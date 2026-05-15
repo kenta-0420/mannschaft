@@ -5,7 +5,7 @@ package com.mannschaft.app.supporter.dto;
  *
  * @param id          申請ID（approve/reject に使用）
  * @param userId      申請者ユーザーID
- * @param displayName 申請者の表示名
+ * @param fullName    申請者の実名（lastName + firstName）
  * @param avatarUrl   申請者のアバター画像URL（null可）
  * @param message     申請メッセージ（null可）
  * @param status      PENDING / APPROVED / REJECTED
@@ -14,7 +14,7 @@ package com.mannschaft.app.supporter.dto;
 public record SupporterApplicationResponse(
         Long id,
         Long userId,
-        String displayName,
+        String fullName,
         String avatarUrl,
         String message,
         String status,

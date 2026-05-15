@@ -15,6 +15,15 @@ import com.mannschaft.app.gdpr.service.PersonalDataCollector;
 import com.mannschaft.app.member.repository.MemberProfileRepository;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
+import com.mannschaft.app.pointcard.entity.PointCardGroupEntity;
+import com.mannschaft.app.pointcard.entity.PointCardGroupItemEntity;
+import com.mannschaft.app.pointcard.entity.PointCardUserSettingsEntity;
+import com.mannschaft.app.pointcard.entity.UserPointCardEntity;
+import com.mannschaft.app.pointcard.enums.BarcodeFormat;
+import com.mannschaft.app.pointcard.repository.PointCardGroupItemRepository;
+import com.mannschaft.app.pointcard.repository.PointCardGroupRepository;
+import com.mannschaft.app.pointcard.repository.PointCardUserSettingsRepository;
+import com.mannschaft.app.pointcard.repository.UserPointCardRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
@@ -31,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -77,6 +87,15 @@ class PersonalDataCollectorTest {
     private UserWeatherLocationRepository userWeatherLocationRepository;
     @Mock
     private EncryptionService encryptionService;
+    // F18 個人ポイントカードウォレット S3
+    @Mock
+    private UserPointCardRepository userPointCardRepository;
+    @Mock
+    private PointCardUserSettingsRepository pointCardUserSettingsRepository;
+    @Mock
+    private PointCardGroupRepository pointCardGroupRepository;
+    @Mock
+    private PointCardGroupItemRepository pointCardGroupItemRepository;
 
     @InjectMocks
     private PersonalDataCollector collector;
@@ -86,7 +105,7 @@ class PersonalDataCollectorTest {
     class Collect {
 
         @Test
-        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（15カテゴリ）")
+        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（16カテゴリ）")
         void 正常_nullカテゴリ_全カテゴリ収集() {
             given(userRepository.findById(anyLong())).willReturn(Optional.empty());
             given(oAuthAccountRepository.findByUserId(anyLong())).willReturn(List.of());
@@ -116,16 +135,23 @@ class PersonalDataCollectorTest {
                     .willReturn(List.of());
             given(userWeatherLocationRepository.findByUserId(anyLong()))
                     .willReturn(List.of());
+            // F18 個人ポイントカードウォレット S3
+            given(pointCardUserSettingsRepository.findById(anyLong()))
+                    .willReturn(Optional.empty());
+            given(userPointCardRepository.findByUserId(anyLong()))
+                    .willReturn(List.of());
+            given(pointCardGroupRepository.findAllByUserIdOrderByDisplayOrderAscCreatedAtAsc(anyLong()))
+                    .willReturn(List.of());
 
             Map<String, String> result = collector.collect(1L, null);
 
-            assertThat(result).hasSize(15);
+            assertThat(result).hasSize(16);
             assertThat(result.keySet()).containsExactlyInAnyOrder(
                     "account.json", "oauth_accounts.json", "memberships.json", "profiles.json",
                     "payments.json", "charts.json", "chat_messages.json", "timeline_posts.json",
                     "audit_logs.json", "notifications.json", "action_memos.json",
                     "error_reports.json", "proxy_input_consents.json", "proxy_input_records.json",
-                    "weather_locations.json"
+                    "weather_locations.json", "point_cards.json"
             );
         }
 
@@ -158,17 +184,112 @@ class PersonalDataCollectorTest {
     class GetCategoryKeys {
 
         @Test
-        @DisplayName("正常系: 15カテゴリキーが返る")
-        void 正常_15カテゴリキー返却() {
+        @DisplayName("正常系: 16カテゴリキーが返る")
+        void 正常_16カテゴリキー返却() {
             Set<String> keys = collector.getCategoryKeys();
 
-            assertThat(keys).hasSize(15);
+            assertThat(keys).hasSize(16);
             assertThat(keys).containsExactlyInAnyOrder(
                     "account", "oauth", "memberships", "profiles", "payments",
                     "charts", "chat_messages", "timeline", "audit_logs", "notifications",
                     "action_memos", "error_reports", "proxy_consents", "proxy_records",
-                    "location_preference"
+                    "location_preference", "point_cards"
             );
+        }
+    }
+
+    @Nested
+    @DisplayName("point_cards カテゴリ（F18 S3 本実装）")
+    class PointCardsCategory {
+
+        @Test
+        @DisplayName("空データ: settings=null / cards=[] / groups=[] を含む 1 ファイルが返る")
+        void 空_3構造のキーが含まれる() {
+            given(pointCardUserSettingsRepository.findById(anyLong()))
+                    .willReturn(Optional.empty());
+            given(userPointCardRepository.findByUserId(anyLong()))
+                    .willReturn(List.of());
+            given(pointCardGroupRepository.findAllByUserIdOrderByDisplayOrderAscCreatedAtAsc(anyLong()))
+                    .willReturn(List.of());
+
+            Map<String, String> result = collector.collect(1L, Set.of("point_cards"));
+
+            assertThat(result).hasSize(1);
+            assertThat(result).containsKey("point_cards.json");
+            String json = result.get("point_cards.json");
+            assertThat(json).contains("\"settings\":null");
+            assertThat(json).contains("\"cards\":[]");
+            assertThat(json).contains("\"groups\":[]");
+        }
+
+        @Test
+        @DisplayName("正常系: cards と groups の中身が JSON に平文で含まれる（EncryptedStringConverter 復号済み）")
+        void 正常系_復号後の平文がエクスポートされる() {
+            PointCardUserSettingsEntity settings = PointCardUserSettingsEntity.builder()
+                    .userId(1L)
+                    .enabled(Boolean.TRUE)
+                    .termsVersion("v1.0.0")
+                    .requireBiometricOnShow(Boolean.FALSE)
+                    .build();
+            given(pointCardUserSettingsRepository.findById(anyLong()))
+                    .willReturn(Optional.of(settings));
+
+            UserPointCardEntity card = UserPointCardEntity.builder()
+                    .userId(1L)
+                    .providerId(null) // 自由入力カード
+                    .displayName("近所のスーパー")  // EncryptedStringConverter が読み込み時に復号した想定
+                    .barcodeValue("9876543210987")
+                    .barcodeFormat(BarcodeFormat.CODE128)
+                    .last4("0987")
+                    .favorite(false)
+                    .displayOrder(0)
+                    .build();
+            card.setId(UUID.randomUUID());
+            given(userPointCardRepository.findByUserId(anyLong())).willReturn(List.of(card));
+
+            PointCardGroupEntity group = PointCardGroupEntity.builder()
+                    .userId(1L)
+                    .name("お買い物セット")
+                    .emoji("🛒")
+                    .displayOrder(0)
+                    .build();
+            group.setId(UUID.randomUUID());
+            given(pointCardGroupRepository.findAllByUserIdOrderByDisplayOrderAscCreatedAtAsc(anyLong()))
+                    .willReturn(List.of(group));
+
+            PointCardGroupItemEntity item = PointCardGroupItemEntity.builder()
+                    .groupId(group.getId())
+                    .cardId(card.getId())
+                    .displayOrder(0)
+                    .build();
+            given(pointCardGroupItemRepository.findAllByGroupIdIn(any()))
+                    .willReturn(List.of(item));
+
+            Map<String, String> result = collector.collect(1L, Set.of("point_cards"));
+
+            assertThat(result).hasSize(1);
+            String json = result.get("point_cards.json");
+            // settings は復号後の平文が含まれる
+            assertThat(json).contains("\"termsVersion\":\"v1.0.0\"");
+            // card は復号後の barcodeValue / displayName を含む（GDPR §15 アクセス権実現）
+            assertThat(json).contains("\"barcodeValue\":\"9876543210987\"");
+            assertThat(json).contains("\"displayName\":\"近所のスーパー\"");
+            // groups は中間アイテム配列を含む
+            assertThat(json).contains("\"name\":\"お買い物セット\"");
+            assertThat(json).contains("\"items\":");
+            assertThat(json).contains(card.getId().toString());
+        }
+
+        @Test
+        @DisplayName("異常系: リポジトリ例外は[]でスキップされる")
+        void 異常系_例外発生_スキップ() {
+            given(pointCardUserSettingsRepository.findById(anyLong()))
+                    .willThrow(new RuntimeException("DB error"));
+
+            Map<String, String> result = collector.collect(1L, Set.of("point_cards"));
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get("point_cards.json")).isEqualTo("[]");
         }
     }
 

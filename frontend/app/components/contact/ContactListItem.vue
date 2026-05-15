@@ -19,7 +19,7 @@ const emit = defineEmits<{
       :label="
         contact.user.avatarUrl
           ? undefined
-          : (contact.customName || contact.user.displayName).charAt(0)
+          : (contact.customName || contact.user.fullName).charAt(0)
       "
       shape="circle"
       size="normal"
@@ -27,7 +27,7 @@ const emit = defineEmits<{
     <div class="min-w-0 flex-1">
       <div class="flex items-center gap-1">
         <span class="truncate font-medium">
-          {{ contact.customName || contact.user.displayName }}
+          {{ contact.customName || contact.user.fullName }}
         </span>
         <i v-if="contact.isPinned" class="pi pi-star-fill shrink-0 text-xs text-yellow-400" />
       </div>

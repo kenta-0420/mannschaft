@@ -323,7 +323,69 @@ public class GlobalExceptionHandler {
             Map.entry("TOUR_025", HttpStatus.UNPROCESSABLE_ENTITY),   // MAX_TEMPLATE_COUNT_EXCEEDED
             Map.entry("TOUR_026", HttpStatus.NOT_FOUND),              // TEAM_NOT_IN_ORGANIZATION (IDOR対策で404)
             Map.entry("TOUR_027", HttpStatus.CONFLICT),               // DUPLICATE_ENTRY_MEMBER
-            Map.entry("TOUR_028", HttpStatus.FORBIDDEN)               // TEMPLATE_TEAM_MISMATCH
+            Map.entry("TOUR_028", HttpStatus.FORBIDDEN),              // TEMPLATE_TEAM_MISMATCH
+            // F17.1 村機能 Phase 1（B2 村CRUD / B3 メンバーシップ / B4 ニックネーム / B5 村作成申請）統合
+            Map.entry("VILLAGE_001", HttpStatus.NOT_FOUND),            // VILLAGE_NOT_FOUND（IDOR 対策で 404）
+            Map.entry("VILLAGE_002", HttpStatus.FORBIDDEN),            // VILLAGE_UNLISTED
+            Map.entry("VILLAGE_006", HttpStatus.CONFLICT),             // ALREADY_MEMBER
+            Map.entry("VILLAGE_007", HttpStatus.NOT_FOUND),            // NOT_MEMBER（IDOR 対策で 404）
+            Map.entry("VILLAGE_008", HttpStatus.CONFLICT),             // NICKNAME_TAKEN
+            Map.entry("VILLAGE_010", HttpStatus.TOO_MANY_REQUESTS),    // CREATION_REQUEST_THROTTLED
+            Map.entry("VILLAGE_011", HttpStatus.TOO_MANY_REQUESTS),    // NICKNAME_CHANGE_THROTTLED
+            Map.entry("VILLAGE_012", HttpStatus.TOO_MANY_REQUESTS),    // PARTICIPATION_LIMIT_EXCEEDED
+            Map.entry("VILLAGE_014", HttpStatus.UNPROCESSABLE_ENTITY), // GUIDELINE_NOT_AGREED
+            Map.entry("VILLAGE_015", HttpStatus.FORBIDDEN),            // REPRESENT_FORBIDDEN
+            Map.entry("VILLAGE_016", HttpStatus.FORBIDDEN),            // SUBJECT_NOT_MEMBER
+            Map.entry("VILLAGE_017", HttpStatus.CONFLICT),             // HEADMAN_CANNOT_LEAVE
+            Map.entry("VILLAGE_018", HttpStatus.CONFLICT),             // VERSION_CONFLICT
+            Map.entry("VILLAGE_019", HttpStatus.CONFLICT),             // VILLAGE_JOIN_REQUIRES_APPROVAL
+            Map.entry("VILLAGE_022", HttpStatus.FORBIDDEN),            // NEW_ACCOUNT_RESTRICTED
+            Map.entry("VILLAGE_024", HttpStatus.FORBIDDEN),            // MODERATION_FORBIDDEN
+            Map.entry("VILLAGE_025", HttpStatus.CONFLICT),             // JOIN_RATE_EXCEEDED
+            Map.entry("VILLAGE_027", HttpStatus.CONFLICT),             // VILLAGE_ALREADY_ARCHIVED
+            Map.entry("VILLAGE_028", HttpStatus.UNPROCESSABLE_ENTITY), // NICKNAME_INVALID
+            Map.entry("VILLAGE_031", HttpStatus.FORBIDDEN),            // MEMBER_BANNED
+            Map.entry("VILLAGE_032", HttpStatus.NOT_FOUND),            // CREATION_REQUEST_NOT_FOUND
+            Map.entry("VILLAGE_033", HttpStatus.CONFLICT),             // CREATION_REQUEST_ALREADY_REVIEWED
+            Map.entry("VILLAGE_034", HttpStatus.FORBIDDEN),            // CREATION_REQUEST_REJECTED
+            Map.entry("VILLAGE_035", HttpStatus.CONFLICT),             // CREATION_REQUEST_SLUG_TAKEN
+            Map.entry("VILLAGE_036", HttpStatus.FORBIDDEN),            // OFFICIAL_VILLAGE_FORBIDDEN
+            Map.entry("VILLAGE_037", HttpStatus.FORBIDDEN),            // VILLAGE_CREATE_FORBIDDEN
+            // F17.1 Phase 1 B6 — 村参加申請（VILLAGE_038〜041）
+            Map.entry("VILLAGE_038", HttpStatus.NOT_FOUND),            // VILLAGE_JOIN_REQUEST_NOT_FOUND
+            Map.entry("VILLAGE_039", HttpStatus.CONFLICT),             // VILLAGE_JOIN_REQUEST_PENDING_DUPLICATE
+            Map.entry("VILLAGE_040", HttpStatus.CONFLICT),             // VILLAGE_JOIN_REQUEST_ALREADY_REVIEWED
+            Map.entry("VILLAGE_041", HttpStatus.UNPROCESSABLE_ENTITY), // VILLAGE_FREE_VILLAGE_DIRECT_JOIN
+            // F17.1 Phase 1 B7 — 通報 + モデレーション（設計書 §10 予約 VILLAGE_009/026 + 追加 VILLAGE_042/043）
+            Map.entry("VILLAGE_009", HttpStatus.TOO_MANY_REQUESTS),    // VILLAGE_REPORT_RATE_LIMITED
+            Map.entry("VILLAGE_026", HttpStatus.UNPROCESSABLE_ENTITY), // VILLAGE_REPORT_INVALID_TARGET
+            Map.entry("VILLAGE_042", HttpStatus.NOT_FOUND),            // VILLAGE_REPORT_NOT_FOUND（IDOR 対策で 404）
+            Map.entry("VILLAGE_043", HttpStatus.CONFLICT),             // VILLAGE_REPORT_ALREADY_RESOLVED
+            // F17.1 Phase 1 B8 — お気に入り村ピン留め（VILLAGE_013 + VILLAGE_044/045/047）
+            Map.entry("VILLAGE_013", HttpStatus.UNPROCESSABLE_ENTITY), // VILLAGE_PIN_LIMIT_EXCEEDED
+            Map.entry("VILLAGE_044", HttpStatus.NOT_FOUND),            // VILLAGE_PIN_NOT_FOUND
+            Map.entry("VILLAGE_045", HttpStatus.CONFLICT),             // VILLAGE_PIN_ALREADY_EXISTS
+            Map.entry("VILLAGE_047", HttpStatus.UNPROCESSABLE_ENTITY), // VILLAGE_PIN_ORDER_MISMATCH
+            // F17.1 Phase 1 B9 — 井戸端会議 + 投稿主体一覧（VILLAGE_048〜050）
+            Map.entry("VILLAGE_048", HttpStatus.FORBIDDEN),            // VILLAGE_POSTING_IDENTITY_FORBIDDEN
+            Map.entry("VILLAGE_049", HttpStatus.NOT_FOUND),            // VILLAGE_LOBBY_NOT_FOUND
+            Map.entry("VILLAGE_050", HttpStatus.INTERNAL_SERVER_ERROR),// VILLAGE_LOBBY_CHANNEL_INIT_FAILED
+            // F17.1 Phase 1 B10 — 村内検索 + ダッシュボード集約（VILLAGE_051）
+            Map.entry("VILLAGE_051", HttpStatus.UNPROCESSABLE_ENTITY), // VILLAGE_SEARCH_INVALID_QUERY
+
+            // F18 個人ポイントカードウォレット（設計書 §6.3 整合）
+            Map.entry("POINT_CARD_001", HttpStatus.FORBIDDEN),         // WALLET_NOT_ENABLED
+            Map.entry("POINT_CARD_002", HttpStatus.BAD_REQUEST),       // INVALID_BARCODE_VALUE（Severity.WARN 既定と同じだが明示）
+            Map.entry("POINT_CARD_003", HttpStatus.CONFLICT),          // CARD_LIMIT_EXCEEDED
+            Map.entry("POINT_CARD_004", HttpStatus.CONFLICT),          // GROUP_LIMIT_EXCEEDED
+            Map.entry("POINT_CARD_005", HttpStatus.CONFLICT),          // GROUP_ITEM_LIMIT_EXCEEDED
+            Map.entry("POINT_CARD_006", HttpStatus.NOT_FOUND),         // CARD_NOT_FOUND（IDOR 対策で 403→404）
+            Map.entry("POINT_CARD_007", HttpStatus.NOT_FOUND),         // PROVIDER_NOT_FOUND
+            Map.entry("POINT_CARD_008", HttpStatus.TOO_MANY_REQUESTS), // RATE_LIMIT_EXCEEDED
+            Map.entry("POINT_CARD_009", HttpStatus.UNAUTHORIZED),      // BIOMETRIC_REQUIRED
+            // F18 Phase 2 S2B 自店プロバイダー CRUD
+            Map.entry("POINT_CARD_010", HttpStatus.CONFLICT),          // PROVIDER_LIMIT_EXCEEDED (20 個超過)
+            Map.entry("POINT_CARD_011", HttpStatus.NOT_FOUND)          // PROVIDER_NOT_OWNED (IDOR 対策で 404)
     );
 
     /**

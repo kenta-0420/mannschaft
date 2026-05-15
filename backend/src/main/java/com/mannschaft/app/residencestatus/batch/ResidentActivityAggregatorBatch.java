@@ -1,0 +1,44 @@
+package com.mannschaft.app.residencestatus.batch;
+
+import com.mannschaft.app.residencestatus.service.ResidentActivityAggregatorService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+/**
+ * 居住者アクティビティ日次集計バッチ（F09.16 S3-B）。
+ *
+ * <p>毎日 03:00 に全居住者のスナップショットを日次生成する。
+ *
+ * <p>v1 は placeholder（score=0）を UPSERT するのみ。
+ * 実際のスコア算定は将来の Activity イベント購読実装後に差し替える。
+ *
+ * <p>TODO: 組織・居住者の走査は residencestatus ドメイン外の情報が必要なため、
+ *     将来 OrganizationResidentListPort（インターフェース）を介した
+ *     EventListener 化が必要。クロスドメイン参照を避けるため v1 は空実装とする。
+ */
+@Component
+@Slf4j
+@RequiredArgsConstructor
+public class ResidentActivityAggregatorBatch {
+
+    private final ResidentActivityAggregatorService aggregatorService;
+
+    /**
+     * 毎日 03:00 に全居住者のスナップショットを日次生成する。
+     *
+     * <p>v1 stub: 組織・居住者の走査手段が別ドメインのため空実装。
+     * 将来は OrganizationResidentListPort 経由で居住者一覧を取得し、
+     * {@link ResidentActivityAggregatorService#upsertDailySnapshot} を呼び出す。
+     * TODO: 将来は EventListener 化予定（クロスドメイン依存の解消）
+     */
+    @Scheduled(cron = "0 0 3 * * *")
+    public void aggregateDaily() {
+        log.info("[ResidentActivityAggregatorBatch] 日次集計 開始");
+        // TODO: 組織・居住者を走査して upsertDailySnapshot を呼ぶ
+        // 現 v1 は組織リスト取得手段が別ドメインのため、空実装でコンパイルのみ確認
+        // TODO: 将来 EventListener 化予定（クロスドメイン依存を解消）
+        log.info("[ResidentActivityAggregatorBatch] 日次集計 完了（v1 stub）");
+    }
+}

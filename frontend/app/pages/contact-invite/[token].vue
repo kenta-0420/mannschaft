@@ -88,7 +88,7 @@ onMounted(fetchPreview)
         <i class="pi pi-check-circle mb-3 text-5xl text-green-500" />
         <h2 class="mb-1 text-lg font-semibold">連絡先に追加しました</h2>
         <p class="mb-4 text-sm text-gray-500">
-          {{ preview?.issuer.displayName }} さんとの連絡先が追加されました
+          {{ preview?.issuer.fullName }} さんとの連絡先が追加されました
         </p>
         <Button label="チャットを開く" icon="pi pi-comments" @click="navigateTo('/chat')" />
       </div>
@@ -100,7 +100,7 @@ onMounted(fetchPreview)
       >
         <div>
           <div class="mb-1 text-sm text-gray-400">連絡先追加の招待</div>
-          <h2 class="text-xl font-bold">{{ preview.issuer.displayName }}</h2>
+          <h2 class="text-xl font-bold">{{ preview.issuer.fullName }}</h2>
           <div v-if="preview.issuer.contactHandle" class="mt-0.5 text-sm text-gray-400">
             @{{ preview.issuer.contactHandle }}
           </div>
@@ -120,7 +120,7 @@ onMounted(fetchPreview)
             @click="acceptInvite"
           />
           <p class="text-xs text-gray-400">
-            追加すると{{ preview.issuer.displayName }}さんとDMができるようになります
+            追加すると{{ preview.issuer.fullName }}さんとDMができるようになります
           </p>
         </div>
       </div>

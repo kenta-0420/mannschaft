@@ -70,7 +70,7 @@ const showConfirmDialog = ref(false)
 const filteredCandidates = computed<RollCallCandidate[]>(() => {
   const q = searchQuery.value.trim().toLowerCase()
   return props.candidates.filter((c) => {
-    if (q && !c.displayName.toLowerCase().includes(q)) return false
+    if (q && !c.fullName.toLowerCase().includes(q)) return false
     if (filterMode.value === 'unchecked' && entriesMap.value.has(c.userId)) {
       return false
     }
@@ -116,7 +116,7 @@ const guardianSetupWarnings = computed<string[]>(() => {
       const entry = entriesMap.value.get(c.userId)
       return entry?.status === 'PRESENT'
     })
-    .map((c) => c.displayName)
+    .map((c) => c.fullName)
 })
 
 const entriesArray = computed<RollCallEntry[]>(() => Array.from(entriesMap.value.values()))

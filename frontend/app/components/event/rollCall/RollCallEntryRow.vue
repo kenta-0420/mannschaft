@@ -92,15 +92,15 @@ const isGuardianMissingWarn = computed(
       <img
         v-if="candidate.avatarUrl"
         :src="candidate.avatarUrl"
-        :alt="candidate.displayName"
+        :alt="candidate.fullName"
         class="rc-row__avatar"
       >
       <div v-else class="rc-row__avatar rc-row__avatar--placeholder" aria-hidden="true">
-        {{ candidate.displayName.charAt(0) }}
+        {{ candidate.fullName.charAt(0) }}
       </div>
       <div class="rc-row__meta">
         <div class="rc-row__name">
-          {{ candidate.displayName }}
+          {{ candidate.fullName }}
         </div>
         <div class="rc-row__badges">
           <span v-if="candidate.isAlreadyCheckedIn" class="rc-badge rc-badge--checked">

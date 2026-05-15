@@ -58,6 +58,13 @@
       "closed_kicked": "Tab closed because you were removed from the channel",
       "closed_deleted": "Tab closed because the channel was deleted",
       "closed_archived": "Tab closed because the channel was archived"
+    },
+    "typing": {
+      "single": "{name} is typing…",
+      "multiple": "{names} are typing…"
+    },
+    "connection": {
+      "failed": "Connection lost. Attempting to reconnect…"
     }
   },
   "button": {
@@ -1095,7 +1102,30 @@
     "noFolders": "No folders yet",
     "emptyFolder": "This folder is empty",
     "limitExceeded": "You can create up to 20 folders",
-    "nameDuplicate": "A folder with the same name already exists"
+    "nameDuplicate": "A folder with the same name already exists",
+    "title": "My Folders",
+    "untagged": "Uncategorized",
+    "all": "All",
+    "createNew": "Create new folder",
+    "assignOnJoin": {
+      "label": "Assign to folder (optional)",
+      "defaultHint": "If not selected, will be placed in Uncategorized",
+      "unselected": "Not selected (auto-placed in Uncategorized)"
+    },
+    "notifications": {
+      "byFolder": "Notifications by folder"
+    },
+    "nav": {
+      "allList": "All (list)",
+      "createNew": "+ Create new folder",
+      "manage": "Manage folders",
+      "teams": "Teams",
+      "organizations": "Organizations"
+    },
+    "error": {
+      "typeMismatch": "Folder scope type mismatch",
+      "defaultImmutable": "Cannot modify Uncategorized folder"
+    }
   },
   "systemAdmin": {
     "logs": {
@@ -1188,5 +1218,25 @@
   },
   "dashboard": {
     "team_reservation_link": "Reservations"
+  },
+  "organizationTeamSearch": {
+    "title": "Search Stores",
+    "keywordPlaceholder": "Search by store name",
+    "prefectureLabel": "Prefecture",
+    "cityLabel": "City",
+    "templateLabel": "Category",
+    "searchButton": "Search",
+    "resetButton": "Reset filters",
+    "empty": "No stores found",
+    "error": "Search failed",
+    "loading": "Searching...",
+    "resultCount": "{count} results",
+    "anyPrefecture": "Any",
+    "anyCity": "Any",
+    "anyTemplate": "Any",
+    "loginToSeeDetails": "Log in to see details",
+    "retry": "Retry",
+    "organizationNotFound": "Organization not found",
+    "rateLimitExceeded": "Too many requests. Please wait and try again."
   }
 }

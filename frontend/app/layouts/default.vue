@@ -60,10 +60,29 @@ watch(
   },
 )
 
+/**
+ * F15.3: チーム/組織は ScopeNavDropdown に分離。
+ * desktop ヘッダーでは navItems から外し、モバイル Drawer では従来通り表示する。
+ */
 const navItems = computed(() => [
   { label: 'ダッシュボード', icon: 'pi pi-home', to: '/dashboard' },
-  { label: 'チーム', icon: 'pi pi-users', to: '/teams' },
-  { label: '組織', icon: 'pi pi-building', to: '/organizations' },
+  { label: 'TODO', icon: 'pi pi-check-square', to: '/todos' },
+  { label: 'カレンダー', icon: 'pi pi-calendar', to: '/calendar' },
+  { label: 'シフト管理', icon: 'pi pi-table', to: '/shift' },
+  { label: 'タイムライン', icon: 'pi pi-comments', to: '/timeline' },
+  { label: 'チャット', icon: 'pi pi-comment', to: '/chat' },
+  { label: t('shift.page.myShift'), icon: 'pi pi-clock', to: '/my/shift' },
+  { label: 'マイページ', icon: 'pi pi-user', to: '/my' },
+  { label: 'Q&A', icon: 'pi pi-question-circle', to: '/help/qa' },
+  { label: '設定', icon: 'pi pi-cog', to: '/settings' },
+])
+
+/** モバイル Drawer 用は従来通りチーム/組織のリンクを含める。F17: 村も追加。 */
+const mobileNavItems = computed(() => [
+  { label: 'ダッシュボード', icon: 'pi pi-home', to: '/dashboard' },
+  { label: t('scopeFolder.nav.teams'), icon: 'pi pi-users', to: '/teams' },
+  { label: t('scopeFolder.nav.organizations'), icon: 'pi pi-building', to: '/organizations' },
+  { label: t('village.title'), icon: 'pi pi-th-large', to: '/villages' },
   { label: 'TODO', icon: 'pi pi-check-square', to: '/todos' },
   { label: 'カレンダー', icon: 'pi pi-calendar', to: '/calendar' },
   { label: 'シフト管理', icon: 'pi pi-table', to: '/shift' },
@@ -132,8 +151,35 @@ function isActive(path: string): boolean {
               v-if="authStore.isAuthenticated"
               class="hidden md:flex items-center gap-1 overflow-x-auto scrollbar-thin-nav"
             >
+              <!-- ダッシュボード（最初に固定表示） -->
               <NuxtLink
-                v-for="item in navItems"
+                to="/dashboard"
+                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100"
+                :class="isActive('/dashboard') ? 'bg-primary/10 text-primary' : 'text-surface-600'"
+              >
+                <i class="pi pi-home" />
+                ダッシュボード
+              </NuxtLink>
+              <!-- F15.3: チーム/組織のドロップダウン（マイフォルダ統合 UX） -->
+              <NavigationScopeNavDropdown
+                scope-type="TEAM"
+                :label="t('scopeFolder.nav.teams')"
+              />
+              <NavigationScopeNavDropdown
+                scope-type="ORGANIZATION"
+                :label="t('scopeFolder.nav.organizations')"
+              />
+              <!-- F17: 村への独立リンク（チーム/組織と並列。ScopeNavDropdown は使わず単純リンク） -->
+              <NuxtLink
+                to="/villages"
+                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100"
+                :class="isActive('/villages') ? 'bg-primary/10 text-primary' : 'text-surface-600'"
+              >
+                <i class="pi pi-th-large" />
+                {{ t('village.title') }}
+              </NuxtLink>
+              <NuxtLink
+                v-for="item in navItems.filter(i => i.to !== '/dashboard')"
                 :key="item.to"
                 :to="item.to"
                 class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100"
@@ -252,7 +298,7 @@ function isActive(path: string): boolean {
         </template>
         <nav class="flex flex-col gap-1 pt-2">
           <NuxtLink
-            v-for="item in navItems"
+            v-for="item in mobileNavItems"
             :key="item.to"
             :to="item.to"
             class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-100"

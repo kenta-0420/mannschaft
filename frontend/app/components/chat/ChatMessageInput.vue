@@ -7,6 +7,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   sent: []
+  /** テキスト入力イベント（タイピングインジケーター用） */
+  typing: []
 }>()
 
 const { sendMessage } = useChatApi()
@@ -48,6 +50,7 @@ function onKeydown(event: KeyboardEvent) {
         class="flex-1"
         :disabled="disabled"
         @keydown="onKeydown"
+        @input="emit('typing')"
       />
       <Button
         data-testid="chat-send-btn"

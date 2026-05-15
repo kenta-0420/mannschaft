@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 interface AuthUser {
   id: number
   email: string
-  displayName: string
+  fullName: string
   profileImageUrl: string | null
   systemRole?: string
 }
@@ -84,6 +84,15 @@ export const useAuthStore = defineStore('auth', {
           await offlineDb.delete()
         } catch {
           // DB 削除失敗は握りつぶす
+        }
+
+        // F18 ウォレット: オフラインキャッシュ DB をクリア（鍵ごと削除）
+        // 設計書 §7.4「ログアウト時に鍵を破棄 + IndexedDB の全レコードを削除」
+        try {
+          const { deleteWalletOfflineDb } = await import('~/utils/walletOfflineStore')
+          await deleteWalletOfflineDb()
+        } catch {
+          // DB 削除失敗は握りつぶす（ログアウト自体は継続）
         }
       }
       useChatTabsStore().clearAll()

@@ -155,6 +155,9 @@ public class ChatAttachmentService {
                 }
                 yield new ScopeResolution(StorageScopeType.PERSONAL, userId);
             }
+            // F17.1 Phase 1: 村ロビーチャネルは添付スコープ未サポート（村スコープのストレージは Phase 2 以降）
+            case VILLAGE_LOBBY -> throw new UnsupportedOperationException(
+                    "VILLAGE_LOBBY 添付はまだサポートされていません (channelId=" + channel.getId() + ")");
         };
     }
 

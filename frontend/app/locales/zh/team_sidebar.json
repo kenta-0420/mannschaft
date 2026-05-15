@@ -1,0 +1,39 @@
+{
+  "teamSidebar": {
+    "category": {
+      "home": "首页",
+      "schedule": "日程",
+      "member": "成员",
+      "ops": "业务运营",
+      "facility": "设施管理",
+      "data": "数据",
+      "settings": "设置"
+    },
+    "item": {
+      "dashboard": "仪表盘",
+      "announcements": "公告",
+      "chat": "聊天",
+      "bulletin": "公告板",
+      "feed": "动态",
+      "schedule": "日历",
+      "shifts": "排班",
+      "duties": "值班",
+      "annual_plan": "年度计划",
+      "members": "成员",
+      "circulation": "传阅",
+      "safety_check": "安全确认",
+      "todos": "任务",
+      "workflows": "工作流",
+      "forms": "问卷",
+      "projects": "项目",
+      "budget": "预算管理",
+      "repair_plan": "维修计划",
+      "equipment": "设备管理",
+      "parking": "停车场",
+      "files": "文件",
+      "analytics": "分析",
+      "audit_logs": "审计日志",
+      "settings": "设置"
+    }
+  }
+}

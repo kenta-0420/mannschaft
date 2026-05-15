@@ -1,0 +1,89 @@
+<script setup lang="ts">
+import type { SidebarCategory } from '~/types/sidebar'
+
+const props = defineProps<{
+  teamId: number
+}>()
+
+const categories: SidebarCategory[] = [
+  {
+    key: 'home',
+    labelKey: 'teamSidebar.category.home',
+    icon: 'pi pi-home',
+    items: [
+      { labelKey: 'teamSidebar.item.dashboard', icon: 'pi pi-th-large', path: '', moduleSlug: null, requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.announcements', icon: 'pi pi-bullhorn', path: 'announcements', moduleSlug: null, requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.chat', icon: 'pi pi-comments', path: 'chat', moduleSlug: 'chat', requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.bulletin', icon: 'pi pi-clipboard', path: 'bulletin', moduleSlug: 'bulletin', requiredRole: 'MEMBER' },
+    ],
+  },
+  {
+    key: 'schedule',
+    labelKey: 'teamSidebar.category.schedule',
+    icon: 'pi pi-calendar',
+    items: [
+      { labelKey: 'teamSidebar.item.schedule', icon: 'pi pi-calendar', path: 'schedule', moduleSlug: 'schedule', requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.shifts', icon: 'pi pi-clock', path: 'shifts', moduleSlug: 'shift', requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.duties', icon: 'pi pi-list', path: 'duties', moduleSlug: null, requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.annual_plan', icon: 'pi pi-calendar-plus', path: 'annual-plan', moduleSlug: null, requiredRole: 'MEMBER' },
+    ],
+  },
+  {
+    key: 'member',
+    labelKey: 'teamSidebar.category.member',
+    icon: 'pi pi-users',
+    items: [
+      { labelKey: 'teamSidebar.item.circulation', icon: 'pi pi-envelope', path: 'circulation', moduleSlug: 'circulation', requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.safety_check', icon: 'pi pi-shield', path: 'safety', moduleSlug: 'safety_check', requiredRole: 'MEMBER' },
+    ],
+  },
+  {
+    key: 'ops',
+    labelKey: 'teamSidebar.category.ops',
+    icon: 'pi pi-briefcase',
+    items: [
+      { labelKey: 'teamSidebar.item.todos', icon: 'pi pi-check-square', path: 'todos', moduleSlug: 'todo', requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.workflows', icon: 'pi pi-sitemap', path: 'workflows', moduleSlug: null, requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.forms', icon: 'pi pi-file-edit', path: 'forms', moduleSlug: 'survey', requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.projects', icon: 'pi pi-folder', path: 'projects', moduleSlug: null, requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.budget', icon: 'pi pi-wallet', path: 'budget', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
+    ],
+  },
+  {
+    key: 'facility',
+    labelKey: 'teamSidebar.category.facility',
+    icon: 'pi pi-building',
+    items: [
+      { labelKey: 'teamSidebar.item.repair_plan', icon: 'pi pi-wrench', path: 'repair-plan', moduleSlug: 'repair_longterm_plan', requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.equipment', icon: 'pi pi-cog', path: 'equipment', moduleSlug: 'equipment', requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.parking', icon: 'pi pi-car', path: 'parking', moduleSlug: 'parking', requiredRole: 'MEMBER' },
+    ],
+  },
+  {
+    key: 'data',
+    labelKey: 'teamSidebar.category.data',
+    icon: 'pi pi-database',
+    items: [
+      { labelKey: 'teamSidebar.item.files', icon: 'pi pi-folder-open', path: 'files', moduleSlug: 'file_sharing', requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.analytics', icon: 'pi pi-chart-bar', path: 'analytics', moduleSlug: 'analytics', requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.audit_logs', icon: 'pi pi-history', path: 'audit-logs', moduleSlug: 'audit_log', requiredRole: 'ADMIN' },
+    ],
+  },
+  {
+    key: 'settings',
+    labelKey: 'teamSidebar.category.settings',
+    icon: 'pi pi-cog',
+    items: [
+      { labelKey: 'teamSidebar.item.settings', icon: 'pi pi-sliders-h', path: 'settings/shift', moduleSlug: null, requiredRole: 'ADMIN' },
+    ],
+  },
+]
+</script>
+
+<template>
+  <BaseSidebar
+    scope-type="team"
+    :scope-id="props.teamId"
+    :categories="categories"
+  />
+</template>

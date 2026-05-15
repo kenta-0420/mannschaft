@@ -5,6 +5,7 @@ import com.mannschaft.app.weather.client.WeatherApiClient;
 import com.mannschaft.app.weather.client.WeatherForecastData;
 import com.mannschaft.app.weather.config.WeatherApiProperties;
 import com.mannschaft.app.weather.exception.WeatherProviderException;
+import com.mannschaft.app.weather.metrics.WeatherMetrics;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -45,6 +46,7 @@ public class WeatherForecastService {
     private final WeatherApiClient client;
     private final WeatherApiProperties props;
     private final ObjectMapper objectMapper;
+    private final WeatherMetrics weatherMetrics;
 
     /**
      * 居住地点の今日・明日の予報を取得する。
@@ -66,22 +68,29 @@ public class WeatherForecastService {
 
         // 2. fresh ヒット → 即返却
         if (cached.isPresent() && isFresh(cached.get())) {
+            weatherMetrics.recordCacheHit();
             return new WeatherForecastResult(cached.get(), false);
         }
 
         // 3. ミス or stale → WeatherAPI.com 呼び出し
+        weatherMetrics.recordCacheMiss();
         try {
+            long startMillis = System.currentTimeMillis();
             Optional<WeatherForecastData> fetched =
                     client.fetchForecast(latRounded, lonRounded, lang);
+            long elapsedMillis = System.currentTimeMillis() - startMillis;
             if (fetched.isEmpty()) {
                 // フェッチは成功したが空 → stale フォールバック試行
                 return fallbackToStale(cached, cacheKey, null);
             }
+            weatherMetrics.recordApiCall("success");
+            weatherMetrics.recordApiLatency(elapsedMillis);
             WeatherForecastData fresh = fetched.get();
             writeCache(cacheKey, fresh, props.getCacheTtlSeconds());
             return new WeatherForecastResult(fresh, false);
         } catch (WeatherProviderException e) {
             log.warn("WeatherAPI.com 取得失敗 key={}: {}", cacheKey, e.getMessage());
+            weatherMetrics.recordApiCall("error");
             return fallbackToStale(cached, cacheKey, e);
         }
     }

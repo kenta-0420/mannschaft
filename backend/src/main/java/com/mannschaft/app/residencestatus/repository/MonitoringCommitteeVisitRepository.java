@@ -24,4 +24,11 @@ public interface MonitoringCommitteeVisitRepository
 
     /** 訪問者（WATCHER）の自身の訪問履歴（24h 以内更新可否判定にも使用）。 */
     List<MonitoringCommitteeVisit> findByVisitorUserIdAndDeletedAtIsNullOrderByVisitedAtDesc(Long visitorUserId);
+
+    /**
+     * 訪問者（WATCHER）の組織スコープ付き訪問履歴（直近順）。
+     * S4-A: getVisitsByWatcher() で使用する。
+     */
+    List<MonitoringCommitteeVisit> findByVisitorUserIdAndOrganizationIdAndDeletedAtIsNullOrderByVisitedAtDesc(
+            Long visitorUserId, Long organizationId);
 }

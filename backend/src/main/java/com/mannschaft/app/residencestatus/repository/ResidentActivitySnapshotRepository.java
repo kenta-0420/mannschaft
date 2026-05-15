@@ -18,9 +18,9 @@ public interface ResidentActivitySnapshotRepository
     Optional<ResidentActivitySnapshot> findBySubjectUserIdAndSnapshotDateAndDeletedAtIsNull(
             Long subjectUserId, LocalDate snapshotDate);
 
-    /** 居住者の直近 N 件 snapshot を新しい順に取得。 */
-    List<ResidentActivitySnapshot> findByResidentRegistryIdAndDeletedAtIsNullOrderBySnapshotDateDesc(
-            Long residentRegistryId);
+    /** 居住者の直近 N 件 snapshot を新しい順に取得（テナント二重防御付き）。 */
+    List<ResidentActivitySnapshot> findByResidentRegistryIdAndOrganizationIdAndDeletedAtIsNullOrderBySnapshotDateDesc(
+            Long residentRegistryId, Long organizationId);
 
     /** 30 日ローテ用: 指定日より古い snapshot を削除候補として取得。 */
     List<ResidentActivitySnapshot> findBySnapshotDateLessThanAndDeletedAtIsNull(LocalDate threshold);

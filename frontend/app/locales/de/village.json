@@ -1,0 +1,292 @@
+{
+  "title": "村",
+  "subtitle": "コミュニティ広場",
+  "action": {
+    "create": "村を作る",
+    "edit": "村を編集",
+    "delete": "村を削除",
+    "archive": "村を凍結",
+    "join": "参加する",
+    "leave": "退村する",
+    "pin": "お気に入りに追加",
+    "unpin": "お気に入りから外す",
+    "report": "通報する",
+    "search": "検索",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "submit": "送信",
+    "approve": "承認",
+    "reject": "却下",
+    "withdraw": "取り下げ",
+    "resolve": "対応完了",
+    "dismiss": "却下",
+    "ban": "Sperren",
+    "unban": "Entsperren",
+    "changeRole": "Rolle ändern",
+    "viewAll": "Alle Dörfer ansehen"
+  },
+  "field": {
+    "name": "村名",
+    "slug": "スラッグ",
+    "category": "カテゴリ",
+    "description": "説明文",
+    "iconUrl": "アイコン",
+    "coverUrl": "カバー画像",
+    "type": "種別",
+    "joinPolicy": "参加方式",
+    "visibility": "公開範囲",
+    "guideline": "村ガイドライン",
+    "purpose": "活動目的",
+    "memberCount": "村人数",
+    "createdAt": "作成日",
+    "archivedAt": "凍結日"
+  },
+  "type": {
+    "OFFICIAL": "公式村",
+    "COMMUNITY": "コミュニティ村"
+  },
+  "joinPolicy": {
+    "FREE": "自由参加",
+    "APPROVAL": "承認制"
+  },
+  "visibility": {
+    "PUBLIC": "公開",
+    "UNLISTED": "限定公開"
+  },
+  "role": {
+    "HEADMAN": "村長",
+    "ELDER": "長老",
+    "VILLAGER": "村人",
+    "VISITOR": "訪問者"
+  },
+  "subjectType": {
+    "USER": "個人",
+    "TEAM": "チーム",
+    "ORGANIZATION": "組織"
+  },
+  "tab": {
+    "bulletin": "掲示板",
+    "timeline": "タイムライン",
+    "lobby": "ロビー",
+    "members": "村人一覧",
+    "settings": "設定",
+    "reports": "通報管理"
+  },
+  "lobby": {
+    "title": "ロビー",
+    "today": "本日",
+    "yesterday": "昨日",
+    "daily": "日次スレッド",
+    "realtime": "リアルタイム",
+    "placeholder": "メッセージを入力...",
+    "empty": "まだメッセージはありません",
+    "loadMore": "もっと見る"
+  },
+  "pin": {
+    "title": "お気に入りの村",
+    "empty": "ピン留めした村はまだありません",
+    "limit": "ピン留めは{max}件まで可能です",
+    "reorder": "並び替え",
+    "reorderSuccess": "並び順を保存しました"
+  },
+  "nickname": {
+    "title": "村ニックネーム",
+    "placeholder": "村で使うニックネーム",
+    "bio": "自己紹介",
+    "avatar": "アバター",
+    "changeLimit": "ニックネーム変更は月{limit}回までです",
+    "remaining": "今月の残り変更回数: {count}回",
+    "saveSuccess": "ニックネームを保存しました"
+  },
+  "report": {
+    "dialog": {
+      "title": "通報する",
+      "reason": "通報理由",
+      "detail": "詳細（任意）",
+      "submit": "通報を送信",
+      "submitted": "通報を受け付けました。運営が確認します。",
+      "anonymous": "通報は匿名で送信されます"
+    },
+    "list": {
+      "title": "通報一覧",
+      "empty": "通報はありません",
+      "status": "状態",
+      "target": "対象",
+      "reportedAt": "通報日時"
+    },
+    "status": {
+      "PENDING": "未対応",
+      "REVIEWING": "確認中",
+      "RESOLVED": "対応済み",
+      "DISMISSED": "却下"
+    },
+    "targetType": {
+      "POST": "投稿",
+      "MESSAGE": "メッセージ",
+      "MEMBERSHIP": "村人",
+      "VILLAGE": "村"
+    },
+    "reason": {
+      "spam": "スパム・宣伝",
+      "harassment": "嫌がらせ・誹謗中傷",
+      "offensive": "不快・不適切な内容",
+      "other": "その他"
+    }
+  },
+  "creationRequest": {
+    "title": "村作成申請",
+    "adminTitle": "村作成申請審査",
+    "guideline": "村ガイドラインに同意する",
+    "submitted": "申請を送信しました。運営の審査をお待ちください。",
+    "pending": "審査待ち",
+    "approved": "承認済み",
+    "rejected": "却下",
+    "withdrawn": "取り下げ済み",
+    "reviewComment": "審査コメント",
+    "reviewCommentPlaceholder": "審査コメントを入力してください",
+    "purpose": "活動目的・運営方針",
+    "empty": "申請はありません",
+    "filter": {
+      "all": "すべて",
+      "PENDING": "審査待ち",
+      "APPROVED": "承認済み",
+      "REJECTED": "却下",
+      "WITHDRAWN": "取り下げ済み"
+    },
+    "column": {
+      "requester": "申請者",
+      "village": "村名",
+      "category": "カテゴリ",
+      "purpose": "目的",
+      "requestedAt": "申請日",
+      "actions": "操作"
+    },
+    "confirm": {
+      "approve": "この村作成申請を承認します。よろしいですか?",
+      "reject": "この村作成申請を却下します。却下理由を入力してください。"
+    },
+    "detailTitle": "村作成申請の詳細",
+    "rejectCommentRequired": "却下時は審査コメントが必須です",
+    "noPermission": "この画面を閲覧する権限がありません",
+    "loadFailed": "村作成申請一覧の取得に失敗しました",
+    "approveSuccess": "申請を承認しました",
+    "rejectSuccess": "申請を却下しました",
+    "reviewFailed": "審査の処理に失敗しました"
+  },
+  "joinRequest": {
+    "title": "参加申請",
+    "message": "申請メッセージ（任意）",
+    "submitted": "参加申請を送信しました",
+    "pending": "審査待ち",
+    "approved": "承認済み",
+    "rejected": "却下",
+    "withdrawn": "取り下げ済み",
+    "reviewComment": "審査コメント",
+    "empty": "参加申請はありません"
+  },
+  "feed": {
+    "title": "Dorf-Feed",
+    "dashboardTitle": "Meine Dörfer",
+    "pinned": "Angeheftete Dörfer",
+    "empty": "Noch keine Lieblingsdörfer",
+    "emptyHint": "Tritt einem Dorf bei, und die neuesten Beiträge erscheinen hier.",
+    "loadingError": "Dorf-Feed konnte nicht geladen werden",
+    "retry": "Erneut versuchen",
+    "type": {
+      "TIMELINE": "Zeitleiste",
+      "LOBBY": "Lobby"
+    }
+  },
+  "search": {
+    "placeholder": "村を検索...",
+    "internalPlaceholder": "この村の中を検索...",
+    "filterType": "種別で絞り込み",
+    "filterCategory": "カテゴリで絞り込み",
+    "filterJoinPolicy": "参加方式で絞り込み",
+    "empty": "条件に一致する村が見つかりません",
+    "internalEmpty": "この村内に該当する結果はありません",
+    "result": {
+      "POST": "投稿",
+      "MESSAGE": "メッセージ",
+      "MEMBER": "村人"
+    }
+  },
+  "members": {
+    "title": "村人一覧",
+    "empty": "村人がいません",
+    "banned": "BAN済み",
+    "you": "あなた",
+    "filterRole": "ロールで絞り込み"
+  },
+  "postingIdentity": {
+    "title": "投稿主体",
+    "asUser": "自分として投稿",
+    "asTeam": "チームとして投稿",
+    "asOrganization": "組織として投稿"
+  },
+  "warn": {
+    "participationLimit": "30 村以上に参加しています。アクティブな村に絞ることをおすすめします。"
+  },
+  "success": {
+    "created": "村を作成しました",
+    "updated": "村情報を更新しました",
+    "deleted": "村を削除しました",
+    "archived": "村を凍結しました",
+    "joined": "村に参加しました",
+    "left": "村を退村しました",
+    "pinned": "お気に入りに追加しました",
+    "unpinned": "お気に入りから外しました",
+    "roleChanged": "ロールを変更しました",
+    "banned": "BANしました",
+    "reported": "通報を送信しました",
+    "reportResolved": "通報を対応済みにしました"
+  },
+  "error": {
+    "VILLAGE_001": "村が見つかりません",
+    "VILLAGE_002": "この村は非公開です",
+    "VILLAGE_003": "その村名はすでに使われています",
+    "VILLAGE_004": "スラッグの形式が不正です（3〜40文字の英小文字・数字・ハイフン）",
+    "VILLAGE_005": "そのスラッグはすでに使われています",
+    "VILLAGE_006": "すでに村人です",
+    "VILLAGE_007": "この村のメンバーではありません",
+    "VILLAGE_008": "そのニックネームはすでに使われています",
+    "VILLAGE_009": "通報の上限に達しました（1時間に10件）",
+    "VILLAGE_010": "村作成申請のレート上限に達しました（1日3件・保有10件まで）",
+    "VILLAGE_011": "ニックネーム変更は月3回までです",
+    "VILLAGE_012": "参加可能な村数の上限（100）を超えました",
+    "VILLAGE_013": "お気に入り村の上限（30件）を超えました",
+    "VILLAGE_014": "村ガイドラインへの同意が必要です（直近1時間以内）",
+    "VILLAGE_015": "この主体として参加する権限がありません",
+    "VILLAGE_016": "指定された主体は村人ではありません",
+    "VILLAGE_017": "村長は後継を指名するまで退村できません",
+    "VILLAGE_018": "他のユーザーが情報を更新しました。最新の内容を確認して再度お試しください",
+    "VILLAGE_019": "この村は承認が必要です。参加申請をご利用ください",
+    "VILLAGE_022": "新規アカウントはこの操作を行えません",
+    "VILLAGE_024": "この操作を行う権限がありません",
+    "VILLAGE_025": "短時間に参加と退出を繰り返しています。しばらく時間をおいてからお試しください",
+    "VILLAGE_026": "通報対象が不正です",
+    "VILLAGE_027": "この村は凍結されています",
+    "VILLAGE_028": "ニックネームが無効です（長さ・禁止語・使用文字を確認してください）",
+    "VILLAGE_029": "入力値が不正です",
+    "VILLAGE_031": "この村から BAN されています",
+    "VILLAGE_032": "村作成申請が見つかりません",
+    "VILLAGE_033": "この村作成申請は既に審査済みです",
+    "VILLAGE_034": "この村作成申請は拒否済みです",
+    "VILLAGE_035": "指定された slug は既に使用されています",
+    "VILLAGE_036": "一般ユーザーは公式村を申請できません",
+    "VILLAGE_037": "公式村の作成には運営権限が必要です",
+    "VILLAGE_038": "参加申請が見つかりません",
+    "VILLAGE_039": "既に審査待ちの参加申請があります",
+    "VILLAGE_040": "この参加申請は既に処理済みです",
+    "VILLAGE_041": "この村は自由参加です。参加申請ではなく直接参加してください",
+    "VILLAGE_042": "通報が見つかりません",
+    "VILLAGE_043": "この通報は既に処理済みです",
+    "VILLAGE_044": "お気に入り村のピンが見つかりません",
+    "generic": "村機能でエラーが発生しました",
+    "backToList": "村一覧へ戻る"
+  },
+  "placeholder": {
+    "bulletinComingSoon": "村の掲示板は Phase 2 で実装予定です",
+    "timelineComingSoon": "村のタイムラインは Phase 2 で実装予定です"
+  }
+}

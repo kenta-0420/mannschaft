@@ -3,6 +3,8 @@ package com.mannschaft.app.bulletin.entity;
 import com.mannschaft.app.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -31,6 +33,23 @@ public class BulletinReplyEntity extends BaseEntity {
     private Long parentId;
 
     private Long authorId;
+
+    /**
+     * 投稿主体種別（F17.1 Phase 1）。
+     * USER（個人投稿）/ TEAM（チーム代表）/ ORGANIZATION（組織代表）。
+     * デフォルトは USER。
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "posted_as_subject_type", nullable = false, length = 20)
+    @Builder.Default
+    private com.mannschaft.app.village.entity.enums.VillageSubjectType postedAsSubjectType =
+            com.mannschaft.app.village.entity.enums.VillageSubjectType.USER;
+
+    /**
+     * 投稿主体 ID（F17.1 Phase 1）。USER 以外の場合のみ値を持つ。FK は張らない（原則1）。
+     */
+    @Column(name = "posted_as_subject_id")
+    private Long postedAsSubjectId;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String body;

@@ -102,11 +102,11 @@ watch(
         >
           <Avatar
             :image="member.avatarUrl ?? undefined"
-            :label="member.avatarUrl ? undefined : member.displayName.charAt(0)"
+            :label="member.avatarUrl ? undefined : member.fullName.charAt(0)"
             shape="circle"
           />
           <div class="min-w-0 flex-1">
-            <div class="truncate font-medium">{{ member.displayName }}</div>
+            <div class="truncate font-medium">{{ member.fullName }}</div>
             <div v-if="member.contactHandle" class="text-xs text-gray-400">
               @{{ member.contactHandle }}
             </div>

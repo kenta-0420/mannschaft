@@ -76,7 +76,7 @@ class AuthLoginControllerTest {
                   "password": "Passw0rd!",
                   "lastName": "田中",
                   "firstName": "太郎",
-                  "displayName": "taro"
+                  "nickname": "taro"
                 }
                 """;
 
@@ -91,14 +91,14 @@ class AuthLoginControllerTest {
     @Test
     @DisplayName("POST /register — 異常系: バリデーション違反で 400 + fieldErrors を返却する")
     void register_validationError_returns400() throws Exception {
-        // email, password, lastName, firstName, displayName すべて空
+        // email, password, lastName, firstName すべて空
         String body = """
                 {
                   "email": "",
                   "password": "",
                   "lastName": "",
                   "firstName": "",
-                  "displayName": ""
+                  "nickname": ""
                 }
                 """;
 

@@ -250,7 +250,7 @@ public class DataExportService {
     private void sendCompletionEmail(Long userId, String zipPassword, LocalDateTime expiresAt) {
         userRepository.findById(userId).ifPresent(user -> {
             String subject = "個人データエクスポートが完了しました";
-            String htmlBody = "<p>" + user.getDisplayName() + " 様</p>" +
+            String htmlBody = "<p>" + user.getLastName() + " " + user.getFirstName() + " 様</p>" +
                     "<p>個人データのエクスポートが完了しました。</p>" +
                     "<p>ダウンロード有効期限: " + expiresAt + "</p>" +
                     "<p>ZIPパスワード: <strong>" + zipPassword + "</strong></p>" +
@@ -263,7 +263,7 @@ public class DataExportService {
     private void sendFailureEmail(Long userId) {
         userRepository.findById(userId).ifPresent(user -> {
             String subject = "個人データエクスポートに失敗しました";
-            String htmlBody = "<p>" + user.getDisplayName() + " 様</p>" +
+            String htmlBody = "<p>" + user.getLastName() + " " + user.getFirstName() + " 様</p>" +
                     "<p>個人データのエクスポート処理中にエラーが発生しました。</p>" +
                     "<p>お手数ですが、しばらく経ってから再度お試しください。</p>";
             emailService.sendEmail(user.getEmail(), subject, htmlBody);

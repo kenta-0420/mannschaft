@@ -8,6 +8,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import com.mannschaft.app.safetycheck.entity.SafetyCheckSourceType;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -48,6 +49,11 @@ public class SafetyCheckEntity extends BaseEntity {
     @Column(nullable = false, length = 20)
     @Builder.Default
     private SafetyCheckStatus status = SafetyCheckStatus.ACTIVE;
+
+    /** 安否確認の発生源種別（NULL の場合は MANUAL 相当の既存データ）。 */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source_type", length = 20)
+    private SafetyCheckSourceType sourceType;
 
     private Integer reminderIntervalMinutes;
 

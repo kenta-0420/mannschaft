@@ -24,13 +24,13 @@ function formatDate(iso: string) {
       :label="
         (type === 'received' ? request.requester : request.target).avatarUrl
           ? undefined
-          : (type === 'received' ? request.requester : request.target).displayName.charAt(0)
+          : (type === 'received' ? request.requester : request.target).fullName.charAt(0)
       "
       shape="circle"
     />
     <div class="min-w-0 flex-1">
       <div class="font-medium">
-        {{ (type === 'received' ? request.requester : request.target).displayName }}
+        {{ (type === 'received' ? request.requester : request.target).fullName }}
       </div>
       <div
         v-if="(type === 'received' ? request.requester : request.target).contactHandle"

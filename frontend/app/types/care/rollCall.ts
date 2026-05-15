@@ -32,8 +32,8 @@ export type RsvpStatus = 'ATTENDING' | 'MAYBE' | 'NOT_ATTENDING' | 'NO_RESPONSE'
 export interface RollCallCandidate {
   /** ユーザーID。 */
   userId: number
-  /** 表示名。 */
-  displayName: string
+  /** 実名（lastName + firstName）。 */
+  fullName: string
   /** アバター URL（任意）。 */
   avatarUrl: string | null
   /** RSVP 回答状態（NO_RESPONSE もありうる）。 */

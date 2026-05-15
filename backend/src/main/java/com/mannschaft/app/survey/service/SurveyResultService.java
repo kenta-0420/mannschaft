@@ -168,12 +168,12 @@ public class SurveyResultService {
                 if (hasResponded) {
                     continue;
                 }
-                result.add(new RespondentResponse(u.getId(), u.getDisplayName(), u.getAvatarUrl(), false, null));
+                result.add(new RespondentResponse(u.getId(), u.getLastName() + " " + u.getFirstName(), u.getAvatarUrl(), false, null));
             } else {
                 java.time.LocalDateTime respondedAt = hasResponded
                         ? firstResponseByUser.get(uid).getCreatedAt()
                         : null;
-                result.add(new RespondentResponse(u.getId(), u.getDisplayName(), u.getAvatarUrl(),
+                result.add(new RespondentResponse(u.getId(), u.getLastName() + " " + u.getFirstName(), u.getAvatarUrl(),
                         hasResponded, respondedAt));
             }
         }

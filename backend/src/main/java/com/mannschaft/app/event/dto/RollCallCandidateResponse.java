@@ -16,8 +16,8 @@ public class RollCallCandidateResponse {
     /** ユーザーID。 */
     private final Long userId;
 
-    /** 表示名。 */
-    private final String displayName;
+    /** 実名（lastName + firstName）。 */
+    private final String fullName;
 
     /** アバター URL（任意）。 */
     private final String avatarUrl;

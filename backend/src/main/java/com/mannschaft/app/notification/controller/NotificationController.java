@@ -6,6 +6,7 @@ import com.mannschaft.app.notification.dto.NotificationResponse;
 import com.mannschaft.app.notification.dto.SnoozeRequest;
 import com.mannschaft.app.notification.dto.UnreadCountResponse;
 import com.mannschaft.app.notification.service.NotificationService;
+import com.mannschaft.app.scopefolder.entity.ScopeType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
 
@@ -35,12 +37,22 @@ public class NotificationController {
 
     /**
      * 通知一覧を取得する。
+     *
+     * <p>F15.3: {@code folderId} + {@code scopeType} 両方指定時はマイスコープフォルダによる
+     * フィルタを適用する。未指定時は従来通り全件取得（後方互換）。</p>
      */
     @GetMapping
-    @Operation(summary = "通知一覧")
+    @Operation(summary = "通知一覧",
+            description = "folderId と scopeType を両方指定するとフォルダ内通知のみ取得。未指定時は全件")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<PagedResponse<NotificationResponse>> listNotifications(Pageable pageable) {
-        Page<NotificationResponse> page = notificationService.listNotifications(SecurityUtils.getCurrentUserId(), pageable);
+    public ResponseEntity<PagedResponse<NotificationResponse>> listNotifications(
+            @RequestParam(required = false) Long folderId,
+            @RequestParam(required = false) ScopeType scopeType,
+            Pageable pageable) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        Page<NotificationResponse> page = (folderId != null && scopeType != null)
+                ? notificationService.listNotificationsByFolder(userId, folderId, scopeType, pageable)
+                : notificationService.listNotifications(userId, pageable);
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 page.getTotalElements(), page.getNumber(), page.getSize(), page.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(page.getContent(), meta));

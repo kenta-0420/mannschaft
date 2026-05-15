@@ -125,7 +125,7 @@ Workers 生成・クライアント生成のいずれも失敗した場合は、
 ## 認証・権限
 
 - SYSTEM_ADMIN は `roles` テーブルの1レコード + `user_roles` で割り当て。専用テーブルは設けず RBAC に統一する
-- `users`: `last_name` / `first_name`（実名）・`display_name`（愛称1、表示用ニックネーム）・`nickname2`（愛称2、nullable）を持つ。電子印鑑は `last_name` を使用。検索・メンションでは実名・愛称いずれでもヒットするようにする
+- `users`: `last_name` / `first_name`（実名）・`display_name`（外部公開コンテンツ専用のニックネーム。チーム内・組織内の表示には `lastName + firstName` 実名を使用すること）・`nickname2`（愛称2、nullable）を持つ。電子印鑑は `last_name` を使用。検索・メンションでは実名・愛称いずれでもヒットするようにする
 - `users.is_searchable BOOLEAN DEFAULT true`: OFF にすると他ユーザーの検索結果に表示されない（メンションは引き続き利用可能）
 - `users.postal_code VARCHAR(10) nullable`: 郵便番号（ハイフン付き、例: 150-0001）。任意入力。プロモーション配信のセグメント条件（F09.2）で使用
 - `users.address VARCHAR(500) nullable`: 住所。任意入力。将来の住民台帳連携にも使用

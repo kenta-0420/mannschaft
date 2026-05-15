@@ -1,6 +1,7 @@
 package com.mannschaft.app.config;
 
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
+import com.mannschaft.app.team.filter.OrganizationTeamSearchRateLimitFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.actuate.health.HealthEndpoint;
@@ -26,6 +27,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ProxyInputContextFilter proxyInputContextFilter;
+    private final OrganizationTeamSearchRateLimitFilter organizationTeamSearchRateLimitFilter;
 
     /**
      * ProxyInputContextFilter の @Component によるサーブレットフィルター自動登録を無効化。
@@ -35,6 +37,20 @@ public class SecurityConfig {
     public FilterRegistrationBean<ProxyInputContextFilter> proxyInputContextFilterRegistration() {
         FilterRegistrationBean<ProxyInputContextFilter> registration =
                 new FilterRegistrationBean<>(proxyInputContextFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    /**
+     * F15.4: OrganizationTeamSearchRateLimitFilter の @Component による
+     * サーブレットフィルター自動登録を無効化。
+     * Spring Security フィルターチェーン経由（addFilterBefore）のみで動作させる。
+     */
+    @Bean
+    public FilterRegistrationBean<OrganizationTeamSearchRateLimitFilter>
+            organizationTeamSearchRateLimitFilterRegistration() {
+        FilterRegistrationBean<OrganizationTeamSearchRateLimitFilter> registration =
+                new FilterRegistrationBean<>(organizationTeamSearchRateLimitFilter);
         registration.setEnabled(false);
         return registration;
     }
@@ -78,10 +94,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/internal/ssr-logs").permitAll()
                 // F04.8 連絡先招待プレビュー（認証不要）
                 .requestMatchers(HttpMethod.GET, "/api/v1/contact-invite/*").permitAll()
+                // F15.4 組織内チーム（店舗）検索（認証不要・レート制限あり）
+                .requestMatchers(HttpMethod.GET, "/api/v1/organizations/*/teams/search").permitAll()
                 // 開発中は全エンドポイントを許可（本番移行時に .authenticated() に変更）
                 .anyRequest().permitAll()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(organizationTeamSearchRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(proxyInputContextFilter, JwtAuthenticationFilter.class);
         return http.build();
     }

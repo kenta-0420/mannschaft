@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * チャットチャンネルリポジトリ。
@@ -70,4 +71,10 @@ public interface ChatChannelRepository extends JpaRepository<ChatChannelEntity, 
      * 組織内で同名のチャンネルが存在するか確認する。
      */
     boolean existsByOrganizationIdAndNameAndDeletedAtIsNull(Long organizationId, String name);
+
+    /**
+     * F17.1 Phase 1 B9: 村 ID から村ロビーチャネル（{@code channelType=VILLAGE_LOBBY}）を取得する。
+     * 村ロビーは 1 村 1 チャネルゆえ Optional で返す。
+     */
+    Optional<ChatChannelEntity> findByVillageIdAndChannelType(UUID villageId, com.mannschaft.app.chat.ChannelType channelType);
 }

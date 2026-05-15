@@ -72,7 +72,8 @@ class ResidentActivitySnapshotRepositoryTest extends AbstractMySqlIntegrationTes
         persistSnapshot(LocalDate.now(), 5);
 
         List<ResidentActivitySnapshot> list =
-                repository.findByResidentRegistryIdAndDeletedAtIsNullOrderBySnapshotDateDesc(REGISTRY_ID);
+                repository.findByResidentRegistryIdAndOrganizationIdAndDeletedAtIsNullOrderBySnapshotDateDesc(
+                        REGISTRY_ID, ORG_ID);
 
         assertThat(list).hasSize(3);
         assertThat(list.get(0).getActivityScoreTotal()).isEqualTo(5);

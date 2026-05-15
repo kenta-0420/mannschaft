@@ -117,7 +117,7 @@ public class ContactableMemberService {
                 .filter(u -> {
                     if (q == null || q.isBlank()) return true;
                     String keyword = q.toLowerCase();
-                    return u.getDisplayName().toLowerCase().contains(keyword)
+                    return (u.getLastName() + " " + u.getFirstName()).toLowerCase().contains(keyword)
                             || (u.getContactHandle() != null && u.getContactHandle().contains(keyword));
                 })
                 .map(u -> {
@@ -127,7 +127,7 @@ public class ContactableMemberService {
                             .isPresent();
                     return ContactableMemberResponse.builder()
                             .userId(u.getId())
-                            .displayName(u.getDisplayName())
+                            .fullName(u.getLastName() + " " + u.getFirstName())
                             .contactHandle(u.getContactHandle())
                             .avatarUrl(u.getAvatarUrl())
                             .isContact(isContact)

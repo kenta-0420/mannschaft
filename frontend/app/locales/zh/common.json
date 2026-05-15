@@ -58,6 +58,13 @@
       "closed_kicked": "因您已从频道中被移除，标签已关闭",
       "closed_deleted": "因频道已被删除，标签已关闭",
       "closed_archived": "因频道已被归档，标签已关闭"
+    },
+    "typing": {
+      "single": "{name}正在输入…",
+      "multiple": "{names}正在输入…"
+    },
+    "connection": {
+      "failed": "连接已断开。正在尝试重新连接…"
     }
   },
   "button": {
@@ -1095,7 +1102,30 @@
     "noFolders": "フォルダはまだありません",
     "emptyFolder": "このフォルダは空です",
     "limitExceeded": "フォルダは最大20個まで作成できます",
-    "nameDuplicate": "同じ名前のフォルダが既に存在します"
+    "nameDuplicate": "同じ名前のフォルダが既に存在します",
+    "title": "我的文件夹",
+    "untagged": "未分类",
+    "all": "全部",
+    "createNew": "新建文件夹",
+    "assignOnJoin": {
+      "label": "分配到文件夹（可选）",
+      "defaultHint": "未选择时将自动放入「未分类」",
+      "unselected": "未选择（自动放入未分类）"
+    },
+    "notifications": {
+      "byFolder": "按文件夹通知"
+    },
+    "nav": {
+      "allList": "全部（列表）",
+      "createNew": "＋ 新建文件夹",
+      "manage": "文件夹管理",
+      "teams": "团队",
+      "organizations": "组织"
+    },
+    "error": {
+      "typeMismatch": "文件夹作用域类型不匹配",
+      "defaultImmutable": "无法修改「未分类」文件夹"
+    }
   },
   "systemAdmin": {
     "logs": {
@@ -1188,5 +1218,25 @@
   },
   "dashboard": {
     "team_reservation_link": "预约管理"
+  },
+  "organizationTeamSearch": {
+    "title": "店舗を検索",
+    "keywordPlaceholder": "店舗名で検索",
+    "prefectureLabel": "都道府県",
+    "cityLabel": "市町村",
+    "templateLabel": "業種",
+    "searchButton": "検索",
+    "resetButton": "条件をリセット",
+    "empty": "該当する店舗が見つかりませんでした",
+    "error": "検索に失敗しました",
+    "loading": "検索中…",
+    "resultCount": "{count} 件",
+    "anyPrefecture": "指定なし",
+    "anyCity": "指定なし",
+    "anyTemplate": "指定なし",
+    "loginToSeeDetails": "詳細を見るにはログインしてください",
+    "retry": "再試行",
+    "organizationNotFound": "指定された組織が見つかりませんでした",
+    "rateLimitExceeded": "リクエストが多すぎます。少し待ってから再試行してください"
   }
 }

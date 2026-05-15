@@ -51,6 +51,21 @@ public class MyScopeFolderEntity {
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
 
+    /**
+     * 未分類フォルダフラグ。user_id × scope_type ごとに最大 1 行のみ TRUE。
+     * 未分類フォルダは削除不可・改名不可・末尾固定（Service 層でバリデーション）。
+     * 設計書 F15.3 §4.3
+     */
+    @Column(name = "is_default", nullable = false)
+    private Boolean isDefault;
+
+    /**
+     * PrimeIcons のアイコン名（例: pi-briefcase）。NULL 許容。
+     * 設計書 F15.3 §4.3 / §9.8 で正規表現バリデーション。
+     */
+    @Column(name = "icon", length = 40)
+    private String icon;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -68,6 +83,9 @@ public class MyScopeFolderEntity {
         if (this.sortOrder == null) {
             this.sortOrder = 0;
         }
+        if (this.isDefault == null) {
+            this.isDefault = Boolean.FALSE;
+        }
     }
 
     @PreUpdate
@@ -82,6 +100,23 @@ public class MyScopeFolderEntity {
         this.name = name;
         this.color = color;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * フォルダの名前・色・アイコンを更新する。
+     */
+    public void update(String name, String color, String icon) {
+        this.name = name;
+        this.color = color;
+        this.icon = icon;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 「未分類」フォルダかどうかを返す（is_default = TRUE）。
+     */
+    public boolean isDefaultFolder() {
+        return Boolean.TRUE.equals(this.isDefault);
     }
 
     /**

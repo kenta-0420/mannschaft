@@ -20,8 +20,8 @@ public class RespondentResponse {
     /** 対象ユーザーID。 */
     private final Long userId;
 
-    /** 表示名。 */
-    private final String displayName;
+    /** 実名（lastName + firstName）。 */
+    private final String fullName;
 
     /** アバターURL（設定なしの場合 null）。 */
     private final String avatarUrl;

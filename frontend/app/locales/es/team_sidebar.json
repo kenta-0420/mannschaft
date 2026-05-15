@@ -1,0 +1,39 @@
+{
+  "teamSidebar": {
+    "category": {
+      "home": "Inicio",
+      "schedule": "Horario",
+      "member": "Miembros",
+      "ops": "Operaciones",
+      "facility": "Instalaciones",
+      "data": "Datos",
+      "settings": "Configuración"
+    },
+    "item": {
+      "dashboard": "Panel",
+      "announcements": "Anuncios",
+      "chat": "Chat",
+      "bulletin": "Tablón de anuncios",
+      "feed": "Feed",
+      "schedule": "Calendario",
+      "shifts": "Turnos",
+      "duties": "Guardias",
+      "annual_plan": "Plan anual",
+      "members": "Miembros",
+      "circulation": "Circulación",
+      "safety_check": "Control de seguridad",
+      "todos": "Tareas",
+      "workflows": "Flujos de trabajo",
+      "forms": "Encuestas",
+      "projects": "Proyectos",
+      "budget": "Gestión de presupuesto",
+      "repair_plan": "Plan de reparación",
+      "equipment": "Gestión de equipos",
+      "parking": "Estacionamiento",
+      "files": "Archivos",
+      "analytics": "Análisis",
+      "audit_logs": "Registros de auditoría",
+      "settings": "Configuración"
+    }
+  }
+}

@@ -16,9 +16,13 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
- * チャットチャンネルエンティティ。チーム・組織・DM等のチャットルームを管理する。
+ * チャットチャンネルエンティティ。チーム・組織・DM・村ロビー等のチャットルームを管理する。
+ *
+ * <p>F17.1 Phase 1: 村ロビー対応のため {@code village_id} を追加。
+ * {@code channelType=VILLAGE_LOBBY} の場合に村の UUIDv7 を保持する（FK は張らない／原則1）。</p>
  */
 @Entity
 @Table(name = "chat_channels")
@@ -36,6 +40,13 @@ public class ChatChannelEntity extends BaseEntity {
     private Long teamId;
 
     private Long organizationId;
+
+    /**
+     * 村 ID（F17.1 Phase 1）。
+     * {@code channelType=VILLAGE_LOBBY} のとき必須。FK は張らない（クロスドメイン・原則1）。
+     */
+    @Column(name = "village_id", columnDefinition = "BINARY(16)")
+    private UUID villageId;
 
     @Column(length = 100)
     private String name;

@@ -65,7 +65,7 @@ const { useRollCall } = await import('~/composables/useRollCall')
 function sampleCandidate(overrides: Partial<RollCallCandidate> = {}): RollCallCandidate {
   return {
     userId: 101,
-    displayName: '山田太郎',
+    fullName: '山田太郎',
     avatarUrl: null,
     rsvpStatus: 'ATTENDING',
     isAlreadyCheckedIn: false,
@@ -113,7 +113,7 @@ beforeEach(() => {
 
 describe('useRollCall.loadCandidates', () => {
   it('正常系: API を呼び candidates を更新する', async () => {
-    const data = [sampleCandidate(), sampleCandidate({ userId: 102, displayName: '鈴木花子' })]
+    const data = [sampleCandidate(), sampleCandidate({ userId: 102, fullName: '鈴木花子' })]
     mockGetCandidates.mockResolvedValueOnce(data)
 
     const teamId = ref(1)
@@ -124,7 +124,7 @@ describe('useRollCall.loadCandidates', () => {
 
     expect(mockGetCandidates).toHaveBeenCalledWith(1, 2)
     expect(rc.candidates.value).toHaveLength(2)
-    expect(rc.candidates.value[0]?.displayName).toBe('山田太郎')
+    expect(rc.candidates.value[0]?.fullName).toBe('山田太郎')
     expect(rc.loading.value).toBe(false)
     expect(rc.error.value).toBeNull()
   })

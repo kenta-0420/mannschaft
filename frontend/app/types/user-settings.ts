@@ -6,7 +6,7 @@ export interface UserProfileResponse {
   firstName: string
   lastNameKana: string
   firstNameKana: string
-  displayName: string
+  nickname: string
   nickname2: string
   isSearchable: boolean
   avatarUrl: string | null
@@ -34,7 +34,7 @@ export interface UpdateProfileRequest {
   firstName?: string
   lastNameKana?: string
   firstNameKana?: string
-  displayName?: string
+  nickname?: string
   nickname2?: string
   locale?: string
   /** ISO 3166-1 alpha-2 国コード（例: JP・US・DE）。null 送信時はクリア。 */
@@ -227,3 +227,5 @@ export interface UserResidentResponse {
 export interface RequestWithdrawalRequest {
   currentPassword?: string
 }
+
+// end of user-settings

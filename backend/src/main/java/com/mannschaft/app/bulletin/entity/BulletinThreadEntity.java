@@ -17,9 +17,15 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * 掲示板スレッドエンティティ。スレッドの本文・状態・統計情報を管理する。
+ *
+ * <p>F17.1 Phase 1: 村スコープ対応カラム ({@code scope_village_id} / {@code posted_as_subject_*})
+ * を追加。{@code scopeType=VILLAGE} のときに {@code scopeVillageId} を使用する。
+ * 投稿主体（チーム/組織代表）の指定は {@code postedAsSubjectType} + {@code postedAsSubjectId} で行う。
+ * デフォルトは USER（個人投稿）。</p>
  */
 @Entity
 @Table(name = "bulletin_threads")
@@ -40,7 +46,31 @@ public class BulletinThreadEntity extends BaseEntity {
     @Column(nullable = false)
     private Long scopeId;
 
+    /**
+     * 村スコープ ID（F17.1 Phase 1）。
+     * {@code scopeType=VILLAGE} の場合に村の UUIDv7 を保持する。FK は張らない（原則1）。
+     */
+    @Column(name = "scope_village_id", columnDefinition = "BINARY(16)")
+    private UUID scopeVillageId;
+
     private Long authorId;
+
+    /**
+     * 投稿主体種別（F17.1 Phase 1）。
+     * USER（個人投稿）/ TEAM（チーム代表）/ ORGANIZATION（組織代表）。
+     * デフォルトは USER。
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "posted_as_subject_type", nullable = false, length = 20)
+    @Builder.Default
+    private com.mannschaft.app.village.entity.enums.VillageSubjectType postedAsSubjectType =
+            com.mannschaft.app.village.entity.enums.VillageSubjectType.USER;
+
+    /**
+     * 投稿主体 ID（F17.1 Phase 1）。USER 以外の場合のみ値を持つ。FK は張らない（原則1）。
+     */
+    @Column(name = "posted_as_subject_id")
+    private Long postedAsSubjectId;
 
     @Column(nullable = false, length = 200)
     private String title;

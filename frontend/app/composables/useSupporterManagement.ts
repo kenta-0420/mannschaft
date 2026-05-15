@@ -1,6 +1,6 @@
 export interface SupporterItem {
   userId: number
-  displayName: string
+  fullName: string
   avatarUrl: string | null
   followedAt: string
 }
@@ -8,7 +8,7 @@ export interface SupporterItem {
 export interface ApplicationItem {
   id: number
   userId: number
-  displayName: string
+  fullName: string
   avatarUrl: string | null
   message: string | null
   status: 'PENDING' | 'APPROVED' | 'REJECTED'

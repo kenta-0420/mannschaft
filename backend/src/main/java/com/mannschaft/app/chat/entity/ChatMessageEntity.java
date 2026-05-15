@@ -4,6 +4,8 @@ import com.mannschaft.app.common.BaseEntity;
 import com.mannschaft.app.gdpr.PersonalData;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -16,6 +18,9 @@ import java.time.LocalDateTime;
 
 /**
  * チャットメッセージエンティティ。チャンネル内のメッセージ・スレッド返信を管理する。
+ *
+ * <p>F17.1 Phase 1: 投稿主体切替のため {@code posted_as_subject_type} / {@code posted_as_subject_id}
+ * を追加。村ロビーやチャネル内でチーム/組織代表として発言する際に使用。デフォルトは USER。</p>
  */
 @PersonalData(category = "chatMessages")
 @Entity
@@ -31,6 +36,22 @@ public class ChatMessageEntity extends BaseEntity {
     private Long channelId;
 
     private Long senderId;
+
+    /**
+     * 投稿主体種別（F17.1 Phase 1）。
+     * USER（個人投稿）/ TEAM（チーム代表）/ ORGANIZATION（組織代表）。デフォルトは USER。
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "posted_as_subject_type", nullable = false, length = 20)
+    @Builder.Default
+    private com.mannschaft.app.village.entity.enums.VillageSubjectType postedAsSubjectType =
+            com.mannschaft.app.village.entity.enums.VillageSubjectType.USER;
+
+    /**
+     * 投稿主体 ID（F17.1 Phase 1）。USER 以外の場合のみ値を持つ。FK は張らない（原則1）。
+     */
+    @Column(name = "posted_as_subject_id")
+    private Long postedAsSubjectId;
 
     private Long parentId;
 
@@ -48,6 +69,9 @@ public class ChatMessageEntity extends BaseEntity {
     private Boolean isSystem = false;
 
     private LocalDateTime scheduledAt;
+
+    /** 予約送信バッチが配信を実行した日時。NULL の場合は未配信（または通常送信メッセージ）。 */
+    private LocalDateTime scheduledSentAt;
 
     private Long rootId;
 
@@ -157,5 +181,14 @@ public class ChatMessageEntity extends BaseEntity {
      */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 予約送信バッチによる配信完了をマークする。
+     *
+     * @param sentAt 配信実行日時
+     */
+    public void markScheduledSent(LocalDateTime sentAt) {
+        this.scheduledSentAt = sentAt;
     }
 }

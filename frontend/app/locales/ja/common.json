@@ -58,6 +58,13 @@
       "closed_kicked": "メンバーから外されたためタブを閉じました",
       "closed_deleted": "チャンネルが削除されたためタブを閉じました",
       "closed_archived": "チャンネルがアーカイブされたためタブを閉じました"
+    },
+    "typing": {
+      "single": "{name}が入力中…",
+      "multiple": "{names}が入力中…"
+    },
+    "connection": {
+      "failed": "接続が切れています。再接続を試みています…"
     }
   },
   "button": {
@@ -1095,7 +1102,30 @@
     "noFolders": "フォルダはまだありません",
     "emptyFolder": "このフォルダは空です",
     "limitExceeded": "フォルダは最大20個まで作成できます",
-    "nameDuplicate": "同じ名前のフォルダが既に存在します"
+    "nameDuplicate": "同じ名前のフォルダが既に存在します",
+    "title": "マイフォルダ",
+    "untagged": "未分類",
+    "all": "すべて",
+    "createNew": "新規フォルダ作成",
+    "assignOnJoin": {
+      "label": "フォルダに振り分け（任意）",
+      "defaultHint": "未選択時は「未分類」に自動配置されます",
+      "unselected": "未選択（未分類に自動配置）"
+    },
+    "notifications": {
+      "byFolder": "フォルダ別通知"
+    },
+    "nav": {
+      "allList": "すべて（一覧）",
+      "createNew": "＋ 新規フォルダ作成",
+      "manage": "フォルダ管理",
+      "teams": "チーム",
+      "organizations": "組織"
+    },
+    "error": {
+      "typeMismatch": "フォルダのスコープ種別が一致しません",
+      "defaultImmutable": "「未分類」フォルダは変更できません"
+    }
   },
   "systemAdmin": {
     "logs": {
@@ -1188,5 +1218,25 @@
   },
   "dashboard": {
     "team_reservation_link": "予約管理"
+  },
+  "organizationTeamSearch": {
+    "title": "店舗を検索",
+    "keywordPlaceholder": "店舗名で検索",
+    "prefectureLabel": "都道府県",
+    "cityLabel": "市町村",
+    "templateLabel": "業種",
+    "searchButton": "検索",
+    "resetButton": "条件をリセット",
+    "empty": "該当する店舗が見つかりませんでした",
+    "error": "検索に失敗しました",
+    "loading": "検索中…",
+    "resultCount": "{count} 件",
+    "anyPrefecture": "指定なし",
+    "anyCity": "指定なし",
+    "anyTemplate": "指定なし",
+    "loginToSeeDetails": "詳細を見るにはログインしてください",
+    "retry": "再試行",
+    "organizationNotFound": "指定された組織が見つかりませんでした",
+    "rateLimitExceeded": "リクエストが多すぎます。少し待ってから再試行してください"
   }
 }

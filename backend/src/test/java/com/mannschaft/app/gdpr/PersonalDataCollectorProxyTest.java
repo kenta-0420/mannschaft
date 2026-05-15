@@ -63,6 +63,11 @@ class PersonalDataCollectorProxyTest {
     @Mock private ProxyInputRecordRepository proxyInputRecordRepository;
     @Mock private UserWeatherLocationRepository userWeatherLocationRepository;
     @Mock private EncryptionService encryptionService;
+    // F18 個人ポイントカードウォレット S3 — collectPointCards 本実装による Repository 追加
+    @Mock private com.mannschaft.app.pointcard.repository.UserPointCardRepository userPointCardRepository;
+    @Mock private com.mannschaft.app.pointcard.repository.PointCardUserSettingsRepository pointCardUserSettingsRepository;
+    @Mock private com.mannschaft.app.pointcard.repository.PointCardGroupRepository pointCardGroupRepository;
+    @Mock private com.mannschaft.app.pointcard.repository.PointCardGroupItemRepository pointCardGroupItemRepository;
 
     @InjectMocks private PersonalDataCollector sut;
 

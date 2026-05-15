@@ -1,5 +1,13 @@
+import type { FetchError } from 'ofetch'
+import type { PagedResponse } from '~/types/api'
 import type { MemberResponse } from '~/types/member'
 import type { TeamResponse } from '~/types/team'
+import {
+  OrganizationNotFoundError,
+  TeamSearchRateLimitError,
+  type TeamSearchItem,
+  type TeamSearchQuery,
+} from '~/types/team-search'
 
 interface TeamSummaryResponse {
   id: number
@@ -31,7 +39,7 @@ interface PagedData<T> {
 
 interface SupporterResponse {
   userId: number
-  displayName: string
+  fullName: string
   avatarUrl: string | null
   followedAt: string
 }
@@ -39,7 +47,7 @@ interface SupporterResponse {
 interface SupporterApplicationResponse {
   id: number
   userId: number
-  displayName: string
+  fullName: string
   avatarUrl: string | null
   message: string | null
   status: 'PENDING' | 'APPROVED' | 'REJECTED'
@@ -77,6 +85,60 @@ export function useTeamApi() {
     query.set('page', String(params.page ?? 0))
     query.set('size', String(params.size ?? 20))
     return api<PagedData<TeamSummaryResponse>>(`/api/v1/teams/search?${query}`)
+  }
+
+  /**
+   * F15.4 組織内チーム（店舗）検索。
+   * 指定された組織に属するチームを keyword / prefecture / city / template で絞り込む。
+   *
+   * - undefined のクエリパラメータは URL から除外される
+   * - 404: 組織が存在しない → {@link OrganizationNotFoundError}
+   * - 429: レート制限超過 → {@link TeamSearchRateLimitError}
+   * - その他のエラーはそのままスロー（ofetch の `FetchError`）
+   *
+   * @param orgId 組織 ID
+   * @param query 検索クエリ
+   * @returns ページング済みの検索結果。閲覧者の権限に応じて要素は
+   *          `TeamPublicSummary` または `TeamSearchResult` の union 型になる
+   *          （判定は `isTeamSearchResult` タイプガードで行う）。
+   */
+  async function searchOrganizationTeams(
+    orgId: number | string,
+    query: TeamSearchQuery,
+  ): Promise<PagedResponse<TeamSearchItem>> {
+    const params = new URLSearchParams()
+    if (query.keyword !== undefined) params.set('keyword', query.keyword)
+    if (query.prefecture !== undefined) params.set('prefecture', query.prefecture)
+    if (query.city !== undefined) params.set('city', query.city)
+    if (query.template !== undefined) params.set('template', query.template)
+    if (query.page !== undefined) params.set('page', String(query.page))
+    if (query.size !== undefined) params.set('size', String(query.size))
+    if (query.sort !== undefined) params.set('sort', query.sort)
+
+    const qs = params.toString()
+    const url =
+      `/api/v1/organizations/${orgId}/teams/search` + (qs.length > 0 ? `?${qs}` : '')
+
+    try {
+      return await api<PagedResponse<TeamSearchItem>>(url)
+    } catch (error) {
+      const fetchError = error as FetchError
+      const status = fetchError?.response?.status
+      if (status === 404) {
+        throw new OrganizationNotFoundError(orgId)
+      }
+      if (status === 429) {
+        const retryAfter = fetchError.response?.headers.get('Retry-After')
+        const retryAfterSeconds =
+          retryAfter !== null && retryAfter !== undefined && retryAfter !== ''
+            ? Number.parseInt(retryAfter, 10)
+            : null
+        throw new TeamSearchRateLimitError(
+          Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : null,
+        )
+      }
+      throw error
+    }
   }
 
   async function createTeam(body: Record<string, unknown>) {
@@ -309,6 +371,7 @@ export function useTeamApi() {
   return {
     getTeam,
     searchTeams,
+    searchOrganizationTeams,
     createTeam,
     updateTeam,
     deleteTeam,

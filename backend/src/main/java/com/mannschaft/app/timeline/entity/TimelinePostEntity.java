@@ -17,9 +17,14 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
- * タイムライン投稿エンティティ。スコープ別（PUBLIC/ORGANIZATION/TEAM/PERSONAL）の投稿を管理する。
+ * タイムライン投稿エンティティ。スコープ別（PUBLIC/ORGANIZATION/TEAM/PERSONAL/VILLAGE）の投稿を管理する。
+ *
+ * <p>F17.1 Phase 1: 村スコープ対応のため {@code scope_village_id} を追加。
+ * {@code scopeType=VILLAGE} の場合に村の UUIDv7 を保持する。
+ * 投稿主体（{@code postedAsType} / {@code postedAsId}）は既存カラムを流用する。</p>
  */
 @Entity
 @Table(name = "timeline_posts")
@@ -37,6 +42,13 @@ public class TimelinePostEntity extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private Long scopeId = 0L;
+
+    /**
+     * 村スコープ ID（F17.1 Phase 1）。
+     * {@code scopeType=VILLAGE} の場合に村の UUIDv7 を保持する。FK は張らない（原則1）。
+     */
+    @Column(name = "scope_village_id", columnDefinition = "BINARY(16)")
+    private UUID scopeVillageId;
 
     @Column(nullable = false)
     private Long userId;

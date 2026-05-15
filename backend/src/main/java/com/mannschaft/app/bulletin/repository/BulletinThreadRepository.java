@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 掲示板スレッドリポジトリ。
@@ -93,4 +94,56 @@ public interface BulletinThreadRepository extends JpaRepository<BulletinThreadEn
             """)
     List<BulletinThreadVisibilityProjection> findVisibilityProjectionsByIdIn(
             @Param("ids") Collection<Long> ids);
+
+    // ====================================================================
+    // F17.1 Phase 1 — 村スコープ検索 / フィード（B10 担当範囲：読み取り専用）
+    // ====================================================================
+
+    /**
+     * 村スコープのスレッドを LIKE で部分一致検索する（F17.1 §4.12）。
+     *
+     * <p>{@code scope_village_id} 一致 + 未削除のみ。
+     * FULLTEXT インデックスは title/body 用に既に貼られているが、
+     * 村スコープ条件を満たした上で q を解釈する場合は LIKE で十分（Phase 1）。
+     * 大量データになった場合は §4.12 で FULLTEXT クエリ化を検討する。</p>
+     *
+     * <p>Hibernate のディスクリミネータでは {@code scope_village_id} カラムを使う
+     * （Entity のフィールド名 {@code scopeVillageId}）。</p>
+     */
+    @Query("""
+            SELECT t FROM BulletinThreadEntity t
+            WHERE t.scopeVillageId = :villageId
+              AND t.deletedAt IS NULL
+              AND (LOWER(t.title) LIKE LOWER(CONCAT('%', :q, '%'))
+                   OR LOWER(t.body) LIKE LOWER(CONCAT('%', :q, '%')))
+            ORDER BY t.createdAt DESC
+            """)
+    List<BulletinThreadEntity> searchByVillageIdAndKeyword(
+            @Param("villageId") UUID villageId,
+            @Param("q") String q,
+            Pageable pageable);
+
+    /** 村スコープのスレッド検索結果件数（ページャ用）。 */
+    @Query("""
+            SELECT COUNT(t) FROM BulletinThreadEntity t
+            WHERE t.scopeVillageId = :villageId
+              AND t.deletedAt IS NULL
+              AND (LOWER(t.title) LIKE LOWER(CONCAT('%', :q, '%'))
+                   OR LOWER(t.body) LIKE LOWER(CONCAT('%', :q, '%')))
+            """)
+    long countByVillageIdAndKeyword(
+            @Param("villageId") UUID villageId,
+            @Param("q") String q);
+
+    /**
+     * 村スコープの最新スレッド N 件を返す（F17.1 §4.13 ダッシュボード集約用）。
+     */
+    @Query("""
+            SELECT t FROM BulletinThreadEntity t
+            WHERE t.scopeVillageId = :villageId
+              AND t.deletedAt IS NULL
+            ORDER BY t.createdAt DESC
+            """)
+    List<BulletinThreadEntity> findLatestByVillageId(
+            @Param("villageId") UUID villageId, Pageable pageable);
 }
