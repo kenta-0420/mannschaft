@@ -1218,5 +1218,25 @@
   },
   "dashboard": {
     "team_reservation_link": "预约管理"
+  },
+  "organizationTeamSearch": {
+    "title": "店舗を検索",
+    "keywordPlaceholder": "店舗名で検索",
+    "prefectureLabel": "都道府県",
+    "cityLabel": "市町村",
+    "templateLabel": "業種",
+    "searchButton": "検索",
+    "resetButton": "条件をリセット",
+    "empty": "該当する店舗が見つかりませんでした",
+    "error": "検索に失敗しました",
+    "loading": "検索中…",
+    "resultCount": "{count} 件",
+    "anyPrefecture": "指定なし",
+    "anyCity": "指定なし",
+    "anyTemplate": "指定なし",
+    "loginToSeeDetails": "詳細を見るにはログインしてください",
+    "retry": "再試行",
+    "organizationNotFound": "指定された組織が見つかりませんでした",
+    "rateLimitExceeded": "リクエストが多すぎます。少し待ってから再試行してください"
   }
 }
