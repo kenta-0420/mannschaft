@@ -243,6 +243,11 @@
     "VILLAGE_042": "通報が見つかりません",
     "VILLAGE_043": "この通報は既に処理済みです",
     "VILLAGE_044": "お気に入り村のピンが見つかりません",
-    "generic": "村機能でエラーが発生しました"
+    "generic": "村機能でエラーが発生しました",
+    "backToList": "村一覧へ戻る"
+  },
+  "placeholder": {
+    "bulletinComingSoon": "村の掲示板は Phase 2 で実装予定です",
+    "timelineComingSoon": "村のタイムラインは Phase 2 で実装予定です"
   }
 }
