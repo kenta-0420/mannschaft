@@ -71,6 +71,7 @@ public class SafetyCheckService {
                 .message(req.getMessage())
                 .isDrill(req.getIsDrill() != null ? req.getIsDrill() : false)
                 .reminderIntervalMinutes(req.getReminderIntervalMinutes())
+                .sourceType(req.getSourceType())
                 .createdBy(userId);
 
         // テンプレートからデフォルト値を適用
