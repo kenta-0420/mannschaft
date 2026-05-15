@@ -9,6 +9,9 @@ import com.mannschaft.app.auth.dto.UpdateWebAuthnCredentialRequest;
 import com.mannschaft.app.auth.dto.WebAuthnCredentialResponse;
 import com.mannschaft.app.auth.dto.WebAuthnLoginBeginResponse;
 import com.mannschaft.app.auth.dto.WebAuthnLoginCompleteRequest;
+import com.mannschaft.app.auth.dto.WebAuthnReauthenticateBeginResponse;
+import com.mannschaft.app.auth.dto.WebAuthnReauthenticateCompleteRequest;
+import com.mannschaft.app.auth.dto.WebAuthnReauthenticateCompleteResponse;
 import com.mannschaft.app.auth.dto.WebAuthnRegisterBeginResponse;
 import com.mannschaft.app.auth.dto.WebAuthnRegisterCompleteRequest;
 import com.mannschaft.app.common.ApiResponse;
@@ -23,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -79,7 +83,7 @@ class AuthWebAuthnServiceTest {
     private static final String TEST_DEVICE_NAME = "My MacBook";
 
     private UserEntity createActiveUser() {
-        return UserEntity.builder()
+        UserEntity user = UserEntity.builder()
                 .email(TEST_EMAIL)
                 .passwordHash("$2a$12$encodedPasswordHash")
                 .lastName("山田")
@@ -90,6 +94,9 @@ class AuthWebAuthnServiceTest {
                 .status(UserEntity.UserStatus.ACTIVE)
                 .isSearchable(true)
                 .build();
+        // BaseEntity.id は @Builder で渡せないためリフレクションでセットする
+        ReflectionTestUtils.setField(user, "id", TEST_USER_ID);
+        return user;
     }
 
     private WebAuthnCredentialEntity createWebAuthnCredential() {
@@ -459,6 +466,193 @@ class AuthWebAuthnServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("AUTH_024"));
+        }
+    }
+
+    // ========================================
+    // F18 提示モード追加保護: WebAuthn 再認証（設計書 §9.6 / POINT_CARD_009）
+    // ========================================
+
+    @Nested
+    @DisplayName("beginReauthenticate (F18 §9.6)")
+    class BeginReauthenticate {
+
+        @Test
+        @DisplayName("正常系: 認証済みユーザーのチャレンジが reauth プレフィックスで保存される")
+        void beginReauthenticate_正常_チャレンジ保存() {
+            // Given
+            given(userRepository.findById(TEST_USER_ID)).willReturn(Optional.of(createActiveUser()));
+            WebAuthnCredentialEntity credential = createWebAuthnCredential();
+            given(webAuthnCredentialRepository.findByUserId(TEST_USER_ID))
+                    .willReturn(List.of(credential));
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+
+            // When
+            ApiResponse<WebAuthnReauthenticateBeginResponse> response =
+                    authWebAuthnService.beginReauthenticate(TEST_USER_ID);
+
+            // Then
+            assertThat(response.getData().getChallenge()).isNotNull().isNotBlank();
+            assertThat(response.getData().getRpId()).isEqualTo("mannschaft.app");
+            assertThat(response.getData().getAllowCredentials()).containsExactly(TEST_WEBAUTHN_CREDENTIAL_ID);
+            assertThat(response.getData().getUserId()).isEqualTo(TEST_USER_ID);
+            assertThat(response.getData().getTimeout()).isEqualTo(60_000L);
+
+            // チャレンジ保存先が reauth プレフィックスであること
+            org.mockito.ArgumentCaptor<String> keyCaptor =
+                    org.mockito.ArgumentCaptor.forClass(String.class);
+            verify(valueOperations).set(keyCaptor.capture(), anyString(), anyLong(), any());
+            assertThat(keyCaptor.getValue())
+                    .startsWith("mannschaft:auth:webauthn_reauth_challenge:")
+                    .contains(String.valueOf(TEST_USER_ID));
+        }
+
+        @Test
+        @DisplayName("異常系: ユーザー不在で AUTH_015")
+        void beginReauthenticate_ユーザー不在_AUTH015() {
+            given(userRepository.findById(TEST_USER_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> authWebAuthnService.beginReauthenticate(TEST_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_015"));
+        }
+
+        @Test
+        @DisplayName("異常系: credential 未登録で AUTH_024")
+        void beginReauthenticate_credential未登録_AUTH024() {
+            given(userRepository.findById(TEST_USER_ID)).willReturn(Optional.of(createActiveUser()));
+            given(webAuthnCredentialRepository.findByUserId(TEST_USER_ID)).willReturn(List.of());
+
+            assertThatThrownBy(() -> authWebAuthnService.beginReauthenticate(TEST_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_024"));
+        }
+    }
+
+    @Nested
+    @DisplayName("completeReauthenticate (F18 §9.6)")
+    class CompleteReauthenticate {
+
+        @Test
+        @DisplayName("異常系: チャレンジ不在で AUTH_027")
+        void completeReauthenticate_チャレンジ不在_AUTH027() {
+            WebAuthnReauthenticateCompleteRequest req = new WebAuthnReauthenticateCompleteRequest(
+                    TEST_WEBAUTHN_CREDENTIAL_ID, "auth-data", "client-data", "signature", 6L);
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(anyString())).willReturn(null);
+
+            assertThatThrownBy(() -> authWebAuthnService.completeReauthenticate(TEST_USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_027"));
+        }
+
+        @Test
+        @DisplayName("異常系: credential_id 未登録で AUTH_024")
+        void completeReauthenticate_credential未登録_AUTH024() {
+            WebAuthnReauthenticateCompleteRequest req = new WebAuthnReauthenticateCompleteRequest(
+                    "nonexistent-cred-id", "auth-data", "client-data", "signature", 6L);
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(anyString())).willReturn("stored-challenge");
+            given(webAuthnCredentialRepository.findByCredentialId("nonexistent-cred-id"))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> authWebAuthnService.completeReauthenticate(TEST_USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_024"));
+        }
+
+        @Test
+        @DisplayName("異常系: 他人 credential 指定で AUTH_024 (IDOR 防止)")
+        void completeReauthenticate_他人credential_AUTH024() {
+            WebAuthnReauthenticateCompleteRequest req = new WebAuthnReauthenticateCompleteRequest(
+                    TEST_WEBAUTHN_CREDENTIAL_ID, "auth-data", "client-data", "signature", 6L);
+            WebAuthnCredentialEntity credential = createWebAuthnCredential(); // userId=TEST_USER_ID
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(anyString())).willReturn("stored-challenge");
+            given(webAuthnCredentialRepository.findByCredentialId(TEST_WEBAUTHN_CREDENTIAL_ID))
+                    .willReturn(Optional.of(credential));
+
+            // 他人 (otherUserId) として呼ぶ
+            Long otherUserId = 999L;
+            assertThatThrownBy(() -> authWebAuthnService.completeReauthenticate(otherUserId, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_024"));
+        }
+    }
+
+    @Nested
+    @DisplayName("isReauthenticatedRecently / consumeReauthentication (F18 §9.6)")
+    class ReauthFlag {
+
+        @Test
+        @DisplayName("正常系: フラグキー存在で true、削除後 false")
+        void isReauthenticatedRecently_キー存在で真() {
+            given(redisTemplate.hasKey(anyString())).willReturn(Boolean.TRUE);
+            assertThat(authWebAuthnService.isReauthenticatedRecently(TEST_USER_ID)).isTrue();
+        }
+
+        @Test
+        @DisplayName("正常系: キー不在で false")
+        void isReauthenticatedRecently_キー不在で偽() {
+            given(redisTemplate.hasKey(anyString())).willReturn(Boolean.FALSE);
+            assertThat(authWebAuthnService.isReauthenticatedRecently(TEST_USER_ID)).isFalse();
+        }
+
+        @Test
+        @DisplayName("正常系: null userId は false")
+        void isReauthenticatedRecently_nullUserId_偽() {
+            assertThat(authWebAuthnService.isReauthenticatedRecently(null)).isFalse();
+        }
+
+        @Test
+        @DisplayName("正常系: consumeReauthentication で reauth_verified キーを削除")
+        void consumeReauthentication_キー削除() {
+            authWebAuthnService.consumeReauthentication(TEST_USER_ID);
+
+            org.mockito.ArgumentCaptor<String> keyCaptor =
+                    org.mockito.ArgumentCaptor.forClass(String.class);
+            verify(redisTemplate).delete(keyCaptor.capture());
+            assertThat(keyCaptor.getValue())
+                    .startsWith("mannschaft:auth:webauthn_reauth_verified:")
+                    .contains(String.valueOf(TEST_USER_ID));
+        }
+
+        @Test
+        @DisplayName("正常系: null userId なら何もしない")
+        void consumeReauthentication_nullUserId_noop() {
+            authWebAuthnService.consumeReauthentication(null);
+            verify(redisTemplate, never()).delete(anyString());
+        }
+
+        @Test
+        @DisplayName("正常系: 一連の流れ — フラグ書き込み→isReauth=true→consume→false")
+        void reauthFlow_書き込み消費の流れ() {
+            // 1. consume 前の状態: キー存在
+            given(redisTemplate.hasKey(anyString())).willReturn(Boolean.TRUE);
+            assertThat(authWebAuthnService.isReauthenticatedRecently(TEST_USER_ID)).isTrue();
+
+            // 2. consume
+            authWebAuthnService.consumeReauthentication(TEST_USER_ID);
+            verify(redisTemplate).delete(anyString());
+
+            // 3. consume 後の状態: キー不在
+            given(redisTemplate.hasKey(anyString())).willReturn(Boolean.FALSE);
+            assertThat(authWebAuthnService.isReauthenticatedRecently(TEST_USER_ID)).isFalse();
+        }
+
+        // 補助: WebAuthnReauthenticateCompleteResponse の DTO がコンパイル時依存となっていること
+        // を保証するためのスモークテスト。
+        @Test
+        @DisplayName("DTO スモーク: WebAuthnReauthenticateCompleteResponse の verifiedUntil 保持")
+        void completeReauthResponse_DTO_スモーク() {
+            java.time.OffsetDateTime now = java.time.OffsetDateTime.now();
+            WebAuthnReauthenticateCompleteResponse dto = new WebAuthnReauthenticateCompleteResponse(now);
+            assertThat(dto.getVerifiedUntil()).isEqualTo(now);
         }
     }
 }
