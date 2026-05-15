@@ -17,6 +17,9 @@ public interface VillageReportRepository extends JpaRepository<VillageReportEnti
     Page<VillageReportEntity> findByVillageIdAndStatus(
             UUID villageId, VillageReportStatus status, Pageable pageable);
 
+    /** status 未指定時の村内全通報一覧（作成日時降順）。 */
+    Page<VillageReportEntity> findByVillageIdOrderByCreatedAtDesc(UUID villageId, Pageable pageable);
+
     /** レートリミット用: 通報者ユーザーの直近通報数。 */
     long countByReporterUserIdAndCreatedAtAfter(Long reporterUserId, LocalDateTime since);
 }
