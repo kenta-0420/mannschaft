@@ -290,7 +290,9 @@ openApi {
     // フォーク先 Spring Boot が完全起動するまで待機する秒数
     waitTimeInSeconds.set(60)
     customBootRun {
-        // openapi-gen プロファイルを有効化（H2 インメモリ DB + Flyway 無効）
-        args.add("--spring.profiles.active=openapi-gen")
+        // args.add は springdoc-openapi-gradle-plugin では機能しないため jvmArgs で -D オプションを使用する
+        jvmArgs.add("-Dspring.profiles.active=openapi-gen")
+        // MapProperty.put() で systemProperties にも設定し二重に適用する
+        systemProperties.put("spring.profiles.active", "openapi-gen")
     }
 }
