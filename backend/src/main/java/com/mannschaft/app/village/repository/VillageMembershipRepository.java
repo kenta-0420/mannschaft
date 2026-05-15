@@ -6,6 +6,8 @@ import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -40,4 +42,21 @@ public interface VillageMembershipRepository extends JpaRepository<VillageMember
 
     /** 村内の指定ロールの現役メンバー件数（最後の HEADMAN 判定用）。 */
     long countByVillageIdAndRoleAndLeftAtIsNull(UUID villageId, VillageRole role);
+
+    // ====================================================================
+    // F17.1 Phase 1 B10 — 村内 MEMBER 検索（読み取り専用）
+    // ====================================================================
+
+    /**
+     * 村内 USER 現役メンバーの user_id（subject_id）集合を返す。
+     * 村内検索の MEMBER タイプで「村人だけに絞ったニックネーム」を引くために使う。
+     */
+    @Query("""
+            SELECT m.subjectId FROM VillageMembershipEntity m
+            WHERE m.villageId = :villageId
+              AND m.subjectType = com.mannschaft.app.village.entity.enums.VillageSubjectType.USER
+              AND m.leftAt IS NULL
+              AND m.bannedAt IS NULL
+            """)
+    List<Long> findActiveUserSubjectIdsByVillageId(@Param("villageId") UUID villageId);
 }

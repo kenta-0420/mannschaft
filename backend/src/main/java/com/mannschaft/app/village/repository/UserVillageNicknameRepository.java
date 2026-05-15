@@ -1,8 +1,13 @@
 package com.mannschaft.app.village.repository;
 
 import com.mannschaft.app.village.entity.UserVillageNicknameEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,4 +27,40 @@ public interface UserVillageNicknameRepository extends JpaRepository<UserVillage
 
     /** ニックネームのプラットフォーム全体ユニーク制約（先着優先）の検証用。 */
     boolean existsByNickname(String nickname);
+
+    // ====================================================================
+    // F17.1 Phase 1 B10 — 村内検索（MEMBER 型）
+    // ====================================================================
+
+    /**
+     * 指定ユーザー集合のニックネーム（Phase 1 デフォルト＝全村共通）を引いて、
+     * 部分一致するものを返す（F17.1 §4.12 MEMBER 検索）。
+     *
+     * <p>個人特定情報保護のため、検索結果には {@code userId} を返さず、
+     * Service 層で {@code nickname} と {@code avatarR2Key} のみ抽出して返す。
+     * 本メソッドは User ID を引数に取るが、それは「村人ユーザー集合に絞り込む」目的のみで
+     * 戻り値の {@code UserVillageNicknameEntity} の {@code userId} は Service 層で読み捨てる。</p>
+     */
+    @Query("""
+            SELECT n FROM UserVillageNicknameEntity n
+            WHERE n.userId IN :userIds
+              AND n.villageId IS NULL
+              AND LOWER(n.nickname) LIKE LOWER(CONCAT('%', :q, '%'))
+            ORDER BY n.nickname ASC
+            """)
+    List<UserVillageNicknameEntity> searchByUserIdsAndKeyword(
+            @Param("userIds") Collection<Long> userIds,
+            @Param("q") String q,
+            Pageable pageable);
+
+    /** 件数（ページャ用）。 */
+    @Query("""
+            SELECT COUNT(n) FROM UserVillageNicknameEntity n
+            WHERE n.userId IN :userIds
+              AND n.villageId IS NULL
+              AND LOWER(n.nickname) LIKE LOWER(CONCAT('%', :q, '%'))
+            """)
+    long countByUserIdsAndKeyword(
+            @Param("userIds") Collection<Long> userIds,
+            @Param("q") String q);
 }
