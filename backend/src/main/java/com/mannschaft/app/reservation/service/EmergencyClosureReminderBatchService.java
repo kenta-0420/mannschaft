@@ -131,7 +131,7 @@ public class EmergencyClosureReminderBatchService {
         UserEntity operator = userRepository.findById(closure.getCreatedBy()).orElse(null);
         if (patient == null || operator == null) return;
 
-        String patientName = patient.getDisplayName();
+        String patientName = patient.getLastName() + " " + patient.getFirstName();
         String appointmentStr = confirmation.getAppointmentAt()
                 .format(DateTimeFormatter.ofPattern("M月d日 HH:mm"));
 

@@ -188,7 +188,7 @@ class RepairPlanTimelineServiceTest {
             given(teamMemberTermRepository.findByScopeTypeAndScopeIdOrderByTermStartAsc(
                     eq(SCOPE_TYPE), eq(SCOPE_ID)))
                     .willReturn(List.of(term));
-            UserEntity user = buildUser(1L, "田中 太郎");
+            UserEntity user = buildUser(1L, "田中", "太郎");
             given(userRepository.findAllById(anyIterable()))
                     .willReturn(List.of(user));
 
@@ -213,7 +213,7 @@ class RepairPlanTimelineServiceTest {
             given(teamMemberTermRepository.findByScopeTypeAndScopeIdOrderByTermStartAsc(
                     eq(SCOPE_TYPE), eq(SCOPE_ID)))
                     .willReturn(List.of(term));
-            UserEntity user = buildUser(1L, "鈴木 花子");
+            UserEntity user = buildUser(1L, "鈴木", "花子");
             given(userRepository.findAllById(anyIterable()))
                     .willReturn(List.of(user));
 
@@ -272,14 +272,14 @@ class RepairPlanTimelineServiceTest {
     }
 
     /**
-     * テスト用 UserEntity を Reflection で構築する。
-     * UserEntity は AllArgsConstructor(PRIVATE) のため Builder 経由でのみ生成可能。
-     * ただし displayName のみ設定できれば十分なのでモックを使う。
+     * テスト用 UserEntity を Mockito モックで構築する。
+     * サービスは lastName + " " + firstName で実名を構成するため、両フィールドをスタブする。
      */
-    private UserEntity buildUser(Long id, String displayName) {
+    private UserEntity buildUser(Long id, String lastName, String firstName) {
         UserEntity user = org.mockito.Mockito.mock(UserEntity.class);
         given(user.getId()).willReturn(id);
-        given(user.getDisplayName()).willReturn(displayName);
+        given(user.getLastName()).willReturn(lastName);
+        given(user.getFirstName()).willReturn(firstName);
         return user;
     }
 }

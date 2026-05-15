@@ -127,7 +127,7 @@ public class ContactHandleService {
         return HandleSearchResponse.builder()
                 .found(true)
                 .userId(target.getId())
-                .displayName(target.getDisplayName())
+                .fullName(target.getLastName() + " " + target.getFirstName())
                 .contactHandle(target.getContactHandle())
                 .avatarUrl(target.getAvatarUrl())
                 .isContact(isContact)

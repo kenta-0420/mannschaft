@@ -919,7 +919,7 @@ public class ErrorReportService {
         Map<Long, String> result = new HashMap<>();
         List<UserEntity> users = userRepository.findByIdIn(userIds);
         for (UserEntity u : users) {
-            result.put(u.getId(), u.getDisplayName());
+            result.put(u.getId(), u.getLastName() + " " + u.getFirstName());
         }
         return result;
     }

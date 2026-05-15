@@ -39,7 +39,7 @@ public class EmergencyClosurePreviewResponse {
     public static class AffectedReservation {
         private Long reservationId;
         private Long userId;
-        private String userDisplayName;
+        private String userFullName;
         private String userEmail;
         private LocalDate slotDate;
         private LocalTime startTime;

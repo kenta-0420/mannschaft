@@ -10,7 +10,7 @@ import lombok.Getter;
 @Builder
 public class ContactUserDto {
     private Long id;
-    private String displayName;
+    private String fullName;
     private String contactHandle;
     private String avatarUrl;
 }

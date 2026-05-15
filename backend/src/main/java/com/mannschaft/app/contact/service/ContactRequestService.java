@@ -233,7 +233,7 @@ public class ContactRequestService {
         if (user == null) return ContactUserDto.builder().id(fallbackId).build();
         return ContactUserDto.builder()
                 .id(user.getId())
-                .displayName(user.getDisplayName())
+                .fullName(user.getLastName() + " " + user.getFirstName())
                 .contactHandle(user.getContactHandle())
                 .avatarUrl(user.getAvatarUrl())
                 .build();
@@ -241,7 +241,7 @@ public class ContactRequestService {
 
     private void sendRequestReceivedNotification(Long requesterId, Long targetId, Long requestId) {
         UserEntity requester = userRepository.findById(requesterId).orElse(null);
-        String requesterName = requester != null ? requester.getDisplayName() : "ユーザー";
+        String requesterName = requester != null ? requester.getLastName() + " " + requester.getFirstName() : "ユーザー";
         notificationService.createNotification(
                 targetId,
                 "CONTACT_REQUEST_RECEIVED",
@@ -259,7 +259,7 @@ public class ContactRequestService {
 
     private void sendRequestAcceptedNotification(Long actorId, Long targetId, Long requestId) {
         UserEntity actor = userRepository.findById(actorId).orElse(null);
-        String actorName = actor != null ? actor.getDisplayName() : "ユーザー";
+        String actorName = actor != null ? actor.getLastName() + " " + actor.getFirstName() : "ユーザー";
         notificationService.createNotification(
                 targetId,
                 "CONTACT_REQUEST_ACCEPTED",

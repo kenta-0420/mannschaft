@@ -104,7 +104,7 @@ public class ContactInviteTokenService {
         return ContactInvitePreviewResponse.builder()
                 .isValid(true)
                 .issuer(issuer != null ? ContactInvitePreviewResponse.IssuerInfo.builder()
-                        .displayName(issuer.getDisplayName())
+                        .fullName(issuer.getLastName() + " " + issuer.getFirstName())
                         .contactHandle(issuer.getContactHandle())
                         .build() : null)
                 .expiresAt(entity.getExpiresAt())
@@ -224,7 +224,7 @@ public class ContactInviteTokenService {
 
     private void sendInviteUsedNotification(Long actorId, Long issuerId, Long tokenId) {
         UserEntity actor = userRepository.findById(actorId).orElse(null);
-        String actorName = actor != null ? actor.getDisplayName() : "ユーザー";
+        String actorName = actor != null ? actor.getLastName() + " " + actor.getFirstName() : "ユーザー";
         notificationService.createNotification(
                 issuerId,
                 "CONTACT_INVITE_USED",

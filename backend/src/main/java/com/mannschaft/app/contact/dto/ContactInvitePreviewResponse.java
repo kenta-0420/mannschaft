@@ -22,7 +22,7 @@ public class ContactInvitePreviewResponse {
     @Getter
     @Builder
     public static class IssuerInfo {
-        private String displayName;
+        private String fullName;
         private String contactHandle;
     }
 }

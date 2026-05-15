@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 public class EmergencyClosureConfirmationResponse {
 
     private final Long userId;
-    private final String userDisplayName;
+    private final String userFullName;
     private final String userEmail;
     private final LocalDateTime appointmentAt;
     private final boolean confirmed;

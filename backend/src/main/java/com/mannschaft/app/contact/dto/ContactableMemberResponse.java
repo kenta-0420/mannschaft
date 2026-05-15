@@ -10,7 +10,7 @@ import lombok.Getter;
 @Builder
 public class ContactableMemberResponse {
     private Long userId;
-    private String displayName;
+    private String fullName;
     private String contactHandle;
     private String avatarUrl;
     private Boolean isContact;
