@@ -7,6 +7,7 @@ import com.mannschaft.app.resident.dto.CreateResidentRequest;
 import com.mannschaft.app.resident.dto.DwellingUnitResponse;
 import com.mannschaft.app.resident.dto.ResidentResponse;
 import com.mannschaft.app.resident.dto.UpdateResidentRequest;
+import com.mannschaft.app.resident.entity.DeathStatus;
 import com.mannschaft.app.resident.entity.DwellingUnitEntity;
 import com.mannschaft.app.resident.entity.ResidentRegistryEntity;
 import com.mannschaft.app.resident.mapper.ResidentMapper;
@@ -174,6 +175,35 @@ public class ResidentRegistryService {
         ResidentRegistryEntity entity = residentRepository.findActiveByUserId(userId)
                 .orElseThrow(() -> new BusinessException(ResidentErrorCode.RESIDENT_NOT_FOUND));
         return residentMapper.toResidentResponse(entity);
+    }
+
+    /**
+     * D+120 エスカレーション到達時の自動起票: death_status を ALIVE → SUSPECTED に変更する。
+     *
+     * <p>既に SUSPECTED / CONFIRMED の場合は何もしない（冪等）。
+     * CANCELLED_FALSE_ALARM の場合も上書きしない（誤確認後の再確認は手動操作で行う）。
+     *
+     * <p>呼び出し元: {@code DelinquencyEscalationService#advanceStage()} (F09.15 S5-C)
+     * TODO: successionドメイン → residentドメインのクロスドメイン呼び出し。将来は
+     *       ResidentDeathSuspectedEvent を発火してresidentドメインがサブスクライブする形に分離予定。
+     *
+     * @param residentRegistryId 居住者台帳 ID
+     */
+    @Transactional
+    public void markDeathSuspected(Long residentRegistryId) {
+        ResidentRegistryEntity entity = residentRepository.findById(residentRegistryId)
+                .orElseThrow(() -> new BusinessException(ResidentErrorCode.RESIDENT_NOT_FOUND));
+
+        if (entity.getDeathStatus() != DeathStatus.ALIVE) {
+            log.info("death_status は既に {} のため自動起票をスキップ: residentRegistryId={}",
+                    entity.getDeathStatus(), residentRegistryId);
+            return;
+        }
+
+        // システムによる自動変更のため changedBy は null（バッチ操作）
+        entity.updateDeathStatus(DeathStatus.SUSPECTED, null);
+        residentRepository.save(entity);
+        log.info("死亡疑い自動起票: residentRegistryId={}", residentRegistryId);
     }
 
     private ResidentRegistryEntity findOrThrow(Long id) {
