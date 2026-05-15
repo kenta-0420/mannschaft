@@ -70,22 +70,6 @@ jobs:
           path: build/reports/tests/
           retention-days: 7
 
-      # springdoc-openapi-gradle-plugin で docs/openapi.json を静的生成する。
-      # フォークした Spring Boot プロセスを内部起動して /v3/api-docs を取得するため
-      # MySQL / Valkey は不要（Testcontainers も起動しない）。
-      # ただし DB 接続を試みるとフォークプロセスが落ちるため、将来的に
-      # spring.datasource.url=jdbc:tc:mysql:8.0:/// 等のモック設定が必要になる場合は
-      # customBootRun.args を追加すること。
-      - name: Generate OpenAPI JSON
-        run: ./gradlew generateOpenApiDocs --no-daemon
-        working-directory: ./backend
-
-      - name: Verify openapi.json generated
-        run: test -f ../docs/openapi.json
-
-      - name: Upload openapi.json as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: openapi-json-pr-${{ github.event.pull_request.number }}
-          path: docs/openapi.json
-          retention-days: 30
+      # openapi.json の生成は CI ではなくローカルで行う運用とする。
+      # Backend API 変更後: ./gradlew generateOpenApiDocs → docs/openapi.json をコミット
+      # CI では Frontend の drift 検出（frontend-ci.yml）で乖離を検出する。
