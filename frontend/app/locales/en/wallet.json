@@ -168,6 +168,11 @@
     "barcode": {
       "no_barcode_label": "No barcode",
       "render_failed": "Failed to render the barcode (invalid format or value)"
+    },
+    "offline": {
+      "cached_notice": "Showing cached data from offline storage",
+      "cache_expired": "Cache has expired",
+      "clear_cache": "Clear offline cache"
     }
   }
 }
