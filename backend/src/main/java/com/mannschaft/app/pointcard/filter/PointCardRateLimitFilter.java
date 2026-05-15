@@ -33,6 +33,9 @@ import java.util.regex.Pattern;
  *   <li>{@code GET    /api/v1/point-cards/groups}         ─ 60 req/分（S3 追加）</li>
  *   <li>{@code POST   /api/v1/point-cards/groups}         ─ 30 req/時（S3 追加）</li>
  *   <li>{@code POST   /api/v1/point-cards/groups/{id}/presentation-start} ─ 600 req/時（S3 追加）</li>
+ *   <li>{@code POST   /api/v1/organizations/{orgId}/point-cards/providers}                ─ 30 req/時（2B 追加）</li>
+ *   <li>{@code PATCH  /api/v1/organizations/{orgId}/point-cards/providers/{id}}           ─ 30 req/時（2B 追加）</li>
+ *   <li>{@code DELETE /api/v1/organizations/{orgId}/point-cards/providers/{id}}           ─ 30 req/時（2B 追加）</li>
  * </ul>
  *
  * <p>パターンは「具体度の高いものから順に」評価する。たとえば
@@ -53,6 +56,8 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     private static final int LIST_GROUPS_RATE_PER_MINUTE = 60;
     private static final int CREATE_GROUP_RATE_PER_HOUR = 30;
     private static final int PRESENTATION_RATE_PER_HOUR = 600;
+    // S2B 自店プロバイダー CRUD（POST / PATCH / DELETE 共通で 30/h）
+    private static final int ORG_PROVIDER_CUD_RATE_PER_HOUR = 30;
 
     private static final Duration BUCKET_TTL = Duration.ofHours(2);
     private static final long MAX_BUCKETS = 10_000L;
@@ -84,6 +89,14 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     private static final Pattern GROUP_PRESENTATION_PATH =
             Pattern.compile("^/api/v1/point-cards/groups/[0-9a-fA-F-]{36}/presentation-start$");
 
+    /** Org プロバイダー一覧 / 新規発行のルートパス。S2B 追加。 */
+    private static final Pattern ORG_PROVIDERS_ROOT_PATH =
+            Pattern.compile("^/api/v1/organizations/[0-9]+/point-cards/providers$");
+
+    /** Org プロバイダー個別操作（編集 / 停止）パス。S2B 追加。 */
+    private static final Pattern ORG_PROVIDER_ID_PATH =
+            Pattern.compile("^/api/v1/organizations/[0-9]+/point-cards/providers/[0-9a-fA-F-]{36}$");
+
     // ──── バケット ──────────────────────────────
     private final Cache<String, Bucket> providersBuckets;
     private final Cache<String, Bucket> settingsBuckets;
@@ -93,6 +106,8 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     private final Cache<String, Bucket> listGroupsBuckets;
     private final Cache<String, Bucket> createGroupBuckets;
     private final Cache<String, Bucket> presentationBuckets;
+    /** S2B Org プロバイダー CUD（POST/PATCH/DELETE）共通バケット。 */
+    private final Cache<String, Bucket> orgProviderCudBuckets;
 
     public PointCardRateLimitFilter() {
         this.providersBuckets = newCache();
@@ -103,6 +118,7 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
         this.listGroupsBuckets = newCache();
         this.createGroupBuckets = newCache();
         this.presentationBuckets = newCache();
+        this.orgProviderCudBuckets = newCache();
     }
 
     private static Cache<String, Bucket> newCache() {
@@ -141,6 +157,14 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
         if ("POST".equalsIgnoreCase(method) && GROUP_PRESENTATION_PATH.matcher(path).matches()) {
             return false;
         }
+        // S2B Org プロバイダー CUD（POST root / PATCH /{id} / DELETE /{id} を対象に）
+        if ("POST".equalsIgnoreCase(method) && ORG_PROVIDERS_ROOT_PATH.matcher(path).matches()) {
+            return false;
+        }
+        if (("PATCH".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method))
+                && ORG_PROVIDER_ID_PATH.matcher(path).matches()) {
+            return false;
+        }
         return true;
     }
 
@@ -156,7 +180,15 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
         String retryAfter;
 
         // 評価順序: より具体的なものから判定する
-        if ("POST".equalsIgnoreCase(method) && GROUP_PRESENTATION_PATH.matcher(path).matches()) {
+        // S2B Org プロバイダー個別操作（PATCH / DELETE）— /{id} 形式の方が ROOT より具体度高
+        if (("PATCH".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method))
+                && ORG_PROVIDER_ID_PATH.matcher(path).matches()) {
+            bucket = orgProviderCudBuckets.get(userKey, k -> newBucketPerHour(ORG_PROVIDER_CUD_RATE_PER_HOUR));
+            retryAfter = "3600";
+        } else if ("POST".equalsIgnoreCase(method) && ORG_PROVIDERS_ROOT_PATH.matcher(path).matches()) {
+            bucket = orgProviderCudBuckets.get(userKey, k -> newBucketPerHour(ORG_PROVIDER_CUD_RATE_PER_HOUR));
+            retryAfter = "3600";
+        } else if ("POST".equalsIgnoreCase(method) && GROUP_PRESENTATION_PATH.matcher(path).matches()) {
             bucket = presentationBuckets.get(userKey, k -> newBucketPerHour(PRESENTATION_RATE_PER_HOUR));
             retryAfter = "3600";
         } else if ("POST".equalsIgnoreCase(method) && GROUPS_ROOT_PATH.matcher(path).matches()) {

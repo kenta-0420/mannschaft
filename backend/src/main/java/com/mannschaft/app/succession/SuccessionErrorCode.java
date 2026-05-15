@@ -57,7 +57,24 @@ public enum SuccessionErrorCode implements ErrorCode {
     UNSEAL_EXPIRED_OR_INACTIVE("SUCCESSION_014", "開封期間が終了しているか、未開封状態です", Severity.WARN),
 
     /** 封緘解除中コンテンツへの閲覧権限がない */
-    UNSEAL_ACCESS_DENIED("SUCCESSION_015", "この事前登録への閲覧権限がありません", Severity.WARN);
+    UNSEAL_ACCESS_DENIED("SUCCESSION_015", "この事前登録への閲覧権限がありません", Severity.WARN),
+
+    // ─── F09.15 S5-A: エスカレーション系エラーコード ─────────────────────────
+
+    /** エスカレーションレコードが見つからない */
+    ESCALATION_NOT_FOUND("SUCCESSION_016", "エスカレーションが見つかりません", Severity.WARN),
+
+    /** 既に解決済みのエスカレーションを操作しようとした */
+    ESCALATION_ALREADY_RESOLVED("SUCCESSION_017", "既に解決済みのエスカレーションです", Severity.WARN),
+
+    /** 凍結中のエスカレーションは操作できない */
+    ESCALATION_FROZEN("SUCCESSION_018", "凍結中のエスカレーションは操作できません", Severity.WARN),
+
+    /** 既に最終ステージ（STAGE_5_LEGAL_PREP）のため昇格できない */
+    ESCALATION_ALREADY_FINAL_STAGE("SUCCESSION_019", "既に最終ステージです", Severity.WARN),
+
+    /** 同一居住者に未解決のエスカレーションが既に存在する */
+    ESCALATION_DUPLICATE("SUCCESSION_020", "重複するエスカレーションが既に存在します", Severity.WARN);
 
     private final String code;
     private final String message;

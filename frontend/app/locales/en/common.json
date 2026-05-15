@@ -1218,5 +1218,25 @@
   },
   "dashboard": {
     "team_reservation_link": "Reservations"
+  },
+  "organizationTeamSearch": {
+    "title": "Search Stores",
+    "keywordPlaceholder": "Search by store name",
+    "prefectureLabel": "Prefecture",
+    "cityLabel": "City",
+    "templateLabel": "Category",
+    "searchButton": "Search",
+    "resetButton": "Reset filters",
+    "empty": "No stores found",
+    "error": "Search failed",
+    "loading": "Searching...",
+    "resultCount": "{count} results",
+    "anyPrefecture": "Any",
+    "anyCity": "Any",
+    "anyTemplate": "Any",
+    "loginToSeeDetails": "Log in to see details",
+    "retry": "Retry",
+    "organizationNotFound": "Organization not found",
+    "rateLimitExceeded": "Too many requests. Please wait and try again."
   }
 }

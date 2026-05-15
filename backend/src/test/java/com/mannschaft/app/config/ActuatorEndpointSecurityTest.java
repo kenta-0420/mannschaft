@@ -5,6 +5,7 @@ import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.team.filter.OrganizationTeamSearchRateLimitFilter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -114,6 +115,18 @@ class ActuatorEndpointSecurityTest {
                     mock(ProxyInputConsentRepository.class),
                     mock(ProxyInputContext.class),
                     mock(ObjectMapper.class));
+        }
+
+        /**
+         * F15.4: SecurityConfig が依存する OrganizationTeamSearchRateLimitFilter の
+         * 本物インスタンス。引数なしコンストラクタで Caffeine Cache を内部初期化する。
+         * 本テストは /actuator/** のみを叩くため、対象パス
+         * （/api/v1/organizations/{orgId}/teams/search）の正規表現に一致せず、
+         * 何もせず chain.doFilter に通す挙動になる。
+         */
+        @Bean
+        OrganizationTeamSearchRateLimitFilter organizationTeamSearchRateLimitFilter() {
+            return new OrganizationTeamSearchRateLimitFilter();
         }
     }
 

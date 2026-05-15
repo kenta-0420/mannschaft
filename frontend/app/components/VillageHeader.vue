@@ -1,0 +1,324 @@
+<script setup lang="ts">
+/**
+ * F17.1 村機能 — VillageHeader 共通コンポーネント
+ *
+ * 村詳細ページ（掲示板 / タイムライン / ロビー / メンバー）で共通利用する
+ * 上部ヘッダー UI。
+ *
+ * - カバー画像 + 村アイコン + 村名 + 公式バッジ
+ * - メタ情報（種別 / 参加方式 / 公開範囲 / カテゴリ / 村人数）
+ * - アクション群（参加・退出・ピン・通報・編集）— 権限と状態で出し分け
+ * - タブナビ（PrimeVue Tabs / Tab）
+ *
+ * 設計書: docs/features/F17.1_village_community.md §4.1 / §4.3 / §4.8
+ *
+ * 注意:
+ *   - 型は FE1 完成版 (frontend/app/types/village.ts) を必ず使う。
+ *   - 通報ダイアログ表示は FE5 担当のため、本コンポは `report-click` を emit するのみ。
+ *   - 画像は `*R2Key` から R2 公開 URL を組み立てて表示する。
+ *     (設計書 §4.1.2 では iconUrl/coverUrl を返す案が記されているが、
+ *      FE1 型では r2Key 採用のため、ここでは r2Key → URL の組立を行う)
+ */
+import type { VillageResponse } from '~/types/village'
+
+const props = defineProps<{
+  village: VillageResponse
+  activeTab: 'bulletin' | 'timeline' | 'lobby' | 'members'
+}>()
+
+const emit = defineEmits<{
+  /** FREE 村における即時参加要求 */
+  join: []
+  /** APPROVAL 村における参加申請フロー遷移要求 */
+  requestJoin: []
+  /** 退村要求 */
+  leave: []
+  /** ピン留め要求 */
+  pin: []
+  /** ピン解除要求 */
+  unpin: []
+  /** 通報ダイアログ表示要求（FE5 でハンドリング） */
+  'report-click': []
+  /** 編集画面への遷移要求 */
+  edit: []
+}>()
+
+const { t } = useI18n()
+const config = useRuntimeConfig()
+
+// =============================================================================
+// R2 公開 URL 組立
+// =============================================================================
+/** R2 Public ベース URL（末尾スラッシュなし） */
+const r2PublicBase = computed<string>(() => {
+  const url = config.public.r2PublicUrl as string | undefined
+  return url ? url.replace(/\/$/, '') : ''
+})
+
+function buildR2Url(r2Key: string | null): string | null {
+  if (!r2Key) return null
+  if (!r2PublicBase.value) return null
+  return `${r2PublicBase.value}/${r2Key}`
+}
+
+const iconUrl = computed<string | null>(() => buildR2Url(props.village.iconR2Key))
+const coverUrl = computed<string | null>(() => buildR2Url(props.village.coverR2Key))
+
+// =============================================================================
+// 表示用 派生値
+// =============================================================================
+const typeLabel = computed(() => t(`village.type.${props.village.type}`))
+const joinPolicyLabel = computed(() => t(`village.joinPolicy.${props.village.joinPolicy}`))
+const visibilityLabel = computed(() => t(`village.visibility.${props.village.visibility}`))
+
+/** イニシャル（アイコン未設定時のフォールバック） */
+const initials = computed(() => {
+  const name = props.village.name ?? ''
+  if (!name) return '?'
+  // 1〜2 文字を抽出（全角 1 文字でも OK）
+  return [...name].slice(0, 2).join('').toUpperCase()
+})
+
+// =============================================================================
+// 出し分け条件
+// =============================================================================
+const isMember = computed(() => props.village.isMember)
+const isPinned = computed(() => props.village.isPinned)
+const isOfficial = computed(() => props.village.isOfficial)
+const canEdit = computed(() => props.village.myRole === 'HEADMAN')
+const isFree = computed(() => props.village.joinPolicy === 'FREE')
+
+// =============================================================================
+// タブナビ — PrimeVue Tabs (v-model:value)
+// =============================================================================
+interface TabDef {
+  key: 'bulletin' | 'timeline' | 'lobby' | 'members'
+  to: string
+  icon: string
+  i18nKey: string
+}
+
+const tabs = computed<TabDef[]>(() => [
+  {
+    key: 'bulletin',
+    to: `/villages/${props.village.id}/bulletin`,
+    icon: 'pi pi-megaphone',
+    i18nKey: 'village.tab.bulletin',
+  },
+  {
+    key: 'timeline',
+    to: `/villages/${props.village.id}/timeline`,
+    icon: 'pi pi-clock',
+    i18nKey: 'village.tab.timeline',
+  },
+  {
+    key: 'lobby',
+    to: `/villages/${props.village.id}/lobby`,
+    icon: 'pi pi-comments',
+    i18nKey: 'village.tab.lobby',
+  },
+  {
+    key: 'members',
+    to: `/villages/${props.village.id}/members`,
+    icon: 'pi pi-users',
+    i18nKey: 'village.tab.members',
+  },
+])
+
+// =============================================================================
+// アクションハンドラ
+// =============================================================================
+function onJoinClick() {
+  if (isFree.value) {
+    emit('join')
+  }
+  else {
+    emit('requestJoin')
+  }
+}
+
+function onPinToggle() {
+  if (isPinned.value) {
+    emit('unpin')
+  }
+  else {
+    emit('pin')
+  }
+}
+</script>
+
+<template>
+  <div class="village-header">
+    <!-- ============================================================== -->
+    <!-- 1. カバー画像                                                    -->
+    <!-- ============================================================== -->
+    <div class="relative w-full overflow-hidden h-40 sm:h-56">
+      <img
+        v-if="coverUrl"
+        :src="coverUrl"
+        :alt="village.name"
+        class="w-full h-full object-cover object-center"
+      >
+      <div
+        v-else
+        class="w-full h-full bg-gradient-to-br from-primary-300 via-primary-500 to-primary-700"
+      />
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- 2. アイコン + 村名 + バッジ + アクション群                         -->
+    <!-- ============================================================== -->
+    <div class="relative px-4 sm:px-6 pb-3 pt-2 bg-surface-0 dark:bg-surface-900">
+      <!-- アイコン（カバー下端と重なる位置） -->
+      <div
+        class="absolute -top-10 sm:-top-12 left-4 sm:left-6 w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-4 border-white dark:border-surface-900 shadow-lg bg-surface-200"
+      >
+        <img
+          v-if="iconUrl"
+          :src="iconUrl"
+          :alt="village.name"
+          class="w-full h-full object-cover"
+        >
+        <div
+          v-else
+          class="w-full h-full flex items-center justify-center text-white font-bold text-2xl bg-primary-500"
+        >
+          {{ initials }}
+        </div>
+      </div>
+
+      <!-- 名前行（アイコンと干渉しないよう左マージン） -->
+      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pl-24 sm:pl-28">
+        <!-- 左: 村名 + メタ -->
+        <div class="flex flex-col gap-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-xl sm:text-2xl font-bold truncate">
+              {{ village.name }}
+            </h1>
+            <!-- 公式バッジ -->
+            <Badge
+              v-if="isOfficial"
+              :value="typeLabel"
+              severity="warn"
+              class="village-header__official-badge"
+            >
+              <i class="pi pi-crown mr-1" />
+              {{ typeLabel }}
+            </Badge>
+          </div>
+
+          <!-- メタ情報 -->
+          <div class="flex items-center gap-2 flex-wrap text-xs sm:text-sm text-surface-600 dark:text-surface-300">
+            <span v-if="!isOfficial">
+              <i class="pi pi-tag mr-1" />{{ typeLabel }}
+            </span>
+            <span>
+              <i class="pi pi-sign-in mr-1" />{{ joinPolicyLabel }}
+            </span>
+            <span>
+              <i class="pi pi-eye mr-1" />{{ visibilityLabel }}
+            </span>
+            <span v-if="village.category">
+              <i class="pi pi-bookmark mr-1" />{{ village.category }}
+            </span>
+            <span>
+              <i class="pi pi-users mr-1" />{{ t('village.field.memberCount') }}: {{ village.memberCount }}
+            </span>
+          </div>
+        </div>
+
+        <!-- 右: アクション群 -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <!-- 参加ボタン（未加入のみ） -->
+          <Button
+            v-if="!isMember"
+            :label="t('village.action.join')"
+            icon="pi pi-sign-in"
+            severity="primary"
+            size="small"
+            @click="onJoinClick"
+          />
+
+          <!-- ピン留めトグル（メンバーのみ） -->
+          <Button
+            v-if="isMember"
+            :label="isPinned ? t('village.action.unpin') : t('village.action.pin')"
+            :icon="isPinned ? 'pi pi-star-fill' : 'pi pi-star'"
+            :severity="isPinned ? 'warn' : 'secondary'"
+            size="small"
+            outlined
+            @click="onPinToggle"
+          />
+
+          <!-- 通報ボタン（メンバーのみ・Dialog 表示は FE5 担当） -->
+          <Button
+            v-if="isMember"
+            :aria-label="t('village.action.report')"
+            icon="pi pi-flag"
+            severity="secondary"
+            size="small"
+            text
+            @click="emit('report-click')"
+          />
+
+          <!-- 編集ボタン（村長のみ） -->
+          <Button
+            v-if="canEdit"
+            :label="t('village.action.edit')"
+            icon="pi pi-pencil"
+            severity="secondary"
+            size="small"
+            outlined
+            @click="emit('edit')"
+          />
+
+          <!-- 退村ボタン（メンバーのみ） -->
+          <Button
+            v-if="isMember"
+            :label="t('village.action.leave')"
+            icon="pi pi-sign-out"
+            severity="danger"
+            size="small"
+            text
+            @click="emit('leave')"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- 3. タブナビ                                                      -->
+    <!-- ============================================================== -->
+    <div class="border-b border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900">
+      <Tabs :value="activeTab">
+        <TabList>
+          <Tab
+            v-for="tab in tabs"
+            :key="tab.key"
+            :value="tab.key"
+            as="div"
+            class="village-header__tab"
+          >
+            <NuxtLink
+              :to="tab.to"
+              class="flex items-center gap-2 no-underline text-inherit"
+            >
+              <i :class="tab.icon" />
+              <span>{{ t(tab.i18nKey) }}</span>
+            </NuxtLink>
+          </Tab>
+        </TabList>
+      </Tabs>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.village-header__official-badge {
+  display: inline-flex;
+  align-items: center;
+}
+.village-header__tab {
+  cursor: pointer;
+}
+</style>

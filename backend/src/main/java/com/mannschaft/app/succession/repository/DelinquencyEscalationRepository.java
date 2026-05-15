@@ -30,4 +30,10 @@ public interface DelinquencyEscalationRepository
     /** 組織配下の進行中エスカ一覧（理事長ダッシュボード用）。 */
     List<DelinquencyEscalationEntity> findByOrganizationIdAndResolvedAtIsNullAndDeletedAtIsNull(
             Long organizationId);
+
+    /**
+     * 日次バッチ用: 全組織の未解決・非凍結エスカレーション一覧。
+     * {@code DelinquencyEscalationBatchService#advanceEscalations()} で使用する。
+     */
+    List<DelinquencyEscalationEntity> findByResolvedAtIsNullAndFrozenAtIsNullAndDeletedAtIsNull();
 }
