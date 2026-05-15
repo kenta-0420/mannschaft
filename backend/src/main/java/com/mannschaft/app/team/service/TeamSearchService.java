@@ -6,7 +6,9 @@ import com.mannschaft.app.organization.exception.OrganizationNotFoundException;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.dto.TeamSearchCriteria;
 import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.metrics.TeamSearchMetrics;
 import com.mannschaft.app.team.repository.TeamRepository;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -42,6 +44,7 @@ public class TeamSearchService {
     private final OrganizationRepository organizationRepository;
     private final TeamRepository teamRepository;
     private final AccessControlService accessControlService;
+    private final TeamSearchMetrics teamSearchMetrics;
 
     /**
      * 組織配下のチームを検索する。
@@ -71,6 +74,9 @@ public class TeamSearchService {
             Pageable pageable
     ) {
         validateSort(pageable);
+
+        // Phase 3 メトリクス計測開始（成功時のみ recordSearch を呼ぶ）
+        Timer.Sample sample = teamSearchMetrics.startTimer();
 
         // 1. 組織の存在確認（@SQLRestriction("deleted_at IS NULL") により論理削除済みは自動除外）
         OrganizationEntity organization = organizationRepository.findById(orgId)
@@ -106,7 +112,13 @@ public class TeamSearchService {
                 .and(TeamSearchSpecifications.cityEquals(effectiveCity))
                 .and(TeamSearchSpecifications.templateEquals(criteria.template()));
 
-        return teamRepository.findAll(spec, pageable);
+        Page<TeamEntity> page = teamRepository.findAll(spec, pageable);
+
+        // 6. Phase 3 メトリクス記録（成功時のみ）
+        String scope = isMember ? TeamSearchMetrics.SCOPE_MEMBER : TeamSearchMetrics.SCOPE_PUBLIC_ONLY;
+        teamSearchMetrics.recordSearch(scope, currentUserId != null, sample, page.getNumberOfElements());
+
+        return page;
     }
 
     /**
