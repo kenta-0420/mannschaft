@@ -62,6 +62,9 @@
     "typing": {
       "single": "{name}正在输入…",
       "multiple": "{names}正在输入…"
+    },
+    "connection": {
+      "failed": "连接已断开。正在尝试重新连接…"
     }
   },
   "button": {
