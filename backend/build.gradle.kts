@@ -287,8 +287,8 @@ openApi {
     // projectDir は backend/ ディレクトリを指すため、親（リポジトリルート）の docs/ を指定する
     outputDir.set(file("${projectDir.parentFile}/docs"))
     outputFileName.set("openapi.json")
-    // フォーク先 Spring Boot が完全起動するまで待機する秒数
-    waitTimeInSeconds.set(60)
+    // フォーク先 Spring Boot が完全起動するまで待機する秒数（ddl-auto:none で高速起動するが余裕を持つ）
+    waitTimeInSeconds.set(120)
     customBootRun {
         // args.add は springdoc-openapi-gradle-plugin では機能しないため jvmArgs で -D オプションを使用する
         jvmArgs.add("-Dspring.profiles.active=openapi-gen")
