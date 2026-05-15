@@ -172,6 +172,7 @@ export default defineNuxtConfig({
           'ja/org_sidebar.json',
           'ja/repair_plan.json',
           'ja/succession.json',
+          'ja/wallet.json',
         ],
       },
       {
@@ -215,6 +216,7 @@ export default defineNuxtConfig({
           'en/org_sidebar.json',
           'en/repair_plan.json',
           'en/succession.json',
+          'en/wallet.json',
         ],
       },
       {
@@ -258,6 +260,7 @@ export default defineNuxtConfig({
           'zh/org_sidebar.json',
           'zh/repair_plan.json',
           'zh/succession.json',
+          'zh/wallet.json',
         ],
       },
       {
@@ -301,6 +304,7 @@ export default defineNuxtConfig({
           'ko/org_sidebar.json',
           'ko/repair_plan.json',
           'ko/succession.json',
+          'ko/wallet.json',
         ],
       },
       {
@@ -344,6 +348,7 @@ export default defineNuxtConfig({
           'es/org_sidebar.json',
           'es/repair_plan.json',
           'es/succession.json',
+          'es/wallet.json',
         ],
       },
       {
@@ -387,6 +392,7 @@ export default defineNuxtConfig({
           'de/org_sidebar.json',
           'de/repair_plan.json',
           'de/succession.json',
+          'de/wallet.json',
         ],
       },
     ],

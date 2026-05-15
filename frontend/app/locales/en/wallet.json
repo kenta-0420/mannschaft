@@ -1,0 +1,72 @@
+{
+  "wallet": {
+    "title": "Point Card Wallet",
+    "tabs": {
+      "cards": "Cards",
+      "groups": "Groups"
+    },
+    "actions": {
+      "add_card": "Add Card",
+      "new_group": "New Group",
+      "settings": "Settings",
+      "search": "Search by card name",
+      "close": "Close",
+      "cancel": "Cancel"
+    },
+    "card": {
+      "favorite": "Favorite",
+      "favorites_section": "Favorites",
+      "all_section": "All Cards",
+      "no_provider": "(unmatched)",
+      "last4_format": "●●●● {last4}",
+      "no_cards": "No cards registered yet",
+      "no_cards_hint": "Tap the '+' button to add your first card",
+      "no_matches": "No cards match '{query}'"
+    },
+    "group": {
+      "card_count": "{count} card(s)",
+      "no_emoji": "📋",
+      "no_groups": "No groups yet",
+      "no_groups_hint": "Group cards you often present together to switch quickly at the register"
+    },
+    "settings": {
+      "title": "Wallet Settings",
+      "section_general": "General",
+      "section_security": "Security",
+      "section_legal": "Terms & Data",
+      "is_enabled": "Enable wallet feature",
+      "is_enabled_hint": "Your data is preserved even when turned off. You can re-enable at any time.",
+      "disable_confirm_title": "Disable wallet?",
+      "disable_confirm_body": "Card information will be preserved but you won't be able to present them. You can re-enable at any time.",
+      "disable_confirm_ok": "Disable",
+      "require_biometric": "Require biometric authentication before presentation",
+      "require_biometric_hint": "Prevents shoulder surfing (others peeking at your screen).",
+      "view_terms": "View terms",
+      "delete_all": "Permanently delete wallet (GDPR)",
+      "delete_all_hint": "Full personal data deletion is available from Settings → Privacy."
+    },
+    "terms": {
+      "title": "Before You Use",
+      "scroll_hint": "Please read the full text and check each item.",
+      "scroll_reached": "You have reviewed the full terms. Please check each item.",
+      "item1": "This feature is an auxiliary tool that re-renders third-party card barcodes for presentation. It is not the official app of any provider.",
+      "item2": "You are responsible for using your cards in compliance with each provider's terms and conditions.",
+      "item3": "We make no guarantee that stores will accept barcodes displayed by this app.",
+      "item4": "Mannschaft is not liable for fraudulent use or card number leakage.",
+      "accept": "Accept and Continue",
+      "view_mode_title": "Terms You Have Accepted"
+    },
+    "errors": {
+      "wallet_not_enabled": "Wallet feature is not enabled",
+      "card_limit_exceeded": "Card limit reached (200 cards max)",
+      "group_limit_exceeded": "Group limit reached (50 groups max)",
+      "group_item_limit_exceeded": "Group capacity reached (20 cards per group max)",
+      "card_not_found": "Card not found",
+      "provider_not_found": "Provider not found",
+      "rate_limit": "Too many requests. Please try again in a moment",
+      "biometric_required": "Biometric authentication required",
+      "load_failed": "Failed to load",
+      "update_failed": "Failed to update"
+    }
+  }
+}
