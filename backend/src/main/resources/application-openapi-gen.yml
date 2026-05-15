@@ -68,8 +68,10 @@ mannschaft:
     access-token-expiration: 900
     refresh-token-expiration: 604800
   encryption:
-    key: ""
-    hmac-key: ""
+    # 32バイト(AES-256)のダミーキー。OpenAPI生成時は実際の暗号化は行わない。
+    # Base64(bytes(32)) = AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    hmac-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
   security:
     internal-signing-key: openapi-gen-dummy-internal-signing-key-32bytes
   storage:
