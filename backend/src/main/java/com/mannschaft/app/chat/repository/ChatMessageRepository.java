@@ -108,4 +108,55 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
     @Query(value = SEARCH_BY_CHANNELS, nativeQuery = true)
     List<ChatMessageEntity> searchByKeywordInChannels(
             @Param("channelIds") List<Long> channelIds, @Param("keyword") String keyword, Pageable pageable);
+
+    // ====================================================================
+    // F17.1 Phase 1 — 村ロビー検索 + ダッシュボード集約（B10 担当：読み取り専用）
+    // ====================================================================
+
+    /**
+     * 村ロビーチャネル等の最新トップレベルメッセージ N 件を返す（F17.1 §4.13）。
+     *
+     * <p>parentId IS NULL でスレッド返信を除外。
+     * 既存の {@link #findByChannelIdOrderByCreatedAtDesc} はスレッド返信も含めて返してしまうため
+     * フィード用途では新規メソッドが必要。</p>
+     */
+    @Query("""
+            SELECT m FROM ChatMessageEntity m
+            WHERE m.channelId = :channelId
+              AND m.parentId IS NULL
+              AND m.deletedAt IS NULL
+            ORDER BY m.createdAt DESC
+            """)
+    List<ChatMessageEntity> findLatestRootMessagesByChannelId(
+            @Param("channelId") Long channelId, Pageable pageable);
+
+    /**
+     * 村ロビーチャネル内のメッセージを部分一致で検索する（F17.1 §4.12）。
+     *
+     * <p>既存の {@link #searchByKeyword} は FULLTEXT を使う native query で高速だが、
+     * 村内検索の Phase 1 では短いキーワード（2 文字）も許可するため LIKE で実装。
+     * FULLTEXT に揃える場合は B11 以降で要件再確認の上切替。</p>
+     */
+    @Query("""
+            SELECT m FROM ChatMessageEntity m
+            WHERE m.channelId = :channelId
+              AND m.deletedAt IS NULL
+              AND LOWER(m.body) LIKE LOWER(CONCAT('%', :q, '%'))
+            ORDER BY m.createdAt DESC
+            """)
+    List<ChatMessageEntity> searchByChannelIdAndKeyword(
+            @Param("channelId") Long channelId,
+            @Param("q") String q,
+            Pageable pageable);
+
+    /** 村ロビーチャネル内メッセージ検索結果件数（ページャ用）。 */
+    @Query("""
+            SELECT COUNT(m) FROM ChatMessageEntity m
+            WHERE m.channelId = :channelId
+              AND m.deletedAt IS NULL
+              AND LOWER(m.body) LIKE LOWER(CONCAT('%', :q, '%'))
+            """)
+    long countByChannelIdAndKeyword(
+            @Param("channelId") Long channelId,
+            @Param("q") String q);
 }

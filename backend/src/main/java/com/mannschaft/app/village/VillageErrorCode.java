@@ -191,7 +191,18 @@ public enum VillageErrorCode implements ErrorCode {
      * 自動払い出し時の DB 競合・整合性違反などの内部例外。— 統合採番で VILLAGE_042 から振替。
      */
     VILLAGE_LOBBY_CHANNEL_INIT_FAILED("VILLAGE_050",
-            "村の井戸端会議チャンネルの初期化に失敗しました", Severity.ERROR);
+            "村の井戸端会議チャンネルの初期化に失敗しました", Severity.ERROR),
+
+    // ==================================================================
+    // B10 村内検索 + ダッシュボード集約 — VILLAGE_051
+    // ==================================================================
+
+    /**
+     * VILLAGE_051: 村内検索クエリが不正（422）。
+     * 空文字 / 最低 2 文字未満 / 不正な type を指定された場合に投げる（F17.1 §4.12）。
+     */
+    VILLAGE_SEARCH_INVALID_QUERY("VILLAGE_051",
+            "検索キーワードは2文字以上を指定してください", Severity.WARN);
 
     private final String code;
     private final String message;
