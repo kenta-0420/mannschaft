@@ -6,6 +6,10 @@ import com.mannschaft.app.residencestatus.ResidenceStatusErrorCode;
 import com.mannschaft.app.residencestatus.dto.OrgWideSafetyCheckDto;
 import com.mannschaft.app.residencestatus.entity.OrgWideSafetyCheck;
 import com.mannschaft.app.residencestatus.repository.OrgWideSafetyCheckRepository;
+import com.mannschaft.app.safetycheck.dto.CreateSafetyCheckRequest;
+import com.mannschaft.app.safetycheck.dto.SafetyCheckResponse;
+import com.mannschaft.app.safetycheck.entity.SafetyCheckSourceType;
+import com.mannschaft.app.safetycheck.service.SafetyCheckService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,13 +19,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * F09.16 S3-C 管理組合横展開安否確認サービス。
+ * F09.16 S3-C/S5-A 管理組合横展開安否確認サービス。
  *
  * <p>理事長（ADMIN）が組織全体に安否確認を発動する際のメタ情報を管理する。
  * 実際の安否確認ロジック（回答収集等）は F03.6 ドメインに委ねる。</p>
  *
- * <p>{@code @Transactional} は residencestatus ドメイン内に閉じている（CLAUDE.md 原則 5）。
- * F03.6 との連携は将来 OrgWideSafetyCheckTriggeredEvent で分離予定。</p>
+ * <p>S5-A 以降は F03.6 {@code SafetyCheckService.createSafetyCheck()} を正式に呼び出す。
+ * {@code @Transactional} が residencestatus と safetycheck ドメインをまたいでいる点については、
+ * 将来 {@code OrgWideSafetyCheckTriggeredEvent} でイベント駆動分離を行う予定（CLAUDE.md 原則 5 参照）。</p>
  */
 @Service
 @Slf4j
@@ -31,14 +36,7 @@ public class OrgWideSafetyCheckService {
 
     private final OrgWideSafetyCheckRepository safetyCheckRepo;
     private final AccessControlService accessControlService;
-
-    /**
-     * v1 の仮 safetyCheckId（F03.6 未連携）。
-     *
-     * <p>F03.6 safety_checks との連携は未実装のため、仮の 0L をセットする。
-     * Entity の safetyCheckId カラムは NOT NULL のため null は使用不可。</p>
-     */
-    private static final long PLACEHOLDER_SAFETY_CHECK_ID = 0L;
+    private final SafetyCheckService safetyCheckService;
 
     // ─────────────────────────────────────────────
     // 横展開安否確認の発動
@@ -47,9 +45,9 @@ public class OrgWideSafetyCheckService {
     /**
      * 管理組合横展開安否確認を発動する（ADMIN のみ）。
      *
-     * <p>TODO: @Transactional 越境。将来は F03.6 との連携を
-     *     {@code OrgWideSafetyCheckTriggeredEvent} で分離予定。
-     *     現 v1 では safetyCheckId=0L（仮）を保存し、F03.6 セッションは別途手動で作成する運用。
+     * <p>F03.6 {@code SafetyCheckService.createSafetyCheck()} を呼び出して実際の安否確認を作成し、
+     * 返却された ID をメタ情報として本テーブルに保存する。
+     * {@code source_type = ORG_WIDE} により F03.6 側でも発動源を識別可能。</p>
      *
      * @param organizationId    テナント ID
      * @param triggeredByUserId 発動者（理事長）ユーザー ID
@@ -57,6 +55,7 @@ public class OrgWideSafetyCheckService {
      * @return 作成された横展開安否確認 DTO
      */
     @Transactional
+    // TODO: residencestatusドメインとsafetycheckドメインをまたぐ@Transactional。将来はOrgWideSafetyCheckTriggeredEventで分離予定
     public OrgWideSafetyCheckDto triggerOrgWideSafetyCheck(
             Long organizationId, Long triggeredByUserId, String triggerReason) {
 
@@ -65,20 +64,36 @@ public class OrgWideSafetyCheckService {
             throw new BusinessException(ResidenceStatusErrorCode.DASHBOARD_ACCESS_FORBIDDEN);
         }
 
-        // TODO: F03.6 との連携は将来 OrgWideSafetyCheckTriggeredEvent で実装予定。
-        //       現 v1 では safetyCheckId=PLACEHOLDER_SAFETY_CHECK_ID(0L) を保存する。
-        //       F03.6 側の safety_check セッション作成は管理者が別途実施する運用とする。
+        // F03.6 安否確認セッションを作成する（ORGANIZATION スコープ、source_type = ORG_WIDE）
+        CreateSafetyCheckRequest safetyCheckReq = new CreateSafetyCheckRequest(
+                "居住実態管理 一斉安否確認",
+                "管理組合より一斉安否確認を実施しています。ご回答をお願いします。",
+                "ORGANIZATION",
+                organizationId,
+                false,
+                null,
+                null
+        );
+        safetyCheckReq.setSourceType(SafetyCheckSourceType.ORG_WIDE);
+
+        SafetyCheckResponse safetyCheckResponse =
+                safetyCheckService.createSafetyCheck(safetyCheckReq, triggeredByUserId);
+        Long safetyCheckId = safetyCheckResponse.getId();
+
+        log.info("F03.6 安否確認セッション作成: safetyCheckId={}, organizationId={}",
+                safetyCheckId, organizationId);
+
         OrgWideSafetyCheck check = OrgWideSafetyCheck.builder()
                 .organizationId(organizationId)
-                .safetyCheckId(PLACEHOLDER_SAFETY_CHECK_ID)
+                .safetyCheckId(safetyCheckId)
                 .triggeredBy(triggeredByUserId)
                 .triggeredAt(LocalDateTime.now())
                 .triggerReason(triggerReason)
                 .build();
 
         OrgWideSafetyCheck saved = safetyCheckRepo.save(check);
-        log.info("横展開安否確認発動: organizationId={}, triggeredBy={}, id={}",
-                organizationId, triggeredByUserId, saved.getId());
+        log.info("横展開安否確認発動: organizationId={}, triggeredBy={}, id={}, safetyCheckId={}",
+                organizationId, triggeredByUserId, saved.getId(), safetyCheckId);
 
         return toDto(saved);
     }
@@ -118,8 +133,7 @@ public class OrgWideSafetyCheckService {
         return OrgWideSafetyCheckDto.builder()
                 .id(e.getId())
                 .organizationId(e.getOrganizationId())
-                .safetyCheckId(e.getSafetyCheckId() == PLACEHOLDER_SAFETY_CHECK_ID
-                        ? null : e.getSafetyCheckId())
+                .safetyCheckId(e.getSafetyCheckId())
                 .triggeredBy(e.getTriggeredBy())
                 .triggeredAt(e.getTriggeredAt())
                 .triggerReason(e.getTriggerReason())
