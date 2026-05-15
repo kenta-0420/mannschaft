@@ -38,7 +38,7 @@ import java.util.UUID;
  * </ul>
  *
  * <p>IDOR 対策は Service 層 {@code findByIdAndUserId} で実施し、
- * 他人のカードへの参照には {@code POINT_CARD_003 CARD_NOT_FOUND} (404) を返す。
+ * 他人のカードへの参照には {@code POINT_CARD_006 CARD_NOT_FOUND} (404) を返す。
  */
 @RestController
 @RequestMapping("/api/v1/point-cards")
