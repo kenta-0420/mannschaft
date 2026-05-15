@@ -29,4 +29,10 @@ public interface PointCardProviderRepository extends JpaRepository<PointCardProv
      * 起動時キャッシュ構築・テスト用途に利用。
      */
     Optional<PointCardProviderEntity> findByCode(String code);
+
+    /**
+     * 指定組織が発行した有効なプロバイダーを全件取得する。
+     * F18 Phase 2: 組織削除イベントで一括 deactivate するために利用。
+     */
+    List<PointCardProviderEntity> findAllByOrganizationIdAndActiveTrue(Long organizationId);
 }
