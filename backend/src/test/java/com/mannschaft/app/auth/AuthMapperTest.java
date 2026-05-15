@@ -66,7 +66,7 @@ class AuthMapperTest {
             assertThat(response.getFirstName()).isEqualTo("太郎");
             assertThat(response.getLastNameKana()).isEqualTo("ヤマダ");
             assertThat(response.getFirstNameKana()).isEqualTo("タロウ");
-            assertThat(response.getDisplayName()).isEqualTo("yamada");
+            assertThat(response.getNickname()).isEqualTo("yamada");
             assertThat(response.getIsSearchable()).isTrue();
             assertThat(response.getLocale()).isEqualTo("ja");
             assertThat(response.getTimezone()).isEqualTo("Asia/Tokyo");
@@ -147,7 +147,7 @@ class AuthMapperTest {
 
             // Then
             assertThat(response.getStatus()).isEqualTo("FROZEN");
-            assertThat(response.getDisplayName()).isEqualTo("sato");
+            assertThat(response.getNickname()).isEqualTo("sato");
         }
     }
 

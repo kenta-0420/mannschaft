@@ -19,7 +19,7 @@ public class UserProfileResponse {
     private final String firstName;
     private final String lastNameKana;
     private final String firstNameKana;
-    private final String displayName;
+    private final String nickname;
     private final String nickname2;
     private final Boolean isSearchable;
     private final String avatarUrl;

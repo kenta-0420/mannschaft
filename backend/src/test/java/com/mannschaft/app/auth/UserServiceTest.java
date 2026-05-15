@@ -140,7 +140,7 @@ class UserServiceTest {
             // Then
             UserProfileResponse profile = response.getData();
             assertThat(profile.getEmail()).isEqualTo(TEST_EMAIL);
-            assertThat(profile.getDisplayName()).isEqualTo("yamada");
+            assertThat(profile.getNickname()).isEqualTo("yamada");
             assertThat(profile.getLastName()).isEqualTo("山田");
             assertThat(profile.getFirstName()).isEqualTo("太郎");
             assertThat(profile.isHasPassword()).isTrue();

@@ -15,7 +15,7 @@ public class UpdateProfileRequest {
     private final String firstName;
     private final String lastNameKana;
     private final String firstNameKana;
-    private final String displayName;
+    private final String nickname;
     private final String nickname2;
     private final String locale;
     /** ISO 3166-1 alpha-2 国コード。null の場合は更新しない。 */

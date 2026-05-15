@@ -29,9 +29,8 @@ public class RegisterRequest {
     @Size(max = 50)
     private final String firstName;
 
-    @NotBlank
     @Size(max = 50)
-    private final String displayName;
+    private final String nickname;
 
     private final String postalCode;
     private final String locale;
@@ -46,7 +45,7 @@ public class RegisterRequest {
             @JsonProperty("password") String password,
             @JsonProperty("lastName") String lastName,
             @JsonProperty("firstName") String firstName,
-            @JsonProperty("displayName") String displayName,
+            @JsonProperty("nickname") String nickname,
             @JsonProperty("postalCode") String postalCode,
             @JsonProperty("locale") String locale,
             @JsonProperty("timezone") String timezone,
@@ -55,7 +54,7 @@ public class RegisterRequest {
         this.password = password;
         this.lastName = lastName;
         this.firstName = firstName;
-        this.displayName = displayName;
+        this.nickname = nickname;
         this.postalCode = postalCode;
         this.locale = locale;
         this.timezone = timezone;

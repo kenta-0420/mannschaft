@@ -156,7 +156,7 @@ public class UserService {
                 .firstName(newFirstName)
                 .lastNameKana(req.getLastNameKana() != null ? req.getLastNameKana() : user.getLastNameKana())
                 .firstNameKana(req.getFirstNameKana() != null ? req.getFirstNameKana() : user.getFirstNameKana())
-                .displayName(req.getDisplayName() != null ? req.getDisplayName() : user.getDisplayName())
+                .displayName(req.getNickname() != null ? req.getNickname() : user.getDisplayName())
                 .nickname2(req.getNickname2() != null ? req.getNickname2() : user.getNickname2())
                 .isSearchable(req.getIsSearchable() != null ? req.getIsSearchable() : user.getIsSearchable())
                 .avatarUrl(req.getAvatarUrl() != null ? req.getAvatarUrl() : user.getAvatarUrl())

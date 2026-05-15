@@ -35,6 +35,7 @@ public interface AuthMapper {
     @Mapping(target = "oauthProviders", ignore = true)
     @Mapping(target = "systemRole", ignore = true)
     @Mapping(target = "status", expression = "java(user.getStatus() != null ? user.getStatus().name() : null)")
+    @Mapping(target = "nickname", source = "displayName")
     UserProfileResponse toUserProfileResponse(UserEntity user);
 
     // ========================================

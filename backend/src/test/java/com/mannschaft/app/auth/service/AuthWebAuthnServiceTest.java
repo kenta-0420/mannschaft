@@ -127,7 +127,7 @@ class AuthWebAuthnServiceTest {
             assertThat(response.getData().getRpId()).isEqualTo("mannschaft.app");
             assertThat(response.getData().getRpName()).isEqualTo("Mannschaft");
             assertThat(response.getData().getUserId()).isEqualTo(TEST_USER_ID);
-            assertThat(response.getData().getUserDisplayName()).isEqualTo("yamada");
+            assertThat(response.getData().getUserDisplayName()).isEqualTo("山田 太郎");
             verify(valueOperations).set(anyString(), anyString(), anyLong(), any());
         }
 

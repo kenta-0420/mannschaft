@@ -99,7 +99,7 @@ public class AuthWebAuthnService {
         redisTemplate.opsForValue().set(challengeKey, challenge, CHALLENGE_TTL_MINUTES, TimeUnit.MINUTES);
 
         WebAuthnRegisterBeginResponse response = new WebAuthnRegisterBeginResponse(
-                challenge, RP_ID, RP_NAME, userId, user.getDisplayName());
+                challenge, RP_ID, RP_NAME, userId, user.getLastName() + " " + user.getFirstName());
 
         return ApiResponse.of(response);
     }
