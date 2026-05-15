@@ -1,0 +1,72 @@
+{
+  "wallet": {
+    "title": "ポイントカードウォレット",
+    "tabs": {
+      "cards": "カード",
+      "groups": "グループ"
+    },
+    "actions": {
+      "add_card": "カードを追加",
+      "new_group": "新規グループ",
+      "settings": "設定",
+      "search": "カード名で検索",
+      "close": "閉じる",
+      "cancel": "キャンセル"
+    },
+    "card": {
+      "favorite": "お気に入り",
+      "favorites_section": "お気に入り",
+      "all_section": "すべてのカード",
+      "no_provider": "（未マッチ）",
+      "last4_format": "●●●● {last4}",
+      "no_cards": "まだカードが登録されていません",
+      "no_cards_hint": "右下の「＋」からカードを追加してください",
+      "no_matches": "「{query}」に一致するカードはありません"
+    },
+    "group": {
+      "card_count": "{count} 枚",
+      "no_emoji": "📋",
+      "no_groups": "まだグループがありません",
+      "no_groups_hint": "よく一緒に提示するカードをグループ化すると、レジで切り替えやすくなります"
+    },
+    "settings": {
+      "title": "ウォレット設定",
+      "section_general": "全般",
+      "section_security": "セキュリティ",
+      "section_legal": "規約・データ",
+      "is_enabled": "ウォレット機能を有効化",
+      "is_enabled_hint": "OFF にしてもデータは保持されます。再度有効化できます。",
+      "disable_confirm_title": "ウォレットを無効化しますか？",
+      "disable_confirm_body": "カード情報は保持されますが、提示できなくなります。いつでも再度有効化できます。",
+      "disable_confirm_ok": "無効化する",
+      "require_biometric": "提示モード開始前に生体認証を要求",
+      "require_biometric_hint": "肩越し閲覧（他人が画面を覗き見ること）を防止します。",
+      "view_terms": "規約を再表示",
+      "delete_all": "ウォレット機能を完全に削除（GDPR）",
+      "delete_all_hint": "個人データの完全削除は設定 → プライバシーから行えます。"
+    },
+    "terms": {
+      "title": "ご利用前の同意事項",
+      "scroll_hint": "全文をお読みのうえ、各項目にチェックを入れてください。",
+      "scroll_reached": "全文を確認しました。各項目にチェックを入れてください。",
+      "item1": "本機能は他社カードのバーコードを再描画して提示する補助ツールであり、各事業者の公式アプリではありません。",
+      "item2": "各ポイント事業者の利用規約・約款に従ってカードを利用する責任はユーザーにあります。",
+      "item3": "店舗側がアプリ表示のバーコードを受け付けない場合、本機能では何ら保証しません。",
+      "item4": "不正利用・カード番号漏洩について Mannschaft は責任を負いません。",
+      "accept": "同意して開始",
+      "view_mode_title": "ご同意いただいた規約"
+    },
+    "errors": {
+      "wallet_not_enabled": "ウォレット機能が有効化されていません",
+      "card_limit_exceeded": "カード保有上限（200 枚）に達しています",
+      "group_limit_exceeded": "グループ作成上限（50 個）に達しています",
+      "group_item_limit_exceeded": "グループ内カード数上限（20 枚）に達しています",
+      "card_not_found": "カードが見つかりません",
+      "provider_not_found": "プロバイダーが見つかりません",
+      "rate_limit": "操作が多すぎます。しばらく待ってからもう一度お試しください",
+      "biometric_required": "生体認証が必要です",
+      "load_failed": "読み込みに失敗しました",
+      "update_failed": "更新に失敗しました"
+    }
+  }
+}
