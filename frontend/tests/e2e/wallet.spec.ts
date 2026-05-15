@@ -22,7 +22,6 @@ import { waitForHydration } from './helpers/wait'
  * 認証は chromium プロジェクトの storageState に依存する（既ログイン状態）。
  */
 
-const CARD_API = '**/api/v1/point-cards'
 const PROVIDERS_API = '**/api/v1/point-cards/providers'
 const SETTINGS_API = '**/api/v1/point-cards/settings'
 const CARDS_API = '**/api/v1/point-cards'
