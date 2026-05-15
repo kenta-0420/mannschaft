@@ -1,4 +1,4 @@
-import { type APIRequestContext } from '@playwright/test'
+import type { APIRequestContext } from '@playwright/test'
 
 /**
  * 実機テスト用: seed データの動的取得ヘルパー

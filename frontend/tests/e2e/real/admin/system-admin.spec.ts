@@ -9,25 +9,8 @@
  * - seed-e2e-data.js で role_id=1（SYSTEM_ADMIN）が付与されている
  */
 
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { waitForHydration } from '../../helpers/wait'
-
-// ---------------------------------------------------------------------------
-// ヘルパー: storageState が有効でない場合のフォールバックログイン
-// ---------------------------------------------------------------------------
-async function loginIfNeeded(page: Page): Promise<void> {
-  await page.goto('/my/')
-  if (page.url().includes('/login')) {
-    const emailInput = page.locator('input#email')
-    await emailInput.click()
-    await emailInput.pressSequentially('e2e-admin@test.mannschaft.local', { delay: 10 })
-    const passwordInput = page.locator('input[type="password"]')
-    await passwordInput.click()
-    await passwordInput.pressSequentially('TestPass2026!', { delay: 10 })
-    await page.getByRole('button', { name: 'ログイン' }).click()
-    await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 30_000 })
-  }
-}
 
 // ---------------------------------------------------------------------------
 // SYS-001〜004: 管理者ダッシュボード基本アクセス

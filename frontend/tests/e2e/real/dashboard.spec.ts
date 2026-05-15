@@ -10,21 +10,8 @@
  * - 通知7件がシードされている
  */
 
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
-
-// ---------------------------------------------------------------------------
-// ヘルパー: storageState が有効でない場合のフォールバックログイン
-// ---------------------------------------------------------------------------
-async function loginIfNeeded(page: Page): Promise<void> {
-  await page.goto('/my/')
-  if (page.url().includes('/login')) {
-    await page.getByLabel('メールアドレス').fill('e2e-user@test.mannschaft.local')
-    await page.getByLabel('パスワード').fill('TestPass2026!')
-    await page.getByRole('button', { name: 'ログイン' }).click()
-    await page.waitForURL(/.*\/my\/.*/, { timeout: 30_000 })
-  }
-}
 
 // ---------------------------------------------------------------------------
 // DASH-001〜008: ダッシュボード基本表示

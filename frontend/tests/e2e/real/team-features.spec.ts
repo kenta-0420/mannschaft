@@ -176,10 +176,6 @@ test.describe('TEAM-001〜008: チームホーム・タイムライン', () => {
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
     // TeamHeaderBar: メンバー数バッジが表示されている
-    const memberCountArea = page
-      .locator('[data-testid="member-count"], [class*="member-count"], .badge')
-      .or(page.getByText(/\d+人|メンバー\d+|Member/i))
-      .first()
     // ページ上にメンバー数を示す何らかのテキストが存在する（緩い確認）
     const bodyText = await page.locator('body').textContent()
     expect(bodyText).toMatch(/\d+/)
