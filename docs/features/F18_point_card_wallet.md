@@ -1,8 +1,8 @@
 # F18: 個人ポイントカードウォレット
 
-> **ステータス**: 🟢 実装完了（Phase 1 MVP）/ 🟡 設計確定（Phase 2 拡張）
-> **実装フェーズ**: Phase 1 完了 2026-05-15 / Phase 2 未着手
-> **最終更新**: 2026-05-15
+> **ステータス**: 🟢 実装完了（Phase 1 MVP + Phase 2 スタンプ型）/ 🟡 設計確定（Phase 2 残高型）
+> **実装フェーズ**: Phase 1 完了 2026-05-15 / Phase 2 (スタンプ型) 完了 2026-05-16 / Phase 2 (残高型) 未着手
+> **最終更新**: 2026-05-16
 > **モジュール種別**: 個人ユーザー向け汎用機能
 > **関連ドキュメント**: F01.6 プロフィールメディア / F10.3 監査ログ / F12.3 GDPR・個人情報管理 / F13 ストレージ統合 / F00 ContentVisibilityResolver（Phase 2 で参照可能性あり）
 
@@ -1640,38 +1640,54 @@ VALUES
 
 設計書追加 PR は #627（コミット 7d2df5feb）。Phase 1 全 10 PR が main マージ済み。
 
-### Phase 2（参考・別軍議）
+### Phase 2 実装結果（2026-05-16 完了 — スタンプ型）
 
-- 自店発行プロバイダー CRUD（`/orgs/{orgId}/point-cards/providers`）
-- スタンプ押印・チャージ API
-- `point_card_stamp_events` / `point_card_balance_events` テーブル新設
-- `OrganizationDeletedEvent` 購読
-- 顧客追加用 QR コード生成 + ディープリンク
+Phase 2 は SELF_ISSUED_STAMP に絞って先行実装、計 6 陣で完遂。Phase 1 残課題 🔴 WebAuthn サーバー側 5 分 TTL 検証も P2-S2A で完全実装した。残高型 (SELF_ISSUED_BALANCE) は Phase 3 で対応。
+
+| 陣 | 内容 | 完了 PR | コミット |
+|---|---|---|---|
+| P2-S1 基盤 | V9.142 `point_card_stamp_events` DDL + Entity + Repository + AuditEventType 4 値 + OrganizationDeletedEvent listener（@TransactionalEventListener AFTER_COMMIT で is_active=0 + ProviderCacheRefreshEvent 発火）| #660 | 3cdad7bc5 |
+| P2-S2A WebAuthn 再認証 | POINT_CARD_009 完全実装。`reauthenticate-begin` / `-complete` API + Valkey 5 分 TTL フラグ + `PointCardGroupService.startPresentation` ゲート + フロント 3 段フロー（begin → credentials.get → complete） | #669 | d067810da |
+| P2-S2B Provider CRUD | 自店プロバイダー CRUD（POST/PATCH/DELETE + 顧客 QR）/ type=SELF_ISSUED_STAMP 固定 / ADMIN+DEPUTY_ADMIN で発行・編集、ADMIN only で停止 / 20 個上限 / ProviderCacheRefreshEvent 連動 | #665 | 715e5dd4f |
+| P2-S2C Stamp API | スタンプ押印 + 履歴 API（7 段検証: 認可/カード存在/provider 紐付け/org 所有/type=STAMP/active/delta 妥当） / @Transactional で stamp_count 更新 + stamp_event 挿入を不可分 / 下限 0 ガード / 監査ログ + organization_id 軸の証拠ログ / ErrorCode 010〜014 | #666 | 745e5785e |
+| P2-S3A Org Dashboard | 店主ダッシュボード Frontend（プロバイダー管理 + 押印画面 + 履歴一覧 + 顧客 QR モーダル）/ qrcode SVG 描画 / 押印画面はカード ID UUID 直接入力 MVP（Phase 3 で QR 自動特定） | #676 | 15eeada04 |
+| P2-S3B Customer QR | 顧客 QR 追加フロー（`/wallet/add-from-qr`）+ クエリ事前充填 + カード ID コピー UX | #677 | af079d8fa |
+
+Phase 2 全 6 PR + 第四陣（E2E + ドキュメント）が main マージ済み。
 
 ---
 
 ## 16. 未解決事項
 
-### 解決済み（Phase 1 実装で確定）
+### 解決済み（Phase 1 + Phase 2 実装で確定）
 
 | 項目 | 解決内容 |
 |---|---|
-| ✅ Flyway 連番 V9.136〜V9.142 | V9.136〜V9.141 で確定（5 本の DDL + Seed）。衝突なし |
-| ✅ Phase 1 リリース対象プロバイダーの最終リスト | 人気 10 社で確定: tokyu_point / dpoint / rakuten / paypay / vpoint / ponta / yodobashi / biccamera / matsukiyo / tsutaya（V9.141 Seed） |
-| ✅ nosleep.js vs Wake Lock API のフォールバック実装 | S5 で動的 import によるフォールバック完了（Wake Lock 未サポート時に nosleep.js 自動有効化） |
-| ✅ ErrorCode 番号体系 | §6.3 通り 001〜009 で整合化完了（S3 で確定） |
+| ✅ Flyway 連番 V9.136〜V9.142 | V9.136〜V9.141 + V9.142 stamp_events で確定 |
+| ✅ Phase 1 リリース対象プロバイダーの最終リスト | 人気 10 社で確定（V9.141 Seed） |
+| ✅ nosleep.js vs Wake Lock API のフォールバック実装 | S5 で動的 import によるフォールバック完了 |
+| ✅ ErrorCode 番号体系 | §6.3 通り 001〜014 で整合化完了 |
+| ✅ WebAuthn サーバー側 5 分 TTL 検証（POINT_CARD_009 完全実装） | P2-S2A で `reauthenticate-begin/-complete` + Valkey フラグ + startPresentation ゲートを完全実装。AT/RT は再発行せず、consumeReauthentication で 1 回限り使用（再生攻撃防止） |
+| ✅ 自店発行プロバイダー CRUD | P2-S2B で完了（20 個上限 / ADMIN+DEPUTY_ADMIN 委任 / ProviderCacheRefreshEvent 連動） |
+| ✅ スタンプ押印 + 証拠ログ | P2-S2C で完了（@Transactional 不可分 / 監査ログ + 履歴テーブル二段の証拠保全） |
+| ✅ 店主ダッシュボード | P2-S3A で完了（プロバイダー管理 + 押印 + 履歴 + 顧客 QR） |
+| ✅ 顧客 QR 追加フロー | P2-S3B で完了 |
+| ✅ OrganizationDeletedEvent 購読 | P2-S1 listener で自店プロバイダー自動停止 + ProviderCacheRefreshEvent 発火 |
 
-### 未解決のまま（後続軍議で対応）
+### 未解決のまま（Phase 3 / 別軍議で対応）
 
 | 項目 | 状態 | 解決方針 |
 |---|---|---|
-| 🔴 WebAuthn サーバー側 5 分 TTL 検証 | Phase 1 はクライアントジェスチャ確認まで実装 | バックエンドに `POST /api/v1/auth/webauthn/reauthenticate` を新設し、Valkey に 5 分 TTL の認証フラグを書く。`startPresentation` 側で当該フラグの存在を検証する設計を別軍議で確定の上、POINT_CARD_009 を完全実装する |
-| 🟡 iOS Safari Wake Lock 実機検証 | 未実施 | Low Power Mode 下では Wake Lock API が reject される。nosleep.js も autoplay 制約あり。実機（iOS 17/18）でのフォールバック挙動を運用前に実測する |
-| 🟡 PDF417 バーコード描画 | 現状エラー表示 | jsbarcode は PDF417 単体非対応。bwip-js 等の対応ライブラリ選定が必要。Yodobashi / 一部航空券系で必要 |
-| 🟡 プロバイダーロゴ画像の権利確認 SOP | 未整備 | 運営側の業務手順として整備。設計上は `logo_url` 列を持つだけで、商標利用はプロバイダー個別交渉に委ねる方針は変わらず |
-| 🟡 Phase 1 Seed プロバイダーの拡充 | 10 社 | リリース運用で 5〜10 社追加予定。マスタに無い事業者は自由入力で吸収できる設計のため UX 阻害なし |
-| 🟡 fuzzy match の正規化レベルの将来拡張 | Phase 1 は完全一致のみ | 同義語辞書（「ドコモポイント」→「dポイント」等）や Levenshtein 距離の導入を検討。誤マッチ UX 悪化のリスク評価が必要 |
-| 🟡 既存マッチ済みカードの再マッチバッチ | Phase 1 では未実装 | プロバイダーマスタ更新時に既存 `user_point_cards.provider_id` を再評価する定期バッチを Phase 1.1 以降で検討 |
+| 🟡 残高型カード (SELF_ISSUED_BALANCE) | Phase 2 スコープ外 | チャージ・使用 API、`point_card_balance_events` テーブル、`user_point_cards.balance` 活用。Phase 1 から NULL 許容で確保済のためスキーマ破壊なし |
+| 🟡 押印画面の QR 自動特定 | カード ID UUID 直接入力 MVP | バックエンドに「barcode_value → card_id を引く API」を新設し、店主側 zxing スキャナで自動特定する Phase 3 拡張 |
+| 🟡 顧客向け provider 公開 API | QR URL にメタ情報埋め込み MVP | `/api/v1/point-cards/providers/{providerId}/public` を Phase 3 で新設し、QR は providerId のみで完結する設計に改修 |
+| 🟡 iOS Safari Wake Lock 実機検証 | 未実施 | Low Power Mode + nosleep.js autoplay 制約。実機（iOS 17/18）で運用前に実測 |
+| 🟡 PDF417 バーコード描画 | 現状エラー表示 | bwip-js 等のライブラリ選定 |
+| 🟡 プロバイダーロゴ画像の権利確認 SOP | 未整備 | 運営側 SOP として整備 |
+| 🟡 Phase 1 Seed プロバイダーの拡充 | 10 社 | 5〜10 社追加予定 |
+| 🟡 fuzzy match の正規化レベルの将来拡張 | 完全一致のみ | 同義語辞書 / Levenshtein 距離の検討 |
+| 🟡 既存マッチ済みカードの再マッチバッチ | 未実装 | プロバイダー更新時の定期バッチ |
+| 🟡 DEPUTY_ADMIN の権限細分化 | 「DEPUTY_ADMIN なら誰でも押印できる」シンプル実装 | 「スタンプ押印権限のみ」を permission group で分ける場合は別軍議 |
 
 ---
 
@@ -1682,3 +1698,4 @@ VALUES
 | 2026-05-14 | 初版作成。Phase 1 MVP（他社カード保管・グループ提示・規約・オフライン対応）+ Phase 2 拡張余地（organization 自店発行カード・スタンプ・残高）。CLAUDE.md 原則 6（UUIDv7）採用、原則 7（AbstractTenantAwareRepository）不採用＝個人スコープのため `AbstractUserOwnedRepository` パターン代替。論理削除不採用（個人機密のため物理削除、F12.3 ポリシー準拠）。`barcode_value` / `nickname` / `memo` を AES-256-GCM 暗号化、`last4` のみ平文（4 桁では特定不可）。Phase 2 用カラム（`organization_id` / `balance` / `stamp_count`）を最初から NULL 許容で投入し破壊的変更を回避。F12.3 / F10.3 連携を §10 / §11 で明記 |
 | 2026-05-14 | 案 B 改修。プロバイダーマスタを人気 10〜15 社のロゴ補強用に縮小。`user_point_cards.display_name`（AES-256-GCM）を新設し自由入力主体に移行。`provider_id` を NULL 許容（ON DELETE SET NULL）に変更し fuzzy match（NFKC + ひらがな化 + 記号削除）で自動紐付け。UI は `ProviderPicker.vue` 廃止 → `PresetCardButtons.vue` 新設で「プリセット + 自由入力」を 1 画面に統合。`POINT_CARD_CREATED` 監査ログ metadata に `provider_matched` 追加。F10.3 metadata 例を null 許容版に追従。Phase 2 自店発行カード設計には無影響 |
 | 2026-05-15 | Phase 1 MVP 実装完了。第一陣〜第六陣で DDL/Entity/Service/Controller/Frontend/提示モード/E2E まで完遂（PR #630/#632/#633/#642/#643/#646/#649/#650/#653 全 main マージ済）。残課題: WebAuthn サーバー側検証、iOS 実機検証、PDF417 対応、プロバイダーマスタ拡充。Phase 2 拡張余地（organization 自店発行カード）は無傷で待機 |
+| 2026-05-16 | Phase 2 スタンプ型完了。WebAuthn 再認証 (POINT_CARD_009 完全実装) / 自店プロバイダー CRUD / スタンプ押印+履歴 / 店主ダッシュボード / 顧客 QR 追加フロー 全 main マージ済（PR #660/#669/#665/#666/#676/#677 + 第四陣）。Phase 1 残課題🔴 WebAuthn も解消。残高型 (SELF_ISSUED_BALANCE) は Phase 3 で対応。Phase 1 から先行投入していた `type` ENUM 3 値 / `organization_id` / `balance` / `stamp_count` カラムが破壊なく Phase 2 で活用され、設計判断 #6（先行投入）の正しさが実証された |
