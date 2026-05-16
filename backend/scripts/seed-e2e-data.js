@@ -533,6 +533,36 @@ function encryptForTest(plain) {
   console.log(`F18 groups inserted: 2 (コンビニ, ドラッグストア)`);
 
   // ============================================================
+  // F02.9. お気に入りウィジェット — E2E_USER 用シード
+  //   - user_favorites: TEAM 2件 + ORGANIZATION 1件 = 3件
+  //   - 主キー id は BINARY(16)（UuidV7Entity）。INSERT 時に
+  //     MySQL の UUID_TO_BIN(UUID()) で発番する。
+  //   - 冪等性: 既存 E2E_USER の user_favorites 行を DELETE してから INSERT。
+  //   - entity_id は VARCHAR(36) なので BIGINT を十進数文字列化して投入する
+  //     （FavoriteResponse#entityId のフロント表現と一致）。
+  // ============================================================
+  console.log('\n--- Seeding F02.9 user_favorites ---');
+
+  await conn.execute('DELETE FROM user_favorites WHERE user_id = ?', [E2E_USER]);
+
+  // TEAM: FC東京U-18, FC東京U-15
+  const favorites = [
+    { entityType: 'TEAM',         entityId: String(teams.fcTokyoU18),   displayOrder: 0 },
+    { entityType: 'TEAM',         entityId: String(teams.fcTokyoU15),   displayOrder: 1 },
+    { entityType: 'ORGANIZATION', entityId: String(orgs.jfa),           displayOrder: 2 },
+  ];
+
+  for (const fav of favorites) {
+    await conn.execute(
+      `INSERT INTO user_favorites
+         (id, user_id, entity_type, entity_id, display_order, created_at)
+       VALUES (UUID_TO_BIN(UUID()), ?, ?, ?, ?, ?)`,
+      [E2E_USER, fav.entityType, fav.entityId, fav.displayOrder, now]
+    );
+  }
+  console.log(`F02.9 favorites inserted: ${favorites.length} (TEAM x2, ORGANIZATION x1)`);
+
+  // ============================================================
   // サマリー
   // ============================================================
   console.log('\n========================================');
@@ -561,6 +591,7 @@ function encryptForTest(plain) {
   console.log(`Activity template: id=${activityTemplateId} (試合結果)`);
   console.log(`Activity result:   id=${activityResultId} (春季合宿2026, PUBLIC)`);
   console.log(`F18 wallet:        E2E_USER に カード 5 / グループ 2 を投入`);
+  console.log(`F02.9 favorites:   E2E_USER に TEAM x2 + ORGANIZATION x1 = 3 件を投入`);
   console.log('========================================');
 
   await conn.end();
