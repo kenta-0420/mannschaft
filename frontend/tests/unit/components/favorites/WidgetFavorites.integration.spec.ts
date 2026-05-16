@@ -89,7 +89,7 @@ vi.mock('~/composables/useConfirmDialog', () => ({
 // （FavoriteQuickEditDialog 用）
 // ============================================================
 
-const mockUpdateTeam = vi.fn(async () => ({ data: {} }))
+const mockUpdateTeam = vi.fn(async (_id: number, _payload: { name?: string }) => ({ data: {} }))
 const mockUpdateOrganization = vi.fn(async () => ({ data: {} }))
 const mockUpdateMyProfile = vi.fn(async () => ({ data: {} }))
 
