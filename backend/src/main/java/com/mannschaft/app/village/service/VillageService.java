@@ -237,6 +237,52 @@ public class VillageService {
     }
 
     // ─────────────────────────────────────────────
+    // 村紋（Monsho）更新／削除（F17 Phase 2 U7）
+    // ─────────────────────────────────────────────
+
+    /**
+     * 村紋 R2 キーを更新する。HEADMAN または SYSTEM_ADMIN のみ。
+     *
+     * <p>R2 への実体アップロードはクライアント側で別途完了している想定（プリサインド URL 経由）。
+     * 本メソッドは {@code villages.monsho_r2_key} カラムの値を新キーに差し替える。</p>
+     *
+     * @param villageId        対象村
+     * @param r2Key            新しい R2 オブジェクトキー
+     * @param requesterUserId  実行者ユーザー ID
+     * @return 更新後の村エンティティ
+     */
+    @Transactional
+    public VillageEntity updateMonsho(UUID villageId, String r2Key, Long requesterUserId) {
+        VillageEntity entity = findActiveOrThrow(villageId);
+        requireHeadmanOrSystemAdmin(entity, requesterUserId);
+
+        entity.setMonshoR2Key(r2Key);
+        entity = villageRepository.save(entity);
+        log.info("村紋更新: villageId={}, byUser={}", villageId, requesterUserId);
+        return entity;
+    }
+
+    /**
+     * 村紋を削除する（{@code monsho_r2_key} を NULL にクリア）。HEADMAN または SYSTEM_ADMIN のみ。
+     *
+     * <p>冪等: 既に NULL でも例外は投げず、現状の Entity をそのまま返す。
+     * R2 上のオブジェクト削除自体は本メソッドの責務外（運用バッチ等で実施）。</p>
+     */
+    @Transactional
+    public VillageEntity deleteMonsho(UUID villageId, Long requesterUserId) {
+        VillageEntity entity = findActiveOrThrow(villageId);
+        requireHeadmanOrSystemAdmin(entity, requesterUserId);
+
+        if (entity.getMonshoR2Key() == null) {
+            return entity; // 冪等
+        }
+        entity.setMonshoR2Key(null);
+        entity = villageRepository.save(entity);
+        log.info("村紋削除: villageId={}, byUser={}", villageId, requesterUserId);
+        return entity;
+    }
+
+    // ─────────────────────────────────────────────
     // 検索
     // ─────────────────────────────────────────────
 
