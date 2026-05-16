@@ -1,4 +1,4 @@
-# API 乖離ベースライン報告書（2026-05-16 時点・v2 スキャナ）
+# API 乖離ベースライン報告書（2026-05-17 時点・v2 スキャナ）
 
 > 本報告書は `backend/scripts/scan_api_drift.py` (v2) により自動生成された。
 > 設計書 `docs/features/F*.md` のテーブル/見出し/インラインコード記載と、
@@ -8,14 +8,14 @@
 ## 改訂履歴
 
 - v1 (2026-05-16): 初回ベースライン
-- v2 (2026-05-16): {scope}/{scopeId} 展開・旧 RequestMapping 強化・末尾スラッシュ吸収・インラインコード補助対応・ドメイン別サマリ表追加
+- v2 (2026-05-17): {scope}/{scopeId} 展開・旧 RequestMapping 強化・末尾スラッシュ吸収・インラインコード補助対応・ドメイン別サマリ表追加
 
 ## サマリ
 
-- 設計あり・実装なし: **1278 件**（v1: 1,187 件）
-- 実装あり・設計なし: **1143 件**（v1: 931 件）
-- 一致: **1326 件**（v1: 1,310 件）
-- 設計記載 ユニーク (method, path) 総数: 2604
+- 設計あり・実装なし: **1256 件**（v1: 1,187 件）
+- 実装あり・設計なし: **1147 件**（v1: 931 件）
+- 一致: **1322 件**（v1: 1,310 件）
+- 設計記載 ユニーク (method, path) 総数: 2578
 - 実装 ユニーク (method, path) 総数: 2469
 - スコープ展開: ON
 
@@ -27,11 +27,11 @@
 |---|---:|---:|---:|---:|
 | /api/v1/teams/* | 283 | 247 | 477 | 530 |
 | /api/v1/organizations/* | 110 | 372 | 147 | 482 |
-| /api/v1/system-admin/* | 104 | 28 | 77 | 132 |
+| /api/v1/system-admin/* | 103 | 28 | 77 | 131 |
 | /api/v1/users/* | 24 | 99 | 48 | 123 |
 | /api/v1/villages/* | 0 | 122 | 1 | 122 |
-| /api/v1/admin/* | 45 | 22 | 46 | 67 |
 | /api/v1/me/* | 42 | 25 | 65 | 67 |
+| /api/v1/admin/* | 24 | 26 | 42 | 50 |
 | /api/v1/{_}/* | 39 | 10 | 0 | 49 |
 | /api/v1/shifts/* | 29 | 19 | 25 | 48 |
 | /api/v1/files/* | 33 | 7 | 9 | 40 |
@@ -194,7 +194,7 @@
 | /api/v1/proxy-input-records/* | 0 | 0 | 1 | 0 |
 | /api/v1/service-records/* | 0 | 0 | 1 | 0 |
 | /api/v1/yabai/* | 0 | 0 | 2 | 0 |
-| **合計** | **1278** | **1143** | **1326** | **2421** |
+| **合計** | **1256** | **1147** | **1322** | **2403** |
 
 ---
 
@@ -292,72 +292,39 @@
 | POST | `/api/v1/activity-templates` | `docs/features/F06.4_activity_records.md` | 363 |
 | POST | `/api/v1/activity-templates` | `docs/features/F06.4_activity_records.md` | 450 |
 
-### /api/v1/admin/* (45 件)
+### /api/v1/admin/* (24 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| DELETE | `/api/v1/admin/forms/presets/{_}` | `docs/features/F05.7_form_builder.md` | 350 |
-| DELETE | `/api/v1/admin/permission-groups/{_}/assign/{_}` | `docs/features/F10.1_admin_dashboard.md` | 476 |
 | DELETE | `/api/v1/admin/team-friends/{_}` | `docs/features/F01.5_team_friend_relationships.md` | 1265 |
-| GET | `/api/v1/admin/action-templates` | `docs/features/F10.1_admin_dashboard.md` | 454 |
-| GET | `/api/v1/admin/action-templates` | `docs/features/F10.1_admin_dashboard.md` | 1055 |
-| GET | `/api/v1/admin/dashboard` | `docs/features/F10.1_admin_dashboard.md` | 466 |
-| GET | `/api/v1/admin/dashboard` | `docs/features/F10.1_admin_dashboard.md` | 1160 |
+| GET | `/api/v1/admin/action-templates` | `docs/features/F10.1_admin_dashboard.md` | 1060 |
+| GET | `/api/v1/admin/dashboard` | `docs/features/F10.1_admin_dashboard.md` | 1165 |
 | GET | `/api/v1/admin/dashboard-stats` | `docs/features/F04.10_committee.md` | 1039 |
-| GET | `/api/v1/admin/feedback` | `docs/features/F10.1_admin_dashboard.md` | 458 |
-| GET | `/api/v1/admin/forms/presets` | `docs/features/F05.7_form_builder.md` | 346 |
-| GET | `/api/v1/admin/forms/presets/{_}` | `docs/features/F05.7_form_builder.md` | 348 |
-| GET | `/api/v1/admin/member-permissions` | `docs/features/F10.1_admin_dashboard.md` | 477 |
-| GET | `/api/v1/admin/modules` | `docs/features/F10.1_admin_dashboard.md` | 479 |
 | GET | `/api/v1/admin/onboarding/presets` | `docs/features/F02.4_onboarding.md` | 336 |
-| GET | `/api/v1/admin/permission-groups` | `docs/features/F10.1_admin_dashboard.md` | 469 |
-| GET | `/api/v1/admin/permission-groups/{_}` | `docs/features/F10.1_admin_dashboard.md` | 471 |
 | GET | `/api/v1/admin/receipt-presets` | `docs/features/F08.4_receipt.md` | 343 |
 | GET | `/api/v1/admin/receipt-queue` | `docs/features/F08.4_receipt.md` | 351 |
 | GET | `/api/v1/admin/receipt-settings` | `docs/features/F08.4_receipt.md` | 307 |
 | GET | `/api/v1/admin/receipt-settings` | `docs/features/F08.4_receipt.md` | 364 |
 | GET | `/api/v1/admin/receipts` | `docs/features/F08.4_receipt.md` | 326 |
 | GET | `/api/v1/admin/receipts` | `docs/features/F08.4_receipt.md` | 857 |
-| GET | `/api/v1/admin/reports` | `docs/features/F04.5_moderation.md` | 51 |
-| GET | `/api/v1/admin/reports` | `docs/features/F04.5_moderation.md` | 113 |
-| GET | `/api/v1/admin/reports` | `docs/features/F10.1_admin_dashboard.md` | 442 |
-| GET | `/api/v1/admin/reports` | `docs/features/F10.1_admin_dashboard.md` | 603 |
-| GET | `/api/v1/admin/reports/{_}` | `docs/features/F04.5_moderation.md` | 52 |
-| GET | `/api/v1/admin/reports/{_}` | `docs/features/F04.5_moderation.md` | 173 |
-| GET | `/api/v1/admin/reports/{_}` | `docs/features/F10.1_admin_dashboard.md` | 443 |
-| GET | `/api/v1/admin/reports/{_}` | `docs/features/F10.1_admin_dashboard.md` | 645 |
-| GET | `/api/v1/admin/seals/regenerate-all/{_}/status` | `docs/features/F05.3_digital_seal.md` | 163 |
+| GET | `/api/v1/admin/reports` | `docs/features/F04.5_moderation.md` | 120 |
+| GET | `/api/v1/admin/reports` | `docs/features/F10.1_admin_dashboard.md` | 608 |
+| GET | `/api/v1/admin/reports/{_}` | `docs/features/F04.5_moderation.md` | 180 |
+| GET | `/api/v1/admin/reports/{_}` | `docs/features/F10.1_admin_dashboard.md` | 650 |
 | GET | `/api/v1/admin/seals/regenerate-all/{_}/status` | `docs/features/F05.3_digital_seal.md` | 527 |
-| GET | `/api/v1/admin/seals/ungenerated` | `docs/features/F05.3_digital_seal.md` | 164 |
 | GET | `/api/v1/admin/seals/ungenerated` | `docs/features/F05.3_digital_seal.md` | 558 |
-| GET | `/api/v1/admin/users` | `docs/features/F10.1_admin_dashboard.md` | 467 |
-| GET | `/api/v1/admin/users/{_}/violation-history` | `docs/features/F10.1_admin_dashboard.md` | 449 |
-| GET | `/api/v1/admin/users/{_}/violation-history` | `docs/features/F10.1_admin_dashboard.md` | 928 |
-| PATCH | `/api/v1/admin/feedback/{_}/respond` | `docs/features/F10.1_admin_dashboard.md` | 459 |
-| PATCH | `/api/v1/admin/feedback/{_}/status` | `docs/features/F10.1_admin_dashboard.md` | 460 |
+| GET | `/api/v1/admin/users/{_}/violation-history` | `docs/features/F10.1_admin_dashboard.md` | 933 |
 | PATCH | `/api/v1/admin/platform/settings` | `docs/features/F04.1_timeline.md` | 1816 |
-| PATCH | `/api/v1/admin/reports/{_}` | `docs/features/F04.5_moderation.md` | 53 |
-| PATCH | `/api/v1/admin/reports/{_}` | `docs/features/F04.5_moderation.md` | 220 |
+| PATCH | `/api/v1/admin/reports/{_}` | `docs/features/F04.5_moderation.md` | 229 |
 | PATCH | `/api/v1/admin/social-profiles/{_}/freeze` | `docs/features/F04.4_social_profiles.md` | 97 |
 | PATCH | `/api/v1/admin/social-profiles/{_}/freeze` | `docs/features/F04.4_social_profiles.md` | 282 |
-| PATCH | `/api/v1/admin/users/{_}/restrict-reporting` | `docs/features/F10.1_admin_dashboard.md` | 450 |
-| PATCH | `/api/v1/admin/users/{_}/role` | `docs/features/F10.1_admin_dashboard.md` | 468 |
 | POST | `/api/v1/admin/action-memo/regenerate-weekly-summary?week=YYYY-Www&userId=` | `docs/features/F02.5_action_memo.md` | 553 |
-| POST | `/api/v1/admin/action-templates` | `docs/features/F10.1_admin_dashboard.md` | 455 |
-| POST | `/api/v1/admin/action-templates` | `docs/features/F10.1_admin_dashboard.md` | 1090 |
-| POST | `/api/v1/admin/forms/presets` | `docs/features/F05.7_form_builder.md` | 347 |
+| POST | `/api/v1/admin/action-templates` | `docs/features/F10.1_admin_dashboard.md` | 1095 |
 | POST | `/api/v1/admin/onboarding/presets` | `docs/features/F02.4_onboarding.md` | 337 |
-| POST | `/api/v1/admin/permission-groups` | `docs/features/F10.1_admin_dashboard.md` | 470 |
 | POST | `/api/v1/admin/receipt-presets` | `docs/features/F08.4_receipt.md` | 344 |
 | POST | `/api/v1/admin/receipts` | `docs/features/F08.4_receipt.md` | 315 |
 | POST | `/api/v1/admin/receipts` | `docs/features/F08.4_receipt.md` | 432 |
-| POST | `/api/v1/admin/seals/regenerate-all` | `docs/features/F05.3_digital_seal.md` | 162 |
-| POST | `/api/v1/admin/seals/regenerate-all` | `docs/features/F05.3_digital_seal.md` | 494 |
 | POST | `/api/v1/admin/users/{_}/care-links` | `docs/features/F03.12_care_recipient_event_watch_notification.md` | 457 |
-| PUT | `/api/v1/admin/forms/presets/{_}` | `docs/features/F05.7_form_builder.md` | 349 |
-| PUT | `/api/v1/admin/member-permissions` | `docs/features/F10.1_admin_dashboard.md` | 478 |
-| PUT | `/api/v1/admin/modules/{_}` | `docs/features/F10.1_admin_dashboard.md` | 480 |
-| PUT | `/api/v1/admin/permission-groups/{_}/assign/{_}` | `docs/features/F10.1_admin_dashboard.md` | 475 |
 | PUT | `/api/v1/admin/receipt-settings` | `docs/features/F08.4_receipt.md` | 308 |
 | PUT | `/api/v1/admin/receipt-settings` | `docs/features/F08.4_receipt.md` | 386 |
 
@@ -767,12 +734,12 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| DELETE | `/api/v1/feedback/{_}/vote` | `docs/features/F10.1_admin_dashboard.md` | 558 |
-| DELETE | `/api/v1/feedback/{_}/vote` | `docs/features/F10.1_admin_dashboard.md` | 1032 |
-| GET | `/api/v1/feedback` | `docs/features/F10.1_admin_dashboard.md` | 556 |
-| POST | `/api/v1/feedback` | `docs/features/F10.1_admin_dashboard.md` | 555 |
-| POST | `/api/v1/feedback/{_}/vote` | `docs/features/F10.1_admin_dashboard.md` | 557 |
-| POST | `/api/v1/feedback/{_}/vote` | `docs/features/F10.1_admin_dashboard.md` | 1005 |
+| DELETE | `/api/v1/feedback/{_}/vote` | `docs/features/F10.1_admin_dashboard.md` | 563 |
+| DELETE | `/api/v1/feedback/{_}/vote` | `docs/features/F10.1_admin_dashboard.md` | 1037 |
+| GET | `/api/v1/feedback` | `docs/features/F10.1_admin_dashboard.md` | 561 |
+| POST | `/api/v1/feedback` | `docs/features/F10.1_admin_dashboard.md` | 560 |
+| POST | `/api/v1/feedback/{_}/vote` | `docs/features/F10.1_admin_dashboard.md` | 562 |
+| POST | `/api/v1/feedback/{_}/vote` | `docs/features/F10.1_admin_dashboard.md` | 1010 |
 
 ### /api/v1/files/* (33 件)
 
@@ -894,7 +861,7 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| GET | `/api/v1/health` | `docs/features/F10.1_admin_dashboard.md` | 554 |
+| GET | `/api/v1/health` | `docs/features/F10.1_admin_dashboard.md` | 559 |
 
 ### /api/v1/incidents/* (25 件)
 
@@ -1353,7 +1320,7 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| GET | `/api/v1/platform/announcements` | `docs/features/F10.1_admin_dashboard.md` | 553 |
+| GET | `/api/v1/platform/announcements` | `docs/features/F10.1_admin_dashboard.md` | 558 |
 | GET | `/api/v1/platform/settings` | `docs/features/F04.1_timeline.md` | 1816 |
 
 ### /api/v1/point-cards/* (7 件)
@@ -1535,10 +1502,8 @@
 |---|---|---|---|
 | DELETE | `/api/v1/reports/{_}` | `docs/features/F10.2_moderation.md` | 356 |
 | DELETE | `/api/v1/reports/{_}` | `docs/features/F10.2_moderation.md` | 389 |
-| POST | `/api/v1/reports` | `docs/features/F04.5_moderation.md` | 50 |
-| POST | `/api/v1/reports` | `docs/features/F04.5_moderation.md` | 57 |
-| POST | `/api/v1/reports` | `docs/features/F10.1_admin_dashboard.md` | 441 |
-| POST | `/api/v1/reports` | `docs/features/F10.1_admin_dashboard.md` | 562 |
+| POST | `/api/v1/reports` | `docs/features/F04.5_moderation.md` | 64 |
+| POST | `/api/v1/reports` | `docs/features/F10.1_admin_dashboard.md` | 567 |
 
 ### /api/v1/residence-status/* (13 件)
 
@@ -1601,11 +1566,8 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| GET | `/api/v1/seal/stamps/verify-batch` | `docs/features/F05.3_digital_seal.md` | 161 |
 | GET | `/api/v1/seal/stamps/verify-batch` | `docs/features/F05.3_digital_seal.md` | 449 |
-| GET | `/api/v1/seal/stamps/{_}/verify` | `docs/features/F05.3_digital_seal.md` | 160 |
 | GET | `/api/v1/seal/stamps/{_}/verify` | `docs/features/F05.3_digital_seal.md` | 402 |
-| POST | `/api/v1/seal/stamps/{_}/revoke` | `docs/features/F05.3_digital_seal.md` | 159 |
 | POST | `/api/v1/seal/stamps/{_}/revoke` | `docs/features/F05.3_digital_seal.md` | 362 |
 
 ### /api/v1/search/* (2 件)
@@ -1841,139 +1803,138 @@
 | POST | `/api/v1/sync` | `docs/features/F11.1_offline_pwa.md` | 891 |
 | POST | `/api/v1/sync` | `docs/features/F11.1_offline_pwa.md` | 895 |
 
-### /api/v1/system-admin/* (104 件)
+### /api/v1/system-admin/* (103 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
 | DELETE | `/api/v1/system-admin/activity-templates/{_}` | `docs/features/F06.1_cms_blog.md` | 762 |
-| DELETE | `/api/v1/system-admin/discount-campaigns/{_}` | `docs/features/F10.1_admin_dashboard.md` | 500 |
+| DELETE | `/api/v1/system-admin/discount-campaigns/{_}` | `docs/features/F10.1_admin_dashboard.md` | 505 |
 | DELETE | `/api/v1/system-admin/feature-flags/{_}/overrides/{_}` | `docs/features/F12.2_feature_flag.md` | 119 |
 | DELETE | `/api/v1/system-admin/modules/{_}` | `docs/features/F01.3_template_module.md` | 398 |
-| DELETE | `/api/v1/system-admin/packages/{_}` | `docs/features/F10.1_admin_dashboard.md` | 496 |
-| DELETE | `/api/v1/system-admin/seasonal-themes/{_}` | `docs/features/F10.1_admin_dashboard.md` | 517 |
-| DELETE | `/api/v1/system-admin/storage-plans/{_}` | `docs/features/F10.1_admin_dashboard.md` | 507 |
+| DELETE | `/api/v1/system-admin/packages/{_}` | `docs/features/F10.1_admin_dashboard.md` | 501 |
+| DELETE | `/api/v1/system-admin/seasonal-themes/{_}` | `docs/features/F10.1_admin_dashboard.md` | 522 |
+| DELETE | `/api/v1/system-admin/storage-plans/{_}` | `docs/features/F10.1_admin_dashboard.md` | 512 |
 | GET | `/api/v1/system-admin/activity-template-presets` | `docs/features/F06.4_activity_records.md` | 340 |
 | GET | `/api/v1/system-admin/activity-templates` | `docs/features/F06.1_cms_blog.md` | 759 |
 | GET | `/api/v1/system-admin/affiliate-configs` | `docs/features/F09.7_advertising.md` | 97 |
 | GET | `/api/v1/system-admin/affiliate-configs` | `docs/features/F09.7_advertising.md` | 227 |
-| GET | `/api/v1/system-admin/affiliate-configs` | `docs/features/F10.1_admin_dashboard.md` | 520 |
+| GET | `/api/v1/system-admin/affiliate-configs` | `docs/features/F10.1_admin_dashboard.md` | 525 |
 | GET | `/api/v1/system-admin/affiliate-configs/preview` | `docs/features/F09.7_advertising.md` | 103 |
 | GET | `/api/v1/system-admin/affiliate-configs/preview` | `docs/features/F09.7_advertising.md` | 370 |
-| GET | `/api/v1/system-admin/announcements` | `docs/features/F10.1_admin_dashboard.md` | 536 |
-| GET | `/api/v1/system-admin/batch-jobs` | `docs/features/F10.1_admin_dashboard.md` | 543 |
-| GET | `/api/v1/system-admin/batch-jobs/{_}/history` | `docs/features/F10.1_admin_dashboard.md` | 544 |
+| GET | `/api/v1/system-admin/announcements` | `docs/features/F10.1_admin_dashboard.md` | 541 |
+| GET | `/api/v1/system-admin/batch-jobs` | `docs/features/F10.1_admin_dashboard.md` | 548 |
+| GET | `/api/v1/system-admin/batch-jobs/{_}/history` | `docs/features/F10.1_admin_dashboard.md` | 549 |
 | GET | `/api/v1/system-admin/beta-restriction` | `docs/features/F00.6_beta_restriction.md` | 34 |
-| GET | `/api/v1/system-admin/dashboard` | `docs/features/F10.1_admin_dashboard.md` | 485 |
-| GET | `/api/v1/system-admin/dashboard` | `docs/features/F10.1_admin_dashboard.md` | 1215 |
+| GET | `/api/v1/system-admin/dashboard` | `docs/features/F10.1_admin_dashboard.md` | 490 |
+| GET | `/api/v1/system-admin/dashboard` | `docs/features/F10.1_admin_dashboard.md` | 1220 |
 | GET | `/api/v1/system-admin/dashboard` | `docs/features/F10.4_business_analytics.md` | 15 |
-| GET | `/api/v1/system-admin/data-export-requests` | `docs/features/F10.1_admin_dashboard.md` | 550 |
-| GET | `/api/v1/system-admin/discount-campaigns` | `docs/features/F10.1_admin_dashboard.md` | 497 |
-| GET | `/api/v1/system-admin/discount-campaigns/{_}/usages` | `docs/features/F10.1_admin_dashboard.md` | 501 |
-| GET | `/api/v1/system-admin/error-reports` | `docs/features/F10.1_admin_dashboard.md` | 518 |
+| GET | `/api/v1/system-admin/data-export-requests` | `docs/features/F10.1_admin_dashboard.md` | 555 |
+| GET | `/api/v1/system-admin/discount-campaigns` | `docs/features/F10.1_admin_dashboard.md` | 502 |
+| GET | `/api/v1/system-admin/discount-campaigns/{_}/usages` | `docs/features/F10.1_admin_dashboard.md` | 506 |
+| GET | `/api/v1/system-admin/error-reports` | `docs/features/F10.1_admin_dashboard.md` | 523 |
 | GET | `/api/v1/system-admin/error-reports` | `docs/features/F10.6_error_monitoring.md` | 155 |
 | GET | `/api/v1/system-admin/error-reports` | `docs/features/F12.5_frontend_error_tracking.md` | 351 |
 | GET | `/api/v1/system-admin/error-reports?view=kanban` | `docs/features/F12.5_frontend_error_tracking.md` | 930 |
-| GET | `/api/v1/system-admin/feature-flags` | `docs/features/F10.1_admin_dashboard.md` | 529 |
+| GET | `/api/v1/system-admin/feature-flags` | `docs/features/F10.1_admin_dashboard.md` | 534 |
 | GET | `/api/v1/system-admin/feature-flags` | `docs/features/F12.2_feature_flag.md` | 111 |
 | GET | `/api/v1/system-admin/feature-flags/{_}/overrides` | `docs/features/F12.2_feature_flag.md` | 117 |
-| GET | `/api/v1/system-admin/feedback` | `docs/features/F10.1_admin_dashboard.md` | 542 |
-| GET | `/api/v1/system-admin/health` | `docs/features/F10.1_admin_dashboard.md` | 546 |
-| GET | `/api/v1/system-admin/maintenance-schedules` | `docs/features/F10.1_admin_dashboard.md` | 533 |
-| GET | `/api/v1/system-admin/moderation-settings` | `docs/features/F10.1_admin_dashboard.md` | 526 |
-| GET | `/api/v1/system-admin/module-prices` | `docs/features/F10.1_admin_dashboard.md` | 491 |
-| GET | `/api/v1/system-admin/module-usage-stats` | `docs/features/F10.1_admin_dashboard.md` | 528 |
-| GET | `/api/v1/system-admin/module-usage-stats` | `docs/features/F10.1_admin_dashboard.md` | 1118 |
+| GET | `/api/v1/system-admin/feedback` | `docs/features/F10.1_admin_dashboard.md` | 547 |
+| GET | `/api/v1/system-admin/health` | `docs/features/F10.1_admin_dashboard.md` | 551 |
+| GET | `/api/v1/system-admin/maintenance-schedules` | `docs/features/F10.1_admin_dashboard.md` | 538 |
+| GET | `/api/v1/system-admin/moderation-settings` | `docs/features/F10.1_admin_dashboard.md` | 531 |
+| GET | `/api/v1/system-admin/module-prices` | `docs/features/F10.1_admin_dashboard.md` | 496 |
+| GET | `/api/v1/system-admin/module-usage-stats` | `docs/features/F10.1_admin_dashboard.md` | 533 |
+| GET | `/api/v1/system-admin/module-usage-stats` | `docs/features/F10.1_admin_dashboard.md` | 1123 |
 | GET | `/api/v1/system-admin/modules` | `docs/features/F01.3_template_module.md` | 395 |
 | GET | `/api/v1/system-admin/modules/level-availability` | `docs/features/F01.3_template_module.md` | 399 |
-| GET | `/api/v1/system-admin/modules/level-settings` | `docs/features/F10.1_admin_dashboard.md` | 522 |
+| GET | `/api/v1/system-admin/modules/level-settings` | `docs/features/F10.1_admin_dashboard.md` | 527 |
 | GET | `/api/v1/system-admin/modules/{_}/deactivation-impact` | `docs/features/F01.3_template_module.md` | 405 |
 | GET | `/api/v1/system-admin/modules/{_}/deactivation-impact` | `docs/features/F01.3_template_module.md` | 1305 |
 | GET | `/api/v1/system-admin/modules/{_}/usage-stats` | `docs/features/F01.3_template_module.md` | 401 |
 | GET | `/api/v1/system-admin/modules/{_}/usage-stats` | `docs/features/F01.3_template_module.md` | 889 |
-| GET | `/api/v1/system-admin/notification-stats` | `docs/features/F10.1_admin_dashboard.md` | 547 |
-| GET | `/api/v1/system-admin/org-count-billing-tiers` | `docs/features/F10.1_admin_dashboard.md` | 509 |
-| GET | `/api/v1/system-admin/org-count-billing/overview` | `docs/features/F10.1_admin_dashboard.md` | 511 |
-| GET | `/api/v1/system-admin/org-type-change-requests` | `docs/features/F10.1_admin_dashboard.md` | 512 |
-| GET | `/api/v1/system-admin/organizations` | `docs/features/F10.1_admin_dashboard.md` | 486 |
-| GET | `/api/v1/system-admin/packages` | `docs/features/F10.1_admin_dashboard.md` | 493 |
+| GET | `/api/v1/system-admin/notification-stats` | `docs/features/F10.1_admin_dashboard.md` | 552 |
+| GET | `/api/v1/system-admin/org-count-billing-tiers` | `docs/features/F10.1_admin_dashboard.md` | 514 |
+| GET | `/api/v1/system-admin/org-count-billing/overview` | `docs/features/F10.1_admin_dashboard.md` | 516 |
+| GET | `/api/v1/system-admin/org-type-change-requests` | `docs/features/F10.1_admin_dashboard.md` | 517 |
+| GET | `/api/v1/system-admin/organizations` | `docs/features/F10.1_admin_dashboard.md` | 491 |
+| GET | `/api/v1/system-admin/packages` | `docs/features/F10.1_admin_dashboard.md` | 498 |
 | GET | `/api/v1/system-admin/promotions/billing` | `docs/features/F09.2_promotion_targeting.md` | 389 |
 | GET | `/api/v1/system-admin/promotions/billing` | `docs/features/F09.2_promotion_targeting.md` | 787 |
 | GET | `/api/v1/system-admin/promotions/billing/settings` | `docs/features/F09.2_promotion_targeting.md` | 390 |
-| GET | `/api/v1/system-admin/reports` | `docs/features/F10.1_admin_dashboard.md` | 461 |
-| GET | `/api/v1/system-admin/reports/monthly` | `docs/features/F10.1_admin_dashboard.md` | 549 |
-| GET | `/api/v1/system-admin/reports/weekly` | `docs/features/F10.1_admin_dashboard.md` | 548 |
-| GET | `/api/v1/system-admin/role-permissions` | `docs/features/F10.1_admin_dashboard.md` | 524 |
+| GET | `/api/v1/system-admin/reports/monthly` | `docs/features/F10.1_admin_dashboard.md` | 554 |
+| GET | `/api/v1/system-admin/reports/weekly` | `docs/features/F10.1_admin_dashboard.md` | 553 |
+| GET | `/api/v1/system-admin/role-permissions` | `docs/features/F10.1_admin_dashboard.md` | 529 |
 | GET | `/api/v1/system-admin/safety-checks/message-presets` | `docs/features/F03.6_safety_check.md` | 275 |
 | GET | `/api/v1/system-admin/safety-checks/message-presets` | `docs/features/F03.6_safety_check.md` | 950 |
-| GET | `/api/v1/system-admin/seasonal-themes` | `docs/features/F10.1_admin_dashboard.md` | 514 |
-| GET | `/api/v1/system-admin/storage-plans` | `docs/features/F10.1_admin_dashboard.md` | 504 |
-| GET | `/api/v1/system-admin/storage-usage` | `docs/features/F10.1_admin_dashboard.md` | 508 |
-| GET | `/api/v1/system-admin/tax-settings` | `docs/features/F10.1_admin_dashboard.md` | 502 |
-| GET | `/api/v1/system-admin/teams` | `docs/features/F10.1_admin_dashboard.md` | 487 |
+| GET | `/api/v1/system-admin/seasonal-themes` | `docs/features/F10.1_admin_dashboard.md` | 519 |
+| GET | `/api/v1/system-admin/storage-plans` | `docs/features/F10.1_admin_dashboard.md` | 509 |
+| GET | `/api/v1/system-admin/storage-usage` | `docs/features/F10.1_admin_dashboard.md` | 513 |
+| GET | `/api/v1/system-admin/tax-settings` | `docs/features/F10.1_admin_dashboard.md` | 507 |
+| GET | `/api/v1/system-admin/teams` | `docs/features/F10.1_admin_dashboard.md` | 492 |
 | GET | `/api/v1/system-admin/template-wallpapers` | `docs/features/F01.4_family_team.md` | 440 |
 | GET | `/api/v1/system-admin/templates` | `docs/features/F01.3_template_module.md` | 390 |
 | GET | `/api/v1/system-admin/templates/{_}/usage-stats` | `docs/features/F01.3_template_module.md` | 402 |
 | GET | `/api/v1/system-admin/templates/{_}/usage-stats` | `docs/features/F01.3_template_module.md` | 1011 |
-| GET | `/api/v1/system-admin/users` | `docs/features/F10.1_admin_dashboard.md` | 488 |
+| GET | `/api/v1/system-admin/users` | `docs/features/F10.1_admin_dashboard.md` | 493 |
 | PATCH | `/api/v1/system-admin/affiliate-configs/toggle-all` | `docs/features/F09.7_advertising.md` | 101 |
 | PATCH | `/api/v1/system-admin/affiliate-configs/toggle-all` | `docs/features/F09.7_advertising.md` | 336 |
-| PATCH | `/api/v1/system-admin/announcements/{_}/unpin` | `docs/features/F10.1_admin_dashboard.md` | 541 |
-| PATCH | `/api/v1/system-admin/error-reports/{_}/status` | `docs/features/F10.1_admin_dashboard.md` | 519 |
-| PATCH | `/api/v1/system-admin/org-type-change-requests/{_}` | `docs/features/F10.1_admin_dashboard.md` | 513 |
+| PATCH | `/api/v1/system-admin/announcements/{_}/unpin` | `docs/features/F10.1_admin_dashboard.md` | 546 |
+| PATCH | `/api/v1/system-admin/error-reports/{_}/status` | `docs/features/F10.1_admin_dashboard.md` | 524 |
+| PATCH | `/api/v1/system-admin/org-type-change-requests/{_}` | `docs/features/F10.1_admin_dashboard.md` | 518 |
 | PATCH | `/api/v1/system-admin/promotions/{_}/suspend` | `docs/features/F09.2_promotion_targeting.md` | 392 |
 | PATCH | `/api/v1/system-admin/promotions/{_}/suspend` | `docs/features/F09.2_promotion_targeting.md` | 1028 |
 | PATCH | `/api/v1/system-admin/safety-checks/message-presets/{_}/active` | `docs/features/F03.6_safety_check.md` | 278 |
 | PATCH | `/api/v1/system-admin/safety-checks/message-presets/{_}/active` | `docs/features/F03.6_safety_check.md` | 1024 |
-| PATCH | `/api/v1/system-admin/users/{_}/freeze` | `docs/features/F10.1_admin_dashboard.md` | 489 |
-| PATCH | `/api/v1/system-admin/users/{_}/unfreeze` | `docs/features/F10.1_admin_dashboard.md` | 490 |
+| PATCH | `/api/v1/system-admin/users/{_}/freeze` | `docs/features/F10.1_admin_dashboard.md` | 494 |
+| PATCH | `/api/v1/system-admin/users/{_}/unfreeze` | `docs/features/F10.1_admin_dashboard.md` | 495 |
 | POST | `/api/v1/system-admin/activity-template-presets` | `docs/features/F06.4_activity_records.md` | 341 |
 | POST | `/api/v1/system-admin/activity-templates` | `docs/features/F06.1_cms_blog.md` | 760 |
 | POST | `/api/v1/system-admin/affiliate-configs` | `docs/features/F09.7_advertising.md` | 98 |
 | POST | `/api/v1/system-admin/affiliate-configs` | `docs/features/F09.7_advertising.md` | 161 |
-| POST | `/api/v1/system-admin/announcements` | `docs/features/F10.1_admin_dashboard.md` | 537 |
-| POST | `/api/v1/system-admin/batch-jobs/{_}/retry` | `docs/features/F10.1_admin_dashboard.md` | 545 |
-| POST | `/api/v1/system-admin/batch-jobs/{_}/retry` | `docs/features/F10.1_admin_dashboard.md` | 973 |
-| POST | `/api/v1/system-admin/discount-campaigns` | `docs/features/F10.1_admin_dashboard.md` | 498 |
+| POST | `/api/v1/system-admin/announcements` | `docs/features/F10.1_admin_dashboard.md` | 542 |
+| POST | `/api/v1/system-admin/batch-jobs/{_}/retry` | `docs/features/F10.1_admin_dashboard.md` | 550 |
+| POST | `/api/v1/system-admin/batch-jobs/{_}/retry` | `docs/features/F10.1_admin_dashboard.md` | 978 |
+| POST | `/api/v1/system-admin/discount-campaigns` | `docs/features/F10.1_admin_dashboard.md` | 503 |
 | POST | `/api/v1/system-admin/error-reports/{_}/ai-analyze` | `docs/features/F10.6_error_monitoring.md` | 159 |
-| POST | `/api/v1/system-admin/feature-flags` | `docs/features/F10.1_admin_dashboard.md` | 530 |
-| POST | `/api/v1/system-admin/maintenance-schedules` | `docs/features/F10.1_admin_dashboard.md` | 534 |
+| POST | `/api/v1/system-admin/feature-flags` | `docs/features/F10.1_admin_dashboard.md` | 535 |
+| POST | `/api/v1/system-admin/maintenance-schedules` | `docs/features/F10.1_admin_dashboard.md` | 539 |
 | POST | `/api/v1/system-admin/modules` | `docs/features/F01.3_template_module.md` | 396 |
-| POST | `/api/v1/system-admin/packages` | `docs/features/F10.1_admin_dashboard.md` | 494 |
+| POST | `/api/v1/system-admin/packages` | `docs/features/F10.1_admin_dashboard.md` | 499 |
 | POST | `/api/v1/system-admin/safety-checks/message-presets` | `docs/features/F03.6_safety_check.md` | 276 |
 | POST | `/api/v1/system-admin/safety-checks/message-presets` | `docs/features/F03.6_safety_check.md` | 968 |
-| POST | `/api/v1/system-admin/seasonal-themes` | `docs/features/F10.1_admin_dashboard.md` | 515 |
-| POST | `/api/v1/system-admin/storage-plans` | `docs/features/F10.1_admin_dashboard.md` | 505 |
+| POST | `/api/v1/system-admin/seasonal-themes` | `docs/features/F10.1_admin_dashboard.md` | 520 |
+| POST | `/api/v1/system-admin/storage-plans` | `docs/features/F10.1_admin_dashboard.md` | 510 |
 | POST | `/api/v1/system-admin/template-wallpapers` | `docs/features/F01.4_family_team.md` | 441 |
 | POST | `/api/v1/system-admin/templates` | `docs/features/F01.3_template_module.md` | 391 |
 | POST | `/api/v1/system-admin/templates` | `docs/features/F01.3_template_module.md` | 801 |
 | POST | `/api/v1/system-admin/templates/{_}/duplicate` | `docs/features/F01.3_template_module.md` | 404 |
 | POST | `/api/v1/system-admin/templates/{_}/duplicate` | `docs/features/F01.3_template_module.md` | 1276 |
 | PUT | `/api/v1/system-admin/activity-templates/{_}` | `docs/features/F06.1_cms_blog.md` | 761 |
-| PUT | `/api/v1/system-admin/affiliate-configs` | `docs/features/F10.1_admin_dashboard.md` | 521 |
+| PUT | `/api/v1/system-admin/affiliate-configs` | `docs/features/F10.1_admin_dashboard.md` | 526 |
 | PUT | `/api/v1/system-admin/beta-restriction` | `docs/features/F00.6_beta_restriction.md` | 50 |
-| PUT | `/api/v1/system-admin/discount-campaigns/{_}` | `docs/features/F10.1_admin_dashboard.md` | 499 |
+| PUT | `/api/v1/system-admin/discount-campaigns/{_}` | `docs/features/F10.1_admin_dashboard.md` | 504 |
 | PUT | `/api/v1/system-admin/feature-flags/{_}/overrides` | `docs/features/F12.2_feature_flag.md` | 118 |
 | PUT | `/api/v1/system-admin/feature-flags/{_}/overrides` | `docs/features/F12.2_feature_flag.md` | 124 |
-| PUT | `/api/v1/system-admin/maintenance-mode` | `docs/features/F10.1_admin_dashboard.md` | 532 |
-| PUT | `/api/v1/system-admin/moderation-settings` | `docs/features/F10.1_admin_dashboard.md` | 527 |
-| PUT | `/api/v1/system-admin/module-prices/{_}` | `docs/features/F10.1_admin_dashboard.md` | 492 |
-| PUT | `/api/v1/system-admin/modules/level-settings/{_}` | `docs/features/F10.1_admin_dashboard.md` | 523 |
+| PUT | `/api/v1/system-admin/maintenance-mode` | `docs/features/F10.1_admin_dashboard.md` | 537 |
+| PUT | `/api/v1/system-admin/moderation-settings` | `docs/features/F10.1_admin_dashboard.md` | 532 |
+| PUT | `/api/v1/system-admin/module-prices/{_}` | `docs/features/F10.1_admin_dashboard.md` | 497 |
+| PUT | `/api/v1/system-admin/modules/level-settings/{_}` | `docs/features/F10.1_admin_dashboard.md` | 528 |
 | PUT | `/api/v1/system-admin/modules/{_}` | `docs/features/F01.3_template_module.md` | 397 |
 | PUT | `/api/v1/system-admin/modules/{_}/level-availability` | `docs/features/F01.3_template_module.md` | 400 |
 | PUT | `/api/v1/system-admin/modules/{_}/level-availability` | `docs/features/F01.3_template_module.md` | 856 |
 | PUT | `/api/v1/system-admin/modules/{_}/recommendations` | `docs/features/F01.3_template_module.md` | 403 |
 | PUT | `/api/v1/system-admin/modules/{_}/recommendations` | `docs/features/F01.3_template_module.md` | 1042 |
-| PUT | `/api/v1/system-admin/org-count-billing-tiers` | `docs/features/F10.1_admin_dashboard.md` | 510 |
-| PUT | `/api/v1/system-admin/packages/{_}` | `docs/features/F10.1_admin_dashboard.md` | 495 |
+| PUT | `/api/v1/system-admin/org-count-billing-tiers` | `docs/features/F10.1_admin_dashboard.md` | 515 |
+| PUT | `/api/v1/system-admin/packages/{_}` | `docs/features/F10.1_admin_dashboard.md` | 500 |
 | PUT | `/api/v1/system-admin/promotions/billing/settings` | `docs/features/F09.2_promotion_targeting.md` | 391 |
-| PUT | `/api/v1/system-admin/role-permissions` | `docs/features/F10.1_admin_dashboard.md` | 525 |
+| PUT | `/api/v1/system-admin/role-permissions` | `docs/features/F10.1_admin_dashboard.md` | 530 |
 | PUT | `/api/v1/system-admin/safety-checks/message-presets/{_}` | `docs/features/F03.6_safety_check.md` | 277 |
 | PUT | `/api/v1/system-admin/safety-checks/message-presets/{_}` | `docs/features/F03.6_safety_check.md` | 1001 |
 | PUT | `/api/v1/system-admin/safety-checks/templates/{_}` | `docs/features/F03.6_safety_check.md` | 281 |
 | PUT | `/api/v1/system-admin/safety-checks/templates/{_}` | `docs/features/F03.6_safety_check.md` | 1095 |
-| PUT | `/api/v1/system-admin/seasonal-themes/{_}` | `docs/features/F10.1_admin_dashboard.md` | 516 |
-| PUT | `/api/v1/system-admin/storage-plans/{_}` | `docs/features/F10.1_admin_dashboard.md` | 506 |
-| PUT | `/api/v1/system-admin/tax-settings` | `docs/features/F10.1_admin_dashboard.md` | 503 |
+| PUT | `/api/v1/system-admin/seasonal-themes/{_}` | `docs/features/F10.1_admin_dashboard.md` | 521 |
+| PUT | `/api/v1/system-admin/storage-plans/{_}` | `docs/features/F10.1_admin_dashboard.md` | 511 |
+| PUT | `/api/v1/system-admin/tax-settings` | `docs/features/F10.1_admin_dashboard.md` | 508 |
 | PUT | `/api/v1/system-admin/templates/{_}` | `docs/features/F01.3_template_module.md` | 392 |
 | PUT | `/api/v1/system-admin/templates/{_}/modules` | `docs/features/F01.3_template_module.md` | 394 |
 
@@ -2564,7 +2525,7 @@
 | GET | `/api/v1/users/contact-handle-check?handle={_}` | `docs/features/F04.8_contact.md` | 343 |
 | GET | `/api/v1/users/me/contact-privacy` | `docs/features/F04.8_contact.md` | 634 |
 | GET | `/api/v1/users/me/corkboards` | `docs/features/F09.8.1_corkboard_pin_dashboard.md` | 119 |
-| GET | `/api/v1/users/me/data-export/{_}` | `docs/features/F10.1_admin_dashboard.md` | 552 |
+| GET | `/api/v1/users/me/data-export/{_}` | `docs/features/F10.1_admin_dashboard.md` | 557 |
 | GET | `/api/v1/users/me/job-notification-preferences` | `docs/features/F13.1_short_term_job_matching.md` | 1651 |
 | GET | `/api/v1/users/me/reports` | `docs/features/F10.2_moderation.md` | 375 |
 | GET | `/api/v1/users/me/reports` | `docs/features/F10.2_moderation.md` | 1017 |
@@ -2576,25 +2537,19 @@
 | GET | `/api/v1/users/{_}` | `docs/features/F04.4_social_profiles.md` | 552 |
 | GET | `/api/v1/users/{_}` | `docs/features/F17.1_village_community.md` | 989 |
 | GET | `/api/v1/users/{_}/followings` | `docs/features/F04.4_social_profiles.md` | 105 |
-| GET | `/api/v1/users/{_}/seals` | `docs/features/F05.3_digital_seal.md` | 153 |
 | GET | `/api/v1/users/{_}/seals` | `docs/features/F05.3_digital_seal.md` | 168 |
-| GET | `/api/v1/users/{_}/seals/preview` | `docs/features/F05.3_digital_seal.md` | 154 |
 | GET | `/api/v1/users/{_}/seals/preview` | `docs/features/F05.3_digital_seal.md` | 216 |
-| GET | `/api/v1/users/{_}/seals/scope-defaults` | `docs/features/F05.3_digital_seal.md` | 156 |
 | GET | `/api/v1/users/{_}/seals/scope-defaults` | `docs/features/F05.3_digital_seal.md` | 278 |
-| GET | `/api/v1/users/{_}/seals/stamps` | `docs/features/F05.3_digital_seal.md` | 158 |
 | GET | `/api/v1/users/{_}/seals/stamps` | `docs/features/F05.3_digital_seal.md` | 322 |
 | POST | `/api/v1/users/blocks` | `docs/features/F04.8_contact.md` | 491 |
 | POST | `/api/v1/users/me/avatar` | `docs/features/F01.1_auth.md` | 427 |
-| POST | `/api/v1/users/me/data-export` | `docs/features/F10.1_admin_dashboard.md` | 551 |
+| POST | `/api/v1/users/me/data-export` | `docs/features/F10.1_admin_dashboard.md` | 556 |
 | POST | `/api/v1/users/me/todo-status-labels` | `docs/features/F02.3.1_todo_status_labels_and_handoff.md` | 195 |
 | POST | `/api/v1/users/me/vehicles` | `docs/features/F09.3_parking.md` | 614 |
 | POST | `/api/v1/users/me/vehicles` | `docs/features/F09.3_parking.md` | 712 |
-| POST | `/api/v1/users/{_}/seals/regenerate` | `docs/features/F05.3_digital_seal.md` | 155 |
 | POST | `/api/v1/users/{_}/seals/regenerate` | `docs/features/F05.3_digital_seal.md` | 247 |
 | PUT | `/api/v1/users/me/contact-privacy` | `docs/features/F04.8_contact.md` | 647 |
 | PUT | `/api/v1/users/me/job-notification-preferences` | `docs/features/F13.1_short_term_job_matching.md` | 1652 |
-| PUT | `/api/v1/users/{_}/seals/scope-defaults` | `docs/features/F05.3_digital_seal.md` | 157 |
 | PUT | `/api/v1/users/{_}/seals/scope-defaults` | `docs/features/F05.3_digital_seal.md` | 297 |
 
 ### /api/v1/visibility-templates/* (3 件)
@@ -3600,6 +3555,37 @@
 | PUT | `/api/v1/system-admin/maintenance-schedules/{_}` | `SystemAdminMaintenanceController#updateSchedule` (backend/src/main/java/com/mannschaft/app/admin/controller/SystemAdminMaintenanceController.java) | 77 |
 | PUT | `/api/v1/system-admin/moderation/settings/{_}` | `SystemAdminModerationController#updateSetting` (backend/src/main/java/com/mannschaft/app/moderation/controller/SystemAdminModerationController.java) | 282 |
 
+#### /api/v1/admin/* (26 件)
+
+| メソッド | パス | Controller | 行 |
+|---|---|---|---|
+| DELETE | `/api/v1/admin/action-templates/{_}` | `AdminActionTemplateController#deleteTemplate` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminActionTemplateController.java) | 84 |
+| DELETE | `/api/v1/admin/form-presets/{_}` | `FormPresetController#deletePreset` (backend/src/main/java/com/mannschaft/app/forms/controller/FormPresetController.java) | 91 |
+| DELETE | `/api/v1/admin/permission-groups/{_}` | `AdminPermissionGroupController#deletePermissionGroup` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminPermissionGroupController.java) | 84 |
+| GET | `/api/v1/admin/dashboard/users` | `AdminDashboardController#getUsers` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminDashboardController.java) | 53 |
+| GET | `/api/v1/admin/form-presets/{_}` | `FormPresetController#getPreset` (backend/src/main/java/com/mannschaft/app/forms/controller/FormPresetController.java) | 54 |
+| GET | `/api/v1/admin/reports/users/{_}/violation-history` | `ModerationResolveController#getViolationHistory` (backend/src/main/java/com/mannschaft/app/moderation/controller/ModerationResolveController.java) | 172 |
+| GET | `/api/v1/admin/reports/{_}/actions` | `ModerationResolveController#getActions` (backend/src/main/java/com/mannschaft/app/moderation/controller/ModerationResolveController.java) | 109 |
+| GET | `/api/v1/admin/village-creation-requests` | `VillageCreationRequestController#listForAdmin` (backend/src/main/java/com/mannschaft/app/village/controller/VillageCreationRequestController.java) | 76 |
+| PATCH | `/api/v1/admin/dashboard/users/{_}/role` | `AdminDashboardController#updateUserRole` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminDashboardController.java) | 69 |
+| PATCH | `/api/v1/admin/feedbacks/{_}/respond` | `AdminFeedbackController#respondToFeedback` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminFeedbackController.java) | 57 |
+| PATCH | `/api/v1/admin/feedbacks/{_}/status` | `AdminFeedbackController#updateFeedbackStatus` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminFeedbackController.java) | 70 |
+| PATCH | `/api/v1/admin/moderation/reports/{_}/review` | `ModerationAdminController#startReview` (backend/src/main/java/com/mannschaft/app/moderation/controller/ModerationAdminController.java) | 60 |
+| PATCH | `/api/v1/admin/permission-groups/{_}/assign/{_}` | `AdminPermissionGroupController#assignMember` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminPermissionGroupController.java) | 107 |
+| PATCH | `/api/v1/admin/permission-groups/{_}/unassign/{_}` | `AdminPermissionGroupController#unassignMember` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminPermissionGroupController.java) | 124 |
+| PATCH | `/api/v1/admin/reports/users/{_}/restrict-reporting` | `ModerationResolveController#restrictReporting` (backend/src/main/java/com/mannschaft/app/moderation/controller/ModerationResolveController.java) | 159 |
+| PATCH | `/api/v1/admin/reports/{_}/restore-content` | `ModerationResolveController#restoreContent` (backend/src/main/java/com/mannschaft/app/moderation/controller/ModerationResolveController.java) | 146 |
+| POST | `/api/v1/admin/action-memo/regenerate-weekly-summary` | `AdminActionMemoController#regenerateWeeklySummary` (backend/src/main/java/com/mannschaft/app/actionmemo/admin/AdminActionMemoController.java) | 59 |
+| POST | `/api/v1/admin/batch/attendance/run-daily-evaluation` | `AttendanceBatchController#runDailyEvaluation` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceBatchController.java) | 37 |
+| POST | `/api/v1/admin/batch/attendance/send-weekly-digest` | `AttendanceBatchController#sendWeeklyDigest` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceBatchController.java) | 52 |
+| POST | `/api/v1/admin/permission-groups/{_}/duplicate` | `AdminPermissionGroupController#duplicatePermissionGroup` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminPermissionGroupController.java) | 95 |
+| POST | `/api/v1/admin/village-creation-requests/{_}/approve` | `VillageCreationRequestController#approve` (backend/src/main/java/com/mannschaft/app/village/controller/VillageCreationRequestController.java) | 86 |
+| POST | `/api/v1/admin/village-creation-requests/{_}/reject` | `VillageCreationRequestController#reject` (backend/src/main/java/com/mannschaft/app/village/controller/VillageCreationRequestController.java) | 97 |
+| POST | `/api/v1/admin/village-creation-requests/{_}/withdraw` | `VillageCreationRequestController#withdraw` (backend/src/main/java/com/mannschaft/app/village/controller/VillageCreationRequestController.java) | 108 |
+| PUT | `/api/v1/admin/action-templates/{_}` | `AdminActionTemplateController#updateTemplate` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminActionTemplateController.java) | 71 |
+| PUT | `/api/v1/admin/form-presets/{_}` | `FormPresetController#updatePreset` (backend/src/main/java/com/mannschaft/app/forms/controller/FormPresetController.java) | 78 |
+| PUT | `/api/v1/admin/permission-groups/{_}` | `AdminPermissionGroupController#updatePermissionGroup` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminPermissionGroupController.java) | 72 |
+
 #### /api/v1/me/* (25 件)
 
 | メソッド | パス | Controller | 行 |
@@ -3629,33 +3615,6 @@
 | POST | `/api/v1/me/village-pins/{_}` | `VillagePinController#pin` (backend/src/main/java/com/mannschaft/app/village/controller/VillagePinController.java) | 59 |
 | PUT | `/api/v1/me/scope-folders/reorder` | `MyScopeFolderController#reorderFolders` (backend/src/main/java/com/mannschaft/app/scopefolder/controller/MyScopeFolderController.java) | 126 |
 | PUT | `/api/v1/me/scope-folders/{_}` | `MyScopeFolderController#updateFolder` (backend/src/main/java/com/mannschaft/app/scopefolder/controller/MyScopeFolderController.java) | 140 |
-
-#### /api/v1/admin/* (22 件)
-
-| メソッド | パス | Controller | 行 |
-|---|---|---|---|
-| DELETE | `/api/v1/admin/form-presets/{_}` | `FormPresetController#deletePreset` (backend/src/main/java/com/mannschaft/app/forms/controller/FormPresetController.java) | 91 |
-| GET | `/api/v1/admin/dashboard/users` | `AdminDashboardController#getUsers` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminDashboardController.java) | 53 |
-| GET | `/api/v1/admin/form-presets/{_}` | `FormPresetController#getPreset` (backend/src/main/java/com/mannschaft/app/forms/controller/FormPresetController.java) | 54 |
-| GET | `/api/v1/admin/moderation/reports/{_}` | `ModerationAdminController#getReport` (backend/src/main/java/com/mannschaft/app/moderation/controller/ModerationAdminController.java) | 49 |
-| GET | `/api/v1/admin/reports/users/{_}/violation-history` | `ModerationResolveController#getViolationHistory` (backend/src/main/java/com/mannschaft/app/moderation/controller/ModerationResolveController.java) | 172 |
-| GET | `/api/v1/admin/reports/{_}/actions` | `ModerationResolveController#getActions` (backend/src/main/java/com/mannschaft/app/moderation/controller/ModerationResolveController.java) | 109 |
-| GET | `/api/v1/admin/village-creation-requests` | `VillageCreationRequestController#listForAdmin` (backend/src/main/java/com/mannschaft/app/village/controller/VillageCreationRequestController.java) | 76 |
-| PATCH | `/api/v1/admin/dashboard/users/{_}/role` | `AdminDashboardController#updateUserRole` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminDashboardController.java) | 69 |
-| PATCH | `/api/v1/admin/feedbacks/{_}/respond` | `AdminFeedbackController#respondToFeedback` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminFeedbackController.java) | 57 |
-| PATCH | `/api/v1/admin/feedbacks/{_}/status` | `AdminFeedbackController#updateFeedbackStatus` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminFeedbackController.java) | 70 |
-| PATCH | `/api/v1/admin/moderation/reports/{_}/review` | `ModerationAdminController#startReview` (backend/src/main/java/com/mannschaft/app/moderation/controller/ModerationAdminController.java) | 60 |
-| PATCH | `/api/v1/admin/permission-groups/{_}/assign/{_}` | `AdminPermissionGroupController#assignMember` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminPermissionGroupController.java) | 107 |
-| PATCH | `/api/v1/admin/permission-groups/{_}/unassign/{_}` | `AdminPermissionGroupController#unassignMember` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminPermissionGroupController.java) | 124 |
-| PATCH | `/api/v1/admin/reports/users/{_}/restrict-reporting` | `ModerationResolveController#restrictReporting` (backend/src/main/java/com/mannschaft/app/moderation/controller/ModerationResolveController.java) | 159 |
-| POST | `/api/v1/admin/action-memo/regenerate-weekly-summary` | `AdminActionMemoController#regenerateWeeklySummary` (backend/src/main/java/com/mannschaft/app/actionmemo/admin/AdminActionMemoController.java) | 59 |
-| POST | `/api/v1/admin/batch/attendance/run-daily-evaluation` | `AttendanceBatchController#runDailyEvaluation` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceBatchController.java) | 37 |
-| POST | `/api/v1/admin/batch/attendance/send-weekly-digest` | `AttendanceBatchController#sendWeeklyDigest` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceBatchController.java) | 52 |
-| POST | `/api/v1/admin/seals/regenerate` | `SealAdminController#regenerateAll` (backend/src/main/java/com/mannschaft/app/seal/controller/SealAdminController.java) | 43 |
-| POST | `/api/v1/admin/village-creation-requests/{_}/approve` | `VillageCreationRequestController#approve` (backend/src/main/java/com/mannschaft/app/village/controller/VillageCreationRequestController.java) | 86 |
-| POST | `/api/v1/admin/village-creation-requests/{_}/reject` | `VillageCreationRequestController#reject` (backend/src/main/java/com/mannschaft/app/village/controller/VillageCreationRequestController.java) | 97 |
-| POST | `/api/v1/admin/village-creation-requests/{_}/withdraw` | `VillageCreationRequestController#withdraw` (backend/src/main/java/com/mannschaft/app/village/controller/VillageCreationRequestController.java) | 108 |
-| PUT | `/api/v1/admin/form-presets/{_}` | `FormPresetController#updatePreset` (backend/src/main/java/com/mannschaft/app/forms/controller/FormPresetController.java) | 78 |
 
 #### /api/v1/shifts/* (19 件)
 
@@ -4184,5 +4143,5 @@
 
 ## 3. ✅ 一致（件数のみ）
 
-一致したエンドポイント: **1326 件**（詳細リストは省略）
+一致したエンドポイント: **1322 件**（詳細リストは省略）
 
