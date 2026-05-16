@@ -383,9 +383,13 @@ public class GlobalExceptionHandler {
             Map.entry("POINT_CARD_007", HttpStatus.NOT_FOUND),         // PROVIDER_NOT_FOUND
             Map.entry("POINT_CARD_008", HttpStatus.TOO_MANY_REQUESTS), // RATE_LIMIT_EXCEEDED
             Map.entry("POINT_CARD_009", HttpStatus.UNAUTHORIZED),      // BIOMETRIC_REQUIRED
-            // F18 Phase 2 S2B 自店プロバイダー CRUD
+            // F18 Phase 2 第二陣 2B — 自店プロバイダー CRUD（POINT_CARD_010〜011）
             Map.entry("POINT_CARD_010", HttpStatus.CONFLICT),          // PROVIDER_LIMIT_EXCEEDED (20 個超過)
             Map.entry("POINT_CARD_011", HttpStatus.NOT_FOUND),         // PROVIDER_NOT_OWNED (IDOR 対策で 404)
+            // F18 Phase 2 第二陣 2C — スタンプ押印（POINT_CARD_012〜014）
+            Map.entry("POINT_CARD_012", HttpStatus.BAD_REQUEST),       // STAMP_INVALID_PROVIDER
+            Map.entry("POINT_CARD_013", HttpStatus.BAD_REQUEST),       // STAMP_INVALID_PROVIDER_TYPE
+            Map.entry("POINT_CARD_014", HttpStatus.BAD_REQUEST),       // STAMP_DELTA_ZERO
             // F02.9 お気に入りウィジェット
             Map.entry("FAV_001", HttpStatus.CONFLICT),                  // ALREADY_REGISTERED（重複登録）
             Map.entry("FAV_002", HttpStatus.UNPROCESSABLE_ENTITY),      // LIMIT_EXCEEDED（上限20件超過）
