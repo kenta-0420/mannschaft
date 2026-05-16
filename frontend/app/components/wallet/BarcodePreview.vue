@@ -6,15 +6,22 @@ import type { BarcodeFormat } from '~/types/pointCard'
 /**
  * F18 ウォレット — バーコード描画コンポーネント。
  *
- * <p>設計書 §8.2 / §8.4 / §8.5 に基づき、QR は qrcode、1D は jsbarcode、
- * NONE はテキスト表示とフォールバックする。バーコード下にカード番号を大きく
- * 表示（設計書 §6.4 / §8.4 「`last4` 強調 + 全桁 1 段下に小さく表示」）する。</p>
+ * <p>設計書 §8.2 / §8.4 / §8.5 に基づき、3 系統のレンダラーを使い分ける:
+ *   <ul>
+ *     <li>QR     → qrcode (npm)</li>
+ *     <li>PDF417 → bwip-js (動的 import / コードスプリッティングで PDF417 を
+ *         使う人だけが 200KB ロードする)</li>
+ *     <li>1D     → jsbarcode (CODE128/CODE39/EAN13/EAN8/JAN13/ITF)</li>
+ *     <li>NONE   → テキスト表示にフォールバック</li>
+ *   </ul>
+ * バーコード下にカード番号を大きく表示
+ * （設計書 §6.4 / §8.4 「`last4` 強調 + 全桁 1 段下に小さく表示」）する。</p>
  *
  * <p>props.value が空・無効・形式不一致で描画失敗した場合は赤エラーテキストを出す
  * （対処療法で握りつぶさず、ユーザーに明示する）。</p>
  *
  * @prop value バーコード値（カード番号文字列）
- * @prop format バーコード形式（'QR' / 'CODE128' / ... / 'NONE'）
+ * @prop format バーコード形式（'QR' / 'PDF417' / 'CODE128' / ... / 'NONE'）
  * @prop size 'normal' = 通常表示 / 'large' = 提示モード相当の大きいサイズ
  */
 
@@ -36,6 +43,7 @@ const renderError = ref(false)
 
 // jsbarcode が受け付ける format コード（type の値 → jsbarcode 用コード）。
 // JAN13 は EAN13 と同一規格のため EAN13 で描画する。
+// PDF417 は jsbarcode ではサポートされないため別ルート（bwip-js）で描画する。
 const JSBARCODE_FORMAT_MAP: Record<string, string> = {
   CODE128: 'CODE128',
   CODE39: 'CODE39',
@@ -43,7 +51,6 @@ const JSBARCODE_FORMAT_MAP: Record<string, string> = {
   EAN8: 'EAN8',
   JAN13: 'EAN13',
   ITF: 'ITF',
-  PDF417: 'PDF417',
 }
 
 /** value の表示用整形: 4 桁ごとに半角スペース区切り（QR・PDF417 のような長い値は raw 表示） */
@@ -75,6 +82,24 @@ async function render() {
       return
     }
 
+    if (props.format === 'PDF417') {
+      // bwip-js を動的 import。コードスプリッティングにより
+      // PDF417 を実際に表示する人だけが ~200KB の追加バンドルをロードする。
+      // サブパス 'bwip-js/browser' を明示することで Nuxt の moduleResolution=Bundler
+      // でも型・実体ともに解決される。
+      const bwipjs = await import('bwip-js/browser')
+      bwipjs.toCanvas(canvasRef.value, {
+        bcid: 'pdf417',
+        text: props.value,
+        scale: props.size === 'large' ? 4 : 3,
+        height: props.size === 'large' ? 12 : 8,
+        includetext: false, // 自前で下に大きく出すので false
+        paddingwidth: 8,
+        paddingheight: 8,
+      })
+      return
+    }
+
     const jsbarcodeFmt = JSBARCODE_FORMAT_MAP[props.format]
     if (!jsbarcodeFmt) {
       renderError.value = true
@@ -89,7 +114,7 @@ async function render() {
     })
   }
   catch (e) {
-    // jsbarcode / qrcode が値不正で例外を投げた場合
+    // jsbarcode / qrcode / bwip-js が値不正で例外を投げた場合
     console.warn('[BarcodePreview] render failed', e)
     renderError.value = true
   }
