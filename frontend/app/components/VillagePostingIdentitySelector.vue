@@ -9,11 +9,14 @@
  *   §4.8  投稿主体エントリ DTO (PostingIdentityResponse)
  *   §5.4  投稿主体代表権限の検証
  *
- * Phase 1 仕様:
- *   - `visible=false` がデフォルト。非表示時は何も描画しない。
- *   - 内部ロジック（API 取得・USER 既定選択・v-model 同期）は完成させており、
- *     Phase 2 で `visible=true` に切替えれば即動作する設計。
- *   - 既存 Service への統合は別軍議のため、ここでは UI 部品として配置するのみ。
+ * Phase 2 仕様（2026-05-14 切替）:
+ *   - `visible=true` がデフォルト。マウント時に投稿主体一覧を取得し Select を表示する。
+ *   - 内部ロジック（API 取得・USER 既定選択・v-model 同期）は Phase 1 完成済み。
+ *   - Phase 2 では「お祭り作成 Dialog」「練習試合募集作成 Dialog」など、
+ *     新規フォームに本コンポを差し込む形で投稿主体切替機能を有効化する。
+ *   - 既存 BulletinService / TimelineService / ChatMessageService への
+ *     postedAs 統合は別軍議扱い。Phase 2 では新規 Phase 2 機能の投稿フォームに
+ *     Selector を組み込むのみとする。
  *
  * 厳守:
  *   - any 禁止 / 文字列直書き禁止 / 既存ファイル変更禁止
@@ -41,14 +44,14 @@ const props = withDefaults(
     /** v-model の値。Phase 1 では USER 固定で初期化される */
     modelValue?: PostingIdentitySelection | null
     /**
-     * 表示フラグ。Phase 1 では既定 false（非表示）。
-     * Phase 2 で true に切替えれば即時 UI 表示される。
+     * 表示フラグ。Phase 2 から既定 true（表示）。
+     * 既存タブで Selector を見せたくない場面では `:visible="false"` を渡せる。
      */
     visible?: boolean
   }>(),
   {
     modelValue: null,
-    visible: false,
+    visible: true,
   },
 )
 
