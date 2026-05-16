@@ -90,6 +90,12 @@ public class GlobalExceptionHandler {
             Map.entry("AD_AUDIENCE_INVALID", HttpStatus.BAD_REQUEST),
             Map.entry("AD_CHANNEL_REQUIRED", HttpStatus.BAD_REQUEST),
             Map.entry("AD_CHANNEL_DUPLICATE", HttpStatus.CONFLICT),
+            // F09.17 Phase 11-b: unsubscribe / 開封ピクセル JWT
+            Map.entry("AD_UNSUBSCRIBE_TOKEN_EXPIRED", HttpStatus.GONE),               // 410: 期限切れ・version 不一致
+            Map.entry("AD_UNSUBSCRIBE_TOKEN_VERSION_MISMATCH", HttpStatus.GONE),      // 410: ローテート済
+            Map.entry("AD_UNSUBSCRIBE_TOKEN_INVALID", HttpStatus.BAD_REQUEST),        // 400: 改竄・形式不正
+            // 開封ピクセルは常に 200 で返すため Controller 内で握り潰す。ここで 200 を明示しても到達しない設計。
+            Map.entry("AD_OPEN_PIXEL_TOKEN_INVALID", HttpStatus.OK),
             Map.entry("AUTH_033", HttpStatus.NOT_FOUND),
             Map.entry("AUTH_034", HttpStatus.CONFLICT),
             // F02.5 行動メモ: IDOR 対策で 403 ではなく 404 を返す

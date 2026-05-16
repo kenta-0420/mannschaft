@@ -1,5 +1,6 @@
 package com.mannschaft.app.config;
 
+import com.mannschaft.app.advertising.campaign.filter.AdPublicEndpointRateLimitFilter;
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
 import com.mannschaft.app.team.filter.OrganizationTeamSearchRateLimitFilter;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ProxyInputContextFilter proxyInputContextFilter;
     private final OrganizationTeamSearchRateLimitFilter organizationTeamSearchRateLimitFilter;
+    private final AdPublicEndpointRateLimitFilter adPublicEndpointRateLimitFilter;
 
     /**
      * ProxyInputContextFilter の @Component によるサーブレットフィルター自動登録を無効化。
@@ -51,6 +53,20 @@ public class SecurityConfig {
             organizationTeamSearchRateLimitFilterRegistration() {
         FilterRegistrationBean<OrganizationTeamSearchRateLimitFilter> registration =
                 new FilterRegistrationBean<>(organizationTeamSearchRateLimitFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    /**
+     * F09.17 Phase 11-b: AdPublicEndpointRateLimitFilter の @Component 由来の
+     * サーブレットフィルター自動登録を無効化。
+     * Spring Security フィルターチェーン経由（addFilterBefore）のみで動作させる。
+     */
+    @Bean
+    public FilterRegistrationBean<AdPublicEndpointRateLimitFilter>
+            adPublicEndpointRateLimitFilterRegistration() {
+        FilterRegistrationBean<AdPublicEndpointRateLimitFilter> registration =
+                new FilterRegistrationBean<>(adPublicEndpointRateLimitFilter);
         registration.setEnabled(false);
         return registration;
     }
@@ -96,11 +112,15 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/contact-invite/*").permitAll()
                 // F15.4 組織内チーム（店舗）検索（認証不要・レート制限あり）
                 .requestMatchers(HttpMethod.GET, "/api/v1/organizations/*/teams/search").permitAll()
+                // F09.17 Phase 11-b 広告 unsubscribe / 開封ピクセル（認証不要・IP レート制限あり）
+                .requestMatchers(HttpMethod.GET, "/api/v1/ads/unsubscribe").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/ads/pixels/open").permitAll()
                 // 開発中は全エンドポイントを許可（本番移行時に .authenticated() に変更）
                 .anyRequest().permitAll()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(organizationTeamSearchRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(adPublicEndpointRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(proxyInputContextFilter, JwtAuthenticationFilter.class);
         return http.build();
     }

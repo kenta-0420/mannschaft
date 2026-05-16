@@ -116,6 +116,65 @@ public class UserAdPreferenceService {
     }
 
     /**
+     * F09.17 Phase 11-b — ワンクリック解除 (unsubscribe JWT 経由) で当該 channel を OFF にする。
+     *
+     * <p>処理:</p>
+     * <ol>
+     *   <li>user_ad_preferences 行を取得（無ければデフォルト生成）</li>
+     *   <li>{@code unsubscribe_token_version} 一致確認 ── 不一致は
+     *       {@link AdCampaignErrorCode#AD_UNSUBSCRIBE_TOKEN_VERSION_MISMATCH} (410)</li>
+     *   <li>channel に応じて {@code accept_*_ads = false} を設定</li>
+     * </ol>
+     *
+     * <p>本メソッドは冪等。既に false でも再度 false を書き戻すだけで成功させる。</p>
+     *
+     * @param userId               JWT の uid claim
+     * @param channel              "ANNOUNCEMENT"/"EMAIL"/"PUSH"/"BANNER"
+     * @param tokenVersionExpected JWT の ver claim
+     * @throws BusinessException token_version 不一致時
+     */
+    @Transactional
+    public void unsubscribe(Long userId, String channel, Integer tokenVersionExpected) {
+        if (userId == null || channel == null || tokenVersionExpected == null) {
+            throw new BusinessException(AdCampaignErrorCode.AD_UNSUBSCRIBE_TOKEN_INVALID);
+        }
+        UserAdPreference entity = preferenceRepository.findByUserId(userId)
+                .orElseGet(() -> createDefault(userId));
+
+        Integer current = entity.getUnsubscribeTokenVersion();
+        int currentVer = (current == null ? 0 : current);
+        if (currentVer != tokenVersionExpected) {
+            // ローテート済 = 古いトークンは無効
+            throw new BusinessException(AdCampaignErrorCode.AD_UNSUBSCRIBE_TOKEN_VERSION_MISMATCH);
+        }
+
+        switch (channel) {
+            case "ANNOUNCEMENT" -> entity.setAcceptAnnouncementAds(Boolean.FALSE);
+            case "EMAIL"        -> entity.setAcceptEmailAds(Boolean.FALSE);
+            case "PUSH"         -> entity.setAcceptPushAds(Boolean.FALSE);
+            case "BANNER"       -> entity.setAcceptBannerAds(Boolean.FALSE);
+            default -> throw new BusinessException(AdCampaignErrorCode.AD_UNSUBSCRIBE_TOKEN_INVALID);
+        }
+        preferenceRepository.save(entity);
+    }
+
+    /**
+     * F09.17 Phase 11-b — {@code unsubscribe_token_version} を +1 し、過去発行 JWT を一括失効させる。
+     *
+     * <p>受信者本人が「全 unsubscribe リンクを無効化したい」と要求した場合に呼ぶ。
+     * {@code rotateUnsubscribeTokens=true} で {@link #updateForUser} 経由でも実行されるが、
+     * 単体呼び出し用にここで切り出しておく。</p>
+     */
+    @Transactional
+    public void rotateUnsubscribeTokenVersion(Long userId) {
+        UserAdPreference entity = preferenceRepository.findByUserId(userId)
+                .orElseGet(() -> createDefault(userId));
+        Integer current = entity.getUnsubscribeTokenVersion();
+        entity.setUnsubscribeTokenVersion((current == null ? 0 : current) + 1);
+        preferenceRepository.save(entity);
+    }
+
+    /**
      * デフォルト行を作成して保存する。
      *
      * <p>accept_*_ads = true / blocked = [] / consented_at = null / token_version = 0。</p>
