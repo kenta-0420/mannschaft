@@ -36,6 +36,7 @@ import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.entity.TodoEntity;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import com.mannschaft.app.todo.service.TodoService;
+import com.mannschaft.app.todo.service.TodoStatusService;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -109,6 +110,9 @@ class ActionMemoServiceTest {
 
     @Mock
     private TodoService todoService;
+
+    @Mock
+    private TodoStatusService todoStatusService;
 
     @Mock
     private UserRoleRepository userRoleRepository;
@@ -869,7 +873,7 @@ class ActionMemoServiceTest {
 
             ArgumentCaptor<TodoStatusChangeRequest> captor =
                     ArgumentCaptor.forClass(TodoStatusChangeRequest.class);
-            verify(todoService).changeStatus(eq(42L), captor.capture(), eq(USER_ID));
+            verify(todoStatusService).changeStatus(eq(42L), captor.capture(), eq(USER_ID));
             assertThat(captor.getValue().getStatus()).isEqualTo("COMPLETED");
         }
 
@@ -891,7 +895,7 @@ class ActionMemoServiceTest {
 
             actionMemoService.createMemo(req, USER_ID);
 
-            verify(todoService, never()).changeStatus(any(), any(), any());
+            verify(todoStatusService, never()).changeStatus(any(), any(), any());
         }
 
         @Test
@@ -1318,7 +1322,7 @@ class ActionMemoServiceTest {
 
             actionMemoAdminService.revertTodoCompletion(MEMO_ID, ADMIN_ID);
 
-            verify(todoService).changeStatus(eq(todoId), any(TodoStatusChangeRequest.class), eq(USER_ID));
+            verify(todoStatusService).changeStatus(eq(todoId), any(TodoStatusChangeRequest.class), eq(USER_ID));
             verify(auditLogService).record(
                     eq("AUDIT_LOG_TODO_REVERTED_BY_ADMIN"),
                     eq(ADMIN_ID),

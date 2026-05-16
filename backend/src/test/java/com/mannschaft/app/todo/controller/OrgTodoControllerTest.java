@@ -18,8 +18,10 @@ import com.mannschaft.app.todo.service.TodoCommentService;
 import com.mannschaft.app.todo.service.TodoGanttService;
 import com.mannschaft.app.todo.service.TodoPersonalMemoService;
 import com.mannschaft.app.todo.service.TodoScheduleLinkService;
+import com.mannschaft.app.todo.service.TodoAssigneeService;
 import com.mannschaft.app.todo.service.TodoService;
 import com.mannschaft.app.todo.service.TodoSharedMemoService;
+import com.mannschaft.app.todo.service.TodoStatusService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -70,6 +72,12 @@ class OrgTodoControllerTest {
 
     @Mock
     private TodoService todoService;
+
+    @Mock
+    private TodoStatusService todoStatusService;
+
+    @Mock
+    private TodoAssigneeService todoAssigneeService;
 
     @Mock
     private TodoCommentService commentService;
@@ -224,7 +232,7 @@ class OrgTodoControllerTest {
 
                 TodoStatusChangeResponse response = new TodoStatusChangeResponse(
                         TODO_ID, TodoStatus.COMPLETED.name(), null, null, null);
-                given(todoService.changeStatus(eq(TODO_ID), any(TodoStatusChangeRequest.class), eq(USER_ID)))
+                given(todoStatusService.changeStatus(eq(TODO_ID), any(TodoStatusChangeRequest.class), eq(USER_ID)))
                         .willReturn(ApiResponse.of(response));
 
                 String json = "{\"status\":\"COMPLETED\"}";

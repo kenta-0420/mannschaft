@@ -35,7 +35,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 
 /**
- * TODOService.changeStatus のカスタムステータスラベル経路（F02.3.1 Phase 1a）の単体テスト。
+ * {@link TodoStatusService}.changeStatus のカスタムステータスラベル経路（F02.3.1 Phase 1a）の単体テスト。
  *
  * <ul>
  *   <li>statusLabelId 指定 → ラベルからバケット導出</li>
@@ -45,7 +45,7 @@ import static org.mockito.BDDMockito.willThrow;
  * </ul>
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("TodoService.changeStatus カスタムラベル経路テスト")
+@DisplayName("TodoStatusService.changeStatus カスタムラベル経路テスト")
 class TodoServiceChangeStatusWithLabelTest {
 
     private static final Long TODO_ID = 1L;
@@ -72,22 +72,24 @@ class TodoServiceChangeStatusWithLabelTest {
     private MilestoneGateService milestoneGateService;
     @Mock
     private TodoStatusLabelService todoStatusLabelService;
+    @Mock
+    private TodoService todoService;
 
     @InjectMocks
-    private TodoService todoService;
+    private TodoStatusService todoStatusService;
 
     @Test
     @DisplayName("正常系: statusLabelId 指定でラベルからバケット → status を導出")
     void changeStatus_ラベル経由でバケット導出() {
         TodoEntity todo = createOpenPersonalTodo();
         TodoStatusLabelEntity label = personalLabel(LABEL_ID, "レビュー中", TodoStatusBucket.IN_PROGRESS);
-        given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
+        given(todoService.findTodoOrThrow(TODO_ID)).willReturn(todo);
         given(todoStatusLabelService.findActiveById(LABEL_ID)).willReturn(label);
         given(todoRepository.save(any(TodoEntity.class))).willAnswer(inv -> inv.getArgument(0));
 
         TodoStatusChangeRequest request = new TodoStatusChangeRequest(null, LABEL_ID);
 
-        ApiResponse<TodoStatusChangeResponse> response = todoService.changeStatus(
+        ApiResponse<TodoStatusChangeResponse> response = todoStatusService.changeStatus(
                 TODO_ID, request, USER_ID);
 
         assertThat(response.getData().getStatus()).isEqualTo("IN_PROGRESS");
@@ -109,7 +111,7 @@ class TodoServiceChangeStatusWithLabelTest {
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
-        given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
+        given(todoService.findTodoOrThrow(TODO_ID)).willReturn(todo);
         given(todoStatusLabelService.findActiveById(LABEL_ID)).willReturn(teamLabel);
         willThrow(new BusinessException(TodoErrorCode.LABEL_SCOPE_MISMATCH))
                 .given(todoStatusLabelService).validateLabelForScope(teamLabel,
@@ -117,7 +119,7 @@ class TodoServiceChangeStatusWithLabelTest {
 
         TodoStatusChangeRequest request = new TodoStatusChangeRequest(null, LABEL_ID);
 
-        assertThatThrownBy(() -> todoService.changeStatus(TODO_ID, request, USER_ID))
+        assertThatThrownBy(() -> todoStatusService.changeStatus(TODO_ID, request, USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(TodoErrorCode.LABEL_SCOPE_MISMATCH);
@@ -128,13 +130,13 @@ class TodoServiceChangeStatusWithLabelTest {
     void changeStatus_status_label_bucket不一致() {
         TodoEntity todo = createOpenPersonalTodo();
         TodoStatusLabelEntity label = personalLabel(LABEL_ID, "完了系", TodoStatusBucket.COMPLETED);
-        given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
+        given(todoService.findTodoOrThrow(TODO_ID)).willReturn(todo);
         given(todoStatusLabelService.findActiveById(LABEL_ID)).willReturn(label);
 
         // status=IN_PROGRESS だが label.bucket=COMPLETED → 不一致
         TodoStatusChangeRequest request = new TodoStatusChangeRequest("IN_PROGRESS", LABEL_ID);
 
-        assertThatThrownBy(() -> todoService.changeStatus(TODO_ID, request, USER_ID))
+        assertThatThrownBy(() -> todoStatusService.changeStatus(TODO_ID, request, USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(TodoErrorCode.STATUS_LABEL_BUCKET_MISMATCH);
@@ -144,12 +146,12 @@ class TodoServiceChangeStatusWithLabelTest {
     @DisplayName("正常系: status のみ指定（後方互換）— ラベルは更新しない")
     void changeStatus_後方互換_statusのみ() {
         TodoEntity todo = createOpenPersonalTodo();
-        given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
+        given(todoService.findTodoOrThrow(TODO_ID)).willReturn(todo);
         given(todoRepository.save(any(TodoEntity.class))).willAnswer(inv -> inv.getArgument(0));
 
         TodoStatusChangeRequest request = new TodoStatusChangeRequest("IN_PROGRESS", null);
 
-        ApiResponse<TodoStatusChangeResponse> response = todoService.changeStatus(
+        ApiResponse<TodoStatusChangeResponse> response = todoStatusService.changeStatus(
                 TODO_ID, request, USER_ID);
 
         assertThat(response.getData().getStatus()).isEqualTo("IN_PROGRESS");
