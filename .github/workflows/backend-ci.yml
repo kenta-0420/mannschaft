@@ -69,3 +69,7 @@ jobs:
           name: test-reports-pr-${{ github.event.pull_request.number }}
           path: build/reports/tests/
           retention-days: 7
+
+      # openapi.json の生成は CI ではなくローカルで行う運用とする。
+      # Backend API 変更後: ./gradlew generateOpenApiDocs → docs/openapi.json をコミット
+      # CI では Frontend の drift 検出（frontend-ci.yml）で乖離を検出する。

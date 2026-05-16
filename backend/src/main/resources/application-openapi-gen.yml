@@ -1,0 +1,91 @@
+# openapi-gen プロファイル
+#
+# springdoc-openapi-gradle-plugin の `generateOpenApiDocs` タスクで使用する専用プロファイル。
+# フォークした Spring Boot プロセスが DB・Redis・Flyway 等への接続なしで
+# /v3/api-docs エンドポイントを提供できるように最小限の構成で起動する。
+#
+# 使い方:
+#   ./gradlew generateOpenApiDocs
+#   （build.gradle.kts の customBootRun.args で -Dspring.profiles.active=openapi-gen を渡す）
+#
+spring:
+  # DataSource をインメモリ H2 で差し替え（MySQL 不要）
+  datasource:
+    url: jdbc:h2:mem:openapi;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  # JPA: スキーマ生成・検証を無効化（OpenAPI 生成には DB テーブルが不要なため）
+  # create-drop を使うと Hibernate が全 Entity の CREATE TABLE を H2 で実行しようとして
+  # MySQL 固有の column type（MEDIUMTEXT 等）でエラーになる可能性がある。
+  # none にすれば EntityManagerFactory の初期化が最小限に抑えられ起動が高速化する。
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+    # EntityManager 初期化時の自動バリデーションを無効化
+    defer-datasource-initialization: true
+
+  # Flyway 無効（H2 に対してマイグレーションを走らせない）
+  flyway:
+    enabled: false
+
+  # Redis（Valkey）: OpenAPI 生成時は接続しないためタイムアウトを短縮
+  # lazy-initialization=true で Redis Bean は基本的に起動しないが、念のため timeout を短く設定
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 200ms
+
+  # @Scheduled タスクを無効化（DB 不在で実行されると例外が出るため）
+  task:
+    scheduling:
+      enabled: false
+
+  # Bean を遅延初期化して起動を高速化し、使われない Bean（バッチ等）の初期化エラーを回避
+  main:
+    lazy-initialization: true
+
+# Actuator: health 以外は不要
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+# Spring Security は起動に必要だが、OpenAPI 生成には認証不要なためデフォルト設定で動作させる
+# JWT 秘密鍵ダミー（256bit = 32 文字以上必要）
+mannschaft:
+  jwt:
+    secret: openapi-gen-dummy-secret-key-minimum-256bits-long
+    access-token-expiration: 900
+    refresh-token-expiration: 604800
+  encryption:
+    # 32バイト(AES-256)のダミーキー。OpenAPI生成時は実際の暗号化は行わない。
+    # Base64(bytes(32)) = AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    hmac-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  security:
+    internal-signing-key: openapi-gen-dummy-internal-signing-key-32bytes
+  storage:
+    bucket: dummy-bucket
+    endpoint: ""
+    access-key: ""
+    secret-key: ""
+  jobs:
+    qr:
+      ttl-seconds: 60
+      ttl-seconds-max: 300
+      rotation-advance-seconds: 5
+      short-code-length: 6
+      signing-keys:
+        - kid: v1
+          secret: openapi-gen-dummy-qr-signing-key-32bytes-xxxx
+          active: true
