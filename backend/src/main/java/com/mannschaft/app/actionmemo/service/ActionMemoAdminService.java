@@ -17,6 +17,7 @@ import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.entity.TodoEntity;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import com.mannschaft.app.todo.service.TodoService;
+import com.mannschaft.app.todo.service.TodoStatusService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -50,6 +51,7 @@ public class ActionMemoAdminService {
     private final ActionMemoTagLinkRepository tagLinkRepository;
     private final TodoRepository todoRepository;
     private final TodoService todoService;
+    private final TodoStatusService todoStatusService;
     private final UserRoleRepository userRoleRepository;
     private final AuditLogService auditLogService;
 
@@ -88,7 +90,7 @@ public class ActionMemoAdminService {
         // TODO を OPEN に戻す（memo 所有者のIDで操作—TodoService の権限チェックをバイパスするため直接変更）
         TodoEntity todo = todoRepository.findByIdAndDeletedAtIsNull(todoId).orElse(null);
         if (todo != null && com.mannschaft.app.todo.TodoStatus.OPEN != todo.getStatus()) {
-            todoService.changeStatus(todoId, new TodoStatusChangeRequest("OPEN", null), memo.getUserId());
+            todoStatusService.changeStatus(todoId, new TodoStatusChangeRequest("OPEN", null), memo.getUserId());
         }
 
         // 監査ログ
