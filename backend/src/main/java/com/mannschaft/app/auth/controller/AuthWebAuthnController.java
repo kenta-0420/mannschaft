@@ -7,6 +7,9 @@ import com.mannschaft.app.auth.dto.UpdateWebAuthnCredentialRequest;
 import com.mannschaft.app.auth.dto.WebAuthnCredentialResponse;
 import com.mannschaft.app.auth.dto.WebAuthnLoginBeginResponse;
 import com.mannschaft.app.auth.dto.WebAuthnLoginCompleteRequest;
+import com.mannschaft.app.auth.dto.WebAuthnReauthenticateBeginResponse;
+import com.mannschaft.app.auth.dto.WebAuthnReauthenticateCompleteRequest;
+import com.mannschaft.app.auth.dto.WebAuthnReauthenticateCompleteResponse;
 import com.mannschaft.app.auth.dto.WebAuthnRegisterBeginResponse;
 import com.mannschaft.app.auth.dto.WebAuthnRegisterCompleteRequest;
 import com.mannschaft.app.common.ApiResponse;
@@ -93,6 +96,36 @@ public class AuthWebAuthnController {
         String ipAddress = com.mannschaft.app.common.IpAddressUtils.getClientIp(request);
         String userAgent = request.getHeader("User-Agent");
         return ResponseEntity.ok(authWebAuthnService.completeLogin(req, ipAddress, userAgent));
+    }
+
+    /**
+     * F18 提示モード追加保護: WebAuthn 再認証開始（設計書 §9.6 / POINT_CARD_009）。
+     *
+     * <p>認証済みユーザー本人を対象に再認証用チャレンジを発行する。
+     * AT/RT は発行されない。完了 API がフラグだけを 5 分 TTL で記録する。
+     * レート制限は {@link com.mannschaft.app.auth.AuthWebAuthnReauthRateLimitFilter} で 10/分。
+     */
+    @PostMapping("/reauthenticate-begin")
+    @Operation(summary = "WebAuthn 再認証開始（提示モード追加保護用）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "チャレンジ生成成功")
+    public ResponseEntity<ApiResponse<WebAuthnReauthenticateBeginResponse>> beginReauthenticate() {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(authWebAuthnService.beginReauthenticate(userId));
+    }
+
+    /**
+     * F18 提示モード追加保護: WebAuthn 再認証完了（設計書 §9.6 / POINT_CARD_009）。
+     *
+     * <p>署名検証 + sign_count 増分検証 + 「再認証済みフラグ」を 5 分 TTL で記録。
+     * <strong>AT/RT は再発行しない</strong>。提示モード開始 API が本フラグを 1 回限りで消費する。
+     */
+    @PostMapping("/reauthenticate-complete")
+    @Operation(summary = "WebAuthn 再認証完了（提示モード追加保護用）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再認証成功")
+    public ResponseEntity<ApiResponse<WebAuthnReauthenticateCompleteResponse>> completeReauthenticate(
+            @Valid @RequestBody WebAuthnReauthenticateCompleteRequest req) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(authWebAuthnService.completeReauthenticate(userId, req));
     }
 
     /**
