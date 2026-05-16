@@ -22,10 +22,13 @@
  * <p>{@code orgId} は ref から取り出すクロージャを引数に受け取る（route.params 変化に追随する目的）。
  */
 import type {
+  BalanceEventRequest,
+  BalanceEventResponse,
   CreateOrgProviderRequest,
   CustomerQrResponse,
   OrgPointCardProvider,
   PageResponse,
+  ResolveTokenResponse,
   StampEventResponse,
   StampRequest,
   UpdateOrgProviderRequest,
@@ -143,6 +146,70 @@ export function useOrgWalletApi(orgId: () => number) {
     return res.data
   }
 
+  // ─────────────────────────────────────────────
+  // Phase 3 — 一時トークン resolve + 残高型（CHARGE/SPENT/REFUND）
+  // ─────────────────────────────────────────────
+
+  /**
+   * 顧客が発行した 5 分 TTL 一時トークンを resolve して cardId を特定する。
+   *
+   * <p>Valkey から GETDEL で 1 回限り消費。期限切れ・使用済・不存在は全て
+   * 404 + {@code POINT_CARD_019 TOKEN_NOT_FOUND} に統一される（情報漏洩防止）。
+   */
+  async function resolveByToken(token: string): Promise<ResolveTokenResponse> {
+    const res = await api<{ data: ResolveTokenResponse }>(
+      `${base()}/resolve-by-token`,
+      { method: 'POST', body: { token } },
+    )
+    return res.data
+  }
+
+  /**
+   * 残高変動イベントを記録する（CHARGE / SPENT / REFUND）。
+   *
+   * <p>{@code operationType} で分岐し、内部で監査ログ
+   * {@code POINT_CARD_BALANCE_CHARGED/SPENT/REFUNDED} が記録される。
+   * {@code amount} は常に正の値で渡す（SPENT は Service 層で負に変換）。
+   *
+   * <p>主なエラー:
+   * <ul>
+   *   <li>POINT_CARD_017 — 残高不足（SPENT）</li>
+   *   <li>POINT_CARD_018 — 残高上限超過（CHARGE）</li>
+   *   <li>POINT_CARD_020 — 累計返金額超過（REFUND）</li>
+   * </ul>
+   */
+  async function recordBalanceEvent(
+    cardId: string,
+    body: BalanceEventRequest,
+  ): Promise<BalanceEventResponse> {
+    const res = await api<{ data: BalanceEventResponse }>(
+      `${base()}/${cardId}/balance-events`,
+      { method: 'POST', body },
+    )
+    return res.data
+  }
+
+  /**
+   * 組織内の残高変動履歴を取得する（新着順、Pageable）。
+   *
+   * <p>このエンドポイントは ApiResponse でラップせず Spring Data {@code Page<T>} を直接返す。
+   */
+  async function listOrgBalanceEvents(
+    params?: { providerId?: string; page?: number; size?: number },
+  ): Promise<PageResponse<BalanceEventResponse>> {
+    return await api<PageResponse<BalanceEventResponse>>(`${base()}/balance-events`, {
+      params,
+    })
+  }
+
+  /** 単一カードの残高変動履歴を取得する（新着順）。 */
+  async function listCardBalanceEvents(cardId: string): Promise<BalanceEventResponse[]> {
+    const res = await api<{ data: BalanceEventResponse[] }>(
+      `${base()}/${cardId}/balance-events`,
+    )
+    return res.data
+  }
+
   return {
     listProviders,
     getProvider,
@@ -153,5 +220,9 @@ export function useOrgWalletApi(orgId: () => number) {
     stamp,
     listOrgStamps,
     listCardStamps,
+    resolveByToken,
+    recordBalanceEvent,
+    listOrgBalanceEvents,
+    listCardBalanceEvents,
   }
 }

@@ -1,21 +1,27 @@
 <script setup lang="ts">
 /**
- * F18 Phase 2 — 店主スタンプ押印画面（最重要 UC-9）。
+ * F18 Phase 3 第三陣 3B — 店主スタンプ・残高操作画面（UC-9 拡張）。
  *
- * <p>設計書: docs/features/F18_point_card_wallet.md §3.3 UC-9 / §8 UI/UX / §12.2
+ * <p>設計書: docs/features/F18_point_card_wallet.md §3.3 UC-9 / §8 UI/UX / §12.1 / §16
  *
- * <p>Phase 2 MVP の制約: バックエンドに「barcode_value → card_id を引く API」が無いため、
- * 押印フローは以下の MVP 設計とする:
+ * <p>Phase 3 ではカード特定方法を 2 モード化し、SELF_ISSUED_BALANCE 型に対応する:
  * <ol>
- *   <li>店主がプロバイダーを選ぶ</li>
- *   <li>カード ID（UUID）を直接入力（顧客側で `/wallet/cards/[id]` URL から取得）</li>
- *   <li>delta を選び（+1 / +2 / -1 / 任意）、メモを任意で入力</li>
- *   <li>押印を確定 → トースト + 直近 3 件履歴を表示</li>
+ *   <li>QR 読取モード — 顧客の一時トークン QR をカメラで読み、{@code resolveByToken} で
+ *       cardId を特定する。GETDEL で 1 回限り消費される（再生防止）。</li>
+ *   <li>カード ID 直接入力モード — UUID をテキスト入力（Phase 2 の MVP 動線を残す）。</li>
  * </ol>
- * Phase 3 で「QR からカード ID を直接読み取る」フローを整備する旨を注意書きとして提示する。
+ *
+ * <p>カード解決後、{@code providerType} に応じて操作タブを切替える:
+ * <ul>
+ *   <li>SELF_ISSUED_STAMP — 押印タブ（既存 +1/+2/-1）</li>
+ *   <li>SELF_ISSUED_BALANCE — チャージ / 利用 / 返金の 3 タブ</li>
+ *   <li>EXTERNAL — 店主側操作は不可（カード追加用 QR とは異なる経路）</li>
+ * </ul>
  */
-import type { OrgPointCardProvider, StampEventResponse } from '~/types/orgPointCard'
 import type { FetchError } from 'ofetch'
+import type { BalanceEventResponse, OrgPointCardProvider, ResolveTokenResponse, StampEventResponse } from '~/types/orgPointCard'
+import type { BarcodeFormat } from '~/types/pointCard'
+import { useToast } from 'primevue/usetoast'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
@@ -36,52 +42,39 @@ const canAccess = computed(() =>
   || myOrg.value?.role === 'DEPUTY_ADMIN',
 )
 
-// ─── 状態 ────────────────────────────────────────────────────
-const providers = ref<OrgPointCardProvider[]>([])
-const providersLoading = ref(false)
-const selectedProviderId = ref<string | null>(null)
-
 // UUID 形式（簡易判定: 8-4-4-4-12）
 const UUID_PATTERN = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+
+// ─── カード特定モード ────────────────────────────────────────
+type ResolveMode = 'qr' | 'manual'
+const resolveMode = ref<ResolveMode>('qr')
+
 const cardIdInput = ref('')
-const delta = ref<number>(1)
-const memo = ref('')
+const manualError = ref<string | null>(null)
 
-const submitting = ref(false)
-const submitError = ref<string | null>(null)
+const resolvedCard = ref<ResolveTokenResponse | null>(null)
+const resolving = ref(false)
 
-// 直近押印履歴
+// ─── 操作タブ（カード解決後に切替） ──────────────────────────
+type OpTab = 'stamp' | 'charge' | 'spent' | 'refund'
+const opTab = ref<OpTab>('stamp')
+
+// プロバイダー（手動入力モードで参照する場合のみ使用）
+const providers = ref<OrgPointCardProvider[]>([])
+
+// ─── スタンプタブ（既存ロジック） ───────────────────────────
+const stampDelta = ref<number>(1)
+const stampMemo = ref('')
+const stampSubmitting = ref(false)
+const stampError = ref<string | null>(null)
 const recentStamps = ref<StampEventResponse[]>([])
 
+// ─── 初期化 ──────────────────────────────────────────────────
 async function fetchProviders() {
-  providersLoading.value = true
   try {
     providers.value = await api.listProviders(true)
-    // 最初の SELF_ISSUED_STAMP を初期選択
-    const first = providers.value.find(p => p.type === 'SELF_ISSUED_STAMP')
-    if (first) selectedProviderId.value = first.id
   } catch (e) {
     console.error('[stamp] listProviders failed', e)
-  } finally {
-    providersLoading.value = false
-  }
-}
-
-async function fetchRecent() {
-  if (!selectedProviderId.value) {
-    recentStamps.value = []
-    return
-  }
-  try {
-    const page = await api.listOrgStamps({
-      providerId: selectedProviderId.value,
-      page: 0,
-      size: 3,
-    })
-    recentStamps.value = page.content
-  } catch (e) {
-    console.error('[stamp] listOrgStamps failed', e)
-    recentStamps.value = []
   }
 }
 
@@ -91,61 +84,138 @@ onMounted(async () => {
   }
   if (canAccess.value) {
     await fetchProviders()
-    await fetchRecent()
   }
 })
 
-watch(selectedProviderId, () => {
-  void fetchRecent()
-})
+// ─── QR 読取モード ───────────────────────────────────────────
+/**
+ * BarcodeCapture から受け取った値からトークンを抽出して resolve する。
+ * 顧客側 share QR の形式:
+ *   - mannschaft://wallet/share?token=UUID
+ *   - https://<host>/wallet/share?token=UUID（PWA フォールバック）
+ * 純粋な UUID 文字列が来た場合は token そのものとして扱う。
+ */
+async function onQrDetected(value: string, _format: BarcodeFormat) {
+  const token = extractToken(value)
+  if (!token) {
+    toast.add({
+      severity: 'error',
+      summary: t('wallet.admin.stamp.token_invalid'),
+      life: 5000,
+    })
+    return
+  }
+  await resolveToken(token)
+}
 
-// ─── バリデーション ──────────────────────────────────────────
-const cardIdError = computed(() => {
-  if (!cardIdInput.value.trim()) return null
-  if (!UUID_PATTERN.test(cardIdInput.value.trim())) {
-    return t('wallet.admin.stamp.card_id_invalid')
+function extractToken(qrValue: string): string | null {
+  const raw = qrValue.trim()
+  if (!raw) return null
+
+  // 純 UUID 形式
+  if (UUID_PATTERN.test(raw)) return raw
+
+  // URL 系（mannschaft:// は WHATWG URL がパースできないため https:// に置換）
+  try {
+    const normalized = raw.startsWith('mannschaft://')
+      ? raw.replace('mannschaft://', 'https://app.local/')
+      : raw
+    const url = new URL(normalized)
+    const token = url.searchParams.get('token')
+    if (token && UUID_PATTERN.test(token)) return token
+  } catch {
+    // パース失敗 → 不正な QR
   }
   return null
-})
+}
 
-const canSubmit = computed(() =>
-  !submitting.value
-  && !!selectedProviderId.value
-  && UUID_PATTERN.test(cardIdInput.value.trim())
-  && delta.value !== 0
-  && delta.value >= -100
-  && delta.value <= 100,
-)
-
-// ─── 押印 ────────────────────────────────────────────────────
-async function pressStamp() {
-  if (!canSubmit.value) return
-  submitting.value = true
-  submitError.value = null
+async function resolveToken(token: string) {
+  resolving.value = true
   try {
-    const event = await api.stamp(cardIdInput.value.trim(), {
-      delta: delta.value,
-      memo: memo.value.trim() || undefined,
-    })
-    toast.add({
-      severity: 'success',
-      summary: t('wallet.admin.stamp.press_success', { count: event.delta }),
-      life: 3000,
-    })
-    // フォームリセット（プロバイダー選択は残す）
-    cardIdInput.value = ''
-    delta.value = 1
-    memo.value = ''
-    await fetchRecent()
+    const res = await api.resolveByToken(token)
+    resolvedCard.value = res
+    // 操作タブの初期値
+    opTab.value = res.providerType === 'SELF_ISSUED_BALANCE' ? 'charge' : 'stamp'
+    await fetchRecentStamps()
   } catch (e) {
     const fe = e as FetchError<{ errorCode?: string; message?: string }>
     const code = fe.data?.errorCode
-    const msg = errorCodeMessage(code) ?? fe.data?.message ?? t('wallet.admin.errors.save_failed')
-    submitError.value = msg
+    const msg = code === 'POINT_CARD_019'
+      ? t('wallet.admin.stamp.token_invalid')
+      : fe.data?.message ?? t('wallet.admin.stamp.card_not_found')
     toast.add({ severity: 'error', summary: msg, life: 5000 })
-    console.error('[stamp] press failed', e)
+    console.error('[stamp] resolveByToken failed', e)
   } finally {
-    submitting.value = false
+    resolving.value = false
+  }
+}
+
+// ─── 手動カード ID 入力モード ──────────────────────────────
+/**
+ * 手動入力時はトークン経由ではなく直接 cardId をフォームに使う。
+ * resolve API を経由しないため providerType が分からない → カード一覧から
+ * 推測することはできない。Phase 2 互換動線として STAMP 用前提とする。
+ *
+ * バックエンドのスタンプ API は対象カードの provider 整合性を検証するため、
+ * 不適切な型のカードに対しては POINT_CARD_013 で根治される。
+ * 残高操作は cardId 直入力モードでは行わない（resolve 経由のみとする）。
+ */
+function applyManualCardId() {
+  manualError.value = null
+  const v = cardIdInput.value.trim()
+  if (!UUID_PATTERN.test(v)) {
+    manualError.value = t('wallet.admin.stamp.card_id_invalid')
+    return
+  }
+  // 手動入力では type 不明のため STAMP 型として擬似的に解決する。
+  // 残高操作タブは表示しない（resolvedCard.providerType を STAMP として扱う）。
+  resolvedCard.value = {
+    cardId: v,
+    providerId: '',
+    providerDisplayName: t('wallet.admin.stamp.manual_resolved_label'),
+    providerType: 'SELF_ISSUED_STAMP',
+    last4: null,
+    currentStampCount: null,
+    currentBalance: null,
+  }
+  opTab.value = 'stamp'
+  void fetchRecentStamps()
+}
+
+function clearResolved() {
+  resolvedCard.value = null
+  cardIdInput.value = ''
+  manualError.value = null
+  recentStamps.value = []
+  stampDelta.value = 1
+  stampMemo.value = ''
+  stampError.value = null
+}
+
+// ─── 押印（既存ロジックを cardId 解決後に呼ぶ形へ） ──────────
+const canSubmitStamp = computed(() =>
+  !stampSubmitting.value
+  && !!resolvedCard.value
+  && stampDelta.value !== 0
+  && stampDelta.value >= -100
+  && stampDelta.value <= 100,
+)
+
+function quickDelta(v: number) {
+  stampDelta.value = v
+}
+
+async function fetchRecentStamps() {
+  if (!resolvedCard.value) {
+    recentStamps.value = []
+    return
+  }
+  try {
+    const list = await api.listCardStamps(resolvedCard.value.cardId)
+    recentStamps.value = list.slice(0, 3)
+  } catch (e) {
+    console.error('[stamp] listCardStamps failed', e)
+    recentStamps.value = []
   }
 }
 
@@ -161,9 +231,57 @@ function errorCodeMessage(code: string | undefined): string | null {
   }
 }
 
-function quickDelta(v: number) {
-  delta.value = v
+async function pressStamp() {
+  if (!canSubmitStamp.value || !resolvedCard.value) return
+  stampSubmitting.value = true
+  stampError.value = null
+  try {
+    const event = await api.stamp(resolvedCard.value.cardId, {
+      delta: stampDelta.value,
+      memo: stampMemo.value.trim() || undefined,
+    })
+    toast.add({
+      severity: 'success',
+      summary: t('wallet.admin.stamp.press_success', { count: event.delta }),
+      life: 3000,
+    })
+    stampDelta.value = 1
+    stampMemo.value = ''
+    // resolve 経由なら currentStampCount を更新（QR モード用）
+    if (resolvedCard.value.currentStampCount !== null) {
+      resolvedCard.value = {
+        ...resolvedCard.value,
+        currentStampCount: (resolvedCard.value.currentStampCount ?? 0) + event.delta,
+      }
+    }
+    await fetchRecentStamps()
+  } catch (e) {
+    const fe = e as FetchError<{ errorCode?: string; message?: string }>
+    const code = fe.data?.errorCode
+    const msg = errorCodeMessage(code) ?? fe.data?.message ?? t('wallet.admin.errors.save_failed')
+    stampError.value = msg
+    toast.add({ severity: 'error', summary: msg, life: 5000 })
+    console.error('[stamp] press failed', e)
+  } finally {
+    stampSubmitting.value = false
+  }
 }
+
+// ─── 残高操作完了時のカード状態再計算 ───────────────────────
+function onBalanceDone(event: BalanceEventResponse) {
+  if (!resolvedCard.value) return
+  // balanceAfter で resolvedCard を更新（再 resolve しない = トークンは消費済のため）
+  resolvedCard.value = {
+    ...resolvedCard.value,
+    currentBalance: event.balanceAfter,
+  }
+}
+
+const currentBalanceNum = computed(() => {
+  if (!resolvedCard.value?.currentBalance) return 0
+  const n = parseFloat(resolvedCard.value.currentBalance)
+  return Number.isNaN(n) ? 0 : n
+})
 </script>
 
 <template>
@@ -190,176 +308,289 @@ function quickDelta(v: number) {
         </h1>
       </header>
 
-      <!-- Phase 3 注意書き -->
-      <div class="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
-        <p class="font-medium">
-          {{ t('wallet.admin.stamp.phase3_note_title') }}
-        </p>
-        <p class="mt-1">
-          {{ t('wallet.admin.stamp.phase3_note') }}
-        </p>
-      </div>
+      <!-- 1. カード特定セクション -->
+      <section
+        v-if="!resolvedCard"
+        class="space-y-3 rounded-lg border border-surface-200 bg-white p-4 shadow-sm dark:border-surface-700 dark:bg-surface-900"
+      >
+        <h2 class="text-base font-semibold">
+          {{ t('wallet.admin.stamp.resolve_title') }}
+        </h2>
 
-      <div class="grid gap-4 lg:grid-cols-2">
-        <!-- 左: 押印フォーム -->
-        <section class="space-y-4 rounded-lg border border-surface-200 bg-white p-4 shadow-sm dark:border-surface-700 dark:bg-surface-900">
-          <!-- プロバイダー選択 -->
-          <div>
-            <label for="stamp-provider" class="mb-1 block text-sm font-medium">
-              {{ t('wallet.admin.stamp.select_provider') }}
-              <span class="text-red-500">*</span>
-            </label>
-            <select
-              id="stamp-provider"
-              v-model="selectedProviderId"
-              class="w-full rounded border border-surface-300 px-3 py-2 dark:border-surface-600 dark:bg-surface-800"
-              :disabled="providersLoading"
-            >
-              <option v-if="providersLoading" value="">
-                {{ t('wallet.admin.providers.loading') }}
-              </option>
-              <option v-else-if="providers.length === 0" value="">
-                {{ t('wallet.admin.providers.empty') }}
-              </option>
-              <option
-                v-for="p in providers"
-                :key="p.id"
-                :value="p.id"
-                :disabled="p.type !== 'SELF_ISSUED_STAMP'"
-              >
-                {{ p.displayName }} ({{ p.code }})
-              </option>
-            </select>
-          </div>
-
-          <!-- カード ID 入力 -->
-          <div>
-            <label for="stamp-card-id" class="mb-1 block text-sm font-medium">
-              {{ t('wallet.admin.stamp.card_id_input') }}
-              <span class="text-red-500">*</span>
-            </label>
-            <input
-              id="stamp-card-id"
-              v-model="cardIdInput"
-              type="text"
-              class="w-full rounded border border-surface-300 px-3 py-2 font-mono text-sm dark:border-surface-600 dark:bg-surface-800"
-              placeholder="00000000-0000-0000-0000-000000000000"
-              :aria-invalid="!!cardIdError"
-              autocomplete="off"
-            >
-            <p class="mt-1 text-xs text-surface-500">
-              {{ t('wallet.admin.stamp.card_id_hint') }}
-            </p>
-            <p v-if="cardIdError" class="mt-1 text-xs text-red-600" role="alert">
-              {{ cardIdError }}
-            </p>
-          </div>
-
-          <!-- カメラ占有 UI（Phase 3 で本格対応） -->
-          <details class="rounded border border-dashed border-surface-300 p-3 dark:border-surface-600">
-            <summary class="cursor-pointer text-sm font-medium">
-              {{ t('wallet.admin.stamp.scanner_unavailable_title') }}
-            </summary>
-            <p class="mt-2 text-xs text-surface-600 dark:text-surface-400">
-              {{ t('wallet.admin.stamp.scanner_unavailable_body') }}
-            </p>
-          </details>
-
-          <!-- delta -->
-          <div>
-            <label for="stamp-delta" class="mb-1 block text-sm font-medium">
-              {{ t('wallet.admin.stamp.delta_label') }}
-            </label>
-            <div class="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                class="rounded border border-surface-300 px-3 py-2 text-sm font-medium hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-800"
-                :class="{ 'bg-primary-600 text-white border-primary-600 hover:bg-primary-700': delta === 1 }"
-                @click="quickDelta(1)"
-              >
-                {{ t('wallet.admin.stamp.delta_plus_one') }}
-              </button>
-              <button
-                type="button"
-                class="rounded border border-surface-300 px-3 py-2 text-sm font-medium hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-800"
-                :class="{ 'bg-primary-600 text-white border-primary-600 hover:bg-primary-700': delta === 2 }"
-                @click="quickDelta(2)"
-              >
-                +2
-              </button>
-              <button
-                type="button"
-                class="rounded border border-surface-300 px-3 py-2 text-sm font-medium hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-800"
-                :class="{ 'bg-primary-600 text-white border-primary-600 hover:bg-primary-700': delta === -1 }"
-                @click="quickDelta(-1)"
-              >
-                -1
-              </button>
-              <input
-                id="stamp-delta"
-                v-model.number="delta"
-                type="number"
-                class="w-24 rounded border border-surface-300 px-3 py-2 dark:border-surface-600 dark:bg-surface-800"
-                min="-100"
-                max="100"
-              >
-            </div>
-            <p v-if="delta === 0" class="mt-1 text-xs text-red-600" role="alert">
-              {{ t('wallet.admin.stamp.error_delta_zero') }}
-            </p>
-          </div>
-
-          <!-- メモ -->
-          <div>
-            <label for="stamp-memo" class="mb-1 block text-sm font-medium">
-              {{ t('wallet.admin.stamp.memo') }}
-            </label>
-            <input
-              id="stamp-memo"
-              v-model="memo"
-              type="text"
-              class="w-full rounded border border-surface-300 px-3 py-2 dark:border-surface-600 dark:bg-surface-800"
-              maxlength="200"
-              :placeholder="t('wallet.admin.stamp.memo_placeholder')"
-            >
-          </div>
-
-          <!-- エラー表示 -->
-          <div
-            v-if="submitError"
-            class="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-950 dark:text-red-300"
-            role="alert"
-          >
-            {{ submitError }}
-          </div>
-
-          <!-- 押印ボタン -->
+        <!-- モード切替 -->
+        <div class="flex gap-2" role="tablist">
           <button
             type="button"
-            class="w-full rounded bg-primary-600 px-4 py-3 text-base font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
-            :disabled="!canSubmit"
-            @click="pressStamp"
+            role="tab"
+            :aria-selected="resolveMode === 'qr'"
+            class="rounded border border-surface-300 px-3 py-1.5 text-sm dark:border-surface-600"
+            :class="{ 'bg-primary-600 text-white border-primary-600': resolveMode === 'qr' }"
+            @click="resolveMode = 'qr'"
           >
-            {{ submitting ? t('wallet.admin.stamp.pressing') : t('wallet.admin.stamp.press') }}
+            {{ t('wallet.admin.stamp.resolve_qr') }}
           </button>
-        </section>
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="resolveMode === 'manual'"
+            class="rounded border border-surface-300 px-3 py-1.5 text-sm dark:border-surface-600"
+            :class="{ 'bg-primary-600 text-white border-primary-600': resolveMode === 'manual' }"
+            @click="resolveMode = 'manual'"
+          >
+            {{ t('wallet.admin.stamp.resolve_manual') }}
+          </button>
+        </div>
 
-        <!-- 右: 直近 3 件履歴 -->
-        <section class="space-y-3 rounded-lg border border-surface-200 bg-white p-4 shadow-sm dark:border-surface-700 dark:bg-surface-900">
-          <div class="flex items-center justify-between">
-            <h2 class="text-sm font-semibold">
-              {{ t('wallet.admin.stamp.recent') }}
-            </h2>
-            <NuxtLink
-              :to="`/organizations/${orgId}/admin/point-cards/history`"
-              class="text-xs text-primary-600 hover:underline dark:text-primary-400"
+        <!-- QR モード -->
+        <div v-if="resolveMode === 'qr'">
+          <p class="mb-2 text-xs text-surface-600 dark:text-surface-400">
+            {{ t('wallet.admin.stamp.resolve_qr_hint') }}
+          </p>
+          <BarcodeCapture @detected="onQrDetected" />
+          <p v-if="resolving" class="mt-2 text-sm text-surface-600">
+            {{ t('wallet.admin.stamp.resolving') }}
+          </p>
+        </div>
+
+        <!-- 手動モード -->
+        <div v-else class="space-y-2">
+          <label for="manual-card-id" class="block text-sm font-medium">
+            {{ t('wallet.admin.stamp.card_id_input') }}
+            <span class="text-red-500">*</span>
+          </label>
+          <input
+            id="manual-card-id"
+            v-model="cardIdInput"
+            type="text"
+            class="w-full rounded border border-surface-300 px-3 py-2 font-mono text-sm dark:border-surface-600 dark:bg-surface-800"
+            placeholder="00000000-0000-0000-0000-000000000000"
+            autocomplete="off"
+            @keyup.enter="applyManualCardId"
+          >
+          <p class="text-xs text-surface-500">
+            {{ t('wallet.admin.stamp.card_id_hint') }}
+          </p>
+          <p v-if="manualError" class="text-xs text-red-600" role="alert">
+            {{ manualError }}
+          </p>
+          <button
+            type="button"
+            class="rounded bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700"
+            @click="applyManualCardId"
+          >
+            {{ t('wallet.admin.stamp.manual_apply') }}
+          </button>
+        </div>
+      </section>
+
+      <!-- 2. カード解決済み表示 + 操作タブ -->
+      <section
+        v-if="resolvedCard"
+        class="space-y-4 rounded-lg border border-surface-200 bg-white p-4 shadow-sm dark:border-surface-700 dark:bg-surface-900"
+      >
+        <!-- 解決済みカード情報 -->
+        <div class="flex flex-wrap items-start justify-between gap-2">
+          <div class="space-y-1">
+            <div class="text-sm text-surface-600 dark:text-surface-400">
+              {{ t('wallet.admin.stamp.resolved_label') }}
+            </div>
+            <div class="text-lg font-semibold">
+              {{ resolvedCard.providerDisplayName }}
+            </div>
+            <div v-if="resolvedCard.last4" class="text-sm font-mono">
+              {{ t('wallet.admin.stamp.last4_label') }}: ●●●● {{ resolvedCard.last4 }}
+            </div>
+            <div
+              v-if="resolvedCard.providerType === 'SELF_ISSUED_STAMP' && resolvedCard.currentStampCount !== null"
+              class="text-sm"
             >
-              {{ t('wallet.admin.stamp.view_all') }} &rarr;
-            </NuxtLink>
+              {{ t('wallet.admin.stamp.current_stamp') }}:
+              <span class="font-mono font-semibold">{{ resolvedCard.currentStampCount }}</span>
+            </div>
+            <div
+              v-if="resolvedCard.providerType === 'SELF_ISSUED_BALANCE'"
+              class="text-sm"
+            >
+              {{ t('wallet.admin.balance.current_balance') }}:
+              <span class="font-mono font-semibold">¥{{ currentBalanceNum.toLocaleString() }}</span>
+            </div>
           </div>
-          <StampHistoryTable :stamps="recentStamps" />
-        </section>
-      </div>
+          <button
+            type="button"
+            class="rounded border border-surface-300 px-3 py-1.5 text-sm hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-800"
+            @click="clearResolved"
+          >
+            {{ t('wallet.admin.stamp.resolve_again') }}
+          </button>
+        </div>
+
+        <!-- EXTERNAL は店主側操作不可 -->
+        <div
+          v-if="resolvedCard.providerType === 'EXTERNAL'"
+          class="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+        >
+          {{ t('wallet.admin.stamp.external_unsupported') }}
+        </div>
+
+        <!-- 操作タブ -->
+        <div v-else>
+          <div class="mb-3 flex flex-wrap gap-2 border-b border-surface-200 pb-2 dark:border-surface-700" role="tablist">
+            <button
+              v-if="resolvedCard.providerType === 'SELF_ISSUED_STAMP'"
+              type="button"
+              role="tab"
+              :aria-selected="opTab === 'stamp'"
+              class="rounded px-3 py-1.5 text-sm font-medium"
+              :class="opTab === 'stamp' ? 'bg-primary-600 text-white' : 'border border-surface-300 dark:border-surface-600'"
+              @click="opTab = 'stamp'"
+            >
+              {{ t('wallet.admin.stamp.tab_stamp') }}
+            </button>
+            <template v-if="resolvedCard.providerType === 'SELF_ISSUED_BALANCE'">
+              <button
+                type="button"
+                role="tab"
+                :aria-selected="opTab === 'charge'"
+                class="rounded px-3 py-1.5 text-sm font-medium"
+                :class="opTab === 'charge' ? 'bg-primary-600 text-white' : 'border border-surface-300 dark:border-surface-600'"
+                @click="opTab = 'charge'"
+              >
+                {{ t('wallet.admin.balance.tab_charge') }}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                :aria-selected="opTab === 'spent'"
+                class="rounded px-3 py-1.5 text-sm font-medium"
+                :class="opTab === 'spent' ? 'bg-primary-600 text-white' : 'border border-surface-300 dark:border-surface-600'"
+                @click="opTab = 'spent'"
+              >
+                {{ t('wallet.admin.balance.tab_spent') }}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                :aria-selected="opTab === 'refund'"
+                class="rounded px-3 py-1.5 text-sm font-medium"
+                :class="opTab === 'refund' ? 'bg-primary-600 text-white' : 'border border-surface-300 dark:border-surface-600'"
+                @click="opTab = 'refund'"
+              >
+                {{ t('wallet.admin.balance.tab_refund') }}
+              </button>
+            </template>
+          </div>
+
+          <!-- スタンプ押印タブ -->
+          <div v-if="opTab === 'stamp'" class="space-y-4">
+            <div>
+              <label for="stamp-delta" class="mb-1 block text-sm font-medium">
+                {{ t('wallet.admin.stamp.delta_label') }}
+              </label>
+              <div class="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  class="rounded border border-surface-300 px-3 py-2 text-sm font-medium hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-800"
+                  :class="{ 'bg-primary-600 text-white border-primary-600 hover:bg-primary-700': stampDelta === 1 }"
+                  @click="quickDelta(1)"
+                >
+                  {{ t('wallet.admin.stamp.delta_plus_one') }}
+                </button>
+                <button
+                  type="button"
+                  class="rounded border border-surface-300 px-3 py-2 text-sm font-medium hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-800"
+                  :class="{ 'bg-primary-600 text-white border-primary-600 hover:bg-primary-700': stampDelta === 2 }"
+                  @click="quickDelta(2)"
+                >
+                  +2
+                </button>
+                <button
+                  type="button"
+                  class="rounded border border-surface-300 px-3 py-2 text-sm font-medium hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-800"
+                  :class="{ 'bg-primary-600 text-white border-primary-600 hover:bg-primary-700': stampDelta === -1 }"
+                  @click="quickDelta(-1)"
+                >
+                  -1
+                </button>
+                <input
+                  id="stamp-delta"
+                  v-model.number="stampDelta"
+                  type="number"
+                  class="w-24 rounded border border-surface-300 px-3 py-2 dark:border-surface-600 dark:bg-surface-800"
+                  min="-100"
+                  max="100"
+                >
+              </div>
+              <p v-if="stampDelta === 0" class="mt-1 text-xs text-red-600" role="alert">
+                {{ t('wallet.admin.stamp.error_delta_zero') }}
+              </p>
+            </div>
+
+            <div>
+              <label for="stamp-memo" class="mb-1 block text-sm font-medium">
+                {{ t('wallet.admin.stamp.memo') }}
+              </label>
+              <input
+                id="stamp-memo"
+                v-model="stampMemo"
+                type="text"
+                class="w-full rounded border border-surface-300 px-3 py-2 dark:border-surface-600 dark:bg-surface-800"
+                maxlength="200"
+                :placeholder="t('wallet.admin.stamp.memo_placeholder')"
+              >
+            </div>
+
+            <div
+              v-if="stampError"
+              class="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-950 dark:text-red-300"
+              role="alert"
+            >
+              {{ stampError }}
+            </div>
+
+            <button
+              type="button"
+              class="w-full rounded bg-primary-600 px-4 py-3 text-base font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+              :disabled="!canSubmitStamp"
+              @click="pressStamp"
+            >
+              {{ stampSubmitting ? t('wallet.admin.stamp.pressing') : t('wallet.admin.stamp.press') }}
+            </button>
+
+            <!-- 直近押印履歴 -->
+            <div v-if="recentStamps.length > 0" class="mt-4 border-t border-surface-200 pt-3 dark:border-surface-700">
+              <h3 class="mb-2 text-sm font-semibold">
+                {{ t('wallet.admin.stamp.recent') }}
+              </h3>
+              <StampHistoryTable :stamps="recentStamps" />
+            </div>
+          </div>
+
+          <!-- チャージ -->
+          <BalanceChargeTabPanel
+            v-else-if="opTab === 'charge' && resolvedCard.providerType === 'SELF_ISSUED_BALANCE'"
+            :card-id="resolvedCard.cardId"
+            :org-id="orgId"
+            @done="onBalanceDone"
+          />
+
+          <!-- 利用 -->
+          <BalanceSpendTabPanel
+            v-else-if="opTab === 'spent' && resolvedCard.providerType === 'SELF_ISSUED_BALANCE'"
+            :card-id="resolvedCard.cardId"
+            :org-id="orgId"
+            :current-balance="currentBalanceNum"
+            @done="onBalanceDone"
+          />
+
+          <!-- 返金 -->
+          <BalanceRefundTabPanel
+            v-else-if="opTab === 'refund' && resolvedCard.providerType === 'SELF_ISSUED_BALANCE'"
+            :card-id="resolvedCard.cardId"
+            :org-id="orgId"
+            @done="onBalanceDone"
+          />
+        </div>
+      </section>
     </template>
   </div>
 </template>
