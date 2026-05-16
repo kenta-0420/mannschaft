@@ -99,7 +99,8 @@ class PointCardControllerTest {
                 "東急ポイント", null, "1234567890123", BarcodeFormat.CODE128,
                 "0123", null, false, 0, null,
                 OffsetDateTime.parse("2026-05-14T10:00:00Z"),
-                OffsetDateTime.parse("2026-05-14T10:00:00Z"));
+                OffsetDateTime.parse("2026-05-14T10:00:00Z"),
+                null, null, null, null);
     }
 
     private UserPointCardListItemResponse sampleListItem() {
@@ -107,7 +108,8 @@ class PointCardControllerTest {
                 CARD_ID, null, null, null, null, null,
                 "東急ポイント", "0123", BarcodeFormat.CODE128,
                 false, 0, null,
-                OffsetDateTime.parse("2026-05-14T10:00:00Z"));
+                OffsetDateTime.parse("2026-05-14T10:00:00Z"),
+                null, null, null, null);
     }
 
     // ──────────────────────────────────────────────

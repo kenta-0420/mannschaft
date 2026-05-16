@@ -1,7 +1,7 @@
 # F18: 個人ポイントカードウォレット
 
-> **ステータス**: 🟢 実装完了（Phase 1 MVP + Phase 2 スタンプ型）/ 🟡 設計確定（Phase 2 残高型）
-> **実装フェーズ**: Phase 1 完了 2026-05-15 / Phase 2 (スタンプ型) 完了 2026-05-16 / Phase 2 (残高型) 未着手
+> **ステータス**: 🟢 実装完了（Phase 1 + Phase 2 スタンプ型 + Phase 3 残高型 + QR 自動特定 + Wake Lock テレメトリ）
+> **実装フェーズ**: Phase 1 完了 2026-05-15 / Phase 2 (スタンプ型) 完了 2026-05-16 / Phase 3 (残高型 + QR 自動特定 + Wake Lock テレメトリ) 完了 2026-05-16
 > **最終更新**: 2026-05-16
 > **モジュール種別**: 個人ユーザー向け汎用機能
 > **関連ドキュメント**: F01.6 プロフィールメディア / F10.3 監査ログ / F12.3 GDPR・個人情報管理 / F13 ストレージ統合 / F00 ContentVisibilityResolver（Phase 2 で参照可能性あり）
@@ -1655,11 +1655,25 @@ Phase 2 は SELF_ISSUED_STAMP に絞って先行実装、計 6 陣で完遂。Ph
 
 Phase 2 全 6 PR + 第四陣（E2E + ドキュメント）が main マージ済み。
 
+### Phase 3 実装結果（2026-05-16 完了 — 残高型 + QR 自動特定 + Wake Lock テレメトリ）
+
+Phase 3 は残高型 (SELF_ISSUED_BALANCE)・押印画面の QR 自動特定（顧客一時トークン方式）・Wake Lock 実機テレメトリ強化の 3 系統を並行で消化した。計 7 陣（本陣 = 第四陣 = 仕上げ）で完遂。Phase 1 から先行投入していた `user_point_cards.balance` カラムと Phase 2 で導入された `SELF_ISSUED_BALANCE` ENUM 値が破壊なく活用された。
+
+| 陣 | 内容 | 完了 PR | コミット |
+|---|---|---|---|
+| P3-S1 基盤 | V9.148 `point_card_balance_events` DDL + Entity + Repository + AuditEvent 3 値（CHARGED/SPENT/REFUNDED）+ ErrorCode 4 値（015-018） | #687 | 08e7f318b |
+| P3-S2A QR 自動特定 | 顧客一時トークン 5 分 TTL（Valkey GETDEL）+ `POST /resolve-by-token` + `POST /share-token` + ErrorCode 019（TOKEN_NOT_FOUND） | #691 | 1b032989e |
+| P3-S2B 残高 API | CHARGE/SPENT/REFUND `POST /balance-events` + 元 event 引用 REFUND（refundOfEventId）+ 累計返金額超過ガード ErrorCode 020 + @Transactional 不可分（balance 更新 + event 挿入）| #692 | bf690ba47 |
+| P3-S2C Wake Lock テレメトリ | `useWakeLock` に `useErrorReport.captureQuiet` 統合（context 分類: `permission_denied` / `release_failed` / `nosleep_fallback_failed`）+ iOS 実機検証 checksheet（`docs/operations/F18_ios_wake_lock_checksheet.md`） | #693 | 1f453e8b5 |
+| P3-S3A 顧客側 FE | 残高/スタンプ表示 UI + 提示 QR 生成モーダル（`ShareTokenQrModal.vue`）+ TTL 残時間カウントダウン + 5 分超過時の再発行ボタン | #701 | f37284e29 |
+| P3-S3B 店主側 FE | 押印画面 QR 自動特定 BarcodeCapture 統合 + 残高型 4 タブ（押印 / チャージ / 利用 / 返金）+ 履歴 2 タブ化（スタンプ / 残高） + 元 SPENT 引用返金 UI | #702 | cb68c349e |
+| P3-S4 第四陣（仕上げ） | Backend DTO 拡張（`UserPointCardListItemResponse` / `DetailResponse` に balance / stampCount / providerType / providerOrganizationId 追加 + Service の provider フェッチ修正）+ E2E `wallet-org-balance.spec.ts` 新規（チャージ → 利用 → 返金）+ 設計書 §1 / §15 / §16 / §17 最終化 + memory 更新 | (本 PR) | - |
+
 ---
 
 ## 16. 未解決事項
 
-### 解決済み（Phase 1 + Phase 2 実装で確定）
+### 解決済み（Phase 1 + Phase 2 + Phase 3 実装で確定）
 
 | 項目 | 解決内容 |
 |---|---|
@@ -1673,18 +1687,19 @@ Phase 2 全 6 PR + 第四陣（E2E + ドキュメント）が main マージ済�
 | ✅ 店主ダッシュボード | P2-S3A で完了（プロバイダー管理 + 押印 + 履歴 + 顧客 QR） |
 | ✅ 顧客 QR 追加フロー | P2-S3B で完了 |
 | ✅ OrganizationDeletedEvent 購読 | P2-S1 listener で自店プロバイダー自動停止 + ProviderCacheRefreshEvent 発火 |
+| ✅ 残高型カード (SELF_ISSUED_BALANCE) | Phase 3 P3-S1 + P3-S2B 完了。CHARGE/SPENT/REFUND API + 元 event 引用返金 + 累計返金額超過ガード（POINT_CARD_020）+ Phase 1 から先行投入していた `user_point_cards.balance` カラムを破壊なく活用 |
+| ✅ 押印画面の QR 自動特定 | Phase 3 P3-S2A + P3-S3B 完了。顧客側で 5 分 TTL の一時トークン UUID を発行 → Valkey GETDEL で atomic 消費（再生防止）→ 店主側 BarcodeCapture で読取して `resolveByToken` で cardId を特定。Blind Index 案より暗号化されたバーコード値の検索不能性を維持できる方式に落ち着いた |
+| ✅ 顧客向け provider 公開 API | Phase 3 で別解採用。QR URL（`/wallet/share?token=`）にトークンを埋め込む形式で代替し、公開 API 自体は作らない方針で完結。providerId・displayName は QR resolve 結果に含めて返す |
+| ✅ Wake Lock テレメトリ | Phase 3 P3-S2C 完了。`useWakeLock` から `useErrorReport.captureQuiet` でテレメトリ送信（context 分類で iOS Safari 制約の集計が可能）+ iOS 17/18 実機検証 checksheet 整備 |
 
-### 未解決のまま（Phase 3 / 別軍議で対応）
+### 未解決のまま（Phase 4 / 別軍議で対応）
 
 | 項目 | 状態 | 解決方針 |
 |---|---|---|
-| 🟡 残高型カード (SELF_ISSUED_BALANCE) | Phase 2 スコープ外 | チャージ・使用 API、`point_card_balance_events` テーブル、`user_point_cards.balance` 活用。Phase 1 から NULL 許容で確保済のためスキーマ破壊なし |
-| 🟡 押印画面の QR 自動特定 | カード ID UUID 直接入力 MVP | バックエンドに「barcode_value → card_id を引く API」を新設し、店主側 zxing スキャナで自動特定する Phase 3 拡張 |
-| 🟡 顧客向け provider 公開 API | QR URL にメタ情報埋め込み MVP | `/api/v1/point-cards/providers/{providerId}/public` を Phase 3 で新設し、QR は providerId のみで完結する設計に改修 |
-| 🟡 iOS Safari Wake Lock 実機検証 | 未実施 | Low Power Mode + nosleep.js autoplay 制約。実機（iOS 17/18）で運用前に実測 |
+| 🟡 iOS Safari Wake Lock 実機検証実施 | テレメトリ整備済 / QA 実機テスト未実施 | Low Power Mode + nosleep.js autoplay 制約。`docs/operations/F18_ios_wake_lock_checksheet.md` 沿って QA 実施待ち |
 | 🟡 PDF417 バーコード描画 | 現状エラー表示 | bwip-js 等のライブラリ選定 |
 | 🟡 プロバイダーロゴ画像の権利確認 SOP | 未整備 | 運営側 SOP として整備 |
-| 🟡 Phase 1 Seed プロバイダーの拡充 | 10 社 | 5〜10 社追加予定 |
+| 🟡 Phase 1 Seed プロバイダーの拡充 | 10 社 | 10 社追加予定（20 社規模へ） |
 | 🟡 fuzzy match の正規化レベルの将来拡張 | 完全一致のみ | 同義語辞書 / Levenshtein 距離の検討 |
 | 🟡 既存マッチ済みカードの再マッチバッチ | 未実装 | プロバイダー更新時の定期バッチ |
 | 🟡 DEPUTY_ADMIN の権限細分化 | 「DEPUTY_ADMIN なら誰でも押印できる」シンプル実装 | 「スタンプ押印権限のみ」を permission group で分ける場合は別軍議 |
@@ -1699,3 +1714,4 @@ Phase 2 全 6 PR + 第四陣（E2E + ドキュメント）が main マージ済�
 | 2026-05-14 | 案 B 改修。プロバイダーマスタを人気 10〜15 社のロゴ補強用に縮小。`user_point_cards.display_name`（AES-256-GCM）を新設し自由入力主体に移行。`provider_id` を NULL 許容（ON DELETE SET NULL）に変更し fuzzy match（NFKC + ひらがな化 + 記号削除）で自動紐付け。UI は `ProviderPicker.vue` 廃止 → `PresetCardButtons.vue` 新設で「プリセット + 自由入力」を 1 画面に統合。`POINT_CARD_CREATED` 監査ログ metadata に `provider_matched` 追加。F10.3 metadata 例を null 許容版に追従。Phase 2 自店発行カード設計には無影響 |
 | 2026-05-15 | Phase 1 MVP 実装完了。第一陣〜第六陣で DDL/Entity/Service/Controller/Frontend/提示モード/E2E まで完遂（PR #630/#632/#633/#642/#643/#646/#649/#650/#653 全 main マージ済）。残課題: WebAuthn サーバー側検証、iOS 実機検証、PDF417 対応、プロバイダーマスタ拡充。Phase 2 拡張余地（organization 自店発行カード）は無傷で待機 |
 | 2026-05-16 | Phase 2 スタンプ型完了。WebAuthn 再認証 (POINT_CARD_009 完全実装) / 自店プロバイダー CRUD / スタンプ押印+履歴 / 店主ダッシュボード / 顧客 QR 追加フロー 全 main マージ済（PR #660/#669/#665/#666/#676/#677 + 第四陣）。Phase 1 残課題🔴 WebAuthn も解消。残高型 (SELF_ISSUED_BALANCE) は Phase 3 で対応。Phase 1 から先行投入していた `type` ENUM 3 値 / `organization_id` / `balance` / `stamp_count` カラムが破壊なく Phase 2 で活用され、設計判断 #6（先行投入）の正しさが実証された |
+| 2026-05-16 | Phase 3 完了（残高型 + QR 自動特定 + Wake Lock テレメトリ）。PR #687（基盤）/ #691（QR 自動特定）/ #692（残高 API）/ #693（Wake Lock テレメトリ）/ #701（顧客側 FE）/ #702（店主側 FE）+ 第四陣（DTO 拡張 + E2E + 設計書最終化）全 main マージ済。残高型は Phase 1 から先行投入していた `user_point_cards.balance` カラム + Phase 2 ENUM SELF_ISSUED_BALANCE が破壊なく活用された。QR 自動特定は Blind Index ではなく Valkey 5 分 TTL の一時トークン方式を採用し、暗号化されたバーコード値の検索不能性を維持しつつ実現。Wake Lock 失敗時の `captureQuiet` テレメトリで iOS Safari 制約の実機実態を集計可能に。Backend DTO の `UserPointCardListItemResponse` / `UserPointCardDetailResponse` に `balance` / `stampCount` / `providerType` / `providerOrganizationId` を追加してフロント側で残高型・スタンプ型カードを一覧で即時表示可能にした。Phase 1 設計判断 #6（先行投入）が 3 Phase にわたって有効であった |
