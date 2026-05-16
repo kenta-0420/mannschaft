@@ -1,0 +1,14 @@
+{
+  "name": "mannschaft-backend-scripts",
+  "version": "1.0.0",
+  "description": "Backend 運用スクリプト（seed-e2e-data.js 等）。E2E テストで MySQL シードを投入するための Node.js スクリプト用 dependencies。",
+  "private": true,
+  "scripts": {
+    "seed:e2e": "node seed-e2e-data.js"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "mysql2": "^3.11.0"
+  }
+}
