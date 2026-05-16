@@ -79,6 +79,15 @@ exclude_patterns:
   - pattern: "/api/signage/**"
     reason: "F09.1 サイネージ旧 URL prefix。/api/v1/signage/ への移行待ち"
     category: legacy
+  - pattern: "/api/webhooks/**"
+    reason: "F09.9 webhook 旧 URL prefix。設計書はチームスコープ /api/v1/teams/{teamId}/webhooks/ が正だが、実装は MVP の暫定 URL。F09.9 軍議で移行 PR 予定"
+    category: legacy
+  - pattern: "/api/api-keys/**"
+    reason: "F09.9 API キー旧 URL prefix。設計書はチームスコープ /api/v1/teams/{teamId}/api-keys/ が正だが、実装は MVP の暫定 URL。F09.9 軍議で移行 PR 予定"
+    category: legacy
+  - pattern: "/api/maintenance-schedules/**"
+    reason: "F07.6 旧 URL prefix（メンテナンス予定）。F07.6 リファクタで /api/v1/teams/{teamId}/incidents/maintenance-schedules/ へ統合予定"
+    category: legacy
 
   # === ヘルスチェック ===
   - pattern: "/api/v1/health"
