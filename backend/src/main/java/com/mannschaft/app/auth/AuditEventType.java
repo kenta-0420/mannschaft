@@ -204,7 +204,17 @@ public enum AuditEventType {
     /** お気に入り村のピンを解除。 */
     VILLAGE_UNPINNED(AuditEventCategory.VILLAGE),
     /** 井戸端会議の日次スレッドをバッチで自動生成。 */
-    VILLAGE_LOBBY_THREAD_CREATED(AuditEventCategory.VILLAGE);
+    VILLAGE_LOBBY_THREAD_CREATED(AuditEventCategory.VILLAGE),
+    /** F17.1 Phase 2 — 村お祭りを作成。 */
+    VILLAGE_FESTIVAL_CREATED(AuditEventCategory.VILLAGE),
+    /** F17.1 Phase 2 — 村お祭りを更新。 */
+    VILLAGE_FESTIVAL_UPDATED(AuditEventCategory.VILLAGE),
+    /** F17.1 Phase 2 — 村お祭りを開催開始（バッチ自動遷移 SCHEDULED→ACTIVE）。 */
+    VILLAGE_FESTIVAL_ACTIVATED(AuditEventCategory.VILLAGE),
+    /** F17.1 Phase 2 — 村お祭りを終了（バッチ自動遷移 ACTIVE→ENDED）。 */
+    VILLAGE_FESTIVAL_ENDED(AuditEventCategory.VILLAGE),
+    /** F17.1 Phase 2 — 村お祭りを中止（村長/長老の判断）。 */
+    VILLAGE_FESTIVAL_CANCELLED(AuditEventCategory.VILLAGE);
 
     private final AuditEventCategory category;
 }
