@@ -1,0 +1,217 @@
+package com.mannschaft.app.team.batch;
+
+import com.mannschaft.app.team.repository.TeamRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Transactional;
+import org.testcontainers.DockerClientFactory;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * F15.4 Phase 4 — {@link TeamMemberCountBackfillBatchService} 結合テスト。
+ *
+ * <p>実 MySQL（Testcontainers）に対し最小限の seed を投入し、夜次再集計バッチが
+ * {@code teams.member_count} を {@code user_roles} ベースの実数に補正することを検証する。</p>
+ *
+ * <p>{@code TeamVisibilityResolverIntegrationTest} の方式を踏襲し、
+ * {@code @Transactional} ロールバック方式 + {@code em.createNativeQuery} で
+ * users / roles / user_roles / teams を直接 INSERT する。</p>
+ *
+ * <h3>検証観点</h3>
+ * <ul>
+ *   <li>ずらした member_count が user_roles ベースの実数に戻ること</li>
+ *   <li>論理削除済み team（{@code deleted_at IS NOT NULL}）は更新対象外であること</li>
+ *   <li>user_roles が 0 件のチームは 0 に補正されること</li>
+ * </ul>
+ */
+@SpringBootTest
+@Testcontainers
+@ActiveProfiles("test")
+@Transactional
+@EnabledIf("com.mannschaft.app.team.batch.TeamMemberCountBackfillBatchServiceIntegrationTest#isDockerAvailable")
+@DisplayName("TeamMemberCountBackfillBatchService 結合テスト")
+class TeamMemberCountBackfillBatchServiceIntegrationTest {
+
+    public static boolean isDockerAvailable() {
+        try {
+            return DockerClientFactory.instance().isDockerAvailable();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Container
+    @SuppressWarnings("resource")
+    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
+            .withDatabaseName("mannschaft_test")
+            .withUsername("test")
+            .withPassword("test");
+
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", mysql::getJdbcUrl);
+        registry.add("spring.datasource.username", mysql::getUsername);
+        registry.add("spring.datasource.password", mysql::getPassword);
+    }
+
+    @MockitoBean
+    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+
+    @Autowired
+    private TeamMemberCountBackfillBatchService batch;
+
+    @Autowired
+    private TeamRepository teamRepository;
+
+    @PersistenceContext
+    private EntityManager em;
+
+    private Long memberRoleId;
+    private Long teamWithMembersId;
+    private Long teamEmptyId;
+    private Long teamDeletedId;
+
+    @BeforeEach
+    void setUp() {
+        // MEMBER ロール
+        em.createNativeQuery(
+                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                        + "VALUES ('MEMBER', 'メンバー', 4, 0, NOW(), NOW())")
+                .executeUpdate();
+        em.flush();
+        memberRoleId = ((Number) em.createNativeQuery(
+                "SELECT id FROM roles WHERE name = 'MEMBER'").getSingleResult()).longValue();
+
+        // 3 ユーザー
+        Long u1 = insertUser("backfill.u1@example.com", "テスト", "一郎");
+        Long u2 = insertUser("backfill.u2@example.com", "テスト", "二郎");
+        Long u3 = insertUser("backfill.u3@example.com", "テスト", "三郎");
+
+        // 3 チーム
+        teamWithMembersId = insertTeam("BF_チーム_メンバーあり");
+        teamEmptyId = insertTeam("BF_チーム_メンバーなし");
+        teamDeletedId = insertTeam("BF_チーム_削除済");
+
+        // teamWithMembersId に 3 メンバー、teamDeletedId に 1 メンバー
+        insertUserRole(u1, memberRoleId, teamWithMembersId);
+        insertUserRole(u2, memberRoleId, teamWithMembersId);
+        insertUserRole(u3, memberRoleId, teamWithMembersId);
+        insertUserRole(u1, memberRoleId, teamDeletedId);
+
+        // teamDeletedId を論理削除
+        em.createNativeQuery("UPDATE teams SET deleted_at = NOW() WHERE id = :id")
+                .setParameter("id", teamDeletedId)
+                .executeUpdate();
+
+        // ドリフトを意図的に発生させる: 全 team の member_count を実数とずれた値に上書き
+        em.createNativeQuery("UPDATE teams SET member_count = 999 WHERE id IN (:t1, :t2, :t3)")
+                .setParameter("t1", teamWithMembersId)
+                .setParameter("t2", teamEmptyId)
+                .setParameter("t3", teamDeletedId)
+                .executeUpdate();
+
+        em.flush();
+        em.clear();
+    }
+
+    @Test
+    @DisplayName("recalculateAll: ずらした member_count が user_roles ベースの実数に戻る")
+    void recalculateAll_corrects_drift() {
+        batch.recalculateAll();
+        em.flush();
+        em.clear();
+
+        Long withMembers = ((Number) em.createNativeQuery(
+                "SELECT member_count FROM teams WHERE id = :id")
+                .setParameter("id", teamWithMembersId)
+                .getSingleResult()).longValue();
+        assertThat(withMembers).as("user_roles 3 件のチームは 3 に補正").isEqualTo(3L);
+
+        Long empty = ((Number) em.createNativeQuery(
+                "SELECT member_count FROM teams WHERE id = :id")
+                .setParameter("id", teamEmptyId)
+                .getSingleResult()).longValue();
+        assertThat(empty).as("user_roles 0 件のチームは 0 に補正").isEqualTo(0L);
+    }
+
+    @Test
+    @DisplayName("recalculateAll: 論理削除済み team は更新対象外（999 のまま）")
+    void recalculateAll_skips_soft_deleted() {
+        batch.recalculateAll();
+        em.flush();
+        em.clear();
+
+        // @SQLRestriction("deleted_at IS NULL") の影響を受けないよう nativeQuery で取得
+        Long deleted = ((Number) em.createNativeQuery(
+                "SELECT member_count FROM teams WHERE id = :id")
+                .setParameter("id", teamDeletedId)
+                .getSingleResult()).longValue();
+        assertThat(deleted).as("論理削除済みは WHERE 句で除外され、ずらした 999 のまま").isEqualTo(999L);
+    }
+
+    // =========================================================================
+    // ヘルパ
+    // =========================================================================
+
+    private Long insertUser(String email, String lastName, String firstName) {
+        em.createNativeQuery(
+                "INSERT INTO users ("
+                        + "email, last_name, first_name, display_name, status, "
+                        + "is_searchable, handle_searchable, contact_approval_required, "
+                        + "online_visibility, dm_receive_from, encryption_key_version, "
+                        + "locale, timezone, reporting_restricted, follow_list_visibility, "
+                        + "care_notification_enabled, offline_only, "
+                        + "created_at, updated_at) "
+                        + "VALUES (:email, :ln, :fn, :dn, 'ACTIVE', "
+                        + "1, 1, 1, "
+                        + "'NOBODY', 'ANYONE', 1, "
+                        + "'ja', 'Asia/Tokyo', 0, 'PUBLIC', "
+                        + "1, 0, "
+                        + "NOW(), NOW())")
+                .setParameter("email", email)
+                .setParameter("ln", lastName)
+                .setParameter("fn", firstName)
+                .setParameter("dn", lastName + " " + firstName)
+                .executeUpdate();
+        return ((Number) em.createNativeQuery(
+                "SELECT id FROM users WHERE email = :email")
+                .setParameter("email", email)
+                .getSingleResult()).longValue();
+    }
+
+    private Long insertTeam(String name) {
+        em.createNativeQuery(
+                "INSERT INTO teams (name, visibility, supporter_enabled, version, created_at, updated_at) "
+                        + "VALUES (:name, 'PUBLIC', 1, 0, NOW(), NOW())")
+                .setParameter("name", name)
+                .executeUpdate();
+        return ((Number) em.createNativeQuery(
+                "SELECT id FROM teams WHERE name = :name")
+                .setParameter("name", name)
+                .getSingleResult()).longValue();
+    }
+
+    private void insertUserRole(Long uid, Long roleId, Long teamIdParam) {
+        em.createNativeQuery(
+                "INSERT INTO user_roles (user_id, role_id, team_id, organization_id, created_at, updated_at) "
+                        + "VALUES (:uid, :rid, :tid, NULL, NOW(), NOW())")
+                .setParameter("uid", uid)
+                .setParameter("rid", roleId)
+                .setParameter("tid", teamIdParam)
+                .executeUpdate();
+    }
+}

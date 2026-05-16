@@ -122,4 +122,23 @@ public interface TeamRepository
     @Query(value = "UPDATE teams SET member_count = GREATEST(member_count - 1, 0) "
             + "WHERE id = :teamId AND deleted_at IS NULL", nativeQuery = true)
     int decrementMemberCount(@Param("teamId") Long teamId);
+
+    /**
+     * F15.4 Phase 4: 全 teams の member_count を user_roles から再集計する（夜次バッチ用）。
+     *
+     * <p>リスナー（足軽16）による同期更新がエラーや @Transactional 境界外で漏れた場合の
+     * ドリフト補正を目的とする。論理削除済みの team は更新対象外。
+     * 設計書: docs/features/F15.4_team_store_search_within_org.md §3.3 / §11.4</p>
+     *
+     * @return 更新件数
+     */
+    @Modifying
+    @Query(value = """
+            UPDATE teams t
+            SET t.member_count = (
+                SELECT COUNT(*) FROM user_roles ur WHERE ur.team_id = t.id
+            )
+            WHERE t.deleted_at IS NULL
+            """, nativeQuery = true)
+    int recalculateMemberCounts();
 }
