@@ -2,9 +2,13 @@ package com.mannschaft.app.advertising.campaign.repository;
 
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
+import com.mannschaft.app.advertising.campaign.enums.AdModerationStatus;
 import com.mannschaft.app.common.repository.AbstractTenantAwareRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,5 +33,14 @@ public interface AdMessagingCampaignRepository
 
     /** モデレーションキュー用: 審査状態順の一覧。 */
     List<AdMessagingCampaign> findByModerationStatusAndDeletedAtIsNullOrderByCreatedAtAsc(
-            com.mannschaft.app.advertising.campaign.enums.AdModerationStatus moderationStatus);
+            AdModerationStatus moderationStatus);
+
+    /**
+     * SYSTEM_ADMIN 審査キュー用: 指定の {@code moderation_status} 群に該当する論理削除されていない
+     * キャンペーンをページング+作成日時昇順で取得する。
+     *
+     * <p>F09.17 Phase 11-a: 通常 {@code PENDING / AUTO_FLAGGED} を渡す想定。</p>
+     */
+    Page<AdMessagingCampaign> findByModerationStatusInAndDeletedAtIsNull(
+            Collection<AdModerationStatus> moderationStatuses, Pageable pageable);
 }

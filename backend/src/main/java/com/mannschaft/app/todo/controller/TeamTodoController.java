@@ -23,12 +23,14 @@ import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
 import com.mannschaft.app.todo.dto.UpdateCommentRequest;
 import com.mannschaft.app.todo.dto.UpdateTodoRequest;
+import com.mannschaft.app.todo.service.TodoAssigneeService;
 import com.mannschaft.app.todo.service.TodoCommentService;
 import com.mannschaft.app.todo.service.TodoGanttService;
 import com.mannschaft.app.todo.service.TodoPersonalMemoService;
 import com.mannschaft.app.todo.service.TodoScheduleLinkService;
 import com.mannschaft.app.todo.service.TodoService;
 import com.mannschaft.app.todo.service.TodoSharedMemoService;
+import com.mannschaft.app.todo.service.TodoStatusService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -61,6 +63,8 @@ import com.mannschaft.app.common.SecurityUtils;
 public class TeamTodoController {
 
     private final TodoService todoService;
+    private final TodoStatusService todoStatusService;
+    private final TodoAssigneeService todoAssigneeService;
     private final TodoCommentService commentService;
     private final TodoGanttService ganttService;
     private final TodoScheduleLinkService scheduleLinkService;
@@ -165,7 +169,7 @@ public class TeamTodoController {
             @Valid @RequestBody TodoStatusChangeRequest request) {
         // F02.3.1 後続 C-7: IDOR 対策
         todoService.assertTodoScope(id, TodoScopeType.TEAM, teamId);
-        return ResponseEntity.ok(todoService.changeStatus(id, request, SecurityUtils.getCurrentUserId()));
+        return ResponseEntity.ok(todoStatusService.changeStatus(id, request, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -177,7 +181,7 @@ public class TeamTodoController {
     public ResponseEntity<ApiResponse<List<TodoStatusChangeResponse>>> bulkChangeStatus(
             @PathVariable Long teamId,
             @Valid @RequestBody BulkStatusChangeRequest request) {
-        return ResponseEntity.ok(todoService.bulkChangeStatus(
+        return ResponseEntity.ok(todoStatusService.bulkChangeStatus(
                 TodoScopeType.TEAM, teamId, request, SecurityUtils.getCurrentUserId()));
     }
 
@@ -196,7 +200,7 @@ public class TeamTodoController {
         // F02.3.1 後続 C-7: IDOR 対策
         todoService.assertTodoScope(id, TodoScopeType.TEAM, teamId);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(todoService.addAssignee(id, request, SecurityUtils.getCurrentUserId()));
+                .body(todoAssigneeService.addAssignee(id, request, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -211,7 +215,7 @@ public class TeamTodoController {
             @PathVariable Long userId) {
         // F02.3.1 後続 C-7: IDOR 対策
         todoService.assertTodoScope(id, TodoScopeType.TEAM, teamId);
-        todoService.removeAssignee(id, userId);
+        todoAssigneeService.removeAssignee(id, userId);
         return ResponseEntity.noContent().build();
     }
 

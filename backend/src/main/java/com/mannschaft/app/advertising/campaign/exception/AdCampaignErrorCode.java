@@ -64,6 +64,36 @@ public enum AdCampaignErrorCode implements ErrorCode {
     AD_REPORT_RATE_LIMITED(
             "AD_REPORT_RATE_LIMITED",
             "通報の回数上限に達しました。時間をおいて再度お試しください",
+            Severity.WARN),
+
+    /** モデレーション審査不可状態（DRAFT/REVIEW 以外で approve しようとした） */
+    NOT_REVIEWABLE(
+            "AD_CAMPAIGN_NOT_REVIEWABLE",
+            "このキャンペーンは審査対象の状態ではありません",
+            Severity.WARN),
+
+    /** 既にブロック済みのキャンペーンへの重複ブロック (409 Conflict) */
+    ALREADY_BLOCKED(
+            "AD_CAMPAIGN_ALREADY_BLOCKED",
+            "既にブロック済みのキャンペーンです",
+            Severity.WARN),
+
+    /** DRAFT 以外の状態で編集系操作を試行した */
+    AD_CAMPAIGN_NOT_EDITABLE(
+            "AD_CAMPAIGN_NOT_EDITABLE",
+            "DRAFT 状態のキャンペーンのみ編集できます",
+            Severity.WARN),
+
+    /** テナント境界越え (別 organization のリソースへアクセス) */
+    AD_CAMPAIGN_FORBIDDEN_TENANT(
+            "AD_CAMPAIGN_FORBIDDEN_TENANT",
+            "このキャンペーンを操作する権限がありません",
+            Severity.WARN),
+
+    /** channel_type + locale ユニーク制約違反 */
+    AD_CHANNEL_DUPLICATE(
+            "AD_CHANNEL_DUPLICATE",
+            "同じ channel_type と locale の組み合わせは登録できません",
             Severity.WARN);
 
     private final String code;

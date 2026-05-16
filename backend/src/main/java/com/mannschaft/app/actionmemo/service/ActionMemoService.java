@@ -24,6 +24,7 @@ import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.entity.TodoEntity;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import com.mannschaft.app.todo.service.TodoService;
+import com.mannschaft.app.todo.service.TodoStatusService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -84,6 +85,7 @@ public class ActionMemoService {
     private final ActionMemoTagLinkRepository tagLinkRepository;
     private final TodoRepository todoRepository;
     private final TodoService todoService;
+    private final TodoStatusService todoStatusService;
     private final UserRoleRepository userRoleRepository;
     private final ActionMemoSettingsService settingsService;
     private final AuditLogService auditLogService;
@@ -567,7 +569,7 @@ public class ActionMemoService {
         if (com.mannschaft.app.todo.TodoStatus.COMPLETED == todo.getStatus()) {
             return;
         }
-        todoService.changeStatus(todoId, new TodoStatusChangeRequest("COMPLETED", null), userId);
+        todoStatusService.changeStatus(todoId, new TodoStatusChangeRequest("COMPLETED", null), userId);
 
         // 監査ログ: source = "ACTION_MEMO", source_id = memoId
         auditLogService.record(

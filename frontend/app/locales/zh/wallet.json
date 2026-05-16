@@ -391,6 +391,37 @@
     "stamp_display": {
       "label": "スタンプ",
       "count": "{count} 個"
+    },
+    "synonym_admin": {
+      "page_title": "プロバイダー同義語管理",
+      "add": "新規追加",
+      "provider_filter": "プロバイダーで絞り込み",
+      "all_providers": "すべて",
+      "col_provider": "プロバイダー",
+      "col_synonym": "同義語",
+      "col_normalized": "正規化値",
+      "col_memo": "メモ",
+      "col_created": "作成日時",
+      "modal_title_add": "同義語追加",
+      "modal_title_edit": "同義語編集",
+      "label_provider": "プロバイダー",
+      "label_synonym": "同義語（表示用）",
+      "label_synonym_placeholder": "例: ドコモポイント / マツキヨ",
+      "label_synonym_hint": "ユーザーが入力する可能性のある別名・略称・口語",
+      "label_memo": "メモ（任意）",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "delete": "削除",
+      "delete_confirm": "この同義語を削除します。よろしいですか？",
+      "empty": "登録された同義語はありません。",
+      "saved": "保存しました",
+      "deleted": "削除しました",
+      "error_load": "同義語の取得に失敗しました",
+      "error_load_providers": "プロバイダー一覧の取得に失敗しました",
+      "error_save": "保存に失敗しました",
+      "error_delete": "削除に失敗しました",
+      "error_duplicate": "この同義語は既に登録されています（正規化後の重複）",
+      "error_provider_not_found": "指定されたプロバイダーが見つかりません"
     }
   }
 }

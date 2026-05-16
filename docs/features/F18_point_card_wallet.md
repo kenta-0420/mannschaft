@@ -1,8 +1,8 @@
 # F18: 個人ポイントカードウォレット
 
-> **ステータス**: 🟢 実装完了（Phase 1 + Phase 2 スタンプ型 + Phase 3 残高型 + QR 自動特定 + Wake Lock テレメトリ）
-> **実装フェーズ**: Phase 1 完了 2026-05-15 / Phase 2 (スタンプ型) 完了 2026-05-16 / Phase 3 (残高型 + QR 自動特定 + Wake Lock テレメトリ) 完了 2026-05-16
-> **最終更新**: 2026-05-16
+> **ステータス**: 🟢 実装完了（Phase 1 + Phase 2 + Phase 3 + Phase 4）
+> **実装フェーズ**: Phase 1 (2026-05-15) / Phase 2 (2026-05-16) / Phase 3 (2026-05-16) / Phase 4 (2026-05-17)
+> **最終更新**: 2026-05-17
 > **モジュール種別**: 個人ユーザー向け汎用機能
 > **関連ドキュメント**: F01.6 プロフィールメディア / F10.3 監査ログ / F12.3 GDPR・個人情報管理 / F13 ストレージ統合 / F00 ContentVisibilityResolver（Phase 2 で参照可能性あり）
 
@@ -1669,11 +1669,24 @@ Phase 3 は残高型 (SELF_ISSUED_BALANCE)・押印画面の QR 自動特定（�
 | P3-S3B 店主側 FE | 押印画面 QR 自動特定 BarcodeCapture 統合 + 残高型 4 タブ（押印 / チャージ / 利用 / 返金）+ 履歴 2 タブ化（スタンプ / 残高） + 元 SPENT 引用返金 UI | #702 | cb68c349e |
 | P3-S4 第四陣（仕上げ） | Backend DTO 拡張（`UserPointCardListItemResponse` / `DetailResponse` に balance / stampCount / providerType / providerOrganizationId 追加 + Service の provider フェッチ修正）+ E2E `wallet-org-balance.spec.ts` 新規（チャージ → 利用 → 返金）+ 設計書 §1 / §15 / §16 / §17 最終化 + memory 更新 | (本 PR) | - |
 
+### Phase 4 実装結果（2026-05-17 完了）
+
+Phase 4 は「設計書 §16 未解決事項の主要解消」を目的に 4 つの拡張を完遂。計 6 陣（第六陣 = 本陣 = 仕上げ）で消化。
+
+| 陣 | 内容 | 完了 PR | コミット |
+|---|---|---|---|
+| P4-S1 基盤 | V9.155 provider 10 社追加 / V9.156 synonyms DDL + POINT_CARD_STAMP_ISSUE Permission / V9.157 シノニム Seed 25+ 件 | #714 | 2ec660781 |
+| P4-S2A fuzzy match 拡張 | `ProviderMatchService` に synonymIndex 追加、2 段フォールバック（既存 normalized cache → synonym normalized cache） | #723 | d94d93573 |
+| P4-S2B DEPUTY_ADMIN 細分化 | `AccessControlService.checkAdminOrHasPermission` 新設、`PointCardStampService` を ADMIN/POINT_CARD_STAMP_ISSUE Permission の OR で認可置換。既存 DEPUTY_ADMIN 全許可挙動から後方互換ありの細分化へ移行 | #724 | f0705368a |
+| P4-S2C PDF417 描画 | `bwip-js@^4.10.1` を `BarcodePreview.vue` で動的 import。PDF417 利用者のみ +200KB DL（code splitting） | #725 | a7214c36c |
+| P4-S3 同義語管理 UI | `AdminPointCardSynonymController` CRUD（GET/POST/PATCH/DELETE）+ `/admin/point-card-synonyms` ページ + i18n 6 言語 + `useAdminWalletApi` クライアント | #729 | 42b886204 |
+| P4-S4 第四陣（最終陣）| E2E `wallet-phase4.spec.ts` 新規（シノニム fuzzy / SystemAdmin UI / PDF417 / DEPUTY_ADMIN 押印権限）+ 設計書 §1 / §15 / §16 / §17 最終化 + memory 更新 | (本 PR) | - |
+
 ---
 
 ## 16. 未解決事項
 
-### 解決済み（Phase 1 + Phase 2 + Phase 3 実装で確定）
+### 解決済み（Phase 1 + Phase 2 + Phase 3 + Phase 4 実装で確定）
 
 | 項目 | 解決内容 |
 |---|---|
@@ -1691,18 +1704,20 @@ Phase 3 は残高型 (SELF_ISSUED_BALANCE)・押印画面の QR 自動特定（�
 | ✅ 押印画面の QR 自動特定 | Phase 3 P3-S2A + P3-S3B 完了。顧客側で 5 分 TTL の一時トークン UUID を発行 → Valkey GETDEL で atomic 消費（再生防止）→ 店主側 BarcodeCapture で読取して `resolveByToken` で cardId を特定。Blind Index 案より暗号化されたバーコード値の検索不能性を維持できる方式に落ち着いた |
 | ✅ 顧客向け provider 公開 API | Phase 3 で別解採用。QR URL（`/wallet/share?token=`）にトークンを埋め込む形式で代替し、公開 API 自体は作らない方針で完結。providerId・displayName は QR resolve 結果に含めて返す |
 | ✅ Wake Lock テレメトリ | Phase 3 P3-S2C 完了。`useWakeLock` から `useErrorReport.captureQuiet` でテレメトリ送信（context 分類で iOS Safari 制約の集計が可能）+ iOS 17/18 実機検証 checksheet 整備 |
+| ✅ PDF417 バーコード描画 | Phase 4 P4-S2C 完了。`bwip-js@^4.10.1` を `BarcodePreview.vue` で動的 import。PDF417 利用者のみ +200KB DL（code splitting）で初期バンドルへの影響を最小化 |
+| ✅ プロバイダーマスタ拡充 | Phase 4 P4-S1 完了。10 社 → 20 社（V9.155 で nanaco / WAON / マクドナルド / コメダ / スターバックス / ユニクロ / GU / イトーヨーカドー / ファミリーマート / 楽天 Edy を追加） |
+| ✅ fuzzy match 拡張（同義語辞書） | Phase 4 P4-S1 + P4-S2A + P4-S3 完了。`point_card_provider_synonyms` テーブル + V9.157 Seed 25+ 件 + `ProviderMatchService` の 2 段フォールバック（既存 normalized cache → synonym normalized cache）+ SystemAdmin 専用シノニム管理 UI |
+| ✅ DEPUTY_ADMIN 権限細分化 | Phase 4 P4-S2B 完了。`AccessControlService.checkAdminOrHasPermission` 新設、`POINT_CARD_STAMP_ISSUE` Permission 駆動化。既存 DEPUTY_ADMIN 全許可挙動から後方互換ありの細分化へ移行 |
 
-### 未解決のまま（Phase 4 / 別軍議で対応）
+### 未解決のまま（Phase 5+ / 別軍議で対応）
 
 | 項目 | 状態 | 解決方針 |
 |---|---|---|
 | 🟡 iOS Safari Wake Lock 実機検証実施 | テレメトリ整備済 / QA 実機テスト未実施 | Low Power Mode + nosleep.js autoplay 制約。`docs/operations/F18_ios_wake_lock_checksheet.md` 沿って QA 実施待ち |
-| 🟡 PDF417 バーコード描画 | 現状エラー表示 | bwip-js 等のライブラリ選定 |
-| 🟡 プロバイダーロゴ画像の権利確認 SOP | 未整備 | 運営側 SOP として整備 |
-| 🟡 Phase 1 Seed プロバイダーの拡充 | 10 社 | 10 社追加予定（20 社規模へ） |
-| 🟡 fuzzy match の正規化レベルの将来拡張 | 完全一致のみ | 同義語辞書 / Levenshtein 距離の検討 |
-| 🟡 既存マッチ済みカードの再マッチバッチ | 未実装 | プロバイダー更新時の定期バッチ |
-| 🟡 DEPUTY_ADMIN の権限細分化 | 「DEPUTY_ADMIN なら誰でも押印できる」シンプル実装 | 「スタンプ押印権限のみ」を permission group で分ける場合は別軍議 |
+| 🟡 プロバイダーロゴ画像の権利確認 SOP | 未整備 | 運営側 SOP として整備（マスタ拡充に追従） |
+| 🟢 fuzzy match の Levenshtein 距離拡張 | 完全一致 + 同義語辞書まで対応済 | 誤マッチリスクの閾値評価が必要。別軍議で慎重設計 |
+| 🟢 既存マッチ済みカードの再マッチバッチ | 未実装 | プロバイダー / シノニム更新時の遡及マッチ（プロバイダー追加・シノニム編集の影響を旧カードに反映） |
+| 🟢 残高型操作（charge/spend/refund）の Permission 駆動化 | 現状 ADMIN/DEPUTY_ADMIN | Phase 4 は押印のみ Permission 駆動化。残高操作も同方式に揃える場合は別軍議 |
 
 ---
 
@@ -1715,3 +1730,4 @@ Phase 3 は残高型 (SELF_ISSUED_BALANCE)・押印画面の QR 自動特定（�
 | 2026-05-15 | Phase 1 MVP 実装完了。第一陣〜第六陣で DDL/Entity/Service/Controller/Frontend/提示モード/E2E まで完遂（PR #630/#632/#633/#642/#643/#646/#649/#650/#653 全 main マージ済）。残課題: WebAuthn サーバー側検証、iOS 実機検証、PDF417 対応、プロバイダーマスタ拡充。Phase 2 拡張余地（organization 自店発行カード）は無傷で待機 |
 | 2026-05-16 | Phase 2 スタンプ型完了。WebAuthn 再認証 (POINT_CARD_009 完全実装) / 自店プロバイダー CRUD / スタンプ押印+履歴 / 店主ダッシュボード / 顧客 QR 追加フロー 全 main マージ済（PR #660/#669/#665/#666/#676/#677 + 第四陣）。Phase 1 残課題🔴 WebAuthn も解消。残高型 (SELF_ISSUED_BALANCE) は Phase 3 で対応。Phase 1 から先行投入していた `type` ENUM 3 値 / `organization_id` / `balance` / `stamp_count` カラムが破壊なく Phase 2 で活用され、設計判断 #6（先行投入）の正しさが実証された |
 | 2026-05-16 | Phase 3 完了（残高型 + QR 自動特定 + Wake Lock テレメトリ）。PR #687（基盤）/ #691（QR 自動特定）/ #692（残高 API）/ #693（Wake Lock テレメトリ）/ #701（顧客側 FE）/ #702（店主側 FE）+ 第四陣（DTO 拡張 + E2E + 設計書最終化）全 main マージ済。残高型は Phase 1 から先行投入していた `user_point_cards.balance` カラム + Phase 2 ENUM SELF_ISSUED_BALANCE が破壊なく活用された。QR 自動特定は Blind Index ではなく Valkey 5 分 TTL の一時トークン方式を採用し、暗号化されたバーコード値の検索不能性を維持しつつ実現。Wake Lock 失敗時の `captureQuiet` テレメトリで iOS Safari 制約の実機実態を集計可能に。Backend DTO の `UserPointCardListItemResponse` / `UserPointCardDetailResponse` に `balance` / `stampCount` / `providerType` / `providerOrganizationId` を追加してフロント側で残高型・スタンプ型カードを一覧で即時表示可能にした。Phase 1 設計判断 #6（先行投入）が 3 Phase にわたって有効であった |
+| 2026-05-17 | Phase 4 完了。設計書 §16 残課題 4 件解消（PDF417 / マスタ拡充 / 同義語辞書 / DEPUTY_ADMIN 細分化）。bwip-js 動的 import で bundle 影響最小化、`ProviderMatchService` の 2 段フォールバックで同義語マッチ、`POINT_CARD_STAMP_ISSUE` Permission で押印権限制御、SystemAdmin 専用シノニム管理 UI 完備。PR #714（基盤 V9.155-157）/ #723（fuzzy match 拡張）/ #724（DEPUTY_ADMIN 細分化）/ #725（PDF417）/ #729（シノニム管理 UI）+ 第四陣（E2E + 設計書最終化 + memory）全 main マージ済。残: iOS 実機検証（QA 待ち）/ Levenshtein 距離拡張 / 再マッチバッチ / 残高型 Permission 駆動化 |

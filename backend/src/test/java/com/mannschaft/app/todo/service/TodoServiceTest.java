@@ -4,13 +4,8 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
-import com.mannschaft.app.todo.dto.AddAssigneeRequest;
-import com.mannschaft.app.todo.dto.AssigneeResponse;
-import com.mannschaft.app.todo.dto.BulkStatusChangeRequest;
 import com.mannschaft.app.todo.dto.CreateTodoRequest;
 import com.mannschaft.app.todo.dto.TodoResponse;
-import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
-import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
 import com.mannschaft.app.todo.dto.PatchTodoRequest;
 import com.mannschaft.app.todo.dto.UpdateTodoRequest;
 import com.mannschaft.app.todo.ProjectStatus;
@@ -21,7 +16,6 @@ import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.entity.ProjectEntity;
 import com.mannschaft.app.todo.entity.TodoAssigneeEntity;
 import com.mannschaft.app.todo.entity.TodoEntity;
-import com.mannschaft.app.todo.event.TodoStatusChangedEvent;
 import com.mannschaft.app.todo.repository.ProjectMilestoneRepository;
 import com.mannschaft.app.todo.repository.ProjectRepository;
 import com.mannschaft.app.todo.repository.TodoAssigneeRepository;
@@ -34,7 +28,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -44,7 +37,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -82,24 +74,63 @@ class TodoServiceTest {
     private NameResolverService nameResolverService;
 
     @Mock
-    private ApplicationEventPublisher eventPublisher;
-
-    @Mock
     private TodoProgressService todoProgressService;
 
     @Mock
-    private MilestoneGateService milestoneGateService;
-
-    @Mock
-    private TodoStatusLabelService todoStatusLabelService;
+    private TodoResponseConverter responseConverter;
 
     @InjectMocks
     private TodoService todoService;
 
     @BeforeEach
     void setUp() {
-        lenient().when(nameResolverService.resolveUserDisplayNames(anyCollection()))
-                .thenReturn(Map.of(USER_ID, "テストユーザー", ASSIGNEE_USER_ID, "担当者ユーザー"));
+        // responseConverter は @Mock なので、各テストで必要に応じて stub する
+        // デフォルト: toTodoResponse / toTodoResponseList は空のレスポンスを返す
+        lenient().when(responseConverter.toTodoResponse(any(TodoEntity.class)))
+                .thenAnswer(inv -> buildMinimalResponse((TodoEntity) inv.getArgument(0)));
+        lenient().when(responseConverter.toTodoResponseList(anyList()))
+                .thenAnswer(inv -> {
+                    List<TodoEntity> list = inv.getArgument(0);
+                    return list.stream().map(this::buildMinimalResponse).toList();
+                });
+        lenient().when(responseConverter.toTodoResponseWithStats(any(TodoEntity.class)))
+                .thenAnswer(inv -> buildMinimalResponse((TodoEntity) inv.getArgument(0)));
+    }
+
+    /**
+     * テスト用の最小限のレスポンスを構築する。
+     */
+    private com.mannschaft.app.todo.dto.TodoResponse buildMinimalResponse(TodoEntity entity) {
+        return new com.mannschaft.app.todo.dto.TodoResponse(
+                entity.getId(),
+                entity.getScopeType() != null ? entity.getScopeType().name() : null,
+                entity.getScopeId(),
+                entity.getProjectId(),
+                entity.getMilestoneId(),
+                entity.getTitle(),
+                entity.getDescription(),
+                entity.getStatus() != null ? entity.getStatus().name() : null,
+                entity.getPriority() != null ? entity.getPriority().name() : null,
+                entity.getDueDate(),
+                entity.getDueTime(),
+                null,
+                entity.getCompletedAt(),
+                null,
+                entity.getCreatedBy() != null
+                        ? new com.mannschaft.app.todo.dto.ProjectResponse.UserInfo(entity.getCreatedBy(), "テストユーザー")
+                        : null,
+                entity.getSortOrder(),
+                List.of(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt(),
+                entity.getParentId(),
+                entity.getDepth() != null ? entity.getDepth() : 0,
+                List.of(), 0, 0, 0,
+                entity.getStartDate(),
+                entity.getLinkedScheduleId(),
+                entity.getProgressRate(),
+                entity.getProgressManual(),
+                null);
     }
 
     // ========================================
@@ -191,7 +222,6 @@ class TodoServiceTest {
             given(todoRepository.findByScopeTypeAndScopeIdAndStatusAndDeletedAtIsNull(
                     eq(SCOPE_TYPE), eq(SCOPE_ID), eq(TodoStatus.OPEN), any(Pageable.class)))
                     .willReturn(page);
-            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
 
             // When
             PagedResponse<TodoResponse> response = todoService.listTodos(
@@ -237,7 +267,6 @@ class TodoServiceTest {
             given(projectService.findProjectOrThrow(PROJECT_ID)).willReturn(createProject());
             given(todoRepository.findByProjectIdAndDeletedAtIsNullOrderBySortOrderAsc(PROJECT_ID))
                     .willReturn(List.of(todo));
-            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
 
             // When
             ApiResponse<List<TodoResponse>> response = todoService.listProjectTodos(PROJECT_ID);
@@ -262,7 +291,6 @@ class TodoServiceTest {
             // Given
             TodoEntity todo = createOpenTodo();
             given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
-            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
 
             // When
             ApiResponse<TodoResponse> response = todoService.getTodo(TODO_ID);
@@ -311,7 +339,6 @@ class TodoServiceTest {
                         m.invoke(e);
                         return e;
                     });
-            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
 
             // When
             ApiResponse<TodoResponse> response = todoService.createTodo(
@@ -342,7 +369,6 @@ class TodoServiceTest {
                         m.invoke(e);
                         return e;
                     });
-            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
 
             // When
             ApiResponse<TodoResponse> response = todoService.createTodo(
@@ -371,7 +397,6 @@ class TodoServiceTest {
                     });
             given(assigneeRepository.save(any(TodoAssigneeEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
-            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
 
             // When
             todoService.createTodo(SCOPE_TYPE, SCOPE_ID, request, USER_ID);
@@ -462,7 +487,6 @@ class TodoServiceTest {
                         m.invoke(e);
                         return e;
                     });
-            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
 
             // When
             ApiResponse<TodoResponse> response = todoService.createTodo(
@@ -498,7 +522,6 @@ class TodoServiceTest {
                         m.invoke(e);
                         return e;
                     });
-            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
 
             // When
             ApiResponse<TodoResponse> response = todoService.updateTodo(TODO_ID, request);
@@ -606,146 +629,6 @@ class TodoServiceTest {
     }
 
     // ========================================
-    // changeStatus
-    // ========================================
-
-    @Nested
-    @DisplayName("changeStatus")
-    class ChangeStatus {
-
-        @Test
-        @DisplayName("正常系: ステータスがCOMPLETEDに変更されイベント発行される")
-        void changeStatus_正常_COMPLETED() {
-            // Given
-            TodoEntity todo = createOpenTodo();
-            TodoStatusChangeRequest request = new TodoStatusChangeRequest("COMPLETED", null);
-            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
-            given(todoRepository.save(any(TodoEntity.class)))
-                    .willAnswer(invocation -> {
-                        TodoEntity e = invocation.getArgument(0);
-                        java.lang.reflect.Method m = TodoEntity.class.getDeclaredMethod("onCreate");
-                        m.setAccessible(true);
-                        m.invoke(e);
-                        return e;
-                    });
-
-            // When
-            ApiResponse<TodoStatusChangeResponse> response = todoService.changeStatus(
-                    TODO_ID, request, USER_ID);
-
-            // Then
-            assertThat(response.getData().getStatus()).isEqualTo("COMPLETED");
-            verify(eventPublisher).publishEvent(any(TodoStatusChangedEvent.class));
-        }
-
-        @Test
-        @DisplayName("正常系: プロジェクト付きTODOの完了で進捗再計算される")
-        void changeStatus_プロジェクト付き_進捗再計算() {
-            // Given
-            TodoEntity todo = createTodoWithProject();
-            ProjectEntity project = createProject();
-            TodoStatusChangeRequest request = new TodoStatusChangeRequest("COMPLETED", null);
-            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
-            given(todoRepository.save(any(TodoEntity.class)))
-                    .willAnswer(invocation -> {
-                        TodoEntity e = invocation.getArgument(0);
-                        java.lang.reflect.Method m = TodoEntity.class.getDeclaredMethod("onCreate");
-                        m.setAccessible(true);
-                        m.invoke(e);
-                        return e;
-                    });
-            given(projectService.findProjectOrThrow(PROJECT_ID)).willReturn(project);
-
-            // When
-            ApiResponse<TodoStatusChangeResponse> response = todoService.changeStatus(
-                    TODO_ID, request, USER_ID);
-
-            // Then
-            assertThat(response.getData().getProjectProgress()).isNotNull();
-            verify(projectRepository).recalculateProgress(PROJECT_ID);
-        }
-
-        @Test
-        @DisplayName("正常系: IN_PROGRESSへの変更")
-        void changeStatus_正常_IN_PROGRESS() {
-            // Given
-            TodoEntity todo = createOpenTodo();
-            TodoStatusChangeRequest request = new TodoStatusChangeRequest("IN_PROGRESS", null);
-            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
-            given(todoRepository.save(any(TodoEntity.class)))
-                    .willAnswer(invocation -> {
-                        TodoEntity e = invocation.getArgument(0);
-                        java.lang.reflect.Method m = TodoEntity.class.getDeclaredMethod("onCreate");
-                        m.setAccessible(true);
-                        m.invoke(e);
-                        return e;
-                    });
-
-            // When
-            ApiResponse<TodoStatusChangeResponse> response = todoService.changeStatus(
-                    TODO_ID, request, USER_ID);
-
-            // Then
-            assertThat(response.getData().getStatus()).isEqualTo("IN_PROGRESS");
-        }
-    }
-
-    // ========================================
-    // bulkChangeStatus
-    // ========================================
-
-    @Nested
-    @DisplayName("bulkChangeStatus")
-    class BulkChangeStatus {
-
-        @Test
-        @DisplayName("正常系: 複数TODOのステータスが一括変更される")
-        void bulkChangeStatus_正常_一括変更() {
-            // Given
-            TodoEntity todo1 = createOpenTodo();
-            TodoEntity todo2 = createOpenTodo();
-            BulkStatusChangeRequest request = new BulkStatusChangeRequest(
-                    List.of(1L, 2L), "COMPLETED");
-            given(todoRepository.findByIdInAndDeletedAtIsNull(List.of(1L, 2L)))
-                    .willReturn(List.of(todo1, todo2));
-            given(todoRepository.save(any(TodoEntity.class)))
-                    .willAnswer(invocation -> {
-                        TodoEntity e = invocation.getArgument(0);
-                        java.lang.reflect.Method m = TodoEntity.class.getDeclaredMethod("onCreate");
-                        m.setAccessible(true);
-                        m.invoke(e);
-                        return e;
-                    });
-
-            // When
-            ApiResponse<List<TodoStatusChangeResponse>> response = todoService.bulkChangeStatus(
-                    SCOPE_TYPE, SCOPE_ID, request, USER_ID);
-
-            // Then
-            assertThat(response.getData()).hasSize(2);
-            assertThat(response.getData().get(0).getStatus()).isEqualTo("COMPLETED");
-        }
-
-        @Test
-        @DisplayName("異常系: 一括操作サイズ超過でTODO_018例外")
-        void bulkChangeStatus_サイズ超過_TODO018例外() {
-            // Given
-            List<Long> ids = new java.util.ArrayList<>();
-            for (long i = 1; i <= 51; i++) {
-                ids.add(i);
-            }
-            BulkStatusChangeRequest request = new BulkStatusChangeRequest(ids, "COMPLETED");
-
-            // When / Then
-            assertThatThrownBy(() -> todoService.bulkChangeStatus(
-                    SCOPE_TYPE, SCOPE_ID, request, USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("TODO_018"));
-        }
-    }
-
-    // ========================================
     // getMyTodos
     // ========================================
 
@@ -759,7 +642,6 @@ class TodoServiceTest {
             // Given
             TodoEntity todo = createOpenTodo();
             given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of(todo));
-            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
 
             // When
             ApiResponse<List<TodoResponse>> response = todoService.getMyTodos(USER_ID);
@@ -779,106 +661,6 @@ class TodoServiceTest {
 
             // Then
             assertThat(response.getData()).isEmpty();
-        }
-    }
-
-    // ========================================
-    // addAssignee
-    // ========================================
-
-    @Nested
-    @DisplayName("addAssignee")
-    class AddAssignee {
-
-        @Test
-        @DisplayName("正常系: 担当者が追加される")
-        void addAssignee_正常_追加成功() {
-            // Given
-            TodoEntity todo = createOpenTodo();
-            AddAssigneeRequest request = new AddAssigneeRequest(ASSIGNEE_USER_ID);
-            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
-            given(assigneeRepository.existsByTodoIdAndUserId(TODO_ID, ASSIGNEE_USER_ID)).willReturn(false);
-            given(assigneeRepository.save(any(TodoAssigneeEntity.class)))
-                    .willAnswer(invocation -> invocation.getArgument(0));
-
-            // When
-            ApiResponse<AssigneeResponse> response = todoService.addAssignee(TODO_ID, request, USER_ID);
-
-            // Then
-            assertThat(response.getData().getUserId()).isEqualTo(ASSIGNEE_USER_ID);
-            verify(assigneeRepository).save(any(TodoAssigneeEntity.class));
-        }
-
-        @Test
-        @DisplayName("異常系: 担当者が既に割り当て済みでTODO_014例外")
-        void addAssignee_重複_TODO014例外() {
-            // Given
-            TodoEntity todo = createOpenTodo();
-            AddAssigneeRequest request = new AddAssigneeRequest(ASSIGNEE_USER_ID);
-            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
-            given(assigneeRepository.existsByTodoIdAndUserId(TODO_ID, ASSIGNEE_USER_ID)).willReturn(true);
-
-            // When / Then
-            assertThatThrownBy(() -> todoService.addAssignee(TODO_ID, request, USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("TODO_014"));
-        }
-
-        @Test
-        @DisplayName("異常系: TODO不在でTODO_010例外")
-        void addAssignee_TODO不在_TODO010例外() {
-            // Given
-            AddAssigneeRequest request = new AddAssigneeRequest(ASSIGNEE_USER_ID);
-            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.empty());
-
-            // When / Then
-            assertThatThrownBy(() -> todoService.addAssignee(TODO_ID, request, USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("TODO_010"));
-        }
-    }
-
-    // ========================================
-    // removeAssignee
-    // ========================================
-
-    @Nested
-    @DisplayName("removeAssignee")
-    class RemoveAssignee {
-
-        @Test
-        @DisplayName("正常系: 担当者が削除される")
-        void removeAssignee_正常_削除() {
-            // Given
-            TodoEntity todo = createOpenTodo();
-            TodoAssigneeEntity assignee = createAssignee();
-            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
-            given(assigneeRepository.findByTodoIdAndUserId(TODO_ID, ASSIGNEE_USER_ID))
-                    .willReturn(Optional.of(assignee));
-
-            // When
-            todoService.removeAssignee(TODO_ID, ASSIGNEE_USER_ID);
-
-            // Then
-            verify(assigneeRepository).delete(assignee);
-        }
-
-        @Test
-        @DisplayName("異常系: 担当者不在でTODO_015例外")
-        void removeAssignee_不在_TODO015例外() {
-            // Given
-            TodoEntity todo = createOpenTodo();
-            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
-            given(assigneeRepository.findByTodoIdAndUserId(TODO_ID, ASSIGNEE_USER_ID))
-                    .willReturn(Optional.empty());
-
-            // When / Then
-            assertThatThrownBy(() -> todoService.removeAssignee(TODO_ID, ASSIGNEE_USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("TODO_015"));
         }
     }
 
@@ -947,7 +729,6 @@ class TodoServiceTest {
                 m.invoke(e);
                 return e;
             });
-            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
 
             // when
             ApiResponse<TodoResponse> result = todoService.createTodo(
@@ -976,7 +757,6 @@ class TodoServiceTest {
                 m.invoke(e);
                 return e;
             });
-            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
 
             // when
             ApiResponse<TodoResponse> result = todoService.createTodo(
@@ -1124,7 +904,6 @@ class TodoServiceTest {
             // parent.getId() は null（ビルドしたエンティティにIDなし）なので null で stub
             given(todoRepository.findByParentIdAndDeletedAtIsNullOrderBySortOrderAsc(null))
                     .willReturn(List.of(child1, child2));
-            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
 
             // when
             ApiResponse<List<TodoResponse>> result = todoService.getChildTodos(
@@ -1155,7 +934,6 @@ class TodoServiceTest {
             given(assigneeRepository.existsByTodoIdAndUserId(TODO_ID, USER_ID)).willReturn(true);
             given(todoRepository.save(any(TodoEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
-            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
 
             // When
             ApiResponse<TodoResponse> response = todoService.patchTodo(TODO_ID, USER_ID, request);
@@ -1177,7 +955,6 @@ class TodoServiceTest {
             given(assigneeRepository.existsByTodoIdAndUserId(TODO_ID, USER_ID)).willReturn(true);
             given(todoRepository.save(any(TodoEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
-            given(assigneeRepository.findByTodoId(any())).willReturn(List.of());
 
             // When
             ApiResponse<TodoResponse> response = todoService.patchTodo(TODO_ID, USER_ID, request);
