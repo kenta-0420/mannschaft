@@ -401,6 +401,10 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_072", HttpStatus.NOT_FOUND),            // CANDIDATE_DATE_NOT_FOUND
             Map.entry("VILLAGE_073", HttpStatus.CONFLICT),             // VOTE_DUPLICATE
             Map.entry("VILLAGE_074", HttpStatus.FORBIDDEN),            // MEETUP_NOT_MEMBER
+            // F17 Phase 3-β-E — 村ニュースレター（VILLAGE_078〜080）
+            Map.entry("VILLAGE_078", HttpStatus.NOT_FOUND),            // NEWSLETTER_NOT_FOUND
+            Map.entry("VILLAGE_079", HttpStatus.CONFLICT),             // NEWSLETTER_ALREADY_OPTED_OUT
+            Map.entry("VILLAGE_080", HttpStatus.CONFLICT),             // NEWSLETTER_NOT_OPTED_OUT
 
             // F17 Phase 3-β — 村史（VILLAGE_075）
             Map.entry("VILLAGE_075", HttpStatus.NOT_FOUND),            // CHRONICLE_NOT_FOUND
