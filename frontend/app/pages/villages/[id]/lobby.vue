@@ -263,12 +263,21 @@ async function onUnpin() {
   await loadVillage()
 }
 
+/** 編集ダイアログ表示状態 — VillageEditDialog (FE α2 で新規実装) を組み込む */
+const showEditDialog = ref(false)
 function onEdit() {
-  navigateTo(`/villages/${villageId}/edit`)
+  showEditDialog.value = true
 }
 
+/** 編集 Dialog から更新成功時に村情報を差し替え */
+function onVillageUpdated(updated: VillageResponse) {
+  village.value = updated
+}
+
+/** 通報ダイアログ表示状態 — VillageReportDialog (FE5 完成済) を組み込む */
+const showReportDialog = ref(false)
 function onReportClick() {
-  // FE5 担当（通報 Dialog） — Phase 1 では未実装
+  showReportDialog.value = true
 }
 
 // =============================================================================
@@ -468,5 +477,22 @@ const villageRef = village as Ref<VillageResponse | null>
         </footer>
       </section>
     </div>
+
+    <!-- 通報ダイアログ — 対象は村本体 (VILLAGE) -->
+    <VillageReportDialog
+      v-if="villageRef"
+      v-model:visible="showReportDialog"
+      :village-id="villageRef.id"
+      target-type="VILLAGE"
+      :target-ref-id="villageRef.id"
+    />
+
+    <!-- 村本体編集ダイアログ — 村長のみ（VillageHeader 側で制御） -->
+    <VillageEditDialog
+      v-if="villageRef"
+      v-model:visible="showEditDialog"
+      :village="villageRef"
+      @updated="onVillageUpdated"
+    />
   </div>
 </template>

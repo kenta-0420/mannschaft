@@ -624,3 +624,211 @@ export interface VillageMatchApplicationCreateRequest {
 export interface VillageMatchApplicationReviewRequest {
   reviewComment?: string | null
 }
+
+// -----------------------------------------------------------------------------
+// F17 Phase 3 — 寄合 (village_meetups)
+// -----------------------------------------------------------------------------
+
+export type VillageMeetupStatus =
+  | 'DRAFT'
+  | 'OPEN'
+  | 'CONFIRMED'
+  | 'CANCELLED'
+  | 'CLOSED'
+
+export type VillageMeetupVoteType =
+  | 'YES'
+  | 'NO'
+  | 'MAYBE'
+
+/** 寄合候補日 */
+export interface VillageMeetupCandidateDateResponse {
+  id: string
+  meetupId: string
+  candidateDate: string
+  candidateTimeStart: string | null
+  candidateTimeEnd: string | null
+  voteCountYes: number
+  voteCountNo: number
+  voteCountMaybe: number
+  isConfirmed: boolean
+}
+
+/** 寄合 */
+export interface VillageMeetupResponse {
+  id: string
+  villageId: string
+  organizerUserId: number
+  title: string
+  description: string | null
+  venue: string | null
+  status: VillageMeetupStatus
+  confirmedDateId: string | null
+  candidateDates: VillageMeetupCandidateDateResponse[]
+  participantCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+/** 寄合投票 */
+export interface VillageMeetupVoteResponse {
+  id: string
+  meetupId: string
+  candidateDateId: string
+  voterUserId: number
+  voteType: VillageMeetupVoteType
+  comment: string | null
+  votedAt: string
+}
+
+/** 寄合投票集計 */
+export interface VillageMeetupVoteSummary {
+  meetupId: string
+  totalVoters: number
+  candidateSummaries: VillageMeetupCandidateDateResponse[]
+}
+
+/** 寄合作成リクエスト */
+export interface VillageMeetupCreateRequest {
+  title: string
+  description?: string | null
+  venue?: string | null
+  candidateDates: Array<{
+    candidateDate: string
+    candidateTimeStart?: string | null
+    candidateTimeEnd?: string | null
+  }>
+}
+
+/** 寄合更新リクエスト */
+export interface VillageMeetupUpdateRequest {
+  title?: string
+  description?: string | null
+  venue?: string | null
+}
+
+/** 寄合投票リクエスト */
+export interface VillageMeetupVoteRequest {
+  candidateDateId: string
+  voteType: VillageMeetupVoteType
+  comment?: string | null
+}
+
+/** 寄合候補日追加リクエスト */
+export interface VillageMeetupCandidateDateAddRequest {
+  candidateDate: string
+  candidateTimeStart?: string | null
+  candidateTimeEnd?: string | null
+}
+
+/** 寄合一覧クエリ */
+export interface VillageMeetupListParams {
+  status?: VillageMeetupStatus
+  page?: number
+  size?: number
+}
+
+// -----------------------------------------------------------------------------
+// F17 Phase 3 — 村史 (village_chronicles)
+// -----------------------------------------------------------------------------
+
+/** 村史エントリ */
+export interface VillageChronicleResponse {
+  id: string
+  villageId: string
+  /** YYYY-MM 形式 */
+  yearMonth: string
+  generatedAt: string
+  postCount: number
+  newMemberCount: number
+  topicTags: string[]
+}
+
+/** 村史一覧 */
+export interface VillageChronicleListResponse {
+  items: VillageChronicleResponse[]
+  total: number
+}
+
+// -----------------------------------------------------------------------------
+// F17 Phase 3 — ご縁スコア (village_serendipity_scores)
+// -----------------------------------------------------------------------------
+
+/** ご縁スコア */
+export interface VillageSerendipityScoreResponse {
+  villageId: string
+  userId: number
+  /** 0.0 〜 1.0 */
+  score: number
+  rank: number | null
+  lastComputedAt: string
+}
+
+/** ご縁スコアランキング */
+export interface VillageSerendipityRankingResponse {
+  items: VillageSerendipityScoreResponse[]
+  total: number
+}
+
+// -----------------------------------------------------------------------------
+// F17 Phase 3 — 巡礼 (village_pilgrimage_*)
+// -----------------------------------------------------------------------------
+
+/** 巡礼推薦 */
+export interface VillagePilgrimageRecommendationResponse {
+  id: string
+  userId: number
+  recommendedVillageId: string
+  recommendedAt: string
+  /** 推薦根拠 */
+  reason: string | null
+  visited: boolean
+  visitedAt: string | null
+}
+
+/** 訪問記録リクエスト */
+export interface VillagePilgrimageVisitRecordRequest {
+  villageId: string
+  recommendationId?: string | null
+}
+
+/** 訪問記録 */
+export interface VillagePilgrimageVisitResponse {
+  id: string
+  userId: number
+  villageId: string
+  visitedAt: string
+}
+
+// -----------------------------------------------------------------------------
+// F17 Phase 3 — ニュースレター (village_newsletter_*)
+// -----------------------------------------------------------------------------
+
+export type VillageNewsletterFrequency =
+  | 'DAILY'
+  | 'WEEKLY'
+  | 'MONTHLY'
+  | 'NEVER'
+
+/** ニュースレター設定 */
+export interface VillageNewsletterSettingsResponse {
+  userId: number
+  villageId: string | null
+  frequency: VillageNewsletterFrequency
+  optedOut: boolean
+  lastSentAt: string | null
+  nextScheduledAt: string | null
+}
+
+/** ニュースレター設定更新リクエスト */
+export interface VillageNewsletterSettingsRequest {
+  frequency: VillageNewsletterFrequency
+  villageId?: string | null
+}
+
+/** ニュースレター購読停止レスポンス */
+export interface VillageNewsletterOptOutResponse {
+  userId: number
+  optedOut: boolean
+  optedOutAt: string | null
+}

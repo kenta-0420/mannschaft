@@ -20,10 +20,10 @@
     "withdraw": "取り下げ",
     "resolve": "対応完了",
     "dismiss": "却下",
-    "ban": "차단",
-    "unban": "차단 해제",
-    "changeRole": "역할 변경",
-    "viewAll": "마을 목록으로"
+    "ban": "Ban",
+    "unban": "Unban",
+    "changeRole": "Change role",
+    "viewAll": "View all villages"
   },
   "field": {
     "name": "村名",
@@ -73,7 +73,9 @@
     "reports": "通報管理",
     "calendar": "歳時記",
     "festival": "お祭り",
-    "matchRecruit": "練習試合・募集"
+    "matchRecruit": "練習試合・募集",
+    "meetup": "寄合",
+    "chronicle": "村史"
   },
   "lobby": {
     "title": "ロビー",
@@ -188,16 +190,16 @@
     "empty": "参加申請はありません"
   },
   "feed": {
-    "title": "마을 피드",
-    "dashboardTitle": "내 마을",
-    "pinned": "즐겨찾기한 마을",
-    "empty": "즐겨찾기한 마을이 없습니다",
-    "emptyHint": "관심 있는 마을에 참여하면 최신 게시물이 여기에 표시됩니다.",
-    "loadingError": "마을 피드를 불러오지 못했습니다",
-    "retry": "다시 시도",
+    "title": "Village feed",
+    "dashboardTitle": "Your villages",
+    "pinned": "Pinned villages",
+    "empty": "No favorite villages yet",
+    "emptyHint": "Join a village you like and the latest posts will appear here.",
+    "loadingError": "Failed to load the village feed",
+    "retry": "Retry",
     "type": {
-      "TIMELINE": "타임라인",
-      "LOBBY": "로비"
+      "TIMELINE": "Timeline",
+      "LOBBY": "Lobby"
     }
   },
   "search": {
@@ -291,6 +293,21 @@
   "placeholder": {
     "bulletinComingSoon": "村の掲示板は Phase 2 で実装予定です",
     "timelineComingSoon": "村のタイムラインは Phase 2 で実装予定です"
+  },
+  "editDialog": {
+    "title": "村を編集",
+    "save": "更新する",
+    "iconLabel": "アイコン画像（R2 キー）",
+    "coverLabel": "カバー画像（R2 キー）",
+    "guidelineLabel": "村ガイドライン (Markdown)",
+    "r2KeyPlaceholder": "villages/<村ID>/icon.png など",
+    "saveSuccess": "村情報を更新しました",
+    "errorNameRequired": "村名は必須です",
+    "errorNameTooLong": "村名は {max} 文字以内で入力してください",
+    "errorDescriptionTooLong": "説明文は {max} 文字以内で入力してください",
+    "errorCategoryTooLong": "カテゴリは {max} 文字以内で入力してください",
+    "errorGuidelineTooLong": "ガイドラインは {max} 文字以内で入力してください",
+    "errorR2KeyTooLong": "R2 キーは {max} 文字以内で入力してください"
   },
   "monsho": {
     "title": "村紋",
@@ -420,5 +437,103 @@
     "empty": "委任された代表はいません",
     "grantedBy": "委任元",
     "note": "メモ"
+  },
+  "meetup": {
+    "title": "寄合",
+    "create": "寄合を企画",
+    "createTitle": "寄合を企画",
+    "editTitle": "寄合を編集",
+    "meetupTitle": "寄合名",
+    "description": "説明",
+    "venue": "場所",
+    "candidateDates": "候補日",
+    "addCandidateDate": "候補日を追加",
+    "removeCandidateDate": "候補日を削除",
+    "candidateDate": "候補日",
+    "candidateTimeStart": "開始時刻",
+    "candidateTimeEnd": "終了時刻",
+    "vote": "投票",
+    "voteComment": "コメント（任意）",
+    "voteSubmit": "投票する",
+    "confirm": "この日に決定",
+    "confirmedDate": "確定日",
+    "cancel": "寄合を中止",
+    "confirmCancel": "この寄合を中止します。よろしいですか?",
+    "empty": "予定されている寄合はありません",
+    "participantCount": "参加予定",
+    "saveSuccess": "寄合を保存しました",
+    "voteSuccess": "投票しました",
+    "confirmSuccess": "開催日を確定しました",
+    "cancelSuccess": "寄合を中止しました",
+    "loadFailed": "寄合の取得に失敗しました",
+    "voteType": {
+      "YES": "参加",
+      "NO": "不参加",
+      "MAYBE": "未定"
+    },
+    "status": {
+      "DRAFT": "下書き",
+      "OPEN": "投票受付中",
+      "CONFIRMED": "開催確定",
+      "CANCELLED": "中止",
+      "CLOSED": "終了"
+    }
+  },
+  "chronicle": {
+    "title": "村史",
+    "subtitle": "村の月次まとめ",
+    "yearMonth": "対象月",
+    "generatedAt": "生成日時",
+    "postCount": "投稿数",
+    "newMemberCount": "新規村人",
+    "topicTags": "話題タグ",
+    "empty": "村史はまだ生成されていません",
+    "loadFailed": "村史の取得に失敗しました",
+    "viewDetail": "詳細を見る"
+  },
+  "serendipity": {
+    "title": "ご縁スコア",
+    "subtitle": "あなたとの相性度",
+    "rank": "順位",
+    "score": "スコア",
+    "myScore": "あなたのスコア",
+    "ranking": "ランキング",
+    "lastComputedAt": "最終計算日時",
+    "empty": "まだご縁スコアは計算されていません",
+    "loadFailed": "ご縁スコアの取得に失敗しました"
+  },
+  "pilgrimage": {
+    "title": "村巡礼",
+    "subtitle": "本日のおすすめ村",
+    "todaysRecommendation": "本日のおすすめ",
+    "visit": "訪問する",
+    "recorded": "訪問済み",
+    "reason": "おすすめ理由",
+    "myVisits": "訪問履歴",
+    "empty": "本日のおすすめはありません",
+    "visitsEmpty": "訪問履歴はありません",
+    "visitSuccess": "訪問を記録しました",
+    "loadFailed": "巡礼情報の取得に失敗しました"
+  },
+  "newsletter": {
+    "title": "ニュースレター",
+    "subtitle": "村の更新通知",
+    "settings": "ニュースレター設定",
+    "frequency": "配信頻度",
+    "lastSentAt": "最終配信日時",
+    "nextScheduledAt": "次回配信予定",
+    "optOut": "配信停止",
+    "optIn": "配信再開",
+    "optedOut": "配信を停止中です",
+    "saveSuccess": "ニュースレター設定を保存しました",
+    "optOutSuccess": "配信を停止しました",
+    "optInSuccess": "配信を再開しました",
+    "loadFailed": "ニュースレター設定の取得に失敗しました",
+    "frequencyOption": {
+      "DAILY": "毎日",
+      "WEEKLY": "毎週",
+      "MONTHLY": "毎月",
+      "NEVER": "停止"
+    }
   }
 }
