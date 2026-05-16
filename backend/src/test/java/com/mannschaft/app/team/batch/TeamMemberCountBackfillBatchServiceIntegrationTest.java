@@ -3,6 +3,8 @@ package com.mannschaft.app.team.batch;
 import com.mannschaft.app.team.repository.TeamRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import net.javacrumbs.shedlock.core.LockProvider;
+import net.javacrumbs.shedlock.core.SimpleLock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,7 +21,12 @@ import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.util.Optional;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * F15.4 Phase 4 — {@link TeamMemberCountBackfillBatchService} 結合テスト。
@@ -71,6 +78,20 @@ class TeamMemberCountBackfillBatchServiceIntegrationTest {
     @MockitoBean
     private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
 
+    /**
+     * ShedLock の {@code shedlock} テーブルは Flyway 経由で本番に作成されるが、
+     * テスト環境は {@code spring.flyway.enabled=false} + {@code ddl-auto=create} のため
+     * Hibernate がエンティティから DDL を生成する方式となり、{@code shedlock} テーブルは作成されない。
+     * そのため {@link org.springframework.scheduling.annotation.Scheduled @Scheduled} +
+     * {@link net.javacrumbs.shedlock.spring.annotation.SchedulerLock @SchedulerLock} を付与した
+     * {@link TeamMemberCountBackfillBatchService#recalculateAll()} を呼ぶと AOP が
+     * {@code shedlock} テーブルに対して INSERT を流し SQLSyntaxErrorException で落ちる。
+     * 本テストの責務は SQL 補正ロジックの検証であり、分散排他制御は対象外のため
+     * {@link LockProvider} を no-op モックに差し替える。
+     */
+    @MockitoBean
+    private LockProvider lockProvider;
+
     @Autowired
     private TeamMemberCountBackfillBatchService batch;
 
@@ -87,6 +108,10 @@ class TeamMemberCountBackfillBatchServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        // ShedLock の no-op スタブ: 常にロック取得成功扱いとし、@SchedulerLock 経由の
+        // shedlock テーブル INSERT/UPDATE を完全にスキップする。
+        when(lockProvider.lock(any())).thenReturn(Optional.of(mock(SimpleLock.class)));
+
         // MEMBER ロール
         em.createNativeQuery(
                 "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
