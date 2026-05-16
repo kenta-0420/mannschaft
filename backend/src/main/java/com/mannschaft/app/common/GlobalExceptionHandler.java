@@ -394,6 +394,14 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_067", HttpStatus.CONFLICT),             // MATCH_APPLICATION_DUPLICATE
             Map.entry("VILLAGE_068", HttpStatus.UNPROCESSABLE_ENTITY), // MATCH_APPLICATION_INVALID_STATUS
 
+            // F17 Phase 3-β — 寄合（VILLAGE_069〜074）
+            Map.entry("VILLAGE_069", HttpStatus.NOT_FOUND),            // MEETUP_NOT_FOUND
+            Map.entry("VILLAGE_070", HttpStatus.CONFLICT),             // MEETUP_ALREADY_CONFIRMED
+            Map.entry("VILLAGE_071", HttpStatus.CONFLICT),             // MEETUP_INVALID_STATUS
+            Map.entry("VILLAGE_072", HttpStatus.NOT_FOUND),            // CANDIDATE_DATE_NOT_FOUND
+            Map.entry("VILLAGE_073", HttpStatus.CONFLICT),             // VOTE_DUPLICATE
+            Map.entry("VILLAGE_074", HttpStatus.FORBIDDEN),            // MEETUP_NOT_MEMBER
+
             // F18 個人ポイントカードウォレット（設計書 §6.3 整合）
             Map.entry("POINT_CARD_001", HttpStatus.FORBIDDEN),         // WALLET_NOT_ENABLED
             Map.entry("POINT_CARD_002", HttpStatus.BAD_REQUEST),       // INVALID_BARCODE_VALUE（Severity.WARN 既定と同じだが明示）

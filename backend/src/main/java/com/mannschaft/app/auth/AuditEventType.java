@@ -239,6 +239,16 @@ public enum AuditEventType {
     VILLAGE_FESTIVAL_ENDED(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 2 — 村お祭りを中止（村長/長老の判断）。 */
     VILLAGE_FESTIVAL_CANCELLED(AuditEventCategory.VILLAGE),
+    /** F17.1 Phase 3-β — 寄合を作成。 */
+    VILLAGE_MEETUP_CREATED(AuditEventCategory.VILLAGE),
+    /** F17.1 Phase 3-β — 寄合を更新。 */
+    VILLAGE_MEETUP_UPDATED(AuditEventCategory.VILLAGE),
+    /** F17.1 Phase 3-β — 寄合の確定（PLANNING → CONFIRMED、幹事による日付確定）。 */
+    VILLAGE_MEETUP_CONFIRMED(AuditEventCategory.VILLAGE),
+    /** F17.1 Phase 3-β — 寄合を中止（幹事の判断）。 */
+    VILLAGE_MEETUP_CANCELLED(AuditEventCategory.VILLAGE),
+    /** F17.1 Phase 3-β — 寄合への投票（新規/変更）。 */
+    VILLAGE_MEETUP_VOTED(AuditEventCategory.VILLAGE),
 
     // ─── SECURITY_RATE_LIMIT (F15.4 組織内チーム検索) ───────────
     /** 組織内チーム検索 API がレート制限に到達した（429 応答）。 */

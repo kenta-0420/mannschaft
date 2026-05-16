@@ -277,7 +277,29 @@ public enum VillageErrorCode implements ErrorCode {
 
     /** VILLAGE_068: 応募レビュー時の status 値が ACCEPTED/REJECTED でない（422） */
     MATCH_APPLICATION_INVALID_STATUS("VILLAGE_068",
-            "応募の審査結果は ACCEPTED または REJECTED を指定してください", Severity.WARN);
+            "応募の審査結果は ACCEPTED または REJECTED を指定してください", Severity.WARN),
+
+    // ==================================================================
+    // F17 Phase 3-β — 寄合（VILLAGE_069〜074）
+    // ==================================================================
+
+    /** VILLAGE_069: 寄合レコードが存在しない（404、IDOR 対策で統一）。 */
+    MEETUP_NOT_FOUND("VILLAGE_069", "寄合が見つかりません", Severity.WARN),
+
+    /** VILLAGE_070: 既に CONFIRMED の寄合に対する重複確定操作（409）。 */
+    MEETUP_ALREADY_CONFIRMED("VILLAGE_070", "この寄合は既に確定済みです", Severity.WARN),
+
+    /** VILLAGE_071: 寄合の status が想定外（例：CANCELLED に対する update/confirm/vote）（409）。 */
+    MEETUP_INVALID_STATUS("VILLAGE_071", "この寄合は現在この操作を受け付けられない状態です", Severity.WARN),
+
+    /** VILLAGE_072: 候補日レコードが存在しない / 指定寄合に属さない（404、IDOR 対策で統一）。 */
+    CANDIDATE_DATE_NOT_FOUND("VILLAGE_072", "候補日が見つかりません", Severity.WARN),
+
+    /** VILLAGE_073: 同一候補日への重複追加（409、UNIQUE 制約に先立つアプリ層チェック）。 */
+    VOTE_DUPLICATE("VILLAGE_073", "この候補日は既に登録されています", Severity.WARN),
+
+    /** VILLAGE_074: 寄合の操作には村人であることが必要（403）。 */
+    MEETUP_NOT_MEMBER("VILLAGE_074", "寄合の操作には村人である必要があります", Severity.WARN);
 
     private final String code;
     private final String message;
