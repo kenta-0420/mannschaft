@@ -204,7 +204,11 @@ public enum AuditEventType {
     /** お気に入り村のピンを解除。 */
     VILLAGE_UNPINNED(AuditEventCategory.VILLAGE),
     /** 井戸端会議の日次スレッドをバッチで自動生成。 */
-    VILLAGE_LOBBY_THREAD_CREATED(AuditEventCategory.VILLAGE);
+    VILLAGE_LOBBY_THREAD_CREATED(AuditEventCategory.VILLAGE),
+
+    // ─── SECURITY_RATE_LIMIT (F15.4 組織内チーム検索) ───────────
+    /** 組織内チーム検索 API がレート制限に到達した（429 応答）。 */
+    TEAM_SEARCH_RATE_LIMITED(AuditEventCategory.SECURITY_RATE_LIMIT);
 
     private final AuditEventCategory category;
 }
