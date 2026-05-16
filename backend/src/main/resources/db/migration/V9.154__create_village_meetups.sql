@@ -24,7 +24,7 @@ CREATE TABLE village_meetups (
     version                 BIGINT          NOT NULL DEFAULT 0                      COMMENT '楽観ロック',
     PRIMARY KEY (id),
     KEY idx_vm_village (village_id, status, deleted_at),
-    CONSTRAINT fk_vm_village FOREIGN KEY (village_id) REFERENCES villages(id) ON DELETE CASCADE
+    CONSTRAINT fk_vmt_village FOREIGN KEY (village_id) REFERENCES villages(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='寄合本体（F17.1 Phase 3-β）';
 
 CREATE TABLE village_meetup_candidate_dates (
