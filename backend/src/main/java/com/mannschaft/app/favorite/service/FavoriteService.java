@@ -3,6 +3,7 @@ package com.mannschaft.app.favorite.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.favorite.FavoriteEntityType;
 import com.mannschaft.app.favorite.FavoriteErrorCode;
+import com.mannschaft.app.favorite.dto.FavoriteCheckResultDto;
 import com.mannschaft.app.favorite.dto.FavoriteEntityMetaDto;
 import com.mannschaft.app.favorite.dto.FavoriteEntityStatus;
 import com.mannschaft.app.favorite.dto.FavoriteItemDto;
@@ -175,6 +176,28 @@ public class FavoriteService {
 
         Map<String, FavoriteEntityMetaDto> metaMap = favoriteResolverService.resolveAll(List.of(entity), userId);
         return toDto(entity, metaMap.get(entity.getEntityId()));
+    }
+
+    /**
+     * 指定エンティティが当該ユーザーのお気に入りに登録されているか確認する。
+     *
+     * <p>フロントエンドの {@code FavoriteToggleButton.vue} のマウント時に呼ばれ、
+     * トグルボタンの初期状態と削除に用いる favoriteId を提供する用途。
+     *
+     * <p>entityId のフォーマット検証は実施しない（不正な ID なら未登録扱い＝
+     * isFavorited=false で返す）。これは「チェック」が副作用なしの読み取り操作であり、
+     * 不正な入力に対しても 200 で「登録されていません」と返すのが自然なため。
+     *
+     * @param userId     ユーザーID
+     * @param entityType エンティティ種別
+     * @param entityId   エンティティID（文字列）
+     * @return チェック結果（登録済み true/false と favoriteId）
+     */
+    @Transactional(readOnly = true)
+    public FavoriteCheckResultDto checkFavorite(Long userId, FavoriteEntityType entityType, String entityId) {
+        return userFavoriteRepository.findByUserIdAndEntityTypeAndEntityId(userId, entityType, entityId)
+                .map(entity -> new FavoriteCheckResultDto(true, entity.getId()))
+                .orElse(new FavoriteCheckResultDto(false, null));
     }
 
     // ========================================
