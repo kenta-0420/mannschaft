@@ -44,6 +44,7 @@ const showDeleteConfirm = ref(false)
 const deleting = ref(false)
 const recordingUsed = ref(false)
 const usedToast = ref(false)
+const cardIdCopiedToast = ref(false)
 
 // 編集用ドラフト（編集モード突入時にコピー、保存成功時にカードへ反映）
 const draft = reactive({
@@ -178,6 +179,40 @@ function backToWallet() {
   router.push('/wallet')
 }
 
+/**
+ * カード ID をクリップボードにコピー。
+ *
+ * <p>F18 Phase 2 UC-9（店主が顧客のカード ID を入力して押印するフロー）で、
+ * 顧客が店主に自分のカード ID を素早く伝えるための UX。Clipboard API が
+ * 使えない環境（古い iOS Safari / HTTP コンテキスト等）は execCommand に
+ * フォールバックする。</p>
+ */
+async function copyCardId() {
+  if (!card.value) return
+  const id = card.value.id
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(id)
+    }
+    else {
+      // フォールバック: 一時 textarea で execCommand('copy')
+      const ta = document.createElement('textarea')
+      ta.value = id
+      ta.style.position = 'fixed'
+      ta.style.left = '-9999px'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    cardIdCopiedToast.value = true
+    setTimeout(() => { cardIdCopiedToast.value = false }, 2000)
+  }
+  catch (e) {
+    console.error('[wallet/cards/[id]] copy card id failed', e)
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -261,6 +296,20 @@ onMounted(load)
           <div class="card-detail__dl-row">
             <dt>Format</dt>
             <dd>{{ card.barcodeFormat }}</dd>
+          </div>
+          <div class="card-detail__dl-row">
+            <dt>{{ t('wallet.card_id_label') }}</dt>
+            <dd class="card-detail__id-cell">
+              <code class="card-detail__id-code">{{ card.id }}</code>
+              <button
+                type="button"
+                class="card-detail__copy-btn"
+                :aria-label="t('wallet.copy_card_id')"
+                @click="copyCardId"
+              >
+                {{ t('wallet.copy_card_id') }}
+              </button>
+            </dd>
           </div>
           <div class="card-detail__dl-row">
             <dt>{{ t('wallet.detail.last_used_at') }}</dt>
@@ -378,6 +427,16 @@ onMounted(load)
       aria-live="polite"
     >
       {{ t('wallet.detail.used_recorded') }}
+    </div>
+
+    <!-- カード ID コピートースト -->
+    <div
+      v-if="cardIdCopiedToast"
+      class="card-detail__toast"
+      role="status"
+      aria-live="polite"
+    >
+      {{ t('wallet.card_id_copied') }}
     </div>
 
     <!-- 削除確認モーダル -->
@@ -524,6 +583,35 @@ onMounted(load)
 .card-detail__memo {
   white-space: pre-wrap;
   text-align: right;
+}
+.card-detail__id-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.card-detail__id-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  background: var(--p-surface-100, #f3f4f6);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  word-break: break-all;
+}
+.card-detail__copy-btn {
+  padding: 0.25rem 0.625rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--p-surface-300, #d1d5db);
+  background: var(--p-surface-0, #fff);
+  color: var(--p-text-color, #111827);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.card-detail__copy-btn:hover {
+  background: var(--p-surface-50, #f9fafb);
 }
 .card-detail__field {
   display: flex;

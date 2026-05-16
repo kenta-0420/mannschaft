@@ -1006,8 +1006,12 @@
     }
   },
   "handoff": {
-    "button": { "passToOther": "Pass to another member" },
-    "dialog": { "title": "Pass TODO" },
+    "button": {
+      "passToOther": "Pass to another member"
+    },
+    "dialog": {
+      "title": "Pass TODO"
+    },
     "field": {
       "recipients": "Recipients",
       "recipientsPlaceholder": "Select members",
@@ -1049,7 +1053,9 @@
       "body": "{from} passed \"{title}\" to you (status: {label})"
     }
   },
-  "common": { "cancel": "Cancel" },
+  "common": {
+    "cancel": "Cancel"
+  },
   "teamHub": {
     "pageTitle": "My Teams",
     "createTeam": "Create Team",
@@ -1265,6 +1271,36 @@
       "KB_PAGE": "KB",
       "BLOG_AUTHOR": "Author",
       "VILLAGE": "Village"
+    }
+  },
+  "succession": {
+    "legalFilings": {
+      "title": "法的手続き準備",
+      "create": "新規起票",
+      "filingType": "申立種別",
+      "absenteePropertyManager": "不在者財産管理人選任申立",
+      "inheritanceLiquidator": "相続財産清算人選任申立",
+      "buildEvidence": "証拠 ZIP 生成",
+      "downloadEvidence": "証拠 ZIP ダウンロード",
+      "evidenceNotReady": "証拠 ZIP 未生成",
+      "warningLegalCheck": "本機能は v1（弁護士監修なし）です。実際の提出前に弁護士へ確認してください。",
+      "residentRegistryId": "居住者台帳 ID",
+      "dwellingUnitId": "居室 ID",
+      "note": "備考",
+      "createdAt": "起票日時",
+      "evidenceBuiltAt": "証拠 ZIP 生成日時",
+      "externalCaseNumber": "外部受理番号",
+      "filedExternallyAt": "外部提出日時",
+      "action": "操作",
+      "cancel": "キャンセル",
+      "submit": "起票する",
+      "createSuccess": "法的手続きを起票しました",
+      "createError": "起票に失敗しました",
+      "evidenceBuildSuccess": "証拠 ZIP を生成しました",
+      "evidenceBuildError": "証拠 ZIP の生成に失敗しました",
+      "downloadError": "ダウンロード URL の取得に失敗しました",
+      "fetchError": "法的手続き一覧の取得に失敗しました",
+      "empty": "法的手続きはまだありません"
     }
   }
 }
