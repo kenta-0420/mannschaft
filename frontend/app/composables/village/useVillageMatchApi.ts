@@ -1,0 +1,147 @@
+import type {
+  VillageMatchApplicationCreateRequest,
+  VillageMatchApplicationResponse,
+  VillageMatchApplicationReviewRequest,
+  VillageMatchRecruitCreateRequest,
+  VillageMatchRecruitListParams,
+  VillageMatchRecruitResponse,
+  VillageMatchRecruitUpdateRequest,
+} from '~/types/village'
+
+/**
+ * F17.1 村機能 API composable — 練習試合募集・応募
+ *
+ * Backend Controller: backend/src/main/java/com/mannschaft/app/village/controller/*.java
+ * 設計書: docs/features/F17.1_village_community.md §4 Phase 2
+ */
+export function useVillageMatchApi() {
+  const api = useApi()
+
+  // クエリ文字列ヘルパー
+  function qs(params?: object | null): string {
+    if (!params) return ''
+    const u = new URLSearchParams()
+    for (const [k, v] of Object.entries(params as Record<string, unknown>)) {
+      if (v !== undefined && v !== null && v !== '') u.set(k, String(v))
+    }
+    const s = u.toString()
+    return s ? `?${s}` : ''
+  }
+
+  // =====================================================================
+  // Phase 2: 練習試合募集 (VillageMatchRecruitController)
+  // /api/v1/villages/{villageId}/match-recruits
+  // =====================================================================
+
+  /** 練習試合募集一覧 */
+  async function listMatchRecruits(
+    villageId: string,
+    params?: VillageMatchRecruitListParams,
+  ) {
+    return api<VillageMatchRecruitResponse[]>(
+      `/api/v1/villages/${villageId}/match-recruits${qs(params)}`,
+    )
+  }
+
+  /** 練習試合募集詳細 */
+  async function getMatchRecruit(villageId: string, id: string) {
+    return api<VillageMatchRecruitResponse>(
+      `/api/v1/villages/${villageId}/match-recruits/${id}`,
+    )
+  }
+
+  /** 練習試合募集作成 */
+  async function createMatchRecruit(
+    villageId: string,
+    body: VillageMatchRecruitCreateRequest,
+  ) {
+    return api<VillageMatchRecruitResponse>(
+      `/api/v1/villages/${villageId}/match-recruits`,
+      { method: 'POST', body },
+    )
+  }
+
+  /** 練習試合募集更新 */
+  async function updateMatchRecruit(
+    villageId: string,
+    id: string,
+    body: VillageMatchRecruitUpdateRequest,
+  ) {
+    return api<VillageMatchRecruitResponse>(
+      `/api/v1/villages/${villageId}/match-recruits/${id}`,
+      { method: 'PATCH', body },
+    )
+  }
+
+  /** 練習試合募集を締切（CLOSED 化） */
+  async function closeMatchRecruit(villageId: string, id: string) {
+    return api<VillageMatchRecruitResponse>(
+      `/api/v1/villages/${villageId}/match-recruits/${id}/close`,
+      { method: 'POST' },
+    )
+  }
+
+  // =====================================================================
+  // Phase 2: 練習試合応募 (VillageMatchApplicationController)
+  // /api/v1/villages/{villageId}/match-recruits/{recruitId}/applications
+  // =====================================================================
+
+  /** 応募する */
+  async function applyToMatchRecruit(
+    villageId: string,
+    recruitId: string,
+    body: VillageMatchApplicationCreateRequest,
+  ) {
+    return api<VillageMatchApplicationResponse>(
+      `/api/v1/villages/${villageId}/match-recruits/${recruitId}/applications`,
+      { method: 'POST', body },
+    )
+  }
+
+  /** 応募一覧（募集主向け） */
+  async function listApplications(villageId: string, recruitId: string) {
+    return api<VillageMatchApplicationResponse[]>(
+      `/api/v1/villages/${villageId}/match-recruits/${recruitId}/applications`,
+    )
+  }
+
+  /** 応募を審査（ACCEPT/REJECT） */
+  async function reviewApplication(
+    villageId: string,
+    recruitId: string,
+    applicationId: string,
+    body: VillageMatchApplicationReviewRequest & { action: 'accept' | 'reject' },
+  ) {
+    const { action, ...reviewBody } = body
+    return api<VillageMatchApplicationResponse>(
+      `/api/v1/villages/${villageId}/match-recruits/${recruitId}/applications/${applicationId}/${action}`,
+      { method: 'POST', body: reviewBody },
+    )
+  }
+
+  /** 応募を取り下げる */
+  async function withdrawApplication(
+    villageId: string,
+    recruitId: string,
+    applicationId: string,
+  ) {
+    return api<VillageMatchApplicationResponse>(
+      `/api/v1/villages/${villageId}/match-recruits/${recruitId}/applications/${applicationId}/withdraw`,
+      { method: 'POST' },
+    )
+  }
+
+  return {
+    // Phase 2: 練習試合募集
+    listMatchRecruits,
+    getMatchRecruit,
+    createMatchRecruit,
+    updateMatchRecruit,
+    closeMatchRecruit,
+    // Phase 2: 練習試合応募
+    applyToMatchRecruit,
+    listApplications,
+    reviewApplication,
+    withdrawApplication,
+  }
+}
