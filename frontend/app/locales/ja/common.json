@@ -1238,5 +1238,31 @@
     "retry": "再試行",
     "organizationNotFound": "指定された組織が見つかりませんでした",
     "rateLimitExceeded": "リクエストが多すぎます。少し待ってから再試行してください"
+  },
+  "favorites": {
+    "title": "お気に入り",
+    "empty": "まだお気に入りがありません。チームや村ページの ⭐ で追加できます",
+    "showMore": "さらに {count} 件表示",
+    "collapse": "折りたたむ",
+    "open": "開く",
+    "edit": "編集",
+    "remove": "削除",
+    "unavailable": "このアイテムは利用できなくなりました",
+    "limitReached": "お気に入りは最大 {max} 件まで登録できます",
+    "addSuccess": "お気に入りに追加しました",
+    "removeSuccess": "お気に入りから削除しました",
+    "reorderSuccess": "並び替えを保存しました",
+    "quickEditTitle": "クイック編集",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "loadError": "お気に入りの読み込みに失敗しました",
+    "saveError": "保存に失敗しました",
+    "entityType": {
+      "TEAM": "チーム",
+      "ORGANIZATION": "組織",
+      "KB_PAGE": "KB",
+      "BLOG_AUTHOR": "著者",
+      "VILLAGE": "村"
+    }
   }
 }
