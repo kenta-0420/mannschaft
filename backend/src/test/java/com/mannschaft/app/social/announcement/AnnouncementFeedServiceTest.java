@@ -38,29 +38,18 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link AnnouncementFeedService} の単体テスト。
+ * {@link AnnouncementCreationService} の単体テスト。
  *
  * <p>
- * createAnnouncement / togglePin / markAsRead の正常系・異常系を検証する。
+ * createAnnouncement の正常系・異常系を検証する。
+ * togglePin / markAsRead は {@link AnnouncementFeedService} / {@link AnnouncementReadService} が担う。
  * </p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AnnouncementFeedService 単体テスト")
 class AnnouncementFeedServiceTest {
 
-    // ── モック ──
-
-    @Mock
-    private AnnouncementFeedRepository feedRepository;
-
-    @Mock
-    private AnnouncementFeedQueryRepository feedQueryRepository;
-
-    @Mock
-    private AnnouncementReadStatusRepository readStatusRepository;
-
-    @Mock
-    private AccessControlService accessControlService;
+    // ── AnnouncementSourceResolver のモック ──
 
     @Mock
     private BlogPostRepository blogPostRepository;
@@ -80,14 +69,41 @@ class AnnouncementFeedServiceTest {
     @Mock
     private CommitteeDistributionLogRepository committeeDistributionLogRepository;
 
+    @InjectMocks
+    private AnnouncementSourceResolver announcementSourceResolver;
+
+    // ── AnnouncementCreationService のモック ──
+
     @Mock
-    private CommitteeMemberRepository committeeMemberRepository;
+    private AnnouncementFeedRepository feedRepository;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @Mock
     private ProxyInputContext proxyInputContext;
 
     @Mock
     private ProxyInputRecordRepository proxyInputRecordRepository;
+
+    @Mock
+    private CommitteeMemberRepository committeeMemberRepository;
+
+    @InjectMocks
+    private AnnouncementCreationService announcementCreationService;
+
+    // ── AnnouncementReadService のモック ──
+
+    @Mock
+    private AnnouncementReadStatusRepository readStatusRepository;
+
+    @InjectMocks
+    private AnnouncementReadService announcementReadService;
+
+    // ── AnnouncementFeedService（委譲先として creationService と readService を使用） ──
+
+    @Mock
+    private AnnouncementFeedQueryRepository feedQueryRepository;
 
     @InjectMocks
     private AnnouncementFeedService announcementFeedService;
@@ -211,6 +227,38 @@ class AnnouncementFeedServiceTest {
         // feedRepository.save は引数をそのまま返す（異常系テストでは使われないため lenient を使用）
         lenient().when(feedRepository.save(any(AnnouncementFeedEntity.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
+        // AnnouncementCreationService に AnnouncementSourceResolver を注入
+        try {
+            java.lang.reflect.Field f = AnnouncementCreationService.class.getDeclaredField("sourceResolver");
+            f.setAccessible(true);
+            f.set(announcementCreationService, announcementSourceResolver);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException("sourceResolverのセットに失敗しました", e);
+        }
+        // AnnouncementFeedService に creationService を注入
+        try {
+            java.lang.reflect.Field f = AnnouncementFeedService.class.getDeclaredField("creationService");
+            f.setAccessible(true);
+            f.set(announcementFeedService, announcementCreationService);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException("creationServiceのセットに失敗しました", e);
+        }
+        // AnnouncementFeedService に readService を注入
+        try {
+            java.lang.reflect.Field f = AnnouncementFeedService.class.getDeclaredField("readService");
+            f.setAccessible(true);
+            f.set(announcementFeedService, announcementReadService);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException("readServiceのセットに失敗しました", e);
+        }
+        // AnnouncementReadService に creationService を注入
+        try {
+            java.lang.reflect.Field f = AnnouncementReadService.class.getDeclaredField("creationService");
+            f.setAccessible(true);
+            f.set(announcementReadService, announcementCreationService);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException("readService.creationServiceのセットに失敗しました", e);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -433,6 +481,7 @@ class AnnouncementFeedServiceTest {
             given(feedRepository.existsById(ANNOUNCEMENT_ID)).willReturn(true);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, AUTHOR_USER_ID))
                     .willReturn(Optional.empty()); // 未読
+            given(proxyInputContext.isProxy()).willReturn(false);
 
             // When
             announcementFeedService.markAsRead(ANNOUNCEMENT_ID, AUTHOR_USER_ID);
