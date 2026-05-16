@@ -427,6 +427,15 @@ async function submit() {
     </div>
 
     <template #footer>
+      <!-- Phase 3: ニュースレター設定への遷移（HEADMAN 専用） -->
+      <NuxtLink
+        :to="`/villages/${props.village.id}/newsletter-settings`"
+        class="mr-auto text-sm text-primary-600 hover:underline"
+        @click="closeDialog"
+      >
+        <i class="pi pi-envelope mr-1" />
+        {{ t('village.newsletter.settings') }}
+      </NuxtLink>
       <Button
         :label="t('village.action.cancel')"
         severity="secondary"
