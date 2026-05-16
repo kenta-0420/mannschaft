@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ViewerRole } from '~/types/dashboard'
+import FavoriteToggleButton from '~/components/favorites/FavoriteToggleButton.vue'
 
 definePageMeta({
   middleware: 'auth',
@@ -130,6 +131,12 @@ onMounted(async () => {
             @click="applySupporter"
           />
         </template>
+        <!-- F02.9 お気に入りトグル -->
+        <FavoriteToggleButton
+          entity-type="ORGANIZATION"
+          :entity-id="String(org.id)"
+          :entity-name="org.nickname1 || org.name"
+        />
         <!-- F02.8 告知ウィザード：MEMBER以上に表示 -->
         <Button
           v-if="roleName && roleName !== 'SUPPORTER'"

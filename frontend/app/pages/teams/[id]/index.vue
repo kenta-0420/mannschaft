@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ViewerRole } from '~/types/dashboard'
 import type { TeamResponse } from '~/types/team'
+import FavoriteToggleButton from '~/components/favorites/FavoriteToggleButton.vue'
 
 definePageMeta({
   middleware: 'auth',
@@ -135,9 +136,16 @@ onMounted(async () => {
         @show-leave-confirm="showLeaveConfirm = true"
       />
 
-      <!-- F02.8 告知ウィザード：MEMBER以上に表示 -->
-      <div v-if="roleName && roleName !== 'SUPPORTER'" class="mb-4 flex justify-end">
+      <!-- F02.9 お気に入りトグル + F02.8 告知ウィザード -->
+      <div class="mb-4 flex items-center justify-end gap-2">
+        <FavoriteToggleButton
+          entity-type="TEAM"
+          :entity-id="String(team.id)"
+          :entity-name="displayName"
+        />
+        <!-- F02.8 告知ウィザード：MEMBER以上に表示 -->
         <Button
+          v-if="roleName && roleName !== 'SUPPORTER'"
           :label="$t('announcement.broadcast_button_team')"
           icon="pi pi-bullhorn"
           severity="secondary"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { BlogPostResponse, BlogTag } from '~/types/cms'
+import FavoriteToggleButton from '~/components/favorites/FavoriteToggleButton.vue'
 
 const route = useRoute()
 const userId = Number(route.params.userId)
@@ -11,6 +12,12 @@ const { relativeTime } = useRelativeTime()
 const posts = ref<BlogPostResponse[]>([])
 const loading = ref(true)
 const selectedTagIds = ref<number[]>([])
+
+// F02.9 お気に入り表示用の著者名（先頭記事の author.displayName を参照）。
+// 著者投稿が 0 件の場合は userId をフォールバックとする。
+const authorDisplayName = computed<string>(
+  () => posts.value[0]?.author?.displayName ?? String(userId),
+)
 
 // 全タグ一覧（投稿から収集）
 const allTags = computed<BlogTag[]>(() => {
@@ -60,6 +67,13 @@ onMounted(() => loadPosts())
     <div class="mb-6 flex items-center gap-3">
       <BackButton />
       <PageHeader :title="$t('blog.post.published')" />
+      <!-- F02.9 お気に入りトグル（BLOG_AUTHOR） -->
+      <FavoriteToggleButton
+        entity-type="BLOG_AUTHOR"
+        :entity-id="String(userId)"
+        :entity-name="authorDisplayName"
+        class="ml-auto"
+      />
     </div>
 
     <PageLoading v-if="loading" />
