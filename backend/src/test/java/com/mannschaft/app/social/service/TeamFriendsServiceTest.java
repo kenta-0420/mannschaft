@@ -10,7 +10,6 @@ import com.mannschaft.app.social.FollowerType;
 import com.mannschaft.app.social.SocialErrorCode;
 import com.mannschaft.app.social.dto.FollowTeamResponse;
 import com.mannschaft.app.social.dto.PastForwardHandling;
-import com.mannschaft.app.social.dto.TeamFriendView;
 import com.mannschaft.app.social.entity.FollowEntity;
 import com.mannschaft.app.social.entity.FriendContentForwardEntity;
 import com.mannschaft.app.social.entity.TeamFriendEntity;
@@ -28,7 +27,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -43,8 +41,13 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 /**
- * {@link TeamFriendsService} の単体テスト。
- * チーム間フォロー・相互フォロー検知・フォロー解除・フレンド一覧取得・公開設定変更を検証する。
+ * {@link TeamFriendsService} の単体テスト（リファクタリング第4弾 Phase 4-B 反映）。
+ *
+ * <p>
+ * ファサードに残った follow / unfollow / 相互フォロー検知の振る舞いを検証する。
+ * listFriends は {@link TeamFriendQueryServiceTest}、setVisibility は
+ * {@link TeamFriendVisibilityServiceTest} を参照。
+ * </p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TeamFriendsService 単体テスト")
@@ -76,6 +79,12 @@ class TeamFriendsServiceTest {
 
     @Mock
     private UserRoleRepository userRoleRepository;
+
+    @Mock
+    private TeamFriendQueryService teamFriendQueryService;
+
+    @Mock
+    private TeamFriendVisibilityService teamFriendVisibilityService;
 
     @InjectMocks
     private TeamFriendsService teamFriendsService;
@@ -356,99 +365,46 @@ class TeamFriendsServiceTest {
     }
 
     // ========================================
-    // setVisibility
+    // 委譲メソッド（QueryService / VisibilityService）
     // ========================================
     @Nested
-    @DisplayName("setVisibility")
-    class SetVisibility {
+    @DisplayName("委譲メソッド")
+    class Delegation {
 
         @Test
-        @DisplayName("正常系: isPublic が更新される")
-        void 公開設定変更_正常() {
+        @DisplayName("listFriendsResponse は TeamFriendQueryService に委譲される")
+        void listFriendsResponse_委譲() {
             // given
-            TeamFriendEntity friend = buildTeamFriend(TEAM_ID, TARGET_TEAM_ID, 1L);
-            Long teamFriendId = 1L;
-
-            given(accessControlService.isAdmin(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
-            given(teamFriendRepository.findById(teamFriendId)).willReturn(Optional.of(friend));
-            given(teamFriendRepository.save(any(TeamFriendEntity.class))).willReturn(friend);
-            doNothing().when(auditLogService).record(anyString(), anyLong(), isNull(),
-                    anyLong(), isNull(), isNull(), isNull(), isNull(), anyString());
+            Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
 
             // when
-            teamFriendsService.setVisibility(TEAM_ID, teamFriendId, true, USER_ID);
+            teamFriendsService.listFriendsResponse(TEAM_ID, USER_ID, pageable, false);
 
             // then
-            verify(teamFriendRepository).save(any(TeamFriendEntity.class));
-            assertThat(friend.getIsPublic()).isTrue();
+            verify(teamFriendQueryService).listFriendsResponse(TEAM_ID, USER_ID, pageable, false);
         }
 
         @Test
-        @DisplayName("異常系: ADMIN 権限なし → BusinessException(FRIEND_VISIBILITY_ADMIN_ONLY)")
-        void 権限不足_公開設定変更_例外() {
+        @DisplayName("listFriends は TeamFriendQueryService に委譲される")
+        void listFriends_委譲() {
             // given
-            given(accessControlService.isAdmin(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
-
-            // when & then
-            assertThatThrownBy(() ->
-                    teamFriendsService.setVisibility(TEAM_ID, 1L, true, USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(SocialErrorCode.FRIEND_VISIBILITY_ADMIN_ONLY));
-        }
-    }
-
-    // ========================================
-    // listFriends
-    // ========================================
-    @Nested
-    @DisplayName("listFriends")
-    class ListFriends {
-
-        @Test
-        @DisplayName("正常系: ADMIN(publicOnly=false) には全件返る")
-        void ADMIN_には全件返る() {
-            // given
-            TeamFriendEntity publicFriend = buildTeamFriendWithPublic(TEAM_ID, TARGET_TEAM_ID, 1L, true);
-            TeamFriendEntity privateFriend = buildTeamFriendWithPublic(TEAM_ID, 30L, 2L, false);
-            TeamEntity friendTeamA = TeamEntity.builder().name("公開チーム").build();
-            TeamEntity friendTeamB = TeamEntity.builder().name("非公開チーム").build();
-            Pageable pageable = PageRequest.of(0, 20);
-
-            given(teamFriendRepository.findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(
-                    TEAM_ID, TEAM_ID, pageable))
-                    .willReturn(List.of(publicFriend, privateFriend));
-            given(teamRepository.findById(TARGET_TEAM_ID)).willReturn(Optional.of(friendTeamA));
-            given(teamRepository.findById(30L)).willReturn(Optional.of(friendTeamB));
+            Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
 
             // when
-            var result = teamFriendsService.listFriends(TEAM_ID, USER_ID, pageable, false);
+            teamFriendsService.listFriends(TEAM_ID, USER_ID, pageable, true);
 
             // then
-            assertThat(result.getContent()).hasSize(2);
-            verify(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
+            verify(teamFriendQueryService).listFriends(TEAM_ID, USER_ID, pageable, true);
         }
 
         @Test
-        @DisplayName("正常系: SUPPORTER(publicOnly=true) には isPublic=true のみ返る")
-        void SUPPORTER_には公開のみ返る() {
-            // given
-            TeamFriendEntity publicFriend = buildTeamFriendWithPublic(TEAM_ID, TARGET_TEAM_ID, 1L, true);
-            TeamFriendEntity privateFriend = buildTeamFriendWithPublic(TEAM_ID, 30L, 2L, false);
-            TeamEntity friendTeam = TeamEntity.builder().name("公開チーム").build();
-            Pageable pageable = PageRequest.of(0, 20);
-
-            given(teamFriendRepository.findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(
-                    TEAM_ID, TEAM_ID, pageable))
-                    .willReturn(List.of(publicFriend, privateFriend));
-            given(teamRepository.findById(TARGET_TEAM_ID)).willReturn(Optional.of(friendTeam));
-
+        @DisplayName("setVisibility は TeamFriendVisibilityService に委譲される")
+        void setVisibility_委譲() {
             // when
-            var result = teamFriendsService.listFriends(TEAM_ID, USER_ID, pageable, true);
+            teamFriendsService.setVisibility(TEAM_ID, 1L, true, USER_ID);
 
             // then
-            assertThat(result.getContent()).hasSize(1);
-            assertThat(result.getContent().get(0).getFriendTeamId()).isEqualTo(TARGET_TEAM_ID);
+            verify(teamFriendVisibilityService).setVisibility(TEAM_ID, 1L, true, USER_ID);
         }
     }
 
@@ -477,21 +433,6 @@ class TeamFriendsServiceTest {
                 .bFollowId(200L)
                 .establishedAt(LocalDateTime.now())
                 .isPublic(false)
-                .build();
-        ReflectionTestUtils.setField(entity, "id", id);
-        return entity;
-    }
-
-    private TeamFriendEntity buildTeamFriendWithPublic(Long teamAId, Long teamBId, Long id, boolean isPublic) {
-        long aId = Math.min(teamAId, teamBId);
-        long bId = Math.max(teamAId, teamBId);
-        TeamFriendEntity entity = TeamFriendEntity.builder()
-                .teamAId(aId)
-                .teamBId(bId)
-                .aFollowId(100L)
-                .bFollowId(200L)
-                .establishedAt(LocalDateTime.now())
-                .isPublic(isPublic)
                 .build();
         ReflectionTestUtils.setField(entity, "id", id);
         return entity;
