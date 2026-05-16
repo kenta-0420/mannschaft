@@ -3,6 +3,7 @@ package com.mannschaft.app.errorreport.controller;
 import com.mannschaft.app.errorreport.dto.ActiveIncidentResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportRequest;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
+import com.mannschaft.app.errorreport.service.ErrorReportQueryService;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,6 +31,7 @@ import java.util.Map;
 public class ErrorReportController {
 
     private final ErrorReportService errorReportService;
+    private final ErrorReportQueryService errorReportQueryService;
 
     /**
      * フロントエンドからのエラーレポートを受信する。
@@ -57,7 +59,7 @@ public class ErrorReportController {
     @Operation(summary = "アクティブインシデント一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ActiveIncidentResponse> getActiveIncidents() {
-        ActiveIncidentResponse response = errorReportService.getActiveIncidents();
+        ActiveIncidentResponse response = errorReportQueryService.getActiveIncidents();
         return ResponseEntity.ok(response);
     }
 }

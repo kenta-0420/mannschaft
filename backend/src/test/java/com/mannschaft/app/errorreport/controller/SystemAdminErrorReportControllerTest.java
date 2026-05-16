@@ -12,7 +12,10 @@ import com.mannschaft.app.errorreport.dto.ErrorReportResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportTimelineResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportWorkflowStageRequest;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
+import com.mannschaft.app.errorreport.service.ErrorReportKanbanService;
+import com.mannschaft.app.errorreport.service.ErrorReportQueryService;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
+import com.mannschaft.app.errorreport.service.ErrorReportTimelineService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -44,6 +47,12 @@ class SystemAdminErrorReportControllerTest {
 
     @Mock
     private ErrorReportService errorReportService;
+    @Mock
+    private ErrorReportQueryService errorReportQueryService;
+    @Mock
+    private ErrorReportKanbanService errorReportKanbanService;
+    @Mock
+    private ErrorReportTimelineService errorReportTimelineService;
     @Mock
     private ErrorReportMapper errorReportMapper;
     @Mock
@@ -92,80 +101,80 @@ class SystemAdminErrorReportControllerTest {
     }
 
     @Test
-    @DisplayName("PATCH /workflow-stage: Service.updateWorkflowStage を呼び出す")
+    @DisplayName("PATCH /workflow-stage: TimelineService.updateWorkflowStage を呼び出す")
     void updateWorkflowStage_callsService() {
         ErrorReportWorkflowStageRequest req = new ErrorReportWorkflowStageRequest();
         req.setWorkflowStage(ErrorReportWorkflowStage.INVESTIGATION_STARTED);
         ErrorReportEntity entity = sampleEntity();
         ErrorReportResponse response = ErrorReportResponse.builder().id(REPORT_ID).build();
 
-        given(errorReportService.updateWorkflowStage(eq(REPORT_ID),
+        given(errorReportTimelineService.updateWorkflowStage(eq(REPORT_ID),
                 eq(ErrorReportWorkflowStage.INVESTIGATION_STARTED), eq(ACTOR_ID)))
                 .willReturn(entity);
         given(errorReportMapper.toResponse(entity)).willReturn(response);
 
         controller.updateWorkflowStage(REPORT_ID, req);
 
-        verify(errorReportService).updateWorkflowStage(REPORT_ID,
+        verify(errorReportTimelineService).updateWorkflowStage(REPORT_ID,
                 ErrorReportWorkflowStage.INVESTIGATION_STARTED, ACTOR_ID);
     }
 
     @Test
-    @DisplayName("PATCH /assignee: Service.assign を呼び出す")
+    @DisplayName("PATCH /assignee: TimelineService.assign を呼び出す")
     void assign_callsService() {
         ErrorReportAssigneeRequest req = new ErrorReportAssigneeRequest();
         req.setAssigneeId(99L);
         ErrorReportEntity entity = sampleEntity();
         ErrorReportResponse response = ErrorReportResponse.builder().id(REPORT_ID).build();
 
-        given(errorReportService.assign(REPORT_ID, 99L, ACTOR_ID)).willReturn(entity);
+        given(errorReportTimelineService.assign(REPORT_ID, 99L, ACTOR_ID)).willReturn(entity);
         given(errorReportMapper.toResponse(entity)).willReturn(response);
 
         controller.assign(REPORT_ID, req);
 
-        verify(errorReportService).assign(REPORT_ID, 99L, ACTOR_ID);
+        verify(errorReportTimelineService).assign(REPORT_ID, 99L, ACTOR_ID);
     }
 
     @Test
-    @DisplayName("POST /comments: Service.addComment を呼び出す")
+    @DisplayName("POST /comments: TimelineService.addComment を呼び出す")
     void addComment_callsService() {
         ErrorReportCommentRequest req = new ErrorReportCommentRequest();
         req.setContent("コメント本文");
 
         controller.addComment(REPORT_ID, req);
 
-        verify(errorReportService).addComment(REPORT_ID, "コメント本文", ACTOR_ID);
+        verify(errorReportTimelineService).addComment(REPORT_ID, "コメント本文", ACTOR_ID);
     }
 
     @Test
-    @DisplayName("GET /kanban: 認可チェックの上で Service.fetchKanban を呼び出す")
+    @DisplayName("GET /kanban: 認可チェックの上で KanbanService.fetchKanban を呼び出す")
     void kanban_callsService() {
         com.mannschaft.app.errorreport.dto.KanbanResponse stub =
                 com.mannschaft.app.errorreport.dto.KanbanResponse.builder()
                         .columns(List.of())
                         .build();
-        given(errorReportService.fetchKanban()).willReturn(stub);
+        given(errorReportKanbanService.fetchKanban()).willReturn(stub);
 
         ResponseEntity<?> entity = controller.kanban();
 
         verify(accessControlService).checkSystemAdmin(ACTOR_ID);
-        verify(errorReportService).fetchKanban();
+        verify(errorReportKanbanService).fetchKanban();
         assertThat(entity.getStatusCode().value()).isEqualTo(200);
     }
 
     @Test
-    @DisplayName("GET /timeline: 認可チェックの上で Service.fetchTimeline を呼び出す")
+    @DisplayName("GET /timeline: 認可チェックの上で TimelineService.fetchTimeline を呼び出す")
     void timeline_callsService() {
         ErrorReportTimelineResponse stub = ErrorReportTimelineResponse.builder()
                 .items(List.of())
                 .hasMore(false)
                 .build();
-        given(errorReportService.fetchTimeline(eq(REPORT_ID), any(), eq(50))).willReturn(stub);
+        given(errorReportTimelineService.fetchTimeline(eq(REPORT_ID), any(), eq(50))).willReturn(stub);
 
         ResponseEntity<?> entity = controller.timeline(REPORT_ID, null, 50);
 
         verify(accessControlService).checkSystemAdmin(ACTOR_ID);
-        verify(errorReportService).fetchTimeline(REPORT_ID, null, 50);
+        verify(errorReportTimelineService).fetchTimeline(REPORT_ID, null, 50);
         assertThat(entity.getStatusCode().value()).isEqualTo(200);
     }
 
@@ -174,11 +183,11 @@ class SystemAdminErrorReportControllerTest {
     void timeline_capsLimitTo100() {
         ErrorReportTimelineResponse stub = ErrorReportTimelineResponse.builder()
                 .items(List.of()).hasMore(false).build();
-        given(errorReportService.fetchTimeline(eq(REPORT_ID), any(), eq(100))).willReturn(stub);
+        given(errorReportTimelineService.fetchTimeline(eq(REPORT_ID), any(), eq(100))).willReturn(stub);
 
         controller.timeline(REPORT_ID, null, 9999);
 
-        verify(errorReportService).fetchTimeline(REPORT_ID, null, 100);
+        verify(errorReportTimelineService).fetchTimeline(REPORT_ID, null, 100);
     }
 
     // ========================================
