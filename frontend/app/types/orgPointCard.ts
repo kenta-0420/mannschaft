@@ -140,3 +140,74 @@ export interface PageResponse<T> {
   first: boolean
   last: boolean
 }
+
+// ─────────────────────────────────────────────────────────────
+// Phase 3 — 一時トークン resolve + 残高型 (SELF_ISSUED_BALANCE)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * 一時トークン resolve レスポンス（Phase 3 第二陣 2A）。
+ *
+ * <p>顧客側で発行された 5 分 TTL の UUID トークンを店主側で resolve した結果。
+ * GETDEL による 1 回限り消費。プライバシー方針 §11 により、暗号化対象
+ * （barcodeValue / displayName / nickname / memo）は一切含まない。
+ * {@code last4} のみ「どのカードか」の最小確認情報として返る。
+ *
+ * <p>{@code currentBalance} は BigDecimal を文字列で受ける（精度損失防止）。
+ */
+export interface ResolveTokenResponse {
+  cardId: string
+  providerId: string
+  providerDisplayName: string
+  providerType: 'EXTERNAL' | 'SELF_ISSUED_STAMP' | 'SELF_ISSUED_BALANCE'
+  /** カード番号下 4 桁（平文、暗号化対象外） */
+  last4: string | null
+  /** STAMP 型のみ非 null、BALANCE 型は null */
+  currentStampCount: number | null
+  /** BALANCE 型のみ非 null、STAMP 型は null。BigDecimal → string */
+  currentBalance: string | null
+}
+
+/** 残高変動の種別。 */
+export type BalanceOperationType = 'CHARGE' | 'SPENT' | 'REFUND'
+
+/**
+ * 残高変動イベント記録リクエスト（Phase 3 第二陣 2B）。
+ *
+ * <p>{@code amount} は常に正の値で渡す。SPENT は Service 層で負に変換される。
+ * 範囲: 0.01 〜 1,000,000.00。0 は POINT_CARD_016 で拒否される。
+ * {@code refundOfEventId} は REFUND 時のみ必須。
+ */
+export interface BalanceEventRequest {
+  operationType: BalanceOperationType
+  amount: number
+  note?: string
+  refundOfEventId?: string
+}
+
+/**
+ * 残高変動イベント レスポンス（Phase 3 第二陣 2B）。
+ *
+ * <p>店主側 API のため、対象顧客カードの暗号化フィールド（displayName / nickname /
+ * barcodeValue / memo / last4）は一切含まない。
+ * {@code delta} / {@code balanceAfter} は BigDecimal を文字列で受ける。
+ */
+export interface BalanceEventResponse {
+  id: string
+  cardId: string
+  providerId: string
+  providerDisplayName: string | null
+  organizationId: number
+  operationType: BalanceOperationType
+  /** CHARGE/REFUND は正、SPENT は負。BigDecimal → string */
+  delta: string
+  /** 反映後の残高。BigDecimal → string */
+  balanceAfter: string
+  /** REFUND 時の元 event ID（REFUND 以外は null） */
+  refundOfEventId: string | null
+  operatedByUserId: number
+  operatedByUserDisplayName: string | null
+  operatedAt: string
+  note: string | null
+  createdAt: string
+}
