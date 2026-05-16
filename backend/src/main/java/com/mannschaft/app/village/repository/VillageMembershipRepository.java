@@ -59,4 +59,23 @@ public interface VillageMembershipRepository extends JpaRepository<VillageMember
               AND m.bannedAt IS NULL
             """)
     List<Long> findActiveUserSubjectIdsByVillageId(@Param("villageId") UUID villageId);
+
+    // ====================================================================
+    // F17.1 Phase 3-β — 村史月次集計
+    // ====================================================================
+
+    /**
+     * 村の新規参加メンバー件数を期間で集計する（村史バッチ用）。
+     * subject_type は問わず（USER/TEAM/ORGANIZATION 合算）。
+     */
+    @Query("""
+            SELECT COUNT(m) FROM VillageMembershipEntity m
+            WHERE m.villageId = :villageId
+              AND m.joinedAt >= :fromInclusive
+              AND m.joinedAt <  :toExclusive
+            """)
+    long countByVillageIdAndJoinedAtBetween(
+            @Param("villageId") UUID villageId,
+            @Param("fromInclusive") java.time.LocalDateTime fromInclusive,
+            @Param("toExclusive") java.time.LocalDateTime toExclusive);
 }
