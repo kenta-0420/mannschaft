@@ -14,14 +14,14 @@
 
 ## サマリ
 
-- 設計あり・実装なし: **1221 件**（v3: 1,214 件 / v2: 1,256 件 / v1: 1,187 件）
-- 実装あり・設計なし: **1083 件**（v3: 1,106 件 / v2: 1,147 件 / v1: 931 件）
-- 一致: **1364 件**（v3: 1,341 件 / v2: 1,322 件 / v1: 1,310 件）
+- 設計あり・実装なし: **1220 件**（v3: 1,214 件 / v2: 1,256 件 / v1: 1,187 件）
+- 実装あり・設計なし: **1073 件**（v3: 1,106 件 / v2: 1,147 件 / v1: 931 件）
+- 一致: **1366 件**（v3: 1,341 件 / v2: 1,322 件 / v1: 1,310 件）
 - V4-1 スコープ逆引き準一致: **0 件**（一致側に繰入）
 - V4-5 🔵 将来機能: **5 件**（メイン集計外）／うち実装済: 0 件
-- 設計記載 ユニーク (method, path) 総数（main）: 2585
-- 実装 ユニーク (method, path) 総数: 2447
-- 除外（実装側）: 22 件 / 除外（設計側）: 4 件 / パターン数: 20
+- 設計記載 ユニーク (method, path) 総数（main）: 2586
+- 実装 ユニーク (method, path) 総数: 2439
+- 除外（実装側）: 30 件 / 除外（設計側）: 5 件 / パターン数: 27
 - スコープ展開: ON
 
 ---
@@ -35,9 +35,9 @@
 | /api/v1/system-admin/* | 103 | 28 | 77 | 131 |
 | /api/v1/users/* | 23 | 99 | 48 | 122 |
 | /api/v1/villages/* | 0 | 122 | 1 | 122 |
+| /api/v1/{_}/* | 50 | 4 | 0 | 54 |
 | /api/v1/me/* | 31 | 20 | 70 | 51 |
 | /api/v1/shifts/* | 28 | 19 | 25 | 47 |
-| /api/v1/{_}/* | 39 | 4 | 0 | 43 |
 | /api/v1/files/* | 33 | 7 | 9 | 40 |
 | /api/v1/timeline/* | 25 | 11 | 2 | 36 |
 | /api/v1/admin/* | 29 | 6 | 61 | 35 |
@@ -60,7 +60,6 @@
 | /api/v1/residence-status/* | 13 | 0 | 0 | 13 |
 | /api/v1/jobs/* | 9 | 3 | 6 | 12 |
 | /api/v1/line/* | 11 | 0 | 0 | 11 |
-| /api/v1/repair-plan/* | 11 | 0 | 0 | 11 |
 | /api/v1/notifications/* | 5 | 4 | 1 | 9 |
 | /api/v1/point-cards/* | 7 | 2 | 7 | 9 |
 | /api/v1/property-listings/* | 9 | 0 | 0 | 9 |
@@ -71,7 +70,6 @@
 | /api/v1/social-profiles/* | 8 | 0 | 0 | 8 |
 | /api/v1/coupons/* | 7 | 0 | 0 | 7 |
 | /api/v1/recruitment-listings/* | 2 | 5 | 9 | 7 |
-| /api/v1/scopes/* | 0 | 7 | 0 | 7 |
 | /api/v1/action-memos/* | 2 | 4 | 10 | 6 |
 | /api/v1/contracts/* | 0 | 6 | 0 | 6 |
 | /api/v1/quick-memos/* | 5 | 1 | 11 | 6 |
@@ -109,7 +107,6 @@
 | /api/v1/action-memo-tags/* | 2 | 0 | 2 | 2 |
 | /api/v1/activity-templates/* | 2 | 0 | 5 | 2 |
 | /api/v1/attendance/* | 2 | 0 | 1 | 2 |
-| /api/v1/auth/* | 0 | 2 | 27 | 2 |
 | /api/v1/budget/* | 2 | 0 | 25 | 2 |
 | /api/v1/contact-invite-tokens/* | 2 | 0 | 2 | 2 |
 | /api/v1/contact-request-blocks/* | 2 | 0 | 1 | 2 |
@@ -145,12 +142,10 @@
 | /api/v1/ical/* | 0 | 1 | 0 | 1 |
 | /api/v1/job-disputes/* | 1 | 0 | 0 | 1 |
 | /api/v1/kb/* | 1 | 0 | 0 | 1 |
-| /api/v1/mail-tracking/* | 1 | 0 | 0 | 1 |
 | /api/v1/member-positions/* | 1 | 0 | 0 | 1 |
 | /api/v1/mentions/* | 0 | 1 | 0 | 1 |
 | /api/v1/modules/* | 1 | 0 | 1 | 1 |
 | /api/v1/my/* | 1 | 0 | 3 | 1 |
-| /api/v1/pdf-signatures/* | 0 | 1 | 0 | 1 |
 | /api/v1/permissions/* | 1 | 0 | 0 | 1 |
 | /api/v1/positions/* | 1 | 0 | 0 | 1 |
 | /api/v1/projects/* | 1 | 0 | 0 | 1 |
@@ -173,6 +168,7 @@
 | /api/v1/announcements/* | 0 | 0 | 1 | 0 |
 | /api/v1/appeals/* | 0 | 0 | 2 | 0 |
 | /api/v1/attendance-requirements/* | 0 | 0 | 2 | 0 |
+| /api/v1/auth/* | 0 | 0 | 29 | 0 |
 | /api/v1/cancellation-policies/* | 0 | 0 | 3 | 0 |
 | /api/v1/charts/* | 0 | 0 | 1 | 0 |
 | /api/v1/committee-invitations/* | 0 | 0 | 3 | 0 |
@@ -191,7 +187,7 @@
 | /api/v1/proxy-input-records/* | 0 | 0 | 1 | 0 |
 | /api/v1/service-records/* | 0 | 0 | 1 | 0 |
 | /api/v1/yabai/* | 0 | 0 | 2 | 0 |
-| **合計** | **1221** | **1083** | **1364** | **2304** |
+| **合計** | **1220** | **1073** | **1366** | **2293** |
 
 ---
 
@@ -999,14 +995,6 @@
 | PUT | `/api/v1/line/configs/{_}` | `docs/features/F09.4_line_sns.md` | 217 |
 | PUT | `/api/v1/line/configs/{_}` | `docs/features/F09.4_line_sns.md` | 336 |
 
-### /api/v1/mail-tracking/* (1 件)
-
-| メソッド | パス | 設計書 | 行 |
-|---|---|---|---|
-| GET | `/api/v1/mail-tracking/{_}` | `docs/features/F09.6_direct_mail.md` | 146 |
-| GET | `/api/v1/mail-tracking/{_}` | `docs/features/F09.6_direct_mail.md` | 337 |
-| GET | `/api/v1/mail-tracking/{_}` | `docs/features/F09.6_direct_mail.md` | 880 |
-
 ### /api/v1/me/* (31 件)
 
 | メソッド | パス | 設計書 | 行 |
@@ -1444,23 +1432,6 @@
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
 | POST | `/api/v1/recruitment-subcategories/{_}/archive` | `docs/features/F03.11_recruitment_listing.md` | 1422 |
-
-### /api/v1/repair-plan/* (11 件)
-
-| メソッド | パス | 設計書 | 行 |
-|---|---|---|---|
-| DELETE | `/api/v1/repair-plan/delegations/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 554 |
-| DELETE | `/api/v1/repair-plan/items/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 532 |
-| GET | `/api/v1/repair-plan/handover-packs/{_}/download` | `docs/features/F08.8_repair_longterm_dashboard.md` | 549 |
-| GET | `/api/v1/repair-plan/quote-kanbans/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 544 |
-| GET | `/api/v1/repair-plan/scenarios/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 537 |
-| PATCH | `/api/v1/repair-plan/items/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 531 |
-| PATCH | `/api/v1/repair-plan/quote-kanbans/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 545 |
-| POST | `/api/v1/repair-plan/quote-cards/{_}/move` | `docs/features/F08.8_repair_longterm_dashboard.md` | 547 |
-| POST | `/api/v1/repair-plan/quote-kanbans/{_}/cards` | `docs/features/F08.8_repair_longterm_dashboard.md` | 546 |
-| POST | `/api/v1/repair-plan/scenarios/{_}/pin-to-corkboard` | `docs/features/F08.8_repair_longterm_dashboard.md` | 540 |
-| POST | `/api/v1/repair-plan/scenarios/{_}/publish-as-announcement` | `docs/features/F08.8_repair_longterm_dashboard.md` | 539 |
-| POST | `/api/v1/repair-plan/scenarios/{_}/publish-as-announcement` | `docs/features/F08.8_repair_longterm_dashboard.md` | 639 |
 
 ### /api/v1/reports/* (2 件)
 
@@ -2500,7 +2471,7 @@
 | GET | `/api/v1/users/{_}/seals/stamps` | `docs/features/F05.3_digital_seal.md` | 158 |
 | GET | `/api/v1/users/{_}/seals/stamps` | `docs/features/F05.3_digital_seal.md` | 322 |
 | POST | `/api/v1/users/blocks` | `docs/features/F04.8_contact.md` | 491 |
-| POST | `/api/v1/users/me/avatar` | `docs/features/F01.1_auth.md` | 427 |
+| POST | `/api/v1/users/me/avatar` | `docs/features/F01.1_auth.md` | 429 |
 | POST | `/api/v1/users/me/data-export` | `docs/features/F10.1_admin_dashboard.md` | 556 |
 | POST | `/api/v1/users/me/todo-status-labels` | `docs/features/F02.3.1_todo_status_labels_and_handoff.md` | 195 |
 | POST | `/api/v1/users/me/vehicles` | `docs/features/F09.3_parking.md` | 614 |
@@ -2569,12 +2540,14 @@
 | POST | `/api/v1/workflows/templates/{_}/requests/external` | `docs/features/F05.6_workflow_approval.md` | 791 |
 | PUT | `/api/v1/workflows/templates/{_}` | `docs/features/F05.6_workflow_approval.md` | 371 |
 
-### /api/v1/{_}/* (39 件)
+### /api/v1/{_}/* (50 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
 | DELETE | `/api/v1/{_}/{_}/property-history/{_}` | `docs/features/F09.13_property_history.md` | 276 |
 | DELETE | `/api/v1/{_}/{_}/property-history/{_}/documents/{_}` | `docs/features/F09.13_property_history.md` | 278 |
+| DELETE | `/api/v1/{_}/{_}/repair-plan/delegations/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 554 |
+| DELETE | `/api/v1/{_}/{_}/repair-plan/items/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 532 |
 | DELETE | `/api/v1/{_}/{_}/vendors/{_}` | `docs/features/F09.13_property_history.md` | 260 |
 | GET | `/api/v1/{_}/{_}/direct-mails/quota` | `docs/features/F09.6_direct_mail.md` | 478 |
 | GET | `/api/v1/{_}/{_}/direct-mails/{_}` | `docs/features/F09.6_direct_mail.md` | 444 |
@@ -2584,15 +2557,20 @@
 | GET | `/api/v1/{_}/{_}/property-history/{_}` | `docs/features/F09.13_property_history.md` | 272 |
 | GET | `/api/v1/{_}/{_}/repair-plan/dashboard` | `docs/features/F08.8_repair_longterm_dashboard.md` | 528 |
 | GET | `/api/v1/{_}/{_}/repair-plan/delegations` | `docs/features/F08.8_repair_longterm_dashboard.md` | 552 |
+| GET | `/api/v1/{_}/{_}/repair-plan/handover-packs/{_}/download` | `docs/features/F08.8_repair_longterm_dashboard.md` | 549 |
 | GET | `/api/v1/{_}/{_}/repair-plan/items` | `docs/features/F08.8_repair_longterm_dashboard.md` | 529 |
 | GET | `/api/v1/{_}/{_}/repair-plan/quote-kanbans` | `docs/features/F08.8_repair_longterm_dashboard.md` | 542 |
+| GET | `/api/v1/{_}/{_}/repair-plan/quote-kanbans/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 544 |
 | GET | `/api/v1/{_}/{_}/repair-plan/scenarios` | `docs/features/F08.8_repair_longterm_dashboard.md` | 535 |
+| GET | `/api/v1/{_}/{_}/repair-plan/scenarios/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 537 |
 | GET | `/api/v1/{_}/{_}/repair-plan/templates` | `docs/features/F08.8_repair_longterm_dashboard.md` | 550 |
 | GET | `/api/v1/{_}/{_}/repair-plan/timeline` | `docs/features/F08.8_repair_longterm_dashboard.md` | 541 |
 | GET | `/api/v1/{_}/{_}/vendors` | `docs/features/F09.13_property_history.md` | 256 |
 | GET | `/api/v1/{_}/{_}/vendors/search` | `docs/features/F09.13_property_history.md` | 261 |
 | GET | `/api/v1/{_}/{_}/vendors/{_}` | `docs/features/F09.13_property_history.md` | 257 |
 | PATCH | `/api/v1/{_}/{_}/property-history/{_}/status` | `docs/features/F09.13_property_history.md` | 275 |
+| PATCH | `/api/v1/{_}/{_}/repair-plan/items/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 531 |
+| PATCH | `/api/v1/{_}/{_}/repair-plan/quote-kanbans/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 545 |
 | POST | `/api/v1/{_}/{_}/bulletin/threads` | `docs/features/F02.8_dashboard_announcement.md` | 181 |
 | POST | `/api/v1/{_}/{_}/property-history` | `docs/features/F09.13_property_history.md` | 273 |
 | POST | `/api/v1/{_}/{_}/property-history/export` | `docs/features/F09.13_property_history.md` | 280 |
@@ -2604,10 +2582,15 @@
 | POST | `/api/v1/{_}/{_}/repair-plan/items/import-csv` | `docs/features/F08.8_repair_longterm_dashboard.md` | 533 |
 | POST | `/api/v1/{_}/{_}/repair-plan/items/import-csv` | `docs/features/F08.8_repair_longterm_dashboard.md` | 613 |
 | POST | `/api/v1/{_}/{_}/repair-plan/items/import-csv/confirm` | `docs/features/F08.8_repair_longterm_dashboard.md` | 534 |
+| POST | `/api/v1/{_}/{_}/repair-plan/quote-cards/{_}/move` | `docs/features/F08.8_repair_longterm_dashboard.md` | 547 |
 | POST | `/api/v1/{_}/{_}/repair-plan/quote-kanbans` | `docs/features/F08.8_repair_longterm_dashboard.md` | 543 |
+| POST | `/api/v1/{_}/{_}/repair-plan/quote-kanbans/{_}/cards` | `docs/features/F08.8_repair_longterm_dashboard.md` | 546 |
 | POST | `/api/v1/{_}/{_}/repair-plan/scenarios` | `docs/features/F08.8_repair_longterm_dashboard.md` | 536 |
 | POST | `/api/v1/{_}/{_}/repair-plan/scenarios/simulate` | `docs/features/F08.8_repair_longterm_dashboard.md` | 538 |
 | POST | `/api/v1/{_}/{_}/repair-plan/scenarios/simulate` | `docs/features/F08.8_repair_longterm_dashboard.md` | 560 |
+| POST | `/api/v1/{_}/{_}/repair-plan/scenarios/{_}/pin-to-corkboard` | `docs/features/F08.8_repair_longterm_dashboard.md` | 540 |
+| POST | `/api/v1/{_}/{_}/repair-plan/scenarios/{_}/publish-as-announcement` | `docs/features/F08.8_repair_longterm_dashboard.md` | 539 |
+| POST | `/api/v1/{_}/{_}/repair-plan/scenarios/{_}/publish-as-announcement` | `docs/features/F08.8_repair_longterm_dashboard.md` | 639 |
 | POST | `/api/v1/{_}/{_}/repair-plan/templates/override` | `docs/features/F08.8_repair_longterm_dashboard.md` | 551 |
 | POST | `/api/v1/{_}/{_}/schedules` | `docs/features/F02.8_dashboard_announcement.md` | 185 |
 | POST | `/api/v1/{_}/{_}/surveys` | `docs/features/F02.8_dashboard_announcement.md` | 186 |
@@ -3658,18 +3641,6 @@
 | PATCH | `/api/v1/files/{_}/comments/{_}` | `FileCommentController#updateComment` (backend/src/main/java/com/mannschaft/app/filesharing/controller/FileCommentController.java) | 66 |
 | POST | `/api/v1/files/presign-upload` | `SharedFileController#presignUpload` (backend/src/main/java/com/mannschaft/app/filesharing/controller/SharedFileController.java) | 114 |
 
-#### /api/v1/scopes/* (7 件)
-
-| メソッド | パス | Controller | 行 |
-|---|---|---|---|
-| GET | `/api/v1/scopes/{_}/{_}/no-shows` | `RecruitmentNoShowController#listNoShows` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentNoShowController.java) | 60 |
-| GET | `/api/v1/scopes/{_}/{_}/penalties` | `RecruitmentPenaltyController#listPenalties` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentPenaltyController.java) | 82 |
-| GET | `/api/v1/scopes/{_}/{_}/penalty-settings` | `RecruitmentPenaltyController#getSetting` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentPenaltyController.java) | 46 |
-| PATCH | `/api/v1/scopes/{_}/{_}/no-shows/{_}/dispute` | `RecruitmentNoShowController#resolveDispute` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentNoShowController.java) | 112 |
-| POST | `/api/v1/scopes/{_}/{_}/penalties/{_}/lift` | `RecruitmentPenaltyController#liftPenalty` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentPenaltyController.java) | 108 |
-| POST | `/api/v1/scopes/{_}/{_}/recruitment-listings/{_}/participants/{_}/no-show` | `RecruitmentNoShowController#markNoShow` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentNoShowController.java) | 44 |
-| PUT | `/api/v1/scopes/{_}/{_}/penalty-settings` | `RecruitmentPenaltyController#upsertSetting` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentPenaltyController.java) | 60 |
-
 #### /api/v1/admin/* (6 件)
 
 | メソッド | パス | Controller | 行 |
@@ -3853,13 +3824,6 @@
 | GET | `/api/v1/venues/{_}` | `VenueController#getVenue` (backend/src/main/java/com/mannschaft/app/venue/controller/VenueController.java) | 46 |
 | POST | `/api/v1/venues/register-from-google` | `VenueController#registerFromGoogle` (backend/src/main/java/com/mannschaft/app/venue/controller/VenueController.java) | 55 |
 
-#### /api/v1/auth/* (2 件)
-
-| メソッド | パス | Controller | 行 |
-|---|---|---|---|
-| POST | `/api/v1/auth/webauthn/reauthenticate-begin` | `AuthWebAuthnController#beginReauthenticate` (backend/src/main/java/com/mannschaft/app/auth/controller/AuthWebAuthnController.java) | 108 |
-| POST | `/api/v1/auth/webauthn/reauthenticate-complete` | `AuthWebAuthnController#completeReauthenticate` (backend/src/main/java/com/mannschaft/app/auth/controller/AuthWebAuthnController.java) | 122 |
-
 #### /api/v1/chat-folders/* (2 件)
 
 | メソッド | パス | Controller | 行 |
@@ -3940,12 +3904,6 @@
 |---|---|---|---|
 | PUT | `/api/v1/notification-preferences` | `NotificationPreferenceController#updatePreference` (backend/src/main/java/com/mannschaft/app/notification/controller/NotificationPreferenceController.java) | 49 |
 
-#### /api/v1/pdf-signatures/* (1 件)
-
-| メソッド | パス | Controller | 行 |
-|---|---|---|---|
-| POST | `/api/v1/pdf-signatures/verify` | `PdfSignatureVerifyController#verify` (backend/src/main/java/com/mannschaft/app/common/pdf/verify/PdfSignatureVerifyController.java) | 38 |
-
 #### /api/v1/proxy-input/* (1 件)
 
 | メソッド | パス | Controller | 行 |
@@ -4016,7 +3974,7 @@
 
 ## 3. ✅ 一致（件数のみ）
 
-一致したエンドポイント: **1364 件**（詳細リストは省略）
+一致したエンドポイント: **1366 件**（詳細リストは省略）
 
 ---
 
