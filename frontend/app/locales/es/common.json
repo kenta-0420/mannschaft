@@ -1257,6 +1257,8 @@
     "cancel": "Cancelar",
     "loadError": "Error al cargar los favoritos",
     "saveError": "Error al guardar",
+    "removeConfirm": "¿Seguro que quieres eliminarlo?",
+    "dragHandle": "Reordenar",
     "entityType": {
       "TEAM": "Equipo",
       "ORGANIZATION": "Organización",

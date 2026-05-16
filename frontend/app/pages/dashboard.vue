@@ -76,6 +76,8 @@ onMounted(async () => {
         <WidgetMyBlog />
         <WidgetMyTeams />
         <WidgetMyOrganizations />
+        <!-- F02.9 Phase 2: お気に入りウィジェット -->
+        <WidgetFavorites />
         <WidgetAmazonAd scope-type="personal" />
         <WidgetRakutenAd scope-type="personal" />
         <WidgetRecentActivity />

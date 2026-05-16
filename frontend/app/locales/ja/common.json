@@ -1257,6 +1257,8 @@
     "cancel": "キャンセル",
     "loadError": "お気に入りの読み込みに失敗しました",
     "saveError": "保存に失敗しました",
+    "removeConfirm": "本当に削除しますか？",
+    "dragHandle": "並び替え",
     "entityType": {
       "TEAM": "チーム",
       "ORGANIZATION": "組織",

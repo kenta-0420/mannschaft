@@ -1257,6 +1257,8 @@
     "cancel": "取消",
     "loadError": "加载收藏失败",
     "saveError": "保存失败",
+    "removeConfirm": "确定要删除吗？",
+    "dragHandle": "排序",
     "entityType": {
       "TEAM": "团队",
       "ORGANIZATION": "组织",

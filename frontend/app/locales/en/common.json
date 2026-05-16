@@ -1257,6 +1257,8 @@
     "cancel": "Cancel",
     "loadError": "Failed to load favorites",
     "saveError": "Failed to save",
+    "removeConfirm": "Are you sure you want to remove this?",
+    "dragHandle": "Reorder",
     "entityType": {
       "TEAM": "Team",
       "ORGANIZATION": "Organization",

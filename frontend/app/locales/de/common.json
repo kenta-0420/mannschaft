@@ -1257,6 +1257,8 @@
     "cancel": "Abbrechen",
     "loadError": "Favoriten konnten nicht geladen werden",
     "saveError": "Speichern fehlgeschlagen",
+    "removeConfirm": "Möchtest du das wirklich entfernen?",
+    "dragHandle": "Neu anordnen",
     "entityType": {
       "TEAM": "Team",
       "ORGANIZATION": "Organisation",
