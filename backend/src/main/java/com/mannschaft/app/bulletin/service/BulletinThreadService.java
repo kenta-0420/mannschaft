@@ -11,12 +11,17 @@ import com.mannschaft.app.bulletin.dto.UpdateThreadRequest;
 import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.village.VillageErrorCode;
+import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.service.PostingIdentityService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 /**
  * 掲示板スレッドサービス。スレッドのCRUD・検索・状態管理を担当する。
@@ -30,6 +35,8 @@ public class BulletinThreadService {
     private final BulletinThreadRepository threadRepository;
     private final BulletinCategoryService categoryService;
     private final BulletinMapper bulletinMapper;
+    /** F17.1 Phase 3: scope=VILLAGE 投稿の主体検証。null 安全のため Optional 注入は使わず常時 inject。 */
+    private final PostingIdentityService postingIdentityService;
 
     /**
      * スコープのスレッド一覧をページング取得する。
@@ -105,11 +112,34 @@ public class BulletinThreadService {
         ReadTrackingMode trackingMode = request.getReadTrackingMode() != null
                 ? ReadTrackingMode.valueOf(request.getReadTrackingMode()) : ReadTrackingMode.COUNT_ONLY;
 
+        // F17.1 Phase 3: scope=VILLAGE 投稿の主体検証
+        VillageSubjectType postedAsType = VillageSubjectType.USER;
+        Long postedAsId = null;
+        UUID scopeVillageId = null;
+        if (scopeType == ScopeType.VILLAGE) {
+            scopeVillageId = request.getScopeVillageId();
+            if (scopeVillageId == null) {
+                throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
+            }
+            VillageSubjectType reqType = request.getPostedAsSubjectType();
+            Long reqId = request.getPostedAsSubjectId();
+            // 個人投稿（postedAs 省略時）は USER + userId として検証
+            postedAsType = reqType != null ? reqType : VillageSubjectType.USER;
+            postedAsId = postedAsType == VillageSubjectType.USER
+                    ? userId
+                    : reqId;
+            postingIdentityService.validatePostingIdentity(
+                    userId, scopeVillageId, postedAsType, postedAsId);
+        }
+
         BulletinThreadEntity entity = BulletinThreadEntity.builder()
                 .categoryId(request.getCategoryId())
                 .scopeType(scopeType)
                 .scopeId(scopeId)
+                .scopeVillageId(scopeVillageId)
                 .authorId(userId)
+                .postedAsSubjectType(postedAsType)
+                .postedAsSubjectId(postedAsId)
                 .title(request.getTitle())
                 .body(request.getBody())
                 .priority(priority)
@@ -119,7 +149,8 @@ public class BulletinThreadService {
                 .build();
 
         BulletinThreadEntity saved = threadRepository.save(entity);
-        log.info("スレッド作成: scopeType={}, scopeId={}, threadId={}", scopeType, scopeId, saved.getId());
+        log.info("スレッド作成: scopeType={}, scopeId={}, threadId={}, postedAs={}/{}",
+                scopeType, scopeId, saved.getId(), postedAsType, postedAsId);
         return bulletinMapper.toThreadResponse(saved);
     }
 

@@ -29,6 +29,9 @@ import com.mannschaft.app.timeline.repository.TimelinePostAttachmentRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostEditRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostReactionRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
+import com.mannschaft.app.village.VillageErrorCode;
+import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.service.PostingIdentityService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -38,6 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * タイムライン投稿サービス。投稿のCRUD・フィード取得・検索を担当する。
@@ -68,6 +72,8 @@ public class TimelinePostService {
     private final R2StorageService r2StorageService;
     /** F13 Phase 4-γ: 統合ストレージクォータサービス。 */
     private final StorageQuotaService storageQuotaService;
+    /** F17.1 Phase 3: scope=VILLAGE 投稿の主体検証。 */
+    private final PostingIdentityService postingIdentityService;
 
     /**
      * 投稿を作成する。添付ファイル・投票も同時に作成する。
@@ -101,12 +107,36 @@ public class TimelinePostService {
             status = PostStatus.PUBLISHED;
         }
 
+        // F17.1 Phase 3: scope=VILLAGE 投稿の主体検証
+        PostScopeType scopeTypeEnum = PostScopeType.valueOf(req.getScopeTypeOrDefault());
+        PostedAsType postedAsTypeEnum = PostedAsType.valueOf(req.getPostedAsTypeOrDefault());
+        Long postedAsId = req.getPostedAsId();
+        UUID scopeVillageId = null;
+        if (scopeTypeEnum == PostScopeType.VILLAGE) {
+            scopeVillageId = req.getScopeVillageId();
+            if (scopeVillageId == null) {
+                throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
+            }
+            // PostedAsType と VillageSubjectType は同名（USER/TEAM/ORGANIZATION）でマッピング可能
+            VillageSubjectType subjectType = VillageSubjectType.valueOf(postedAsTypeEnum.name());
+            Long subjectId = subjectType == VillageSubjectType.USER
+                    ? userId
+                    : postedAsId;
+            postingIdentityService.validatePostingIdentity(
+                    userId, scopeVillageId, subjectType, subjectId);
+            // USER の場合は postedAsId に投稿者本人 ID を入れる（既存挙動も同様）
+            if (subjectType == VillageSubjectType.USER) {
+                postedAsId = userId;
+            }
+        }
+
         TimelinePostEntity post = TimelinePostEntity.builder()
-                .scopeType(PostScopeType.valueOf(req.getScopeTypeOrDefault()))
+                .scopeType(scopeTypeEnum)
                 .scopeId(req.getScopeIdOrDefault())
+                .scopeVillageId(scopeVillageId)
                 .userId(userId)
-                .postedAsType(PostedAsType.valueOf(req.getPostedAsTypeOrDefault()))
-                .postedAsId(req.getPostedAsId())
+                .postedAsType(postedAsTypeEnum)
+                .postedAsId(postedAsId)
                 .parentId(req.getParentId())
                 .content(req.getContent())
                 .repostOfId(req.getRepostOfId())

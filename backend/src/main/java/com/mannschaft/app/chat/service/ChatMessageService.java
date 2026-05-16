@@ -1,5 +1,6 @@
 package com.mannschaft.app.chat.service;
 
+import com.mannschaft.app.chat.ChannelType;
 import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.ChatMapper;
 import com.mannschaft.app.chat.dto.ActiveThreadItemResponse;
@@ -20,6 +21,8 @@ import com.mannschaft.app.chat.repository.ChatMessageReactionRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.service.PostingIdentityService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -57,6 +60,8 @@ public class ChatMessageService {
     private final ChatChannelMemberRepository memberRepository;
     /** F04.2: WebSocket STOMP でメッセージイベントをチャンネル参加者に配信する。 */
     private final ChatMessagePublisher chatMessagePublisher;
+    /** F17.1 Phase 3: VILLAGE_LOBBY での postedAs 検証用。 */
+    private final PostingIdentityService postingIdentityService;
 
     /**
      * チャンネルのメッセージ一覧を取得する（カーソルベースページネーション）。
@@ -141,9 +146,23 @@ public class ChatMessageService {
             depth = (parentMessage.getDepth() != null ? parentMessage.getDepth() : 0) + 1;
         }
 
+        // F17.1 Phase 3: VILLAGE_LOBBY での postedAs 検証
+        VillageSubjectType postedAsType = VillageSubjectType.USER;
+        Long postedAsId = null;
+        if (channel.getChannelType() == ChannelType.VILLAGE_LOBBY && channel.getVillageId() != null) {
+            VillageSubjectType reqType = request.getPostedAsSubjectType();
+            Long reqId = request.getPostedAsSubjectId();
+            postedAsType = reqType != null ? reqType : VillageSubjectType.USER;
+            postedAsId = postedAsType == VillageSubjectType.USER ? senderId : reqId;
+            postingIdentityService.validatePostingIdentity(
+                    senderId, channel.getVillageId(), postedAsType, postedAsId);
+        }
+
         ChatMessageEntity message = ChatMessageEntity.builder()
                 .channelId(channelId)
                 .senderId(senderId)
+                .postedAsSubjectType(postedAsType)
+                .postedAsSubjectId(postedAsId)
                 .parentId(request.getParentId())
                 .rootId(rootId)
                 .depth(depth)
