@@ -1,7 +1,7 @@
 package com.mannschaft.app.actionmemo.controller;
 
 import com.mannschaft.app.actionmemo.dto.ActionMemoListResponse;
-import com.mannschaft.app.actionmemo.service.ActionMemoService;
+import com.mannschaft.app.actionmemo.service.ActionMemoAdminService;
 import com.mannschaft.app.common.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ActionMemoDashboardController {
 
-    private final ActionMemoService actionMemoService;
+    private final ActionMemoAdminService actionMemoAdminService;
 
     /**
      * チームメンバーの WORK メモ一覧を取得する（カーソルページネーション）。
@@ -46,7 +46,7 @@ public class ActionMemoDashboardController {
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer limit) {
         Long cursorId = cursor != null ? parseCursor(cursor) : null;
-        ActionMemoListResponse response = actionMemoService.listTeamMemberMemos(
+        ActionMemoListResponse response = actionMemoAdminService.listTeamMemberMemos(
                 teamId, memberId, SecurityUtils.getCurrentUserId(), cursorId, limit != null ? limit : 50);
         return ResponseEntity.ok(response);
     }

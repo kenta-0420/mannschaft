@@ -17,6 +17,10 @@ import com.mannschaft.app.actionmemo.dto.PublishDailyToTeamResponse;
 import com.mannschaft.app.actionmemo.dto.PublishToTeamRequest;
 import com.mannschaft.app.actionmemo.dto.PublishToTeamResponse;
 import com.mannschaft.app.actionmemo.dto.UpdateActionMemoRequest;
+import com.mannschaft.app.actionmemo.service.ActionMemoAnalyticsService;
+import com.mannschaft.app.actionmemo.service.ActionMemoAdminService;
+import com.mannschaft.app.actionmemo.service.ActionMemoPublishingService;
+import com.mannschaft.app.actionmemo.service.ActionMemoScopeService;
 import com.mannschaft.app.actionmemo.service.ActionMemoService;
 import com.mannschaft.app.actionmemo.service.ActionMemoTagService;
 import com.mannschaft.app.common.ApiResponse;
@@ -56,6 +60,10 @@ import java.util.List;
 public class ActionMemoController {
 
     private final ActionMemoService actionMemoService;
+    private final ActionMemoPublishingService actionMemoPublishingService;
+    private final ActionMemoScopeService actionMemoScopeService;
+    private final ActionMemoAnalyticsService actionMemoAnalyticsService;
+    private final ActionMemoAdminService actionMemoAdminService;
     private final ActionMemoTagService actionMemoTagService;
 
     /**
@@ -147,7 +155,7 @@ public class ActionMemoController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "投稿成功")
     public ResponseEntity<ApiResponse<PublishDailyResponse>> publishDaily(
             @Valid @RequestBody PublishDailyRequest request) {
-        PublishDailyResponse response = actionMemoService.publishDaily(
+        PublishDailyResponse response = actionMemoPublishingService.publishDaily(
                 request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -202,7 +210,7 @@ public class ActionMemoController {
     public ResponseEntity<ApiResponse<PublishToTeamResponse>> publishToTeam(
             @PathVariable Long id,
             @Valid @RequestBody PublishToTeamRequest request) {
-        PublishToTeamResponse response = actionMemoService.publishToTeam(
+        PublishToTeamResponse response = actionMemoPublishingService.publishToTeam(
                 id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -217,7 +225,7 @@ public class ActionMemoController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "投稿成功")
     public ResponseEntity<ApiResponse<PublishDailyToTeamResponse>> publishDailyToTeam(
             @Valid @RequestBody PublishDailyToTeamRequest request) {
-        PublishDailyToTeamResponse response = actionMemoService.publishDailyToTeam(
+        PublishDailyToTeamResponse response = actionMemoPublishingService.publishDailyToTeam(
                 request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -231,7 +239,7 @@ public class ActionMemoController {
     @GetMapping("/available-teams")
     @Operation(summary = "投稿先チーム一覧取得")
     public ResponseEntity<ApiResponse<List<AvailableTeamResponse>>> getAvailableTeams() {
-        List<AvailableTeamResponse> response = actionMemoService.getAvailableTeams(
+        List<AvailableTeamResponse> response = actionMemoScopeService.getAvailableTeams(
                 SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -244,7 +252,7 @@ public class ActionMemoController {
     @GetMapping("/available-orgs")
     @Operation(summary = "組織スコープ投稿先組織一覧取得（Phase 5-2）")
     public ResponseEntity<ApiResponse<List<AvailableOrgResponse>>> getAvailableOrgs() {
-        List<AvailableOrgResponse> response = actionMemoService.getAvailableOrgs(
+        List<AvailableOrgResponse> response = actionMemoScopeService.getAvailableOrgs(
                 SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -265,7 +273,7 @@ public class ActionMemoController {
     public ResponseEntity<ApiResponse<MoodStatsResponse>> getMoodStats(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        MoodStatsResponse response = actionMemoService.getMoodStats(
+        MoodStatsResponse response = actionMemoAnalyticsService.getMoodStats(
                 SecurityUtils.getCurrentUserId(), from, to);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -297,7 +305,7 @@ public class ActionMemoController {
     @Operation(summary = "TODO 差し戻し（Phase 4-β）— チーム管理者のみ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "差し戻し成功")
     public ResponseEntity<Void> revertTodoCompletion(@PathVariable Long id) {
-        actionMemoService.revertTodoCompletion(id, SecurityUtils.getCurrentUserId());
+        actionMemoAdminService.revertTodoCompletion(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }
