@@ -1,0 +1,97 @@
+# =============================================================================
+# Frontend E2E CI — pull_request to main
+# =============================================================================
+# F15.4 を含む smoke subset の Playwright E2E を毎 PR で実行する。
+#
+# 設計方針:
+#   - 全 1809 spec を CI で走らせると約 7.5 時間と非現実的のため、
+#     smoke subset のみを実行（まずは F15.4-org-team-search、拡大予定）。
+#   - F15.4 spec は `page.route()` でモック化されているため、バックエンド非依存。
+#   - dev サーバは playwright.config.ts の `webServer` 設定で自動起動。
+#   - Playwright Chromium ブラウザは package-lock.json ハッシュをキーにキャッシュ。
+# =============================================================================
+
+name: Frontend — E2E (PR Check)
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-e2e-ci.yml"
+
+concurrency:
+  group: frontend-e2e-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  e2e:
+    name: Smoke E2E (F15.4 + 拡大予定)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
+
+      - name: Install Playwright Chromium (with system deps)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Ensure system deps for Playwright (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      # playwright.config.ts の chromium project が
+      # storageState: 'tests/e2e/.auth/user.json' を要求するため、
+      # CI では空の storageState を用意してプロジェクト起動エラーを回避する。
+      # F15.4 spec は addInitScript / page.route() で完全自己完結のため空 JSON で問題なし。
+      - name: Prepare empty Playwright storageState (CI only)
+        run: |
+          mkdir -p tests/e2e/.auth
+          if [ ! -f tests/e2e/.auth/user.json ]; then
+            echo '{"cookies":[],"origins":[]}' > tests/e2e/.auth/user.json
+          fi
+
+      - name: Run F15.4 smoke E2E
+        run: npx playwright test F15.4-org-team-search --project=chromium --workers=1 --timeout=120000
+
+      - name: Upload Playwright HTML report (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-f15.4
+          path: frontend/playwright-report/
+          retention-days: 14
+
+      - name: Upload Playwright trace (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-trace-f15.4
+          path: frontend/test-results/
+          retention-days: 14
