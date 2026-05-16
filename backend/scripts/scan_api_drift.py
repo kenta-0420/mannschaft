@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-API 乖離スキャナ（v3）
+API 乖離スキャナ（v4）
 
 設計書 (docs/features/F*.md) と実装 (backend/src/main/java/**/controller/*.java)
 の API エンドポイント差分を抽出し、`docs/internal/api_drift_baseline.md` に
@@ -12,7 +12,7 @@ Markdown レポートを生成する。
     （または）python backend/scripts/scan_api_drift.py [--no-expand-scope]
 
 注意:
-    本スクリプトは「殿様判断資料」を作るための試作 v3。
+    本スクリプトは「殿様判断資料」を作るための試作 v4。
     Phase A 本実装で置き換える前提。標準ライブラリのみ使用。
 
 # CHANGELOG
@@ -32,6 +32,16 @@ Markdown レポートを生成する。
 #   バグ5: {scope} 階層展開を第 3 セグメント以外でも対応（汎用パラメータ展開）
 #   バグ6: 文字化け Controller の読み飛ばし防止（encoding='utf-8', errors='replace' 既に v2 で対応済、v3 で念押し）
 #   除外パターン: docs/internal/api_drift_exclusions.yml をロードして実装側からマッチ分を除外
+# v4 (2026-05-17 緊急):
+#   V4-1: スコープ階層プレフィックス逆引きマッチ
+#       - 実装側 /api/v1/teams/{_}/admin/modules を /api/v1/admin/modules （設計側）と同一視
+#       - 誤合体回避のため SCOPE_CORE_PATTERNS ホワイトリスト方式
+#       - マッチした (method, impl_path, design_path) は Set で記録し二重カウント防止
+#   V4-5: 🔵 将来機能タグ認識
+#       - Markdown テーブル行の状態列 🔵/🟢/🟡/❌ を抽出
+#       - 🔵 のエンドポイントは future_features に分類してメイン集計から除外
+#       - 状態列無しテーブル行（後方互換）は status=None で従来通り集計
+#       - レポート末尾に「🔵 将来機能（N 件）」セクションを追加
 """
 from __future__ import annotations
 
@@ -52,11 +62,33 @@ SCOPE_EXPANSIONS = ("teams", "organizations", "villages", "users")
 GENERIC_SCOPE_NAMES = {"scope", "scopeType", "type", "scopetype"}
 GENERIC_SCOPE_ID_NAMES = {"scopeId", "id", "scopeid"}
 
+# V4-1: スコープ階層プレフィックス（実装側のパスがこれで始まる場合、
+# 除去して「コアパス」を取り出す対象）
+SCOPE_PREFIXES_FOR_REVERSE = (
+    "/api/v1/teams/{_}",
+    "/api/v1/organizations/{_}",
+    "/api/v1/villages/{_}",
+    "/api/v1/users/{_}",
+)
+
+# V4-1: コアパスとしてスコープ逆引きを許可するパターン（誤合体回避のホワイトリスト）
+# `/admin/`, `/dashboard/`, `/modules/`, `/visibility/`, `/settings/` 系のみ。
+# これ以外（例: /posts, /surveys 等のリソース系）は scope context の有無で
+# 意味が変わる可能性が高いため、逆引きマッチを行わない。
+SCOPE_CORE_PATTERNS = (
+    "/api/v1/admin/**",
+    "/api/v1/dashboard/**",
+    "/api/v1/modules/**",
+    "/api/v1/visibility/**",
+    "/api/v1/settings/**",
+)
+
+
 # ---------------------------------------------------------------------------
 # データ構造
 # ---------------------------------------------------------------------------
 DesignEndpoint = namedtuple(
-    "DesignEndpoint", ["method", "path", "source_file", "line_number"]
+    "DesignEndpoint", ["method", "path", "source_file", "line_number", "status"]
 )
 ImplEndpoint = namedtuple(
     "ImplEndpoint",
@@ -164,6 +196,41 @@ def domain_of(path: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# V4-1: スコープ階層プレフィックス逆引き
+# ---------------------------------------------------------------------------
+def extract_core_path(path: str) -> str | None:
+    """実装側パスから scope prefix を除去してコアパスを返す。
+
+    例: `/api/v1/teams/{_}/admin/modules` → `/api/v1/admin/modules`
+
+    対象外（scope prefix で始まらない / 末尾が prefix と完全一致）の場合は None。
+    """
+    if not path:
+        return None
+    for prefix in SCOPE_PREFIXES_FOR_REVERSE:
+        if path == prefix:
+            # スコープエンティティ自身（例: GET /api/v1/teams/{id}）はコアパスなし
+            return None
+        if path.startswith(prefix + "/"):
+            tail = path[len(prefix):]  # "/admin/modules"
+            return "/api/v1" + tail
+    return None
+
+
+def _core_pattern_matches(core_path: str) -> bool:
+    """コアパスが SCOPE_CORE_PATTERNS のいずれかにマッチするか。
+
+    誤合体回避のホワイトリスト。`/admin/`, `/dashboard/`, `/modules/`,
+    `/visibility/`, `/settings/` 系のみマッチ許可。
+    """
+    for pattern in SCOPE_CORE_PATTERNS:
+        regex = _glob_to_regex(pattern)
+        if regex.match(core_path):
+            return True
+    return False
+
+
+# ---------------------------------------------------------------------------
 # 除外パターンのロード（v3 新規）
 # ---------------------------------------------------------------------------
 def _parse_exclusion_yaml(text: str) -> list[str]:
@@ -242,7 +309,15 @@ def is_excluded(path: str, compiled_patterns: list[re.Pattern[str]]) -> bool:
 # ---------------------------------------------------------------------------
 # 設計書スキャン
 # ---------------------------------------------------------------------------
-# Markdown テーブル行: `| GET | /api/v1/... | ... |`
+# V4-5: 状態列付き Markdown テーブル行: `| 🔵 | GET | /api/v1/foo | ... |`
+# 状態列はオプション。先頭の `|` の直後に絵文字（🟢/🔵/🟡/❌）が来た場合、状態として抽出。
+_DESIGN_TABLE_WITH_STATUS_RE = re.compile(
+    r"^\s*\|\s*(🟢|🔵|🟡|❌)\s*\|"
+    r"\s*`?(GET|POST|PUT|PATCH|DELETE)`?\s*\|"
+    r"\s*`?(/api/v\d+/[^\s`|]+)`?\s*\|",
+    re.IGNORECASE,
+)
+# 旧来形式（状態列なし）: `| GET | /api/v1/... | ... |`
 _DESIGN_TABLE_RE = re.compile(
     r"^\s*\|\s*`?(GET|POST|PUT|PATCH|DELETE)`?\s*\|"
     r"\s*`?(/api/v\d+/[^\s`|]+)`?\s*\|",
@@ -262,7 +337,11 @@ _DESIGN_INLINE_RE = re.compile(
 
 
 def scan_design_docs(docs_dir: Path) -> list[DesignEndpoint]:
-    """`docs/features/F*.md` を全て走査し設計記載エンドポイントを集める。"""
+    """`docs/features/F*.md` を全て走査し設計記載エンドポイントを集める。
+
+    v4: 状態列付きテーブル行 (`| 🔵 | GET | ... |`) を優先抽出し、
+    状態列が無い場合は従来通り status=None で抽出する（後方互換）。
+    """
     results: list[DesignEndpoint] = []
     if not docs_dir.is_dir():
         print(f"[WARN] features dir not found: {docs_dir}", file=sys.stderr)
@@ -278,19 +357,39 @@ def scan_design_docs(docs_dir: Path) -> list[DesignEndpoint]:
 
         for i, line in enumerate(text.splitlines(), start=1):
             matched_in_line = False
-            m = _DESIGN_TABLE_RE.match(line)
-            if m:
-                method = m.group(1).upper()
-                path = m.group(2).rstrip(".,;`")
+
+            # V4-5: 状態列付きテーブル行を先に試行
+            m_status = _DESIGN_TABLE_WITH_STATUS_RE.match(line)
+            if m_status:
+                status = m_status.group(1)
+                method = m_status.group(2).upper()
+                path = m_status.group(3).rstrip(".,;`")
                 results.append(
                     DesignEndpoint(
                         method=method,
                         path=normalize_path(path),
                         source_file=str(md.as_posix()),
                         line_number=i,
+                        status=status,
                     )
                 )
                 matched_in_line = True
+
+            if not matched_in_line:
+                m = _DESIGN_TABLE_RE.match(line)
+                if m:
+                    method = m.group(1).upper()
+                    path = m.group(2).rstrip(".,;`")
+                    results.append(
+                        DesignEndpoint(
+                            method=method,
+                            path=normalize_path(path),
+                            source_file=str(md.as_posix()),
+                            line_number=i,
+                            status=None,
+                        )
+                    )
+                    matched_in_line = True
 
             m2 = _DESIGN_HEADING_RE.match(line)
             if m2:
@@ -302,6 +401,7 @@ def scan_design_docs(docs_dir: Path) -> list[DesignEndpoint]:
                         path=normalize_path(path),
                         source_file=str(md.as_posix()),
                         line_number=i,
+                        status=None,
                     )
                 )
                 matched_in_line = True
@@ -317,6 +417,7 @@ def scan_design_docs(docs_dir: Path) -> list[DesignEndpoint]:
                             path=normalize_path(path),
                             source_file=str(md.as_posix()),
                             line_number=i,
+                            status=None,
                         )
                     )
     return results
@@ -491,15 +592,37 @@ def make_report(
 
     v3 バグ2根治: 集計時に Set で重複排除（design_keys/impl_keys は dict だが
     キーが既に集約されているため、`set(design_keys)` で自然に重複排除される）。
+
+    v4:
+        V4-1 スコープ階層逆引きマッチで「設計あり・実装なし」+「実装あり・設計なし」
+        の組を「準一致」として一致側に繰り入れる。
+        V4-5 🔵 タグ付きエンドポイントは future_features に分類して集計対象外。
     """
     # 除外パターンを compile
     compiled = []
     if exclusion_patterns:
         compiled = [_glob_to_regex(p) for p in exclusion_patterns]
 
-    design_keys: dict[tuple[str, str], list[DesignEndpoint]] = defaultdict(list)
+    # V4-5: 🔵 将来機能を分離
+    future_designs: list[DesignEndpoint] = []
+    main_designs: list[DesignEndpoint] = []
     for d in designs:
+        if d.status == "🔵":
+            future_designs.append(d)
+        else:
+            main_designs.append(d)
+
+    design_keys: dict[tuple[str, str], list[DesignEndpoint]] = defaultdict(list)
+    for d in main_designs:
         design_keys[(d.method, d.path)].append(d)
+
+    # 🔵 として登録されたキーは future_keys に集約
+    future_keys: dict[tuple[str, str], list[DesignEndpoint]] = defaultdict(list)
+    for d in future_designs:
+        future_keys[(d.method, d.path)].append(d)
+
+    # 🔵 と通常 (🟢 等) の両方に同じキーが登場した場合、通常側を優先（メインに残す）
+    # → 何もしなくても OK。design_keys に既に含まれているならそのまま比較対象。
 
     impl_keys: dict[tuple[str, str], list[ImplEndpoint]] = defaultdict(list)
     excluded_count = 0
@@ -509,8 +632,7 @@ def make_report(
             continue
         impl_keys[(i.method, i.path)].append(i)
 
-    # 設計側も除外パターンを適用（実装側だけ消すと永遠に「設計あり・実装なし」に
-    # 残ってしまうため。actuator や internal を設計書に書いた場合は両側除外）
+    # 設計側も除外パターンを適用
     design_excluded = 0
     if compiled:
         filtered_design: dict[tuple[str, str], list[DesignEndpoint]] = defaultdict(list)
@@ -520,11 +642,57 @@ def make_report(
                 continue
             filtered_design[key] = ds
         design_keys = filtered_design
+        filtered_future: dict[tuple[str, str], list[DesignEndpoint]] = defaultdict(list)
+        for key, ds in future_keys.items():
+            if is_excluded(key[1], compiled):
+                continue
+            filtered_future[key] = ds
+        future_keys = filtered_future
 
-    # v3 バグ2: set 化で重複排除（dict キーで既に集約されているが念のため）
-    only_design = sorted(set(design_keys.keys()) - set(impl_keys.keys()))
-    only_impl = sorted(set(impl_keys.keys()) - set(design_keys.keys()))
-    matched = sorted(set(design_keys.keys()) & set(impl_keys.keys()))
+    # V4-5: 🔵 として実装側に存在するエンドポイントは「将来機能だが既に実装あり」
+    # として、実装側の only_impl からは除外する（一致でも・only_impl でもない別カテゴリ）。
+    # ただし通常 (🟢 等) としても登録されていれば、そちらの一致判定が優先される。
+    future_already_impl: list[tuple[str, str]] = []
+    for fkey in list(future_keys.keys()):
+        if fkey in impl_keys and fkey not in design_keys:
+            future_already_impl.append(fkey)
+
+    # v3 バグ2: set 化で重複排除
+    only_design = set(design_keys.keys()) - set(impl_keys.keys())
+    only_impl = set(impl_keys.keys()) - set(design_keys.keys())
+    matched = set(design_keys.keys()) & set(impl_keys.keys())
+
+    # V4-5: 🔵 として実装済みのキーは only_impl からも除外
+    only_impl -= set(future_already_impl)
+
+    # V4-1: スコープ階層逆引きマッチ
+    # 実装側 only_impl のうち scope prefix で始まり、core path が only_design に
+    # 存在し、かつ core path が SCOPE_CORE_PATTERNS にマッチするものは「準一致」
+    # としてメイン集計から除外する。
+    scope_reverse_matches: set[tuple[str, str, str]] = set()  # (method, impl_path, design_path)
+    only_impl_to_remove: set[tuple[str, str]] = set()
+    only_design_to_remove: set[tuple[str, str]] = set()
+
+    for (method, impl_path) in list(only_impl):
+        core = extract_core_path(impl_path)
+        if core is None:
+            continue
+        if (method, core) not in only_design:
+            continue
+        # 同じスコープ prefix で設計側にも書かれていれば、そちらを優先（誤合体防止）
+        # → 既に matched 側に入っているなら only_impl/only_design には来ないので OK
+        if not _core_pattern_matches(core):
+            continue
+        scope_reverse_matches.add((method, impl_path, core))
+        only_impl_to_remove.add((method, impl_path))
+        only_design_to_remove.add((method, core))
+
+    only_impl -= only_impl_to_remove
+    only_design -= only_design_to_remove
+
+    only_design_sorted = sorted(only_design)
+    only_impl_sorted = sorted(only_impl)
+    matched_sorted = sorted(matched)
 
     def rel(p: str) -> str:
         try:
@@ -534,9 +702,9 @@ def make_report(
 
     today = date.today().isoformat()
     lines: list[str] = []
-    lines.append(f"# API 乖離ベースライン報告書（{today} 時点・v3 スキャナ）")
+    lines.append(f"# API 乖離ベースライン報告書（{today} 時点・v4 スキャナ）")
     lines.append("")
-    lines.append("> 本報告書は `backend/scripts/scan_api_drift.py` (v3) により自動生成された。")
+    lines.append("> 本報告書は `backend/scripts/scan_api_drift.py` (v4) により自動生成された。")
     lines.append("> 設計書 `docs/features/F*.md` のテーブル/見出し/インラインコード記載と、")
     lines.append("> 実装 `backend/src/main/java/**/controller/*Controller.java` の")
     lines.append("> Spring MVC アノテーション（新形式 + 旧 @RequestMapping(method=) 形式）を突合した結果である。")
@@ -548,17 +716,34 @@ def make_report(
         "- v2 (2026-05-17): {scope}/{scopeId} 展開・旧 RequestMapping 強化・末尾スラッシュ吸収・インラインコード補助対応・ドメイン別サマリ表追加"
     )
     lines.append(
-        f"- v3 ({today}): 6 バグ集合根治（query 切捨・重複排除・末尾スラッシュ取りこぼし・スコープ展開拡張・文字化け read 念押し・除外パターン適用）"
+        "- v3 (2026-05-17): 6 バグ集合根治（query 切捨・重複排除・末尾スラッシュ取りこぼし・スコープ展開拡張・文字化け read 念押し・除外パターン適用）"
+    )
+    lines.append(
+        f"- v4 ({today}): V4-1 スコープ階層プレフィックス逆引きマッチ + V4-5 🔵 将来機能タグ認識"
     )
     lines.append("")
     lines.append("## サマリ")
     lines.append("")
-    lines.append(f"- 設計あり・実装なし: **{len(only_design)} 件**（v2: 1,256 件 / v1: 1,187 件）")
-    lines.append(f"- 実装あり・設計なし: **{len(only_impl)} 件**（v2: 1,147 件 / v1: 931 件）")
-    lines.append(f"- 一致: **{len(matched)} 件**（v2: 1,322 件 / v1: 1,310 件）")
-    lines.append(f"- 設計記載 ユニーク (method, path) 総数: {len(design_keys)}")
+    lines.append(
+        f"- 設計あり・実装なし: **{len(only_design_sorted)} 件**（v3: 1,214 件 / v2: 1,256 件 / v1: 1,187 件）"
+    )
+    lines.append(
+        f"- 実装あり・設計なし: **{len(only_impl_sorted)} 件**（v3: 1,106 件 / v2: 1,147 件 / v1: 931 件）"
+    )
+    lines.append(
+        f"- 一致: **{len(matched_sorted)} 件**（v3: 1,341 件 / v2: 1,322 件 / v1: 1,310 件）"
+    )
+    lines.append(
+        f"- V4-1 スコープ逆引き準一致: **{len(scope_reverse_matches)} 件**（一致側に繰入）"
+    )
+    lines.append(
+        f"- V4-5 🔵 将来機能: **{len(future_keys)} 件**（メイン集計外）／うち実装済: {len(future_already_impl)} 件"
+    )
+    lines.append(f"- 設計記載 ユニーク (method, path) 総数（main）: {len(design_keys)}")
     lines.append(f"- 実装 ユニーク (method, path) 総数: {len(impl_keys)}")
-    lines.append(f"- 除外（実装側）: {excluded_count} 件 / 除外（設計側）: {design_excluded} 件 / パターン数: {len(exclusion_patterns or [])}")
+    lines.append(
+        f"- 除外（実装側）: {excluded_count} 件 / 除外（設計側）: {design_excluded} 件 / パターン数: {len(exclusion_patterns or [])}"
+    )
     lines.append(f"- スコープ展開: {'ON' if expand_scope else 'OFF'}")
     lines.append("")
     lines.append("---")
@@ -571,20 +756,19 @@ def make_report(
     only_design_by_domain: dict[str, int] = defaultdict(int)
     only_impl_by_domain: dict[str, int] = defaultdict(int)
     matched_by_domain: dict[str, int] = defaultdict(int)
-    for key in only_design:
+    for key in only_design_sorted:
         d = domain_of(key[1])
         only_design_by_domain[d] += 1
         all_domains.add(d)
-    for key in only_impl:
+    for key in only_impl_sorted:
         d = domain_of(key[1])
         only_impl_by_domain[d] += 1
         all_domains.add(d)
-    for key in matched:
+    for key in matched_sorted:
         d = domain_of(key[1])
         matched_by_domain[d] += 1
         all_domains.add(d)
 
-    # ソート: 合計乖離数の多い順
     def _drift_total(d: str) -> int:
         return only_design_by_domain[d] + only_impl_by_domain[d]
 
@@ -597,9 +781,8 @@ def make_report(
         oi = only_impl_by_domain[d]
         mt = matched_by_domain[d]
         lines.append(f"| /api/v1/{d}/* | {od} | {oi} | {mt} | {od + oi} |")
-    # 合計行
     lines.append(
-        f"| **合計** | **{len(only_design)}** | **{len(only_impl)}** | **{len(matched)}** | **{len(only_design) + len(only_impl)}** |"
+        f"| **合計** | **{len(only_design_sorted)}** | **{len(only_impl_sorted)}** | **{len(matched_sorted)}** | **{len(only_design_sorted) + len(only_impl_sorted)}** |"
     )
     lines.append("")
     lines.append("---")
@@ -608,11 +791,11 @@ def make_report(
     # 1. 設計あり・実装なし
     lines.append("## 1. 🔴 設計あり・実装なし（Phase 1 漏れ系）")
     lines.append("")
-    if not only_design:
+    if not only_design_sorted:
         lines.append("_該当なし。_")
     else:
         by_domain: dict[str, list[tuple[str, str]]] = defaultdict(list)
-        for key in only_design:
+        for key in only_design_sorted:
             by_domain[domain_of(key[1])].append(key)
         for dom in sorted(by_domain):
             keys = by_domain[dom]
@@ -633,11 +816,11 @@ def make_report(
     # 2. 実装あり・設計なし
     lines.append("## 2. 🟡 実装あり・設計なし（設計書整備候補）")
     lines.append("")
-    if not only_impl:
+    if not only_impl_sorted:
         lines.append("_該当なし。_")
     else:
         by_domain2: dict[str, list[tuple[str, str]]] = defaultdict(list)
-        for key in only_impl:
+        for key in only_impl_sorted:
             by_domain2[domain_of(key[1])].append(key)
         for dom in sorted(by_domain2, key=lambda d: (-len(by_domain2[d]), d)):
             keys = by_domain2[dom]
@@ -659,12 +842,61 @@ def make_report(
     # 3. 一致（件数のみ）
     lines.append("## 3. ✅ 一致（件数のみ）")
     lines.append("")
-    lines.append(f"一致したエンドポイント: **{len(matched)} 件**（詳細リストは省略）")
+    lines.append(f"一致したエンドポイント: **{len(matched_sorted)} 件**（詳細リストは省略）")
     lines.append("")
+    lines.append("---")
+    lines.append("")
+
+    # V4-1: スコープ逆引き準一致セクション
+    lines.append("## 4. 🟦 スコープ階層プレフィックス逆引き準一致（V4-1）")
+    lines.append("")
+    lines.append(
+        "> 実装側が `/api/v1/teams/{_}/...` 等のスコープ context 付きで定義されているが、"
+        "設計書側ではコアパス（scope 抜き）で記載されているケース。"
+        "意味的に同一とみなし、メイン集計の「設計あり・実装なし」「実装あり・設計なし」"
+        "両方から除外している。"
+    )
+    lines.append("")
+    if not scope_reverse_matches:
+        lines.append("_該当なし。_")
+    else:
+        lines.append(f"準一致件数: **{len(scope_reverse_matches)} 件**")
+        lines.append("")
+        lines.append("| メソッド | 実装パス | 設計コアパス |")
+        lines.append("|---|---|---|")
+        for method, impl_path, design_path in sorted(scope_reverse_matches):
+            lines.append(f"| {method} | `{impl_path}` | `{design_path}` |")
+        lines.append("")
+    lines.append("---")
+    lines.append("")
+
+    # V4-5: 🔵 将来機能セクション
+    lines.append("## 5. 🔵 将来機能（実装ステータス明示）")
+    lines.append("")
+    lines.append(
+        "> 設計書テーブル行で状態列が `🔵`（Phase X 未着工等）と明示されているエンドポイント。"
+        "意図的に未実装のため、メインの「設計あり・実装なし」には含めない。"
+    )
+    lines.append("")
+    if not future_keys:
+        lines.append("_該当なし。_")
+    else:
+        lines.append(f"将来機能件数: **{len(future_keys)} 件**")
+        lines.append("")
+        lines.append("| 状態 | メソッド | パス | 設計書 | 行 | 実装済 |")
+        lines.append("|---|---|---|---|---:|:---:|")
+        for key in sorted(future_keys.keys()):
+            method, path = key
+            already = "✓" if key in impl_keys else ""
+            for d in future_keys[key]:
+                lines.append(
+                    f"| 🔵 | {method} | `{path}` | `{rel(d.source_file)}` | {d.line_number} | {already} |"
+                )
+        lines.append("")
 
     out_file.parent.mkdir(parents=True, exist_ok=True)
     out_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return len(only_design), len(only_impl), len(matched)
+    return len(only_design_sorted), len(only_impl_sorted), len(matched_sorted)
 
 
 # ---------------------------------------------------------------------------
@@ -672,7 +904,7 @@ def make_report(
 # ---------------------------------------------------------------------------
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="API 乖離スキャナ v3（設計書 vs Controller 実装）"
+        description="API 乖離スキャナ v4（設計書 vs Controller 実装）"
     )
     parser.add_argument(
         "--no-expand-scope",

@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-API 乖離スキャナ v3 の単体テスト。
+API 乖離スキャナ v4 の単体テスト。
 
 実行:
     cd backend && python -m unittest scripts/test_scan_api_drift.py
     （または）python -m unittest backend.scripts.test_scan_api_drift
 
 v2 で確認された 6 つの偽陽性バグについて、reproducer + 期待挙動を検証する。
+v4 拡張: V4-1 スコープ階層プレフィックス逆引きマッチ・V4-5 🔵 将来機能タグ認識。
 """
 from __future__ import annotations
 
@@ -60,10 +61,10 @@ class TestBug2DuplicateDedup(unittest.TestCase):
     def test_make_report_dedups_identical_keys(self) -> None:
         """同じ (method, path) が複数回出てきても 1 件扱い。"""
         de1 = scanner.DesignEndpoint(
-            method="GET", path="/api/v1/foo", source_file="x.md", line_number=1
+            method="GET", path="/api/v1/foo", source_file="x.md", line_number=1, status=None
         )
         de2 = scanner.DesignEndpoint(
-            method="GET", path="/api/v1/foo", source_file="y.md", line_number=2
+            method="GET", path="/api/v1/foo", source_file="y.md", line_number=2, status=None
         )
         ie1 = scanner.ImplEndpoint(
             method="GET",
@@ -272,6 +273,294 @@ class TestDomainOf(unittest.TestCase):
 
     def test_domain_of_empty(self) -> None:
         self.assertEqual(scanner.domain_of(""), "(root)")
+
+
+class TestV4ScopeReverseMatch(unittest.TestCase):
+    """V4-1: スコープ階層プレフィックス逆引きマッチ。"""
+
+    def test_extract_core_path_teams_prefix(self) -> None:
+        """`/api/v1/teams/{_}/admin/modules` → `/api/v1/admin/modules`"""
+        self.assertEqual(
+            scanner.extract_core_path("/api/v1/teams/{_}/admin/modules"),
+            "/api/v1/admin/modules",
+        )
+
+    def test_extract_core_path_organizations_prefix(self) -> None:
+        self.assertEqual(
+            scanner.extract_core_path("/api/v1/organizations/{_}/dashboard/users"),
+            "/api/v1/dashboard/users",
+        )
+
+    def test_extract_core_path_no_prefix_returns_none(self) -> None:
+        """スコープ prefix で始まらないパスは None。"""
+        self.assertIsNone(scanner.extract_core_path("/api/v1/admin/modules"))
+        self.assertIsNone(scanner.extract_core_path("/api/v1/me/foo"))
+
+    def test_extract_core_path_scope_entity_itself_returns_none(self) -> None:
+        """`/api/v1/teams/{_}` 自体（scope entity）は core path なし。"""
+        self.assertIsNone(scanner.extract_core_path("/api/v1/teams/{_}"))
+
+    def test_v4_1_admin_modules_matched_as_reverse(self) -> None:
+        """設計 `/api/v1/admin/modules` ≡ 実装 `/api/v1/teams/{_}/admin/modules`
+        が準一致として扱われ、メイン only_* から除外されること。
+        """
+        de = scanner.DesignEndpoint(
+            method="GET",
+            path="/api/v1/admin/modules",
+            source_file="x.md",
+            line_number=1,
+            status=None,
+        )
+        ie = scanner.ImplEndpoint(
+            method="GET",
+            path="/api/v1/teams/{_}/admin/modules",
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de], [ie], out, Path(td), expand_scope=False
+            )
+            # V4-1 で準一致 → 設計あり・実装なし=0, 実装あり・設計なし=0
+            self.assertEqual(md, 0)
+            self.assertEqual(mi, 0)
+            # 通常 matched にはカウントしない（準一致は別カテゴリ）
+            self.assertEqual(mt, 0)
+
+    def test_v4_1_no_match_for_resource_paths(self) -> None:
+        """誤合体防止: SCOPE_CORE_PATTERNS 外（例: /api/v1/posts）は逆引きしない。
+
+        設計 `/api/v1/posts` と 実装 `/api/v1/teams/{_}/posts` は別物扱い。
+        """
+        de = scanner.DesignEndpoint(
+            method="GET",
+            path="/api/v1/posts",
+            source_file="x.md",
+            line_number=1,
+            status=None,
+        )
+        ie = scanner.ImplEndpoint(
+            method="GET",
+            path="/api/v1/teams/{_}/posts",
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de], [ie], out, Path(td), expand_scope=False
+            )
+            # /posts は SCOPE_CORE_PATTERNS 外 → 別物として残る
+            self.assertEqual(md, 1)
+            self.assertEqual(mi, 1)
+
+    def test_v4_1_dashboard_core_matched(self) -> None:
+        """dashboard 系も SCOPE_CORE_PATTERNS にマッチして準一致になる。"""
+        de = scanner.DesignEndpoint(
+            method="GET",
+            path="/api/v1/dashboard/users",
+            source_file="x.md",
+            line_number=1,
+            status=None,
+        )
+        ie = scanner.ImplEndpoint(
+            method="GET",
+            path="/api/v1/organizations/{_}/dashboard/users",
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de], [ie], out, Path(td), expand_scope=False
+            )
+            self.assertEqual(md, 0)
+            self.assertEqual(mi, 0)
+
+    def test_v4_1_method_mismatch_no_match(self) -> None:
+        """メソッドが違えば逆引きマッチしない（GET vs POST）。"""
+        de = scanner.DesignEndpoint(
+            method="GET",
+            path="/api/v1/admin/modules",
+            source_file="x.md",
+            line_number=1,
+            status=None,
+        )
+        ie = scanner.ImplEndpoint(
+            method="POST",
+            path="/api/v1/teams/{_}/admin/modules",
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de], [ie], out, Path(td), expand_scope=False
+            )
+            self.assertEqual(md, 1)
+            self.assertEqual(mi, 1)
+
+
+class TestV4FutureFeatureTag(unittest.TestCase):
+    """V4-5: 🔵 将来機能タグ認識。"""
+
+    def test_design_table_with_blue_status_extracted(self) -> None:
+        """`| 🔵 | GET | /api/v1/foo | ... |` の status=🔵 が抽出される。"""
+        with tempfile.TemporaryDirectory() as td:
+            features = Path(td) / "docs" / "features"
+            features.mkdir(parents=True)
+            md = features / "F99.test.md"
+            md.write_text(
+                "# テスト設計書\n\n"
+                "| 状態 | メソッド | パス | 説明 |\n"
+                "|---|---|---|---|\n"
+                "| 🟢 | GET | `/api/v1/foo` | 実装済 |\n"
+                "| 🔵 | POST | `/api/v1/foo/v2` | 将来機能 |\n",
+                encoding="utf-8",
+            )
+            results = scanner.scan_design_docs(features)
+            by_path = {(r.method, r.path): r.status for r in results}
+            self.assertEqual(by_path.get(("GET", "/api/v1/foo")), "🟢")
+            self.assertEqual(by_path.get(("POST", "/api/v1/foo/v2")), "🔵")
+
+    def test_design_table_without_status_backward_compat(self) -> None:
+        """状態列なしの旧テーブルも status=None で従来通り抽出される。"""
+        with tempfile.TemporaryDirectory() as td:
+            features = Path(td) / "docs" / "features"
+            features.mkdir(parents=True)
+            md = features / "F99.test.md"
+            md.write_text(
+                "# テスト設計書\n\n"
+                "| メソッド | パス | 説明 |\n"
+                "|---|---|---|\n"
+                "| GET | `/api/v1/legacy` | 旧テーブル形式 |\n",
+                encoding="utf-8",
+            )
+            results = scanner.scan_design_docs(features)
+            paths = {(r.method, r.path, r.status) for r in results}
+            self.assertIn(("GET", "/api/v1/legacy", None), paths)
+
+    def test_blue_endpoint_excluded_from_main_only_design(self) -> None:
+        """🔵 のエンドポイントは only_design（メイン）にカウントされない。"""
+        de_blue = scanner.DesignEndpoint(
+            method="POST",
+            path="/api/v1/foo/v2",
+            source_file="x.md",
+            line_number=1,
+            status="🔵",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de_blue], [], out, Path(td), expand_scope=False
+            )
+            # 🔵 単独なら only_design=0（メイン集計外）
+            self.assertEqual(md, 0)
+            self.assertEqual(mi, 0)
+            self.assertEqual(mt, 0)
+            # レポート末尾に 🔵 セクションが含まれる
+            content = out.read_text(encoding="utf-8")
+            self.assertIn("🔵 将来機能", content)
+            self.assertIn("/api/v1/foo/v2", content)
+
+    def test_blue_endpoint_with_impl_marked_already(self) -> None:
+        """🔵 として登録されたが実装済の場合、only_impl からも除外され、
+        将来機能セクションで「実装済✓」と表示される。
+        """
+        de_blue = scanner.DesignEndpoint(
+            method="GET",
+            path="/api/v1/foo",
+            source_file="x.md",
+            line_number=1,
+            status="🔵",
+        )
+        ie = scanner.ImplEndpoint(
+            method="GET",
+            path="/api/v1/foo",
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de_blue], [ie], out, Path(td), expand_scope=False
+            )
+            # 実装あり・設計なし にもカウントされない（🔵 で別カテゴリ）
+            self.assertEqual(mi, 0)
+            self.assertEqual(md, 0)
+            content = out.read_text(encoding="utf-8")
+            # ✓ マークが将来機能セクションに付くこと
+            self.assertIn("/api/v1/foo", content)
+
+    def test_normal_status_treated_as_regular(self) -> None:
+        """🟢/🟡 は通常扱い（メイン集計に入る）。"""
+        de_green = scanner.DesignEndpoint(
+            method="GET",
+            path="/api/v1/green",
+            source_file="x.md",
+            line_number=1,
+            status="🟢",
+        )
+        de_yellow = scanner.DesignEndpoint(
+            method="GET",
+            path="/api/v1/yellow",
+            source_file="x.md",
+            line_number=2,
+            status="🟡",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de_green, de_yellow], [], out, Path(td), expand_scope=False
+            )
+            # 両方とも only_design に入る（🔵 ではないため）
+            self.assertEqual(md, 2)
+
+    def test_blue_table_parser_regex_with_inline_code(self) -> None:
+        """`| 🔵 | GET | \`/api/v1/foo\` | ... |` のようにパスがバッククォート
+        付きでも抽出できる。
+        """
+        with tempfile.TemporaryDirectory() as td:
+            features = Path(td) / "docs" / "features"
+            features.mkdir(parents=True)
+            md = features / "F99.test.md"
+            md.write_text(
+                "| 🔵 | GET | `/api/v1/admin/seals/regenerate-all/{jobId}/status` | SYSTEM_ADMIN | xxx |\n",
+                encoding="utf-8",
+            )
+            results = scanner.scan_design_docs(features)
+            statuses = [(r.method, r.path, r.status) for r in results]
+            self.assertIn(
+                ("GET", "/api/v1/admin/seals/regenerate-all/{_}/status", "🔵"),
+                statuses,
+            )
+
+
+class TestV4CorePatternMatch(unittest.TestCase):
+    """SCOPE_CORE_PATTERNS が glob として正しくマッチするか。"""
+
+    def test_admin_pattern_matches(self) -> None:
+        self.assertTrue(scanner._core_pattern_matches("/api/v1/admin/modules"))
+        self.assertTrue(scanner._core_pattern_matches("/api/v1/admin/dashboard/users"))
+
+    def test_dashboard_pattern_matches(self) -> None:
+        self.assertTrue(scanner._core_pattern_matches("/api/v1/dashboard/users"))
+
+    def test_non_whitelisted_does_not_match(self) -> None:
+        self.assertFalse(scanner._core_pattern_matches("/api/v1/posts"))
+        self.assertFalse(scanner._core_pattern_matches("/api/v1/coupons/{_}"))
+        self.assertFalse(scanner._core_pattern_matches("/api/v1/me/foo"))
 
 
 if __name__ == "__main__":
