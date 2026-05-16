@@ -304,6 +304,25 @@
         "load_failed": "Failed to load",
         "save_failed": "Failed to save"
       }
-    }
+    },
+    "add_from_qr": {
+      "title": "Add {providerName} card",
+      "title_fallback": "Add store card",
+      "intro": "Add a {providerName} stamp card to your wallet.",
+      "intro_fallback": "Add a store stamp card to your wallet from the QR code.",
+      "from_org": "(issued by {orgName})",
+      "barcode_input": "Your member number (if any)",
+      "barcode_hint": "Enter the number printed on the card the store gave you. Leave blank if your card has no number.",
+      "no_barcode": "Register without a number",
+      "add": "Add to wallet",
+      "added": "Card added to your wallet",
+      "adding": "Adding…",
+      "qr_invalid": "Invalid QR code",
+      "provider_not_found": "This provider is currently disabled",
+      "missing_params": "QR code is missing required information"
+    },
+    "copy_card_id": "Copy card ID",
+    "card_id_copied": "Card ID copied",
+    "card_id_label": "Card ID"
   }
 }
