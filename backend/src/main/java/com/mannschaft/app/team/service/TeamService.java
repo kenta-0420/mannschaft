@@ -43,6 +43,7 @@ import lombok.extern.slf4j.Slf4j;
 import com.mannschaft.app.team.service.TeamShiftSettingsService;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -78,6 +79,7 @@ public class TeamService {
      */
     @Transactional
     // TODO: teamドメインがroleドメイン(RoleRepository/UserRoleRepository)・socialドメイン(TeamFriendRepository)・membershipドメイン(MembershipRepository/MembershipService)・shiftドメイン(TeamShiftSettingsService)をまたいでいる。将来はTeamCreatedEventで分離予定
+    @CacheEvict(value = "team-search", allEntries = true)
     public ApiResponse<TeamResponse> createTeam(Long userId, CreateTeamRequest req) {
         TeamEntity team = TeamEntity.builder()
                 .name(req.getName())
@@ -136,7 +138,10 @@ public class TeamService {
      */
     @Transactional
     // TODO: teamドメインがroleドメイン(UserRoleRepository)・socialドメイン(TeamFriendRepository)・membershipドメイン(MembershipRepository)をまたいでいる。将来はTeamUpdatedEventで分離予定
-    @CacheEvict(value = "team-detail", key = "#teamId")
+    @Caching(evict = {
+            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-search", allEntries = true)
+    })
     public ApiResponse<TeamResponse> updateTeam(Long teamId, UpdateTeamRequest req) {
         TeamEntity team = findTeamOrThrow(teamId);
         checkNotArchived(team);
@@ -169,7 +174,10 @@ public class TeamService {
      * チームを論理削除する。
      */
     @Transactional
-    @CacheEvict(value = "team-detail", key = "#teamId")
+    @Caching(evict = {
+            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-search", allEntries = true)
+    })
     public void deleteTeam(Long teamId, Long userId) {
         TeamEntity team = findTeamOrThrow(teamId);
         team.softDelete();
@@ -184,6 +192,10 @@ public class TeamService {
      * チームをアーカイブする。
      */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-search", allEntries = true)
+    })
     public void archiveTeam(Long teamId) {
         TeamEntity team = findTeamOrThrow(teamId);
         if (team.getArchivedAt() != null) {
@@ -197,6 +209,10 @@ public class TeamService {
      * チームのアーカイブを解除する。
      */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-search", allEntries = true)
+    })
     public void unarchiveTeam(Long teamId) {
         TeamEntity team = findTeamOrThrow(teamId);
         team.unarchive();
@@ -275,6 +291,10 @@ public class TeamService {
      */
     @Transactional
     // TODO: teamドメインとmembershipドメイン(MembershipRepository/MembershipService)をまたいでいる。将来はTeamFollowRequestedEventで分離予定
+    @Caching(evict = {
+            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-search", allEntries = true)
+    })
     public void followTeam(Long userId, Long teamId) {
         findTeamOrThrow(teamId);
 
@@ -309,6 +329,10 @@ public class TeamService {
      */
     @Transactional
     // TODO: teamドメインとmembershipドメイン(MembershipRepository/MembershipService)をまたいでいる。将来はTeamUnfollowedEventで分離予定
+    @Caching(evict = {
+            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-search", allEntries = true)
+    })
     public void unfollowTeam(Long userId, Long teamId) {
         findTeamOrThrow(teamId);
 
@@ -348,6 +372,10 @@ public class TeamService {
      * 論理削除済みチームを復元する（SYSTEM_ADMIN専用）。
      */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-search", allEntries = true)
+    })
     public void restoreTeam(Long teamId) {
         if (teamRepository.countByIdIncludingDeleted(teamId) == 0) {
             throw new BusinessException(TeamErrorCode.TEAM_001);
