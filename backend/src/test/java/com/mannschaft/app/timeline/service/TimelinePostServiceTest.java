@@ -26,6 +26,8 @@ import com.mannschaft.app.timeline.repository.TimelinePostAttachmentRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostEditRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostReactionRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
+import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.service.PostingIdentityService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -39,6 +41,7 @@ import org.springframework.data.domain.PageRequest;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -81,6 +84,9 @@ class TimelinePostServiceTest {
 
     @Mock
     private StorageQuotaService storageQuotaService;
+
+    @Mock
+    private PostingIdentityService postingIdentityService;
 
     @InjectMocks
     private TimelinePostService timelinePostService;
@@ -131,6 +137,29 @@ class TimelinePostServiceTest {
             // then
             assertThat(result).isEqualTo(expected);
             verify(postRepository).save(any(TimelinePostEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系: VILLAGEスコープ投稿はPostingIdentityServiceで検証される")
+        void VILLAGEスコープ投稿はPostingIdentityServiceで検証される() {
+            // given
+            UUID villageId = UUID.randomUUID();
+            Long orgSubjectId = 89L;
+            // 11 引数コンストラクタ + scopeVillageId は完全コンストラクタで指定
+            CreatePostRequest req = new CreatePostRequest("村への告知", "VILLAGE", 0L,
+                    "ORGANIZATION", orgSubjectId, null, null, null, null, null, null, villageId);
+            TimelinePostEntity savedPost = createPost();
+            PostResponse expected = createPostResponse();
+
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+
+            // when
+            timelinePostService.createPost(req, USER_ID);
+
+            // then: PostingIdentityService が ORGANIZATION=89 で検証されること
+            verify(postingIdentityService).validatePostingIdentity(
+                    eq(USER_ID), eq(villageId), eq(VillageSubjectType.ORGANIZATION), eq(orgSubjectId));
         }
 
         @Test

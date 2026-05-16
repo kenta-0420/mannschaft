@@ -17,6 +17,8 @@ import com.mannschaft.app.chat.repository.ChatMessageReactionRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.service.PostingIdentityService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -30,6 +32,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -71,6 +74,10 @@ class ChatMessageServiceTest {
     /** F04.2: WebSocket STOMP メッセージ配信。NPE 回避のため Mock 設定が必須。 */
     @Mock
     private ChatMessagePublisher chatMessagePublisher;
+
+    /** F17.1 Phase 3: VILLAGE_LOBBY での postedAs 検証。 */
+    @Mock
+    private PostingIdentityService postingIdentityService;
 
     @InjectMocks
     private ChatMessageService chatMessageService;
@@ -128,6 +135,36 @@ class ChatMessageServiceTest {
             // then
             assertThat(result).isEqualTo(expected);
             verify(messageRepository).save(any(ChatMessageEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系: VILLAGE_LOBBYでpostedAs=TEAM指定時にPostingIdentityServiceが呼ばれる")
+        void village_lobby_postedAsTeam_検証発火() {
+            // given
+            UUID villageId = UUID.randomUUID();
+            Long teamSubjectId = 567L;
+            SendMessageRequest req = new SendMessageRequest(
+                    "おはよう村人", null, null, null,
+                    VillageSubjectType.TEAM, teamSubjectId);
+            ChatChannelEntity lobby = ChatChannelEntity.builder()
+                    .channelType(ChannelType.VILLAGE_LOBBY)
+                    .villageId(villageId)
+                    .name("井戸端")
+                    .createdBy(SENDER_ID)
+                    .build();
+            ChatMessageEntity saved = createMessage();
+            MessageResponse expected = createMessageResponse();
+
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(lobby);
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(saved);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+
+            // when
+            chatMessageService.sendMessage(CHANNEL_ID, req, SENDER_ID);
+
+            // then: PostingIdentityService が TEAM=567 で検証される
+            verify(postingIdentityService).validatePostingIdentity(
+                    eq(SENDER_ID), eq(villageId), eq(VillageSubjectType.TEAM), eq(teamSubjectId));
         }
 
         @Test

@@ -12,6 +12,8 @@ import com.mannschaft.app.bulletin.entity.BulletinCategoryEntity;
 import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.service.PostingIdentityService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -25,10 +27,12 @@ import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -48,6 +52,9 @@ class BulletinThreadServiceTest {
 
     @Mock
     private BulletinMapper bulletinMapper;
+
+    @Mock
+    private PostingIdentityService postingIdentityService;
 
     @InjectMocks
     private BulletinThreadService bulletinThreadService;
@@ -230,6 +237,35 @@ class BulletinThreadServiceTest {
             // Then
             assertThat(result).isNotNull();
             verify(threadRepository).save(any(BulletinThreadEntity.class));
+        }
+
+        @Test
+        @DisplayName("スレッド作成_VILLAGEスコープ_postedAs検証が呼ばれる")
+        void スレッド作成_VILLAGEスコープ_postedAs検証が呼ばれる() {
+            // Given
+            UUID villageId = UUID.randomUUID();
+            Long teamSubjectId = 567L;
+            CreateThreadRequest request = new CreateThreadRequest(
+                    CATEGORY_ID, "村への告知", "本文", "INFO", "COUNT_ONLY", null, null,
+                    villageId, VillageSubjectType.TEAM, teamSubjectId);
+
+            BulletinCategoryEntity category = BulletinCategoryEntity.builder()
+                    .scopeType(ScopeType.VILLAGE).scopeId(0L).name("井戸端").build();
+            BulletinThreadEntity savedEntity = createDefaultThread();
+            ThreadResponse response = createThreadResponse();
+
+            given(categoryService.findCategoryOrThrow(ScopeType.VILLAGE, 0L, CATEGORY_ID)).willReturn(category);
+            given(threadRepository.save(any(BulletinThreadEntity.class))).willReturn(savedEntity);
+            given(bulletinMapper.toThreadResponse(savedEntity)).willReturn(response);
+
+            // When
+            ThreadResponse result = bulletinThreadService.createThread(
+                    ScopeType.VILLAGE, 0L, USER_ID, request);
+
+            // Then: PostingIdentityService が TEAM=567 で検証されること
+            assertThat(result).isNotNull();
+            verify(postingIdentityService).validatePostingIdentity(
+                    eq(USER_ID), eq(villageId), eq(VillageSubjectType.TEAM), eq(teamSubjectId));
         }
 
         @Test

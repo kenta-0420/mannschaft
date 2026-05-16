@@ -6,7 +6,12 @@ package com.mannschaft.app.bulletin;
 public enum ScopeType {
     ORGANIZATION,
     TEAM,
-    PERSONAL;
+    PERSONAL,
+    /**
+     * 村スコープ（F17.1 Phase 3）。{@code scope_village_id} で村の UUIDv7 を保持し、
+     * {@code scope_id} は 0 を入れる（NOT NULL 制約のため）。
+     */
+    VILLAGE;
 
     /**
      * URL パスセグメント（複数形 or 単数形）から ScopeType を取得する。
@@ -35,6 +40,7 @@ public enum ScopeType {
             case "ORGANIZATIONS", "ORGANIZATION" -> ORGANIZATION;
             case "TEAMS", "TEAM" -> TEAM;
             case "PERSONAL" -> PERSONAL;
+            case "VILLAGES", "VILLAGE" -> VILLAGE;
             default -> throw new IllegalArgumentException("Unknown scopeType: " + pathSegment);
         };
     }

@@ -7,6 +7,7 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * タイムライン投稿作成リクエストDTO。
@@ -48,25 +49,42 @@ public class CreatePostRequest {
     private final PostStatus status;
 
     /**
+     * 村スコープ ID（F17.1 Phase 3）。{@code scopeType=VILLAGE} の場合に必須。
+     */
+    private final UUID scopeVillageId;
+
+    /**
      * 既存呼び出し元との後方互換のため、status を取らない 10 引数コンストラクタを残す。
      * 新規実装では {@link #CreatePostRequest(String, String, Long, String, Long, Long, Long,
-     * LocalDateTime, CreatePollRequest, List, PostStatus)} を利用すること。
+     * LocalDateTime, CreatePollRequest, List, PostStatus, UUID)} を利用すること。
      */
     public CreatePostRequest(String content, String scopeType, Long scopeId, String postedAsType,
                              Long postedAsId, Long parentId, Long repostOfId,
                              LocalDateTime scheduledAt, CreatePollRequest poll,
                              List<CreateAttachmentRequest> attachments) {
         this(content, scopeType, scopeId, postedAsType, postedAsId, parentId, repostOfId,
-                scheduledAt, poll, attachments, null);
+                scheduledAt, poll, attachments, null, null);
     }
 
     /**
-     * F09.13 Phase 2-α-2: status を明示指定する完全コンストラクタ。
+     * F09.13 Phase 2-α-2 後方互換用: scopeVillageId を取らない 11 引数コンストラクタ。
      */
     public CreatePostRequest(String content, String scopeType, Long scopeId, String postedAsType,
                              Long postedAsId, Long parentId, Long repostOfId,
                              LocalDateTime scheduledAt, CreatePollRequest poll,
                              List<CreateAttachmentRequest> attachments, PostStatus status) {
+        this(content, scopeType, scopeId, postedAsType, postedAsId, parentId, repostOfId,
+                scheduledAt, poll, attachments, status, null);
+    }
+
+    /**
+     * F17.1 Phase 3: 村スコープを明示指定する完全コンストラクタ。
+     */
+    public CreatePostRequest(String content, String scopeType, Long scopeId, String postedAsType,
+                             Long postedAsId, Long parentId, Long repostOfId,
+                             LocalDateTime scheduledAt, CreatePollRequest poll,
+                             List<CreateAttachmentRequest> attachments, PostStatus status,
+                             UUID scopeVillageId) {
         this.content = content;
         this.scopeType = scopeType;
         this.scopeId = scopeId;
@@ -78,6 +96,7 @@ public class CreatePostRequest {
         this.poll = poll;
         this.attachments = attachments;
         this.status = status;
+        this.scopeVillageId = scopeVillageId;
     }
 
     /**

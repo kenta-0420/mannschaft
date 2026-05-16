@@ -24,5 +24,10 @@ public enum PostScopeType {
     /** F01.5 フレンド投稿の転送先スコープ（Phase 1 から利用） */
     FRIEND_FORWARD,
     /** F01.5 フレンド解除後のアーカイブ領域（Phase 3 利用予定） */
-    FRIEND_ARCHIVE
+    FRIEND_ARCHIVE,
+    /**
+     * 村スコープ（F17.1 Phase 3）。{@code scope_village_id} で村の UUIDv7 を保持し、
+     * {@code scope_id} は 0 を入れる（NOT NULL 制約のため）。
+     */
+    VILLAGE
 }
