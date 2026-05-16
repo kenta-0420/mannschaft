@@ -1,9 +1,11 @@
 package com.mannschaft.app.config;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,9 +40,12 @@ public class RedisConfig {
      */
     @Bean
     public RedisCacheConfiguration redisCacheConfiguration() {
-        // JavaTimeModule を登録した ObjectMapper で日時型を正しくシリアライズ
+        // JavaTimeModule と ParameterNamesModule を登録した ObjectMapper で日時型・コンストラクタ引数名を正しく処理する
+        // ParameterNamesModule がないと @RequiredArgsConstructor の Lombok クラス（ApiResponse 等）を
+        // デシリアライズできず、キャッシュ読み込み時に 500 エラーが発生する（-parameters フラグ前提）
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.registerModule(new ParameterNamesModule(JsonCreator.Mode.DEFAULT));
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         // デシリアライズ時に型情報が必要（LinkedHashMap キャストエラー防止）
         objectMapper.activateDefaultTyping(

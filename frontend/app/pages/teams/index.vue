@@ -67,6 +67,8 @@ function setCurrentFolderId(value: CurrentFolder) {
 }
 
 onMounted(async () => {
+  // 直接アクセス時もチーム一覧が表示されるよう常にフェッチする
+  await teamStore.fetchMyTeams().catch(() => {})
   try {
     await foldersStore.fetchAll('TEAM')
   }

@@ -28,13 +28,7 @@ export interface NotificationResponse {
 
 export interface UnreadCountResponse {
   data: {
-    total: number
-    byScope: Array<{
-      scopeType: NotificationScopeType
-      scopeId: number
-      scopeName: string
-      count: number
-    }>
+    unreadCount: number
   }
 }
 
