@@ -529,6 +529,123 @@ class AccessControlServiceTest {
     }
 
     // ========================================
+    // checkAdminOrHasPermission（F18 Phase 4 第二陣 2B）
+    // ========================================
+
+    @Nested
+    @DisplayName("checkAdminOrHasPermission")
+    class CheckAdminOrHasPermission {
+
+        private static final String PERMISSION = "POINT_CARD_STAMP_ISSUE";
+
+        private UserRoleEntity createOrgUserRole(Long roleId) {
+            return UserRoleEntity.builder()
+                    .id(1L)
+                    .userId(USER_ID)
+                    .roleId(roleId)
+                    .organizationId(SCOPE_ID)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("正常系: ADMIN は Permission を見ずに無条件許可")
+        void checkAdminOrHasPermission_ADMIN_例外なし() {
+            // Given: ADMIN ロール（isAdmin で判定される経路）
+            UserRoleEntity userRole = createOrgUserRole(ROLE_ID);
+            RoleEntity role = createRole("ADMIN", 1);
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(userRole));
+            given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(role));
+
+            // When / Then（例外なし）
+            accessControlService.checkAdminOrHasPermission(USER_ID, SCOPE_ID, "ORGANIZATION", PERMISSION);
+        }
+
+        @Test
+        @DisplayName("正常系: DEPUTY_ADMIN + Permission 保有で許可")
+        void checkAdminOrHasPermission_DEPUTY_ADMINかつPermissionあり_例外なし() {
+            // Given: DEPUTY_ADMIN（isAdmin=false） + リポジトリで Permission 保有あり
+            UserRoleEntity userRole = createOrgUserRole(ROLE_ID);
+            RoleEntity role = createRole("DEPUTY_ADMIN", 2);
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(userRole));
+            given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(role));
+            given(userRoleRepository.existsDeputyAdminWithPermissionInOrganization(
+                    USER_ID, SCOPE_ID, PERMISSION)).willReturn(true);
+
+            // When / Then（例外なし）
+            accessControlService.checkAdminOrHasPermission(USER_ID, SCOPE_ID, "ORGANIZATION", PERMISSION);
+        }
+
+        @Test
+        @DisplayName("異常系: DEPUTY_ADMIN だが Permission 保有なしで COMMON_002")
+        void checkAdminOrHasPermission_DEPUTY_ADMINだがPermissionなし_COMMON002例外() {
+            // Given: DEPUTY_ADMIN だがリポジトリで Permission 未保有
+            UserRoleEntity userRole = createOrgUserRole(ROLE_ID);
+            RoleEntity role = createRole("DEPUTY_ADMIN", 2);
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(userRole));
+            given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(role));
+            given(userRoleRepository.existsDeputyAdminWithPermissionInOrganization(
+                    USER_ID, SCOPE_ID, PERMISSION)).willReturn(false);
+
+            // When / Then
+            assertThatThrownBy(() -> accessControlService.checkAdminOrHasPermission(
+                    USER_ID, SCOPE_ID, "ORGANIZATION", PERMISSION))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("異常系: MEMBER は ADMIN でも DEPUTY_ADMIN でもないため COMMON_002")
+        void checkAdminOrHasPermission_MEMBER_COMMON002例外() {
+            // Given: MEMBER ロール
+            UserRoleEntity userRole = createOrgUserRole(ROLE_ID);
+            RoleEntity role = createRole("MEMBER", 3);
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(userRole));
+            given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(role));
+            // DEPUTY_ADMIN 判定 SQL は false を返す（MEMBER なので当然）
+            given(userRoleRepository.existsDeputyAdminWithPermissionInOrganization(
+                    USER_ID, SCOPE_ID, PERMISSION)).willReturn(false);
+
+            // When / Then
+            assertThatThrownBy(() -> accessControlService.checkAdminOrHasPermission(
+                    USER_ID, SCOPE_ID, "ORGANIZATION", PERMISSION))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("異常系: 非メンバーで COMMON_002")
+        void checkAdminOrHasPermission_非メンバー_COMMON002例外() {
+            // Given: user_roles に行なし
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.empty());
+            given(userRoleRepository.existsDeputyAdminWithPermissionInOrganization(
+                    USER_ID, SCOPE_ID, PERMISSION)).willReturn(false);
+
+            // When / Then
+            assertThatThrownBy(() -> accessControlService.checkAdminOrHasPermission(
+                    USER_ID, SCOPE_ID, "ORGANIZATION", PERMISSION))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("異常系: TEAM スコープ指定で IllegalArgumentException")
+        void checkAdminOrHasPermission_TEAMスコープ_IllegalArgumentException() {
+            // When / Then
+            assertThatThrownBy(() -> accessControlService.checkAdminOrHasPermission(
+                    USER_ID, SCOPE_ID, "TEAM", PERMISSION))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    // ========================================
     // checkPermission
     // ========================================
 
