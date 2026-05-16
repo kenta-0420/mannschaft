@@ -377,10 +377,15 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_053", HttpStatus.CONFLICT),             // REPRESENTATIVE_ALREADY_GRANTED
             Map.entry("VILLAGE_054", HttpStatus.UNPROCESSABLE_ENTITY), // REPRESENTATIVE_NOT_TEAM_OR_ORG_MEMBERSHIP
             Map.entry("VILLAGE_055", HttpStatus.UNPROCESSABLE_ENTITY), // REPRESENTATIVE_USER_NOT_IN_SUBJECT
-            // F17.1 Phase 2 U4 — 歳時記カレンダー（VILLAGE_056〜058）
+            // F17 Phase 2 U4 — 歳時記カレンダー（VILLAGE_056〜058）
             Map.entry("VILLAGE_056", HttpStatus.NOT_FOUND),            // CALENDAR_EVENT_NOT_FOUND（IDOR 対策で 404）
             Map.entry("VILLAGE_057", HttpStatus.UNPROCESSABLE_ENTITY), // CALENDAR_EVENT_INVALID_DATE_RANGE
             Map.entry("VILLAGE_058", HttpStatus.UNPROCESSABLE_ENTITY), // CALENDAR_EVENT_INVALID_COLOR
+            // F17 Phase 2 U5 — お祭り（VILLAGE_059〜062）
+            Map.entry("VILLAGE_059", HttpStatus.NOT_FOUND),            // FESTIVAL_NOT_FOUND
+            Map.entry("VILLAGE_060", HttpStatus.UNPROCESSABLE_ENTITY), // FESTIVAL_INVALID_PERIOD
+            Map.entry("VILLAGE_061", HttpStatus.UNPROCESSABLE_ENTITY), // FESTIVAL_INVALID_COLOR
+            Map.entry("VILLAGE_062", HttpStatus.CONFLICT),             // FESTIVAL_ALREADY_ENDED
 
             // F18 個人ポイントカードウォレット（設計書 §6.3 整合）
             Map.entry("POINT_CARD_001", HttpStatus.FORBIDDEN),         // WALLET_NOT_ENABLED

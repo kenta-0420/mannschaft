@@ -205,6 +205,7 @@ public enum VillageErrorCode implements ErrorCode {
             "検索キーワードは2文字以上を指定してください", Severity.WARN),
 
     // ==================================================================
+<<<<<<< HEAD
     // F17 Phase 2 U3 — 村代表委任（VILLAGE_052〜055）
     // ==================================================================
 
@@ -238,7 +239,23 @@ public enum VillageErrorCode implements ErrorCode {
 
     /** VILLAGE_058: 歳時記イベントのカラーコード形式不正（422、#RRGGBB 以外） */
     CALENDAR_EVENT_INVALID_COLOR("VILLAGE_058",
-            "色は #RRGGBB 形式で指定してください", Severity.WARN);
+            "色は #RRGGBB 形式で指定してください", Severity.WARN),
+
+    // ==================================================================
+    // F17 Phase 2 U5 — お祭り（VILLAGE_059〜062）
+    // ==================================================================
+
+    /** VILLAGE_059: お祭りレコードが存在しない（404、IDOR 対策で統一）。 */
+    FESTIVAL_NOT_FOUND("VILLAGE_059", "お祭りが見つかりません", Severity.WARN),
+
+    /** VILLAGE_060: 期間が不正（422、ends_at <= starts_at）。 */
+    FESTIVAL_INVALID_PERIOD("VILLAGE_060", "お祭りの期間が不正です（終了日時は開始日時より後である必要があります）", Severity.WARN),
+
+    /** VILLAGE_061: テーマ色フォーマット不正（422、#RRGGBB 以外）。 */
+    FESTIVAL_INVALID_COLOR("VILLAGE_061", "テーマ色は #RRGGBB 形式で指定してください", Severity.WARN),
+
+    /** VILLAGE_062: 終了済み / 中止済みのお祭りを更新しようとした（409）。 */
+    FESTIVAL_ALREADY_ENDED("VILLAGE_062", "このお祭りは既に終了または中止されています", Severity.WARN);
 
     private final String code;
     private final String message;
