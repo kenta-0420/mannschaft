@@ -1,0 +1,108 @@
+# API 乖離スキャン 除外パターン定義
+#
+# 用途: scan_api_drift.py v3 以降で、ここに列挙されたパスパターンに
+#       マッチする実装側エンドポイントを「乖離検出対象外」として除外する。
+#
+# 初版: 2026-05-16 (Stage 0 足軽2)
+# 形式:
+#   - pattern: glob 表記 (** = 任意階層、* = 任意1セグメント) のパス
+#   - reason: 除外する理由（必ず記述、レビュー時の判定材料）
+#   - category: internal / actuator / openapi / debug / legacy / public / 他
+#
+# 運用:
+#   - 新規 ⚪ 除外候補を見つけたら PR でこのファイルに追記
+#   - スキャナ実行前にロードされ、実装側スキャン結果からパターンマッチ分を除去
+#   - 設計書側はそもそも記載が無い前提なので、こちらだけで運用可能
+
+exclude_patterns:
+
+  # === Spring Actuator (health, metrics, 等) ===
+  - pattern: "/actuator/**"
+    reason: "Spring Boot Actuator が提供する health / metrics / info 等の運用監視エンドポイント。設計書化対象外"
+    category: actuator
+
+  # === OpenAPI / Swagger UI ===
+  - pattern: "/v3/api-docs/**"
+    reason: "springdoc-openapi が自動生成する OpenAPI スキーマ配信エンドポイント"
+    category: openapi
+  - pattern: "/swagger-ui/**"
+    reason: "Swagger UI 静的アセット"
+    category: openapi
+  - pattern: "/swagger-resources/**"
+    reason: "Swagger UI のメタ情報配信"
+    category: openapi
+
+  # === エラー ハンドラ ===
+  - pattern: "/error"
+    reason: "Spring Boot のデフォルトエラー JSON 返却エンドポイント"
+    category: internal
+  - pattern: "/error/**"
+    reason: "Spring Boot のエラーページ系（Whitelabel など）"
+    category: internal
+
+  # === SSR / フロント連携専用 internal API ===
+  - pattern: "/api/internal/**"
+    reason: "Nuxt SSR からのみ呼ばれる内部 API。設計書化不要（フロント実装と密結合）"
+    category: internal
+
+  # === システム管理者向け運用フラグ・デバッグ ===
+  - pattern: "/api/v1/admin/system-flag/**"
+    reason: "システムフラグ操作の運用専用エンドポイント（社内オペレータが手動叩く想定）"
+    category: internal
+  - pattern: "/api/v1/admin/debug/**"
+    reason: "デバッグ専用エンドポイント（dev/staging 専用）"
+    category: debug
+
+  # === Webhook 受信エンドポイント（外部システム連携） ===
+  - pattern: "/api/v1/webhooks/incoming/**"
+    reason: "外部サービス（Stripe, LINE 等）からの incoming webhook 受信口。API 仕様は外部サービス側のドキュメントが正"
+    category: external
+  - pattern: "/api/v1/stripe/webhooks/**"
+    reason: "Stripe webhook 受信（Stripe ダッシュボード側で URL 設定）"
+    category: external
+  - pattern: "/api/v1/line/webhook/**"
+    reason: "LINE Messaging API webhook 受信"
+    category: external
+
+  # === CSRF / セキュリティ系 ===
+  - pattern: "/api/v1/csrf/**"
+    reason: "CSRF トークン発行エンドポイント。Spring Security 標準動作"
+    category: internal
+
+  # === レガシー互換 URL (移行期間中の旧 URL) ===
+  - pattern: "/api/incidents/**"
+    reason: "F07.6 旧 URL prefix（/api/v1/ なし）。F07.6 リファクタ時に /api/v1/incidents/ へ統合予定。それまでは除外扱い"
+    category: legacy
+  - pattern: "/api/signage/**"
+    reason: "F09.1 サイネージ旧 URL prefix。/api/v1/signage/ への移行待ち"
+    category: legacy
+
+  # === ヘルスチェック ===
+  - pattern: "/api/v1/health"
+    reason: "ロードバランサ用ヘルスチェック。設計書記述不要"
+    category: internal
+  - pattern: "/api/v1/ping"
+    reason: "疎通確認用エンドポイント"
+    category: internal
+
+  # === ファイルアップロード署名 URL 受け取り ===
+  - pattern: "/api/v1/storage/internal/**"
+    reason: "R2 storage 内部 callback / signed URL の受け取り。外部公開対象外"
+    category: internal
+
+  # === メトリクス・分析 (内部利用) ===
+  - pattern: "/api/v1/metrics/internal/**"
+    reason: "システム内部のメトリクス収集エンドポイント。設計書化対象外"
+    category: internal
+
+
+# === 除外しない（あえて含めるべきもの） ===
+# 以下は誤って除外されがちなので、明示的に「除外しない」と記録しておく。
+# このセクションは記録のみで、スキャナは参照しない。
+do_not_exclude_examples:
+  - pattern: "/api/v1/public/**"
+    reason: "公開エンドポイント（ランディング・トーナメント公開ページ等）は設計書記述が必要"
+  - pattern: "/api/v1/admin/**"
+    reason: "管理者向けでも UI から叩かれるため設計書化対象（system-flag/debug を除く）"
+  - pattern: "/api/v1/system-admin/**"
+    reason: "F10.1 admin_dashboard で網羅的に設計書化対象"
