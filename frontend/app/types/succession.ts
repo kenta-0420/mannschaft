@@ -51,6 +51,58 @@ export interface ResolveEscalationRequest {
   /** 解決理由コード（PAID / DEATH_CONFIRMED / MANUAL_CLOSE 等、最大 50 文字） */
   resolvedReason: string
 }
+/**
+ * 法的手続き申立種別（F09.15 S6-B）。
+ * - ABSENTEE_PROPERTY_MANAGER: 不在者財産管理人選任申立（家事事件手続法 145 条）
+ * - INHERITANCE_LIQUIDATOR: 相続財産清算人選任申立（民法 952 条）
+ */
+export type LegalFilingType = 'ABSENTEE_PROPERTY_MANAGER' | 'INHERITANCE_LIQUIDATOR'
+
+/**
+ * 法的手続き レスポンス型（F09.15 S6-B）。
+ */
+export interface LegalFiling {
+  /** 法的手続きレコード ID（UUIDv7）。 */
+  id: string
+  organizationId: number
+  dwellingUnitId: number
+  residentRegistryId: number
+  filingType: LegalFilingType
+  /** 申立書テンプレート PDF の S3 キー。 */
+  templatePdfS3Key?: string
+  /** 区分所有法 8 条 証拠 ZIP の S3 キー（未生成の場合 undefined）。 */
+  evidencePackageS3Key?: string
+  /** 証拠 ZIP 生成日時。 */
+  evidenceBuiltAt?: string
+  /** 証拠 ZIP の SHA-256 ハッシュ。 */
+  evidenceSha256?: string
+  /** 外部（家庭裁判所等）への提出日時。 */
+  filedExternallyAt?: string
+  /** 外部受理番号。 */
+  externalCaseNumber?: string
+  note?: string
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * 法的手続き起票リクエスト型（F09.15 S6-B）。
+ */
+export interface CreateLegalFilingRequest {
+  residentRegistryId: number
+  dwellingUnitId: number
+  filingType: LegalFilingType
+  note?: string
+}
+
+/**
+ * 証拠 ZIP ダウンロード URL レスポンス型（F09.15 S6-B）。
+ */
+export interface EvidenceDownloadUrlResponse {
+  downloadUrl: string
+  ttlSeconds: number
+}
+
 export type UnsealRequestStatus = 'PENDING' | 'FIRST_APPROVED' | 'UNSEALED' | 'RE_SEALED' | 'CANCELLED'
 
 export interface UnsealRequestResponse {
