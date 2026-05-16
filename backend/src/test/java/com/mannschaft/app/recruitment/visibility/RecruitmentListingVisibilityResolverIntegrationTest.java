@@ -166,8 +166,8 @@ class RecruitmentListingVisibilityResolverIntegrationTest {
 
     private Long insertTeam(String name) {
         em.createNativeQuery(
-                "INSERT INTO teams (name, visibility, supporter_enabled, version, created_at, updated_at) "
-                        + "VALUES (:name, 'PUBLIC', 1, 0, NOW(), NOW())")
+                "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, created_at, updated_at) "
+                        + "VALUES (:name, 'PUBLIC', 1, 0, 0, NOW(), NOW())")
                 .setParameter("name", name)
                 .executeUpdate();
         return ((Number) em.createNativeQuery(
