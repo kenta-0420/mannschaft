@@ -187,6 +187,142 @@
       "biometric_failed": "Authentication failed",
       "no_cards": "This group has no cards",
       "load_failed": "Failed to load the group"
-    }
+    },
+    "admin": {
+      "page_title": "Point Card Administration",
+      "tabs": {
+        "providers": "Providers",
+        "history": "Stamp History",
+        "stamp": "Stamp Screen"
+      },
+      "cards": {
+        "providers_desc": "Add, edit, or deactivate your own stamp card providers.",
+        "history_desc": "View an audit log of who stamped how many and when.",
+        "stamp_desc": "Enter a customer card ID and press a stamp on the spot.",
+        "stamp_cta": "Open stamp screen"
+      },
+      "actions": {
+        "save": "Save",
+        "saving": "Saving…",
+        "cancel": "Cancel",
+        "back": "Back",
+        "edit": "Edit",
+        "close": "Close",
+        "copy": "Copy",
+        "copied": "Copied",
+        "processing": "Processing…",
+        "prev": "Prev",
+        "next": "Next"
+      },
+      "providers": {
+        "title": "Providers (Active)",
+        "new": "Create new provider",
+        "edit": "Edit provider",
+        "active": "Active",
+        "inactive": "Inactive",
+        "loading": "Loading…",
+        "qr_loading": "Generating QR…",
+        "empty": "No providers yet. Use \"Create new provider\" to add one.",
+        "display_name": "Card name",
+        "display_name_placeholder": "e.g. Salon XX Points",
+        "brand_color": "Brand color",
+        "logo_url": "Logo URL",
+        "card_number_regex": "Card number regex (optional)",
+        "card_number_regex_hint": "e.g. ^[0-9]{10,16}$ — applied when customers add the card.",
+        "card_number_length_hint": "Card number length hint (optional)",
+        "card_number_length_hint_placeholder": "16-digit number",
+        "type": "Type",
+        "show_customer_qr": "Show customer QR",
+        "deactivate": "Deactivate this provider",
+        "deactivate_title": "Deactivate this provider?",
+        "deactivate_confirm": "Once deactivated, customers cannot add new cards. Existing customer cards remain intact. This action cannot be undone.",
+        "limit_exceeded": "Provider creation limit (20 per organization) reached. Deactivate unused providers and try again.",
+        "validation": {
+          "display_name_required": "Please enter the card name",
+          "display_name_max": "Card name must be 100 characters or fewer",
+          "brand_color_format": "Brand color must be in #RRGGBB format",
+          "logo_url_max": "Logo URL must be 500 characters or fewer",
+          "regex_max": "Regex must be 200 characters or fewer",
+          "hint_max": "Length hint must be 50 characters or fewer"
+        }
+      },
+      "stamp": {
+        "title": "Stamp Punching",
+        "select_provider": "Select provider",
+        "card_id_input": "Card ID (UUID)",
+        "card_id_hint": "Get it from the customer's card detail URL (/wallet/cards/[id]).",
+        "card_id_invalid": "Please enter a UUID (e.g. 00000000-0000-0000-0000-000000000000)",
+        "scanner_unavailable_title": "Want to scan a QR / barcode?",
+        "scanner_unavailable_body": "Phase 2 does not yet support identifying a card directly from a QR. Planned for Phase 3. For now, paste the card ID manually.",
+        "delta_label": "Stamp count",
+        "delta_plus_one": "+1 stamp",
+        "memo": "Memo (optional)",
+        "memo_placeholder": "e.g. correction, bonus reward",
+        "press": "Stamp",
+        "pressing": "Stamping…",
+        "press_success": "Stamped {count} on the card",
+        "recent": "Recent stamps (this provider)",
+        "view_all": "View all history",
+        "phase3_note_title": "Phase 2 MVP notice",
+        "phase3_note": "Card ID must be entered manually for now. QR-based automatic identification is planned for Phase 3.",
+        "error_card_not_found": "The specified card does not exist",
+        "error_not_owned": "This provider does not belong to the specified organization",
+        "error_invalid_provider": "This card has no self-issued provider linked",
+        "error_invalid_provider_type": "Stamping is allowed only for SELF_ISSUED_STAMP providers",
+        "error_delta_zero": "Delta cannot be 0",
+        "error_rate_limit": "Too many requests. Please wait and try again"
+      },
+      "history": {
+        "title": "Stamp history (audit log)",
+        "filter_provider": "Filter by provider",
+        "all_providers": "All providers",
+        "total_count": "{count} entries total",
+        "page_indicator": "{current} / {total}",
+        "col_pressed_at": "Time",
+        "col_provider": "Provider",
+        "col_staff": "Staff",
+        "col_delta": "+/-",
+        "col_memo": "Memo",
+        "col_card_id": "Card ID",
+        "copy_card_id": "Copy card ID",
+        "empty": "No stamp history yet.",
+        "loading": "Loading…"
+      },
+      "customer_qr": {
+        "title": "Customer QR code",
+        "instruction": "Print this QR and display it in the store. Customers can scan it to add the card automatically.",
+        "deep_link": "App deep link",
+        "web_link": "Web URL",
+        "download": "Download SVG",
+        "loading": "Loading…",
+        "render_failed": "Failed to render the QR code"
+      },
+      "errors": {
+        "access_denied_title": "You cannot access this page",
+        "access_denied_body": "Only organization admins (ADMIN) or deputy admins (DEPUTY_ADMIN) can access this page.",
+        "access_denied_admin_only": "Only organization admins (ADMIN) can perform this operation.",
+        "load_failed": "Failed to load",
+        "save_failed": "Failed to save"
+      }
+    },
+    "add_from_qr": {
+      "title": "Add {providerName} card",
+      "title_fallback": "Add store card",
+      "intro": "Add a {providerName} stamp card to your wallet.",
+      "intro_fallback": "Add a store stamp card to your wallet from the QR code.",
+      "from_org": "(issued by {orgName})",
+      "barcode_input": "Your member number (if any)",
+      "barcode_hint": "Enter the number printed on the card the store gave you. Leave blank if your card has no number.",
+      "no_barcode": "Register without a number",
+      "add": "Add to wallet",
+      "added": "Card added to your wallet",
+      "adding": "Adding…",
+      "qr_invalid": "Invalid QR code",
+      "provider_not_found": "This provider is currently disabled",
+      "missing_params": "QR code is missing required information"
+    },
+    "copy_card_id": "Copy card ID",
+    "card_id_copied": "Card ID copied",
+    "card_id_label": "Card ID"
   }
 }

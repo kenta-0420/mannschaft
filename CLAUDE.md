@@ -135,9 +135,11 @@
 
 ### 型定義の管理
 
-- `frontend/app/types/` 配下に手動管理（60+ファイル）
-- `types/generated/` は現在未使用（OpenAPI Generator 未導入）
-- APIの型を追加する場合は `frontend/app/types/` 内の該当ファイルを編集する
+- `frontend/app/types/` 配下に手動管理（145+ファイル）
+- `frontend/app/types/generated/index.ts` は **openapi-typescript による自動生成**（手動編集禁止）
+  - 再生成: `cd frontend && npm run generate:types`（`docs/openapi.json` を入力とする）
+  - Backend API 変更後は必ず再生成してコミットすること
+- 新規 API の型は生成型を優先して使用し、既存の手動型は段階的に移行する
 
 ---
 

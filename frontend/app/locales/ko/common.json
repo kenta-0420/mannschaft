@@ -1006,8 +1006,12 @@
     }
   },
   "handoff": {
-    "button": { "passToOther": "他のメンバーに渡す" },
-    "dialog": { "title": "TODO を渡す" },
+    "button": {
+      "passToOther": "他のメンバーに渡す"
+    },
+    "dialog": {
+      "title": "TODO を渡す"
+    },
     "field": {
       "recipients": "宛先メンバー",
       "recipientsPlaceholder": "メンバーを選択",
@@ -1049,7 +1053,9 @@
       "body": "{from}さんから「{title}」を渡されました（ステータス: {label}）"
     }
   },
-  "common": { "cancel": "キャンセル" },
+  "common": {
+    "cancel": "キャンセル"
+  },
   "teamHub": {
     "pageTitle": "내 팀",
     "createTeam": "팀 만들기",
@@ -1238,5 +1244,63 @@
     "retry": "다시 시도",
     "organizationNotFound": "지정한 조직을 찾을 수 없습니다",
     "rateLimitExceeded": "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요"
+  },
+  "favorites": {
+    "title": "즐겨찾기",
+    "empty": "즐겨찾기가 없습니다. 팀이나 마을 페이지의 ⭐ 로 추가할 수 있습니다",
+    "showMore": "{count}개 더 보기",
+    "collapse": "접기",
+    "open": "열기",
+    "edit": "편집",
+    "remove": "삭제",
+    "unavailable": "이 항목은 더 이상 이용할 수 없습니다",
+    "limitReached": "즐겨찾기는 최대 {max}개까지 등록할 수 있습니다",
+    "addSuccess": "즐겨찾기에 추가했습니다",
+    "removeSuccess": "즐겨찾기에서 삭제했습니다",
+    "reorderSuccess": "순서를 저장했습니다",
+    "quickEditTitle": "빠른 편집",
+    "save": "저장",
+    "cancel": "취소",
+    "loadError": "즐겨찾기를 불러오지 못했습니다",
+    "saveError": "저장에 실패했습니다",
+    "removeConfirm": "정말로 삭제하시겠습니까?",
+    "dragHandle": "순서 변경",
+    "entityType": {
+      "TEAM": "팀",
+      "ORGANIZATION": "조직",
+      "KB_PAGE": "KB",
+      "BLOG_AUTHOR": "작성자",
+      "VILLAGE": "마을"
+    }
+  },
+  "succession": {
+    "legalFilings": {
+      "title": "法的手続き準備",
+      "create": "新規起票",
+      "filingType": "申立種別",
+      "absenteePropertyManager": "不在者財産管理人選任申立",
+      "inheritanceLiquidator": "相続財産清算人選任申立",
+      "buildEvidence": "証拠 ZIP 生成",
+      "downloadEvidence": "証拠 ZIP ダウンロード",
+      "evidenceNotReady": "証拠 ZIP 未生成",
+      "warningLegalCheck": "本機能は v1（弁護士監修なし）です。実際の提出前に弁護士へ確認してください。",
+      "residentRegistryId": "居住者台帳 ID",
+      "dwellingUnitId": "居室 ID",
+      "note": "備考",
+      "createdAt": "起票日時",
+      "evidenceBuiltAt": "証拠 ZIP 生成日時",
+      "externalCaseNumber": "外部受理番号",
+      "filedExternallyAt": "外部提出日時",
+      "action": "操作",
+      "cancel": "キャンセル",
+      "submit": "起票する",
+      "createSuccess": "法的手続きを起票しました",
+      "createError": "起票に失敗しました",
+      "evidenceBuildSuccess": "証拠 ZIP を生成しました",
+      "evidenceBuildError": "証拠 ZIP の生成に失敗しました",
+      "downloadError": "ダウンロード URL の取得に失敗しました",
+      "fetchError": "法的手続き一覧の取得に失敗しました",
+      "empty": "法的手続きはまだありません"
+    }
   }
 }

@@ -36,6 +36,9 @@ import java.util.regex.Pattern;
  *   <li>{@code POST   /api/v1/organizations/{orgId}/point-cards/providers}                ─ 30 req/時（2B 追加）</li>
  *   <li>{@code PATCH  /api/v1/organizations/{orgId}/point-cards/providers/{id}}           ─ 30 req/時（2B 追加）</li>
  *   <li>{@code DELETE /api/v1/organizations/{orgId}/point-cards/providers/{id}}           ─ 30 req/時（2B 追加）</li>
+ *   <li>{@code POST   /api/v1/organizations/{orgId}/point-cards/{cardId}/stamps} ─ 300 req/時（2C 追加）</li>
+ *   <li>{@code GET    /api/v1/organizations/{orgId}/point-cards/stamps} ─ 120 req/分（2C 追加）</li>
+ *   <li>{@code GET    /api/v1/organizations/{orgId}/point-cards/{cardId}/stamps} ─ 120 req/分（2C 追加）</li>
  * </ul>
  *
  * <p>パターンは「具体度の高いものから順に」評価する。たとえば
@@ -58,6 +61,9 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     private static final int PRESENTATION_RATE_PER_HOUR = 600;
     // S2B 自店プロバイダー CRUD（POST / PATCH / DELETE 共通で 30/h）
     private static final int ORG_PROVIDER_CUD_RATE_PER_HOUR = 30;
+    // 2C スタンプ押印 / 履歴
+    private static final int STAMP_POST_RATE_PER_HOUR = 300;
+    private static final int STAMP_LIST_RATE_PER_MINUTE = 120;
 
     private static final Duration BUCKET_TTL = Duration.ofHours(2);
     private static final long MAX_BUCKETS = 10_000L;
@@ -96,6 +102,13 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     /** Org プロバイダー個別操作（編集 / 停止）パス。S2B 追加。 */
     private static final Pattern ORG_PROVIDER_ID_PATH =
             Pattern.compile("^/api/v1/organizations/[0-9]+/point-cards/providers/[0-9a-fA-F-]{36}$");
+    /** 組織配下: 単一カードへのスタンプ押印 / 履歴。具体度が高いので組織一覧パターンより先に判定。 */
+    private static final Pattern ORG_STAMP_CARD_PATH =
+            Pattern.compile("^/api/v1/organizations/\\d+/point-cards/[0-9a-fA-F-]{36}/stamps$");
+
+    /** 組織配下: スタンプ履歴一覧。 */
+    private static final Pattern ORG_STAMP_LIST_PATH =
+            Pattern.compile("^/api/v1/organizations/\\d+/point-cards/stamps$");
 
     // ──── バケット ──────────────────────────────
     private final Cache<String, Bucket> providersBuckets;
@@ -108,6 +121,9 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     private final Cache<String, Bucket> presentationBuckets;
     /** S2B Org プロバイダー CUD（POST/PATCH/DELETE）共通バケット。 */
     private final Cache<String, Bucket> orgProviderCudBuckets;
+    private final Cache<String, Bucket> stampPostBuckets;
+    private final Cache<String, Bucket> stampCardListBuckets;
+    private final Cache<String, Bucket> stampOrgListBuckets;
 
     public PointCardRateLimitFilter() {
         this.providersBuckets = newCache();
@@ -119,6 +135,9 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
         this.createGroupBuckets = newCache();
         this.presentationBuckets = newCache();
         this.orgProviderCudBuckets = newCache();
+        this.stampPostBuckets = newCache();
+        this.stampCardListBuckets = newCache();
+        this.stampOrgListBuckets = newCache();
     }
 
     private static Cache<String, Bucket> newCache() {
@@ -165,6 +184,16 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
                 && ORG_PROVIDER_ID_PATH.matcher(path).matches()) {
             return false;
         }
+        // 2C: 組織配下スタンプ系
+        if ("POST".equalsIgnoreCase(method) && ORG_STAMP_CARD_PATH.matcher(path).matches()) {
+            return false;
+        }
+        if ("GET".equalsIgnoreCase(method) && ORG_STAMP_CARD_PATH.matcher(path).matches()) {
+            return false;
+        }
+        if ("GET".equalsIgnoreCase(method) && ORG_STAMP_LIST_PATH.matcher(path).matches()) {
+            return false;
+        }
         return true;
     }
 
@@ -188,6 +217,15 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
         } else if ("POST".equalsIgnoreCase(method) && ORG_PROVIDERS_ROOT_PATH.matcher(path).matches()) {
             bucket = orgProviderCudBuckets.get(userKey, k -> newBucketPerHour(ORG_PROVIDER_CUD_RATE_PER_HOUR));
             retryAfter = "3600";
+        } else if ("POST".equalsIgnoreCase(method) && ORG_STAMP_CARD_PATH.matcher(path).matches()) {
+            bucket = stampPostBuckets.get(userKey, k -> newBucketPerHour(STAMP_POST_RATE_PER_HOUR));
+            retryAfter = "3600";
+        } else if ("GET".equalsIgnoreCase(method) && ORG_STAMP_CARD_PATH.matcher(path).matches()) {
+            bucket = stampCardListBuckets.get(userKey, k -> newBucketPerMinute(STAMP_LIST_RATE_PER_MINUTE));
+            retryAfter = "60";
+        } else if ("GET".equalsIgnoreCase(method) && ORG_STAMP_LIST_PATH.matcher(path).matches()) {
+            bucket = stampOrgListBuckets.get(userKey, k -> newBucketPerMinute(STAMP_LIST_RATE_PER_MINUTE));
+            retryAfter = "60";
         } else if ("POST".equalsIgnoreCase(method) && GROUP_PRESENTATION_PATH.matcher(path).matches()) {
             bucket = presentationBuckets.get(userKey, k -> newBucketPerHour(PRESENTATION_RATE_PER_HOUR));
             retryAfter = "3600";

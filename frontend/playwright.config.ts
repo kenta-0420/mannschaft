@@ -59,7 +59,13 @@ export default defineConfig({
       // dependencies: ['setup-admin'],
       testMatch: '**/admin/**/*.spec.ts',
     },
-    // 実機テスト（real/ 配下のみ・起動済みサーバーが必要）
+    // Setup: 実機テスト用管理者認証状態を保存
+    {
+      name: 'setup-real-admin',
+      testMatch: /.*real-admin\.setup\.ts/,
+    },
+    // 実機テスト: 一般ユーザー（real/ 配下のみ実行）
+    // storageState が存在しない場合は各テスト内の loginIfNeeded() でフォールバックする
     {
       name: 'chromium-real',
       use: {
@@ -68,6 +74,16 @@ export default defineConfig({
       },
       testMatch: '**/real/**/*.spec.ts',
       dependencies: ['setup-real-user'],
+    },
+    // 実機テスト: 管理者（real/admin/ 配下のみ実行）
+    {
+      name: 'chromium-real-admin',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/real-admin.json',
+      },
+      testMatch: '**/real/admin/**/*.spec.ts',
+      dependencies: ['setup-real-admin'],
     },
   ],
 
@@ -79,9 +95,7 @@ export default defineConfig({
   // テスト実行前に dev サーバーを起動する場合は有効化
   webServer: {
     command: 'npm run dev',
-    // ヘルスチェック URL: 3000 or 3002 のどちらかが応答すれば OK。
-    // worktree サーバーは 127.0.0.1:3002 で起動済みの場合が多い。
-    url: 'http://localhost:3000',
+    url: BASE_URL,
     reuseExistingServer: true,
     timeout: 120_000,
   },

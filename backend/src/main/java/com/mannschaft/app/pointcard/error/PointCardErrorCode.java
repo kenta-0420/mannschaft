@@ -24,7 +24,12 @@ import lombok.RequiredArgsConstructor;
  *   007 PROVIDER_NOT_FOUND        404
  *   008 RATE_LIMIT_EXCEEDED       429
  *   009 BIOMETRIC_REQUIRED        401
+ *   012 STAMP_INVALID_PROVIDER    400
+ *   013 STAMP_INVALID_PROVIDER_TYPE 400
+ *   014 STAMP_DELTA_ZERO          400
  * </pre>
+ *
+ * <p>番号 010 / 011 は 2B（プロバイダー CRUD）用に予約。
  */
 @Getter
 @RequiredArgsConstructor
@@ -112,7 +117,31 @@ public enum PointCardErrorCode implements ErrorCode {
      * 「他組織のプロバイダーを覗こうとした」状態は 403 ではなく 404 を返す慣習（IDOR 抑止）。
      */
     PROVIDER_NOT_OWNED("POINT_CARD_011",
-            "このプロバイダーは指定された組織のものではありません", Severity.WARN);
+            "このプロバイダーは指定された組織のものではありません", Severity.WARN),
+
+    /**
+     * スタンプ押印対象のカードに自店プロバイダーが紐付いていない。HTTP 400。
+     *
+     * <p>{@code user_point_cards.provider_id IS NULL} の自由入力カードは
+     * 押印不可。Phase 2 第二陣 2C で導入。
+     */
+    STAMP_INVALID_PROVIDER("POINT_CARD_012",
+            "このカードには自店プロバイダーが紐付いていません", Severity.WARN),
+
+    /**
+     * スタンプ押印対象のプロバイダー種別が {@code SELF_ISSUED_STAMP} でない。HTTP 400。
+     *
+     * <p>外部プロバイダー（EXTERNAL）や残高型（SELF_ISSUED_BALANCE）への押印は不可。
+     */
+    STAMP_INVALID_PROVIDER_TYPE("POINT_CARD_013",
+            "スタンプ押印は SELF_ISSUED_STAMP プロバイダーでのみ可能です", Severity.WARN),
+
+    /**
+     * スタンプ delta が 0。HTTP 400。
+     *
+     * <p>DB CHECK 制約でも防げるがアプリ層で事前に弾く（無意味なトランザクション抑止）。
+     */
+    STAMP_DELTA_ZERO("POINT_CARD_014", "delta は 0 にできません", Severity.WARN);
 
     private final String code;
     private final String message;

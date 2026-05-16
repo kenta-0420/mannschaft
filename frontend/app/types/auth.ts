@@ -71,6 +71,39 @@ export interface UpdateWebAuthnCredentialRequest {
   deviceName: string
 }
 
+// === F18 WebAuthn 再認証（提示モード追加保護 / POINT_CARD_009） ===
+
+/**
+ * WebAuthn 再認証開始レスポンス（F18 設計書 §9.6）。
+ * 既存の {@link WebAuthnLoginBeginResponse} と異なり、認証済みユーザーを対象にし、
+ * 完了側で AT/RT を返さない。
+ */
+export interface WebAuthnReauthenticateBeginResponse {
+  challenge: string
+  rpId: string
+  allowCredentials: string[]
+  userId: number
+  timeout: number
+}
+
+/**
+ * WebAuthn 再認証完了リクエスト（F18 設計書 §9.6）。
+ */
+export interface WebAuthnReauthenticateCompleteRequest {
+  credentialId: string
+  authenticatorData: string
+  clientDataJson: string
+  signature: string
+  signCount: number
+}
+
+/**
+ * WebAuthn 再認証完了レスポンス。AT/RT は含まれず、5 分有効な再認証フラグの期限のみ返す。
+ */
+export interface WebAuthnReauthenticateCompleteResponse {
+  verifiedUntil: string
+}
+
 // === OAuth ===
 export interface OAuthLinkConfirmRequest {
   token: string

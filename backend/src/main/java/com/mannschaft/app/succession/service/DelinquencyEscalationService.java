@@ -1,6 +1,7 @@
 package com.mannschaft.app.succession.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.resident.service.ResidentRegistryService;
 import com.mannschaft.app.succession.SuccessionErrorCode;
 import com.mannschaft.app.succession.entity.DelinquencyEscalationEntity;
 import com.mannschaft.app.succession.entity.DelinquencyEscalationStage;
@@ -38,7 +39,9 @@ import java.util.UUID;
 public class DelinquencyEscalationService {
 
     private final DelinquencyEscalationRepository escalationRepository;
-    // S5-C で追加: private final SuccessionPreRegistrationService preRegistrationService;
+    // TODO: residentドメイン → successionドメインのクロスドメイン呼び出し。将来は
+    //       DelinquencyReachedStage4Event を発火してresidentドメインがサブスクライブする形に分離予定。
+    private final ResidentRegistryService residentRegistryService;
 
     /**
      * 滞納エスカレーションを新規作成する（F08.2 イベント受信時に呼ぶ）。
@@ -118,7 +121,14 @@ public class DelinquencyEscalationService {
         log.info("エスカレーションステージ昇格: id={}, {} → {}",
                 escalationId, currentStage, nextStage);
 
-        return escalationRepository.save(entity);
+        DelinquencyEscalationEntity saved = escalationRepository.save(entity);
+
+        // STAGE_4 到達時: 居住者台帳の death_status を ALIVE → SUSPECTED に自動遷移
+        if (nextStage == DelinquencyEscalationStage.STAGE_4_DEATH_SUSPECTED) {
+            autoMarkDeathSuspected(entity.getResidentRegistryId());
+        }
+
+        return saved;
     }
 
     /**
@@ -190,6 +200,26 @@ public class DelinquencyEscalationService {
         return escalationRepository
                 .findByIdAndOrganizationIdAndDeletedAtIsNull(escalationId, organizationId)
                 .orElseThrow(() -> new BusinessException(SuccessionErrorCode.ESCALATION_NOT_FOUND));
+    }
+
+    /**
+     * STAGE_4 到達時に居住者台帳の death_status を SUSPECTED に自動変更する。
+     *
+     * <p>存在しない居住者 ID または例外発生時はログを記録してスキップする。
+     * エスカレーション本体の保存は既に完了しているため、ここで例外が発生しても
+     * エスカレーション昇格自体はロールバックしない（death_status 更新は best-effort）。
+     * TODO: 将来的に DelinquencyReachedStage4Event 経由でresidentドメインを分離予定。
+     *
+     * @param residentRegistryId 居住者台帳 ID
+     */
+    private void autoMarkDeathSuspected(Long residentRegistryId) {
+        try {
+            residentRegistryService.markDeathSuspected(residentRegistryId);
+        } catch (Exception e) {
+            // death_status 更新失敗はエスカレーション昇格を止めない（best-effort）
+            log.error("死亡疑い自動起票に失敗（エスカレーション昇格は維持）: residentRegistryId={}, error={}",
+                    residentRegistryId, e.getMessage(), e);
+        }
     }
 
     /**

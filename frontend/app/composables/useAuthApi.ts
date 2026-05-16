@@ -8,6 +8,9 @@ import type {
   WebAuthnRegisterCompleteRequest,
   WebAuthnLoginBeginResponse,
   WebAuthnLoginCompleteRequest,
+  WebAuthnReauthenticateBeginResponse,
+  WebAuthnReauthenticateCompleteRequest,
+  WebAuthnReauthenticateCompleteResponse,
   UpdateWebAuthnCredentialRequest,
   MessageResponse,
 } from '~/types/auth'
@@ -101,6 +104,33 @@ export function useAuthApi() {
     })
   }
 
+  /**
+   * F18 提示モード追加保護: WebAuthn 再認証開始（設計書 §9.6 / POINT_CARD_009）。
+   *
+   * <p>認証済みユーザーが提示モード起動前に行う本人確認。サーバー側で 5 分 TTL の
+   * チャレンジを記録し、完了 API で「再認証済みフラグ」を立てる。
+   * 既存の {@code beginWebAuthnLogin} と異なり email パラメータを取らない。
+   */
+  async function beginWebAuthnReauthenticate() {
+    return api<{ data: WebAuthnReauthenticateBeginResponse }>(
+      '/api/v1/auth/webauthn/reauthenticate-begin',
+      { method: 'POST' },
+    )
+  }
+
+  /**
+   * F18 提示モード追加保護: WebAuthn 再認証完了（設計書 §9.6 / POINT_CARD_009）。
+   *
+   * <p>サーバー側で署名検証を行い、成功時に 5 分間有効な「再認証済みフラグ」を立てる。
+   * <strong>AT/RT は再発行されない</strong>（{@code completeWebAuthnLogin} とは別フロー）。
+   */
+  async function completeWebAuthnReauthenticate(body: WebAuthnReauthenticateCompleteRequest) {
+    return api<{ data: WebAuthnReauthenticateCompleteResponse }>(
+      '/api/v1/auth/webauthn/reauthenticate-complete',
+      { method: 'POST', body },
+    )
+  }
+
   // === 2FA Setup Verify ===
   async function verifyTotpSetup(code: string) {
     return api<{ data: MessageResponse }>('/api/v1/auth/2fa/verify', {
@@ -153,6 +183,8 @@ export function useAuthApi() {
     completeWebAuthnRegister,
     beginWebAuthnLogin,
     completeWebAuthnLogin,
+    beginWebAuthnReauthenticate,
+    completeWebAuthnReauthenticate,
     verifyTotpSetup,
     loginWithOAuth,
     confirmOAuthLink,

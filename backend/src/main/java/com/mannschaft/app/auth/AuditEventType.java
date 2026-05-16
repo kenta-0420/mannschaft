@@ -139,6 +139,24 @@ public enum AuditEventType {
     /** 入居時誓約を撤回（revoked_at セット）。 */
     COVENANT_REVOKED(AuditEventCategory.SUCCESSION),
 
+    // ─── SUCCESSION (F09.15 S5/S6 エスカレーション・法的手続き) ─────────
+    /** 5 段階エスカレーションを新規起票。 */
+    ESCALATION_CREATED(AuditEventCategory.SUCCESSION),
+    /** エスカレーションを次のステージへ昇格。 */
+    ESCALATION_ADVANCED(AuditEventCategory.SUCCESSION),
+    /** エスカレーションを凍結（弁護士介入等）。 */
+    ESCALATION_FROZEN(AuditEventCategory.SUCCESSION),
+    /** エスカレーションを解決（支払完了・死亡確認・手動クローズ等）。 */
+    ESCALATION_RESOLVED(AuditEventCategory.SUCCESSION),
+    /** 死亡疑い（STAGE_4）バッチによる自動起票。 */
+    DEATH_SUSPECTED_AUTO_TRIGGERED(AuditEventCategory.SUCCESSION),
+    /** 法的手続きレコードを起票（申立書 PDF 生成 + S3 アップロード）。 */
+    LEGAL_FILING_CREATED(AuditEventCategory.SUCCESSION),
+    /** 証拠 ZIP パッケージを生成（S3 アップロード + SHA-256 記録）。 */
+    EVIDENCE_PACKAGE_BUILT(AuditEventCategory.SUCCESSION),
+    /** 証拠 ZIP の Pre-signed ダウンロード URL を発行。 */
+    EVIDENCE_PACKAGE_DOWNLOADED(AuditEventCategory.SUCCESSION),
+
     // ─── POINT_CARD (F18 個人ポイントカードウォレット) ─────────────
     /** 個人ポイントカードを発行（barcode_value 暗号化 + ownership_token 付与）。 */
     POINT_CARD_CREATED(AuditEventCategory.POINT_CARD),
@@ -205,6 +223,16 @@ public enum AuditEventType {
     VILLAGE_UNPINNED(AuditEventCategory.VILLAGE),
     /** 井戸端会議の日次スレッドをバッチで自動生成。 */
     VILLAGE_LOBBY_THREAD_CREATED(AuditEventCategory.VILLAGE),
+    /** F17.1 Phase 2 — 村お祭りを作成。 */
+    VILLAGE_FESTIVAL_CREATED(AuditEventCategory.VILLAGE),
+    /** F17.1 Phase 2 — 村お祭りを更新。 */
+    VILLAGE_FESTIVAL_UPDATED(AuditEventCategory.VILLAGE),
+    /** F17.1 Phase 2 — 村お祭りを開催開始（バッチ自動遷移 SCHEDULED→ACTIVE）。 */
+    VILLAGE_FESTIVAL_ACTIVATED(AuditEventCategory.VILLAGE),
+    /** F17.1 Phase 2 — 村お祭りを終了（バッチ自動遷移 ACTIVE→ENDED）。 */
+    VILLAGE_FESTIVAL_ENDED(AuditEventCategory.VILLAGE),
+    /** F17.1 Phase 2 — 村お祭りを中止（村長/長老の判断）。 */
+    VILLAGE_FESTIVAL_CANCELLED(AuditEventCategory.VILLAGE),
 
     // ─── SECURITY_RATE_LIMIT (F15.4 組織内チーム検索) ───────────
     /** 組織内チーム検索 API がレート制限に到達した（429 応答）。 */

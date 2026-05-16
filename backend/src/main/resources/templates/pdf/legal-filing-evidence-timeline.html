@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+    <style>
+        /*
+         * 5段階エスカレーション タイムライン PDF 専用スタイル。
+         * Flying Saucer は flexbox/grid 未対応のため float / table レイアウトを採用。
+         */
+        .timeline-title {
+            text-align: center;
+            font-size: 16pt;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-family: 'NotoSerifJP', 'NotoSansJP', serif;
+        }
+        .timeline-subtitle {
+            text-align: center;
+            font-size: 9pt;
+            color: #666;
+            margin-bottom: 24px;
+        }
+        .meta-section {
+            margin: 12px 0 20px 0;
+        }
+        .meta-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .meta-table td {
+            border: 1px solid #999;
+            padding: 6px 10px;
+            font-size: 10pt;
+        }
+        .meta-table .label {
+            background-color: #f0f0f0;
+            width: 30%;
+            font-weight: bold;
+        }
+        .timeline-section {
+            margin: 16px 0;
+        }
+        .timeline-section h2 {
+            font-size: 12pt;
+            border-left: 4px solid #444;
+            padding-left: 8px;
+            margin-bottom: 8px;
+        }
+        .timeline-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .timeline-table th {
+            background-color: #333;
+            color: #fff;
+            padding: 7px 10px;
+            font-size: 10pt;
+            text-align: left;
+        }
+        .timeline-table td {
+            border: 1px solid #ccc;
+            padding: 7px 10px;
+            font-size: 10pt;
+            vertical-align: top;
+        }
+        .timeline-table tr.completed td {
+            background-color: #f0fff0;
+        }
+        .timeline-table tr.pending td {
+            background-color: #fff;
+            color: #999;
+        }
+        .stage-badge {
+            font-weight: bold;
+            font-size: 9pt;
+        }
+        .stage-badge.completed {
+            color: #2a7a2a;
+        }
+        .stage-badge.pending {
+            color: #aaa;
+        }
+        .not-done {
+            color: #aaa;
+            font-style: italic;
+        }
+        .freeze-section {
+            margin: 16px 0;
+            border: 1px solid #ff8800;
+            padding: 10px 14px;
+            background-color: #fff8ee;
+        }
+        .freeze-section h2 {
+            font-size: 11pt;
+            color: #ff8800;
+            margin-bottom: 6px;
+        }
+        .resolve-section {
+            margin: 16px 0;
+            border: 1px solid #2a7a2a;
+            padding: 10px 14px;
+            background-color: #f0fff0;
+        }
+        .resolve-section h2 {
+            font-size: 11pt;
+            color: #2a7a2a;
+            margin-bottom: 6px;
+        }
+        .status-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .status-table td {
+            border: 1px solid #ccc;
+            padding: 6px 10px;
+            font-size: 10pt;
+        }
+        .status-table .label {
+            background-color: #f5f5f5;
+            width: 30%;
+            font-weight: bold;
+        }
+        .footer-note {
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 1px solid #999;
+            font-size: 8pt;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="pdf-body">
+
+        <!-- タイトル -->
+        <div class="timeline-title">5 段階エスカレーション タイムライン</div>
+        <div class="timeline-subtitle">
+            区分所有法 8 条 証拠パッケージ同梱書類（F09.15 §5.12）
+        </div>
+
+        <!-- 基本情報 -->
+        <div class="meta-section">
+            <table class="meta-table">
+                <tr>
+                    <td class="label">対象居室</td>
+                    <td th:text="${dwellingUnitLabel}">部屋 N/A</td>
+                </tr>
+                <tr>
+                    <td class="label">居住者台帳 ID</td>
+                    <td th:text="${residentRegistryId}">N/A</td>
+                </tr>
+                <tr>
+                    <td class="label">滞納開始日（D+0）</td>
+                    <td>
+                        <span th:if="${delinquencyStartedAt != null}"
+                              th:text="${#temporals.format(delinquencyStartedAt, 'yyyy年MM月dd日')}">N/A</span>
+                        <span th:if="${delinquencyStartedAt == null}" class="not-done">不明</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">現在のステージ</td>
+                    <td>
+                        <span th:if="${currentStage != null}" th:text="${currentStage}">N/A</span>
+                        <span th:if="${currentStage == null}" class="not-done">未開始</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">タイムライン生成日</td>
+                    <td th:text="${#temporals.format(generatedAt, 'yyyy年MM月dd日 HH:mm')}">N/A</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- タイムライン表 -->
+        <div class="timeline-section">
+            <h2>エスカレーション 5 段階 実施記録</h2>
+            <table class="timeline-table">
+                <thead>
+                    <tr>
+                        <th style="width: 22%;">段階</th>
+                        <th style="width: 12%;">日数目安</th>
+                        <th style="width: 36%;">内容</th>
+                        <th style="width: 30%;">実施日</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- STAGE_1 -->
+                    <tr th:classappend="${stage1CompletedAt != null} ? 'completed' : 'pending'">
+                        <td>
+                            <span class="stage-badge"
+                                  th:classappend="${stage1CompletedAt != null} ? 'completed' : 'pending'">
+                                STAGE_1_REMINDER
+                            </span>
+                        </td>
+                        <td>D+30</td>
+                        <td>督促通知（書面・メール）</td>
+                        <td>
+                            <span th:if="${stage1CompletedAt != null}"
+                                  th:text="${#temporals.format(stage1CompletedAt, 'yyyy年MM月dd日 HH:mm')}">N/A</span>
+                            <span th:if="${stage1CompletedAt == null}" class="not-done">未実施</span>
+                        </td>
+                    </tr>
+                    <!-- STAGE_2 -->
+                    <tr th:classappend="${stage2CompletedAt != null} ? 'completed' : 'pending'">
+                        <td>
+                            <span class="stage-badge"
+                                  th:classappend="${stage2CompletedAt != null} ? 'completed' : 'pending'">
+                                STAGE_2_EMERGENCY_CONTACT
+                            </span>
+                        </td>
+                        <td>D+60</td>
+                        <td>緊急連絡先への発呼・接触試行</td>
+                        <td>
+                            <span th:if="${stage2CompletedAt != null}"
+                                  th:text="${#temporals.format(stage2CompletedAt, 'yyyy年MM月dd日 HH:mm')}">N/A</span>
+                            <span th:if="${stage2CompletedAt == null}" class="not-done">未実施</span>
+                        </td>
+                    </tr>
+                    <!-- STAGE_3 -->
+                    <tr th:classappend="${stage3CompletedAt != null} ? 'completed' : 'pending'">
+                        <td>
+                            <span class="stage-badge"
+                                  th:classappend="${stage3CompletedAt != null} ? 'completed' : 'pending'">
+                                STAGE_3_WATCHER_VISIT
+                            </span>
+                        </td>
+                        <td>D+90</td>
+                        <td>見守り委員・管理員による訪問確認依頼</td>
+                        <td>
+                            <span th:if="${stage3CompletedAt != null}"
+                                  th:text="${#temporals.format(stage3CompletedAt, 'yyyy年MM月dd日 HH:mm')}">N/A</span>
+                            <span th:if="${stage3CompletedAt == null}" class="not-done">未実施</span>
+                        </td>
+                    </tr>
+                    <!-- STAGE_4 -->
+                    <tr th:classappend="${stage4CompletedAt != null} ? 'completed' : 'pending'">
+                        <td>
+                            <span class="stage-badge"
+                                  th:classappend="${stage4CompletedAt != null} ? 'completed' : 'pending'">
+                                STAGE_4_DEATH_SUSPECTED
+                            </span>
+                        </td>
+                        <td>D+120</td>
+                        <td>死亡疑い起票・区分所有者状態変更</td>
+                        <td>
+                            <span th:if="${stage4CompletedAt != null}"
+                                  th:text="${#temporals.format(stage4CompletedAt, 'yyyy年MM月dd日 HH:mm')}">N/A</span>
+                            <span th:if="${stage4CompletedAt == null}" class="not-done">未実施</span>
+                        </td>
+                    </tr>
+                    <!-- STAGE_5 -->
+                    <tr th:classappend="${stage5CompletedAt != null} ? 'completed' : 'pending'">
+                        <td>
+                            <span class="stage-badge"
+                                  th:classappend="${stage5CompletedAt != null} ? 'completed' : 'pending'">
+                                STAGE_5_LEGAL_PREP
+                            </span>
+                        </td>
+                        <td>D+150</td>
+                        <td>法的手続き準備（本申立書の起票）</td>
+                        <td>
+                            <span th:if="${stage5CompletedAt != null}"
+                                  th:text="${#temporals.format(stage5CompletedAt, 'yyyy年MM月dd日 HH:mm')}">N/A</span>
+                            <span th:if="${stage5CompletedAt == null}" class="not-done">未実施</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 凍結情報（frozenAt が存在する場合のみ表示） -->
+        <div class="freeze-section" th:if="${frozenAt != null}">
+            <h2>エスカレーション凍結情報</h2>
+            <table class="status-table">
+                <tr>
+                    <td class="label">凍結日時</td>
+                    <td th:text="${#temporals.format(frozenAt, 'yyyy年MM月dd日 HH:mm')}">N/A</td>
+                </tr>
+                <tr>
+                    <td class="label">凍結理由</td>
+                    <td>
+                        <span th:if="${frozenReason != null}" th:text="${frozenReason}">N/A</span>
+                        <span th:if="${frozenReason == null}" class="not-done">記録なし</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 解決情報（resolvedAt が存在する場合のみ表示） -->
+        <div class="resolve-section" th:if="${resolvedAt != null}">
+            <h2>エスカレーション解決情報</h2>
+            <table class="status-table">
+                <tr>
+                    <td class="label">解決日時</td>
+                    <td th:text="${#temporals.format(resolvedAt, 'yyyy年MM月dd日 HH:mm')}">N/A</td>
+                </tr>
+                <tr>
+                    <td class="label">解決理由</td>
+                    <td>
+                        <span th:if="${resolvedReason != null}" th:text="${resolvedReason}">N/A</span>
+                        <span th:if="${resolvedReason == null}" class="not-done">記録なし</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- フッター -->
+        <div class="footer-note">
+            <p>
+                本書面は Mannschaft 管理組合支援システムにより自動生成されました。
+                生成日時: <span th:text="${#temporals.format(generatedAt, 'yyyy年MM月dd日 HH:mm:ss')}">N/A</span>
+                ／ 本書面は区分所有法8条 証拠パッケージ（ZIP）に同梱されています。
+            </p>
+        </div>
+
+    </div>
+</body>
+</html>

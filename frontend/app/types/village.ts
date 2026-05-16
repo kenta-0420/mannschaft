@@ -370,3 +370,257 @@ export interface VillageInternalSearchParams {
   page?: number
   size?: number
 }
+
+// =============================================================================
+// Phase 2 拡張型 — 紋・代表委任・歳時記カレンダー・お祭り・練習試合募集
+// =============================================================================
+//
+// 設計書: docs/features/F17.1_village_community.md §2.2 / §3.11 / §13.2
+//
+// 重要事項:
+//   - Phase 1 既存 type は変更せず、Phase 2 では本ブロックに追記する。
+//   - 主キーはバックエンド側で UUIDv7（BINARY(16)）採用のため string 表現。
+//   - 実 API パスは Backend Controller 完成時に微調整の可能性あり。
+//   - `villages.monsho_r2_key` は VillageResponse の拡張で扱うが、
+//     既存 VillageResponse は変更禁止のため、別途 VillageMonshoResponse 等で扱う
+//     設計とする（VillageHeader 表示用に `village.iconR2Key` を流用しないこと）。
+//
+
+// -----------------------------------------------------------------------------
+// 代表委任 (village_representatives) — §3.11
+// -----------------------------------------------------------------------------
+
+/** 村代表委任レスポンス */
+export interface VillageRepresentativeResponse {
+  id: string
+  villageId: string
+  /** 対象メンバーシップ ID（TEAM/ORGANIZATION の村加入） */
+  membershipId: string
+  representativeUserId: number
+  /** 代表として表示する名前（Backend 解決後のスナップショット） */
+  representativeDisplayName: string | null
+  /** 委任を発行したチーム/組織 ADMIN の user_id */
+  grantedByUserId: number
+  grantedAt: string
+  revokedAt: string | null
+  /** 任意メモ */
+  note: string | null
+}
+
+/** 代表委任発行リクエスト */
+export interface VillageRepresentativeGrantRequest {
+  membershipId: string
+  representativeUserId: number
+  note?: string | null
+}
+
+/** 代表委任取消リクエスト */
+export interface VillageRepresentativeRevokeRequest {
+  note?: string | null
+}
+
+// -----------------------------------------------------------------------------
+// 歳時記カレンダー (village_calendar_events) — §13.2
+// -----------------------------------------------------------------------------
+
+/** 歳時記カレンダーイベント */
+export interface VillageCalendarEventResponse {
+  id: string
+  villageId: string
+  title: string
+  description: string | null
+  /** 開催日 (YYYY-MM-DD) */
+  eventDate: string
+  /** 終了日 (任意・複数日イベント時) */
+  eventEndDate: string | null
+  /** 年中行事（毎年繰り返し）フラグ */
+  isAnnualRecurring: boolean
+  /** 絵文字アイコン（例: 🎏 🌸 🎃） */
+  iconEmoji: string | null
+  /** 色（#RRGGBB） */
+  colorHex: string | null
+  createdByUserId: number
+  createdAt: string
+}
+
+export interface VillageCalendarEventCreateRequest {
+  title: string
+  description?: string | null
+  eventDate: string
+  eventEndDate?: string | null
+  isAnnualRecurring?: boolean
+  iconEmoji?: string | null
+  colorHex?: string | null
+}
+
+export interface VillageCalendarEventUpdateRequest {
+  title?: string | null
+  description?: string | null
+  eventDate?: string | null
+  eventEndDate?: string | null
+  isAnnualRecurring?: boolean | null
+  iconEmoji?: string | null
+  colorHex?: string | null
+}
+
+/** 歳時記カレンダー一覧クエリ */
+export interface VillageCalendarEventListParams {
+  /** 期間絞り込み開始日 (YYYY-MM-DD) */
+  from?: string
+  /** 期間絞り込み終了日 (YYYY-MM-DD) */
+  to?: string
+  /** 年中行事のみフィルタ */
+  annualOnly?: boolean
+}
+
+// -----------------------------------------------------------------------------
+// お祭り (village_festivals) — §13.2
+// -----------------------------------------------------------------------------
+
+export type VillageFestivalStatus = 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED'
+
+export interface VillageFestivalResponse {
+  id: string
+  villageId: string
+  title: string
+  description: string | null
+  startsAt: string
+  endsAt: string
+  bannerR2Key: string | null
+  /** テーマカラー (#RRGGBB) */
+  themeColorHex: string | null
+  status: VillageFestivalStatus
+  createdByUserId: number
+  createdAt: string
+}
+
+export interface VillageFestivalCreateRequest {
+  title: string
+  description?: string | null
+  startsAt: string
+  endsAt: string
+  bannerR2Key?: string | null
+  themeColorHex?: string | null
+}
+
+export interface VillageFestivalUpdateRequest {
+  title?: string | null
+  description?: string | null
+  startsAt?: string | null
+  endsAt?: string | null
+  bannerR2Key?: string | null
+  themeColorHex?: string | null
+}
+
+// -----------------------------------------------------------------------------
+// 練習試合募集 (village_match_recruits) — §13.2
+// -----------------------------------------------------------------------------
+
+export type VillageMatchRecruitCategory =
+  | 'PRACTICE_MATCH'
+  | 'REFEREE'
+  | 'VENUE'
+  | 'OTHER'
+
+export type VillageMatchRecruitStatus =
+  | 'OPEN'
+  | 'CLOSED'
+  | 'FULFILLED'
+  | 'CANCELLED'
+
+export interface VillageMatchRecruitResponse {
+  id: string
+  villageId: string
+  postedByUserId: number
+  /** チーム代表として投稿した場合のチーム ID */
+  postedByTeamId: number | null
+  category: VillageMatchRecruitCategory
+  title: string
+  description: string | null
+  /** 試合日 (YYYY-MM-DD) */
+  matchDate: string | null
+  /** 開始時刻 (HH:mm) */
+  matchTimeStart: string | null
+  /** 終了時刻 (HH:mm) */
+  matchTimeEnd: string | null
+  venue: string | null
+  /** 必要人数 / 必要チーム数 */
+  requiredCount: number | null
+  /** 連絡方法（自由記述） */
+  contactMethod: string | null
+  /** 応募締切 */
+  applicationDeadline: string | null
+  status: VillageMatchRecruitStatus
+  createdAt: string
+}
+
+export interface VillageMatchRecruitCreateRequest {
+  category: VillageMatchRecruitCategory
+  title: string
+  description?: string | null
+  matchDate?: string | null
+  matchTimeStart?: string | null
+  matchTimeEnd?: string | null
+  venue?: string | null
+  requiredCount?: number | null
+  contactMethod?: string | null
+  applicationDeadline?: string | null
+  /** チームとして投稿する場合のチーム ID */
+  postedByTeamId?: number | null
+}
+
+export interface VillageMatchRecruitUpdateRequest {
+  category?: VillageMatchRecruitCategory | null
+  title?: string | null
+  description?: string | null
+  matchDate?: string | null
+  matchTimeStart?: string | null
+  matchTimeEnd?: string | null
+  venue?: string | null
+  requiredCount?: number | null
+  contactMethod?: string | null
+  applicationDeadline?: string | null
+}
+
+/** 練習試合募集一覧クエリ */
+export interface VillageMatchRecruitListParams {
+  category?: VillageMatchRecruitCategory
+  status?: VillageMatchRecruitStatus
+  page?: number
+  size?: number
+}
+
+// -----------------------------------------------------------------------------
+// 練習試合応募 (village_match_applications)
+// -----------------------------------------------------------------------------
+
+export type VillageMatchApplicationStatus =
+  | 'PENDING'
+  | 'ACCEPTED'
+  | 'REJECTED'
+  | 'WITHDRAWN'
+
+export interface VillageMatchApplicationResponse {
+  id: string
+  villageId: string
+  recruitId: string
+  applicantUserId: number
+  /** チームとして応募した場合のチーム ID */
+  applicantTeamId: number | null
+  message: string | null
+  status: VillageMatchApplicationStatus
+  reviewedByUserId: number | null
+  reviewedAt: string | null
+  reviewComment: string | null
+  createdAt: string
+}
+
+export interface VillageMatchApplicationCreateRequest {
+  message?: string | null
+  /** チームとして応募する場合のチーム ID */
+  applicantTeamId?: number | null
+}
+
+export interface VillageMatchApplicationReviewRequest {
+  reviewComment?: string | null
+}

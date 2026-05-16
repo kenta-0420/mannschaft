@@ -3,30 +3,175 @@
 <head>
     <meta charset="UTF-8"/>
     <link rel="stylesheet" href="/css/pdf-common.css"/>
+    <style>
+        /*
+         * 区分所有法8条 証拠パッケージ 表紙 専用スタイル。
+         * Flying Saucer は flexbox/grid 未対応のため float / table レイアウトを採用。
+         */
+        .cover-title {
+            text-align: center;
+            font-size: 16pt;
+            font-weight: bold;
+            margin-bottom: 6px;
+            font-family: 'NotoSerifJP', 'NotoSansJP', serif;
+        }
+        .cover-subtitle {
+            text-align: center;
+            font-size: 10pt;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .legal-warning {
+            border: 2px solid #c00;
+            color: #c00;
+            padding: 10px 14px;
+            margin: 16px 0;
+            font-size: 9pt;
+            background-color: #fff8f8;
+        }
+        .cover-section {
+            margin: 16px 0;
+        }
+        .cover-section h2 {
+            font-size: 12pt;
+            border-left: 4px solid #444;
+            padding-left: 8px;
+            margin-bottom: 8px;
+        }
+        .meta-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .meta-table td {
+            border: 1px solid #999;
+            padding: 6px 10px;
+            font-size: 10pt;
+        }
+        .meta-table .label {
+            background-color: #f0f0f0;
+            width: 30%;
+            font-weight: bold;
+        }
+        .contents-list {
+            margin: 8px 0 8px 20px;
+            font-size: 10pt;
+            line-height: 2.0;
+        }
+        .contents-list li {
+            margin: 4px 0;
+        }
+        .contents-list .file-code {
+            font-family: monospace;
+            background-color: #f5f5f5;
+            padding: 2px 4px;
+        }
+        .footer-note {
+            margin-top: 40px;
+            padding-top: 10px;
+            border-top: 1px solid #999;
+            font-size: 8pt;
+            color: #555;
+        }
+    </style>
 </head>
-<!--
-    F09.15 §5.13 区分所有法 8 条 証拠 ZIP 表紙 PDF テンプレート（skeleton）
-    根拠条文: 区分所有法 8 条（管理費等の先取特権実行）
-
-    TODO: S6 で本実装。本テンプレは S1 第三陣A の予約 skeleton。
-    本実装時は以下を含めること:
-      - ZIP 内容物一覧
-      - ZIP 全体および各ファイルの SHA-256 ハッシュ
-      - 生成日時・生成者
-      - ⚠ 弁護士監修なし v1 注意書きを表紙に明示
--->
 <body>
     <div class="pdf-body">
-        <h1 style="text-align: center;">区分所有法 8 条 証拠パッケージ 表紙</h1>
-        <p style="text-align: center; color: #c00;">
-            ⚠ skeleton（S6 で本実装予定）
-        </p>
-        <div style="border: 2px solid #c00; padding: 12px; margin: 20px 0; color: #c00;">
-            本テンプレートは S6 で本実装予定の skeleton です。
-            実装時は <code>docs/features/F09.15_resident_succession_support.md §5.13</code> 参照。
+
+        <!-- タイトル -->
+        <div class="cover-title">区分所有法 8 条 先取特権実行</div>
+        <div class="cover-title" style="font-size: 14pt; margin-top: 4px;">証拠パッケージ 表紙</div>
+        <div class="cover-subtitle">
+            根拠条文: 区分所有法 第8条（特定承継人の責任）/ 先取特権実行
         </div>
-        <p>部屋番号: <span th:text="${dwellingUnitLabel}">N/A</span></p>
-        <p>ZIP 生成日: <span th:text="${#temporals.format(packageGeneratedAt, 'yyyy年MM月dd日')}">N/A</span></p>
+
+        <!-- ⚠ 弁護士監修なし v1 注意書き -->
+        <div class="legal-warning">
+            ⚠ 本書面は Mannschaft システムが自動生成したテンプレートです。
+            <strong>2026年5月時点で弁護士監修を受けていません。</strong>
+            実際の法的手続きに際しては、必ず弁護士・司法書士にご相談ください。
+        </div>
+
+        <!-- 1. パッケージ基本情報 -->
+        <div class="cover-section">
+            <h2>1. パッケージ基本情報</h2>
+            <table class="meta-table">
+                <tr>
+                    <td class="label">生成日時</td>
+                    <td th:text="${#temporals.format(packageGeneratedAt, 'yyyy年MM月dd日 HH:mm')}">N/A</td>
+                </tr>
+                <tr>
+                    <td class="label">対象居室</td>
+                    <td th:text="${dwellingUnitLabel}">部屋 N/A</td>
+                </tr>
+                <tr>
+                    <td class="label">居住者台帳 ID</td>
+                    <td th:text="${residentRegistryId}">N/A</td>
+                </tr>
+                <tr>
+                    <td class="label">申立種別</td>
+                    <td>
+                        <span th:if="${filingType == 'ABSENTEE_PROPERTY_MANAGER'}">不在者財産管理人選任申立</span>
+                        <span th:if="${filingType == 'INHERITANCE_LIQUIDATOR'}">相続財産清算人選任申立</span>
+                        <span th:if="${filingType != 'ABSENTEE_PROPERTY_MANAGER' and filingType != 'INHERITANCE_LIQUIDATOR'}"
+                              th:text="${filingType}">N/A</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">生成システム</td>
+                    <td>Mannschaft 管理組合支援システム</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 2. ZIP 内容物一覧 -->
+        <div class="cover-section">
+            <h2>2. ZIP 内容物一覧</h2>
+            <ol class="contents-list">
+                <li>
+                    <span class="file-code">01_template.pdf</span> — 申立書テンプレート
+                    <br/>
+                    <span style="font-size: 9pt; color: #666;">
+                        （不在者財産管理人選任申立書 または 相続財産清算人選任申立書）
+                    </span>
+                </li>
+                <li>
+                    <span class="file-code">02_evidence-timeline.pdf</span> — 5段階エスカレーション タイムライン
+                    <br/>
+                    <span style="font-size: 9pt; color: #666;">
+                        （D+30〜D+150 の段階別実施記録・凍結・解決情報を含む）
+                    </span>
+                </li>
+                <li>
+                    <span class="file-code">03_art8-cover.pdf</span> — 表紙（本書）
+                    <br/>
+                    <span style="font-size: 9pt; color: #666;">
+                        （ZIP 内容物一覧・パッケージ基本情報を収録）
+                    </span>
+                </li>
+            </ol>
+        </div>
+
+        <!-- 3. 整合性確認 -->
+        <div class="cover-section">
+            <h2>3. 整合性確認（SHA-256）</h2>
+            <p style="font-size: 10pt;">
+                本 ZIP パッケージ全体の SHA-256 ハッシュは、
+                証拠パッケージ生成処理（buildEvidencePackage）が完了した後に
+                <code>legal_filings.evidence_sha256</code> カラムに記録されます。
+                実際の提出前に Mannschaft 管理画面から SHA-256 を確認し、
+                ZIP ファイルの改ざんがないことを検証してください。
+            </p>
+        </div>
+
+        <!-- フッター -->
+        <div class="footer-note">
+            <p>
+                本書面は Mannschaft システムにより自動生成されました。
+                本書面の SHA-256 は証拠パッケージ生成後に個別に確認してください。
+                弁護士監修なし v1（収益化後 v2 で正式監修を実施予定）。
+            </p>
+        </div>
+
     </div>
 </body>
 </html>
