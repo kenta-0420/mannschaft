@@ -31,10 +31,12 @@ import lombok.RequiredArgsConstructor;
  *   016 BALANCE_DELTA_ZERO       400
  *   017 INSUFFICIENT_BALANCE     400
  *   018 BALANCE_LIMIT_EXCEEDED   409
+ *   019 TOKEN_NOT_FOUND          404
  * </pre>
  *
  * <p>番号 010 / 011 は 2B（プロバイダー CRUD）用に予約。
  * <p>番号 015〜018 は Phase 3（残高型）用。
+ * <p>番号 019 は Phase 3 第二陣 2A（QR 自動特定 = 顧客側一時トークン）用。
  */
 @Getter
 @RequiredArgsConstructor
@@ -174,7 +176,18 @@ public enum PointCardErrorCode implements ErrorCode {
      * 残高上限超過（累計 10,000,000 円）。HTTP 409。
      */
     BALANCE_LIMIT_EXCEEDED("POINT_CARD_018",
-            "残高上限（10,000,000 円）に達しています", Severity.WARN);
+            "残高上限（10,000,000 円）に達しています", Severity.WARN),
+
+    /**
+     * 一時トークンが見つからない / 期限切れ / 使用済み。HTTP 404。
+     *
+     * <p>Phase 3 第二陣 2A の QR 自動特定で利用。
+     * 顧客側で発行した 5 分 TTL の UUID トークンを店主側が resolve した際、
+     * Valkey に存在しないか TTL 切れ、または既に消費済（GETDEL で削除済）の場合に投げる。
+     * 不存在 / 期限切れ / 使用済の区別はクライアントに開示しない（情報漏洩防止）。
+     */
+    TOKEN_NOT_FOUND("POINT_CARD_019",
+            "一時トークンが見つからないか、期限切れまたは使用済みです", Severity.WARN);
 
     private final String code;
     private final String message;

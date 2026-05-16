@@ -5,12 +5,14 @@ import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.pointcard.dto.CreateUserPointCardRequest;
+import com.mannschaft.app.pointcard.dto.ShareTokenResponse;
 import com.mannschaft.app.pointcard.dto.UpdateUserPointCardRequest;
 import com.mannschaft.app.pointcard.dto.UserPointCardDetailResponse;
 import com.mannschaft.app.pointcard.dto.UserPointCardListItemResponse;
 import com.mannschaft.app.pointcard.enums.BarcodeFormat;
 import com.mannschaft.app.pointcard.error.PointCardErrorCode;
 import com.mannschaft.app.pointcard.service.PointCardService;
+import com.mannschaft.app.pointcard.service.PointCardShareTokenService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,6 +71,9 @@ class PointCardControllerTest {
 
     @MockitoBean
     private PointCardService pointCardService;
+
+    @MockitoBean
+    private PointCardShareTokenService shareTokenService;
 
     @MockitoBean
     private AuthTokenService authTokenService;
@@ -282,5 +287,37 @@ class PointCardControllerTest {
         mockMvc.perform(post("/api/v1/point-cards/{id}/used", CARD_ID))
                 .andExpect(status().isNoContent());
         verify(pointCardService).recordUsed(eq(CARD_ID), eq(USER_ID));
+    }
+
+    // ──────────────────────────────────────────────
+    // POST /api/v1/point-cards/{cardId}/share-tokens（Phase 3 第二陣 2A）
+    // ──────────────────────────────────────────────
+
+    @Test
+    @DisplayName("POST /api/v1/point-cards/{cardId}/share-tokens: 201 + token + deepLinkUrl")
+    void createShareToken_201() throws Exception {
+        ShareTokenResponse stub = new ShareTokenResponse(
+                "01234567-89ab-4cde-8fed-cba987654321",
+                OffsetDateTime.parse("2026-05-14T10:05:00Z"),
+                "mannschaft://wallet/share?token=01234567-89ab-4cde-8fed-cba987654321");
+        given(shareTokenService.generate(eq(USER_ID), eq(CARD_ID))).willReturn(stub);
+
+        mockMvc.perform(post("/api/v1/point-cards/{cardId}/share-tokens", CARD_ID))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.token").value("01234567-89ab-4cde-8fed-cba987654321"))
+                .andExpect(jsonPath("$.data.deepLinkUrl")
+                        .value("mannschaft://wallet/share?token=01234567-89ab-4cde-8fed-cba987654321"))
+                .andExpect(jsonPath("$.data.expiresAt").exists());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/point-cards/{cardId}/share-tokens: 他人カード → 404 POINT_CARD_006")
+    void createShareToken_otherUser_404() throws Exception {
+        willThrow(new BusinessException(PointCardErrorCode.CARD_NOT_FOUND))
+                .given(shareTokenService).generate(eq(USER_ID), eq(CARD_ID));
+
+        mockMvc.perform(post("/api/v1/point-cards/{cardId}/share-tokens", CARD_ID))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("POINT_CARD_006"));
     }
 }
