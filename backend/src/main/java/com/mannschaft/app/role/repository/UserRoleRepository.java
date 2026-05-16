@@ -263,6 +263,50 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             @Param("permissionName") String permissionName);
 
     /**
+     * 指定ユーザーが指定組織で「DEPUTY_ADMIN ロールを持ち、かつ指定 Permission を保有している」かを判定する
+     * （F18 Phase 4 第二陣 2B: スタンプ押印 Permission 駆動化用）。
+     *
+     * <p>判定条件:</p>
+     * <ul>
+     *   <li>{@code user_roles.role_id} が DEPUTY_ADMIN を指している</li>
+     *   <li>かつ次のいずれかを満たす:
+     *     <ul>
+     *       <li>{@code role_permissions} に {@code is_default=1} で permission が登録されている</li>
+     *       <li>{@code user_permission_groups → permission_group_permissions} 経由で permission が個別付与されている</li>
+     *     </ul>
+     *   </li>
+     * </ul>
+     *
+     * <p>{@code is_default=0} の「天井登録のみ」は許可しない（V9.156 のように DEPUTY_ADMIN へ天井登録だけしてある
+     * 状態を「自動付与」と誤判定しないため）。</p>
+     */
+    @Query(value =
+            "SELECT COUNT(*) > 0 FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "WHERE ur.user_id = :userId " +
+            "  AND ur.organization_id = :organizationId " +
+            "  AND r.name = 'DEPUTY_ADMIN' " +
+            "  AND ( " +
+            "    EXISTS ( " +
+            "      SELECT 1 FROM role_permissions rp " +
+            "      JOIN permissions p ON p.id = rp.permission_id " +
+            "      WHERE rp.role_id = ur.role_id AND p.name = :permissionName AND rp.is_default = 1 " +
+            "    ) OR EXISTS ( " +
+            "      SELECT 1 FROM user_permission_groups upg " +
+            "      JOIN permission_group_permissions pgp ON pgp.permission_group_id = upg.permission_group_id " +
+            "      JOIN permissions p2 ON p2.id = pgp.permission_id " +
+            "      WHERE upg.user_id = ur.user_id " +
+            "        AND upg.organization_id = ur.organization_id " +
+            "        AND p2.name = :permissionName " +
+            "    ) " +
+            "  )",
+            nativeQuery = true)
+    boolean existsDeputyAdminWithPermissionInOrganization(
+            @Param("userId") Long userId,
+            @Param("organizationId") Long organizationId,
+            @Param("permissionName") String permissionName);
+
+    /**
      * 指定組織の ADMIN/DEPUTY_ADMIN ユーザーIDリストを取得する（F08.7 Phase 9-δ 通知用）。
      */
     @Query(value = "SELECT DISTINCT ur.user_id FROM user_roles ur " +

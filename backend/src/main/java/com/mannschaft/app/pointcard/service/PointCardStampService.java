@@ -45,7 +45,13 @@ import java.util.UUID;
  * </ul>
  *
  * <h2>認可方針</h2>
- * <p>本サービスはすべて組織スコープで、ADMIN または DEPUTY_ADMIN のみ操作可能。
+ * <p>本サービスはすべて組織スコープ。
+ * <ul>
+ *   <li>{@link #stamp 押印（stamp）}: ADMIN または {@code POINT_CARD_STAMP_ISSUE} Permission を保有する
+ *       DEPUTY_ADMIN のみ可能（F18 Phase 4 第二陣 2B で Permission 駆動化）。</li>
+ *   <li>{@link #listOrgStamps 押印履歴閲覧（listOrgStamps / listCardStamps）}: ADMIN または DEPUTY_ADMIN
+ *       （閲覧権限は押印権限と別物として扱うため、引き続き {@code checkAdminOrAbove} を使用）。</li>
+ * </ul>
  * 顧客本人は対象外（顧客側マイページ用 API は Phase 2 第三陣以降で別途整備）。
  *
  * <h2>監査ログのプライバシー方針</h2>
@@ -79,7 +85,8 @@ public class PointCardStampService {
      * スタンプを押印する（{@code stamp_count} 更新 + 履歴記録 + 監査ログ）。
      *
      * <ol>
-     *   <li><strong>認可</strong>: {@code accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION")}</li>
+     *   <li><strong>認可</strong>: {@code accessControlService.checkAdminOrHasPermission(userId, orgId,
+     *       "ORGANIZATION", "POINT_CARD_STAMP_ISSUE")}（F18 Phase 4 第二陣 2B で Permission 駆動化）</li>
      *   <li><strong>カード存在</strong>: {@code findById}（他人のカードでも押印可なので {@code findByIdAndUserId} は使わない）</li>
      *   <li><strong>プロバイダー紐付け</strong>: {@code provider_id IS NULL} なら 012</li>
      *   <li><strong>組織所有</strong>: {@code provider.organization_id != orgId} なら 011（IDOR 防止）</li>
@@ -103,8 +110,9 @@ public class PointCardStampService {
     @Transactional
     public StampEventResponse stamp(Long orgId, UUID cardId, Long userId, StampRequest req,
                                     String ipAddress, String userAgent, String sessionHash) {
-        // 1. 認可（ADMIN または DEPUTY_ADMIN のみ）
-        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
+        // 1. 認可（F18 Phase 4 第二陣 2B: ADMIN or POINT_CARD_STAMP_ISSUE を持つ DEPUTY_ADMIN）
+        accessControlService.checkAdminOrHasPermission(
+                userId, orgId, "ORGANIZATION", "POINT_CARD_STAMP_ISSUE");
 
         // 2. カード取得（他人のカードでも押印可能なので findByIdAndUserId は使わない）
         UserPointCardEntity card = cardRepository.findById(cardId)

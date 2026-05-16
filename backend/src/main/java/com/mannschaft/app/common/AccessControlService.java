@@ -127,6 +127,49 @@ public class AccessControlService {
         }
     }
 
+    /**
+     * ADMIN 以上 or 指定 Permission を持つ DEPUTY_ADMIN かを判定する（F18 Phase 4 第二陣 2B）。
+     *
+     * <p>挙動:</p>
+     * <ul>
+     *   <li>ADMIN は無条件で許可</li>
+     *   <li>DEPUTY_ADMIN は次のいずれかを満たす場合のみ許可:
+     *     <ul>
+     *       <li>{@code role_permissions} に {@code is_default=1} で permission が登録されている</li>
+     *       <li>{@code permission_groups} 経由で permission が個別付与されている</li>
+     *     </ul>
+     *   </li>
+     *   <li>それ以外（MEMBER / SUPPORTER / 非メンバー / 天井登録のみの DEPUTY_ADMIN）は 403 COMMON_002</li>
+     * </ul>
+     *
+     * <p>本メソッドは {@code ORGANIZATION} スコープ専用。{@code TEAM} スコープでの使用は現状未対応のため、
+     * 渡された場合は {@link IllegalArgumentException} を投げる。</p>
+     *
+     * @param userId         操作者ユーザー ID
+     * @param scopeId        組織 ID
+     * @param scopeType      "ORGANIZATION" 固定
+     * @param permissionName 必要な Permission 名（例: {@code "POINT_CARD_STAMP_ISSUE"}）
+     * @throws BusinessException        権限なしの場合（COMMON_002）
+     * @throws IllegalArgumentException scopeType が ORGANIZATION 以外の場合
+     */
+    public void checkAdminOrHasPermission(Long userId, Long scopeId, String scopeType, String permissionName) {
+        if (!"ORGANIZATION".equals(scopeType)) {
+            throw new IllegalArgumentException(
+                    "checkAdminOrHasPermission は ORGANIZATION スコープ専用です: " + scopeType);
+        }
+        // 1. ADMIN なら無条件許可
+        if (isAdmin(userId, scopeId, scopeType)) {
+            return;
+        }
+        // 2. DEPUTY_ADMIN かつ Permission 保有なら許可
+        if (userRoleRepository.existsDeputyAdminWithPermissionInOrganization(
+                userId, scopeId, permissionName)) {
+            return;
+        }
+        // 3. それ以外は拒否
+        throw new BusinessException(CommonErrorCode.COMMON_002);
+    }
+
     // ========================================
     // SYSTEM_ADMIN 判定
     // ========================================

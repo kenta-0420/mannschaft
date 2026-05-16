@@ -151,7 +151,7 @@ class PointCardStampServiceTest {
         UserPointCardEntity card = sampleCard(provider.getId(), 3);
 
         willDoNothing().given(accessControlService)
-                .checkAdminOrAbove(STAFF_USER_ID, ORG_ID, "ORGANIZATION");
+                .checkAdminOrHasPermission(STAFF_USER_ID, ORG_ID, "ORGANIZATION", "POINT_CARD_STAMP_ISSUE");
         given(cardRepository.findById(card.getId())).willReturn(Optional.of(card));
         given(providerRepository.findById(provider.getId())).willReturn(Optional.of(provider));
         given(cardRepository.save(any(UserPointCardEntity.class)))
@@ -214,7 +214,7 @@ class PointCardStampServiceTest {
         UserPointCardEntity card = sampleCard(provider.getId(), 2);
 
         willDoNothing().given(accessControlService)
-                .checkAdminOrAbove(anyLong(), anyLong(), anyString());
+                .checkAdminOrHasPermission(anyLong(), anyLong(), anyString(), anyString());
         given(cardRepository.findById(card.getId())).willReturn(Optional.of(card));
         given(providerRepository.findById(provider.getId())).willReturn(Optional.of(provider));
         given(cardRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -235,7 +235,7 @@ class PointCardStampServiceTest {
         UserPointCardEntity card = sampleCard(provider.getId(), 5);
 
         willDoNothing().given(accessControlService)
-                .checkAdminOrAbove(anyLong(), anyLong(), anyString());
+                .checkAdminOrHasPermission(anyLong(), anyLong(), anyString(), anyString());
         given(cardRepository.findById(card.getId())).willReturn(Optional.of(card));
         given(providerRepository.findById(provider.getId())).willReturn(Optional.of(provider));
         given(cardRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -256,7 +256,7 @@ class PointCardStampServiceTest {
         UserPointCardEntity card = sampleCard(provider.getId(), 0);
 
         willDoNothing().given(accessControlService)
-                .checkAdminOrAbove(anyLong(), anyLong(), anyString());
+                .checkAdminOrHasPermission(anyLong(), anyLong(), anyString(), anyString());
         given(cardRepository.findById(card.getId())).willReturn(Optional.of(card));
         given(providerRepository.findById(provider.getId())).willReturn(Optional.of(provider));
         given(cardRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -277,7 +277,7 @@ class PointCardStampServiceTest {
         UserPointCardEntity card = sampleCard(provider.getId(), null);
 
         willDoNothing().given(accessControlService)
-                .checkAdminOrAbove(anyLong(), anyLong(), anyString());
+                .checkAdminOrHasPermission(anyLong(), anyLong(), anyString(), anyString());
         given(cardRepository.findById(card.getId())).willReturn(Optional.of(card));
         given(providerRepository.findById(provider.getId())).willReturn(Optional.of(provider));
         given(cardRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -300,7 +300,8 @@ class PointCardStampServiceTest {
     void stamp_unauthorized_propagatesAccessException() {
         UUID cardId = UUID.randomUUID();
         willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                .given(accessControlService).checkAdminOrAbove(STAFF_USER_ID, ORG_ID, "ORGANIZATION");
+                .given(accessControlService).checkAdminOrHasPermission(
+                        STAFF_USER_ID, ORG_ID, "ORGANIZATION", "POINT_CARD_STAMP_ISSUE");
 
         StampRequest req = new StampRequest(1, null);
         assertThatThrownBy(() -> stampService.stamp(
@@ -320,7 +321,7 @@ class PointCardStampServiceTest {
         UserPointCardEntity card = sampleCard(null, 0);
 
         willDoNothing().given(accessControlService)
-                .checkAdminOrAbove(anyLong(), anyLong(), anyString());
+                .checkAdminOrHasPermission(anyLong(), anyLong(), anyString(), anyString());
         given(cardRepository.findById(card.getId())).willReturn(Optional.of(card));
 
         StampRequest req = new StampRequest(1, null);
@@ -341,7 +342,7 @@ class PointCardStampServiceTest {
         UserPointCardEntity card = sampleCard(otherOrgProvider.getId(), 0);
 
         willDoNothing().given(accessControlService)
-                .checkAdminOrAbove(anyLong(), anyLong(), anyString());
+                .checkAdminOrHasPermission(anyLong(), anyLong(), anyString(), anyString());
         given(cardRepository.findById(card.getId())).willReturn(Optional.of(card));
         given(providerRepository.findById(otherOrgProvider.getId()))
                 .willReturn(Optional.of(otherOrgProvider));
@@ -369,7 +370,7 @@ class PointCardStampServiceTest {
         UserPointCardEntity card = sampleCard(provider.getId(), 0);
 
         willDoNothing().given(accessControlService)
-                .checkAdminOrAbove(anyLong(), anyLong(), anyString());
+                .checkAdminOrHasPermission(anyLong(), anyLong(), anyString(), anyString());
         given(cardRepository.findById(card.getId())).willReturn(Optional.of(card));
         given(providerRepository.findById(provider.getId())).willReturn(Optional.of(provider));
 
@@ -389,7 +390,7 @@ class PointCardStampServiceTest {
         UserPointCardEntity card = sampleCard(provider.getId(), 0);
 
         willDoNothing().given(accessControlService)
-                .checkAdminOrAbove(anyLong(), anyLong(), anyString());
+                .checkAdminOrHasPermission(anyLong(), anyLong(), anyString(), anyString());
         given(cardRepository.findById(card.getId())).willReturn(Optional.of(card));
         given(providerRepository.findById(provider.getId())).willReturn(Optional.of(provider));
 
@@ -408,7 +409,7 @@ class PointCardStampServiceTest {
         UserPointCardEntity card = sampleCard(provider.getId(), 0);
 
         willDoNothing().given(accessControlService)
-                .checkAdminOrAbove(anyLong(), anyLong(), anyString());
+                .checkAdminOrHasPermission(anyLong(), anyLong(), anyString(), anyString());
         given(cardRepository.findById(card.getId())).willReturn(Optional.of(card));
         given(providerRepository.findById(provider.getId())).willReturn(Optional.of(provider));
 
@@ -430,7 +431,7 @@ class PointCardStampServiceTest {
     void stamp_cardNotFound_throws006() {
         UUID cardId = UUID.randomUUID();
         willDoNothing().given(accessControlService)
-                .checkAdminOrAbove(anyLong(), anyLong(), anyString());
+                .checkAdminOrHasPermission(anyLong(), anyLong(), anyString(), anyString());
         given(cardRepository.findById(cardId)).willReturn(Optional.empty());
 
         StampRequest req = new StampRequest(1, null);
