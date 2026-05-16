@@ -202,7 +202,82 @@ public enum VillageErrorCode implements ErrorCode {
      * 空文字 / 最低 2 文字未満 / 不正な type を指定された場合に投げる（F17.1 §4.12）。
      */
     VILLAGE_SEARCH_INVALID_QUERY("VILLAGE_051",
-            "検索キーワードは2文字以上を指定してください", Severity.WARN);
+            "検索キーワードは2文字以上を指定してください", Severity.WARN),
+
+    // ==================================================================
+    // F17 Phase 2 U3 — 村代表委任（VILLAGE_052〜055）
+    // ==================================================================
+
+    /** VILLAGE_052: 代表委任レコードが存在しない（404、IDOR 対策で 404 統一）。 */
+    REPRESENTATIVE_NOT_FOUND("VILLAGE_052",
+            "代表委任が見つかりません", Severity.WARN),
+
+    /** VILLAGE_053: 既に現役の代表委任が存在する（409、重複 grant 拒否）。 */
+    REPRESENTATIVE_ALREADY_GRANTED("VILLAGE_053",
+            "このユーザーには既に代表権が委任されています", Severity.WARN),
+
+    /** VILLAGE_054: 代表委任の対象メンバーシップが TEAM/ORGANIZATION でない（422） */
+    REPRESENTATIVE_NOT_TEAM_OR_ORG_MEMBERSHIP("VILLAGE_054",
+            "代表委任はチーム/組織メンバーシップに対してのみ可能です", Severity.WARN),
+
+    /** VILLAGE_055: 委任先ユーザーが当該チーム/組織のメンバーでない（422） */
+    REPRESENTATIVE_USER_NOT_IN_SUBJECT("VILLAGE_055",
+            "委任先ユーザーが対象チーム/組織のメンバーではありません", Severity.WARN),
+
+    // ==================================================================
+    // F17 Phase 2 U4 — 歳時記カレンダー（VILLAGE_056〜058）
+    // ==================================================================
+
+    /** VILLAGE_056: 歳時記イベントが見つからない（404、IDOR 対策で 404） */
+    CALENDAR_EVENT_NOT_FOUND("VILLAGE_056",
+            "歳時記イベントが見つかりません", Severity.WARN),
+
+    /** VILLAGE_057: 歳時記イベントの期間が不正（422、event_end_date < event_date） */
+    CALENDAR_EVENT_INVALID_DATE_RANGE("VILLAGE_057",
+            "終了日は開始日以降を指定してください", Severity.WARN),
+
+    /** VILLAGE_058: 歳時記イベントのカラーコード形式不正（422、#RRGGBB 以外） */
+    CALENDAR_EVENT_INVALID_COLOR("VILLAGE_058",
+            "色は #RRGGBB 形式で指定してください", Severity.WARN),
+
+    // ==================================================================
+    // F17 Phase 2 U5 — お祭り（VILLAGE_059〜062）
+    // ==================================================================
+
+    /** VILLAGE_059: お祭りレコードが存在しない（404、IDOR 対策で統一）。 */
+    FESTIVAL_NOT_FOUND("VILLAGE_059", "お祭りが見つかりません", Severity.WARN),
+
+    /** VILLAGE_060: 期間が不正（422、ends_at <= starts_at）。 */
+    FESTIVAL_INVALID_PERIOD("VILLAGE_060", "お祭りの期間が不正です（終了日時は開始日時より後である必要があります）", Severity.WARN),
+
+    /** VILLAGE_061: テーマ色フォーマット不正（422、#RRGGBB 以外）。 */
+    FESTIVAL_INVALID_COLOR("VILLAGE_061", "テーマ色は #RRGGBB 形式で指定してください", Severity.WARN),
+
+    /** VILLAGE_062: 終了済み / 中止済みのお祭りを更新しようとした（409）。 */
+    FESTIVAL_ALREADY_ENDED("VILLAGE_062", "このお祭りは既に終了または中止されています", Severity.WARN),
+
+    // ==================================================================
+    // F17 Phase 2 U6 — 練習試合・審判募集（VILLAGE_063〜068）
+    // ==================================================================
+
+    /** VILLAGE_063: 練習試合募集レコードが存在しない（404、IDOR 対策で統一） */
+    MATCH_RECRUIT_NOT_FOUND("VILLAGE_063", "練習試合の募集が見つかりません", Severity.WARN),
+
+    /** VILLAGE_064: OPEN 以外の募集に応募しようとした（409） */
+    MATCH_RECRUIT_NOT_OPEN("VILLAGE_064", "この募集は現在受付中ではありません", Severity.WARN),
+
+    /** VILLAGE_065: 試合時刻が不正（match_time_end < match_time_start）（422） */
+    MATCH_RECRUIT_TIME_INVALID("VILLAGE_065", "試合時刻の指定が不正です（開始時刻が終了時刻より後）", Severity.WARN),
+
+    /** VILLAGE_066: 応募レコードが存在しない（404、IDOR 対策で統一） */
+    MATCH_APPLICATION_NOT_FOUND("VILLAGE_066", "応募が見つかりません", Severity.WARN),
+
+    /** VILLAGE_067: 同一ユーザーで PENDING 応募が既に存在する（409） */
+    MATCH_APPLICATION_DUPLICATE("VILLAGE_067", "既に審査待ちの応募があります", Severity.WARN),
+
+    /** VILLAGE_068: 応募レビュー時の status 値が ACCEPTED/REJECTED でない（422） */
+    MATCH_APPLICATION_INVALID_STATUS("VILLAGE_068",
+            "応募の審査結果は ACCEPTED または REJECTED を指定してください", Severity.WARN);
 
     private final String code;
     private final String message;
