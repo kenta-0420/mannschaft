@@ -449,6 +449,8 @@ public class GlobalExceptionHandler {
             Map.entry("POINT_CARD_019", HttpStatus.NOT_FOUND),         // TOKEN_NOT_FOUND
             // F18 Phase 3 第二陣 2B — 残高型 REFUND 超過
             Map.entry("POINT_CARD_020", HttpStatus.CONFLICT),          // REFUND_EXCEEDS_ORIGINAL
+            // F18 Phase 4 第三陣 S3 — 同義語管理 UI
+            Map.entry("POINT_CARD_021", HttpStatus.CONFLICT),          // SYNONYM_DUPLICATE
             // F02.9 お気に入りウィジェット
             Map.entry("FAV_001", HttpStatus.CONFLICT),                  // ALREADY_REGISTERED（重複登録）
             Map.entry("FAV_002", HttpStatus.UNPROCESSABLE_ENTITY),      // LIMIT_EXCEEDED（上限20件超過）
