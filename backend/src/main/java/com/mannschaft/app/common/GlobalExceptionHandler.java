@@ -445,7 +445,11 @@ public class GlobalExceptionHandler {
             Map.entry("FAV_003", HttpStatus.NOT_FOUND),                 // ENTITY_NOT_FOUND（IDOR対策で404）
             Map.entry("FAV_004", HttpStatus.FORBIDDEN),                 // ACCESS_DENIED（他ユーザーお気に入り）
             Map.entry("FAV_005", HttpStatus.BAD_REQUEST),               // INVALID_ENTITY_TYPE
-            Map.entry("FAV_006", HttpStatus.BAD_REQUEST)                // INVALID_ENTITY_ID
+            Map.entry("FAV_006", HttpStatus.BAD_REQUEST),               // INVALID_ENTITY_ID
+            // F09.17 Phase 11-a モデレーション
+            Map.entry("AD_CAMPAIGN_NOT_REVIEWABLE", HttpStatus.BAD_REQUEST),  // 審査対象外状態
+            Map.entry("AD_CAMPAIGN_ALREADY_BLOCKED", HttpStatus.CONFLICT),    // 既に BLOCKED
+            Map.entry("AD_CAMPAIGN_NOT_FOUND", HttpStatus.NOT_FOUND)         // キャンペーン不存在
     );
 
     /**
