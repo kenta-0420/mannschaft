@@ -299,7 +299,14 @@ public enum VillageErrorCode implements ErrorCode {
     VOTE_DUPLICATE("VILLAGE_073", "この候補日は既に登録されています", Severity.WARN),
 
     /** VILLAGE_074: 寄合の操作には村人であることが必要（403）。 */
-    MEETUP_NOT_MEMBER("VILLAGE_074", "寄合の操作には村人である必要があります", Severity.WARN);
+    MEETUP_NOT_MEMBER("VILLAGE_074", "寄合の操作には村人である必要があります", Severity.WARN),
+
+    // ==================================================================
+    // F17 Phase 3-β — 村史（月次ダイジェスト）（VILLAGE_075）
+    // ==================================================================
+
+    /** VILLAGE_075: 指定年月の村史が存在しない（404、IDOR 対策で統一）。 */
+    CHRONICLE_NOT_FOUND("VILLAGE_075", "指定された村史が見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

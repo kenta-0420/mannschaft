@@ -105,4 +105,25 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
             """)
     List<TimelinePostEntity> findLatestByVillageId(
             @Param("villageId") UUID villageId, Pageable pageable);
+
+    // ====================================================================
+    // F17.1 Phase 3-β — 村史月次集計（村ドメインから read-only 呼出）
+    // TODO: 将来は VillagePostCreatedEvent によるカウンタ非同期更新へ分離予定。
+    // ====================================================================
+
+    /**
+     * 村スコープのタイムライン投稿件数を期間で集計する。
+     */
+    @Query("""
+            SELECT COUNT(p) FROM TimelinePostEntity p
+            WHERE p.scopeVillageId = :villageId
+              AND p.parentId IS NULL
+              AND p.status = com.mannschaft.app.timeline.PostStatus.PUBLISHED
+              AND p.createdAt >= :fromInclusive
+              AND p.createdAt <  :toExclusive
+            """)
+    long countByVillageIdAndCreatedAtBetween(
+            @Param("villageId") UUID villageId,
+            @Param("fromInclusive") java.time.LocalDateTime fromInclusive,
+            @Param("toExclusive") java.time.LocalDateTime toExclusive);
 }
