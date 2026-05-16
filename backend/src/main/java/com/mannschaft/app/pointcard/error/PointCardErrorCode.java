@@ -32,11 +32,14 @@ import lombok.RequiredArgsConstructor;
  *   017 INSUFFICIENT_BALANCE     400
  *   018 BALANCE_LIMIT_EXCEEDED   409
  *   019 TOKEN_NOT_FOUND          404
+ *   020 REFUND_EXCEEDS_ORIGINAL 409
  * </pre>
  *
  * <p>番号 010 / 011 は 2B（プロバイダー CRUD）用に予約。
  * <p>番号 015〜018 は Phase 3（残高型）用。
  * <p>番号 019 は Phase 3 第二陣 2A（QR 自動特定 = 顧客側一時トークン）用。
+ * <p>番号 019 は Phase 3 第二陣 2A（一時トークン API）用に予約。
+ * <p>番号 020 は Phase 3 第二陣 2B（残高型 REFUND 上限超過）用。
  */
 @Getter
 @RequiredArgsConstructor
@@ -187,7 +190,17 @@ public enum PointCardErrorCode implements ErrorCode {
      * 不存在 / 期限切れ / 使用済の区別はクライアントに開示しない（情報漏洩防止）。
      */
     TOKEN_NOT_FOUND("POINT_CARD_019",
-            "一時トークンが見つからないか、期限切れまたは使用済みです", Severity.WARN);
+            "一時トークンが見つからないか、期限切れまたは使用済みです", Severity.WARN),
+
+    /**
+     * REFUND（返金）金額が元 SPENT イベントの利用額を超えている。HTTP 409。
+     *
+     * <p>多重返金や水増し返金を防ぐため、{@code refund_of_event_id} で示される元 event の
+     * {@code |delta|} を上限として、既存返金累計 + 今回返金額がそれを超える場合に投擲する。
+     * Phase 3 第二陣 2B で導入。
+     */
+    REFUND_EXCEEDS_ORIGINAL("POINT_CARD_020",
+            "返金額が元の利用額を超えています", Severity.WARN);
 
     private final String code;
     private final String message;
