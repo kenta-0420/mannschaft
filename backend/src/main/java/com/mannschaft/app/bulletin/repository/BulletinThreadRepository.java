@@ -146,4 +146,45 @@ public interface BulletinThreadRepository extends JpaRepository<BulletinThreadEn
             """)
     List<BulletinThreadEntity> findLatestByVillageId(
             @Param("villageId") UUID villageId, Pageable pageable);
+
+    // ====================================================================
+    // F17.1 Phase 3-β — 村史月次集計（村ドメインから read-only 呼出）
+    // TODO: 将来は VillagePostCreatedEvent によるカウンタ非同期更新へ分離予定。
+    // ====================================================================
+
+    /**
+     * 村スコープのスレッド件数を期間で集計する。
+     *
+     * @param villageId 村 ID
+     * @param fromInclusive 期間開始（含む）
+     * @param toExclusive   期間終了（含まない）
+     */
+    @Query("""
+            SELECT COUNT(t) FROM BulletinThreadEntity t
+            WHERE t.scopeVillageId = :villageId
+              AND t.deletedAt IS NULL
+              AND t.createdAt >= :fromInclusive
+              AND t.createdAt <  :toExclusive
+            """)
+    long countByVillageIdAndCreatedAtBetween(
+            @Param("villageId") UUID villageId,
+            @Param("fromInclusive") java.time.LocalDateTime fromInclusive,
+            @Param("toExclusive") java.time.LocalDateTime toExclusive);
+
+    /**
+     * 村スコープのスレッド title を期間内で全件返す（村史 TOP3 トピック抽出用）。
+     *
+     * <p>件数は通常月数百件程度を想定。万一爆発した場合は将来集計テーブル化する。</p>
+     */
+    @Query("""
+            SELECT t.title FROM BulletinThreadEntity t
+            WHERE t.scopeVillageId = :villageId
+              AND t.deletedAt IS NULL
+              AND t.createdAt >= :fromInclusive
+              AND t.createdAt <  :toExclusive
+            """)
+    List<String> findTitlesByVillageIdAndCreatedAtBetween(
+            @Param("villageId") UUID villageId,
+            @Param("fromInclusive") java.time.LocalDateTime fromInclusive,
+            @Param("toExclusive") java.time.LocalDateTime toExclusive);
 }

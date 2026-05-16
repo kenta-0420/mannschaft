@@ -401,6 +401,17 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_072", HttpStatus.NOT_FOUND),            // CANDIDATE_DATE_NOT_FOUND
             Map.entry("VILLAGE_073", HttpStatus.CONFLICT),             // VOTE_DUPLICATE
             Map.entry("VILLAGE_074", HttpStatus.FORBIDDEN),            // MEETUP_NOT_MEMBER
+            // F17 Phase 3-β-E — 村ニュースレター（VILLAGE_078〜080）
+            Map.entry("VILLAGE_078", HttpStatus.NOT_FOUND),            // NEWSLETTER_NOT_FOUND
+            Map.entry("VILLAGE_079", HttpStatus.CONFLICT),             // NEWSLETTER_ALREADY_OPTED_OUT
+            Map.entry("VILLAGE_080", HttpStatus.CONFLICT),             // NEWSLETTER_NOT_OPTED_OUT
+
+            // F17 Phase 3-β — 村史（VILLAGE_075）
+            Map.entry("VILLAGE_075", HttpStatus.NOT_FOUND),            // CHRONICLE_NOT_FOUND
+            // F17 Phase 3-β — ご縁スコア（VILLAGE_076）
+            Map.entry("VILLAGE_076", HttpStatus.NOT_FOUND),            // SERENDIPITY_NOT_FOUND
+            // F17 Phase 3-β — 巡礼（VILLAGE_077）
+            Map.entry("VILLAGE_077", HttpStatus.NOT_FOUND),            // PILGRIMAGE_NOT_FOUND
 
             // F18 個人ポイントカードウォレット（設計書 §6.3 整合）
             Map.entry("POINT_CARD_001", HttpStatus.FORBIDDEN),         // WALLET_NOT_ENABLED

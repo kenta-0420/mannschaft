@@ -59,4 +59,49 @@ public interface VillageMembershipRepository extends JpaRepository<VillageMember
               AND m.bannedAt IS NULL
             """)
     List<Long> findActiveUserSubjectIdsByVillageId(@Param("villageId") UUID villageId);
+
+    // ====================================================================
+    // F17.1 Phase 3-β — 村史月次集計
+    // ====================================================================
+
+    /**
+     * 村の新規参加メンバー件数を期間で集計する（村史バッチ用）。
+     */
+    @Query("""
+            SELECT COUNT(m) FROM VillageMembershipEntity m
+            WHERE m.villageId = :villageId
+              AND m.joinedAt >= :fromInclusive
+              AND m.joinedAt <  :toExclusive
+            """)
+    long countByVillageIdAndJoinedAtBetween(
+            @Param("villageId") UUID villageId,
+            @Param("fromInclusive") java.time.LocalDateTime fromInclusive,
+            @Param("toExclusive") java.time.LocalDateTime toExclusive);
+
+    // ====================================================================
+    // F17.1 Phase 3-β — 巡礼バッチ
+    // ====================================================================
+
+    /**
+     * 全村横断で「現役の USER メンバーシップ」の subject_id 重複なし集合を返す（巡礼バッチ用）。
+     */
+    @Query("""
+            SELECT DISTINCT m.subjectId FROM VillageMembershipEntity m
+            WHERE m.subjectType = com.mannschaft.app.village.entity.enums.VillageSubjectType.USER
+              AND m.leftAt IS NULL
+              AND m.bannedAt IS NULL
+            """)
+    List<Long> findDistinctActiveUserSubjectIds();
+
+    /**
+     * 指定ユーザーが現役所属している村のメンバーシップ取得（巡礼バッチ用）。
+     */
+    @Query("""
+            SELECT m FROM VillageMembershipEntity m
+            WHERE m.subjectType = com.mannschaft.app.village.entity.enums.VillageSubjectType.USER
+              AND m.subjectId = :userId
+              AND m.leftAt IS NULL
+              AND m.bannedAt IS NULL
+            """)
+    List<VillageMembershipEntity> findActiveUserMemberships(@Param("userId") Long userId);
 }
