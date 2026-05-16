@@ -187,6 +187,123 @@
       "biometric_failed": "認証に失敗しました",
       "no_cards": "このグループにカードがありません",
       "load_failed": "グループの読み込みに失敗しました"
+    },
+    "admin": {
+      "page_title": "ポイントカード管理",
+      "tabs": {
+        "providers": "プロバイダー",
+        "history": "押印履歴",
+        "stamp": "押印画面"
+      },
+      "cards": {
+        "providers_desc": "自店発行のスタンプカードを追加・編集・停止できます。",
+        "history_desc": "誰がいつ何枚スタンプを押したかの証拠ログを参照できます。",
+        "stamp_desc": "顧客のカード ID を入力してその場でスタンプを押印します。",
+        "stamp_cta": "押印画面を開く"
+      },
+      "actions": {
+        "save": "保存",
+        "saving": "保存中…",
+        "cancel": "キャンセル",
+        "back": "戻る",
+        "edit": "編集",
+        "close": "閉じる",
+        "copy": "コピー",
+        "copied": "コピー済",
+        "processing": "処理中…",
+        "prev": "前へ",
+        "next": "次へ"
+      },
+      "providers": {
+        "title": "プロバイダー一覧（稼働中）",
+        "new": "新規プロバイダー発行",
+        "edit": "プロバイダー編集",
+        "active": "稼働中",
+        "inactive": "停止中",
+        "loading": "読み込み中…",
+        "qr_loading": "QR を生成中…",
+        "empty": "まだプロバイダーがありません。「新規プロバイダー発行」から作成してください。",
+        "display_name": "カード名",
+        "display_name_placeholder": "例: サロン○○ ポイント",
+        "brand_color": "ブランドカラー",
+        "logo_url": "ロゴURL",
+        "card_number_regex": "カード番号バリデーション正規表現（任意）",
+        "card_number_regex_hint": "例: ^[0-9]{10,16}$ — 顧客のカード追加時にこの形式でチェックされます。",
+        "card_number_length_hint": "カード番号桁数ヒント（任意）",
+        "card_number_length_hint_placeholder": "16 桁の数字",
+        "type": "種別",
+        "show_customer_qr": "顧客向けQRを表示",
+        "deactivate": "このプロバイダーを停止",
+        "deactivate_title": "プロバイダーを停止しますか？",
+        "deactivate_confirm": "停止すると顧客は新規追加できなくなります。既存顧客のカードはそのまま残ります。この操作は復活できません。",
+        "limit_exceeded": "プロバイダー作成上限（20 個）に達しています。既存の不要なプロバイダーを停止してから再試行してください。",
+        "validation": {
+          "display_name_required": "カード名を入力してください",
+          "display_name_max": "カード名は 100 文字以内で入力してください",
+          "brand_color_format": "ブランドカラーは #RRGGBB 形式で指定してください",
+          "logo_url_max": "ロゴURL は 500 文字以内で入力してください",
+          "regex_max": "正規表現は 200 文字以内で入力してください",
+          "hint_max": "桁数ヒントは 50 文字以内で入力してください"
+        }
+      },
+      "stamp": {
+        "title": "スタンプ押印",
+        "select_provider": "プロバイダーを選択",
+        "card_id_input": "カードID（UUID）",
+        "card_id_hint": "顧客のカード詳細画面 URL（/wallet/cards/[id]）から取得してください。",
+        "card_id_invalid": "UUID 形式で入力してください（例: 00000000-0000-0000-0000-000000000000）",
+        "scanner_unavailable_title": "QR / バーコードスキャナで読み取りたい場合",
+        "scanner_unavailable_body": "Phase 2 では QR から直接カード ID を特定する機能は未実装です。Phase 3 で対応予定。それまではカード ID を直接入力してください。",
+        "delta_label": "押印数",
+        "delta_plus_one": "+1 押印",
+        "memo": "メモ（任意）",
+        "memo_placeholder": "誤押印取消・特典付与など",
+        "press": "押印する",
+        "pressing": "押印中…",
+        "press_success": "{count} スタンプを押印しました",
+        "recent": "直近の押印（このプロバイダー）",
+        "view_all": "すべての履歴を見る",
+        "phase3_note_title": "Phase 2 MVP 注意",
+        "phase3_note": "現在はカード ID 直接入力のみ対応しています。Phase 3 で QR スキャンによる自動特定を実装予定です。",
+        "error_card_not_found": "指定されたカードは存在しません",
+        "error_not_owned": "このプロバイダーは指定された組織のものではありません",
+        "error_invalid_provider": "このカードには自店プロバイダーが紐付いていません",
+        "error_invalid_provider_type": "スタンプ押印は SELF_ISSUED_STAMP プロバイダーでのみ可能です",
+        "error_delta_zero": "delta は 0 にできません",
+        "error_rate_limit": "アクセス頻度が高すぎます。しばらく待ってから再試行してください"
+      },
+      "history": {
+        "title": "押印履歴（証拠ログ）",
+        "filter_provider": "プロバイダーで絞り込み",
+        "all_providers": "すべてのプロバイダー",
+        "total_count": "全 {count} 件",
+        "page_indicator": "{current} / {total}",
+        "col_pressed_at": "日時",
+        "col_provider": "プロバイダー",
+        "col_staff": "押印者",
+        "col_delta": "+/-",
+        "col_memo": "メモ",
+        "col_card_id": "カードID",
+        "copy_card_id": "カードIDをコピー",
+        "empty": "押印履歴がまだありません。",
+        "loading": "読み込み中…"
+      },
+      "customer_qr": {
+        "title": "顧客向け QR コード",
+        "instruction": "この QR を店内に掲示してください。顧客がアプリで読み取るとカードが自動追加されます。",
+        "deep_link": "アプリディープリンク",
+        "web_link": "Web URL",
+        "download": "SVG をダウンロード",
+        "loading": "読み込み中…",
+        "render_failed": "QR コードの描画に失敗しました"
+      },
+      "errors": {
+        "access_denied_title": "このページにはアクセスできません",
+        "access_denied_body": "組織の管理者（ADMIN）または副管理者（DEPUTY_ADMIN）のみがアクセスできます。",
+        "access_denied_admin_only": "この操作は組織の管理者（ADMIN）のみが行えます。",
+        "load_failed": "情報の読み込みに失敗しました",
+        "save_failed": "保存に失敗しました"
+      }
     }
   }
 }
