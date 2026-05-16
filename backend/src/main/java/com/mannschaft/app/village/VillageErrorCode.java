@@ -205,7 +205,6 @@ public enum VillageErrorCode implements ErrorCode {
             "検索キーワードは2文字以上を指定してください", Severity.WARN),
 
     // ==================================================================
-<<<<<<< HEAD
     // F17 Phase 2 U3 — 村代表委任（VILLAGE_052〜055）
     // ==================================================================
 
@@ -255,7 +254,30 @@ public enum VillageErrorCode implements ErrorCode {
     FESTIVAL_INVALID_COLOR("VILLAGE_061", "テーマ色は #RRGGBB 形式で指定してください", Severity.WARN),
 
     /** VILLAGE_062: 終了済み / 中止済みのお祭りを更新しようとした（409）。 */
-    FESTIVAL_ALREADY_ENDED("VILLAGE_062", "このお祭りは既に終了または中止されています", Severity.WARN);
+    FESTIVAL_ALREADY_ENDED("VILLAGE_062", "このお祭りは既に終了または中止されています", Severity.WARN),
+
+    // ==================================================================
+    // F17 Phase 2 U6 — 練習試合・審判募集（VILLAGE_063〜068）
+    // ==================================================================
+
+    /** VILLAGE_063: 練習試合募集レコードが存在しない（404、IDOR 対策で統一） */
+    MATCH_RECRUIT_NOT_FOUND("VILLAGE_063", "練習試合の募集が見つかりません", Severity.WARN),
+
+    /** VILLAGE_064: OPEN 以外の募集に応募しようとした（409） */
+    MATCH_RECRUIT_NOT_OPEN("VILLAGE_064", "この募集は現在受付中ではありません", Severity.WARN),
+
+    /** VILLAGE_065: 試合時刻が不正（match_time_end < match_time_start）（422） */
+    MATCH_RECRUIT_TIME_INVALID("VILLAGE_065", "試合時刻の指定が不正です（開始時刻が終了時刻より後）", Severity.WARN),
+
+    /** VILLAGE_066: 応募レコードが存在しない（404、IDOR 対策で統一） */
+    MATCH_APPLICATION_NOT_FOUND("VILLAGE_066", "応募が見つかりません", Severity.WARN),
+
+    /** VILLAGE_067: 同一ユーザーで PENDING 応募が既に存在する（409） */
+    MATCH_APPLICATION_DUPLICATE("VILLAGE_067", "既に審査待ちの応募があります", Severity.WARN),
+
+    /** VILLAGE_068: 応募レビュー時の status 値が ACCEPTED/REJECTED でない（422） */
+    MATCH_APPLICATION_INVALID_STATUS("VILLAGE_068",
+            "応募の審査結果は ACCEPTED または REJECTED を指定してください", Severity.WARN);
 
     private final String code;
     private final String message;
