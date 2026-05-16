@@ -287,8 +287,10 @@ openApi {
     // projectDir は backend/ ディレクトリを指すため、親（リポジトリルート）の docs/ を指定する
     outputDir.set(file("${projectDir.parentFile}/docs"))
     outputFileName.set("openapi.json")
-    // フォーク先 Spring Boot が完全起動するまで待機する秒数（ddl-auto:none で高速起動するが余裕を持つ）
-    waitTimeInSeconds.set(120)
+    // フォーク先 Spring Boot が完全起動するまで待機する秒数
+    // ddl-auto:create-drop + 全 Entity 構築で 5 分前後かかるため、余裕を持って 300 秒に設定
+    // （CI 運用は廃止しローカル生成のみのため、長めの待機で問題ない）
+    waitTimeInSeconds.set(300)
     customBootRun {
         // args.add は springdoc-openapi-gradle-plugin では機能しないため jvmArgs で -D オプションを使用する
         jvmArgs.add("-Dspring.profiles.active=openapi-gen")

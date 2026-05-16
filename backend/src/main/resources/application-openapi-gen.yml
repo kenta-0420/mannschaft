@@ -16,13 +16,13 @@ spring:
     username: sa
     password:
 
-  # JPA: スキーマ生成・検証を無効化（OpenAPI 生成には DB テーブルが不要なため）
-  # create-drop を使うと Hibernate が全 Entity の CREATE TABLE を H2 で実行しようとして
-  # MySQL 固有の column type（MEDIUMTEXT 等）でエラーになる可能性がある。
-  # none にすれば EntityManagerFactory の初期化が最小限に抑えられ起動が高速化する。
+  # JPA: H2 上で DDL を自動生成し、Entity メタデータを完全構築する。
+  # 注意: ddl-auto: none に変更すると、@PostConstruct で DB クエリを行う Bean
+  # （ReferenceTypeIntegrityCheck 等）が初期化失敗し、それに依存する Controller
+  # （F17.1 村機能等）が openapi.json から欠落するため、create-drop を維持すること。
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: create-drop
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
