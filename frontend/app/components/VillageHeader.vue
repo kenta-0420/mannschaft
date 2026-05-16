@@ -40,6 +40,8 @@ const props = defineProps<{
     | 'calendar'
     | 'festival'
     | 'matchRecruit'
+    | 'meetup'
+    | 'chronicle'
 }>()
 
 const emit = defineEmits<{
@@ -125,6 +127,8 @@ interface TabDef {
     | 'calendar'
     | 'festival'
     | 'matchRecruit'
+    | 'meetup'
+    | 'chronicle'
   to: string
   icon: string
   i18nKey: string
@@ -175,6 +179,20 @@ const tabs = computed<TabDef[]>(() => [
     to: `/villages/${props.village.id}/match-recruits`,
     icon: 'pi pi-flag',
     i18nKey: 'village.tab.matchRecruit',
+  },
+  // Phase 3: 寄合
+  {
+    key: 'meetup',
+    to: `/villages/${props.village.id}/meetups`,
+    icon: 'pi pi-calendar-plus',
+    i18nKey: 'village.tab.meetup',
+  },
+  // Phase 3: 村史
+  {
+    key: 'chronicle',
+    to: `/villages/${props.village.id}/chronicles`,
+    icon: 'pi pi-book',
+    i18nKey: 'village.tab.chronicle',
   },
 ])
 
