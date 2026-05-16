@@ -5,13 +5,12 @@ import { toTypedSchema } from '@vee-validate/zod'
 import type { IncomingWebhook } from '~/types/webhook'
 
 const props = defineProps<{
-  orgId: number
+  scopeType: 'ORGANIZATION' | 'TEAM'
+  scopeId: number
 }>()
 
 const webhookApi = useWebhookApi()
 const { success, error: showError } = useNotification()
-
-const SCOPE_TYPE = 'ORGANIZATION'
 
 // ===== 受信Webhook =====
 const incomingWebhooks = ref<IncomingWebhook[]>([])
@@ -46,7 +45,7 @@ const incomingSaving = ref(false)
 async function loadIncomingWebhooks() {
   incomingLoading.value = true
   try {
-    const res = await webhookApi.getIncomingWebhooks(SCOPE_TYPE, props.orgId)
+    const res = await webhookApi.getIncomingWebhooks(props.scopeType, props.scopeId)
     incomingWebhooks.value = res.data
   } catch {
     showError('受信Webhookの取得に失敗しました')
@@ -70,8 +69,8 @@ const onSaveIncoming = handleIncomingSubmit(async (values) => {
           .filter(Boolean)
       : []
     await webhookApi.createIncomingWebhook({
-      scopeType: SCOPE_TYPE,
-      scopeId: props.orgId,
+      scopeType: props.scopeType,
+      scopeId: props.scopeId,
       name: values.name,
       description: values.description,
       allowedIps,
