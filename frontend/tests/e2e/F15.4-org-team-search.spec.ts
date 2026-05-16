@@ -276,7 +276,9 @@ test('F15.4-3: 都道府県のみ指定で検索が成功し、クエリパラ�
   const initialCount = searchCallCount
 
   // 都道府県プルダウンで「東京都」を選択
-  await page.getByLabel('都道府県').click()
+  // PrimeVue Select は <label> と combobox が aria 関連付けされていないため、
+  // 名前付き combobox の role 指定で探索する。
+  await page.getByRole('combobox', { name: /都道府県/i }).click()
   await page.getByRole('option', { name: '東京都', exact: true }).click()
 
   // 再検索（onFilterChange）で API が呼ばれる
@@ -306,8 +308,9 @@ test('F15.4-4: 存在しない orgId にアクセスすると 404 エラーメ�
 
   // 設計書 §5.1: 404 時は OrganizationNotFoundError をスローし、
   // 「指定された組織が見つかりませんでした」メッセージを表示する。
+  // ページ本文の <p> と toast の <span> 両方に同テキストが出るため first() で一意化。
   await expect(
-    page.getByText('指定された組織が見つかりませんでした'),
+    page.getByText('指定された組織が見つかりませんでした').first(),
   ).toBeVisible()
 
   // 再試行ボタンも表示される
@@ -331,8 +334,9 @@ test('F15.4-5: 未ログインで PRIVATE 組織にアクセスするとバッ�
 
   await page.goto(`/organizations/${PRIVATE_ORG_ID}/teams/search`)
 
+  // 本文と toast の二重マッチを first() で一意化
   await expect(
-    page.getByText('指定された組織が見つかりませんでした'),
+    page.getByText('指定された組織が見つかりませんでした').first(),
   ).toBeVisible()
 })
 
@@ -425,6 +429,9 @@ async function mockOrgTopApis(page: Page): Promise<void> {
 test('F15.4-6: 組織トップ「所属チーム」タブで「店舗を検索」ボタンが見え、クリックすると検索ページへ遷移する', async ({
   page,
 }) => {
+  // 組織トップ /organizations/{id} は auth middleware で認証必須のため
+  // ログインメンバーとして localStorage に認証情報を注入する
+  await loginAsMember(page)
   // 組織トップで必要となる API 一式を先にモック
   await mockOrgTopApis(page)
   // 既存ヘルパで /organizations/{id} と検索 API もモック（PUBLIC 組織）

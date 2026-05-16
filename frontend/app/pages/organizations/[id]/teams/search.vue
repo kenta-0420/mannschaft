@@ -316,6 +316,7 @@ onMounted(async () => {
             option-label="name"
             option-value="code"
             class="w-full"
+            :aria-label="$t('organizationTeamSearch.prefectureLabel')"
             @update:model-value="onFilterChange"
           />
         </div>
@@ -332,6 +333,7 @@ onMounted(async () => {
             option-value="code"
             :disabled="!prefectureCode"
             class="w-full"
+            :aria-label="$t('organizationTeamSearch.cityLabel')"
             @update:model-value="onFilterChange"
           />
         </div>
@@ -347,6 +349,7 @@ onMounted(async () => {
             option-label="label"
             option-value="value"
             class="w-full"
+            :aria-label="$t('organizationTeamSearch.templateLabel')"
             @update:model-value="onFilterChange"
           />
         </div>
