@@ -299,7 +299,23 @@ public enum VillageErrorCode implements ErrorCode {
     VOTE_DUPLICATE("VILLAGE_073", "この候補日は既に登録されています", Severity.WARN),
 
     /** VILLAGE_074: 寄合の操作には村人であることが必要（403）。 */
-    MEETUP_NOT_MEMBER("VILLAGE_074", "寄合の操作には村人である必要があります", Severity.WARN);
+    MEETUP_NOT_MEMBER("VILLAGE_074", "寄合の操作には村人である必要があります", Severity.WARN),
+
+    // ==================================================================
+    // F17 Phase 3-β-E — 村ニュースレター（VILLAGE_078〜080）
+    // ==================================================================
+
+    /** VILLAGE_078: ニュースレター設定が存在しない（404、IDOR 対策で統一）。 */
+    NEWSLETTER_NOT_FOUND("VILLAGE_078",
+            "ニュースレター設定が見つかりません", Severity.WARN),
+
+    /** VILLAGE_079: 既に opt-out 済み（409、二重 opt-out 拒否）。 */
+    NEWSLETTER_ALREADY_OPTED_OUT("VILLAGE_079",
+            "このニュースレターは既に配信停止済みです", Severity.WARN),
+
+    /** VILLAGE_080: opt-out していないのに opt-in しようとした（409、対称性）。 */
+    NEWSLETTER_NOT_OPTED_OUT("VILLAGE_080",
+            "このニュースレターは配信停止されていません", Severity.WARN);
 
     private final String code;
     private final String message;
