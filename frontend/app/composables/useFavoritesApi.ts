@@ -1,6 +1,7 @@
 import { computed, readonly, ref } from 'vue'
 import type {
   AddFavoriteRequest,
+  FavoriteCheckResponse,
   FavoriteEntityType,
   ReorderFavoritesRequest,
   UserFavoriteItem,
@@ -145,6 +146,22 @@ export function useFavoritesApi() {
     return mapBackendToFrontend(res.data)
   }
 
+  /**
+   * 指定エンティティが当該ユーザーのお気に入りに登録されているか確認する。
+   * <p>FavoriteToggleButton マウント時に呼び出され、ボタンの初期表示状態
+   * （☆ / ★）を決定するために用いる。レート制限は 240 req/分。</p>
+   */
+  async function check(
+    entityType: FavoriteEntityType,
+    entityId: string,
+  ): Promise<FavoriteCheckResponse> {
+    const response = await api<ApiResponseWrapper<FavoriteCheckResponse>>(
+      `/api/v1/me/favorites/check?entityType=${entityType}&entityId=${encodeURIComponent(entityId)}`,
+      { method: 'GET' },
+    )
+    return response.data
+  }
+
   return {
     items: readonly(items),
     totalCount,
@@ -155,5 +172,6 @@ export function useFavoritesApi() {
     removeFavorite,
     reorderFavorites,
     getFavoriteById,
+    check,
   }
 }
