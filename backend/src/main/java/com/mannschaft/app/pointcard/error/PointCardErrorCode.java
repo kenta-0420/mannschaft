@@ -200,7 +200,18 @@ public enum PointCardErrorCode implements ErrorCode {
      * Phase 3 第二陣 2B で導入。
      */
     REFUND_EXCEEDS_ORIGINAL("POINT_CARD_020",
-            "返金額が元の利用額を超えています", Severity.WARN);
+            "返金額が元の利用額を超えています", Severity.WARN),
+
+    /**
+     * 同義語の正規化済キーが既に登録されている。HTTP 409。
+     *
+     * <p>{@code point_card_provider_synonyms.synonym_normalized} は UNIQUE 制約があり
+     * DB 層でも検出可能だが、運営マスタ管理 UI からの操作では事前に明確な
+     * エラーメッセージを返すためアプリ層でも重複チェックする。
+     * Phase 4 第三陣 S3 で導入。
+     */
+    SYNONYM_DUPLICATE("POINT_CARD_021",
+            "この同義語は既に登録されています", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -391,6 +391,37 @@
     "stamp_display": {
       "label": "Stamps",
       "count": "{count}"
+    },
+    "synonym_admin": {
+      "page_title": "Provider Synonym Management",
+      "add": "Add",
+      "provider_filter": "Filter by provider",
+      "all_providers": "All",
+      "col_provider": "Provider",
+      "col_synonym": "Synonym",
+      "col_normalized": "Normalized",
+      "col_memo": "Memo",
+      "col_created": "Created",
+      "modal_title_add": "Add Synonym",
+      "modal_title_edit": "Edit Synonym",
+      "label_provider": "Provider",
+      "label_synonym": "Synonym (display)",
+      "label_synonym_placeholder": "e.g. Docomo Points / MatsuKiyo",
+      "label_synonym_hint": "Aliases, abbreviations, or colloquial names users may enter",
+      "label_memo": "Memo (optional)",
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "delete_confirm": "Delete this synonym?",
+      "empty": "No synonyms registered.",
+      "saved": "Saved",
+      "deleted": "Deleted",
+      "error_load": "Failed to load synonyms",
+      "error_load_providers": "Failed to load providers",
+      "error_save": "Failed to save",
+      "error_delete": "Failed to delete",
+      "error_duplicate": "This synonym is already registered (duplicate after normalization)",
+      "error_provider_not_found": "Provider not found"
     }
   }
 }
