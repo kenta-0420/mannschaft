@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import BarcodePreview from '~/components/wallet/BarcodePreview.vue'
+import ShareTokenQrModal from '~/components/wallet/ShareTokenQrModal.vue'
 import type { UpdateUserPointCardRequest, UserPointCardDetail } from '~/types/pointCard'
 
 /**
@@ -45,6 +46,7 @@ const deleting = ref(false)
 const recordingUsed = ref(false)
 const usedToast = ref(false)
 const cardIdCopiedToast = ref(false)
+const showShareQrModal = ref(false)
 
 // 編集用ドラフト（編集モード突入時にコピー、保存成功時にカードへ反映）
 const draft = reactive({
@@ -63,6 +65,37 @@ const lastUsedDisplay = computed(() => {
   if (!card.value?.lastUsedAt) return '—'
   const d = new Date(card.value.lastUsedAt)
   return d.toLocaleString()
+})
+
+/**
+ * 自店発行カード（SELF_ISSUED_BALANCE / SELF_ISSUED_STAMP）の場合のみ
+ * 「店舗で提示」ボタンと残高/スタンプ数セクションを表示する。
+ * EXTERNAL カードは店舗で押印できないため非表示。
+ */
+const isSelfIssued = computed(() => {
+  const t = card.value?.providerType
+  return t === 'SELF_ISSUED_BALANCE' || t === 'SELF_ISSUED_STAMP'
+})
+
+const isBalanceType = computed(() => card.value?.providerType === 'SELF_ISSUED_BALANCE')
+const isStampType = computed(() => card.value?.providerType === 'SELF_ISSUED_STAMP')
+
+/** 残高表示（JPY フォーマット）。MVP は JPY 固定。 */
+const balanceFormatted = computed(() => {
+  if (!isBalanceType.value) return ''
+  const v = card.value?.balance
+  if (v === null || v === undefined) return ''
+  return new Intl.NumberFormat('ja-JP', {
+    style: 'currency',
+    currency: 'JPY',
+    maximumFractionDigits: 0,
+  }).format(v)
+})
+
+const stampCountValue = computed(() => {
+  if (!isStampType.value) return null
+  const v = card.value?.stampCount
+  return v === null || v === undefined ? null : v
 })
 
 // ─────────────────────────────────────────────
@@ -251,11 +284,31 @@ onMounted(load)
         />
       </section>
 
+      <!-- 残高 / スタンプ数表示（自店発行カードのみ） -->
+      <section v-if="!editMode && isBalanceType && balanceFormatted" class="card-detail__balance">
+        <div class="card-detail__balance-label">{{ t('wallet.balance_display.label') }}</div>
+        <div class="card-detail__balance-value">{{ balanceFormatted }}</div>
+        <p class="card-detail__balance-hint">{{ t('wallet.balance_display.history_hint') }}</p>
+      </section>
+      <section v-else-if="!editMode && isStampType && stampCountValue !== null" class="card-detail__balance">
+        <div class="card-detail__balance-label">{{ t('wallet.stamp_display.label') }}</div>
+        <div class="card-detail__balance-value">{{ t('wallet.stamp_display.count', { count: stampCountValue }) }}</div>
+      </section>
+
       <!-- 使用済み記録ボタン（編集モード以外で表示） -->
       <section v-if="!editMode" class="card-detail__actions">
         <button
+          v-if="isSelfIssued"
           type="button"
           class="card-detail__btn card-detail__btn--primary"
+          @click="showShareQrModal = true"
+        >
+          {{ t('wallet.share.open_button') }}
+        </button>
+        <button
+          type="button"
+          class="card-detail__btn"
+          :class="{ 'card-detail__btn--primary': !isSelfIssued }"
           :disabled="recordingUsed"
           @click="recordUsed"
         >
@@ -439,6 +492,13 @@ onMounted(load)
       {{ t('wallet.card_id_copied') }}
     </div>
 
+    <!-- 店舗で提示 QR モーダル -->
+    <ShareTokenQrModal
+      :card-id="cardId"
+      :show="showShareQrModal"
+      @close="showShareQrModal = false"
+    />
+
     <!-- 削除確認モーダル -->
     <div
       v-if="showDeleteConfirm"
@@ -532,6 +592,35 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+.card-detail__balance {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 1rem;
+  background: var(--p-primary-50, #eff6ff);
+  border: 1px solid var(--p-primary-200, #bfdbfe);
+  border-radius: 0.75rem;
+}
+.card-detail__balance-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--p-text-muted-color, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.card-detail__balance-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--p-primary-color, #3b82f6);
+  font-variant-numeric: tabular-nums;
+}
+.card-detail__balance-hint {
+  font-size: 0.75rem;
+  color: var(--p-text-muted-color, #6b7280);
+  margin: 0.25rem 0 0;
+  text-align: center;
 }
 .card-detail__btn {
   padding: 0.75rem 1rem;

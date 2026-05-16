@@ -88,12 +88,27 @@ export interface UserPointCardListItem {
   providerDisplayName: string | null
   providerBrandColor: string | null
   providerLogoUrl: string | null
+  /**
+   * プロバイダー種別。SELF_ISSUED_BALANCE / SELF_ISSUED_STAMP / EXTERNAL のいずれか。
+   * Phase 3 で API レスポンスに追加予定（未追加の間は undefined）。
+   */
+  providerType?: PointCardProviderType | null
   displayName: string
   last4: string | null
   barcodeFormat: BarcodeFormat
   favorite: boolean
   displayOrder: number
   lastUsedAt: string | null
+  /**
+   * 残高（SELF_ISSUED_BALANCE のみ、円単位の整数）。
+   * EXTERNAL / SELF_ISSUED_STAMP / 未対応バックエンドでは null または undefined。
+   */
+  balance?: number | null
+  /**
+   * スタンプ累計数（SELF_ISSUED_STAMP のみ）。
+   * EXTERNAL / SELF_ISSUED_BALANCE / 未対応バックエンドでは null または undefined。
+   */
+  stampCount?: number | null
   createdAt: string
 }
 
@@ -109,6 +124,11 @@ export interface UserPointCardDetail {
   providerDisplayName: string | null
   providerBrandColor: string | null
   providerLogoUrl: string | null
+  /**
+   * プロバイダー種別。SELF_ISSUED_BALANCE / SELF_ISSUED_STAMP / EXTERNAL のいずれか。
+   * Phase 3 で API レスポンスに追加予定（未追加の間は undefined）。
+   */
+  providerType?: PointCardProviderType | null
   providerMatched: boolean
   displayName: string
   nickname: string | null
@@ -119,8 +139,41 @@ export interface UserPointCardDetail {
   favorite: boolean
   displayOrder: number
   lastUsedAt: string | null
+  /**
+   * 残高（SELF_ISSUED_BALANCE のみ、円単位の整数）。
+   * EXTERNAL / SELF_ISSUED_STAMP / 未対応バックエンドでは null または undefined。
+   */
+  balance?: number | null
+  /**
+   * スタンプ累計数（SELF_ISSUED_STAMP のみ）。
+   * EXTERNAL / SELF_ISSUED_BALANCE / 未対応バックエンドでは null または undefined。
+   */
+  stampCount?: number | null
   createdAt: string
   updatedAt: string
+}
+
+// =====================================================================
+// Share Token（顧客側 → 店主側に渡す一時 UUID）
+// =====================================================================
+
+/**
+ * `POST /api/v1/point-cards/{cardId}/share-tokens` のレスポンス DTO。
+ *
+ * <p>顧客が店舗で提示する際に発行する 5 分 TTL の一時トークン。
+ * フロントは {@code deepLinkUrl} を QR コードに描画して画面表示し、
+ * 店主側端末が読み取って {@code resolve-by-token} 経由でカード ID を解決する。
+ *
+ * <ul>
+ *   <li>{@code token}: UUID 文字列</li>
+ *   <li>{@code expiresAt}: ISO 8601 形式の失効日時</li>
+ *   <li>{@code deepLinkUrl}: 例 {@code mannschaft://wallet/share?token=...}</li>
+ * </ul>
+ */
+export interface ShareTokenResponse {
+  token: string
+  expiresAt: string
+  deepLinkUrl: string
 }
 
 /**

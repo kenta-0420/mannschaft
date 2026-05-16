@@ -323,6 +323,24 @@
     },
     "copy_card_id": "Copy card ID",
     "card_id_copied": "Card ID copied",
-    "card_id_label": "Card ID"
+    "card_id_label": "Card ID",
+    "share": {
+      "title": "Show at store",
+      "instruction": "Show this QR code to the store staff. It is valid for 5 minutes.",
+      "remaining": "Remaining {time}",
+      "expired": "The QR code has expired",
+      "regenerate": "Generate new QR",
+      "open_button": "Show at store",
+      "generate_failed": "Failed to generate QR code"
+    },
+    "balance_display": {
+      "label": "Balance",
+      "currency_jpy": "¥{amount}",
+      "history_hint": "Please contact the store for balance history"
+    },
+    "stamp_display": {
+      "label": "Stamps",
+      "count": "{count}"
+    }
   }
 }

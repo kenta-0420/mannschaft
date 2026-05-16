@@ -44,11 +44,36 @@ const last4Display = computed(() => {
   return t('wallet.card.last4_format', { last4: props.card.last4 })
 })
 
+/**
+ * 残高表示（SELF_ISSUED_BALANCE のみ）。MVP は JPY 固定。
+ * バックエンドが返さない場合は null として扱い、空文字を返す。
+ */
+const balanceDisplay = computed(() => {
+  if (props.card.providerType !== 'SELF_ISSUED_BALANCE') return ''
+  if (props.card.balance === null || props.card.balance === undefined) return ''
+  return new Intl.NumberFormat('ja-JP', {
+    style: 'currency',
+    currency: 'JPY',
+    maximumFractionDigits: 0,
+  }).format(props.card.balance)
+})
+
+/**
+ * スタンプ数表示（SELF_ISSUED_STAMP のみ）。上限値は無いため累計のみ。
+ */
+const stampCountDisplay = computed(() => {
+  if (props.card.providerType !== 'SELF_ISSUED_STAMP') return ''
+  if (props.card.stampCount === null || props.card.stampCount === undefined) return ''
+  return t('wallet.stamp_display.count', { count: props.card.stampCount })
+})
+
 const ariaLabel = computed(() => {
   const provider = props.card.providerDisplayName
   const fav = props.card.favorite ? `, ${t('wallet.card.favorite')}` : ''
   const tail4 = props.card.last4 ? `, ${last4Display.value}` : ''
-  return `${provider ?? props.card.displayName}${tail4}${fav}`
+  const bal = balanceDisplay.value ? `, ${t('wallet.balance_display.label')} ${balanceDisplay.value}` : ''
+  const stamp = stampCountDisplay.value ? `, ${stampCountDisplay.value}` : ''
+  return `${provider ?? props.card.displayName}${tail4}${bal}${stamp}${fav}`
 })
 </script>
 
@@ -79,6 +104,16 @@ const ariaLabel = computed(() => {
       </div>
       <div class="card-tile__meta">
         <span v-if="card.last4" class="card-tile__last4">{{ last4Display }}</span>
+        <span
+          v-if="balanceDisplay"
+          class="card-tile__balance"
+          :aria-label="t('wallet.balance_display.label')"
+        >{{ balanceDisplay }}</span>
+        <span
+          v-else-if="stampCountDisplay"
+          class="card-tile__stamp"
+          :aria-label="t('wallet.stamp_display.label')"
+        >{{ stampCountDisplay }}</span>
         <span
           v-if="card.favorite"
           class="card-tile__favorite"
@@ -168,6 +203,12 @@ const ariaLabel = computed(() => {
   font-family: var(--font-mono, ui-monospace, monospace);
   letter-spacing: 0.05em;
   color: var(--p-text-color, #111827);
+}
+.card-tile__balance,
+.card-tile__stamp {
+  font-weight: 600;
+  color: var(--p-primary-color, #3b82f6);
+  margin-left: auto;
 }
 .card-tile__favorite {
   color: #f59e0b;
