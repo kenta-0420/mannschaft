@@ -202,7 +202,23 @@ public enum VillageErrorCode implements ErrorCode {
      * 空文字 / 最低 2 文字未満 / 不正な type を指定された場合に投げる（F17.1 §4.12）。
      */
     VILLAGE_SEARCH_INVALID_QUERY("VILLAGE_051",
-            "検索キーワードは2文字以上を指定してください", Severity.WARN);
+            "検索キーワードは2文字以上を指定してください", Severity.WARN),
+
+    // ==================================================================
+    // F17.1 Phase 2 U4 — 歳時記カレンダー（VILLAGE_056〜058）
+    // ==================================================================
+
+    /** VILLAGE_056: 歳時記イベントが見つからない（404、IDOR 対策で 404） */
+    CALENDAR_EVENT_NOT_FOUND("VILLAGE_056",
+            "歳時記イベントが見つかりません", Severity.WARN),
+
+    /** VILLAGE_057: 歳時記イベントの期間が不正（422、event_end_date < event_date） */
+    CALENDAR_EVENT_INVALID_DATE_RANGE("VILLAGE_057",
+            "終了日は開始日以降を指定してください", Severity.WARN),
+
+    /** VILLAGE_058: 歳時記イベントのカラーコード形式不正（422、#RRGGBB 以外） */
+    CALENDAR_EVENT_INVALID_COLOR("VILLAGE_058",
+            "色は #RRGGBB 形式で指定してください", Severity.WARN);
 
     private final String code;
     private final String message;
