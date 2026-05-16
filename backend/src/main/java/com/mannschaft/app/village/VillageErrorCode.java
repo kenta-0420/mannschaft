@@ -302,11 +302,18 @@ public enum VillageErrorCode implements ErrorCode {
     MEETUP_NOT_MEMBER("VILLAGE_074", "寄合の操作には村人である必要があります", Severity.WARN),
 
     // ==================================================================
-    // F17 Phase 3-β — 村史（月次ダイジェスト）（VILLAGE_075）
+    // F17 Phase 3-β — 村史（VILLAGE_075）
     // ==================================================================
 
     /** VILLAGE_075: 指定年月の村史が存在しない（404、IDOR 対策で統一）。 */
-    CHRONICLE_NOT_FOUND("VILLAGE_075", "指定された村史が見つかりません", Severity.WARN);
+    CHRONICLE_NOT_FOUND("VILLAGE_075", "指定された村史が見つかりません", Severity.WARN),
+
+    // ==================================================================
+    // F17 Phase 3-β — ご縁スコア（VILLAGE_076）
+    // ==================================================================
+
+    /** VILLAGE_076: ご縁スコアレコードが存在しない（404）。 */
+    SERENDIPITY_NOT_FOUND("VILLAGE_076", "ご縁スコアが見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;
