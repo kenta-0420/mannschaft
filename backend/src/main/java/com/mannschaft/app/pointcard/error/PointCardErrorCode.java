@@ -27,9 +27,14 @@ import lombok.RequiredArgsConstructor;
  *   012 STAMP_INVALID_PROVIDER    400
  *   013 STAMP_INVALID_PROVIDER_TYPE 400
  *   014 STAMP_DELTA_ZERO          400
+ *   015 BALANCE_INVALID_PROVIDER_TYPE 400
+ *   016 BALANCE_DELTA_ZERO       400
+ *   017 INSUFFICIENT_BALANCE     400
+ *   018 BALANCE_LIMIT_EXCEEDED   409
  * </pre>
  *
  * <p>番号 010 / 011 は 2B（プロバイダー CRUD）用に予約。
+ * <p>番号 015〜018 は Phase 3（残高型）用。
  */
 @Getter
 @RequiredArgsConstructor
@@ -141,7 +146,35 @@ public enum PointCardErrorCode implements ErrorCode {
      *
      * <p>DB CHECK 制約でも防げるがアプリ層で事前に弾く（無意味なトランザクション抑止）。
      */
-    STAMP_DELTA_ZERO("POINT_CARD_014", "delta は 0 にできません", Severity.WARN);
+    STAMP_DELTA_ZERO("POINT_CARD_014", "delta は 0 にできません", Severity.WARN),
+
+    /**
+     * 残高型操作対象のプロバイダー種別が {@code SELF_ISSUED_BALANCE} でない。HTTP 400。
+     *
+     * <p>スタンプ型（SELF_ISSUED_STAMP）や外部プロバイダー（EXTERNAL）への残高操作は不可。
+     * Phase 3 で導入。
+     */
+    BALANCE_INVALID_PROVIDER_TYPE("POINT_CARD_015",
+            "残高操作は SELF_ISSUED_BALANCE プロバイダーでのみ可能です", Severity.WARN),
+
+    /**
+     * 残高操作の delta が 0。HTTP 400。
+     *
+     * <p>DB CHECK 制約でも防げるがアプリ層で事前に弾く（無意味なトランザクション抑止）。
+     */
+    BALANCE_DELTA_ZERO("POINT_CARD_016", "delta は 0 にできません", Severity.WARN),
+
+    /**
+     * 残高不足（balance_after が負数になる SPENT 操作）。HTTP 400。
+     */
+    INSUFFICIENT_BALANCE("POINT_CARD_017",
+            "残高が不足しています", Severity.WARN),
+
+    /**
+     * 残高上限超過（累計 10,000,000 円）。HTTP 409。
+     */
+    BALANCE_LIMIT_EXCEEDED("POINT_CARD_018",
+            "残高上限（10,000,000 円）に達しています", Severity.WARN);
 
     private final String code;
     private final String message;

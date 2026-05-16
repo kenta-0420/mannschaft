@@ -178,6 +178,12 @@ public enum AuditEventType {
     POINT_CARD_PROVIDER_DEACTIVATED(AuditEventCategory.POINT_CARD),
     /** 自店スタンプを押印（顧客カードへの delta 反映）。 */
     POINT_CARD_STAMP_ISSUED(AuditEventCategory.POINT_CARD),
+    /** F18 Phase 3 — 残高型カードへの入金（CHARGE）。 */
+    POINT_CARD_BALANCE_CHARGED(AuditEventCategory.POINT_CARD),
+    /** F18 Phase 3 — 残高型カードの利用（SPENT）。 */
+    POINT_CARD_BALANCE_SPENT(AuditEventCategory.POINT_CARD),
+    /** F18 Phase 3 — 残高型カードの返金（REFUND、refund_of_event_id で元 event を参照）。 */
+    POINT_CARD_BALANCE_REFUNDED(AuditEventCategory.POINT_CARD),
 
     // ─── VILLAGE (F17 村機能 Phase 1) ───────────────────────────
     // TODO(F17 Phase 1): 各 Village Service の主要メソッドへ
