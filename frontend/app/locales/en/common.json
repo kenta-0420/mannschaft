@@ -1245,6 +1245,34 @@
     "organizationNotFound": "Organization not found",
     "rateLimitExceeded": "Too many requests. Please wait and try again."
   },
+  "favorites": {
+    "title": "Favorites",
+    "empty": "No favorites yet. Add them with the ⭐ on team or village pages",
+    "showMore": "Show {count} more",
+    "collapse": "Collapse",
+    "open": "Open",
+    "edit": "Edit",
+    "remove": "Remove",
+    "unavailable": "This item is no longer available",
+    "limitReached": "You can register up to {max} favorites",
+    "addSuccess": "Added to favorites",
+    "removeSuccess": "Removed from favorites",
+    "reorderSuccess": "Order saved",
+    "quickEditTitle": "Quick edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "loadError": "Failed to load favorites",
+    "saveError": "Failed to save",
+    "removeConfirm": "Are you sure you want to remove this?",
+    "dragHandle": "Reorder",
+    "entityType": {
+      "TEAM": "Team",
+      "ORGANIZATION": "Organization",
+      "KB_PAGE": "KB",
+      "BLOG_AUTHOR": "Author",
+      "VILLAGE": "Village"
+    }
+  },
   "succession": {
     "legalFilings": {
       "title": "法的手続き準備",

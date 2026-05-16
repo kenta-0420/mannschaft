@@ -1245,6 +1245,34 @@
     "organizationNotFound": "指定された組織が見つかりませんでした",
     "rateLimitExceeded": "リクエストが多すぎます。少し待ってから再試行してください"
   },
+  "favorites": {
+    "title": "收藏",
+    "empty": "尚未添加收藏。可在团队或村页面通过 ⭐ 添加",
+    "showMore": "再显示 {count} 项",
+    "collapse": "收起",
+    "open": "打开",
+    "edit": "编辑",
+    "remove": "删除",
+    "unavailable": "此项目已不可用",
+    "limitReached": "最多可注册 {max} 个收藏",
+    "addSuccess": "已添加到收藏",
+    "removeSuccess": "已从收藏中移除",
+    "reorderSuccess": "已保存排序",
+    "quickEditTitle": "快速编辑",
+    "save": "保存",
+    "cancel": "取消",
+    "loadError": "加载收藏失败",
+    "saveError": "保存失败",
+    "removeConfirm": "确定要删除吗？",
+    "dragHandle": "排序",
+    "entityType": {
+      "TEAM": "团队",
+      "ORGANIZATION": "组织",
+      "KB_PAGE": "知识库",
+      "BLOG_AUTHOR": "作者",
+      "VILLAGE": "村"
+    }
+  },
   "succession": {
     "legalFilings": {
       "title": "法的手続き準備",

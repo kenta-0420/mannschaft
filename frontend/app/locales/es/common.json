@@ -1245,6 +1245,34 @@
     "organizationNotFound": "指定された組織が見つかりませんでした",
     "rateLimitExceeded": "リクエストが多すぎます。少し待ってから再試行してください"
   },
+  "favorites": {
+    "title": "Favoritos",
+    "empty": "Aún no hay favoritos. Añádelos con la ⭐ en las páginas de equipo o pueblo",
+    "showMore": "Mostrar {count} más",
+    "collapse": "Contraer",
+    "open": "Abrir",
+    "edit": "Editar",
+    "remove": "Eliminar",
+    "unavailable": "Este elemento ya no está disponible",
+    "limitReached": "Puedes registrar hasta {max} favoritos",
+    "addSuccess": "Añadido a favoritos",
+    "removeSuccess": "Eliminado de favoritos",
+    "reorderSuccess": "Orden guardado",
+    "quickEditTitle": "Edición rápida",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "loadError": "Error al cargar los favoritos",
+    "saveError": "Error al guardar",
+    "removeConfirm": "¿Seguro que quieres eliminarlo?",
+    "dragHandle": "Reordenar",
+    "entityType": {
+      "TEAM": "Equipo",
+      "ORGANIZATION": "Organización",
+      "KB_PAGE": "KB",
+      "BLOG_AUTHOR": "Autor",
+      "VILLAGE": "Pueblo"
+    }
+  },
   "succession": {
     "legalFilings": {
       "title": "法的手続き準備",

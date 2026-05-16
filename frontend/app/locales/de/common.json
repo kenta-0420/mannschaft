@@ -1245,6 +1245,34 @@
     "organizationNotFound": "指定された組織が見つかりませんでした",
     "rateLimitExceeded": "リクエストが多すぎます。少し待ってから再試行してください"
   },
+  "favorites": {
+    "title": "Favoriten",
+    "empty": "Noch keine Favoriten. Füge sie über das ⭐ auf Team- oder Dorfseiten hinzu",
+    "showMore": "{count} weitere anzeigen",
+    "collapse": "Einklappen",
+    "open": "Öffnen",
+    "edit": "Bearbeiten",
+    "remove": "Entfernen",
+    "unavailable": "Dieses Element ist nicht mehr verfügbar",
+    "limitReached": "Du kannst bis zu {max} Favoriten registrieren",
+    "addSuccess": "Zu Favoriten hinzugefügt",
+    "removeSuccess": "Aus Favoriten entfernt",
+    "reorderSuccess": "Reihenfolge gespeichert",
+    "quickEditTitle": "Schnellbearbeitung",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "loadError": "Favoriten konnten nicht geladen werden",
+    "saveError": "Speichern fehlgeschlagen",
+    "removeConfirm": "Möchtest du das wirklich entfernen?",
+    "dragHandle": "Neu anordnen",
+    "entityType": {
+      "TEAM": "Team",
+      "ORGANIZATION": "Organisation",
+      "KB_PAGE": "KB",
+      "BLOG_AUTHOR": "Autor",
+      "VILLAGE": "Dorf"
+    }
+  },
   "succession": {
     "legalFilings": {
       "title": "法的手続き準備",
