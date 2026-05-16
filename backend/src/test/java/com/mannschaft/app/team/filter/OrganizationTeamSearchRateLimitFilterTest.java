@@ -9,11 +9,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.function.Consumer;
 
 import java.util.List;
 
@@ -52,9 +55,18 @@ class OrganizationTeamSearchRateLimitFilterTest {
     private AuditLogService auditLogService;
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
         auditLogService = mock(AuditLogService.class);
-        filter = new OrganizationTeamSearchRateLimitFilter(auditLogService);
+        ObjectProvider<AuditLogService> provider = mock(ObjectProvider.class);
+        // ifAvailable(Consumer) は AuditLogService が利用可能なときに Consumer を実行する。
+        // テストでは Mock を常に注入したいので、Consumer を即座に実行する。
+        org.mockito.Mockito.doAnswer(invocation -> {
+            Consumer<AuditLogService> consumer = invocation.getArgument(0);
+            consumer.accept(auditLogService);
+            return null;
+        }).when(provider).ifAvailable(any());
+        filter = new OrganizationTeamSearchRateLimitFilter(provider);
     }
 
     @AfterEach

@@ -11,6 +11,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
@@ -65,13 +66,21 @@ public class OrganizationTeamSearchRateLimitFilter extends OncePerRequestFilter 
     /** 未認証アクセスのバケット（キー: {@code "ip:" + remoteAddr}）。 */
     private final Cache<String, Bucket> anonymousBuckets;
 
-    /** §6.6 監査ログ記録用（fire-and-forget）。 */
-    private final AuditLogService auditLogService;
+    /**
+     * §6.6 監査ログ記録用（fire-and-forget）。
+     *
+     * <p>{@link ObjectProvider} 経由で弱結合化することで、{@code @WebMvcTest} ベースの
+     * 最小コンテキストで {@code AuditLogService} の依存が解決できなくても本フィルタの
+     * インスタンス化を阻害しない。AuditLogService Bean が存在する本番／フル統合テスト
+     * では通常通り {@link AuditLogService#record} が呼ばれる。
+     */
+    private final ObjectProvider<AuditLogService> auditLogServiceProvider;
 
-    public OrganizationTeamSearchRateLimitFilter(AuditLogService auditLogService) {
+    public OrganizationTeamSearchRateLimitFilter(
+            ObjectProvider<AuditLogService> auditLogServiceProvider) {
         this.authenticatedBuckets = newCache();
         this.anonymousBuckets = newCache();
-        this.auditLogService = auditLogService;
+        this.auditLogServiceProvider = auditLogServiceProvider;
     }
 
     private static Cache<String, Bucket> newCache() {
@@ -153,17 +162,19 @@ public class OrganizationTeamSearchRateLimitFilter extends OncePerRequestFilter 
         String ipHash = SessionHashUtil.hash(request.getRemoteAddr());
         String metadata = buildMetadataJson(orgIdStr, ipHash);
 
-        auditLogService.record(
+        final Long capturedUserId = userId;
+        final Long capturedOrgId = organizationId;
+        auditLogServiceProvider.ifAvailable(svc -> svc.record(
                 AuditEventType.TEAM_SEARCH_RATE_LIMITED.name(),
-                userId,
+                capturedUserId,
                 null,
                 null,
-                organizationId,
+                capturedOrgId,
                 null,
                 null,
                 null,
                 metadata
-        );
+        ));
     }
 
     /** {@code {"orgId":"100","ipHash":"abc..."}} 形式の JSON を構築する。 */
