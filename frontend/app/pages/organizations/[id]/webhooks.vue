@@ -25,15 +25,15 @@ const activeTab = ref(0)
 
       <TabPanels>
         <TabPanel :value="0">
-          <WebhookOutgoingTab :org-id="orgId" />
+          <WebhookOutgoingTab scope-type="ORGANIZATION" :scope-id="orgId" />
         </TabPanel>
 
         <TabPanel :value="1">
-          <WebhookIncomingTab :org-id="orgId" />
+          <WebhookIncomingTab scope-type="ORGANIZATION" :scope-id="orgId" />
         </TabPanel>
 
         <TabPanel :value="2">
-          <WebhookApiKeyTab :org-id="orgId" />
+          <WebhookApiKeyTab scope-type="ORGANIZATION" :scope-id="orgId" />
         </TabPanel>
       </TabPanels>
     </Tabs>

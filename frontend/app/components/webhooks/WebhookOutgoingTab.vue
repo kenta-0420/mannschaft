@@ -6,23 +6,24 @@ import type { WebhookDelivery } from '~/types/webhook'
 import type { WebhookEndpointResponse } from '~/composables/useWebhookApi'
 
 const props = defineProps<{
-  orgId: number
+  scopeType: 'ORGANIZATION' | 'TEAM'
+  scopeId: number
 }>()
 
 const webhookApi = useWebhookApi()
 const { success, error: showError } = useNotification()
 
-const SCOPE_TYPE = 'ORGANIZATION'
+const scopePrefix = computed(() => props.scopeType === 'TEAM' ? 'team' : 'organization')
 
-const OUTGOING_EVENT_TYPES = [
-  { key: 'organization.member.joined', label: 'メンバー参加' },
-  { key: 'organization.member.left', label: 'メンバー退出' },
-  { key: 'organization.event.created', label: 'イベント作成' },
-  { key: 'organization.schedule.updated', label: 'スケジュール更新' },
-  { key: 'organization.payment.received', label: '支払い受取' },
-  { key: 'organization.post.published', label: '投稿公開' },
-  { key: 'organization.form.submitted', label: 'フォーム送信' },
-]
+const OUTGOING_EVENT_TYPES = computed(() => [
+  { key: `${scopePrefix.value}.member.joined`, label: 'メンバー参加' },
+  { key: `${scopePrefix.value}.member.left`, label: 'メンバー退出' },
+  { key: `${scopePrefix.value}.event.created`, label: 'イベント作成' },
+  { key: `${scopePrefix.value}.schedule.updated`, label: 'スケジュール更新' },
+  { key: `${scopePrefix.value}.payment.received`, label: '支払い受取' },
+  { key: `${scopePrefix.value}.post.published`, label: '投稿公開' },
+  { key: `${scopePrefix.value}.form.submitted`, label: 'フォーム送信' },
+])
 
 // ===== 送信Webhook =====
 const endpoints = ref<WebhookEndpointResponse[]>([])
@@ -70,7 +71,7 @@ const retryingDeliveryId = ref<number | null>(null)
 async function loadEndpoints() {
   endpointsLoading.value = true
   try {
-    const res = await webhookApi.getEndpoints(SCOPE_TYPE, props.orgId)
+    const res = await webhookApi.getEndpoints(props.scopeType, props.scopeId)
     endpoints.value = res.data
   } catch {
     showError('Webhookエンドポイントの取得に失敗しました')
@@ -123,8 +124,8 @@ const onSaveEndpoint = handleEndpointSubmit(async (values) => {
       success('Webhookエンドポイントを更新しました')
     } else {
       await webhookApi.createEndpoint({
-        scopeType: SCOPE_TYPE,
-        scopeId: props.orgId,
+        scopeType: props.scopeType,
+        scopeId: props.scopeId,
         name: values.name,
         url: values.url,
         description: values.description,
