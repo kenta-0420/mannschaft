@@ -11,6 +11,7 @@ import com.mannschaft.app.team.repository.TeamRepository;
 import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -66,7 +67,37 @@ public class TeamSearchService {
      * @return 検索結果（権限スコープに合った可視性のチームのみ）
      * @throws OrganizationNotFoundException 組織が存在しない／論理削除済み／PRIVATE で未ログイン
      * @throws IllegalArgumentException      sort カラムがホワイトリスト外
+     *
+     * <p><b>Phase 3 — Valkey キャッシュ（設計書 §6.5）:</b><br>
+     * 同一引数（orgId + criteria + currentUserId スコープ + pageable）の検索結果を
+     * {@code team-search} キャッシュ（TTL 60 秒）に格納する。
+     * 権限スコープ（未ログイン / ログイン済み）はキーに含めるため、
+     * 未ログイン者と組織メンバーで別キャッシュとなる。
+     * </p>
+     *
+     * <p><b>無効化方針:</b><br>
+     * チーム更新（{@code TeamService.updateTeam} 等）からのキャッシュ無効化は
+     * SCAN+DEL が必要となり本任務スコープ外。TTL 60 秒で最大 60 秒の
+     * 反映遅延を許容する。Phase 4 以降で {@code @CacheEvict allEntries=true}
+     * もしくは Redis SCAN 連携を検討する。
+     * </p>
+     *
+     * <p><b>キャッシュヒット時のメトリクス:</b><br>
+     * キャッシュヒット時は本メソッド本体が呼ばれず、
+     * {@link TeamSearchMetrics#recordSearch} は記録されない。
+     * これは仕様として受容する（DB 負荷削減が主目的のため）。
+     * メトリクスを正確に取りたい場合は将来 Controller 層に移動を検討。
+     * </p>
+     *
+     * <p><b>0 件結果はキャッシュしない</b>（{@code unless} 条件）— 検索ボットによる
+     * 無意味なキャッシュ占有を防ぐ。
+     * </p>
      */
+    @Cacheable(
+            value = "team-search",
+            key = "T(java.util.Objects).hash(#orgId, #criteria, #currentUserId == null ? 'anon' : 'user-' + #currentUserId, #pageable)",
+            unless = "#result == null || #result.totalElements == 0"
+    )
     public Page<TeamEntity> search(
             Long orgId,
             TeamSearchCriteria criteria,
