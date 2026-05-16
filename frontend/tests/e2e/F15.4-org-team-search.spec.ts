@@ -335,3 +335,125 @@ test('F15.4-5: 未ログインで PRIVATE 組織にアクセスするとバッ�
     page.getByText('指定された組織が見つかりませんでした'),
   ).toBeVisible()
 })
+
+// ──────────────────────────────────────────────────────────────────────────
+// シナリオ 6 (Phase 3): 組織トップ「所属チーム」タブの「店舗を検索」ボタン導線
+// ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * 組織トップページ (/organizations/{id}) で必要となる追加 API のモック。
+ *
+ * - GET /api/v1/organizations/{id}/teams         : OrgTeamGrid 用
+ * - GET /api/v1/organizations/{id}/ancestors     : 上位組織パンくず
+ * - GET /api/v1/organizations/{id}/children      : 下位組織タブ
+ * - GET /api/v1/organizations/{id}/me/permissions: useRoleAccess
+ * - GET /api/v1/organizations/{id}/follow/status : サポーター状態
+ */
+async function mockOrgTopApis(page: Page): Promise<void> {
+  // 所属チーム一覧
+  await page.route(
+    '**/api/v1/organizations/*/teams',
+    async (route: Route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: MOCK_TEAMS_PUBLIC }),
+      })
+    },
+  )
+
+  // 上位組織（祖先）
+  await page.route(
+    '**/api/v1/organizations/*/ancestors',
+    async (route: Route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [],
+          meta: { depth: 0, truncated: false },
+        }),
+      })
+    },
+  )
+
+  // 下位組織
+  await page.route(
+    '**/api/v1/organizations/*/children**',
+    async (route: Route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [],
+          meta: { nextCursor: null, hasNext: false },
+        }),
+      })
+    },
+  )
+
+  // 自身の権限（未ログイン or PUBLIC 閲覧者は roleName=null）
+  await page.route(
+    '**/api/v1/organizations/*/me/permissions',
+    async (route: Route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            roleName: null,
+            permissions: [],
+          },
+        }),
+      })
+    },
+  )
+
+  // サポーター状態
+  await page.route(
+    '**/api/v1/organizations/*/follow/status',
+    async (route: Route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { status: 'NONE' } }),
+      })
+    },
+  )
+}
+
+test('F15.4-6: 組織トップ「所属チーム」タブで「店舗を検索」ボタンが見え、クリックすると検索ページへ遷移する', async ({
+  page,
+}) => {
+  // 組織トップで必要となる API 一式を先にモック
+  await mockOrgTopApis(page)
+  // 既存ヘルパで /organizations/{id} と検索 API もモック（PUBLIC 組織）
+  await mockApis(page, { teamItems: MOCK_TEAMS_PUBLIC })
+
+  await page.goto(`/organizations/${PUBLIC_ORG_ID}`)
+
+  // 組織名（タイトル）が表示されるまで待つ
+  await expect(
+    page.getByRole('heading', { name: 'テスト町内会（公開）' }),
+  ).toBeVisible()
+
+  // 「所属チーム」タブを開く（タブ value=3）
+  await page.getByRole('tab', { name: '所属チーム' }).click()
+
+  // 「店舗を検索」ボタン（NuxtLink, aria-label="店舗を検索"）が見える
+  const searchLink = page.getByRole('link', { name: '店舗を検索' })
+  await expect(searchLink).toBeVisible()
+  // href は /organizations/{id}/teams/search を指す
+  await expect(searchLink).toHaveAttribute(
+    'href',
+    `/organizations/${PUBLIC_ORG_ID}/teams/search`,
+  )
+
+  // クリックで検索ページへ遷移する
+  await searchLink.click()
+  await expect(page).toHaveURL(
+    new RegExp(`/organizations/${PUBLIC_ORG_ID}/teams/search`),
+  )
+  // 検索ページのタイトル（heading）が描画される
+  await expect(page.getByRole('heading', { name: '店舗を検索' })).toBeVisible()
+})

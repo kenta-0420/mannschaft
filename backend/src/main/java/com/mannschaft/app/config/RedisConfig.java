@@ -53,6 +53,9 @@ public class RedisConfig {
                         .allowIfSubType("com.mannschaft")
                         .allowIfSubType("java.util")
                         .allowIfSubType("java.time")
+                        // F15.4 Phase 3: team-search キャッシュで Page<TeamEntity> をシリアライズするため
+                        // org.springframework.data.domain.PageImpl 等を許可
+                        .allowIfSubType("org.springframework.data")
                         .build(),
                 ObjectMapper.DefaultTyping.NON_FINAL
         );
@@ -78,7 +81,8 @@ public class RedisConfig {
      * <p>デフォルト TTL は 30分。ケアリンク判定用キャッシュ（careLinks / careCategory）は
      * 変更頻度が高いため 5分 TTL を設定する。F02.2.1 ダッシュボード可視性キャッシュは
      * 設計書 §5 に従い「閲覧者ロール: 60秒」「ウィジェット可視性: 300秒」を設定する。
-     * Phase 4-E: コア読み取りキャッシュ（role-permissions: 5分、team-detail / org-detail: 10分）を追加。</p>
+     * Phase 4-E: コア読み取りキャッシュ（role-permissions: 5分、team-detail / org-detail: 10分）を追加。
+     * F15.4 Phase 3: 組織内チーム（店舗）検索キャッシュ（team-search: 60秒）を追加。</p>
      */
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
@@ -111,6 +115,12 @@ public class RedisConfig {
                         redisCacheConfiguration().entryTtl(Duration.ofMinutes(10)))
                 .withCacheConfiguration("org-detail",
                         redisCacheConfiguration().entryTtl(Duration.ofMinutes(10)))
+                // F15.4 Phase 3: 組織内チーム（店舗）検索結果キャッシュ。
+                // TTL は短め（60 秒）— チーム更新時の SCAN+DEL を実装しない代わりに
+                // 反映遅延を最大 60 秒で許容する（設計書 §6.5）。
+                // 権限スコープ（未ログイン / 組織メンバー）はキーに含めるため別キャッシュとなる。
+                .withCacheConfiguration("team-search",
+                        redisCacheConfiguration().entryTtl(Duration.ofSeconds(60)))
                 .build();
     }
 }

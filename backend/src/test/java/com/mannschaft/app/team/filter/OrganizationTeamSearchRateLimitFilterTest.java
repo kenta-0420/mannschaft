@@ -1,29 +1,38 @@
 package com.mannschaft.app.team.filter;
 
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.util.function.Consumer;
+
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
  * {@link OrganizationTeamSearchRateLimitFilter} のレート制限検証。
  *
- * <p>設計書 {@code docs/features/F15.4_team_store_search_within_org.md §3.5 / §6} に従い以下を検証する:</p>
+ * <p>設計書 {@code docs/features/F15.4_team_store_search_within_org.md §3.5 / §6 / §6.6} に従い以下を検証する:</p>
  * <ul>
  *   <li>未ログイン: 30 回まで成功、31 回目で 429（IP ベース）</li>
  *   <li>ログイン: 120 回まで成功、121 回目で 429（userId ベース）</li>
@@ -31,6 +40,7 @@ import static org.mockito.Mockito.verify;
  *   <li>対象パス外（{@code GET /api/v1/organizations/{orgId}/teams}）は透過する</li>
  *   <li>非 GET メソッドは透過する</li>
  *   <li>429 レスポンスに {@code Retry-After: 60} ヘッダーと JSON ボディが返る</li>
+ *   <li>§6.6: レート違反時のみ {@code AuditLogService.record(TEAM_SEARCH_RATE_LIMITED, ...)} が呼ばれる</li>
  * </ul>
  *
  * <p><b>実装アプローチ</b>: 既存 {@link com.mannschaft.app.pointcard.filter.PointCardRateLimitFilter}
@@ -42,10 +52,21 @@ class OrganizationTeamSearchRateLimitFilterTest {
     private static final String TARGET_PATH = "/api/v1/organizations/100/teams/search";
 
     private OrganizationTeamSearchRateLimitFilter filter;
+    private AuditLogService auditLogService;
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
-        filter = new OrganizationTeamSearchRateLimitFilter();
+        auditLogService = mock(AuditLogService.class);
+        ObjectProvider<AuditLogService> provider = mock(ObjectProvider.class);
+        // ifAvailable(Consumer) は AuditLogService が利用可能なときに Consumer を実行する。
+        // テストでは Mock を常に注入したいので、Consumer を即座に実行する。
+        org.mockito.Mockito.doAnswer(invocation -> {
+            Consumer<AuditLogService> consumer = invocation.getArgument(0);
+            consumer.accept(auditLogService);
+            return null;
+        }).when(provider).ifAvailable(any());
+        filter = new OrganizationTeamSearchRateLimitFilter(provider);
     }
 
     @AfterEach
@@ -223,6 +244,104 @@ class OrganizationTeamSearchRateLimitFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         filter.doFilter(request, response, chain);
         assertThat(response.getStatus()).isEqualTo(429);
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // §6.6: 監査ログ記録（AuditLogService.record 呼び出し検証）
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("§6.6: 通常リクエスト（200 応答）では AuditLogService.record は呼ばれない")
+    void normalRequest_doesNotInvokeAuditLog() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+
+        for (int i = 0; i < 10; i++) {
+            MockHttpServletRequest request = buildRequest(TARGET_PATH, "GET");
+            request.setRemoteAddr("198.51.100.50");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, chain);
+            assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        }
+
+        verify(auditLogService, never()).record(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("§6.6: 未ログインで 429 発火時に TEAM_SEARCH_RATE_LIMITED が 1 回記録される（userId=null, ipHash あり）")
+    void anonymous_rateLimited_recordsAuditEvent() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+
+        // 30 回消費して上限到達
+        for (int i = 0; i < 30; i++) {
+            MockHttpServletRequest request = buildRequest(TARGET_PATH, "GET");
+            request.setRemoteAddr("198.51.100.60");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, chain);
+            assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        }
+        // 通常時は呼ばれていない
+        verify(auditLogService, never()).record(any(), any(), any(), any(), any(), any(), any(), any(), any());
+
+        // 31 回目: 429 で記録される
+        MockHttpServletRequest request = buildRequest(TARGET_PATH, "GET");
+        request.setRemoteAddr("198.51.100.60");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getStatus()).isEqualTo(429);
+
+        ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
+        verify(auditLogService, times(1)).record(
+                eq(AuditEventType.TEAM_SEARCH_RATE_LIMITED.name()),
+                isNull(), // userId（未ログイン）
+                isNull(), // targetUserId
+                isNull(), // teamId
+                eq(100L), // organizationId（URL から抽出）
+                isNull(), // ipAddress（生 IP は渡さない）
+                isNull(), // userAgent
+                isNull(), // sessionHash
+                metadataCaptor.capture()
+        );
+
+        String metadata = metadataCaptor.getValue();
+        assertThat(metadata).contains("\"orgId\":\"100\"");
+        assertThat(metadata).contains("\"ipHash\":\"");
+        // 生 IP がメタデータに含まれていないこと（PII 保護）
+        assertThat(metadata).doesNotContain("198.51.100.60");
+    }
+
+    @Test
+    @DisplayName("§6.6: ログイン状態で 429 発火時は userId が記録される")
+    void authenticated_rateLimited_recordsAuditEventWithUserId() throws Exception {
+        setAuthenticated("777");
+        FilterChain chain = mock(FilterChain.class);
+
+        for (int i = 0; i < 120; i++) {
+            MockHttpServletRequest request = buildRequest(TARGET_PATH, "GET");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, chain);
+            assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        }
+        verify(auditLogService, never()).record(any(), any(), any(), any(), any(), any(), any(), any(), any());
+
+        // 121 回目: 429
+        MockHttpServletRequest request = buildRequest(TARGET_PATH, "GET");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getStatus()).isEqualTo(429);
+
+        verify(auditLogService, times(1)).record(
+                eq(AuditEventType.TEAM_SEARCH_RATE_LIMITED.name()),
+                eq(777L),
+                isNull(),
+                isNull(),
+                eq(100L),
+                isNull(),
+                isNull(),
+                isNull(),
+                any()
+        );
     }
 
     // ────────────────────────────────────────────────────────────
