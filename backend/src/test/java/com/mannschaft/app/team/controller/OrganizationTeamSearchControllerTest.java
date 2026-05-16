@@ -100,6 +100,7 @@ class OrganizationTeamSearchControllerTest {
                 .supporterEnabled(true)
                 .iconUrl("https://cdn/icon.png")
                 .bannerUrl("https://cdn/banner.png")
+                .memberCount(42L)
                 .build();
         Page<TeamEntity> page = new PageImpl<>(List.of(team));
         given(teamSearchService.search(eq(ORG_ID), any(TeamSearchCriteria.class), any(), any(Pageable.class)))
@@ -113,10 +114,11 @@ class OrganizationTeamSearchControllerTest {
                 .andExpect(jsonPath("$.data[0].name").value("公開店舗A"))
                 .andExpect(jsonPath("$.data[0].prefecture").value("東京都"))
                 .andExpect(jsonPath("$.data[0].city").value("渋谷区"))
-                // 抑制版には visibility / bannerUrl / supporterEnabled は含まれない
+                // 抑制版には visibility / bannerUrl / supporterEnabled / memberCount は含まれない
                 .andExpect(jsonPath("$.data[0].visibility").doesNotExist())
                 .andExpect(jsonPath("$.data[0].bannerUrl").doesNotExist())
                 .andExpect(jsonPath("$.data[0].supporterEnabled").doesNotExist())
+                .andExpect(jsonPath("$.data[0].memberCount").doesNotExist())
                 .andExpect(jsonPath("$.meta.total").value(1));
     }
 
@@ -135,6 +137,7 @@ class OrganizationTeamSearchControllerTest {
                 .supporterEnabled(false)
                 .iconUrl("https://cdn/icon2.png")
                 .bannerUrl("https://cdn/banner2.png")
+                .memberCount(17L)
                 .build();
         Page<TeamEntity> page = new PageImpl<>(List.of(team));
         given(teamSearchService.search(eq(ORG_ID), any(TeamSearchCriteria.class), eq(MEMBER_USER_ID), any(Pageable.class)))
@@ -145,10 +148,11 @@ class OrganizationTeamSearchControllerTest {
         mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/search", ORG_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].name").value("詳細店舗B"))
-                // 詳細版には visibility / bannerUrl / supporterEnabled が含まれる
+                // 詳細版には visibility / bannerUrl / supporterEnabled / memberCount が含まれる
                 .andExpect(jsonPath("$.data[0].visibility").value("ORGANIZATION_ONLY"))
                 .andExpect(jsonPath("$.data[0].bannerUrl").value("https://cdn/banner2.png"))
-                .andExpect(jsonPath("$.data[0].supporterEnabled").value(false));
+                .andExpect(jsonPath("$.data[0].supporterEnabled").value(false))
+                .andExpect(jsonPath("$.data[0].memberCount").value(17));
     }
 
     @Test
