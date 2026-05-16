@@ -83,15 +83,22 @@ class DisclosureExportServiceTest {
 
     private DisclosureExportService service;
 
+    private DisclosureExportValidationService validationService;
+    private DisclosureExportFileService fileService;
+    private DisclosureExportStorageService storageService;
+
     @BeforeEach
     void setUp() {
+        validationService = new DisclosureExportValidationService(
+                templateValidator, propertyWorkPackageRepository, objectMapper);
+        fileService = new DisclosureExportFileService(
+                pdfGeneratorService, excelGeneratorService, wordGeneratorService, userRepository);
+        storageService = new DisclosureExportStorageService(
+                r2StorageService, folderRepository, sharedFileRepository, sharedFileVersionRepository);
         service = new DisclosureExportService(
-                exportRepository, draftService, templateService, templateValidator,
-                pdfGeneratorService, excelGeneratorService, wordGeneratorService,
-                r2StorageService,
-                folderRepository, sharedFileRepository, sharedFileVersionRepository,
-                organizationRepository, dwellingUnitRepository,
-                propertyWorkPackageRepository, userRepository, objectMapper,
+                exportRepository, draftService, templateService,
+                validationService, fileService, storageService,
+                organizationRepository, dwellingUnitRepository, objectMapper,
                 sealStampService, sealStampLogRepository);
     }
 
