@@ -40,9 +40,9 @@ CREATE TABLE village_representatives (
         COMMENT '退任（revoked_at IS NOT NULL）は履歴並存可、現役（NULL）は組合せ1件のみ',
     KEY idx_vr_village (village_id, revoked_at),
     KEY idx_vr_user (representative_user_id, revoked_at),
-    CONSTRAINT fk_vr_village FOREIGN KEY (village_id)
+    CONSTRAINT fk_vrep_village FOREIGN KEY (village_id)
         REFERENCES villages(id) ON DELETE CASCADE,
-    CONSTRAINT fk_vr_membership FOREIGN KEY (membership_id)
+    CONSTRAINT fk_vrep_membership FOREIGN KEY (membership_id)
         REFERENCES village_memberships(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
   COMMENT='F17 Phase 2: 村代表ロール委任';

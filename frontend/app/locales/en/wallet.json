@@ -228,7 +228,7 @@
         "brand_color": "Brand color",
         "logo_url": "Logo URL",
         "card_number_regex": "Card number regex (optional)",
-        "card_number_regex_hint": "e.g. ^[0-9]{10,16}$ — applied when customers add the card.",
+        "card_number_regex_hint": "Regex allowing 10–16 digits (applied when customers add the card).",
         "card_number_length_hint": "Card number length hint (optional)",
         "card_number_length_hint_placeholder": "16-digit number",
         "type": "Type",
