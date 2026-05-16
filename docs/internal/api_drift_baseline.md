@@ -14,14 +14,14 @@
 
 ## サマリ
 
-- 設計あり・実装なし: **1206 件**（v3: 1,214 件 / v2: 1,256 件 / v1: 1,187 件）
-- 実装あり・設計なし: **1083 件**（v3: 1,106 件 / v2: 1,147 件 / v1: 931 件）
-- 一致: **1364 件**（v3: 1,341 件 / v2: 1,322 件 / v1: 1,310 件）
+- 設計あり・実装なし: **1220 件**（v3: 1,214 件 / v2: 1,256 件 / v1: 1,187 件）
+- 実装あり・設計なし: **1073 件**（v3: 1,106 件 / v2: 1,147 件 / v1: 931 件）
+- 一致: **1366 件**（v3: 1,341 件 / v2: 1,322 件 / v1: 1,310 件）
 - V4-1 スコープ逆引き準一致: **0 件**（一致側に繰入）
-- V4-5 🔵 将来機能: **28 件**（メイン集計外）／うち実装済: 0 件
-- 設計記載 ユニーク (method, path) 総数（main）: 2570
-- 実装 ユニーク (method, path) 総数: 2447
-- 除外（実装側）: 22 件 / 除外（設計側）: 4 件 / パターン数: 20
+- V4-5 🔵 将来機能: **5 件**（メイン集計外）／うち実装済: 0 件
+- 設計記載 ユニーク (method, path) 総数（main）: 2586
+- 実装 ユニーク (method, path) 総数: 2439
+- 除外（実装側）: 30 件 / 除外（設計側）: 5 件 / パターン数: 27
 - スコープ展開: ON
 
 ---
@@ -30,12 +30,12 @@
 
 | ドメイン | 設計あり・実装なし | 実装あり・設計なし | 一致 | 合計乖離 |
 |---|---:|---:|---:|---:|
-| /api/v1/teams/* | 272 | 235 | 489 | 507 |
-| /api/v1/organizations/* | 86 | 369 | 150 | 455 |
+| /api/v1/teams/* | 270 | 235 | 489 | 505 |
+| /api/v1/organizations/* | 109 | 369 | 150 | 478 |
 | /api/v1/system-admin/* | 103 | 28 | 77 | 131 |
 | /api/v1/users/* | 23 | 99 | 48 | 122 |
 | /api/v1/villages/* | 0 | 122 | 1 | 122 |
-| /api/v1/{_}/* | 57 | 4 | 0 | 61 |
+| /api/v1/{_}/* | 50 | 4 | 0 | 54 |
 | /api/v1/me/* | 31 | 20 | 70 | 51 |
 | /api/v1/shifts/* | 28 | 19 | 25 | 47 |
 | /api/v1/files/* | 33 | 7 | 9 | 40 |
@@ -48,19 +48,18 @@
 | /api/v1/circulation/* | 24 | 0 | 0 | 24 |
 | /api/v1/dwelling-units/* | 23 | 0 | 0 | 23 |
 | /api/v1/corkboards/* | 17 | 5 | 5 | 22 |
+| /api/v1/workflows/* | 22 | 0 | 0 | 22 |
 | /api/v1/activities/* | 20 | 0 | 11 | 20 |
 | /api/v1/safety-checks/* | 12 | 8 | 4 | 20 |
+| /api/v1/forms/* | 19 | 0 | 0 | 19 |
 | /api/v1/succession/* | 18 | 1 | 2 | 19 |
 | /api/v1/surveys/* | 16 | 3 | 2 | 19 |
 | /api/v1/job-contracts/* | 17 | 0 | 0 | 17 |
 | /api/v1/promotions/* | 17 | 0 | 0 | 17 |
 | /api/v1/todos/* | 4 | 12 | 1 | 16 |
-| /api/v1/workflows/* | 14 | 0 | 0 | 14 |
-| /api/v1/forms/* | 13 | 0 | 0 | 13 |
 | /api/v1/residence-status/* | 13 | 0 | 0 | 13 |
 | /api/v1/jobs/* | 9 | 3 | 6 | 12 |
 | /api/v1/line/* | 11 | 0 | 0 | 11 |
-| /api/v1/repair-plan/* | 11 | 0 | 0 | 11 |
 | /api/v1/notifications/* | 5 | 4 | 1 | 9 |
 | /api/v1/point-cards/* | 7 | 2 | 7 | 9 |
 | /api/v1/property-listings/* | 9 | 0 | 0 | 9 |
@@ -69,14 +68,13 @@
 | /api/v1/sns/* | 8 | 0 | 0 | 8 |
 | /api/v1/social/* | 0 | 8 | 0 | 8 |
 | /api/v1/social-profiles/* | 8 | 0 | 0 | 8 |
-| /api/v1/workflow-requests/* | 2 | 6 | 0 | 8 |
 | /api/v1/coupons/* | 7 | 0 | 0 | 7 |
 | /api/v1/recruitment-listings/* | 2 | 5 | 9 | 7 |
-| /api/v1/scopes/* | 0 | 7 | 0 | 7 |
 | /api/v1/action-memos/* | 2 | 4 | 10 | 6 |
 | /api/v1/contracts/* | 0 | 6 | 0 | 6 |
 | /api/v1/quick-memos/* | 5 | 1 | 11 | 6 |
 | /api/v1/shift-budget/* | 1 | 5 | 3 | 6 |
+| /api/v1/workflow-requests/* | 0 | 6 | 0 | 6 |
 | /api/v1/committees/* | 5 | 0 | 11 | 5 |
 | /api/v1/follows/* | 5 | 0 | 0 | 5 |
 | /api/v1/account/* | 0 | 4 | 0 | 4 |
@@ -109,7 +107,6 @@
 | /api/v1/action-memo-tags/* | 2 | 0 | 2 | 2 |
 | /api/v1/activity-templates/* | 2 | 0 | 5 | 2 |
 | /api/v1/attendance/* | 2 | 0 | 1 | 2 |
-| /api/v1/auth/* | 0 | 2 | 27 | 2 |
 | /api/v1/budget/* | 2 | 0 | 25 | 2 |
 | /api/v1/contact-invite-tokens/* | 2 | 0 | 2 | 2 |
 | /api/v1/contact-request-blocks/* | 2 | 0 | 1 | 2 |
@@ -145,12 +142,10 @@
 | /api/v1/ical/* | 0 | 1 | 0 | 1 |
 | /api/v1/job-disputes/* | 1 | 0 | 0 | 1 |
 | /api/v1/kb/* | 1 | 0 | 0 | 1 |
-| /api/v1/mail-tracking/* | 1 | 0 | 0 | 1 |
 | /api/v1/member-positions/* | 1 | 0 | 0 | 1 |
 | /api/v1/mentions/* | 0 | 1 | 0 | 1 |
 | /api/v1/modules/* | 1 | 0 | 1 | 1 |
 | /api/v1/my/* | 1 | 0 | 3 | 1 |
-| /api/v1/pdf-signatures/* | 0 | 1 | 0 | 1 |
 | /api/v1/permissions/* | 1 | 0 | 0 | 1 |
 | /api/v1/positions/* | 1 | 0 | 0 | 1 |
 | /api/v1/projects/* | 1 | 0 | 0 | 1 |
@@ -173,6 +168,7 @@
 | /api/v1/announcements/* | 0 | 0 | 1 | 0 |
 | /api/v1/appeals/* | 0 | 0 | 2 | 0 |
 | /api/v1/attendance-requirements/* | 0 | 0 | 2 | 0 |
+| /api/v1/auth/* | 0 | 0 | 29 | 0 |
 | /api/v1/cancellation-policies/* | 0 | 0 | 3 | 0 |
 | /api/v1/charts/* | 0 | 0 | 1 | 0 |
 | /api/v1/committee-invitations/* | 0 | 0 | 3 | 0 |
@@ -191,7 +187,7 @@
 | /api/v1/proxy-input-records/* | 0 | 0 | 1 | 0 |
 | /api/v1/service-records/* | 0 | 0 | 1 | 0 |
 | /api/v1/yabai/* | 0 | 0 | 2 | 0 |
-| **合計** | **1206** | **1083** | **1364** | **2289** |
+| **合計** | **1220** | **1073** | **1366** | **2293** |
 
 ---
 
@@ -373,53 +369,53 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| DELETE | `/api/v1/bulletin/categories/{_}` | `docs/features/F05.1_bulletin_board.md` | 260 |
-| DELETE | `/api/v1/bulletin/categories/{_}` | `docs/features/F05.1_bulletin_board.md` | 393 |
-| DELETE | `/api/v1/bulletin/replies/{_}` | `docs/features/F05.1_bulletin_board.md` | 274 |
-| DELETE | `/api/v1/bulletin/replies/{_}` | `docs/features/F05.1_bulletin_board.md` | 943 |
-| DELETE | `/api/v1/bulletin/threads/{_}` | `docs/features/F05.1_bulletin_board.md` | 265 |
-| DELETE | `/api/v1/bulletin/threads/{_}` | `docs/features/F05.1_bulletin_board.md` | 658 |
-| DELETE | `/api/v1/bulletin/{_}/{_}/reactions/{_}` | `docs/features/F05.1_bulletin_board.md` | 280 |
-| DELETE | `/api/v1/bulletin/{_}/{_}/reactions/{_}` | `docs/features/F05.1_bulletin_board.md` | 1103 |
-| GET | `/api/v1/bulletin/categories` | `docs/features/F05.1_bulletin_board.md` | 257 |
-| GET | `/api/v1/bulletin/categories` | `docs/features/F05.1_bulletin_board.md` | 284 |
-| GET | `/api/v1/bulletin/threads` | `docs/features/F05.1_bulletin_board.md` | 261 |
-| GET | `/api/v1/bulletin/threads` | `docs/features/F05.1_bulletin_board.md` | 416 |
-| GET | `/api/v1/bulletin/threads/updates` | `docs/features/F05.1_bulletin_board.md` | 275 |
-| GET | `/api/v1/bulletin/threads/updates` | `docs/features/F05.1_bulletin_board.md` | 965 |
-| GET | `/api/v1/bulletin/threads/{_}` | `docs/features/F05.1_bulletin_board.md` | 263 |
-| GET | `/api/v1/bulletin/threads/{_}` | `docs/features/F05.1_bulletin_board.md` | 540 |
-| GET | `/api/v1/bulletin/threads/{_}/readers` | `docs/features/F05.1_bulletin_board.md` | 268 |
-| GET | `/api/v1/bulletin/threads/{_}/readers` | `docs/features/F05.1_bulletin_board.md` | 278 |
-| GET | `/api/v1/bulletin/threads/{_}/readers` | `docs/features/F05.1_bulletin_board.md` | 732 |
-| PATCH | `/api/v1/bulletin/threads/{_}/archive` | `docs/features/F05.1_bulletin_board.md` | 277 |
-| PATCH | `/api/v1/bulletin/threads/{_}/archive` | `docs/features/F05.1_bulletin_board.md` | 1030 |
-| PATCH | `/api/v1/bulletin/threads/{_}/lock` | `docs/features/F05.1_bulletin_board.md` | 270 |
-| PATCH | `/api/v1/bulletin/threads/{_}/lock` | `docs/features/F05.1_bulletin_board.md` | 804 |
-| PATCH | `/api/v1/bulletin/threads/{_}/pin` | `docs/features/F05.1_bulletin_board.md` | 269 |
-| PATCH | `/api/v1/bulletin/threads/{_}/pin` | `docs/features/F05.1_bulletin_board.md` | 775 |
-| PATCH | `/api/v1/bulletin/threads/{_}/priority` | `docs/features/F05.1_bulletin_board.md` | 266 |
-| PATCH | `/api/v1/bulletin/threads/{_}/priority` | `docs/features/F05.1_bulletin_board.md` | 680 |
-| POST | `/api/v1/bulletin/categories` | `docs/features/F05.1_bulletin_board.md` | 258 |
-| POST | `/api/v1/bulletin/categories` | `docs/features/F05.1_bulletin_board.md` | 321 |
-| POST | `/api/v1/bulletin/replies/{_}/replies` | `docs/features/F05.1_bulletin_board.md` | 272 |
-| POST | `/api/v1/bulletin/replies/{_}/replies` | `docs/features/F05.1_bulletin_board.md` | 874 |
-| POST | `/api/v1/bulletin/threads` | `docs/features/F05.1_bulletin_board.md` | 262 |
-| POST | `/api/v1/bulletin/threads` | `docs/features/F05.1_bulletin_board.md` | 477 |
-| POST | `/api/v1/bulletin/threads/read-all` | `docs/features/F05.1_bulletin_board.md` | 276 |
-| POST | `/api/v1/bulletin/threads/read-all` | `docs/features/F05.1_bulletin_board.md` | 998 |
-| POST | `/api/v1/bulletin/threads/{_}/read` | `docs/features/F05.1_bulletin_board.md` | 267 |
-| POST | `/api/v1/bulletin/threads/{_}/read` | `docs/features/F05.1_bulletin_board.md` | 713 |
-| POST | `/api/v1/bulletin/threads/{_}/replies` | `docs/features/F05.1_bulletin_board.md` | 271 |
-| POST | `/api/v1/bulletin/threads/{_}/replies` | `docs/features/F05.1_bulletin_board.md` | 833 |
-| POST | `/api/v1/bulletin/{_}/{_}/reactions` | `docs/features/F05.1_bulletin_board.md` | 279 |
-| POST | `/api/v1/bulletin/{_}/{_}/reactions` | `docs/features/F05.1_bulletin_board.md` | 1059 |
-| PUT | `/api/v1/bulletin/categories/{_}` | `docs/features/F05.1_bulletin_board.md` | 259 |
-| PUT | `/api/v1/bulletin/categories/{_}` | `docs/features/F05.1_bulletin_board.md` | 366 |
-| PUT | `/api/v1/bulletin/replies/{_}` | `docs/features/F05.1_bulletin_board.md` | 273 |
-| PUT | `/api/v1/bulletin/replies/{_}` | `docs/features/F05.1_bulletin_board.md` | 915 |
-| PUT | `/api/v1/bulletin/threads/{_}` | `docs/features/F05.1_bulletin_board.md` | 264 |
-| PUT | `/api/v1/bulletin/threads/{_}` | `docs/features/F05.1_bulletin_board.md` | 626 |
+| DELETE | `/api/v1/bulletin/categories/{_}` | `docs/features/F05.1_bulletin_board.md` | 252 |
+| DELETE | `/api/v1/bulletin/categories/{_}` | `docs/features/F05.1_bulletin_board.md` | 385 |
+| DELETE | `/api/v1/bulletin/replies/{_}` | `docs/features/F05.1_bulletin_board.md` | 266 |
+| DELETE | `/api/v1/bulletin/replies/{_}` | `docs/features/F05.1_bulletin_board.md` | 935 |
+| DELETE | `/api/v1/bulletin/threads/{_}` | `docs/features/F05.1_bulletin_board.md` | 257 |
+| DELETE | `/api/v1/bulletin/threads/{_}` | `docs/features/F05.1_bulletin_board.md` | 650 |
+| DELETE | `/api/v1/bulletin/{_}/{_}/reactions/{_}` | `docs/features/F05.1_bulletin_board.md` | 272 |
+| DELETE | `/api/v1/bulletin/{_}/{_}/reactions/{_}` | `docs/features/F05.1_bulletin_board.md` | 1095 |
+| GET | `/api/v1/bulletin/categories` | `docs/features/F05.1_bulletin_board.md` | 249 |
+| GET | `/api/v1/bulletin/categories` | `docs/features/F05.1_bulletin_board.md` | 276 |
+| GET | `/api/v1/bulletin/threads` | `docs/features/F05.1_bulletin_board.md` | 253 |
+| GET | `/api/v1/bulletin/threads` | `docs/features/F05.1_bulletin_board.md` | 408 |
+| GET | `/api/v1/bulletin/threads/updates` | `docs/features/F05.1_bulletin_board.md` | 267 |
+| GET | `/api/v1/bulletin/threads/updates` | `docs/features/F05.1_bulletin_board.md` | 957 |
+| GET | `/api/v1/bulletin/threads/{_}` | `docs/features/F05.1_bulletin_board.md` | 255 |
+| GET | `/api/v1/bulletin/threads/{_}` | `docs/features/F05.1_bulletin_board.md` | 532 |
+| GET | `/api/v1/bulletin/threads/{_}/readers` | `docs/features/F05.1_bulletin_board.md` | 260 |
+| GET | `/api/v1/bulletin/threads/{_}/readers` | `docs/features/F05.1_bulletin_board.md` | 270 |
+| GET | `/api/v1/bulletin/threads/{_}/readers` | `docs/features/F05.1_bulletin_board.md` | 724 |
+| PATCH | `/api/v1/bulletin/threads/{_}/archive` | `docs/features/F05.1_bulletin_board.md` | 269 |
+| PATCH | `/api/v1/bulletin/threads/{_}/archive` | `docs/features/F05.1_bulletin_board.md` | 1022 |
+| PATCH | `/api/v1/bulletin/threads/{_}/lock` | `docs/features/F05.1_bulletin_board.md` | 262 |
+| PATCH | `/api/v1/bulletin/threads/{_}/lock` | `docs/features/F05.1_bulletin_board.md` | 796 |
+| PATCH | `/api/v1/bulletin/threads/{_}/pin` | `docs/features/F05.1_bulletin_board.md` | 261 |
+| PATCH | `/api/v1/bulletin/threads/{_}/pin` | `docs/features/F05.1_bulletin_board.md` | 767 |
+| PATCH | `/api/v1/bulletin/threads/{_}/priority` | `docs/features/F05.1_bulletin_board.md` | 258 |
+| PATCH | `/api/v1/bulletin/threads/{_}/priority` | `docs/features/F05.1_bulletin_board.md` | 672 |
+| POST | `/api/v1/bulletin/categories` | `docs/features/F05.1_bulletin_board.md` | 250 |
+| POST | `/api/v1/bulletin/categories` | `docs/features/F05.1_bulletin_board.md` | 313 |
+| POST | `/api/v1/bulletin/replies/{_}/replies` | `docs/features/F05.1_bulletin_board.md` | 264 |
+| POST | `/api/v1/bulletin/replies/{_}/replies` | `docs/features/F05.1_bulletin_board.md` | 866 |
+| POST | `/api/v1/bulletin/threads` | `docs/features/F05.1_bulletin_board.md` | 254 |
+| POST | `/api/v1/bulletin/threads` | `docs/features/F05.1_bulletin_board.md` | 469 |
+| POST | `/api/v1/bulletin/threads/read-all` | `docs/features/F05.1_bulletin_board.md` | 268 |
+| POST | `/api/v1/bulletin/threads/read-all` | `docs/features/F05.1_bulletin_board.md` | 990 |
+| POST | `/api/v1/bulletin/threads/{_}/read` | `docs/features/F05.1_bulletin_board.md` | 259 |
+| POST | `/api/v1/bulletin/threads/{_}/read` | `docs/features/F05.1_bulletin_board.md` | 705 |
+| POST | `/api/v1/bulletin/threads/{_}/replies` | `docs/features/F05.1_bulletin_board.md` | 263 |
+| POST | `/api/v1/bulletin/threads/{_}/replies` | `docs/features/F05.1_bulletin_board.md` | 825 |
+| POST | `/api/v1/bulletin/{_}/{_}/reactions` | `docs/features/F05.1_bulletin_board.md` | 271 |
+| POST | `/api/v1/bulletin/{_}/{_}/reactions` | `docs/features/F05.1_bulletin_board.md` | 1051 |
+| PUT | `/api/v1/bulletin/categories/{_}` | `docs/features/F05.1_bulletin_board.md` | 251 |
+| PUT | `/api/v1/bulletin/categories/{_}` | `docs/features/F05.1_bulletin_board.md` | 358 |
+| PUT | `/api/v1/bulletin/replies/{_}` | `docs/features/F05.1_bulletin_board.md` | 265 |
+| PUT | `/api/v1/bulletin/replies/{_}` | `docs/features/F05.1_bulletin_board.md` | 907 |
+| PUT | `/api/v1/bulletin/threads/{_}` | `docs/features/F05.1_bulletin_board.md` | 256 |
+| PUT | `/api/v1/bulletin/threads/{_}` | `docs/features/F05.1_bulletin_board.md` | 618 |
 
 ### /api/v1/bulletin-threads/* (1 件)
 
@@ -618,17 +614,17 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| DELETE | `/api/v1/coupons/{_}` | `docs/features/F09.2_promotion_targeting.md` | 396 |
-| GET | `/api/v1/coupons` | `docs/features/F09.2_promotion_targeting.md` | 392 |
-| GET | `/api/v1/coupons` | `docs/features/F09.2_promotion_targeting.md` | 642 |
-| GET | `/api/v1/coupons/my` | `docs/features/F09.2_promotion_targeting.md` | 398 |
-| GET | `/api/v1/coupons/my` | `docs/features/F09.2_promotion_targeting.md` | 754 |
-| GET | `/api/v1/coupons/{_}` | `docs/features/F09.2_promotion_targeting.md` | 394 |
-| POST | `/api/v1/coupons` | `docs/features/F09.2_promotion_targeting.md` | 393 |
-| POST | `/api/v1/coupons` | `docs/features/F09.2_promotion_targeting.md` | 660 |
-| POST | `/api/v1/coupons/{_}/redeem` | `docs/features/F09.2_promotion_targeting.md` | 397 |
-| POST | `/api/v1/coupons/{_}/redeem` | `docs/features/F09.2_promotion_targeting.md` | 716 |
-| PUT | `/api/v1/coupons/{_}` | `docs/features/F09.2_promotion_targeting.md` | 395 |
+| DELETE | `/api/v1/coupons/{_}` | `docs/features/F09.2_promotion_targeting.md` | 386 |
+| GET | `/api/v1/coupons` | `docs/features/F09.2_promotion_targeting.md` | 382 |
+| GET | `/api/v1/coupons` | `docs/features/F09.2_promotion_targeting.md` | 632 |
+| GET | `/api/v1/coupons/my` | `docs/features/F09.2_promotion_targeting.md` | 388 |
+| GET | `/api/v1/coupons/my` | `docs/features/F09.2_promotion_targeting.md` | 744 |
+| GET | `/api/v1/coupons/{_}` | `docs/features/F09.2_promotion_targeting.md` | 384 |
+| POST | `/api/v1/coupons` | `docs/features/F09.2_promotion_targeting.md` | 383 |
+| POST | `/api/v1/coupons` | `docs/features/F09.2_promotion_targeting.md` | 650 |
+| POST | `/api/v1/coupons/{_}/redeem` | `docs/features/F09.2_promotion_targeting.md` | 387 |
+| POST | `/api/v1/coupons/{_}/redeem` | `docs/features/F09.2_promotion_targeting.md` | 706 |
+| PUT | `/api/v1/coupons/{_}` | `docs/features/F09.2_promotion_targeting.md` | 385 |
 
 ### /api/v1/dashboard/* (1 件)
 
@@ -648,47 +644,47 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| DELETE | `/api/v1/dwelling-units/residents/documents/{_}` | `docs/features/F09.1_resident_registry.md` | 326 |
-| DELETE | `/api/v1/dwelling-units/{_}` | `docs/features/F09.1_resident_registry.md` | 309 |
-| DELETE | `/api/v1/dwelling-units/{_}/residents/{_}` | `docs/features/F09.1_resident_registry.md` | 314 |
-| GET | `/api/v1/dwelling-units` | `docs/features/F09.1_resident_registry.md` | 305 |
-| GET | `/api/v1/dwelling-units` | `docs/features/F09.1_resident_registry.md` | 375 |
-| GET | `/api/v1/dwelling-units/export` | `docs/features/F09.1_resident_registry.md` | 322 |
-| GET | `/api/v1/dwelling-units/export` | `docs/features/F09.1_resident_registry.md` | 891 |
-| GET | `/api/v1/dwelling-units/my` | `docs/features/F09.1_resident_registry.md` | 321 |
-| GET | `/api/v1/dwelling-units/my` | `docs/features/F09.1_resident_registry.md` | 627 |
-| GET | `/api/v1/dwelling-units/residents/search` | `docs/features/F09.1_resident_registry.md` | 323 |
-| GET | `/api/v1/dwelling-units/residents/search` | `docs/features/F09.1_resident_registry.md` | 917 |
-| GET | `/api/v1/dwelling-units/stats` | `docs/features/F09.1_resident_registry.md` | 336 |
-| GET | `/api/v1/dwelling-units/stats` | `docs/features/F09.1_resident_registry.md` | 808 |
-| GET | `/api/v1/dwelling-units/{_}` | `docs/features/F09.1_resident_registry.md` | 307 |
-| GET | `/api/v1/dwelling-units/{_}` | `docs/features/F09.1_resident_registry.md` | 431 |
-| GET | `/api/v1/dwelling-units/{_}/residents` | `docs/features/F09.1_resident_registry.md` | 311 |
-| GET | `/api/v1/dwelling-units/{_}/residents` | `docs/features/F09.1_resident_registry.md` | 512 |
-| PATCH | `/api/v1/dwelling-units/bulk-privacy` | `docs/features/F09.1_resident_registry.md` | 324 |
-| PATCH | `/api/v1/dwelling-units/bulk-privacy` | `docs/features/F09.1_resident_registry.md` | 960 |
-| PATCH | `/api/v1/dwelling-units/{_}/move-out-all` | `docs/features/F09.1_resident_registry.md` | 316 |
-| PATCH | `/api/v1/dwelling-units/{_}/move-out-all` | `docs/features/F09.1_resident_registry.md` | 1168 |
-| PATCH | `/api/v1/dwelling-units/{_}/residents/{_}/move-out` | `docs/features/F09.1_resident_registry.md` | 315 |
-| PATCH | `/api/v1/dwelling-units/{_}/residents/{_}/move-out` | `docs/features/F09.1_resident_registry.md` | 576 |
-| PATCH | `/api/v1/dwelling-units/{_}/residents/{_}/renew-lease` | `docs/features/F09.1_resident_registry.md` | 318 |
-| PATCH | `/api/v1/dwelling-units/{_}/residents/{_}/renew-lease` | `docs/features/F09.1_resident_registry.md` | 1208 |
-| PATCH | `/api/v1/dwelling-units/{_}/residents/{_}/verify` | `docs/features/F09.1_resident_registry.md` | 317 |
-| PATCH | `/api/v1/dwelling-units/{_}/residents/{_}/verify` | `docs/features/F09.1_resident_registry.md` | 606 |
-| POST | `/api/v1/dwelling-units` | `docs/features/F09.1_resident_registry.md` | 306 |
-| POST | `/api/v1/dwelling-units` | `docs/features/F09.1_resident_registry.md` | 340 |
-| POST | `/api/v1/dwelling-units/import` | `docs/features/F09.1_resident_registry.md` | 310 |
-| POST | `/api/v1/dwelling-units/import` | `docs/features/F09.1_resident_registry.md` | 845 |
-| POST | `/api/v1/dwelling-units/self-register` | `docs/features/F09.1_resident_registry.md` | 320 |
-| POST | `/api/v1/dwelling-units/self-register` | `docs/features/F09.1_resident_registry.md` | 1133 |
-| POST | `/api/v1/dwelling-units/{_}/invite` | `docs/features/F09.1_resident_registry.md` | 319 |
-| POST | `/api/v1/dwelling-units/{_}/invite` | `docs/features/F09.1_resident_registry.md` | 1094 |
-| POST | `/api/v1/dwelling-units/{_}/residents` | `docs/features/F09.1_resident_registry.md` | 312 |
-| POST | `/api/v1/dwelling-units/{_}/residents` | `docs/features/F09.1_resident_registry.md` | 534 |
-| POST | `/api/v1/dwelling-units/{_}/residents/{_}/documents` | `docs/features/F09.1_resident_registry.md` | 325 |
-| POST | `/api/v1/dwelling-units/{_}/residents/{_}/documents` | `docs/features/F09.1_resident_registry.md` | 993 |
-| PUT | `/api/v1/dwelling-units/{_}` | `docs/features/F09.1_resident_registry.md` | 308 |
-| PUT | `/api/v1/dwelling-units/{_}/residents/{_}` | `docs/features/F09.1_resident_registry.md` | 313 |
+| DELETE | `/api/v1/dwelling-units/residents/documents/{_}` | `docs/features/F09.1_resident_registry.md` | 312 |
+| DELETE | `/api/v1/dwelling-units/{_}` | `docs/features/F09.1_resident_registry.md` | 295 |
+| DELETE | `/api/v1/dwelling-units/{_}/residents/{_}` | `docs/features/F09.1_resident_registry.md` | 300 |
+| GET | `/api/v1/dwelling-units` | `docs/features/F09.1_resident_registry.md` | 291 |
+| GET | `/api/v1/dwelling-units` | `docs/features/F09.1_resident_registry.md` | 361 |
+| GET | `/api/v1/dwelling-units/export` | `docs/features/F09.1_resident_registry.md` | 308 |
+| GET | `/api/v1/dwelling-units/export` | `docs/features/F09.1_resident_registry.md` | 877 |
+| GET | `/api/v1/dwelling-units/my` | `docs/features/F09.1_resident_registry.md` | 307 |
+| GET | `/api/v1/dwelling-units/my` | `docs/features/F09.1_resident_registry.md` | 613 |
+| GET | `/api/v1/dwelling-units/residents/search` | `docs/features/F09.1_resident_registry.md` | 309 |
+| GET | `/api/v1/dwelling-units/residents/search` | `docs/features/F09.1_resident_registry.md` | 903 |
+| GET | `/api/v1/dwelling-units/stats` | `docs/features/F09.1_resident_registry.md` | 322 |
+| GET | `/api/v1/dwelling-units/stats` | `docs/features/F09.1_resident_registry.md` | 794 |
+| GET | `/api/v1/dwelling-units/{_}` | `docs/features/F09.1_resident_registry.md` | 293 |
+| GET | `/api/v1/dwelling-units/{_}` | `docs/features/F09.1_resident_registry.md` | 417 |
+| GET | `/api/v1/dwelling-units/{_}/residents` | `docs/features/F09.1_resident_registry.md` | 297 |
+| GET | `/api/v1/dwelling-units/{_}/residents` | `docs/features/F09.1_resident_registry.md` | 498 |
+| PATCH | `/api/v1/dwelling-units/bulk-privacy` | `docs/features/F09.1_resident_registry.md` | 310 |
+| PATCH | `/api/v1/dwelling-units/bulk-privacy` | `docs/features/F09.1_resident_registry.md` | 946 |
+| PATCH | `/api/v1/dwelling-units/{_}/move-out-all` | `docs/features/F09.1_resident_registry.md` | 302 |
+| PATCH | `/api/v1/dwelling-units/{_}/move-out-all` | `docs/features/F09.1_resident_registry.md` | 1154 |
+| PATCH | `/api/v1/dwelling-units/{_}/residents/{_}/move-out` | `docs/features/F09.1_resident_registry.md` | 301 |
+| PATCH | `/api/v1/dwelling-units/{_}/residents/{_}/move-out` | `docs/features/F09.1_resident_registry.md` | 562 |
+| PATCH | `/api/v1/dwelling-units/{_}/residents/{_}/renew-lease` | `docs/features/F09.1_resident_registry.md` | 304 |
+| PATCH | `/api/v1/dwelling-units/{_}/residents/{_}/renew-lease` | `docs/features/F09.1_resident_registry.md` | 1194 |
+| PATCH | `/api/v1/dwelling-units/{_}/residents/{_}/verify` | `docs/features/F09.1_resident_registry.md` | 303 |
+| PATCH | `/api/v1/dwelling-units/{_}/residents/{_}/verify` | `docs/features/F09.1_resident_registry.md` | 592 |
+| POST | `/api/v1/dwelling-units` | `docs/features/F09.1_resident_registry.md` | 292 |
+| POST | `/api/v1/dwelling-units` | `docs/features/F09.1_resident_registry.md` | 326 |
+| POST | `/api/v1/dwelling-units/import` | `docs/features/F09.1_resident_registry.md` | 296 |
+| POST | `/api/v1/dwelling-units/import` | `docs/features/F09.1_resident_registry.md` | 831 |
+| POST | `/api/v1/dwelling-units/self-register` | `docs/features/F09.1_resident_registry.md` | 306 |
+| POST | `/api/v1/dwelling-units/self-register` | `docs/features/F09.1_resident_registry.md` | 1119 |
+| POST | `/api/v1/dwelling-units/{_}/invite` | `docs/features/F09.1_resident_registry.md` | 305 |
+| POST | `/api/v1/dwelling-units/{_}/invite` | `docs/features/F09.1_resident_registry.md` | 1080 |
+| POST | `/api/v1/dwelling-units/{_}/residents` | `docs/features/F09.1_resident_registry.md` | 298 |
+| POST | `/api/v1/dwelling-units/{_}/residents` | `docs/features/F09.1_resident_registry.md` | 520 |
+| POST | `/api/v1/dwelling-units/{_}/residents/{_}/documents` | `docs/features/F09.1_resident_registry.md` | 311 |
+| POST | `/api/v1/dwelling-units/{_}/residents/{_}/documents` | `docs/features/F09.1_resident_registry.md` | 979 |
+| PUT | `/api/v1/dwelling-units/{_}` | `docs/features/F09.1_resident_registry.md` | 294 |
+| PUT | `/api/v1/dwelling-units/{_}/residents/{_}` | `docs/features/F09.1_resident_registry.md` | 299 |
 
 ### /api/v1/events/* (18 件)
 
@@ -815,30 +811,37 @@
 | POST | `/api/v1/follows` | `docs/features/F04.4_social_profiles.md` | 98 |
 | POST | `/api/v1/follows` | `docs/features/F04.4_social_profiles.md` | 320 |
 
-### /api/v1/forms/* (13 件)
+### /api/v1/forms/* (19 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| DELETE | `/api/v1/forms/submissions/{_}` | `docs/features/F05.7_form_builder.md` | 386 |
+| DELETE | `/api/v1/forms/submissions/{_}` | `docs/features/F05.7_form_builder.md` | 381 |
+| DELETE | `/api/v1/forms/templates/{_}` | `docs/features/F05.7_form_builder.md` | 368 |
 | GET | `/api/v1/forms/presets` | `docs/features/F05.7_form_builder.md` | 355 |
-| GET | `/api/v1/forms/submissions/me` | `docs/features/F05.7_form_builder.md` | 381 |
-| GET | `/api/v1/forms/submissions/{_}` | `docs/features/F05.7_form_builder.md` | 383 |
-| GET | `/api/v1/forms/submissions/{_}/pdf/download-url` | `docs/features/F05.7_form_builder.md` | 392 |
-| GET | `/api/v1/forms/submissions/{_}/pdf/download-url` | `docs/features/F05.7_form_builder.md` | 640 |
-| GET | `/api/v1/forms/templates/{_}/submissions` | `docs/features/F05.7_form_builder.md` | 380 |
-| GET | `/api/v1/forms/templates/{_}/submissions` | `docs/features/F05.7_form_builder.md` | 685 |
-| GET | `/api/v1/forms/templates/{_}/submissions/export` | `docs/features/F05.7_form_builder.md` | 393 |
-| GET | `/api/v1/forms/templates/{_}/submissions/export` | `docs/features/F05.7_form_builder.md` | 662 |
-| PATCH | `/api/v1/forms/submissions/{_}` | `docs/features/F05.7_form_builder.md` | 384 |
-| POST | `/api/v1/forms/submissions/{_}/pdf` | `docs/features/F05.7_form_builder.md` | 391 |
-| POST | `/api/v1/forms/submissions/{_}/pdf` | `docs/features/F05.7_form_builder.md` | 614 |
-| POST | `/api/v1/forms/submissions/{_}/submit` | `docs/features/F05.7_form_builder.md` | 385 |
-| POST | `/api/v1/forms/submissions/{_}/submit` | `docs/features/F05.7_form_builder.md` | 583 |
-| POST | `/api/v1/forms/submissions/{_}/upload-url` | `docs/features/F05.7_form_builder.md` | 398 |
-| POST | `/api/v1/forms/submissions/{_}/upload-url` | `docs/features/F05.7_form_builder.md` | 753 |
-| POST | `/api/v1/forms/templates/{_}/remind` | `docs/features/F05.7_form_builder.md` | 727 |
-| POST | `/api/v1/forms/templates/{_}/submissions` | `docs/features/F05.7_form_builder.md` | 382 |
-| POST | `/api/v1/forms/templates/{_}/submissions` | `docs/features/F05.7_form_builder.md` | 523 |
+| GET | `/api/v1/forms/submissions/me` | `docs/features/F05.7_form_builder.md` | 376 |
+| GET | `/api/v1/forms/submissions/{_}` | `docs/features/F05.7_form_builder.md` | 378 |
+| GET | `/api/v1/forms/submissions/{_}/pdf/download-url` | `docs/features/F05.7_form_builder.md` | 387 |
+| GET | `/api/v1/forms/submissions/{_}/pdf/download-url` | `docs/features/F05.7_form_builder.md` | 635 |
+| GET | `/api/v1/forms/templates/{_}` | `docs/features/F05.7_form_builder.md` | 364 |
+| GET | `/api/v1/forms/templates/{_}/submissions` | `docs/features/F05.7_form_builder.md` | 375 |
+| GET | `/api/v1/forms/templates/{_}/submissions` | `docs/features/F05.7_form_builder.md` | 680 |
+| GET | `/api/v1/forms/templates/{_}/submissions/export` | `docs/features/F05.7_form_builder.md` | 388 |
+| GET | `/api/v1/forms/templates/{_}/submissions/export` | `docs/features/F05.7_form_builder.md` | 657 |
+| PATCH | `/api/v1/forms/submissions/{_}` | `docs/features/F05.7_form_builder.md` | 379 |
+| POST | `/api/v1/forms/submissions/{_}/pdf` | `docs/features/F05.7_form_builder.md` | 386 |
+| POST | `/api/v1/forms/submissions/{_}/pdf` | `docs/features/F05.7_form_builder.md` | 609 |
+| POST | `/api/v1/forms/submissions/{_}/submit` | `docs/features/F05.7_form_builder.md` | 380 |
+| POST | `/api/v1/forms/submissions/{_}/submit` | `docs/features/F05.7_form_builder.md` | 578 |
+| POST | `/api/v1/forms/submissions/{_}/upload-url` | `docs/features/F05.7_form_builder.md` | 393 |
+| POST | `/api/v1/forms/submissions/{_}/upload-url` | `docs/features/F05.7_form_builder.md` | 748 |
+| POST | `/api/v1/forms/templates/{_}/close` | `docs/features/F05.7_form_builder.md` | 367 |
+| POST | `/api/v1/forms/templates/{_}/duplicate` | `docs/features/F05.7_form_builder.md` | 369 |
+| POST | `/api/v1/forms/templates/{_}/publish` | `docs/features/F05.7_form_builder.md` | 366 |
+| POST | `/api/v1/forms/templates/{_}/remind` | `docs/features/F05.7_form_builder.md` | 370 |
+| POST | `/api/v1/forms/templates/{_}/remind` | `docs/features/F05.7_form_builder.md` | 722 |
+| POST | `/api/v1/forms/templates/{_}/submissions` | `docs/features/F05.7_form_builder.md` | 377 |
+| POST | `/api/v1/forms/templates/{_}/submissions` | `docs/features/F05.7_form_builder.md` | 518 |
+| PUT | `/api/v1/forms/templates/{_}` | `docs/features/F05.7_form_builder.md` | 365 |
 
 ### /api/v1/gallery/* (2 件)
 
@@ -853,36 +856,36 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| DELETE | `/api/v1/incidents/categories/{_}` | `docs/features/F07.6_incident_management.md` | 440 |
-| DELETE | `/api/v1/incidents/maintenance-schedules/{_}` | `docs/features/F07.6_incident_management.md` | 499 |
-| DELETE | `/api/v1/incidents/{_}` | `docs/features/F07.6_incident_management.md` | 453 |
-| DELETE | `/api/v1/incidents/{_}/assignments/{_}` | `docs/features/F07.6_incident_management.md` | 469 |
-| DELETE | `/api/v1/incidents/{_}/comments/{_}` | `docs/features/F07.6_incident_management.md` | 476 |
-| GET | `/api/v1/incidents/assigned` | `docs/features/F07.6_incident_management.md` | 448 |
-| GET | `/api/v1/incidents/maintenance-schedules/{_}` | `docs/features/F07.6_incident_management.md` | 497 |
-| GET | `/api/v1/incidents/me` | `docs/features/F07.6_incident_management.md` | 447 |
-| GET | `/api/v1/incidents/{_}` | `docs/features/F07.6_incident_management.md` | 451 |
-| GET | `/api/v1/incidents/{_}/comments` | `docs/features/F07.6_incident_management.md` | 474 |
-| GET | `/api/v1/incidents/{_}/expense-status` | `docs/features/F07.6_incident_management.md` | 488 |
-| PATCH | `/api/v1/incidents/{_}` | `docs/features/F07.6_incident_management.md` | 452 |
-| POST | `/api/v1/incidents/{_}/acknowledge` | `docs/features/F07.6_incident_management.md` | 458 |
-| POST | `/api/v1/incidents/{_}/assignments` | `docs/features/F07.6_incident_management.md` | 468 |
-| POST | `/api/v1/incidents/{_}/assignments` | `docs/features/F07.6_incident_management.md` | 691 |
-| POST | `/api/v1/incidents/{_}/close` | `docs/features/F07.6_incident_management.md` | 463 |
-| POST | `/api/v1/incidents/{_}/comments` | `docs/features/F07.6_incident_management.md` | 475 |
-| POST | `/api/v1/incidents/{_}/comments` | `docs/features/F07.6_incident_management.md` | 964 |
-| POST | `/api/v1/incidents/{_}/comments/{_}/upload-url` | `docs/features/F07.6_incident_management.md` | 482 |
-| POST | `/api/v1/incidents/{_}/confirm` | `docs/features/F07.6_incident_management.md` | 461 |
-| POST | `/api/v1/incidents/{_}/expense-request` | `docs/features/F07.6_incident_management.md` | 487 |
-| POST | `/api/v1/incidents/{_}/expense-request` | `docs/features/F07.6_incident_management.md` | 746 |
-| POST | `/api/v1/incidents/{_}/reopen` | `docs/features/F07.6_incident_management.md` | 462 |
-| POST | `/api/v1/incidents/{_}/reopen` | `docs/features/F07.6_incident_management.md` | 659 |
-| POST | `/api/v1/incidents/{_}/resolve` | `docs/features/F07.6_incident_management.md` | 460 |
-| POST | `/api/v1/incidents/{_}/resolve` | `docs/features/F07.6_incident_management.md` | 623 |
-| POST | `/api/v1/incidents/{_}/start` | `docs/features/F07.6_incident_management.md` | 459 |
-| POST | `/api/v1/incidents/{_}/upload-url` | `docs/features/F07.6_incident_management.md` | 481 |
-| PUT | `/api/v1/incidents/categories/{_}` | `docs/features/F07.6_incident_management.md` | 439 |
-| PUT | `/api/v1/incidents/maintenance-schedules/{_}` | `docs/features/F07.6_incident_management.md` | 498 |
+| DELETE | `/api/v1/incidents/categories/{_}` | `docs/features/F07.6_incident_management.md` | 433 |
+| DELETE | `/api/v1/incidents/maintenance-schedules/{_}` | `docs/features/F07.6_incident_management.md` | 492 |
+| DELETE | `/api/v1/incidents/{_}` | `docs/features/F07.6_incident_management.md` | 446 |
+| DELETE | `/api/v1/incidents/{_}/assignments/{_}` | `docs/features/F07.6_incident_management.md` | 462 |
+| DELETE | `/api/v1/incidents/{_}/comments/{_}` | `docs/features/F07.6_incident_management.md` | 469 |
+| GET | `/api/v1/incidents/assigned` | `docs/features/F07.6_incident_management.md` | 441 |
+| GET | `/api/v1/incidents/maintenance-schedules/{_}` | `docs/features/F07.6_incident_management.md` | 490 |
+| GET | `/api/v1/incidents/me` | `docs/features/F07.6_incident_management.md` | 440 |
+| GET | `/api/v1/incidents/{_}` | `docs/features/F07.6_incident_management.md` | 444 |
+| GET | `/api/v1/incidents/{_}/comments` | `docs/features/F07.6_incident_management.md` | 467 |
+| GET | `/api/v1/incidents/{_}/expense-status` | `docs/features/F07.6_incident_management.md` | 481 |
+| PATCH | `/api/v1/incidents/{_}` | `docs/features/F07.6_incident_management.md` | 445 |
+| POST | `/api/v1/incidents/{_}/acknowledge` | `docs/features/F07.6_incident_management.md` | 451 |
+| POST | `/api/v1/incidents/{_}/assignments` | `docs/features/F07.6_incident_management.md` | 461 |
+| POST | `/api/v1/incidents/{_}/assignments` | `docs/features/F07.6_incident_management.md` | 684 |
+| POST | `/api/v1/incidents/{_}/close` | `docs/features/F07.6_incident_management.md` | 456 |
+| POST | `/api/v1/incidents/{_}/comments` | `docs/features/F07.6_incident_management.md` | 468 |
+| POST | `/api/v1/incidents/{_}/comments` | `docs/features/F07.6_incident_management.md` | 957 |
+| POST | `/api/v1/incidents/{_}/comments/{_}/upload-url` | `docs/features/F07.6_incident_management.md` | 475 |
+| POST | `/api/v1/incidents/{_}/confirm` | `docs/features/F07.6_incident_management.md` | 454 |
+| POST | `/api/v1/incidents/{_}/expense-request` | `docs/features/F07.6_incident_management.md` | 480 |
+| POST | `/api/v1/incidents/{_}/expense-request` | `docs/features/F07.6_incident_management.md` | 739 |
+| POST | `/api/v1/incidents/{_}/reopen` | `docs/features/F07.6_incident_management.md` | 455 |
+| POST | `/api/v1/incidents/{_}/reopen` | `docs/features/F07.6_incident_management.md` | 652 |
+| POST | `/api/v1/incidents/{_}/resolve` | `docs/features/F07.6_incident_management.md` | 453 |
+| POST | `/api/v1/incidents/{_}/resolve` | `docs/features/F07.6_incident_management.md` | 616 |
+| POST | `/api/v1/incidents/{_}/start` | `docs/features/F07.6_incident_management.md` | 452 |
+| POST | `/api/v1/incidents/{_}/upload-url` | `docs/features/F07.6_incident_management.md` | 474 |
+| PUT | `/api/v1/incidents/categories/{_}` | `docs/features/F07.6_incident_management.md` | 432 |
+| PUT | `/api/v1/incidents/maintenance-schedules/{_}` | `docs/features/F07.6_incident_management.md` | 491 |
 
 ### /api/v1/job-contracts/* (17 件)
 
@@ -969,36 +972,28 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| DELETE | `/api/v1/line/configs/{_}` | `docs/features/F09.4_line_sns.md` | 225 |
-| DELETE | `/api/v1/line/configs/{_}` | `docs/features/F09.4_line_sns.md` | 371 |
-| DELETE | `/api/v1/line/link/{_}` | `docs/features/F09.4_line_sns.md` | 228 |
-| DELETE | `/api/v1/line/link/{_}` | `docs/features/F09.4_line_sns.md` | 459 |
-| GET | `/api/v1/line/configs` | `docs/features/F09.4_line_sns.md` | 222 |
-| GET | `/api/v1/line/configs` | `docs/features/F09.4_line_sns.md` | 327 |
-| GET | `/api/v1/line/configs/{_}/logs` | `docs/features/F09.4_line_sns.md` | 230 |
-| GET | `/api/v1/line/configs/{_}/logs` | `docs/features/F09.4_line_sns.md` | 504 |
-| GET | `/api/v1/line/configs/{_}/stats` | `docs/features/F09.4_line_sns.md` | 231 |
-| GET | `/api/v1/line/configs/{_}/stats` | `docs/features/F09.4_line_sns.md` | 543 |
-| GET | `/api/v1/line/link/status` | `docs/features/F09.4_line_sns.md` | 229 |
-| GET | `/api/v1/line/link/status` | `docs/features/F09.4_line_sns.md` | 479 |
-| POST | `/api/v1/line/configs` | `docs/features/F09.4_line_sns.md` | 223 |
-| POST | `/api/v1/line/configs` | `docs/features/F09.4_line_sns.md` | 280 |
-| POST | `/api/v1/line/configs/{_}/broadcast` | `docs/features/F09.4_line_sns.md` | 232 |
-| POST | `/api/v1/line/configs/{_}/broadcast` | `docs/features/F09.4_line_sns.md` | 584 |
-| POST | `/api/v1/line/configs/{_}/test` | `docs/features/F09.4_line_sns.md` | 226 |
-| POST | `/api/v1/line/configs/{_}/test` | `docs/features/F09.4_line_sns.md` | 392 |
-| POST | `/api/v1/line/link` | `docs/features/F09.4_line_sns.md` | 227 |
-| POST | `/api/v1/line/link` | `docs/features/F09.4_line_sns.md` | 420 |
-| PUT | `/api/v1/line/configs/{_}` | `docs/features/F09.4_line_sns.md` | 224 |
-| PUT | `/api/v1/line/configs/{_}` | `docs/features/F09.4_line_sns.md` | 343 |
-
-### /api/v1/mail-tracking/* (1 件)
-
-| メソッド | パス | 設計書 | 行 |
-|---|---|---|---|
-| GET | `/api/v1/mail-tracking/{_}` | `docs/features/F09.6_direct_mail.md` | 146 |
-| GET | `/api/v1/mail-tracking/{_}` | `docs/features/F09.6_direct_mail.md` | 342 |
-| GET | `/api/v1/mail-tracking/{_}` | `docs/features/F09.6_direct_mail.md` | 885 |
+| DELETE | `/api/v1/line/configs/{_}` | `docs/features/F09.4_line_sns.md` | 218 |
+| DELETE | `/api/v1/line/configs/{_}` | `docs/features/F09.4_line_sns.md` | 364 |
+| DELETE | `/api/v1/line/link/{_}` | `docs/features/F09.4_line_sns.md` | 221 |
+| DELETE | `/api/v1/line/link/{_}` | `docs/features/F09.4_line_sns.md` | 452 |
+| GET | `/api/v1/line/configs` | `docs/features/F09.4_line_sns.md` | 215 |
+| GET | `/api/v1/line/configs` | `docs/features/F09.4_line_sns.md` | 320 |
+| GET | `/api/v1/line/configs/{_}/logs` | `docs/features/F09.4_line_sns.md` | 223 |
+| GET | `/api/v1/line/configs/{_}/logs` | `docs/features/F09.4_line_sns.md` | 497 |
+| GET | `/api/v1/line/configs/{_}/stats` | `docs/features/F09.4_line_sns.md` | 224 |
+| GET | `/api/v1/line/configs/{_}/stats` | `docs/features/F09.4_line_sns.md` | 536 |
+| GET | `/api/v1/line/link/status` | `docs/features/F09.4_line_sns.md` | 222 |
+| GET | `/api/v1/line/link/status` | `docs/features/F09.4_line_sns.md` | 472 |
+| POST | `/api/v1/line/configs` | `docs/features/F09.4_line_sns.md` | 216 |
+| POST | `/api/v1/line/configs` | `docs/features/F09.4_line_sns.md` | 273 |
+| POST | `/api/v1/line/configs/{_}/broadcast` | `docs/features/F09.4_line_sns.md` | 225 |
+| POST | `/api/v1/line/configs/{_}/broadcast` | `docs/features/F09.4_line_sns.md` | 577 |
+| POST | `/api/v1/line/configs/{_}/test` | `docs/features/F09.4_line_sns.md` | 219 |
+| POST | `/api/v1/line/configs/{_}/test` | `docs/features/F09.4_line_sns.md` | 385 |
+| POST | `/api/v1/line/link` | `docs/features/F09.4_line_sns.md` | 220 |
+| POST | `/api/v1/line/link` | `docs/features/F09.4_line_sns.md` | 413 |
+| PUT | `/api/v1/line/configs/{_}` | `docs/features/F09.4_line_sns.md` | 217 |
+| PUT | `/api/v1/line/configs/{_}` | `docs/features/F09.4_line_sns.md` | 336 |
 
 ### /api/v1/me/* (31 件)
 
@@ -1134,15 +1129,18 @@
 | GET | `/api/v1/onboarding/progresses/me` | `docs/features/F02.4_onboarding.md` | 376 |
 | GET | `/api/v1/onboarding/progresses/me` | `docs/features/F02.4_onboarding.md` | 566 |
 
-### /api/v1/organizations/* (86 件)
+### /api/v1/organizations/* (109 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| DELETE | `/api/v1/organizations/{_}/signage/screens/{_}` | `docs/features/F09.10_digital_signage.md` | 304 |
-| DELETE | `/api/v1/organizations/{_}/signage/screens/{_}/emergency` | `docs/features/F09.10_digital_signage.md` | 351 |
-| DELETE | `/api/v1/organizations/{_}/signage/screens/{_}/schedules/{_}` | `docs/features/F09.10_digital_signage.md` | 330 |
-| DELETE | `/api/v1/organizations/{_}/signage/screens/{_}/slots/{_}` | `docs/features/F09.10_digital_signage.md` | 317 |
-| DELETE | `/api/v1/organizations/{_}/signage/screens/{_}/tokens/{_}` | `docs/features/F09.10_digital_signage.md` | 342 |
+| DELETE | `/api/v1/organizations/{_}/knowledge-base/pages/{_}` | `docs/features/F06.5_knowledge_base.md` | 316 |
+| DELETE | `/api/v1/organizations/{_}/signage/screens/{_}` | `docs/features/F09.10_digital_signage.md` | 296 |
+| DELETE | `/api/v1/organizations/{_}/signage/screens/{_}/emergency` | `docs/features/F09.10_digital_signage.md` | 343 |
+| DELETE | `/api/v1/organizations/{_}/signage/screens/{_}/schedules/{_}` | `docs/features/F09.10_digital_signage.md` | 322 |
+| DELETE | `/api/v1/organizations/{_}/signage/screens/{_}/slots/{_}` | `docs/features/F09.10_digital_signage.md` | 309 |
+| DELETE | `/api/v1/organizations/{_}/signage/screens/{_}/tokens/{_}` | `docs/features/F09.10_digital_signage.md` | 334 |
+| DELETE | `/api/v1/organizations/{_}/skill-categories/{_}` | `docs/features/F07.5_skill_certification.md` | 191 |
+| DELETE | `/api/v1/organizations/{_}/skills/{_}` | `docs/features/F07.5_skill_certification.md` | 212 |
 | DELETE | `/api/v1/organizations/{_}/team-invites/{_}` | `docs/features/F01.2_org_team_member_role.md` | 729 |
 | DELETE | `/api/v1/organizations/{_}/teams/{_}` | `docs/features/F01.2_org_team_member_role.md` | 730 |
 | GET | `/api/v1/organizations/{_}/access-requirements` | `docs/features/F08.2_payments_access_control.md` | 361 |
@@ -1158,25 +1156,34 @@
 | GET | `/api/v1/organizations/{_}/events` | `docs/features/F03.8_event_management.md` | 396 |
 | GET | `/api/v1/organizations/{_}/events/{_}/care-participants` | `docs/features/F03.12_care_recipient_event_watch_notification.md` | 465 |
 | GET | `/api/v1/organizations/{_}/events/{_}/stats` | `docs/features/F03.8_event_management.md` | 403 |
-| GET | `/api/v1/organizations/{_}/form-templates` | `docs/features/F05.7_form_builder.md` | 366 |
+| GET | `/api/v1/organizations/{_}/forms/templates` | `docs/features/F05.7_form_builder.md` | 361 |
 | GET | `/api/v1/organizations/{_}/gamification/config` | `docs/features/F04.7_gamification.md` | 370 |
-| GET | `/api/v1/organizations/{_}/incidents` | `docs/features/F07.6_incident_management.md` | 446 |
-| GET | `/api/v1/organizations/{_}/incidents/categories` | `docs/features/F07.6_incident_management.md` | 436 |
-| GET | `/api/v1/organizations/{_}/incidents/maintenance-schedules` | `docs/features/F07.6_incident_management.md` | 494 |
-| GET | `/api/v1/organizations/{_}/incidents/stats` | `docs/features/F07.6_incident_management.md` | 505 |
+| GET | `/api/v1/organizations/{_}/incidents` | `docs/features/F07.6_incident_management.md` | 439 |
+| GET | `/api/v1/organizations/{_}/incidents/categories` | `docs/features/F07.6_incident_management.md` | 429 |
+| GET | `/api/v1/organizations/{_}/incidents/maintenance-schedules` | `docs/features/F07.6_incident_management.md` | 487 |
+| GET | `/api/v1/organizations/{_}/incidents/stats` | `docs/features/F07.6_incident_management.md` | 498 |
 | GET | `/api/v1/organizations/{_}/invite-tokens/{_}/pdf` | `docs/features/F01.8_team_invite_qr_pdf.md` | 580 |
+| GET | `/api/v1/organizations/{_}/knowledge-base/pages` | `docs/features/F06.5_knowledge_base.md` | 312 |
+| GET | `/api/v1/organizations/{_}/knowledge-base/pages/{_}` | `docs/features/F06.5_knowledge_base.md` | 313 |
 | GET | `/api/v1/organizations/{_}/modules` | `docs/features/F16.1_organization_sidebar_navigation.md` | 56 |
 | GET | `/api/v1/organizations/{_}/onboarding/templates` | `docs/features/F02.4_onboarding.md` | 351 |
 | GET | `/api/v1/organizations/{_}/payment-items` | `docs/features/F08.2_payments_access_control.md` | 349 |
 | GET | `/api/v1/organizations/{_}/schedules` | `docs/features/F03.1_schedule_shared.md` | 437 |
 | GET | `/api/v1/organizations/{_}/schedules` | `docs/features/F03.1_schedule_shared.md` | 818 |
 | GET | `/api/v1/organizations/{_}/schedules/annual` | `docs/features/F03.10_annual_event_plan.md` | 214 |
-| GET | `/api/v1/organizations/{_}/signage/screens` | `docs/features/F09.10_digital_signage.md` | 300 |
-| GET | `/api/v1/organizations/{_}/signage/screens/{_}` | `docs/features/F09.10_digital_signage.md` | 302 |
-| GET | `/api/v1/organizations/{_}/signage/screens/{_}/emergency/history` | `docs/features/F09.10_digital_signage.md` | 352 |
-| GET | `/api/v1/organizations/{_}/signage/screens/{_}/schedules` | `docs/features/F09.10_digital_signage.md` | 327 |
-| GET | `/api/v1/organizations/{_}/signage/screens/{_}/slots` | `docs/features/F09.10_digital_signage.md` | 314 |
-| GET | `/api/v1/organizations/{_}/signage/screens/{_}/tokens` | `docs/features/F09.10_digital_signage.md` | 339 |
+| GET | `/api/v1/organizations/{_}/signage/screens` | `docs/features/F09.10_digital_signage.md` | 292 |
+| GET | `/api/v1/organizations/{_}/signage/screens/{_}` | `docs/features/F09.10_digital_signage.md` | 294 |
+| GET | `/api/v1/organizations/{_}/signage/screens/{_}/emergency/history` | `docs/features/F09.10_digital_signage.md` | 344 |
+| GET | `/api/v1/organizations/{_}/signage/screens/{_}/schedules` | `docs/features/F09.10_digital_signage.md` | 319 |
+| GET | `/api/v1/organizations/{_}/signage/screens/{_}/slots` | `docs/features/F09.10_digital_signage.md` | 306 |
+| GET | `/api/v1/organizations/{_}/signage/screens/{_}/tokens` | `docs/features/F09.10_digital_signage.md` | 331 |
+| GET | `/api/v1/organizations/{_}/skill-categories` | `docs/features/F07.5_skill_certification.md` | 188 |
+| GET | `/api/v1/organizations/{_}/skill-matrix` | `docs/features/F07.5_skill_certification.md` | 227 |
+| GET | `/api/v1/organizations/{_}/skills/export` | `docs/features/F07.5_skill_certification.md` | 229 |
+| GET | `/api/v1/organizations/{_}/skills/me` | `docs/features/F07.5_skill_certification.md` | 208 |
+| GET | `/api/v1/organizations/{_}/skills/search` | `docs/features/F07.5_skill_certification.md` | 228 |
+| GET | `/api/v1/organizations/{_}/skills/{_}` | `docs/features/F07.5_skill_certification.md` | 210 |
+| GET | `/api/v1/organizations/{_}/skills/{_}/certificate-url` | `docs/features/F07.5_skill_certification.md` | 215 |
 | GET | `/api/v1/organizations/{_}/stats` | `docs/features/F02.2.1_dashboard_widget_role_visibility.md` | 572 |
 | GET | `/api/v1/organizations/{_}/storage` | `docs/features/F05.5_file_sharing.md` | 362 |
 | GET | `/api/v1/organizations/{_}/storage` | `docs/features/F05.5_file_sharing.md` | 1058 |
@@ -1185,9 +1192,14 @@
 | GET | `/api/v1/organizations/{_}/timetable-terms` | `docs/features/F03.9_timetable.md` | 294 |
 | GET | `/api/v1/organizations/{_}/todo-status-labels` | `docs/features/F02.3.1_todo_status_labels_and_handoff.md` | 212 |
 | GET | `/api/v1/organizations/{_}/todos` | `docs/features/F02.2.1_dashboard_widget_role_visibility.md` | 571 |
-| GET | `/api/v1/organizations/{_}/workflow-requests` | `docs/features/F05.6_workflow_approval.md` | 384 |
-| GET | `/api/v1/organizations/{_}/workflow-templates` | `docs/features/F05.6_workflow_approval.md` | 371 |
+| GET | `/api/v1/organizations/{_}/workflows/requests` | `docs/features/F05.6_workflow_approval.md` | 378 |
+| GET | `/api/v1/organizations/{_}/workflows/templates` | `docs/features/F05.6_workflow_approval.md` | 367 |
 | PATCH | `/api/v1/organizations/{_}/budget/config` | `docs/features/F08.6_budget_accounting.md` | 416 |
+| PATCH | `/api/v1/organizations/{_}/knowledge-base/pages/{_}` | `docs/features/F06.5_knowledge_base.md` | 315 |
+| PATCH | `/api/v1/organizations/{_}/knowledge-base/pages/{_}/archive` | `docs/features/F06.5_knowledge_base.md` | 319 |
+| PATCH | `/api/v1/organizations/{_}/knowledge-base/pages/{_}/move` | `docs/features/F06.5_knowledge_base.md` | 317 |
+| PATCH | `/api/v1/organizations/{_}/knowledge-base/pages/{_}/publish` | `docs/features/F06.5_knowledge_base.md` | 318 |
+| PATCH | `/api/v1/organizations/{_}/skills/{_}/verify` | `docs/features/F07.5_skill_certification.md` | 213 |
 | POST | `/api/v1/organizations` | `docs/features/F01.2_org_team_member_role.md` | 669 |
 | POST | `/api/v1/organizations/{_}/budget/fiscal-years` | `docs/features/F08.6_budget_accounting.md` | 351 |
 | POST | `/api/v1/organizations/{_}/corkboards` | `docs/features/F09.8_corkboard.md` | 239 |
@@ -1198,35 +1210,41 @@
 | POST | `/api/v1/organizations/{_}/events` | `docs/features/F03.8_event_management.md` | 395 |
 | POST | `/api/v1/organizations/{_}/events/{_}/care-participants/{_}/notify-watcher` | `docs/features/F03.12_care_recipient_event_watch_notification.md` | 466 |
 | POST | `/api/v1/organizations/{_}/events/{_}/complete` | `docs/features/F03.8_event_management.md` | 402 |
-| POST | `/api/v1/organizations/{_}/form-templates` | `docs/features/F05.7_form_builder.md` | 368 |
-| POST | `/api/v1/organizations/{_}/incidents` | `docs/features/F07.6_incident_management.md` | 450 |
-| POST | `/api/v1/organizations/{_}/incidents/categories` | `docs/features/F07.6_incident_management.md` | 438 |
-| POST | `/api/v1/organizations/{_}/incidents/maintenance-schedules` | `docs/features/F07.6_incident_management.md` | 496 |
+| POST | `/api/v1/organizations/{_}/forms/templates` | `docs/features/F05.7_form_builder.md` | 363 |
+| POST | `/api/v1/organizations/{_}/incidents` | `docs/features/F07.6_incident_management.md` | 443 |
+| POST | `/api/v1/organizations/{_}/incidents/categories` | `docs/features/F07.6_incident_management.md` | 431 |
+| POST | `/api/v1/organizations/{_}/incidents/maintenance-schedules` | `docs/features/F07.6_incident_management.md` | 489 |
+| POST | `/api/v1/organizations/{_}/knowledge-base/pages` | `docs/features/F06.5_knowledge_base.md` | 314 |
 | POST | `/api/v1/organizations/{_}/onboarding/templates` | `docs/features/F02.4_onboarding.md` | 353 |
 | POST | `/api/v1/organizations/{_}/payment-items` | `docs/features/F08.2_payments_access_control.md` | 350 |
 | POST | `/api/v1/organizations/{_}/recruitment-listings` | `docs/features/F03.11_recruitment_listing.md` | 1362 |
 | POST | `/api/v1/organizations/{_}/schedules` | `docs/features/F03.10_annual_event_plan.md` | 129 |
 | POST | `/api/v1/organizations/{_}/schedules` | `docs/features/F03.1_schedule_shared.md` | 438 |
 | POST | `/api/v1/organizations/{_}/schedules` | `docs/features/F03.1_schedule_shared.md` | 824 |
-| POST | `/api/v1/organizations/{_}/signage/screens` | `docs/features/F09.10_digital_signage.md` | 301 |
-| POST | `/api/v1/organizations/{_}/signage/screens/{_}/emergency` | `docs/features/F09.10_digital_signage.md` | 350 |
-| POST | `/api/v1/organizations/{_}/signage/screens/{_}/schedules` | `docs/features/F09.10_digital_signage.md` | 328 |
-| POST | `/api/v1/organizations/{_}/signage/screens/{_}/slots` | `docs/features/F09.10_digital_signage.md` | 315 |
-| POST | `/api/v1/organizations/{_}/signage/screens/{_}/tokens` | `docs/features/F09.10_digital_signage.md` | 340 |
-| POST | `/api/v1/organizations/{_}/signage/upload-url` | `docs/features/F09.10_digital_signage.md` | 358 |
+| POST | `/api/v1/organizations/{_}/signage/screens` | `docs/features/F09.10_digital_signage.md` | 293 |
+| POST | `/api/v1/organizations/{_}/signage/screens/{_}/emergency` | `docs/features/F09.10_digital_signage.md` | 342 |
+| POST | `/api/v1/organizations/{_}/signage/screens/{_}/schedules` | `docs/features/F09.10_digital_signage.md` | 320 |
+| POST | `/api/v1/organizations/{_}/signage/screens/{_}/slots` | `docs/features/F09.10_digital_signage.md` | 307 |
+| POST | `/api/v1/organizations/{_}/signage/screens/{_}/tokens` | `docs/features/F09.10_digital_signage.md` | 332 |
+| POST | `/api/v1/organizations/{_}/signage/upload-url` | `docs/features/F09.10_digital_signage.md` | 350 |
+| POST | `/api/v1/organizations/{_}/skill-categories` | `docs/features/F07.5_skill_certification.md` | 189 |
+| POST | `/api/v1/organizations/{_}/skills` | `docs/features/F07.5_skill_certification.md` | 209 |
+| POST | `/api/v1/organizations/{_}/skills/upload-url` | `docs/features/F07.5_skill_certification.md` | 214 |
 | POST | `/api/v1/organizations/{_}/team-invites` | `docs/features/F01.2_org_team_member_role.md` | 727 |
 | POST | `/api/v1/organizations/{_}/timetable-terms` | `docs/features/F03.9_timetable.md` | 295 |
 | POST | `/api/v1/organizations/{_}/todo-status-labels` | `docs/features/F02.3.1_todo_status_labels_and_handoff.md` | 213 |
 | POST | `/api/v1/organizations/{_}/todos` | `docs/features/F02.8_dashboard_announcement.md` | 184 |
-| POST | `/api/v1/organizations/{_}/workflow-templates` | `docs/features/F05.6_workflow_approval.md` | 373 |
+| POST | `/api/v1/organizations/{_}/workflows/templates` | `docs/features/F05.6_workflow_approval.md` | 369 |
 | PUT | `/api/v1/organizations/{_}/access-requirements` | `docs/features/F08.2_payments_access_control.md` | 362 |
 | PUT | `/api/v1/organizations/{_}/content-payment-gates` | `docs/features/F08.2_payments_access_control.md` | 366 |
 | PUT | `/api/v1/organizations/{_}/gamification/config` | `docs/features/F04.7_gamification.md` | 371 |
-| PUT | `/api/v1/organizations/{_}/signage/screens/{_}` | `docs/features/F09.10_digital_signage.md` | 303 |
-| PUT | `/api/v1/organizations/{_}/signage/screens/{_}/schedules/{_}` | `docs/features/F09.10_digital_signage.md` | 329 |
-| PUT | `/api/v1/organizations/{_}/signage/screens/{_}/slots/reorder` | `docs/features/F09.10_digital_signage.md` | 318 |
-| PUT | `/api/v1/organizations/{_}/signage/screens/{_}/slots/{_}` | `docs/features/F09.10_digital_signage.md` | 316 |
-| PUT | `/api/v1/organizations/{_}/signage/screens/{_}/tokens/{_}` | `docs/features/F09.10_digital_signage.md` | 341 |
+| PUT | `/api/v1/organizations/{_}/signage/screens/{_}` | `docs/features/F09.10_digital_signage.md` | 295 |
+| PUT | `/api/v1/organizations/{_}/signage/screens/{_}/schedules/{_}` | `docs/features/F09.10_digital_signage.md` | 321 |
+| PUT | `/api/v1/organizations/{_}/signage/screens/{_}/slots/reorder` | `docs/features/F09.10_digital_signage.md` | 310 |
+| PUT | `/api/v1/organizations/{_}/signage/screens/{_}/slots/{_}` | `docs/features/F09.10_digital_signage.md` | 308 |
+| PUT | `/api/v1/organizations/{_}/signage/screens/{_}/tokens/{_}` | `docs/features/F09.10_digital_signage.md` | 333 |
+| PUT | `/api/v1/organizations/{_}/skill-categories/{_}` | `docs/features/F07.5_skill_certification.md` | 190 |
+| PUT | `/api/v1/organizations/{_}/skills/{_}` | `docs/features/F07.5_skill_certification.md` | 211 |
 | PUT | `/api/v1/organizations/{_}/timetable-periods` | `docs/features/F03.9_timetable.md` | 289 |
 
 ### /api/v1/orgs/* (8 件)
@@ -1296,55 +1314,55 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| DELETE | `/api/v1/promotions/{_}` | `docs/features/F09.2_promotion_targeting.md` | 375 |
-| DELETE | `/api/v1/promotions/{_}/segments/{_}` | `docs/features/F09.2_promotion_targeting.md` | 382 |
-| GET | `/api/v1/promotions` | `docs/features/F09.2_promotion_targeting.md` | 371 |
-| GET | `/api/v1/promotions` | `docs/features/F09.2_promotion_targeting.md` | 409 |
-| GET | `/api/v1/promotions` | `docs/features/F09.2_promotion_targeting.md` | 1186 |
-| GET | `/api/v1/promotions/{_}` | `docs/features/F09.2_promotion_targeting.md` | 373 |
-| GET | `/api/v1/promotions/{_}/segments` | `docs/features/F09.2_promotion_targeting.md` | 379 |
-| GET | `/api/v1/promotions/{_}/stats` | `docs/features/F09.2_promotion_targeting.md` | 378 |
-| GET | `/api/v1/promotions/{_}/stats` | `docs/features/F09.2_promotion_targeting.md` | 555 |
-| GET | `/api/v1/promotions/{_}/stats/export` | `docs/features/F09.2_promotion_targeting.md` | 387 |
-| GET | `/api/v1/promotions/{_}/stats/export` | `docs/features/F09.2_promotion_targeting.md` | 944 |
-| PATCH | `/api/v1/promotions/{_}/approve` | `docs/features/F09.2_promotion_targeting.md` | 385 |
-| PATCH | `/api/v1/promotions/{_}/approve` | `docs/features/F09.2_promotion_targeting.md` | 874 |
-| PATCH | `/api/v1/promotions/{_}/cancel` | `docs/features/F09.2_promotion_targeting.md` | 377 |
-| PATCH | `/api/v1/promotions/{_}/cancel` | `docs/features/F09.2_promotion_targeting.md` | 532 |
-| PATCH | `/api/v1/promotions/{_}/reject` | `docs/features/F09.2_promotion_targeting.md` | 386 |
-| PATCH | `/api/v1/promotions/{_}/reject` | `docs/features/F09.2_promotion_targeting.md` | 912 |
-| POST | `/api/v1/promotions` | `docs/features/F09.2_promotion_targeting.md` | 372 |
-| POST | `/api/v1/promotions` | `docs/features/F09.2_promotion_targeting.md` | 427 |
-| POST | `/api/v1/promotions/{_}/clone` | `docs/features/F09.2_promotion_targeting.md` | 384 |
-| POST | `/api/v1/promotions/{_}/clone` | `docs/features/F09.2_promotion_targeting.md` | 844 |
-| POST | `/api/v1/promotions/{_}/preview` | `docs/features/F09.2_promotion_targeting.md` | 383 |
-| POST | `/api/v1/promotions/{_}/preview` | `docs/features/F09.2_promotion_targeting.md` | 603 |
-| POST | `/api/v1/promotions/{_}/publish` | `docs/features/F09.2_promotion_targeting.md` | 376 |
-| POST | `/api/v1/promotions/{_}/publish` | `docs/features/F09.2_promotion_targeting.md` | 472 |
-| POST | `/api/v1/promotions/{_}/segments` | `docs/features/F09.2_promotion_targeting.md` | 380 |
-| PUT | `/api/v1/promotions/{_}` | `docs/features/F09.2_promotion_targeting.md` | 374 |
-| PUT | `/api/v1/promotions/{_}/segments/{_}` | `docs/features/F09.2_promotion_targeting.md` | 381 |
+| DELETE | `/api/v1/promotions/{_}` | `docs/features/F09.2_promotion_targeting.md` | 365 |
+| DELETE | `/api/v1/promotions/{_}/segments/{_}` | `docs/features/F09.2_promotion_targeting.md` | 372 |
+| GET | `/api/v1/promotions` | `docs/features/F09.2_promotion_targeting.md` | 361 |
+| GET | `/api/v1/promotions` | `docs/features/F09.2_promotion_targeting.md` | 399 |
+| GET | `/api/v1/promotions` | `docs/features/F09.2_promotion_targeting.md` | 1176 |
+| GET | `/api/v1/promotions/{_}` | `docs/features/F09.2_promotion_targeting.md` | 363 |
+| GET | `/api/v1/promotions/{_}/segments` | `docs/features/F09.2_promotion_targeting.md` | 369 |
+| GET | `/api/v1/promotions/{_}/stats` | `docs/features/F09.2_promotion_targeting.md` | 368 |
+| GET | `/api/v1/promotions/{_}/stats` | `docs/features/F09.2_promotion_targeting.md` | 545 |
+| GET | `/api/v1/promotions/{_}/stats/export` | `docs/features/F09.2_promotion_targeting.md` | 377 |
+| GET | `/api/v1/promotions/{_}/stats/export` | `docs/features/F09.2_promotion_targeting.md` | 934 |
+| PATCH | `/api/v1/promotions/{_}/approve` | `docs/features/F09.2_promotion_targeting.md` | 375 |
+| PATCH | `/api/v1/promotions/{_}/approve` | `docs/features/F09.2_promotion_targeting.md` | 864 |
+| PATCH | `/api/v1/promotions/{_}/cancel` | `docs/features/F09.2_promotion_targeting.md` | 367 |
+| PATCH | `/api/v1/promotions/{_}/cancel` | `docs/features/F09.2_promotion_targeting.md` | 522 |
+| PATCH | `/api/v1/promotions/{_}/reject` | `docs/features/F09.2_promotion_targeting.md` | 376 |
+| PATCH | `/api/v1/promotions/{_}/reject` | `docs/features/F09.2_promotion_targeting.md` | 902 |
+| POST | `/api/v1/promotions` | `docs/features/F09.2_promotion_targeting.md` | 362 |
+| POST | `/api/v1/promotions` | `docs/features/F09.2_promotion_targeting.md` | 417 |
+| POST | `/api/v1/promotions/{_}/clone` | `docs/features/F09.2_promotion_targeting.md` | 374 |
+| POST | `/api/v1/promotions/{_}/clone` | `docs/features/F09.2_promotion_targeting.md` | 834 |
+| POST | `/api/v1/promotions/{_}/preview` | `docs/features/F09.2_promotion_targeting.md` | 373 |
+| POST | `/api/v1/promotions/{_}/preview` | `docs/features/F09.2_promotion_targeting.md` | 593 |
+| POST | `/api/v1/promotions/{_}/publish` | `docs/features/F09.2_promotion_targeting.md` | 366 |
+| POST | `/api/v1/promotions/{_}/publish` | `docs/features/F09.2_promotion_targeting.md` | 462 |
+| POST | `/api/v1/promotions/{_}/segments` | `docs/features/F09.2_promotion_targeting.md` | 370 |
+| PUT | `/api/v1/promotions/{_}` | `docs/features/F09.2_promotion_targeting.md` | 364 |
+| PUT | `/api/v1/promotions/{_}/segments/{_}` | `docs/features/F09.2_promotion_targeting.md` | 371 |
 
 ### /api/v1/property-listings/* (9 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| DELETE | `/api/v1/property-listings/{_}` | `docs/features/F09.1_resident_registry.md` | 331 |
-| GET | `/api/v1/property-listings` | `docs/features/F09.1_resident_registry.md` | 327 |
-| GET | `/api/v1/property-listings` | `docs/features/F09.1_resident_registry.md` | 662 |
-| GET | `/api/v1/property-listings/{_}` | `docs/features/F09.1_resident_registry.md` | 329 |
-| GET | `/api/v1/property-listings/{_}/inquiries` | `docs/features/F09.1_resident_registry.md` | 335 |
-| GET | `/api/v1/property-listings/{_}/inquiries` | `docs/features/F09.1_resident_registry.md` | 1066 |
-| PATCH | `/api/v1/property-listings/{_}/close` | `docs/features/F09.1_resident_registry.md` | 332 |
-| PATCH | `/api/v1/property-listings/{_}/close` | `docs/features/F09.1_resident_registry.md` | 772 |
-| PATCH | `/api/v1/property-listings/{_}/withdraw` | `docs/features/F09.1_resident_registry.md` | 333 |
-| PATCH | `/api/v1/property-listings/{_}/withdraw` | `docs/features/F09.1_resident_registry.md` | 790 |
-| POST | `/api/v1/property-listings` | `docs/features/F09.1_resident_registry.md` | 328 |
-| POST | `/api/v1/property-listings` | `docs/features/F09.1_resident_registry.md` | 717 |
-| POST | `/api/v1/property-listings/{_}/inquire` | `docs/features/F09.1_resident_registry.md` | 334 |
-| POST | `/api/v1/property-listings/{_}/inquire` | `docs/features/F09.1_resident_registry.md` | 1028 |
-| PUT | `/api/v1/property-listings/{_}` | `docs/features/F09.1_resident_registry.md` | 330 |
-| PUT | `/api/v1/property-listings/{_}` | `docs/features/F09.1_resident_registry.md` | 749 |
+| DELETE | `/api/v1/property-listings/{_}` | `docs/features/F09.1_resident_registry.md` | 317 |
+| GET | `/api/v1/property-listings` | `docs/features/F09.1_resident_registry.md` | 313 |
+| GET | `/api/v1/property-listings` | `docs/features/F09.1_resident_registry.md` | 648 |
+| GET | `/api/v1/property-listings/{_}` | `docs/features/F09.1_resident_registry.md` | 315 |
+| GET | `/api/v1/property-listings/{_}/inquiries` | `docs/features/F09.1_resident_registry.md` | 321 |
+| GET | `/api/v1/property-listings/{_}/inquiries` | `docs/features/F09.1_resident_registry.md` | 1052 |
+| PATCH | `/api/v1/property-listings/{_}/close` | `docs/features/F09.1_resident_registry.md` | 318 |
+| PATCH | `/api/v1/property-listings/{_}/close` | `docs/features/F09.1_resident_registry.md` | 758 |
+| PATCH | `/api/v1/property-listings/{_}/withdraw` | `docs/features/F09.1_resident_registry.md` | 319 |
+| PATCH | `/api/v1/property-listings/{_}/withdraw` | `docs/features/F09.1_resident_registry.md` | 776 |
+| POST | `/api/v1/property-listings` | `docs/features/F09.1_resident_registry.md` | 314 |
+| POST | `/api/v1/property-listings` | `docs/features/F09.1_resident_registry.md` | 703 |
+| POST | `/api/v1/property-listings/{_}/inquire` | `docs/features/F09.1_resident_registry.md` | 320 |
+| POST | `/api/v1/property-listings/{_}/inquire` | `docs/features/F09.1_resident_registry.md` | 1014 |
+| PUT | `/api/v1/property-listings/{_}` | `docs/features/F09.1_resident_registry.md` | 316 |
+| PUT | `/api/v1/property-listings/{_}` | `docs/features/F09.1_resident_registry.md` | 735 |
 
 ### /api/v1/proxy-input-consents/* (1 件)
 
@@ -1415,23 +1433,6 @@
 |---|---|---|---|
 | POST | `/api/v1/recruitment-subcategories/{_}/archive` | `docs/features/F03.11_recruitment_listing.md` | 1422 |
 
-### /api/v1/repair-plan/* (11 件)
-
-| メソッド | パス | 設計書 | 行 |
-|---|---|---|---|
-| DELETE | `/api/v1/repair-plan/delegations/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 554 |
-| DELETE | `/api/v1/repair-plan/items/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 532 |
-| GET | `/api/v1/repair-plan/handover-packs/{_}/download` | `docs/features/F08.8_repair_longterm_dashboard.md` | 549 |
-| GET | `/api/v1/repair-plan/quote-kanbans/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 544 |
-| GET | `/api/v1/repair-plan/scenarios/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 537 |
-| PATCH | `/api/v1/repair-plan/items/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 531 |
-| PATCH | `/api/v1/repair-plan/quote-kanbans/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 545 |
-| POST | `/api/v1/repair-plan/quote-cards/{_}/move` | `docs/features/F08.8_repair_longterm_dashboard.md` | 547 |
-| POST | `/api/v1/repair-plan/quote-kanbans/{_}/cards` | `docs/features/F08.8_repair_longterm_dashboard.md` | 546 |
-| POST | `/api/v1/repair-plan/scenarios/{_}/pin-to-corkboard` | `docs/features/F08.8_repair_longterm_dashboard.md` | 540 |
-| POST | `/api/v1/repair-plan/scenarios/{_}/publish-as-announcement` | `docs/features/F08.8_repair_longterm_dashboard.md` | 539 |
-| POST | `/api/v1/repair-plan/scenarios/{_}/publish-as-announcement` | `docs/features/F08.8_repair_longterm_dashboard.md` | 648 |
-
 ### /api/v1/reports/* (2 件)
 
 | メソッド | パス | 設計書 | 行 |
@@ -1447,19 +1448,19 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| GET | `/api/v1/residence-status/activity-snapshots/{_}` | `docs/features/F09.16_residence_status_management.md` | 372 |
-| GET | `/api/v1/residence-status/annual-reviews` | `docs/features/F09.16_residence_status_management.md` | 366 |
-| GET | `/api/v1/residence-status/annual-reviews/my` | `docs/features/F09.16_residence_status_management.md` | 370 |
-| GET | `/api/v1/residence-status/annual-reviews/{_}` | `docs/features/F09.16_residence_status_management.md` | 367 |
-| GET | `/api/v1/residence-status/annual-reviews/{_}/responses` | `docs/features/F09.16_residence_status_management.md` | 369 |
-| GET | `/api/v1/residence-status/dashboard` | `docs/features/F09.16_residence_status_management.md` | 377 |
-| GET | `/api/v1/residence-status/monitoring-visits` | `docs/features/F09.16_residence_status_management.md` | 374 |
-| POST | `/api/v1/residence-status/annual-reviews` | `docs/features/F09.16_residence_status_management.md` | 365 |
-| POST | `/api/v1/residence-status/annual-reviews/{_}/close` | `docs/features/F09.16_residence_status_management.md` | 368 |
-| POST | `/api/v1/residence-status/monitoring-visits` | `docs/features/F09.16_residence_status_management.md` | 373 |
-| POST | `/api/v1/residence-status/org-wide-safety-checks` | `docs/features/F09.16_residence_status_management.md` | 376 |
-| PUT | `/api/v1/residence-status/annual-reviews/{_}/responses/me` | `docs/features/F09.16_residence_status_management.md` | 371 |
-| PUT | `/api/v1/residence-status/monitoring-visits/{_}` | `docs/features/F09.16_residence_status_management.md` | 375 |
+| GET | `/api/v1/residence-status/activity-snapshots/{_}` | `docs/features/F09.16_residence_status_management.md` | 364 |
+| GET | `/api/v1/residence-status/annual-reviews` | `docs/features/F09.16_residence_status_management.md` | 358 |
+| GET | `/api/v1/residence-status/annual-reviews/my` | `docs/features/F09.16_residence_status_management.md` | 362 |
+| GET | `/api/v1/residence-status/annual-reviews/{_}` | `docs/features/F09.16_residence_status_management.md` | 359 |
+| GET | `/api/v1/residence-status/annual-reviews/{_}/responses` | `docs/features/F09.16_residence_status_management.md` | 361 |
+| GET | `/api/v1/residence-status/dashboard` | `docs/features/F09.16_residence_status_management.md` | 369 |
+| GET | `/api/v1/residence-status/monitoring-visits` | `docs/features/F09.16_residence_status_management.md` | 366 |
+| POST | `/api/v1/residence-status/annual-reviews` | `docs/features/F09.16_residence_status_management.md` | 357 |
+| POST | `/api/v1/residence-status/annual-reviews/{_}/close` | `docs/features/F09.16_residence_status_management.md` | 360 |
+| POST | `/api/v1/residence-status/monitoring-visits` | `docs/features/F09.16_residence_status_management.md` | 365 |
+| POST | `/api/v1/residence-status/org-wide-safety-checks` | `docs/features/F09.16_residence_status_management.md` | 368 |
+| PUT | `/api/v1/residence-status/annual-reviews/{_}/responses/me` | `docs/features/F09.16_residence_status_management.md` | 363 |
+| PUT | `/api/v1/residence-status/monitoring-visits/{_}` | `docs/features/F09.16_residence_status_management.md` | 367 |
 
 ### /api/v1/safety-checks/* (12 件)
 
@@ -1523,12 +1524,12 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| DELETE | `/api/v1/segment-presets/{_}` | `docs/features/F09.2_promotion_targeting.md` | 391 |
-| GET | `/api/v1/segment-presets` | `docs/features/F09.2_promotion_targeting.md` | 388 |
-| GET | `/api/v1/segment-presets` | `docs/features/F09.2_promotion_targeting.md` | 973 |
-| POST | `/api/v1/segment-presets` | `docs/features/F09.2_promotion_targeting.md` | 389 |
-| POST | `/api/v1/segment-presets` | `docs/features/F09.2_promotion_targeting.md` | 1000 |
-| PUT | `/api/v1/segment-presets/{_}` | `docs/features/F09.2_promotion_targeting.md` | 390 |
+| DELETE | `/api/v1/segment-presets/{_}` | `docs/features/F09.2_promotion_targeting.md` | 381 |
+| GET | `/api/v1/segment-presets` | `docs/features/F09.2_promotion_targeting.md` | 378 |
+| GET | `/api/v1/segment-presets` | `docs/features/F09.2_promotion_targeting.md` | 963 |
+| POST | `/api/v1/segment-presets` | `docs/features/F09.2_promotion_targeting.md` | 379 |
+| POST | `/api/v1/segment-presets` | `docs/features/F09.2_promotion_targeting.md` | 990 |
+| PUT | `/api/v1/segment-presets/{_}` | `docs/features/F09.2_promotion_targeting.md` | 380 |
 
 ### /api/v1/shared/* (1 件)
 
@@ -1611,31 +1612,31 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| GET | `/api/v1/signage/{_}/content/{_}` | `docs/features/F09.10_digital_signage.md` | 364 |
-| GET | `/api/v1/signage/{_}/content/{_}` | `docs/features/F09.10_digital_signage.md` | 629 |
-| GET | `/api/v1/signage/{_}/screen` | `docs/features/F09.10_digital_signage.md` | 363 |
-| GET | `/api/v1/signage/{_}/screen` | `docs/features/F09.10_digital_signage.md` | 560 |
-| GET | `/api/v1/signage/{_}/weather` | `docs/features/F09.10_digital_signage.md` | 365 |
+| GET | `/api/v1/signage/{_}/content/{_}` | `docs/features/F09.10_digital_signage.md` | 356 |
+| GET | `/api/v1/signage/{_}/content/{_}` | `docs/features/F09.10_digital_signage.md` | 621 |
+| GET | `/api/v1/signage/{_}/screen` | `docs/features/F09.10_digital_signage.md` | 355 |
+| GET | `/api/v1/signage/{_}/screen` | `docs/features/F09.10_digital_signage.md` | 552 |
+| GET | `/api/v1/signage/{_}/weather` | `docs/features/F09.10_digital_signage.md` | 357 |
 
 ### /api/v1/sns/* (8 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| DELETE | `/api/v1/sns/configs/{_}` | `docs/features/F09.4_line_sns.md` | 241 |
-| DELETE | `/api/v1/sns/configs/{_}` | `docs/features/F09.4_line_sns.md` | 751 |
-| GET | `/api/v1/sns/configs` | `docs/features/F09.4_line_sns.md` | 238 |
-| GET | `/api/v1/sns/feeds` | `docs/features/F09.4_line_sns.md` | 237 |
-| GET | `/api/v1/sns/feeds` | `docs/features/F09.4_line_sns.md` | 785 |
-| GET | `/api/v1/sns/instagram/oauth/callback` | `docs/features/F09.4_line_sns.md` | 244 |
-| GET | `/api/v1/sns/instagram/oauth/callback` | `docs/features/F09.4_line_sns.md` | 673 |
-| GET | `/api/v1/sns/instagram/oauth/start` | `docs/features/F09.4_line_sns.md` | 243 |
-| GET | `/api/v1/sns/instagram/oauth/start` | `docs/features/F09.4_line_sns.md` | 643 |
-| POST | `/api/v1/sns/configs` | `docs/features/F09.4_line_sns.md` | 239 |
-| POST | `/api/v1/sns/configs` | `docs/features/F09.4_line_sns.md` | 702 |
-| POST | `/api/v1/sns/configs/{_}/refresh` | `docs/features/F09.4_line_sns.md` | 242 |
-| POST | `/api/v1/sns/configs/{_}/refresh` | `docs/features/F09.4_line_sns.md` | 761 |
-| PUT | `/api/v1/sns/configs/{_}` | `docs/features/F09.4_line_sns.md` | 240 |
-| PUT | `/api/v1/sns/configs/{_}` | `docs/features/F09.4_line_sns.md` | 735 |
+| DELETE | `/api/v1/sns/configs/{_}` | `docs/features/F09.4_line_sns.md` | 234 |
+| DELETE | `/api/v1/sns/configs/{_}` | `docs/features/F09.4_line_sns.md` | 744 |
+| GET | `/api/v1/sns/configs` | `docs/features/F09.4_line_sns.md` | 231 |
+| GET | `/api/v1/sns/feeds` | `docs/features/F09.4_line_sns.md` | 230 |
+| GET | `/api/v1/sns/feeds` | `docs/features/F09.4_line_sns.md` | 778 |
+| GET | `/api/v1/sns/instagram/oauth/callback` | `docs/features/F09.4_line_sns.md` | 237 |
+| GET | `/api/v1/sns/instagram/oauth/callback` | `docs/features/F09.4_line_sns.md` | 666 |
+| GET | `/api/v1/sns/instagram/oauth/start` | `docs/features/F09.4_line_sns.md` | 236 |
+| GET | `/api/v1/sns/instagram/oauth/start` | `docs/features/F09.4_line_sns.md` | 636 |
+| POST | `/api/v1/sns/configs` | `docs/features/F09.4_line_sns.md` | 232 |
+| POST | `/api/v1/sns/configs` | `docs/features/F09.4_line_sns.md` | 695 |
+| POST | `/api/v1/sns/configs/{_}/refresh` | `docs/features/F09.4_line_sns.md` | 235 |
+| POST | `/api/v1/sns/configs/{_}/refresh` | `docs/features/F09.4_line_sns.md` | 754 |
+| PUT | `/api/v1/sns/configs/{_}` | `docs/features/F09.4_line_sns.md` | 233 |
+| PUT | `/api/v1/sns/configs/{_}` | `docs/features/F09.4_line_sns.md` | 728 |
 
 ### /api/v1/social-profiles/* (8 件)
 
@@ -1671,62 +1672,62 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| GET | `/api/v1/succession/covenant-templates` | `docs/features/F09.15_resident_succession_support.md` | 498 |
-| GET | `/api/v1/succession/delinquency-escalations` | `docs/features/F09.15_resident_succession_support.md` | 510 |
-| GET | `/api/v1/succession/frozen-account-guidance` | `docs/features/F09.15_resident_succession_support.md` | 516 |
-| GET | `/api/v1/succession/legal-filings/{_}/evidence-zip` | `docs/features/F09.15_resident_succession_support.md` | 514 |
-| GET | `/api/v1/succession/pre-registrations/me` | `docs/features/F09.15_resident_succession_support.md` | 501 |
-| GET | `/api/v1/succession/pre-registrations/{_}` | `docs/features/F09.15_resident_succession_support.md` | 503 |
-| GET | `/api/v1/succession/unseal-requests/{_}/audit-views` | `docs/features/F09.15_resident_succession_support.md` | 509 |
+| GET | `/api/v1/succession/covenant-templates` | `docs/features/F09.15_resident_succession_support.md` | 490 |
+| GET | `/api/v1/succession/delinquency-escalations` | `docs/features/F09.15_resident_succession_support.md` | 502 |
+| GET | `/api/v1/succession/frozen-account-guidance` | `docs/features/F09.15_resident_succession_support.md` | 508 |
+| GET | `/api/v1/succession/legal-filings/{_}/evidence-zip` | `docs/features/F09.15_resident_succession_support.md` | 506 |
+| GET | `/api/v1/succession/pre-registrations/me` | `docs/features/F09.15_resident_succession_support.md` | 493 |
+| GET | `/api/v1/succession/pre-registrations/{_}` | `docs/features/F09.15_resident_succession_support.md` | 495 |
+| GET | `/api/v1/succession/unseal-requests/{_}/audit-views` | `docs/features/F09.15_resident_succession_support.md` | 501 |
 | POST | `/api/v1/succession/covenants/{_}/verify` | `docs/features/F12.1_pdf_generation.md` | 406 |
-| POST | `/api/v1/succession/delinquency-escalations/{_}/freeze` | `docs/features/F09.15_resident_succession_support.md` | 511 |
-| POST | `/api/v1/succession/delinquency-escalations/{_}/resolve` | `docs/features/F09.15_resident_succession_support.md` | 512 |
-| POST | `/api/v1/succession/legal-filings` | `docs/features/F09.15_resident_succession_support.md` | 513 |
-| POST | `/api/v1/succession/legal-filings/{_}/evidence-rebuild` | `docs/features/F09.15_resident_succession_support.md` | 515 |
-| POST | `/api/v1/succession/residents/{_}/death-status` | `docs/features/F09.15_resident_succession_support.md` | 504 |
-| POST | `/api/v1/succession/unseal-requests` | `docs/features/F09.15_resident_succession_support.md` | 505 |
-| POST | `/api/v1/succession/unseal-requests/{_}/first-approve` | `docs/features/F09.15_resident_succession_support.md` | 506 |
-| POST | `/api/v1/succession/unseal-requests/{_}/reject` | `docs/features/F09.15_resident_succession_support.md` | 508 |
-| POST | `/api/v1/succession/unseal-requests/{_}/second-approve` | `docs/features/F09.15_resident_succession_support.md` | 507 |
-| PUT | `/api/v1/succession/pre-registrations/me` | `docs/features/F09.15_resident_succession_support.md` | 502 |
+| POST | `/api/v1/succession/delinquency-escalations/{_}/freeze` | `docs/features/F09.15_resident_succession_support.md` | 503 |
+| POST | `/api/v1/succession/delinquency-escalations/{_}/resolve` | `docs/features/F09.15_resident_succession_support.md` | 504 |
+| POST | `/api/v1/succession/legal-filings` | `docs/features/F09.15_resident_succession_support.md` | 505 |
+| POST | `/api/v1/succession/legal-filings/{_}/evidence-rebuild` | `docs/features/F09.15_resident_succession_support.md` | 507 |
+| POST | `/api/v1/succession/residents/{_}/death-status` | `docs/features/F09.15_resident_succession_support.md` | 496 |
+| POST | `/api/v1/succession/unseal-requests` | `docs/features/F09.15_resident_succession_support.md` | 497 |
+| POST | `/api/v1/succession/unseal-requests/{_}/first-approve` | `docs/features/F09.15_resident_succession_support.md` | 498 |
+| POST | `/api/v1/succession/unseal-requests/{_}/reject` | `docs/features/F09.15_resident_succession_support.md` | 500 |
+| POST | `/api/v1/succession/unseal-requests/{_}/second-approve` | `docs/features/F09.15_resident_succession_support.md` | 499 |
+| PUT | `/api/v1/succession/pre-registrations/me` | `docs/features/F09.15_resident_succession_support.md` | 494 |
 
 ### /api/v1/surveys/* (16 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| DELETE | `/api/v1/surveys/{_}` | `docs/features/F05.4_survey_vote.md` | 287 |
-| DELETE | `/api/v1/surveys/{_}` | `docs/features/F05.4_survey_vote.md` | 556 |
-| GET | `/api/v1/surveys` | `docs/features/F05.4_survey_vote.md` | 283 |
-| GET | `/api/v1/surveys` | `docs/features/F05.4_survey_vote.md` | 308 |
-| GET | `/api/v1/surveys/series/{_}/comparison` | `docs/features/F05.4_survey_vote.md` | 300 |
-| GET | `/api/v1/surveys/series/{_}/comparison` | `docs/features/F05.4_survey_vote.md` | 1097 |
-| GET | `/api/v1/surveys/{_}` | `docs/features/F05.4_survey_vote.md` | 285 |
-| GET | `/api/v1/surveys/{_}` | `docs/features/F05.4_survey_vote.md` | 469 |
-| GET | `/api/v1/surveys/{_}/respondents` | `docs/features/F05.4_survey_vote.md` | 294 |
-| GET | `/api/v1/surveys/{_}/respondents` | `docs/features/F05.4_survey_vote.md` | 849 |
-| GET | `/api/v1/surveys/{_}/responses/my` | `docs/features/F05.4_survey_vote.md` | 291 |
-| GET | `/api/v1/surveys/{_}/responses/my` | `docs/features/F05.4_survey_vote.md` | 713 |
-| GET | `/api/v1/surveys/{_}/responses/{_}` | `docs/features/F05.4_survey_vote.md` | 299 |
-| GET | `/api/v1/surveys/{_}/responses/{_}` | `docs/features/F05.4_survey_vote.md` | 1045 |
-| GET | `/api/v1/surveys/{_}/results/export` | `docs/features/F05.4_survey_vote.md` | 293 |
-| GET | `/api/v1/surveys/{_}/results/export` | `docs/features/F05.4_survey_vote.md` | 819 |
-| PATCH | `/api/v1/surveys/{_}/close` | `docs/features/F05.4_survey_vote.md` | 289 |
-| PATCH | `/api/v1/surveys/{_}/close` | `docs/features/F05.4_survey_vote.md` | 614 |
-| PATCH | `/api/v1/surveys/{_}/extend` | `docs/features/F05.4_survey_vote.md` | 297 |
-| PATCH | `/api/v1/surveys/{_}/extend` | `docs/features/F05.4_survey_vote.md` | 971 |
-| PATCH | `/api/v1/surveys/{_}/publish` | `docs/features/F05.4_survey_vote.md` | 288 |
-| PATCH | `/api/v1/surveys/{_}/publish` | `docs/features/F05.4_survey_vote.md` | 579 |
+| DELETE | `/api/v1/surveys/{_}` | `docs/features/F05.4_survey_vote.md` | 281 |
+| DELETE | `/api/v1/surveys/{_}` | `docs/features/F05.4_survey_vote.md` | 550 |
+| GET | `/api/v1/surveys` | `docs/features/F05.4_survey_vote.md` | 277 |
+| GET | `/api/v1/surveys` | `docs/features/F05.4_survey_vote.md` | 302 |
+| GET | `/api/v1/surveys/series/{_}/comparison` | `docs/features/F05.4_survey_vote.md` | 294 |
+| GET | `/api/v1/surveys/series/{_}/comparison` | `docs/features/F05.4_survey_vote.md` | 1091 |
+| GET | `/api/v1/surveys/{_}` | `docs/features/F05.4_survey_vote.md` | 279 |
+| GET | `/api/v1/surveys/{_}` | `docs/features/F05.4_survey_vote.md` | 463 |
+| GET | `/api/v1/surveys/{_}/respondents` | `docs/features/F05.4_survey_vote.md` | 288 |
+| GET | `/api/v1/surveys/{_}/respondents` | `docs/features/F05.4_survey_vote.md` | 843 |
+| GET | `/api/v1/surveys/{_}/responses/my` | `docs/features/F05.4_survey_vote.md` | 285 |
+| GET | `/api/v1/surveys/{_}/responses/my` | `docs/features/F05.4_survey_vote.md` | 707 |
+| GET | `/api/v1/surveys/{_}/responses/{_}` | `docs/features/F05.4_survey_vote.md` | 293 |
+| GET | `/api/v1/surveys/{_}/responses/{_}` | `docs/features/F05.4_survey_vote.md` | 1039 |
+| GET | `/api/v1/surveys/{_}/results/export` | `docs/features/F05.4_survey_vote.md` | 287 |
+| GET | `/api/v1/surveys/{_}/results/export` | `docs/features/F05.4_survey_vote.md` | 813 |
+| PATCH | `/api/v1/surveys/{_}/close` | `docs/features/F05.4_survey_vote.md` | 283 |
+| PATCH | `/api/v1/surveys/{_}/close` | `docs/features/F05.4_survey_vote.md` | 608 |
+| PATCH | `/api/v1/surveys/{_}/extend` | `docs/features/F05.4_survey_vote.md` | 291 |
+| PATCH | `/api/v1/surveys/{_}/extend` | `docs/features/F05.4_survey_vote.md` | 965 |
+| PATCH | `/api/v1/surveys/{_}/publish` | `docs/features/F05.4_survey_vote.md` | 282 |
+| PATCH | `/api/v1/surveys/{_}/publish` | `docs/features/F05.4_survey_vote.md` | 573 |
 | POST | `/api/v1/surveys` | `docs/features/F04.10_committee.md` | 378 |
-| POST | `/api/v1/surveys` | `docs/features/F05.4_survey_vote.md` | 284 |
-| POST | `/api/v1/surveys` | `docs/features/F05.4_survey_vote.md` | 363 |
-| POST | `/api/v1/surveys/{_}/duplicate` | `docs/features/F05.4_survey_vote.md` | 296 |
-| POST | `/api/v1/surveys/{_}/duplicate` | `docs/features/F05.4_survey_vote.md` | 939 |
-| POST | `/api/v1/surveys/{_}/generate-blog-draft` | `docs/features/F05.4_survey_vote.md` | 295 |
-| POST | `/api/v1/surveys/{_}/generate-blog-draft` | `docs/features/F05.4_survey_vote.md` | 881 |
-| POST | `/api/v1/surveys/{_}/responses` | `docs/features/F05.4_survey_vote.md` | 290 |
-| POST | `/api/v1/surveys/{_}/responses` | `docs/features/F05.4_survey_vote.md` | 648 |
-| PUT | `/api/v1/surveys/{_}` | `docs/features/F05.4_survey_vote.md` | 286 |
-| PUT | `/api/v1/surveys/{_}` | `docs/features/F05.4_survey_vote.md` | 537 |
+| POST | `/api/v1/surveys` | `docs/features/F05.4_survey_vote.md` | 278 |
+| POST | `/api/v1/surveys` | `docs/features/F05.4_survey_vote.md` | 357 |
+| POST | `/api/v1/surveys/{_}/duplicate` | `docs/features/F05.4_survey_vote.md` | 290 |
+| POST | `/api/v1/surveys/{_}/duplicate` | `docs/features/F05.4_survey_vote.md` | 933 |
+| POST | `/api/v1/surveys/{_}/generate-blog-draft` | `docs/features/F05.4_survey_vote.md` | 289 |
+| POST | `/api/v1/surveys/{_}/generate-blog-draft` | `docs/features/F05.4_survey_vote.md` | 875 |
+| POST | `/api/v1/surveys/{_}/responses` | `docs/features/F05.4_survey_vote.md` | 284 |
+| POST | `/api/v1/surveys/{_}/responses` | `docs/features/F05.4_survey_vote.md` | 642 |
+| PUT | `/api/v1/surveys/{_}` | `docs/features/F05.4_survey_vote.md` | 280 |
+| PUT | `/api/v1/surveys/{_}` | `docs/features/F05.4_survey_vote.md` | 531 |
 
 ### /api/v1/sync/* (1 件)
 
@@ -1792,9 +1793,9 @@
 | GET | `/api/v1/system-admin/org-type-change-requests` | `docs/features/F10.1_admin_dashboard.md` | 517 |
 | GET | `/api/v1/system-admin/organizations` | `docs/features/F10.1_admin_dashboard.md` | 491 |
 | GET | `/api/v1/system-admin/packages` | `docs/features/F10.1_admin_dashboard.md` | 498 |
-| GET | `/api/v1/system-admin/promotions/billing` | `docs/features/F09.2_promotion_targeting.md` | 399 |
-| GET | `/api/v1/system-admin/promotions/billing` | `docs/features/F09.2_promotion_targeting.md` | 797 |
-| GET | `/api/v1/system-admin/promotions/billing/settings` | `docs/features/F09.2_promotion_targeting.md` | 400 |
+| GET | `/api/v1/system-admin/promotions/billing` | `docs/features/F09.2_promotion_targeting.md` | 389 |
+| GET | `/api/v1/system-admin/promotions/billing` | `docs/features/F09.2_promotion_targeting.md` | 787 |
+| GET | `/api/v1/system-admin/promotions/billing/settings` | `docs/features/F09.2_promotion_targeting.md` | 390 |
 | GET | `/api/v1/system-admin/reports` | `docs/features/F10.1_admin_dashboard.md` | 464 |
 | GET | `/api/v1/system-admin/reports/monthly` | `docs/features/F10.1_admin_dashboard.md` | 554 |
 | GET | `/api/v1/system-admin/reports/weekly` | `docs/features/F10.1_admin_dashboard.md` | 553 |
@@ -1816,8 +1817,8 @@
 | PATCH | `/api/v1/system-admin/announcements/{_}/unpin` | `docs/features/F10.1_admin_dashboard.md` | 546 |
 | PATCH | `/api/v1/system-admin/error-reports/{_}/status` | `docs/features/F10.1_admin_dashboard.md` | 524 |
 | PATCH | `/api/v1/system-admin/org-type-change-requests/{_}` | `docs/features/F10.1_admin_dashboard.md` | 518 |
-| PATCH | `/api/v1/system-admin/promotions/{_}/suspend` | `docs/features/F09.2_promotion_targeting.md` | 402 |
-| PATCH | `/api/v1/system-admin/promotions/{_}/suspend` | `docs/features/F09.2_promotion_targeting.md` | 1038 |
+| PATCH | `/api/v1/system-admin/promotions/{_}/suspend` | `docs/features/F09.2_promotion_targeting.md` | 392 |
+| PATCH | `/api/v1/system-admin/promotions/{_}/suspend` | `docs/features/F09.2_promotion_targeting.md` | 1028 |
 | PATCH | `/api/v1/system-admin/safety-checks/message-presets/{_}/active` | `docs/features/F03.6_safety_check.md` | 278 |
 | PATCH | `/api/v1/system-admin/safety-checks/message-presets/{_}/active` | `docs/features/F03.6_safety_check.md` | 1024 |
 | PATCH | `/api/v1/system-admin/users/{_}/freeze` | `docs/features/F10.1_admin_dashboard.md` | 494 |
@@ -1861,7 +1862,7 @@
 | PUT | `/api/v1/system-admin/modules/{_}/recommendations` | `docs/features/F01.3_template_module.md` | 1042 |
 | PUT | `/api/v1/system-admin/org-count-billing-tiers` | `docs/features/F10.1_admin_dashboard.md` | 515 |
 | PUT | `/api/v1/system-admin/packages/{_}` | `docs/features/F10.1_admin_dashboard.md` | 500 |
-| PUT | `/api/v1/system-admin/promotions/billing/settings` | `docs/features/F09.2_promotion_targeting.md` | 401 |
+| PUT | `/api/v1/system-admin/promotions/billing/settings` | `docs/features/F09.2_promotion_targeting.md` | 391 |
 | PUT | `/api/v1/system-admin/role-permissions` | `docs/features/F10.1_admin_dashboard.md` | 530 |
 | PUT | `/api/v1/system-admin/safety-checks/message-presets/{_}` | `docs/features/F03.6_safety_check.md` | 277 |
 | PUT | `/api/v1/system-admin/safety-checks/message-presets/{_}` | `docs/features/F03.6_safety_check.md` | 1001 |
@@ -1883,14 +1884,14 @@
 | POST | `/api/v1/team/pages` | `docs/features/F06.2_member_gallery.md` | 322 |
 | POST | `/api/v1/team/pages` | `docs/features/F06.2_member_gallery.md` | 365 |
 
-### /api/v1/teams/* (272 件)
+### /api/v1/teams/* (270 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
 | DELETE | `/api/v1/teams/{_}/api-keys/{_}` | `docs/features/F09.9_webhook_api.md` | 283 |
 | DELETE | `/api/v1/teams/{_}/api-keys/{_}` | `docs/features/F09.9_webhook_api.md` | 829 |
 | DELETE | `/api/v1/teams/{_}/direct-mails/{_}` | `docs/features/F09.6_direct_mail.md` | 305 |
-| DELETE | `/api/v1/teams/{_}/direct-mails/{_}` | `docs/features/F09.6_direct_mail.md` | 520 |
+| DELETE | `/api/v1/teams/{_}/direct-mails/{_}` | `docs/features/F09.6_direct_mail.md` | 515 |
 | DELETE | `/api/v1/teams/{_}/friend-feed/{_}/forward/{_}` | `docs/features/F01.5_team_friend_relationships.md` | 401 |
 | DELETE | `/api/v1/teams/{_}/friend-feed/{_}/forward/{_}` | `docs/features/F01.5_team_friend_relationships.md` | 826 |
 | DELETE | `/api/v1/teams/{_}/jobbers/invitations/{_}` | `docs/features/F13.1_short_term_job_matching.md` | 1656 |
@@ -1905,11 +1906,11 @@
 | DELETE | `/api/v1/teams/{_}/queue/counters/{_}` | `docs/features/F03.7_queue.md` | 333 |
 | DELETE | `/api/v1/teams/{_}/reservation-blocked-times/{_}` | `docs/features/F03.4_reservation.md` | 363 |
 | DELETE | `/api/v1/teams/{_}/reservation-blocked-times/{_}` | `docs/features/F03.4_reservation.md` | 1576 |
-| DELETE | `/api/v1/teams/{_}/signage/screens/{_}` | `docs/features/F09.10_digital_signage.md` | 299 |
-| DELETE | `/api/v1/teams/{_}/signage/screens/{_}/emergency` | `docs/features/F09.10_digital_signage.md` | 348 |
-| DELETE | `/api/v1/teams/{_}/signage/screens/{_}/schedules/{_}` | `docs/features/F09.10_digital_signage.md` | 326 |
-| DELETE | `/api/v1/teams/{_}/signage/screens/{_}/slots/{_}` | `docs/features/F09.10_digital_signage.md` | 312 |
-| DELETE | `/api/v1/teams/{_}/signage/screens/{_}/tokens/{_}` | `docs/features/F09.10_digital_signage.md` | 338 |
+| DELETE | `/api/v1/teams/{_}/signage/screens/{_}` | `docs/features/F09.10_digital_signage.md` | 291 |
+| DELETE | `/api/v1/teams/{_}/signage/screens/{_}/emergency` | `docs/features/F09.10_digital_signage.md` | 340 |
+| DELETE | `/api/v1/teams/{_}/signage/screens/{_}/schedules/{_}` | `docs/features/F09.10_digital_signage.md` | 318 |
+| DELETE | `/api/v1/teams/{_}/signage/screens/{_}/slots/{_}` | `docs/features/F09.10_digital_signage.md` | 304 |
+| DELETE | `/api/v1/teams/{_}/signage/screens/{_}/tokens/{_}` | `docs/features/F09.10_digital_signage.md` | 330 |
 | DELETE | `/api/v1/teams/{_}/webhooks/endpoints/{_}` | `docs/features/F09.9_webhook_api.md` | 263 |
 | DELETE | `/api/v1/teams/{_}/webhooks/endpoints/{_}` | `docs/features/F09.9_webhook_api.md` | 425 |
 | DELETE | `/api/v1/teams/{_}/webhooks/incoming/{_}` | `docs/features/F09.9_webhook_api.md` | 275 |
@@ -1919,7 +1920,7 @@
 | GET | `/api/v1/teams/{_}/announcements` | `docs/features/F02.2_dashboard.md` | 219 |
 | GET | `/api/v1/teams/{_}/announcements` | `docs/features/F02.6_announcement_widget.md` | 242 |
 | GET | `/api/v1/teams/{_}/announcements` | `docs/features/F02.6_announcement_widget.md` | 261 |
-| GET | `/api/v1/teams/{_}/announcements` | `docs/features/F05.1_bulletin_board.md` | 1374 |
+| GET | `/api/v1/teams/{_}/announcements` | `docs/features/F05.1_bulletin_board.md` | 1366 |
 | GET | `/api/v1/teams/{_}/announcements` | `docs/features/F06.1_cms_blog.md` | 2450 |
 | GET | `/api/v1/teams/{_}/api-keys` | `docs/features/F09.9_webhook_api.md` | 280 |
 | GET | `/api/v1/teams/{_}/api-keys` | `docs/features/F09.9_webhook_api.md` | 765 |
@@ -1939,14 +1940,14 @@
 | GET | `/api/v1/teams/{_}/content-payment-gates` | `docs/features/F08.2_payments_access_control.md` | 363 |
 | GET | `/api/v1/teams/{_}/content-payment-gates` | `docs/features/F08.2_payments_access_control.md` | 635 |
 | GET | `/api/v1/teams/{_}/corkboards` | `docs/features/F09.8_corkboard.md` | 235 |
-| GET | `/api/v1/teams/{_}/direct-mail-templates` | `docs/features/F09.6_direct_mail.md` | 329 |
+| GET | `/api/v1/teams/{_}/direct-mail-templates` | `docs/features/F09.6_direct_mail.md` | 324 |
 | GET | `/api/v1/teams/{_}/direct-mails` | `docs/features/F09.6_direct_mail.md` | 302 |
-| GET | `/api/v1/teams/{_}/direct-mails` | `docs/features/F09.6_direct_mail.md` | 351 |
+| GET | `/api/v1/teams/{_}/direct-mails` | `docs/features/F09.6_direct_mail.md` | 346 |
 | GET | `/api/v1/teams/{_}/direct-mails/quota` | `docs/features/F09.6_direct_mail.md` | 317 |
 | GET | `/api/v1/teams/{_}/direct-mails/stats` | `docs/features/F09.6_direct_mail.md` | 316 |
-| GET | `/api/v1/teams/{_}/direct-mails/stats` | `docs/features/F09.6_direct_mail.md` | 831 |
+| GET | `/api/v1/teams/{_}/direct-mails/stats` | `docs/features/F09.6_direct_mail.md` | 826 |
 | GET | `/api/v1/teams/{_}/direct-mails/{_}/preview` | `docs/features/F09.6_direct_mail.md` | 311 |
-| GET | `/api/v1/teams/{_}/direct-mails/{_}/preview` | `docs/features/F09.6_direct_mail.md` | 647 |
+| GET | `/api/v1/teams/{_}/direct-mails/{_}/preview` | `docs/features/F09.6_direct_mail.md` | 642 |
 | GET | `/api/v1/teams/{_}/duties` | `docs/features/F01.4_family_team.md` | 409 |
 | GET | `/api/v1/teams/{_}/equipment` | `docs/features/F07.3_equipment.md` | 149 |
 | GET | `/api/v1/teams/{_}/equipment` | `docs/features/F07.3_equipment.md` | 318 |
@@ -1956,11 +1957,11 @@
 | GET | `/api/v1/teams/{_}/events` | `docs/features/F03.8_event_management.md` | 383 |
 | GET | `/api/v1/teams/{_}/events/{_}/care-participants` | `docs/features/F03.12_care_recipient_event_watch_notification.md` | 463 |
 | GET | `/api/v1/teams/{_}/events/{_}/stats` | `docs/features/F03.8_event_management.md` | 390 |
-| GET | `/api/v1/teams/{_}/facilities` | `docs/features/F09.5_facility_booking.md` | 468 |
-| GET | `/api/v1/teams/{_}/facilities` | `docs/features/F09.5_facility_booking.md` | 502 |
-| GET | `/api/v1/teams/{_}/facilities/bookings` | `docs/features/F09.5_facility_booking.md` | 483 |
-| GET | `/api/v1/teams/{_}/facilities/bookings` | `docs/features/F09.5_facility_booking.md` | 1326 |
-| GET | `/api/v1/teams/{_}/form-templates` | `docs/features/F05.7_form_builder.md` | 365 |
+| GET | `/api/v1/teams/{_}/facilities` | `docs/features/F09.5_facility_booking.md` | 462 |
+| GET | `/api/v1/teams/{_}/facilities` | `docs/features/F09.5_facility_booking.md` | 496 |
+| GET | `/api/v1/teams/{_}/facilities/bookings` | `docs/features/F09.5_facility_booking.md` | 477 |
+| GET | `/api/v1/teams/{_}/facilities/bookings` | `docs/features/F09.5_facility_booking.md` | 1320 |
+| GET | `/api/v1/teams/{_}/forms/templates` | `docs/features/F05.7_form_builder.md` | 360 |
 | GET | `/api/v1/teams/{_}/friend-feed` | `docs/features/F01.5_team_friend_relationships.md` | 398 |
 | GET | `/api/v1/teams/{_}/friend-feed` | `docs/features/F01.5_team_friend_relationships.md` | 701 |
 | GET | `/api/v1/teams/{_}/friend-folders` | `docs/features/F01.5_team_friend_relationships.md` | 392 |
@@ -1975,12 +1976,12 @@
 | GET | `/api/v1/teams/{_}/gamification/point-rules` | `docs/features/F04.7_gamification.md` | 376 |
 | GET | `/api/v1/teams/{_}/gamification/rankings` | `docs/features/F04.7_gamification.md` | 400 |
 | GET | `/api/v1/teams/{_}/gamification/rankings` | `docs/features/F04.7_gamification.md` | 607 |
-| GET | `/api/v1/teams/{_}/incidents` | `docs/features/F07.6_incident_management.md` | 445 |
-| GET | `/api/v1/teams/{_}/incidents` | `docs/features/F07.6_incident_management.md` | 900 |
-| GET | `/api/v1/teams/{_}/incidents/categories` | `docs/features/F07.6_incident_management.md` | 435 |
-| GET | `/api/v1/teams/{_}/incidents/maintenance-schedules` | `docs/features/F07.6_incident_management.md` | 493 |
-| GET | `/api/v1/teams/{_}/incidents/stats` | `docs/features/F07.6_incident_management.md` | 504 |
-| GET | `/api/v1/teams/{_}/incidents/stats` | `docs/features/F07.6_incident_management.md` | 837 |
+| GET | `/api/v1/teams/{_}/incidents` | `docs/features/F07.6_incident_management.md` | 438 |
+| GET | `/api/v1/teams/{_}/incidents` | `docs/features/F07.6_incident_management.md` | 893 |
+| GET | `/api/v1/teams/{_}/incidents/categories` | `docs/features/F07.6_incident_management.md` | 428 |
+| GET | `/api/v1/teams/{_}/incidents/maintenance-schedules` | `docs/features/F07.6_incident_management.md` | 486 |
+| GET | `/api/v1/teams/{_}/incidents/stats` | `docs/features/F07.6_incident_management.md` | 497 |
+| GET | `/api/v1/teams/{_}/incidents/stats` | `docs/features/F07.6_incident_management.md` | 830 |
 | GET | `/api/v1/teams/{_}/jobbers` | `docs/features/F13.1_short_term_job_matching.md` | 1659 |
 | GET | `/api/v1/teams/{_}/jobbers/invitations` | `docs/features/F13.1_short_term_job_matching.md` | 1655 |
 | GET | `/api/v1/teams/{_}/jobs` | `docs/features/F13.1_short_term_job_matching.md` | 2645 |
@@ -2007,19 +2008,19 @@
 | GET | `/api/v1/teams/{_}/my-tickets` | `docs/features/F08.5_ticket_book.md` | 614 |
 | GET | `/api/v1/teams/{_}/onboarding/templates` | `docs/features/F02.4_onboarding.md` | 350 |
 | GET | `/api/v1/teams/{_}/org-invites` | `docs/features/F01.2_org_team_member_role.md` | 735 |
-| GET | `/api/v1/teams/{_}/parking/applications` | `docs/features/F09.3_parking.md` | 642 |
-| GET | `/api/v1/teams/{_}/parking/applications` | `docs/features/F09.3_parking.md` | 1424 |
-| GET | `/api/v1/teams/{_}/parking/listings` | `docs/features/F09.3_parking.md` | 648 |
-| GET | `/api/v1/teams/{_}/parking/listings` | `docs/features/F09.3_parking.md` | 1688 |
-| GET | `/api/v1/teams/{_}/parking/subleases` | `docs/features/F09.3_parking.md` | 674 |
-| GET | `/api/v1/teams/{_}/parking/watchlist` | `docs/features/F09.3_parking.md` | 664 |
+| GET | `/api/v1/teams/{_}/parking/applications` | `docs/features/F09.3_parking.md` | 632 |
+| GET | `/api/v1/teams/{_}/parking/applications` | `docs/features/F09.3_parking.md` | 1414 |
+| GET | `/api/v1/teams/{_}/parking/listings` | `docs/features/F09.3_parking.md` | 638 |
+| GET | `/api/v1/teams/{_}/parking/listings` | `docs/features/F09.3_parking.md` | 1678 |
+| GET | `/api/v1/teams/{_}/parking/subleases` | `docs/features/F09.3_parking.md` | 664 |
+| GET | `/api/v1/teams/{_}/parking/watchlist` | `docs/features/F09.3_parking.md` | 654 |
 | GET | `/api/v1/teams/{_}/payment-items` | `docs/features/F08.2_payments_access_control.md` | 335 |
 | GET | `/api/v1/teams/{_}/penalty-settings` | `docs/features/F03.11_recruitment_listing.md` | 1471 |
 | GET | `/api/v1/teams/{_}/performance/metrics` | `docs/features/F07.2_performance.md` | 238 |
 | GET | `/api/v1/teams/{_}/presence/icons` | `docs/features/F01.4_family_team.md` | 427 |
 | GET | `/api/v1/teams/{_}/projects` | `docs/features/F02.2.1_dashboard_widget_role_visibility.md` | 567 |
-| GET | `/api/v1/teams/{_}/projects` | `docs/features/F02.3_todo_project.md` | 264 |
-| GET | `/api/v1/teams/{_}/projects` | `docs/features/F02.3_todo_project.md` | 298 |
+| GET | `/api/v1/teams/{_}/projects` | `docs/features/F02.3_todo_project.md` | 258 |
+| GET | `/api/v1/teams/{_}/projects` | `docs/features/F02.3_todo_project.md` | 292 |
 | GET | `/api/v1/teams/{_}/queue/categories` | `docs/features/F03.7_queue.md` | 326 |
 | GET | `/api/v1/teams/{_}/queue/categories/{_}/qr-code` | `docs/features/F03.7_queue.md` | 335 |
 | GET | `/api/v1/teams/{_}/queue/counters` | `docs/features/F03.7_queue.md` | 330 |
@@ -2053,12 +2054,12 @@
 | GET | `/api/v1/teams/{_}/schedules/annual` | `docs/features/F03.10_annual_event_plan.md` | 213 |
 | GET | `/api/v1/teams/{_}/schedules/annual` | `docs/features/F03.10_annual_event_plan.md` | 228 |
 | GET | `/api/v1/teams/{_}/shopping-lists` | `docs/features/F01.4_family_team.md` | 388 |
-| GET | `/api/v1/teams/{_}/signage/screens` | `docs/features/F09.10_digital_signage.md` | 295 |
-| GET | `/api/v1/teams/{_}/signage/screens/{_}` | `docs/features/F09.10_digital_signage.md` | 297 |
-| GET | `/api/v1/teams/{_}/signage/screens/{_}/emergency/history` | `docs/features/F09.10_digital_signage.md` | 349 |
-| GET | `/api/v1/teams/{_}/signage/screens/{_}/schedules` | `docs/features/F09.10_digital_signage.md` | 323 |
-| GET | `/api/v1/teams/{_}/signage/screens/{_}/slots` | `docs/features/F09.10_digital_signage.md` | 309 |
-| GET | `/api/v1/teams/{_}/signage/screens/{_}/tokens` | `docs/features/F09.10_digital_signage.md` | 335 |
+| GET | `/api/v1/teams/{_}/signage/screens` | `docs/features/F09.10_digital_signage.md` | 287 |
+| GET | `/api/v1/teams/{_}/signage/screens/{_}` | `docs/features/F09.10_digital_signage.md` | 289 |
+| GET | `/api/v1/teams/{_}/signage/screens/{_}/emergency/history` | `docs/features/F09.10_digital_signage.md` | 341 |
+| GET | `/api/v1/teams/{_}/signage/screens/{_}/schedules` | `docs/features/F09.10_digital_signage.md` | 315 |
+| GET | `/api/v1/teams/{_}/signage/screens/{_}/slots` | `docs/features/F09.10_digital_signage.md` | 301 |
+| GET | `/api/v1/teams/{_}/signage/screens/{_}/tokens` | `docs/features/F09.10_digital_signage.md` | 327 |
 | GET | `/api/v1/teams/{_}/storage` | `docs/features/F05.5_file_sharing.md` | 361 |
 | GET | `/api/v1/teams/{_}/storage` | `docs/features/F05.5_file_sharing.md` | 1016 |
 | GET | `/api/v1/teams/{_}/summary` | `docs/features/F01.5_team_friend_relationships.md` | 348 |
@@ -2074,7 +2075,7 @@
 | GET | `/api/v1/teams/{_}/todo-status-labels` | `docs/features/F02.3.1_todo_status_labels_and_handoff.md` | 203 |
 | GET | `/api/v1/teams/{_}/todo-status-labels` | `docs/features/F02.3.1_todo_status_labels_and_handoff.md` | 238 |
 | GET | `/api/v1/teams/{_}/todos` | `docs/features/F02.2.1_dashboard_widget_role_visibility.md` | 566 |
-| GET | `/api/v1/teams/{_}/todos` | `docs/features/F02.3_todo_project.md` | 281 |
+| GET | `/api/v1/teams/{_}/todos` | `docs/features/F02.3_todo_project.md` | 275 |
 | GET | `/api/v1/teams/{_}/user-penalties` | `docs/features/F03.11_recruitment_listing.md` | 1473 |
 | GET | `/api/v1/teams/{_}/webhooks/endpoints` | `docs/features/F09.9_webhook_api.md` | 259 |
 | GET | `/api/v1/teams/{_}/webhooks/endpoints` | `docs/features/F09.9_webhook_api.md` | 344 |
@@ -2087,15 +2088,15 @@
 | GET | `/api/v1/teams/{_}/workers/{_}/history` | `docs/features/F13.1_short_term_job_matching.md` | 1642 |
 | GET | `/api/v1/teams/{_}/workers/{_}/history` | `docs/features/F13.1_short_term_job_matching.md` | 1855 |
 | GET | `/api/v1/teams/{_}/workers/{_}/history` | `docs/features/F13.1_short_term_job_matching.md` | 2143 |
-| GET | `/api/v1/teams/{_}/workflow-requests` | `docs/features/F05.6_workflow_approval.md` | 383 |
-| GET | `/api/v1/teams/{_}/workflow-templates` | `docs/features/F05.6_workflow_approval.md` | 370 |
+| GET | `/api/v1/teams/{_}/workflows/requests` | `docs/features/F05.6_workflow_approval.md` | 377 |
+| GET | `/api/v1/teams/{_}/workflows/templates` | `docs/features/F05.6_workflow_approval.md` | 366 |
 | PATCH | `/api/v1/teams/{_}/api-keys/{_}` | `docs/features/F09.9_webhook_api.md` | 282 |
 | PATCH | `/api/v1/teams/{_}/api-keys/{_}` | `docs/features/F09.9_webhook_api.md` | 796 |
 | PATCH | `/api/v1/teams/{_}/budget/config` | `docs/features/F08.6_budget_accounting.md` | 415 |
 | PATCH | `/api/v1/teams/{_}/budget/config` | `docs/features/F08.6_budget_accounting.md` | 908 |
 | PATCH | `/api/v1/teams/{_}/confirmable-notification-templates/{_}` | `docs/features/F04.9_confirmable_notification.md` | 288 |
 | PATCH | `/api/v1/teams/{_}/direct-mails/{_}/schedule` | `docs/features/F09.6_direct_mail.md` | 314 |
-| PATCH | `/api/v1/teams/{_}/direct-mails/{_}/schedule` | `docs/features/F09.6_direct_mail.md` | 751 |
+| PATCH | `/api/v1/teams/{_}/direct-mails/{_}/schedule` | `docs/features/F09.6_direct_mail.md` | 746 |
 | PATCH | `/api/v1/teams/{_}/queue/counters/{_}/accepting` | `docs/features/F03.7_queue.md` | 351 |
 | PATCH | `/api/v1/teams/{_}/queue/tickets/call-next` | `docs/features/F03.7_queue.md` | 352 |
 | PATCH | `/api/v1/teams/{_}/queue/tickets/call-next` | `docs/features/F03.7_queue.md` | 566 |
@@ -2144,18 +2145,18 @@
 | POST | `/api/v1/teams/{_}/confirmable-notifications` | `docs/features/F04.9_confirmable_notification.md` | 279 |
 | POST | `/api/v1/teams/{_}/confirmable-notifications` | `docs/features/F04.9_confirmable_notification.md` | 301 |
 | POST | `/api/v1/teams/{_}/corkboards` | `docs/features/F09.8_corkboard.md` | 238 |
-| POST | `/api/v1/teams/{_}/direct-mail-templates` | `docs/features/F09.6_direct_mail.md` | 330 |
+| POST | `/api/v1/teams/{_}/direct-mail-templates` | `docs/features/F09.6_direct_mail.md` | 325 |
 | POST | `/api/v1/teams/{_}/direct-mails` | `docs/features/F09.6_direct_mail.md` | 301 |
-| POST | `/api/v1/teams/{_}/direct-mails` | `docs/features/F09.6_direct_mail.md` | 389 |
-| POST | `/api/v1/teams/{_}/direct-mails/images` | `docs/features/F09.6_direct_mail.md` | 337 |
+| POST | `/api/v1/teams/{_}/direct-mails` | `docs/features/F09.6_direct_mail.md` | 384 |
+| POST | `/api/v1/teams/{_}/direct-mails/images` | `docs/features/F09.6_direct_mail.md` | 332 |
 | POST | `/api/v1/teams/{_}/direct-mails/preview-recipients` | `docs/features/F09.6_direct_mail.md` | 315 |
-| POST | `/api/v1/teams/{_}/direct-mails/preview-recipients` | `docs/features/F09.6_direct_mail.md` | 780 |
+| POST | `/api/v1/teams/{_}/direct-mails/preview-recipients` | `docs/features/F09.6_direct_mail.md` | 775 |
 | POST | `/api/v1/teams/{_}/direct-mails/{_}/duplicate` | `docs/features/F09.6_direct_mail.md` | 310 |
-| POST | `/api/v1/teams/{_}/direct-mails/{_}/duplicate` | `docs/features/F09.6_direct_mail.md` | 639 |
+| POST | `/api/v1/teams/{_}/direct-mails/{_}/duplicate` | `docs/features/F09.6_direct_mail.md` | 634 |
 | POST | `/api/v1/teams/{_}/direct-mails/{_}/resend-to-unopened` | `docs/features/F09.6_direct_mail.md` | 313 |
-| POST | `/api/v1/teams/{_}/direct-mails/{_}/resend-to-unopened` | `docs/features/F09.6_direct_mail.md` | 702 |
+| POST | `/api/v1/teams/{_}/direct-mails/{_}/resend-to-unopened` | `docs/features/F09.6_direct_mail.md` | 697 |
 | POST | `/api/v1/teams/{_}/direct-mails/{_}/test-send` | `docs/features/F09.6_direct_mail.md` | 309 |
-| POST | `/api/v1/teams/{_}/direct-mails/{_}/test-send` | `docs/features/F09.6_direct_mail.md` | 595 |
+| POST | `/api/v1/teams/{_}/direct-mails/{_}/test-send` | `docs/features/F09.6_direct_mail.md` | 590 |
 | POST | `/api/v1/teams/{_}/duties` | `docs/features/F01.4_family_team.md` | 410 |
 | POST | `/api/v1/teams/{_}/equipment` | `docs/features/F07.3_equipment.md` | 151 |
 | POST | `/api/v1/teams/{_}/equipment` | `docs/features/F07.3_equipment.md` | 187 |
@@ -2165,12 +2166,12 @@
 | POST | `/api/v1/teams/{_}/events/{_}/care-participants/{_}/notify-watcher` | `docs/features/F03.12_care_recipient_event_watch_notification.md` | 464 |
 | POST | `/api/v1/teams/{_}/events/{_}/complete` | `docs/features/F03.8_event_management.md` | 389 |
 | POST | `/api/v1/teams/{_}/events/{_}/roll-call` | `docs/features/F03.12_care_recipient_event_watch_notification.md` | 960 |
-| POST | `/api/v1/teams/{_}/facilities` | `docs/features/F09.5_facility_booking.md` | 469 |
-| POST | `/api/v1/teams/{_}/facilities` | `docs/features/F09.5_facility_booking.md` | 557 |
-| POST | `/api/v1/teams/{_}/facilities/bookings` | `docs/features/F09.5_facility_booking.md` | 484 |
-| POST | `/api/v1/teams/{_}/facilities/bookings` | `docs/features/F09.5_facility_booking.md` | 1404 |
-| POST | `/api/v1/teams/{_}/form-templates` | `docs/features/F05.7_form_builder.md` | 367 |
-| POST | `/api/v1/teams/{_}/forms/templates` | `docs/features/F05.7_form_builder.md` | 402 |
+| POST | `/api/v1/teams/{_}/facilities` | `docs/features/F09.5_facility_booking.md` | 463 |
+| POST | `/api/v1/teams/{_}/facilities` | `docs/features/F09.5_facility_booking.md` | 551 |
+| POST | `/api/v1/teams/{_}/facilities/bookings` | `docs/features/F09.5_facility_booking.md` | 478 |
+| POST | `/api/v1/teams/{_}/facilities/bookings` | `docs/features/F09.5_facility_booking.md` | 1398 |
+| POST | `/api/v1/teams/{_}/forms/templates` | `docs/features/F05.7_form_builder.md` | 362 |
+| POST | `/api/v1/teams/{_}/forms/templates` | `docs/features/F05.7_form_builder.md` | 397 |
 | POST | `/api/v1/teams/{_}/friend-folders` | `docs/features/F01.5_team_friend_relationships.md` | 393 |
 | POST | `/api/v1/teams/{_}/friend-folders` | `docs/features/F01.5_team_friend_relationships.md` | 605 |
 | POST | `/api/v1/teams/{_}/gamification/badges` | `docs/features/F04.7_gamification.md` | 385 |
@@ -2178,12 +2179,12 @@
 | POST | `/api/v1/teams/{_}/gamification/badges/upload-icon` | `docs/features/F04.7_gamification.md` | 389 |
 | POST | `/api/v1/teams/{_}/gamification/point-rules` | `docs/features/F04.7_gamification.md` | 377 |
 | POST | `/api/v1/teams/{_}/gamification/point-rules` | `docs/features/F04.7_gamification.md` | 468 |
-| POST | `/api/v1/teams/{_}/incidents` | `docs/features/F07.6_incident_management.md` | 449 |
-| POST | `/api/v1/teams/{_}/incidents` | `docs/features/F07.6_incident_management.md` | 554 |
-| POST | `/api/v1/teams/{_}/incidents/categories` | `docs/features/F07.6_incident_management.md` | 437 |
-| POST | `/api/v1/teams/{_}/incidents/categories` | `docs/features/F07.6_incident_management.md` | 509 |
-| POST | `/api/v1/teams/{_}/incidents/maintenance-schedules` | `docs/features/F07.6_incident_management.md` | 495 |
-| POST | `/api/v1/teams/{_}/incidents/maintenance-schedules` | `docs/features/F07.6_incident_management.md` | 781 |
+| POST | `/api/v1/teams/{_}/incidents` | `docs/features/F07.6_incident_management.md` | 442 |
+| POST | `/api/v1/teams/{_}/incidents` | `docs/features/F07.6_incident_management.md` | 547 |
+| POST | `/api/v1/teams/{_}/incidents/categories` | `docs/features/F07.6_incident_management.md` | 430 |
+| POST | `/api/v1/teams/{_}/incidents/categories` | `docs/features/F07.6_incident_management.md` | 502 |
+| POST | `/api/v1/teams/{_}/incidents/maintenance-schedules` | `docs/features/F07.6_incident_management.md` | 488 |
+| POST | `/api/v1/teams/{_}/incidents/maintenance-schedules` | `docs/features/F07.6_incident_management.md` | 774 |
 | POST | `/api/v1/teams/{_}/jobbers/invite` | `docs/features/F13.1_short_term_job_matching.md` | 638 |
 | POST | `/api/v1/teams/{_}/jobbers/invite` | `docs/features/F13.1_short_term_job_matching.md` | 1654 |
 | POST | `/api/v1/teams/{_}/jobbers/invite` | `docs/features/F13.1_short_term_job_matching.md` | 1883 |
@@ -2203,20 +2204,20 @@
 | POST | `/api/v1/teams/{_}/onboarding/templates` | `docs/features/F02.4_onboarding.md` | 382 |
 | POST | `/api/v1/teams/{_}/org-invites/{_}/accept` | `docs/features/F01.2_org_team_member_role.md` | 736 |
 | POST | `/api/v1/teams/{_}/org-invites/{_}/reject` | `docs/features/F01.2_org_team_member_role.md` | 737 |
-| POST | `/api/v1/teams/{_}/parking/applications` | `docs/features/F09.3_parking.md` | 643 |
-| POST | `/api/v1/teams/{_}/parking/applications` | `docs/features/F09.3_parking.md` | 1478 |
-| POST | `/api/v1/teams/{_}/parking/listings` | `docs/features/F09.3_parking.md` | 649 |
-| POST | `/api/v1/teams/{_}/parking/listings` | `docs/features/F09.3_parking.md` | 1736 |
-| POST | `/api/v1/teams/{_}/parking/subleases` | `docs/features/F09.3_parking.md` | 675 |
-| POST | `/api/v1/teams/{_}/parking/subleases` | `docs/features/F09.3_parking.md` | 2347 |
-| POST | `/api/v1/teams/{_}/parking/watchlist` | `docs/features/F09.3_parking.md` | 665 |
-| POST | `/api/v1/teams/{_}/parking/watchlist` | `docs/features/F09.3_parking.md` | 2231 |
+| POST | `/api/v1/teams/{_}/parking/applications` | `docs/features/F09.3_parking.md` | 633 |
+| POST | `/api/v1/teams/{_}/parking/applications` | `docs/features/F09.3_parking.md` | 1468 |
+| POST | `/api/v1/teams/{_}/parking/listings` | `docs/features/F09.3_parking.md` | 639 |
+| POST | `/api/v1/teams/{_}/parking/listings` | `docs/features/F09.3_parking.md` | 1726 |
+| POST | `/api/v1/teams/{_}/parking/subleases` | `docs/features/F09.3_parking.md` | 665 |
+| POST | `/api/v1/teams/{_}/parking/subleases` | `docs/features/F09.3_parking.md` | 2337 |
+| POST | `/api/v1/teams/{_}/parking/watchlist` | `docs/features/F09.3_parking.md` | 655 |
+| POST | `/api/v1/teams/{_}/parking/watchlist` | `docs/features/F09.3_parking.md` | 2221 |
 | POST | `/api/v1/teams/{_}/payment-items` | `docs/features/F08.2_payments_access_control.md` | 336 |
 | POST | `/api/v1/teams/{_}/payment-items` | `docs/features/F08.2_payments_access_control.md` | 380 |
 | POST | `/api/v1/teams/{_}/performance/metrics` | `docs/features/F07.2_performance.md` | 239 |
 | POST | `/api/v1/teams/{_}/performance/metrics` | `docs/features/F07.2_performance.md` | 261 |
 | POST | `/api/v1/teams/{_}/performance/records` | `docs/features/F07.2_performance.md` | 242 |
-| POST | `/api/v1/teams/{_}/projects` | `docs/features/F02.3_todo_project.md` | 265 |
+| POST | `/api/v1/teams/{_}/projects` | `docs/features/F02.3_todo_project.md` | 259 |
 | POST | `/api/v1/teams/{_}/queue/categories` | `docs/features/F03.7_queue.md` | 327 |
 | POST | `/api/v1/teams/{_}/queue/categories/{_}/qr-code` | `docs/features/F03.7_queue.md` | 334 |
 | POST | `/api/v1/teams/{_}/queue/counters` | `docs/features/F03.7_queue.md` | 331 |
@@ -2238,19 +2239,19 @@
 | POST | `/api/v1/teams/{_}/schedules` | `docs/features/F03.1_schedule_shared.md` | 464 |
 | POST | `/api/v1/teams/{_}/schedules` | `docs/features/F03.1_schedule_shared.md` | 826 |
 | POST | `/api/v1/teams/{_}/shopping-lists` | `docs/features/F01.4_family_team.md` | 389 |
-| POST | `/api/v1/teams/{_}/signage/screens` | `docs/features/F09.10_digital_signage.md` | 296 |
-| POST | `/api/v1/teams/{_}/signage/screens` | `docs/features/F09.10_digital_signage.md` | 369 |
-| POST | `/api/v1/teams/{_}/signage/screens/{_}/emergency` | `docs/features/F09.10_digital_signage.md` | 347 |
-| POST | `/api/v1/teams/{_}/signage/screens/{_}/emergency` | `docs/features/F09.10_digital_signage.md` | 520 |
-| POST | `/api/v1/teams/{_}/signage/screens/{_}/schedules` | `docs/features/F09.10_digital_signage.md` | 324 |
-| POST | `/api/v1/teams/{_}/signage/screens/{_}/slots` | `docs/features/F09.10_digital_signage.md` | 310 |
-| POST | `/api/v1/teams/{_}/signage/screens/{_}/slots` | `docs/features/F09.10_digital_signage.md` | 427 |
-| POST | `/api/v1/teams/{_}/signage/screens/{_}/tokens` | `docs/features/F09.10_digital_signage.md` | 336 |
-| POST | `/api/v1/teams/{_}/signage/screens/{_}/tokens` | `docs/features/F09.10_digital_signage.md` | 478 |
-| POST | `/api/v1/teams/{_}/signage/upload-url` | `docs/features/F09.10_digital_signage.md` | 357 |
-| POST | `/api/v1/teams/{_}/signage/upload-url` | `docs/features/F09.10_digital_signage.md` | 687 |
-| POST | `/api/v1/teams/{_}/skills` | `docs/features/F07.5_skill_certification.md` | 201 |
-| POST | `/api/v1/teams/{_}/skills` | `docs/features/F07.5_skill_certification.md` | 314 |
+| POST | `/api/v1/teams/{_}/signage/screens` | `docs/features/F09.10_digital_signage.md` | 288 |
+| POST | `/api/v1/teams/{_}/signage/screens` | `docs/features/F09.10_digital_signage.md` | 361 |
+| POST | `/api/v1/teams/{_}/signage/screens/{_}/emergency` | `docs/features/F09.10_digital_signage.md` | 339 |
+| POST | `/api/v1/teams/{_}/signage/screens/{_}/emergency` | `docs/features/F09.10_digital_signage.md` | 512 |
+| POST | `/api/v1/teams/{_}/signage/screens/{_}/schedules` | `docs/features/F09.10_digital_signage.md` | 316 |
+| POST | `/api/v1/teams/{_}/signage/screens/{_}/slots` | `docs/features/F09.10_digital_signage.md` | 302 |
+| POST | `/api/v1/teams/{_}/signage/screens/{_}/slots` | `docs/features/F09.10_digital_signage.md` | 419 |
+| POST | `/api/v1/teams/{_}/signage/screens/{_}/tokens` | `docs/features/F09.10_digital_signage.md` | 328 |
+| POST | `/api/v1/teams/{_}/signage/screens/{_}/tokens` | `docs/features/F09.10_digital_signage.md` | 470 |
+| POST | `/api/v1/teams/{_}/signage/upload-url` | `docs/features/F09.10_digital_signage.md` | 349 |
+| POST | `/api/v1/teams/{_}/signage/upload-url` | `docs/features/F09.10_digital_signage.md` | 679 |
+| POST | `/api/v1/teams/{_}/skills` | `docs/features/F07.5_skill_certification.md` | 197 |
+| POST | `/api/v1/teams/{_}/skills` | `docs/features/F07.5_skill_certification.md` | 304 |
 | POST | `/api/v1/teams/{_}/ticket-products` | `docs/features/F08.5_ticket_book.md` | 232 |
 | POST | `/api/v1/teams/{_}/ticket-products` | `docs/features/F08.5_ticket_book.md` | 264 |
 | POST | `/api/v1/teams/{_}/timetable-terms` | `docs/features/F03.9_timetable.md` | 297 |
@@ -2258,7 +2259,7 @@
 | POST | `/api/v1/teams/{_}/timetables` | `docs/features/F03.9_timetable.md` | 339 |
 | POST | `/api/v1/teams/{_}/todo-status-labels` | `docs/features/F02.3.1_todo_status_labels_and_handoff.md` | 204 |
 | POST | `/api/v1/teams/{_}/todo-status-labels` | `docs/features/F02.3.1_todo_status_labels_and_handoff.md` | 306 |
-| POST | `/api/v1/teams/{_}/todos` | `docs/features/F02.3_todo_project.md` | 282 |
+| POST | `/api/v1/teams/{_}/todos` | `docs/features/F02.3_todo_project.md` | 276 |
 | POST | `/api/v1/teams/{_}/todos` | `docs/features/F02.8_dashboard_announcement.md` | 184 |
 | POST | `/api/v1/teams/{_}/webhooks/endpoints` | `docs/features/F09.9_webhook_api.md` | 260 |
 | POST | `/api/v1/teams/{_}/webhooks/endpoints` | `docs/features/F09.9_webhook_api.md` | 289 |
@@ -2268,8 +2269,8 @@
 | POST | `/api/v1/teams/{_}/webhooks/endpoints/{_}/test` | `docs/features/F09.9_webhook_api.md` | 441 |
 | POST | `/api/v1/teams/{_}/webhooks/incoming` | `docs/features/F09.9_webhook_api.md` | 273 |
 | POST | `/api/v1/teams/{_}/webhooks/incoming` | `docs/features/F09.9_webhook_api.md` | 625 |
-| POST | `/api/v1/teams/{_}/workflow-templates` | `docs/features/F05.6_workflow_approval.md` | 372 |
-| POST | `/api/v1/teams/{_}/workflows/templates` | `docs/features/F05.6_workflow_approval.md` | 423 |
+| POST | `/api/v1/teams/{_}/workflows/templates` | `docs/features/F05.6_workflow_approval.md` | 368 |
+| POST | `/api/v1/teams/{_}/workflows/templates` | `docs/features/F05.6_workflow_approval.md` | 417 |
 | PUT | `/api/v1/teams/{_}/access-requirements` | `docs/features/F08.2_payments_access_control.md` | 348 |
 | PUT | `/api/v1/teams/{_}/access-requirements` | `docs/features/F08.2_payments_access_control.md` | 609 |
 | PUT | `/api/v1/teams/{_}/charts/{_}/body-marks` | `docs/features/F07.4_chart.md` | 410 |
@@ -2305,12 +2306,12 @@
 | PUT | `/api/v1/teams/{_}/role-aliases` | `docs/features/F01.4_family_team.md` | 376 |
 | PUT | `/api/v1/teams/{_}/role-aliases` | `docs/features/F01.4_family_team.md` | 601 |
 | PUT | `/api/v1/teams/{_}/settings/wallpaper` | `docs/features/F01.4_family_team.md` | 439 |
-| PUT | `/api/v1/teams/{_}/signage/screens/{_}` | `docs/features/F09.10_digital_signage.md` | 298 |
-| PUT | `/api/v1/teams/{_}/signage/screens/{_}/schedules/{_}` | `docs/features/F09.10_digital_signage.md` | 325 |
-| PUT | `/api/v1/teams/{_}/signage/screens/{_}/slots/reorder` | `docs/features/F09.10_digital_signage.md` | 313 |
-| PUT | `/api/v1/teams/{_}/signage/screens/{_}/slots/reorder` | `docs/features/F09.10_digital_signage.md` | 722 |
-| PUT | `/api/v1/teams/{_}/signage/screens/{_}/slots/{_}` | `docs/features/F09.10_digital_signage.md` | 311 |
-| PUT | `/api/v1/teams/{_}/signage/screens/{_}/tokens/{_}` | `docs/features/F09.10_digital_signage.md` | 337 |
+| PUT | `/api/v1/teams/{_}/signage/screens/{_}` | `docs/features/F09.10_digital_signage.md` | 290 |
+| PUT | `/api/v1/teams/{_}/signage/screens/{_}/schedules/{_}` | `docs/features/F09.10_digital_signage.md` | 317 |
+| PUT | `/api/v1/teams/{_}/signage/screens/{_}/slots/reorder` | `docs/features/F09.10_digital_signage.md` | 305 |
+| PUT | `/api/v1/teams/{_}/signage/screens/{_}/slots/reorder` | `docs/features/F09.10_digital_signage.md` | 714 |
+| PUT | `/api/v1/teams/{_}/signage/screens/{_}/slots/{_}` | `docs/features/F09.10_digital_signage.md` | 303 |
+| PUT | `/api/v1/teams/{_}/signage/screens/{_}/tokens/{_}` | `docs/features/F09.10_digital_signage.md` | 329 |
 | PUT | `/api/v1/teams/{_}/template` | `docs/features/F01.3_template_module.md` | 376 |
 | PUT | `/api/v1/teams/{_}/template` | `docs/features/F01.3_template_module.md` | 745 |
 
@@ -2454,8 +2455,8 @@
 | GET | `/api/v1/users/me/reports` | `docs/features/F10.2_moderation.md` | 375 |
 | GET | `/api/v1/users/me/reports` | `docs/features/F10.2_moderation.md` | 1017 |
 | GET | `/api/v1/users/me/todo-status-labels` | `docs/features/F02.3.1_todo_status_labels_and_handoff.md` | 194 |
-| GET | `/api/v1/users/me/vehicles` | `docs/features/F09.3_parking.md` | 623 |
-| GET | `/api/v1/users/me/vehicles` | `docs/features/F09.3_parking.md` | 688 |
+| GET | `/api/v1/users/me/vehicles` | `docs/features/F09.3_parking.md` | 613 |
+| GET | `/api/v1/users/me/vehicles` | `docs/features/F09.3_parking.md` | 678 |
 | GET | `/api/v1/users/{_}` | `docs/features/F01.5_team_friend_relationships.md` | 349 |
 | GET | `/api/v1/users/{_}` | `docs/features/F04.4_social_profiles.md` | 61 |
 | GET | `/api/v1/users/{_}` | `docs/features/F04.4_social_profiles.md` | 552 |
@@ -2470,11 +2471,11 @@
 | GET | `/api/v1/users/{_}/seals/stamps` | `docs/features/F05.3_digital_seal.md` | 158 |
 | GET | `/api/v1/users/{_}/seals/stamps` | `docs/features/F05.3_digital_seal.md` | 322 |
 | POST | `/api/v1/users/blocks` | `docs/features/F04.8_contact.md` | 491 |
-| POST | `/api/v1/users/me/avatar` | `docs/features/F01.1_auth.md` | 427 |
+| POST | `/api/v1/users/me/avatar` | `docs/features/F01.1_auth.md` | 429 |
 | POST | `/api/v1/users/me/data-export` | `docs/features/F10.1_admin_dashboard.md` | 556 |
 | POST | `/api/v1/users/me/todo-status-labels` | `docs/features/F02.3.1_todo_status_labels_and_handoff.md` | 195 |
-| POST | `/api/v1/users/me/vehicles` | `docs/features/F09.3_parking.md` | 624 |
-| POST | `/api/v1/users/me/vehicles` | `docs/features/F09.3_parking.md` | 722 |
+| POST | `/api/v1/users/me/vehicles` | `docs/features/F09.3_parking.md` | 614 |
+| POST | `/api/v1/users/me/vehicles` | `docs/features/F09.3_parking.md` | 712 |
 | POST | `/api/v1/users/{_}/seals/regenerate` | `docs/features/F05.3_digital_seal.md` | 155 |
 | POST | `/api/v1/users/{_}/seals/regenerate` | `docs/features/F05.3_digital_seal.md` | 247 |
 | PUT | `/api/v1/users/me/contact-privacy` | `docs/features/F04.8_contact.md` | 647 |
@@ -2500,104 +2501,102 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| POST | `/api/v1/webhooks/ses` | `docs/features/F09.6_direct_mail.md` | 347 |
+| POST | `/api/v1/webhooks/ses` | `docs/features/F09.6_direct_mail.md` | 342 |
 | POST | `/api/v1/webhooks/stripe/connect` | `docs/features/F13.1_short_term_job_matching.md` | 1649 |
 | POST | `/api/v1/webhooks/stripe/platform` | `docs/features/F13.1_short_term_job_matching.md` | 1650 |
 
-### /api/v1/workflow-requests/* (2 件)
+### /api/v1/workflows/* (22 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| GET | `/api/v1/workflow-requests/me` | `docs/features/F05.6_workflow_approval.md` | 385 |
-| GET | `/api/v1/workflow-requests/pending` | `docs/features/F05.6_workflow_approval.md` | 386 |
+| DELETE | `/api/v1/workflows/requests/{_}` | `docs/features/F05.6_workflow_approval.md` | 386 |
+| DELETE | `/api/v1/workflows/requests/{_}/attachments/{_}` | `docs/features/F05.6_workflow_approval.md` | 407 |
+| DELETE | `/api/v1/workflows/requests/{_}/comments/{_}` | `docs/features/F05.6_workflow_approval.md` | 400 |
+| DELETE | `/api/v1/workflows/templates/{_}` | `docs/features/F05.6_workflow_approval.md` | 372 |
+| GET | `/api/v1/workflows/requests/by-source` | `docs/features/F05.6_workflow_approval.md` | 413 |
+| GET | `/api/v1/workflows/requests/by-source` | `docs/features/F05.6_workflow_approval.md` | 823 |
+| GET | `/api/v1/workflows/requests/me` | `docs/features/F05.6_workflow_approval.md` | 379 |
+| GET | `/api/v1/workflows/requests/pending` | `docs/features/F05.6_workflow_approval.md` | 380 |
+| GET | `/api/v1/workflows/requests/pending` | `docs/features/F05.6_workflow_approval.md` | 748 |
+| GET | `/api/v1/workflows/requests/{_}` | `docs/features/F05.6_workflow_approval.md` | 382 |
+| GET | `/api/v1/workflows/requests/{_}/comments` | `docs/features/F05.6_workflow_approval.md` | 398 |
+| GET | `/api/v1/workflows/templates/{_}` | `docs/features/F05.6_workflow_approval.md` | 370 |
+| PATCH | `/api/v1/workflows/requests/{_}` | `docs/features/F05.6_workflow_approval.md` | 383 |
+| POST | `/api/v1/workflows/requests/{_}/approve` | `docs/features/F05.6_workflow_approval.md` | 391 |
+| POST | `/api/v1/workflows/requests/{_}/approve` | `docs/features/F05.6_workflow_approval.md` | 628 |
+| POST | `/api/v1/workflows/requests/{_}/attachments` | `docs/features/F05.6_workflow_approval.md` | 406 |
+| POST | `/api/v1/workflows/requests/{_}/cancel` | `docs/features/F05.6_workflow_approval.md` | 385 |
+| POST | `/api/v1/workflows/requests/{_}/comments` | `docs/features/F05.6_workflow_approval.md` | 399 |
+| POST | `/api/v1/workflows/requests/{_}/reject` | `docs/features/F05.6_workflow_approval.md` | 392 |
+| POST | `/api/v1/workflows/requests/{_}/reject` | `docs/features/F05.6_workflow_approval.md` | 696 |
+| POST | `/api/v1/workflows/requests/{_}/return` | `docs/features/F05.6_workflow_approval.md` | 393 |
+| POST | `/api/v1/workflows/requests/{_}/return` | `docs/features/F05.6_workflow_approval.md` | 722 |
+| POST | `/api/v1/workflows/requests/{_}/submit` | `docs/features/F05.6_workflow_approval.md` | 384 |
+| POST | `/api/v1/workflows/requests/{_}/submit` | `docs/features/F05.6_workflow_approval.md` | 581 |
+| POST | `/api/v1/workflows/requests/{_}/upload-url` | `docs/features/F05.6_workflow_approval.md` | 405 |
+| POST | `/api/v1/workflows/templates/{_}/requests` | `docs/features/F05.6_workflow_approval.md` | 381 |
+| POST | `/api/v1/workflows/templates/{_}/requests` | `docs/features/F05.6_workflow_approval.md` | 530 |
+| POST | `/api/v1/workflows/templates/{_}/requests/external` | `docs/features/F05.6_workflow_approval.md` | 412 |
+| POST | `/api/v1/workflows/templates/{_}/requests/external` | `docs/features/F05.6_workflow_approval.md` | 791 |
+| PUT | `/api/v1/workflows/templates/{_}` | `docs/features/F05.6_workflow_approval.md` | 371 |
 
-### /api/v1/workflows/* (14 件)
+### /api/v1/{_}/* (50 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| DELETE | `/api/v1/workflows/requests/{_}/attachments/{_}` | `docs/features/F05.6_workflow_approval.md` | 413 |
-| DELETE | `/api/v1/workflows/requests/{_}/comments/{_}` | `docs/features/F05.6_workflow_approval.md` | 406 |
-| GET | `/api/v1/workflows/requests/by-source` | `docs/features/F05.6_workflow_approval.md` | 419 |
-| GET | `/api/v1/workflows/requests/by-source` | `docs/features/F05.6_workflow_approval.md` | 829 |
-| GET | `/api/v1/workflows/requests/pending` | `docs/features/F05.6_workflow_approval.md` | 754 |
-| GET | `/api/v1/workflows/requests/{_}/comments` | `docs/features/F05.6_workflow_approval.md` | 404 |
-| POST | `/api/v1/workflows/requests/{_}/approve` | `docs/features/F05.6_workflow_approval.md` | 397 |
-| POST | `/api/v1/workflows/requests/{_}/approve` | `docs/features/F05.6_workflow_approval.md` | 634 |
-| POST | `/api/v1/workflows/requests/{_}/attachments` | `docs/features/F05.6_workflow_approval.md` | 412 |
-| POST | `/api/v1/workflows/requests/{_}/comments` | `docs/features/F05.6_workflow_approval.md` | 405 |
-| POST | `/api/v1/workflows/requests/{_}/reject` | `docs/features/F05.6_workflow_approval.md` | 398 |
-| POST | `/api/v1/workflows/requests/{_}/reject` | `docs/features/F05.6_workflow_approval.md` | 702 |
-| POST | `/api/v1/workflows/requests/{_}/return` | `docs/features/F05.6_workflow_approval.md` | 399 |
-| POST | `/api/v1/workflows/requests/{_}/return` | `docs/features/F05.6_workflow_approval.md` | 728 |
-| POST | `/api/v1/workflows/requests/{_}/submit` | `docs/features/F05.6_workflow_approval.md` | 587 |
-| POST | `/api/v1/workflows/requests/{_}/upload-url` | `docs/features/F05.6_workflow_approval.md` | 411 |
-| POST | `/api/v1/workflows/templates/{_}/requests` | `docs/features/F05.6_workflow_approval.md` | 536 |
-| POST | `/api/v1/workflows/templates/{_}/requests/external` | `docs/features/F05.6_workflow_approval.md` | 418 |
-| POST | `/api/v1/workflows/templates/{_}/requests/external` | `docs/features/F05.6_workflow_approval.md` | 797 |
-
-### /api/v1/{_}/* (57 件)
-
-| メソッド | パス | 設計書 | 行 |
-|---|---|---|---|
-| DELETE | `/api/v1/{_}/{_}/form-templates/{_}` | `docs/features/F05.7_form_builder.md` | 373 |
-| DELETE | `/api/v1/{_}/{_}/property-history/{_}` | `docs/features/F09.13_property_history.md` | 284 |
-| DELETE | `/api/v1/{_}/{_}/property-history/{_}/documents/{_}` | `docs/features/F09.13_property_history.md` | 286 |
-| DELETE | `/api/v1/{_}/{_}/vendors/{_}` | `docs/features/F09.13_property_history.md` | 268 |
-| DELETE | `/api/v1/{_}/{_}/workflow-requests/{_}` | `docs/features/F05.6_workflow_approval.md` | 392 |
-| DELETE | `/api/v1/{_}/{_}/workflow-templates/{_}` | `docs/features/F05.6_workflow_approval.md` | 376 |
-| GET | `/api/v1/{_}/{_}/direct-mails/quota` | `docs/features/F09.6_direct_mail.md` | 483 |
-| GET | `/api/v1/{_}/{_}/direct-mails/{_}` | `docs/features/F09.6_direct_mail.md` | 449 |
-| GET | `/api/v1/{_}/{_}/form-templates/{_}` | `docs/features/F05.7_form_builder.md` | 369 |
-| GET | `/api/v1/{_}/{_}/property-history` | `docs/features/F09.13_property_history.md` | 277 |
-| GET | `/api/v1/{_}/{_}/property-history/gantt` | `docs/features/F09.13_property_history.md` | 279 |
-| GET | `/api/v1/{_}/{_}/property-history/timeline` | `docs/features/F09.13_property_history.md` | 278 |
-| GET | `/api/v1/{_}/{_}/property-history/{_}` | `docs/features/F09.13_property_history.md` | 280 |
+| DELETE | `/api/v1/{_}/{_}/property-history/{_}` | `docs/features/F09.13_property_history.md` | 276 |
+| DELETE | `/api/v1/{_}/{_}/property-history/{_}/documents/{_}` | `docs/features/F09.13_property_history.md` | 278 |
+| DELETE | `/api/v1/{_}/{_}/repair-plan/delegations/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 554 |
+| DELETE | `/api/v1/{_}/{_}/repair-plan/items/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 532 |
+| DELETE | `/api/v1/{_}/{_}/vendors/{_}` | `docs/features/F09.13_property_history.md` | 260 |
+| GET | `/api/v1/{_}/{_}/direct-mails/quota` | `docs/features/F09.6_direct_mail.md` | 478 |
+| GET | `/api/v1/{_}/{_}/direct-mails/{_}` | `docs/features/F09.6_direct_mail.md` | 444 |
+| GET | `/api/v1/{_}/{_}/property-history` | `docs/features/F09.13_property_history.md` | 269 |
+| GET | `/api/v1/{_}/{_}/property-history/gantt` | `docs/features/F09.13_property_history.md` | 271 |
+| GET | `/api/v1/{_}/{_}/property-history/timeline` | `docs/features/F09.13_property_history.md` | 270 |
+| GET | `/api/v1/{_}/{_}/property-history/{_}` | `docs/features/F09.13_property_history.md` | 272 |
 | GET | `/api/v1/{_}/{_}/repair-plan/dashboard` | `docs/features/F08.8_repair_longterm_dashboard.md` | 528 |
 | GET | `/api/v1/{_}/{_}/repair-plan/delegations` | `docs/features/F08.8_repair_longterm_dashboard.md` | 552 |
+| GET | `/api/v1/{_}/{_}/repair-plan/handover-packs/{_}/download` | `docs/features/F08.8_repair_longterm_dashboard.md` | 549 |
 | GET | `/api/v1/{_}/{_}/repair-plan/items` | `docs/features/F08.8_repair_longterm_dashboard.md` | 529 |
 | GET | `/api/v1/{_}/{_}/repair-plan/quote-kanbans` | `docs/features/F08.8_repair_longterm_dashboard.md` | 542 |
+| GET | `/api/v1/{_}/{_}/repair-plan/quote-kanbans/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 544 |
 | GET | `/api/v1/{_}/{_}/repair-plan/scenarios` | `docs/features/F08.8_repair_longterm_dashboard.md` | 535 |
+| GET | `/api/v1/{_}/{_}/repair-plan/scenarios/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 537 |
 | GET | `/api/v1/{_}/{_}/repair-plan/templates` | `docs/features/F08.8_repair_longterm_dashboard.md` | 550 |
 | GET | `/api/v1/{_}/{_}/repair-plan/timeline` | `docs/features/F08.8_repair_longterm_dashboard.md` | 541 |
-| GET | `/api/v1/{_}/{_}/vendors` | `docs/features/F09.13_property_history.md` | 264 |
-| GET | `/api/v1/{_}/{_}/vendors/search` | `docs/features/F09.13_property_history.md` | 269 |
-| GET | `/api/v1/{_}/{_}/vendors/{_}` | `docs/features/F09.13_property_history.md` | 265 |
-| GET | `/api/v1/{_}/{_}/workflow-requests/{_}` | `docs/features/F05.6_workflow_approval.md` | 388 |
-| GET | `/api/v1/{_}/{_}/workflow-templates/{_}` | `docs/features/F05.6_workflow_approval.md` | 374 |
-| PATCH | `/api/v1/{_}/{_}/property-history/{_}/status` | `docs/features/F09.13_property_history.md` | 283 |
-| PATCH | `/api/v1/{_}/{_}/workflow-requests/{_}` | `docs/features/F05.6_workflow_approval.md` | 389 |
+| GET | `/api/v1/{_}/{_}/vendors` | `docs/features/F09.13_property_history.md` | 256 |
+| GET | `/api/v1/{_}/{_}/vendors/search` | `docs/features/F09.13_property_history.md` | 261 |
+| GET | `/api/v1/{_}/{_}/vendors/{_}` | `docs/features/F09.13_property_history.md` | 257 |
+| PATCH | `/api/v1/{_}/{_}/property-history/{_}/status` | `docs/features/F09.13_property_history.md` | 275 |
+| PATCH | `/api/v1/{_}/{_}/repair-plan/items/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 531 |
+| PATCH | `/api/v1/{_}/{_}/repair-plan/quote-kanbans/{_}` | `docs/features/F08.8_repair_longterm_dashboard.md` | 545 |
 | POST | `/api/v1/{_}/{_}/bulletin/threads` | `docs/features/F02.8_dashboard_announcement.md` | 181 |
-| POST | `/api/v1/{_}/{_}/form-templates/{_}/close` | `docs/features/F05.7_form_builder.md` | 372 |
-| POST | `/api/v1/{_}/{_}/form-templates/{_}/duplicate` | `docs/features/F05.7_form_builder.md` | 374 |
-| POST | `/api/v1/{_}/{_}/form-templates/{_}/publish` | `docs/features/F05.7_form_builder.md` | 371 |
-| POST | `/api/v1/{_}/{_}/form-templates/{_}/remind` | `docs/features/F05.7_form_builder.md` | 375 |
-| POST | `/api/v1/{_}/{_}/property-history` | `docs/features/F09.13_property_history.md` | 281 |
-| POST | `/api/v1/{_}/{_}/property-history/export` | `docs/features/F09.13_property_history.md` | 288 |
-| POST | `/api/v1/{_}/{_}/property-history/{_}/documents` | `docs/features/F09.13_property_history.md` | 285 |
-| POST | `/api/v1/{_}/{_}/property-history/{_}/export` | `docs/features/F09.13_property_history.md` | 287 |
+| POST | `/api/v1/{_}/{_}/property-history` | `docs/features/F09.13_property_history.md` | 273 |
+| POST | `/api/v1/{_}/{_}/property-history/export` | `docs/features/F09.13_property_history.md` | 280 |
+| POST | `/api/v1/{_}/{_}/property-history/{_}/documents` | `docs/features/F09.13_property_history.md` | 277 |
+| POST | `/api/v1/{_}/{_}/property-history/{_}/export` | `docs/features/F09.13_property_history.md` | 279 |
 | POST | `/api/v1/{_}/{_}/repair-plan/delegations` | `docs/features/F08.8_repair_longterm_dashboard.md` | 553 |
 | POST | `/api/v1/{_}/{_}/repair-plan/handover-packs` | `docs/features/F08.8_repair_longterm_dashboard.md` | 548 |
 | POST | `/api/v1/{_}/{_}/repair-plan/items` | `docs/features/F08.8_repair_longterm_dashboard.md` | 530 |
 | POST | `/api/v1/{_}/{_}/repair-plan/items/import-csv` | `docs/features/F08.8_repair_longterm_dashboard.md` | 533 |
-| POST | `/api/v1/{_}/{_}/repair-plan/items/import-csv` | `docs/features/F08.8_repair_longterm_dashboard.md` | 622 |
+| POST | `/api/v1/{_}/{_}/repair-plan/items/import-csv` | `docs/features/F08.8_repair_longterm_dashboard.md` | 613 |
 | POST | `/api/v1/{_}/{_}/repair-plan/items/import-csv/confirm` | `docs/features/F08.8_repair_longterm_dashboard.md` | 534 |
+| POST | `/api/v1/{_}/{_}/repair-plan/quote-cards/{_}/move` | `docs/features/F08.8_repair_longterm_dashboard.md` | 547 |
 | POST | `/api/v1/{_}/{_}/repair-plan/quote-kanbans` | `docs/features/F08.8_repair_longterm_dashboard.md` | 543 |
+| POST | `/api/v1/{_}/{_}/repair-plan/quote-kanbans/{_}/cards` | `docs/features/F08.8_repair_longterm_dashboard.md` | 546 |
 | POST | `/api/v1/{_}/{_}/repair-plan/scenarios` | `docs/features/F08.8_repair_longterm_dashboard.md` | 536 |
 | POST | `/api/v1/{_}/{_}/repair-plan/scenarios/simulate` | `docs/features/F08.8_repair_longterm_dashboard.md` | 538 |
-| POST | `/api/v1/{_}/{_}/repair-plan/scenarios/simulate` | `docs/features/F08.8_repair_longterm_dashboard.md` | 569 |
+| POST | `/api/v1/{_}/{_}/repair-plan/scenarios/simulate` | `docs/features/F08.8_repair_longterm_dashboard.md` | 560 |
+| POST | `/api/v1/{_}/{_}/repair-plan/scenarios/{_}/pin-to-corkboard` | `docs/features/F08.8_repair_longterm_dashboard.md` | 540 |
+| POST | `/api/v1/{_}/{_}/repair-plan/scenarios/{_}/publish-as-announcement` | `docs/features/F08.8_repair_longterm_dashboard.md` | 539 |
+| POST | `/api/v1/{_}/{_}/repair-plan/scenarios/{_}/publish-as-announcement` | `docs/features/F08.8_repair_longterm_dashboard.md` | 639 |
 | POST | `/api/v1/{_}/{_}/repair-plan/templates/override` | `docs/features/F08.8_repair_longterm_dashboard.md` | 551 |
 | POST | `/api/v1/{_}/{_}/schedules` | `docs/features/F02.8_dashboard_announcement.md` | 185 |
 | POST | `/api/v1/{_}/{_}/surveys` | `docs/features/F02.8_dashboard_announcement.md` | 186 |
-| POST | `/api/v1/{_}/{_}/vendors` | `docs/features/F09.13_property_history.md` | 266 |
-| POST | `/api/v1/{_}/{_}/workflow-requests/{_}/submit` | `docs/features/F05.6_workflow_approval.md` | 390 |
-| POST | `/api/v1/{_}/{_}/workflow-requests/{_}/withdraw` | `docs/features/F05.6_workflow_approval.md` | 391 |
-| POST | `/api/v1/{_}/{_}/workflow-templates/{_}/activate` | `docs/features/F05.6_workflow_approval.md` | 377 |
-| POST | `/api/v1/{_}/{_}/workflow-templates/{_}/deactivate` | `docs/features/F05.6_workflow_approval.md` | 378 |
-| POST | `/api/v1/{_}/{_}/workflow-templates/{_}/requests` | `docs/features/F05.6_workflow_approval.md` | 387 |
-| PUT | `/api/v1/{_}/{_}/form-templates/{_}` | `docs/features/F05.7_form_builder.md` | 370 |
-| PUT | `/api/v1/{_}/{_}/property-history/{_}` | `docs/features/F09.13_property_history.md` | 282 |
-| PUT | `/api/v1/{_}/{_}/vendors/{_}` | `docs/features/F09.13_property_history.md` | 267 |
-| PUT | `/api/v1/{_}/{_}/workflow-templates/{_}` | `docs/features/F05.6_workflow_approval.md` | 375 |
+| POST | `/api/v1/{_}/{_}/vendors` | `docs/features/F09.13_property_history.md` | 258 |
+| PUT | `/api/v1/{_}/{_}/property-history/{_}` | `docs/features/F09.13_property_history.md` | 274 |
+| PUT | `/api/v1/{_}/{_}/vendors/{_}` | `docs/features/F09.13_property_history.md` | 259 |
 
 ---
 
@@ -3642,18 +3641,6 @@
 | PATCH | `/api/v1/files/{_}/comments/{_}` | `FileCommentController#updateComment` (backend/src/main/java/com/mannschaft/app/filesharing/controller/FileCommentController.java) | 66 |
 | POST | `/api/v1/files/presign-upload` | `SharedFileController#presignUpload` (backend/src/main/java/com/mannschaft/app/filesharing/controller/SharedFileController.java) | 114 |
 
-#### /api/v1/scopes/* (7 件)
-
-| メソッド | パス | Controller | 行 |
-|---|---|---|---|
-| GET | `/api/v1/scopes/{_}/{_}/no-shows` | `RecruitmentNoShowController#listNoShows` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentNoShowController.java) | 60 |
-| GET | `/api/v1/scopes/{_}/{_}/penalties` | `RecruitmentPenaltyController#listPenalties` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentPenaltyController.java) | 82 |
-| GET | `/api/v1/scopes/{_}/{_}/penalty-settings` | `RecruitmentPenaltyController#getSetting` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentPenaltyController.java) | 46 |
-| PATCH | `/api/v1/scopes/{_}/{_}/no-shows/{_}/dispute` | `RecruitmentNoShowController#resolveDispute` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentNoShowController.java) | 112 |
-| POST | `/api/v1/scopes/{_}/{_}/penalties/{_}/lift` | `RecruitmentPenaltyController#liftPenalty` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentPenaltyController.java) | 108 |
-| POST | `/api/v1/scopes/{_}/{_}/recruitment-listings/{_}/participants/{_}/no-show` | `RecruitmentNoShowController#markNoShow` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentNoShowController.java) | 44 |
-| PUT | `/api/v1/scopes/{_}/{_}/penalty-settings` | `RecruitmentPenaltyController#upsertSetting` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentPenaltyController.java) | 60 |
-
 #### /api/v1/admin/* (6 件)
 
 | メソッド | パス | Controller | 行 |
@@ -3837,13 +3824,6 @@
 | GET | `/api/v1/venues/{_}` | `VenueController#getVenue` (backend/src/main/java/com/mannschaft/app/venue/controller/VenueController.java) | 46 |
 | POST | `/api/v1/venues/register-from-google` | `VenueController#registerFromGoogle` (backend/src/main/java/com/mannschaft/app/venue/controller/VenueController.java) | 55 |
 
-#### /api/v1/auth/* (2 件)
-
-| メソッド | パス | Controller | 行 |
-|---|---|---|---|
-| POST | `/api/v1/auth/webauthn/reauthenticate-begin` | `AuthWebAuthnController#beginReauthenticate` (backend/src/main/java/com/mannschaft/app/auth/controller/AuthWebAuthnController.java) | 108 |
-| POST | `/api/v1/auth/webauthn/reauthenticate-complete` | `AuthWebAuthnController#completeReauthenticate` (backend/src/main/java/com/mannschaft/app/auth/controller/AuthWebAuthnController.java) | 122 |
-
 #### /api/v1/chat-folders/* (2 件)
 
 | メソッド | パス | Controller | 行 |
@@ -3924,12 +3904,6 @@
 |---|---|---|---|
 | PUT | `/api/v1/notification-preferences` | `NotificationPreferenceController#updatePreference` (backend/src/main/java/com/mannschaft/app/notification/controller/NotificationPreferenceController.java) | 49 |
 
-#### /api/v1/pdf-signatures/* (1 件)
-
-| メソッド | パス | Controller | 行 |
-|---|---|---|---|
-| POST | `/api/v1/pdf-signatures/verify` | `PdfSignatureVerifyController#verify` (backend/src/main/java/com/mannschaft/app/common/pdf/verify/PdfSignatureVerifyController.java) | 38 |
-
 #### /api/v1/proxy-input/* (1 件)
 
 | メソッド | パス | Controller | 行 |
@@ -4000,7 +3974,7 @@
 
 ## 3. ✅ 一致（件数のみ）
 
-一致したエンドポイント: **1364 件**（詳細リストは省略）
+一致したエンドポイント: **1366 件**（詳細リストは省略）
 
 ---
 
@@ -4015,36 +3989,13 @@ _該当なし。_
 
 > 設計書テーブル行で状態列が `🔵`（Phase X 未着工等）と明示されているエンドポイント。意図的に未実装のため、メインの「設計あり・実装なし」には含めない。
 
-将来機能件数: **28 件**
+将来機能件数: **5 件**
 
 | 状態 | メソッド | パス | 設計書 | 行 | 実装済 |
 |---|---|---|---|---:|:---:|
-| 🔵 | DELETE | `/api/v1/organizations/{_}/knowledge-base/pages/{_}` | `docs/features/F06.5_knowledge_base.md` | 320 |  |
-| 🔵 | DELETE | `/api/v1/organizations/{_}/skill-categories/{_}` | `docs/features/F07.5_skill_certification.md` | 195 |  |
-| 🔵 | DELETE | `/api/v1/organizations/{_}/skills/{_}` | `docs/features/F07.5_skill_certification.md` | 219 |  |
 | 🔵 | GET | `/api/v1/admin/member-permissions` | `docs/features/F10.1_admin_dashboard.md` | 480 |  |
 | 🔵 | GET | `/api/v1/admin/permission-groups/{_}` | `docs/features/F10.1_admin_dashboard.md` | 474 |  |
 | 🔵 | GET | `/api/v1/admin/seals/regenerate-all/{_}/status` | `docs/features/F05.3_digital_seal.md` | 163 |  |
 | 🔵 | GET | `/api/v1/admin/seals/ungenerated` | `docs/features/F05.3_digital_seal.md` | 164 |  |
-| 🔵 | GET | `/api/v1/organizations/{_}/knowledge-base/pages` | `docs/features/F06.5_knowledge_base.md` | 316 |  |
-| 🔵 | GET | `/api/v1/organizations/{_}/knowledge-base/pages/{_}` | `docs/features/F06.5_knowledge_base.md` | 317 |  |
-| 🔵 | GET | `/api/v1/organizations/{_}/skill-categories` | `docs/features/F07.5_skill_certification.md` | 192 |  |
-| 🔵 | GET | `/api/v1/organizations/{_}/skill-matrix` | `docs/features/F07.5_skill_certification.md` | 237 |  |
-| 🔵 | GET | `/api/v1/organizations/{_}/skills/export` | `docs/features/F07.5_skill_certification.md` | 239 |  |
-| 🔵 | GET | `/api/v1/organizations/{_}/skills/me` | `docs/features/F07.5_skill_certification.md` | 215 |  |
-| 🔵 | GET | `/api/v1/organizations/{_}/skills/search` | `docs/features/F07.5_skill_certification.md` | 238 |  |
-| 🔵 | GET | `/api/v1/organizations/{_}/skills/{_}` | `docs/features/F07.5_skill_certification.md` | 217 |  |
-| 🔵 | GET | `/api/v1/organizations/{_}/skills/{_}/certificate-url` | `docs/features/F07.5_skill_certification.md` | 222 |  |
-| 🔵 | PATCH | `/api/v1/organizations/{_}/knowledge-base/pages/{_}` | `docs/features/F06.5_knowledge_base.md` | 319 |  |
-| 🔵 | PATCH | `/api/v1/organizations/{_}/knowledge-base/pages/{_}/archive` | `docs/features/F06.5_knowledge_base.md` | 323 |  |
-| 🔵 | PATCH | `/api/v1/organizations/{_}/knowledge-base/pages/{_}/move` | `docs/features/F06.5_knowledge_base.md` | 321 |  |
-| 🔵 | PATCH | `/api/v1/organizations/{_}/knowledge-base/pages/{_}/publish` | `docs/features/F06.5_knowledge_base.md` | 322 |  |
-| 🔵 | PATCH | `/api/v1/organizations/{_}/skills/{_}/verify` | `docs/features/F07.5_skill_certification.md` | 220 |  |
-| 🔵 | POST | `/api/v1/organizations/{_}/knowledge-base/pages` | `docs/features/F06.5_knowledge_base.md` | 318 |  |
-| 🔵 | POST | `/api/v1/organizations/{_}/skill-categories` | `docs/features/F07.5_skill_certification.md` | 193 |  |
-| 🔵 | POST | `/api/v1/organizations/{_}/skills` | `docs/features/F07.5_skill_certification.md` | 216 |  |
-| 🔵 | POST | `/api/v1/organizations/{_}/skills/upload-url` | `docs/features/F07.5_skill_certification.md` | 221 |  |
 | 🔵 | PUT | `/api/v1/admin/member-permissions` | `docs/features/F10.1_admin_dashboard.md` | 481 |  |
-| 🔵 | PUT | `/api/v1/organizations/{_}/skill-categories/{_}` | `docs/features/F07.5_skill_certification.md` | 194 |  |
-| 🔵 | PUT | `/api/v1/organizations/{_}/skills/{_}` | `docs/features/F07.5_skill_certification.md` | 218 |  |
 

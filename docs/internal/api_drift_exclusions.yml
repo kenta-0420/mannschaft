@@ -107,6 +107,41 @@ exclude_patterns:
     reason: "システム内部のメトリクス収集エンドポイント。設計書化対象外"
     category: internal
 
+  # === スコープ参照ヘルパー（F00 ContentVisibilityResolver 系）===
+  - pattern: "/api/v1/scopes/**"
+    reason: "スコープ解決ヘルパー API（F00 ContentVisibilityResolver 内部利用）。設計書化対象外"
+    category: internal
+
+  # === API メタ情報 / 自己内省（dev 補助）===
+  - pattern: "/api/v1/endpoints/**"
+    reason: "エンドポイント自己内省 API（開発補助）。設計書化対象外"
+    category: debug
+
+  # === 外部 webhook 受信（incoming）===
+  - pattern: "/api/v1/incoming/**"
+    reason: "外部システムからの incoming 受信口。API 仕様は外部側ドキュメントが正"
+    category: external
+
+  # === iCalendar フィード ===
+  - pattern: "/api/v1/ical/**"
+    reason: "iCalendar フィード配信（F03.3 Google Calendar 連携）。RFC5545 が一次仕様"
+    category: external
+
+  # === メールトラッキング（pixel / link click）===
+  - pattern: "/api/v1/mail-tracking/**"
+    reason: "メール open / click トラッキング pixel・redirect。設計書化対象外"
+    category: internal
+
+  # === PDF 署名検証（内部 webhook）===
+  - pattern: "/api/v1/pdf-signatures/**"
+    reason: "PDF 電子署名検証 webhook（F05.3 系内部）"
+    category: internal
+
+  # === i18n 補助 ===
+  - pattern: "/api/v1/supported-locales/**"
+    reason: "i18n 対応ロケール一覧。フロント初期化用補助 API"
+    category: internal
+
 
 # === 除外しない（あえて含めるべきもの） ===
 # 以下は誤って除外されがちなので、明示的に「除外しない」と記録しておく。
