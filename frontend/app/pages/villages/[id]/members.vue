@@ -455,9 +455,16 @@ async function handleUnpin() {
   }
 }
 
+/** 村本体編集ダイアログ表示状態 — VillageEditDialog (FE α2 で新規実装) */
+const showVillageEditDialog = ref(false)
 function handleEdit() {
   if (!village.value) return
-  void navigateTo(`/villages/${village.value.id}/edit`)
+  showVillageEditDialog.value = true
+}
+
+/** 編集 Dialog から更新成功時に村情報を差し替え */
+function onVillageUpdated(updated: VillageResponse) {
+  village.value = updated
 }
 
 // =============================================================================
@@ -727,6 +734,16 @@ onMounted(async () => {
       :village-id="village.id"
       :target-type="reportTargetType"
       :target-ref-id="reportTargetRefId"
+    />
+
+    <!-- ============================================================== -->
+    <!-- 村本体編集 Dialog（FE α2 共通コンポ・HEADMAN のみ）             -->
+    <!-- ============================================================== -->
+    <VillageEditDialog
+      v-if="village"
+      v-model:visible="showVillageEditDialog"
+      :village="village"
+      @updated="onVillageUpdated"
     />
   </div>
 </template>

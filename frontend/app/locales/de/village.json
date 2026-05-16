@@ -292,6 +292,21 @@
     "bulletinComingSoon": "村の掲示板は Phase 2 で実装予定です",
     "timelineComingSoon": "村のタイムラインは Phase 2 で実装予定です"
   },
+  "editDialog": {
+    "title": "村を編集",
+    "save": "更新する",
+    "iconLabel": "アイコン画像（R2 キー）",
+    "coverLabel": "カバー画像（R2 キー）",
+    "guidelineLabel": "村ガイドライン (Markdown)",
+    "r2KeyPlaceholder": "villages/<村ID>/icon.png など",
+    "saveSuccess": "村情報を更新しました",
+    "errorNameRequired": "村名は必須です",
+    "errorNameTooLong": "村名は {max} 文字以内で入力してください",
+    "errorDescriptionTooLong": "説明文は {max} 文字以内で入力してください",
+    "errorCategoryTooLong": "カテゴリは {max} 文字以内で入力してください",
+    "errorGuidelineTooLong": "ガイドラインは {max} 文字以内で入力してください",
+    "errorR2KeyTooLong": "R2 キーは {max} 文字以内で入力してください"
+  },
   "monsho": {
     "title": "村紋",
     "upload": "村紋をアップロード",
