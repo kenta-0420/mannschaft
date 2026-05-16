@@ -74,7 +74,15 @@ public enum SuccessionErrorCode implements ErrorCode {
     ESCALATION_ALREADY_FINAL_STAGE("SUCCESSION_019", "既に最終ステージです", Severity.WARN),
 
     /** 同一居住者に未解決のエスカレーションが既に存在する */
-    ESCALATION_DUPLICATE("SUCCESSION_020", "重複するエスカレーションが既に存在します", Severity.WARN);
+    ESCALATION_DUPLICATE("SUCCESSION_020", "重複するエスカレーションが既に存在します", Severity.WARN),
+
+    // ─── SUCCESSION_021〜022: 法的手続き（LegalFiling 系）─────────────────────────
+
+    /** 法的手続きレコードが見つからない */
+    LEGAL_FILING_NOT_FOUND("SUCCESSION_021", "法的手続きレコードが見つかりません", Severity.WARN),
+
+    /** 証拠パッケージがまだ生成されていない */
+    EVIDENCE_NOT_READY("SUCCESSION_022", "証拠パッケージがまだ生成されていません。先に buildEvidencePackage を実行してください", Severity.WARN);
 
     private final String code;
     private final String message;

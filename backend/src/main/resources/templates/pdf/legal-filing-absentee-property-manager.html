@@ -3,31 +3,234 @@
 <head>
     <meta charset="UTF-8"/>
     <link rel="stylesheet" href="/css/pdf-common.css"/>
+    <style>
+        /*
+         * 不在者財産管理人選任申立書 専用スタイル。
+         * Flying Saucer は flexbox/grid 未対応のため float / table レイアウトを採用。
+         */
+        .filing-title {
+            text-align: center;
+            font-size: 18pt;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-family: 'NotoSerifJP', 'NotoSansJP', serif;
+        }
+        .filing-subtitle {
+            text-align: center;
+            font-size: 9pt;
+            color: #666;
+            margin-bottom: 24px;
+        }
+        .legal-warning {
+            border: 2px solid #c00;
+            color: #c00;
+            padding: 10px 14px;
+            margin: 16px 0;
+            font-size: 9pt;
+            background-color: #fff8f8;
+        }
+        .filing-section {
+            margin: 16px 0;
+        }
+        .filing-section h2 {
+            font-size: 12pt;
+            border-left: 4px solid #444;
+            padding-left: 8px;
+            margin-bottom: 8px;
+        }
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .info-table td {
+            border: 1px solid #999;
+            padding: 6px 10px;
+            font-size: 10pt;
+        }
+        .info-table .label {
+            background-color: #f0f0f0;
+            width: 30%;
+            font-weight: bold;
+        }
+        .info-table .blank-field {
+            color: #aaa;
+            font-style: italic;
+        }
+        .filing-text {
+            font-size: 10pt;
+            line-height: 1.8;
+            margin: 8px 0;
+        }
+        .attachment-list {
+            margin: 8px 0 8px 20px;
+            font-size: 10pt;
+            line-height: 1.8;
+        }
+        .signature-area {
+            margin-top: 40px;
+        }
+        .signature-area table {
+            width: 100%;
+        }
+        .signature-area table td {
+            border: none;
+            padding: 6px 10px;
+            font-size: 10pt;
+            vertical-align: bottom;
+        }
+        .signature-line {
+            border-bottom: 1px solid #333;
+            display: inline-block;
+            min-width: 200px;
+            padding-bottom: 2px;
+        }
+        .seal-placeholder {
+            border: 1px solid #999;
+            width: 50px;
+            height: 50px;
+            display: inline-block;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 8pt;
+            color: #aaa;
+            padding-top: 16px;
+        }
+    </style>
 </head>
-<!--
-    F09.15 §5.11 不在者財産管理人選任申立書 PDF テンプレート（skeleton）
-    根拠条文: 家事事件手続法 145 条 / 民法 25 条
-
-    TODO: S6 で本実装。本テンプレは S1 第三陣A の予約 skeleton。
-    本実装時は以下を含めること:
-      - 申立人情報（管理組合・代表者）
-      - 不在者（区分所有者）情報・部屋番号・最終確認日
-      - 申立の趣旨・理由
-      - 添付書類目録
-      - 弁護士監修なし v1 注意書きを表紙に明示
--->
 <body>
     <div class="pdf-body">
-        <h1 style="text-align: center;">不在者財産管理人選任申立書</h1>
-        <p style="text-align: center; color: #c00;">
-            ⚠ skeleton（S6 で本実装予定）
-        </p>
-        <div style="border: 2px solid #c00; padding: 12px; margin: 20px 0; color: #c00;">
-            本テンプレートは S6 で本実装予定の skeleton です。
-            実装時は <code>docs/features/F09.15_resident_succession_support.md §5.11</code> 参照。
+
+        <!-- タイトル -->
+        <div class="filing-title">不在者財産管理人選任申立書</div>
+        <div class="filing-subtitle">
+            根拠条文: 家事事件手続法 第145条 / 民法 第25条
         </div>
-        <p>部屋番号: <span th:text="${dwellingUnitLabel}">N/A</span></p>
-        <p>起票日: <span th:text="${#temporals.format(draftedAt, 'yyyy年MM月dd日')}">N/A</span></p>
+
+        <!-- ⚠ 弁護士監修なし v1 注意書き -->
+        <div class="legal-warning">
+            ⚠ 本書面は Mannschaft システムが自動生成したテンプレートです。
+            <strong>2026年5月時点で弁護士監修を受けていません。</strong>
+            実際の家庭裁判所への申立に際しては、必ず弁護士・司法書士にご相談ください。
+            本書面はあくまで申立準備の参考資料としてご利用ください。
+        </div>
+
+        <!-- 1. 申立人情報 -->
+        <div class="filing-section">
+            <h2>1. 申立人</h2>
+            <table class="info-table">
+                <tr>
+                    <td class="label">管理組合名</td>
+                    <td><span class="blank-field">（手入力欄）</span></td>
+                </tr>
+                <tr>
+                    <td class="label">代表者（理事長）氏名</td>
+                    <td><span class="blank-field">（手入力欄）</span></td>
+                </tr>
+                <tr>
+                    <td class="label">所在地</td>
+                    <td><span class="blank-field">（手入力欄）</span></td>
+                </tr>
+                <tr>
+                    <td class="label">電話番号</td>
+                    <td><span class="blank-field">（手入力欄）</span></td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 2. 対象者（不在者）情報 -->
+        <div class="filing-section">
+            <h2>2. 対象者（不在者）情報</h2>
+            <table class="info-table">
+                <tr>
+                    <td class="label">居室番号</td>
+                    <td th:text="${dwellingUnitLabel}">部屋 N/A</td>
+                </tr>
+                <tr>
+                    <td class="label">区分所有者氏名</td>
+                    <td><span class="blank-field">（手入力欄）</span></td>
+                </tr>
+                <tr>
+                    <td class="label">最終連絡確認日</td>
+                    <td th:text="${#temporals.format(draftedAt, 'yyyy年MM月dd日')}">N/A</td>
+                </tr>
+                <tr>
+                    <td class="label">滞納開始日</td>
+                    <td>
+                        <span th:if="${delinquencyStartedAt != null}"
+                              th:text="${#temporals.format(delinquencyStartedAt, 'yyyy年MM月dd日')}">N/A</span>
+                        <span th:if="${delinquencyStartedAt == null}">不明</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">エスカレーション段階</td>
+                    <td>
+                        <span th:if="${currentStage != null}" th:text="${currentStage}">N/A</span>
+                        <span th:if="${currentStage == null}">未着手</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 3. 申立の趣旨 -->
+        <div class="filing-section">
+            <h2>3. 申立の趣旨</h2>
+            <p class="filing-text">
+                上記対象者（不在者）の財産の管理及び保護を委ねるため、
+                家事事件手続法第145条及び民法第25条に基づき、
+                財産管理人の選任を申立てます。
+            </p>
+        </div>
+
+        <!-- 4. 申立の理由 -->
+        <div class="filing-section">
+            <h2>4. 申立の理由</h2>
+            <p class="filing-text">
+                1. 申立人は、マンション管理組合として、
+                <span th:text="${dwellingUnitLabel}">居室</span>
+                の区分所有者に対して管理費等の債権を有しています。
+            </p>
+            <p class="filing-text">
+                2. 対象者は長期間にわたり連絡不能の状態にあり、
+                住居に居住している形跡が確認できません。
+                また、管理費等の支払いも滞納が継続しています。
+            </p>
+            <p class="filing-text">
+                3. 申立人は、本件区分所有不動産の適切な管理及び
+                管理費等債権の保全のため、不在者財産管理人の選任が
+                必要であると判断し、本申立に至りました。
+            </p>
+        </div>
+
+        <!-- 5. 添付書類目録 -->
+        <div class="filing-section">
+            <h2>5. 添付書類目録</h2>
+            <ol class="attachment-list">
+                <li>不動産登記事項証明書（対象居室）</li>
+                <li>管理費等滞納一覧表</li>
+                <li>エスカレーションタイムライン（証拠パッケージ同梱）</li>
+                <li>区分所有法8条 証拠パッケージ（別途提出）</li>
+                <li>申立人の資格証明書（管理組合規約等）</li>
+            </ol>
+        </div>
+
+        <!-- 6. 署名欄 -->
+        <div class="filing-section signature-area">
+            <p class="filing-text" th:text="${#temporals.format(draftedAt, 'yyyy年MM月dd日')}">起票日</p>
+            <table>
+                <tr>
+                    <td>申立人（管理組合）: <span class="signature-line"></span></td>
+                    <td style="text-align: right; width: 80px;">
+                        <div class="seal-placeholder">印</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="font-size: 9pt; color: #666; padding-top: 8px;">
+                        ※ 本書面への押印前に必ず弁護士・司法書士に内容を確認してください。
+                    </td>
+                </tr>
+            </table>
+        </div>
+
     </div>
 </body>
 </html>
