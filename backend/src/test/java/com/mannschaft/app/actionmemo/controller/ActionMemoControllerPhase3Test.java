@@ -10,6 +10,10 @@ import com.mannschaft.app.actionmemo.dto.PublishDailyToTeamResponse;
 import com.mannschaft.app.actionmemo.dto.PublishToTeamRequest;
 import com.mannschaft.app.actionmemo.dto.PublishToTeamResponse;
 import com.mannschaft.app.actionmemo.enums.ActionMemoCategory;
+import com.mannschaft.app.actionmemo.service.ActionMemoAdminService;
+import com.mannschaft.app.actionmemo.service.ActionMemoAnalyticsService;
+import com.mannschaft.app.actionmemo.service.ActionMemoPublishingService;
+import com.mannschaft.app.actionmemo.service.ActionMemoScopeService;
 import com.mannschaft.app.actionmemo.service.ActionMemoService;
 import com.mannschaft.app.actionmemo.service.ActionMemoTagService;
 import com.mannschaft.app.auth.service.AuthTokenService;
@@ -77,6 +81,18 @@ class ActionMemoControllerPhase3Test {
     private ActionMemoService actionMemoService;
 
     @MockitoBean
+    private ActionMemoPublishingService actionMemoPublishingService;
+
+    @MockitoBean
+    private ActionMemoScopeService actionMemoScopeService;
+
+    @MockitoBean
+    private ActionMemoAnalyticsService actionMemoAnalyticsService;
+
+    @MockitoBean
+    private ActionMemoAdminService actionMemoAdminService;
+
+    @MockitoBean
     private ActionMemoTagService actionMemoTagService;
 
     // JwtAuthenticationFilter 依存解決用
@@ -116,7 +132,7 @@ class ActionMemoControllerPhase3Test {
                     .teamId(TEAM_ID)
                     .memoId(MEMO_ID)
                     .build();
-            given(actionMemoService.publishToTeam(eq(MEMO_ID), any(PublishToTeamRequest.class), eq(USER_ID)))
+            given(actionMemoPublishingService.publishToTeam(eq(MEMO_ID), any(PublishToTeamRequest.class), eq(USER_ID)))
                     .willReturn(stub);
 
             String body = objectMapper.writeValueAsString(
@@ -135,7 +151,7 @@ class ActionMemoControllerPhase3Test {
         @DisplayName("PRIVATE メモを投稿しようとすると 400 ACTION_MEMO_015 (only_work_can_be_posted)")
         void publishToTeam_PRIVATEメモ_400() throws Exception {
             willThrow(new BusinessException(ActionMemoErrorCode.ACTION_MEMO_ONLY_WORK_CAN_BE_POSTED))
-                    .given(actionMemoService)
+                    .given(actionMemoPublishingService)
                     .publishToTeam(eq(MEMO_ID), any(PublishToTeamRequest.class), eq(USER_ID));
 
             String body = objectMapper.writeValueAsString(new PublishToTeamRequest(TEAM_ID, null));
@@ -151,7 +167,7 @@ class ActionMemoControllerPhase3Test {
         @DisplayName("既投稿メモの再投稿で 409 ACTION_MEMO_016 (already_posted)")
         void publishToTeam_既投稿_409() throws Exception {
             willThrow(new BusinessException(ActionMemoErrorCode.ACTION_MEMO_ALREADY_POSTED))
-                    .given(actionMemoService)
+                    .given(actionMemoPublishingService)
                     .publishToTeam(eq(MEMO_ID), any(PublishToTeamRequest.class), eq(USER_ID));
 
             String body = objectMapper.writeValueAsString(new PublishToTeamRequest(TEAM_ID, null));
@@ -167,7 +183,7 @@ class ActionMemoControllerPhase3Test {
         @DisplayName("チーム未参加で 404 ACTION_MEMO_019 (team_not_found, IDOR 対策)")
         void publishToTeam_チーム未参加_404() throws Exception {
             willThrow(new BusinessException(ActionMemoErrorCode.ACTION_MEMO_TEAM_NOT_FOUND))
-                    .given(actionMemoService)
+                    .given(actionMemoPublishingService)
                     .publishToTeam(eq(MEMO_ID), any(PublishToTeamRequest.class), eq(USER_ID));
 
             String body = objectMapper.writeValueAsString(new PublishToTeamRequest(TEAM_ID, null));
@@ -195,7 +211,7 @@ class ActionMemoControllerPhase3Test {
                     .teamId(TEAM_ID)
                     .postedCount(3)
                     .build();
-            given(actionMemoService.publishDailyToTeam(any(PublishDailyToTeamRequest.class), eq(USER_ID)))
+            given(actionMemoPublishingService.publishDailyToTeam(any(PublishDailyToTeamRequest.class), eq(USER_ID)))
                     .willReturn(stub);
 
             String body = objectMapper.writeValueAsString(new PublishDailyToTeamRequest(TEAM_ID));
@@ -212,7 +228,7 @@ class ActionMemoControllerPhase3Test {
         @DisplayName("当日 WORK メモなしで 400 ACTION_MEMO_018 (no_work_memo_today)")
         void publishDailyToTeam_当日WORK0件_400() throws Exception {
             willThrow(new BusinessException(ActionMemoErrorCode.ACTION_MEMO_NO_WORK_MEMO_TODAY))
-                    .given(actionMemoService)
+                    .given(actionMemoPublishingService)
                     .publishDailyToTeam(any(PublishDailyToTeamRequest.class), eq(USER_ID));
 
             String body = objectMapper.writeValueAsString(new PublishDailyToTeamRequest(TEAM_ID));
@@ -247,7 +263,7 @@ class ActionMemoControllerPhase3Test {
                             .name("運用チーム")
                             .isDefault(false)
                             .build());
-            given(actionMemoService.getAvailableTeams(USER_ID)).willReturn(teams);
+            given(actionMemoScopeService.getAvailableTeams(USER_ID)).willReturn(teams);
 
             mockMvc.perform(get("/api/v1/action-memos/available-teams"))
                     .andExpect(status().isOk())
@@ -261,7 +277,7 @@ class ActionMemoControllerPhase3Test {
         @Test
         @DisplayName("所属チーム0件: 200 OK で空配列を返す")
         void getAvailableTeams_0件_200() throws Exception {
-            given(actionMemoService.getAvailableTeams(USER_ID)).willReturn(List.of());
+            given(actionMemoScopeService.getAvailableTeams(USER_ID)).willReturn(List.of());
 
             mockMvc.perform(get("/api/v1/action-memos/available-teams"))
                     .andExpect(status().isOk())

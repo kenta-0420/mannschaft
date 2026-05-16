@@ -21,6 +21,7 @@ import com.mannschaft.app.actionmemo.repository.ActionMemoTagLinkRepository;
 import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
@@ -118,8 +119,20 @@ class ActionMemoServiceTest {
     @Mock
     private AuditLogService auditLogService;
 
+    @Mock
+    private OrganizationRepository organizationRepository;
+
     @InjectMocks
     private ActionMemoService actionMemoService;
+
+    @InjectMocks
+    private ActionMemoPublishingService actionMemoPublishingService;
+
+    @InjectMocks
+    private ActionMemoScopeService actionMemoScopeService;
+
+    @InjectMocks
+    private ActionMemoAdminService actionMemoAdminService;
 
     private static final Long USER_ID = 100L;
     private static final Long OTHER_USER_ID = 999L;
@@ -405,7 +418,7 @@ class ActionMemoServiceTest {
             PublishDailyRequest req = new PublishDailyRequest();
             req.setMemoDate(TARGET_DATE);
 
-            PublishDailyResponse response = actionMemoService.publishDaily(req, USER_ID);
+            PublishDailyResponse response = actionMemoPublishingService.publishDaily(req, USER_ID);
 
             assertThat(response).isNotNull();
             assertThat(response.getMemoCount()).isEqualTo(3);
@@ -467,7 +480,7 @@ class ActionMemoServiceTest {
             PublishDailyRequest req = new PublishDailyRequest();
             req.setMemoDate(TARGET_DATE);
 
-            PublishDailyResponse response = actionMemoService.publishDaily(req, USER_ID);
+            PublishDailyResponse response = actionMemoPublishingService.publishDaily(req, USER_ID);
 
             // 旧投稿の論理削除が呼ばれている
             assertThat(oldPost.getDeletedAt()).isNotNull();
@@ -486,7 +499,7 @@ class ActionMemoServiceTest {
             PublishDailyRequest req = new PublishDailyRequest();
             req.setMemoDate(TARGET_DATE);
 
-            assertThatThrownBy(() -> actionMemoService.publishDaily(req, USER_ID))
+            assertThatThrownBy(() -> actionMemoPublishingService.publishDaily(req, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             ActionMemoErrorCode.ACTION_MEMO_NO_MEMOS_FOR_DATE);
@@ -517,7 +530,7 @@ class ActionMemoServiceTest {
             req.setMemoDate(TARGET_DATE);
             req.setExtraComment("今日はよく動けた<script>alert('xss')</script>");
 
-            actionMemoService.publishDaily(req, USER_ID);
+            actionMemoPublishingService.publishDaily(req, USER_ID);
 
             ArgumentCaptor<TimelinePostEntity> captor =
                     ArgumentCaptor.forClass(TimelinePostEntity.class);
@@ -971,7 +984,7 @@ class ActionMemoServiceTest {
                     .willAnswer(inv -> inv.getArgument(0));
 
             PublishToTeamRequest req = new PublishToTeamRequest(42L, null);
-            PublishToTeamResponse response = actionMemoService.publishToTeam(MEMO_ID, req, USER_ID);
+            PublishToTeamResponse response = actionMemoPublishingService.publishToTeam(MEMO_ID, req, USER_ID);
 
             assertThat(response.getTimelinePostId()).isEqualTo(9000L);
             assertThat(response.getTeamId()).isEqualTo(42L);
@@ -991,7 +1004,7 @@ class ActionMemoServiceTest {
 
             PublishToTeamRequest req = new PublishToTeamRequest(42L, null);
 
-            assertThatThrownBy(() -> actionMemoService.publishToTeam(MEMO_ID, req, USER_ID))
+            assertThatThrownBy(() -> actionMemoPublishingService.publishToTeam(MEMO_ID, req, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             ActionMemoErrorCode.ACTION_MEMO_ONLY_WORK_CAN_BE_POSTED);
@@ -1010,7 +1023,7 @@ class ActionMemoServiceTest {
 
             PublishToTeamRequest req = new PublishToTeamRequest(42L, null);
 
-            assertThatThrownBy(() -> actionMemoService.publishToTeam(MEMO_ID, req, USER_ID))
+            assertThatThrownBy(() -> actionMemoPublishingService.publishToTeam(MEMO_ID, req, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             ActionMemoErrorCode.ACTION_MEMO_ALREADY_POSTED);
@@ -1028,7 +1041,7 @@ class ActionMemoServiceTest {
 
             PublishToTeamRequest req = new PublishToTeamRequest(42L, null);
 
-            assertThatThrownBy(() -> actionMemoService.publishToTeam(MEMO_ID, req, USER_ID))
+            assertThatThrownBy(() -> actionMemoPublishingService.publishToTeam(MEMO_ID, req, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             ActionMemoErrorCode.ACTION_MEMO_TEAM_NOT_FOUND);
@@ -1046,7 +1059,7 @@ class ActionMemoServiceTest {
 
             PublishToTeamRequest req = new PublishToTeamRequest(null, null);
 
-            assertThatThrownBy(() -> actionMemoService.publishToTeam(MEMO_ID, req, USER_ID))
+            assertThatThrownBy(() -> actionMemoPublishingService.publishToTeam(MEMO_ID, req, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             ActionMemoErrorCode.ACTION_MEMO_TEAM_ID_REQUIRED);
@@ -1073,7 +1086,7 @@ class ActionMemoServiceTest {
                     .willAnswer(inv -> inv.getArgument(0));
 
             PublishToTeamRequest req = new PublishToTeamRequest(null, null);
-            PublishToTeamResponse response = actionMemoService.publishToTeam(MEMO_ID, req, USER_ID);
+            PublishToTeamResponse response = actionMemoPublishingService.publishToTeam(MEMO_ID, req, USER_ID);
 
             assertThat(response.getTeamId()).isEqualTo(99L);
             assertThat(response.getTimelinePostId()).isEqualTo(9100L);
@@ -1104,7 +1117,7 @@ class ActionMemoServiceTest {
 
             PublishToTeamRequest req = new PublishToTeamRequest(42L,
                     "順調です<script>alert(1)</script>");
-            actionMemoService.publishToTeam(MEMO_ID, req, USER_ID);
+            actionMemoPublishingService.publishToTeam(MEMO_ID, req, USER_ID);
 
             ArgumentCaptor<TimelinePostEntity> postCaptor =
                     ArgumentCaptor.forClass(TimelinePostEntity.class);
@@ -1165,7 +1178,7 @@ class ActionMemoServiceTest {
                     .willAnswer(inv -> inv.getArgument(0));
 
             PublishDailyToTeamRequest req = new PublishDailyToTeamRequest(42L);
-            PublishDailyToTeamResponse response = actionMemoService.publishDailyToTeam(req, USER_ID);
+            PublishDailyToTeamResponse response = actionMemoPublishingService.publishDailyToTeam(req, USER_ID);
 
             assertThat(response.getPostedCount()).isEqualTo(2);
             assertThat(response.getTeamId()).isEqualTo(42L);
@@ -1196,7 +1209,7 @@ class ActionMemoServiceTest {
                     .willAnswer(inv -> inv.getArgument(0));
 
             PublishDailyToTeamRequest req = new PublishDailyToTeamRequest(42L);
-            PublishDailyToTeamResponse response = actionMemoService.publishDailyToTeam(req, USER_ID);
+            PublishDailyToTeamResponse response = actionMemoPublishingService.publishDailyToTeam(req, USER_ID);
 
             // 既投稿は repository 段階で除外されるため、postedCount は未投稿分のみ
             assertThat(response.getPostedCount()).isEqualTo(1);
@@ -1212,7 +1225,7 @@ class ActionMemoServiceTest {
 
             PublishDailyToTeamRequest req = new PublishDailyToTeamRequest(42L);
 
-            assertThatThrownBy(() -> actionMemoService.publishDailyToTeam(req, USER_ID))
+            assertThatThrownBy(() -> actionMemoPublishingService.publishDailyToTeam(req, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             ActionMemoErrorCode.ACTION_MEMO_NO_WORK_MEMO_TODAY);
@@ -1248,7 +1261,7 @@ class ActionMemoServiceTest {
                     .willAnswer(inv -> inv.getArgument(0));
 
             PublishDailyToTeamRequest req = new PublishDailyToTeamRequest(42L);
-            PublishDailyToTeamResponse response = actionMemoService.publishDailyToTeam(req, USER_ID);
+            PublishDailyToTeamResponse response = actionMemoPublishingService.publishDailyToTeam(req, USER_ID);
 
             assertThat(response.getPostedCount()).isEqualTo(3);
             // timelinePostRepository.save が 3 回呼ばれる
@@ -1303,7 +1316,7 @@ class ActionMemoServiceTest {
             given(userRoleRepository.countTeamAdminByUserIdAndTeamId(ADMIN_ID, TEAM_ID)).willReturn(1L);
             given(todoRepository.findByIdAndDeletedAtIsNull(todoId)).willReturn(Optional.of(todo));
 
-            actionMemoService.revertTodoCompletion(MEMO_ID, ADMIN_ID);
+            actionMemoAdminService.revertTodoCompletion(MEMO_ID, ADMIN_ID);
 
             verify(todoService).changeStatus(eq(todoId), any(TodoStatusChangeRequest.class), eq(USER_ID));
             verify(auditLogService).record(
@@ -1321,7 +1334,7 @@ class ActionMemoServiceTest {
             given(memoRepository.findById(MEMO_ID)).willReturn(Optional.of(memo));
             given(userRoleRepository.countTeamAdminByUserIdAndTeamId(USER_ID, TEAM_ID)).willReturn(0L);
 
-            assertThatThrownBy(() -> actionMemoService.revertTodoCompletion(MEMO_ID, USER_ID))
+            assertThatThrownBy(() -> actionMemoAdminService.revertTodoCompletion(MEMO_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ActionMemoErrorCode.ACTION_MEMO_TODO_REVERT_NOT_ALLOWED);
@@ -1334,7 +1347,7 @@ class ActionMemoServiceTest {
 
             given(memoRepository.findById(MEMO_ID)).willReturn(Optional.of(memo));
 
-            assertThatThrownBy(() -> actionMemoService.revertTodoCompletion(MEMO_ID, ADMIN_ID))
+            assertThatThrownBy(() -> actionMemoAdminService.revertTodoCompletion(MEMO_ID, ADMIN_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ActionMemoErrorCode.ACTION_MEMO_TODO_NOT_COMPLETED_BY_MEMO);
@@ -1375,7 +1388,7 @@ class ActionMemoServiceTest {
             given(teamRepository.findById(10L)).willReturn(Optional.of(teamWith(10L, "チームA")));
             given(teamRepository.findById(20L)).willReturn(Optional.of(teamWith(20L, "チームB")));
 
-            List<AvailableTeamResponse> result = actionMemoService.getAvailableTeams(USER_ID);
+            List<AvailableTeamResponse> result = actionMemoScopeService.getAvailableTeams(USER_ID);
 
             assertThat(result).hasSize(2);
             AvailableTeamResponse a = result.stream().filter(t -> t.getId() == 10L).findFirst().orElseThrow();
@@ -1398,7 +1411,7 @@ class ActionMemoServiceTest {
             given(teamRepository.findById(30L)).willReturn(Optional.of(teamWith(30L, "チームC")));
             given(teamRepository.findById(40L)).willReturn(Optional.of(teamWith(40L, "チームD")));
 
-            List<AvailableTeamResponse> result = actionMemoService.getAvailableTeams(USER_ID);
+            List<AvailableTeamResponse> result = actionMemoScopeService.getAvailableTeams(USER_ID);
 
             assertThat(result).hasSize(2);
             assertThat(result).extracting(AvailableTeamResponse::getId).containsExactlyInAnyOrder(30L, 40L);
@@ -1413,7 +1426,7 @@ class ActionMemoServiceTest {
             // findSettings は呼ばれる可能性あり（lenient）
             lenient().when(settingsService.findSettings(USER_ID)).thenReturn(Optional.empty());
 
-            List<AvailableTeamResponse> result = actionMemoService.getAvailableTeams(USER_ID);
+            List<AvailableTeamResponse> result = actionMemoScopeService.getAvailableTeams(USER_ID);
 
             assertThat(result).isEmpty();
         }
@@ -1454,7 +1467,7 @@ class ActionMemoServiceTest {
                     .willReturn(List.of(memo1, memo2));
             given(tagLinkRepository.findByMemoId(any())).willReturn(List.of());
 
-            var result = actionMemoService.listTeamMemberMemos(TEAM_ID, MEMBER_ID, ADMIN_ID, null, 50);
+            var result = actionMemoAdminService.listTeamMemberMemos(TEAM_ID, MEMBER_ID, ADMIN_ID, null, 50);
 
             assertThat(result.getData()).hasSize(2);
             assertThat(result.getNextCursor()).isNull();
@@ -1465,7 +1478,7 @@ class ActionMemoServiceTest {
         void listTeamMemberMemos_notAdmin_throws() {
             given(userRoleRepository.countTeamAdminByUserIdAndTeamId(USER_ID, TEAM_ID)).willReturn(0L);
 
-            assertThatThrownBy(() -> actionMemoService.listTeamMemberMemos(TEAM_ID, MEMBER_ID, USER_ID, null, 50))
+            assertThatThrownBy(() -> actionMemoAdminService.listTeamMemberMemos(TEAM_ID, MEMBER_ID, USER_ID, null, 50))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ActionMemoErrorCode.ACTION_MEMO_DASHBOARD_FORBIDDEN);
@@ -1485,7 +1498,7 @@ class ActionMemoServiceTest {
                     .willReturn(List.of(memo1, memo2, memo3));
             given(tagLinkRepository.findByMemoId(any())).willReturn(List.of());
 
-            var result = actionMemoService.listTeamMemberMemos(TEAM_ID, MEMBER_ID, ADMIN_ID, null, 2);
+            var result = actionMemoAdminService.listTeamMemberMemos(TEAM_ID, MEMBER_ID, ADMIN_ID, null, 2);
 
             assertThat(result.getData()).hasSize(2);
             assertThat(result.getNextCursor()).isEqualTo("11");

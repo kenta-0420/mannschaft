@@ -4,7 +4,7 @@ import com.mannschaft.app.actionmemo.ActionMemoErrorCode;
 import com.mannschaft.app.actionmemo.dto.ActionMemoListResponse;
 import com.mannschaft.app.actionmemo.dto.ActionMemoResponse;
 import com.mannschaft.app.actionmemo.enums.ActionMemoCategory;
-import com.mannschaft.app.actionmemo.service.ActionMemoService;
+import com.mannschaft.app.actionmemo.service.ActionMemoAdminService;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
@@ -55,7 +55,7 @@ class ActionMemoDashboardControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ActionMemoService actionMemoService;
+    private ActionMemoAdminService actionMemoAdminService;
 
     @MockitoBean
     private AuthTokenService authTokenService;
@@ -88,7 +88,7 @@ class ActionMemoDashboardControllerTest {
                 .build();
         ActionMemoListResponse response = new ActionMemoListResponse(List.of(memo), null);
 
-        given(actionMemoService.listTeamMemberMemos(eq(TEAM_ID), eq(MEMBER_ID),
+        given(actionMemoAdminService.listTeamMemberMemos(eq(TEAM_ID), eq(MEMBER_ID),
                 eq(ADMIN_USER_ID), any(), anyInt())).willReturn(response);
 
         mockMvc.perform(get("/api/v1/teams/{teamId}/members/{memberId}/action-memos",
@@ -104,7 +104,7 @@ class ActionMemoDashboardControllerTest {
     @DisplayName("非 ADMIN: DASHBOARD_FORBIDDEN で 403 が返る")
     void listMemberMemos_notAdmin_forbidden() throws Exception {
         willThrow(new BusinessException(ActionMemoErrorCode.ACTION_MEMO_DASHBOARD_FORBIDDEN))
-                .given(actionMemoService).listTeamMemberMemos(any(), any(), any(), any(), anyInt());
+                .given(actionMemoAdminService).listTeamMemberMemos(any(), any(), any(), any(), anyInt());
 
         mockMvc.perform(get("/api/v1/teams/{teamId}/members/{memberId}/action-memos",
                         TEAM_ID, MEMBER_ID))
@@ -116,7 +116,7 @@ class ActionMemoDashboardControllerTest {
     void listMemberMemos_withCursor_success() throws Exception {
         ActionMemoListResponse response = new ActionMemoListResponse(List.of(), null);
 
-        given(actionMemoService.listTeamMemberMemos(eq(TEAM_ID), eq(MEMBER_ID),
+        given(actionMemoAdminService.listTeamMemberMemos(eq(TEAM_ID), eq(MEMBER_ID),
                 eq(ADMIN_USER_ID), eq(99L), anyInt())).willReturn(response);
 
         mockMvc.perform(get("/api/v1/teams/{teamId}/members/{memberId}/action-memos",

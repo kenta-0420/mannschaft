@@ -1,6 +1,10 @@
 package com.mannschaft.app.actionmemo.controller;
 
 import com.mannschaft.app.actionmemo.ActionMemoErrorCode;
+import com.mannschaft.app.actionmemo.service.ActionMemoAdminService;
+import com.mannschaft.app.actionmemo.service.ActionMemoAnalyticsService;
+import com.mannschaft.app.actionmemo.service.ActionMemoPublishingService;
+import com.mannschaft.app.actionmemo.service.ActionMemoScopeService;
 import com.mannschaft.app.actionmemo.service.ActionMemoService;
 import com.mannschaft.app.auth.dto.AuditLogResponse;
 import com.mannschaft.app.auth.service.AuthTokenService;
@@ -51,6 +55,18 @@ class ActionMemoAuditControllerTest {
 
     @MockitoBean
     private ActionMemoService actionMemoService;
+
+    @MockitoBean
+    private ActionMemoPublishingService actionMemoPublishingService;
+
+    @MockitoBean
+    private ActionMemoScopeService actionMemoScopeService;
+
+    @MockitoBean
+    private ActionMemoAnalyticsService actionMemoAnalyticsService;
+
+    @MockitoBean
+    private ActionMemoAdminService actionMemoAdminService;
 
     @MockitoBean
     private com.mannschaft.app.actionmemo.service.ActionMemoTagService actionMemoTagService;
