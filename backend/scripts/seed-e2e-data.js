@@ -1,5 +1,29 @@
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+
+// F18 ポイントカード等の AES-256-GCM 暗号化（バックエンド EncryptionService と互換）
+// 鍵は本陣 dev 環境（WSL2 /home/kenta/repair-plan-build/backend/application-local.yml）と同一: 32 byte Base64
+// 環境変数 MANNSCHAFT_ENCRYPTION_KEY が設定されていればそちらを優先
+const ENCRYPTION_KEY = Buffer.from(
+  process.env.MANNSCHAFT_ENCRYPTION_KEY || 'pE8ozQmki8gdQ1nCFC86zcK1SSNJuVRLd7uhdpO4ihc=',
+  'base64'
+);
+
+/**
+ * バックエンドの EncryptionService.encrypt(plain) と同一の出力形式を返す。
+ * フォーマット: Base64(IV[12] + ciphertext + authTag[16])
+ * @param {string} plainText
+ * @returns {string} Base64 文字列（DB の VARBINARY 列には UTF-8 バイトとして書き込む）
+ */
+function encryptForTest(plainText) {
+  if (plainText == null) return null;
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', ENCRYPTION_KEY, iv);
+  const encrypted = Buffer.concat([cipher.update(plainText, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, encrypted, tag]).toString('base64');
+}
 
 (async () => {
   const conn = await mysql.createConnection({
@@ -400,6 +424,160 @@ const bcrypt = require('bcryptjs');
   console.log(`Activity result created/found: id=${activityResultId}`);
 
   // ============================================================
+  // 9. F18 ポイントカードウォレット（E2E_USER 用）
+  //    - 設定: terms_accepted_at=NOW() で TermsAcceptModal をスキップ
+  //    - カード: 5 枚（tokyu_point / rakuten / 自由入力 3 枚）
+  //    - グループ: 2 個（コンビニ / ドラッグストア）+ メンバー紐付け
+  // ============================================================
+
+  // 9-a. 既存の F18 データをクリーン（テナント別冪等性のため E2E_USER だけ削除）
+  await conn.execute(
+    `DELETE FROM point_card_group_items
+     WHERE group_id IN (SELECT id FROM point_card_groups WHERE user_id = ?)`,
+    [E2E_USER]
+  );
+  await conn.execute('DELETE FROM point_card_groups WHERE user_id = ?', [E2E_USER]);
+  await conn.execute('DELETE FROM user_point_cards WHERE user_id = ?', [E2E_USER]);
+  await conn.execute('DELETE FROM point_card_user_settings WHERE user_id = ?', [E2E_USER]);
+
+  // 9-b. ユーザー設定（規約同意済み・有効化）
+  await conn.execute(
+    `INSERT INTO point_card_user_settings
+       (user_id, is_enabled, terms_accepted_at, terms_version,
+        require_biometric_on_show, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?)`,
+    [E2E_USER, 1, now, 'v1', 0, now, now]
+  );
+
+  // 9-c. ポイントカード 5 枚
+  //   provider_id は V9.141 で投入されたマスタの UUID（東急 / 楽天）
+  const PROVIDER_TOKYU = '01901111-0000-7000-8000-000000000001';
+  const PROVIDER_RAKUTEN = '01901111-0000-7000-8000-000000000003';
+
+  function genUuidV7() {
+    // 標準 UUID v4 で十分（CHAR(36) PK、ソート要件は seed 対象外）
+    return crypto.randomUUID();
+  }
+
+  const walletCards = [
+    {
+      providerId: PROVIDER_TOKYU,
+      displayName: '東急ポイント',
+      nickname: null,
+      barcodeValue: '2812345678901',
+      barcodeFormat: 'CODE128',
+      last4: '8901',
+      memo: 'よく行くスーパー用',
+      favorite: 1,
+      displayOrder: 0,
+    },
+    {
+      providerId: PROVIDER_RAKUTEN,
+      displayName: '楽天ポイント',
+      nickname: 'メイン',
+      barcodeValue: '4901234567890',
+      barcodeFormat: 'CODE128',
+      last4: '7890',
+      memo: null,
+      favorite: 1,
+      displayOrder: 1,
+    },
+    {
+      providerId: null,
+      displayName: '近所のクリーニング屋',
+      nickname: null,
+      barcodeValue: 'CLEAN-0001-XYZ',
+      barcodeFormat: 'CODE128',
+      last4: null,
+      memo: '10 回で 1 回無料',
+      favorite: 0,
+      displayOrder: 2,
+    },
+    {
+      providerId: null,
+      displayName: 'ドラッグストアA',
+      nickname: null,
+      barcodeValue: '9876543210123',
+      barcodeFormat: 'CODE128',
+      last4: '0123',
+      memo: null,
+      favorite: 0,
+      displayOrder: 3,
+    },
+    {
+      providerId: null,
+      displayName: 'コンビニB',
+      nickname: null,
+      barcodeValue: '1122334455667',
+      barcodeFormat: 'CODE128',
+      last4: '5667',
+      memo: null,
+      favorite: 0,
+      displayOrder: 4,
+    },
+  ];
+
+  const cardIds = [];
+  for (const c of walletCards) {
+    const id = genUuidV7();
+    cardIds.push(id);
+    // VARBINARY 列には Base64 文字列を UTF-8 バイトとして保存
+    await conn.execute(
+      `INSERT INTO user_point_cards
+         (id, user_id, provider_id, display_name, nickname, barcode_value,
+          barcode_format, last4, memo, is_favorite, display_order,
+          created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        id, E2E_USER, c.providerId,
+        Buffer.from(encryptForTest(c.displayName), 'utf8'),
+        c.nickname ? Buffer.from(encryptForTest(c.nickname), 'utf8') : null,
+        Buffer.from(encryptForTest(c.barcodeValue), 'utf8'),
+        c.barcodeFormat, c.last4,
+        c.memo ? Buffer.from(encryptForTest(c.memo), 'utf8') : null,
+        c.favorite, c.displayOrder,
+        now, now,
+      ]
+    );
+  }
+
+  // 9-d. グループ 2 個
+  const groupConvenience = genUuidV7();
+  const groupDrugstore = genUuidV7();
+
+  await conn.execute(
+    `INSERT INTO point_card_groups
+       (id, user_id, name, emoji, display_order, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?)`,
+    [groupConvenience, E2E_USER, 'コンビニ', '🏪', 0, now, now]
+  );
+  await conn.execute(
+    `INSERT INTO point_card_groups
+       (id, user_id, name, emoji, display_order, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?)`,
+    [groupDrugstore, E2E_USER, 'ドラッグストア', '💊', 1, now, now]
+  );
+
+  // 9-e. グループ紐付け
+  //   コンビニ: 楽天 + コンビニB / ドラッグストア: 東急 + ドラッグストアA
+  const groupItems = [
+    { groupId: groupConvenience, cardId: cardIds[1], order: 0 }, // 楽天
+    { groupId: groupConvenience, cardId: cardIds[4], order: 1 }, // コンビニB
+    { groupId: groupDrugstore,   cardId: cardIds[0], order: 0 }, // 東急
+    { groupId: groupDrugstore,   cardId: cardIds[3], order: 1 }, // ドラッグストアA
+  ];
+  for (const gi of groupItems) {
+    await conn.execute(
+      `INSERT INTO point_card_group_items
+         (id, group_id, card_id, display_order, created_at)
+       VALUES (?,?,?,?,?)`,
+      [genUuidV7(), gi.groupId, gi.cardId, gi.order, now]
+    );
+  }
+
+  console.log(`F18 wallet seed: settings 1 / cards ${walletCards.length} / groups 2 / group_items ${groupItems.length}`);
+
+  // ============================================================
   // サマリー
   // ============================================================
   console.log('\n========================================');
@@ -427,6 +605,7 @@ const bcrypt = require('bcryptjs');
   console.log(`Notifications: 7`);
   console.log(`Activity template: id=${activityTemplateId} (試合結果)`);
   console.log(`Activity result:   id=${activityResultId} (春季合宿2026, PUBLIC)`);
+  console.log(`F18 Wallet:    cards=5 / groups=2 (E2E_USER, terms_accepted)`);
   console.log('========================================');
 
   await conn.end();
