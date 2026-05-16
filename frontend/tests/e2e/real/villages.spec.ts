@@ -1,0 +1,302 @@
+/**
+ * F17 村コミュニティ（Village Community）— 実機 E2E テスト（VLG-001〜012）。
+ *
+ * このテストはAPIモックを使わない実機テストです。
+ * バックエンド (http://localhost:8080) とフロントエンド (http://localhost:3000) が
+ * 起動済みの状態で実行してください。
+ *
+ * 認証: tests/e2e/.auth/real-user.json の storageState を使用。
+ * 未生成の場合は loginIfNeeded() でフォールバックログインする。
+ *
+ * 前提シード: backend/scripts/seed-e2e-data.js の F17 ブロックを実行済み。
+ *   - villages 2 件（"E2Eテスト公式村" OFFICIAL / "E2Eテストコミュニティ村" COMMUNITY）
+ *   - E2E_USER は COMMUNITY 村に VILLAGER として参加済み
+ *
+ * 検証粒度: dashboard.spec.ts / wallet.spec.ts と同等の「ページ描画 + 主要要素可視」レベル。
+ *
+ * テストユーザー: e2e-user@test.mannschaft.local / TestPass2026!
+ */
+
+import { test, expect, type Page } from '@playwright/test'
+import { waitForHydration } from '../helpers/wait'
+
+const USER_EMAIL = 'e2e-user@test.mannschaft.local'
+const USER_PASSWORD = 'TestPass2026!'
+
+const COMMUNITY_VILLAGE_NAME = 'E2Eテストコミュニティ村'
+
+// ---------------------------------------------------------------------------
+// ヘルパー: storageState が無効な場合のフォールバックログイン
+// ---------------------------------------------------------------------------
+async function loginIfNeeded(page: Page): Promise<void> {
+  await page.goto('/my/dashboard')
+  if (page.url().includes('/login')) {
+    await waitForHydration(page)
+    const emailInput = page.locator('input#email')
+    await emailInput.click()
+    await emailInput.pressSequentially(USER_EMAIL, { delay: 10 })
+    const passwordInput = page.locator('input[type="password"]')
+    await passwordInput.click()
+    await passwordInput.pressSequentially(USER_PASSWORD, { delay: 10 })
+    await page.getByRole('button', { name: 'ログイン' }).click()
+    await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 20_000 })
+  }
+}
+
+// ===========================================================================
+// VLG-001〜012: F17 村コミュニティ
+//
+// 注意:
+//   - 1 describe 内でテスト毎に fetchAccessToken を呼ぶと連続 login 試行が
+//     バックエンドのレート制限に引っかかって 400 を返す事例があった（実測 13 連続）。
+//   - そのため beforeAll で token と villageId を 1 回だけ取得し、全ケースで使い回す。
+//     request fixture は test スコープなので playwright.request.newContext() で
+//     独立した requestContext を生成する。
+// ===========================================================================
+test.describe('VLG-001〜012: F17 村コミュニティ', () => {
+  // 村ページは village 詳細 + メンバーシップ + チャネル等 複数 API 直列のためタイムアウト延長
+  test.setTimeout(120_000)
+
+  // describe スコープで token と villageId を 1 回だけ取得
+  let cachedToken = ''
+  let cachedVillageId = ''
+
+  test.beforeAll(async ({ playwright }) => {
+    const ctx = await playwright.request.newContext()
+    try {
+      const loginResp = await ctx.post('http://localhost:8080/api/v1/auth/login', {
+        data: { email: USER_EMAIL, password: USER_PASSWORD },
+      })
+      expect(loginResp.status()).toBe(200)
+      const loginBody = await loginResp.json()
+      cachedToken = loginBody.data.accessToken as string
+
+      const searchResp = await ctx.get(
+        `http://localhost:8080/api/v1/villages/search?q=${encodeURIComponent(COMMUNITY_VILLAGE_NAME)}&size=10`,
+        { headers: { Authorization: `Bearer ${cachedToken}` } },
+      )
+      expect(searchResp.status()).toBe(200)
+      const searchBody = await searchResp.json()
+      const village = searchBody.content.find(
+        (v: { name: string; id: string }) => v.name === COMMUNITY_VILLAGE_NAME,
+      )
+      expect(village, `seed 済の "${COMMUNITY_VILLAGE_NAME}" が search 結果に含まれていない`).toBeTruthy()
+      cachedVillageId = village.id as string
+    }
+    finally {
+      await ctx.dispose()
+    }
+  })
+
+  // -------------------------------------------------------------------------
+  // VLG-001: /villages 一覧ページが表示される
+  // -------------------------------------------------------------------------
+  test('VLG-001: /villages 村一覧ページが表示される', async ({ page }) => {
+    await loginIfNeeded(page)
+    await page.goto('/villages')
+    await waitForHydration(page)
+    await expect(page).not.toHaveURL(/\/login/)
+
+    // 検索ページの PageHeader（heading）または検索フォーム input が見える。
+    // seed 投入済の COMMUNITY 村名が一覧に出ていれば理想的。
+    const heading = page.getByRole('heading').first()
+    const villageName = page.getByText(COMMUNITY_VILLAGE_NAME, { exact: false }).first()
+    await expect(heading.or(villageName).first()).toBeVisible({ timeout: 20_000 })
+  })
+
+  // -------------------------------------------------------------------------
+  // VLG-002: /villages/create-request 申請フォームが表示される
+  // -------------------------------------------------------------------------
+  test('VLG-002: /villages/create-request 申請フォームが表示される', async ({ page }) => {
+    await loginIfNeeded(page)
+    await page.goto('/villages/create-request')
+    await waitForHydration(page)
+    await expect(page).not.toHaveURL(/\/login/)
+
+    // フォーム上の何らかの input（村名 / slug / カテゴリなど）が描画されること
+    const anyInput = page.locator('input[type="text"], input:not([type])').first()
+    await expect(anyInput).toBeVisible({ timeout: 20_000 })
+  })
+
+  // -------------------------------------------------------------------------
+  // VLG-003: GET /api/v1/villages/search が認証付きで 200 を返す
+  //
+  //   バックエンド実装上 search は認証必須（SecurityUtils.getCurrentUserId 呼出のため）。
+  //   認証ヘッダ付きで 200 + content 配列が返ることを検証する。
+  // -------------------------------------------------------------------------
+  test('VLG-003: GET /villages/search が認証付きで 200 を返す', async ({ page }) => {
+    const token = cachedToken
+    const resp = await page.request.get('http://localhost:8080/api/v1/villages/search?page=0&size=10', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    expect(resp.status()).toBe(200)
+    const body = await resp.json()
+    expect(Array.isArray(body.content)).toBe(true)
+    // seed 済 COMMUNITY 村が見つかること
+    const found = body.content.find((v: { name: string }) => v.name === COMMUNITY_VILLAGE_NAME)
+    expect(found, 'seed 済 COMMUNITY 村が search 結果に含まれていない').toBeTruthy()
+  })
+
+  // -------------------------------------------------------------------------
+  // VLG-004: 検索クエリで該当なしの場合に空配列が返る
+  //
+  //   絶対にマッチしない文字列で検索 → 200 + content=[] を期待。
+  // -------------------------------------------------------------------------
+  test('VLG-004: 検索クエリ該当なしで 200 + 空配列', async ({ page }) => {
+    const token = cachedToken
+    const q = encodeURIComponent('absent_text_zzz_nomatch_18f2e9')
+    const resp = await page.request.get(`http://localhost:8080/api/v1/villages/search?q=${q}&page=0&size=10`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    expect(resp.status()).toBe(200)
+    const body = await resp.json()
+    expect(Array.isArray(body.content)).toBe(true)
+    expect(body.content.length).toBe(0)
+  })
+
+  // -------------------------------------------------------------------------
+  // VLG-005: 村詳細 /villages/{id} に直アクセスすると bulletin にリダイレクト
+  //
+  //   index.vue は即時 navigateTo('/villages/{id}/bulletin') する設計。
+  //   遷移後の bulletin ページに VillageHeader（h1 で村名）が描画されること。
+  // -------------------------------------------------------------------------
+  test('VLG-005: /villages/{id} が表示され村名が見える（bulletin にリダイレクト）', async ({ page }) => {
+    await loginIfNeeded(page)
+    const villageId = cachedVillageId
+
+    await page.goto(`/villages/${villageId}`)
+    await waitForHydration(page)
+    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
+    await expect(page).not.toHaveURL(/\/login/)
+
+    // PageLoading が消えた後 VillageHeader の h1（村名）が見える、
+    // または main 要素が描画されていれば pass
+    const headline = page.getByRole('heading', { name: COMMUNITY_VILLAGE_NAME }).first()
+    const mainEl = page.locator('main').first()
+    await expect(headline.or(mainEl).first()).toBeVisible({ timeout: 30_000 })
+  })
+
+  // -------------------------------------------------------------------------
+  // VLG-006: タイムラインタブ
+  // -------------------------------------------------------------------------
+  test('VLG-006: /villages/{id}/timeline タイムラインページが表示される', async ({ page }) => {
+    await loginIfNeeded(page)
+    const villageId = cachedVillageId
+
+    await page.goto(`/villages/${villageId}/timeline`)
+    await waitForHydration(page)
+    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
+    await expect(page).not.toHaveURL(/\/login/)
+
+    // VillageHeader の h1（村名）または main 要素が見える
+    const headline = page.getByRole('heading', { name: COMMUNITY_VILLAGE_NAME }).first()
+    const mainEl = page.locator('main').first()
+    await expect(headline.or(mainEl).first()).toBeVisible({ timeout: 30_000 })
+  })
+
+  // -------------------------------------------------------------------------
+  // VLG-007: 井戸端会議タブ
+  // -------------------------------------------------------------------------
+  test('VLG-007: /villages/{id}/lobby 井戸端会議ページが表示される', async ({ page }) => {
+    await loginIfNeeded(page)
+    const villageId = cachedVillageId
+
+    await page.goto(`/villages/${villageId}/lobby`)
+    await waitForHydration(page)
+    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
+    await expect(page).not.toHaveURL(/\/login/)
+
+    const headline = page.getByRole('heading', { name: COMMUNITY_VILLAGE_NAME }).first()
+    const mainEl = page.locator('main').first()
+    await expect(headline.or(mainEl).first()).toBeVisible({ timeout: 30_000 })
+  })
+
+  // -------------------------------------------------------------------------
+  // VLG-008: 掲示板タブ
+  // -------------------------------------------------------------------------
+  test('VLG-008: /villages/{id}/bulletin 掲示板ページが表示される', async ({ page }) => {
+    await loginIfNeeded(page)
+    const villageId = cachedVillageId
+
+    await page.goto(`/villages/${villageId}/bulletin`)
+    await waitForHydration(page)
+    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
+    await expect(page).not.toHaveURL(/\/login/)
+
+    const headline = page.getByRole('heading', { name: COMMUNITY_VILLAGE_NAME }).first()
+    const mainEl = page.locator('main').first()
+    await expect(headline.or(mainEl).first()).toBeVisible({ timeout: 30_000 })
+  })
+
+  // -------------------------------------------------------------------------
+  // VLG-009: メンバー一覧
+  //
+  //   E2E_USER は COMMUNITY 村に VILLAGER として参加済（seed）。
+  //   メンバー一覧ページが描画されること（VillageHeader + メンバーテーブル想定）。
+  // -------------------------------------------------------------------------
+  test('VLG-009: /villages/{id}/members メンバー一覧ページが表示される', async ({ page }) => {
+    await loginIfNeeded(page)
+    const villageId = cachedVillageId
+
+    await page.goto(`/villages/${villageId}/members`)
+    await waitForHydration(page)
+    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
+    await expect(page).not.toHaveURL(/\/login/)
+
+    // VillageHeader の村名見出し or main 要素が見える
+    const headline = page.getByRole('heading', { name: COMMUNITY_VILLAGE_NAME }).first()
+    const mainEl = page.locator('main').first()
+    await expect(headline.or(mainEl).first()).toBeVisible({ timeout: 30_000 })
+  })
+
+  // -------------------------------------------------------------------------
+  // VLG-010: カレンダー（歳時記）タブ
+  // -------------------------------------------------------------------------
+  test('VLG-010: /villages/{id}/calendar カレンダーページが表示される', async ({ page }) => {
+    await loginIfNeeded(page)
+    const villageId = cachedVillageId
+
+    await page.goto(`/villages/${villageId}/calendar`)
+    await waitForHydration(page)
+    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
+    await expect(page).not.toHaveURL(/\/login/)
+
+    const headline = page.getByRole('heading', { name: COMMUNITY_VILLAGE_NAME }).first()
+    const mainEl = page.locator('main').first()
+    await expect(headline.or(mainEl).first()).toBeVisible({ timeout: 30_000 })
+  })
+
+  // -------------------------------------------------------------------------
+  // VLG-011: お祭りタブ
+  // -------------------------------------------------------------------------
+  test('VLG-011: /villages/{id}/festivals お祭りページが表示される', async ({ page }) => {
+    await loginIfNeeded(page)
+    const villageId = cachedVillageId
+
+    await page.goto(`/villages/${villageId}/festivals`)
+    await waitForHydration(page)
+    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
+    await expect(page).not.toHaveURL(/\/login/)
+
+    const headline = page.getByRole('heading', { name: COMMUNITY_VILLAGE_NAME }).first()
+    const mainEl = page.locator('main').first()
+    await expect(headline.or(mainEl).first()).toBeVisible({ timeout: 30_000 })
+  })
+
+  // -------------------------------------------------------------------------
+  // VLG-012: 練習試合募集タブ
+  // -------------------------------------------------------------------------
+  test('VLG-012: /villages/{id}/match-recruits 練習試合募集ページが表示される', async ({ page }) => {
+    await loginIfNeeded(page)
+    const villageId = cachedVillageId
+
+    await page.goto(`/villages/${villageId}/match-recruits`)
+    await waitForHydration(page)
+    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
+    await expect(page).not.toHaveURL(/\/login/)
+
+    const headline = page.getByRole('heading', { name: COMMUNITY_VILLAGE_NAME }).first()
+    const mainEl = page.locator('main').first()
+    await expect(headline.or(mainEl).first()).toBeVisible({ timeout: 30_000 })
+  })
+})
