@@ -27,7 +27,7 @@ import java.util.List;
  * カテゴリの作成・一覧取得・更新・論理削除を提供する。
  */
 @RestController
-@RequestMapping("/api/incidents/categories")
+@RequestMapping("/api/v1/incidents/categories")
 @RequiredArgsConstructor
 public class IncidentCategoryController {
 

@@ -70,7 +70,7 @@ test.describe('SIGNAGE: デジタルサイネージモード', () => {
   })
 
   test('SIGNAGE-001: サイネージページが表示される', async ({ page }) => {
-    await page.route('**/api/signage/screens**', async (route) => {
+    await page.route('**/api/v1/signage/screens**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -88,21 +88,21 @@ test.describe('SIGNAGE: デジタルサイネージモード', () => {
   })
 
   test('SIGNAGE-002: スロット一覧の取得と表示（GET）', async ({ page }) => {
-    await page.route('**/api/signage/screens**', async (route) => {
+    await page.route('**/api/v1/signage/screens**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: MOCK_SCREENS }),
       })
     })
-    await page.route('**/api/signage/screens/1/slots', async (route) => {
+    await page.route('**/api/v1/signage/screens/1/slots', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: MOCK_SLOTS }),
       })
     })
-    await page.route('**/api/signage/screens/1/tokens', async (route) => {
+    await page.route('**/api/v1/signage/screens/1/tokens', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -124,14 +124,14 @@ test.describe('SIGNAGE: デジタルサイネージモード', () => {
   test('SIGNAGE-003: スロットを設定できる（POST）', async ({ page }) => {
     let slotCreateCalled = false
 
-    await page.route('**/api/signage/screens**', async (route) => {
+    await page.route('**/api/v1/signage/screens**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: MOCK_SCREENS }),
       })
     })
-    await page.route('**/api/signage/screens/1/slots', async (route) => {
+    await page.route('**/api/v1/signage/screens/1/slots', async (route) => {
       if (route.request().method() === 'POST') {
         slotCreateCalled = true
         await route.fulfill({
@@ -158,7 +158,7 @@ test.describe('SIGNAGE: デジタルサイネージモード', () => {
         })
       }
     })
-    await page.route('**/api/signage/screens/1/tokens', async (route) => {
+    await page.route('**/api/v1/signage/screens/1/tokens', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -188,21 +188,21 @@ test.describe('SIGNAGE: デジタルサイネージモード', () => {
   test('SIGNAGE-004: サイネージトークンを発行できる（POST /token）', async ({ page }) => {
     let tokenIssueCalled = false
 
-    await page.route('**/api/signage/screens**', async (route) => {
+    await page.route('**/api/v1/signage/screens**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: MOCK_SCREENS }),
       })
     })
-    await page.route('**/api/signage/screens/1/slots', async (route) => {
+    await page.route('**/api/v1/signage/screens/1/slots', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: MOCK_SLOTS }),
       })
     })
-    await page.route('**/api/signage/screens/1/tokens', async (route) => {
+    await page.route('**/api/v1/signage/screens/1/tokens', async (route) => {
       if (route.request().method() === 'POST') {
         tokenIssueCalled = true
         await route.fulfill({
@@ -244,21 +244,21 @@ test.describe('SIGNAGE: デジタルサイネージモード', () => {
   })
 
   test('SIGNAGE-005: サイネージトークンが表示される', async ({ page }) => {
-    await page.route('**/api/signage/screens**', async (route) => {
+    await page.route('**/api/v1/signage/screens**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: MOCK_SCREENS }),
       })
     })
-    await page.route('**/api/signage/screens/1/slots', async (route) => {
+    await page.route('**/api/v1/signage/screens/1/slots', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: MOCK_SLOTS }),
       })
     })
-    await page.route('**/api/signage/screens/1/tokens', async (route) => {
+    await page.route('**/api/v1/signage/screens/1/tokens', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -282,14 +282,14 @@ test.describe('SIGNAGE: デジタルサイネージモード', () => {
   test('SIGNAGE-006: コンテンツを削除できる（DELETE）', async ({ page }) => {
     let slotDeleteCalled = false
 
-    await page.route('**/api/signage/screens**', async (route) => {
+    await page.route('**/api/v1/signage/screens**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: MOCK_SCREENS }),
       })
     })
-    await page.route('**/api/signage/screens/1/slots/1', async (route) => {
+    await page.route('**/api/v1/signage/screens/1/slots/1', async (route) => {
       if (route.request().method() === 'DELETE') {
         slotDeleteCalled = true
         await route.fulfill({ status: 204 })
@@ -297,14 +297,14 @@ test.describe('SIGNAGE: デジタルサイネージモード', () => {
         await route.continue()
       }
     })
-    await page.route('**/api/signage/screens/1/slots', async (route) => {
+    await page.route('**/api/v1/signage/screens/1/slots', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: MOCK_SLOTS }),
       })
     })
-    await page.route('**/api/signage/screens/1/tokens', async (route) => {
+    await page.route('**/api/v1/signage/screens/1/tokens', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

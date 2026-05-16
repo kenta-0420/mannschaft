@@ -32,7 +32,7 @@ import java.util.List;
  * 画面の作成・一覧・取得・更新・削除、トークン管理、緊急メッセージを提供する。
  */
 @RestController
-@RequestMapping("/api/signage/screens")
+@RequestMapping("/api/v1/signage/screens")
 @RequiredArgsConstructor
 public class SignageScreenController {
 

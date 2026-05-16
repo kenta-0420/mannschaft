@@ -24,7 +24,7 @@ import java.util.List;
  * スロットの追加・一覧・更新・削除・並び替えを提供する。
  */
 @RestController
-@RequestMapping("/api/signage/screens/{screenId}/slots")
+@RequestMapping("/api/v1/signage/screens/{screenId}/slots")
 @RequiredArgsConstructor
 public class SignageSlotController {
 
