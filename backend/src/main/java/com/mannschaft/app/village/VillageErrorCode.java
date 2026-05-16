@@ -202,7 +202,33 @@ public enum VillageErrorCode implements ErrorCode {
      * 空文字 / 最低 2 文字未満 / 不正な type を指定された場合に投げる（F17.1 §4.12）。
      */
     VILLAGE_SEARCH_INVALID_QUERY("VILLAGE_051",
-            "検索キーワードは2文字以上を指定してください", Severity.WARN);
+            "検索キーワードは2文字以上を指定してください", Severity.WARN),
+
+    // ==================================================================
+    // F17 Phase 2 U3 — 村代表委任（VILLAGE_052〜055）
+    // ==================================================================
+
+    /** VILLAGE_052: 代表委任レコードが存在しない（404、IDOR 対策で 404 統一）。 */
+    REPRESENTATIVE_NOT_FOUND("VILLAGE_052",
+            "代表委任が見つかりません", Severity.WARN),
+
+    /** VILLAGE_053: 既に現役の代表委任が存在する（409、重複 grant 拒否）。 */
+    REPRESENTATIVE_ALREADY_GRANTED("VILLAGE_053",
+            "このユーザーには既に代表権が委任されています", Severity.WARN),
+
+    /**
+     * VILLAGE_054: 代表委任の対象メンバーシップが TEAM/ORGANIZATION でない（422）。
+     * USER メンバーシップへの代表委任は意味を成さないため拒否する。
+     */
+    REPRESENTATIVE_NOT_TEAM_OR_ORG_MEMBERSHIP("VILLAGE_054",
+            "代表委任はチーム/組織メンバーシップに対してのみ可能です", Severity.WARN),
+
+    /**
+     * VILLAGE_055: 委任先ユーザーが当該チーム/組織のメンバーでない（422）。
+     * チーム/組織に所属していない第三者を代表として委任することは禁止。
+     */
+    REPRESENTATIVE_USER_NOT_IN_SUBJECT("VILLAGE_055",
+            "委任先ユーザーが対象チーム/組織のメンバーではありません", Severity.WARN);
 
     private final String code;
     private final String message;
