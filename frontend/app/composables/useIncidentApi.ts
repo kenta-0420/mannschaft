@@ -13,7 +13,7 @@ import type {
 
 export function useIncidentApi() {
   const api = useApi()
-  const BASE = '/api/incidents'
+  const BASE = '/api/v1/incidents'
 
   // === Incidents ===
 

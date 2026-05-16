@@ -34,7 +34,7 @@ import java.util.List;
  * インシデントの報告・取得・一覧・更新・ステータス変更・アサイン・削除を提供する。
  */
 @RestController
-@RequestMapping("/api/incidents")
+@RequestMapping("/api/v1/incidents")
 @RequiredArgsConstructor
 public class IncidentController {
 

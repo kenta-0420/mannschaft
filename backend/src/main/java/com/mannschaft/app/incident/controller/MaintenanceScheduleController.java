@@ -28,7 +28,7 @@ import java.util.List;
  * 定期メンテナンスの作成・一覧取得・更新・削除・手動トリガーを提供する。
  */
 @RestController
-@RequestMapping("/api/maintenance-schedules")
+@RequestMapping("/api/v1/maintenance-schedules")
 @RequiredArgsConstructor
 public class MaintenanceScheduleController {
 

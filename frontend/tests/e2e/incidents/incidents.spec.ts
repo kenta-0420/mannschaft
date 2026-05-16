@@ -66,8 +66,8 @@ async function mockIncidentApis(page: Page): Promise<void> {
 
   await mockTeam(page)
 
-  // インシデント一覧 (/api/incidents は /api/v1/ 配下ではないため個別設定)
-  await page.route('**/api/incidents**', async (route) => {
+  // インシデント一覧
+  await page.route('**/api/v1/incidents**', async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
         status: 200,
@@ -150,7 +150,7 @@ test.describe('INCIDENT-001〜006: F07.6 インシデント管理', () => {
       })
     })
 
-    await page.route('**/api/incidents**', async (route) => {
+    await page.route('**/api/v1/incidents**', async (route) => {
       if (route.request().method() === 'GET') {
         await route.fulfill({
           status: 200,
@@ -204,7 +204,7 @@ test.describe('INCIDENT-001〜006: F07.6 インシデント管理', () => {
       })
     })
 
-    await page.route('**/api/incidents**', async (route) => {
+    await page.route('**/api/v1/incidents**', async (route) => {
       if (route.request().method() === 'GET') {
         await route.fulfill({
           status: 200,
@@ -216,7 +216,7 @@ test.describe('INCIDENT-001〜006: F07.6 インシデント管理', () => {
       }
     })
 
-    await page.route(`**/api/incidents/${INCIDENT_ID}/status`, async (route) => {
+    await page.route(`**/api/v1/incidents/${INCIDENT_ID}/status`, async (route) => {
       if (route.request().method() === 'PATCH') {
         await route.fulfill({
           status: 200,
@@ -257,7 +257,7 @@ test.describe('INCIDENT-001〜006: F07.6 インシデント管理', () => {
       })
     })
 
-    await page.route('**/api/incidents**', async (route) => {
+    await page.route('**/api/v1/incidents**', async (route) => {
       if (route.request().method() === 'GET') {
         await route.fulfill({
           status: 200,
@@ -269,7 +269,7 @@ test.describe('INCIDENT-001〜006: F07.6 インシデント管理', () => {
       }
     })
 
-    await page.route(`**/api/incidents/${INCIDENT_ID}/status`, async (route) => {
+    await page.route(`**/api/v1/incidents/${INCIDENT_ID}/status`, async (route) => {
       if (route.request().method() === 'PATCH') {
         await route.fulfill({
           status: 200,
@@ -314,7 +314,7 @@ test.describe('INCIDENT-001〜006: F07.6 インシデント管理', () => {
       })
     })
 
-    await page.route('**/api/incidents**', async (route) => {
+    await page.route('**/api/v1/incidents**', async (route) => {
       if (route.request().method() === 'GET') {
         await route.fulfill({
           status: 200,
@@ -326,7 +326,7 @@ test.describe('INCIDENT-001〜006: F07.6 インシデント管理', () => {
       }
     })
 
-    await page.route(`**/api/incidents/${INCIDENT_ID}`, async (route) => {
+    await page.route(`**/api/v1/incidents/${INCIDENT_ID}`, async (route) => {
       if (route.request().method() === 'DELETE') {
         await route.fulfill({ status: 204 })
       } else {
