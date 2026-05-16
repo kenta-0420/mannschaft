@@ -672,6 +672,159 @@ function encryptForTest(plain) {
   console.log(`F17 memberships: E2E_USER joined COMMUNITY village as VILLAGER`);
 
   // ============================================================
+  // F09.15 区分所有者承継支援 — Phase 11 実機E2E用 seed
+  // ------------------------------------------------------------
+  //   - apartment 組織 1件（COMMUNITY 型・name で UPSERT）を作成
+  //   - E2E_USER に当該組織の ADMIN ロール（role_id=2）を付与
+  //     ※ 全 succession 系一覧 API は accessControlService.isAdminOrAbove で
+  //       ADMIN 必須のため、E2E_USER 自身が ADMIN を持たないと 403 になる
+  //   - dwelling_units（住戸）1件 / resident_registry（居住者）1件 を投入
+  //     resident_registry の暗号化カラム（last_name 等）は encryptForTest() で投入
+  //   - succession_covenants / succession_pre_registrations /
+  //     unseal_requests / delinquency_escalations / legal_filings 各 1件
+  //     冪等性: 当該 apartment 組織内の各テーブルを毎回 DELETE → INSERT
+  // ============================================================
+  console.log('\n--- Seeding F09.15 succession (apartment) ---');
+
+  // apartment 組織を UPSERT
+  const apartmentOrgId = await createOrg(
+    'E2Eテストマンション管理組合', 'COMMUNITY', null, '東京都', '世田谷区'
+  );
+  console.log(`F09.15 apartment org: id=${apartmentOrgId}`);
+
+  // E2E_USER に apartment 組織の ADMIN ロール（role_id=2）を付与
+  await assignRole(E2E_USER, 2, null, apartmentOrgId);
+  // E2E_ADMIN にも付与（管理者操作用）
+  await assignRole(E2E_ADMIN, 2, null, apartmentOrgId);
+  console.log(`F09.15 roles: E2E_USER / E2E_ADMIN granted ADMIN of apartment org`);
+
+  // 既存 succession データを冪等削除（apartment 組織配下のみ）
+  await conn.execute(
+    'DELETE FROM legal_filings WHERE organization_id = ?', [apartmentOrgId]
+  );
+  await conn.execute(
+    'DELETE FROM delinquency_escalations WHERE organization_id = ?', [apartmentOrgId]
+  );
+  await conn.execute(
+    'DELETE FROM unseal_requests WHERE organization_id = ?', [apartmentOrgId]
+  );
+  await conn.execute(
+    'DELETE FROM succession_covenants WHERE organization_id = ?', [apartmentOrgId]
+  );
+  await conn.execute(
+    'DELETE FROM succession_pre_registrations WHERE organization_id = ?', [apartmentOrgId]
+  );
+  await conn.execute(
+    'DELETE FROM resident_registry WHERE dwelling_unit_id IN (SELECT id FROM dwelling_units WHERE organization_id = ?)',
+    [apartmentOrgId]
+  );
+  await conn.execute(
+    'DELETE FROM dwelling_units WHERE organization_id = ?', [apartmentOrgId]
+  );
+
+  // dwelling_units 1件
+  await conn.execute(
+    `INSERT INTO dwelling_units
+      (scope_type, organization_id, unit_number, floor, area_sqm, layout,
+       unit_type, resident_count, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?)`,
+    ['ORGANIZATION', apartmentOrgId, '101', 1, 65.50, '3LDK', 'STANDARD', 1, now, now]
+  );
+  const [[dwellingRow]] = await conn.execute(
+    'SELECT id FROM dwelling_units WHERE organization_id = ? AND unit_number = ?',
+    [apartmentOrgId, '101']
+  );
+  const dwellingUnitId = Number(dwellingRow.id);
+
+  // resident_registry 1件（暗号化カラムは encryptForTest() で投入）
+  const residentLastName = encryptForTest('承継太郎');
+  const residentFirstName = encryptForTest('被験者');
+  await conn.execute(
+    `INSERT INTO resident_registry
+      (dwelling_unit_id, user_id, resident_type, last_name, first_name,
+       encryption_key_version, move_in_date, is_primary, is_verified,
+       death_status, occupancy_status,
+       created_at, updated_at)
+     VALUES (?,?,?,?,?,1,?,1,1,?,?,?,?)`,
+    [dwellingUnitId, E2E_USER, 'OWNER',
+     residentLastName, residentFirstName,
+     '2020-04-01', 'ALIVE', 'RESIDING', now, now]
+  );
+  const [[residentRow]] = await conn.execute(
+    'SELECT id FROM resident_registry WHERE dwelling_unit_id = ? AND user_id = ?',
+    [dwellingUnitId, E2E_USER]
+  );
+  const residentRegistryId = Number(residentRow.id);
+
+  // succession_covenants 1件
+  await conn.execute(
+    `INSERT INTO succession_covenants
+      (id, organization_id, dwelling_unit_id, resident_registry_id, signer_user_id,
+       covenant_type, covenant_version, pdf_s3_key, pdf_sha256,
+       internal_signature_token, signed_at, created_at, updated_at)
+     VALUES (UUID_TO_BIN(UUID()), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [apartmentOrgId, dwellingUnitId, residentRegistryId, E2E_USER,
+     'SUCCESSION_PRE_REGISTRATION', '1.0',
+     `organizations/${apartmentOrgId}/succession/covenants/e2e-seed.pdf`,
+     '0'.repeat(64),
+     'e2e-seed-token-' + Date.now(),
+     now, now, now]
+  );
+
+  // succession_pre_registrations 1件（封緘済）
+  await conn.execute(
+    `INSERT INTO succession_pre_registrations
+      (id, organization_id, dwelling_unit_id, resident_registry_id, owner_user_id,
+       seal_status, emergency_contacts, inheritance_candidates, will_memo,
+       last_updated_by_owner_at, created_at, updated_at)
+     VALUES (UUID_TO_BIN(UUID()), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [apartmentOrgId, dwellingUnitId, residentRegistryId, E2E_USER,
+     'SEALED',
+     '[{"name":"承継花子","phone":"090-0000-0000","relationship":"配偶者"}]',
+     '[{"name":"承継一郎","relationship":"長男"}]',
+     '自筆証書遺言は公証役場に保管。',
+     now, now, now]
+  );
+  const [[preRegRow]] = await conn.execute(
+    'SELECT BIN_TO_UUID(id) AS id_text FROM succession_pre_registrations WHERE organization_id = ? AND resident_registry_id = ?',
+    [apartmentOrgId, residentRegistryId]
+  );
+  const preRegistrationIdText = preRegRow.id_text;
+
+  // unseal_requests 1件（PENDING）
+  await conn.execute(
+    `INSERT INTO unseal_requests
+      (id, organization_id, dwelling_unit_id, resident_registry_id, pre_registration_id,
+       requested_by, request_reason, created_at, updated_at)
+     VALUES (UUID_TO_BIN(UUID()), ?, ?, ?, UUID_TO_BIN(?), ?, ?, ?, ?)`,
+    [apartmentOrgId, dwellingUnitId, residentRegistryId, preRegistrationIdText,
+     E2E_ADMIN, 'E2E テスト用ダミー申請（死亡確認のため開封要請）', now, now]
+  );
+
+  // delinquency_escalations 1件
+  await conn.execute(
+    `INSERT INTO delinquency_escalations
+      (id, organization_id, dwelling_unit_id, resident_registry_id,
+       current_stage, delinquency_started_at, created_at, updated_at)
+     VALUES (UUID_TO_BIN(UUID()), ?, ?, ?, ?, ?, ?, ?)`,
+    [apartmentOrgId, dwellingUnitId, residentRegistryId,
+     'STAGE_1_REMINDER', '2026-04-01', now, now]
+  );
+
+  // legal_filings 1件
+  await conn.execute(
+    `INSERT INTO legal_filings
+      (id, organization_id, dwelling_unit_id, resident_registry_id,
+       filing_type, note, created_at, updated_at)
+     VALUES (UUID_TO_BIN(UUID()), ?, ?, ?, ?, ?, ?, ?)`,
+    [apartmentOrgId, dwellingUnitId, residentRegistryId,
+     'ABSENTEE_PROPERTY_MANAGER', 'E2E テスト用ダミー申立て（不在者財産管理人）', now, now]
+  );
+
+  console.log(`F09.15 apartment seed: org=${apartmentOrgId}, dwelling=${dwellingUnitId}, resident=${residentRegistryId}`);
+  console.log(`F09.15 succession rows: covenant x1, pre_registration x1, unseal_request x1, delinquency_escalation x1, legal_filing x1`);
+
+  // ============================================================
   // サマリー
   // ============================================================
   console.log('\n========================================');
@@ -702,6 +855,7 @@ function encryptForTest(plain) {
   console.log(`F18 wallet:        E2E_USER に カード 5 / グループ 2 を投入`);
   console.log(`F02.9 favorites:   E2E_USER に TEAM x2 + ORGANIZATION x1 = 3 件を投入`);
   console.log(`F17 villages:      OFFICIAL x1 + COMMUNITY x1 を投入。E2E_USER は COMMUNITY 村に参加`);
+  console.log(`F09.15 succession: apartment org + dwelling + resident + 5 succession records を投入`);
   console.log('========================================');
 
   await conn.end();
