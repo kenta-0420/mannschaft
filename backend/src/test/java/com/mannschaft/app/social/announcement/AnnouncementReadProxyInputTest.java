@@ -1,16 +1,9 @@
 package com.mannschaft.app.social.announcement;
 
-import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
-import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
-import com.mannschaft.app.cms.repository.BlogPostRepository;
-import com.mannschaft.app.committee.repository.CommitteeDistributionLogRepository;
-import com.mannschaft.app.committee.repository.CommitteeMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
-import com.mannschaft.app.survey.repository.SurveyRepository;
-import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -32,24 +25,18 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link AnnouncementFeedService#markAsRead} の代理確認ロジック単体テスト。
+ * {@link AnnouncementReadService#markAsRead} の代理確認ロジック単体テスト。
  * 通常既読・代理確認の2パターンを検証する。
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("AnnouncementFeedService 代理確認テスト")
+@DisplayName("AnnouncementReadService 代理確認テスト")
 class AnnouncementReadProxyInputTest {
 
     @Mock
     private AnnouncementFeedRepository feedRepository;
 
     @Mock
-    private AnnouncementFeedQueryRepository feedQueryRepository;
-
-    @Mock
     private AnnouncementReadStatusRepository readStatusRepository;
-
-    @Mock
-    private AccessControlService accessControlService;
 
     @Mock
     private ProxyInputContext proxyInputContext;
@@ -58,33 +45,31 @@ class AnnouncementReadProxyInputTest {
     private ProxyInputRecordRepository proxyInputRecordRepository;
 
     @Mock
-    private BlogPostRepository blogPostRepository;
+    private AccessControlService accessControlService;
 
-    @Mock
-    private BulletinThreadRepository bulletinThreadRepository;
-
-    @Mock
-    private TimelinePostRepository timelinePostRepository;
-
-    @Mock
-    private CirculationDocumentRepository circulationDocumentRepository;
-
-    @Mock
-    private SurveyRepository surveyRepository;
-
-    @Mock
-    private CommitteeDistributionLogRepository committeeDistributionLogRepository;
-
-    @Mock
-    private CommitteeMemberRepository committeeMemberRepository;
+    // AnnouncementCreationService のモック（AnnouncementReadService が buildAndSaveAnnouncementProxyRecord を呼ぶ）
+    @InjectMocks
+    private AnnouncementCreationService announcementCreationService;
 
     @InjectMocks
-    private AnnouncementFeedService announcementFeedService;
+    private AnnouncementReadService announcementReadService;
 
     private static final Long ANNOUNCEMENT_ID = 200L;
     private static final Long USER_ID = 10L;
     private static final Long CONSENT_ID = 50L;
     private static final Long PROXY_RECORD_ID = 888L;
+
+    @BeforeEach
+    void setUp() {
+        // AnnouncementReadService に creationService を注入
+        try {
+            java.lang.reflect.Field f = AnnouncementReadService.class.getDeclaredField("creationService");
+            f.setAccessible(true);
+            f.set(announcementReadService, announcementCreationService);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException("creationServiceのセットに失敗しました", e);
+        }
+    }
 
     private AnnouncementReadStatusEntity createSavedStatus() {
         AnnouncementReadStatusEntity status = AnnouncementReadStatusEntity.builder()
@@ -122,7 +107,7 @@ class AnnouncementReadProxyInputTest {
             given(proxyInputContext.isProxy()).willReturn(false);
 
             // When
-            announcementFeedService.markAsRead(ANNOUNCEMENT_ID, USER_ID);
+            announcementReadService.markAsRead(ANNOUNCEMENT_ID, USER_ID);
 
             // Then: save が1回のみ呼ばれ、proxyInputRecordRepository は呼ばれない
             verify(readStatusRepository, times(1)).save(any(AnnouncementReadStatusEntity.class));
@@ -145,7 +130,7 @@ class AnnouncementReadProxyInputTest {
             given(proxyInputContext.isProxy()).willReturn(false);
 
             // When
-            announcementFeedService.markAsRead(ANNOUNCEMENT_ID, USER_ID);
+            announcementReadService.markAsRead(ANNOUNCEMENT_ID, USER_ID);
 
             // Then: 保存時のエンティティは isProxyConfirmed=false
             AnnouncementReadStatusEntity captured = captor.getValue();
@@ -164,7 +149,7 @@ class AnnouncementReadProxyInputTest {
                     .willReturn(Optional.of(existingStatus));
 
             // When
-            announcementFeedService.markAsRead(ANNOUNCEMENT_ID, USER_ID);
+            announcementReadService.markAsRead(ANNOUNCEMENT_ID, USER_ID);
 
             // Then: save は呼ばれない（冪等）
             verify(readStatusRepository, never()).save(any(AnnouncementReadStatusEntity.class));
@@ -229,7 +214,7 @@ class AnnouncementReadProxyInputTest {
             given(proxyInputRecordRepository.save(any(ProxyInputRecordEntity.class))).willReturn(proxyRecord);
 
             // When
-            announcementFeedService.markAsRead(ANNOUNCEMENT_ID, USER_ID);
+            announcementReadService.markAsRead(ANNOUNCEMENT_ID, USER_ID);
 
             // Then: readStatusRepository.save が2回呼ばれる（初回保存 + 代理フラグ付き更新）
             verify(readStatusRepository, times(2)).save(any(AnnouncementReadStatusEntity.class));
@@ -284,7 +269,7 @@ class AnnouncementReadProxyInputTest {
                     .willReturn(Optional.of(existingProxyRecord));
 
             // When
-            announcementFeedService.markAsRead(ANNOUNCEMENT_ID, USER_ID);
+            announcementReadService.markAsRead(ANNOUNCEMENT_ID, USER_ID);
 
             // Then: proxyInputRecordRepository.save は呼ばれない（既存レコードを使用）
             verify(proxyInputRecordRepository, never()).save(any(ProxyInputRecordEntity.class));
