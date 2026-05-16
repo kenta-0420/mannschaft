@@ -59,4 +59,27 @@ public interface VillageMembershipRepository extends JpaRepository<VillageMember
               AND m.bannedAt IS NULL
             """)
     List<Long> findActiveUserSubjectIdsByVillageId(@Param("villageId") UUID villageId);
+
+    /**
+     * 全村横断で「現役の USER メンバーシップ」の subject_id 重複なし集合を返す（F17.1 Phase 3-β 巡礼バッチ用）。
+     */
+    @Query("""
+            SELECT DISTINCT m.subjectId FROM VillageMembershipEntity m
+            WHERE m.subjectType = com.mannschaft.app.village.entity.enums.VillageSubjectType.USER
+              AND m.leftAt IS NULL
+              AND m.bannedAt IS NULL
+            """)
+    List<Long> findDistinctActiveUserSubjectIds();
+
+    /**
+     * 指定ユーザーが現役所属している村のカテゴリ・村IDを参照するためのメンバーシップ取得（巡礼バッチ用）。
+     */
+    @Query("""
+            SELECT m FROM VillageMembershipEntity m
+            WHERE m.subjectType = com.mannschaft.app.village.entity.enums.VillageSubjectType.USER
+              AND m.subjectId = :userId
+              AND m.leftAt IS NULL
+              AND m.bannedAt IS NULL
+            """)
+    List<VillageMembershipEntity> findActiveUserMemberships(@Param("userId") Long userId);
 }

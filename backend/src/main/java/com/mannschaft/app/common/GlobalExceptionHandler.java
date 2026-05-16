@@ -402,6 +402,9 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_073", HttpStatus.CONFLICT),             // VOTE_DUPLICATE
             Map.entry("VILLAGE_074", HttpStatus.FORBIDDEN),            // MEETUP_NOT_MEMBER
 
+            // F17 Phase 3-β — 巡礼（VILLAGE_077）
+            Map.entry("VILLAGE_077", HttpStatus.NOT_FOUND),            // PILGRIMAGE_NOT_FOUND
+
             // F18 個人ポイントカードウォレット（設計書 §6.3 整合）
             Map.entry("POINT_CARD_001", HttpStatus.FORBIDDEN),         // WALLET_NOT_ENABLED
             Map.entry("POINT_CARD_002", HttpStatus.BAD_REQUEST),       // INVALID_BARCODE_VALUE（Severity.WARN 既定と同じだが明示）

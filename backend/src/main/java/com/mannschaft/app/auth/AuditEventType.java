@@ -249,6 +249,8 @@ public enum AuditEventType {
     VILLAGE_MEETUP_CANCELLED(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β — 寄合への投票（新規/変更）。 */
     VILLAGE_MEETUP_VOTED(AuditEventCategory.VILLAGE),
+    /** F17.1 Phase 3-β — 巡礼推薦を訪問した。 */
+    VILLAGE_PILGRIMAGE_VISITED(AuditEventCategory.VILLAGE),
 
     // ─── SECURITY_RATE_LIMIT (F15.4 組織内チーム検索) ───────────
     /** 組織内チーム検索 API がレート制限に到達した（429 応答）。 */
