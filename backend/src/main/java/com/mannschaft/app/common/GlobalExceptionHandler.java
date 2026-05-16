@@ -80,6 +80,16 @@ public class GlobalExceptionHandler {
             Map.entry("AD_006", HttpStatus.CONFLICT),
             Map.entry("AD_007", HttpStatus.CONFLICT),
             Map.entry("AD_010", HttpStatus.FORBIDDEN),
+            // F09.17 メッセージ型キャンペーン (DRAFT CRUD)
+            Map.entry("AD_CAMPAIGN_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("AD_CAMPAIGN_INVALID_STATE", HttpStatus.CONFLICT),
+            Map.entry("AD_CAMPAIGN_NOT_EDITABLE", HttpStatus.CONFLICT),
+            Map.entry("AD_CAMPAIGN_FORBIDDEN_TENANT", HttpStatus.NOT_FOUND), // IDOR 対策で 404
+            Map.entry("AD_CAMPAIGN_CREDIT_EXCEEDED", HttpStatus.PAYMENT_REQUIRED),
+            Map.entry("AD_CAMPAIGN_MODERATION_BLOCKED", HttpStatus.FORBIDDEN),
+            Map.entry("AD_AUDIENCE_INVALID", HttpStatus.BAD_REQUEST),
+            Map.entry("AD_CHANNEL_REQUIRED", HttpStatus.BAD_REQUEST),
+            Map.entry("AD_CHANNEL_DUPLICATE", HttpStatus.CONFLICT),
             Map.entry("AUTH_033", HttpStatus.NOT_FOUND),
             Map.entry("AUTH_034", HttpStatus.CONFLICT),
             // F02.5 行動メモ: IDOR 対策で 403 ではなく 404 を返す
