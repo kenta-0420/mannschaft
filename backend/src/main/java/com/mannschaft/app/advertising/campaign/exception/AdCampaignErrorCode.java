@@ -66,6 +66,18 @@ public enum AdCampaignErrorCode implements ErrorCode {
             "通報の回数上限に達しました。時間をおいて再度お試しください",
             Severity.WARN),
 
+    /** モデレーション審査不可状態（DRAFT/REVIEW 以外で approve しようとした） */
+    NOT_REVIEWABLE(
+            "AD_CAMPAIGN_NOT_REVIEWABLE",
+            "このキャンペーンは審査対象の状態ではありません",
+            Severity.WARN),
+
+    /** 既にブロック済みのキャンペーンへの重複ブロック (409 Conflict) */
+    ALREADY_BLOCKED(
+            "AD_CAMPAIGN_ALREADY_BLOCKED",
+            "既にブロック済みのキャンペーンです",
+            Severity.WARN),
+
     /** DRAFT 以外の状態で編集系操作を試行した */
     AD_CAMPAIGN_NOT_EDITABLE(
             "AD_CAMPAIGN_NOT_EDITABLE",
