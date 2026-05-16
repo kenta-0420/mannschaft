@@ -411,6 +411,11 @@ public class GlobalExceptionHandler {
             Map.entry("POINT_CARD_012", HttpStatus.BAD_REQUEST),       // STAMP_INVALID_PROVIDER
             Map.entry("POINT_CARD_013", HttpStatus.BAD_REQUEST),       // STAMP_INVALID_PROVIDER_TYPE
             Map.entry("POINT_CARD_014", HttpStatus.BAD_REQUEST),       // STAMP_DELTA_ZERO
+            // F18 Phase 3 — 残高型（POINT_CARD_015〜018）
+            Map.entry("POINT_CARD_015", HttpStatus.BAD_REQUEST),       // BALANCE_INVALID_PROVIDER_TYPE
+            Map.entry("POINT_CARD_016", HttpStatus.BAD_REQUEST),       // BALANCE_DELTA_ZERO
+            Map.entry("POINT_CARD_017", HttpStatus.BAD_REQUEST),       // INSUFFICIENT_BALANCE
+            Map.entry("POINT_CARD_018", HttpStatus.CONFLICT),          // BALANCE_LIMIT_EXCEEDED
             // F02.9 お気に入りウィジェット
             Map.entry("FAV_001", HttpStatus.CONFLICT),                  // ALREADY_REGISTERED（重複登録）
             Map.entry("FAV_002", HttpStatus.UNPROCESSABLE_ENTITY),      // LIMIT_EXCEEDED（上限20件超過）
