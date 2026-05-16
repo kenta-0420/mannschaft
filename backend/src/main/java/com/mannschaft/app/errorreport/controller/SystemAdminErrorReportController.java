@@ -22,7 +22,10 @@ import com.mannschaft.app.errorreport.entity.ErrorReportAiAnalysisEntity;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
 import com.mannschaft.app.errorreport.repository.ErrorReportAiAnalysisRepository;
 import com.mannschaft.app.errorreport.service.ErrorReportAiAnalysisService;
+import com.mannschaft.app.errorreport.service.ErrorReportKanbanService;
+import com.mannschaft.app.errorreport.service.ErrorReportQueryService;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
+import com.mannschaft.app.errorreport.service.ErrorReportTimelineService;
 import com.mannschaft.app.errorreport.service.GitHubIssueService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -56,6 +59,9 @@ import java.util.Map;
 public class SystemAdminErrorReportController {
 
     private final ErrorReportService errorReportService;
+    private final ErrorReportQueryService errorReportQueryService;
+    private final ErrorReportKanbanService errorReportKanbanService;
+    private final ErrorReportTimelineService errorReportTimelineService;
     private final ErrorReportMapper errorReportMapper;
     private final AccessControlService accessControlService;
     private final ErrorReportAiAnalysisService aiAnalysisService;
@@ -82,7 +88,7 @@ public class SystemAdminErrorReportController {
             @RequestParam(defaultValue = "lastOccurredAt,desc") String sort) {
         int cappedSize = Math.min(size, 100);
         Pageable pageable = buildPageable(page, cappedSize, sort);
-        Page<ErrorReportEntity> result = errorReportService.search(status, severity, from, to, pageable);
+        Page<ErrorReportEntity> result = errorReportQueryService.search(status, severity, from, to, pageable);
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(
@@ -96,7 +102,7 @@ public class SystemAdminErrorReportController {
     @Operation(summary = "エラーレポート詳細取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ErrorReportResponse>> get(@PathVariable Long id) {
-        ErrorReportEntity entity = errorReportService.findById(id);
+        ErrorReportEntity entity = errorReportQueryService.findById(id);
         ErrorReportResponse response = errorReportMapper.toResponse(entity);
         // F12.5 Phase 2-C — 最新 SUCCESS の AI 分析サマリを埋める
         aiAnalysisRepository.findFirstByErrorReportIdAndStatusOrderByCreatedAtDesc(id, "SUCCESS")
@@ -137,7 +143,7 @@ public class SystemAdminErrorReportController {
     @Operation(summary = "エラーレポート統計取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ErrorReportStatsResponse>> stats() {
-        return ResponseEntity.ok(ApiResponse.of(errorReportService.getStats()));
+        return ResponseEntity.ok(ApiResponse.of(errorReportQueryService.getStats()));
     }
 
     // ========================================
@@ -153,7 +159,7 @@ public class SystemAdminErrorReportController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<KanbanResponse>> kanban() {
         accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
-        KanbanResponse response = errorReportService.fetchKanban();
+        KanbanResponse response = errorReportKanbanService.fetchKanban();
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -171,7 +177,7 @@ public class SystemAdminErrorReportController {
             @PathVariable Long id,
             @Valid @RequestBody ErrorReportWorkflowStageRequest req) {
         Long actorId = SecurityUtils.getCurrentUserId();
-        ErrorReportEntity entity = errorReportService.updateWorkflowStage(id, req.getWorkflowStage(), actorId);
+        ErrorReportEntity entity = errorReportTimelineService.updateWorkflowStage(id, req.getWorkflowStage(), actorId);
         return ResponseEntity.ok(ApiResponse.of(errorReportMapper.toResponse(entity)));
     }
 
@@ -185,7 +191,7 @@ public class SystemAdminErrorReportController {
             @PathVariable Long id,
             @Valid @RequestBody ErrorReportAssigneeRequest req) {
         Long actorId = SecurityUtils.getCurrentUserId();
-        ErrorReportEntity entity = errorReportService.assign(id, req.getAssigneeId(), actorId);
+        ErrorReportEntity entity = errorReportTimelineService.assign(id, req.getAssigneeId(), actorId);
         return ResponseEntity.ok(ApiResponse.of(errorReportMapper.toResponse(entity)));
     }
 
@@ -199,7 +205,7 @@ public class SystemAdminErrorReportController {
             @PathVariable Long id,
             @Valid @RequestBody ErrorReportCommentRequest req) {
         Long actorId = SecurityUtils.getCurrentUserId();
-        errorReportService.addComment(id, req.getContent(), actorId);
+        errorReportTimelineService.addComment(id, req.getContent(), actorId);
         return ResponseEntity.ok(ApiResponse.of(null));
     }
 
@@ -215,7 +221,7 @@ public class SystemAdminErrorReportController {
             @RequestParam(defaultValue = "50") int limit) {
         accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
         int cappedLimit = Math.min(Math.max(limit, 1), 100);
-        ErrorReportTimelineResponse response = errorReportService.fetchTimeline(id, cursor, cappedLimit);
+        ErrorReportTimelineResponse response = errorReportTimelineService.fetchTimeline(id, cursor, cappedLimit);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
