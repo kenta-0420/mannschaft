@@ -41,6 +41,9 @@ import java.util.regex.Pattern;
  *   <li>{@code GET    /api/v1/organizations/{orgId}/point-cards/{cardId}/stamps} ─ 120 req/分（2C 追加）</li>
  *   <li>{@code POST   /api/v1/point-cards/{cardId}/share-tokens} ─ 60 req/時（P3 2A 追加）</li>
  *   <li>{@code POST   /api/v1/organizations/{orgId}/point-cards/resolve-by-token} ─ 600 req/時（P3 2A 追加）</li>
+ *   <li>{@code POST   /api/v1/organizations/{orgId}/point-cards/{cardId}/balance-events} ─ 300 req/時（Phase 3 2B 追加）</li>
+ *   <li>{@code GET    /api/v1/organizations/{orgId}/point-cards/balance-events} ─ 120 req/分（Phase 3 2B 追加）</li>
+ *   <li>{@code GET    /api/v1/organizations/{orgId}/point-cards/{cardId}/balance-events} ─ 120 req/分（Phase 3 2B 追加）</li>
  * </ul>
  *
  * <p>パターンは「具体度の高いものから順に」評価する。たとえば
@@ -69,6 +72,9 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     // P3 2A QR 自動特定（顧客側発行 / 店主側 resolve）
     private static final int SHARE_TOKEN_GENERATE_RATE_PER_HOUR = 60;
     private static final int SHARE_TOKEN_RESOLVE_RATE_PER_HOUR = 600;
+    // Phase 3 2B 残高型 CHARGE/SPENT/REFUND / 履歴
+    private static final int BALANCE_POST_RATE_PER_HOUR = 300;
+    private static final int BALANCE_LIST_RATE_PER_MINUTE = 120;
 
     private static final Duration BUCKET_TTL = Duration.ofHours(2);
     private static final long MAX_BUCKETS = 10_000L;
@@ -122,6 +128,13 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     /** P3 2A: 店主側 一時トークン resolve。 */
     private static final Pattern SHARE_TOKEN_RESOLVE_PATH =
             Pattern.compile("^/api/v1/organizations/\\d+/point-cards/resolve-by-token$");
+    /** 組織配下: 単一カードの残高イベント記録 / 履歴。具体度高いので組織一覧パターンより先に判定。 */
+    private static final Pattern ORG_BALANCE_CARD_PATH =
+            Pattern.compile("^/api/v1/organizations/\\d+/point-cards/[0-9a-fA-F-]{36}/balance-events$");
+
+    /** 組織配下: 残高変動履歴一覧。 */
+    private static final Pattern ORG_BALANCE_LIST_PATH =
+            Pattern.compile("^/api/v1/organizations/\\d+/point-cards/balance-events$");
 
     // ──── バケット ──────────────────────────────
     private final Cache<String, Bucket> providersBuckets;
@@ -141,6 +154,9 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     private final Cache<String, Bucket> shareTokenGenerateBuckets;
     /** P3 2A: 店主側 一時トークン resolve（600/h）。 */
     private final Cache<String, Bucket> shareTokenResolveBuckets;
+    private final Cache<String, Bucket> balancePostBuckets;
+    private final Cache<String, Bucket> balanceCardListBuckets;
+    private final Cache<String, Bucket> balanceOrgListBuckets;
 
     public PointCardRateLimitFilter() {
         this.providersBuckets = newCache();
@@ -157,6 +173,9 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
         this.stampOrgListBuckets = newCache();
         this.shareTokenGenerateBuckets = newCache();
         this.shareTokenResolveBuckets = newCache();
+        this.balancePostBuckets = newCache();
+        this.balanceCardListBuckets = newCache();
+        this.balanceOrgListBuckets = newCache();
     }
 
     private static Cache<String, Bucket> newCache() {
@@ -220,6 +239,16 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
         if ("POST".equalsIgnoreCase(method) && SHARE_TOKEN_RESOLVE_PATH.matcher(path).matches()) {
             return false;
         }
+        // Phase 3 2B: 組織配下 残高型イベント
+        if ("POST".equalsIgnoreCase(method) && ORG_BALANCE_CARD_PATH.matcher(path).matches()) {
+            return false;
+        }
+        if ("GET".equalsIgnoreCase(method) && ORG_BALANCE_CARD_PATH.matcher(path).matches()) {
+            return false;
+        }
+        if ("GET".equalsIgnoreCase(method) && ORG_BALANCE_LIST_PATH.matcher(path).matches()) {
+            return false;
+        }
         return true;
     }
 
@@ -251,6 +280,15 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
             retryAfter = "60";
         } else if ("GET".equalsIgnoreCase(method) && ORG_STAMP_LIST_PATH.matcher(path).matches()) {
             bucket = stampOrgListBuckets.get(userKey, k -> newBucketPerMinute(STAMP_LIST_RATE_PER_MINUTE));
+            retryAfter = "60";
+        } else if ("POST".equalsIgnoreCase(method) && ORG_BALANCE_CARD_PATH.matcher(path).matches()) {
+            bucket = balancePostBuckets.get(userKey, k -> newBucketPerHour(BALANCE_POST_RATE_PER_HOUR));
+            retryAfter = "3600";
+        } else if ("GET".equalsIgnoreCase(method) && ORG_BALANCE_CARD_PATH.matcher(path).matches()) {
+            bucket = balanceCardListBuckets.get(userKey, k -> newBucketPerMinute(BALANCE_LIST_RATE_PER_MINUTE));
+            retryAfter = "60";
+        } else if ("GET".equalsIgnoreCase(method) && ORG_BALANCE_LIST_PATH.matcher(path).matches()) {
+            bucket = balanceOrgListBuckets.get(userKey, k -> newBucketPerMinute(BALANCE_LIST_RATE_PER_MINUTE));
             retryAfter = "60";
         } else if ("POST".equalsIgnoreCase(method) && GROUP_PRESENTATION_PATH.matcher(path).matches()) {
             bucket = presentationBuckets.get(userKey, k -> newBucketPerHour(PRESENTATION_RATE_PER_HOUR));
