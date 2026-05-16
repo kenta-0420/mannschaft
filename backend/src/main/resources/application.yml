@@ -314,6 +314,20 @@ mannschaft.disk-monitor:
   warn-threshold: 0.75
   error-threshold: 0.90
 
+# F18 Phase 5 — fuzzy match Levenshtein 拡張設定
+# 設計書: docs/features/F18_point_card_wallet.md §16
+# - enabled: Levenshtein 距離による fuzzy match の有効化フラグ
+#   true  = synonym 完全一致で見つからなかった場合に Levenshtein マッチを追加で試行
+#   false = 従来通り synonym 完全一致のみで判定
+# - max-distance: 編集距離の上限。1 = タイポ吸収のみ、2 以上で誤マッチ増加（既定 1）
+# - min-input-length: この文字数未満の入力は Levenshtein 対象外（誤マッチ防止、既定 5）
+f18:
+  fuzzy-match:
+    levenshtein:
+      enabled: true
+      max-distance: 1
+      min-input-length: 5
+
 # F08.8 Phase 2: シミュレーション計算 Bulkhead 設定
 # simulation-pool: 同時 4 スレッドまで。超過リクエストは即座に 429 を返す（waitDuration=0）。
 # シミュレーション計算は CPU バウンドで重いため、デフォルト値より低く設定する。

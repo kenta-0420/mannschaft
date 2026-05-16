@@ -184,6 +184,8 @@ public enum AuditEventType {
     POINT_CARD_BALANCE_SPENT(AuditEventCategory.POINT_CARD),
     /** F18 Phase 3 — 残高型カードの返金（REFUND、refund_of_event_id で元 event を参照）。 */
     POINT_CARD_BALANCE_REFUNDED(AuditEventCategory.POINT_CARD),
+    /** F18 Phase 5 — fuzzy match 再マッチバッチを実行（夜間バッチで provider_id=NULL カードを再評価）。 */
+    POINT_CARD_REMATCH_BATCH_EXECUTED(AuditEventCategory.POINT_CARD),
 
     // ─── VILLAGE (F17 村機能 Phase 1) ───────────────────────────
     // TODO(F17 Phase 1): 各 Village Service の主要メソッドへ
