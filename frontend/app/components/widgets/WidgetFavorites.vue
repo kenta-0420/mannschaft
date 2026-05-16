@@ -4,12 +4,12 @@
 //   - 1〜10件は全件表示、11〜20件は先頭10件のみ表示し「さらに N 件表示」で展開
 //   - vuedraggable で D&D 並び替え。500ms debounce で reorder API を叩く
 //   - 削除は確認ダイアログ → API → トースト
-//   - FavoriteQuickEditDialog は別足軽（足軽3）が並行作成中のため、
-//     現フェーズでは @edit ハンドラを TODO スタブとし、後続軍で統合する
+//   - @edit は FavoriteQuickEditDialog（足軽3 実装）にバインドされる
 import draggable from 'vuedraggable'
 import type { UserFavoriteItem } from '~/types/favorite'
 import FavoriteCard from '~/components/favorites/FavoriteCard.vue'
 import FavoritesWidgetEmpty from '~/components/widgets/FavoritesWidgetEmpty.vue'
+import FavoriteQuickEditDialog from '~/components/favorites/FavoriteQuickEditDialog.vue'
 
 const { t } = useI18n()
 const notification = useNotification()
@@ -88,10 +88,16 @@ function handleOpen(item: UserFavoriteItem) {
   navigateTo(item.entity.pageUrl)
 }
 
+/** クイック編集ダイアログの編集対象。null のときダイアログは非表示。 */
+const editingFavorite = ref<UserFavoriteItem | null>(null)
+
 function handleEdit(item: UserFavoriteItem) {
-  // TODO(F02.9 Phase 2 足軽3): FavoriteQuickEditDialog 完成後にダイアログを開く
-  // ここでは未実装と分かるよう console に明示的に残す（握り潰さない）
-  console.warn('[WidgetFavorites] FavoriteQuickEditDialog 未統合。足軽3 の完了待ち', item.favoriteId)
+  editingFavorite.value = item
+}
+
+/** クイック編集ダイアログの保存完了通知 → 一覧再取得（name/icon の即時反映）。 */
+async function onFavoriteSaved() {
+  await refresh()
 }
 
 function handleRemove(item: UserFavoriteItem) {
@@ -171,5 +177,10 @@ onMounted(refresh)
         {{ expanded ? t('favorites.collapse') : t('favorites.showMore', { count: overflowCount }) }}
       </button>
     </template>
+
+    <FavoriteQuickEditDialog
+      v-model="editingFavorite"
+      @saved="onFavoriteSaved"
+    />
   </DashboardWidgetCard>
 </template>
