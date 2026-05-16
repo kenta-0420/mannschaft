@@ -13,6 +13,7 @@ import com.mannschaft.app.village.dto.PostingIdentityResponse;
 import com.mannschaft.app.village.entity.UserVillageNicknameEntity;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
+import com.mannschaft.app.village.entity.VillageRepresentativeEntity;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
@@ -30,7 +31,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * F17.1 Phase 1 B9 — 投稿主体（PostingIdentity）解決・検証サービス。
+ * F17.1 Phase 1 B9 + Phase 2 U10 — 投稿主体（PostingIdentity）解決・検証サービス。
  *
  * <p>役割は 2 つに分かれる:</p>
  * <ul>
@@ -40,13 +41,15 @@ import java.util.UUID;
  *       既存ドメイン Service（bulletin/timeline/chat）が投稿時に呼ぶ検証関数（§5.4 / §6.3）</li>
  * </ul>
  *
- * <p>判定ルール（Phase 1）:</p>
+ * <p>判定ルール（Phase 1 + Phase 2 拡張、設計書 §5.4 準拠）:</p>
  * <ul>
  *   <li>USER: subjectId が actorUserId 本人と一致すること（IDOR 対策）</li>
- *   <li>TEAM: actorUserId が当該チームの ADMIN / DEPUTY_ADMIN かつ
- *       チームが当該村のメンバーであること</li>
- *   <li>ORGANIZATION: actorUserId が当該組織の ADMIN / DEPUTY_ADMIN かつ
- *       組織が当該村のメンバーであること</li>
+ *   <li>TEAM: actorUserId が当該チームの ADMIN / DEPUTY_ADMIN
+ *       <b>または</b> {@code village_representatives} で当該メンバーシップに対する
+ *       現役の代表委任を保持していること。かつチームが当該村のメンバーであること。</li>
+ *   <li>ORGANIZATION: actorUserId が当該組織の ADMIN / DEPUTY_ADMIN
+ *       <b>または</b> {@code village_representatives} で当該メンバーシップに対する
+ *       現役の代表委任を保持していること。かつ組織が当該村のメンバーであること。</li>
  * </ul>
  *
  * <p>アーキテクチャ原則:</p>
@@ -69,6 +72,8 @@ public class PostingIdentityService {
     private final UserRoleRepository userRoleRepository;
     private final TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
+    /** Phase 2 U10: 専用代表ロール委任の判定に利用。 */
+    private final VillageRepresentativeService villageRepresentativeService;
 
     // ========================================================================
     // §4.6 投稿主体一覧
@@ -163,6 +168,52 @@ public class PostingIdentityService {
             result.add(PostingIdentityResponse.organization(orgId, name));
         }
 
+        // 3) Phase 2 U10: village_representatives で active な代表委任を受けたチーム/組織
+        //    ADMIN ではないが HEADMAN/ELDER に専用代表として委任されたメンバーを拾う。
+        //    設計書 §5.4 / §1.4 Phase 2 条項に対応。
+        List<VillageRepresentativeEntity> delegations =
+                villageRepresentativeService.findActiveRepresentativesByUser(actorUserId);
+        for (VillageRepresentativeEntity rep : delegations) {
+            // 別の村の委任は無視（横断利用の防衛）
+            if (!villageId.equals(rep.getVillageId())) {
+                continue;
+            }
+            // 委任先 membership を引いてチーム/組織を解決
+            Optional<VillageMembershipEntity> membershipOpt =
+                    membershipRepository.findById(rep.getMembershipId());
+            if (membershipOpt.isEmpty()) {
+                continue;
+            }
+            VillageMembershipEntity membership = membershipOpt.get();
+            // 退会 / BAN 済みのメンバーシップは委任も無効扱い（村のメンバーでない subject は代表できない）
+            if (membership.getLeftAt() != null || membership.getBannedAt() != null) {
+                continue;
+            }
+            VillageSubjectType subjectType = membership.getSubjectType();
+            Long subjectId = membership.getSubjectId();
+            if (subjectId == null) {
+                continue;
+            }
+            if (subjectType == VillageSubjectType.TEAM) {
+                if (containsSubject(result, VillageSubjectType.TEAM, subjectId)) {
+                    continue;
+                }
+                String name = teamRepository.findById(subjectId)
+                        .map(TeamEntity::getName)
+                        .orElse("TEAM:#" + subjectId);
+                result.add(PostingIdentityResponse.team(subjectId, name));
+            } else if (subjectType == VillageSubjectType.ORGANIZATION) {
+                if (containsSubject(result, VillageSubjectType.ORGANIZATION, subjectId)) {
+                    continue;
+                }
+                String name = organizationRepository.findById(subjectId)
+                        .map(OrganizationEntity::getName)
+                        .orElse("ORG:#" + subjectId);
+                result.add(PostingIdentityResponse.organization(subjectId, name));
+            }
+            // USER タイプの委任は設計上発生しない（U3 で REPRESENTATIVE_NOT_TEAM_OR_ORG_MEMBERSHIP ガード済み）
+        }
+
         return PostingIdentityListResponse.of(result);
     }
 
@@ -176,8 +227,10 @@ public class PostingIdentityService {
      * <p>USER の場合は subjectId が actorUserId 本人と一致することのみ確認。
      * TEAM/ORGANIZATION の場合は以下をすべて満たす必要がある:</p>
      * <ol>
-     *   <li>actorUserId が当該主体の ADMIN/DEPUTY_ADMIN ロールを持つ</li>
      *   <li>当該主体が対象村の現役メンバーである（village_memberships に subject 一致行があり left_at IS NULL）</li>
+     *   <li>actorUserId が当該主体の ADMIN/DEPUTY_ADMIN ロールを持つ
+     *       <b>または</b>当該 membership に対し
+     *       {@code village_representatives} の現役委任を保有していること（Phase 2 拡張）</li>
      * </ol>
      *
      * <p>いずれか失格なら {@link VillageErrorCode#VILLAGE_POSTING_IDENTITY_FORBIDDEN}（403）を投げる。
@@ -214,20 +267,37 @@ public class PostingIdentityService {
                 }
             }
             case TEAM -> {
-                long adminCount = userRoleRepository.countTeamAdminByUserIdAndTeamId(actorUserId, subjectId);
-                if (adminCount == 0L) {
+                // 主体（チーム）が当該村のメンバーであることを先に確認（IDOR 対策）。
+                // 委任判定にも membership.id が必要なので Optional で取得する。
+                Optional<VillageMembershipEntity> teamMembership = membershipRepository
+                        .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                                villageId, VillageSubjectType.TEAM, subjectId)
+                        .filter(m -> m.getBannedAt() == null);
+                if (teamMembership.isEmpty()) {
                     throw new BusinessException(VillageErrorCode.VILLAGE_POSTING_IDENTITY_FORBIDDEN);
                 }
-                if (!isSubjectVillageMember(villageId, VillageSubjectType.TEAM, subjectId)) {
+                // Phase 1: ADMIN ロール所持 OR Phase 2: 専用代表委任
+                long adminCount = userRoleRepository.countTeamAdminByUserIdAndTeamId(actorUserId, subjectId);
+                boolean isAdmin = adminCount > 0L;
+                boolean isDelegated = !isAdmin && villageRepresentativeService
+                        .isUserActiveRepresentative(teamMembership.get().getId(), actorUserId);
+                if (!isAdmin && !isDelegated) {
                     throw new BusinessException(VillageErrorCode.VILLAGE_POSTING_IDENTITY_FORBIDDEN);
                 }
             }
             case ORGANIZATION -> {
-                List<Long> admins = userRoleRepository.findAdminUserIdsByOrganizationId(subjectId);
-                if (!admins.contains(actorUserId)) {
+                Optional<VillageMembershipEntity> orgMembership = membershipRepository
+                        .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                                villageId, VillageSubjectType.ORGANIZATION, subjectId)
+                        .filter(m -> m.getBannedAt() == null);
+                if (orgMembership.isEmpty()) {
                     throw new BusinessException(VillageErrorCode.VILLAGE_POSTING_IDENTITY_FORBIDDEN);
                 }
-                if (!isSubjectVillageMember(villageId, VillageSubjectType.ORGANIZATION, subjectId)) {
+                List<Long> admins = userRoleRepository.findAdminUserIdsByOrganizationId(subjectId);
+                boolean isAdmin = admins.contains(actorUserId);
+                boolean isDelegated = !isAdmin && villageRepresentativeService
+                        .isUserActiveRepresentative(orgMembership.get().getId(), actorUserId);
+                if (!isAdmin && !isDelegated) {
                     throw new BusinessException(VillageErrorCode.VILLAGE_POSTING_IDENTITY_FORBIDDEN);
                 }
             }
@@ -257,14 +327,6 @@ public class PostingIdentityService {
         return membershipRepository
                 .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
                         villageId, VillageSubjectType.USER, userId)
-                .filter(m -> m.getBannedAt() == null)
-                .isPresent();
-    }
-
-    /** 指定 subject が村の現役メンバーであるか。 */
-    private boolean isSubjectVillageMember(UUID villageId, VillageSubjectType type, Long subjectId) {
-        return membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(villageId, type, subjectId)
                 .filter(m -> m.getBannedAt() == null)
                 .isPresent();
     }
