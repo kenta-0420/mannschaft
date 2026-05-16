@@ -406,6 +406,8 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_075", HttpStatus.NOT_FOUND),            // CHRONICLE_NOT_FOUND
             // F17 Phase 3-β — ご縁スコア（VILLAGE_076）
             Map.entry("VILLAGE_076", HttpStatus.NOT_FOUND),            // SERENDIPITY_NOT_FOUND
+            // F17 Phase 3-β — 巡礼（VILLAGE_077）
+            Map.entry("VILLAGE_077", HttpStatus.NOT_FOUND),            // PILGRIMAGE_NOT_FOUND
 
             // F18 個人ポイントカードウォレット（設計書 §6.3 整合）
             Map.entry("POINT_CARD_001", HttpStatus.FORBIDDEN),         // WALLET_NOT_ENABLED

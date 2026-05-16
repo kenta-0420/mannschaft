@@ -250,12 +250,17 @@ public enum AuditEventType {
     /** F17.1 Phase 3-β — 寄合への投票（新規/変更）。 */
     VILLAGE_MEETUP_VOTED(AuditEventCategory.VILLAGE),
 <<<<<<< HEAD
+<<<<<<< HEAD
     /** F17.1 Phase 3-β — 村史（月次ダイジェスト）を生成（バッチ）。 */
     VILLAGE_CHRONICLE_GENERATED(AuditEventCategory.VILLAGE),
 =======
     /** F17.1 Phase 3-β — ご縁スコア更新（日次バッチによる加算反映）。 */
     VILLAGE_SERENDIPITY_UPDATED(AuditEventCategory.VILLAGE),
 >>>>>>> worktree-agent-a0be0039a14c290c0
+=======
+    /** F17.1 Phase 3-β — 巡礼推薦を訪問した。 */
+    VILLAGE_PILGRIMAGE_VISITED(AuditEventCategory.VILLAGE),
+>>>>>>> worktree-agent-a34f35289c7ef8658
 
     // ─── SECURITY_RATE_LIMIT (F15.4 組織内チーム検索) ───────────
     /** 組織内チーム検索 API がレート制限に到達した（429 応答）。 */
