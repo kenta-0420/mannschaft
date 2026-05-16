@@ -5,13 +5,12 @@ import { toTypedSchema } from '@vee-validate/zod'
 import type { ApiKeyResponse, ApiKeyIssueResult } from '~/types/webhook'
 
 const props = defineProps<{
-  orgId: number
+  scopeType: 'ORGANIZATION' | 'TEAM'
+  scopeId: number
 }>()
 
 const webhookApi = useWebhookApi()
 const { success, error: showError } = useNotification()
-
-const SCOPE_TYPE = 'ORGANIZATION'
 
 const API_KEY_PERMISSIONS = [
   { key: 'read:members', label: 'メンバー読み取り' },
@@ -59,7 +58,7 @@ const [akExpiresAt, akExpiresAtAttrs] = defineApiKeyField('expiresAt')
 async function loadApiKeys() {
   apiKeysLoading.value = true
   try {
-    const res = await webhookApi.getApiKeys(SCOPE_TYPE, props.orgId)
+    const res = await webhookApi.getApiKeys(props.scopeType, props.scopeId)
     apiKeys.value = res.data
   } catch {
     showError('APIキーの取得に失敗しました')
@@ -87,8 +86,8 @@ const onIssueApiKey = handleApiKeySubmit(async (values) => {
   apiKeySaving.value = true
   try {
     const result = await webhookApi.issueApiKey({
-      scopeType: SCOPE_TYPE,
-      scopeId: props.orgId,
+      scopeType: props.scopeType,
+      scopeId: props.scopeId,
       name: values.name,
       description: values.description,
       permissions: selectedPermissions.value,
