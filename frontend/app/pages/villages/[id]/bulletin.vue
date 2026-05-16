@@ -225,6 +225,11 @@ onMounted(() => {
           icon="pi pi-megaphone"
           :message="t('village.placeholder.bulletinComingSoon')"
         />
+
+        <!-- ご縁ランキング (Phase 3) — 村人のみ表示 -->
+        <section v-if="village.isMember" class="mt-6 rounded-lg border border-surface-200 p-4 dark:border-surface-700">
+          <VillageSerendipityRankingWidget :village-id="village.id" />
+        </section>
       </div>
 
       <!-- 通報ダイアログ — 対象は村本体 (VILLAGE) -->
