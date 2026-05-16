@@ -228,7 +228,7 @@
         "brand_color": "ブランドカラー",
         "logo_url": "ロゴURL",
         "card_number_regex": "カード番号バリデーション正規表現（任意）",
-        "card_number_regex_hint": "例: ^[0-9]{10,16}$ — 顧客のカード追加時にこの形式でチェックされます。",
+        "card_number_regex_hint": "例: ^[0-9]'{10,16}'$ — 顧客のカード追加時にこのフォーマットでチェックされます。",
         "card_number_length_hint": "カード番号桁数ヒント（任意）",
         "card_number_length_hint_placeholder": "16 桁の数字",
         "type": "種別",

@@ -1,6 +1,6 @@
 package com.mannschaft.app.pointcard.entity;
 
-import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.common.entity.UuidV7CharEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.PrePersist;
@@ -13,6 +13,8 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -41,14 +43,16 @@ import java.util.UUID;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
-public class PointCardGroupItemEntity extends UuidV7Entity {
+public class PointCardGroupItemEntity extends UuidV7CharEntity {
 
     /** 所属グループ ID。FK ON DELETE CASCADE。 */
-    @Column(name = "group_id", nullable = false)
+    @Column(name = "group_id", nullable = false, columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
     private UUID groupId;
 
     /** 紐付くカード ID。FK ON DELETE CASCADE。 */
-    @Column(name = "card_id", nullable = false)
+    @Column(name = "card_id", nullable = false, columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
     private UUID cardId;
 
     /** グループ内の提示順序（昇順）。 */

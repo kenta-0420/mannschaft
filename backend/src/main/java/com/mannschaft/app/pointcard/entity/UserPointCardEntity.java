@@ -1,7 +1,7 @@
 package com.mannschaft.app.pointcard.entity;
 
 import com.mannschaft.app.common.EncryptedStringConverter;
-import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.common.entity.UuidV7CharEntity;
 import com.mannschaft.app.gdpr.PersonalData;
 import com.mannschaft.app.pointcard.enums.BarcodeFormat;
 import jakarta.persistence.Column;
@@ -19,6 +19,8 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -62,7 +64,7 @@ import java.util.UUID;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
-public class UserPointCardEntity extends UuidV7Entity {
+public class UserPointCardEntity extends UuidV7CharEntity {
 
     /** 保有ユーザー ID（users.id）。FK あり ON DELETE CASCADE は同一物理的ライフサイクル前提。 */
     @Column(name = "user_id", nullable = false)
@@ -72,7 +74,8 @@ public class UserPointCardEntity extends UuidV7Entity {
      * 紐付いた運営プロバイダー ID（point_card_providers.id）。
      * fuzzy match で解決できなかった場合は null。プロバイダー側削除時は SET NULL。
      */
-    @Column(name = "provider_id")
+    @Column(name = "provider_id", columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
     private UUID providerId;
 
     /** カードのユーザー表示名（暗号化）。識別必須のため一覧でも復号して返却する。 */

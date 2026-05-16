@@ -1,6 +1,6 @@
 package com.mannschaft.app.pointcard.entity;
 
-import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.common.entity.UuidV7CharEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.PrePersist;
@@ -39,7 +39,7 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
-public class PointCardGroupEntity extends UuidV7Entity {
+public class PointCardGroupEntity extends UuidV7CharEntity {
 
     /** グループ所有者（users.id）。FK あり ON DELETE CASCADE。 */
     @Column(name = "user_id", nullable = false)
