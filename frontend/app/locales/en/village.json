@@ -294,6 +294,21 @@
     "bulletinComingSoon": "村の掲示板は Phase 2 で実装予定です",
     "timelineComingSoon": "村のタイムラインは Phase 2 で実装予定です"
   },
+  "editDialog": {
+    "title": "Edit Village",
+    "save": "Update",
+    "iconLabel": "Icon image (R2 key)",
+    "coverLabel": "Cover image (R2 key)",
+    "guidelineLabel": "Village Guideline (Markdown)",
+    "r2KeyPlaceholder": "e.g. villages/<villageId>/icon.png",
+    "saveSuccess": "Village information updated",
+    "errorNameRequired": "Village name is required",
+    "errorNameTooLong": "Village name must be {max} characters or less",
+    "errorDescriptionTooLong": "Description must be {max} characters or less",
+    "errorCategoryTooLong": "Category must be {max} characters or less",
+    "errorGuidelineTooLong": "Guideline must be {max} characters or less",
+    "errorR2KeyTooLong": "R2 key must be {max} characters or less"
+  },
   "monsho": {
     "title": "村紋",
     "upload": "村紋をアップロード",
