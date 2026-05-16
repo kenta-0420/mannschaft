@@ -5,9 +5,11 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.favorite.FavoriteEntityType;
 import com.mannschaft.app.favorite.FavoriteErrorCode;
+import com.mannschaft.app.favorite.dto.FavoriteCheckResultDto;
 import com.mannschaft.app.favorite.dto.FavoriteItemDto;
 import com.mannschaft.app.favorite.dto.request.AddFavoriteRequest;
 import com.mannschaft.app.favorite.dto.request.ReorderFavoritesRequest;
+import com.mannschaft.app.favorite.dto.response.FavoriteCheckResponse;
 import com.mannschaft.app.favorite.dto.response.FavoriteResponse;
 import com.mannschaft.app.favorite.service.FavoriteService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -37,6 +40,7 @@ import java.util.UUID;
  * <p>認証必須・{@code FavoriteRateLimitFilter} でユーザー別レート制限を適用する:
  * <ul>
  *   <li>GET    /api/v1/me/favorites         ─ 120 req/分</li>
+ *   <li>GET    /api/v1/me/favorites/check   ─ 240 req/分</li>
  *   <li>POST   /api/v1/me/favorites         ─ 30 req/時</li>
  *   <li>DELETE /api/v1/me/favorites/{id}    ─ 60 req/時</li>
  *   <li>PATCH  /api/v1/me/favorites/reorder ─ 30 req/時</li>
@@ -71,6 +75,40 @@ public class FavoriteController {
                 .map(FavoriteResponse::from)
                 .toList();
         return ResponseEntity.ok(ApiResponse.of(responses));
+    }
+
+    // ─────────────────────────────────────────────
+    // 登録状態チェック
+    // ─────────────────────────────────────────────
+
+    @GetMapping("/check")
+    @Operation(summary = "お気に入り登録状態チェック",
+            description = "指定エンティティが当該ユーザーのお気に入りに登録されているか確認する。"
+                    + "FavoriteToggleButton.vue のマウント時に呼び出される。")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "成功"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "entityType 不正"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未認証")
+    })
+    public ResponseEntity<ApiResponse<FavoriteCheckResponse>> checkFavorite(
+            @RequestParam("entityType") String entityTypeStr,
+            @RequestParam("entityId") String entityId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+
+        // entityType 文字列をenumに変換。不正な値は FAV_005 をスロー（POST と同様の挙動）
+        FavoriteEntityType entityType;
+        try {
+            entityType = FavoriteEntityType.valueOf(entityTypeStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(FavoriteErrorCode.FAV_005);
+        }
+
+        FavoriteCheckResultDto result = favoriteService.checkFavorite(userId, entityType, entityId);
+        FavoriteCheckResponse response = new FavoriteCheckResponse(
+                result.isFavorited(),
+                result.favoriteId() != null ? result.favoriteId().toString() : null
+        );
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     // ─────────────────────────────────────────────

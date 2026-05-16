@@ -26,13 +26,17 @@ import java.util.regex.Pattern;
  * <p>本フィルタが扱う対象:
  * <ul>
  *   <li>{@code GET    /api/v1/me/favorites}         ─ 120 req/分</li>
+ *   <li>{@code GET    /api/v1/me/favorites/check}   ─ 240 req/分</li>
  *   <li>{@code POST   /api/v1/me/favorites}         ─ 30 req/時</li>
  *   <li>{@code DELETE /api/v1/me/favorites/{id}}    ─ 60 req/時</li>
  *   <li>{@code PATCH  /api/v1/me/favorites/reorder} ─ 30 req/時</li>
  * </ul>
  *
+ * <p>check API はトグルボタンマウント時に各ページで頻繁に呼ばれるため、
+ * 一覧 GET の倍程度（240 req/分）を許容する。
+ *
  * <p>パターンは「具体度の高いものから順に」評価する。
- * {@code /reorder} を {@code /{id}} より先に判定すること。
+ * {@code /reorder} と {@code /check} を {@code /{id}} より先に判定すること。
  *
  * <p>キャッシュ戦略: Caffeine の expireAfterAccess=2 時間 + maximumSize=10000。
  * {@link com.mannschaft.app.pointcard.filter.PointCardRateLimitFilter} と同一パターン。
@@ -42,6 +46,7 @@ public class FavoriteRateLimitFilter extends OncePerRequestFilter {
 
     // ──── レート定義 ─────────────────────────────
     private static final int LIST_RATE_PER_MINUTE = 120;
+    private static final int CHECK_RATE_PER_MINUTE = 240;
     private static final int ADD_RATE_PER_HOUR = 30;
     private static final int DELETE_RATE_PER_HOUR = 60;
     private static final int REORDER_RATE_PER_HOUR = 30;
@@ -59,18 +64,24 @@ public class FavoriteRateLimitFilter extends OncePerRequestFilter {
     private static final Pattern REORDER_PATH =
             Pattern.compile("^/api/v1/me/favorites/reorder$");
 
+    /** 登録状態チェック: /{id} パターンより先に判定する。 */
+    private static final Pattern CHECK_PATH =
+            Pattern.compile("^/api/v1/me/favorites/check$");
+
     /** 削除 (DELETE) / 1件取得 (GET) の {@code /{id}} パターン。 */
     private static final Pattern FAVORITE_ID_PATH =
             Pattern.compile("^/api/v1/me/favorites/[0-9a-fA-F-]{36}$");
 
     // ──── バケット ──────────────────────────────
     private final Cache<String, Bucket> listBuckets;
+    private final Cache<String, Bucket> checkBuckets;
     private final Cache<String, Bucket> addBuckets;
     private final Cache<String, Bucket> deleteBuckets;
     private final Cache<String, Bucket> reorderBuckets;
 
     public FavoriteRateLimitFilter() {
         this.listBuckets = newCache();
+        this.checkBuckets = newCache();
         this.addBuckets = newCache();
         this.deleteBuckets = newCache();
         this.reorderBuckets = newCache();
@@ -93,6 +104,9 @@ public class FavoriteRateLimitFilter extends OncePerRequestFilter {
                 && FAVORITES_ROOT_PATH.matcher(path).matches()) {
             return false;
         }
+        if ("GET".equalsIgnoreCase(method) && CHECK_PATH.matcher(path).matches()) {
+            return false;
+        }
         if ("PATCH".equalsIgnoreCase(method) && REORDER_PATH.matcher(path).matches()) {
             return false;
         }
@@ -113,10 +127,13 @@ public class FavoriteRateLimitFilter extends OncePerRequestFilter {
         Bucket bucket;
         String retryAfter;
 
-        // 評価順序: より具体的なものから判定する（reorder を /{id} より先に）
+        // 評価順序: より具体的なものから判定する（reorder/check を /{id} より先に）
         if ("PATCH".equalsIgnoreCase(method) && REORDER_PATH.matcher(path).matches()) {
             bucket = reorderBuckets.get(userKey, k -> newBucketPerHour(REORDER_RATE_PER_HOUR));
             retryAfter = "3600";
+        } else if ("GET".equalsIgnoreCase(method) && CHECK_PATH.matcher(path).matches()) {
+            bucket = checkBuckets.get(userKey, k -> newBucketPerMinute(CHECK_RATE_PER_MINUTE));
+            retryAfter = "60";
         } else if ("DELETE".equalsIgnoreCase(method) && FAVORITE_ID_PATH.matcher(path).matches()) {
             bucket = deleteBuckets.get(userKey, k -> newBucketPerHour(DELETE_RATE_PER_HOUR));
             retryAfter = "3600";

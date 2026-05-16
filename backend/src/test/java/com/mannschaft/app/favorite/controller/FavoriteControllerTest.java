@@ -6,6 +6,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.favorite.FavoriteEntityType;
 import com.mannschaft.app.favorite.FavoriteErrorCode;
+import com.mannschaft.app.favorite.dto.FavoriteCheckResultDto;
 import com.mannschaft.app.favorite.dto.FavoriteItemDto;
 import com.mannschaft.app.favorite.service.FavoriteService;
 import com.mannschaft.app.proxy.ProxyInputContext;
@@ -343,6 +344,53 @@ class FavoriteControllerTest {
                             .content(body))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error.code").value("COMMON_001"));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // GET /api/v1/me/favorites/check
+    // ─────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("GET /api/v1/me/favorites/check")
+    class CheckFavorite {
+
+        @Test
+        @DisplayName("正常系: 未登録 → 200 isFavorited=false favoriteId=null")
+        void checkFavorite_未登録_200() throws Exception {
+            given(favoriteService.checkFavorite(eq(USER_ID), eq(FavoriteEntityType.TEAM), eq("999")))
+                    .willReturn(new FavoriteCheckResultDto(false, null));
+
+            mockMvc.perform(get("/api/v1/me/favorites/check")
+                            .param("entityType", "TEAM")
+                            .param("entityId", "999"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.isFavorited").value(false))
+                    .andExpect(jsonPath("$.data.favoriteId").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("正常系: 登録済み → 200 isFavorited=true と favoriteId 文字列")
+        void checkFavorite_登録済み_200() throws Exception {
+            given(favoriteService.checkFavorite(eq(USER_ID), eq(FavoriteEntityType.TEAM), eq("1")))
+                    .willReturn(new FavoriteCheckResultDto(true, FAVORITE_ID));
+
+            mockMvc.perform(get("/api/v1/me/favorites/check")
+                            .param("entityType", "TEAM")
+                            .param("entityId", "1"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.isFavorited").value(true))
+                    .andExpect(jsonPath("$.data.favoriteId").value(FAVORITE_ID.toString()));
+        }
+
+        @Test
+        @DisplayName("異常系: entityType=INVALID → 400 FAV_005")
+        void checkFavorite_entityType不正_400FAV005() throws Exception {
+            mockMvc.perform(get("/api/v1/me/favorites/check")
+                            .param("entityType", "INVALID")
+                            .param("entityId", "1"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("FAV_005"));
         }
     }
 }

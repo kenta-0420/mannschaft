@@ -3,6 +3,7 @@ package com.mannschaft.app.favorite.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.favorite.FavoriteEntityType;
 import com.mannschaft.app.favorite.FavoriteErrorCode;
+import com.mannschaft.app.favorite.dto.FavoriteCheckResultDto;
 import com.mannschaft.app.favorite.dto.FavoriteEntityMetaDto;
 import com.mannschaft.app.favorite.dto.FavoriteEntityStatus;
 import com.mannschaft.app.favorite.dto.FavoriteItemDto;
@@ -417,6 +418,45 @@ class FavoriteServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("FAV_004"));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // checkFavorite
+    // ─────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("checkFavorite")
+    class CheckFavorite {
+
+        @Test
+        @DisplayName("正常系: 登録済み → isFavorited=true と favoriteId を返す")
+        void checkFavorite_登録済み_isFavoriteTrueとfavoriteIdを返す() {
+            UserFavoriteEntity entity = createEntity(FavoriteEntityType.TEAM, "1", 0);
+
+            given(userFavoriteRepository.findByUserIdAndEntityTypeAndEntityId(
+                    USER_ID, FavoriteEntityType.TEAM, "1"))
+                    .willReturn(Optional.of(entity));
+
+            FavoriteCheckResultDto result = favoriteService.checkFavorite(
+                    USER_ID, FavoriteEntityType.TEAM, "1");
+
+            assertThat(result.isFavorited()).isTrue();
+            assertThat(result.favoriteId()).isEqualTo(FAVORITE_ID);
+        }
+
+        @Test
+        @DisplayName("正常系: 未登録 → isFavorited=false と favoriteId=null を返す")
+        void checkFavorite_未登録_isFavoriteFalseとfavoriteIdNullを返す() {
+            given(userFavoriteRepository.findByUserIdAndEntityTypeAndEntityId(
+                    USER_ID, FavoriteEntityType.TEAM, "999"))
+                    .willReturn(Optional.empty());
+
+            FavoriteCheckResultDto result = favoriteService.checkFavorite(
+                    USER_ID, FavoriteEntityType.TEAM, "999");
+
+            assertThat(result.isFavorited()).isFalse();
+            assertThat(result.favoriteId()).isNull();
         }
     }
 }

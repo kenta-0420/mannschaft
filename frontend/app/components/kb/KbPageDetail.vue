@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { KbPageResponse, KbPageRevisionSummaryResponse } from '~/types/knowledgeBase'
 import type { KbScopeType } from '~/composables/useKnowledgeBaseApi'
+import FavoriteToggleButton from '~/components/favorites/FavoriteToggleButton.vue'
 
 const props = defineProps<{
   scopeType: KbScopeType
@@ -181,10 +182,16 @@ watch(() => props.pageId, () => {
     <div class="mb-4 flex items-center justify-between">
       <Button icon="pi pi-arrow-left" label="一覧へ戻る" text size="small" @click="emit('back')" />
       <div class="flex items-center gap-1">
-        <!-- Favorite toggle (available to all) -->
+        <!-- F02.9 ダッシュボードショートカット用お気に入り（F06.5 ブックマークとは別系統） -->
+        <FavoriteToggleButton
+          entity-type="KB_PAGE"
+          :entity-id="String(pageId)"
+          :entity-name="page.title"
+        />
+        <!-- F06.5 KB 内ブックマーク (available to all) -->
         <Button
-          :icon="isFavorited ? 'pi pi-star-fill' : 'pi pi-star'"
-          :label="isFavorited ? 'お気に入り解除' : 'お気に入り'"
+          :icon="isFavorited ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'"
+          :label="isFavorited ? 'ブックマーク解除' : 'ブックマーク'"
           text
           size="small"
           @click="onToggleFavorite"
