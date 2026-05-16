@@ -216,19 +216,29 @@ public enum VillageErrorCode implements ErrorCode {
     REPRESENTATIVE_ALREADY_GRANTED("VILLAGE_053",
             "このユーザーには既に代表権が委任されています", Severity.WARN),
 
-    /**
-     * VILLAGE_054: 代表委任の対象メンバーシップが TEAM/ORGANIZATION でない（422）。
-     * USER メンバーシップへの代表委任は意味を成さないため拒否する。
-     */
+    /** VILLAGE_054: 代表委任の対象メンバーシップが TEAM/ORGANIZATION でない（422） */
     REPRESENTATIVE_NOT_TEAM_OR_ORG_MEMBERSHIP("VILLAGE_054",
             "代表委任はチーム/組織メンバーシップに対してのみ可能です", Severity.WARN),
 
-    /**
-     * VILLAGE_055: 委任先ユーザーが当該チーム/組織のメンバーでない（422）。
-     * チーム/組織に所属していない第三者を代表として委任することは禁止。
-     */
+    /** VILLAGE_055: 委任先ユーザーが当該チーム/組織のメンバーでない（422） */
     REPRESENTATIVE_USER_NOT_IN_SUBJECT("VILLAGE_055",
-            "委任先ユーザーが対象チーム/組織のメンバーではありません", Severity.WARN);
+            "委任先ユーザーが対象チーム/組織のメンバーではありません", Severity.WARN),
+
+    // ==================================================================
+    // F17 Phase 2 U4 — 歳時記カレンダー（VILLAGE_056〜058）
+    // ==================================================================
+
+    /** VILLAGE_056: 歳時記イベントが見つからない（404、IDOR 対策で 404） */
+    CALENDAR_EVENT_NOT_FOUND("VILLAGE_056",
+            "歳時記イベントが見つかりません", Severity.WARN),
+
+    /** VILLAGE_057: 歳時記イベントの期間が不正（422、event_end_date < event_date） */
+    CALENDAR_EVENT_INVALID_DATE_RANGE("VILLAGE_057",
+            "終了日は開始日以降を指定してください", Severity.WARN),
+
+    /** VILLAGE_058: 歳時記イベントのカラーコード形式不正（422、#RRGGBB 以外） */
+    CALENDAR_EVENT_INVALID_COLOR("VILLAGE_058",
+            "色は #RRGGBB 形式で指定してください", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -377,6 +377,10 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_053", HttpStatus.CONFLICT),             // REPRESENTATIVE_ALREADY_GRANTED
             Map.entry("VILLAGE_054", HttpStatus.UNPROCESSABLE_ENTITY), // REPRESENTATIVE_NOT_TEAM_OR_ORG_MEMBERSHIP
             Map.entry("VILLAGE_055", HttpStatus.UNPROCESSABLE_ENTITY), // REPRESENTATIVE_USER_NOT_IN_SUBJECT
+            // F17.1 Phase 2 U4 — 歳時記カレンダー（VILLAGE_056〜058）
+            Map.entry("VILLAGE_056", HttpStatus.NOT_FOUND),            // CALENDAR_EVENT_NOT_FOUND（IDOR 対策で 404）
+            Map.entry("VILLAGE_057", HttpStatus.UNPROCESSABLE_ENTITY), // CALENDAR_EVENT_INVALID_DATE_RANGE
+            Map.entry("VILLAGE_058", HttpStatus.UNPROCESSABLE_ENTITY), // CALENDAR_EVENT_INVALID_COLOR
 
             // F18 個人ポイントカードウォレット（設計書 §6.3 整合）
             Map.entry("POINT_CARD_001", HttpStatus.FORBIDDEN),         // WALLET_NOT_ENABLED
