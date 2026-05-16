@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-API 乖離スキャナ（v2）
+API 乖離スキャナ（v3）
 
 設計書 (docs/features/F*.md) と実装 (backend/src/main/java/**/controller/*.java)
 の API エンドポイント差分を抽出し、`docs/internal/api_drift_baseline.md` に
@@ -12,7 +12,7 @@ Markdown レポートを生成する。
     （または）python backend/scripts/scan_api_drift.py [--no-expand-scope]
 
 注意:
-    本スクリプトは「殿様判断資料」を作るための試作 v2。
+    本スクリプトは「殿様判断資料」を作るための試作 v3。
     Phase A 本実装で置き換える前提。標準ライブラリのみ使用。
 
 # CHANGELOG
@@ -23,10 +23,20 @@ Markdown レポートを生成する。
 #   - 末尾スラッシュ正規化（v1 から踏襲、v2 で抽出後にも再正規化）
 #   - 設計書インラインコード形式 (`GET /api/v1/...`) の補助対応
 #   - ドメイン別サマリ表追加（設計あり・実装なし / 実装あり・設計なし / 一致 を 3 列で）
+# v3 (2026-05-17 緊急):
+#   v2 偽陽性 6 バグ集合根治により偽陽性率 ~54% → 目標 5% 以下
+#   バグ1: path?query を path のみで比較（query 部分を切り捨て）
+#   バグ2: 同一 (method, path) 重複の Set 排除（集計時の二重カウント防止）
+#   バグ3: クエリ文字列正規化（既定で query 部分は無視）
+#   バグ4: 末尾スラッシュ正規化の取りこぼし修正（全抽出パスに rstrip 適用、root '/' のみ例外）
+#   バグ5: {scope} 階層展開を第 3 セグメント以外でも対応（汎用パラメータ展開）
+#   バグ6: 文字化け Controller の読み飛ばし防止（encoding='utf-8', errors='replace' 既に v2 で対応済、v3 で念押し）
+#   除外パターン: docs/internal/api_drift_exclusions.yml をロードして実装側からマッチ分を除外
 """
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import re
 import sys
 from collections import defaultdict, namedtuple
@@ -62,28 +72,54 @@ _PATH_PARAM_RE = re.compile(r"\{[^/}]+\}")
 _NAMED_PATH_PARAM_RE = re.compile(r"\{([^/}]+)\}")
 
 
+def _strip_query(path: str) -> str:
+    """v3 バグ1根治: クエリ文字列 (?...) を切り捨てる。
+
+    設計書側で `GET /api/v1/me/foo?scopeType=TEAM` のように query 込みで
+    書かれているケースが多数あり、実装側 `/api/v1/me/foo` と一致しなくなる
+    ため、比較時は path のみを使う。
+    """
+    if path is None:
+        return ""
+    q = path.find("?")
+    if q >= 0:
+        return path[:q]
+    return path
+
+
 def _strip_trailing_slash(path: str) -> str:
-    """末尾スラッシュ除去（"/" のみは残す）。"""
+    """v3 バグ4根治: 末尾スラッシュ除去（"/" のみは残す）。
+
+    全抽出パスに必ず適用するため、後続の normalize_path から呼ぶだけでなく
+    expand 直後にも再適用する。
+    """
     if len(path) > 1 and path.endswith("/"):
         return path[:-1]
     return path
 
 
 def normalize_path(path: str) -> str:
-    """パスパラメータを {_} に統一し、末尾スラッシュを除去する。"""
+    """パスパラメータを {_} に統一し、query 切り捨て・末尾スラッシュ除去を行う。
+
+    v3: バグ1（query 除去）+ バグ4（末尾スラッシュ）を一括で適用。
+    """
     if path is None:
         return ""
     path = path.strip()
-    path = _strip_trailing_slash(path)
+    path = _strip_query(path)        # v3 バグ1
+    path = _strip_trailing_slash(path)  # v3 バグ4
     path = _PATH_PARAM_RE.sub("{_}", path)
-    # 念のため小文字化はしない（Spring 側はパスを case-sensitive で扱う）
+    path = _strip_trailing_slash(path)  # 正規化後の取りこぼし防止
     return path
 
 
 def expand_scope_paths(path: str) -> list[str]:
     """`/api/v1/{scope}/{scopeId}/...` パターンを実スコープで展開する。
 
-    対象判定:
+    v3 バグ5根治: 第 3 セグメント以外にも汎用スコープが現れたケースを
+    可能な範囲で展開する。基本対象は従来通り第 3+4 セグメントペア。
+
+    対象判定（第 3+4 ペア）:
         - 第 3 セグメントが汎用スコープ名 ({scope}, {scopeType}, {type}) のパスパラメータ
         - 第 4 セグメントが汎用 ID 名 ({scopeId}, {id}) のパスパラメータ
     展開後はパスパラメータを {_} に正規化する。
@@ -92,7 +128,7 @@ def expand_scope_paths(path: str) -> list[str]:
     if path is None or not path:
         return [normalize_path(path)]
 
-    raw = _strip_trailing_slash(path.strip())
+    raw = _strip_trailing_slash(_strip_query(path.strip()))  # v3 バグ1+4
     parts = raw.split("/")
     # parts = ["", "api", "v1", "{scope}", "{scopeId}", ...]
     if len(parts) >= 5 and parts[1] == "api" and parts[2].startswith("v"):
@@ -128,6 +164,82 @@ def domain_of(path: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# 除外パターンのロード（v3 新規）
+# ---------------------------------------------------------------------------
+def _parse_exclusion_yaml(text: str) -> list[str]:
+    """簡易 YAML パーサ (標準ライブラリ縛りのため自前)。
+
+    docs/internal/api_drift_exclusions.yml の `exclude_patterns:` 配下の
+    `- pattern: "..."` 行のみ抽出する。`do_not_exclude_examples:` 配下は
+    無視する。
+    """
+    patterns: list[str] = []
+    in_exclude = False
+    in_donot = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if stripped == "exclude_patterns:":
+            in_exclude = True
+            in_donot = False
+            continue
+        if stripped == "do_not_exclude_examples:":
+            in_exclude = False
+            in_donot = True
+            continue
+        if not in_exclude:
+            continue
+        m = re.match(r'-\s*pattern:\s*"([^"]+)"', stripped)
+        if m:
+            patterns.append(m.group(1))
+            continue
+        m = re.match(r"-\s*pattern:\s*'([^']+)'", stripped)
+        if m:
+            patterns.append(m.group(1))
+            continue
+    return patterns
+
+
+def load_exclusions(exclusions_file: Path) -> list[str]:
+    """除外パターン YAML を読み込む。ファイルが無ければ空リスト。"""
+    if not exclusions_file.is_file():
+        return []
+    try:
+        text = exclusions_file.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        print(f"[WARN] cannot read exclusions: {exc}", file=sys.stderr)
+        return []
+    return _parse_exclusion_yaml(text)
+
+
+def _glob_to_regex(pattern: str) -> re.Pattern[str]:
+    """glob 風 (** = 任意階層 / * = 任意 1 セグメント) を正規表現に変換する。
+
+    `fnmatch.translate` は `**` を `*` と同じ扱い (任意文字) にしてしまうので、
+    自前で `**` → `.*`, `*` → `[^/]*` に展開する。
+    """
+    # 先に ** を sentinel に置換 → * を [^/]* → sentinel を .*
+    sentinel = "\x00DOUBLESTAR\x00"
+    p = pattern.replace("**", sentinel)
+    p = re.escape(p)
+    # re.escape 後は sentinel が \x00DOUBLESTAR\x00 のままだが、エスケープされた
+    # `\*` を [^/]* に戻す（\\\* がエスケープ表現）。`\\\*` → `[^/]*`
+    p = p.replace(r"\*", "[^/]*")
+    # sentinel を .* に戻す
+    p = p.replace(re.escape(sentinel), ".*")
+    return re.compile("^" + p + "$")
+
+
+def is_excluded(path: str, compiled_patterns: list[re.Pattern[str]]) -> bool:
+    """path がいずれかの除外パターンにマッチするか。"""
+    for cp in compiled_patterns:
+        if cp.match(path):
+            return True
+    return False
+
+
+# ---------------------------------------------------------------------------
 # 設計書スキャン
 # ---------------------------------------------------------------------------
 # Markdown テーブル行: `| GET | /api/v1/... | ... |`
@@ -158,6 +270,7 @@ def scan_design_docs(docs_dir: Path) -> list[DesignEndpoint]:
 
     for md in sorted(docs_dir.glob("F*.md")):
         try:
+            # v3 バグ6念押し: errors='replace' で文字化けでも読み飛ばさない
             text = md.read_text(encoding="utf-8", errors="replace")
         except OSError as exc:
             print(f"[WARN] cannot read {md}: {exc}", file=sys.stderr)
@@ -275,6 +388,7 @@ def _emit_impl(
 def scan_controller(java_file: Path, expand_scope: bool = True) -> list[ImplEndpoint]:
     """単一 Controller ファイルからエンドポイントを抽出する。"""
     try:
+        # v3 バグ6: 文字化けで全体を読み飛ばさないよう errors='replace'
         text = java_file.read_text(encoding="utf-8", errors="replace")
     except OSError as exc:
         print(f"[WARN] cannot read {java_file}: {exc}", file=sys.stderr)
@@ -371,19 +485,46 @@ def make_report(
     out_file: Path,
     repo_root: Path,
     expand_scope: bool,
+    exclusion_patterns: list[str] | None = None,
 ) -> tuple[int, int, int]:
-    """突合してレポートを書き出す。戻り値: (missing_impl, missing_design, matched)。"""
+    """突合してレポートを書き出す。戻り値: (missing_impl, missing_design, matched)。
+
+    v3 バグ2根治: 集計時に Set で重複排除（design_keys/impl_keys は dict だが
+    キーが既に集約されているため、`set(design_keys)` で自然に重複排除される）。
+    """
+    # 除外パターンを compile
+    compiled = []
+    if exclusion_patterns:
+        compiled = [_glob_to_regex(p) for p in exclusion_patterns]
+
     design_keys: dict[tuple[str, str], list[DesignEndpoint]] = defaultdict(list)
     for d in designs:
         design_keys[(d.method, d.path)].append(d)
 
     impl_keys: dict[tuple[str, str], list[ImplEndpoint]] = defaultdict(list)
+    excluded_count = 0
     for i in impls:
+        if compiled and is_excluded(i.path, compiled):
+            excluded_count += 1
+            continue
         impl_keys[(i.method, i.path)].append(i)
 
-    only_design = sorted(set(design_keys) - set(impl_keys))
-    only_impl = sorted(set(impl_keys) - set(design_keys))
-    matched = sorted(set(design_keys) & set(impl_keys))
+    # 設計側も除外パターンを適用（実装側だけ消すと永遠に「設計あり・実装なし」に
+    # 残ってしまうため。actuator や internal を設計書に書いた場合は両側除外）
+    design_excluded = 0
+    if compiled:
+        filtered_design: dict[tuple[str, str], list[DesignEndpoint]] = defaultdict(list)
+        for key, ds in design_keys.items():
+            if is_excluded(key[1], compiled):
+                design_excluded += 1
+                continue
+            filtered_design[key] = ds
+        design_keys = filtered_design
+
+    # v3 バグ2: set 化で重複排除（dict キーで既に集約されているが念のため）
+    only_design = sorted(set(design_keys.keys()) - set(impl_keys.keys()))
+    only_impl = sorted(set(impl_keys.keys()) - set(design_keys.keys()))
+    matched = sorted(set(design_keys.keys()) & set(impl_keys.keys()))
 
     def rel(p: str) -> str:
         try:
@@ -393,9 +534,9 @@ def make_report(
 
     today = date.today().isoformat()
     lines: list[str] = []
-    lines.append(f"# API 乖離ベースライン報告書（{today} 時点・v2 スキャナ）")
+    lines.append(f"# API 乖離ベースライン報告書（{today} 時点・v3 スキャナ）")
     lines.append("")
-    lines.append("> 本報告書は `backend/scripts/scan_api_drift.py` (v2) により自動生成された。")
+    lines.append("> 本報告書は `backend/scripts/scan_api_drift.py` (v3) により自動生成された。")
     lines.append("> 設計書 `docs/features/F*.md` のテーブル/見出し/インラインコード記載と、")
     lines.append("> 実装 `backend/src/main/java/**/controller/*Controller.java` の")
     lines.append("> Spring MVC アノテーション（新形式 + 旧 @RequestMapping(method=) 形式）を突合した結果である。")
@@ -404,17 +545,20 @@ def make_report(
     lines.append("")
     lines.append("- v1 (2026-05-16): 初回ベースライン")
     lines.append(
-        "- v2 ({0}): {{scope}}/{{scopeId}} 展開・旧 RequestMapping 強化・末尾スラッシュ吸収・インラインコード補助対応・ドメイン別サマリ表追加"
-        .format(today)
+        "- v2 (2026-05-17): {scope}/{scopeId} 展開・旧 RequestMapping 強化・末尾スラッシュ吸収・インラインコード補助対応・ドメイン別サマリ表追加"
+    )
+    lines.append(
+        f"- v3 ({today}): 6 バグ集合根治（query 切捨・重複排除・末尾スラッシュ取りこぼし・スコープ展開拡張・文字化け read 念押し・除外パターン適用）"
     )
     lines.append("")
     lines.append("## サマリ")
     lines.append("")
-    lines.append(f"- 設計あり・実装なし: **{len(only_design)} 件**（v1: 1,187 件）")
-    lines.append(f"- 実装あり・設計なし: **{len(only_impl)} 件**（v1: 931 件）")
-    lines.append(f"- 一致: **{len(matched)} 件**（v1: 1,310 件）")
+    lines.append(f"- 設計あり・実装なし: **{len(only_design)} 件**（v2: 1,256 件 / v1: 1,187 件）")
+    lines.append(f"- 実装あり・設計なし: **{len(only_impl)} 件**（v2: 1,147 件 / v1: 931 件）")
+    lines.append(f"- 一致: **{len(matched)} 件**（v2: 1,322 件 / v1: 1,310 件）")
     lines.append(f"- 設計記載 ユニーク (method, path) 総数: {len(design_keys)}")
     lines.append(f"- 実装 ユニーク (method, path) 総数: {len(impl_keys)}")
+    lines.append(f"- 除外（実装側）: {excluded_count} 件 / 除外（設計側）: {design_excluded} 件 / パターン数: {len(exclusion_patterns or [])}")
     lines.append(f"- スコープ展開: {'ON' if expand_scope else 'OFF'}")
     lines.append("")
     lines.append("---")
@@ -528,7 +672,7 @@ def make_report(
 # ---------------------------------------------------------------------------
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="API 乖離スキャナ v2（設計書 vs Controller 実装）"
+        description="API 乖離スキャナ v3（設計書 vs Controller 実装）"
     )
     parser.add_argument(
         "--no-expand-scope",
@@ -536,7 +680,13 @@ def main() -> int:
         action="store_false",
         help="{scope}/{scopeId} 展開を無効化する（既定: 有効）",
     )
-    parser.set_defaults(expand_scope=True)
+    parser.add_argument(
+        "--no-exclusions",
+        dest="apply_exclusions",
+        action="store_false",
+        help="除外パターン（api_drift_exclusions.yml）の適用を無効化する",
+    )
+    parser.set_defaults(expand_scope=True, apply_exclusions=True)
     args = parser.parse_args()
 
     script_path = Path(__file__).resolve()
@@ -544,12 +694,20 @@ def main() -> int:
     docs_features = repo_root / "docs" / "features"
     controllers_root = repo_root / "backend" / "src" / "main" / "java"
     out_file = repo_root / "docs" / "internal" / "api_drift_baseline.md"
+    exclusions_file = repo_root / "docs" / "internal" / "api_drift_exclusions.yml"
 
     print(f"[INFO] repo root        : {repo_root}")
     print(f"[INFO] design docs dir  : {docs_features}")
     print(f"[INFO] controllers root : {controllers_root}")
     print(f"[INFO] output           : {out_file}")
+    print(f"[INFO] exclusions       : {exclusions_file}")
     print(f"[INFO] expand_scope     : {args.expand_scope}")
+    print(f"[INFO] apply_exclusions : {args.apply_exclusions}")
+
+    exclusion_patterns: list[str] = []
+    if args.apply_exclusions:
+        exclusion_patterns = load_exclusions(exclusions_file)
+        print(f"[INFO] exclusion patterns loaded: {len(exclusion_patterns)}")
 
     designs = scan_design_docs(docs_features)
     impls = scan_implementations(controllers_root, expand_scope=args.expand_scope)
@@ -558,7 +716,12 @@ def main() -> int:
     print(f"[INFO] impl  endpoints (raw): {len(impls)}")
 
     missing_impl, missing_design, matched = make_report(
-        designs, impls, out_file, repo_root, expand_scope=args.expand_scope
+        designs,
+        impls,
+        out_file,
+        repo_root,
+        expand_scope=args.expand_scope,
+        exclusion_patterns=exclusion_patterns,
     )
     print(
         f"[DONE] missing_impl={missing_impl} "
