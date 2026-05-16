@@ -304,6 +304,25 @@
         "load_failed": "情報の読み込みに失敗しました",
         "save_failed": "保存に失敗しました"
       }
-    }
+    },
+    "add_from_qr": {
+      "title": "{providerName} のカードを追加",
+      "title_fallback": "店舗のカードを追加",
+      "intro": "{providerName} のスタンプカードをウォレットに追加します。",
+      "intro_fallback": "QR コードから店舗のスタンプカードをウォレットに追加します。",
+      "from_org": "（{orgName} 発行）",
+      "barcode_input": "あなたの会員番号（あれば）",
+      "barcode_hint": "店舗で受け取ったカードに記載されている番号です。番号が無い場合は空欄のままで構いません。",
+      "no_barcode": "番号なしで登録",
+      "add": "ウォレットに追加",
+      "added": "カードを追加しました",
+      "adding": "追加しています…",
+      "qr_invalid": "無効な QR コードです",
+      "provider_not_found": "このプロバイダーは現在停止されています",
+      "missing_params": "QR コードの情報が不足しています"
+    },
+    "copy_card_id": "カード ID をコピー",
+    "card_id_copied": "カード ID をコピーしました",
+    "card_id_label": "カード ID"
   }
 }

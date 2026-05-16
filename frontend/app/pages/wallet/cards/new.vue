@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { LocationQueryValue } from 'vue-router'
 import BarcodeCapture from '~/components/wallet/BarcodeCapture.vue'
 import BarcodePreview from '~/components/wallet/BarcodePreview.vue'
 import PresetCardButtons from '~/components/wallet/PresetCardButtons.vue'
@@ -26,8 +27,36 @@ definePageMeta({
 })
 
 const { t } = useI18n()
+const route = useRoute()
 const router = useRouter()
 const walletApi = useWalletApi()
+
+// ─────────────────────────────────────────────
+// Query 事前充填（F18 Phase 2 UC-8 互換）
+// ─────────────────────────────────────────────
+// QR 経由で `/wallet/cards/new?providerId=...&name=...&format=...` で開かれた場合に
+// 自由入力モードを初期値プリセット状態で開く。専用ページ /wallet/add-from-qr を使うほうが
+// UX が良いが、PWA でないブラウザや古い QR スキャナアプリが従来 URL でこのページを叩いて
+// くる可能性もあるためフォールバックとして対応しておく。
+function pickQueryString(
+  value: LocationQueryValue | LocationQueryValue[] | undefined,
+): string {
+  if (value == null) return ''
+  if (Array.isArray(value)) {
+    const first = value[0]
+    return first ?? ''
+  }
+  return value
+}
+const initialDisplayName = pickQueryString(route.query.name)
+const initialFormatRaw = pickQueryString(route.query.format).toUpperCase()
+const KNOWN_FORMATS_FOR_QUERY: BarcodeFormat[] = [
+  'CODE128', 'CODE39', 'EAN13', 'EAN8', 'JAN13', 'ITF', 'QR', 'PDF417', 'NONE',
+]
+const initialFormat: BarcodeFormat
+  = (KNOWN_FORMATS_FOR_QUERY as string[]).includes(initialFormatRaw)
+    ? (initialFormatRaw as BarcodeFormat)
+    : 'CODE128'
 
 // ─────────────────────────────────────────────
 // State
@@ -36,9 +65,9 @@ const walletApi = useWalletApi()
 type Step = 'input' | 'preview'
 const step = ref<Step>('input')
 
-const displayName = ref('')
+const displayName = ref(initialDisplayName)
 const barcodeValue = ref('')
-const barcodeFormat = ref<BarcodeFormat>('CODE128')
+const barcodeFormat = ref<BarcodeFormat>(initialFormat)
 
 const nickname = ref('')
 const memo = ref('')
