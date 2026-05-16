@@ -6,6 +6,7 @@ import com.mannschaft.app.organization.exception.OrganizationNotFoundException;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.dto.TeamSearchCriteria;
 import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.metrics.TeamSearchMetrics;
 import com.mannschaft.app.team.repository.TeamRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -65,6 +66,9 @@ class TeamSearchServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    @Mock
+    private TeamSearchMetrics teamSearchMetrics;
 
     @InjectMocks
     private TeamSearchService service;

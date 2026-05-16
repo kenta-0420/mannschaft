@@ -33,6 +33,7 @@ const router = useRouter()
 const walletApi = useWalletApi()
 const walletOffline = useWalletOffline()
 const authApi = useAuthApi()
+const { captureQuiet } = useErrorReport()
 
 const groupId = computed(() => route.params.id as string)
 
@@ -69,32 +70,66 @@ async function acquireWakeLock(): Promise<void> {
   const nav = navigator as Navigator & {
     wakeLock?: { request: (type: 'screen') => Promise<WakeLockSentinelLike> }
   }
-  if (nav.wakeLock?.request) {
-    try {
-      const sentinel = await nav.wakeLock.request('screen')
-      wakeLock = sentinel
-      sentinel.addEventListener('release', () => {
-        wakeLock = null
-      })
-      return
-    }
-    catch (e) {
-      // ユーザーの設定で拒否される / バッテリーセーブモード等で失敗するケースは
-      // 黙ってフォールバックに移行する（症状を隠しているわけではなく仕様通り）
-      if (import.meta.dev) console.warn('[presentation] wakeLock.request failed, falling back to nosleep.js', e)
-    }
+  if (!nav.wakeLock?.request) {
+    // 1) Wake Lock API 自体が未サポート（旧 Safari など）
+    captureQuiet(
+      new Error('Wake Lock API not supported in this browser'),
+      { context: 'wake_lock_unsupported' },
+    )
+    await fallbackToNoSleep()
+    return
   }
-  // フォールバック: nosleep.js（無音動画ループで画面を起こし続ける）
+  try {
+    const sentinel = await nav.wakeLock.request('screen')
+    wakeLock = sentinel
+    sentinel.addEventListener('release', () => {
+      wakeLock = null
+    })
+    return
+  }
+  catch (e) {
+    // 2) Wake Lock API は存在するが reject された
+    //    （iOS Safari Low Power Mode / バッテリー残量低下 / ユーザー設定拒否など）
+    if (import.meta.dev) console.warn('[presentation] wakeLock.request failed, falling back to nosleep.js', e)
+    const name = e instanceof Error ? e.name : 'unknown'
+    const msg = e instanceof Error ? e.message : String(e)
+    captureQuiet(
+      new Error(`Wake Lock request failed [${name}]: ${msg}`),
+      { context: 'wake_lock_request_failed' },
+    )
+    await fallbackToNoSleep()
+  }
+}
+
+/**
+ * Wake Lock API が使えなかったときの最終手段。
+ * nosleep.js（無音動画ループで画面を起こし続ける）にフォールバックする。
+ *
+ * <p>成功・失敗のいずれもテレメトリを送信する。失敗時（`wake_lock_nosleep_failed`）は
+ * 致命傷（顧客提示中に画面が落ちる可能性）なので運用部隊が緊急調査する。</p>
+ */
+async function fallbackToNoSleep(): Promise<void> {
   try {
     const mod = await import('nosleep.js')
     const NoSleepCtor = mod.default
     const instance = new NoSleepCtor()
     await instance.enable()
     noSleep = instance
+    // 3) フォールバック成功（一定割合発生する想定。正常系の派生）
+    captureQuiet(
+      new Error('Fell back to nosleep.js successfully'),
+      { context: 'wake_lock_nosleep_fallback_ok' },
+    )
   }
   catch (e) {
-    // ここまで来たら諦める。提示モード自体は継続可能（ユーザー操作で画面オン維持）
+    // 4) フォールバックも失敗（致命傷）。提示モード自体は継続可能だが画面が暗転しうる
     if (import.meta.dev) console.warn('[presentation] nosleep.js fallback failed', e)
+    const name = e instanceof Error ? e.name : 'unknown'
+    const msg = e instanceof Error ? e.message : String(e)
+    captureQuiet(
+      new Error(`nosleep.js fallback also failed [${name}]: ${msg}`),
+      { context: 'wake_lock_nosleep_failed' },
+    )
   }
 }
 

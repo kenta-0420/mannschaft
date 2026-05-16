@@ -19,5 +19,7 @@ public enum AuditEventCategory {
     /** F18 個人ポイントカードウォレット（生成 / 削除 / 閲覧 / グループ / 設定）。 */
     POINT_CARD,
     /** F17 村機能（村作成・参加・通報・ピン・ロビー等）。 */
-    VILLAGE
+    VILLAGE,
+    /** F15.4 セキュリティ系（レート制限到達 / 429 応答等）。 */
+    SECURITY_RATE_LIMIT
 }

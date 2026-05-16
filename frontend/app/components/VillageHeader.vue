@@ -32,7 +32,14 @@ type VillageWithMonsho = VillageResponse & { monshoR2Key?: string | null }
 
 const props = defineProps<{
   village: VillageWithMonsho
-  activeTab: 'bulletin' | 'timeline' | 'lobby' | 'members'
+  activeTab:
+    | 'bulletin'
+    | 'timeline'
+    | 'lobby'
+    | 'members'
+    | 'calendar'
+    | 'festival'
+    | 'matchRecruit'
 }>()
 
 const emit = defineEmits<{
@@ -110,7 +117,14 @@ const isFree = computed(() => props.village.joinPolicy === 'FREE')
 // タブナビ — PrimeVue Tabs (v-model:value)
 // =============================================================================
 interface TabDef {
-  key: 'bulletin' | 'timeline' | 'lobby' | 'members'
+  key:
+    | 'bulletin'
+    | 'timeline'
+    | 'lobby'
+    | 'members'
+    | 'calendar'
+    | 'festival'
+    | 'matchRecruit'
   to: string
   icon: string
   i18nKey: string
@@ -140,6 +154,27 @@ const tabs = computed<TabDef[]>(() => [
     to: `/villages/${props.village.id}/members`,
     icon: 'pi pi-users',
     i18nKey: 'village.tab.members',
+  },
+  // Phase 2: 歳時記カレンダー
+  {
+    key: 'calendar',
+    to: `/villages/${props.village.id}/calendar`,
+    icon: 'pi pi-calendar',
+    i18nKey: 'village.tab.calendar',
+  },
+  // Phase 2: お祭り
+  {
+    key: 'festival',
+    to: `/villages/${props.village.id}/festivals`,
+    icon: 'pi pi-star',
+    i18nKey: 'village.tab.festival',
+  },
+  // Phase 2: 練習試合・募集
+  {
+    key: 'matchRecruit',
+    to: `/villages/${props.village.id}/match-recruits`,
+    icon: 'pi pi-flag',
+    i18nKey: 'village.tab.matchRecruit',
   },
 ])
 

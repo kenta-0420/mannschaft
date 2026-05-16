@@ -119,14 +119,18 @@ class ActuatorEndpointSecurityTest {
 
         /**
          * F15.4: SecurityConfig が依存する OrganizationTeamSearchRateLimitFilter の
-         * 本物インスタンス。引数なしコンストラクタで Caffeine Cache を内部初期化する。
+         * 本物インスタンス。AuditLogService は ObjectProvider 経由で弱結合化されているため
+         * 空の ObjectProvider モックを渡す。
          * 本テストは /actuator/** のみを叩くため、対象パス
          * （/api/v1/organizations/{orgId}/teams/search）の正規表現に一致せず、
-         * 何もせず chain.doFilter に通す挙動になる。
+         * 何もせず chain.doFilter に通す挙動になる（AuditLogService.record は呼ばれない）。
          */
         @Bean
+        @SuppressWarnings("unchecked")
         OrganizationTeamSearchRateLimitFilter organizationTeamSearchRateLimitFilter() {
-            return new OrganizationTeamSearchRateLimitFilter();
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.auth.service.AuditLogService> provider =
+                    mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new OrganizationTeamSearchRateLimitFilter(provider);
         }
     }
 

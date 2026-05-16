@@ -238,7 +238,11 @@ public enum AuditEventType {
     /** F17.1 Phase 2 — 村お祭りを終了（バッチ自動遷移 ACTIVE→ENDED）。 */
     VILLAGE_FESTIVAL_ENDED(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 2 — 村お祭りを中止（村長/長老の判断）。 */
-    VILLAGE_FESTIVAL_CANCELLED(AuditEventCategory.VILLAGE);
+    VILLAGE_FESTIVAL_CANCELLED(AuditEventCategory.VILLAGE),
+
+    // ─── SECURITY_RATE_LIMIT (F15.4 組織内チーム検索) ───────────
+    /** 組織内チーム検索 API がレート制限に到達した（429 応答）。 */
+    TEAM_SEARCH_RATE_LIMITED(AuditEventCategory.SECURITY_RATE_LIMIT);
 
     private final AuditEventCategory category;
 }
