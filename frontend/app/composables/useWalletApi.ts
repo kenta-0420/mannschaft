@@ -18,6 +18,7 @@ import type {
   PointCardGroupListItem,
   PointCardProvider,
   PointCardUserSettings,
+  ShareTokenResponse,
   UpdateGroupRequest,
   UpdateUserPointCardRequest,
   UpdateUserSettingsRequest,
@@ -103,6 +104,24 @@ export function useWalletApi() {
    */
   async function recordUsed(id: string): Promise<void> {
     await api(`${BASE}/${id}/used`, { method: 'POST' })
+  }
+
+  /**
+   * 「店舗で提示」フロー用の一時トークンを発行する（F18 Phase 3）。
+   *
+   * <p>顧客がレジで提示するために 5 分間有効な UUID トークンを発行する。
+   * フロントは {@code deepLinkUrl} を QR コードに描画して画面表示し、
+   * 店主端末がスキャンすると {@code resolve-by-token} 経由でカード ID を特定できる。
+   *
+   * <p>Valkey の SET NX EX 300 で管理され、TTL 切れ後は再度本 API を呼び直す。
+   * レート制限 12/min/カード（短時間連打防止）。
+   */
+  async function generateShareToken(cardId: string): Promise<ShareTokenResponse> {
+    const res = await api<{ data: ShareTokenResponse }>(
+      `${BASE}/${cardId}/share-tokens`,
+      { method: 'POST' },
+    )
+    return res.data
   }
 
   // ─────────────────────────────────────────────
@@ -198,6 +217,7 @@ export function useWalletApi() {
     updateCard,
     deleteCard,
     recordUsed,
+    generateShareToken,
     // Groups
     listGroups,
     getGroup,
