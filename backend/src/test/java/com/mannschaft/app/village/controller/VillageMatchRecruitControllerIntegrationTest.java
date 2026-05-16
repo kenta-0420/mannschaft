@@ -113,7 +113,7 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("POST /match-recruits — 村人は 201 で作成成功")
     void create_villagerOk() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
         authenticateAs(VILLAGER_USER_ID);
 
         MatchRecruitCreateRequest req = new MatchRecruitCreateRequest(
@@ -161,7 +161,7 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("GET /match-recruits — フィルタなしで一覧取得 200")
     void list_ok() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
         persistRecruit(village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
         authenticateAs(VILLAGER_USER_ID);
@@ -210,7 +210,7 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("GET /match-recruits/{id} — 村人は 200")
     void get_villagerOk() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -227,7 +227,7 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("GET /match-recruits/{id} — 非村人は NOT_MEMBER")
     void get_nonMemberForbidden() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -247,7 +247,7 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("PATCH /match-recruits/{id} — 投稿者本人は 200")
     void update_authorOk() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -267,8 +267,8 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("PATCH /match-recruits/{id} — 投稿者以外は COMMON_002（権限なし）")
     void update_nonAuthorForbidden() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
-        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
+        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -289,7 +289,7 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("POST /match-recruits/{id}/close — 投稿者本人は CLOSED に遷移")
     void close_authorOk() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -307,7 +307,7 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     void close_headmanOk() {
         VillageEntity village = persistVillage();
         persistMembership(village.getId(), HEADMAN_USER_ID, VillageRole.HEADMAN);
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -324,8 +324,8 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("POST /match-recruits/{id}/close — 第三者村人は MODERATION_FORBIDDEN")
     void close_otherVillagerForbidden() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
-        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
+        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -345,7 +345,7 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("POST /match-recruits/{id}/fulfill — 投稿者本人は FULFILLED に遷移")
     void fulfill_authorOk() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -362,7 +362,7 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("POST /match-recruits/{id}/fulfill — 既に CLOSED の募集は MATCH_RECRUIT_NOT_OPEN")
     void fulfill_alreadyClosed() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.CLOSED,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -382,7 +382,7 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("POST /match-recruits/{id}/cancel — 投稿者本人は CANCELLED に遷移")
     void cancel_authorOk() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -399,8 +399,8 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("POST /match-recruits/{id}/cancel — 第三者村人は MODERATION_FORBIDDEN")
     void cancel_otherVillagerForbidden() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
-        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
+        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -420,8 +420,8 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("POST /applications — 村人は 201 で応募作成")
     void apply_villagerOk() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
-        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
+        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -442,7 +442,7 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("POST /applications — 投稿者本人の自己応募は COMMON_002")
     void apply_selfApplyForbidden() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -462,8 +462,8 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("GET /applications — 投稿者本人は応募一覧取得 200")
     void listApplications_authorOk() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
-        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
+        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -485,8 +485,8 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("GET /applications — 第三者村人は MODERATION_FORBIDDEN")
     void listApplications_otherVillagerForbidden() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
-        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
+        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -506,8 +506,8 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("POST /applications/{id}/withdraw — 応募者本人は WITHDRAWN に遷移")
     void withdraw_applicantOk() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
-        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
+        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -526,8 +526,8 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("POST /applications/{id}/withdraw — 応募者以外は COMMON_002")
     void withdraw_otherUserForbidden() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
-        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
+        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -550,8 +550,8 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("POST /applications/{id}/review — 投稿者本人が ACCEPTED に審査")
     void review_accepted() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
-        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
+        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
@@ -575,8 +575,8 @@ class VillageMatchRecruitControllerIntegrationTest extends AbstractVillageIntegr
     @DisplayName("POST /applications/{id}/review — status=PENDING の審査リクエストは MATCH_APPLICATION_INVALID_STATUS")
     void review_invalidTargetStatus() {
         VillageEntity village = persistVillage();
-        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.MEMBER);
-        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.MEMBER);
+        persistMembership(village.getId(), VILLAGER_USER_ID, VillageRole.VILLAGER);
+        persistMembership(village.getId(), OTHER_VILLAGER_USER_ID, VillageRole.VILLAGER);
         VillageMatchRecruitEntity recruit = persistRecruit(
                 village.getId(), VILLAGER_USER_ID, VillageMatchRecruitStatus.OPEN,
                 VillageMatchRecruitCategory.PRACTICE_MATCH, LocalDate.now().plusDays(7));
