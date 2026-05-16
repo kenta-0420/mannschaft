@@ -89,6 +89,17 @@ public class TeamEntity extends BaseEntity {
     @Column(columnDefinition = "JSON")
     private com.mannschaft.app.organization.ProfileVisibility profileVisibility;
 
+    // --- F15.4 Phase 4: メンバー数事前集計 ---
+
+    /**
+     * アクティブメンバー数の事前集計値。
+     * リスナー（足軽16）で同期更新し、夜次バッチ（足軽17）で誤差補正する。
+     * 設計書: docs/features/F15.4_team_store_search_within_org.md §3.3 / §11.4
+     */
+    @Column(name = "member_count", nullable = false)
+    @Builder.Default
+    private Long memberCount = 0L;
+
     /**
      * チーム公開範囲
      */
