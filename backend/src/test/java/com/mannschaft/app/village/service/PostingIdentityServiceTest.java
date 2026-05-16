@@ -12,6 +12,7 @@ import com.mannschaft.app.village.dto.PostingIdentityListResponse;
 import com.mannschaft.app.village.entity.UserVillageNicknameEntity;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
+import com.mannschaft.app.village.entity.VillageRepresentativeEntity;
 import com.mannschaft.app.village.entity.enums.VillageJoinPolicy;
 import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
@@ -79,6 +80,8 @@ class PostingIdentityServiceTest {
     private TeamRepository teamRepository;
     @Mock
     private OrganizationRepository organizationRepository;
+    @Mock
+    private VillageRepresentativeService villageRepresentativeService;
 
     @InjectMocks
     private PostingIdentityService service;
@@ -109,23 +112,27 @@ class PostingIdentityServiceTest {
     }
 
     private VillageMembershipEntity teamMember(Long teamId) {
-        return VillageMembershipEntity.builder()
+        VillageMembershipEntity m = VillageMembershipEntity.builder()
                 .villageId(VILLAGE_ID)
                 .subjectType(VillageSubjectType.TEAM)
                 .subjectId(teamId)
                 .role(VillageRole.VILLAGER)
                 .joinedAt(LocalDateTime.now())
                 .build();
+        m.setId(UUID.fromString("01956c00-1111-7000-8000-000000000001"));
+        return m;
     }
 
     private VillageMembershipEntity orgMember(Long orgId) {
-        return VillageMembershipEntity.builder()
+        VillageMembershipEntity m = VillageMembershipEntity.builder()
                 .villageId(VILLAGE_ID)
                 .subjectType(VillageSubjectType.ORGANIZATION)
                 .subjectId(orgId)
                 .role(VillageRole.VILLAGER)
                 .joinedAt(LocalDateTime.now())
                 .build();
+        m.setId(UUID.fromString("01956c00-2222-7000-8000-000000000002"));
+        return m;
     }
 
     // ========================================================================
@@ -325,5 +332,111 @@ class PostingIdentityServiceTest {
         assertThatThrownBy(() -> service.listIdentities(ACTOR_USER_ID, VILLAGE_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(VillageErrorCode.NOT_MEMBER);
+    }
+
+    // ========================================================================
+    // Phase 2 U10: village_representatives 委任反映
+    // ========================================================================
+
+    @Test
+    @DisplayName("Phase2: ADMIN ではないが代表委任を受けた TEAM が listIdentities に含まれる")
+    void list_delegated_team_included() {
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
+        // 村の USER メンバー
+        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID))
+                .willReturn(Optional.of(userMember()));
+        given(nicknameRepository.findByUserIdAndVillageIdIsNull(ACTOR_USER_ID))
+                .willReturn(Optional.empty());
+
+        // 村メンバー一覧: USER + TEAM_ID（委任先となるチーム）
+        VillageMembershipEntity teamMembership = teamMember(TEAM_ID);
+        Page<VillageMembershipEntity> page = new PageImpl<>(List.of(
+                userMember(), teamMembership));
+        given(membershipRepository.findByVillageIdAndLeftAtIsNullOrderByJoinedAtAsc(
+                eq(VILLAGE_ID), any(Pageable.class))).willReturn(page);
+
+        // actor はチーム所属しているが ADMIN ではない（findByUserIdAndTeamIdIsNotNull は空でも OK）
+        given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(ACTOR_USER_ID))
+                .willReturn(List.of());
+        given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(ACTOR_USER_ID))
+                .willReturn(List.of());
+
+        // 委任あり: actor は teamMembership の代表として委任を受けている
+        VillageRepresentativeEntity delegation = VillageRepresentativeEntity.builder()
+                .villageId(VILLAGE_ID)
+                .membershipId(teamMembership.getId())
+                .representativeUserId(ACTOR_USER_ID)
+                .grantedByUserId(999L)
+                .grantedAt(LocalDateTime.now())
+                .build();
+        given(villageRepresentativeService.findActiveRepresentativesByUser(ACTOR_USER_ID))
+                .willReturn(List.of(delegation));
+        given(membershipRepository.findById(teamMembership.getId()))
+                .willReturn(Optional.of(teamMembership));
+        TeamEntity team = TeamEntity.builder().name("受任チーム").build();
+        given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+
+        PostingIdentityListResponse res = service.listIdentities(ACTOR_USER_ID, VILLAGE_ID);
+
+        // USER + 委任 TEAM の 2 件
+        assertThat(res.identities()).hasSize(2);
+        assertThat(res.identities().get(0).subjectType()).isEqualTo(VillageSubjectType.USER);
+        assertThat(res.identities().get(1).subjectType()).isEqualTo(VillageSubjectType.TEAM);
+        assertThat(res.identities().get(1).subjectId()).isEqualTo(TEAM_ID);
+        assertThat(res.identities().get(1).displayName()).isEqualTo("受任チーム");
+        assertThat(res.identities().get(1).canPostAs()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Phase2: ADMIN ではないが代表委任を受けた TEAM 投稿は validate を通る")
+    void validate_team_delegated_ok() {
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
+        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID))
+                .willReturn(Optional.of(userMember()));
+
+        // チームは村のメンバー
+        VillageMembershipEntity teamMembership = teamMember(TEAM_ID);
+        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                VILLAGE_ID, VillageSubjectType.TEAM, TEAM_ID))
+                .willReturn(Optional.of(teamMembership));
+
+        // ADMIN ではない
+        given(userRoleRepository.countTeamAdminByUserIdAndTeamId(ACTOR_USER_ID, TEAM_ID))
+                .willReturn(0L);
+        // しかし代表委任を保有
+        given(villageRepresentativeService.isUserActiveRepresentative(
+                teamMembership.getId(), ACTOR_USER_ID)).willReturn(true);
+
+        // 例外が出ないこと
+        service.validatePostingIdentity(ACTOR_USER_ID, VILLAGE_ID,
+                VillageSubjectType.TEAM, TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("Phase2: 委任が revoked 済（active 0 件）なら validate は VILLAGE_040")
+    void validate_team_delegation_revoked_forbidden() {
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
+        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID))
+                .willReturn(Optional.of(userMember()));
+
+        VillageMembershipEntity teamMembership = teamMember(TEAM_ID);
+        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                VILLAGE_ID, VillageSubjectType.TEAM, TEAM_ID))
+                .willReturn(Optional.of(teamMembership));
+
+        // ADMIN でもなく
+        given(userRoleRepository.countTeamAdminByUserIdAndTeamId(ACTOR_USER_ID, TEAM_ID))
+                .willReturn(0L);
+        // 委任も revoked 済（U3 が active を返さない）
+        given(villageRepresentativeService.isUserActiveRepresentative(
+                teamMembership.getId(), ACTOR_USER_ID)).willReturn(false);
+
+        assertThatThrownBy(() -> service.validatePostingIdentity(
+                ACTOR_USER_ID, VILLAGE_ID, VillageSubjectType.TEAM, TEAM_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_POSTING_IDENTITY_FORBIDDEN);
     }
 }
