@@ -563,6 +563,115 @@ function encryptForTest(plain) {
   console.log(`F02.9 favorites inserted: ${favorites.length} (TEAM x2, ORGANIZATION x1)`);
 
   // ============================================================
+  // F17 村コミュニティ — Phase 10 実機E2E用 seed
+  // ------------------------------------------------------------
+  //   - villages 2件 (OFFICIAL x1 / COMMUNITY x1) を name で UPSERT する
+  //   - E2E_USER を COMMUNITY 村に VILLAGER として参加させる
+  //   - 冪等性: E2E_USER の village_memberships を当該村について DELETE → INSERT
+  //   - villages の id は BINARY(16) なので UUID_TO_BIN(UUID()) で発番
+  // ============================================================
+  console.log('\n--- Seeding F17 villages ---');
+
+  const villageSeeds = [
+    {
+      slug: 'e2e-test-official-village',
+      name: 'E2Eテスト公式村',
+      description: 'E2E実機テスト用の公式村。VLG-001〜012 で参照される。',
+      type: 'OFFICIAL',
+      joinPolicy: 'FREE',
+      visibility: 'PUBLIC',
+      category: 'sports',
+    },
+    {
+      slug: 'e2e-test-community-village',
+      name: 'E2Eテストコミュニティ村',
+      description: 'E2E実機テスト用のコミュニティ村。E2E_USER が VILLAGER として参加する。',
+      type: 'COMMUNITY',
+      joinPolicy: 'FREE',
+      visibility: 'PUBLIC',
+      category: 'hobby',
+    },
+  ];
+
+  /** village を name で UPSERT し、BIN_TO_UUID(id) を返す */
+  async function upsertVillage(v) {
+    // 既存村があるか確認（name は UNIQUE）
+    const [rows] = await conn.execute(
+      'SELECT BIN_TO_UUID(id) AS id_text FROM villages WHERE name = ?',
+      [v.name]
+    );
+    if (rows.length > 0) {
+      // 既存村: メタを最新化（slug/desc/type/...）
+      await conn.execute(
+        `UPDATE villages
+           SET slug = ?, description = ?, type = ?, join_policy = ?,
+               visibility = ?, category = ?, deleted_at = NULL, archived_at = NULL,
+               updated_at = ?
+         WHERE name = ?`,
+        [v.slug, v.description, v.type, v.joinPolicy, v.visibility, v.category, now, v.name]
+      );
+      return rows[0].id_text;
+    }
+    // 新規 INSERT
+    await conn.execute(
+      `INSERT INTO villages
+         (id, slug, name, description, type, join_policy, visibility, category,
+          member_count_cache, created_by_user_id, created_at, updated_at, version)
+       VALUES (UUID_TO_BIN(UUID()), ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 0)`,
+      [v.slug, v.name, v.description, v.type, v.joinPolicy, v.visibility, v.category,
+       E2E_ADMIN, now, now]
+    );
+    const [[newRow]] = await conn.execute(
+      'SELECT BIN_TO_UUID(id) AS id_text FROM villages WHERE name = ?',
+      [v.name]
+    );
+    return newRow.id_text;
+  }
+
+  const villageIds = {};
+  for (const v of villageSeeds) {
+    const idText = await upsertVillage(v);
+    villageIds[v.slug] = idText;
+  }
+
+  // E2E_USER を COMMUNITY 村に VILLAGER として参加させる
+  // 冪等性: E2E_USER × その村の既存メンバーシップを全削除
+  const communityIdText = villageIds['e2e-test-community-village'];
+  await conn.execute(
+    `DELETE FROM village_memberships
+       WHERE village_id = UUID_TO_BIN(?)
+         AND subject_type = 'USER'
+         AND subject_id = ?`,
+    [communityIdText, E2E_USER]
+  );
+  await conn.execute(
+    `INSERT INTO village_memberships
+       (id, village_id, subject_type, subject_id, role, joined_at,
+        created_at, updated_at, version)
+     VALUES (UUID_TO_BIN(UUID()), UUID_TO_BIN(?), 'USER', ?, 'VILLAGER', ?, ?, ?, 0)`,
+    [communityIdText, E2E_USER, now, now, now]
+  );
+
+  // member_count_cache を再計算
+  for (const slug of Object.keys(villageIds)) {
+    const idText = villageIds[slug];
+    await conn.execute(
+      `UPDATE villages
+          SET member_count_cache = (
+            SELECT COUNT(*) FROM village_memberships
+             WHERE village_id = UUID_TO_BIN(?)
+               AND left_at IS NULL
+               AND banned_at IS NULL
+          )
+        WHERE id = UUID_TO_BIN(?)`,
+      [idText, idText]
+    );
+  }
+
+  console.log(`F17 villages inserted: 2 (OFFICIAL=${villageIds['e2e-test-official-village']}, COMMUNITY=${villageIds['e2e-test-community-village']})`);
+  console.log(`F17 memberships: E2E_USER joined COMMUNITY village as VILLAGER`);
+
+  // ============================================================
   // サマリー
   // ============================================================
   console.log('\n========================================');
@@ -592,6 +701,7 @@ function encryptForTest(plain) {
   console.log(`Activity result:   id=${activityResultId} (春季合宿2026, PUBLIC)`);
   console.log(`F18 wallet:        E2E_USER に カード 5 / グループ 2 を投入`);
   console.log(`F02.9 favorites:   E2E_USER に TEAM x2 + ORGANIZATION x1 = 3 件を投入`);
+  console.log(`F17 villages:      OFFICIAL x1 + COMMUNITY x1 を投入。E2E_USER は COMMUNITY 村に参加`);
   console.log('========================================');
 
   await conn.end();
