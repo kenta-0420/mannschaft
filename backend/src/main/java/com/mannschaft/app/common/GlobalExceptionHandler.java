@@ -372,6 +372,13 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_050", HttpStatus.INTERNAL_SERVER_ERROR),// VILLAGE_LOBBY_CHANNEL_INIT_FAILED
             // F17.1 Phase 1 B10 — 村内検索 + ダッシュボード集約（VILLAGE_051）
             Map.entry("VILLAGE_051", HttpStatus.UNPROCESSABLE_ENTITY), // VILLAGE_SEARCH_INVALID_QUERY
+            // F17.1 Phase 2 U6 — 練習試合・審判募集（VILLAGE_063〜068）
+            Map.entry("VILLAGE_063", HttpStatus.NOT_FOUND),            // MATCH_RECRUIT_NOT_FOUND（IDOR 対策で 404）
+            Map.entry("VILLAGE_064", HttpStatus.CONFLICT),             // MATCH_RECRUIT_NOT_OPEN
+            Map.entry("VILLAGE_065", HttpStatus.UNPROCESSABLE_ENTITY), // MATCH_RECRUIT_TIME_INVALID
+            Map.entry("VILLAGE_066", HttpStatus.NOT_FOUND),            // MATCH_APPLICATION_NOT_FOUND（IDOR 対策で 404）
+            Map.entry("VILLAGE_067", HttpStatus.CONFLICT),             // MATCH_APPLICATION_DUPLICATE
+            Map.entry("VILLAGE_068", HttpStatus.UNPROCESSABLE_ENTITY), // MATCH_APPLICATION_INVALID_STATUS
 
             // F18 個人ポイントカードウォレット（設計書 §6.3 整合）
             Map.entry("POINT_CARD_001", HttpStatus.FORBIDDEN),         // WALLET_NOT_ENABLED
