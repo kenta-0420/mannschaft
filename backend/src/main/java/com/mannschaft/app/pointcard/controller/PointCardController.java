@@ -3,10 +3,12 @@ package com.mannschaft.app.pointcard.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.pointcard.dto.CreateUserPointCardRequest;
+import com.mannschaft.app.pointcard.dto.ShareTokenResponse;
 import com.mannschaft.app.pointcard.dto.UpdateUserPointCardRequest;
 import com.mannschaft.app.pointcard.dto.UserPointCardDetailResponse;
 import com.mannschaft.app.pointcard.dto.UserPointCardListItemResponse;
 import com.mannschaft.app.pointcard.service.PointCardService;
+import com.mannschaft.app.pointcard.service.PointCardShareTokenService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -47,6 +49,7 @@ import java.util.UUID;
 public class PointCardController {
 
     private final PointCardService pointCardService;
+    private final PointCardShareTokenService shareTokenService;
 
     // ─────────────────────────────────────────────
     // 一覧
@@ -127,5 +130,22 @@ public class PointCardController {
         Long userId = SecurityUtils.getCurrentUserId();
         pointCardService.recordUsed(id, userId);
         return ResponseEntity.noContent().build();
+    }
+
+    // ─────────────────────────────────────────────
+    // 一時トークン発行（QR 自動特定 / Phase 3 第二陣 2A）
+    // ─────────────────────────────────────────────
+
+    @PostMapping("/{cardId}/share-tokens")
+    @Operation(summary = "QR 自動特定用 一時トークン発行",
+            description = "本人のカードに対して 5 分 TTL の UUID トークンを Valkey に発行する。"
+                    + "フロントは返却された token を QR コードに変換して店主側に提示し、"
+                    + "店主側端末が POST /api/v1/organizations/{orgId}/point-cards/resolve-by-token で消費する。"
+                    + "レート制限: 60/h/user。")
+    public ResponseEntity<ApiResponse<ShareTokenResponse>> createShareToken(
+            @PathVariable UUID cardId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        ShareTokenResponse response = shareTokenService.generate(userId, cardId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 }

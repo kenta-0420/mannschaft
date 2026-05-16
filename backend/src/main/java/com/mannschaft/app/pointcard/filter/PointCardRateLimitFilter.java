@@ -39,6 +39,8 @@ import java.util.regex.Pattern;
  *   <li>{@code POST   /api/v1/organizations/{orgId}/point-cards/{cardId}/stamps} ─ 300 req/時（2C 追加）</li>
  *   <li>{@code GET    /api/v1/organizations/{orgId}/point-cards/stamps} ─ 120 req/分（2C 追加）</li>
  *   <li>{@code GET    /api/v1/organizations/{orgId}/point-cards/{cardId}/stamps} ─ 120 req/分（2C 追加）</li>
+ *   <li>{@code POST   /api/v1/point-cards/{cardId}/share-tokens} ─ 60 req/時（P3 2A 追加）</li>
+ *   <li>{@code POST   /api/v1/organizations/{orgId}/point-cards/resolve-by-token} ─ 600 req/時（P3 2A 追加）</li>
  * </ul>
  *
  * <p>パターンは「具体度の高いものから順に」評価する。たとえば
@@ -64,6 +66,9 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     // 2C スタンプ押印 / 履歴
     private static final int STAMP_POST_RATE_PER_HOUR = 300;
     private static final int STAMP_LIST_RATE_PER_MINUTE = 120;
+    // P3 2A QR 自動特定（顧客側発行 / 店主側 resolve）
+    private static final int SHARE_TOKEN_GENERATE_RATE_PER_HOUR = 60;
+    private static final int SHARE_TOKEN_RESOLVE_RATE_PER_HOUR = 600;
 
     private static final Duration BUCKET_TTL = Duration.ofHours(2);
     private static final long MAX_BUCKETS = 10_000L;
@@ -110,6 +115,14 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     private static final Pattern ORG_STAMP_LIST_PATH =
             Pattern.compile("^/api/v1/organizations/\\d+/point-cards/stamps$");
 
+    /** P3 2A: 顧客側 一時トークン発行。{@code /share-tokens} は {@code CARD_ID_PATH} より具体度高い。 */
+    private static final Pattern SHARE_TOKEN_GENERATE_PATH =
+            Pattern.compile("^/api/v1/point-cards/[0-9a-fA-F-]{36}/share-tokens$");
+
+    /** P3 2A: 店主側 一時トークン resolve。 */
+    private static final Pattern SHARE_TOKEN_RESOLVE_PATH =
+            Pattern.compile("^/api/v1/organizations/\\d+/point-cards/resolve-by-token$");
+
     // ──── バケット ──────────────────────────────
     private final Cache<String, Bucket> providersBuckets;
     private final Cache<String, Bucket> settingsBuckets;
@@ -124,6 +137,10 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     private final Cache<String, Bucket> stampPostBuckets;
     private final Cache<String, Bucket> stampCardListBuckets;
     private final Cache<String, Bucket> stampOrgListBuckets;
+    /** P3 2A: 顧客側 一時トークン発行（60/h）。 */
+    private final Cache<String, Bucket> shareTokenGenerateBuckets;
+    /** P3 2A: 店主側 一時トークン resolve（600/h）。 */
+    private final Cache<String, Bucket> shareTokenResolveBuckets;
 
     public PointCardRateLimitFilter() {
         this.providersBuckets = newCache();
@@ -138,6 +155,8 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
         this.stampPostBuckets = newCache();
         this.stampCardListBuckets = newCache();
         this.stampOrgListBuckets = newCache();
+        this.shareTokenGenerateBuckets = newCache();
+        this.shareTokenResolveBuckets = newCache();
     }
 
     private static Cache<String, Bucket> newCache() {
@@ -194,6 +213,13 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
         if ("GET".equalsIgnoreCase(method) && ORG_STAMP_LIST_PATH.matcher(path).matches()) {
             return false;
         }
+        // P3 2A: 一時トークン発行 / resolve
+        if ("POST".equalsIgnoreCase(method) && SHARE_TOKEN_GENERATE_PATH.matcher(path).matches()) {
+            return false;
+        }
+        if ("POST".equalsIgnoreCase(method) && SHARE_TOKEN_RESOLVE_PATH.matcher(path).matches()) {
+            return false;
+        }
         return true;
     }
 
@@ -235,6 +261,16 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
         } else if ("GET".equalsIgnoreCase(method) && GROUPS_ROOT_PATH.matcher(path).matches()) {
             bucket = listGroupsBuckets.get(userKey, k -> newBucketPerMinute(LIST_GROUPS_RATE_PER_MINUTE));
             retryAfter = "60";
+        } else if ("POST".equalsIgnoreCase(method) && SHARE_TOKEN_GENERATE_PATH.matcher(path).matches()) {
+            // /share-tokens は CARD_USED_PATH（/used）と同じく CARD_ID_PATH より具体度が高い。
+            // パス末尾文字列が異なるので衝突しないが、CARD_USED_PATH と同じ精度なので近傍に配置する。
+            bucket = shareTokenGenerateBuckets.get(userKey, k -> newBucketPerHour(SHARE_TOKEN_GENERATE_RATE_PER_HOUR));
+            retryAfter = "3600";
+        } else if ("POST".equalsIgnoreCase(method) && SHARE_TOKEN_RESOLVE_PATH.matcher(path).matches()) {
+            // /resolve-by-token は固定文字列のため他のパターンと衝突しないが、
+            // 評価順序として ORG_STAMP_CARD_PATH などより先に判定して安全側に倒す。
+            bucket = shareTokenResolveBuckets.get(userKey, k -> newBucketPerHour(SHARE_TOKEN_RESOLVE_RATE_PER_HOUR));
+            retryAfter = "3600";
         } else if ("POST".equalsIgnoreCase(method) && CARD_USED_PATH.matcher(path).matches()) {
             bucket = recordUsedBuckets.get(userKey, k -> newBucketPerHour(RECORD_USED_RATE_PER_HOUR));
             retryAfter = "3600";
