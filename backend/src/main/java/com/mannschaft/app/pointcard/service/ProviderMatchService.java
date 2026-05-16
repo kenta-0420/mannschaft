@@ -1,8 +1,10 @@
 package com.mannschaft.app.pointcard.service;
 
 import com.mannschaft.app.pointcard.entity.PointCardProviderEntity;
+import com.mannschaft.app.pointcard.entity.PointCardProviderSynonymEntity;
 import com.mannschaft.app.pointcard.event.ProviderCacheRefreshEvent;
 import com.mannschaft.app.pointcard.repository.PointCardProviderRepository;
+import com.mannschaft.app.pointcard.repository.PointCardProviderSynonymRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +17,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * ユーザー入力 {@code display_name} を運営プロバイダーマスタと突き合わせる fuzzy match サービス。
@@ -26,6 +29,15 @@ import java.util.Optional;
  * {@code Map<String, PointCardProviderEntity>} を構築する。
  * 検索時は入力文字列を同じ正規化ルールにかけて完全一致でルックアップする
  * （O(1) かつメモリ数十 KB）。
+ *
+ * <h2>2 段フォールバック（Phase 4 P4-S2A 追加）</h2>
+ * <ol>
+ *   <li>第 1 段: provider 自体（{@code code} / {@code display_name}）の正規化キーで完全一致</li>
+ *   <li>第 2 段: ヒットしなければ {@code point_card_provider_synonyms} の
+ *       {@code synonym_normalized} を経由して provider を解決</li>
+ * </ol>
+ * <p>これにより「ドコモポイント」「Tポイント」のような口語・略称・旧称が
+ * 運営登録の Provider に紐付けられる。
  *
  * <h2>正規化ステップ（順序固定、§7.6.1）</h2>
  * <ol>
@@ -43,7 +55,7 @@ import java.util.Optional;
  * <h2>キャッシュ更新</h2>
  * <p>SYSTEM_ADMIN がプロバイダーを追加・編集・無効化した際に
  * {@link ProviderCacheRefreshEvent} が発火する。本サービスはそれを購読して
- * 全件再ロードする。
+ * provider / synonym の両キャッシュを全件再ロードする。
  */
 @Slf4j
 @Component
@@ -51,12 +63,21 @@ import java.util.Optional;
 public class ProviderMatchService {
 
     private final PointCardProviderRepository providerRepository;
+    private final PointCardProviderSynonymRepository synonymRepository;
 
     /** 正規化キー → プロバイダーのインデックス。書き込み時は synchronized で全置換。 */
     private volatile Map<String, PointCardProviderEntity> normalizedIndex = Map.of();
 
     /**
-     * 起動時に有効化されているプロバイダーを全件読み込み、正規化インデックスを構築する。
+     * 同義語の正規化キー → プロバイダー ID のインデックス。
+     * provider entity 自体ではなく ID を保持し、マッチ時に provider repository から
+     * 解決する（provider 側の更新で stale な参照を持たないため）。
+     */
+    private volatile Map<String, UUID> synonymIndex = Map.of();
+
+    /**
+     * 起動時に有効化されているプロバイダーと同義語辞書を全件読み込み、
+     * 正規化インデックスを構築する。
      */
     @PostConstruct
     public void init() {
@@ -64,7 +85,7 @@ public class ProviderMatchService {
     }
 
     /**
-     * プロバイダーマスタ更新通知を受信したらキャッシュを再構築する。
+     * プロバイダーマスタ更新通知を受信したら provider / synonym 両キャッシュを再構築する。
      */
     @EventListener(ProviderCacheRefreshEvent.class)
     public void onProviderCacheRefresh(ProviderCacheRefreshEvent event) {
@@ -77,6 +98,14 @@ public class ProviderMatchService {
      * 読み取り側は volatile 経由で常に過去 or 新しいインデックスを参照する（中間状態は見えない）。
      */
     public synchronized void loadCache() {
+        rebuildProviderIndex();
+        rebuildSynonymIndex();
+    }
+
+    /**
+     * provider マスタを再読込してインデックスを置き換える。
+     */
+    private void rebuildProviderIndex() {
         List<PointCardProviderEntity> all =
                 providerRepository.findAllByActiveTrueOrderByCategoryAscDisplayNameAsc();
         Map<String, PointCardProviderEntity> idx = new HashMap<>(all.size() * 2);
@@ -92,12 +121,40 @@ public class ProviderMatchService {
             }
         }
         this.normalizedIndex = Map.copyOf(idx);
-        log.info("ProviderMatchService キャッシュ構築完了: providers={}, normalizedKeys={}",
+        log.info("ProviderMatchService provider キャッシュ構築完了: providers={}, normalizedKeys={}",
                 all.size(), this.normalizedIndex.size());
     }
 
     /**
+     * 同義語辞書を再読込してインデックスを置き換える。
+     *
+     * <p>順序は {@code provider_id ASC, synonym_normalized ASC} で固定し、
+     * 同一の正規化キーが複数登録されている場合も {@code putIfAbsent} により
+     * 最古登録（決定論的）が採用される。
+     */
+    private void rebuildSynonymIndex() {
+        List<PointCardProviderSynonymEntity> all =
+                synonymRepository.findAllByOrderByProviderIdAscSynonymNormalizedAsc();
+        Map<String, UUID> idx = new HashMap<>(all.size());
+        for (PointCardProviderSynonymEntity syn : all) {
+            String key = syn.getSynonymNormalized();
+            if (key != null && !key.isEmpty()) {
+                idx.putIfAbsent(key, syn.getProviderId());
+            }
+        }
+        this.synonymIndex = Map.copyOf(idx);
+        log.info("ProviderMatchService synonym キャッシュ構築完了: synonyms={}, normalizedKeys={}",
+                all.size(), this.synonymIndex.size());
+    }
+
+    /**
      * ユーザー入力を正規化してマスタに対して fuzzy match する。
+     *
+     * <p>2 段フォールバック:
+     * <ol>
+     *   <li>provider 直マッチ（{@code code} / {@code display_name}）</li>
+     *   <li>同義語辞書経由マッチ（{@code is_active=false} の provider は除外）</li>
+     * </ol>
      *
      * @param userInput ユーザー入力（カード名）。null / 空文字は常に空で返す
      * @return マッチしたプロバイダー。マッチしない場合は {@link Optional#empty()}
@@ -110,7 +167,21 @@ public class ProviderMatchService {
         if (key.isEmpty()) {
             return Optional.empty();
         }
-        return Optional.ofNullable(normalizedIndex.get(key));
+
+        // 第 1 段: provider 直マッチ（code or display_name）
+        PointCardProviderEntity direct = normalizedIndex.get(key);
+        if (direct != null) {
+            return Optional.of(direct);
+        }
+
+        // 第 2 段: 同義語辞書経由
+        UUID synonymProviderId = synonymIndex.get(key);
+        if (synonymProviderId != null) {
+            return providerRepository.findById(synonymProviderId)
+                    .filter(p -> Boolean.TRUE.equals(p.getActive()));
+        }
+
+        return Optional.empty();
     }
 
     /**
@@ -150,9 +221,16 @@ public class ProviderMatchService {
     }
 
     /**
-     * テスト用: 現在のキャッシュサイズを返す。
+     * テスト用: 現在の provider キャッシュサイズを返す。
      */
     int currentCacheSize() {
         return normalizedIndex.size();
+    }
+
+    /**
+     * テスト用: 現在の synonym キャッシュサイズを返す。
+     */
+    int currentSynonymCacheSize() {
+        return synonymIndex.size();
     }
 }

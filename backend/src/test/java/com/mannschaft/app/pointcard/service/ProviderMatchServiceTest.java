@@ -1,10 +1,12 @@
 package com.mannschaft.app.pointcard.service;
 
 import com.mannschaft.app.pointcard.entity.PointCardProviderEntity;
+import com.mannschaft.app.pointcard.entity.PointCardProviderSynonymEntity;
 import com.mannschaft.app.pointcard.enums.PointCardCategory;
 import com.mannschaft.app.pointcard.enums.PointCardProviderType;
 import com.mannschaft.app.pointcard.event.ProviderCacheRefreshEvent;
 import com.mannschaft.app.pointcard.repository.PointCardProviderRepository;
+import com.mannschaft.app.pointcard.repository.PointCardProviderSynonymRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -13,9 +15,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -24,7 +29,8 @@ import static org.mockito.BDDMockito.given;
  * {@link ProviderMatchService} の単体テスト。
  *
  * <p>設計書 §7.6.3 のマッチ例を中心に、表記揺れの正規化が同一プロバイダーに
- * 紐づくこと、キャッシュ更新イベントで再ロードされることを検証する。
+ * 紐づくこと、キャッシュ更新イベントで再ロードされること、
+ * Phase 4 P4-S2A の 2 段フォールバック（同義語辞書）が機能することを検証する。
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ProviderMatchService 単体テスト")
@@ -32,6 +38,9 @@ class ProviderMatchServiceTest {
 
     @Mock
     private PointCardProviderRepository providerRepository;
+
+    @Mock
+    private PointCardProviderSynonymRepository synonymRepository;
 
     @InjectMocks
     private ProviderMatchService providerMatchService;
@@ -41,7 +50,7 @@ class ProviderMatchServiceTest {
      * code は半角英小文字、display_name は半角英大文字＋カタカナで保存される想定。
      */
     private PointCardProviderEntity buildDpoint() {
-        return PointCardProviderEntity.builder()
+        PointCardProviderEntity p = PointCardProviderEntity.builder()
                 .code("dpoint")
                 .displayName("dポイント")
                 .category(PointCardCategory.OTHER)
@@ -49,10 +58,14 @@ class ProviderMatchServiceTest {
                 .brandColor("#CC0033")
                 .active(Boolean.TRUE)
                 .build();
+        // UuidV7CharEntity の id は通常 @PrePersist で発番されるが、
+        // テストでは ReflectionTestUtils で直接セットして findById のキーと一致させる。
+        ReflectionTestUtils.setField(p, "id", DPOINT_ID);
+        return p;
     }
 
     private PointCardProviderEntity buildTokyu() {
-        return PointCardProviderEntity.builder()
+        PointCardProviderEntity p = PointCardProviderEntity.builder()
                 .code("tokyu_point")
                 .displayName("東急ポイント")
                 .category(PointCardCategory.RETAIL)
@@ -60,12 +73,32 @@ class ProviderMatchServiceTest {
                 .brandColor("#E60012")
                 .active(Boolean.TRUE)
                 .build();
+        ReflectionTestUtils.setField(p, "id", TOKYU_ID);
+        return p;
+    }
+
+    /** 固定 ID（テスト内でシノニムの参照先と一致させるため）。 */
+    private static final UUID DPOINT_ID = UUID.fromString("00000000-0000-7000-8000-000000000001");
+    private static final UUID TOKYU_ID = UUID.fromString("00000000-0000-7000-8000-000000000002");
+    private static final UUID VPOINT_ID = UUID.fromString("00000000-0000-7000-8000-000000000003");
+
+    /**
+     * シノニム生成ヘルパー。
+     */
+    private PointCardProviderSynonymEntity buildSynonym(UUID providerId, String display, String normalized) {
+        return PointCardProviderSynonymEntity.builder()
+                .providerId(providerId)
+                .synonymDisplay(display)
+                .synonymNormalized(normalized)
+                .build();
     }
 
     @BeforeEach
     void setUp() {
         given(providerRepository.findAllByActiveTrueOrderByCategoryAscDisplayNameAsc())
                 .willReturn(List.of(buildDpoint(), buildTokyu()));
+        given(synonymRepository.findAllByOrderByProviderIdAscSynonymNormalizedAsc())
+                .willReturn(Collections.emptyList());
         providerMatchService.init();
     }
 
@@ -204,6 +237,156 @@ class ProviderMatchServiceTest {
 
             assertThat(providerMatchService.matchProvider("dポイント")).isEmpty();
             assertThat(providerMatchService.matchProvider("東急ポイント")).isPresent();
+        }
+    }
+
+    @Nested
+    @DisplayName("同義語辞書フォールバック (Phase 4 P4-S2A)")
+    class SynonymFallback {
+
+        /**
+         * シノニム経由マッチ: 「ドコモポイント」→ dpoint プロバイダー返却。
+         */
+        @Test
+        @DisplayName("シノニム『ドコモポイント』は dpoint にマッチする")
+        void synonymDocomoPoint_matchesDpoint() {
+            // 「ドコモポイント」の正規化 = どこもぽいんと
+            String normalizedKey = ProviderMatchService.normalize("ドコモポイント");
+            given(synonymRepository.findAllByOrderByProviderIdAscSynonymNormalizedAsc())
+                    .willReturn(List.of(buildSynonym(DPOINT_ID, "ドコモポイント", normalizedKey)));
+            given(providerRepository.findById(DPOINT_ID))
+                    .willReturn(Optional.of(buildDpoint()));
+
+            providerMatchService.onProviderCacheRefresh(new ProviderCacheRefreshEvent());
+
+            Optional<PointCardProviderEntity> result =
+                    providerMatchService.matchProvider("ドコモポイント");
+            assertThat(result).isPresent();
+            assertThat(result.get().getCode()).isEqualTo("dpoint");
+        }
+
+        /**
+         * シノニム経由マッチ: 「Tポイント」→ vpoint プロバイダー返却。
+         * Tポイントは 2024 年に V ポイント統合済みのため運営プロバイダーは vpoint。
+         */
+        @Test
+        @DisplayName("シノニム『Tポイント』は vpoint にマッチする")
+        void synonymTPoint_matchesVpoint() {
+            // vpoint プロバイダーは正規化インデックスには含まれない（synonyms 経由のみで解決）
+            PointCardProviderEntity vpoint = PointCardProviderEntity.builder()
+                    .code("vpoint")
+                    .displayName("Vポイント")
+                    .category(PointCardCategory.OTHER)
+                    .type(PointCardProviderType.EXTERNAL)
+                    .active(Boolean.TRUE)
+                    .build();
+            ReflectionTestUtils.setField(vpoint, "id", VPOINT_ID);
+
+            given(providerRepository.findAllByActiveTrueOrderByCategoryAscDisplayNameAsc())
+                    .willReturn(List.of(buildDpoint(), buildTokyu(), vpoint));
+            String normalizedKey = ProviderMatchService.normalize("Tポイント");
+            given(synonymRepository.findAllByOrderByProviderIdAscSynonymNormalizedAsc())
+                    .willReturn(List.of(buildSynonym(VPOINT_ID, "Tポイント", normalizedKey)));
+            given(providerRepository.findById(VPOINT_ID))
+                    .willReturn(Optional.of(vpoint));
+
+            providerMatchService.onProviderCacheRefresh(new ProviderCacheRefreshEvent());
+
+            Optional<PointCardProviderEntity> result =
+                    providerMatchService.matchProvider("Tポイント");
+            assertThat(result).isPresent();
+            assertThat(result.get().getCode()).isEqualTo("vpoint");
+        }
+
+        /**
+         * シノニム未登録: 「適当な単語」→ Optional.empty()
+         */
+        @Test
+        @DisplayName("シノニム未登録の入力は Optional.empty を返す")
+        void unknownSynonym_returnsEmpty() {
+            given(synonymRepository.findAllByOrderByProviderIdAscSynonymNormalizedAsc())
+                    .willReturn(List.of(buildSynonym(DPOINT_ID, "ドコモポイント",
+                            ProviderMatchService.normalize("ドコモポイント"))));
+            providerMatchService.onProviderCacheRefresh(new ProviderCacheRefreshEvent());
+
+            Optional<PointCardProviderEntity> result =
+                    providerMatchService.matchProvider("適当な未登録カード");
+            assertThat(result).isEmpty();
+        }
+
+        /**
+         * is_active=false プロバイダーへのシノニム → Optional.empty()
+         */
+        @Test
+        @DisplayName("is_active=false プロバイダーへのシノニムマッチは除外される")
+        void synonymToInactiveProvider_returnsEmpty() {
+            // is_active=false の dpoint を返す
+            PointCardProviderEntity inactiveDpoint = PointCardProviderEntity.builder()
+                    .code("dpoint")
+                    .displayName("dポイント")
+                    .category(PointCardCategory.OTHER)
+                    .type(PointCardProviderType.EXTERNAL)
+                    .active(Boolean.FALSE)
+                    .build();
+            ReflectionTestUtils.setField(inactiveDpoint, "id", DPOINT_ID);
+
+            String normalizedKey = ProviderMatchService.normalize("ドコモポイント");
+            given(synonymRepository.findAllByOrderByProviderIdAscSynonymNormalizedAsc())
+                    .willReturn(List.of(buildSynonym(DPOINT_ID, "ドコモポイント", normalizedKey)));
+            given(providerRepository.findById(DPOINT_ID))
+                    .willReturn(Optional.of(inactiveDpoint));
+
+            providerMatchService.onProviderCacheRefresh(new ProviderCacheRefreshEvent());
+
+            Optional<PointCardProviderEntity> result =
+                    providerMatchService.matchProvider("ドコモポイント");
+            assertThat(result).isEmpty();
+        }
+
+        /**
+         * ProviderCacheRefreshEvent 後にシノニムキャッシュもリビルド。
+         */
+        @Test
+        @DisplayName("ProviderCacheRefreshEvent で synonym キャッシュも再構築される")
+        void onRefresh_rebuildsSynonymIndex() {
+            // 初期は synonyms 空
+            assertThat(providerMatchService.matchProvider("ドコモポイント")).isEmpty();
+
+            // 新たに synonyms を投入してリフレッシュ
+            String normalizedKey = ProviderMatchService.normalize("ドコモポイント");
+            given(synonymRepository.findAllByOrderByProviderIdAscSynonymNormalizedAsc())
+                    .willReturn(List.of(buildSynonym(DPOINT_ID, "ドコモポイント", normalizedKey)));
+            given(providerRepository.findById(DPOINT_ID))
+                    .willReturn(Optional.of(buildDpoint()));
+
+            providerMatchService.onProviderCacheRefresh(new ProviderCacheRefreshEvent());
+
+            // synonym 経由でマッチするようになる
+            Optional<PointCardProviderEntity> result =
+                    providerMatchService.matchProvider("ドコモポイント");
+            assertThat(result).isPresent();
+            assertThat(result.get().getCode()).isEqualTo("dpoint");
+        }
+
+        /**
+         * 完全一致 > シノニム の優先順位。
+         * provider.display_name と同義語が衝突した場合は provider 直マッチ優先。
+         */
+        @Test
+        @DisplayName("provider 直マッチがシノニムより優先される")
+        void directMatchTakesPriorityOverSynonym() {
+            // dpoint と衝突するシノニム（誤って tokyu に紐付け）を登録
+            String normalizedDpoint = ProviderMatchService.normalize("dポイント");
+            given(synonymRepository.findAllByOrderByProviderIdAscSynonymNormalizedAsc())
+                    .willReturn(List.of(buildSynonym(TOKYU_ID, "dポイント (誤紐付け)", normalizedDpoint)));
+
+            providerMatchService.onProviderCacheRefresh(new ProviderCacheRefreshEvent());
+
+            // 「dポイント」は provider 直マッチで dpoint を返す（tokyu ではない）
+            Optional<PointCardProviderEntity> result =
+                    providerMatchService.matchProvider("dポイント");
+            assertThat(result).isPresent();
+            assertThat(result.get().getCode()).isEqualTo("dpoint");
         }
     }
 }
