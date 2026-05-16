@@ -3,7 +3,9 @@ package com.mannschaft.app.pointcard.dto;
 import com.mannschaft.app.pointcard.entity.PointCardProviderEntity;
 import com.mannschaft.app.pointcard.entity.UserPointCardEntity;
 import com.mannschaft.app.pointcard.enums.BarcodeFormat;
+import com.mannschaft.app.pointcard.enums.PointCardProviderType;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -16,6 +18,10 @@ import java.util.UUID;
  * <p>{@code last4} だけは識別性が高くリスクが小さいため平文で返す。
  * 一覧画面でユーザーが「あ、これは違う」と即座に気付けるよう、
  * {@code displayName} は復号後の値を返す。
+ *
+ * <p>Phase 3 で追加: {@code providerType} / {@code providerOrganizationId} /
+ * {@code stampCount} / {@code balance}。残高型・スタンプ型カードの一覧描画で
+ * 現在残高 / スタンプ数を即時表示するためにフロント側へ公開する。
  */
 public record UserPointCardListItemResponse(
         UUID id,
@@ -30,7 +36,11 @@ public record UserPointCardListItemResponse(
         boolean favorite,
         int displayOrder,
         OffsetDateTime lastUsedAt,
-        OffsetDateTime createdAt
+        OffsetDateTime createdAt,
+        PointCardProviderType providerType,
+        Long providerOrganizationId,
+        Integer stampCount,
+        BigDecimal balance
 ) {
 
     /**
@@ -51,7 +61,11 @@ public record UserPointCardListItemResponse(
                 card.isFavorite(),
                 card.getDisplayOrder(),
                 card.getLastUsedAt(),
-                card.getCreatedAt()
+                card.getCreatedAt(),
+                provider != null ? provider.getType() : null,
+                provider != null ? provider.getOrganizationId() : null,
+                card.getStampCount(),
+                card.getBalance()
         );
     }
 }
