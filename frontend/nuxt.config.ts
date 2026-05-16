@@ -173,6 +173,7 @@ export default defineNuxtConfig({
           'ja/repair_plan.json',
           'ja/succession.json',
           'ja/wallet.json',
+          'ja/village.json',
         ],
       },
       {
@@ -217,6 +218,7 @@ export default defineNuxtConfig({
           'en/repair_plan.json',
           'en/succession.json',
           'en/wallet.json',
+          'en/village.json',
         ],
       },
       {
@@ -261,6 +263,7 @@ export default defineNuxtConfig({
           'zh/repair_plan.json',
           'zh/succession.json',
           'zh/wallet.json',
+          'zh/village.json',
         ],
       },
       {
@@ -305,6 +308,7 @@ export default defineNuxtConfig({
           'ko/repair_plan.json',
           'ko/succession.json',
           'ko/wallet.json',
+          'ko/village.json',
         ],
       },
       {
@@ -349,6 +353,7 @@ export default defineNuxtConfig({
           'es/repair_plan.json',
           'es/succession.json',
           'es/wallet.json',
+          'es/village.json',
         ],
       },
       {
@@ -393,6 +398,7 @@ export default defineNuxtConfig({
           'de/repair_plan.json',
           'de/succession.json',
           'de/wallet.json',
+          'de/village.json',
         ],
       },
     ],
