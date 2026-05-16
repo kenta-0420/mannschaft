@@ -1,5 +1,34 @@
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+
+// ============================================================
+// F18 ポイントカードウォレット用 AES-256-GCM 暗号化ヘルパー
+// ------------------------------------------------------------
+// バックエンド `EncryptionService`（AES/GCM/NoPadding、IV 12bytes、
+// Auth tag 128bit）と完全に互換。
+// 鍵は application-local.yml の `mannschaft.encryption.key`
+// （Base64 エンコードされた 32 バイト鍵）と同じ値を使用する。
+// ============================================================
+const F18_ENCRYPTION_KEY_BASE64 = 'pE8ozQmki8gdQ1nCFC86zcK1SSNJuVRLd7uhdpO4ihc=';
+const F18_KEY_BYTES = Buffer.from(F18_ENCRYPTION_KEY_BASE64, 'base64');
+if (F18_KEY_BYTES.length !== 32) {
+  throw new Error('F18 encryption key must decode to 32 bytes');
+}
+
+/**
+ * 平文文字列を AES-256-GCM で暗号化し、Base64 文字列として返す。
+ * フォーマット: Base64(IV[12] || ciphertext || authTag[16])
+ * バックエンド `EncryptionService#encrypt` と同一の出力形式。
+ */
+function encryptForTest(plain) {
+  if (plain === null || plain === undefined) return null;
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', F18_KEY_BYTES, iv);
+  const enc = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, enc, tag]).toString('base64');
+}
 
 (async () => {
   const conn = await mysql.createConnection({
@@ -400,6 +429,110 @@ const bcrypt = require('bcryptjs');
   console.log(`Activity result created/found: id=${activityResultId}`);
 
   // ============================================================
+  // F18. ポイントカードウォレット — E2E_USER 用シード
+  //   - point_card_user_settings: 規約同意済み行を 1 件
+  //   - user_point_cards: 5 枚（東急 / 楽天 / クリーニング屋 / ドラッグストア / コンビニ）
+  //   - point_card_groups: 2 グループ（コンビニ / ドラッグストア）
+  //   - point_card_group_items: 各グループに 1〜2 枚を紐付け
+  //
+  //   VARBINARY 暗号化カラムは encryptForTest()（AES-256-GCM）で投入する。
+  //   E2E_USER の既存 F18 データを DELETE してから INSERT することで冪等化する。
+  // ============================================================
+  console.log('\n--- Seeding F18 point card wallet ---');
+
+  // 既存データを掃除（外部キー順: items → groups, cards, settings）
+  await conn.execute(
+    `DELETE FROM point_card_group_items
+       WHERE group_id IN (SELECT id FROM point_card_groups WHERE user_id = ?)`,
+    [E2E_USER]
+  );
+  await conn.execute('DELETE FROM point_card_groups WHERE user_id = ?', [E2E_USER]);
+  await conn.execute('DELETE FROM user_point_cards WHERE user_id = ?', [E2E_USER]);
+  await conn.execute('DELETE FROM point_card_user_settings WHERE user_id = ?', [E2E_USER]);
+
+  // 規約同意済み設定
+  await conn.execute(
+    `INSERT INTO point_card_user_settings
+       (user_id, is_enabled, terms_accepted_at, terms_version, require_biometric_on_show,
+        created_at, updated_at)
+     VALUES (?, 1, ?, ?, 0, ?, ?)`,
+    [E2E_USER, now, 'v1.0.0', now, now]
+  );
+
+  // カード 5 枚定義
+  const f18Cards = [
+    { name: '東急ポイント',       barcode: '1234567890123', last4: '0123', format: 'CODE128', favorite: true,  order: 0 },
+    { name: '楽天ポイントカード', barcode: '9876543210987', last4: '0987', format: 'CODE128', favorite: true,  order: 1 },
+    { name: 'クリーニング屋',     barcode: '5555000011112222', last4: '2222', format: 'CODE128', favorite: false, order: 2 },
+    { name: 'マツモトキヨシ',     barcode: '7777888899990000', last4: '0000', format: 'CODE128', favorite: false, order: 3 },
+    { name: 'セブンイレブン',     barcode: '1111222233334444', last4: '4444', format: 'CODE128', favorite: false, order: 4 },
+  ];
+
+  const f18CardIds = [];
+  for (const c of f18Cards) {
+    const id = crypto.randomUUID();
+    await conn.execute(
+      `INSERT INTO user_point_cards
+         (id, user_id, provider_id,
+          display_name, nickname, barcode_value, barcode_format, last4, memo,
+          is_favorite, display_order, balance, stamp_count, last_used_at,
+          created_at, updated_at)
+       VALUES (?, ?, NULL,
+               ?, NULL, ?, ?, ?, NULL,
+               ?, ?, NULL, NULL, NULL,
+               ?, ?)`,
+      [
+        id, E2E_USER,
+        encryptForTest(c.name),
+        encryptForTest(c.barcode),
+        c.format,
+        c.last4,
+        c.favorite ? 1 : 0,
+        c.order,
+        now, now,
+      ]
+    );
+    f18CardIds.push({ id, name: c.name });
+  }
+  console.log(`F18 cards inserted: ${f18CardIds.length}`);
+
+  // グループ 2 個
+  const conveniGroupId = crypto.randomUUID();
+  const drugGroupId = crypto.randomUUID();
+
+  await conn.execute(
+    `INSERT INTO point_card_groups
+       (id, user_id, name, emoji, display_order, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [conveniGroupId, E2E_USER, 'コンビニ', '🏪', 0, now, now]
+  );
+  await conn.execute(
+    `INSERT INTO point_card_groups
+       (id, user_id, name, emoji, display_order, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [drugGroupId, E2E_USER, 'ドラッグストア', '💊', 1, now, now]
+  );
+
+  // グループに紐付け
+  //   コンビニ: セブンイレブン
+  //   ドラッグストア: マツモトキヨシ
+  const conveniCard = f18CardIds.find((c) => c.name === 'セブンイレブン');
+  const drugCard = f18CardIds.find((c) => c.name === 'マツモトキヨシ');
+  await conn.execute(
+    `INSERT INTO point_card_group_items
+       (id, group_id, card_id, display_order, created_at)
+     VALUES (?, ?, ?, ?, ?)`,
+    [crypto.randomUUID(), conveniGroupId, conveniCard.id, 0, now]
+  );
+  await conn.execute(
+    `INSERT INTO point_card_group_items
+       (id, group_id, card_id, display_order, created_at)
+     VALUES (?, ?, ?, ?, ?)`,
+    [crypto.randomUUID(), drugGroupId, drugCard.id, 0, now]
+  );
+  console.log(`F18 groups inserted: 2 (コンビニ, ドラッグストア)`);
+
+  // ============================================================
   // サマリー
   // ============================================================
   console.log('\n========================================');
@@ -427,6 +560,7 @@ const bcrypt = require('bcryptjs');
   console.log(`Notifications: 7`);
   console.log(`Activity template: id=${activityTemplateId} (試合結果)`);
   console.log(`Activity result:   id=${activityResultId} (春季合宿2026, PUBLIC)`);
+  console.log(`F18 wallet:        E2E_USER に カード 5 / グループ 2 を投入`);
   console.log('========================================');
 
   await conn.end();

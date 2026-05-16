@@ -1,6 +1,6 @@
 package com.mannschaft.app.pointcard.entity;
 
-import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.common.entity.UuidV7CharEntity;
 import com.mannschaft.app.pointcard.enums.BarcodeFormat;
 import com.mannschaft.app.pointcard.enums.PointCardCategory;
 import com.mannschaft.app.pointcard.enums.PointCardProviderType;
@@ -43,7 +43,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
-public class PointCardProviderEntity extends UuidV7Entity {
+public class PointCardProviderEntity extends UuidV7CharEntity {
 
     /** 一意コード（例: tokyu_point, dpoint）。fuzzy match の正規化マッチ対象。 */
     @Column(name = "code", nullable = false, length = 50, unique = true)

@@ -1,6 +1,6 @@
 package com.mannschaft.app.pointcard.entity;
 
-import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.common.entity.UuidV7CharEntity;
 import com.mannschaft.app.pointcard.enums.BalanceOperationType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,6 +15,8 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -40,14 +42,16 @@ import java.util.UUID;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
-public class PointCardBalanceEventEntity extends UuidV7Entity {
+public class PointCardBalanceEventEntity extends UuidV7CharEntity {
 
     /** 対象カード ID（user_point_cards.id 参照）。 */
     @Column(name = "card_id", nullable = false, columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
     private UUID cardId;
 
     /** プロバイダー ID（point_card_providers.id 参照、SELF_ISSUED_BALANCE 種別）。 */
     @Column(name = "provider_id", nullable = false, columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
     private UUID providerId;
 
     /** プロバイダーを発行した組織 ID（クロスドメイン弱参照）。 */
@@ -78,6 +82,7 @@ public class PointCardBalanceEventEntity extends UuidV7Entity {
      * REFUND 以外では NULL。元 event 削除時は ON DELETE SET NULL（自己参照 FK）。
      */
     @Column(name = "refund_of_event_id", columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
     private UUID refundOfEventId;
 
     /** 操作を実施した店員ユーザー ID（クロスドメイン弱参照）。 */
