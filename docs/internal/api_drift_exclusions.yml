@@ -52,6 +52,9 @@ exclude_patterns:
   - pattern: "/api/v1/admin/debug/**"
     reason: "デバッグ専用エンドポイント（dev/staging 専用）"
     category: debug
+  - pattern: "/api/v1/admin/stripe/**"
+    reason: "Stripe 決済連携の管理用 API（webhook 設定・操作）。Stripe ダッシュボード仕様が一次資料のため設計書化対象外"
+    category: external
 
   # === Webhook 受信エンドポイント（外部システム連携） ===
   - pattern: "/api/v1/webhooks/incoming/**"
