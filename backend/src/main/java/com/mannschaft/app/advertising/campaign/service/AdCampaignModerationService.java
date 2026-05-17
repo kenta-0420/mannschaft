@@ -1,15 +1,22 @@
 package com.mannschaft.app.advertising.campaign.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.advertising.campaign.dto.BlockCampaignRequest;
 import com.mannschaft.app.advertising.campaign.dto.ReviewQueueItemResponse;
 import com.mannschaft.app.advertising.campaign.entity.AdCampaignModerationLog;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
+import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaignChannel;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.enums.AdModerationAction;
 import com.mannschaft.app.advertising.campaign.enums.AdModerationStatus;
 import com.mannschaft.app.advertising.campaign.exception.AdCampaignErrorCode;
 import com.mannschaft.app.advertising.campaign.repository.AdCampaignModerationLogRepository;
+import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignChannelRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRepository;
+import com.mannschaft.app.advertising.campaign.service.moderation.DetectedNgWord;
+import com.mannschaft.app.advertising.campaign.service.moderation.ModerationCheckResult;
+import com.mannschaft.app.advertising.campaign.service.moderation.SuggestedModerationAction;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,9 +26,13 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * F09.17 Phase 11-a メッセージ型キャンペーン モデレーションサービス。
@@ -41,8 +52,13 @@ public class AdCampaignModerationService {
     private static final Set<AdCampaignStatus> APPROVE_ALLOWED_STATUSES =
             Set.of(AdCampaignStatus.DRAFT, AdCampaignStatus.REVIEW);
 
+    /** {@code ng_words_detected} JSON シリアライズ用 (Spring Boot 既定 ObjectMapper を利用)。 */
+    private static final ObjectMapper NG_WORDS_JSON_MAPPER = new ObjectMapper();
+
     private final AdMessagingCampaignRepository campaignRepository;
     private final AdCampaignModerationLogRepository moderationLogRepository;
+    private final AdMessagingCampaignChannelRepository campaignChannelRepository;
+    private final AdContentModerator contentModerator;
 
     /**
      * SYSTEM_ADMIN 審査キューを取得する。
@@ -123,6 +139,108 @@ public class AdCampaignModerationService {
                 .action(AdModerationAction.BLOCKED)
                 .reason(reason)
                 .build());
+    }
+
+    /**
+     * F09.17 Phase 11-b: submit 状態遷移時に呼ばれる自動 NG 検知エントリポイント。
+     *
+     * <p>第二陣 ζ のキャンペーン状態遷移処理から呼び出される。
+     * 1 キャンペーンに紐づく全 {@code AdMessagingCampaignChannel} の {@code bodyMarkdown} を
+     * {@link AdContentModerator#check(String)} に渡し、結果を集約してキャンペーンの
+     * {@code moderation_status} を更新する。</p>
+     *
+     * <p>集約ロジック:
+     * <ul>
+     *   <li>いずれかチャネルで {@code AUTO_BLOCK} 検出 → キャンペーン全体を {@code BLOCKED}
+     *       (+ {@code blockedReason} に NG 語サマリ)。</li>
+     *   <li>{@code AUTO_BLOCK} なし + いずれかチャネルで {@code AUTO_FLAG} 検出
+     *       → {@code AUTO_FLAGGED} (SYSTEM_ADMIN 手動レビュー待ち)。</li>
+     *   <li>すべて {@code AUTO_PASS} → {@code AUTO_PASSED}。</li>
+     * </ul>
+     * </p>
+     *
+     * <p>{@code ad_campaign_moderation_logs} には集約結果 1 行を残す。
+     * {@code ng_words_detected} 列には全チャネルの検出 NG ワード配列を JSON で保存する。</p>
+     *
+     * @param campaignId 対象キャンペーン ID (存在しなければ {@link AdCampaignErrorCode#AD_CAMPAIGN_NOT_FOUND})
+     */
+    @Transactional
+    public void autoFlagOnSubmit(UUID campaignId) {
+        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId);
+
+        List<AdMessagingCampaignChannel> channels = campaignChannelRepository.findByCampaignId(campaignId);
+
+        boolean anyBlock = false;
+        boolean anyWarn = false;
+        // 重複 word を排除しつつ挿入順を保持するため LinkedHashMap を使う
+        Map<String, DetectedNgWord> detectedAggregate = new LinkedHashMap<>();
+
+        for (AdMessagingCampaignChannel channel : channels) {
+            ModerationCheckResult result = contentModerator.check(channel.getBodyMarkdown());
+            for (DetectedNgWord d : result.detectedWords()) {
+                detectedAggregate.putIfAbsent(d.word(), d);
+            }
+            if (result.suggestedAction() == SuggestedModerationAction.AUTO_BLOCK) {
+                anyBlock = true;
+            } else if (result.suggestedAction() == SuggestedModerationAction.AUTO_FLAG) {
+                anyWarn = true;
+            }
+        }
+
+        List<DetectedNgWord> allDetected = new ArrayList<>(detectedAggregate.values());
+
+        AdModerationAction logAction;
+        if (anyBlock) {
+            campaign.setModerationStatus(AdModerationStatus.BLOCKED);
+            campaign.setStatus(AdCampaignStatus.BLOCKED);
+            campaign.setBlockedReason(buildBlockedReason(allDetected));
+            logAction = AdModerationAction.BLOCKED;
+        } else if (anyWarn) {
+            campaign.setModerationStatus(AdModerationStatus.AUTO_FLAGGED);
+            logAction = AdModerationAction.AUTO_FLAGGED;
+        } else {
+            campaign.setModerationStatus(AdModerationStatus.AUTO_PASSED);
+            logAction = AdModerationAction.AUTO_PASSED;
+        }
+        campaignRepository.save(campaign);
+
+        AdCampaignModerationLog.AdCampaignModerationLogBuilder logBuilder = AdCampaignModerationLog.builder()
+                .campaignId(campaignId)
+                .moderatorUserId(null) // 自動検知のため NULL
+                .action(logAction);
+
+        if (!allDetected.isEmpty()) {
+            logBuilder.ngWordsDetected(serializeDetectedNgWords(allDetected));
+        }
+        if (logAction == AdModerationAction.BLOCKED) {
+            logBuilder.reason(buildBlockedReason(allDetected));
+        }
+        moderationLogRepository.save(logBuilder.build());
+    }
+
+    /** BLOCK 検出時の {@code blocked_reason} を生成する (NG 語をカンマ区切り)。 */
+    private String buildBlockedReason(List<DetectedNgWord> detected) {
+        List<String> blockWords = detected.stream()
+                .filter(d -> d.severity() == com.mannschaft.app.advertising.campaign.enums.AdNgWordSeverity.BLOCK)
+                .map(DetectedNgWord::word)
+                .toList();
+        String summary = blockWords.isEmpty()
+                ? detected.stream().map(DetectedNgWord::word).collect(Collectors.joining(", "))
+                : String.join(", ", blockWords);
+        return "自動 NG 検知によりブロック: " + summary;
+    }
+
+    /** {@code DetectedNgWord} のリストを JSON 文字列にシリアライズする。失敗時は最小限の fallback。 */
+    private String serializeDetectedNgWords(List<DetectedNgWord> detected) {
+        try {
+            return NG_WORDS_JSON_MAPPER.writeValueAsString(detected);
+        } catch (JsonProcessingException e) {
+            // 万一の失敗時も moderation_logs 行は残せるよう Java の toString fallback
+            return "[" + detected.stream()
+                    .map(d -> "{\"word\":\"" + d.word() + "\",\"category\":\"" + d.category()
+                            + "\",\"severity\":\"" + d.severity() + "\"}")
+                    .collect(Collectors.joining(",")) + "]";
+        }
     }
 
     /**

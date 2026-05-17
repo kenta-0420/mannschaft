@@ -26,13 +26,10 @@ import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -43,17 +40,18 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * フレンドチーム関係サービス（F01.5 Phase 1）。
+ * フレンドチーム関係ファサードサービス（F01.5 Phase 1）。
  *
  * <p>
- * チーム間のフォロー・フォロー解除・相互フォロー検知・フレンド一覧取得・
- * 公開設定変更を担当する。フレンドフォルダ CRUD および転送実行は別サービス
- * （{@code TeamFriendFolderService} / {@code FriendContentForwardService}）
- * に分離する想定。
+ * チーム間のフォロー・フォロー解除・相互フォロー検知と、それに伴う監査ログ・通知発火を
+ * 担当する。フレンド一覧取得は {@link TeamFriendQueryService} に、
+ * 公開設定変更は {@link TeamFriendVisibilityService} に委譲する
+ * （リファクタリング第4弾 Phase 4-B で分離）。
  * </p>
  *
  * <p>
- * 設計書: {@code docs/features/F01.5_team_friend_relationships.md}
+ * 設計書: {@code docs/features/F01.5_team_friend_relationships.md}<br>
+ * リファクタ設計書: {@code docs/refactoring/phase4_overview.md} §2
  * </p>
  *
  * <p>
@@ -92,6 +90,8 @@ public class TeamFriendsService {
     private final AuditLogService auditLogService;
     private final NotificationHelper notificationHelper;
     private final UserRoleRepository userRoleRepository;
+    private final TeamFriendQueryService teamFriendQueryService;
+    private final TeamFriendVisibilityService teamFriendVisibilityService;
 
     // ═════════════════════════════════════════════════════════════
     // 1. チーム間フォロー + 相互フォロー検知
@@ -439,79 +439,26 @@ public class TeamFriendsService {
     }
 
     // ═════════════════════════════════════════════════════════════
-    // 3. フレンド一覧取得
+    // 3. フレンド一覧取得（TeamFriendQueryService へ委譲）
     // ═════════════════════════════════════════════════════════════
 
     /**
-     * 自チームのフレンドチーム一覧を取得する。
-     *
-     * <p>
-     * 認可: {@code teamId} チームに所属する全メンバー（MEMBER 以上。SUPPORTER も
-     * 閲覧可。ただし SUPPORTER は {@code is_public = TRUE} のフレンドのみ）。
-     * {@link AccessControlService#checkMembership(Long, Long, String)} で
-     * 所属チェックを行い、SUPPORTER 判定は Controller / Service 層のパラメータ
-     * {@code publicOnly} で絞り込む。
-     * </p>
+     * 自チームのフレンドチーム一覧を取得する。{@link TeamFriendQueryService} へ委譲する。
      *
      * @param teamId     自チーム ID
      * @param userId     閲覧者ユーザー ID
      * @param pageable   ページング
      * @param publicOnly {@code true} の場合 {@code is_public = TRUE} のみ返却（SUPPORTER 向け）
      * @return フレンドチーム一覧
-     * @throws BusinessException 非メンバー時（403）
      */
-    @Cacheable(
-            value = "teamFriendList",
-            key = "#teamId + ':' + #pageable.pageNumber + ':' + #pageable.pageSize + ':' + #publicOnly",
-            condition = "#pageable != null"
-    )
     public Page<TeamFriendView> listFriends(Long teamId, Long userId,
                                             Pageable pageable, boolean publicOnly) {
-        // 1. 所属チェック（非メンバーは 403）
-        accessControlService.checkMembership(userId, teamId, SCOPE_TEAM);
-
-        // 2. DB 取得
-        Pageable effectivePageable = (pageable != null)
-                ? pageable
-                : PageRequest.of(0, 20);
-
-        List<TeamFriendEntity> rows = teamFriendRepository
-                .findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(teamId, teamId, effectivePageable);
-
-        // 3. View へ変換。publicOnly のときは is_public=true のみ残す
-        List<TeamFriendView> views = rows.stream()
-                .filter(e -> !publicOnly || Boolean.TRUE.equals(e.getIsPublic()))
-                .map(e -> toView(e, teamId))
-                .toList();
-
-        // Phase 1 は Pageable ベースで件数概算を返す（将来 count クエリを追加）。
-        return new PageImpl<>(views, effectivePageable, views.size());
-    }
-
-    /**
-     * エンティティをビューに変換する。閲覧者チーム視点で相手チーム ID を抽出する。
-     *
-     * @param entity  フレンド関係エンティティ
-     * @param selfTeamId 閲覧者チーム ID
-     * @return ビュー
-     */
-    private TeamFriendView toView(TeamFriendEntity entity, Long selfTeamId) {
-        Long friendId = entity.getTeamAId().equals(selfTeamId)
-                ? entity.getTeamBId() : entity.getTeamAId();
-        String friendName = teamRepository.findById(friendId)
-                .map(TeamEntity::getName)
-                .orElse(null);
-        return TeamFriendView.builder()
-                .teamFriendId(entity.getId())
-                .friendTeamId(friendId)
-                .friendTeamName(friendName)
-                .isPublic(Boolean.TRUE.equals(entity.getIsPublic()))
-                .establishedAt(entity.getEstablishedAt())
-                .build();
+        return teamFriendQueryService.listFriends(teamId, userId, pageable, publicOnly);
     }
 
     /**
      * {@link TeamFriendListResponse} として整形したレスポンスを返却する。
+     * {@link TeamFriendQueryService} へ委譲する。
      *
      * @param teamId     自チーム ID
      * @param userId     閲覧者ユーザー ID
@@ -521,64 +468,24 @@ public class TeamFriendsService {
      */
     public TeamFriendListResponse listFriendsResponse(Long teamId, Long userId,
                                                       Pageable pageable, boolean publicOnly) {
-        Page<TeamFriendView> page = listFriends(teamId, userId, pageable, publicOnly);
-        return TeamFriendListResponse.builder()
-                .data(page.getContent())
-                .pagination(TeamFriendListResponse.Pagination.builder()
-                        .page(page.getNumber())
-                        .size(page.getSize())
-                        .totalElements(page.getTotalElements())
-                        .totalPages(page.getTotalPages())
-                        .hasNext(page.hasNext())
-                        .build())
-                .build();
+        return teamFriendQueryService.listFriendsResponse(teamId, userId, pageable, publicOnly);
     }
 
     // ═════════════════════════════════════════════════════════════
-    // 4. 公開設定変更
+    // 4. 公開設定変更（TeamFriendVisibilityService へ委譲）
     // ═════════════════════════════════════════════════════════════
 
     /**
      * フレンド関係の公開設定（{@code is_public}）を変更する。
-     *
-     * <p>
-     * 認可: {@code teamId} チームの ADMIN のみ（DEPUTY_ADMIN 不可）。それ以外は 403。
-     * Phase 1 は単独承認型として、どちらかの ADMIN が {@code TRUE} に切り替えれば
-     * 公開となる。Phase 3 で両チーム承認型に昇格予定。
-     * </p>
+     * {@link TeamFriendVisibilityService} へ委譲する。
      *
      * @param teamId       自チーム ID
      * @param teamFriendId フレンド関係 ID
      * @param isPublic     公開フラグ
      * @param userId       操作実行者のユーザー ID
-     * @throws BusinessException 権限不足・フレンド関係不存在・他チーム関係への操作時
      */
-    @Transactional
-    @Caching(evict = {
-            @CacheEvict(value = "teamFriendList", allEntries = true)
-    })
     public void setVisibility(Long teamId, Long teamFriendId, boolean isPublic, Long userId) {
-        // 1. ADMIN 権限チェック（DEPUTY_ADMIN 不可）
-        if (!accessControlService.isAdmin(userId, teamId, SCOPE_TEAM)) {
-            throw new BusinessException(SocialErrorCode.FRIEND_VISIBILITY_ADMIN_ONLY);
-        }
-
-        // 2. フレンド関係の取得・IDOR チェック（teamId がフレンドペアの片方であること）
-        TeamFriendEntity friend = teamFriendRepository.findById(teamFriendId)
-                .orElseThrow(() -> new BusinessException(SocialErrorCode.FRIEND_RELATION_NOT_FOUND));
-
-        if (!friend.getTeamAId().equals(teamId) && !friend.getTeamBId().equals(teamId)) {
-            // 所有権のないリソースへの操作は設計書 §5 に従い 403 を返す
-            throw new BusinessException(SocialErrorCode.FRIEND_VISIBILITY_ADMIN_ONLY);
-        }
-
-        boolean before = Boolean.TRUE.equals(friend.getIsPublic());
-        friend.changePublicity(isPublic);
-        teamFriendRepository.save(friend);
-
-        log.info("フレンド公開設定変更: teamFriendId={}, before={}, after={}, userId={}",
-                teamFriendId, before, isPublic, userId);
-        recordVisibilityChangeAudit(userId, teamId, teamFriendId, before, isPublic);
+        teamFriendVisibilityService.setVisibility(teamId, teamFriendId, isPublic, userId);
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -660,20 +567,6 @@ public class TeamFriendsService {
                 String.format(
                         "{\"team_a_id\":%d,\"team_b_id\":%d,\"past_forward_handling\":\"%s\"}",
                         friend.getTeamAId(), friend.getTeamBId(), mode.name()));
-    }
-
-    /**
-     * 公開設定変更の監査ログを記録する。
-     */
-    private void recordVisibilityChangeAudit(Long userId, Long teamId,
-                                             Long teamFriendId, boolean before, boolean after) {
-        auditLogService.record(
-                "FRIEND_VISIBILITY_CHANGED", userId, null,
-                teamId, null,
-                null, null, null,
-                String.format(
-                        "{\"team_friend_id\":%d,\"is_public_before\":%s,\"is_public_after\":%s}",
-                        teamFriendId, before, after));
     }
 
     // ═════════════════════════════════════════════════════════════
