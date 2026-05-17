@@ -1,6 +1,7 @@
 package com.mannschaft.app.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.advertising.campaign.filter.AdPublicEndpointRateLimitFilter;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
@@ -131,6 +132,19 @@ class ActuatorEndpointSecurityTest {
             org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.auth.service.AuditLogService> provider =
                     mock(org.springframework.beans.factory.ObjectProvider.class);
             return new OrganizationTeamSearchRateLimitFilter(provider);
+        }
+
+        /**
+         * F09.17 Phase 11-b: SecurityConfig が依存する AdPublicEndpointRateLimitFilter の
+         * 本物インスタンス。引数なしコンストラクタで、内部の Caffeine キャッシュ + Bucket4j
+         * は localhost 単発リクエストの本テストでは枯渇しないため、本物のフィルタを使って問題ない。
+         * 本テストは /actuator/** のみを叩くため、対象パス
+         * （/api/v1/ads/unsubscribe, /api/v1/ads/pixels/open）と一致せず、
+         * 何もせず chain.doFilter に通す挙動になる。
+         */
+        @Bean
+        AdPublicEndpointRateLimitFilter adPublicEndpointRateLimitFilter() {
+            return new AdPublicEndpointRateLimitFilter();
         }
     }
 

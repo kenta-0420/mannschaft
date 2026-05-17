@@ -54,10 +54,28 @@ public enum AdCampaignErrorCode implements ErrorCode {
             "ブロック広告主は最大 100 件までです",
             Severity.WARN),
 
-    /** unsubscribe トークン失効 */
+    /** unsubscribe トークン失効 (exp 経過) */
     AD_UNSUBSCRIBE_TOKEN_EXPIRED(
             "AD_UNSUBSCRIBE_TOKEN_EXPIRED",
             "オプトアウト用のトークンが失効しています",
+            Severity.WARN),
+
+    /** unsubscribe トークン改竄・形式不正 */
+    AD_UNSUBSCRIBE_TOKEN_INVALID(
+            "AD_UNSUBSCRIBE_TOKEN_INVALID",
+            "オプトアウト用のトークンが不正です",
+            Severity.WARN),
+
+    /** unsubscribe トークン version 不一致 (ローテート済) */
+    AD_UNSUBSCRIBE_TOKEN_VERSION_MISMATCH(
+            "AD_UNSUBSCRIBE_TOKEN_VERSION_MISMATCH",
+            "オプトアウト用のトークンは既に失効しています",
+            Severity.WARN),
+
+    /** 開封ピクセル JWT 不正（ログ用、ピクセル自体は 200 で返す） */
+    AD_OPEN_PIXEL_TOKEN_INVALID(
+            "AD_OPEN_PIXEL_TOKEN_INVALID",
+            "開封ピクセルトークンが不正です",
             Severity.WARN),
 
     /** 通報レート制限 */
