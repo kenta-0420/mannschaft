@@ -1,0 +1,133 @@
+package com.mannschaft.app.social.service;
+
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.social.entity.TeamFriendEntity;
+import com.mannschaft.app.social.repository.TeamFriendRepository;
+import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.repository.TeamRepository;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+
+/**
+ * {@link TeamFriendQueryService} の単体テスト（リファクタリング第4弾 Phase 4-B で分離）。
+ *
+ * <p>フレンド一覧取得の振る舞い（ADMIN 全件 / SUPPORTER 公開のみ）を検証する。</p>
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("TeamFriendQueryService 単体テスト")
+class TeamFriendQueryServiceTest {
+
+    @Mock
+    private TeamFriendRepository teamFriendRepository;
+
+    @Mock
+    private TeamRepository teamRepository;
+
+    @Mock
+    private AccessControlService accessControlService;
+
+    @InjectMocks
+    private TeamFriendQueryService teamFriendQueryService;
+
+    private static final Long USER_ID = 1L;
+    private static final Long TEAM_ID = 10L;
+    private static final Long TARGET_TEAM_ID = 20L;
+
+    @Test
+    @DisplayName("正常系: ADMIN(publicOnly=false) には全件返る")
+    void ADMIN_には全件返る() {
+        // given
+        TeamFriendEntity publicFriend = buildTeamFriendWithPublic(TEAM_ID, TARGET_TEAM_ID, 1L, true);
+        TeamFriendEntity privateFriend = buildTeamFriendWithPublic(TEAM_ID, 30L, 2L, false);
+        TeamEntity friendTeamA = TeamEntity.builder().name("公開チーム").build();
+        TeamEntity friendTeamB = TeamEntity.builder().name("非公開チーム").build();
+        Pageable pageable = PageRequest.of(0, 20);
+
+        given(teamFriendRepository.findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(
+                TEAM_ID, TEAM_ID, pageable))
+                .willReturn(List.of(publicFriend, privateFriend));
+        given(teamRepository.findById(TARGET_TEAM_ID)).willReturn(Optional.of(friendTeamA));
+        given(teamRepository.findById(30L)).willReturn(Optional.of(friendTeamB));
+
+        // when
+        var result = teamFriendQueryService.listFriends(TEAM_ID, USER_ID, pageable, false);
+
+        // then
+        assertThat(result.getContent()).hasSize(2);
+        verify(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
+    }
+
+    @Test
+    @DisplayName("正常系: SUPPORTER(publicOnly=true) には isPublic=true のみ返る")
+    void SUPPORTER_には公開のみ返る() {
+        // given
+        TeamFriendEntity publicFriend = buildTeamFriendWithPublic(TEAM_ID, TARGET_TEAM_ID, 1L, true);
+        TeamFriendEntity privateFriend = buildTeamFriendWithPublic(TEAM_ID, 30L, 2L, false);
+        TeamEntity friendTeam = TeamEntity.builder().name("公開チーム").build();
+        Pageable pageable = PageRequest.of(0, 20);
+
+        given(teamFriendRepository.findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(
+                TEAM_ID, TEAM_ID, pageable))
+                .willReturn(List.of(publicFriend, privateFriend));
+        given(teamRepository.findById(TARGET_TEAM_ID)).willReturn(Optional.of(friendTeam));
+
+        // when
+        var result = teamFriendQueryService.listFriends(TEAM_ID, USER_ID, pageable, true);
+
+        // then
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getFriendTeamId()).isEqualTo(TARGET_TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("listFriendsResponse: 整形済みレスポンスが正しく返る")
+    void listFriendsResponse_整形() {
+        // given
+        TeamFriendEntity publicFriend = buildTeamFriendWithPublic(TEAM_ID, TARGET_TEAM_ID, 1L, true);
+        TeamEntity friendTeam = TeamEntity.builder().name("公開チーム").build();
+        Pageable pageable = PageRequest.of(0, 20);
+
+        given(teamFriendRepository.findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(
+                TEAM_ID, TEAM_ID, pageable))
+                .willReturn(List.of(publicFriend));
+        given(teamRepository.findById(TARGET_TEAM_ID)).willReturn(Optional.of(friendTeam));
+
+        // when
+        var response = teamFriendQueryService.listFriendsResponse(TEAM_ID, USER_ID, pageable, false);
+
+        // then
+        assertThat(response.getData()).hasSize(1);
+        assertThat(response.getPagination().getPage()).isZero();
+        assertThat(response.getPagination().getSize()).isEqualTo(20);
+    }
+
+    private TeamFriendEntity buildTeamFriendWithPublic(Long teamAId, Long teamBId, Long id, boolean isPublic) {
+        long aId = Math.min(teamAId, teamBId);
+        long bId = Math.max(teamAId, teamBId);
+        TeamFriendEntity entity = TeamFriendEntity.builder()
+                .teamAId(aId)
+                .teamBId(bId)
+                .aFollowId(100L)
+                .bFollowId(200L)
+                .establishedAt(LocalDateTime.now())
+                .isPublic(isPublic)
+                .build();
+        ReflectionTestUtils.setField(entity, "id", id);
+        return entity;
+    }
+}
