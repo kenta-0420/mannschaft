@@ -53,11 +53,11 @@ CLAUDE.md 原則 1（クロスドメイン FK 禁止）・原則 5（@Transactio
 | 7 | `OAuthLinkTokenRepository` | auth | （未実装 WARN） | gdpr → auth | メソッド欠落 |
 | 8 | `OAuthAccountRepository` | auth | `deleteAll(findByUserId)` | gdpr → auth | **既に `AuthAnonymizationEventListener` で削除済の二重実行** |
 | 9 | `TwoFactorAuthRepository` | auth | `delete(findByUserId)` | gdpr → auth | **既に `AuthAnonymizationEventListener` で削除済の二重実行** |
-| 10 | `WebAuthnCredentialRepository` | auth | `deleteAll(findByUserId)` | gdpr → auth | 同ドメイン |
+| 10 | `WebAuthnCredentialRepository` | auth | `deleteAll(findByUserId)` | gdpr → auth | `AuthAnonymizationEventListener` には削除なし。auth ドメイン側で残す |
 | 11 | `ChartRecordRepository` | chart | `anonymizeCustomerUserId()` | **🔴 越境** | chart ドメイン |
 | 12 | `ErrorReportOccurrenceRepository` | errorreport | `anonymizeByUserId()` | **🔴 越境** | errorreport ドメイン |
-| 13 | `UserRoleRepository` | role | `nullifyGrantedBy()`, `deleteAllByUserId()` | **🔴 越境** | role ドメイン |
-| 14 | `TeamOrgMembershipRepository` | team | `nullifyInvitedBy()`, `nullifyRespondedBy()` | **🔴 越境** | F15.4 Caveat の発火点 |
+| 13 | `UserRoleRepository` | role | `nullifyGrantedBy()`, `deleteAllByUserId()` | **🔴 越境** | role ドメイン。**F15.4 Caveat の真の発火点（§3.5）** |
+| 14 | `TeamOrgMembershipRepository` | team | `nullifyInvitedBy()`, `nullifyRespondedBy()` | **🔴 越境** | team ドメイン（NULL 化のみ・DELETE なし） |
 | 15 | `MemberPaymentRepository` | payment | `anonymizeUserId()` | **🔴 越境** | payment ドメイン |
 | 16 | `StripeCustomerRepository` | payment | `delete(findByUserId)` | **🔴 越境** | payment ドメイン |
 | 17 | `DataExportRepository` | gdpr | `findByExpiresAtBeforeAndS3KeyIsNotNull()`, `delete()` | 同ドメイン | gdpr 自ドメイン |
@@ -73,7 +73,7 @@ CLAUDE.md 原則 1（クロスドメイン FK 禁止）・原則 5（@Transactio
 | 全 Repository / Service 呼び出し | 21 |
 | 同ドメイン内（gdpr 自身） | 2 |
 | auth ドメインへの越境（gdpr → auth） | 11 |
-| その他ドメインへの越境（gdpr → chart/errorreport/role/team/payment/proxy） | **7（chart 1, errorreport 1, role 1, team 1, payment 2, proxy 2）** |
+| その他ドメインへの越境（gdpr → chart/errorreport/role/team/payment/proxy） | **8（chart 1, errorreport 1, role 1, team 1, payment 2, proxy 2）** |
 | **`@Transactional` 1 個でまたいでいるドメイン数** | **gdpr / auth / chart / errorreport / role / team / payment / proxy = 8 ドメイン** |
 
 ### 2.3 二重実行リスクの既存箇所
@@ -105,7 +105,17 @@ CLAUDE.md 原則 1（クロスドメイン FK 禁止）・原則 5（@Transactio
 
 ## §3. 目標アーキテクチャ
 
-### 3.1 採用方針: 案 C（`AccountPurgedEvent` + 各ドメイン listener）
+### 3.1 採用方針: `AccountPurgedEvent` + 各ドメイン listener
+
+**選定理由（他案との比較）:**
+
+| 案 | 説明 | 不採用理由 |
+|---|---|---|
+| 案 A | `AccountPurgeService` に各ドメインの `*PurgeService.purgeByUserId(userId)` メソッドを呼び出すパブリック API を追加 | 結局 `AccountPurgeService` が他ドメインの Service を直接呼ぶ越境構造が残り、`@Transactional` も依然として横断する。マイクロサービス分割境界の改善にならない |
+| 案 B | `UserAnonymizedEvent`（既存・即時匿名化用）を 30 日後にもう一度発火させ流用 | 「即時匿名化」と「30 日後物理削除」は責務が異なる（前者は氏名/メール等の個人情報マスク、後者は user 本体物理削除と完全クローズ）。既存リスナーの分岐ロジックが膨張し可読性が劣化 |
+| **案 C（採用）** | 新規 `AccountPurgedEvent` を発行、各ドメインに `*PurgeEventListener` を新設 | ✅ 既存 `UserAnonymizedEvent` 系 9 リスナーと**完全に同じ流儀**で揃う／✅ `@Transactional` が gdpr ドメインに閉じる／✅ ドメイン分割境界が明確化／✅ Phase B 併走中も冪等で安全 |
+
+
 
 ```java
 // gdpr ドメイン
@@ -227,36 +237,48 @@ public final class AccountPurgedEvent extends BaseEvent {
 ### 3.5 F15.4 Phase 4 Caveat の自動解消（副次効果）
 
 本リファクタが完成すると、F15.4 Phase 4（PR #718 / 2026-05-17）で記録された Caveat ——
-「`AccountPurgeService#purgeUser()` が `team_org_memberships` を直接 DML 操作するため `MembershipChangedEvent` が発火せず、退会経路で `teams.member_count` が最大 24h ズレる」——
+「`AccountPurgeService#purgeUser()` が **`user_roles` を直接 DML 操作（`deleteAllByUserId`）** するため `MembershipChangedEvent` が発火せず、退会経路で `teams.member_count` が最大 24h ズレる」——
 が **追加のコード変更なしに自動的に解消される**。
+
+> **【家老 検分修正 / 2026-05-18】** 当初記載の「`team_org_memberships` を直接 DML」は事実誤認。
+> 実コード `AccountPurgeService.java:164` は `userRoleRepository.deleteAllByUserId(userId)` を呼んでおり、これが **role ドメイン越境（§2.1 表 #13）** に相当する。
+> `team_org_memberships` への操作（§2.1 表 #14・行 167-168）は `nullifyInvitedBy` / `nullifyRespondedBy` の NULL 化のみで DELETE ではない。
+> `MembershipChangedEvent` の発火源は `RoleService` の 5 箇所 + `MembershipService` の 2 箇所であり、`team` ドメインからは発火しない。
 
 **解消メカニズム:**
 
 ```
 [Before（現状）]
   AccountPurgeService
-    └─ teamOrgMembershipRepository.deleteByUserId(userId)  ← 越境 DML
-         └─ MembershipChangedEvent 発火されず
-              └─ teams.member_count ズレ → 翌朝 02:00 JST 夜次バッチで補正
+    └─ userRoleRepository.deleteAllByUserId(userId)  ← 越境 DML（gdpr → role）
+         └─ MembershipChangedEvent(REMOVED) 発火されず
+              └─ teams.member_count ズレ → 翌朝 02:00 JST 夜次バッチ
+                 （TeamMemberCountBackfillBatchService）で補正
 
 [After（本リファクタ完成後）]
   AccountPurgeService
     └─ eventPublisher.publish(AccountPurgedEvent)
-         └─ RolePurgeEventListener / TeamPurgeEventListener（team ドメイン側）
-              └─ RoleService#removeMember 経由で membership 削除
-                   └─ MembershipChangedEvent(REMOVED) 発火
-                        └─ 既存 TeamMemberCountListener が即時減算
-                             → teams.member_count は退会と同時に正しい値
+         └─ RolePurgeEventListener（role ドメイン側、@TransactionalEventListener AFTER_COMMIT）
+              └─ userRoleRepository.findAllByUserId(userId) でループ
+                   └─ 各 UserRoleEntity に対し
+                      RoleService#removeMember(scopeId, scopeType, userId) を呼ぶ
+                        └─ user_roles から DELETE（同ドメイン内 @Transactional）
+                             └─ MembershipChangedEvent(REMOVED) 発火（RoleService.java:168）
+                                  └─ 既存 TeamMemberCountListener が即時減算
+                                       → teams.member_count は退会と同時に正しい値
 ```
 
 **ポイント:**
 
 | 項目 | 方針 |
 |---|---|
-| `MembershipChangedEvent(REMOVED)` 発火経路 | 既存 `RoleService#removeMember` を `RolePurgeEventListener` 内から呼び、自然な経路で発火させる（§9.2 推奨案 B と整合） |
+| 真の越境点 | `user_roles.deleteAllByUserId`（§2.1 表 #13・role ドメイン）。`team_org_memberships` ではない |
+| `MembershipChangedEvent(REMOVED)` 発火経路 | 既存 `RoleService#removeMember`（`RoleService.java:124-150`）を `RolePurgeEventListener` 内から呼び、自然な経路で発火させる（§9.2 推奨案 B と整合） |
+| ループ粒度 | `findAllByUserId(userId)` で取得した各 `UserRoleEntity` の `(scopeId, scopeType)` を引数に `removeMember` を順次呼ぶ（1 ユーザーが複数組織/チームに所属するケースに対応） |
+| 最後の ADMIN ガード | `RoleService#removeMember` の `checkLastAdmin` ガード（`RoleService.java:142`）が退会者を `BusinessException(ROLE_001)` で弾く。退会経路ではこの保護を**バイパス or 事前昇格**する設計が別途必要（**§9.6 未解決事項**として新設） |
 | 既存 `TeamMemberCountListener` (F15.4 Phase 4) | **変更なし**。`MembershipChangedEvent` 購読側のロジックはそのまま再利用 |
 | 既存 `TeamMemberCountBackfillBatchService`（夜次補正） | **撤去しない・保険として残す**。理由: ①リスナー失敗時の三重防御（§3.4 ④）/ ②本リファクタ外の経路で集計ズレが入った場合の最終防衛線 / ③ Phase B 併走期間中の冪等性検証用 |
-| 検証手段 | Phase B-1（team ドメイン）の統合テストで「退会即時に `teams.member_count` が減る」アサーションを追加 |
+| 検証手段 | Phase B-1（**role ドメイン**）の統合テストで「退会即時に `teams.member_count` が減る」アサーションを追加 |
 
 **汎用性 — 同パターンが将来の集計カラムにも適用可能:**
 
@@ -295,14 +317,23 @@ public final class AccountPurgedEvent extends BaseEvent {
 
 **3. 各ドメインに `*PurgeEventListener` を新設（1 ドメイン = 1 PR）**
 
-| PR | ドメイン | 新設リスナー | 取り込む既存 DML |
-|---|---|---|---|
-| B-1 | team | `TeamPurgeEventListener` | `nullifyInvitedBy` / `nullifyRespondedBy` + 将来の `MembershipChangedEvent(REMOVED)` 発火 |
-| B-2 | payment | `PaymentPurgeEventListener` | `member_payments.anonymizeUserId` / `stripe_customers.delete` |
-| B-3 | role | `RolePurgeEventListener` | `user_roles.nullifyGrantedBy` / `deleteAllByUserId` |
-| B-4 | chart | `ChartPurgeEventListener` | `chart_records.anonymizeCustomerUserId` |
-| B-5 | proxy | `ProxyPurgeEventListener` | `proxy_input_records.deleteAllBySubjectUserId` / `proxy_input_consents.logicalDeleteAllBySubjectUserId` |
-| B-6 | errorreport | `ErrorReportPurgeEventListener` | `error_report_occurrences.anonymizeByUserId` |
+| PR | ドメイン | 新設リスナー | 取り込む既存 DML | 御裁可後 PR# |
+|---|---|---|---|---|
+| B-1 | **role** | `RolePurgeEventListener` | `user_roles.nullifyGrantedBy` + `findAllByUserId` ループで `RoleService#removeMember` 呼び出し（`MembershipChangedEvent(REMOVED)` を自然発火させ F15.4 Caveat を自動解消） | _未割当_ |
+| B-2 | team | `TeamPurgeEventListener` | `team_org_memberships.nullifyInvitedBy` / `nullifyRespondedBy` |  _未割当_ |
+| B-3 | payment | `PaymentPurgeEventListener` | `member_payments.anonymizeUserId(SENTINEL)` / `stripe_customers.delete` |  _未割当_ |
+| B-4 | chart | `ChartPurgeEventListener` | `chart_records.anonymizeCustomerUserId` |  _未割当_ |
+| B-5 | proxy | `ProxyPurgeEventListener` | `proxy_input_records.deleteAllBySubjectUserId` / `proxy_input_consents.logicalDeleteAllBySubjectUserId` |  _未割当_ |
+| B-6 | errorreport | `ErrorReportPurgeEventListener` | `error_report_occurrences.anonymizeByUserId` |  _未割当_ |
+
+**B-1 を role に変更した理由（検分指摘 / 2026-05-18）:**
+当初 B-1 を `team` ドメインに据えていたのは「F15.4 Caveat 発火点」を最優先に固めるため。しかし家老検分で、Caveat の真の発火源は `user_roles.deleteAllByUserId`（role ドメイン）であることが判明（§3.5 参照）。
+したがって最高影響度・最も検証価値の高いドメインは **role**。`RolePurgeEventListener` を最初に確立することで、`MembershipChangedEvent(REMOVED)` 経由で `teams.member_count` 即時減算が動くことを Phase B-1 統合テストで保証できる。
+`team` ドメイン（B-2）の `nullifyInvitedBy` / `nullifyRespondedBy` は NULL 化のみで影響が小さく、`role` の後で十分。
+
+**B-1 の冪等性留意（Phase B 併走期間中）:**
+`member_payments.anonymizeUserId(userId, SENTINEL=0)` はターゲット選択型のため、2 回目の呼び出しでは「既に user_id=SENTINEL になっている行」をターゲットにできない（once-only ターゲット選択）。
+これは「2 回呼んでも有害ではない」が「冪等」ではない。Phase B 併走中は「listener が先に anonymize → 後で AccountPurgeService の越境 DML が改めて anonymizeUserId を呼ぶ」順序で、2 回目は 0 件処理になることを前提とする（B-3 の統合テストで検証）。
 
 **4. 統合テスト**
 - `AccountPurgedEvent` 発火 → 各ドメインの行が消えていることを `@SpringBootTest` で確認
@@ -395,15 +426,16 @@ public void backfill() {
 
 | # | ドメイン | 影響度 | 着手順序 | 理由 |
 |---|---|---|---|---|
-| 1 | team | **high** | B-1 | F15.4 Caveat の発火点。`MembershipChangedEvent(REMOVED)` 発火経路の検証が必要なため最初に着手し品質を固める |
-| 2 | payment | **high** | B-2 | 金銭情報。GDPR + 決済法的要件で複雑。Stripe API 連携の確認が必要 |
-| 3 | role | medium | B-3 | F02.2.1 ダッシュボードキャッシュ無効化への波及確認が必要 |
-| 4 | proxy | medium | B-4 | F14.1 Phase 13-γ で導入された機能。論理削除と物理削除の使い分けに注意 |
-| 5 | chart | low | B-5 | 単純な anonymize のみ |
+| 1 | **role** | **high** | **B-1** | **F15.4 Caveat の真の発火点（`user_roles.deleteAllByUserId`）。`MembershipChangedEvent(REMOVED)` 発火経路の検証が必要なため最初に着手し品質を固める** |
+| 2 | team | medium | B-2 | `team_org_memberships` は NULL 化のみで影響軽微。role B-1 完了後の安全な統合先 |
+| 3 | payment | **high** | B-3 | 金銭情報。GDPR + 決済法的要件で複雑。Stripe API 連携の確認が必要。冪等性留意（§4 B-3 ノート） |
+| 4 | chart | low | B-4 | 単純な anonymize のみ |
+| 5 | proxy | medium | B-5 | F14.1 Phase 13-γ で導入された機能。論理削除と物理削除の使い分けに注意 |
 | 6 | errorreport | low | B-6 | 単純な anonymize のみ。F12.5 Phase 2-F の挙動維持 |
 
-**着手順序の根拠:**
-- 高影響ドメイン（team / payment）を先に着手し、リスナー基盤の品質を早期に固める
+**着手順序の根拠（家老検分 / 2026-05-18 反映後）:**
+- **role を最優先に固める** — F15.4 Caveat の真の発火点であり、`MembershipChangedEvent(REMOVED)` 発火経路を最初に確立することで「退会即時に `teams.member_count` が減る」ことを Phase B-1 統合テストで保証できる
+- 高影響ドメイン（payment）を中盤に置き、リスナー基盤の品質が固まった段階で複雑案件に着手
 - 低影響ドメイン（chart / errorreport）を最後に着手することで Phase B 後半は安定運用フェーズになる
 
 ---
@@ -516,6 +548,87 @@ public void backfill() {
 
 **推奨:** Phase D 完了後の「運用知見蓄積期間（3〜6ヶ月）」を経て、outbox 必要性を判断する別軍議を起こす。本リファクタの第一目標は越境構造の解消であり、信頼性向上は次フェーズ。
 
+**判断トリガー条件（具体化 / 検分指摘 2026-05-18）:**
+- (a) 複数 Spring Boot インスタンス起動が定常化した時点（現状: 単一インスタンス想定）
+- (b) AFTER_COMMIT 取りこぼしが**月次 10 件以上**観測された時点
+- (c) Phase D 完了から **6 ヶ月経過後の定期見直し**（memory にリマインダ記録）
+
+上記いずれか早い方の達成時に別軍議を起こす。
+
+### 9.6 最後の ADMIN が退会した場合の組織オーナー継承（検分追加 / 必須）
+
+**論点:** `RoleService#removeMember`（`RoleService.java:142`）の `checkLastAdmin` ガードが「最後の ADMIN を削除しようとすると `BusinessException(ROLE_001)` を投げる」設計。退会経路で `RolePurgeEventListener` がこのメソッドを呼ぶと、退会者が最後の ADMIN だった組織で例外が発生し purge が止まる。
+
+**選択肢:**
+- A. `RolePurgeEventListener` 専用に `removeMemberWithoutAdminCheck(scopeId, scopeType, userId)` を `RoleService` に新設し、退会経路では `checkLastAdmin` をバイパス。残った組織は「ADMIN 不在」状態で運用判断（手動で他メンバー昇格 or arch化）
+- B. 退会受付時（即時匿名化フェーズ）に「最後の ADMIN かつ他メンバーがいる組織」を検出し、ユーザーに「後任 ADMIN を指名するか組織を arch化するか」を選択させる UX を追加
+- C. 退会受付時に自動で「次の最古参メンバーを ADMIN に昇格」させる規約を制定（民主主義/独裁の選択を一律機械化）
+- D. 「最後の ADMIN かつ他メンバー 1 人以上」の組織は退会自体を拒否する規約を制定（ユーザー責任で事前整理）
+
+**推奨:** B + A の併用。Phase B-1 出陣前に**マスター御裁可必須**（UX 設計 + 法務・運用ルール影響大）。
+B が間に合わない場合の安全弁として A の `removeMemberWithoutAdminCheck` を先行実装し、運用通知（孤児 ADMIN 不在組織アラート）で人的対応する暫定運用も可。
+
+### 9.7 監視・アラート要件 — 「夜次バッチで拾うから OK」を技術的負債にしないために（検分追加 / 必須）
+
+**論点:** `*PurgeEventListener` の `try-catch WARN`（`TeamMemberCountListener` 同形）は「失敗してもログ警告のみ・夜次バッチが拾う」設計。これは CLAUDE.md「障害対応の原則 — 症状を隠さない」と緊張関係にあり、可観測性が無いと**誰も気付かない技術的負債**に転化する。
+
+**選択肢:**
+- A. WARN ログ件数をメトリクス化（Datadog / CloudWatch）し、**日次 1 件以上で PagerDuty 発火**
+- B. WARN ログを構造化（`{event: "purge_listener_failure", domain: "role", userId: ..., error: ...}`）し、Sentry / Honeybadger に送信
+- C. 夜次補正バッチが「listener が拾いきれなかった孤児行数」を返り値とし、閾値超過で運用通知
+
+**推奨:** A + C の併用。Phase B-1 と同時に必須インフラとして整備。
+Phase B 併走期間中は「listener 失敗 → 既存越境 DELETE が結局拾う」ので影響軽微だが、Phase C で既存越境 DELETE を撤去した瞬間に取りこぼしが本物の不整合になる。**Phase C 着手の前提条件**とすべき。
+
+### 9.8 退会バースト時の `event-pool` 枯渇対策（検分追加 / 推奨）
+
+**論点:** 既存 `event-pool` は `WebhookDeliveryService` / `OgpFetchService` / `BudgetWorkflowListener` 等多数で共用されている（`AsyncConfig.java`）。退会バッチが 100 件処理 × 6 ドメイン listener = **600 タスクが瞬時 enqueue** される可能性があり、`event-pool` の queueCapacity を超えると他機能（Webhook 配信等）に影響する。
+
+**選択肢:**
+- A. 専用プール `purge-pool`（小規模・別管理）を新設し、`@Async("purge-pool")` で分離
+- B. `AsyncConfig` の `event-pool` の queueCapacity / maxPoolSize を増強
+- C. 退会バッチ自体の処理粒度を絞る（1 サイクルあたり 10 件まで等）
+
+**推奨:** A。`event-pool` の品質保証を侵さず、退会経路の独立性を担保。Phase B-1 と同時着手で大きな追加コストにならない。
+ただし `AsyncConfig.java` の現状値（`corePoolSize / maxPoolSize / queueCapacity`）を Phase B-1 出陣前に確認し、B が必要十分なら A を後回しにする判断もあり。
+
+### 9.9 `AccountPurgedEvent` payload にシャーディング考慮を含めるか（検分追加 / 推奨）
+
+**論点:** 現案 `AccountPurgedEvent(userId, emailHash)` は `organization_id` を持たない。1000 万ユーザー時のシャードキーが `organization_id` になると（`db_scalability.md` Phase 4 想定）、各 `*PurgeEventListener` は「userId だけで全シャードを横断する DML を打つ」ことになり、シャードルーティング層で全シャードブロードキャスト化する。
+
+**選択肢:**
+- A. `AccountPurgedEvent(userId, emailHash)` のまま（YAGNI / 現状最小）
+- B. `AccountPurgedEvent(userId, emailHash, Set<Long> organizationIds)` でその user が所属していた全組織を含める
+- C. `AccountPurgedEvent` は最小に保ち、各 listener が `user_roles` から `organization_id` を逆引きする
+
+**推奨:** A を Phase B では採用し、§9.5 outbox 判断と同時にシャーディング着手時に B / C への移行を別軍議で判断。
+理由: シャーディング着手まで最低 2〜3 年は単一 DB ノード前提なので、現時点では YAGNI で十分。
+
+### 9.10 夜次補正バッチの O(N) スキャン対策（検分追加 / 推奨）
+
+**論点:** Phase D の「孤児 user_id 検出 → 削除」バッチは、無策だと
+`SELECT user_id FROM team_org_memberships WHERE user_id NOT IN (SELECT id FROM users)`
+という相関サブクエリで 1000 万ユーザー × 子テーブル N で**フルスキャン**に陥る。
+
+**選択肢:**
+- A. `users.purged_at` カラムにインデックスを張り、「最新の purge から N 日以内に purge された user_id のみ」を対象にする差分検出
+- B. `users` 物理削除前に「`pre_purge_user_ids` 一時テーブル」に user_id を退避し、バッチはそれを参照
+- C. `db_scalability.md` Phase 3 のパーティショニング（月次パーティション）を子テーブル側にも適用し、補正バッチも月次パーティション単位で走らせる
+
+**推奨:** A を Phase D で必須化、B / C は 1000 万ユーザー到達近辺で再評価。
+Phase D 設計書冒頭に「孤児検出は差分方式・フルスキャン禁止」の制約を明記すべき。
+
+### 9.11 部分失敗時の「全ドメイン完了監査ログ」発行判定（検分追加 / 推奨）
+
+**論点:** 各 `*PurgeEventListener` が `REQUIRES_NEW` で独立 commit するため「team listener 成功 + payment listener 失敗」のような部分失敗状態が発生し得る。§5.3「`ACCOUNT_PURGE_COMPLETED_ALL_DOMAINS` 監査ログ」発行時にどう判定するか曖昧。
+
+**選択肢:**
+- A. `account_purge_completion_status` テーブルを新設し、6 ドメイン × `(userId, domain, completed_at, status)` で per-domain 完了表を持ち、全行 SUCCESS で監査ログ発行
+- B. 夜次監査バッチが「孤児 user_id が全ドメインで 0」を確認した時点で監査ログ発行（テーブル不要だが SQL コスト高）
+- C. listener 完了時に各ドメインが個別に `ACCOUNT_PURGE_COMPLETED_<DOMAIN>` 監査ログを発行し、運用側で集約
+
+**推奨:** A。GDPR Art.17 「30 日以内に削除完了」の証跡として per-domain 完了表が最も明示的。Phase D の最重要成果物として設計書に組み込むべき。
+
 ---
 
 ## 関連ドキュメント
@@ -538,3 +651,5 @@ public void backfill() {
 | 日付 | 内容 | 担当 |
 |---|---|---|
 | 2026-05-18 | 初版作成（陣立て書） | 家老（Plan agent） |
+| 2026-05-18 | §3.5 追加（F15.4 Caveat 自動解消・副次効果） | 殿（追記指示反映） |
+| 2026-05-18 | 検分修正反映：§3.5 Before/After 図の事実誤認修正（team→role）／§2.1 表 #14・#10 追記／§2.2 算数誤り（7→8）／§3.1 採用方針 A/B/C 案比較表新設／§4 Phase B-1 順序入替（team→role）+ PR# 記入欄追加 + 冪等性留意ノート／§6 影響度マトリクス並び替え／§9 必須追記 2 件（9.6 最後の ADMIN 退会／9.7 監視・アラート要件）＋推奨追記 4 件（9.8 event-pool ／9.9 organization_id payload／9.10 補正バッチ O(N)／9.11 部分失敗監査） | 殿（家老検分反映） |
