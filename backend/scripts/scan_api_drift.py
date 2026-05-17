@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-API 乖離スキャナ（v4）
+API 乖離スキャナ（v5）
 
 設計書 (docs/features/F*.md) と実装 (backend/src/main/java/**/controller/*.java)
 の API エンドポイント差分を抽出し、`docs/internal/api_drift_baseline.md` に
@@ -12,7 +12,7 @@ Markdown レポートを生成する。
     （または）python backend/scripts/scan_api_drift.py [--no-expand-scope]
 
 注意:
-    本スクリプトは「殿様判断資料」を作るための試作 v4。
+    本スクリプトは「殿様判断資料」を作るための試作 v5。
     Phase A 本実装で置き換える前提。標準ライブラリのみ使用。
 
 # CHANGELOG
@@ -42,6 +42,24 @@ Markdown レポートを生成する。
 #       - 🔵 のエンドポイントは future_features に分類してメイン集計から除外
 #       - 状態列無しテーブル行（後方互換）は status=None で従来通り集計
 #       - レポート末尾に「🔵 将来機能（N 件）」セクションを追加
+# v5 (2026-05-17):
+#   V5-1: リソース系スコープ逆引き拡張
+#       - SCOPE_CORE_PATTERNS_V5 に /coupons/**, /dwelling-units/**, /repair-plans/**,
+#         /forms/**, /surveys/**, /workflows/**, /circulation/**, /bulletin/** を追加
+#       - 実装側 /api/v1/teams/{_}/coupons/... 等を設計側 /api/v1/coupons/... と
+#         準一致扱いする逆引きの対象を拡張
+#       - --v5-reverse / --no-v5-reverse フラグでオン/オフ切替（既定 ON）
+#       - SCOPE_CORE_PATTERNS_V5 は v4 のホワイトリストと和集合で運用
+#   V5-2: 設計書インラインコード強化
+#       - コードブロック (``` ... ```) 内のエンドポイント記述を除外
+#       - HTML コメント (<!-- ... -->) 内のエンドポイント記述を除外
+#       - 散文中・リスト中・テーブル説明列中のインラインコード `GET /api/v1/...`
+#         をテーブル/見出しヒット行とは別扱いで補助抽出
+#   V5-3: 命名揺れ正規化（単複形）
+#       - 設計と実装で第 3 セグメントが単複違い（例: feedback ↔ feedbacks,
+#         circulation ↔ circulations）のものを SINGULAR_PLURAL_DICT で正規化し
+#         準一致扱いにする
+#       - レポートに 「(matched by naming-normalization)」セクションを追加
 """
 from __future__ import annotations
 
@@ -74,7 +92,7 @@ SCOPE_PREFIXES_FOR_REVERSE = (
 # V4-1: コアパスとしてスコープ逆引きを許可するパターン（誤合体回避のホワイトリスト）
 # `/admin/`, `/dashboard/`, `/modules/`, `/visibility/`, `/settings/` 系のみ。
 # これ以外（例: /posts, /surveys 等のリソース系）は scope context の有無で
-# 意味が変わる可能性が高いため、逆引きマッチを行わない。
+# 意味が変わる可能性が高いため、逆引きマッチを行わない（v4 既定）。
 SCOPE_CORE_PATTERNS = (
     "/api/v1/admin/**",
     "/api/v1/dashboard/**",
@@ -82,6 +100,87 @@ SCOPE_CORE_PATTERNS = (
     "/api/v1/visibility/**",
     "/api/v1/settings/**",
 )
+
+# V5-1: リソース系スコープ逆引き拡張（--v5-reverse=ON で SCOPE_CORE_PATTERNS と
+# 和集合になる）
+#
+# 検証手順:
+#   各パターン追加前に baseline.md を確認し、設計側が /api/v1/{resource}/...
+#   の形（スコープ抜き）で記載されており、かつ実装側が
+#   /api/v1/teams/{_}/{resource}/... 等のスコープ context 付きで定義されている
+#   ことをドメインごとに確認した:
+#     - coupons       : F11 系 設計 vs TeamCouponController（実装）
+#     - dwelling-units: F09.15/F09.16 設計 vs TeamDwellingUnitController
+#     - repair-plans  : F08.8 設計 vs TeamRepairPlanController/OrgRepairPlanController
+#     - forms         : F05.7 設計 vs TeamFormController/SubmissionController 等
+#     - surveys       : F05.4 設計 vs SurveyController（teams/{_}/surveys）
+#     - workflows     : F05.6 設計 vs TeamWorkflowController
+#     - circulation   : F05.2 設計（"circulation" 単数）vs Controller（"circulations" 複数）
+#                       → V5-3 命名揺れ正規化と組み合わせて効く
+#     - bulletin      : F05.1 設計 vs TeamBulletin*Controller（teams/{_}/bulletin/...）
+#
+# 誤合体リスク: 設計側にもごく僅かに /teams/{_}/coupons 形式の記述があり得るが、
+# その場合は通常マッチ（matched）に入るので逆引きは発火しない（only_impl/only_design
+# から準一致に繰り入れる仕組みのため重複ヒットしない）。
+SCOPE_CORE_PATTERNS_V5 = (
+    "/api/v1/coupons/**",
+    "/api/v1/dwelling-units/**",
+    "/api/v1/repair-plans/**",
+    "/api/v1/forms/**",
+    "/api/v1/surveys/**",
+    "/api/v1/workflows/**",
+    "/api/v1/circulation/**",
+    "/api/v1/circulations/**",  # 単数/複数両対応（V5-3 と相補）
+    "/api/v1/bulletin/**",
+)
+
+
+# V5-3: 命名揺れ正規化辞書（単数形 → 複数形へ正規化）
+#
+# 第 3 セグメント (path の `/api/v1/<here>/...`) の単複揺れを統一する。
+# 「単数 → 複数」方向に正規化し、設計側・実装側の path のうち第 3 セグメントが
+# 辞書に登録されていれば、正規化版を比較キーに採用する。
+#
+# baseline をざっと grep して収集したペア:
+#   - feedback ↔ feedbacks (設計: /api/v1/feedback/{_}/vote vs 実装: /api/v1/feedbacks/me)
+#   - circulation ↔ circulations (設計: F05.2 で circulation 単数 vs 実装: circulations 複数)
+#   - notification ↔ notifications (汎用揺れ)
+#   - announcement ↔ announcements
+#   - mention ↔ mentions
+#   - contact ↔ contacts
+#   - reservation ↔ reservations
+#   - report ↔ reports
+#   - student ↔ students
+#   - team ↔ teams（NOTE: /api/v1/team/* は実装が org-scope の単数形 URL、
+#       /api/v1/teams/* は実装が teams collection。意味的に同一でないので除外）
+#   - recruitment ↔ recruitments（NOTE: recruitment-listings 等の派生があるため除外）
+#
+# 注意: 派生 path（recruitment-listings, recruitment-categories 等）は別エンドポイント
+# なので辞書には含めない。第 3 セグメント完全一致のみ対象。
+SINGULAR_PLURAL_DICT = {
+    "feedback": "feedbacks",
+    "circulation": "circulations",
+    "notification": "notifications",
+    "announcement": "announcements",
+    "mention": "mentions",
+    "contact": "contacts",
+    "reservation": "reservations",
+    "report": "reports",
+    "student": "students",
+    "venue": "venues",
+    "schedule": "schedules",
+    "tournament": "tournaments",
+    "membership": "memberships",
+    "mute": "mutes",
+    "follow": "follows",
+    "application": "applications",
+    "appeal": "appeals",
+    "incident": "incidents",
+    "permission": "permissions",
+    "warning": "warnings",
+    "promotion": "promotions",
+    "todo": "todos",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -217,17 +316,44 @@ def extract_core_path(path: str) -> str | None:
     return None
 
 
-def _core_pattern_matches(core_path: str) -> bool:
-    """コアパスが SCOPE_CORE_PATTERNS のいずれかにマッチするか。
+def _core_pattern_matches(core_path: str, v5_reverse: bool = True) -> bool:
+    """コアパスが SCOPE_CORE_PATTERNS（+V5-1 拡張）のいずれかにマッチするか。
 
     誤合体回避のホワイトリスト。`/admin/`, `/dashboard/`, `/modules/`,
-    `/visibility/`, `/settings/` 系のみマッチ許可。
+    `/visibility/`, `/settings/` 系（v4）に加え、v5_reverse=True の場合は
+    リソース系コアパス（/coupons/**, /surveys/** など SCOPE_CORE_PATTERNS_V5）
+    にもマッチ許可。
     """
-    for pattern in SCOPE_CORE_PATTERNS:
+    patterns = list(SCOPE_CORE_PATTERNS)
+    if v5_reverse:
+        patterns.extend(SCOPE_CORE_PATTERNS_V5)
+    for pattern in patterns:
         regex = _glob_to_regex(pattern)
         if regex.match(core_path):
             return True
     return False
+
+
+# ---------------------------------------------------------------------------
+# V5-3: 命名揺れ正規化（単複形）
+# ---------------------------------------------------------------------------
+def normalize_naming(path: str) -> str:
+    """第 3 セグメント（`/api/v1/<here>/...` の <here>）が単数形なら
+    SINGULAR_PLURAL_DICT で複数形に正規化したパスを返す。
+
+    対象外なら入力をそのまま返す。
+    """
+    if not path or not path.startswith("/api/"):
+        return path
+    parts = path.split("/")
+    # parts = ["", "api", "v1", "<seg3>", ...]
+    if len(parts) < 4:
+        return path
+    seg3 = parts[3]
+    if seg3 in SINGULAR_PLURAL_DICT:
+        parts[3] = SINGULAR_PLURAL_DICT[seg3]
+        return "/".join(parts)
+    return path
 
 
 # ---------------------------------------------------------------------------
@@ -336,11 +462,42 @@ _DESIGN_INLINE_RE = re.compile(
 )
 
 
+def _strip_html_comments(text: str) -> str:
+    """V5-2: HTML コメント <!-- ... --> を取り除く（multiline 対応）。
+
+    コメント中に書かれた `GET /api/v1/foo` 形式は設計対象ではないので除外。
+    """
+    return re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
+
+
+def _compute_code_block_lines(text: str) -> set[int]:
+    """V5-2: ``` で囲まれたコードブロック内の行番号集合を返す（1-origin）。
+
+    開始/終了 ``` の行自体もコードブロック内として扱う（インラインコード抽出から
+    除外するため）。
+    """
+    inside = False
+    fence_re = re.compile(r"^\s*```")
+    out: set[int] = set()
+    for i, line in enumerate(text.splitlines(), start=1):
+        if fence_re.match(line):
+            out.add(i)
+            inside = not inside
+            continue
+        if inside:
+            out.add(i)
+    return out
+
+
 def scan_design_docs(docs_dir: Path) -> list[DesignEndpoint]:
     """`docs/features/F*.md` を全て走査し設計記載エンドポイントを集める。
 
     v4: 状態列付きテーブル行 (`| 🔵 | GET | ... |`) を優先抽出し、
     状態列が無い場合は従来通り status=None で抽出する（後方互換）。
+
+    v5 (V5-2): HTML コメント / コードブロック内は除外しつつ、散文中の
+    インラインコード `GET /api/v1/...` を本文段落全体（テーブルセル含む）で
+    補助抽出する。
     """
     results: list[DesignEndpoint] = []
     if not docs_dir.is_dir():
@@ -355,8 +512,42 @@ def scan_design_docs(docs_dir: Path) -> list[DesignEndpoint]:
             print(f"[WARN] cannot read {md}: {exc}", file=sys.stderr)
             continue
 
+        # V5-2: HTML コメントは事前に除去（行番号は維持するため改行のみ残す）
+        text = re.sub(
+            r"<!--.*?-->",
+            lambda m: "\n" * m.group(0).count("\n"),
+            text,
+            flags=re.DOTALL,
+        )
+
+        # V5-2: コードブロック内の行番号セット
+        code_block_lines = _compute_code_block_lines(text)
+
+        # キー: (line_number, method, path) で重複ヒット防止
+        seen: set[tuple[int, str, str]] = set()
+
+        def _add(method: str, path: str, line_no: int, status: str | None) -> None:
+            norm = normalize_path(path)
+            key = (line_no, method, norm)
+            if key in seen:
+                return
+            seen.add(key)
+            results.append(
+                DesignEndpoint(
+                    method=method,
+                    path=norm,
+                    source_file=str(md.as_posix()),
+                    line_number=line_no,
+                    status=status,
+                )
+            )
+
         for i, line in enumerate(text.splitlines(), start=1):
             matched_in_line = False
+
+            # V5-2: コードブロック内の行はスキップ（テーブル/見出しも含めない）
+            if i in code_block_lines:
+                continue
 
             # V4-5: 状態列付きテーブル行を先に試行
             m_status = _DESIGN_TABLE_WITH_STATUS_RE.match(line)
@@ -364,15 +555,7 @@ def scan_design_docs(docs_dir: Path) -> list[DesignEndpoint]:
                 status = m_status.group(1)
                 method = m_status.group(2).upper()
                 path = m_status.group(3).rstrip(".,;`")
-                results.append(
-                    DesignEndpoint(
-                        method=method,
-                        path=normalize_path(path),
-                        source_file=str(md.as_posix()),
-                        line_number=i,
-                        status=status,
-                    )
-                )
+                _add(method, path, i, status)
                 matched_in_line = True
 
             if not matched_in_line:
@@ -380,46 +563,23 @@ def scan_design_docs(docs_dir: Path) -> list[DesignEndpoint]:
                 if m:
                     method = m.group(1).upper()
                     path = m.group(2).rstrip(".,;`")
-                    results.append(
-                        DesignEndpoint(
-                            method=method,
-                            path=normalize_path(path),
-                            source_file=str(md.as_posix()),
-                            line_number=i,
-                            status=None,
-                        )
-                    )
+                    _add(method, path, i, None)
                     matched_in_line = True
 
             m2 = _DESIGN_HEADING_RE.match(line)
             if m2:
                 method = m2.group(1).upper()
                 path = m2.group(2).rstrip(".,;`)")
-                results.append(
-                    DesignEndpoint(
-                        method=method,
-                        path=normalize_path(path),
-                        source_file=str(md.as_posix()),
-                        line_number=i,
-                        status=None,
-                    )
-                )
+                _add(method, path, i, None)
                 matched_in_line = True
 
-            # インラインコード形式は、テーブル/見出しでヒットしていない行のみ補助対応
-            if not matched_in_line:
-                for mi in _DESIGN_INLINE_RE.finditer(line):
-                    method = mi.group(1).upper()
-                    path = mi.group(2).rstrip(".,;`)")
-                    results.append(
-                        DesignEndpoint(
-                            method=method,
-                            path=normalize_path(path),
-                            source_file=str(md.as_posix()),
-                            line_number=i,
-                            status=None,
-                        )
-                    )
+            # V5-2: 散文中・テーブルセル中のインラインコード `GET /api/v1/...` を
+            # 補助抽出する。テーブル/見出しで既にヒットした行でも、別の path が
+            # 同じ行内に書かれているケース（例: 表の説明列に補足 path）を拾う。
+            for mi in _DESIGN_INLINE_RE.finditer(line):
+                method = mi.group(1).upper()
+                path = mi.group(2).rstrip(".,;`)")
+                _add(method, path, i, None)
     return results
 
 
@@ -587,6 +747,8 @@ def make_report(
     repo_root: Path,
     expand_scope: bool,
     exclusion_patterns: list[str] | None = None,
+    v5_reverse: bool = True,
+    v5_naming: bool = True,
 ) -> tuple[int, int, int]:
     """突合してレポートを書き出す。戻り値: (missing_impl, missing_design, matched)。
 
@@ -673,22 +835,100 @@ def make_report(
     only_impl_to_remove: set[tuple[str, str]] = set()
     only_design_to_remove: set[tuple[str, str]] = set()
 
+    # V5-1+V5-3 連携: 逆引き core path に対して命名揺れ正規化（v5_naming=ON 時のみ）
+    # を試行することで、設計側 (例: circulation 単数) と実装側 (circulations 複数)
+    # のペアもまとめて準一致にする。
+    only_design_paths_by_method: dict[str, set[str]] = defaultdict(set)
+    for (m, p) in only_design:
+        only_design_paths_by_method[m].add(p)
+        if v5_naming:
+            # 命名揺れ後の path も index に積む（実装 core が正規化済の場合の補助）
+            only_design_paths_by_method[m].add(normalize_naming(p))
+
     for (method, impl_path) in list(only_impl):
         core = extract_core_path(impl_path)
         if core is None:
             continue
-        if (method, core) not in only_design:
-            continue
         # 同じスコープ prefix で設計側にも書かれていれば、そちらを優先（誤合体防止）
         # → 既に matched 側に入っているなら only_impl/only_design には来ないので OK
-        if not _core_pattern_matches(core):
+        if not _core_pattern_matches(core, v5_reverse=v5_reverse):
             continue
-        scope_reverse_matches.add((method, impl_path, core))
+
+        # 設計側候補: core そのもの または 命名揺れ後の core で一致する設計 path
+        candidates: list[str] = []
+        if (method, core) in only_design:
+            candidates.append(core)
+        if v5_naming:
+            normalized_core = normalize_naming(core)
+            # 設計側に「単数形のまま」書かれた path が、core を normalize_naming した
+            # 結果と一致するか調べる（実装が複数形、設計が単数形）
+            for dp in only_design_paths_by_method[method]:
+                if dp == core:
+                    continue
+                # dp を normalize_naming して core と一致 → 単数 vs 複数の関係
+                if normalize_naming(dp) == core:
+                    candidates.append(dp)
+                # 逆方向: core を normalize_naming して dp と一致 → 実装が単数で
+                # 設計が複数形のケース（稀だが対応）
+                elif dp == normalized_core:
+                    candidates.append(dp)
+        if not candidates:
+            continue
+        # 最初の候補（通常 core 一致を優先）を採用
+        design_path = candidates[0]
+        if (method, design_path) not in only_design:
+            continue
+        scope_reverse_matches.add((method, impl_path, design_path))
         only_impl_to_remove.add((method, impl_path))
-        only_design_to_remove.add((method, core))
+        only_design_to_remove.add((method, design_path))
 
     only_impl -= only_impl_to_remove
     only_design -= only_design_to_remove
+
+    # V5-3: 命名揺れ正規化マッチ
+    # only_design と only_impl の path を normalize_naming で正規化し、
+    # 同じキー (method, normalized_path) になるペアを「準一致」として除外する。
+    naming_matches: set[tuple[str, str, str]] = set()  # (method, design_path, impl_path)
+    if v5_naming:
+        # 正規化キー → 元キーの索引を作る
+        design_index: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
+        for (method, path) in only_design:
+            norm = normalize_naming(path)
+            if norm != path:  # 正規化対象だった場合のみ index に積む
+                design_index[(method, norm)].append((method, path))
+        impl_index: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
+        for (method, path) in only_impl:
+            norm = normalize_naming(path)
+            if norm != path:
+                impl_index[(method, norm)].append((method, path))
+        # 設計側が「正規化済み」になる（複数形）形で書かれているケースもあるので、
+        # 実装側が正規化される（単数形）パスとマッチさせるため、設計側の元の
+        # キーもインデックスに登録しておく必要がある。
+        # 例: 設計 /api/v1/feedbacks/me, 実装 /api/v1/feedback/me
+        #   → 実装側 normalize で feedback→feedbacks となり、設計側の元と一致
+        for (method, path) in only_design:
+            # 元のままの path もキー候補として登録（実装側が単数 → 複数化 と一致）
+            design_index[(method, path)].append((method, path))
+        for (method, path) in only_impl:
+            impl_index[(method, path)].append((method, path))
+
+        d_remove: set[tuple[str, str]] = set()
+        i_remove: set[tuple[str, str]] = set()
+        for key, design_origins in design_index.items():
+            if key not in impl_index:
+                continue
+            impl_origins = impl_index[key]
+            for d in design_origins:
+                for i in impl_origins:
+                    if d == i:
+                        continue  # 同一キーは V5 不要（既に matched）
+                    if d[0] != i[0]:
+                        continue
+                    naming_matches.add((d[0], d[1], i[1]))
+                    d_remove.add(d)
+                    i_remove.add(i)
+        only_design -= d_remove
+        only_impl -= i_remove
 
     only_design_sorted = sorted(only_design)
     only_impl_sorted = sorted(only_impl)
@@ -702,9 +942,9 @@ def make_report(
 
     today = date.today().isoformat()
     lines: list[str] = []
-    lines.append(f"# API 乖離ベースライン報告書（{today} 時点・v4 スキャナ）")
+    lines.append(f"# API 乖離ベースライン報告書（{today} 時点・v5 スキャナ）")
     lines.append("")
-    lines.append("> 本報告書は `backend/scripts/scan_api_drift.py` (v4) により自動生成された。")
+    lines.append("> 本報告書は `backend/scripts/scan_api_drift.py` (v5) により自動生成された。")
     lines.append("> 設計書 `docs/features/F*.md` のテーブル/見出し/インラインコード記載と、")
     lines.append("> 実装 `backend/src/main/java/**/controller/*Controller.java` の")
     lines.append("> Spring MVC アノテーション（新形式 + 旧 @RequestMapping(method=) 形式）を突合した結果である。")
@@ -719,22 +959,28 @@ def make_report(
         "- v3 (2026-05-17): 6 バグ集合根治（query 切捨・重複排除・末尾スラッシュ取りこぼし・スコープ展開拡張・文字化け read 念押し・除外パターン適用）"
     )
     lines.append(
-        f"- v4 ({today}): V4-1 スコープ階層プレフィックス逆引きマッチ + V4-5 🔵 将来機能タグ認識"
+        f"- v4 (2026-05-17): V4-1 スコープ階層プレフィックス逆引きマッチ + V4-5 🔵 将来機能タグ認識"
+    )
+    lines.append(
+        f"- v5 ({today}): V5-1 リソース系スコープ逆引き拡張 + V5-2 設計書インラインコード強化 + V5-3 命名揺れ正規化"
     )
     lines.append("")
     lines.append("## サマリ")
     lines.append("")
     lines.append(
-        f"- 設計あり・実装なし: **{len(only_design_sorted)} 件**（v3: 1,214 件 / v2: 1,256 件 / v1: 1,187 件）"
+        f"- 設計あり・実装なし: **{len(only_design_sorted)} 件**（v4: 1,223 件 / v3: 1,214 件 / v2: 1,256 件 / v1: 1,187 件）"
     )
     lines.append(
-        f"- 実装あり・設計なし: **{len(only_impl_sorted)} 件**（v3: 1,106 件 / v2: 1,147 件 / v1: 931 件）"
+        f"- 実装あり・設計なし: **{len(only_impl_sorted)} 件**（v4: 925 件 / v3: 1,106 件 / v2: 1,147 件 / v1: 931 件）"
     )
     lines.append(
-        f"- 一致: **{len(matched_sorted)} 件**（v3: 1,341 件 / v2: 1,322 件 / v1: 1,310 件）"
+        f"- 一致: **{len(matched_sorted)} 件**（v4: 1,514 件 / v3: 1,341 件 / v2: 1,322 件 / v1: 1,310 件）"
     )
     lines.append(
-        f"- V4-1 スコープ逆引き準一致: **{len(scope_reverse_matches)} 件**（一致側に繰入）"
+        f"- V4-1+V5-1 スコープ逆引き準一致: **{len(scope_reverse_matches)} 件**（一致側に繰入）"
+    )
+    lines.append(
+        f"- V5-3 命名揺れ正規化準一致: **{len(naming_matches)} 件**（一致側に繰入）"
     )
     lines.append(
         f"- V4-5 🔵 将来機能: **{len(future_keys)} 件**（メイン集計外）／うち実装済: {len(future_already_impl)} 件"
@@ -744,7 +990,7 @@ def make_report(
     lines.append(
         f"- 除外（実装側）: {excluded_count} 件 / 除外（設計側）: {design_excluded} 件 / パターン数: {len(exclusion_patterns or [])}"
     )
-    lines.append(f"- スコープ展開: {'ON' if expand_scope else 'OFF'}")
+    lines.append(f"- スコープ展開: {'ON' if expand_scope else 'OFF'} / V5 逆引き: {'ON' if v5_reverse else 'OFF'} / V5 命名揺れ: {'ON' if v5_naming else 'OFF'}")
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -870,8 +1116,33 @@ def make_report(
     lines.append("---")
     lines.append("")
 
+    # V5-3: 命名揺れ正規化準一致セクション
+    lines.append("## 5. 🟪 命名揺れ正規化準一致（V5-3: 単複形揺れ）")
+    lines.append("")
+    lines.append(
+        "> 設計書と実装で第 3 セグメントが単複違い（例: `feedback` ↔ `feedbacks`,"
+        " `circulation` ↔ `circulations`）のため別エンドポイント扱いされていた組を、"
+        "`SINGULAR_PLURAL_DICT` で正規化して準一致とみなしたケース。"
+        "メイン集計の「設計あり・実装なし」「実装あり・設計なし」両方から除外している。"
+    )
+    lines.append("")
+    if not naming_matches:
+        lines.append("_該当なし。_")
+    else:
+        lines.append(f"準一致件数: **{len(naming_matches)} 件**")
+        lines.append("")
+        lines.append("| メソッド | 設計パス | 実装パス | 備考 |")
+        lines.append("|---|---|---|---|")
+        for method, design_path, impl_path in sorted(naming_matches):
+            lines.append(
+                f"| {method} | `{design_path}` | `{impl_path}` | matched by naming-normalization |"
+            )
+        lines.append("")
+    lines.append("---")
+    lines.append("")
+
     # V4-5: 🔵 将来機能セクション
-    lines.append("## 5. 🔵 将来機能（実装ステータス明示）")
+    lines.append("## 6. 🔵 将来機能（実装ステータス明示）")
     lines.append("")
     lines.append(
         "> 設計書テーブル行で状態列が `🔵`（Phase X 未着工等）と明示されているエンドポイント。"
@@ -904,7 +1175,7 @@ def make_report(
 # ---------------------------------------------------------------------------
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="API 乖離スキャナ v4（設計書 vs Controller 実装）"
+        description="API 乖離スキャナ v5（設計書 vs Controller 実装）"
     )
     parser.add_argument(
         "--no-expand-scope",
@@ -918,7 +1189,24 @@ def main() -> int:
         action="store_false",
         help="除外パターン（api_drift_exclusions.yml）の適用を無効化する",
     )
-    parser.set_defaults(expand_scope=True, apply_exclusions=True)
+    parser.add_argument(
+        "--no-v5-reverse",
+        dest="v5_reverse",
+        action="store_false",
+        help="V5-1 リソース系スコープ逆引き拡張を無効化する（既定: 有効）",
+    )
+    parser.add_argument(
+        "--no-v5-naming",
+        dest="v5_naming",
+        action="store_false",
+        help="V5-3 命名揺れ正規化を無効化する（既定: 有効）",
+    )
+    parser.set_defaults(
+        expand_scope=True,
+        apply_exclusions=True,
+        v5_reverse=True,
+        v5_naming=True,
+    )
     args = parser.parse_args()
 
     script_path = Path(__file__).resolve()
@@ -935,6 +1223,8 @@ def main() -> int:
     print(f"[INFO] exclusions       : {exclusions_file}")
     print(f"[INFO] expand_scope     : {args.expand_scope}")
     print(f"[INFO] apply_exclusions : {args.apply_exclusions}")
+    print(f"[INFO] v5_reverse       : {args.v5_reverse}")
+    print(f"[INFO] v5_naming        : {args.v5_naming}")
 
     exclusion_patterns: list[str] = []
     if args.apply_exclusions:
@@ -954,6 +1244,8 @@ def main() -> int:
         repo_root,
         expand_scope=args.expand_scope,
         exclusion_patterns=exclusion_patterns,
+        v5_reverse=args.v5_reverse,
+        v5_naming=args.v5_naming,
     )
     print(
         f"[DONE] missing_impl={missing_impl} "
