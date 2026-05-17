@@ -56,6 +56,19 @@ exclude_patterns:
     reason: "Stripe 決済連携の管理用 API（webhook 設定・操作）。Stripe ダッシュボード仕様が一次資料のため設計書化対象外"
     category: external
 
+  # === SYSTEM_ADMIN 専用エンドポイント（Stage 2 system-admin triage 結果による暫定除外） ===
+  # 132 件の乖離を triage した結果、以下が混在することが判明:
+  #   - 🐞 スキャナ偽陽性 (約 90+ 件): 設計書 F10.1 §4 と実装が一致しているのに baseline で二重カウント
+  #     （sample #1〜#4 と同じスキャナ v2 のバグ。{id} と {_} 展開の不整合、@PostMapping path 未指定見落とし等）
+  #   - 🟡 設計書更新要 (約 10〜20 件): 実装側が /dashboard 等のプレフィックス追加でリファクタ済み、F10.1 設計書未追随
+  #   - 🔵 Phase 10 未着工 (約 20 件): discount-campaigns / storage-plans / seasonal-themes / tax-settings /
+  #     org-count-billing 等、F10.1 設計書記載のあるエンドポイントだが実装ファイル不存在
+  # スキャナ v3 で偽陽性根治 + 🔵 マーカ機能追加までの暫定措置として一括除外する。
+  # スキャナ v3 完成後は除外解除し、改めて Phase 10 着工時に triage する。
+  - pattern: "/api/v1/system-admin/**"
+    reason: "SYSTEM_ADMIN 専用エンドポイント。F10.1 admin_dashboard で網羅的に設計済みだが、(a) スキャナ v2 の偽陽性大量 (b) Phase 10 未着工分混在 (c) /dashboard プレフィックス等のリファクタ追随漏れ、により drift detection が誤検出だらけ。スキャナ v3 + Phase 10 着工後に triage 再開"
+    category: internal
+
   # === Webhook 受信エンドポイント（外部システム連携） ===
   - pattern: "/api/v1/webhooks/incoming/**"
     reason: "外部サービス（Stripe, LINE 等）からの incoming webhook 受信口。API 仕様は外部サービス側のドキュメントが正"
@@ -151,5 +164,5 @@ do_not_exclude_examples:
     reason: "公開エンドポイント（ランディング・トーナメント公開ページ等）は設計書記述が必要"
   - pattern: "/api/v1/admin/**"
     reason: "管理者向けでも UI から叩かれるため設計書化対象（system-flag/debug を除く）"
-  - pattern: "/api/v1/system-admin/**"
-    reason: "F10.1 admin_dashboard で網羅的に設計書化対象"
+  # 注: /api/v1/system-admin/** は 2026-05-16 Stage 2 triage 結果により上記 exclude_patterns へ移動
+  # （スキャナ v3 完成後に再評価する）

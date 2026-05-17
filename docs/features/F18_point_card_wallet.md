@@ -890,6 +890,20 @@ List<GroupItemView> findGroupItemsJoined(@Param("groupId") UUID groupId, @Param(
 | `POINT_CARD_007` | 404 | プロバイダーが見つかりません | `provider_id` 不正または `is_active=false` |
 | `POINT_CARD_008` | 429 | レートリミット超過 | Bucket4j |
 | `POINT_CARD_009` | 401 | 生体認証が必要です | `require_biometric_on_show=true` で WebAuthn 未通過 |
+| `POINT_CARD_010` | 409 | 1 組織あたりのプロバイダー作成上限（20 個）に達しています | Phase 2 P2-S2B 自店プロバイダー新規発行で上限超過 |
+| `POINT_CARD_011` | 404 | このプロバイダーは指定された組織のものではありません | パスの `orgId` と当該プロバイダーの `organization_id` 不一致（IDOR 抑止のため 403 ではなく 404）|
+| `POINT_CARD_012` | 400 | このカードには自店プロバイダーが紐付いていません | スタンプ押印対象カードの `provider_id IS NULL`（自由入力カード）|
+| `POINT_CARD_013` | 400 | スタンプ押印は SELF_ISSUED_STAMP プロバイダーでのみ可能です | 外部 / 残高型プロバイダーへの押印 |
+| `POINT_CARD_014` | 400 | delta は 0 にできません | スタンプ delta = 0 |
+| `POINT_CARD_015` | 400 | 残高操作は SELF_ISSUED_BALANCE プロバイダーでのみ可能です | スタンプ型 / 外部プロバイダーへの残高操作 |
+| `POINT_CARD_016` | 400 | delta は 0 にできません | 残高操作 delta = 0 |
+| `POINT_CARD_017` | 400 | 残高が不足しています | SPENT 操作で `balance_after` が負数になる |
+| `POINT_CARD_018` | 409 | 残高上限（10,000,000 円）に達しています | 累計残高上限超過 |
+| `POINT_CARD_019` | 404 | 一時トークンが見つからないか、期限切れまたは使用済みです | Phase 3 P3-S2A QR 自動特定で Valkey 不存在 / TTL 切れ / GETDEL 消費済（区別はクライアント非開示）|
+| `POINT_CARD_020` | 409 | 返金額が元の利用額を超えています | `refund_of_event_id` の元 SPENT に対し既存返金累計 + 今回返金額が `|delta|` を超過 |
+| `POINT_CARD_021` | 409 | この同義語は既に登録されています | Phase 4 P4-S3 同義語管理 UI で `synonym_normalized` UNIQUE 違反のアプリ層先行チェック |
+| `POINT_CARD_022` | 403 | 残高操作（チャージ・利用）権限が必要です | Phase 5 P5-S1 で導入。`POINT_CARD_BALANCE_OPERATE` Permission 不足（P5-S2 で `PointCardBalanceService` の認可に適用予定）|
+| `POINT_CARD_023` | 403 | 残高返金権限が必要です | Phase 5 P5-S1 で導入。`POINT_CARD_BALANCE_REFUND` Permission 不足（REFUND は CHARGE/SPENT と別委任可能）|
 
 ---
 
@@ -1682,6 +1696,25 @@ Phase 4 は「設計書 §16 未解決事項の主要解消」を目的に 4 つ
 | P4-S3 同義語管理 UI | `AdminPointCardSynonymController` CRUD（GET/POST/PATCH/DELETE）+ `/admin/point-card-synonyms` ページ + i18n 6 言語 + `useAdminWalletApi` クライアント | #729 | 42b886204 |
 | P4-S4 第四陣（最終陣）| E2E `wallet-phase4.spec.ts` 新規（シノニム fuzzy / SystemAdmin UI / PDF417 / DEPUTY_ADMIN 押印権限）+ 設計書 §1 / §15 / §16 / §17 最終化 + memory 更新 | (本 PR) | - |
 
+### Phase 5 進行中（2026-05-17〜 — 残高 Permission 駆動化 + fuzzy match 拡張 + 再マッチバッチ）
+
+Phase 4 までで「PDF417 描画」「マスタ拡充」「同義語辞書 fuzzy match」「DEPUTY_ADMIN 押印権限の Permission 駆動化」が完遂した。Phase 5 は §16 残課題の「残高型 Permission 駆動化」「fuzzy match Levenshtein 拡張」「既存マッチ済みカードの再マッチバッチ」の 3 系統を狙う。
+
+| 陣 | 内容 | 完了 PR | コミット |
+|---|---|---|---|
+| P5-S1 基盤 | V9.158 `POINT_CARD_BALANCE_OPERATE` / `POINT_CARD_BALANCE_REFUND` Permission 2 種新設 + ADMIN は `is_default=1` 自動付与・DEPUTY_ADMIN は `is_default=0` 天井のみ登録（V9.156 の `POINT_CARD_STAMP_ISSUE` と同パターン、後方互換 100%）+ ErrorCode 022/023（BALANCE_*_PERMISSION_REQUIRED → 403）+ `AuditEventType.POINT_CARD_REMATCH_BATCH_EXECUTED` 追加 + `f18.fuzzy-match.levenshtein` feature flag 雛形（`enabled` / `max-distance=1` / `min-input-length=5`） | #737 | 04404e9d7 |
+
+**P5-S2 で取り組む順序（軍議準備メモ）**:
+
+1. **残高 API の Permission 切替**: `PointCardBalanceService` の認可を `roleService.hasPermission(orgId, "POINT_CARD_BALANCE_OPERATE")` ／ REFUND 系は `..._BALANCE_REFUND` に置換。既存のハードコード分岐（ADMIN/DEPUTY_ADMIN 直接判定）を撤去し、失敗時は ErrorCode 022/023 を投げる。
+2. **DEPUTY_ADMIN 既存ユーザー救済の移行手順併設**: V9.158 では DEPUTY_ADMIN に `is_default=0` 天井しか登録していないため、P5-S2 リリース時に既存 DEPUTY_ADMIN ロールへ `permission_groups` 経由で BALANCE_OPERATE / BALANCE_REFUND を一括付与する移行 SQL（または運用 Runbook）を**必ず**併設する。これを怠ると本番リリースで既存 DEPUTY_ADMIN が残高操作を失う回帰を起こす。
+3. **権限グループ UI 動作確認**: 理事長が `permission_groups` から BALANCE_OPERATE / BALANCE_REFUND を個別 ON/OFF できることを店主ダッシュボード / 組織管理画面で確認（F00 配下の既存 UI が自動で拾うはず。要動作確認）。
+4. **テスト**: Service / Controller 統合テスト（ADMIN OK / DEPUTY_ADMIN 天井あり個別付与 OK / DEPUTY_ADMIN 個別付与なし 403 / MEMBER 403）。E2E は既存 `wallet-org-balance.spec.ts` の前後に Permission 剥奪シナリオを追加。
+
+**P5-S3 候補**: fuzzy match Levenshtein 拡張本体（`ProviderMatchService` に feature flag 駆動の 3 段目フォールバック追加。`min-input-length=5` / `max-distance=1` ガード遵守、cache miss 時のみ実行）。
+
+**P5-S4 候補**: 再マッチバッチ（`provider_id IS NULL` カードを夜間に再評価。Quartz / Spring Scheduler / 既存バッチ基盤の選定要）+ `POINT_CARD_REMATCH_BATCH_EXECUTED` 監査ログ発火。
+
 ---
 
 ## 16. 未解決事項
@@ -1693,7 +1726,7 @@ Phase 4 は「設計書 §16 未解決事項の主要解消」を目的に 4 つ
 | ✅ Flyway 連番 V9.136〜V9.142 | V9.136〜V9.141 + V9.142 stamp_events で確定 |
 | ✅ Phase 1 リリース対象プロバイダーの最終リスト | 人気 10 社で確定（V9.141 Seed） |
 | ✅ nosleep.js vs Wake Lock API のフォールバック実装 | S5 で動的 import によるフォールバック完了 |
-| ✅ ErrorCode 番号体系 | §6.3 通り 001〜014 で整合化完了 |
+| ✅ ErrorCode 番号体系 | §6.3 通り 001〜023 で整合化完了（Phase 5 P5-S1 で 022/023 追記までキャッチアップ済み）|
 | ✅ WebAuthn サーバー側 5 分 TTL 検証（POINT_CARD_009 完全実装） | P2-S2A で `reauthenticate-begin/-complete` + Valkey フラグ + startPresentation ゲートを完全実装。AT/RT は再発行せず、consumeReauthentication で 1 回限り使用（再生攻撃防止） |
 | ✅ 自店発行プロバイダー CRUD | P2-S2B で完了（20 個上限 / ADMIN+DEPUTY_ADMIN 委任 / ProviderCacheRefreshEvent 連動） |
 | ✅ スタンプ押印 + 証拠ログ | P2-S2C で完了（@Transactional 不可分 / 監査ログ + 履歴テーブル二段の証拠保全） |
@@ -1715,9 +1748,9 @@ Phase 4 は「設計書 §16 未解決事項の主要解消」を目的に 4 つ
 |---|---|---|
 | 🟡 iOS Safari Wake Lock 実機検証実施 | テレメトリ整備済 / QA 実機テスト未実施 | Low Power Mode + nosleep.js autoplay 制約。`docs/operations/F18_ios_wake_lock_checksheet.md` 沿って QA 実施待ち |
 | 🟡 プロバイダーロゴ画像の権利確認 SOP | 未整備 | 運営側 SOP として整備（マスタ拡充に追従） |
-| 🟢 fuzzy match の Levenshtein 距離拡張 | 完全一致 + 同義語辞書まで対応済 | 誤マッチリスクの閾値評価が必要。別軍議で慎重設計 |
-| 🟢 既存マッチ済みカードの再マッチバッチ | 未実装 | プロバイダー / シノニム更新時の遡及マッチ（プロバイダー追加・シノニム編集の影響を旧カードに反映） |
-| 🟢 残高型操作（charge/spend/refund）の Permission 駆動化 | 現状 ADMIN/DEPUTY_ADMIN | Phase 4 は押印のみ Permission 駆動化。残高操作も同方式に揃える場合は別軍議 |
+| 🟢 fuzzy match の Levenshtein 距離拡張 | Phase 5 P5-S1 で feature flag 雛形のみ投入（`f18.fuzzy-match.levenshtein.enabled` / `max-distance=1` / `min-input-length=5`）| P5-S3 で `ProviderMatchService` に 3 段目フォールバック実装。誤マッチリスク抑制のため `min-input-length=5` ガード遵守 |
+| 🟢 既存マッチ済みカードの再マッチバッチ | Phase 5 P5-S1 で監査イベント型のみ追加（`POINT_CARD_REMATCH_BATCH_EXECUTED`）| P5-S4 で夜間バッチ実装（Quartz / Spring Scheduler / 既存基盤の選定要）。プロバイダー / シノニム更新時に `provider_id IS NULL` カードを遡及マッチ |
+| 🟢 残高型操作（charge/spend/refund）の Permission 駆動化 | Phase 5 P5-S1 で Permission 2 種新設 + ErrorCode + 後方互換マイグレーション完了（PR #737）| P5-S2 で `PointCardBalanceService` の認可を `roleService.hasPermission(..., "POINT_CARD_BALANCE_OPERATE" / "..._REFUND")` に置換。DEPUTY_ADMIN 既存ユーザー救済のため `permission_groups` 経由の一括付与移行手順を**必ず併設**する |
 
 ---
 
@@ -1731,3 +1764,4 @@ Phase 4 は「設計書 §16 未解決事項の主要解消」を目的に 4 つ
 | 2026-05-16 | Phase 2 スタンプ型完了。WebAuthn 再認証 (POINT_CARD_009 完全実装) / 自店プロバイダー CRUD / スタンプ押印+履歴 / 店主ダッシュボード / 顧客 QR 追加フロー 全 main マージ済（PR #660/#669/#665/#666/#676/#677 + 第四陣）。Phase 1 残課題🔴 WebAuthn も解消。残高型 (SELF_ISSUED_BALANCE) は Phase 3 で対応。Phase 1 から先行投入していた `type` ENUM 3 値 / `organization_id` / `balance` / `stamp_count` カラムが破壊なく Phase 2 で活用され、設計判断 #6（先行投入）の正しさが実証された |
 | 2026-05-16 | Phase 3 完了（残高型 + QR 自動特定 + Wake Lock テレメトリ）。PR #687（基盤）/ #691（QR 自動特定）/ #692（残高 API）/ #693（Wake Lock テレメトリ）/ #701（顧客側 FE）/ #702（店主側 FE）+ 第四陣（DTO 拡張 + E2E + 設計書最終化）全 main マージ済。残高型は Phase 1 から先行投入していた `user_point_cards.balance` カラム + Phase 2 ENUM SELF_ISSUED_BALANCE が破壊なく活用された。QR 自動特定は Blind Index ではなく Valkey 5 分 TTL の一時トークン方式を採用し、暗号化されたバーコード値の検索不能性を維持しつつ実現。Wake Lock 失敗時の `captureQuiet` テレメトリで iOS Safari 制約の実機実態を集計可能に。Backend DTO の `UserPointCardListItemResponse` / `UserPointCardDetailResponse` に `balance` / `stampCount` / `providerType` / `providerOrganizationId` を追加してフロント側で残高型・スタンプ型カードを一覧で即時表示可能にした。Phase 1 設計判断 #6（先行投入）が 3 Phase にわたって有効であった |
 | 2026-05-17 | Phase 4 完了。設計書 §16 残課題 4 件解消（PDF417 / マスタ拡充 / 同義語辞書 / DEPUTY_ADMIN 細分化）。bwip-js 動的 import で bundle 影響最小化、`ProviderMatchService` の 2 段フォールバックで同義語マッチ、`POINT_CARD_STAMP_ISSUE` Permission で押印権限制御、SystemAdmin 専用シノニム管理 UI 完備。PR #714（基盤 V9.155-157）/ #723（fuzzy match 拡張）/ #724（DEPUTY_ADMIN 細分化）/ #725（PDF417）/ #729（シノニム管理 UI）+ 第四陣（E2E + 設計書最終化 + memory）全 main マージ済。残: iOS 実機検証（QA 待ち）/ Levenshtein 距離拡張 / 再マッチバッチ / 残高型 Permission 駆動化 |
+| 2026-05-17 | Phase 5 第一陣（P5-S1 基盤）main マージ（PR #737 / 04404e9d7）。V9.158 で `POINT_CARD_BALANCE_OPERATE` / `POINT_CARD_BALANCE_REFUND` Permission 2 種新設、ADMIN は `is_default=1` 自動付与・DEPUTY_ADMIN は `is_default=0` 天井のみ登録（V9.156 `POINT_CARD_STAMP_ISSUE` と同パターン、後方互換 100%）。`PointCardErrorCode` 022/023（BALANCE_*_PERMISSION_REQUIRED → 403）+ `AuditEventType.POINT_CARD_REMATCH_BATCH_EXECUTED` + `f18.fuzzy-match.levenshtein` feature flag 雛形も同陣で前出し。実認可切替は P5-S2 で `PointCardBalanceService` に適用予定。設計書 §6.3 エラーコード一覧は同 PR の docs PR で Phase 2〜5 累積分（010〜023）を一括キャッチアップ追記（本陣の docs PR）。**Phase 5 第二陣リリース時の必須移行手順**: DEPUTY_ADMIN への `permission_groups` 経由 BALANCE_* 一括付与を併設しないと既存 DEPUTY_ADMIN が残高操作を失う回帰を起こす |
