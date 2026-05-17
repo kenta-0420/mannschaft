@@ -49,10 +49,6 @@ function wrap<T>(data: T): string {
   return JSON.stringify({ data })
 }
 
-function nowIso(): string {
-  return new Date().toISOString()
-}
-
 function newState(): MockState {
   return {
     balance: 0,
