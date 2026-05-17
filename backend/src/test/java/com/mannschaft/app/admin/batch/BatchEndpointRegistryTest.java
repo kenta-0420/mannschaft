@@ -51,7 +51,7 @@ class BatchEndpointRegistryTest {
         try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext()) {
             ctx.register(RegistryOnlyConfig.class, DuplicateNameBeanA.class, DuplicateNameBeanB.class);
             assertThatThrownBy(ctx::refresh)
-                    .hasCauseInstanceOf(IllegalStateException.class)
+                    .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("dup-name");
         }
     }
