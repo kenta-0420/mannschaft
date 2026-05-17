@@ -18,12 +18,14 @@ import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.entity.ScheduleMediaUploadEntity;
 import com.mannschaft.app.schedule.repository.ScheduleMediaUploadRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.schedule.service.ScheduleMediaQueryService;
 import com.mannschaft.app.schedule.service.ScheduleMediaService;
+import com.mannschaft.app.schedule.service.ScheduleMediaUploadService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -74,8 +76,28 @@ class ScheduleMediaServiceTest {
     @Mock
     private StorageQuotaService storageQuotaService;
 
-    @InjectMocks
+    /**
+     * リファクタリング第6弾（2026-05-17）以降、{@link ScheduleMediaService} は
+     * {@link ScheduleMediaUploadService} と {@link ScheduleMediaQueryService} へ
+     * 委譲する薄いファサードになった。テストではモック群から各サービスを手動で組み立てる。
+     */
     private ScheduleMediaService scheduleMediaService;
+
+    @BeforeEach
+    void setUp() {
+        ScheduleMediaUploadService uploadService = new ScheduleMediaUploadService(
+                r2StorageService,
+                multipartUploadService,
+                scheduleMediaUploadRepository,
+                scheduleRepository,
+                storageQuotaService);
+        ScheduleMediaQueryService queryService = new ScheduleMediaQueryService(
+                r2StorageService,
+                scheduleMediaUploadRepository,
+                scheduleRepository,
+                storageQuotaService);
+        scheduleMediaService = new ScheduleMediaService(uploadService, queryService);
+    }
 
     /** テスト用固定ユーザー ID */
     private static final Long UPLOADER_ID = 1L;
