@@ -1,0 +1,134 @@
+# =============================================================================
+# API Drift Check — pull_request to main（Stage 3 第一陣 1-β / 案 B warning-only）
+# =============================================================================
+# 設計書 (docs/features/F*.md) と Controller 実装の API 乖離をスキャンし、
+# main の baseline (docs/internal/api_drift_baseline.md) との差分を
+# PR コメントとして投稿する。
+#
+# 重要:
+# - 警告のみで PR を fail させない（必ず exit 0）
+# - フォーク PR ではコメント投稿に write 権限が必要なため、pull_request イベントで
+#   permissions を明示する
+# - 既存 backend-ci.yml / frontend-ci.yml と独立した concurrency group
+# =============================================================================
+
+name: API Drift — Check (PR Warning)
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "backend/src/main/java/**/controller/**/*.java"
+      - "docs/features/**"
+      - "backend/scripts/scan_api_drift.py"
+      - "backend/scripts/ci_drift_summary.py"
+      - "docs/internal/api_drift_baseline.md"
+      - "docs/internal/api_drift_exclusions.yml"
+      - ".github/workflows/api-drift-check.yml"
+
+# 同一 PR の新規 push で前回 run をキャンセル（独立 group）
+concurrency:
+  group: api-drift-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+# PR コメント投稿に必要な権限
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  drift-check:
+    name: Scan & Comment
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          # main の baseline と diff を取るため、十分な履歴を取得
+          fetch-depth: 0
+
+      - name: Set up Python 3
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # main の baseline.md を一時退避（PR ブランチでスキャンすると上書きされるため）
+      - name: Capture main baseline
+        id: capture_main
+        run: |
+          set -e
+          mkdir -p /tmp/drift
+          # origin/main は actions/checkout で取得済み
+          if git show "origin/${{ github.base_ref }}:docs/internal/api_drift_baseline.md" \
+              > /tmp/drift/baseline_main.md 2>/dev/null; then
+            echo "main_baseline_present=true" >> "$GITHUB_OUTPUT"
+            echo "[INFO] main baseline captured: $(wc -l < /tmp/drift/baseline_main.md) lines"
+          else
+            echo "main_baseline_present=false" >> "$GITHUB_OUTPUT"
+            echo "[WARN] main baseline not found on base branch"
+          fi
+
+      # PR ブランチで scan_api_drift.py を実行
+      # → docs/internal/api_drift_baseline.md が上書きされる（コミットはしない）
+      - name: Run drift scanner on PR
+        run: |
+          set -e
+          python backend/scripts/scan_api_drift.py
+          cp docs/internal/api_drift_baseline.md /tmp/drift/baseline_pr.md
+          echo "[INFO] PR baseline captured: $(wc -l < /tmp/drift/baseline_pr.md) lines"
+
+      # 生成された baseline.md は CI 用の作業ファイルなので元の状態に戻す
+      # （後続ステップが PR の add 状態を見ても困らないように）
+      - name: Restore baseline.md to checkout state
+        run: |
+          git checkout -- docs/internal/api_drift_baseline.md || true
+
+      # 差分サマリを生成
+      - name: Build PR comment body
+        run: |
+          set -e
+          python backend/scripts/ci_drift_summary.py \
+            --main /tmp/drift/baseline_main.md \
+            --pr   /tmp/drift/baseline_pr.md \
+            --output /tmp/drift/comment.md
+          echo "----- generated PR comment -----"
+          cat /tmp/drift/comment.md
+
+      # PR コメントを投稿（既存コメントがあれば update、重複防止のためマーカーで識別）
+      - name: Post or update PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('/tmp/drift/comment.md', 'utf8');
+            const marker = '<!-- api-drift-check-marker -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            // 既存コメントを検索
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              { owner, repo, issue_number, per_page: 100 }
+            );
+            const existing = comments.find(c =>
+              c.user && c.user.type === 'Bot' && c.body && c.body.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: existing.id, body
+              });
+              core.info(`Updated existing PR comment #${existing.id}`);
+            } else {
+              const created = await github.rest.issues.createComment({
+                owner, repo, issue_number, body
+              });
+              core.info(`Created new PR comment #${created.data.id}`);
+            }
+
+      # 念のため warning-only を明示（このジョブは常に成功扱い）
+      - name: Mark step as warning-only
+        if: always()
+        run: echo "::notice::API drift check is warning-only and will not fail the PR."
