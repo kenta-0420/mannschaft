@@ -14,6 +14,10 @@
  *       - カード -> 詳細 Dialog（応募ボタン + 応募一覧（投稿者/HEADMAN/ELDER のみ））
  *
  * Phase 2: 募集作成 / 応募 Dialog に VillagePostingIdentitySelector を組み込む。
+ *
+ * リファクタリング第5弾 (2026-05-17): 一覧・募集作成・詳細・応募 Dialog を
+ * components/match-recruits/ 配下の子コンポーネントに分割。本ページは API
+ * 呼び出し・state 統合・配置に専念する。振る舞いは完全に元コードと同一。
  */
 import type {
   MembershipResponse,
@@ -25,7 +29,6 @@ import type {
   VillageMatchRecruitStatus,
   VillageResponse,
 } from '~/types/village'
-import type { PostingIdentitySelection } from '~/components/VillagePostingIdentitySelector.vue'
 
 definePageMeta({
   middleware: 'auth',
@@ -109,71 +112,11 @@ async function loadRecruits() {
   }
 }
 
-function severityForStatus(
-  status: VillageMatchRecruitStatus,
-): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-  switch (status) {
-    case 'OPEN':
-      return 'success'
-    case 'CLOSED':
-      return 'secondary'
-    case 'FULFILLED':
-      return 'info'
-    case 'CANCELLED':
-      return 'danger'
-  }
-}
-
-function severityForAppStatus(
-  status: VillageMatchApplicationResponse['status'],
-): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-  switch (status) {
-    case 'PENDING':
-      return 'warn'
-    case 'ACCEPTED':
-      return 'success'
-    case 'REJECTED':
-      return 'danger'
-    case 'WITHDRAWN':
-      return 'secondary'
-  }
-}
-
 // =====================================================================
 // 募集作成 Dialog
 // =====================================================================
 
-interface RecruitFormState {
-  category: VillageMatchRecruitCategory
-  title: string
-  description: string
-  matchDate: string
-  matchTimeStart: string
-  matchTimeEnd: string
-  venue: string
-  requiredCount: string
-  contactMethod: string
-  applicationDeadline: string
-}
-
-function emptyForm(): RecruitFormState {
-  return {
-    category: 'PRACTICE_MATCH',
-    title: '',
-    description: '',
-    matchDate: '',
-    matchTimeStart: '',
-    matchTimeEnd: '',
-    venue: '',
-    requiredCount: '',
-    contactMethod: '',
-    applicationDeadline: '',
-  }
-}
-
 const showCreateDialog = ref(false)
-const createForm = ref<RecruitFormState>(emptyForm())
-const createPostingIdentity = ref<PostingIdentitySelection | null>(null)
 
 const createCategoryOptions = computed(() =>
   [
@@ -185,32 +128,10 @@ const createCategoryOptions = computed(() =>
 )
 
 function openCreateDialog() {
-  createForm.value = emptyForm()
-  createPostingIdentity.value = null
   showCreateDialog.value = true
 }
 
-async function submitCreate() {
-  if (!createForm.value.title) return
-  const postedByTeamId
-    = createPostingIdentity.value?.subjectType === 'TEAM'
-      ? createPostingIdentity.value.subjectId
-      : null
-  const body: VillageMatchRecruitCreateRequest = {
-    category: createForm.value.category,
-    title: createForm.value.title,
-    description: createForm.value.description || null,
-    matchDate: createForm.value.matchDate || null,
-    matchTimeStart: createForm.value.matchTimeStart || null,
-    matchTimeEnd: createForm.value.matchTimeEnd || null,
-    venue: createForm.value.venue || null,
-    requiredCount: createForm.value.requiredCount ? Number(createForm.value.requiredCount) : null,
-    contactMethod: createForm.value.contactMethod || null,
-    applicationDeadline: createForm.value.applicationDeadline
-      ? `${createForm.value.applicationDeadline}:00`
-      : null,
-    postedByTeamId,
-  }
+async function submitCreate(body: VillageMatchRecruitCreateRequest) {
   try {
     await villageApi.createMatchRecruit(villageId, body)
     showCreateDialog.value = false
@@ -255,25 +176,13 @@ async function openDetailDialog(r: VillageMatchRecruitResponse) {
 }
 
 const showApplyDialog = ref(false)
-const applyMessage = ref('')
-const applyPostingIdentity = ref<PostingIdentitySelection | null>(null)
 
 function openApplyDialog() {
-  applyMessage.value = ''
-  applyPostingIdentity.value = null
   showApplyDialog.value = true
 }
 
-async function submitApply() {
+async function submitApply(body: VillageMatchApplicationCreateRequest) {
   if (!detailRecruit.value) return
-  const applicantTeamId
-    = applyPostingIdentity.value?.subjectType === 'TEAM'
-      ? applyPostingIdentity.value.subjectId
-      : null
-  const body: VillageMatchApplicationCreateRequest = {
-    message: applyMessage.value || null,
-    applicantTeamId,
-  }
   try {
     await villageApi.applyToMatchRecruit(villageId, detailRecruit.value.id, body)
     showApplyDialog.value = false
@@ -524,376 +433,49 @@ onMounted(() => {
         @edit="onEdit"
       />
 
-      <div class="mx-auto max-w-4xl p-4 sm:p-6">
-        <!-- フィルタ + 作成ボタン -->
-        <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
-          <div class="flex items-center gap-2 flex-wrap">
-            <Select
-              v-model="categoryFilter"
-              :options="categoryDropdownOptions"
-              option-value="value"
-              option-label="label"
-              class="w-44"
-            />
-            <Select
-              v-model="statusFilter"
-              :options="statusDropdownOptions"
-              option-value="value"
-              option-label="label"
-              class="w-44"
-            />
-          </div>
-          <Button
-            v-if="isVillager"
-            :label="t('village.matchRecruit.create')"
-            icon="pi pi-plus"
-            severity="primary"
-            size="small"
-            @click="openCreateDialog"
-          />
-        </div>
-
-        <!-- 募集一覧 -->
-        <div v-if="recruitsLoading" class="text-center py-12 text-surface-500">
-          <i class="pi pi-spin pi-spinner text-2xl" />
-        </div>
-        <DashboardEmptyState
-          v-else-if="recruits.length === 0"
-          icon="pi pi-flag"
-          :message="t('village.matchRecruit.empty')"
-        />
-        <div v-else class="flex flex-col gap-3">
-          <button
-            v-for="r in recruits"
-            :key="r.id"
-            type="button"
-            class="village-match-recruit__row flex flex-col gap-1 rounded-lg border border-surface-200 p-4 text-left transition hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-800"
-            @click="openDetailDialog(r)"
-          >
-            <div class="flex items-center justify-between gap-2 flex-wrap">
-              <div class="flex items-center gap-2">
-                <Badge
-                  :value="t(`village.matchRecruit.category.${r.category}`)"
-                  severity="secondary"
-                />
-                <Badge
-                  :value="t(`village.matchRecruit.status.${r.status}`)"
-                  :severity="severityForStatus(r.status)"
-                />
-              </div>
-              <span v-if="r.applicationDeadline" class="text-xs text-surface-500">
-                {{ t('village.matchRecruit.deadline') }}: {{ r.applicationDeadline }}
-              </span>
-            </div>
-            <span class="font-semibold truncate">{{ r.title }}</span>
-            <div class="text-xs text-surface-500 flex items-center gap-3 flex-wrap">
-              <span v-if="r.matchDate">
-                <i class="pi pi-calendar mr-1" />{{ r.matchDate }}
-                <span v-if="r.matchTimeStart"> {{ r.matchTimeStart }}</span>
-                <span v-if="r.matchTimeEnd"> - {{ r.matchTimeEnd }}</span>
-              </span>
-              <span v-if="r.venue">
-                <i class="pi pi-map-marker mr-1" />{{ r.venue }}
-              </span>
-              <span v-if="r.requiredCount">
-                <i class="pi pi-users mr-1" />{{ r.requiredCount }}
-              </span>
-            </div>
-          </button>
-        </div>
-      </div>
+      <!-- フィルタ + 募集一覧 -->
+      <MatchRecruitList
+        v-model:category-filter="categoryFilter"
+        v-model:status-filter="statusFilter"
+        :recruits="recruits"
+        :recruits-loading="recruitsLoading"
+        :is-villager="isVillager"
+        :category-dropdown-options="categoryDropdownOptions"
+        :status-dropdown-options="statusDropdownOptions"
+        @create="openCreateDialog"
+        @select="openDetailDialog"
+      />
 
       <!-- 募集作成 Dialog (Selector 付き) -->
-      <Dialog
+      <MatchRecruitForm
         v-model:visible="showCreateDialog"
-        modal
-        :draggable="false"
-        :header="t('village.matchRecruit.createTitle')"
-        :style="{ width: '36rem' }"
-        :breakpoints="{ '640px': '92vw' }"
-      >
-        <div class="flex flex-col gap-3">
-          <!-- Phase 2: 投稿主体 Selector を有効化 -->
-          <VillagePostingIdentitySelector
-            :village-id="villageId"
-            :model-value="createPostingIdentity"
-            :visible="true"
-            @update:model-value="(v) => (createPostingIdentity = v)"
-          />
-          <div>
-            <label class="block text-sm font-medium mb-1">
-              {{ t('village.field.category') }}
-            </label>
-            <Select
-              v-model="createForm.category"
-              :options="createCategoryOptions"
-              option-value="value"
-              option-label="label"
-              class="w-full"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">
-              {{ t('village.matchRecruit.recruitTitle') }}
-            </label>
-            <InputText v-model="createForm.title" class="w-full" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">
-              {{ t('village.matchRecruit.description') }}
-            </label>
-            <Textarea v-model="createForm.description" class="w-full" rows="3" />
-          </div>
-          <div class="grid grid-cols-3 gap-3">
-            <div>
-              <label class="block text-sm font-medium mb-1">
-                {{ t('village.matchRecruit.matchDate') }}
-              </label>
-              <InputText v-model="createForm.matchDate" type="date" class="w-full" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">
-                {{ t('village.matchRecruit.matchTimeStart') }}
-              </label>
-              <InputText v-model="createForm.matchTimeStart" type="time" class="w-full" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">
-                {{ t('village.matchRecruit.matchTimeEnd') }}
-              </label>
-              <InputText v-model="createForm.matchTimeEnd" type="time" class="w-full" />
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium mb-1">
-                {{ t('village.matchRecruit.venue') }}
-              </label>
-              <InputText v-model="createForm.venue" class="w-full" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">
-                {{ t('village.matchRecruit.requiredCount') }}
-              </label>
-              <InputText
-                v-model="createForm.requiredCount"
-                type="number"
-                min="0"
-                class="w-full"
-              />
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">
-              {{ t('village.matchRecruit.contactMethod') }}
-            </label>
-            <InputText v-model="createForm.contactMethod" class="w-full" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">
-              {{ t('village.matchRecruit.deadline') }}
-            </label>
-            <InputText
-              v-model="createForm.applicationDeadline"
-              type="datetime-local"
-              class="w-full"
-            />
-          </div>
-        </div>
-        <template #footer>
-          <Button
-            :label="t('village.action.cancel')"
-            severity="secondary"
-            text
-            @click="showCreateDialog = false"
-          />
-          <Button
-            :label="t('village.action.save')"
-            icon="pi pi-check"
-            severity="primary"
-            @click="submitCreate"
-          />
-        </template>
-      </Dialog>
+        :village-id="villageId"
+        :category-options="createCategoryOptions"
+        @submit="submitCreate"
+      />
 
       <!-- 詳細 Dialog -->
-      <Dialog
+      <MatchRecruitDetailDialog
         v-model:visible="showDetailDialog"
-        modal
-        :draggable="false"
-        :header="detailRecruit?.title ?? ''"
-        :style="{ width: '40rem' }"
-        :breakpoints="{ '640px': '92vw' }"
-      >
-        <div v-if="detailRecruit" class="flex flex-col gap-3">
-          <div class="flex items-center gap-2 flex-wrap">
-            <Badge
-              :value="t(`village.matchRecruit.category.${detailRecruit.category}`)"
-              severity="secondary"
-            />
-            <Badge
-              :value="t(`village.matchRecruit.status.${detailRecruit.status}`)"
-              :severity="severityForStatus(detailRecruit.status)"
-            />
-          </div>
-          <p v-if="detailRecruit.description" class="whitespace-pre-wrap text-sm">
-            {{ detailRecruit.description }}
-          </p>
-          <div class="grid grid-cols-2 gap-2 text-sm">
-            <div v-if="detailRecruit.matchDate">
-              <strong>{{ t('village.matchRecruit.matchDate') }}:</strong>
-              {{ detailRecruit.matchDate }}
-              <span v-if="detailRecruit.matchTimeStart">{{ detailRecruit.matchTimeStart }}</span>
-              <span v-if="detailRecruit.matchTimeEnd"> - {{ detailRecruit.matchTimeEnd }}</span>
-            </div>
-            <div v-if="detailRecruit.venue">
-              <strong>{{ t('village.matchRecruit.venue') }}:</strong>
-              {{ detailRecruit.venue }}
-            </div>
-            <div v-if="detailRecruit.requiredCount">
-              <strong>{{ t('village.matchRecruit.requiredCount') }}:</strong>
-              {{ detailRecruit.requiredCount }}
-            </div>
-            <div v-if="detailRecruit.contactMethod">
-              <strong>{{ t('village.matchRecruit.contactMethod') }}:</strong>
-              {{ detailRecruit.contactMethod }}
-            </div>
-            <div v-if="detailRecruit.applicationDeadline">
-              <strong>{{ t('village.matchRecruit.deadline') }}:</strong>
-              {{ detailRecruit.applicationDeadline }}
-            </div>
-          </div>
-
-          <!-- 応募一覧（投稿者 / HEADMAN / ELDER のみ） -->
-          <div v-if="canSeeApplications" class="mt-2">
-            <h3 class="font-semibold mb-2">
-              {{ t('village.matchRecruit.applications') }}
-            </h3>
-            <DashboardEmptyState
-              v-if="detailApplications.length === 0"
-              icon="pi pi-inbox"
-              :message="t('village.matchRecruit.noApplications')"
-            />
-            <div v-else class="flex flex-col gap-2">
-              <div
-                v-for="app in detailApplications"
-                :key="app.id"
-                class="rounded border border-surface-200 dark:border-surface-700 p-3 text-sm"
-              >
-                <div class="flex items-center justify-between gap-2 flex-wrap">
-                  <span>
-                    {{ t('village.matchRecruit.applicantUser') }} #{{ app.applicantUserId }}
-                    <span v-if="app.applicantTeamId"> (team #{{ app.applicantTeamId }})</span>
-                  </span>
-                  <Badge
-                    :value="t(`village.matchApplication.status.${app.status}`)"
-                    :severity="severityForAppStatus(app.status)"
-                  />
-                </div>
-                <p v-if="app.message" class="text-xs text-surface-500 mt-1 whitespace-pre-wrap">
-                  {{ app.message }}
-                </p>
-                <div
-                  v-if="app.status === 'PENDING'"
-                  class="flex items-center gap-2 mt-2"
-                >
-                  <Button
-                    :label="t('village.matchApplication.accept')"
-                    size="small"
-                    severity="success"
-                    @click="reviewApp(app, 'accept')"
-                  />
-                  <Button
-                    :label="t('village.matchApplication.reject')"
-                    size="small"
-                    severity="danger"
-                    outlined
-                    @click="reviewApp(app, 'reject')"
-                  />
-                  <Button
-                    v-if="currentUserId === app.applicantUserId"
-                    :label="t('village.matchApplication.withdraw')"
-                    size="small"
-                    severity="secondary"
-                    text
-                    @click="withdrawApp(app)"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <template #footer>
-          <Button
-            v-if="
-              detailRecruit
-                && detailRecruit.status === 'OPEN'
-                && isVillager
-            "
-            :label="t('village.matchRecruit.apply')"
-            icon="pi pi-send"
-            severity="primary"
-            @click="openApplyDialog"
-          />
-          <Button
-            v-if="
-              detailRecruit
-                && detailRecruit.status === 'OPEN'
-                && (isDetailOwner || canManage)
-            "
-            :label="t('village.matchRecruit.close')"
-            icon="pi pi-times"
-            severity="secondary"
-            outlined
-            @click="closeRecruit"
-          />
-          <Button
-            :label="t('village.action.cancel')"
-            severity="secondary"
-            text
-            @click="showDetailDialog = false"
-          />
-        </template>
-      </Dialog>
+        :recruit="detailRecruit"
+        :applications="detailApplications"
+        :can-see-applications="canSeeApplications"
+        :is-villager="isVillager"
+        :is-detail-owner="isDetailOwner"
+        :can-manage="canManage"
+        :current-user-id="currentUserId"
+        @apply="openApplyDialog"
+        @close-recruit="closeRecruit"
+        @review-app="reviewApp"
+        @withdraw-app="withdrawApp"
+      />
 
       <!-- 応募 Dialog (Selector 付き) -->
-      <Dialog
+      <MatchRecruitApplyDialog
         v-model:visible="showApplyDialog"
-        modal
-        :draggable="false"
-        :header="t('village.matchRecruit.applyTitle')"
-        :style="{ width: '32rem' }"
-        :breakpoints="{ '640px': '92vw' }"
-      >
-        <div class="flex flex-col gap-3">
-          <VillagePostingIdentitySelector
-            :village-id="villageId"
-            :model-value="applyPostingIdentity"
-            :visible="true"
-            @update:model-value="(v) => (applyPostingIdentity = v)"
-          />
-          <div>
-            <label class="block text-sm font-medium mb-1">
-              {{ t('village.matchRecruit.applyMessage') }}
-            </label>
-            <Textarea v-model="applyMessage" class="w-full" rows="4" />
-          </div>
-        </div>
-        <template #footer>
-          <Button
-            :label="t('village.action.cancel')"
-            severity="secondary"
-            text
-            @click="showApplyDialog = false"
-          />
-          <Button
-            :label="t('village.matchRecruit.apply')"
-            icon="pi pi-send"
-            severity="primary"
-            @click="submitApply"
-          />
-        </template>
-      </Dialog>
+        :village-id="villageId"
+        @submit="submitApply"
+      />
 
       <!-- 通報ダイアログ — 対象は村本体 (VILLAGE) -->
       <VillageReportDialog
