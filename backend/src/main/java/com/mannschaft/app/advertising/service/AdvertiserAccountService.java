@@ -169,4 +169,37 @@ public class AdvertiserAccountService {
         return advertiserAccountRepository.findById(accountId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
     }
+
+    /**
+     * F09.17 Phase 11-b ε-A: メッセージ型キャンペーン {@code launch} / {@code resume} の同期 credit_limit 判定。
+     *
+     * <p>新規キャンペーンの {@code total_budget_yen} が広告主の {@code credit_limit} を超えていないか同期確認する。
+     * 設計書 §5「credit_limit 超過時の挙動」では「credit_used + estimated_cost > credit_limit」で判定するが、
+     * Phase 11-b ε-A 時点では {@code credit_used} 集計（ε-C 課金ブリッジで導入予定）がまだ無いため、
+     * 単純に {@code totalBudgetYen <= creditLimit} で判定する暫定実装とする。
+     * ε-C で {@code credit_used} 集計を導入したらここを差し替える。</p>
+     *
+     * <p>ドメイン境界: 本メソッドは F09.17 ドメインの
+     * {@code AdMessagingCampaignTransitionService} から呼ばれる。
+     * 広告主アカウントは同 {@code advertising} 親パッケージ内のため跨ぎ違反にはならない。</p>
+     *
+     * @param advertiserAccountId 広告主アカウント ID
+     * @param requestedBudgetYen キャンペーンの総予算（円）
+     * @return 受け入れ可能なら {@code true}
+     */
+    public boolean canAcceptNewCampaign(Long advertiserAccountId, Long requestedBudgetYen) {
+        AdvertiserAccountEntity entity = findById(advertiserAccountId);
+        if (entity.getStatus() != AdvertiserAccountStatus.ACTIVE) {
+            return false;
+        }
+        if (requestedBudgetYen == null || requestedBudgetYen <= 0L) {
+            // 予算 0 のキャンペーンは launch 不可（バリデーション側でも弾く想定）
+            return false;
+        }
+        java.math.BigDecimal limit = entity.getCreditLimit();
+        if (limit == null) {
+            return false;
+        }
+        return limit.compareTo(java.math.BigDecimal.valueOf(requestedBudgetYen)) >= 0;
+    }
 }

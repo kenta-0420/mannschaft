@@ -43,4 +43,22 @@ public interface AdMessagingCampaignRepository
      */
     Page<AdMessagingCampaign> findByModerationStatusInAndDeletedAtIsNull(
             Collection<AdModerationStatus> moderationStatuses, Pageable pageable);
+
+    /**
+     * F09.17 Phase 11-b ε-A 自動遷移ワーカー用: 指定状態かつ {@code starts_at <= now} のキャンペーンを取得。
+     *
+     * <p>{@link AdCampaignStatus#SCHEDULED} を渡し、配信開始時刻に到達したキャンペーンを
+     * {@code DELIVERING} へ自動遷移するために使う。</p>
+     */
+    List<AdMessagingCampaign> findByStatusAndStartsAtLessThanEqualAndDeletedAtIsNull(
+            AdCampaignStatus status, LocalDateTime now);
+
+    /**
+     * F09.17 Phase 11-b ε-A 自動遷移ワーカー用: 指定状態かつ {@code ends_at <= now} のキャンペーンを取得。
+     *
+     * <p>{@link AdCampaignStatus#DELIVERING} を渡し、配信終了時刻に到達したキャンペーンを
+     * {@code COMPLETED} へ自動遷移するために使う。</p>
+     */
+    List<AdMessagingCampaign> findByStatusAndEndsAtLessThanEqualAndDeletedAtIsNull(
+            AdCampaignStatus status, LocalDateTime now);
 }
