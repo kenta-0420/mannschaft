@@ -112,6 +112,17 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     Optional<String> findLocaleById(@org.springframework.data.repository.query.Param("userId") Long userId);
 
     /**
+     * userId に対応する timezone 文字列のみを取得する（F09.17 フリークエンシーキャップ
+     * の週境界をユーザーローカル時刻で評価するために使用する）。
+     *
+     * @param userId ユーザーID
+     * @return timezone 文字列（例: "Asia/Tokyo"）。ユーザー未存在・論理削除済みなら empty。
+     */
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT u.timezone FROM UserEntity u WHERE u.id = :userId AND u.deletedAt IS NULL")
+    Optional<String> findTimezoneById(@org.springframework.data.repository.query.Param("userId") Long userId);
+
+    /**
      * 物理削除対象ユーザーを取得する。
      * @SQLRestriction("deleted_at IS NULL") をバイパスするためネイティブSQLを使用。
      */
