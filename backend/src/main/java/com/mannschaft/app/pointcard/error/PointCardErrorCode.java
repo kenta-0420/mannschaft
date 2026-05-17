@@ -211,7 +211,25 @@ public enum PointCardErrorCode implements ErrorCode {
      * Phase 4 第三陣 S3 で導入。
      */
     SYNONYM_DUPLICATE("POINT_CARD_021",
-            "この同義語は既に登録されています", Severity.WARN);
+            "この同義語は既に登録されています", Severity.WARN),
+
+    /**
+     * 残高操作（CHARGE/SPENT）の権限がない。HTTP 403。
+     *
+     * <p>POINT_CARD_BALANCE_OPERATE Permission を持つ ADMIN/DEPUTY_ADMIN のみ実行可能。
+     * Phase 5 で導入。
+     */
+    BALANCE_OPERATE_PERMISSION_REQUIRED("POINT_CARD_022",
+            "残高操作（チャージ・利用）権限が必要です", Severity.WARN),
+
+    /**
+     * 残高返金の権限がない。HTTP 403。
+     *
+     * <p>POINT_CARD_BALANCE_REFUND Permission を持つ ADMIN/DEPUTY_ADMIN のみ実行可能。
+     * REFUND は CHARGE/SPENT とは別 Permission で個別委任可能。Phase 5 で導入。
+     */
+    BALANCE_REFUND_PERMISSION_REQUIRED("POINT_CARD_023",
+            "残高返金権限が必要です", Severity.WARN);
 
     private final String code;
     private final String message;
