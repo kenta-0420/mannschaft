@@ -558,9 +558,331 @@ class TestV4CorePatternMatch(unittest.TestCase):
         self.assertTrue(scanner._core_pattern_matches("/api/v1/dashboard/users"))
 
     def test_non_whitelisted_does_not_match(self) -> None:
+        # v4 デフォルト（v5_reverse=False）ではリソース系は許可されない
+        self.assertFalse(scanner._core_pattern_matches("/api/v1/posts", v5_reverse=False))
+        self.assertFalse(scanner._core_pattern_matches("/api/v1/coupons/{_}", v5_reverse=False))
+        self.assertFalse(scanner._core_pattern_matches("/api/v1/me/foo", v5_reverse=False))
+        # v5 デフォルト (v5_reverse=True) でも /posts や /me は許可されない
         self.assertFalse(scanner._core_pattern_matches("/api/v1/posts"))
-        self.assertFalse(scanner._core_pattern_matches("/api/v1/coupons/{_}"))
         self.assertFalse(scanner._core_pattern_matches("/api/v1/me/foo"))
+
+
+class TestV5ReverseExpansion(unittest.TestCase):
+    """V5-1: リソース系スコープ逆引き拡張。"""
+
+    def test_v5_core_pattern_matches_resource_paths(self) -> None:
+        """v5_reverse=True のとき /coupons/**, /surveys/** 等が許可される。"""
+        self.assertTrue(scanner._core_pattern_matches("/api/v1/coupons/{_}"))
+        self.assertTrue(scanner._core_pattern_matches("/api/v1/dwelling-units/{_}"))
+        self.assertTrue(scanner._core_pattern_matches("/api/v1/repair-plans/{_}/stats"))
+        self.assertTrue(scanner._core_pattern_matches("/api/v1/forms/templates"))
+        self.assertTrue(scanner._core_pattern_matches("/api/v1/surveys/{_}/publish"))
+        self.assertTrue(scanner._core_pattern_matches("/api/v1/workflows/templates"))
+        self.assertTrue(scanner._core_pattern_matches("/api/v1/circulation/{_}/stamp"))
+        self.assertTrue(scanner._core_pattern_matches("/api/v1/bulletin/threads"))
+
+    def test_v5_core_pattern_disabled_when_flag_off(self) -> None:
+        """v5_reverse=False のとき V5 リソース系は許可されない（v4 互換）。"""
+        self.assertFalse(scanner._core_pattern_matches("/api/v1/coupons/{_}", v5_reverse=False))
+        self.assertFalse(scanner._core_pattern_matches("/api/v1/surveys/{_}", v5_reverse=False))
+
+    def test_v5_reverse_match_coupons(self) -> None:
+        """設計 /api/v1/coupons/{_} ≡ 実装 /api/v1/teams/{_}/coupons/{_}
+        が V5-1 で準一致になる。
+        """
+        de = scanner.DesignEndpoint(
+            method="GET",
+            path="/api/v1/coupons/{_}",
+            source_file="x.md",
+            line_number=1,
+            status=None,
+        )
+        ie = scanner.ImplEndpoint(
+            method="GET",
+            path="/api/v1/teams/{_}/coupons/{_}",
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de], [ie], out, Path(td), expand_scope=False
+            )
+            # V5-1 で準一致 → 両方 0 件
+            self.assertEqual(md, 0)
+            self.assertEqual(mi, 0)
+            content = out.read_text(encoding="utf-8")
+            # 準一致セクションに記載される
+            self.assertIn("/api/v1/teams/{_}/coupons/{_}", content)
+
+    def test_v5_reverse_disabled_keeps_resource_paths_unmatched(self) -> None:
+        """--no-v5-reverse のときリソース系は別物のまま。"""
+        de = scanner.DesignEndpoint(
+            method="GET",
+            path="/api/v1/coupons/{_}",
+            source_file="x.md",
+            line_number=1,
+            status=None,
+        )
+        ie = scanner.ImplEndpoint(
+            method="GET",
+            path="/api/v1/teams/{_}/coupons/{_}",
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de], [ie], out, Path(td),
+                expand_scope=False, v5_reverse=False,
+            )
+            # v5_reverse=False のとき準一致しない（別物）
+            self.assertEqual(md, 1)
+            self.assertEqual(mi, 1)
+
+    def test_v5_reverse_dwelling_units_orgs_prefix(self) -> None:
+        """設計 /api/v1/dwelling-units/{_} ≡ 実装 /api/v1/organizations/{_}/dwelling-units/{_}"""
+        de = scanner.DesignEndpoint(
+            method="POST",
+            path="/api/v1/dwelling-units/{_}/invite",
+            source_file="x.md",
+            line_number=1,
+            status=None,
+        )
+        ie = scanner.ImplEndpoint(
+            method="POST",
+            path="/api/v1/organizations/{_}/dwelling-units/{_}/invite",
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de], [ie], out, Path(td), expand_scope=False
+            )
+            self.assertEqual(md, 0)
+            self.assertEqual(mi, 0)
+
+
+class TestV5InlineCodeScan(unittest.TestCase):
+    """V5-2: 設計書インラインコード強化。"""
+
+    def test_inline_code_in_table_description_column(self) -> None:
+        """テーブルの説明列に書かれたインラインコード `GET /api/v1/...` を拾う。"""
+        with tempfile.TemporaryDirectory() as td:
+            features = Path(td) / "docs" / "features"
+            features.mkdir(parents=True)
+            md = features / "F99.test.md"
+            md.write_text(
+                "# テスト設計書\n\n"
+                "| 機能 | 説明 |\n"
+                "|---|---|\n"
+                "| クーポン作成 | 内部で `POST /api/v1/internal/coupons` を呼び出す |\n",
+                encoding="utf-8",
+            )
+            results = scanner.scan_design_docs(features)
+            paths = {(r.method, r.path) for r in results}
+            self.assertIn(("POST", "/api/v1/internal/coupons"), paths)
+
+    def test_inline_code_in_bullet_list(self) -> None:
+        """箇条書きの中のインラインコードを拾う。"""
+        with tempfile.TemporaryDirectory() as td:
+            features = Path(td) / "docs" / "features"
+            features.mkdir(parents=True)
+            md = features / "F99.test.md"
+            md.write_text(
+                "# テスト設計書\n\n"
+                "## API 一覧\n\n"
+                "- `GET /api/v1/foo/bar` でデータ取得\n"
+                "- `POST /api/v1/foo/baz` で作成\n",
+                encoding="utf-8",
+            )
+            results = scanner.scan_design_docs(features)
+            paths = {(r.method, r.path) for r in results}
+            self.assertIn(("GET", "/api/v1/foo/bar"), paths)
+            self.assertIn(("POST", "/api/v1/foo/baz"), paths)
+
+    def test_html_comment_excluded(self) -> None:
+        """HTML コメント内のインラインコードは抽出しない。"""
+        with tempfile.TemporaryDirectory() as td:
+            features = Path(td) / "docs" / "features"
+            features.mkdir(parents=True)
+            md = features / "F99.test.md"
+            md.write_text(
+                "# テスト設計書\n\n"
+                "<!-- TODO: 後日 `GET /api/v1/legacy/foo` を削除 -->\n"
+                "本文: `POST /api/v1/main/bar`\n",
+                encoding="utf-8",
+            )
+            results = scanner.scan_design_docs(features)
+            paths = {(r.method, r.path) for r in results}
+            # コメント内のものは含まれない
+            self.assertNotIn(("GET", "/api/v1/legacy/foo"), paths)
+            # 本文のものは含まれる
+            self.assertIn(("POST", "/api/v1/main/bar"), paths)
+
+    def test_code_block_excluded(self) -> None:
+        """コードブロック ``` ... ``` 内の path は抽出しない。"""
+        with tempfile.TemporaryDirectory() as td:
+            features = Path(td) / "docs" / "features"
+            features.mkdir(parents=True)
+            md = features / "F99.test.md"
+            md.write_text(
+                "# テスト設計書\n\n"
+                "```bash\n"
+                "curl -X GET /api/v1/in-code/foo\n"
+                "```\n"
+                "\n"
+                "本文: `POST /api/v1/main/bar`\n",
+                encoding="utf-8",
+            )
+            results = scanner.scan_design_docs(features)
+            paths = {(r.method, r.path) for r in results}
+            self.assertNotIn(("GET", "/api/v1/in-code/foo"), paths)
+            self.assertIn(("POST", "/api/v1/main/bar"), paths)
+
+    def test_inline_code_multiline_html_comment_excluded(self) -> None:
+        """複数行にわたる HTML コメントもまるごと除外される。"""
+        with tempfile.TemporaryDirectory() as td:
+            features = Path(td) / "docs" / "features"
+            features.mkdir(parents=True)
+            md = features / "F99.test.md"
+            md.write_text(
+                "# テスト設計書\n\n"
+                "<!--\n"
+                "TODO リスト:\n"
+                "- `DELETE /api/v1/old/foo` を削除\n"
+                "- `PUT /api/v1/old/bar` を移行\n"
+                "-->\n"
+                "\n"
+                "現役: `GET /api/v1/current/list`\n",
+                encoding="utf-8",
+            )
+            results = scanner.scan_design_docs(features)
+            paths = {(r.method, r.path) for r in results}
+            self.assertNotIn(("DELETE", "/api/v1/old/foo"), paths)
+            self.assertNotIn(("PUT", "/api/v1/old/bar"), paths)
+            self.assertIn(("GET", "/api/v1/current/list"), paths)
+
+
+class TestV5NamingNormalization(unittest.TestCase):
+    """V5-3: 単複形揺れの命名揺れ正規化。"""
+
+    def test_normalize_naming_feedback_to_feedbacks(self) -> None:
+        self.assertEqual(
+            scanner.normalize_naming("/api/v1/feedback/{_}/vote"),
+            "/api/v1/feedbacks/{_}/vote",
+        )
+
+    def test_normalize_naming_circulation_to_circulations(self) -> None:
+        self.assertEqual(
+            scanner.normalize_naming("/api/v1/circulation/{_}/stamp"),
+            "/api/v1/circulations/{_}/stamp",
+        )
+
+    def test_normalize_naming_already_plural_unchanged(self) -> None:
+        # 複数形は不変
+        self.assertEqual(
+            scanner.normalize_naming("/api/v1/feedbacks/me"),
+            "/api/v1/feedbacks/me",
+        )
+
+    def test_normalize_naming_outside_dict_unchanged(self) -> None:
+        # 辞書外は不変
+        self.assertEqual(
+            scanner.normalize_naming("/api/v1/coupons/{_}"),
+            "/api/v1/coupons/{_}",
+        )
+
+    def test_normalize_naming_non_api_path_unchanged(self) -> None:
+        self.assertEqual(scanner.normalize_naming("/foo/feedback"), "/foo/feedback")
+
+    def test_v5_3_design_singular_matches_impl_plural(self) -> None:
+        """設計 /api/v1/circulation/{_}/stamp ≡ 実装 /api/v1/circulations/{_}/stamp"""
+        de = scanner.DesignEndpoint(
+            method="POST",
+            path="/api/v1/circulation/{_}/stamp",
+            source_file="x.md",
+            line_number=1,
+            status=None,
+        )
+        ie = scanner.ImplEndpoint(
+            method="POST",
+            path="/api/v1/circulations/{_}/stamp",
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de], [ie], out, Path(td), expand_scope=False
+            )
+            # V5-3 で準一致 → 両方 0 件
+            self.assertEqual(md, 0)
+            self.assertEqual(mi, 0)
+            content = out.read_text(encoding="utf-8")
+            self.assertIn("命名揺れ正規化", content)
+            self.assertIn("matched by naming-normalization", content)
+
+    def test_v5_3_naming_normalization_disabled(self) -> None:
+        """--no-v5-naming で命名揺れマッチが無効化される。"""
+        de = scanner.DesignEndpoint(
+            method="POST",
+            path="/api/v1/circulation/{_}/stamp",
+            source_file="x.md",
+            line_number=1,
+            status=None,
+        )
+        ie = scanner.ImplEndpoint(
+            method="POST",
+            path="/api/v1/circulations/{_}/stamp",
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de], [ie], out, Path(td),
+                expand_scope=False, v5_naming=False,
+            )
+            # 命名揺れ無効化 → 別物として残る
+            self.assertEqual(md, 1)
+            self.assertEqual(mi, 1)
+
+    def test_v5_3_feedback_to_feedbacks(self) -> None:
+        """feedback (単数) ↔ feedbacks (複数) の正規化。"""
+        de = scanner.DesignEndpoint(
+            method="GET",
+            path="/api/v1/feedback/me",
+            source_file="x.md",
+            line_number=1,
+            status=None,
+        )
+        ie = scanner.ImplEndpoint(
+            method="GET",
+            path="/api/v1/feedbacks/me",
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de], [ie], out, Path(td), expand_scope=False
+            )
+            self.assertEqual(md, 0)
+            self.assertEqual(mi, 0)
 
 
 if __name__ == "__main__":
