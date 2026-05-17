@@ -93,4 +93,52 @@ public interface TeamRepository
            "t.id, t.id, t.visibility, t.archivedAt, t.deletedAt) " +
            "FROM TeamEntity t WHERE t.id IN :ids")
     List<TeamVisibilityProjection> findVisibilityProjectionsByIdIn(@Param("ids") Collection<Long> ids);
+
+    /**
+     * F15.4 Phase 4: teams.member_count を +1 する。
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} の影響を受けない nativeQuery を用いて
+     * 論理削除済みチームの場合でも安全に no-op となるよう WHERE 句で防御する。
+     * イベント駆動の同期更新は best-effort のため、誤差は夜次バッチ（足軽17）で補正する。</p>
+     *
+     * @param teamId チームID
+     * @return 更新件数（0 = 対象なし or 既に論理削除済み）
+     */
+    @Modifying
+    @Query(value = "UPDATE teams SET member_count = member_count + 1 "
+            + "WHERE id = :teamId AND deleted_at IS NULL", nativeQuery = true)
+    int incrementMemberCount(@Param("teamId") Long teamId);
+
+    /**
+     * F15.4 Phase 4: teams.member_count を -1 する（0未満にはしない）。
+     *
+     * <p>{@code GREATEST(member_count - 1, 0)} で 0 を下回らないよう保護する。
+     * イベント駆動の同期更新は best-effort のため、誤差は夜次バッチ（足軽17）で補正する。</p>
+     *
+     * @param teamId チームID
+     * @return 更新件数（0 = 対象なし or 既に論理削除済み）
+     */
+    @Modifying
+    @Query(value = "UPDATE teams SET member_count = GREATEST(member_count - 1, 0) "
+            + "WHERE id = :teamId AND deleted_at IS NULL", nativeQuery = true)
+    int decrementMemberCount(@Param("teamId") Long teamId);
+
+    /**
+     * F15.4 Phase 4: 全 teams の member_count を user_roles から再集計する（夜次バッチ用）。
+     *
+     * <p>リスナー（足軽16）による同期更新がエラーや @Transactional 境界外で漏れた場合の
+     * ドリフト補正を目的とする。論理削除済みの team は更新対象外。
+     * 設計書: docs/features/F15.4_team_store_search_within_org.md §3.3 / §11.4</p>
+     *
+     * @return 更新件数
+     */
+    @Modifying
+    @Query(value = """
+            UPDATE teams t
+            SET t.member_count = (
+                SELECT COUNT(*) FROM user_roles ur WHERE ur.team_id = t.id
+            )
+            WHERE t.deleted_at IS NULL
+            """, nativeQuery = true)
+    int recalculateMemberCounts();
 }
