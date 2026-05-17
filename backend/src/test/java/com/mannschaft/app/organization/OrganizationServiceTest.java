@@ -1,34 +1,23 @@
 package com.mannschaft.app.organization;
 
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
-import com.mannschaft.app.membership.domain.RoleKind;
-import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.membership.dto.MemberDto;
-import com.mannschaft.app.membership.dto.MembershipCreateRequest;
-import com.mannschaft.app.membership.entity.MembershipEntity;
-import com.mannschaft.app.membership.repository.MembershipRepository;
-import com.mannschaft.app.membership.service.MembershipService;
-import com.mannschaft.app.membership.query.MemberQueryDispatcher;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
 import com.mannschaft.app.organization.dto.OrganizationSummaryResponse;
 import com.mannschaft.app.organization.dto.UpdateOrganizationRequest;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.service.OrganizationHierarchyService;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.organization.service.OrganizationService;
-import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
-import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
-import com.mannschaft.app.team.repository.TeamRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.Nested;
@@ -52,10 +41,12 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link OrganizationService} の単体テスト。
- * 組織のCRUD・アーカイブ・フォロー・メンバー一覧を検証する。
+ * {@link OrganizationService} の単体テスト（ファサード自身が担う組織 CRUD・アーカイブ・検索）。
  *
- * <p>F00.5 Phase 3: getMembers() は MemberQueryDispatcher 経由で memberships 参照に切替済み。</p>
+ * <p>リファクタリング Phase 5: メンバー・フォロー系は {@link OrganizationMembershipService} へ、
+ * 階層表示は {@link OrganizationHierarchyService} へ切り出された。
+ * これらに委譲されるメソッド (getMembers/followOrganization/unfollowOrganization/getTeams/
+ * getAllMembers/getAncestors/getChildren) のテストは各サービス専用のテストクラスに移送済み。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("OrganizationService 単体テスト")
@@ -75,28 +66,16 @@ class OrganizationServiceTest {
     private RoleRepository roleRepository;
 
     @Mock
-    private UserRepository userRepository;
-
-    @Mock
     private InviteTokenRepository inviteTokenRepository;
 
     @Mock
-    private TeamRepository teamRepository;
-
-    @Mock
-    private TeamOrgMembershipRepository teamOrgMembershipRepository;
-
-    @Mock
-    private MemberQueryDispatcher memberQueryDispatcher;
-
-    @Mock
-    private MembershipService membershipService;
-
-    @Mock
-    private MembershipRepository membershipRepository;
-
-    @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private OrganizationMembershipService organizationMembershipService;
+
+    @Mock
+    private OrganizationHierarchyService organizationHierarchyService;
 
     @InjectMocks
     private OrganizationService organizationService;
@@ -500,162 +479,6 @@ class OrganizationServiceTest {
                     organizationService.searchOrganizations("存在しない", pageable);
 
             assertThat(response.getData()).isEmpty();
-        }
-    }
-
-    // ========================================
-    // getMembers
-    // ========================================
-
-    @Nested
-    @DisplayName("getMembers")
-    class GetMembers {
-
-        @Test
-        @DisplayName("メンバー一覧取得_ユーザー情報付きで返される")
-        void メンバー一覧取得_ユーザー情報付きで返される() {
-            OrganizationEntity org = createOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
-
-            // F00.5 Phase 3: MemberQueryDispatcher 経由で memberships 参照
-            MemberDto memberDto = new MemberDto(USER_ID, "yamada", null, "ADMIN",
-                    LocalDateTime.now().minusMonths(1));
-            given(memberQueryDispatcher.queryMembers(ORG_ID, ScopeType.ORGANIZATION, null))
-                    .willReturn(List.of(memberDto));
-
-            Pageable pageable = PageRequest.of(0, 10);
-            PagedResponse<MemberResponse> response =
-                    organizationService.getMembers(ORG_ID, pageable);
-
-            assertThat(response.getData()).hasSize(1);
-            assertThat(response.getData().get(0).getDisplayName()).isEqualTo("yamada");
-            assertThat(response.getData().get(0).getRoleName()).isEqualTo("ADMIN");
-        }
-
-        @Test
-        @DisplayName("メンバー一覧取得_空リストの場合は空で返される")
-        void メンバー一覧取得_空リスト返却() {
-            OrganizationEntity org = createOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
-
-            // Dispatcher が空リストを返す場合
-            given(memberQueryDispatcher.queryMembers(ORG_ID, ScopeType.ORGANIZATION, null))
-                    .willReturn(List.of());
-
-            Pageable pageable = PageRequest.of(0, 10);
-            PagedResponse<MemberResponse> response =
-                    organizationService.getMembers(ORG_ID, pageable);
-
-            assertThat(response.getData()).isEmpty();
-        }
-
-        @Test
-        @DisplayName("組織不在_ORG_001例外")
-        void 組織不在_ORG_001例外() {
-            given(organizationRepository.findById(999L)).willReturn(Optional.empty());
-
-            assertThatThrownBy(() -> organizationService.getMembers(999L, PageRequest.of(0, 10)))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("ORG_001"));
-        }
-    }
-
-    // ========================================
-    // followOrganization / unfollowOrganization
-    // ========================================
-
-    @Nested
-    @DisplayName("followOrganization")
-    class FollowOrganization {
-
-        @Test
-        @DisplayName("正常フォロー_memberships に SUPPORTER として入会される")
-        void 正常フォロー_membershipsにSUPPORTERとして入会される() {
-            OrganizationEntity org = createOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
-            // F00.5 Phase 5: memberships ベースの重複チェック
-            given(membershipRepository.existsActiveByUserAndScopeAndRoleKind(
-                    USER_ID, ScopeType.ORGANIZATION, ORG_ID, RoleKind.SUPPORTER)).willReturn(false);
-
-            organizationService.followOrganization(USER_ID, ORG_ID);
-
-            verify(membershipService).join(any(MembershipCreateRequest.class));
-        }
-
-        @Test
-        @DisplayName("既にSUPPORTERとして所属している_ORG_007例外")
-        void 既にメンバー_ORG_007例外() {
-            OrganizationEntity org = createOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
-            // F00.5 Phase 5: memberships ベースの重複チェック
-            given(membershipRepository.existsActiveByUserAndScopeAndRoleKind(
-                    USER_ID, ScopeType.ORGANIZATION, ORG_ID, RoleKind.SUPPORTER)).willReturn(true);
-
-            assertThatThrownBy(() -> organizationService.followOrganization(USER_ID, ORG_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("ORG_007"));
-        }
-
-        @Test
-        @DisplayName("組織不在_ORG_001例外")
-        void 組織不在_ORG_001例外() {
-            given(organizationRepository.findById(999L)).willReturn(Optional.empty());
-
-            assertThatThrownBy(() -> organizationService.followOrganization(USER_ID, 999L))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("ORG_001"));
-        }
-    }
-
-    @Nested
-    @DisplayName("unfollowOrganization")
-    class UnfollowOrganization {
-
-        @Test
-        @DisplayName("正常フォロー解除_memberships から退会される")
-        void 正常フォロー解除_membershipsから退会される() {
-            OrganizationEntity org = createOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
-            // F00.5 Phase 5: active な membership がある場合は leave を呼ぶ
-            MembershipEntity activeMembership = MembershipEntity.builder()
-                    .userId(USER_ID)
-                    .scopeType(ScopeType.ORGANIZATION)
-                    .scopeId(ORG_ID)
-                    .roleKind(RoleKind.SUPPORTER)
-                    .build();
-            given(membershipRepository.findActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, ORG_ID))
-                    .willReturn(Optional.of(activeMembership));
-
-            organizationService.unfollowOrganization(USER_ID, ORG_ID);
-
-            verify(membershipService).leave(any(), any());
-        }
-
-        @Test
-        @DisplayName("フォロー未登録でも例外なし_何もしない")
-        void フォロー未登録_例外なし() {
-            OrganizationEntity org = createOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
-            // active な membership がない場合は何もしない
-            given(membershipRepository.findActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, ORG_ID))
-                    .willReturn(Optional.empty());
-
-            organizationService.unfollowOrganization(USER_ID, ORG_ID);
-            // 例外が発生しないことを確認
-        }
-
-        @Test
-        @DisplayName("組織不在_ORG_001例外")
-        void 組織不在_ORG_001例外() {
-            given(organizationRepository.findById(999L)).willReturn(Optional.empty());
-
-            assertThatThrownBy(() -> organizationService.unfollowOrganization(USER_ID, 999L))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("ORG_001"));
         }
     }
 
