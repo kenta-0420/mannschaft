@@ -3,9 +3,6 @@ package com.mannschaft.app.schedule.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
-import com.mannschaft.app.role.entity.UserRoleEntity;
-import com.mannschaft.app.role.repository.UserRoleRepository;
-import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.AttendanceGenerationStatus;
 import com.mannschaft.app.schedule.EventType;
@@ -18,7 +15,6 @@ import com.mannschaft.app.schedule.ScheduleVisibility;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
 import com.mannschaft.app.schedule.dto.EventCategoryResponse;
-import com.mannschaft.app.schedule.dto.RecurrenceRuleDto;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
 import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
@@ -26,9 +22,6 @@ import com.mannschaft.app.schedule.event.ScheduleCancelledEvent;
 import com.mannschaft.app.schedule.event.ScheduleCreatedEvent;
 import com.mannschaft.app.schedule.event.ScheduleUpdatedEvent;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -37,12 +30,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.TemporalAdjusters;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * スケジュールサービス。スケジュールのCRUD・繰り返し展開・カレンダー集約を担当する。
+ * スケジュールサービス。スケジュールのCRUD・横断調整を担当するファサード。
+ *
+ * <p>リファクタリング第6弾（2026-05-17）で 773 行を 3 クラスに分割した:</p>
+ * <ul>
+ *   <li>{@link ScheduleService} — CRUD・横断調整（このクラス）</li>
+ *   <li>{@link ScheduleQueryService} — 取得系・カレンダー集約</li>
+ *   <li>{@link ScheduleRecurrenceService} — 繰り返し展開・例外処理</li>
+ * </ul>
+ *
+ * <p>外部公開メソッドのシグネチャは完全維持。ロジック変更なし・振る舞い変更なし。</p>
  */
 @Slf4j
 @Service
@@ -50,11 +50,9 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class ScheduleService {
 
-    private static final int MAX_RECURRENCE_OCCURRENCES = 365;
     private static final String SCOPE_TYPE_TEAM = "TEAM";
     private static final String SCOPE_TYPE_ORGANIZATION = "ORGANIZATION";
     private static final String SCOPE_TYPE_PERSONAL = "PERSONAL";
-    private static final String UPDATE_SCOPE_THIS_ONLY = "THIS_ONLY";
     private static final String UPDATE_SCOPE_THIS_AND_FOLLOWING = "THIS_AND_FOLLOWING";
     private static final String UPDATE_SCOPE_ALL = "ALL";
 
@@ -62,11 +60,10 @@ public class ScheduleService {
     private final EventSurveyService eventSurveyService;
     private final ScheduleReminderService reminderService;
     private final ApplicationEventPublisher eventPublisher;
-    private final ObjectMapper objectMapper;
-    private final NameResolverService nameResolverService;
-    private final UserRoleRepository userRoleRepository;
     private final ScheduleEventCategoryService eventCategoryService;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    private final ScheduleQueryService queryService;
+    private final ScheduleRecurrenceService recurrenceService;
 
     /**
      * スケジュールを単体取得する。存在しない場合は例外をスローする。
@@ -117,9 +114,7 @@ public class ScheduleService {
      * @return スケジュール一覧
      */
     public List<ScheduleResponse> listTeamSchedules(Long teamId, LocalDateTime from, LocalDateTime to) {
-        List<ScheduleEntity> schedules = scheduleRepository
-                .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, to);
-        return schedules.stream().map(this::toScheduleResponse).toList();
+        return queryService.listTeamSchedules(teamId, from, to);
     }
 
     /**
@@ -131,9 +126,7 @@ public class ScheduleService {
      * @return スケジュール一覧
      */
     public List<ScheduleResponse> listOrgSchedules(Long orgId, LocalDateTime from, LocalDateTime to) {
-        List<ScheduleEntity> schedules = scheduleRepository
-                .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, to);
-        return schedules.stream().map(this::toScheduleResponse).toList();
+        return queryService.listOrgSchedules(orgId, from, to);
     }
 
     /**
@@ -156,7 +149,7 @@ public class ScheduleService {
 
         // 繰り返しルールがある場合は子スケジュールを展開
         if (req.getRecurrenceRule() != null) {
-            expandRecurrenceSchedules(schedule);
+            recurrenceService.expandRecurrenceSchedules(schedule);
         }
 
         // アンケート設問の保存
@@ -201,7 +194,7 @@ public class ScheduleService {
         }
 
         if (schedule.isRecurring() || schedule.getParentScheduleId() != null) {
-            updateRecurringSchedule(schedule, req, updateScope);
+            recurrenceService.updateRecurringSchedule(schedule, req, updateScope, this::applyUpdateToSchedule);
         } else {
             applyUpdateToSchedule(schedule, req);
         }
@@ -231,10 +224,10 @@ public class ScheduleService {
             ScheduleEntity parent = findScheduleOrThrow(parentId);
             parent.softDelete();
             scheduleRepository.save(parent);
-            deleteChildSchedules(parentId);
+            recurrenceService.deleteChildSchedules(parentId);
         } else if (UPDATE_SCOPE_THIS_AND_FOLLOWING.equals(updateScope) && schedule.getParentScheduleId() != null) {
             // この日以降の子を削除
-            deleteFollowingSchedules(schedule);
+            recurrenceService.deleteFollowingSchedules(schedule);
         } else {
             // 単体削除
             schedule.softDelete();
@@ -296,36 +289,11 @@ public class ScheduleService {
      * @param to     期間終了
      * @return カレンダーエントリー一覧
      */
-    // TODO: scheduleドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
-    @Timed(value = "mannschaft.repository.query", extraTags = {"operation", "ScheduleService.getMyCalendar"})
     public List<CalendarEntryResponse> getMyCalendar(Long userId, LocalDateTime from, LocalDateTime to) {
-        List<CalendarEntryResponse> entries = new ArrayList<>();
-
-        // 個人スケジュール
-        List<ScheduleEntity> personalSchedules = scheduleRepository
-                .findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, from, to);
-        personalSchedules.forEach(s -> entries.add(toCalendarEntry(s, SCOPE_TYPE_PERSONAL, userId)));
-
-        // 所属チームのスケジュールを取得
-        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
-        for (UserRoleEntity role : teamRoles) {
-            List<ScheduleEntity> teamSchedules = scheduleRepository
-                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), from, to);
-            teamSchedules.forEach(s -> entries.add(toCalendarEntry(s, "TEAM", role.getTeamId())));
-        }
-
-        // 所属組織のスケジュールを取得
-        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
-        for (UserRoleEntity role : orgRoles) {
-            List<ScheduleEntity> orgSchedules = scheduleRepository
-                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(role.getOrganizationId(), from, to);
-            orgSchedules.forEach(s -> entries.add(toCalendarEntry(s, "ORGANIZATION", role.getOrganizationId())));
-        }
-
-        return entries;
+        return queryService.getMyCalendar(userId, from, to);
     }
 
-    // --- プライベートメソッド ---
+    // --- パッケージプライベートメソッド（同パッケージのサービスから利用） ---
 
     /**
      * スケジュールを取得する。存在しない場合は例外をスローする。
@@ -334,6 +302,8 @@ public class ScheduleService {
         return scheduleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
     }
+
+    // --- プライベートメソッド ---
 
     /**
      * 開始日時と終了日時の整合性を検証する。
@@ -360,7 +330,7 @@ public class ScheduleService {
                                                String scopeType, Long userId) {
         String recurrenceRuleJson = null;
         if (req.getRecurrenceRule() != null) {
-            recurrenceRuleJson = serializeRecurrenceRule(req.getRecurrenceRule());
+            recurrenceRuleJson = recurrenceService.serializeRecurrenceRule(req.getRecurrenceRule());
         }
 
         // カテゴリスコープ整合性チェック（F03.10）
@@ -407,165 +377,6 @@ public class ScheduleService {
         }
 
         return builder.build();
-    }
-
-    /**
-     * 繰り返しスケジュールを展開して子スケジュールを生成する。
-     * DAILY: interval日ごと、WEEKLY: daysOfWeek に従って展開、
-     * MONTHLY: 同日（存在しなければ末日）、YEARLY: 同月同日。
-     * end_type=DATE: endDateまで / COUNT: count回 / NEVER: 1年先まで（上限365件）
-     */
-    private void expandRecurrenceSchedules(ScheduleEntity parent) {
-        RecurrenceRuleDto rule = deserializeRecurrenceRule(parent.getRecurrenceRule());
-        if (rule == null) {
-            throw new BusinessException(ScheduleErrorCode.INVALID_RECURRENCE_RULE);
-        }
-
-        LocalDateTime baseStart = parent.getStartAt();
-        long durationMinutes = parent.getEndAt() != null
-                ? java.time.Duration.between(parent.getStartAt(), parent.getEndAt()).toMinutes()
-                : 0;
-
-        List<LocalDateTime> occurrences = calculateOccurrences(rule, baseStart);
-
-        for (LocalDateTime startAt : occurrences) {
-            LocalDateTime endAt = durationMinutes > 0 ? startAt.plusMinutes(durationMinutes) : null;
-
-            ScheduleEntity child = parent.toBuilder()
-                    .parentScheduleId(parent.getId())
-                    .startAt(startAt)
-                    .endAt(endAt)
-                    .recurrenceRule(null)
-                    .isException(false)
-                    .googleCalendarEventId(null)
-                    .build();
-
-            scheduleRepository.save(child);
-        }
-
-        log.info("繰り返し展開: parentId={}, 生成数={}", parent.getId(), occurrences.size());
-    }
-
-    /**
-     * 繰り返しルールに基づいて日時の一覧を計算する。
-     */
-    private List<LocalDateTime> calculateOccurrences(RecurrenceRuleDto rule, LocalDateTime baseStart) {
-        List<LocalDateTime> occurrences = new ArrayList<>();
-
-        int maxCount = resolveMaxCount(rule);
-        LocalDate endDate = resolveEndDate(rule, baseStart.toLocalDate());
-        int interval = rule.interval();
-
-        LocalDate current = baseStart.toLocalDate();
-        int count = 0;
-
-        while (count < maxCount) {
-            current = advanceDate(current, rule.type(), interval, rule.daysOfWeek());
-            if (current == null || current.isAfter(endDate)) {
-                break;
-            }
-
-            occurrences.add(current.atTime(baseStart.toLocalTime()));
-            count++;
-        }
-
-        return occurrences;
-    }
-
-    /**
-     * 繰り返しルールの終了条件から最大生成数を決定する。
-     */
-    private int resolveMaxCount(RecurrenceRuleDto rule) {
-        if ("COUNT".equals(rule.endType()) && rule.count() != null) {
-            return Math.min(rule.count(), MAX_RECURRENCE_OCCURRENCES);
-        }
-        return MAX_RECURRENCE_OCCURRENCES;
-    }
-
-    /**
-     * 繰り返しルールの終了条件から終了日を決定する。
-     */
-    private LocalDate resolveEndDate(RecurrenceRuleDto rule, LocalDate baseDate) {
-        if ("DATE".equals(rule.endType()) && rule.endDate() != null) {
-            return rule.endDate();
-        }
-        // NEVER または COUNT の場合は1年先を上限とする
-        return baseDate.plusYears(1);
-    }
-
-    /**
-     * 繰り返し種別に応じて次の日付を算出する。
-     */
-    private LocalDate advanceDate(LocalDate current, String type, int interval, List<String> daysOfWeek) {
-        return switch (type) {
-            case "DAILY" -> current.plusDays(interval);
-            case "WEEKLY" -> advanceWeekly(current, interval, daysOfWeek);
-            case "MONTHLY" -> advanceMonthly(current, interval);
-            case "YEARLY" -> current.plusYears(interval);
-            default -> null;
-        };
-    }
-
-    /**
-     * 週単位の繰り返し: daysOfWeek に従って次の日付を算出する。
-     */
-    private LocalDate advanceWeekly(LocalDate current, int interval, List<String> daysOfWeek) {
-        if (daysOfWeek == null || daysOfWeek.isEmpty()) {
-            return current.plusWeeks(interval);
-        }
-        // 次の該当曜日を探す
-        LocalDate next = current.plusDays(1);
-        LocalDate limit = current.plusWeeks(interval + 1);
-        while (!next.isAfter(limit)) {
-            String dayName = next.getDayOfWeek().name();
-            if (daysOfWeek.contains(dayName)) {
-                return next;
-            }
-            next = next.plusDays(1);
-        }
-        return current.plusWeeks(interval);
-    }
-
-    /**
-     * 月単位の繰り返し: 同日（存在しなければ末日）を算出する。
-     */
-    private LocalDate advanceMonthly(LocalDate current, int interval) {
-        LocalDate nextMonth = current.plusMonths(interval);
-        int targetDay = current.getDayOfMonth();
-        int lastDay = nextMonth.with(TemporalAdjusters.lastDayOfMonth()).getDayOfMonth();
-        return nextMonth.withDayOfMonth(Math.min(targetDay, lastDay));
-    }
-
-    /**
-     * 繰り返しスケジュールの更新処理を行う。
-     */
-    private void updateRecurringSchedule(ScheduleEntity schedule, UpdateScheduleRequest req,
-                                         String updateScope) {
-        switch (updateScope) {
-            case UPDATE_SCOPE_THIS_ONLY -> {
-                applyUpdateToSchedule(schedule, req);
-                // 繰り返しの例外としてマーク
-                if (schedule.getParentScheduleId() != null) {
-                    schedule = schedule.toBuilder().isException(true).build();
-                    scheduleRepository.save(schedule);
-                }
-            }
-            case UPDATE_SCOPE_THIS_AND_FOLLOWING -> {
-                applyUpdateToSchedule(schedule, req);
-                // この日以降の子スケジュールも更新（例外を除く）
-                updateFollowingSchedules(schedule, req);
-            }
-            case UPDATE_SCOPE_ALL -> {
-                // 親を更新、全子を更新（例外を除く）
-                Long parentId = schedule.getParentScheduleId() != null
-                        ? schedule.getParentScheduleId() : schedule.getId();
-                ScheduleEntity parent = findScheduleOrThrow(parentId);
-                applyUpdateToSchedule(parent, req);
-                scheduleRepository.save(parent);
-                updateAllChildSchedules(parentId, req);
-            }
-            default -> applyUpdateToSchedule(schedule, req);
-        }
     }
 
     /**
@@ -624,90 +435,12 @@ public class ScheduleService {
     }
 
     /**
-     * 指定スケジュール以降の子スケジュールを更新する（例外は除く）。
-     */
-    private void updateFollowingSchedules(ScheduleEntity schedule, UpdateScheduleRequest req) {
-        Long parentId = schedule.getParentScheduleId() != null
-                ? schedule.getParentScheduleId() : schedule.getId();
-        List<ScheduleEntity> children = scheduleRepository
-                .findByParentScheduleIdOrderByStartAtAsc(parentId);
-
-        children.stream()
-                .filter(child -> !child.getIsException())
-                .filter(child -> !child.getStartAt().isBefore(schedule.getStartAt()))
-                .forEach(child -> applyUpdateToSchedule(child, req));
-    }
-
-    /**
-     * 親スケジュールの全子を更新する（例外は除く）。
-     */
-    private void updateAllChildSchedules(Long parentId, UpdateScheduleRequest req) {
-        List<ScheduleEntity> children = scheduleRepository
-                .findByParentScheduleIdOrderByStartAtAsc(parentId);
-
-        children.stream()
-                .filter(child -> !child.getIsException())
-                .forEach(child -> applyUpdateToSchedule(child, req));
-    }
-
-    /**
-     * 親スケジュールの全子を論理削除する。
-     */
-    private void deleteChildSchedules(Long parentId) {
-        List<ScheduleEntity> children = scheduleRepository
-                .findByParentScheduleIdOrderByStartAtAsc(parentId);
-        children.forEach(child -> {
-            child.softDelete();
-            scheduleRepository.save(child);
-        });
-    }
-
-    /**
-     * 指定スケジュール以降の子スケジュールを論理削除する。
-     */
-    private void deleteFollowingSchedules(ScheduleEntity schedule) {
-        Long parentId = schedule.getParentScheduleId() != null
-                ? schedule.getParentScheduleId() : schedule.getId();
-        List<ScheduleEntity> children = scheduleRepository
-                .findByParentScheduleIdOrderByStartAtAsc(parentId);
-
-        children.stream()
-                .filter(child -> !child.getStartAt().isBefore(schedule.getStartAt()))
-                .forEach(child -> {
-                    child.softDelete();
-                    scheduleRepository.save(child);
-                });
-    }
-
-    /**
      * スケジュールのスコープ種別を解決する。
      */
     private String resolveScopeType(ScheduleEntity schedule) {
         if (schedule.isTeamScope()) return SCOPE_TYPE_TEAM;
         if (schedule.isOrganizationScope()) return SCOPE_TYPE_ORGANIZATION;
         return SCOPE_TYPE_PERSONAL;
-    }
-
-    /**
-     * 繰り返しルールをJSON文字列にシリアライズする。
-     */
-    private String serializeRecurrenceRule(RecurrenceRuleDto rule) {
-        try {
-            return objectMapper.writeValueAsString(rule);
-        } catch (JsonProcessingException e) {
-            throw new BusinessException(ScheduleErrorCode.INVALID_RECURRENCE_RULE);
-        }
-    }
-
-    /**
-     * JSON文字列から繰り返しルールをデシリアライズする。
-     */
-    private RecurrenceRuleDto deserializeRecurrenceRule(String json) {
-        try {
-            return objectMapper.readValue(json, RecurrenceRuleDto.class);
-        } catch (JsonProcessingException e) {
-            throw new BusinessException(ScheduleErrorCode.INVALID_RECURRENCE_RULE);
-        }
     }
 
     /**
@@ -749,25 +482,5 @@ public class ScheduleService {
             // カテゴリが削除済みの場合は null を返す
             return null;
         }
-    }
-
-    /**
-     * エンティティをカレンダーエントリーレスポンスDTOに変換する。
-     */
-    private CalendarEntryResponse toCalendarEntry(ScheduleEntity entity, String scopeType, Long scopeId) {
-        String iconUrl = nameResolverService.resolveIconUrl(scopeType, scopeId);
-        return new CalendarEntryResponse(
-                entity.getId(),
-                entity.getTitle(),
-                entity.getStartAt(),
-                entity.getEndAt(),
-                entity.getAllDay(),
-                entity.getEventType().name(),
-                entity.getStatus().name(),
-                scopeType,
-                scopeId,
-                nameResolverService.resolveScopeName(scopeType, scopeId),
-                null,
-                iconUrl);
     }
 }

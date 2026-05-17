@@ -1,10 +1,8 @@
 package com.mannschaft.app.schedule;
 
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
@@ -12,6 +10,8 @@ import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.service.ScheduleEventCategoryService;
+import com.mannschaft.app.schedule.service.ScheduleQueryService;
+import com.mannschaft.app.schedule.service.ScheduleRecurrenceService;
 import com.mannschaft.app.schedule.service.ScheduleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -47,16 +47,16 @@ class ScheduleServiceTest {
     private ApplicationEventPublisher eventPublisher;
 
     @Mock
-    private NameResolverService nameResolverService;
-
-    @Mock
-    private UserRoleRepository userRoleRepository;
-
-    @Mock
     private ScheduleEventCategoryService eventCategoryService;
 
     @Mock
     private ContentVisibilityChecker contentVisibilityChecker;
+
+    @Mock
+    private ScheduleQueryService queryService;
+
+    @Mock
+    private ScheduleRecurrenceService recurrenceService;
 
     @InjectMocks
     private ScheduleService scheduleService;
@@ -188,12 +188,15 @@ class ScheduleServiceTest {
     class ListTeamSchedules {
 
         @Test
-        @DisplayName("チームスケジュール一覧_正常_レスポンス一覧を返す")
-        void チームスケジュール一覧_正常_レスポンス一覧を返す() {
+        @DisplayName("チームスケジュール一覧_正常_QueryServiceに委譲する")
+        void チームスケジュール一覧_正常_QueryServiceに委譲する() {
             // given
-            ScheduleEntity entity = createTeamScheduleEntity();
-            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, START, END))
-                    .willReturn(List.of(entity));
+            ScheduleResponse stub = new ScheduleResponse(
+                    SCHEDULE_ID, "練習", START, END, false,
+                    "PRACTICE", "SCHEDULED", true, null, null,
+                    null, null, null, null, null, null, null);
+            given(queryService.listTeamSchedules(TEAM_ID, START, END))
+                    .willReturn(List.of(stub));
 
             // when
             List<ScheduleResponse> result = scheduleService.listTeamSchedules(TEAM_ID, START, END);
@@ -201,6 +204,7 @@ class ScheduleServiceTest {
             // then
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getTitle()).isEqualTo("練習");
+            verify(queryService).listTeamSchedules(TEAM_ID, START, END);
         }
     }
 
@@ -446,18 +450,16 @@ class ScheduleServiceTest {
     class ListOrgSchedules {
 
         @Test
-        @DisplayName("組織スケジュール一覧_正常_レスポンス一覧を返す")
-        void 組織スケジュール一覧_正常_レスポンス一覧を返す() {
+        @DisplayName("組織スケジュール一覧_正常_QueryServiceに委譲する")
+        void 組織スケジュール一覧_正常_QueryServiceに委譲する() {
             // given
             Long ORG_ID = 20L;
-            ScheduleEntity entity = ScheduleEntity.builder()
-                    .organizationId(ORG_ID).title("全体集会")
-                    .startAt(START).endAt(END).allDay(false)
-                    .eventType(EventType.EVENT).visibility(ScheduleVisibility.MEMBERS_ONLY)
-                    .minViewRole(MinViewRole.MEMBER_PLUS).status(ScheduleStatus.SCHEDULED)
-                    .isException(false).createdBy(USER_ID).build();
-            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(ORG_ID, START, END))
-                    .willReturn(List.of(entity));
+            ScheduleResponse stub = new ScheduleResponse(
+                    SCHEDULE_ID, "全体集会", START, END, false,
+                    "EVENT", "SCHEDULED", null, null, null,
+                    null, null, null, null, null, null, null);
+            given(queryService.listOrgSchedules(ORG_ID, START, END))
+                    .willReturn(List.of(stub));
 
             // when
             List<ScheduleResponse> result = scheduleService.listOrgSchedules(ORG_ID, START, END);
@@ -465,6 +467,7 @@ class ScheduleServiceTest {
             // then
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getTitle()).isEqualTo("全体集会");
+            verify(queryService).listOrgSchedules(ORG_ID, START, END);
         }
     }
 
@@ -477,8 +480,8 @@ class ScheduleServiceTest {
     class DeleteScheduleThisAndFollowing {
 
         @Test
-        @DisplayName("THIS_AND_FOLLOWING削除_繰り返し子スケジュール_以降が削除される")
-        void THIS_AND_FOLLOWING削除_繰り返し子スケジュール_以降が削除される() {
+        @DisplayName("THIS_AND_FOLLOWING削除_繰り返し子スケジュール_RecurrenceServiceに委譲する")
+        void THIS_AND_FOLLOWING削除_繰り返し子スケジュール_RecurrenceServiceに委譲する() {
             // given
             ScheduleEntity child = ScheduleEntity.builder()
                     .teamId(TEAM_ID).title("繰り返し練習")
@@ -488,19 +491,18 @@ class ScheduleServiceTest {
                     .parentScheduleId(99L) // 親IDあり
                     .isException(false).createdBy(USER_ID).build();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(child));
-            given(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(99L))
-                    .willReturn(List.of());
 
             // when
             scheduleService.deleteSchedule(SCHEDULE_ID, "THIS_AND_FOLLOWING");
 
             // then
             verify(scheduleRepository).findById(SCHEDULE_ID);
+            verify(recurrenceService).deleteFollowingSchedules(child);
         }
 
         @Test
-        @DisplayName("ALL削除_繰り返し子から親含め全削除")
-        void ALL削除_繰り返し子から親含め全削除() {
+        @DisplayName("ALL削除_繰り返し子から親含め全削除_RecurrenceServiceに委譲する")
+        void ALL削除_繰り返し子から親含め全削除_RecurrenceServiceに委譲する() {
             // given
             ScheduleEntity child = ScheduleEntity.builder()
                     .teamId(TEAM_ID).title("繰り返し練習")
@@ -520,13 +522,13 @@ class ScheduleServiceTest {
             given(scheduleRepository.findById(99L)).willReturn(Optional.of(parent));
             given(scheduleRepository.save(any(ScheduleEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
-            given(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(99L)).willReturn(List.of());
 
             // when
             scheduleService.deleteSchedule(SCHEDULE_ID, "ALL");
 
             // then
             assertThat(parent.getDeletedAt()).isNotNull();
+            verify(recurrenceService).deleteChildSchedules(99L);
         }
     }
 
@@ -585,27 +587,15 @@ class ScheduleServiceTest {
     class GetMyCalendar {
 
         @Test
-        @DisplayName("横断カレンダー取得_個人とチーム_統合して返す")
-        void 横断カレンダー取得_個人とチーム_統合して返す() {
+        @DisplayName("横断カレンダー取得_QueryServiceに委譲する")
+        void 横断カレンダー取得_QueryServiceに委譲する() {
             // given
-            ScheduleEntity personalSchedule = ScheduleEntity.builder()
-                    .userId(USER_ID)
-                    .title("個人予定")
-                    .startAt(START)
-                    .endAt(END)
-                    .allDay(false)
-                    .eventType(EventType.OTHER)
-                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
-                    .minViewRole(MinViewRole.ADMIN_ONLY)
-                    .status(ScheduleStatus.SCHEDULED)
-                    .isException(false)
-                    .build();
-
-            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(USER_ID, START, END))
-                    .willReturn(List.of(personalSchedule));
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(nameResolverService.resolveScopeName("PERSONAL", USER_ID)).willReturn("個人");
+            CalendarEntryResponse stub = new CalendarEntryResponse(
+                    SCHEDULE_ID, "個人予定", START, END, false,
+                    "OTHER", "SCHEDULED", "PERSONAL", USER_ID, "個人",
+                    null, null);
+            given(queryService.getMyCalendar(USER_ID, START, END))
+                    .willReturn(List.of(stub));
 
             // when
             List<CalendarEntryResponse> result = scheduleService.getMyCalendar(USER_ID, START, END);
@@ -613,6 +603,7 @@ class ScheduleServiceTest {
             // then
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getTitle()).isEqualTo("個人予定");
+            verify(queryService).getMyCalendar(USER_ID, START, END);
         }
     }
 }
