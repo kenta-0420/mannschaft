@@ -224,6 +224,53 @@ public final class AccountPurgedEvent extends BaseEvent {
 - Phase B/C では `@Retryable` + 夜次補正で十分（既存パターンと同等）
 - outbox 本格導入は、Phase D（または別軍議）で「複数インスタンス起動 + Kafka/SQS 投入」が必要になった段階で検討。本リファクタの第一目標ではない
 
+### 3.5 F15.4 Phase 4 Caveat の自動解消（副次効果）
+
+本リファクタが完成すると、F15.4 Phase 4（PR #718 / 2026-05-17）で記録された Caveat ——
+「`AccountPurgeService#purgeUser()` が `team_org_memberships` を直接 DML 操作するため `MembershipChangedEvent` が発火せず、退会経路で `teams.member_count` が最大 24h ズレる」——
+が **追加のコード変更なしに自動的に解消される**。
+
+**解消メカニズム:**
+
+```
+[Before（現状）]
+  AccountPurgeService
+    └─ teamOrgMembershipRepository.deleteByUserId(userId)  ← 越境 DML
+         └─ MembershipChangedEvent 発火されず
+              └─ teams.member_count ズレ → 翌朝 02:00 JST 夜次バッチで補正
+
+[After（本リファクタ完成後）]
+  AccountPurgeService
+    └─ eventPublisher.publish(AccountPurgedEvent)
+         └─ RolePurgeEventListener / TeamPurgeEventListener（team ドメイン側）
+              └─ RoleService#removeMember 経由で membership 削除
+                   └─ MembershipChangedEvent(REMOVED) 発火
+                        └─ 既存 TeamMemberCountListener が即時減算
+                             → teams.member_count は退会と同時に正しい値
+```
+
+**ポイント:**
+
+| 項目 | 方針 |
+|---|---|
+| `MembershipChangedEvent(REMOVED)` 発火経路 | 既存 `RoleService#removeMember` を `RolePurgeEventListener` 内から呼び、自然な経路で発火させる（§9.2 推奨案 B と整合） |
+| 既存 `TeamMemberCountListener` (F15.4 Phase 4) | **変更なし**。`MembershipChangedEvent` 購読側のロジックはそのまま再利用 |
+| 既存 `TeamMemberCountBackfillBatchService`（夜次補正） | **撤去しない・保険として残す**。理由: ①リスナー失敗時の三重防御（§3.4 ④）/ ②本リファクタ外の経路で集計ズレが入った場合の最終防衛線 / ③ Phase B 併走期間中の冪等性検証用 |
+| 検証手段 | Phase B-1（team ドメイン）の統合テストで「退会即時に `teams.member_count` が減る」アサーションを追加 |
+
+**汎用性 — 同パターンが将来の集計カラムにも適用可能:**
+
+`teams.member_count` で確立した「ドメイン横断イベント → 自ドメイン Service 経由 → ドメインイベント発火 → 既存リスナーが即時集計更新 + 夜次バッチが保険」の三段構えは、
+将来同種の集計カラム導入時にそのまま流用できる:
+
+| 想定 | 集計対象イベント | 集計カラム例 |
+|---|---|---|
+| チャット未読件数の即時化 | `ChatMessageDeletedEvent(by purge)` | `chat_channels.message_count` / `chat_channels.last_message_at` |
+| シフト割当残数の即時化 | `ShiftAssignmentRemovedEvent(by purge)` | `shifts.assigned_count` |
+| 組織アクティブユーザー数の即時化 | `MembershipChangedEvent(REMOVED, by purge)` | `organizations.active_member_count`（将来追加候補） |
+
+これにより F15.4 Phase 4 の苦労が「個別の例外対応」ではなく「再利用可能な設計パターン」として結実する。
+
 ---
 
 ## §4. 段階リリース計画（Phase A〜D）
