@@ -1,6 +1,5 @@
 package com.mannschaft.app.organization.service;
 
-import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.organization.dto.AncestorOrganizationResponse;
 import com.mannschaft.app.organization.dto.AncestorsResponse;
@@ -9,11 +8,8 @@ import com.mannschaft.app.organization.dto.ChildrenResponse;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
-import com.mannschaft.app.role.repository.InviteTokenRepository;
-import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
-import com.mannschaft.app.team.repository.TeamRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,14 +34,17 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 /**
- * {@link OrganizationService} の F01.2 階層表示API（祖先・子組織）の単体テスト。
+ * {@link OrganizationHierarchyService} の F01.2 階層表示API（祖先・子組織）の単体テスト。
  *
  * <p>祖先個別の返却フィルタ（直接所属／子孫メンバー＋hierarchyVisibility／外部）と、
  * 子組織取得の visibility フィルタ・認可・archived 表示を検証する。</p>
+ *
+ * <p>リファクタリング Phase 5 で OrganizationService から階層ロジックを切り出した。
+ * テスト対象クラスのみ差し替え、テスト内容（assertion・stub）は分割前から変更していない。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-@DisplayName("OrganizationService 階層表示API（祖先・子組織）")
+@DisplayName("OrganizationHierarchyService 階層表示API（祖先・子組織）")
 class OrganizationServiceAncestorsTest {
 
     private static final Long REQUESTER_ID = 1L;
@@ -54,15 +53,11 @@ class OrganizationServiceAncestorsTest {
     private static final Long GRANDPARENT_ORG_ID = 300L;
 
     @Mock private OrganizationRepository organizationRepository;
-    @Mock private TeamRepository teamRepository;
     @Mock private TeamOrgMembershipRepository teamOrgMembershipRepository;
     @Mock private UserRoleRepository userRoleRepository;
-    @Mock private RoleRepository roleRepository;
-    @Mock private UserRepository userRepository;
-    @Mock private InviteTokenRepository inviteTokenRepository;
 
     @InjectMocks
-    private OrganizationService organizationService;
+    private OrganizationHierarchyService organizationService;
 
     @BeforeEach
     void setUp() {
