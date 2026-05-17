@@ -11,7 +11,6 @@ import com.mannschaft.app.proxyvote.QuorumType;
 import com.mannschaft.app.proxyvote.RequiredApproval;
 import com.mannschaft.app.proxyvote.ResolutionMode;
 import com.mannschaft.app.proxyvote.SessionStatus;
-import com.mannschaft.app.proxyvote.VoteType;
 import com.mannschaft.app.proxyvote.VotingStatus;
 import com.mannschaft.app.proxyvote.dto.CastVoteRequest;
 import com.mannschaft.app.proxyvote.dto.CastVoteResponse;
@@ -28,9 +27,7 @@ import com.mannschaft.app.proxyvote.dto.SessionListResponse;
 import com.mannschaft.app.proxyvote.dto.SessionResponse;
 import com.mannschaft.app.proxyvote.dto.UpdateSessionRequest;
 import com.mannschaft.app.proxyvote.dto.VoteResultsResponse;
-import com.mannschaft.app.proxyvote.entity.ProxyDelegationEntity;
 import com.mannschaft.app.proxyvote.entity.ProxyVoteAttachmentEntity;
-import com.mannschaft.app.proxyvote.entity.ProxyVoteEntity;
 import com.mannschaft.app.proxyvote.entity.ProxyVoteMotionEntity;
 import com.mannschaft.app.proxyvote.entity.ProxyVoteSessionEntity;
 import com.mannschaft.app.proxyvote.repository.ProxyDelegationRepository;
@@ -47,13 +44,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 投票セッションサービス。セッション・議案のCRUDと投票ライフサイクルを担当する。
+ * 投票セッションサービス（ファサード）。
+ * <p>セッション・議案のCRUD・状態遷移を担当し、投票登録・結果集計・確定処理は
+ * 各専門サービス（{@link ProxyVoteCastService} / {@link ProxyVoteResultService}）に委譲する。
+ * 公開 API シグネチャは Phase 5 リファクタ前と完全互換。
  */
 @Slf4j
 @Service
@@ -68,6 +65,9 @@ public class ProxyVoteSessionService {
     private final ProxyDelegationRepository delegationRepository;
     private final ProxyVoteMapper mapper;
     private final UserRoleRepository userRoleRepository;
+    private final ProxyVoteQuorumCalculator quorumCalculator;
+    private final ProxyVoteCastService castService;
+    private final ProxyVoteResultService resultService;
 
     /**
      * 投票セッション一覧を取得する。
@@ -255,245 +255,27 @@ public class ProxyVoteSessionService {
     }
 
     /**
-     * 結果を確定する（CLOSED → FINALIZED）。
+     * 結果を確定する（CLOSED → FINALIZED）。{@link ProxyVoteResultService} へ委譲。
      */
     @Transactional
     public FinalizeResponse finalizeSession(Long id, FinalizeRequest request, Long currentUserId) {
-        ProxyVoteSessionEntity session = findSessionOrThrow(id);
-        if (session.getStatus() != SessionStatus.CLOSED) {
-            throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_CLOSED);
-        }
-
-        QuorumStatusResponse quorumStatus = buildQuorumStatus(session);
-        boolean quorumMet = quorumStatus.getIsMet();
-        boolean force = request.getForce() != null && request.getForce();
-
-        if (!quorumMet && !force) {
-            return FinalizeResponse.builder()
-                    .sessionId(id)
-                    .status(SessionStatus.CLOSED.name())
-                    .quorumMet(false)
-                    .quorumStatus(quorumStatus)
-                    .message("定足数に達していません。force=true で強制確定できますが、結果は参考決議となります。")
-                    .build();
-        }
-
-        List<ProxyVoteMotionEntity> motions = motionRepository.findBySessionIdOrderByMotionNumberAsc(id);
-        List<FinalizeResponse.MotionFinalizeResponse> motionResults = new ArrayList<>();
-
-        // WRITTEN モード: 各議案の result を判定
-        if (session.getResolutionMode() == ResolutionMode.WRITTEN) {
-            for (ProxyVoteMotionEntity motion : motions) {
-                MotionResult result = judgeMotionResult(motion);
-                motion.setResult(result);
-                motionResults.add(FinalizeResponse.MotionFinalizeResponse.builder()
-                        .id(motion.getId())
-                        .result(result.name())
-                        .isAdvisory(!quorumMet)
-                        .build());
-            }
-            motionRepository.saveAll(motions);
-        } else {
-            // MEETING: result は end-vote 時に確定済み
-            for (ProxyVoteMotionEntity motion : motions) {
-                motionResults.add(FinalizeResponse.MotionFinalizeResponse.builder()
-                        .id(motion.getId())
-                        .result(motion.getResult() != null ? motion.getResult().name() : null)
-                        .isAdvisory(!quorumMet)
-                        .build());
-            }
-        }
-
-        session.changeStatus(SessionStatus.FINALIZED);
-        sessionRepository.save(session);
-        log.info("投票セッション FINALIZED: sessionId={}", id);
-
-        return FinalizeResponse.builder()
-                .sessionId(id)
-                .status(SessionStatus.FINALIZED.name())
-                .quorumMet(quorumMet)
-                .motions(motionResults)
-                .build();
+        return resultService.finalizeSession(id, request, currentUserId);
     }
 
     /**
-     * 投票する。
+     * 投票する。{@link ProxyVoteCastService} へ委譲。
      */
     @Transactional
     public CastVoteResponse castVote(Long sessionId, CastVoteRequest request, Long currentUserId) {
-        ProxyVoteSessionEntity session = findSessionOrThrow(sessionId);
-        if (session.getStatus() != SessionStatus.OPEN) {
-            throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_OPEN);
-        }
-
-        List<ProxyVoteMotionEntity> motions = motionRepository.findBySessionIdOrderByMotionNumberAsc(sessionId);
-        validateCastVoteRequest(session, motions, request);
-
-        // 既に投票済みかチェック
-        boolean alreadyVoted = voteRepository.existsBySessionIdAndUserId(sessionId, currentUserId);
-        if (alreadyVoted) {
-            throw new BusinessException(ProxyVoteErrorCode.ALREADY_VOTED);
-        }
-
-        // 委任状がある場合は自動キャンセル
-        delegationRepository.findBySessionIdAndDelegatorId(sessionId, currentUserId)
-                .ifPresent(delegation -> {
-                    delegation.cancel();
-                    delegationRepository.save(delegation);
-                });
-
-        // 本人の投票を記録
-        LocalDateTime votedAt = LocalDateTime.now();
-        int votedCount = 0;
-        for (CastVoteRequest.VoteItem item : request.getVotes()) {
-            VoteType voteType = VoteType.valueOf(item.getVoteType());
-            ProxyVoteEntity vote = ProxyVoteEntity.builder()
-                    .motionId(item.getMotionId())
-                    .userId(currentUserId)
-                    .voteType(voteType)
-                    .isProxyVote(false)
-                    .votedAt(votedAt)
-                    .build();
-            voteRepository.save(vote);
-
-            // カウント更新
-            ProxyVoteMotionEntity motion = motions.stream()
-                    .filter(m -> m.getId().equals(item.getMotionId()))
-                    .findFirst().orElseThrow(() -> new BusinessException(ProxyVoteErrorCode.MOTION_NOT_FOUND));
-            motion.incrementVoteCount(voteType);
-            motionRepository.save(motion);
-            votedCount++;
-        }
-
-        // 委任を受けている場合: 代理投票を一括生成
-        List<ProxyDelegationEntity> acceptedDelegations =
-                delegationRepository.findBySessionIdAndDelegateIdAndStatus(sessionId, currentUserId, DelegationStatus.ACCEPTED);
-        for (ProxyDelegationEntity delegation : acceptedDelegations) {
-            for (CastVoteRequest.VoteItem item : request.getVotes()) {
-                VoteType voteType = VoteType.valueOf(item.getVoteType());
-                if (!voteRepository.existsByMotionIdAndUserId(item.getMotionId(), delegation.getDelegatorId())) {
-                    ProxyVoteEntity proxyVote = ProxyVoteEntity.builder()
-                            .motionId(item.getMotionId())
-                            .userId(delegation.getDelegatorId())
-                            .voteType(voteType)
-                            .isProxyVote(true)
-                            .delegationId(delegation.getId())
-                            .votedAt(votedAt)
-                            .build();
-                    voteRepository.save(proxyVote);
-
-                    ProxyVoteMotionEntity motion = motions.stream()
-                            .filter(m -> m.getId().equals(item.getMotionId()))
-                            .findFirst().orElseThrow(() -> new BusinessException(ProxyVoteErrorCode.MOTION_NOT_FOUND));
-                    motion.incrementVoteCount(voteType);
-                    motionRepository.save(motion);
-                }
-            }
-        }
-
-        return CastVoteResponse.builder()
-                .sessionId(sessionId)
-                .votedMotions(votedCount)
-                .votedAt(votedAt)
-                .build();
+        return castService.castVote(sessionId, request, currentUserId);
     }
 
     /**
-     * 投票を変更する。
+     * 投票を変更する。{@link ProxyVoteCastService} へ委譲。
      */
     @Transactional
     public CastVoteResponse updateVote(Long sessionId, CastVoteRequest request, Long currentUserId) {
-        ProxyVoteSessionEntity session = findSessionOrThrow(sessionId);
-        if (session.getStatus() != SessionStatus.OPEN) {
-            throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_OPEN);
-        }
-
-        boolean alreadyVoted = voteRepository.existsBySessionIdAndUserId(sessionId, currentUserId);
-        if (!alreadyVoted) {
-            throw new BusinessException(ProxyVoteErrorCode.VOTE_NOT_FOUND);
-        }
-
-        List<ProxyVoteMotionEntity> motions = motionRepository.findBySessionIdOrderByMotionNumberAsc(sessionId);
-        validateCastVoteRequest(session, motions, request);
-
-        // 既存の投票を削除してカウント補正
-        List<ProxyVoteEntity> existingVotes = voteRepository.findBySessionIdAndUserId(sessionId, currentUserId);
-        for (ProxyVoteEntity existing : existingVotes) {
-            ProxyVoteMotionEntity motion = motions.stream()
-                    .filter(m -> m.getId().equals(existing.getMotionId()))
-                    .findFirst().orElse(null);
-            if (motion != null) {
-                motion.decrementVoteCount(existing.getVoteType());
-            }
-            voteRepository.delete(existing);
-        }
-
-        // 代理投票も削除
-        List<ProxyDelegationEntity> acceptedDelegations =
-                delegationRepository.findBySessionIdAndDelegateIdAndStatus(sessionId, currentUserId, DelegationStatus.ACCEPTED);
-        for (ProxyDelegationEntity delegation : acceptedDelegations) {
-            List<ProxyVoteEntity> proxyVotes = voteRepository.findByDelegationId(delegation.getId());
-            for (ProxyVoteEntity pv : proxyVotes) {
-                ProxyVoteMotionEntity motion = motions.stream()
-                        .filter(m -> m.getId().equals(pv.getMotionId()))
-                        .findFirst().orElse(null);
-                if (motion != null) {
-                    motion.decrementVoteCount(pv.getVoteType());
-                }
-                voteRepository.delete(pv);
-            }
-        }
-        motionRepository.saveAll(motions);
-
-        // 新しい投票を記録（castVote と同じロジック）
-        LocalDateTime votedAt = LocalDateTime.now();
-        int votedCount = 0;
-        for (CastVoteRequest.VoteItem item : request.getVotes()) {
-            VoteType voteType = VoteType.valueOf(item.getVoteType());
-            ProxyVoteEntity vote = ProxyVoteEntity.builder()
-                    .motionId(item.getMotionId())
-                    .userId(currentUserId)
-                    .voteType(voteType)
-                    .isProxyVote(false)
-                    .votedAt(votedAt)
-                    .build();
-            voteRepository.save(vote);
-
-            ProxyVoteMotionEntity motion = motions.stream()
-                    .filter(m -> m.getId().equals(item.getMotionId()))
-                    .findFirst().orElseThrow(() -> new BusinessException(ProxyVoteErrorCode.MOTION_NOT_FOUND));
-            motion.incrementVoteCount(voteType);
-            motionRepository.save(motion);
-            votedCount++;
-        }
-
-        // 代理投票を再生成
-        for (ProxyDelegationEntity delegation : acceptedDelegations) {
-            for (CastVoteRequest.VoteItem item : request.getVotes()) {
-                VoteType voteType = VoteType.valueOf(item.getVoteType());
-                ProxyVoteEntity proxyVote = ProxyVoteEntity.builder()
-                        .motionId(item.getMotionId())
-                        .userId(delegation.getDelegatorId())
-                        .voteType(voteType)
-                        .isProxyVote(true)
-                        .delegationId(delegation.getId())
-                        .votedAt(votedAt)
-                        .build();
-                voteRepository.save(proxyVote);
-
-                ProxyVoteMotionEntity motion = motions.stream()
-                        .filter(m -> m.getId().equals(item.getMotionId()))
-                        .findFirst().orElseThrow(() -> new BusinessException(ProxyVoteErrorCode.MOTION_NOT_FOUND));
-                motion.incrementVoteCount(voteType);
-                motionRepository.save(motion);
-            }
-        }
-
-        return CastVoteResponse.builder()
-                .sessionId(sessionId)
-                .votedMotions(votedCount)
-                .votedAt(votedAt)
-                .build();
+        return castService.updateVote(sessionId, request, currentUserId);
     }
 
     /**
@@ -540,83 +322,18 @@ public class ProxyVoteSessionService {
     }
 
     /**
-     * 投票結果を取得する。
+     * 投票結果を取得する。{@link ProxyVoteResultService} へ委譲。
      */
     public VoteResultsResponse getResults(Long id) {
-        ProxyVoteSessionEntity session = findSessionOrThrow(id);
-        List<ProxyVoteMotionEntity> motions = motionRepository.findBySessionIdOrderByMotionNumberAsc(id);
-
-        long votedCount = voteRepository.countDistinctVotersBySessionId(id);
-        long delegatedCount = delegationRepository.countBySessionIdAndStatus(id, DelegationStatus.ACCEPTED);
-        long notResponded = session.getEligibleCount() - votedCount - delegatedCount;
-        if (notResponded < 0) notResponded = 0;
-
-        QuorumStatusResponse quorumStatus = buildQuorumStatus(session);
-
-        List<VoteResultsResponse.MotionResultResponse> motionResults = motions.stream()
-                .map(m -> {
-                    int total = m.getApproveCount() + m.getRejectCount() + m.getAbstainCount();
-                    BigDecimal approveRate = total > 0
-                            ? BigDecimal.valueOf(m.getApproveCount() * 100.0 / total).setScale(1, RoundingMode.HALF_UP)
-                            : BigDecimal.ZERO;
-                    return VoteResultsResponse.MotionResultResponse.builder()
-                            .id(m.getId())
-                            .motionNumber(m.getMotionNumber())
-                            .title(m.getTitle())
-                            .requiredApproval(m.getRequiredApproval().name())
-                            .result(m.getResult() != null ? m.getResult().name() : null)
-                            .approveCount(m.getApproveCount())
-                            .rejectCount(m.getRejectCount())
-                            .abstainCount(m.getAbstainCount())
-                            .approveRate(approveRate)
-                            .totalVotes(total)
-                            .build();
-                }).toList();
-
-        BigDecimal participationRate = session.getEligibleCount() > 0
-                ? BigDecimal.valueOf((votedCount + delegatedCount) * 100.0 / session.getEligibleCount())
-                        .setScale(1, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
-
-        long finalNotResponded = notResponded;
-        return VoteResultsResponse.builder()
-                .sessionId(id)
-                .status(session.getStatus().name())
-                .quorumStatus(quorumStatus)
-                .motions(motionResults)
-                .summary(VoteResultsResponse.SummaryResponse.builder()
-                        .totalEligible(session.getEligibleCount())
-                        .totalVoted(votedCount)
-                        .totalDelegated(delegatedCount)
-                        .totalNotResponded(finalNotResponded)
-                        .participationRate(participationRate)
-                        .build())
-                .build();
+        return resultService.getResults(id);
     }
 
     /**
-     * リマインド送信する。
+     * リマインド送信する。{@link ProxyVoteResultService} へ委譲。
      */
     @Transactional
     public RemindResponse remind(Long id) {
-        ProxyVoteSessionEntity session = findSessionOrThrow(id);
-        if (session.getStatus() != SessionStatus.OPEN) {
-            throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_OPEN);
-        }
-
-        // 通知送信・レートリミットは NotificationService 連携時に実装予定
-        long votedCount = voteRepository.countDistinctVotersBySessionId(id);
-        long delegatedCount = delegationRepository.countBySessionIdAndStatus(id, DelegationStatus.ACCEPTED);
-        long notResponded = session.getEligibleCount() - votedCount - delegatedCount;
-        if (notResponded <= 0) {
-            throw new BusinessException(ProxyVoteErrorCode.NO_PENDING_MEMBERS);
-        }
-
-        log.info("リマインド送信: sessionId={}, remindedCount={}", id, notResponded);
-        return RemindResponse.builder()
-                .remindedCount((int) notResponded)
-                .sessionId(id)
-                .build();
+        return resultService.remind(id);
     }
 
     /**
@@ -706,6 +423,21 @@ public class ProxyVoteSessionService {
                 .orElseThrow(() -> new BusinessException(ProxyVoteErrorCode.MOTION_NOT_FOUND));
     }
 
+    /**
+     * 議案の可決/否決判定。{@link ProxyVoteQuorumCalculator} へ委譲。
+     * <p>他サービス（{@link ProxyVoteMotionService} 等）からの後方互換のため公開維持。
+     */
+    MotionResult judgeMotionResult(ProxyVoteMotionEntity motion) {
+        return quorumCalculator.judgeMotionResult(motion);
+    }
+
+    /**
+     * 定足数充足状況の組み立て。{@link ProxyVoteQuorumCalculator} へ委譲。
+     */
+    QuorumStatusResponse buildQuorumStatus(ProxyVoteSessionEntity session) {
+        return quorumCalculator.buildQuorumStatus(session);
+    }
+
     private void createMotions(Long sessionId, List<MotionRequest> motionRequests) {
         int number = 1;
         for (MotionRequest mr : motionRequests) {
@@ -740,75 +472,6 @@ public class ProxyVoteSessionService {
         }
     }
 
-    private void validateCastVoteRequest(ProxyVoteSessionEntity session,
-                                          List<ProxyVoteMotionEntity> motions,
-                                          CastVoteRequest request) {
-        if (session.getResolutionMode() == ResolutionMode.WRITTEN) {
-            if (request.getVotes().size() != motions.size()) {
-                throw new BusinessException(ProxyVoteErrorCode.INCOMPLETE_VOTES);
-            }
-        }
-
-        for (CastVoteRequest.VoteItem item : request.getVotes()) {
-            ProxyVoteMotionEntity motion = motions.stream()
-                    .filter(m -> m.getId().equals(item.getMotionId()))
-                    .findFirst()
-                    .orElseThrow(() -> new BusinessException(ProxyVoteErrorCode.MOTION_NOT_FOUND));
-
-            if (session.getResolutionMode() == ResolutionMode.MEETING) {
-                if (motion.getVotingStatus() != VotingStatus.VOTING) {
-                    throw new BusinessException(ProxyVoteErrorCode.NON_VOTING_MOTION_INCLUDED);
-                }
-            }
-        }
-    }
-
-    MotionResult judgeMotionResult(ProxyVoteMotionEntity motion) {
-        int total = motion.getApproveCount() + motion.getRejectCount() + motion.getAbstainCount();
-        if (total == 0) {
-            return MotionResult.REJECTED;
-        }
-        return switch (motion.getRequiredApproval()) {
-            case MAJORITY -> motion.getApproveCount() > total / 2.0
-                    ? MotionResult.APPROVED : MotionResult.REJECTED;
-            case TWO_THIRDS -> motion.getApproveCount() >= Math.ceil(total * 2.0 / 3.0)
-                    ? MotionResult.APPROVED : MotionResult.REJECTED;
-            case UNANIMOUS -> motion.getRejectCount() == 0 && motion.getAbstainCount() == 0
-                    ? MotionResult.APPROVED : MotionResult.REJECTED;
-        };
-    }
-
-    QuorumStatusResponse buildQuorumStatus(ProxyVoteSessionEntity session) {
-        long votedCount = voteRepository.countDistinctVotersBySessionId(session.getId());
-        long delegatedCount = delegationRepository.countBySessionIdAndStatus(session.getId(), DelegationStatus.ACCEPTED);
-        long current = votedCount + delegatedCount;
-        long notResponded = session.getEligibleCount() - current;
-        if (notResponded < 0) notResponded = 0;
-
-        int required = calculateQuorumRequired(session);
-        boolean isMet = current >= required;
-
-        return QuorumStatusResponse.builder()
-                .required(required)
-                .current((int) current)
-                .isMet(isMet)
-                .votedCount(votedCount)
-                .delegatedCount(delegatedCount)
-                .notRespondedCount(notResponded)
-                .build();
-    }
-
-    private int calculateQuorumRequired(ProxyVoteSessionEntity session) {
-        int eligible = session.getEligibleCount();
-        return switch (session.getQuorumType()) {
-            case MAJORITY -> (int) Math.ceil(eligible / 2.0) + 1;
-            case TWO_THIRDS -> (int) Math.ceil(eligible * 2.0 / 3.0);
-            case CUSTOM -> session.getQuorumThreshold() != null
-                    ? (int) Math.ceil(eligible * session.getQuorumThreshold().doubleValue() / 100.0)
-                    : (int) Math.ceil(eligible / 2.0) + 1;
-        };
-    }
-
     private SessionResponse toSessionResponse(ProxyVoteSessionEntity session, Long currentUserId) {
         List<ProxyVoteMotionEntity> motions = motionRepository.findBySessionIdOrderByMotionNumberAsc(session.getId());
         List<ProxyVoteAttachmentEntity> attachments =
@@ -834,7 +497,7 @@ public class ProxyVoteSessionService {
                 .quorumType(session.getQuorumType().name())
                 .quorumThreshold(session.getQuorumThreshold())
                 .eligibleCount(session.getEligibleCount())
-                .quorumStatus(buildQuorumStatus(session))
+                .quorumStatus(quorumCalculator.buildQuorumStatus(session))
                 .motions(mapper.toMotionResponseList(motions))
                 .attachments(mapper.toAttachmentResponseList(attachments))
                 .myStatus(MyStatusResponse.builder().hasVoted(hasVoted).hasDelegated(hasDelegated).build())
@@ -874,7 +537,7 @@ public class ProxyVoteSessionService {
                 .isAnonymous(session.getIsAnonymous())
                 .eligibleCount(session.getEligibleCount())
                 .motionCount((int) motionCount)
-                .quorumStatus(buildQuorumStatus(session))
+                .quorumStatus(quorumCalculator.buildQuorumStatus(session))
                 .myStatus(MyStatusResponse.builder().hasVoted(hasVoted).hasDelegated(hasDelegated).build())
                 .createdAt(session.getCreatedAt())
                 .build();
