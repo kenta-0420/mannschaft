@@ -176,12 +176,23 @@ export function useOrgWalletApi(orgId: () => number) {
    *   <li>POINT_CARD_017 — 残高不足（SPENT）</li>
    *   <li>POINT_CARD_018 — 残高上限超過（CHARGE）</li>
    *   <li>POINT_CARD_020 — 累計返金額超過（REFUND）</li>
+   *   <li>POINT_CARD_024 — 残高機能凍結中（503 SERVICE_UNAVAILABLE。資金決済法対応）</li>
    * </ul>
+   *
+   * <p>F18 SELF_ISSUED_BALANCE 凍結（2026-05-17 マスター御裁可）:
+   * フロントの runtimeConfig.public.f18BalanceEnabled=false の場合は API 呼び出し自体を
+   * 行わず、ローカルでエラーを投げる（無駄な往復を抑止）。バックエンド側も
+   * f18.balance.enabled=false で 503 を返すため二重防御となる。
    */
   async function recordBalanceEvent(
     cardId: string,
     body: BalanceEventRequest,
   ): Promise<BalanceEventResponse> {
+    const config = useRuntimeConfig()
+    if (!config.public.f18BalanceEnabled) {
+      // 凍結中: API を叩かずローカルで弾く（バックエンドも 503 で根治治療）
+      throw new Error('F18_BALANCE_DISABLED')
+    }
     const res = await api<{ data: BalanceEventResponse }>(
       `${base()}/${cardId}/balance-events`,
       { method: 'POST', body },

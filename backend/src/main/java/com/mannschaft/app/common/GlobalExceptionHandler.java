@@ -460,6 +460,8 @@ public class GlobalExceptionHandler {
             // F18 Phase 5 — 残高 Permission 駆動化（POINT_CARD_022〜023）
             Map.entry("POINT_CARD_022", HttpStatus.FORBIDDEN),         // BALANCE_OPERATE_PERMISSION_REQUIRED
             Map.entry("POINT_CARD_023", HttpStatus.FORBIDDEN),         // BALANCE_REFUND_PERMISSION_REQUIRED
+            // F18 SELF_ISSUED_BALANCE 凍結（資金決済法対応・2026-05-17 マスター御裁可）
+            Map.entry("POINT_CARD_024", HttpStatus.SERVICE_UNAVAILABLE), // BALANCE_SERVICE_DISABLED
             // F02.9 お気に入りウィジェット
             Map.entry("FAV_001", HttpStatus.CONFLICT),                  // ALREADY_REGISTERED（重複登録）
             Map.entry("FAV_002", HttpStatus.UNPROCESSABLE_ENTITY),      // LIMIT_EXCEEDED（上限20件超過）

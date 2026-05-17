@@ -26,8 +26,15 @@ const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const walletApi = useWalletApi()
+const runtimeConfig = useRuntimeConfig()
 
 const cardId = computed(() => route.params.id as string)
+
+// F18 SELF_ISSUED_BALANCE 凍結（2026-05-17 マスター御裁可）
+// 資金決済法（前払式支払手段＝自家型）対応のため法務整備が整うまで一時凍結。
+// 残高型カードの残高表示は「---」（伏字）に置き換え、停止中バナーを表示する。
+// 設計書: docs/features/F18_point_card_wallet.md §1.4 / §16 / §17
+const balanceEnabled = computed<boolean>(() => Boolean(runtimeConfig.public.f18BalanceEnabled))
 
 // ─────────────────────────────────────────────
 // State
@@ -80,9 +87,13 @@ const isSelfIssued = computed(() => {
 const isBalanceType = computed(() => card.value?.providerType === 'SELF_ISSUED_BALANCE')
 const isStampType = computed(() => card.value?.providerType === 'SELF_ISSUED_STAMP')
 
-/** 残高表示（JPY フォーマット）。MVP は JPY 固定。 */
+/** 残高表示（JPY フォーマット）。MVP は JPY 固定。
+ * F18 BALANCE 凍結中（balanceEnabled=false）は実値を伏字「---」に置換し、
+ * 残高 PII を画面表示しない方針とする（API は引き続き値を返すが、UI で隠す）。
+ */
 const balanceFormatted = computed(() => {
   if (!isBalanceType.value) return ''
+  if (!balanceEnabled.value) return '---'
   const v = card.value?.balance
   if (v === null || v === undefined) return ''
   return new Intl.NumberFormat('ja-JP', {
@@ -289,6 +300,19 @@ onMounted(load)
         <div class="card-detail__balance-label">{{ t('wallet.balance_display.label') }}</div>
         <div class="card-detail__balance-value">{{ balanceFormatted }}</div>
         <p class="card-detail__balance-hint">{{ t('wallet.balance_display.history_hint') }}</p>
+        <!-- F18 BALANCE 凍結バナー（2026-05-17 マスター御裁可）。資金決済法対応のため一時停止中。 -->
+        <div
+          v-if="!balanceEnabled"
+          class="card-detail__balance-frozen"
+          role="status"
+        >
+          <p class="card-detail__balance-frozen-title">
+            {{ t('wallet.balance.disabled.banner') }}
+          </p>
+          <p class="card-detail__balance-frozen-body">
+            {{ t('wallet.balance.disabled.reason') }}
+          </p>
+        </div>
       </section>
       <section v-else-if="!editMode && isStampType && stampCountValue !== null" class="card-detail__balance">
         <div class="card-detail__balance-label">{{ t('wallet.stamp_display.label') }}</div>
@@ -621,6 +645,26 @@ onMounted(load)
   color: var(--p-text-muted-color, #6b7280);
   margin: 0.25rem 0 0;
   text-align: center;
+}
+/* F18 BALANCE 凍結バナー（2026-05-17 マスター御裁可・資金決済法対応） */
+.card-detail__balance-frozen {
+  margin-top: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #fcd34d; /* amber-300 */
+  background: #fffbeb;       /* amber-50 */
+  color: #78350f;            /* amber-900 */
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+.card-detail__balance-frozen-title {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+.card-detail__balance-frozen-body {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
 }
 .card-detail__btn {
   padding: 0.75rem 1rem;

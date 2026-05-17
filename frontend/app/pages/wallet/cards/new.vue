@@ -20,6 +20,17 @@ import type { BarcodeFormat, PointCardProvider } from '~/types/pointCard'
  * <p>「step 1: 入力」と「step 2: プレビュー & 任意項目」の 2 画面構成にして
  * ADHD ユーザーに優しい一画面完結に近づけている。step 1 に必須項目（displayName +
  * バーコード値 / NONE 選択）を全部置き、step 2 で確認 + 任意項目を入力する。</p>
+ *
+ * <p>F18 SELF_ISSUED_BALANCE 凍結（2026-05-17 マスター御裁可）:</p>
+ * <ul>
+ *   <li>このページはユーザー個人が他社（EXTERNAL）カードを追加する経路であり、
+ *       SELF_ISSUED_BALANCE / SELF_ISSUED_STAMP の選択肢自体を持たない（type は
+ *       サーバー側で fuzzy match の結果として決まる）。プリセットカードも EXTERNAL の
+ *       人気事業者マスタのみ。よって本ページ単体での凍結ガードは不要。</li>
+ *   <li>自店発行プロバイダーへのカード紐付けは {@code /wallet/add-from-qr} 経由のため、
+ *       残高型プロバイダーが今後 SELF_ISSUED_BALANCE で発行された場合の追加経路は
+ *       別途検討する（現状そもそも管理 UI からは STAMP のみ作成可能）。</li>
+ * </ul>
  */
 
 definePageMeta({
