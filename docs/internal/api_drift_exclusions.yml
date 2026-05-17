@@ -92,6 +92,15 @@ exclude_patterns:
   - pattern: "/api/signage/**"
     reason: "F09.1 サイネージ旧 URL prefix。/api/v1/signage/ への移行待ち"
     category: legacy
+  - pattern: "/api/webhooks/**"
+    reason: "F09.9 webhook 旧 URL prefix。設計書はチームスコープ /api/v1/teams/{teamId}/webhooks/ が正だが、実装は MVP の暫定 URL。F09.9 軍議で移行 PR 予定"
+    category: legacy
+  - pattern: "/api/api-keys/**"
+    reason: "F09.9 API キー旧 URL prefix。設計書はチームスコープ /api/v1/teams/{teamId}/api-keys/ が正だが、実装は MVP の暫定 URL。F09.9 軍議で移行 PR 予定"
+    category: legacy
+  - pattern: "/api/maintenance-schedules/**"
+    reason: "F07.6 旧 URL prefix（メンテナンス予定）。F07.6 リファクタで /api/v1/teams/{teamId}/incidents/maintenance-schedules/ へ統合予定"
+    category: legacy
 
   # === ヘルスチェック ===
   - pattern: "/api/v1/health"
@@ -109,6 +118,41 @@ exclude_patterns:
   # === メトリクス・分析 (内部利用) ===
   - pattern: "/api/v1/metrics/internal/**"
     reason: "システム内部のメトリクス収集エンドポイント。設計書化対象外"
+    category: internal
+
+  # === スコープ参照ヘルパー（F00 ContentVisibilityResolver 系）===
+  - pattern: "/api/v1/scopes/**"
+    reason: "スコープ解決ヘルパー API（F00 ContentVisibilityResolver 内部利用）。設計書化対象外"
+    category: internal
+
+  # === API メタ情報 / 自己内省（dev 補助）===
+  - pattern: "/api/v1/endpoints/**"
+    reason: "エンドポイント自己内省 API（開発補助）。設計書化対象外"
+    category: debug
+
+  # === 外部 webhook 受信（incoming）===
+  - pattern: "/api/v1/incoming/**"
+    reason: "外部システムからの incoming 受信口。API 仕様は外部側ドキュメントが正"
+    category: external
+
+  # === iCalendar フィード ===
+  - pattern: "/api/v1/ical/**"
+    reason: "iCalendar フィード配信（F03.3 Google Calendar 連携）。RFC5545 が一次仕様"
+    category: external
+
+  # === メールトラッキング（pixel / link click）===
+  - pattern: "/api/v1/mail-tracking/**"
+    reason: "メール open / click トラッキング pixel・redirect。設計書化対象外"
+    category: internal
+
+  # === PDF 署名検証（内部 webhook）===
+  - pattern: "/api/v1/pdf-signatures/**"
+    reason: "PDF 電子署名検証 webhook（F05.3 系内部）"
+    category: internal
+
+  # === i18n 補助 ===
+  - pattern: "/api/v1/supported-locales/**"
+    reason: "i18n 対応ロケール一覧。フロント初期化用補助 API"
     category: internal
 
 
