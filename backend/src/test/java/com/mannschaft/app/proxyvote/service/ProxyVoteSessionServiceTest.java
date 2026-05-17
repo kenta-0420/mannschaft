@@ -24,10 +24,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 
 /**
  * {@link ProxyVoteSessionService} の単体テスト。
+ *
+ * <p>Phase 5 リファクタにより本サービスはファサード化された。
+ * castVote / updateVote は {@link ProxyVoteCastService} に、
+ * finalizeSession / getResults / remind は {@link ProxyVoteResultService} に委譲される。
+ * このため委譲系メソッドのテストは委譲先がスローする状態をモックして検証する。
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ProxyVoteSessionService 単体テスト")
@@ -40,6 +47,9 @@ class ProxyVoteSessionServiceTest {
     @Mock private ProxyDelegationRepository delegationRepository;
     @Mock private ProxyVoteMapper mapper;
     @Mock private UserRoleRepository userRoleRepository;
+    @Mock private ProxyVoteQuorumCalculator quorumCalculator;
+    @Mock private ProxyVoteCastService castService;
+    @Mock private ProxyVoteResultService resultService;
 
     @InjectMocks
     private ProxyVoteSessionService service;
@@ -121,11 +131,11 @@ class ProxyVoteSessionServiceTest {
     class FinalizeSession {
 
         @Test
-        @DisplayName("異常系: CLOSED以外のFINALIZE遷移はエラー")
+        @DisplayName("異常系: CLOSED以外のFINALIZE遷移はエラー（ProxyVoteResultService が判定しスロー）")
         void CLOSED以外FINALIZE不可() {
-            ProxyVoteSessionEntity session = ProxyVoteSessionEntity.builder()
-                    .status(SessionStatus.OPEN).build();
-            given(sessionRepository.findById(SESSION_ID)).willReturn(Optional.of(session));
+            // ファサードは ProxyVoteResultService に委譲する。委譲先が同じエラーを投げる前提を検証。
+            given(resultService.finalizeSession(anyLong(), any(), anyLong()))
+                    .willThrow(new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_CLOSED));
 
             assertThatThrownBy(() -> service.finalizeSession(SESSION_ID, null, USER_ID))
                     .isInstanceOf(BusinessException.class)
@@ -139,11 +149,11 @@ class ProxyVoteSessionServiceTest {
     class CastVote {
 
         @Test
-        @DisplayName("異常系: OPEN以外で投票はエラー")
+        @DisplayName("異常系: OPEN以外で投票はエラー（ProxyVoteCastService が判定しスロー）")
         void OPEN以外投票不可() {
-            ProxyVoteSessionEntity session = ProxyVoteSessionEntity.builder()
-                    .status(SessionStatus.CLOSED).build();
-            given(sessionRepository.findById(SESSION_ID)).willReturn(Optional.of(session));
+            // ファサードは ProxyVoteCastService に委譲する。委譲先が同じエラーを投げる前提を検証。
+            given(castService.castVote(anyLong(), any(), anyLong()))
+                    .willThrow(new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_OPEN));
 
             assertThatThrownBy(() -> service.castVote(SESSION_ID, null, USER_ID))
                     .isInstanceOf(BusinessException.class)
