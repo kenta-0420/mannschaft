@@ -39,6 +39,9 @@
 
 本機能はあくまで「ユーザーが自分で入力したバーコード/カード番号を画面再描画するもの」であり、各ポイント事業者の公式機能・契約に基づくものではない。利用に伴う一切の責任はユーザー本人にある旨を規約・ヘルプ・初回利用時モーダルで明示する（§9 セキュリティ・規約4項目参照）。
 
+> 🔴 **SELF_ISSUED_BALANCE（自店プリペイド残高カード）凍結中（2026-05-17〜）**
+> 自店発行の残高型カードは資金決済法第 3 条「前払式支払手段（自家型）」に該当するため、法務整備（弁護士意見書 / 規約改訂 / 6ヶ月有効期限ガード / 1000 万円アラート / 発行体表示・払戻し条件明示）が整うまで**一時凍結**する。マスター御裁可（2026-05-17）に基づき、案 B（機能フラグ + Service 入口例外）方式で `application.yml` の `f18.balance.enabled=false` と Nuxt `runtimeConfig.public.f18BalanceEnabled=false` により、`PointCardBalanceService` の CHARGE / SPENT / REFUND を `POINT_CARD_024 BALANCE_SERVICE_DISABLED`（HTTP 503）で拒否し、フロントの 3 タブ（チャージ / 利用 / 返金）も非表示にする。SELF_ISSUED_STAMP（押印型）と EXTERNAL（他社カード再描画）は凍結対象外で**無傷**。再開判断基準は §17 / §16 を参照。
+
 ---
 
 ## 2. スコープ
@@ -172,7 +175,7 @@
 |---|---|---|
 | `EXTERNAL` | 他社（外部事業者）が発行するポイントカード。Mannschaft はバーコードを再描画するだけで、残高・履歴は管理しない | Phase 1 |
 | `SELF_ISSUED_STAMP` | organization が自店発行するスタンプカード（10 個押すと 1 杯無料など）| Phase 2 |
-| `SELF_ISSUED_BALANCE` | organization が自店発行するチャージ型残高カード（プリペイド・電子マネー風）| Phase 2 |
+| `SELF_ISSUED_BALANCE` 🔴 凍結中（v2 再開予定） | organization が自店発行するチャージ型残高カード（プリペイド・電子マネー風）| Phase 2 実装済 → 2026-05-17 から資金決済法対応で機能フラグ凍結。CHARGE/SPENT/REFUND は 503 で拒否、履歴閲覧のみ維持 |
 
 ### 4.2 カテゴリ enum（`point_card_providers.category`）
 
@@ -570,6 +573,8 @@ erDiagram
 | PUT | `/api/v1/point-cards/settings` | MEMBER | ユーザー設定更新（オプトイン・規約同意・WebAuthn 要求設定）|
 
 > **Phase 2 で追加予定の API**: `POST /api/v1/orgs/{orgId}/point-cards` (organization が自店プロバイダー発行), `POST /api/v1/orgs/{orgId}/point-cards/{cardId}/stamps` (スタンプ押印), `POST /api/v1/orgs/{orgId}/point-cards/{cardId}/balance-events` (チャージ・引き落とし) など。
+>
+> ⚠️ **`/balance-events` 系 POST は本機能凍結中（2026-05-17〜）**: `f18.balance.enabled=false`（既定）の本番環境では `PointCardBalanceService` が入口で `POINT_CARD_024 BALANCE_SERVICE_DISABLED` を投擲し HTTP 503 を返す。資金決済法対応のため。GET（履歴閲覧）は凍結対象外で正常稼働。STAMP / EXTERNAL は無傷。
 
 ### 6.2 主要エンドポイント仕様
 
@@ -1459,6 +1464,8 @@ CREATE TABLE point_card_balance_events (
 
 ### 12.2 Phase 2 追加 API
 
+> ⚠️ **本機能（SELF_ISSUED_BALANCE）は凍結中（資金決済法対応のため・2026-05-17〜）**: 下表の `/balance-events` POST 行（CHARGE / SPENT / REFUND）は `f18.balance.enabled=false` の本番環境で `POINT_CARD_024` HTTP 503 を返す。GET 系（履歴閲覧）と他の API（プロバイダー / スタンプ）は無傷。
+
 | メソッド | パス | 認可 | 用途 |
 |---|---|---|---|
 | GET | `/api/v1/orgs/{orgId}/point-cards/providers` | ADMIN | 自組織の自店プロバイダー一覧 |
@@ -1467,7 +1474,7 @@ CREATE TABLE point_card_balance_events (
 | DELETE | `/api/v1/orgs/{orgId}/point-cards/providers/{id}` | ADMIN | プロバイダー停止（is_active=false） |
 | GET | `/api/v1/orgs/{orgId}/point-cards/providers/{id}/qr` | ADMIN | 顧客追加用 QR コード生成 |
 | POST | `/api/v1/orgs/{orgId}/point-cards/{cardId}/stamps` | ADMIN/DEPUTY_ADMIN | スタンプ押印（+1） |
-| POST | `/api/v1/orgs/{orgId}/point-cards/{cardId}/balance-events` | ADMIN/DEPUTY_ADMIN | チャージ・引き落とし |
+| POST | `/api/v1/orgs/{orgId}/point-cards/{cardId}/balance-events` 🔴 | ADMIN/DEPUTY_ADMIN | チャージ・引き落とし（凍結中: 503 POINT_CARD_024） |
 
 ### 12.3 organization 退会時の自店プロバイダー処理
 
@@ -1671,6 +1678,8 @@ Phase 2 全 6 PR + 第四陣（E2E + ドキュメント）が main マージ済�
 
 ### Phase 3 実装結果（2026-05-16 完了 — 残高型 + QR 自動特定 + Wake Lock テレメトリ）
 
+> ⚠️ **本機能（SELF_ISSUED_BALANCE）は 2026-05-17 から凍結中**（資金決済法対応のため）。実装は完遂しているが本番環境では `f18.balance.enabled=false` で機能フラグ凍結している。再開判断基準は §17 / §16 を参照。STAMP / EXTERNAL は無傷で稼働中。
+
 Phase 3 は残高型 (SELF_ISSUED_BALANCE)・押印画面の QR 自動特定（顧客一時トークン方式）・Wake Lock 実機テレメトリ強化の 3 系統を並行で消化した。計 7 陣（本陣 = 第四陣 = 仕上げ）で完遂。Phase 1 から先行投入していた `user_point_cards.balance` カラムと Phase 2 で導入された `SELF_ISSUED_BALANCE` ENUM 値が破壊なく活用された。
 
 | 陣 | 内容 | 完了 PR | コミット |
@@ -1704,7 +1713,10 @@ Phase 4 までで「PDF417 描画」「マスタ拡充」「同義語辞書 fuzz
 |---|---|---|---|
 | P5-S1 基盤 | V9.158 `POINT_CARD_BALANCE_OPERATE` / `POINT_CARD_BALANCE_REFUND` Permission 2 種新設 + ADMIN は `is_default=1` 自動付与・DEPUTY_ADMIN は `is_default=0` 天井のみ登録（V9.156 の `POINT_CARD_STAMP_ISSUE` と同パターン、後方互換 100%）+ ErrorCode 022/023（BALANCE_*_PERMISSION_REQUIRED → 403）+ `AuditEventType.POINT_CARD_REMATCH_BATCH_EXECUTED` 追加 + `f18.fuzzy-match.levenshtein` feature flag 雛形（`enabled` / `max-distance=1` / `min-input-length=5`） | #737 | 04404e9d7 |
 
-**P5-S2 で取り組む順序（軍議準備メモ）**:
+**🔴 P5-S2 = 残高 Permission 駆動化は無期延期（2026-05-17）**:
+SELF_ISSUED_BALANCE 機能が資金決済法対応のため凍結となったため、Permission 駆動化作業（PR #737 で基盤投入済）は**無期延期**する。F18 BALANCE 機能再開時（v2）に Permission 駆動化が必要かどうかを再評価する（再開と同時に Permission 駆動化を統合実装する方針を推奨）。残課題管理は §16 を参照。
+
+**（凍結前の P5-S2 軍議準備メモ — 凍結中は参考情報として温存）**:
 
 1. **残高 API の Permission 切替**: `PointCardBalanceService` の認可を `roleService.hasPermission(orgId, "POINT_CARD_BALANCE_OPERATE")` ／ REFUND 系は `..._BALANCE_REFUND` に置換。既存のハードコード分岐（ADMIN/DEPUTY_ADMIN 直接判定）を撤去し、失敗時は ErrorCode 022/023 を投げる。
 2. **DEPUTY_ADMIN 既存ユーザー救済の移行手順併設**: V9.158 では DEPUTY_ADMIN に `is_default=0` 天井しか登録していないため、P5-S2 リリース時に既存 DEPUTY_ADMIN ロールへ `permission_groups` 経由で BALANCE_OPERATE / BALANCE_REFUND を一括付与する移行 SQL（または運用 Runbook）を**必ず**併設する。これを怠ると本番リリースで既存 DEPUTY_ADMIN が残高操作を失う回帰を起こす。
@@ -1750,7 +1762,8 @@ Phase 4 までで「PDF417 描画」「マスタ拡充」「同義語辞書 fuzz
 | 🟡 プロバイダーロゴ画像の権利確認 SOP | 未整備 | 運営側 SOP として整備（マスタ拡充に追従） |
 | 🟢 fuzzy match の Levenshtein 距離拡張 | Phase 5 P5-S1 で feature flag 雛形のみ投入（`f18.fuzzy-match.levenshtein.enabled` / `max-distance=1` / `min-input-length=5`）| P5-S3 で `ProviderMatchService` に 3 段目フォールバック実装。誤マッチリスク抑制のため `min-input-length=5` ガード遵守 |
 | 🟢 既存マッチ済みカードの再マッチバッチ | Phase 5 P5-S1 で監査イベント型のみ追加（`POINT_CARD_REMATCH_BATCH_EXECUTED`）| P5-S4 で夜間バッチ実装（Quartz / Spring Scheduler / 既存基盤の選定要）。プロバイダー / シノニム更新時に `provider_id IS NULL` カードを遡及マッチ |
-| 🟢 残高型操作（charge/spend/refund）の Permission 駆動化 | Phase 5 P5-S1 で Permission 2 種新設 + ErrorCode + 後方互換マイグレーション完了（PR #737）| P5-S2 で `PointCardBalanceService` の認可を `roleService.hasPermission(..., "POINT_CARD_BALANCE_OPERATE" / "..._REFUND")` に置換。DEPUTY_ADMIN 既存ユーザー救済のため `permission_groups` 経由の一括付与移行手順を**必ず併設**する |
+| 🔴 残高型操作（charge/spend/refund）の Permission 駆動化 | **無期延期**（2026-05-17、SELF_ISSUED_BALANCE 機能凍結に伴う）| F18 BALANCE 機能再開時（v2）に Permission 駆動化が必要かどうかを再評価。再開時は凍結解除と同時に Permission 駆動化を統合実装する方針を推奨。Phase 5 P5-S1 で投入した Permission 2 種・ErrorCode 022/023・V9.158 マイグレーションは無傷で温存し、機能フラグ凍結中も DB は退避状態で保持する |
+| 🔴 SELF_ISSUED_BALANCE 機能凍結（v2 再開判断基準）| **凍結中**（2026-05-17〜、案 B 機能フラグ方式）| 再開条件 5 項目：① 利用 organization 数 1 万件超 または特定組織での残高需要が顕在化 / ② 法律事務所（西村あさひ・森・濱田松本・TMI・GVA 等の金融規制チーム）による意見書取得 / ③ 6 ヶ月有効期限ガード・1000 万円アラート・基準日集計・REFUND 限定ロジックの追加実装 / ④ 規約改訂（発行体明示・払戻しポリシー・有効期限）+ 弁護士レビュー / ⑤ 利用 organization への届出義務 onboarding 教育コンテンツ整備。すべて満たした時点で `f18.balance.enabled=true` + `NUXT_PUBLIC_F18_BALANCE_ENABLED=true` で機能フラグを解除。STAMP / EXTERNAL は凍結対象外（無傷で稼働中）|
 
 ---
 
@@ -1764,4 +1777,5 @@ Phase 4 までで「PDF417 描画」「マスタ拡充」「同義語辞書 fuzz
 | 2026-05-16 | Phase 2 スタンプ型完了。WebAuthn 再認証 (POINT_CARD_009 完全実装) / 自店プロバイダー CRUD / スタンプ押印+履歴 / 店主ダッシュボード / 顧客 QR 追加フロー 全 main マージ済（PR #660/#669/#665/#666/#676/#677 + 第四陣）。Phase 1 残課題🔴 WebAuthn も解消。残高型 (SELF_ISSUED_BALANCE) は Phase 3 で対応。Phase 1 から先行投入していた `type` ENUM 3 値 / `organization_id` / `balance` / `stamp_count` カラムが破壊なく Phase 2 で活用され、設計判断 #6（先行投入）の正しさが実証された |
 | 2026-05-16 | Phase 3 完了（残高型 + QR 自動特定 + Wake Lock テレメトリ）。PR #687（基盤）/ #691（QR 自動特定）/ #692（残高 API）/ #693（Wake Lock テレメトリ）/ #701（顧客側 FE）/ #702（店主側 FE）+ 第四陣（DTO 拡張 + E2E + 設計書最終化）全 main マージ済。残高型は Phase 1 から先行投入していた `user_point_cards.balance` カラム + Phase 2 ENUM SELF_ISSUED_BALANCE が破壊なく活用された。QR 自動特定は Blind Index ではなく Valkey 5 分 TTL の一時トークン方式を採用し、暗号化されたバーコード値の検索不能性を維持しつつ実現。Wake Lock 失敗時の `captureQuiet` テレメトリで iOS Safari 制約の実機実態を集計可能に。Backend DTO の `UserPointCardListItemResponse` / `UserPointCardDetailResponse` に `balance` / `stampCount` / `providerType` / `providerOrganizationId` を追加してフロント側で残高型・スタンプ型カードを一覧で即時表示可能にした。Phase 1 設計判断 #6（先行投入）が 3 Phase にわたって有効であった |
 | 2026-05-17 | Phase 4 完了。設計書 §16 残課題 4 件解消（PDF417 / マスタ拡充 / 同義語辞書 / DEPUTY_ADMIN 細分化）。bwip-js 動的 import で bundle 影響最小化、`ProviderMatchService` の 2 段フォールバックで同義語マッチ、`POINT_CARD_STAMP_ISSUE` Permission で押印権限制御、SystemAdmin 専用シノニム管理 UI 完備。PR #714（基盤 V9.155-157）/ #723（fuzzy match 拡張）/ #724（DEPUTY_ADMIN 細分化）/ #725（PDF417）/ #729（シノニム管理 UI）+ 第四陣（E2E + 設計書最終化 + memory）全 main マージ済。残: iOS 実機検証（QA 待ち）/ Levenshtein 距離拡張 / 再マッチバッチ / 残高型 Permission 駆動化 |
+| 2026-05-17 | **SELF_ISSUED_BALANCE 凍結（マスター御裁可）**: 自店プリペイド残高カードが資金決済法第 3 条「前払式支払手段（自家型）」に該当するため、法務整備（弁護士意見書 / 規約改訂 / 6ヶ月有効期限ガード / 1000 万円アラート / 発行体表示・払戻し条件明示・届出義務 onboarding）が整うまで一時凍結する。採用方式は**案 B（機能フラグ + Service 入口例外）**: ① backend `application.yml` の `f18.balance.enabled=false`（既定 false）+ `PointCardBalanceService` の `charge/spend/refund` 入口で flag=false 時に `POINT_CARD_024 BALANCE_SERVICE_DISABLED`（HTTP 503）投擲。② frontend `runtimeConfig.public.f18BalanceEnabled=false` + 店主ダッシュボードの 3 タブ（チャージ / 利用 / 返金）非表示 + カード詳細ページで残高伏字化「---」+ 停止中バナー表示。③ DB スキーマ・Permission（V9.158）・ENUM 値・既存テーブルはすべて温存（再開時の互換性確保）。④ 残高履歴閲覧（`listOrgEvents` / `listCardEvents`）は凍結対象外で正常稼働（既存残高型カードユーザーが履歴を確認できるよう維持）。⑤ SELF_ISSUED_STAMP（押印型）と EXTERNAL（他社カード再描画）は**無傷**で稼働継続。本番 DB には SELF_ISSUED_BALANCE データなし（マスター確認済み）。**v2 再開判断基準 5 項目**: ① 利用 organization 数 1 万件超または残高需要顕在化、② 法律事務所（西村あさひ・森・濱田松本・TMI・GVA 等の金融規制チーム）意見書取得、③ 有効期限ガード・1000 万円アラート・基準日集計・REFUND 限定ロジックの追加実装、④ 規約改訂 + 弁護士レビュー、⑤ 利用 organization への届出義務 onboarding 教育コンテンツ整備。すべて満たした時点で機能フラグ解除。i18n 6 言語に `wallet.balance.disabled.banner` / `wallet.balance.disabled.reason` キー追加。Phase 5 P5-S2（残高 Permission 駆動化）は**無期延期**（凍結中は不要、再開時に統合実装で再評価） |
 | 2026-05-17 | Phase 5 第一陣（P5-S1 基盤）main マージ（PR #737 / 04404e9d7）。V9.158 で `POINT_CARD_BALANCE_OPERATE` / `POINT_CARD_BALANCE_REFUND` Permission 2 種新設、ADMIN は `is_default=1` 自動付与・DEPUTY_ADMIN は `is_default=0` 天井のみ登録（V9.156 `POINT_CARD_STAMP_ISSUE` と同パターン、後方互換 100%）。`PointCardErrorCode` 022/023（BALANCE_*_PERMISSION_REQUIRED → 403）+ `AuditEventType.POINT_CARD_REMATCH_BATCH_EXECUTED` + `f18.fuzzy-match.levenshtein` feature flag 雛形も同陣で前出し。実認可切替は P5-S2 で `PointCardBalanceService` に適用予定。設計書 §6.3 エラーコード一覧は同 PR の docs PR で Phase 2〜5 累積分（010〜023）を一括キャッチアップ追記（本陣の docs PR）。**Phase 5 第二陣リリース時の必須移行手順**: DEPUTY_ADMIN への `permission_groups` 経由 BALANCE_* 一括付与を併設しないと既存 DEPUTY_ADMIN が残高操作を失う回帰を起こす |

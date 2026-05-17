@@ -20,7 +20,9 @@ import com.mannschaft.app.pointcard.error.PointCardErrorCode;
 import com.mannschaft.app.pointcard.repository.PointCardBalanceEventRepository;
 import com.mannschaft.app.pointcard.repository.PointCardProviderRepository;
 import com.mannschaft.app.pointcard.repository.UserPointCardRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -107,6 +109,17 @@ class PointCardBalanceServiceTest {
 
     @InjectMocks
     private PointCardBalanceService balanceService;
+
+    /**
+     * 既存テストはすべて「残高機能が有効な状態」を前提とする。
+     * {@code @Value("${f18.balance.enabled:true}")} は @InjectMocks では注入されず
+     * Java の primitive default（false）になってしまうため、ReflectionTestUtils で
+     * 明示的に true を流し込む。凍結状態の検証は {@link WhenBalanceDisabled} を参照。
+     */
+    @BeforeEach
+    void enableBalanceFeatureByDefault() {
+        ReflectionTestUtils.setField(balanceService, "balanceEnabled", true);
+    }
 
     // ─────────────────────────────────────────────
     // ヘルパ
@@ -796,5 +809,101 @@ class PointCardBalanceServiceTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).operatedByUserDisplayName()).isEqualTo("店員");
+    }
+
+    // ─────────────────────────────────────────────
+    // F18 SELF_ISSUED_BALANCE 凍結（2026-05-17 マスター御裁可）
+    // 設計書: docs/features/F18_point_card_wallet.md §1.4 / §16 / §17
+    // ─────────────────────────────────────────────
+
+    /**
+     * f18.balance.enabled=false で機能凍結中の検証群。
+     *
+     * <p>charge / spend / refund の入口で
+     * {@link PointCardErrorCode#BALANCE_SERVICE_DISABLED}（POINT_CARD_024 → HTTP 503）を投げ、
+     * 認可チェックや DB アクセスは一切行わないことを確認する。
+     * 履歴閲覧（listOrgEvents / listCardEvents）は凍結対象外で常に許可される。
+     */
+    @Nested
+    @DisplayName("WhenBalanceDisabled — f18.balance.enabled=false 凍結状態")
+    class WhenBalanceDisabled {
+
+        @BeforeEach
+        void disableBalanceFeature() {
+            ReflectionTestUtils.setField(balanceService, "balanceEnabled", false);
+        }
+
+        @Test
+        @DisplayName("charge: 凍結中は POINT_CARD_024 を投擲し DB アクセスしない")
+        void charge_whenDisabled_throws024() {
+            UUID cardId = UUID.randomUUID();
+            BalanceEventRequest request = req(BalanceOperationType.CHARGE, "1000.00");
+
+            assertThatThrownBy(() -> balanceService.charge(
+                    ORG_ID, cardId, STAFF_USER_ID, request, null, null, null))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(PointCardErrorCode.BALANCE_SERVICE_DISABLED);
+
+            // 認可・カード解決・DB アクセスは一切行わない
+            verify(accessControlService, never()).checkAdminOrAbove(anyLong(), anyLong(), anyString());
+            verify(cardRepository, never()).findById(any());
+            verify(cardRepository, never()).save(any());
+            verify(balanceEventRepository, never()).save(any());
+            verify(auditLogService, never()).record(anyString(), anyLong(),
+                    any(), any(), anyLong(), any(), any(), any(), anyString());
+        }
+
+        @Test
+        @DisplayName("spend: 凍結中は POINT_CARD_024 を投擲し DB アクセスしない")
+        void spend_whenDisabled_throws024() {
+            UUID cardId = UUID.randomUUID();
+            BalanceEventRequest request = req(BalanceOperationType.SPENT, "500.00");
+
+            assertThatThrownBy(() -> balanceService.spend(
+                    ORG_ID, cardId, STAFF_USER_ID, request, null, null, null))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(PointCardErrorCode.BALANCE_SERVICE_DISABLED);
+
+            verify(accessControlService, never()).checkAdminOrAbove(anyLong(), anyLong(), anyString());
+            verify(cardRepository, never()).findById(any());
+            verify(cardRepository, never()).save(any());
+            verify(balanceEventRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("refund: 凍結中は POINT_CARD_024 を投擲し DB アクセスしない")
+        void refund_whenDisabled_throws024() {
+            UUID cardId = UUID.randomUUID();
+            UUID originalEventId = UUID.randomUUID();
+            BalanceEventRequest request = reqRefund("200.00", originalEventId);
+
+            assertThatThrownBy(() -> balanceService.refund(
+                    ORG_ID, cardId, STAFF_USER_ID, request, null, null, null))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(PointCardErrorCode.BALANCE_SERVICE_DISABLED);
+
+            verify(accessControlService, never()).checkAdminOrAbove(anyLong(), anyLong(), anyString());
+            verify(cardRepository, never()).findById(any());
+            verify(cardRepository, never()).save(any());
+            verify(balanceEventRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("listOrgEvents: 凍結中でも履歴閲覧は許可される（凍結対象外）")
+        void listOrgEvents_whenDisabled_stillWorks() {
+            willDoNothing().given(accessControlService)
+                    .checkAdminOrAbove(STAFF_USER_ID, ORG_ID, "ORGANIZATION");
+            given(balanceEventRepository.findByOrganizationIdOrderByOperatedAtDesc(eq(ORG_ID), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of()));
+
+            Page<BalanceEventResponse> page = balanceService.listOrgEvents(
+                    ORG_ID, STAFF_USER_ID, null, PageRequest.of(0, 20));
+
+            assertThat(page.getContent()).isEmpty();
+            verify(accessControlService).checkAdminOrAbove(STAFF_USER_ID, ORG_ID, "ORGANIZATION");
+        }
     }
 }

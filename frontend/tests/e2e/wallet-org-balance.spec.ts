@@ -4,18 +4,17 @@ import { waitForHydration } from './helpers/wait'
 /**
  * F18 Phase 3 — 店主残高型カード操作フロー E2E。
  *
- * シナリオ（API モック方式、wallet-org-stamp.spec.ts と同じ流儀）:
- *   1. 組織 ADMIN として `/organizations/{orgId}/admin/point-cards/stamp` を開く
- *   2. QR モードのまま BarcodeCapture の「手入力」タブで顧客一時トークン UUID を入力
- *      → submitManual で stamp.vue 側の onQrDetected が呼ばれ、
- *        resolveByToken モックが SELF_ISSUED_BALANCE で応答
- *   3. SELF_ISSUED_BALANCE のため操作タブが「チャージ / 利用 / 返金」に切替わる
- *   4. 1,000 円チャージ → 残高 ¥1,000
- *   5. 利用タブで 500 円 → 残高 ¥500
- *   6. 返金タブで元 SPENT を選択 → 200 円返金 → 残高 ¥700
- *   7. モック側で 3 件の event が記録されている
+ * ※ 2026-05-17 マスター御裁可により SELF_ISSUED_BALANCE 機能を凍結（資金決済法対応のため）。
+ *   案 B: 機能フラグ（runtimeConfig.public.f18BalanceEnabled=false）+ Service 入口 503 例外
+ *   採用。STAMP / EXTERNAL は無傷。設計書 §1.4 / §16 / §17 参照。
  *
- * バックエンド API はすべて page.route でモック化する。
+ *   本 spec は凍結シナリオを主軸に書き換えた:
+ *     - SELF_ISSUED_BALANCE で resolveByToken した場合、操作タブ（チャージ / 利用 / 返金）が
+ *       一切表示されないこと
+ *     - 「この機能は現在停止中です」バナーと資金決済法対応の理由文が表示されること
+ *
+ *   元の「ADMIN として CHARGE → SPENT → REFUND 成功」シナリオは下部に skip 付きで残してあり、
+ *   v2 で機能再開する際に復活させること。
  */
 
 const ORG_ID = 1
@@ -154,50 +153,30 @@ async function setupMocks(page: Page, state: MockState) {
     },
   )
 
-  // 残高変動イベント（POST/GET）
+  // 残高変動イベント（POST/GET）— 凍結中も GET（履歴）は許可される設計。
+  // POST が呼ばれてしまった場合は 503 を返してフロント側のバグを顕在化させる。
   await page.route(
     /\/api\/v1\/organizations\/\d+\/point-cards\/[^/]+\/balance-events$/,
     async (route: Route) => {
       const url = route.request().url()
       const m = url.match(/\/point-cards\/([^/]+)\/balance-events/)
       const cardId = m?.[1] ?? ''
-      // 組織全体の履歴 URL（cardId 部 = "balance-events"）は別ハンドラへ
       if (cardId === 'balance-events') {
         await route.fallback()
         return
       }
       const method = route.request().method()
       if (method === 'POST') {
-        const body = JSON.parse(route.request().postData() ?? '{}') as {
-          operationType: 'CHARGE' | 'SPENT' | 'REFUND'
-          amount: number
-          note?: string
-          refundOfEventId?: string
-        }
-        const sign = body.operationType === 'SPENT' ? -1 : 1
-        const signedDelta = sign * body.amount
-        state.balance = Math.round((state.balance + signedDelta) * 100) / 100
-        const ev: MockBalanceEvent = {
-          id: `evt-${state.nextEventSeq++}`,
-          cardId,
-          providerId: PROVIDER_ID,
-          providerDisplayName: 'テスト店舗 残高型',
-          organizationId: ORG_ID,
-          operationType: body.operationType,
-          delta: signedDelta.toFixed(2),
-          balanceAfter: state.balance.toFixed(2),
-          refundOfEventId: body.refundOfEventId ?? null,
-          operatedByUserId: 1,
-          operatedByUserDisplayName: '店主太郎',
-          operatedAt: nowIso(),
-          note: body.note ?? null,
-          createdAt: nowIso(),
-        }
-        state.events.unshift(ev)
+        // 凍結中: バックエンドは 503 POINT_CARD_024 を返す
         await route.fulfill({
-          status: 201,
+          status: 503,
           contentType: 'application/json',
-          body: wrap(ev),
+          body: JSON.stringify({
+            error: {
+              code: 'POINT_CARD_024',
+              message: '残高機能は現在停止中です（資金決済法対応のため）',
+            },
+          }),
         })
         return
       }
@@ -215,8 +194,8 @@ async function setupMocks(page: Page, state: MockState) {
   )
 }
 
-test.describe('F18 Phase 3 店主残高型カード操作フロー', () => {
-  test('ADMIN がトークン解決 → チャージ → 利用 → 返金まで一連の動線', async ({ page }) => {
+test.describe('F18 SELF_ISSUED_BALANCE 凍結（資金決済法対応・2026-05-17〜）', () => {
+  test('ADMIN が残高型カードを resolve してもタブが出ず、停止中バナーが表示される', async ({ page }) => {
     const state = newState()
     await setupMocks(page, state)
 
@@ -229,68 +208,44 @@ test.describe('F18 Phase 3 店主残高型カード操作フロー', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10_000 })
 
     // ─────────────────────────────────────────────
-    // 2. BarcodeCapture の「手入力」タブに切替えて、トークンを直接入力する
-    //    （カメラは E2E では使えないため、手入力タブの submitManual を
-    //     経由して onQrDetected を発火させる）
+    // 2. BarcodeCapture の「手入力」タブからトークンを直接入力
     // ─────────────────────────────────────────────
-    // QR モードの BarcodeCapture が表示されている前提
-    // 手入力タブを開く
     await page.getByRole('tab', { name: /手入力|Manual/i }).click()
     await page.locator('#bc-manual-value').fill(TOKEN)
-    // 「次へ」ボタンで submitManual → onQrDetected → resolveByToken
     await page.getByRole('button', { name: /次へ|Next/i }).click()
 
     // ─────────────────────────────────────────────
-    // 3. resolve 完了で SELF_ISSUED_BALANCE のタブ（チャージ）が出る
+    // 3. resolve 後、SELF_ISSUED_BALANCE であってもチャージ / 利用 / 返金タブは出ない
+    //    （runtimeConfig.public.f18BalanceEnabled=false の凍結状態）
     // ─────────────────────────────────────────────
-    const chargeTab = page.getByRole('tab', { name: 'チャージ' })
-    await expect(chargeTab).toBeVisible({ timeout: 10_000 })
+    // 解決済みカード情報は表示される（providerDisplayName）
+    await expect(page.getByText('テスト店舗 残高型')).toBeVisible({ timeout: 10_000 })
 
-    // ─────────────────────────────────────────────
-    // 4. チャージ 1,000 円
-    // ─────────────────────────────────────────────
-    await chargeTab.click()
-    await page.locator('#charge-amount').fill('1000')
-    await page.getByRole('button', { name: /^チャージ/ }).last().click()
+    // 凍結バナー：i18n キー wallet.balance.disabled.banner
+    await expect(page.getByText('この機能は現在停止中です')).toBeVisible()
+    // 理由文：wallet.balance.disabled.reason
+    await expect(
+      page.getByText(/資金決済法対応のため.*一時停止/),
+    ).toBeVisible()
 
-    // 残高 ¥1,000 を確認
-    await expect(page.getByText('¥1,000')).toBeVisible({ timeout: 5_000 })
+    // チャージ / 利用 / 返金タブは描画されない
+    await expect(page.getByRole('tab', { name: 'チャージ' })).toHaveCount(0)
+    await expect(page.getByRole('tab', { name: '利用' })).toHaveCount(0)
+    await expect(page.getByRole('tab', { name: '返金' })).toHaveCount(0)
 
-    // ─────────────────────────────────────────────
-    // 5. 利用 500 円
-    // ─────────────────────────────────────────────
-    await page.getByRole('tab', { name: '利用' }).click()
-    await page.locator('#spend-amount').fill('500')
-    await page.getByRole('button', { name: /^利用/ }).last().click()
+    // バックエンド POST は一切走らない（凍結バナーで操作不可なため）
+    expect(state.events.length).toBe(0)
+  })
+})
 
-    await expect(page.getByText('¥500')).toBeVisible({ timeout: 5_000 })
-
-    // ─────────────────────────────────────────────
-    // 6. 返金 200 円（元 SPENT を選択）
-    // ─────────────────────────────────────────────
-    await page.getByRole('tab', { name: '返金' }).click()
-    const refundEvent = page.locator('#refund-event')
-    await expect(refundEvent).toBeEnabled({ timeout: 5_000 })
-    // 空 option / 区切りを除いた最初の有効値を選ぶ
-    const optionValue = await refundEvent.evaluate((el) => {
-      const sel = el as HTMLSelectElement
-      for (const o of Array.from(sel.options)) {
-        if (o.value && o.value.length > 0) return o.value
-      }
-      return ''
-    })
-    expect(optionValue).not.toBe('')
-    await refundEvent.selectOption(optionValue)
-    await page.locator('#refund-amount').fill('200')
-    await page.getByRole('button', { name: /^返金/ }).last().click()
-
-    // 残高 ¥700 を確認
-    await expect(page.getByText('¥700')).toBeVisible({ timeout: 5_000 })
-
-    // ─────────────────────────────────────────────
-    // 7. モック側で 3 件の event が記録されている
-    // ─────────────────────────────────────────────
-    expect(state.events.length).toBe(3)
-    expect(state.events.map(e => e.operationType).sort()).toEqual(['CHARGE', 'REFUND', 'SPENT'])
+// ─────────────────────────────────────────────────────────────
+// 機能再開時に復活させる（v2 / 法務整備完了後）
+// 設計書 §16 v2 再開判断基準 5 項目（弁護士意見書 / 規約改訂 等）が全て満たされたら
+// 下記 skip を解除し、上記凍結シナリオを削除して通常運用に戻すこと。
+// ─────────────────────────────────────────────────────────────
+test.describe.skip('F18 Phase 3 店主残高型カード操作フロー（凍結中はスキップ）', () => {
+  test('ADMIN がトークン解決 → チャージ → 利用 → 返金まで一連の動線', async ({ page: _page }) => {
+    // 機能再開時に元の charge → spend → refund シナリオを復活させる。
+    // git 履歴の本コミット以前を参照。
   })
 })

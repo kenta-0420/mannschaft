@@ -30,8 +30,14 @@ const route = useRoute()
 const toast = useToast()
 const orgStore = useOrganizationStore()
 const orgId = computed(() => Number(route.params.id))
+const runtimeConfig = useRuntimeConfig()
 
 const api = useOrgWalletApi(() => orgId.value)
+
+// F18 SELF_ISSUED_BALANCE 凍結（2026-05-17 マスター御裁可）
+// 資金決済法対応のため法務整備が整うまで残高 3 タブを非表示。
+// 設計書: docs/features/F18_point_card_wallet.md §1.4 / §16 / §17
+const balanceEnabled = computed<boolean>(() => Boolean(runtimeConfig.public.f18BalanceEnabled))
 
 const myOrg = computed(() =>
   orgStore.myOrganizations.find(o => o.id === orgId.value),
@@ -135,7 +141,13 @@ async function resolveToken(token: string) {
     const res = await api.resolveByToken(token)
     resolvedCard.value = res
     // 操作タブの初期値
-    opTab.value = res.providerType === 'SELF_ISSUED_BALANCE' ? 'charge' : 'stamp'
+    // F18 BALANCE 凍結中（f18BalanceEnabled=false）のときは SELF_ISSUED_BALANCE でも
+    // 操作タブを開かない（バナーのみ表示）。stamp を初期値にしておくと SELF_ISSUED_STAMP
+    // 判定 v-if と合わせて該当タブが何も表示されない自然な状態になる。
+    opTab.value
+      = res.providerType === 'SELF_ISSUED_BALANCE' && balanceEnabled.value
+        ? 'charge'
+        : 'stamp'
     await fetchRecentStamps()
   } catch (e) {
     const fe = e as FetchError<{ errorCode?: string; message?: string }>
@@ -412,7 +424,21 @@ const currentBalanceNum = computed(() => {
               class="text-sm"
             >
               {{ t('wallet.admin.balance.current_balance') }}:
-              <span class="font-mono font-semibold">¥{{ currentBalanceNum.toLocaleString() }}</span>
+              <span class="font-mono font-semibold">
+                <template v-if="balanceEnabled">¥{{ currentBalanceNum.toLocaleString() }}</template>
+                <template v-else>---</template>
+              </span>
+            </div>
+            <!-- F18 BALANCE 凍結バナー（資金決済法対応のため一時停止中） -->
+            <div
+              v-if="resolvedCard.providerType === 'SELF_ISSUED_BALANCE' && !balanceEnabled"
+              class="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+              role="status"
+            >
+              <p class="font-semibold">
+                {{ t('wallet.balance.disabled.banner') }}
+              </p>
+              <p>{{ t('wallet.balance.disabled.reason') }}</p>
             </div>
           </div>
           <button
@@ -446,7 +472,8 @@ const currentBalanceNum = computed(() => {
             >
               {{ t('wallet.admin.stamp.tab_stamp') }}
             </button>
-            <template v-if="resolvedCard.providerType === 'SELF_ISSUED_BALANCE'">
+            <!-- F18 BALANCE 凍結中（balanceEnabled=false）はタブそのものを描画しない -->
+            <template v-if="resolvedCard.providerType === 'SELF_ISSUED_BALANCE' && balanceEnabled">
               <button
                 type="button"
                 role="tab"
@@ -565,26 +592,26 @@ const currentBalanceNum = computed(() => {
             </div>
           </div>
 
-          <!-- チャージ -->
+          <!-- チャージ（F18 BALANCE 凍結中は描画しない） -->
           <BalanceChargeTabPanel
-            v-else-if="opTab === 'charge' && resolvedCard.providerType === 'SELF_ISSUED_BALANCE'"
+            v-else-if="opTab === 'charge' && resolvedCard.providerType === 'SELF_ISSUED_BALANCE' && balanceEnabled"
             :card-id="resolvedCard.cardId"
             :org-id="orgId"
             @done="onBalanceDone"
           />
 
-          <!-- 利用 -->
+          <!-- 利用（F18 BALANCE 凍結中は描画しない） -->
           <BalanceSpendTabPanel
-            v-else-if="opTab === 'spent' && resolvedCard.providerType === 'SELF_ISSUED_BALANCE'"
+            v-else-if="opTab === 'spent' && resolvedCard.providerType === 'SELF_ISSUED_BALANCE' && balanceEnabled"
             :card-id="resolvedCard.cardId"
             :org-id="orgId"
             :current-balance="currentBalanceNum"
             @done="onBalanceDone"
           />
 
-          <!-- 返金 -->
+          <!-- 返金（F18 BALANCE 凍結中は描画しない） -->
           <BalanceRefundTabPanel
-            v-else-if="opTab === 'refund' && resolvedCard.providerType === 'SELF_ISSUED_BALANCE'"
+            v-else-if="opTab === 'refund' && resolvedCard.providerType === 'SELF_ISSUED_BALANCE' && balanceEnabled"
             :card-id="resolvedCard.cardId"
             :org-id="orgId"
             @done="onBalanceDone"

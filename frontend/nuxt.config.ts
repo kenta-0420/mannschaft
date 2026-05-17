@@ -120,6 +120,11 @@ export default defineNuxtConfig({
     internalLogToken: process.env.NUXT_INTERNAL_LOG_TOKEN || 'dev-internal-token',
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8080',
+      // F18 SELF_ISSUED_BALANCE 機能フラグ（2026-05-17 マスター御裁可で凍結）。
+      // 資金決済法（前払式支払手段＝自家型）対応のため法務整備が整うまで一時凍結。
+      // 設計書: docs/features/F18_point_card_wallet.md §1.4 / §16 / §17
+      // 既定 false（凍結中）。再開時は NUXT_PUBLIC_F18_BALANCE_ENABLED=true で復活可能。
+      f18BalanceEnabled: process.env.NUXT_PUBLIC_F18_BALANCE_ENABLED === 'true',
     },
   },
 

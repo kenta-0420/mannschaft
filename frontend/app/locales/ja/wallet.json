@@ -388,6 +388,12 @@
       "currency_jpy": "¥{amount}",
       "history_hint": "残高履歴は店舗にお問い合わせください"
     },
+    "balance": {
+      "disabled": {
+        "banner": "この機能は現在停止中です",
+        "reason": "資金決済法対応のため、残高型カードのチャージ・利用・返金機能は一時停止しています"
+      }
+    },
     "stamp_display": {
       "label": "スタンプ",
       "count": "{count} 個"

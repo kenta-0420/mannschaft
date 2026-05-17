@@ -229,7 +229,28 @@ public enum PointCardErrorCode implements ErrorCode {
      * REFUND は CHARGE/SPENT とは別 Permission で個別委任可能。Phase 5 で導入。
      */
     BALANCE_REFUND_PERMISSION_REQUIRED("POINT_CARD_023",
-            "残高返金権限が必要です", Severity.WARN);
+            "残高返金権限が必要です", Severity.WARN),
+
+    /**
+     * 残高機能が停止中（資金決済法対応のため一時凍結）。HTTP 503 Service Unavailable。
+     *
+     * <p>F18 SELF_ISSUED_BALANCE 機能は資金決済法（前払式支払手段＝自家型）に該当するため、
+     * 法務整備が整うまで {@code f18.balance.enabled=false} で凍結する（マスター御裁可
+     * 2026-05-17）。本コードは {@link com.mannschaft.app.pointcard.service.PointCardBalanceService}
+     * の CHARGE / SPENT / REFUND 入口で flag が false の場合に投擲される。
+     *
+     * <p>凍結対象外（無傷）:
+     * <ul>
+     *   <li>SELF_ISSUED_STAMP 押印 API（{@code PointCardStampService}）</li>
+     *   <li>EXTERNAL カード（他社カード再描画）</li>
+     *   <li>残高履歴の閲覧（{@code listOrgEvents} / {@code listCardEvents}）</li>
+     * </ul>
+     *
+     * <p>HTTP 503 は {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} で個別マッピング。
+     * 設計書 §1.4 / §15 Phase 5 / §16 / §17 参照。
+     */
+    BALANCE_SERVICE_DISABLED("POINT_CARD_024",
+            "残高機能は現在停止中です（資金決済法対応のため）", Severity.WARN);
 
     private final String code;
     private final String message;

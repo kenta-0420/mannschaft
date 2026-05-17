@@ -388,6 +388,12 @@
       "currency_jpy": "¥{amount}",
       "history_hint": "Please contact the store for balance history"
     },
+    "balance": {
+      "disabled": {
+        "banner": "This feature is currently disabled",
+        "reason": "Balance card charging, spending, and refunding are temporarily suspended to comply with payment services regulations."
+      }
+    },
     "stamp_display": {
       "label": "Stamps",
       "count": "{count}"

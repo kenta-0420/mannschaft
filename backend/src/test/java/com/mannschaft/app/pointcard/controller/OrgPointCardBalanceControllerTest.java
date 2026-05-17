@@ -232,4 +232,28 @@ class OrgPointCardBalanceControllerTest {
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isForbidden());
     }
+
+    // ─────────────────────────────────────────────
+    // F18 SELF_ISSUED_BALANCE 凍結（2026-05-17 マスター御裁可）
+    // 設計書: docs/features/F18_point_card_wallet.md §1.4 / §16 / §17
+    // ─────────────────────────────────────────────
+
+    @Test
+    @DisplayName("POST /balance-events: 機能凍結中（f18.balance.enabled=false）は 503 + POINT_CARD_024")
+    void balanceServiceDisabled_503() throws Exception {
+        // Service が BALANCE_SERVICE_DISABLED を投げた場合、GlobalExceptionHandler が
+        // ERROR_CODE_STATUS_MAP に従って 503 SERVICE_UNAVAILABLE にマップすることを検証する。
+        willThrow(new BusinessException(PointCardErrorCode.BALANCE_SERVICE_DISABLED))
+                .given(balanceService).charge(eq(ORG_ID), eq(CARD_ID), eq(USER_ID),
+                        any(BalanceEventRequest.class), any(), any(), any());
+
+        BalanceEventRequest req = new BalanceEventRequest(
+                BalanceOperationType.CHARGE, new BigDecimal("1000.00"), null, null);
+        mockMvc.perform(post("/api/v1/organizations/{orgId}/point-cards/{cardId}/balance-events",
+                        ORG_ID, CARD_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.error.code").value("POINT_CARD_024"));
+    }
 }

@@ -328,12 +328,30 @@ mannschaft.disk-monitor:
 #   false = 従来通り synonym 完全一致のみで判定
 # - max-distance: 編集距離の上限。1 = タイポ吸収のみ、2 以上で誤マッチ増加（既定 1）
 # - min-input-length: この文字数未満の入力は Levenshtein 対象外（誤マッチ防止、既定 5）
+#
+# F18 SELF_ISSUED_BALANCE 凍結フラグ（2026-05-17 マスター御裁可）
+# 資金決済法（前払式支払手段＝自家型）に該当するため、法務整備が整うまで一時凍結する。
+# 設計書 §1.4 / §16 / §17 参照。
+# - balance.enabled=false（既定 false）: 残高型 CHARGE/SPENT/REFUND API を入口で 503 拒否
+#     し、フロントの 3 タブ（チャージ・利用・返金）も非表示にする。
+#     残高型カードの既存履歴閲覧（listOrgEvents / listCardEvents）は維持する。
+#     SELF_ISSUED_STAMP（押印型）と EXTERNAL（他社カード再描画）は凍結対象外で無傷。
+# - 再開判断基準（§16 / §17 参照）:
+#     1) 利用 organization 数の規模顕在化（全国 1 万件超等）
+#     2) 法律事務所（西村あさひ・森・濱田松本・TMI・GVA 等の金融規制チーム）意見書取得
+#     3) 6 ヶ月有効期限ガード / 1000 万円アラート / 基準日集計 / REFUND 限定ロジック実装
+#     4) 規約改訂（発行体明示・払戻しポリシー・有効期限）+ 弁護士レビュー
+#     5) 利用 organization への届出義務 onboarding 教育コンテンツ整備
+# 既存テストが残高 API を呼ぶケースに備え、Service の @Value 既定値は true としつつ
+# 本番 application.yml では false 固定で凍結状態を保証する。
 f18:
   fuzzy-match:
     levenshtein:
       enabled: true
       max-distance: 1
       min-input-length: 5
+  balance:
+    enabled: false
 
 # F08.8 Phase 2: シミュレーション計算 Bulkhead 設定
 # simulation-pool: 同時 4 スレッドまで。超過リクエストは即座に 429 を返す（waitDuration=0）。

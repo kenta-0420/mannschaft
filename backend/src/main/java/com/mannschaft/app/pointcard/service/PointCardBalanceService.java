@@ -19,6 +19,7 @@ import com.mannschaft.app.pointcard.repository.PointCardProviderRepository;
 import com.mannschaft.app.pointcard.repository.UserPointCardRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -81,6 +82,23 @@ public class PointCardBalanceService {
     private final AuditLogService auditLogService;
     private final AccessControlService accessControlService;
 
+    /**
+     * F18 SELF_ISSUED_BALANCE 機能の有効化フラグ（2026-05-17 凍結・マスター御裁可）。
+     *
+     * <p>資金決済法（前払式支払手段＝自家型）に該当するため、法務整備が整うまで凍結中。
+     * {@code false} のとき {@link #charge}/{@link #spend}/{@link #refund} の入口で
+     * {@link PointCardErrorCode#BALANCE_SERVICE_DISABLED}（POINT_CARD_024 → HTTP 503）を投擲する。
+     *
+     * <p>履歴閲覧（{@link #listOrgEvents}/{@link #listCardEvents}）は凍結対象外で常に許可する
+     * （既存残高型カードの履歴をユーザーが UI で確認できるようにするため）。
+     *
+     * <p>既定値は {@code true}（後方互換）。本番 application.yml で
+     * {@code f18.balance.enabled=false} を明示する運用とする。
+     * 設計書: {@code docs/features/F18_point_card_wallet.md} §1.4 / §15 Phase 5 / §16 / §17。
+     */
+    @Value("${f18.balance.enabled:true}")
+    private boolean balanceEnabled;
+
     // ─────────────────────────────────────────────
     // CHARGE: 入金
     // ─────────────────────────────────────────────
@@ -100,6 +118,7 @@ public class PointCardBalanceService {
     public BalanceEventResponse charge(Long orgId, UUID cardId, Long userId,
                                        BalanceEventRequest req,
                                        String ipAddress, String userAgent, String sessionHash) {
+        ensureBalanceFeatureEnabled();
         ValidatedContext ctx = validateForBalanceOperation(orgId, cardId, userId);
 
         BigDecimal amount = req.amount();
@@ -153,6 +172,7 @@ public class PointCardBalanceService {
     public BalanceEventResponse spend(Long orgId, UUID cardId, Long userId,
                                       BalanceEventRequest req,
                                       String ipAddress, String userAgent, String sessionHash) {
+        ensureBalanceFeatureEnabled();
         ValidatedContext ctx = validateForBalanceOperation(orgId, cardId, userId);
 
         BigDecimal amount = req.amount();
@@ -214,6 +234,7 @@ public class PointCardBalanceService {
     public BalanceEventResponse refund(Long orgId, UUID cardId, Long userId,
                                        BalanceEventRequest req,
                                        String ipAddress, String userAgent, String sessionHash) {
+        ensureBalanceFeatureEnabled();
         ValidatedContext ctx = validateForBalanceOperation(orgId, cardId, userId);
 
         BigDecimal amount = req.amount();
@@ -340,6 +361,26 @@ public class PointCardBalanceService {
                 .map(e -> BalanceEventResponse.from(
                         e, provider, displayNameCache.get(e.getOperatedByUserId())))
                 .toList();
+    }
+
+    // ─────────────────────────────────────────────
+    // 機能凍結チェック（2026-05-17 マスター御裁可）
+    // ─────────────────────────────────────────────
+
+    /**
+     * F18 SELF_ISSUED_BALANCE 機能の凍結チェック。
+     *
+     * <p>{@link #balanceEnabled} が {@code false} の場合、
+     * {@link PointCardErrorCode#BALANCE_SERVICE_DISABLED}（POINT_CARD_024 → HTTP 503）を投擲する。
+     * CHARGE / SPENT / REFUND の各エンドポイント入口で必ず呼び出す。
+     *
+     * <p>履歴閲覧（{@link #listOrgEvents} / {@link #listCardEvents}）からは呼ばない
+     * （凍結対象外。既存残高型カードの履歴を UI 上で確認できるよう維持する）。
+     */
+    private void ensureBalanceFeatureEnabled() {
+        if (!balanceEnabled) {
+            throw new BusinessException(PointCardErrorCode.BALANCE_SERVICE_DISABLED);
+        }
     }
 
     // ─────────────────────────────────────────────
