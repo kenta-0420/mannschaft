@@ -1,6 +1,6 @@
-# API 乖離ベースライン報告書（2026-05-17 時点・v2 スキャナ）
+# API 乖離ベースライン報告書（2026-05-17 時点・v4 スキャナ）
 
-> 本報告書は `backend/scripts/scan_api_drift.py` (v2) により自動生成された。
+> 本報告書は `backend/scripts/scan_api_drift.py` (v4) により自動生成された。
 > 設計書 `docs/features/F*.md` のテーブル/見出し/インラインコード記載と、
 > 実装 `backend/src/main/java/**/controller/*Controller.java` の
 > Spring MVC アノテーション（新形式 + 旧 @RequestMapping(method=) 形式）を突合した結果である。
@@ -9,14 +9,19 @@
 
 - v1 (2026-05-16): 初回ベースライン
 - v2 (2026-05-17): {scope}/{scopeId} 展開・旧 RequestMapping 強化・末尾スラッシュ吸収・インラインコード補助対応・ドメイン別サマリ表追加
+- v3 (2026-05-17): 6 バグ集合根治（query 切捨・重複排除・末尾スラッシュ取りこぼし・スコープ展開拡張・文字化け read 念押し・除外パターン適用）
+- v4 (2026-05-17): V4-1 スコープ階層プレフィックス逆引きマッチ + V4-5 🔵 将来機能タグ認識
 
 ## サマリ
 
-- 設計あり・実装なし: **1256 件**（v1: 1,187 件）
-- 実装あり・設計なし: **1147 件**（v1: 931 件）
-- 一致: **1322 件**（v1: 1,310 件）
-- 設計記載 ユニーク (method, path) 総数: 2578
-- 実装 ユニーク (method, path) 総数: 2469
+- 設計あり・実装なし: **1221 件**（v3: 1,214 件 / v2: 1,256 件 / v1: 1,187 件）
+- 実装あり・設計なし: **1083 件**（v3: 1,106 件 / v2: 1,147 件 / v1: 931 件）
+- 一致: **1364 件**（v3: 1,341 件 / v2: 1,322 件 / v1: 1,310 件）
+- V4-1 スコープ逆引き準一致: **0 件**（一致側に繰入）
+- V4-5 🔵 将来機能: **5 件**（メイン集計外）／うち実装済: 0 件
+- 設計記載 ユニーク (method, path) 総数（main）: 2585
+- 実装 ユニーク (method, path) 総数: 2447
+- 除外（実装側）: 22 件 / 除外（設計側）: 4 件 / パターン数: 20
 - スコープ展開: ON
 
 ---
@@ -25,21 +30,21 @@
 
 | ドメイン | 設計あり・実装なし | 実装あり・設計なし | 一致 | 合計乖離 |
 |---|---:|---:|---:|---:|
-| /api/v1/teams/* | 283 | 247 | 477 | 530 |
-| /api/v1/organizations/* | 110 | 372 | 147 | 482 |
+| /api/v1/teams/* | 270 | 235 | 489 | 505 |
+| /api/v1/organizations/* | 109 | 369 | 150 | 478 |
 | /api/v1/system-admin/* | 103 | 28 | 77 | 131 |
-| /api/v1/users/* | 24 | 99 | 48 | 123 |
+| /api/v1/users/* | 23 | 99 | 48 | 122 |
 | /api/v1/villages/* | 0 | 122 | 1 | 122 |
-| /api/v1/me/* | 42 | 25 | 65 | 67 |
-| /api/v1/admin/* | 24 | 26 | 42 | 50 |
-| /api/v1/{_}/* | 39 | 10 | 0 | 49 |
-| /api/v1/shifts/* | 29 | 19 | 25 | 48 |
+| /api/v1/me/* | 31 | 20 | 70 | 51 |
+| /api/v1/shifts/* | 28 | 19 | 25 | 47 |
+| /api/v1/{_}/* | 39 | 4 | 0 | 43 |
 | /api/v1/files/* | 33 | 7 | 9 | 40 |
 | /api/v1/timeline/* | 25 | 11 | 2 | 36 |
+| /api/v1/admin/* | 29 | 6 | 61 | 35 |
 | /api/v1/chat/* | 18 | 10 | 15 | 28 |
 | /api/v1/events/* | 18 | 8 | 11 | 26 |
-| /api/v1/bulletin/* | 24 | 1 | 0 | 25 |
 | /api/v1/incidents/* | 25 | 0 | 0 | 25 |
+| /api/v1/bulletin/* | 23 | 1 | 0 | 24 |
 | /api/v1/circulation/* | 24 | 0 | 0 | 24 |
 | /api/v1/dwelling-units/* | 23 | 0 | 0 | 23 |
 | /api/v1/corkboards/* | 17 | 5 | 5 | 22 |
@@ -54,31 +59,28 @@
 | /api/v1/todos/* | 4 | 12 | 1 | 16 |
 | /api/v1/residence-status/* | 13 | 0 | 0 | 13 |
 | /api/v1/jobs/* | 9 | 3 | 6 | 12 |
-| /api/v1/line/* | 11 | 0 | 1 | 11 |
+| /api/v1/line/* | 11 | 0 | 0 | 11 |
 | /api/v1/repair-plan/* | 11 | 0 | 0 | 11 |
-| /api/v1/screens/* | 0 | 11 | 0 | 11 |
 | /api/v1/notifications/* | 5 | 4 | 1 | 9 |
 | /api/v1/point-cards/* | 7 | 2 | 7 | 9 |
 | /api/v1/property-listings/* | 9 | 0 | 0 | 9 |
-| /api/v1/recruitment-listings/* | 3 | 6 | 8 | 9 |
 | /api/v1/orgs/* | 8 | 0 | 0 | 8 |
 | /api/v1/public/* | 0 | 8 | 4 | 8 |
 | /api/v1/sns/* | 8 | 0 | 0 | 8 |
 | /api/v1/social/* | 0 | 8 | 0 | 8 |
 | /api/v1/social-profiles/* | 8 | 0 | 0 | 8 |
 | /api/v1/coupons/* | 7 | 0 | 0 | 7 |
-| /api/v1/quick-memos/* | 6 | 1 | 11 | 7 |
+| /api/v1/recruitment-listings/* | 2 | 5 | 9 | 7 |
 | /api/v1/scopes/* | 0 | 7 | 0 | 7 |
 | /api/v1/action-memos/* | 2 | 4 | 10 | 6 |
 | /api/v1/contracts/* | 0 | 6 | 0 | 6 |
+| /api/v1/quick-memos/* | 5 | 1 | 11 | 6 |
 | /api/v1/shift-budget/* | 1 | 5 | 3 | 6 |
 | /api/v1/workflow-requests/* | 0 | 6 | 0 | 6 |
 | /api/v1/committees/* | 5 | 0 | 11 | 5 |
 | /api/v1/follows/* | 5 | 0 | 0 | 5 |
-| /api/v1/students/* | 2 | 3 | 2 | 5 |
 | /api/v1/account/* | 0 | 4 | 0 | 4 |
 | /api/v1/applications/* | 0 | 4 | 0 | 4 |
-| /api/v1/auth/* | 2 | 2 | 27 | 4 |
 | /api/v1/blog/* | 4 | 0 | 19 | 4 |
 | /api/v1/chat-folders/* | 2 | 2 | 5 | 4 |
 | /api/v1/circulations/* | 0 | 4 | 0 | 4 |
@@ -90,8 +92,6 @@
 | /api/v1/signage/* | 3 | 1 | 0 | 4 |
 | /api/v1/team/* | 4 | 0 | 21 | 4 |
 | /api/v1/timeline-digest/* | 4 | 0 | 6 | 4 |
-| /api/v1/visibility-templates/* | 3 | 1 | 4 | 4 |
-| /api/v1/webhooks/* | 4 | 0 | 2 | 4 |
 | /api/v1/embed/* | 0 | 3 | 0 | 3 |
 | /api/v1/feedbacks/* | 0 | 3 | 0 | 3 |
 | /api/v1/gallery/* | 2 | 1 | 9 | 3 |
@@ -104,12 +104,13 @@
 | /api/v1/seal/* | 3 | 0 | 0 | 3 |
 | /api/v1/stripe/* | 3 | 0 | 0 | 3 |
 | /api/v1/venues/* | 0 | 3 | 0 | 3 |
+| /api/v1/webhooks/* | 3 | 0 | 2 | 3 |
 | /api/v1/action-memo-settings/* | 2 | 0 | 0 | 2 |
 | /api/v1/action-memo-tags/* | 2 | 0 | 2 | 2 |
 | /api/v1/activity-templates/* | 2 | 0 | 5 | 2 |
 | /api/v1/attendance/* | 2 | 0 | 1 | 2 |
+| /api/v1/auth/* | 0 | 2 | 27 | 2 |
 | /api/v1/budget/* | 2 | 0 | 25 | 2 |
-| /api/v1/categories/* | 0 | 2 | 0 | 2 |
 | /api/v1/contact-invite-tokens/* | 2 | 0 | 2 | 2 |
 | /api/v1/contact-request-blocks/* | 2 | 0 | 1 | 2 |
 | /api/v1/dashboard/* | 1 | 1 | 18 | 2 |
@@ -126,21 +127,21 @@
 | /api/v1/timetable-terms/* | 2 | 0 | 0 | 2 |
 | /api/v1/timetables/* | 2 | 0 | 6 | 2 |
 | /api/v1/todo-budget/* | 1 | 1 | 0 | 2 |
+| /api/v1/visibility-templates/* | 2 | 0 | 5 | 2 |
 | /api/v1/activity-records/* | 1 | 0 | 0 | 1 |
 | /api/v1/ads/* | 0 | 1 | 1 | 1 |
 | /api/v1/advertiser/* | 0 | 1 | 18 | 1 |
-| /api/v1/blog-posts?visibility=PRIVATE/* | 1 | 0 | 0 | 1 |
+| /api/v1/blog-posts/* | 1 | 0 | 0 | 1 |
 | /api/v1/bulletin-threads/* | 1 | 0 | 0 | 1 |
 | /api/v1/care-links/* | 0 | 1 | 2 | 1 |
 | /api/v1/circulation-documents/* | 1 | 0 | 0 | 1 |
 | /api/v1/contact-requests/* | 1 | 0 | 5 | 1 |
 | /api/v1/contacts/* | 1 | 0 | 1 | 1 |
 | /api/v1/deliveries/* | 0 | 1 | 0 | 1 |
-| /api/v1/disclosure-templates?prefectureCode=&isStandard=/* | 1 | 0 | 0 | 1 |
+| /api/v1/disclosure-templates/* | 1 | 0 | 1 | 1 |
 | /api/v1/families/* | 1 | 0 | 1 | 1 |
 | /api/v1/feature-flags/* | 1 | 0 | 0 | 1 |
 | /api/v1/file-permissions/* | 0 | 1 | 0 | 1 |
-| /api/v1/health/* | 1 | 0 | 0 | 1 |
 | /api/v1/ical/* | 0 | 1 | 0 | 1 |
 | /api/v1/job-disputes/* | 1 | 0 | 0 | 1 |
 | /api/v1/kb/* | 1 | 0 | 0 | 1 |
@@ -149,9 +150,6 @@
 | /api/v1/mentions/* | 0 | 1 | 0 | 1 |
 | /api/v1/modules/* | 1 | 0 | 1 | 1 |
 | /api/v1/my/* | 1 | 0 | 3 | 1 |
-| /api/v1/notifications?folderId=/* | 1 | 0 | 0 | 1 |
-| /api/v1/notifications?folderId=&scopeType=/* | 1 | 0 | 0 | 1 |
-| /api/v1/notifications?folderId={_}&scopeType=TEAM/* | 1 | 0 | 0 | 1 |
 | /api/v1/pdf-signatures/* | 0 | 1 | 0 | 1 |
 | /api/v1/permissions/* | 1 | 0 | 0 | 1 |
 | /api/v1/positions/* | 1 | 0 | 0 | 1 |
@@ -164,7 +162,7 @@
 | /api/v1/reservations/* | 0 | 1 | 2 | 1 |
 | /api/v1/shared/* | 1 | 0 | 0 | 1 |
 | /api/v1/shared-links/* | 0 | 1 | 0 | 1 |
-| /api/v1/ssr-logs/* | 0 | 1 | 0 | 1 |
+| /api/v1/students/* | 0 | 1 | 4 | 1 |
 | /api/v1/supported-locales/* | 0 | 1 | 0 | 1 |
 | /api/v1/sync/* | 1 | 0 | 4 | 1 |
 | /api/v1/timeline-posts/* | 1 | 0 | 0 | 1 |
@@ -179,7 +177,6 @@
 | /api/v1/charts/* | 0 | 0 | 1 | 0 |
 | /api/v1/committee-invitations/* | 0 | 0 | 3 | 0 |
 | /api/v1/contact-invite/* | 0 | 0 | 2 | 0 |
-| /api/v1/disclosure-templates/* | 0 | 0 | 1 | 0 |
 | /api/v1/equipment/* | 0 | 0 | 1 | 0 |
 | /api/v1/error-reports/* | 0 | 0 | 1 | 0 |
 | /api/v1/event-categories/* | 0 | 0 | 2 | 0 |
@@ -194,7 +191,7 @@
 | /api/v1/proxy-input-records/* | 0 | 0 | 1 | 0 |
 | /api/v1/service-records/* | 0 | 0 | 1 | 0 |
 | /api/v1/yabai/* | 0 | 0 | 2 | 0 |
-| **合計** | **1256** | **1147** | **1322** | **2403** |
+| **合計** | **1221** | **1083** | **1364** | **2304** |
 
 ---
 
@@ -292,22 +289,31 @@
 | POST | `/api/v1/activity-templates` | `docs/features/F06.4_activity_records.md` | 363 |
 | POST | `/api/v1/activity-templates` | `docs/features/F06.4_activity_records.md` | 450 |
 
-### /api/v1/admin/* (24 件)
+### /api/v1/admin/* (29 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
 | DELETE | `/api/v1/admin/team-friends/{_}` | `docs/features/F01.5_team_friend_relationships.md` | 1265 |
+| GET | `/api/v1/admin/action-templates` | `docs/features/F10.1_admin_dashboard.md` | 457 |
 | GET | `/api/v1/admin/action-templates` | `docs/features/F10.1_admin_dashboard.md` | 1060 |
+| GET | `/api/v1/admin/dashboard` | `docs/features/F10.1_admin_dashboard.md` | 469 |
 | GET | `/api/v1/admin/dashboard` | `docs/features/F10.1_admin_dashboard.md` | 1165 |
 | GET | `/api/v1/admin/dashboard-stats` | `docs/features/F04.10_committee.md` | 1039 |
+| GET | `/api/v1/admin/feedbacks` | `docs/features/F10.1_admin_dashboard.md` | 461 |
+| GET | `/api/v1/admin/form-presets` | `docs/features/F05.7_form_builder.md` | 346 |
+| GET | `/api/v1/admin/moderation/reports` | `docs/features/F04.5_moderation.md` | 56 |
+| GET | `/api/v1/admin/moderation/reports` | `docs/features/F10.1_admin_dashboard.md` | 443 |
 | GET | `/api/v1/admin/onboarding/presets` | `docs/features/F02.4_onboarding.md` | 336 |
+| GET | `/api/v1/admin/permission-groups` | `docs/features/F10.1_admin_dashboard.md` | 472 |
 | GET | `/api/v1/admin/receipt-presets` | `docs/features/F08.4_receipt.md` | 343 |
 | GET | `/api/v1/admin/receipt-queue` | `docs/features/F08.4_receipt.md` | 351 |
 | GET | `/api/v1/admin/receipt-settings` | `docs/features/F08.4_receipt.md` | 307 |
 | GET | `/api/v1/admin/receipt-settings` | `docs/features/F08.4_receipt.md` | 364 |
 | GET | `/api/v1/admin/receipts` | `docs/features/F08.4_receipt.md` | 326 |
 | GET | `/api/v1/admin/receipts` | `docs/features/F08.4_receipt.md` | 857 |
+| GET | `/api/v1/admin/reports` | `docs/features/F04.5_moderation.md` | 55 |
 | GET | `/api/v1/admin/reports` | `docs/features/F04.5_moderation.md` | 120 |
+| GET | `/api/v1/admin/reports` | `docs/features/F10.1_admin_dashboard.md` | 442 |
 | GET | `/api/v1/admin/reports` | `docs/features/F10.1_admin_dashboard.md` | 608 |
 | GET | `/api/v1/admin/reports/{_}` | `docs/features/F04.5_moderation.md` | 180 |
 | GET | `/api/v1/admin/reports/{_}` | `docs/features/F10.1_admin_dashboard.md` | 650 |
@@ -318,9 +324,11 @@
 | PATCH | `/api/v1/admin/reports/{_}` | `docs/features/F04.5_moderation.md` | 229 |
 | PATCH | `/api/v1/admin/social-profiles/{_}/freeze` | `docs/features/F04.4_social_profiles.md` | 97 |
 | PATCH | `/api/v1/admin/social-profiles/{_}/freeze` | `docs/features/F04.4_social_profiles.md` | 282 |
-| POST | `/api/v1/admin/action-memo/regenerate-weekly-summary?week=YYYY-Www&userId=` | `docs/features/F02.5_action_memo.md` | 553 |
+| POST | `/api/v1/admin/action-templates` | `docs/features/F10.1_admin_dashboard.md` | 458 |
 | POST | `/api/v1/admin/action-templates` | `docs/features/F10.1_admin_dashboard.md` | 1095 |
+| POST | `/api/v1/admin/form-presets` | `docs/features/F05.7_form_builder.md` | 347 |
 | POST | `/api/v1/admin/onboarding/presets` | `docs/features/F02.4_onboarding.md` | 337 |
+| POST | `/api/v1/admin/permission-groups` | `docs/features/F10.1_admin_dashboard.md` | 473 |
 | POST | `/api/v1/admin/receipt-presets` | `docs/features/F08.4_receipt.md` | 344 |
 | POST | `/api/v1/admin/receipts` | `docs/features/F08.4_receipt.md` | 315 |
 | POST | `/api/v1/admin/receipts` | `docs/features/F08.4_receipt.md` | 432 |
@@ -335,15 +343,6 @@
 | POST | `/api/v1/attendance/requirements/evaluations/{_}/disclose` | `docs/features/F03.13_school_daily_subject_attendance.md` | 969 |
 | POST | `/api/v1/attendance/requirements/evaluations/{_}/withhold` | `docs/features/F03.13_school_daily_subject_attendance.md` | 970 |
 
-### /api/v1/auth/* (2 件)
-
-| メソッド | パス | 設計書 | 行 |
-|---|---|---|---|
-| DELETE | `/api/v1/auth/sessions?keepCurrent=true` | `docs/features/F12.4_session_management.md` | 208 |
-| DELETE | `/api/v1/auth/sessions?keepCurrent=true` | `docs/features/F12.4_session_management.md` | 417 |
-| DELETE | `/api/v1/auth/sessions?keepCurrent=true` | `docs/features/F12.4_session_management.md` | 570 |
-| GET | `/api/v1/auth/sessions?currentSessionId={_}` | `docs/features/F12.4_session_management.md` | 385 |
-
 ### /api/v1/blog/* (4 件)
 
 | メソッド | パス | 設計書 | 行 |
@@ -355,12 +354,12 @@
 | POST | `/api/v1/blog/tags` | `docs/features/F06.1_cms_blog.md` | 694 |
 | POST | `/api/v1/blog/tags` | `docs/features/F06.1_cms_blog.md` | 1038 |
 
-### /api/v1/blog-posts?visibility=PRIVATE/* (1 件)
+### /api/v1/blog-posts/* (1 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| GET | `/api/v1/blog-posts?visibility=PRIVATE` | `docs/features/F02.5_action_memo.md` | 235 |
-| GET | `/api/v1/blog-posts?visibility=PRIVATE` | `docs/features/F02.5_action_memo.md` | 766 |
+| GET | `/api/v1/blog-posts` | `docs/features/F02.5_action_memo.md` | 235 |
+| GET | `/api/v1/blog-posts` | `docs/features/F02.5_action_memo.md` | 766 |
 
 ### /api/v1/budget/* (2 件)
 
@@ -370,7 +369,7 @@
 | PUT | `/api/v1/budget/fiscal-years/{_}/allocations` | `docs/features/F08.6_budget_accounting.md` | 371 |
 | PUT | `/api/v1/budget/fiscal-years/{_}/allocations` | `docs/features/F08.6_budget_accounting.md` | 501 |
 
-### /api/v1/bulletin/* (24 件)
+### /api/v1/bulletin/* (23 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
@@ -391,8 +390,8 @@
 | GET | `/api/v1/bulletin/threads/{_}` | `docs/features/F05.1_bulletin_board.md` | 255 |
 | GET | `/api/v1/bulletin/threads/{_}` | `docs/features/F05.1_bulletin_board.md` | 532 |
 | GET | `/api/v1/bulletin/threads/{_}/readers` | `docs/features/F05.1_bulletin_board.md` | 260 |
+| GET | `/api/v1/bulletin/threads/{_}/readers` | `docs/features/F05.1_bulletin_board.md` | 270 |
 | GET | `/api/v1/bulletin/threads/{_}/readers` | `docs/features/F05.1_bulletin_board.md` | 724 |
-| GET | `/api/v1/bulletin/threads/{_}/readers?filter=unread` | `docs/features/F05.1_bulletin_board.md` | 270 |
 | PATCH | `/api/v1/bulletin/threads/{_}/archive` | `docs/features/F05.1_bulletin_board.md` | 269 |
 | PATCH | `/api/v1/bulletin/threads/{_}/archive` | `docs/features/F05.1_bulletin_board.md` | 1022 |
 | PATCH | `/api/v1/bulletin/threads/{_}/lock` | `docs/features/F05.1_bulletin_board.md` | 262 |
@@ -639,11 +638,11 @@
 | GET | `/api/v1/dashboard` | `docs/features/F02.2_dashboard.md` | 258 |
 | GET | `/api/v1/dashboard` | `docs/features/F02.2_dashboard.md` | 294 |
 
-### /api/v1/disclosure-templates?prefectureCode=&isStandard=/* (1 件)
+### /api/v1/disclosure-templates/* (1 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| GET | `/api/v1/disclosure-templates?prefectureCode=&isStandard=` | `docs/features/F09.14_real_estate_disclosure.md` | 274 |
+| GET | `/api/v1/disclosure-templates` | `docs/features/F09.14_real_estate_disclosure.md` | 274 |
 
 ### /api/v1/dwelling-units/* (23 件)
 
@@ -857,12 +856,6 @@
 | POST | `/api/v1/gallery/albums` | `docs/features/F06.2_member_gallery.md` | 351 |
 | POST | `/api/v1/gallery/albums` | `docs/features/F06.2_member_gallery.md` | 603 |
 
-### /api/v1/health/* (1 件)
-
-| メソッド | パス | 設計書 | 行 |
-|---|---|---|---|
-| GET | `/api/v1/health` | `docs/features/F10.1_admin_dashboard.md` | 559 |
-
 ### /api/v1/incidents/* (25 件)
 
 | メソッド | パス | 設計書 | 行 |
@@ -1014,17 +1007,13 @@
 | GET | `/api/v1/mail-tracking/{_}` | `docs/features/F09.6_direct_mail.md` | 337 |
 | GET | `/api/v1/mail-tracking/{_}` | `docs/features/F09.6_direct_mail.md` | 880 |
 
-### /api/v1/me/* (42 件)
+### /api/v1/me/* (31 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| GET | `/api/v1/me/attendance/daily?from=&to=` | `docs/features/F03.13_school_daily_subject_attendance.md` | 324 |
-| GET | `/api/v1/me/attendance/statistics/term?termId=` | `docs/features/F03.13_school_daily_subject_attendance.md` | 357 |
-| GET | `/api/v1/me/attendance/timeline?date=YYYY-MM-DD` | `docs/features/F03.13_school_daily_subject_attendance.md` | 334 |
 | GET | `/api/v1/me/favorites` | `docs/features/F02.2_dashboard.md` | 212 |
 | GET | `/api/v1/me/favorites` | `docs/features/F02.9_favorites_widget.md` | 558 |
 | GET | `/api/v1/me/favorites` | `docs/features/F02.9_favorites_widget.md` | 610 |
-| GET | `/api/v1/me/favorites/check?entityType=X&entityId=Y` | `docs/features/F02.9_favorites_widget.md` | 424 |
 | GET | `/api/v1/me/jobber-profile` | `docs/features/F13.1_short_term_job_matching.md` | 1661 |
 | GET | `/api/v1/me/jobs/history` | `docs/features/F13.1_short_term_job_matching.md` | 1643 |
 | GET | `/api/v1/me/jobs/history` | `docs/features/F13.1_short_term_job_matching.md` | 1879 |
@@ -1034,19 +1023,13 @@
 | GET | `/api/v1/me/personal-timetables` | `docs/features/F03.15_personal_timetable.md` | 359 |
 | GET | `/api/v1/me/personal-timetables/{_}/periods` | `docs/features/F03.15_personal_timetable.md` | 372 |
 | GET | `/api/v1/me/personal-timetables/{_}/share-targets` | `docs/features/F03.15_personal_timetable.md` | 388 |
-| GET | `/api/v1/me/personal-timetables/{_}/weekly?week_of=YYYY-MM-DD` | `docs/features/F03.15_personal_timetable.md` | 380 |
 | GET | `/api/v1/me/schedules` | `docs/features/F03.2_schedule_personal.md` | 121 |
 | GET | `/api/v1/me/schedules` | `docs/features/F03.2_schedule_personal.md` | 183 |
+| GET | `/api/v1/me/scope-folders` | `docs/features/F15.2_team_folder.md` | 172 |
 | GET | `/api/v1/me/scope-folders` | `docs/features/F15.3_scope_folder_integration.md` | 160 |
 | GET | `/api/v1/me/scope-folders` | `docs/features/F15.3_scope_folder_integration.md` | 279 |
-| GET | `/api/v1/me/scope-folders/default?scopeType=TEAM` | `docs/features/F15.3_scope_folder_integration.md` | 196 |
-| GET | `/api/v1/me/scope-folders/notifications/summary?scopeType=TEAM` | `docs/features/F15.3_scope_folder_integration.md` | 198 |
-| GET | `/api/v1/me/scope-folders?scopeType=TEAM` | `docs/features/F15.2_team_folder.md` | 172 |
 | GET | `/api/v1/me/timetable-slot-note-fields` | `docs/features/F03.15_personal_timetable.md` | 420 |
-| GET | `/api/v1/me/timetable-slot-notes/upcoming?from=YYYY-MM-DD&to=YYYY-MM-DD` | `docs/features/F03.15_personal_timetable.md` | 620 |
-| GET | `/api/v1/me/timetable-slot-notes?slot_kind={TEAM\` | `docs/features/F03.15_personal_timetable.md` | 412 |
-| GET | `/api/v1/me/voice-input-consents/active?version=1` | `docs/features/F02.5_quick_memo.md` | 552 |
-| GET | `/api/v1/me/voice-input-consents/active?version={_}` | `docs/features/F02.5_quick_memo.md` | 1139 |
+| GET | `/api/v1/me/timetable-slot-notes` | `docs/features/F03.15_personal_timetable.md` | 412 |
 | PATCH | `/api/v1/me/care-category` | `docs/features/F03.12_care_recipient_event_watch_notification.md` | 435 |
 | PATCH | `/api/v1/me/favorites/order` | `docs/features/F02.9_favorites_widget.md` | 394 |
 | PATCH | `/api/v1/me/favorites/order` | `docs/features/F02.9_favorites_widget.md` | 557 |
@@ -1061,7 +1044,7 @@
 | POST | `/api/v1/me/personal-timetables/{_}/slots/import-from-team` | `docs/features/F03.15_personal_timetable.md` | 648 |
 | POST | `/api/v1/me/schedules` | `docs/features/F03.2_schedule_personal.md` | 120 |
 | POST | `/api/v1/me/schedules` | `docs/features/F03.2_schedule_personal.md` | 131 |
-| POST | `/api/v1/me/scope-folders?scopeType=TEAM` | `docs/features/F15.2_team_folder.md` | 178 |
+| POST | `/api/v1/me/scope-folders` | `docs/features/F15.2_team_folder.md` | 178 |
 | POST | `/api/v1/me/timetable-slot-note-fields` | `docs/features/F03.15_personal_timetable.md` | 421 |
 | POST | `/api/v1/me/voice-input-consents` | `docs/features/F02.5_quick_memo.md` | 551 |
 | PUT | `/api/v1/me/jobber-profile` | `docs/features/F13.1_short_term_job_matching.md` | 1662 |
@@ -1137,6 +1120,10 @@
 |---|---|---|---|
 | GET | `/api/v1/notifications` | `docs/features/F04.3_push_notification.md` | 203 |
 | GET | `/api/v1/notifications` | `docs/features/F04.3_push_notification.md` | 221 |
+| GET | `/api/v1/notifications` | `docs/features/F15.3_scope_folder_integration.md` | 199 |
+| GET | `/api/v1/notifications` | `docs/features/F15.3_scope_folder_integration.md` | 253 |
+| GET | `/api/v1/notifications` | `docs/features/F15.3_scope_folder_integration.md` | 283 |
+| GET | `/api/v1/notifications` | `docs/features/F15.3_scope_folder_integration.md` | 623 |
 | PATCH | `/api/v1/notifications/read-all` | `docs/features/F04.3_push_notification.md` | 208 |
 | PATCH | `/api/v1/notifications/read-all` | `docs/features/F04.3_push_notification.md` | 414 |
 | PATCH | `/api/v1/notifications/{_}/read` | `docs/features/F04.3_push_notification.md` | 205 |
@@ -1146,25 +1133,6 @@
 | PATCH | `/api/v1/notifications/{_}/unread` | `docs/features/F04.3_push_notification.md` | 206 |
 | PATCH | `/api/v1/notifications/{_}/unread` | `docs/features/F04.3_push_notification.md` | 336 |
 
-### /api/v1/notifications?folderId=/* (1 件)
-
-| メソッド | パス | 設計書 | 行 |
-|---|---|---|---|
-| GET | `/api/v1/notifications?folderId=` | `docs/features/F15.3_scope_folder_integration.md` | 623 |
-
-### /api/v1/notifications?folderId=&scopeType=/* (1 件)
-
-| メソッド | パス | 設計書 | 行 |
-|---|---|---|---|
-| GET | `/api/v1/notifications?folderId=&scopeType=` | `docs/features/F15.3_scope_folder_integration.md` | 283 |
-
-### /api/v1/notifications?folderId={_}&scopeType=TEAM/* (1 件)
-
-| メソッド | パス | 設計書 | 行 |
-|---|---|---|---|
-| GET | `/api/v1/notifications?folderId={_}&scopeType=TEAM` | `docs/features/F15.3_scope_folder_integration.md` | 199 |
-| GET | `/api/v1/notifications?folderId={_}&scopeType=TEAM` | `docs/features/F15.3_scope_folder_integration.md` | 253 |
-
 ### /api/v1/onboarding/* (2 件)
 
 | メソッド | パス | 設計書 | 行 |
@@ -1173,7 +1141,7 @@
 | GET | `/api/v1/onboarding/progresses/me` | `docs/features/F02.4_onboarding.md` | 376 |
 | GET | `/api/v1/onboarding/progresses/me` | `docs/features/F02.4_onboarding.md` | 566 |
 
-### /api/v1/organizations/* (110 件)
+### /api/v1/organizations/* (109 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
@@ -1248,7 +1216,6 @@
 | POST | `/api/v1/organizations/{_}/budget/fiscal-years` | `docs/features/F08.6_budget_accounting.md` | 351 |
 | POST | `/api/v1/organizations/{_}/corkboards` | `docs/features/F09.8_corkboard.md` | 239 |
 | POST | `/api/v1/organizations/{_}/disclosure-drafts` | `docs/features/F09.14_real_estate_disclosure.md` | 286 |
-| POST | `/api/v1/organizations/{_}/disclosure-drafts/{_}/export?format=pdf\` | `docs/features/F09.14_real_estate_disclosure.md` | 295 |
 | POST | `/api/v1/organizations/{_}/disclosure-templates` | `docs/features/F09.14_real_estate_disclosure.md` | 276 |
 | POST | `/api/v1/organizations/{_}/equipment` | `docs/features/F07.3_equipment.md` | 152 |
 | POST | `/api/v1/organizations/{_}/event-categories` | `docs/features/F03.10_annual_event_plan.md` | 208 |
@@ -1445,7 +1412,7 @@
 | POST | `/api/v1/queue/join/{_}` | `docs/features/F03.7_queue.md` | 342 |
 | POST | `/api/v1/queue/join/{_}` | `docs/features/F03.7_queue.md` | 428 |
 
-### /api/v1/quick-memos/* (6 件)
+### /api/v1/quick-memos/* (5 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
@@ -1457,7 +1424,7 @@
 | POST | `/api/v1/quick-memos` | `docs/features/F02.5_quick_memo.md` | 637 |
 | POST | `/api/v1/quick-memos` | `docs/features/F02.5_quick_memo.md` | 688 |
 | PUT | `/api/v1/quick-memos/settings` | `docs/features/F02.5_quick_memo.md` | 449 |
-| PUT | `/api/v1/quick-memos/settings?apply_to={NEW_ONLY\` | `docs/features/F02.5_quick_memo.md` | 684 |
+| PUT | `/api/v1/quick-memos/settings` | `docs/features/F02.5_quick_memo.md` | 684 |
 
 ### /api/v1/recruitment-categories/* (1 件)
 
@@ -1465,11 +1432,10 @@
 |---|---|---|---|
 | GET | `/api/v1/recruitment-categories` | `docs/features/F03.11_recruitment_listing.md` | 1428 |
 
-### /api/v1/recruitment-listings/* (3 件)
+### /api/v1/recruitment-listings/* (2 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| GET | `/api/v1/recruitment-listings/{_}/cancellation-fee-estimate?at={_}` | `docs/features/F03.11_recruitment_listing.md` | 1447 |
 | PATCH | `/api/v1/recruitment-listings/{_}/participants/{_}` | `docs/features/F03.11_recruitment_listing.md` | 1377 |
 | PATCH | `/api/v1/recruitment-listings/{_}/participants/{_}/mark-no-show` | `docs/features/F03.11_recruitment_listing.md` | 1462 |
 
@@ -1502,7 +1468,9 @@
 |---|---|---|---|
 | DELETE | `/api/v1/reports/{_}` | `docs/features/F10.2_moderation.md` | 356 |
 | DELETE | `/api/v1/reports/{_}` | `docs/features/F10.2_moderation.md` | 389 |
+| POST | `/api/v1/reports` | `docs/features/F04.5_moderation.md` | 54 |
 | POST | `/api/v1/reports` | `docs/features/F04.5_moderation.md` | 64 |
+| POST | `/api/v1/reports` | `docs/features/F10.1_admin_dashboard.md` | 441 |
 | POST | `/api/v1/reports` | `docs/features/F10.1_admin_dashboard.md` | 567 |
 
 ### /api/v1/residence-status/* (13 件)
@@ -1566,8 +1534,11 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
+| GET | `/api/v1/seal/stamps/verify-batch` | `docs/features/F05.3_digital_seal.md` | 161 |
 | GET | `/api/v1/seal/stamps/verify-batch` | `docs/features/F05.3_digital_seal.md` | 449 |
+| GET | `/api/v1/seal/stamps/{_}/verify` | `docs/features/F05.3_digital_seal.md` | 160 |
 | GET | `/api/v1/seal/stamps/{_}/verify` | `docs/features/F05.3_digital_seal.md` | 402 |
+| POST | `/api/v1/seal/stamps/{_}/revoke` | `docs/features/F05.3_digital_seal.md` | 159 |
 | POST | `/api/v1/seal/stamps/{_}/revoke` | `docs/features/F05.3_digital_seal.md` | 362 |
 
 ### /api/v1/search/* (2 件)
@@ -1601,7 +1572,7 @@
 |---|---|---|---|
 | POST | `/api/v1/shift-budget/allocations` | `docs/features/F08.7_shift_budget_integration.md` | 759 |
 
-### /api/v1/shifts/* (29 件)
+### /api/v1/shifts/* (28 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
@@ -1621,7 +1592,7 @@
 | GET | `/api/v1/shifts/schedules/{_}/pdf` | `docs/features/F03.5_shift.md` | 617 |
 | GET | `/api/v1/shifts/schedules/{_}/pdf` | `docs/features/F03.5_shift.md` | 2576 |
 | GET | `/api/v1/shifts/schedules/{_}/pdf` | `docs/features/F03.5_shift.md` | 3411 |
-| GET | `/api/v1/shifts/schedules/{_}/pdf?layout=team\|personal&member_id=...&include_draft_watermark=...&locale=` | `docs/features/F03.5_shift.md` | 3948 |
+| GET | `/api/v1/shifts/schedules/{_}/pdf` | `docs/features/F03.5_shift.md` | 3948 |
 | GET | `/api/v1/shifts/schedules/{_}/requests` | `docs/features/F03.5_shift.md` | 577 |
 | GET | `/api/v1/shifts/schedules/{_}/requests` | `docs/features/F03.5_shift.md` | 1129 |
 | GET | `/api/v1/shifts/schedules/{_}/summary` | `docs/features/F03.5_shift.md` | 582 |
@@ -1726,13 +1697,6 @@
 | POST | `/api/v1/stripe/connect/onboarding-link` | `docs/features/F13.1_short_term_job_matching.md` | 1646 |
 | POST | `/api/v1/stripe/connect/onboarding-link` | `docs/features/F13.1_short_term_job_matching.md` | 2548 |
 
-### /api/v1/students/* (2 件)
-
-| メソッド | パス | 設計書 | 行 |
-|---|---|---|---|
-| GET | `/api/v1/students/{_}/attendance/locations/timeline?date=` | `docs/features/F03.13_school_daily_subject_attendance.md` | 945 |
-| GET | `/api/v1/students/{_}/attendance/summary?termId=&academicYear=` | `docs/features/F03.13_school_daily_subject_attendance.md` | 962 |
-
 ### /api/v1/succession/* (18 件)
 
 | メソッド | パス | 設計書 | 行 |
@@ -1834,7 +1798,7 @@
 | GET | `/api/v1/system-admin/error-reports` | `docs/features/F10.1_admin_dashboard.md` | 523 |
 | GET | `/api/v1/system-admin/error-reports` | `docs/features/F10.6_error_monitoring.md` | 155 |
 | GET | `/api/v1/system-admin/error-reports` | `docs/features/F12.5_frontend_error_tracking.md` | 351 |
-| GET | `/api/v1/system-admin/error-reports?view=kanban` | `docs/features/F12.5_frontend_error_tracking.md` | 930 |
+| GET | `/api/v1/system-admin/error-reports` | `docs/features/F12.5_frontend_error_tracking.md` | 930 |
 | GET | `/api/v1/system-admin/feature-flags` | `docs/features/F10.1_admin_dashboard.md` | 534 |
 | GET | `/api/v1/system-admin/feature-flags` | `docs/features/F12.2_feature_flag.md` | 111 |
 | GET | `/api/v1/system-admin/feature-flags/{_}/overrides` | `docs/features/F12.2_feature_flag.md` | 117 |
@@ -1861,6 +1825,7 @@
 | GET | `/api/v1/system-admin/promotions/billing` | `docs/features/F09.2_promotion_targeting.md` | 389 |
 | GET | `/api/v1/system-admin/promotions/billing` | `docs/features/F09.2_promotion_targeting.md` | 787 |
 | GET | `/api/v1/system-admin/promotions/billing/settings` | `docs/features/F09.2_promotion_targeting.md` | 390 |
+| GET | `/api/v1/system-admin/reports` | `docs/features/F10.1_admin_dashboard.md` | 464 |
 | GET | `/api/v1/system-admin/reports/monthly` | `docs/features/F10.1_admin_dashboard.md` | 554 |
 | GET | `/api/v1/system-admin/reports/weekly` | `docs/features/F10.1_admin_dashboard.md` | 553 |
 | GET | `/api/v1/system-admin/role-permissions` | `docs/features/F10.1_admin_dashboard.md` | 529 |
@@ -1948,7 +1913,7 @@
 | POST | `/api/v1/team/pages` | `docs/features/F06.2_member_gallery.md` | 322 |
 | POST | `/api/v1/team/pages` | `docs/features/F06.2_member_gallery.md` | 365 |
 
-### /api/v1/teams/* (283 件)
+### /api/v1/teams/* (270 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
@@ -1984,20 +1949,10 @@
 | GET | `/api/v1/teams/{_}/announcements` | `docs/features/F02.2_dashboard.md` | 219 |
 | GET | `/api/v1/teams/{_}/announcements` | `docs/features/F02.6_announcement_widget.md` | 242 |
 | GET | `/api/v1/teams/{_}/announcements` | `docs/features/F02.6_announcement_widget.md` | 261 |
-| GET | `/api/v1/teams/{_}/announcements?source_type=BLOG_POST` | `docs/features/F06.1_cms_blog.md` | 2450 |
-| GET | `/api/v1/teams/{_}/announcements?source_type=BULLETIN_THREAD` | `docs/features/F05.1_bulletin_board.md` | 1366 |
+| GET | `/api/v1/teams/{_}/announcements` | `docs/features/F05.1_bulletin_board.md` | 1366 |
+| GET | `/api/v1/teams/{_}/announcements` | `docs/features/F06.1_cms_blog.md` | 2450 |
 | GET | `/api/v1/teams/{_}/api-keys` | `docs/features/F09.9_webhook_api.md` | 280 |
 | GET | `/api/v1/teams/{_}/api-keys` | `docs/features/F09.9_webhook_api.md` | 765 |
-| GET | `/api/v1/teams/{_}/attendance/daily?date=YYYY-MM-DD` | `docs/features/F03.13_school_daily_subject_attendance.md` | 321 |
-| GET | `/api/v1/teams/{_}/attendance/export?from=&to=&format=csv` | `docs/features/F03.13_school_daily_subject_attendance.md` | 358 |
-| GET | `/api/v1/teams/{_}/attendance/locations?date=YYYY-MM-DD` | `docs/features/F03.13_school_daily_subject_attendance.md` | 944 |
-| GET | `/api/v1/teams/{_}/attendance/notices?date=YYYY-MM-DD` | `docs/features/F03.13_school_daily_subject_attendance.md` | 341 |
-| GET | `/api/v1/teams/{_}/attendance/periods/{_}/candidates?date=` | `docs/features/F03.13_school_daily_subject_attendance.md` | 331 |
-| GET | `/api/v1/teams/{_}/attendance/periods?date=YYYY-MM-DD` | `docs/features/F03.13_school_daily_subject_attendance.md` | 330 |
-| GET | `/api/v1/teams/{_}/attendance/requirements/at-risk?status=RISK,VIOLATION` | `docs/features/F03.13_school_daily_subject_attendance.md` | 967 |
-| GET | `/api/v1/teams/{_}/attendance/statistics/monthly?year=&month=` | `docs/features/F03.13_school_daily_subject_attendance.md` | 356 |
-| GET | `/api/v1/teams/{_}/attendance/summaries?termId=` | `docs/features/F03.13_school_daily_subject_attendance.md` | 963 |
-| GET | `/api/v1/teams/{_}/attendance/transition-alerts?date=YYYY-MM-DD&unresolvedOnly=true` | `docs/features/F03.13_school_daily_subject_attendance.md` | 349 |
 | GET | `/api/v1/teams/{_}/budget/config` | `docs/features/F08.6_budget_accounting.md` | 413 |
 | GET | `/api/v1/teams/{_}/budget/fiscal-years` | `docs/features/F08.6_budget_accounting.md` | 348 |
 | GET | `/api/v1/teams/{_}/budget/transactions` | `docs/features/F08.6_budget_accounting.md` | 376 |
@@ -2106,7 +2061,7 @@
 | GET | `/api/v1/teams/{_}/queue/status` | `docs/features/F03.7_queue.md` | 361 |
 | GET | `/api/v1/teams/{_}/queue/tickets/history` | `docs/features/F03.7_queue.md` | 356 |
 | GET | `/api/v1/teams/{_}/recruitment-listings` | `docs/features/F03.11_recruitment_listing.md` | 1363 |
-| GET | `/api/v1/teams/{_}/recruitment-subcategories?categoryId={_}` | `docs/features/F03.11_recruitment_listing.md` | 1421 |
+| GET | `/api/v1/teams/{_}/recruitment-subcategories` | `docs/features/F03.11_recruitment_listing.md` | 1421 |
 | GET | `/api/v1/teams/{_}/reservation-blocked-times` | `docs/features/F03.4_reservation.md` | 361 |
 | GET | `/api/v1/teams/{_}/reservation-blocked-times` | `docs/features/F03.4_reservation.md` | 1489 |
 | GET | `/api/v1/teams/{_}/reservation-business-hours` | `docs/features/F03.4_reservation.md` | 359 |
@@ -2150,7 +2105,7 @@
 | GET | `/api/v1/teams/{_}/todo-status-labels` | `docs/features/F02.3.1_todo_status_labels_and_handoff.md` | 238 |
 | GET | `/api/v1/teams/{_}/todos` | `docs/features/F02.2.1_dashboard_widget_role_visibility.md` | 566 |
 | GET | `/api/v1/teams/{_}/todos` | `docs/features/F02.3_todo_project.md` | 275 |
-| GET | `/api/v1/teams/{_}/user-penalties?status=ACTIVE` | `docs/features/F03.11_recruitment_listing.md` | 1473 |
+| GET | `/api/v1/teams/{_}/user-penalties` | `docs/features/F03.11_recruitment_listing.md` | 1473 |
 | GET | `/api/v1/teams/{_}/webhooks/endpoints` | `docs/features/F09.9_webhook_api.md` | 259 |
 | GET | `/api/v1/teams/{_}/webhooks/endpoints` | `docs/features/F09.9_webhook_api.md` | 344 |
 | GET | `/api/v1/teams/{_}/webhooks/endpoints/{_}` | `docs/features/F09.9_webhook_api.md` | 261 |
@@ -2361,7 +2316,7 @@
 | PUT | `/api/v1/teams/{_}/modules` | `docs/features/F01.3_template_module.md` | 374 |
 | PUT | `/api/v1/teams/{_}/modules` | `docs/features/F01.3_template_module.md` | 708 |
 | PUT | `/api/v1/teams/{_}/modules` | `docs/features/F01.3_template_module.md` | 984 |
-| PUT | `/api/v1/teams/{_}/modules?dry_run=true` | `docs/features/F01.3_template_module.md` | 988 |
+| PUT | `/api/v1/teams/{_}/modules` | `docs/features/F01.3_template_module.md` | 988 |
 | PUT | `/api/v1/teams/{_}/penalty-settings` | `docs/features/F03.11_recruitment_listing.md` | 1472 |
 | PUT | `/api/v1/teams/{_}/presence/icons` | `docs/features/F01.4_family_team.md` | 428 |
 | PUT | `/api/v1/teams/{_}/queue/categories/{_}` | `docs/features/F03.7_queue.md` | 328 |
@@ -2517,12 +2472,11 @@
 |---|---|---|---|
 | POST | `/api/v1/user-penalties/{_}/lift` | `docs/features/F03.11_recruitment_listing.md` | 1474 |
 
-### /api/v1/users/* (24 件)
+### /api/v1/users/* (23 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
 | GET | `/api/v1/users/blocks` | `docs/features/F04.8_contact.md` | 519 |
-| GET | `/api/v1/users/contact-handle-check?handle={_}` | `docs/features/F04.8_contact.md` | 343 |
 | GET | `/api/v1/users/me/contact-privacy` | `docs/features/F04.8_contact.md` | 634 |
 | GET | `/api/v1/users/me/corkboards` | `docs/features/F09.8.1_corkboard_pin_dashboard.md` | 119 |
 | GET | `/api/v1/users/me/data-export/{_}` | `docs/features/F10.1_admin_dashboard.md` | 557 |
@@ -2537,9 +2491,13 @@
 | GET | `/api/v1/users/{_}` | `docs/features/F04.4_social_profiles.md` | 552 |
 | GET | `/api/v1/users/{_}` | `docs/features/F17.1_village_community.md` | 989 |
 | GET | `/api/v1/users/{_}/followings` | `docs/features/F04.4_social_profiles.md` | 105 |
+| GET | `/api/v1/users/{_}/seals` | `docs/features/F05.3_digital_seal.md` | 153 |
 | GET | `/api/v1/users/{_}/seals` | `docs/features/F05.3_digital_seal.md` | 168 |
+| GET | `/api/v1/users/{_}/seals/preview` | `docs/features/F05.3_digital_seal.md` | 154 |
 | GET | `/api/v1/users/{_}/seals/preview` | `docs/features/F05.3_digital_seal.md` | 216 |
+| GET | `/api/v1/users/{_}/seals/scope-defaults` | `docs/features/F05.3_digital_seal.md` | 156 |
 | GET | `/api/v1/users/{_}/seals/scope-defaults` | `docs/features/F05.3_digital_seal.md` | 278 |
+| GET | `/api/v1/users/{_}/seals/stamps` | `docs/features/F05.3_digital_seal.md` | 158 |
 | GET | `/api/v1/users/{_}/seals/stamps` | `docs/features/F05.3_digital_seal.md` | 322 |
 | POST | `/api/v1/users/blocks` | `docs/features/F04.8_contact.md` | 491 |
 | POST | `/api/v1/users/me/avatar` | `docs/features/F01.1_auth.md` | 427 |
@@ -2547,18 +2505,19 @@
 | POST | `/api/v1/users/me/todo-status-labels` | `docs/features/F02.3.1_todo_status_labels_and_handoff.md` | 195 |
 | POST | `/api/v1/users/me/vehicles` | `docs/features/F09.3_parking.md` | 614 |
 | POST | `/api/v1/users/me/vehicles` | `docs/features/F09.3_parking.md` | 712 |
+| POST | `/api/v1/users/{_}/seals/regenerate` | `docs/features/F05.3_digital_seal.md` | 155 |
 | POST | `/api/v1/users/{_}/seals/regenerate` | `docs/features/F05.3_digital_seal.md` | 247 |
 | PUT | `/api/v1/users/me/contact-privacy` | `docs/features/F04.8_contact.md` | 647 |
 | PUT | `/api/v1/users/me/job-notification-preferences` | `docs/features/F13.1_short_term_job_matching.md` | 1652 |
+| PUT | `/api/v1/users/{_}/seals/scope-defaults` | `docs/features/F05.3_digital_seal.md` | 157 |
 | PUT | `/api/v1/users/{_}/seals/scope-defaults` | `docs/features/F05.3_digital_seal.md` | 297 |
 
-### /api/v1/visibility-templates/* (3 件)
+### /api/v1/visibility-templates/* (2 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
 | GET | `/api/v1/visibility-templates` | `docs/features/F01.7_custom_visibility_templates.md` | 238 |
 | POST | `/api/v1/visibility-templates` | `docs/features/F01.7_custom_visibility_templates.md` | 240 |
-| POST | `/api/v1/visibility-templates/{_}/evaluate?targetUserId=X` | `docs/features/F01.7_custom_visibility_templates.md` | 243 |
 
 ### /api/v1/warnings/* (1 件)
 
@@ -2567,12 +2526,10 @@
 | PATCH | `/api/v1/warnings/re-reviews/{_}/escalate` | `docs/features/F10.2_moderation.md` | 371 |
 | PATCH | `/api/v1/warnings/re-reviews/{_}/escalate` | `docs/features/F10.2_moderation.md` | 889 |
 
-### /api/v1/webhooks/* (4 件)
+### /api/v1/webhooks/* (3 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| POST | `/api/v1/webhooks/incoming/{_}` | `docs/features/F09.9_webhook_api.md` | 271 |
-| POST | `/api/v1/webhooks/incoming/{_}` | `docs/features/F09.9_webhook_api.md` | 545 |
 | POST | `/api/v1/webhooks/ses` | `docs/features/F09.6_direct_mail.md` | 342 |
 | POST | `/api/v1/webhooks/stripe/connect` | `docs/features/F13.1_short_term_job_matching.md` | 1649 |
 | POST | `/api/v1/webhooks/stripe/platform` | `docs/features/F13.1_short_term_job_matching.md` | 1650 |
@@ -2622,7 +2579,7 @@
 | GET | `/api/v1/{_}/{_}/direct-mails/quota` | `docs/features/F09.6_direct_mail.md` | 478 |
 | GET | `/api/v1/{_}/{_}/direct-mails/{_}` | `docs/features/F09.6_direct_mail.md` | 444 |
 | GET | `/api/v1/{_}/{_}/property-history` | `docs/features/F09.13_property_history.md` | 269 |
-| GET | `/api/v1/{_}/{_}/property-history/gantt?from=&to=` | `docs/features/F09.13_property_history.md` | 271 |
+| GET | `/api/v1/{_}/{_}/property-history/gantt` | `docs/features/F09.13_property_history.md` | 271 |
 | GET | `/api/v1/{_}/{_}/property-history/timeline` | `docs/features/F09.13_property_history.md` | 270 |
 | GET | `/api/v1/{_}/{_}/property-history/{_}` | `docs/features/F09.13_property_history.md` | 272 |
 | GET | `/api/v1/{_}/{_}/repair-plan/dashboard` | `docs/features/F08.8_repair_longterm_dashboard.md` | 528 |
@@ -2633,14 +2590,14 @@
 | GET | `/api/v1/{_}/{_}/repair-plan/templates` | `docs/features/F08.8_repair_longterm_dashboard.md` | 550 |
 | GET | `/api/v1/{_}/{_}/repair-plan/timeline` | `docs/features/F08.8_repair_longterm_dashboard.md` | 541 |
 | GET | `/api/v1/{_}/{_}/vendors` | `docs/features/F09.13_property_history.md` | 256 |
-| GET | `/api/v1/{_}/{_}/vendors/search?q=` | `docs/features/F09.13_property_history.md` | 261 |
+| GET | `/api/v1/{_}/{_}/vendors/search` | `docs/features/F09.13_property_history.md` | 261 |
 | GET | `/api/v1/{_}/{_}/vendors/{_}` | `docs/features/F09.13_property_history.md` | 257 |
 | PATCH | `/api/v1/{_}/{_}/property-history/{_}/status` | `docs/features/F09.13_property_history.md` | 275 |
 | POST | `/api/v1/{_}/{_}/bulletin/threads` | `docs/features/F02.8_dashboard_announcement.md` | 181 |
 | POST | `/api/v1/{_}/{_}/property-history` | `docs/features/F09.13_property_history.md` | 273 |
-| POST | `/api/v1/{_}/{_}/property-history/export?format=pdf\` | `docs/features/F09.13_property_history.md` | 280 |
+| POST | `/api/v1/{_}/{_}/property-history/export` | `docs/features/F09.13_property_history.md` | 280 |
 | POST | `/api/v1/{_}/{_}/property-history/{_}/documents` | `docs/features/F09.13_property_history.md` | 277 |
-| POST | `/api/v1/{_}/{_}/property-history/{_}/export?format=pdf\` | `docs/features/F09.13_property_history.md` | 279 |
+| POST | `/api/v1/{_}/{_}/property-history/{_}/export` | `docs/features/F09.13_property_history.md` | 279 |
 | POST | `/api/v1/{_}/{_}/repair-plan/delegations` | `docs/features/F08.8_repair_longterm_dashboard.md` | 553 |
 | POST | `/api/v1/{_}/{_}/repair-plan/handover-packs` | `docs/features/F08.8_repair_longterm_dashboard.md` | 548 |
 | POST | `/api/v1/{_}/{_}/repair-plan/items` | `docs/features/F08.8_repair_longterm_dashboard.md` | 530 |
@@ -2662,7 +2619,7 @@
 
 ## 2. 🟡 実装あり・設計なし（設計書整備候補）
 
-#### /api/v1/organizations/* (372 件)
+#### /api/v1/organizations/* (369 件)
 
 | メソッド | パス | Controller | 行 |
 |---|---|---|---|
@@ -2717,7 +2674,6 @@
 | DELETE | `/api/v1/organizations/{_}/vendors/{_}` | `VendorController#deleteVendor` (backend/src/main/java/com/mannschaft/app/property/controller/VendorController.java) | 151 |
 | DELETE | `/api/v1/organizations/{_}/workflow-requests/{_}` | `WorkflowRequestController#deleteRequest` (backend/src/main/java/com/mannschaft/app/workflow/controller/WorkflowRequestController.java) | 134 |
 | DELETE | `/api/v1/organizations/{_}/workflow-templates/{_}` | `WorkflowTemplateController#deleteTemplate` (backend/src/main/java/com/mannschaft/app/workflow/controller/WorkflowTemplateController.java) | 105 |
-| GET | `/api/v1/organizations/{_}/admin/modules` | `AdminModuleController#listOrgModules` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminModuleController.java) | 82 |
 | GET | `/api/v1/organizations/{_}/announcement-templates` | `AnnouncementRangeTemplateController#listOrgTemplates` (backend/src/main/java/com/mannschaft/app/social/announcement/controller/AnnouncementRangeTemplateController.java) | 174 |
 | GET | `/api/v1/organizations/{_}/bulletin/categories/{_}` | `BulletinCategoryController#getCategory` (backend/src/main/java/com/mannschaft/app/bulletin/controller/BulletinCategoryController.java) | 56 |
 | GET | `/api/v1/organizations/{_}/bulletin/threads/search` | `BulletinThreadController#searchThreads` (backend/src/main/java/com/mannschaft/app/bulletin/controller/BulletinThreadController.java) | 83 |
@@ -2906,7 +2862,6 @@
 | POST | `/api/v1/organizations/{_}/direct-mails/{_}/cancel` | `OrganizationDirectMailController#cancelMail` (backend/src/main/java/com/mannschaft/app/directmail/controller/OrganizationDirectMailController.java) | 122 |
 | POST | `/api/v1/organizations/{_}/direct-mails/{_}/schedule` | `OrganizationDirectMailController#scheduleMail` (backend/src/main/java/com/mannschaft/app/directmail/controller/OrganizationDirectMailController.java) | 109 |
 | POST | `/api/v1/organizations/{_}/direct-mails/{_}/send` | `OrganizationDirectMailController#sendMail` (backend/src/main/java/com/mannschaft/app/directmail/controller/OrganizationDirectMailController.java) | 97 |
-| POST | `/api/v1/organizations/{_}/disclosure-drafts/{_}/export` | `DisclosureExportController#exportDraft` (backend/src/main/java/com/mannschaft/app/disclosure/controller/DisclosureExportController.java) | 62 |
 | POST | `/api/v1/organizations/{_}/dwelling-units` | `OrgDwellingUnitController#create` (backend/src/main/java/com/mannschaft/app/resident/controller/OrgDwellingUnitController.java) | 50 |
 | POST | `/api/v1/organizations/{_}/dwelling-units/batch` | `OrgDwellingUnitController#batchCreate` (backend/src/main/java/com/mannschaft/app/resident/controller/OrgDwellingUnitController.java) | 80 |
 | POST | `/api/v1/organizations/{_}/dwelling-units/{_}/residents` | `OrgResidentController#create` (backend/src/main/java/com/mannschaft/app/resident/controller/OrgResidentController.java) | 44 |
@@ -2997,7 +2952,6 @@
 | POST | `/api/v1/organizations/{_}/workflow-requests/{_}/withdraw` | `WorkflowRequestController#withdrawRequest` (backend/src/main/java/com/mannschaft/app/workflow/controller/WorkflowRequestController.java) | 120 |
 | POST | `/api/v1/organizations/{_}/workflow-templates/{_}/activate` | `WorkflowTemplateStatusController#activateTemplate` (backend/src/main/java/com/mannschaft/app/workflow/controller/WorkflowTemplateStatusController.java) | 29 |
 | POST | `/api/v1/organizations/{_}/workflow-templates/{_}/deactivate` | `WorkflowTemplateStatusController#deactivateTemplate` (backend/src/main/java/com/mannschaft/app/workflow/controller/WorkflowTemplateStatusController.java) | 43 |
-| PUT | `/api/v1/organizations/{_}/admin/modules/{_}` | `AdminModuleController#toggleOrgModule` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminModuleController.java) | 105 |
 | PUT | `/api/v1/organizations/{_}/announcement-templates/{_}` | `AnnouncementRangeTemplateController#updateOrgTemplate` (backend/src/main/java/com/mannschaft/app/social/announcement/controller/AnnouncementRangeTemplateController.java) | 229 |
 | PUT | `/api/v1/organizations/{_}/bulletin/categories/{_}` | `BulletinCategoryController#updateCategory` (backend/src/main/java/com/mannschaft/app/bulletin/controller/BulletinCategoryController.java) | 86 |
 | PUT | `/api/v1/organizations/{_}/bulletin/threads/{_}` | `BulletinThreadController#updateThread` (backend/src/main/java/com/mannschaft/app/bulletin/controller/BulletinThreadController.java) | 117 |
@@ -3039,7 +2993,7 @@
 | PUT | `/api/v1/organizations/{_}/workflow-requests/{_}` | `WorkflowRequestController#updateRequest` (backend/src/main/java/com/mannschaft/app/workflow/controller/WorkflowRequestController.java) | 91 |
 | PUT | `/api/v1/organizations/{_}/workflow-templates/{_}` | `WorkflowTemplateController#updateTemplate` (backend/src/main/java/com/mannschaft/app/workflow/controller/WorkflowTemplateController.java) | 90 |
 
-#### /api/v1/teams/* (247 件)
+#### /api/v1/teams/* (235 件)
 
 | メソッド | パス | Controller | 行 |
 |---|---|---|---|
@@ -3079,19 +3033,8 @@
 | DELETE | `/api/v1/teams/{_}/vendors/{_}` | `VendorController#deleteVendor` (backend/src/main/java/com/mannschaft/app/property/controller/VendorController.java) | 151 |
 | DELETE | `/api/v1/teams/{_}/workflow-requests/{_}` | `WorkflowRequestController#deleteRequest` (backend/src/main/java/com/mannschaft/app/workflow/controller/WorkflowRequestController.java) | 134 |
 | DELETE | `/api/v1/teams/{_}/workflow-templates/{_}` | `WorkflowTemplateController#deleteTemplate` (backend/src/main/java/com/mannschaft/app/workflow/controller/WorkflowTemplateController.java) | 105 |
-| GET | `/api/v1/teams/{_}/admin/modules` | `AdminModuleController#listTeamModules` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminModuleController.java) | 39 |
 | GET | `/api/v1/teams/{_}/announcement-templates` | `AnnouncementRangeTemplateController#listTeamTemplates` (backend/src/main/java/com/mannschaft/app/social/announcement/controller/AnnouncementRangeTemplateController.java) | 64 |
-| GET | `/api/v1/teams/{_}/attendance/daily` | `DailyAttendanceController#getDailyAttendance` (backend/src/main/java/com/mannschaft/app/school/controller/DailyAttendanceController.java) | 47 |
-| GET | `/api/v1/teams/{_}/attendance/export` | `AttendanceStatisticsController#exportCsv` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceStatisticsController.java) | 73 |
-| GET | `/api/v1/teams/{_}/attendance/locations` | `AttendanceLocationController#getTeamLocations` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceLocationController.java) | 83 |
-| GET | `/api/v1/teams/{_}/attendance/notices` | `FamilyAttendanceNoticeController#getTeamNotices` (backend/src/main/java/com/mannschaft/app/school/controller/FamilyAttendanceNoticeController.java) | 58 |
-| GET | `/api/v1/teams/{_}/attendance/periods` | `PeriodAttendanceController#getPeriodAttendance` (backend/src/main/java/com/mannschaft/app/school/controller/PeriodAttendanceController.java) | 54 |
-| GET | `/api/v1/teams/{_}/attendance/periods/{_}/candidates` | `PeriodAttendanceController#getPeriodCandidates` (backend/src/main/java/com/mannschaft/app/school/controller/PeriodAttendanceController.java) | 67 |
-| GET | `/api/v1/teams/{_}/attendance/requirements/at-risk` | `AttendanceRequirementEvaluationController#getAtRiskStudents` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceRequirementEvaluationController.java) | 55 |
 | GET | `/api/v1/teams/{_}/attendance/requirements/evaluations/{_}/disclosure-history` | `AttendanceDisclosureController#getDisclosureHistory` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceDisclosureController.java) | 82 |
-| GET | `/api/v1/teams/{_}/attendance/statistics/monthly` | `AttendanceStatisticsController#getMonthlyStatistics` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceStatisticsController.java) | 38 |
-| GET | `/api/v1/teams/{_}/attendance/summaries` | `AttendanceSummaryController#getClassSummaries` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceSummaryController.java) | 62 |
-| GET | `/api/v1/teams/{_}/attendance/transition-alerts` | `TransitionAlertController#getAlerts` (backend/src/main/java/com/mannschaft/app/school/controller/TransitionAlertController.java) | 41 |
 | GET | `/api/v1/teams/{_}/bulletin/categories/{_}` | `BulletinCategoryController#getCategory` (backend/src/main/java/com/mannschaft/app/bulletin/controller/BulletinCategoryController.java) | 56 |
 | GET | `/api/v1/teams/{_}/bulletin/threads/search` | `BulletinThreadController#searchThreads` (backend/src/main/java/com/mannschaft/app/bulletin/controller/BulletinThreadController.java) | 83 |
 | GET | `/api/v1/teams/{_}/bulletin/threads/{_}` | `BulletinThreadController#getThread` (backend/src/main/java/com/mannschaft/app/bulletin/controller/BulletinThreadController.java) | 68 |
@@ -3262,7 +3205,6 @@
 | POST | `/api/v1/teams/{_}/workflow-requests/{_}/withdraw` | `WorkflowRequestController#withdrawRequest` (backend/src/main/java/com/mannschaft/app/workflow/controller/WorkflowRequestController.java) | 120 |
 | POST | `/api/v1/teams/{_}/workflow-templates/{_}/activate` | `WorkflowTemplateStatusController#activateTemplate` (backend/src/main/java/com/mannschaft/app/workflow/controller/WorkflowTemplateStatusController.java) | 29 |
 | POST | `/api/v1/teams/{_}/workflow-templates/{_}/deactivate` | `WorkflowTemplateStatusController#deactivateTemplate` (backend/src/main/java/com/mannschaft/app/workflow/controller/WorkflowTemplateStatusController.java) | 43 |
-| PUT | `/api/v1/teams/{_}/admin/modules/{_}` | `AdminModuleController#toggleTeamModule` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminModuleController.java) | 62 |
 | PUT | `/api/v1/teams/{_}/announcement-templates/{_}` | `AnnouncementRangeTemplateController#updateTeamTemplate` (backend/src/main/java/com/mannschaft/app/social/announcement/controller/AnnouncementRangeTemplateController.java) | 119 |
 | PUT | `/api/v1/teams/{_}/bulletin/categories/{_}` | `BulletinCategoryController#updateCategory` (backend/src/main/java/com/mannschaft/app/bulletin/controller/BulletinCategoryController.java) | 86 |
 | PUT | `/api/v1/teams/{_}/bulletin/threads/{_}` | `BulletinThreadController#updateThread` (backend/src/main/java/com/mannschaft/app/bulletin/controller/BulletinThreadController.java) | 117 |
@@ -3555,38 +3497,7 @@
 | PUT | `/api/v1/system-admin/maintenance-schedules/{_}` | `SystemAdminMaintenanceController#updateSchedule` (backend/src/main/java/com/mannschaft/app/admin/controller/SystemAdminMaintenanceController.java) | 77 |
 | PUT | `/api/v1/system-admin/moderation/settings/{_}` | `SystemAdminModerationController#updateSetting` (backend/src/main/java/com/mannschaft/app/moderation/controller/SystemAdminModerationController.java) | 282 |
 
-#### /api/v1/admin/* (26 件)
-
-| メソッド | パス | Controller | 行 |
-|---|---|---|---|
-| DELETE | `/api/v1/admin/action-templates/{_}` | `AdminActionTemplateController#deleteTemplate` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminActionTemplateController.java) | 84 |
-| DELETE | `/api/v1/admin/form-presets/{_}` | `FormPresetController#deletePreset` (backend/src/main/java/com/mannschaft/app/forms/controller/FormPresetController.java) | 91 |
-| DELETE | `/api/v1/admin/permission-groups/{_}` | `AdminPermissionGroupController#deletePermissionGroup` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminPermissionGroupController.java) | 84 |
-| GET | `/api/v1/admin/dashboard/users` | `AdminDashboardController#getUsers` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminDashboardController.java) | 53 |
-| GET | `/api/v1/admin/form-presets/{_}` | `FormPresetController#getPreset` (backend/src/main/java/com/mannschaft/app/forms/controller/FormPresetController.java) | 54 |
-| GET | `/api/v1/admin/reports/users/{_}/violation-history` | `ModerationResolveController#getViolationHistory` (backend/src/main/java/com/mannschaft/app/moderation/controller/ModerationResolveController.java) | 172 |
-| GET | `/api/v1/admin/reports/{_}/actions` | `ModerationResolveController#getActions` (backend/src/main/java/com/mannschaft/app/moderation/controller/ModerationResolveController.java) | 109 |
-| GET | `/api/v1/admin/village-creation-requests` | `VillageCreationRequestController#listForAdmin` (backend/src/main/java/com/mannschaft/app/village/controller/VillageCreationRequestController.java) | 76 |
-| PATCH | `/api/v1/admin/dashboard/users/{_}/role` | `AdminDashboardController#updateUserRole` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminDashboardController.java) | 69 |
-| PATCH | `/api/v1/admin/feedbacks/{_}/respond` | `AdminFeedbackController#respondToFeedback` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminFeedbackController.java) | 57 |
-| PATCH | `/api/v1/admin/feedbacks/{_}/status` | `AdminFeedbackController#updateFeedbackStatus` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminFeedbackController.java) | 70 |
-| PATCH | `/api/v1/admin/moderation/reports/{_}/review` | `ModerationAdminController#startReview` (backend/src/main/java/com/mannschaft/app/moderation/controller/ModerationAdminController.java) | 60 |
-| PATCH | `/api/v1/admin/permission-groups/{_}/assign/{_}` | `AdminPermissionGroupController#assignMember` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminPermissionGroupController.java) | 107 |
-| PATCH | `/api/v1/admin/permission-groups/{_}/unassign/{_}` | `AdminPermissionGroupController#unassignMember` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminPermissionGroupController.java) | 124 |
-| PATCH | `/api/v1/admin/reports/users/{_}/restrict-reporting` | `ModerationResolveController#restrictReporting` (backend/src/main/java/com/mannschaft/app/moderation/controller/ModerationResolveController.java) | 159 |
-| PATCH | `/api/v1/admin/reports/{_}/restore-content` | `ModerationResolveController#restoreContent` (backend/src/main/java/com/mannschaft/app/moderation/controller/ModerationResolveController.java) | 146 |
-| POST | `/api/v1/admin/action-memo/regenerate-weekly-summary` | `AdminActionMemoController#regenerateWeeklySummary` (backend/src/main/java/com/mannschaft/app/actionmemo/admin/AdminActionMemoController.java) | 59 |
-| POST | `/api/v1/admin/batch/attendance/run-daily-evaluation` | `AttendanceBatchController#runDailyEvaluation` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceBatchController.java) | 37 |
-| POST | `/api/v1/admin/batch/attendance/send-weekly-digest` | `AttendanceBatchController#sendWeeklyDigest` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceBatchController.java) | 52 |
-| POST | `/api/v1/admin/permission-groups/{_}/duplicate` | `AdminPermissionGroupController#duplicatePermissionGroup` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminPermissionGroupController.java) | 95 |
-| POST | `/api/v1/admin/village-creation-requests/{_}/approve` | `VillageCreationRequestController#approve` (backend/src/main/java/com/mannschaft/app/village/controller/VillageCreationRequestController.java) | 86 |
-| POST | `/api/v1/admin/village-creation-requests/{_}/reject` | `VillageCreationRequestController#reject` (backend/src/main/java/com/mannschaft/app/village/controller/VillageCreationRequestController.java) | 97 |
-| POST | `/api/v1/admin/village-creation-requests/{_}/withdraw` | `VillageCreationRequestController#withdraw` (backend/src/main/java/com/mannschaft/app/village/controller/VillageCreationRequestController.java) | 108 |
-| PUT | `/api/v1/admin/action-templates/{_}` | `AdminActionTemplateController#updateTemplate` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminActionTemplateController.java) | 71 |
-| PUT | `/api/v1/admin/form-presets/{_}` | `FormPresetController#updatePreset` (backend/src/main/java/com/mannschaft/app/forms/controller/FormPresetController.java) | 78 |
-| PUT | `/api/v1/admin/permission-groups/{_}` | `AdminPermissionGroupController#updatePermissionGroup` (backend/src/main/java/com/mannschaft/app/admin/controller/AdminPermissionGroupController.java) | 72 |
-
-#### /api/v1/me/* (25 件)
+#### /api/v1/me/* (20 件)
 
 | メソッド | パス | Controller | 行 |
 |---|---|---|---|
@@ -3594,18 +3505,13 @@
 | DELETE | `/api/v1/me/scope-folders/{_}/items/{_}` | `MyScopeFolderController#removeItem` (backend/src/main/java/com/mannschaft/app/scopefolder/controller/MyScopeFolderController.java) | 180 |
 | DELETE | `/api/v1/me/village-pins/{_}` | `VillagePinController#unpin` (backend/src/main/java/com/mannschaft/app/village/controller/VillagePinController.java) | 73 |
 | GET | `/api/v1/me/applications` | `JobApplicationController#listMyApplications` (backend/src/main/java/com/mannschaft/app/jobmatching/controller/JobApplicationController.java) | 121 |
-| GET | `/api/v1/me/attendance/daily` | `DailyAttendanceController#getMyDailyAttendanceHistory` (backend/src/main/java/com/mannschaft/app/school/controller/DailyAttendanceController.java) | 98 |
 | GET | `/api/v1/me/attendance/notices` | `FamilyAttendanceNoticeController#getMyNotices` (backend/src/main/java/com/mannschaft/app/school/controller/FamilyAttendanceNoticeController.java) | 105 |
-| GET | `/api/v1/me/attendance/statistics/term` | `AttendanceStatisticsController#getTermStatistics` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceStatisticsController.java) | 55 |
-| GET | `/api/v1/me/attendance/timeline` | `PeriodAttendanceController#getStudentDailyTimeline` (backend/src/main/java/com/mannschaft/app/school/controller/PeriodAttendanceController.java) | 108 |
 | GET | `/api/v1/me/circulations/created` | `MyCirculationController#listCreatedDocuments` (backend/src/main/java/com/mannschaft/app/circulation/controller/MyCirculationController.java) | 33 |
 | GET | `/api/v1/me/confirmable-notifications/pending` | `ConfirmableNotificationRecipientController#listPending` (backend/src/main/java/com/mannschaft/app/notification/confirmable/controller/ConfirmableNotificationRecipientController.java) | 38 |
 | GET | `/api/v1/me/contracts` | `JobContractController#listMyContracts` (backend/src/main/java/com/mannschaft/app/jobmatching/controller/JobContractController.java) | 68 |
 | GET | `/api/v1/me/favorites/{_}` | `FavoriteController#getFavorite` (backend/src/main/java/com/mannschaft/app/favorite/controller/FavoriteController.java) | 146 |
-| GET | `/api/v1/me/personal-timetables/{_}/weekly` | `PersonalTimetableSlotController#weekly` (backend/src/main/java/com/mannschaft/app/timetable/personal/controller/PersonalTimetableSlotController.java) | 78 |
 | GET | `/api/v1/me/pilgrimage/history` | `VillagePilgrimageController#history` (backend/src/main/java/com/mannschaft/app/village/controller/VillagePilgrimageController.java) | 74 |
 | GET | `/api/v1/me/pilgrimage/today` | `VillagePilgrimageController#getToday` (backend/src/main/java/com/mannschaft/app/village/controller/VillagePilgrimageController.java) | 52 |
-| GET | `/api/v1/me/timetable-slot-notes/upcoming` | `TimetableSlotUserNoteController#upcoming` (backend/src/main/java/com/mannschaft/app/timetable/notes/controller/TimetableSlotUserNoteController.java) | 93 |
 | GET | `/api/v1/me/timetable-slot-notes/{_}/attachments` | `TimetableSlotUserNoteAttachmentController#list` (backend/src/main/java/com/mannschaft/app/timetable/notes/controller/TimetableSlotUserNoteAttachmentController.java) | 40 |
 | GET | `/api/v1/me/village-creation-requests` | `VillageCreationRequestController#listMine` (backend/src/main/java/com/mannschaft/app/village/controller/VillageCreationRequestController.java) | 64 |
 | PATCH | `/api/v1/me/favorites/reorder` | `FavoriteController#reorderFavorites` (backend/src/main/java/com/mannschaft/app/favorite/controller/FavoriteController.java) | 185 |
@@ -3657,22 +3563,6 @@
 | PUT | `/api/v1/todos/{_}` | `PersonalTodoController#updatePersonalTodo` (backend/src/main/java/com/mannschaft/app/todo/controller/PersonalTodoController.java) | 98 |
 | PUT | `/api/v1/todos/{_}/memo` | `PersonalTodoController#upsertPersonalMemo` (backend/src/main/java/com/mannschaft/app/todo/controller/PersonalTodoController.java) | 228 |
 
-#### /api/v1/screens/* (11 件)
-
-| メソッド | パス | Controller | 行 |
-|---|---|---|---|
-| DELETE | `/api/signage/screens/tokens/{_}` | `SignageScreenController#revokeToken` (backend/src/main/java/com/mannschaft/app/signage/controller/SignageScreenController.java) | 138 |
-| DELETE | `/api/signage/screens/{_}` | `SignageScreenController#deleteScreen` (backend/src/main/java/com/mannschaft/app/signage/controller/SignageScreenController.java) | 99 |
-| DELETE | `/api/signage/screens/{_}/slots/{_}` | `SignageSlotController#removeSlot` (backend/src/main/java/com/mannschaft/app/signage/controller/SignageSlotController.java) | 74 |
-| GET | `/api/signage/screens/{_}` | `SignageScreenController#getScreen` (backend/src/main/java/com/mannschaft/app/signage/controller/SignageScreenController.java) | 77 |
-| GET | `/api/signage/screens/{_}/emergency` | `SignageScreenController#listEmergencyMessages` (backend/src/main/java/com/mannschaft/app/signage/controller/SignageScreenController.java) | 166 |
-| GET | `/api/signage/screens/{_}/tokens` | `SignageScreenController#listTokens` (backend/src/main/java/com/mannschaft/app/signage/controller/SignageScreenController.java) | 128 |
-| POST | `/api/signage/screens/{_}/emergency` | `SignageScreenController#broadcastEmergency` (backend/src/main/java/com/mannschaft/app/signage/controller/SignageScreenController.java) | 153 |
-| POST | `/api/signage/screens/{_}/tokens` | `SignageScreenController#issueToken` (backend/src/main/java/com/mannschaft/app/signage/controller/SignageScreenController.java) | 114 |
-| PUT | `/api/signage/screens/{_}` | `SignageScreenController#updateScreen` (backend/src/main/java/com/mannschaft/app/signage/controller/SignageScreenController.java) | 87 |
-| PUT | `/api/signage/screens/{_}/slots/reorder` | `SignageSlotController#reorderSlots` (backend/src/main/java/com/mannschaft/app/signage/controller/SignageSlotController.java) | 88 |
-| PUT | `/api/signage/screens/{_}/slots/{_}` | `SignageSlotController#updateSlot` (backend/src/main/java/com/mannschaft/app/signage/controller/SignageSlotController.java) | 61 |
-
 #### /api/v1/timeline/* (11 件)
 
 | メソッド | パス | Controller | 行 |
@@ -3703,21 +3593,6 @@
 | POST | `/api/v1/chat/files/upload-url` | `ChatUploadController#generateUploadUrl` (backend/src/main/java/com/mannschaft/app/chat/controller/ChatUploadController.java) | 52 |
 | POST | `/api/v1/chat/messages/{_}/migrate-to-board` | `ChatBoardMigrationController#migrateToBoard` (backend/src/main/java/com/mannschaft/app/chat/controller/ChatBoardMigrationController.java) | 41 |
 | POST | `/api/v1/chat/messages/{_}/pin` | `ChatMessageController#togglePin` (backend/src/main/java/com/mannschaft/app/chat/controller/ChatMessageController.java) | 118 |
-
-#### /api/v1/{_}/* (10 件)
-
-| メソッド | パス | Controller | 行 |
-|---|---|---|---|
-| DELETE | `/api/api-keys/{_}` | `ApiKeyController#revokeApiKey` (backend/src/main/java/com/mannschaft/app/webhook/controller/ApiKeyController.java) | 71 |
-| DELETE | `/api/incidents/{_}` | `IncidentController#deleteIncident` (backend/src/main/java/com/mannschaft/app/incident/controller/IncidentController.java) | 142 |
-| DELETE | `/api/maintenance-schedules/{_}` | `MaintenanceScheduleController#deleteSchedule` (backend/src/main/java/com/mannschaft/app/incident/controller/MaintenanceScheduleController.java) | 80 |
-| GET | `/api/incidents/{_}` | `IncidentController#getIncident` (backend/src/main/java/com/mannschaft/app/incident/controller/IncidentController.java) | 70 |
-| GET | `/api/incidents/{_}/comments` | `IncidentController#listComments` (backend/src/main/java/com/mannschaft/app/incident/controller/IncidentController.java) | 152 |
-| PATCH | `/api/incidents/{_}/status` | `IncidentController#changeStatus` (backend/src/main/java/com/mannschaft/app/incident/controller/IncidentController.java) | 116 |
-| POST | `/api/incidents/{_}/assign` | `IncidentController#assignIncident` (backend/src/main/java/com/mannschaft/app/incident/controller/IncidentController.java) | 129 |
-| POST | `/api/maintenance-schedules/{_}/trigger` | `MaintenanceScheduleController#triggerManually` (backend/src/main/java/com/mannschaft/app/incident/controller/MaintenanceScheduleController.java) | 90 |
-| PUT | `/api/incidents/{_}` | `IncidentController#updateIncident` (backend/src/main/java/com/mannschaft/app/incident/controller/IncidentController.java) | 103 |
-| PUT | `/api/maintenance-schedules/{_}` | `MaintenanceScheduleController#updateSchedule` (backend/src/main/java/com/mannschaft/app/incident/controller/MaintenanceScheduleController.java) | 67 |
 
 #### /api/v1/events/* (8 件)
 
@@ -3795,6 +3670,17 @@
 | POST | `/api/v1/scopes/{_}/{_}/recruitment-listings/{_}/participants/{_}/no-show` | `RecruitmentNoShowController#markNoShow` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentNoShowController.java) | 44 |
 | PUT | `/api/v1/scopes/{_}/{_}/penalty-settings` | `RecruitmentPenaltyController#upsertSetting` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentPenaltyController.java) | 60 |
 
+#### /api/v1/admin/* (6 件)
+
+| メソッド | パス | Controller | 行 |
+|---|---|---|---|
+| GET | `/api/v1/admin/village-creation-requests` | `VillageCreationRequestController#listForAdmin` (backend/src/main/java/com/mannschaft/app/village/controller/VillageCreationRequestController.java) | 76 |
+| POST | `/api/v1/admin/batch/attendance/run-daily-evaluation` | `AttendanceBatchController#runDailyEvaluation` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceBatchController.java) | 37 |
+| POST | `/api/v1/admin/batch/attendance/send-weekly-digest` | `AttendanceBatchController#sendWeeklyDigest` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceBatchController.java) | 52 |
+| POST | `/api/v1/admin/village-creation-requests/{_}/approve` | `VillageCreationRequestController#approve` (backend/src/main/java/com/mannschaft/app/village/controller/VillageCreationRequestController.java) | 86 |
+| POST | `/api/v1/admin/village-creation-requests/{_}/reject` | `VillageCreationRequestController#reject` (backend/src/main/java/com/mannschaft/app/village/controller/VillageCreationRequestController.java) | 97 |
+| POST | `/api/v1/admin/village-creation-requests/{_}/withdraw` | `VillageCreationRequestController#withdraw` (backend/src/main/java/com/mannschaft/app/village/controller/VillageCreationRequestController.java) | 108 |
+
 #### /api/v1/contracts/* (6 件)
 
 | メソッド | パス | Controller | 行 |
@@ -3805,17 +3691,6 @@
 | POST | `/api/v1/contracts/{_}/cancel` | `JobContractController#cancelContract` (backend/src/main/java/com/mannschaft/app/jobmatching/controller/JobContractController.java) | 142 |
 | POST | `/api/v1/contracts/{_}/reject-completion` | `JobContractController#rejectCompletion` (backend/src/main/java/com/mannschaft/app/jobmatching/controller/JobContractController.java) | 125 |
 | POST | `/api/v1/contracts/{_}/report-completion` | `JobContractController#reportCompletion` (backend/src/main/java/com/mannschaft/app/jobmatching/controller/JobContractController.java) | 98 |
-
-#### /api/v1/recruitment-listings/* (6 件)
-
-| メソッド | パス | Controller | 行 |
-|---|---|---|---|
-| GET | `/api/v1/recruitment-listings/search` | `RecruitmentListingController#searchListings` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentListingController.java) | 61 |
-| GET | `/api/v1/recruitment-listings/{_}/cancellation-fee-estimate` | `RecruitmentListingController#estimateCancellationFee` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentListingController.java) | 128 |
-| GET | `/api/v1/recruitment-listings/{_}/distribution-targets` | `RecruitmentListingController#getDistributionTargets` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentListingController.java) | 144 |
-| PATCH | `/api/v1/recruitment-listings/{_}/participants/{_}/attend` | `RecruitmentApplicationController#markAttended` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentApplicationController.java) | 72 |
-| POST | `/api/v1/recruitment-listings/{_}/participants/{_}/confirm` | `RecruitmentListingController#confirmApplication` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentListingController.java) | 165 |
-| PUT | `/api/v1/recruitment-listings/{_}/distribution-targets` | `RecruitmentListingController#setDistributionTargets` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentListingController.java) | 152 |
 
 #### /api/v1/workflow-requests/* (6 件)
 
@@ -3837,6 +3712,16 @@
 | PATCH | `/api/v1/corkboards/{_}/cards/{_}/archive` | `CorkboardCardController#archiveCard` (backend/src/main/java/com/mannschaft/app/corkboard/controller/CorkboardCardController.java) | 83 |
 | POST | `/api/v1/corkboards/{_}/groups/{_}/cards/{_}` | `CorkboardGroupController#addCardToGroup` (backend/src/main/java/com/mannschaft/app/corkboard/controller/CorkboardGroupController.java) | 75 |
 | PUT | `/api/v1/corkboards/{_}/groups/{_}` | `CorkboardGroupController#updateGroup` (backend/src/main/java/com/mannschaft/app/corkboard/controller/CorkboardGroupController.java) | 50 |
+
+#### /api/v1/recruitment-listings/* (5 件)
+
+| メソッド | パス | Controller | 行 |
+|---|---|---|---|
+| GET | `/api/v1/recruitment-listings/search` | `RecruitmentListingController#searchListings` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentListingController.java) | 61 |
+| GET | `/api/v1/recruitment-listings/{_}/distribution-targets` | `RecruitmentListingController#getDistributionTargets` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentListingController.java) | 144 |
+| PATCH | `/api/v1/recruitment-listings/{_}/participants/{_}/attend` | `RecruitmentApplicationController#markAttended` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentApplicationController.java) | 72 |
+| POST | `/api/v1/recruitment-listings/{_}/participants/{_}/confirm` | `RecruitmentListingController#confirmApplication` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentListingController.java) | 165 |
+| PUT | `/api/v1/recruitment-listings/{_}/distribution-targets` | `RecruitmentListingController#setDistributionTargets` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentListingController.java) | 152 |
 
 #### /api/v1/shift-budget/* (5 件)
 
@@ -3911,6 +3796,15 @@
 | POST | `/api/v1/notifications/{_}/snooze` | `NotificationController#snoozeNotification` (backend/src/main/java/com/mannschaft/app/notification/controller/NotificationController.java) | 99 |
 | POST | `/api/v1/notifications/{_}/unread` | `NotificationController#markAsUnread` (backend/src/main/java/com/mannschaft/app/notification/controller/NotificationController.java) | 87 |
 
+#### /api/v1/{_}/* (4 件)
+
+| メソッド | パス | Controller | 行 |
+|---|---|---|---|
+| DELETE | `/api/api-keys/{_}` | `ApiKeyController#revokeApiKey` (backend/src/main/java/com/mannschaft/app/webhook/controller/ApiKeyController.java) | 71 |
+| DELETE | `/api/maintenance-schedules/{_}` | `MaintenanceScheduleController#deleteSchedule` (backend/src/main/java/com/mannschaft/app/incident/controller/MaintenanceScheduleController.java) | 80 |
+| POST | `/api/maintenance-schedules/{_}/trigger` | `MaintenanceScheduleController#triggerManually` (backend/src/main/java/com/mannschaft/app/incident/controller/MaintenanceScheduleController.java) | 90 |
+| PUT | `/api/maintenance-schedules/{_}` | `MaintenanceScheduleController#updateSchedule` (backend/src/main/java/com/mannschaft/app/incident/controller/MaintenanceScheduleController.java) | 67 |
+
 #### /api/v1/embed/* (3 件)
 
 | メソッド | パス | Controller | 行 |
@@ -3943,14 +3837,6 @@
 | GET | `/api/v1/recruitment/penalties/me` | `RecruitmentPenaltyController#getMyPenalties` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentPenaltyController.java) | 123 |
 | POST | `/api/v1/recruitment/no-shows/{_}/dispute` | `RecruitmentNoShowController#dispute` (backend/src/main/java/com/mannschaft/app/recruitment/controller/RecruitmentNoShowController.java) | 99 |
 
-#### /api/v1/students/* (3 件)
-
-| メソッド | パス | Controller | 行 |
-|---|---|---|---|
-| GET | `/api/v1/students/{_}/attendance/locations/timeline` | `AttendanceLocationController#getTimeline` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceLocationController.java) | 117 |
-| GET | `/api/v1/students/{_}/attendance/summary` | `AttendanceSummaryController#getStudentSummary` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceSummaryController.java) | 41 |
-| POST | `/api/v1/students/{_}/attendance/requirements/{_}/evaluate` | `AttendanceRequirementEvaluationController#evaluate` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceRequirementEvaluationController.java) | 70 |
-
 #### /api/v1/surveys/* (3 件)
 
 | メソッド | パス | Controller | 行 |
@@ -3973,13 +3859,6 @@
 |---|---|---|---|
 | POST | `/api/v1/auth/webauthn/reauthenticate-begin` | `AuthWebAuthnController#beginReauthenticate` (backend/src/main/java/com/mannschaft/app/auth/controller/AuthWebAuthnController.java) | 108 |
 | POST | `/api/v1/auth/webauthn/reauthenticate-complete` | `AuthWebAuthnController#completeReauthenticate` (backend/src/main/java/com/mannschaft/app/auth/controller/AuthWebAuthnController.java) | 122 |
-
-#### /api/v1/categories/* (2 件)
-
-| メソッド | パス | Controller | 行 |
-|---|---|---|---|
-| DELETE | `/api/incidents/categories/{_}` | `IncidentCategoryController#deleteCategory` (backend/src/main/java/com/mannschaft/app/incident/controller/IncidentCategoryController.java) | 77 |
-| PUT | `/api/incidents/categories/{_}` | `IncidentCategoryController#updateCategory` (backend/src/main/java/com/mannschaft/app/incident/controller/IncidentCategoryController.java) | 65 |
 
 #### /api/v1/chat-folders/* (2 件)
 
@@ -4103,11 +3982,11 @@
 |---|---|---|---|
 | GET | `/signage/{_}` | `SignageDisplayController#getDisplayConfig` (backend/src/main/java/com/mannschaft/app/signage/controller/SignageDisplayController.java) | 48 |
 
-#### /api/v1/ssr-logs/* (1 件)
+#### /api/v1/students/* (1 件)
 
 | メソッド | パス | Controller | 行 |
 |---|---|---|---|
-| POST | `/api/internal/ssr-logs` | `InternalSsrLogController#receiveSsrLog` (backend/src/main/java/com/mannschaft/app/admin/systemlog/InternalSsrLogController.java) | 51 |
+| POST | `/api/v1/students/{_}/attendance/requirements/{_}/evaluate` | `AttendanceRequirementEvaluationController#evaluate` (backend/src/main/java/com/mannschaft/app/school/controller/AttendanceRequirementEvaluationController.java) | 70 |
 
 #### /api/v1/succession/* (1 件)
 
@@ -4133,15 +4012,32 @@
 |---|---|---|---|
 | GET | `/api/v1/tournament-presets` | `TournamentTemplateController#listPublicPresets` (backend/src/main/java/com/mannschaft/app/tournament/controller/TournamentTemplateController.java) | 98 |
 
-#### /api/v1/visibility-templates/* (1 件)
-
-| メソッド | パス | Controller | 行 |
-|---|---|---|---|
-| POST | `/api/v1/visibility-templates/{_}/evaluate` | `VisibilityTemplateController#evaluate` (backend/src/main/java/com/mannschaft/app/visibility/controller/VisibilityTemplateController.java) | 135 |
-
 ---
 
 ## 3. ✅ 一致（件数のみ）
 
-一致したエンドポイント: **1322 件**（詳細リストは省略）
+一致したエンドポイント: **1364 件**（詳細リストは省略）
+
+---
+
+## 4. 🟦 スコープ階層プレフィックス逆引き準一致（V4-1）
+
+> 実装側が `/api/v1/teams/{_}/...` 等のスコープ context 付きで定義されているが、設計書側ではコアパス（scope 抜き）で記載されているケース。意味的に同一とみなし、メイン集計の「設計あり・実装なし」「実装あり・設計なし」両方から除外している。
+
+_該当なし。_
+---
+
+## 5. 🔵 将来機能（実装ステータス明示）
+
+> 設計書テーブル行で状態列が `🔵`（Phase X 未着工等）と明示されているエンドポイント。意図的に未実装のため、メインの「設計あり・実装なし」には含めない。
+
+将来機能件数: **5 件**
+
+| 状態 | メソッド | パス | 設計書 | 行 | 実装済 |
+|---|---|---|---|---:|:---:|
+| 🔵 | GET | `/api/v1/admin/member-permissions` | `docs/features/F10.1_admin_dashboard.md` | 480 |  |
+| 🔵 | GET | `/api/v1/admin/permission-groups/{_}` | `docs/features/F10.1_admin_dashboard.md` | 474 |  |
+| 🔵 | GET | `/api/v1/admin/seals/regenerate-all/{_}/status` | `docs/features/F05.3_digital_seal.md` | 163 |  |
+| 🔵 | GET | `/api/v1/admin/seals/ungenerated` | `docs/features/F05.3_digital_seal.md` | 164 |  |
+| 🔵 | PUT | `/api/v1/admin/member-permissions` | `docs/features/F10.1_admin_dashboard.md` | 481 |  |
 
