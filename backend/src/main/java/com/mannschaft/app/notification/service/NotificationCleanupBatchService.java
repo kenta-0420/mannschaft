@@ -42,7 +42,6 @@ public class NotificationCleanupBatchService {
     @BatchEndpoint(name = "notification-cleanup", description = "90 日経過した既読通知を毎日 04:00 に物理削除する")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "notificationCleanupBatch", lockAtMostFor = "PT1H", lockAtLeastFor = "PT5M")
-    @BatchEndpoint(name = "notification-cleanup", description = "通知の物理削除（保持期限超過分）")
     public void cleanupOldReadNotifications() {
         LocalDateTime threshold = LocalDateTime.now().minusDays(RETENTION_DAYS);
         log.info("[NotificationCleanupBatch] クリーンアップ開始: 基準日時={}", threshold);

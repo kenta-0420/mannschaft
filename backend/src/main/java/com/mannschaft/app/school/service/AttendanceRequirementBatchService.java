@@ -52,7 +52,6 @@ public class AttendanceRequirementBatchService {
     @BatchEndpoint(name = "attendance-daily-evaluation", description = "出席要件規程の日次評価を毎日 06:00 に実行する")
     @Scheduled(cron = "0 0 6 * * *")
     @Transactional
-    @BatchEndpoint(name = "attendance-daily-evaluation", description = "出席日次評価")
     public void runDailyEvaluation() {
         LocalDate today = LocalDate.now();
         short year = (short) today.getYear();
