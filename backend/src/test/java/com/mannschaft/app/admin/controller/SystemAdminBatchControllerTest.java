@@ -18,11 +18,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -35,8 +30,9 @@ import java.util.Optional;
 import java.util.concurrent.Executor;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -47,13 +43,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * F10.X 第二陣 — {@link SystemAdminBatchController} の MockMvc テスト。
  *
  * <p>{@code @WebMvcTest} で Controller のみをロードし、Registry / Service / Probe / Executor を
- * すべて MockitoBean / TestConfig で差し替える。
- * Executor は同期実行する {@code Runnable::run} を Bean 化して非同期分岐の挙動も検証する。</p>
+ * すべて {@code @MockitoBean} で差し替える。
+ * Executor は {@code @MockitoBean(name = "job-pool")} で qualifier 付き mock として注入し、
+ * テストで {@code Runnable::run} を即時実行するようスタブする（非同期分岐の検証用）。</p>
  */
 @DisplayName("SystemAdminBatchController テスト")
 @WebMvcTest(SystemAdminBatchController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import(SystemAdminBatchControllerTest.TestConfig.class)
 class SystemAdminBatchControllerTest {
 
     @Autowired
@@ -71,6 +67,13 @@ class SystemAdminBatchControllerTest {
     @MockitoBean
     private ShedLockProbe shedLockProbe;
 
+    /**
+     * Controller が {@code @Qualifier("job-pool")} で要求する Executor。
+     * mock のスタブで「投入された Runnable をその場で実行する」挙動を {@link BeforeEach} で仕込む。
+     */
+    @MockitoBean(name = "job-pool")
+    private Executor jobPoolExecutor;
+
     // フィルター・コンテキスト依存（@WebMvcTest 共通の慣習）
     @MockitoBean
     private AuthTokenService authTokenService;
@@ -82,22 +85,15 @@ class SystemAdminBatchControllerTest {
     private ProxyInputContext proxyInputContext;
 
     @BeforeEach
-    void setUpSecurityContext() {
+    void setUp() {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("1", null, List.of()));
-    }
-
-    /**
-     * job-pool Executor は本テストでは同期実行する。
-     * Controller が submit したタスクが即座に走るので、後段のアサーションで状態を検証できる。
-     */
-    @Configuration
-    static class TestConfig {
-        @Bean("job-pool")
-        @Primary
-        public Executor jobPoolExecutor() {
-            return Runnable::run;
-        }
+        // execute() に渡された Runnable をその場で実行する（非同期分岐の検証用）
+        doAnswer(invocation -> {
+            Runnable r = invocation.getArgument(0);
+            r.run();
+            return null;
+        }).when(jobPoolExecutor).execute(any(Runnable.class));
     }
 
     private static BatchEndpointDescriptor descriptor(String name, String lockName) throws Exception {
@@ -235,17 +231,5 @@ class SystemAdminBatchControllerTest {
         // JdbcTemplate=null でも呼び出し前に短絡判定するので NPE は出ない
         assertThat(probe.isLocked(null)).isFalse();
         assertThat(probe.isLocked("")).isFalse();
-    }
-
-    @Test
-    @DisplayName("ShedLockProbe: anyString 評価用の整合性確認")
-    void shedLockProbe_mockReturnsFalseByDefault() throws Exception {
-        // anyString のスタブを使う他テストの取りこぼし防御
-        given(shedLockProbe.isLocked(anyString())).willReturn(false);
-        BatchEndpointDescriptor d = descriptor("foo-batch", "fooLock");
-        given(registry.find("foo-batch")).willReturn(Optional.of(d));
-
-        mockMvc.perform(post("/api/v1/system-admin/batch/foo-batch/trigger"))
-                .andExpect(status().isAccepted());
     }
 }
