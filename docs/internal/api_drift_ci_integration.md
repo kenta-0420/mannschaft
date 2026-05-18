@@ -15,7 +15,7 @@ GitHub Actions ワークフローを Stage 3 で導入した。
 | ファイル | 役割 |
 |---|---|
 | `.github/workflows/api-drift-check.yml` | ワークフロー本体（pull_request イベントで起動） |
-| `backend/scripts/scan_api_drift.py` | 既存スキャナ v4（**この PR では変更しない**） |
+| `backend/scripts/scan_api_drift.py` | 既存スキャナ v6（v4 → v5 → v6 と進化。v6 では V6-1 同一ファイル内重複排除 既定 ON、V6-2 末尾セグメントリネーム辞書 既定 OFF（`--v6-rename` で ON）） |
 | `backend/scripts/ci_drift_summary.py` | 新規補助スクリプト。main / PR の baseline.md を読み込んで差分 Markdown を生成 |
 | `docs/internal/api_drift_baseline.md` | main 上の最新 baseline（手動コミット運用） |
 | `docs/internal/api_drift_exclusions.yml` | 既知の除外パターン |
