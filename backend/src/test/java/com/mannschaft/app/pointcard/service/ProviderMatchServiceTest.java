@@ -81,6 +81,8 @@ class ProviderMatchServiceTest {
     private static final UUID DPOINT_ID = UUID.fromString("00000000-0000-7000-8000-000000000001");
     private static final UUID TOKYU_ID = UUID.fromString("00000000-0000-7000-8000-000000000002");
     private static final UUID VPOINT_ID = UUID.fromString("00000000-0000-7000-8000-000000000003");
+    private static final UUID MCDONALD_ID = UUID.fromString("00000000-0000-7000-8000-000000000004");
+    private static final UUID DOCOMO_SYN_OWNER_ID = UUID.fromString("00000000-0000-7000-8000-000000000005");
 
     /**
      * シノニム生成ヘルパー。
@@ -387,6 +389,226 @@ class ProviderMatchServiceTest {
                     providerMatchService.matchProvider("dポイント");
             assertThat(result).isPresent();
             assertThat(result.get().getCode()).isEqualTo("dpoint");
+        }
+    }
+
+    /**
+     * マクドナルド プロバイダー（Levenshtein テスト用、距離 1 マッチ検証）。
+     * normalize 後 = まくどなるど（6 文字）。「まくどなど」（5 文字、距離 1）でヒットさせる用。
+     */
+    private PointCardProviderEntity buildMcdonald() {
+        PointCardProviderEntity p = PointCardProviderEntity.builder()
+                .code("mcdonalds")
+                .displayName("マクドナルド")
+                .category(PointCardCategory.RETAIL)
+                .type(PointCardProviderType.EXTERNAL)
+                .brandColor("#FFC72C")
+                .active(Boolean.TRUE)
+                .build();
+        ReflectionTestUtils.setField(p, "id", MCDONALD_ID);
+        return p;
+    }
+
+    @Nested
+    @DisplayName("Levenshtein 距離マッチ (Phase 5 P5-S3)")
+    class LevenshteinFallback {
+
+        /**
+         * 各テストで明示的に Levenshtein 設定を投入する（@Value 注入は MockitoExtension では効かないため）。
+         * 既定: enabled=true, max-distance=1, min-input-length=5（application.yml と同値）。
+         */
+        @BeforeEach
+        void enableLevenshtein() {
+            ReflectionTestUtils.setField(providerMatchService, "levenshteinEnabled", true);
+            ReflectionTestUtils.setField(providerMatchService, "levenshteinMaxDistance", 1);
+            ReflectionTestUtils.setField(providerMatchService, "levenshteinMinInputLength", 5);
+
+            // マクドナルドを含む 3 件のマスタで再ロード
+            given(providerRepository.findAllByActiveTrueOrderByCategoryAscDisplayNameAsc())
+                    .willReturn(List.of(buildDpoint(), buildTokyu(), buildMcdonald()));
+            given(synonymRepository.findAllByOrderByProviderIdAscSynonymNormalizedAsc())
+                    .willReturn(Collections.emptyList());
+            providerMatchService.onProviderCacheRefresh(new ProviderCacheRefreshEvent());
+        }
+
+        @Test
+        @DisplayName("enabled=true + 距離 1 でマクドナルドにマッチする（『まくどなど』）")
+        void enabled_distance1_matchesMcdonald() {
+            // normalize 後: 入力「まくどなど」(5 文字) vs マスタ「まくどなるど」(6 文字) = 距離 1
+            Optional<PointCardProviderEntity> result =
+                    providerMatchService.matchProvider("まくどなど");
+            assertThat(result).isPresent();
+            assertThat(result.get().getCode()).isEqualTo("mcdonalds");
+        }
+
+        @Test
+        @DisplayName("enabled=true でも距離 2 はマッチしない（『まくどなるもの』）")
+        void enabled_distance2_doesNotMatch() {
+            // normalize 後: 入力「まくどなるもの」(7 文字) vs マスタ「まくどなるど」(6 文字) = 距離 2
+            // （末尾「ど」→「もの」で 1 置換 + 1 挿入 = 2）
+            Optional<PointCardProviderEntity> result =
+                    providerMatchService.matchProvider("まくどなるもの");
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("enabled=false なら距離 1 候補があっても Levenshtein スキップ")
+        void disabled_skipsLevenshtein() {
+            ReflectionTestUtils.setField(providerMatchService, "levenshteinEnabled", false);
+            Optional<PointCardProviderEntity> result =
+                    providerMatchService.matchProvider("まくどなど");
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("入力長 < min-input-length なら Levenshtein スキップ（min=5 で 4 文字入力）")
+        void shortInput_skipsLevenshtein() {
+            // min-input-length=5 のため 4 文字入力は近似マッチ対象外
+            // 「とぽいん」(4 文字)。マスタ「dぽいんと」(5 文字)、「とうきゅうぽいんと」(9 文字) いずれも候補だが
+            // ガードでスキップされ Optional.empty が返る。
+            ReflectionTestUtils.setField(providerMatchService, "levenshteinMinInputLength", 5);
+            Optional<PointCardProviderEntity> result =
+                    providerMatchService.matchProvider("ぽいん");
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("1 段目 normalized で hit する入力は完全一致を返す（Levenshtein 段は呼ばれない）")
+        void exactMatch_skipsLevenshtein() {
+            // 完全一致入力。Levenshtein 段に到達せず確実に dpoint を返す。
+            Optional<PointCardProviderEntity> result =
+                    providerMatchService.matchProvider("dポイント");
+            assertThat(result).isPresent();
+            assertThat(result.get().getCode()).isEqualTo("dpoint");
+        }
+
+        @Test
+        @DisplayName("2 段目 synonym で hit する入力はシノニム経由を返す（Levenshtein 段は呼ばれない）")
+        void synonymExactMatch_skipsLevenshtein() {
+            // synonym「ドコモポイント」を dpoint に紐付け
+            String normalizedKey = ProviderMatchService.normalize("ドコモポイント");
+            given(synonymRepository.findAllByOrderByProviderIdAscSynonymNormalizedAsc())
+                    .willReturn(List.of(buildSynonym(DPOINT_ID, "ドコモポイント", normalizedKey)));
+            given(providerRepository.findById(DPOINT_ID))
+                    .willReturn(Optional.of(buildDpoint()));
+            providerMatchService.onProviderCacheRefresh(new ProviderCacheRefreshEvent());
+
+            // 完全一致の synonym 入力は 2 段目で hit する
+            Optional<PointCardProviderEntity> result =
+                    providerMatchService.matchProvider("ドコモポイント");
+            assertThat(result).isPresent();
+            assertThat(result.get().getCode()).isEqualTo("dpoint");
+        }
+
+        @Test
+        @DisplayName("synonym 経由の距離 1 マッチ（『どこもぽいんお』→ dpoint）")
+        void synonymLevenshteinMatch() {
+            // synonym normalized = 「どこもぽいんと」(7 文字)、入力「どこもぽいんお」(7 文字) → 距離 1
+            String normalizedKey = ProviderMatchService.normalize("ドコモポイント"); // = どこもぽいんと
+            given(synonymRepository.findAllByOrderByProviderIdAscSynonymNormalizedAsc())
+                    .willReturn(List.of(buildSynonym(DPOINT_ID, "ドコモポイント", normalizedKey)));
+            given(providerRepository.findById(DPOINT_ID))
+                    .willReturn(Optional.of(buildDpoint()));
+            providerMatchService.onProviderCacheRefresh(new ProviderCacheRefreshEvent());
+
+            Optional<PointCardProviderEntity> result =
+                    providerMatchService.matchProvider("どこもぽいんお");
+            assertThat(result).isPresent();
+            assertThat(result.get().getCode()).isEqualTo("dpoint");
+        }
+
+        @Test
+        @DisplayName("優先度順: 距離 1 で normalized 由来と synonym 由来が両方 hit したら normalized を返す")
+        void priority_normalizedBeatsSynonym() {
+            // normalized「まくどなるど」(6) と入力「まくどなるも」(6) は距離 1（末尾「ど→も」置換）
+            // 同時に別 provider (DOCOMO_SYN_OWNER_ID) に synonym「まくどなるみ」を紐付け → 入力との距離も 1
+            // 期待: normalized 由来の mcdonalds が返る。
+            PointCardProviderEntity decoy = PointCardProviderEntity.builder()
+                    .code("decoy_provider")
+                    .displayName("囮プロバイダー")
+                    .category(PointCardCategory.OTHER)
+                    .type(PointCardProviderType.EXTERNAL)
+                    .active(Boolean.TRUE)
+                    .build();
+            ReflectionTestUtils.setField(decoy, "id", DOCOMO_SYN_OWNER_ID);
+
+            given(providerRepository.findAllByActiveTrueOrderByCategoryAscDisplayNameAsc())
+                    .willReturn(List.of(buildDpoint(), buildTokyu(), buildMcdonald(), decoy));
+            given(synonymRepository.findAllByOrderByProviderIdAscSynonymNormalizedAsc())
+                    .willReturn(List.of(buildSynonym(DOCOMO_SYN_OWNER_ID, "まくどなるみ", "まくどなるみ")));
+            // 実装上は normalizedIndex を先に走査するため、normalized 由来が best に入った時点で
+            // synonym 候補の findById は呼ばれない（早期 continue で省略）。
+            // したがって providerRepository.findById(DOCOMO_SYN_OWNER_ID) の stub は不要。
+            providerMatchService.onProviderCacheRefresh(new ProviderCacheRefreshEvent());
+
+            Optional<PointCardProviderEntity> result =
+                    providerMatchService.matchProvider("まくどなるも");
+            assertThat(result).isPresent();
+            assertThat(result.get().getCode())
+                    .as("normalized 由来 (mcdonalds) が synonym 由来 (decoy_provider) より優先される")
+                    .isEqualTo("mcdonalds");
+        }
+
+        @Test
+        @DisplayName("半角全角混在 + Levenshtein（全角『ｍａｃｄｏｎａｄ』→ mcdonalds の code 経由）")
+        void fullWidthAlphabet_withLevenshtein() {
+            // NFKC 後: 「macdonad」(8 文字)。マスタ code「mcdonalds」normalize→「mcdonalds」(9 文字)
+            // 距離: m-c-d-o-n-a-d  vs  m-c-d-o-n-a-l-d-s
+            // 「macdonad」(8) vs 「mcdonalds」(9) は実際の距離が複雑なので分かりやすい例に変更:
+            // 全角「ｍｃｄｏｎａｌｄｓ」入力 → NFKC で「mcdonalds」完全一致（1 段目 hit）になってしまう。
+            // ここでは「全角入力 + 1 文字違い」を検証するため、全角『ｍｃｄｏｎａｌｄ』(末尾 s 抜き) を入れる
+            // → NFKC「mcdonald」(8 文字) vs マスタ「mcdonalds」(9 文字) = 距離 1（末尾 s 削除のみ）
+            Optional<PointCardProviderEntity> result =
+                    providerMatchService.matchProvider("ｍｃｄｏｎａｌｄ");
+            assertThat(result).isPresent();
+            assertThat(result.get().getCode()).isEqualTo("mcdonalds");
+        }
+
+        @Test
+        @DisplayName("null 入力は Levenshtein 段に到達せず Optional.empty を返す")
+        void nullInput_returnsEmptyBeforeLevenshtein() {
+            assertThat(providerMatchService.matchProvider(null)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("空白のみ入力は Levenshtein 段に到達せず Optional.empty を返す")
+        void blankInput_returnsEmptyBeforeLevenshtein() {
+            assertThat(providerMatchService.matchProvider("   ")).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("levenshteinDistance ヘルパー")
+    class LevenshteinDistanceHelper {
+
+        @Test
+        @DisplayName("完全一致は距離 0")
+        void identical_returnsZero() {
+            assertThat(ProviderMatchService.levenshteinDistance("abc", "abc")).isZero();
+        }
+
+        @Test
+        @DisplayName("1 文字置換は距離 1")
+        void substitution_returnsOne() {
+            assertThat(ProviderMatchService.levenshteinDistance("abc", "abd")).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("1 文字挿入は距離 1")
+        void insertion_returnsOne() {
+            assertThat(ProviderMatchService.levenshteinDistance("abc", "abcd")).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("1 文字削除は距離 1")
+        void deletion_returnsOne() {
+            assertThat(ProviderMatchService.levenshteinDistance("abcd", "abc")).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("空文字 vs 長さ N は距離 N")
+        void emptyVsN_returnsN() {
+            assertThat(ProviderMatchService.levenshteinDistance("", "abcd")).isEqualTo(4);
         }
     }
 }
