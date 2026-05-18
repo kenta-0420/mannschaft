@@ -1,10 +1,14 @@
 package com.mannschaft.app.workflow.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.workflow.dto.WorkflowAttachmentPresignRequest;
+import com.mannschaft.app.workflow.dto.WorkflowAttachmentPresignResponse;
+import com.mannschaft.app.workflow.dto.WorkflowAttachmentRegisterRequest;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentResponse;
 import com.mannschaft.app.workflow.dto.WorkflowCommentRequest;
 import com.mannschaft.app.workflow.dto.WorkflowCommentResponse;
 import com.mannschaft.app.workflow.service.WorkflowCommentService;
+import com.mannschaft.app.workflow.service.WorkflowRequestAttachmentService;
 import com.mannschaft.app.workflow.WorkflowMapper;
 import com.mannschaft.app.workflow.repository.WorkflowRequestAttachmentRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,6 +40,7 @@ public class WorkflowCommentController {
 
     private final WorkflowCommentService commentService;
     private final WorkflowRequestAttachmentRepository attachmentRepository;
+    private final WorkflowRequestAttachmentService attachmentService;
     private final WorkflowMapper workflowMapper;
 
 
@@ -102,5 +107,48 @@ public class WorkflowCommentController {
         List<WorkflowAttachmentResponse> attachments = workflowMapper.toAttachmentResponseList(
                 attachmentRepository.findByRequestIdOrderByCreatedAtAsc(requestId));
         return ResponseEntity.ok(ApiResponse.of(attachments));
+    }
+
+    /**
+     * 添付ファイルアップロード用 Pre-signed URL を発行する（F05.6 Phase 11 第二陣 2-γ）。
+     */
+    @PostMapping("/upload-url")
+    @Operation(summary = "添付ファイル アップロード URL 発行",
+            description = "クライアントが返却された uploadUrl に対して PUT で直接アップロードする。完了後 POST /attachments で登録")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "発行成功")
+    public ResponseEntity<ApiResponse<WorkflowAttachmentPresignResponse>> presignUpload(
+            @PathVariable Long requestId,
+            @Valid @RequestBody WorkflowAttachmentPresignRequest request) {
+        WorkflowAttachmentPresignResponse response = attachmentService.presignUpload(
+                requestId, SecurityUtils.getCurrentUserId(), request);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 添付ファイルを登録する（F05.6 Phase 11 第二陣 2-γ）。
+     */
+    @PostMapping("/attachments")
+    @Operation(summary = "添付ファイル登録",
+            description = "Pre-signed URL でのアップロード完了後にメタデータを登録")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "登録成功")
+    public ResponseEntity<ApiResponse<WorkflowAttachmentResponse>> registerAttachment(
+            @PathVariable Long requestId,
+            @Valid @RequestBody WorkflowAttachmentRegisterRequest request) {
+        WorkflowAttachmentResponse response = attachmentService.registerAttachment(
+                requestId, SecurityUtils.getCurrentUserId(), request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    /**
+     * 添付ファイルを削除する（F05.6 Phase 11 第二陣 2-γ）。
+     */
+    @DeleteMapping("/attachments/{attachmentId}")
+    @Operation(summary = "添付ファイル削除")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    public ResponseEntity<Void> deleteAttachment(
+            @PathVariable Long requestId,
+            @PathVariable Long attachmentId) {
+        attachmentService.deleteAttachment(requestId, attachmentId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
     }
 }

@@ -32,6 +32,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -450,6 +451,62 @@ class WorkflowRequestServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(WorkflowErrorCode.REQUEST_NOT_FOUND));
+        }
+    }
+
+    @Nested
+    @DisplayName("listMyRequests (F05.6 Phase 11 第二陣 2-γ)")
+    class ListMyRequests {
+
+        @Test
+        @DisplayName("自分の申請一覧_status未指定_全件取得")
+        void 自分の申請一覧_status未指定_全件取得() {
+            // Given
+            WorkflowRequestEntity entity = createDraftRequest();
+            Page<WorkflowRequestEntity> page = new PageImpl<>(List.of(entity));
+            WorkflowRequestResponse response = new WorkflowRequestResponse(REQUEST_ID, TEMPLATE_ID,
+                    SCOPE_TYPE, SCOPE_ID, "休暇申請", "DRAFT", USER_ID, null, null,
+                    null, null, null, null, null, null, List.of());
+
+            given(requestRepository.findByRequestedByOrderByCreatedAtDesc(eq(USER_ID), any(PageRequest.class)))
+                    .willReturn(page);
+            given(requestStepRepository.findByRequestIdOrderByStepOrderAsc(any())).willReturn(List.of());
+            given(workflowMapper.toRequestDetailResponse(any(), any())).willReturn(response);
+
+            // When
+            Page<WorkflowRequestResponse> result = workflowRequestService.listMyRequests(
+                    USER_ID, null, PageRequest.of(0, 20));
+
+            // Then
+            assertThat(result.getContent()).hasSize(1);
+            assertThat(result.getContent().get(0).getTitle()).isEqualTo("休暇申請");
+            verify(requestRepository).findByRequestedByOrderByCreatedAtDesc(eq(USER_ID), any(PageRequest.class));
+        }
+
+        @Test
+        @DisplayName("自分の申請一覧_status指定_フィルタ取得")
+        void 自分の申請一覧_status指定_フィルタ取得() {
+            // Given
+            WorkflowRequestEntity entity = createDraftRequest();
+            Page<WorkflowRequestEntity> page = new PageImpl<>(List.of(entity));
+            WorkflowRequestResponse response = new WorkflowRequestResponse(REQUEST_ID, TEMPLATE_ID,
+                    SCOPE_TYPE, SCOPE_ID, "休暇申請", "PENDING", USER_ID, null, null,
+                    null, null, null, null, null, null, List.of());
+
+            given(requestRepository.findByRequestedByAndStatusOrderByCreatedAtDesc(
+                    eq(USER_ID), eq(WorkflowStatus.PENDING), any(PageRequest.class)))
+                    .willReturn(page);
+            given(requestStepRepository.findByRequestIdOrderByStepOrderAsc(any())).willReturn(List.of());
+            given(workflowMapper.toRequestDetailResponse(any(), any())).willReturn(response);
+
+            // When
+            Page<WorkflowRequestResponse> result = workflowRequestService.listMyRequests(
+                    USER_ID, "PENDING", PageRequest.of(0, 20));
+
+            // Then
+            assertThat(result.getContent()).hasSize(1);
+            verify(requestRepository).findByRequestedByAndStatusOrderByCreatedAtDesc(
+                    eq(USER_ID), eq(WorkflowStatus.PENDING), any(PageRequest.class));
         }
     }
 }

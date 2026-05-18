@@ -32,6 +32,17 @@ public interface WorkflowRequestRepository extends JpaRepository<WorkflowRequest
     List<WorkflowRequestEntity> findByRequestedByOrderByCreatedAtDesc(Long requestedBy);
 
     /**
+     * ユーザーの申請一覧をページング取得する（F05.6 Phase 11 第二陣 2-γ: GET /workflow-requests/me 用）。
+     */
+    Page<WorkflowRequestEntity> findByRequestedByOrderByCreatedAtDesc(Long requestedBy, Pageable pageable);
+
+    /**
+     * ユーザーの申請一覧をステータスでフィルタしてページング取得する（F05.6 Phase 11 第二陣 2-γ: GET /workflow-requests/me 用）。
+     */
+    Page<WorkflowRequestEntity> findByRequestedByAndStatusOrderByCreatedAtDesc(
+            Long requestedBy, WorkflowStatus status, Pageable pageable);
+
+    /**
      * IDとスコープで申請を取得する。
      */
     Optional<WorkflowRequestEntity> findByIdAndScopeTypeAndScopeId(
