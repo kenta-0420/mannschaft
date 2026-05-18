@@ -66,7 +66,8 @@ async function loadMore() {
   }
 }
 
-function handleFilterChange() {
+function selectFilter(channel: AdChannelType | 'ALL') {
+  filterChannel.value = channel
   loadInitial()
 }
 
@@ -134,50 +135,35 @@ onMounted(loadInitial)
           :severity="filterChannel === 'ALL' ? 'primary' : 'secondary'"
           :outlined="filterChannel !== 'ALL'"
           size="small"
-          @click="
-            filterChannel = 'ALL'
-            handleFilterChange()
-          "
+          @click="selectFilter('ALL')"
         />
         <Button
           :label="t('advertising.pages.me_ad_deliveries.filter_announcement')"
           :severity="filterChannel === 'ANNOUNCEMENT' ? 'primary' : 'secondary'"
           :outlined="filterChannel !== 'ANNOUNCEMENT'"
           size="small"
-          @click="
-            filterChannel = 'ANNOUNCEMENT'
-            handleFilterChange()
-          "
+          @click="selectFilter('ANNOUNCEMENT')"
         />
         <Button
           :label="t('advertising.pages.me_ad_deliveries.filter_email')"
           :severity="filterChannel === 'EMAIL' ? 'primary' : 'secondary'"
           :outlined="filterChannel !== 'EMAIL'"
           size="small"
-          @click="
-            filterChannel = 'EMAIL'
-            handleFilterChange()
-          "
+          @click="selectFilter('EMAIL')"
         />
         <Button
           :label="t('advertising.pages.me_ad_deliveries.filter_push')"
           :severity="filterChannel === 'PUSH' ? 'primary' : 'secondary'"
           :outlined="filterChannel !== 'PUSH'"
           size="small"
-          @click="
-            filterChannel = 'PUSH'
-            handleFilterChange()
-          "
+          @click="selectFilter('PUSH')"
         />
         <Button
           :label="t('advertising.pages.me_ad_deliveries.filter_banner')"
           :severity="filterChannel === 'BANNER' ? 'primary' : 'secondary'"
           :outlined="filterChannel !== 'BANNER'"
           size="small"
-          @click="
-            filterChannel = 'BANNER'
-            handleFilterChange()
-          "
+          @click="selectFilter('BANNER')"
         />
       </div>
 
