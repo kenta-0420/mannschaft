@@ -37,6 +37,10 @@ export interface TeamResponse {
   bannerUrl: string | null
   teamFriendCount: number
   supporterCount: number
+  /**
+   * F15.4 Phase 5-β: Google Maps 埋め込み URL（管理画面表示用、null 許容）
+   */
+  mapEmbedUrl: string | null
 }
 
 export interface TeamSummaryResponse {
@@ -76,6 +80,12 @@ export interface UpdateTeamRequest {
   description?: string
   visibility?: TeamVisibility
   supporterEnabled?: boolean
+  /**
+   * F15.4 Phase 5-β: Google Maps 埋め込み URL。
+   * null を指定すると地図を削除、undefined（指定なし）は既存値を保持。
+   * 形式: `^https://www\.google\.com/maps/embed\?...`
+   */
+  mapEmbedUrl?: string | null
 }
 
 // === F01.2 拡張プロフィール ===

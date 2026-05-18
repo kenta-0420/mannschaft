@@ -15,6 +15,7 @@ import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.dto.CreateTeamRequest;
 import com.mannschaft.app.team.dto.TeamResponse;
+import com.mannschaft.app.team.dto.UpdateTeamRequest;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
@@ -125,6 +126,64 @@ class TeamServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TEAM_002"));
+        }
+    }
+
+    @Nested
+    @DisplayName("updateTeam")
+    class UpdateTeam {
+
+        @Test
+        @DisplayName("正常系: F15.4 Phase 5-β - mapEmbedUrl が保存されレスポンスに含まれる")
+        void 更新_mapEmbedUrl_保存() {
+            // Given
+            TeamEntity team = TeamEntity.builder()
+                    .name("テスト").template("sports")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .supporterEnabled(false)
+                    .build();
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+            given(teamRepository.save(any(TeamEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
+            given(membershipRepository.countActiveByScopeAndRoleKind(any(), any(), any())).willReturn(0L);
+
+            String embedUrl = "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d12345";
+            UpdateTeamRequest req = new UpdateTeamRequest(
+                    null, null, null, null, null, null, null, null, null,
+                    embedUrl, 1L);
+
+            // When
+            ApiResponse<TeamResponse> result = service.updateTeam(TEAM_ID, req);
+
+            // Then
+            assertThat(result.getData().getMapEmbedUrl()).isEqualTo(embedUrl);
+            verify(teamRepository).save(any(TeamEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系: mapEmbedUrl=null の場合は既存値が保持される")
+        void 更新_mapEmbedUrl_null時既存維持() {
+            // Given
+            TeamEntity team = TeamEntity.builder()
+                    .name("テスト").template("sports")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .supporterEnabled(false)
+                    .mapEmbedUrl("https://www.google.com/maps/embed?pb=existing")
+                    .build();
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+            given(teamRepository.save(any(TeamEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
+            given(membershipRepository.countActiveByScopeAndRoleKind(any(), any(), any())).willReturn(0L);
+
+            UpdateTeamRequest req = new UpdateTeamRequest(
+                    "新名称", null, null, null, null, null, null, null, null,
+                    null, 1L);
+
+            // When
+            ApiResponse<TeamResponse> result = service.updateTeam(TEAM_ID, req);
+
+            // Then
+            assertThat(result.getData().getMapEmbedUrl()).isEqualTo("https://www.google.com/maps/embed?pb=existing");
         }
     }
 

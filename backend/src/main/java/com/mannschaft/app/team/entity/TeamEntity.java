@@ -89,6 +89,17 @@ public class TeamEntity extends BaseEntity {
     @Column(columnDefinition = "JSON")
     private com.mannschaft.app.organization.ProfileVisibility profileVisibility;
 
+    // --- F15.4 Phase 5-β: 店舗詳細ページの地図表示用 ---
+
+    /**
+     * Google Maps 埋め込み URL。未ログイン公開店舗詳細ページで iframe 表示する。
+     * フォーマット例: {@code https://www.google.com/maps/embed?pb=...}
+     * バリデーション（^https://www\.google\.com/maps/embed\?で始まる）は Application 層で実施。
+     * 設計書: docs/features/F15.4_phase5_team_public_detail.md §5
+     */
+    @Column(name = "map_embed_url", length = 2048)
+    private String mapEmbedUrl;
+
     // --- F15.4 Phase 4: メンバー数事前集計 ---
 
     /**

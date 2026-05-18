@@ -214,6 +214,8 @@ onMounted(async () => {
               :supporter-enabled="team.supporterEnabled"
               :description="team.description ?? null"
               :is-admin="isAdmin"
+              :map-embed-url="team.mapEmbedUrl ?? null"
+              @updated:map-embed-url="(url) => { if (team) team.mapEmbedUrl = url }"
             />
           </TabPanel>
 

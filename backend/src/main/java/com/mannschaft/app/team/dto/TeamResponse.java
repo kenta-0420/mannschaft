@@ -30,4 +30,8 @@ public class TeamResponse {
     private final LocalDateTime createdAt;
     private final long teamFriendCount;
     private final long supporterCount;
+    /**
+     * F15.4 Phase 5-β: Google Maps 埋め込み URL（管理画面表示用、null 許容）
+     */
+    private final String mapEmbedUrl;
 }
