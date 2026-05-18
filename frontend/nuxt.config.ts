@@ -174,6 +174,7 @@ export default defineNuxtConfig({
           'ja/succession.json',
           'ja/wallet.json',
           'ja/village.json',
+          'ja/system_admin_batch.json',
         ],
       },
       {
@@ -219,6 +220,7 @@ export default defineNuxtConfig({
           'en/succession.json',
           'en/wallet.json',
           'en/village.json',
+          'en/system_admin_batch.json',
         ],
       },
       {
@@ -264,6 +266,7 @@ export default defineNuxtConfig({
           'zh/succession.json',
           'zh/wallet.json',
           'zh/village.json',
+          'zh/system_admin_batch.json',
         ],
       },
       {
@@ -309,6 +312,7 @@ export default defineNuxtConfig({
           'ko/succession.json',
           'ko/wallet.json',
           'ko/village.json',
+          'ko/system_admin_batch.json',
         ],
       },
       {
@@ -354,6 +358,7 @@ export default defineNuxtConfig({
           'es/succession.json',
           'es/wallet.json',
           'es/village.json',
+          'es/system_admin_batch.json',
         ],
       },
       {
@@ -399,6 +404,7 @@ export default defineNuxtConfig({
           'de/succession.json',
           'de/wallet.json',
           'de/village.json',
+          'de/system_admin_batch.json',
         ],
       },
     ],
