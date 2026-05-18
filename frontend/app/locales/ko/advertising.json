@@ -181,5 +181,122 @@
     "AD_PREFERENCES_BLOCKED_LIMIT": "ブロックできる広告主は最大 100 件までです。",
     "AD_REPORT_DUPLICATE": "このキャンペーンは既に通報済みです。",
     "AD_RATE_LIMIT_EXCEEDED": "リクエスト数が上限に達しました。しばらくお待ちください。"
+  },
+  "advertiser_crud": {
+    "list_tab": {
+      "all": "すべて",
+      "draft": "下書き",
+      "review": "審査中",
+      "approved": "承認済み",
+      "scheduled": "配信予約",
+      "delivering": "配信中",
+      "paused": "一時停止",
+      "completed": "終了",
+      "blocked": "ブロック",
+      "cancelled": "キャンセル"
+    },
+    "list_action": {
+      "create_button": "新規作成"
+    },
+    "list_table": {
+      "name": "キャンペーン名",
+      "status": "ステータス",
+      "period": "配信期間",
+      "total_budget": "総予算",
+      "consumed_budget": "消費済み",
+      "actions": "操作"
+    },
+    "create_step": {
+      "basic": "基本情報",
+      "channels": "配信チャネル",
+      "audience": "オーディエンス",
+      "preview": "プレビュー / 確定"
+    },
+    "create_nav": {
+      "next": "次へ",
+      "back": "戻る",
+      "submit": "下書きとして作成"
+    },
+    "detail_tab": {
+      "overview": "概要",
+      "channels": "チャネル",
+      "audience": "オーディエンス",
+      "moderation": "モデレーション履歴"
+    },
+    "detail_empty": {
+      "moderation_logs": "審査履歴はありません。"
+    },
+    "form": {
+      "name": "キャンペーン名",
+      "name_placeholder": "例: 春のキャンペーン",
+      "total_budget": "総予算（円）",
+      "starts_at": "配信開始時刻",
+      "ends_at": "配信終了時刻",
+      "scheduled_timezone": "タイムゾーン",
+      "frequency_cap_override": "フリークエンシーキャップ上書き（週件数）",
+      "frequency_cap_help": "未指定の場合はデフォルトの週 3 件を使用します。"
+    },
+    "channel_form": {
+      "subject": "件名",
+      "body_markdown": "本文（Markdown）",
+      "image_url": "画像 URL",
+      "cta_label": "CTA ラベル",
+      "cta_url": "CTA リンク URL",
+      "banner_creative_id": "バナークリエイティブ ID",
+      "select_channel": "チャネル種別を選択",
+      "select_locale": "言語を選択"
+    },
+    "segment_form": {
+      "select_type": "セグメント種別を選択",
+      "inclusion_mode": "包含モード",
+      "age_min": "下限年齢",
+      "age_max": "上限年齢",
+      "genders": "性別",
+      "prefecture_codes": "都道府県コード（カンマ区切り）",
+      "city_codes": "市区町村コード（カンマ区切り）",
+      "interest_tags": "興味タグ（カンマ区切り）",
+      "org_types": "組織タイプ（カンマ区切り）",
+      "locales": "言語",
+      "devices": "デバイス",
+      "remove": "削除"
+    },
+    "preview": {
+      "title": "推定リーチ",
+      "estimated_range": "推定リーチ数（レンジ）",
+      "channel_breakdown": "チャネル別推定",
+      "fetch": "推定リーチを取得",
+      "loading": "推定中...",
+      "under_100_warning": "推定リーチ数が 100 未満です。配信対象が少なすぎる可能性があります。",
+      "no_data": "プレビューデータがありません。先に「推定リーチを取得」を実行してください。"
+    },
+    "errors": {
+      "load_failed": "データの取得に失敗しました。",
+      "save_failed": "保存に失敗しました。",
+      "transition_failed": "状態遷移に失敗しました。",
+      "preview_failed": "プレビューの取得に失敗しました。"
+    },
+    "confirm": {
+      "submit": "このキャンペーンを審査に出しますか？",
+      "cancel": "キャンセルすると元に戻せません。続行しますか？",
+      "launch": "配信を開始します。よろしいですか？",
+      "pause": "配信を一時停止します。よろしいですか？",
+      "resume": "配信を再開します。よろしいですか？",
+      "delete": "この下書きを削除します。よろしいですか？"
+    },
+    "validation": {
+      "name_required": "キャンペーン名は必須です。",
+      "name_max": "キャンペーン名は 120 文字以内で入力してください。",
+      "total_budget_min": "総予算は 1,000 円以上で指定してください。",
+      "total_budget_max": "総予算は 100,000,000 円以下で指定してください。",
+      "starts_at_required": "配信開始時刻は必須です。",
+      "ends_at_required": "配信終了時刻は必須です。",
+      "starts_before_ends": "配信開始時刻は終了時刻より前にしてください。",
+      "frequency_cap_range": "フリークエンシーキャップは 1〜30 の範囲で指定してください。",
+      "at_least_one_channel": "少なくとも 1 つのチャネルを設定してください。",
+      "at_least_one_segment": "少なくとも 1 つのオーディエンスセグメントを設定してください。"
+    },
+    "nav": {
+      "messaging_campaigns": "メッセージ型キャンペーン"
+    }
   }
 }
