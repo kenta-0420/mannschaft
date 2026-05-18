@@ -34,7 +34,7 @@ import java.util.function.Function;
  * <p>設計書: docs/features/F02.10_weather_widget.md §3 API 呼び出し仕様 / §7.3 / §8.2。</p>
  *
  * <ul>
- *   <li>クエリパラメータ: {@code q={lat},{lon}} / {@code days=2} / {@code aqi=no}
+ *   <li>クエリパラメータ: {@code q={lat},{lon}} / {@code days=3} / {@code aqi=no}
  *       / {@code alerts=no} / {@code lang} / {@code key}</li>
  *   <li>{@code lang} は {@code ja|en|zh|ko|es|de} 以外なら {@code en} にフォールバック</li>
  *   <li>5xx / タイムアウト → {@link Retryable} で最大 3 回（200ms→600ms→1.8s 相当）</li>
@@ -53,8 +53,8 @@ public class WeatherApiClient {
     /** {@code lang} が未対応のときのフォールバック先。 */
     private static final String FALLBACK_LANG = "en";
 
-    /** 取得日数（今日 + 明日）。 */
-    private static final int DAYS = 2;
+    /** 取得日数（今日 + 明日 + 明後日）。WeatherAPI.com 無料プラン上限 = 3。 */
+    private static final int DAYS = 3;
 
     private static final DateTimeFormatter ISO_DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -90,7 +90,7 @@ public class WeatherApiClient {
     }
 
     /**
-     * 0.5 度丸めの緯度経度と表示言語を渡して、今日と明日の予報を取得する。
+     * 0.5 度丸めの緯度経度と表示言語を渡して、今日・明日・明後日の予報を取得する。
      *
      * @param latRounded 0.5 度丸めの緯度
      * @param lonRounded 0.5 度丸めの経度
@@ -198,33 +198,37 @@ public class WeatherApiClient {
 
     /**
      * WeatherAPI.com JSON レスポンスを内部 DTO に変換する。
+     *
+     * <p>{@code forecast.forecastday} は最大 {@link #DAYS} 日分を順次取り込む。
+     * 要素数が {@link #DAYS} に満たない場合は実数分のみを返却する（最低 1 日は必要）。</p>
      */
     WeatherForecastData parseResponse(String responseJson) {
         try {
             JsonNode root = objectMapper.readTree(responseJson);
             JsonNode forecastDays = root.path("forecast").path("forecastday");
-            if (!forecastDays.isArray() || forecastDays.size() < 2) {
+            if (!forecastDays.isArray() || forecastDays.size() < 1) {
                 throw new WeatherProviderException(
-                        "WeatherAPI.com forecast.forecastday に 2 日分のデータがない");
+                        "WeatherAPI.com forecast.forecastday にデータがない");
             }
-            JsonNode todayNode = forecastDays.get(0);
-            JsonNode tomorrowNode = forecastDays.get(1);
+
+            int size = Math.min(forecastDays.size(), DAYS);
+            java.util.List<WeatherForecastData.DayData> days = new java.util.ArrayList<>(size);
+            for (int i = 0; i < size; i++) {
+                JsonNode node = forecastDays.get(i);
+                JsonNode day = node.path("day");
+                days.add(WeatherForecastData.DayData.builder()
+                        .date(parseDate(node.path("date").asText()))
+                        .conditionCode(day.path("condition").path("code").asInt())
+                        .conditionText(day.path("condition").path("text").asText())
+                        .maxTempC(readDecimal(day.path("maxtemp_c")))
+                        .minTempC(readDecimal(day.path("mintemp_c")))
+                        .avgHumidity(day.path("avghumidity").asInt())
+                        .chanceOfRain(day.path("daily_chance_of_rain").asInt())
+                        .build());
+            }
 
             return WeatherForecastData.builder()
-                    .todayDate(parseDate(todayNode.path("date").asText()))
-                    .tomorrowDate(parseDate(tomorrowNode.path("date").asText()))
-                    .todayConditionCode(todayNode.path("day").path("condition").path("code").asInt())
-                    .tomorrowConditionCode(tomorrowNode.path("day").path("condition").path("code").asInt())
-                    .todayConditionText(todayNode.path("day").path("condition").path("text").asText())
-                    .tomorrowConditionText(tomorrowNode.path("day").path("condition").path("text").asText())
-                    .todayMaxTempC(readDecimal(todayNode.path("day").path("maxtemp_c")))
-                    .todayMinTempC(readDecimal(todayNode.path("day").path("mintemp_c")))
-                    .tomorrowMaxTempC(readDecimal(tomorrowNode.path("day").path("maxtemp_c")))
-                    .tomorrowMinTempC(readDecimal(tomorrowNode.path("day").path("mintemp_c")))
-                    .todayAvgHumidity(todayNode.path("day").path("avghumidity").asInt())
-                    .tomorrowAvgHumidity(tomorrowNode.path("day").path("avghumidity").asInt())
-                    .todayChanceOfRain(todayNode.path("day").path("daily_chance_of_rain").asInt())
-                    .tomorrowChanceOfRain(tomorrowNode.path("day").path("daily_chance_of_rain").asInt())
+                    .days(java.util.Collections.unmodifiableList(days))
                     .fetchedAt(Instant.now())
                     .build();
         } catch (WeatherProviderException e) {

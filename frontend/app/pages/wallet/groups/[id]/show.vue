@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { useSwipe } from '@vueuse/core'
-import BarcodePreview from '~/components/wallet/BarcodePreview.vue'
+import GroupShowCardView from '~/components/wallet/group-show/GroupShowCardView.vue'
+import GroupShowFooter from '~/components/wallet/group-show/GroupShowFooter.vue'
+import GroupShowHeader from '~/components/wallet/group-show/GroupShowHeader.vue'
+import GroupShowWarningModal from '~/components/wallet/group-show/GroupShowWarningModal.vue'
 import type { PointCardGroupDetail, PointCardGroupItem } from '~/types/pointCard'
 
 /**
@@ -21,6 +24,13 @@ import type { PointCardGroupDetail, PointCardGroupItem } from '~/types/pointCard
  *       （localStorage で既読フラグ管理）。</li>
  *   <li>onBeforeUnmount で Wake Lock 解放・nosleep 停止・fullscreen 解除を確実に行う。</li>
  * </ul>
+ *
+ * <p>リファクタリング第11弾（2026-05-17）でロジックを以下に分割した（振る舞い変更なし）:</p>
+ * <ul>
+ *   <li>Wake Lock + nosleep + fullscreen → {@code composables/wallet-group-show/useWakeLockWithFallback.ts}</li>
+ *   <li>WebAuthn 再認証 → {@code composables/wallet-group-show/useBiometricGate.ts}</li>
+ *   <li>テンプレート（ヘッダ・中央カード・フッタ・警告モーダル）→ {@code components/wallet/group-show/*.vue}</li>
+ * </ul>
  */
 
 definePageMeta({
@@ -32,10 +42,15 @@ const route = useRoute()
 const router = useRouter()
 const walletApi = useWalletApi()
 const walletOffline = useWalletOffline()
-const authApi = useAuthApi()
-const { captureQuiet } = useErrorReport()
 
 const groupId = computed(() => route.params.id as string)
+
+// ─────────────────────────────────────────────
+// 分割した composable（振る舞い変更なし）
+// ─────────────────────────────────────────────
+
+const { acquireWakeLock, releaseWakeLock, enterFullscreen, exitFullscreen } = useWakeLockWithFallback()
+const { verifyBiometric } = useBiometricGate()
 
 // ─────────────────────────────────────────────
 // State
@@ -50,232 +65,6 @@ const showScreenCaptureWarning = ref(false)
 const biometricFailed = ref(false)
 
 const SCREEN_CAPTURE_WARNING_KEY = 'wallet:screen_capture_warning_acked'
-
-// ─────────────────────────────────────────────
-// Wake Lock + nosleep フォールバック
-// ─────────────────────────────────────────────
-
-// WakeLockSentinel 型がない環境向けの最小定義（lib.dom の WakeLockSentinel に準拠）
-interface WakeLockSentinelLike {
-  release: () => Promise<void>
-  addEventListener: (type: 'release', listener: () => void) => void
-}
-
-let wakeLock: WakeLockSentinelLike | null = null
-// nosleep.js の型は default export のインスタンス。動的 import で取得する
-let noSleep: { enable: () => Promise<void>; disable: () => void } | null = null
-
-async function acquireWakeLock(): Promise<void> {
-  // WakeLock API が使えるなら最優先で使う（ネイティブ・低オーバーヘッド）
-  const nav = navigator as Navigator & {
-    wakeLock?: { request: (type: 'screen') => Promise<WakeLockSentinelLike> }
-  }
-  if (!nav.wakeLock?.request) {
-    // 1) Wake Lock API 自体が未サポート（旧 Safari など）
-    captureQuiet(
-      new Error('Wake Lock API not supported in this browser'),
-      { context: 'wake_lock_unsupported' },
-    )
-    await fallbackToNoSleep()
-    return
-  }
-  try {
-    const sentinel = await nav.wakeLock.request('screen')
-    wakeLock = sentinel
-    sentinel.addEventListener('release', () => {
-      wakeLock = null
-    })
-    return
-  }
-  catch (e) {
-    // 2) Wake Lock API は存在するが reject された
-    //    （iOS Safari Low Power Mode / バッテリー残量低下 / ユーザー設定拒否など）
-    if (import.meta.dev) console.warn('[presentation] wakeLock.request failed, falling back to nosleep.js', e)
-    const name = e instanceof Error ? e.name : 'unknown'
-    const msg = e instanceof Error ? e.message : String(e)
-    captureQuiet(
-      new Error(`Wake Lock request failed [${name}]: ${msg}`),
-      { context: 'wake_lock_request_failed' },
-    )
-    await fallbackToNoSleep()
-  }
-}
-
-/**
- * Wake Lock API が使えなかったときの最終手段。
- * nosleep.js（無音動画ループで画面を起こし続ける）にフォールバックする。
- *
- * <p>成功・失敗のいずれもテレメトリを送信する。失敗時（`wake_lock_nosleep_failed`）は
- * 致命傷（顧客提示中に画面が落ちる可能性）なので運用部隊が緊急調査する。</p>
- */
-async function fallbackToNoSleep(): Promise<void> {
-  try {
-    const mod = await import('nosleep.js')
-    const NoSleepCtor = mod.default
-    const instance = new NoSleepCtor()
-    await instance.enable()
-    noSleep = instance
-    // 3) フォールバック成功（一定割合発生する想定。正常系の派生）
-    captureQuiet(
-      new Error('Fell back to nosleep.js successfully'),
-      { context: 'wake_lock_nosleep_fallback_ok' },
-    )
-  }
-  catch (e) {
-    // 4) フォールバックも失敗（致命傷）。提示モード自体は継続可能だが画面が暗転しうる
-    if (import.meta.dev) console.warn('[presentation] nosleep.js fallback failed', e)
-    const name = e instanceof Error ? e.name : 'unknown'
-    const msg = e instanceof Error ? e.message : String(e)
-    captureQuiet(
-      new Error(`nosleep.js fallback also failed [${name}]: ${msg}`),
-      { context: 'wake_lock_nosleep_failed' },
-    )
-  }
-}
-
-function releaseWakeLock(): void {
-  if (wakeLock) {
-    // release は Promise を返すが unmount 経路では待たない（fire-and-forget）
-    wakeLock.release().catch((e) => {
-      if (import.meta.dev) console.warn('[presentation] wakeLock.release failed', e)
-    })
-    wakeLock = null
-  }
-  if (noSleep) {
-    noSleep.disable()
-    noSleep = null
-  }
-}
-
-// ─────────────────────────────────────────────
-// Fullscreen
-// ─────────────────────────────────────────────
-
-async function enterFullscreen(): Promise<void> {
-  const el = document.documentElement
-  if (!el.requestFullscreen) return
-  try {
-    await el.requestFullscreen()
-  }
-  catch (e) {
-    // iOS Safari など fullscreen 非対応 / ユーザー拒否時は無視（提示モード継続）
-    if (import.meta.dev) console.warn('[presentation] requestFullscreen failed', e)
-  }
-}
-
-async function exitFullscreen(): Promise<void> {
-  if (!document.fullscreenElement) return
-  try {
-    await document.exitFullscreen()
-  }
-  catch (e) {
-    if (import.meta.dev) console.warn('[presentation] exitFullscreen failed', e)
-  }
-}
-
-// ─────────────────────────────────────────────
-// 生体認証ゲート
-// ─────────────────────────────────────────────
-
-// base64url ⇄ ArrayBuffer 変換ユーティリティ（依存追加を避けて手書き）
-function b64urlToBuf(s: string): ArrayBuffer {
-  const pad = '='.repeat((4 - (s.length % 4)) % 4)
-  const b64 = (s + pad).replace(/-/g, '+').replace(/_/g, '/')
-  const bin = atob(b64)
-  const buf = new ArrayBuffer(bin.length)
-  const view = new Uint8Array(buf)
-  for (let i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i)
-  return buf
-}
-
-function bufToB64url(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf)
-  let bin = ''
-  for (let i = 0; i < bytes.byteLength; i++) bin += String.fromCharCode(bytes[i]!)
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
-/**
- * authenticatorData (CBOR デコード不要、固定オフセット) から signCount を抽出する。
- *
- * <p>WebAuthn 仕様 §6.1: authenticatorData の構造
- * <pre>
- *   rpIdHash (32) | flags (1) | signCount (4, big-endian) | ...
- * </pre>
- * signCount は バイト 33-36 (0-indexed) の 32bit big-endian unsigned。
- */
-function extractSignCount(authenticatorData: ArrayBuffer): number {
-  const view = new DataView(authenticatorData)
-  // 32 (rpIdHash) + 1 (flags) = 33 から 4 バイトが signCount
-  return view.getUint32(33, false)
-}
-
-/**
- * 設定 `requireBiometricOnShow=true` のときに呼ぶ。サーバー側 5 分 TTL 検証を含む 3 段フロー。
- *
- * <ol>
- *   <li>{@code POST /reauthenticate-begin} でチャレンジ取得</li>
- *   <li>{@code navigator.credentials.get} で署名取得（OS 生体認証 / PIN ダイアログ）</li>
- *   <li>{@code POST /reauthenticate-complete} でサーバー検証 → 「再認証済みフラグ」が
- *       Valkey に 5 分 TTL で記録される</li>
- * </ol>
- *
- * <p>completeReauthenticate は AT/RT を再発行しない。フラグは提示モード起動 API が
- * 1 回限りで消費する（POINT_CARD_009 再生攻撃防止）。
- *
- * @returns 成功で true / ユーザーキャンセル or 失敗で false
- */
-async function verifyBiometric(): Promise<boolean> {
-  // WebAuthn API 自体が無い環境（古いブラウザ・SSR）ではスキップして警告のみとする
-  if (typeof window === 'undefined' || !window.PublicKeyCredential || !navigator.credentials) {
-    return false
-  }
-  try {
-    // 1. begin: 再認証用チャレンジ取得（既存ログインフローとは別エンドポイント）
-    const beginRes = await authApi.beginWebAuthnReauthenticate()
-    const begin = beginRes.data
-
-    const publicKey: PublicKeyCredentialRequestOptions = {
-      challenge: b64urlToBuf(begin.challenge),
-      rpId: begin.rpId,
-      timeout: begin.timeout,
-      userVerification: 'preferred',
-      allowCredentials: begin.allowCredentials.map((id) => ({
-        type: 'public-key' as const,
-        id: b64urlToBuf(id),
-      })),
-    }
-
-    // 2. navigator.credentials.get で署名取得
-    const cred = await navigator.credentials.get({ publicKey })
-    if (!cred) return false
-
-    // PublicKeyCredential を取り出してサーバー検証用に Base64URL 化
-    const pkCred = cred as PublicKeyCredential
-    const assertion = pkCred.response as AuthenticatorAssertionResponse
-
-    const credentialId = bufToB64url(pkCred.rawId)
-    const authenticatorDataB64 = bufToB64url(assertion.authenticatorData)
-    const clientDataJsonB64 = bufToB64url(assertion.clientDataJSON)
-    const signatureB64 = bufToB64url(assertion.signature)
-    const signCount = extractSignCount(assertion.authenticatorData)
-
-    // 3. complete: サーバー検証 → 再認証済みフラグが Valkey に書き込まれる
-    await authApi.completeWebAuthnReauthenticate({
-      credentialId,
-      authenticatorData: authenticatorDataB64,
-      clientDataJson: clientDataJsonB64,
-      signature: signatureB64,
-      signCount,
-    })
-    return true
-  }
-  catch (e) {
-    // ユーザーキャンセル / タイムアウト / authenticator なし / サーバー検証失敗
-    if (import.meta.dev) console.warn('[presentation] biometric verification failed', e)
-    return false
-  }
-}
 
 // ─────────────────────────────────────────────
 // ライフサイクル
@@ -471,83 +260,31 @@ onBeforeUnmount(() => {
     :style="brandColor ? { background: brandColor } : undefined"
   >
     <!-- 上部ヘッダ -->
-    <header class="presentation__header">
-      <button
-        type="button"
-        class="presentation__close"
-        :aria-label="t('wallet.presentation.close')"
-        @click="closePresentation"
-      >
-        ×
-      </button>
-      <div v-if="total > 0" class="presentation__indicator">
-        {{ pageIndicator }}
-      </div>
-      <div v-if="currentCard?.providerDisplayName" class="presentation__provider">
-        {{ currentCard.providerDisplayName }}
-      </div>
-      <div v-else class="presentation__provider" aria-hidden="true">&nbsp;</div>
-    </header>
+    <GroupShowHeader
+      :total="total"
+      :page-indicator="pageIndicator"
+      :provider-display-name="currentCard?.providerDisplayName ?? null"
+      @close="closePresentation"
+    />
 
     <!-- 中央: バーコード本体 -->
-    <main class="presentation__main">
-      <p v-if="loading" class="presentation__loading">…</p>
-
-      <div v-else-if="loadError" class="presentation__error" role="alert">
-        <p>{{ loadError }}</p>
-        <button
-          v-if="!biometricFailed"
-          type="button"
-          class="presentation__btn"
-          @click="reload"
-        >
-          ↻ {{ t('wallet.presentation.reload') }}
-        </button>
-      </div>
-
-      <p v-else-if="total === 0" class="presentation__empty">
-        {{ t('wallet.presentation.no_cards') }}
-      </p>
-
-      <div v-else-if="currentCard" class="presentation__card">
-        <img
-          v-if="currentCard.providerLogoUrl"
-          :src="currentCard.providerLogoUrl"
-          :alt="currentCard.providerDisplayName ?? ''"
-          class="presentation__logo"
-        >
-        <BarcodePreview
-          :value="currentCard.barcodeValue"
-          :format="currentCard.barcodeFormat"
-          size="large"
-        />
-        <h2 class="presentation__name">{{ currentCard.displayName }}</h2>
-        <p v-if="currentCard.last4" class="presentation__last4">
-          ●●●● {{ currentCard.last4 }}
-        </p>
-      </div>
-    </main>
+    <GroupShowCardView
+      :loading="loading"
+      :load-error="loadError"
+      :biometric-failed="biometricFailed"
+      :total="total"
+      :current-card="currentCard"
+      @reload="reload"
+    />
 
     <!-- 下部ヒント + 進捗 + 再読み込み -->
-    <footer v-if="!loading && !loadError && total > 0" class="presentation__footer">
-      <p class="presentation__hint">
-        {{ t('wallet.presentation.hint_swipe') }}
-      </p>
-      <p class="presentation__hint presentation__hint--muted">
-        {{ t('wallet.presentation.hint_brightness') }}
-      </p>
-      <div v-if="total > 1" class="presentation__progress">
-        <span
-          v-for="(_, idx) in items"
-          :key="idx"
-          class="presentation__dot"
-          :class="{ 'presentation__dot--active': idx === currentIndex }"
-        />
-      </div>
-      <button type="button" class="presentation__btn" @click="reload">
-        ↻ {{ t('wallet.presentation.reload') }}
-      </button>
-    </footer>
+    <GroupShowFooter
+      v-if="!loading && !loadError && total > 0"
+      :items="items"
+      :current-index="currentIndex"
+      :total="total"
+      @reload="reload"
+    />
 
     <!-- オフラインキャッシュ通知バナー -->
     <div v-if="cachedFromOffline" class="presentation__offline-banner" role="status">
@@ -555,29 +292,10 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- スクリーンキャプチャ警告モーダル（初回のみ） -->
-    <div
+    <GroupShowWarningModal
       v-if="showScreenCaptureWarning"
-      class="presentation__modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      :aria-label="t('wallet.presentation.warning_title')"
-    >
-      <div class="presentation__modal">
-        <h2 class="presentation__modal-title">
-          {{ t('wallet.presentation.warning_title') }}
-        </h2>
-        <p class="presentation__modal-body">
-          {{ t('wallet.presentation.warning_body') }}
-        </p>
-        <button
-          type="button"
-          class="presentation__btn presentation__btn--primary"
-          @click="dismissWarning"
-        >
-          {{ t('wallet.presentation.warning_ack') }}
-        </button>
-      </div>
-    </div>
+      @dismiss="dismissWarning"
+    />
   </div>
 </template>
 
@@ -595,136 +313,6 @@ onBeforeUnmount(() => {
   -webkit-user-select: none;
   touch-action: pan-y;
 }
-.presentation__header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: rgba(0, 0, 0, 0.35);
-}
-.presentation__close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  border: none;
-  cursor: pointer;
-  font-size: 1.5rem;
-  line-height: 1;
-}
-.presentation__indicator {
-  flex: 1;
-  text-align: center;
-  font-weight: 600;
-  font-size: 0.9375rem;
-  letter-spacing: 0.05em;
-}
-.presentation__provider {
-  font-size: 0.875rem;
-  font-weight: 600;
-  max-width: 40%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
-}
-.presentation__main {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  overflow: hidden;
-}
-.presentation__card {
-  background: #fff;
-  color: #111;
-  border-radius: 1rem;
-  padding: 1.5rem 1.25rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.875rem;
-  max-width: 96%;
-  width: 100%;
-  max-width: 520px;
-}
-.presentation__logo {
-  height: 32px;
-  max-width: 60%;
-  object-fit: contain;
-}
-.presentation__name {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin: 0;
-  text-align: center;
-}
-.presentation__last4 {
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  margin: 0;
-}
-.presentation__loading,
-.presentation__empty,
-.presentation__error {
-  text-align: center;
-  font-size: 1rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-}
-.presentation__footer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem 1.25rem;
-  background: rgba(0, 0, 0, 0.35);
-}
-.presentation__hint {
-  margin: 0;
-  font-size: 0.875rem;
-  opacity: 0.85;
-}
-.presentation__hint--muted {
-  font-size: 0.75rem;
-  opacity: 0.6;
-}
-.presentation__progress {
-  display: flex;
-  gap: 0.375rem;
-}
-.presentation__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.35);
-}
-.presentation__dot--active {
-  background: #fff;
-  transform: scale(1.3);
-}
-.presentation__btn {
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  cursor: pointer;
-  font-weight: 600;
-}
-.presentation__btn--primary {
-  background: #fff;
-  color: #111;
-  border-color: transparent;
-}
 .presentation__offline-banner {
   position: absolute;
   top: 64px;
@@ -736,37 +324,5 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   font-size: 0.8125rem;
   font-weight: 600;
-}
-.presentation__modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  z-index: 10;
-}
-.presentation__modal {
-  background: #fff;
-  color: #111;
-  border-radius: 0.75rem;
-  padding: 1.5rem;
-  max-width: 480px;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  text-align: center;
-}
-.presentation__modal-title {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 700;
-}
-.presentation__modal-body {
-  margin: 0;
-  font-size: 0.9375rem;
-  line-height: 1.5;
 }
 </style>

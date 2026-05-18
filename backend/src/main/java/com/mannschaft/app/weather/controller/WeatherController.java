@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -40,7 +41,7 @@ import java.util.Optional;
  *
  * <p>提供エンドポイント:
  * <ul>
- *   <li>{@code GET /api/v1/dashboard/weather} — 今日・明日の予報を返す（60 req/h/user）</li>
+ *   <li>{@code GET /api/v1/dashboard/weather} — 今日・明日・明後日の予報を返す（60 req/h/user）</li>
  *   <li>{@code POST /api/v1/users/me/weather-location/refresh} — 居住地点を再導出する（5 req/h/user）</li>
  * </ul>
  *
@@ -77,7 +78,7 @@ public class WeatherController {
     // ========================================
 
     /**
-     * 今日・明日の天気予報を返す。
+     * 今日・明日・明後日の天気予報を返す。
      *
      * <p>処理フロー:
      * <ol>
@@ -231,33 +232,24 @@ public class WeatherController {
     private WeatherForecastResponse toForecastResponse(WeatherForecastResult result, String placeName) {
         var data = result.data();
 
-        DayForecastDto today = new DayForecastDto(
-                data.getTodayDate() != null ? data.getTodayDate().toString() : null,
-                data.getTodayConditionCode(),
-                data.getTodayConditionText(),
-                WeatherConditionMapper.toIconKey(data.getTodayConditionCode()),
-                data.getTodayMaxTempC() != null ? data.getTodayMaxTempC().doubleValue() : 0.0,
-                data.getTodayMinTempC() != null ? data.getTodayMinTempC().doubleValue() : 0.0,
-                data.getTodayAvgHumidity(),
-                data.getTodayChanceOfRain()
-        );
-
-        DayForecastDto tomorrow = new DayForecastDto(
-                data.getTomorrowDate() != null ? data.getTomorrowDate().toString() : null,
-                data.getTomorrowConditionCode(),
-                data.getTomorrowConditionText(),
-                WeatherConditionMapper.toIconKey(data.getTomorrowConditionCode()),
-                data.getTomorrowMaxTempC() != null ? data.getTomorrowMaxTempC().doubleValue() : 0.0,
-                data.getTomorrowMinTempC() != null ? data.getTomorrowMinTempC().doubleValue() : 0.0,
-                data.getTomorrowAvgHumidity(),
-                data.getTomorrowChanceOfRain()
-        );
+        List<DayForecastDto> forecasts = (data.getDays() == null ? List.<com.mannschaft.app.weather.client.WeatherForecastData.DayData>of()
+                : data.getDays()).stream()
+                .map(d -> new DayForecastDto(
+                        d.getDate() != null ? d.getDate().toString() : null,
+                        d.getConditionCode(),
+                        d.getConditionText(),
+                        WeatherConditionMapper.toIconKey(d.getConditionCode()),
+                        d.getMaxTempC() != null ? d.getMaxTempC().doubleValue() : 0.0,
+                        d.getMinTempC() != null ? d.getMinTempC().doubleValue() : 0.0,
+                        d.getAvgHumidity(),
+                        d.getChanceOfRain()))
+                .toList();
 
         // fetchedAt を ISO 8601 UTC 文字列に変換
         Instant fetchedAt = data.getFetchedAt() != null ? data.getFetchedAt() : Instant.now();
         String fetchedAtStr = ISO_UTC.format(fetchedAt);
 
-        return new WeatherForecastResponse(placeName, today, tomorrow, DATA_SOURCE, fetchedAtStr, result.stale());
+        return new WeatherForecastResponse(placeName, forecasts, DATA_SOURCE, fetchedAtStr, result.stale());
     }
 
     /**

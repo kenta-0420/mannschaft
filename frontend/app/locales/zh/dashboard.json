@@ -30,6 +30,7 @@
       "title": "天气",
       "today": "今天",
       "tomorrow": "明天",
+      "day_after_tomorrow": "后天",
       "max": "最高",
       "min": "最低",
       "humidity": "湿度",

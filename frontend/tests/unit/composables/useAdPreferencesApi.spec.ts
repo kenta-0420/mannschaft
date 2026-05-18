@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
  * 検証観点:
  *   ADP-API-001: getPreferences → GET /api/v1/me/ad-preferences を呼び {data} を返す
  *   ADP-API-002: updatePreferences → PUT で body を渡す
- *   ADP-API-003: rotateUnsubscribeToken → PUT で rotateUnsubscribeToken=true を送る
+ *   ADP-API-003: rotateUnsubscribeTokens → PUT で rotateUnsubscribeTokens=true を送る
  */
 
 const mockFetch = vi.fn()
@@ -17,23 +17,28 @@ vi.mock('~/composables/useApi', () => ({
 
 const { useAdPreferencesApi } = await import('~/composables/useAdPreferencesApi')
 
+function makePrefs(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'pref-1',
+    acceptAnnouncementAds: true,
+    acceptEmailAds: true,
+    acceptPushAds: true,
+    acceptBannerAds: true,
+    blockedAdvertiserAccountIds: [],
+    consentedAt: null,
+    unsubscribeTokenVersion: 1,
+    updatedAt: '2026-05-17T00:00:00Z',
+    ...overrides,
+  }
+}
+
 describe('useAdPreferencesApi', () => {
   beforeEach(() => {
     mockFetch.mockReset()
   })
 
   it('ADP-API-001: getPreferences は GET /api/v1/me/ad-preferences を呼ぶ', async () => {
-    mockFetch.mockResolvedValueOnce({
-      data: {
-        acceptAnnouncementAds: true,
-        acceptEmailAds: true,
-        acceptPushAds: true,
-        acceptBannerAds: true,
-        blockedAdvertiserAccountIds: [],
-        consentedAt: null,
-        unsubscribeTokenVersion: 1,
-      },
-    })
+    mockFetch.mockResolvedValueOnce({ data: makePrefs() })
     const api = useAdPreferencesApi()
     const res = await api.getPreferences()
 
@@ -43,15 +48,10 @@ describe('useAdPreferencesApi', () => {
 
   it('ADP-API-002: updatePreferences は PUT で body を渡す', async () => {
     mockFetch.mockResolvedValueOnce({
-      data: {
+      data: makePrefs({
         acceptAnnouncementAds: false,
-        acceptEmailAds: true,
-        acceptPushAds: true,
-        acceptBannerAds: true,
         blockedAdvertiserAccountIds: [12, 34],
-        consentedAt: '2026-05-17T00:00:00Z',
-        unsubscribeTokenVersion: 1,
-      },
+      }),
     })
     const api = useAdPreferencesApi()
     const res = await api.updatePreferences({
@@ -69,24 +69,16 @@ describe('useAdPreferencesApi', () => {
     expect(res.data.blockedAdvertiserAccountIds).toEqual([12, 34])
   })
 
-  it('ADP-API-003: rotateUnsubscribeToken は PUT で rotateUnsubscribeToken=true を送る', async () => {
+  it('ADP-API-003: rotateUnsubscribeTokens は PUT で rotateUnsubscribeTokens=true を送る', async () => {
     mockFetch.mockResolvedValueOnce({
-      data: {
-        acceptAnnouncementAds: true,
-        acceptEmailAds: true,
-        acceptPushAds: true,
-        acceptBannerAds: true,
-        blockedAdvertiserAccountIds: [],
-        consentedAt: null,
-        unsubscribeTokenVersion: 2,
-      },
+      data: makePrefs({ unsubscribeTokenVersion: 2 }),
     })
     const api = useAdPreferencesApi()
-    const res = await api.rotateUnsubscribeToken()
+    const res = await api.rotateUnsubscribeTokens()
 
     expect(mockFetch).toHaveBeenCalledWith('/api/v1/me/ad-preferences', {
       method: 'PUT',
-      body: { rotateUnsubscribeToken: true },
+      body: { rotateUnsubscribeTokens: true },
     })
     expect(res.data.unsubscribeTokenVersion).toBe(2)
   })

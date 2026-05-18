@@ -30,6 +30,7 @@
       "title": "Clima",
       "today": "Hoy",
       "tomorrow": "Mañana",
+      "day_after_tomorrow": "Pasado mañana",
       "max": "Máx.",
       "min": "Mín.",
       "humidity": "Humedad",

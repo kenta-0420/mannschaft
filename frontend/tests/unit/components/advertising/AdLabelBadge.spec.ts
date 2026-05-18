@@ -29,4 +29,11 @@ describe('AdLabelBadge.vue', () => {
     // toLowerCase で大文字小文字差を吸収
     expect(html.toLowerCase()).toContain('#ff9800')
   })
+
+  it('ALB-004: size="sm" でサイズ別クラスが切り替わる', async () => {
+    const wrapper = await mountSuspended(AdLabelBadge, {
+      props: { size: 'sm' },
+    })
+    expect(wrapper.html()).toContain('text-[10px]')
+  })
 })

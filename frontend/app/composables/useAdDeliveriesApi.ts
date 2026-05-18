@@ -1,11 +1,9 @@
+import type { AdChannelType } from '~/types/adMessagingCampaign'
 import type {
-  AdChannelType,
-  AdDeliveryHistoryResponse,
-} from '~/types/adMessagingCampaign'
-import type {
+  AdDeliveryListResponse,
   AdReportResponse,
   CreateAdReportRequest,
-} from '~/types/adModeration'
+} from '~/types/adPreferences'
 
 /**
  * F09.17 受信者向け広告配信履歴 API クライアント
@@ -22,7 +20,7 @@ export function useAdDeliveriesApi() {
     cursor?: string
     limit?: number
   }) {
-    return api<{ data: AdDeliveryHistoryResponse }>('/api/v1/me/ad-deliveries', {
+    return api<AdDeliveryListResponse>('/api/v1/me/ad-deliveries', {
       params,
     })
   }

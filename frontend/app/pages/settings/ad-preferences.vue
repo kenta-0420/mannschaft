@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AdPreferencesResponse } from '~/types/adPreferences'
+import type { UserAdPreferences } from '~/types/adPreferences'
 
 /**
  * F09.17 受信者向け広告受信設定ページ
@@ -20,7 +20,7 @@ const notification = useNotification()
 const prefsApi = useAdPreferencesApi()
 const confirm = useConfirm()
 
-const preferences = ref<AdPreferencesResponse | null>(null)
+const preferences = ref<UserAdPreferences | null>(null)
 const loading = ref(false)
 const saving = ref(false)
 const rotating = ref(false)
@@ -33,10 +33,7 @@ async function loadPreferences() {
     const res = await prefsApi.getPreferences()
     preferences.value = res.data
   } catch (err) {
-    notification.error(
-      t('advertising.pages.settings_ad_preferences.title'),
-      String(err),
-    )
+    notification.error(t('advertising.pages.settings_ad_preferences.title'), String(err))
   } finally {
     loading.value = false
   }
@@ -65,12 +62,12 @@ async function savePreferences() {
       blockedAdvertiserAccountIds: preferences.value.blockedAdvertiserAccountIds,
     })
     preferences.value = res.data
-    notification.success(t('advertising.pages.settings_ad_preferences.save_success'))
+    notification.success(t('advertising.pages.settings_ad_preferences.saved'))
   } catch (err) {
     const status = extractStatus(err)
     if (status === 422) {
       notification.error(
-        t('advertising.pages.settings_ad_preferences.blocked_advertisers_limit_exceeded'),
+        t('advertising.pages.settings_ad_preferences.blocked_limit_exceeded'),
       )
     } else if (status === 429) {
       notification.warn(t('advertising.pages.settings_ad_preferences.save_rate_limited'))
@@ -94,9 +91,7 @@ function addBlock() {
     return
   }
   if (preferences.value.blockedAdvertiserAccountIds.length >= 100) {
-    notification.warn(
-      t('advertising.pages.settings_ad_preferences.blocked_advertisers_limit_exceeded'),
-    )
+    notification.warn(t('advertising.pages.settings_ad_preferences.blocked_limit_exceeded'))
     return
   }
   preferences.value = {
@@ -119,22 +114,24 @@ function removeBlock(id: number) {
   }
 }
 
-function handleRotateToken() {
+function handleRotateTokens() {
   confirm.require({
-    message: t('advertising.pages.settings_ad_preferences.rotate_token_confirm'),
-    header: t('advertising.pages.settings_ad_preferences.rotate_token_section'),
+    message: t('advertising.pages.settings_ad_preferences.rotate_tokens_confirm'),
+    header: t('advertising.pages.settings_ad_preferences.rotate_tokens_section'),
     icon: 'pi pi-exclamation-triangle',
-    rejectLabel: t('advertising.report_modal.cancel'),
-    acceptLabel: t('advertising.pages.settings_ad_preferences.rotate_token_button'),
+    rejectLabel: t('advertising.report_dialog.cancel'),
+    acceptLabel: t('advertising.pages.settings_ad_preferences.rotate_tokens'),
     accept: async () => {
       rotating.value = true
       try {
-        const res = await prefsApi.rotateUnsubscribeToken()
+        const res = await prefsApi.rotateUnsubscribeTokens()
         preferences.value = res.data
-        notification.success(t('advertising.pages.settings_ad_preferences.rotate_token_success'))
+        notification.success(
+          t('advertising.pages.settings_ad_preferences.rotate_tokens_success'),
+        )
       } catch (err) {
         notification.error(
-          t('advertising.pages.settings_ad_preferences.rotate_token_section'),
+          t('advertising.pages.settings_ad_preferences.rotate_tokens_section'),
           String(err),
         )
       } finally {
@@ -175,11 +172,11 @@ onMounted(loadPreferences)
         <SectionCard>
           <template #header>
             <h2 class="text-base font-semibold">
-              {{ t('advertising.pages.settings_ad_preferences.channels_section') }}
+              {{ t('advertising.pages.settings_ad_preferences.channel_section') }}
             </h2>
           </template>
           <p class="mb-4 text-xs text-surface-500 dark:text-surface-300">
-            {{ t('advertising.pages.settings_ad_preferences.channels_description') }}
+            {{ t('advertising.pages.settings_ad_preferences.channel_section_description') }}
           </p>
 
           <div class="flex flex-col gap-3">
@@ -223,14 +220,14 @@ onMounted(loadPreferences)
         <SectionCard>
           <template #header>
             <h2 class="text-base font-semibold">
-              {{ t('advertising.pages.settings_ad_preferences.blocked_advertisers_section') }}
+              {{ t('advertising.pages.settings_ad_preferences.blocked_section') }}
               <span class="ml-2 text-xs font-normal text-surface-400">
                 ({{ blockedCount }} / 100)
               </span>
             </h2>
           </template>
           <p class="mb-4 text-xs text-surface-500 dark:text-surface-300">
-            {{ t('advertising.pages.settings_ad_preferences.blocked_advertisers_description') }}
+            {{ t('advertising.pages.settings_ad_preferences.blocked_section_description') }}
           </p>
 
           <div class="mb-4 flex gap-2">
@@ -259,7 +256,7 @@ onMounted(loadPreferences)
             v-if="blockLimitReached"
             class="mb-4 rounded bg-orange-100 p-2 text-xs text-orange-700 dark:bg-orange-900/30 dark:text-orange-300"
           >
-            {{ t('advertising.pages.settings_ad_preferences.blocked_advertisers_limit_exceeded') }}
+            {{ t('advertising.pages.settings_ad_preferences.blocked_limit_exceeded') }}
           </p>
 
           <ul v-if="blockedCount > 0" class="flex flex-col gap-2" data-testid="block-list">
@@ -281,7 +278,7 @@ onMounted(loadPreferences)
             </li>
           </ul>
           <p v-else class="text-sm text-surface-400">
-            {{ t('advertising.pages.settings_ad_preferences.blocked_advertisers_empty') }}
+            {{ t('advertising.pages.settings_ad_preferences.blocked_empty') }}
           </p>
         </SectionCard>
 
@@ -289,19 +286,19 @@ onMounted(loadPreferences)
         <SectionCard>
           <template #header>
             <h2 class="text-base font-semibold">
-              {{ t('advertising.pages.settings_ad_preferences.rotate_token_section') }}
+              {{ t('advertising.pages.settings_ad_preferences.rotate_tokens_section') }}
             </h2>
           </template>
           <p class="mb-4 text-xs text-surface-500 dark:text-surface-300">
-            {{ t('advertising.pages.settings_ad_preferences.rotate_token_description') }}
+            {{ t('advertising.pages.settings_ad_preferences.rotate_tokens_help') }}
           </p>
           <Button
-            :label="t('advertising.pages.settings_ad_preferences.rotate_token_button')"
+            :label="t('advertising.pages.settings_ad_preferences.rotate_tokens')"
             icon="pi pi-refresh"
             severity="warn"
             :loading="rotating"
-            data-testid="rotate-token-button"
-            @click="handleRotateToken"
+            data-testid="rotate-tokens-button"
+            @click="handleRotateTokens"
           />
         </SectionCard>
 

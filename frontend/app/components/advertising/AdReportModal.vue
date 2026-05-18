@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import type { AdChannelType } from '~/types/adMessagingCampaign'
-import type { AdReportReasonCode } from '~/types/adModeration'
+import type { AdReportReason } from '~/types/adPreferences'
 
 /**
  * F09.17 広告通報モーダル
  *
- * - reason_code 6 種から選択（OFFENSIVE / MISLEADING / IRRELEVANT / INAPPROPRIATE / SPAM / OTHER）
+ * - reason 5 種から選択（OFFENSIVE / MISLEADING / SPAM / IRRELEVANT / OTHER）
  * - 任意の自由記述
  * - POST `/api/v1/me/ad-reports` で送信
  * - 送信成功でモーダル自動クローズ + トースト通知
@@ -15,7 +14,6 @@ import type { AdReportReasonCode } from '~/types/adModeration'
 const props = defineProps<{
   visible: boolean
   campaignId: string
-  channelType: AdChannelType
 }>()
 
 const emit = defineEmits<{
@@ -27,17 +25,10 @@ const { t } = useI18n()
 const notification = useNotification()
 const deliveriesApi = useAdDeliveriesApi()
 
-const reasonCodes: AdReportReasonCode[] = [
-  'OFFENSIVE',
-  'MISLEADING',
-  'IRRELEVANT',
-  'INAPPROPRIATE',
-  'SPAM',
-  'OTHER',
-]
+const reasons: AdReportReason[] = ['OFFENSIVE', 'MISLEADING', 'SPAM', 'IRRELEVANT', 'OTHER']
 
-const selectedReason = ref<AdReportReasonCode | null>(null)
-const comment = ref('')
+const selectedReason = ref<AdReportReason | null>(null)
+const detail = ref('')
 const submitting = ref(false)
 
 watch(
@@ -46,7 +37,7 @@ watch(
     if (newValue) {
       // 開くたびにフォーム初期化
       selectedReason.value = null
-      comment.value = ''
+      detail.value = ''
       submitting.value = false
     }
   },
@@ -71,19 +62,18 @@ async function handleSubmit() {
   try {
     await deliveriesApi.createReport({
       campaignId: props.campaignId,
-      channelType: props.channelType,
-      reasonCode: selectedReason.value,
-      comment: comment.value.trim() || undefined,
+      reason: selectedReason.value,
+      detail: detail.value.trim() || null,
     })
-    notification.success(t('advertising.report_modal.success'))
+    notification.success(t('advertising.report_dialog.submitted'))
     emit('submitted')
     emit('update:visible', false)
   } catch (err) {
     const status = extractStatus(err)
     if (status === 429) {
-      notification.warn(t('advertising.report_modal.rate_limited'))
+      notification.warn(t('advertising.report_dialog.rate_limited'))
     } else {
-      notification.error(t('advertising.report_modal.title'), String(err))
+      notification.error(t('advertising.report_dialog.title'), String(err))
     }
   } finally {
     submitting.value = false
@@ -99,7 +89,7 @@ function handleCancel() {
   <Dialog
     :visible="visible"
     modal
-    :header="t('advertising.report_modal.title')"
+    :header="t('advertising.report_dialog.title')"
     :style="{ width: '32rem' }"
     :breakpoints="{ '640px': '90vw' }"
     :closable="!submitting"
@@ -107,14 +97,14 @@ function handleCancel() {
   >
     <div class="flex flex-col gap-4">
       <p class="text-sm text-surface-500 dark:text-surface-300">
-        {{ t('advertising.report_modal.description') }}
+        {{ t('advertising.report_dialog.description') }}
       </p>
 
       <div class="flex flex-col gap-2">
-        <label class="font-medium">{{ t('advertising.report_modal.reason_label') }}</label>
+        <label class="font-medium">{{ t('advertising.report_dialog.reason_label') }}</label>
         <div class="flex flex-col gap-2">
           <label
-            v-for="code in reasonCodes"
+            v-for="code in reasons"
             :key="code"
             class="flex cursor-pointer items-center gap-2 rounded-md border border-surface-300 p-2 hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-800"
           >
@@ -124,21 +114,21 @@ function handleCancel() {
               :value="code"
               :name="'ad-report-reason'"
             />
-            <span>{{ t(`advertising.report_reason.${code}`) }}</span>
+            <span>{{ t(`advertising.report_reason.${code.toLowerCase()}`) }}</span>
           </label>
         </div>
       </div>
 
       <div class="flex flex-col gap-2">
-        <label for="ad-report-comment" class="font-medium">
-          {{ t('advertising.report_modal.comment_label') }}
+        <label for="ad-report-detail" class="font-medium">
+          {{ t('advertising.report_dialog.detail_label') }}
         </label>
         <Textarea
-          id="ad-report-comment"
-          v-model="comment"
+          id="ad-report-detail"
+          v-model="detail"
           rows="3"
           maxlength="1000"
-          :placeholder="t('advertising.report_modal.comment_placeholder')"
+          :placeholder="t('advertising.report_dialog.detail_placeholder')"
           :disabled="submitting"
           class="w-full"
         />
@@ -147,13 +137,13 @@ function handleCancel() {
 
     <template #footer>
       <Button
-        :label="t('advertising.report_modal.cancel')"
+        :label="t('advertising.report_dialog.cancel')"
         text
         :disabled="submitting"
         @click="handleCancel"
       />
       <Button
-        :label="t('advertising.report_modal.submit')"
+        :label="t('advertising.report_dialog.submit')"
         icon="pi pi-send"
         :disabled="!canSubmit"
         :loading="submitting"

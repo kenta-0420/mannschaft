@@ -49,7 +49,7 @@ public class WeatherForecastService {
     private final WeatherMetrics weatherMetrics;
 
     /**
-     * 居住地点の今日・明日の予報を取得する。
+     * 居住地点の今日・明日・明後日の予報を取得する。
      *
      * @param countryCode ISO 3166-1 alpha-2
      * @param latRounded  0.5 度丸めの緯度

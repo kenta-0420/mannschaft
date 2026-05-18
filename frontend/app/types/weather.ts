@@ -4,6 +4,10 @@
  * BE の WeatherForecastResponse / DayForecastDto に対応。
  * Nuxt の useFetch はレスポンスを camelCase に変換しないため、
  * useApi() の実装に合わせてフィールド名を確認して定義している。
+ *
+ * 2026-05-18 変更: WeatherAPI.com 無料プラン上限（3 日）に合わせ、
+ * today / tomorrow フィールドを {@code forecasts} 配列に統合した。
+ * forecasts[0]=今日、[1]=明日、[2]=明後日。
  */
 
 export interface DayForecast {
@@ -19,8 +23,8 @@ export interface DayForecast {
 
 export interface WeatherForecastResponse {
   placeName: string
-  today: DayForecast
-  tomorrow: DayForecast
+  /** 今日・明日・明後日の予報。インデックス 0/1/2 の固定順、要素数 3。 */
+  forecasts: DayForecast[]
   dataSource: string
   fetchedAt: string
   isStale: boolean

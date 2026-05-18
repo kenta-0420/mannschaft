@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
- * F15.4 Phase 5-γ 未ログイン公開店舗詳細ページ
+ * F15.4 Phase 5-γ/δ 未ログイン公開店舗詳細ページ
  *
- * 設計書: docs/features/F15.4_phase5_team_public_detail.md §6
+ * 設計書: docs/features/F15.4_phase5_team_public_detail.md §5.2 / §6
  *
  * - middleware なし（未ログインで閲覧可能）。
  * - バックエンド `GET /api/v1/public/teams/{id}` を呼ぶ（permitAll + レート制限 60/min/IP）。
@@ -10,8 +10,10 @@
  * - 表示要素: ヘッダー / 基本情報 / 理念 / 地図 (Google Maps iframe) / ログイン誘導 CTA。
  * - メンバー一覧・連絡先・告知・チャット等は一切表示しない（抑制 DTO のため取得もしない）。
  *
- * TODO (Phase 5-δ): CSP (`frame-src https://www.google.com`) の追加を nuxt.config.ts もしくは
- *   server middleware で行う。本 Phase では既存 CSP が未設定のため対象外。
+ * Phase 5-δ: CSP (`frame-src https://www.google.com`) をページ単位の `<meta http-equiv>` で付与する。
+ *   フロント全体には現状 CSP ヘッダが未導入のため、Google Maps iframe を許容する本ページに限定して
+ *   ページ内 meta 形式で宣言する。将来全体に CSP ヘッダ（nuxt-security 等）を導入する際は、
+ *   `frame-src 'self' https://www.google.com` をホワイトリストへ移行すること。
  */
 import type { TeamPublicDetailResponse } from '~/types/team'
 
@@ -95,7 +97,18 @@ function formatEstablishedDate(): string {
   return `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-// === SEO / OGP ===
+// === SEO / OGP / CSP ===
+// CSP: 本ページ限定で Google Maps iframe を許容（設計書 §5.2）。
+// frame-src と child-src を両方指定し旧 UA 互換を確保する。
+// 既定の self / data: / https: のオリジンを含めつつ、frame だけは厳格に絞り込む。
+const PUBLIC_TEAM_CSP =
+  "default-src 'self' https: data: blob:; " +
+  "img-src 'self' https: data: blob:; " +
+  "style-src 'self' 'unsafe-inline' https:; " +
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; " +
+  "frame-src 'self' https://www.google.com; " +
+  "child-src 'self' https://www.google.com"
+
 useHead(() => ({
   title: team.value?.name ?? t('publicTeamDetail.notFound'),
   meta: [
@@ -106,6 +119,7 @@ useHead(() => ({
       content: team.value?.bannerUrl ?? team.value?.iconUrl ?? '',
     },
     { property: 'og:type', content: 'website' },
+    { 'http-equiv': 'Content-Security-Policy', content: PUBLIC_TEAM_CSP },
   ],
 }))
 

@@ -24,7 +24,8 @@ describe('useAdDeliveriesApi', () => {
 
   it('ADV-API-001: listDeliveries は GET /api/v1/me/ad-deliveries に params を渡す', async () => {
     mockFetch.mockResolvedValueOnce({
-      data: { items: [], nextCursor: null },
+      data: [],
+      meta: { nextCursor: null, limit: 20, hasNext: false },
     })
     const api = useAdDeliveriesApi()
     await api.listDeliveries({ channelType: 'EMAIL', limit: 20 })
@@ -49,16 +50,17 @@ describe('useAdDeliveriesApi', () => {
       data: {
         id: 'rep-1',
         campaignId: 'cmp-1',
-        reasonCode: 'MISLEADING',
+        userId: 1,
+        reason: 'MISLEADING',
+        detail: '誇大',
         createdAt: '2026-05-17T00:00:00Z',
       },
     })
     const api = useAdDeliveriesApi()
     const body = {
       campaignId: 'cmp-1',
-      channelType: 'EMAIL' as const,
-      reasonCode: 'MISLEADING' as const,
-      comment: '誇大',
+      reason: 'MISLEADING' as const,
+      detail: '誇大',
     }
     await api.createReport(body)
 

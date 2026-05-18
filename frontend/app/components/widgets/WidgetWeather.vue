@@ -3,9 +3,11 @@ import { getWeatherIconPath } from '~/constants/weatherIconMap'
 import type { WeatherErrorCode, WeatherForecastResponse } from '~/types/weather'
 
 /**
- * F02.10 天気ウィジェット — 今日・明日の天気を表示するウィジェット。
+ * F02.10 天気ウィジェット — 今日・明日・明後日の天気を表示するウィジェット。
  *
  * 設計書: docs/features/F02.10_weather_widget.md §6
+ *
+ * 2026-05-18: WeatherAPI.com 無料プラン上限 3 日に合わせ、2 列から 3 列グリッドへ拡張。
  */
 
 const { t } = useI18n()
@@ -16,6 +18,9 @@ const forecast = ref<WeatherForecastResponse | null>(null)
 const loading = ref(true)
 const refreshing = ref(false)
 const errorCode = ref<WeatherErrorCode | null>(null)
+
+/** 列ラベルキー（インデックス順）。i18n キー: dashboard.weather.today / tomorrow / day_after_tomorrow */
+const DAY_LABEL_KEYS = ['today', 'tomorrow', 'day_after_tomorrow'] as const
 
 async function load() {
   loading.value = true
@@ -63,6 +68,11 @@ function formatDate(dateStr: string): string {
   return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
+/** インデックスに対応する列ラベル（無効な index は空文字）。 */
+function labelKey(index: number): string {
+  return DAY_LABEL_KEYS[index] ?? ''
+}
+
 onMounted(load)
 </script>
 
@@ -81,76 +91,43 @@ onMounted(load)
         {{ forecast.placeName }}
       </p>
 
-      <!-- 2カラムグリッド: 今日・明日 -->
-      <div class="grid grid-cols-2 gap-3">
-        <!-- 今日 -->
-        <div class="flex flex-col items-center gap-1">
+      <!-- 3カラムグリッド: 今日・明日・明後日（狭い画面では縦積み） -->
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-2">
+        <div
+          v-for="(day, idx) in forecast.forecasts"
+          :key="day.date || idx"
+          class="flex flex-col items-center gap-1"
+        >
           <p class="text-xs font-semibold text-surface-500 dark:text-surface-400">
-            {{ t('dashboard.weather.today') }}
-            <span v-if="forecast.today.date" class="ml-1">
-              {{ formatDate(forecast.today.date) }}
+            {{ t(`dashboard.weather.${labelKey(idx)}`) }}
+            <span v-if="day.date" class="ml-1">
+              {{ formatDate(day.date) }}
             </span>
           </p>
           <img
-            :src="getWeatherIconPath(forecast.today.iconKey)"
+            :src="getWeatherIconPath(day.iconKey)"
             class="h-12 w-12 motion-reduce:transition-none"
-            :aria-label="t(`dashboard.weather.condition.${forecast.today.iconKey}`, forecast.today.conditionText)"
-            :alt="t(`dashboard.weather.condition.${forecast.today.iconKey}`, forecast.today.conditionText)"
+            :aria-label="t(`dashboard.weather.condition.${day.iconKey}`, day.conditionText)"
+            :alt="t(`dashboard.weather.condition.${day.iconKey}`, day.conditionText)"
           >
           <!-- XSS対策: v-text でバインド（設計書 §5.1 / §7.7） -->
-          <p class="text-center text-xs text-surface-600 dark:text-surface-300" v-text="forecast.today.conditionText" />
+          <p class="text-center text-xs text-surface-600 dark:text-surface-300" v-text="day.conditionText" />
           <div class="mt-1 w-full space-y-1 text-xs">
             <div class="flex justify-between">
               <span class="text-surface-500">{{ t('dashboard.weather.max') }}</span>
-              <span class="font-medium">{{ forecast.today.maxTempC.toFixed(1) }}°</span>
+              <span class="font-medium">{{ day.maxTempC.toFixed(1) }}°</span>
             </div>
             <div class="flex justify-between">
               <span class="text-surface-500">{{ t('dashboard.weather.min') }}</span>
-              <span class="font-medium">{{ forecast.today.minTempC.toFixed(1) }}°</span>
+              <span class="font-medium">{{ day.minTempC.toFixed(1) }}°</span>
             </div>
             <div class="flex justify-between">
               <span class="text-surface-500">{{ t('dashboard.weather.humidity') }}</span>
-              <span class="font-medium">{{ forecast.today.avgHumidity }}%</span>
+              <span class="font-medium">{{ day.avgHumidity }}%</span>
             </div>
             <div class="flex justify-between">
               <span class="text-surface-500">{{ t('dashboard.weather.chance_of_rain') }}</span>
-              <span class="font-medium">{{ forecast.today.chanceOfRain }}%</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 明日 -->
-        <div class="flex flex-col items-center gap-1">
-          <p class="text-xs font-semibold text-surface-500 dark:text-surface-400">
-            {{ t('dashboard.weather.tomorrow') }}
-            <span v-if="forecast.tomorrow.date" class="ml-1">
-              {{ formatDate(forecast.tomorrow.date) }}
-            </span>
-          </p>
-          <img
-            :src="getWeatherIconPath(forecast.tomorrow.iconKey)"
-            class="h-12 w-12 motion-reduce:transition-none"
-            :aria-label="t(`dashboard.weather.condition.${forecast.tomorrow.iconKey}`, forecast.tomorrow.conditionText)"
-            :alt="t(`dashboard.weather.condition.${forecast.tomorrow.iconKey}`, forecast.tomorrow.conditionText)"
-          >
-          <!-- XSS対策: v-text でバインド（設計書 §5.1 / §7.7） -->
-          <p class="text-center text-xs text-surface-600 dark:text-surface-300" v-text="forecast.tomorrow.conditionText" />
-          <div class="mt-1 w-full space-y-1 text-xs">
-            <div class="flex justify-between">
-              <span class="text-surface-500">{{ t('dashboard.weather.max') }}</span>
-              <span class="font-medium">{{ forecast.tomorrow.maxTempC.toFixed(1) }}°</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-surface-500">{{ t('dashboard.weather.min') }}</span>
-              <span class="font-medium">{{ forecast.tomorrow.minTempC.toFixed(1) }}°</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-surface-500">{{ t('dashboard.weather.humidity') }}</span>
-              <span class="font-medium">{{ forecast.tomorrow.avgHumidity }}%</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-surface-500">{{ t('dashboard.weather.chance_of_rain') }}</span>
-              <span class="font-medium">{{ forecast.tomorrow.chanceOfRain }}%</span>
+              <span class="font-medium">{{ day.chanceOfRain }}%</span>
             </div>
           </div>
         </div>

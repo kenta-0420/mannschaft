@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { AnnouncementFeedItem } from '~/types/announcement'
-import type { AdChannelType } from '~/types/adMessagingCampaign'
 
 const props = defineProps<{
   item: AnnouncementFeedItem
@@ -67,15 +66,10 @@ function toggleMenu(event: MouseEvent) {
 
 /** F09.17: 広告通報モーダル */
 const reportModalVisible = ref(false)
-const reportTarget = computed<{ campaignId: string; channelType: AdChannelType } | null>(
-  () => {
-    if (!isAd.value || !props.item.adCampaignId) return null
-    return {
-      campaignId: props.item.adCampaignId,
-      channelType: 'ANNOUNCEMENT',
-    }
-  },
-)
+const reportCampaignId = computed<string | null>(() => {
+  if (!isAd.value || !props.item.messagingCampaignId) return null
+  return props.item.messagingCampaignId
+})
 
 /** 相対時刻表示（シンプル実装）*/
 function relativeTime(dateStr: string): string {
@@ -199,10 +193,9 @@ function handleClick() {
 
     <!-- F09.17: 通報モーダル（広告フィードのみマウント） -->
     <AdReportModal
-      v-if="isAd && reportTarget"
+      v-if="isAd && reportCampaignId"
       v-model:visible="reportModalVisible"
-      :campaign-id="reportTarget.campaignId"
-      :channel-type="reportTarget.channelType"
+      :campaign-id="reportCampaignId"
       @click.stop
     />
   </div>

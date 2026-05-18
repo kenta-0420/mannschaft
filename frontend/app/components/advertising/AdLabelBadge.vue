@@ -1,31 +1,53 @@
 <script setup lang="ts">
 /**
- * F09.17 「広告」ラベルバッジ
+ * F09.17 「広告」ラベルバッジ。
  *
- * 景品表示法（WG 第 5 条 3 項）対応で、広告コンテンツに必須表示するバッジ。
- * バッジ色は #FF9800 固定（設計書 §6 / §9）。
- * ARIA `role="region" aria-label="広告"` でスクリーンリーダー向けに広告領域を明示。
+ * <p>景品表示法に準拠し、広告由来の表示物（お知らせ・メール・プッシュ・バナー）には
+ * 必ず本コンポーネントを併記する。配色 `#FF9800`（橙色）とロケール別表記
+ * （広告 / Ad / 广告 / 광고 / Anzeige / Anuncio）で識別性を担保する。</p>
  *
- * 注: このコンポーネントは Phase 11-c-1（基盤）と並行作成された雛形。
- * 11-c-1 マージ時に統合される可能性がある。
+ * <p>意味的にはボタンではなく単純ラベルのため `role="region"` でラベル化する。
+ * クリック可能要素にしてはいけない。</p>
+ *
+ * 使用例:
+ * <pre>
+ *   &lt;AdLabelBadge /&gt;
+ *   &lt;AdLabelBadge size="sm" /&gt;
+ * </pre>
  */
+
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+interface Props {
+  /** 表示サイズ。`sm` は一覧の見出し横、`md` はカード上部などで使う。 */
+  size?: 'sm' | 'md'
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  size: 'md',
+})
 
 const { t } = useI18n()
 
-defineProps<{
-  /** small / medium / large 表示サイズ */
-  size?: 'sm' | 'md'
-}>()
+const label = computed(() => t('advertising.ad_label'))
+
+const sizeClass = computed(() =>
+  props.size === 'sm'
+    ? 'text-[10px] px-1.5 py-0.5'
+    : 'text-xs px-2 py-0.5',
+)
 </script>
 
 <template>
   <span
     role="region"
-    :aria-label="t('advertising.label_badge.ad')"
-    class="inline-flex items-center rounded font-semibold text-white"
-    :class="size === 'sm' ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-xs'"
-    style="background-color: #ff9800"
+    :aria-label="label"
+    class="inline-flex items-center rounded font-bold text-white select-none"
+    :class="sizeClass"
+    style="background-color: #FF9800"
+    data-testid="ad-label-badge"
   >
-    {{ t('advertising.label_badge.ad') }}
+    {{ label }}
   </span>
 </template>

@@ -57,10 +57,7 @@ async function handleStopAll() {
     markShown()
     emit('update:visible', false)
   } catch (err) {
-    notification.error(
-      t('advertising.consent_dialog.title'),
-      String(err),
-    )
+    notification.error(t('advertising.consent_dialog.title'), String(err))
   } finally {
     stopping.value = false
   }
@@ -93,7 +90,7 @@ async function handleStopAll() {
         @click="handleStopAll"
       />
       <Button
-        :label="t('advertising.consent_dialog.agree')"
+        :label="t('advertising.consent_dialog.accept')"
         icon="pi pi-check"
         :disabled="stopping"
         @click="handleAgree"

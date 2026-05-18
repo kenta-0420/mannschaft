@@ -30,6 +30,7 @@
       "title": "Weather",
       "today": "Today",
       "tomorrow": "Tomorrow",
+      "day_after_tomorrow": "Day after tomorrow",
       "max": "High",
       "min": "Low",
       "humidity": "Humidity",

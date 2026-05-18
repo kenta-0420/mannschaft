@@ -8,7 +8,7 @@ import AdReportModal from '~/components/advertising/AdReportModal.vue'
  *
  * テスト観点:
  *   ARM-001: visible=true でダイアログが描画される
- *   ARM-002: reason 未選択時は送信ボタンが disabled
+ *   ARM-002: reason 未選択時は createReport が呼ばれない
  *   ARM-003: reason 選択 + 送信 → createReport を所定の引数で呼ぶ + 成功トースト
  *   ARM-004: 送信成功で submitted emit + visible=false emit
  *   ARM-005: 429 受信時はレート制限警告トースト
@@ -35,10 +35,6 @@ vi.mock('~/composables/useNotification', () => ({
   }),
 }))
 
-function findByTestId<T extends Element = HTMLElement>(testId: string): T | null {
-  return document.body.querySelector<T>(`[data-testid="${testId}"]`)
-}
-
 beforeEach(() => {
   setActivePinia(createPinia())
   mockCreateReport.mockReset()
@@ -60,19 +56,17 @@ describe('AdReportModal.vue', () => {
       props: {
         visible: true,
         campaignId: '0190xxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-        channelType: 'ANNOUNCEMENT',
       },
     })
     // PrimeVue Dialog は body へテレポート
     expect(document.body.querySelector('.p-dialog')).not.toBeNull()
   })
 
-  it('ARM-002: reason 未選択時は送信が呼ばれない（disabled）', async () => {
+  it('ARM-002: reason 未選択時は createReport が呼ばれない', async () => {
     const wrapper = await mountSuspended(AdReportModal, {
       props: {
         visible: true,
         campaignId: 'cmp-1',
-        channelType: 'ANNOUNCEMENT',
       },
     })
     const vm = wrapper.vm as unknown as { handleSubmit: () => Promise<void> }
@@ -85,7 +79,9 @@ describe('AdReportModal.vue', () => {
       data: {
         id: 'rep-1',
         campaignId: 'cmp-1',
-        reasonCode: 'MISLEADING',
+        userId: 1,
+        reason: 'MISLEADING',
+        detail: '実態と異なる',
         createdAt: '2026-05-17T00:00:00Z',
       },
     })
@@ -93,36 +89,40 @@ describe('AdReportModal.vue', () => {
       props: {
         visible: true,
         campaignId: 'cmp-1',
-        channelType: 'EMAIL',
       },
     })
     const vm = wrapper.vm as unknown as {
       selectedReason: string | null
-      comment: string
+      detail: string
       handleSubmit: () => Promise<void>
     }
     vm.selectedReason = 'MISLEADING'
-    vm.comment = '実態と異なる'
+    vm.detail = '実態と異なる'
     await vm.handleSubmit()
 
     expect(mockCreateReport).toHaveBeenCalledWith({
       campaignId: 'cmp-1',
-      channelType: 'EMAIL',
-      reasonCode: 'MISLEADING',
-      comment: '実態と異なる',
+      reason: 'MISLEADING',
+      detail: '実態と異なる',
     })
     expect(mockToastSuccess).toHaveBeenCalled()
   })
 
   it('ARM-004: 送信成功で submitted emit + update:visible(false) emit', async () => {
     mockCreateReport.mockResolvedValueOnce({
-      data: { id: 'rep-1', campaignId: 'cmp-1', reasonCode: 'SPAM', createdAt: '' },
+      data: {
+        id: 'rep-1',
+        campaignId: 'cmp-1',
+        userId: 1,
+        reason: 'SPAM',
+        detail: null,
+        createdAt: '',
+      },
     })
     const wrapper = await mountSuspended(AdReportModal, {
       props: {
         visible: true,
         campaignId: 'cmp-1',
-        channelType: 'PUSH',
       },
     })
     const vm = wrapper.vm as unknown as {
@@ -149,7 +149,6 @@ describe('AdReportModal.vue', () => {
       props: {
         visible: true,
         campaignId: 'cmp-1',
-        channelType: 'ANNOUNCEMENT',
       },
     })
     const vm = wrapper.vm as unknown as {
@@ -161,10 +160,5 @@ describe('AdReportModal.vue', () => {
 
     expect(mockToastWarn).toHaveBeenCalled()
     expect(mockToastSuccess).not.toHaveBeenCalled()
-  })
-
-  // 動的型を抑制するため未使用変数を排除
-  it('ARM-006: findByTestId ヘルパは export 済（lint 抑止）', () => {
-    expect(findByTestId).toBeDefined()
   })
 })

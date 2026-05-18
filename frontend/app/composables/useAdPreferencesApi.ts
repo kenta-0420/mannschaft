@@ -1,5 +1,5 @@
 import type {
-  AdPreferencesResponse,
+  UserAdPreferences,
   UpdateAdPreferencesRequest,
 } from '~/types/adPreferences'
 
@@ -8,30 +8,30 @@ import type {
  *
  * - GET `/api/v1/me/ad-preferences` で初期表示用
  * - PUT `/api/v1/me/ad-preferences` で保存（部分更新）
- * - PUT `/api/v1/me/ad-preferences` + `rotateUnsubscribeToken=true` で
+ * - PUT `/api/v1/me/ad-preferences` + `rotateUnsubscribeTokens=true` で
  *   既存メール内の unsubscribe リンクを一括無効化（unsubscribe_token_version をインクリメント）
  */
 export function useAdPreferencesApi() {
   const api = useApi()
 
   async function getPreferences() {
-    return api<{ data: AdPreferencesResponse }>('/api/v1/me/ad-preferences')
+    return api<{ data: UserAdPreferences }>('/api/v1/me/ad-preferences')
   }
 
   async function updatePreferences(body: UpdateAdPreferencesRequest) {
-    return api<{ data: AdPreferencesResponse }>('/api/v1/me/ad-preferences', {
+    return api<{ data: UserAdPreferences }>('/api/v1/me/ad-preferences', {
       method: 'PUT',
       body,
     })
   }
 
-  async function rotateUnsubscribeToken() {
-    return updatePreferences({ rotateUnsubscribeToken: true })
+  async function rotateUnsubscribeTokens() {
+    return updatePreferences({ rotateUnsubscribeTokens: true })
   }
 
   return {
     getPreferences,
     updatePreferences,
-    rotateUnsubscribeToken,
+    rotateUnsubscribeTokens,
   }
 }

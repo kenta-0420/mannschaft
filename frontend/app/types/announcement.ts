@@ -62,14 +62,16 @@ export interface AnnouncementFeedItem {
   expiresAt: string | null
   createdAt: string
   /**
-   * F09.17: 広告フィードかどうか。`true` の場合「広告」バッジ表示 + 「広告を通報 / 受信停止」メニュー追加。
-   * バックエンドが `announcement_feeds.is_advertisement` から返す。
+   * F09.17: 広告由来のお知らせかどうか。
+   * true の場合は <AdLabelBadge /> の表示と景品表示法対応の挙動を有効化する。
    */
   isAdvertisement?: boolean
-  /**
-   * F09.17: 広告の場合のキャンペーン ID（UUIDv7）。通報モーダル起動時に使用。
-   */
-  adCampaignId?: string | null
+  /** F09.17: 広告主アカウント ID（{@link isAdvertisement} が true の場合のみ） */
+  advertiserAccountId?: number
+  /** F09.17: メッセージ型キャンペーン ID（UUID 文字列、{@link isAdvertisement} が true の場合のみ） */
+  messagingCampaignId?: string
+  /** F09.17: お知らせ枠経由の広告であることを明示する固定値 */
+  channelType?: 'ANNOUNCEMENT'
 }
 
 export interface AnnouncementFeedMeta {
