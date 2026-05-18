@@ -25,7 +25,6 @@ function setToday() {
 const useTimeRange = ref(false)
 const startHour = ref<number | null>(null) // 0〜23
 const endHour = ref<number | null>(null)   // 1〜24（終了時刻は 24:00 = 翌0:00 まで許容しないが UI 上は 23:00 まで）
-const HOURS = Array.from({ length: 24 }, (_, i) => i) // 0〜23
 
 function toHHmm(h: number | null): string | null {
   if (h === null) return null
@@ -325,85 +324,16 @@ onMounted(loadHistory)
 <template>
   <div class="space-y-6">
     <!-- Section 1: 休業期間選択 -->
-    <section class="rounded-lg border border-surface-200 p-4 dark:border-surface-700">
-      <h3 class="mb-3 font-semibold text-surface-700 dark:text-surface-200">{{ $t('emergency_closure.section.period') }}</h3>
-      <div class="flex flex-wrap items-end gap-3">
-        <div>
-          <label class="mb-1 block text-sm font-medium">{{ $t('emergency_closure.label.start_date') }}</label>
-          <input
-            v-model="startDate"
-            type="date"
-            class="rounded-md border border-surface-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
-          >
-        </div>
-        <div>
-          <label class="mb-1 block text-sm font-medium">{{ $t('emergency_closure.label.end_date') }}</label>
-          <input
-            v-model="endDate"
-            type="date"
-            :min="startDate"
-            class="rounded-md border border-surface-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
-          >
-        </div>
-        <Button
-          :label="$t('emergency_closure.button.today_only')"
-          icon="pi pi-calendar"
-          size="small"
-          severity="secondary"
-          outlined
-          @click="setToday"
-        />
-      </div>
-
-      <!-- 時間帯指定（部分時間帯休業）-->
-      <div class="mt-4 border-t border-surface-100 pt-3 dark:border-surface-700">
-        <div class="flex items-center gap-2">
-          <Checkbox v-model="useTimeRange" input-id="use-time-range" :binary="true" />
-          <label for="use-time-range" class="cursor-pointer text-sm">
-            {{ $t('emergency_closure.label.partial_time') }}
-          </label>
-        </div>
-        <p class="mt-1 text-xs text-surface-400">
-          {{ $t('emergency_closure.hint.all_day') }}
-        </p>
-
-        <div v-if="useTimeRange" class="mt-3 flex flex-wrap items-end gap-3">
-          <div>
-            <label class="mb-1 block text-sm font-medium">{{ $t('emergency_closure.label.start_time') }}</label>
-            <select
-              v-model.number="startHour"
-              class="rounded-md border border-surface-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
-            >
-              <option :value="null">{{ $t('emergency_closure.placeholder.select') }}</option>
-              <option v-for="h in HOURS" :key="`s${h}`" :value="h">
-                {{ String(h).padStart(2, '0') }}:00
-              </option>
-            </select>
-          </div>
-          <span class="pb-2 text-surface-400">〜</span>
-          <div>
-            <label class="mb-1 block text-sm font-medium">{{ $t('emergency_closure.label.end_time') }}</label>
-            <select
-              v-model.number="endHour"
-              class="rounded-md border border-surface-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100"
-            >
-              <option :value="null">{{ $t('emergency_closure.placeholder.select') }}</option>
-              <option v-for="h in HOURS" :key="`e${h}`" :value="h">
-                {{ String(h).padStart(2, '0') }}:00
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <p v-if="timeRangeError" class="mt-2 text-xs text-red-500">
-          <i class="pi pi-exclamation-circle mr-1" />{{ timeRangeError }}
-        </p>
-      </div>
-
-      <p v-if="startDate" class="mt-3 text-sm text-surface-500">
-        {{ $t('emergency_closure.label.target_period') }}: <span class="font-medium text-surface-700 dark:text-surface-200">{{ periodText }}</span>
-      </p>
-    </section>
+    <EmergencyClosurePeriodInput
+      v-model:start-date="startDate"
+      v-model:end-date="endDate"
+      v-model:use-time-range="useTimeRange"
+      v-model:start-hour="startHour"
+      v-model:end-hour="endHour"
+      :period-text="periodText"
+      :time-range-error="timeRangeError"
+      @set-today="setToday"
+    />
 
     <!-- Section 2: テンプレート選択 -->
     <section class="rounded-lg border border-surface-200 p-4 dark:border-surface-700">
@@ -422,25 +352,10 @@ onMounted(loadHistory)
     </section>
 
     <!-- Section 3: メッセージ編集 -->
-    <section class="rounded-lg border border-surface-200 p-4 dark:border-surface-700">
-      <h3 class="mb-3 font-semibold text-surface-700 dark:text-surface-200">{{ $t('emergency_closure.section.message_edit') }}</h3>
-      <div class="space-y-3">
-        <div>
-          <label class="mb-1 block text-sm font-medium">{{ $t('emergency_closure.label.subject') }}</label>
-          <InputText v-model="subject" class="w-full" :placeholder="$t('emergency_closure.placeholder.subject')" />
-        </div>
-        <div>
-          <label class="mb-1 block text-sm font-medium">{{ $t('emergency_closure.label.body') }}</label>
-          <Textarea
-            v-model="messageBody"
-            class="w-full"
-            rows="8"
-            :placeholder="$t('emergency_closure.placeholder.body')"
-            auto-resize
-          />
-        </div>
-      </div>
-    </section>
+    <EmergencyClosureMessageEditor
+      v-model:subject="subject"
+      v-model:message-body="messageBody"
+    />
 
     <!-- Section 4: オプション -->
     <section class="rounded-lg border border-surface-200 p-4 dark:border-surface-700">
@@ -457,66 +372,15 @@ onMounted(loadHistory)
     </section>
 
     <!-- Section 5: プレビュー -->
-    <section class="rounded-lg border border-surface-200 p-4 dark:border-surface-700">
-      <div class="mb-3 flex items-center justify-between">
-        <h3 class="font-semibold text-surface-700 dark:text-surface-200">{{ $t('emergency_closure.section.preview') }}</h3>
-        <Button
-          :label="$t('emergency_closure.button.check_preview')"
-          icon="pi pi-search"
-          size="small"
-          severity="info"
-          outlined
-          :loading="previewLoading"
-          @click="loadPreview"
-        />
-      </div>
-
-      <div v-if="previewLoading">
-        <Skeleton v-for="i in 3" :key="i" height="2.5rem" class="mb-2" />
-      </div>
-
-      <template v-else-if="previewDone">
-        <p class="mb-2 text-sm font-medium">
-          <span v-if="previewItems.length > 0" class="text-primary-600 dark:text-primary-400">
-            {{ $t('emergency_closure.message.notify_count', { count: previewItems.length }) }}
-          </span>
-          <span v-else class="text-surface-400">
-            {{ $t('emergency_closure.message.no_reservations') }}
-          </span>
-        </p>
-
-        <div v-if="previewItems.length > 0" class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-surface-200 dark:border-surface-600">
-                <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.patient_name') }}</th>
-                <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.datetime') }}</th>
-                <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.status') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="item in previewItems"
-                :key="item.reservationId"
-                class="border-b border-surface-100 last:border-0 dark:border-surface-700"
-              >
-                <td class="py-2 pr-4">{{ item.userDisplayName }}</td>
-                <td class="py-2 pr-4 text-surface-600 dark:text-surface-300">
-                  {{ formatPreviewDateTime(item.slotDate, item.startTime, item.endTime) }}
-                </td>
-                <td class="py-2">
-                  <Tag :value="statusLabel(item.status)" :severity="statusSeverity(item.status)" />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </template>
-
-      <p v-else class="text-sm text-surface-400">
-        {{ $t('emergency_closure.hint.press_check_preview') }}
-      </p>
-    </section>
+    <EmergencyClosurePreview
+      :loading="previewLoading"
+      :done="previewDone"
+      :items="previewItems"
+      :format-preview-date-time="formatPreviewDateTime"
+      :status-label="statusLabel"
+      :status-severity="statusSeverity"
+      @check="loadPreview"
+    />
 
     <!-- Section 6: 送信 -->
     <section class="rounded-lg border border-surface-200 p-4 dark:border-surface-700">
@@ -537,139 +401,26 @@ onMounted(loadHistory)
     </section>
 
     <!-- 送信履歴 -->
-    <section class="rounded-lg border border-surface-200 p-4 dark:border-surface-700">
-      <div class="mb-3 flex items-center justify-between">
-        <h3 class="font-semibold text-surface-700 dark:text-surface-200">{{ $t('emergency_closure.section.history') }}</h3>
-        <Button
-          icon="pi pi-refresh"
-          text
-          rounded
-          size="small"
-          :loading="historyLoading"
-          @click="loadHistory"
-        />
-      </div>
-
-      <div v-if="historyLoading">
-        <Skeleton v-for="i in 2" :key="i" height="2.5rem" class="mb-2" />
-      </div>
-      <div v-else-if="historyItems.length > 0" class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-surface-200 dark:border-surface-600">
-              <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.sent_at') }}</th>
-              <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.section.period') }}</th>
-              <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.reason') }}</th>
-              <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.count') }}</th>
-              <th class="pb-2 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.confirmation_status') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <template
-              v-for="item in historyItems"
-              :key="item.id"
-            >
-              <tr class="border-b border-surface-100 dark:border-surface-700">
-                <td class="py-2 pr-4 text-surface-600 dark:text-surface-300">
-                  {{ new Date(item.createdAt).toLocaleString('ja-JP') }}
-                </td>
-                <td class="py-2 pr-4">
-                  <div>
-                    {{ item.startDate === item.endDate ? formatDate(item.startDate) : `${formatDate(item.startDate)}〜${formatDate(item.endDate)}` }}
-                  </div>
-                  <div v-if="item.startTime && item.endTime" class="text-xs text-surface-500">
-                    {{ item.startTime }}〜{{ item.endTime }}
-                  </div>
-                </td>
-                <td class="py-2 pr-4">{{ item.reason }}</td>
-                <td class="py-2 pr-4">
-                  <Tag :value="`${item.notifiedCount}件`" severity="info" />
-                </td>
-                <td class="py-2">
-                  <button
-                    class="inline-flex items-center gap-1 rounded text-xs text-primary-600 hover:underline dark:text-primary-400"
-                    @click="toggleConfirmations(item.id)"
-                  >
-                    <i v-if="confirmationsLoading && expandedClosureId === item.id" class="pi pi-spin pi-spinner text-xs" />
-                    <template v-else>
-                      <span v-if="confirmationsMap[item.id]">
-                        {{ $t('emergency_closure.message.confirmed_count', { confirmed: confirmedCount(item.id), total: totalCount(item.id) }) }}
-                      </span>
-                      <span v-else>{{ $t('emergency_closure.button.view_confirmations') }}</span>
-                      <i :class="expandedClosureId === item.id ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" class="text-xs" />
-                    </template>
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="expandedClosureId === item.id">
-                <td colspan="5" class="px-4 pb-3 pt-1">
-                  <div v-if="confirmationsMap[item.id]" class="rounded-md border border-surface-200 bg-surface-50 p-3 dark:border-surface-600 dark:bg-surface-800">
-                    <p class="mb-2 text-xs font-semibold text-surface-500">{{ $t('emergency_closure.section.confirmations') }}</p>
-                    <table class="w-full text-xs">
-                      <thead>
-                        <tr class="border-b border-surface-200 dark:border-surface-600">
-                          <th class="pb-1 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.patient_name') }}</th>
-                          <th class="pb-1 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.appointment_at') }}</th>
-                          <th class="pb-1 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.confirmed_header') }}</th>
-                          <th class="pb-1 text-left font-medium text-surface-500">{{ $t('emergency_closure.table.reminder') }}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr
-                          v-for="conf in confirmationsMap[item.id]"
-                          :key="conf.userId"
-                          class="border-b border-surface-100 last:border-0 dark:border-surface-700"
-                        >
-                          <td class="py-1 pr-4">{{ conf.userDisplayName }}</td>
-                          <td class="py-1 pr-4 text-surface-500">
-                            {{ new Date(conf.appointmentAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
-                          </td>
-                          <td class="py-1 pr-4">
-                            <span v-if="conf.confirmed" class="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
-                              <i class="pi pi-check-circle" /> {{ $t('emergency_closure.status.confirmed') }}
-                            </span>
-                            <span v-else class="inline-flex items-center gap-1 text-red-500">
-                              <i class="pi pi-times-circle" /> {{ $t('emergency_closure.status.unconfirmed') }}
-                            </span>
-                          </td>
-                          <td class="py-1">
-                            <span v-if="conf.reminderSent" class="text-amber-500">{{ $t('emergency_closure.status.reminder_sent') }}</span>
-                            <span v-else class="text-surface-400">{{ $t('emergency_closure.status.reminder_not_sent') }}</span>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </td>
-              </tr>
-            </template>
-          </tbody>
-        </table>
-      </div>
-      <DashboardEmptyState v-else icon="pi pi-inbox" :message="$t('emergency_closure.message.no_history')" />
-    </section>
+    <EmergencyClosureHistory
+      :loading="historyLoading"
+      :items="historyItems"
+      :expanded-closure-id="expandedClosureId"
+      :confirmations-map="confirmationsMap"
+      :confirmations-loading="confirmationsLoading"
+      :format-date="formatDate"
+      :confirmed-count="confirmedCount"
+      :total-count="totalCount"
+      @reload="loadHistory"
+      @toggle-confirmations="toggleConfirmations"
+    />
 
     <!-- 確認ダイアログ -->
-    <Dialog
+    <EmergencyClosureConfirmDialog
       v-model:visible="showConfirm"
-      :header="$t('emergency_closure.dialog.title')"
-      :style="{ width: '420px' }"
-      modal
-    >
-      <div class="space-y-2 text-sm">
-        <p>{{ $t('emergency_closure.dialog.confirm_message') }}</p>
-        <ul class="mt-2 space-y-1 rounded-md bg-surface-50 p-3 dark:bg-surface-800">
-          <li><span class="font-medium">{{ $t('emergency_closure.dialog.label_period') }}:</span> {{ periodText }}</li>
-          <li><span class="font-medium">{{ $t('emergency_closure.dialog.label_subject') }}:</span> {{ subject }}</li>
-          <li v-if="cancelReservations" class="text-orange-600 dark:text-orange-400">
-            {{ $t('emergency_closure.dialog.cancel_warning') }}
-          </li>
-        </ul>
-      </div>
-      <template #footer>
-        <Button :label="$t('button.cancel')" text @click="showConfirm = false" />
-        <Button :label="$t('emergency_closure.button.send_confirm')" icon="pi pi-send" severity="danger" @click="confirmSend" />
-      </template>
-    </Dialog>
+      :period-text="periodText"
+      :subject="subject"
+      :cancel-reservations="cancelReservations"
+      @confirm="confirmSend"
+    />
   </div>
 </template>
