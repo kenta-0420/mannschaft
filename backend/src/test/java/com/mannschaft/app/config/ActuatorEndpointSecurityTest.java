@@ -6,7 +6,7 @@ import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
-import com.mannschaft.app.team.filter.OrganizationTeamSearchRateLimitFilter;
+import com.mannschaft.app.team.filter.PublicTeamApiRateLimitFilter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -119,19 +119,23 @@ class ActuatorEndpointSecurityTest {
         }
 
         /**
-         * F15.4: SecurityConfig が依存する OrganizationTeamSearchRateLimitFilter の
+         * F15.4: SecurityConfig が依存する PublicTeamApiRateLimitFilter の
          * 本物インスタンス。AuditLogService は ObjectProvider 経由で弱結合化されているため
          * 空の ObjectProvider モックを渡す。
          * 本テストは /actuator/** のみを叩くため、対象パス
-         * （/api/v1/organizations/{orgId}/teams/search）の正規表現に一致せず、
-         * 何もせず chain.doFilter に通す挙動になる（AuditLogService.record は呼ばれない）。
+         * （/api/v1/organizations/{orgId}/teams/search / /api/v1/public/teams/{id}）の
+         * 正規表現に一致せず、何もせず chain.doFilter に通す挙動になる
+         * （AuditLogService.record は呼ばれない）。
+         *
+         * <p>※ Phase 5-α でクラス名を {@code OrganizationTeamSearchRateLimitFilter} →
+         *   {@code PublicTeamApiRateLimitFilter} にリネーム済み。
          */
         @Bean
         @SuppressWarnings("unchecked")
-        OrganizationTeamSearchRateLimitFilter organizationTeamSearchRateLimitFilter() {
+        PublicTeamApiRateLimitFilter publicTeamApiRateLimitFilter() {
             org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.auth.service.AuditLogService> provider =
                     mock(org.springframework.beans.factory.ObjectProvider.class);
-            return new OrganizationTeamSearchRateLimitFilter(provider);
+            return new PublicTeamApiRateLimitFilter(provider);
         }
 
         /**

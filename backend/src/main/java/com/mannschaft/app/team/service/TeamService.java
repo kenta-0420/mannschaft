@@ -29,6 +29,7 @@ import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.dto.CreateTeamRequest;
 import com.mannschaft.app.team.dto.TeamOrgSummaryResponse;
+import com.mannschaft.app.team.dto.TeamPublicDetailResponse;
 import com.mannschaft.app.team.dto.TeamResponse;
 import com.mannschaft.app.team.dto.TeamSummaryResponse;
 import com.mannschaft.app.team.dto.UpdateTeamRequest;
@@ -115,6 +116,42 @@ public class TeamService {
         long supporterCount = membershipRepository.countActiveByScopeAndRoleKind(
                 ScopeType.TEAM, team.getId(), RoleKind.SUPPORTER);
         return ApiResponse.of(toResponse(team, 1, teamFriendCount, supporterCount));
+    }
+
+    /**
+     * F15.4 Phase 5-α: 店舗詳細を <strong>未ログイン</strong> でも取得できる公開エンドポイント用メソッド。
+     *
+     * <p>設計書: {@code docs/features/F15.4_phase5_team_public_detail.md} §4
+     *
+     * <p>以下のいずれかに該当する場合は {@link BusinessException}（{@link TeamErrorCode#TEAM_001}
+     * → 404 にマップ）を投げる。エニュメレーション対策で他の状態と区別せず一律 404 とする。
+     * <ul>
+     *   <li>チーム不在</li>
+     *   <li>論理削除済み（{@code deletedAt != null}）— {@code @SQLRestriction} により
+     *       通常クエリでは取得されないが、念のためチェック</li>
+     *   <li>アーカイブ済み（{@code archivedAt != null}）— マスター裁可: 404</li>
+     *   <li>{@code visibility != PUBLIC}</li>
+     * </ul>
+     *
+     * <p>既存 {@link #getTeam(Long)} は<b>無傷</b>で残し、こちらは別途
+     * {@link TeamPublicDetailResponse}（抑制版 DTO）を返す。
+     */
+    public TeamPublicDetailResponse getPublicTeam(Long teamId) {
+        TeamEntity team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
+        // 念のための二重チェック（@SQLRestriction で deletedAt IS NULL は通常担保される）
+        if (team.getDeletedAt() != null) {
+            throw new BusinessException(TeamErrorCode.TEAM_001);
+        }
+        // archived は未ログインアクセスに対しては 404（マスター裁可）
+        if (team.getArchivedAt() != null) {
+            throw new BusinessException(TeamErrorCode.TEAM_001);
+        }
+        // 公開可視性以外は 404（IDOR / エニュメレーション対策）
+        if (team.getVisibility() != TeamEntity.Visibility.PUBLIC) {
+            throw new BusinessException(TeamErrorCode.TEAM_001);
+        }
+        return TeamPublicDetailResponse.from(team);
     }
 
     /**

@@ -30,28 +30,32 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link OrganizationTeamSearchRateLimitFilter} のレート制限検証。
+ * {@link PublicTeamApiRateLimitFilter} のレート制限検証。
  *
- * <p>設計書 {@code docs/features/F15.4_team_store_search_within_org.md §3.5 / §6 / §6.6} に従い以下を検証する:</p>
+ * <p>設計書 {@code docs/features/F15.4_team_store_search_within_org.md §3.5 / §6 / §6.6}
+ *      および {@code docs/features/F15.4_phase5_team_public_detail.md §4.4} に従い以下を検証する:</p>
  * <ul>
- *   <li>未ログイン: 30 回まで成功、31 回目で 429（IP ベース）</li>
- *   <li>ログイン: 120 回まで成功、121 回目で 429（userId ベース）</li>
+ *   <li>(検索) 未ログイン: 30 回まで成功、31 回目で 429（IP ベース）</li>
+ *   <li>(検索) ログイン: 120 回まで成功、121 回目で 429（userId ベース）</li>
+ *   <li>(詳細) 未ログイン: 60 回まで成功、61 回目で 429（IP ベース、Phase 5-α）</li>
  *   <li>異なる IP / 異なるユーザー間でバケットが隔離されている</li>
+ *   <li>検索パスと詳細パスは別バケット（Target enum で名前空間分離）</li>
  *   <li>対象パス外（{@code GET /api/v1/organizations/{orgId}/teams}）は透過する</li>
  *   <li>非 GET メソッドは透過する</li>
  *   <li>429 レスポンスに {@code Retry-After: 60} ヘッダーと JSON ボディが返る</li>
- *   <li>§6.6: レート違反時のみ {@code AuditLogService.record(TEAM_SEARCH_RATE_LIMITED, ...)} が呼ばれる</li>
+ *   <li>§6.6: レート違反時に対象に応じた AuditEventType（TEAM_SEARCH_RATE_LIMITED /
+ *       PUBLIC_TEAM_DETAIL_RATE_LIMIT_EXCEEDED）が記録される</li>
  * </ul>
  *
  * <p><b>実装アプローチ</b>: 既存 {@link com.mannschaft.app.pointcard.filter.PointCardRateLimitFilter}
  * のテストと同形で、Filter を直接呼び出し Bucket4j のトークン消費を検証する。</p>
  */
-@DisplayName("OrganizationTeamSearchRateLimitFilter レート制限検証")
-class OrganizationTeamSearchRateLimitFilterTest {
+@DisplayName("PublicTeamApiRateLimitFilter レート制限検証")
+class PublicTeamApiRateLimitFilterTest {
 
     private static final String TARGET_PATH = "/api/v1/organizations/100/teams/search";
 
-    private OrganizationTeamSearchRateLimitFilter filter;
+    private PublicTeamApiRateLimitFilter filter;
     private AuditLogService auditLogService;
 
     @BeforeEach
@@ -66,7 +70,7 @@ class OrganizationTeamSearchRateLimitFilterTest {
             consumer.accept(auditLogService);
             return null;
         }).when(provider).ifAvailable(any());
-        filter = new OrganizationTeamSearchRateLimitFilter(provider);
+        filter = new PublicTeamApiRateLimitFilter(provider);
     }
 
     @AfterEach
@@ -342,6 +346,146 @@ class OrganizationTeamSearchRateLimitFilterTest {
                 isNull(),
                 any()
         );
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // Phase 5-α: 店舗詳細 Public API (/api/v1/public/teams/{id})
+    // ────────────────────────────────────────────────────────────
+
+    private static final String DETAIL_PATH = "/api/v1/public/teams/42";
+
+    @Test
+    @DisplayName("(詳細) 未ログイン: GET /public/teams/{id} は 60 回まで成功、61 回目で 429")
+    void detail_anonymous_60PerMinute_then429() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+
+        for (int i = 0; i < 60; i++) {
+            MockHttpServletRequest request = buildRequest(DETAIL_PATH, "GET");
+            request.setRemoteAddr("198.51.100.70");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, chain);
+            assertThat(response.getStatus())
+                    .as("詳細 未ログイン %d 回目は 200 を期待", i + 1)
+                    .isEqualTo(HttpServletResponse.SC_OK);
+        }
+
+        // 61 回目: 429
+        MockHttpServletRequest request = buildRequest(DETAIL_PATH, "GET");
+        request.setRemoteAddr("198.51.100.70");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getStatus()).isEqualTo(429);
+        assertThat(response.getHeader("Retry-After")).isEqualTo("60");
+    }
+
+    @Test
+    @DisplayName("(詳細) ログイン: GET /public/teams/{id} は 200 回まで成功、201 回目で 429")
+    void detail_authenticated_200PerMinute_then429() throws Exception {
+        setAuthenticated("555");
+        FilterChain chain = mock(FilterChain.class);
+
+        for (int i = 0; i < 200; i++) {
+            MockHttpServletRequest request = buildRequest(DETAIL_PATH, "GET");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, chain);
+            assertThat(response.getStatus())
+                    .as("詳細 ログイン %d 回目は 200 を期待", i + 1)
+                    .isEqualTo(HttpServletResponse.SC_OK);
+        }
+
+        // 201 回目: 429
+        MockHttpServletRequest request = buildRequest(DETAIL_PATH, "GET");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getStatus()).isEqualTo(429);
+    }
+
+    @Test
+    @DisplayName("(詳細) 検索パスのバケットとは独立: 検索を 30 回消費しても詳細は影響なし")
+    void detail_separateBucketFromSearch() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+        String ip = "198.51.100.80";
+
+        // 検索パスで 30 回消費 → 上限到達
+        for (int i = 0; i < 30; i++) {
+            MockHttpServletRequest req = buildRequest(TARGET_PATH, "GET");
+            req.setRemoteAddr(ip);
+            MockHttpServletResponse res = new MockHttpServletResponse();
+            filter.doFilter(req, res, chain);
+            assertThat(res.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        }
+        MockHttpServletRequest searchOver = buildRequest(TARGET_PATH, "GET");
+        searchOver.setRemoteAddr(ip);
+        MockHttpServletResponse searchOverRes = new MockHttpServletResponse();
+        filter.doFilter(searchOver, searchOverRes, chain);
+        assertThat(searchOverRes.getStatus()).isEqualTo(429);
+
+        // 詳細パスは独立バケットなので 200 を返す
+        MockHttpServletRequest detailReq = buildRequest(DETAIL_PATH, "GET");
+        detailReq.setRemoteAddr(ip);
+        MockHttpServletResponse detailRes = new MockHttpServletResponse();
+        filter.doFilter(detailReq, detailRes, chain);
+        assertThat(detailRes.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+    }
+
+    @Test
+    @DisplayName("§6.6 (詳細): 429 発火時に PUBLIC_TEAM_DETAIL_RATE_LIMIT_EXCEEDED が記録される")
+    void detail_anonymous_rateLimited_recordsAuditEvent() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+
+        for (int i = 0; i < 60; i++) {
+            MockHttpServletRequest request = buildRequest(DETAIL_PATH, "GET");
+            request.setRemoteAddr("198.51.100.90");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, chain);
+            assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        }
+        verify(auditLogService, never()).record(any(), any(), any(), any(), any(), any(), any(), any(), any());
+
+        // 61 回目: 429 で記録される
+        MockHttpServletRequest request = buildRequest(DETAIL_PATH, "GET");
+        request.setRemoteAddr("198.51.100.90");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getStatus()).isEqualTo(429);
+
+        ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
+        verify(auditLogService, times(1)).record(
+                eq(AuditEventType.PUBLIC_TEAM_DETAIL_RATE_LIMIT_EXCEEDED.name()),
+                isNull(), // userId（未ログイン）
+                isNull(),
+                isNull(),
+                isNull(), // organizationId は詳細パスでは取れない → null
+                isNull(),
+                isNull(),
+                isNull(),
+                metadataCaptor.capture()
+        );
+
+        String metadata = metadataCaptor.getValue();
+        assertThat(metadata).contains("\"teamId\":\"42\"");
+        assertThat(metadata).contains("\"ipHash\":\"");
+        // 生 IP がメタデータに含まれていないこと（PII 保護）
+        assertThat(metadata).doesNotContain("198.51.100.90");
+    }
+
+    @Test
+    @DisplayName("対象外パス（/api/v1/public/teams ルート）は透過する")
+    void detail_rootPath_isTransparent() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+        // 末尾に id がない（{@code /api/v1/public/teams/}）パスは正規表現にマッチしない
+        MockHttpServletRequest request = buildRequest("/api/v1/public/teams", "GET");
+        request.setRemoteAddr("198.51.100.95");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain, times(1)).doFilter(any(), any());
+        assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
     }
 
     // ────────────────────────────────────────────────────────────
