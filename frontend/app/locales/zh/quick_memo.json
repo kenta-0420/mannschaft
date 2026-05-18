@@ -28,6 +28,15 @@
       "deleted": "已删除",
       "delete_error": "删除失败"
     },
+    "dashboard_widget": {
+      "title": "快速备忘录",
+      "empty": "没有未整理的快速备忘录",
+      "click_to_edit": "点击编辑",
+      "open_detail": "打开详情",
+      "see_all": "查看全部",
+      "converted": "已转换为待办事项",
+      "convert_error": "转换为待办事项失败"
+    },
     "capture_modal": {
       "title": "快速备忘录",
       "title_placeholder": "现在脑海中浮现的是什么？",

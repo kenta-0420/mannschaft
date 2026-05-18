@@ -128,6 +128,14 @@ const quickLinks: QuickLink[] = [
     color: 'text-gray-500',
     bg: 'bg-gray-50 dark:bg-gray-900/20',
   },
+  // F09.17 Phase 11-c-4: 広告キャンペーン審査ダッシュボード
+  {
+    label: t('advertising.pages.system_admin_dashboard.quick_link_label'),
+    icon: 'pi pi-shield',
+    to: '/system-admin/advertising',
+    color: 'text-amber-500',
+    bg: 'bg-amber-50 dark:bg-amber-900/20',
+  },
 ]
 </script>
 

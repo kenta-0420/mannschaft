@@ -3,26 +3,94 @@
  * F03.15 Phase 3 ダッシュボード「今日の時間割」ウィジェット。
  *
  * 個人ダッシュボードに配置し、所属チーム時間割と個人時間割を時刻順でマージ表示する。
+ * 各コマには折り畳み式の個人メモ（予習 / 持参物 / 自由メモ）を併載し、
+ *  - メモ無し → 「＋メモを書く」ボタンでエディタを開く
+ *  - メモ有り → 展開ボタンで冒頭抜粋を確認、「編集」ボタンでフル編集
+ * という導線で完結させる。
  */
-import type { DashboardTimetableToday } from '~/types/timetable-note'
+import type {
+  DashboardTimetableToday,
+  DashboardTimetableTodayItem,
+  TimetableSlotKind,
+  TimetableSlotUserNote,
+} from '~/types/timetable-note'
 
 const { t } = useI18n()
 const api = useTimetableSlotNoteApi()
 
 const data = ref<DashboardTimetableToday | null>(null)
+const notesBySlot = ref<Map<string, TimetableSlotUserNote>>(new Map())
+const expandedSlots = ref<Set<string>>(new Set())
 const loading = ref(true)
+
+const editorVisible = ref(false)
+const editorSlot = ref<{ kind: TimetableSlotKind, id: number, date?: string | null } | null>(null)
+
+function slotKey(kind: TimetableSlotKind | 'TEAM' | 'PERSONAL', id: number): string {
+  return `${kind}:${id}`
+}
+
+function snippet(text: string | null | undefined, max = 60): string {
+  if (!text) return ''
+  return text.length > max ? `${text.slice(0, max)}…` : text
+}
+
+function hasAnyNote(note: TimetableSlotUserNote | undefined): boolean {
+  if (!note) return false
+  return !!(note.preparation || note.items_to_bring || note.free_memo
+    || (note.custom_fields && note.custom_fields.some(f => f.value)))
+}
 
 async function load() {
   loading.value = true
   try {
-    data.value = await api.dashboardToday()
+    const [today, notes] = await Promise.all([
+      api.dashboardToday(),
+      api.todayNotes().catch(() => [] as TimetableSlotUserNote[]),
+    ])
+    data.value = today
+    const map = new Map<string, TimetableSlotUserNote>()
+    const autoExpand = new Set<string>()
+    for (const n of notes) {
+      const key = slotKey(n.slot_kind, n.slot_id)
+      map.set(key, n)
+      // メモのある行は既定で展開しておく（ダッシュボードでひと目で内容を把握させる）
+      if (n.preparation || n.items_to_bring || n.free_memo
+        || (n.custom_fields && n.custom_fields.some(f => f.value))) {
+        autoExpand.add(key)
+      }
+    }
+    notesBySlot.value = map
+    expandedSlots.value = autoExpand
   }
   catch {
     data.value = null
+    notesBySlot.value = new Map()
+    expandedSlots.value = new Set()
   }
   finally {
     loading.value = false
   }
+}
+
+function toggleExpand(item: DashboardTimetableTodayItem) {
+  const key = slotKey(item.source_kind, item.slot_id)
+  if (expandedSlots.value.has(key)) expandedSlots.value.delete(key)
+  else expandedSlots.value.add(key)
+}
+
+function openEditor(item: DashboardTimetableTodayItem) {
+  editorSlot.value = {
+    kind: item.source_kind as TimetableSlotKind,
+    id: item.slot_id,
+    date: data.value?.date ?? null,
+  }
+  editorVisible.value = true
+}
+
+async function onNoteSaved() {
+  editorVisible.value = false
+  await load()
 }
 
 onMounted(load)
@@ -43,19 +111,94 @@ onMounted(load)
       <li
         v-for="(item, idx) in data.items"
         :key="`${item.source_kind}-${item.slot_id}-${idx}`"
-        class="flex items-center text-sm border-l-4 pl-2 py-1"
+        class="border-l-4 pl-2 py-1 text-sm"
         :style="item.color ? `border-color:${item.color}` : 'border-color:#cbd5e0'"
       >
-        <span class="mr-2 text-gray-500 w-16">
-          {{ item.start_time?.slice(0, 5) ?? '--:--' }}
-        </span>
-        <span class="font-medium mr-1">{{ item.subject_name }}</span>
-        <span v-if="item.room_name" class="text-gray-500 mr-1">@ {{ item.room_name }}</span>
-        <span class="ml-auto text-xs px-1.5 py-0.5 rounded" :class="item.source_kind === 'PERSONAL' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'">
-          {{ item.source_kind === 'PERSONAL' ? t('personalTimetable.dashboard.tag_personal') : t('personalTimetable.dashboard.tag_team') }}
-        </span>
-        <span v-if="item.has_attachments" class="ml-1 text-xs">📎</span>
+        <!-- コマ本体 -->
+        <div class="flex items-center">
+          <span class="mr-2 text-gray-500 w-16">
+            {{ item.start_time?.slice(0, 5) ?? '--:--' }}
+          </span>
+          <span class="font-medium mr-1">{{ item.subject_name }}</span>
+          <span v-if="item.room_name" class="text-gray-500 mr-1">@ {{ item.room_name }}</span>
+          <span
+            class="ml-auto text-xs px-1.5 py-0.5 rounded"
+            :class="item.source_kind === 'PERSONAL' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'"
+          >
+            {{ item.source_kind === 'PERSONAL' ? t('personalTimetable.dashboard.tag_personal') : t('personalTimetable.dashboard.tag_team') }}
+          </span>
+          <span v-if="item.has_attachments" class="ml-1 text-xs">📎</span>
+        </div>
+
+        <!-- メモ操作行 -->
+        <div class="flex items-center gap-2 mt-1 ml-16">
+          <template v-if="hasAnyNote(notesBySlot.get(slotKey(item.source_kind, item.slot_id)))">
+            <button
+              type="button"
+              class="text-xs text-primary hover:underline"
+              @click="toggleExpand(item)"
+            >
+              <i
+                :class="expandedSlots.has(slotKey(item.source_kind, item.slot_id)) ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
+                class="text-[10px] mr-0.5"
+              />
+              {{ t('personalTimetable.dashboard.memo_label') }}
+            </button>
+            <button
+              type="button"
+              class="text-xs text-gray-500 hover:text-primary hover:underline ml-auto"
+              @click="openEditor(item)"
+            >
+              <i class="pi pi-pencil text-[10px] mr-0.5" />{{ t('personalTimetable.dashboard.memo_edit') }}
+            </button>
+          </template>
+          <template v-else>
+            <button
+              type="button"
+              class="text-xs text-gray-400 hover:text-primary hover:underline"
+              @click="openEditor(item)"
+            >
+              <i class="pi pi-plus text-[10px] mr-0.5" />{{ t('personalTimetable.dashboard.memo_add') }}
+            </button>
+          </template>
+        </div>
+
+        <!-- メモ展開部 -->
+        <div
+          v-if="expandedSlots.has(slotKey(item.source_kind, item.slot_id)) && notesBySlot.get(slotKey(item.source_kind, item.slot_id))"
+          class="mt-1 ml-16 space-y-0.5 text-xs text-gray-700 dark:text-gray-300"
+        >
+          <p v-if="notesBySlot.get(slotKey(item.source_kind, item.slot_id))!.preparation">
+            <span class="font-medium">{{ t('personalTimetable.notes.field_preparation') }}:</span>
+            {{ snippet(notesBySlot.get(slotKey(item.source_kind, item.slot_id))!.preparation) }}
+          </p>
+          <p v-if="notesBySlot.get(slotKey(item.source_kind, item.slot_id))!.items_to_bring">
+            <span class="font-medium">{{ t('personalTimetable.notes.field_items_to_bring') }}:</span>
+            {{ snippet(notesBySlot.get(slotKey(item.source_kind, item.slot_id))!.items_to_bring) }}
+          </p>
+          <p v-if="notesBySlot.get(slotKey(item.source_kind, item.slot_id))!.free_memo">
+            <span class="font-medium">{{ t('personalTimetable.notes.field_free_memo') }}:</span>
+            {{ snippet(notesBySlot.get(slotKey(item.source_kind, item.slot_id))!.free_memo) }}
+          </p>
+        </div>
       </li>
     </ul>
+
+    <!-- メモ編集モーダル -->
+    <Dialog
+      v-model:visible="editorVisible"
+      :header="t('personalTimetable.notes.dashboard_title')"
+      modal
+      class="w-full max-w-2xl"
+    >
+      <TimetableSlotNoteEditor
+        v-if="editorSlot"
+        :slot-kind="editorSlot.kind"
+        :slot-id="editorSlot.id"
+        :target-date="editorSlot.date"
+        @saved="onNoteSaved"
+        @closed="editorVisible = false"
+      />
+    </Dialog>
   </DashboardWidgetCard>
 </template>

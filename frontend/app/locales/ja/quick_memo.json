@@ -28,6 +28,15 @@
       "deleted": "削除しました",
       "delete_error": "削除に失敗しました"
     },
+    "dashboard_widget": {
+      "title": "ポイっとメモ",
+      "empty": "未整理のポイっとメモはありません",
+      "click_to_edit": "クリックして編集",
+      "open_detail": "詳細を開く",
+      "see_all": "すべて見る",
+      "converted": "TODOに変換しました",
+      "convert_error": "TODO 変換に失敗しました"
+    },
     "capture_modal": {
       "title": "ポイっとメモ",
       "title_placeholder": "気になったことを書いておこう…",

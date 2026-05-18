@@ -133,6 +133,12 @@ public class SecurityConfig {
                 // F09.17 Phase 11-b 広告 unsubscribe / 開封ピクセル（認証不要・IP レート制限あり）
                 .requestMatchers(HttpMethod.GET, "/api/v1/ads/unsubscribe").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/ads/pixels/open").permitAll()
+                // TODO(F09.18 Phase 18-d): /api/v1/system-admin/email-outbox/** に SYSTEM_ADMIN
+                //   ロール限定の包括認可ルールを追加すること。現在は `.anyRequest().permitAll()`
+                //   が末尾でフォールバックしており Controller 側の @PreAuthorize に依存している。
+                //   本番移行時 (.anyRequest().authenticated() 化) 前に
+                //   `.requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN")` 系の
+                //   明示ルールを追加して二重ガードとすること。設計書 §6.2 / §8 参照。
                 // 開発中は全エンドポイントを許可（本番移行時に .authenticated() に変更）
                 .anyRequest().permitAll()
             )
