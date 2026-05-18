@@ -3,7 +3,6 @@ package com.mannschaft.app.notification.confirmable.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -11,11 +10,8 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationSettingsEntity;
-import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationStatus;
-import com.mannschaft.app.notification.confirmable.entity.ConfirmedVia;
 import com.mannschaft.app.notification.confirmable.entity.UnconfirmedVisibility;
 import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
-import com.mannschaft.app.notification.confirmable.event.ConfirmableNotificationConfirmedEvent;
 import com.mannschaft.app.notification.confirmable.event.ConfirmableNotificationCreatedEvent;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
@@ -34,9 +30,17 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * F04.9 確認通知コアサービス。
+ * F04.9 確認通知コアサービス（ファサード）。
  *
- * <p>確認通知の送信・確認・キャンセル・詳細取得などの業務ロジックを提供する。</p>
+ * <p>確認通知の送信・確認・キャンセル・詳細取得などの業務ロジックを提供する公開エントリポイント。
+ * 実装はリファクタリング第9弾で以下の 3 クラスに分割されており、本クラスはファサードとして
+ * 既存呼び出し元（Controller / 他ドメイン Service）の public シグネチャを完全に維持する。</p>
+ *
+ * <ul>
+ *   <li>本クラス: 送信処理（{@code send}）— 通知作成・受信者バッチ登録・課金・イベント発行</li>
+ *   <li>{@link ConfirmableNotificationConfirmService}: 確認・キャンセル・リマインド再送</li>
+ *   <li>{@link ConfirmableNotificationQueryService}: 詳細・一覧の参照（読込専用）</li>
+ * </ul>
  *
  * <p><b>リマインド分数の3段フォールバック解決ロジック</b>:
  * <ol>
@@ -69,6 +73,12 @@ public class ConfirmableNotificationService {
     private final ApplicationEventPublisher eventPublisher;
     /** F09.13 通知クレジット消費（確認通知は課金対象） */
     private final NotificationCreditService notificationCreditService;
+
+    /** リファクタリング第9弾で分離された確認系処理（委譲先） */
+    private final ConfirmableNotificationConfirmService confirmService;
+
+    /** リファクタリング第9弾で分離された参照系処理（委譲先） */
+    private final ConfirmableNotificationQueryService queryService;
 
     /**
      * 確認通知を送信する。
@@ -253,187 +263,65 @@ public class ConfirmableNotificationService {
     /**
      * 認証済みユーザーがアプリ内から確認通知を確認する。
      *
+     * <p>実装は {@link ConfirmableNotificationConfirmService#confirm(Long, Long)} に委譲。</p>
+     *
      * @param notificationId 確認通知ID
      * @param userId         確認するユーザーID
      */
     @Transactional
     public void confirm(Long notificationId, Long userId) {
-        // 通知の存在チェック
-        ConfirmableNotificationEntity notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.NOT_FOUND));
-
-        // ACTIVE 状態チェック（キャンセル・期限切れ・完了済みは確認不可）
-        if (!notification.isActive()) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.ALREADY_CANCELLED);
-        }
-
-        // 受信者レコードの取得
-        List<ConfirmableNotificationRecipientEntity> allRecipients =
-                recipientRepository.findByConfirmableNotificationId(notificationId);
-        ConfirmableNotificationRecipientEntity recipient = allRecipients.stream()
-                .filter(r -> r.getUser().getId().equals(userId))
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.RECIPIENT_NOT_FOUND));
-
-        // 除外済みチェック
-        if (recipient.isExcluded()) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.RECIPIENT_NOT_FOUND);
-        }
-
-        // 二重確認チェック
-        if (Boolean.TRUE.equals(recipient.getIsConfirmed())) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.ALREADY_CONFIRMED);
-        }
-
-        // アプリ内確認として記録
-        recipient.confirm(ConfirmedVia.APP);
-        recipientRepository.save(recipient);
-
-        log.info("確認通知確認（APP）: notificationId={}, userId={}", notificationId, userId);
-
-        // 全受信者（除外者を除く）が確認済みになった場合は通知を完了状態にする
-        checkAndCompleteIfAllConfirmed(notification, allRecipients, recipient);
-
-        // ConfirmableNotificationConfirmedEvent を発行（AFTER_COMMIT でリスナーが受け取る）
-        eventPublisher.publishEvent(new ConfirmableNotificationConfirmedEvent(
-                notificationId, userId, recipient.getConfirmedAt()));
+        confirmService.confirm(notificationId, userId);
     }
 
     /**
      * トークンURL経由で確認通知を確認する（認証不要）。
      *
+     * <p>実装は {@link ConfirmableNotificationConfirmService#confirmByToken(String)} に委譲。</p>
+     *
      * @param confirmToken 確認トークン（UUID文字列）
      */
     @Transactional
     public void confirmByToken(String confirmToken) {
-        // トークンで受信者を検索
-        ConfirmableNotificationRecipientEntity recipient =
-                recipientRepository.findByConfirmToken(confirmToken)
-                        .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.INVALID_TOKEN));
-
-        // 除外済みチェック
-        if (recipient.isExcluded()) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.INVALID_TOKEN);
-        }
-
-        // 二重確認チェック
-        if (Boolean.TRUE.equals(recipient.getIsConfirmed())) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.ALREADY_CONFIRMED);
-        }
-
-        ConfirmableNotificationEntity notification = recipient.getConfirmableNotification();
-
-        // ACTIVE 状態チェック
-        if (!notification.isActive()) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.ALREADY_CANCELLED);
-        }
-
-        // トークン経由での確認として記録
-        recipient.confirm(ConfirmedVia.TOKEN);
-        recipientRepository.save(recipient);
-
-        log.info("確認通知確認（TOKEN）: notificationId={}, userId={}",
-                notification.getId(), recipient.getUser().getId());
-
-        // 全受信者確認済み判定
-        List<ConfirmableNotificationRecipientEntity> allRecipients =
-                recipientRepository.findByConfirmableNotificationId(notification.getId());
-        checkAndCompleteIfAllConfirmed(notification, allRecipients, recipient);
-
-        // イベント発行
-        eventPublisher.publishEvent(new ConfirmableNotificationConfirmedEvent(
-                notification.getId(),
-                recipient.getUser().getId(),
-                recipient.getConfirmedAt()));
+        confirmService.confirmByToken(confirmToken);
     }
 
     /**
      * 確認通知をキャンセルする（ADMIN操作）。
+     *
+     * <p>実装は {@link ConfirmableNotificationConfirmService#cancel(Long, Long)} に委譲。</p>
      *
      * @param notificationId    確認通知ID
      * @param cancelledByUserId キャンセル実行者のユーザーID
      */
     @Transactional
     public void cancel(Long notificationId, Long cancelledByUserId) {
-        ConfirmableNotificationEntity notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.NOT_FOUND));
-
-        // 既にキャンセル済みの場合はエラー
-        if (notification.getStatus() == ConfirmableNotificationStatus.CANCELLED) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.ALREADY_CANCELLED);
-        }
-
-        // ACTIVE 以外（COMPLETED / EXPIRED）もキャンセル不可
-        if (!notification.isActive()) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.ALREADY_CANCELLED);
-        }
-
-        UserEntity cancelledBy = userRepository.findById(cancelledByUserId).orElse(null);
-        notification.cancel(cancelledBy);
-        notificationRepository.save(notification);
-
-        log.info("確認通知キャンセル: notificationId={}, cancelledByUserId={}",
-                notificationId, cancelledByUserId);
+        confirmService.cancel(notificationId, cancelledByUserId);
     }
 
     /**
      * 手動リマインドを再送する（ADMIN操作）。
      *
-     * <p>ACTIVE 状態の通知に対して、未確認の受信者全員にリマインドを再送する。</p>
+     * <p>ACTIVE 状態の通知に対して、未確認の受信者全員にリマインドを再送する。
+     * 実装は {@link ConfirmableNotificationConfirmService#resendReminder(Long)} に委譲。</p>
      *
      * @param notificationId 確認通知ID
      */
     @Transactional
     public void resendReminder(Long notificationId) {
-        ConfirmableNotificationEntity notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.NOT_FOUND));
-
-        if (!notification.isActive()) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.ALREADY_CANCELLED);
-        }
-
-        // 未確認かつ除外されていない受信者を取得
-        List<ConfirmableNotificationRecipientEntity> unconfirmedRecipients =
-                recipientRepository.findActiveUnconfirmedByNotificationId(notificationId);
-
-        if (unconfirmedRecipients.isEmpty()) {
-            log.info("手動リマインド再送: 未確認受信者なし notificationId={}", notificationId);
-            return;
-        }
-
-        // 未確認受信者のユーザーIDを収集
-        List<Long> targetUserIds = unconfirmedRecipients.stream()
-                .map(r -> r.getUser().getId())
-                .collect(Collectors.toList());
-
-        // F04.3 通知基盤経由でリマインドを一括送信
-        NotificationScopeType notifScopeType = toNotificationScopeType(notification.getScopeType());
-        notificationHelper.notifyAll(
-                targetUserIds,
-                "CONFIRMABLE_NOTIFICATION_REMINDER",
-                toNotificationPriority(notification.getPriority()),
-                notification.getTitle(),
-                notification.getBody() != null ? notification.getBody() : "",
-                "CONFIRMABLE_NOTIFICATION",
-                notificationId,
-                notifScopeType,
-                notification.getScopeId(),
-                notification.getActionUrl(),
-                null);
-
-        log.info("手動リマインド再送: notificationId={}, targetCount={}", notificationId, targetUserIds.size());
+        confirmService.resendReminder(notificationId);
     }
 
     /**
      * 確認通知の詳細を取得する。
+     *
+     * <p>実装は {@link ConfirmableNotificationQueryService#getDetail(Long)} に委譲。</p>
      *
      * @param notificationId 確認通知ID
      * @return 確認通知エンティティ
      */
     @Transactional(readOnly = true)
     public ConfirmableNotificationEntity getDetail(Long notificationId) {
-        return notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.NOT_FOUND));
+        return queryService.getDetail(notificationId);
     }
 
     /**
@@ -441,32 +329,21 @@ public class ConfirmableNotificationService {
      *
      * <p>呼び出し側で ADMIN+ 権限チェック済みであること。
      * F04.9 Phase D の MEMBER 視点アクセスは
-     * {@link #getRecipientsForMember(Long, Long)} を使用すること。</p>
+     * {@link #getRecipientsForMember(Long, Long)} を使用すること。
+     * 実装は {@link ConfirmableNotificationQueryService#getRecipients(Long)} に委譲。</p>
      *
      * @param notificationId 確認通知ID
      * @return 受信者エンティティリスト（除外者・確認済みも含む全件）
      */
     @Transactional(readOnly = true)
     public List<ConfirmableNotificationRecipientEntity> getRecipients(Long notificationId) {
-        // 通知の存在確認
-        if (!notificationRepository.existsById(notificationId)) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.NOT_FOUND);
-        }
-        return recipientRepository.findByConfirmableNotificationId(notificationId);
+        return queryService.getRecipients(notificationId);
     }
 
     /**
      * MEMBER 視点で確認通知の未確認者一覧を取得する（F04.9 Phase D）。
      *
-     * <p>認可判定:
-     * <ol>
-     *   <li>通知が存在し、{@code unconfirmedVisibility = ALL_MEMBERS} であること</li>
-     *   <li>呼び出しユーザーが当通知の受信者であること（除外者は不可）</li>
-     * </ol>
-     * いずれかを満たさない場合は {@link CommonErrorCode#COMMON_002}（403）を投げる。</p>
-     *
-     * <p>戻り値は <b>未確認かつ非除外</b> の受信者のみ。Mapper の
-     * {@code toRecipientPublicResponseList} で confirmedAt / confirmedVia / excludedAt をマスクして返すこと。</p>
+     * <p>実装は {@link ConfirmableNotificationQueryService#getRecipientsForMember(Long, Long)} に委譲。</p>
      *
      * @param notificationId  確認通知ID
      * @param requesterUserId リクエスト元ユーザーID
@@ -475,33 +352,13 @@ public class ConfirmableNotificationService {
     @Transactional(readOnly = true)
     public List<ConfirmableNotificationRecipientEntity> getRecipientsForMember(
             Long notificationId, Long requesterUserId) {
-        // 通知の存在確認
-        ConfirmableNotificationEntity notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.NOT_FOUND));
-
-        // 公開範囲チェック: ALL_MEMBERS 以外は 403
-        if (notification.getUnconfirmedVisibility() != UnconfirmedVisibility.ALL_MEMBERS) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
-
-        // 呼び出しユーザーが受信者かつ非除外であることを確認
-        List<ConfirmableNotificationRecipientEntity> allRecipients =
-                recipientRepository.findByConfirmableNotificationId(notificationId);
-        boolean isRecipient = allRecipients.stream()
-                .anyMatch(r -> r.getUser().getId().equals(requesterUserId) && !r.isExcluded());
-        if (!isRecipient) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
-
-        // 未確認かつ非除外の受信者のみ返す
-        return allRecipients.stream()
-                .filter(r -> !Boolean.TRUE.equals(r.getIsConfirmed()))
-                .filter(r -> !r.isExcluded())
-                .collect(Collectors.toList());
+        return queryService.getRecipientsForMember(notificationId, requesterUserId);
     }
 
     /**
      * スコープ内の確認通知一覧を取得する（作成日時降順）。
+     *
+     * <p>実装は {@link ConfirmableNotificationQueryService#listByScope(ScopeType, Long)} に委譲。</p>
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
@@ -509,53 +366,25 @@ public class ConfirmableNotificationService {
      */
     @Transactional(readOnly = true)
     public List<ConfirmableNotificationEntity> listByScope(ScopeType scopeType, Long scopeId) {
-        return notificationRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(scopeType, scopeId);
+        return queryService.listByScope(scopeType, scopeId);
     }
 
     /**
      * ユーザーの未確認通知一覧を取得する（受信者視点）。
+     *
+     * <p>実装は {@link ConfirmableNotificationQueryService#listPending(Long)} に委譲。</p>
      *
      * @param userId ユーザーID
      * @return 未確認受信者エンティティリスト
      */
     @Transactional(readOnly = true)
     public List<ConfirmableNotificationRecipientEntity> listPending(Long userId) {
-        return recipientRepository.findByUserIdAndIsConfirmedFalseAndExcludedAtIsNull(userId);
+        return queryService.listPending(userId);
     }
 
     // =========================================================================
-    // プライベートヘルパーメソッド
+    // プライベートヘルパーメソッド（send 内部で使用）
     // =========================================================================
-
-    /**
-     * 全受信者（除外者を除く）が確認済みの場合は通知を完了状態にする。
-     *
-     * @param notification   対象確認通知
-     * @param allRecipients  全受信者リスト
-     * @param justConfirmed  今回確認された受信者（already-confirmed 状態に反映済み）
-     */
-    private void checkAndCompleteIfAllConfirmed(
-            ConfirmableNotificationEntity notification,
-            List<ConfirmableNotificationRecipientEntity> allRecipients,
-            ConfirmableNotificationRecipientEntity justConfirmed) {
-
-        // 除外者を除いた受信者の中に未確認者が残っていないか確認
-        boolean allConfirmed = allRecipients.stream()
-                .filter(r -> !r.isExcluded())
-                .allMatch(r -> {
-                    // 今回確認されたレシピエントは確認済みとして扱う（save前でも）
-                    if (r.getId().equals(justConfirmed.getId())) {
-                        return true;
-                    }
-                    return Boolean.TRUE.equals(r.getIsConfirmed());
-                });
-
-        if (allConfirmed) {
-            notification.complete();
-            notificationRepository.save(notification);
-            log.info("確認通知完了（全員確認）: notificationId={}", notification.getId());
-        }
-    }
 
     /**
      * 確認通知の優先度を F04.3 通知基盤の優先度に変換する。
