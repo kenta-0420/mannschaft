@@ -2,16 +2,26 @@ package com.mannschaft.app.shift.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.shift.ShiftAssignmentStatus;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftMapper;
 import com.mannschaft.app.shift.ShiftPeriodType;
 import com.mannschaft.app.shift.ShiftScheduleStatus;
 import com.mannschaft.app.shift.dto.CreateShiftScheduleRequest;
 import com.mannschaft.app.shift.dto.ShiftScheduleResponse;
+import com.mannschaft.app.shift.dto.ShiftScheduleSummaryResponse;
 import com.mannschaft.app.shift.dto.UpdateShiftScheduleRequest;
+import com.mannschaft.app.shift.entity.ShiftAssignmentEntity;
+import com.mannschaft.app.shift.entity.ShiftPositionEntity;
+import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
+import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.event.ShiftPublishedEvent;
+import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
+import com.mannschaft.app.shift.repository.ShiftPositionRepository;
+import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
+import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
@@ -19,7 +29,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * シフトスケジュールサービス。シフトスケジュールのCRUD・ステータス遷移を担当する。
@@ -31,6 +46,10 @@ import java.util.List;
 public class ShiftScheduleService {
 
     private final ShiftScheduleRepository scheduleRepository;
+    private final ShiftSlotRepository slotRepository;
+    private final ShiftAssignmentRepository assignmentRepository;
+    private final ShiftRequestRepository requestRepository;
+    private final ShiftPositionRepository positionRepository;
     private final ShiftMapper shiftMapper;
     private final DomainEventPublisher eventPublisher;
 
@@ -208,6 +227,115 @@ public class ShiftScheduleService {
         duplicate = scheduleRepository.save(duplicate);
         log.info("シフトスケジュール複製: sourceId={}, newId={}", id, duplicate.getId());
         return shiftMapper.toScheduleResponse(duplicate);
+    }
+
+    /**
+     * シフトスケジュールの「日付 × ポジション」充足状況サマリーを取得する。
+     *
+     * <p>管理者のシフト調整画面の概観表示で使用する。スロット・確定アサイン・希望提出を
+     * それぞれ集計し、未充足の箇所を一望できるマトリクスとして返す。</p>
+     *
+     * <p>認可は Controller 側で {@code @PreAuthorize("hasRole('ADMIN')")} を付与しているため、
+     * 本メソッドでは追加チェックを行わない（既存パターン踏襲）。</p>
+     *
+     * @param id スケジュール ID
+     * @return 日付別・ポジション別の充足状況サマリー
+     * @throws BusinessException スケジュールが存在しない場合
+     */
+    public ShiftScheduleSummaryResponse getScheduleSummary(Long id) {
+        ShiftScheduleEntity schedule = findScheduleOrThrow(id);
+
+        // 1) スロット一覧（日付・開始時刻昇順）を取得
+        List<ShiftSlotEntity> slots = slotRepository
+                .findByScheduleIdOrderBySlotDateAscStartTimeAsc(schedule.getId());
+
+        // 2) 全スロットの確定アサイン件数を集計（slotId → CONFIRMED 件数）
+        Map<Long, Long> confirmedCountBySlot = new HashMap<>();
+        for (ShiftSlotEntity slot : slots) {
+            long confirmed = assignmentRepository.findAllBySlotId(slot.getId()).stream()
+                    .filter(a -> a.getStatus() == ShiftAssignmentStatus.CONFIRMED)
+                    .count();
+            confirmedCountBySlot.put(slot.getId(), confirmed);
+        }
+
+        // 3) スケジュール全希望を取得（後で日付ごとに分配）
+        List<ShiftRequestEntity> allRequests = requestRepository
+                .findByScheduleIdOrderBySlotDateAsc(schedule.getId());
+
+        // 4) ポジション名解決用マップ（teamId 内の全ポジション）
+        Map<Long, String> positionNameMap = positionRepository
+                .findByTeamIdOrderByDisplayOrderAsc(schedule.getTeamId()).stream()
+                .collect(Collectors.toMap(ShiftPositionEntity::getId, ShiftPositionEntity::getName));
+
+        // 5) 日付ごとにスロットをグループ化
+        Map<LocalDate, List<ShiftSlotEntity>> slotsByDate = slots.stream()
+                .collect(Collectors.groupingBy(ShiftSlotEntity::getSlotDate));
+
+        // 6) 日付ごとの希望件数（slot_date 単位、preference 種別を問わない延べ件数）
+        Map<LocalDate, Long> requestCountByDate = allRequests.stream()
+                .collect(Collectors.groupingBy(ShiftRequestEntity::getSlotDate, Collectors.counting()));
+
+        // 7) 日付昇順で DateSummary を組み立てる
+        List<LocalDate> dates = slotsByDate.keySet().stream().sorted().toList();
+        List<ShiftScheduleSummaryResponse.DateSummary> dateSummaries = new ArrayList<>();
+        for (LocalDate date : dates) {
+            List<ShiftSlotEntity> daySlots = slotsByDate.get(date);
+
+            // positionId（NULL含む）でグループ化
+            Map<Long, List<ShiftSlotEntity>> byPosition = daySlots.stream()
+                    .collect(Collectors.groupingBy(
+                            s -> s.getPositionId(),
+                            HashMap::new,
+                            Collectors.toList()));
+
+            List<ShiftScheduleSummaryResponse.PositionSummary> positionSummaries = byPosition.entrySet().stream()
+                    .map(e -> {
+                        Long positionId = e.getKey();
+                        List<ShiftSlotEntity> positionSlots = e.getValue();
+                        int required = positionSlots.stream()
+                                .mapToInt(s -> s.getRequiredCount() != null ? s.getRequiredCount() : 0)
+                                .sum();
+                        long confirmed = positionSlots.stream()
+                                .mapToLong(s -> confirmedCountBySlot.getOrDefault(s.getId(), 0L))
+                                .sum();
+                        // 希望は slot 単位で割り出すのが本来理想だが、現状の shift_requests は
+                        // slot_id NULL かつ slot_date 単位で提出されるユースケースが多いため、
+                        // ポジション単位の希望集計は「ポジション指定なし」枠を含む day-level の
+                        // 延べ件数を再掲する形にとどめる（将来 slot_id 必須化されたら絞り込み導入）。
+                        return ShiftScheduleSummaryResponse.PositionSummary.builder()
+                                .positionId(positionId)
+                                .positionName(positionId != null
+                                        ? positionNameMap.getOrDefault(positionId, "(不明)")
+                                        : null)
+                                .required(required)
+                                .confirmed((int) confirmed)
+                                .requested(0) // ポジション単位の希望集計は v1 では未対応（day-level に集約）
+                                .build();
+                    })
+                    .sorted(Comparator.comparing(
+                            ShiftScheduleSummaryResponse.PositionSummary::getPositionId,
+                            Comparator.nullsLast(Comparator.naturalOrder())))
+                    .toList();
+
+            int totalRequired = positionSummaries.stream()
+                    .mapToInt(ShiftScheduleSummaryResponse.PositionSummary::getRequired).sum();
+            int totalConfirmed = positionSummaries.stream()
+                    .mapToInt(ShiftScheduleSummaryResponse.PositionSummary::getConfirmed).sum();
+            int totalRequested = (int) (long) requestCountByDate.getOrDefault(date, 0L);
+
+            dateSummaries.add(ShiftScheduleSummaryResponse.DateSummary.builder()
+                    .date(date)
+                    .byPosition(positionSummaries)
+                    .totalRequired(totalRequired)
+                    .totalConfirmed(totalConfirmed)
+                    .totalRequested(totalRequested)
+                    .build());
+        }
+
+        return ShiftScheduleSummaryResponse.builder()
+                .scheduleId(schedule.getId())
+                .summaryByDate(dateSummaries)
+                .build();
     }
 
     /**

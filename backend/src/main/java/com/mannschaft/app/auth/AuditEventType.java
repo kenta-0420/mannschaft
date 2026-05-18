@@ -262,6 +262,10 @@ public enum AuditEventType {
     /** F17.1 Phase 3-β-E — 村ニュースレター opt-out（ユーザー自身の操作）。 */
     VILLAGE_NEWSLETTER_OPT_OUT(AuditEventCategory.VILLAGE),
 
+    // ─── SHIFT (F03.5 シフト管理) ──────────────────────────────
+    /** 管理者がシフト希望未提出者に手動でリマインドを送信した。 */
+    SHIFT_MANUAL_REMINDER_SENT(AuditEventCategory.SHIFT),
+
     // ─── SECURITY_RATE_LIMIT (F15.4 組織内チーム検索) ───────────
     /** 組織内チーム検索 API がレート制限に到達した（429 応答）。 */
     TEAM_SEARCH_RATE_LIMITED(AuditEventCategory.SECURITY_RATE_LIMIT),

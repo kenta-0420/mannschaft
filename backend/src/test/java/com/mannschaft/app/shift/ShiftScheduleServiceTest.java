@@ -4,11 +4,21 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.shift.dto.CreateShiftScheduleRequest;
 import com.mannschaft.app.shift.dto.ShiftScheduleResponse;
+import com.mannschaft.app.shift.dto.ShiftScheduleSummaryResponse;
 import com.mannschaft.app.shift.dto.UpdateShiftScheduleRequest;
+import com.mannschaft.app.shift.entity.ShiftAssignmentEntity;
+import com.mannschaft.app.shift.entity.ShiftPositionEntity;
+import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
+import com.mannschaft.app.shift.entity.ShiftSlotEntity;
+import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
+import com.mannschaft.app.shift.repository.ShiftPositionRepository;
+import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
+import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.shift.service.ShiftAutoAssignService;
 import com.mannschaft.app.shift.service.ShiftScheduleService;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -38,6 +48,18 @@ class ShiftScheduleServiceTest {
 
     @Mock
     private ShiftScheduleRepository scheduleRepository;
+
+    @Mock
+    private ShiftSlotRepository slotRepository;
+
+    @Mock
+    private ShiftAssignmentRepository assignmentRepository;
+
+    @Mock
+    private ShiftRequestRepository requestRepository;
+
+    @Mock
+    private ShiftPositionRepository positionRepository;
 
     @Mock
     private ShiftMapper shiftMapper;
@@ -467,6 +489,112 @@ class ShiftScheduleServiceTest {
             // When & Then
             assertThatThrownBy(() -> shiftScheduleService.duplicateSchedule(SCHEDULE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class);
+        }
+    }
+
+    // ========================================
+    // getScheduleSummary (Phase 11 第二陣 2-α)
+    // ========================================
+
+    @Nested
+    @DisplayName("getScheduleSummary")
+    class GetScheduleSummary {
+
+        @Test
+        @DisplayName("スケジュール存在_日付別ポジション別の充足状況を返す")
+        void 正常_日付別ポジション別サマリ返却() {
+            // Given: スケジュール + 2 日分 × ホール/キッチン 2 ポジションのスロット
+            ShiftScheduleEntity schedule = createScheduleEntity();
+            ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+
+            // ポジション
+            ShiftPositionEntity posHall = ShiftPositionEntity.builder().teamId(TEAM_ID).name("ホール").build();
+            ReflectionTestUtils.setField(posHall, "id", 1L);
+            ShiftPositionEntity posKitchen = ShiftPositionEntity.builder().teamId(TEAM_ID).name("キッチン").build();
+            ReflectionTestUtils.setField(posKitchen, "id", 2L);
+            given(positionRepository.findByTeamIdOrderByDisplayOrderAsc(TEAM_ID))
+                    .willReturn(List.of(posHall, posKitchen));
+
+            // スロット
+            ShiftSlotEntity s1 = ShiftSlotEntity.builder()
+                    .scheduleId(SCHEDULE_ID).slotDate(LocalDate.of(2026, 3, 1))
+                    .startTime(java.time.LocalTime.of(9, 0)).endTime(java.time.LocalTime.of(17, 0))
+                    .positionId(1L).requiredCount(3).build();
+            ReflectionTestUtils.setField(s1, "id", 1001L);
+            ShiftSlotEntity s2 = ShiftSlotEntity.builder()
+                    .scheduleId(SCHEDULE_ID).slotDate(LocalDate.of(2026, 3, 1))
+                    .startTime(java.time.LocalTime.of(9, 0)).endTime(java.time.LocalTime.of(17, 0))
+                    .positionId(2L).requiredCount(2).build();
+            ReflectionTestUtils.setField(s2, "id", 1002L);
+            given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
+                    .willReturn(List.of(s1, s2));
+
+            // 確定アサイン
+            ShiftAssignmentEntity a1 = ShiftAssignmentEntity.builder()
+                    .slotId(1001L).userId(50L).assignedBy(USER_ID)
+                    .status(ShiftAssignmentStatus.CONFIRMED).build();
+            ShiftAssignmentEntity a2 = ShiftAssignmentEntity.builder()
+                    .slotId(1001L).userId(51L).assignedBy(USER_ID)
+                    .status(ShiftAssignmentStatus.PROPOSED).build(); // 確定ではない
+            given(assignmentRepository.findAllBySlotId(1001L)).willReturn(List.of(a1, a2));
+            given(assignmentRepository.findAllBySlotId(1002L)).willReturn(List.of());
+
+            // 希望（slot_date 単位の延べ件数 3 件）
+            ShiftRequestEntity r1 = ShiftRequestEntity.builder()
+                    .scheduleId(SCHEDULE_ID).userId(50L).slotDate(LocalDate.of(2026, 3, 1))
+                    .preference(ShiftPreference.PREFERRED).build();
+            ShiftRequestEntity r2 = ShiftRequestEntity.builder()
+                    .scheduleId(SCHEDULE_ID).userId(51L).slotDate(LocalDate.of(2026, 3, 1))
+                    .preference(ShiftPreference.AVAILABLE).build();
+            given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
+                    .willReturn(List.of(r1, r2));
+
+            // When
+            ShiftScheduleSummaryResponse response = shiftScheduleService.getScheduleSummary(SCHEDULE_ID);
+
+            // Then
+            assertThat(response.getScheduleId()).isEqualTo(SCHEDULE_ID);
+            assertThat(response.getSummaryByDate()).hasSize(1);
+            ShiftScheduleSummaryResponse.DateSummary day = response.getSummaryByDate().get(0);
+            assertThat(day.getDate()).isEqualTo(LocalDate.of(2026, 3, 1));
+            assertThat(day.getTotalRequired()).isEqualTo(5);
+            assertThat(day.getTotalConfirmed()).isEqualTo(1);
+            assertThat(day.getTotalRequested()).isEqualTo(2);
+            assertThat(day.getByPosition()).hasSize(2);
+            assertThat(day.getByPosition()).extracting("positionName")
+                    .containsExactly("ホール", "キッチン");
+            assertThat(day.getByPosition().get(0).getConfirmed()).isEqualTo(1);
+            assertThat(day.getByPosition().get(0).getRequired()).isEqualTo(3);
+            assertThat(day.getByPosition().get(1).getConfirmed()).isZero();
+            assertThat(day.getByPosition().get(1).getRequired()).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("スケジュール非存在_BusinessException")
+        void 非存在_BusinessException() {
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.empty());
+            assertThatThrownBy(() -> shiftScheduleService.getScheduleSummary(SCHEDULE_ID))
+                    .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("スロット 0 件_空リストを返す")
+        void スロット0件_空リスト() {
+            ShiftScheduleEntity schedule = createScheduleEntity();
+            ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+            given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
+                    .willReturn(List.of());
+            given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
+                    .willReturn(List.of());
+            given(positionRepository.findByTeamIdOrderByDisplayOrderAsc(TEAM_ID))
+                    .willReturn(List.of());
+
+            ShiftScheduleSummaryResponse response = shiftScheduleService.getScheduleSummary(SCHEDULE_ID);
+
+            assertThat(response.getScheduleId()).isEqualTo(SCHEDULE_ID);
+            assertThat(response.getSummaryByDate()).isEmpty();
         }
     }
 }
