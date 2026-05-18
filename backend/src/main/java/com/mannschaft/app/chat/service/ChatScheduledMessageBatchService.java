@@ -1,5 +1,6 @@
 package com.mannschaft.app.chat.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.chat.ChatMapper;
 import com.mannschaft.app.chat.dto.MessageResponse;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
@@ -28,6 +29,7 @@ public class ChatScheduledMessageBatchService {
     private final ChatMessagePublisher publisher;
     private final ChatMapper chatMapper;
 
+    @BatchEndpoint(name = "chat-scheduled-message-dispatch", description = "予約送信チャットメッセージを 1 分毎に STOMP 配信する")
     @Scheduled(fixedDelay = 60_000)
     @Transactional
     public void processScheduledMessages() {

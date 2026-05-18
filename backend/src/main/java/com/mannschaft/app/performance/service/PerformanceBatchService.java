@@ -1,5 +1,6 @@
 package com.mannschaft.app.performance.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.performance.repository.PerformanceRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ public class PerformanceBatchService {
      * 日次バッチ: 前日の記録を月次サマリーに反映する。
      * 毎朝3:00に実行。
      */
+    @BatchEndpoint(name = "performance-monthly-summary-aggregation-daily", description = "前日のパフォーマンス記録を毎日 03:00 に月次サマリーへ集計する")
     @Scheduled(cron = "0 0 3 * * *")
     @Transactional
     public void aggregateDailySummaries() {

@@ -1,5 +1,6 @@
 package com.mannschaft.app.corkboard.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.corkboard.entity.CorkboardCardEntity;
 import com.mannschaft.app.corkboard.repository.CorkboardCardRepository;
 import lombok.RequiredArgsConstructor;
@@ -78,6 +79,7 @@ public class CorkboardBatchService {
      * {@code auto_archive_at <= now} のカードを {@code is_archived=true} へ更新する。
      * 設計書 §A-4 自動アーカイブバッチ。
      */
+    @BatchEndpoint(name = "corkboard-auto-archive-hourly", description = "コルクボードカードの自動アーカイブを毎時 0 分に実行する")
     @Scheduled(cron = "0 0 * * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "corkboardAutoArchiveBatch", lockAtMostFor = "PT10M", lockAtLeastFor = "PT0S")
     @Transactional
@@ -107,6 +109,7 @@ public class CorkboardBatchService {
      * REFERENCE カードの参照先存在を referenceType 別に IN 句で確認し、
      * 存在しないものを {@code is_ref_deleted=true} に設定する。
      */
+    @BatchEndpoint(name = "corkboard-dead-reference-detect-daily", description = "コルクボード参照カードの参照先消失を毎日 03:00 に検知する")
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "corkboardDeadReferenceDetectBatch", lockAtMostFor = "PT15M", lockAtLeastFor = "PT0S")
     @Transactional
@@ -188,6 +191,7 @@ public class CorkboardBatchService {
     /**
      * {@code deleted_at < NOW() - 90 days} のカードを物理削除する。
      */
+    @BatchEndpoint(name = "corkboard-purge-soft-deleted-daily", description = "90 日以上前に論理削除されたコルクボードカードを毎日 04:00 に物理削除する")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "corkboardPurgeSoftDeletedBatch", lockAtMostFor = "PT15M", lockAtLeastFor = "PT0S")
     @Transactional

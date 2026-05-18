@@ -1,5 +1,6 @@
 package com.mannschaft.app.gdpr.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.UserConstants;
 import com.mannschaft.app.auth.entity.UserEntity;
@@ -78,6 +79,7 @@ public class AccountPurgeService {
     private final ErrorReportOccurrenceRepository errorReportOccurrenceRepository;
     private final AuditLogService auditLogService;
 
+    @BatchEndpoint(name = "gdpr-account-purge-daily", description = "退会後 30 日経過アカウントを毎日 04:00 に物理削除する")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "accountPurgeBatch", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     public void purgeExpiredAccounts() {

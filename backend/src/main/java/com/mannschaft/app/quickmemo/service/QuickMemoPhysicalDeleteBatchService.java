@@ -1,5 +1,6 @@
 package com.mannschaft.app.quickmemo.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.quickmemo.entity.QuickMemoEntity;
@@ -40,6 +41,7 @@ public class QuickMemoPhysicalDeleteBatchService {
     private final R2StorageService s3StorageService;
     private final AuditLogService auditLogService;
 
+    @BatchEndpoint(name = "quickmemo-physical-delete-daily", description = "90 日以上前に論理削除されたポイっとメモを毎日 03:00 に物理削除する")
     @Scheduled(cron = "0 0 3 * * *")
     @Transactional
     public void execute() {

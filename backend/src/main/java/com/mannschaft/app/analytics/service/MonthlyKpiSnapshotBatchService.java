@@ -1,5 +1,6 @@
 package com.mannschaft.app.analytics.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.analytics.MonthlyReportHtmlBuilder;
 import com.mannschaft.app.analytics.RevenueSource;
 import com.mannschaft.app.analytics.entity.AnalyticsDailyRevenueEntity;
@@ -41,6 +42,7 @@ public class MonthlyKpiSnapshotBatchService {
     private final UserRoleRepository userRoleRepository;
     private final UserRepository userRepository;
 
+    @BatchEndpoint(name = "analytics-monthly-kpi-snapshot", description = "前月分の KPI スナップショットを毎月 1 日 04:00 に保存する")
     @Scheduled(cron = "0 0 4 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "monthlyKpiSnapshot", lockAtMostFor = "30m", lockAtLeastFor = "5m")
     @Transactional

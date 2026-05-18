@@ -1,5 +1,6 @@
 package com.mannschaft.app.errorreport.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.admin.entity.BatchJobLogEntity;
 import com.mannschaft.app.admin.service.BatchJobLogService;
 import com.mannschaft.app.errorreport.ErrorReportProperties;
@@ -38,6 +39,7 @@ public class ErrorReportAiAnalysisBatch {
     /**
      * バッチエントリポイント。{@code @Scheduled(fixedDelay = 300_000)}（5 分間隔）。
      */
+    @BatchEndpoint(name = "errorreport-ai-analysis", description = "未分析エラーレポートを 5 分毎に AI 分析する")
     @Scheduled(fixedDelay = 300_000)
     @SchedulerLock(
             name = "errorReportAiAnalysisBatch",

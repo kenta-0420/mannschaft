@@ -1,5 +1,6 @@
 package com.mannschaft.app.quickmemo.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.quickmemo.entity.QuickMemoEntity;
@@ -42,6 +43,7 @@ public class WithdrawSagaJobBatchService {
     private final R2StorageService s3StorageService;
     private final AuditLogService auditLogService;
 
+    @BatchEndpoint(name = "quickmemo-withdraw-saga", description = "退会 SAGA ジョブを 10 分毎に再開・継続実行する")
     @Scheduled(cron = "0 */10 * * * *")
     @Transactional
     public void execute() {

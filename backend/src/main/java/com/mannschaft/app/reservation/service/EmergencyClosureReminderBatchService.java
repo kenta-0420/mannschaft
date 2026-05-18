@@ -1,5 +1,6 @@
 package com.mannschaft.app.reservation.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.EmailService;
@@ -40,6 +41,7 @@ public class EmergencyClosureReminderBatchService {
     private final NotificationHelper notificationHelper;
     private final EmailService emailService;
 
+    @BatchEndpoint(name = "reservation-emergency-closure-reminder", description = "臨時休業の未確認患者・送信者リマインドを 1 分毎に処理する")
     @Scheduled(fixedDelay = 60_000)
     @SchedulerLock(name = "emergencyClosureReminderBatch", lockAtLeastFor = "30s", lockAtMostFor = "5m")
     @Transactional

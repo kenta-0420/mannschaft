@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.confirmable.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class ConfirmableNotificationExpiryBatchService {
      *
      * <p>ACTIVE かつ deadline_at が現在日時より前の通知を一括で EXPIRED に変更する。</p>
      */
+    @BatchEndpoint(name = "notification-confirmable-expiry-daily", description = "期限超過の確認通知を毎日 03:00 に EXPIRED へ更新する")
     @Scheduled(cron = "0 0 3 * * *") // 毎日 AM 3:00
     @SchedulerLock(
             name = "confirmableNotificationExpiryBatch",

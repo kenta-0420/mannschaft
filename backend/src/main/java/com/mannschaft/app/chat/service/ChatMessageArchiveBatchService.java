@@ -1,5 +1,6 @@
 package com.mannschaft.app.chat.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -39,6 +40,7 @@ public class ChatMessageArchiveBatchService {
 
     private final JdbcTemplate jdbcTemplate;
 
+    @BatchEndpoint(name = "chat-message-archive-daily", description = "6 ヶ月以上前の chat_messages を毎日 03:30 にアーカイブテーブルへ移送する")
     @Scheduled(cron = "0 30 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "chatMessageArchiveBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT5M")
     public void archiveOldMessages() {

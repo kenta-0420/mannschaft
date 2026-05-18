@@ -1,5 +1,6 @@
 package com.mannschaft.app.errorreport.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.errorreport.ErrorReportProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +42,7 @@ public class ErrorReportAiBudgetMonitorBatch {
     /**
      * 毎時 0 分（JST）に実行。
      */
+    @BatchEndpoint(name = "errorreport-ai-budget-monitor-hourly", description = "AI 月次予算の 80% / 100% 到達を毎時監視して通知する")
     @Scheduled(cron = "0 0 * * * *", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = "errorReportAiBudgetMonitor",

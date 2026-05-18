@@ -1,5 +1,6 @@
 package com.mannschaft.app.todo.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
@@ -85,6 +86,7 @@ public class TodoDueReminderBatch {
      * </ol>
      * </p>
      */
+    @BatchEndpoint(name = "todo-due-reminder-daily", description = "TODO の明日期限と期限超過リマインドを毎日 08:00 に送信する")
     @Scheduled(cron = "0 0 8 * * *", zone = "Asia/Tokyo")
     public void run() {
         log.info("TodoDueReminderBatch 開始");

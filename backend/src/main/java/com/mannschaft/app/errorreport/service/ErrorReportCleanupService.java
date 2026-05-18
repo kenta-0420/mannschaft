@@ -1,5 +1,6 @@
 package com.mannschaft.app.errorreport.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.admin.entity.BatchJobLogEntity;
 import com.mannschaft.app.admin.service.BatchJobLogService;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
@@ -56,6 +57,7 @@ public class ErrorReportCleanupService {
     /**
      * 毎日 AM3:00（JST）に実行されるエントリポイント。
      */
+    @BatchEndpoint(name = "errorreport-cleanup-daily", description = "エラーレポート関連テーブルの保持期間超過レコードを毎日 03:00 にクリーンアップする")
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = JOB_NAME,

@@ -1,5 +1,6 @@
 package com.mannschaft.app.advertising.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.ReportFrequency;
 import com.mannschaft.app.advertising.entity.AdDailyStatsEntity;
 import com.mannschaft.app.advertising.entity.AdReportScheduleEntity;
@@ -46,6 +47,7 @@ public class ReportDeliveryBatchService {
     /**
      * 週次レポート配信バッチ。毎週月曜 AM 9:00 (JST)。
      */
+    @BatchEndpoint(name = "advertising-report-delivery-weekly", description = "広告主向け週次レポートを毎週月曜 09:00 に配信する")
     @Scheduled(cron = "0 0 9 * * MON", zone = "Asia/Tokyo")
     @Transactional
     public void deliverWeeklyReports() {
@@ -58,6 +60,7 @@ public class ReportDeliveryBatchService {
     /**
      * 月次レポート配信バッチ。毎月1日 AM 9:00 (JST)。
      */
+    @BatchEndpoint(name = "advertising-report-delivery-monthly", description = "広告主向け月次レポートを毎月 1 日 09:00 に配信する")
     @Scheduled(cron = "0 0 9 1 * *", zone = "Asia/Tokyo")
     @Transactional
     public void deliverMonthlyReports() {

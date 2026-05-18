@@ -1,5 +1,6 @@
 package com.mannschaft.app.proxyvote.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.proxyvote.ResolutionMode;
 import com.mannschaft.app.proxyvote.SessionStatus;
 import com.mannschaft.app.proxyvote.VotingStatus;
@@ -33,6 +34,7 @@ public class ProxyVoteScheduledService {
      * OPEN → CLOSED 自動遷移（WRITTEN モードのみ）。
      * MEETING モード投票タイマー自動終了。
      */
+    @BatchEndpoint(name = "proxyvote-session-state-transition", description = "委任投票セッションの状態遷移と投票タイマーを 5 分毎に処理する")
     @Scheduled(fixedRate = 300_000) // 5分間隔
     @Transactional
     public void processAutoTransitions() {

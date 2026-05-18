@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.credit.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.credit.entity.OrganizationNotificationBalanceEntity;
 import com.mannschaft.app.notification.credit.repository.OrganizationNotificationBalanceRepository;
@@ -40,6 +41,7 @@ public class NotificationCreditMonthlyResetBatch {
     /**
      * 月次リセットバッチを実行する（毎月1日 AM 2:00 JST）。
      */
+    @BatchEndpoint(name = "notification-credit-monthly-reset", description = "通知クレジットの無料枠と猶予負債を毎月 1 日 02:00 にリセットする")
     @Scheduled(cron = "0 0 2 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = "notificationCreditMonthlyReset",

@@ -1,5 +1,6 @@
 package com.mannschaft.app.weather.job;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.weather.config.WeatherLocationProperties;
 import com.mannschaft.app.weather.service.GeonamesImportService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class GeonamesImportScheduler {
     /**
      * 月次取り込みバッチ。
      */
+    @BatchEndpoint(name = "weather-geonames-import-monthly", description = "GeoNames 郵便番号データを毎月 1 回取り込み（デフォルト 5 日 02:00 UTC）")
     @Scheduled(cron = "${weather.location.geonames.cron}")
     public void runMonthlyImport() {
         String url = properties.getGeonames().getDownloadUrl();

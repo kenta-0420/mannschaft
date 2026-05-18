@@ -1,5 +1,6 @@
 package com.mannschaft.app.todo.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.todo.entity.ProjectEntity;
 import com.mannschaft.app.todo.entity.ProjectMilestoneEntity;
@@ -62,6 +63,7 @@ public class MilestoneReconciliationBatch {
      * <p>JST 03:15 実行。F02.3 の projects.progress_rate 補正バッチ（現状未実装）と
      * 同時間帯に配置して将来的に統合可能。</p>
      */
+    @BatchEndpoint(name = "todo-milestone-reconciliation-daily", description = "マイルストーンの進捗率とロック連鎖を毎日 03:15 に再集計・補正する")
     @Scheduled(cron = "0 15 3 * * *", zone = "Asia/Tokyo")
     @Transactional
     public void reconcile() {

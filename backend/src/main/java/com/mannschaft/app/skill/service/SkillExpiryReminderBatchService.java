@@ -1,5 +1,6 @@
 package com.mannschaft.app.skill.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.skill.NotificationType;
 import com.mannschaft.app.skill.entity.MemberSkillEntity;
@@ -39,6 +40,7 @@ public class SkillExpiryReminderBatchService {
      * 2. 7日前リマインダー
      * 3. 期限切れ自動ステータス更新（ACTIVE → EXPIRED）
      */
+    @BatchEndpoint(name = "skill-expiry-reminder-daily", description = "資格期限の 30/7 日前リマインドと自動失効を毎日 08:00 に処理する")
     @Scheduled(cron = "0 0 8 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "skill_expiry_reminder", lockAtMostFor = "PT10M")
     @Transactional

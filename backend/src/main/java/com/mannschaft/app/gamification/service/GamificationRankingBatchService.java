@@ -1,5 +1,6 @@
 package com.mannschaft.app.gamification.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.gamification.PeriodType;
 import com.mannschaft.app.gamification.entity.GamificationConfigEntity;
 import com.mannschaft.app.gamification.entity.RankingSnapshotEntity;
@@ -48,6 +49,7 @@ public class GamificationRankingBatchService {
      *   <li>処理件数をログ出力</li>
      * </ol>
      */
+    @BatchEndpoint(name = "gamification-ranking-snapshot-daily", description = "ランキングスナップショットを毎日 03:30 に生成する")
     @Scheduled(cron = "0 30 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "gamification_ranking_snapshot", lockAtMostFor = "PT30M")
     @Transactional

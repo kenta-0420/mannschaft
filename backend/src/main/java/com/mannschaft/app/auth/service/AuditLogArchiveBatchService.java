@@ -1,6 +1,7 @@
 package com.mannschaft.app.auth.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.entity.AuditLogEntity;
 import com.mannschaft.app.auth.repository.AuditLogRepository;
 import com.mannschaft.app.common.storage.StorageService;
@@ -63,6 +64,7 @@ public class AuditLogArchiveBatchService {
     private final ObjectMapper objectMapper;
     private final JdbcTemplate jdbcTemplate;
 
+    @BatchEndpoint(name = "auth-audit-log-archive-monthly", description = "2 年以上前の audit_logs を R2 に毎月 1 日 02:00 アーカイブして物理削除する")
     @Scheduled(cron = "0 0 2 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "auditLogArchiveBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT5M")
     public void archiveOldLogs() {

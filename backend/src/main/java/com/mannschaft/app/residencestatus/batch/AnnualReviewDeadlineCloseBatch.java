@@ -1,5 +1,6 @@
 package com.mannschaft.app.residencestatus.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.residencestatus.service.AnnualReviewService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ public class AnnualReviewDeadlineCloseBatch {
 
     private final AnnualReviewService annualReviewService;
 
+    @BatchEndpoint(name = "residencestatus-annual-review-close-daily", description = "期限超過の年次見直しキャンペーンを毎日 04:00 に自動クローズする")
     @Scheduled(cron = "0 0 4 * * *")
     public void autoClose() {
         log.info("[AnnualReviewDeadlineCloseBatch] 開始");

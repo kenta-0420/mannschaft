@@ -1,5 +1,6 @@
 package com.mannschaft.app.quickmemo.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.quickmemo.entity.PendingUploadEntity;
@@ -26,6 +27,7 @@ public class PendingUploadCleanupBatchService {
     private final R2StorageService s3StorageService;
     private final AuditLogService auditLogService;
 
+    @BatchEndpoint(name = "quickmemo-pending-upload-cleanup", description = "期限切れの Presigned アップロード孤立オブジェクトを 5 分毎に削除する")
     @Scheduled(cron = "0 */5 * * * *")
     @Transactional
     public void execute() {

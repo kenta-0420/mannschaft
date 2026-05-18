@@ -1,5 +1,6 @@
 package com.mannschaft.app.family.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.family.entity.PresenceEventEntity;
 import com.mannschaft.app.family.repository.CoinTossResultRepository;
 import com.mannschaft.app.family.repository.PresenceEventRepository;
@@ -28,6 +29,7 @@ public class FamilyBatchService {
     private final PresenceEventRepository presenceEventRepository;
     private final CoinTossResultRepository coinTossResultRepository;
 
+    @BatchEndpoint(name = "family-overdue-event-check", description = "ファミリーの帰宅遅延イベントを 15 分毎にチェックする")
     @Scheduled(fixedRate = 15 * 60 * 1000)
     @Transactional
     public void checkOverdueEvents() {
@@ -47,11 +49,13 @@ public class FamilyBatchService {
         }
     }
 
+    @BatchEndpoint(name = "family-anniversary-notify-daily", description = "ファミリーの記念日通知を毎日 09:00 に送信する")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
     public void checkAnniversaries() {
         log.info("記念日通知バッチを実行しました");
     }
 
+    @BatchEndpoint(name = "family-presence-cleanup-daily", description = "プレゼンス・コイントス履歴の保持期間超過を毎日 04:00 にクリーンアップする")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
     @Transactional
     public void cleanupOldRecords() {

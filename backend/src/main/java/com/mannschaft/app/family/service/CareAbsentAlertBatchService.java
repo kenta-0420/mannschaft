@@ -1,5 +1,6 @@
 package com.mannschaft.app.family.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.event.entity.EventRsvpResponseEntity;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRepository;
@@ -97,6 +98,7 @@ public class CareAbsentAlertBatchService {
      * <p>冪等チェックは {@link CareEventNotificationService#sendNoContactCheck} に委譲する。</p>
      */
     // TODO: familyドメインとeventドメインをまたいでいる（EventRepository・EventRsvpResponseRepository・EventCheckinRepositoryを直接参照）。将来はEventQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
+    @BatchEndpoint(name = "family-care-no-contact-check", description = "ケア対象者の未連絡を 3 分毎にソフト確認通知する")
     @Scheduled(fixedDelay = 180_000)
     @Transactional
     public void runNoContactCheck() {
@@ -141,6 +143,7 @@ public class CareAbsentAlertBatchService {
      * <p>冪等チェックは {@link CareEventNotificationService#sendAbsentAlert} に委譲する。</p>
      */
     // TODO: familyドメインとeventドメインをまたいでいる（EventRepository・EventRsvpResponseRepository・EventCheckinRepositoryを直接参照）。将来はEventQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
+    @BatchEndpoint(name = "family-care-absent-alert", description = "ケア対象者の正式不在アラートを 3 分毎に送信する")
     @Scheduled(fixedDelay = 180_000)
     @Transactional
     public void runAbsentAlertCheck() {

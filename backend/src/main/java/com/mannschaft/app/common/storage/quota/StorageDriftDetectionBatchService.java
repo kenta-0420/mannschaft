@@ -1,5 +1,6 @@
 package com.mannschaft.app.common.storage.quota;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.storage.StorageProperties;
 import com.mannschaft.app.common.storage.quota.entity.StorageSubscriptionEntity;
 import com.mannschaft.app.common.storage.quota.entity.StorageUsageLogEntity;
@@ -114,6 +115,7 @@ public class StorageDriftDetectionBatchService {
      * 週次ドリフト検出バッチのエントリポイント。
      * 毎週日曜日深夜 2:00 に実行する。
      */
+    @BatchEndpoint(name = "storage-quota-drift-detection-weekly", description = "R2 実使用量と DB の used_bytes 差分を毎週日曜 02:00 に自動修正する")
     @Scheduled(cron = "0 0 2 * * SUN")
     public void execute() {
         log.info("F13 ドリフト検出バッチ 開始 (migrationMode={})", migrationModeEnabled);
