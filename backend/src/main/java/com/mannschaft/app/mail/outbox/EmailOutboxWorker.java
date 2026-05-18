@@ -7,6 +7,8 @@ import net.javacrumbs.shedlock.core.LockAssert;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -42,6 +44,10 @@ public class EmailOutboxWorker {
             lockAtMostFor = "PT2M",
             lockAtLeastFor = "PT5S"
     )
+    // 検分 P1: 防御策。poll() 全体を 1 トランザクションで包んでしまうと processOne の
+    // REQUIRES_NEW が機能しない（外側 TX が rollback すると全件巻き戻る）ため、
+    // 外側 TX を明示的に張らない契約を NEVER で固定する。
+    @Transactional(propagation = Propagation.NEVER)
     public void poll() {
         LockAssert.assertLocked();
         List<EmailOutboxEntity> batch = repository.findReadyForSending(BATCH_SIZE);
