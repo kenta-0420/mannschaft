@@ -6,6 +6,7 @@ import com.mannschaft.app.role.entity.PermissionEntity;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.RolePermissionEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.event.MembershipChangedEvent;
 import com.mannschaft.app.role.repository.PermissionGroupPermissionRepository;
 import com.mannschaft.app.role.repository.PermissionGroupRepository;
 import com.mannschaft.app.role.repository.PermissionRepository;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -196,6 +198,67 @@ class RoleServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ROLE_004"));
+        }
+    }
+
+    // ========================================
+    // removeMemberWithoutAdminCheck
+    // ========================================
+
+    @Nested
+    @DisplayName("removeMemberWithoutAdminCheck")
+    class RemoveMemberWithoutAdminCheck {
+
+        @Test
+        @DisplayName("正常_最後のADMINでも削除成功_MembershipChangedEvent発火")
+        void 正常_最後のADMINでも削除成功_MembershipChangedEvent発火() {
+            // 最後の ADMIN のシナリオを構築（adminCount = 1 でも例外を投げないことを検証）
+            UserRoleEntity current = UserRoleEntity.builder()
+                    .id(1L).userId(TARGET_USER_ID).roleId(ADMIN_ROLE_ID).organizationId(SCOPE_ID).build();
+            given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(current));
+            // checkLastAdmin はスキップされるため roleRepository.findById や countByOrganizationIdAndRoleId は
+            // 呼ばれないが、stubbing しなくても MockitoExtension は厳格でないため問題なし
+
+            roleService.removeMemberWithoutAdminCheck(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID);
+
+            // userRole が DELETE されたことを検証
+            verify(userRoleRepository).delete(current);
+            // MembershipChangedEvent(REMOVED) が発火されたことを検証
+            verify(eventPublisher).publishEvent(any(MembershipChangedEvent.class));
+        }
+
+        @Test
+        @DisplayName("対象未所属_ROLE_001例外")
+        void 対象未所属_ROLE_001例外() {
+            given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(() ->
+                    roleService.removeMemberWithoutAdminCheck(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ROLE_001"));
+        }
+
+        @Test
+        @DisplayName("event_payload確認_REMOVED_userId_scopeId_scopeType")
+        void event_payload確認_REMOVED_userId_scopeId_scopeType() {
+            UserRoleEntity current = UserRoleEntity.builder()
+                    .id(1L).userId(TARGET_USER_ID).roleId(ADMIN_ROLE_ID).teamId(SCOPE_ID).build();
+            given(userRoleRepository.findByUserIdAndTeamId(TARGET_USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(current));
+
+            roleService.removeMemberWithoutAdminCheck(SCOPE_ID, "TEAM", TARGET_USER_ID);
+
+            ArgumentCaptor<MembershipChangedEvent> captor =
+                    ArgumentCaptor.forClass(MembershipChangedEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            MembershipChangedEvent event = captor.getValue();
+            assertThat(event.userId()).isEqualTo(TARGET_USER_ID);
+            assertThat(event.scopeType()).isEqualTo("TEAM");
+            assertThat(event.scopeId()).isEqualTo(SCOPE_ID);
+            assertThat(event.changeType()).isEqualTo(MembershipChangedEvent.ChangeType.REMOVED);
         }
     }
 

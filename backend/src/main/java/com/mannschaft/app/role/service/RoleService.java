@@ -150,6 +150,45 @@ public class RoleService {
     }
 
     /**
+     * メンバーを除名する（最後のADMIN保護チェックをスキップ）。
+     *
+     * <p><b>⚠️ AccountPurgeService 等の管理者操作専用。通常の API からは呼ばないこと。</b></p>
+     *
+     * <p>本メソッドは {@link #removeMember(Long, String, Long)} と同等のロジックを実行するが、
+     * {@link #checkLastAdmin(Long, String, UserRoleEntity)} を呼ばないため、
+     * 「最後の ADMIN を除名」しても {@link RoleErrorCode#ROLE_004} を投げない。
+     * 退会済ユーザーの 30 日後物理削除（{@code AccountPurgeService#purgeUser}）の経路で
+     * {@code RolePurgeEventListener} から呼び出される安全弁メソッド。</p>
+     *
+     * <p>呼び出し後は対象スコープが ADMIN 不在状態になる可能性があるため、
+     * 別途運用通知バッチで検出し、SYSTEM_ADMIN または夜次承継バッチで是正する設計
+     * （設計書: {@code docs/architecture/account_purge_last_admin_succession.md} §4.1 / §6 Phase α-1）。</p>
+     *
+     * <p>通常版 {@code removeMember} と同様に {@link MembershipChangedEvent#REMOVED} を発火する。</p>
+     *
+     * @param scopeId      スコープID（チームID or 組織ID）
+     * @param scopeType    スコープ種別（{@code TEAM} or {@code ORGANIZATION}）
+     * @param targetUserId 除名対象のユーザーID
+     * @throws BusinessException 対象ユーザーが当該スコープに所属していない場合（{@link RoleErrorCode#ROLE_001}）
+     */
+    @Transactional
+    @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
+    public void removeMemberWithoutAdminCheck(Long scopeId, String scopeType, Long targetUserId) {
+        UserRoleEntity current = findUserRole(targetUserId, scopeId, scopeType)
+                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
+
+        // checkLastAdmin はあえて呼ばない（安全弁メソッドの本質）
+
+        userRoleRepository.delete(current);
+        log.warn("メンバー除名完了（ADMIN保護バイパス）: scopeType={}, scopeId={}, userId={}",
+                scopeType, scopeId, targetUserId);
+
+        // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）
+        eventPublisher.publishEvent(new MembershipChangedEvent(
+                targetUserId, scopeType, scopeId, MembershipChangedEvent.ChangeType.REMOVED));
+    }
+
+    /**
      * ユーザーが自主退会する。最後のADMIN保護チェック付き。
      */
     @Transactional
