@@ -101,6 +101,75 @@ public class AnnouncementFeedService {
     }
 
     /**
+     * F09.17 Phase 11-b ε-B 広告主キャンペーン由来お知らせを登録する。
+     *
+     * <p>{@link AnnouncementCreationService#createFromBroadcast} とは異なり以下の特徴を持つ:</p>
+     * <ul>
+     *   <li>{@code scopeType = ADVERTISER_AD}, {@code scopeId = advertiser_accounts.id}</li>
+     *   <li>{@code sourceType = ADVERTISER_CAMPAIGN}, {@code sourceId} は採番後の自フィード ID と
+     *       一致させるため、まず仮 ID で保存して取得後に再代入する（自己参照）</li>
+     *   <li>{@code authorId = null}（広告主由来のためユーザー所属を持たない）</li>
+     *   <li>{@code isAdvertisement = true}（景品表示法対応の「広告」ラベル必須化）</li>
+     *   <li>IDOR / 権限チェックは呼び出し元（{@code AdAnnouncementChannelService}）に委譲</li>
+     * </ul>
+     *
+     * <p>戻り値は保存済み {@link AnnouncementFeedEntity}。呼び出し元はこの ID を
+     * {@code ad_announcement_deliveries.announcement_feed_id} に転記する。</p>
+     *
+     * @param advertiserAccountId 広告主アカウント ID（scope_id）
+     * @param campaignId          キャンペーン ID（ログ用、source_id へは入れない）
+     * @param userId              受信者ユーザー ID（フィードは 1 ユーザー 1 行）
+     * @param titleCache          タイトル（最大 200 文字、超過時は切り詰め）
+     * @param excerptCache        本文抜粋（最大 300 文字、超過時は切り詰め）
+     * @return 保存済みのお知らせフィードエンティティ
+     */
+    @Transactional
+    public AnnouncementFeedEntity createAdvertiserFeed(
+            Long advertiserAccountId,
+            java.util.UUID campaignId,
+            Long userId,
+            String titleCache,
+            String excerptCache) {
+
+        // タイトル・本文の長さ補正（カラム制約に合わせる）
+        String safeTitle = truncate(titleCache != null ? titleCache : "(広告)", 200);
+        String safeExcerpt = excerptCache == null ? null : truncate(excerptCache, 300);
+
+        // 仮の sourceId として広告主 ID + キャンペーン UUID の MSB を用いる。
+        // 詳細: source_id 列は NOT NULL (BIGINT) のため一時値が必要。
+        // 採番後の自己参照では UNIQUE 制約があるとぶつかるが、本テーブルに UNIQUE はない設計。
+        long sourceIdSeed = campaignId.getLeastSignificantBits() & Long.MAX_VALUE;
+
+        AnnouncementFeedEntity entity = AnnouncementFeedEntity.builder()
+                .scopeType(AnnouncementScopeType.ADVERTISER_AD)
+                .scopeId(advertiserAccountId)
+                .sourceType(AnnouncementSourceType.ADVERTISER_CAMPAIGN)
+                .sourceId(sourceIdSeed)
+                .authorId(null)
+                .titleCache(safeTitle)
+                .excerptCache(safeExcerpt)
+                .priority("NORMAL")
+                .visibility("MEMBERS_ONLY")
+                .isAdvertisement(true)
+                .build();
+
+        AnnouncementFeedEntity saved = feedRepository.save(entity);
+        log.info("広告お知らせフィード登録 feedId={} userId={} advertiserId={} campaignId={}",
+                saved.getId(), userId, advertiserAccountId, campaignId);
+        return saved;
+    }
+
+    /**
+     * 指定長を超える文字列を切り詰める。null セーフ。
+     */
+    private static String truncate(String text, int maxLen) {
+        if (text == null) {
+            return null;
+        }
+        return text.length() > maxLen ? text.substring(0, maxLen) : text;
+    }
+
+    /**
      * 告知ウィザード（F02.8）経由でお知らせフィードを登録する。
      *
      * @see AnnouncementCreationService#createFromBroadcast

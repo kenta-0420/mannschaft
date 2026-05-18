@@ -19,6 +19,7 @@ package com.mannschaft.app.social.announcement;
  *   <li>{@link #SCHEDULE} — チーム/組織スケジュール（F02.8 告知ウィザード用）</li>
  *   <li>{@link #COMMITTEE_DECISION} — 委員会決議（F04.10）</li>
  *   <li>{@link #COMMITTEE_MINUTES} — 委員会議事録（F04.10）</li>
+ *   <li>{@link #ADVERTISER_CAMPAIGN} — 広告主メッセージ型キャンペーン（F09.17）</li>
  * </ul>
  */
 public enum AnnouncementSourceType {
@@ -48,5 +49,14 @@ public enum AnnouncementSourceType {
     COMMITTEE_DECISION,
 
     /** 委員会議事録（委員会伝達コンテンツ） */
-    COMMITTEE_MINUTES
+    COMMITTEE_MINUTES,
+
+    /**
+     * 広告主メッセージ型キャンペーン（F09.17 Phase 11-b ε-B）。
+     * {@code source_id} は {@code ad_messaging_campaigns.id} のハッシュ値（CRC32 等）ではなく
+     * {@code ad_announcement_deliveries.id} のような関連エンティティの BIGINT を入れる設計だが、
+     * 現状は配信のたびに採番される {@code announcement_feeds.id} の自己参照で十分なため
+     * {@code source_id=feedId 自身} を許容する（feed 1 件 = 1 配信、ポリモーフィック逆引き不要）。
+     */
+    ADVERTISER_CAMPAIGN
 }

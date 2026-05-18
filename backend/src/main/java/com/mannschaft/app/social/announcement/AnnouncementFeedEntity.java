@@ -155,6 +155,17 @@ public class AnnouncementFeedEntity extends BaseEntity {
     @Column
     private LocalDateTime sourceDeletedAt;
 
+    /**
+     * 広告主キャンペーン由来フラグ（F09.17 Phase 11-b ε-B、景品表示法対応）。
+     *
+     * <p>true の場合、UI 側で「広告」バッジを表示し配色 {@code #FF9800} を適用する。
+     * V67.020 でカラム追加済み、Java 層でこのフラグから判定する。
+     * 既存お知らせ（チーム/組織/委員会）は常に false。</p>
+     */
+    @Column(name = "is_advertisement", nullable = false)
+    @Builder.Default
+    private Boolean isAdvertisement = false;
+
     // --- ドメインメソッド ---
 
     /**
