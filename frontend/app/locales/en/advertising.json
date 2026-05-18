@@ -1,0 +1,185 @@
+{
+  "ad_label": "Ad",
+  "status": {
+    "draft": "Draft",
+    "review": "In review",
+    "approved": "Approved",
+    "scheduled": "Scheduled",
+    "delivering": "Delivering",
+    "paused": "Paused",
+    "completed": "Completed",
+    "blocked": "Blocked",
+    "cancelled": "Cancelled"
+  },
+  "moderation_status": {
+    "pending": "Pending",
+    "auto_passed": "Auto-passed",
+    "auto_flagged": "Needs review",
+    "approved": "Approved",
+    "blocked": "Blocked"
+  },
+  "moderation_action": {
+    "approved": "Approved",
+    "blocked": "Blocked",
+    "unblocked": "Unblocked",
+    "auto_flagged": "Auto-flagged",
+    "auto_passed": "Auto-passed"
+  },
+  "segment_type": {
+    "age_range": "Age range",
+    "gender": "Gender",
+    "region_prefecture": "Prefecture",
+    "region_city": "City",
+    "interest_tag": "Interest tag",
+    "org_type": "Organization type",
+    "locale": "Language",
+    "device": "Device"
+  },
+  "inclusion_mode": {
+    "include": "Include",
+    "exclude": "Exclude"
+  },
+  "report_reason": {
+    "offensive": "Offensive content",
+    "misleading": "Misleading information",
+    "spam": "Spam",
+    "irrelevant": "Not relevant to me",
+    "other": "Other"
+  },
+  "channel": {
+    "announcement": "Announcement",
+    "email": "Email",
+    "push": "Push",
+    "banner": "Banner"
+  },
+  "reach_range": {
+    "under_100": "Too few matching users",
+    "range_100_500": "Approx. 100–500 users",
+    "range_500_1k": "Approx. 500–1,000 users",
+    "range_1k_5k": "Approx. 1,000–5,000 users",
+    "range_5k_10k": "Approx. 5,000–10,000 users",
+    "range_10k_50k": "Approx. 10,000–50,000 users",
+    "range_50k_100k": "Approx. 50,000–100,000 users",
+    "over_100k": "Approx. 100,000+ users"
+  },
+  "actions": {
+    "submit": "Submit for review",
+    "launch": "Launch",
+    "pause": "Pause",
+    "resume": "Resume",
+    "cancel": "Cancel",
+    "approve": "Approve",
+    "block": "Block",
+    "save_draft": "Save draft",
+    "preview": "Preview",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "add_channel": "Add channel",
+    "remove_channel": "Remove channel",
+    "add_segment": "Add segment",
+    "remove_segment": "Remove segment",
+    "report": "Report",
+    "unsubscribe": "Unsubscribe",
+    "block_advertiser": "Block this advertiser"
+  },
+  "pages": {
+    "advertiser_campaign_list": {
+      "title": "Messaging campaigns",
+      "description": "Manage targeted messaging campaigns to specific audiences.",
+      "empty": "No campaigns yet.",
+      "filter_status": "Filter by status",
+      "column_name": "Campaign name",
+      "column_status": "Status",
+      "column_budget": "Budget (JPY)",
+      "column_consumed": "Consumed (JPY)",
+      "column_period": "Period",
+      "column_updated": "Updated"
+    },
+    "advertiser_campaign_create": {
+      "title": "Create a campaign",
+      "description": "Configure channels and audience targeting. Drafts can be edited freely.",
+      "field_name": "Campaign name",
+      "field_budget": "Total budget (JPY)",
+      "field_starts_at": "Start date/time",
+      "field_ends_at": "End date/time",
+      "field_timezone": "Time zone",
+      "field_frequency_cap": "Max messages per week (default 3)",
+      "step_basic": "Basics",
+      "step_channels": "Channels",
+      "step_audience": "Audience",
+      "step_review": "Review & submit",
+      "submitted": "Campaign submitted for review.",
+      "saved": "Draft saved."
+    },
+    "advertiser_campaign_detail": {
+      "title": "Campaign detail",
+      "section_summary": "Summary",
+      "section_channels": "Channels",
+      "section_audience": "Audience",
+      "section_moderation": "Moderation",
+      "section_report": "Performance",
+      "blocked_reason": "Reason for block",
+      "preview_reach": "Estimated reach",
+      "no_channels": "No channels configured.",
+      "no_segments": "No audience segments configured."
+    },
+    "system_admin_moderation": {
+      "title": "Ad campaign review",
+      "description": "Review pending campaigns and approve or block them.",
+      "empty": "No campaigns pending review.",
+      "approve_dialog_title": "Approve this campaign?",
+      "approve_dialog_message": "Once approved the advertiser can launch delivery.",
+      "block_dialog_title": "Block this campaign?",
+      "block_dialog_message": "Enter the reason for blocking (it will be sent to the advertiser).",
+      "block_reason_label": "Reason",
+      "block_reason_placeholder": "e.g. Inappropriate wording",
+      "user_reports_section": "User reports"
+    },
+    "settings_ad_preferences": {
+      "title": "Advertising preferences",
+      "description": "Choose which channels you accept ads from and block specific advertisers.",
+      "channel_section": "Accepted channels",
+      "blocked_section": "Blocked advertisers",
+      "blocked_empty": "No advertisers are currently blocked.",
+      "rotate_tokens": "Revoke previously sent unsubscribe links",
+      "rotate_tokens_help": "Invalidates any unsubscribe links sent in past emails.",
+      "consent_required": "You need to consent before receiving ads.",
+      "saved": "Preferences saved."
+    },
+    "me_ad_deliveries": {
+      "title": "Ads you received",
+      "description": "History of advertising messages delivered to you.",
+      "empty": "You have not received any ads yet.",
+      "delivered_at": "Delivered at",
+      "opened": "Opened",
+      "clicked": "Clicked"
+    }
+  },
+  "report_dialog": {
+    "title": "Report this ad",
+    "description": "Reports are reviewed by SYSTEM_ADMIN.",
+    "reason_label": "Reason",
+    "detail_label": "Details (optional)",
+    "submit": "Submit report",
+    "submitted": "Thank you. Your report has been received."
+  },
+  "consent_dialog": {
+    "title": "Accept ad delivery?",
+    "description": "Mannschaft delivers limited advertising messages from advertisers. You can change your preferences at any time.",
+    "accept": "Accept and continue",
+    "decline": "Not now"
+  },
+  "error_codes": {
+    "AD_CAMPAIGN_NOT_FOUND": "Campaign not found.",
+    "AD_CAMPAIGN_NOT_EDITABLE": "This campaign cannot be edited in its current state.",
+    "AD_CAMPAIGN_INVALID_TRANSITION": "This state transition is not allowed.",
+    "AD_CAMPAIGN_BUDGET_INSUFFICIENT": "Insufficient budget remaining.",
+    "AD_CAMPAIGN_CREDIT_LIMIT_EXCEEDED": "Credit limit exceeded.",
+    "AD_CAMPAIGN_MODERATION_BLOCKED": "This campaign was blocked during moderation.",
+    "AD_CAMPAIGN_NO_CHANNEL": "Please configure at least one channel.",
+    "AD_PREFERENCES_BLOCKED_LIMIT": "You can block up to 100 advertisers.",
+    "AD_REPORT_DUPLICATE": "You have already reported this campaign.",
+    "AD_RATE_LIMIT_EXCEEDED": "Too many requests. Please try again later."
+  }
+}
