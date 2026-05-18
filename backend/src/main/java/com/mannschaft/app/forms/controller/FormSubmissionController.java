@@ -101,6 +101,24 @@ public class FormSubmissionController {
     }
 
     /**
+     * 提出を実行する（DRAFT/RETURNED → SUBMITTED 遷移）。
+     *
+     * <p>F05.7 Phase 11 第一陣: PUT による update + submitImmediately=true 経路の補完として、
+     * 既存の DRAFT 提出に対して値を変更せず submit のみ行う専用 API。</p>
+     */
+    @PostMapping("/{submissionId}/submit")
+    @Operation(summary = "提出実行")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "提出成功")
+    public ResponseEntity<ApiResponse<FormSubmissionResponse>> submit(
+            @PathVariable String scopeType,
+            @PathVariable Long scopeId,
+            @PathVariable Long submissionId) {
+        FormSubmissionResponse response = submissionService.submit(
+                submissionId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
      * 提出を削除する。
      */
     @DeleteMapping("/{submissionId}")
