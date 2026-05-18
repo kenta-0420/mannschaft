@@ -120,4 +120,25 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
            "o.id, o.id, o.visibility, o.archivedAt, o.deletedAt) " +
            "FROM OrganizationEntity o WHERE o.id IN :ids")
     List<OrganizationVisibilityProjection> findVisibilityProjectionsByIdIn(@Param("ids") Collection<Long> ids);
+
+    /**
+     * F19.1 Phase 1 Foundation: 未ログイン公開ページ用に PUBLIC 組織を取得する。
+     *
+     * <p>{@code visibility = PUBLIC} かつ未論理削除・未アーカイブの組織のみ返す。
+     * {@code @SQLRestriction("deleted_at IS NULL")} が適用されるため WHERE では
+     * 明示的に {@code archivedAt IS NULL} と visibility を絞り込む。</p>
+     *
+     * <p>F19.1 Phase 2 以降の公開ページ系 Query Service
+     * （{@code PublicPostQueryService} 等）から呼ばれる横断利用向け。</p>
+     *
+     * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §5.1 / §7.6</p>
+     *
+     * @param id 対象組織ID
+     * @return PUBLIC かつアクティブな組織。条件を満たさない場合は空。
+     */
+    @Query("SELECT o FROM OrganizationEntity o " +
+           "WHERE o.id = :id " +
+           "AND o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC " +
+           "AND o.archivedAt IS NULL")
+    Optional<OrganizationEntity> findPublicOrganizationById(@Param("id") Long id);
 }
