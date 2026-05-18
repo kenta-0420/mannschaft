@@ -105,7 +105,8 @@ public class OrganizationEntity extends BaseEntity {
      * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §5.1 / §7.2</p>
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "supporter_name_disclosure", nullable = false, length = 20)
+    @Column(name = "supporter_name_disclosure", nullable = false,
+            columnDefinition = "ENUM('DISPLAY_NAME','REAL_NAME') NOT NULL DEFAULT 'DISPLAY_NAME'")
     @Builder.Default
     private com.mannschaft.app.publicview.enums.NameDisclosureMode supporterNameDisclosure =
             com.mannschaft.app.publicview.enums.NameDisclosureMode.DISPLAY_NAME;
