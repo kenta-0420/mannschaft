@@ -87,7 +87,7 @@ exclude_patterns:
 
   # === レガシー互換 URL (移行期間中の旧 URL) ===
   - pattern: "/api/incidents/**"
-    reason: "F07.6 旧 URL prefix（/api/v1/ なし）。F07.6 リファクタ時に /api/v1/incidents/ へ統合予定。それまでは除外扱い"
+    reason: "F07.6 旧 URL prefix（/api/v1/ なし）。Stage 2 PR #732 で /api/v1/incidents/ へ統合済み。レガシー互換のため除外維持（Stage 3 3-γ 2026-05-17 注記更新）"
     category: legacy
   - pattern: "/api/signage/**"
     reason: "F09.1 サイネージ旧 URL prefix。/api/v1/signage/ への移行待ち"
@@ -99,7 +99,7 @@ exclude_patterns:
     reason: "F09.9 API キー旧 URL prefix。設計書はチームスコープ /api/v1/teams/{teamId}/api-keys/ が正だが、実装は MVP の暫定 URL。F09.9 軍議で移行 PR 予定"
     category: legacy
   - pattern: "/api/maintenance-schedules/**"
-    reason: "F07.6 旧 URL prefix（メンテナンス予定）。F07.6 リファクタで /api/v1/teams/{teamId}/incidents/maintenance-schedules/ へ統合予定"
+    reason: "F07.6 旧 URL prefix（メンテナンス予定）。Stage 2 PR #732 で /api/v1/maintenance-schedules/ へ統合済み。レガシー互換のため除外維持（Stage 3 3-γ 2026-05-17 注記更新。設計書ネスト形式 /api/v1/incidents/maintenance-schedules/ ではなくフラット形式が実装側の正）"
     category: legacy
 
   # === ヘルスチェック ===
