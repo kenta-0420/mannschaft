@@ -20,15 +20,18 @@ async function handlePwaInstall() {
   }
 }
 
-// Mannschaftロゴ長押し → ポイっとメモへ（250ms）
+// Mannschaftロゴ長押し → ポイっとメモ作成モーダル（600ms）
+// 別ページ遷移にすると意識が遷移先に持っていかれ、元の作業を忘れてしまうため
+// 簡易メモとしての価値を保つためにモーダルで開く（ADHD 配慮）
 const logoLongPressTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const logoLongPressTriggered = ref(false)
+const quickMemoModalVisible = ref(false)
 
 const startLogoLongPress = () => {
   logoLongPressTriggered.value = false
   logoLongPressTimer.value = setTimeout(() => {
     logoLongPressTriggered.value = true
-    router.push('/quick-memos')
+    quickMemoModalVisible.value = true
   }, 600)
 }
 
@@ -129,7 +132,7 @@ function isActive(path: string): boolean {
       <div class="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4">
         <!-- 左: ロゴ + ナビゲーション -->
         <div class="flex min-w-0 flex-1 items-center gap-6">
-          <!-- 通常タップ→/dashboard、長押し600ms→/quick-memos（ADHD向け裏仕掛け） -->
+          <!-- 通常タップ→/dashboard、長押し600ms→ポイっとメモモーダル（ADHD向け裏仕掛け） -->
           <span
             class="text-3xl font-bold text-primary cursor-pointer select-none"
             style="touch-action: manipulation"
@@ -290,6 +293,7 @@ function isActive(path: string): boolean {
     <ClientOnly>
       <ErrorReportDialog />
       <IosInstallGuideModal v-model:visible="iosInstallModalVisible" />
+      <QuickMemoCaptureModal v-model:visible="quickMemoModalVisible" />
 
       <!-- モバイルメニュー Drawer -->
       <Drawer v-model:visible="showMobileMenu" position="left" class="w-72">

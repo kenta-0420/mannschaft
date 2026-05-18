@@ -28,6 +28,15 @@
       "deleted": "Deleted",
       "delete_error": "Failed to delete"
     },
+    "dashboard_widget": {
+      "title": "Quick Memos",
+      "empty": "No unsorted quick memos",
+      "click_to_edit": "Click to edit",
+      "open_detail": "Open detail",
+      "see_all": "See all",
+      "converted": "Converted to TODO",
+      "convert_error": "Failed to convert to TODO"
+    },
     "capture_modal": {
       "title": "Quick Memo",
       "title_placeholder": "What's on your mind?",
