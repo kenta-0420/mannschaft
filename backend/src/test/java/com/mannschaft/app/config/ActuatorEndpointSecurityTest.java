@@ -6,7 +6,7 @@ import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
-import com.mannschaft.app.team.filter.PublicTeamApiRateLimitFilter;
+import com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -127,15 +127,17 @@ class ActuatorEndpointSecurityTest {
          * 正規表現に一致せず、何もせず chain.doFilter に通す挙動になる
          * （AuditLogService.record は呼ばれない）。
          *
-         * <p>※ Phase 5-α でクラス名を {@code OrganizationTeamSearchRateLimitFilter} →
-         *   {@code PublicTeamApiRateLimitFilter} にリネーム済み。
+         * <p>※ クラス名遷移:
+         *   F15.4 Phase 1: {@code OrganizationTeamSearchRateLimitFilter}
+         *   → F15.4 Phase 5-α: {@code PublicTeamApiRateLimitFilter}
+         *   → F19.1 Phase 1: {@link PublicApiRateLimitFilter}（リネーム + 拡張）。
          */
         @Bean
         @SuppressWarnings("unchecked")
-        PublicTeamApiRateLimitFilter publicTeamApiRateLimitFilter() {
+        PublicApiRateLimitFilter publicApiRateLimitFilter() {
             org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.auth.service.AuditLogService> provider =
                     mock(org.springframework.beans.factory.ObjectProvider.class);
-            return new PublicTeamApiRateLimitFilter(provider);
+            return new PublicApiRateLimitFilter(provider);
         }
 
         /**

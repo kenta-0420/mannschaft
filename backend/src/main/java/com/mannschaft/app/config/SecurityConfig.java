@@ -2,7 +2,7 @@ package com.mannschaft.app.config;
 
 import com.mannschaft.app.advertising.campaign.filter.AdPublicEndpointRateLimitFilter;
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
-import com.mannschaft.app.team.filter.PublicTeamApiRateLimitFilter;
+import com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.actuate.health.HealthEndpoint;
@@ -28,7 +28,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ProxyInputContextFilter proxyInputContextFilter;
-    private final PublicTeamApiRateLimitFilter publicTeamApiRateLimitFilter;
+    private final PublicApiRateLimitFilter publicApiRateLimitFilter;
     private final AdPublicEndpointRateLimitFilter adPublicEndpointRateLimitFilter;
 
     /**
@@ -44,19 +44,22 @@ public class SecurityConfig {
     }
 
     /**
-     * F15.4: PublicTeamApiRateLimitFilter の @Component による
+     * F19.1 Phase 1: {@link PublicApiRateLimitFilter} の @Component による
      * サーブレットフィルター自動登録を無効化。
      * Spring Security フィルターチェーン経由（addFilterBefore）のみで動作させる。
      *
-     * <p>※ Phase 1 時点では {@code OrganizationTeamSearchRateLimitFilter} の名前で
-     * 登録していたが、Phase 5-α で店舗詳細 Public API も同フィルタで扱うため
-     * リネーム済み。
+     * <p>クラス遷移履歴:</p>
+     * <ul>
+     *   <li>F15.4 Phase 1: {@code OrganizationTeamSearchRateLimitFilter}</li>
+     *   <li>F15.4 Phase 5-α: {@code PublicTeamApiRateLimitFilter}（リネーム + 店舗詳細追加）</li>
+     *   <li>F19.1 Phase 1: {@link PublicApiRateLimitFilter}（リネーム + organizations/posts/events 拡張）</li>
+     * </ul>
      */
     @Bean
-    public FilterRegistrationBean<PublicTeamApiRateLimitFilter>
-            publicTeamApiRateLimitFilterRegistration() {
-        FilterRegistrationBean<PublicTeamApiRateLimitFilter> registration =
-                new FilterRegistrationBean<>(publicTeamApiRateLimitFilter);
+    public FilterRegistrationBean<PublicApiRateLimitFilter>
+            publicApiRateLimitFilterRegistration() {
+        FilterRegistrationBean<PublicApiRateLimitFilter> registration =
+                new FilterRegistrationBean<>(publicApiRateLimitFilter);
         registration.setEnabled(false);
         return registration;
     }
@@ -95,15 +98,14 @@ public class SecurityConfig {
                 // JwtAuthenticationFilter が "ROLE_SYSTEM_ADMIN" として authority を付与するため hasRole を使用
                 .requestMatchers(EndpointRequest.toAnyEndpoint().excluding(HealthEndpoint.class))
                     .hasRole("SYSTEM_ADMIN")
-                // 認証不要エンドポイント
+                // 認証不要エンドポイント（auth 系）
                 .requestMatchers(
                     "/api/v1/auth/login",
                     "/api/v1/auth/register",
                     "/api/v1/auth/refresh",
                     "/api/v1/auth/password-reset/**",
                     "/api/v1/auth/email-verification/**",
-                    "/api/v1/auth/oauth/**",
-                    "/api/v1/public/**"
+                    "/api/v1/auth/oauth/**"
                 ).permitAll()
                 // F11.3 UI i18n: 対応言語一覧（認証不要）
                 .requestMatchers("/api/i18n/**").permitAll()
@@ -116,10 +118,18 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/contact-invite/*").permitAll()
                 // F15.4 組織内チーム（店舗）検索（認証不要・レート制限あり）
                 .requestMatchers(HttpMethod.GET, "/api/v1/organizations/*/teams/search").permitAll()
-                // F15.4 Phase 5-α 店舗詳細 Public API（認証不要・レート制限あり）
-                // パターンは `*`（1 階層）で限定。`/**`（再帰）にすると将来の非公開サブパスが
-                // 漏れる事故が起きるため厳格に絞る（設計書 §4.2）。
+                // F19.1 Phase 1 公開ページ API（認証不要・レート制限あり）。
+                // F15.4 Phase 5-α `/api/v1/public/teams/*` も本 F19.1 規約に統合・置換した。
+                // 設計書 §7.4: パターンは `*`（1 階層厳格）で限定。`/**`（再帰）は使わない。
+                // IDOR 防止と整合（F15.4 Phase 5 §4.2 / F19.1 §17.8 案 B 統合）。
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/posts").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/posts/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/events").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/posts").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/posts/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/events").permitAll()
                 // F09.17 Phase 11-b 広告 unsubscribe / 開封ピクセル（認証不要・IP レート制限あり）
                 .requestMatchers(HttpMethod.GET, "/api/v1/ads/unsubscribe").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/ads/pixels/open").permitAll()
@@ -127,7 +137,7 @@ public class SecurityConfig {
                 .anyRequest().permitAll()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(publicTeamApiRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(publicApiRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(adPublicEndpointRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(proxyInputContextFilter, JwtAuthenticationFilter.class);
         return http.build();
