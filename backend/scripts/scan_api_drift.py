@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-API 乖離スキャナ（v5）
+API 乖離スキャナ（v6）
 
 設計書 (docs/features/F*.md) と実装 (backend/src/main/java/**/controller/*.java)
 の API エンドポイント差分を抽出し、`docs/internal/api_drift_baseline.md` に
@@ -42,6 +42,26 @@ Markdown レポートを生成する。
 #       - 🔵 のエンドポイントは future_features に分類してメイン集計から除外
 #       - 状態列無しテーブル行（後方互換）は status=None で従来通り集計
 #       - レポート末尾に「🔵 将来機能（N 件）」セクションを追加
+# v6 (2026-05-17):
+#   V6-1: 同一設計書内 (method, path) 重複排除（既定 ON）
+#       - §4 の一覧表 (`| GET | /api/v1/foo | ... |`) と §4.x 詳細セクション
+#         (`#### GET /api/v1/foo`) で同じ (method, path) が 2 回抽出され、
+#         matched 水増し・missing_design 偽陽性の原因となっていた問題を根治。
+#       - 同一 .md ファイル内で (method, path) を unique 化し、最初の出現
+#         （行番号・source_file を採用）を保持して後続は捨てる。
+#       - 異なる .md ファイル間の同一 (method, path) は集約しない（複数設計書が
+#         同じ API を参照することは正当）。
+#       - --no-v6-dedup でオフ。
+#   V6-2: 末尾セグメントリネーム辞書による準一致（既定 OFF）
+#       - 設計 `/api/v1/foo/{id}/first-approve` と実装 `/api/v1/foo/{id}/approve`
+#         のように末尾セグメントが意味的等価リネームのペアで、他セグメントが
+#         完全一致するものを RENAME_PAIRS_V6 ホワイトリスト方式で準一致扱い。
+#       - 過剰マッチ防止のため、ペアを明示登録する：
+#           ("first-approve", "approve")
+#           ("evidence-zip", "evidence-package")
+#           ("evidence-rebuild", "evidence-package")
+#       - --v6-rename で ON にする。デフォルト OFF（意図しない合体リスク回避）。
+#       - レポートでは「(matched by rename normalization)」注釈を付与。
 # v5 (2026-05-17):
 #   V5-1: リソース系スコープ逆引き拡張
 #       - SCOPE_CORE_PATTERNS_V5 に /coupons/**, /dwelling-units/**, /repair-plans/**,
@@ -181,6 +201,64 @@ SINGULAR_PLURAL_DICT = {
     "promotion": "promotions",
     "todo": "todos",
 }
+
+
+# V6-2: 末尾セグメントリネーム辞書（ホワイトリスト方式）
+#
+# Stage 3 succession 軍が triage_log で報告した「末尾セグメントだけ違うが意味的に
+# 等価」なペアを明示登録する。過剰マッチを避けるため、対象は末尾セグメントの
+# 完全一致差分のみ。両方向で双方向マッチさせる（順序非依存）。
+#
+# 採用ルール:
+#   - 末尾セグメントが片方ともう片方で違うだけで、それ以外のセグメントは
+#     完全一致するパスのペアを対象とする
+#   - ペア両側の文字列が両方とも他に出現していないようなレアケースのみ追加
+#   - 動詞同義語 (approve / first-approve, cancel / reject 等) に限る
+#   - 名詞系の単数複数揺れは V5-3 SINGULAR_PLURAL_DICT 側で扱う
+#
+# 注意: 「ペア」の片方が path の他セグメントに既出する場合、誤合体リスクが
+# 急上昇するので追加しないこと（Stage 3 triage_log を確認のうえ拡張する）。
+RENAME_PAIRS_V6 = (
+    ("first-approve", "approve"),
+    ("evidence-zip", "evidence-package"),
+    ("evidence-rebuild", "evidence-package"),
+)
+
+
+def _build_rename_lookup(pairs: tuple[tuple[str, str], ...]) -> dict[str, set[str]]:
+    """双方向リネームルックアップを構築する。
+    例: ("first-approve", "approve") → {"first-approve": {"approve"}, "approve": {"first-approve"}}
+    """
+    lookup: dict[str, set[str]] = {}
+    for a, b in pairs:
+        lookup.setdefault(a, set()).add(b)
+        lookup.setdefault(b, set()).add(a)
+    return lookup
+
+
+_RENAME_LOOKUP_V6 = _build_rename_lookup(RENAME_PAIRS_V6)
+
+
+def find_rename_match(path: str, candidate_paths: set[str]) -> str | None:
+    """path の末尾セグメントを RENAME_PAIRS_V6 で言い換えた候補が candidate_paths
+    に含まれるなら、その候補 path を返す。
+
+    末尾セグメント以外が完全一致することが前提（誤合体回避）。
+    """
+    if not path:
+        return None
+    idx = path.rfind("/")
+    if idx < 0:
+        return None
+    head = path[: idx + 1]  # 末尾 / を含む
+    tail = path[idx + 1 :]
+    if tail not in _RENAME_LOOKUP_V6:
+        return None
+    for alt_tail in _RENAME_LOOKUP_V6[tail]:
+        alt_path = head + alt_tail
+        if alt_path in candidate_paths:
+            return alt_path
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -489,7 +567,37 @@ def _compute_code_block_lines(text: str) -> set[int]:
     return out
 
 
-def scan_design_docs(docs_dir: Path) -> list[DesignEndpoint]:
+def dedup_design_within_file(
+    endpoints: list[DesignEndpoint],
+) -> list[DesignEndpoint]:
+    """V6-1: 同一ファイル内で (method, path) が重複している場合、最初の出現を
+    保持し後続を捨てる。
+
+    Stage 3 第三陣以降で繰り返し報告された偽陽性パターン:
+        §4 一覧表 (例: `| GET | /api/v1/foo | ... |`) と
+        §4.x 詳細ヘッダ (例: `#### GET /api/v1/foo`) で
+        同一 (method, path) が 2 度抽出され、matched 水増し / missing_design
+        の独立カウントで偽陽性となっていた問題を根治する。
+
+    異なる .md ファイル間の同一 (method, path) は集約しない
+    （複数設計書が同じ API を参照することは正当な情報）。
+
+    入力順を保持。
+    """
+    seen_per_file: dict[str, set[tuple[str, str]]] = defaultdict(set)
+    out: list[DesignEndpoint] = []
+    for ep in endpoints:
+        key = (ep.method, ep.path)
+        if key in seen_per_file[ep.source_file]:
+            continue
+        seen_per_file[ep.source_file].add(key)
+        out.append(ep)
+    return out
+
+
+def scan_design_docs(
+    docs_dir: Path, v6_dedup: bool = True
+) -> list[DesignEndpoint]:
     """`docs/features/F*.md` を全て走査し設計記載エンドポイントを集める。
 
     v4: 状態列付きテーブル行 (`| 🔵 | GET | ... |`) を優先抽出し、
@@ -498,6 +606,9 @@ def scan_design_docs(docs_dir: Path) -> list[DesignEndpoint]:
     v5 (V5-2): HTML コメント / コードブロック内は除外しつつ、散文中の
     インラインコード `GET /api/v1/...` を本文段落全体（テーブルセル含む）で
     補助抽出する。
+
+    v6 (V6-1): v6_dedup=True (既定) のとき、同一ファイル内で
+    (method, path) が重複している場合は最初の出現のみを保持する。
     """
     results: list[DesignEndpoint] = []
     if not docs_dir.is_dir():
@@ -580,6 +691,9 @@ def scan_design_docs(docs_dir: Path) -> list[DesignEndpoint]:
                 method = mi.group(1).upper()
                 path = mi.group(2).rstrip(".,;`)")
                 _add(method, path, i, None)
+    # V6-1: 同一ファイル内 (method, path) 重複排除
+    if v6_dedup:
+        results = dedup_design_within_file(results)
     return results
 
 
@@ -749,6 +863,7 @@ def make_report(
     exclusion_patterns: list[str] | None = None,
     v5_reverse: bool = True,
     v5_naming: bool = True,
+    v6_rename: bool = False,
 ) -> tuple[int, int, int]:
     """突合してレポートを書き出す。戻り値: (missing_impl, missing_design, matched)。
 
@@ -930,6 +1045,32 @@ def make_report(
         only_design -= d_remove
         only_impl -= i_remove
 
+    # V6-2: 末尾セグメントリネーム辞書による準一致（v6_rename=ON 時のみ）
+    # only_design と only_impl の組で、末尾セグメントが RENAME_PAIRS_V6 の
+    # 双方向ペアで言い換え可能、かつそれ以外のセグメントが完全一致する組を
+    # 「準一致」としてメイン集計から除外する。
+    rename_matches: set[tuple[str, str, str]] = set()  # (method, design_path, impl_path)
+    if v6_rename:
+        # method ごとに impl path 集合を構築
+        impl_by_method: dict[str, set[str]] = defaultdict(set)
+        for (m, p) in only_impl:
+            impl_by_method[m].add(p)
+
+        d_remove6: set[tuple[str, str]] = set()
+        i_remove6: set[tuple[str, str]] = set()
+        for (method, design_path) in list(only_design):
+            alt = find_rename_match(design_path, impl_by_method.get(method, set()))
+            if alt is None:
+                continue
+            impl_key = (method, alt)
+            if impl_key not in only_impl:
+                continue
+            rename_matches.add((method, design_path, alt))
+            d_remove6.add((method, design_path))
+            i_remove6.add(impl_key)
+        only_design -= d_remove6
+        only_impl -= i_remove6
+
     only_design_sorted = sorted(only_design)
     only_impl_sorted = sorted(only_impl)
     matched_sorted = sorted(matched)
@@ -942,9 +1083,9 @@ def make_report(
 
     today = date.today().isoformat()
     lines: list[str] = []
-    lines.append(f"# API 乖離ベースライン報告書（{today} 時点・v5 スキャナ）")
+    lines.append(f"# API 乖離ベースライン報告書（{today} 時点・v6 スキャナ）")
     lines.append("")
-    lines.append("> 本報告書は `backend/scripts/scan_api_drift.py` (v5) により自動生成された。")
+    lines.append("> 本報告書は `backend/scripts/scan_api_drift.py` (v6) により自動生成された。")
     lines.append("> 設計書 `docs/features/F*.md` のテーブル/見出し/インラインコード記載と、")
     lines.append("> 実装 `backend/src/main/java/**/controller/*Controller.java` の")
     lines.append("> Spring MVC アノテーション（新形式 + 旧 @RequestMapping(method=) 形式）を突合した結果である。")
@@ -962,7 +1103,10 @@ def make_report(
         f"- v4 (2026-05-17): V4-1 スコープ階層プレフィックス逆引きマッチ + V4-5 🔵 将来機能タグ認識"
     )
     lines.append(
-        f"- v5 ({today}): V5-1 リソース系スコープ逆引き拡張 + V5-2 設計書インラインコード強化 + V5-3 命名揺れ正規化"
+        "- v5 (2026-05-17): V5-1 リソース系スコープ逆引き拡張 + V5-2 設計書インラインコード強化 + V5-3 命名揺れ正規化"
+    )
+    lines.append(
+        f"- v6 ({today}): V6-1 同一設計書内 (method, path) 重複排除（既定 ON） + V6-2 末尾セグメントリネーム辞書（既定 OFF・--v6-rename で ON）"
     )
     lines.append("")
     lines.append("## サマリ")
@@ -983,6 +1127,9 @@ def make_report(
         f"- V5-3 命名揺れ正規化準一致: **{len(naming_matches)} 件**（一致側に繰入）"
     )
     lines.append(
+        f"- V6-2 リネーム辞書準一致: **{len(rename_matches)} 件**（{'ON' if v6_rename else 'OFF'} / 一致側に繰入）"
+    )
+    lines.append(
         f"- V4-5 🔵 将来機能: **{len(future_keys)} 件**（メイン集計外）／うち実装済: {len(future_already_impl)} 件"
     )
     lines.append(f"- 設計記載 ユニーク (method, path) 総数（main）: {len(design_keys)}")
@@ -990,7 +1137,7 @@ def make_report(
     lines.append(
         f"- 除外（実装側）: {excluded_count} 件 / 除外（設計側）: {design_excluded} 件 / パターン数: {len(exclusion_patterns or [])}"
     )
-    lines.append(f"- スコープ展開: {'ON' if expand_scope else 'OFF'} / V5 逆引き: {'ON' if v5_reverse else 'OFF'} / V5 命名揺れ: {'ON' if v5_naming else 'OFF'}")
+    lines.append(f"- スコープ展開: {'ON' if expand_scope else 'OFF'} / V5 逆引き: {'ON' if v5_reverse else 'OFF'} / V5 命名揺れ: {'ON' if v5_naming else 'OFF'} / V6 リネーム辞書: {'ON' if v6_rename else 'OFF'}")
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -1141,8 +1288,36 @@ def make_report(
     lines.append("---")
     lines.append("")
 
+    # V6-2: リネーム辞書準一致セクション
+    lines.append("## 6. 🟫 末尾セグメントリネーム辞書準一致（V6-2）")
+    lines.append("")
+    lines.append(
+        "> 設計と実装で末尾セグメントが意味的等価リネームのペア（例: "
+        "`first-approve` ↔ `approve`, `evidence-zip` ↔ `evidence-package`）"
+        "になっており、それ以外のセグメントは完全一致するため、`RENAME_PAIRS_V6` の"
+        "ホワイトリストで準一致扱いとした組。意図しない合体を避けるため `--v6-rename`"
+        "で明示的に ON にしたときのみ作動する（デフォルト OFF）。"
+    )
+    lines.append("")
+    if not v6_rename:
+        lines.append("_V6-2 は無効化されている（`--v6-rename` で有効化可能）。_")
+    elif not rename_matches:
+        lines.append("_該当なし。_")
+    else:
+        lines.append(f"準一致件数: **{len(rename_matches)} 件**")
+        lines.append("")
+        lines.append("| メソッド | 設計パス | 実装パス | 備考 |")
+        lines.append("|---|---|---|---|")
+        for method, design_path, impl_path in sorted(rename_matches):
+            lines.append(
+                f"| {method} | `{design_path}` | `{impl_path}` | matched by rename normalization |"
+            )
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+
     # V4-5: 🔵 将来機能セクション
-    lines.append("## 6. 🔵 将来機能（実装ステータス明示）")
+    lines.append("## 7. 🔵 将来機能（実装ステータス明示）")
     lines.append("")
     lines.append(
         "> 設計書テーブル行で状態列が `🔵`（Phase X 未着工等）と明示されているエンドポイント。"
@@ -1175,7 +1350,7 @@ def make_report(
 # ---------------------------------------------------------------------------
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="API 乖離スキャナ v5（設計書 vs Controller 実装）"
+        description="API 乖離スキャナ v6（設計書 vs Controller 実装）"
     )
     parser.add_argument(
         "--no-expand-scope",
@@ -1201,11 +1376,25 @@ def main() -> int:
         action="store_false",
         help="V5-3 命名揺れ正規化を無効化する（既定: 有効）",
     )
+    parser.add_argument(
+        "--no-v6-dedup",
+        dest="v6_dedup",
+        action="store_false",
+        help="V6-1 同一設計書内 (method, path) 重複排除を無効化する（既定: 有効）",
+    )
+    parser.add_argument(
+        "--v6-rename",
+        dest="v6_rename",
+        action="store_true",
+        help="V6-2 末尾セグメントリネーム辞書による準一致を有効化する（既定: 無効）",
+    )
     parser.set_defaults(
         expand_scope=True,
         apply_exclusions=True,
         v5_reverse=True,
         v5_naming=True,
+        v6_dedup=True,
+        v6_rename=False,
     )
     args = parser.parse_args()
 
@@ -1225,13 +1414,15 @@ def main() -> int:
     print(f"[INFO] apply_exclusions : {args.apply_exclusions}")
     print(f"[INFO] v5_reverse       : {args.v5_reverse}")
     print(f"[INFO] v5_naming        : {args.v5_naming}")
+    print(f"[INFO] v6_dedup         : {args.v6_dedup}")
+    print(f"[INFO] v6_rename        : {args.v6_rename}")
 
     exclusion_patterns: list[str] = []
     if args.apply_exclusions:
         exclusion_patterns = load_exclusions(exclusions_file)
         print(f"[INFO] exclusion patterns loaded: {len(exclusion_patterns)}")
 
-    designs = scan_design_docs(docs_features)
+    designs = scan_design_docs(docs_features, v6_dedup=args.v6_dedup)
     impls = scan_implementations(controllers_root, expand_scope=args.expand_scope)
 
     print(f"[INFO] design endpoints (raw): {len(designs)}")
@@ -1246,6 +1437,7 @@ def main() -> int:
         exclusion_patterns=exclusion_patterns,
         v5_reverse=args.v5_reverse,
         v5_naming=args.v5_naming,
+        v6_rename=args.v6_rename,
     )
     print(
         f"[DONE] missing_impl={missing_impl} "

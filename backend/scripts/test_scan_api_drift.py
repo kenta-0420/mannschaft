@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-API 乖離スキャナ v4 の単体テスト。
+API 乖離スキャナ v6 の単体テスト。
 
 実行:
     cd backend && python -m unittest scripts/test_scan_api_drift.py
@@ -9,6 +9,8 @@ API 乖離スキャナ v4 の単体テスト。
 
 v2 で確認された 6 つの偽陽性バグについて、reproducer + 期待挙動を検証する。
 v4 拡張: V4-1 スコープ階層プレフィックス逆引きマッチ・V4-5 🔵 将来機能タグ認識。
+v6 拡張: V6-1 同一設計書内 (method, path) 重複排除（デフォルト ON）、
+         V6-2 末尾セグメントリネーム辞書による準一致（デフォルト OFF）。
 """
 from __future__ import annotations
 
@@ -883,6 +885,386 @@ class TestV5NamingNormalization(unittest.TestCase):
             )
             self.assertEqual(md, 0)
             self.assertEqual(mi, 0)
+
+
+class TestV6DedupWithinFile(unittest.TestCase):
+    """V6-1: 同一設計書ファイル内で (method, path) を重複排除する。
+
+    Stage 3 第三陣以降で繰り返し報告された偽陽性パターン:
+        §4 一覧表 (`| GET | /api/v1/foo | ... |`) と §4.x 詳細ヘッダ
+        (`#### GET /api/v1/foo`) で同じ (method, path) が 2 度抽出される。
+    """
+
+    def test_dedup_table_and_heading_in_same_file(self) -> None:
+        """同一ファイル内で 一覧表 と 詳細ヘッダ で同じ (method, path) が
+        2 回出てきても 1 件に集約される。
+        """
+        with tempfile.TemporaryDirectory() as td:
+            features = Path(td) / "docs" / "features"
+            features.mkdir(parents=True)
+            md = features / "F99.test.md"
+            md.write_text(
+                "# テスト設計書\n\n"
+                "## 4. API 一覧\n\n"
+                "| メソッド | パス | 説明 |\n"
+                "|---|---|---|\n"
+                "| GET | /api/v1/foo | 取得 |\n"
+                "\n"
+                "## 4.1 詳細\n\n"
+                "#### GET /api/v1/foo\n"
+                "\n"
+                "詳細説明...\n",
+                encoding="utf-8",
+            )
+            results = scanner.scan_design_docs(features)
+            keys = [(r.method, r.path) for r in results]
+            # 1 件のみに集約
+            self.assertEqual(keys.count(("GET", "/api/v1/foo")), 1)
+
+    def test_dedup_preserves_first_occurrence(self) -> None:
+        """重複時、最初の出現（一覧表）の行番号・source_file を保持する。"""
+        with tempfile.TemporaryDirectory() as td:
+            features = Path(td) / "docs" / "features"
+            features.mkdir(parents=True)
+            md = features / "F99.test.md"
+            md.write_text(
+                "# テスト設計書\n\n"
+                "| メソッド | パス | 説明 |\n"
+                "|---|---|---|\n"
+                "| GET | /api/v1/foo | 取得 |\n"
+                "\n"
+                "#### GET /api/v1/foo\n",
+                encoding="utf-8",
+            )
+            results = scanner.scan_design_docs(features)
+            foos = [r for r in results if (r.method, r.path) == ("GET", "/api/v1/foo")]
+            self.assertEqual(len(foos), 1)
+            # 一覧表（行 5）が最初の出現
+            self.assertEqual(foos[0].line_number, 5)
+
+    def test_dedup_does_not_merge_across_files(self) -> None:
+        """異なるファイル間の同一 (method, path) は集約しない（正当な相互参照）。"""
+        with tempfile.TemporaryDirectory() as td:
+            features = Path(td) / "docs" / "features"
+            features.mkdir(parents=True)
+            (features / "F01.test.md").write_text(
+                "| GET | /api/v1/shared | A |\n", encoding="utf-8"
+            )
+            (features / "F02.test.md").write_text(
+                "| GET | /api/v1/shared | B |\n", encoding="utf-8"
+            )
+            results = scanner.scan_design_docs(features)
+            shared = [r for r in results if (r.method, r.path) == ("GET", "/api/v1/shared")]
+            # 2 ファイルから 1 件ずつ、計 2 件残る
+            self.assertEqual(len(shared), 2)
+            sources = {r.source_file for r in shared}
+            self.assertEqual(len(sources), 2)
+
+    def test_no_v6_dedup_flag_disables_within_file_dedup(self) -> None:
+        """v6_dedup=False で従来挙動（重複そのまま）に戻る。"""
+        with tempfile.TemporaryDirectory() as td:
+            features = Path(td) / "docs" / "features"
+            features.mkdir(parents=True)
+            md = features / "F99.test.md"
+            md.write_text(
+                "| メソッド | パス | 説明 |\n"
+                "|---|---|---|\n"
+                "| GET | /api/v1/foo | 取得 |\n"
+                "\n"
+                "#### GET /api/v1/foo\n",
+                encoding="utf-8",
+            )
+            results = scanner.scan_design_docs(features, v6_dedup=False)
+            keys = [(r.method, r.path) for r in results]
+            # フラグ OFF なら 2 件残る
+            self.assertEqual(keys.count(("GET", "/api/v1/foo")), 2)
+
+    def test_dedup_does_not_affect_distinct_methods(self) -> None:
+        """method が違えば重複と見なさない。"""
+        with tempfile.TemporaryDirectory() as td:
+            features = Path(td) / "docs" / "features"
+            features.mkdir(parents=True)
+            md = features / "F99.test.md"
+            md.write_text(
+                "| GET | /api/v1/foo | 取得 |\n"
+                "| POST | /api/v1/foo | 作成 |\n",
+                encoding="utf-8",
+            )
+            results = scanner.scan_design_docs(features)
+            keys = {(r.method, r.path) for r in results}
+            self.assertIn(("GET", "/api/v1/foo"), keys)
+            self.assertIn(("POST", "/api/v1/foo"), keys)
+            self.assertEqual(len(keys), 2)
+
+    def test_dedup_helper_preserves_order(self) -> None:
+        """dedup_design_within_file は入力順を保持する。"""
+        eps = [
+            scanner.DesignEndpoint("GET", "/api/v1/a", "x.md", 1, None),
+            scanner.DesignEndpoint("GET", "/api/v1/b", "x.md", 2, None),
+            scanner.DesignEndpoint("GET", "/api/v1/a", "x.md", 3, None),  # dup
+            scanner.DesignEndpoint("GET", "/api/v1/a", "y.md", 4, None),  # 別ファイル
+        ]
+        out = scanner.dedup_design_within_file(eps)
+        # x.md/GET /a は 1 件、b は 1 件、y.md/GET /a は 1 件 → 計 3 件
+        self.assertEqual(len(out), 3)
+        # 最初の出現（行 1, x.md）が保持される
+        self.assertEqual(out[0].line_number, 1)
+        self.assertEqual(out[0].source_file, "x.md")
+
+    def test_dedup_reduces_only_design_count(self) -> None:
+        """重複設計記載 + 実装なし の場合、v6_dedup により only_design は 1 件に。"""
+        with tempfile.TemporaryDirectory() as td:
+            features = Path(td) / "docs" / "features"
+            features.mkdir(parents=True)
+            (features / "F99.test.md").write_text(
+                "| GET | /api/v1/foo | 取得 |\n"
+                "\n"
+                "#### GET /api/v1/foo\n",
+                encoding="utf-8",
+            )
+            designs = scanner.scan_design_docs(features)
+            with tempfile.TemporaryDirectory() as td2:
+                out = Path(td2) / "out.md"
+                md, mi, mt = scanner.make_report(
+                    designs, [], out, Path(td2), expand_scope=False
+                )
+                # 同一ファイル内 dedup により 1 件
+                self.assertEqual(md, 1)
+
+
+class TestV6RenamePairs(unittest.TestCase):
+    """V6-2: 末尾セグメントリネーム辞書による準一致。"""
+
+    def test_rename_lookup_is_bidirectional(self) -> None:
+        """_RENAME_LOOKUP_V6 は双方向（a→{b}, b→{a}）。"""
+        self.assertIn("approve", scanner._RENAME_LOOKUP_V6.get("first-approve", set()))
+        self.assertIn("first-approve", scanner._RENAME_LOOKUP_V6.get("approve", set()))
+        self.assertIn(
+            "evidence-package", scanner._RENAME_LOOKUP_V6.get("evidence-zip", set())
+        )
+        self.assertIn(
+            "evidence-zip", scanner._RENAME_LOOKUP_V6.get("evidence-package", set())
+        )
+
+    def test_find_rename_match_basic(self) -> None:
+        """末尾セグメントが辞書ペア、それ以外完全一致 → 候補から見つけて返す。"""
+        candidates = {"/api/v1/foo/{_}/approve"}
+        self.assertEqual(
+            scanner.find_rename_match("/api/v1/foo/{_}/first-approve", candidates),
+            "/api/v1/foo/{_}/approve",
+        )
+
+    def test_find_rename_match_returns_none_if_other_segments_differ(self) -> None:
+        """末尾セグメント以外が違う → マッチしない（誤合体回避）。"""
+        candidates = {"/api/v1/bar/{_}/approve"}
+        self.assertIsNone(
+            scanner.find_rename_match("/api/v1/foo/{_}/first-approve", candidates)
+        )
+
+    def test_find_rename_match_returns_none_for_non_whitelisted(self) -> None:
+        """ホワイトリストにない言い換え (delete↔remove 等) はマッチしない。"""
+        candidates = {"/api/v1/foo/{_}/remove"}
+        self.assertIsNone(
+            scanner.find_rename_match("/api/v1/foo/{_}/delete", candidates)
+        )
+
+    def test_v6_rename_off_by_default(self) -> None:
+        """デフォルトでは V6-2 は OFF → 設計と実装が別物のまま残る。"""
+        de = scanner.DesignEndpoint(
+            method="POST",
+            path="/api/v1/circulations/{_}/first-approve",
+            source_file="x.md",
+            line_number=1,
+            status=None,
+        )
+        ie = scanner.ImplEndpoint(
+            method="POST",
+            path="/api/v1/circulations/{_}/approve",
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de], [ie], out, Path(td), expand_scope=False
+            )
+            # v6_rename=False（既定）→ 別物として残る
+            self.assertEqual(md, 1)
+            self.assertEqual(mi, 1)
+
+    def test_v6_rename_on_matches_first_approve_approve(self) -> None:
+        """--v6-rename ON で first-approve ↔ approve が準一致になる。"""
+        de = scanner.DesignEndpoint(
+            method="POST",
+            path="/api/v1/circulations/{_}/first-approve",
+            source_file="x.md",
+            line_number=1,
+            status=None,
+        )
+        ie = scanner.ImplEndpoint(
+            method="POST",
+            path="/api/v1/circulations/{_}/approve",
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de], [ie], out, Path(td),
+                expand_scope=False, v6_rename=True,
+            )
+            self.assertEqual(md, 0)
+            self.assertEqual(mi, 0)
+            content = out.read_text(encoding="utf-8")
+            self.assertIn("リネーム辞書", content)
+            self.assertIn("matched by rename normalization", content)
+
+    def test_v6_rename_on_matches_evidence_zip_package(self) -> None:
+        """evidence-zip ↔ evidence-package も準一致。"""
+        de = scanner.DesignEndpoint(
+            method="GET",
+            path="/api/v1/foo/{_}/evidence-zip",
+            source_file="x.md",
+            line_number=1,
+            status=None,
+        )
+        ie = scanner.ImplEndpoint(
+            method="GET",
+            path="/api/v1/foo/{_}/evidence-package",
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de], [ie], out, Path(td),
+                expand_scope=False, v6_rename=True,
+            )
+            self.assertEqual(md, 0)
+            self.assertEqual(mi, 0)
+
+    def test_v6_rename_does_not_match_arbitrary_pair(self) -> None:
+        """ホワイトリスト外（例: delete ↔ remove）は ON でもマッチしない。"""
+        de = scanner.DesignEndpoint(
+            method="DELETE",
+            path="/api/v1/foo/{_}/delete",
+            source_file="x.md",
+            line_number=1,
+            status=None,
+        )
+        ie = scanner.ImplEndpoint(
+            method="DELETE",
+            path="/api/v1/foo/{_}/remove",
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de], [ie], out, Path(td),
+                expand_scope=False, v6_rename=True,
+            )
+            # ホワイトリスト外 → 別物のまま
+            self.assertEqual(md, 1)
+            self.assertEqual(mi, 1)
+
+    def test_v6_rename_does_not_match_when_other_segments_differ(self) -> None:
+        """末尾は辞書ペアでも、他セグメントが違えば合体しない（誤合体回避）。"""
+        de = scanner.DesignEndpoint(
+            method="POST",
+            path="/api/v1/foo/{_}/first-approve",
+            source_file="x.md",
+            line_number=1,
+            status=None,
+        )
+        ie = scanner.ImplEndpoint(
+            method="POST",
+            path="/api/v1/bar/{_}/approve",  # foo vs bar
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de], [ie], out, Path(td),
+                expand_scope=False, v6_rename=True,
+            )
+            # 別物として残る
+            self.assertEqual(md, 1)
+            self.assertEqual(mi, 1)
+
+    def test_v6_rename_method_must_match(self) -> None:
+        """method が違えば V6-2 でもマッチしない。"""
+        de = scanner.DesignEndpoint(
+            method="POST",
+            path="/api/v1/foo/{_}/first-approve",
+            source_file="x.md",
+            line_number=1,
+            status=None,
+        )
+        ie = scanner.ImplEndpoint(
+            method="GET",
+            path="/api/v1/foo/{_}/approve",
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de], [ie], out, Path(td),
+                expand_scope=False, v6_rename=True,
+            )
+            self.assertEqual(md, 1)
+            self.assertEqual(mi, 1)
+
+    def test_v6_rename_bidirectional_design_plain_impl_first(self) -> None:
+        """逆向き: 設計 approve, 実装 first-approve でもマッチする（双方向）。"""
+        de = scanner.DesignEndpoint(
+            method="POST",
+            path="/api/v1/foo/{_}/approve",
+            source_file="x.md",
+            line_number=1,
+            status=None,
+        )
+        ie = scanner.ImplEndpoint(
+            method="POST",
+            path="/api/v1/foo/{_}/first-approve",
+            source_file="X.java",
+            line_number=10,
+            class_name="X",
+            method_name="m",
+        )
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            md, mi, mt = scanner.make_report(
+                [de], [ie], out, Path(td),
+                expand_scope=False, v6_rename=True,
+            )
+            self.assertEqual(md, 0)
+            self.assertEqual(mi, 0)
+
+    def test_v6_rename_section_shows_disabled_message_when_off(self) -> None:
+        """v6_rename=OFF のときレポートに「無効化されている」旨が記載される。"""
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "out.md"
+            scanner.make_report(
+                [], [], out, Path(td), expand_scope=False, v6_rename=False
+            )
+            content = out.read_text(encoding="utf-8")
+            self.assertIn("リネーム辞書", content)
+            self.assertIn("無効化されている", content)
 
 
 if __name__ == "__main__":
