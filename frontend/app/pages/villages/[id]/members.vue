@@ -6,10 +6,11 @@
  *
  * 画面構成:
  *   1. VillageHeader（FE2 成果物） — activeTab="members"
- *   2. メンバー一覧テーブル（displayName / role / joinedAt / 操作）
- *   3. ロール変更 Dialog（HEADMAN のみ）
- *   4. BAN 確認 Dialog（HEADMAN のみ）
- *   5. 通報 Dialog（VillageReportDialog コンポを利用）
+ *   2. メンバー一覧テーブル（VillageMembersTable 子コンポ）
+ *   3. ロール変更 Dialog（VillageMembersRoleDialog 子コンポ・HEADMAN のみ）
+ *   4. BAN 確認 Dialog（VillageMembersBanDialog 子コンポ・HEADMAN のみ）
+ *   5. 通報 Dialog（VillageReportDialog 共通コンポ）
+ *   6. 村本体編集 Dialog（VillageEditDialog 共通コンポ）
  *
  * 権限:
  *   - 自分が HEADMAN（村長）の場合のみ「ロール変更」「BAN」操作ボタンを表示。
@@ -20,19 +21,18 @@
  *     (targetType=MEMBERSHIP, targetRefId=membership.id)
  *   - VillageHeader の通報ボタン → VillageReportDialog
  *     (targetType=VILLAGE, targetRefId=village.id)
+ *
+ * リファクタ第 12 弾でテンプレート部を以下の子コンポーネントに分割。
+ * 本ページは API 呼び出し・状態管理・各種ハンドラに専念する：
+ *   - components/villages/members/VillageMembersTable.vue
+ *   - components/villages/members/VillageMembersRoleDialog.vue
+ *   - components/villages/members/VillageMembersBanDialog.vue
  */
-import Badge from 'primevue/badge'
-import Button from 'primevue/button'
-import Column from 'primevue/column'
-import DataTable from 'primevue/datatable'
-import Dialog from 'primevue/dialog'
-import Paginator from 'primevue/paginator'
-import Select from 'primevue/select'
-import Tag from 'primevue/tag'
-import Textarea from 'primevue/textarea'
-
 import VillageHeader from '~/components/VillageHeader.vue'
 import VillageReportDialog from '~/components/VillageReportDialog.vue'
+import VillageMembersBanDialog from '~/components/villages/members/VillageMembersBanDialog.vue'
+import VillageMembersRoleDialog from '~/components/villages/members/VillageMembersRoleDialog.vue'
+import VillageMembersTable from '~/components/villages/members/VillageMembersTable.vue'
 import { useAuthStore } from '~/stores/useAuthStore'
 import type {
   MembershipResponse,
@@ -128,50 +128,8 @@ const isHeadman = computed<boolean>(() => {
 })
 
 // =============================================================================
-// 表示ヘルパ
+// 表示ヘルパ（本体に残すもの — 自身の判定など）
 // =============================================================================
-
-function roleLabel(role: VillageRole): string {
-  return t(`village.role.${role}`)
-}
-
-function roleSeverity(role: VillageRole): 'warn' | 'info' | 'secondary' | 'contrast' {
-  switch (role) {
-    case 'HEADMAN':
-      return 'warn'
-    case 'ELDER':
-      return 'info'
-    case 'VILLAGER':
-      return 'secondary'
-    case 'VISITOR':
-      return 'contrast'
-  }
-}
-
-function subjectTypeIcon(type: MembershipResponse['subjectType']): string {
-  switch (type) {
-    case 'TEAM':
-      return 'pi pi-users'
-    case 'ORGANIZATION':
-      return 'pi pi-building'
-    case 'USER':
-    default:
-      return 'pi pi-user'
-  }
-}
-
-function displayName(m: MembershipResponse): string {
-  return m.displayName ?? `#${m.subjectId}`
-}
-
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString()
-  }
-  catch {
-    return iso
-  }
-}
 
 /** 自分自身の membership 行かどうか（自分への操作は禁止） */
 function isSelfMembership(m: MembershipResponse): boolean {
@@ -494,236 +452,44 @@ onMounted(async () => {
     />
 
     <!-- メンバー一覧本体 -->
-    <section class="mx-auto max-w-5xl px-4 py-6 sm:px-6">
-      <div class="mb-3 flex items-center justify-between">
-        <h2 class="text-lg font-semibold">
-          {{ t('village.members.title') }}
-        </h2>
-        <span class="text-sm text-surface-500">
-          {{ t('village.field.memberCount') }}: {{ totalElements }}
-        </span>
-      </div>
+    <VillageMembersTable
+      :members="members"
+      :loading="membersLoading || villageLoading"
+      :village="village"
+      :is-headman="isHeadman"
+      :current-user-id="currentUserId"
+      :total-elements="totalElements"
+      :page="page"
+      :page-size="PAGE_SIZE"
+      @page-change="onPageChange"
+      @open-role-dialog="openRoleDialog"
+      @open-ban-dialog="openBanDialog"
+      @open-member-report="openMemberReportDialog"
+    />
 
-      <DataTable
-        :value="members"
-        :loading="membersLoading || villageLoading"
-        data-key="id"
-        striped-rows
-        responsive-layout="scroll"
-      >
-        <template #empty>
-          <div class="py-6 text-center text-sm text-surface-500">
-            {{ t('village.members.empty') }}
-          </div>
-        </template>
-
-        <!-- 名前列 -->
-        <Column :header="t('village.field.name')">
-          <template #body="slotProps">
-            <div class="flex items-center gap-2">
-              <i :class="subjectTypeIcon((slotProps.data as MembershipResponse).subjectType)" />
-              <span class="font-medium">
-                {{ displayName(slotProps.data as MembershipResponse) }}
-              </span>
-              <Badge
-                v-if="isSelfMembership(slotProps.data as MembershipResponse)"
-                :value="t('village.members.you')"
-                severity="info"
-                size="small"
-              />
-              <Badge
-                v-if="(slotProps.data as MembershipResponse).isBanned"
-                :value="t('village.members.banned')"
-                severity="danger"
-                size="small"
-              />
-            </div>
-            <div class="mt-1 text-xs text-surface-500">
-              {{ t(`village.subjectType.${(slotProps.data as MembershipResponse).subjectType}`) }}
-            </div>
-          </template>
-        </Column>
-
-        <!-- ロール列 -->
-        <Column :header="t('village.field.type')">
-          <template #body="slotProps">
-            <Tag
-              :value="roleLabel((slotProps.data as MembershipResponse).role)"
-              :severity="roleSeverity((slotProps.data as MembershipResponse).role)"
-            />
-          </template>
-        </Column>
-
-        <!-- 参加日列 -->
-        <Column :header="t('village.field.createdAt')">
-          <template #body="slotProps">
-            {{ formatDate((slotProps.data as MembershipResponse).joinedAt) }}
-          </template>
-        </Column>
-
-        <!-- 操作列 -->
-        <Column :header="t('village.action.submit')">
-          <template #body="slotProps">
-            <div class="flex flex-wrap gap-1">
-              <!-- 通報（自分以外・自分が村人の場合のみ） -->
-              <Button
-                v-if="village?.isMember && !isSelfMembership(slotProps.data as MembershipResponse)"
-                :aria-label="t('village.action.report')"
-                icon="pi pi-flag"
-                severity="secondary"
-                size="small"
-                text
-                @click="openMemberReportDialog(slotProps.data as MembershipResponse)"
-              />
-
-              <!-- ロール変更（HEADMAN のみ・自分以外・BAN 済みでない） -->
-              <Button
-                v-if="isHeadman && !isSelfMembership(slotProps.data as MembershipResponse) && !(slotProps.data as MembershipResponse).isBanned"
-                :label="t('village.action.changeRole')"
-                icon="pi pi-shield"
-                severity="secondary"
-                size="small"
-                outlined
-                @click="openRoleDialog(slotProps.data as MembershipResponse)"
-              />
-
-              <!-- BAN（HEADMAN のみ・自分以外・BAN 済みでない） -->
-              <Button
-                v-if="isHeadman && !isSelfMembership(slotProps.data as MembershipResponse) && !(slotProps.data as MembershipResponse).isBanned"
-                :label="t('village.action.ban')"
-                icon="pi pi-ban"
-                severity="danger"
-                size="small"
-                outlined
-                @click="openBanDialog(slotProps.data as MembershipResponse)"
-              />
-            </div>
-          </template>
-        </Column>
-      </DataTable>
-
-      <!-- ページネーション -->
-      <Paginator
-        v-if="totalElements > PAGE_SIZE"
-        :rows="PAGE_SIZE"
-        :total-records="totalElements"
-        :first="page * PAGE_SIZE"
-        class="mt-2"
-        @page="onPageChange"
-      />
-    </section>
-
-    <!-- ============================================================== -->
-    <!-- ロール変更 Dialog                                                -->
-    <!-- ============================================================== -->
-    <Dialog
+    <!-- ロール変更 Dialog -->
+    <VillageMembersRoleDialog
       v-model:visible="roleDialogVisible"
-      modal
-      :draggable="false"
-      :header="t('village.action.changeRole')"
-      :style="{ width: '28rem' }"
-      :closable="!roleSubmitting"
-    >
-      <div v-if="roleDialogTarget" class="flex flex-col gap-4 py-2">
-        <div class="text-sm">
-          <span class="font-medium">{{ displayName(roleDialogTarget) }}</span>
-          <span class="ml-1 text-surface-500">
-            ({{ t(`village.subjectType.${roleDialogTarget.subjectType}`) }})
-          </span>
-        </div>
+      v-model:new-role="roleDialogNewRole"
+      :target="roleDialogTarget"
+      :role-options="roleOptions"
+      :submitting="roleSubmitting"
+      @submit="submitRoleChange"
+      @cancel="closeRoleDialog"
+    />
 
-        <div>
-          <label for="role-select" class="mb-1 block text-sm font-medium">
-            {{ t('village.action.changeRole') }}
-          </label>
-          <Select
-            id="role-select"
-            v-model="roleDialogNewRole"
-            :options="roleOptions"
-            option-label="label"
-            option-value="value"
-            class="w-full"
-            :disabled="roleSubmitting"
-          />
-        </div>
-      </div>
-
-      <template #footer>
-        <Button
-          :label="t('village.action.cancel')"
-          severity="secondary"
-          text
-          :disabled="roleSubmitting"
-          @click="closeRoleDialog"
-        />
-        <Button
-          :label="t('village.action.save')"
-          icon="pi pi-check"
-          :disabled="roleSubmitting || !roleDialogNewRole"
-          :loading="roleSubmitting"
-          @click="submitRoleChange"
-        />
-      </template>
-    </Dialog>
-
-    <!-- ============================================================== -->
-    <!-- BAN 確認 Dialog                                                  -->
-    <!-- ============================================================== -->
-    <Dialog
+    <!-- BAN 確認 Dialog -->
+    <VillageMembersBanDialog
       v-model:visible="banDialogVisible"
-      modal
-      :draggable="false"
-      :header="t('village.action.ban')"
-      :style="{ width: '32rem' }"
-      :closable="!banSubmitting"
-    >
-      <div v-if="banDialogTarget" class="flex flex-col gap-4 py-2">
-        <div class="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
-          <i class="pi pi-exclamation-triangle mr-1" />
-          {{ t('village.members.banned') }}: {{ displayName(banDialogTarget) }}
-        </div>
-
-        <div>
-          <label for="ban-reason" class="mb-1 block text-sm font-medium">
-            {{ t('village.report.dialog.detail') }}
-          </label>
-          <Textarea
-            id="ban-reason"
-            v-model="banDialogReason"
-            :maxlength="BAN_REASON_MAX"
-            :auto-resize="true"
-            rows="3"
-            class="w-full"
-            :invalid="!!banReasonError"
-            :disabled="banSubmitting"
-          />
-          <p class="mt-1 text-xs text-surface-500">
-            {{ banDialogReason.length }} / {{ BAN_REASON_MAX }}
-          </p>
-          <p v-if="banReasonError" class="mt-1 text-xs text-red-600">
-            {{ banReasonError }}
-          </p>
-        </div>
-      </div>
-
-      <template #footer>
-        <Button
-          :label="t('village.action.cancel')"
-          severity="secondary"
-          text
-          :disabled="banSubmitting"
-          @click="closeBanDialog"
-        />
-        <Button
-          :label="t('village.action.ban')"
-          icon="pi pi-ban"
-          severity="danger"
-          :disabled="!canSubmitBan"
-          :loading="banSubmitting"
-          @click="submitBan"
-        />
-      </template>
-    </Dialog>
+      v-model:reason="banDialogReason"
+      :target="banDialogTarget"
+      :reason-error="banReasonError"
+      :reason-max="BAN_REASON_MAX"
+      :can-submit="canSubmitBan"
+      :submitting="banSubmitting"
+      @submit="submitBan"
+      @cancel="closeBanDialog"
+    />
 
     <!-- ============================================================== -->
     <!-- 通報 Dialog（FE5 共通コンポ）                                     -->

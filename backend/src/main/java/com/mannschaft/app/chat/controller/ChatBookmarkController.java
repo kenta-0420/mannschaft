@@ -10,7 +10,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -52,5 +54,19 @@ public class ChatBookmarkController {
     public ResponseEntity<ApiResponse<List<BookmarkResponse>>> listBookmarks() {
         List<BookmarkResponse> responses = bookmarkService.listBookmarks(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
+    }
+
+    /**
+     * ブックマークを削除する。
+     *
+     * <p>F04.2 Phase 11 第一陣: Service 実装済の {@code removeBookmark} を外部 API として公開する。
+     * 削除対象は呼び出し元ユーザー自身のブックマークのみ（Repository 側で userId スコープ）。</p>
+     */
+    @DeleteMapping("/{messageId}")
+    @Operation(summary = "ブックマーク削除")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    public ResponseEntity<Void> removeBookmark(@PathVariable Long messageId) {
+        bookmarkService.removeBookmark(messageId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
     }
 }

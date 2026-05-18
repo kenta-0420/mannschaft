@@ -55,9 +55,20 @@ async function loadTags() {
   }
 }
 
+const route = useRoute()
+
 onMounted(() => {
   loadMemos()
   loadTags()
+  // ダッシュボードウィジェット等から ?id=X で深リンクされた場合、該当メモの詳細を自動展開
+  const queryId = Array.isArray(route.query.id) ? route.query.id[0] : route.query.id
+  if (queryId) {
+    const numericId = Number(queryId)
+    if (Number.isFinite(numericId)) {
+      selectedMemoId.value = numericId
+      drawerVisible.value = true
+    }
+  }
 })
 
 watch(activeTab, () => {

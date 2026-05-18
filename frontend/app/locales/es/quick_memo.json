@@ -28,6 +28,15 @@
       "deleted": "Eliminado",
       "delete_error": "Error al eliminar"
     },
+    "dashboard_widget": {
+      "title": "Notas rápidas",
+      "empty": "No hay notas rápidas sin clasificar",
+      "click_to_edit": "Clic para editar",
+      "open_detail": "Abrir detalle",
+      "see_all": "Ver todas",
+      "converted": "Convertido a TODO",
+      "convert_error": "Error al convertir a TODO"
+    },
     "capture_modal": {
       "title": "Nota rápida",
       "title_placeholder": "¿Qué tienes en mente?",

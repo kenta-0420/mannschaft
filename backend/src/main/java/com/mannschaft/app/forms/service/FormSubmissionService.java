@@ -196,6 +196,46 @@ public class FormSubmissionService {
     }
 
     /**
+     * 提出を実行する（DRAFT/RETURNED → SUBMITTED 遷移）。
+     *
+     * <p>F05.7 Phase 11 第一陣: 外部 API 用エントリーポイント。
+     * 自分の提出のみ submit 可能（所有者チェック）。すでに SUBMITTED 以降の場合は INVALID_SUBMISSION_STATUS。
+     * テンプレートの submissionCount をインクリメントする。
+     * 楽観的ロック (@Version) は Entity 側で保持される。</p>
+     *
+     * @param submissionId 提出ID
+     * @param userId       ユーザーID（所有者）
+     * @return 更新された提出レスポンス
+     */
+    @Transactional
+    public FormSubmissionResponse submit(Long submissionId, Long userId) {
+        FormSubmissionEntity entity = submissionRepository.findByIdAndSubmittedBy(submissionId, userId)
+                .orElseThrow(() -> new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND));
+
+        if (!entity.isEditable()) {
+            throw new BusinessException(FormErrorCode.INVALID_SUBMISSION_STATUS);
+        }
+
+        FormTemplateEntity template = templateService.getTemplateEntity(entity.getTemplateId());
+
+        if (template.getStatus() != FormStatus.PUBLISHED) {
+            throw new BusinessException(FormErrorCode.TEMPLATE_NOT_PUBLISHED);
+        }
+
+        if (template.isDeadlinePassed()) {
+            throw new BusinessException(FormErrorCode.TEMPLATE_DEADLINE_PASSED);
+        }
+
+        entity.submit();
+        FormSubmissionEntity saved = submissionRepository.save(entity);
+        template.incrementSubmissionCount();
+        List<FormSubmissionValueEntity> values = valueRepository.findBySubmissionId(submissionId);
+
+        log.info("提出実行: submissionId={}, userId={}", submissionId, userId);
+        return formMapper.toSubmissionResponseWithValues(saved, values);
+    }
+
+    /**
      * 提出を承認する。
      *
      * @param submissionId 提出ID
