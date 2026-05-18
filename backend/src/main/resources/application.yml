@@ -79,6 +79,30 @@ mannschaft:
   email:
     from-address: ${MANNSCHAFT_EMAIL_FROM:noreply@mannschaft.app}
     frontend-url: ${MANNSCHAFT_FRONTEND_URL:http://localhost:3000}
+  # F09.18 メール配信基盤 (Phase 18-a で導入)
+  # 設計書: docs/features/F09.18_email_delivery_infrastructure.md §4 / §10 / §14
+  # - worker.enabled: EmailOutboxWorker の @Scheduled 起動フラグ（test/openapi-gen で false 推奨）
+  # - worker.poll-interval-ms: ポーリング間隔（既定 10s）
+  # - worker.batch-size: 1 ティックあたりの processable 行取得上限
+  # - worker.lock-at-most-for: ShedLock の最大保持時間（emailOutboxWorker ロック名）
+  # - worker.lock-at-least-for: ShedLock の最小保持時間（短いタスクの過剰再取得を防ぐ）
+  # - backoff.max-retry: SES 一時失敗時の最大リトライ回数（5 = 計 6 回試行）
+  # - backoff.delays-seconds: retry_count=0..5 の遅延秒数（10s / 30s / 2m / 10m / 30m / 2h）
+  # - stuck-recovery.cron: SENDING 残骸（pod 落ち等）を SENT_PENDING 戻しする復旧バッチ cron
+  # - stuck-recovery.threshold-minutes: SENDING 状態がこの分数を超えたら復旧対象
+  email-outbox:
+    worker:
+      enabled: ${MANNSCHAFT_EMAIL_OUTBOX_WORKER_ENABLED:true}
+      poll-interval-ms: 10000
+      batch-size: 50
+      lock-at-most-for: PT2M
+      lock-at-least-for: PT5S
+    backoff:
+      max-retry: 5
+      delays-seconds: "10,30,120,600,1800,7200"  # retry_count=0..5 の遅延
+    stuck-recovery:
+      cron: "0 0 * * * *"  # 毎時
+      threshold-minutes: 5
   webauthn:
     origin: ${MANNSCHAFT_WEBAUTHN_ORIGIN:https://mannschaft.app}
   google:
