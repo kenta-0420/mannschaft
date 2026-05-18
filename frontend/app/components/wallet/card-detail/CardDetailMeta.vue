@@ -1,0 +1,152 @@
+<script setup lang="ts">
+import type { UserPointCardDetail } from '~/types/pointCard'
+
+/**
+ * カード詳細ページの基本情報 (`section_meta`) と任意項目 (`section_optional`) セクション。
+ *
+ * <p>F18 リファクタリング第10弾で `wallet/cards/[id].vue` から分割した子コンポーネント。
+ * カード ID コピー UX もここに含む。クリップボード書き込みの実処理は親に残してあり、
+ * 本コンポーネントは `copy-card-id` イベントを emit するだけ。</p>
+ */
+
+interface Props {
+  /** カード詳細 DTO。 */
+  card: UserPointCardDetail
+  /** 親で整形した最終使用日時表示。 */
+  lastUsedDisplay: string
+}
+
+defineProps<Props>()
+const emit = defineEmits<(e: 'copy-card-id') => void>()
+
+const { t } = useI18n()
+</script>
+
+<template>
+  <section class="card-detail__section">
+    <h2 class="card-detail__section-title">{{ t('wallet.detail.section_meta') }}</h2>
+    <dl class="card-detail__dl">
+      <div class="card-detail__dl-row">
+        <dt>{{ t('wallet.add.display_name') }}</dt>
+        <dd>{{ card.displayName }}</dd>
+      </div>
+      <div v-if="card.providerDisplayName" class="card-detail__dl-row">
+        <dt>Provider</dt>
+        <dd>{{ card.providerDisplayName }}</dd>
+      </div>
+      <div v-if="card.last4" class="card-detail__dl-row">
+        <dt>Last 4</dt>
+        <dd>{{ card.last4 }}</dd>
+      </div>
+      <div class="card-detail__dl-row">
+        <dt>Format</dt>
+        <dd>{{ card.barcodeFormat }}</dd>
+      </div>
+      <div class="card-detail__dl-row">
+        <dt>{{ t('wallet.card_id_label') }}</dt>
+        <dd class="card-detail__id-cell">
+          <code class="card-detail__id-code">{{ card.id }}</code>
+          <button
+            type="button"
+            class="card-detail__copy-btn"
+            :aria-label="t('wallet.copy_card_id')"
+            @click="emit('copy-card-id')"
+          >
+            {{ t('wallet.copy_card_id') }}
+          </button>
+        </dd>
+      </div>
+      <div class="card-detail__dl-row">
+        <dt>{{ t('wallet.detail.last_used_at') }}</dt>
+        <dd>{{ lastUsedDisplay }}</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section v-if="card.nickname || card.memo" class="card-detail__section">
+    <h2 class="card-detail__section-title">{{ t('wallet.detail.section_optional') }}</h2>
+    <dl class="card-detail__dl">
+      <div v-if="card.nickname" class="card-detail__dl-row">
+        <dt>{{ t('wallet.detail.nickname') }}</dt>
+        <dd>{{ card.nickname }}</dd>
+      </div>
+      <div v-if="card.memo" class="card-detail__dl-row">
+        <dt>{{ t('wallet.detail.memo') }}</dt>
+        <dd class="card-detail__memo">{{ card.memo }}</dd>
+      </div>
+    </dl>
+  </section>
+</template>
+
+<style scoped>
+.card-detail__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.card-detail__section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--p-text-muted-color, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+.card-detail__dl {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+}
+.card-detail__dl-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--p-surface-200, #e5e7eb);
+}
+.card-detail__dl-row dt {
+  font-size: 0.8125rem;
+  color: var(--p-text-muted-color, #6b7280);
+  margin: 0;
+}
+.card-detail__dl-row dd {
+  font-size: 0.9375rem;
+  margin: 0;
+  text-align: right;
+  word-break: break-all;
+}
+.card-detail__memo {
+  white-space: pre-wrap;
+  text-align: right;
+}
+.card-detail__id-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.card-detail__id-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  background: var(--p-surface-100, #f3f4f6);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  word-break: break-all;
+}
+.card-detail__copy-btn {
+  padding: 0.25rem 0.625rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--p-surface-300, #d1d5db);
+  background: var(--p-surface-0, #fff);
+  color: var(--p-text-color, #111827);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.card-detail__copy-btn:hover {
+  background: var(--p-surface-50, #f9fafb);
+}
+</style>
