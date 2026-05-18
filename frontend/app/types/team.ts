@@ -70,6 +70,33 @@ export interface CreateTeamRequest {
   supporterEnabled: boolean
 }
 
+/**
+ * F15.4 Phase 5-α: 未ログイン公開 API のレスポンス DTO
+ *
+ * `GET /api/v1/public/teams/{id}` で取得される抑制版 DTO。
+ * メンバー一覧・連絡先・番地住所・supporterEnabled・archivedAt 等の
+ * 内部状態は含めない（バックエンド `TeamPublicDetailResponse` と一致）。
+ */
+export interface TeamPublicDetailResponse {
+  id: number
+  name: string
+  nameKana: string | null
+  nickname1: string | null
+  nickname2: string | null
+  template: TeamTemplate
+  prefecture: string | null
+  city: string | null
+  iconUrl: string | null
+  bannerUrl: string | null
+  homepageUrl: string | null
+  /** ISO 文字列（LocalDate を YYYY-MM-DD で受信） */
+  establishedDate: string | null
+  establishedDatePrecision: EstablishedDatePrecision | null
+  philosophy: string | null
+  memberCount: number | null
+  mapEmbedUrl: string | null
+}
+
 export interface UpdateTeamRequest {
   name?: string
   nameKana?: string

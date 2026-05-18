@@ -1245,6 +1245,23 @@
     "organizationNotFound": "Organisation nicht gefunden",
     "rateLimitExceeded": "Zu viele Anfragen. Bitte später erneut versuchen"
   },
+  "publicTeamDetail": {
+    "loginToSeeMembers": "メンバー一覧を見るにはログインしてください",
+    "loginToSeeAnnouncements": "お知らせを見るにはログインしてください",
+    "loginToSeeChat": "チャットを見るにはログインしてください",
+    "loginToSeeMore": "もっと見るにはログイン",
+    "loginCtaDescription": "メンバー一覧、お知らせ、チャット、詳細情報はログインしてご覧いただけます",
+    "loginButton": "ログイン",
+    "signupButton": "新規登録",
+    "mapTitle": "店舗の場所",
+    "noMap": "地図情報なし",
+    "philosophyTitle": "理念",
+    "establishedLabel": "設立",
+    "homepageLabel": "公式サイト",
+    "memberCountSuffix": "名のスタッフ",
+    "backToSearch": "店舗一覧に戻る",
+    "notFound": "店舗が見つかりません"
+  },
   "favorites": {
     "title": "Favoriten",
     "empty": "Noch keine Favoriten. Füge sie über das ⭐ auf Team- oder Dorfseiten hinzu",

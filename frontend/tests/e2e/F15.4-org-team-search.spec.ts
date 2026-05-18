@@ -193,10 +193,38 @@ async function loginAsMember(page: Page): Promise<void> {
 // シナリオ 1: 未ログイン → 公開組織 → 検索 → 結果 → カードクリックで詳細遷移しない
 // ──────────────────────────────────────────────────────────────────────────
 
-test('F15.4-1: 未ログインで公開組織のチームを検索し、カードに「ログイン CTA」が表示される', async ({
+test('F15.4-1: 未ログインで公開組織のチームを検索し、カードに「ログイン CTA」が表示され、クリックで /public/teams/{id} へ遷移する', async ({
   page,
 }) => {
+  // Phase 5-γ で公開詳細ページが新設されたため、本シナリオではカードクリック後の遷移先 API も
+  // モックしておく（未ログイン公開 API）。
   await mockApis(page, { teamItems: MOCK_TEAMS_PUBLIC })
+  await page.route('**/api/v1/public/teams/*', async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          id: 8001,
+          name: 'みどり町第一支部',
+          nameKana: 'ミドリチョウダイイチシブ',
+          nickname1: null,
+          nickname2: null,
+          template: 'NEIGHBORHOOD',
+          prefecture: '東京都',
+          city: '渋谷区',
+          iconUrl: null,
+          bannerUrl: null,
+          homepageUrl: null,
+          establishedDate: null,
+          establishedDatePrecision: null,
+          philosophy: null,
+          memberCount: 5,
+          mapEmbedUrl: null,
+        },
+      }),
+    })
+  })
 
   await page.goto(`/organizations/${PUBLIC_ORG_ID}/teams/search`)
 
@@ -212,11 +240,9 @@ test('F15.4-1: 未ログインで公開組織のチームを検索し、カー�
     page.getByText('詳細を見るにはログインしてください').first(),
   ).toBeVisible()
 
-  // カードクリックでも詳細ページへ遷移しない（compact モードなので NuxtLink は出ない）
-  const beforeUrl = page.url()
+  // Phase 5-γ: カードクリックで /public/teams/{id} へ遷移する
   await card.click()
-  // ページ遷移していないこと
-  await expect(page).toHaveURL(beforeUrl)
+  await expect(page).toHaveURL(/\/public\/teams\/8001/)
 })
 
 // ──────────────────────────────────────────────────────────────────────────

@@ -1245,6 +1245,23 @@
     "organizationNotFound": "Organization not found",
     "rateLimitExceeded": "Too many requests. Please wait and try again."
   },
+  "publicTeamDetail": {
+    "loginToSeeMembers": "Log in to see members",
+    "loginToSeeAnnouncements": "Log in to see announcements",
+    "loginToSeeChat": "Log in to see chat",
+    "loginToSeeMore": "Log in to see more",
+    "loginCtaDescription": "Sign in to see members, announcements, chat, and more details",
+    "loginButton": "Log in",
+    "signupButton": "Sign up",
+    "mapTitle": "Location",
+    "noMap": "No map available",
+    "philosophyTitle": "Philosophy",
+    "establishedLabel": "Established",
+    "homepageLabel": "Website",
+    "memberCountSuffix": " staff",
+    "backToSearch": "Back to team list",
+    "notFound": "Team not found"
+  },
   "favorites": {
     "title": "Favorites",
     "empty": "No favorites yet. Add them with the ⭐ on team or village pages",

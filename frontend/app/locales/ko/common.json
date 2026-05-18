@@ -1245,6 +1245,23 @@
     "organizationNotFound": "지정한 조직을 찾을 수 없습니다",
     "rateLimitExceeded": "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요"
   },
+  "publicTeamDetail": {
+    "loginToSeeMembers": "メンバー一覧を見るにはログインしてください",
+    "loginToSeeAnnouncements": "お知らせを見るにはログインしてください",
+    "loginToSeeChat": "チャットを見るにはログインしてください",
+    "loginToSeeMore": "もっと見るにはログイン",
+    "loginCtaDescription": "メンバー一覧、お知らせ、チャット、詳細情報はログインしてご覧いただけます",
+    "loginButton": "ログイン",
+    "signupButton": "新規登録",
+    "mapTitle": "店舗の場所",
+    "noMap": "地図情報なし",
+    "philosophyTitle": "理念",
+    "establishedLabel": "設立",
+    "homepageLabel": "公式サイト",
+    "memberCountSuffix": "名のスタッフ",
+    "backToSearch": "店舗一覧に戻る",
+    "notFound": "店舗が見つかりません"
+  },
   "favorites": {
     "title": "즐겨찾기",
     "empty": "즐겨찾기가 없습니다. 팀이나 마을 페이지의 ⭐ 로 추가할 수 있습니다",
