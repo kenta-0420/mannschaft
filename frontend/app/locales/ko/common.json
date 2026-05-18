@@ -1305,5 +1305,13 @@
       "fetchError": "法的手続き一覧の取得に失敗しました",
       "empty": "法的手続きはまだありません"
     }
+  },
+  "team": {
+    "mapEmbedUrlLabel": "店舗地図（Google Maps 埋め込み URL）",
+    "mapEmbedUrlPlaceholder": "https://www.google.com/maps/embed?...",
+    "mapEmbedUrlWarning": "⚠️ この URL は未ログインユーザーにも公開されます",
+    "mapEmbedUrlHelp": "Google Maps で「共有 > 地図を埋め込む > HTML をコピー」して src= の URL を貼り付けてください",
+    "mapEmbedUrlInvalidFormat": "Google Maps 埋め込み URL（https://www.google.com/maps/embed?...）の形式である必要があります",
+    "mapEmbedUrlSaved": "店舗地図 URL を保存しました"
   }
 }

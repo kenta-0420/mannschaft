@@ -158,6 +158,8 @@ public class TeamService {
                         ? TeamEntity.Visibility.valueOf(req.getVisibility())
                         : team.getVisibility())
                 .supporterEnabled(req.getSupporterEnabled() != null ? req.getSupporterEnabled() : team.getSupporterEnabled())
+                // F15.4 Phase 5-β: Google Maps 埋め込み URL。null 許容（地図なしも OK）
+                .mapEmbedUrl(req.getMapEmbedUrl() != null ? req.getMapEmbedUrl() : team.getMapEmbedUrl())
                 .build();
         teamRepository.save(updated);
 
@@ -411,6 +413,7 @@ public class TeamService {
                 team.getSupporterEnabled(), team.getVersion(),
                 memberCount, team.getIconUrl(), team.getBannerUrl(),
                 team.getArchivedAt(), team.getCreatedAt(),
-                teamFriendCount, supporterCount);
+                teamFriendCount, supporterCount,
+                team.getMapEmbedUrl());
     }
 }
