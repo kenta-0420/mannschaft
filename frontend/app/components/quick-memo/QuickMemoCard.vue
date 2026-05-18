@@ -3,6 +3,12 @@ import type { QuickMemoResponse } from '~/types/quickMemo'
 
 const props = defineProps<{
   memo: QuickMemoResponse
+  /**
+   * アクションボタンを常時表示するか。
+   * ごみ箱画面のように「復元しか操作しない」前提の画面では hover に隠さない方が
+   * タッチ端末からも到達可能でアクセシビリティが上がる。
+   */
+  alwaysShowActions?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -74,7 +80,11 @@ function formatDate(iso: string) {
     <div class="mt-3 flex items-center justify-between">
       <span class="text-xs text-surface-400">{{ formatDate(memo.createdAt) }}</span>
 
-      <div class="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100" @click.stop>
+      <div
+        class="flex gap-1 transition-opacity"
+        :class="alwaysShowActions ? '' : 'opacity-0 group-hover:opacity-100'"
+        @click.stop
+      >
         <!-- UNSORTED のみアーカイブ・TODO変換 -->
         <template v-if="memo.status === 'UNSORTED'">
           <Button

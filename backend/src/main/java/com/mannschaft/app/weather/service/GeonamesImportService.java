@@ -2,6 +2,7 @@ package com.mannschaft.app.weather.service;
 
 import com.mannschaft.app.weather.entity.GeonamesMetadataEntity;
 import com.mannschaft.app.weather.repository.GeonamesMetadataRepository;
+import com.mannschaft.app.weather.util.PostalCodeNormalizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -200,10 +201,15 @@ public class GeonamesImportService {
         }
         try {
             String countryCode = nullIfBlank(cols[0]);
-            String postalCode = nullIfBlank(cols[1]);
-            if (countryCode == null || postalCode == null) {
+            String rawPostalCode = nullIfBlank(cols[1]);
+            if (countryCode == null || rawPostalCode == null) {
                 return null;
             }
+            // 正規化（JP はハイフン除去 + 7 桁ゼロパディング）して保存。
+            // 引き当て側 WeatherLocationDeriver と完全に同じロジックを使う（PostalCodeNormalizer）。
+            // 2026-05-18 根治治療: ここで raw 値のまま書いていたため、マスタに hyphen 入り行と
+            // 正規化形行が混在し、JP の引き当てが恒常的に失敗していた。
+            String postalCode = PostalCodeNormalizer.normalize(countryCode, rawPostalCode);
             String placeName = defaultIfBlank(cols[2], "");
             String admin1Name = nullIfBlank(cols[3]);
             String admin2Name = nullIfBlank(cols[5]);

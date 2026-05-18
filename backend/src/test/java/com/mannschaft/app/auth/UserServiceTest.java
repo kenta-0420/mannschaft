@@ -3,6 +3,7 @@ package com.mannschaft.app.auth;
 import com.mannschaft.app.auth.entity.EmailChangeTokenEntity;
 import com.mannschaft.app.auth.entity.TwoFactorAuthEntity;
 import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.event.WithdrawalCancelledEvent;
 import com.mannschaft.app.auth.repository.EmailChangeTokenRepository;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
@@ -26,6 +27,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -39,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -345,6 +348,36 @@ class UserServiceTest {
             assertThat(response.getData().getMessage()).contains("取り消し");
             assertThat(user.getDeletedAt()).isNull();
             verify(userRepository).save(user);
+        }
+
+        @Test
+        @DisplayName("正常系: WithdrawalCancelledEvent が発行される（監査ログ用）")
+        void cancelWithdrawal_正常_イベント発行() {
+            // Given
+            UserEntity user = createActiveUserWithDeletedAt();
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+            // When
+            userService.cancelWithdrawal(USER_ID);
+
+            // Then
+            ArgumentCaptor<WithdrawalCancelledEvent> captor = ArgumentCaptor.forClass(WithdrawalCancelledEvent.class);
+            verify(eventPublisher).publish(captor.capture());
+            assertThat(captor.getValue().getUserId()).isEqualTo(USER_ID);
+        }
+
+        @Test
+        @DisplayName("異常系: 未申請時はイベントが発行されない")
+        void cancelWithdrawal_未申請時_イベント未発行() {
+            // Given
+            UserEntity user = createActiveUser(); // deletedAt = null
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+
+            // When / Then
+            assertThatThrownBy(() -> userService.cancelWithdrawal(USER_ID))
+                    .isInstanceOf(BusinessException.class);
+            verify(eventPublisher, never()).publish(any(WithdrawalCancelledEvent.class));
         }
     }
 

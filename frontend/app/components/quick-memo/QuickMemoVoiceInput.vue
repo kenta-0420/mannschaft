@@ -13,9 +13,16 @@ const hasConsent = ref<boolean | null>(null)
 const checking = ref(false)
 const granting = ref(false)
 
-// transcriptの変化をemit
+// transcript は累積値なので、前回 emit 済みの末尾以降を差分として emit する
+let lastEmitted = ''
 watch(transcript, (val) => {
-  if (val) emit('transcript', val)
+  if (!val) {
+    lastEmitted = ''
+    return
+  }
+  const delta = val.startsWith(lastEmitted) ? val.slice(lastEmitted.length) : val
+  lastEmitted = val
+  if (delta) emit('transcript', delta)
 })
 
 async function handleClick() {

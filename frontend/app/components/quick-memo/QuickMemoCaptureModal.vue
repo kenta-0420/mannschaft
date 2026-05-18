@@ -18,7 +18,8 @@ const form = ref({
   showReminder: false,
 })
 const submitting = ref(false)
-const titleInput = ref<HTMLInputElement | null>(null)
+// PrimeVue InputText のコンポーネントインスタンス。実 DOM は $el で取得する
+const titleInput = ref<{ $el?: HTMLInputElement } | null>(null)
 const personalTags = ref<TagResponse[]>([])
 const creatingTag = ref(false)
 
@@ -26,7 +27,7 @@ const creatingTag = ref(false)
 watch(visible, async (val) => {
   if (val) {
     await nextTick()
-    titleInput.value?.focus()
+    titleInput.value?.$el?.focus()
     if (personalTags.value.length === 0) {
       loadTags()
     }
@@ -77,6 +78,23 @@ async function submit() {
     notification.error(t('quick_memo.save_error'))
     submitting.value = false
   }
+}
+
+function onVoiceTranscript(text: string) {
+  // タイトルが空ならまずタイトルへ。これで「ポイっと」ボタンの disabled が外れる
+  if (!form.value.title.trim()) {
+    // タイトルは 200 文字制限なので超過分は本文に回す
+    const remain = 200 - form.value.title.length
+    if (text.length <= remain) {
+      form.value.title += text
+      return
+    }
+    form.value.title += text.slice(0, remain)
+    form.value.body += text.slice(remain)
+  } else {
+    form.value.body += text
+  }
+  form.value.showBody = form.value.body.length > 0
 }
 
 function resetForm() {
@@ -148,9 +166,9 @@ function resetForm() {
         />
       </template>
 
-      <!-- 音声入力 -->
+      <!-- 音声入力: タイトルが空ならタイトルに、埋まっていれば本文に流し込む -->
       <div class="flex items-center gap-2">
-        <QuickMemoVoiceInput @transcript="(text) => { form.body += text; form.showBody = true }" />
+        <QuickMemoVoiceInput @transcript="onVoiceTranscript" />
       </div>
     </div>
 
