@@ -180,6 +180,7 @@ export default defineNuxtConfig({
           'ja/wallet.json',
           'ja/village.json',
           'ja/system_admin_batch.json',
+          'ja/advertising.json',
         ],
       },
       {
@@ -226,6 +227,7 @@ export default defineNuxtConfig({
           'en/wallet.json',
           'en/village.json',
           'en/system_admin_batch.json',
+          'en/advertising.json',
         ],
       },
       {
@@ -272,6 +274,7 @@ export default defineNuxtConfig({
           'zh/wallet.json',
           'zh/village.json',
           'zh/system_admin_batch.json',
+          'zh/advertising.json',
         ],
       },
       {
@@ -318,6 +321,7 @@ export default defineNuxtConfig({
           'ko/wallet.json',
           'ko/village.json',
           'ko/system_admin_batch.json',
+          'ko/advertising.json',
         ],
       },
       {
@@ -364,6 +368,7 @@ export default defineNuxtConfig({
           'es/wallet.json',
           'es/village.json',
           'es/system_admin_batch.json',
+          'es/advertising.json',
         ],
       },
       {
@@ -410,6 +415,7 @@ export default defineNuxtConfig({
           'de/wallet.json',
           'de/village.json',
           'de/system_admin_batch.json',
+          'de/advertising.json',
         ],
       },
     ],
