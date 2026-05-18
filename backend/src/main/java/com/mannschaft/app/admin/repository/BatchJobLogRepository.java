@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * バッチジョブログリポジトリ。
@@ -17,6 +18,11 @@ public interface BatchJobLogRepository extends JpaRepository<BatchJobLogEntity, 
      * ジョブ名で実行履歴を取得する。
      */
     List<BatchJobLogEntity> findByJobNameOrderByStartedAtDesc(String jobName);
+
+    /**
+     * ジョブ名で直近 1 件の実行履歴を取得する（F10.X 第二陣 — バッチキック API の status 表示用）。
+     */
+    Optional<BatchJobLogEntity> findFirstByJobNameOrderByStartedAtDesc(String jobName);
 
     /**
      * ステータス別にジョブログを取得する。
