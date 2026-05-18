@@ -7,6 +7,7 @@ import com.mannschaft.app.chat.dto.AddMemberRequest;
 import com.mannschaft.app.chat.dto.ChangeRoleRequest;
 import com.mannschaft.app.chat.dto.ChannelSettingsRequest;
 import com.mannschaft.app.chat.dto.MemberResponse;
+import com.mannschaft.app.chat.dto.UpdateMyChannelSettingsRequest;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.BusinessException;
@@ -157,6 +158,40 @@ public class ChatMemberService {
 
         ChatChannelMemberEntity saved = memberRepository.save(member);
         log.info("チャンネル個人設定更新完了: channelId={}, userId={}", channelId, userId);
+        return chatMapper.toMemberResponse(saved);
+    }
+
+    /**
+     * F04.2 Phase 11 第二陣 2-β: 自分のチャンネル個人設定（通知ミュート・ピン留め・カテゴリ）を更新する。
+     *
+     * <p>{@code PATCH /chat/channels/{id}/members/me} の Service エントリポイント。
+     * 設計書 §4 「{@code /settings}（チャンネル全体）」と「{@code /members/me}（メンバー個人）」を
+     * 別リソースとして扱う設計のため、本メソッドは「呼び出しユーザー自身のメンバー行」だけを更新する。</p>
+     *
+     * <p>認可: チャンネルメンバーであること（行が存在しなければ {@link ChatErrorCode#MEMBER_NOT_FOUND}）。
+     * 「他人の設定」を弄れない設計のため、対象ユーザー ID パラメータは取らず {@code userId} のみを受ける。</p>
+     *
+     * @param channelId チャンネル ID
+     * @param userId    呼び出しユーザー ID（自分自身）
+     * @param request   個人設定更新リクエスト
+     * @return 更新後のメンバー情報
+     */
+    @Transactional
+    public MemberResponse updateMySettings(Long channelId, Long userId, UpdateMyChannelSettingsRequest request) {
+        ChatChannelMemberEntity member = findMemberOrThrow(channelId, userId);
+
+        if (request.getIsMuted() != null) {
+            member.setMuted(request.getIsMuted());
+        }
+        if (request.getIsPinned() != null) {
+            member.setPinned(request.getIsPinned());
+        }
+        if (request.getCategory() != null) {
+            member.updateCategory(request.getCategory());
+        }
+
+        ChatChannelMemberEntity saved = memberRepository.save(member);
+        log.info("自分のチャンネル個人設定更新完了: channelId={}, userId={}", channelId, userId);
         return chatMapper.toMemberResponse(saved);
     }
 

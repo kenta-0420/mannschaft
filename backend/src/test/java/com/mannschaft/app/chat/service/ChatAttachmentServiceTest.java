@@ -1,10 +1,15 @@
 package com.mannschaft.app.chat.service;
 
+import com.mannschaft.app.chat.ChannelMemberRole;
 import com.mannschaft.app.chat.ChannelType;
 import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
+import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity;
+import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
@@ -18,6 +23,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
+import java.time.Duration;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -25,6 +32,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -51,6 +59,8 @@ class ChatAttachmentServiceTest {
     private static final Long ATTACHMENT_ID = 999L;
 
     @Mock private StorageQuotaService storageQuotaService;
+    @Mock private StorageService storageService;
+    @Mock private ChatChannelMemberRepository chatChannelMemberRepository;
     @InjectMocks private ChatAttachmentService service;
 
     private ChatChannelEntity teamChannel(ChannelType type) {
@@ -320,6 +330,122 @@ class ChatAttachmentServiceTest {
             assertThat(ch.getChannelType()).isEqualTo(ChannelType.DM);
             assertThatThrownBy(() -> service.checkAttachmentQuota(ch, 1L, null))
                     .isInstanceOf(IllegalStateException.class);
+        }
+    }
+
+    /**
+     * F04.2 Phase 11 第二陣 2-β: チャンネルアイコン Pre-signed URL 発行のテスト。
+     */
+    @Nested
+    @DisplayName("presignChannelIconUpload (Phase 11 2-β)")
+    class PresignChannelIconUpload {
+
+        private ChatChannelMemberEntity memberAs(ChannelMemberRole role) {
+            return ChatChannelMemberEntity.builder()
+                    .channelId(CHANNEL_ID).userId(SENDER_ID).role(role).build();
+        }
+
+        @Test
+        @DisplayName("正常系: OWNER が JPEG 1MB を投稿 → 5分有効の URL を発行")
+        void 正常系_OWNER_JPEG() {
+            ChatChannelEntity ch = teamChannel(ChannelType.TEAM_PUBLIC);
+            given(chatChannelMemberRepository.findByChannelIdAndUserId(CHANNEL_ID, SENDER_ID))
+                    .willReturn(Optional.of(memberAs(ChannelMemberRole.OWNER)));
+            given(storageService.generateUploadUrl(anyString(), eq("image/jpeg"), eq(Duration.ofMinutes(5))))
+                    .willReturn(new PresignedUploadResult(
+                            "https://r2.example/icon", "chat/TEAM/50/icons/uuid/icon.jpg", 300L));
+
+            PresignedUploadResult result = service.presignChannelIconUpload(
+                    ch, SENDER_ID, "image/jpeg", 1024L * 1024, "icon.jpg");
+
+            assertThat(result.s3Key()).startsWith("chat/TEAM/50/icons/");
+            assertThat(result.expiresInSeconds()).isEqualTo(300L);
+        }
+
+        @Test
+        @DisplayName("正常系: ADMIN は PNG 投稿可能")
+        void 正常系_ADMIN_PNG() {
+            ChatChannelEntity ch = teamChannel(ChannelType.TEAM_PUBLIC);
+            given(chatChannelMemberRepository.findByChannelIdAndUserId(CHANNEL_ID, SENDER_ID))
+                    .willReturn(Optional.of(memberAs(ChannelMemberRole.ADMIN)));
+            given(storageService.generateUploadUrl(anyString(), eq("image/png"), any(Duration.class)))
+                    .willReturn(new PresignedUploadResult("https://r2", "chat/TEAM/50/icons/x/x.png", 300L));
+
+            PresignedUploadResult result = service.presignChannelIconUpload(
+                    ch, SENDER_ID, "image/png", 512L * 1024, "x.png");
+            assertThat(result).isNotNull();
+        }
+
+        @Test
+        @DisplayName("異常系: MEMBER は権限なし (CHANNEL_ICON_PERMISSION_DENIED / 403)")
+        void 異常系_MEMBER_拒否() {
+            ChatChannelEntity ch = teamChannel(ChannelType.TEAM_PUBLIC);
+            given(chatChannelMemberRepository.findByChannelIdAndUserId(CHANNEL_ID, SENDER_ID))
+                    .willReturn(Optional.of(memberAs(ChannelMemberRole.MEMBER)));
+
+            assertThatThrownBy(() -> service.presignChannelIconUpload(
+                    ch, SENDER_ID, "image/jpeg", 1024L, "x.jpg"))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode",
+                            ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
+        }
+
+        @Test
+        @DisplayName("異常系: 非メンバーは権限なし")
+        void 異常系_非メンバー() {
+            ChatChannelEntity ch = teamChannel(ChannelType.TEAM_PUBLIC);
+            given(chatChannelMemberRepository.findByChannelIdAndUserId(CHANNEL_ID, SENDER_ID))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.presignChannelIconUpload(
+                    ch, SENDER_ID, "image/jpeg", 1024L, "x.jpg"))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode",
+                            ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
+        }
+
+        @Test
+        @DisplayName("異常系: GIF 等の非対応 MIME は ICON_CONTENT_TYPE_INVALID")
+        void 異常系_MIME不許可() {
+            ChatChannelEntity ch = teamChannel(ChannelType.TEAM_PUBLIC);
+            given(chatChannelMemberRepository.findByChannelIdAndUserId(CHANNEL_ID, SENDER_ID))
+                    .willReturn(Optional.of(memberAs(ChannelMemberRole.OWNER)));
+
+            assertThatThrownBy(() -> service.presignChannelIconUpload(
+                    ch, SENDER_ID, "image/gif", 1024L, "anim.gif"))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode",
+                            ChatErrorCode.ICON_CONTENT_TYPE_INVALID);
+        }
+
+        @Test
+        @DisplayName("異常系: 2MB 超過は ICON_SIZE_EXCEEDED (413)")
+        void 異常系_サイズ超過() {
+            ChatChannelEntity ch = teamChannel(ChannelType.TEAM_PUBLIC);
+            given(chatChannelMemberRepository.findByChannelIdAndUserId(CHANNEL_ID, SENDER_ID))
+                    .willReturn(Optional.of(memberAs(ChannelMemberRole.OWNER)));
+
+            long over = ChatAttachmentService.CHANNEL_ICON_MAX_BYTES + 1;
+            assertThatThrownBy(() -> service.presignChannelIconUpload(
+                    ch, SENDER_ID, "image/png", over, "big.png"))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode",
+                            ChatErrorCode.ICON_SIZE_EXCEEDED);
+        }
+
+        @Test
+        @DisplayName("正常系: DM チャンネルでも OWNER であれば PERSONAL スコープのキーで発行")
+        void 正常系_DM_PERSONAL() {
+            ChatChannelEntity ch = dmChannel(ChannelType.DM);
+            given(chatChannelMemberRepository.findByChannelIdAndUserId(CHANNEL_ID, SENDER_ID))
+                    .willReturn(Optional.of(memberAs(ChannelMemberRole.OWNER)));
+            given(storageService.generateUploadUrl(anyString(), anyString(), any(Duration.class)))
+                    .willReturn(new PresignedUploadResult(
+                            "https://r2", "chat/PERSONAL/" + SENDER_ID + "/icons/u/i.webp", 300L));
+
+            PresignedUploadResult result = service.presignChannelIconUpload(
+                    ch, SENDER_ID, "image/webp", 512L, "i.webp");
+            assertThat(result.s3Key()).startsWith("chat/PERSONAL/" + SENDER_ID + "/icons/");
         }
     }
 }
