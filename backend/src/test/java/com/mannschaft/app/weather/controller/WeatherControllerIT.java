@@ -116,24 +116,38 @@ class WeatherControllerIT {
     // ========================================
 
     /**
-     * テスト用の {@link WeatherForecastData} を生成する。
+     * テスト用の {@link WeatherForecastData} を生成する（今日・明日・明後日の 3 日分）。
      */
     private WeatherForecastData buildForecastData() {
+        WeatherForecastData.DayData today = WeatherForecastData.DayData.builder()
+                .date(LocalDate.of(2026, 5, 12))
+                .conditionCode(1000)
+                .conditionText("晴れ")
+                .maxTempC(new BigDecimal("25.0"))
+                .minTempC(new BigDecimal("18.0"))
+                .avgHumidity(60)
+                .chanceOfRain(0)
+                .build();
+        WeatherForecastData.DayData tomorrow = WeatherForecastData.DayData.builder()
+                .date(LocalDate.of(2026, 5, 13))
+                .conditionCode(1003)
+                .conditionText("一部曇り")
+                .maxTempC(new BigDecimal("23.0"))
+                .minTempC(new BigDecimal("16.0"))
+                .avgHumidity(65)
+                .chanceOfRain(20)
+                .build();
+        WeatherForecastData.DayData dayAfterTomorrow = WeatherForecastData.DayData.builder()
+                .date(LocalDate.of(2026, 5, 14))
+                .conditionCode(1063)
+                .conditionText("雨")
+                .maxTempC(new BigDecimal("20.0"))
+                .minTempC(new BigDecimal("14.0"))
+                .avgHumidity(80)
+                .chanceOfRain(70)
+                .build();
         return WeatherForecastData.builder()
-                .todayDate(LocalDate.of(2026, 5, 12))
-                .tomorrowDate(LocalDate.of(2026, 5, 13))
-                .todayConditionCode(1000)
-                .tomorrowConditionCode(1003)
-                .todayConditionText("晴れ")
-                .tomorrowConditionText("一部曇り")
-                .todayMaxTempC(new BigDecimal("25.0"))
-                .todayMinTempC(new BigDecimal("18.0"))
-                .tomorrowMaxTempC(new BigDecimal("23.0"))
-                .tomorrowMinTempC(new BigDecimal("16.0"))
-                .todayAvgHumidity(60)
-                .tomorrowAvgHumidity(65)
-                .todayChanceOfRain(0)
-                .tomorrowChanceOfRain(20)
+                .days(List.of(today, tomorrow, dayAfterTomorrow))
                 .fetchedAt(Instant.parse("2026-05-12T06:00:00Z"))
                 .build();
     }
@@ -202,10 +216,12 @@ class WeatherControllerIT {
 
             mockMvc.perform(get("/api/v1/dashboard/weather"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.today.conditionCode").value(1000))
-                    .andExpect(jsonPath("$.data.today.iconKey").value("sunny"))
-                    .andExpect(jsonPath("$.data.tomorrow.conditionCode").value(1003))
-                    .andExpect(jsonPath("$.data.tomorrow.iconKey").value("partly_cloudy"))
+                    .andExpect(jsonPath("$.data.forecasts.length()").value(3))
+                    .andExpect(jsonPath("$.data.forecasts[0].conditionCode").value(1000))
+                    .andExpect(jsonPath("$.data.forecasts[0].iconKey").value("sunny"))
+                    .andExpect(jsonPath("$.data.forecasts[1].conditionCode").value(1003))
+                    .andExpect(jsonPath("$.data.forecasts[1].iconKey").value("partly_cloudy"))
+                    .andExpect(jsonPath("$.data.forecasts[2].conditionCode").value(1063))
                     .andExpect(jsonPath("$.data.isStale").value(false))
                     .andExpect(jsonPath("$.data.dataSource").value("WeatherAPI.com"));
         }

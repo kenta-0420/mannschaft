@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,7 +36,8 @@ import static org.mockito.Mockito.verify;
 /**
  * F02.10 Phase 2 — {@link WeatherForecastService} の単体テスト。
  *
- * <p>キャッシュヒット（fresh）/ キャッシュミス / stale 延命の 3 シナリオを検証する。</p>
+ * <p>キャッシュヒット（fresh）/ キャッシュミス / stale 延命の 3 シナリオを検証する。
+ * 2026-05-18 に 3 日対応へ拡張: テストデータも {@code days[0..2]} の 3 日分を組み立てる。</p>
  */
 @DisplayName("WeatherForecastService 単体テスト")
 class WeatherForecastServiceTest {
@@ -76,8 +78,9 @@ class WeatherForecastServiceTest {
                 "JP", new BigDecimal("35.5"), new BigDecimal("139.5"), "ja");
 
         assertThat(result.stale()).isFalse();
-        assertThat(result.data().getTodayConditionCode())
-                .isEqualTo(fresh.getTodayConditionCode());
+        assertThat(result.data().getDays()).hasSize(3);
+        assertThat(result.data().getDays().get(0).getConditionCode())
+                .isEqualTo(fresh.getDays().get(0).getConditionCode());
         verify(client, never()).fetchForecast(any(), any(), anyString());
     }
 
@@ -96,6 +99,7 @@ class WeatherForecastServiceTest {
 
         assertThat(result.stale()).isFalse();
         assertThat(result.data()).isSameAs(fetched);
+        assertThat(result.data().getDays()).hasSize(3);
 
         ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Long> ttlCaptor = ArgumentCaptor.forClass(Long.class);
@@ -121,8 +125,9 @@ class WeatherForecastServiceTest {
                 "JP", new BigDecimal("35.5"), new BigDecimal("139.5"), "ja");
 
         assertThat(result.stale()).isTrue();
-        assertThat(result.data().getTodayConditionCode())
-                .isEqualTo(stale.getTodayConditionCode());
+        assertThat(result.data().getDays()).hasSize(3);
+        assertThat(result.data().getDays().get(0).getConditionCode())
+                .isEqualTo(stale.getDays().get(0).getConditionCode());
 
         // TTL 6 時間で再保存（延命）
         ArgumentCaptor<Long> ttlCaptor = ArgumentCaptor.forClass(Long.class);
@@ -151,23 +156,37 @@ class WeatherForecastServiceTest {
         assertThat(key).isEqualTo("weather:JP:35.5:139.5:ja");
     }
 
-    /** テスト用 DTO 生成。 */
+    /** テスト用 DTO 生成（今日・明日・明後日の 3 日分）。 */
     private static WeatherForecastData sampleData(Instant fetchedAt) {
+        WeatherForecastData.DayData today = WeatherForecastData.DayData.builder()
+                .date(LocalDate.of(2026, 5, 9))
+                .conditionCode(1003)
+                .conditionText("曇り時々晴れ")
+                .maxTempC(new BigDecimal("22.4"))
+                .minTempC(new BigDecimal("14.1"))
+                .avgHumidity(58)
+                .chanceOfRain(10)
+                .build();
+        WeatherForecastData.DayData tomorrow = WeatherForecastData.DayData.builder()
+                .date(LocalDate.of(2026, 5, 10))
+                .conditionCode(1063)
+                .conditionText("雨")
+                .maxTempC(new BigDecimal("18.0"))
+                .minTempC(new BigDecimal("13.5"))
+                .avgHumidity(82)
+                .chanceOfRain(80)
+                .build();
+        WeatherForecastData.DayData dayAfterTomorrow = WeatherForecastData.DayData.builder()
+                .date(LocalDate.of(2026, 5, 11))
+                .conditionCode(1000)
+                .conditionText("晴れ")
+                .maxTempC(new BigDecimal("24.0"))
+                .minTempC(new BigDecimal("15.0"))
+                .avgHumidity(50)
+                .chanceOfRain(5)
+                .build();
         return WeatherForecastData.builder()
-                .todayDate(LocalDate.of(2026, 5, 9))
-                .tomorrowDate(LocalDate.of(2026, 5, 10))
-                .todayConditionCode(1003)
-                .tomorrowConditionCode(1063)
-                .todayConditionText("曇り時々晴れ")
-                .tomorrowConditionText("雨")
-                .todayMaxTempC(new BigDecimal("22.4"))
-                .todayMinTempC(new BigDecimal("14.1"))
-                .tomorrowMaxTempC(new BigDecimal("18.0"))
-                .tomorrowMinTempC(new BigDecimal("13.5"))
-                .todayAvgHumidity(58)
-                .tomorrowAvgHumidity(82)
-                .todayChanceOfRain(10)
-                .tomorrowChanceOfRain(80)
+                .days(List.of(today, tomorrow, dayAfterTomorrow))
                 .fetchedAt(fetchedAt)
                 .build();
     }

@@ -58,6 +58,16 @@ class WeatherApiClientTest {
                       "daily_chance_of_rain": 80,
                       "condition": {"code": 1063, "text": "雨"}
                     }
+                  },
+                  {
+                    "date": "2026-05-11",
+                    "day": {
+                      "maxtemp_c": 24.0,
+                      "mintemp_c": 15.0,
+                      "avghumidity": 50,
+                      "daily_chance_of_rain": 5,
+                      "condition": {"code": 1000, "text": "晴れ"}
+                    }
                   }
                 ]
               }
@@ -78,7 +88,7 @@ class WeatherApiClientTest {
     }
 
     @Test
-    @DisplayName("正常系: 200 応答が WeatherForecastData に正しく変換される")
+    @DisplayName("正常系: 200 応答が WeatherForecastData に正しく変換される（3 日分）")
     void fetchForecast_parsesSuccessResponse() {
         client.setWebClientForTest(mockWebClient(SAMPLE_JSON, null));
 
@@ -87,14 +97,22 @@ class WeatherApiClientTest {
 
         assertThat(result).isPresent();
         WeatherForecastData data = result.get();
-        assertThat(data.getTodayDate().toString()).isEqualTo("2026-05-09");
-        assertThat(data.getTomorrowDate().toString()).isEqualTo("2026-05-10");
-        assertThat(data.getTodayConditionCode()).isEqualTo(1003);
-        assertThat(data.getTodayConditionText()).isEqualTo("曇り時々晴れ");
-        assertThat(data.getTodayMaxTempC()).isEqualByComparingTo("22.4");
-        assertThat(data.getTodayMinTempC()).isEqualByComparingTo("14.1");
-        assertThat(data.getTomorrowAvgHumidity()).isEqualTo(82);
-        assertThat(data.getTomorrowChanceOfRain()).isEqualTo(80);
+        assertThat(data.getDays()).hasSize(3);
+        // 今日
+        assertThat(data.getDays().get(0).getDate().toString()).isEqualTo("2026-05-09");
+        assertThat(data.getDays().get(0).getConditionCode()).isEqualTo(1003);
+        assertThat(data.getDays().get(0).getConditionText()).isEqualTo("曇り時々晴れ");
+        assertThat(data.getDays().get(0).getMaxTempC()).isEqualByComparingTo("22.4");
+        assertThat(data.getDays().get(0).getMinTempC()).isEqualByComparingTo("14.1");
+        // 明日
+        assertThat(data.getDays().get(1).getDate().toString()).isEqualTo("2026-05-10");
+        assertThat(data.getDays().get(1).getAvgHumidity()).isEqualTo(82);
+        assertThat(data.getDays().get(1).getChanceOfRain()).isEqualTo(80);
+        // 明後日
+        assertThat(data.getDays().get(2).getDate().toString()).isEqualTo("2026-05-11");
+        assertThat(data.getDays().get(2).getConditionCode()).isEqualTo(1000);
+        assertThat(data.getDays().get(2).getConditionText()).isEqualTo("晴れ");
+        assertThat(data.getDays().get(2).getMaxTempC()).isEqualByComparingTo("24.0");
         assertThat(data.getFetchedAt()).isNotNull();
     }
 
@@ -138,20 +156,34 @@ class WeatherApiClientTest {
     }
 
     @Test
-    @DisplayName("forecastday が 2 件未満 → WeatherProviderException")
-    void parseResponse_throwsWhenForecastdayInsufficient() {
-        String shortJson = """
+    @DisplayName("forecastday が空 → WeatherProviderException")
+    void parseResponse_throwsWhenForecastdayEmpty() {
+        String emptyJson = """
+                {
+                  "forecast": {
+                    "forecastday": []
+                  }
+                }
+                """;
+        assertThatThrownBy(() -> client.parseResponse(emptyJson))
+                .isInstanceOf(WeatherProviderException.class);
+    }
+
+    @Test
+    @DisplayName("forecastday が 3 件未満 (例: 2 件) でも実数分だけ返却される（堅牢性）")
+    void parseResponse_returnsAvailableDaysOnlyWhenLessThan3() {
+        String twoDayJson = """
                 {
                   "forecast": {
                     "forecastday": [
-                      {"date": "2026-05-09", "day": {"condition": {"code": 1000, "text": "晴れ"}}}
+                      {"date": "2026-05-09", "day": {"maxtemp_c": 22.4, "mintemp_c": 14.1, "avghumidity": 58, "daily_chance_of_rain": 10, "condition": {"code": 1003, "text": "曇り時々晴れ"}}},
+                      {"date": "2026-05-10", "day": {"maxtemp_c": 18.0, "mintemp_c": 13.5, "avghumidity": 82, "daily_chance_of_rain": 80, "condition": {"code": 1063, "text": "雨"}}}
                     ]
                   }
                 }
                 """;
-        assertThatThrownBy(() -> client.parseResponse(shortJson))
-                .isInstanceOf(WeatherProviderException.class)
-                .hasMessageContaining("2 日分");
+        WeatherForecastData data = client.parseResponse(twoDayJson);
+        assertThat(data.getDays()).hasSize(2);
     }
 
     /**
