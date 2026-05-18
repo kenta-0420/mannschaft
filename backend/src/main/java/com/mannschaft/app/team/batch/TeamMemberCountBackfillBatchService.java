@@ -1,5 +1,6 @@
 package com.mannschaft.app.team.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -55,6 +56,7 @@ public class TeamMemberCountBackfillBatchService {
      * <p>F15.4 設計書 §11.4 に基づき、深夜帯にバッチを実行することで業務時間中の負荷を回避する。
      * {@link SchedulerLock} により複数インスタンス起動時の同時実行を防ぐ。</p>
      */
+    @BatchEndpoint(name = "team-member-count-backfill-daily", description = "teams.member_count を user_roles から毎日 02:00 に再集計する")
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = JOB_NAME,

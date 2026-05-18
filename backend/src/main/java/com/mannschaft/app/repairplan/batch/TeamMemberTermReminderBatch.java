@@ -1,5 +1,6 @@
 package com.mannschaft.app.repairplan.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -40,6 +41,7 @@ public class TeamMemberTermReminderBatch {
     /**
      * スケジュール起動エントリポイント（毎朝 9:00 JST）。
      */
+    @BatchEndpoint(name = "repairplan-team-member-term-reminder-daily", description = "理事任期終了 30 日前のリマインドを毎日 09:00 に通知する")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "TeamMemberTermReminderBatch", lockAtMostFor = "PT55M")
     @Transactional(readOnly = true)

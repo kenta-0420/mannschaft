@@ -108,6 +108,114 @@ class TeamServiceTest {
         }
     }
 
+    /**
+     * F15.4 Phase 5-α: 未ログイン公開エンドポイント用 {@code getPublicTeam}。
+     * 設計書 §4.3 のステータスマッピング（不在 / 削除 / archived / 非 PUBLIC → 404）を確認する。
+     */
+    @Nested
+    @DisplayName("getPublicTeam (F15.4 Phase 5-α)")
+    class GetPublicTeam {
+
+        @Test
+        @DisplayName("正常系: PUBLIC かつ未 archive かつ未削除なら DTO を返す")
+        void 公開取得_正常() {
+            TeamEntity team = TeamEntity.builder()
+                    .name("公開店舗")
+                    .template("salon")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .supporterEnabled(true)
+                    .build();
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+
+            var dto = service.getPublicTeam(TEAM_ID);
+
+            assertThat(dto).isNotNull();
+            assertThat(dto.name()).isEqualTo("公開店舗");
+            assertThat(dto.template()).isEqualTo("salon");
+        }
+
+        @Test
+        @DisplayName("異常系: チーム不在 → TEAM_001（404 にマップ）")
+        void 公開取得_不在_404() {
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.getPublicTeam(TEAM_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TEAM_001"));
+        }
+
+        @Test
+        @DisplayName("異常系: archived チーム → TEAM_001（マスター裁可: 一律 404）")
+        void 公開取得_archived_404() {
+            TeamEntity team = TeamEntity.builder()
+                    .name("凍結店舗")
+                    .template("salon")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .supporterEnabled(true)
+                    .build();
+            team.archive();
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+
+            assertThatThrownBy(() -> service.getPublicTeam(TEAM_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TEAM_001"));
+        }
+
+        @Test
+        @DisplayName("異常系: 論理削除済み → TEAM_001（@SQLRestriction 抜けの安全網）")
+        void 公開取得_deleted_404() {
+            TeamEntity team = TeamEntity.builder()
+                    .name("削除店舗")
+                    .template("salon")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .supporterEnabled(true)
+                    .build();
+            team.softDelete();
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+
+            assertThatThrownBy(() -> service.getPublicTeam(TEAM_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TEAM_001"));
+        }
+
+        @Test
+        @DisplayName("異常系: visibility=ORGANIZATION_ONLY → TEAM_001（IDOR 対策で 404）")
+        void 公開取得_organizationOnly_404() {
+            TeamEntity team = TeamEntity.builder()
+                    .name("組織内店舗")
+                    .template("salon")
+                    .visibility(TeamEntity.Visibility.ORGANIZATION_ONLY)
+                    .supporterEnabled(true)
+                    .build();
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+
+            assertThatThrownBy(() -> service.getPublicTeam(TEAM_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TEAM_001"));
+        }
+
+        @Test
+        @DisplayName("異常系: visibility=PRIVATE → TEAM_001（IDOR 対策で 404）")
+        void 公開取得_private_404() {
+            TeamEntity team = TeamEntity.builder()
+                    .name("非公開店舗")
+                    .template("salon")
+                    .visibility(TeamEntity.Visibility.PRIVATE)
+                    .supporterEnabled(false)
+                    .build();
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+
+            assertThatThrownBy(() -> service.getPublicTeam(TEAM_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TEAM_001"));
+        }
+    }
+
     @Nested
     @DisplayName("archiveTeam")
     class ArchiveTeam {

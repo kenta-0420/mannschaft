@@ -78,6 +78,9 @@ public class AnnouncementSourceResolver {
             // TODO / SCHEDULE は F02.8 告知ウィザード専用。
             // createFromBroadcast() 経由で登録するためここには到達しない。
             case TODO, SCHEDULE -> throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_006);
+            // F09.17 ADVERTISER_CAMPAIGN は AnnouncementFeedService.createAdvertiserFeed が
+            // resolveSourceInfo を介さず直接 builder を組み立てるためここには到達しない。
+            case ADVERTISER_CAMPAIGN -> throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_006);
         };
     }
 
@@ -116,6 +119,7 @@ public class AnnouncementSourceResolver {
             case TEAM -> scopeId.equals(post.getTeamId());
             case ORGANIZATION -> scopeId.equals(post.getOrganizationId());
             case COMMITTEE -> false; // ブログ記事は委員会スコープ不可
+            case ADVERTISER_AD -> false; // F09.17 広告は別経路（createAdvertiserFeed）
         };
         if (!scopeMatches) {
             throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_005);
@@ -192,6 +196,7 @@ public class AnnouncementSourceResolver {
             case ORGANIZATION -> scopeId.equals(post.getScopeId())
                     && "ORGANIZATION".equals(post.getScopeType().name());
             case COMMITTEE -> false; // タイムライン投稿は委員会スコープ不可
+            case ADVERTISER_AD -> false; // F09.17 広告は別経路（createAdvertiserFeed）
         };
         if (!scopeMatches) {
             throw new BusinessException(AnnouncementErrorCode.ANNOUNCE_005);

@@ -32,6 +32,19 @@ public class DirectMailLogEntity extends BaseEntity {
     @Column(nullable = false)
     private Long senderId;
 
+    /**
+     * 送信者種別（F09.17 Phase 11-b ε-B で V67.021 にて追加）。
+     * <ul>
+     *   <li>{@code USER} : 通常のユーザー送信（既存）</li>
+     *   <li>{@code SYSTEM} : システム送信</li>
+     *   <li>{@code SYSTEM_AD} : F09.17 広告キャンペーン由来</li>
+     * </ul>
+     * デフォルト {@code USER}（既存呼び出しの後方互換）。
+     */
+    @Column(name = "sender_type", nullable = false, length = 20)
+    @Builder.Default
+    private String senderType = "USER";
+
     @Column(nullable = false, length = 200)
     private String subject;
 

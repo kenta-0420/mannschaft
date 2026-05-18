@@ -1,5 +1,6 @@
 package com.mannschaft.app.shiftbudget.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventStatus;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetFailedEventEntity;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetFailedEventRepository;
@@ -45,6 +46,7 @@ public class ShiftBudgetRetryBatchJob {
     /**
      * 15 分毎に実行する。
      */
+    @BatchEndpoint(name = "shiftbudget-failed-event-retry", description = "失敗したシフト予算イベントを 15 分毎に最大 3 回までリトライする")
     @Scheduled(cron = "0 */15 * * * ?", zone = "Asia/Tokyo")
     @SchedulerLock(name = "ShiftBudgetRetryBatchJob",
             lockAtMostFor = "10m", lockAtLeastFor = "1m")

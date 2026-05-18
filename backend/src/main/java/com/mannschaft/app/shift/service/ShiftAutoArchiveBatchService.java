@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.event.ShiftArchivedEvent;
 import com.mannschaft.app.shift.repository.ShiftChangeRequestRepository;
@@ -38,6 +39,7 @@ public class ShiftAutoArchiveBatchService {
     /**
      * 毎日 AM 3:00（JST）に実行。終了から 7 日超過した PUBLISHED スケジュールをアーカイブする。
      */
+    @BatchEndpoint(name = "shift-auto-archive-daily", description = "終了 7 日経過の PUBLISHED シフトを毎日 03:00 に ARCHIVED へ遷移する")
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "shift_auto_archive", lockAtMostFor = "PT30M", lockAtLeastFor = "PT5M")
     @Transactional

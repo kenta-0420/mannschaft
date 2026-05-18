@@ -1,5 +1,6 @@
 package com.mannschaft.app.disclosure.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.disclosure.entity.DisclosureAutoDeleteBatchLogEntity;
@@ -82,6 +83,7 @@ public class DisclosureAutoDeleteBatchService {
      * <p>F09.14 設計書 §5.7 に基づき、深夜帯にバッチを実行することで業務時間中の負荷を回避する。
      * {@link SchedulerLock} により複数インスタンス起動時の同時実行を防ぐ。</p>
      */
+    @BatchEndpoint(name = "disclosure-auto-delete-daily", description = "保存期限超過の開示エクスポートを毎日 02:00 に自動削除する")
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = JOB_NAME,

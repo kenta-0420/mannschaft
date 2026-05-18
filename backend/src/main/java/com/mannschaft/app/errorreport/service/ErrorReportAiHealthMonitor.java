@@ -1,5 +1,6 @@
 package com.mannschaft.app.errorreport.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.errorreport.repository.ErrorReportAiAnalysisRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +42,7 @@ public class ErrorReportAiHealthMonitor {
     /**
      * 毎時 0 分（JST）に実行されるエントリポイント。
      */
+    @BatchEndpoint(name = "errorreport-ai-health-monitor-hourly", description = "AI 分析の FAILED 件数を毎時集計し閾値超過時に通知する")
     @Scheduled(cron = "0 0 * * * *", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = "errorReportAiHealthMonitor",

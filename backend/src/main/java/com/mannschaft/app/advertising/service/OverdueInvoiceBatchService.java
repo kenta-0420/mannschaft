@@ -1,5 +1,6 @@
 package com.mannschaft.app.advertising.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.InvoiceStatus;
 import com.mannschaft.app.advertising.entity.AdInvoiceEntity;
 import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
@@ -34,6 +35,7 @@ public class OverdueInvoiceBatchService {
      * OVERDUE 自動化バッチ。毎日 AM 6:00 (JST) に実行。
      * status = ISSUED かつ due_date < TODAY の請求書を OVERDUE に更新。
      */
+    @BatchEndpoint(name = "advertising-invoice-overdue-mark-daily", description = "支払期限切れの広告請求書を OVERDUE に更新する（毎日 06:00）")
     @Scheduled(cron = "0 0 6 * * *", zone = "Asia/Tokyo")
     @Transactional
     public void markOverdueInvoices() {

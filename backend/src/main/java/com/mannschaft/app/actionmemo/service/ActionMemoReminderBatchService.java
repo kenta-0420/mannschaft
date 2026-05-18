@@ -1,6 +1,7 @@
 package com.mannschaft.app.actionmemo.service;
 
 import com.mannschaft.app.actionmemo.entity.UserActionMemoSettingsEntity;
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.notification.NotificationPriority;
@@ -45,6 +46,7 @@ public class ActionMemoReminderBatchService {
      * スケジュール起動エントリポイント（毎分実行）。
      */
     // TODO: actionmemoドメインとnotificationドメイン・authドメイン(AuditLogService)をまたいでいる。将来はActionMemoReminderTriggeredEventで分離予定
+    @BatchEndpoint(name = "actionmemo-reminder", description = "行動メモのリマインド通知を毎分送信する")
     @Scheduled(cron = "0 * * * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "actionMemoReminderBatch", lockAtMostFor = "PT50S", lockAtLeastFor = "PT0S")
     @Transactional(readOnly = true)

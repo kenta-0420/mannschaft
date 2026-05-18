@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.shift.entity.ShiftSwapRequestEntity;
@@ -38,6 +39,7 @@ public class ShiftCleanupBatchService {
     /**
      * 毎日 AM 3:00（JST）に実行。48h 経過した PENDING スワップ申請を自動キャンセルする。
      */
+    @BatchEndpoint(name = "shift-swap-expiry-cancel-daily", description = "48h 経過した PENDING スワップ申請を毎日 03:00 に自動キャンセルする")
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "shift_swap_expiry_cancel", lockAtMostFor = "PT30M", lockAtLeastFor = "PT5M")
     @Transactional
@@ -78,6 +80,7 @@ public class ShiftCleanupBatchService {
     /**
      * 毎日 AM 3:05（JST）に実行。ARCHIVED から 30 日経過したシフト希望を物理削除する。
      */
+    @BatchEndpoint(name = "shift-request-cleanup-daily", description = "ARCHIVED から 30 日経過のシフト希望を毎日 03:05 に物理削除する")
     @Scheduled(cron = "0 5 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "shift_request_cleanup", lockAtMostFor = "PT30M", lockAtLeastFor = "PT5M")
     @Transactional

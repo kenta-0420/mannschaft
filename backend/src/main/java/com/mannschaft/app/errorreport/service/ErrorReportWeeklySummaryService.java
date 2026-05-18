@@ -1,5 +1,6 @@
 package com.mannschaft.app.errorreport.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.EmailService;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
@@ -31,6 +32,7 @@ public class ErrorReportWeeklySummaryService {
     private final UserRepository userRepository;
     private final EmailService emailService;
 
+    @BatchEndpoint(name = "errorreport-weekly-summary", description = "エラーレポートの週次サマリーを毎週月曜 09:00 に SYSTEM_ADMIN へ配信する")
     @Scheduled(cron = "0 0 9 * * MON", zone = "Asia/Tokyo")
     @SchedulerLock(name = "errorReportWeeklySummary", lockAtMostFor = "PT10M", lockAtLeastFor = "PT1M")
     public void sendWeeklySummary() {

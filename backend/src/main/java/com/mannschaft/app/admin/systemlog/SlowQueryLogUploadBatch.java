@@ -1,5 +1,6 @@
 package com.mannschaft.app.admin.systemlog;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,6 +23,7 @@ public class SlowQueryLogUploadBatch {
      * 前日分のスロークエリログを R2 にアップロードする。
      * cron 式: 秒 分 時 日 月 曜日（デフォルト: 毎日 1:00 AM）
      */
+    @BatchEndpoint(name = "systemlog-slow-query-upload-daily", description = "前日分スロークエリログを R2 へ毎日 01:00 アップロードする")
     @Scheduled(cron = "${mannschaft.system-log.slow-query-cron:0 0 1 * * *}")
     public void run() {
         LocalDate yesterday = LocalDate.now().minusDays(1);

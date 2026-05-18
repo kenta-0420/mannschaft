@@ -1,0 +1,64 @@
+{
+  "systemAdmin": {
+    "batches": {
+      "title": "Batch Management",
+      "description": "Trigger and monitor registered batch jobs",
+      "summary": {
+        "title": "Batch summary (last 24h)",
+        "success": "Success",
+        "failed": "Failed",
+        "viewAll": "View details"
+      },
+      "filter": {
+        "search": "Search by name",
+        "status": "Filter by status",
+        "statusAll": "All"
+      },
+      "column": {
+        "name": "Name",
+        "description": "Description",
+        "lastStatus": "Last status",
+        "lastRun": "Last run",
+        "actions": "Actions"
+      },
+      "button": {
+        "run": "Run",
+        "runSync": "Run (sync)",
+        "viewDetail": "Detail",
+        "close": "Close",
+        "refresh": "Reload"
+      },
+      "status": {
+        "success": "Success",
+        "failed": "Failed",
+        "running": "Running",
+        "skipped": "Skipped",
+        "locked": "Locked",
+        "accepted": "Accepted",
+        "completed": "Completed",
+        "unknown": "Not run"
+      },
+      "toast": {
+        "runStarted": "Batch trigger accepted: {name}",
+        "runStartedDetail": "Running asynchronously. You will be notified when finished.",
+        "runCompleted": "Batch completed: {name}",
+        "runFailed": "Batch failed: {name}",
+        "locked": "Another instance is currently holding the lock: {name}",
+        "loadFailed": "Failed to load batches",
+        "statusFailed": "Failed to load status"
+      },
+      "detail": {
+        "title": "Batch detail",
+        "noHistory": "No execution history",
+        "jobName": "Job name",
+        "status": "Status",
+        "startedAt": "Started at",
+        "finishedAt": "Finished at",
+        "processedCount": "Processed count",
+        "errorMessage": "Error message"
+      },
+      "empty": "No batches registered",
+      "noResults": "No batches match the filter"
+    }
+  }
+}

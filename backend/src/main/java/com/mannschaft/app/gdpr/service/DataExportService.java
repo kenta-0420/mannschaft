@@ -1,5 +1,6 @@
 package com.mannschaft.app.gdpr.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EmailService;
@@ -184,6 +185,7 @@ public class DataExportService {
     /**
      * スタックしたPROCESSINGをFAILEDにリカバリする。毎時実行。
      */
+    @BatchEndpoint(name = "gdpr-export-stuck-recovery-hourly", description = "スタックした GDPR エクスポートジョブを毎時 FAILED に戻す")
     @Scheduled(cron = "0 0 * * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "exportRecoveryBatch", lockAtMostFor = "PT5M", lockAtLeastFor = "PT1M")
     @Transactional
@@ -199,6 +201,7 @@ public class DataExportService {
     /**
      * 期限切れZIPをS3から削除する。毎日AM5:00実行。
      */
+    @BatchEndpoint(name = "gdpr-export-expired-cleanup-daily", description = "期限切れ GDPR エクスポート ZIP を毎日 05:00 に R2 から削除する")
     @Scheduled(cron = "0 0 5 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "exportCleanupBatch", lockAtMostFor = "PT10M", lockAtLeastFor = "PT1M")
     @Transactional

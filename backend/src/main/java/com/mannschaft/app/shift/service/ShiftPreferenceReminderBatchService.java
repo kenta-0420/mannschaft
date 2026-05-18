@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -42,6 +43,7 @@ public class ShiftPreferenceReminderBatchService {
      * 10 分ごとに実行。48h前・24h前リマインドを未提出メンバーに送信する。
      */
     // TODO: shiftドメインがroleドメイン（UserRoleRepository）とteamドメイン（TeamShiftSettingsRepository）をまたいでいる。将来はそれぞれのQueryService経由で分離予定。Phase1-E: 2026-05-09
+    @BatchEndpoint(name = "shift-preference-reminder", description = "シフト希望提出 48h・24h 前のリマインドを 10 分毎に送信する")
     @Scheduled(cron = "0 */10 * * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "shift_preference_reminder", lockAtMostFor = "15m", lockAtLeastFor = "2m")
     @Transactional

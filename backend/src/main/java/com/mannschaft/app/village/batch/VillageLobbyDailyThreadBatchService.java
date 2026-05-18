@@ -1,5 +1,6 @@
 package com.mannschaft.app.village.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.village.entity.VillageEntity;
@@ -52,6 +53,7 @@ public class VillageLobbyDailyThreadBatchService {
      * <p>UTC 0 時を採用しているのは「村は組織横断」ゆえ地域タイムゾーンに合わせると
      * 不公平が生じるため。Phase 2 で村ごとのタイムゾーン設定が入れば切替予定。</p>
      */
+    @BatchEndpoint(name = "village-lobby-daily-thread", description = "全村のロビー日次スレッドを毎日 UTC 00:00 に冪等生成する")
     @Scheduled(cron = "0 0 0 * * *", zone = "UTC")
     @SchedulerLock(
             name = "villageLobbyDailyThreadBatch",

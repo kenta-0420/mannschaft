@@ -1,5 +1,6 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.recruitment.CancellationPaymentStatus;
 import com.mannschaft.app.recruitment.entity.RecruitmentCancellationRecordEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentCancellationRecordRepository;
@@ -30,6 +31,7 @@ public class RecruitmentPaymentRetryBatch {
     /**
      * 1時間ごとに実行。ShedLock で重複実行を防止。
      */
+    @BatchEndpoint(name = "recruitment-payment-retry-hourly", description = "募集キャンセル料の決済 FAILED を毎時最大 3 回までリトライする")
     @Scheduled(fixedDelay = 60 * 60 * 1000L)
     @SchedulerLock(
             name = "recruitment-payment-retry-batch",

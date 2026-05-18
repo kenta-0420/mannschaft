@@ -1,5 +1,6 @@
 package com.mannschaft.app.village.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.village.entity.VillageNewsletterEntity;
@@ -60,6 +61,7 @@ public class VillageNewsletterDispatchBatchService {
     /**
      * 週次配信: 金曜 18:00（UTC）。
      */
+    @BatchEndpoint(name = "village-newsletter-weekly-dispatch", description = "村ニュースレター週次配信を毎週金曜 18:00 UTC に実行する")
     @Scheduled(cron = "0 0 18 * * FRI", zone = "UTC")
     @SchedulerLock(
             name = "villageNewsletterWeeklyDispatch",
@@ -76,6 +78,7 @@ public class VillageNewsletterDispatchBatchService {
      *
      * <p>cron 自体は 28〜31 日の 18:00 で発火し、当日が月末でない場合はスキップする。</p>
      */
+    @BatchEndpoint(name = "village-newsletter-monthly-dispatch", description = "村ニュースレター月次配信を毎月末日 18:00 UTC に実行する")
     @Scheduled(cron = "0 0 18 28-31 * *", zone = "UTC")
     @SchedulerLock(
             name = "villageNewsletterMonthlyDispatch",

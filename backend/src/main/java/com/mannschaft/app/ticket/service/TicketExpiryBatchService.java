@@ -1,5 +1,6 @@
 package com.mannschaft.app.ticket.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.ticket.entity.TicketBookEntity;
@@ -29,6 +30,7 @@ public class TicketExpiryBatchService {
     /**
      * 期限切れチケットを EXPIRED に遷移する。毎日 00:30 JST に実行。
      */
+    @BatchEndpoint(name = "ticket-expiry-daily", description = "期限切れチケットを毎日 00:30 に EXPIRED へ遷移する")
     @Scheduled(cron = "0 30 0 * * *", zone = "Asia/Tokyo")
     @Transactional
     public void expireTickets() {
@@ -55,6 +57,7 @@ public class TicketExpiryBatchService {
     /**
      * PENDING のまま放置されたチケットをクリーンアップする。毎日 01:00 JST に実行。
      */
+    @BatchEndpoint(name = "ticket-pending-cleanup-daily", description = "PENDING のまま 2 時間放置されたチケットを毎日 01:00 にキャンセルする")
     @Scheduled(cron = "0 0 1 * * *", zone = "Asia/Tokyo")
     @Transactional
     public void cleanupPendingBooks() {
@@ -77,6 +80,7 @@ public class TicketExpiryBatchService {
     /**
      * 期限切れ事前通知を送信する。毎日 09:00 JST に実行。
      */
+    @BatchEndpoint(name = "ticket-expiry-pre-notification-daily", description = "チケット期限 30/7/3/1 日前の事前通知を毎日 09:00 に送信する")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
     @Transactional(readOnly = true)
     public void sendExpiryNotifications() {

@@ -1,5 +1,6 @@
 package com.mannschaft.app.gamification.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.gamification.AwardedBy;
 import com.mannschaft.app.gamification.BadgeConditionType;
 import com.mannschaft.app.gamification.entity.BadgeEntity;
@@ -58,6 +59,7 @@ public class GamificationBadgeBatchService {
      *   <li>条件を満たすユーザーに UserBadge を付与（重複チェック済み）</li>
      * </ol>
      */
+    @BatchEndpoint(name = "gamification-badge-evaluation-daily", description = "バッジ獲得条件を毎日 03:00 に評価して付与する")
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "gamification_badge_evaluation", lockAtMostFor = "PT30M")
     @Transactional

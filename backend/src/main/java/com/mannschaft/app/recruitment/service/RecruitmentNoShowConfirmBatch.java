@@ -1,5 +1,6 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.recruitment.entity.RecruitmentNoShowRecordEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentNoShowRecordRepository;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class RecruitmentNoShowConfirmBatch {
     /**
      * 毎時0分に実行。24h 経過した仮マーク NO_SHOW を確定する。
      */
+    @BatchEndpoint(name = "recruitment-no-show-confirm-hourly", description = "24h 経過した NO_SHOW 仮マークを毎時 0 分に確定する")
     @Scheduled(cron = "0 0 * * * *")
     @SchedulerLock(name = "recruitment-no-show-confirm-batch", lockAtMostFor = "55m", lockAtLeastFor = "5m")
     @Transactional

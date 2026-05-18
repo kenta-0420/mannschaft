@@ -1,5 +1,6 @@
 package com.mannschaft.app.errorreport.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.errorreport.service.ErrorReportAggregator;
 import com.mannschaft.app.errorreport.service.ErrorReportAggregator.AggregatedEntry;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
@@ -50,6 +51,7 @@ public class ErrorAggregationFlushBatch {
      * <p>{@code fixedRateString} で指定した間隔は {@code application.yml} で上書き可能。
      * バッチ実行が遅延しても次回は予定通り走る（fixedRate）。</p>
      */
+    @BatchEndpoint(name = "errorreport-aggregation-flush", description = "エラー集約バッファを 5 分毎にドレインして Slack にサマリ送信する")
     @Scheduled(fixedRateString = "${mannschaft.error-monitoring.aggregation.flush-interval-ms:300000}",
                initialDelayString = "${mannschaft.error-monitoring.aggregation.flush-interval-ms:300000}")
     public void flush() {

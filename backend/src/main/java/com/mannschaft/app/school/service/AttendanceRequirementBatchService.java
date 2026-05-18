@@ -1,5 +1,6 @@
 package com.mannschaft.app.school.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.school.dto.EvaluationResponse;
 import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity;
 import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity.EvaluationStatus;
@@ -48,6 +49,7 @@ public class AttendanceRequirementBatchService {
      * <p>全ACTIVE規程の対象生徒を一括評価し、ステータス変化があれば教員に通知する。
      * 1件の評価が失敗しても例外をキャッチして次の生徒に進む設計とする。</p>
      */
+    @BatchEndpoint(name = "attendance-daily-evaluation", description = "出席要件規程の日次評価を毎日 06:00 に実行する")
     @Scheduled(cron = "0 0 6 * * *")
     @Transactional
     public void runDailyEvaluation() {
@@ -101,6 +103,7 @@ public class AttendanceRequirementBatchService {
      * <p>チームごとに担任へリスク生徒一覧をダイジェスト通知する。
      * 同一チームが複数規程を持つ場合は重複送信しない。</p>
      */
+    @BatchEndpoint(name = "attendance-weekly-digest", description = "出席要件のリスク生徒週次ダイジェストを毎週月曜 07:00 に教員へ送信する")
     @Scheduled(cron = "0 0 7 * * MON")
     @Transactional(readOnly = true)
     public void sendWeeklyDigest() {

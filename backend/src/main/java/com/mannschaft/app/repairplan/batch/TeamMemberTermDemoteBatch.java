@@ -1,5 +1,6 @@
 package com.mannschaft.app.repairplan.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.repairplan.entity.TeamMemberTerm;
 import com.mannschaft.app.repairplan.repository.TeamMemberTermRepository;
@@ -39,6 +40,7 @@ public class TeamMemberTermDemoteBatch {
     /**
      * スケジュール起動エントリポイント（毎晩 23:00 JST）。
      */
+    @BatchEndpoint(name = "repairplan-team-member-term-demote-daily", description = "任期終了 90 日経過の理事を毎日 23:00 に非アクティブ化する")
     @Scheduled(cron = "0 0 23 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "TeamMemberTermDemoteBatch", lockAtMostFor = "PT55M")
     @Transactional

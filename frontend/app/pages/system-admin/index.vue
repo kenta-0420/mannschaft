@@ -75,6 +75,7 @@ onMounted(load)
     <template v-else>
       <SystemAdminModerationKpi :stats="moderationStats" />
       <SystemAdminErrorKpi :stats="errorStats" />
+      <SystemAdminBatchSummary />
       <SystemAdminQuickLinks />
 
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">

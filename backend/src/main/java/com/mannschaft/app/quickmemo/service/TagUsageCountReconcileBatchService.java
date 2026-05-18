@@ -1,5 +1,6 @@
 package com.mannschaft.app.quickmemo.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.quickmemo.entity.TagEntity;
 import com.mannschaft.app.quickmemo.repository.QuickMemoTagLinkRepository;
@@ -33,6 +34,7 @@ public class TagUsageCountReconcileBatchService {
     private final TodoTagLinkRepository todoTagLinkRepository;
     private final AuditLogService auditLogService;
 
+    @BatchEndpoint(name = "quickmemo-tag-usage-reconcile-daily", description = "タグ usage_count と実リンク数の不整合を毎日 03:30 に検出・修正する")
     @Scheduled(cron = "0 30 3 * * *")
     @Transactional
     public void execute() {

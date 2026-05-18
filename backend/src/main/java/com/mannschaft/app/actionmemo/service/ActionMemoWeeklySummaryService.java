@@ -1,6 +1,7 @@
 package com.mannschaft.app.actionmemo.service;
 
 import com.mannschaft.app.actionmemo.ActionMemoMetrics;
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.actionmemo.ActionMemoMood;
 import com.mannschaft.app.actionmemo.entity.ActionMemoEntity;
 import com.mannschaft.app.actionmemo.entity.ActionMemoTagEntity;
@@ -106,6 +107,7 @@ public class ActionMemoWeeklySummaryService {
      * <p>バッチ全体で例外が出ないよう、個別ユーザーの生成は try/catch で隔離される。
      * 1ユーザーの失敗は次のユーザーの処理に影響しない。</p>
      */
+    @BatchEndpoint(name = "actionmemo-weekly-summary", description = "行動メモ週次まとめブログを生成する（毎週日曜 21:00 JST）")
     @Scheduled(cron = "0 0 21 * * SUN", zone = "Asia/Tokyo")
     @SchedulerLock(name = "actionMemoWeeklySummary",
             lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")

@@ -1,5 +1,6 @@
 package com.mannschaft.app.sync.job;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.sync.repository.OfflineSyncConflictRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,7 @@ public class OfflineSyncConflictCleanupJob {
      * 解決済みコンフリクトの清掃。
      * resolution IS NOT NULL かつ resolved_at が90日以上前のレコードを物理削除する。
      */
+    @BatchEndpoint(name = "sync-offline-conflict-cleanup-daily", description = "解決済みオフライン同期コンフリクト 90 日経過分を毎日 04:00 に物理削除する")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "offlineSyncConflictCleanup", lockAtMostFor = "PT10M", lockAtLeastFor = "PT1M")
     @Transactional

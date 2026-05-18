@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.confirmable.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
@@ -44,6 +45,7 @@ public class ConfirmableNotificationReminderBatchService {
      *
      * <p>1分間隔で起動し、ACTIVE 状態の通知を対象にリマインド送信・アラート送信を行う。</p>
      */
+    @BatchEndpoint(name = "notification-confirmable-reminder", description = "確認通知の未確認受信者リマインドを 1 分毎に送信する")
     @Scheduled(fixedDelay = 60_000) // 1分間隔
     @SchedulerLock(
             name = "confirmableNotificationReminderBatch",

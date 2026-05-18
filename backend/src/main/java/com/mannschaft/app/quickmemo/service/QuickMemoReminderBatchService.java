@@ -1,5 +1,6 @@
 package com.mannschaft.app.quickmemo.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -34,6 +35,7 @@ public class QuickMemoReminderBatchService {
     private final NotificationService notificationService;
     private final AuditLogService auditLogService;
 
+    @BatchEndpoint(name = "quickmemo-reminder-dispatch", description = "ポイっとメモのリマインド通知を 30 分毎にユーザー単位で集約送信する")
     @Scheduled(cron = "0 */30 * * * *")
     @Transactional
     public void execute() {

@@ -4,8 +4,12 @@ import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.enums.AdModerationStatus;
 import com.mannschaft.app.common.repository.AbstractTenantAwareRepository;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -61,4 +65,26 @@ public interface AdMessagingCampaignRepository
      */
     List<AdMessagingCampaign> findByStatusAndEndsAtLessThanEqualAndDeletedAtIsNull(
             AdCampaignStatus status, LocalDateTime now);
+
+    /**
+     * F09.17 Phase 11-b ε-B 配信ワーカー用: 配信中（ウィンドウ内）の対象キャンペーンを
+     * 悲観ロック付きで取得する。
+     *
+     * <p>配信ワーカーが 1 分間隔で起動するため、複数ノードで同時にスキャンする場合の
+     * 重複配信を {@code SELECT ... FOR UPDATE} で防ぐ。
+     * {@code @SchedulerLock} はトップレベル多重実行を防ぐが、念のため二重防御とする。</p>
+     *
+     * @param status DELIVERING を渡す
+     * @param now    現在時刻（starts_at &lt;= now AND ends_at &gt;= now の判定基準）
+     * @return ロック取得済みキャンペーン一覧
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM AdMessagingCampaign c "
+            + "WHERE c.status = :status "
+            + "AND c.startsAt <= :now "
+            + "AND c.endsAt >= :now "
+            + "AND c.deletedAt IS NULL")
+    List<AdMessagingCampaign> findActiveDeliveringForUpdate(
+            @Param("status") AdCampaignStatus status,
+            @Param("now") LocalDateTime now);
 }

@@ -1,5 +1,6 @@
 package com.mannschaft.app.advertising.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.AdvertiserAccountStatus;
 import com.mannschaft.app.advertising.BillingMethod;
 import com.mannschaft.app.advertising.InvoiceStatus;
@@ -45,6 +46,7 @@ public class MonthlyInvoiceBatchService {
     /**
      * 月次請求バッチ。毎月1日 AM 5:00 (JST) に実行。
      */
+    @BatchEndpoint(name = "advertising-invoice-monthly-generate", description = "前月分の広告主月次請求書を毎月 1 日 05:00 に生成する")
     @Scheduled(cron = "0 0 5 1 * *", zone = "Asia/Tokyo")
     @Transactional
     public void generateMonthlyInvoices() {

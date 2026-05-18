@@ -1,5 +1,6 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.notification.entity.NotificationEntity;
@@ -42,6 +43,7 @@ public class RecruitmentReminderBatch {
      * 未送信リマインダーを処理する。
      * {@code fixedDelay = 60_000} ms = 1分間隔（前回実行完了から1分後に次の実行）。
      */
+    @BatchEndpoint(name = "recruitment-reminder", description = "募集型予約の未送信リマインドを毎分処理する")
     @Scheduled(fixedDelay = 60_000)
     @SchedulerLock(name = "recruitment-reminder-batch",
             lockAtLeastFor = "PT50S",

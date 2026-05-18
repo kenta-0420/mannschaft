@@ -2,6 +2,7 @@ package com.mannschaft.app.directmail.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.EmailService;
 import com.mannschaft.app.common.MarkdownConverter;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.directmail.DirectMailErrorCode;
@@ -49,6 +50,101 @@ public class DirectMailService {
     private final DomainEventPublisher eventPublisher;
     /** F09.13 通知クレジット消費（ダイレクトメールは課金対象） */
     private final NotificationCreditService notificationCreditService;
+    /** F09.17 Phase 11-b ε-B 広告メール送信用の SES クライアントラッパ。 */
+    private final EmailService emailService;
+
+    /** F09.17 Phase 11-b ε-B 広告メール送信者種別。{@code sender_type='SYSTEM_AD'}。 */
+    private static final String SENDER_TYPE_SYSTEM_AD = "SYSTEM_AD";
+
+    /** F09.17 Phase 11-b ε-B 広告メール scope_type. 広告は組織横断のため固定値。 */
+    private static final String AD_SCOPE_TYPE = "ADVERTISER_AD";
+
+    /** F09.17 Phase 11-b ε-B 件名プレフィックス（景品表示法対応・運営層強制）。 */
+    private static final String AD_SUBJECT_PREFIX = "[PR] ";
+
+    /**
+     * F09.17 Phase 11-b ε-B 広告メール送信。
+     *
+     * <p>処理:</p>
+     * <ol>
+     *   <li>{@code direct_mail_logs} 行を 1 件作成（sender_type=SYSTEM_AD、scope_type=ADVERTISER_AD、
+     *       scope_id=advertiserAccountId、senderId=systemSenderId、status=SENDING）</li>
+     *   <li>{@code direct_mail_recipients} 行を 1 件作成</li>
+     *   <li>件名に {@link #AD_SUBJECT_PREFIX "[PR] "} を強制付与</li>
+     *   <li>{@link EmailService#sendEmail} で SES 送信</li>
+     *   <li>SES message_id を recipient.sesMessageId に記録</li>
+     *   <li>log.status を SENT に更新</li>
+     * </ol>
+     *
+     * <p>呼び出し元（{@code AdEmailChannelService}）は戻り値 recipientId を
+     * {@code ad_email_deliveries.direct_mail_recipient_id} に転記する。</p>
+     *
+     * <p>本メソッドは {@code @Transactional}。SES 送信は同期だが失敗時は {@link EmailService} が
+     * ログ化のみで例外を吸収するため、ここでは bouncedAt 等は記録しない。
+     * 真のバウンス検知は既存 {@code SesWebhookService} 経路で別途行う。</p>
+     *
+     * @param advertiserAccountId 広告主アカウント ID（scope_id として使用）
+     * @param userId              受信者ユーザー ID
+     * @param recipientEmail      送信先メールアドレス
+     * @param subject             件名（[PR] プレフィックスは内部で付与する。重複時はそのまま）
+     * @param bodyHtml            HTML 本文（unsubscribe リンク・開封ピクセル埋め込み済を期待）
+     * @return 送信に使用した {@link DirectMailRecipientEntity}（特に id を後続で参照）
+     */
+    @Transactional
+    public DirectMailRecipientEntity sendSystemAdMail(
+            Long advertiserAccountId,
+            Long userId,
+            String recipientEmail,
+            String subject,
+            String bodyHtml) {
+        if (advertiserAccountId == null || userId == null
+                || recipientEmail == null || recipientEmail.isBlank()
+                || subject == null || bodyHtml == null) {
+            throw new IllegalArgumentException(
+                    "advertiserAccountId, userId, recipientEmail, subject, bodyHtml は必須です");
+        }
+
+        // 件名プレフィックス強制（既に [PR] 付与済なら二重付与しない）
+        String enforcedSubject = subject.startsWith(AD_SUBJECT_PREFIX)
+                ? subject
+                : AD_SUBJECT_PREFIX + subject;
+
+        // 1) direct_mail_logs を 1 件作成
+        DirectMailLogEntity log = DirectMailLogEntity.builder()
+                .scopeType(AD_SCOPE_TYPE)
+                .scopeId(advertiserAccountId)
+                .senderId(0L) // システム送信。F09.17 ε-C で SYSTEM USER 化検討。
+                .senderType(SENDER_TYPE_SYSTEM_AD)
+                .subject(enforcedSubject)
+                .bodyMarkdown(bodyHtml) // Markdown 変換は ε-B 範囲外。HTML をそのまま保存。
+                .bodyHtml(bodyHtml)
+                .recipientType("ROLE")
+                .recipientFilter(null)
+                .estimatedRecipients(1)
+                .build();
+        DirectMailLogEntity savedLog = mailLogRepository.save(log);
+
+        // 2) direct_mail_recipients を 1 件作成
+        DirectMailRecipientEntity recipient = DirectMailRecipientEntity.builder()
+                .mailLogId(savedLog.getId())
+                .userId(userId)
+                .email(recipientEmail)
+                .build();
+
+        // 3) SES 送信（EmailService が失敗時もログ吸収するので例外伝播なし）
+        emailService.sendEmail(recipientEmail, enforcedSubject, bodyHtml);
+
+        // 4) recipient.status=SENT を記録。messageId は EmailService 内でログのみで取得不可のため
+        //    本メソッドからは sesMessageId を空のまま SENT マークする。SES Webhook で後追い更新。
+        recipient.markSent(null);
+        DirectMailRecipientEntity savedRecipient = recipientRepository.save(recipient);
+
+        // 5) log を SENT に
+        savedLog.markSent(1, 1);
+        mailLogRepository.save(savedLog);
+
+        return savedRecipient;
+    }
 
     /**
      * メールを作成する（下書き保存）。
