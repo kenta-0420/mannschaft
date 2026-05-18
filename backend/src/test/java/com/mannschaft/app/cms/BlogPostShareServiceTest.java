@@ -1,0 +1,240 @@
+package com.mannschaft.app.cms;
+
+import com.mannschaft.app.cms.dto.BlogPostResponse;
+import com.mannschaft.app.cms.dto.SharePostRequest;
+import com.mannschaft.app.cms.dto.SharePostResponse;
+import com.mannschaft.app.cms.entity.BlogPostEntity;
+import com.mannschaft.app.cms.entity.BlogPostShareEntity;
+import com.mannschaft.app.cms.repository.BlogPostRepository;
+import com.mannschaft.app.cms.repository.BlogPostShareRepository;
+import com.mannschaft.app.cms.service.BlogPostShareService;
+import com.mannschaft.app.common.BusinessException;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+
+/**
+ * {@link BlogPostShareService} の単体テスト。
+ *
+ * <p>リファクタリング第10弾で BlogPostService から分離した
+ * 共有・プレビュートークン処理を検証する。
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("BlogPostShareService 単体テスト")
+class BlogPostShareServiceTest {
+
+    @Mock
+    private BlogPostRepository postRepository;
+    @Mock
+    private BlogPostShareRepository shareRepository;
+    @Mock
+    private CmsMapper cmsMapper;
+
+    @InjectMocks
+    private BlogPostShareService service;
+
+    private static final Long TEAM_ID = 1L;
+    private static final Long ORG_ID = 2L;
+    private static final Long USER_ID = 100L;
+    private static final Long POST_ID = 10L;
+
+    private BlogPostEntity createPostEntity(PostStatus status) {
+        return BlogPostEntity.builder()
+                .teamId(TEAM_ID)
+                .authorId(USER_ID)
+                .title("テスト記事")
+                .slug("test-article")
+                .body("テスト本文")
+                .postType(PostType.BLOG)
+                .visibility(Visibility.MEMBERS_ONLY)
+                .priority(PostPriority.NORMAL)
+                .status(status)
+                .readingTimeMinutes((short) 1)
+                .build();
+    }
+
+    private BlogPostResponse createPostResponse() {
+        return new BlogPostResponse(
+                null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, false, 0);
+    }
+
+    @Nested
+    @DisplayName("sharePost")
+    class SharePost {
+
+        @Test
+        @DisplayName("異常系: ソーシャルプロフィール記事の共有でCMS_012例外")
+        void 共有_ソーシャルプロフィール_例外() {
+            BlogPostEntity entity = BlogPostEntity.builder()
+                    .teamId(TEAM_ID)
+                    .authorId(USER_ID)
+                    .title("テスト記事")
+                    .slug("test")
+                    .body("本文")
+                    .socialProfileId(5L)
+                    .postType(PostType.BLOG)
+                    .visibility(Visibility.MEMBERS_ONLY)
+                    .status(PostStatus.PUBLISHED)
+                    .readingTimeMinutes((short) 1)
+                    .build();
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
+            SharePostRequest request = new SharePostRequest(2L, null);
+
+            assertThatThrownBy(() -> service.sharePost(POST_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("CMS_012"));
+        }
+
+        @Test
+        @DisplayName("異常系: チームスコープで重複共有でCMS_013例外")
+        void 共有_チーム重複_例外() {
+            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
+            SharePostRequest request = new SharePostRequest(2L, null);
+            given(shareRepository.findByBlogPostIdAndTeamId(POST_ID, 2L))
+                    .willReturn(Optional.of(BlogPostShareEntity.builder().build()));
+
+            assertThatThrownBy(() -> service.sharePost(POST_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("CMS_013"));
+        }
+
+        @Test
+        @DisplayName("正常系: 組織スコープで記事が共有される")
+        void 共有_組織スコープ_正常() {
+            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
+            given(shareRepository.findByBlogPostIdAndOrganizationId(POST_ID, ORG_ID))
+                    .willReturn(Optional.empty());
+            BlogPostShareEntity share = BlogPostShareEntity.builder()
+                    .blogPostId(POST_ID).organizationId(ORG_ID).sharedBy(USER_ID).build();
+            given(shareRepository.save(any())).willReturn(share);
+
+            SharePostRequest request = new SharePostRequest(null, ORG_ID);
+            SharePostResponse result = service.sharePost(POST_ID, USER_ID, request);
+
+            assertThat(result).isNotNull();
+        }
+
+        @Test
+        @DisplayName("異常系: 組織スコープで重複共有でCMS_013例外")
+        void 共有_組織重複_例外() {
+            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
+            given(shareRepository.findByBlogPostIdAndOrganizationId(POST_ID, ORG_ID))
+                    .willReturn(Optional.of(BlogPostShareEntity.builder().build()));
+
+            SharePostRequest request = new SharePostRequest(null, ORG_ID);
+
+            assertThatThrownBy(() -> service.sharePost(POST_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("CMS_013"));
+        }
+    }
+
+    @Nested
+    @DisplayName("revokeShare")
+    class RevokeShare {
+
+        @Test
+        @DisplayName("異常系: 共有不在でCMS_019例外")
+        void 共有取消_不在_例外() {
+            given(shareRepository.findById(99L)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.revokeShare(POST_ID, 99L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("CMS_019"));
+        }
+
+        @Test
+        @DisplayName("異常系: 共有の記事IDが不一致でCMS_019例外")
+        void 共有取消_記事ID不一致_例外() {
+            // share.blogPostId = 99 ≠ POST_ID = 10
+            BlogPostShareEntity share = BlogPostShareEntity.builder()
+                    .blogPostId(99L).teamId(1L).sharedBy(USER_ID).build();
+            given(shareRepository.findById(5L)).willReturn(Optional.of(share));
+
+            assertThatThrownBy(() -> service.revokeShare(POST_ID, 5L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("CMS_019"));
+        }
+
+        @Test
+        @DisplayName("正常系: 共有が取り消される")
+        void 共有取消_正常_削除実行() {
+            BlogPostShareEntity share = BlogPostShareEntity.builder()
+                    .blogPostId(POST_ID).teamId(1L).sharedBy(USER_ID).build();
+            given(shareRepository.findById(5L)).willReturn(Optional.of(share));
+
+            service.revokeShare(POST_ID, 5L);
+
+            verify(shareRepository).delete(share);
+        }
+    }
+
+    @Nested
+    @DisplayName("issuePreviewToken")
+    class IssuePreviewToken {
+
+        @Test
+        @DisplayName("異常系: 公開済み記事でCMS_010例外")
+        void プレビュートークン_公開済み_例外() {
+            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> service.issuePreviewToken(POST_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("CMS_010"));
+        }
+
+        @Test
+        @DisplayName("正常系: ドラフト記事にプレビュートークンが発行される")
+        void プレビュートークン_ドラフト_正常発行() {
+            BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
+            given(postRepository.save(entity)).willReturn(entity);
+            given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
+
+            BlogPostResponse result = service.issuePreviewToken(POST_ID);
+
+            assertThat(result).isNotNull();
+            assertThat(entity.getPreviewToken()).isNotNull();
+        }
+    }
+
+    @Nested
+    @DisplayName("revokePreviewToken")
+    class RevokePreviewToken {
+
+        @Test
+        @DisplayName("正常系: プレビュートークンが無効化される")
+        void プレビュートークン無効化_正常() {
+            BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
+
+            service.revokePreviewToken(POST_ID);
+
+            verify(postRepository).save(entity);
+        }
+    }
+}

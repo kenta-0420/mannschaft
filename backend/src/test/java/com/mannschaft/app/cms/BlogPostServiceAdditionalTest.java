@@ -7,17 +7,13 @@ import com.mannschaft.app.cms.dto.BulkActionResponse;
 import com.mannschaft.app.cms.dto.CreateBlogPostRequest;
 import com.mannschaft.app.cms.dto.PublishRequest;
 import com.mannschaft.app.cms.dto.SelfReviewRequest;
-import com.mannschaft.app.cms.dto.SharePostRequest;
-import com.mannschaft.app.cms.dto.SharePostResponse;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
-import com.mannschaft.app.cms.entity.BlogPostRevisionEntity;
-import com.mannschaft.app.cms.entity.BlogPostShareEntity;
 import com.mannschaft.app.cms.entity.BlogPostTagEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
-import com.mannschaft.app.cms.repository.BlogPostRevisionRepository;
-import com.mannschaft.app.cms.repository.BlogPostShareRepository;
 import com.mannschaft.app.cms.repository.BlogPostTagRepository;
+import com.mannschaft.app.cms.service.BlogPostRevisionService;
 import com.mannschaft.app.cms.service.BlogPostService;
+import com.mannschaft.app.cms.service.BlogPostShareService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -47,7 +43,10 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link BlogPostService} 追加単体テスト。未テストのブランチをカバーする。
+ * {@link BlogPostService}（ファサード）追加単体テスト。未テストのブランチをカバーする。
+ *
+ * <p>リファクタリング第10弾以降、リビジョン/共有/プレビュー詳細は
+ * {@link BlogPostRevisionServiceTest} / {@link BlogPostShareServiceTest} に分離済み。
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("BlogPostService 追加単体テスト")
@@ -58,13 +57,13 @@ class BlogPostServiceAdditionalTest {
     @Mock
     private BlogPostTagRepository postTagRepository;
     @Mock
-    private BlogPostRevisionRepository revisionRepository;
-    @Mock
-    private BlogPostShareRepository shareRepository;
-    @Mock
     private CmsMapper cmsMapper;
     @Mock
     private ContentVisibilityChecker contentVisibilityChecker;
+    @Mock
+    private BlogPostRevisionService revisionService;
+    @Mock
+    private BlogPostShareService shareService;
 
     @InjectMocks
     private BlogPostService service;
@@ -299,27 +298,6 @@ class BlogPostServiceAdditionalTest {
             verify(postTagRepository).deleteByBlogPostId(POST_ID);
             verify(postTagRepository, org.mockito.Mockito.times(2)).save(any(BlogPostTagEntity.class));
         }
-
-        @Test
-        @DisplayName("正常系: PUBLISHED記事の更新でリビジョン数が10件以上の場合最古が削除される")
-        void 更新_公開済み_リビジョン10件超_最古削除() {
-            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
-            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
-            given(revisionRepository.countByBlogPostId(any())).willReturn(10L);
-            BlogPostRevisionEntity oldest = BlogPostRevisionEntity.builder()
-                    .blogPostId(POST_ID).revisionNumber(1).title("旧").body("旧本文").build();
-            given(revisionRepository.findFirstByBlogPostIdOrderByRevisionNumberAsc(any()))
-                    .willReturn(Optional.of(oldest));
-            com.mannschaft.app.cms.dto.UpdateBlogPostRequest request =
-                    new com.mannschaft.app.cms.dto.UpdateBlogPostRequest(
-                            "更新タイトル", null, "更新本文", null, null, null, null, null, null, null, null, null, null);
-            given(postRepository.save(entity)).willReturn(entity);
-            given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
-
-            service.updatePost(POST_ID, USER_ID, request);
-
-            verify(revisionRepository).delete(oldest);
-        }
     }
 
     // ========================================
@@ -372,49 +350,6 @@ class BlogPostServiceAdditionalTest {
             service.changeStatus(POST_ID, request);
 
             assertThat(entity.getPublishedAt()).isEqualTo(publishAt);
-        }
-    }
-
-    // ========================================
-    // issuePreviewToken - success path
-    // ========================================
-
-    @Nested
-    @DisplayName("issuePreviewToken 追加")
-    class IssuePreviewTokenAdditional {
-
-        @Test
-        @DisplayName("正常系: ドラフト記事にプレビュートークンが発行される")
-        void プレビュートークン_ドラフト_正常発行() {
-            BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
-            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
-            given(postRepository.save(entity)).willReturn(entity);
-            given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
-
-            BlogPostResponse result = service.issuePreviewToken(POST_ID);
-
-            assertThat(result).isNotNull();
-            assertThat(entity.getPreviewToken()).isNotNull();
-        }
-    }
-
-    // ========================================
-    // revokePreviewToken
-    // ========================================
-
-    @Nested
-    @DisplayName("revokePreviewToken")
-    class RevokePreviewToken {
-
-        @Test
-        @DisplayName("正常系: プレビュートークンが無効化される")
-        void プレビュートークン無効化_正常() {
-            BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
-            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
-
-            service.revokePreviewToken(POST_ID);
-
-            verify(postRepository).save(entity);
         }
     }
 
@@ -620,83 +555,6 @@ class BlogPostServiceAdditionalTest {
     }
 
     // ========================================
-    // sharePost - organization scope
-    // ========================================
-
-    @Nested
-    @DisplayName("sharePost 追加ブランチ")
-    class SharePostAdditional {
-
-        @Test
-        @DisplayName("正常系: 組織スコープで記事が共有される")
-        void 共有_組織スコープ_正常() {
-            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
-            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
-            given(shareRepository.findByBlogPostIdAndOrganizationId(POST_ID, ORG_ID))
-                    .willReturn(Optional.empty());
-            BlogPostShareEntity share = BlogPostShareEntity.builder()
-                    .blogPostId(POST_ID).organizationId(ORG_ID).sharedBy(USER_ID).build();
-            given(shareRepository.save(any())).willReturn(share);
-
-            SharePostRequest request = new SharePostRequest(null, ORG_ID);
-            SharePostResponse result = service.sharePost(POST_ID, USER_ID, request);
-
-            assertThat(result).isNotNull();
-        }
-
-        @Test
-        @DisplayName("異常系: 組織スコープで重複共有でCMS_013例外")
-        void 共有_組織スコープ_重複_例外() {
-            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
-            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
-            given(shareRepository.findByBlogPostIdAndOrganizationId(POST_ID, ORG_ID))
-                    .willReturn(Optional.of(BlogPostShareEntity.builder().build()));
-
-            SharePostRequest request = new SharePostRequest(null, ORG_ID);
-
-            assertThatThrownBy(() -> service.sharePost(POST_ID, USER_ID, request))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("CMS_013"));
-        }
-    }
-
-    // ========================================
-    // revokeShare - wrong post
-    // ========================================
-
-    @Nested
-    @DisplayName("revokeShare 追加ブランチ")
-    class RevokeShareAdditional {
-
-        @Test
-        @DisplayName("異常系: 共有の記事IDが不一致でCMS_019例外")
-        void 共有取消_記事ID不一致_例外() {
-            // share.blogPostId = 99 ≠ POST_ID = 10
-            BlogPostShareEntity share = BlogPostShareEntity.builder()
-                    .blogPostId(99L).teamId(1L).sharedBy(USER_ID).build();
-            given(shareRepository.findById(5L)).willReturn(Optional.of(share));
-
-            assertThatThrownBy(() -> service.revokeShare(POST_ID, 5L))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("CMS_019"));
-        }
-
-        @Test
-        @DisplayName("正常系: 共有が取り消される")
-        void 共有取消_正常_削除実行() {
-            BlogPostShareEntity share = BlogPostShareEntity.builder()
-                    .blogPostId(POST_ID).teamId(1L).sharedBy(USER_ID).build();
-            given(shareRepository.findById(5L)).willReturn(Optional.of(share));
-
-            service.revokeShare(POST_ID, 5L);
-
-            verify(shareRepository).delete(share);
-        }
-    }
-
-    // ========================================
     // selfReview - branches
     // ========================================
 
@@ -769,33 +627,6 @@ class BlogPostServiceAdditionalTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CMS_008"));
-        }
-    }
-
-    // ========================================
-    // restoreRevision - success path
-    // ========================================
-
-    @Nested
-    @DisplayName("restoreRevision 追加ブランチ")
-    class RestoreRevisionAdditional {
-
-        @Test
-        @DisplayName("正常系: リビジョンから記事が復元される")
-        void 復元_正常_DRAFT化() {
-            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
-            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
-            BlogPostRevisionEntity revision = BlogPostRevisionEntity.builder()
-                    .blogPostId(POST_ID).revisionNumber(2).title("旧タイトル").body("旧本文").editorId(USER_ID).build();
-            given(revisionRepository.findById(5L)).willReturn(Optional.of(revision));
-            given(revisionRepository.countByBlogPostId(any())).willReturn(1L);
-            given(postRepository.save(entity)).willReturn(entity);
-            given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
-
-            BlogPostResponse result = service.restoreRevision(POST_ID, 5L, USER_ID);
-
-            assertThat(result).isNotNull();
-            assertThat(entity.getStatus()).isEqualTo(PostStatus.DRAFT);
         }
     }
 

@@ -12,17 +12,14 @@ import com.mannschaft.app.cms.dto.BulkActionRequest;
 import com.mannschaft.app.cms.dto.BulkActionResponse;
 import com.mannschaft.app.cms.dto.CreateBlogPostRequest;
 import com.mannschaft.app.cms.dto.PublishRequest;
+import com.mannschaft.app.cms.dto.RevisionResponse;
 import com.mannschaft.app.cms.dto.SelfReviewRequest;
 import com.mannschaft.app.cms.dto.SharePostRequest;
 import com.mannschaft.app.cms.dto.SharePostResponse;
 import com.mannschaft.app.cms.dto.UpdateBlogPostRequest;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
-import com.mannschaft.app.cms.entity.BlogPostRevisionEntity;
-import com.mannschaft.app.cms.entity.BlogPostShareEntity;
 import com.mannschaft.app.cms.entity.BlogPostTagEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
-import com.mannschaft.app.cms.repository.BlogPostRevisionRepository;
-import com.mannschaft.app.cms.repository.BlogPostShareRepository;
 import com.mannschaft.app.cms.repository.BlogPostTagRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
@@ -42,7 +39,16 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * ブログ記事サービス。記事のCRUD・公開制御・リビジョン管理を担当する。
+ * ブログ記事サービス（ファサード）。
+ *
+ * <p>記事 CRUD・公開制御を担当する。リファクタリング第10弾で次のサブサービスへ責務分離した:
+ * <ul>
+ *   <li>{@link BlogPostRevisionService} — リビジョン履歴の取得/復元/保存</li>
+ *   <li>{@link BlogPostShareService} — 共有・プレビュートークン</li>
+ * </ul>
+ *
+ * <p>本クラスは Controller から呼ばれる public シグネチャを完全維持し、
+ * リビジョン・共有系のメソッドは委譲先サブサービスへそのまま転送する。
  */
 @Slf4j
 @Service
@@ -52,10 +58,10 @@ public class BlogPostService {
 
     private final BlogPostRepository postRepository;
     private final BlogPostTagRepository postTagRepository;
-    private final BlogPostRevisionRepository revisionRepository;
-    private final BlogPostShareRepository shareRepository;
     private final CmsMapper cmsMapper;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    private final BlogPostRevisionService revisionService;
+    private final BlogPostShareService shareService;
 
     /**
      * チーム別記事一覧をページング取得する。
@@ -182,7 +188,7 @@ public class BlogPostService {
 
         // PUBLISHED 記事を再編集する場合、リビジョンを自動保存
         if (entity.getStatus() == PostStatus.PUBLISHED) {
-            saveRevision(entity, userId);
+            revisionService.saveRevision(entity, userId);
         }
 
         entity.update(request.getTitle(), slug, request.getBody(), request.getExcerpt(),
@@ -273,64 +279,31 @@ public class BlogPostService {
     }
 
     /**
-     * リビジョン一覧を取得する。
+     * リビジョン一覧を取得する（{@link BlogPostRevisionService} へ委譲）。
      */
-    public List<com.mannschaft.app.cms.dto.RevisionResponse> listRevisions(Long postId) {
-        findPostOrThrow(postId);
-        return cmsMapper.toRevisionResponseList(
-                revisionRepository.findByBlogPostIdOrderByCreatedAtDesc(postId));
+    public List<RevisionResponse> listRevisions(Long postId) {
+        return revisionService.listRevisions(postId);
     }
 
     /**
-     * リビジョンから復元する。
+     * リビジョンから復元する（{@link BlogPostRevisionService} へ委譲）。
      */
-    @Transactional
     public BlogPostResponse restoreRevision(Long postId, Long revisionId, Long userId) {
-        BlogPostEntity entity = findPostOrThrow(postId);
-        BlogPostRevisionEntity revision = revisionRepository.findById(revisionId)
-                .orElseThrow(() -> new BusinessException(CmsErrorCode.REVISION_NOT_FOUND));
-
-        // 現在の状態をリビジョンとして保存
-        saveRevision(entity, userId);
-
-        // 復元
-        entity.update(revision.getTitle(), entity.getSlug(), revision.getBody(),
-                entity.getExcerpt(), entity.getCoverImageUrl(), entity.getVisibility(),
-                entity.getPriority(), calculateReadingTime(revision.getBody()));
-        entity.changeStatus(PostStatus.DRAFT);
-
-        BlogPostEntity saved = postRepository.save(entity);
-        log.info("リビジョン復元: postId={}, revisionId={}", postId, revisionId);
-        return cmsMapper.toBlogPostResponse(saved);
+        return revisionService.restoreRevision(postId, revisionId, userId);
     }
 
     /**
-     * プレビュートークンを発行する。
+     * プレビュートークンを発行する（{@link BlogPostShareService} へ委譲）。
      */
-    @Transactional
     public BlogPostResponse issuePreviewToken(Long id) {
-        BlogPostEntity entity = findPostOrThrow(id);
-        if (entity.getStatus() == PostStatus.PUBLISHED) {
-            throw new BusinessException(CmsErrorCode.ALREADY_PUBLISHED);
-        }
-
-        String token = java.util.UUID.randomUUID().toString().replace("-", "") +
-                java.util.UUID.randomUUID().toString().replace("-", "");
-        entity.setPreviewToken(token, LocalDateTime.now().plusHours(24));
-        BlogPostEntity saved = postRepository.save(entity);
-        log.info("プレビュートークン発行: postId={}", id);
-        return cmsMapper.toBlogPostResponse(saved);
+        return shareService.issuePreviewToken(id);
     }
 
     /**
-     * プレビュートークンを無効化する。
+     * プレビュートークンを無効化する（{@link BlogPostShareService} へ委譲）。
      */
-    @Transactional
     public void revokePreviewToken(Long id) {
-        BlogPostEntity entity = findPostOrThrow(id);
-        entity.setPreviewToken(null, null);
-        postRepository.save(entity);
-        log.info("プレビュートークン無効化: postId={}", id);
+        shareService.revokePreviewToken(id);
     }
 
     /**
@@ -438,52 +411,17 @@ public class BlogPostService {
     }
 
     /**
-     * 個人ブログ記事をチーム/組織に共有する。
+     * 個人ブログ記事をチーム/組織に共有する（{@link BlogPostShareService} へ委譲）。
      */
-    @Transactional
     public SharePostResponse sharePost(Long postId, Long userId, SharePostRequest request) {
-        BlogPostEntity entity = findPostOrThrow(postId);
-
-        // ソーシャルプロフィール名義の記事は共有不可
-        if (entity.getSocialProfileId() != null) {
-            throw new BusinessException(CmsErrorCode.SOCIAL_PROFILE_SHARE_NOT_ALLOWED);
-        }
-
-        // 重複チェック
-        if (request.getTeamId() != null) {
-            shareRepository.findByBlogPostIdAndTeamId(postId, request.getTeamId())
-                    .ifPresent(s -> { throw new BusinessException(CmsErrorCode.DUPLICATE_SHARE); });
-        } else if (request.getOrganizationId() != null) {
-            shareRepository.findByBlogPostIdAndOrganizationId(postId, request.getOrganizationId())
-                    .ifPresent(s -> { throw new BusinessException(CmsErrorCode.DUPLICATE_SHARE); });
-        }
-
-        BlogPostShareEntity share = BlogPostShareEntity.builder()
-                .blogPostId(postId)
-                .teamId(request.getTeamId())
-                .organizationId(request.getOrganizationId())
-                .sharedBy(userId)
-                .build();
-        BlogPostShareEntity saved = shareRepository.save(share);
-
-        log.info("記事共有: postId={}, shareId={}", postId, saved.getId());
-        return new SharePostResponse(saved.getId(), postId, saved.getTeamId(), saved.getOrganizationId());
+        return shareService.sharePost(postId, userId, request);
     }
 
     /**
-     * 共有を取り消す。
+     * 共有を取り消す（{@link BlogPostShareService} へ委譲）。
      */
-    @Transactional
     public void revokeShare(Long postId, Long shareId) {
-        BlogPostShareEntity share = shareRepository.findById(shareId)
-                .orElseThrow(() -> new BusinessException(CmsErrorCode.SHARE_NOT_FOUND));
-
-        if (!share.getBlogPostId().equals(postId)) {
-            throw new BusinessException(CmsErrorCode.SHARE_NOT_FOUND);
-        }
-
-        shareRepository.delete(share);
-        log.info("共有取消: postId={}, shareId={}", postId, shareId);
+        shareService.revokeShare(postId, shareId);
     }
 
     /**
@@ -526,28 +464,6 @@ public class BlogPostService {
     BlogPostEntity findPostOrThrow(Long id) {
         return postRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND));
-    }
-
-    /**
-     * リビジョンを保存する。
-     */
-    private void saveRevision(BlogPostEntity entity, Long editorId) {
-        long count = revisionRepository.countByBlogPostId(entity.getId());
-
-        // 10版を超える場合は最古のリビジョンを削除
-        if (count >= 10) {
-            revisionRepository.findFirstByBlogPostIdOrderByRevisionNumberAsc(entity.getId())
-                    .ifPresent(revisionRepository::delete);
-        }
-
-        BlogPostRevisionEntity revision = BlogPostRevisionEntity.builder()
-                .blogPostId(entity.getId())
-                .revisionNumber((int) count + 1)
-                .title(entity.getTitle())
-                .body(entity.getBody())
-                .editorId(editorId)
-                .build();
-        revisionRepository.save(revision);
     }
 
     /**
