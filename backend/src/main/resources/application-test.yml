@@ -48,3 +48,11 @@ mannschaft:
         - kid: v1
           secret: test-qr-signing-key-fixed-32bytes-testingxxxx
           active: true
+
+# F18 Phase 5 P5-S4 — テスト環境では再マッチバッチ Bean を登録しない
+# （@Scheduled cron が SpringBootTest 中に走らないよう enabled=false）
+# 個別のサービステストは @SpringBootTest を使わず @ExtendWith(MockitoExtension.class) で
+# Service を直接呼ぶため、Bean 登録不要。
+pointcard:
+  rematch-batch:
+    enabled: false

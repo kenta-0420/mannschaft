@@ -353,6 +353,18 @@ f18:
   balance:
     enabled: false
 
+# F18 Phase 5 P5-S4 — provider_id IS NULL カードの夜間再マッチバッチ設定。
+# 設計書: docs/features/F18_point_card_wallet.md §15 Phase 5 / §16
+# - enabled: バッチ Bean 登録フラグ（local 環境では false 推奨、本番は true）
+# - cron: 起動時刻（Asia/Tokyo タイムゾーン）。F15.4 teams.member_count 集計（02:00）と
+#   被らない 03:00 を採用
+# - chunk-size: 1 チャンクで処理するカード数（メモリ圧迫回避 + REQUIRES_NEW 1 トランザクション粒度）
+pointcard:
+  rematch-batch:
+    enabled: true
+    cron: "0 0 3 * * *"
+    chunk-size: 1000
+
 # F08.8 Phase 2: シミュレーション計算 Bulkhead 設定
 # simulation-pool: 同時 4 スレッドまで。超過リクエストは即座に 429 を返す（waitDuration=0）。
 # シミュレーション計算は CPU バウンドで重いため、デフォルト値より低く設定する。
