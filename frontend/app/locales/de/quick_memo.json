@@ -28,6 +28,15 @@
       "deleted": "Geloscht",
       "delete_error": "Loschen fehlgeschlagen"
     },
+    "dashboard_widget": {
+      "title": "Schnellnotizen",
+      "empty": "Keine unsortierten Schnellnotizen",
+      "click_to_edit": "Zum Bearbeiten klicken",
+      "open_detail": "Detail öffnen",
+      "see_all": "Alle anzeigen",
+      "converted": "In TODO umgewandelt",
+      "convert_error": "Umwandlung in TODO fehlgeschlagen"
+    },
     "capture_modal": {
       "title": "Schnellnotiz",
       "title_placeholder": "Was beschäftigt dich?",

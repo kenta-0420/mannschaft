@@ -72,6 +72,7 @@ async function handleUndelete(id: number) {
         v-for="memo in memos"
         :key="memo.id"
         :memo="memo"
+        always-show-actions
         @undelete="handleUndelete"
         @click="() => {}"
       />

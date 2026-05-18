@@ -28,6 +28,15 @@
       "deleted": "삭제했어요",
       "delete_error": "삭제에 실패했어요"
     },
+    "dashboard_widget": {
+      "title": "빠른 메모",
+      "empty": "정리되지 않은 빠른 메모가 없습니다",
+      "click_to_edit": "클릭하여 편집",
+      "open_detail": "상세 열기",
+      "see_all": "모두 보기",
+      "converted": "TODO로 변환했어요",
+      "convert_error": "TODO 변환에 실패했어요"
+    },
     "capture_modal": {
       "title": "빠른 메모",
       "title_placeholder": "지금 떠오르는 것을 적어보세요…",
