@@ -1,7 +1,7 @@
 import type { FetchError } from 'ofetch'
 import type { PagedResponse } from '~/types/api'
 import type { MemberResponse } from '~/types/member'
-import type { TeamResponse } from '~/types/team'
+import type { TeamPublicDetailResponse, TeamResponse } from '~/types/team'
 import {
   OrganizationNotFoundError,
   TeamSearchRateLimitError,
@@ -69,6 +69,19 @@ export function useTeamApi() {
   // === CRUD ===
   async function getTeam(teamId: number) {
     return api<{ data: TeamResponse }>(`/api/v1/teams/${teamId}`)
+  }
+
+  /**
+   * F15.4 Phase 5-α: 未ログイン公開チーム詳細取得。
+   * `GET /api/v1/public/teams/{id}` を呼ぶ（permitAll、レート制限 60/min/IP）。
+   *
+   * - 404: 不在 / 削除済み / archived / visibility != PUBLIC
+   * - 429: レート制限超過（呼び出し元で扱う）
+   *
+   * バックエンドのレスポンスは `{ data: TeamPublicDetailResponse }` 形式。
+   */
+  async function getPublicTeam(teamId: number) {
+    return api<{ data: TeamPublicDetailResponse }>(`/api/v1/public/teams/${teamId}`)
   }
 
   async function searchTeams(params: {
@@ -370,6 +383,7 @@ export function useTeamApi() {
 
   return {
     getTeam,
+    getPublicTeam,
     searchTeams,
     searchOrganizationTeams,
     createTeam,
