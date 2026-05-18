@@ -1,10 +1,15 @@
 package com.mannschaft.app.chat.service;
 
+import com.mannschaft.app.chat.ChannelMemberRole;
 import com.mannschaft.app.chat.ChannelType;
 import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
+import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity;
+import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
@@ -12,6 +17,11 @@ import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.util.Locale;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * F04.2 チャット添付ファイルの F13 統合ストレージクォータ連携サービス。
@@ -40,7 +50,19 @@ public class ChatAttachmentService {
     /** F13 Phase 4-β: storage_usage_logs.reference_type に記録するテーブル名。 */
     private static final String REFERENCE_TYPE = "chat_message_attachments";
 
+    /** F04.2 Phase 11 2-β: チャンネルアイコンの最大サイズ（2MB）。 */
+    public static final long CHANNEL_ICON_MAX_BYTES = 2L * 1024 * 1024;
+
+    /** F04.2 Phase 11 2-β: チャンネルアイコンで許可される MIME タイプ。 */
+    public static final Set<String> CHANNEL_ICON_ALLOWED_CONTENT_TYPES =
+            Set.of("image/jpeg", "image/png", "image/webp");
+
+    /** F04.2 Phase 11 2-β: チャンネルアイコンの Pre-signed URL 有効期限（5 分）。 */
+    private static final Duration CHANNEL_ICON_PRESIGN_TTL = Duration.ofMinutes(5);
+
     private final StorageQuotaService storageQuotaService;
+    private final StorageService storageService;
+    private final ChatChannelMemberRepository chatChannelMemberRepository;
 
     /**
      * presign 直前のクォータ・UX ガード事前チェック。
@@ -163,4 +185,103 @@ public class ChatAttachmentService {
 
     /** 解決されたストレージスコープ。 */
     public record ScopeResolution(StorageScopeType scopeType, Long scopeId) {}
+
+    /**
+     * F04.2 Phase 11 第二陣 2-β: チャンネルアイコン用 Pre-signed URL を発行する。
+     *
+     * <p>メッセージ添付用 {@link #checkAttachmentQuota} とは別経路。
+     * チャンネルアイコンは {@code chat_channels.icon_key} に保存される独立リソースであり、
+     * メッセージ添付テーブルに INSERT しない / F13 統合クォータも計上しない。</p>
+     *
+     * <p>処理順序:</p>
+     * <ol>
+     *     <li>認可: 呼び出しユーザーがチャンネルの OWNER / ADMIN であること
+     *         （{@link ChatErrorCode#CHANNEL_ICON_PERMISSION_DENIED} = 403）</li>
+     *     <li>MIME ホワイトリスト検証
+     *         （{@link ChatErrorCode#ICON_CONTENT_TYPE_INVALID} = 400）</li>
+     *     <li>サイズ上限検証（2MB）
+     *         （{@link ChatErrorCode#ICON_SIZE_EXCEEDED} = 413）</li>
+     *     <li>R2 オブジェクトキー組み立て: {@code chat/{scopeType}/{scopeId}/icons/{uuid}/{fileName}}</li>
+     *     <li>{@link StorageService#generateUploadUrl} で 5 分有効の署名 URL を発行</li>
+     * </ol>
+     *
+     * @param channel       対象チャンネル
+     * @param currentUserId 操作者ユーザー ID
+     * @param contentType   アイコンの MIME タイプ
+     * @param fileSize      アイコンのファイルサイズ（バイト）
+     * @param fileName      アイコンのファイル名（オブジェクトキーの末尾に付与）
+     * @return Pre-signed URL 結果（uploadUrl / s3Key / expiresInSeconds）
+     */
+    public PresignedUploadResult presignChannelIconUpload(ChatChannelEntity channel,
+                                                          Long currentUserId,
+                                                          String contentType,
+                                                          long fileSize,
+                                                          String fileName) {
+        // 1. 認可チェック: OWNER / ADMIN のみアイコン変更可能
+        ChatChannelMemberEntity member = chatChannelMemberRepository
+                .findByChannelIdAndUserId(channel.getId(), currentUserId)
+                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED));
+        ChannelMemberRole role = member.getRole();
+        if (role != ChannelMemberRole.OWNER && role != ChannelMemberRole.ADMIN) {
+            log.info("チャンネルアイコン presign 拒否（権限不足）: channelId={}, userId={}, role={}",
+                    channel.getId(), currentUserId, role);
+            throw new BusinessException(ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
+        }
+
+        // 2. MIME ホワイトリスト
+        String normalizedType = contentType == null ? "" : contentType.toLowerCase(Locale.ROOT);
+        if (!CHANNEL_ICON_ALLOWED_CONTENT_TYPES.contains(normalizedType)) {
+            log.info("チャンネルアイコン presign 拒否（MIME 不許可）: channelId={}, contentType={}",
+                    channel.getId(), contentType);
+            throw new BusinessException(ChatErrorCode.ICON_CONTENT_TYPE_INVALID);
+        }
+
+        // 3. サイズ上限（2MB）
+        if (fileSize > CHANNEL_ICON_MAX_BYTES) {
+            log.info("チャンネルアイコン presign 拒否（サイズ超過）: channelId={}, size={}, limit={}",
+                    channel.getId(), fileSize, CHANNEL_ICON_MAX_BYTES);
+            throw new BusinessException(ChatErrorCode.ICON_SIZE_EXCEEDED);
+        }
+
+        // 4. オブジェクトキー組み立て
+        //    既存の resolveScope() を流用してチャンネル種別ごとのスコープパスを得る。
+        //    VILLAGE_LOBBY は未サポート例外を投げるため、ここでは PERSONAL フォールバックで操作者を使う。
+        ScopeResolution scope = resolveIconScope(channel, currentUserId);
+        String safeFileName = sanitizeFileName(fileName);
+        String fileKey = "chat/" + scope.scopeType().name()
+                + "/" + scope.scopeId()
+                + "/icons/" + UUID.randomUUID()
+                + "/" + safeFileName;
+
+        // 5. Pre-signed URL 発行（5 分有効）
+        PresignedUploadResult result = storageService.generateUploadUrl(
+                fileKey, normalizedType, CHANNEL_ICON_PRESIGN_TTL);
+        log.info("チャンネルアイコン presign 発行: channelId={}, userId={}, fileKey={}",
+                channel.getId(), currentUserId, fileKey);
+        return result;
+    }
+
+    /**
+     * チャンネルアイコン用のスコープ解決。
+     * VILLAGE_LOBBY は {@link #resolveScope} が例外を投げるため、
+     * 操作者ベースの PERSONAL スコープにフォールバックする。
+     */
+    private ScopeResolution resolveIconScope(ChatChannelEntity channel, Long userId) {
+        if (channel.getChannelType() == ChannelType.VILLAGE_LOBBY) {
+            return new ScopeResolution(StorageScopeType.PERSONAL, userId);
+        }
+        return resolveScope(channel, userId);
+    }
+
+    /** R2 オブジェクトキーに使うため簡易サニタイズ。スラッシュ・空白・制御文字を除去。 */
+    private String sanitizeFileName(String fileName) {
+        if (fileName == null || fileName.isBlank()) {
+            return "icon";
+        }
+        String cleaned = fileName.replaceAll("[\\\\/\\s\\p{Cntrl}]", "_");
+        if (cleaned.length() > 100) {
+            cleaned = cleaned.substring(cleaned.length() - 100);
+        }
+        return cleaned;
+    }
 }

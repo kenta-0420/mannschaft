@@ -69,7 +69,16 @@ public enum ChatErrorCode implements ErrorCode {
     ATTACHMENT_QUOTA_EXCEEDED("CHAT_019", "ストレージ容量が不足しているため添付ファイルをアップロードできません", Severity.ERROR),
 
     /** アーカイブされていないチャンネルのアーカイブ解除 */
-    CHANNEL_NOT_ARCHIVED("CHAT_020", "このチャンネルはアーカイブされていません", Severity.WARN);
+    CHANNEL_NOT_ARCHIVED("CHAT_020", "このチャンネルはアーカイブされていません", Severity.WARN),
+
+    /** チャンネルアイコンの content_type が許可されていない（image/jpeg, image/png, image/webp のみ） */
+    ICON_CONTENT_TYPE_INVALID("CHAT_021", "チャンネルアイコンは JPEG / PNG / WebP のみ対応しています", Severity.WARN),
+
+    /** チャンネルアイコンのサイズが上限（2MB）を超えている */
+    ICON_SIZE_EXCEEDED("CHAT_022", "チャンネルアイコンのファイルサイズが上限（2MB）を超えています", Severity.WARN),
+
+    /** チャンネルアイコン変更権限がない（OWNER/ADMIN ではない） */
+    CHANNEL_ICON_PERMISSION_DENIED("CHAT_023", "チャンネルアイコンを変更する権限がありません", Severity.WARN);
 
     private final String code;
     private final String message;
