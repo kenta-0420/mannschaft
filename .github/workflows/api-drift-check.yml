@@ -1,18 +1,23 @@
 # =============================================================================
-# API Drift Check — pull_request to main（Stage 3 第一陣 1-β / 案 B warning-only）
+# API Drift Check — pull_request to main（Stage 4 第六陣 / 案 A 段階移行対応）
 # =============================================================================
 # 設計書 (docs/features/F*.md) と Controller 実装の API 乖離をスキャンし、
 # main の baseline (docs/internal/api_drift_baseline.md) との差分を
 # PR コメントとして投稿する。
 #
 # 重要:
-# - 警告のみで PR を fail させない（必ず exit 0）
+# - 既定は warning-only（`STRICT_DRIFT` 未設定 / 'false'）。Stage 3 と挙動互換
+# - GitHub Repository Variable `STRICT_DRIFT=true` を設定すると案A昇格:
+#     * PR で新規発生した missing_impl / missing_design があれば PR を fail
+#     * 既知の baseline drift は無視（chip-away 運用）
 # - フォーク PR ではコメント投稿に write 権限が必要なため、pull_request イベントで
 #   permissions を明示する
 # - 既存 backend-ci.yml / frontend-ci.yml と独立した concurrency group
+# - PR コメント投稿は `if: always()` + `continue-on-error: true` のまま維持し、
+#   fail させる場合もユーザに通知できるようにする
 # =============================================================================
 
-name: API Drift — Check (PR Warning)
+name: API Drift — Check (PR)
 
 on:
   pull_request:
@@ -86,9 +91,15 @@ jobs:
           git checkout -- docs/internal/api_drift_baseline.md || true
 
       # 差分サマリを生成
+      # STRICT_DRIFT=true のとき、新規発生 drift があれば exit 1 となり、ジョブ全体が fail する。
+      # GitHub Repository Variable `STRICT_DRIFT` 未設定時は 'false' をデフォルトとして渡す。
       - name: Build PR comment body
+        id: build_comment
+        env:
+          STRICT_DRIFT: ${{ vars.STRICT_DRIFT || 'false' }}
         run: |
           set -e
+          echo "[INFO] STRICT_DRIFT=${STRICT_DRIFT}"
           python backend/scripts/ci_drift_summary.py \
             --main /tmp/drift/baseline_main.md \
             --pr   /tmp/drift/baseline_pr.md \
@@ -142,7 +153,16 @@ jobs:
               core.notice(`PR comment post failed (warning-only, likely missing write permission on fork PR): ${e.message}`);
             }
 
-      # 念のため warning-only を明示（このジョブは常に成功扱い）
-      - name: Mark step as warning-only
+      # ジョブの最終ステータスを notice として明示
+      # STRICT_DRIFT=true で fail した場合は build_comment ステップ自体が exit 1 となり、
+      # この notice は出ない（後続ステップは if: always() が無いとスキップされる）。
+      - name: Annotate final status
         if: always()
-        run: echo "::notice::API drift check is warning-only and will not fail the PR."
+        env:
+          STRICT_DRIFT: ${{ vars.STRICT_DRIFT || 'false' }}
+        run: |
+          if [ "${STRICT_DRIFT}" = "true" ]; then
+            echo "::notice::API drift check is in STRICT mode. New drift will fail the PR (existing baseline drift is ignored)."
+          else
+            echo "::notice::API drift check is warning-only (STRICT_DRIFT=false). PR will not be failed."
+          fi

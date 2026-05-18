@@ -1,4 +1,4 @@
-# API Drift Check CI 統合（Stage 3 第一陣 1-β / 案 B warning-only）
+# API Drift Check CI 統合（Stage 4 第六陣 / 案A段階移行対応）
 
 ## 概要
 
@@ -6,8 +6,9 @@ PR 作成時に `backend/scripts/scan_api_drift.py` を自動実行し、`main` 
 baseline と PR 上での再スキャン結果を比較して **PR コメントに差分サマリを投稿** する
 GitHub Actions ワークフローを Stage 3 で導入した。
 
-**判定方針**: 警告のみ（warning-only）。drift が増えても PR を fail させない。
-あくまで「殿様判断資料」として可視化する用途。
+**判定方針**: 既定は **warning-only**（drift が増えても PR を fail させない）。
+**`STRICT_DRIFT=true`** を GitHub Repository Variable で設定することで **案A (fail-on-new-drift)**
+に昇格できる（Stage 4 第六陣で追加）。詳細は本ドキュメント末尾の「Strict mode 切替方法」を参照。
 
 ## 関連ファイル
 
@@ -87,6 +88,60 @@ _このチェックは警告のみで PR をブロックしません。詳細は
 - 将来 fail させたくなったら、`ci_drift_summary.py` に `--max-new` 等の閾値オプションを追加して
   ワークフローの最終ステップで exit code を切り替えるだけで OK（現状は常に exit 0）
 
+## Strict mode (案A) 切替方法
+
+Stage 4 第六陣 (2026-05-17) で `ci_drift_summary.py` に `STRICT_DRIFT` 環境変数による
+fail-on-new-drift モードを追加した。
+
+### 仕様
+
+- 環境変数 `STRICT_DRIFT` の値が `true` / `1` / `yes` / `on`（大文字小文字無視）のとき有効
+- 「**この PR で新規発生**した missing_impl / missing_design」があれば `ci_drift_summary.py`
+  が exit 1 を返し、`Build PR comment body` ステップが fail → ワークフロー全体が fail する
+- 「新規発生」の定義: PR baseline にあり、main baseline に無い `(method, path)` の組
+- **既知の baseline drift は無視**: main にも PR にも同じく載っているものは fail 対象外
+  （chip-away 運用 — Phase 11 残課題 40 件などの既存 drift は影響しない）
+- 「解消 drift」(main にあり PR で消えた) は当然 fail しない（むしろ歓迎）
+- main baseline が存在しない場合 (初回導入時) は `STRICT_DRIFT=true` でも exit 0
+- exit 1 のときも `/tmp/drift/comment.md` は必ず書き出されるため、PR コメントは投稿される
+
+### ON にする手順
+
+1. GitHub リポジトリの **Settings → Secrets and variables → Actions → Variables** タブを開く
+2. **New repository variable** で以下を作成
+   - Name: `STRICT_DRIFT`
+   - Value: `true`
+3. 次回 PR の workflow から strict mode が有効になる
+
+### OFF に戻す手順
+
+Repository Variable の `STRICT_DRIFT` を `false` に変更するか、変数自体を削除する
+（未設定時のデフォルトは `'false'`）。
+
+### 段階移行のおすすめ手順
+
+1. **v6 投入後 1〜2 日**: `STRICT_DRIFT` を設定しないまま warning-only で運用継続
+   （PR コメントだけで「新規 drift がどれくらい発生するか」の感触を掴む）
+2. **運用が安定** したら（false positive が許容範囲・PR コメントを見る習慣がついた）
+   `STRICT_DRIFT=true` に切替えて昇格
+3. **誤検出多発で運用が回らない場合**: いったん `STRICT_DRIFT=false` に戻し、
+   scanner (v6 以降) の改修 / `api_drift_exclusions.yml` の整備で問題箇所を潰してから再昇格
+
+### Strict mode で fail したときの対処
+
+PR コメントに `### ❌ Strict mode: 新規発生 drift が N 件あるためこの PR は fail します` が
+出ている場合、以下のいずれかで対応する:
+
+1. **新規発生 drift を解消する** — その PR の設計書または実装を修正して整合させる
+2. **scanner 偽陽性であれば v6+ で改修** — `backend/scripts/scan_api_drift.py` を改修する
+3. **正当な除外を追加** — `docs/internal/api_drift_exclusions.yml` に
+   除外パターンを追加して再スキャン
+
+Phase 11 残課題 40 件 (F03.5 / F04.2 / F05.2 / F05.4 / F05.6 / F05.7 ほか) のような
+**既知 drift** は main baseline に登録済みなので、`STRICT_DRIFT=true` 切替後も新規 drift
+として fail させる対象にはならない（main baseline と PR baseline の差分しか見ないため）。
+
 ## 履歴
 
 - 2026-05-17: Stage 3 第一陣 1-β にて新規導入（案 B warning-only）
+- 2026-05-17: Stage 4 第六陣にて `STRICT_DRIFT` 環境変数で案A (fail-on-new-drift) 昇格対応を追加
