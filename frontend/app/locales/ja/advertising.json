@@ -1,0 +1,185 @@
+{
+  "ad_label": "広告",
+  "status": {
+    "draft": "下書き",
+    "review": "審査中",
+    "approved": "承認済み",
+    "scheduled": "配信予約",
+    "delivering": "配信中",
+    "paused": "一時停止",
+    "completed": "終了",
+    "blocked": "ブロック",
+    "cancelled": "キャンセル"
+  },
+  "moderation_status": {
+    "pending": "未審査",
+    "auto_passed": "自動チェック通過",
+    "auto_flagged": "要確認",
+    "approved": "承認済み",
+    "blocked": "ブロック"
+  },
+  "moderation_action": {
+    "approved": "承認",
+    "blocked": "ブロック",
+    "unblocked": "ブロック解除",
+    "auto_flagged": "自動フラグ",
+    "auto_passed": "自動通過"
+  },
+  "segment_type": {
+    "age_range": "年代",
+    "gender": "性別",
+    "region_prefecture": "都道府県",
+    "region_city": "市区町村",
+    "interest_tag": "興味タグ",
+    "org_type": "組織種別",
+    "locale": "言語",
+    "device": "デバイス"
+  },
+  "inclusion_mode": {
+    "include": "含める",
+    "exclude": "除外する"
+  },
+  "report_reason": {
+    "offensive": "不快な内容",
+    "misleading": "誤解を招く内容",
+    "spam": "スパム",
+    "irrelevant": "関連性が低い",
+    "other": "その他"
+  },
+  "channel": {
+    "announcement": "お知らせ",
+    "email": "メール",
+    "push": "プッシュ通知",
+    "banner": "バナー"
+  },
+  "reach_range": {
+    "under_100": "条件に合致するユーザーが少なすぎます",
+    "range_100_500": "約100〜500人",
+    "range_500_1k": "約500〜1,000人",
+    "range_1k_5k": "約1,000〜5,000人",
+    "range_5k_10k": "約5,000〜10,000人",
+    "range_10k_50k": "約10,000〜50,000人",
+    "range_50k_100k": "約50,000〜100,000人",
+    "over_100k": "約100,000人以上"
+  },
+  "actions": {
+    "submit": "審査に提出",
+    "launch": "配信開始",
+    "pause": "一時停止",
+    "resume": "再開",
+    "cancel": "キャンセル",
+    "approve": "承認",
+    "block": "ブロック",
+    "save_draft": "下書き保存",
+    "preview": "プレビュー",
+    "delete": "削除",
+    "edit": "編集",
+    "create": "新規作成",
+    "add_channel": "チャネルを追加",
+    "remove_channel": "チャネルを削除",
+    "add_segment": "セグメントを追加",
+    "remove_segment": "セグメントを削除",
+    "report": "通報する",
+    "unsubscribe": "配信停止",
+    "block_advertiser": "この広告主をブロック"
+  },
+  "pages": {
+    "advertiser_campaign_list": {
+      "title": "メッセージ型キャンペーン一覧",
+      "description": "ターゲット層へ向けたメッセージ配信キャンペーンを管理します。",
+      "empty": "まだキャンペーンはありません。",
+      "filter_status": "ステータスで絞り込み",
+      "column_name": "キャンペーン名",
+      "column_status": "ステータス",
+      "column_budget": "予算（円）",
+      "column_consumed": "消費（円）",
+      "column_period": "配信期間",
+      "column_updated": "更新日時"
+    },
+    "advertiser_campaign_create": {
+      "title": "キャンペーンを作成",
+      "description": "配信するチャネルとターゲット条件を設定します。下書きは何度でも編集できます。",
+      "field_name": "キャンペーン名",
+      "field_budget": "総予算（円）",
+      "field_starts_at": "配信開始日時",
+      "field_ends_at": "配信終了日時",
+      "field_timezone": "タイムゾーン",
+      "field_frequency_cap": "週あたりの最大配信回数（未指定で 3 件）",
+      "step_basic": "基本情報",
+      "step_channels": "チャネル設定",
+      "step_audience": "ターゲット設定",
+      "step_review": "確認・提出",
+      "submitted": "キャンペーンを審査に提出しました。",
+      "saved": "下書きを保存しました。"
+    },
+    "advertiser_campaign_detail": {
+      "title": "キャンペーン詳細",
+      "section_summary": "概要",
+      "section_channels": "チャネル",
+      "section_audience": "ターゲット",
+      "section_moderation": "審査状況",
+      "section_report": "実績レポート",
+      "blocked_reason": "ブロック理由",
+      "preview_reach": "推定リーチ",
+      "no_channels": "チャネルが未設定です。",
+      "no_segments": "ターゲット条件が未設定です。"
+    },
+    "system_admin_moderation": {
+      "title": "広告キャンペーン審査",
+      "description": "審査待ちのキャンペーンを確認し、承認またはブロックします。",
+      "empty": "審査待ちのキャンペーンはありません。",
+      "approve_dialog_title": "キャンペーンを承認しますか？",
+      "approve_dialog_message": "承認すると広告主は配信を開始できるようになります。",
+      "block_dialog_title": "キャンペーンをブロックしますか？",
+      "block_dialog_message": "ブロック理由を入力してください（広告主に通知されます）。",
+      "block_reason_label": "ブロック理由",
+      "block_reason_placeholder": "例: 表現が不適切",
+      "user_reports_section": "ユーザー通報"
+    },
+    "settings_ad_preferences": {
+      "title": "広告の受信設定",
+      "description": "受け取る広告のチャネルや、ブロックしたい広告主を設定します。",
+      "channel_section": "受信するチャネル",
+      "blocked_section": "ブロック済み広告主",
+      "blocked_empty": "ブロック中の広告主はいません。",
+      "rotate_tokens": "配信停止リンクを無効化する",
+      "rotate_tokens_help": "過去のメール内リンクを使えなくします。",
+      "consent_required": "広告の受信には初回同意が必要です。",
+      "saved": "設定を保存しました。"
+    },
+    "me_ad_deliveries": {
+      "title": "受け取った広告",
+      "description": "あなたに配信された広告の履歴を確認できます。",
+      "empty": "まだ広告を受け取っていません。",
+      "delivered_at": "配信日時",
+      "opened": "閲覧済み",
+      "clicked": "クリック済み"
+    }
+  },
+  "report_dialog": {
+    "title": "この広告を通報する",
+    "description": "通報内容は SYSTEM_ADMIN が確認します。",
+    "reason_label": "通報理由",
+    "detail_label": "詳細（任意）",
+    "submit": "通報を送信",
+    "submitted": "通報を受け付けました。"
+  },
+  "consent_dialog": {
+    "title": "広告の受信に同意しますか？",
+    "description": "Mannschaft は広告主からの限定的なメッセージ配信を提供しています。受信設定はいつでも変更できます。",
+    "accept": "同意して続行",
+    "decline": "今は受け取らない"
+  },
+  "error_codes": {
+    "AD_CAMPAIGN_NOT_FOUND": "キャンペーンが見つかりません。",
+    "AD_CAMPAIGN_NOT_EDITABLE": "現在の状態ではこのキャンペーンを編集できません。",
+    "AD_CAMPAIGN_INVALID_TRANSITION": "この状態遷移は許可されていません。",
+    "AD_CAMPAIGN_BUDGET_INSUFFICIENT": "予算残高が不足しています。",
+    "AD_CAMPAIGN_CREDIT_LIMIT_EXCEEDED": "クレジット上限を超えています。",
+    "AD_CAMPAIGN_MODERATION_BLOCKED": "このキャンペーンは審査でブロックされました。",
+    "AD_CAMPAIGN_NO_CHANNEL": "少なくとも 1 つのチャネルを設定してください。",
+    "AD_PREFERENCES_BLOCKED_LIMIT": "ブロックできる広告主は最大 100 件までです。",
+    "AD_REPORT_DUPLICATE": "このキャンペーンは既に通報済みです。",
+    "AD_RATE_LIMIT_EXCEEDED": "リクエスト数が上限に達しました。しばらくお待ちください。"
+  }
+}
