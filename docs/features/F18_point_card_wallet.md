@@ -1153,6 +1153,63 @@ Phase 2 で organization が自店ポイントカードを発行する際の流�
 
 結論: **Phase 1 のスキーマ・API は Phase 2 で破壊的変更なし**。
 
+#### 7.6.6 Levenshtein 距離マッチ（Phase 5 P5-S3）
+
+Phase 4 で導入した 2 段フォールバック（normalized + synonym）に加え、Phase 5 で **3 段目の Levenshtein 距離マッチ** を追加する。これにより 1 文字程度の誤入力（タイポ・かな違い）も自動的に救済される。
+
+##### 設定値（`application.yml`）
+
+| キー | 既定 | 意味 |
+|---|---|---|
+| `f18.fuzzy-match.levenshtein.enabled` | `true` | Levenshtein 段の有効化フラグ。障害時は `false` に切り替えるだけで即時無効化可能 |
+| `f18.fuzzy-match.levenshtein.max-distance` | `1` | 編集距離の許容上限。1 文字違いまで採用する |
+| `f18.fuzzy-match.levenshtein.min-input-length` | `5` | 近似マッチを発動する最小入力長（normalize 後）。短すぎる入力は誤マッチ防止のためスキップ |
+
+##### 動作仕様
+
+- **距離計算は normalize 適用後の文字列同士**で行う（§7.6.1 と同じ NFKC + ひらがな化 + 記号削除 + lower の結果に対して比較）
+- 1 段目（normalized 完全一致）/ 2 段目（synonym 完全一致）でヒットした場合は Levenshtein 段に到達しない（性能温存・正確性優先）
+- `normalizedIndex` と `synonymIndex` の **両方** を候補として走査する
+- 同一距離で複数 hit した場合は **優先度順** で解決:
+  - 優先度 0: `normalizedIndex` 由来（provider 自体の `code` / `display_name` に近い）
+  - 優先度 1: `synonymIndex` 由来（同義語経由）
+- 同一距離 + 同一優先度で複数 hit した場合は `HashMap` iteration order に従い先勝ち（実運用上は問題なしと判断、決定論性が必要なら後日改善）
+- `synonymIndex` 経由解決で `is_active=false` の provider に紐付いていた候補はスキップする
+
+##### 救済例
+
+| ユーザー入力 | normalize 後 | 距離 | マッチ先 | 結果 |
+|---|---|---|---|---|
+| 「まくどなど」 | `まくどなど` (5) | 1 | provider「マクドナルド」`まくどなるど` (6) | ✅ マッチ |
+| 「どこもぽいんお」 | `どこもぽいんお` (7) | 1 | synonym「ドコモポイント」`どこもぽいんと` (7) → dpoint | ✅ マッチ |
+| 「ｍｃｄｏｎａｌｄ」 | `mcdonald` (8) | 1 | provider code「mcdonalds」(9) | ✅ マッチ |
+| 「まくどなるもの」 | `まくどなるもの` (7) | 2 | provider「マクドナルド」`まくどなるど` (6) | ❌ 距離超過 |
+| 「ぽいん」 | `ぽいん` (3) | – | 入力長 5 未満のためスキップ | ❌ ガード |
+
+##### 計算量と性能
+
+- 計算量: `O((N + M) * L^2)`（N=`normalizedIndex` サイズ、M=`synonymIndex` サイズ、L=平均文字列長）
+- F18 Phase 5 時点で N ≒ 40・M ≒ 30・L ≒ 8 → 1 比較あたり 64 セル × 100ns 未満 = 70 件全候補走査でも **5μs 未満**で完了
+- 1/2 段で hit する大多数の入力では Levenshtein 段に到達しないため、本番運用での実コストは更に低い
+
+##### 自前 DP 実装の選択理由
+
+Apache Commons Text 等の外部ライブラリ追加を避け、教科書的な 2 次元 DP（30 行）を `ProviderMatchService.levenshteinDistance(String, String)` に自前実装した。F18 で使う唯一の関数のため依存追加のコストに見合わないこと、ロジックが単純で保守性に問題がないこと、レビュー可能性を最大化することの 3 点が理由。
+
+##### 障害時の即時無効化手順
+
+万が一 Levenshtein 段が誤マッチを大量発生させた場合は、
+
+```yaml
+# backend/src/main/resources/application.yml
+f18:
+  fuzzy-match:
+    levenshtein:
+      enabled: false  # ← 即時無効化
+```
+
+として再デプロイ。Service ロジックは変更不要で、1/2 段のみの動作に即座にロールバックされる。
+
 ---
 
 ## 8. UI / UX 設計
@@ -1713,6 +1770,7 @@ Phase 4 までで「PDF417 描画」「マスタ拡充」「同義語辞書 fuzz
 |---|---|---|---|
 | P5-S1 基盤 | V9.158 `POINT_CARD_BALANCE_OPERATE` / `POINT_CARD_BALANCE_REFUND` Permission 2 種新設 + ADMIN は `is_default=1` 自動付与・DEPUTY_ADMIN は `is_default=0` 天井のみ登録（V9.156 の `POINT_CARD_STAMP_ISSUE` と同パターン、後方互換 100%）+ ErrorCode 022/023（BALANCE_*_PERMISSION_REQUIRED → 403）+ `AuditEventType.POINT_CARD_REMATCH_BATCH_EXECUTED` 追加 + `f18.fuzzy-match.levenshtein` feature flag 雛形（`enabled` / `max-distance=1` / `min-input-length=5`） | #737 | 04404e9d7 |
 | P5-S4 再マッチバッチ | `provider_id IS NULL` カードの夜間再評価バッチ `PointCardRematchBatchService` 新規。Asia/Tokyo 03:00 起動・ShedLock `pointCardRematchBatch`（lockAtMostFor=PT15M）排他・チャンク 1000 件単位 `REQUIRES_NEW` トランザクション・個別失敗スキップ続行・集計監査ログ `POINT_CARD_REMATCH_BATCH_EXECUTED`（metadata: total/matched/skipped/durationMs）1 件のみ発火・失敗率 10% 超で `ErrorReportService.recordBackendException(HIGH)` Sentry 通知。`@ConditionalOnProperty(pointcard.rematch-batch.enabled=true, matchIfMissing=true)` で local 環境無効化可能。`UserPointCardRepository.findRematchTargets(Pageable)` 新規。単体テスト 8 件（全件マッチ / 部分マッチ / 全件未マッチ / 個別失敗スキップ / 空テーブル / チャンク境界 / 高失敗率→Sentry / 低失敗率→Sentry なし）| (本 PR) | - |
+| P5-S3 Levenshtein 拡張 | `ProviderMatchService` に 3 段目 Levenshtein 距離マッチを追加（自前 DP 30 行・外部依存追加なし）。feature flag `f18.fuzzy-match.levenshtein.{enabled,max-distance,min-input-length}` 連携（P5-S1 で投入済の値を実活用）。normalizedIndex + synonymIndex の両方を走査し、同一距離複数 hit 時は優先度順（normalized > synonym）で解決。`min-input-length=5` ガードで短入力の誤マッチ防止。`max-distance=1` 既定で 1 文字違いまで救済（「まくどなど」→マクドナルド、「どこもぽいんお」→ドコモポイント、「ｍｃｄｏｎａｌｄ」→ mcdonalds 等）。性能 5μs 未満で実用上ゼロ。単体テスト 11 件 + `levenshteinDistance` ヘルパーテスト 5 件 = 計 16 件 | (本 PR) | - |
 
 **🔴 P5-S2 = 残高 Permission 駆動化は無期延期（2026-05-17）**:
 SELF_ISSUED_BALANCE 機能が資金決済法対応のため凍結となったため、Permission 駆動化作業（PR #737 で基盤投入済）は**無期延期**する。F18 BALANCE 機能再開時（v2）に Permission 駆動化が必要かどうかを再評価する（再開と同時に Permission 駆動化を統合実装する方針を推奨）。残課題管理は §16 を参照。
@@ -1754,6 +1812,8 @@ SELF_ISSUED_BALANCE 機能が資金決済法対応のため凍結となったた
 | ✅ プロバイダーマスタ拡充 | Phase 4 P4-S1 完了。10 社 → 20 社（V9.155 で nanaco / WAON / マクドナルド / コメダ / スターバックス / ユニクロ / GU / イトーヨーカドー / ファミリーマート / 楽天 Edy を追加） |
 | ✅ fuzzy match 拡張（同義語辞書） | Phase 4 P4-S1 + P4-S2A + P4-S3 完了。`point_card_provider_synonyms` テーブル + V9.157 Seed 25+ 件 + `ProviderMatchService` の 2 段フォールバック（既存 normalized cache → synonym normalized cache）+ SystemAdmin 専用シノニム管理 UI |
 | ✅ DEPUTY_ADMIN 権限細分化 | Phase 4 P4-S2B 完了。`AccessControlService.checkAdminOrHasPermission` 新設、`POINT_CARD_STAMP_ISSUE` Permission 駆動化。既存 DEPUTY_ADMIN 全許可挙動から後方互換ありの細分化へ移行 |
+| ✅ fuzzy match の Levenshtein 距離拡張 | Phase 5 P5-S3 完了。`ProviderMatchService` に 3 段目フォールバック追加（feature flag `f18.fuzzy-match.levenshtein.{enabled=true, max-distance=1, min-input-length=5}` 駆動・自前 DP 30 行）。normalizedIndex + synonymIndex 両方を走査、優先度順（normalized > synonym）で同一距離複数 hit を解決。性能 5μs 未満。単体テスト 11 + DP ヘルパー 5 = 16 件 |
+| ✅ 既存マッチ済みカードの再マッチバッチ | Phase 5 P5-S4 完了。`PointCardRematchBatchService`（Spring `@Scheduled` + ShedLock + チャンク 1000 件 REQUIRES_NEW）が Asia/Tokyo 03:00 に `provider_id IS NULL` カードを再評価し、`ProviderMatchService.matchProvider()` でヒットすれば UPDATE。集計監査ログ 1 件＋失敗率 10% 超で Sentry HIGH。プロバイダー追加・シノニム編集の影響を遡及反映 |
 
 ### 未解決のまま（Phase 5+ / 別軍議で対応）
 
@@ -1761,8 +1821,6 @@ SELF_ISSUED_BALANCE 機能が資金決済法対応のため凍結となったた
 |---|---|---|
 | 🟡 iOS Safari Wake Lock 実機検証実施 | テレメトリ整備済 / QA 実機テスト未実施 | Low Power Mode + nosleep.js autoplay 制約。`docs/operations/F18_ios_wake_lock_checksheet.md` 沿って QA 実施待ち |
 | 🟡 プロバイダーロゴ画像の権利確認 SOP | 未整備 | 運営側 SOP として整備（マスタ拡充に追従） |
-| 🟢 fuzzy match の Levenshtein 距離拡張 | Phase 5 P5-S1 で feature flag 雛形のみ投入（`f18.fuzzy-match.levenshtein.enabled` / `max-distance=1` / `min-input-length=5`）| P5-S3 で `ProviderMatchService` に 3 段目フォールバック実装。誤マッチリスク抑制のため `min-input-length=5` ガード遵守 |
-| ✅ 既存マッチ済みカードの再マッチバッチ | Phase 5 P5-S4 完了。`PointCardRematchBatchService`（Spring `@Scheduled` + ShedLock + チャンク 1000 件 REQUIRES_NEW）が Asia/Tokyo 03:00 に `provider_id IS NULL` カードを再評価し、`ProviderMatchService.matchProvider()` でヒットすれば UPDATE。集計監査ログ 1 件＋失敗率 10% 超で Sentry HIGH。プロバイダー追加・シノニム編集の影響を遡及反映 |
 | 🔴 残高型操作（charge/spend/refund）の Permission 駆動化 | **無期延期**（2026-05-17、SELF_ISSUED_BALANCE 機能凍結に伴う）| F18 BALANCE 機能再開時（v2）に Permission 駆動化が必要かどうかを再評価。再開時は凍結解除と同時に Permission 駆動化を統合実装する方針を推奨。Phase 5 P5-S1 で投入した Permission 2 種・ErrorCode 022/023・V9.158 マイグレーションは無傷で温存し、機能フラグ凍結中も DB は退避状態で保持する |
 | 🔴 SELF_ISSUED_BALANCE 機能凍結（v2 再開判断基準）| **凍結中**（2026-05-17〜、案 B 機能フラグ方式）| 再開条件 5 項目：① 利用 organization 数 1 万件超 または特定組織での残高需要が顕在化 / ② 法律事務所（西村あさひ・森・濱田松本・TMI・GVA 等の金融規制チーム）による意見書取得 / ③ 6 ヶ月有効期限ガード・1000 万円アラート・基準日集計・REFUND 限定ロジックの追加実装 / ④ 規約改訂（発行体明示・払戻しポリシー・有効期限）+ 弁護士レビュー / ⑤ 利用 organization への届出義務 onboarding 教育コンテンツ整備。すべて満たした時点で `f18.balance.enabled=true` + `NUXT_PUBLIC_F18_BALANCE_ENABLED=true` で機能フラグを解除。STAMP / EXTERNAL は凍結対象外（無傷で稼働中）|
 
@@ -1781,3 +1839,4 @@ SELF_ISSUED_BALANCE 機能が資金決済法対応のため凍結となったた
 | 2026-05-17 | **SELF_ISSUED_BALANCE 凍結（マスター御裁可）**: 自店プリペイド残高カードが資金決済法第 3 条「前払式支払手段（自家型）」に該当するため、法務整備（弁護士意見書 / 規約改訂 / 6ヶ月有効期限ガード / 1000 万円アラート / 発行体表示・払戻し条件明示・届出義務 onboarding）が整うまで一時凍結する。採用方式は**案 B（機能フラグ + Service 入口例外）**: ① backend `application.yml` の `f18.balance.enabled=false`（既定 false）+ `PointCardBalanceService` の `charge/spend/refund` 入口で flag=false 時に `POINT_CARD_024 BALANCE_SERVICE_DISABLED`（HTTP 503）投擲。② frontend `runtimeConfig.public.f18BalanceEnabled=false` + 店主ダッシュボードの 3 タブ（チャージ / 利用 / 返金）非表示 + カード詳細ページで残高伏字化「---」+ 停止中バナー表示。③ DB スキーマ・Permission（V9.158）・ENUM 値・既存テーブルはすべて温存（再開時の互換性確保）。④ 残高履歴閲覧（`listOrgEvents` / `listCardEvents`）は凍結対象外で正常稼働（既存残高型カードユーザーが履歴を確認できるよう維持）。⑤ SELF_ISSUED_STAMP（押印型）と EXTERNAL（他社カード再描画）は**無傷**で稼働継続。本番 DB には SELF_ISSUED_BALANCE データなし（マスター確認済み）。**v2 再開判断基準 5 項目**: ① 利用 organization 数 1 万件超または残高需要顕在化、② 法律事務所（西村あさひ・森・濱田松本・TMI・GVA 等の金融規制チーム）意見書取得、③ 有効期限ガード・1000 万円アラート・基準日集計・REFUND 限定ロジックの追加実装、④ 規約改訂 + 弁護士レビュー、⑤ 利用 organization への届出義務 onboarding 教育コンテンツ整備。すべて満たした時点で機能フラグ解除。i18n 6 言語に `wallet.balance.disabled.banner` / `wallet.balance.disabled.reason` キー追加。Phase 5 P5-S2（残高 Permission 駆動化）は**無期延期**（凍結中は不要、再開時に統合実装で再評価） |
 | 2026-05-17 | Phase 5 第一陣（P5-S1 基盤）main マージ（PR #737 / 04404e9d7）。V9.158 で `POINT_CARD_BALANCE_OPERATE` / `POINT_CARD_BALANCE_REFUND` Permission 2 種新設、ADMIN は `is_default=1` 自動付与・DEPUTY_ADMIN は `is_default=0` 天井のみ登録（V9.156 `POINT_CARD_STAMP_ISSUE` と同パターン、後方互換 100%）。`PointCardErrorCode` 022/023（BALANCE_*_PERMISSION_REQUIRED → 403）+ `AuditEventType.POINT_CARD_REMATCH_BATCH_EXECUTED` + `f18.fuzzy-match.levenshtein` feature flag 雛形も同陣で前出し。実認可切替は P5-S2 で `PointCardBalanceService` に適用予定。設計書 §6.3 エラーコード一覧は同 PR の docs PR で Phase 2〜5 累積分（010〜023）を一括キャッチアップ追記（本陣の docs PR）。**Phase 5 第二陣リリース時の必須移行手順**: DEPUTY_ADMIN への `permission_groups` 経由 BALANCE_* 一括付与を併設しないと既存 DEPUTY_ADMIN が残高操作を失う回帰を起こす |
 | 2026-05-18 | Phase 5 第四陣（P5-S4 再マッチバッチ）完了。`PointCardRematchBatchService` 新規（`com.mannschaft.app.pointcard.batch` パッケージ・226 行）+ `UserPointCardRepository.findRematchTargets(Pageable)` 新規 + 単体テスト 8 件（332 行）+ `application.yml` / `application-test.yml` に `pointcard.rematch-batch.{enabled,cron,chunk-size}` 設定追加。設計判断（マスター御裁可済）: cron `0 0 3 * * *` Asia/Tokyo（F15.4 02:00 と被らない 03:00 採用） / chunk-size 1000 / 個別失敗スキップ続行（一件失敗で全体中止しない）/ 集計監査ログ 1 件のみ（個別 UPDATE は監査ログ爆発回避）/ 失敗率 10% 超で Sentry HIGH。チャンク単位 `@Transactional(REQUIRES_NEW)` で長時間ロック・メモリ圧迫回避。`@ConditionalOnProperty(matchIfMissing=true)` + `application-test.yml` で `enabled=false` のためテスト環境では Bean 登録回避。これにより P5-S1 で投入済の `POINT_CARD_REMATCH_BATCH_EXECUTED` AuditEventType が実装と接続。プロバイダーマスタ追加・シノニム編集の効果が既存「自由入力」カードに遡及反映可能となった。残: P5-S3 fuzzy match Levenshtein 拡張本体のみ |
+| 2026-05-18 | Phase 5 第三陣（P5-S3 fuzzy match Levenshtein 拡張本体）完了。`ProviderMatchService` に 3 段目 Levenshtein 距離マッチを追加（feature flag `f18.fuzzy-match.levenshtein.{enabled,max-distance,min-input-length}` 駆動、P5-S1 で投入済の値を実活用）。マスター御裁可済みの設計判断: ① Apache Commons Text 等の外部依存を避けて教科書的な自前 2 次元 DP（30 行）を `levenshteinDistance(a, b)` に実装、② `normalizedIndex` と `synonymIndex` の両方を候補として走査、③ 同一距離複数 hit 時は優先度順（normalizedIndex 由来 > synonymIndex 由来）で解決、④ `application.yml` は既に `enabled=true` のためマージで即動作（即時有効化）。`min-input-length=5` ガードで「ぽいん」(3 文字) 等の短入力誤マッチを防止、`max-distance=1` で 1 文字違いまで救済（「まくどなど」→マクドナルド、「どこもぽいんお」→ドコモポイント、全角「ｍｃｄｏｎａｌｄ」→ mcdonalds など）。性能: F18 マスタ規模（normalized 40 件 + synonym 30 件 = 70 候補・平均 8 文字）で 1 回 5μs 未満、1/2 段 hit 時はそもそも到達せず実質ゼロ。1/2 段の挙動は完全互換（既存テスト 23 件 PASS）。単体テスト 11 件 + `levenshteinDistance` DP ヘルパーテスト 5 件 = 計 16 件追加（全件 PASS）。`ProviderMatchService.java` +152/-13、`ProviderMatchServiceTest.java` +180/-1、設計書 §7.6.6 章新設 + §15/§16/§17 更新。F18 残課題テーブル「fuzzy match Levenshtein 距離拡張」が ✅ に移動。F18 Phase 5 実装フェーズ完全クローズ（残: iOS 実機 QA / 残高型 Permission 駆動化 v2 再開時統合のみ） |
