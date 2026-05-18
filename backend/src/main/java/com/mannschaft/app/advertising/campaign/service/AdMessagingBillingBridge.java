@@ -135,9 +135,10 @@ public class AdMessagingBillingBridge {
         // SCHEDULED で前月終了 / DELIVERING / COMPLETED を抽出。
         // 全件走査でも 1000 万ユーザー想定では合理的件数。
         LocalDateTime monthEnd = targetMonth.atEndOfMonth().atTime(23, 59, 59);
-        List<AdMessagingCampaign> candidates =
+        // Repository が返す List は immutable な場合があるため、ここで明示的に可変リストにラップする。
+        List<AdMessagingCampaign> candidates = new java.util.ArrayList<>(
                 messagingCampaignRepository.findByStatusAndStartsAtLessThanEqualAndDeletedAtIsNull(
-                        AdCampaignStatus.DELIVERING, monthEnd);
+                        AdCampaignStatus.DELIVERING, monthEnd));
         candidates.addAll(
                 messagingCampaignRepository.findByStatusAndStartsAtLessThanEqualAndDeletedAtIsNull(
                         AdCampaignStatus.COMPLETED, monthEnd));
