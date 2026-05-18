@@ -74,7 +74,7 @@ UserService#withdrawUser           ← Day 0 — 即時匿名化（呼出元ゼ�
 |---|---|---|
 | 退会受付 〜 物理削除のラグ | 30 日 | 30 日（変わらず）|
 | **その 30 日間の PII 残存状態** | **氏名・暗号化氏名・メール（生）・パスワードハッシュ・@ハンドル・全 OAuth 連携・全 2FA・全プッシュ購読・全フォロー関係・全 Google Calendar 連携・お気に入り全件・天気地点キャッシュ・村ニックネーム・全ピン留めが残存** | これらは即時匿名化・削除されるはず |
-| 退会者からの「忘れられる権利」即時行使要求への応答能力 | 不可（30 日待つほかない、または手動運用）| 即時（`UserAnonymizedEvent` で 8 ドメインが即時 clean）|
+| 退会者からの「忘れられる権利」即時行使要求への応答能力 | 不可（30 日待つほかない、または手動運用）| 即時（`UserAnonymizedEvent` で 7 ドメインが即時 clean、scopefolder 配線後は 8 ドメイン）|
 | データブリーチ時に流出する PII の量 | 退会者 N 名分 × 30 日分が常時 at-rest | 退会済アカウント分はゼロ |
 | GDPR Art.17 Recital 65 解釈 | 「30 日の合理的猶予」として正当化は可能だが、**「即時に PII 残存を最小化する技術的措置がコードに存在するのに動いていない」状態は監督官庁監査時に説明困難** | コードと運用が一致 |
 
@@ -133,7 +133,7 @@ UserService#withdrawUser           ← Day 0 — 即時匿名化（呼出元ゼ�
 | ② 対象抽出 | `userRepository.findPurgeTargets(cutoff=now-30d, PageRequest.of(0, 100))` | `deleted_at < cutoff AND purged_at IS NULL` |
 | ③ ループ内 `purgeUser(user)` | `AccountPurgeService.java:110-222`（`@Transactional`）| 越境 DML 21 種（親設計書 §2.1 参照）+ `AuditEventType.WITHDRAWAL_COMPLETED` 監査ログ + `userRepository.delete(user)` |
 
-`AccountPurgeService` は `UserAnonymizedEvent` も `WithdrawalRequestedEvent` も発火しない。**したがって 9 ドメインの即時匿名化リスナーは 30 日後フェーズでも一切呼ばれない**。
+`AccountPurgeService` は `UserAnonymizedEvent` も `WithdrawalRequestedEvent` も発火しない。**したがって 7 ドメインの即時匿名化リスナー（+ scopefolder 未配線）は 30 日後フェーズでも一切呼ばれない**。
 
 ### 2.5 `withdrawUser` 関数の中身（休眠中）
 
@@ -150,7 +150,7 @@ public void withdrawUser(Long userId) {
     user.softDelete();                             // ④ deleted_at セット（冪等）
     userRepository.save(user);
     eventPublisher.publish(
-        new UserAnonymizedEvent(userId, originalEmail));   // ⑤ 8 ドメインに伝播
+        new UserAnonymizedEvent(userId, originalEmail));   // ⑤ 7 配線済ドメインに伝播
 }
 ```
 
@@ -171,7 +171,7 @@ public void withdrawUser(Long userId) {
 
 ---
 
-## §3. 8 ドメイン匿名化リスナー網羅表 — 現状休眠の影響
+## §3. 9 ドメイン匿名化リスナー網羅表（**7 配線済 + 1 未配線 + 1 別構造**）— 現状休眠の影響
 
 | # | ドメイン | リスナー / クラス | 監視テーブル | 操作 | 現状休眠の影響 |
 |---|---|---|---|---|---|
@@ -182,7 +182,7 @@ public void withdrawUser(Long userId) {
 | 5 | schedule | `IntegrationAnonymizationEventListener` | `user_google_calendar_connections` | DELETE（`deleteByUserId`）| **Google Calendar OAuth トークンが残存 → 退会後もカレンダー連携が裏で生き続ける**。最重大級の GDPR 違反候補 |
 | 6 | village | `VillageUserCleanerEventListener` | `user_village_nicknames`, `user_village_pins`, `village_memberships` | DELETE × 2 + `leftAt`/`bannedReason="ANONYMIZED"` | 村ニックネーム・ピンが残存。`village_memberships` も active のまま |
 | 7 | weather | `WeatherLocationCleanupListener` | `user_weather_locations` | DELETE（`deleteByUserId`）| 地理情報残存（個人特定可能性ありと設計書明記） |
-| 8 | scopefolder | **未配線**（フックメソッド `MyScopeFolderService#deleteAllByUserId` のみ存在、リスナー無し）| `my_scope_folders`, `my_scope_folder_items` | （実行されない）| F15.3 設計書 §9.4 で「後続 PR でリスナー追加」と書かれたまま塩漬け（[`MyScopeFolderService.java:451`](../../backend/src/main/java/com/mannschaft/app/scopefolder/service/MyScopeFolderService.java)）|
+| 8 | scopefolder | **未配線**（フックメソッド `MyScopeFolderService#deleteAllByUserId` のみ存在、リスナー無し）| `my_scope_folders`, `my_scope_folder_items` | （実行されない）| F15.3 設計書 §9.4 で「後続 PR でリスナー追加」と書かれたまま塩漬け（[`MyScopeFolderService.java:457`](../../backend/src/main/java/com/mannschaft/app/scopefolder/service/MyScopeFolderService.java)）|
 
 > **注:** 指示書では「9 ドメイン」だったが、本検分の結果 **配線済は 7 + scopefolder 未配線 + chart は未実装 = 実体 7 リスナー**。`chart` ドメインには `UserAnonymizedEvent` を購読する Listener は存在しない（`grep` 確定）。`chart_records.anonymizeCustomerUserId` は `AccountPurgeService` から直接呼ばれているのみ（親 §2.1 表 #11）。
 
@@ -610,6 +610,67 @@ GDPR Art.17 Recital 65 は「データ主体の要求から **1 ヶ月以内（�
 
 **論点:** 案 δ 採用時、過去 1 年弱の `withdrawUser` 実装労力（コミット `badfe701e` / `5d064d4d2`）と 7 リスナー設計を捨てる判断が必要。これは「サンクコスト」だが念のため記録。
 
+### 13.7（家老検分追加 / 2026-05-18）— `FavoriteAnonymizationEventListener` トランザクション伝播の差異解消
+
+**論点:** 他リスナーが `@Async("event-pool") + REQUIRES_NEW + AFTER_COMMIT` の三重防御なのに対し、`FavoriteAnonymizationEventListener` だけ `@EventListener + @Transactional`（同期・同一 TX 内）。
+案 ε で Favorite を「弱匿名化（Day 0 実行）」に分類した場合、**`requestWithdrawal` の TX 内で同期実行され、Favorite 削除失敗時に退会受付自体がロールバックする** リスクがある。
+
+**選択肢:**
+- A. Favorite リスナーを他リスナーと同型に書き換え（`@Async + REQUIRES_NEW + AFTER_COMMIT`）→ Phase W-A の前提条件として実施
+- B. 弱匿名化分類から Favorite を外し強匿名化（30 日後）に回す → ただし「お気に入りは即時消去すべき」という案 ε の思想に反する
+
+**家老推奨:** A（伝播設計を揃える）。Phase W-A の最初の差分として実施。
+
+### 13.8（家老検分追加 / 2026-05-18）— 案 ε の「キャンセル UX」が部分復帰になる事実
+
+**論点:** 案 ε の「キャンセル UX 維持」主張は **氏名・メール・auth/social/village のみ復帰可能**。push 購読・Google Calendar 連携・天気地点・お気に入りは Day 0 で消えるため復帰不能。
+これは「F12.3 で約束したキャンセル UX」の文言と厳密には乖離する。**マスターは「氏名/メール/OAuth ログイン情報のみ復帰可能・通知設定や連携は一からやり直し」という UX 制約を許容できるか判断必須**。
+
+**選択肢:**
+- A. この UX 制約を許容する（案 ε 推奨形）→ cancel-withdrawal レスポンスで `requiresReconfiguration` 配列を返し、再設定 UI を整備
+- B. 案 δ に転換（即時匿名化を諦め、現状の遅延モデルを正とする）→ §13.6 サンクコスト承認とセット
+- C. 弱匿名化対象を更に絞り込み「Google Calendar 外部 revoke のみ Day 0、push 購読等は Day 30 強匿名化」とする → 案 ε の純粋性は損なうが、キャンセル UX の死亡範囲を最小化
+
+**家老推奨:** A。「退会キャンセルは『気が変わった』時の救済であり、再設定 UI の整備で十分」と整理。**ただしマスターの UX 哲学次第なので明示裁定必須**。
+
+### 13.9（家老検分追加 / 2026-05-18）— 弱匿名化リスナー切替の不可逆性と「データ復元不能性」
+
+**論点:** §9 表で W-C ロールバックを「`git revert` 5 分」としているが、**本番運用後の `WithdrawalRequestedEvent` 駆動で物理削除された `push_subscriptions` / `user_google_calendar_connections` を元に戻す手段はない**。「コードはロールバック可能だが消えたデータは戻らない」差し戻し戦略を明記すべき。
+
+**選択肢:**
+- A. ロールバック計画 §9 表に「データ復元不能・既退会者には新フローを継続適用」を明記し、ロールバック判断者の責任範囲を明確化
+- B. W-C 着手前に「カナリアリリース：1% トラフィックで 7 日間運用 → 問題なければ全展開」のような段階的有効化を必須化
+- C. 安全弁として、削除前に対象行を `withdrawal_anonymization_audit` テーブルに JSON snapshot で退避し、ロールバック時に再投入可能とする（高コスト・高価値）
+
+**家老推奨:** A + B。C はオーバースペック。
+
+### 13.10（家老検分追加 / 2026-05-18）— 退会バースト時の event-pool 枯渇 + Google Calendar 外部 API revoke 方針
+
+**論点 A（event-pool）:** 1000 万ユーザー × 退会バースト（規約改定後の集団退会 1% = 10 万件）で案 ε 採用後は即時匿名化 4 リスナー × 10 万 = **40 万非同期タスクが即時 enqueue**。兄弟設計書 §10.14 で同論点が指摘されているのに本書は連携していない。
+**論点 B（Google Calendar 外部 revoke）:** 現行 `IntegrationAnonymizationEventListener` は DB DELETE のみ（外部 API call なし）。GDPR Art.17「第三者からの消去」義務に抵触する可能性。案 ε で「Day 0 即時消去」を謳うなら **Google `oauth2/revoke` エンドポイント呼出を含めるか** 方針確定が必要。
+
+**家老推奨:**
+- A: 親設計書 §9.8 と統合し、退会経路専用の `withdrawal-pool`（または `purge-pool` 共用）を Phase W-A の前提インフラとして整備
+- B: Phase W-C 着手時に Google `oauth2/revoke` 呼出を追加（失敗時は WARN + 監査ログ、リトライは 3 回 + バックオフ）
+
+### 13.11（家老検分追加 / 2026-05-18）— `WithdrawalCancelledEvent` 発火コード欠落の並行調査
+
+**論点:** `AuditLogEventListener#handleWithdrawalCancelled`（行 222-234）が `WithdrawalCancelledEvent` を購読しているが、**`UserService#cancelWithdrawal`（行 447-459）内に `eventPublisher.publish(new WithdrawalCancelledEvent(...))` の発火コードが見当たらない**（殿 verify 確定 2026-05-18）。
+これは本軍議のスコープではないが、**`cancelWithdrawal` が監査ログを残せていない既存隠れバグ**。
+
+**家老推奨:** 別途「早馬」案件として 1 PR で発火コードを追加（5 行差分）。本軍議の W-C と同時着手可能。
+
+### 13.12（家老検分追加 / 2026-05-18）— CLAUDE.md 原則 4「退会時は匿名化」と案 ε の二段モデルの整合性宣言
+
+**論点:** CLAUDE.md DB 設計原則 4 は「**退会したら個人情報のみ消去**」を要求している（Day 0 完全匿名化の含意）。案 ε は強匿名化（auth/social/village/scopefolder）を 30 日後まで猶予するため、形式上原則 4 の文面と部分的に矛盾する。
+
+**選択肢:**
+- A. CLAUDE.md 原則 4 を更新し「即時匿名化は段階実施可能、ただし 30 日以内に完全匿名化」と緩める → 本軍議 W-A の同時 PR で実施
+- B. 案 ε を諦め案 α/β（全リスナー Day 0 同期/非同期実行）に転換 → キャンセル UX の死亡を許容
+- C. 案 δ に転換 → サンクコスト承認
+
+**家老推奨:** A。原則 4 の真意は「投稿・履歴を物理削除しない」が主であり、PII 消去のタイミングは GDPR 30 日タイムリミット内であれば許容と解釈。CLAUDE.md 改訂の文面案を W-A の同時 PR に含める。
+
 ---
 
 ## 関連ドキュメント
@@ -634,3 +695,5 @@ GDPR Art.17 Recital 65 は「データ主体の要求から **1 ヶ月以内（�
 | 日付 | 内容 | 担当 |
 |---|---|---|
 | 2026-05-18 | 初版作成（陣立て書）。兄弟設計書 §10.10 専用深堀。案 α〜ζ の 6 案比較・案 ε を推奨。親 §2.3 + PR #772 §10.10 への波及対応計画記載。マスター御裁可待ち事項 6 件提示 | 家老（Plan agent）|
+| 2026-05-18 | 検分修正反映 #1: 軽微修正 — §3 章タイトル「9 ドメイン (7 配線済 + 1 未配線 + 1 別構造)」に統一、§1.2 / §2.4 / §2.5 結論ブロックの数字を「7 ドメイン配線済 + scopefolder 配線後 8」に揃え、§3 表 #8 scopefolder 行番号 451→457 訂正 | 殿（家老検分反映）|
+| 2026-05-18 | 検分修正反映 #2: §13 補強 6 件追加 — 13.7 Favorite TX 伝播差異 / 13.8 案 ε のキャンセル UX 部分復帰 / 13.9 弱匿名化リスナー切替の不可逆性 / 13.10 event-pool 枯渇 + Google Calendar 外部 revoke / 13.11 WithdrawalCancelledEvent 発火欠落（殿 verify 確定）/ 13.12 CLAUDE.md 原則 4 と案 ε の整合性宣言 | 殿（家老検分反映 + 殿 verify）|
