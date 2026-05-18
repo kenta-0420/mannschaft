@@ -96,6 +96,30 @@ public class OrganizationEntity extends BaseEntity {
     @Column(columnDefinition = "JSON")
     private com.mannschaft.app.organization.ProfileVisibility profileVisibility;
 
+    // --- F19.1 Phase 1 Foundation: 公開ページ氏名開示制御 ---
+
+    /**
+     * サポーター向け氏名表示モード。
+     * <p>{@code DISPLAY_NAME}（既定）または {@code REAL_NAME}。Phase 1 ではカラム追加のみで
+     * 機能活性化は Phase 2 の IdentityVisibilityResolver 実装時に行う。</p>
+     * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §5.1 / §7.2</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "supporter_name_disclosure", nullable = false, length = 20)
+    @Builder.Default
+    private com.mannschaft.app.publicview.enums.NameDisclosureMode supporterNameDisclosure =
+            com.mannschaft.app.publicview.enums.NameDisclosureMode.DISPLAY_NAME;
+
+    /**
+     * Google Maps 等の埋め込み URL。
+     * <p>F19.1 Phase 1 で organizations の公開ページ iframe 表示に使用する。
+     * バリデーション（{@code ^https://www\.google\.com/maps/embed\?} で始まる）は
+     * Application 層で実施する。teams 側の同等カラムは F15.4 Phase 5-β V9.160 で先行導入済。</p>
+     * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §5.1</p>
+     */
+    @Column(name = "map_embed_url", length = 2048)
+    private String mapEmbedUrl;
+
     /**
      * 組織種別
      */

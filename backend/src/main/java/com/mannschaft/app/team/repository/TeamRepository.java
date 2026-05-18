@@ -141,4 +141,27 @@ public interface TeamRepository
             WHERE t.deleted_at IS NULL
             """, nativeQuery = true)
     int recalculateMemberCounts();
+
+    /**
+     * F19.1 Phase 1 Foundation: 未ログイン公開ページ用に PUBLIC チームを取得する。
+     *
+     * <p>{@code visibility = PUBLIC} かつ未論理削除・未アーカイブのチームのみ返す。
+     * {@code @SQLRestriction("deleted_at IS NULL")} が適用されるため WHERE では
+     * 明示的に {@code archivedAt IS NULL} と visibility を絞り込む。</p>
+     *
+     * <p>F15.4 Phase 5-β の {@code TeamService.getPublicTeam(Long)} は {@code findById} +
+     * 二重 NULL チェックで構成されているが、本メソッドは F19.1 Phase 2 以降の
+     * 公開ページ系 Query Service（{@code PublicPostQueryService} 等）から呼ばれる
+     * 横断利用向けに Repository 層へ整理して再利用しやすくする。</p>
+     *
+     * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §5.1 / §7.6</p>
+     *
+     * @param id 対象チームID
+     * @return PUBLIC かつアクティブなチーム。条件を満たさない場合は空。
+     */
+    @Query("SELECT t FROM TeamEntity t " +
+           "WHERE t.id = :id " +
+           "AND t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC " +
+           "AND t.archivedAt IS NULL")
+    Optional<TeamEntity> findPublicTeamById(@Param("id") Long id);
 }

@@ -111,6 +111,31 @@ public class TeamEntity extends BaseEntity {
     @Builder.Default
     private Long memberCount = 0L;
 
+    // --- F19.1 Phase 1 Foundation: 公開ページ氏名開示制御 ---
+
+    /**
+     * サポーター向け氏名表示モード。
+     * <p>{@code DISPLAY_NAME}（既定）または {@code REAL_NAME}。Phase 1 ではカラム追加のみで
+     * 機能活性化は Phase 2 の IdentityVisibilityResolver 実装時に行う。</p>
+     * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §5.1 / §7.2</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "supporter_name_disclosure", nullable = false, length = 20)
+    @Builder.Default
+    private com.mannschaft.app.publicview.enums.NameDisclosureMode supporterNameDisclosure =
+            com.mannschaft.app.publicview.enums.NameDisclosureMode.DISPLAY_NAME;
+
+    /**
+     * 公開ページでチームイベント一覧を表示するか。
+     * <p>Phase 1 ではカラム追加のみで機能活性化は Phase 4 の
+     * PublicTeamEventQueryService 実装時に行う。組織イベントは常時公開のため
+     * organizations 側に対応カラムは存在しない。</p>
+     * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §5.1</p>
+     */
+    @Column(name = "public_events_enabled", nullable = false)
+    @Builder.Default
+    private Boolean publicEventsEnabled = Boolean.FALSE;
+
     /**
      * チーム公開範囲
      */
