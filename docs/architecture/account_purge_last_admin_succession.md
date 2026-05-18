@@ -69,7 +69,7 @@ CLAUDE.md「障害対応の原則」§2「症状を隠さない」の精神に�
 | 退会画面 | [`frontend/app/pages/settings/account.vue`](../../frontend/app/pages/settings/account.vue)（行 273）→ [`SettingsDeleteAccountSection.vue`](../../frontend/app/components/settings/SettingsDeleteAccountSection.vue) → [`SettingsDeletionPreviewDialog.vue`](../../frontend/app/components/settings/SettingsDeletionPreviewDialog.vue) | `getDeletionPreview()` で `GET /api/v1/account/deletion-preview`（[`GdprController.java:92-99`](../../backend/src/main/java/com/mannschaft/app/gdpr/controller/GdprController.java)）| 削除されるデータ件数を表示。**現状は ADMIN 不在になる組織の警告は出ない** |
 | 退会 API 呼び出し | `handleDeleteAccount` 内 `DELETE /api/v1/users/me`（`account.vue:12`）| [`UserController.java:122-125`](../../backend/src/main/java/com/mannschaft/app/auth/controller/UserController.java) | 内部で `requestWithdrawal()` を呼ぶ（**`withdrawUser()` ではない**）|
 | バックエンド受付 | `UserService#requestWithdrawal`（[`UserService.java:408-438`](../../backend/src/main/java/com/mannschaft/app/auth/service/UserService.java)）| SYSTEM_ADMIN のみブロック / Password 確認 / `user.requestDeletion()` で `deleted_at` セット + Refresh Token 失効 + `WithdrawalRequestedEvent` 発火 | **組織 ADMIN は退会できる**。`user_roles` は残存。30日以内に `/api/v1/account/cancel-withdrawal` で取消可能 |
-| 即時匿名化 | `UserService#withdrawUser`（同 §478）| **現状この経路は `requestWithdrawal` から呼ばれていない**。`WithdrawalRequestedEvent` を購読する側で発火させる設計（要確認） / `user.anonymize() + softDelete()` + `UserAnonymizedEvent` 発火 | 9 ドメインの `*AnonymizationEventListener` が連鎖発火（auth / favorite / notification / schedule / social / village / weather / scopefolder / chart）|
+| 即時匿名化 | `UserService#withdrawUser`（同 §478）| 🔴 **休眠コード（殿の検分で確定 2026-05-18）**。`withdrawUser()` を呼ぶ呼出元はリポジトリ内に**一切存在しない**（`WithdrawalRequestedEvent` 購読者は `WithdrawalStripeHandler` と `AuditLogEventListener` のみで、いずれも `withdrawUser` を呼ばない）。`UserAnonymizedEvent` 発火点は `UserService.java:497` の **1 箇所のみ** = `withdrawUser` 内 = 発火実績なし | 結果として 9 ドメインの `*AnonymizationEventListener`（auth / favorite / notification / schedule / social / village / weather / scopefolder / chart）は**全休眠中**。退会受付から 30 日間、個人情報は丸見えのまま **🔴 重大な既存隠れバグ**（§10.10 で別軍議起票）|
 | 30 日後物理削除 | `AccountPurgeService#purgeUser`（[`AccountPurgeService.java:111`](../../backend/src/main/java/com/mannschaft/app/gdpr/service/AccountPurgeService.java)）| `user_roles.deleteAllByUserId` で全 ADMIN ロール強制 DELETE → `users.delete` 物理削除 | 本軍議の対象。親設計書 Phase B-1 で `AccountPurgedEvent` → `RolePurgeEventListener` 経由に置き換える計画 |
 
 ### 2.2 `checkLastAdmin` ガードの実装範囲
@@ -150,24 +150,31 @@ private void checkLastAdmin(Long scopeId, String scopeType, UserRoleEntity curre
 3. **追加**: レスポンスに「あなたが最後の ADMIN になっている組織/チーム一覧」を含める（`lastAdminScopes: [{scopeType, scopeId, scopeName, otherMembersCount}]`）
 4. 1 件以上ある場合、Dialog の「削除する」ボタンを無効化し、組織ごとに「後任 ADMIN を指名する」/「組織を archive する」のラジオを提示
 5. 「後任 ADMIN を指名」選択時はメンバー検索コンポーネントで対象選択 → 内部で `POST /api/v1/{scope}/{id}/transfer-ownership` を呼ぶ（**既存 API**）
-6. 「組織 archive」選択時は内部で `POST /api/v1/{scope}/{id}/archive` を呼ぶ（要確認: org/team の archive API 有無）
+6. 「組織 archive」選択時は内部で **`PATCH /api/v1/{scope}/{id}/archive`** を呼ぶ（**既存 API 確認済 / 偵察 2026-05-18**）
 7. すべての lastAdmin 組織を処理完了したら「削除する」ボタンが活性化し、`DELETE /api/v1/users/me` を呼べる
 
 **バックエンド処理:**
 1. `GdprController#buildDeletionPreview` を拡張し、`UserRoleRepository.findLastAdminScopes(userId)` を追加（新規メソッド: 「自分が ADMIN かつスコープ内 ADMIN 数 = 1」のスコープを返す）
 2. `UserService#requestWithdrawal` の冒頭に「lastAdmin スコープが残っていないか」のサーバ側ガードを追加（フロント素通り防止）。残っていれば新エラーコード `AUTH_xxx = "未処理の最後 ADMIN 組織があります"` を返す
-3. ORG/TEAM の archive API が未実装の場合は別途追加
+3. **ORG/TEAM の archive API は既存（偵察確認済 2026-05-18）**:
+   - `PATCH /api/v1/organizations/{id}/archive`（`OrganizationController.java:159` / `OrganizationService#archiveOrganization` 行 171）
+   - `PATCH /api/v1/organizations/{id}/unarchive`（同 167 / 184）
+   - `PATCH /api/v1/teams/{id}/archive`（`TeamController.java:158` / `TeamService#archiveTeam` 行 199）
+   - `PATCH /api/v1/teams/{id}/unarchive`（同 166 / 216）
+   - Entity 側に `archive() / unarchive()` メソッド、`organizations.archived_at` / `teams.archived_at` カラム既存
 4. 既存 `transferOwnership` API はそのまま再利用
+5. **指名先承諾フローは入れない**（既存 `transferOwnership` も同意なしの即時昇格設計）→ §10.11 議論事項
+6. **archive 後の不可逆性**: 残メンバー 0 で archive → 全員退会済になると `unarchive` を呼べる人が不在に → SYSTEM_ADMIN 介入手順を運用整備（§10.12）
 
 **失敗時のフォールバック:** UX 内で対応完了させる前提のため、フォールバックはサーバ側ガードのみ。それでも素通りした場合は案 A の安全弁が拾う。
 
 **法務・運用観点:** ユーザーに明示的に組織責任の引継ぎを選ばせるため、自治会・管理組合の組織責任が明確化する。GDPR 削除権との整合: 「削除を阻害」と見える可能性があるが、「30日後に物理削除」の保証は変わらないため法的問題なし。
 
-**実装コスト:** 4〜5 PR。
+**実装コスト:** **4 PR**（β-4 archive API 新規追加が偵察確認で不要となり 1 PR 削減）。
 - B-1: バックエンド `findLastAdminScopes` + `buildDeletionPreview` 拡張 + UT
 - B-2: `UserService#requestWithdrawal` の lastAdmin ガード追加 + 新エラーコード
-- B-3: フロント `SettingsDeletionPreviewDialog` 拡張 + 組織別承継 UI コンポーネント新規 + i18n 6 言語
-- B-4: ORG/TEAM archive API が未実装ならその追加（既存有無は要事前確認）
+- B-3: フロント `SettingsDeletionPreviewDialog` 拡張 + 組織別承継 UI コンポーネント新規 + 既存 Dialog の i18n 化（現状日本語直書きのため、Phase β-3 でついでに i18n 化）+ 6 言語投入（初版は ja 値）
+- B-4 ~~ORG/TEAM archive API 追加~~ → **削除（既存実装あり）**。代わりに「他メンバー 0 人ケース」の自動 archive バッチ `OrganizationHeadlessArchiveBatchService` / `TeamHeadlessArchiveBatchService`（F17.1 `VillageHeadmanSuccessionBatchService` を 1:1 流用、各約 200 行）を Phase β-4 として実装
 - B-5: E2E テスト追加（lastAdmin あり / なし / 全件処理して削除成功）
 
 ### 案 C: 自動承継（最古参メンバーを ADMIN 昇格）
@@ -524,6 +531,7 @@ zh / ko / es / de は Phase β 着手時に翻訳。初版はすべて ja と同
 3. 「推奨案」を「案 B + 案 A 併用（詳細別書）」と確定表記に変更
 4. 親 Phase B-1 着手前提として「α-1 PR（`removeMemberWithoutAdminCheck` 追加）」をブロッカーとして明記
 5. 親設計書「変更履歴」表に本軍議への分岐を追記
+6. 🔴 **エラーコード誤記訂正**: 親 §9.6 本文中の `BusinessException(ROLE_001)` → **`BusinessException(ROLE_004)`** に訂正（実コード `RoleErrorCode.ROLE_004` が正、本設計書 §2.2 で確認済）
 
 **更新 PR 番号予定:** 本設計書の御裁可後、出陣命令と同時に発番される PR 番号を記入する欄を親側に新設（現時点では `_TBD_`）。
 
@@ -534,7 +542,7 @@ zh / ko / es / de は Phase β 着手時に翻訳。初版はすべて ja と同
 | # | 論点 | 推奨 | 御裁可必要事項 |
 |---|---|---|---|
 | 10.1 | 案 B + 案 A 併用方針の承認 | ─ | **本軍議の根幹**。承認 / 修正 / 他案再検討の判断 |
-| 10.2 | Phase β-4「ORG/TEAM archive API」の既存有無事前調査 | 別軍議または β-4 出陣前の偵察フェーズ | archive API が既存なら β-4 は不要、未実装ならスコープに含める |
+| 10.2 | ~~Phase β-4「ORG/TEAM archive API」の既存有無事前調査~~ | ✅ **解決済（偵察 2026-05-18）**。`PATCH /api/v1/organizations/{id}/archive`、`PATCH /api/v1/teams/{id}/archive` 既存。F17.1 `VillageHeadmanSuccessionBatchService` パターン流用可能 | **裁定不要**。β-4 スコープは「自動 archive バッチ新設（各約 200 行）」に縮減 |
 | 10.3 | Phase γ-1「安全弁縮退判断」のメトリクス閾値 | 「Phase β リリース後 30 日連続で `removeMemberWithoutAdminCheck` 発火 0 件」を縮退条件とする | 数値の妥当性確認 |
 | 10.4 | 案 B の「他メンバー 0 人ケース」自動 archive の挙動 | UX 上「自動凍結」ボタンを表示し、ユーザーがワンクリックで実行 | 「完全自動で archive される」vs 「ユーザー確認必須」の判断 |
 | 10.5 | F09.15「区分所有者承継支援」との UX 統合 | 別軍議で要件整理 | F09.15 既存 UX フローと本軍議の UX を統合するか、別フローのままにするか |
@@ -542,6 +550,12 @@ zh / ko / es / de は Phase β 着手時に翻訳。初版はすべて ja と同
 | 10.7 | 法務レビューのタイミング | Phase β リリース前に任意レビュー | 法務レビュー実施判断 |
 | 10.8 | 親設計書 §9.6 の反映 PR タイミング | 本軍議の御裁可後ただちに立てる | OK ならそのまま、別タイミングが良ければ指示 |
 | 10.9 | i18n 翻訳（zh / ko / es / de）の調達 | 初版はすべて ja 値で投入し、Phase β リリース後の運用フェーズで順次翻訳 | 翻訳業者調達 or AI 翻訳の判断 |
+| **10.10** | 🔴 **`withdrawUser()` 休眠コード問題の別軍議起票要否**（殿検分 2026-05-18） | **別軍議で根治治療**。本軍議の §9.6 とは独立論点 | 退会受付（`requestWithdrawal`）と即時匿名化（`withdrawUser`）が**接続されていない**現状を、本軍議の出陣前に別軍議で扱うか / 本軍議出陣と並行で扱うか / Phase B-1 完了後に対処するか。**Phase B-1 着手の前提として「即時匿名化が機能しない前提」で問題ないかの判断必須** |
+| **10.11** | `transferOwnership` の指名先承諾プロセス欠如（家老検分 2026-05-18） | 案 B では既存 `transferOwnership` をそのまま使うため、指名先には**事後通知のみ** | 案 C 不採用理由「本人同意なき権限譲渡」と論理矛盾しないか、指名先承諾フロー（事前通知 + 異議申立期間）を入れるか |
+| **10.12** | archive 後の不可逆性と組織完全消失リスク（家老検分 2026-05-18） | SYSTEM_ADMIN 介入手順を運用整備（GdprController に SYSTEM_ADMIN 用 force-unarchive エンドポイント新設？）| 残メンバー 0 で archive 後の救済経路を整備するか、archive を「論理削除と同等」とみなし放置するか |
+| **10.13** | Phase α 単独運用の上限期間サーキットブレーカー（家老検分 2026-05-18） | 「Phase α 開始から N ヶ月以内に Phase β 必着」を memory にリマインダ記録 | 「3 ヶ月」「6 ヶ月」等の上限期間の確定 |
+| **10.14** | 退会バースト時の通知バックエンド枯渇対策（家老検分 2026-05-18） | 親 §9.8 `event-pool` 議論と統合。「退会バースト 10,000 件 → 新 ADMIN 通知 + 全メンバー通知 + SYSTEM_ADMIN 通知が一斉発火」シナリオへの `purge-pool` 分離適用 | 退会経路の通知も `purge-pool` に分離するかの判断 |
+| **10.15** | `findLastAdminScopes(userId)` の必要インデックス明示と EXPLAIN 確認（家老検分 2026-05-18） | `user_roles.user_id` インデックス + Phase α-2 統合テストで EXPLAIN 確認 | クエリ計画を §5.4 に追記するか、α-2 着手時に確認するか |
 
 ---
 
@@ -568,3 +582,6 @@ zh / ko / es / de は Phase β 着手時に翻訳。初版はすべて ja と同
 | 日付 | 内容 | 担当 |
 |---|---|---|
 | 2026-05-18 | 初版作成（陣立て書 / 案 B+A 推奨 / Phase α-β-γ 計画 / マスター御裁可待ち 9 項目）| 家老（Plan agent）|
+| 2026-05-18 | 検分修正反映 #1: ORG/TEAM archive API 既存実装あり（偵察確定） → §3 案 B / §5.2 / §6 β-4 / §10.2 を全面改訂（POST→PATCH、新規開発→既存活用、β-4 をバッチ実装に縮減で 1 PR 削減） | 殿（家老検分 + 偵察反映）|
+| 2026-05-18 | 検分修正反映 #2: 🔴 重大発見 — `withdrawUser()` は呼出ゼロ・`UserAnonymizedEvent` 発火実績ゼロ・9 リスナー全休眠中 → §2.1 表に 🔴 明示、§10.10 別軍議起票事項として新設 | 殿（殿検分 verify）|
+| 2026-05-18 | 検分修正反映 #3: §10 に 5 件追記（10.11 指名先承諾欠如 / 10.12 archive 不可逆性 / 10.13 Phase α 上限期間 / 10.14 退会バースト時通知枯渇 / 10.15 findLastAdminScopes EXPLAIN）+ §9 親設計書反映 PR に `ROLE_001→ROLE_004` 訂正項目追加 | 殿（家老検分反映）|
