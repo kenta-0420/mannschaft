@@ -1,5 +1,8 @@
 package com.mannschaft.app.directmail.service;
 
+import com.mannschaft.app.advertising.campaign.entity.AdEmailDelivery;
+import com.mannschaft.app.advertising.campaign.enums.AdBounceType;
+import com.mannschaft.app.advertising.campaign.repository.AdEmailDeliveryRepository;
 import com.mannschaft.app.directmail.dto.SesNotificationRequest;
 import com.mannschaft.app.directmail.entity.DirectMailRecipientEntity;
 import com.mannschaft.app.directmail.repository.DirectMailLogRepository;
@@ -10,10 +13,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
  * SES Webhook サービス。バウンス・苦情・開封通知を処理する。
+ *
+ * <p>F09.17 Phase 11-b ε-C: SYSTEM_AD 送信メールへの bounce/complaint 通知を
+ * {@code ad_email_deliveries.bounced_at / bounce_type} にも反映する。
+ * direct_mail_recipient_id 経由で AdEmailDelivery を引き当て、存在する場合のみ更新する。</p>
  */
 @Slf4j
 @Service
@@ -23,6 +31,7 @@ public class SesWebhookService {
 
     private final DirectMailRecipientRepository recipientRepository;
     private final DirectMailLogRepository mailLogRepository;
+    private final AdEmailDeliveryRepository adEmailDeliveryRepository;
 
     /**
      * SES通知を処理する。
@@ -60,11 +69,18 @@ public class SesWebhookService {
                 mailLogRepository.save(mailLog);
             });
 
+            // F09.17 ε-C: ad_email_deliveries 側にもバウンス反映
+            reflectBounceToAdEmailDelivery(recipient.getId(), request.getBounceType());
+
             log.info("SESバウンス処理: recipientId={}, bounceType={}", recipient.getId(), request.getBounceType());
 
         } else if ("Complaint".equals(notificationType)) {
             recipient.markComplained();
             recipientRepository.save(recipient);
+
+            // F09.17 ε-C: 苦情も ad_email_deliveries に COMPLAINT として反映 (HARD 同等扱い)
+            reflectComplaintToAdEmailDelivery(recipient.getId());
+
             log.info("SES苦情処理: recipientId={}", recipient.getId());
 
         } else if ("Delivery".equals(notificationType)) {
@@ -82,6 +98,62 @@ public class SesWebhookService {
 
             log.info("SES開封記録: recipientId={}", recipient.getId());
         }
+    }
+
+    /**
+     * F09.17 ε-C: SES バウンスを {@code ad_email_deliveries} に反映する。
+     *
+     * <p>recipient_id 経由で F09.17 由来配信履歴を引き当て、{@code bounced_at} と
+     * {@code bounce_type} (HARD/SOFT) を更新する。F09.17 経路以外（通常の DirectMail）
+     * では該当 row が存在しないため Optional.empty となり何もしない。</p>
+     *
+     * <p>SES の {@code bounceType} は通常 "Permanent"/"Transient"/"Undetermined" の三種。
+     * "Permanent" → HARD、"Transient" → SOFT、その他 → HARD (安全側) として課金可否を決定する。</p>
+     */
+    private void reflectBounceToAdEmailDelivery(Long recipientId, String sesBounceType) {
+        Optional<AdEmailDelivery> opt = adEmailDeliveryRepository.findByDirectMailRecipientId(recipientId);
+        if (opt.isEmpty()) {
+            // F09.17 由来でないメール (= 通常 DirectMail) は何もしない
+            return;
+        }
+        AdEmailDelivery delivery = opt.get();
+        AdBounceType bounceType = mapSesBounceType(sesBounceType);
+        delivery.setBouncedAt(LocalDateTime.now());
+        delivery.setBounceType(bounceType);
+        adEmailDeliveryRepository.save(delivery);
+        log.info("F09.17 ad_email_deliveries バウンス反映: deliveryId={} recipientId={} bounceType={}",
+                delivery.getId(), recipientId, bounceType);
+    }
+
+    /**
+     * F09.17 ε-C: SES 苦情通知を {@code ad_email_deliveries} に COMPLAINT として反映する。
+     * COMPLAINT は HARD 同等扱い (設計書 §11 解決事項 8) で課金対象外。
+     */
+    private void reflectComplaintToAdEmailDelivery(Long recipientId) {
+        Optional<AdEmailDelivery> opt = adEmailDeliveryRepository.findByDirectMailRecipientId(recipientId);
+        if (opt.isEmpty()) {
+            return;
+        }
+        AdEmailDelivery delivery = opt.get();
+        delivery.setBouncedAt(LocalDateTime.now());
+        delivery.setBounceType(AdBounceType.COMPLAINT);
+        adEmailDeliveryRepository.save(delivery);
+        log.info("F09.17 ad_email_deliveries 苦情反映: deliveryId={} recipientId={}",
+                delivery.getId(), recipientId);
+    }
+
+    /**
+     * SES の bounceType 文字列を {@link AdBounceType} に変換する。
+     */
+    static AdBounceType mapSesBounceType(String sesBounceType) {
+        if (sesBounceType == null) {
+            return AdBounceType.HARD;
+        }
+        return switch (sesBounceType) {
+            case "Permanent" -> AdBounceType.HARD;
+            case "Transient" -> AdBounceType.SOFT;
+            default -> AdBounceType.HARD;
+        };
     }
 
     /**
