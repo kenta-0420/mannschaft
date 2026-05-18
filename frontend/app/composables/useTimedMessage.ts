@@ -1,5 +1,5 @@
 export function useTimedMessage() {
-  const { tm } = useI18n()
+  const { tm, rt } = useI18n()
   const message = ref('')
 
   function pick() {
@@ -11,11 +11,14 @@ export function useTimedMessage() {
     else if (hour >= 17 && hour < 21) period = 'evening'
     else period = 'night'
 
-    // tm() returns deeply typed locale values; use unknown to avoid excessive type instantiation
+    // tm() は配列要素を compiled message AST として返すため、
+    // .value プロパティでは取り出せず undefined になる（commit 0554b54d4 の typecheck 対応で誤って導入されたリグレッション）。
+    // rt() は compiled message を文字列に解決する公式 API のため、各要素に対して rt() を適用する。
     const raw: unknown = tm(`timedMessage.${period}`)
-    const messages: string[] = Array.isArray(raw) ? (raw as { value: string }[]).map((m) => m.value ?? '') : []
-    if (messages.length > 0) {
-      message.value = messages[Math.floor(Math.random() * messages.length)] ?? ''
+    if (Array.isArray(raw) && raw.length > 0) {
+      const picked = raw[Math.floor(Math.random() * raw.length)]
+      // as Parameters<typeof rt>[0] で型穴を埋める（compiled message AST の型を vue-i18n が露出していないため）
+      message.value = rt(picked as Parameters<typeof rt>[0])
     }
   }
 
