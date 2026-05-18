@@ -64,6 +64,29 @@ public class WorkflowRequestService {
     }
 
     /**
+     * 自分の申請一覧を組織横断的にページング取得する。
+     *
+     * <p>F05.6 Phase 11 第二陣（2-γ）で追加。MEMBER ロールがフロントエンドの「マイ申請ページ」で
+     * 自分の申請をスコープを跨いで一覧表示するためのエンドポイントを支える。</p>
+     *
+     * @param currentUserId 操作者ユーザー ID
+     * @param status        ステータスフィルタ（null の場合は全件）
+     * @param pageable      ページング情報
+     * @return 申請レスポンスのページ
+     */
+    public Page<WorkflowRequestResponse> listMyRequests(Long currentUserId, String status, Pageable pageable) {
+        Page<WorkflowRequestEntity> page;
+        if (status != null) {
+            WorkflowStatus workflowStatus = WorkflowStatus.valueOf(status);
+            page = requestRepository.findByRequestedByAndStatusOrderByCreatedAtDesc(
+                    currentUserId, workflowStatus, pageable);
+        } else {
+            page = requestRepository.findByRequestedByOrderByCreatedAtDesc(currentUserId, pageable);
+        }
+        return page.map(this::buildRequestResponse);
+    }
+
+    /**
      * 申請詳細を取得する。
      *
      * @param scopeType スコープ種別
