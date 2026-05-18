@@ -60,10 +60,19 @@ class PublicTeamControllerTest {
      * 必ずこの配列と照らし合わせてレビューすること。
      */
     static final String[] FORBIDDEN_FIELDS = {
+            // 個人情報（メンバー一覧 / 連絡先）
             "members", "memberList", "users", "userList",
-            "email", "phone", "phoneNumber", "address",
+            "email", "emails", "phone", "phoneNumber", "phones",
+            "address", "addressLine", "streetAddress",
+            // 内部状態 / 楽観ロックトークン（設計書 §3.2）
             "supporterEnabled", "archivedAt", "deletedAt", "version",
-            "chatMessages", "announcements", "files"
+            // 関連エンティティ（チャット / 告知 / ファイル / 出席）
+            "chatMessages", "chatHistory",
+            "announcements", "announcementList",
+            "files", "documents", "attachments",
+            "attendances", "attendanceRecords",
+            // 統計値の生データ（memberCount のみ公開 OK だが、それ以外の統計は伏せる）
+            "memberRoster", "userRoster"
     };
 
     private static final Long TEAM_ID = 100L;
