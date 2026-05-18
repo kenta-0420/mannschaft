@@ -1,5 +1,5 @@
 {
-  "ad_label": "Anuncio",
+  "ad_label": "広告",
   "status": {
     "draft": "下書き",
     "review": "審査中",
@@ -82,6 +82,8 @@
     "report": "通報する",
     "unsubscribe": "配信停止",
     "block_advertiser": "この広告主をブロック",
+    "stop_ads": "広告受信を停止",
+    "unblock_advertiser": "ブロック解除",
     "export_csv": "CSV をエクスポート",
     "view_detail": "詳細を見る",
     "back_to_queue": "審査キューに戻る",
@@ -153,12 +155,29 @@
       "title": "広告の受信設定",
       "description": "受け取る広告のチャネルや、ブロックしたい広告主を設定します。",
       "channel_section": "受信するチャネル",
+      "channel_section_description": "停止したチャネルからは広告を受信しなくなります。",
       "blocked_section": "ブロック済み広告主",
+      "blocked_section_description": "ブロックした広告主からの広告は一切届かなくなります（最大 100 件）。",
       "blocked_empty": "ブロック中の広告主はいません。",
+      "blocked_limit_exceeded": "ブロック上限（100 件）に達しています。一部を解除してから追加してください。",
+      "add_block_label": "広告主 ID で追加",
+      "add_block_placeholder": "例: 12",
+      "add_block_button": "ブロックに追加",
       "rotate_tokens": "配信停止リンクを無効化する",
       "rotate_tokens_help": "過去のメール内リンクを使えなくします。",
+      "rotate_tokens_section": "セキュリティ",
+      "rotate_tokens_confirm": "本当にすべての配信停止リンクを無効化しますか？この操作は元に戻せません。",
+      "rotate_tokens_success": "メール内リンクを無効化しました。",
       "consent_required": "広告の受信には初回同意が必要です。",
-      "saved": "設定を保存しました。"
+      "consented_at": "初回同意日時",
+      "not_consented": "未同意",
+      "save_button": "保存",
+      "saved": "設定を保存しました。",
+      "save_rate_limited": "設定変更の上限（1 時間 10 件）に達しました。しばらく待ってから再度お試しください。",
+      "channel_announcement": "お知らせフィード内の広告",
+      "channel_email": "メール広告",
+      "channel_push": "プッシュ通知広告",
+      "channel_banner": "サイト内バナー広告"
     },
     "me_ad_deliveries": {
       "title": "受け取った広告",
@@ -166,7 +185,26 @@
       "empty": "まだ広告を受け取っていません。",
       "delivered_at": "配信日時",
       "opened": "閲覧済み",
-      "clicked": "クリック済み"
+      "clicked": "クリック済み",
+      "filter_all": "すべて",
+      "filter_announcement": "お知らせ",
+      "filter_email": "メール",
+      "filter_push": "プッシュ",
+      "filter_banner": "バナー",
+      "column_campaign": "キャンペーン",
+      "column_advertiser": "広告主",
+      "column_channel": "チャネル",
+      "column_engagement": "アクション",
+      "column_actions": "操作",
+      "engagement_read": "開封済み",
+      "engagement_clicked": "クリック済み",
+      "engagement_none": "未開封",
+      "load_more": "さらに読み込む",
+      "delete_all_section": "データ削除（GDPR 削除権）",
+      "delete_all_description": "受信した広告の履歴をすべて削除します。広告主の課金実績や統計は保持されますが、あなたとの紐付けは消去されます。",
+      "delete_all_button": "すべての履歴を削除",
+      "delete_all_confirm": "本当にこれまでの広告履歴をすべて削除しますか？この操作は元に戻せません。",
+      "delete_all_success": "広告履歴をすべて削除しました。"
     },
     "system_admin_dashboard": {
       "title": "広告審査ダッシュボード",
@@ -235,14 +273,19 @@
     "description": "通報内容は SYSTEM_ADMIN が確認します。",
     "reason_label": "通報理由",
     "detail_label": "詳細（任意）",
+    "detail_placeholder": "気になった点を具体的にお書きください",
     "submit": "通報を送信",
-    "submitted": "通報を受け付けました。"
+    "cancel": "キャンセル",
+    "submitted": "通報を受け付けました。",
+    "rate_limited": "通報送信の上限（1 日 20 件）に達しました。明日再度お試しください。"
   },
   "consent_dialog": {
     "title": "広告の受信に同意しますか？",
     "description": "Mannschaft は広告主からの限定的なメッセージ配信を提供しています。受信設定はいつでも変更できます。",
     "accept": "同意して続行",
-    "decline": "今は受け取らない"
+    "decline": "今は受け取らない",
+    "stop_all": "広告を全停止",
+    "stopped_message": "すべての広告受信を停止しました。設定画面でいつでも変更できます。"
   },
   "error_codes": {
     "AD_CAMPAIGN_NOT_FOUND": "キャンペーンが見つかりません。",
@@ -255,5 +298,122 @@
     "AD_PREFERENCES_BLOCKED_LIMIT": "ブロックできる広告主は最大 100 件までです。",
     "AD_REPORT_DUPLICATE": "このキャンペーンは既に通報済みです。",
     "AD_RATE_LIMIT_EXCEEDED": "リクエスト数が上限に達しました。しばらくお待ちください。"
+  },
+  "advertiser_crud": {
+    "list_tab": {
+      "all": "すべて",
+      "draft": "下書き",
+      "review": "審査中",
+      "approved": "承認済み",
+      "scheduled": "配信予約",
+      "delivering": "配信中",
+      "paused": "一時停止",
+      "completed": "終了",
+      "blocked": "ブロック",
+      "cancelled": "キャンセル"
+    },
+    "list_action": {
+      "create_button": "新規作成"
+    },
+    "list_table": {
+      "name": "キャンペーン名",
+      "status": "ステータス",
+      "period": "配信期間",
+      "total_budget": "総予算",
+      "consumed_budget": "消費済み",
+      "actions": "操作"
+    },
+    "create_step": {
+      "basic": "基本情報",
+      "channels": "配信チャネル",
+      "audience": "オーディエンス",
+      "preview": "プレビュー / 確定"
+    },
+    "create_nav": {
+      "next": "次へ",
+      "back": "戻る",
+      "submit": "下書きとして作成"
+    },
+    "detail_tab": {
+      "overview": "概要",
+      "channels": "チャネル",
+      "audience": "オーディエンス",
+      "moderation": "モデレーション履歴"
+    },
+    "detail_empty": {
+      "moderation_logs": "審査履歴はありません。"
+    },
+    "form": {
+      "name": "キャンペーン名",
+      "name_placeholder": "例: 春のキャンペーン",
+      "total_budget": "総予算（円）",
+      "starts_at": "配信開始時刻",
+      "ends_at": "配信終了時刻",
+      "scheduled_timezone": "タイムゾーン",
+      "frequency_cap_override": "フリークエンシーキャップ上書き（週件数）",
+      "frequency_cap_help": "未指定の場合はデフォルトの週 3 件を使用します。"
+    },
+    "channel_form": {
+      "subject": "件名",
+      "body_markdown": "本文（Markdown）",
+      "image_url": "画像 URL",
+      "cta_label": "CTA ラベル",
+      "cta_url": "CTA リンク URL",
+      "banner_creative_id": "バナークリエイティブ ID",
+      "select_channel": "チャネル種別を選択",
+      "select_locale": "言語を選択"
+    },
+    "segment_form": {
+      "select_type": "セグメント種別を選択",
+      "inclusion_mode": "包含モード",
+      "age_min": "下限年齢",
+      "age_max": "上限年齢",
+      "genders": "性別",
+      "prefecture_codes": "都道府県コード（カンマ区切り）",
+      "city_codes": "市区町村コード（カンマ区切り）",
+      "interest_tags": "興味タグ（カンマ区切り）",
+      "org_types": "組織タイプ（カンマ区切り）",
+      "locales": "言語",
+      "devices": "デバイス",
+      "remove": "削除"
+    },
+    "preview": {
+      "title": "推定リーチ",
+      "estimated_range": "推定リーチ数（レンジ）",
+      "channel_breakdown": "チャネル別推定",
+      "fetch": "推定リーチを取得",
+      "loading": "推定中...",
+      "under_100_warning": "推定リーチ数が 100 未満です。配信対象が少なすぎる可能性があります。",
+      "no_data": "プレビューデータがありません。先に「推定リーチを取得」を実行してください。"
+    },
+    "errors": {
+      "load_failed": "データの取得に失敗しました。",
+      "save_failed": "保存に失敗しました。",
+      "transition_failed": "状態遷移に失敗しました。",
+      "preview_failed": "プレビューの取得に失敗しました。"
+    },
+    "confirm": {
+      "submit": "このキャンペーンを審査に出しますか？",
+      "cancel": "キャンセルすると元に戻せません。続行しますか？",
+      "launch": "配信を開始します。よろしいですか？",
+      "pause": "配信を一時停止します。よろしいですか？",
+      "resume": "配信を再開します。よろしいですか？",
+      "delete": "この下書きを削除します。よろしいですか？"
+    },
+    "validation": {
+      "name_required": "キャンペーン名は必須です。",
+      "name_max": "キャンペーン名は 120 文字以内で入力してください。",
+      "total_budget_min": "総予算は 1,000 円以上で指定してください。",
+      "total_budget_max": "総予算は 100,000,000 円以下で指定してください。",
+      "starts_at_required": "配信開始時刻は必須です。",
+      "ends_at_required": "配信終了時刻は必須です。",
+      "starts_before_ends": "配信開始時刻は終了時刻より前にしてください。",
+      "frequency_cap_range": "フリークエンシーキャップは 1〜30 の範囲で指定してください。",
+      "at_least_one_channel": "少なくとも 1 つのチャネルを設定してください。",
+      "at_least_one_segment": "少なくとも 1 つのオーディエンスセグメントを設定してください。"
+    },
+    "nav": {
+      "messaging_campaigns": "メッセージ型キャンペーン"
+    }
   }
 }

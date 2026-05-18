@@ -82,6 +82,8 @@
     "report": "Report",
     "unsubscribe": "Unsubscribe",
     "block_advertiser": "Block this advertiser",
+    "stop_ads": "Stop receiving ads",
+    "unblock_advertiser": "Unblock",
     "export_csv": "Export CSV",
     "view_detail": "View details",
     "back_to_queue": "Back to review queue",
@@ -153,12 +155,29 @@
       "title": "Advertising preferences",
       "description": "Choose which channels you accept ads from and block specific advertisers.",
       "channel_section": "Accepted channels",
+      "channel_section_description": "Turning off a channel will stop ads from that channel.",
       "blocked_section": "Blocked advertisers",
+      "blocked_section_description": "Blocked advertisers will not be able to deliver ads to you (max 100).",
       "blocked_empty": "No advertisers are currently blocked.",
+      "blocked_limit_exceeded": "You have reached the block limit (100). Please unblock some entries first.",
+      "add_block_label": "Add by advertiser ID",
+      "add_block_placeholder": "e.g., 12",
+      "add_block_button": "Add to block list",
       "rotate_tokens": "Revoke previously sent unsubscribe links",
       "rotate_tokens_help": "Invalidates any unsubscribe links sent in past emails.",
+      "rotate_tokens_section": "Security",
+      "rotate_tokens_confirm": "Are you sure you want to invalidate all unsubscribe links? This action cannot be undone.",
+      "rotate_tokens_success": "Email links have been invalidated.",
       "consent_required": "You need to consent before receiving ads.",
-      "saved": "Preferences saved."
+      "consented_at": "Initial consent date",
+      "not_consented": "Not consented",
+      "save_button": "Save",
+      "saved": "Preferences saved.",
+      "save_rate_limited": "You have reached the preference update limit (10 per hour). Please wait and try again.",
+      "channel_announcement": "Ads in announcement feed",
+      "channel_email": "Email ads",
+      "channel_push": "Push notification ads",
+      "channel_banner": "In-site banner ads"
     },
     "me_ad_deliveries": {
       "title": "Ads you received",
@@ -166,7 +185,26 @@
       "empty": "You have not received any ads yet.",
       "delivered_at": "Delivered at",
       "opened": "Opened",
-      "clicked": "Clicked"
+      "clicked": "Clicked",
+      "filter_all": "All",
+      "filter_announcement": "Announcement",
+      "filter_email": "Email",
+      "filter_push": "Push",
+      "filter_banner": "Banner",
+      "column_campaign": "Campaign",
+      "column_advertiser": "Advertiser",
+      "column_channel": "Channel",
+      "column_engagement": "Action",
+      "column_actions": "Operations",
+      "engagement_read": "Read",
+      "engagement_clicked": "Clicked",
+      "engagement_none": "Unread",
+      "load_more": "Load more",
+      "delete_all_section": "Data deletion (GDPR Right to Erasure)",
+      "delete_all_description": "Delete all ad delivery history. Advertiser billing records and aggregate statistics will be retained, but their association with you will be removed.",
+      "delete_all_button": "Delete all history",
+      "delete_all_confirm": "Are you sure you want to delete all ad history? This action cannot be undone.",
+      "delete_all_success": "Ad history has been deleted."
     },
     "system_admin_dashboard": {
       "title": "Ad moderation dashboard",
@@ -235,14 +273,19 @@
     "description": "Reports are reviewed by SYSTEM_ADMIN.",
     "reason_label": "Reason",
     "detail_label": "Details (optional)",
+    "detail_placeholder": "Please describe specifically what concerned you",
     "submit": "Submit report",
-    "submitted": "Thank you. Your report has been received."
+    "cancel": "Cancel",
+    "submitted": "Thank you. Your report has been received.",
+    "rate_limited": "You have reached the daily reporting limit (20 per day). Please try again tomorrow."
   },
   "consent_dialog": {
     "title": "Accept ad delivery?",
     "description": "Mannschaft delivers limited advertising messages from advertisers. You can change your preferences at any time.",
     "accept": "Accept and continue",
-    "decline": "Not now"
+    "decline": "Not now",
+    "stop_all": "Stop all ads",
+    "stopped_message": "All ad delivery has been stopped. You can change this anytime in settings."
   },
   "error_codes": {
     "AD_CAMPAIGN_NOT_FOUND": "Campaign not found.",
@@ -255,5 +298,122 @@
     "AD_PREFERENCES_BLOCKED_LIMIT": "You can block up to 100 advertisers.",
     "AD_REPORT_DUPLICATE": "You have already reported this campaign.",
     "AD_RATE_LIMIT_EXCEEDED": "Too many requests. Please try again later."
+  },
+  "advertiser_crud": {
+    "list_tab": {
+      "all": "All",
+      "draft": "Draft",
+      "review": "In review",
+      "approved": "Approved",
+      "scheduled": "Scheduled",
+      "delivering": "Delivering",
+      "paused": "Paused",
+      "completed": "Completed",
+      "blocked": "Blocked",
+      "cancelled": "Cancelled"
+    },
+    "list_action": {
+      "create_button": "Create"
+    },
+    "list_table": {
+      "name": "Name",
+      "status": "Status",
+      "period": "Period",
+      "total_budget": "Total budget",
+      "consumed_budget": "Consumed",
+      "actions": "Actions"
+    },
+    "create_step": {
+      "basic": "Basic info",
+      "channels": "Channels",
+      "audience": "Audience",
+      "preview": "Preview / Confirm"
+    },
+    "create_nav": {
+      "next": "Next",
+      "back": "Back",
+      "submit": "Create as draft"
+    },
+    "detail_tab": {
+      "overview": "Overview",
+      "channels": "Channels",
+      "audience": "Audience",
+      "moderation": "Moderation history"
+    },
+    "detail_empty": {
+      "moderation_logs": "No moderation history."
+    },
+    "form": {
+      "name": "Campaign name",
+      "name_placeholder": "e.g. Spring campaign",
+      "total_budget": "Total budget (JPY)",
+      "starts_at": "Start at",
+      "ends_at": "End at",
+      "scheduled_timezone": "Timezone",
+      "frequency_cap_override": "Frequency cap override (per week)",
+      "frequency_cap_help": "Defaults to 3 per week if left blank."
+    },
+    "channel_form": {
+      "subject": "Subject",
+      "body_markdown": "Body (Markdown)",
+      "image_url": "Image URL",
+      "cta_label": "CTA label",
+      "cta_url": "CTA URL",
+      "banner_creative_id": "Banner creative ID",
+      "select_channel": "Select channel type",
+      "select_locale": "Select locale"
+    },
+    "segment_form": {
+      "select_type": "Select segment type",
+      "inclusion_mode": "Inclusion mode",
+      "age_min": "Min age",
+      "age_max": "Max age",
+      "genders": "Genders",
+      "prefecture_codes": "Prefecture codes (comma separated)",
+      "city_codes": "City codes (comma separated)",
+      "interest_tags": "Interest tags (comma separated)",
+      "org_types": "Organization types (comma separated)",
+      "locales": "Locales",
+      "devices": "Devices",
+      "remove": "Remove"
+    },
+    "preview": {
+      "title": "Estimated reach",
+      "estimated_range": "Estimated reach range",
+      "channel_breakdown": "Channel breakdown",
+      "fetch": "Fetch preview",
+      "loading": "Estimating...",
+      "under_100_warning": "Estimated reach is under 100. The audience may be too narrow.",
+      "no_data": "No preview yet. Click 'Fetch preview' to estimate."
+    },
+    "errors": {
+      "load_failed": "Failed to load data.",
+      "save_failed": "Failed to save.",
+      "transition_failed": "State transition failed.",
+      "preview_failed": "Failed to fetch preview."
+    },
+    "confirm": {
+      "submit": "Submit this campaign for review?",
+      "cancel": "Cancel this campaign? This cannot be undone.",
+      "launch": "Launch this campaign?",
+      "pause": "Pause this campaign?",
+      "resume": "Resume this campaign?",
+      "delete": "Delete this draft?"
+    },
+    "validation": {
+      "name_required": "Campaign name is required.",
+      "name_max": "Campaign name must be at most 120 characters.",
+      "total_budget_min": "Total budget must be at least 1,000.",
+      "total_budget_max": "Total budget must be at most 100,000,000.",
+      "starts_at_required": "Start time is required.",
+      "ends_at_required": "End time is required.",
+      "starts_before_ends": "Start time must be before end time.",
+      "frequency_cap_range": "Frequency cap must be between 1 and 30.",
+      "at_least_one_channel": "Configure at least one channel.",
+      "at_least_one_segment": "Configure at least one audience segment."
+    },
+    "nav": {
+      "messaging_campaigns": "Messaging campaigns"
+    }
   }
 }
