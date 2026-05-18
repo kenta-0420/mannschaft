@@ -1,5 +1,6 @@
 package com.mannschaft.app.proxy.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.proxy.service.ProxyConsentLifecycleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ public class ProxyConsentExpiryJob {
 
     private final ProxyConsentLifecycleService lifecycleService;
 
+    @BatchEndpoint(name = "proxy-consent-expiry-daily", description = "代理入力同意書の有効期限切れを毎日 02:00 に AUTO_BY_TENURE_END で失効する")
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "ProxyConsentExpiryJob", lockAtMostFor = "10m", lockAtLeastFor = "1m")
     public void run() {

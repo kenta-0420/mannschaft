@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.credit.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -47,6 +48,7 @@ public class NotificationCreditExpiryBatch {
     /**
      * 有効期限バッチを実行する（毎日 AM 3:00 JST）。
      */
+    @BatchEndpoint(name = "notification-credit-expiry-daily", description = "通知クレジットの期限アラートと失効処理を毎日 03:00 に実行する")
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = "notificationCreditExpiryBatch",

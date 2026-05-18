@@ -1,5 +1,6 @@
 package com.mannschaft.app.succession.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.succession.entity.UnsealRequestEntity;
 import com.mannschaft.app.succession.repository.SuccessionPreRegistrationRepository;
 import com.mannschaft.app.succession.repository.UnsealRequestRepository;
@@ -29,6 +30,7 @@ public class AutoResealBatchService {
     private final UnsealRequestRepository unsealRequestRepo;
     private final SuccessionPreRegistrationRepository preRegRepo;
 
+    @BatchEndpoint(name = "succession-auto-reseal", description = "封緘解除 72h TTL を 5 分毎にチェックし RE_SEALED へ自動遷移する")
     @Scheduled(cron = "0 */5 * * * *")
     @Transactional
     public void autoReseal() {

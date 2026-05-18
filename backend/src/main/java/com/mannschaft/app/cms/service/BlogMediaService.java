@@ -1,5 +1,6 @@
 package com.mannschaft.app.cms.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.cms.CmsErrorCode;
 import com.mannschaft.app.cms.dto.BlogMediaUploadUrlRequest;
 import com.mannschaft.app.cms.dto.BlogMediaUploadUrlResponse;
@@ -132,6 +133,7 @@ public class BlogMediaService {
      * 使用量を減算する。s3Key のプレフィックス（{@code blog/{SCOPE_TYPE}/{SCOPE_ID}/}）から
      * スコープを復元する。スコープ解析に失敗した場合は警告ログのみで減算をスキップする。</p>
      */
+    @BatchEndpoint(name = "cms-blog-media-orphan-cleanup", description = "72 時間以上孤立した blog メディアを毎日 02:00 に R2 から物理削除する")
     @Scheduled(cron = "0 0 2 * * *")
     @Transactional
     public void cleanupOrphanMedia() {

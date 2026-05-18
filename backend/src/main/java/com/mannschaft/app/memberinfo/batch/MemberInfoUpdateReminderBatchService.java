@@ -1,5 +1,6 @@
 package com.mannschaft.app.memberinfo.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.memberinfo.TeamMemberInfoFieldEntity;
 import com.mannschaft.app.memberinfo.TeamMemberInfoFieldRepository;
 import com.mannschaft.app.memberinfo.TeamMemberInfoResponseEntity;
@@ -44,6 +45,7 @@ public class MemberInfoUpdateReminderBatchService {
     /**
      * 毎日9時（JST）に実行。期限切れまたは未回答フィールドを持つメンバーへリマインドを送信する。
      */
+    @BatchEndpoint(name = "memberinfo-update-reminder-daily", description = "メンバー情報の期限切れ・未回答に対するリマインドを毎日 09:00 に送信する")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "memberInfoUpdateReminderBatch", lockAtMostFor = "30m", lockAtLeastFor = "5m")
     @Transactional

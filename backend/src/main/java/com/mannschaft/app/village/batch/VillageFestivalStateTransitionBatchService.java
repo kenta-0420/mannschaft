@@ -1,5 +1,6 @@
 package com.mannschaft.app.village.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.village.entity.VillageFestivalEntity;
@@ -50,6 +51,7 @@ public class VillageFestivalStateTransitionBatchService {
      *
      * <p>cron 表現 {@code "0 *\/15 * * * *"} は毎時 0/15/30/45 分の 0 秒に発火。</p>
      */
+    @BatchEndpoint(name = "village-festival-state-transition", description = "村のお祭り SCHEDULED→ACTIVE→ENDED 状態遷移を 15 分毎に処理する")
     @Scheduled(cron = "0 */15 * * * *", zone = "UTC")
     @SchedulerLock(
             name = "villageFestivalStateTransitionBatch",

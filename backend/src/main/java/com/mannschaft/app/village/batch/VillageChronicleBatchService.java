@@ -1,5 +1,6 @@
 package com.mannschaft.app.village.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.repository.VillageRepository;
 import com.mannschaft.app.village.service.VillageChronicleService;
@@ -38,6 +39,7 @@ public class VillageChronicleBatchService {
      *
      * <p>cron 表現: {@code "0 0 3 1 * *"} — 毎月 1 日の 03:00:00 に発火（JST）。</p>
      */
+    @BatchEndpoint(name = "village-chronicle-monthly", description = "全村の前月分村史を毎月 1 日 03:00 に生成する")
     @Scheduled(cron = "0 0 3 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = "villageChronicleMonthlyBatch",

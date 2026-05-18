@@ -1,5 +1,6 @@
 package com.mannschaft.app.village.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
@@ -54,6 +55,7 @@ public class VillageHeadmanSuccessionBatchService {
     /**
      * 毎日 UTC 03:00 にバッチ実行する。
      */
+    @BatchEndpoint(name = "village-headman-succession-daily", description = "村長 HEADMAN の自動引き継ぎを毎日 UTC 03:00 に処理する")
     @Scheduled(cron = "0 0 3 * * *", zone = "UTC")
     @SchedulerLock(
             name = "villageHeadmanSuccessionBatch",

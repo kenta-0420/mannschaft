@@ -1,5 +1,6 @@
 package com.mannschaft.app.membership.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
@@ -35,6 +36,7 @@ public class MembershipConsistencyChecker {
     private final UserRoleRepository userRoleRepository;
     private final MeterRegistry meterRegistry;
 
+    @BatchEndpoint(name = "membership-consistency-check-daily", description = "memberships と user_roles の整合性を毎日 04:00 に検査する")
     @Scheduled(cron = "0 0 4 * * *")
     public void checkConsistency() {
         long diffCount = computeDiff();

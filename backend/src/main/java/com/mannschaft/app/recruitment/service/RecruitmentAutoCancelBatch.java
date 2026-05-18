@@ -1,5 +1,6 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
@@ -56,6 +57,7 @@ public class RecruitmentAutoCancelBatch {
     /**
      * 5分間隔で自動キャンセル対象の募集を処理する。
      */
+    @BatchEndpoint(name = "recruitment-auto-cancel", description = "auto_cancel_at 経過かつ最小定員不足の募集を 5 分毎に AUTO_CANCELLED に遷移する")
     @Scheduled(fixedDelay = 5 * 60 * 1000)
     @SchedulerLock(name = "recruitment-auto-cancel-batch", lockAtLeastFor = "PT4M", lockAtMostFor = "PT15M")
     public void run() {

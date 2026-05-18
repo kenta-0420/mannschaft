@@ -1,5 +1,6 @@
 package com.mannschaft.app.shiftbudget.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.shiftbudget.service.MonthlyShiftBudgetCloseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,7 @@ public class MonthlyShiftBudgetCloseBatchJob {
      * 毎月 1 日 02:00 JST に実行する。
      * <p>Phase 10-β: {@code closeAll} を使用。組織毎の失敗は failed_events に記録されつつ続行する。</p>
      */
+    @BatchEndpoint(name = "shiftbudget-monthly-close", description = "前月分のシフト予算 allocation を毎月 1 日 02:00 に全組織横断で締める")
     @Scheduled(cron = "0 0 2 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "MonthlyShiftBudgetCloseBatchJob",
             lockAtMostFor = "30m", lockAtLeastFor = "5m")

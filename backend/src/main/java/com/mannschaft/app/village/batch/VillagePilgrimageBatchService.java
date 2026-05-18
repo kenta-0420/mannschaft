@@ -1,5 +1,6 @@
 package com.mannschaft.app.village.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.village.entity.UserVillagePinEntity;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
@@ -70,6 +71,7 @@ public class VillagePilgrimageBatchService {
      * <p>cron 表現 {@code "0 0 9 * * *"} は JST 09:00 ちょうどに発火。
      * 朝のログイン時に「今日の村」を提示できるタイミングを優先した。</p>
      */
+    @BatchEndpoint(name = "village-pilgrimage-daily", description = "村の巡礼推薦を毎日 09:00 にユーザー別に生成する")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = "villagePilgrimageBatch",

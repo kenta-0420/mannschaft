@@ -1,5 +1,6 @@
 package com.mannschaft.app.translation.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.translation.TranslationStatus;
 import com.mannschaft.app.translation.entity.ContentTranslationEntity;
 import com.mannschaft.app.translation.repository.ContentTranslationQueryRepository;
@@ -37,6 +38,7 @@ public class StaleTranslationBatchService {
      * 3. 更新件数をINFOログに出力
      * </p>
      */
+    @BatchEndpoint(name = "translation-stale-check-daily", description = "原文更新後に陳腐化した翻訳を毎日 02:00 に NEEDS_UPDATE へ一括更新する")
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "stale_translation_check", lockAtMostFor = "PT15M")
     @Transactional

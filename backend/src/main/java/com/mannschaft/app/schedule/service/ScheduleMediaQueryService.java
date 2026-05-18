@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
@@ -246,6 +247,7 @@ public class ScheduleMediaQueryService {
      * schedule_id IS NULL かつ 72 時間以上経過したレコードを R2 から削除して物理削除する。
      * スケジュール削除時（ON DELETE SET NULL）によって schedule_id が NULL になったレコードも対象となる。
      */
+    @BatchEndpoint(name = "schedule-media-orphan-cleanup-daily", description = "72 時間以上孤立した schedule メディアを毎日 02:30 に R2 から物理削除する")
     @Scheduled(cron = "0 30 2 * * *")
     @Transactional
     public void cleanupOrphanMedia() {

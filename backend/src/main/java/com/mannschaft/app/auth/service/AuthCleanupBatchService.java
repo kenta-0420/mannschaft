@@ -1,5 +1,6 @@
 package com.mannschaft.app.auth.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.entity.UserEntity.UserStatus;
@@ -31,6 +32,7 @@ public class AuthCleanupBatchService {
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final AuditLogService auditLogService;
 
+    @BatchEndpoint(name = "auth-unverified-account-cleanup-daily", description = "登録後 7 日経過しても未認証のアカウントを毎日 03:00 に論理削除する")
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "authCleanupBatch", lockAtMostFor = "PT15M", lockAtLeastFor = "PT1M")
     @Transactional

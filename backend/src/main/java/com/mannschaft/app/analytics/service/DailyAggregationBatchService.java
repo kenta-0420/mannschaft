@@ -1,5 +1,6 @@
 package com.mannschaft.app.analytics.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.analytics.FunnelStage;
 import com.mannschaft.app.analytics.RevenueSource;
 import com.mannschaft.app.analytics.entity.AnalyticsDailyRevenueEntity;
@@ -50,6 +51,7 @@ public class DailyAggregationBatchService {
      * 日次集計バッチを実行する。
      * ShedLock による排他制御あり。最大ロック30分。
      */
+    @BatchEndpoint(name = "analytics-daily-aggregation", description = "前日分の売上・ユーザー・ファネル統計を毎日 02:00 に集計する")
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "dailyAnalyticsAggregation", lockAtMostFor = "30m", lockAtLeastFor = "5m")
     @Transactional

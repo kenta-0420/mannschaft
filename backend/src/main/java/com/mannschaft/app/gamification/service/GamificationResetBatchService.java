@@ -1,5 +1,6 @@
 package com.mannschaft.app.gamification.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.gamification.TransactionType;
 import com.mannschaft.app.gamification.entity.GamificationConfigEntity;
 import com.mannschaft.app.gamification.entity.PointTransactionEntity;
@@ -45,6 +46,7 @@ public class GamificationResetBatchService {
      *   <li>処理件数をログ出力</li>
      * </ol>
      */
+    @BatchEndpoint(name = "gamification-point-reset-daily", description = "ポイントリセット設定に該当するスコープを毎日 04:00 にリセットする")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "gamification_point_reset", lockAtMostFor = "PT30M")
     @Transactional

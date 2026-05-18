@@ -1,5 +1,6 @@
 package com.mannschaft.app.auth.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -35,6 +36,7 @@ public class AuditLogPartitionMaintenanceBatchService {
 
     private final JdbcTemplate jdbcTemplate;
 
+    @BatchEndpoint(name = "auth-audit-log-partition-maintenance", description = "audit_logs テーブルの翌々月分パーティションを毎月 1 日 01:00 に追加する")
     @Scheduled(cron = "0 0 1 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "auditLogPartitionMaintenance", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     public void addNextPartitions() {

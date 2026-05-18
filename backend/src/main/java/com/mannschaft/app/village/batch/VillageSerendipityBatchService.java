@@ -1,5 +1,6 @@
 package com.mannschaft.app.village.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.village.entity.VillageEntity;
@@ -57,6 +58,7 @@ public class VillageSerendipityBatchService {
     /**
      * 毎日 02:00（JST）に集計を実行する。
      */
+    @BatchEndpoint(name = "village-serendipity-daily", description = "村のご縁スコアを毎日 02:00 に集計する")
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = "villageSerendipityBatch",

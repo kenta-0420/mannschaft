@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -38,6 +39,7 @@ public class NotificationCleanupBatchService {
 
     private final JdbcTemplate jdbcTemplate;
 
+    @BatchEndpoint(name = "notification-cleanup", description = "90 日経過した既読通知を毎日 04:00 に物理削除する")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "notificationCleanupBatch", lockAtMostFor = "PT1H", lockAtLeastFor = "PT5M")
     public void cleanupOldReadNotifications() {

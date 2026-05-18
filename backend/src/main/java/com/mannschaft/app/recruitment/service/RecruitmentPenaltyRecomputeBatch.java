@@ -1,5 +1,6 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.recruitment.PenaltyLiftReason;
 import com.mannschaft.app.recruitment.entity.RecruitmentPenaltySettingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity;
@@ -36,6 +37,7 @@ public class RecruitmentPenaltyRecomputeBatch {
     /**
      * 毎日 04:00 JST (= 19:00 UTC) に実行。
      */
+    @BatchEndpoint(name = "recruitment-penalty-recompute-daily", description = "募集ペナルティの有効性を毎日 04:00 に再判定する")
     @Scheduled(cron = "0 0 19 * * *")
     @SchedulerLock(name = "recruitment-penalty-recompute-batch", lockAtMostFor = "50m", lockAtLeastFor = "5m")
     @Transactional

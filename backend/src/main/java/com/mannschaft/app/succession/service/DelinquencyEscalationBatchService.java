@@ -1,5 +1,6 @@
 package com.mannschaft.app.succession.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.succession.entity.DelinquencyEscalationEntity;
 import com.mannschaft.app.succession.entity.DelinquencyEscalationStage;
 import com.mannschaft.app.succession.repository.DelinquencyEscalationRepository;
@@ -52,6 +53,7 @@ public class DelinquencyEscalationBatchService {
      * <p>処理対象: {@code resolved_at IS NULL AND frozen_at IS NULL} の全エスカレーション。
      * バッチ失敗時のリトライ安全性を確保するため、各昇格は個別トランザクションで実行する。
      */
+    @BatchEndpoint(name = "succession-delinquency-escalation-daily", description = "滞納エスカレーションを毎日 02:00 に経過日数で 5 段階自動昇格する")
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Tokyo")
     @Transactional
     public void advanceEscalations() {

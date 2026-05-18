@@ -1,5 +1,6 @@
 package com.mannschaft.app.gdpr.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.EmailService;
@@ -26,6 +27,7 @@ public class WithdrawalReminderService {
     private final UserRepository userRepository;
     private final EmailService emailService;
 
+    @BatchEndpoint(name = "gdpr-withdrawal-reminder-daily", description = "退会猶予期間中のユーザーへ毎日 09:00 にリマインドメールを送信する")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "withdrawalReminderBatch", lockAtMostFor = "PT10M", lockAtLeastFor = "PT1M")
     @Transactional

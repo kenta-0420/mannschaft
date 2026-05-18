@@ -1,5 +1,6 @@
 package com.mannschaft.app.residencestatus.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.residencestatus.service.ResidentActivityAggregatorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,7 @@ public class ResidentActivityAggregatorBatch {
      * {@link ResidentActivityAggregatorService#upsertDailySnapshot} を呼び出す。
      * TODO: 将来は EventListener 化予定（クロスドメイン依存の解消）
      */
+    @BatchEndpoint(name = "residencestatus-activity-aggregator-daily", description = "全居住者アクティビティスナップショットを毎日 03:00 に生成する（v1 stub）")
     @Scheduled(cron = "0 0 3 * * *")
     public void aggregateDaily() {
         log.info("[ResidentActivityAggregatorBatch] 日次集計 開始");

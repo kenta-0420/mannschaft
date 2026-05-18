@@ -1,5 +1,6 @@
 package com.mannschaft.app.analytics.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.analytics.entity.AnalyticsMonthlyCohortEntity;
 import com.mannschaft.app.analytics.repository.AnalyticsMonthlyCohortRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
@@ -31,6 +32,7 @@ public class MonthlyCohortBatchService {
     private final MemberPaymentRepository memberPaymentRepository;
     private static final int COHORT_LOOKBACK_MONTHS = 24;
 
+    @BatchEndpoint(name = "analytics-monthly-cohort-aggregation", description = "過去 24 ヶ月のコホート分析を毎月 1 日 03:00 に再計算する")
     @Scheduled(cron = "0 0 3 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "monthlyCohortAggregation", lockAtMostFor = "60m", lockAtLeastFor = "10m")
     @Transactional

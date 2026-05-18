@@ -1,5 +1,6 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.recruitment.PenaltyLiftReason;
 import com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentUserPenaltyRepository;
@@ -30,6 +31,7 @@ public class RecruitmentPenaltyLiftBatch {
     /**
      * 毎日 03:00 JST (= 18:00 UTC) に実行。
      */
+    @BatchEndpoint(name = "recruitment-penalty-lift-daily", description = "期限切れの募集ペナルティを毎日 03:00 に AUTO_EXPIRED で自動解除する")
     @Scheduled(cron = "0 0 18 * * *")
     @SchedulerLock(name = "recruitment-penalty-lift-batch", lockAtMostFor = "50m", lockAtLeastFor = "5m")
     @Transactional

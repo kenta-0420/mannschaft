@@ -1,5 +1,6 @@
 package com.mannschaft.app.onboarding.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.onboarding.OnboardingProgressStatus;
@@ -37,6 +38,7 @@ public class OnboardingReminderBatchService {
     /**
      * 毎日9時（JST）に実行。期限前リマインダーと期限超過通知を送信する。
      */
+    @BatchEndpoint(name = "onboarding-reminder-daily", description = "オンボーディング期限前リマインドと超過通知を毎日 09:00 に送信する")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "onboardingReminderBatch", lockAtMostFor = "30m", lockAtLeastFor = "5m")
     @Transactional
