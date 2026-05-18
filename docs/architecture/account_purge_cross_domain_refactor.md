@@ -78,19 +78,23 @@ CLAUDE.md 原則 1（クロスドメイン FK 禁止）・原則 5（@Transactio
 
 ### 2.3 二重実行リスクの既存箇所
 
-`UserAnonymizedEvent`（即時匿名化フェーズで発火済）を購読する既存リスナーが、**30日後の `AccountPurgeService` でも同じテーブルに DELETE を打っている**：
+> ⚠️ **検分修正 2026-05-18**: 当初「二重実行リスク」としていた前提は、即時匿名化リスナーが全休眠中のため実態としては「即時実行が無く 30 日後のみが動く」状態であることが PR #793 で確定。本節は現状の正確な記述に修正済。
+>
+> 具体的には `UserService#withdrawUser()` の呼出元がリポジトリ内に一切存在せず、`UserAnonymizedEvent` の発火実績がゼロ。下表で「即時時に削除済」としていた 9 ドメインの `*AnonymizationEventListener` 群（`AuthAnonymizationEventListener` / `NotificationAnonymizationEventListener` / `FavoriteAnonymizationEventListener` / `SocialAnonymizationEventListener` / `IntegrationAnonymizationEventListener` / `VillageUserCleanerEventListener` 等）は**いずれも休眠状態**であり、現状の clean 経路は 30 日後 `AccountPurgeService` の越境 DML のみが事実上唯一である。
 
-| テーブル | 即時時に削除済 | 30日後にも削除 | リスク |
+`UserAnonymizedEvent`（即時匿名化フェーズ）と `AccountPurgeService`（30 日後物理削除フェーズ）の実態整理：
+
+| テーブル | 即時時に削除済 | 30日後にも削除 | 実態リスク |
 |---|---|---|---|
-| `oauth_accounts` | ✅ `AuthAnonymizationEventListener` | ✅ `AccountPurgeService` (#8) | 二重 DELETE（冪等で実害なし、ただし無駄） |
-| `two_factor_auth` | ✅ `AuthAnonymizationEventListener` | ✅ `AccountPurgeService` (#9) | 同上 |
-| `push_subscriptions` 等 | ✅ `NotificationAnonymizationEventListener` | （`AccountPurgeService` 未削除） | 一貫性欠落 |
-| `user_favorites` | ✅ `FavoriteAnonymizationEventListener` | （`AccountPurgeService` 未削除） | 一貫性欠落 |
-| `follows`, `user_social_profiles` | ✅ `SocialAnonymizationEventListener` | （`AccountPurgeService` 未削除） | 一貫性欠落 |
-| `user_google_calendar_connections` | ✅ `IntegrationAnonymizationEventListener`（schedule） | （`AccountPurgeService` 未削除） | 一貫性欠落 |
-| `user_village_*` | ✅ `VillageUserCleanerEventListener` | （`AccountPurgeService` 未削除） | 一貫性欠落 |
+| `oauth_accounts` | ❌ `AuthAnonymizationEventListener`（リスナー休眠中・PR #793 で根治治療着手） | ✅ `AccountPurgeService` (#8) | 即時実行が無く 30 日後のみが clean。Phase B 完了まで 30 日間 PII 残存 |
+| `two_factor_auth` | ❌ `AuthAnonymizationEventListener`（同上） | ✅ `AccountPurgeService` (#9) | 同上 |
+| `push_subscriptions` 等 | ❌ `NotificationAnonymizationEventListener`（同上） | （`AccountPurgeService` 未削除） | **完全に未 clean**（リスナー休眠 × バッチ未実装） |
+| `user_favorites` | ❌ `FavoriteAnonymizationEventListener`（同上） | （`AccountPurgeService` 未削除） | 同上 |
+| `follows`, `user_social_profiles` | ❌ `SocialAnonymizationEventListener`（同上） | （`AccountPurgeService` 未削除） | 同上 |
+| `user_google_calendar_connections` | ❌ `IntegrationAnonymizationEventListener`（schedule・同上） | （`AccountPurgeService` 未削除） | 同上 |
+| `user_village_*` | ❌ `VillageUserCleanerEventListener`（同上） | （`AccountPurgeService` 未削除） | 同上 |
 
-**結論:** 現状は「即時匿名化リスナー」と「30日後 `AccountPurgeService`」が**互いを知らないまま並走している**。本リファクタはこの 2 系統を統合する。
+**結論:** 現状は **即時匿名化フェーズ自体が実行されていない**（PR #793 §1 / `withdrawal_flow_immediate_anonymization_fix.md` で確定）。30 日後 `AccountPurgeService` が唯一の clean 経路となっているが、Phase B 完了までは 30 日間 PII が残存する状態。**本リファクタは両系統の統合ではなく、休眠リスナーの 30 日後フェーズ統合 + 即時匿名化の再有効化（W-A〜W-F）の両輪で進める。**
 
 ### 2.4 既存テスト網羅性
 
@@ -643,6 +647,7 @@ Phase D 設計書冒頭に「孤児検出は差分方式・フルスキャン禁
 | `backend/src/main/java/com/mannschaft/app/team/listener/TeamMemberCountListener.java` | F15.4 Phase 4 同形パターン |
 | `backend/src/main/java/com/mannschaft/app/team/batch/TeamMemberCountBackfillBatchService.java` | 夜次補正バッチの金型 |
 | `backend/src/main/java/com/mannschaft/app/circulation/event/CirculationDocumentDeletedEvent.java` | F09.14 Phase 4 同形パターン |
+| `docs/architecture/withdrawal_flow_immediate_anonymization_fix.md` | 即時匿名化リスナー全休眠の根治治療設計（PR #793 / f3708a9b4 main マージ済 2026-05-18） |
 
 ---
 
@@ -653,3 +658,4 @@ Phase D 設計書冒頭に「孤児検出は差分方式・フルスキャン禁
 | 2026-05-18 | 初版作成（陣立て書） | 家老（Plan agent） |
 | 2026-05-18 | §3.5 追加（F15.4 Caveat 自動解消・副次効果） | 殿（追記指示反映） |
 | 2026-05-18 | 検分修正反映：§3.5 Before/After 図の事実誤認修正（team→role）／§2.1 表 #14・#10 追記／§2.2 算数誤り（7→8）／§3.1 採用方針 A/B/C 案比較表新設／§4 Phase B-1 順序入替（team→role）+ PR# 記入欄追加 + 冪等性留意ノート／§6 影響度マトリクス並び替え／§9 必須追記 2 件（9.6 最後の ADMIN 退会／9.7 監視・アラート要件）＋推奨追記 4 件（9.8 event-pool ／9.9 organization_id payload／9.10 補正バッチ O(N)／9.11 部分失敗監査） | 殿（家老検分反映） |
+| 2026-05-18 | addendum: §2.3 事実誤認訂正。PR #793（main マージ済 / f3708a9b4）の検分で `UserService#withdrawUser()` 呼出元ゼロ・9 ドメインの即時匿名化リスナー全休眠中が確定。「即時時に削除済 ✅」7 行を全て ❌（休眠中）に修正、結論段落を「両系統統合ではなく休眠リスナーの 30 日後フェーズ統合 + 即時匿名化再有効化（W-A〜W-F）の両輪」に書き換え。関連ドキュメント表に `withdrawal_flow_immediate_anonymization_fix.md` を追加 | 足軽（addendum PR）|
