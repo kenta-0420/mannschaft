@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * バッチジョブログサービス。ジョブログの記録・取得を担当する。
@@ -50,6 +51,16 @@ public class BatchJobLogService {
     public List<BatchJobLogResponse> getLogsByJobName(String jobName) {
         return adminMapper.toBatchJobLogResponseList(
                 batchJobLogRepository.findByJobNameOrderByStartedAtDesc(jobName));
+    }
+
+    /**
+     * ジョブ名で直近 1 件の実行履歴を取得する（F10.X 第二陣 — バッチキック API の status 表示用）。
+     *
+     * <p>Entity のまま返すのは、DTO 変換が必要な利用箇所と、Entity 直参照したい利用箇所
+     * （{@code Repository.findFirstBy...} 相当）の両方に応えるため。</p>
+     */
+    public Optional<BatchJobLogEntity> findLatestByJobName(String jobName) {
+        return batchJobLogRepository.findFirstByJobNameOrderByStartedAtDesc(jobName);
     }
 
     /**
