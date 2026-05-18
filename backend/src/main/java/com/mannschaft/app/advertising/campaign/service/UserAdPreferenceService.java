@@ -62,6 +62,37 @@ public class UserAdPreferenceService {
     }
 
     /**
+     * F09.17 Phase 11-b ε-B 配信ワーカー専用 ── Entity 直接取得版。
+     *
+     * <p>{@link #getOrCreateForUser} は DTO を返すが、配信時にチャネル別オプトアウト判定と
+     * {@code blocked_advertiser_account_ids} 判定の両方が必要なため Entity を直接取得する。</p>
+     *
+     * <p>既存行が無ければデフォルト行を遅延作成する点は {@link #getOrCreateForUser} と同じ。</p>
+     *
+     * @param userId 受信者ユーザー ID
+     * @return preference Entity
+     */
+    @Transactional
+    public UserAdPreference getOrCreateEntityForUser(Long userId) {
+        return preferenceRepository.findByUserId(userId)
+                .orElseGet(() -> createDefault(userId));
+    }
+
+    /**
+     * F09.17 Phase 11-b ε-B 配信ワーカー専用 ── {@code blocked_advertiser_account_ids} JSON を
+     * List&lt;Long&gt; にデコードして返す。
+     *
+     * @param entity preference Entity
+     * @return ブロック広告主 ID 一覧（空なら empty list）
+     */
+    public List<Long> decodeBlockedAdvertiserIds(UserAdPreference entity) {
+        if (entity == null) {
+            return Collections.emptyList();
+        }
+        return fromJson(entity.getBlockedAdvertiserAccountIds());
+    }
+
+    /**
      * 認証ユーザーの広告受信設定を更新する。
      *
      * <p>初回 PUT で {@code consented_at} を {@code now()} に設定する。2 回目以降は維持。</p>
