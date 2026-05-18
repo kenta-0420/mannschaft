@@ -139,6 +139,38 @@ export interface BatchJobLogResponse {
   createdAt: string
 }
 
+// ===== F10.X 第二陣: 汎用バッチキック API =====
+/** バッチ直近実行ステータス（{@code @SchedulerLock} の SKIPPED を含む） */
+export type BatchEndpointLastStatus = 'SUCCESS' | 'FAILED' | 'RUNNING' | 'SKIPPED'
+
+/** バッチ起動応答ステータス */
+export type BatchTriggerStatus = 'ACCEPTED' | 'COMPLETED' | 'FAILED' | 'LOCKED'
+
+/** 登録済みバッチエンドポイントの概要 DTO（GET /api/v1/system-admin/batch） */
+export interface BatchEndpointSummary {
+  name: string
+  description: string
+  schedulerLockName: string | null
+  /** 直近実行ステータス（履歴が無ければ null） */
+  lastStatus: BatchEndpointLastStatus | null
+  /** 直近実行の開始時刻（履歴が無ければ null） */
+  lastStartedAt: string | null
+}
+
+/** バッチ直近実行状況応答（GET /api/v1/system-admin/batch/{name}/status） */
+export interface BatchStatusResponse {
+  name: string
+  lastJobLog: BatchJobLogResponse | null
+}
+
+/** バッチ起動応答（POST /api/v1/system-admin/batch/{name}/trigger） */
+export interface BatchTriggerResponse {
+  name: string
+  status: BatchTriggerStatus
+  jobLogId: number | null
+  message: string
+}
+
 // ===== Notification Stats =====
 export interface NotificationStatsResponse {
   id: number
