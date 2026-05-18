@@ -30,6 +30,7 @@
       "title": "날씨",
       "today": "오늘",
       "tomorrow": "내일",
+      "day_after_tomorrow": "모레",
       "max": "최고",
       "min": "최저",
       "humidity": "습도",
