@@ -60,8 +60,11 @@ const rtMock = vi.fn((msg: unknown): string => {
 // Nuxt の auto-import から提供される useI18n をモックする
 mockNuxtImport('useI18n', () => () => ({ tm: tmMock, rt: rtMock }))
 
-// useTimedMessage は import を mockNuxtImport より後にする必要があるため、
-// 動的 import せず通常 import で問題ない（vitest が hoist 処理する）。
+// useTimedMessage は mockNuxtImport より後で import する必要がある（mockNuxtImport の
+// 仕組み上、対象 composable を import する前にモックを登録しなければならない）。
+// vitest + @nuxt/test-utils が hoisting を担当するため動作上は問題ないが、
+// ESLint の import/first ルールに引っかかるためここで明示的に無効化する。
+// eslint-disable-next-line import/first
 import { useTimedMessage } from '~/composables/useTimedMessage'
 
 // ============================================================
