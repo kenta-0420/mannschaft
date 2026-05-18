@@ -23,6 +23,7 @@ import com.mannschaft.app.auth.event.EmailChangeRequestedEvent;
 import com.mannschaft.app.auth.event.PasswordChangedEvent;
 import com.mannschaft.app.auth.event.PasswordSetupEvent;
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
+import com.mannschaft.app.auth.event.WithdrawalCancelledEvent;
 import com.mannschaft.app.auth.event.WithdrawalRequestedEvent;
 import com.mannschaft.app.weather.event.UserPostalCodeUpdatedEvent;
 import com.mannschaft.app.common.ApiResponse;
@@ -439,6 +440,11 @@ public class UserService {
 
     /**
      * 退会リクエストを取り消す。
+     * <ol>
+     *   <li>deleted_at が NULL の場合 AUTH_032 例外</li>
+     *   <li>deleted_at を NULL に戻す（退会キャンセル）</li>
+     *   <li>WithdrawalCancelledEvent 発行（監査ログ記録用）</li>
+     * </ol>
      *
      * @param userId ユーザーID
      * @return メッセージレスポンス
@@ -454,6 +460,9 @@ public class UserService {
 
         user.cancelDeletion();
         userRepository.save(user);
+
+        // イベント発行（監査ログ AuditLogEventListener#handleWithdrawalCancelled が購読）
+        eventPublisher.publish(new WithdrawalCancelledEvent(userId));
 
         return ApiResponse.of(MessageResponse.of("退会リクエストを取り消しました"));
     }
