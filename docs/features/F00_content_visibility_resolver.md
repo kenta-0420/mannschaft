@@ -153,8 +153,10 @@ F09.8.1 §4.3 の 11 種を起点に、本基盤としては以下 17 種を Pha
 | 13 | `COMMENT` | (親コンテンツの可視性に従属) | 親従属 (Phase C は CirculationComment 限定) | C |
 | 14 | `PHOTO_ALBUM` | `gallery.AlbumVisibility` | 既存enum | D |
 | 15 | `FILE_ATTACHMENT` | (添付元コンテンツの可視性に従属) | 親従属 | D |
-| 16 | `TEAM` | `TeamEntity.Visibility` | 既存enum | D |
-| 17 | `ORGANIZATION` | `OrganizationEntity.Visibility` | 既存enum | D |
+| 16 | `TEAM` | `TeamEntity.Visibility` | 既存enum | D（**F19.1 で Phase D から繰り上げ実装**）|
+| 17 | `ORGANIZATION` | `OrganizationEntity.Visibility` | 既存enum | D（**F19.1 で Phase D から繰り上げ実装**）|
+
+> **F19.1 連携追記（2026-05-18）**: `TEAM` / `ORGANIZATION` Resolver は F19.1 公開チーム・組織ページ機能で本基盤の Phase D を待たず繰り上げ実装される。`PublicTeamVisibilityResolver` / `PublicOrganizationVisibilityResolver` として `com.mannschaft.app.publicview` に配置される。詳細: `F19.1_public_pages_identity_disclosure.md` §7.2。
 
 **visibility 戦略の凡例**:
 - **既存enum**: 機能側に visibility カラムあり、Mapper 経由で StandardVisibility に正規化
@@ -2411,6 +2413,8 @@ if (viewerUserId == null) {
 - 監査ログ §11.4 の `userId` フィールドは未認証時 `"anonymous"` 文字列で記録（NPE 回避）
 
 **決着**: ✅ 確定（v1.0、マスター裁可済）。
+
+> **F19.1 連携追記（2026-05-18）**: 本ガイドラインの実装例として F19.1 公開チーム・組織ページを参照。未認証ユーザーが PUBLIC チーム / 組織 / 公開投稿を閲覧可能になるエンドポイント群（`/api/v1/public/**`）は本ガイドラインに準拠する。詳細: `F19.1_public_pages_identity_disclosure.md` §10。
 
 ### Q2: 「権限なし」と「存在しない」の HTTP レスポンス区別
 
