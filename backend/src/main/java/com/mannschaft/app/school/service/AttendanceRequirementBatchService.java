@@ -1,5 +1,6 @@
 package com.mannschaft.app.school.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.school.dto.EvaluationResponse;
 import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity;
 import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity.EvaluationStatus;
@@ -50,6 +51,7 @@ public class AttendanceRequirementBatchService {
      */
     @Scheduled(cron = "0 0 6 * * *")
     @Transactional
+    @BatchEndpoint(name = "attendance-daily-evaluation", description = "出席日次評価")
     public void runDailyEvaluation() {
         LocalDate today = LocalDate.now();
         short year = (short) today.getYear();

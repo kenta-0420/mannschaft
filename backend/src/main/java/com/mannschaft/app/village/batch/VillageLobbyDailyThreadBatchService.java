@@ -1,5 +1,6 @@
 package com.mannschaft.app.village.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.village.entity.VillageEntity;
@@ -57,6 +58,7 @@ public class VillageLobbyDailyThreadBatchService {
             name = "villageLobbyDailyThreadBatch",
             lockAtLeastFor = "PT1M",
             lockAtMostFor = "PT30M")
+    @BatchEndpoint(name = "village-lobby-daily-thread", description = "村ロビー デイリースレッド自動生成")
     public void runBatch() {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         log.info("井戸端会議日次スレッドバッチ開始: date={}", today);
