@@ -1,8 +1,7 @@
 package com.mannschaft.app.auth;
 
 import com.mannschaft.app.auth.dto.AuditLogResponse;
-import com.mannschaft.app.auth.repository.AuditLogRepository;
-import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.auth.service.AuditLogQueryService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
@@ -27,12 +26,14 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
+/**
+ * リファクタリング第11弾: AuditLogService 分割に伴い、
+ * 参照系メソッドのテスト対象を {@link AuditLogQueryService} に変更。
+ * テスト内容（振る舞い検証）は変更なし。
+ */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("AuditLogService — スコープ付き参照（Phase 3）")
+@DisplayName("AuditLogQueryService — スコープ付き参照（Phase 3）")
 class AuditLogServiceScopeTest {
-
-    @Mock
-    private AuditLogRepository auditLogRepository;
 
     @Mock
     private AccessControlService accessControlService;
@@ -41,7 +42,7 @@ class AuditLogServiceScopeTest {
     private JdbcTemplate jdbcTemplate;
 
     @InjectMocks
-    private AuditLogService auditLogService;
+    private AuditLogQueryService auditLogQueryService;
 
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 100L;
@@ -73,7 +74,7 @@ class AuditLogServiceScopeTest {
             when(jdbcTemplate.queryForList(anyString(), any(Object[].class)))
                     .thenReturn(List.of(buildRow(1L, "TEAM_MEMBER_JOINED")));
 
-            CursorPagedResponse<AuditLogResponse> result = auditLogService.getTeamAuditLogs(
+            CursorPagedResponse<AuditLogResponse> result = auditLogQueryService.getTeamAuditLogs(
                     USER_ID, TEAM_ID, null, null, null, null, null, null, 20);
 
             assertThat(result.getData()).hasSize(1);
@@ -86,7 +87,7 @@ class AuditLogServiceScopeTest {
             doThrow(new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
                     .when(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
 
-            assertThatThrownBy(() -> auditLogService.getTeamAuditLogs(
+            assertThatThrownBy(() -> auditLogQueryService.getTeamAuditLogs(
                     USER_ID, TEAM_ID, null, null, null, null, null, null, 20))
                     .isInstanceOf(BusinessException.class);
         }
@@ -97,7 +98,7 @@ class AuditLogServiceScopeTest {
             LocalDateTime from = LocalDateTime.now();
             LocalDateTime to = from.minusDays(1);
 
-            assertThatThrownBy(() -> auditLogService.getTeamAuditLogs(
+            assertThatThrownBy(() -> auditLogQueryService.getTeamAuditLogs(
                     USER_ID, TEAM_ID, null, null, null, from, to, null, 20))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
@@ -115,7 +116,7 @@ class AuditLogServiceScopeTest {
                             buildRow(1L, "TEAM_MEMBER_JOINED")
                     ));
 
-            CursorPagedResponse<AuditLogResponse> result = auditLogService.getTeamAuditLogs(
+            CursorPagedResponse<AuditLogResponse> result = auditLogQueryService.getTeamAuditLogs(
                     USER_ID, TEAM_ID, null, null, null, null, null, null, 2);
 
             assertThat(result.getData()).hasSize(2);
@@ -137,7 +138,7 @@ class AuditLogServiceScopeTest {
             when(jdbcTemplate.queryForList(anyString(), any(Object[].class)))
                     .thenReturn(List.of(row));
 
-            CursorPagedResponse<AuditLogResponse> result = auditLogService.getOrganizationAuditLogs(
+            CursorPagedResponse<AuditLogResponse> result = auditLogQueryService.getOrganizationAuditLogs(
                     USER_ID, ORG_ID, null, null, null, null, null, null, 20);
 
             assertThat(result.getData()).hasSize(1);
@@ -150,7 +151,7 @@ class AuditLogServiceScopeTest {
             LocalDateTime from = LocalDateTime.now();
             LocalDateTime to = from.minusHours(1);
 
-            assertThatThrownBy(() -> auditLogService.getOrganizationAuditLogs(
+            assertThatThrownBy(() -> auditLogQueryService.getOrganizationAuditLogs(
                     USER_ID, ORG_ID, null, null, null, from, to, null, 20))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
@@ -170,7 +171,7 @@ class AuditLogServiceScopeTest {
             when(jdbcTemplate.queryForList(anyString(), any(Object[].class)))
                     .thenReturn(List.of(row));
 
-            CursorPagedResponse<AuditLogResponse> result = auditLogService.getTeamAuditLogs(
+            CursorPagedResponse<AuditLogResponse> result = auditLogQueryService.getTeamAuditLogs(
                     USER_ID, TEAM_ID, null, null, null, null, null, null, 20);
 
             String metadata = result.getData().get(0).getMetadata();
@@ -187,7 +188,7 @@ class AuditLogServiceScopeTest {
             when(jdbcTemplate.queryForList(anyString(), any(Object[].class)))
                     .thenReturn(List.of(row));
 
-            CursorPagedResponse<AuditLogResponse> result = auditLogService.getTeamAuditLogs(
+            CursorPagedResponse<AuditLogResponse> result = auditLogQueryService.getTeamAuditLogs(
                     USER_ID, TEAM_ID, null, null, null, null, null, null, 20);
 
             String metadata = result.getData().get(0).getMetadata();
