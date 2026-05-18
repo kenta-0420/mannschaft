@@ -13,6 +13,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const router = useRouter()
 
 /** ソース種別アイコン（PrimeIcons）のマップ */
 const sourceTypeIconMap: Record<string, string> = {
@@ -33,6 +34,42 @@ const priorityColorMap: Record<string, string> = {
 const sourceIcon = computed(() => sourceTypeIconMap[props.item.sourceType] ?? 'pi pi-info-circle')
 const priorityClass = computed(() => priorityColorMap[props.item.priority] ?? '')
 const showPriorityBadge = computed(() => props.item.priority !== 'NORMAL')
+
+/** F09.17: 広告フィードかどうか */
+const isAd = computed(() => props.item.isAdvertisement === true)
+
+/** F09.17: 広告アクション用メニュー */
+const menuRef = ref()
+const menuItems = computed(() => {
+  if (!isAd.value) return []
+  return [
+    {
+      label: t('advertising.actions.report'),
+      icon: 'pi pi-flag',
+      command: () => {
+        reportModalVisible.value = true
+      },
+    },
+    {
+      label: t('advertising.actions.stop_ads'),
+      icon: 'pi pi-ban',
+      command: () => {
+        router.push('/settings/ad-preferences')
+      },
+    },
+  ]
+})
+
+function toggleMenu(event: MouseEvent) {
+  menuRef.value?.toggle(event)
+}
+
+/** F09.17: 広告通報モーダル */
+const reportModalVisible = ref(false)
+const reportCampaignId = computed<string | null>(() => {
+  if (!isAd.value || !props.item.messagingCampaignId) return null
+  return props.item.messagingCampaignId
+})
 
 /** 相対時刻表示（シンプル実装）*/
 function relativeTime(dateStr: string): string {
@@ -77,12 +114,16 @@ function handleClick() {
     <div class="min-w-0 flex-1">
       <!-- タイトル行 -->
       <div class="flex items-start justify-between gap-2">
-        <p
-          class="line-clamp-2 text-sm font-medium leading-snug"
-          :class="item.isRead ? 'text-surface-500' : 'text-surface-900 dark:text-surface-0'"
-        >
-          {{ item.title }}
-        </p>
+        <div class="flex min-w-0 flex-1 items-start gap-2">
+          <!-- F09.17: 広告ラベルバッジ（景品表示法対応） -->
+          <AdLabelBadge v-if="isAd" size="sm" class="mt-0.5 flex-shrink-0" data-testid="ad-label-badge" />
+          <p
+            class="line-clamp-2 text-sm font-medium leading-snug"
+            :class="item.isRead ? 'text-surface-500' : 'text-surface-900 dark:text-surface-0'"
+          >
+            {{ item.title }}
+          </p>
+        </div>
         <!-- 優先度バッジ -->
         <span
           v-if="showPriorityBadge"
@@ -107,6 +148,20 @@ function handleClick() {
           {{ t('announcement.expires_at') }}: {{ new Date(item.expiresAt).toLocaleDateString('ja-JP') }}
         </span>
       </div>
+    </div>
+
+    <!-- F09.17: 広告アクションメニュー -->
+    <div v-if="isAd" class="flex-shrink-0">
+      <Button
+        icon="pi pi-ellipsis-v"
+        text
+        rounded
+        size="small"
+        :aria-label="t('advertising.actions.report')"
+        data-testid="ad-menu-trigger"
+        @click.stop="toggleMenu"
+      />
+      <Menu ref="menuRef" :model="menuItems" :popup="true" />
     </div>
 
     <!-- 管理者アクション -->
@@ -135,5 +190,13 @@ function handleClick() {
     <div v-if="!item.isRead" class="mt-2 flex-shrink-0">
       <span class="inline-block h-2 w-2 rounded-full bg-primary" />
     </div>
+
+    <!-- F09.17: 通報モーダル（広告フィードのみマウント） -->
+    <AdReportModal
+      v-if="isAd && reportCampaignId"
+      v-model:visible="reportModalVisible"
+      :campaign-id="reportCampaignId"
+      @click.stop
+    />
   </div>
 </template>

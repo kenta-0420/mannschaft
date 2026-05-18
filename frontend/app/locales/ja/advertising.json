@@ -81,7 +81,9 @@
     "remove_segment": "セグメントを削除",
     "report": "通報する",
     "unsubscribe": "配信停止",
-    "block_advertiser": "この広告主をブロック"
+    "block_advertiser": "この広告主をブロック",
+    "stop_ads": "広告受信を停止",
+    "unblock_advertiser": "ブロック解除"
   },
   "pages": {
     "advertiser_campaign_list": {
@@ -140,12 +142,29 @@
       "title": "広告の受信設定",
       "description": "受け取る広告のチャネルや、ブロックしたい広告主を設定します。",
       "channel_section": "受信するチャネル",
+      "channel_section_description": "停止したチャネルからは広告を受信しなくなります。",
       "blocked_section": "ブロック済み広告主",
+      "blocked_section_description": "ブロックした広告主からの広告は一切届かなくなります（最大 100 件）。",
       "blocked_empty": "ブロック中の広告主はいません。",
+      "blocked_limit_exceeded": "ブロック上限（100 件）に達しています。一部を解除してから追加してください。",
+      "add_block_label": "広告主 ID で追加",
+      "add_block_placeholder": "例: 12",
+      "add_block_button": "ブロックに追加",
       "rotate_tokens": "配信停止リンクを無効化する",
       "rotate_tokens_help": "過去のメール内リンクを使えなくします。",
+      "rotate_tokens_section": "セキュリティ",
+      "rotate_tokens_confirm": "本当にすべての配信停止リンクを無効化しますか？この操作は元に戻せません。",
+      "rotate_tokens_success": "メール内リンクを無効化しました。",
       "consent_required": "広告の受信には初回同意が必要です。",
-      "saved": "設定を保存しました。"
+      "consented_at": "初回同意日時",
+      "not_consented": "未同意",
+      "save_button": "保存",
+      "saved": "設定を保存しました。",
+      "save_rate_limited": "設定変更の上限（1 時間 10 件）に達しました。しばらく待ってから再度お試しください。",
+      "channel_announcement": "お知らせフィード内の広告",
+      "channel_email": "メール広告",
+      "channel_push": "プッシュ通知広告",
+      "channel_banner": "サイト内バナー広告"
     },
     "me_ad_deliveries": {
       "title": "受け取った広告",
@@ -153,7 +172,26 @@
       "empty": "まだ広告を受け取っていません。",
       "delivered_at": "配信日時",
       "opened": "閲覧済み",
-      "clicked": "クリック済み"
+      "clicked": "クリック済み",
+      "filter_all": "すべて",
+      "filter_announcement": "お知らせ",
+      "filter_email": "メール",
+      "filter_push": "プッシュ",
+      "filter_banner": "バナー",
+      "column_campaign": "キャンペーン",
+      "column_advertiser": "広告主",
+      "column_channel": "チャネル",
+      "column_engagement": "アクション",
+      "column_actions": "操作",
+      "engagement_read": "開封済み",
+      "engagement_clicked": "クリック済み",
+      "engagement_none": "未開封",
+      "load_more": "さらに読み込む",
+      "delete_all_section": "データ削除（GDPR 削除権）",
+      "delete_all_description": "受信した広告の履歴をすべて削除します。広告主の課金実績や統計は保持されますが、あなたとの紐付けは消去されます。",
+      "delete_all_button": "すべての履歴を削除",
+      "delete_all_confirm": "本当にこれまでの広告履歴をすべて削除しますか？この操作は元に戻せません。",
+      "delete_all_success": "広告履歴をすべて削除しました。"
     }
   },
   "report_dialog": {
@@ -161,14 +199,19 @@
     "description": "通報内容は SYSTEM_ADMIN が確認します。",
     "reason_label": "通報理由",
     "detail_label": "詳細（任意）",
+    "detail_placeholder": "気になった点を具体的にお書きください",
     "submit": "通報を送信",
-    "submitted": "通報を受け付けました。"
+    "cancel": "キャンセル",
+    "submitted": "通報を受け付けました。",
+    "rate_limited": "通報送信の上限（1 日 20 件）に達しました。明日再度お試しください。"
   },
   "consent_dialog": {
     "title": "広告の受信に同意しますか？",
     "description": "Mannschaft は広告主からの限定的なメッセージ配信を提供しています。受信設定はいつでも変更できます。",
     "accept": "同意して続行",
-    "decline": "今は受け取らない"
+    "decline": "今は受け取らない",
+    "stop_all": "広告を全停止",
+    "stopped_message": "すべての広告受信を停止しました。設定画面でいつでも変更できます。"
   },
   "error_codes": {
     "AD_CAMPAIGN_NOT_FOUND": "キャンペーンが見つかりません。",

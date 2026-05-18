@@ -107,6 +107,12 @@ const individualItems = [
     icon: 'pi pi-ban',
     to: '/settings/contact-request-blocks',
   },
+  {
+    label: '広告受信設定',
+    description: '広告のチャネル別オプトアウト・広告主ブロック',
+    icon: 'pi pi-megaphone',
+    to: '/settings/ad-preferences',
+  },
 ]
 
 const searchQuery = ref('')

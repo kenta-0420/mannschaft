@@ -81,7 +81,9 @@
     "remove_segment": "Remove segment",
     "report": "Report",
     "unsubscribe": "Unsubscribe",
-    "block_advertiser": "Block this advertiser"
+    "block_advertiser": "Block this advertiser",
+    "stop_ads": "Stop receiving ads",
+    "unblock_advertiser": "Unblock"
   },
   "pages": {
     "advertiser_campaign_list": {
@@ -140,12 +142,29 @@
       "title": "Advertising preferences",
       "description": "Choose which channels you accept ads from and block specific advertisers.",
       "channel_section": "Accepted channels",
+      "channel_section_description": "Turning off a channel will stop ads from that channel.",
       "blocked_section": "Blocked advertisers",
+      "blocked_section_description": "Blocked advertisers will not be able to deliver ads to you (max 100).",
       "blocked_empty": "No advertisers are currently blocked.",
+      "blocked_limit_exceeded": "You have reached the block limit (100). Please unblock some entries first.",
+      "add_block_label": "Add by advertiser ID",
+      "add_block_placeholder": "e.g., 12",
+      "add_block_button": "Add to block list",
       "rotate_tokens": "Revoke previously sent unsubscribe links",
       "rotate_tokens_help": "Invalidates any unsubscribe links sent in past emails.",
+      "rotate_tokens_section": "Security",
+      "rotate_tokens_confirm": "Are you sure you want to invalidate all unsubscribe links? This action cannot be undone.",
+      "rotate_tokens_success": "Email links have been invalidated.",
       "consent_required": "You need to consent before receiving ads.",
-      "saved": "Preferences saved."
+      "consented_at": "Initial consent date",
+      "not_consented": "Not consented",
+      "save_button": "Save",
+      "saved": "Preferences saved.",
+      "save_rate_limited": "You have reached the preference update limit (10 per hour). Please wait and try again.",
+      "channel_announcement": "Ads in announcement feed",
+      "channel_email": "Email ads",
+      "channel_push": "Push notification ads",
+      "channel_banner": "In-site banner ads"
     },
     "me_ad_deliveries": {
       "title": "Ads you received",
@@ -153,7 +172,26 @@
       "empty": "You have not received any ads yet.",
       "delivered_at": "Delivered at",
       "opened": "Opened",
-      "clicked": "Clicked"
+      "clicked": "Clicked",
+      "filter_all": "All",
+      "filter_announcement": "Announcement",
+      "filter_email": "Email",
+      "filter_push": "Push",
+      "filter_banner": "Banner",
+      "column_campaign": "Campaign",
+      "column_advertiser": "Advertiser",
+      "column_channel": "Channel",
+      "column_engagement": "Action",
+      "column_actions": "Operations",
+      "engagement_read": "Read",
+      "engagement_clicked": "Clicked",
+      "engagement_none": "Unread",
+      "load_more": "Load more",
+      "delete_all_section": "Data deletion (GDPR Right to Erasure)",
+      "delete_all_description": "Delete all ad delivery history. Advertiser billing records and aggregate statistics will be retained, but their association with you will be removed.",
+      "delete_all_button": "Delete all history",
+      "delete_all_confirm": "Are you sure you want to delete all ad history? This action cannot be undone.",
+      "delete_all_success": "Ad history has been deleted."
     }
   },
   "report_dialog": {
@@ -161,14 +199,19 @@
     "description": "Reports are reviewed by SYSTEM_ADMIN.",
     "reason_label": "Reason",
     "detail_label": "Details (optional)",
+    "detail_placeholder": "Please describe specifically what concerned you",
     "submit": "Submit report",
-    "submitted": "Thank you. Your report has been received."
+    "cancel": "Cancel",
+    "submitted": "Thank you. Your report has been received.",
+    "rate_limited": "You have reached the daily reporting limit (20 per day). Please try again tomorrow."
   },
   "consent_dialog": {
     "title": "Accept ad delivery?",
     "description": "Mannschaft delivers limited advertising messages from advertisers. You can change your preferences at any time.",
     "accept": "Accept and continue",
-    "decline": "Not now"
+    "decline": "Not now",
+    "stop_all": "Stop all ads",
+    "stopped_message": "All ad delivery has been stopped. You can change this anytime in settings."
   },
   "error_codes": {
     "AD_CAMPAIGN_NOT_FOUND": "Campaign not found.",
