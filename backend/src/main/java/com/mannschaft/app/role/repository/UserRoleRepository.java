@@ -64,6 +64,15 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     void deleteByUserIdAndOrganizationId(Long userId, Long organizationId);
 
     /**
+     * Phase B-1 (RolePurgeEventListener) 用: 指定ユーザーの全ロール割当を取得する。
+     *
+     * <p>{@link #findByUserIdAndTeamIdIsNotNull(Long)} / {@link #findByUserIdAndOrganizationIdIsNotNull(Long)}
+     * とは異なり、SYSTEM_ADMIN（team_id・organization_id がともに NULL）も含めた
+     * 当該ユーザーの全 user_roles 行を返す。</p>
+     */
+    List<UserRoleEntity> findAllByUserId(Long userId);
+
+    /**
      * 物理削除バッチ用: 指定ユーザーを付与者とするロール割当のgrantedByをNULL化する。
      */
     @Modifying
