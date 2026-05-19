@@ -5,6 +5,8 @@ import com.mannschaft.app.advertising.campaign.service.AdMessagingCampaignTransi
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.membership.domain.ScopeType;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,9 +17,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 /**
- * F09.17 Phase 11-b ε-A メッセージ型キャンペーン状態遷移 API。
+ * F09.17 Phase 11-b ε-A メッセージ型キャンペーン状態遷移 API (旧 organizationId クエリ式)。
  *
- * <p>所有者 (組織 ADMIN 以上) 向けの遷移エンドポイントを提供する。設計書 §4 に対応:</p>
+ * <p>所有者 (組織 ADMIN 以上) 向けの遷移エンドポイントを提供する:</p>
  *
  * <ul>
  *   <li>{@code POST /api/v1/advertiser/campaigns/messaging/{id}/submit}  DRAFT → REVIEW</li>
@@ -27,17 +29,23 @@ import java.util.UUID;
  *   <li>{@code POST /api/v1/advertiser/campaigns/messaging/{id}/resume}  PAUSED → DELIVERING</li>
  * </ul>
  *
+ * <p><strong>非推奨</strong> F09.17 Phase 11-d-2 で scope ベース URL
+ * ({@link OrganizationAdMessagingCampaignTransitionController} /
+ * {@link TeamAdMessagingCampaignTransitionController}) を導入。
+ * 本 Controller は互換のため Phase 11-e まで残置するが、全エンドポイントに
+ * {@code Deprecation: true} と {@code Sunset} ヘッダを付与して段階的廃止を予告する。</p>
+ *
  * <p>SYSTEM_ADMIN の {@code approve} / {@code block} はすでに
  * {@link SystemAdminAdCampaignController} で提供済のためここでは扱わない。</p>
- *
- * <p>テナント越境制御は {@link AccessControlService#checkAdminOrAbove(Long, Long, String)} と
- * Service 層の {@code organization_id} フィルタの 2 段構えで担保する。
- * 同 controller の DRAFT CRUD 側 ({@link AdvertiserMessagingCampaignController}) と同形。</p>
  */
+@Deprecated
 @RestController
 @RequestMapping("/api/v1/advertiser/campaigns/messaging")
 @RequiredArgsConstructor
 public class AdMessagingCampaignTransitionController {
+
+    /** 廃止予定日 (F09.17 Phase 11-e リリース予定日)。HTTP-date 形式 (RFC 7231)。 */
+    private static final String SUNSET_DATE = "Wed, 31 Dec 2026 23:59:59 GMT";
 
     private final AdMessagingCampaignTransitionService transitionService;
     private final AccessControlService accessControlService;
@@ -47,63 +55,67 @@ public class AdMessagingCampaignTransitionController {
         accessControlService.checkAdminOrAbove(userId, organizationId, "ORGANIZATION");
     }
 
-    /**
-     * DRAFT → REVIEW (自動 NG 検知の結果次第で BLOCKED 直行もあり)。
-     */
+    private void writeDeprecationHeaders(HttpServletResponse response) {
+        response.setHeader("Deprecation", "true");
+        response.setHeader("Sunset", SUNSET_DATE);
+        response.setHeader(
+                "Link",
+                "</api/v1/organizations/{organizationId}/advertiser/campaigns/messaging>; "
+                        + "rel=\"successor-version\"");
+    }
+
     @PostMapping("/{id}/submit")
     public ApiResponse<CampaignDetailResponse> submit(
             @PathVariable UUID id,
-            @RequestParam Long organizationId) {
+            @RequestParam Long organizationId,
+            HttpServletResponse response) {
+        writeDeprecationHeaders(response);
         verifyOrganizationAccess(organizationId);
         Long userId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(transitionService.submit(id, organizationId, userId));
+        return ApiResponse.of(transitionService.submit(id, ScopeType.ORGANIZATION, organizationId, userId));
     }
 
-    /**
-     * DRAFT/REVIEW → CANCELLED。
-     */
     @PostMapping("/{id}/cancel")
     public ApiResponse<CampaignDetailResponse> cancel(
             @PathVariable UUID id,
-            @RequestParam Long organizationId) {
+            @RequestParam Long organizationId,
+            HttpServletResponse response) {
+        writeDeprecationHeaders(response);
         verifyOrganizationAccess(organizationId);
         Long userId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(transitionService.cancel(id, organizationId, userId));
+        return ApiResponse.of(transitionService.cancel(id, ScopeType.ORGANIZATION, organizationId, userId));
     }
 
-    /**
-     * APPROVED → SCHEDULED または DELIVERING。
-     */
     @PostMapping("/{id}/launch")
     public ApiResponse<CampaignDetailResponse> launch(
             @PathVariable UUID id,
-            @RequestParam Long organizationId) {
+            @RequestParam Long organizationId,
+            HttpServletResponse response) {
+        writeDeprecationHeaders(response);
         verifyOrganizationAccess(organizationId);
         Long userId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(transitionService.launch(id, organizationId, userId));
+        return ApiResponse.of(transitionService.launch(id, ScopeType.ORGANIZATION, organizationId, userId));
     }
 
-    /**
-     * DELIVERING → PAUSED。
-     */
     @PostMapping("/{id}/pause")
     public ApiResponse<CampaignDetailResponse> pause(
             @PathVariable UUID id,
-            @RequestParam Long organizationId) {
+            @RequestParam Long organizationId,
+            HttpServletResponse response) {
+        writeDeprecationHeaders(response);
         verifyOrganizationAccess(organizationId);
         Long userId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(transitionService.pause(id, organizationId, userId));
+        return ApiResponse.of(transitionService.pause(id, ScopeType.ORGANIZATION, organizationId, userId));
     }
 
-    /**
-     * PAUSED → DELIVERING (credit_limit 再判定)。
-     */
     @PostMapping("/{id}/resume")
     public ApiResponse<CampaignDetailResponse> resume(
             @PathVariable UUID id,
-            @RequestParam Long organizationId) {
+            @RequestParam Long organizationId,
+            HttpServletResponse response) {
+        writeDeprecationHeaders(response);
         verifyOrganizationAccess(organizationId);
         Long userId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(transitionService.resume(id, organizationId, userId));
+        return ApiResponse.of(transitionService.resume(id, ScopeType.ORGANIZATION, organizationId, userId));
     }
 }

@@ -25,6 +25,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -223,6 +224,8 @@ class AdvertiserMessagingCampaignControllerIT {
         return new AdvertiserAccountResponse(
                 ADVERTISER_ACCOUNT_ID,
                 ORG_ID,
+                com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION,
+                ORG_ID,
                 null,
                 "テスト広告主",
                 "ad-campaign@example.com",
@@ -245,10 +248,10 @@ class AdvertiserMessagingCampaignControllerIT {
         void 正常系_201() throws Exception {
             willDoNothing().given(accessControlService)
                     .checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
-            given(advertiserAccountService.getByOrganizationId(ORG_ID))
+            given(advertiserAccountService.getByScope(ScopeType.ORGANIZATION, ORG_ID))
                     .willReturn(stubAdvertiserAccount());
-            given(campaignService.createCampaign(eq(ORG_ID), eq(ADVERTISER_ACCOUNT_ID),
-                    eq(USER_ID), any(CreateCampaignRequest.class)))
+            given(campaignService.createCampaign(eq(ScopeType.ORGANIZATION), eq(ORG_ID),
+                    eq(ADVERTISER_ACCOUNT_ID), eq(USER_ID), any(CreateCampaignRequest.class)))
                     .willReturn(stubDetail());
 
             mockMvc.perform(post("/api/v1/advertiser/campaigns/messaging")
@@ -314,7 +317,7 @@ class AdvertiserMessagingCampaignControllerIT {
                     .checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
             Page<CampaignListItemResponse> page =
                     new PageImpl<>(List.of(stubListItem()), Pageable.unpaged(), 1);
-            given(campaignService.listCampaigns(eq(ORG_ID), any(), any()))
+            given(campaignService.listCampaigns(eq(ScopeType.ORGANIZATION), eq(ORG_ID), any(), any()))
                     .willReturn(page);
 
             mockMvc.perform(get("/api/v1/advertiser/campaigns/messaging")
@@ -334,7 +337,7 @@ class AdvertiserMessagingCampaignControllerIT {
         void 正常系_200() throws Exception {
             willDoNothing().given(accessControlService)
                     .checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
-            given(campaignService.getCampaign(CAMPAIGN_ID, ORG_ID))
+            given(campaignService.getCampaign(CAMPAIGN_ID, ScopeType.ORGANIZATION, ORG_ID))
                     .willReturn(stubDetail());
 
             mockMvc.perform(get("/api/v1/advertiser/campaigns/messaging/{id}", CAMPAIGN_ID)
@@ -349,7 +352,7 @@ class AdvertiserMessagingCampaignControllerIT {
             willDoNothing().given(accessControlService)
                     .checkAdminOrAbove(USER_ID, OTHER_ORG_ID, "ORGANIZATION");
             willThrow(new BusinessException(AdCampaignErrorCode.AD_CAMPAIGN_FORBIDDEN_TENANT))
-                    .given(campaignService).getCampaign(CAMPAIGN_ID, OTHER_ORG_ID);
+                    .given(campaignService).getCampaign(CAMPAIGN_ID, ScopeType.ORGANIZATION, OTHER_ORG_ID);
 
             mockMvc.perform(get("/api/v1/advertiser/campaigns/messaging/{id}", CAMPAIGN_ID)
                             .param("organizationId", OTHER_ORG_ID.toString()))
@@ -363,7 +366,7 @@ class AdvertiserMessagingCampaignControllerIT {
             willDoNothing().given(accessControlService)
                     .checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
             willThrow(new BusinessException(AdCampaignErrorCode.AD_CAMPAIGN_NOT_FOUND))
-                    .given(campaignService).getCampaign(CAMPAIGN_ID, ORG_ID);
+                    .given(campaignService).getCampaign(CAMPAIGN_ID, ScopeType.ORGANIZATION, ORG_ID);
 
             mockMvc.perform(get("/api/v1/advertiser/campaigns/messaging/{id}", CAMPAIGN_ID)
                             .param("organizationId", ORG_ID.toString()))
@@ -387,7 +390,8 @@ class AdvertiserMessagingCampaignControllerIT {
                     .checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
             willThrow(new BusinessException(AdCampaignErrorCode.AD_CAMPAIGN_NOT_EDITABLE))
                     .given(campaignService)
-                    .updateCampaign(eq(CAMPAIGN_ID), eq(ORG_ID), any(UpdateCampaignRequest.class));
+                    .updateCampaign(eq(CAMPAIGN_ID), eq(ScopeType.ORGANIZATION), eq(ORG_ID),
+                            any(UpdateCampaignRequest.class));
 
             mockMvc.perform(put("/api/v1/advertiser/campaigns/messaging/{id}", CAMPAIGN_ID)
                             .param("organizationId", ORG_ID.toString())
@@ -411,13 +415,14 @@ class AdvertiserMessagingCampaignControllerIT {
         void 正常系_204() throws Exception {
             willDoNothing().given(accessControlService)
                     .checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
-            willDoNothing().given(campaignService).softDeleteCampaign(CAMPAIGN_ID, ORG_ID);
+            willDoNothing().given(campaignService)
+                    .softDeleteCampaign(CAMPAIGN_ID, ScopeType.ORGANIZATION, ORG_ID);
 
             mockMvc.perform(delete("/api/v1/advertiser/campaigns/messaging/{id}", CAMPAIGN_ID)
                             .param("organizationId", ORG_ID.toString()))
                     .andExpect(status().isNoContent());
 
-            verify(campaignService).softDeleteCampaign(CAMPAIGN_ID, ORG_ID);
+            verify(campaignService).softDeleteCampaign(CAMPAIGN_ID, ScopeType.ORGANIZATION, ORG_ID);
         }
     }
 
@@ -434,7 +439,7 @@ class AdvertiserMessagingCampaignControllerIT {
         void 正常系_201() throws Exception {
             willDoNothing().given(accessControlService)
                     .checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
-            given(campaignService.addChannel(eq(CAMPAIGN_ID), eq(ORG_ID),
+            given(campaignService.addChannel(eq(CAMPAIGN_ID), eq(ScopeType.ORGANIZATION), eq(ORG_ID),
                     any(CampaignChannelRequest.class)))
                     .willReturn(stubChannel());
 
@@ -455,7 +460,8 @@ class AdvertiserMessagingCampaignControllerIT {
                     .checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
             willThrow(new BusinessException(AdCampaignErrorCode.AD_CHANNEL_DUPLICATE))
                     .given(campaignService)
-                    .addChannel(eq(CAMPAIGN_ID), eq(ORG_ID), any(CampaignChannelRequest.class));
+                    .addChannel(eq(CAMPAIGN_ID), eq(ScopeType.ORGANIZATION), eq(ORG_ID),
+                            any(CampaignChannelRequest.class));
 
             mockMvc.perform(post("/api/v1/advertiser/campaigns/messaging/{id}/channels",
                             CAMPAIGN_ID)
@@ -473,7 +479,8 @@ class AdvertiserMessagingCampaignControllerIT {
                     .checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
             willThrow(new BusinessException(AdCampaignErrorCode.AD_CAMPAIGN_NOT_EDITABLE))
                     .given(campaignService)
-                    .addChannel(eq(CAMPAIGN_ID), eq(ORG_ID), any(CampaignChannelRequest.class));
+                    .addChannel(eq(CAMPAIGN_ID), eq(ScopeType.ORGANIZATION), eq(ORG_ID),
+                            any(CampaignChannelRequest.class));
 
             mockMvc.perform(post("/api/v1/advertiser/campaigns/messaging/{id}/channels",
                             CAMPAIGN_ID)
@@ -505,7 +512,7 @@ class AdvertiserMessagingCampaignControllerIT {
                     Map.of("min", 20, "max", 40),
                     AdSegmentInclusionMode.INCLUDE,
                     LocalDateTime.now());
-            given(campaignService.setAudience(eq(CAMPAIGN_ID), eq(ORG_ID),
+            given(campaignService.setAudience(eq(CAMPAIGN_ID), eq(ScopeType.ORGANIZATION), eq(ORG_ID),
                     any(AudienceConfigRequest.class)))
                     .willReturn(List.of(seg));
 
@@ -531,7 +538,8 @@ class AdvertiserMessagingCampaignControllerIT {
                     .checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
             willThrow(new BusinessException(AdCampaignErrorCode.AD_AUDIENCE_INVALID))
                     .given(campaignService)
-                    .setAudience(eq(CAMPAIGN_ID), eq(ORG_ID), any(AudienceConfigRequest.class));
+                    .setAudience(eq(CAMPAIGN_ID), eq(ScopeType.ORGANIZATION), eq(ORG_ID),
+                            any(AudienceConfigRequest.class));
 
             AudienceConfigRequest req = new AudienceConfigRequest(List.of(
                     new AudienceSegmentRequest(

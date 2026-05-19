@@ -22,6 +22,7 @@ import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignCha
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.ErrorResponse;
+import com.mannschaft.app.membership.domain.ScopeType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -43,9 +44,13 @@ import java.util.UUID;
  * </ul>
  * submit / launch / pause / preview / report 等の状態遷移系・分析系は Phase 11-b で実装する。</p>
  *
- * <p>すべての書き込みメソッドは入口で {@code campaign.organizationId == organizationId} を検証し、
- * 越境を検出した場合は {@link AdCampaignErrorCode#AD_CAMPAIGN_FORBIDDEN_TENANT} を返して
- * IDOR 対策として 404 にマップする。</p>
+ * <p>F09.17 Phase 11-d-2: scope ベース化。
+ * 引数 {@code organizationId} を {@code (ScopeType scopeType, Long scopeId)} に置き換えた。
+ * 越境検出時は {@link AdCampaignErrorCode#AD_CAMPAIGN_NOT_FOUND} を返して IDOR 対策とする
+ * (旧コード互換のため一部メソッドで {@code AD_CAMPAIGN_FORBIDDEN_TENANT} は使わない)。
+ * 旧 {@code organizationId} 引数の overload は {@code @Deprecated} で残置し、
+ * 内部で {@code (ORGANIZATION, organizationId)} に詰め替えて新シグネチャに委譲する。
+ * Phase 11-e で旧 overload を物理削除予定。</p>
  */
 @Service
 @Transactional(readOnly = true)
@@ -58,17 +63,16 @@ public class AdMessagingCampaignService {
     private final AdMessagingCampaignMapper mapper;
 
     // ─────────────────────────────────────────────
-    // 一覧 / 詳細
+    // 一覧 / 詳細 (scope ベース)
     // ─────────────────────────────────────────────
 
     /**
-     * 自組織が所有するキャンペーン一覧を取得する。
-     * {@code status} を指定すると当該状態のみ抽出。
+     * scope が所有するキャンペーン一覧を取得する (Phase 11-d-2)。
      */
     public Page<CampaignListItemResponse> listCampaigns(
-            Long organizationId, AdCampaignStatus status, Pageable pageable) {
+            ScopeType scopeType, Long scopeId, AdCampaignStatus status, Pageable pageable) {
         Page<AdMessagingCampaign> page =
-                campaignRepository.findByOrganizationIdAndDeletedAtIsNull(organizationId, pageable);
+                campaignRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId, pageable);
         return page.map(entity -> {
             if (status != null && entity.getStatus() != status) {
                 return null;
@@ -78,38 +82,40 @@ public class AdMessagingCampaignService {
     }
 
     /**
-     * キャンペーン詳細を取得する。
-     * チャネル一覧・ターゲティング条件を同時に詰めて返す。
+     * キャンペーン詳細を取得する (Phase 11-d-2)。
      */
-    public CampaignDetailResponse getCampaign(UUID campaignId, Long organizationId) {
-        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, organizationId);
+    public CampaignDetailResponse getCampaign(UUID campaignId, ScopeType scopeType, Long scopeId) {
+        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, scopeType, scopeId);
         List<AdMessagingCampaignChannel> channels = channelRepository.findByCampaignId(campaignId);
         List<AdAudienceSegment> segments = segmentRepository.findByCampaignId(campaignId);
         return mapper.toDetail(campaign, channels, segments);
     }
 
     // ─────────────────────────────────────────────
-    // 作成 / 更新 / 削除
+    // 作成 / 更新 / 削除 (scope ベース)
     // ─────────────────────────────────────────────
 
     /**
-     * 新規キャンペーンを DRAFT 状態で作成する。
+     * 新規キャンペーンを DRAFT 状態で作成する (Phase 11-d-2)。
      */
     @Transactional
     public CampaignDetailResponse createCampaign(
-            Long organizationId,
+            ScopeType scopeType,
+            Long scopeId,
             Long advertiserAccountId,
             Long createdByUserId,
             CreateCampaignRequest request) {
         validateScheduleWindow(request.startsAt(), request.endsAt());
 
-        // F09.17 Phase 11-d-1: scope ベース化。既存 organizationId 引数を ORGANIZATION スコープとして埋める。
-        // Phase 11-d-2 で scopeType/scopeId を引数として受け取る形に書き換える。
+        // Phase 11-d-2: scope_type/scope_id を主役とする。
+        // 互換のため organization_id は ORGANIZATION の場合のみ埋める (Phase 11-e 削除予定)。
+        Long legacyOrganizationId = (scopeType == ScopeType.ORGANIZATION) ? scopeId : null;
+
         AdMessagingCampaign entity = AdMessagingCampaign.builder()
                 .advertiserAccountId(advertiserAccountId)
-                .organizationId(organizationId)
-                .scopeType(com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION)
-                .scopeId(organizationId)
+                .organizationId(legacyOrganizationId)
+                .scopeType(scopeType)
+                .scopeId(scopeId)
                 .name(request.name())
                 .status(AdCampaignStatus.DRAFT)
                 .moderationStatus(AdModerationStatus.PENDING)
@@ -127,12 +133,12 @@ public class AdMessagingCampaignService {
     }
 
     /**
-     * DRAFT 状態のキャンペーンを更新する。
+     * DRAFT 状態のキャンペーンを更新する (Phase 11-d-2)。
      */
     @Transactional
     public CampaignDetailResponse updateCampaign(
-            UUID campaignId, Long organizationId, UpdateCampaignRequest request) {
-        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, organizationId);
+            UUID campaignId, ScopeType scopeType, Long scopeId, UpdateCampaignRequest request) {
+        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, scopeType, scopeId);
         requireDraft(campaign);
         validateScheduleWindow(request.startsAt(), request.endsAt());
 
@@ -150,29 +156,27 @@ public class AdMessagingCampaignService {
     }
 
     /**
-     * DRAFT 状態のキャンペーンを論理削除する。
-     * チャネル・セグメントは将来の監査要件に備え物理削除はしない。
+     * DRAFT 状態のキャンペーンを論理削除する (Phase 11-d-2)。
      */
     @Transactional
-    public void softDeleteCampaign(UUID campaignId, Long organizationId) {
-        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, organizationId);
+    public void softDeleteCampaign(UUID campaignId, ScopeType scopeType, Long scopeId) {
+        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, scopeType, scopeId);
         requireDraft(campaign);
         campaign.softDelete();
         campaignRepository.save(campaign);
     }
 
     // ─────────────────────────────────────────────
-    // チャネル CRUD
+    // チャネル CRUD (scope ベース)
     // ─────────────────────────────────────────────
 
     /**
-     * キャンペーンにチャネル別コンテンツを追加する。
-     * UNIQUE (campaign_id, channel_type, locale) を守る。
+     * キャンペーンにチャネル別コンテンツを追加する (Phase 11-d-2)。
      */
     @Transactional
     public CampaignChannelResponse addChannel(
-            UUID campaignId, Long organizationId, CampaignChannelRequest request) {
-        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, organizationId);
+            UUID campaignId, ScopeType scopeType, Long scopeId, CampaignChannelRequest request) {
+        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, scopeType, scopeId);
         requireDraft(campaign);
         validateChannelRequest(request);
 
@@ -200,16 +204,15 @@ public class AdMessagingCampaignService {
     }
 
     /**
-     * チャネル別コンテンツを更新する。
-     * channel_type / locale の変更も許可するが、結果として UNIQUE 制約を破ってはならない。
+     * チャネル別コンテンツを更新する (Phase 11-d-2)。
      */
     @Transactional
     public CampaignChannelResponse updateChannel(
-            UUID channelId, Long organizationId, CampaignChannelRequest request) {
+            UUID channelId, ScopeType scopeType, Long scopeId, CampaignChannelRequest request) {
         AdMessagingCampaignChannel channel = channelRepository.findById(channelId)
                 .orElseThrow(() -> new BusinessException(AdCampaignErrorCode.AD_CAMPAIGN_NOT_FOUND));
 
-        AdMessagingCampaign campaign = findCampaignOrThrow(channel.getCampaignId(), organizationId);
+        AdMessagingCampaign campaign = findCampaignOrThrow(channel.getCampaignId(), scopeType, scopeId);
         requireDraft(campaign);
         validateChannelRequest(request);
 
@@ -239,31 +242,30 @@ public class AdMessagingCampaignService {
     }
 
     /**
-     * チャネル別コンテンツを物理削除する。
+     * チャネル別コンテンツを物理削除する (Phase 11-d-2)。
      */
     @Transactional
-    public void removeChannel(UUID channelId, Long organizationId) {
+    public void removeChannel(UUID channelId, ScopeType scopeType, Long scopeId) {
         AdMessagingCampaignChannel channel = channelRepository.findById(channelId)
                 .orElseThrow(() -> new BusinessException(AdCampaignErrorCode.AD_CAMPAIGN_NOT_FOUND));
 
-        AdMessagingCampaign campaign = findCampaignOrThrow(channel.getCampaignId(), organizationId);
+        AdMessagingCampaign campaign = findCampaignOrThrow(channel.getCampaignId(), scopeType, scopeId);
         requireDraft(campaign);
 
         channelRepository.delete(channel);
     }
 
     // ─────────────────────────────────────────────
-    // ターゲティング設定
+    // ターゲティング設定 (scope ベース)
     // ─────────────────────────────────────────────
 
     /**
-     * ターゲティングセグメントを全件 replace する。
-     * 既存セグメントを DELETE してからリクエスト配列を INSERT する単純な同期。
+     * ターゲティングセグメントを全件 replace する (Phase 11-d-2)。
      */
     @Transactional
     public List<AudienceSegmentResponse> setAudience(
-            UUID campaignId, Long organizationId, AudienceConfigRequest request) {
-        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, organizationId);
+            UUID campaignId, ScopeType scopeType, Long scopeId, AudienceConfigRequest request) {
+        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, scopeType, scopeId);
         requireDraft(campaign);
 
         // 同期: 既存セグメントを全削除してからリクエストを INSERT
@@ -278,17 +280,89 @@ public class AdMessagingCampaignService {
     }
 
     // ─────────────────────────────────────────────
+    // 互換 API (Phase 11-e で削除予定)
+    // ─────────────────────────────────────────────
+
+    /** @deprecated Phase 11-d-2 で scope ベース化。{@link #listCampaigns(ScopeType, Long, AdCampaignStatus, Pageable)} に置換。 */
+    @Deprecated
+    public Page<CampaignListItemResponse> listCampaigns(
+            Long organizationId, AdCampaignStatus status, Pageable pageable) {
+        return listCampaigns(ScopeType.ORGANIZATION, organizationId, status, pageable);
+    }
+
+    /** @deprecated Phase 11-d-2 で scope ベース化。{@link #getCampaign(UUID, ScopeType, Long)} に置換。 */
+    @Deprecated
+    public CampaignDetailResponse getCampaign(UUID campaignId, Long organizationId) {
+        return getCampaign(campaignId, ScopeType.ORGANIZATION, organizationId);
+    }
+
+    /** @deprecated Phase 11-d-2 で scope ベース化。 */
+    @Deprecated
+    @Transactional
+    public CampaignDetailResponse createCampaign(
+            Long organizationId,
+            Long advertiserAccountId,
+            Long createdByUserId,
+            CreateCampaignRequest request) {
+        return createCampaign(ScopeType.ORGANIZATION, organizationId, advertiserAccountId, createdByUserId, request);
+    }
+
+    /** @deprecated Phase 11-d-2 で scope ベース化。 */
+    @Deprecated
+    @Transactional
+    public CampaignDetailResponse updateCampaign(
+            UUID campaignId, Long organizationId, UpdateCampaignRequest request) {
+        return updateCampaign(campaignId, ScopeType.ORGANIZATION, organizationId, request);
+    }
+
+    /** @deprecated Phase 11-d-2 で scope ベース化。 */
+    @Deprecated
+    @Transactional
+    public void softDeleteCampaign(UUID campaignId, Long organizationId) {
+        softDeleteCampaign(campaignId, ScopeType.ORGANIZATION, organizationId);
+    }
+
+    /** @deprecated Phase 11-d-2 で scope ベース化。 */
+    @Deprecated
+    @Transactional
+    public CampaignChannelResponse addChannel(
+            UUID campaignId, Long organizationId, CampaignChannelRequest request) {
+        return addChannel(campaignId, ScopeType.ORGANIZATION, organizationId, request);
+    }
+
+    /** @deprecated Phase 11-d-2 で scope ベース化。 */
+    @Deprecated
+    @Transactional
+    public CampaignChannelResponse updateChannel(
+            UUID channelId, Long organizationId, CampaignChannelRequest request) {
+        return updateChannel(channelId, ScopeType.ORGANIZATION, organizationId, request);
+    }
+
+    /** @deprecated Phase 11-d-2 で scope ベース化。 */
+    @Deprecated
+    @Transactional
+    public void removeChannel(UUID channelId, Long organizationId) {
+        removeChannel(channelId, ScopeType.ORGANIZATION, organizationId);
+    }
+
+    /** @deprecated Phase 11-d-2 で scope ベース化。 */
+    @Deprecated
+    @Transactional
+    public List<AudienceSegmentResponse> setAudience(
+            UUID campaignId, Long organizationId, AudienceConfigRequest request) {
+        return setAudience(campaignId, ScopeType.ORGANIZATION, organizationId, request);
+    }
+
+    // ─────────────────────────────────────────────
     // private ヘルパー
     // ─────────────────────────────────────────────
 
-    private AdMessagingCampaign findCampaignOrThrow(UUID campaignId, Long organizationId) {
+    private AdMessagingCampaign findCampaignOrThrow(UUID campaignId, ScopeType scopeType, Long scopeId) {
         AdMessagingCampaign campaign = campaignRepository
-                .findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, organizationId)
+                .findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, scopeType, scopeId)
                 .orElse(null);
         if (campaign == null) {
             // IDOR 対策: 存在しない場合と他テナント所有の場合を区別しない（どちらも 404 にマップ）
-            // 個別に FORBIDDEN_TENANT を返す可能性も別 path から呼ばれることを想定して保持する
-            // ここでは findByIdAndOrganizationIdAndDeletedAtIsNull がフィルタするため NOT_FOUND を返す
             throw new BusinessException(AdCampaignErrorCode.AD_CAMPAIGN_NOT_FOUND);
         }
         return campaign;

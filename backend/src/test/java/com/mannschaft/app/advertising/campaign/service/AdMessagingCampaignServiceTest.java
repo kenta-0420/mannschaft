@@ -23,6 +23,7 @@ import com.mannschaft.app.advertising.campaign.repository.AdAudienceSegmentRepos
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignChannelRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.domain.ScopeType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -137,7 +138,8 @@ class AdMessagingCampaignServiceTest {
         UUID campaignId = UUID.randomUUID();
         Long orgId = 100L;
         AdMessagingCampaign existing = buildCampaign(campaignId, orgId, AdCampaignStatus.REVIEW);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, orgId))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+                        campaignId, ScopeType.ORGANIZATION, orgId))
                 .willReturn(Optional.of(existing));
 
         UpdateCampaignRequest request = new UpdateCampaignRequest(
@@ -166,7 +168,8 @@ class AdMessagingCampaignServiceTest {
         // Given
         UUID campaignId = UUID.randomUUID();
         Long orgId = 999L; // 攻撃者のテナント
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, orgId))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+                        campaignId, ScopeType.ORGANIZATION, orgId))
                 .willReturn(Optional.empty());
 
         // When / Then
@@ -187,7 +190,8 @@ class AdMessagingCampaignServiceTest {
         UUID campaignId = UUID.randomUUID();
         Long orgId = 100L;
         AdMessagingCampaign existing = buildCampaign(campaignId, orgId, AdCampaignStatus.DRAFT);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, orgId))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+                        campaignId, ScopeType.ORGANIZATION, orgId))
                 .willReturn(Optional.of(existing));
 
         AdMessagingCampaignChannel duplicate = AdMessagingCampaignChannel.builder()
@@ -229,7 +233,8 @@ class AdMessagingCampaignServiceTest {
         UUID campaignId = UUID.randomUUID();
         Long orgId = 100L;
         AdMessagingCampaign existing = buildCampaign(campaignId, orgId, AdCampaignStatus.DRAFT);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, orgId))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+                        campaignId, ScopeType.ORGANIZATION, orgId))
                 .willReturn(Optional.of(existing));
 
         AudienceConfigRequest request = new AudienceConfigRequest(List.of(
@@ -273,7 +278,8 @@ class AdMessagingCampaignServiceTest {
         // Given (DRAFT 成功ケース)
         UUID draftId = UUID.randomUUID();
         AdMessagingCampaign draft = buildCampaign(draftId, 100L, AdCampaignStatus.DRAFT);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(draftId, 100L))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+                        draftId, ScopeType.ORGANIZATION, 100L))
                 .willReturn(Optional.of(draft));
         given(campaignRepository.save(any(AdMessagingCampaign.class)))
                 .willAnswer(inv -> inv.getArgument(0));
@@ -288,7 +294,8 @@ class AdMessagingCampaignServiceTest {
         // Given (DELIVERING の論理削除は拒否)
         UUID liveId = UUID.randomUUID();
         AdMessagingCampaign live = buildCampaign(liveId, 100L, AdCampaignStatus.DELIVERING);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(liveId, 100L))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+                        liveId, ScopeType.ORGANIZATION, 100L))
                 .willReturn(Optional.of(live));
 
         // When / Then
@@ -308,6 +315,8 @@ class AdMessagingCampaignServiceTest {
         AdMessagingCampaign campaign = AdMessagingCampaign.builder()
                 .advertiserAccountId(200L)
                 .organizationId(orgId)
+                .scopeType(ScopeType.ORGANIZATION)
+                .scopeId(orgId)
                 .name("既存キャンペーン")
                 .status(status)
                 .moderationStatus(AdModerationStatus.PENDING)
