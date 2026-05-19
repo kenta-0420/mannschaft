@@ -2,7 +2,7 @@ package com.mannschaft.app.reservation;
 
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.EmailService;
+import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.reservation.dto.EmergencyClosurePreviewResponse;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
@@ -58,7 +58,7 @@ class EmergencyClosureServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private EmailService emailService;
+    private EmailOutboxService emailOutboxService;
 
     @Mock
     private NotificationHelper notificationHelper;

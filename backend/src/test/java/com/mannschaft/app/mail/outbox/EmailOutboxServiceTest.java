@@ -200,4 +200,25 @@ class EmailOutboxServiceTest {
         UUID id = service.enqueue(req);
         assertThat(id).isNotNull();
     }
+
+    @Test
+    @DisplayName("RESERVATION_EMERGENCY_CLOSURE: subject/body を含む payload で enqueue 成功 (スルー方式)")
+    void enqueue_emergencyClosurePassthrough() {
+        EmailOutboxRequest req = new EmailOutboxRequest(
+                "RESERVATION_EMERGENCY_CLOSURE",
+                "ja",
+                "patient@example.com",
+                Map.of(
+                        "subject", "【臨時休業のお知らせ】 5/20-5/22",
+                        "body", "<p>誠に申し訳ございませんが…</p>"
+                ),
+                "reservation",
+                "emergency-closure:42:1001",
+                null,
+                1001L,
+                null
+        );
+        UUID id = service.enqueue(req);
+        assertThat(id).isNotNull();
+    }
 }
