@@ -60,7 +60,8 @@ class ConfirmableNotificationEmailEventListenerTest {
     void setUp() {
         ReflectionTestUtils.setField(listener, "frontendUrl", "http://localhost:3000");
         // MessageSource: キーをそのまま返すデフォルトスタブ
-        when(messageSource.getMessage(anyString(), any(), anyString(), any(Locale.class)))
+        // lenient: スキップ系テスト(skipUserWithBlankEmail等)では renderEmailTemplate が呼ばれないため
+        lenient().when(messageSource.getMessage(anyString(), any(), anyString(), any(Locale.class)))
                 .thenAnswer(invocation -> invocation.getArgument(2));
     }
 

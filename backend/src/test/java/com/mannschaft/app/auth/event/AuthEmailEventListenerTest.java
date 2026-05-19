@@ -63,7 +63,7 @@ class AuthEmailEventListenerTest {
             assertThat(req.sourceDomain()).isEqualTo("auth");
             assertThat(req.userId()).isEqualTo(1L);
             assertThat(req.organizationId()).isNull();
-            assertThat(req.sourceEventId()).isEqualTo("1");
+            assertThat(req.sourceEventId()).isEqualTo("register:1");
             assertThat(req.payloadVars())
                     .containsEntry("displayName", "山田 太郎")
                     .containsEntry("verifyUrl", "http://localhost:3000/verify-email?token=token-abc123");
