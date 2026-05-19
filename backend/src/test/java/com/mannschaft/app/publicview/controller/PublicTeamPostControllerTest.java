@@ -11,8 +11,10 @@ import com.mannschaft.app.publicview.dto.PublicPostSummary;
 import com.mannschaft.app.publicview.dto.PublicScopeRef;
 import com.mannschaft.app.publicview.error.PublicViewErrorCode;
 import com.mannschaft.app.publicview.service.PublicPostQueryService;
+import com.mannschaft.app.publicview.service.ViewerContextBuilder;
 import com.mannschaft.app.publicview.visibility.AnonymousLabels;
 import com.mannschaft.app.publicview.visibility.DisplayIdentity;
+import com.mannschaft.app.publicview.visibility.ViewerContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,6 +25,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -42,19 +45,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * {@link PublicTeamPostController} の MockMvc 結合テスト (F19.1 Phase 1)。
+ * {@link PublicTeamPostController} の MockMvc 結合テスト (F19.1 Phase 2)。
  *
  * <p>設計書 §6.1 / §4.6 のステータスコード網羅:</p>
  * <ul>
  *   <li>200: PUBLIC チームの公開投稿一覧 / 詳細（段階開示済み）</li>
  *   <li>404: PRIVATE チーム / 不在 / 非公開記事（IDOR 対策で一律 404）</li>
- *   <li>投稿者識別が Phase 1 ルール通り（DISPLAY_NAME 系・未ログインは汎用ラベル）</li>
+ *   <li>未ログインの場合は汎用ラベルが返ること（ANONYMOUS ViewerContext）</li>
  *   <li>レスポンス JSON に禁則ワードが含まれない（PII 漏洩防止）</li>
  * </ul>
  */
 @WebMvcTest(PublicTeamPostController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@DisplayName("PublicTeamPostController 結合テスト (F19.1 Phase 1)")
+@DisplayName("PublicTeamPostController 結合テスト (F19.1 Phase 2)")
 class PublicTeamPostControllerTest {
 
     static final String[] FORBIDDEN_FIELDS = {
@@ -77,6 +80,9 @@ class PublicTeamPostControllerTest {
     private PublicPostQueryService publicPostQueryService;
 
     @MockitoBean
+    private ViewerContextBuilder viewerContextBuilder;
+
+    @MockitoBean
     private AuthTokenService authTokenService;
     @MockitoBean
     private UserLocaleCache userLocaleCache;
@@ -86,8 +92,13 @@ class PublicTeamPostControllerTest {
     private ProxyInputContext proxyInputContext;
 
     @BeforeEach
-    void clearContext() {
+    void setUp() {
         SecurityContextHolder.clearContext();
+        // デフォルト: ViewerContextBuilder は ANONYMOUS ViewerContext を返す
+        given(viewerContextBuilder.buildForTeam(any(Authentication.class), any(Long.class)))
+                .willReturn(ViewerContext.anonymous());
+        given(viewerContextBuilder.buildForTeam(eq(null), any(Long.class)))
+                .willReturn(ViewerContext.anonymous());
     }
 
     @Test
@@ -97,7 +108,7 @@ class PublicTeamPostControllerTest {
                 List.of(sampleSummary()),
                 PageRequest.of(0, 20),
                 1);
-        given(publicPostQueryService.listPublicPostsByTeam(eq(TEAM_ID), any(Pageable.class)))
+        given(publicPostQueryService.listPublicPostsByTeam(eq(TEAM_ID), any(Pageable.class), any(ViewerContext.class)))
                 .willReturn(page);
 
         mockMvc.perform(get("/api/v1/public/teams/{teamId}/posts", TEAM_ID))
@@ -120,7 +131,7 @@ class PublicTeamPostControllerTest {
     void listPublicPosts_privateTeam_returns404() throws Exception {
         willThrow(new BusinessException(PublicViewErrorCode.PUBLIC_001))
                 .given(publicPostQueryService)
-                .listPublicPostsByTeam(eq(TEAM_ID), any(Pageable.class));
+                .listPublicPostsByTeam(eq(TEAM_ID), any(Pageable.class), any(ViewerContext.class));
 
         mockMvc.perform(get("/api/v1/public/teams/{teamId}/posts", TEAM_ID))
                 .andExpect(status().isNotFound());
@@ -129,7 +140,7 @@ class PublicTeamPostControllerTest {
     @Test
     @DisplayName("GET /public/teams/{id}/posts/{postId} 200: 投稿詳細（段階開示済み）")
     void getPublicPostDetail_returns200() throws Exception {
-        given(publicPostQueryService.findPublicPostDetailByTeam(eq(TEAM_ID), eq(POST_ID)))
+        given(publicPostQueryService.findPublicPostDetailByTeam(eq(TEAM_ID), eq(POST_ID), any(ViewerContext.class)))
                 .willReturn(sampleDetail());
 
         mockMvc.perform(get("/api/v1/public/teams/{teamId}/posts/{postId}", TEAM_ID, POST_ID))
@@ -144,7 +155,7 @@ class PublicTeamPostControllerTest {
     @DisplayName("GET /public/teams/{id}/posts/{postId} 404: PUBLIC_003 投稿不在")
     void getPublicPostDetail_postNotFound_returns404() throws Exception {
         willThrow(new BusinessException(PublicViewErrorCode.PUBLIC_003))
-                .given(publicPostQueryService).findPublicPostDetailByTeam(eq(TEAM_ID), eq(POST_ID));
+                .given(publicPostQueryService).findPublicPostDetailByTeam(eq(TEAM_ID), eq(POST_ID), any(ViewerContext.class));
 
         mockMvc.perform(get("/api/v1/public/teams/{teamId}/posts/{postId}", TEAM_ID, POST_ID))
                 .andExpect(status().isNotFound());
@@ -154,7 +165,7 @@ class PublicTeamPostControllerTest {
     @DisplayName("GET /public/teams/{id}/posts/{postId} 404: PRIVATE チーム配下の投稿試行")
     void getPublicPostDetail_privateTeam_returns404() throws Exception {
         willThrow(new BusinessException(PublicViewErrorCode.PUBLIC_001))
-                .given(publicPostQueryService).findPublicPostDetailByTeam(eq(TEAM_ID), eq(POST_ID));
+                .given(publicPostQueryService).findPublicPostDetailByTeam(eq(TEAM_ID), eq(POST_ID), any(ViewerContext.class));
 
         mockMvc.perform(get("/api/v1/public/teams/{teamId}/posts/{postId}", TEAM_ID, POST_ID))
                 .andExpect(status().isNotFound());
@@ -165,7 +176,7 @@ class PublicTeamPostControllerTest {
     void publicPostResponse_doesNotLeakSensitiveFields() throws Exception {
         Page<PublicPostSummary> page = new PageImpl<>(
                 List.of(sampleSummary()), PageRequest.of(0, 20), 1);
-        given(publicPostQueryService.listPublicPostsByTeam(eq(TEAM_ID), any(Pageable.class)))
+        given(publicPostQueryService.listPublicPostsByTeam(eq(TEAM_ID), any(Pageable.class), any(ViewerContext.class)))
                 .willReturn(page);
 
         MvcResult result = mockMvc.perform(get("/api/v1/public/teams/{teamId}/posts", TEAM_ID))

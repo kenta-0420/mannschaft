@@ -9,27 +9,29 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * {@link IdentityVisibilityResolver} の Phase 1 仕様検証。
+ * {@link IdentityVisibilityResolver} の Phase 2 仕様検証。
  *
- * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §4.6 / §7.1 / §4.6.4。</p>
+ * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §4.6 / §7.1 / §4.6.4 / §11.3。</p>
  *
- * <p>Phase 1 では「常時 DISPLAY_NAME 系で振る舞う」ことが要件であり、立場別に以下を検証する:</p>
+ * <p>Phase 2 の §4.6.1 開示マトリクス + §11.3 MINOR 上書きルールを検証する:</p>
  * <ul>
  *   <li>未ログイン / 非メンバー → 汎用ラベル「投稿者」 + 汎用アバター + 所属非表示</li>
  *   <li>サポーター（DISPLAY_NAME mode）→ display_name + 実アバター + 所属表示</li>
- *   <li>サポーター（REAL_NAME mode の Phase 1 暫定）→ display_name と同じ挙動（fail-safe）</li>
- *   <li>メンバー / 本人 / システム管理者 → display_name + 実アバター + 所属表示</li>
+ *   <li>サポーター（REAL_NAME mode）→ realNameSnapshot または fullName + 実アバター + 所属表示</li>
+ *   <li>メンバー / 本人 / システム管理者 → realNameSnapshot または fullName + 実アバター + 所属表示</li>
+ *   <li>MINOR 上書きルール → 閲覧者ステータスにかかわらず汎用ラベル「投稿者」</li>
+ *   <li>退会済みユーザー → 「退会済みユーザー」ラベル</li>
  *   <li>display_name が NULL → §4.6.4 フォールバック {@code 匿名のユーザー#XXXXX}</li>
- *   <li>display_name が空文字 → §4.6.4 フォールバック</li>
  *   <li>fallback shortHash の決定論性（同一 userId で同じ値）</li>
  * </ul>
  */
-@DisplayName("IdentityVisibilityResolver Phase 1 仕様")
+@DisplayName("IdentityVisibilityResolver Phase 2 仕様")
 class IdentityVisibilityResolverTest {
 
     private final IdentityVisibilityResolver resolver = new IdentityVisibilityResolver();
 
-    private static final PostAuthor SAMPLE_AUTHOR = new PostAuthor(
+    /** Phase 2 テスト用: displayName のみ、fullName=null、minor=false */
+    private static final PostAuthor SAMPLE_AUTHOR = PostAuthor.ofPhase1(
             42L,
             "やまだ太郎",
             null,
@@ -82,25 +84,41 @@ class IdentityVisibilityResolverTest {
     }
 
     @Test
-    @DisplayName("サポーター（REAL_NAME mode）: Phase 1 暫定で DISPLAY_NAME と同じ挙動")
-    void supporter_realNameMode_phase1FallsBackToDisplayName() {
+    @DisplayName("サポーター（REAL_NAME mode）: realNameSnapshot が null / fullName が null → display_name フォールバック")
+    void supporter_realNameMode_noSnapshotNoFullName_fallsBackToDisplayName() {
         ViewerContext viewer = new ViewerContext(
                 50L, ViewerStatus.SUPPORTER, Set.of(), Set.of(100L));
 
+        // SAMPLE_AUTHOR は realNameSnapshot=null, fullName=null なので display_name "やまだ太郎" にフォールバック
         DisplayIdentity identity = resolver.resolveIdentityForViewer(
                 SAMPLE_AUTHOR, viewer, TEAM_SCOPE, REAL_NAME_MODE);
 
-        // Phase 1: REAL_NAME モードでも display_name を返す（snapshot 機能は Phase 2）
         assertThat(identity.displayLabel()).isEqualTo("やまだ太郎");
         assertThat(identity.teamAffiliationVisible()).isTrue();
     }
 
     @Test
-    @DisplayName("メンバー: display_name + 実アバター + 所属表示")
-    void member_returnsDisplayName() {
+    @DisplayName("サポーター（REAL_NAME mode）: realNameSnapshot がある場合はスナップショットを返す")
+    void supporter_realNameMode_withSnapshot_returnsSnapshot() {
+        PostAuthor authorWithSnapshot = new PostAuthor(
+                42L, "やまだ太郎", "山田 太郎", "山田太郎", "/images/users/42/avatar.png", false);
+        ViewerContext viewer = new ViewerContext(
+                50L, ViewerStatus.SUPPORTER, Set.of(), Set.of(100L));
+
+        DisplayIdentity identity = resolver.resolveIdentityForViewer(
+                authorWithSnapshot, viewer, TEAM_SCOPE, REAL_NAME_MODE);
+
+        assertThat(identity.displayLabel()).isEqualTo("山田 太郎");
+        assertThat(identity.teamAffiliationVisible()).isTrue();
+    }
+
+    @Test
+    @DisplayName("メンバー: realNameSnapshot=null, fullName=null → display_name フォールバック")
+    void member_noSnapshotNoFullName_fallsBackToDisplayName() {
         ViewerContext viewer = new ViewerContext(
                 51L, ViewerStatus.MEMBER, Set.of(100L), Set.of());
 
+        // SAMPLE_AUTHOR は realNameSnapshot=null, fullName=null なので display_name にフォールバック
         DisplayIdentity identity = resolver.resolveIdentityForViewer(
                 SAMPLE_AUTHOR, viewer, TEAM_SCOPE, DISPLAY_NAME_MODE);
 
@@ -110,35 +128,116 @@ class IdentityVisibilityResolverTest {
     }
 
     @Test
-    @DisplayName("本人: display_name + 実アバター + 所属表示")
-    void self_returnsDisplayName() {
+    @DisplayName("メンバー: fullName がある場合は fullName を返す（snapshot=null）")
+    void member_withFullName_returnsFullName() {
+        PostAuthor authorWithFullName = new PostAuthor(
+                42L, "やまだ太郎", null, "山田太郎", "/images/users/42/avatar.png", false);
+        ViewerContext viewer = new ViewerContext(
+                51L, ViewerStatus.MEMBER, Set.of(100L), Set.of());
+
+        DisplayIdentity identity = resolver.resolveIdentityForViewer(
+                authorWithFullName, viewer, TEAM_SCOPE, DISPLAY_NAME_MODE);
+
+        assertThat(identity.displayLabel()).isEqualTo("山田太郎");
+        assertThat(identity.teamAffiliationVisible()).isTrue();
+        assertThat(identity.anonymized()).isFalse();
+    }
+
+    @Test
+    @DisplayName("本人（SELF）: realNameSnapshot があればスナップショットを返す")
+    void self_withSnapshot_returnsSnapshot() {
+        PostAuthor authorWithSnapshot = new PostAuthor(
+                42L, "やまだ太郎", "山田 太郎", "山田太郎", "/images/users/42/avatar.png", false);
         ViewerContext viewer = new ViewerContext(
                 42L, ViewerStatus.SELF, Set.of(), Set.of());
 
         DisplayIdentity identity = resolver.resolveIdentityForViewer(
-                SAMPLE_AUTHOR, viewer, TEAM_SCOPE, DISPLAY_NAME_MODE);
+                authorWithSnapshot, viewer, TEAM_SCOPE, DISPLAY_NAME_MODE);
 
-        assertThat(identity.displayLabel()).isEqualTo("やまだ太郎");
+        assertThat(identity.displayLabel()).isEqualTo("山田 太郎");
         assertThat(identity.teamAffiliationVisible()).isTrue();
     }
 
     @Test
-    @DisplayName("システム管理者: display_name + 所属表示")
-    void systemAdmin_returnsDisplayName() {
+    @DisplayName("本人判定（userId 一致）: MEMBER ステータスでも author.authorId == viewer.userId なら SELF 扱い")
+    void self_detectedByUserIdMatch() {
+        PostAuthor authorWithFullName = new PostAuthor(
+                42L, "やまだ太郎", null, "山田太郎", "/images/users/42/avatar.png", false);
+        // viewer.userId == author.authorId: MEMBER ステータスでも SELF として処理
+        ViewerContext viewer = new ViewerContext(
+                42L, ViewerStatus.MEMBER, Set.of(100L), Set.of());
+
+        DisplayIdentity identity = resolver.resolveIdentityForViewer(
+                authorWithFullName, viewer, TEAM_SCOPE, DISPLAY_NAME_MODE);
+
+        assertThat(identity.displayLabel()).isEqualTo("山田太郎");
+        assertThat(identity.teamAffiliationVisible()).isTrue();
+    }
+
+    @Test
+    @DisplayName("システム管理者: realNameSnapshot があればスナップショットを返す")
+    void systemAdmin_withSnapshot_returnsSnapshot() {
+        PostAuthor authorWithSnapshot = new PostAuthor(
+                42L, "やまだ太郎", "山田 太郎", "山田太郎", "/images/users/42/avatar.png", false);
         ViewerContext viewer = new ViewerContext(
                 1L, ViewerStatus.SYSTEM_ADMIN, Set.of(), Set.of());
 
         DisplayIdentity identity = resolver.resolveIdentityForViewer(
-                SAMPLE_AUTHOR, viewer, TEAM_SCOPE, DISPLAY_NAME_MODE);
+                authorWithSnapshot, viewer, TEAM_SCOPE, DISPLAY_NAME_MODE);
 
-        assertThat(identity.displayLabel()).isEqualTo("やまだ太郎");
+        assertThat(identity.displayLabel()).isEqualTo("山田 太郎");
         assertThat(identity.teamAffiliationVisible()).isTrue();
     }
 
     @Test
-    @DisplayName("display_name が NULL: §4.6.4 フォールバック『匿名のユーザー#XXXXX』")
+    @DisplayName("MINOR 上書きルール（§11.3）: minor=true は MEMBER でも汎用ラベル『投稿者』")
+    void minor_overridesAllStatus_returnsAnonymousLabel() {
+        PostAuthor minorAuthor = new PostAuthor(
+                42L, "やまだ太郎", "山田太郎", "山田太郎", "/images/users/42/avatar.png", true);
+        ViewerContext memberViewer = new ViewerContext(
+                51L, ViewerStatus.MEMBER, Set.of(100L), Set.of());
+
+        DisplayIdentity identity = resolver.resolveIdentityForViewer(
+                minorAuthor, memberViewer, TEAM_SCOPE, DISPLAY_NAME_MODE);
+
+        assertThat(identity.displayLabel()).isEqualTo(AnonymousLabels.POSTER);
+        assertThat(identity.teamAffiliationVisible()).isFalse();
+        assertThat(identity.anonymized()).isTrue();
+    }
+
+    @Test
+    @DisplayName("MINOR 上書きルール（§11.3）: SYSTEM_ADMIN でも minor=true は汎用ラベル")
+    void minor_overridesSystemAdmin_returnsAnonymousLabel() {
+        PostAuthor minorAuthor = new PostAuthor(
+                42L, "やまだ太郎", null, null, "/images/users/42/avatar.png", true);
+        ViewerContext adminViewer = new ViewerContext(
+                1L, ViewerStatus.SYSTEM_ADMIN, Set.of(), Set.of());
+
+        DisplayIdentity identity = resolver.resolveIdentityForViewer(
+                minorAuthor, adminViewer, TEAM_SCOPE, DISPLAY_NAME_MODE);
+
+        assertThat(identity.displayLabel()).isEqualTo(AnonymousLabels.POSTER);
+        assertThat(identity.anonymized()).isTrue();
+    }
+
+    @Test
+    @DisplayName("退会済みユーザー: authorId=null → 『退会済みユーザー』ラベル")
+    void anonymizedAuthor_returnsWithdrawnLabel() {
+        PostAuthor withdrawnAuthor = PostAuthor.ofPhase1(null, null, null, null);
+        ViewerContext memberViewer = new ViewerContext(
+                51L, ViewerStatus.MEMBER, Set.of(100L), Set.of());
+
+        DisplayIdentity identity = resolver.resolveIdentityForViewer(
+                withdrawnAuthor, memberViewer, TEAM_SCOPE, DISPLAY_NAME_MODE);
+
+        assertThat(identity.displayLabel()).isEqualTo("退会済みユーザー");
+        assertThat(identity.anonymized()).isTrue();
+    }
+
+    @Test
+    @DisplayName("display_name が NULL で fullName も NULL: §4.6.4 フォールバック『匿名のユーザー#XXXXX』")
     void displayNameNull_fallsBackToAnonymousHash() {
-        PostAuthor author = new PostAuthor(42L, null, null, null);
+        PostAuthor author = PostAuthor.ofPhase1(42L, null, null, null);
         ViewerContext viewer = new ViewerContext(
                 51L, ViewerStatus.MEMBER, Set.of(100L), Set.of());
 
@@ -153,11 +252,12 @@ class IdentityVisibilityResolverTest {
     }
 
     @Test
-    @DisplayName("display_name が空文字: §4.6.4 フォールバック")
-    void displayNameEmpty_fallsBackToAnonymousHash() {
-        PostAuthor author = new PostAuthor(42L, "   ", "ignored", "/avatar.png");
+    @DisplayName("サポーター DISPLAY_NAME mode: display_name が空白のみ → §4.6.4 フォールバック")
+    void supporter_displayNameEmpty_fallsBackToAnonymousHash() {
+        // SUPPORTER + DISPLAY_NAME mode は resolveDisplayLabel → fallbackDisplayName を呼ぶ
+        PostAuthor author = PostAuthor.ofPhase1(42L, "   ", null, "/avatar.png");
         ViewerContext viewer = new ViewerContext(
-                51L, ViewerStatus.MEMBER, Set.of(100L), Set.of());
+                50L, ViewerStatus.SUPPORTER, Set.of(), Set.of(100L));
 
         DisplayIdentity identity = resolver.resolveIdentityForViewer(
                 author, viewer, TEAM_SCOPE, DISPLAY_NAME_MODE);
@@ -202,10 +302,4 @@ class IdentityVisibilityResolverTest {
         assertThat(result).isEqualTo("山田花子");
     }
 
-    @Test
-    @DisplayName("isMinor: Phase 1 暫定実装は常に false を返す")
-    void isMinor_phase1_alwaysFalse() {
-        assertThat(resolver.isMinor(1L)).isFalse();
-        assertThat(resolver.isMinor(99999L)).isFalse();
-    }
 }
