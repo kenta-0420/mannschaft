@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- 雲 -->
+  <path d="M12 36 Q12 28 20 28 Q22 20 32 20 Q42 20 44 28 Q52 28 52 36 Q52 42 44 42 L18 42 Q10 42 10 36 Q10 36 12 36 Z" fill="#94A3B8"/>
+  <!-- 雨滴 3本 -->
+  <line x1="22" y1="47" x2="20" y2="57" stroke="#60A5FA" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="32" y1="47" x2="30" y2="57" stroke="#60A5FA" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="42" y1="47" x2="40" y2="57" stroke="#60A5FA" stroke-width="2.5" stroke-linecap="round"/>
+</svg>
