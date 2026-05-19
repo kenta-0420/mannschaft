@@ -1,6 +1,7 @@
 package com.mannschaft.app.team.event;
 
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +11,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+
+import java.time.LocalDateTime;
 
 /**
  * 30 日後物理削除（{@link AccountPurgedEvent}）を購読し、
@@ -44,6 +47,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class TeamPurgeEventListener {
 
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
+    private final AccountPurgeCompletionStatusRepository completionStatusRepository;
 
     /**
      * {@link AccountPurgedEvent} を購読し、対象ユーザーが招待者 / 応答者となっている
@@ -81,5 +85,15 @@ public class TeamPurgeEventListener {
 
         log.info("ユーザー退会 team purge 完了: userId={}, nullifiedInvitedBy={}, nullifiedRespondedBy={}, invitedByFailed={}, respondedByFailed={}",
                 userId, nullifiedInvitedBy, nullifiedRespondedBy, invitedByFailed, respondedByFailed);
+
+        // Phase D-8: 処理完了を completion_status に記録（両操作とも失敗なしの場合のみ SUCCESS とする）
+        if (!invitedByFailed && !respondedByFailed) {
+            completionStatusRepository.findByUserIdAndDomainName(userId, "team")
+                    .ifPresent(entity -> {
+                        entity.setStatus("SUCCESS");
+                        entity.setCompletedAt(LocalDateTime.now());
+                        completionStatusRepository.save(entity);
+                    });
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.mannschaft.app.role.event;
 
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.RoleService;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -49,6 +51,7 @@ public class RolePurgeEventListener {
 
     private final UserRoleRepository userRoleRepository;
     private final RoleService roleService;
+    private final AccountPurgeCompletionStatusRepository completionStatusRepository;
 
     /**
      * {@link AccountPurgedEvent} を購読し、対象ユーザーの全 user_roles を
@@ -92,5 +95,15 @@ public class RolePurgeEventListener {
         }
         log.info("ユーザー退会 role purge 完了: userId={}, removedScopes={}, skipped={}, failed={}",
                 userId, removed, skipped, failed);
+
+        // Phase D-8: 処理完了を completion_status に記録（失敗が 0 件の場合のみ SUCCESS とする）
+        if (failed == 0) {
+            completionStatusRepository.findByUserIdAndDomainName(userId, "role")
+                    .ifPresent(entity -> {
+                        entity.setStatus("SUCCESS");
+                        entity.setCompletedAt(LocalDateTime.now());
+                        completionStatusRepository.save(entity);
+                    });
+        }
     }
 }

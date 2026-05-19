@@ -409,10 +409,35 @@ public void backfill() {
 
 **2. `@Retryable` 導入** — **不採用（意思決定 ② 参照）**
 
-**3. GDPR 監査ログ強化（意思決定 ① 案 A）**
+**3. GDPR 監査ログ強化（意思決定 ① 案 A）** ✅ Phase D-8 で実施済み
+
 - `account_purge_completion_status` テーブル新設（6 ドメイン × `(userId, domain, completed_at, status)` で per-domain 完了を記録）
-- 全行 SUCCESS で `ACCOUNT_PURGE_COMPLETED_ALL_DOMAINS` 監査ログを発行するバッチ（`GdprPurgeAuditBatchService`）
-- 完了未達のユーザー ID をアラート通知
+  - Flyway: `V9.172__create_account_purge_completion_status.sql`
+  - Entity: `com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity`（UUIDv7, FK なし）
+  - Repository: `com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository`
+- `AccountPurgeService#purgeUser()` が `AccountPurgedEvent` 発火前に 6 ドメイン分の PENDING レコードを INSERT
+- 各 `*PurgeEventListener` が処理成功時に対応ドメインの status を SUCCESS に更新
+- `GdprPurgeAuditBatchService`（毎日 05:00 JST）が PENDING のまま 2 時間以上経過したレコードを検出して `log.error` アラートを出力
+  - `@BatchEndpoint(name = "gdpr-purge-audit-daily")`
+  - `@SchedulerLock(name = "gdprPurgeAuditBatch", lockAtMostFor = "PT30M")`
+
+**Phase D-8 実施内容（PR #XXX）:**
+
+| 追加・変更ファイル | 内容 |
+|---|---|
+| `V9.172__create_account_purge_completion_status.sql` | Flyway マイグレーション（証跡テーブル新設） |
+| `AccountPurgeCompletionStatusEntity` | Entity（UUIDv7 主キー、FK なし） |
+| `AccountPurgeCompletionStatusRepository` | Repository（findByStatusAndAttemptedAtBefore / findByUserId / findByUserIdAndDomainName） |
+| `AccountPurgeService` | purgeUser() に PENDING INSERT ロジック追加 |
+| `RolePurgeEventListener` | 処理完了時に SUCCESS 更新を追加 |
+| `TeamPurgeEventListener` | 処理完了時に SUCCESS 更新を追加 |
+| `PaymentPurgeEventListener` | 処理完了時に SUCCESS 更新を追加 |
+| `ChartPurgeEventListener` | 処理完了時に SUCCESS 更新を追加 |
+| `ProxyPurgeEventListener` | 処理完了時に SUCCESS 更新を追加 |
+| `ErrorReportPurgeEventListener` | 処理完了時に SUCCESS 更新を追加 |
+| `GdprPurgeAuditBatchService` | 監査バッチ（05:00 JST 日次実行、2 時間超 PENDING をアラート） |
+| `AccountPurgeServiceTest` | Phase D-8 テスト追加（PENDING 6 件 INSERT 確認） |
+| `GdprPurgeAuditBatchServiceTest` | 監査バッチテスト新規作成（4 ケース） |
 
 **4. 法務レビュー**
 - 全 Phase 完了後にマスター主導で実施
@@ -421,12 +446,14 @@ public void backfill() {
 
 ### 全体 PR 数概算
 
-| Phase | PR 数 | 累計 |
-|---|---|---|
-| A | 1 | 1 |
-| B | 6 | 7 |
-| C | 7 | 14 |
-| D | 7〜9 | **21〜23** |
+| Phase | PR 数 | 累計 | ステータス |
+|---|---|---|---|
+| A | 1 | 1 | ✅ 完了 |
+| B | 6 | 7 | ✅ 完了（PR #837/#845/#855/#850/#851/#847） |
+| C | 7 | 14 | ✅ 完了（PR #858 含む） |
+| D-1 | 1 | 15 | ✅ 完了（purge-pool 専用スレッドプール） |
+| D-8 | 1 | 16 | ✅ 完了（GDPR 監査バッチ + completion_status テーブル） |
+| D（残） | 6〜7 | **22〜23** | 🟡 夜次補正バッチ 6 ドメイン + 法務レビュー |
 
 ---
 

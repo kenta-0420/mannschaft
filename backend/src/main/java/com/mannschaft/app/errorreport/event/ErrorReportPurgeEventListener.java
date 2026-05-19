@@ -2,6 +2,7 @@ package com.mannschaft.app.errorreport.event;
 
 import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -10,6 +11,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+
+import java.time.LocalDateTime;
 
 /**
  * 30 日後物理削除（{@link AccountPurgedEvent}）を購読し、
@@ -46,6 +49,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class ErrorReportPurgeEventListener {
 
     private final ErrorReportOccurrenceRepository errorReportOccurrenceRepository;
+    private final AccountPurgeCompletionStatusRepository completionStatusRepository;
 
     /**
      * {@link AccountPurgedEvent} を購読し、対象ユーザーに紐づく
@@ -59,13 +63,25 @@ public class ErrorReportPurgeEventListener {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(AccountPurgedEvent event) {
         Long userId = event.getUserId();
+        boolean success = false;
         try {
             int anonymized = errorReportOccurrenceRepository.anonymizeByUserId(userId);
             log.info("ユーザー退会 errorreport purge 完了: userId={}, anonymizedOccurrences={}",
                     userId, anonymized);
+            success = true;
         } catch (Exception e) {
             log.warn("ユーザー退会 errorreport purge: 匿名化失敗 userId={}, error={}",
                     userId, e.getMessage(), e);
+        }
+
+        // Phase D-8: 処理完了を completion_status に記録
+        if (success) {
+            completionStatusRepository.findByUserIdAndDomainName(userId, "errorreport")
+                    .ifPresent(entity -> {
+                        entity.setStatus("SUCCESS");
+                        entity.setCompletedAt(LocalDateTime.now());
+                        completionStatusRepository.save(entity);
+                    });
         }
     }
 }
