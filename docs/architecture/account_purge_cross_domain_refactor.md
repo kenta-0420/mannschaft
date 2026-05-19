@@ -328,7 +328,7 @@ public final class AccountPurgedEvent extends BaseEvent {
 | B-3 | payment | `PaymentPurgeEventListener` | `member_payments.anonymizeUserId(SENTINEL)` / `stripe_customers.delete` |  _未割当_ |
 | B-4 | chart | `ChartPurgeEventListener` | `chart_records.anonymizeCustomerUserId` |  _未割当_ |
 | B-5 | proxy | `ProxyPurgeEventListener` | `proxy_input_records.deleteAllBySubjectUserId` / `proxy_input_consents.logicalDeleteAllBySubjectUserId` |  _未割当_ |
-| B-6 | errorreport | `ErrorReportPurgeEventListener` | `error_report_occurrences.anonymizeByUserId` |  _未割当_ |
+| B-6 | errorreport | `ErrorReportPurgeEventListener` | `error_report_occurrences.anonymizeByUserId` | **PR `_TBD_`（Phase B-6 実装）** |
 
 **B-1 を role に変更した理由（検分指摘 / 2026-05-18）:**
 当初 B-1 を `team` ドメインに据えていたのは「F15.4 Caveat 発火点」を最優先に固めるため。しかし家老検分で、Caveat の真の発火源は `user_roles.deleteAllByUserId`（role ドメイン）であることが判明（§3.5 参照）。
@@ -660,3 +660,4 @@ Phase D 設計書冒頭に「孤児検出は差分方式・フルスキャン禁
 | 2026-05-18 | 検分修正反映：§3.5 Before/After 図の事実誤認修正（team→role）／§2.1 表 #14・#10 追記／§2.2 算数誤り（7→8）／§3.1 採用方針 A/B/C 案比較表新設／§4 Phase B-1 順序入替（team→role）+ PR# 記入欄追加 + 冪等性留意ノート／§6 影響度マトリクス並び替え／§9 必須追記 2 件（9.6 最後の ADMIN 退会／9.7 監視・アラート要件）＋推奨追記 4 件（9.8 event-pool ／9.9 organization_id payload／9.10 補正バッチ O(N)／9.11 部分失敗監査） | 殿（家老検分反映） |
 | 2026-05-18 | addendum: §2.3 事実誤認訂正。PR #793（main マージ済 / f3708a9b4）の検分で `UserService#withdrawUser()` 呼出元ゼロ・9 ドメインの即時匿名化リスナー全休眠中が確定。「即時時に削除済 ✅」7 行を全て ❌（休眠中）に修正、結論段落を「両系統統合ではなく休眠リスナーの 30 日後フェーズ統合 + 即時匿名化再有効化（W-A〜W-F）の両輪」に書き換え。関連ドキュメント表に `withdrawal_flow_immediate_anonymization_fix.md` を追加 | 足軽（addendum PR）|
 | 2026-05-18 | Phase B-1 実装 PR `_TBD_`：`AccountPurgedEvent` 新規（gdpr.event）+ `AccountPurgeService#purgeUser` 末尾に `eventPublisher.publishEvent(...)` 発火追加 + `RolePurgeEventListener` 新設（role.event、`@Async` + `@TransactionalEventListener(AFTER_COMMIT)` + `@Transactional(REQUIRES_NEW)` 三重防御）。`UserRoleRepository#findAllByUserId(Long)` 追加。SYSTEM_ADMIN（team_id・organization_id 共に NULL）はスキップ。既存越境 DELETE は Phase C で撤去するまで併走。テスト追加: `AccountPurgedEventTest`（3 件）+ `RolePurgeEventListenerTest`（4 件、正常/失敗継続/0件/SystemAdmin スキップ）+ `AccountPurgeServiceTest` に Phase B-1 発火検証 1 件追加。F15.4 Caveat 自動解消メカニズム発動 | 足軽（Phase B-1 v2）|
+| 2026-05-18 | Phase B-6 実装 PR `_TBD_`：`ErrorReportPurgeEventListener` 新設（errorreport.event、`@Async("event-pool")` + `@TransactionalEventListener(AFTER_COMMIT)` + `@Transactional(REQUIRES_NEW)` 三重防御）。`AccountPurgedEvent` を購読し `errorReportOccurrenceRepository.anonymizeByUserId(userId)` を呼出。匿名化対象は F12.5 Phase 2-F 仕様維持（`ip_address` / `user_agent` / `user_id` を NULL 化）。既存越境 DML（`AccountPurgeService.java:161-164`）は Phase C-6 まで併走。テスト追加: `ErrorReportPurgeEventListenerTest`（3 件、正常/0件/例外伝播せず） | 足軽（Phase B-6）|
