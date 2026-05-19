@@ -182,6 +182,7 @@ export default defineNuxtConfig({
           'ja/system_admin_batch.json',
           'ja/advertising.json',
           'ja/public.json',
+          'ja/proxy.json',
         ],
       },
       {
@@ -230,6 +231,7 @@ export default defineNuxtConfig({
           'en/system_admin_batch.json',
           'en/advertising.json',
           'en/public.json',
+          'en/proxy.json',
         ],
       },
       {
@@ -278,6 +280,7 @@ export default defineNuxtConfig({
           'zh/system_admin_batch.json',
           'zh/advertising.json',
           'zh/public.json',
+          'zh/proxy.json',
         ],
       },
       {
@@ -326,6 +329,7 @@ export default defineNuxtConfig({
           'ko/system_admin_batch.json',
           'ko/advertising.json',
           'ko/public.json',
+          'ko/proxy.json',
         ],
       },
       {
@@ -374,6 +378,7 @@ export default defineNuxtConfig({
           'es/system_admin_batch.json',
           'es/advertising.json',
           'es/public.json',
+          'es/proxy.json',
         ],
       },
       {
@@ -422,6 +427,7 @@ export default defineNuxtConfig({
           'de/system_admin_batch.json',
           'de/advertising.json',
           'de/public.json',
+          'de/proxy.json',
         ],
       },
     ],

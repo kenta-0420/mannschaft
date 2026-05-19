@@ -164,11 +164,11 @@ function isActive(path: string): boolean {
                 ダッシュボード
               </NuxtLink>
               <!-- F15.3: チーム/組織のドロップダウン（マイフォルダ統合 UX） -->
-              <NavigationScopeNavDropdown
+              <ScopeNavDropdown
                 scope-type="TEAM"
                 :label="t('scopeFolder.nav.teams')"
               />
-              <NavigationScopeNavDropdown
+              <ScopeNavDropdown
                 scope-type="ORGANIZATION"
                 :label="t('scopeFolder.nav.organizations')"
               />
