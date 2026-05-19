@@ -20,6 +20,7 @@ import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignCha
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.domain.ScopeType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -63,7 +64,8 @@ class AdCampaignModerationServiceTest {
     private AdMessagingCampaign buildCampaign(AdCampaignStatus status, AdModerationStatus moderationStatus) {
         AdMessagingCampaign campaign = AdMessagingCampaign.builder()
                 .advertiserAccountId(100L)
-                .organizationId(1L)
+                .scopeType(ScopeType.ORGANIZATION)
+                .scopeId(1L)
                 .name("テストキャンペーン")
                 .status(status)
                 .totalBudgetYen(100_000L)

@@ -91,7 +91,7 @@ public class AdPushChannelService {
                 campaign.getAdvertiserAccountId(),
                 /* actionUrl */ null,
                 /* actorId   */ null,
-                /* organizationId */ campaign.getOrganizationId());
+                /* organizationId */ campaign.getScopeId());
 
         if (entity == null) {
             log.debug("AD_PUSH_SKIPPED reason=VISIBILITY_DENY userId={} campaignId={}",

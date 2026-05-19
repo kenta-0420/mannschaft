@@ -10,6 +10,7 @@ import com.mannschaft.app.advertising.repository.AdCampaignRepository;
 import com.mannschaft.app.advertising.repository.AdDailyStatsRepository;
 import com.mannschaft.app.advertising.repository.AdEntityRepository;
 import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
+import com.mannschaft.app.membership.domain.ScopeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -48,7 +49,7 @@ public class RecommendationService {
      */
     @Cacheable(value = "adRecommendations", key = "#organizationId")
     public List<RecommendationItem> getRecommendations(Long organizationId) {
-        AdvertiserAccountEntity account = advertiserAccountRepository.findByOrganizationId(organizationId)
+        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
                 .orElse(null);
         if (account == null || account.getStatus() != AdvertiserAccountStatus.ACTIVE) {
             return List.of();

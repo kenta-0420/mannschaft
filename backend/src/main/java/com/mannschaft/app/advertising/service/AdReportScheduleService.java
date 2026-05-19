@@ -9,6 +9,7 @@ import com.mannschaft.app.advertising.repository.AdReportScheduleRepository;
 import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +34,7 @@ public class AdReportScheduleService {
      * レポートスケジュール一覧を取得する。
      */
     public List<ReportScheduleResponse> findByOrganizationId(Long organizationId) {
-        AdvertiserAccountEntity account = advertiserAccountRepository.findByOrganizationId(organizationId)
+        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
         return adReportScheduleRepository.findByAdvertiserAccountId(account.getId()).stream()
                 .map(this::toResponse)
@@ -45,7 +46,7 @@ public class AdReportScheduleService {
      */
     @Transactional
     public ReportScheduleResponse create(Long organizationId, Long userId, CreateReportScheduleRequest request) {
-        AdvertiserAccountEntity account = advertiserAccountRepository.findByOrganizationId(organizationId)
+        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
 
         if (adReportScheduleRepository.countByAdvertiserAccountId(account.getId()) >= 3) {
@@ -73,7 +74,7 @@ public class AdReportScheduleService {
      */
     @Transactional
     public void delete(Long scheduleId, Long organizationId) {
-        AdvertiserAccountEntity account = advertiserAccountRepository.findByOrganizationId(organizationId)
+        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
 
         AdReportScheduleEntity schedule = adReportScheduleRepository.findById(scheduleId)

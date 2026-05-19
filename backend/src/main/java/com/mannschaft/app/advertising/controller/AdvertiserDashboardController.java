@@ -28,6 +28,7 @@ import com.mannschaft.app.advertising.service.InvoicePdfService;
 import com.mannschaft.app.advertising.service.RateSimulatorService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import jakarta.validation.Valid;
@@ -90,7 +91,7 @@ public class AdvertiserDashboardController {
             @RequestParam Long organizationId,
             @Valid @RequestBody RegisterAdvertiserRequest request) {
         verifyOrganizationAccess(organizationId);
-        return ApiResponse.of(advertiserAccountService.register(organizationId, request));
+        return ApiResponse.of(advertiserAccountService.register(ScopeType.ORGANIZATION, organizationId, request));
     }
 
     /**
@@ -99,7 +100,7 @@ public class AdvertiserDashboardController {
     @GetMapping("/account")
     public ApiResponse<AdvertiserAccountResponse> getAccount(@RequestParam Long organizationId) {
         verifyOrganizationAccess(organizationId);
-        return ApiResponse.of(advertiserAccountService.getByOrganizationId(organizationId));
+        return ApiResponse.of(advertiserAccountService.getByScope(ScopeType.ORGANIZATION, organizationId));
     }
 
     /**
@@ -110,7 +111,7 @@ public class AdvertiserDashboardController {
             @RequestParam Long organizationId,
             @Valid @RequestBody UpdateAdvertiserAccountRequest request) {
         verifyOrganizationAccess(organizationId);
-        return ApiResponse.of(advertiserAccountService.updateProfile(organizationId, request));
+        return ApiResponse.of(advertiserAccountService.updateProfile(ScopeType.ORGANIZATION, organizationId, request));
     }
 
     /**
@@ -164,7 +165,7 @@ public class AdvertiserDashboardController {
             @RequestParam(required = false) InvoiceStatus status,
             Pageable pageable) {
         verifyOrganizationAccess(organizationId);
-        AdvertiserAccountResponse account = advertiserAccountService.getByOrganizationId(organizationId);
+        AdvertiserAccountResponse account = advertiserAccountService.getByScope(ScopeType.ORGANIZATION, organizationId);
         Page<InvoiceSummaryResponse> page = adInvoiceService.findByAccountId(account.id(), status, pageable);
         return PagedResponse.of(
                 page.getContent(),
@@ -185,7 +186,7 @@ public class AdvertiserDashboardController {
             @PathVariable Long invoiceId,
             @RequestParam Long organizationId) {
         verifyOrganizationAccess(organizationId);
-        AdvertiserAccountResponse account = advertiserAccountService.getByOrganizationId(organizationId);
+        AdvertiserAccountResponse account = advertiserAccountService.getByScope(ScopeType.ORGANIZATION, organizationId);
         return ApiResponse.of(adInvoiceService.getDetail(invoiceId, account.id()));
     }
 
@@ -329,7 +330,7 @@ public class AdvertiserDashboardController {
             @PathVariable Long invoiceId,
             @RequestParam Long organizationId) {
         verifyOrganizationAccess(organizationId);
-        AdvertiserAccountResponse account = advertiserAccountService.getByOrganizationId(organizationId);
+        AdvertiserAccountResponse account = advertiserAccountService.getByScope(ScopeType.ORGANIZATION, organizationId);
         byte[] pdf = invoicePdfService.generateInvoicePdf(invoiceId, account.id());
         String filename = invoicePdfService.getFilename(invoiceId);
         return ResponseEntity.ok()

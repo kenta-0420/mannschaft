@@ -26,30 +26,10 @@ import java.util.UUID;
  * チーム単位キャンペーンを運用可能にするため scope_type + scope_id 2 カラム方式に移行し、
  * テナント分離キーが {@code organization_id} 単独ではなくなったため。</p>
  *
- * <p>互換性保持: 既存 Service 層が依存している
- * {@code findByOrganizationIdAndDeletedAtIsNull}, {@code findByIdAndOrganizationIdAndDeletedAtIsNull}
- * は本インターフェースで明示宣言して保持する。
- * Service 層の scope 化完了時 (Phase 11-d-2 以降) に削除予定。</p>
+ * <p>F09.17 Phase 11-e で organizationId 系互換メソッドを物理削除済み。</p>
  */
 public interface AdMessagingCampaignRepository
         extends JpaRepository<AdMessagingCampaign, UUID> {
-
-    // ====== 互換性保持メソッド群（Phase 11-d-2 で削除予定） ======
-
-    /**
-     * @deprecated F09.17 Phase 11-d-1 で {@link #findByScopeTypeAndScopeIdAndDeletedAtIsNull} を導入。
-     *             Phase 11-d-2 以降で削除予定。互換維持のため一時保持。
-     */
-    @Deprecated
-    Page<AdMessagingCampaign> findByOrganizationIdAndDeletedAtIsNull(Long organizationId, Pageable pageable);
-
-    /**
-     * @deprecated F09.17 Phase 11-d-1 で
-     *             {@link #findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull} を導入。
-     *             Phase 11-d-2 以降で削除予定。互換維持のため一時保持。
-     */
-    @Deprecated
-    Optional<AdMessagingCampaign> findByIdAndOrganizationIdAndDeletedAtIsNull(UUID id, Long organizationId);
 
     // ====== scope ベース新規メソッド ======
 

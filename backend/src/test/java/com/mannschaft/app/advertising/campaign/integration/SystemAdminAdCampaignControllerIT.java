@@ -146,7 +146,6 @@ class SystemAdminAdCampaignControllerIT {
         void 正常系_200() throws Exception {
             ReviewQueueItemResponse item = ReviewQueueItemResponse.builder()
                     .campaignId(CAMPAIGN_ID)
-                    .organizationId(200L)
                     .advertiserAccountId(50L)
                     .name("審査待ちキャンペーン")
                     .status(AdCampaignStatus.DRAFT)

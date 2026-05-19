@@ -59,12 +59,7 @@ public class AdvertiserAccountService {
             throw new BusinessException(AdvertisingErrorCode.AD_006);
         }
 
-        // Phase 11-d-2: scope_type/scope_id を主役とする。organization_id は ORGANIZATION の場合のみ埋める
-        // (互換のため。Phase 11-e で削除予定)。
-        Long legacyOrganizationId = (scopeType == ScopeType.ORGANIZATION) ? scopeId : null;
-
         AdvertiserAccountEntity entity = AdvertiserAccountEntity.builder()
-                .organizationId(legacyOrganizationId)
                 .scopeType(scopeType)
                 .scopeId(scopeId)
                 .companyName(request.companyName())
@@ -112,55 +107,15 @@ public class AdvertiserAccountService {
     }
 
     // ─────────────────────────────────────────────
-    // 互換 API (Phase 11-e で削除予定)
-    // ─────────────────────────────────────────────
-
-    /**
-     * 広告主アカウントを登録する（旧 organizationId 引数）。
-     *
-     * @deprecated F09.17 Phase 11-d-2 で {@link #register(ScopeType, Long, RegisterAdvertiserRequest)}
-     *             を導入。Phase 11-e で削除予定。
-     */
-    @Deprecated
-    @Transactional
-    public AdvertiserAccountResponse register(Long organizationId, RegisterAdvertiserRequest request) {
-        return register(ScopeType.ORGANIZATION, organizationId, request);
-    }
-
-    /**
-     * 組織IDで広告主アカウントを取得する。
-     *
-     * @deprecated F09.17 Phase 11-d-2 で {@link #getByScope(ScopeType, Long)} を導入。
-     *             Phase 11-e で削除予定。
-     */
-    @Deprecated
-    public AdvertiserAccountResponse getByOrganizationId(Long organizationId) {
-        return getByScope(ScopeType.ORGANIZATION, organizationId);
-    }
-
-    /**
-     * 広告主アカウントのプロフィールを更新する。
-     *
-     * @deprecated F09.17 Phase 11-d-2 で
-     *             {@link #updateProfile(ScopeType, Long, UpdateAdvertiserAccountRequest)} を導入。
-     *             Phase 11-e で削除予定。
-     */
-    @Deprecated
-    @Transactional
-    public AdvertiserAccountResponse updateProfile(Long organizationId, UpdateAdvertiserAccountRequest request) {
-        return updateProfile(ScopeType.ORGANIZATION, organizationId, request);
-    }
-
-    // ─────────────────────────────────────────────
     // SYSTEM_ADMIN / 共通 API（scope に依存しない）
     // ─────────────────────────────────────────────
 
     /**
      * 広告主アカウント一覧を取得する（SYSTEM_ADMIN用）。
      *
-     * <p>scope 横断で全件返す。{@code organizationName} は
-     * {@code scopeType=ORGANIZATION} の場合のみ解決し、それ以外は {@code null} のまま返す。
-     * 表示用 scope ラベルは DTO に追加された {@code scopeType}/{@code scopeId} を Frontend で解釈する。</p>
+     * <p>scope 横断で全件返す。{@code scopeName} は
+     * {@code scopeType=ORGANIZATION} の場合は組織名を解決し、それ以外は {@code null} のまま返す。
+     * 表示用 scope ラベルは DTO の {@code scopeType}/{@code scopeId}/{@code scopeName} を Frontend で解釈する。</p>
      */
     public Page<AdvertiserAccountDetailResponse> findAll(AdvertiserAccountStatus status, Pageable pageable) {
         Page<AdvertiserAccountEntity> page = (status != null)
@@ -168,18 +123,17 @@ public class AdvertiserAccountService {
                 : advertiserAccountRepository.findAll(pageable);
 
         return page.map(entity -> {
-            String organizationName = null;
+            String scopeName = null;
             if (entity.getScopeType() == ScopeType.ORGANIZATION && entity.getScopeId() != null) {
-                organizationName = organizationRepository.findById(entity.getScopeId())
+                scopeName = organizationRepository.findById(entity.getScopeId())
                         .map(org -> org.getName())
                         .orElse(String.valueOf(entity.getScopeId()));
             }
             return new AdvertiserAccountDetailResponse(
                     entity.getId(),
-                    entity.getOrganizationId(),
                     entity.getScopeType(),
                     entity.getScopeId(),
-                    organizationName,
+                    scopeName,
                     entity.getStatus(),
                     entity.getCompanyName(),
                     entity.getContactEmail(),

@@ -95,7 +95,7 @@ class AdMessagingCampaignServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         // When
-        CampaignDetailResponse response = service.createCampaign(orgId, accountId, userId, request);
+        CampaignDetailResponse response = service.createCampaign(ScopeType.ORGANIZATION, orgId, accountId, userId, request);
 
         // Then
         assertThat(response.name()).isEqualTo("夏キャンペーン");
@@ -121,7 +121,7 @@ class AdMessagingCampaignServiceTest {
                 null);
 
         // When / Then
-        assertThatThrownBy(() -> service.createCampaign(1L, 2L, 3L, request))
+        assertThatThrownBy(() -> service.createCampaign(ScopeType.ORGANIZATION, 1L, 2L, 3L, request))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
@@ -151,7 +151,7 @@ class AdMessagingCampaignServiceTest {
                 null);
 
         // When / Then
-        assertThatThrownBy(() -> service.updateCampaign(campaignId, orgId, request))
+        assertThatThrownBy(() -> service.updateCampaign(campaignId, ScopeType.ORGANIZATION, orgId, request))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(AdCampaignErrorCode.AD_CAMPAIGN_NOT_EDITABLE);
@@ -173,7 +173,7 @@ class AdMessagingCampaignServiceTest {
                 .willReturn(Optional.empty());
 
         // When / Then
-        assertThatThrownBy(() -> service.getCampaign(campaignId, orgId))
+        assertThatThrownBy(() -> service.getCampaign(campaignId, ScopeType.ORGANIZATION, orgId))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(AdCampaignErrorCode.AD_CAMPAIGN_NOT_FOUND);
@@ -215,7 +215,7 @@ class AdMessagingCampaignServiceTest {
                 null);
 
         // When / Then
-        assertThatThrownBy(() -> service.addChannel(campaignId, orgId, request))
+        assertThatThrownBy(() -> service.addChannel(campaignId, ScopeType.ORGANIZATION, orgId, request))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(AdCampaignErrorCode.AD_CHANNEL_DUPLICATE);
@@ -255,7 +255,7 @@ class AdMessagingCampaignServiceTest {
                 });
 
         // When
-        List<AudienceSegmentResponse> responses = service.setAudience(campaignId, orgId, request);
+        List<AudienceSegmentResponse> responses = service.setAudience(campaignId, ScopeType.ORGANIZATION, orgId, request);
 
         // Then
         // 既存セグメントを必ず先に削除している
@@ -285,7 +285,7 @@ class AdMessagingCampaignServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         // When
-        service.softDeleteCampaign(draftId, 100L);
+        service.softDeleteCampaign(draftId, ScopeType.ORGANIZATION, 100L);
 
         // Then: deletedAt がセットされ save される
         verify(campaignRepository, times(1)).save(draft);
@@ -299,7 +299,7 @@ class AdMessagingCampaignServiceTest {
                 .willReturn(Optional.of(live));
 
         // When / Then
-        assertThatThrownBy(() -> service.softDeleteCampaign(liveId, 100L))
+        assertThatThrownBy(() -> service.softDeleteCampaign(liveId, ScopeType.ORGANIZATION, 100L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(AdCampaignErrorCode.AD_CAMPAIGN_NOT_EDITABLE);
@@ -314,7 +314,6 @@ class AdMessagingCampaignServiceTest {
     private AdMessagingCampaign buildCampaign(UUID id, Long orgId, AdCampaignStatus status) {
         AdMessagingCampaign campaign = AdMessagingCampaign.builder()
                 .advertiserAccountId(200L)
-                .organizationId(orgId)
                 .scopeType(ScopeType.ORGANIZATION)
                 .scopeId(orgId)
                 .name("既存キャンペーン")

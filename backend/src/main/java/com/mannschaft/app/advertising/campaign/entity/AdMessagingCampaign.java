@@ -44,16 +44,6 @@ public class AdMessagingCampaign extends UuidV7Entity {
     @Column(name = "advertiser_account_id", nullable = false)
     private Long advertiserAccountId;
 
-    /**
-     * 旧テナント分離キー (F09.17 Phase 11-d-1 で nullable 化・クロスドメイン参照・FK なし)。
-     *
-     * <p>Phase 11-d-1 では scope_type/scope_id への移行完了後も互換維持のため残置する。
-     * 上位層 (Service/Controller) の scope 化は Phase 11-d-2 以降で実施し、それと同時に本フィールドは
-     * Phase 11-e で物理削除予定。</p>
-     */
-    @Column(name = "organization_id", nullable = true)
-    private Long organizationId;
-
     /** スコープ種別 (ORGANIZATION / TEAM)。F09.17 Phase 11-d-1 で追加。 */
     @Enumerated(EnumType.STRING)
     @Column(name = "scope_type", nullable = false, length = 20)

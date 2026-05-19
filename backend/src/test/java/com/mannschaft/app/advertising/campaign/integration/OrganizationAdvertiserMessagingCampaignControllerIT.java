@@ -151,7 +151,6 @@ class OrganizationAdvertiserMessagingCampaignControllerIT {
     private AdvertiserAccountResponse stubAdvertiserAccount() {
         return new AdvertiserAccountResponse(
                 ADVERTISER_ACCOUNT_ID,
-                ORG_ID,
                 ScopeType.ORGANIZATION,
                 ORG_ID,
                 null,
