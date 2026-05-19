@@ -47,6 +47,48 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     int nullifyRespondedBy(@Param("userId") Long userId);
 
     // ========================================================================
+    // Phase D-3: AccountPurgedEvent 処理漏れの孤児補正（夜次バッチ用）
+    //
+    // TeamPurgeEventListener が失敗した場合、退会済みユーザーへの参照が残存する。
+    // 以下の 2 クエリは孤児を検出して NULL 化する。users テーブルとの LEFT JOIN で
+    // 物理削除済みユーザー（u.id IS NULL）を特定する。
+    // ========================================================================
+
+    /**
+     * 孤児補正バッチ用: 退会済みユーザー（物理削除済み）への invited_by 参照を NULL 化する。
+     *
+     * <p>{@code team_org_memberships.invited_by} が {@code users.id} に存在しない（LEFT JOIN 後 NULL）
+     * 場合を孤児と判定し、まとめて NULL 化する。冪等な更新なので複数回実行しても安全。</p>
+     *
+     * @return 補正件数
+     */
+    @Modifying
+    @Query(value = """
+            UPDATE team_org_memberships m
+            LEFT JOIN users u ON m.invited_by = u.id
+            SET m.invited_by = NULL
+            WHERE m.invited_by IS NOT NULL AND u.id IS NULL
+            """, nativeQuery = true)
+    int nullifyOrphanInvitedBy();
+
+    /**
+     * 孤児補正バッチ用: 退会済みユーザー（物理削除済み）への responded_by 参照を NULL 化する。
+     *
+     * <p>{@code team_org_memberships.responded_by} が {@code users.id} に存在しない（LEFT JOIN 後 NULL）
+     * 場合を孤児と判定し、まとめて NULL 化する。冪等な更新なので複数回実行しても安全。</p>
+     *
+     * @return 補正件数
+     */
+    @Modifying
+    @Query(value = """
+            UPDATE team_org_memberships m
+            LEFT JOIN users u ON m.responded_by = u.id
+            SET m.responded_by = NULL
+            WHERE m.responded_by IS NOT NULL AND u.id IS NULL
+            """, nativeQuery = true)
+    int nullifyOrphanRespondedBy();
+
+    // ========================================================================
     // F00 ContentVisibilityResolver 基盤拡張 (Phase A-3b)
     //
     // ScopeAncestorResolver.resolveParentOrgIds() からバルク親 ORG 解決で利用される。
