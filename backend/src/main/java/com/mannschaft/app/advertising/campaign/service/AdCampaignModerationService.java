@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.advertising.campaign.dto.BlockCampaignRequest;
 import com.mannschaft.app.advertising.campaign.dto.ReviewQueueItemResponse;
+import com.mannschaft.app.advertising.campaign.dto.UnblockCampaignRequest;
 import com.mannschaft.app.advertising.campaign.entity.AdCampaignModerationLog;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaignChannel;
@@ -17,6 +18,7 @@ import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRep
 import com.mannschaft.app.advertising.campaign.service.moderation.DetectedNgWord;
 import com.mannschaft.app.advertising.campaign.service.moderation.ModerationCheckResult;
 import com.mannschaft.app.advertising.campaign.service.moderation.SuggestedModerationAction;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -59,6 +61,7 @@ public class AdCampaignModerationService {
     private final AdCampaignModerationLogRepository moderationLogRepository;
     private final AdMessagingCampaignChannelRepository campaignChannelRepository;
     private final AdContentModerator contentModerator;
+    private final AuditLogService auditLogService;
 
     /**
      * SYSTEM_ADMIN 審査キューを取得する。
@@ -139,6 +142,67 @@ public class AdCampaignModerationService {
                 .action(AdModerationAction.BLOCKED)
                 .reason(reason)
                 .build());
+    }
+
+    /**
+     * BLOCK されたキャンペーンを UNBLOCK して再審査キューに戻す (F09.17 残課題 3)。
+     *
+     * <p>誤 BLOCK の取消用 API。BLOCKED → REVIEW に遷移させ、SYSTEM_ADMIN による
+     * 再判定（approve または block 再実行）の対象となる。BLOCKED → APPROVED 直行は
+     * 権限濫用リスクが高いため、必ず REVIEW に戻す設計。</p>
+     *
+     * <p>遷移条件: {@code status=BLOCKED} のみ。それ以外は
+     * {@link AdCampaignErrorCode#AD_CAMPAIGN_NOT_UNBLOCKABLE} (400) を投げる。</p>
+     *
+     * <p>副作用:
+     * <ul>
+     *   <li>{@code status=REVIEW}, {@code moderation_status=PENDING},
+     *       {@code blocked_reason=NULL} に更新</li>
+     *   <li>{@code ad_campaign_moderation_logs} に {@code action=UNBLOCKED} + reason の行を 1 件作成</li>
+     *   <li>監査ログ {@code CAMPAIGN_UNBLOCKED} を {@link AuditLogService#record} 経由で発火</li>
+     * </ul>
+     * </p>
+     *
+     * @param campaignId       対象キャンペーン ID
+     * @param moderatorUserId  操作 SYSTEM_ADMIN の user_id
+     * @param request          {@link UnblockCampaignRequest} (reason 必須・500 字以内)
+     */
+    @Transactional
+    public void unblock(UUID campaignId, Long moderatorUserId, UnblockCampaignRequest request) {
+        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId);
+
+        if (campaign.getStatus() != AdCampaignStatus.BLOCKED) {
+            throw new BusinessException(AdCampaignErrorCode.AD_CAMPAIGN_NOT_UNBLOCKABLE);
+        }
+
+        String reason = request.reason();
+        campaign.setStatus(AdCampaignStatus.REVIEW);
+        campaign.setModerationStatus(AdModerationStatus.PENDING);
+        campaign.setBlockedReason(null);
+        campaignRepository.save(campaign);
+
+        moderationLogRepository.save(AdCampaignModerationLog.builder()
+                .campaignId(campaignId)
+                .moderatorUserId(moderatorUserId)
+                .action(AdModerationAction.UNBLOCKED)
+                .reason(reason)
+                .build());
+
+        // 監査ログ: 誤 BLOCK 取消は重要操作のため必ず記録（非同期 fire-and-forget）
+        // metadata は最小限のキーのみで簡易 JSON 構築（依存追加を避けるため手書き、改行・特殊文字は reason 末尾で起きないことを前提）
+        String metadata = "{\"campaign_id\":\"" + campaignId + "\",\"reason\":\""
+                + escapeJsonString(reason) + "\"}";
+        auditLogService.record(
+                "CAMPAIGN_UNBLOCKED",
+                moderatorUserId,
+                null,
+                null,
+                campaign.getOrganizationId(),
+                null,
+                null,
+                null,
+                metadata
+        );
     }
 
     /**
@@ -256,5 +320,36 @@ public class AdCampaignModerationService {
     /** ハッシュコレクション化のためのユーティリティ (テスト容易化用に List 経由公開)。 */
     static List<AdModerationStatus> reviewQueueStatusesForTest() {
         return List.copyOf(REVIEW_QUEUE_STATUSES);
+    }
+
+    /**
+     * 監査ログ metadata の手書き JSON 構築用に reason をエスケープする。
+     * {@link ObjectMapper} を都度引き当てるよりオーバーヘッドが小さいため小規模ヘルパで実装。
+     */
+    private static String escapeJsonString(String s) {
+        if (s == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder(s.length() + 8);
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '"' -> sb.append("\\\"");
+                case '\\' -> sb.append("\\\\");
+                case '\n' -> sb.append("\\n");
+                case '\r' -> sb.append("\\r");
+                case '\t' -> sb.append("\\t");
+                case '\b' -> sb.append("\\b");
+                case '\f' -> sb.append("\\f");
+                default -> {
+                    if (c < 0x20) {
+                        sb.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        sb.append(c);
+                    }
+                }
+            }
+        }
+        return sb.toString();
     }
 }

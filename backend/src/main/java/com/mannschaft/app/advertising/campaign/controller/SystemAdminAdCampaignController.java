@@ -2,6 +2,7 @@ package com.mannschaft.app.advertising.campaign.controller;
 
 import com.mannschaft.app.advertising.campaign.dto.BlockCampaignRequest;
 import com.mannschaft.app.advertising.campaign.dto.ReviewQueueItemResponse;
+import com.mannschaft.app.advertising.campaign.dto.UnblockCampaignRequest;
 import com.mannschaft.app.advertising.campaign.service.AdCampaignModerationService;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
@@ -29,6 +30,7 @@ import java.util.UUID;
  *   <li>{@code GET /review-queue} 審査待ちキャンペーン一覧</li>
  *   <li>{@code POST /{id}/approve} キャンペーン承認</li>
  *   <li>{@code POST /{id}/block} キャンペーンブロック</li>
+ *   <li>{@code POST /{id}/unblock} キャンペーン UNBLOCK (BLOCKED→REVIEW 戻し)</li>
  * </ul>
  * クラスレベル {@code @PreAuthorize} で SYSTEM_ADMIN ロールに限定する。</p>
  */
@@ -81,5 +83,20 @@ public class SystemAdminAdCampaignController {
             @Valid @RequestBody BlockCampaignRequest request) {
         Long moderatorUserId = SecurityUtils.getCurrentUserId();
         adCampaignModerationService.block(campaignId, moderatorUserId, request);
+    }
+
+    /**
+     * 誤 BLOCK されたキャンペーンを UNBLOCK して再審査キューに戻す (F09.17 残課題 3)。
+     *
+     * <p>遷移: {@code BLOCKED → REVIEW}。{@code reason} は監査用必須。
+     * {@code status != BLOCKED} の場合は {@code AD_CAMPAIGN_NOT_UNBLOCKABLE} で 400 を返す。</p>
+     */
+    @PostMapping("/{id}/unblock")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void unblock(
+            @PathVariable("id") UUID campaignId,
+            @Valid @RequestBody UnblockCampaignRequest request) {
+        Long moderatorUserId = SecurityUtils.getCurrentUserId();
+        adCampaignModerationService.unblock(campaignId, moderatorUserId, request);
     }
 }

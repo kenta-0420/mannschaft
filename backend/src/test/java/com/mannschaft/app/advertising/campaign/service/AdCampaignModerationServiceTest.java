@@ -2,6 +2,7 @@ package com.mannschaft.app.advertising.campaign.service;
 
 import com.mannschaft.app.advertising.campaign.dto.BlockCampaignRequest;
 import com.mannschaft.app.advertising.campaign.dto.ReviewQueueItemResponse;
+import com.mannschaft.app.advertising.campaign.dto.UnblockCampaignRequest;
 import com.mannschaft.app.advertising.campaign.entity.AdCampaignModerationLog;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaignChannel;
@@ -17,6 +18,7 @@ import com.mannschaft.app.advertising.campaign.exception.AdCampaignErrorCode;
 import com.mannschaft.app.advertising.campaign.repository.AdCampaignModerationLogRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignChannelRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRepository;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,6 +39,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -52,6 +55,7 @@ class AdCampaignModerationServiceTest {
     @Mock private AdCampaignModerationLogRepository moderationLogRepository;
     @Mock private AdMessagingCampaignChannelRepository campaignChannelRepository;
     @Mock private AdContentModerator contentModerator;
+    @Mock private AuditLogService auditLogService;
     @InjectMocks private AdCampaignModerationService service;
 
     private static final Long MODERATOR_USER_ID = 999L;
@@ -263,6 +267,126 @@ class AdCampaignModerationServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(AdCampaignErrorCode.AD_CAMPAIGN_NOT_FOUND);
+    }
+
+    // ─────────────────────────────────────────────
+    // unblock() — F09.17 残課題 3
+    // ─────────────────────────────────────────────
+
+    @Test
+    @DisplayName("unblock 成功: BLOCKED → REVIEW + blocked_reason クリア + UNBLOCKED ログ + 監査ログ発火")
+    void unblock_成功() {
+        AdMessagingCampaign campaign = buildCampaign(AdCampaignStatus.BLOCKED, AdModerationStatus.BLOCKED);
+        campaign.setBlockedReason("旧ブロック理由");
+        UUID campaignId = campaign.getId();
+        given(campaignRepository.findById(campaignId)).willReturn(Optional.of(campaign));
+
+        service.unblock(campaignId, MODERATOR_USER_ID, new UnblockCampaignRequest("誤判定のため取消"));
+
+        // Entity 更新確認
+        assertThat(campaign.getStatus()).isEqualTo(AdCampaignStatus.REVIEW);
+        assertThat(campaign.getModerationStatus()).isEqualTo(AdModerationStatus.PENDING);
+        assertThat(campaign.getBlockedReason()).isNull();
+        verify(campaignRepository).save(campaign);
+
+        // moderation_logs 行作成
+        ArgumentCaptor<AdCampaignModerationLog> captor = ArgumentCaptor.forClass(AdCampaignModerationLog.class);
+        verify(moderationLogRepository).save(captor.capture());
+        AdCampaignModerationLog log = captor.getValue();
+        assertThat(log.getCampaignId()).isEqualTo(campaignId);
+        assertThat(log.getModeratorUserId()).isEqualTo(MODERATOR_USER_ID);
+        assertThat(log.getAction()).isEqualTo(AdModerationAction.UNBLOCKED);
+        assertThat(log.getReason()).isEqualTo("誤判定のため取消");
+
+        // 監査ログ発火確認
+        verify(auditLogService).record(
+                eq("CAMPAIGN_UNBLOCKED"),
+                eq(MODERATOR_USER_ID),
+                any(),
+                any(),
+                eq(1L),
+                any(),
+                any(),
+                any(),
+                any()
+        );
+    }
+
+    @Test
+    @DisplayName("unblock 拒否: status=DRAFT → NOT_UNBLOCKABLE")
+    void unblock_拒否_DRAFT() {
+        AdMessagingCampaign campaign = buildCampaign(AdCampaignStatus.DRAFT, AdModerationStatus.PENDING);
+        given(campaignRepository.findById(campaign.getId())).willReturn(Optional.of(campaign));
+
+        assertThatThrownBy(() -> service.unblock(campaign.getId(), MODERATOR_USER_ID,
+                new UnblockCampaignRequest("試行")))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(AdCampaignErrorCode.AD_CAMPAIGN_NOT_UNBLOCKABLE);
+
+        verify(campaignRepository, never()).save(any());
+        verify(moderationLogRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("unblock 拒否: status=APPROVED → NOT_UNBLOCKABLE")
+    void unblock_拒否_APPROVED() {
+        AdMessagingCampaign campaign = buildCampaign(AdCampaignStatus.APPROVED, AdModerationStatus.APPROVED);
+        given(campaignRepository.findById(campaign.getId())).willReturn(Optional.of(campaign));
+
+        assertThatThrownBy(() -> service.unblock(campaign.getId(), MODERATOR_USER_ID,
+                new UnblockCampaignRequest("試行")))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(AdCampaignErrorCode.AD_CAMPAIGN_NOT_UNBLOCKABLE);
+    }
+
+    @Test
+    @DisplayName("unblock 拒否: status=DELIVERING → NOT_UNBLOCKABLE")
+    void unblock_拒否_DELIVERING() {
+        AdMessagingCampaign campaign = buildCampaign(AdCampaignStatus.DELIVERING, AdModerationStatus.APPROVED);
+        given(campaignRepository.findById(campaign.getId())).willReturn(Optional.of(campaign));
+
+        assertThatThrownBy(() -> service.unblock(campaign.getId(), MODERATOR_USER_ID,
+                new UnblockCampaignRequest("試行")))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(AdCampaignErrorCode.AD_CAMPAIGN_NOT_UNBLOCKABLE);
+    }
+
+    @Test
+    @DisplayName("unblock 拒否: 存在しない → AD_CAMPAIGN_NOT_FOUND")
+    void unblock_存在しない() {
+        UUID id = UUID.randomUUID();
+        given(campaignRepository.findById(id)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.unblock(id, MODERATOR_USER_ID,
+                new UnblockCampaignRequest("試行")))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(AdCampaignErrorCode.AD_CAMPAIGN_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("unblock: 監査ログ metadata に campaign_id と reason が含まれる")
+    void unblock_監査ログメタデータ確認() {
+        AdMessagingCampaign campaign = buildCampaign(AdCampaignStatus.BLOCKED, AdModerationStatus.BLOCKED);
+        UUID campaignId = campaign.getId();
+        given(campaignRepository.findById(campaignId)).willReturn(Optional.of(campaign));
+
+        service.unblock(campaignId, MODERATOR_USER_ID, new UnblockCampaignRequest("ダブルクォート\"含む理由"));
+
+        ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
+        verify(auditLogService).record(
+                eq("CAMPAIGN_UNBLOCKED"),
+                eq(MODERATOR_USER_ID),
+                any(), any(), any(), any(), any(), any(),
+                metadataCaptor.capture()
+        );
+        String metadata = metadataCaptor.getValue();
+        assertThat(metadata).contains(campaignId.toString());
+        // ダブルクォートはエスケープされる
+        assertThat(metadata).contains("\\\"");
     }
 
     // ─────────────────────────────────────────────
