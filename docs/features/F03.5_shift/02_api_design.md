@@ -26,8 +26,8 @@
 | PATCH | `/api/v1/shifts/requests/{id}` | 必要 | 希望編集（部分更新、PUT から PATCH へ変更） |
 | DELETE | `/api/v1/shifts/requests/{id}` | 必要 | 希望取り下げ |
 | GET | `/api/v1/shifts/my/requests` | 必要 | 自分の希望提出一覧取得（旧 `GET /shifts/my` を改名） |
-| GET | `/api/v1/shifts/schedules/{id}/summary` | 必要 | 日付別・ポジション別の充足状況サマリー **【未実装・Phase 11 残課題、本ファイル §残課題参照】** |
-| POST | `/api/v1/shifts/schedules/{id}/remind` | 必要 | 未提出者への手動リマインド送信（管理者用） **【未実装・Phase 11 残課題、本ファイル §残課題参照】** |
+| GET | `/api/v1/shifts/schedules/{id}/summary` | 必要 | 日付別・ポジション別の充足状況サマリー **【🟢 実装済 Phase 11 第二陣 2-α / N+1 修正 Phase 11 事後検分 fixup / 2026-05-17】** |
+| POST | `/api/v1/shifts/schedules/{id}/remind` | 必要 | 未提出者への手動リマインド送信（管理者用） **【🟢 実装済 Phase 11 第二陣 2-α / Valkey ロック追加 Phase 11 事後検分 fixup / 2026-05-17】** |
 | GET | `/api/v1/shifts/positions` | 必要 | ポジションマスター一覧取得 |
 | POST | `/api/v1/shifts/positions` | 必要 | ポジション作成 |
 | PATCH | `/api/v1/shifts/positions/{id}` | 必要 | ポジション更新（部分更新、PUT から PATCH へ変更） |
@@ -812,9 +812,12 @@
 
 ---
 
-#### `GET /api/v1/shifts/schedules/{id}/summary` 【未実装・Phase 11 残課題】
+#### `GET /api/v1/shifts/schedules/{id}/summary` 【🟢 実装済（Phase 11 第二陣 2-α / 2026-05-17）】
 
-> ※ 本エンドポイントは設計時点で v1 仕様に含めたが、現状 `ShiftScheduleController` に実装が存在しない。クライアント側でスロット集計から代替算出している暫定運用。実装追加は別 PR で対応予定（triage_log `shifts.md` §C-1 参照）。
+> ※ 実装: `ShiftScheduleController#getScheduleSummary` / `ShiftScheduleService#getScheduleSummary`（PR #829 main マージ済）。Controller に `@PreAuthorize("hasRole('ADMIN')")` を宣言済（`@EnableMethodSecurity` 付与フェーズで実機認可が効く）。
+>
+> **N+1 修正（Phase 11 事後検分 fixup / 2026-05-17）:**
+> 初版は slot ごとに `findAllBySlotId()` を呼び出す N+1 クエリだった。`ShiftAssignmentRepository#findAllByScheduleId(scheduleId)`（JPQL JOIN）を追加して 1 回 SQL に統合し、Java 側で `slotId` でグルーピングする形に改修した。slot 数 N に対して SQL は 1 回（schedule 1 + slot 1 + assignment 1 + request 1 + position 1）。
 
 日付別・ポジション別の充足状況サマリーを取得する。管理者のシフト調整画面で使用。
 
@@ -872,9 +875,12 @@
 
 ---
 
-#### `POST /api/v1/shifts/schedules/{id}/remind` 【未実装・Phase 11 残課題】
+#### `POST /api/v1/shifts/schedules/{id}/remind` 【🟢 実装済（Phase 11 第二陣 2-α / 2026-05-17）】
 
-> ※ リマインド機能はバッチ (`ShiftReminderBatchJob` 推定) で自動送信されるが、管理者による手動起動 API は未実装。実装追加は別 PR で対応予定（triage_log `shifts.md` §C-2 参照）。
+> ※ 実装: `ShiftScheduleController#remindUnsubmitted` / `ShiftPreferenceReminderBatchService#triggerManualReminder`（PR #829 main マージ済）。Controller に `@PreAuthorize("hasRole('ADMIN')")` を宣言済（`@EnableMethodSecurity` 付与フェーズで実機認可が効く）。
+>
+> **二重起動防止（Phase 11 事後検分 fixup / 2026-05-17）:**
+> cron バッチ (`processReminders`) は `@SchedulerLock` で保護されているが、初版の手動 API は無保護で ADMIN 連打により重複通知のリスクがあった。`triggerManualReminder()` 冒頭で Valkey SET NX EX（キー `shift:manual-reminder:lock:{scheduleId}`、TTL 15 秒）を取得する形に改修した。連打時は `SHIFT_036 MANUAL_REMINDER_THROTTLED` で 400 を返す。cron 側ロックとは別の名前空間のため業務的に衝突しない。
 
 管理者が未提出メンバーに手動でリマインド通知を送信する。自動リマインド（24時間前）とは別に、任意のタイミングで送信可能。
 
@@ -896,11 +902,12 @@
 - `COLLECTING` 状態でのみ実行可能
 
 **エラーレスポンス**
-| ステータス | 条件 |
-|-----------|------|
-| 403 | ADMIN / DEPUTY_ADMIN（MANAGE_SHIFTS）ではない |
-| 404 | シフトスケジュールが存在しない |
-| 409 | `COLLECTING` 以外のステータス |
+| ステータス | エラーコード | 条件 |
+|-----------|---|------|
+| 400 | `SHIFT_036` (`MANUAL_REMINDER_THROTTLED`) | 同一スケジュールへの 15 秒以内の連打（Valkey ロック取得失敗） |
+| 403 | - | ADMIN / DEPUTY_ADMIN（MANAGE_SHIFTS）ではない |
+| 404 | `SHIFT_001` | シフトスケジュールが存在しない |
+| 409 | `SHIFT_012` | `COLLECTING` 以外のステータス |
 
 ---
 

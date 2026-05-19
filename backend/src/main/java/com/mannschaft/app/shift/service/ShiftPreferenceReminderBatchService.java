@@ -19,10 +19,12 @@ import com.mannschaft.app.team.repository.TeamShiftSettingsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
@@ -45,6 +47,17 @@ public class ShiftPreferenceReminderBatchService {
     private final NotificationHelper notificationHelper;
     private final TeamShiftSettingsRepository teamShiftSettingsRepository;
     private final AuditLogService auditLogService;
+    private final StringRedisTemplate redisTemplate;
+
+    /**
+     * 手動リマインド二重起動防止用 Valkey ロックの設定値。
+     *
+     * <p>Phase 11 事後検分 fixup（2026-05-17）: cron バッチは {@code @SchedulerLock} で保護されているが、
+     * 手動 API は無保護のため ADMIN 連打で重複通知のリスクがあった。SET NX EX で同一
+     * {@code scheduleId} 内の 15 秒以内の連打を阻止する（実通知送信時間 ＋ ネットワーク往復時間より長く取る）。</p>
+     */
+    private static final String MANUAL_REMINDER_LOCK_KEY_PREFIX = "shift:manual-reminder:lock:";
+    private static final Duration MANUAL_REMINDER_LOCK_TTL = Duration.ofSeconds(15);
 
     /**
      * 10 分ごとに実行。48h前・24h前リマインドを未提出メンバーに送信する。
@@ -162,11 +175,29 @@ public class ShiftPreferenceReminderBatchService {
      * @param scheduleId スケジュール ID
      * @param userId     呼び出し元（操作した管理者）の ID
      * @return 送信件数と対象ユーザー ID 一覧
+     * <p>Phase 11 事後検分 fixup（2026-05-17）: ADMIN 連打による重複通知を阻止するため、
+     * Valkey の SET NX EX で {@code scheduleId} 単位 15 秒のロックを取得する。同一 schedule の
+     * 連続呼び出しは {@link ShiftErrorCode#MANUAL_REMINDER_THROTTLED} で短絡する。
+     * cron バッチ側の {@code @SchedulerLock} とは独立の名前空間を使用するため、cron 走行中でも
+     * 手動 API は別ロックとして競合しない（業務的にも cron と手動は別文脈）。</p>
+     *
      * @throws BusinessException スケジュールが存在しない場合 ({@link ShiftErrorCode#SHIFT_SCHEDULE_NOT_FOUND}) /
-     *                           COLLECTING 以外の場合 ({@link ShiftErrorCode#INVALID_SCHEDULE_STATUS})
+     *                           COLLECTING 以外の場合 ({@link ShiftErrorCode#INVALID_SCHEDULE_STATUS}) /
+     *                           15 秒以内に同一 scheduleId への連打があった場合 ({@link ShiftErrorCode#MANUAL_REMINDER_THROTTLED})
      */
     @Transactional
     public ManualRemindResponse triggerManualReminder(Long scheduleId, Long userId) {
+        // Valkey ロック取得（SET NX EX）。失敗時は連打とみなして 429 相当で短絡。
+        String lockKey = MANUAL_REMINDER_LOCK_KEY_PREFIX + scheduleId;
+        Boolean acquired = redisTemplate.opsForValue().setIfAbsent(
+                lockKey,
+                String.valueOf(userId),
+                MANUAL_REMINDER_LOCK_TTL);
+        if (!Boolean.TRUE.equals(acquired)) {
+            log.warn("シフト希望手動リマインド連打検出: scheduleId={}, operator={}", scheduleId, userId);
+            throw new BusinessException(ShiftErrorCode.MANUAL_REMINDER_THROTTLED);
+        }
+
         ShiftScheduleEntity schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
 

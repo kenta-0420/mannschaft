@@ -249,14 +249,16 @@ public class ShiftScheduleService {
         List<ShiftSlotEntity> slots = slotRepository
                 .findByScheduleIdOrderBySlotDateAscStartTimeAsc(schedule.getId());
 
-        // 2) 全スロットの確定アサイン件数を集計（slotId → CONFIRMED 件数）
-        Map<Long, Long> confirmedCountBySlot = new HashMap<>();
-        for (ShiftSlotEntity slot : slots) {
-            long confirmed = assignmentRepository.findAllBySlotId(slot.getId()).stream()
-                    .filter(a -> a.getStatus() == ShiftAssignmentStatus.CONFIRMED)
-                    .count();
-            confirmedCountBySlot.put(slot.getId(), confirmed);
-        }
+        // 2) 全スロットの確定アサイン件数を集計（slotId → CONFIRMED 件数）。
+        //    Phase 11 事後検分 fixup（2026-05-17）: 旧実装は slot 数 N に対して N 回
+        //    findAllBySlotId() を発行する N+1 クエリだった。スケジュール ID で 1 回 JOIN 取得し、
+        //    Java 側で slotId でグルーピングする形に改修。
+        Map<Long, Long> confirmedCountBySlot = assignmentRepository
+                .findAllByScheduleId(schedule.getId()).stream()
+                .filter(a -> a.getStatus() == ShiftAssignmentStatus.CONFIRMED)
+                .collect(Collectors.groupingBy(
+                        ShiftAssignmentEntity::getSlotId,
+                        Collectors.counting()));
 
         // 3) スケジュール全希望を取得（後で日付ごとに分配）
         List<ShiftRequestEntity> allRequests = requestRepository
