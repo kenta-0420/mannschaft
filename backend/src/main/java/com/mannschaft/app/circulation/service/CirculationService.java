@@ -1,5 +1,7 @@
 package com.mannschaft.app.circulation.service;
 
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.circulation.CirculationErrorCode;
 import com.mannschaft.app.circulation.CirculationMapper;
 import com.mannschaft.app.circulation.CirculationMode;
@@ -32,6 +34,7 @@ import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -65,8 +68,12 @@ public class CirculationService {
      */
     private final ContentVisibilityChecker contentVisibilityChecker;
 
-    /** F13 Phase 5-a: R2 presigned URL 発行に使用。 */
+    /** F13 Phase 5-a: R2 presigned URL 発行 / オブジェクト削除に使用。 */
     private final R2StorageService r2StorageService;
+
+    /** F05.2 Phase 11 第三陣 3-B: 監査ログサービス。null 注入時はログ記録をスキップ。 */
+    @Autowired(required = false)
+    private AuditLogService auditLogService;
 
     /**
      * F09.14 Phase 4-C: 回覧文書削除イベントを発行するためのパブリッシャー。
@@ -423,23 +430,71 @@ public class CirculationService {
     /**
      * 添付ファイルを削除する。
      *
+     * <p>F05.2 Phase 11 第三陣 3-B 拡張:
+     * <ul>
+     *   <li>文書が DRAFT 状態の場合のみ削除可能</li>
+     *   <li>R2 オブジェクトをベストエフォートで削除（失敗時は WARN ログ）</li>
+     *   <li>監査ログ {@code CIRCULATION_ATTACHMENT_DELETED} を発火</li>
+     *   <li>呼び出し元の作成者本人チェックは Controller / 上位ガード側で実施</li>
+     * </ul>
+     * </p>
+     *
      * @param scopeType    スコープ種別
      * @param scopeId      スコープID
      * @param documentId   文書ID
      * @param attachmentId 添付ファイルID
+     * @param userId       操作実行ユーザーID（監査ログ用）
      */
     @Transactional
-    public void removeAttachment(String scopeType, Long scopeId, Long documentId, Long attachmentId) {
+    public void removeAttachment(String scopeType, Long scopeId, Long documentId, Long attachmentId, Long userId) {
         CirculationDocumentEntity document = findDocumentOrThrow(scopeType, scopeId, documentId);
+
+        // DRAFT 段階のみ削除可能
+        if (!document.isEditable()) {
+            throw new BusinessException(CirculationErrorCode.ATTACHMENT_NOT_DELETABLE);
+        }
 
         CirculationAttachmentEntity attachment = attachmentRepository.findByIdAndDocumentId(attachmentId, documentId)
                 .orElseThrow(() -> new BusinessException(CirculationErrorCode.ATTACHMENT_NOT_FOUND));
+
+        String fileKey = attachment.getFileKey();
 
         attachmentRepository.delete(attachment);
         document.decrementAttachmentCount();
         documentRepository.save(document);
 
-        log.info("添付ファイル削除: documentId={}, attachmentId={}", documentId, attachmentId);
+        // R2 オブジェクト削除（ベストエフォート）
+        if (fileKey != null && r2StorageService != null) {
+            try {
+                r2StorageService.delete(fileKey);
+            } catch (Exception e) {
+                log.warn("R2 オブジェクト削除失敗 (ベストエフォート): fileKey={}, error={}", fileKey, e.getMessage());
+            }
+        }
+
+        // 監査ログ発火
+        if (auditLogService != null) {
+            auditLogService.record(AuditEventType.CIRCULATION_ATTACHMENT_DELETED.name(),
+                    userId, null, null, null, null, null, null,
+                    "{\"documentId\":" + documentId
+                            + ",\"attachmentId\":" + attachmentId
+                            + ",\"fileKey\":\"" + (fileKey == null ? "" : fileKey.replace("\"", "\\\"")) + "\"}");
+        }
+
+        log.info("添付ファイル削除: documentId={}, attachmentId={}, userId={}",
+                documentId, attachmentId, userId);
+    }
+
+    /**
+     * 旧シグネチャ互換用（テスト等で使用）。userId=null として呼び出す。
+     *
+     * @deprecated F05.2 Phase 11 第三陣 3-B 以降は {@link #removeAttachment(String, Long, Long, Long, Long)}
+     *             を使用する。
+     */
+    @Deprecated
+    @Transactional
+    public void removeAttachment(String scopeType, Long scopeId, Long documentId, Long attachmentId) {
+        removeAttachment(scopeType, scopeId, documentId, attachmentId, null);
     }
 
     /**

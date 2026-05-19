@@ -266,7 +266,17 @@ public enum AuditEventType {
     /** 組織内チーム検索 API がレート制限に到達した（429 応答）。 */
     TEAM_SEARCH_RATE_LIMITED(AuditEventCategory.SECURITY_RATE_LIMIT),
     /** F15.4 Phase 5-α: 店舗詳細 Public API がレート制限に到達した（429 応答）。 */
-    PUBLIC_TEAM_DETAIL_RATE_LIMIT_EXCEEDED(AuditEventCategory.SECURITY_RATE_LIMIT);
+    PUBLIC_TEAM_DETAIL_RATE_LIMIT_EXCEEDED(AuditEventCategory.SECURITY_RATE_LIMIT),
+
+    // ─── CIRCULATION (F05.2 Phase 11 第三陣 3-B) ─────────────────
+    /** 押印を訂正した（受信者本人）。 */
+    CIRCULATION_STAMP_CORRECTED(AuditEventCategory.CIRCULATION),
+    /** 押印を委任した（受信者→代理人）。 */
+    CIRCULATION_STAMP_DELEGATED(AuditEventCategory.CIRCULATION),
+    /** ADMIN が受信者を強制スキップした。 */
+    CIRCULATION_RECIPIENT_SKIPPED(AuditEventCategory.CIRCULATION),
+    /** DRAFT 文書から添付ファイルを削除した。 */
+    CIRCULATION_ATTACHMENT_DELETED(AuditEventCategory.CIRCULATION);
 
     private final AuditEventCategory category;
 }

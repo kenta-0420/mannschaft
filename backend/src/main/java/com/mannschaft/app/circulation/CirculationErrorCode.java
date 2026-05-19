@@ -45,7 +45,25 @@ public enum CirculationErrorCode implements ErrorCode {
     DOCUMENT_OVERDUE("CIRCULATION_011", "回覧期限を超過しています", Severity.WARN),
 
     /** 受信者が空 */
-    EMPTY_RECIPIENTS("CIRCULATION_012", "受信者を1名以上指定してください", Severity.ERROR);
+    EMPTY_RECIPIENTS("CIRCULATION_012", "受信者を1名以上指定してください", Severity.ERROR),
+
+    /** 訂正可能期間（押印後 24h）を超過 */
+    CORRECTION_WINDOW_EXPIRED("CIRCULATION_013", "押印訂正は押印後24時間以内のみ可能です", Severity.WARN),
+
+    /** 訂正は押印済みの場合のみ */
+    NOT_STAMPED_CANNOT_CORRECT("CIRCULATION_014", "押印していないため訂正できません", Severity.WARN),
+
+    /** 委任者は自分自身を代理人に指定できない */
+    SELF_DELEGATION_NOT_ALLOWED("CIRCULATION_015", "自分自身に委任することはできません", Severity.WARN),
+
+    /** 既に有効な委任が存在する */
+    DELEGATION_ALREADY_EXISTS("CIRCULATION_016", "この文書には既に委任が登録されています", Severity.WARN),
+
+    /** ADMIN 権限が必要 */
+    ADMIN_REQUIRED("CIRCULATION_017", "この操作には管理者権限が必要です", Severity.WARN),
+
+    /** 添付削除は DRAFT のみ可能 */
+    ATTACHMENT_NOT_DELETABLE("CIRCULATION_018", "添付ファイルの削除は下書き状態のみ可能です", Severity.WARN);
 
     private final String code;
     private final String message;

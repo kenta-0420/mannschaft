@@ -1,15 +1,19 @@
 package com.mannschaft.app.circulation.controller;
 
 import com.mannschaft.app.circulation.dto.AddRecipientsRequest;
+import com.mannschaft.app.circulation.dto.AdminSkipRecipientRequest;
 import com.mannschaft.app.circulation.dto.RecipientResponse;
 import com.mannschaft.app.circulation.service.CirculationService;
+import com.mannschaft.app.circulation.service.CirculationStampService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,6 +36,7 @@ public class CirculationRecipientController {
     private static final String SCOPE_TYPE = "TEAM";
 
     private final CirculationService circulationService;
+    private final CirculationStampService stampService;
 
     /**
      * 受信者一覧を取得する。
@@ -72,5 +77,24 @@ public class CirculationRecipientController {
         // ドキュメントからscopeType/scopeIdを解決（現時点ではデフォルト値を使用）
         circulationService.removeRecipient(SCOPE_TYPE, 0L, documentId, recipientId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * ADMIN による受信者強制スキップ。
+     *
+     * <p>F05.2 Phase 11 第三陣 3-B: 退職者・休職者などへの対応として、ADMIN が
+     * 特定受信者を SKIPPED 状態に強制遷移させる。{@code reason} は必須。</p>
+     */
+    @PostMapping("/{userId}/skip")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "ADMIN による受信者強制スキップ")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "スキップ成功")
+    public ResponseEntity<ApiResponse<RecipientResponse>> adminSkipRecipient(
+            @PathVariable Long documentId,
+            @PathVariable("userId") Long targetUserId,
+            @Valid @RequestBody AdminSkipRecipientRequest request) {
+        RecipientResponse response = stampService.adminSkipRecipient(documentId, targetUserId,
+                SecurityUtils.getCurrentUserId(), request);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

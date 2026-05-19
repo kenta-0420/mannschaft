@@ -21,5 +21,7 @@ public enum AuditEventCategory {
     /** F17 村機能（村作成・参加・通報・ピン・ロビー等）。 */
     VILLAGE,
     /** F15.4 セキュリティ系（レート制限到達 / 429 応答等）。 */
-    SECURITY_RATE_LIMIT
+    SECURITY_RATE_LIMIT,
+    /** F05.2 回覧板（押印訂正・委任・強制スキップ・添付削除等）。 */
+    CIRCULATION
 }
