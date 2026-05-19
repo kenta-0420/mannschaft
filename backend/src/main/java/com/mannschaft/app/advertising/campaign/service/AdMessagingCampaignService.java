@@ -103,9 +103,13 @@ public class AdMessagingCampaignService {
             CreateCampaignRequest request) {
         validateScheduleWindow(request.startsAt(), request.endsAt());
 
+        // F09.17 Phase 11-d-1: scope ベース化。既存 organizationId 引数を ORGANIZATION スコープとして埋める。
+        // Phase 11-d-2 で scopeType/scopeId を引数として受け取る形に書き換える。
         AdMessagingCampaign entity = AdMessagingCampaign.builder()
                 .advertiserAccountId(advertiserAccountId)
                 .organizationId(organizationId)
+                .scopeType(com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION)
+                .scopeId(organizationId)
                 .name(request.name())
                 .status(AdCampaignStatus.DRAFT)
                 .moderationStatus(AdModerationStatus.PENDING)

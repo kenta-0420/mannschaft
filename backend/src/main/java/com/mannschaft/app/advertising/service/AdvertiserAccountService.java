@@ -44,8 +44,12 @@ public class AdvertiserAccountService {
             throw new BusinessException(AdvertisingErrorCode.AD_006);
         }
 
+        // F09.17 Phase 11-d-1: scope ベース化。既存 organizationId 引数を ORGANIZATION スコープとして埋める。
+        // Phase 11-d-2 で scopeType/scopeId を引数として受け取る形に書き換える。
         AdvertiserAccountEntity entity = AdvertiserAccountEntity.builder()
                 .organizationId(organizationId)
+                .scopeType(com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION)
+                .scopeId(organizationId)
                 .companyName(request.companyName())
                 .contactEmail(request.contactEmail())
                 .billingMethod(request.billingMethod())

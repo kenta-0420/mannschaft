@@ -3,6 +3,7 @@ package com.mannschaft.app.advertising.entity;
 import com.mannschaft.app.advertising.AdvertiserAccountStatus;
 import com.mannschaft.app.advertising.BillingMethod;
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.membership.domain.ScopeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -30,8 +31,24 @@ import java.time.LocalDateTime;
 @Builder(toBuilder = true)
 public class AdvertiserAccountEntity extends BaseEntity {
 
-    @Column(nullable = false)
+    /**
+     * 旧スコープ参照 (F09.17 Phase 11-d-1 で nullable 化)。
+     *
+     * <p>Phase 11-d-1 では scope_type/scope_id への移行完了後も互換維持のため残置する。
+     * 上位層 (Service/Controller) の scope 化は Phase 11-d-2 以降で実施し、それと同時に本フィールドは
+     * Phase 11-e で物理削除予定。</p>
+     */
+    @Column(name = "organization_id", nullable = true)
     private Long organizationId;
+
+    /** スコープ種別 (ORGANIZATION / TEAM)。F09.17 Phase 11-d-1 で追加。 */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "scope_type", nullable = false, length = 20)
+    private ScopeType scopeType;
+
+    /** スコープ ID (organization_id または team_id・クロスドメイン参照・FKなし)。F09.17 Phase 11-d-1 で追加。 */
+    @Column(name = "scope_id", nullable = false)
+    private Long scopeId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
