@@ -1,5 +1,6 @@
 package com.mannschaft.app.circulation.entity;
 
+import com.mannschaft.app.circulation.CirculationExportStatus;
 import com.mannschaft.app.circulation.CirculationMode;
 import com.mannschaft.app.circulation.CirculationPriority;
 import com.mannschaft.app.circulation.CirculationStatus;
@@ -100,6 +101,65 @@ public class CirculationDocumentEntity extends BaseEntity {
     private Integer commentCount = 0;
 
     private LocalDateTime deletedAt;
+
+    // ─────────────────────────────────────────────
+    // F05.2 Phase 11 第四陣 4-C: 押印済み証跡 PDF エクスポート
+    // ─────────────────────────────────────────────
+
+    /** エクスポート生成状態（NOT_GENERATED / PENDING / COMPLETED / FAILED）。 */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    @Builder.Default
+    private CirculationExportStatus exportStatus = CirculationExportStatus.NOT_GENERATED;
+
+    /** R2 オブジェクトキー（生成完了時にセット）。 */
+    @Column(length = 500)
+    private String exportFileKey;
+
+    /** エクスポート生成リクエスト受付時刻。 */
+    private LocalDateTime exportRequestedAt;
+
+    /** エクスポート生成完了時刻。 */
+    private LocalDateTime exportCompletedAt;
+
+    /** 生成失敗時のエラー要約。 */
+    @Column(length = 1000)
+    private String exportErrorMessage;
+
+    /**
+     * エクスポート生成リクエストを受け付けた直後の状態に遷移させる。
+     */
+    public void markExportPending() {
+        this.exportStatus = CirculationExportStatus.PENDING;
+        this.exportRequestedAt = LocalDateTime.now();
+        this.exportErrorMessage = null;
+    }
+
+    /**
+     * エクスポート生成完了状態に遷移させる。
+     *
+     * @param fileKey 生成済 PDF の R2 オブジェクトキー
+     */
+    public void markExportCompleted(String fileKey) {
+        this.exportStatus = CirculationExportStatus.COMPLETED;
+        this.exportFileKey = fileKey;
+        this.exportCompletedAt = LocalDateTime.now();
+        this.exportErrorMessage = null;
+    }
+
+    /**
+     * エクスポート生成失敗状態に遷移させる。
+     *
+     * @param errorMessage エラー要約（最大 1000 文字、それ以上は切詰め）
+     */
+    public void markExportFailed(String errorMessage) {
+        this.exportStatus = CirculationExportStatus.FAILED;
+        if (errorMessage != null && errorMessage.length() > 1000) {
+            this.exportErrorMessage = errorMessage.substring(0, 1000);
+        } else {
+            this.exportErrorMessage = errorMessage;
+        }
+    }
 
     /**
      * 文書を公開（ACTIVE）にする。

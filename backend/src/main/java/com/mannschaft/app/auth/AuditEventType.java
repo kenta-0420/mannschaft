@@ -295,7 +295,13 @@ public enum AuditEventType {
     /** ADMIN が受信者を強制スキップした。 */
     CIRCULATION_RECIPIENT_SKIPPED(AuditEventCategory.CIRCULATION),
     /** DRAFT 文書から添付ファイルを削除した。 */
-    CIRCULATION_ATTACHMENT_DELETED(AuditEventCategory.CIRCULATION);
+    CIRCULATION_ATTACHMENT_DELETED(AuditEventCategory.CIRCULATION),
+
+    /** 押印済み証跡 PDF エクスポートを要求した（Phase 11 4-C）。 */
+    CIRCULATION_EXPORT_REQUESTED(AuditEventCategory.CIRCULATION),
+
+    /** 押印済み証跡 PDF エクスポートを生成完了した（Phase 11 4-C）。 */
+    CIRCULATION_EXPORT_GENERATED(AuditEventCategory.CIRCULATION);
 
     private final AuditEventCategory category;
 }

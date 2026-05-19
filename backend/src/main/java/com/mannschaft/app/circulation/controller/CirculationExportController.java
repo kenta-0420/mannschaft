@@ -1,0 +1,108 @@
+package com.mannschaft.app.circulation.controller;
+
+import com.mannschaft.app.circulation.dto.ExportRequestResponse;
+import com.mannschaft.app.circulation.dto.ExportStatusResponse;
+import com.mannschaft.app.circulation.service.CirculationExportService;
+import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.net.URI;
+
+/**
+ * 押印済み証跡 PDF エクスポートコントローラー（F05.2 Phase 11 第四陣 4-C）。
+ *
+ * <p>設計書: {@code docs/features/F05.2_circular.md} §4.8 / §残課題マトリクス</p>
+ *
+ * <p>提供する 2 エンドポイント:</p>
+ * <ul>
+ *   <li>{@code GET /api/v1/circulations/{documentId}/export} —
+ *       生成済の場合 302 リダイレクト → R2 Pre-signed URL。
+ *       未生成 / 失敗の場合は非同期ジョブを起動し 202 Accepted。
+ *       生成中の場合は 202 Accepted（再起動なし）。</li>
+ *   <li>{@code GET /api/v1/circulations/{documentId}/export/status} — 現在の生成状況を返却</li>
+ * </ul>
+ *
+ * <p>認可: Service 層で「作成者 / 受信者 / ADMIN」を判定する。
+ * Controller では {@code SecurityContextHolder} から ROLE_ADMIN 保有有無を引き出して Service に渡す。</p>
+ */
+@RestController
+@RequestMapping("/api/v1/circulations/{documentId}/export")
+@Tag(name = "回覧板（PDFエクスポート）", description = "F05.2 Phase 11 第四陣 4-C 押印済み証跡 PDF エクスポート")
+@RequiredArgsConstructor
+public class CirculationExportController {
+
+    private final CirculationExportService exportService;
+
+    /**
+     * 押印済み証跡 PDF のエクスポートを要求する。
+     */
+    @GetMapping
+    @Operation(summary = "押印済み証跡PDFエクスポート",
+            description = "COMPLETED の回覧文書を PDF 化する。生成済の場合は 302 リダイレクト、未生成の場合は 202 Accepted で非同期ジョブを起動する")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "302", description = "生成済 PDF への Pre-signed URL リダイレクト")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "非同期生成ジョブ受付")
+    public ResponseEntity<?> requestExport(@PathVariable Long documentId) {
+        Long actorId = SecurityUtils.getCurrentUserId();
+        boolean isAdmin = currentUserHasAdminRole();
+
+        Object result = exportService.requestExport(documentId, actorId, isAdmin);
+
+        // COMPLETED かつ URL 入りの場合は 302 リダイレクト
+        if (result instanceof ExportStatusResponse status
+                && "COMPLETED".equals(status.status())
+                && status.url() != null) {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(status.url()))
+                    .build();
+        }
+
+        // それ以外（GENERATING / FAILED）は 202 Accepted で受付確認
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(ApiResponse.of(result));
+    }
+
+    /**
+     * 押印済み証跡 PDF の生成状況を確認する。
+     */
+    @GetMapping("/status")
+    @Operation(summary = "押印済み証跡PDFエクスポート状況確認",
+            description = "現在の生成状態（PENDING / COMPLETED / FAILED）を返却する。COMPLETED の場合は Pre-signed URL も含む")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<ExportStatusResponse>> getStatus(@PathVariable Long documentId) {
+        Long actorId = SecurityUtils.getCurrentUserId();
+        boolean isAdmin = currentUserHasAdminRole();
+
+        ExportStatusResponse response = exportService.getExportStatus(documentId, actorId, isAdmin);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 現在の Authentication が ROLE_ADMIN を保持しているかを判定する。
+     *
+     * @return ROLE_ADMIN を持つ場合 {@code true}
+     */
+    private boolean currentUserHasAdminRole() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            return false;
+        }
+        for (GrantedAuthority authority : authentication.getAuthorities()) {
+            if ("ROLE_ADMIN".equals(authority.getAuthority())) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
