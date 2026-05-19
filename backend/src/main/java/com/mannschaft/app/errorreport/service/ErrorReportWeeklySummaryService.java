@@ -3,6 +3,8 @@ package com.mannschaft.app.errorreport.service;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.EmailService;
+import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
+import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
@@ -14,9 +16,11 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 
 /**
  * エラーレポートの週次サマリーメール送信サービス。
@@ -31,6 +35,7 @@ public class ErrorReportWeeklySummaryService {
     private final UserRoleRepository userRoleRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final EmailOutboxService emailOutboxService;
 
     @BatchEndpoint(name = "errorreport-weekly-summary", description = "エラーレポートの週次サマリーを毎週月曜 09:00 に SYSTEM_ADMIN へ配信する")
     @Scheduled(cron = "0 0 9 * * MON", zone = "Asia/Tokyo")
@@ -76,18 +81,33 @@ public class ErrorReportWeeklySummaryService {
                 return;
             }
 
-            List<String> emails = userRepository.findAllById(adminIds).stream()
-                    .map(u -> u.getEmail())
-                    .filter(e -> e != null && !e.isBlank())
+            var adminUsers = userRepository.findAllById(adminIds).stream()
+                    .filter(u -> u.getEmail() != null && !u.getEmail().isBlank())
                     .toList();
 
+            if (adminUsers.isEmpty()) {
+                log.warn("[ErrorReportWeeklySummary] メールアドレス有効な SYSTEM_ADMIN が見つかりません");
+                return;
+            }
+
             String subject = "[Mannschaft] エラーレポート週次サマリー";
-            for (String email : emails) {
-                emailService.sendEmail(email, subject, htmlBody);
+            LocalDate weekAgoDate = weekAgo.toLocalDate();
+            for (var adminUser : adminUsers) {
+                emailOutboxService.enqueue(new EmailOutboxRequest(
+                        "ERROR_REPORT_WEEKLY",
+                        "ja",
+                        adminUser.getEmail(),
+                        Map.of("subject", subject, "body", htmlBody),
+                        "errorreport",
+                        "error-weekly:" + weekAgoDate.toString() + ":" + adminUser.getEmail(),
+                        null,
+                        adminUser.getId(),
+                        null
+                ));
             }
 
             log.info("[ErrorReportWeeklySummary] 週次サマリー送信完了: recipients={}, newCount={}, unresolvedCount={}",
-                    emails.size(), newCount, unresolvedCount);
+                    adminUsers.size(), newCount, unresolvedCount);
         } catch (Exception e) {
             log.error("[ErrorReportWeeklySummary] 週次サマリー送信失敗", e);
         }
