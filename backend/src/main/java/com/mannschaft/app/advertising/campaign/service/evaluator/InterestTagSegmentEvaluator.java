@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.advertising.campaign.entity.AdAudienceSegment;
 import com.mannschaft.app.advertising.campaign.enums.AdSegmentType;
 import com.mannschaft.app.advertising.campaign.exception.AdCampaignErrorCode;
+import com.mannschaft.app.auth.repository.UserInterestTagRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EncryptionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -16,34 +18,17 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * F09.17 INTEREST_TAG セグメント評価器。
+ * F09.17 INTEREST_TAG セグメント評価器（Phase A 本実装）。
  *
  * <p>設計書 §3.2 例: {@code segment_value = {"tag_ids": ["sports_football", "neighborhood_event"]}}。</p>
  *
- * <h2>データソース未整備宣言</h2>
- * <p>{@code user_interest_tags} 表 / {@code interest_tags} マスタは現状未作成。
- * 後続フェーズで以下のスキーマを Flyway で追加すれば、本評価器の {@code resolveUserIds} を
- * SQL 1 本に差し替えるだけで稼働可能。</p>
+ * <p>Phase A で {@code user_interest_tags} テーブルが整備されたため、
+ * タグ文字列を {@link EncryptionService#hmac(String)} でハッシュ化し、
+ * {@code user_interest_tags.tag_hash IN (:hashes)} でブラインドインデックス検索を行う。</p>
  *
- * <pre>
- * CREATE TABLE interest_tags (
- *     id          VARCHAR(60) NOT NULL,
- *     name_ja     VARCHAR(60) NOT NULL,
- *     deleted_at  DATETIME    NULL,
- *     PRIMARY KEY (id)
- * );
- *
- * CREATE TABLE user_interest_tags (
- *     user_id   BIGINT      NOT NULL,
- *     tag_id    VARCHAR(60) NOT NULL,
- *     created_at DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP,
- *     PRIMARY KEY (user_id, tag_id),
- *     INDEX idx_user_interest_tags_tag (tag_id, user_id)
- * );
- * </pre>
- *
- * <p>本評価器は登録だけ済ませ、評価時は {@link SegmentDataSourceNotAvailableException} を投げる
- * （対処療法の空集合返却は禁止 — CLAUDE.md「障害対応の原則 — 根治治療を徹底すること」）。</p>
+ * <p>ただし、ユーザーが興味タグを登録する UI / API は Phase B 以降で実装予定のため、
+ * 現時点では {@code user_interest_tags} にデータが存在せず空集合が返る。
+ * これは「データが無い」という正常状態であり、対処療法ではない。</p>
  */
 @Slf4j
 @Component
@@ -53,10 +38,12 @@ public class InterestTagSegmentEvaluator implements AdSegmentEvaluator {
     private static final TypeReference<Map<String, Object>> SEGMENT_VALUE_TYPE =
             new TypeReference<>() {};
 
-    /** タグ ID の最大長（user_interest_tags.tag_id 想定）。 */
-    private static final int MAX_TAG_ID_LENGTH = 60;
+    /** タグ文字列の最大長（user_interest_tags.tag カラムに合わせる）。 */
+    private static final int MAX_TAG_LENGTH = 50;
 
     private final ObjectMapper objectMapper;
+    private final EncryptionService encryptionService;
+    private final UserInterestTagRepository userInterestTagRepository;
 
     @Override
     public boolean supports(AdSegmentType type) {
@@ -72,30 +59,32 @@ public class InterestTagSegmentEvaluator implements AdSegmentEvaluator {
                     segment.getCampaignId(), segment.getId());
             throw new BusinessException(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
         }
-        Set<String> targets = new HashSet<>();
-        for (Object raw : rawList) {
-            if (!(raw instanceof String str) || str.isBlank()) {
-                continue;
-            }
-            String trimmed = str.trim();
-            if (trimmed.length() > MAX_TAG_ID_LENGTH) {
-                log.warn("INTEREST_TAG segment の tag_id が長すぎます: length={}, campaignId={}",
-                        trimmed.length(), segment.getCampaignId());
+        List<String> tags = rawList.stream()
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .toList();
+        for (String tag : tags) {
+            if (tag.length() > MAX_TAG_LENGTH) {
+                log.warn("INTEREST_TAG segment の tag が長すぎます: length={}, campaignId={}",
+                        tag.length(), segment.getCampaignId());
                 throw new BusinessException(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
             }
-            targets.add(trimmed);
         }
-        if (targets.isEmpty()) {
+        if (tags.isEmpty()) {
             throw new BusinessException(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
         }
 
-        log.warn("INTEREST_TAG segment はデータソース未整備のため評価不能です。"
-                        + "user_interest_tags 表 / interest_tags マスタの追加を待ってください。"
-                        + "campaignId={}, segmentId={}",
-                segment.getCampaignId(), segment.getId());
-        throw new SegmentDataSourceNotAvailableException(
-                AdSegmentType.INTEREST_TAG,
-                "user_interest_tags 表 + interest_tags マスタ");
+        // タグを HMAC-SHA256 でハッシュ化してブラインドインデックス検索
+        List<String> tagHashes = tags.stream()
+                .map(encryptionService::hmac)
+                .toList();
+
+        List<Long> userIds = userInterestTagRepository.findUserIdsByTagHashIn(tagHashes);
+        log.debug("INTEREST_TAG segment 評価完了: tagCount={}, matchedUserCount={}, campaignId={}",
+                tags.size(), userIds.size(), segment.getCampaignId());
+        return new HashSet<>(userIds);
     }
 
     private Map<String, Object> deserialize(String json) {
