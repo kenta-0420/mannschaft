@@ -11,8 +11,10 @@ import com.mannschaft.app.publicview.dto.PublicPostSummary;
 import com.mannschaft.app.publicview.dto.PublicScopeRef;
 import com.mannschaft.app.publicview.error.PublicViewErrorCode;
 import com.mannschaft.app.publicview.service.PublicPostQueryService;
+import com.mannschaft.app.publicview.service.ViewerContextBuilder;
 import com.mannschaft.app.publicview.visibility.AnonymousLabels;
 import com.mannschaft.app.publicview.visibility.DisplayIdentity;
+import com.mannschaft.app.publicview.visibility.ViewerContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,6 +25,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -40,13 +43,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * {@link PublicOrganizationPostController} の MockMvc 結合テスト (F19.1 Phase 1)。
+ * {@link PublicOrganizationPostController} の MockMvc 結合テスト (F19.1 Phase 2)。
  *
  * <p>{@link PublicTeamPostControllerTest} の組織版（対称構造）。</p>
  */
 @WebMvcTest(PublicOrganizationPostController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@DisplayName("PublicOrganizationPostController 結合テスト (F19.1 Phase 1)")
+@DisplayName("PublicOrganizationPostController 結合テスト (F19.1 Phase 2)")
 class PublicOrganizationPostControllerTest {
 
     private static final Long ORG_ID = 200L;
@@ -59,6 +62,9 @@ class PublicOrganizationPostControllerTest {
     private PublicPostQueryService publicPostQueryService;
 
     @MockitoBean
+    private ViewerContextBuilder viewerContextBuilder;
+
+    @MockitoBean
     private AuthTokenService authTokenService;
     @MockitoBean
     private UserLocaleCache userLocaleCache;
@@ -68,8 +74,13 @@ class PublicOrganizationPostControllerTest {
     private ProxyInputContext proxyInputContext;
 
     @BeforeEach
-    void clearContext() {
+    void setUp() {
         SecurityContextHolder.clearContext();
+        // デフォルト: ViewerContextBuilder は ANONYMOUS ViewerContext を返す
+        given(viewerContextBuilder.buildForOrganization(any(Authentication.class), any(Long.class)))
+                .willReturn(ViewerContext.anonymous());
+        given(viewerContextBuilder.buildForOrganization(eq(null), any(Long.class)))
+                .willReturn(ViewerContext.anonymous());
     }
 
     @Test
@@ -77,7 +88,7 @@ class PublicOrganizationPostControllerTest {
     void listPublicPosts_returns200() throws Exception {
         Page<PublicPostSummary> page = new PageImpl<>(
                 List.of(sampleSummary()), PageRequest.of(0, 20), 1);
-        given(publicPostQueryService.listPublicPostsByOrganization(eq(ORG_ID), any(Pageable.class)))
+        given(publicPostQueryService.listPublicPostsByOrganization(eq(ORG_ID), any(Pageable.class), any(ViewerContext.class)))
                 .willReturn(page);
 
         mockMvc.perform(get("/api/v1/public/organizations/{orgId}/posts", ORG_ID))
@@ -94,7 +105,7 @@ class PublicOrganizationPostControllerTest {
     void listPublicPosts_privateOrg_returns404() throws Exception {
         willThrow(new BusinessException(PublicViewErrorCode.PUBLIC_001))
                 .given(publicPostQueryService)
-                .listPublicPostsByOrganization(eq(ORG_ID), any(Pageable.class));
+                .listPublicPostsByOrganization(eq(ORG_ID), any(Pageable.class), any(ViewerContext.class));
 
         mockMvc.perform(get("/api/v1/public/organizations/{orgId}/posts", ORG_ID))
                 .andExpect(status().isNotFound());
@@ -103,7 +114,7 @@ class PublicOrganizationPostControllerTest {
     @Test
     @DisplayName("GET /public/organizations/{id}/posts/{postId} 200: 投稿詳細")
     void getPublicPostDetail_returns200() throws Exception {
-        given(publicPostQueryService.findPublicPostDetailByOrganization(eq(ORG_ID), eq(POST_ID)))
+        given(publicPostQueryService.findPublicPostDetailByOrganization(eq(ORG_ID), eq(POST_ID), any(ViewerContext.class)))
                 .willReturn(sampleDetail());
 
         mockMvc.perform(get("/api/v1/public/organizations/{orgId}/posts/{postId}", ORG_ID, POST_ID))
@@ -117,7 +128,7 @@ class PublicOrganizationPostControllerTest {
     void getPublicPostDetail_postNotFound_returns404() throws Exception {
         willThrow(new BusinessException(PublicViewErrorCode.PUBLIC_003))
                 .given(publicPostQueryService)
-                .findPublicPostDetailByOrganization(eq(ORG_ID), eq(POST_ID));
+                .findPublicPostDetailByOrganization(eq(ORG_ID), eq(POST_ID), any(ViewerContext.class));
 
         mockMvc.perform(get("/api/v1/public/organizations/{orgId}/posts/{postId}", ORG_ID, POST_ID))
                 .andExpect(status().isNotFound());
@@ -128,7 +139,7 @@ class PublicOrganizationPostControllerTest {
     void getPublicPostDetail_privateOrg_returns404() throws Exception {
         willThrow(new BusinessException(PublicViewErrorCode.PUBLIC_001))
                 .given(publicPostQueryService)
-                .findPublicPostDetailByOrganization(eq(ORG_ID), eq(POST_ID));
+                .findPublicPostDetailByOrganization(eq(ORG_ID), eq(POST_ID), any(ViewerContext.class));
 
         mockMvc.perform(get("/api/v1/public/organizations/{orgId}/posts/{postId}", ORG_ID, POST_ID))
                 .andExpect(status().isNotFound());

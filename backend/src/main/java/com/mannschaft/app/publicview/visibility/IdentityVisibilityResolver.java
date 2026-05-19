@@ -12,19 +12,26 @@ import java.util.Objects;
 /**
  * F19.1 投稿者識別段階的開示の表示識別解決サービス。
  *
- * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §7.1 / §4.6 / §4.6.4。</p>
+ * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §7.1 / §4.6 / §4.6.4 / §11.3。</p>
  *
- * <p><strong>Phase 1 簡易版仕様</strong>:</p>
+ * <p><strong>Phase 2 仕様</strong>（設計書 §4.6.1 開示マトリクス）:</p>
  * <ul>
- *   <li>未ログイン / 非メンバー → 汎用ラベル（「投稿者」）+ 汎用アバター + チーム所属非表示</li>
- *   <li>サポーター → 現在の display_name（フォールバック §4.6.4 適用）+ 実アバター + 所属表示</li>
- *   <li>メンバー / 本人 / システム管理者 → 現在の display_name + 実アバター + 所属表示</li>
+ *   <li>未ログイン / 非メンバー → 汎用ラベル「投稿者」+ 汎用アバター + チーム所属非表示（anonymized=true）</li>
+ *   <li>サポーター:
+ *     <ul>
+ *       <li>スコープ設定 {@code DISPLAY_NAME}: display_name（フォールバック §4.6.4 適用）+ 実アバター</li>
+ *       <li>スコープ設定 {@code REAL_NAME}: realNameSnapshot（なければ fullName）+ 実アバター</li>
+ *     </ul>
+ *   </li>
+ *   <li>メンバー / 本人 / システム管理者: realNameSnapshot（なければ fullName）+ 実アバター</li>
  * </ul>
  *
- * <p>Phase 1 では {@code teams.supporter_name_disclosure} / {@code organizations.supporter_name_disclosure}
- * カラム自体は Foundation で追加済（V9.166）だが、本 Resolver は値の如何にかかわらず常時 DISPLAY_NAME 系で
- * 振る舞う。Phase 2 で REAL_NAME 経路を実装する際は本クラス内の {@code switch (mode)} 分岐に
- * 実装を追加する（プレースホルダ箇所を参照）。</p>
+ * <p><strong>MINOR 上書きルール</strong>（§11.3）:
+ * {@code author.minor() == true}（{@code users.care_category == MINOR}）の場合、
+ * 閲覧者ステータスにかかわらず汎用ラベル（ANONYMOUS 相当）を返す。</p>
+ *
+ * <p><strong>退会済みユーザー</strong>: {@code author.isAnonymizedAuthor() == true} の場合、
+ * 汎用ラベル「退会済みユーザー」を返す。</p>
  *
  * <p><strong>display_name フォールバック規約</strong>（§4.6.4）:
  * {@code users.display_name} が NULL または空文字の場合、{@link #fallbackDisplayName(Long, String)} を
@@ -40,15 +47,21 @@ public class IdentityVisibilityResolver {
     /** §4.6.4 の shortHash 長（4〜6 文字、設計書推奨値 5）。 */
     private static final int SHORT_HASH_LENGTH = 5;
 
+    /** §11.3 MINOR 上書きルール適用時の汎用ラベル。 */
+    private static final String MINOR_ANONYMOUS_LABEL = "投稿者";
+
+    /** 退会済みユーザー向け汎用ラベル。 */
+    private static final String WITHDRAWN_USER_LABEL = "退会済みユーザー";
+
     /**
      * 閲覧者の立場に応じた投稿者表示識別を解決する。
      *
-     * <p>Phase 1 では viewer.status が ANONYMOUS / NON_MEMBER のとき汎用ラベル、
-     * SUPPORTER / MEMBER / SELF / SYSTEM_ADMIN のとき display_name（フォールバック §4.6.4 適用）を返す。
-     * Phase 2 で REAL_NAME モードが活性化された際は {@code scopeSettings.supporterNameDisclosure} を
-     * 参照して切り替える（現在は常時 DISPLAY_NAME 系）。</p>
+     * <p>Phase 2 実装: §4.6.1 開示マトリクス + §11.3 MINOR 上書きルール を完全実装する。</p>
      *
-     * @param author        投稿者情報（{@code null} 不可。退会済みは {@link PostAuthor#isAnonymizedAuthor()} で判定）
+     * <p>SELF ステータス（投稿者本人）は ViewerContext 構築時に MEMBER として扱い、
+     * 本メソッドは author.authorId == viewer.userId の一致チェックも行う。</p>
+     *
+     * @param author        投稿者情報（{@code null} 不可）
      * @param viewer        閲覧者コンテキスト（{@code null} 不可）
      * @param scope         対象スコープ参照（{@code null} 不可）
      * @param scopeSettings スコープの表示モード設定（{@code null} 不可）
@@ -64,10 +77,26 @@ public class IdentityVisibilityResolver {
         Objects.requireNonNull(scope, "scope must not be null");
         Objects.requireNonNull(scopeSettings, "scopeSettings must not be null");
 
-        return switch (viewer.status()) {
+        // 退会済みユーザーの投稿は常に汎用ラベル
+        if (author.isAnonymizedAuthor()) {
+            return anonymousIdentityWithLabel(WITHDRAWN_USER_LABEL);
+        }
+
+        // §11.3 MINOR 上書きルール（最優先: 全閲覧者ステータスに優先する）
+        if (author.minor()) {
+            return anonymousIdentityWithLabel(MINOR_ANONYMOUS_LABEL);
+        }
+
+        // 本人判定: author.authorId == viewer.userId の場合は SELF として本名表示
+        ViewerStatus effectiveStatus = viewer.status();
+        if (viewer.userId() != null && viewer.userId().equals(author.authorId())) {
+            effectiveStatus = ViewerStatus.SELF;
+        }
+
+        return switch (effectiveStatus) {
             case ANONYMOUS, NON_MEMBER -> anonymousIdentity();
             case SUPPORTER -> resolveForSupporter(author, scopeSettings);
-            case MEMBER, SELF, SYSTEM_ADMIN -> resolveForMemberOrAbove(author);
+            case MEMBER, SELF, SYSTEM_ADMIN -> resolveRealName(author);
         };
     }
 
@@ -77,8 +106,15 @@ public class IdentityVisibilityResolver {
      * <p>§4.6.1 開示マトリクスに従い汎用ラベル「投稿者」+ 汎用アバター + チーム所属非表示で固定。</p>
      */
     private DisplayIdentity anonymousIdentity() {
+        return anonymousIdentityWithLabel(AnonymousLabels.POSTER);
+    }
+
+    /**
+     * 指定ラベルの汎用識別を返す（退会済みユーザー / MINOR 上書き用）。
+     */
+    private DisplayIdentity anonymousIdentityWithLabel(String label) {
         return new DisplayIdentity(
-                AnonymousLabels.POSTER,
+                label,
                 DisplayIdentity.ANONYMOUS_AVATAR_URL,
                 false,
                 true);
@@ -87,9 +123,11 @@ public class IdentityVisibilityResolver {
     /**
      * サポーター向け識別を返す。
      *
-     * <p>Phase 1: {@code scopeSettings.supporterNameDisclosure} の値にかかわらず DISPLAY_NAME 経路で処理する。
-     * Phase 2 で REAL_NAME 経路を実装する際は本メソッド内の {@code switch} 分岐の REAL_NAME case を
-     * 実装する（現在は {@link UnsupportedOperationException} を投げるプレースホルダ）。</p>
+     * <p>Phase 2: {@code scopeSettings.supporterNameDisclosure} の値に従って DISPLAY_NAME / REAL_NAME を切り替える。</p>
+     * <ul>
+     *   <li>{@code DISPLAY_NAME}: display_name（フォールバック §4.6.4 適用）+ 実アバター + 所属表示</li>
+     *   <li>{@code REAL_NAME}: realNameSnapshot → fullName フォールバック + 実アバター + 所属表示</li>
+     * </ul>
      */
     private DisplayIdentity resolveForSupporter(PostAuthor author, ScopeSettings scopeSettings) {
         NameDisclosureMode mode = scopeSettings.supporterNameDisclosure();
@@ -99,30 +137,31 @@ public class IdentityVisibilityResolver {
                     resolveAvatar(author),
                     true,
                     false);
-            case REAL_NAME ->
-                // Phase 2 で本名スナップショット表示を実装する。
-                // §4.7.1: post.realNameSnapshot != null なら本名表示、
-                //          null なら display_name にフォールバック（DISPLAY_NAME と同じ挙動）。
-                // Phase 1 では REAL_NAME モードが UI から設定されることはないため、
-                // 防御的に DISPLAY_NAME と同じ挙動とする（fail-safe）。
-                new DisplayIdentity(
-                        resolveDisplayLabel(author),
-                        resolveAvatar(author),
-                        true,
-                        false);
+            case REAL_NAME -> resolveRealName(author);
         };
     }
 
     /**
-     * メンバー以上 / 本人 / システム管理者向け識別を返す。
+     * メンバー以上向け本名識別を返す。
      *
-     * <p>Phase 1: 本名表示は実装しない。display_name（フォールバック §4.6.4 適用）+ 実アバター + 所属表示。
-     * Phase 2 で「メンバー以上は本名固定」のマトリクス §4.6.1 が活性化したら本メソッドで
-     * {@code author.realNameSnapshot} ベースの本名解決を実装する。</p>
+     * <p>§4.7.1: {@code author.realNameSnapshot()} が非 null であれば投稿時スナップショットを優先し、
+     * null の場合（Phase 1 以前の投稿）は {@code author.fullName()} にフォールバックする。
+     * さらに fullName も null の場合は display_name フォールバック（§4.6.4）を適用する。</p>
      */
-    private DisplayIdentity resolveForMemberOrAbove(PostAuthor author) {
+    private DisplayIdentity resolveRealName(PostAuthor author) {
+        String nameToDisplay;
+        if (author.realNameSnapshot() != null && !author.realNameSnapshot().isBlank()) {
+            // Phase 2 以降: 投稿時スナップショットを優先
+            nameToDisplay = author.realNameSnapshot();
+        } else if (author.fullName() != null && !author.fullName().isBlank()) {
+            // Phase 1 以前の投稿（snapshot=null）: 現在の本名を使用
+            nameToDisplay = author.fullName();
+        } else {
+            // 本名も取得できない場合（データ不整合）: display_name フォールバック
+            nameToDisplay = resolveDisplayLabel(author);
+        }
         return new DisplayIdentity(
-                resolveDisplayLabel(author),
+                nameToDisplay,
                 resolveAvatar(author),
                 true,
                 false);
@@ -130,6 +169,8 @@ public class IdentityVisibilityResolver {
 
     /**
      * 投稿者の display_name を取得する。NULL/空時は §4.6.4 のフォールバックを返す。
+     *
+     * <p>SUPPORTER 向け DISPLAY_NAME モード および fallback 時に使用する。</p>
      */
     private String resolveDisplayLabel(PostAuthor author) {
         return fallbackDisplayName(author.authorId(), author.displayName());
@@ -203,18 +244,4 @@ public class IdentityVisibilityResolver {
         }
     }
 
-    /**
-     * 未成年判定（§11.3 暫定実装）。
-     *
-     * <p>軍議裁定（2026-05-18）により Phase 1 では {@code users.is_minor} カラム未追加のため、
-     * 常時 false を返す暫定実装とする。Phase 2 で {@code users.is_minor} 追加後に
-     * 本メソッドを差し替える。</p>
-     *
-     * @param authorId 投稿者 user_id
-     * @return 常に false（Phase 1 暫定）
-     */
-    @SuppressWarnings("unused") // Phase 2 で UserRepository ベースの判定に差し替える
-    public boolean isMinor(Long authorId) {
-        return false;
-    }
 }
