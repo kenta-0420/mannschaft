@@ -186,6 +186,8 @@ public class UserEntity extends BaseEntity {
      */
     public enum UserStatus {
         PENDING_VERIFICATION,
+        /** 保護者同意待ち（F01.9 年齢確認・保護者同意機能: 未成年ユーザーの同意取得中） */
+        PENDING_PARENTAL_CONSENT,
         ACTIVE,
         FROZEN,
         ARCHIVED,
