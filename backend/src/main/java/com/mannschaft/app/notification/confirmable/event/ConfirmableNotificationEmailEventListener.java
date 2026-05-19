@@ -2,11 +2,13 @@ package com.mannschaft.app.notification.confirmable.event;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
-import com.mannschaft.app.common.EmailService;
+import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
+import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -20,8 +22,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.MissingResourceException;
-import java.util.ResourceBundle;
 
 /**
  * F04.9 確認通知メール送信イベントリスナー。
@@ -43,10 +43,9 @@ import java.util.ResourceBundle;
 public class ConfirmableNotificationEmailEventListener {
 
     private static final String TEMPLATE_NAME = "email/confirmable-notification";
-    private static final ResourceBundle.Control PROPERTIES_CONTROL =
-            ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_PROPERTIES);
 
-    private final EmailService emailService;
+    private final EmailOutboxService emailOutboxService;
+    private final MessageSource messageSource;
     private final ConfirmableNotificationRecipientRepository recipientRepository;
     private final UserRepository userRepository;
     private final TemplateEngine templateEngine;
@@ -100,7 +99,17 @@ public class ConfirmableNotificationEmailEventListener {
                 String confirmUrl = frontendUrl + "/notifications/confirm/" + confirmToken;
                 String subject = getMessage("email.confirmableNotification.subject", locale);
                 String htmlBody = renderEmailTemplate(confirmUrl, subject, locale);
-                emailService.sendEmail(email, subject, htmlBody);
+                emailOutboxService.enqueue(new EmailOutboxRequest(
+                        "NOTIFICATION_CONFIRM",
+                        locale.toLanguageTag(),
+                        email,
+                        Map.of("subject", subject, "body", htmlBody),
+                        "notification",
+                        "notif-confirm:" + event.getConfirmableNotificationId() + ":" + user.getId(),
+                        null,
+                        user.getId(),
+                        null
+                ));
                 sentCount++;
                 log.debug("確認通知メール送信成功: userId={}", user.getId());
             } catch (Exception e) {
@@ -134,21 +143,15 @@ public class ConfirmableNotificationEmailEventListener {
 
     /**
      * メッセージキーからローカライズされた文字列を取得する。
-     * プロパティファイル（email/email_{lang}.properties）のキーを参照する。
-     * F09.18 Phase 18-b TC-0 で i18n/email/ を email/ に統合した変更に追従。
+     * Spring の {@link MessageSource} 経由でプロパティを参照する。
+     * F09.18 Phase 18-c で ResourceBundle → MessageSource に置換。
      *
      * @param key    メッセージキー
      * @param locale ロケール
      * @return メッセージ文字列（キーが見つからない場合はキー名をそのまま返す）
      */
     String getMessage(String key, Locale locale) {
-        try {
-            ResourceBundle bundle = ResourceBundle.getBundle("email/email", locale, PROPERTIES_CONTROL);
-            return bundle.getString(key);
-        } catch (MissingResourceException e) {
-            log.warn("メールi18nキーが見つかりません: key={}, locale={}", key, locale);
-            return key;
-        }
+        return messageSource.getMessage(key, null, key, locale);
     }
 
     /**
