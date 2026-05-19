@@ -1,4 +1,4 @@
-package com.mannschaft.app.team.filter;
+package com.mannschaft.app.publicview.filter;
 
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
@@ -30,7 +30,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link PublicTeamApiRateLimitFilter} のレート制限検証。
+ * {@link PublicApiRateLimitFilter} のレート制限検証。
  *
  * <p>設計書 {@code docs/features/F15.4_team_store_search_within_org.md §3.5 / §6 / §6.6}
  *      および {@code docs/features/F15.4_phase5_team_public_detail.md §4.4} に従い以下を検証する:</p>
@@ -50,12 +50,12 @@ import static org.mockito.Mockito.verify;
  * <p><b>実装アプローチ</b>: 既存 {@link com.mannschaft.app.pointcard.filter.PointCardRateLimitFilter}
  * のテストと同形で、Filter を直接呼び出し Bucket4j のトークン消費を検証する。</p>
  */
-@DisplayName("PublicTeamApiRateLimitFilter レート制限検証")
-class PublicTeamApiRateLimitFilterTest {
+@DisplayName("PublicApiRateLimitFilter レート制限検証")
+class PublicApiRateLimitFilterTest {
 
     private static final String TARGET_PATH = "/api/v1/organizations/100/teams/search";
 
-    private PublicTeamApiRateLimitFilter filter;
+    private PublicApiRateLimitFilter filter;
     private AuditLogService auditLogService;
 
     @BeforeEach
@@ -70,7 +70,7 @@ class PublicTeamApiRateLimitFilterTest {
             consumer.accept(auditLogService);
             return null;
         }).when(provider).ifAvailable(any());
-        filter = new PublicTeamApiRateLimitFilter(provider);
+        filter = new PublicApiRateLimitFilter(provider);
     }
 
     @AfterEach
@@ -486,6 +486,148 @@ class PublicTeamApiRateLimitFilterTest {
 
         verify(chain, times(1)).doFilter(any(), any());
         assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // F19.1 Phase 1: 拡張パス (organizations / posts / events)
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("(F19.1) 公開組織パス GET /public/organizations/{id} はレート対象、60 回まで成功して 61 回目で 429")
+    void f19_organizationsDetail_anonymous_60PerMinute_then429() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+
+        for (int i = 0; i < 60; i++) {
+            MockHttpServletRequest request = buildRequest("/api/v1/public/organizations/77", "GET");
+            request.setRemoteAddr("198.51.100.100");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, chain);
+            assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        }
+
+        MockHttpServletRequest request = buildRequest("/api/v1/public/organizations/77", "GET");
+        request.setRemoteAddr("198.51.100.100");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getStatus()).isEqualTo(429);
+
+        // F19.1: organizations 系は PUBLIC_API_RATE_LIMIT_EXCEEDED が記録される
+        ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
+        verify(auditLogService, times(1)).record(
+                eq(AuditEventType.PUBLIC_API_RATE_LIMIT_EXCEEDED.name()),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                metadataCaptor.capture()
+        );
+        assertThat(metadataCaptor.getValue()).contains("\"organizationId\":\"77\"");
+    }
+
+    @Test
+    @DisplayName("(F19.1) チーム投稿一覧 GET /public/teams/{id}/posts はレート対象")
+    void f19_teamPosts_anonymous_60PerMinute_then429() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+
+        for (int i = 0; i < 60; i++) {
+            MockHttpServletRequest request = buildRequest("/api/v1/public/teams/42/posts", "GET");
+            request.setRemoteAddr("198.51.100.110");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, chain);
+            assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        }
+
+        MockHttpServletRequest request = buildRequest("/api/v1/public/teams/42/posts", "GET");
+        request.setRemoteAddr("198.51.100.110");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getStatus()).isEqualTo(429);
+
+        // F19.1: posts 系は teams 単独詳細でないため PUBLIC_API_RATE_LIMIT_EXCEEDED
+        verify(auditLogService, times(1)).record(
+                eq(AuditEventType.PUBLIC_API_RATE_LIMIT_EXCEEDED.name()),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any()
+        );
+    }
+
+    @Test
+    @DisplayName("(F19.1) チーム投稿詳細 GET /public/teams/{id}/posts/{postId} はレート対象")
+    void f19_teamPostDetail_anonymous_isRateLimited() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+
+        // 1 回叩いて 200 が返ることだけ確認（パス Pattern マッチ確認）
+        MockHttpServletRequest request = buildRequest("/api/v1/public/teams/42/posts/100", "GET");
+        request.setRemoteAddr("198.51.100.120");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        // chain が呼ばれた = shouldNotFilter で弾かれず、Filter が動作した
+        verify(chain, times(1)).doFilter(any(), any());
+    }
+
+    @Test
+    @DisplayName("(F19.1) チームイベント一覧 GET /public/teams/{id}/events はレート対象")
+    void f19_teamEvents_anonymous_isRateLimited() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+
+        MockHttpServletRequest request = buildRequest("/api/v1/public/teams/42/events", "GET");
+        request.setRemoteAddr("198.51.100.130");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        verify(chain, times(1)).doFilter(any(), any());
+    }
+
+    @Test
+    @DisplayName("(F19.1) 組織投稿一覧 GET /public/organizations/{id}/posts はレート対象")
+    void f19_orgPosts_anonymous_isRateLimited() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+
+        MockHttpServletRequest request = buildRequest("/api/v1/public/organizations/77/posts", "GET");
+        request.setRemoteAddr("198.51.100.140");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        verify(chain, times(1)).doFilter(any(), any());
+    }
+
+    @Test
+    @DisplayName("(F19.1) 公開ページ全体で同一 IP は 60 件で 429 — teams 系と organizations 系が同じ PUBLIC_API バケットを共有")
+    void f19_publicApi_singleBucketAcrossScopes() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+        String ip = "198.51.100.150";
+
+        // teams 詳細で 30 回消費
+        for (int i = 0; i < 30; i++) {
+            MockHttpServletRequest r = buildRequest("/api/v1/public/teams/42", "GET");
+            r.setRemoteAddr(ip);
+            MockHttpServletResponse res = new MockHttpServletResponse();
+            filter.doFilter(r, res, chain);
+            assertThat(res.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        }
+        // organizations 詳細で 30 回消費 → 合計 60 で上限到達
+        for (int i = 0; i < 30; i++) {
+            MockHttpServletRequest r = buildRequest("/api/v1/public/organizations/77", "GET");
+            r.setRemoteAddr(ip);
+            MockHttpServletResponse res = new MockHttpServletResponse();
+            filter.doFilter(r, res, chain);
+            assertThat(res.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        }
+        // 次の 1 回（teams posts）で 429
+        MockHttpServletRequest over = buildRequest("/api/v1/public/teams/42/posts", "GET");
+        over.setRemoteAddr(ip);
+        MockHttpServletResponse overRes = new MockHttpServletResponse();
+        filter.doFilter(over, overRes, chain);
+        assertThat(overRes.getStatus()).isEqualTo(429);
     }
 
     // ────────────────────────────────────────────────────────────

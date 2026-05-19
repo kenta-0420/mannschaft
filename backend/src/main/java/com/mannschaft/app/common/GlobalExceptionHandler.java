@@ -301,6 +301,9 @@ public class GlobalExceptionHandler {
             // F04.2 チャット 添付ファイル（F13 Phase 4-β）
             Map.entry("CHAT_015", HttpStatus.PAYLOAD_TOO_LARGE),             // ATTACHMENT_SIZE_EXCEEDED (UX ガード 500MB 超過)
             Map.entry("CHAT_019", HttpStatus.CONFLICT),                      // ATTACHMENT_QUOTA_EXCEEDED (F13 統合クォータ超過)
+            // F04.2 Phase 11 第二陣 2-β: チャンネルアイコン Pre-signed URL
+            Map.entry("CHAT_022", HttpStatus.PAYLOAD_TOO_LARGE),             // ICON_SIZE_EXCEEDED (2MB 超過)
+            Map.entry("CHAT_023", HttpStatus.FORBIDDEN),                     // CHANNEL_ICON_PERMISSION_DENIED (OWNER/ADMIN ではない)
             // F05.5 ファイル共有（F13 Phase 4-epsilon）
             Map.entry("FILE_SHARING_016", HttpStatus.CONFLICT),              // STORAGE_QUOTA_EXCEEDED (F13 統合クォータ超過)
             // F02.3.1 TODO カスタムステータスラベル

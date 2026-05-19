@@ -3,6 +3,7 @@ package com.mannschaft.app.chat.controller;
 import com.mannschaft.app.chat.dto.ActiveThreadItemResponse;
 import com.mannschaft.app.chat.dto.AddMemberRequest;
 import com.mannschaft.app.chat.dto.ChangeRoleRequest;
+import com.mannschaft.app.chat.dto.ChannelIconUploadUrlRequest;
 import com.mannschaft.app.chat.dto.ChannelResponse;
 import com.mannschaft.app.chat.dto.ChannelSettingsRequest;
 import com.mannschaft.app.chat.dto.CreateChannelRequest;
@@ -10,12 +11,17 @@ import com.mannschaft.app.chat.dto.InviteToZimmerRequest;
 import com.mannschaft.app.chat.dto.MemberResponse;
 import com.mannschaft.app.chat.dto.StartConversationRequest;
 import com.mannschaft.app.chat.dto.UpdateChannelRequest;
+import com.mannschaft.app.chat.dto.UpdateMyChannelSettingsRequest;
+import com.mannschaft.app.chat.dto.UploadUrlResponse;
+import com.mannschaft.app.chat.entity.ChatChannelEntity;
+import com.mannschaft.app.chat.service.ChatAttachmentService;
 import com.mannschaft.app.chat.service.ChatChannelService.ConversationResult;
 import com.mannschaft.app.chat.service.ChatChannelService;
 import com.mannschaft.app.chat.service.ChatMemberService;
 import com.mannschaft.app.chat.service.ChatMessageService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.common.storage.PresignedUploadResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -47,6 +53,7 @@ public class ChatChannelController {
     private final ChatChannelService channelService;
     private final ChatMemberService memberService;
     private final ChatMessageService messageService;
+    private final ChatAttachmentService attachmentService;
 
 
     /**
@@ -252,6 +259,56 @@ public class ChatChannelController {
             @PathVariable Long channelId,
             @Valid @RequestBody ChannelSettingsRequest request) {
         MemberResponse response = memberService.updateSettings(channelId, SecurityUtils.getCurrentUserId(), request);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * F04.2 Phase 11 第二陣 2-β: 自分のチャンネル個人設定を更新する。
+     *
+     * <p>{@code /settings}（チャンネル全体の管理者向け設定）とは別リソース。
+     * 「自分の通知ミュート / ピン留め / カテゴリ」のメンバー個人設定のみを更新する。</p>
+     *
+     * <p>認可: チャンネルメンバーであること（自分自身のみ）。</p>
+     */
+    @PatchMapping("/{channelId}/members/me")
+    @Operation(summary = "自分のチャンネル個人設定更新")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<ApiResponse<MemberResponse>> updateMySettings(
+            @PathVariable Long channelId,
+            @Valid @RequestBody UpdateMyChannelSettingsRequest request) {
+        MemberResponse response = memberService.updateMySettings(
+                channelId, SecurityUtils.getCurrentUserId(), request);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * F04.2 Phase 11 第二陣 2-β: チャンネルアイコン用 Pre-signed URL を発行する。
+     *
+     * <p>メッセージ添付用 {@code /files/upload-url} とは別経路。MIME は画像のみ（JPEG/PNG/WebP）、
+     * サイズ上限は 2MB の専用制約を持つ。発行された URL は 5 分間有効で、フロントエンドは
+     * 取得した {@code fileKey} を {@code PATCH /chat/channels/{id}} の {@code icon_key} に
+     * 設定することでチャンネルアイコンを更新する。</p>
+     *
+     * <p>認可: チャンネル OWNER / ADMIN のみ。</p>
+     */
+    @PostMapping("/{channelId}/icon/upload-url")
+    @Operation(summary = "チャンネルアイコン Pre-signed URL 発行")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "発行成功")
+    public ResponseEntity<ApiResponse<UploadUrlResponse>> generateIconUploadUrl(
+            @PathVariable Long channelId,
+            @Valid @RequestBody ChannelIconUploadUrlRequest request) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ChatChannelEntity channel = channelService.findChannelOrThrow(channelId);
+        PresignedUploadResult result = attachmentService.presignChannelIconUpload(
+                channel, currentUserId,
+                request.getContentType(),
+                request.getFileSize() != null ? request.getFileSize() : 0L,
+                request.getFileName());
+        UploadUrlResponse response = new UploadUrlResponse(
+                result.uploadUrl(),
+                result.s3Key(),
+                result.expiresInSeconds()
+        );
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }
