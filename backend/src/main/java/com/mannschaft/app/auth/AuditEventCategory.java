@@ -25,5 +25,7 @@ public enum AuditEventCategory {
     /** F05.2 回覧板（押印訂正・委任・強制スキップ・添付削除等）。 */
     CIRCULATION,
     /** F05.7 書類テンプレート・フォームビルダー系（PDF / CSV / 複製 / リマインド等）。 */
-    FORM
+    FORM,
+    /** F03.5 シフト管理（手動リマインド送信等）。 */
+    SHIFT
 }

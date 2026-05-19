@@ -1,9 +1,13 @@
 package com.mannschaft.app.shift.service;
 
+import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftScheduleStatus;
+import com.mannschaft.app.shift.dto.ManualRemindResponse;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
@@ -23,6 +27,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
@@ -38,6 +44,7 @@ class ShiftPreferenceReminderBatchServiceTest {
     @Mock private UserRoleRepository userRoleRepository;
     @Mock private NotificationHelper notificationHelper;
     @Mock private TeamShiftSettingsRepository teamShiftSettingsRepository;
+    @Mock private AuditLogService auditLogService;
 
     @InjectMocks
     private ShiftPreferenceReminderBatchService batchService;
@@ -152,6 +159,101 @@ class ShiftPreferenceReminderBatchServiceTest {
                     eq(NotificationScopeType.TEAM), eq(TEAM_ID),
                     anyString(), isNull());
             verify(scheduleRepository).save(schedule);
+        }
+    }
+
+    // =========================================================
+    // 手動リマインド (Phase 11 第二陣 2-α)
+    // =========================================================
+
+    @Nested
+    @DisplayName("triggerManualReminder")
+    class TriggerManualReminder {
+
+        private static final Long OPERATOR_ID = 999L;
+
+        @Test
+        @DisplayName("COLLECTING_未提出者がいる_通知送信+監査ログ記録")
+        void COLLECTING_未提出者がいる_通知送信_監査ログ記録() {
+            ShiftScheduleEntity schedule = buildSchedule(SCHEDULE_ID, TEAM_ID);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+            given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
+                    .willReturn(List.of(buildRequest(SCHEDULE_ID, USER_A)));
+            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))
+                    .willReturn(List.of(USER_A, USER_B, USER_C));
+
+            ManualRemindResponse response = batchService.triggerManualReminder(SCHEDULE_ID, OPERATOR_ID);
+
+            assertThat(response.getScheduleId()).isEqualTo(SCHEDULE_ID);
+            assertThat(response.getRemindedCount()).isEqualTo(2);
+            assertThat(response.getRemindedUserIds()).containsExactlyInAnyOrder(USER_B, USER_C);
+
+            verify(notificationHelper).notifyAll(
+                    eq(List.of(USER_B, USER_C)),
+                    eq("SHIFT_REQUEST_REMINDER_MANUAL"),
+                    anyString(), anyString(),
+                    eq("SHIFT_SCHEDULE"), eq(SCHEDULE_ID),
+                    eq(NotificationScopeType.TEAM), eq(TEAM_ID),
+                    anyString(), isNull());
+            verify(auditLogService).record(
+                    eq("SHIFT_MANUAL_REMINDER_SENT"),
+                    eq(OPERATOR_ID), isNull(), eq(TEAM_ID), isNull(),
+                    isNull(), isNull(), isNull(), anyString());
+        }
+
+        @Test
+        @DisplayName("COLLECTING_全員提出済み_通知送信なしでもレスポンスは返り監査ログは残す")
+        void COLLECTING_全員提出済み_通知送信なし_監査ログ残す() {
+            ShiftScheduleEntity schedule = buildSchedule(SCHEDULE_ID, TEAM_ID);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+            given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
+                    .willReturn(List.of(
+                            buildRequest(SCHEDULE_ID, USER_A),
+                            buildRequest(SCHEDULE_ID, USER_B),
+                            buildRequest(SCHEDULE_ID, USER_C)));
+            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))
+                    .willReturn(List.of(USER_A, USER_B, USER_C));
+
+            ManualRemindResponse response = batchService.triggerManualReminder(SCHEDULE_ID, OPERATOR_ID);
+
+            assertThat(response.getRemindedCount()).isZero();
+            assertThat(response.getRemindedUserIds()).isEmpty();
+            verifyNoInteractions(notificationHelper);
+            verify(auditLogService).record(
+                    eq("SHIFT_MANUAL_REMINDER_SENT"),
+                    eq(OPERATOR_ID), isNull(), eq(TEAM_ID), isNull(),
+                    isNull(), isNull(), isNull(), anyString());
+        }
+
+        @Test
+        @DisplayName("スケジュールが存在しない場合は SHIFT_SCHEDULE_NOT_FOUND を投げる")
+        void スケジュール非存在_例外() {
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> batchService.triggerManualReminder(SCHEDULE_ID, OPERATOR_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+            verifyNoInteractions(notificationHelper, auditLogService);
+        }
+
+        @Test
+        @DisplayName("DRAFT 状態では INVALID_SCHEDULE_STATUS を投げる")
+        void DRAFT_状態_例外() {
+            ShiftScheduleEntity schedule = ShiftScheduleEntity.builder()
+                    .teamId(TEAM_ID)
+                    .title("テスト")
+                    .status(ShiftScheduleStatus.DRAFT)
+                    .endDate(LocalDate.now().plusDays(7))
+                    .build();
+            ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+
+            assertThatThrownBy(() -> batchService.triggerManualReminder(SCHEDULE_ID, OPERATOR_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ShiftErrorCode.INVALID_SCHEDULE_STATUS);
+            verifyNoInteractions(notificationHelper, auditLogService);
         }
     }
 

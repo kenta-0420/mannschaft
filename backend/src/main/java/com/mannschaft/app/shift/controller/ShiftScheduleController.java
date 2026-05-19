@@ -2,8 +2,11 @@ package com.mannschaft.app.shift.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.shift.dto.CreateShiftScheduleRequest;
+import com.mannschaft.app.shift.dto.ManualRemindResponse;
 import com.mannschaft.app.shift.dto.ShiftScheduleResponse;
+import com.mannschaft.app.shift.dto.ShiftScheduleSummaryResponse;
 import com.mannschaft.app.shift.dto.UpdateShiftScheduleRequest;
+import com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService;
 import com.mannschaft.app.shift.service.ShiftScheduleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -36,6 +40,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class ShiftScheduleController {
 
     private final ShiftScheduleService scheduleService;
+    private final ShiftPreferenceReminderBatchService preferenceReminderBatchService;
 
 
     /**
@@ -117,6 +122,39 @@ public class ShiftScheduleController {
             @PathVariable Long scheduleId,
             @RequestParam String status) {
         ShiftScheduleResponse response = scheduleService.transitionStatus(scheduleId, status, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * シフトスケジュールの日付別・ポジション別の充足状況サマリーを取得する。
+     *
+     * <p>管理者・副管理者のシフト調整画面で「未充足の枠を一望する」用途で使用する。
+     * F03.5 設計書 §4.x 参照。</p>
+     */
+    @GetMapping("/{scheduleId}/summary")
+    @Operation(summary = "シフト充足状況サマリ")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<ShiftScheduleSummaryResponse>> getScheduleSummary(
+            @PathVariable Long scheduleId) {
+        ShiftScheduleSummaryResponse response = scheduleService.getScheduleSummary(scheduleId);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 未提出メンバーに手動でリマインド通知を送信する（ADMIN のみ、COLLECTING のみ）。
+     *
+     * <p>自動リマインド（48h / 24h 前）とは独立して、管理者の任意のタイミングで
+     * 一斉送信できる。F03.5 設計書 §4.x 参照。</p>
+     */
+    @PostMapping("/{scheduleId}/remind")
+    @Operation(summary = "シフト希望未提出者への手動リマインド送信")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "送信成功")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<ManualRemindResponse>> remindUnsubmitted(
+            @PathVariable Long scheduleId) {
+        ManualRemindResponse response = preferenceReminderBatchService
+                .triggerManualReminder(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

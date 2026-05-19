@@ -1,9 +1,15 @@
 package com.mannschaft.app.shift.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.shift.ShiftErrorCode;
+import com.mannschaft.app.shift.ShiftScheduleStatus;
+import com.mannschaft.app.shift.dto.ManualRemindResponse;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
@@ -38,6 +44,7 @@ public class ShiftPreferenceReminderBatchService {
     private final UserRoleRepository userRoleRepository;
     private final NotificationHelper notificationHelper;
     private final TeamShiftSettingsRepository teamShiftSettingsRepository;
+    private final AuditLogService auditLogService;
 
     /**
      * 10 分ごとに実行。48h前・24h前リマインドを未提出メンバーに送信する。
@@ -113,21 +120,7 @@ public class ShiftPreferenceReminderBatchService {
 
     private void sendReminderToUnsubmittedMembers(ShiftScheduleEntity schedule,
             String notificationType, String title, String body) {
-        // 提出済みユーザー ID セット
-        Set<Long> submittedUserIds = requestRepository
-                .findByScheduleIdOrderBySlotDateAsc(schedule.getId())
-                .stream()
-                .map(ShiftRequestEntity::getUserId)
-                .collect(Collectors.toSet());
-
-        // チーム全員から提出済みを除いた未提出者
-        // TODO: SUPPORTER・GUEST を除外するロール別フィルタは Phase 4-1 で実装
-        List<Long> unsubmitted = userRoleRepository
-                .findUserIdsByScope("TEAM", schedule.getTeamId())
-                .stream()
-                .filter(uid -> !submittedUserIds.contains(uid))
-                .toList();
-
+        List<Long> unsubmitted = resolveUnsubmittedUserIds(schedule);
         if (unsubmitted.isEmpty()) return;
 
         notificationHelper.notifyAll(
@@ -138,5 +131,77 @@ public class ShiftPreferenceReminderBatchService {
 
         log.info("シフト希望リマインド送信: type={}, scheduleId={}, 未提出人数={}",
                 notificationType, schedule.getId(), unsubmitted.size());
+    }
+
+    /**
+     * シフト希望未提出メンバーの ID 一覧を解決する。
+     *
+     * <p>cron バッチと手動リマインド API の両方から再利用される。</p>
+     */
+    private List<Long> resolveUnsubmittedUserIds(ShiftScheduleEntity schedule) {
+        Set<Long> submittedUserIds = requestRepository
+                .findByScheduleIdOrderBySlotDateAsc(schedule.getId())
+                .stream()
+                .map(ShiftRequestEntity::getUserId)
+                .collect(Collectors.toSet());
+
+        // TODO: SUPPORTER・GUEST を除外するロール別フィルタは Phase 4-1 で実装
+        return userRoleRepository
+                .findUserIdsByScope("TEAM", schedule.getTeamId())
+                .stream()
+                .filter(uid -> !submittedUserIds.contains(uid))
+                .toList();
+    }
+
+    /**
+     * 管理者の手動操作によるリマインド送信。
+     *
+     * <p>COLLECTING ステータスのスケジュールにのみ実行可能。cron バッチと同じ
+     * 「未提出者抽出 → 通知一斉送信」ロジックを再利用しつつ、監査ログを必ず残す。</p>
+     *
+     * @param scheduleId スケジュール ID
+     * @param userId     呼び出し元（操作した管理者）の ID
+     * @return 送信件数と対象ユーザー ID 一覧
+     * @throws BusinessException スケジュールが存在しない場合 ({@link ShiftErrorCode#SHIFT_SCHEDULE_NOT_FOUND}) /
+     *                           COLLECTING 以外の場合 ({@link ShiftErrorCode#INVALID_SCHEDULE_STATUS})
+     */
+    @Transactional
+    public ManualRemindResponse triggerManualReminder(Long scheduleId, Long userId) {
+        ShiftScheduleEntity schedule = scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+
+        if (schedule.getStatus() != ShiftScheduleStatus.COLLECTING) {
+            throw new BusinessException(ShiftErrorCode.INVALID_SCHEDULE_STATUS);
+        }
+
+        List<Long> unsubmitted = resolveUnsubmittedUserIds(schedule);
+
+        if (!unsubmitted.isEmpty()) {
+            notificationHelper.notifyAll(
+                    unsubmitted,
+                    "SHIFT_REQUEST_REMINDER_MANUAL",
+                    "シフト希望提出のリマインド",
+                    "シフト「" + schedule.getTitle() + "」の希望提出のお願いです。提出期限までにご対応ください。",
+                    "SHIFT_SCHEDULE", schedule.getId(),
+                    NotificationScopeType.TEAM, schedule.getTeamId(),
+                    "/shifts/schedules/" + schedule.getId(), null);
+        }
+
+        // 監査ログ: MANUAL_REMINDER（操作者・スケジュール・チーム・送信件数を記録）
+        auditLogService.record(
+                AuditEventType.SHIFT_MANUAL_REMINDER_SENT.name(),
+                userId, null, schedule.getTeamId(), null,
+                null, null, null,
+                "{\"schedule_id\":" + schedule.getId()
+                        + ",\"reminded_count\":" + unsubmitted.size() + "}");
+
+        log.info("シフト希望手動リマインド送信: scheduleId={}, 未提出人数={}, operator={}",
+                schedule.getId(), unsubmitted.size(), userId);
+
+        return ManualRemindResponse.builder()
+                .scheduleId(schedule.getId())
+                .remindedCount(unsubmitted.size())
+                .remindedUserIds(unsubmitted)
+                .build();
     }
 }

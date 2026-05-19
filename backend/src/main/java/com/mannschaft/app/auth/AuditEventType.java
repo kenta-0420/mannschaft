@@ -271,6 +271,9 @@ public enum AuditEventType {
     FORM_TEMPLATE_DUPLICATED(AuditEventCategory.FORM),
     /** F05.7 Phase 11 第四陣 4-B — 提出一覧 CSV をエクスポート。 */
     FORM_SUBMISSIONS_CSV_EXPORTED(AuditEventCategory.FORM),
+    // ─── SHIFT (F03.5 シフト管理) ──────────────────────────────
+    /** 管理者がシフト希望未提出者に手動でリマインドを送信した。 */
+    SHIFT_MANUAL_REMINDER_SENT(AuditEventCategory.SHIFT),
 
     // ─── SECURITY_RATE_LIMIT (F15.4 組織内チーム検索) ───────────
     /** 組織内チーム検索 API がレート制限に到達した（429 応答）。 */

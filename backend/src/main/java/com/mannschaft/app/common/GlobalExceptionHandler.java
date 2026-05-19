@@ -198,6 +198,9 @@ public class GlobalExceptionHandler {
             Map.entry("SCHOOL_FAMILY_NOTICE_ALREADY_APPLIED", HttpStatus.CONFLICT),
             Map.entry("SCHOOL_TRANSITION_ALERT_NOT_FOUND", HttpStatus.NOT_FOUND),
             Map.entry("SCHOOL_TRANSITION_ALERT_ALREADY_RESOLVED", HttpStatus.CONFLICT),
+            // F03.5 シフト管理（Phase 11 第二陣で summary / remind 追加）
+            Map.entry("SHIFT_001", HttpStatus.NOT_FOUND),                   // SHIFT_SCHEDULE_NOT_FOUND
+            Map.entry("SHIFT_012", HttpStatus.CONFLICT),                    // INVALID_SCHEDULE_STATUS
             // F08.7 シフト予算 (Phase 9-α: 逆算 API)
             Map.entry("SHIFT_BUDGET_001", HttpStatus.SERVICE_UNAVAILABLE),  // FEATURE_DISABLED
             Map.entry("SHIFT_BUDGET_002", HttpStatus.BAD_REQUEST),          // EMPTY_POSITION_LIST
