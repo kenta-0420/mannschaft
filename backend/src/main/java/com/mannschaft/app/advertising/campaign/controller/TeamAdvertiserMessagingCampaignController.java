@@ -17,7 +17,6 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.membership.domain.ScopeType;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -38,50 +37,29 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * F09.17 Phase 11-a 広告主向けメッセージ型キャンペーン API (旧 organizationId クエリ式)。
+ * F09.17 Phase 11-d-2 チームスコープ メッセージ型キャンペーン API。
  *
- * <p>基底パス {@code /api/v1/advertiser/campaigns/messaging}。</p>
+ * <p>基底パス {@code /api/v1/teams/{teamId}/advertiser/campaigns/messaging}。
+ * チームが独立した広告主アカウントを持つ場合の DRAFT CRUD・チャネル設定・ターゲティング設定を提供する。</p>
  *
- * <p><strong>非推奨</strong> F09.17 Phase 11-d-2 で scope ベース URL
- * ({@link OrganizationAdvertiserMessagingCampaignController} /
- * {@link TeamAdvertiserMessagingCampaignController}) を導入。
- * 本 Controller は互換のため Phase 11-e まで残置するが、
- * 全エンドポイントに {@code Deprecation: true} と {@code Sunset} ヘッダを付与して
- * 段階的廃止を予告する。新規実装では新 URL を使用すること。</p>
- *
- * <p>内部実装は {@code scope_type=ORGANIZATION} 固定で scope ベースの Service を呼ぶ。</p>
+ * <p>テナント越境制御は {@link AccessControlService#checkAdminOrAbove(Long, Long, String)} で
+ * 指定チームの ADMIN 以上を要求し、Service 層の scope_type/scope_id フィルタで 2 段防御する。</p>
  */
-@Deprecated
 @RestController
-@RequestMapping("/api/v1/advertiser/campaigns/messaging")
+@RequestMapping("/api/v1/teams/{teamId}/advertiser/campaigns/messaging")
 @RequiredArgsConstructor
-public class AdvertiserMessagingCampaignController {
-
-    /** 廃止予定日 (F09.17 Phase 11-e リリース予定日)。HTTP-date 形式 (RFC 7231)。 */
-    private static final String SUNSET_DATE = "Wed, 31 Dec 2026 23:59:59 GMT";
+public class TeamAdvertiserMessagingCampaignController {
 
     private final AdMessagingCampaignService campaignService;
     private final AdvertiserAccountService advertiserAccountService;
     private final AccessControlService accessControlService;
 
     /**
-     * 組織スコープの権限検証。指定組織の ADMIN 以上であることを確認する。
+     * チームスコープの権限検証。指定チームの ADMIN 以上であることを確認する。
      */
-    private void verifyOrganizationAccess(Long organizationId) {
+    private void verifyTeamAccess(Long teamId) {
         Long userId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkAdminOrAbove(userId, organizationId, "ORGANIZATION");
-    }
-
-    /**
-     * 全エンドポイント共通の deprecation 警告ヘッダを書き込む。
-     */
-    private void writeDeprecationHeaders(HttpServletResponse response) {
-        response.setHeader("Deprecation", "true");
-        response.setHeader("Sunset", SUNSET_DATE);
-        response.setHeader(
-                "Link",
-                "</api/v1/organizations/{organizationId}/advertiser/campaigns/messaging>; "
-                        + "rel=\"successor-version\"");
+        accessControlService.checkAdminOrAbove(userId, teamId, ScopeType.TEAM.name());
     }
 
     // ─────────────────────────────────────────────
@@ -90,14 +68,12 @@ public class AdvertiserMessagingCampaignController {
 
     @GetMapping
     public PagedResponse<CampaignListItemResponse> list(
-            @RequestParam Long organizationId,
+            @PathVariable Long teamId,
             @RequestParam(required = false) AdCampaignStatus status,
-            Pageable pageable,
-            HttpServletResponse response) {
-        writeDeprecationHeaders(response);
-        verifyOrganizationAccess(organizationId);
+            Pageable pageable) {
+        verifyTeamAccess(teamId);
         Page<CampaignListItemResponse> page =
-                campaignService.listCampaigns(ScopeType.ORGANIZATION, organizationId, status, pageable);
+                campaignService.listCampaigns(ScopeType.TEAM, teamId, status, pageable);
         List<CampaignListItemResponse> filtered = page.getContent().stream()
                 .filter(item -> item != null)
                 .toList();
@@ -114,13 +90,10 @@ public class AdvertiserMessagingCampaignController {
 
     @GetMapping("/{id}")
     public ApiResponse<CampaignDetailResponse> get(
-            @PathVariable UUID id,
-            @RequestParam Long organizationId,
-            HttpServletResponse response) {
-        writeDeprecationHeaders(response);
-        verifyOrganizationAccess(organizationId);
-        return ApiResponse.of(
-                campaignService.getCampaign(id, ScopeType.ORGANIZATION, organizationId));
+            @PathVariable Long teamId,
+            @PathVariable UUID id) {
+        verifyTeamAccess(teamId);
+        return ApiResponse.of(campaignService.getCampaign(id, ScopeType.TEAM, teamId));
     }
 
     // ─────────────────────────────────────────────
@@ -130,39 +103,33 @@ public class AdvertiserMessagingCampaignController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<CampaignDetailResponse> create(
-            @RequestParam Long organizationId,
-            @Valid @RequestBody CreateCampaignRequest request,
-            HttpServletResponse response) {
-        writeDeprecationHeaders(response);
-        verifyOrganizationAccess(organizationId);
+            @PathVariable Long teamId,
+            @Valid @RequestBody CreateCampaignRequest request) {
+        verifyTeamAccess(teamId);
         Long userId = SecurityUtils.getCurrentUserId();
         AdvertiserAccountResponse account =
-                advertiserAccountService.getByScope(ScopeType.ORGANIZATION, organizationId);
+                advertiserAccountService.getByScope(ScopeType.TEAM, teamId);
         return ApiResponse.of(campaignService.createCampaign(
-                ScopeType.ORGANIZATION, organizationId, account.id(), userId, request));
+                ScopeType.TEAM, teamId, account.id(), userId, request));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<CampaignDetailResponse> update(
+            @PathVariable Long teamId,
             @PathVariable UUID id,
-            @RequestParam Long organizationId,
-            @Valid @RequestBody UpdateCampaignRequest request,
-            HttpServletResponse response) {
-        writeDeprecationHeaders(response);
-        verifyOrganizationAccess(organizationId);
+            @Valid @RequestBody UpdateCampaignRequest request) {
+        verifyTeamAccess(teamId);
         return ApiResponse.of(campaignService.updateCampaign(
-                id, ScopeType.ORGANIZATION, organizationId, request));
+                id, ScopeType.TEAM, teamId, request));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(
-            @PathVariable UUID id,
-            @RequestParam Long organizationId,
-            HttpServletResponse response) {
-        writeDeprecationHeaders(response);
-        verifyOrganizationAccess(organizationId);
-        campaignService.softDeleteCampaign(id, ScopeType.ORGANIZATION, organizationId);
+            @PathVariable Long teamId,
+            @PathVariable UUID id) {
+        verifyTeamAccess(teamId);
+        campaignService.softDeleteCampaign(id, ScopeType.TEAM, teamId);
     }
 
     // ─────────────────────────────────────────────
@@ -172,41 +139,33 @@ public class AdvertiserMessagingCampaignController {
     @PostMapping("/{id}/channels")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<CampaignChannelResponse> addChannel(
+            @PathVariable Long teamId,
             @PathVariable UUID id,
-            @RequestParam Long organizationId,
-            @Valid @RequestBody CampaignChannelRequest request,
-            HttpServletResponse response) {
-        writeDeprecationHeaders(response);
-        verifyOrganizationAccess(organizationId);
+            @Valid @RequestBody CampaignChannelRequest request) {
+        verifyTeamAccess(teamId);
         return ApiResponse.of(campaignService.addChannel(
-                id, ScopeType.ORGANIZATION, organizationId, request));
+                id, ScopeType.TEAM, teamId, request));
     }
 
     @PutMapping("/{id}/channels/{channelId}")
     public ApiResponse<CampaignChannelResponse> updateChannel(
+            @PathVariable Long teamId,
             @PathVariable UUID id,
             @PathVariable UUID channelId,
-            @RequestParam Long organizationId,
-            @Valid @RequestBody CampaignChannelRequest request,
-            HttpServletResponse response) {
-        writeDeprecationHeaders(response);
-        verifyOrganizationAccess(organizationId);
-        // {id} はパス上の整合性確認用。Service は channelId と scope で
-        // キャンペーン到達性を検証するため、id は明示的に利用しない。
+            @Valid @RequestBody CampaignChannelRequest request) {
+        verifyTeamAccess(teamId);
         return ApiResponse.of(campaignService.updateChannel(
-                channelId, ScopeType.ORGANIZATION, organizationId, request));
+                channelId, ScopeType.TEAM, teamId, request));
     }
 
     @DeleteMapping("/{id}/channels/{channelId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void removeChannel(
+            @PathVariable Long teamId,
             @PathVariable UUID id,
-            @PathVariable UUID channelId,
-            @RequestParam Long organizationId,
-            HttpServletResponse response) {
-        writeDeprecationHeaders(response);
-        verifyOrganizationAccess(organizationId);
-        campaignService.removeChannel(channelId, ScopeType.ORGANIZATION, organizationId);
+            @PathVariable UUID channelId) {
+        verifyTeamAccess(teamId);
+        campaignService.removeChannel(channelId, ScopeType.TEAM, teamId);
     }
 
     // ─────────────────────────────────────────────
@@ -215,13 +174,11 @@ public class AdvertiserMessagingCampaignController {
 
     @PostMapping("/{id}/audience")
     public ApiResponse<List<AudienceSegmentResponse>> setAudience(
+            @PathVariable Long teamId,
             @PathVariable UUID id,
-            @RequestParam Long organizationId,
-            @Valid @RequestBody AudienceConfigRequest request,
-            HttpServletResponse response) {
-        writeDeprecationHeaders(response);
-        verifyOrganizationAccess(organizationId);
+            @Valid @RequestBody AudienceConfigRequest request) {
+        verifyTeamAccess(teamId);
         return ApiResponse.of(campaignService.setAudience(
-                id, ScopeType.ORGANIZATION, organizationId, request));
+                id, ScopeType.TEAM, teamId, request));
     }
 }

@@ -6,7 +6,6 @@ import com.mannschaft.app.advertising.campaign.entity.AdAudienceSegment;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaignChannel;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
-import com.mannschaft.app.advertising.campaign.enums.AdModerationStatus;
 import com.mannschaft.app.advertising.campaign.exception.AdCampaignErrorCode;
 import com.mannschaft.app.advertising.campaign.mapper.AdMessagingCampaignMapper;
 import com.mannschaft.app.advertising.campaign.repository.AdAudienceSegmentRepository;
@@ -14,6 +13,7 @@ import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignCha
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRepository;
 import com.mannschaft.app.advertising.service.AdvertiserAccountService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.domain.ScopeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,18 +32,22 @@ import java.util.UUID;
  * 設計書 §5「キャンペーン状態遷移マシン」に従い、以下の遷移を提供する:</p>
  *
  * <ul>
- *   <li>{@link #submit(UUID, Long, Long)} : DRAFT → REVIEW (AUTO_BLOCK 検出時のみ BLOCKED)</li>
- *   <li>{@link #cancel(UUID, Long, Long)} : DRAFT/REVIEW → CANCELLED</li>
- *   <li>{@link #approve(UUID, Long)}      : REVIEW → APPROVED (既存サービスへ委譲)</li>
+ *   <li>{@code submit} : DRAFT → REVIEW (AUTO_BLOCK 検出時のみ BLOCKED)</li>
+ *   <li>{@code cancel} : DRAFT/REVIEW → CANCELLED</li>
+ *   <li>{@link #approve(UUID, Long)} : REVIEW → APPROVED (既存サービスへ委譲)</li>
  *   <li>{@link #block(UUID, Long, BlockCampaignRequest)} : 任意 → BLOCKED (既存サービスへ委譲)</li>
- *   <li>{@link #launch(UUID, Long, Long)} : APPROVED → SCHEDULED または DELIVERING</li>
- *   <li>{@link #pause(UUID, Long, Long)}  : DELIVERING → PAUSED</li>
- *   <li>{@link #resume(UUID, Long, Long)} : PAUSED → DELIVERING (credit_limit 再判定)</li>
+ *   <li>{@code launch} : APPROVED → SCHEDULED または DELIVERING</li>
+ *   <li>{@code pause}  : DELIVERING → PAUSED</li>
+ *   <li>{@code resume} : PAUSED → DELIVERING (credit_limit 再判定)</li>
  * </ul>
  *
- * <p>所有者向け遷移 (submit/cancel/launch/pause/resume) は {@code organization_id} で
+ * <p>F09.17 Phase 11-d-2: scope ベース化。
+ * 所有者向け遷移 (submit/cancel/launch/pause/resume) は {@code (ScopeType, scopeId)} で
  * テナント越境を検証し、IDOR 対策として違反時は 404 にマップする。
- * approve/block は SYSTEM_ADMIN 専用のため Controller 層の {@code @PreAuthorize} に委ねる。</p>
+ * approve/block は SYSTEM_ADMIN 専用のため Controller 層の {@code @PreAuthorize} に委ねる。
+ * 旧 {@code organizationId} 引数の overload は {@code @Deprecated} で残置し、
+ * 内部で {@code (ORGANIZATION, organizationId)} に詰め替えて新シグネチャに委譲する。
+ * Phase 11-e で旧 overload を物理削除予定。</p>
  */
 @Service
 @Transactional(readOnly = true)
@@ -63,38 +67,24 @@ public class AdMessagingCampaignTransitionService {
     private final AdvertiserAccountService advertiserAccountService;
 
     // ─────────────────────────────────────────────
-    // 所有者向け遷移
+    // 所有者向け遷移 (scope ベース)
     // ─────────────────────────────────────────────
 
     /**
-     * DRAFT → REVIEW 遷移。
-     *
-     * <ol>
-     *   <li>キャンペーン取得 + テナント検証 + status=DRAFT 確認</li>
-     *   <li>必須項目検証 (少なくとも 1 channel + 1 audience segment)</li>
-     *   <li>{@link AdCampaignModerationService#autoFlagOnSubmit(UUID)} で自動 NG 検知</li>
-     *   <li>結果に応じて status を更新:
-     *       <ul>
-     *         <li>AUTO_BLOCK 検出: moderation_status=BLOCKED 済 → status=BLOCKED もすでにセット済 (autoFlagOnSubmit 内)</li>
-     *         <li>AUTO_FLAG または AUTO_PASS: moderation_status のみ更新済 → status=REVIEW に更新</li>
-     *       </ul>
-     *   </li>
-     * </ol>
-     *
-     * <p>F10.3 監査ログ: ε-C で統合予定 (TODO)。</p>
+     * DRAFT → REVIEW 遷移 (Phase 11-d-2)。
      */
     @Transactional
-    public CampaignDetailResponse submit(UUID campaignId, Long organizationId, Long requesterUserId) {
-        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, organizationId);
+    public CampaignDetailResponse submit(
+            UUID campaignId, ScopeType scopeType, Long scopeId, Long requesterUserId) {
+        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, scopeType, scopeId);
         requireStatus(campaign, AdCampaignStatus.DRAFT);
         validateSubmitPrerequisites(campaignId);
 
-        // 既存の自動 NG 検知 (d25684f87) は内部で moderation_status と
+        // 既存の自動 NG 検知は内部で moderation_status と
         // (AUTO_BLOCK 時のみ) status=BLOCKED まで更新する。
         moderationService.autoFlagOnSubmit(campaignId);
 
-        // autoFlagOnSubmit 内の更新を読み戻す
-        AdMessagingCampaign refreshed = findCampaignOrThrow(campaignId, organizationId);
+        AdMessagingCampaign refreshed = findCampaignOrThrow(campaignId, scopeType, scopeId);
         if (refreshed.getStatus() != AdCampaignStatus.BLOCKED) {
             refreshed.setStatus(AdCampaignStatus.REVIEW);
             campaignRepository.save(refreshed);
@@ -108,11 +98,12 @@ public class AdMessagingCampaignTransitionService {
     }
 
     /**
-     * DRAFT/REVIEW → CANCELLED 遷移。
+     * DRAFT/REVIEW → CANCELLED 遷移 (Phase 11-d-2)。
      */
     @Transactional
-    public CampaignDetailResponse cancel(UUID campaignId, Long organizationId, Long requesterUserId) {
-        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, organizationId);
+    public CampaignDetailResponse cancel(
+            UUID campaignId, ScopeType scopeType, Long scopeId, Long requesterUserId) {
+        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, scopeType, scopeId);
         if (!CANCELLABLE_STATUSES.contains(campaign.getStatus())) {
             throw new BusinessException(AdCampaignErrorCode.AD_CAMPAIGN_INVALID_STATE);
         }
@@ -125,14 +116,12 @@ public class AdMessagingCampaignTransitionService {
     }
 
     /**
-     * APPROVED → SCHEDULED または APPROVED → DELIVERING 遷移。
-     *
-     * <p>{@code starts_at > now} なら SCHEDULED、{@code starts_at <= now} なら DELIVERING。
-     * 同期 credit_limit 判定で超過なら {@link AdCampaignErrorCode#AD_CAMPAIGN_CREDIT_EXCEEDED}。</p>
+     * APPROVED → SCHEDULED または APPROVED → DELIVERING 遷移 (Phase 11-d-2)。
      */
     @Transactional
-    public CampaignDetailResponse launch(UUID campaignId, Long organizationId, Long requesterUserId) {
-        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, organizationId);
+    public CampaignDetailResponse launch(
+            UUID campaignId, ScopeType scopeType, Long scopeId, Long requesterUserId) {
+        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, scopeType, scopeId);
         requireStatus(campaign, AdCampaignStatus.APPROVED);
         ensureCreditAvailable(campaign);
 
@@ -150,11 +139,12 @@ public class AdMessagingCampaignTransitionService {
     }
 
     /**
-     * DELIVERING → PAUSED 遷移 (広告主の手動操作)。
+     * DELIVERING → PAUSED 遷移 (Phase 11-d-2)。
      */
     @Transactional
-    public CampaignDetailResponse pause(UUID campaignId, Long organizationId, Long requesterUserId) {
-        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, organizationId);
+    public CampaignDetailResponse pause(
+            UUID campaignId, ScopeType scopeType, Long scopeId, Long requesterUserId) {
+        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, scopeType, scopeId);
         requireStatus(campaign, AdCampaignStatus.DELIVERING);
         campaign.setStatus(AdCampaignStatus.PAUSED);
         campaignRepository.save(campaign);
@@ -165,12 +155,12 @@ public class AdMessagingCampaignTransitionService {
     }
 
     /**
-     * PAUSED → DELIVERING 遷移 (広告主の手動 resume)。pause 中に他キャンペーンで credit_limit を使い果たした
-     * 可能性があるため再判定を行う。
+     * PAUSED → DELIVERING 遷移 (Phase 11-d-2、credit_limit 再判定)。
      */
     @Transactional
-    public CampaignDetailResponse resume(UUID campaignId, Long organizationId, Long requesterUserId) {
-        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, organizationId);
+    public CampaignDetailResponse resume(
+            UUID campaignId, ScopeType scopeType, Long scopeId, Long requesterUserId) {
+        AdMessagingCampaign campaign = findCampaignOrThrow(campaignId, scopeType, scopeId);
         requireStatus(campaign, AdCampaignStatus.PAUSED);
         ensureCreditAvailable(campaign);
         campaign.setStatus(AdCampaignStatus.DELIVERING);
@@ -203,12 +193,51 @@ public class AdMessagingCampaignTransitionService {
     }
 
     // ─────────────────────────────────────────────
+    // 互換 API (Phase 11-e で削除予定)
+    // ─────────────────────────────────────────────
+
+    /** @deprecated Phase 11-d-2 で scope ベース化。 */
+    @Deprecated
+    @Transactional
+    public CampaignDetailResponse submit(UUID campaignId, Long organizationId, Long requesterUserId) {
+        return submit(campaignId, ScopeType.ORGANIZATION, organizationId, requesterUserId);
+    }
+
+    /** @deprecated Phase 11-d-2 で scope ベース化。 */
+    @Deprecated
+    @Transactional
+    public CampaignDetailResponse cancel(UUID campaignId, Long organizationId, Long requesterUserId) {
+        return cancel(campaignId, ScopeType.ORGANIZATION, organizationId, requesterUserId);
+    }
+
+    /** @deprecated Phase 11-d-2 で scope ベース化。 */
+    @Deprecated
+    @Transactional
+    public CampaignDetailResponse launch(UUID campaignId, Long organizationId, Long requesterUserId) {
+        return launch(campaignId, ScopeType.ORGANIZATION, organizationId, requesterUserId);
+    }
+
+    /** @deprecated Phase 11-d-2 で scope ベース化。 */
+    @Deprecated
+    @Transactional
+    public CampaignDetailResponse pause(UUID campaignId, Long organizationId, Long requesterUserId) {
+        return pause(campaignId, ScopeType.ORGANIZATION, organizationId, requesterUserId);
+    }
+
+    /** @deprecated Phase 11-d-2 で scope ベース化。 */
+    @Deprecated
+    @Transactional
+    public CampaignDetailResponse resume(UUID campaignId, Long organizationId, Long requesterUserId) {
+        return resume(campaignId, ScopeType.ORGANIZATION, organizationId, requesterUserId);
+    }
+
+    // ─────────────────────────────────────────────
     // private ヘルパー
     // ─────────────────────────────────────────────
 
-    private AdMessagingCampaign findCampaignOrThrow(UUID campaignId, Long organizationId) {
+    private AdMessagingCampaign findCampaignOrThrow(UUID campaignId, ScopeType scopeType, Long scopeId) {
         return campaignRepository
-                .findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, organizationId)
+                .findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(AdCampaignErrorCode.AD_CAMPAIGN_NOT_FOUND));
     }
 
