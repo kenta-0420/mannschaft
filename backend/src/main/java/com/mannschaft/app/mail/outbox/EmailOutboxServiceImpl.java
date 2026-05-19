@@ -243,10 +243,9 @@ public class EmailOutboxServiceImpl implements EmailOutboxService {
     /**
      * テンプレ種別ごとにレンダリング。
      *
-     * <p>Phase 18-a で VERIFICATION / PASSWORD_RESET を実装。
-     * Phase 18-b で RESERVATION_EMERGENCY_CLOSURE をスルー方式で追加
-     * (admin 自由入力 subject/body をテンプレ化せず payload からそのまま流す)。
-     * 残種別は Phase 18-c で追加していく。</p>
+     * <p>VERIFICATION / PASSWORD_RESET は既存 Thymeleaf テンプレを使用。
+     * 残 12 種（Phase 18-b/c 移行分）は呼び出し元が subject/body を組み立て
+     * payloadVars に詰めてくる「スルー方式」で処理する。</p>
      */
     private RenderedEmail renderTemplate(String templateKind, String localeStr, Map<String, String> vars) {
         Locale locale = Locale.forLanguageTag(localeStr);
@@ -268,21 +267,30 @@ public class EmailOutboxServiceImpl implements EmailOutboxService {
                 String subject = renderer.resolveMessage("email.password-reset.subject", locale);
                 yield new RenderedEmail(subject, html);
             }
-            case "RESERVATION_EMERGENCY_CLOSURE" -> {
-                // 自由入力 subject/body を payload から取り出してスルー。
-                // テンプレ化は将来 Phase で。現状は admin が組み立てた本文を流す。
+            // Phase 18-b/c スルー方式: 呼び出し元が subject/body を組み立てて payloadVars に詰める
+            case "RESERVATION_EMERGENCY_CLOSURE",
+                 "ANALYTICS_KPI_MONTHLY",
+                 "ANALYTICS_SUMMARY",
+                 "ADVERTISING_INVOICE_OVERDUE",
+                 "ERROR_REPORT_WEEKLY",
+                 "NOTIFICATION_CONFIRM",
+                 "GDPR_EXPORT_READY",
+                 "GDPR_EXPORT_FAILED",
+                 "GDPR_WITHDRAWAL_REMINDER",
+                 "RESERVATION_EMERGENCY_REMINDER",
+                 "RESERVATION_EMERGENCY_UNCONFIRMED" -> {
                 String subject = vars.get("subject");
                 String htmlBody = vars.get("body");
                 if (subject == null || htmlBody == null) {
                     throw new EmailOutboxValidationException(
                             "EMAIL_OUTBOX_002",
-                            "RESERVATION_EMERGENCY_CLOSURE には subject と body が必要"
+                            templateKind + " には subject と body が必要"
                     );
                 }
                 yield new RenderedEmail(subject, htmlBody);
             }
             default -> throw new IllegalStateException(
-                    "Unsupported templateKind (Phase 18-a/b): " + templateKind
+                    "Unsupported templateKind: " + templateKind
             );
         };
     }
