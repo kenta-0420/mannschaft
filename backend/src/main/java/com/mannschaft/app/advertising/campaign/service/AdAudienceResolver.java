@@ -162,7 +162,14 @@ public class AdAudienceResolver {
     }
 
     /**
-     * 単一セグメントを評価する。サポートする evaluator が無ければ {@link UnsupportedSegmentException}。
+     * 単一セグメントを評価する。
+     *
+     * <p>例外の意味合い:</p>
+     * <ul>
+     *   <li>{@link UnsupportedSegmentException} — 該当 type の Evaluator が DI に登録されていない（戦略パターン未配備）</li>
+     *   <li>{@code SegmentDataSourceNotAvailableException} — Evaluator は配備されているがデータソース（カラム / 表）が未整備
+     *       （Evaluator 内部から投げられる）</li>
+     * </ul>
      */
     private Set<Long> evaluate(AdAudienceSegment segment) {
         for (AdSegmentEvaluator evaluator : evaluators) {
