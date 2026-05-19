@@ -235,7 +235,7 @@ GET も `/hourly-rate` (単数) で実装。
 
 ## 3. 修正済みファイル一覧（本 PR のスコープ）
 
-### 3.1 docs/features/F03.5_shift.md
+### 3.1 docs/features/F03.5_shift/README.md
 
 - §4 API 仕様（line 568-617 周辺の表ヘッダ）:
   - `PUT /shifts/schedules/{id}` → `PATCH /shifts/schedules/{id}`
@@ -300,7 +300,7 @@ GET も `/hourly-rate` (単数) で実装。
 
 ```bash
 # 設計書と実装の突合
-grep -n "POST /api/v1/shifts/schedules" docs/features/F03.5_shift.md
+grep -n "POST /api/v1/shifts/schedules" docs/features/F03.5_shift/README.md
 grep -n "@PostMapping" backend/src/main/java/com/mannschaft/app/shift/controller/ShiftScheduleController.java
 # → 設計あり / 実装 POST  / patch 系統合 → 🟡
 

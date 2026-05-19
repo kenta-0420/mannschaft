@@ -432,5 +432,13 @@
     "nav": {
       "messaging_campaigns": "消息型广告活动"
     }
+  },
+  "teams_page": {
+    "title": "チーム広告主管理",
+    "description": "チーム単位でメッセージ型広告キャンペーンを作成・配信します。",
+    "nav": {
+      "messaging_campaigns_description": "チームのメンバーに向けたメッセージ型広告キャンペーンを作成します。"
+    },
+    "future_features_notice": "請求書管理・与信枠申請・定期レポートは将来の Phase で対応予定です。"
   }
 }
