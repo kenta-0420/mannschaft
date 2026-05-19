@@ -55,5 +55,9 @@ public enum EmailTemplateKind {
     /** #13 臨時休業患者リマインド (3時間前) */
     RESERVATION_EMERGENCY_REMINDER,
     /** #14 臨時休業未確認リマインド (2時間前、操作者向け) */
-    RESERVATION_EMERGENCY_UNCONFIRMED
+    RESERVATION_EMERGENCY_UNCONFIRMED,
+
+    // 広告メール配信系 (Phase 18-f — TC-4 package-private 化で前倒し移行)
+    /** F09.17 ダイレクトメール配信 (DirectMailService 経由、スルー方式) */
+    DIRECT_MAIL_AD
 }

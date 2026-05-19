@@ -3,7 +3,8 @@ package com.mannschaft.app.reservation.service;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
-import com.mannschaft.app.common.EmailService;
+import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
+import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -21,6 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 臨時休業未確認リマインダーバッチ。1分ごとに実行し、以下の2段階で通知する。
@@ -39,7 +43,7 @@ public class EmergencyClosureReminderBatchService {
     private final EmergencyClosureRepository closureRepository;
     private final UserRepository userRepository;
     private final NotificationHelper notificationHelper;
-    private final EmailService emailService;
+    private final EmailOutboxService emailOutboxService;
 
     @BatchEndpoint(name = "reservation-emergency-closure-reminder", description = "臨時休業の未確認患者・送信者リマインドを 1 分毎に処理する")
     @Scheduled(fixedDelay = 60_000)
@@ -52,16 +56,33 @@ public class EmergencyClosureReminderBatchService {
         List<EmergencyClosureConfirmationEntity> patientTargets =
                 confirmationRepository.findUnconfirmedForPatientReminder(now, now.plusHours(3));
 
-        for (EmergencyClosureConfirmationEntity confirmation : patientTargets) {
-            try {
-                sendReminderToPatient(confirmation);
-                confirmation.markPatientReminderSent();
-                confirmationRepository.save(confirmation);
-            } catch (Exception e) {
-                log.error("臨時休業患者リマインド送信失敗: confirmationId={}", confirmation.getId(), e);
-            }
-        }
         if (!patientTargets.isEmpty()) {
+            // N+1 対策: closure / patient を一括取得してからループ処理する
+            Set<Long> step1ClosureIds = patientTargets.stream()
+                    .map(EmergencyClosureConfirmationEntity::getEmergencyClosureId)
+                    .collect(Collectors.toSet());
+            Set<Long> step1PatientIds = patientTargets.stream()
+                    .map(EmergencyClosureConfirmationEntity::getUserId)
+                    .collect(Collectors.toSet());
+            Map<Long, EmergencyClosureEntity> step1ClosureMap = closureRepository.findAllById(step1ClosureIds)
+                    .stream()
+                    .collect(Collectors.toMap(EmergencyClosureEntity::getId, e -> e));
+            Map<Long, UserEntity> step1PatientMap = userRepository.findByIdIn(step1PatientIds)
+                    .stream()
+                    .collect(Collectors.toMap(UserEntity::getId, u -> u));
+
+            for (EmergencyClosureConfirmationEntity confirmation : patientTargets) {
+                EmergencyClosureEntity closure = step1ClosureMap.get(confirmation.getEmergencyClosureId());
+                UserEntity patient = step1PatientMap.get(confirmation.getUserId());
+                if (closure == null || patient == null) continue;
+                try {
+                    sendReminderToPatient(confirmation, closure, patient);
+                    confirmation.markPatientReminderSent();
+                    confirmationRepository.save(confirmation);
+                } catch (Exception e) {
+                    log.error("臨時休業患者リマインド送信失敗: confirmationId={}", confirmation.getId(), e);
+                }
+            }
             log.info("臨時休業患者リマインド: {}件送信", patientTargets.size());
         }
 
@@ -69,27 +90,50 @@ public class EmergencyClosureReminderBatchService {
         List<EmergencyClosureConfirmationEntity> operatorTargets =
                 confirmationRepository.findUnconfirmedApproachingAppointments(now, now.plusHours(2));
 
-        for (EmergencyClosureConfirmationEntity confirmation : operatorTargets) {
-            try {
-                sendReminderToOperator(confirmation);
-                confirmation.markReminderSent();
-                confirmationRepository.save(confirmation);
-            } catch (Exception e) {
-                log.error("臨時休業未確認リマインド送信失敗: confirmationId={}", confirmation.getId(), e);
-            }
-        }
         if (!operatorTargets.isEmpty()) {
+            // N+1 対策: closure / patient / operator を一括取得してからループ処理する
+            Set<Long> step2ClosureIds = operatorTargets.stream()
+                    .map(EmergencyClosureConfirmationEntity::getEmergencyClosureId)
+                    .collect(Collectors.toSet());
+            Map<Long, EmergencyClosureEntity> step2ClosureMap = closureRepository.findAllById(step2ClosureIds)
+                    .stream()
+                    .collect(Collectors.toMap(EmergencyClosureEntity::getId, e -> e));
+
+            // patient + operator (closure.getCreatedBy()) を一度にバッチ取得
+            Set<Long> step2PatientIds = operatorTargets.stream()
+                    .map(EmergencyClosureConfirmationEntity::getUserId)
+                    .collect(Collectors.toSet());
+            Set<Long> step2OperatorIds = step2ClosureMap.values().stream()
+                    .map(EmergencyClosureEntity::getCreatedBy)
+                    .collect(Collectors.toSet());
+            Set<Long> step2AllUserIds = new java.util.HashSet<>(step2PatientIds);
+            step2AllUserIds.addAll(step2OperatorIds);
+            Map<Long, UserEntity> step2UserMap = userRepository.findByIdIn(step2AllUserIds)
+                    .stream()
+                    .collect(Collectors.toMap(UserEntity::getId, u -> u));
+
+            for (EmergencyClosureConfirmationEntity confirmation : operatorTargets) {
+                EmergencyClosureEntity closure = step2ClosureMap.get(confirmation.getEmergencyClosureId());
+                if (closure == null) continue;
+                UserEntity patient = step2UserMap.get(confirmation.getUserId());
+                UserEntity operator = step2UserMap.get(closure.getCreatedBy());
+                if (patient == null || operator == null) continue;
+                try {
+                    sendReminderToOperator(confirmation, closure, patient, operator);
+                    confirmation.markReminderSent();
+                    confirmationRepository.save(confirmation);
+                } catch (Exception e) {
+                    log.error("臨時休業未確認リマインド送信失敗: confirmationId={}", confirmation.getId(), e);
+                }
+            }
             log.info("臨時休業送信者アラート: {}件送信", operatorTargets.size());
         }
     }
 
-    private void sendReminderToPatient(EmergencyClosureConfirmationEntity confirmation) {
-        EmergencyClosureEntity closure = closureRepository.findById(confirmation.getEmergencyClosureId())
-                .orElse(null);
-        if (closure == null) return;
-
-        UserEntity patient = userRepository.findById(confirmation.getUserId()).orElse(null);
-        if (patient == null) return;
+    private void sendReminderToPatient(
+            EmergencyClosureConfirmationEntity confirmation,
+            EmergencyClosureEntity closure,
+            UserEntity patient) {
 
         String appointmentStr = confirmation.getAppointmentAt()
                 .format(DateTimeFormatter.ofPattern("M月d日 HH:mm"));
@@ -112,26 +156,33 @@ public class EmergencyClosureReminderBatchService {
                 closure.getCreatedBy()
         );
 
-        // メールも再送
+        // #13: メールも再送 (outbox 経由)
         String htmlBody = String.format(
                 "<p><strong>%s</strong></p><p>%s</p><hr>" +
                 "<p>%s</p>",
                 title, body, closure.getMessageBody()
         );
-        emailService.sendEmail(patient.getEmail(), title, htmlBody);
+        emailOutboxService.enqueue(new EmailOutboxRequest(
+                "RESERVATION_EMERGENCY_REMINDER",
+                "ja",
+                patient.getEmail(),
+                Map.of("subject", title, "body", htmlBody),
+                "reservation",
+                "emergency-reminder:" + confirmation.getEmergencyClosureId() + ":" + patient.getId(),
+                null,
+                patient.getId(),
+                null
+        ));
 
         log.info("臨時休業患者リマインド送信: closureId={}, patientId={}",
                 confirmation.getEmergencyClosureId(), confirmation.getUserId());
     }
 
-    private void sendReminderToOperator(EmergencyClosureConfirmationEntity confirmation) {
-        EmergencyClosureEntity closure = closureRepository.findById(confirmation.getEmergencyClosureId())
-                .orElse(null);
-        if (closure == null) return;
-
-        UserEntity patient = userRepository.findById(confirmation.getUserId()).orElse(null);
-        UserEntity operator = userRepository.findById(closure.getCreatedBy()).orElse(null);
-        if (patient == null || operator == null) return;
+    private void sendReminderToOperator(
+            EmergencyClosureConfirmationEntity confirmation,
+            EmergencyClosureEntity closure,
+            UserEntity patient,
+            UserEntity operator) {
 
         String patientName = patient.getLastName() + " " + patient.getFirstName();
         String appointmentStr = confirmation.getAppointmentAt()
@@ -154,13 +205,23 @@ public class EmergencyClosureReminderBatchService {
                 null
         );
 
-        // メールも送信
+        // #14: メールも送信 (outbox 経由)
         String htmlBody = String.format(
                 "<p><strong>%s</strong></p><p>%s</p><hr>" +
                 "<p>患者名: %s</p><p>予約日時: %s</p>",
                 title, body, patientName, appointmentStr
         );
-        emailService.sendEmail(operator.getEmail(), "【要確認】臨時休業未確認患者様のお知らせ", htmlBody);
+        emailOutboxService.enqueue(new EmailOutboxRequest(
+                "RESERVATION_EMERGENCY_UNCONFIRMED",
+                "ja",
+                operator.getEmail(),
+                Map.of("subject", "【要確認】臨時休業未確認患者様のお知らせ", "body", htmlBody),
+                "reservation",
+                "emergency-unconfirmed:" + confirmation.getEmergencyClosureId() + ":" + patient.getId(),
+                null,
+                operator.getId(),
+                null
+        ));
 
         log.info("臨時休業未確認リマインド送信: closureId={}, patientId={}, operatorId={}",
                 confirmation.getEmergencyClosureId(), confirmation.getUserId(), operator.getId());

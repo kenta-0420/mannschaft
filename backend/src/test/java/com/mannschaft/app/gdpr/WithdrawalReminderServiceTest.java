@@ -2,8 +2,9 @@ package com.mannschaft.app.gdpr;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
-import com.mannschaft.app.common.EmailService;
 import com.mannschaft.app.gdpr.service.WithdrawalReminderService;
+import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
+import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -32,7 +34,7 @@ class WithdrawalReminderServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private EmailService emailService;
+    private EmailOutboxService emailOutboxService;
 
     @InjectMocks
     private WithdrawalReminderService service;
@@ -68,10 +70,10 @@ class WithdrawalReminderServiceTest {
 
             service.sendWithdrawalReminders();
 
-            verify(emailService, times(1)).sendEmail(
-                    eq("day7@example.com"),
-                    contains("23日"),
-                    anyString()
+            verify(emailOutboxService, times(1)).enqueue(
+                    argThat(req -> "day7@example.com".equals(req.toAddress())
+                            && "GDPR_WITHDRAWAL_REMINDER".equals(req.templateKind())
+                            && req.payloadVars().get("subject").contains("23日"))
             );
         }
 
@@ -88,15 +90,15 @@ class WithdrawalReminderServiceTest {
 
             service.sendWithdrawalReminders();
 
-            verify(emailService, times(1)).sendEmail(
-                    eq("day25@example.com"),
-                    contains("5日"),
-                    anyString()
+            verify(emailOutboxService, times(1)).enqueue(
+                    argThat(req -> "day25@example.com".equals(req.toAddress())
+                            && "GDPR_WITHDRAWAL_REMINDER".equals(req.templateKind())
+                            && req.payloadVars().get("subject").contains("5日"))
             );
         }
 
         @Test
-        @DisplayName("正常系: 送信済みユーザー（reminderSentAtが1日以内）はsendEmailが呼ばれない")
+        @DisplayName("正常系: 送信済みユーザー（reminderSentAtが1日以内）はenqueueが呼ばれない")
         void 正常_送信済みユーザースキップ() {
             // reminderSentAtが1日以内のユーザーはサービス内でスキップされる
             UserEntity user = buildUser(1L, "sent@example.com");
@@ -109,11 +111,11 @@ class WithdrawalReminderServiceTest {
 
             service.sendWithdrawalReminders();
 
-            verify(emailService, never()).sendEmail(anyString(), anyString(), anyString());
+            verify(emailOutboxService, never()).enqueue(any(EmailOutboxRequest.class));
         }
 
         @Test
-        @DisplayName("正常系: 7日目と25日目の両方にユーザーがいる場合、両方にメールが送信される")
+        @DisplayName("正常系: 7日目と25日目の両方にユーザーがいる場合、両方にenqueueされる")
         void 正常_7日目と25日目両方メール送信() {
             UserEntity user7 = buildUser(1L, "day7@example.com");
             UserEntity user25 = buildUser(2L, "day25@example.com");
@@ -125,7 +127,7 @@ class WithdrawalReminderServiceTest {
 
             service.sendWithdrawalReminders();
 
-            verify(emailService, times(2)).sendEmail(anyString(), anyString(), anyString());
+            verify(emailOutboxService, times(2)).enqueue(any(EmailOutboxRequest.class));
         }
     }
 }

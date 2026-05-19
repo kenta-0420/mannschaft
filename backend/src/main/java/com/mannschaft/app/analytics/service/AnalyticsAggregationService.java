@@ -30,7 +30,8 @@ import com.mannschaft.app.analytics.repository.AnalyticsMonthlyCohortRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsMonthlySnapshotRepository;
 import com.mannschaft.app.analytics.service.DateRangeResolver.DateRange;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.EmailService;
+import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
+import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -69,7 +70,7 @@ public class AnalyticsAggregationService {
     private final AnalyticsMonthlySnapshotRepository snapshotRepository;
     private final MetricCalculationService metricCalc;
     private final DateRangeResolver dateRangeResolver;
-    private final EmailService emailService;
+    private final EmailOutboxService emailOutboxService;
 
     /**
      * 収益サマリ（MRR/ARR/ARPU/LTV等）を算出する。
@@ -476,7 +477,17 @@ public class AnalyticsAggregationService {
         String htmlBody = MonthlyReportHtmlBuilder.build(month, snapshot);
 
         for (String recipient : recipients) {
-            emailService.sendEmail(recipient, subject, htmlBody);
+            emailOutboxService.enqueue(new EmailOutboxRequest(
+                    "ANALYTICS_SUMMARY",
+                    "ja",
+                    recipient,
+                    Map.of("subject", subject, "body", htmlBody),
+                    "analytics",
+                    "analytics-summary:" + month + ":" + recipient,
+                    null,
+                    null,
+                    null
+            ));
         }
 
         snapshot.markReportSent();

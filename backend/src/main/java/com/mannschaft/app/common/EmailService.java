@@ -33,7 +33,7 @@ public class EmailService {
      * @param subject   件名
      * @param htmlBody  HTML 本文
      */
-    public void sendEmail(String recipient, String subject, String htmlBody) {
+    void sendEmail(String recipient, String subject, String htmlBody) {
         try {
             SendEmailResponse response = sesV2Client.sendEmail(SendEmailRequest.builder()
                     .fromEmailAddress(fromAddress)
