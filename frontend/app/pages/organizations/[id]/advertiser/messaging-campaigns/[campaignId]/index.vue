@@ -4,6 +4,7 @@ import type {
   AdCampaignPreviewResponse,
   AdMessagingCampaign,
   AdMessagingCampaignStatus,
+  ScopeType,
 } from '~/types/adMessagingCampaign'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
@@ -12,6 +13,9 @@ const route = useRoute()
 const router = useRouter()
 const orgId = Number(route.params.id)
 const campaignId = String(route.params.campaignId)
+// F09.17 Phase 11-d-3: 組織配下ページは scope='ORGANIZATION' 固定で composable を呼ぶ。
+const scopeType: ScopeType = 'ORGANIZATION'
+const scopeId = orgId
 const { t } = useI18n()
 const api = useAdMessagingCampaignApi()
 const toast = useNotification()
@@ -43,7 +47,7 @@ function statusLabel(s: AdMessagingCampaignStatus): string {
 async function load() {
   loading.value = true
   try {
-    const res = await api.getCampaign(orgId, campaignId)
+    const res = await api.getCampaign(scopeType, scopeId, campaignId)
     campaign.value = res.data
   }
   catch {
@@ -72,7 +76,7 @@ async function runTransition(
             case 'resume': return api.resumeCampaign
           }
         })()
-        const res = await fn(orgId, campaignId)
+        const res = await fn(scopeType, scopeId, campaignId)
         campaign.value = res.data
         toast.success(t(`advertising.actions.${action}`))
       }
@@ -91,7 +95,7 @@ async function deleteCampaign() {
     message: t('advertising.advertiser_crud.confirm.delete'),
     accept: async () => {
       try {
-        await api.deleteCampaign(orgId, campaignId)
+        await api.deleteCampaign(scopeType, scopeId, campaignId)
         toast.success(t('advertising.actions.delete'))
         router.push(`/organizations/${orgId}/advertiser/messaging-campaigns`)
       }
@@ -105,7 +109,7 @@ async function deleteCampaign() {
 async function fetchPreview() {
   previewLoading.value = true
   try {
-    const res = await api.previewCampaign(orgId, campaignId)
+    const res = await api.previewCampaign(scopeType, scopeId, campaignId)
     preview.value = res.data
   }
   catch {
