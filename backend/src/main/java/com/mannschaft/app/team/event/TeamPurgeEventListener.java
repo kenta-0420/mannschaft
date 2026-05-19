@@ -53,7 +53,7 @@ public class TeamPurgeEventListener {
      * （GDPR 30 日タイムリミット遵守のため）。失敗件は WARN ログを残し、
      * 夜次補正バッチで再処理する運用とする。</p>
      */
-    @Async("event-pool")
+    @Async("purge-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(AccountPurgedEvent event) {

@@ -52,7 +52,7 @@ public class ChartPurgeEventListener {
      * <p>例外発生時は WARN ログのみで伝播させない（GDPR 30 日タイムリミットを優先し、
      * 他リスナーの処理を妨げない）。失敗分は夜次補正バッチ（Phase D）で再処理する運用とする。</p>
      */
-    @Async("event-pool")
+    @Async("purge-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(AccountPurgedEvent event) {

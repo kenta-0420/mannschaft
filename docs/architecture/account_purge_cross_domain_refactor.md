@@ -383,6 +383,19 @@ public final class AccountPurgedEvent extends BaseEvent {
 
 ### Phase D: 監査・保険レイヤ強化
 
+**意思決定（マスター御裁可 2026-05-19）:**
+
+| # | 論点 | 選択肢 | 採用 |
+|---|---|---|---|
+| ① | 全ドメイン完了監査の実装方式（§9.11） | A. `account_purge_completion_status` テーブル新設 / B. 孤児検出 SQL / C. 個別監査ログ | **案 A 採用** — GDPR Art.17 30 日証跡として per-domain 完了表が最も明示的 |
+| ② | `*PurgeEventListener` への `@Retryable` 付与（§3.4） | 採用 / 不採用 | **不採用** — 夜次補正バッチが保険として十分。`@Retryable` を重ねると「補正バッチと二重実行」の冪等性リスクが増す。Phase D-2 以降で必要性が判明した時点で再評価 |
+| ③ | `event-pool` 枯渇対策（§9.8） | A. 専用プール `purge-pool` 新設 / B. `event-pool` 増強 / C. バッチ粒度削減 | **案 A 採用** — `event-pool` の品質保証を侵さず退会経路を独立管理。Phase D-1 で実施済み（PR #XXX） |
+
+**Phase D-1 実施内容（本 PR）:**
+- `AsyncConfig.java` に `purge-pool` Bean を追加（corePoolSize=2 / maxPoolSize=10 / queueCapacity=500）
+- 6 本の `*PurgeEventListener` の `@Async("event-pool")` を `@Async("purge-pool")` に切り替え
+- 対象リスナー: `RolePurgeEventListener` / `TeamPurgeEventListener` / `PaymentPurgeEventListener` / `ChartPurgeEventListener` / `ProxyPurgeEventListener` / `ErrorReportPurgeEventListener`
+
 **1. 夜次補正バッチ整備（1 ドメイン = 1 PR）**
 
 各ドメインに「孤児 user_id 検出 → 削除」バッチを設置（既存 `TeamMemberCountBackfillBatchService` と同形）:
@@ -394,17 +407,17 @@ public void backfill() {
 }
 ```
 
-**2. `@Retryable` 導入**
-- 各 `*PurgeEventListener` に `@Retryable(maxAttempts=3, backoff=...)` を付与
+**2. `@Retryable` 導入** — **不採用（意思決定 ② 参照）**
 
-**3. GDPR 監査ログ強化**
-- `AccountPurgedEvent` 発火後 30日以内に全ドメインの clean が完了したことを記録するバッチ（`GdprPurgeAuditBatchService`）
+**3. GDPR 監査ログ強化（意思決定 ① 案 A）**
+- `account_purge_completion_status` テーブル新設（6 ドメイン × `(userId, domain, completed_at, status)` で per-domain 完了を記録）
+- 全行 SUCCESS で `ACCOUNT_PURGE_COMPLETED_ALL_DOMAINS` 監査ログを発行するバッチ（`GdprPurgeAuditBatchService`）
 - 完了未達のユーザー ID をアラート通知
 
 **4. 法務レビュー**
 - 全 Phase 完了後にマスター主導で実施
 
-**PR 数:** 7〜9（補正バッチ 6 + Retryable 1 + 監査バッチ 1〜2）
+**PR 数:** 7〜8（purge-pool D-1 済 + 補正バッチ 6 + 監査バッチ 1〜2）
 
 ### 全体 PR 数概算
 
@@ -683,4 +696,5 @@ Phase D 設計書冒頭に「孤児検出は差分方式・フルスキャン禁
 | 2026-05-18 | Phase B-4 実装 PR `_TBD_`：`ChartPurgeEventListener` 新設（chart.event、`@Async("event-pool")` + `@TransactionalEventListener(AFTER_COMMIT)` + `@Transactional(REQUIRES_NEW)` 三重防御）。`AccountPurgedEvent` を購読し `chartRecordRepository.anonymizeCustomerUserId(userId)` を呼出（`chart_records.customer_user_id` を NULL 化）。既存越境 DML（`AccountPurgeService.java:152`）は Phase C-4 まで併走。テスト追加: `ChartPurgeEventListenerTest`（3 件、正常/0件/例外伝播せず）。PR #837（B-1 role）/ #845（B-2 team）/ #847（B-6 errorreport）と同型 | 足軽（Phase B-4）|
 | 2026-05-18 | Phase B-5 実装 PR `_TBD_`：`ProxyPurgeEventListener` 新設（proxy.event、PR #837 Phase B-1 と同型の三重防御 `@Async("event-pool")` + `@TransactionalEventListener(AFTER_COMMIT)` + `@Transactional(REQUIRES_NEW)`）。`AccountPurgedEvent` を購読し **2 操作・混在型**（`proxyInputRecordRepository.deleteAllBySubjectUserId(userId)` で **物理削除** + `proxyInputConsentRepository.logicalDeleteAllBySubjectUserId(userId)` で **論理削除**）を実行。records は本人特定情報そのものを含むため GDPR 削除権により物理削除、consents は監査証跡として記録自体を保持するため論理削除（`deleted_at` セット）。各操作を独立 try-catch で囲み、片方が失敗してももう片方を継続（GDPR 30 日タイムリミット遵守）。既存越境 DML（`AccountPurgeService.java:201-203`）は Phase C-5 まで併走。テスト追加: `ProxyPurgeEventListenerTest`（5 件、正常両Repo呼出 / 0 件 / records失敗時もconsents継続 / consents失敗_伝播せず / 両方失敗_伝播せず）。F14.1 Phase 13-γ 由来データの清掃が完了 | 足軽（Phase B-5）|
 | 2026-05-18 | Phase B-3 実装 PR `_TBD_`：`PaymentPurgeEventListener` 新設（payment.event、`@Async("event-pool")` + `@TransactionalEventListener(AFTER_COMMIT)` + `@Transactional(REQUIRES_NEW)` 三重防御）。`AccountPurgedEvent` を購読し **2 操作混在パターン** を実行: (1) `memberPaymentRepository.anonymizeUserId(userId, SENTINEL_USER_ID)` でセンチネル化（GDPR Art.17 と会計税法 7 年保持の両立、once-only ターゲット選択型）/ (2) `stripeCustomerRepository.findByUserId().ifPresent(delete)` で Stripe 顧客行物理削除（Stripe API 側顧客は本 PR スコープ外）。2 操作はそれぞれ独立 try-catch で囲み 1 操作失敗時も他継続。既存越境 DML（`AccountPurgeService.java:177-183`）は Phase C-2 まで併走。テスト追加: `PaymentPurgeEventListenerTest`（5 件、正常両操作 / 0 件両方 / センチネル失敗→Stripe 継続 / Stripe 不在で delete 未呼出 / Stripe 削除失敗で例外伝播なし）。Phase B シリーズ最終陣。PR #837（B-1 role）/ #845（B-2 team）/ #850（B-4 chart）/ #851 (B-5 proxy) / #847（B-6 errorreport）と同型 | 足軽（Phase B-3）|
+| 2026-05-19 | **Phase D-1 実装 PR #XXX（purge-pool 専用プール新設 + 6 リスナー切り替え）**: 意思決定 ①②③ を設計書に記録（案 A/不採用/案 A）。`AsyncConfig.java` に `purge-pool` Bean を追加（corePoolSize=2 / maxPoolSize=10 / queueCapacity=500）。6 本の `*PurgeEventListener` の `@Async("event-pool")` を `@Async("purge-pool")` に切り替え。退会バッチ 100 件 × 6 ドメイン = 600 タスクが `event-pool`（queueCapacity=100）を枯渇させる問題を根治 | 足軽（Phase D-1）|
 | 2026-05-19 | **Phase C 実装 PR #858（越境 DML 一括撤去）**: `AccountPurgeService#purgeUser()` から 6 ドメイン越境 DML を全廃。削除した import: `ChartRecordRepository` / `UserRoleRepository` / `TeamOrgMembershipRepository` / `MemberPaymentRepository` / `StripeCustomerRepository` / `ProxyInputConsentRepository` / `ProxyInputRecordRepository` / `ErrorReportOccurrenceRepository` / `UserConstants`。削除したフィールド: 上記 8 Repository 注入。削除した DML 呼び出し: B-1〜B-6 の各 PurgeEventListener が担う全操作（chart匿名化 / role DELETE / team NULL化 / payment センチネル+Stripe削除 / proxy 物理・論理削除 / errorreport 匿名化）。`AccountPurgeServiceTest` を Phase C 後の状態に更新（越境 @Mock 8 フィールド削除・stubAuthAndGdprMocks ヘルパー抽出・data_exports S3削除継続確認テスト追加）。設計書 §4 Phase B PR# 確定・Phase C 完了を記録 | 足軽（Phase C）|

@@ -57,7 +57,7 @@ public class RolePurgeEventListener {
      * <p>1 件削除失敗しても他のスコープ削除は継続する（GDPR 30 日タイムリミットを優先）。
      * 失敗件は WARN ログとして残し、夜次補正バッチで再処理する運用とする。</p>
      */
-    @Async("event-pool")
+    @Async("purge-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(AccountPurgedEvent event) {

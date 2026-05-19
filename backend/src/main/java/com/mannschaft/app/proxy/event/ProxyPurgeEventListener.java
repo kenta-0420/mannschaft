@@ -66,7 +66,7 @@ public class ProxyPurgeEventListener {
      * <p>各操作は独立 try-catch で囲み、片方の失敗が他方の継続を妨げない。
      * 例外は伝播させず WARN ログのみ（GDPR 30 日タイムリミット優先）。</p>
      */
-    @Async("event-pool")
+    @Async("purge-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(AccountPurgedEvent event) {
