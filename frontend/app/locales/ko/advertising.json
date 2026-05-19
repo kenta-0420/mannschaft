@@ -254,6 +254,23 @@
       "no_data": "선택한 기간에 데이터가 없습니다.",
       "export_started": "CSV 내보내기를 시작했습니다."
     },
+    "unsubscribe_spa": {
+      "title": "광고 메일 수신 중지",
+      "description": "중지하고 싶은 채널을 선택하세요. 체크하지 않은 채널은 계속 수신됩니다.",
+      "submit_button": "선택한 채널 중지",
+      "note": "광고 메일 끝의 수신 중지 링크로 접속하면 표시됩니다. 로그인 후 「광고 수신 설정」 화면에서 언제든지 변경할 수 있습니다.",
+      "success_message": "선택한 채널의 광고 수신을 중지했습니다.",
+      "done_title": "광고 수신을 중지했습니다",
+      "done_description": "선택한 채널에서 광고를 더 이상 받지 않습니다.",
+      "done_disabled_label": "중지한 채널:",
+      "done_remaining_label": "계속 수신하는 채널:",
+      "done_login_hint": "로그인 후 「광고 수신 설정」 화면에서 언제든 변경할 수 있습니다.",
+      "error_title": "중지할 수 없습니다",
+      "error_invalid_or_expired": "링크의 유효 기간이 지났거나 무효화되었습니다. 로그인 후 「광고 수신 설정」 화면에서 진행해 주세요.",
+      "error_rate_limited": "짧은 시간에 많은 요청이 접수되었습니다. 잠시 후 다시 시도해 주세요.",
+      "error_unknown": "예기치 못한 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+      "error_login_hint": "로그인 후 「광고 수신 설정」 화면에서 채널별로 중지할 수 있습니다."
+    },
     "system_admin_moderation_detail": {
       "title": "캠페인 심사 상세",
       "section_channels": "채널별 본문",

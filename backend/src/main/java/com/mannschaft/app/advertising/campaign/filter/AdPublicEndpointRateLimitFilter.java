@@ -20,8 +20,9 @@ import java.time.Duration;
  *
  * <p>対象:</p>
  * <ul>
- *   <li>{@code GET /api/v1/ads/unsubscribe}     ─ 60 req/分（設計書 §6）</li>
- *   <li>{@code GET /api/v1/ads/pixels/open}     ─ 600 req/分（メーラー再フェッチ考慮）</li>
+ *   <li>{@code GET  /api/v1/ads/unsubscribe}     ─ 60 req/分（設計書 §6）</li>
+ *   <li>{@code POST /api/v1/ads/unsubscribe}     ─ 60 req/分（F09.17 残課題 4 SPA POST 共通）</li>
+ *   <li>{@code GET  /api/v1/ads/pixels/open}     ─ 600 req/分（メーラー再フェッチ考慮）</li>
  * </ul>
  *
  * <p>認証不要エンドポイントのためユーザー識別子が無く、IP アドレスのみで制御する。
@@ -60,11 +61,18 @@ public class AdPublicEndpointRateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        if (!"GET".equalsIgnoreCase(request.getMethod())) {
-            return true;
-        }
+        String method = request.getMethod();
         String path = request.getServletPath();
-        return !UNSUBSCRIBE_PATH.equals(path) && !OPEN_PIXEL_PATH.equals(path);
+        // unsubscribe は GET (後方互換ワンクリック) / POST (SPA 確定) の両方を 60/min で守る
+        if (UNSUBSCRIBE_PATH.equals(path)
+                && ("GET".equalsIgnoreCase(method) || "POST".equalsIgnoreCase(method))) {
+            return false;
+        }
+        // 開封ピクセルは GET のみ
+        if (OPEN_PIXEL_PATH.equals(path) && "GET".equalsIgnoreCase(method)) {
+            return false;
+        }
+        return true;
     }
 
     @Override

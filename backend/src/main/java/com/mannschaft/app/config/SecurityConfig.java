@@ -132,6 +132,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/events").permitAll()
                 // F09.17 Phase 11-b 広告 unsubscribe / 開封ピクセル（認証不要・IP レート制限あり）
                 .requestMatchers(HttpMethod.GET, "/api/v1/ads/unsubscribe").permitAll()
+                // F09.17 残課題 4 公開 unsubscribe SPA POST（認証不要）
+                .requestMatchers(HttpMethod.POST, "/api/v1/ads/unsubscribe").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/ads/pixels/open").permitAll()
                 // TODO(F09.18 Phase 18-d): /api/v1/system-admin/email-outbox/** に SYSTEM_ADMIN
                 //   ロール限定の包括認可ルールを追加すること。現在は `.anyRequest().permitAll()`

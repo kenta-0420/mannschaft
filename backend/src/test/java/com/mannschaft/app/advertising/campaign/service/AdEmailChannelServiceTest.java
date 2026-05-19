@@ -12,11 +12,11 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.directmail.entity.DirectMailRecipientEntity;
 import com.mannschaft.app.directmail.service.DirectMailService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -47,7 +47,22 @@ class AdEmailChannelServiceTest {
     @Mock private AdUnsubscribeJwtService unsubscribeJwtService;
     @Mock private AdOpenPixelJwtService openPixelJwtService;
     @Mock private AdEmailDeliveryRepository deliveryRepository;
-    @InjectMocks private AdEmailChannelService service;
+
+    private AdEmailChannelService service;
+
+    private static final String APP_BASE_URL = "http://localhost:3000";
+
+    @BeforeEach
+    void setUp() {
+        service = new AdEmailChannelService(
+                directMailService,
+                userRepository,
+                userAdPreferenceService,
+                unsubscribeJwtService,
+                openPixelJwtService,
+                deliveryRepository,
+                APP_BASE_URL);
+    }
 
     private AdMessagingCampaign buildCampaign() {
         AdMessagingCampaign campaign = AdMessagingCampaign.builder()
@@ -151,11 +166,12 @@ class AdEmailChannelServiceTest {
     }
 
     @Test
-    @DisplayName("buildHtmlBody: unsubscribe リンクと open pixel が埋め込まれる")
+    @DisplayName("buildHtmlBody: unsubscribe SPA リンクと open pixel が埋め込まれる")
     void buildHtmlBody_リンク埋め込み() {
         String html = service.buildHtmlBody("本文", "JWT-U", "JWT-P");
         assertThat(html).contains("<html>").contains("<body>");
-        assertThat(html).contains("/api/v1/ads/unsubscribe?token=JWT-U");
+        // F09.17 残課題 4: メール本文の unsubscribe URL は SPA 経路 (/ads/unsubscribe) に切替済み
+        assertThat(html).contains(APP_BASE_URL + "/ads/unsubscribe?token=JWT-U");
         assertThat(html).contains("/api/v1/ads/pixels/open?token=JWT-P");
         assertThat(html).contains("配信停止");
     }
@@ -165,6 +181,6 @@ class AdEmailChannelServiceTest {
     void buildHtmlBody_pixel_null_は_imgなし() {
         String html = service.buildHtmlBody("本文", "JWT-U", null);
         assertThat(html).doesNotContain("/api/v1/ads/pixels/open");
-        assertThat(html).contains("/api/v1/ads/unsubscribe?token=JWT-U");
+        assertThat(html).contains(APP_BASE_URL + "/ads/unsubscribe?token=JWT-U");
     }
 }
