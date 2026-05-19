@@ -44,4 +44,29 @@ public interface ErrorReportOccurrenceRepository
             + "SET o.ipAddress = NULL, o.userAgent = NULL "
             + "WHERE o.userId = :userId")
     int anonymizeByUserId(@Param("userId") Long userId);
+
+    /**
+     * 退会済みユーザーの ip_address / user_agent を匿名化する（孤児補正バッチ用）。
+     *
+     * <p>{@code user_id} FK は V62.015 で撤廃済みのため、物理削除後も {@code user_id}
+     * に元の値が残る。よって孤児は「{@code user_id} が指す {@code users} レコードが
+     * 存在しない かつ {@code ip_address} または {@code user_agent} が非 NULL」で検出する。</p>
+     *
+     * <p>{@link com.mannschaft.app.errorreport.event.ErrorReportPurgeEventListener} が
+     * 失敗した場合の補正用。Phase D-7 補正バッチ
+     * ({@link com.mannschaft.app.errorreport.batch.ErrorReportPurgeBackfillBatchService})
+     * から呼び出す。</p>
+     *
+     * @return 匿名化した行数
+     */
+    @Modifying
+    @Query(value = """
+            UPDATE error_report_occurrences ero
+            LEFT JOIN users u ON ero.user_id = u.id
+            SET ero.ip_address = NULL, ero.user_agent = NULL
+            WHERE ero.user_id IS NOT NULL
+              AND u.id IS NULL
+              AND (ero.ip_address IS NOT NULL OR ero.user_agent IS NOT NULL)
+            """, nativeQuery = true)
+    int anonymizeOrphanByUserId();
 }
