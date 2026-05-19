@@ -4,6 +4,8 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.forms.dto.CreateFormSubmissionRequest;
 import com.mannschaft.app.forms.dto.FormSubmissionResponse;
+import com.mannschaft.app.forms.dto.FormUploadUrlRequest;
+import com.mannschaft.app.forms.dto.FormUploadUrlResponse;
 import com.mannschaft.app.forms.dto.UpdateFormSubmissionRequest;
 import com.mannschaft.app.forms.service.FormSubmissionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -115,6 +117,25 @@ public class FormSubmissionController {
             @PathVariable Long submissionId) {
         FormSubmissionResponse response = submissionService.submit(
                 submissionId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * F05.7 Phase 11 第四陣 4-B: 添付ファイル / 署名 PNG の Pre-signed アップロード URL を発行する。
+     *
+     * <p>field_key に "signature" を含む場合は署名扱い（最大 500KB / image/png のみ）。
+     * それ以外は一般ファイル扱い（最大 10MB / pdf, jpeg, png, gif, webp）。</p>
+     */
+    @PostMapping("/{submissionId}/upload-url")
+    @Operation(summary = "添付 Pre-signed URL 発行")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "URL 発行成功")
+    public ResponseEntity<ApiResponse<FormUploadUrlResponse>> presignUpload(
+            @PathVariable String scopeType,
+            @PathVariable Long scopeId,
+            @PathVariable Long submissionId,
+            @Valid @RequestBody FormUploadUrlRequest request) {
+        FormUploadUrlResponse response = submissionService.presignUploadUrl(
+                scopeType, scopeId, submissionId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
