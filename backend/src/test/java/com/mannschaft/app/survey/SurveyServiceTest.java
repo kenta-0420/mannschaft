@@ -340,10 +340,19 @@ class SurveyServiceTest {
         void アンケート複製_正常_DRAFT状態で新規作成() {
             // Given
             SurveyEntity source = createDraftSurvey();
+            SurveyEntity newEntity = createDraftSurvey();
+            // 複製元 (SURVEY_ID) と、getSurveyDetail 内部で参照される複製後 (savedNew.getId() は null)
+            // をそれぞれ specific に stub する。
+            // any() を使うと Mockito Strict 配下で先に登録した stub を上書きし
+            // UnnecessaryStubbingException が発生するため、引数ごとに分離する。
             given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(source));
+            given(surveyRepository.findByIdAndScopeTypeAndScopeId(
+                    org.mockito.ArgumentMatchers.isNull(),
+                    org.mockito.ArgumentMatchers.eq(SCOPE_TYPE),
+                    org.mockito.ArgumentMatchers.eq(SCOPE_ID)))
+                    .willReturn(Optional.of(newEntity));
             given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, SCOPE_TYPE)).willReturn(true);
-            SurveyEntity newEntity = createDraftSurvey();
             // save の呼び出しでは引数のエンティティをそのまま返す
             given(surveyRepository.save(org.mockito.ArgumentMatchers.any(SurveyEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -351,12 +360,6 @@ class SurveyServiceTest {
                     .willReturn(Collections.emptyList());
             given(targetRepository.findBySurveyId(SURVEY_ID)).willReturn(Collections.emptyList());
             given(resultViewerRepository.findBySurveyId(SURVEY_ID)).willReturn(Collections.emptyList());
-            // getSurveyDetail 内部呼び出し用
-            given(surveyRepository.findByIdAndScopeTypeAndScopeId(
-                    org.mockito.ArgumentMatchers.any(),
-                    org.mockito.ArgumentMatchers.eq(SCOPE_TYPE),
-                    org.mockito.ArgumentMatchers.eq(SCOPE_ID)))
-                    .willReturn(Optional.of(newEntity));
             given(surveyMapper.toSurveyResponse(org.mockito.ArgumentMatchers.any()))
                     .willReturn(createSurveyResponse());
 
