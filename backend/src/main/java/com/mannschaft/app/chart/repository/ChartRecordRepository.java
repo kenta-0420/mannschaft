@@ -4,6 +4,7 @@ import com.mannschaft.app.chart.entity.ChartRecordEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -86,9 +87,33 @@ public interface ChartRecordRepository extends JpaRepository<ChartRecordEntity, 
     /**
      * 物理削除バッチ用: customer_user_id をNULLに更新する（退会ユーザーの匿名化）。
      */
-    @org.springframework.data.jpa.repository.Modifying
+    @Modifying
     @Query("UPDATE ChartRecordEntity c SET c.customerUserId = NULL WHERE c.customerUserId = :userId")
     int anonymizeCustomerUserId(@Param("userId") Long userId);
+
+    /**
+     * 孤児補正バッチ用: 退会済み（物理削除済み）ユーザーを参照している
+     * {@code customer_user_id} を一括で NULL 化する。
+     *
+     * <p>{@code ChartPurgeEventListener} が {@link com.mannschaft.app.gdpr.event.AccountPurgedEvent}
+     * の処理に失敗した場合、{@code customer_user_id} に削除済みユーザーの ID が残存する。
+     * 本メソッドはその孤児を夜次バッチ（{@link com.mannschaft.app.chart.batch.ChartPurgeBackfillBatchService}）
+     * で補正するために使用する。</p>
+     *
+     * <p>LEFT JOIN で {@code users} テーブルに一致しない行（= 物理削除済みユーザー）を対象にする。
+     * FK 制約 {@code fk_cr_customer} は V62.013 で撤廃済みのため、JOIN 結果が NULL でも
+     * 制約エラーは発生しない。</p>
+     *
+     * @return NULL 化した件数
+     */
+    @Modifying
+    @Query(value = """
+            UPDATE chart_records cr
+            LEFT JOIN users u ON cr.customer_user_id = u.id
+            SET cr.customer_user_id = NULL
+            WHERE cr.customer_user_id IS NOT NULL AND u.id IS NULL
+            """, nativeQuery = true)
+    int anonymizeOrphanCustomerUserId();
 
     /**
      * 特定顧客のカルテ総件数を取得する（GDPR削除プレビュー用）。
