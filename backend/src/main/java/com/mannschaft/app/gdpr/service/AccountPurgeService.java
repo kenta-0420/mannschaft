@@ -2,7 +2,6 @@ package com.mannschaft.app.gdpr.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
-import com.mannschaft.app.auth.UserConstants;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.EmailChangeTokenRepository;
 import com.mannschaft.app.auth.repository.EmailVerificationTokenRepository;
@@ -15,19 +14,11 @@ import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
-import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.util.SessionHashUtil;
-import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
-import com.mannschaft.app.payment.repository.MemberPaymentRepository;
-import com.mannschaft.app.payment.repository.StripeCustomerRepository;
-import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
-import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
-import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -58,15 +49,10 @@ public class AccountPurgeService {
     private boolean dryRun;
 
     private final UserRepository userRepository;
-    private final ChartRecordRepository chartRecordRepository;
-    private final UserRoleRepository userRoleRepository;
-    private final TeamOrgMembershipRepository teamOrgMembershipRepository;
-    private final MemberPaymentRepository memberPaymentRepository;
-    private final StripeCustomerRepository stripeCustomerRepository;
     private final DataExportRepository dataExportRepository;
     private final StorageService storageService;
 
-    // トークン系
+    // auth ドメイン: トークン・セッション系（同一 purgeUser トランザクション内で実行）
     private final RefreshTokenRepository refreshTokenRepository;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
@@ -76,9 +62,6 @@ public class AccountPurgeService {
     private final OAuthAccountRepository oAuthAccountRepository;
     private final TwoFactorAuthRepository twoFactorAuthRepository;
     private final WebAuthnCredentialRepository webAuthnCredentialRepository;
-    private final ProxyInputConsentRepository proxyInputConsentRepository;
-    private final ProxyInputRecordRepository proxyInputRecordRepository;
-    private final ErrorReportOccurrenceRepository errorReportOccurrenceRepository;
     private final AuditLogService auditLogService;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -147,42 +130,8 @@ public class AccountPurgeService {
         webAuthnCredentialRepository.deleteAll(
                 webAuthnCredentialRepository.findByUserId(userId));
 
-        // Phase 2: 活動データの匿名化
-        // chart_records: customer_user_id をNULL化（ON DELETE RESTRICT のため先に実行）
-        int anonymizedCharts = chartRecordRepository.anonymizeCustomerUserId(userId);
-        log.debug("chart_records匿名化: userId={}, 件数={}", userId, anonymizedCharts);
-
-        // F12.5 Phase 2-F: error_report_occurrences の ip_address / user_agent を NULL 化する。
-        // user_id 自体は ON DELETE SET NULL の FK 制約があるため、ユーザー物理削除時に
-        // 自動で NULL 化されるが、ip_address / user_agent はアプリ層で明示的に NULL 化
-        // しないと退会後もログ復元の手がかりとして残ってしまう。
-        // ※ 必ず user_id を絞り込みキーとして使うため、ユーザー本体削除（FK SET NULL 発火）
-        //   よりも前に呼び出す必要がある。
-        int anonymizedOccurrences =
-                errorReportOccurrenceRepository.anonymizeByUserId(userId);
-        log.debug("error_report_occurrences匿名化: userId={}, 件数={}",
-                userId, anonymizedOccurrences);
-
-        // Phase 3: メンバーシップ
-        // user_roles: granted_byをNULL化してからDELETE
-        userRoleRepository.nullifyGrantedBy(userId);
-        userRoleRepository.deleteAllByUserId(userId);
-
-        // team_org_memberships: invited_by, responded_by をNULL化
-        teamOrgMembershipRepository.nullifyInvitedBy(userId);
-        teamOrgMembershipRepository.nullifyRespondedBy(userId);
-
-        // Phase 4: 決済
-        // member_payments: user_id をSENTINEL_USER_IDに差し替え（支払い履歴は保持）
-        int anonymizedPayments = memberPaymentRepository.anonymizeUserId(
-                userId, UserConstants.SENTINEL_USER_ID);
-        log.debug("member_payments匿名化: userId={}, 件数={}", userId, anonymizedPayments);
-
-        // stripe_customers: 削除
-        stripeCustomerRepository.findByUserId(userId)
-                .ifPresent(stripeCustomerRepository::delete);
-
         // data_exports: S3ファイルを削除してからレコード削除
+        // （gdpr 自ドメイン。クロスドメイン操作は AccountPurgedEvent リスナーが担当）
         List<DataExportEntity> dataExports = dataExportRepository
                 .findByExpiresAtBeforeAndS3KeyIsNotNull(LocalDateTime.now().plusYears(100));
         dataExports.stream()
@@ -196,11 +145,6 @@ public class AccountPurgeService {
                     }
                     dataExportRepository.delete(de);
                 });
-
-        // 代理入力記録の物理削除（F14.1 Phase 13-γ）
-        proxyInputRecordRepository.deleteAllBySubjectUserId(userId);
-        // 代理入力同意書の論理削除（監査証跡として保持するため物理削除しない）
-        proxyInputConsentRepository.logicalDeleteAllBySubjectUserId(userId);
 
         // Phase 5: ユーザー本体削除
         // purged_atを記録してからsave（論理削除時刻を保存するため）
@@ -226,9 +170,9 @@ public class AccountPurgeService {
         userRepository.delete(user);
 
         // Phase 7: AccountPurgedEvent 発火（クロスドメイン整合性のイベント駆動化）
-        // 設計書: docs/architecture/account_purge_cross_domain_refactor.md §3.1 / §3.2 / §4 Phase B
-        // 各ドメインの *PurgeEventListener が AFTER_COMMIT で購読する。
-        // 既存の越境 DELETE は Phase C で撤去するまで併走（冪等のため機能影響なし）。
+        // 設計書: docs/architecture/account_purge_cross_domain_refactor.md §3.1 / §3.2 / §4 Phase C
+        // 各ドメインの *PurgeEventListener（B-1〜B-6）が AFTER_COMMIT で購読し、
+        // 自ドメインの関連データを片付ける。越境 DML は Phase C で全廃済み。
         eventPublisher.publishEvent(new AccountPurgedEvent(userId, emailHash));
     }
 }

@@ -1,8 +1,8 @@
 # AccountPurgeService 越境 DELETE 全廃リファクタ 陣立て書
 
 > 起票日: 2026-05-18
-> 担当: kenta（マスター御裁可待ち）
-> ステータス: 🟡 設計段階（実コード変更なし）
+> 担当: kenta
+> ステータス: 🟡 Phase C 完了 / Phase D 未着手
 > 帰属: `docs/architecture/db_scalability.md` 「次フェーズ」候補（退会経路のドメイン境界正規化）
 
 ---
@@ -323,12 +323,12 @@ public final class AccountPurgedEvent extends BaseEvent {
 
 | PR | ドメイン | 新設リスナー | 取り込む既存 DML | 御裁可後 PR# |
 |---|---|---|---|---|
-| B-1 | **role** | `RolePurgeEventListener` | `user_roles.nullifyGrantedBy` + `findAllByUserId` ループで `RoleService#removeMember` 呼び出し（`MembershipChangedEvent(REMOVED)` を自然発火させ F15.4 Caveat を自動解消） | **PR `_TBD_`（Phase B-1 実装）** |
-| B-2 | team | `TeamPurgeEventListener` | `team_org_memberships.nullifyInvitedBy` / `nullifyRespondedBy` | **PR `_TBD_`（Phase B-2 実装）** |
-| B-3 | payment | `PaymentPurgeEventListener` | `member_payments.anonymizeUserId(SENTINEL)` / `stripe_customers.delete` | **PR `_TBD_`（Phase B-3 実装）** |
-| B-4 | chart | `ChartPurgeEventListener` | `chart_records.anonymizeCustomerUserId` | **PR `_TBD_`（Phase B-4 実装）** |
-| B-5 | proxy | `ProxyPurgeEventListener` | `proxy_input_records.deleteAllBySubjectUserId` / `proxy_input_consents.logicalDeleteAllBySubjectUserId` | **PR `_TBD_`（Phase B-5 実装）** |
-| B-6 | errorreport | `ErrorReportPurgeEventListener` | `error_report_occurrences.anonymizeByUserId` | **PR `_TBD_`（Phase B-6 実装）** |
+| B-1 | **role** | `RolePurgeEventListener` | `user_roles.nullifyGrantedBy` + `findAllByUserId` ループで `RoleService#removeMember` 呼び出し（`MembershipChangedEvent(REMOVED)` を自然発火させ F15.4 Caveat を自動解消） | **PR #837 マージ済み** |
+| B-2 | team | `TeamPurgeEventListener` | `team_org_memberships.nullifyInvitedBy` / `nullifyRespondedBy` | **PR #845 マージ済み** |
+| B-3 | payment | `PaymentPurgeEventListener` | `member_payments.anonymizeUserId(SENTINEL)` / `stripe_customers.delete` | **PR #855 マージ済み** |
+| B-4 | chart | `ChartPurgeEventListener` | `chart_records.anonymizeCustomerUserId` | **PR #850 マージ済み** |
+| B-5 | proxy | `ProxyPurgeEventListener` | `proxy_input_records.deleteAllBySubjectUserId` / `proxy_input_consents.logicalDeleteAllBySubjectUserId` | **PR #851 マージ済み** |
+| B-6 | errorreport | `ErrorReportPurgeEventListener` | `error_report_occurrences.anonymizeByUserId` | **PR #847 マージ済み** |
 
 **B-1 を role に変更した理由（検分指摘 / 2026-05-18）:**
 当初 B-1 を `team` ドメインに据えていたのは「F15.4 Caveat 発火点」を最優先に固めるため。しかし家老検分で、Caveat の真の発火源は `user_roles.deleteAllByUserId`（role ドメイン）であることが判明（§3.5 参照）。
@@ -345,23 +345,41 @@ public final class AccountPurgedEvent extends BaseEvent {
 
 **PR 数:** 6（B-1 〜 B-6）
 
-### Phase C: 越境 DELETE 撤去
+### Phase C: 越境 DELETE 撤去 ✅ 完了
 
-各ドメインのリスナーが安定稼働していることを Phase B のテスト + ステージング数日運用で確認した後、`AccountPurgeService#purgeUser()` から該当ドメインへの直接 DML を 1 ドメインずつ削除。
+各ドメインのリスナーが安定稼働していることを Phase B のテスト + ステージング数日運用で確認した後、`AccountPurgeService#purgeUser()` から該当ドメインへの直接 DML を一括削除。
 
-| PR | 撤去内容 |
+**Phase C 実施内容（1 PR に一括まとめ）:**
+
+| 撤去対象 | 内容 |
 |---|---|
-| C-1 | team Repository 注入を削除し、関連呼び出しを撤去 |
-| C-2 | payment Repository 注入を削除し、関連呼び出しを撤去 |
-| C-3 | role Repository 注入を削除し、関連呼び出しを撤去 |
-| C-4 | chart Repository 注入を削除し、関連呼び出しを撤去 |
-| C-5 | proxy Repository 注入を削除し、関連呼び出しを撤去 |
-| C-6 | errorreport Repository 注入を削除し、関連呼び出しを撤去 |
-| C-7 | auth トークン系（`oauth_accounts` / `two_factor_auth` 二重実行解消）— 即時匿名化リスナーで既に削除されているので 30日後の重複削除を撤去 |
+| `ChartRecordRepository` | import・フィールド・`anonymizeCustomerUserId()` 呼び出し・`log.debug` を削除 |
+| `UserRoleRepository` | import・フィールド・`nullifyGrantedBy()` / `deleteAllByUserId()` 呼び出しを削除 |
+| `TeamOrgMembershipRepository` | import・フィールド・`nullifyInvitedBy()` / `nullifyRespondedBy()` 呼び出しを削除 |
+| `MemberPaymentRepository` | import・フィールド・`anonymizeUserId()` 呼び出し・`log.debug` を削除 |
+| `StripeCustomerRepository` | import・フィールド・`findByUserId().ifPresent(delete)` 呼び出しを削除 |
+| `ProxyInputRecordRepository` | import・フィールド・`deleteAllBySubjectUserId()` 呼び出しを削除 |
+| `ProxyInputConsentRepository` | import・フィールド・`logicalDeleteAllBySubjectUserId()` 呼び出しを削除 |
+| `ErrorReportOccurrenceRepository` | import・フィールド・`anonymizeByUserId()` 呼び出し・`log.debug` を削除 |
+| `UserConstants` import | `SENTINEL_USER_ID` の参照が無くなったため削除 |
 
-**完了条件:** `AccountPurgeService` のフィールドが `UserRepository` / `DataExportRepository` / `StorageService` / `AuditLogService` / `RefreshTokenRepository` / `EmailVerificationTokenRepository` / `WebAuthnCredentialRepository` / `EventPublisher` のみになる（auth ドメイン自体への直接アクセスは「gdpr が auth の親バッチを担う」位置付けで残す）。
+**達成後の状態:** `AccountPurgeService` のフィールドが下記のみになった:
+- `UserRepository`（gdpr → auth、user 本体操作）
+- `DataExportRepository`（gdpr 自ドメイン）
+- `StorageService`（common infra、R2 削除）
+- `RefreshTokenRepository` / `EmailVerificationTokenRepository` / `OAuthAccountRepository` / `TwoFactorAuthRepository` / `WebAuthnCredentialRepository` 等（auth トークン系）
+- `AuditLogService`（監査ログ）
+- `ApplicationEventPublisher`（AccountPurgedEvent 発火）
 
-**PR 数:** 7（C-1 〜 C-7）
+**PR #858**（マージ後に「マージ済み」に更新）
+
+**`AccountPurgeServiceTest` 更新内容:**
+- 削除した越境 DML の mock 設定（`given(...).willReturn(...)`）・`verify` を除去
+- 越境 Repository（`ChartRecordRepository` 等 8 つ）の `@Mock` フィールドを削除
+- テストヘルパー `stubAuthAndGdprMocks()` を抽出して各テストを簡潔化
+- Phase C 後の gdpr 自ドメイン操作（data_exports S3 削除）継続確認テストを追加
+
+**PR 数:** 1（Phase C 一括撤去 PR）
 
 ### Phase D: 監査・保険レイヤ強化
 
@@ -665,3 +683,4 @@ Phase D 設計書冒頭に「孤児検出は差分方式・フルスキャン禁
 | 2026-05-18 | Phase B-4 実装 PR `_TBD_`：`ChartPurgeEventListener` 新設（chart.event、`@Async("event-pool")` + `@TransactionalEventListener(AFTER_COMMIT)` + `@Transactional(REQUIRES_NEW)` 三重防御）。`AccountPurgedEvent` を購読し `chartRecordRepository.anonymizeCustomerUserId(userId)` を呼出（`chart_records.customer_user_id` を NULL 化）。既存越境 DML（`AccountPurgeService.java:152`）は Phase C-4 まで併走。テスト追加: `ChartPurgeEventListenerTest`（3 件、正常/0件/例外伝播せず）。PR #837（B-1 role）/ #845（B-2 team）/ #847（B-6 errorreport）と同型 | 足軽（Phase B-4）|
 | 2026-05-18 | Phase B-5 実装 PR `_TBD_`：`ProxyPurgeEventListener` 新設（proxy.event、PR #837 Phase B-1 と同型の三重防御 `@Async("event-pool")` + `@TransactionalEventListener(AFTER_COMMIT)` + `@Transactional(REQUIRES_NEW)`）。`AccountPurgedEvent` を購読し **2 操作・混在型**（`proxyInputRecordRepository.deleteAllBySubjectUserId(userId)` で **物理削除** + `proxyInputConsentRepository.logicalDeleteAllBySubjectUserId(userId)` で **論理削除**）を実行。records は本人特定情報そのものを含むため GDPR 削除権により物理削除、consents は監査証跡として記録自体を保持するため論理削除（`deleted_at` セット）。各操作を独立 try-catch で囲み、片方が失敗してももう片方を継続（GDPR 30 日タイムリミット遵守）。既存越境 DML（`AccountPurgeService.java:201-203`）は Phase C-5 まで併走。テスト追加: `ProxyPurgeEventListenerTest`（5 件、正常両Repo呼出 / 0 件 / records失敗時もconsents継続 / consents失敗_伝播せず / 両方失敗_伝播せず）。F14.1 Phase 13-γ 由来データの清掃が完了 | 足軽（Phase B-5）|
 | 2026-05-18 | Phase B-3 実装 PR `_TBD_`：`PaymentPurgeEventListener` 新設（payment.event、`@Async("event-pool")` + `@TransactionalEventListener(AFTER_COMMIT)` + `@Transactional(REQUIRES_NEW)` 三重防御）。`AccountPurgedEvent` を購読し **2 操作混在パターン** を実行: (1) `memberPaymentRepository.anonymizeUserId(userId, SENTINEL_USER_ID)` でセンチネル化（GDPR Art.17 と会計税法 7 年保持の両立、once-only ターゲット選択型）/ (2) `stripeCustomerRepository.findByUserId().ifPresent(delete)` で Stripe 顧客行物理削除（Stripe API 側顧客は本 PR スコープ外）。2 操作はそれぞれ独立 try-catch で囲み 1 操作失敗時も他継続。既存越境 DML（`AccountPurgeService.java:177-183`）は Phase C-2 まで併走。テスト追加: `PaymentPurgeEventListenerTest`（5 件、正常両操作 / 0 件両方 / センチネル失敗→Stripe 継続 / Stripe 不在で delete 未呼出 / Stripe 削除失敗で例外伝播なし）。Phase B シリーズ最終陣。PR #837（B-1 role）/ #845（B-2 team）/ #850（B-4 chart）/ #851 (B-5 proxy) / #847（B-6 errorreport）と同型 | 足軽（Phase B-3）|
+| 2026-05-19 | **Phase C 実装 PR #858（越境 DML 一括撤去）**: `AccountPurgeService#purgeUser()` から 6 ドメイン越境 DML を全廃。削除した import: `ChartRecordRepository` / `UserRoleRepository` / `TeamOrgMembershipRepository` / `MemberPaymentRepository` / `StripeCustomerRepository` / `ProxyInputConsentRepository` / `ProxyInputRecordRepository` / `ErrorReportOccurrenceRepository` / `UserConstants`。削除したフィールド: 上記 8 Repository 注入。削除した DML 呼び出し: B-1〜B-6 の各 PurgeEventListener が担う全操作（chart匿名化 / role DELETE / team NULL化 / payment センチネル+Stripe削除 / proxy 物理・論理削除 / errorreport 匿名化）。`AccountPurgeServiceTest` を Phase C 後の状態に更新（越境 @Mock 8 フィールド削除・stubAuthAndGdprMocks ヘルパー抽出・data_exports S3削除継続確認テスト追加）。設計書 §4 Phase B PR# 確定・Phase C 完了を記録 | 足軽（Phase C）|
