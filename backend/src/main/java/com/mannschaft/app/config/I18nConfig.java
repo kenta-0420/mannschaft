@@ -21,7 +21,7 @@ public class I18nConfig {
     public MessageSource messageSource() {
         ReloadableResourceBundleMessageSource source = new ReloadableResourceBundleMessageSource();
         source.setBasenames("classpath:messages", "classpath:ValidationMessages",
-                "classpath:email/email", "classpath:i18n/email/email");
+                "classpath:email/email");
         source.setDefaultEncoding("UTF-8");
         source.setFallbackToSystemLocale(false);
         source.setUseCodeAsDefaultMessage(false);
