@@ -223,7 +223,6 @@ class AdvertiserMessagingCampaignControllerIT {
     private AdvertiserAccountResponse stubAdvertiserAccount() {
         return new AdvertiserAccountResponse(
                 ADVERTISER_ACCOUNT_ID,
-                ORG_ID,
                 com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION,
                 ORG_ID,
                 null,

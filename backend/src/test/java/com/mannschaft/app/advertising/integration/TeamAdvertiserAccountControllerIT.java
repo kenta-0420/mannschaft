@@ -101,7 +101,6 @@ class TeamAdvertiserAccountControllerIT {
     private AdvertiserAccountResponse stubAccountResponse() {
         return new AdvertiserAccountResponse(
                 ACCOUNT_ID,
-                (Long) null,
                 ScopeType.TEAM,
                 TEAM_ID,
                 AdvertiserAccountStatus.PENDING,
