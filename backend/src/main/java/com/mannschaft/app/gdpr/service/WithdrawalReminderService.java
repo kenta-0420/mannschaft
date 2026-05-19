@@ -4,6 +4,8 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.EmailService;
+import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
+import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -13,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 退会猶予期間中のリマインドメール送信バッチ。
@@ -26,6 +29,7 @@ public class WithdrawalReminderService {
 
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final EmailOutboxService emailOutboxService;
 
     @BatchEndpoint(name = "gdpr-withdrawal-reminder-daily", description = "退会猶予期間中のユーザーへ毎日 09:00 にリマインドメールを送信する")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
@@ -65,13 +69,24 @@ public class WithdrawalReminderService {
         String body = buildReminderEmailBody(user.getLastName() + " " + user.getFirstName(), daysRemaining);
 
         try {
-            emailService.sendEmail(user.getEmail(), subject, body);
+            // #11: 退会リマインドメールを outbox 経由で enqueue
+            emailOutboxService.enqueue(new EmailOutboxRequest(
+                    "GDPR_WITHDRAWAL_REMINDER",
+                    "ja",
+                    user.getEmail(),
+                    Map.of("subject", subject, "body", body),
+                    "gdpr",
+                    "gdpr-withdrawal:" + user.getId() + ":" + daysRemaining,
+                    null,
+                    user.getId(),
+                    null
+            ));
             // 送信記録を更新（重複防止）
             user.setReminderSentAt(LocalDateTime.now());
             userRepository.save(user);
-            log.info("退会リマインドメール送信完了: userId={}, daysSince={}", user.getId(), daysSince);
+            log.info("退会リマインドメール enqueue 完了: userId={}, daysSince={}", user.getId(), daysSince);
         } catch (Exception e) {
-            log.warn("リマインドメール送信失敗: userId={}", user.getId(), e);
+            log.warn("リマインドメール enqueue 失敗: userId={}", user.getId(), e);
         }
     }
 

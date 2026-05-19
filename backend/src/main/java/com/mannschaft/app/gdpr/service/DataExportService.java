@@ -8,6 +8,8 @@ import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.gdpr.GdprErrorCode;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
+import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
+import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -45,6 +47,7 @@ public class DataExportService {
     private final PersonalDataCollector personalDataCollector;
     private final StorageService storageService;
     private final EmailService emailService;
+    private final EmailOutboxService emailOutboxService;
     private final UserRepository userRepository;
 
     /**
@@ -141,13 +144,13 @@ public class DataExportService {
             dataExportRepository.save(entity);
 
             // 完了通知メール（ZIPパスワード平文をメールで送信）
-            sendCompletionEmail(userId, zipPassword, expiresAt);
+            sendCompletionEmail(userId, zipPassword, expiresAt, exportId);
 
         } catch (Exception e) {
             log.error("データエクスポート処理失敗: exportId={}, userId={}", exportId, userId, e);
             entity.markFailed(e.getMessage() != null ? e.getMessage() : "不明なエラー");
             dataExportRepository.save(entity);
-            sendFailureEmail(userId);
+            sendFailureEmail(userId, exportId);
         }
     }
 
@@ -250,7 +253,8 @@ public class DataExportService {
         return generatePasswordProtectedZip(data, password);
     }
 
-    private void sendCompletionEmail(Long userId, String zipPassword, LocalDateTime expiresAt) {
+    // #9: エクスポート完了通知
+    private void sendCompletionEmail(Long userId, String zipPassword, LocalDateTime expiresAt, Long exportId) {
         userRepository.findById(userId).ifPresent(user -> {
             String subject = "個人データエクスポートが完了しました";
             String htmlBody = "<p>" + user.getLastName() + " " + user.getFirstName() + " 様</p>" +
@@ -258,19 +262,40 @@ public class DataExportService {
                     "<p>ダウンロード有効期限: " + expiresAt + "</p>" +
                     "<p>ZIPパスワード: <strong>" + zipPassword + "</strong></p>" +
                     "<p>パスワードは安全な場所に保管してください。</p>";
-            emailService.sendEmail(user.getEmail(), subject, htmlBody);
-            log.info("エクスポート完了メール送信: userId={}", userId);
+            emailOutboxService.enqueue(new EmailOutboxRequest(
+                    "GDPR_EXPORT_READY",
+                    "ja",
+                    user.getEmail(),
+                    Map.of("subject", subject, "body", htmlBody),
+                    "gdpr",
+                    "gdpr-export-ready:" + exportId,
+                    null,
+                    userId,
+                    null
+            ));
+            log.info("エクスポート完了メール enqueue: userId={}, exportId={}", userId, exportId);
         });
     }
 
-    private void sendFailureEmail(Long userId) {
+    // #10: エクスポート失敗通知
+    private void sendFailureEmail(Long userId, Long exportId) {
         userRepository.findById(userId).ifPresent(user -> {
             String subject = "個人データエクスポートに失敗しました";
             String htmlBody = "<p>" + user.getLastName() + " " + user.getFirstName() + " 様</p>" +
                     "<p>個人データのエクスポート処理中にエラーが発生しました。</p>" +
                     "<p>お手数ですが、しばらく経ってから再度お試しください。</p>";
-            emailService.sendEmail(user.getEmail(), subject, htmlBody);
-            log.warn("エクスポート失敗メール送信: userId={}", userId);
+            emailOutboxService.enqueue(new EmailOutboxRequest(
+                    "GDPR_EXPORT_FAILED",
+                    "ja",
+                    user.getEmail(),
+                    Map.of("subject", subject, "body", htmlBody),
+                    "gdpr",
+                    "gdpr-export-failed:" + exportId,
+                    null,
+                    userId,
+                    null
+            ));
+            log.warn("エクスポート失敗メール enqueue: userId={}, exportId={}", userId, exportId);
         });
     }
 }

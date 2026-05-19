@@ -8,6 +8,7 @@ import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
 import com.mannschaft.app.gdpr.service.DataExportService;
 import com.mannschaft.app.gdpr.service.PersonalDataCollector;
+import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,9 @@ class DataExportServiceTest {
 
     @Mock
     private EmailService emailService;
+
+    @Mock
+    private EmailOutboxService emailOutboxService;
 
     @Mock
     private UserRepository userRepository;
