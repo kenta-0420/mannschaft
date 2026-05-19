@@ -22,10 +22,10 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * F09.17 Phase 11-d-1 {@link AdMessagingCampaignRepository} 結合テスト。
+ * F09.17 Phase 11-e {@link AdMessagingCampaignRepository} 結合テスト。
  *
- * <p>scope_type / scope_id 2 カラム方式の新規メソッド群を検証する。
- * 旧 {@code findByOrganizationIdAndDeletedAtIsNull} 系は互換性のため Phase 11-d-2 まで残置。</p>
+ * <p>scope_type / scope_id 2 カラム方式のメソッド群を検証する。
+ * Phase 11-e で organization_id カラムを物理削除済み。</p>
  */
 @Transactional
 @DisplayName("AdMessagingCampaignRepository scope ベースメソッド結合テスト")
@@ -45,11 +45,10 @@ class AdMessagingCampaignRepositoryTest extends AbstractMySqlIntegrationTest {
     private static final Long CREATED_BY = 6001L;
 
     private AdMessagingCampaign persistCampaign(
-            ScopeType scopeType, Long scopeId, Long organizationId, String name) {
+            ScopeType scopeType, Long scopeId, String name) {
         LocalDateTime now = LocalDateTime.now();
         AdMessagingCampaign entity = AdMessagingCampaign.builder()
                 .advertiserAccountId(ADVERTISER)
-                .organizationId(organizationId)
                 .scopeType(scopeType)
                 .scopeId(scopeId)
                 .name(name)
@@ -71,8 +70,8 @@ class AdMessagingCampaignRepositoryTest extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("findByScopeTypeAndScopeIdAndDeletedAtIsNull_ORGANIZATION_スコープで取得できる")
     void findByScopeTypeAndScopeIdAndDeletedAtIsNull_ORGANIZATION_スコープで取得できる() {
-        persistCampaign(ScopeType.ORGANIZATION, ORG_A, ORG_A, "org-a-campaign");
-        persistCampaign(ScopeType.ORGANIZATION, ORG_B, ORG_B, "org-b-campaign");
+        persistCampaign(ScopeType.ORGANIZATION, ORG_A, "org-a-campaign");
+        persistCampaign(ScopeType.ORGANIZATION, ORG_B, "org-b-campaign");
 
         Page<AdMessagingCampaign> page = repository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(
                 ScopeType.ORGANIZATION, ORG_A, PageRequest.of(0, 10));
@@ -86,9 +85,8 @@ class AdMessagingCampaignRepositoryTest extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("findByScopeTypeAndScopeIdAndDeletedAtIsNull_TEAM_スコープで取得できる")
     void findByScopeTypeAndScopeIdAndDeletedAtIsNull_TEAM_スコープで取得できる() {
-        // チームスコープのキャンペーンは organization_id NULL 可
-        persistCampaign(ScopeType.TEAM, TEAM_A, null, "team-a-campaign");
-        persistCampaign(ScopeType.ORGANIZATION, ORG_A, ORG_A, "org-a-campaign");
+        persistCampaign(ScopeType.TEAM, TEAM_A, "team-a-campaign");
+        persistCampaign(ScopeType.ORGANIZATION, ORG_A, "org-a-campaign");
 
         Page<AdMessagingCampaign> page = repository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(
                 ScopeType.TEAM, TEAM_A, PageRequest.of(0, 10));
@@ -97,14 +95,13 @@ class AdMessagingCampaignRepositoryTest extends AbstractMySqlIntegrationTest {
         assertThat(page.getContent().get(0).getName()).isEqualTo("team-a-campaign");
         assertThat(page.getContent().get(0).getScopeType()).isEqualTo(ScopeType.TEAM);
         assertThat(page.getContent().get(0).getScopeId()).isEqualTo(TEAM_A);
-        assertThat(page.getContent().get(0).getOrganizationId()).isNull();
     }
 
     @Test
     @DisplayName("findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull_スコープ違いでは取得できない")
     void findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull_スコープ違いでは取得できない() {
         AdMessagingCampaign saved = persistCampaign(
-                ScopeType.ORGANIZATION, ORG_A, ORG_A, "org-a-only");
+                ScopeType.ORGANIZATION, ORG_A, "org-a-only");
         UUID id = saved.getId();
 
         Optional<AdMessagingCampaign> hit = repository
@@ -122,9 +119,9 @@ class AdMessagingCampaignRepositoryTest extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("countByScopeTypeAndScopeIdAndDeletedAtIsNull_件数を返せる")
     void countByScopeTypeAndScopeIdAndDeletedAtIsNull_件数を返せる() {
-        persistCampaign(ScopeType.ORGANIZATION, ORG_A, ORG_A, "c1");
-        persistCampaign(ScopeType.ORGANIZATION, ORG_A, ORG_A, "c2");
-        persistCampaign(ScopeType.ORGANIZATION, ORG_B, ORG_B, "c3");
+        persistCampaign(ScopeType.ORGANIZATION, ORG_A, "c1");
+        persistCampaign(ScopeType.ORGANIZATION, ORG_A, "c2");
+        persistCampaign(ScopeType.ORGANIZATION, ORG_B, "c3");
 
         long countA = repository.countByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, ORG_A);
         long countB = repository.countByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, ORG_B);
@@ -133,20 +130,4 @@ class AdMessagingCampaignRepositoryTest extends AbstractMySqlIntegrationTest {
         assertThat(countB).isEqualTo(1L);
     }
 
-    @Test
-    @DisplayName("既存_ORGANIZATIONスコープ_は_互換メソッドからも同件取得できる")
-    void 既存_ORGANIZATIONスコープ_は_互換メソッドからも同件取得できる() {
-        persistCampaign(ScopeType.ORGANIZATION, ORG_A, ORG_A, "compat-a");
-
-        Page<AdMessagingCampaign> scopeBased = repository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(
-                ScopeType.ORGANIZATION, ORG_A, PageRequest.of(0, 10));
-        @SuppressWarnings("deprecation")
-        Page<AdMessagingCampaign> orgBased = repository.findByOrganizationIdAndDeletedAtIsNull(
-                ORG_A, PageRequest.of(0, 10));
-
-        assertThat(scopeBased.getTotalElements()).isEqualTo(1);
-        assertThat(orgBased.getTotalElements()).isEqualTo(1);
-        assertThat(scopeBased.getContent().get(0).getId())
-                .isEqualTo(orgBased.getContent().get(0).getId());
-    }
 }

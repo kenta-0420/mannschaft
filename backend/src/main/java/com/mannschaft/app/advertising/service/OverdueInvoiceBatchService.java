@@ -73,10 +73,10 @@ public class OverdueInvoiceBatchService {
             String body = String.format("請求書 %s（期限: %s）が延滞状態になりました。",
                     invoice.getInvoiceNumber(), invoice.getDueDate());
 
-            // 広告主組織のADMINユーザーへ通知
+            // 広告主スコープのADMINユーザーへ通知（scopeId = organization_id または team_id）
             advertiserAccountRepository.findById(invoice.getAdvertiserAccountId())
                     .ifPresent(account -> {
-                        Long orgId = account.getOrganizationId();
+                        Long orgId = account.getScopeId();
                         List<Object[]> orgAdmins = userRoleRepository.findUserIdAndEmailByScopeAndRole(
                                 "ORGANIZATION", orgId, "ADMIN");
                         for (Object[] row : orgAdmins) {

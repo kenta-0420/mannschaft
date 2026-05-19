@@ -31,16 +31,6 @@ import java.time.LocalDateTime;
 @Builder(toBuilder = true)
 public class AdvertiserAccountEntity extends BaseEntity {
 
-    /**
-     * 旧スコープ参照 (F09.17 Phase 11-d-1 で nullable 化)。
-     *
-     * <p>Phase 11-d-1 では scope_type/scope_id への移行完了後も互換維持のため残置する。
-     * 上位層 (Service/Controller) の scope 化は Phase 11-d-2 以降で実施し、それと同時に本フィールドは
-     * Phase 11-e で物理削除予定。</p>
-     */
-    @Column(name = "organization_id", nullable = true)
-    private Long organizationId;
-
     /** スコープ種別 (ORGANIZATION / TEAM)。F09.17 Phase 11-d-1 で追加。 */
     @Enumerated(EnumType.STRING)
     @Column(name = "scope_type", nullable = false, length = 20)

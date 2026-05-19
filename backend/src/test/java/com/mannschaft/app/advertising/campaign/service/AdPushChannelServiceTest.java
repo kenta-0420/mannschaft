@@ -6,6 +6,7 @@ import com.mannschaft.app.advertising.campaign.entity.AdPushDelivery;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.enums.AdChannelType;
 import com.mannschaft.app.advertising.campaign.enums.AdModerationStatus;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.advertising.campaign.repository.AdPushDeliveryRepository;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -48,7 +49,8 @@ class AdPushChannelServiceTest {
     private AdMessagingCampaign buildCampaign() {
         AdMessagingCampaign campaign = AdMessagingCampaign.builder()
                 .advertiserAccountId(100L)
-                .organizationId(1L)
+                .scopeType(ScopeType.ORGANIZATION)
+                .scopeId(1L)
                 .name("テストキャンペーン")
                 .status(AdCampaignStatus.DELIVERING)
                 .totalBudgetYen(50_000L)

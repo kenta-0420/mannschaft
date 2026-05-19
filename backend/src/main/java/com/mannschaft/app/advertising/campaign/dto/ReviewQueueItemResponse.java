@@ -16,8 +16,7 @@ import java.util.UUID;
  * <p>{@code moderation_status} が {@code PENDING} または {@code AUTO_FLAGGED} の
  * メッセージ型キャンペーン 1 件分を表す。</p>
  *
- * <p>F09.17 Phase 11-d-2 で scope ベース化 (scopeType/scopeId)。
- * {@code organizationId} は scope_type=ORGANIZATION 互換のため残置 (Phase 11-e 削除予定)。</p>
+ * <p>F09.17 Phase 11-e で {@code organizationId} を削除し、scope ベース化完了。</p>
  */
 @Getter
 @Builder
@@ -25,13 +24,6 @@ public class ReviewQueueItemResponse {
 
     /** キャンペーン ID (UUID v7) */
     private final UUID campaignId;
-
-    /**
-     * 旧テナント分離キー (Phase 11-e 削除予定)。
-     *
-     * <p>{@code scope_type=ORGANIZATION} の場合のみ非 null。{@code TEAM} の場合は {@code null}。</p>
-     */
-    private final Long organizationId;
 
     /** F09.17 Phase 11-d-2: スコープ種別 (ORGANIZATION / TEAM)。 */
     private final ScopeType scopeType;
@@ -60,7 +52,6 @@ public class ReviewQueueItemResponse {
     public static ReviewQueueItemResponse from(AdMessagingCampaign campaign) {
         return ReviewQueueItemResponse.builder()
                 .campaignId(campaign.getId())
-                .organizationId(campaign.getOrganizationId())
                 .scopeType(campaign.getScopeType())
                 .scopeId(campaign.getScopeId())
                 .advertiserAccountId(campaign.getAdvertiserAccountId())

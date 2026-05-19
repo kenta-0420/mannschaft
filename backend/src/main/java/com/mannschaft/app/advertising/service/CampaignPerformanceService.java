@@ -18,6 +18,7 @@ import com.mannschaft.app.advertising.repository.AdConversionRepository;
 import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.membership.domain.ScopeType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,7 +49,7 @@ public class CampaignPerformanceService {
      * 当月分の全キャンペーンのad_daily_statsを集計して返す。
      */
     public AdvertiserOverviewResponse getOverview(Long organizationId) {
-        AdvertiserAccountEntity account = advertiserAccountRepository.findByOrganizationId(organizationId)
+        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
 
         List<AdCampaignEntity> campaigns = adCampaignRepository.findByAdvertiserOrganizationId(organizationId);

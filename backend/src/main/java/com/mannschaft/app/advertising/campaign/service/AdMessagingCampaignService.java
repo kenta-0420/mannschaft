@@ -47,10 +47,9 @@ import java.util.UUID;
  * <p>F09.17 Phase 11-d-2: scope ベース化。
  * 引数 {@code organizationId} を {@code (ScopeType scopeType, Long scopeId)} に置き換えた。
  * 越境検出時は {@link AdCampaignErrorCode#AD_CAMPAIGN_NOT_FOUND} を返して IDOR 対策とする
- * (旧コード互換のため一部メソッドで {@code AD_CAMPAIGN_FORBIDDEN_TENANT} は使わない)。
- * 旧 {@code organizationId} 引数の overload は {@code @Deprecated} で残置し、
- * 内部で {@code (ORGANIZATION, organizationId)} に詰め替えて新シグネチャに委譲する。
- * Phase 11-e で旧 overload を物理削除予定。</p>
+ * (旧コード互換のため一部メソッドで {@code AD_CAMPAIGN_FORBIDDEN_TENANT} は使わない)。</p>
+ *
+ * <p>F09.17 Phase 11-e: 旧 organizationId overload を物理削除済み。</p>
  */
 @Service
 @Transactional(readOnly = true)
@@ -107,13 +106,8 @@ public class AdMessagingCampaignService {
             CreateCampaignRequest request) {
         validateScheduleWindow(request.startsAt(), request.endsAt());
 
-        // Phase 11-d-2: scope_type/scope_id を主役とする。
-        // 互換のため organization_id は ORGANIZATION の場合のみ埋める (Phase 11-e 削除予定)。
-        Long legacyOrganizationId = (scopeType == ScopeType.ORGANIZATION) ? scopeId : null;
-
         AdMessagingCampaign entity = AdMessagingCampaign.builder()
                 .advertiserAccountId(advertiserAccountId)
-                .organizationId(legacyOrganizationId)
                 .scopeType(scopeType)
                 .scopeId(scopeId)
                 .name(request.name())
@@ -277,80 +271,6 @@ public class AdMessagingCampaignService {
         List<AdAudienceSegment> saved = segmentRepository.saveAll(toInsert);
 
         return saved.stream().map(mapper::toSegmentResponse).toList();
-    }
-
-    // ─────────────────────────────────────────────
-    // 互換 API (Phase 11-e で削除予定)
-    // ─────────────────────────────────────────────
-
-    /** @deprecated Phase 11-d-2 で scope ベース化。{@link #listCampaigns(ScopeType, Long, AdCampaignStatus, Pageable)} に置換。 */
-    @Deprecated
-    public Page<CampaignListItemResponse> listCampaigns(
-            Long organizationId, AdCampaignStatus status, Pageable pageable) {
-        return listCampaigns(ScopeType.ORGANIZATION, organizationId, status, pageable);
-    }
-
-    /** @deprecated Phase 11-d-2 で scope ベース化。{@link #getCampaign(UUID, ScopeType, Long)} に置換。 */
-    @Deprecated
-    public CampaignDetailResponse getCampaign(UUID campaignId, Long organizationId) {
-        return getCampaign(campaignId, ScopeType.ORGANIZATION, organizationId);
-    }
-
-    /** @deprecated Phase 11-d-2 で scope ベース化。 */
-    @Deprecated
-    @Transactional
-    public CampaignDetailResponse createCampaign(
-            Long organizationId,
-            Long advertiserAccountId,
-            Long createdByUserId,
-            CreateCampaignRequest request) {
-        return createCampaign(ScopeType.ORGANIZATION, organizationId, advertiserAccountId, createdByUserId, request);
-    }
-
-    /** @deprecated Phase 11-d-2 で scope ベース化。 */
-    @Deprecated
-    @Transactional
-    public CampaignDetailResponse updateCampaign(
-            UUID campaignId, Long organizationId, UpdateCampaignRequest request) {
-        return updateCampaign(campaignId, ScopeType.ORGANIZATION, organizationId, request);
-    }
-
-    /** @deprecated Phase 11-d-2 で scope ベース化。 */
-    @Deprecated
-    @Transactional
-    public void softDeleteCampaign(UUID campaignId, Long organizationId) {
-        softDeleteCampaign(campaignId, ScopeType.ORGANIZATION, organizationId);
-    }
-
-    /** @deprecated Phase 11-d-2 で scope ベース化。 */
-    @Deprecated
-    @Transactional
-    public CampaignChannelResponse addChannel(
-            UUID campaignId, Long organizationId, CampaignChannelRequest request) {
-        return addChannel(campaignId, ScopeType.ORGANIZATION, organizationId, request);
-    }
-
-    /** @deprecated Phase 11-d-2 で scope ベース化。 */
-    @Deprecated
-    @Transactional
-    public CampaignChannelResponse updateChannel(
-            UUID channelId, Long organizationId, CampaignChannelRequest request) {
-        return updateChannel(channelId, ScopeType.ORGANIZATION, organizationId, request);
-    }
-
-    /** @deprecated Phase 11-d-2 で scope ベース化。 */
-    @Deprecated
-    @Transactional
-    public void removeChannel(UUID channelId, Long organizationId) {
-        removeChannel(channelId, ScopeType.ORGANIZATION, organizationId);
-    }
-
-    /** @deprecated Phase 11-d-2 で scope ベース化。 */
-    @Deprecated
-    @Transactional
-    public List<AudienceSegmentResponse> setAudience(
-            UUID campaignId, Long organizationId, AudienceConfigRequest request) {
-        return setAudience(campaignId, ScopeType.ORGANIZATION, organizationId, request);
     }
 
     // ─────────────────────────────────────────────

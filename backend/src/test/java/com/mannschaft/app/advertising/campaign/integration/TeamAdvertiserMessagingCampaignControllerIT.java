@@ -155,7 +155,6 @@ class TeamAdvertiserMessagingCampaignControllerIT {
     private AdvertiserAccountResponse stubAdvertiserAccount() {
         return new AdvertiserAccountResponse(
                 ADVERTISER_ACCOUNT_ID,
-                null,
                 ScopeType.TEAM,
                 TEAM_ID,
                 null,
