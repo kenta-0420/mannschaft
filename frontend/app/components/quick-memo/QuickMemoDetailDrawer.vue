@@ -26,6 +26,8 @@ watch(
   () => [visible.value, props.memoId],
   async ([vis, id]) => {
     if (vis && id) {
+      editing.value = false
+      showConvertDialog.value = false
       await loadMemo(id as number)
       loadTags()
     }
