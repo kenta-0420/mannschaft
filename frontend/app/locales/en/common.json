@@ -537,6 +537,7 @@
       "updateFailed": "Failed to update"
     },
     "priorityValue": {
+      "URGENT": "Urgent",
       "HIGH": "High",
       "MEDIUM": "Medium",
       "LOW": "Low"
