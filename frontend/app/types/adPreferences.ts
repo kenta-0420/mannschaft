@@ -104,3 +104,29 @@ export interface AdReportResponse {
   detail: string | null
   createdAt: string
 }
+
+// === Public Unsubscribe SPA (F09.17 残課題 4) ===
+
+/**
+ * 公開 unsubscribe SPA からの POST リクエスト。
+ * backend {@code UnsubscribeRequest} に対応。
+ */
+export interface UnsubscribeRequest {
+  /** メール末尾リンクで配布される unsubscribe JWT */
+  token: string
+  /** OFF にしたいチャネル一覧（最低 1 件） */
+  channels: AdReceiveChannel[]
+}
+
+/**
+ * 公開 unsubscribe SPA POST レスポンス。
+ * backend {@code UnsubscribeResultResponse} に対応。
+ */
+export interface UnsubscribeResultResponse {
+  /** 今回 OFF にしたチャネル */
+  disabledChannels: AdReceiveChannel[]
+  /** まだ ON のチャネル */
+  remainingActiveChannels: AdReceiveChannel[]
+  /** フロント i18n キー */
+  messageKey: string
+}

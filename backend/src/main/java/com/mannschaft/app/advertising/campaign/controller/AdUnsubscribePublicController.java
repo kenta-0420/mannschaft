@@ -1,5 +1,7 @@
 package com.mannschaft.app.advertising.campaign.controller;
 
+import com.mannschaft.app.advertising.campaign.dto.UnsubscribeRequest;
+import com.mannschaft.app.advertising.campaign.dto.UnsubscribeResultResponse;
 import com.mannschaft.app.advertising.campaign.event.AdOpenPixelTrackingEvent;
 import com.mannschaft.app.advertising.campaign.exception.AdCampaignErrorCode;
 import com.mannschaft.app.advertising.campaign.service.AdOpenPixelJwtService;
@@ -8,6 +10,7 @@ import com.mannschaft.app.advertising.campaign.service.UserAdPreferenceService;
 import com.mannschaft.app.common.BusinessException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -15,6 +18,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -82,6 +87,38 @@ public class AdUnsubscribePublicController {
         return ResponseEntity.ok()
                 .header("Content-Type", "text/html;charset=UTF-8")
                 .body(buildSuccessHtml(claims.channel()));
+    }
+
+    /**
+     * F09.17 残課題 4 — 公開 unsubscribe SPA からの POST 受信エンドポイント。
+     *
+     * <p>{@code GET /api/v1/ads/unsubscribe} は単一クリックで JWT 内 {@code ch}
+     * 1 チャネルのみを OFF にする後方互換用フローだが、設計書 §9.3 のタップ動線では
+     * 「リンクから JWT 受領 → SPA でチャネル選択 → POST で確定 → 完了画面」の
+     * 3 ステップ UX を要求している。本メソッドはその 2 ステップ目に対応する。</p>
+     *
+     * <p>JWT 検証 → 受信 channels 一覧 (1〜4 件) を冪等に OFF にし、確定後の状態を返す。</p>
+     *
+     * <ul>
+     *   <li>JWT 期限切れ → 410 AD_UNSUBSCRIBE_TOKEN_EXPIRED</li>
+     *   <li>JWT 改竄 / 形式不正 → 400 AD_UNSUBSCRIBE_TOKEN_INVALID</li>
+     *   <li>token_version 不一致 → 410 AD_UNSUBSCRIBE_TOKEN_VERSION_MISMATCH</li>
+     *   <li>channels 空 → 400 (Validation により先に弾く)</li>
+     * </ul>
+     */
+    @PostMapping(value = "/unsubscribe", consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "公開 unsubscribe SPA からのチャネル選択 OFF（認証不要）",
+            description = "メール末尾リンクから SPA に遷移したユーザーがチェックボックスで選択した複数チャネルを OFF にする")
+    public UnsubscribeResultResponse unsubscribePost(@Valid @RequestBody UnsubscribeRequest request) {
+        AdUnsubscribeJwtService.UnsubscribeTokenClaims claims =
+                unsubscribeJwtService.verify(request.token());
+        UnsubscribeResultResponse response =
+                preferenceService.applyChannelUnsubscribe(
+                        claims.userId(), request.channels(), claims.tokenVersion());
+        log.info("ad unsubscribe SPA processed userId={} disabledChannels={}",
+                claims.userId(), response.disabledChannels());
+        return response;
     }
 
     /**

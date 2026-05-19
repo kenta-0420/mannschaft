@@ -254,6 +254,23 @@
       "no_data": "No data for the selected period.",
       "export_started": "CSV export started."
     },
+    "unsubscribe_spa": {
+      "title": "Unsubscribe from ad emails",
+      "description": "Select the channels you would like to stop. Unchecked channels will continue to be delivered.",
+      "submit_button": "Stop selected channels",
+      "note": "This page is shown when you arrive from the unsubscribe link in an ad email. You can change these settings later from your ad preferences after logging in.",
+      "success_message": "You have unsubscribed from the selected ad channels.",
+      "done_title": "Unsubscribed",
+      "done_description": "You will no longer receive ads on the selected channels.",
+      "done_disabled_label": "Disabled channels:",
+      "done_remaining_label": "Still active channels:",
+      "done_login_hint": "You can change these settings any time from your ad preferences after logging in.",
+      "error_title": "Could not unsubscribe",
+      "error_invalid_or_expired": "This link has expired or is no longer valid. Please sign in and use the ad preferences screen instead.",
+      "error_rate_limited": "Too many requests in a short time. Please wait a moment and try again.",
+      "error_unknown": "An unexpected error occurred. Please try again shortly.",
+      "error_login_hint": "You can unsubscribe per channel from your ad preferences after logging in."
+    },
     "system_admin_moderation_detail": {
       "title": "Campaign review detail",
       "section_channels": "Channel content",

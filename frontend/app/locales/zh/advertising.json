@@ -254,6 +254,23 @@
       "no_data": "所选期间没有数据。",
       "export_started": "CSV 导出已开始。"
     },
+    "unsubscribe_spa": {
+      "title": "取消广告邮件订阅",
+      "description": "请选择要停止接收的渠道。未勾选的渠道将继续接收。",
+      "submit_button": "停止所选渠道",
+      "note": "本页面通过广告邮件中的退订链接访问。登录后可在「广告接收设置」页面随时修改。",
+      "success_message": "已停止接收所选渠道的广告。",
+      "done_title": "已停止接收广告",
+      "done_description": "您将不再通过所选渠道接收广告。",
+      "done_disabled_label": "已停止的渠道：",
+      "done_remaining_label": "仍继续接收的渠道：",
+      "done_login_hint": "登录后可在「广告接收设置」页面随时修改。",
+      "error_title": "无法停止订阅",
+      "error_invalid_or_expired": "此链接已过期或无效。请登录后在「广告接收设置」页面进行操作。",
+      "error_rate_limited": "短时间内请求过多，请稍后再试。",
+      "error_unknown": "发生了未知错误，请稍后再试。",
+      "error_login_hint": "登录后可在「广告接收设置」页面按渠道单独停止。"
+    },
     "system_admin_moderation_detail": {
       "title": "广告活动审核详情",
       "section_channels": "各渠道正文",

@@ -254,6 +254,23 @@
       "no_data": "Keine Daten für den gewählten Zeitraum.",
       "export_started": "CSV-Export gestartet."
     },
+    "unsubscribe_spa": {
+      "title": "Werbe-E-Mails abbestellen",
+      "description": "Wählen Sie die Kanäle aus, die Sie stoppen möchten. Nicht angekreuzte Kanäle werden weiterhin zugestellt.",
+      "submit_button": "Ausgewählte Kanäle stoppen",
+      "note": "Diese Seite erscheint, wenn Sie den Abmeldelink aus einer Werbemail aufrufen. Sie können diese Einstellungen später jederzeit in Ihren Anzeigeneinstellungen nach dem Login ändern.",
+      "success_message": "Die ausgewählten Werbekanäle wurden deaktiviert.",
+      "done_title": "Abgemeldet",
+      "done_description": "Sie erhalten keine Werbung mehr auf den ausgewählten Kanälen.",
+      "done_disabled_label": "Deaktivierte Kanäle:",
+      "done_remaining_label": "Weiterhin aktive Kanäle:",
+      "done_login_hint": "Sie können diese Einstellungen jederzeit nach dem Login in Ihren Anzeigeneinstellungen ändern.",
+      "error_title": "Abmeldung nicht möglich",
+      "error_invalid_or_expired": "Dieser Link ist abgelaufen oder nicht mehr gültig. Bitte melden Sie sich an und verwenden Sie den Bildschirm „Anzeigeneinstellungen“.",
+      "error_rate_limited": "Zu viele Anfragen in kurzer Zeit. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+      "error_unknown": "Es ist ein unerwarteter Fehler aufgetreten. Bitte versuchen Sie es später erneut.",
+      "error_login_hint": "Nach dem Login können Sie sich kanalweise in den Anzeigeneinstellungen abmelden."
+    },
     "system_admin_moderation_detail": {
       "title": "Kampagnenprüfung – Details",
       "section_channels": "Inhalte pro Kanal",

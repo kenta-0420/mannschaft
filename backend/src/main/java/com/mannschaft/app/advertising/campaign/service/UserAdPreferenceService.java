@@ -3,9 +3,11 @@ package com.mannschaft.app.advertising.campaign.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.advertising.campaign.dto.UnsubscribeResultResponse;
 import com.mannschaft.app.advertising.campaign.dto.UpdateUserAdPreferencesRequest;
 import com.mannschaft.app.advertising.campaign.dto.UserAdPreferenceResponse;
 import com.mannschaft.app.advertising.campaign.entity.UserAdPreference;
+import com.mannschaft.app.advertising.campaign.enums.AdChannelType;
 import com.mannschaft.app.advertising.campaign.exception.AdCampaignErrorCode;
 import com.mannschaft.app.advertising.campaign.repository.UserAdPreferenceRepository;
 import com.mannschaft.app.common.BusinessException;
@@ -16,8 +18,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * F09.17 Phase 11-a 受信者の広告受信設定サービス。
@@ -187,6 +192,88 @@ public class UserAdPreferenceService {
             default -> throw new BusinessException(AdCampaignErrorCode.AD_UNSUBSCRIBE_TOKEN_INVALID);
         }
         preferenceRepository.save(entity);
+    }
+
+    /**
+     * F09.17 残課題 4 — 公開 unsubscribe SPA から複数チャネルを一括 OFF にする。
+     *
+     * <p>{@link #unsubscribe(Long, String, Integer)} は JWT の {@code ch} クレームに従う
+     * 単一チャネル切替だが、SPA はチェックボックスで複数チャネル選択を可能にするため
+     * 本メソッドを用意する。</p>
+     *
+     * <p>処理:</p>
+     * <ol>
+     *   <li>{@code user_ad_preferences} 行を取得（無ければデフォルト生成）</li>
+     *   <li>{@code unsubscribe_token_version} 一致確認 ── 不一致は
+     *       {@link AdCampaignErrorCode#AD_UNSUBSCRIBE_TOKEN_VERSION_MISMATCH} (410)</li>
+     *   <li>指定チャネルごとに {@code accept_*_ads = false} を冪等に設定</li>
+     *   <li>{@link UnsubscribeResultResponse} を組み立てて返却</li>
+     * </ol>
+     *
+     * <p>本メソッドは冪等。既に OFF のチャネルでも例外なく再度 false を書き戻す。
+     * 入力 channels が空の場合は {@link AdCampaignErrorCode#AD_UNSUBSCRIBE_TOKEN_INVALID} を投げる
+     * （Controller / DTO バリデーションでもブロックされるが二重防御）。</p>
+     *
+     * <p>監査ログ専用イベントは Phase 11-b 系列で未整備のため、本メソッドでは {@code log.info}
+     * での記録に留める（既存 GET 経由の {@link #unsubscribe} と同方針）。</p>
+     *
+     * @param userId               JWT の uid claim
+     * @param channels             OFF にしたいチャネル一覧（最低 1 件）
+     * @param tokenVersionExpected JWT の ver claim
+     * @return 確定後の disabled / remaining-active チャネル一覧
+     * @throws BusinessException token_version 不一致 / 入力不正時
+     */
+    @Transactional
+    public UnsubscribeResultResponse applyChannelUnsubscribe(
+            Long userId, List<AdChannelType> channels, Integer tokenVersionExpected) {
+        if (userId == null || channels == null || channels.isEmpty() || tokenVersionExpected == null) {
+            throw new BusinessException(AdCampaignErrorCode.AD_UNSUBSCRIBE_TOKEN_INVALID);
+        }
+
+        UserAdPreference entity = preferenceRepository.findByUserId(userId)
+                .orElseGet(() -> createDefault(userId));
+
+        Integer current = entity.getUnsubscribeTokenVersion();
+        int currentVer = (current == null ? 0 : current);
+        if (currentVer != tokenVersionExpected) {
+            // ローテート済 = 古いトークンは無効
+            throw new BusinessException(AdCampaignErrorCode.AD_UNSUBSCRIBE_TOKEN_VERSION_MISMATCH);
+        }
+
+        // 重複排除 + 入力順保持
+        Set<AdChannelType> targets = new LinkedHashSet<>(channels);
+        for (AdChannelType ch : targets) {
+            switch (ch) {
+                case ANNOUNCEMENT -> entity.setAcceptAnnouncementAds(Boolean.FALSE);
+                case EMAIL        -> entity.setAcceptEmailAds(Boolean.FALSE);
+                case PUSH         -> entity.setAcceptPushAds(Boolean.FALSE);
+                case BANNER       -> entity.setAcceptBannerAds(Boolean.FALSE);
+            }
+        }
+        preferenceRepository.save(entity);
+
+        List<AdChannelType> disabled = new ArrayList<>(targets);
+        List<AdChannelType> remaining = new ArrayList<>();
+        if (Boolean.TRUE.equals(entity.getAcceptAnnouncementAds())) {
+            remaining.add(AdChannelType.ANNOUNCEMENT);
+        }
+        if (Boolean.TRUE.equals(entity.getAcceptEmailAds())) {
+            remaining.add(AdChannelType.EMAIL);
+        }
+        if (Boolean.TRUE.equals(entity.getAcceptPushAds())) {
+            remaining.add(AdChannelType.PUSH);
+        }
+        if (Boolean.TRUE.equals(entity.getAcceptBannerAds())) {
+            remaining.add(AdChannelType.BANNER);
+        }
+
+        log.info("ad unsubscribe SPA applied userId={} disabledChannels={} remaining={}",
+                userId, disabled, remaining);
+
+        return new UnsubscribeResultResponse(
+                disabled,
+                remaining,
+                "advertising.unsubscribe_spa.success_message");
     }
 
     /**

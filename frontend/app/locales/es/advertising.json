@@ -254,6 +254,23 @@
       "no_data": "No hay datos para el periodo seleccionado.",
       "export_started": "Exportación CSV iniciada."
     },
+    "unsubscribe_spa": {
+      "title": "Cancelar suscripción de correos publicitarios",
+      "description": "Seleccione los canales que desea detener. Los canales no marcados seguirán recibiendo anuncios.",
+      "submit_button": "Detener los canales seleccionados",
+      "note": "Esta página se muestra al acceder desde el enlace de cancelación en un correo publicitario. Podrá cambiar estos ajustes después en sus preferencias de anuncios tras iniciar sesión.",
+      "success_message": "Ha cancelado la suscripción de los canales seleccionados.",
+      "done_title": "Suscripción cancelada",
+      "done_description": "Ya no recibirá anuncios en los canales seleccionados.",
+      "done_disabled_label": "Canales deshabilitados:",
+      "done_remaining_label": "Canales aún activos:",
+      "done_login_hint": "Puede modificar estos ajustes en cualquier momento desde sus preferencias de anuncios tras iniciar sesión.",
+      "error_title": "No se ha podido cancelar la suscripción",
+      "error_invalid_or_expired": "Este enlace ha caducado o ya no es válido. Inicie sesión y utilice la pantalla de preferencias de anuncios.",
+      "error_rate_limited": "Demasiadas solicitudes en poco tiempo. Espere un momento e inténtelo de nuevo.",
+      "error_unknown": "Se ha producido un error inesperado. Inténtelo de nuevo más tarde.",
+      "error_login_hint": "Puede cancelar la suscripción por canal desde sus preferencias de anuncios tras iniciar sesión."
+    },
     "system_admin_moderation_detail": {
       "title": "Detalle de revisión de campaña",
       "section_channels": "Contenido por canal",
