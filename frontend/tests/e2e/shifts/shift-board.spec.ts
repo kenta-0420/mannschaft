@@ -28,7 +28,7 @@ import {
  *   <li>BOARD-004: 割当済みメンバーをドラッグして別スロットに移動できる</li>
  * </ul>
  *
- * <p>仕様書: docs/features/F03.5_shift.md</p>
+ * <p>仕様書: docs/features/F03.5_shift/README.md</p>
  */
 
 const BOARD_URL = `/teams/${TEAM_ID}/shifts/${SCHEDULE_ID}/board`
