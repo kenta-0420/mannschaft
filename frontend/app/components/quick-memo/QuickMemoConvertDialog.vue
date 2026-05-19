@@ -21,10 +21,10 @@ const loading = ref(false)
 const dueDateObj = ref<Date | null>(null)
 
 const priorityOptions = [
-  { label: t('todo.priority.LOW'), value: 'LOW' },
-  { label: t('todo.priority.MEDIUM'), value: 'MEDIUM' },
-  { label: t('todo.priority.HIGH'), value: 'HIGH' },
-  { label: t('todo.priority.URGENT'), value: 'URGENT' },
+  { label: t('todo.priorityValue.URGENT'), value: 'URGENT' },
+  { label: t('todo.priorityValue.HIGH'), value: 'HIGH' },
+  { label: t('todo.priorityValue.MEDIUM'), value: 'MEDIUM' },
+  { label: t('todo.priorityValue.LOW'), value: 'LOW' },
 ]
 
 async function submit() {

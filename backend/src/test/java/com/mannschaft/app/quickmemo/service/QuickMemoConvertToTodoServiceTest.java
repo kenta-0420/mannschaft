@@ -12,7 +12,9 @@ import com.mannschaft.app.quickmemo.repository.QuickMemoTagLinkRepository;
 import com.mannschaft.app.quickmemo.repository.TagRepository;
 import com.mannschaft.app.quickmemo.repository.TodoTagLinkRepository;
 import com.mannschaft.app.todo.TodoPriority;
+import com.mannschaft.app.todo.entity.TodoAssigneeEntity;
 import com.mannschaft.app.todo.entity.TodoEntity;
+import com.mannschaft.app.todo.repository.TodoAssigneeRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -50,6 +52,9 @@ class QuickMemoConvertToTodoServiceTest {
 
     @Mock
     private TodoRepository todoRepository;
+
+    @Mock
+    private TodoAssigneeRepository todoAssigneeRepository;
 
     @Mock
     private QuickMemoTagLinkRepository memoTagLinkRepository;
@@ -294,6 +299,31 @@ class QuickMemoConvertToTodoServiceTest {
             // Then — 2つのタグリンクが保存されている
             verify(todoTagLinkRepository, times(2)).save(any(TodoTagLinkEntity.class));
             verify(tagRepository, times(2)).incrementUsageCount(anyLong());
+        }
+
+        @Test
+        @DisplayName("convertToTodo_正常_作成者がTODO担当者として登録される")
+        void convertToTodo_正常_作成者がTODO担当者として登録される() {
+            // Given
+            QuickMemoEntity memo = buildUnsortedMemo();
+            TodoEntity savedTodo = buildSavedTodoEntity(TODO_ID);
+            given(memoRepository.findByIdAndUserIdForUpdate(MEMO_ID, USER_ID))
+                    .willReturn(Optional.of(memo));
+            given(todoRepository.save(any(TodoEntity.class))).willReturn(savedTodo);
+            given(memoTagLinkRepository.findTagIdsByMemoId(MEMO_ID)).willReturn(List.of());
+            given(memoRepository.save(any(QuickMemoEntity.class))).willReturn(memo);
+
+            ConvertToTodoRequest req = new ConvertToTodoRequest(null, null, null);
+
+            // When
+            convertToTodoService.convertToTodo(MEMO_ID, USER_ID, req);
+
+            // Then — 作成者が担当者として1回保存されていること
+            ArgumentCaptor<TodoAssigneeEntity> assigneeCaptor = ArgumentCaptor.forClass(TodoAssigneeEntity.class);
+            verify(todoAssigneeRepository, times(1)).save(assigneeCaptor.capture());
+            assertThat(assigneeCaptor.getValue().getTodoId()).isEqualTo(TODO_ID);
+            assertThat(assigneeCaptor.getValue().getUserId()).isEqualTo(USER_ID);
+            assertThat(assigneeCaptor.getValue().getAssignedBy()).isEqualTo(USER_ID);
         }
     }
 }
