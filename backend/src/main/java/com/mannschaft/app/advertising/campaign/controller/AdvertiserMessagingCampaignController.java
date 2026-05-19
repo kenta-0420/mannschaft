@@ -16,6 +16,8 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.membership.domain.ScopeType;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -36,20 +38,27 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * F09.17 Phase 11-a 広告主向けメッセージ型キャンペーン API。
+ * F09.17 Phase 11-a 広告主向けメッセージ型キャンペーン API (旧 organizationId クエリ式)。
  *
- * <p>基底パス {@code /api/v1/advertiser/campaigns/messaging}。
- * DRAFT 作成・編集・チャネル CRUD・ターゲティング設定までを提供する。
- * submit / launch / pause / preview / report 等の状態遷移系・分析系は
- * Phase 11-b で実装する。</p>
+ * <p>基底パス {@code /api/v1/advertiser/campaigns/messaging}。</p>
  *
- * <p>テナント越境制御は {@link AccessControlService#checkAdminOrAbove(Long, Long, String)} と
- * Service 層の {@code organization_id} フィルタの 2 段構えで担保する。</p>
+ * <p><strong>非推奨</strong> F09.17 Phase 11-d-2 で scope ベース URL
+ * ({@link OrganizationAdvertiserMessagingCampaignController} /
+ * {@link TeamAdvertiserMessagingCampaignController}) を導入。
+ * 本 Controller は互換のため Phase 11-e まで残置するが、
+ * 全エンドポイントに {@code Deprecation: true} と {@code Sunset} ヘッダを付与して
+ * 段階的廃止を予告する。新規実装では新 URL を使用すること。</p>
+ *
+ * <p>内部実装は {@code scope_type=ORGANIZATION} 固定で scope ベースの Service を呼ぶ。</p>
  */
+@Deprecated
 @RestController
 @RequestMapping("/api/v1/advertiser/campaigns/messaging")
 @RequiredArgsConstructor
 public class AdvertiserMessagingCampaignController {
+
+    /** 廃止予定日 (F09.17 Phase 11-e リリース予定日)。HTTP-date 形式 (RFC 7231)。 */
+    private static final String SUNSET_DATE = "Wed, 31 Dec 2026 23:59:59 GMT";
 
     private final AdMessagingCampaignService campaignService;
     private final AdvertiserAccountService advertiserAccountService;
@@ -63,22 +72,32 @@ public class AdvertiserMessagingCampaignController {
         accessControlService.checkAdminOrAbove(userId, organizationId, "ORGANIZATION");
     }
 
+    /**
+     * 全エンドポイント共通の deprecation 警告ヘッダを書き込む。
+     */
+    private void writeDeprecationHeaders(HttpServletResponse response) {
+        response.setHeader("Deprecation", "true");
+        response.setHeader("Sunset", SUNSET_DATE);
+        response.setHeader(
+                "Link",
+                "</api/v1/organizations/{organizationId}/advertiser/campaigns/messaging>; "
+                        + "rel=\"successor-version\"");
+    }
+
     // ─────────────────────────────────────────────
     // 一覧 / 詳細
     // ─────────────────────────────────────────────
 
-    /**
-     * 自組織が所有するメッセージ型キャンペーンを一覧する。
-     */
     @GetMapping
     public PagedResponse<CampaignListItemResponse> list(
             @RequestParam Long organizationId,
             @RequestParam(required = false) AdCampaignStatus status,
-            Pageable pageable) {
+            Pageable pageable,
+            HttpServletResponse response) {
+        writeDeprecationHeaders(response);
         verifyOrganizationAccess(organizationId);
         Page<CampaignListItemResponse> page =
-                campaignService.listCampaigns(organizationId, status, pageable);
-        // status フィルタで除外された行は null になるため除去する。
+                campaignService.listCampaigns(ScopeType.ORGANIZATION, organizationId, status, pageable);
         List<CampaignListItemResponse> filtered = page.getContent().stream()
                 .filter(item -> item != null)
                 .toList();
@@ -93,119 +112,116 @@ public class AdvertiserMessagingCampaignController {
         );
     }
 
-    /**
-     * キャンペーン詳細を取得する（チャネル一覧 + ターゲティング条件込み）。
-     */
     @GetMapping("/{id}")
     public ApiResponse<CampaignDetailResponse> get(
             @PathVariable UUID id,
-            @RequestParam Long organizationId) {
+            @RequestParam Long organizationId,
+            HttpServletResponse response) {
+        writeDeprecationHeaders(response);
         verifyOrganizationAccess(organizationId);
-        return ApiResponse.of(campaignService.getCampaign(id, organizationId));
+        return ApiResponse.of(
+                campaignService.getCampaign(id, ScopeType.ORGANIZATION, organizationId));
     }
 
     // ─────────────────────────────────────────────
     // 作成 / 編集 / 削除
     // ─────────────────────────────────────────────
 
-    /**
-     * 新規キャンペーンを DRAFT で作成する。
-     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<CampaignDetailResponse> create(
             @RequestParam Long organizationId,
-            @Valid @RequestBody CreateCampaignRequest request) {
+            @Valid @RequestBody CreateCampaignRequest request,
+            HttpServletResponse response) {
+        writeDeprecationHeaders(response);
         verifyOrganizationAccess(organizationId);
         Long userId = SecurityUtils.getCurrentUserId();
         AdvertiserAccountResponse account =
-                advertiserAccountService.getByOrganizationId(organizationId);
-        return ApiResponse.of(
-                campaignService.createCampaign(organizationId, account.id(), userId, request));
+                advertiserAccountService.getByScope(ScopeType.ORGANIZATION, organizationId);
+        return ApiResponse.of(campaignService.createCampaign(
+                ScopeType.ORGANIZATION, organizationId, account.id(), userId, request));
     }
 
-    /**
-     * DRAFT 状態のキャンペーンを編集する。
-     */
     @PutMapping("/{id}")
     public ApiResponse<CampaignDetailResponse> update(
             @PathVariable UUID id,
             @RequestParam Long organizationId,
-            @Valid @RequestBody UpdateCampaignRequest request) {
+            @Valid @RequestBody UpdateCampaignRequest request,
+            HttpServletResponse response) {
+        writeDeprecationHeaders(response);
         verifyOrganizationAccess(organizationId);
-        return ApiResponse.of(campaignService.updateCampaign(id, organizationId, request));
+        return ApiResponse.of(campaignService.updateCampaign(
+                id, ScopeType.ORGANIZATION, organizationId, request));
     }
 
-    /**
-     * DRAFT 状態のキャンペーンを論理削除する。
-     */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(
             @PathVariable UUID id,
-            @RequestParam Long organizationId) {
+            @RequestParam Long organizationId,
+            HttpServletResponse response) {
+        writeDeprecationHeaders(response);
         verifyOrganizationAccess(organizationId);
-        campaignService.softDeleteCampaign(id, organizationId);
+        campaignService.softDeleteCampaign(id, ScopeType.ORGANIZATION, organizationId);
     }
 
     // ─────────────────────────────────────────────
     // チャネル CRUD
     // ─────────────────────────────────────────────
 
-    /**
-     * キャンペーンにチャネル別コンテンツを追加する。
-     */
     @PostMapping("/{id}/channels")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<CampaignChannelResponse> addChannel(
             @PathVariable UUID id,
             @RequestParam Long organizationId,
-            @Valid @RequestBody CampaignChannelRequest request) {
+            @Valid @RequestBody CampaignChannelRequest request,
+            HttpServletResponse response) {
+        writeDeprecationHeaders(response);
         verifyOrganizationAccess(organizationId);
-        return ApiResponse.of(campaignService.addChannel(id, organizationId, request));
+        return ApiResponse.of(campaignService.addChannel(
+                id, ScopeType.ORGANIZATION, organizationId, request));
     }
 
-    /**
-     * チャネル別コンテンツを更新する。
-     */
     @PutMapping("/{id}/channels/{channelId}")
     public ApiResponse<CampaignChannelResponse> updateChannel(
             @PathVariable UUID id,
             @PathVariable UUID channelId,
             @RequestParam Long organizationId,
-            @Valid @RequestBody CampaignChannelRequest request) {
+            @Valid @RequestBody CampaignChannelRequest request,
+            HttpServletResponse response) {
+        writeDeprecationHeaders(response);
         verifyOrganizationAccess(organizationId);
-        // {id} はパス上の整合性確認用。Service は channelId と organizationId で
+        // {id} はパス上の整合性確認用。Service は channelId と scope で
         // キャンペーン到達性を検証するため、id は明示的に利用しない。
-        return ApiResponse.of(campaignService.updateChannel(channelId, organizationId, request));
+        return ApiResponse.of(campaignService.updateChannel(
+                channelId, ScopeType.ORGANIZATION, organizationId, request));
     }
 
-    /**
-     * チャネル別コンテンツを削除する。
-     */
     @DeleteMapping("/{id}/channels/{channelId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void removeChannel(
             @PathVariable UUID id,
             @PathVariable UUID channelId,
-            @RequestParam Long organizationId) {
+            @RequestParam Long organizationId,
+            HttpServletResponse response) {
+        writeDeprecationHeaders(response);
         verifyOrganizationAccess(organizationId);
-        campaignService.removeChannel(channelId, organizationId);
+        campaignService.removeChannel(channelId, ScopeType.ORGANIZATION, organizationId);
     }
 
     // ─────────────────────────────────────────────
     // ターゲティング設定
     // ─────────────────────────────────────────────
 
-    /**
-     * キャンペーンのターゲティング条件を全件 replace する。
-     */
     @PostMapping("/{id}/audience")
     public ApiResponse<List<AudienceSegmentResponse>> setAudience(
             @PathVariable UUID id,
             @RequestParam Long organizationId,
-            @Valid @RequestBody AudienceConfigRequest request) {
+            @Valid @RequestBody AudienceConfigRequest request,
+            HttpServletResponse response) {
+        writeDeprecationHeaders(response);
         verifyOrganizationAccess(organizationId);
-        return ApiResponse.of(campaignService.setAudience(id, organizationId, request));
+        return ApiResponse.of(campaignService.setAudience(
+                id, ScopeType.ORGANIZATION, organizationId, request));
     }
 }

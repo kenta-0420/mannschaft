@@ -1,0 +1,48 @@
+package com.mannschaft.app.publicview.controller;
+
+import com.mannschaft.app.publicview.dto.PublicOrganizationResponse;
+import com.mannschaft.app.publicview.service.PublicOrganizationQueryService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * F19.1 公開組織ページ Controller。
+ *
+ * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §6.1 / §7.3</p>
+ *
+ * <p>このコントローラは<strong>認証不要</strong>（permitAll）であり、
+ * PR-3 の SecurityConfig 整理で {@code /api/v1/public/organizations/*} が
+ * permitAll パターンに含まれている前提で動作する。</p>
+ *
+ * <p>レート制限は publicview の {@link com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter}
+ * が担う（PR-3 で T15.4 PublicTeamApiRateLimitFilter からリネーム済）。</p>
+ *
+ * <p><strong>IDOR / エニュメレーション対策</strong>: PRIVATE / archived / 削除済 / 不在は
+ * 一律 {@link com.mannschaft.app.publicview.error.PublicViewErrorCode#PUBLIC_001} (404) を返し
+ * 状態を区別しない。</p>
+ */
+@RestController
+@RequestMapping("/api/v1/public/organizations")
+@Tag(name = "公開組織ページ API (F19.1)")
+@RequiredArgsConstructor
+public class PublicOrganizationController {
+
+    private final PublicOrganizationQueryService publicOrganizationQueryService;
+
+    /**
+     * 組織詳細を未ログインで取得する。
+     */
+    @GetMapping("/{id}")
+    @Operation(
+            summary = "組織詳細（未ログイン公開）",
+            description = "未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除の組織のみ 200。"
+                    + " それ以外は 404（IDOR 対策で状態を区別しない）。")
+    public PublicOrganizationResponse getPublicOrganization(@PathVariable Long id) {
+        return publicOrganizationQueryService.getPublicOrganization(id);
+    }
+}

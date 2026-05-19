@@ -282,7 +282,17 @@ public enum AuditEventType {
      * レート制限に到達した（429 応答）。F15.4 Phase 5-α の {@link #PUBLIC_TEAM_DETAIL_RATE_LIMIT_EXCEEDED}
      * を内包・上位化し、posts / events サブパスを含む全公開エンドポイントの上限超過を統一記録する。
      */
-    PUBLIC_API_RATE_LIMIT_EXCEEDED(AuditEventCategory.SECURITY_RATE_LIMIT);
+    PUBLIC_API_RATE_LIMIT_EXCEEDED(AuditEventCategory.SECURITY_RATE_LIMIT),
+
+    // ─── CIRCULATION (F05.2 Phase 11 第三陣 3-B) ─────────────────
+    /** 押印を訂正した（受信者本人）。 */
+    CIRCULATION_STAMP_CORRECTED(AuditEventCategory.CIRCULATION),
+    /** 押印を委任した（受信者→代理人）。 */
+    CIRCULATION_STAMP_DELEGATED(AuditEventCategory.CIRCULATION),
+    /** ADMIN が受信者を強制スキップした。 */
+    CIRCULATION_RECIPIENT_SKIPPED(AuditEventCategory.CIRCULATION),
+    /** DRAFT 文書から添付ファイルを削除した。 */
+    CIRCULATION_ATTACHMENT_DELETED(AuditEventCategory.CIRCULATION);
 
     private final AuditEventCategory category;
 }

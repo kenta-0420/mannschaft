@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- 霧: 薄い横線3本 -->
+  <line x1="12" y1="24" x2="52" y2="24" stroke="#CBD5E1" stroke-width="3" stroke-linecap="round"/>
+  <line x1="8" y1="32" x2="56" y2="32" stroke="#CBD5E1" stroke-width="3" stroke-linecap="round"/>
+  <line x1="12" y1="40" x2="52" y2="40" stroke="#CBD5E1" stroke-width="3" stroke-linecap="round"/>
+</svg>

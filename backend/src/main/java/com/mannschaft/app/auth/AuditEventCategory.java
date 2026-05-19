@@ -22,6 +22,8 @@ public enum AuditEventCategory {
     VILLAGE,
     /** F15.4 セキュリティ系（レート制限到達 / 429 応答等）。 */
     SECURITY_RATE_LIMIT,
+    /** F05.2 回覧板（押印訂正・委任・強制スキップ・添付削除等）。 */
+    CIRCULATION,
     /** F05.7 書類テンプレート・フォームビルダー系（PDF / CSV / 複製 / リマインド等）。 */
     FORM
 }

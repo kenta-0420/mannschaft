@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useDebounceFn, useEventBus } from '@vueuse/core'
 import type { ChatChannelResponse, ChatMessageResponse } from '~/types/chat'
+import type { ActiveThreadItem } from './message-panel/ChatActiveThreadsDrawer.vue'
 
 const props = defineProps<{
   channel: ChatChannelResponse
@@ -40,7 +41,10 @@ const messages = ref<ChatMessageResponse[]>([])
 const loading = ref(false)
 const nextCursor = ref<string | null>(null)
 const hasMore = ref(false)
-const scrollContainer = ref<HTMLElement | null>(null)
+
+// ChatMessageList の scrollContainer 参照を取得するための ref
+const messageListRef = ref<{ scrollContainer: HTMLElement | null } | null>(null)
+const scrollContainer = computed(() => messageListRef.value?.scrollContainer ?? null)
 
 // --- スレッド展開パネル（新版: ChatThreadPanel コンポーネントへ委譲） ---
 const threadRootMessageId = ref<number | null>(null)
@@ -63,15 +67,6 @@ const channelActiveThreadCount = computed(() => {
   const ch = props.channel as ChatChannelResponse & { activeThreadCount?: number }
   return ch.activeThreadCount ?? activeThreadCount.value
 })
-
-interface ActiveThreadItem {
-  id: number
-  body: string
-  replyCount: number
-  lastReplyAt: string | null
-  lastReplyPreview: string | null
-  createdAt: string
-}
 
 const activeThreads = ref<ActiveThreadItem[]>([])
 const activeThreadsLoading = ref(false)
@@ -100,6 +95,11 @@ async function loadActiveThreads(cursor?: string) {
 function openActiveThreadsDrawer() {
   showActiveThreadsDrawer.value = true
   loadActiveThreads()
+}
+
+function onActiveThreadSelected(threadId: number) {
+  openThread(threadId)
+  showActiveThreadsDrawer.value = false
 }
 
 async function loadMessages(cursor?: string) {
@@ -219,17 +219,6 @@ const debouncedSendTyping = useDebounceFn(() => {
   sendTyping(props.channel.id)
 }, 2000)
 
-/** 表示テキスト（「田中が入力中…」「田中、鈴木が入力中…」）*/
-const typingText = computed(() => {
-  const names = Array.from(typingUsers.value.values())
-  if (names.length === 0) return ''
-  if (names.length === 1) return names[0]
-  return names.join('、')
-})
-
-/** タイピングユーザーが複数か否か */
-const isMultipleTyping = computed(() => typingUsers.value.size > 1)
-
 // ============================================================
 // WebSocket STOMP 購読 — メッセージリアルタイム受信
 // ============================================================
@@ -323,55 +312,13 @@ onUnmounted(() => {
     </div>
 
     <!-- チャンネルヘッダー -->
-    <div class="flex items-center gap-3 border-b border-surface-200 px-4 py-3">
-      <i
-        :class="
-          channel.channelType === 'DIRECT'
-            ? 'pi pi-user'
-            : channel.isPrivate
-              ? 'pi pi-lock'
-              : 'pi pi-hashtag'
-        "
-        class="text-surface-400"
-      />
-      <div>
-        <h3 class="text-sm font-semibold">
-          {{
-            channel.channelType === 'DIRECT' && channel.dmPartner
-              ? channel.dmPartner.displayName
-              : channel.name
-          }}
-        </h3>
-        <p v-if="channel.description" class="text-xs text-surface-400">{{ channel.description }}</p>
-      </div>
-      <div class="ml-auto flex items-center gap-2">
-        <Button
-          v-if="channel.channelType === 'DIRECT'"
-          v-tooltip.bottom="'Zimmerに招待'"
-          icon="pi pi-user-plus"
-          text
-          rounded
-          size="small"
-          severity="secondary"
-          @click="showInviteDialog = true"
-        />
-        <span class="flex items-center gap-1 text-xs text-surface-400">
-          <i class="pi pi-users" />
-          {{ channel.memberCount }}
-        </span>
-      </div>
-    </div>
+    <ChatChannelHeader :channel="channel" @invite="showInviteDialog = true" />
 
     <!-- アクティブスレッドバッジ -->
-    <div
-      v-if="channelActiveThreadCount > 0"
-      class="flex cursor-pointer items-center gap-1.5 border-b border-surface-100 bg-primary/5 px-4 py-1.5 text-xs text-primary hover:bg-primary/10"
-      @click="openActiveThreadsDrawer"
-    >
-      <i class="pi pi-comments text-xs" />
-      <span>{{ $t('chat.thread.activeThreads', { count: channelActiveThreadCount }) }}</span>
-      <i class="pi pi-chevron-right ml-auto text-xs" />
-    </div>
+    <ChatActiveThreadsBar
+      :count="channelActiveThreadCount"
+      @open="openActiveThreadsDrawer"
+    />
 
     <!-- メインコンテンツエリア（メッセージ + サイドスレッドパネル） -->
     <div class="flex flex-1 overflow-hidden">
@@ -381,46 +328,24 @@ onUnmounted(() => {
         :class="threadRootMessageId ? 'border-r border-surface-200 dark:border-surface-700' : ''"
       >
         <!-- メッセージ一覧 -->
-        <div ref="scrollContainer" class="flex-1 overflow-y-auto">
-          <div v-if="hasMore" class="flex justify-center py-2">
-            <Button
-              label="過去のメッセージを読み込む"
-              text
-              size="small"
-              :loading="loading"
-              @click="loadMessages(nextCursor!)"
-            />
-          </div>
-          <ChatMessageBubble
-            v-for="msg in messages"
-            :key="msg.id"
-            :message="msg"
-            :can-pin="canPin"
-            :can-delete="canDelete"
-            @reaction="onReaction"
-            @pin="onPin"
-            @delete="onDelete"
-            @bookmark="onBookmark"
-            @reply="openThread"
-          />
-          <DashboardEmptyState
-            v-if="messages.length === 0 && !loading"
-            icon="pi pi-comments"
-            message="まだメッセージがありません"
-          />
-        </div>
+        <ChatMessageList
+          ref="messageListRef"
+          :messages="messages"
+          :loading="loading"
+          :has-more="hasMore"
+          :next-cursor="nextCursor"
+          :can-pin="canPin"
+          :can-delete="canDelete"
+          @load-more="(cursor: string) => loadMessages(cursor)"
+          @reaction="onReaction"
+          @pin="onPin"
+          @delete="onDelete"
+          @bookmark="onBookmark"
+          @reply="openThread"
+        />
 
         <!-- タイピングインジケーター -->
-        <div
-          v-if="typingUsers.size > 0"
-          class="px-4 py-1 text-sm italic text-surface-400"
-        >
-          {{
-            isMultipleTyping
-              ? $t('chat.typing.multiple', { names: typingText })
-              : $t('chat.typing.single', { name: typingText })
-          }}
-        </div>
+        <ChatTypingIndicator :typing-users="typingUsers" />
 
         <!-- 入力 -->
         <ChatMessageInput
@@ -448,42 +373,16 @@ onUnmounted(() => {
   </div>
 
   <!-- アクティブスレッドドロワー -->
-  <Drawer
+  <ChatActiveThreadsDrawer
     v-model:visible="showActiveThreadsDrawer"
-    :header="$t('chat.thread.activeThreads', { count: channelActiveThreadCount })"
-    position="right"
-    style="width: 360px"
-  >
-    <div v-if="activeThreadsLoading && activeThreads.length === 0" class="flex justify-center py-8">
-      <ProgressSpinner style="width: 32px; height: 32px" />
-    </div>
-    <div v-else-if="activeThreads.length === 0" class="py-8 text-center text-sm text-surface-400">
-      進行中のスレッドはありません
-    </div>
-    <ul v-else class="divide-y divide-surface-100">
-      <li
-        v-for="thread in activeThreads"
-        :key="thread.id"
-        class="cursor-pointer px-4 py-3 hover:bg-surface-50"
-        @click="() => { openThread(thread.id); showActiveThreadsDrawer = false }"
-      >
-        <p class="line-clamp-2 text-sm">{{ thread.body }}</p>
-        <div class="mt-1 flex items-center gap-2 text-xs text-surface-400">
-          <span>{{ $t('chat.thread.replyCount', { count: thread.replyCount }) }}</span>
-          <span v-if="thread.lastReplyPreview" class="truncate">{{ thread.lastReplyPreview }}</span>
-        </div>
-      </li>
-    </ul>
-    <div v-if="activeThreadsHasMore" class="flex justify-center py-2">
-      <Button
-        :label="$t('label.loadMore')"
-        text
-        size="small"
-        :loading="activeThreadsLoading"
-        @click="loadActiveThreads(activeThreadsNextCursor!)"
-      />
-    </div>
-  </Drawer>
+    :count="channelActiveThreadCount"
+    :threads="activeThreads"
+    :loading="activeThreadsLoading"
+    :has-more="activeThreadsHasMore"
+    :next-cursor="activeThreadsNextCursor"
+    @select-thread="onActiveThreadSelected"
+    @load-more="(cursor: string) => loadActiveThreads(cursor)"
+  />
 
   <ChatInviteToZimmerDialog
     v-model:visible="showInviteDialog"

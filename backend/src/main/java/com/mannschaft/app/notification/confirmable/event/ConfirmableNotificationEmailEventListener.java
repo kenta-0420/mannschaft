@@ -134,7 +134,8 @@ public class ConfirmableNotificationEmailEventListener {
 
     /**
      * メッセージキーからローカライズされた文字列を取得する。
-     * プロパティファイル（i18n/email/email_{lang}.properties）のキーを参照する。
+     * プロパティファイル（email/email_{lang}.properties）のキーを参照する。
+     * F09.18 Phase 18-b TC-0 で i18n/email/ を email/ に統合した変更に追従。
      *
      * @param key    メッセージキー
      * @param locale ロケール
@@ -142,7 +143,7 @@ public class ConfirmableNotificationEmailEventListener {
      */
     String getMessage(String key, Locale locale) {
         try {
-            ResourceBundle bundle = ResourceBundle.getBundle("i18n/email/email", locale, PROPERTIES_CONTROL);
+            ResourceBundle bundle = ResourceBundle.getBundle("email/email", locale, PROPERTIES_CONTROL);
             return bundle.getString(key);
         } catch (MissingResourceException e) {
             log.warn("メールi18nキーが見つかりません: key={}, locale={}", key, locale);
