@@ -3,7 +3,8 @@ package com.mannschaft.app.reservation.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.EmailService;
+import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
+import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -53,7 +54,7 @@ public class EmergencyClosureService {
     private final ReservationSlotRepository slotRepository;
     private final ReservationRepository reservationRepository;
     private final UserRepository userRepository;
-    private final EmailService emailService;
+    private final EmailOutboxService emailOutboxService;
     private final NotificationHelper notificationHelper;
     private final EmergencyClosureRepository emergencyClosureRepository;
     private final ReservationSlotService slotService;
@@ -115,13 +116,6 @@ public class EmergencyClosureService {
                 .distinct()
                 .collect(Collectors.toList());
 
-        // メール送信（ユーザーごとに1通）
-        for (Long userId : targetUserIds) {
-            userRepository.findById(userId).ifPresent(user ->
-                emailService.sendEmail(user.getEmail(), request.getSubject(), request.getMessageBody())
-            );
-        }
-
         // 予約キャンセル処理
         if (request.isCancelReservations()) {
             for (ReservationEntity reservation : activeReservations) {
@@ -134,7 +128,8 @@ public class EmergencyClosureService {
             log.info("臨時休業: 予約キャンセル完了 teamId={}, 件数={}", teamId, activeReservations.size());
         }
 
-        // 履歴保存
+        // 履歴保存（closure.id を確定させてからメール enqueue に進む。
+        // sourceEventId = "emergency-closure:" + closure.id + ":" + userId として一意化する）
         EmergencyClosureEntity entity = EmergencyClosureEntity.builder()
                 .teamId(teamId)
                 .startDate(request.getStartDate())
@@ -150,7 +145,28 @@ public class EmergencyClosureService {
                 .build();
 
         EmergencyClosureEntity saved = emergencyClosureRepository.save(entity);
-        log.info("臨時休業通知送信完了: teamId={}, closureId={}, sentCount={}", teamId, saved.getId(), targetUserIds.size());
+        log.info("臨時休業通知保存完了: teamId={}, closureId={}, sentCount={}", teamId, saved.getId(), targetUserIds.size());
+
+        // F09.18 Phase 18-b: メール送信は EmailOutboxService.enqueue() 経由に移行
+        // (1 record = 1 宛先展開、テンプレ未整備のため RESERVATION_EMERGENCY_CLOSURE はスルー方式)
+        for (Long userId : targetUserIds) {
+            userRepository.findById(userId).ifPresent(user ->
+                emailOutboxService.enqueue(new EmailOutboxRequest(
+                        "RESERVATION_EMERGENCY_CLOSURE",
+                        "ja",
+                        user.getEmail(),
+                        Map.of(
+                                "subject", request.getSubject(),
+                                "body", request.getMessageBody()
+                        ),
+                        "reservation",
+                        "emergency-closure:" + saved.getId() + ":" + userId,
+                        null,
+                        userId,
+                        null  // EmergencyClosureEntity に organizationId フィールドが無いため null
+                ))
+            );
+        }
 
         // アプリ内通知（WebSocket + PWA Push）— メールと二重で確実に届ける
         notificationHelper.notifyAll(
