@@ -85,10 +85,6 @@ public class CirculationService {
     /** F13 Phase 5-a: R2 presigned URL 発行 / オブジェクト削除に使用。 */
     private final R2StorageService r2StorageService;
 
-    /** F05.2 Phase 11 第三陣 3-B: 監査ログサービス。null 注入時はログ記録をスキップ。 */
-    @Autowired(required = false)
-    private AuditLogService auditLogService;
-
     /**
      * F09.14 Phase 4-C: 回覧文書削除イベントを発行するためのパブリッシャー。
      * 購読側（{@code DisclosureCirculationCleanupHandler} 等）が
@@ -105,8 +101,13 @@ public class CirculationService {
     /** Phase 11 第三陣 3-A: 手動リマインド送信に使用。 */
     private final NotificationService notificationService;
 
-    /** Phase 11 第三陣 3-A: 強制完了・一括強制完了の監査ログ書き込みに使用。 */
-    private final AuditLogService auditLogService;
+    /**
+     * Phase 11 第三陣 3-A/3-B: 監査ログサービス。
+     * - 3-A: 強制完了・一括強制完了の監査ログ書き込み
+     * - 3-B: 添付削除等の監査ログ書き込み（null 注入時はログ記録をスキップ）
+     */
+    @Autowired(required = false)
+    private AuditLogService auditLogService;
 
     /**
      * 文書一覧をページング取得する。
