@@ -17,14 +17,14 @@ import java.util.stream.Collectors;
  * GDPR 30日以内削除完了を監査する日次バッチ。
  *
  * <p>毎日 05:00（JST）に {@code account_purge_completion_status} テーブルを走査し、
- * {@code status = 'PENDING'} のまま {@code attempted_at} から 2 時間以上経過している
+ * {@code status = 'PENDING'} のまま {@code attempted_at} から 30 分以上経過している
  * レコードを検出してアラートログを出力する。</p>
  *
  * <h2>タイミングの意図</h2>
  * <ul>
  *   <li>04:00: {@code AccountPurgeService}（物理削除バッチ）が実行 → PENDING レコードを INSERT → {@code AccountPurgedEvent} 発火</li>
  *   <li>04:00〜: 各 {@code *PurgeEventListener} が非同期で処理 → SUCCESS に更新</li>
- *   <li>05:00: 本バッチが実行。2 時間（= 1 時間のバッファ）以上 PENDING のまま = リスナー未処理 → アラート</li>
+ *   <li>05:00: 本バッチが実行。閾値 = 05:00 − 30 分 = 04:30。04:00 の PENDING は 04:00 &lt; 04:30 で同日中に検出。</li>
  * </ul>
  *
  * <h2>アラートの意味</h2>
@@ -39,15 +39,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GdprPurgeAuditBatchService {
 
-    /** PENDING から SUCCESS への更新が完了するまでに許容する時間（時間）。 */
-    private static final long ALERT_THRESHOLD_HOURS = 2L;
+    /** PENDING から SUCCESS への更新が完了するまでに許容する時間（分）。04:00 作成のレコードを 05:00 実行時に同日検出できる値。 */
+    private static final long ALERT_THRESHOLD_MINUTES = 30L;
 
     private final AccountPurgeCompletionStatusRepository completionStatusRepository;
 
     /**
      * GDPR purge 全ドメイン処理完了を監査し、PENDING 残存をアラートする（毎日 05:00 JST）。
      *
-     * <p>2 時間以上 PENDING のまま経過しているレコードをユーザー別にグルーピングし、
+     * <p>30 分以上 PENDING のまま経過しているレコードをユーザー別にグルーピングし、
      * {@code log.error} でアラートを出力する。正常完了時は {@code log.info} で完了を記録する。</p>
      */
     @BatchEndpoint(
@@ -57,7 +57,7 @@ public class GdprPurgeAuditBatchService {
     @Scheduled(cron = "0 0 5 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "gdprPurgeAuditBatch", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     public void audit() {
-        LocalDateTime threshold = LocalDateTime.now().minusHours(ALERT_THRESHOLD_HOURS);
+        LocalDateTime threshold = LocalDateTime.now().minusMinutes(ALERT_THRESHOLD_MINUTES);
         List<AccountPurgeCompletionStatusEntity> pendingList =
                 completionStatusRepository.findByStatusAndAttemptedAtBefore("PENDING", threshold);
 
