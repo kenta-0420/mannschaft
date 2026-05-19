@@ -139,7 +139,51 @@ public enum AuthErrorCode implements ErrorCode {
     AUTH_042("AUTH_042", "ベータ期間中は招待コードが必要です", Severity.WARN),
 
     /** 招待コードが無効またはベータ対象外 */
-    AUTH_043("AUTH_043", "招待コードが無効またはベータ対象外です", Severity.WARN);
+    AUTH_043("AUTH_043", "招待コードが無効またはベータ対象外です", Severity.WARN),
+
+    // ===== F01.9 年齢確認・保護者同意機能 (AUTH_050〜AUTH_070) =====
+
+    /** 生年月日未指定 */
+    AUTH_050("AUTH_050", "birth_date is required", Severity.WARN),
+
+    /** 日付フォーマット誤り */
+    AUTH_051("AUTH_051", "Invalid date format (expected: YYYY-MM-DD)", Severity.WARN),
+
+    /** 未来日付 */
+    AUTH_052("AUTH_052", "Birth date cannot be in the future", Severity.WARN),
+
+    /** 100年以上前の生年月日 */
+    AUTH_053("AUTH_053", "Birth date is too far in the past", Severity.WARN),
+
+    /** 保護者同意トークン無効・期限切れ・使用済み統一 */
+    AUTH_060("AUTH_060", "Parental consent token is invalid or expired", Severity.WARN),
+
+    /** 自己承認防止 */
+    AUTH_062("AUTH_062", "Cannot register yourself as a guardian", Severity.WARN),
+
+    /** 未成年保護者防止 */
+    AUTH_063("AUTH_063", "Guardian must be 18 years or older", Severity.WARN),
+
+    /** 子側からの最終リンク削除防止 */
+    AUTH_064("AUTH_064", "Cannot remove the last guardian link", Severity.WARN),
+
+    /** 保護者側からの最終リンク解除防止 */
+    AUTH_065("AUTH_065", "Please invite another guardian first", Severity.WARN),
+
+    /** 保護者退会ブロック */
+    AUTH_066("AUTH_066", "You are the sole guardian of a minor account", Severity.WARN),
+
+    /** 招待数上限 */
+    AUTH_067("AUTH_067", "Maximum 3 pending invitations allowed", Severity.WARN),
+
+    /** 重複招待防止 */
+    AUTH_068("AUTH_068", "An invitation has already been sent to this email", Severity.WARN),
+
+    /** 自己招待防止 */
+    AUTH_069("AUTH_069", "Cannot invite your own email address", Severity.WARN),
+
+    /** PENDING_PARENTAL_CONSENT での操作ブロック */
+    AUTH_070("AUTH_070", "This operation is not allowed for accounts pending parental consent", Severity.WARN);
 
     private final String code;
     private final String message;
