@@ -50,7 +50,7 @@
 | `/api/v1/safety-checks/*` | 12 | `/api/v1/safety-checks/...`（一致するはず・偽陽性多）+ `/api/v1/system-admin/safety-checks/...` | F03.6_safety_check.md |
 | `/api/v1/corkboards/*` | 17 | `/api/v1/{scopeType}/{scopeId}/corkboards/...` | F09.8_corkboard.md |
 | `/api/v1/activities/*` | 20 | `/api/v1/activities/...`（一致しているはず・重複起因） | F06.1_cms_blog.md / F06.4_activity_records.md |
-| `/api/v1/job-contracts/*` | 17 | `/api/v1/job-contracts/...`（多くは一致・命名揺れ） | F13.1_short_term_job_matching.md |
+| `/api/v1/job-contracts/*` | 17 | `/api/v1/job-contracts/...`（多くは一致・命名揺れ） | F13.1_short_term_job_matching/README.md |
 | `/api/v1/timeline/*` | 25 | `/api/v1/timeline/...`（実装多数あり・重複起因） | F04.1_timeline.md |
 | `/api/v1/chat/*` | 18 | `/api/v1/teams/{teamId}/chat/...` + `/api/v1/chat/...` | F04.2_chat.md / F04.2.1_chat_multi_tab_ui.md |
 | `/api/v1/events/*` | 18 | `/api/v1/organizations/{orgId}/events/...` + `/api/v1/teams/{teamId}/events/...` | F03.8_event_management.md |
@@ -247,7 +247,7 @@ F01.1 既存設計書には 27 件の一致記述があり、不足 2 件のみ�
 
 3. **F09.16_residence_status.md**: dwelling-units 23 件・residence-status 13 件のスコープ prefix 追記
 
-4. **F13.1_short_term_job_matching.md**: jobber-invitations / job-disputes / job-payments / no-show-records に 🔵 マーカ付与（Phase 5 未着工）
+4. **F13.1_short_term_job_matching/README.md**: jobber-invitations / job-disputes / job-payments / no-show-records に 🔵 マーカ付与（Phase 5 未着工）
 
 5. **F04.4_social_profiles.md**: `/api/v1/sns/*` `/api/v1/social-profiles/*` 16 件を `/api/v1/social/*` にリネーム反映
 

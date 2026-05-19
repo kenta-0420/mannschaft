@@ -172,7 +172,7 @@ scope-prefix-less ルーティングへの統一実装 PR が必要。本陣は�
 |---:|---:|
 | 🔵 (Phase 5 未着工) | 17 件全件 |
 
-主なエンドポイント（全件 F13.1_short_term_job_matching.md より）:
+主なエンドポイント（全件 F13.1_short_term_job_matching/02_api_design.md より）:
 
 - GET `/job-contracts` / `/{_}` (検索・詳細)
 - POST `/{_}/approve` / `/cancel` / `/start` / `/report-completion` / `/reject-completion`

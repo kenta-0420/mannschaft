@@ -660,58 +660,58 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| GET | `/api/v1/job-contracts` | `docs/features/F13.1_short_term_job_matching.md` | 1628 |
-| GET | `/api/v1/job-contracts/{_}` | `docs/features/F13.1_short_term_job_matching.md` | 1629 |
-| GET | `/api/v1/job-contracts/{_}/qr-tokens/current` | `docs/features/F13.1_short_term_job_matching.md` | 1632 |
-| GET | `/api/v1/job-contracts/{_}/reviews` | `docs/features/F13.1_short_term_job_matching.md` | 1639 |
-| GET | `/api/v1/job-contracts/{_}/time-confirmations` | `docs/features/F13.1_short_term_job_matching.md` | 1665 |
-| POST | `/api/v1/job-contracts/{_}/admin-override-checkin` | `docs/features/F13.1_short_term_job_matching.md` | 3554 |
-| POST | `/api/v1/job-contracts/{_}/approve` | `docs/features/F13.1_short_term_job_matching.md` | 1635 |
-| POST | `/api/v1/job-contracts/{_}/cancel` | `docs/features/F13.1_short_term_job_matching.md` | 1637 |
-| POST | `/api/v1/job-contracts/{_}/disputes` | `docs/features/F13.1_short_term_job_matching.md` | 1644 |
-| POST | `/api/v1/job-contracts/{_}/qr-tokens` | `docs/features/F13.1_short_term_job_matching.md` | 1631 |
-| POST | `/api/v1/job-contracts/{_}/reject-completion` | `docs/features/F13.1_short_term_job_matching.md` | 1636 |
-| POST | `/api/v1/job-contracts/{_}/report-completion` | `docs/features/F13.1_short_term_job_matching.md` | 1634 |
-| POST | `/api/v1/job-contracts/{_}/reviews` | `docs/features/F13.1_short_term_job_matching.md` | 1638 |
-| POST | `/api/v1/job-contracts/{_}/start` | `docs/features/F13.1_short_term_job_matching.md` | 1630 |
-| POST | `/api/v1/job-contracts/{_}/time-confirmations` | `docs/features/F13.1_short_term_job_matching.md` | 640 |
-| POST | `/api/v1/job-contracts/{_}/time-confirmations/{_}/approve` | `docs/features/F13.1_short_term_job_matching.md` | 1666 |
-| POST | `/api/v1/job-contracts/{_}/time-confirmations/{_}/dispute` | `docs/features/F13.1_short_term_job_matching.md` | 1667 |
+| GET | `/api/v1/job-contracts` | `docs/features/F13.1_short_term_job_matching/README.md` | 1628 |
+| GET | `/api/v1/job-contracts/{_}` | `docs/features/F13.1_short_term_job_matching/README.md` | 1629 |
+| GET | `/api/v1/job-contracts/{_}/qr-tokens/current` | `docs/features/F13.1_short_term_job_matching/README.md` | 1632 |
+| GET | `/api/v1/job-contracts/{_}/reviews` | `docs/features/F13.1_short_term_job_matching/README.md` | 1639 |
+| GET | `/api/v1/job-contracts/{_}/time-confirmations` | `docs/features/F13.1_short_term_job_matching/README.md` | 1665 |
+| POST | `/api/v1/job-contracts/{_}/admin-override-checkin` | `docs/features/F13.1_short_term_job_matching/README.md` | 3554 |
+| POST | `/api/v1/job-contracts/{_}/approve` | `docs/features/F13.1_short_term_job_matching/README.md` | 1635 |
+| POST | `/api/v1/job-contracts/{_}/cancel` | `docs/features/F13.1_short_term_job_matching/README.md` | 1637 |
+| POST | `/api/v1/job-contracts/{_}/disputes` | `docs/features/F13.1_short_term_job_matching/README.md` | 1644 |
+| POST | `/api/v1/job-contracts/{_}/qr-tokens` | `docs/features/F13.1_short_term_job_matching/README.md` | 1631 |
+| POST | `/api/v1/job-contracts/{_}/reject-completion` | `docs/features/F13.1_short_term_job_matching/README.md` | 1636 |
+| POST | `/api/v1/job-contracts/{_}/report-completion` | `docs/features/F13.1_short_term_job_matching/README.md` | 1634 |
+| POST | `/api/v1/job-contracts/{_}/reviews` | `docs/features/F13.1_short_term_job_matching/README.md` | 1638 |
+| POST | `/api/v1/job-contracts/{_}/start` | `docs/features/F13.1_short_term_job_matching/README.md` | 1630 |
+| POST | `/api/v1/job-contracts/{_}/time-confirmations` | `docs/features/F13.1_short_term_job_matching/README.md` | 640 |
+| POST | `/api/v1/job-contracts/{_}/time-confirmations/{_}/approve` | `docs/features/F13.1_short_term_job_matching/README.md` | 1666 |
+| POST | `/api/v1/job-contracts/{_}/time-confirmations/{_}/dispute` | `docs/features/F13.1_short_term_job_matching/README.md` | 1667 |
 
 ### /api/v1/job-disputes/* (1 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| POST | `/api/v1/job-disputes/{_}/resolve` | `docs/features/F13.1_short_term_job_matching.md` | 1645 |
+| POST | `/api/v1/job-disputes/{_}/resolve` | `docs/features/F13.1_short_term_job_matching/README.md` | 1645 |
 
 ### /api/v1/job-payments/* (3 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| GET | `/api/v1/job-payments/{_}/escrow-status` | `docs/features/F13.1_short_term_job_matching.md` | 1670 |
-| POST | `/api/v1/job-payments/{_}/dispute` | `docs/features/F13.1_short_term_job_matching.md` | 355 |
-| POST | `/api/v1/job-payments/{_}/early-release` | `docs/features/F13.1_short_term_job_matching.md` | 345 |
+| GET | `/api/v1/job-payments/{_}/escrow-status` | `docs/features/F13.1_short_term_job_matching/README.md` | 1670 |
+| POST | `/api/v1/job-payments/{_}/dispute` | `docs/features/F13.1_short_term_job_matching/README.md` | 355 |
+| POST | `/api/v1/job-payments/{_}/early-release` | `docs/features/F13.1_short_term_job_matching/README.md` | 345 |
 
 ### /api/v1/jobber-invitations/* (2 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| POST | `/api/v1/jobber-invitations/{_}/accept` | `docs/features/F13.1_short_term_job_matching.md` | 1657 |
-| POST | `/api/v1/jobber-invitations/{_}/decline` | `docs/features/F13.1_short_term_job_matching.md` | 1658 |
+| POST | `/api/v1/jobber-invitations/{_}/accept` | `docs/features/F13.1_short_term_job_matching/README.md` | 1657 |
+| POST | `/api/v1/jobber-invitations/{_}/decline` | `docs/features/F13.1_short_term_job_matching/README.md` | 1658 |
 
 ### /api/v1/jobs/* (9 件)
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| DELETE | `/api/v1/jobs/{_}/applications/me` | `docs/features/F13.1_short_term_job_matching.md` | 1624 |
-| GET | `/api/v1/jobs` | `docs/features/F13.1_short_term_job_matching.md` | 1615 |
-| GET | `/api/v1/jobs/public-board` | `docs/features/F13.1_short_term_job_matching.md` | 1663 |
-| POST | `/api/v1/jobs` | `docs/features/F13.1_short_term_job_matching.md` | 1617 |
-| POST | `/api/v1/jobs/check-ins` | `docs/features/F13.1_short_term_job_matching.md` | 116 |
-| POST | `/api/v1/jobs/fee-preview` | `docs/features/F13.1_short_term_job_matching.md` | 595 |
-| POST | `/api/v1/jobs/{_}/applications` | `docs/features/F13.1_short_term_job_matching.md` | 1623 |
-| POST | `/api/v1/jobs/{_}/applications/{_}/accept` | `docs/features/F13.1_short_term_job_matching.md` | 1626 |
-| POST | `/api/v1/jobs/{_}/applications/{_}/reject` | `docs/features/F13.1_short_term_job_matching.md` | 1627 |
+| DELETE | `/api/v1/jobs/{_}/applications/me` | `docs/features/F13.1_short_term_job_matching/README.md` | 1624 |
+| GET | `/api/v1/jobs` | `docs/features/F13.1_short_term_job_matching/README.md` | 1615 |
+| GET | `/api/v1/jobs/public-board` | `docs/features/F13.1_short_term_job_matching/README.md` | 1663 |
+| POST | `/api/v1/jobs` | `docs/features/F13.1_short_term_job_matching/README.md` | 1617 |
+| POST | `/api/v1/jobs/check-ins` | `docs/features/F13.1_short_term_job_matching/README.md` | 116 |
+| POST | `/api/v1/jobs/fee-preview` | `docs/features/F13.1_short_term_job_matching/README.md` | 595 |
+| POST | `/api/v1/jobs/{_}/applications` | `docs/features/F13.1_short_term_job_matching/README.md` | 1623 |
+| POST | `/api/v1/jobs/{_}/applications/{_}/accept` | `docs/features/F13.1_short_term_job_matching/README.md` | 1626 |
+| POST | `/api/v1/jobs/{_}/applications/{_}/reject` | `docs/features/F13.1_short_term_job_matching/README.md` | 1627 |
 
 ### /api/v1/kb/* (1 件)
 
@@ -754,8 +754,8 @@
 | GET | `/api/v1/me/favorites` | `docs/features/F02.2_dashboard.md` | 212 |
 | GET | `/api/v1/me/favorites` | `docs/features/F02.9_favorites_widget.md` | 558 |
 | GET | `/api/v1/me/folders` | `docs/features/F05.5_file_sharing.md` | 336 |
-| GET | `/api/v1/me/jobber-profile` | `docs/features/F13.1_short_term_job_matching.md` | 1661 |
-| GET | `/api/v1/me/jobs/history` | `docs/features/F13.1_short_term_job_matching.md` | 1643 |
+| GET | `/api/v1/me/jobber-profile` | `docs/features/F13.1_short_term_job_matching/README.md` | 1661 |
+| GET | `/api/v1/me/jobs/history` | `docs/features/F13.1_short_term_job_matching/README.md` | 1643 |
 | GET | `/api/v1/me/no-show-history` | `docs/features/F03.11_recruitment_listing.md` | 1465 |
 | GET | `/api/v1/me/penalties` | `docs/features/F03.11_recruitment_listing.md` | 1475 |
 | GET | `/api/v1/me/personal-timetable-settings` | `docs/features/F03.15_personal_timetable.md` | 436 |
@@ -783,7 +783,7 @@
 | POST | `/api/v1/me/timetable-slot-note-fields` | `docs/features/F03.15_personal_timetable.md` | 421 |
 | POST | `/api/v1/me/voice-input-consents` | `docs/features/F02.5_quick_memo.md` | 551 |
 | PUT | `/api/v1/me/ad-preferences` | `docs/features/F09.17_advertiser_targeted_campaign.md` | 440 |
-| PUT | `/api/v1/me/jobber-profile` | `docs/features/F13.1_short_term_job_matching.md` | 1662 |
+| PUT | `/api/v1/me/jobber-profile` | `docs/features/F13.1_short_term_job_matching/README.md` | 1662 |
 | PUT | `/api/v1/me/personal-timetable-settings` | `docs/features/F03.15_personal_timetable.md` | 437 |
 | PUT | `/api/v1/me/personal-timetables/{_}/periods` | `docs/features/F03.15_personal_timetable.md` | 373 |
 | PUT | `/api/v1/me/timetable-slot-notes` | `docs/features/F03.15_personal_timetable.md` | 413 |
@@ -1248,9 +1248,9 @@
 
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
-| GET | `/api/v1/stripe/connect/me` | `docs/features/F13.1_short_term_job_matching.md` | 1647 |
-| POST | `/api/v1/stripe/connect/login-link` | `docs/features/F13.1_short_term_job_matching.md` | 1648 |
-| POST | `/api/v1/stripe/connect/onboarding-link` | `docs/features/F13.1_short_term_job_matching.md` | 1646 |
+| GET | `/api/v1/stripe/connect/me` | `docs/features/F13.1_short_term_job_matching/README.md` | 1647 |
+| POST | `/api/v1/stripe/connect/login-link` | `docs/features/F13.1_short_term_job_matching/README.md` | 1648 |
+| POST | `/api/v1/stripe/connect/onboarding-link` | `docs/features/F13.1_short_term_job_matching/README.md` | 1646 |
 
 ### /api/v1/succession/* (1 件)
 
@@ -1286,9 +1286,9 @@
 | DELETE | `/api/v1/teams/{_}/api-keys/{_}` | `docs/features/F09.9_webhook_api.md` | 283 |
 | DELETE | `/api/v1/teams/{_}/direct-mails/{_}` | `docs/features/F09.6_direct_mail.md` | 307 |
 | DELETE | `/api/v1/teams/{_}/friend-feed/{_}/forward/{_}` | `docs/features/F01.5_team_friend_relationships.md` | 401 |
-| DELETE | `/api/v1/teams/{_}/jobbers/invitations/{_}` | `docs/features/F13.1_short_term_job_matching.md` | 1656 |
-| DELETE | `/api/v1/teams/{_}/jobbers/me` | `docs/features/F13.1_short_term_job_matching.md` | 263 |
-| DELETE | `/api/v1/teams/{_}/jobbers/{_}` | `docs/features/F13.1_short_term_job_matching.md` | 638 |
+| DELETE | `/api/v1/teams/{_}/jobbers/invitations/{_}` | `docs/features/F13.1_short_term_job_matching/README.md` | 1656 |
+| DELETE | `/api/v1/teams/{_}/jobbers/me` | `docs/features/F13.1_short_term_job_matching/README.md` | 263 |
+| DELETE | `/api/v1/teams/{_}/jobbers/{_}` | `docs/features/F13.1_short_term_job_matching/README.md` | 638 |
 | DELETE | `/api/v1/teams/{_}/members/{_}/care-overrides/{_}` | `docs/features/F03.12_care_recipient_event_watch_notification.md` | 450 |
 | DELETE | `/api/v1/teams/{_}/modules/{_}/schedule` | `docs/features/F01.3_template_module.md` | 383 |
 | DELETE | `/api/v1/teams/{_}/organizations/{_}` | `docs/features/F01.2_org_team_member_role.md` | 743 |
@@ -1349,11 +1349,11 @@
 | GET | `/api/v1/teams/{_}/incidents/categories` | `docs/features/F07.6_incident_management.md` | 457 |
 | GET | `/api/v1/teams/{_}/incidents/maintenance-schedules` | `docs/features/F07.6_incident_management.md` | 516 |
 | GET | `/api/v1/teams/{_}/incidents/stats` | `docs/features/F07.6_incident_management.md` | 528 |
-| GET | `/api/v1/teams/{_}/jobbers` | `docs/features/F13.1_short_term_job_matching.md` | 1659 |
-| GET | `/api/v1/teams/{_}/jobbers/invitations` | `docs/features/F13.1_short_term_job_matching.md` | 1655 |
-| GET | `/api/v1/teams/{_}/jobs` | `docs/features/F13.1_short_term_job_matching.md` | 2645 |
-| GET | `/api/v1/teams/{_}/jobs/history` | `docs/features/F13.1_short_term_job_matching.md` | 1640 |
-| GET | `/api/v1/teams/{_}/jobs/history/export.csv` | `docs/features/F13.1_short_term_job_matching.md` | 1641 |
+| GET | `/api/v1/teams/{_}/jobbers` | `docs/features/F13.1_short_term_job_matching/README.md` | 1659 |
+| GET | `/api/v1/teams/{_}/jobbers/invitations` | `docs/features/F13.1_short_term_job_matching/README.md` | 1655 |
+| GET | `/api/v1/teams/{_}/jobs` | `docs/features/F13.1_short_term_job_matching/README.md` | 2645 |
+| GET | `/api/v1/teams/{_}/jobs/history` | `docs/features/F13.1_short_term_job_matching/README.md` | 1640 |
+| GET | `/api/v1/teams/{_}/jobs/history/export.csv` | `docs/features/F13.1_short_term_job_matching/README.md` | 1641 |
 | GET | `/api/v1/teams/{_}/matching/ng-teams` | `docs/features/F08.1_matching.md` | 348 |
 | GET | `/api/v1/teams/{_}/matching/notification-preferences` | `docs/features/F08.1_matching.md` | 354 |
 | GET | `/api/v1/teams/{_}/matching/templates` | `docs/features/F08.1_matching.md` | 356 |
@@ -1422,7 +1422,7 @@
 | GET | `/api/v1/teams/{_}/webhooks/endpoints/{_}` | `docs/features/F09.9_webhook_api.md` | 261 |
 | GET | `/api/v1/teams/{_}/webhooks/endpoints/{_}/logs` | `docs/features/F09.9_webhook_api.md` | 265 |
 | GET | `/api/v1/teams/{_}/webhooks/incoming` | `docs/features/F09.9_webhook_api.md` | 272 |
-| GET | `/api/v1/teams/{_}/workers/{_}/history` | `docs/features/F13.1_short_term_job_matching.md` | 1642 |
+| GET | `/api/v1/teams/{_}/workers/{_}/history` | `docs/features/F13.1_short_term_job_matching/README.md` | 1642 |
 | GET | `/api/v1/teams/{_}/workflow-requests` | `docs/features/F05.6_workflow_approval.md` | 387 |
 | GET | `/api/v1/teams/{_}/workflow-templates` | `docs/features/F05.6_workflow_approval.md` | 370 |
 | PATCH | `/api/v1/teams/{_}/api-keys/{_}` | `docs/features/F09.9_webhook_api.md` | 282 |
@@ -1483,7 +1483,7 @@
 | POST | `/api/v1/teams/{_}/incidents` | `docs/features/F07.6_incident_management.md` | 471 |
 | POST | `/api/v1/teams/{_}/incidents/categories` | `docs/features/F07.6_incident_management.md` | 459 |
 | POST | `/api/v1/teams/{_}/incidents/maintenance-schedules` | `docs/features/F07.6_incident_management.md` | 518 |
-| POST | `/api/v1/teams/{_}/jobbers/invite` | `docs/features/F13.1_short_term_job_matching.md` | 638 |
+| POST | `/api/v1/teams/{_}/jobbers/invite` | `docs/features/F13.1_short_term_job_matching/README.md` | 638 |
 | POST | `/api/v1/teams/{_}/matching/ng-teams` | `docs/features/F08.1_matching.md` | 349 |
 | POST | `/api/v1/teams/{_}/matching/templates` | `docs/features/F08.1_matching.md` | 357 |
 | POST | `/api/v1/teams/{_}/modules/copy-from` | `docs/features/F01.3_template_module.md` | 380 |
@@ -1632,9 +1632,9 @@
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
 | GET | `/api/v1/todos` | `docs/features/F02.5_quick_memo.md` | 1327 |
-| PATCH | `/api/v1/todos/{_}/jobber-flag` | `docs/features/F13.1_short_term_job_matching.md` | 1672 |
+| PATCH | `/api/v1/todos/{_}/jobber-flag` | `docs/features/F13.1_short_term_job_matching/README.md` | 1672 |
 | PATCH | `/api/v1/todos/{_}/status` | `docs/features/F02.3.1_todo_status_labels_and_handoff.md` | 221 |
-| POST | `/api/v1/todos/{_}/convert-to-job-posting` | `docs/features/F13.1_short_term_job_matching.md` | 462 |
+| POST | `/api/v1/todos/{_}/convert-to-job-posting` | `docs/features/F13.1_short_term_job_matching/README.md` | 462 |
 
 ### /api/v1/user-penalties/* (1 件)
 
@@ -1650,7 +1650,7 @@
 | GET | `/api/v1/users/me/contact-privacy` | `docs/features/F04.8_contact.md` | 634 |
 | GET | `/api/v1/users/me/corkboards` | `docs/features/F09.8.1_corkboard_pin_dashboard.md` | 119 |
 | GET | `/api/v1/users/me/data-export/{_}` | `docs/features/F10.1_admin_dashboard.md` | 570 |
-| GET | `/api/v1/users/me/job-notification-preferences` | `docs/features/F13.1_short_term_job_matching.md` | 1651 |
+| GET | `/api/v1/users/me/job-notification-preferences` | `docs/features/F13.1_short_term_job_matching/README.md` | 1651 |
 | GET | `/api/v1/users/me/reports` | `docs/features/F10.2_moderation.md` | 375 |
 | GET | `/api/v1/users/me/todo-status-labels` | `docs/features/F02.3.1_todo_status_labels_and_handoff.md` | 194 |
 | GET | `/api/v1/users/me/vehicles` | `docs/features/F09.3_parking.md` | 623 |
@@ -1669,7 +1669,7 @@
 | POST | `/api/v1/users/me/vehicles` | `docs/features/F09.3_parking.md` | 624 |
 | POST | `/api/v1/users/{_}/seals/regenerate` | `docs/features/F05.3_digital_seal.md` | 155 |
 | PUT | `/api/v1/users/me/contact-privacy` | `docs/features/F04.8_contact.md` | 647 |
-| PUT | `/api/v1/users/me/job-notification-preferences` | `docs/features/F13.1_short_term_job_matching.md` | 1652 |
+| PUT | `/api/v1/users/me/job-notification-preferences` | `docs/features/F13.1_short_term_job_matching/README.md` | 1652 |
 | PUT | `/api/v1/users/{_}/seals/scope-defaults` | `docs/features/F05.3_digital_seal.md` | 157 |
 
 ### /api/v1/villages/* (2 件)
@@ -1697,8 +1697,8 @@
 | メソッド | パス | 設計書 | 行 |
 |---|---|---|---|
 | POST | `/api/v1/webhooks/ses` | `docs/features/F09.6_direct_mail.md` | 349 |
-| POST | `/api/v1/webhooks/stripe/connect` | `docs/features/F13.1_short_term_job_matching.md` | 1649 |
-| POST | `/api/v1/webhooks/stripe/platform` | `docs/features/F13.1_short_term_job_matching.md` | 1650 |
+| POST | `/api/v1/webhooks/stripe/connect` | `docs/features/F13.1_short_term_job_matching/README.md` | 1649 |
+| POST | `/api/v1/webhooks/stripe/platform` | `docs/features/F13.1_short_term_job_matching/README.md` | 1650 |
 
 ### /api/v1/workflow-requests/* (3 件)
 

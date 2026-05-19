@@ -159,7 +159,7 @@ F01.3 合計内訳: 🟡 4 件（記載ぶれ）/ 🔵 13 件 / 🐞 8 件（同
 
 F09.6 合計内訳: 🟡 6 件 / 🔵 14 件 / 🐞 4 件
 
-### G. F13.1_short_term_job_matching.md（17 件）— 🔵
+### G. F13.1_short_term_job_matching/README.md（17 件）— 🔵
 
 実装: `JobController` (`/api/v1/jobs`), `JobCheckInController`, `RecruitmentTemplateController` (チーム配下) は実装あり。
 `jobs/history`, `jobbers/me`, `jobbers/invitations`, `workers/{_}/history` 等の **チームスコープ運営者向け API** は未実装（Phase 2）。
