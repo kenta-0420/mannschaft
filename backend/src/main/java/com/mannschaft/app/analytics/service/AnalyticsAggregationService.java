@@ -30,7 +30,6 @@ import com.mannschaft.app.analytics.repository.AnalyticsMonthlyCohortRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsMonthlySnapshotRepository;
 import com.mannschaft.app.analytics.service.DateRangeResolver.DateRange;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.EmailService;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import lombok.RequiredArgsConstructor;
@@ -71,7 +70,6 @@ public class AnalyticsAggregationService {
     private final AnalyticsMonthlySnapshotRepository snapshotRepository;
     private final MetricCalculationService metricCalc;
     private final DateRangeResolver dateRangeResolver;
-    private final EmailService emailService;
     private final EmailOutboxService emailOutboxService;
 
     /**

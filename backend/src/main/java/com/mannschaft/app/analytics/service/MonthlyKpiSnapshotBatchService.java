@@ -10,7 +10,6 @@ import com.mannschaft.app.analytics.repository.AnalyticsDailyRevenueRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsDailyUsersRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsMonthlySnapshotRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
-import com.mannschaft.app.common.EmailService;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -41,7 +40,6 @@ public class MonthlyKpiSnapshotBatchService {
     private final AnalyticsDailyRevenueRepository revenueRepository;
     private final AnalyticsDailyUsersRepository usersRepository;
     private final MetricCalculationService metricCalculation;
-    private final EmailService emailService;
     private final EmailOutboxService emailOutboxService;
     private final UserRoleRepository userRoleRepository;
     private final UserRepository userRepository;

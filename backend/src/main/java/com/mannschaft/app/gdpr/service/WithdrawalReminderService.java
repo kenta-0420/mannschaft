@@ -3,7 +3,6 @@ package com.mannschaft.app.gdpr.service;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
-import com.mannschaft.app.common.EmailService;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +27,6 @@ import java.util.Map;
 public class WithdrawalReminderService {
 
     private final UserRepository userRepository;
-    private final EmailService emailService;
     private final EmailOutboxService emailOutboxService;
 
     @BatchEndpoint(name = "gdpr-withdrawal-reminder-daily", description = "退会猶予期間中のユーザーへ毎日 09:00 にリマインドメールを送信する")

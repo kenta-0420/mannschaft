@@ -2,7 +2,6 @@ package com.mannschaft.app.errorreport.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.repository.UserRepository;
-import com.mannschaft.app.common.EmailService;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
@@ -34,7 +33,6 @@ public class ErrorReportWeeklySummaryService {
     private final ErrorReportRepository errorReportRepository;
     private final UserRoleRepository userRoleRepository;
     private final UserRepository userRepository;
-    private final EmailService emailService;
     private final EmailOutboxService emailOutboxService;
 
     @BatchEndpoint(name = "errorreport-weekly-summary", description = "エラーレポートの週次サマリーを毎週月曜 09:00 に SYSTEM_ADMIN へ配信する")

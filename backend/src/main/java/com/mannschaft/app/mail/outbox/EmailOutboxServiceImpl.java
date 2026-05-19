@@ -278,7 +278,8 @@ public class EmailOutboxServiceImpl implements EmailOutboxService {
                  "GDPR_EXPORT_FAILED",
                  "GDPR_WITHDRAWAL_REMINDER",
                  "RESERVATION_EMERGENCY_REMINDER",
-                 "RESERVATION_EMERGENCY_UNCONFIRMED" -> {
+                 "RESERVATION_EMERGENCY_UNCONFIRMED",
+                 "DIRECT_MAIL_AD" -> {
                 String subject = vars.get("subject");
                 String htmlBody = vars.get("body");
                 if (subject == null || htmlBody == null) {

@@ -6,7 +6,6 @@ import com.mannschaft.app.advertising.entity.AdInvoiceEntity;
 import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
 import com.mannschaft.app.advertising.repository.AdInvoiceRepository;
 import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
-import com.mannschaft.app.common.EmailService;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.notification.NotificationPriority;
@@ -30,7 +29,6 @@ public class OverdueInvoiceBatchService {
 
     private final AdInvoiceRepository adInvoiceRepository;
     private final AdvertiserAccountRepository advertiserAccountRepository;
-    private final EmailService emailService;
     private final EmailOutboxService emailOutboxService;
     private final NotificationService notificationService;
     private final UserRoleRepository userRoleRepository;

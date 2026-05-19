@@ -3,7 +3,6 @@ package com.mannschaft.app.gdpr.service;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.EmailService;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.gdpr.GdprErrorCode;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
@@ -46,7 +45,6 @@ public class DataExportService {
     private final DataExportRepository dataExportRepository;
     private final PersonalDataCollector personalDataCollector;
     private final StorageService storageService;
-    private final EmailService emailService;
     private final EmailOutboxService emailOutboxService;
     private final UserRepository userRepository;
 

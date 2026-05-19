@@ -2,7 +2,6 @@ package com.mannschaft.app.gdpr;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
-import com.mannschaft.app.common.EmailService;
 import com.mannschaft.app.gdpr.service.WithdrawalReminderService;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
@@ -33,9 +32,6 @@ class WithdrawalReminderServiceTest {
 
     @Mock
     private UserRepository userRepository;
-
-    @Mock
-    private EmailService emailService;
 
     @Mock
     private EmailOutboxService emailOutboxService;

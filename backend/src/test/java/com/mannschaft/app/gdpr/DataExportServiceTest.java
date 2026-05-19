@@ -2,7 +2,6 @@ package com.mannschaft.app.gdpr;
 
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.EmailService;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
@@ -39,9 +38,6 @@ class DataExportServiceTest {
 
     @Mock
     private StorageService storageService;
-
-    @Mock
-    private EmailService emailService;
 
     @Mock
     private EmailOutboxService emailOutboxService;

@@ -3,7 +3,6 @@ package com.mannschaft.app.reservation.service;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
-import com.mannschaft.app.common.EmailService;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.notification.NotificationPriority;
@@ -44,7 +43,6 @@ public class EmergencyClosureReminderBatchService {
     private final EmergencyClosureRepository closureRepository;
     private final UserRepository userRepository;
     private final NotificationHelper notificationHelper;
-    private final EmailService emailService;
     private final EmailOutboxService emailOutboxService;
 
     @BatchEndpoint(name = "reservation-emergency-closure-reminder", description = "臨時休業の未確認患者・送信者リマインドを 1 分毎に処理する")

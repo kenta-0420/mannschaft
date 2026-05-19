@@ -51,7 +51,6 @@ class AnalyticsAggregationServiceTest {
     @Mock private AnalyticsMonthlySnapshotRepository snapshotRepository;
     @Mock private MetricCalculationService metricCalc;
     @Mock private DateRangeResolver dateRangeResolver;
-    @Mock private com.mannschaft.app.common.EmailService emailService;
     @Mock private EmailOutboxService emailOutboxService;
     @InjectMocks private AnalyticsAggregationService service;
 
