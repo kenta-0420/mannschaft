@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { t } = useI18n()
+import type { ScheduleEventFormState, TimeHistoryEntry } from './event-form/types'
 
 interface ScopeOption {
   label: string
@@ -28,8 +28,6 @@ const emit = defineEmits<{
 const selectedScopeKey = ref<string>(
   (props.isPersonal ?? false) ? 'personal' : `${props.scopeType}_${props.scopeId}`,
 )
-
-const SCOPE_OVERFLOW = 5
 
 // ダイアログが開くたびにスコープキーを prop に合わせてリセット
 watch(
@@ -75,11 +73,6 @@ const timeOptions = Array.from({ length: 96 }, (_, i) => {
 // 入力履歴（localStorage）
 const HISTORY_KEY = 'schedule-time-history'
 
-interface TimeHistoryEntry {
-  startTime: string
-  endTime: string
-}
-
 function loadTimeHistory(): TimeHistoryEntry[] {
   if (typeof localStorage === 'undefined') return []
   try {
@@ -101,23 +94,23 @@ function saveTimeHistory(startTime: string, endTime: string) {
 
 const timeHistory = ref<TimeHistoryEntry[]>(loadTimeHistory())
 
-const form = ref({
+const form = ref<ScheduleEventFormState>({
   title: '',
   description: '',
   location: '',
-  startDate: null as Date | null,
+  startDate: null,
   startTime: '',
-  endDate: null as Date | null,
+  endDate: null,
   endTime: '',
   allDay: false,
   color: '#22c55e',
   attendanceRequired: false,
   recurrence: false,
-  recurrenceType: 'WEEKLY' as 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY',
+  recurrenceType: 'WEEKLY',
   recurrenceInterval: 1,
-  recurrenceDaysOfWeek: [] as string[],
-  recurrenceEndType: 'NEVER' as 'DATE' | 'COUNT' | 'NEVER',
-  recurrenceEndDate: null as Date | null,
+  recurrenceDaysOfWeek: [],
+  recurrenceEndType: 'NEVER',
+  recurrenceEndDate: null,
   recurrenceCount: 10,
 })
 
@@ -306,15 +299,6 @@ function resetForm() {
   fieldErrors.value = {}
 }
 
-function toggleDay(day: string) {
-  const idx = form.value.recurrenceDaysOfWeek.indexOf(day)
-  if (idx >= 0) {
-    form.value.recurrenceDaysOfWeek.splice(idx, 1)
-  } else {
-    form.value.recurrenceDaysOfWeek.push(day)
-  }
-}
-
 function close() {
   emit('update:visible', false)
   resetForm()
@@ -339,216 +323,27 @@ function close() {
   >
     <div class="flex flex-col gap-4">
       <!-- スコープ選択（複数スコープがある場合のみ表示） -->
-      <div v-if="props.scopeOptions && props.scopeOptions.length > 1" class="mb-4">
-        <label class="mb-2 block text-sm font-medium text-surface-600 dark:text-surface-300">作成先</label>
-
-        <!-- ≤5件: 横並びボタン -->
-        <div v-if="props.scopeOptions.length <= SCOPE_OVERFLOW" class="flex flex-wrap gap-2">
-          <button
-            v-for="opt in props.scopeOptions"
-            :key="opt.value"
-            type="button"
-            class="rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors"
-            :class="selectedScopeKey === opt.value
-              ? 'border-primary bg-primary/10 text-primary'
-              : 'border-surface-300 text-surface-500 hover:border-surface-400 dark:border-surface-600 dark:text-surface-400'"
-            @click="selectedScopeKey = opt.value"
-          >
-            {{ opt.label }}
-          </button>
-        </div>
-
-        <!-- 6件以上: Select ドロップダウン（単一選択） -->
-        <Select
-          v-else
-          v-model="selectedScopeKey"
-          :options="props.scopeOptions"
-          option-label="label"
-          option-value="value"
-          class="w-full"
-          :placeholder="t('schedule.filter.selectScope')"
-        />
-      </div>
-      <div>
-        <label class="mb-1 block text-sm font-medium"
-          >タイトル <span class="text-red-500">*</span></label
-        >
-        <InputText
-          v-model="form.title"
-          class="w-full"
-          :class="{ 'p-invalid': fieldErrors.title }"
-        />
-        <small v-if="fieldErrors.title" class="text-red-500">{{ fieldErrors.title }}</small>
-      </div>
-      <div class="flex items-center gap-4">
-        <div v-if="!effectiveScope.isPersonal" class="flex items-center gap-2">
-          <Checkbox v-model="form.attendanceRequired" input-id="attendance-required" :binary="true" />
-          <label for="attendance-required" class="text-sm cursor-pointer">出欠確認する</label>
-        </div>
-        <div class="flex items-center gap-2">
-          <ToggleSwitch v-model="form.allDay" />
-          <label class="text-sm">終日</label>
-        </div>
-      </div>
-      <!-- よく使う時間（履歴クイック選択） -->
-      <div v-if="timeHistory.length > 0 && !form.allDay" class="flex flex-wrap gap-1.5 mb-1">
-        <span class="text-xs text-surface-400 self-center">履歴:</span>
-        <button
-          v-for="h in timeHistory"
-          :key="`${h.startTime}-${h.endTime}`"
-          type="button"
-          class="text-xs px-2 py-0.5 rounded-full bg-surface-100 hover:bg-surface-200 dark:bg-surface-700 dark:hover:bg-surface-600 border border-surface-200 dark:border-surface-600"
-          @click="form.startTime = h.startTime; form.endTime = h.endTime"
-        >
-          {{ h.startTime }}〜{{ h.endTime }}
-        </button>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label for="schedule-start-date" class="mb-1 block text-sm font-medium">開始日</label>
-          <DatePicker v-model="form.startDate" input-id="schedule-start-date" date-format="yy/mm/dd" class="w-full" show-icon />
-        </div>
-        <div v-if="!form.allDay">
-          <label class="mb-1 block text-sm font-medium">開始時刻</label>
-          <Select
-            v-model="form.startTime"
-            :options="timeOptions"
-            option-label="label"
-            option-value="value"
-            filter
-            class="w-full"
-          />
-        </div>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label for="schedule-end-date" class="mb-1 block text-sm font-medium">終了日</label>
-          <DatePicker v-model="form.endDate" input-id="schedule-end-date" date-format="yy/mm/dd" class="w-full" show-icon />
-        </div>
-        <div v-if="!form.allDay">
-          <label class="mb-1 block text-sm font-medium">終了時刻</label>
-          <Select
-            v-model="form.endTime"
-            :options="timeOptions"
-            option-label="label"
-            option-value="value"
-            filter
-            class="w-full"
-          />
-        </div>
-      </div>
-      <div>
-        <label class="mb-1 block text-sm font-medium">場所</label>
-        <InputText v-model="form.location" class="w-full" placeholder="場所（任意）" />
-      </div>
-      <!-- 繰り返し -->
-      <div class="flex flex-col gap-3 rounded-lg border border-surface-200 dark:border-surface-600 p-3">
-        <div class="flex items-center justify-between">
-          <label class="text-sm font-medium">繰り返し</label>
-          <ToggleSwitch v-model="form.recurrence" />
-        </div>
-
-        <template v-if="form.recurrence">
-          <!-- 種別 + 間隔 -->
-          <div class="flex items-center gap-2">
-            <InputNumber
-              v-model="form.recurrenceInterval"
-              :min="1" :max="99"
-              class="w-20"
-              input-class="text-center"
-            />
-            <Select
-              v-model="form.recurrenceType"
-              :options="[
-                { label: '日ごと',  value: 'DAILY' },
-                { label: '週ごと',  value: 'WEEKLY' },
-                { label: 'ヶ月ごと', value: 'MONTHLY' },
-                { label: '年ごと',  value: 'YEARLY' },
-              ]"
-              option-label="label"
-              option-value="value"
-              class="flex-1"
-            />
-          </div>
-
-          <!-- 曜日選択（WEEKLY のみ） -->
-          <div v-if="form.recurrenceType === 'WEEKLY'" class="flex gap-1.5 flex-wrap">
-            <button
-              v-for="d in [
-                { label: '日', value: 'SUNDAY' },
-                { label: '月', value: 'MONDAY' },
-                { label: '火', value: 'TUESDAY' },
-                { label: '水', value: 'WEDNESDAY' },
-                { label: '木', value: 'THURSDAY' },
-                { label: '金', value: 'FRIDAY' },
-                { label: '土', value: 'SATURDAY' },
-              ]"
-              :key="d.value"
-              type="button"
-              class="h-8 w-8 rounded-full text-xs font-medium border transition-colors"
-              :class="form.recurrenceDaysOfWeek.includes(d.value)
-                ? 'bg-primary text-white border-primary'
-                : 'border-surface-300 dark:border-surface-600 text-surface-600 dark:text-surface-300 hover:border-primary'"
-              @click="toggleDay(d.value)"
-            >
-              {{ d.label }}
-            </button>
-          </div>
-
-          <!-- 終了条件 -->
-          <div class="flex flex-col gap-2">
-            <label class="text-xs text-surface-500">終了</label>
-            <div class="flex flex-col gap-1.5">
-              <label class="flex items-center gap-2 text-sm cursor-pointer">
-                <RadioButton v-model="form.recurrenceEndType" value="NEVER" />
-                指定なし
-              </label>
-              <label class="flex items-center gap-2 text-sm cursor-pointer">
-                <RadioButton v-model="form.recurrenceEndType" value="DATE" />
-                <span class="shrink-0">日付</span>
-                <DatePicker
-                  v-if="form.recurrenceEndType === 'DATE'"
-                  v-model="form.recurrenceEndDate"
-                  date-format="yy/mm/dd"
-                  class="flex-1"
-                  show-icon
-                />
-              </label>
-              <label class="flex items-center gap-2 text-sm cursor-pointer">
-                <RadioButton v-model="form.recurrenceEndType" value="COUNT" />
-                <span class="shrink-0">回数</span>
-                <InputNumber
-                  v-if="form.recurrenceEndType === 'COUNT'"
-                  v-model="form.recurrenceCount"
-                  :min="1" :max="365"
-                  class="w-20"
-                  input-class="text-center"
-                  suffix=" 回"
-                />
-              </label>
-            </div>
-          </div>
-        </template>
-      </div>
+      <ScheduleEventScopeSelector
+        v-if="props.scopeOptions && props.scopeOptions.length > 1"
+        v-model:selected-scope-key="selectedScopeKey"
+        :scope-options="props.scopeOptions"
+      />
+      <ScheduleEventBasicFields
+        v-model:form="form"
+        :field-errors="fieldErrors"
+        :is-personal-scope="effectiveScope.isPersonal"
+        :time-history="timeHistory"
+        :time-options="timeOptions"
+      />
+      <ScheduleEventRecurrenceInput v-model:form="form" />
       <div>
         <label class="mb-1 block text-sm font-medium">説明</label>
         <Textarea v-model="form.description" rows="3" class="w-full" />
       </div>
-      <div v-if="effectiveScope.isPersonal">
-        <label class="mb-1 block text-sm font-medium">色</label>
-        <div class="flex gap-2">
-          <button
-            v-for="c in ['#6366f1', '#ef4444', '#22c55e', '#f59e0b', '#3b82f6', '#ec4899']"
-            :key="c"
-            class="h-8 w-8 rounded-full border-2"
-            :class="
-              form.color === c ? 'border-primary ring-2 ring-primary/30' : 'border-surface-300'
-            "
-            :style="{ backgroundColor: c }"
-            @click="form.color = c"
-          />
-        </div>
-      </div>
+      <ScheduleEventColorPicker
+        v-if="effectiveScope.isPersonal"
+        v-model:color="form.color"
+      />
     </div>
     <template #footer>
       <Button label="キャンセル" text @click="close" />
