@@ -77,4 +77,21 @@ public interface ProxyInputRecordRepository extends JpaRepository<ProxyInputReco
     @Modifying
     @Query("DELETE FROM ProxyInputRecordEntity r WHERE r.subjectUserId = :userId")
     void deleteAllBySubjectUserId(@Param("userId") Long userId);
+
+    /**
+     * 孤児補正バッチ用: 退会済みユーザー（{@code users} テーブルに行が存在しない）が
+     * {@code subject_user_id} として参照されている代理入力記録を全件物理削除する。
+     *
+     * <p>{@link com.mannschaft.app.proxy.event.ProxyPurgeEventListener} の処理漏れを
+     * 夜次補正バッチ（Phase D-6）で回収するためのクエリ。</p>
+     *
+     * @return 物理削除した件数
+     */
+    @Modifying
+    @Query(value = """
+            DELETE pir FROM proxy_input_records pir
+            LEFT JOIN users u ON pir.subject_user_id = u.id
+            WHERE u.id IS NULL
+            """, nativeQuery = true)
+    int deleteOrphanBySubjectUserId();
 }
