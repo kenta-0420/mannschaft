@@ -64,7 +64,14 @@ public class ErrorReportAsyncExecutor {
      * @param requestId  MDC requestId（NULL 可、@Async 伝播されない場合のフォールバック）
      * @param severity   重要度
      */
+    // @Async("event-pool") により AOP プロキシ経由で呼ばれるため @Transactional が有効に機能する。
+    // 内部の doRecordBackendException() は self-invocation（同一インスタンス呼び出し）なので
+    // AOP プロキシを経由せず @Transactional が無視される。
+    // 本メソッドにトランザクションを開始することで doRecordBackendException() が
+    // 既存トランザクションに参加し、@Modifying な incrementOccurrence() が
+    // TransactionRequiredException を発生させずに実行される。
     @Async("event-pool")
+    @Transactional
     public void recordBackendException(Throwable ex,
                                         String pageUrl,
                                         String userAgent,

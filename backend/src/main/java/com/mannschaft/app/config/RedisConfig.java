@@ -57,7 +57,13 @@ public class RedisConfig {
                         // org.springframework.data.domain.PageImpl 等を許可
                         .allowIfSubType("org.springframework.data")
                         .build(),
-                ObjectMapper.DefaultTyping.NON_FINAL
+                // NON_FINAL はルートオブジェクト（List<T> 等）に型アノテーションを付けないため、
+                // GenericJackson2JsonRedisSerializer のデシリアライズ時に
+                // "Unexpected token (START_ARRAY)" が発生する。
+                // EVERYTHING に変更することでルートレベルを含む全オブジェクトに型情報が付加される。
+                // 注意: 変更後は既存の NON_FINAL 形式キャッシュが読めなくなるため、
+                // 本 PR 適用時に Valkey のキャッシュをフラッシュすること（redis-cli FLUSHALL）。
+                ObjectMapper.DefaultTyping.EVERYTHING
         );
 
         GenericJackson2JsonRedisSerializer jsonSerializer =
