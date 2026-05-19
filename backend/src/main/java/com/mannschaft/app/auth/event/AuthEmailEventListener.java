@@ -45,7 +45,7 @@ public class AuthEmailEventListener {
                         "verifyUrl", verifyUrl
                 ),
                 "auth",
-                String.valueOf(event.getUserId()),
+                "register:" + event.getUserId(),
                 null,
                 event.getUserId(),
                 null
