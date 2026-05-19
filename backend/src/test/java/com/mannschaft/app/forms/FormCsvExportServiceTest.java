@@ -23,6 +23,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -88,13 +89,16 @@ class FormCsvExportServiceTest {
                 .willReturn(List.of(field("formula", "計算式", FormFieldType.TEXT)));
         given(submissionRepository.findByTemplateIdOrderByCreatedAtDesc(anyLong()))
                 .willReturn(List.of(submission));
-        given(valueRepository.findBySubmissionId(anyLong())).willReturn(List.of(value));
+        // テスト用エンティティは BaseEntity の id が null のままで save されないため、any() で受ける
+        given(valueRepository.findBySubmissionId(any())).willReturn(List.of(value));
 
         String csv = csvExportService.exportSubmissionsCsv("teams", 7L, 100L, 1L);
 
-        // = で始まる値は ' で先頭エスケープされ、さらに " でクオートされる（カンマやダブルクオートを含むため）
-        // 期待: 値部分が "'=cmd|'/C calc'!A1" になる
-        assertThat(csv).contains("\"'=cmd|'/C calc'!A1\"");
+        // CSV インジェクション対策: 先頭が = の値は ' で先頭エスケープされる（RFC 4180 準拠）。
+        // 値そのものに , や " を含まないため、ダブルクオート囲みは行われない（設計書 §6 / FormCsvExportService.escapeCell）。
+        // 期待: 値部分が '=cmd|'/C calc'!A1 になる
+        assertThat(csv).contains("'=cmd|'/C calc'!A1");
+        assertThat(csv).doesNotContain("\"'=cmd|");
     }
 
     @Test

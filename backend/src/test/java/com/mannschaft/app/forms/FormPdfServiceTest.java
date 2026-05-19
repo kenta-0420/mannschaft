@@ -72,7 +72,8 @@ class FormPdfServiceTest {
         FormTemplateEntity template = template(99L);
         given(submissionRepository.findById(anyLong())).willReturn(Optional.of(submission));
         given(templateRepository.findById(anyLong())).willReturn(Optional.of(template));
-        given(fieldRepository.findByTemplateIdOrderBySortOrderAsc(anyLong())).willReturn(List.of());
+        // BaseEntity#id は @GeneratedValue で未 save なら null。anyLong() は null にマッチしないため any() を使う
+        given(fieldRepository.findByTemplateIdOrderBySortOrderAsc(any())).willReturn(List.of());
         given(valueRepository.findBySubmissionId(anyLong())).willReturn(List.of());
         given(pdfGeneratorService.generateFromTemplate(anyString(), any(Map.class))).willReturn(new byte[]{1, 2, 3});
         given(submissionRepository.save(any())).willReturn(submission);
@@ -91,7 +92,8 @@ class FormPdfServiceTest {
         FormTemplateEntity template = template(99L);
         given(submissionRepository.findById(anyLong())).willReturn(Optional.of(submission));
         given(templateRepository.findById(anyLong())).willReturn(Optional.of(template));
-        given(fieldRepository.findByTemplateIdOrderBySortOrderAsc(anyLong())).willReturn(List.of());
+        // BaseEntity#id は @GeneratedValue で未 save なら null。anyLong() は null にマッチしないため any() を使う
+        given(fieldRepository.findByTemplateIdOrderBySortOrderAsc(any())).willReturn(List.of());
         given(valueRepository.findBySubmissionId(anyLong())).willReturn(List.of());
         given(pdfGeneratorService.generateFromTemplate(anyString(), any(Map.class))).willReturn(new byte[]{1});
         given(submissionRepository.save(any())).willReturn(submission);
