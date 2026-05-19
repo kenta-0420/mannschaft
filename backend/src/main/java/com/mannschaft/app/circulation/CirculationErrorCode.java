@@ -45,7 +45,13 @@ public enum CirculationErrorCode implements ErrorCode {
     DOCUMENT_OVERDUE("CIRCULATION_011", "回覧期限を超過しています", Severity.WARN),
 
     /** 受信者が空 */
-    EMPTY_RECIPIENTS("CIRCULATION_012", "受信者を1名以上指定してください", Severity.ERROR);
+    EMPTY_RECIPIENTS("CIRCULATION_012", "受信者を1名以上指定してください", Severity.ERROR),
+
+    /** 一括処理の件数超過 */
+    BATCH_SIZE_EXCEEDED("CIRCULATION_013", "一括処理可能な件数を超過しています（最大20件）", Severity.WARN),
+
+    /** 一括処理対象が空 */
+    EMPTY_BATCH("CIRCULATION_014", "処理対象を1件以上指定してください", Severity.WARN);
 
     private final String code;
     private final String message;

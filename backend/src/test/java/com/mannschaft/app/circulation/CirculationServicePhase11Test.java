@@ -1,0 +1,333 @@
+package com.mannschaft.app.circulation;
+
+import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.circulation.dto.DocumentResponse;
+import com.mannschaft.app.circulation.dto.DocumentStatusResponse;
+import com.mannschaft.app.circulation.dto.ForceCompleteBatchResponse;
+import com.mannschaft.app.circulation.dto.RemindResponse;
+import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
+import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
+import com.mannschaft.app.circulation.repository.CirculationAttachmentRepository;
+import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
+import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
+import com.mannschaft.app.circulation.service.CirculationService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.notification.service.NotificationService;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
+/**
+ * Phase 11 第三陣 3-A で追加した {@link CirculationService} 機能の単体テスト。
+ *
+ * <ul>
+ *   <li>{@code forceCompleteDocument} - 強制完了</li>
+ *   <li>{@code forceCompleteBatch} - 一括強制完了</li>
+ *   <li>{@code remindDocument} - 手動リマインド</li>
+ *   <li>{@code duplicateDocument} - 複製</li>
+ *   <li>{@code getDocumentStatus} - 受信者押印状況一覧</li>
+ * </ul>
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("CirculationService Phase 11 第三陣 3-A 単体テスト")
+class CirculationServicePhase11Test {
+
+    @Mock
+    private CirculationDocumentRepository documentRepository;
+
+    @Mock
+    private CirculationRecipientRepository recipientRepository;
+
+    @Mock
+    private CirculationAttachmentRepository attachmentRepository;
+
+    @Mock
+    private CirculationMapper circulationMapper;
+
+    @Mock
+    private R2StorageService r2StorageService;
+
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private NotificationService notificationService;
+
+    @Mock
+    private AuditLogService auditLogService;
+
+    @InjectMocks
+    private CirculationService circulationService;
+
+    private static final Long DOCUMENT_ID = 100L;
+    private static final Long SCOPE_ID = 1L;
+    private static final Long USER_ID = 10L;
+    private static final Long ACTOR_ID = 99L;
+    private static final String SCOPE_TYPE = "TEAM";
+
+    private CirculationDocumentEntity buildDraft() {
+        return CirculationDocumentEntity.builder()
+                .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).createdBy(USER_ID)
+                .title("テスト回覧").body("本文").build();
+    }
+
+    private CirculationDocumentEntity buildActive() {
+        CirculationDocumentEntity e = buildDraft();
+        e.activate();
+        e.updateRecipientCount(3);
+        return e;
+    }
+
+    private DocumentResponse mockResponse() {
+        return new DocumentResponse(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID, USER_ID,
+                "テスト回覧", "本文", "SIMULTANEOUS", 0, "ACTIVE", "NORMAL",
+                null, false, (short) 24, "STANDARD", 3, 0, null, 0, 0,
+                null, null);
+    }
+
+    // ─────────────────────────────────────────────
+    // forceCompleteDocument
+    // ─────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("forceCompleteDocument")
+    class ForceComplete {
+
+        @Test
+        @DisplayName("ACTIVE文書_強制完了_COMPLETEDに遷移して監査ログ発火")
+        void ACTIVE文書_強制完了_正常() {
+            CirculationDocumentEntity entity = buildActive();
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
+            given(documentRepository.save(entity)).willReturn(entity);
+            given(circulationMapper.toDocumentResponse(entity)).willReturn(mockResponse());
+
+            DocumentResponse result = circulationService.forceCompleteDocument(DOCUMENT_ID, ACTOR_ID);
+
+            assertThat(result).isNotNull();
+            assertThat(entity.getStatus()).isEqualTo(CirculationStatus.COMPLETED);
+            verify(auditLogService).record(
+                    eq("CIRCULATION_FORCE_COMPLETED"), eq(ACTOR_ID), any(), any(), any(),
+                    any(), any(), any(), anyString());
+        }
+
+        @Test
+        @DisplayName("DRAFT文書_強制完了不可_INVALID_DOCUMENT_STATUS")
+        void DRAFT文書_強制完了不可() {
+            CirculationDocumentEntity entity = buildDraft();
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> circulationService.forceCompleteDocument(DOCUMENT_ID, ACTOR_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CirculationErrorCode.INVALID_DOCUMENT_STATUS));
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // forceCompleteBatch
+    // ─────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("forceCompleteBatch")
+    class ForceCompleteBatch {
+
+        @Test
+        @DisplayName("3件一括_全成功_succeeded3件_failed0件")
+        void 一括強制完了_全成功() {
+            CirculationDocumentEntity e1 = buildActive();
+            CirculationDocumentEntity e2 = buildActive();
+            CirculationDocumentEntity e3 = buildActive();
+            given(documentRepository.findById(101L)).willReturn(Optional.of(e1));
+            given(documentRepository.findById(102L)).willReturn(Optional.of(e2));
+            given(documentRepository.findById(103L)).willReturn(Optional.of(e3));
+            given(documentRepository.save(any())).willReturn(e1);
+            given(circulationMapper.toDocumentResponse(any())).willReturn(mockResponse());
+
+            ForceCompleteBatchResponse result = circulationService.forceCompleteBatch(
+                    List.of(101L, 102L, 103L), ACTOR_ID);
+
+            assertThat(result.getSucceeded()).hasSize(3);
+            assertThat(result.getFailed()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("DRAFTを含む_部分成功_failed1件")
+        void 一括強制完了_部分失敗() {
+            CirculationDocumentEntity active = buildActive();
+            CirculationDocumentEntity draft = buildDraft();
+            given(documentRepository.findById(201L)).willReturn(Optional.of(active));
+            given(documentRepository.findById(202L)).willReturn(Optional.of(draft));
+            given(documentRepository.save(any())).willReturn(active);
+            given(circulationMapper.toDocumentResponse(any())).willReturn(mockResponse());
+
+            ForceCompleteBatchResponse result = circulationService.forceCompleteBatch(
+                    List.of(201L, 202L), ACTOR_ID);
+
+            assertThat(result.getSucceeded()).containsExactly(201L);
+            assertThat(result.getFailed()).hasSize(1);
+            assertThat(result.getFailed().get(0).getErrorCode()).isEqualTo("CIRCULATION_005");
+        }
+
+        @Test
+        @DisplayName("空配列_EMPTY_BATCH例外")
+        void 一括強制完了_空配列() {
+            assertThatThrownBy(() -> circulationService.forceCompleteBatch(List.of(), ACTOR_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CirculationErrorCode.EMPTY_BATCH));
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // remindDocument
+    // ─────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("remindDocument")
+    class Remind {
+
+        @Test
+        @DisplayName("ACTIVE文書_PENDING2件_remindedCount2件")
+        void 手動リマインド_正常() {
+            CirculationDocumentEntity entity = buildActive();
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
+
+            CirculationRecipientEntity r1 = CirculationRecipientEntity.builder()
+                    .documentId(DOCUMENT_ID).userId(30L).sortOrder(0).build();
+            CirculationRecipientEntity r2 = CirculationRecipientEntity.builder()
+                    .documentId(DOCUMENT_ID).userId(31L).sortOrder(1).build();
+            given(recipientRepository.findByDocumentIdAndStatusOrderBySortOrderAsc(
+                    DOCUMENT_ID, RecipientStatus.PENDING))
+                    .willReturn(List.of(r1, r2));
+
+            RemindResponse result = circulationService.remindDocument(DOCUMENT_ID, ACTOR_ID);
+
+            assertThat(result.getRemindedCount()).isEqualTo(2);
+            verify(notificationService, times(2)).createNotification(
+                    anyLong(), eq("CIRCULATION_REMINDER"), any(), anyString(), anyString(),
+                    eq("CIRCULATION_DOCUMENT"), eq(DOCUMENT_ID), any(), anyLong(), anyString(), eq(ACTOR_ID));
+        }
+
+        @Test
+        @DisplayName("DRAFT文書_リマインド不可_INVALID_DOCUMENT_STATUS")
+        void 手動リマインド_DRAFT不可() {
+            CirculationDocumentEntity entity = buildDraft();
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> circulationService.remindDocument(DOCUMENT_ID, ACTOR_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CirculationErrorCode.INVALID_DOCUMENT_STATUS));
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // duplicateDocument
+    // ─────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("duplicateDocument")
+    class Duplicate {
+
+        @Test
+        @DisplayName("複製_新規DRAFT作成_受信者コピー_タイトル末尾コピー付与")
+        void 複製_正常() {
+            CirculationDocumentEntity source = buildActive();
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(source));
+
+            CirculationRecipientEntity r1 = CirculationRecipientEntity.builder()
+                    .documentId(DOCUMENT_ID).userId(40L).sortOrder(0).build();
+            CirculationRecipientEntity r2 = CirculationRecipientEntity.builder()
+                    .documentId(DOCUMENT_ID).userId(41L).sortOrder(1).build();
+            given(recipientRepository.findByDocumentIdOrderBySortOrderAsc(DOCUMENT_ID))
+                    .willReturn(List.of(r1, r2));
+
+            CirculationDocumentEntity newEntity = buildDraft();
+            given(documentRepository.save(any(CirculationDocumentEntity.class))).willReturn(newEntity);
+            given(circulationMapper.toDocumentResponse(any())).willReturn(mockResponse());
+
+            DocumentResponse result = circulationService.duplicateDocument(DOCUMENT_ID, ACTOR_ID);
+
+            assertThat(result).isNotNull();
+            verify(recipientRepository, times(2)).save(any(CirculationRecipientEntity.class));
+        }
+
+        @Test
+        @DisplayName("複製_元文書なし_DOCUMENT_NOT_FOUND")
+        void 複製_元文書なし() {
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> circulationService.duplicateDocument(DOCUMENT_ID, ACTOR_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CirculationErrorCode.DOCUMENT_NOT_FOUND));
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // getDocumentStatus
+    // ─────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("getDocumentStatus")
+    class Status {
+
+        @Test
+        @DisplayName("受信者2件_押印状況返却_sortOrder保持")
+        void 押印状況一覧_正常() {
+            CirculationDocumentEntity entity = buildActive();
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
+
+            CirculationRecipientEntity r1 = CirculationRecipientEntity.builder()
+                    .documentId(DOCUMENT_ID).userId(50L).sortOrder(0).build();
+            CirculationRecipientEntity r2 = CirculationRecipientEntity.builder()
+                    .documentId(DOCUMENT_ID).userId(51L).sortOrder(1).build();
+            given(recipientRepository.findByDocumentIdOrderBySortOrderAsc(DOCUMENT_ID))
+                    .willReturn(List.of(r1, r2));
+            given(userRepository.findMemberSummaryById(50L)).willReturn(Optional.empty());
+            given(userRepository.findMemberSummaryById(51L)).willReturn(Optional.empty());
+
+            DocumentStatusResponse result = circulationService.getDocumentStatus(DOCUMENT_ID);
+
+            assertThat(result.getDocumentId()).isEqualTo(DOCUMENT_ID);
+            assertThat(result.getDocumentStatus()).isEqualTo("ACTIVE");
+            assertThat(result.getRecipients()).hasSize(2);
+            assertThat(result.getRecipients().get(0).getUserId()).isEqualTo(50L);
+            assertThat(result.getRecipients().get(0).getStampStatus()).isEqualTo("PENDING");
+        }
+
+        @Test
+        @DisplayName("文書なし_DOCUMENT_NOT_FOUND")
+        void 押印状況一覧_文書なし() {
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> circulationService.getDocumentStatus(DOCUMENT_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CirculationErrorCode.DOCUMENT_NOT_FOUND));
+        }
+    }
+}
