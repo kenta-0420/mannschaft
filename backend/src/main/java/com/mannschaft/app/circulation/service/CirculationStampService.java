@@ -222,11 +222,9 @@ public class CirculationStampService {
         recipient.correctStamp();
         CirculationRecipientEntity saved = recipientRepository.save(recipient);
 
-        // 文書の押印数をデクリメント
+        // 文書の押印数をデクリメント（受け取った document インスタンスを直接ミューテートする）
         if (document.getStampedCount() > 0) {
-            document = document.toBuilder()
-                    .stampedCount(document.getStampedCount() - 1)
-                    .build();
+            document.decrementStampedCount();
             // COMPLETED から ACTIVE に戻す（再押印待ち）
             if (document.getStatus() == com.mannschaft.app.circulation.CirculationStatus.COMPLETED) {
                 document.activate();
