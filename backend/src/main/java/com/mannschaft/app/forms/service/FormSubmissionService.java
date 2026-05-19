@@ -1,12 +1,16 @@
 package com.mannschaft.app.forms.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.forms.FormErrorCode;
 import com.mannschaft.app.forms.FormFieldType;
 import com.mannschaft.app.forms.FormMapper;
 import com.mannschaft.app.forms.FormStatus;
 import com.mannschaft.app.forms.dto.CreateFormSubmissionRequest;
 import com.mannschaft.app.forms.dto.FormSubmissionResponse;
+import com.mannschaft.app.forms.dto.FormUploadUrlRequest;
+import com.mannschaft.app.forms.dto.FormUploadUrlResponse;
 import com.mannschaft.app.forms.dto.SubmissionValueRequest;
 import com.mannschaft.app.forms.dto.UpdateFormSubmissionRequest;
 import com.mannschaft.app.forms.entity.FormSubmissionEntity;
@@ -21,7 +25,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * フォーム提出サービス。提出のCRUD・ステータス遷移を担当する。
@@ -36,6 +44,31 @@ public class FormSubmissionService {
     private final FormSubmissionValueRepository valueRepository;
     private final FormTemplateService templateService;
     private final FormMapper formMapper;
+    private final StorageService storageService;
+
+    /** Pre-signed upload URL の有効期間（10 分）。設計書 §4 添付アップロード API 準拠。 */
+    private static final Duration UPLOAD_URL_TTL = Duration.ofMinutes(10);
+
+    /** 一般ファイル添付の最大サイズ（10MB）。設計書 §6 セキュリティ準拠。 */
+    private static final long FILE_MAX_BYTES = 10L * 1024 * 1024;
+
+    /** 署名 PNG の最大サイズ（500KB）。設計書 §6 セキュリティ準拠。 */
+    private static final long SIGNATURE_MAX_BYTES = 500L * 1024;
+
+    /** 添付ファイル許可 MIME（一般）。 */
+    private static final Set<String> ALLOWED_FILE_CONTENT_TYPES = Set.of(
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "image/gif",
+            "image/webp"
+    );
+
+    /** 署名画像の許可 MIME。 */
+    private static final Set<String> ALLOWED_SIGNATURE_CONTENT_TYPES = Set.of("image/png");
+
+    /** field_key が "signature" を含む場合は署名扱いとする。 */
+    private static final String SIGNATURE_FIELD_KEY_HINT = "signature";
 
     /**
      * テンプレートに紐付く提出一覧をページング取得する。
@@ -196,6 +229,46 @@ public class FormSubmissionService {
     }
 
     /**
+     * 提出を実行する（DRAFT/RETURNED → SUBMITTED 遷移）。
+     *
+     * <p>F05.7 Phase 11 第一陣: 外部 API 用エントリーポイント。
+     * 自分の提出のみ submit 可能（所有者チェック）。すでに SUBMITTED 以降の場合は INVALID_SUBMISSION_STATUS。
+     * テンプレートの submissionCount をインクリメントする。
+     * 楽観的ロック (@Version) は Entity 側で保持される。</p>
+     *
+     * @param submissionId 提出ID
+     * @param userId       ユーザーID（所有者）
+     * @return 更新された提出レスポンス
+     */
+    @Transactional
+    public FormSubmissionResponse submit(Long submissionId, Long userId) {
+        FormSubmissionEntity entity = submissionRepository.findByIdAndSubmittedBy(submissionId, userId)
+                .orElseThrow(() -> new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND));
+
+        if (!entity.isEditable()) {
+            throw new BusinessException(FormErrorCode.INVALID_SUBMISSION_STATUS);
+        }
+
+        FormTemplateEntity template = templateService.getTemplateEntity(entity.getTemplateId());
+
+        if (template.getStatus() != FormStatus.PUBLISHED) {
+            throw new BusinessException(FormErrorCode.TEMPLATE_NOT_PUBLISHED);
+        }
+
+        if (template.isDeadlinePassed()) {
+            throw new BusinessException(FormErrorCode.TEMPLATE_DEADLINE_PASSED);
+        }
+
+        entity.submit();
+        FormSubmissionEntity saved = submissionRepository.save(entity);
+        template.incrementSubmissionCount();
+        List<FormSubmissionValueEntity> values = valueRepository.findBySubmissionId(submissionId);
+
+        log.info("提出実行: submissionId={}, userId={}", submissionId, userId);
+        return formMapper.toSubmissionResponseWithValues(saved, values);
+    }
+
+    /**
      * 提出を承認する。
      *
      * @param submissionId 提出ID
@@ -282,6 +355,98 @@ public class FormSubmissionService {
     private FormSubmissionEntity findSubmissionOrThrow(Long submissionId) {
         return submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND));
+    }
+
+    /**
+     * F05.7 Phase 11 第四陣 4-B: ユーザー横断「自分の提出」一覧をページング取得する。
+     *
+     * <p>{@code GET /api/v1/me/form-submissions} 用。スコープを問わず提出者で絞り込む。</p>
+     *
+     * @param userId   ユーザー ID
+     * @param pageable ページング
+     * @return 提出レスポンスのページ
+     */
+    public Page<FormSubmissionResponse> listMySubmissions(Long userId, Pageable pageable) {
+        Page<FormSubmissionEntity> page =
+                submissionRepository.findBySubmittedByOrderByCreatedAtDesc(userId, pageable);
+        return page.map(entity -> {
+            List<FormSubmissionValueEntity> values = valueRepository.findBySubmissionId(entity.getId());
+            return formMapper.toSubmissionResponseWithValues(entity, values);
+        });
+    }
+
+    /**
+     * F05.7 Phase 11 第四陣 4-B: フォーム添付 / 署名 PNG の Pre-signed アップロード URL を発行する。
+     *
+     * <p>{@code POST /api/v1/{scopeType}/{scopeId}/form-submissions/{id}/upload-url} 用。
+     * 認可は「提出者本人 + 編集可能ステータス（DRAFT / RETURNED）」のみ通す。
+     * field_key に "signature" が含まれていれば署名扱い（最大 500KB / image/png のみ）。</p>
+     *
+     * @param scopeType     スコープ種別
+     * @param scopeId       スコープ ID
+     * @param submissionId  提出 ID
+     * @param userId        操作ユーザー ID
+     * @param request       アップロードメタ情報
+     * @return Pre-signed PUT URL + 確定 R2/S3 キー + 有効期限秒
+     * @throws BusinessException SUBMISSION_NOT_FOUND / EDIT_AFTER_SUBMIT_NOT_ALLOWED
+     *                           / UPLOAD_CONTENT_TYPE_INVALID / UPLOAD_SIZE_EXCEEDED
+     */
+    public FormUploadUrlResponse presignUploadUrl(
+            String scopeType, Long scopeId, Long submissionId, Long userId,
+            FormUploadUrlRequest request) {
+        FormSubmissionEntity entity = submissionRepository.findByIdAndSubmittedBy(submissionId, userId)
+                .orElseThrow(() -> new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND));
+
+        // 編集可能ステータス（DRAFT / RETURNED）でのみ添付追加を許可する
+        if (!entity.isEditable()) {
+            throw new BusinessException(FormErrorCode.EDIT_AFTER_SUBMIT_NOT_ALLOWED);
+        }
+
+        boolean isSignature = request.getFieldKey() != null
+                && request.getFieldKey().toLowerCase(Locale.ROOT).contains(SIGNATURE_FIELD_KEY_HINT);
+        long maxBytes = isSignature ? SIGNATURE_MAX_BYTES : FILE_MAX_BYTES;
+        Set<String> allowedTypes = isSignature ? ALLOWED_SIGNATURE_CONTENT_TYPES : ALLOWED_FILE_CONTENT_TYPES;
+
+        String normalizedType = request.getContentType() == null
+                ? "" : request.getContentType().toLowerCase(Locale.ROOT);
+        if (!allowedTypes.contains(normalizedType)) {
+            log.info("フォーム upload-url 拒否（MIME 不許可）: submissionId={}, contentType={}, isSignature={}",
+                    submissionId, request.getContentType(), isSignature);
+            throw new BusinessException(FormErrorCode.UPLOAD_CONTENT_TYPE_INVALID);
+        }
+
+        if (request.getFileSize() > maxBytes) {
+            log.info("フォーム upload-url 拒否（サイズ超過）: submissionId={}, fileSize={}, max={}",
+                    submissionId, request.getFileSize(), maxBytes);
+            throw new BusinessException(FormErrorCode.UPLOAD_SIZE_EXCEEDED);
+        }
+
+        String safeName = sanitizeFileName(request.getFileName());
+        String fileKey = String.format(
+                "forms/%s/%d/submissions/%d/%s/%s/%s",
+                scopeType, scopeId, submissionId,
+                isSignature ? "signatures" : "attachments",
+                UUID.randomUUID(), safeName);
+
+        PresignedUploadResult result = storageService.generateUploadUrl(
+                fileKey, normalizedType, UPLOAD_URL_TTL);
+        log.info("フォーム upload-url 発行: submissionId={}, userId={}, fileKey={}",
+                submissionId, userId, fileKey);
+        return new FormUploadUrlResponse(result.uploadUrl(), result.s3Key(), result.expiresInSeconds());
+    }
+
+    /**
+     * R2/S3 オブジェクトキー安全化（スラッシュ・空白・制御文字を除去）。
+     */
+    private String sanitizeFileName(String fileName) {
+        if (fileName == null || fileName.isBlank()) {
+            return "file";
+        }
+        String s = fileName.replace('\\', '/');
+        int idx = s.lastIndexOf('/');
+        if (idx >= 0) s = s.substring(idx + 1);
+        // 安全な文字以外は _ に置換
+        return s.replaceAll("[^a-zA-Z0-9._-]", "_");
     }
 
     /**

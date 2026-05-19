@@ -1,6 +1,8 @@
 package com.mannschaft.app.advertising.campaign.integration;
 
 import com.mannschaft.app.advertising.campaign.controller.AdUnsubscribePublicController;
+import com.mannschaft.app.advertising.campaign.dto.UnsubscribeResultResponse;
+import com.mannschaft.app.advertising.campaign.enums.AdChannelType;
 import com.mannschaft.app.advertising.campaign.event.AdOpenPixelTrackingEvent;
 import com.mannschaft.app.advertising.campaign.exception.AdCampaignErrorCode;
 import com.mannschaft.app.advertising.campaign.service.AdOpenPixelJwtService;
@@ -21,8 +23,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,7 +37,9 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -73,8 +79,12 @@ class AdUnsubscribePublicControllerIT {
                 unsubscribeJwtService, openPixelJwtService, preferenceService, eventPublisher);
         // GlobalExceptionHandler を紐付けて BusinessException → HttpStatus マッピングを反映する
         GlobalExceptionHandler exceptionHandler = new GlobalExceptionHandler(new StaticMessageSource());
+        // @Valid (Jakarta Bean Validation) を standalone setup でも有効化する
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.afterPropertiesSet();
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(exceptionHandler)
+                .setValidator(validator)
                 .build();
     }
 
@@ -136,6 +146,128 @@ class AdUnsubscribePublicControllerIT {
 
         mockMvc.perform(get("/api/v1/ads/unsubscribe").param("token", "old-token"))
                 .andExpect(status().isGone());
+    }
+
+    // ─────────────────────────────────────
+    // POST /api/v1/ads/unsubscribe (F09.17 残課題 4 SPA 経路)
+    // ─────────────────────────────────────
+
+    @Test
+    @DisplayName("POST 正常: JWT 有効 + channels=[EMAIL,PUSH] → 200 + result JSON + 2 channel OFF")
+    void unsubscribePostSuccess() throws Exception {
+        given(unsubscribeJwtService.verify("good-token"))
+                .willReturn(new AdUnsubscribeJwtService.UnsubscribeTokenClaims(42L, 1, "EMAIL"));
+        given(preferenceService.applyChannelUnsubscribe(
+                eq(42L),
+                eq(List.of(AdChannelType.EMAIL, AdChannelType.PUSH)),
+                eq(1)))
+                .willReturn(new UnsubscribeResultResponse(
+                        List.of(AdChannelType.EMAIL, AdChannelType.PUSH),
+                        List.of(AdChannelType.ANNOUNCEMENT, AdChannelType.BANNER),
+                        "advertising.unsubscribe_spa.success_message"));
+
+        String requestBody = """
+                {"token":"good-token","channels":["EMAIL","PUSH"]}
+                """;
+
+        mockMvc.perform(post("/api/v1/ads/unsubscribe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.disabledChannels[0]").value("EMAIL"))
+                .andExpect(jsonPath("$.disabledChannels[1]").value("PUSH"))
+                .andExpect(jsonPath("$.remainingActiveChannels[0]").value("ANNOUNCEMENT"))
+                .andExpect(jsonPath("$.remainingActiveChannels[1]").value("BANNER"))
+                .andExpect(jsonPath("$.messageKey").value("advertising.unsubscribe_spa.success_message"));
+
+        verify(preferenceService).applyChannelUnsubscribe(
+                eq(42L), eq(List.of(AdChannelType.EMAIL, AdChannelType.PUSH)), eq(1));
+    }
+
+    @Test
+    @DisplayName("POST 期限切れ JWT → 410 GONE")
+    void unsubscribePostExpired() throws Exception {
+        willThrow(new BusinessException(AdCampaignErrorCode.AD_UNSUBSCRIBE_TOKEN_EXPIRED))
+                .given(unsubscribeJwtService).verify("expired");
+
+        String requestBody = """
+                {"token":"expired","channels":["EMAIL"]}
+                """;
+
+        mockMvc.perform(post("/api/v1/ads/unsubscribe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isGone());
+
+        verify(preferenceService, never()).applyChannelUnsubscribe(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("POST token_version 不一致 → 410 GONE")
+    void unsubscribePostVersionMismatch() throws Exception {
+        given(unsubscribeJwtService.verify("old-token"))
+                .willReturn(new AdUnsubscribeJwtService.UnsubscribeTokenClaims(42L, 1, "EMAIL"));
+        willThrow(new BusinessException(AdCampaignErrorCode.AD_UNSUBSCRIBE_TOKEN_VERSION_MISMATCH))
+                .given(preferenceService)
+                .applyChannelUnsubscribe(eq(42L), eq(List.of(AdChannelType.EMAIL)), eq(1));
+
+        String requestBody = """
+                {"token":"old-token","channels":["EMAIL"]}
+                """;
+
+        mockMvc.perform(post("/api/v1/ads/unsubscribe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isGone());
+    }
+
+    @Test
+    @DisplayName("POST 改竄 JWT → 400 BAD REQUEST")
+    void unsubscribePostInvalid() throws Exception {
+        willThrow(new BusinessException(AdCampaignErrorCode.AD_UNSUBSCRIBE_TOKEN_INVALID))
+                .given(unsubscribeJwtService).verify("bogus");
+
+        String requestBody = """
+                {"token":"bogus","channels":["EMAIL"]}
+                """;
+
+        mockMvc.perform(post("/api/v1/ads/unsubscribe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest());
+
+        verify(preferenceService, never()).applyChannelUnsubscribe(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("POST channels 空配列 → 400 (Bean Validation @NotEmpty)")
+    void unsubscribePostEmptyChannels() throws Exception {
+        String requestBody = """
+                {"token":"good-token","channels":[]}
+                """;
+
+        mockMvc.perform(post("/api/v1/ads/unsubscribe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest());
+
+        verify(preferenceService, never()).applyChannelUnsubscribe(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("POST token 空文字 → 400 (Bean Validation @NotBlank)")
+    void unsubscribePostBlankToken() throws Exception {
+        String requestBody = """
+                {"token":"","channels":["EMAIL"]}
+                """;
+
+        mockMvc.perform(post("/api/v1/ads/unsubscribe")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest());
+
+        verify(preferenceService, never()).applyChannelUnsubscribe(any(), any(), any());
     }
 
     // ─────────────────────────────────────

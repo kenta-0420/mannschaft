@@ -83,7 +83,11 @@
     "unsubscribe": "Unsubscribe",
     "block_advertiser": "Block this advertiser",
     "stop_ads": "Stop receiving ads",
-    "unblock_advertiser": "Unblock"
+    "unblock_advertiser": "Unblock",
+    "export_csv": "Export CSV",
+    "view_detail": "View details",
+    "back_to_queue": "Back to review queue",
+    "reload": "Reload"
   },
   "pages": {
     "advertiser_campaign_list": {
@@ -136,7 +140,16 @@
       "block_dialog_message": "Enter the reason for blocking (it will be sent to the advertiser).",
       "block_reason_label": "Reason",
       "block_reason_placeholder": "e.g. Inappropriate wording",
-      "user_reports_section": "User reports"
+      "user_reports_section": "User reports",
+      "queue_title": "Review queue",
+      "queue_description": "Campaigns that currently need review.",
+      "filter_submitted_period": "Filter by submitted time",
+      "filter_auto_flag": "Filter by auto flag",
+      "filter_auto_flag_all": "All",
+      "filter_auto_flag_only": "Auto-flagged only",
+      "filter_auto_flag_passed": "Auto-passed only",
+      "card_advertiser": "Advertiser account ID",
+      "card_submitted_at": "Submitted at"
     },
     "settings_ad_preferences": {
       "title": "Advertising preferences",
@@ -192,6 +205,84 @@
       "delete_all_button": "Delete all history",
       "delete_all_confirm": "Are you sure you want to delete all ad history? This action cannot be undone.",
       "delete_all_success": "Ad history has been deleted."
+    },
+    "system_admin_dashboard": {
+      "title": "Ad moderation dashboard",
+      "description": "Overview of pending reviews, user reports and recent blocks.",
+      "kpi_review_pending": "Pending review",
+      "kpi_auto_flagged": "Auto-flagged",
+      "kpi_user_reports": "User reports",
+      "kpi_recent_blocks": "Blocked (last 7 days)",
+      "auto_suspend_warning": "{count} campaigns have a burst of user reports",
+      "shortcut_review_queue": "Open review queue",
+      "shortcut_user_reports": "Open user reports",
+      "load_failed": "Failed to load ad moderation data",
+      "quick_link_label": "Ad moderation"
+    },
+    "system_admin_user_reports": {
+      "title": "Ad user reports",
+      "description": "Review user reports and suspend offending campaigns if needed.",
+      "empty": "No reports to handle.",
+      "filter_reason": "Filter by reason",
+      "filter_status": "Filter by status",
+      "column_reported_at": "Reported at",
+      "column_campaign": "Campaign",
+      "column_reporter": "Reporter",
+      "column_reason": "Reason",
+      "column_status": "Status",
+      "auto_suspend_candidate": "Reports burst",
+      "auto_suspend_candidate_tooltip": "Multiple reports received in a short period — auto-suspend candidate.",
+      "go_campaign": "Open campaign"
+    },
+    "advertiser_campaign_report": {
+      "title": "Campaign performance report",
+      "description": "Aggregated delivery metrics and daily trends. Filter by period to narrow down.",
+      "field_from": "From",
+      "field_to": "To",
+      "kpi_delivered": "Delivered",
+      "kpi_opened": "Opened",
+      "kpi_clicked": "Clicked",
+      "kpi_consumed": "Consumed (JPY)",
+      "chart_title": "Daily trend",
+      "chart_delivered": "Delivered",
+      "chart_open_rate": "Open rate",
+      "chart_click_rate": "Click rate",
+      "channel_breakdown_title": "Per-channel breakdown",
+      "channel_breakdown_delivered": "Delivered",
+      "channel_breakdown_opened": "Opened",
+      "channel_breakdown_clicked": "Clicked",
+      "no_data": "No data for the selected period.",
+      "export_started": "CSV export started."
+    },
+    "unsubscribe_spa": {
+      "title": "Unsubscribe from ad emails",
+      "description": "Select the channels you would like to stop. Unchecked channels will continue to be delivered.",
+      "submit_button": "Stop selected channels",
+      "note": "This page is shown when you arrive from the unsubscribe link in an ad email. You can change these settings later from your ad preferences after logging in.",
+      "success_message": "You have unsubscribed from the selected ad channels.",
+      "done_title": "Unsubscribed",
+      "done_description": "You will no longer receive ads on the selected channels.",
+      "done_disabled_label": "Disabled channels:",
+      "done_remaining_label": "Still active channels:",
+      "done_login_hint": "You can change these settings any time from your ad preferences after logging in.",
+      "error_title": "Could not unsubscribe",
+      "error_invalid_or_expired": "This link has expired or is no longer valid. Please sign in and use the ad preferences screen instead.",
+      "error_rate_limited": "Too many requests in a short time. Please wait a moment and try again.",
+      "error_unknown": "An unexpected error occurred. Please try again shortly.",
+      "error_login_hint": "You can unsubscribe per channel from your ad preferences after logging in."
+    },
+    "system_admin_moderation_detail": {
+      "title": "Campaign review detail",
+      "section_channels": "Channel content",
+      "section_audience": "Audience segments",
+      "section_ng_words": "Detected NG words",
+      "section_logs": "Moderation log",
+      "no_ng_words": "No NG words detected.",
+      "preview_locale": "Preview locale",
+      "approve_confirm": "Approve this campaign?",
+      "block_confirm": "Block this campaign?",
+      "approved_toast": "Campaign approved.",
+      "blocked_toast": "Campaign blocked."
     }
   },
   "report_dialog": {

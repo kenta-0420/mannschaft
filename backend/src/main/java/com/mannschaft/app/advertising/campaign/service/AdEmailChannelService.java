@@ -9,8 +9,8 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.directmail.entity.DirectMailRecipientEntity;
 import com.mannschaft.app.directmail.service.DirectMailService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,15 +33,22 @@ import java.util.Optional;
  * 開封ピクセル JWT は {@link AdOpenPixelJwtService}、unsubscribe JWT は {@link AdUnsubscribeJwtService}。</p>
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class AdEmailChannelService {
 
     /** YYYY-MM (パーティショニング用 month_key) */
     private static final DateTimeFormatter MONTH_KEY_FMT = DateTimeFormatter.ofPattern("yyyy-MM");
 
-    /** Unsubscribe リンクのパス。 */
-    private static final String UNSUBSCRIBE_PATH = "/api/v1/ads/unsubscribe?token=";
+    /**
+     * Unsubscribe SPA のパス (F09.17 残課題 4)。
+     *
+     * <p>旧: {@code /api/v1/ads/unsubscribe?token=...} (バックエンド HTML 直接返却)<br>
+     * 新: {@code /ads/unsubscribe?token=...} (Nuxt SPA でチャネル選択 → POST)</p>
+     *
+     * <p>旧 URL は古いメール救済のため Controller 側で後方互換維持されている。
+     * 本サービス（新規送信）は SPA URL を採用する。</p>
+     */
+    private static final String UNSUBSCRIBE_SPA_PATH = "/ads/unsubscribe?token=";
 
     /** 開封ピクセルのパス。 */
     private static final String OPEN_PIXEL_PATH = "/api/v1/ads/pixels/open?token=";
@@ -52,6 +59,36 @@ public class AdEmailChannelService {
     private final AdUnsubscribeJwtService unsubscribeJwtService;
     private final AdOpenPixelJwtService openPixelJwtService;
     private final AdEmailDeliveryRepository deliveryRepository;
+
+    /** SPA 配信元のベース URL。{@code mannschaft.app-base-url} と統一。 */
+    private final String appBaseUrl;
+
+    public AdEmailChannelService(
+            DirectMailService directMailService,
+            UserRepository userRepository,
+            UserAdPreferenceService userAdPreferenceService,
+            AdUnsubscribeJwtService unsubscribeJwtService,
+            AdOpenPixelJwtService openPixelJwtService,
+            AdEmailDeliveryRepository deliveryRepository,
+            @Value("${mannschaft.app-base-url:http://localhost:3000}") String appBaseUrl) {
+        this.directMailService = directMailService;
+        this.userRepository = userRepository;
+        this.userAdPreferenceService = userAdPreferenceService;
+        this.unsubscribeJwtService = unsubscribeJwtService;
+        this.openPixelJwtService = openPixelJwtService;
+        this.deliveryRepository = deliveryRepository;
+        this.appBaseUrl = normalizeBaseUrl(appBaseUrl);
+    }
+
+    /**
+     * 末尾の "/" を除去して {@code base + path} 結合時の "//" 発生を防ぐ。
+     */
+    private static String normalizeBaseUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return "";
+        }
+        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    }
 
     /**
      * 1 ユーザーに 1 通のメールを配信する。
@@ -144,7 +181,8 @@ public class AdEmailChannelService {
         html.append("この広告メールは F09.17 広告配信ネットワークから送信されました。");
         if (unsubscribeJwt != null && !unsubscribeJwt.isBlank()) {
             html.append("<br><a href=\"")
-                    .append(UNSUBSCRIBE_PATH)
+                    .append(appBaseUrl)
+                    .append(UNSUBSCRIBE_SPA_PATH)
                     .append(unsubscribeJwt)
                     .append("\">配信停止</a>");
         }

@@ -63,6 +63,16 @@ public class CirculationRecipientEntity extends BaseEntity {
     @Builder.Default
     private Boolean isFlipped = false;
 
+    /** F05.2 Phase 11 第三陣 3-B: ADMIN 強制スキップ時の理由（self-skip は NULL）。 */
+    @Column(length = 255)
+    private String skipReason;
+
+    /** F05.2 Phase 11 第三陣 3-B: スキップ操作実行者の user_id（self-skip は NULL）。 */
+    private Long skippedBy;
+
+    /** F05.2 Phase 11 第三陣 3-B: スキップ実行日時。 */
+    private LocalDateTime skippedAt;
+
     /**
      * 押印する。
      *
@@ -81,10 +91,40 @@ public class CirculationRecipientEntity extends BaseEntity {
     }
 
     /**
-     * スキップする。
+     * 押印を訂正する（受信者本人による）。
+     *
+     * <p>F05.2 Phase 11 第三陣 3-B: 押印済みの受信者が自分の押印を訂正する。
+     * status は PENDING に戻り、再押印を促す。訂正前のスナップショットは
+     * {@code CirculationStampCorrectionLogEntity} に記録される。</p>
+     */
+    public void correctStamp() {
+        this.status = RecipientStatus.PENDING;
+        this.stampedAt = null;
+        this.sealId = null;
+        this.sealVariant = null;
+        this.tiltAngle = 0;
+        this.isFlipped = false;
+    }
+
+    /**
+     * スキップする（受信者本人によるセルフスキップ）。
      */
     public void skip() {
         this.status = RecipientStatus.SKIPPED;
+        this.skippedAt = LocalDateTime.now();
+    }
+
+    /**
+     * ADMIN による強制スキップを実行する。
+     *
+     * @param adminUserId スキップ操作を行った ADMIN の user_id
+     * @param reason      スキップ理由
+     */
+    public void adminSkip(Long adminUserId, String reason) {
+        this.status = RecipientStatus.SKIPPED;
+        this.skipReason = reason;
+        this.skippedBy = adminUserId;
+        this.skippedAt = LocalDateTime.now();
     }
 
     /**

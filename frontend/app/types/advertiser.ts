@@ -8,11 +8,34 @@ export type CreditLimitRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 export type ReportFrequency = 'WEEKLY' | 'MONTHLY'
 export type CampaignStatus = 'DRAFT' | 'PENDING_REVIEW' | 'ACTIVE' | 'PAUSED' | 'ENDED'
 
+/**
+ * スコープ種別（backend {@code ScopeType}）。
+ *
+ * <p>F09.17 Phase 11-d-1〜d-3 で導入。広告主アカウントは組織またはチームのいずれかの
+ * スコープに所属するように再設計された。</p>
+ */
+export type ScopeType = 'ORGANIZATION' | 'TEAM'
+
 // === Account ===
 
+/**
+ * 広告主アカウントレスポンス。
+ *
+ * <p>F09.17 Phase 11-d-2 で {@code scopeType}/{@code scopeId} を追加。
+ * 既存 {@code organizationId} は後方互換のため optional として残置されており、
+ * {@code scope_type=ORGANIZATION} の場合のみ非 null。Phase 11-e 完了後に削除予定。</p>
+ */
 export interface AdvertiserAccountResponse {
   id: number
-  organizationId: number
+  /** F09.17 Phase 11-d-2: スコープ種別（必須）。 */
+  scopeType: ScopeType
+  /** F09.17 Phase 11-d-2: スコープ ID（必須）。 */
+  scopeId: number
+  /**
+   * 旧スコープ参照（Phase 11-e 削除予定）。
+   * {@code scope_type=ORGANIZATION} の場合のみ非 null。{@code TEAM} の場合は null。
+   */
+  organizationId?: number | null
   status: AdvertiserAccountStatus
   companyName: string
   contactEmail: string
@@ -22,9 +45,20 @@ export interface AdvertiserAccountResponse {
   createdAt: string
 }
 
+/**
+ * 広告主アカウント詳細レスポンス（SYSTEM_ADMIN 用）。
+ *
+ * <p>{@code organizationName} を含むのは組織スコープに限り、チームスコープでは
+ * Phase 11-e 以降で {@code scopeName} 等へ統合されるまで暫定的に空文字となる想定。</p>
+ */
 export interface AdvertiserAccountDetailResponse {
   id: number
-  organizationId: number
+  /** F09.17 Phase 11-d-2: スコープ種別（必須）。 */
+  scopeType: ScopeType
+  /** F09.17 Phase 11-d-2: スコープ ID（必須）。 */
+  scopeId: number
+  /** 旧スコープ参照（Phase 11-e 削除予定）。 */
+  organizationId?: number | null
   organizationName: string
   status: AdvertiserAccountStatus
   companyName: string

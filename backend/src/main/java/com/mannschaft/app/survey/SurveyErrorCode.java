@@ -57,7 +57,25 @@ public enum SurveyErrorCode implements ErrorCode {
     REMIND_COOLDOWN_NOT_ELAPSED("SURVEY_015", "前回の督促から24時間経過していません", Severity.WARN),
 
     /** 督促回数の上限到達（F05.4 督促 API） */
-    REMIND_QUOTA_EXCEEDED("SURVEY_016", "督促の上限回数（3回）に達しました", Severity.WARN);
+    REMIND_QUOTA_EXCEEDED("SURVEY_016", "督促の上限回数（3回）に達しました", Severity.WARN),
+
+    /** 締切延長で短縮を試みた（F05.4 extend） */
+    INVALID_NEW_DEADLINE("SURVEY_017", "延長後の締切は現在の締切より後である必要があります", Severity.WARN),
+
+    /** 匿名アンケートの個別回答取得不可（F05.4 responses/{userId}） */
+    ANONYMOUS_RESPONSE_FORBIDDEN("SURVEY_018", "匿名アンケートの個別回答は取得できません", Severity.WARN),
+
+    /** 個別回答の閲覧権限なし（F05.4 responses/{userId}） */
+    RESPONSE_ACCESS_DENIED("SURVEY_019", "個別回答を閲覧する権限がありません", Severity.WARN),
+
+    /** 指定ユーザーが未回答（F05.4 responses/{userId}） */
+    USER_RESPONSE_NOT_FOUND("SURVEY_020", "指定ユーザーの回答が見つかりません", Severity.WARN),
+
+    /** シリーズに該当するアンケートが存在しない（F05.4 series/{id}/comparison） */
+    SERIES_NOT_FOUND("SURVEY_021", "指定シリーズに該当するアンケートが見つかりません", Severity.WARN),
+
+    /** 操作権限なし（F05.4 extend/duplicate 共通） */
+    OPERATION_PERMISSION_DENIED("SURVEY_022", "この操作を実行する権限がありません", Severity.WARN);
 
     private final String code;
     private final String message;

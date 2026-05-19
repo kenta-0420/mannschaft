@@ -25,10 +25,13 @@ import com.mannschaft.app.survey.repository.SurveyQuestionRepository;
 import com.mannschaft.app.survey.repository.SurveyResponseRepository;
 import com.mannschaft.app.survey.repository.SurveyResultViewerRepository;
 import com.mannschaft.app.survey.repository.SurveyTargetRepository;
+import com.mannschaft.app.survey.repository.SurveyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.format.DateTimeFormatter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -47,6 +50,10 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class SurveyResultService {
 
+    /** CSV エクスポート時の匿名性保証のための最小回答者数（5名未満は集計マスク）。 */
+    private static final int MIN_RESPONDENTS_FOR_DETAIL_EXPORT = 5;
+
+    private final SurveyRepository surveyRepository;
     private final SurveyQuestionRepository questionRepository;
     private final SurveyOptionRepository optionRepository;
     private final SurveyResponseRepository responseRepository;
@@ -178,6 +185,137 @@ public class SurveyResultService {
             }
         }
         return result;
+    }
+
+    /**
+     * 集計結果と全回答の生データを CSV として返す（F05.4 §4.5 results/export）。
+     *
+     * <p>認可: ADMIN+ / 作成者 / {@code survey_result_viewers} 登録者。
+     * 匿名アンケート（{@code is_anonymous=true}）の場合は「回答者」列を「匿名」と表示する。
+     * 5名未満の場合は匿名性保証のため詳細データをマスクし、集計サマリのみ返す。</p>
+     *
+     * <p>BOM 付き UTF-8 で出力し、Excel での文字化けを防ぐ。</p>
+     *
+     * @param scopeType     スコープ種別
+     * @param scopeId       スコープ ID
+     * @param surveyId      対象アンケート ID
+     * @param currentUserId 操作実行者ユーザー ID
+     * @return CSV バイト列（BOM 付き UTF-8）
+     */
+    public byte[] exportResultsCsv(String scopeType, Long scopeId, Long surveyId, Long currentUserId) {
+        SurveyEntity survey = surveyRepository.findByIdAndScopeTypeAndScopeId(surveyId, scopeType, scopeId)
+                .orElseThrow(() -> new BusinessException(SurveyErrorCode.SURVEY_NOT_FOUND));
+
+        // 認可
+        boolean isCreator = survey.getCreatedBy() != null && survey.getCreatedBy().equals(currentUserId);
+        boolean isAdmin = accessControlService.isAdminOrAbove(
+                currentUserId, survey.getScopeId(), survey.getScopeType());
+        boolean isViewer = resultViewerRepository.existsBySurveyIdAndUserId(surveyId, currentUserId);
+        if (!isAdmin && !isCreator && !isViewer) {
+            throw new BusinessException(SurveyErrorCode.RESULT_ACCESS_DENIED);
+        }
+
+        List<SurveyQuestionEntity> questions =
+                questionRepository.findBySurveyIdOrderByDisplayOrderAsc(surveyId);
+        long uniqueRespondents = responseRepository.countDistinctUsersBySurveyId(surveyId);
+        boolean isAnonymous = Boolean.TRUE.equals(survey.getIsAnonymous());
+        boolean maskDetails = uniqueRespondents < MIN_RESPONDENTS_FOR_DETAIL_EXPORT;
+
+        StringBuilder sb = new StringBuilder();
+        // BOM 付き UTF-8 のため、先頭に "﻿" を付ける（後で getBytes(UTF_8)）
+        sb.append('﻿');
+
+        if (maskDetails) {
+            // 5名未満: 集計サマリのみ
+            sb.append("項目,値\n");
+            sb.append("アンケート名,").append(escape(survey.getTitle())).append('\n');
+            sb.append("回答者数,").append(uniqueRespondents).append('\n');
+            sb.append("注記,匿名性保証のため5名未満の場合は集計詳細を表示していません\n");
+            return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+
+        // ヘッダー行: 回答日時, 回答者, Q1_..., Q2_..., ...
+        sb.append("回答日時,回答者");
+        for (SurveyQuestionEntity q : questions) {
+            sb.append(',').append(escape("Q" + q.getDisplayOrder() + "_" + q.getQuestionText()));
+        }
+        sb.append('\n');
+
+        // 回答者ごとに行を構築
+        List<SurveyResponseEntity> allResponses =
+                responseRepository.findBySurveyIdOrderByCreatedAtAsc(surveyId);
+        Map<Long, List<SurveyResponseEntity>> byUser = allResponses.stream()
+                .collect(Collectors.groupingBy(SurveyResponseEntity::getUserId));
+
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+        for (Map.Entry<Long, List<SurveyResponseEntity>> entry : byUser.entrySet()) {
+            Long uid = entry.getKey();
+            List<SurveyResponseEntity> userResponses = entry.getValue();
+            java.time.LocalDateTime respondedAt = userResponses.get(0).getCreatedAt();
+            sb.append(respondedAt != null ? respondedAt.format(fmt) : "").append(',');
+
+            // 回答者カラム
+            if (isAnonymous) {
+                sb.append("匿名");
+            } else {
+                UserEntity u = userRepository.findById(uid).orElse(null);
+                String name = u != null
+                        ? ((u.getLastName() != null ? u.getLastName() : "") + " "
+                           + (u.getFirstName() != null ? u.getFirstName() : "")).trim()
+                        : "";
+                sb.append(escape(name));
+            }
+
+            // 設問ごとの回答
+            Map<Long, List<SurveyResponseEntity>> byQuestion = userResponses.stream()
+                    .collect(Collectors.groupingBy(SurveyResponseEntity::getQuestionId));
+            for (SurveyQuestionEntity q : questions) {
+                sb.append(',');
+                List<SurveyResponseEntity> qResponses = byQuestion.getOrDefault(q.getId(), List.of());
+                sb.append(escape(formatAnswerForCsv(q, qResponses)));
+            }
+            sb.append('\n');
+        }
+
+        log.info("アンケート結果 CSV エクスポート: surveyId={}, rows={}, by={}",
+                surveyId, byUser.size(), currentUserId);
+        return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    /**
+     * 設問単位の回答を CSV セル用文字列にフォーマットする。
+     */
+    private String formatAnswerForCsv(SurveyQuestionEntity question, List<SurveyResponseEntity> responses) {
+        if (responses.isEmpty()) {
+            return "";
+        }
+        if (question.getQuestionType() == QuestionType.SINGLE_CHOICE
+                || question.getQuestionType() == QuestionType.MULTIPLE_CHOICE) {
+            List<String> labels = new ArrayList<>();
+            for (SurveyResponseEntity r : responses) {
+                if (r.getOptionId() != null) {
+                    optionRepository.findById(r.getOptionId())
+                            .ifPresent(o -> labels.add(o.getOptionText()));
+                }
+            }
+            return String.join(",", labels);
+        }
+        // FREE_TEXT / SCALE は最初の textResponse を使用
+        return responses.get(0).getTextResponse() != null ? responses.get(0).getTextResponse() : "";
+    }
+
+    /**
+     * CSV セルとしてエスケープする（カンマ・改行・ダブルクォート対応）。
+     */
+    private String escape(String input) {
+        if (input == null) {
+            return "";
+        }
+        boolean needsQuote = input.contains(",") || input.contains("\n")
+                || input.contains("\r") || input.contains("\"");
+        String escaped = input.replace("\"", "\"\"");
+        return needsQuote ? "\"" + escaped + "\"" : escaped;
     }
 
     /**

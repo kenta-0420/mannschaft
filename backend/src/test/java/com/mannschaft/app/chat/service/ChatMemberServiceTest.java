@@ -8,6 +8,7 @@ import com.mannschaft.app.chat.dto.AddMemberRequest;
 import com.mannschaft.app.chat.dto.ChangeRoleRequest;
 import com.mannschaft.app.chat.dto.ChannelSettingsRequest;
 import com.mannschaft.app.chat.dto.MemberResponse;
+import com.mannschaft.app.chat.dto.UpdateMyChannelSettingsRequest;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
@@ -219,6 +220,85 @@ class ChatMemberServiceTest {
 
             // then
             assertThat(result).isEqualTo(expected);
+        }
+    }
+
+    // ========================================
+    // updateMySettings (F04.2 Phase 11 第二陣 2-β)
+    // ========================================
+    @Nested
+    @DisplayName("updateMySettings (Phase 11 2-β)")
+    class UpdateMySettings {
+
+        @Test
+        @DisplayName("正常系: 自分のミュート・ピン・カテゴリを更新できる")
+        void 自分の個人設定を更新できる() {
+            // given
+            ChatChannelMemberEntity member = createMember(ChannelMemberRole.MEMBER);
+            UpdateMyChannelSettingsRequest req = new UpdateMyChannelSettingsRequest();
+            req.setIsMuted(true);
+            req.setIsPinned(true);
+            req.setCategory("プロジェクト");
+            MemberResponse expected = new MemberResponse(1L, CHANNEL_ID, USER_ID, "MEMBER",
+                    0, null, true, true, "プロジェクト", null);
+
+            given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID))
+                    .willReturn(Optional.of(member));
+            given(memberRepository.save(any(ChatChannelMemberEntity.class))).willReturn(member);
+            given(chatMapper.toMemberResponse(any(ChatChannelMemberEntity.class))).willReturn(expected);
+
+            // when
+            MemberResponse result = chatMemberService.updateMySettings(CHANNEL_ID, USER_ID, req);
+
+            // then
+            assertThat(result).isEqualTo(expected);
+            assertThat(member.getIsMuted()).isTrue();
+            assertThat(member.getIsPinned()).isTrue();
+            assertThat(member.getCategory()).isEqualTo("プロジェクト");
+        }
+
+        @Test
+        @DisplayName("正常系: 指定したフィールドのみ更新される（PATCH セマンティクス）")
+        void 指定したフィールドのみ更新される() {
+            // given
+            ChatChannelMemberEntity member = createMember(ChannelMemberRole.MEMBER);
+            // 元値: isPinned=true / category="既存"
+            member.setPinned(true);
+            member.updateCategory("既存カテゴリ");
+
+            UpdateMyChannelSettingsRequest req = new UpdateMyChannelSettingsRequest();
+            req.setIsMuted(true); // muted のみ指定
+
+            given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID))
+                    .willReturn(Optional.of(member));
+            given(memberRepository.save(any(ChatChannelMemberEntity.class))).willReturn(member);
+            given(chatMapper.toMemberResponse(any(ChatChannelMemberEntity.class)))
+                    .willReturn(new MemberResponse(1L, CHANNEL_ID, USER_ID, "MEMBER",
+                            0, null, true, true, "既存カテゴリ", null));
+
+            // when
+            chatMemberService.updateMySettings(CHANNEL_ID, USER_ID, req);
+
+            // then
+            assertThat(member.getIsMuted()).isTrue();
+            assertThat(member.getIsPinned()).isTrue(); // 既存値が温存される
+            assertThat(member.getCategory()).isEqualTo("既存カテゴリ");
+        }
+
+        @Test
+        @DisplayName("異常系: 自分がチャンネルメンバーでない場合は MEMBER_NOT_FOUND")
+        void メンバーでない場合は例外() {
+            // given
+            UpdateMyChannelSettingsRequest req = new UpdateMyChannelSettingsRequest();
+            req.setIsMuted(true);
+            given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> chatMemberService.updateMySettings(CHANNEL_ID, USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ChatErrorCode.MEMBER_NOT_FOUND));
         }
     }
 

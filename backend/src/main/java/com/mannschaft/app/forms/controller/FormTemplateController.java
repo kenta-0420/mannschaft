@@ -142,4 +142,22 @@ public class FormTemplateController {
         templateService.deleteTemplate(scopeType, scopeId, templateId);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * F05.7 Phase 11 第四陣 4-B: テンプレートを複製する。
+     *
+     * <p>名称末尾に「(コピー)」を付与した DRAFT 状態の新規テンプレートを生成する。
+     * フィールド定義も全て複製する。</p>
+     */
+    @PostMapping("/{templateId}/duplicate")
+    @Operation(summary = "テンプレート複製", description = "DRAFT 状態の新規テンプレートを生成（フィールドも複製）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "複製成功")
+    public ResponseEntity<ApiResponse<FormTemplateResponse>> duplicateTemplate(
+            @PathVariable String scopeType,
+            @PathVariable Long scopeId,
+            @PathVariable Long templateId) {
+        FormTemplateResponse response = templateService.duplicateTemplate(
+                scopeType, scopeId, templateId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
 }

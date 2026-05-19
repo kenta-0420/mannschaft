@@ -1,7 +1,7 @@
 package com.mannschaft.app.auth.event;
 
-import com.mannschaft.app.common.EmailService;
-import com.mannschaft.app.common.EmailTemplateRenderer;
+import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
+import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,12 +10,17 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-import java.util.Locale;
+import java.util.Map;
 
 /**
  * 認証メール送信イベントリスナー。
- * SES v2 経由でメール認証・パスワードリセットメールを送信する。
- * Thymeleaf テンプレートと 6 言語の properties を使い、ロケール別にメール本文を生成する。
+ *
+ * <p>Phase 18-b 移行: 直接 SES に投げる代わりに F09.18 メール配信基盤
+ * ({@link EmailOutboxService#enqueue}) に投入する。テンプレートレンダリングは
+ * Worker 側で実施するため、ここでは payload に必要な変数のみを詰める。</p>
+ *
+ * <p>locale は当面 ja 固定。{@link UserRegisteredEvent} 等にロケールフィールドが
+ * 追加されたら切り替える (将来拡張)。</p>
  */
 @Slf4j
 @Component
@@ -25,41 +30,66 @@ public class AuthEmailEventListener {
     @Value("${mannschaft.email.frontend-url:http://localhost:3000}")
     private String frontendUrl;
 
-    private final EmailService emailService;
-    private final EmailTemplateRenderer emailTemplateRenderer;
+    private final EmailOutboxService emailOutboxService;
 
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleUserRegistered(UserRegisteredEvent event) {
         String verifyUrl = frontendUrl + "/verify-email?token=" + event.getRawToken();
-        // ユーザーのロケールが取れない場合は日本語をデフォルトとする
-        Locale locale = Locale.JAPANESE;
-        String subject = emailTemplateRenderer.resolveMessage("email.verification.subject", locale);
-        String htmlBody = emailTemplateRenderer.renderVerificationEmail(event.getDisplayName(), verifyUrl, locale);
-        log.info("認証メール送信開始: to={}", event.getEmail());
-        emailService.sendEmail(event.getEmail(), subject, htmlBody);
+        emailOutboxService.enqueue(new EmailOutboxRequest(
+                "VERIFICATION",
+                "ja",
+                event.getEmail(),
+                Map.of(
+                        "displayName", event.getDisplayName() != null ? event.getDisplayName() : "",
+                        "verifyUrl", verifyUrl
+                ),
+                "auth",
+                String.valueOf(event.getUserId()),
+                null,
+                event.getUserId(),
+                null
+        ));
+        log.info("認証メール enqueue 完了: to={}, userId={}", event.getEmail(), event.getUserId());
     }
 
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleEmailVerificationResent(EmailVerificationResentEvent event) {
         String verifyUrl = frontendUrl + "/verify-email?token=" + event.getRawToken();
-        Locale locale = Locale.JAPANESE;
-        String subject = emailTemplateRenderer.resolveMessage("email.verification.subject", locale);
-        // 再送時は displayName が取れないため、空文字で代替する
-        String htmlBody = emailTemplateRenderer.renderVerificationEmail("", verifyUrl, locale);
-        log.info("認証メール再送信開始: to={}", event.getEmail());
-        emailService.sendEmail(event.getEmail(), subject, htmlBody);
+        // 再送時は displayName が取れないため空文字、ソースイベントは「再送ごとに新規 nonce」で衝突回避
+        emailOutboxService.enqueue(new EmailOutboxRequest(
+                "VERIFICATION",
+                "ja",
+                event.getEmail(),
+                Map.of(
+                        "displayName", "",
+                        "verifyUrl", verifyUrl
+                ),
+                "auth",
+                "resent:" + event.getUserId() + ":" + System.nanoTime(),
+                null,
+                event.getUserId(),
+                null
+        ));
+        log.info("認証メール再送 enqueue 完了: to={}, userId={}", event.getEmail(), event.getUserId());
     }
 
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePasswordResetRequested(PasswordResetRequestedEvent event) {
         String resetUrl = frontendUrl + "/reset-password?token=" + event.getRawToken();
-        Locale locale = Locale.JAPANESE;
-        String subject = emailTemplateRenderer.resolveMessage("email.passwordReset.subject", locale);
-        String htmlBody = emailTemplateRenderer.renderPasswordResetEmail(resetUrl, locale);
-        log.info("パスワードリセットメール送信開始: to={}", event.getEmail());
-        emailService.sendEmail(event.getEmail(), subject, htmlBody);
+        emailOutboxService.enqueue(new EmailOutboxRequest(
+                "PASSWORD_RESET",
+                "ja",
+                event.getEmail(),
+                Map.of("resetUrl", resetUrl),
+                "auth",
+                "pwreset:" + event.getUserId() + ":" + System.nanoTime(),
+                null,
+                event.getUserId(),
+                null
+        ));
+        log.info("パスワードリセットメール enqueue 完了: to={}, userId={}", event.getEmail(), event.getUserId());
     }
 }

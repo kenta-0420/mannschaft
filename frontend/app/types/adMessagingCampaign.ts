@@ -11,6 +11,15 @@
 
 // === Enums ===
 
+/**
+ * スコープ種別（backend {@code ScopeType}）。
+ *
+ * <p>F09.17 Phase 11-d-1〜d-3 で導入。広告主アカウントおよびメッセージ型キャンペーンは
+ * 組織またはチームのいずれかのスコープに所属する。フロント側は URL パスでスコープを
+ * 表現し、composable はこの値で base URL を組み立てる。</p>
+ */
+export type ScopeType = 'ORGANIZATION' | 'TEAM'
+
 /** キャンペーン状態（backend {@code AdCampaignStatus}） */
 export type AdMessagingCampaignStatus =
   | 'DRAFT'
@@ -240,8 +249,13 @@ export interface AdMessagingCampaignAudienceConfigRequest {
 
 // === List parameters ===
 
+/**
+ * 一覧 API のクエリパラメータ。
+ *
+ * <p>F09.17 Phase 11-d-3 で scope ベース URL 化されたため、{@code scopeType}/{@code scopeId}
+ * は URL パス側で表現する。本型はクエリ条件 (status / page / size / sort) のみを表す。</p>
+ */
 export interface AdMessagingCampaignListParams {
-  organizationId: number
   status?: AdMessagingCampaignStatus
   page?: number
   size?: number

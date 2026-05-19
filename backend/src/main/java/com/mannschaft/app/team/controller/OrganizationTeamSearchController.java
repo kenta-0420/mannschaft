@@ -38,9 +38,11 @@ import java.util.Set;
  * <p>このコントローラは <strong>未ログインアクセス可</strong>（permitAll）であり、
  * 権限スコープを明確化するため既存 {@code TeamController} から分離した実装。
  *
- * <p>レート制限は {@link com.mannschaft.app.team.filter.PublicTeamApiRateLimitFilter}
+ * <p>レート制限は {@link com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter}
  * が担う（未ログイン 30 req/min/IP・ログイン 120 req/min/user）。
- * ※ Phase 5-α でフィルタクラスをリネーム済み（旧名: {@code OrganizationTeamSearchRateLimitFilter}）。
+ * ※ クラス名遷移: {@code OrganizationTeamSearchRateLimitFilter}
+ *   → F15.4 Phase 5-α {@code PublicTeamApiRateLimitFilter}
+ *   → F19.1 Phase 1 {@link com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter}。
  */
 @RestController
 @RequestMapping("/api/v1/organizations/{orgId}/teams")

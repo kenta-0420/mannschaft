@@ -45,6 +45,9 @@ class FormSubmissionServiceTest {
     @Mock
     private FormMapper formMapper;
 
+    @Mock
+    private com.mannschaft.app.common.storage.StorageService storageService;
+
     @InjectMocks
     private FormSubmissionService formSubmissionService;
 
@@ -238,6 +241,89 @@ class FormSubmissionServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FormErrorCode.SUBMISSION_NOT_FOUND));
+        }
+    }
+
+    /**
+     * F05.7 Phase 11 第一陣 A 分類: 外部 API 用 submit のテスト。
+     */
+    @Nested
+    @DisplayName("submit (Phase 11 外部 API)")
+    class Submit {
+
+        @Test
+        @DisplayName("提出実行_DRAFT_SUBMITTED遷移成功")
+        void 提出実行_DRAFT_SUBMITTED遷移成功() {
+            // Given
+            FormSubmissionEntity entity = createDraftSubmission();
+            FormTemplateEntity template = createPublishedTemplate();
+            given(submissionRepository.findByIdAndSubmittedBy(SUBMISSION_ID, USER_ID))
+                    .willReturn(Optional.of(entity));
+            given(templateService.getTemplateEntity(TEMPLATE_ID)).willReturn(template);
+            given(submissionRepository.save(entity)).willReturn(entity);
+            given(valueRepository.findBySubmissionId(SUBMISSION_ID)).willReturn(List.of());
+            FormSubmissionResponse stub = new FormSubmissionResponse(
+                    SUBMISSION_ID, TEMPLATE_ID, SCOPE_TYPE, SCOPE_ID,
+                    "SUBMITTED", USER_ID, null, null, 1, 0L,
+                    null, null, List.of());
+            given(formMapper.toSubmissionResponseWithValues(entity, List.of()))
+                    .willReturn(stub);
+
+            // When
+            FormSubmissionResponse response = formSubmissionService.submit(SUBMISSION_ID, USER_ID);
+
+            // Then
+            assertThat(response).isNotNull();
+            assertThat(entity.getStatus()).isEqualTo(SubmissionStatus.SUBMITTED);
+            assertThat(template.getSubmissionCount()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("提出実行_提出未存在_FORM_002")
+        void 提出実行_提出未存在_FORM_002() {
+            // Given
+            given(submissionRepository.findByIdAndSubmittedBy(SUBMISSION_ID, USER_ID))
+                    .willReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> formSubmissionService.submit(SUBMISSION_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FormErrorCode.SUBMISSION_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("提出実行_既にSUBMITTED_FORM_005")
+        void 提出実行_既にSUBMITTED_FORM_005() {
+            // Given
+            FormSubmissionEntity entity = createSubmittedSubmission();
+            given(submissionRepository.findByIdAndSubmittedBy(SUBMISSION_ID, USER_ID))
+                    .willReturn(Optional.of(entity));
+
+            // When & Then
+            assertThatThrownBy(() -> formSubmissionService.submit(SUBMISSION_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FormErrorCode.INVALID_SUBMISSION_STATUS));
+        }
+
+        @Test
+        @DisplayName("提出実行_テンプレート未公開_FORM_006")
+        void 提出実行_テンプレート未公開_FORM_006() {
+            // Given
+            FormSubmissionEntity entity = createDraftSubmission();
+            FormTemplateEntity template = FormTemplateEntity.builder()
+                    .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).name("休暇届").createdBy(1L).build();
+            // publish() 呼ばず DRAFT のまま
+            given(submissionRepository.findByIdAndSubmittedBy(SUBMISSION_ID, USER_ID))
+                    .willReturn(Optional.of(entity));
+            given(templateService.getTemplateEntity(TEMPLATE_ID)).willReturn(template);
+
+            // When & Then
+            assertThatThrownBy(() -> formSubmissionService.submit(SUBMISSION_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FormErrorCode.TEMPLATE_NOT_PUBLISHED));
         }
     }
 }

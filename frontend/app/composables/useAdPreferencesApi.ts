@@ -1,6 +1,8 @@
 import type {
   UserAdPreferences,
   UpdateAdPreferencesRequest,
+  UnsubscribeRequest,
+  UnsubscribeResultResponse,
 } from '~/types/adPreferences'
 
 /**
@@ -29,9 +31,23 @@ export function useAdPreferencesApi() {
     return updatePreferences({ rotateUnsubscribeTokens: true })
   }
 
+  /**
+   * F09.17 残課題 4 — 公開 unsubscribe SPA からのチャネル選択 OFF。
+   *
+   * <p>このエンドポイントは認証不要（JWT による本人特定）。{@code useApi} 経由で呼ぶと
+   * Authorization ヘッダが未ログイン時には付かないだけなので、認証不要ページからも使用可能。</p>
+   */
+  async function submitUnsubscribe(body: UnsubscribeRequest) {
+    return api<UnsubscribeResultResponse>('/api/v1/ads/unsubscribe', {
+      method: 'POST',
+      body,
+    })
+  }
+
   return {
     getPreferences,
     updatePreferences,
     rotateUnsubscribeTokens,
+    submitUnsubscribe,
   }
 }

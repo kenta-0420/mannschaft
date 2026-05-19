@@ -7,12 +7,14 @@ import com.mannschaft.app.circulation.dto.CreateAttachmentRequest;
 import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
 import com.mannschaft.app.circulation.service.CirculationService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -80,5 +82,25 @@ public class CirculationAttachmentController {
         CirculationAttachmentPresignResponse response =
                 circulationService.presignAttachmentUpload(documentId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 添付ファイルを削除する（DRAFT 段階のみ）。
+     *
+     * <p>F05.2 Phase 11 第三陣 3-B: 文書作成者が DRAFT 状態の添付を削除する。
+     * R2 オブジェクトはベストエフォートで削除し、監査ログ
+     * {@code CIRCULATION_ATTACHMENT_DELETED} を発火する。</p>
+     */
+    @DeleteMapping("/{attachmentId}")
+    @Operation(summary = "添付ファイル削除（DRAFT のみ）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    public ResponseEntity<Void> deleteAttachment(
+            @PathVariable Long documentId,
+            @PathVariable Long attachmentId) {
+        CirculationDocumentEntity doc = circulationService.findDocumentById(documentId);
+        circulationService.removeAttachment(
+                doc.getScopeType(), doc.getScopeId(), documentId, attachmentId,
+                SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
     }
 }

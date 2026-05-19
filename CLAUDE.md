@@ -334,6 +334,18 @@ user.softDelete();       // deleted_at をセット
 // → 統計・履歴の価値を保持しつつ個人情報を保護（GDPR対応）
 ```
 
+**PII 消去のタイミング（2026-05-18 改訂 / マスター御裁可 §13.12）:**
+
+PII（個人識別情報）の消去は **GDPR Art.17 の 30 日タイムリミット内であれば段階的実施を許容する**。
+退会フローは「即時消去対象（弱匿名化）」と「猶予対象（強匿名化）」の二段モデルを採用する。
+
+| 区分 | 対象ドメイン | タイミング | 根拠 |
+|---|---|---|---|
+| **即時消去（弱匿名化）** | 通知・カレンダー連携・天気設定・お気に入り 等の「再設定で復旧可能」かつ「個人特定リスクが残る」データ | `requestWithdrawal` 受付直後（`UserAnonymizedEvent` 即時発火）| 退会撤回時は再設定で対応可。漏洩リスクを最小化 |
+| **猶予対象（強匿名化）** | auth（OAuth/2FA）・social・village 所有権・scopefolder 等の「復旧不可能」または「業務整合性に重大影響」のあるデータ | `requestWithdrawal` 受付から最大 30 日後（`AccountPurgeService` バッチ）| 退会撤回ウィンドウを保持しつつ GDPR Art.17 を遵守 |
+
+設計詳細: [`docs/architecture/withdrawal_flow_immediate_anonymization_fix.md`](docs/architecture/withdrawal_flow_immediate_anonymization_fix.md) §1.3 / §13.12（PR #793 main マージ済）。
+
 #### 5. @Transactional はドメイン内に閉じる
 `@Transactional` メソッドが複数ドメインのRepositoryをまたぐ場合は設計を見直す。
 やむを得ずまたぐ場合はコメントで理由を明記し、将来のイベント駆動化候補として記録する。

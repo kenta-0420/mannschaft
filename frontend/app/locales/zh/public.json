@@ -1,0 +1,64 @@
+{
+  "public": {
+    "layout": {
+      "skipToContent": "本文へスキップ",
+      "login": "ログイン",
+      "register": "新規登録",
+      "siteName": "Mannschaft",
+      "openMenu": "メニューを開く"
+    },
+    "team": {
+      "title": "{name} - 公開ページ",
+      "memberCount": "{n}人のメンバー",
+      "memberCountLabel": "メンバー数",
+      "philosophyTitle": "理念",
+      "mapTitle": "地図",
+      "homepageLabel": "公式サイト",
+      "establishedAt": "設立: {date}"
+    },
+    "organization": {
+      "title": "{name} - 公開ページ",
+      "philosophyTitle": "理念",
+      "mapTitle": "地図",
+      "homepageLabel": "公式サイト",
+      "establishedAt": "設立: {date}"
+    },
+    "posts": {
+      "sectionTitle": "公開投稿",
+      "empty": "公開された投稿はまだありません",
+      "loading": "読み込み中...",
+      "readMore": "続きを読む",
+      "publishedAt": "公開: {date}",
+      "backToList": "一覧に戻る",
+      "totalCount": "全 {n} 件",
+      "page": "{page} / {total}",
+      "next": "次へ",
+      "prev": "前へ"
+    },
+    "author": {
+      "anonymous": "投稿者",
+      "member": "メンバー",
+      "organizer": "主催者",
+      "anonymousAvatarAlt": "投稿者（匿名表示）"
+    },
+    "cta": {
+      "join": "このチームに参加する",
+      "joinOrganization": "この組織に参加する",
+      "login": "ログインしてもっと見る",
+      "register": "新規登録",
+      "ctaHeading": "Mannschaft に参加しませんか？",
+      "ctaDescription": "メンバーになると、チームメンバーや活動内容をすべて閲覧できます。"
+    },
+    "error": {
+      "notFound": "指定されたページは存在しないか、公開されていません",
+      "notFoundTitle": "ページが見つかりません",
+      "loadFailed": "情報の取得に失敗しました",
+      "rateLimit": "アクセスが集中しています。しばらく経ってから再度お試しください",
+      "backToHome": "トップへ戻る"
+    },
+    "meta": {
+      "ogDescriptionDefault": "Mannschaft の公開ページ",
+      "ogSiteName": "Mannschaft"
+    }
+  }
+}

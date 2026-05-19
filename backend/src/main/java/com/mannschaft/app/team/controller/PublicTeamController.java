@@ -19,8 +19,9 @@ import org.springframework.web.bind.annotation.RestController;
  * 既存 {@link TeamController#getTeam(Long)}（{@code GET /api/v1/teams/{id}}、認証必須）
  * とは独立した分離型エンドポイントとして提供する。
  *
- * <p>レート制限は {@link com.mannschaft.app.team.filter.PublicTeamApiRateLimitFilter}
+ * <p>レート制限は {@link com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter}
  * が担う（未ログイン 60 req/min/IP・ログイン 200 req/min/user）。
+ * 旧名: {@code com.mannschaft.app.team.filter.PublicTeamApiRateLimitFilter}（F19.1 Phase 1 でリネーム）。
  *
  * <p>権限分岐:
  * <ul>

@@ -19,6 +19,7 @@ import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignCha
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRepository;
 import com.mannschaft.app.advertising.service.AdvertiserAccountService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.domain.ScopeType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -93,6 +94,8 @@ class AdMessagingCampaignTransitionServiceTest {
         AdMessagingCampaign campaign = AdMessagingCampaign.builder()
                 .advertiserAccountId(ADVERTISER_ID)
                 .organizationId(ORG_ID)
+                .scopeType(ScopeType.ORGANIZATION)
+                .scopeId(ORG_ID)
                 .name("テストキャンペーン")
                 .status(status)
                 .totalBudgetYen(50_000L)
@@ -135,7 +138,7 @@ class AdMessagingCampaignTransitionServiceTest {
     @DisplayName("submit: AUTO_PASS 結果なら status=REVIEW + moderation_status=AUTO_PASSED")
     void submit_AUTO_PASS_REVIEWに遷移() {
         AdMessagingCampaign draft = buildCampaign(AdCampaignStatus.DRAFT);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(draft));
         given(channelRepository.findByCampaignId(campaignId)).willReturn(List.of(buildChannel()));
         given(segmentRepository.findByCampaignId(campaignId)).willReturn(List.of(buildSegment()));
@@ -156,7 +159,7 @@ class AdMessagingCampaignTransitionServiceTest {
     @DisplayName("submit: AUTO_FLAGGED 結果でも status=REVIEW に遷移（人間レビュー待ち）")
     void submit_AUTO_FLAGGED_REVIEWに遷移() {
         AdMessagingCampaign draft = buildCampaign(AdCampaignStatus.DRAFT);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(draft));
         given(channelRepository.findByCampaignId(campaignId)).willReturn(List.of(buildChannel()));
         given(segmentRepository.findByCampaignId(campaignId)).willReturn(List.of(buildSegment()));
@@ -175,7 +178,7 @@ class AdMessagingCampaignTransitionServiceTest {
     @DisplayName("submit: AUTO_BLOCK 結果なら status=BLOCKED を維持 (REVIEW へ遷移しない)")
     void submit_AUTO_BLOCK_BLOCKEDのまま() {
         AdMessagingCampaign draft = buildCampaign(AdCampaignStatus.DRAFT);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(draft));
         given(channelRepository.findByCampaignId(campaignId)).willReturn(List.of(buildChannel()));
         given(segmentRepository.findByCampaignId(campaignId)).willReturn(List.of(buildSegment()));
@@ -197,7 +200,7 @@ class AdMessagingCampaignTransitionServiceTest {
     @DisplayName("submit: status=DRAFT 以外は AD_CAMPAIGN_INVALID_STATE")
     void submit_DRAFT以外は不正() {
         AdMessagingCampaign review = buildCampaign(AdCampaignStatus.REVIEW);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(review));
 
         assertThatThrownBy(() -> service.submit(campaignId, ORG_ID, REQUESTER_USER_ID))
@@ -211,7 +214,7 @@ class AdMessagingCampaignTransitionServiceTest {
     @DisplayName("submit: チャネル未登録は AD_CHANNEL_REQUIRED")
     void submit_チャネルなしは拒否() {
         AdMessagingCampaign draft = buildCampaign(AdCampaignStatus.DRAFT);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(draft));
         given(channelRepository.findByCampaignId(campaignId)).willReturn(List.of());
 
@@ -225,7 +228,7 @@ class AdMessagingCampaignTransitionServiceTest {
     @DisplayName("submit: セグメント未登録は AD_AUDIENCE_INVALID")
     void submit_セグメントなしは拒否() {
         AdMessagingCampaign draft = buildCampaign(AdCampaignStatus.DRAFT);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(draft));
         given(channelRepository.findByCampaignId(campaignId)).willReturn(List.of(buildChannel()));
         given(segmentRepository.findByCampaignId(campaignId)).willReturn(List.of());
@@ -244,7 +247,7 @@ class AdMessagingCampaignTransitionServiceTest {
     @DisplayName("cancel: DRAFT → CANCELLED")
     void cancel_DRAFTから成功() {
         AdMessagingCampaign draft = buildCampaign(AdCampaignStatus.DRAFT);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(draft));
 
         service.cancel(campaignId, ORG_ID, REQUESTER_USER_ID);
@@ -256,7 +259,7 @@ class AdMessagingCampaignTransitionServiceTest {
     @DisplayName("cancel: REVIEW → CANCELLED")
     void cancel_REVIEWから成功() {
         AdMessagingCampaign review = buildCampaign(AdCampaignStatus.REVIEW);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(review));
 
         service.cancel(campaignId, ORG_ID, REQUESTER_USER_ID);
@@ -268,7 +271,7 @@ class AdMessagingCampaignTransitionServiceTest {
     @DisplayName("cancel: DELIVERING など対象外は AD_CAMPAIGN_INVALID_STATE")
     void cancel_対象外状態は拒否() {
         AdMessagingCampaign delivering = buildCampaign(AdCampaignStatus.DELIVERING);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(delivering));
 
         assertThatThrownBy(() -> service.cancel(campaignId, ORG_ID, REQUESTER_USER_ID))
@@ -286,7 +289,7 @@ class AdMessagingCampaignTransitionServiceTest {
     void launch_開始時刻到達済なら配信中() {
         AdMessagingCampaign approved = buildCampaign(
                 AdCampaignStatus.APPROVED, AdModerationStatus.APPROVED, LocalDateTime.now().minusHours(1));
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(approved));
         given(advertiserAccountService.canAcceptNewCampaign(ADVERTISER_ID, 50_000L)).willReturn(true);
 
@@ -300,7 +303,7 @@ class AdMessagingCampaignTransitionServiceTest {
     void launch_開始時刻未来ならスケジュール() {
         AdMessagingCampaign approved = buildCampaign(
                 AdCampaignStatus.APPROVED, AdModerationStatus.APPROVED, LocalDateTime.now().plusDays(1));
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(approved));
         given(advertiserAccountService.canAcceptNewCampaign(ADVERTISER_ID, 50_000L)).willReturn(true);
 
@@ -314,7 +317,7 @@ class AdMessagingCampaignTransitionServiceTest {
     void launch_creditLimit超過() {
         AdMessagingCampaign approved = buildCampaign(
                 AdCampaignStatus.APPROVED, AdModerationStatus.APPROVED, LocalDateTime.now().minusHours(1));
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(approved));
         given(advertiserAccountService.canAcceptNewCampaign(ADVERTISER_ID, 50_000L)).willReturn(false);
 
@@ -330,7 +333,7 @@ class AdMessagingCampaignTransitionServiceTest {
     @DisplayName("launch: status=APPROVED 以外は AD_CAMPAIGN_INVALID_STATE")
     void launch_APPROVED以外は拒否() {
         AdMessagingCampaign draft = buildCampaign(AdCampaignStatus.DRAFT);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(draft));
 
         assertThatThrownBy(() -> service.launch(campaignId, ORG_ID, REQUESTER_USER_ID))
@@ -347,7 +350,7 @@ class AdMessagingCampaignTransitionServiceTest {
     @DisplayName("pause: DELIVERING → PAUSED")
     void pause_配信中から一時停止() {
         AdMessagingCampaign delivering = buildCampaign(AdCampaignStatus.DELIVERING);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(delivering));
 
         service.pause(campaignId, ORG_ID, REQUESTER_USER_ID);
@@ -359,7 +362,7 @@ class AdMessagingCampaignTransitionServiceTest {
     @DisplayName("pause: DELIVERING 以外は AD_CAMPAIGN_INVALID_STATE")
     void pause_DELIVERING以外は拒否() {
         AdMessagingCampaign approved = buildCampaign(AdCampaignStatus.APPROVED);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(approved));
 
         assertThatThrownBy(() -> service.pause(campaignId, ORG_ID, REQUESTER_USER_ID))
@@ -372,7 +375,7 @@ class AdMessagingCampaignTransitionServiceTest {
     @DisplayName("resume: PAUSED → DELIVERING (credit_limit OK)")
     void resume_credit十分なら配信再開() {
         AdMessagingCampaign paused = buildCampaign(AdCampaignStatus.PAUSED);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(paused));
         given(advertiserAccountService.canAcceptNewCampaign(ADVERTISER_ID, 50_000L)).willReturn(true);
 
@@ -385,7 +388,7 @@ class AdMessagingCampaignTransitionServiceTest {
     @DisplayName("resume: credit_limit 不足は AD_CAMPAIGN_CREDIT_EXCEEDED で PAUSED 維持")
     void resume_credit不足ならPAUSEDまま() {
         AdMessagingCampaign paused = buildCampaign(AdCampaignStatus.PAUSED);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(paused));
         given(advertiserAccountService.canAcceptNewCampaign(ADVERTISER_ID, 50_000L)).willReturn(false);
 
@@ -400,7 +403,7 @@ class AdMessagingCampaignTransitionServiceTest {
     @DisplayName("resume: PAUSED 以外は AD_CAMPAIGN_INVALID_STATE")
     void resume_PAUSED以外は拒否() {
         AdMessagingCampaign delivering = buildCampaign(AdCampaignStatus.DELIVERING);
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.of(delivering));
 
         assertThatThrownBy(() -> service.resume(campaignId, ORG_ID, REQUESTER_USER_ID))
@@ -416,7 +419,7 @@ class AdMessagingCampaignTransitionServiceTest {
     @Test
     @DisplayName("submit: テナント越境は AD_CAMPAIGN_NOT_FOUND (IDOR 対策)")
     void テナント越境は404扱い() {
-        given(campaignRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(campaignId, ORG_ID))
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
                 .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.submit(campaignId, ORG_ID, REQUESTER_USER_ID))

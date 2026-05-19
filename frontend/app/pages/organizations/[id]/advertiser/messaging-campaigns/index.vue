@@ -3,12 +3,17 @@
 import type {
   AdMessagingCampaignListItem,
   AdMessagingCampaignStatus,
+  ScopeType,
 } from '~/types/adMessagingCampaign'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
 const orgId = Number(route.params.id)
+// F09.17 Phase 11-d-3: 組織配下ページは scope='ORGANIZATION' 固定で composable を呼ぶ。
+// チーム配下ページ (pages/teams/[id]/advertiser/*) は 11-d-4 で別途追加予定。
+const scopeType: ScopeType = 'ORGANIZATION'
+const scopeId = orgId
 const { t } = useI18n()
 const api = useAdMessagingCampaignApi()
 
@@ -52,7 +57,11 @@ async function load() {
   loading.value = true
   try {
     const status = activeTab.value === 'ALL' ? undefined : activeTab.value
-    const res = await api.listCampaigns(orgId, { status, page: page.value, size: size.value })
+    const res = await api.listCampaigns(scopeType, scopeId, {
+      status,
+      page: page.value,
+      size: size.value,
+    })
     items.value = res.data
     totalElements.value = res.meta.totalElements
   }

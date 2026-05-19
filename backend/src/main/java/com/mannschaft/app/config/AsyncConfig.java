@@ -45,6 +45,33 @@ public class AsyncConfig {
     }
 
     /**
+     * 退会フロー専用スレッドプール（Phase W-A 前提インフラ）。
+     *
+     * <p>退会即時匿名化（{@code UserAnonymizedEvent}）配下の 9 ドメインリスナーを
+     * {@code event-pool} から物理分離するための専用プール。退会バースト時に
+     * Webhook 配信・通知配信などの他機能を圧迫することを防ぐ。</p>
+     *
+     * <p>設計根拠: {@code docs/architecture/withdrawal_flow_immediate_anonymization_fix.md}
+     * §13.10（マスター御裁可 2026-05-18: A + B 両方採用）。
+     * {@code @Async("withdrawal-pool")} を退会経路リスナーに指定して切替える運用とする。</p>
+     *
+     * <p>サイジング: corePoolSize=2 / maxPoolSize=10 / queueCapacity=100 で
+     * 想定退会同時実行 100 件をキャパに収める。1 退会あたり 9 ドメイン × 数百 ms
+     * を見込み、ピーク 10 並列で吸収する。</p>
+     */
+    @Bean("withdrawal-pool")
+    public Executor withdrawalPoolExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(10);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("withdrawal-");
+        executor.setTaskDecorator(new MdcTaskDecorator());
+        executor.initialize();
+        return executor;
+    }
+
+    /**
      * バッチジョブ用スレッドプール。
      * 定期実行タスクや重い処理に使用する。
      */

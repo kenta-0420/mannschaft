@@ -599,3 +599,4 @@ zh / ko / es / de は Phase β 着手時に翻訳。初版はすべて ja と同
 | 2026-05-18 | 検分修正反映 #2: 🔴 重大発見 — `withdrawUser()` は呼出ゼロ・`UserAnonymizedEvent` 発火実績ゼロ・9 リスナー全休眠中 → §2.1 表に 🔴 明示、§10.10 別軍議起票事項として新設 | 殿（殿検分 verify）|
 | 2026-05-18 | 検分修正反映 #3: §10 に 5 件追記（10.11 指名先承諾欠如 / 10.12 archive 不可逆性 / 10.13 Phase α 上限期間 / 10.14 退会バースト時通知枯渇 / 10.15 findLastAdminScopes EXPLAIN）+ §9 親設計書反映 PR に `ROLE_001→ROLE_004` 訂正項目追加 | 殿（家老検分反映）|
 | 2026-05-18 | マスター「よきにはからえ」一括裁定反映: §10.10 を「PR #793 で根治治療」として解決済化。§10 全項目について家老推奨案採用 + 殿の安全側裁定を §10 ヘッダに明記（β リリース前法務レビュー必須化 / Phase α 上限 6 ヶ月 / SYSTEM_ADMIN force-unarchive 新設）。残論点ゼロ・出陣可能状態 | 殿（マスター御裁可反映）|
+| 2026-05-18 | **Phase α-1 実装 PR `_TBD_` で `RoleService#removeMemberWithoutAdminCheck` 安全弁メソッド追加**（`checkLastAdmin` バイパス版、`MembershipChangedEvent(REMOVED)` 発火、UT 3 件）。呼出元（`RolePurgeEventListener`）は Phase B-1 / α-2 で配線予定 | 足軽（Phase α-1）|

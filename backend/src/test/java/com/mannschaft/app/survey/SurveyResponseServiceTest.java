@@ -1,17 +1,23 @@
 package com.mannschaft.app.survey;
 
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.survey.dto.SubmitResponseRequest;
 import com.mannschaft.app.survey.dto.SurveyResponseEntry;
+import com.mannschaft.app.survey.dto.UserResponseDetailResponse;
 import com.mannschaft.app.survey.entity.SurveyEntity;
 import com.mannschaft.app.survey.entity.SurveyQuestionEntity;
 import com.mannschaft.app.survey.entity.SurveyResponseEntity;
+import com.mannschaft.app.survey.repository.SurveyOptionRepository;
 import com.mannschaft.app.survey.repository.SurveyQuestionRepository;
 import com.mannschaft.app.survey.repository.SurveyRepository;
 import com.mannschaft.app.survey.repository.SurveyResponseRepository;
+import com.mannschaft.app.survey.repository.SurveyResultViewerRepository;
 import com.mannschaft.app.survey.repository.SurveyTargetRepository;
 import com.mannschaft.app.survey.service.SurveyResponseService;
 import com.mannschaft.app.survey.service.SurveyService;
@@ -58,6 +64,12 @@ class SurveyResponseServiceTest {
     private SurveyTargetRepository targetRepository;
 
     @Mock
+    private SurveyOptionRepository optionRepository;
+
+    @Mock
+    private SurveyResultViewerRepository resultViewerRepository;
+
+    @Mock
     private SurveyMapper surveyMapper;
 
     @Mock
@@ -68,6 +80,12 @@ class SurveyResponseServiceTest {
 
     @Mock
     private ProxyInputRecordRepository proxyInputRecordRepository;
+
+    @Mock
+    private AccessControlService accessControlService;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private SurveyResponseService surveyResponseService;
@@ -410,6 +428,109 @@ class SurveyResponseServiceTest {
 
             // Then
             verify(proxyInputRecordRepository, never()).save(any(ProxyInputRecordEntity.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("getResponseByUser")
+    class GetResponseByUser {
+
+        @Test
+        @DisplayName("匿名アンケート_ANONYMOUS_RESPONSE_FORBIDDEN")
+        void 匿名アンケート_ANONYMOUS_RESPONSE_FORBIDDEN() {
+            // Given
+            SurveyEntity survey = SurveyEntity.builder()
+                    .scopeType("TEAM").scopeId(1L).title("匿名")
+                    .isAnonymous(true).createdBy(USER_ID).build();
+            survey.publish();
+            given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
+
+            // When & Then
+            assertThatThrownBy(() -> surveyResponseService.getResponseByUser(SURVEY_ID, 99L, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(SurveyErrorCode.ANONYMOUS_RESPONSE_FORBIDDEN));
+        }
+
+        @Test
+        @DisplayName("権限なし_RESPONSE_ACCESS_DENIED")
+        void 権限なし_RESPONSE_ACCESS_DENIED() {
+            // Given
+            Long otherUser = 999L;
+            SurveyEntity survey = SurveyEntity.builder()
+                    .scopeType("TEAM").scopeId(1L).title("非匿名")
+                    .isAnonymous(false).createdBy(USER_ID).build();
+            survey.publish();
+            given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
+            given(accessControlService.isAdminOrAbove(otherUser, 1L, "TEAM")).willReturn(false);
+            given(resultViewerRepository.existsBySurveyIdAndUserId(SURVEY_ID, otherUser)).willReturn(false);
+
+            // When & Then
+            assertThatThrownBy(() -> surveyResponseService.getResponseByUser(SURVEY_ID, 99L, otherUser))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(SurveyErrorCode.RESPONSE_ACCESS_DENIED));
+        }
+
+        @Test
+        @DisplayName("未回答ユーザー_USER_RESPONSE_NOT_FOUND")
+        void 未回答ユーザー_USER_RESPONSE_NOT_FOUND() {
+            // Given
+            Long targetUser = 50L;
+            SurveyEntity survey = SurveyEntity.builder()
+                    .scopeType("TEAM").scopeId(1L).title("非匿名")
+                    .isAnonymous(false).createdBy(USER_ID).build();
+            survey.publish();
+            given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
+            // 作成者はアクセス可
+            given(responseRepository.findBySurveyIdAndUserId(SURVEY_ID, targetUser))
+                    .willReturn(List.of());
+
+            // When & Then
+            assertThatThrownBy(() -> surveyResponseService.getResponseByUser(SURVEY_ID, targetUser, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(SurveyErrorCode.USER_RESPONSE_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("作成者として取得_成功")
+        void 作成者として取得_成功() {
+            // Given
+            Long targetUser = 50L;
+            SurveyEntity survey = SurveyEntity.builder()
+                    .scopeType("TEAM").scopeId(1L).title("非匿名")
+                    .isAnonymous(false).createdBy(USER_ID).build();
+            survey.publish();
+
+            SurveyQuestionEntity q = SurveyQuestionEntity.builder()
+                    .id(10L).surveyId(SURVEY_ID)
+                    .questionType(QuestionType.FREE_TEXT)
+                    .questionText("自由記述")
+                    .isRequired(false).displayOrder(1).build();
+            SurveyResponseEntity r = SurveyResponseEntity.builder()
+                    .id(1L).surveyId(SURVEY_ID).questionId(10L)
+                    .userId(targetUser).textResponse("回答内容").build();
+            UserEntity user = org.mockito.Mockito.mock(UserEntity.class);
+            given(user.getLastName()).willReturn("田中");
+            given(user.getFirstName()).willReturn("太郎");
+
+            given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
+            given(responseRepository.findBySurveyIdAndUserId(SURVEY_ID, targetUser))
+                    .willReturn(List.of(r));
+            given(questionRepository.findBySurveyIdOrderByDisplayOrderAsc(SURVEY_ID))
+                    .willReturn(List.of(q));
+            given(userRepository.findById(targetUser)).willReturn(Optional.of(user));
+
+            // When
+            UserResponseDetailResponse result =
+                    surveyResponseService.getResponseByUser(SURVEY_ID, targetUser, USER_ID);
+
+            // Then
+            assertThat(result.surveyId()).isEqualTo(SURVEY_ID);
+            assertThat(result.answers()).hasSize(1);
+            assertThat(result.answers().get(0).answerText()).isEqualTo("回答内容");
+            assertThat(result.user().displayName()).isEqualTo("田中 太郎");
         }
     }
 }

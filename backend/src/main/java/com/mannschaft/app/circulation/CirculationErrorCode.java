@@ -45,7 +45,31 @@ public enum CirculationErrorCode implements ErrorCode {
     DOCUMENT_OVERDUE("CIRCULATION_011", "回覧期限を超過しています", Severity.WARN),
 
     /** 受信者が空 */
-    EMPTY_RECIPIENTS("CIRCULATION_012", "受信者を1名以上指定してください", Severity.ERROR);
+    EMPTY_RECIPIENTS("CIRCULATION_012", "受信者を1名以上指定してください", Severity.ERROR),
+
+    /** 一括処理の件数超過 (Phase 11 3-A) */
+    BATCH_SIZE_EXCEEDED("CIRCULATION_013", "一括処理可能な件数を超過しています（最大20件）", Severity.WARN),
+
+    /** 一括処理対象が空 (Phase 11 3-A) */
+    EMPTY_BATCH("CIRCULATION_014", "処理対象を1件以上指定してください", Severity.WARN),
+
+    /** 訂正可能期間（押印後 24h）を超過 (Phase 11 3-B) */
+    CORRECTION_WINDOW_EXPIRED("CIRCULATION_015", "押印訂正は押印後24時間以内のみ可能です", Severity.WARN),
+
+    /** 訂正は押印済みの場合のみ (Phase 11 3-B) */
+    NOT_STAMPED_CANNOT_CORRECT("CIRCULATION_016", "押印していないため訂正できません", Severity.WARN),
+
+    /** 委任者は自分自身を代理人に指定できない (Phase 11 3-B) */
+    SELF_DELEGATION_NOT_ALLOWED("CIRCULATION_017", "自分自身に委任することはできません", Severity.WARN),
+
+    /** 既に有効な委任が存在する (Phase 11 3-B) */
+    DELEGATION_ALREADY_EXISTS("CIRCULATION_018", "この文書には既に委任が登録されています", Severity.WARN),
+
+    /** ADMIN 権限が必要 (Phase 11 3-B) */
+    ADMIN_REQUIRED("CIRCULATION_019", "この操作には管理者権限が必要です", Severity.WARN),
+
+    /** 添付削除は DRAFT のみ可能 (Phase 11 3-B) */
+    ATTACHMENT_NOT_DELETABLE("CIRCULATION_020", "添付ファイルの削除は下書き状態のみ可能です", Severity.WARN);
 
     private final String code;
     private final String message;

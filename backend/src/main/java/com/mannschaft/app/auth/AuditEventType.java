@@ -262,6 +262,15 @@ public enum AuditEventType {
     /** F17.1 Phase 3-β-E — 村ニュースレター opt-out（ユーザー自身の操作）。 */
     VILLAGE_NEWSLETTER_OPT_OUT(AuditEventCategory.VILLAGE),
 
+    // ─── FORM (F05.7 書類テンプレート・フォームビルダー) ──────────
+    /** F05.7 Phase 11 第四陣 4-B — フォーム提出 PDF を生成（Thymeleaf + Flying Saucer + R2 アップロード）。 */
+    FORM_PDF_GENERATED(AuditEventCategory.FORM),
+    /** F05.7 Phase 11 第四陣 4-B — テンプレート単位の未提出者リマインドを送信。 */
+    FORM_TEMPLATE_REMIND(AuditEventCategory.FORM),
+    /** F05.7 Phase 11 第四陣 4-B — テンプレートを複製。 */
+    FORM_TEMPLATE_DUPLICATED(AuditEventCategory.FORM),
+    /** F05.7 Phase 11 第四陣 4-B — 提出一覧 CSV をエクスポート。 */
+    FORM_SUBMISSIONS_CSV_EXPORTED(AuditEventCategory.FORM),
     // ─── SHIFT (F03.5 シフト管理) ──────────────────────────────
     /** 管理者がシフト希望未提出者に手動でリマインドを送信した。 */
     SHIFT_MANUAL_REMINDER_SENT(AuditEventCategory.SHIFT),
@@ -270,7 +279,23 @@ public enum AuditEventType {
     /** 組織内チーム検索 API がレート制限に到達した（429 応答）。 */
     TEAM_SEARCH_RATE_LIMITED(AuditEventCategory.SECURITY_RATE_LIMIT),
     /** F15.4 Phase 5-α: 店舗詳細 Public API がレート制限に到達した（429 応答）。 */
-    PUBLIC_TEAM_DETAIL_RATE_LIMIT_EXCEEDED(AuditEventCategory.SECURITY_RATE_LIMIT);
+    PUBLIC_TEAM_DETAIL_RATE_LIMIT_EXCEEDED(AuditEventCategory.SECURITY_RATE_LIMIT),
+    /**
+     * F19.1 Phase 1: 公開ページ API（{@code /api/v1/public/(teams|organizations)/...}）が
+     * レート制限に到達した（429 応答）。F15.4 Phase 5-α の {@link #PUBLIC_TEAM_DETAIL_RATE_LIMIT_EXCEEDED}
+     * を内包・上位化し、posts / events サブパスを含む全公開エンドポイントの上限超過を統一記録する。
+     */
+    PUBLIC_API_RATE_LIMIT_EXCEEDED(AuditEventCategory.SECURITY_RATE_LIMIT),
+
+    // ─── CIRCULATION (F05.2 Phase 11 第三陣 3-B) ─────────────────
+    /** 押印を訂正した（受信者本人）。 */
+    CIRCULATION_STAMP_CORRECTED(AuditEventCategory.CIRCULATION),
+    /** 押印を委任した（受信者→代理人）。 */
+    CIRCULATION_STAMP_DELEGATED(AuditEventCategory.CIRCULATION),
+    /** ADMIN が受信者を強制スキップした。 */
+    CIRCULATION_RECIPIENT_SKIPPED(AuditEventCategory.CIRCULATION),
+    /** DRAFT 文書から添付ファイルを削除した。 */
+    CIRCULATION_ATTACHMENT_DELETED(AuditEventCategory.CIRCULATION);
 
     private final AuditEventCategory category;
 }

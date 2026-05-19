@@ -10,6 +10,7 @@ import com.mannschaft.app.weather.exception.WeatherLocationDeriveException.Error
 import com.mannschaft.app.weather.metrics.WeatherMetrics;
 import com.mannschaft.app.weather.repository.PostalCodeRepository;
 import com.mannschaft.app.weather.repository.UserWeatherLocationRepository;
+import com.mannschaft.app.weather.util.PostalCodeNormalizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -82,8 +83,8 @@ public class WeatherLocationDeriver {
         // 2) 国コードを決定（NULL なら locale プレフィックスから推定）
         String countryCode = resolveCountryCode(user);
 
-        // 3) 国別フォーマットに正規化
-        String normalizedPostalCode = normalizePostalCode(countryCode, plainPostalCode);
+        // 3) 国別フォーマットに正規化（GeonamesImportService と同じロジックを共有）
+        String normalizedPostalCode = PostalCodeNormalizer.normalize(countryCode, plainPostalCode);
 
         // 4) postal_codes 引き当て。マスタヒット失敗時は country/postal の粒度で切り分ける。
         Optional<PostalCodeEntity> masterOpt = postalCodeRepository
@@ -168,26 +169,6 @@ public class WeatherLocationDeriver {
             case "de" -> "DE";
             default -> throw new WeatherLocationDeriveException(ErrorCode.COUNTRY_NOT_SUPPORTED);
         };
-    }
-
-    /**
-     * 国別に郵便番号を正規化する。
-     * <ul>
-     *   <li>JP: 半角ハイフン除去 + 7 桁ゼロパディング</li>
-     *   <li>その他: トリム + 大文字化（英字を含む国向け）</li>
-     * </ul>
-     */
-    private String normalizePostalCode(String countryCode, String postalCode) {
-        String trimmed = postalCode.trim();
-        if ("JP".equalsIgnoreCase(countryCode)) {
-            String digits = trimmed.replace("-", "").replace("‐", "").replace("ー", "");
-            // 7 桁未満ならゼロパディング（マスタ側は 7 桁固定）
-            if (digits.length() < 7) {
-                digits = "0".repeat(7 - digits.length()) + digits;
-            }
-            return digits;
-        }
-        return trimmed.toUpperCase();
     }
 
     /**

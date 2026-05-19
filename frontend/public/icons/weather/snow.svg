@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- 雲 -->
+  <path d="M12 34 Q12 26 20 26 Q22 18 32 18 Q42 18 44 26 Q52 26 52 34 Q52 40 44 40 L18 40 Q10 40 10 34 Q10 34 12 34 Z" fill="#94A3B8"/>
+  <!-- 雪片（中央）6方向の線 -->
+  <line x1="32" y1="46" x2="32" y2="58" stroke="#BAE6FD" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="26.6" y1="49" x2="37.4" y2="55" stroke="#BAE6FD" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="26.6" y1="55" x2="37.4" y2="49" stroke="#BAE6FD" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- 雪片の横枝 -->
+  <line x1="29" y1="49.5" x2="32" y2="46" stroke="#BAE6FD" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="35" y1="49.5" x2="32" y2="46" stroke="#BAE6FD" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="29" y1="54.5" x2="32" y2="58" stroke="#BAE6FD" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="35" y1="54.5" x2="32" y2="58" stroke="#BAE6FD" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

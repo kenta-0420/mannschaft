@@ -3,6 +3,8 @@ package com.mannschaft.app.survey.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.survey.dto.CreateSurveyRequest;
+import com.mannschaft.app.survey.dto.DuplicateSurveyRequest;
+import com.mannschaft.app.survey.dto.ExtendDeadlineRequest;
 import com.mannschaft.app.survey.dto.RespondentResponse;
 import com.mannschaft.app.survey.dto.SurveyDetailResponse;
 import com.mannschaft.app.survey.dto.SurveyResponse;
@@ -29,6 +31,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
+import org.springframework.http.HttpHeaders;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
@@ -166,6 +170,67 @@ public class SurveyController {
         List<RespondentResponse> respondents = surveyResultService.getRespondents(
                 surveyId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(respondents));
+    }
+
+    /**
+     * F05.4 §4.5 アンケート結果 CSV エクスポート。
+     *
+     * <p>ADMIN+ / 作成者 / 結果閲覧者が利用可能。匿名アンケートの場合は回答者列を「匿名」と表示し、
+     * 5名未満の場合は集計サマリのみ返す（匿名性保証）。</p>
+     */
+    @GetMapping(value = "/{surveyId}/results/export", produces = "text/csv; charset=UTF-8")
+    @Operation(summary = "アンケート結果 CSV エクスポート",
+            description = "F05.4 §4.5 集計結果と全回答の生データを CSV で返す")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<byte[]> exportResults(
+            @PathVariable String scopeType,
+            @PathVariable Long scopeId,
+            @PathVariable Long surveyId) {
+        byte[] csv = surveyResultService.exportResultsCsv(
+                scopeType, scopeId, surveyId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"survey_" + surveyId + ".csv\"")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(csv);
+    }
+
+    /**
+     * F05.4 §4.6 アンケート複製。
+     *
+     * <p>DRAFT 状態でアンケートを複製する。設問・選択肢・配信対象・結果閲覧者をコピーし、
+     * 回答データ・状態・日時はリセットする。タイトル末尾に「（コピー）」を付与する。</p>
+     */
+    @PostMapping("/{surveyId}/duplicate")
+    @Operation(summary = "アンケート複製",
+            description = "F05.4 §4.6 既存アンケートを DRAFT としてコピーする")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "複製成功")
+    public ResponseEntity<ApiResponse<SurveyDetailResponse>> duplicateSurvey(
+            @PathVariable String scopeType,
+            @PathVariable Long scopeId,
+            @PathVariable Long surveyId,
+            @RequestBody(required = false) DuplicateSurveyRequest request) {
+        SurveyDetailResponse response = surveyService.duplicateSurvey(
+                scopeType, scopeId, surveyId, request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    /**
+     * F05.4 §4.7 アンケート締切延長。
+     *
+     * <p>公開中アンケートの締切を延長する。短縮は不可。延長後は受信者に通知を送信する。</p>
+     */
+    @PostMapping("/{surveyId}/extend")
+    @Operation(summary = "アンケート締切延長",
+            description = "F05.4 §4.7 回答期限を延長する。短縮は不可")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "延長成功")
+    public ResponseEntity<ApiResponse<SurveyResponse>> extendDeadline(
+            @PathVariable String scopeType,
+            @PathVariable Long scopeId,
+            @PathVariable Long surveyId,
+            @Valid @RequestBody ExtendDeadlineRequest request) {
+        SurveyResponse response = surveyService.extendDeadline(
+                scopeType, scopeId, surveyId, request.getNewDeadline(), SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**

@@ -224,6 +224,75 @@ public class FormTemplateService {
     }
 
     /**
+     * F05.7 Phase 11 第四陣 4-B: テンプレートを複製する。
+     *
+     * <p>{@code POST /api/v1/{scopeType}/{scopeId}/form-templates/{templateId}/duplicate} 用。
+     * 名称末尾に「(コピー)」を付与した DRAFT 状態の新規テンプレートを生成する。
+     * フィールド定義もすべて複製する（id / sort_order は新規採番）。</p>
+     *
+     * <p>制約:</p>
+     * <ul>
+     *   <li>複製先は同一スコープ。クロススコープ複製はサポート外（Phase 5 以降の検討事項）</li>
+     *   <li>新規テンプレートは {@code status = DRAFT} で作成、submissionCount / publishedAt / closedAt はリセット</li>
+     *   <li>workflowTemplateId / presetId はそのまま継承（参照整合性はアプリ層で別途検証）</li>
+     * </ul>
+     *
+     * @param scopeType  スコープ種別
+     * @param scopeId    スコープ ID
+     * @param templateId 複製元テンプレート ID
+     * @param userId     実行ユーザー ID（複製先の createdBy になる）
+     * @return 複製されたテンプレートのレスポンス
+     */
+    @Transactional
+    public FormTemplateResponse duplicateTemplate(
+            String scopeType, Long scopeId, Long templateId, Long userId) {
+        FormTemplateEntity original = findTemplateOrThrow(scopeType, scopeId, templateId);
+        List<FormTemplateFieldEntity> originalFields =
+                fieldRepository.findByTemplateIdOrderBySortOrderAsc(templateId);
+
+        FormTemplateEntity copy = FormTemplateEntity.builder()
+                .scopeType(original.getScopeType())
+                .scopeId(original.getScopeId())
+                .name(original.getName() + " (コピー)")
+                .description(original.getDescription())
+                .icon(original.getIcon())
+                .color(original.getColor())
+                .requiresApproval(original.getRequiresApproval())
+                .workflowTemplateId(original.getWorkflowTemplateId())
+                .isSealOnPdf(original.getIsSealOnPdf())
+                .deadline(original.getDeadline())
+                .allowEditAfterSubmit(original.getAllowEditAfterSubmit())
+                .autoFillEnabled(original.getAutoFillEnabled())
+                .maxSubmissionsPerUser(original.getMaxSubmissionsPerUser())
+                .sortOrder(original.getSortOrder())
+                .presetId(original.getPresetId())
+                .targetCount(0)
+                .createdBy(userId)
+                .build();
+
+        FormTemplateEntity savedTemplate = templateRepository.save(copy);
+
+        List<FormTemplateFieldEntity> copiedFields = originalFields.stream()
+                .map(f -> FormTemplateFieldEntity.builder()
+                        .templateId(savedTemplate.getId())
+                        .fieldKey(f.getFieldKey())
+                        .fieldLabel(f.getFieldLabel())
+                        .fieldType(f.getFieldType())
+                        .isRequired(f.getIsRequired())
+                        .sortOrder(f.getSortOrder())
+                        .autoFillKey(f.getAutoFillKey())
+                        .optionsJson(f.getOptionsJson())
+                        .placeholder(f.getPlaceholder())
+                        .build())
+                .toList();
+        List<FormTemplateFieldEntity> savedFields = fieldRepository.saveAll(copiedFields);
+
+        log.info("テンプレート複製: originalId={}, copyId={}, userId={}",
+                templateId, savedTemplate.getId(), userId);
+        return formMapper.toTemplateResponseWithFields(savedTemplate, savedFields);
+    }
+
+    /**
      * テンプレートを論理削除する。
      *
      * @param scopeType  スコープ種別
