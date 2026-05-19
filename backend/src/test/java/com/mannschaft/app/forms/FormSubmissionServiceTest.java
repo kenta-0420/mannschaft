@@ -45,6 +45,9 @@ class FormSubmissionServiceTest {
     @Mock
     private FormMapper formMapper;
 
+    @Mock
+    private com.mannschaft.app.common.storage.StorageService storageService;
+
     @InjectMocks
     private FormSubmissionService formSubmissionService;
 

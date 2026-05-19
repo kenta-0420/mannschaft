@@ -45,7 +45,37 @@ public enum FormErrorCode implements ErrorCode {
     DUPLICATE_FIELD_KEY("FORM_011", "フィールドキーが重複しています", Severity.WARN),
 
     /** テンプレートの締切超過 */
-    TEMPLATE_DEADLINE_PASSED("FORM_012", "テンプレートの締切を過ぎています", Severity.WARN);
+    TEMPLATE_DEADLINE_PASSED("FORM_012", "テンプレートの締切を過ぎています", Severity.WARN),
+
+    /** PDF 未生成 */
+    PDF_NOT_GENERATED("FORM_013", "PDF が未生成です。先に PDF 生成 API を呼び出してください", Severity.WARN),
+
+    /** PDF 生成権限なし */
+    PDF_ACCESS_DENIED("FORM_014", "PDF を閲覧する権限がありません", Severity.WARN),
+
+    /** PDF 生成不可（ステータス不正） */
+    PDF_GENERATION_NOT_ALLOWED("FORM_015", "提出が SUBMITTED 以降でないため PDF を生成できません", Severity.WARN),
+
+    /** リマインダー権限なし */
+    REMIND_NOT_ALLOWED("FORM_016", "リマインドを送信する権限がありません", Severity.WARN),
+
+    /** リマインダー対象なし */
+    REMIND_NO_TARGET("FORM_017", "リマインド対象のユーザーが指定されていません", Severity.WARN),
+
+    /** リマインダー回数制限超過 */
+    REMIND_RATE_LIMITED("FORM_018", "1 日あたりのリマインド送信回数上限に達しています", Severity.WARN),
+
+    /** Pre-signed アップロード MIME タイプ不正 */
+    UPLOAD_CONTENT_TYPE_INVALID("FORM_019", "許可されていない MIME タイプです", Severity.WARN),
+
+    /** Pre-signed アップロード サイズ超過 */
+    UPLOAD_SIZE_EXCEEDED("FORM_020", "ファイルサイズが上限を超えています", Severity.WARN),
+
+    /** CSV エクスポート権限なし */
+    CSV_EXPORT_NOT_ALLOWED("FORM_021", "CSV をエクスポートする権限がありません", Severity.WARN),
+
+    /** テンプレート複製権限なし */
+    TEMPLATE_DUPLICATE_NOT_ALLOWED("FORM_022", "テンプレートを複製する権限がありません", Severity.WARN);
 
     private final String code;
     private final String message;

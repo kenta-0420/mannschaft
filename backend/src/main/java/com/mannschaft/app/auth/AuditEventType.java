@@ -262,6 +262,16 @@ public enum AuditEventType {
     /** F17.1 Phase 3-β-E — 村ニュースレター opt-out（ユーザー自身の操作）。 */
     VILLAGE_NEWSLETTER_OPT_OUT(AuditEventCategory.VILLAGE),
 
+    // ─── FORM (F05.7 書類テンプレート・フォームビルダー) ──────────
+    /** F05.7 Phase 11 第四陣 4-B — フォーム提出 PDF を生成（Thymeleaf + Flying Saucer + R2 アップロード）。 */
+    FORM_PDF_GENERATED(AuditEventCategory.FORM),
+    /** F05.7 Phase 11 第四陣 4-B — テンプレート単位の未提出者リマインドを送信。 */
+    FORM_TEMPLATE_REMIND(AuditEventCategory.FORM),
+    /** F05.7 Phase 11 第四陣 4-B — テンプレートを複製。 */
+    FORM_TEMPLATE_DUPLICATED(AuditEventCategory.FORM),
+    /** F05.7 Phase 11 第四陣 4-B — 提出一覧 CSV をエクスポート。 */
+    FORM_SUBMISSIONS_CSV_EXPORTED(AuditEventCategory.FORM),
+
     // ─── SECURITY_RATE_LIMIT (F15.4 組織内チーム検索) ───────────
     /** 組織内チーム検索 API がレート制限に到達した（429 応答）。 */
     TEAM_SEARCH_RATE_LIMITED(AuditEventCategory.SECURITY_RATE_LIMIT),

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+    <style>
+        .form-meta { margin-bottom: 16px; font-size: 10pt; }
+        .form-meta td { padding: 2px 6px; }
+        .form-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        .form-table th, .form-table td { border: 1px solid #888; padding: 6px 8px; vertical-align: top; }
+        .form-table th { background: #f3f4f6; width: 30%; text-align: left; }
+        .form-title { font-size: 18pt; margin-bottom: 8px; }
+        .form-desc { color: #555; font-size: 10pt; margin-bottom: 12px; }
+    </style>
+</head>
+<body class="font-serif">
+    <div class="pdf-header">
+        <h1 class="form-title" th:text="${templateName}">フォーム提出書</h1>
+    </div>
+    <div class="pdf-body">
+        <p class="form-desc" th:if="${templateDescription}" th:text="${templateDescription}">説明</p>
+        <table class="form-meta no-border">
+            <tr>
+                <td>提出 ID: <span th:text="${submissionId}">-</span></td>
+                <td style="text-align: right;">提出日時:
+                    <span th:text="${submittedAt != null ? #temporals.format(submittedAt, 'yyyy-MM-dd HH:mm') : ''}">-</span>
+                </td>
+            </tr>
+            <tr>
+                <td>提出者 ID: <span th:text="${submittedBy}">-</span></td>
+                <td style="text-align: right;">ステータス: <span th:text="${status}">-</span></td>
+            </tr>
+        </table>
+
+        <table class="form-table">
+            <tbody>
+                <tr th:each="row : ${rows}">
+                    <th th:text="${row.fieldLabel}">フィールド名</th>
+                    <td th:text="${row.value}">値</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
