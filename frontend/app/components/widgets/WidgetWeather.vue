@@ -112,23 +112,15 @@ onMounted(load)
           >
           <!-- XSS対策: v-text でバインド（設計書 §5.1 / §7.7） -->
           <p class="text-center text-xs text-surface-600 dark:text-surface-300" v-text="day.conditionText" />
-          <div class="mt-1 w-full space-y-1 text-xs">
-            <div class="flex justify-between">
-              <span class="text-surface-500">{{ t('dashboard.weather.max') }}</span>
-              <span class="font-medium">{{ day.maxTempC.toFixed(1) }}°</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-surface-500">{{ t('dashboard.weather.min') }}</span>
-              <span class="font-medium">{{ day.minTempC.toFixed(1) }}°</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-surface-500">{{ t('dashboard.weather.humidity') }}</span>
-              <span class="font-medium">{{ day.avgHumidity }}%</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-surface-500">{{ t('dashboard.weather.chance_of_rain') }}</span>
-              <span class="font-medium">{{ day.chanceOfRain }}%</span>
-            </div>
+          <div class="mx-auto mt-1 inline-grid grid-cols-[auto_auto] gap-x-3 gap-y-1 text-xs">
+            <span class="text-surface-500">{{ t('dashboard.weather.max') }}</span>
+            <span class="font-medium">{{ day.maxTempC.toFixed(1) }}°</span>
+            <span class="text-surface-500">{{ t('dashboard.weather.min') }}</span>
+            <span class="font-medium">{{ day.minTempC.toFixed(1) }}°</span>
+            <span class="text-surface-500">{{ t('dashboard.weather.humidity') }}</span>
+            <span class="font-medium">{{ day.avgHumidity }}%</span>
+            <span class="text-surface-500">{{ t('dashboard.weather.chance_of_rain') }}</span>
+            <span class="font-medium">{{ day.chanceOfRain }}%</span>
           </div>
         </div>
       </div>
