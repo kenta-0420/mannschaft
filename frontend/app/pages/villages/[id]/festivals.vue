@@ -6,14 +6,12 @@
  *
  * 構成:
  *   - 上段: <VillageHeader activeTab="festival" />
- *   - 下段:
- *       - ステータスフィルタタブ（ACTIVE / SCHEDULED / ENDED / CANCELLED / ALL）
- *       - お祭りカード一覧（バナー画像 + タイトル + 期間 + ステータスバッジ）
- *       - HEADMAN/ELDER のみ「お祭りを企画」ボタン
- *       - カード -> 詳細 Dialog（編集 / 中止）
+ *   - 下段: <VillageFestivalListSection />（フィルタタブ + 一覧 + 企画ボタン）
+ *   - 作成 Dialog: <VillageFestivalCreateDialog />（VillagePostingIdentitySelector 付き）
+ *   - 詳細 Dialog: <VillageFestivalDetailDialog />
+ *   - 編集 Dialog: <VillageFestivalEditDialog />
  *
- * Phase 2: 新規 Dialog では VillagePostingIdentitySelector を組み込み、
- * 投稿主体（個人 / チーム / 組織）を選べる UI を提供する。
+ * 子コンポーネントは表示専用。API 呼び出し・state 統合はすべて本体側に集約する。
  */
 import type {
   MembershipResponse,
@@ -62,7 +60,7 @@ const canManage = computed(
   () => village.value?.myRole === 'HEADMAN' || village.value?.myRole === 'ELDER',
 )
 
-const statusFilterTabs: { value: StatusFilter; i18nKey: string }[] = [
+const statusFilterTabs: { value: StatusFilter, i18nKey: string }[] = [
   { value: 'ACTIVE', i18nKey: 'village.festival.status.ACTIVE' },
   { value: 'SCHEDULED', i18nKey: 'village.festival.status.SCHEDULED' },
   { value: 'ENDED', i18nKey: 'village.festival.status.ENDED' },
@@ -88,19 +86,6 @@ async function loadFestivals() {
 function setStatusFilter(value: StatusFilter) {
   statusFilter.value = value
   loadFestivals()
-}
-
-function severityForStatus(status: VillageFestivalStatus): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-  switch (status) {
-    case 'ACTIVE':
-      return 'success'
-    case 'SCHEDULED':
-      return 'info'
-    case 'ENDED':
-      return 'secondary'
-    case 'CANCELLED':
-      return 'danger'
-  }
 }
 
 // =====================================================================
@@ -261,7 +246,7 @@ async function loadVillage() {
     await loadFestivals()
   }
   catch (error: unknown) {
-    const status = (error as { statusCode?: number; response?: { status?: number } })
+    const status = (error as { statusCode?: number, response?: { status?: number } })
     const code = status?.statusCode ?? status?.response?.status
     if (code === 404) {
       notFound.value = true
@@ -398,294 +383,43 @@ onMounted(() => {
         @edit="onEdit"
       />
 
-      <div class="mx-auto max-w-4xl p-4 sm:p-6">
-        <!-- ステータスフィルタ + 企画ボタン -->
-        <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
-          <div class="flex items-center gap-2 flex-wrap">
-            <Button
-              v-for="tab in statusFilterTabs"
-              :key="tab.value"
-              :label="t(tab.i18nKey)"
-              size="small"
-              :severity="statusFilter === tab.value ? 'primary' : 'secondary'"
-              :outlined="statusFilter !== tab.value"
-              @click="setStatusFilter(tab.value)"
-            />
-          </div>
-          <Button
-            v-if="canManage"
-            :label="t('village.festival.create')"
-            icon="pi pi-plus"
-            severity="primary"
-            size="small"
-            @click="openCreateDialog"
-          />
-        </div>
-
-        <!-- お祭り一覧 -->
-        <div v-if="festivalsLoading" class="text-center py-12 text-surface-500">
-          <i class="pi pi-spin pi-spinner text-2xl" />
-        </div>
-        <DashboardEmptyState
-          v-else-if="festivals.length === 0"
-          icon="pi pi-star"
-          :message="t('village.festival.empty')"
-        />
-        <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <button
-            v-for="f in festivals"
-            :key="f.id"
-            type="button"
-            class="village-festival__card flex flex-col rounded-lg border border-surface-200 overflow-hidden text-left transition hover:shadow-md dark:border-surface-700"
-            :style="f.themeColorHex ? { borderTop: `4px solid ${f.themeColorHex}` } : undefined"
-            @click="openDetailDialog(f)"
-          >
-            <div class="h-28 bg-surface-100 dark:bg-surface-800 flex items-center justify-center overflow-hidden">
-              <img
-                v-if="buildBannerUrl(f.bannerR2Key)"
-                :src="buildBannerUrl(f.bannerR2Key) ?? undefined"
-                :alt="f.title"
-                class="w-full h-full object-cover"
-              >
-              <span v-else class="text-surface-400 text-sm">
-                <i class="pi pi-image" /> {{ t('village.festival.noBanner') }}
-              </span>
-            </div>
-            <div class="p-3 flex flex-col gap-1">
-              <div class="flex items-center justify-between gap-2">
-                <span class="font-semibold truncate">{{ f.title }}</span>
-                <Badge
-                  :value="t(`village.festival.status.${f.status}`)"
-                  :severity="severityForStatus(f.status)"
-                />
-              </div>
-              <div class="text-xs text-surface-500">
-                {{ f.startsAt }} 〜 {{ f.endsAt }}
-              </div>
-            </div>
-          </button>
-        </div>
-      </div>
+      <VillageFestivalListSection
+        :festivals="festivals"
+        :festivals-loading="festivalsLoading"
+        :status-filter="statusFilter"
+        :status-filter-tabs="statusFilterTabs"
+        :can-manage="canManage"
+        :build-banner-url="buildBannerUrl"
+        @set-status-filter="setStatusFilter"
+        @open-create-dialog="openCreateDialog"
+        @open-detail-dialog="openDetailDialog"
+      />
 
       <!-- 作成 Dialog（投稿主体 Selector 付き） -->
-      <Dialog
+      <VillageFestivalCreateDialog
         v-model:visible="showCreateDialog"
-        modal
-        :draggable="false"
-        :header="t('village.festival.createTitle')"
-        :style="{ width: '36rem' }"
-        :breakpoints="{ '640px': '92vw' }"
-      >
-        <div class="flex flex-col gap-3">
-          <!-- Phase 2: 投稿主体 Selector を有効化 -->
-          <VillagePostingIdentitySelector
-            :village-id="villageId"
-            :model-value="createPostingIdentity"
-            :visible="true"
-            @update:model-value="(v) => (createPostingIdentity = v)"
-          />
-          <div>
-            <label class="block text-sm font-medium mb-1">
-              {{ t('village.festival.festivalTitle') }}
-            </label>
-            <InputText v-model="createForm.title" class="w-full" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">
-              {{ t('village.festival.description') }}
-            </label>
-            <Textarea v-model="createForm.description" class="w-full" rows="3" />
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium mb-1">
-                {{ t('village.festival.starts') }}
-              </label>
-              <InputText
-                v-model="createForm.startsAt"
-                type="datetime-local"
-                class="w-full"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">
-                {{ t('village.festival.ends') }}
-              </label>
-              <InputText
-                v-model="createForm.endsAt"
-                type="datetime-local"
-                class="w-full"
-              />
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">
-              {{ t('village.festival.bannerImage') }}
-            </label>
-            <InputText v-model="createForm.bannerR2Key" class="w-full" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">
-              {{ t('village.festival.themeColor') }}
-            </label>
-            <InputText
-              v-model="createForm.themeColorHex"
-              type="color"
-              class="w-full h-10"
-            />
-          </div>
-        </div>
-        <template #footer>
-          <Button
-            :label="t('village.action.cancel')"
-            severity="secondary"
-            text
-            @click="showCreateDialog = false"
-          />
-          <Button
-            :label="t('village.action.save')"
-            icon="pi pi-check"
-            severity="primary"
-            @click="submitCreate"
-          />
-        </template>
-      </Dialog>
+        v-model:form="createForm"
+        v-model:posting-identity="createPostingIdentity"
+        :village-id="villageId"
+        @submit="submitCreate"
+      />
 
       <!-- 詳細 Dialog -->
-      <Dialog
+      <VillageFestivalDetailDialog
         v-model:visible="showDetailDialog"
-        modal
-        :draggable="false"
-        :header="detailFestival?.title ?? ''"
-        :style="{ width: '32rem' }"
-        :breakpoints="{ '640px': '92vw' }"
-      >
-        <div v-if="detailFestival" class="flex flex-col gap-3">
-          <div
-            v-if="buildBannerUrl(detailFestival.bannerR2Key)"
-            class="h-40 bg-surface-100 dark:bg-surface-800 overflow-hidden rounded"
-          >
-            <img
-              :src="buildBannerUrl(detailFestival.bannerR2Key) ?? undefined"
-              :alt="detailFestival.title"
-              class="w-full h-full object-cover"
-            >
-          </div>
-          <div class="flex items-center gap-2">
-            <Badge
-              :value="t(`village.festival.status.${detailFestival.status}`)"
-              :severity="severityForStatus(detailFestival.status)"
-            />
-            <span class="text-sm text-surface-500">
-              {{ detailFestival.startsAt }} 〜 {{ detailFestival.endsAt }}
-            </span>
-          </div>
-          <p v-if="detailFestival.description" class="whitespace-pre-wrap text-sm">
-            {{ detailFestival.description }}
-          </p>
-        </div>
-        <template #footer>
-          <Button
-            v-if="canManage && detailFestival"
-            :label="t('village.festival.edit')"
-            icon="pi pi-pencil"
-            severity="secondary"
-            outlined
-            @click="openEditDialog(detailFestival)"
-          />
-          <Button
-            v-if="canManage && detailFestival && detailFestival.status !== 'CANCELLED' && detailFestival.status !== 'ENDED'"
-            :label="t('village.festival.cancel')"
-            icon="pi pi-times"
-            severity="danger"
-            outlined
-            @click="submitCancel(detailFestival)"
-          />
-          <Button
-            :label="t('village.action.cancel')"
-            severity="secondary"
-            text
-            @click="showDetailDialog = false"
-          />
-        </template>
-      </Dialog>
+        :festival="detailFestival"
+        :can-manage="canManage"
+        :build-banner-url="buildBannerUrl"
+        @edit="openEditDialog"
+        @cancel-festival="submitCancel"
+      />
 
       <!-- 編集 Dialog -->
-      <Dialog
+      <VillageFestivalEditDialog
         v-model:visible="showEditDialog"
-        modal
-        :draggable="false"
-        :header="t('village.festival.editTitle')"
-        :style="{ width: '36rem' }"
-        :breakpoints="{ '640px': '92vw' }"
-      >
-        <div class="flex flex-col gap-3">
-          <div>
-            <label class="block text-sm font-medium mb-1">
-              {{ t('village.festival.festivalTitle') }}
-            </label>
-            <InputText v-model="editForm.title" class="w-full" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">
-              {{ t('village.festival.description') }}
-            </label>
-            <Textarea v-model="editForm.description" class="w-full" rows="3" />
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium mb-1">
-                {{ t('village.festival.starts') }}
-              </label>
-              <InputText
-                v-model="editForm.startsAt"
-                type="datetime-local"
-                class="w-full"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">
-                {{ t('village.festival.ends') }}
-              </label>
-              <InputText
-                v-model="editForm.endsAt"
-                type="datetime-local"
-                class="w-full"
-              />
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">
-              {{ t('village.festival.bannerImage') }}
-            </label>
-            <InputText v-model="editForm.bannerR2Key" class="w-full" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">
-              {{ t('village.festival.themeColor') }}
-            </label>
-            <InputText
-              v-model="editForm.themeColorHex"
-              type="color"
-              class="w-full h-10"
-            />
-          </div>
-        </div>
-        <template #footer>
-          <Button
-            :label="t('village.action.cancel')"
-            severity="secondary"
-            text
-            @click="showEditDialog = false"
-          />
-          <Button
-            :label="t('village.action.save')"
-            icon="pi pi-check"
-            severity="primary"
-            @click="submitEdit"
-          />
-        </template>
-      </Dialog>
+        v-model:form="editForm"
+        @submit="submitEdit"
+      />
 
       <!-- 通報ダイアログ — 対象は村本体 (VILLAGE) -->
       <VillageReportDialog
