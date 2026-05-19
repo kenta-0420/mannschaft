@@ -9,7 +9,6 @@ import com.mannschaft.app.translation.entity.TranslationConfigEntity;
 import com.mannschaft.app.translation.repository.ContentTranslationQueryRepository;
 import com.mannschaft.app.translation.repository.ContentTranslationRepository;
 import com.mannschaft.app.translation.repository.TranslationConfigRepository;
-import com.mannschaft.app.translation.service.ContentTranslationService.ChangeStatusRequest;
 import com.mannschaft.app.translation.service.ContentTranslationService.ContentTranslationResponse;
 import com.mannschaft.app.translation.service.ContentTranslationService.CreateTranslationRequest;
 import com.mannschaft.app.translation.service.ContentTranslationService.TranslationDashboardResponse;
@@ -51,6 +50,9 @@ class ContentTranslationServiceTest {
 
     @Mock
     private TranslationConfigRepository translationConfigRepository;
+
+    @Mock
+    private ContentTranslationStatusService contentTranslationStatusService;
 
     @InjectMocks
     private ContentTranslationService sut;
@@ -198,90 +200,10 @@ class ContentTranslationServiceTest {
     }
 
     // ========================================
-    // changeStatus
+    // changeStatus / publishTranslation / markAsStale のテストは
+    // 第12弾リファクタリングで ContentTranslationStatusService へ切り出した。
+    // 該当テストは ContentTranslationStatusServiceTest を参照。
     // ========================================
-
-    @Nested
-    @DisplayName("changeStatus")
-    class ChangeStatus {
-
-        @Test
-        @DisplayName("正常系_DRAFTからIN_REVIEWへ遷移")
-        void 正常系_DRAFTからIN_REVIEWへ遷移() {
-            // given
-            ContentTranslationEntity entity = createEntity("DRAFT");
-            given(contentTranslationRepository.findById(1L)).willReturn(Optional.of(entity));
-            given(contentTranslationRepository.save(any(ContentTranslationEntity.class)))
-                    .willAnswer(inv -> inv.getArgument(0));
-
-            ChangeStatusRequest req = new ChangeStatusRequest();
-            req.setStatus("IN_REVIEW");
-            req.setVersion(0L);
-
-            // when
-            ApiResponse<ContentTranslationResponse> result = sut.changeStatus(1L, req);
-
-            // then
-            assertThat(result.getData().getStatus()).isEqualTo("IN_REVIEW");
-        }
-
-        @Test
-        @DisplayName("正常系_DRAFTからPUBLISHEDへ遷移_publishedAtが設定される")
-        void 正常系_DRAFTからPUBLISHEDへ遷移() {
-            // given
-            ContentTranslationEntity entity = createEntity("DRAFT");
-            given(contentTranslationRepository.findById(1L)).willReturn(Optional.of(entity));
-            given(contentTranslationRepository.save(any(ContentTranslationEntity.class)))
-                    .willAnswer(inv -> inv.getArgument(0));
-
-            ChangeStatusRequest req = new ChangeStatusRequest();
-            req.setStatus("PUBLISHED");
-            req.setVersion(0L);
-
-            // when
-            ApiResponse<ContentTranslationResponse> result = sut.changeStatus(1L, req);
-
-            // then
-            assertThat(result.getData().getStatus()).isEqualTo("PUBLISHED");
-            assertThat(result.getData().getPublishedAt()).isNotNull();
-        }
-
-        @Test
-        @DisplayName("異常系_不正なステータス遷移_TRANSLATION_005")
-        void 異常系_不正なステータス遷移_TRANSLATION_005() {
-            // given: PUBLISHED → IN_REVIEW は許可されていない
-            ContentTranslationEntity entity = createEntity("PUBLISHED");
-            given(contentTranslationRepository.findById(1L)).willReturn(Optional.of(entity));
-
-            ChangeStatusRequest req = new ChangeStatusRequest();
-            req.setStatus("IN_REVIEW");
-            req.setVersion(0L);
-
-            // when & then
-            assertThatThrownBy(() -> sut.changeStatus(1L, req))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(TranslationErrorCode.TRANSLATION_005);
-        }
-
-        @Test
-        @DisplayName("異常系_バージョン不一致_TRANSLATION_007")
-        void 異常系_バージョン不一致_TRANSLATION_007() {
-            // given
-            ContentTranslationEntity entity = createEntity("DRAFT");
-            given(contentTranslationRepository.findById(1L)).willReturn(Optional.of(entity));
-
-            ChangeStatusRequest req = new ChangeStatusRequest();
-            req.setStatus("IN_REVIEW");
-            req.setVersion(999L); // version mismatch
-
-            // when & then
-            assertThatThrownBy(() -> sut.changeStatus(1L, req))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(TranslationErrorCode.TRANSLATION_007);
-        }
-    }
 
     // ========================================
     // updateTranslation

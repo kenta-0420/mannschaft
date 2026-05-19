@@ -14,7 +14,6 @@ import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
@@ -24,12 +23,16 @@ import java.util.List;
  * F00 Phase D-γ — {@link ReferenceType#TEAM} 用 {@link AbstractContentVisibilityResolver} 実装。
  *
  * <p>設計書: {@code docs/features/F00_content_visibility_resolver.md}
- * §4.6 / §7.5 / §11.6 / §15 D-13/D-14/D-16。</p>
+ * §4.6 / §7.5 / §11.6 / §15 D-13/D-14/D-16。
+ * また F19.1 公開チーム・組織ページ §7.2 / §17.1 で「Phase D 予約 Resolver を本機能で繰り上げ実装」
+ * とされており、未認証 PUBLIC 閲覧の段階開示判定における権威ソースとして本 Resolver を恒常稼働させる。</p>
  *
- * <p><strong>feature flag による段階展開制御</strong>:
- * {@code feature.visibility-resolver.team=true} を設定した環境でのみ本 Bean が登録される。
- * デフォルト ({@code false}) では Bean 未登録のため、{@link com.mannschaft.app.common.visibility.ContentVisibilityChecker}
- * は TEAM 型をフォールバック (fail-closed) で処理する。</p>
+ * <p><strong>F19.1 Phase 1 で恒常稼働化</strong>（2026-05-18）:
+ * Phase D 段階では {@code feature.visibility-resolver.team=true} feature flag で段階展開する設計だったが、
+ * F19.1 公開チームページの未認証閲覧判定の前提として本 Resolver を常時稼働させる必要があるため、
+ * F19.1 Phase 1 で {@code @ConditionalOnProperty} を撤去しデフォルト Bean 登録に変更した。
+ * Bean が常時登録されることにより {@link com.mannschaft.app.common.visibility.ContentVisibilityChecker}
+ * が {@link ReferenceType#TEAM} 型を正規ルートで処理するようになる。</p>
  *
  * <p><strong>機能側 visibility との StandardVisibility マッピング</strong>（§5.2）:</p>
  * <ul>
@@ -60,7 +63,6 @@ import java.util.List;
  * </ul>
  */
 @Component
-@ConditionalOnProperty(name = "feature.visibility-resolver.team", havingValue = "true", matchIfMissing = false)
 public class TeamVisibilityResolver
         extends AbstractContentVisibilityResolver<TeamEntity.Visibility, TeamVisibilityProjection> {
 

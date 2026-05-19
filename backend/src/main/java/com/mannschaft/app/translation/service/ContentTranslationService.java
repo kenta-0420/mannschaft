@@ -32,9 +32,15 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * 翻訳コンテンツ管理サービス。
- * 翻訳の作成・取得・更新・ステータス変更・公開・論理削除を担う。
- * また原文更新時の一括ステータス更新（markAsStale）およびダッシュボード統計を提供する。
+ * 翻訳コンテンツ管理サービス（ファサード）。
+ * <p>
+ * 翻訳の作成・取得・更新・公開・論理削除と、ダッシュボード統計を担う。
+ * ステータス遷移・PUBLISHED 公開・NEEDS_UPDATE 一括マーク（markAsStale）は
+ * {@link ContentTranslationStatusService} に委譲する。
+ * <p>
+ * 第12弾リファクタリングでステータス系処理を切り出したが、
+ * 公開 API（メソッドシグネチャ・例外コード・トランザクション境界・ログ出力）は
+ * 元実装と完全に同一を保つ。
  */
 @Slf4j
 @Service
@@ -45,6 +51,7 @@ public class ContentTranslationService {
     private final ContentTranslationRepository contentTranslationRepository;
     private final ContentTranslationQueryRepository contentTranslationQueryRepository;
     private final TranslationConfigRepository translationConfigRepository;
+    private final ContentTranslationStatusService contentTranslationStatusService;
 
     // ========================================
     // リクエスト DTO
@@ -392,6 +399,8 @@ public class ContentTranslationService {
 
     /**
      * 翻訳コンテンツのステータスを変更する。遷移ルールをバリデーションする。
+     * <p>
+     * 実装は {@link ContentTranslationStatusService#changeStatus(Long, ChangeStatusRequest)} へ委譲する。
      *
      * @param id  翻訳コンテンツID
      * @param req ステータス変更リクエスト
@@ -400,85 +409,35 @@ public class ContentTranslationService {
      * @throws BusinessException TRANSLATION_005: 不正なステータス遷移の場合
      * @throws BusinessException TRANSLATION_007: バージョン不一致の場合
      */
-    @Transactional
     public ApiResponse<ContentTranslationResponse> changeStatus(Long id, ChangeStatusRequest req) {
-        ContentTranslationEntity entity = findOrThrow(id);
-
-        // 楽観的ロック: バージョンチェック
-        checkVersion(entity, req.getVersion());
-
-        TranslationStatus currentStatus = TranslationStatus.valueOf(entity.getStatus());
-        TranslationStatus targetStatus;
-        try {
-            targetStatus = TranslationStatus.valueOf(req.getStatus());
-        } catch (IllegalArgumentException e) {
-            throw new BusinessException(TranslationErrorCode.TRANSLATION_005);
-        }
-
-        // ステータス遷移バリデーション
-        if (!currentStatus.canTransitionTo(targetStatus)) {
-            throw new BusinessException(TranslationErrorCode.TRANSLATION_005);
-        }
-
-        // PUBLISHED への遷移時は publishedAt を記録
-        if (targetStatus == TranslationStatus.PUBLISHED) {
-            entity.publish();
-        } else {
-            entity.updateStatus(targetStatus.name());
-        }
-
-        try {
-            ContentTranslationEntity saved = contentTranslationRepository.save(entity);
-            log.info("翻訳ステータス変更: id={}, {} → {}", id, currentStatus, targetStatus);
-            return ApiResponse.of(new ContentTranslationResponse(saved));
-        } catch (ObjectOptimisticLockingFailureException e) {
-            throw new BusinessException(TranslationErrorCode.TRANSLATION_007);
-        }
+        return contentTranslationStatusService.changeStatus(id, req);
     }
 
     /**
      * 翻訳コンテンツを公開状態（PUBLISHED）に更新する。
+     * <p>
+     * 実装は {@link ContentTranslationStatusService#publishTranslation(Long)} へ委譲する。
      *
      * @param id 翻訳コンテンツID
      * @return 更新後の翻訳コンテンツのレスポンス
      * @throws BusinessException TRANSLATION_002: 対象が見つからない場合
      */
-    @Transactional
     public ApiResponse<ContentTranslationResponse> publishTranslation(Long id) {
-        ContentTranslationEntity entity = findOrThrow(id);
-        entity.publish();
-        ContentTranslationEntity saved = contentTranslationRepository.save(entity);
-        log.info("翻訳コンテンツ公開: id={}", id);
-        return ApiResponse.of(new ContentTranslationResponse(saved));
+        return contentTranslationStatusService.publishTranslation(id);
     }
 
     /**
      * 指定原文コンテンツのPUBLISHED翻訳を全てNEEDS_UPDATEに更新する。
      * 原文が更新された際に呼び出す（イベントリスナー・バッチからの呼び出し）。
+     * <p>
+     * 実装は {@link ContentTranslationStatusService#markAsStale(String, Long)} へ委譲する。
      *
      * @param contentType 原文コンテンツ種別
      * @param contentId   原文コンテンツID
      * @return 更新件数
      */
-    @Transactional
     public int markAsStale(String contentType, Long contentId) {
-        // PUBLISHED状態の翻訳を全て取得
-        List<ContentTranslationEntity> publishedList =
-                contentTranslationRepository.findBySourceTypeAndSourceIdAndStatusAndDeletedAtIsNull(
-                        contentType, contentId, TranslationStatus.PUBLISHED.name());
-
-        int count = 0;
-        for (ContentTranslationEntity entity : publishedList) {
-            entity.updateStatus(TranslationStatus.NEEDS_UPDATE.name());
-            contentTranslationRepository.save(entity);
-            count++;
-        }
-
-        if (count > 0) {
-            log.info("翻訳コンテンツをNEEDS_UPDATEに更新: contentType={}, contentId={}, 件数={}",
-                    contentType, contentId, count);
-        }
-        return count;
+        return contentTranslationStatusService.markAsStale(contentType, contentId);
     }
 
     /**

@@ -267,6 +267,12 @@ public enum AuditEventType {
     TEAM_SEARCH_RATE_LIMITED(AuditEventCategory.SECURITY_RATE_LIMIT),
     /** F15.4 Phase 5-α: 店舗詳細 Public API がレート制限に到達した（429 応答）。 */
     PUBLIC_TEAM_DETAIL_RATE_LIMIT_EXCEEDED(AuditEventCategory.SECURITY_RATE_LIMIT),
+    /**
+     * F19.1 Phase 1: 公開ページ API（{@code /api/v1/public/(teams|organizations)/...}）が
+     * レート制限に到達した（429 応答）。F15.4 Phase 5-α の {@link #PUBLIC_TEAM_DETAIL_RATE_LIMIT_EXCEEDED}
+     * を内包・上位化し、posts / events サブパスを含む全公開エンドポイントの上限超過を統一記録する。
+     */
+    PUBLIC_API_RATE_LIMIT_EXCEEDED(AuditEventCategory.SECURITY_RATE_LIMIT),
 
     // ─── CIRCULATION (F05.2 Phase 11 第三陣 3-B) ─────────────────
     /** 押印を訂正した（受信者本人）。 */
