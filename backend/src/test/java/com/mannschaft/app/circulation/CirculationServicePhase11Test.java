@@ -15,6 +15,7 @@ import com.mannschaft.app.circulation.service.CirculationService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.notification.service.NotificationService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -81,6 +83,17 @@ class CirculationServicePhase11Test {
 
     @InjectMocks
     private CirculationService circulationService;
+
+    /**
+     * {@code auditLogService} は {@code CirculationService} 側で
+     * {@code @Autowired(required = false)} の非 final フィールドとして定義されているため、
+     * Mockito の {@code @InjectMocks} はコンストラクタ注入を優先しフィールド注入が
+     * スキップされるケースがある。{@link ReflectionTestUtils#setField} で確実に注入する。
+     */
+    @BeforeEach
+    void injectOptionalFields() {
+        ReflectionTestUtils.setField(circulationService, "auditLogService", auditLogService);
+    }
 
     private static final Long DOCUMENT_ID = 100L;
     private static final Long SCOPE_ID = 1L;

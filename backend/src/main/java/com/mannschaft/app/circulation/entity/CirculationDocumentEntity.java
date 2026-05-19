@@ -140,6 +140,19 @@ public class CirculationDocumentEntity extends BaseEntity {
     }
 
     /**
+     * 押印数をデクリメントする（押印訂正時に使用）。
+     *
+     * <p>F05.2 Phase 11 第三陣 3-B: 受信者が押印を訂正した際に、
+     * 押印済み件数をデクリメントする。アンダーフロー防止のため、
+     * 0 以下にはならない。</p>
+     */
+    public void decrementStampedCount() {
+        if (this.stampedCount > 0) {
+            this.stampedCount--;
+        }
+    }
+
+    /**
      * 添付ファイル数をインクリメントする。
      */
     public void incrementAttachmentCount() {
