@@ -15,6 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -43,8 +46,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(ShiftScheduleController.class)
 @AutoConfigureMockMvc
+@Import(ShiftSchedulePhase11ControllerTest.MethodSecurityTestConfig.class)
 @DisplayName("ShiftScheduleController Phase 11 結合テスト")
 class ShiftSchedulePhase11ControllerTest {
+
+    /**
+     * {@code @PreAuthorize} をテスト時に有効化するための設定。
+     *
+     * <p>本番 {@code SecurityConfig} はまだ {@code @EnableMethodSecurity} を有効化していない
+     * （開発中は全エンドポイント素通し）ため、{@code @WebMvcTest} 単体では {@code hasRole('ADMIN')}
+     * の認可判定が効かず 200 が返ってしまう。本クラスを {@code @Import} することで
+     * 当該テストクラスのコンテキストでのみ Method Security を有効化し、Spring Security の
+     * {@code AuthorizationManager} が 403 を返す経路を本物どおり検証する。</p>
+     */
+    @Configuration
+    @EnableMethodSecurity
+    static class MethodSecurityTestConfig {
+    }
 
     private static final Long USER_ID = 100L;
     private static final Long SCHEDULE_ID = 1L;
