@@ -181,6 +181,7 @@ export default defineNuxtConfig({
           'ja/village.json',
           'ja/system_admin_batch.json',
           'ja/advertising.json',
+          'ja/public.json',
         ],
       },
       {
@@ -228,6 +229,7 @@ export default defineNuxtConfig({
           'en/village.json',
           'en/system_admin_batch.json',
           'en/advertising.json',
+          'en/public.json',
         ],
       },
       {
@@ -275,6 +277,7 @@ export default defineNuxtConfig({
           'zh/village.json',
           'zh/system_admin_batch.json',
           'zh/advertising.json',
+          'zh/public.json',
         ],
       },
       {
@@ -322,6 +325,7 @@ export default defineNuxtConfig({
           'ko/village.json',
           'ko/system_admin_batch.json',
           'ko/advertising.json',
+          'ko/public.json',
         ],
       },
       {
@@ -369,6 +373,7 @@ export default defineNuxtConfig({
           'es/village.json',
           'es/system_admin_batch.json',
           'es/advertising.json',
+          'es/public.json',
         ],
       },
       {
@@ -416,6 +421,7 @@ export default defineNuxtConfig({
           'de/village.json',
           'de/system_admin_batch.json',
           'de/advertising.json',
+          'de/public.json',
         ],
       },
     ],

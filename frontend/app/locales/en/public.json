@@ -1,0 +1,64 @@
+{
+  "public": {
+    "layout": {
+      "skipToContent": "Skip to main content",
+      "login": "Log in",
+      "register": "Sign up",
+      "siteName": "Mannschaft",
+      "openMenu": "Open menu"
+    },
+    "team": {
+      "title": "{name} - Public Page",
+      "memberCount": "{n} members",
+      "memberCountLabel": "Members",
+      "philosophyTitle": "Philosophy",
+      "mapTitle": "Location",
+      "homepageLabel": "Website",
+      "establishedAt": "Established: {date}"
+    },
+    "organization": {
+      "title": "{name} - Public Page",
+      "philosophyTitle": "Philosophy",
+      "mapTitle": "Location",
+      "homepageLabel": "Website",
+      "establishedAt": "Established: {date}"
+    },
+    "posts": {
+      "sectionTitle": "Public Posts",
+      "empty": "No public posts yet",
+      "loading": "Loading...",
+      "readMore": "Read more",
+      "publishedAt": "Published: {date}",
+      "backToList": "Back to list",
+      "totalCount": "{n} posts in total",
+      "page": "{page} / {total}",
+      "next": "Next",
+      "prev": "Previous"
+    },
+    "author": {
+      "anonymous": "Author",
+      "member": "Member",
+      "organizer": "Organizer",
+      "anonymousAvatarAlt": "Author (anonymous)"
+    },
+    "cta": {
+      "join": "Join this team",
+      "joinOrganization": "Join this organization",
+      "login": "Log in for more",
+      "register": "Sign up",
+      "ctaHeading": "Want to join Mannschaft?",
+      "ctaDescription": "Members can see all team members and activities."
+    },
+    "error": {
+      "notFound": "This page does not exist or is not public",
+      "notFoundTitle": "Page not found",
+      "loadFailed": "Failed to load information",
+      "rateLimit": "Too many requests. Please try again later.",
+      "backToHome": "Back to home"
+    },
+    "meta": {
+      "ogDescriptionDefault": "Public page on Mannschaft",
+      "ogSiteName": "Mannschaft"
+    }
+  }
+}
