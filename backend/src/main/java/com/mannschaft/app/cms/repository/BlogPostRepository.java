@@ -96,4 +96,68 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
             """)
     List<BlogPostVisibilityProjection> findVisibilityProjectionsByIdIn(
             @Param("ids") Collection<Long> ids);
+
+    // ========================================================================
+    // F19.1 Phase 1: 公開ページ用 ソース直 JOIN 方式での絞り込み
+    //
+    // §4.2 軍議追補に従い、announcement_feeds 経由ではなく blog_posts を直接
+    // visibility = PUBLIC かつ status = PUBLISHED で取得する。
+    // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §4.2 / §7.6
+    // ========================================================================
+
+    /**
+     * F19.1 Phase 1: チームの公開ブログ記事一覧を取得する。
+     *
+     * <p>{@code visibility = PUBLIC} かつ {@code status = PUBLISHED} かつ未削除の
+     * 記事のみ返す（{@code @SQLRestriction} で削除済みは自然に除外）。
+     * 並び順は {@code publishedAt DESC, id DESC}（ページング安定性のため id を tiebreaker）。</p>
+     *
+     * @param teamId   対象チーム ID
+     * @param pageable ページネーション
+     * @return 公開記事ページ
+     */
+    @Query("SELECT bp FROM BlogPostEntity bp "
+            + "WHERE bp.teamId = :teamId "
+            + "AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC "
+            + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED "
+            + "ORDER BY bp.publishedAt DESC, bp.id DESC")
+    Page<BlogPostEntity> findPublicPostsByTeamId(@Param("teamId") Long teamId, Pageable pageable);
+
+    /**
+     * F19.1 Phase 1: 組織の公開ブログ記事一覧を取得する。
+     *
+     * @see #findPublicPostsByTeamId(Long, Pageable)
+     */
+    @Query("SELECT bp FROM BlogPostEntity bp "
+            + "WHERE bp.organizationId = :organizationId "
+            + "AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC "
+            + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED "
+            + "ORDER BY bp.publishedAt DESC, bp.id DESC")
+    Page<BlogPostEntity> findPublicPostsByOrganizationId(
+            @Param("organizationId") Long organizationId, Pageable pageable);
+
+    /**
+     * F19.1 Phase 1: チームの公開ブログ記事を ID 指定で取得する。
+     *
+     * <p>{@code teamId} 不一致 / PRIVATE / 未公開 / 削除済 / 不在 は全て空を返す
+     * （IDOR 対策で 404 隠蔽。呼び出し側 Service で {@code orElseThrow}）。</p>
+     */
+    @Query("SELECT bp FROM BlogPostEntity bp "
+            + "WHERE bp.id = :postId "
+            + "AND bp.teamId = :teamId "
+            + "AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC "
+            + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED")
+    Optional<BlogPostEntity> findPublicPostByTeamIdAndId(
+            @Param("teamId") Long teamId, @Param("postId") Long postId);
+
+    /**
+     * F19.1 Phase 1: 組織の公開ブログ記事を ID 指定で取得する。
+     */
+    @Query("SELECT bp FROM BlogPostEntity bp "
+            + "WHERE bp.id = :postId "
+            + "AND bp.organizationId = :organizationId "
+            + "AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC "
+            + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED")
+    Optional<BlogPostEntity> findPublicPostByOrganizationIdAndId(
+            @Param("organizationId") Long organizationId, @Param("postId") Long postId);
 }

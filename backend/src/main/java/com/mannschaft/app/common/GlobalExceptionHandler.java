@@ -79,6 +79,10 @@ public class GlobalExceptionHandler {
             Map.entry(CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT),
             // F15.4 Phase 5-α: 店舗詳細 Public API（IDOR対策で 404）
             Map.entry("TEAM_001", HttpStatus.NOT_FOUND),
+            // F19.1 公開ページ Public API（IDOR / レート制限）
+            Map.entry("PUBLIC_001", HttpStatus.NOT_FOUND),         // PUBLIC でないチーム / 組織は 404 で隠蔽
+            Map.entry("PUBLIC_002", HttpStatus.TOO_MANY_REQUESTS), // レート制限超過
+            Map.entry("PUBLIC_003", HttpStatus.NOT_FOUND),         // 公開投稿不在も 404 で隠蔽
             Map.entry("AD_006", HttpStatus.CONFLICT),
             Map.entry("AD_007", HttpStatus.CONFLICT),
             Map.entry("AD_010", HttpStatus.FORBIDDEN),
