@@ -32,7 +32,7 @@ import {
  *   <li>AUTO-006: 確定後に取消（REVOKE）できる</li>
  * </ul>
  *
- * <p>仕様書: docs/features/F03.5_shift.md</p>
+ * <p>仕様書: docs/features/F03.5_shift/README.md</p>
  */
 
 const BOARD_URL = `/teams/${TEAM_ID}/shifts/${SCHEDULE_ID}/board`

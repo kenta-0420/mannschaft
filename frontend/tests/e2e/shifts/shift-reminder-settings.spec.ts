@@ -17,7 +17,7 @@ import {
  *   <li>REMINDER-SETTINGS-004: 設定なし（404）の場合はデフォルト値で表示される</li>
  * </ul>
  *
- * <p>仕様書: docs/features/F03.5_shift.md</p>
+ * <p>仕様書: docs/features/F03.5_shift/README.md</p>
  */
 
 const SETTINGS_URL = `/teams/${TEAM_ID}/settings/shift`

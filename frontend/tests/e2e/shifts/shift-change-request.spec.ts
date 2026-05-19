@@ -31,7 +31,7 @@ import {
  *   <li>CHANGE-006: 管理者が変更依頼を ACCEPTED / REJECTED にできる</li>
  * </ul>
  *
- * <p>仕様書: docs/features/F03.5_shift.md</p>
+ * <p>仕様書: docs/features/F03.5_shift/README.md</p>
  */
 
 const CHANGE_REQUEST_URL = `/teams/${TEAM_ID}/shifts/${SCHEDULE_ID}/change-requests`
