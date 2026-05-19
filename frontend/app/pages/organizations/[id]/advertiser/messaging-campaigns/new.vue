@@ -6,6 +6,7 @@ import type {
   AdMessagingCampaignAudienceSegmentRequest,
   AdMessagingCampaignChannelRequest,
   CreateAdMessagingCampaignRequest,
+  ScopeType,
 } from '~/types/adMessagingCampaign'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
@@ -13,6 +14,9 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
 const router = useRouter()
 const orgId = Number(route.params.id)
+// F09.17 Phase 11-d-3: 組織配下ページは scope='ORGANIZATION' 固定で composable を呼ぶ。
+const scopeType: ScopeType = 'ORGANIZATION'
+const scopeId = orgId
 const { t } = useI18n()
 const api = useAdMessagingCampaignApi()
 const toast = useNotification()
@@ -173,16 +177,16 @@ async function submit() {
       scheduledTimezone: basic.value.scheduledTimezone,
       frequencyCapOverride: basic.value.frequencyCapOverride ?? null,
     }
-    const res = await api.createCampaign(orgId, payload)
+    const res = await api.createCampaign(scopeType, scopeId, payload)
     const campaignId = res.data.id
 
     // チャネル登録
     for (const ch of channels.value) {
-      await api.createChannel(orgId, campaignId, ch)
+      await api.createChannel(scopeType, scopeId, campaignId, ch)
     }
     // オーディエンス
     if (segments.value.length > 0) {
-      await api.setAudience(orgId, campaignId, { segments: segments.value })
+      await api.setAudience(scopeType, scopeId, campaignId, { segments: segments.value })
     }
 
     toast.success(t('advertising.pages.advertiser_campaign_create.saved'))

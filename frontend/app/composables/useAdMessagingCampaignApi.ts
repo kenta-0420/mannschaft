@@ -1,6 +1,12 @@
 // F09.17 広告主向けメッセージ型キャンペーン API クライアント
 // 設計書: docs/features/F09.17_advertiser_targeted_campaign.md §4
-// 型は Phase 11-c-1 で導入された `~/types/adMessagingCampaign` を利用する。
+//
+// F09.17 Phase 11-d-3 で scope ベース URL に切り替え:
+//  - 旧 URL: /api/v1/advertiser/campaigns/messaging/* (organizationId クエリ式 / Deprecated)
+//  - 新 URL: /api/v1/{organizations|teams}/{scopeId}/advertiser/campaigns/messaging/*
+//
+// 全メソッドの第 1・第 2 引数を (scopeType, scopeId) に統一し、
+// 組織/チームのいずれのスコープにも対応できるようにする。
 
 import type {
   AdCampaignPreviewResponse,
@@ -13,6 +19,7 @@ import type {
   AdMessagingCampaignListItem,
   AdMessagingCampaignStatus,
   CreateAdMessagingCampaignRequest,
+  ScopeType,
   UpdateAdMessagingCampaignRequest,
 } from '~/types/adMessagingCampaign'
 
@@ -32,54 +39,81 @@ interface PagedEnvelope<T> {
   meta: PageMeta
 }
 
+/**
+ * scope に応じた URL セグメントを返す。
+ *
+ * <p>{@code ORGANIZATION} → {@code organizations}、{@code TEAM} → {@code teams}。
+ * backend Controller の {@code @RequestMapping} に追従する。</p>
+ */
+function scopeSegment(scopeType: ScopeType): 'organizations' | 'teams' {
+  return scopeType === 'ORGANIZATION' ? 'organizations' : 'teams'
+}
+
+/**
+ * scope ベースの base path を組み立てる。
+ *
+ * @example
+ *   buildBasePath('ORGANIZATION', 100)
+ *     → '/api/v1/organizations/100/advertiser/campaigns/messaging'
+ *   buildBasePath('TEAM', 42)
+ *     → '/api/v1/teams/42/advertiser/campaigns/messaging'
+ */
+function buildBasePath(scopeType: ScopeType, scopeId: number): string {
+  return `/api/v1/${scopeSegment(scopeType)}/${scopeId}/advertiser/campaigns/messaging`
+}
+
 export function useAdMessagingCampaignApi() {
   const api = useApi()
-
-  const base = '/api/v1/advertiser/campaigns/messaging'
 
   // ─────────────────────────────────────────────
   // 一覧 / 詳細 / CRUD
   // ─────────────────────────────────────────────
 
   async function listCampaigns(
-    organizationId: number,
+    scopeType: ScopeType,
+    scopeId: number,
     params?: { status?: AdMessagingCampaignStatus; page?: number; size?: number },
   ) {
-    return api<PagedEnvelope<AdMessagingCampaignListItem>>(base, {
-      params: { organizationId, ...params },
+    return api<PagedEnvelope<AdMessagingCampaignListItem>>(buildBasePath(scopeType, scopeId), {
+      params,
     })
   }
 
-  async function getCampaign(organizationId: number, campaignId: string) {
-    return api<ApiEnvelope<AdMessagingCampaign>>(`${base}/${campaignId}`, {
-      params: { organizationId },
-    })
+  async function getCampaign(scopeType: ScopeType, scopeId: number, campaignId: string) {
+    return api<ApiEnvelope<AdMessagingCampaign>>(
+      `${buildBasePath(scopeType, scopeId)}/${campaignId}`,
+    )
   }
 
-  async function createCampaign(organizationId: number, body: CreateAdMessagingCampaignRequest) {
-    return api<ApiEnvelope<AdMessagingCampaign>>(base, {
+  async function createCampaign(
+    scopeType: ScopeType,
+    scopeId: number,
+    body: CreateAdMessagingCampaignRequest,
+  ) {
+    return api<ApiEnvelope<AdMessagingCampaign>>(buildBasePath(scopeType, scopeId), {
       method: 'POST',
-      params: { organizationId },
       body,
     })
   }
 
   async function updateCampaign(
-    organizationId: number,
+    scopeType: ScopeType,
+    scopeId: number,
     campaignId: string,
     body: UpdateAdMessagingCampaignRequest,
   ) {
-    return api<ApiEnvelope<AdMessagingCampaign>>(`${base}/${campaignId}`, {
-      method: 'PUT',
-      params: { organizationId },
-      body,
-    })
+    return api<ApiEnvelope<AdMessagingCampaign>>(
+      `${buildBasePath(scopeType, scopeId)}/${campaignId}`,
+      {
+        method: 'PUT',
+        body,
+      },
+    )
   }
 
-  async function deleteCampaign(organizationId: number, campaignId: string) {
-    return api(`${base}/${campaignId}`, {
+  async function deleteCampaign(scopeType: ScopeType, scopeId: number, campaignId: string) {
+    return api(`${buildBasePath(scopeType, scopeId)}/${campaignId}`, {
       method: 'DELETE',
-      params: { organizationId },
     })
   }
 
@@ -88,37 +122,44 @@ export function useAdMessagingCampaignApi() {
   // ─────────────────────────────────────────────
 
   async function createChannel(
-    organizationId: number,
+    scopeType: ScopeType,
+    scopeId: number,
     campaignId: string,
-    body: AdMessagingCampaignChannelRequest,
-  ) {
-    return api<ApiEnvelope<AdMessagingCampaignChannel>>(`${base}/${campaignId}/channels`, {
-      method: 'POST',
-      params: { organizationId },
-      body,
-    })
-  }
-
-  async function updateChannel(
-    organizationId: number,
-    campaignId: string,
-    channelId: string,
     body: AdMessagingCampaignChannelRequest,
   ) {
     return api<ApiEnvelope<AdMessagingCampaignChannel>>(
-      `${base}/${campaignId}/channels/${channelId}`,
+      `${buildBasePath(scopeType, scopeId)}/${campaignId}/channels`,
       {
-        method: 'PUT',
-        params: { organizationId },
+        method: 'POST',
         body,
       },
     )
   }
 
-  async function deleteChannel(organizationId: number, campaignId: string, channelId: string) {
-    return api(`${base}/${campaignId}/channels/${channelId}`, {
+  async function updateChannel(
+    scopeType: ScopeType,
+    scopeId: number,
+    campaignId: string,
+    channelId: string,
+    body: AdMessagingCampaignChannelRequest,
+  ) {
+    return api<ApiEnvelope<AdMessagingCampaignChannel>>(
+      `${buildBasePath(scopeType, scopeId)}/${campaignId}/channels/${channelId}`,
+      {
+        method: 'PUT',
+        body,
+      },
+    )
+  }
+
+  async function deleteChannel(
+    scopeType: ScopeType,
+    scopeId: number,
+    campaignId: string,
+    channelId: string,
+  ) {
+    return api(`${buildBasePath(scopeType, scopeId)}/${campaignId}/channels/${channelId}`, {
       method: 'DELETE',
-      params: { organizationId },
     })
   }
 
@@ -127,15 +168,15 @@ export function useAdMessagingCampaignApi() {
   // ─────────────────────────────────────────────
 
   async function setAudience(
-    organizationId: number,
+    scopeType: ScopeType,
+    scopeId: number,
     campaignId: string,
     body: AdMessagingCampaignAudienceConfigRequest,
   ) {
     return api<ApiEnvelope<AdMessagingCampaignAudienceSegment[]>>(
-      `${base}/${campaignId}/audience`,
+      `${buildBasePath(scopeType, scopeId)}/${campaignId}/audience`,
       {
         method: 'POST',
-        params: { organizationId },
         body,
       },
     )
@@ -143,62 +184,81 @@ export function useAdMessagingCampaignApi() {
 
   // ─────────────────────────────────────────────
   // Preview / Report
+  //
+  // 注: backend は Phase 11-b で実装予定（11-d 時点で未実装）。
+  // 11-d-3 では新 URL のスケルトンを用意するに留め、実呼び出しは backend 実装後に通る想定。
   // ─────────────────────────────────────────────
 
-  async function previewCampaign(organizationId: number, campaignId: string) {
-    return api<ApiEnvelope<AdCampaignPreviewResponse>>(`${base}/${campaignId}/preview`, {
-      method: 'POST',
-      params: { organizationId },
-    })
+  async function previewCampaign(scopeType: ScopeType, scopeId: number, campaignId: string) {
+    return api<ApiEnvelope<AdCampaignPreviewResponse>>(
+      `${buildBasePath(scopeType, scopeId)}/${campaignId}/preview`,
+      {
+        method: 'POST',
+      },
+    )
   }
 
   async function getReport(
-    organizationId: number,
+    scopeType: ScopeType,
+    scopeId: number,
     campaignId: string,
     params?: { from?: string; to?: string },
   ) {
-    return api<ApiEnvelope<AdCampaignReport>>(`${base}/${campaignId}/report`, {
-      params: { organizationId, ...params },
-    })
+    return api<ApiEnvelope<AdCampaignReport>>(
+      `${buildBasePath(scopeType, scopeId)}/${campaignId}/report`,
+      {
+        params,
+      },
+    )
   }
 
   // ─────────────────────────────────────────────
-  // 状態遷移
+  // 状態遷移（submit / cancel / launch / pause / resume）
   // ─────────────────────────────────────────────
 
-  async function submitCampaign(organizationId: number, campaignId: string) {
-    return api<ApiEnvelope<AdMessagingCampaign>>(`${base}/${campaignId}/submit`, {
-      method: 'POST',
-      params: { organizationId },
-    })
+  async function submitCampaign(scopeType: ScopeType, scopeId: number, campaignId: string) {
+    return api<ApiEnvelope<AdMessagingCampaign>>(
+      `${buildBasePath(scopeType, scopeId)}/${campaignId}/submit`,
+      {
+        method: 'POST',
+      },
+    )
   }
 
-  async function cancelCampaign(organizationId: number, campaignId: string) {
-    return api<ApiEnvelope<AdMessagingCampaign>>(`${base}/${campaignId}/cancel`, {
-      method: 'POST',
-      params: { organizationId },
-    })
+  async function cancelCampaign(scopeType: ScopeType, scopeId: number, campaignId: string) {
+    return api<ApiEnvelope<AdMessagingCampaign>>(
+      `${buildBasePath(scopeType, scopeId)}/${campaignId}/cancel`,
+      {
+        method: 'POST',
+      },
+    )
   }
 
-  async function launchCampaign(organizationId: number, campaignId: string) {
-    return api<ApiEnvelope<AdMessagingCampaign>>(`${base}/${campaignId}/launch`, {
-      method: 'POST',
-      params: { organizationId },
-    })
+  async function launchCampaign(scopeType: ScopeType, scopeId: number, campaignId: string) {
+    return api<ApiEnvelope<AdMessagingCampaign>>(
+      `${buildBasePath(scopeType, scopeId)}/${campaignId}/launch`,
+      {
+        method: 'POST',
+      },
+    )
   }
 
-  async function pauseCampaign(organizationId: number, campaignId: string) {
-    return api<ApiEnvelope<AdMessagingCampaign>>(`${base}/${campaignId}/pause`, {
-      method: 'POST',
-      params: { organizationId },
-    })
+  async function pauseCampaign(scopeType: ScopeType, scopeId: number, campaignId: string) {
+    return api<ApiEnvelope<AdMessagingCampaign>>(
+      `${buildBasePath(scopeType, scopeId)}/${campaignId}/pause`,
+      {
+        method: 'POST',
+      },
+    )
   }
 
-  async function resumeCampaign(organizationId: number, campaignId: string) {
-    return api<ApiEnvelope<AdMessagingCampaign>>(`${base}/${campaignId}/resume`, {
-      method: 'POST',
-      params: { organizationId },
-    })
+  async function resumeCampaign(scopeType: ScopeType, scopeId: number, campaignId: string) {
+    return api<ApiEnvelope<AdMessagingCampaign>>(
+      `${buildBasePath(scopeType, scopeId)}/${campaignId}/resume`,
+      {
+        method: 'POST',
+      },
+    )
   }
 
   return {
