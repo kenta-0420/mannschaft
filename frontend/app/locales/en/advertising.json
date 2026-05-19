@@ -432,5 +432,13 @@
     "nav": {
       "messaging_campaigns": "Messaging campaigns"
     }
+  },
+  "teams_page": {
+    "title": "Team advertiser management",
+    "description": "Create and deliver messaging-type ad campaigns at the team level.",
+    "nav": {
+      "messaging_campaigns_description": "Create messaging-type ad campaigns targeted to team members."
+    },
+    "future_features_notice": "Invoices, credit limit requests, and recurring reports will be supported in a future phase."
   }
 }

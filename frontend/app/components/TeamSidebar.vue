@@ -47,6 +47,9 @@ const categories: SidebarCategory[] = [
       { labelKey: 'teamSidebar.item.forms', icon: 'pi pi-file-edit', path: 'forms', moduleSlug: 'survey', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.projects', icon: 'pi pi-folder', path: 'projects', moduleSlug: null, requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.budget', icon: 'pi pi-wallet', path: 'budget', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
+      // F09.17 Phase 11-d-4: チーム広告主機能（チーム ADMIN のみ表示。
+      // moduleSlug は組織版と同じ 'ad_display' を流用し、有効化判定を統一する）。
+      { labelKey: 'teamSidebar.item.advertiser', icon: 'pi pi-megaphone', path: 'advertiser', moduleSlug: 'ad_display', requiredRole: 'ADMIN' },
     ],
   },
   {
