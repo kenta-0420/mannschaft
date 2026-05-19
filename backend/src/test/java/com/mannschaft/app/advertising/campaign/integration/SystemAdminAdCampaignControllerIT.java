@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.advertising.campaign.controller.SystemAdminAdCampaignController;
 import com.mannschaft.app.advertising.campaign.dto.BlockCampaignRequest;
 import com.mannschaft.app.advertising.campaign.dto.ReviewQueueItemResponse;
+import com.mannschaft.app.advertising.campaign.dto.UnblockCampaignRequest;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.enums.AdModerationStatus;
 import com.mannschaft.app.advertising.campaign.exception.AdCampaignErrorCode;
@@ -267,6 +268,84 @@ class SystemAdminAdCampaignControllerIT {
             BlockCampaignRequest invalid = new BlockCampaignRequest("");
 
             mockMvc.perform(post("/api/v1/system-admin/ad-campaigns/{id}/block", CAMPAIGN_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(invalid)))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    // ════════════════════════════════════════════════
+    // POST /{id}/unblock — F09.17 残課題 3
+    // ════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("POST /api/v1/system-admin/ad-campaigns/{id}/unblock")
+    class UnblockCampaign {
+
+        @Test
+        @DisplayName("ハッピーパス: UNBLOCK → 204 + Service に moderatorUserId 伝搬")
+        void 正常系_204() throws Exception {
+            UnblockCampaignRequest req = new UnblockCampaignRequest("誤判定のため取消");
+            willDoNothing().given(moderationService)
+                    .unblock(eq(CAMPAIGN_ID), eq(MODERATOR_USER_ID), any(UnblockCampaignRequest.class));
+
+            mockMvc.perform(post("/api/v1/system-admin/ad-campaigns/{id}/unblock", CAMPAIGN_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(req)))
+                    .andExpect(status().isNoContent());
+
+            verify(moderationService)
+                    .unblock(eq(CAMPAIGN_ID), eq(MODERATOR_USER_ID), any(UnblockCampaignRequest.class));
+        }
+
+        @Test
+        @DisplayName("BLOCKED 以外 → AD_CAMPAIGN_NOT_UNBLOCKABLE 400")
+        void UNBLOCK不可状態_400() throws Exception {
+            UnblockCampaignRequest req = new UnblockCampaignRequest("試行");
+            willThrow(new BusinessException(AdCampaignErrorCode.AD_CAMPAIGN_NOT_UNBLOCKABLE))
+                    .given(moderationService)
+                    .unblock(eq(CAMPAIGN_ID), eq(MODERATOR_USER_ID), any(UnblockCampaignRequest.class));
+
+            mockMvc.perform(post("/api/v1/system-admin/ad-campaigns/{id}/unblock", CAMPAIGN_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(req)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("AD_CAMPAIGN_NOT_UNBLOCKABLE"));
+        }
+
+        @Test
+        @DisplayName("不在: AD_CAMPAIGN_NOT_FOUND → 404")
+        void 不在_404() throws Exception {
+            UnblockCampaignRequest req = new UnblockCampaignRequest("試行");
+            willThrow(new BusinessException(AdCampaignErrorCode.AD_CAMPAIGN_NOT_FOUND))
+                    .given(moderationService)
+                    .unblock(eq(CAMPAIGN_ID), eq(MODERATOR_USER_ID), any(UnblockCampaignRequest.class));
+
+            mockMvc.perform(post("/api/v1/system-admin/ad-campaigns/{id}/unblock", CAMPAIGN_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(req)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("AD_CAMPAIGN_NOT_FOUND"));
+        }
+
+        @Test
+        @DisplayName("reason 空 → Bean Validation 400")
+        void reason空_400() throws Exception {
+            UnblockCampaignRequest invalid = new UnblockCampaignRequest("");
+
+            mockMvc.perform(post("/api/v1/system-admin/ad-campaigns/{id}/unblock", CAMPAIGN_ID)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(invalid)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("reason 500 文字超過 → Bean Validation 400")
+        void reason超過_400() throws Exception {
+            String tooLong = "a".repeat(501);
+            UnblockCampaignRequest invalid = new UnblockCampaignRequest(tooLong);
+
+            mockMvc.perform(post("/api/v1/system-admin/ad-campaigns/{id}/unblock", CAMPAIGN_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(invalid)))
                     .andExpect(status().isBadRequest());

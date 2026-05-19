@@ -96,6 +96,12 @@ public enum AdCampaignErrorCode implements ErrorCode {
             "既にブロック済みのキャンペーンです",
             Severity.WARN),
 
+    /** UNBLOCK 不可状態（status != BLOCKED） */
+    AD_CAMPAIGN_NOT_UNBLOCKABLE(
+            "AD_CAMPAIGN_NOT_UNBLOCKABLE",
+            "BLOCKED 状態のキャンペーンのみ UNBLOCK 可能です",
+            Severity.WARN),
+
     /** DRAFT 以外の状態で編集系操作を試行した */
     AD_CAMPAIGN_NOT_EDITABLE(
             "AD_CAMPAIGN_NOT_EDITABLE",

@@ -480,7 +480,9 @@ public class GlobalExceptionHandler {
             Map.entry("FAV_006", HttpStatus.BAD_REQUEST),               // INVALID_ENTITY_ID
             // F09.17 Phase 11-a モデレーション (AD_CAMPAIGN_NOT_FOUND は §1 Campaign 域で定義済)
             Map.entry("AD_CAMPAIGN_NOT_REVIEWABLE", HttpStatus.BAD_REQUEST),  // 審査対象外状態
-            Map.entry("AD_CAMPAIGN_ALREADY_BLOCKED", HttpStatus.CONFLICT)     // 既に BLOCKED
+            Map.entry("AD_CAMPAIGN_ALREADY_BLOCKED", HttpStatus.CONFLICT),    // 既に BLOCKED
+            // F09.17 残課題 3 UNBLOCK
+            Map.entry("AD_CAMPAIGN_NOT_UNBLOCKABLE", HttpStatus.BAD_REQUEST)  // status != BLOCKED で UNBLOCK 試行
     );
 
     /**
