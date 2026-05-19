@@ -243,7 +243,7 @@ public class PublicPostQueryService {
         PostAuthor postAuthor = new PostAuthor(
                 post.getAuthorId(),
                 author != null ? author.getDisplayName() : null,
-                null, // realNameSnapshot: Phase 2 では blog_posts テーブルに未実装のため null
+                post.getAuthorRealNameSnapshot(),
                 fullName,
                 author != null ? author.getAvatarUrl() : null,
                 isMinor);
