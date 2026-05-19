@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -69,7 +70,7 @@ public class BatchJobLogService {
      * @param jobName ジョブ名
      * @return 作成されたログエンティティ
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public BatchJobLogEntity startJob(String jobName) {
         BatchJobLogEntity entity = BatchJobLogEntity.builder()
                 .jobName(jobName)
@@ -87,7 +88,7 @@ public class BatchJobLogService {
      * @param logEntity      ログエンティティ
      * @param processedCount 処理件数
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void completeJob(BatchJobLogEntity logEntity, int processedCount) {
         logEntity.complete(processedCount);
         batchJobLogRepository.save(logEntity);
@@ -100,7 +101,7 @@ public class BatchJobLogService {
      * @param logEntity    ログエンティティ
      * @param errorMessage エラーメッセージ
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void failJob(BatchJobLogEntity logEntity, String errorMessage) {
         logEntity.fail(errorMessage);
         batchJobLogRepository.save(logEntity);
