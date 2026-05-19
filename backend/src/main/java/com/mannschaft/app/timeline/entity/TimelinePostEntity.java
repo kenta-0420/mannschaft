@@ -124,6 +124,22 @@ public class TimelinePostEntity extends BaseEntity {
     @Column(name = "forward_target_range", length = 30)
     private String forwardTargetRange;
 
+    /**
+     * F19.1 Phase 2: 投稿時の本名スナップショット。
+     * 投稿者が属するチーム/組織の supporter_name_disclosure = REAL_NAME の場合のみ格納する。
+     * DISPLAY_NAME モード時は NULL。
+     */
+    @Column(name = "author_real_name_snapshot", length = 100)
+    private String authorRealNameSnapshot;
+
+    /**
+     * F19.1 Phase 2: 投稿の公開表示フラグ。
+     * false の場合、公開ページ・sitemap・OGP から除外する（ログイン後の通常ビューには変化なし）。
+     */
+    @Column(name = "public_visible", nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT TRUE")
+    @Builder.Default
+    private boolean publicVisible = true;
+
     private LocalDateTime deletedAt;
 
     /**
