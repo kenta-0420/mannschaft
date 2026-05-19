@@ -72,6 +72,33 @@ public class AsyncConfig {
     }
 
     /**
+     * 退会物理削除（{@code AccountPurgedEvent}）専用スレッドプール（Phase D-1）。
+     *
+     * <p>退会バッチ（{@code AccountPurgeService}、04:00 JST）が 100 件 × 6 ドメイン
+     * = 最大 600 タスクを瞬時 enqueue する。{@code event-pool}（queueCapacity=100）では
+     * 溢れるため、退会物理削除専用のプールに物理分離する。</p>
+     *
+     * <p>設計根拠: {@code docs/architecture/account_purge_cross_domain_refactor.md}
+     * §9.8 案 A 採用（マスター御裁可 Phase D-1）。
+     * {@code @Async("purge-pool")} を 6 本の {@code *PurgeEventListener} に指定して切替え。</p>
+     *
+     * <p>サイジング: corePoolSize=2 / maxPoolSize=10 / queueCapacity=500 で
+     * 100 件バッチ × 6 ドメイン = 600 タスクに対応。1 件あたり数十〜数百 ms を見込み、
+     * ピーク 10 並列 × queueCapacity=500 でバースト吸収する。</p>
+     */
+    @Bean("purge-pool")
+    public Executor purgePool() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(10);
+        executor.setQueueCapacity(500); // 100件バッチ × 6ドメイン = 600タスクに対応
+        executor.setThreadNamePrefix("purge-");
+        executor.setTaskDecorator(new MdcTaskDecorator());
+        executor.initialize();
+        return executor;
+    }
+
+    /**
      * バッチジョブ用スレッドプール。
      * 定期実行タスクや重い処理に使用する。
      */
