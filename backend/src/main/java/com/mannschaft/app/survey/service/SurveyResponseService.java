@@ -1,5 +1,8 @@
 package com.mannschaft.app.survey.service;
 
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
@@ -11,12 +14,17 @@ import com.mannschaft.app.survey.SurveyErrorCode;
 import com.mannschaft.app.survey.SurveyMapper;
 import com.mannschaft.app.survey.dto.SubmitResponseRequest;
 import com.mannschaft.app.survey.dto.SurveyResponseEntry;
+import com.mannschaft.app.survey.dto.UserResponseAnswerEntry;
+import com.mannschaft.app.survey.dto.UserResponseDetailResponse;
 import com.mannschaft.app.survey.entity.SurveyEntity;
+import com.mannschaft.app.survey.entity.SurveyOptionEntity;
 import com.mannschaft.app.survey.entity.SurveyQuestionEntity;
 import com.mannschaft.app.survey.entity.SurveyResponseEntity;
+import com.mannschaft.app.survey.repository.SurveyOptionRepository;
 import com.mannschaft.app.survey.repository.SurveyQuestionRepository;
 import com.mannschaft.app.survey.repository.SurveyRepository;
 import com.mannschaft.app.survey.repository.SurveyResponseRepository;
+import com.mannschaft.app.survey.repository.SurveyResultViewerRepository;
 import com.mannschaft.app.survey.repository.SurveyTargetRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,12 +48,16 @@ public class SurveyResponseService {
 
     private final SurveyRepository surveyRepository;
     private final SurveyQuestionRepository questionRepository;
+    private final SurveyOptionRepository optionRepository;
     private final SurveyResponseRepository responseRepository;
     private final SurveyTargetRepository targetRepository;
+    private final SurveyResultViewerRepository resultViewerRepository;
     private final SurveyMapper surveyMapper;
     private final SurveyService surveyService;
     private final ProxyInputContext proxyInputContext;
     private final ProxyInputRecordRepository proxyInputRecordRepository;
+    private final AccessControlService accessControlService;
+    private final UserRepository userRepository;
 
     /**
      * アンケートに回答を送信する。
@@ -139,6 +151,96 @@ public class SurveyResponseService {
     public List<SurveyResponseEntry> getMyResponses(Long surveyId, Long userId) {
         List<SurveyResponseEntity> responses = responseRepository.findBySurveyIdAndUserId(surveyId, userId);
         return surveyMapper.toResponseEntryList(responses);
+    }
+
+    /**
+     * 指定ユーザーの回答詳細を取得する（F05.4 §4.8 /responses/{userId}）。
+     *
+     * <p>認可:
+     * <ul>
+     *   <li>匿名アンケート（{@code is_anonymous=true}）の場合は無条件で 403</li>
+     *   <li>ADMIN+ / 作成者 / {@code survey_result_viewers} 登録者のみ閲覧可</li>
+     *   <li>指定ユーザーが未回答の場合 404</li>
+     * </ul>
+     *
+     * @param surveyId      対象アンケート ID
+     * @param userId        回答取得対象ユーザー ID
+     * @param currentUserId 操作実行者ユーザー ID
+     * @return 個別回答詳細
+     */
+    public UserResponseDetailResponse getResponseByUser(Long surveyId, Long userId, Long currentUserId) {
+        SurveyEntity survey = surveyService.findSurveyEntityOrThrow(surveyId);
+
+        // 匿名アンケートは個別回答取得不可
+        if (Boolean.TRUE.equals(survey.getIsAnonymous())) {
+            throw new BusinessException(SurveyErrorCode.ANONYMOUS_RESPONSE_FORBIDDEN);
+        }
+
+        // 認可
+        boolean isCreator = survey.getCreatedBy() != null && survey.getCreatedBy().equals(currentUserId);
+        boolean isAdmin = accessControlService.isAdminOrAbove(
+                currentUserId, survey.getScopeId(), survey.getScopeType());
+        boolean isViewer = resultViewerRepository.existsBySurveyIdAndUserId(surveyId, currentUserId);
+        if (!isAdmin && !isCreator && !isViewer) {
+            throw new BusinessException(SurveyErrorCode.RESPONSE_ACCESS_DENIED);
+        }
+
+        List<SurveyResponseEntity> responses = responseRepository.findBySurveyIdAndUserId(surveyId, userId);
+        if (responses.isEmpty()) {
+            throw new BusinessException(SurveyErrorCode.USER_RESPONSE_NOT_FOUND);
+        }
+
+        List<SurveyQuestionEntity> questions =
+                questionRepository.findBySurveyIdOrderByDisplayOrderAsc(surveyId);
+        Map<Long, SurveyQuestionEntity> questionMap = questions.stream()
+                .collect(Collectors.toMap(SurveyQuestionEntity::getId, Function.identity()));
+
+        // question_id ごとに responses をグルーピング（MULTIPLE_CHOICE は複数行）
+        Map<Long, List<SurveyResponseEntity>> byQuestion = responses.stream()
+                .collect(Collectors.groupingBy(SurveyResponseEntity::getQuestionId));
+
+        List<UserResponseAnswerEntry> answers = new ArrayList<>();
+        java.time.LocalDateTime respondedAt = responses.get(0).getCreatedAt();
+        for (SurveyQuestionEntity q : questions) {
+            List<SurveyResponseEntity> qResponses = byQuestion.getOrDefault(q.getId(), List.of());
+            if (qResponses.isEmpty()) {
+                continue;
+            }
+            List<Long> optionIds = new ArrayList<>();
+            List<String> optionTexts = new ArrayList<>();
+            String answerText = null;
+            for (SurveyResponseEntity r : qResponses) {
+                if (r.getOptionId() != null) {
+                    optionIds.add(r.getOptionId());
+                    SurveyOptionEntity opt = optionRepository.findById(r.getOptionId()).orElse(null);
+                    optionTexts.add(opt != null ? opt.getOptionText() : null);
+                }
+                if (r.getTextResponse() != null) {
+                    answerText = r.getTextResponse();
+                }
+            }
+            answers.add(new UserResponseAnswerEntry(
+                    q.getId(),
+                    q.getQuestionText(),
+                    q.getQuestionType().name(),
+                    optionIds.isEmpty() ? null : optionIds,
+                    optionTexts.isEmpty() ? null : optionTexts,
+                    answerText));
+        }
+
+        UserEntity user = userRepository.findById(userId).orElse(null);
+        String displayName = user != null
+                ? (user.getLastName() != null ? user.getLastName() : "") + " "
+                  + (user.getFirstName() != null ? user.getFirstName() : "")
+                : null;
+        UserResponseDetailResponse.UserSummary summary =
+                new UserResponseDetailResponse.UserSummary(userId, displayName != null ? displayName.trim() : null);
+        // 未使用変数を黙らせるためのフィールド参照（questionMap は将来拡張用に保持）
+        if (questionMap.isEmpty()) {
+            log.debug("questionMap empty for surveyId={}", surveyId);
+        }
+
+        return new UserResponseDetailResponse(surveyId, summary, respondedAt, answers);
     }
 
     /**

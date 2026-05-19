@@ -2,17 +2,23 @@ package com.mannschaft.app.survey.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.QuestionType;
 import com.mannschaft.app.survey.ResultsVisibility;
 import com.mannschaft.app.survey.SurveyErrorCode;
 import com.mannschaft.app.survey.SurveyMapper;
+import com.mannschaft.app.survey.SurveyNotificationType;
 import com.mannschaft.app.survey.SurveyStatus;
 import com.mannschaft.app.survey.UnrespondedVisibility;
 import com.mannschaft.app.survey.dto.CreateOptionRequest;
 import com.mannschaft.app.survey.dto.CreateQuestionRequest;
 import com.mannschaft.app.survey.dto.CreateSurveyRequest;
+import com.mannschaft.app.survey.dto.DuplicateSurveyRequest;
 import com.mannschaft.app.survey.dto.QuestionResponse;
 import com.mannschaft.app.survey.dto.SurveyDetailResponse;
 import com.mannschaft.app.survey.dto.SurveyResponse;
@@ -28,6 +34,7 @@ import com.mannschaft.app.survey.repository.SurveyQuestionRepository;
 import com.mannschaft.app.survey.repository.SurveyRepository;
 import com.mannschaft.app.survey.repository.SurveyResultViewerRepository;
 import com.mannschaft.app.survey.repository.SurveyTargetRepository;
+import com.mannschaft.app.survey.repository.SurveyResponseRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -52,8 +59,12 @@ public class SurveyService {
     private final SurveyOptionRepository optionRepository;
     private final SurveyTargetRepository targetRepository;
     private final SurveyResultViewerRepository resultViewerRepository;
+    private final SurveyResponseRepository responseRepository;
     private final SurveyMapper surveyMapper;
     private final ObjectMapper objectMapper;
+    private final AccessControlService accessControlService;
+    private final UserRoleRepository userRoleRepository;
+    private final NotificationHelper notificationHelper;
 
     /**
      * アンケート一覧をページング取得する。
@@ -379,6 +390,182 @@ public class SurveyService {
                 resultViewerRepository.save(viewer);
             }
         }
+    }
+
+    /**
+     * アンケート締切を延長する（F05.4 §4.7 extend）。
+     *
+     * <p>認可: 作成者 / ADMIN+。状態は PUBLISHED のみ受付。
+     * 短縮は不可（既に期限内の回答者への約束を守るため）。
+     * カウンタ・受信者への通知も送信する。</p>
+     *
+     * @param scopeType     スコープ種別
+     * @param scopeId       スコープ ID
+     * @param surveyId      対象アンケート ID
+     * @param newDeadline   新しい締切（現在の {@code expires_at} より後）
+     * @param currentUserId 操作実行者ユーザー ID
+     * @return 延長後のアンケートレスポンス
+     */
+    @Transactional
+    public SurveyResponse extendDeadline(String scopeType, Long scopeId, Long surveyId,
+                                          java.time.LocalDateTime newDeadline, Long currentUserId) {
+        SurveyEntity entity = findSurveyOrThrow(scopeType, scopeId, surveyId);
+
+        // 認可: 作成者 or ADMIN+
+        boolean isCreator = entity.getCreatedBy() != null && entity.getCreatedBy().equals(currentUserId);
+        boolean isAdmin = accessControlService.isAdminOrAbove(currentUserId, scopeId, scopeType);
+        if (!isCreator && !isAdmin) {
+            throw new BusinessException(SurveyErrorCode.OPERATION_PERMISSION_DENIED);
+        }
+
+        // 状態: PUBLISHED のみ
+        if (entity.getStatus() != SurveyStatus.PUBLISHED) {
+            throw new BusinessException(SurveyErrorCode.INVALID_SURVEY_STATUS);
+        }
+
+        // 短縮不可: 新締切は現在の expires_at より後
+        if (newDeadline == null) {
+            throw new BusinessException(SurveyErrorCode.INVALID_NEW_DEADLINE);
+        }
+        if (entity.getExpiresAt() != null && !newDeadline.isAfter(entity.getExpiresAt())) {
+            throw new BusinessException(SurveyErrorCode.INVALID_NEW_DEADLINE);
+        }
+
+        entity.updatePeriod(entity.getStartsAt(), newDeadline);
+        SurveyEntity saved = surveyRepository.save(entity);
+
+        // 受信者通知（distribution_mode に応じた母集団）
+        List<Long> recipients = saved.getDistributionMode() == DistributionMode.ALL
+                ? userRoleRepository.findUserIdsByScope(scopeType, scopeId)
+                : targetRepository.findBySurveyId(surveyId).stream()
+                    .map(SurveyTargetEntity::getUserId)
+                    .distinct()
+                    .toList();
+        NotificationScopeType notifScope = "TEAM".equals(scopeType)
+                ? NotificationScopeType.TEAM
+                : NotificationScopeType.ORGANIZATION;
+        if (!recipients.isEmpty()) {
+            notificationHelper.notifyAll(
+                    recipients,
+                    SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name(),
+                    "アンケート締切が延長されました",
+                    "「" + saved.getTitle() + "」の回答締切が " + newDeadline + " に延長されました。",
+                    "SURVEY",
+                    surveyId,
+                    notifScope,
+                    scopeId,
+                    "/surveys/" + surveyId,
+                    currentUserId);
+        }
+
+        log.info("アンケート締切延長: surveyId={}, newDeadline={}, by={}", surveyId, newDeadline, currentUserId);
+        return surveyMapper.toSurveyResponse(saved);
+    }
+
+    /**
+     * アンケートを複製する（F05.4 §4.6 duplicate）。
+     *
+     * <p>新規 {@code DRAFT} を作成し、設問・選択肢・配信対象・結果閲覧者をコピーする。
+     * 回答データ・状態・日時はリセットする。タイトル末尾に「（コピー）」を付与する
+     * （リクエストで {@code title} が指定された場合はそれを優先）。</p>
+     *
+     * @param scopeType     スコープ種別
+     * @param scopeId       スコープ ID
+     * @param surveyId      コピー元アンケート ID
+     * @param request       複製リクエスト（タイトル・seriesId 任意）
+     * @param currentUserId 作成者ユーザー ID
+     * @return 複製後の新アンケート詳細
+     */
+    @Transactional
+    public SurveyDetailResponse duplicateSurvey(String scopeType, Long scopeId, Long surveyId,
+                                                 DuplicateSurveyRequest request, Long currentUserId) {
+        SurveyEntity source = findSurveyOrThrow(scopeType, scopeId, surveyId);
+
+        // 認可: 作成者 or ADMIN+
+        boolean isCreator = source.getCreatedBy() != null && source.getCreatedBy().equals(currentUserId);
+        boolean isAdmin = accessControlService.isAdminOrAbove(currentUserId, scopeId, scopeType);
+        if (!isCreator && !isAdmin) {
+            throw new BusinessException(SurveyErrorCode.OPERATION_PERMISSION_DENIED);
+        }
+
+        String newTitle = (request != null && request.getTitle() != null && !request.getTitle().isBlank())
+                ? request.getTitle()
+                : source.getTitle() + "（コピー）";
+        String newSeriesId = (request != null && request.getSeriesId() != null)
+                ? request.getSeriesId()
+                : source.getSeriesId();
+
+        SurveyEntity newEntity = SurveyEntity.builder()
+                .scopeType(source.getScopeType())
+                .scopeId(source.getScopeId())
+                .title(newTitle)
+                .description(source.getDescription())
+                .status(SurveyStatus.DRAFT)
+                .isAnonymous(source.getIsAnonymous())
+                .allowMultipleSubmissions(source.getAllowMultipleSubmissions())
+                .resultsVisibility(source.getResultsVisibility())
+                .distributionMode(source.getDistributionMode())
+                .unrespondedVisibility(source.getUnrespondedVisibility())
+                .autoPostToTimeline(source.getAutoPostToTimeline())
+                .seriesId(newSeriesId)
+                .remindBeforeHours(source.getRemindBeforeHours())
+                .createdBy(currentUserId)
+                .build();
+        SurveyEntity savedNew = surveyRepository.save(newEntity);
+
+        // 設問・選択肢をコピー
+        List<SurveyQuestionEntity> sourceQuestions =
+                questionRepository.findBySurveyIdOrderByDisplayOrderAsc(surveyId);
+        for (SurveyQuestionEntity sq : sourceQuestions) {
+            SurveyQuestionEntity newQ = SurveyQuestionEntity.builder()
+                    .surveyId(savedNew.getId())
+                    .questionType(sq.getQuestionType())
+                    .questionText(sq.getQuestionText())
+                    .isRequired(sq.getIsRequired())
+                    .displayOrder(sq.getDisplayOrder())
+                    .maxSelections(sq.getMaxSelections())
+                    .scaleMin(sq.getScaleMin())
+                    .scaleMax(sq.getScaleMax())
+                    .scaleMinLabel(sq.getScaleMinLabel())
+                    .scaleMaxLabel(sq.getScaleMaxLabel())
+                    .build();
+            SurveyQuestionEntity savedQ = questionRepository.save(newQ);
+            List<SurveyOptionEntity> sourceOptions =
+                    optionRepository.findByQuestionIdOrderByDisplayOrderAsc(sq.getId());
+            for (SurveyOptionEntity so : sourceOptions) {
+                SurveyOptionEntity newOpt = SurveyOptionEntity.builder()
+                        .questionId(savedQ.getId())
+                        .optionText(so.getOptionText())
+                        .displayOrder(so.getDisplayOrder())
+                        .build();
+                optionRepository.save(newOpt);
+            }
+        }
+
+        // 配信対象 / 結果閲覧者をコピー
+        List<SurveyTargetEntity> sourceTargets = targetRepository.findBySurveyId(surveyId);
+        for (SurveyTargetEntity t : sourceTargets) {
+            targetRepository.save(SurveyTargetEntity.builder()
+                    .surveyId(savedNew.getId())
+                    .userId(t.getUserId())
+                    .build());
+        }
+        if (!sourceTargets.isEmpty()) {
+            savedNew.updateTargetCount(sourceTargets.size());
+            surveyRepository.save(savedNew);
+        }
+
+        List<SurveyResultViewerEntity> sourceViewers =
+                resultViewerRepository.findBySurveyId(surveyId);
+        for (SurveyResultViewerEntity v : sourceViewers) {
+            resultViewerRepository.save(SurveyResultViewerEntity.builder()
+                    .surveyId(savedNew.getId())
+                    .userId(v.getUserId())
+                    .build());
+        }
+
+        log.info("アンケート複製: source={}, new={}, by={}", surveyId, savedNew.getId(), currentUserId);
+        return getSurveyDetail(scopeType, scopeId, savedNew.getId());
     }
 
     /**

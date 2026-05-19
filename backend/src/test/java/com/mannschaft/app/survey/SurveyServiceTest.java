@@ -1,6 +1,10 @@
 package com.mannschaft.app.survey;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.survey.dto.DuplicateSurveyRequest;
 import com.mannschaft.app.survey.dto.SurveyResponse;
 import com.mannschaft.app.survey.dto.SurveyStatsResponse;
 import com.mannschaft.app.survey.entity.SurveyEntity;
@@ -8,6 +12,9 @@ import com.mannschaft.app.survey.entity.SurveyQuestionEntity;
 import com.mannschaft.app.survey.repository.SurveyOptionRepository;
 import com.mannschaft.app.survey.repository.SurveyQuestionRepository;
 import com.mannschaft.app.survey.repository.SurveyRepository;
+import com.mannschaft.app.survey.repository.SurveyResponseRepository;
+import com.mannschaft.app.survey.repository.SurveyResultViewerRepository;
+import com.mannschaft.app.survey.repository.SurveyTargetRepository;
 import com.mannschaft.app.survey.service.SurveyService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -17,6 +24,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,7 +51,25 @@ class SurveyServiceTest {
     private SurveyOptionRepository optionRepository;
 
     @Mock
+    private SurveyTargetRepository targetRepository;
+
+    @Mock
+    private SurveyResultViewerRepository resultViewerRepository;
+
+    @Mock
+    private SurveyResponseRepository responseRepository;
+
+    @Mock
     private SurveyMapper surveyMapper;
+
+    @Mock
+    private AccessControlService accessControlService;
+
+    @Mock
+    private UserRoleRepository userRoleRepository;
+
+    @Mock
+    private NotificationHelper notificationHelper;
 
     @InjectMocks
     private SurveyService surveyService;
@@ -233,6 +260,135 @@ class SurveyServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(SurveyErrorCode.QUESTION_NOT_FOUND));
+        }
+    }
+
+    @Nested
+    @DisplayName("extendDeadline")
+    class ExtendDeadline {
+
+        @Test
+        @DisplayName("締切延長_正常_PUBLISHED状態で延長成功")
+        void 締切延長_正常_PUBLISHED状態で延長成功() {
+            // Given
+            SurveyEntity entity = createPublishedSurvey();
+            entity.updatePeriod(LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(7));
+            LocalDateTime newDeadline = LocalDateTime.now().plusDays(14);
+
+            given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, SCOPE_TYPE)).willReturn(true);
+            given(surveyRepository.save(entity)).willReturn(entity);
+            given(surveyMapper.toSurveyResponse(entity)).willReturn(createSurveyResponse());
+            given(userRoleRepository.findUserIdsByScope(SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Collections.emptyList());
+
+            // When
+            surveyService.extendDeadline(SCOPE_TYPE, SCOPE_ID, SURVEY_ID, newDeadline, USER_ID);
+
+            // Then
+            assertThat(entity.getExpiresAt()).isEqualTo(newDeadline);
+        }
+
+        @Test
+        @DisplayName("締切延長_短縮試行_BusinessException")
+        void 締切延長_短縮試行_BusinessException() {
+            // Given
+            SurveyEntity entity = createPublishedSurvey();
+            LocalDateTime currentDeadline = LocalDateTime.now().plusDays(7);
+            entity.updatePeriod(LocalDateTime.now().minusDays(1), currentDeadline);
+            LocalDateTime shorterDeadline = LocalDateTime.now().plusDays(3);
+
+            given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, SCOPE_TYPE)).willReturn(true);
+
+            // When & Then
+            assertThatThrownBy(() -> surveyService.extendDeadline(
+                    SCOPE_TYPE, SCOPE_ID, SURVEY_ID, shorterDeadline, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(SurveyErrorCode.INVALID_NEW_DEADLINE));
+        }
+
+        @Test
+        @DisplayName("締切延長_権限なし_BusinessException")
+        void 締切延長_権限なし_BusinessException() {
+            // Given
+            Long otherUserId = 999L;
+            SurveyEntity entity = createPublishedSurvey();
+
+            given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(otherUserId, SCOPE_ID, SCOPE_TYPE)).willReturn(false);
+
+            // When & Then
+            assertThatThrownBy(() -> surveyService.extendDeadline(
+                    SCOPE_TYPE, SCOPE_ID, SURVEY_ID, LocalDateTime.now().plusDays(30), otherUserId))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(SurveyErrorCode.OPERATION_PERMISSION_DENIED));
+        }
+    }
+
+    @Nested
+    @DisplayName("duplicateSurvey")
+    class DuplicateSurvey {
+
+        @Test
+        @DisplayName("アンケート複製_正常_DRAFT状態で新規作成")
+        void アンケート複製_正常_DRAFT状態で新規作成() {
+            // Given
+            SurveyEntity source = createDraftSurvey();
+            given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(source));
+            given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, SCOPE_TYPE)).willReturn(true);
+            SurveyEntity newEntity = createDraftSurvey();
+            // save の呼び出しでは引数のエンティティをそのまま返す
+            given(surveyRepository.save(org.mockito.ArgumentMatchers.any(SurveyEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(questionRepository.findBySurveyIdOrderByDisplayOrderAsc(SURVEY_ID))
+                    .willReturn(Collections.emptyList());
+            given(targetRepository.findBySurveyId(SURVEY_ID)).willReturn(Collections.emptyList());
+            given(resultViewerRepository.findBySurveyId(SURVEY_ID)).willReturn(Collections.emptyList());
+            // getSurveyDetail 内部呼び出し用
+            given(surveyRepository.findByIdAndScopeTypeAndScopeId(
+                    org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.eq(SCOPE_TYPE),
+                    org.mockito.ArgumentMatchers.eq(SCOPE_ID)))
+                    .willReturn(Optional.of(newEntity));
+            given(surveyMapper.toSurveyResponse(org.mockito.ArgumentMatchers.any()))
+                    .willReturn(createSurveyResponse());
+
+            DuplicateSurveyRequest request = new DuplicateSurveyRequest();
+
+            // When
+            surveyService.duplicateSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID, request, USER_ID);
+
+            // Then
+            verify(surveyRepository, org.mockito.Mockito.atLeastOnce())
+                    .save(org.mockito.ArgumentMatchers.argThat(s -> s != null
+                            && s.getStatus() == SurveyStatus.DRAFT
+                            && s.getTitle().endsWith("（コピー）")));
+        }
+
+        @Test
+        @DisplayName("アンケート複製_権限なし_BusinessException")
+        void アンケート複製_権限なし_BusinessException() {
+            // Given
+            Long otherUserId = 999L;
+            SurveyEntity source = createDraftSurvey();
+            given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(source));
+            given(accessControlService.isAdminOrAbove(otherUserId, SCOPE_ID, SCOPE_TYPE))
+                    .willReturn(false);
+
+            // When & Then
+            assertThatThrownBy(() -> surveyService.duplicateSurvey(
+                    SCOPE_TYPE, SCOPE_ID, SURVEY_ID, new DuplicateSurveyRequest(), otherUserId))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(SurveyErrorCode.OPERATION_PERMISSION_DENIED));
         }
     }
 

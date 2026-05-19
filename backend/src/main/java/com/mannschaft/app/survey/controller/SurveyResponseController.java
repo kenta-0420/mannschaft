@@ -3,6 +3,7 @@ package com.mannschaft.app.survey.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.survey.dto.SubmitResponseRequest;
 import com.mannschaft.app.survey.dto.SurveyResponseEntry;
+import com.mannschaft.app.survey.dto.UserResponseDetailResponse;
 import com.mannschaft.app.survey.service.SurveyResponseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,6 +45,24 @@ public class SurveyResponseController {
         List<SurveyResponseEntry> responses = responseService.submitResponse(
                 surveyId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(responses));
+    }
+
+    /**
+     * F05.4 §4.8 指定ユーザーの個別回答取得。
+     *
+     * <p>非匿名アンケート専用。ADMIN+ / 作成者 / {@code survey_result_viewers} 登録者のみ閲覧可。
+     * 匿名アンケートの場合は 403 を返す。</p>
+     */
+    @GetMapping("/{userId}")
+    @Operation(summary = "指定ユーザーの個別回答取得",
+            description = "F05.4 §4.8 特定ユーザーの回答詳細を取得（非匿名のみ）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<UserResponseDetailResponse>> getResponseByUser(
+            @PathVariable Long surveyId,
+            @PathVariable Long userId) {
+        UserResponseDetailResponse response = responseService.getResponseByUser(
+                surveyId, userId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
