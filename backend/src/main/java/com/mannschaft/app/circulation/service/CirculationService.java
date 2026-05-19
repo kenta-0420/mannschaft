@@ -12,13 +12,24 @@ import com.mannschaft.app.circulation.dto.AddRecipientsRequest;
 import com.mannschaft.app.circulation.dto.AttachmentResponse;
 import com.mannschaft.app.circulation.dto.CirculationAttachmentPresignRequest;
 import com.mannschaft.app.circulation.dto.CirculationAttachmentPresignResponse;
+import com.mannschaft.app.circulation.RecipientStatus;
 import com.mannschaft.app.circulation.dto.CreateAttachmentRequest;
 import com.mannschaft.app.circulation.dto.CreateDocumentRequest;
 import com.mannschaft.app.circulation.dto.DocumentResponse;
 import com.mannschaft.app.circulation.dto.DocumentStatsResponse;
+import com.mannschaft.app.circulation.dto.DocumentStatusResponse;
+import com.mannschaft.app.circulation.dto.ForceCompleteBatchResponse;
 import com.mannschaft.app.circulation.dto.RecipientEntry;
 import com.mannschaft.app.circulation.dto.RecipientResponse;
+import com.mannschaft.app.circulation.dto.RecipientStatusEntry;
+import com.mannschaft.app.circulation.dto.RemindResponse;
 import com.mannschaft.app.circulation.dto.UpdateDocumentRequest;
+import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.repository.UserRepository.MemberSummary;
+import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationService;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.circulation.entity.CirculationAttachmentEntity;
 import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
 import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
@@ -42,7 +53,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -81,6 +95,18 @@ public class CirculationService {
      * クロスドメイン参照のクリーンアップを行う。
      */
     private final ApplicationEventPublisher applicationEventPublisher;
+
+    /**
+     * Phase 11 第三陣 3-A: 受信者表示名解決・手動リマインド・複製で使用。
+     * Bean 不在のテスト構成（Mockito @InjectMocks 等）では null 注入される。
+     */
+    private final UserRepository userRepository;
+
+    /** Phase 11 第三陣 3-A: 手動リマインド送信に使用。 */
+    private final NotificationService notificationService;
+
+    /** Phase 11 第三陣 3-A: 強制完了・一括強制完了の監査ログ書き込みに使用。 */
+    private final AuditLogService auditLogService;
 
     /**
      * 文書一覧をページング取得する。
@@ -525,6 +551,220 @@ public class CirculationService {
         long total = draft + active + completed + cancelled;
 
         return new DocumentStatsResponse(total, draft, active, completed, cancelled);
+    }
+
+    // ─────────────────────────────────────────────
+    // Phase 11 第三陣 3-A: 管理者向け小機能群
+    // ─────────────────────────────────────────────
+
+    /**
+     * 文書を強制完了する（Phase 11 第三陣 3-A）。
+     *
+     * <p>全受信者が未押印でも、管理者判断で {@code COMPLETED} 扱いとする。
+     * 対象は {@code DRAFT} 以外（{@code IN_PROGRESS / ACTIVE} 想定）に限定し、
+     * 既に {@code COMPLETED / CANCELLED} の場合は {@code INVALID_DOCUMENT_STATUS} を投げる。
+     * 監査ログイベント {@code CIRCULATION_FORCE_COMPLETED} を非同期発火する。</p>
+     *
+     * @param documentId 文書 ID
+     * @param actorId    操作者ユーザー ID
+     * @return 強制完了後の文書レスポンス
+     */
+    @Transactional
+    public DocumentResponse forceCompleteDocument(Long documentId, Long actorId) {
+        CirculationDocumentEntity entity = findDocumentById(documentId);
+
+        if (entity.getStatus() == CirculationStatus.COMPLETED
+                || entity.getStatus() == CirculationStatus.CANCELLED
+                || entity.getStatus() == CirculationStatus.DRAFT) {
+            throw new BusinessException(CirculationErrorCode.INVALID_DOCUMENT_STATUS);
+        }
+
+        entity.complete();
+        CirculationDocumentEntity saved = documentRepository.save(entity);
+
+        if (auditLogService != null) {
+            auditLogService.record(
+                    "CIRCULATION_FORCE_COMPLETED", actorId, null,
+                    "TEAM".equals(entity.getScopeType()) ? entity.getScopeId() : null,
+                    "ORGANIZATION".equals(entity.getScopeType()) ? entity.getScopeId() : null,
+                    null, null, null,
+                    "{\"documentId\":" + documentId + "}");
+        }
+        log.info("回覧文書強制完了: documentId={}, actorId={}", documentId, actorId);
+        return circulationMapper.toDocumentResponse(saved);
+    }
+
+    /**
+     * 文書を一括強制完了する（Phase 11 第三陣 3-A）。
+     *
+     * <p>個別の {@link #forceCompleteDocument} を順次呼び出し、各文書ごとに監査ログを発火する。
+     * 失敗した文書はスキップしてレスポンスに記録する（部分成功を許容）。
+     * 最大件数は呼び出し側（Controller）の Bean Validation で 20 件に制限される。</p>
+     *
+     * @param documentIds 文書 ID リスト
+     * @param actorId     操作者ユーザー ID
+     * @return 成否別レスポンス
+     */
+    @Transactional
+    public ForceCompleteBatchResponse forceCompleteBatch(List<Long> documentIds, Long actorId) {
+        if (documentIds == null || documentIds.isEmpty()) {
+            throw new BusinessException(CirculationErrorCode.EMPTY_BATCH);
+        }
+        if (documentIds.size() > 20) {
+            throw new BusinessException(CirculationErrorCode.BATCH_SIZE_EXCEEDED);
+        }
+
+        List<Long> succeeded = new ArrayList<>();
+        List<ForceCompleteBatchResponse.FailureEntry> failed = new ArrayList<>();
+
+        for (Long documentId : documentIds) {
+            try {
+                forceCompleteDocument(documentId, actorId);
+                succeeded.add(documentId);
+            } catch (BusinessException ex) {
+                failed.add(new ForceCompleteBatchResponse.FailureEntry(
+                        documentId, ex.getErrorCode().getCode(), ex.getErrorCode().getMessage()));
+            }
+        }
+        log.info("回覧文書一括強制完了: 成功={}, 失敗={}, actorId={}", succeeded.size(), failed.size(), actorId);
+        return new ForceCompleteBatchResponse(succeeded, failed);
+    }
+
+    /**
+     * 文書の未押印受信者に手動リマインドを送信する（Phase 11 第三陣 3-A）。
+     *
+     * <p>{@code IN_PROGRESS / ACTIVE} ステータスの文書のみ対象。
+     * {@code PENDING} ステータスの受信者全員に {@code CIRCULATION_REMINDER} 通知を作成する。</p>
+     *
+     * @param documentId 文書 ID
+     * @param actorId    操作者ユーザー ID
+     * @return 送信結果
+     */
+    @Transactional
+    public RemindResponse remindDocument(Long documentId, Long actorId) {
+        CirculationDocumentEntity entity = findDocumentById(documentId);
+
+        if (entity.getStatus() != CirculationStatus.ACTIVE) {
+            throw new BusinessException(CirculationErrorCode.INVALID_DOCUMENT_STATUS);
+        }
+
+        List<CirculationRecipientEntity> pendings =
+                recipientRepository.findByDocumentIdAndStatusOrderBySortOrderAsc(documentId, RecipientStatus.PENDING);
+
+        int remindedCount = 0;
+        if (notificationService != null) {
+            for (CirculationRecipientEntity recipient : pendings) {
+                notificationService.createNotification(
+                        recipient.getUserId(),
+                        "CIRCULATION_REMINDER",
+                        NotificationPriority.NORMAL,
+                        "回覧の未確認があります",
+                        "「" + entity.getTitle() + "」の押印をお願いします。",
+                        "CIRCULATION_DOCUMENT", documentId,
+                        scopeTypeToNotificationScope(entity.getScopeType()),
+                        entity.getScopeId(),
+                        "/circulations/" + documentId,
+                        actorId);
+                remindedCount++;
+            }
+        }
+        log.info("回覧手動リマインド送信: documentId={}, count={}, actorId={}", documentId, remindedCount, actorId);
+        return new RemindResponse(documentId, remindedCount);
+    }
+
+    /**
+     * 文書を複製する（Phase 11 第三陣 3-A）。
+     *
+     * <p>新規 {@code DRAFT} を作成し、受信者は元文書からコピーする（押印状態はリセット）。
+     * 添付・コメントはコピーしない。
+     * タイトル末尾に「(コピー)」を付与する。</p>
+     *
+     * @param sourceDocumentId 元文書 ID
+     * @param actorId          作成者ユーザー ID
+     * @return 複製後の新文書レスポンス
+     */
+    @Transactional
+    public DocumentResponse duplicateDocument(Long sourceDocumentId, Long actorId) {
+        CirculationDocumentEntity source = findDocumentById(sourceDocumentId);
+
+        CirculationDocumentEntity newEntity = CirculationDocumentEntity.builder()
+                .scopeType(source.getScopeType())
+                .scopeId(source.getScopeId())
+                .createdBy(actorId)
+                .title(source.getTitle() + " (コピー)")
+                .body(source.getBody())
+                .circulationMode(source.getCirculationMode())
+                .priority(source.getPriority())
+                .dueDate(source.getDueDate())
+                .reminderEnabled(source.getReminderEnabled())
+                .reminderIntervalHours(source.getReminderIntervalHours())
+                .stampDisplayStyle(source.getStampDisplayStyle())
+                .build();
+
+        CirculationDocumentEntity saved = documentRepository.save(newEntity);
+
+        List<CirculationRecipientEntity> sourceRecipients =
+                recipientRepository.findByDocumentIdOrderBySortOrderAsc(sourceDocumentId);
+        for (CirculationRecipientEntity sr : sourceRecipients) {
+            CirculationRecipientEntity copy = CirculationRecipientEntity.builder()
+                    .documentId(saved.getId())
+                    .userId(sr.getUserId())
+                    .sortOrder(sr.getSortOrder())
+                    .build();
+            recipientRepository.save(copy);
+        }
+        saved.updateRecipientCount(sourceRecipients.size());
+        saved = documentRepository.save(saved);
+
+        log.info("回覧文書複製: source={}, new={}, actorId={}", sourceDocumentId, saved.getId(), actorId);
+        return circulationMapper.toDocumentResponse(saved);
+    }
+
+    /**
+     * 文書の受信者ごとの押印状況一覧を取得する（Phase 11 第三陣 3-A）。
+     *
+     * <p>UI ブロッカー最優先案件。各受信者の {@code userId / displayName / stampStatus / stampedAt / sortOrder}
+     * を返す。表示名は {@link UserRepository#findMemberSummaryById} で軽量取得する。</p>
+     *
+     * @param documentId 文書 ID
+     * @return 受信者ごとの押印状況一覧
+     */
+    public DocumentStatusResponse getDocumentStatus(Long documentId) {
+        CirculationDocumentEntity entity = findDocumentById(documentId);
+        List<CirculationRecipientEntity> recipients =
+                recipientRepository.findByDocumentIdOrderBySortOrderAsc(documentId);
+
+        Map<Long, String> displayNameMap = new HashMap<>();
+        if (userRepository != null) {
+            for (CirculationRecipientEntity r : recipients) {
+                userRepository.findMemberSummaryById(r.getUserId())
+                        .ifPresent(ms -> displayNameMap.put(ms.getId(), ms.getDisplayName()));
+            }
+        }
+
+        List<RecipientStatusEntry> entries = recipients.stream()
+                .map(r -> new RecipientStatusEntry(
+                        r.getUserId(),
+                        displayNameMap.getOrDefault(r.getUserId(), null),
+                        r.getStatus().name(),
+                        r.getStampedAt(),
+                        r.getSortOrder()))
+                .toList();
+
+        return new DocumentStatusResponse(documentId, entity.getStatus().name(), entries);
+    }
+
+    /**
+     * scope_type 文字列を NotificationScopeType に変換する。
+     */
+    private NotificationScopeType scopeTypeToNotificationScope(String scopeType) {
+        if ("TEAM".equals(scopeType)) {
+            return NotificationScopeType.TEAM;
+        }
+        if ("ORGANIZATION".equals(scopeType)) {
+            return NotificationScopeType.ORGANIZATION;
+        }
+        return NotificationScopeType.PERSONAL;
     }
 
     /**

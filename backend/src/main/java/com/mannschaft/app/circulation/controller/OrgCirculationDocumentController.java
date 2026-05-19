@@ -2,6 +2,8 @@ package com.mannschaft.app.circulation.controller;
 
 import com.mannschaft.app.circulation.dto.CreateDocumentRequest;
 import com.mannschaft.app.circulation.dto.DocumentResponse;
+import com.mannschaft.app.circulation.dto.DocumentStatsResponse;
+import com.mannschaft.app.circulation.dto.UpdateDocumentRequest;
 import com.mannschaft.app.circulation.service.CirculationService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
@@ -13,7 +15,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -82,6 +86,20 @@ public class OrgCirculationDocumentController {
     }
 
     /**
+     * 回覧文書を更新する（Phase 11 第三陣 3-A）。
+     */
+    @PatchMapping("/{documentId}")
+    @Operation(summary = "組織回覧文書更新")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<ApiResponse<DocumentResponse>> updateDocument(
+            @PathVariable Long orgId,
+            @PathVariable Long documentId,
+            @Valid @RequestBody UpdateDocumentRequest request) {
+        DocumentResponse response = circulationService.updateDocument(SCOPE_TYPE, orgId, documentId, request);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
      * 回覧文書を公開する。
      */
     @PostMapping("/{documentId}/activate")
@@ -91,6 +109,44 @@ public class OrgCirculationDocumentController {
             @PathVariable Long orgId,
             @PathVariable Long documentId) {
         DocumentResponse response = circulationService.activateDocument(SCOPE_TYPE, orgId, documentId);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 回覧文書をキャンセルする（Phase 11 第三陣 3-A）。
+     */
+    @PostMapping("/{documentId}/cancel")
+    @Operation(summary = "組織回覧文書キャンセル")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "キャンセル成功")
+    public ResponseEntity<ApiResponse<DocumentResponse>> cancelDocument(
+            @PathVariable Long orgId,
+            @PathVariable Long documentId) {
+        DocumentResponse response = circulationService.cancelDocument(SCOPE_TYPE, orgId, documentId);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 回覧文書を削除する（Phase 11 第三陣 3-A）。
+     */
+    @DeleteMapping("/{documentId}")
+    @Operation(summary = "組織回覧文書削除")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    public ResponseEntity<Void> deleteDocument(
+            @PathVariable Long orgId,
+            @PathVariable Long documentId) {
+        circulationService.deleteDocument(SCOPE_TYPE, orgId, documentId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 回覧文書統計を取得する（Phase 11 第三陣 3-A）。
+     */
+    @GetMapping("/stats")
+    @Operation(summary = "組織回覧統計")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<DocumentStatsResponse>> getStats(
+            @PathVariable Long orgId) {
+        DocumentStatsResponse response = circulationService.getStats(SCOPE_TYPE, orgId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }
