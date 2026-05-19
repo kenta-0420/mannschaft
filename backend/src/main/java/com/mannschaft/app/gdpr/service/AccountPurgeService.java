@@ -20,6 +20,7 @@ import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.util.SessionHashUtil;
 import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
+import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.repository.StripeCustomerRepository;
@@ -31,6 +32,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -78,6 +80,7 @@ public class AccountPurgeService {
     private final ProxyInputRecordRepository proxyInputRecordRepository;
     private final ErrorReportOccurrenceRepository errorReportOccurrenceRepository;
     private final AuditLogService auditLogService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @BatchEndpoint(name = "gdpr-account-purge-daily", description = "退会後 30 日経過アカウントを毎日 04:00 に物理削除する")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
@@ -221,5 +224,11 @@ public class AccountPurgeService {
 
         // ユーザー本体を物理削除
         userRepository.delete(user);
+
+        // Phase 7: AccountPurgedEvent 発火（クロスドメイン整合性のイベント駆動化）
+        // 設計書: docs/architecture/account_purge_cross_domain_refactor.md §3.1 / §3.2 / §4 Phase B
+        // 各ドメインの *PurgeEventListener が AFTER_COMMIT で購読する。
+        // 既存の越境 DELETE は Phase C で撤去するまで併走（冪等のため機能影響なし）。
+        eventPublisher.publishEvent(new AccountPurgedEvent(userId, emailHash));
     }
 }

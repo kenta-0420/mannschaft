@@ -16,6 +16,7 @@ import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
+import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
 import com.mannschaft.app.gdpr.service.AccountPurgeService;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
@@ -28,15 +29,18 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -91,6 +95,8 @@ class AccountPurgeServiceTest {
     private ErrorReportOccurrenceRepository errorReportOccurrenceRepository;
     @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private AccountPurgeService service;
@@ -275,6 +281,33 @@ class AccountPurgeServiceTest {
 
             // user2は処理される
             verify(userRepository).delete(user2);
+        }
+
+        @Test
+        @DisplayName("Phase B-1: 物理削除完了時に AccountPurgedEvent が発火される")
+        void Phase_B1_AccountPurgedEvent発火() {
+            UserEntity user = buildUser(USER_ID);
+            given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
+                    .willReturn(List.of(user));
+            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
+            given(oAuthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webAuthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(chartRecordRepository.anonymizeCustomerUserId(USER_ID)).willReturn(0);
+            given(memberPaymentRepository.anonymizeUserId(any(), any())).willReturn(0);
+            given(stripeCustomerRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any())).willReturn(List.of());
+
+            service.purgeExpiredAccounts();
+
+            // AccountPurgedEvent が userId / emailHash 整合性で発火されることを検証
+            ArgumentCaptor<AccountPurgedEvent> captor = ArgumentCaptor.forClass(AccountPurgedEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            AccountPurgedEvent event = captor.getValue();
+            assertThat(event.getUserId()).isEqualTo(USER_ID);
+            assertThat(event.getEmailHash()).isNotBlank();
+            // SHA-256 hex 文字列なので 64 文字
+            assertThat(event.getEmailHash()).hasSize(64);
         }
     }
 }
