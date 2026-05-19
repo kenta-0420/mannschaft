@@ -439,6 +439,18 @@
     "nav": {
       "messaging_campaigns_description": "Create messaging-type ad campaigns targeted to team members."
     },
-    "future_features_notice": "Invoices, credit limit requests, and recurring reports will be supported in a future phase."
+    "future_features_notice": "Invoices, credit limit requests, and recurring reports will be supported in a future phase.",
+    "register": {
+      "title": "Advertiser registration",
+      "submit": "Submit application",
+      "company_name_label": "Company / advertiser name",
+      "company_name_placeholder": "Sample Corp.",
+      "contact_email_label": "Contact email address",
+      "billing_method_label": "Payment method",
+      "billing_stripe": "Credit card (Stripe)",
+      "billing_invoice": "Invoice",
+      "success_message": "Your application has been submitted. You can start using the service after review.",
+      "error_message": "Registration failed"
+    }
   }
 }

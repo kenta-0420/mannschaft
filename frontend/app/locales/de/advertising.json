@@ -434,11 +434,23 @@
     }
   },
   "teams_page": {
-    "title": "チーム広告主管理",
-    "description": "チーム単位でメッセージ型広告キャンペーンを作成・配信します。",
+    "title": "Team-Werbetreibenden-Verwaltung",
+    "description": "Erstellen und liefern Sie Messaging-Kampagnen auf Teamebene.",
     "nav": {
-      "messaging_campaigns_description": "チームのメンバーに向けたメッセージ型広告キャンペーンを作成します。"
+      "messaging_campaigns_description": "Erstellen Sie Messaging-Kampagnen, die an Teammitglieder gerichtet sind."
     },
-    "future_features_notice": "請求書管理・与信枠申請・定期レポートは将来の Phase で対応予定です。"
+    "future_features_notice": "Rechnungen, Kreditlimitanfragen und wiederkehrende Berichte werden in einer zukünftigen Phase unterstützt.",
+    "register": {
+      "title": "Werbetreibenden-Registrierung",
+      "submit": "Antrag einreichen",
+      "company_name_label": "Firmen- / Werbetreibenden-Name",
+      "company_name_placeholder": "Musterfirma GmbH",
+      "contact_email_label": "Kontakt-E-Mail-Adresse",
+      "billing_method_label": "Zahlungsmethode",
+      "billing_stripe": "Kreditkarte (Stripe)",
+      "billing_invoice": "Rechnung",
+      "success_message": "Ihr Antrag wurde eingereicht. Nach der Prüfung können Sie mit der Nutzung beginnen.",
+      "error_message": "Registrierung fehlgeschlagen"
+    }
   }
 }

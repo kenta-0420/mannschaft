@@ -434,11 +434,23 @@
     }
   },
   "teams_page": {
-    "title": "チーム広告主管理",
-    "description": "チーム単位でメッセージ型広告キャンペーンを作成・配信します。",
+    "title": "Gestión de anunciante del equipo",
+    "description": "Crea y entrega campañas de mensajería a nivel de equipo.",
     "nav": {
-      "messaging_campaigns_description": "チームのメンバーに向けたメッセージ型広告キャンペーンを作成します。"
+      "messaging_campaigns_description": "Crea campañas de mensajería dirigidas a los miembros del equipo."
     },
-    "future_features_notice": "請求書管理・与信枠申請・定期レポートは将来の Phase で対応予定です。"
+    "future_features_notice": "Las facturas, solicitudes de límite de crédito e informes recurrentes serán compatibles en una fase futura.",
+    "register": {
+      "title": "Registro de anunciante",
+      "submit": "Enviar solicitud",
+      "company_name_label": "Nombre de la empresa / anunciante",
+      "company_name_placeholder": "Empresa de Ejemplo S.A.",
+      "contact_email_label": "Dirección de correo electrónico de contacto",
+      "billing_method_label": "Método de pago",
+      "billing_stripe": "Tarjeta de crédito (Stripe)",
+      "billing_invoice": "Factura",
+      "success_message": "Su solicitud ha sido enviada. Podrá comenzar a usar el servicio después de la revisión.",
+      "error_message": "Error en el registro"
+    }
   }
 }
