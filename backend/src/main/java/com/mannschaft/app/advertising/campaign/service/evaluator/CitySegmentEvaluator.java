@@ -5,11 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.advertising.campaign.entity.AdAudienceSegment;
 import com.mannschaft.app.advertising.campaign.enums.AdSegmentType;
 import com.mannschaft.app.advertising.campaign.exception.AdCampaignErrorCode;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EncryptionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -21,13 +24,8 @@ import java.util.regex.Pattern;
  *
  * <p>設計書 §3.2 例: {@code segment_value = {"codes": ["13113", "13104"]}}（JIS X 0402 全国地方公共団体コード 5 桁）。</p>
  *
- * <h2>データソース未整備宣言</h2>
- * <p>{@link PrefectureSegmentEvaluator} と同様、ユーザー側 {@code users.city_code} カラムが未整備のため、
- * 後続フェーズで {@code users.city_code CHAR(5) INDEX} を追加して初めて稼働可能になる。
- * {@code cities} マスタテーブルは F08.1 で既に存在する。</p>
- *
- * <p>本評価器は登録だけ済ませ、評価時は {@link SegmentDataSourceNotAvailableException} を投げる
- * （対処療法の空集合返却は禁止 — CLAUDE.md「障害対応の原則 — 根治治療を徹底すること」）。</p>
+ * <p>{@code users.city_code_hash} カラム（V68.002 追加、HMAC-SHA256 ブラインドインデックス）を
+ * 使って SQL 1 クエリでターゲットユーザーを特定する。</p>
  */
 @Slf4j
 @Component
@@ -41,6 +39,8 @@ public class CitySegmentEvaluator implements AdSegmentEvaluator {
     private static final Pattern CITY_CODE_PATTERN = Pattern.compile("^[0-9]{5}$");
 
     private final ObjectMapper objectMapper;
+    private final EncryptionService encryptionService;
+    private final UserRepository userRepository;
 
     @Override
     public boolean supports(AdSegmentType type) {
@@ -56,7 +56,7 @@ public class CitySegmentEvaluator implements AdSegmentEvaluator {
                     segment.getCampaignId(), segment.getId());
             throw new BusinessException(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
         }
-        Set<String> targets = new HashSet<>();
+        List<String> codes = new ArrayList<>();
         for (Object raw : rawList) {
             if (!(raw instanceof String str) || str.isBlank()) {
                 continue;
@@ -67,19 +67,18 @@ public class CitySegmentEvaluator implements AdSegmentEvaluator {
                         str, segment.getCampaignId());
                 throw new BusinessException(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
             }
-            targets.add(trimmed);
+            codes.add(trimmed);
         }
-        if (targets.isEmpty()) {
+        if (codes.isEmpty()) {
             throw new BusinessException(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
         }
 
-        log.warn("REGION_CITY segment はデータソース未整備のため評価不能です。"
-                        + "users.city_code (暗号化 postal_code は索引不可) の追加を待ってください。"
-                        + "campaignId={}, segmentId={}",
-                segment.getCampaignId(), segment.getId());
-        throw new SegmentDataSourceNotAvailableException(
-                AdSegmentType.REGION_CITY,
-                "users.city_code CHAR(5) INDEX (暗号化 postal_code は索引不可)");
+        // segment_value: {"codes":["13113"]}
+        // city_code は AES-256-GCM 暗号化済みのため HMAC ブラインドインデックス (city_code_hash) で検索する
+        List<String> hashes = codes.stream()
+                .map(encryptionService::hmac)
+                .toList();
+        return new HashSet<>(userRepository.findUserIdsByCityCodeHashIn(hashes));
     }
 
     private Map<String, Object> deserialize(String json) {
