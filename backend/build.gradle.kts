@@ -4,6 +4,7 @@ plugins {
     id("org.springframework.boot") version "3.5.13"
     id("io.spring.dependency-management") version "1.1.7"
     id("org.springdoc.openapi-gradle-plugin") version "1.9.0"
+    id("org.owasp.dependencycheck") version "12.1.3"
 }
 
 group = "com.mannschaft"
@@ -275,6 +276,37 @@ tasks.register<JavaExec>("importPostalCodes") {
         "-XX:HeapDumpPath=logs/heap-dump.hprof"
     )
     dependsOn("compileJava")
+}
+
+// OWASP Dependency-Check: 依存ライブラリの CVE（既知脆弱性）スキャン
+// 実行: ./gradlew dependencyCheckAnalyze
+// レポート: backend/build/reports/dependency-check-report.html
+dependencyCheck {
+    // CVSS スコア 7.0 以上（High/Critical）でビルド失敗
+    failBuildOnCVSS = 7.0f
+
+    // スキャン対象から除外する設定（テスト専用・ローカルのみの依存は除外可）
+    suppressionFile = "owasp-suppression.xml"
+
+    // レポート形式（HTML と JSON を両方生成）
+    formats = listOf("HTML", "JSON")
+
+    // NVD API キーが環境変数にあれば使用（なくても動作するが低速になる）
+    nvd {
+        apiKey = System.getenv("NVD_API_KEY") ?: ""
+    }
+
+    // analyzers: 不要なアナライザを無効化してスキャン高速化
+    analyzers {
+        // Node.js の npm は frontend/ ディレクトリで別管理なので無効
+        nodeEnabled = false
+        nodeAuditEnabled = false
+        // Nuget は使っていないので無効
+        nuspecEnabled = false
+        nugetconfEnabled = false
+        // Ruby も使っていないので無効
+        bundleAuditEnabled = false
+    }
 }
 
 // OpenAPI JSON 静的生成
