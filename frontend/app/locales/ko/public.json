@@ -1,6 +1,15 @@
 {
   "public": {
     "admin": {
+      "publicVisible": {
+        "label": "공개 표시",
+        "enabledLabel": "공개 중",
+        "disabledLabel": "비공개",
+        "toggleAriaLabel": "게시물 공개/비공개 전환",
+        "enableConfirm": "이 게시물을 공개합니다. 계속하시겠습니까?",
+        "disableConfirm": "이 게시물을 비공개로 설정합니다. 계속하시겠습니까?",
+        "saveFailed": "전환에 실패했습니다. 다시 시도해 주세요."
+      },
       "nameDisclosure": {
         "title": "投稿者識別モード",
         "displayName": "表示名で表示",

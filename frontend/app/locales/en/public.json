@@ -15,6 +15,15 @@
         "changedBy": "Changed by",
         "fromMode": "Previous mode",
         "toMode": "New mode"
+      },
+      "publicVisible": {
+        "label": "Public visibility",
+        "enabledLabel": "Public",
+        "disabledLabel": "Hidden",
+        "toggleAriaLabel": "Toggle post visibility",
+        "enableConfirm": "Make this post public?",
+        "disableConfirm": "Hide this post from public view?",
+        "saveFailed": "Failed to update. Please try again."
       }
     },
     "layout": {
