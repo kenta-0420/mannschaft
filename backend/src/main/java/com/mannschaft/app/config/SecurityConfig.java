@@ -143,6 +143,9 @@ public class SecurityConfig {
                 //   `.requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN")` 系の
                 //   明示ルールを追加して二重ガードとすること。設計書 §6.2 / §8 参照。
                 .requestMatchers("/api/v1/system-admin/gdpr/**").hasRole("SYSTEM_ADMIN")
+                // F19.1 Phase 2: Admin 向け投稿者識別モード切替 API（ADMIN / SYSTEM_ADMIN 限定）
+                // 現状は Controller 側の @PreAuthorize に委ねているが、
+                // 本番移行時に明示的なルールを追加すること（上記 TODO と同様）。
                 // 開発中は全エンドポイントを許可（本番移行時に .authenticated() に変更）
                 .anyRequest().permitAll()
             )

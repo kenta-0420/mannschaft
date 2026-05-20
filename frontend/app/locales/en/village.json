@@ -302,7 +302,7 @@
       "iconLabel": "Icon image (R2 key)",
       "coverLabel": "Cover image (R2 key)",
       "guidelineLabel": "Village Guideline (Markdown)",
-      "r2KeyPlaceholder": "e.g. villages/<villageId>/icon.png",
+      "r2KeyPlaceholder": "e.g. villages/{villageId}/icon.png",
       "saveSuccess": "Village information updated",
       "errorNameRequired": "Village name is required",
       "errorNameTooLong": "Village name must be {max} characters or less",

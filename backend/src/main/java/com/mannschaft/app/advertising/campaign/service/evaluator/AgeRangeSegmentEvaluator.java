@@ -5,37 +5,34 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.advertising.campaign.entity.AdAudienceSegment;
 import com.mannschaft.app.advertising.campaign.enums.AdSegmentType;
 import com.mannschaft.app.advertising.campaign.exception.AdCampaignErrorCode;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 /**
- * F09.17 AGE_RANGE セグメント評価器。
+ * F09.17 AGE_RANGE セグメント評価器（Phase B 本実装）。
  *
- * <p>設計書 §3.2 例: {@code segment_value = {"min": 20, "max": 39}}（半開閉区間 min &le; age &le; max）。</p>
+ * <p>設計書 §3.2 例: {@code segment_value = {"min": 20, "max": 39}}（min &le; age &le; max の閉区間）。</p>
  *
- * <h2>データソース未整備宣言</h2>
- * <p>{@code users.birth_date} は AES-256-GCM 暗号化された {@code VARBINARY(255)} カラムであり、
- * SQL レイヤーで誕生年で絞り込むインデックスは <b>存在しない</b>。アプリ層で全 ACTIVE ユーザーを
- * load して復号 → 年齢計算という処理は 1000 万ユーザー規模では不可。</p>
+ * <p>Phase B で {@code users.birth_year SMALLINT UNSIGNED NULL} カラムが追加されたため（V68.004）、
+ * 年齢範囲を生年範囲に変換し {@code users.birth_year BETWEEN :minBirthYear AND :maxBirthYear} で
+ * インデックス検索を行う。</p>
  *
- * <p>そのため AGE_RANGE は <b>「シャーディング前提の年齢索引カラム追加」</b> を待って実装する。
- * 候補となるスキーマ追加（後続フェーズで Flyway 起票予定）:</p>
+ * <h2>年齢 → 生年の変換ルール</h2>
  * <ul>
- *   <li>{@code users.birth_year SMALLINT INDEX} — 西暦のみ（PII 配慮）</li>
- *   <li>または {@code user_demographics} 専用テーブル (シャーディング時に集約)</li>
+ *   <li>min=20, max=39 → minBirthYear = currentYear - 39, maxBirthYear = currentYear - 20</li>
+ *   <li>BETWEEN は両端を含む（&ge; minBirthYear AND &le; maxBirthYear）</li>
  * </ul>
  *
- * <p>本評価器は登録だけ済ませ、評価時は {@link SegmentDataSourceNotAvailableException} を投げる
- * （対処療法の空集合返却は禁止 — CLAUDE.md「障害対応の原則 — 根治治療を徹底すること」）。</p>
- *
- * <h2>segment_value バリデーションは継続実施</h2>
- * <p>UI 側からの不正値で 500 にならないよう、JSON 構造のバリデーション自体は本評価器でも行う。
- * 不正な segment_value → {@code AD_AUDIENCE_INVALID}, 構造が正しい → データソース未整備例外。</p>
+ * <h2>segment_value バリデーション</h2>
+ * <p>不正な segment_value は {@code AD_AUDIENCE_INVALID} をスローする。</p>
  */
 @Slf4j
 @Component
@@ -49,6 +46,7 @@ public class AgeRangeSegmentEvaluator implements AdSegmentEvaluator {
     private static final int MAX_PLAUSIBLE_AGE = 130;
 
     private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
 
     @Override
     public boolean supports(AdSegmentType type) {
@@ -78,13 +76,17 @@ public class AgeRangeSegmentEvaluator implements AdSegmentEvaluator {
             throw new BusinessException(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
         }
 
-        log.warn("AGE_RANGE segment はデータソース未整備のため評価不能です。"
-                        + "users.birth_year (または user_demographics 表) の追加を待ってください。"
-                        + "campaignId={}, segmentId={}",
-                segment.getCampaignId(), segment.getId());
-        throw new SegmentDataSourceNotAvailableException(
-                AdSegmentType.AGE_RANGE,
-                "users.birth_year インデックス (暗号化 birth_date は索引不可)");
+        // 年齢 → 生年の変換（min/max どちらか片方が null の場合は全件相当の端点で補完）
+        int currentYear = java.time.Year.now().getValue();
+        int resolvedMin = (min != null) ? min : 0;
+        int resolvedMax = (max != null) ? max : MAX_PLAUSIBLE_AGE;
+        int minBirthYear = currentYear - resolvedMax;  // 39歳以下 → currentYear-39 以降生まれ
+        int maxBirthYear = currentYear - resolvedMin;  // 20歳以上 → currentYear-20 以前生まれ
+
+        List<Long> userIds = userRepository.findUserIdsByBirthYearBetween(minBirthYear, maxBirthYear);
+        log.debug("AGE_RANGE segment 評価完了: min={}, max={}, minBirthYear={}, maxBirthYear={}, matchedUserCount={}, campaignId={}",
+                resolvedMin, resolvedMax, minBirthYear, maxBirthYear, userIds.size(), segment.getCampaignId());
+        return new HashSet<>(userIds);
     }
 
     private Integer parseAge(Object raw) {

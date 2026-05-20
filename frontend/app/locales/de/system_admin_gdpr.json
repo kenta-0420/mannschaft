@@ -26,7 +26,8 @@
         "status": "Status",
         "attemptedAt": "Versucht Am",
         "completedAt": "Abgeschlossen Am",
-        "isAlert": "Warnung"
+        "isAlert": "Warnung",
+        "retryCount": "Wiederholungen"
       },
       "filter": {
         "status": "Status",
@@ -43,9 +44,19 @@
         "close": "Schließen"
       },
       "noData": "Keine Daten verfügbar",
+      "retry": {
+        "button": "Wiederholen",
+        "confirm": "DSGVO-Bereinigung für Domäne \"{domain}\" wiederholen?",
+        "success": "Wiederholung erfolgreich",
+        "failed": "Wiederholung fehlgeschlagen (weiterhin AUSSTEHEND)",
+        "alreadySuccess": "Bereits abgeschlossen",
+        "count": "{count}-mal wiederholt",
+        "lastRetried": "Letzte Wiederholung: {datetime}"
+      },
       "toast": {
         "loadFailed": "Fehler beim Laden der Daten",
-        "detailLoadFailed": "Fehler beim Laden der Benutzerdetails"
+        "detailLoadFailed": "Fehler beim Laden der Benutzerdetails",
+        "retryFailed": "Wiederholungsanfrage fehlgeschlagen"
       },
       "quickLinkLabel": "DSGVO Bereinigung"
     }

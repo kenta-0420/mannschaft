@@ -80,4 +80,18 @@ public class AccountPurgeCompletionStatusEntity extends UuidV7Entity {
      */
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
+
+    /**
+     * 管理者による手動 retry の累計実行回数。
+     * Phase F で追加。retry を一度も実行していない場合は 0。
+     */
+    @Column(name = "retry_count", columnDefinition = "TINYINT UNSIGNED NOT NULL DEFAULT 0")
+    private Integer retryCount = 0;
+
+    /**
+     * 管理者が最後に retry を実行した日時。
+     * Phase F で追加。一度も retry していない場合は null。
+     */
+    @Column(name = "last_retried_at")
+    private LocalDateTime lastRetriedAt;
 }
