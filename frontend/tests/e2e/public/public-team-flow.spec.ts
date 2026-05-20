@@ -1,5 +1,5 @@
 /**
- * F19.1 Phase 1 公開チームページ E2E GoldenPath。
+ * F19.1 公開チームページ E2E GoldenPath。
  *
  * 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §14.3 / §15 / §8.6
  *
@@ -24,8 +24,15 @@
  *   3. 環境変数 `E2E_PUBLIC_TEAM_ID` / `E2E_PUBLIC_POST_ID` を指定して実行
  *
  * これらが未指定の場合は test.skip により自動的にスキップされる。
- * Phase 1 のフロント動作確認は本陣の Spring Boot 統合テスト (PublicTeamControllerTest 等
- * 27 件) と組み合わせて担保する。
+ *
+ * 【Phase 2 完了済み】
+ * Phase 2（2026-05-19）で以下の機能が追加されている:
+ * - IdentityVisibilityResolver: 全ステータス × snapshot × MINOR × 退会済み = 32件 UT
+ * - AdminSupporterNameDisclosureController: IT 10件
+ * - PublicVisibleToggle.vue: 個別投稿の公開/非公開トグル UI（API は Phase 3 で実装予定）
+ *
+ * 本 E2E は BE 統合環境が必要なため、CI では環境変数未指定でスキップされる。
+ * 統合環境（docker-compose）で手動実行する場合は上記前提を満たした上で実行すること。
  */
 import { test, expect } from '@playwright/test'
 
