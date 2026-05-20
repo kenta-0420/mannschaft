@@ -55,6 +55,7 @@ class EmailOutboxSesFailureScenarioTest {
     @Mock private SesExceptionClassifier classifier;
     @Spy private IdempotencyKeyGenerator keyGen = new IdempotencyKeyGenerator();
     @Spy private io.micrometer.core.instrument.MeterRegistry meterRegistry = new SimpleMeterRegistry();
+    @Mock private EmailOutboxMicrometerMetrics metrics;
     @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks private EmailOutboxServiceImpl service;

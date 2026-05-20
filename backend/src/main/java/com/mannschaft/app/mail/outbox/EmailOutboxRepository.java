@@ -122,4 +122,8 @@ public interface EmailOutboxRepository extends JpaRepository<EmailOutboxEntity, 
                AND created_at >= :since
             """, nativeQuery = true)
     long countByStatusSince(@Param("status") String status, @Param("since") LocalDateTime since);
+
+    /** SENT 行の平均リトライ数。行ゼロ時は NULL → null を返す。 */
+    @Query(value = "SELECT AVG(retry_count) FROM email_outbox WHERE status = 'SENT'", nativeQuery = true)
+    Double findAvgRetryCountOfSent();
 }
