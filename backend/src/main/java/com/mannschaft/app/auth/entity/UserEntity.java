@@ -215,6 +215,16 @@ public class UserEntity extends BaseEntity {
     private String birthDateHash;
 
     /**
+     * AGE_RANGE セグメント検索用の生年（西暦）。
+     *
+     * <p>{@code birth_date} は AES-256-GCM 暗号化されているため SQL での範囲検索が不可能。
+     * 生年のみ平文の SMALLINT として保持し、INDEX を張ることで AGE_RANGE ターゲティングを実現する。
+     * F09.17 AdSegmentEvaluator Phase B で追加（V68.004）。</p>
+     */
+    @Column(name = "birth_year")
+    private Integer birthYear;
+
+    /**
      * ユーザーステータス
      */
     public enum UserStatus {
@@ -337,6 +347,8 @@ public class UserEntity extends BaseEntity {
         this.cityCode = null;
         this.cityCodeHash = null;
         this.birthDateHash = null;
+        // AGE_RANGE セグメント用 birth_year を消去（F09.17 Phase B）
+        this.birthYear = null;
         // 検索不可に設定
         this.isSearchable = false;
         // 論理削除フラグ自体は softDelete() に分離している（責任分離）。
@@ -433,5 +445,17 @@ public class UserEntity extends BaseEntity {
      */
     public void updateBannerUrl(String bannerUrl) {
         this.bannerUrl = bannerUrl;
+    }
+
+    /**
+     * AGE_RANGE セグメント検索用の生年を更新する（F09.17 Phase B）。
+     *
+     * <p>{@code birth_date} が "YYYY-MM-DD" 形式の平文（復号済み）である場合に生年を抽出して保存する。
+     * プロフィール更新 API で {@code birth_date} をセットする際に合わせて呼び出すこと。</p>
+     *
+     * @param birthYearValue 西暦年（null の場合はカラムを NULL にする）
+     */
+    public void updateBirthYear(Integer birthYearValue) {
+        this.birthYear = birthYearValue;
     }
 }

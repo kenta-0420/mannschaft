@@ -166,4 +166,57 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      */
     @Query(value = "SELECT u.id, u.display_name AS displayName, u.avatar_url AS avatarUrl FROM users u WHERE u.id = :id AND u.deleted_at IS NULL", nativeQuery = true)
     Optional<MemberSummary> findMemberSummaryById(@Param("id") Long id);
+
+    // === 広告ターゲティング セグメント検索クエリ（F09.17 AdSegmentEvaluator Phase B）===
+
+    /**
+     * GENDER セグメント: gender_hash が指定リストに含まれるアクティブユーザーIDを取得する。
+     *
+     * <p>gender は AES-256-GCM 暗号化済みのため直接比較不可。
+     * HMAC-SHA256 のブラインドインデックス（gender_hash）を使用する。</p>
+     *
+     * @param hashes HMAC-SHA256 ハッシュのリスト（EncryptionService.hmac() で生成）
+     * @return 一致したユーザーID リスト
+     */
+    @Query("SELECT u.id FROM UserEntity u WHERE u.genderHash IN :hashes AND u.deletedAt IS NULL")
+    List<Long> findUserIdsByGenderHashIn(@Param("hashes") List<String> hashes);
+
+    /**
+     * REGION_PREFECTURE セグメント: prefecture_code_hash が指定リストに含まれるアクティブユーザーIDを取得する。
+     *
+     * <p>prefecture_code は AES-256-GCM 暗号化済みのため直接比較不可。
+     * HMAC-SHA256 のブラインドインデックス（prefecture_code_hash）を使用する。</p>
+     *
+     * @param hashes HMAC-SHA256 ハッシュのリスト（EncryptionService.hmac() で生成）
+     * @return 一致したユーザーID リスト
+     */
+    @Query("SELECT u.id FROM UserEntity u WHERE u.prefectureCodeHash IN :hashes AND u.deletedAt IS NULL")
+    List<Long> findUserIdsByPrefectureCodeHashIn(@Param("hashes") List<String> hashes);
+
+    /**
+     * REGION_CITY セグメント: city_code_hash が指定リストに含まれるアクティブユーザーIDを取得する。
+     *
+     * <p>city_code は AES-256-GCM 暗号化済みのため直接比較不可。
+     * HMAC-SHA256 のブラインドインデックス（city_code_hash）を使用する。</p>
+     *
+     * @param hashes HMAC-SHA256 ハッシュのリスト（EncryptionService.hmac() で生成）
+     * @return 一致したユーザーID リスト
+     */
+    @Query("SELECT u.id FROM UserEntity u WHERE u.cityCodeHash IN :hashes AND u.deletedAt IS NULL")
+    List<Long> findUserIdsByCityCodeHashIn(@Param("hashes") List<String> hashes);
+
+    /**
+     * AGE_RANGE セグメント: birth_year が指定範囲（minBirthYear 以上 maxBirthYear 以下）のアクティブユーザーIDを取得する。
+     *
+     * <p>birth_date は AES-256-GCM 暗号化のため索引不可。
+     * 平文で保持する birth_year カラム（V68.004 追加）を使用して範囲検索を行う。
+     * 年齢 age から生年 birthYear への変換は呼び出し側で行うこと（例: 現在年 - age）。</p>
+     *
+     * @param minBirthYear 対象年齢範囲の最大生年（年齢の若い側: 例 age=39 なら currentYear-39）
+     * @param maxBirthYear 対象年齢範囲の最小生年（年齢の高い側: 例 age=20 なら currentYear-20）
+     * @return 一致したユーザーID リスト
+     */
+    @Query("SELECT u.id FROM UserEntity u WHERE u.birthYear BETWEEN :minBirthYear AND :maxBirthYear AND u.deletedAt IS NULL")
+    List<Long> findUserIdsByBirthYearBetween(@Param("minBirthYear") int minBirthYear,
+                                             @Param("maxBirthYear") int maxBirthYear);
 }
