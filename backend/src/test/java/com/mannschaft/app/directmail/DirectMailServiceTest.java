@@ -9,6 +9,8 @@ import com.mannschaft.app.directmail.entity.DirectMailLogEntity;
 import com.mannschaft.app.directmail.repository.DirectMailLogRepository;
 import com.mannschaft.app.directmail.repository.DirectMailRecipientRepository;
 import com.mannschaft.app.directmail.service.DirectMailService;
+import com.mannschaft.app.mail.outbox.EmailOutboxService;
+import com.mannschaft.app.notification.credit.service.NotificationCreditService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -35,6 +37,9 @@ class DirectMailServiceTest {
     @Mock private DirectMailMapper directMailMapper;
     @Mock private UserRoleRepository userRoleRepository;
     @Mock private DomainEventPublisher eventPublisher;
+    @Mock private NotificationCreditService notificationCreditService;
+    /** F09.18 Phase 18-f: sendSystemAdMail が enqueue() を呼ぶため Mock が必要 */
+    @Mock private EmailOutboxService emailOutboxService;
     @InjectMocks private DirectMailService service;
 
     private static final String SCOPE_TYPE = "TEAM";

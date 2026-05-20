@@ -1,13 +1,11 @@
--- account_purge_completion_status: AccountPurgedEvent 処理完了証跡テーブル
+﻿-- account_purge_completion_status: AccountPurgedEvent 処理完了証跡テーブル
 -- GDPR Art.17「30日以内削除完了」の per-domain 完了を記録する監査テーブル
+-- 元々 V9.172 として作成されたが V9.172 (F05.2) と競合のため V9.179 に採番し直した。
+-- IF NOT EXISTS により冪等性を確保（他マイグレーション経由で既に存在する場合も安全）。
 --
 -- CLAUDE.md 原則 6: 新規テーブルは UUIDv7（BINARY(16)）主キー
 -- CLAUDE.md 原則 1: user_id は FK なし（クロスドメイン FK 禁止）
---
--- 各 *PurgeEventListener が成功時に status='SUCCESS' に更新する。
--- AccountPurgeService#purgeUser() が AccountPurgedEvent 発火直前に 6 ドメイン分の PENDING を INSERT する。
--- GdprPurgeAuditBatchService が PENDING のまま 2 時間以上経過したレコードを検出してアラートログを出力する。
-CREATE TABLE account_purge_completion_status
+CREATE TABLE IF NOT EXISTS account_purge_completion_status
 (
     id           BINARY(16)   NOT NULL,
     user_id      BIGINT UNSIGNED NOT NULL COMMENT 'users.id の参照値（FK 制約なし: クロスドメイン FK 禁止原則）',
