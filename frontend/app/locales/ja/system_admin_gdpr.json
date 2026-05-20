@@ -1,0 +1,53 @@
+{
+  "systemAdmin": {
+    "gdpr": {
+      "title": "GDPR パージ状況",
+      "summary": {
+        "completed": "処理完了",
+        "pending": "処理待ち",
+        "alert": "アラート"
+      },
+      "domain": {
+        "role": "ロール",
+        "team": "チーム",
+        "payment": "決済",
+        "chart": "チャート",
+        "proxy": "プロキシ",
+        "errorreport": "エラーレポート"
+      },
+      "status": {
+        "PENDING": "処理待ち",
+        "SUCCESS": "完了"
+      },
+      "table": {
+        "userId": "ユーザーID",
+        "emailHash": "メールハッシュ",
+        "domainName": "ドメイン",
+        "status": "ステータス",
+        "attemptedAt": "処理開始日時",
+        "completedAt": "処理完了日時",
+        "isAlert": "アラート"
+      },
+      "filter": {
+        "status": "ステータス",
+        "domain": "ドメイン",
+        "dateFrom": "開始日時",
+        "dateTo": "終了日時",
+        "search": "検索",
+        "allStatuses": "全ステータス",
+        "allDomains": "全ドメイン"
+      },
+      "export": "CSV エクスポート",
+      "detail": {
+        "title": "ユーザー詳細",
+        "close": "閉じる"
+      },
+      "noData": "データがありません",
+      "toast": {
+        "loadFailed": "データの取得に失敗しました",
+        "detailLoadFailed": "ユーザー詳細の取得に失敗しました"
+      },
+      "quickLinkLabel": "GDPR パージ状況"
+    }
+  }
+}

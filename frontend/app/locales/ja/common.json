@@ -1170,7 +1170,8 @@
       "auditLogs": "監査ログ",
       "shiftBudget": "シフト予算",
       "betaRestriction": "ベータ制限",
-      "errorReports": "エラーレポート"
+      "errorReports": "エラーレポート",
+      "gdprPurge": "GDPR パージ状況"
     }
   },
   "notificationCredit": {

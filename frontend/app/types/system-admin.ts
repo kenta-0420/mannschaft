@@ -434,3 +434,55 @@ export interface UpdateBetaRestrictionRequest {
   maxTeamId: number | null
   maxOrgId: number | null
 }
+
+// ===== GDPR パージ状況 (Phase E) =====
+/** GDPR パージ処理の状態 */
+export type GdprPurgeStatus = 'PENDING' | 'SUCCESS'
+
+/** GDPR パージ対象ドメイン名 */
+export type GdprPurgeDomain = 'role' | 'team' | 'payment' | 'chart' | 'proxy' | 'errorreport'
+
+/** GDPR パージ状況の 1 行（ユーザー × ドメイン） */
+export interface GdprPurgeStatusRow {
+  userId: number
+  emailHash: string
+  domainName: string
+  status: GdprPurgeStatus
+  attemptedAt: string
+  completedAt: string | null
+  isAlert: boolean
+}
+
+/** ドメイン別サマリー */
+export interface GdprPurgeDomainSummary {
+  domain: string
+  pendingCount: number
+  successCount: number
+}
+
+/** GDPR パージ状況サマリー（GET /api/v1/system-admin/gdpr/purge-status/summary） */
+export interface GdprPurgeSummaryData {
+  totalPending: number
+  totalSuccess: number
+  alertCount: number
+  byDomain: GdprPurgeDomainSummary[]
+}
+
+/** ページネーション付き GDPR パージ状況レスポンス */
+export interface GdprPurgeStatusPage {
+  content: GdprPurgeStatusRow[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
+}
+
+/** GET /api/v1/system-admin/gdpr/purge-status のクエリパラメータ */
+export interface GdprPurgeStatusQuery {
+  status?: string
+  domain?: string
+  dateFrom?: string
+  dateTo?: string
+  page?: number
+  size?: number
+}
