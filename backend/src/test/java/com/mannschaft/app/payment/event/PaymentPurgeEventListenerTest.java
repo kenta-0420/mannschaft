@@ -2,6 +2,7 @@ package com.mannschaft.app.payment.event;
 
 import com.mannschaft.app.auth.UserConstants;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import com.mannschaft.app.payment.entity.StripeCustomerEntity;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.repository.StripeCustomerRepository;
@@ -29,6 +30,9 @@ class PaymentPurgeEventListenerTest {
 
     @Mock
     private StripeCustomerRepository stripeCustomerRepository;
+
+    @Mock
+    private AccountPurgeCompletionStatusRepository completionStatusRepository;
 
     @InjectMocks
     private PaymentPurgeEventListener listener;

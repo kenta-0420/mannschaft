@@ -2,6 +2,7 @@ package com.mannschaft.app.payment.event;
 
 import com.mannschaft.app.auth.UserConstants;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.repository.StripeCustomerRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+
+import java.time.LocalDateTime;
 
 /**
  * 30 日後物理削除（{@link AccountPurgedEvent}）を購読し、
@@ -65,6 +68,7 @@ public class PaymentPurgeEventListener {
 
     private final MemberPaymentRepository memberPaymentRepository;
     private final StripeCustomerRepository stripeCustomerRepository;
+    private final AccountPurgeCompletionStatusRepository completionStatusRepository;
 
     /**
      * {@link AccountPurgedEvent} を購読し、対象ユーザーに紐付く payment ドメイン行を
@@ -111,5 +115,15 @@ public class PaymentPurgeEventListener {
         log.info(
                 "ユーザー退会 payment purge 完了: userId={}, sentinelizedPayments={}, stripeDeleted={}, sentinelizeFailed={}, stripeFailed={}",
                 userId, sentinelizedPayments, stripeDeleted, sentinelizeFailed, stripeFailed);
+
+        // Phase D-8: 処理完了を completion_status に記録（両操作とも失敗なしの場合のみ SUCCESS とする）
+        if (!sentinelizeFailed && !stripeFailed) {
+            completionStatusRepository.findByUserIdAndDomainName(userId, "payment")
+                    .ifPresent(entity -> {
+                        entity.setStatus("SUCCESS");
+                        entity.setCompletedAt(LocalDateTime.now());
+                        completionStatusRepository.save(entity);
+                    });
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.mannschaft.app.team.event;
 
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,9 @@ class TeamPurgeEventListenerTest {
 
     @Mock
     private TeamOrgMembershipRepository teamOrgMembershipRepository;
+
+    @Mock
+    private AccountPurgeCompletionStatusRepository completionStatusRepository;
 
     @InjectMocks
     private TeamPurgeEventListener listener;

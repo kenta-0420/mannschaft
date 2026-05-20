@@ -41,6 +41,13 @@ export function useAdvertiserApi() {
     })
   }
 
+  async function registerTeam(teamId: number, body: RegisterAdvertiserRequest) {
+    return api<{ data: AdvertiserAccountResponse }>(`/api/v1/teams/${teamId}/advertiser/register`, {
+      method: 'POST',
+      body,
+    })
+  }
+
   async function getAccount(organizationId: number) {
     return api<{ data: AdvertiserAccountResponse }>('/api/v1/advertiser/account', {
       params: { organizationId },
@@ -239,6 +246,7 @@ export function useAdvertiserApi() {
   return {
     // Advertiser
     register,
+    registerTeam,
     getAccount,
     updateAccount,
     getOverview,

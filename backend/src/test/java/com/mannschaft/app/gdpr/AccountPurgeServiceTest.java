@@ -14,8 +14,10 @@ import com.mannschaft.app.auth.repository.ParentalConsentLinkRepository;
 import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
 import com.mannschaft.app.gdpr.service.AccountPurgeService;
 import org.junit.jupiter.api.DisplayName;
@@ -36,9 +38,11 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -84,6 +88,8 @@ class AccountPurgeServiceTest {
     private AuditLogService auditLogService;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private AccountPurgeCompletionStatusRepository completionStatusRepository;
 
     @InjectMocks
     private AccountPurgeService service;
@@ -189,6 +195,31 @@ class AccountPurgeServiceTest {
             assertThat(event.getEmailHash()).isNotBlank();
             // SHA-256 hex 文字列なので 64 文字
             assertThat(event.getEmailHash()).hasSize(64);
+        }
+
+        @Test
+        @DisplayName("Phase D-8: AccountPurgedEvent 発火前に 6 ドメイン分の PENDING レコードが INSERT される")
+        void PhaseD8_PENDING_レコードがINSERTされる() {
+            UserEntity user = buildUser(USER_ID);
+            given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
+                    .willReturn(List.of(user));
+            stubAuthAndGdprMocks(USER_ID);
+
+            service.purgeExpiredAccounts();
+
+            // 6 ドメイン（role/team/payment/chart/proxy/errorreport）分の save が呼ばれること
+            verify(completionStatusRepository, atLeast(6)).save(any(AccountPurgeCompletionStatusEntity.class));
+
+            // 各ドメイン名の PENDING レコードが INSERT されること
+            for (String domain : List.of("role", "team", "payment", "chart", "proxy", "errorreport")) {
+                verify(completionStatusRepository).save(argThat(entity ->
+                        entity.getUserId().equals(USER_ID)
+                                && entity.getDomainName().equals(domain)
+                                && "PENDING".equals(entity.getStatus())
+                                && entity.getAttemptedAt() != null
+                                && entity.getCompletedAt() == null
+                ));
+            }
         }
 
         @Test

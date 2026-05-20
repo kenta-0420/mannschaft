@@ -439,6 +439,18 @@
     "nav": {
       "messaging_campaigns_description": "チームのメンバーに向けたメッセージ型広告キャンペーンを作成します。"
     },
-    "future_features_notice": "請求書管理・与信枠申請・定期レポートは将来の Phase で対応予定です。"
+    "future_features_notice": "請求書管理・与信枠申請・定期レポートは将来の Phase で対応予定です。",
+    "register": {
+      "title": "広告主登録",
+      "submit": "登録申請",
+      "company_name_label": "会社名 / 広告主名",
+      "company_name_placeholder": "株式会社サンプル",
+      "contact_email_label": "連絡先メールアドレス",
+      "billing_method_label": "決済方法",
+      "billing_stripe": "クレジットカード（Stripe）",
+      "billing_invoice": "請求書払い",
+      "success_message": "広告主登録を申請しました。審査後に利用開始できます。",
+      "error_message": "登録に失敗しました"
+    }
   }
 }

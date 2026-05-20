@@ -17,8 +17,10 @@ import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.util.SessionHashUtil;
+import com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,6 +68,7 @@ public class AccountPurgeService {
     private final AuditLogService auditLogService;
     private final ApplicationEventPublisher eventPublisher;
     private final ParentalConsentLinkRepository parentalConsentLinkRepository;
+    private final AccountPurgeCompletionStatusRepository completionStatusRepository;
 
     @BatchEndpoint(name = "gdpr-account-purge-daily", description = "退会後 30 日経過アカウントを毎日 04:00 に物理削除する")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
@@ -176,6 +179,22 @@ public class AccountPurgeService {
 
         // ユーザー本体を物理削除
         userRepository.delete(user);
+
+        // Phase D-8: AccountPurgedEvent 発火前に全ドメイン分の PENDING レコードを INSERT する。
+        // 設計書: docs/architecture/account_purge_cross_domain_refactor.md §4 Phase D-8
+        // 各 *PurgeEventListener が処理完了時に SUCCESS に更新する。
+        // 2 時間後も PENDING のまま = リスナーが未処理 → GdprPurgeAuditBatchService がアラート検出する。
+        List<String> purgeTargetDomains = List.of("role", "team", "payment", "chart", "proxy", "errorreport");
+        LocalDateTime purgeAttemptedAt = LocalDateTime.now();
+        purgeTargetDomains.forEach(domain -> {
+            AccountPurgeCompletionStatusEntity pending = new AccountPurgeCompletionStatusEntity();
+            pending.setUserId(userId);
+            pending.setEmailHash(emailHash);
+            pending.setDomainName(domain);
+            pending.setStatus("PENDING");
+            pending.setAttemptedAt(purgeAttemptedAt);
+            completionStatusRepository.save(pending);
+        });
 
         // Phase 7: AccountPurgedEvent 発火（クロスドメイン整合性のイベント駆動化）
         // 設計書: docs/architecture/account_purge_cross_domain_refactor.md §3.1 / §3.2 / §4 Phase C
