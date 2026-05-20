@@ -181,6 +181,39 @@ public class UserEntity extends BaseEntity {
     /** 見守り者がアカウントを代理作成した場合の作成者ユーザーID。 */
     private Long accountCreatedByWatcherUserId;
 
+    // === 広告ターゲティング用フィールド（F09.17 AdSegmentEvaluator Phase A）===
+
+    /** 性別（AES-256-GCM 暗号化、任意）。広告ターゲティング用。 */
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "gender", columnDefinition = "TEXT")
+    private String gender;
+
+    /** gender の HMAC-SHA256 ブラインドインデックス。広告ターゲティング検索用。 */
+    @Column(name = "gender_hash", length = 64)
+    private String genderHash;
+
+    /** 都道府県コード（AES-256-GCM 暗号化、JIS X 0401 01〜47、任意）。広告ターゲティング用。 */
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "prefecture_code", columnDefinition = "TEXT")
+    private String prefectureCode;
+
+    /** prefecture_code の HMAC-SHA256 ブラインドインデックス。広告ターゲティング検索用。 */
+    @Column(name = "prefecture_code_hash", length = 64)
+    private String prefectureCodeHash;
+
+    /** 市区町村コード（AES-256-GCM 暗号化、JIS X 0402、任意）。広告ターゲティング用。 */
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "city_code", columnDefinition = "TEXT")
+    private String cityCode;
+
+    /** city_code の HMAC-SHA256 ブラインドインデックス。広告ターゲティング検索用。 */
+    @Column(name = "city_code_hash", length = 64)
+    private String cityCodeHash;
+
+    /** birth_date の HMAC-SHA256 ブラインドインデックス。AGE_RANGE ターゲティング検索用。 */
+    @Column(name = "birth_date_hash", length = 64)
+    private String birthDateHash;
+
     /**
      * ユーザーステータス
      */
@@ -296,6 +329,14 @@ public class UserEntity extends BaseEntity {
         // 生年月日・ケアカテゴリ（暗号化 PII）を消去
         this.birthDate = null;
         this.careCategory = null;
+        // 広告ターゲティング用 PII を消去（F09.17）
+        this.gender = null;
+        this.genderHash = null;
+        this.prefectureCode = null;
+        this.prefectureCodeHash = null;
+        this.cityCode = null;
+        this.cityCodeHash = null;
+        this.birthDateHash = null;
         // 検索不可に設定
         this.isSearchable = false;
         // 論理削除フラグ自体は softDelete() に分離している（責任分離）。
