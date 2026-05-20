@@ -2,6 +2,7 @@ package com.mannschaft.app.errorreport.event;
 
 import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,6 +22,9 @@ class ErrorReportPurgeEventListenerTest {
 
     @Mock
     private ErrorReportOccurrenceRepository errorReportOccurrenceRepository;
+
+    @Mock
+    private AccountPurgeCompletionStatusRepository completionStatusRepository;
 
     @InjectMocks
     private ErrorReportPurgeEventListener listener;
