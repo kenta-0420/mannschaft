@@ -35,3 +35,8 @@ docker-compose.override.yml
 
 # --- F10.5 Phase 10-α: MySQL スロークエリログ ---
 logs/mysql-slow/
+
+# --- k6 負荷テスト結果 ---
+k6/results/
+k6/*.json
+k6/*.csv
