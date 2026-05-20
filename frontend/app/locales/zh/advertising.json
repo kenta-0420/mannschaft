@@ -434,11 +434,23 @@
     }
   },
   "teams_page": {
-    "title": "チーム広告主管理",
-    "description": "チーム単位でメッセージ型広告キャンペーンを作成・配信します。",
+    "title": "团队广告主管理",
+    "description": "在团队级别创建和投放消息型广告活动。",
     "nav": {
-      "messaging_campaigns_description": "チームのメンバーに向けたメッセージ型広告キャンペーンを作成します。"
+      "messaging_campaigns_description": "创建面向团队成员的消息型广告活动。"
     },
-    "future_features_notice": "請求書管理・与信枠申請・定期レポートは将来の Phase で対応予定です。"
+    "future_features_notice": "发票管理、信用额度申请和定期报告将在未来阶段支持。",
+    "register": {
+      "title": "广告主注册",
+      "submit": "提交申请",
+      "company_name_label": "公司 / 广告主名称",
+      "company_name_placeholder": "示例株式会社",
+      "contact_email_label": "联系电子邮件地址",
+      "billing_method_label": "付款方式",
+      "billing_stripe": "信用卡（Stripe）",
+      "billing_invoice": "发票",
+      "success_message": "您的申请已提交。审核后即可开始使用。",
+      "error_message": "注册失败"
+    }
   }
 }

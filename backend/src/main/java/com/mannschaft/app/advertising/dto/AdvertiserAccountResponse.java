@@ -17,7 +17,6 @@ public record AdvertiserAccountResponse(
         Long id,
         /** F09.17 Phase 11-d-2: スコープ種別。 */
         ScopeType scopeType,
-        /** F09.17 Phase 11-d-2: スコープ ID。 */
         Long scopeId,
         AdvertiserAccountStatus status,
         String companyName,
