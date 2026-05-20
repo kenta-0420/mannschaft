@@ -4,5 +4,5 @@
 
 ALTER TABLE circulation_recipients
     ADD COLUMN skip_reason VARCHAR(255) NULL COMMENT 'スキップ理由（ADMIN強制スキップ時のみ必須）',
-    ADD COLUMN skipped_by BIGINT NULL COMMENT 'スキップ操作実行者の user_id（NULL なら受信者本人のセルフスキップ）',
+    ADD COLUMN skipped_by BIGINT UNSIGNED NULL COMMENT 'スキップ操作実行者の user_id（NULL なら受信者本人のセルフスキップ）',
     ADD COLUMN skipped_at DATETIME NULL COMMENT 'スキップ実行日時';

@@ -8,9 +8,9 @@
 
 CREATE TABLE circulation_stamp_delegations (
     id BINARY(16) NOT NULL COMMENT 'UUIDv7 主キー',
-    document_id BIGINT NOT NULL COMMENT 'circulation_documents.id',
-    delegator_user_id BIGINT NOT NULL COMMENT '委任者（元の受信者）の user_id',
-    delegatee_user_id BIGINT NOT NULL COMMENT '代理人（押印を委ねられた者）の user_id',
+    document_id BIGINT UNSIGNED NOT NULL COMMENT 'circulation_documents.id',
+    delegator_user_id BIGINT UNSIGNED NOT NULL COMMENT '委任者（元の受信者）の user_id',
+    delegatee_user_id BIGINT UNSIGNED NOT NULL COMMENT '代理人（押印を委ねられた者）の user_id',
     reason VARCHAR(255) NULL COMMENT '委任理由（任意）',
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE / REVOKED / FULFILLED',
     revoked_at DATETIME NULL,
