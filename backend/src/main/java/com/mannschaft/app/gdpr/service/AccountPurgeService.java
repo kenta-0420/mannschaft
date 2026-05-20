@@ -9,6 +9,7 @@ import com.mannschaft.app.auth.repository.MfaRecoveryTokenRepository;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.OAuthLinkTokenRepository;
 import com.mannschaft.app.auth.repository.PasswordResetTokenRepository;
+import com.mannschaft.app.auth.repository.ParentalConsentLinkRepository;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
@@ -66,6 +67,7 @@ public class AccountPurgeService {
     private final WebAuthnCredentialRepository webAuthnCredentialRepository;
     private final AuditLogService auditLogService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ParentalConsentLinkRepository parentalConsentLinkRepository;
     private final AccountPurgeCompletionStatusRepository completionStatusRepository;
 
     @BatchEndpoint(name = "gdpr-account-purge-daily", description = "退会後 30 日経過アカウントを毎日 04:00 に物理削除する")
@@ -132,6 +134,12 @@ public class AccountPurgeService {
         // WebAuthnCredential: findByUserIdあり → 全削除
         webAuthnCredentialRepository.deleteAll(
                 webAuthnCredentialRepository.findByUserId(userId));
+
+        // F01.9: parental_consent_links の削除（auth 同一ドメイン）
+        // 子として登録されていたリンクを物理削除する
+        parentalConsentLinkRepository.deleteByChildUserId(userId);
+        // 保護者として関係するリンク（parent_user_id）は REVOKED に更新済みのため
+        // 子の purge 後も保護者側の記録は維持される（GDPR データ最小化原則に従い値参照のみ残す）
 
         // data_exports: S3ファイルを削除してからレコード削除
         // （gdpr 自ドメイン。クロスドメイン操作は AccountPurgedEvent リスナーが担当）

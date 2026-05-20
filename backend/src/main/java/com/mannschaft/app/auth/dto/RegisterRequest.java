@@ -39,6 +39,9 @@ public class RegisterRequest {
     /** ベータ招待トークン（nullable）。ベータ制限ON時に必須となる。 */
     private final String inviteToken;
 
+    /** 生年月日（YYYY-MM-DD形式）。F01.9 年齢確認のため必須。 */
+    private final String birthDate;
+
     @JsonCreator
     public RegisterRequest(
             @JsonProperty("email") String email,
@@ -49,7 +52,8 @@ public class RegisterRequest {
             @JsonProperty("postalCode") String postalCode,
             @JsonProperty("locale") String locale,
             @JsonProperty("timezone") String timezone,
-            @JsonProperty("inviteToken") String inviteToken) {
+            @JsonProperty("inviteToken") String inviteToken,
+            @JsonProperty("birth_date") String birthDate) {
         this.email = email;
         this.password = password;
         this.lastName = lastName;
@@ -59,5 +63,6 @@ public class RegisterRequest {
         this.locale = locale;
         this.timezone = timezone;
         this.inviteToken = inviteToken;
+        this.birthDate = birthDate;
     }
 }

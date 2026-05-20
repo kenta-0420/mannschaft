@@ -17,6 +17,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.common.util.AgeGroupCalculator;
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.weather.event.UserPostalCodeUpdatedEvent;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -106,6 +109,24 @@ public class AuthRegistrationService {
         // 3. パスワードポリシー検証
         PasswordPolicyValidator.validate(req.getPassword());
 
+        // 3.5. birth_date バリデーション（F01.9）
+        if (req.getBirthDate() == null || req.getBirthDate().isBlank()) {
+            throw new BusinessException(AuthErrorCode.AUTH_050);
+        }
+        LocalDate birthDate;
+        try {
+            birthDate = LocalDate.parse(req.getBirthDate());
+        } catch (DateTimeParseException e) {
+            throw new BusinessException(AuthErrorCode.AUTH_051);
+        }
+        LocalDate today = LocalDate.now();
+        if (birthDate.isAfter(today)) {
+            throw new BusinessException(AuthErrorCode.AUTH_052);
+        }
+        if (birthDate.isBefore(today.minusYears(100))) {
+            throw new BusinessException(AuthErrorCode.AUTH_053);
+        }
+
         // 4. ユーザー作成
         UserEntity user = UserEntity.builder()
                 .email(req.getEmail())
@@ -120,6 +141,7 @@ public class AuthRegistrationService {
                 .timezone(req.getTimezone() != null ? req.getTimezone() : "Asia/Tokyo")
                 .status(UserEntity.UserStatus.PENDING_VERIFICATION)
                 .isSearchable(true)
+                .birthDate(req.getBirthDate())
                 .build();
         userRepository.save(user);
 
@@ -179,10 +201,21 @@ public class AuthRegistrationService {
         // 3. トークンを使用済みにする
         verificationToken.markUsed();
 
-        // 4. ユーザーを有効化
+        // 4. ユーザーを有効化（F01.9: メール認証完了時に18歳未満か判定）
         UserEntity user = userRepository.findById(verificationToken.getUserId())
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_005));
-        user.activate();
+        if (user.getBirthDate() != null) {
+            LocalDate parsedBirthDate = LocalDate.parse(user.getBirthDate());
+            if (AgeGroupCalculator.isMinor(parsedBirthDate, LocalDate.now())) {
+                // 18歳未満: 保護者同意待ちステータスに遷移
+                user.pendingParentalConsent();
+            } else {
+                user.activate();
+            }
+        } else {
+            // birth_date 未設定（移行期の旧アカウント）は ACTIVE へ
+            user.activate();
+        }
 
         // 5. イベント発行
         eventPublisher.publish(new EmailVerifiedEvent(user.getId(), user.getEmail()));
