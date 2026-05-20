@@ -4,14 +4,14 @@
 -- 訂正履歴を別テーブル化することで、将来「訂正→再訂正→…」の N 件履歴にも拡張できるようにする。
 --
 -- CLAUDE.md 原則 6 適用: 新規テーブルは UUIDv7 主キー（BINARY(16)）を用いる。
--- 親 circulation_recipients は BIGINT FK だが、同一ドメイン内なので CASCADE 削除を許可。
+-- 親 circulation_recipients は BIGINT UNSIGNED FK。同一ドメイン内なので CASCADE 削除を許可。
 
 CREATE TABLE circulation_stamp_correction_logs (
     id BINARY(16) NOT NULL COMMENT 'UUIDv7 主キー',
-    recipient_id BIGINT NOT NULL COMMENT '対象の circulation_recipients.id（同一ドメイン内）',
-    document_id BIGINT NOT NULL COMMENT 'circulation_documents.id（検索効率用に冗長保持）',
-    corrected_by BIGINT NOT NULL COMMENT '訂正を行ったユーザーID（押印者本人）',
-    original_seal_id BIGINT NULL COMMENT '訂正前の印鑑ID',
+    recipient_id BIGINT UNSIGNED NOT NULL COMMENT '対象の circulation_recipients.id（同一ドメイン内）',
+    document_id BIGINT UNSIGNED NOT NULL COMMENT 'circulation_documents.id（検索効率用に冗長保持）',
+    corrected_by BIGINT UNSIGNED NOT NULL COMMENT '訂正を行ったユーザーID（押印者本人）',
+    original_seal_id BIGINT UNSIGNED NULL COMMENT '訂正前の印鑑ID',
     original_seal_variant VARCHAR(20) NULL COMMENT '訂正前のバリアント',
     original_tilt_angle SMALLINT NULL COMMENT '訂正前の傾き角度',
     original_is_flipped TINYINT(1) NOT NULL DEFAULT 0 COMMENT '訂正前の反転フラグ',

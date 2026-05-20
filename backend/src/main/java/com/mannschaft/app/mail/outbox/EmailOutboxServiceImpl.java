@@ -24,6 +24,8 @@ import software.amazon.awssdk.services.sesv2.model.SendEmailRequest;
 import software.amazon.awssdk.services.sesv2.model.SendEmailResponse;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Map;
@@ -62,6 +64,7 @@ public class EmailOutboxServiceImpl implements EmailOutboxService {
     private final SesExceptionClassifier classifier;
     private final IdempotencyKeyGenerator keyGen;
     private final MeterRegistry meterRegistry;
+    private final EmailOutboxMicrometerMetrics metrics;
     private final ObjectMapper objectMapper;
 
     @Value("${mannschaft.email.from-address:noreply@mannschaft.app}")
@@ -147,12 +150,15 @@ public class EmailOutboxServiceImpl implements EmailOutboxService {
             Map<String, String> payloadVars = decodePayload(row.getPayloadJson());
             RenderedEmail rendered = renderTemplate(row.getTemplateKind(), row.getLocale(), payloadVars);
 
+            Instant sendStart = Instant.now();
             SendEmailResponse response = sendViaSes(toAddress, rendered);
+            Duration sendDuration = Duration.between(sendStart, Instant.now());
 
             row.markSent(response.messageId());
             repository.save(row);
             meterRegistry.counter("email_outbox.sent",
                     "template", row.getTemplateKind()).increment();
+            metrics.recordSendDuration(sendDuration, row.getTemplateKind());
 
         } catch (RuntimeException ex) {
             if (classifier.isPermanent(ex)) {

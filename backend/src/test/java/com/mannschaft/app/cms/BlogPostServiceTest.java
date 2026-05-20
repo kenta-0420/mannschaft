@@ -20,6 +20,7 @@ import com.mannschaft.app.cms.service.BlogPostShareService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -67,6 +68,8 @@ class BlogPostServiceTest {
     private BlogPostRevisionService revisionService;
     @Mock
     private BlogPostShareService shareService;
+    @Mock
+    private PostAuthorSnapshotService postAuthorSnapshotService;
 
     @InjectMocks
     private BlogPostService service;

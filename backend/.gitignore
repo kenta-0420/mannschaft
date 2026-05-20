@@ -46,3 +46,8 @@ logs/
 .claude/worktrees/
 
 node_modules/
+
+# OWASP Dependency-Check キャッシュ・レポート
+.gradle/dependency-check-data/
+build/reports/dependency-check-*.html
+build/reports/dependency-check-*.json

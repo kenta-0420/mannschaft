@@ -5,29 +5,43 @@ import com.mannschaft.app.advertising.campaign.entity.AdAudienceSegment;
 import com.mannschaft.app.advertising.campaign.enums.AdSegmentInclusionMode;
 import com.mannschaft.app.advertising.campaign.enums.AdSegmentType;
 import com.mannschaft.app.advertising.campaign.exception.AdCampaignErrorCode;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Year;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
- * {@link AgeRangeSegmentEvaluator} 単体テスト。
+ * {@link AgeRangeSegmentEvaluator} 単体テスト（Phase B 本実装）。
  *
- * <p>データソース未整備のため、構造バリデーション網羅と
- * {@link SegmentDataSourceNotAvailableException} 投げ分けを検証する。</p>
+ * <p>Phase B で users.birth_year を使った実装に差し替えたため、
+ * UserRepository をモック化して年齢→生年変換の正確性と異常系を検証する。</p>
  */
+@ExtendWith(MockitoExtension.class)
 class AgeRangeSegmentEvaluatorTest {
+
+    @Mock
+    private UserRepository userRepository;
 
     private AgeRangeSegmentEvaluator evaluator;
 
     @BeforeEach
     void setUp() {
-        evaluator = new AgeRangeSegmentEvaluator(new ObjectMapper());
+        evaluator = new AgeRangeSegmentEvaluator(new ObjectMapper(), userRepository);
     }
 
     @Test
@@ -40,24 +54,63 @@ class AgeRangeSegmentEvaluatorTest {
     }
 
     @Test
-    @DisplayName("resolveUserIds: 正常な min/max → データソース未整備例外")
-    void resolveUserIds_validValueThrowsDataSourceUnavailable() {
+    @DisplayName("resolveUserIds: min=20, max=39 → birthYear 範囲に変換してユーザーIDを返す")
+    void resolveUserIds_minMax_convertsTobirthYearRange() {
+        int currentYear = Year.now().getValue();
+        int expectedMinBirthYear = currentYear - 39;
+        int expectedMaxBirthYear = currentYear - 20;
+        when(userRepository.findUserIdsByBirthYearBetween(expectedMinBirthYear, expectedMaxBirthYear))
+                .thenReturn(List.of(101L, 202L, 303L));
+
         AdAudienceSegment seg = segment("{\"min\":20,\"max\":39}");
-        assertThatThrownBy(() -> evaluator.resolveUserIds(seg))
-                .isInstanceOf(SegmentDataSourceNotAvailableException.class)
-                .satisfies(e -> {
-                    SegmentDataSourceNotAvailableException ex = (SegmentDataSourceNotAvailableException) e;
-                    assertThat(ex.getSegmentType()).isEqualTo(AdSegmentType.AGE_RANGE);
-                    assertThat(ex.getMissingDataSource()).contains("birth_year");
-                });
+        Set<Long> result = evaluator.resolveUserIds(seg);
+
+        assertThat(result).containsExactlyInAnyOrder(101L, 202L, 303L);
+        verify(userRepository).findUserIdsByBirthYearBetween(expectedMinBirthYear, expectedMaxBirthYear);
     }
 
     @Test
-    @DisplayName("resolveUserIds: min のみ指定でもデータソース未整備例外（構造的には有効）")
-    void resolveUserIds_minOnlyThrowsDataSourceUnavailable() {
+    @DisplayName("resolveUserIds: min=0, max=100 の広範囲でも正常に動作する")
+    void resolveUserIds_wideRange_works() {
+        int currentYear = Year.now().getValue();
+        int expectedMinBirthYear = currentYear - 100;
+        int expectedMaxBirthYear = currentYear;
+        when(userRepository.findUserIdsByBirthYearBetween(expectedMinBirthYear, expectedMaxBirthYear))
+                .thenReturn(List.of(1L, 2L, 3L, 4L, 5L));
+
+        AdAudienceSegment seg = segment("{\"min\":0,\"max\":100}");
+        Set<Long> result = evaluator.resolveUserIds(seg);
+
+        assertThat(result).hasSize(5);
+        verify(userRepository).findUserIdsByBirthYearBetween(expectedMinBirthYear, expectedMaxBirthYear);
+    }
+
+    @Test
+    @DisplayName("resolveUserIds: min のみ指定 → max を MAX_PLAUSIBLE_AGE(130) で補完")
+    void resolveUserIds_minOnly_complementsMax() {
+        int currentYear = Year.now().getValue();
+        int expectedMinBirthYear = currentYear - 130;  // MAX_PLAUSIBLE_AGE=130
+        int expectedMaxBirthYear = currentYear - 60;
+        when(userRepository.findUserIdsByBirthYearBetween(expectedMinBirthYear, expectedMaxBirthYear))
+                .thenReturn(List.of(501L));
+
         AdAudienceSegment seg = segment("{\"min\":60}");
-        assertThatThrownBy(() -> evaluator.resolveUserIds(seg))
-                .isInstanceOf(SegmentDataSourceNotAvailableException.class);
+        Set<Long> result = evaluator.resolveUserIds(seg);
+
+        assertThat(result).containsExactly(501L);
+        verify(userRepository).findUserIdsByBirthYearBetween(expectedMinBirthYear, expectedMaxBirthYear);
+    }
+
+    @Test
+    @DisplayName("resolveUserIds: マッチなし → 空集合を返す（正常）")
+    void resolveUserIds_noMatch_returnsEmpty() {
+        when(userRepository.findUserIdsByBirthYearBetween(anyInt(), anyInt()))
+                .thenReturn(List.of());
+
+        AdAudienceSegment seg = segment("{\"min\":20,\"max\":39}");
+        Set<Long> result = evaluator.resolveUserIds(seg);
+
+        assertThat(result).isEmpty();
     }
 
     @Test
@@ -91,7 +144,7 @@ class AgeRangeSegmentEvaluatorTest {
     }
 
     @Test
-    @DisplayName("resolveUserIds: 異常に高齢な値 → AD_AUDIENCE_INVALID")
+    @DisplayName("resolveUserIds: 異常に高齢な値（130超） → AD_AUDIENCE_INVALID")
     void resolveUserIds_unrealisticallyHighAge() {
         AdAudienceSegment seg = segment("{\"min\":20,\"max\":300}");
         assertThatThrownBy(() -> evaluator.resolveUserIds(seg))
@@ -111,11 +164,16 @@ class AgeRangeSegmentEvaluatorTest {
     }
 
     @Test
-    @DisplayName("resolveUserIds: 文字列で渡された数値もパースする")
+    @DisplayName("resolveUserIds: 文字列で渡された数値もパースしてリポジトリを呼ぶ")
     void resolveUserIds_stringNumbers() {
+        int currentYear = Year.now().getValue();
+        when(userRepository.findUserIdsByBirthYearBetween(currentYear - 39, currentYear - 20))
+                .thenReturn(List.of(100L));
+
         AdAudienceSegment seg = segment("{\"min\":\"20\",\"max\":\"39\"}");
-        assertThatThrownBy(() -> evaluator.resolveUserIds(seg))
-                .isInstanceOf(SegmentDataSourceNotAvailableException.class);
+        Set<Long> result = evaluator.resolveUserIds(seg);
+
+        assertThat(result).containsExactly(100L);
     }
 
     private static AdAudienceSegment segment(String json) {

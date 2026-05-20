@@ -1173,7 +1173,8 @@
       "auditLogs": "Registros de auditoría",
       "shiftBudget": "Presupuesto de turno",
       "betaRestriction": "Restricción beta",
-      "errorReports": "Informes de errores"
+      "errorReports": "Informes de errores",
+      "gdprPurge": "Estado de Purga GDPR"
     }
   },
   "notificationCredit": {

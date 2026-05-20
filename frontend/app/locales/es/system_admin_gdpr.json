@@ -1,0 +1,53 @@
+{
+  "systemAdmin": {
+    "gdpr": {
+      "title": "Estado de Purga GDPR",
+      "summary": {
+        "completed": "Completado",
+        "pending": "Pendiente",
+        "alert": "Alertas"
+      },
+      "domain": {
+        "role": "Rol",
+        "team": "Equipo",
+        "payment": "Pago",
+        "chart": "Gráfico",
+        "proxy": "Proxy",
+        "errorreport": "Reporte de Error"
+      },
+      "status": {
+        "PENDING": "Pendiente",
+        "SUCCESS": "Completado"
+      },
+      "table": {
+        "userId": "ID de Usuario",
+        "emailHash": "Hash de Email",
+        "domainName": "Dominio",
+        "status": "Estado",
+        "attemptedAt": "Intentado En",
+        "completedAt": "Completado En",
+        "isAlert": "Alerta"
+      },
+      "filter": {
+        "status": "Estado",
+        "domain": "Dominio",
+        "dateFrom": "Desde",
+        "dateTo": "Hasta",
+        "search": "Buscar",
+        "allStatuses": "Todos los Estados",
+        "allDomains": "Todos los Dominios"
+      },
+      "export": "Exportar CSV",
+      "detail": {
+        "title": "Detalle de Usuario",
+        "close": "Cerrar"
+      },
+      "noData": "No hay datos disponibles",
+      "toast": {
+        "loadFailed": "Error al cargar datos",
+        "detailLoadFailed": "Error al cargar detalle de usuario"
+      },
+      "quickLinkLabel": "Estado GDPR"
+    }
+  }
+}

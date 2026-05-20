@@ -136,6 +136,14 @@ const quickLinks: QuickLink[] = [
     color: 'text-amber-500',
     bg: 'bg-amber-50 dark:bg-amber-900/20',
   },
+  // Phase E: GDPR パージ状況管理
+  {
+    label: t('admin.quickLinks.gdprPurge'),
+    icon: 'pi pi-trash',
+    to: '/system-admin/gdpr',
+    color: 'text-violet-500',
+    bg: 'bg-violet-50 dark:bg-violet-900/20',
+  },
 ]
 </script>
 

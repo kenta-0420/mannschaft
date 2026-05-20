@@ -1,5 +1,22 @@
 {
   "public": {
+    "admin": {
+      "nameDisclosure": {
+        "title": "Author identity mode",
+        "displayName": "Show display name",
+        "realName": "Show real name",
+        "warningTitle": "About switching to real name display",
+        "warningBody": "Once enabled, posts will show the author's real name. Real names that have been made public may spread externally and cannot be fully revoked.",
+        "warningCheckbox": "I understand the above and wish to proceed",
+        "confirmButton": "Confirm and switch",
+        "cancelButton": "Cancel",
+        "historyTitle": "Change history",
+        "changedAt": "Changed at",
+        "changedBy": "Changed by",
+        "fromMode": "Previous mode",
+        "toMode": "New mode"
+      }
+    },
     "layout": {
       "skipToContent": "Skip to main content",
       "login": "Log in",
