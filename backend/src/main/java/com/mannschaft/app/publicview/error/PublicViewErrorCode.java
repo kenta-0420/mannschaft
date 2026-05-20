@@ -31,6 +31,21 @@ public enum PublicViewErrorCode implements ErrorCode {
     /** 指定された投稿は存在しないか公開されていません (404 へ正規化)。 */
     PUBLIC_003("PUBLIC_003",
             "指定された投稿は存在しないか公開されていません",
+            Severity.WARN),
+
+    /** 切替対象のチーム / 組織が見つかりません (404)。 */
+    NAME_DISCLOSURE_NOT_FOUND("PUBLIC_004",
+            "指定されたチーム / 組織が見つかりません",
+            Severity.WARN),
+
+    /** confirmed=false のまま切替を要求されました (400)。 */
+    NAME_DISCLOSURE_CONFIRM_REQUIRED("PUBLIC_005",
+            "投稿者識別モードの切替確認が必要です",
+            Severity.WARN),
+
+    /** 切替権限がありません (403)。 */
+    NAME_DISCLOSURE_FORBIDDEN("PUBLIC_006",
+            "投稿者識別モードの切替権限がありません",
             Severity.WARN);
 
     private final String code;

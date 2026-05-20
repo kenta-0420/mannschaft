@@ -100,3 +100,31 @@ export interface PublicPostDetail {
   scope: PublicScopeRef
   publishedAt: string
 }
+
+// ─── F19.1 Phase 2: Admin 向け supporter_name_disclosure 切替 API 型 ───
+
+/** supporter_name_disclosure の値。 */
+export type NameDisclosureMode = 'DISPLAY_NAME' | 'REAL_NAME'
+
+/** Admin PATCH リクエスト DTO。 */
+export interface SupporterNameDisclosurePatchRequest {
+  mode: NameDisclosureMode
+  confirmed: boolean
+}
+
+/** Admin PATCH レスポンス DTO。 */
+export interface SupporterNameDisclosureResponse {
+  currentMode: NameDisclosureMode
+  /** 同値更新の場合は null。 */
+  changedAt: string | null
+}
+
+/** 変更履歴 1 件の DTO。 */
+export interface NameDisclosureChangeLogResponse {
+  id: string
+  oldMode: NameDisclosureMode
+  newMode: NameDisclosureMode
+  confirmed: boolean
+  changedBy: number
+  changedAt: string
+}
