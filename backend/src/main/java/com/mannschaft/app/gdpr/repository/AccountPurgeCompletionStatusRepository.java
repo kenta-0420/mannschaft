@@ -1,7 +1,13 @@
 package com.mannschaft.app.gdpr.repository;
 
 import com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,9 +20,14 @@ import java.util.UUID;
  * <p>GDPR Art.17「30日以内削除完了」の per-domain 完了証跡を操作する。
  * gdpr ドメイン内で完結するリポジトリのため、クロスドメイン制約違反なし。</p>
  *
- * <p>設計根拠: {@code docs/architecture/account_purge_cross_domain_refactor.md} §4 Phase D-8</p>
+ * <p>Phase E 拡張: システム管理者向け読み取り専用 API をサポートするため
+ * {@link JpaSpecificationExecutor} を追加した。動的検索・サマリー集計・CSV エクスポートに使用する。</p>
+ *
+ * <p>設計根拠: {@code docs/architecture/account_purge_cross_domain_refactor.md} §4 Phase D-8 / Phase E</p>
  */
-public interface AccountPurgeCompletionStatusRepository extends JpaRepository<AccountPurgeCompletionStatusEntity, UUID> {
+public interface AccountPurgeCompletionStatusRepository
+        extends JpaRepository<AccountPurgeCompletionStatusEntity, UUID>,
+                JpaSpecificationExecutor<AccountPurgeCompletionStatusEntity> {
 
     /**
      * 指定ステータスかつ指定日時より古い PENDING レコードを取得する（監査バッチ用）。
@@ -51,4 +62,35 @@ public interface AccountPurgeCompletionStatusRepository extends JpaRepository<Ac
      * @return マッチしたエンティティ（存在しない場合は空）
      */
     Optional<AccountPurgeCompletionStatusEntity> findByUserIdAndDomainName(Long userId, String domainName);
+
+    // ---- Phase E: システム管理者向け読み取り専用 API 追加メソッド ----
+
+    /**
+     * ユーザー詳細取得用: userId に紐づく全ドメイン行をドメイン名昇順で返す。
+     *
+     * @param userId 対象ユーザー ID
+     * @return 対象ユーザーの全 per-domain レコード（ドメイン名昇順）
+     */
+    List<AccountPurgeCompletionStatusEntity> findByUserIdOrderByDomainName(Long userId);
+
+    /**
+     * サマリー集計用: domainName × status のカウントを返す。
+     *
+     * <p>戻り値の {@code Object[]} の構造: {@code [0]=domainName, [1]=status, [2]=count}。</p>
+     *
+     * @return ドメイン × ステータス別カウント
+     */
+    @Query("SELECT e.domainName, e.status, COUNT(e) FROM AccountPurgeCompletionStatusEntity e GROUP BY e.domainName, e.status")
+    List<Object[]> countByDomainAndStatus();
+
+    /**
+     * アラート対象件数取得: PENDING かつ指定閾値より古い attemptedAt を持つレコード数。
+     *
+     * <p>GDPR Art.17「30日以内削除完了」の監視に使用する。</p>
+     *
+     * @param threshold この日時より前の {@code attemptedAt} を持つ PENDING レコードをカウント
+     * @return アラート対象レコード数
+     */
+    @Query("SELECT COUNT(e) FROM AccountPurgeCompletionStatusEntity e WHERE e.status = 'PENDING' AND e.attemptedAt < :threshold")
+    long countAlerting(@Param("threshold") LocalDateTime threshold);
 }
