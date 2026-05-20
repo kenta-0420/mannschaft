@@ -1173,7 +1173,8 @@
       "auditLogs": "Audit-Protokolle",
       "shiftBudget": "Schichtbudget",
       "betaRestriction": "Beta-Einschränkung",
-      "errorReports": "Fehlerberichte"
+      "errorReports": "Fehlerberichte",
+      "gdprPurge": "DSGVO Bereinigungsstatus"
     }
   },
   "notificationCredit": {

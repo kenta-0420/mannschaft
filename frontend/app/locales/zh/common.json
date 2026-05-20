@@ -1173,7 +1173,8 @@
       "auditLogs": "审计日志",
       "shiftBudget": "班次预算",
       "betaRestriction": "测试版限制",
-      "errorReports": "错误报告"
+      "errorReports": "错误报告",
+      "gdprPurge": "GDPR 清除状态"
     }
   },
   "notificationCredit": {

@@ -1,0 +1,53 @@
+{
+  "systemAdmin": {
+    "gdpr": {
+      "title": "DSGVO Bereinigungsstatus",
+      "summary": {
+        "completed": "Abgeschlossen",
+        "pending": "Ausstehend",
+        "alert": "Warnungen"
+      },
+      "domain": {
+        "role": "Rolle",
+        "team": "Team",
+        "payment": "Zahlung",
+        "chart": "Diagramm",
+        "proxy": "Proxy",
+        "errorreport": "Fehlerbericht"
+      },
+      "status": {
+        "PENDING": "Ausstehend",
+        "SUCCESS": "Erfolgreich"
+      },
+      "table": {
+        "userId": "Benutzer-ID",
+        "emailHash": "E-Mail-Hash",
+        "domainName": "Domäne",
+        "status": "Status",
+        "attemptedAt": "Versucht Am",
+        "completedAt": "Abgeschlossen Am",
+        "isAlert": "Warnung"
+      },
+      "filter": {
+        "status": "Status",
+        "domain": "Domäne",
+        "dateFrom": "Von",
+        "dateTo": "Bis",
+        "search": "Suchen",
+        "allStatuses": "Alle Status",
+        "allDomains": "Alle Domänen"
+      },
+      "export": "CSV Exportieren",
+      "detail": {
+        "title": "Benutzerdetails",
+        "close": "Schließen"
+      },
+      "noData": "Keine Daten verfügbar",
+      "toast": {
+        "loadFailed": "Fehler beim Laden der Daten",
+        "detailLoadFailed": "Fehler beim Laden der Benutzerdetails"
+      },
+      "quickLinkLabel": "DSGVO Bereinigung"
+    }
+  }
+}

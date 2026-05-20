@@ -1173,7 +1173,8 @@
       "auditLogs": "Audit Logs",
       "shiftBudget": "Shift Budget",
       "betaRestriction": "Beta Restriction",
-      "errorReports": "Error Reports"
+      "errorReports": "Error Reports",
+      "gdprPurge": "GDPR Purge Status"
     }
   },
   "notificationCredit": {

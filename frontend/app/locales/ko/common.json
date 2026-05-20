@@ -1173,7 +1173,8 @@
       "auditLogs": "감사 로그",
       "shiftBudget": "교대 예산",
       "betaRestriction": "베타 제한",
-      "errorReports": "오류 보고서"
+      "errorReports": "오류 보고서",
+      "gdprPurge": "GDPR 삭제 현황"
     }
   },
   "notificationCredit": {
