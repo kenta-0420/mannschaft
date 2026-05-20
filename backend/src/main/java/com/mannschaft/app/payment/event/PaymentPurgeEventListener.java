@@ -126,4 +126,36 @@ public class PaymentPurgeEventListener {
                     });
         }
     }
+
+    /**
+     * 管理者からの手動 retry 用。{@link #on(AccountPurgedEvent)} と同じドメイン操作を実行するが、
+     * {@code completionStatusRepository} の更新は {@code GdprPurgeRetryService} が担う。
+     *
+     * @param userId retry 対象ユーザー ID
+     * @return true=全操作成功、false=1 件以上失敗
+     */
+    @Transactional
+    public boolean retryPurge(Long userId) {
+        boolean sentinelizeFailed = false;
+        boolean stripeFailed = false;
+
+        try {
+            memberPaymentRepository.anonymizeUserId(userId, UserConstants.SENTINEL_USER_ID);
+        } catch (Exception e) {
+            sentinelizeFailed = true;
+            log.warn("payment purge retry: member_payments センチネル化失敗 userId={}", userId, e);
+        }
+
+        try {
+            var stripeCustomerOpt = stripeCustomerRepository.findByUserId(userId);
+            if (stripeCustomerOpt.isPresent()) {
+                stripeCustomerRepository.delete(stripeCustomerOpt.get());
+            }
+        } catch (Exception e) {
+            stripeFailed = true;
+            log.warn("payment purge retry: stripe_customers 削除失敗 userId={}", userId, e);
+        }
+
+        return !sentinelizeFailed && !stripeFailed;
+    }
 }

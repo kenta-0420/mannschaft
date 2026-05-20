@@ -36,6 +36,8 @@ public enum AuditEventType {
     WITHDRAWAL_CANCELLED(AuditEventCategory.ACCOUNT),
     WITHDRAWAL_COMPLETED(AuditEventCategory.ACCOUNT),
     PENDING_USER_CLEANED_UP(AuditEventCategory.ACCOUNT),
+    /** Phase F: SYSTEM_ADMIN が GDPR ドメインパージを手動で retry した。 */
+    DOMAIN_PURGE_RETRIED(AuditEventCategory.ACCOUNT),
 
     // ─── OAUTH ──────────────────────────────────────────────
     OAUTH_LINK_REQUESTED(AuditEventCategory.OAUTH),

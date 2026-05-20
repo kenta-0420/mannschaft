@@ -4,6 +4,8 @@ import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.gdpr.dto.PurgeStatusRow;
 import com.mannschaft.app.gdpr.dto.PurgeStatusSummaryData;
+import com.mannschaft.app.gdpr.dto.RetryResultResponse;
+import com.mannschaft.app.gdpr.service.GdprPurgeRetryService;
 import com.mannschaft.app.gdpr.service.GdprPurgeStatusQueryService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
@@ -31,10 +33,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -63,6 +67,9 @@ class SystemAdminGdprPurgeControllerTest {
 
     @MockitoBean
     private GdprPurgeStatusQueryService queryService;
+
+    @MockitoBean
+    private GdprPurgeRetryService retryService;
 
     // @WebMvcTest 共通の慣習: フィルター・コンテキスト依存 Bean を Mock 化
     @MockitoBean
@@ -94,7 +101,9 @@ class SystemAdminGdprPurgeControllerTest {
                 status,
                 now.minusMinutes(60),
                 "SUCCESS".equals(status) ? now : null,
-                isAlert);
+                isAlert,
+                0,
+                null);
     }
 
     private PurgeStatusSummaryData buildSummary() {
@@ -228,6 +237,45 @@ class SystemAdminGdprPurgeControllerTest {
                             org.hamcrest.Matchers.containsString("attachment")))
                     .andExpect(header().string("Content-Disposition",
                             org.hamcrest.Matchers.containsString("gdpr-purge-status-")));
+        }
+    }
+
+    // ---- 手動 retry（Phase F）----
+
+    @Nested
+    @DisplayName("POST /api/v1/system-admin/gdpr/purge-status/{userId}/retry/{domainName}")
+    class RetryTest {
+
+        @Test
+        @DisplayName("retry 成功系: succeeded=true で 200 OK")
+        void retry成功_200() throws Exception {
+            RetryResultResponse response = new RetryResultResponse(
+                    true, "role", "SUCCESS", 1, "retry 成功");
+            given(retryService.retryDomainPurge(eq(100L), eq("role")))
+                    .willReturn(response);
+
+            mockMvc.perform(post("/api/v1/system-admin/gdpr/purge-status/100/retry/role"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.succeeded").value(true))
+                    .andExpect(jsonPath("$.data.domainName").value("role"))
+                    .andExpect(jsonPath("$.data.newStatus").value("SUCCESS"))
+                    .andExpect(jsonPath("$.data.retryCount").value(1))
+                    .andExpect(jsonPath("$.data.message").value("retry 成功"));
+        }
+
+        @Test
+        @DisplayName("retry 失敗系: succeeded=false で 200 OK（PENDING 継続）")
+        void retry失敗_200_PENDING継続() throws Exception {
+            RetryResultResponse response = new RetryResultResponse(
+                    false, "payment", "PENDING", 2, "retry 失敗（PENDING 継続）");
+            given(retryService.retryDomainPurge(eq(200L), eq("payment")))
+                    .willReturn(response);
+
+            mockMvc.perform(post("/api/v1/system-admin/gdpr/purge-status/200/retry/payment"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.succeeded").value(false))
+                    .andExpect(jsonPath("$.data.newStatus").value("PENDING"))
+                    .andExpect(jsonPath("$.data.retryCount").value(2));
         }
     }
 }

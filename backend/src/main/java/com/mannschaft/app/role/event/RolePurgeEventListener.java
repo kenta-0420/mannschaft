@@ -106,4 +106,42 @@ public class RolePurgeEventListener {
                     });
         }
     }
+
+    /**
+     * 管理者からの手動 retry 用。{@link #on(AccountPurgedEvent)} と同じドメイン操作を実行するが、
+     * {@code completionStatusRepository} の更新は {@code GdprPurgeRetryService} が担う。
+     *
+     * <p>SYSTEM_ADMIN 行（team_id / organization_id 両方 null）はスキップして成功扱いとする
+     * （{@link #on(AccountPurgedEvent)} と同じポリシー）。</p>
+     *
+     * @param userId retry 対象ユーザー ID
+     * @return true=全操作成功（0 件失敗）、false=1 件以上失敗
+     */
+    @Transactional
+    public boolean retryPurge(Long userId) {
+        List<UserRoleEntity> userRoles = userRoleRepository.findAllByUserId(userId);
+        int failed = 0;
+        for (UserRoleEntity userRole : userRoles) {
+            try {
+                Long scopeId;
+                String scopeType;
+                if (userRole.getOrganizationId() != null) {
+                    scopeId = userRole.getOrganizationId();
+                    scopeType = "ORGANIZATION";
+                } else if (userRole.getTeamId() != null) {
+                    scopeId = userRole.getTeamId();
+                    scopeType = "TEAM";
+                } else {
+                    log.warn("role purge retry: scopeId/scopeType 不明な user_role をスキップ: userRoleId={}, userId={}",
+                            userRole.getId(), userId);
+                    continue;
+                }
+                roleService.removeMemberWithoutAdminCheck(scopeId, scopeType, userId);
+            } catch (Exception e) {
+                log.warn("role purge retry 失敗 userId={} userRoleId={}", userId, userRole.getId(), e);
+                failed++;
+            }
+        }
+        return failed == 0;
+    }
 }

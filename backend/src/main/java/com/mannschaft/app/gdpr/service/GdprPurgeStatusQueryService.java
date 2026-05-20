@@ -144,7 +144,7 @@ public class GdprPurgeStatusQueryService {
 
         try (PrintWriter writer = new PrintWriter(out, false, StandardCharsets.UTF_8)) {
             // ヘッダー行
-            writer.println("userId,emailHash,domainName,status,attemptedAt,completedAt,isAlert");
+            writer.println("userId,emailHash,domainName,status,attemptedAt,completedAt,isAlert,retryCount,lastRetriedAt");
 
             // 全件を Specification=null（条件なし）でストリーム処理
             // 件数が大きい場合でもページングせずバッチフェッチで対応（監査用途のため全件出力が前提）
@@ -203,7 +203,9 @@ public class GdprPurgeStatusQueryService {
                 entity.getStatus(),
                 entity.getAttemptedAt(),
                 entity.getCompletedAt(),
-                isAlert);
+                isAlert,
+                entity.getRetryCount(),
+                entity.getLastRetriedAt());
     }
 
     /**
@@ -217,7 +219,9 @@ public class GdprPurgeStatusQueryService {
                 safeStr(row.status()),
                 row.attemptedAt() != null ? row.attemptedAt().format(CSV_DATETIME_FORMAT) : "",
                 row.completedAt() != null ? row.completedAt().format(CSV_DATETIME_FORMAT) : "",
-                String.valueOf(row.isAlert()));
+                String.valueOf(row.isAlert()),
+                safeStr(row.retryCount()),
+                row.lastRetriedAt() != null ? row.lastRetriedAt().format(CSV_DATETIME_FORMAT) : "");
     }
 
     private String safeStr(Object val) {
