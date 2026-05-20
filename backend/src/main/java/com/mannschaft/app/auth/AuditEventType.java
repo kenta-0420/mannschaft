@@ -301,7 +301,15 @@ public enum AuditEventType {
     CIRCULATION_EXPORT_REQUESTED(AuditEventCategory.CIRCULATION),
 
     /** 押印済み証跡 PDF エクスポートを生成完了した（Phase 11 4-C）。 */
-    CIRCULATION_EXPORT_GENERATED(AuditEventCategory.CIRCULATION);
+    CIRCULATION_EXPORT_GENERATED(AuditEventCategory.CIRCULATION),
+
+    // ─── EMAIL_OUTBOX SYSTEM_ADMIN (F09.18 Phase 18-d) ─────────────────
+    /** SYSTEM_ADMIN がメール outbox 詳細を閲覧した。 */
+    SYSTEM_ADMIN_EMAIL_OUTBOX_VIEWED(AuditEventCategory.ADMIN_ACTION),
+    /** SYSTEM_ADMIN が DEAD_LETTER をリトライキューに戻した。 */
+    SYSTEM_ADMIN_EMAIL_OUTBOX_RETRIED(AuditEventCategory.ADMIN_ACTION),
+    /** SYSTEM_ADMIN が PENDING メールをキャンセルした。 */
+    SYSTEM_ADMIN_EMAIL_OUTBOX_CANCELLED(AuditEventCategory.ADMIN_ACTION);
 
     private final AuditEventCategory category;
 }
