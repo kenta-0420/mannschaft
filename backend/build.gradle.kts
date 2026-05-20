@@ -4,6 +4,7 @@ plugins {
     id("org.springframework.boot") version "3.5.13"
     id("io.spring.dependency-management") version "1.1.7"
     id("org.springdoc.openapi-gradle-plugin") version "1.9.0"
+    // OWASP Dependency-Check: 依存ライブラリの既知 CVE をスキャンする（週次 CI で使用）
     id("org.owasp.dependencycheck") version "12.1.3"
 }
 
@@ -285,23 +286,35 @@ tasks.register<JavaExec>("importPostalCodes") {
     dependsOn("compileJava")
 }
 
-// OWASP Dependency-Check: 依存ライブラリの CVE（既知脆弱性）スキャン
-// 実行: ./gradlew dependencyCheckAnalyze
-// レポート: backend/build/reports/dependency-check-report.html
+// =============================================================================
+// OWASP Dependency-Check 設定
+// =============================================================================
+// 使い方: ./gradlew dependencyCheckAnalyze
+// 週次 CI (.github/workflows/security-scan.yml) で自動実行される。
+// NVD API キーは環境変数 NVD_API_KEY で設定する（GitHub Secret: NVD_API_KEY）。
+// スキャン対象: runtimeClasspath のみ（テスト専用ライブラリは除外）。
+// CVSS スコア 7.0 以上 (HIGH) で CI を失敗させる。
+// =============================================================================
 dependencyCheck {
-    // CVSS スコア 7.0 以上（High/Critical）でビルド失敗
+    // CVSS スコア閾値: 7.0 以上（HIGH/CRITICAL）で失敗
     failBuildOnCVSS = 7.0f
 
-    // スキャン対象から除外する設定（テスト専用・ローカルのみの依存は除外可）
-    suppressionFile = "owasp-suppression.xml"
-
-    // レポート形式（HTML と JSON を両方生成）
+    // HTML + JSON レポートを出力（CI Artifact に保存する）
     formats = listOf("HTML", "JSON")
 
-    // NVD API キーが環境変数にあれば使用（なくても動作するが低速になる）
+    // NVD API キー（CI では環境変数 NVD_API_KEY から取得）
+    // ローカルで動かす場合は gradle.properties か環境変数で NVD_API_KEY を設定すること
     nvd {
         apiKey = System.getenv("NVD_API_KEY") ?: ""
+        // API レート制限: 無料枠は 5 req/30s。余裕を持って 4000ms 間隔
+        delay = 4000
     }
+
+    // テスト専用ライブラリはスキャン対象から除外（本番デプロイされないため）
+    scanConfigurations = listOf("runtimeClasspath")
+
+    // 誤検知（false positive）の抑制ファイル
+    // suppressionFile = "${projectDir}/owasp-suppressions.xml"
 
     // analyzers: 不要なアナライザを無効化してスキャン高速化
     analyzers {

@@ -4,6 +4,7 @@
 # Runs compile + test on every PR targeting main.
 # No AWS credentials required — build and deploy are intentionally omitted.
 # 2026-05-07: forkEvery(100) + G1GC + AbandonedConnectionCleanup 無効化 + timezone=Asia/Tokyo
+# 2026-05-20: Gradle ビルドキャッシュ強化（--build-cache + actions/cache 明示）
 # =============================================================================
 
 name: Backend — CI (PR Check)
@@ -32,6 +33,7 @@ jobs:
   test:
     name: Compile & Test
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     defaults:
       run:
         working-directory: ./backend
@@ -45,7 +47,19 @@ jobs:
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
+          # setup-java の組み込み Gradle キャッシュ（~/.gradle/caches, ~/.gradle/wrapper）
           cache: gradle
+
+      # setup-java の cache: gradle は ~/.gradle を対象とするが、
+      # プロジェクト内の .gradle ディレクトリ（Gradle ビルドキャッシュ本体）は別途キャッシュする。
+      # --build-cache はこのローカルキャッシュを参照してタスクの再実行をスキップする。
+      - name: Gradle ビルドキャッシュ（プロジェクト内）
+        uses: actions/cache@v4
+        with:
+          path: backend/.gradle/buildOutputCleanup
+          key: gradle-build-cache-${{ runner.os }}-${{ hashFiles('backend/**/*.gradle*', 'backend/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-build-cache-${{ runner.os }}-
 
       - name: Grant Gradle wrapper execute permission
         run: chmod +x gradlew
@@ -53,21 +67,30 @@ jobs:
       # Compile all source sets first so compilation errors surface quickly
       # before the slower test run starts.
       - name: Compile
-        run: ./gradlew compileJava compileTestJava --no-daemon
+        run: ./gradlew compileJava compileTestJava --no-daemon --build-cache
 
       # Run the full test suite.
-      # --continue ensures all test failures are collected (not just the first).
+      # --build-cache: キャッシュヒット時にテストタスクの再実行をスキップして CI を高速化
+      # --continue: 全テスト失敗を収集（最初の失敗で打ち切りしない）
       - name: Run tests
-        run: ./gradlew test --no-daemon --continue
+        run: ./gradlew test --no-daemon --continue --build-cache
         env:
           TESTCONTAINERS_RYUK_DISABLED: "false"
 
-      - name: Upload test reports on failure
-        if: failure()
+      - name: テスト結果レポートをアップロード
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports-pr-${{ github.event.pull_request.number }}
+          name: test-results-pr-${{ github.event.pull_request.number || 'manual' }}
           path: build/reports/tests/
+          retention-days: 7
+
+      - name: JaCoCo カバレッジレポートをアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-pr-${{ github.event.pull_request.number || 'manual' }}
+          path: build/reports/jacoco/
           retention-days: 7
 
       # openapi.json の生成は CI ではなくローカルで行う運用とする。

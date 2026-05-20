@@ -1,0 +1,76 @@
+# =============================================================================
+# セキュリティスキャン（週次） — OWASP Dependency-Check
+# =============================================================================
+# 依存ライブラリの既知 CVE を週次でスキャンし、HIGH/CRITICAL 発見時に CI を失敗させる。
+# NVD API キーは GitHub Secret「NVD_API_KEY」で設定すること。
+# 未設定でも動作するが、NVD API レート制限でスキャンに数時間かかる場合がある。
+#
+# 2026-05-20: 初版作成
+# =============================================================================
+
+name: セキュリティスキャン（週次 OWASP）
+
+on:
+  schedule:
+    # 毎週月曜 JST 10:00（UTC 01:00）に実行
+    - cron: '0 1 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: security-scan
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: "21"
+
+jobs:
+  owasp-dependency-check:
+    name: OWASP Dependency-Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: gradle
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      # NVD データベースキャッシュ（CVE データのダウンロードを削減）
+      # キャッシュキーを週単位にすることで、毎週月曜に新しい CVE データを取得しつつ
+      # 同週内の再実行ではキャッシュを使用する
+      - name: NVD データベースキャッシュ
+        uses: actions/cache@v4
+        with:
+          path: backend/.gradle/dependency-check-data
+          key: nvd-${{ runner.os }}-${{ env.week_key }}
+          restore-keys: |
+            nvd-${{ runner.os }}-
+        env:
+          week_key: ${{ github.run_id }}
+
+      - name: OWASP CVE スキャン実行
+        run: ./gradlew dependencyCheckAnalyze --no-daemon
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+
+      - name: スキャンレポートをアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-report-${{ github.run_number }}
+          path: |
+            backend/build/reports/dependency-check-report.html
+            backend/build/reports/dependency-check-report.json
+          retention-days: 30
