@@ -34,6 +34,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * ダイレクトメールサービス。メールのCRUD・送信・統計を担当する。
@@ -64,6 +65,15 @@ public class DirectMailService {
     private static final String AD_SUBJECT_PREFIX = "[PR] ";
 
     /**
+     * F09.18 Phase 18-f: {@link #sendSystemAdMail} の戻り値。
+     * recipient と outboxId を呼び出し元（{@code AdEmailChannelService}）に返す。
+     *
+     * @param recipient 作成された {@link DirectMailRecipientEntity}
+     * @param outboxId  {@code email_outbox.id}（双方向トレース用）
+     */
+    public record AdMailSendResult(DirectMailRecipientEntity recipient, UUID outboxId) {}
+
+    /**
      * F09.17 Phase 11-b ε-B 広告メール送信。
      *
      * <p>処理:</p>
@@ -72,32 +82,34 @@ public class DirectMailService {
      *       scope_id=advertiserAccountId、senderId=systemSenderId、status=SENDING）</li>
      *   <li>{@code direct_mail_recipients} 行を 1 件作成</li>
      *   <li>件名に {@link #AD_SUBJECT_PREFIX "[PR] "} を強制付与</li>
-     *   <li>{@link EmailService#sendEmail} で SES 送信</li>
+     *   <li>{@link EmailOutboxService#enqueue} で SES 送信（F09.18 outbox 経由・非同期・リトライ保証）</li>
      *   <li>SES message_id を recipient.sesMessageId に記録</li>
      *   <li>log.status を SENT に更新</li>
      * </ol>
      *
-     * <p>呼び出し元（{@code AdEmailChannelService}）は戻り値 recipientId を
-     * {@code ad_email_deliveries.direct_mail_recipient_id} に転記する。</p>
+     * <p>呼び出し元（{@code AdEmailChannelService}）は戻り値 {@link AdMailSendResult} から
+     * recipientId を {@code ad_email_deliveries.direct_mail_recipient_id} に、
+     * outboxId を {@code ad_email_deliveries.email_outbox_id} に転記する（双方向トレース）。</p>
      *
-     * <p>本メソッドは {@code @Transactional}。SES 送信は同期だが失敗時は {@link EmailService} が
-     * ログ化のみで例外を吸収するため、ここでは bouncedAt 等は記録しない。
-     * 真のバウンス検知は既存 {@code SesWebhookService} 経路で別途行う。</p>
+     * <p>本メソッドは {@code @Transactional}。SES 送信は outbox 経由の非同期であり、
+     * enqueue 失敗時は例外が伝播する。真のバウンス検知は既存 {@code SesWebhookService} 経路で行う。</p>
      *
-     * @param advertiserAccountId 広告主アカウント ID（scope_id として使用）
-     * @param userId              受信者ユーザー ID
-     * @param recipientEmail      送信先メールアドレス
-     * @param subject             件名（[PR] プレフィックスは内部で付与する。重複時はそのまま）
-     * @param bodyHtml            HTML 本文（unsubscribe リンク・開封ピクセル埋め込み済を期待）
-     * @return 送信に使用した {@link DirectMailRecipientEntity}（特に id を後続で参照）
+     * @param advertiserAccountId  広告主アカウント ID（scope_id として使用）
+     * @param userId               受信者ユーザー ID
+     * @param recipientEmail       送信先メールアドレス
+     * @param subject              件名（[PR] プレフィックスは内部で付与する。重複時はそのまま）
+     * @param bodyHtml             HTML 本文（unsubscribe リンク・開封ピクセル埋め込み済を期待）
+     * @param adEmailDeliveryId    {@code ad_email_deliveries.id}（enqueue の source_event_id として使用。双方向トレース用）
+     * @return {@link AdMailSendResult}（recipient と outboxId を含む）
      */
     @Transactional
-    public DirectMailRecipientEntity sendSystemAdMail(
+    public AdMailSendResult sendSystemAdMail(
             Long advertiserAccountId,
             Long userId,
             String recipientEmail,
             String subject,
-            String bodyHtml) {
+            String bodyHtml,
+            UUID adEmailDeliveryId) {
         if (advertiserAccountId == null || userId == null
                 || recipientEmail == null || recipientEmail.isBlank()
                 || subject == null || bodyHtml == null) {
@@ -133,13 +145,14 @@ public class DirectMailService {
                 .build();
 
         // 3) SES 送信 — EmailOutboxService 経由（outbox + リトライ保証）
-        emailOutboxService.enqueue(new EmailOutboxRequest(
+        // F09.18 Phase 18-f: source_domain="advertising"、source_event_id=ad_email_delivery.id で双方向トレース
+        UUID outboxId = emailOutboxService.enqueue(new EmailOutboxRequest(
                 "DIRECT_MAIL_AD",
                 "ja",
                 recipientEmail,
                 java.util.Map.of("subject", enforcedSubject, "body", bodyHtml),
-                "directmail",
-                "directmail-ad:" + advertiserAccountId + ":" + userId,
+                "advertising",                                                    // "directmail" から変更
+                adEmailDeliveryId != null ? adEmailDeliveryId.toString() : null, // delivery UUID を使用
                 null,
                 userId,
                 advertiserAccountId
@@ -154,7 +167,7 @@ public class DirectMailService {
         savedLog.markSent(1, 1);
         mailLogRepository.save(savedLog);
 
-        return savedRecipient;
+        return new AdMailSendResult(savedRecipient, outboxId);
     }
 
     /**

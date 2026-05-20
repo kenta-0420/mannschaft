@@ -1,6 +1,15 @@
 {
   "public": {
     "admin": {
+      "publicVisible": {
+        "label": "公开显示",
+        "enabledLabel": "公开中",
+        "disabledLabel": "非公开",
+        "toggleAriaLabel": "切换帖子的公开/非公开状态",
+        "enableConfirm": "将此帖子设为公开。确认吗？",
+        "disableConfirm": "将此帖子设为非公开。确认吗？",
+        "saveFailed": "切换失败，请重试"
+      },
       "nameDisclosure": {
         "title": "投稿者識別モード",
         "displayName": "表示名で表示",

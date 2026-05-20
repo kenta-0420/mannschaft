@@ -15,6 +15,15 @@
         "changedBy": "変更者",
         "fromMode": "変更前",
         "toMode": "変更後"
+      },
+      "publicVisible": {
+        "label": "公開表示",
+        "enabledLabel": "公開中",
+        "disabledLabel": "非公開",
+        "toggleAriaLabel": "投稿の公開・非公開を切り替える",
+        "enableConfirm": "この投稿を公開します。よろしいですか？",
+        "disableConfirm": "この投稿を非公開にします。よろしいですか？",
+        "saveFailed": "切替に失敗しました。再度お試しください"
       }
     },
     "layout": {

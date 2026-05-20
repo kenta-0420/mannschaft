@@ -125,9 +125,13 @@ class AdEmailChannelServiceTest {
         given(unsubscribeJwtService.generate(42L, 5, "EMAIL")).willReturn("UNSUB_JWT");
 
         DirectMailRecipientEntity recipient = buildRecipient();
+        UUID fakeOutboxId = UUID.randomUUID();
+        DirectMailService.AdMailSendResult adMailResult =
+                new DirectMailService.AdMailSendResult(recipient, fakeOutboxId);
         given(directMailService.sendSystemAdMail(
-                eq(100L), eq(42L), eq("user@example.com"), any(String.class), any(String.class)))
-                .willReturn(recipient);
+                eq(100L), eq(42L), eq("user@example.com"), any(String.class), any(String.class),
+                any(UUID.class)))
+                .willReturn(adMailResult);
 
         boolean result = service.deliver(campaign, channel, 42L);
 
@@ -135,7 +139,7 @@ class AdEmailChannelServiceTest {
         ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
         verify(directMailService, times(1)).sendSystemAdMail(
                 eq(100L), eq(42L), eq("user@example.com"),
-                eq("広告タイトル"), bodyCaptor.capture());
+                eq("広告タイトル"), bodyCaptor.capture(), any(UUID.class));
         // unsubscribe JWT がメール本文に埋め込まれていること
         assertThat(bodyCaptor.getValue()).contains("UNSUB_JWT").contains("配信停止");
 
@@ -146,6 +150,8 @@ class AdEmailChannelServiceTest {
         assertThat(saved.getUserId()).isEqualTo(42L);
         assertThat(saved.getDirectMailRecipientId()).isEqualTo(9999L);
         assertThat(saved.getMonthKey()).matches("\\d{4}-\\d{2}");
+        // F09.18 双方向トレース: emailOutboxId が delivery に設定されていること
+        assertThat(saved.getEmailOutboxId()).isEqualTo(fakeOutboxId);
     }
 
     @Test
@@ -160,7 +166,7 @@ class AdEmailChannelServiceTest {
 
         assertThat(result).isFalse();
         verify(directMailService, never()).sendSystemAdMail(
-                anyLong(), anyLong(), any(), any(), any());
+                anyLong(), anyLong(), any(), any(), any(), any());
         verify(deliveryRepository, never()).save(any());
     }
 

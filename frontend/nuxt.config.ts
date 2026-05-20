@@ -113,7 +113,13 @@ export default defineNuxtConfig({
     },
   },
 
-  css: ['~/assets/css/main.css'],
+  css: [
+    '~/assets/css/main.css',
+    // frappe-gantt v1.2.2 の package.json exports に CSS サブパスが未定義のため、
+    // Vite が exports を厳密チェックして ERR_PACKAGE_PATH_NOT_EXPORTED になる問題を回避。
+    // node_modules からアセットとしてコピーし、exports 制限を完全に回避する（意図的なベンダリング）。
+    '~/assets/css/frappe-gantt.css',
+  ],
 
   runtimeConfig: {
     // F10.6 Phase 10-γ-③-b: SSRエラー転送用内部トークン（サーバーサイドのみ）

@@ -44,6 +44,10 @@ public class AdEmailDelivery extends UuidV7Entity {
     @Column(name = "direct_mail_recipient_id", nullable = false)
     private Long directMailRecipientId;
 
+    /** F09.18 email_outbox.id — 双方向トレース用 (FK なし) */
+    @Column(name = "email_outbox_id")
+    private UUID emailOutboxId;
+
     @Column(name = "sent_at", nullable = false)
     private LocalDateTime sentAt;
 
