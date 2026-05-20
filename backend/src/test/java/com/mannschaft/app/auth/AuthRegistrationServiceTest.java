@@ -117,7 +117,7 @@ class AuthRegistrationServiceTest {
 
     private RegisterRequest createRegisterRequest() {
         return new RegisterRequest(
-                TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null);
+                TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null, "2000-01-01");
     }
 
     // ========================================
@@ -169,7 +169,7 @@ class AuthRegistrationServiceTest {
         void register_パスワードポリシー違反_AUTH008例外() {
             // Given: 短すぎるパスワード
             RegisterRequest req = new RegisterRequest(
-                    TEST_EMAIL, "short", "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null);
+                    TEST_EMAIL, "short", "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null, "2000-01-01");
             given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
 
             // When / Then
@@ -184,7 +184,7 @@ class AuthRegistrationServiceTest {
         void register_文字種不足_AUTH008例外() {
             // Given: 8文字以上だが小文字と数字の2種のみ
             RegisterRequest req = new RegisterRequest(
-                    TEST_EMAIL, "password123", "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null);
+                    TEST_EMAIL, "password123", "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null, "2000-01-01");
             given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
 
             // When / Then
@@ -199,7 +199,7 @@ class AuthRegistrationServiceTest {
         void register_locale省略_デフォルト値() {
             // Given
             RegisterRequest req = new RegisterRequest(
-                    TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, null, null, null);
+                    TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, null, null, null, "2000-01-01");
             given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
             given(passwordEncoder.encode(TEST_PASSWORD)).willReturn(ENCODED_PASSWORD);
             given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> {
@@ -225,7 +225,7 @@ class AuthRegistrationServiceTest {
             given(betaRestrictionService.isEnabled()).willReturn(true);
             RegisterRequest req = new RegisterRequest(
                     "new@example.com", "Password1!", "山田", "太郎", "yamada",
-                    "123-4567", "ja", "Asia/Tokyo", null);
+                    "123-4567", "ja", "Asia/Tokyo", null, "2000-01-01");
 
             // When / Then
             assertThatThrownBy(() -> authRegistrationService.register(req, TEST_IP))
@@ -242,7 +242,7 @@ class AuthRegistrationServiceTest {
             given(betaRestrictionService.isBetaTokenValid("bad-token")).willReturn(false);
             RegisterRequest req = new RegisterRequest(
                     "new@example.com", "Password1!", "山田", "太郎", "yamada",
-                    "123-4567", "ja", "Asia/Tokyo", "bad-token");
+                    "123-4567", "ja", "Asia/Tokyo", "bad-token", "2000-01-01");
 
             // When / Then
             assertThatThrownBy(() -> authRegistrationService.register(req, TEST_IP))
@@ -264,7 +264,7 @@ class AuthRegistrationServiceTest {
             given(emailVerificationTokenRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
             RegisterRequest req = new RegisterRequest(
                     "new@example.com", "Password1!", "山田", "太郎", "yamada",
-                    "123-4567", "ja", "Asia/Tokyo", "valid-token");
+                    "123-4567", "ja", "Asia/Tokyo", "valid-token", "2000-01-01");
 
             // When
             authRegistrationService.register(req, TEST_IP);

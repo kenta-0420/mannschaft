@@ -66,6 +66,7 @@ public class UserService {
     private final DomainEventPublisher eventPublisher;
     private final EncryptionService encryptionService;
     private final UserRoleRepository userRoleRepository;
+    private final ParentalConsentService parentalConsentService;
 
     /**
      * パスワードポリシー: 8文字以上、大文字・小文字・数字・記号をそれぞれ1文字以上含む
@@ -409,6 +410,9 @@ public class UserService {
     public void requestWithdrawal(Long userId, RequestWithdrawalRequest req) {
         // 唯一の SYSTEM_ADMIN であれば退会をブロック
         checkNotLastSystemAdmin(userId);
+
+        // F01.9: 唯一の保護者退会ブロック
+        parentalConsentService.checkWithdrawalBlock(userId);
 
         // 1. レートリミット
         authTokenService.checkRateLimit(

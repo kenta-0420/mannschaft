@@ -205,6 +205,13 @@ public class UserEntity extends BaseEntity {
     }
 
     /**
+     * ユーザーを保護者同意待ち状態にする（F01.9 年齢確認）。
+     */
+    public void pendingParentalConsent() {
+        this.status = UserStatus.PENDING_PARENTAL_CONSENT;
+    }
+
+    /**
      * ユーザーを凍結する。
      */
     public void freeze() {
