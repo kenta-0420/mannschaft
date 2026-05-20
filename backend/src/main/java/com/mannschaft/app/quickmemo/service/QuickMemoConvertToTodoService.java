@@ -13,7 +13,9 @@ import com.mannschaft.app.quickmemo.repository.TagRepository;
 import com.mannschaft.app.quickmemo.repository.TodoTagLinkRepository;
 import com.mannschaft.app.todo.TodoPriority;
 import com.mannschaft.app.todo.TodoScopeType;
+import com.mannschaft.app.todo.entity.TodoAssigneeEntity;
 import com.mannschaft.app.todo.entity.TodoEntity;
+import com.mannschaft.app.todo.repository.TodoAssigneeRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +40,7 @@ public class QuickMemoConvertToTodoService {
 
     private final QuickMemoRepository memoRepository;
     private final TodoRepository todoRepository;
+    private final TodoAssigneeRepository todoAssigneeRepository;
     private final QuickMemoTagLinkRepository memoTagLinkRepository;
     private final TodoTagLinkRepository todoTagLinkRepository;
     private final TagRepository tagRepository;
@@ -79,6 +82,13 @@ public class QuickMemoConvertToTodoService {
                 .sortOrder(0)
                 .build();
         TodoEntity savedTodo = todoRepository.save(todo);
+
+        // 作成者を担当者として登録（findMyTodosはassignee経由で取得するため必須）
+        todoAssigneeRepository.save(TodoAssigneeEntity.builder()
+                .todoId(savedTodo.getId())
+                .userId(userId)
+                .assignedBy(userId)
+                .build());
 
         // メモのタグを TODO にコピー（スコープ検証込み）
         List<Long> tagIds = memoTagLinkRepository.findTagIdsByMemoId(memoId);

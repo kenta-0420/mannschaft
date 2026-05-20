@@ -1,0 +1,98 @@
+package com.mannschaft.app.auth.repository;
+
+import com.mannschaft.app.auth.ParentalConsentLinkStatus;
+import com.mannschaft.app.auth.entity.ParentalConsentLinkEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+/**
+ * F01.9 年齢確認・保護者同意機能: 保護者同意リンクリポジトリ。
+ *
+ * <p>parental_consent_links テーブルへのアクセスを提供する。
+ * PK は {@link UUID}（UUIDv7 / BINARY(16)）。</p>
+ */
+public interface ParentalConsentLinkRepository extends JpaRepository<ParentalConsentLinkEntity, UUID> {
+
+    /**
+     * 子ユーザーに紐付くすべての同意リンクを取得する。
+     *
+     * @param childUserId 子ユーザーの ID
+     * @return 同意リンクのリスト（空の場合は空リスト）
+     */
+    List<ParentalConsentLinkEntity> findByChildUserId(Long childUserId);
+
+    /**
+     * 子ユーザーとステータスを指定して同意リンクを取得する。
+     *
+     * @param childUserId 子ユーザーの ID
+     * @param status      絞り込むステータス
+     * @return 一致する同意リンクのリスト
+     */
+    List<ParentalConsentLinkEntity> findByChildUserIdAndStatus(
+            Long childUserId, ParentalConsentLinkStatus status);
+
+    /**
+     * 保護者ユーザーとステータスを指定して同意リンクを取得する。
+     * 保護者がシステム登録済みユーザーである場合に利用する。
+     *
+     * @param parentUserId 保護者のユーザー ID
+     * @param status       絞り込むステータス
+     * @return 一致する同意リンクのリスト
+     */
+    List<ParentalConsentLinkEntity> findByParentUserIdAndStatus(
+            Long parentUserId, ParentalConsentLinkStatus status);
+
+    /**
+     * トークンハッシュで同意リンクを検索する。
+     * メール内のリンクを保護者がクリックした際の照合に使用する。
+     *
+     * @param tokenHash SHA-256 ハッシュ値（16進文字列）
+     * @return 一致する同意リンク（存在しない場合は空 Optional）
+     */
+    Optional<ParentalConsentLinkEntity> findByTokenHash(String tokenHash);
+
+    /**
+     * 子ユーザーとステータスで同意リンク数をカウントする。
+     * PENDING 件数の上限チェックなどに利用する。
+     *
+     * @param childUserId 子ユーザーの ID
+     * @param status      絞り込むステータス
+     * @return 件数
+     */
+    long countByChildUserIdAndStatus(Long childUserId, ParentalConsentLinkStatus status);
+
+    /**
+     * 同一の子ユーザー・保護者メール・ステータスの組み合わせが存在するか確認する。
+     * 重複申請の防止に利用する。
+     *
+     * @param childUserId  子ユーザーの ID
+     * @param parentEmail  保護者のメールアドレス
+     * @param status       絞り込むステータス
+     * @return 存在する場合 true
+     */
+    boolean existsByChildUserIdAndParentEmailAndStatus(
+            Long childUserId, String parentEmail, ParentalConsentLinkStatus status);
+
+    /**
+     * バッチ用: 指定ステータスかつ指定日時より前に期限切れになった同意リンクを取得する。
+     * 主に PENDING リンクの期限切れ処理（自動 REVOKE など）で使用する。
+     *
+     * @param status    絞り込むステータス（通常 PENDING）
+     * @param threshold この日時より前に期限切れになったリンクを対象とする
+     * @return 対象の同意リンクのリスト
+     */
+    List<ParentalConsentLinkEntity> findByStatusAndExpiresAtBefore(
+            ParentalConsentLinkStatus status, LocalDateTime threshold);
+
+    /**
+     * GDPR 削除用: 子ユーザーに紐付く同意リンクをすべて物理削除する。
+     * AccountPurgeService から呼び出される。
+     *
+     * @param childUserId 削除対象の子ユーザー ID
+     */
+    void deleteByChildUserId(Long childUserId);
+}

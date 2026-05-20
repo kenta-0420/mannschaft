@@ -6,7 +6,8 @@ import com.mannschaft.app.advertising.entity.AdInvoiceEntity;
 import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
 import com.mannschaft.app.advertising.repository.AdInvoiceRepository;
 import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
-import com.mannschaft.app.common.EmailService;
+import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
+import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +29,7 @@ public class OverdueInvoiceBatchService {
 
     private final AdInvoiceRepository adInvoiceRepository;
     private final AdvertiserAccountRepository advertiserAccountRepository;
-    private final EmailService emailService;
+    private final EmailOutboxService emailOutboxService;
     private final NotificationService notificationService;
     private final UserRoleRepository userRoleRepository;
 
@@ -73,10 +75,10 @@ public class OverdueInvoiceBatchService {
             String body = String.format("請求書 %s（期限: %s）が延滞状態になりました。",
                     invoice.getInvoiceNumber(), invoice.getDueDate());
 
-            // 広告主組織のADMINユーザーへ通知
+            // 広告主スコープのADMINユーザーへ通知（scopeId = organization_id または team_id）
             advertiserAccountRepository.findById(invoice.getAdvertiserAccountId())
                     .ifPresent(account -> {
-                        Long orgId = account.getOrganizationId();
+                        Long orgId = account.getScopeId();
                         List<Object[]> orgAdmins = userRoleRepository.findUserIdAndEmailByScopeAndRole(
                                 "ORGANIZATION", orgId, "ADMIN");
                         for (Object[] row : orgAdmins) {
@@ -91,7 +93,17 @@ public class OverdueInvoiceBatchService {
                             String email = (String) row[1];
                             if (email != null && !email.isBlank()) {
                                 String htmlBody = buildOverdueEmailHtml(invoice);
-                                emailService.sendEmail(email, title, htmlBody);
+                                emailOutboxService.enqueue(new EmailOutboxRequest(
+                                        "ADVERTISING_INVOICE_OVERDUE",
+                                        "ja",
+                                        email,
+                                        Map.of("subject", title, "body", htmlBody),
+                                        "advertising",
+                                        "invoice-overdue:" + invoice.getId(),
+                                        null,
+                                        userId,
+                                        null
+                                ));
                             }
                         }
                     });

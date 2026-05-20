@@ -93,7 +93,6 @@ class AdMessagingCampaignTransitionServiceTest {
                                               LocalDateTime startsAt) {
         AdMessagingCampaign campaign = AdMessagingCampaign.builder()
                 .advertiserAccountId(ADVERTISER_ID)
-                .organizationId(ORG_ID)
                 .scopeType(ScopeType.ORGANIZATION)
                 .scopeId(ORG_ID)
                 .name("テストキャンペーン")

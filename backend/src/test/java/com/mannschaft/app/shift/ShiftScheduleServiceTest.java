@@ -537,8 +537,10 @@ class ShiftScheduleServiceTest {
             ShiftAssignmentEntity a2 = ShiftAssignmentEntity.builder()
                     .slotId(1001L).userId(51L).assignedBy(USER_ID)
                     .status(ShiftAssignmentStatus.PROPOSED).build(); // 確定ではない
-            given(assignmentRepository.findAllBySlotId(1001L)).willReturn(List.of(a1, a2));
-            given(assignmentRepository.findAllBySlotId(1002L)).willReturn(List.of());
+            // Phase 11 事後検分 fixup（2026-05-19）: N+1 解消で findAllByScheduleId に一本化したため
+            // slot ごとの Mock ではなくスケジュール単位の Mock に変更。Java 側で slotId グルーピングする。
+            given(assignmentRepository.findAllByScheduleId(SCHEDULE_ID))
+                    .willReturn(List.of(a1, a2));
 
             // 希望（slot_date 単位の延べ件数 3 件）
             ShiftRequestEntity r1 = ShiftRequestEntity.builder()

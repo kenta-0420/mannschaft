@@ -73,6 +73,26 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     List<UserRoleEntity> findAllByUserId(Long userId);
 
     /**
+     * Phase D-2 (UserRolePurgeBackfillBatchService) 用:
+     * {@code users} テーブルに対応する行が存在しない孤児 {@code user_id} 一覧を取得する。
+     *
+     * <p>孤児の定義: {@code user_roles.user_id} が指す {@code users} レコードが
+     * 物理削除済み（{@code NOT EXISTS}）であること。
+     * {@link com.mannschaft.app.gdpr.service.AccountPurgeService} による 30 日後物理削除完了後、
+     * {@link com.mannschaft.app.role.event.RolePurgeEventListener} の処理が失敗した場合に残存する。</p>
+     *
+     * @param pageable ページング情報（pageSize で上限件数を指定）
+     * @return 孤児 userId のリスト（重複なし）
+     */
+    @Query(value = """
+            SELECT DISTINCT ur.user_id
+            FROM user_roles ur
+            WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = ur.user_id)
+            LIMIT :#{#pageable.pageSize}
+            """, nativeQuery = true)
+    List<Long> findOrphanUserIds(Pageable pageable);
+
+    /**
      * 物理削除バッチ用: 指定ユーザーを付与者とするロール割当のgrantedByをNULL化する。
      */
     @Modifying

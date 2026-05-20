@@ -67,7 +67,6 @@ class AdEmailChannelServiceTest {
     private AdMessagingCampaign buildCampaign() {
         AdMessagingCampaign campaign = AdMessagingCampaign.builder()
                 .advertiserAccountId(100L)
-                .organizationId(1L)
                 .name("テストキャンペーン")
                 .status(AdCampaignStatus.DELIVERING)
                 .totalBudgetYen(50_000L)

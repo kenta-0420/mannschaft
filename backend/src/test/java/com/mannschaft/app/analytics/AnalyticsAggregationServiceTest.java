@@ -16,6 +16,7 @@ import com.mannschaft.app.analytics.service.AnalyticsAggregationService;
 import com.mannschaft.app.analytics.service.DateRangeResolver;
 import com.mannschaft.app.analytics.service.DateRangeResolver.DateRange;
 import com.mannschaft.app.analytics.service.MetricCalculationService;
+import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -28,11 +29,14 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AnalyticsAggregationService 単体テスト")
@@ -47,6 +51,7 @@ class AnalyticsAggregationServiceTest {
     @Mock private AnalyticsMonthlySnapshotRepository snapshotRepository;
     @Mock private MetricCalculationService metricCalc;
     @Mock private DateRangeResolver dateRangeResolver;
+    @Mock private EmailOutboxService emailOutboxService;
     @InjectMocks private AnalyticsAggregationService service;
 
     // ========== getRevenueSummary ==========
@@ -315,6 +320,40 @@ class AnalyticsAggregationServiceTest {
 
             // Assert
             assertThat(result).hasSize(2);
+        }
+    }
+
+    // ========== sendMonthlyReport ==========
+
+    @Nested
+    @DisplayName("sendMonthlyReport")
+    class SendMonthlyReport {
+
+        @Test
+        @DisplayName("正常系: 受信者2件に対して emailOutboxService.enqueue が2回呼ばれる")
+        void testSendMonthlyReport_正常_enqueue2回() {
+            // Arrange
+            String month = "2026-03";
+            List<String> recipients = List.of("admin1@example.com", "admin2@example.com");
+
+            AnalyticsMonthlySnapshotEntity snapshot = AnalyticsMonthlySnapshotEntity.builder()
+                    .month(LocalDate.of(2026, 3, 1))
+                    .mrr(new BigDecimal("100000"))
+                    .arr(new BigDecimal("1200000"))
+                    .userChurnRate(new BigDecimal("3.00"))
+                    .revenueChurnRate(new BigDecimal("2.50"))
+                    .activeUsers(500).payingUsers(200)
+                    .build();
+
+            given(snapshotRepository.findByMonth(LocalDate.of(2026, 3, 1)))
+                    .willReturn(Optional.of(snapshot));
+            given(emailOutboxService.enqueue(any())).willReturn(UUID.randomUUID());
+
+            // Act
+            service.sendMonthlyReport(month, recipients);
+
+            // Assert
+            verify(emailOutboxService, times(2)).enqueue(any());
         }
     }
 }

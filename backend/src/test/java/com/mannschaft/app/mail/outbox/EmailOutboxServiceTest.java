@@ -17,12 +17,15 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 import software.amazon.awssdk.services.sesv2.SesV2Client;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
@@ -220,5 +223,44 @@ class EmailOutboxServiceTest {
         );
         UUID id = service.enqueue(req);
         assertThat(id).isNotNull();
+    }
+
+    // -----------------------------------------------------------------------
+    // TC-6: スルー方式 subject/body 欠落時の EMAIL_OUTBOX_002 検証 (Phase 18-b 申し送り #9)
+    // -----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("TC-6 スルー方式: subject 欠落時に EMAIL_OUTBOX_002 例外 (RESERVATION_EMERGENCY_CLOSURE)")
+    void renderTemplate_passthroughMissingSubject_throwsOutbox002() throws Exception {
+        Method m = EmailOutboxServiceImpl.class.getDeclaredMethod(
+                "renderTemplate", String.class, String.class, Map.class);
+        m.setAccessible(true);
+        try {
+            m.invoke(service, "RESERVATION_EMERGENCY_CLOSURE", "ja", Map.of("body", "<p>本文</p>"));
+            fail("EMAIL_OUTBOX_002 例外が期待されるが発生しなかった");
+        } catch (InvocationTargetException ex) {
+            assertThat(ex.getCause())
+                    .isInstanceOf(EmailOutboxValidationException.class)
+                    .extracting(e -> ((EmailOutboxValidationException) e).getErrorCode())
+                    .isEqualTo("EMAIL_OUTBOX_002");
+        }
+    }
+
+    @Test
+    @DisplayName("TC-6 スルー方式: body 欠落時に EMAIL_OUTBOX_002 例外 (ANALYTICS_KPI_MONTHLY)")
+    void renderTemplate_passthroughMissingBody_throwsOutbox002() throws Exception {
+        Method m = EmailOutboxServiceImpl.class.getDeclaredMethod(
+                "renderTemplate", String.class, String.class, Map.class);
+        m.setAccessible(true);
+        try {
+            m.invoke(service, "ANALYTICS_KPI_MONTHLY", "ja",
+                    Map.of("subject", "[Mannschaft] 月次レポート 2026-04"));
+            fail("EMAIL_OUTBOX_002 例外が期待されるが発生しなかった");
+        } catch (InvocationTargetException ex) {
+            assertThat(ex.getCause())
+                    .isInstanceOf(EmailOutboxValidationException.class)
+                    .extracting(e -> ((EmailOutboxValidationException) e).getErrorCode())
+                    .isEqualTo("EMAIL_OUTBOX_002");
+        }
     }
 }

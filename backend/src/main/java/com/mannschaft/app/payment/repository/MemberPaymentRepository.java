@@ -81,6 +81,20 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
     int anonymizeUserId(@Param("userId") Long userId, @Param("sentinelId") Long sentinelId);
 
     /**
+     * 孤児補正バッチ用: 退会済みユーザー（users テーブルに存在しない）の
+     * member_payments.user_id を sentinelUserId に置換する。
+     * AccountPurgedEvent 処理漏れ検出・補正のために夜次バッチから呼ぶ。
+     */
+    @Modifying
+    @Query(value = """
+            UPDATE member_payments mp
+            LEFT JOIN users u ON mp.user_id = u.id
+            SET mp.user_id = :sentinelUserId
+            WHERE mp.user_id != :sentinelUserId AND u.id IS NULL
+            """, nativeQuery = true)
+    int anonymizeOrphanUserId(@Param("sentinelUserId") Long sentinelUserId);
+
+    /**
      * 支払い項目に対する全支払い記録を取得する。
      */
     List<MemberPaymentEntity> findByPaymentItemId(Long paymentItemId);

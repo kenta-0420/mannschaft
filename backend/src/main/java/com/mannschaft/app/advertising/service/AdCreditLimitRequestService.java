@@ -12,6 +12,7 @@ import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
 import com.mannschaft.app.advertising.repository.AdCreditLimitRequestRepository;
 import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.domain.ScopeType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -37,7 +38,7 @@ public class AdCreditLimitRequestService {
      */
     @Transactional
     public CreditLimitRequestResponse create(Long organizationId, CreateCreditLimitRequest request) {
-        AdvertiserAccountEntity account = advertiserAccountRepository.findByOrganizationId(organizationId)
+        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
 
         if (request.requestedLimit().compareTo(account.getCreditLimit()) <= 0) {
@@ -64,7 +65,7 @@ public class AdCreditLimitRequestService {
      * 自組織の増額申請履歴を取得する。
      */
     public List<CreditLimitRequestResponse> findByOrganizationId(Long organizationId) {
-        AdvertiserAccountEntity account = advertiserAccountRepository.findByOrganizationId(organizationId)
+        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
         return adCreditLimitRequestRepository.findByAdvertiserAccountId(account.getId()).stream()
                 .map(advertisingMapper::toCreditLimitRequestResponse)

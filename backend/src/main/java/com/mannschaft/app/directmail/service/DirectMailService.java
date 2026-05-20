@@ -2,8 +2,9 @@ package com.mannschaft.app.directmail.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
-import com.mannschaft.app.common.EmailService;
 import com.mannschaft.app.common.MarkdownConverter;
+import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
+import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.directmail.DirectMailErrorCode;
 import com.mannschaft.app.directmail.DirectMailMapper;
@@ -50,8 +51,8 @@ public class DirectMailService {
     private final DomainEventPublisher eventPublisher;
     /** F09.13 通知クレジット消費（ダイレクトメールは課金対象） */
     private final NotificationCreditService notificationCreditService;
-    /** F09.17 Phase 11-b ε-B 広告メール送信用の SES クライアントラッパ。 */
-    private final EmailService emailService;
+    /** F09.18 Phase 18-c TC-4: EmailOutboxService 経由で SES 送信する。 */
+    private final EmailOutboxService emailOutboxService;
 
     /** F09.17 Phase 11-b ε-B 広告メール送信者種別。{@code sender_type='SYSTEM_AD'}。 */
     private static final String SENDER_TYPE_SYSTEM_AD = "SYSTEM_AD";
@@ -131,8 +132,18 @@ public class DirectMailService {
                 .email(recipientEmail)
                 .build();
 
-        // 3) SES 送信（EmailService が失敗時もログ吸収するので例外伝播なし）
-        emailService.sendEmail(recipientEmail, enforcedSubject, bodyHtml);
+        // 3) SES 送信 — EmailOutboxService 経由（outbox + リトライ保証）
+        emailOutboxService.enqueue(new EmailOutboxRequest(
+                "DIRECT_MAIL_AD",
+                "ja",
+                recipientEmail,
+                java.util.Map.of("subject", enforcedSubject, "body", bodyHtml),
+                "directmail",
+                "directmail-ad:" + advertiserAccountId + ":" + userId,
+                null,
+                userId,
+                advertiserAccountId
+        ));
 
         // 4) recipient.status=SENT を記録。messageId は EmailService 内でログのみで取得不可のため
         //    本メソッドからは sesMessageId を空のまま SENT マークする。SES Webhook で後追い更新。

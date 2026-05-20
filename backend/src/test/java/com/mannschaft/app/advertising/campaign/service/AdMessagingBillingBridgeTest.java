@@ -90,7 +90,6 @@ class AdMessagingBillingBridgeTest {
         monthKey = "2026-04";
         campaign = AdMessagingCampaign.builder()
                 .advertiserAccountId(100L)
-                .organizationId(200L)
                 .name("テストキャンペーン")
                 .status(AdCampaignStatus.COMPLETED)
                 .totalBudgetYen(50_000L)

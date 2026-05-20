@@ -12,6 +12,7 @@ import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,9 +20,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.mannschaft.app.team.repository.TeamShiftSettingsRepository;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -45,6 +49,9 @@ class ShiftPreferenceReminderBatchServiceTest {
     @Mock private NotificationHelper notificationHelper;
     @Mock private TeamShiftSettingsRepository teamShiftSettingsRepository;
     @Mock private AuditLogService auditLogService;
+    // Phase 11 事後検分 fixup（2026-05-19）: triggerManualReminder の Valkey 連打防止ロック用 Mock。
+    @Mock private StringRedisTemplate redisTemplate;
+    @Mock private ValueOperations<String, String> valueOps;
 
     @InjectMocks
     private ShiftPreferenceReminderBatchService batchService;
@@ -172,6 +179,18 @@ class ShiftPreferenceReminderBatchServiceTest {
 
         private static final Long OPERATOR_ID = 999L;
 
+        /**
+         * Phase 11 事後検分 fixup（2026-05-19）:
+         * 手動リマインドは最初に Valkey の SET NX EX で連打防止ロックを取得する。
+         * 個別ケース（連打スロットリングテスト）以外は Lock 取得成功（TRUE）が前提。
+         */
+        @BeforeEach
+        void setUpValkeyLockSuccess() {
+            given(redisTemplate.opsForValue()).willReturn(valueOps);
+            given(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class)))
+                    .willReturn(Boolean.TRUE);
+        }
+
         @Test
         @DisplayName("COLLECTING_未提出者がいる_通知送信+監査ログ記録")
         void COLLECTING_未提出者がいる_通知送信_監査ログ記録() {
@@ -254,6 +273,50 @@ class ShiftPreferenceReminderBatchServiceTest {
                     .extracting("errorCode")
                     .isEqualTo(ShiftErrorCode.INVALID_SCHEDULE_STATUS);
             verifyNoInteractions(notificationHelper, auditLogService);
+        }
+    }
+
+    // =========================================================
+    // 手動リマインド スロットリング（Phase 11 事後検分 fixup / Valkey ロック）
+    // =========================================================
+
+    @Nested
+    @DisplayName("triggerManualReminder（連打防止ロック）")
+    class TriggerManualReminderThrottling {
+
+        private static final Long OPERATOR_ID = 999L;
+
+        @Test
+        @DisplayName("Valkey ロック取得失敗（15 秒以内の連打）_MANUAL_REMINDER_THROTTLED を投げる")
+        void 連打検出_MANUAL_REMINDER_THROTTLED_スケジュール取得もしない() {
+            // Lock 取得失敗（既に他のリクエストが取得済み）を再現
+            given(redisTemplate.opsForValue()).willReturn(valueOps);
+            given(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class)))
+                    .willReturn(Boolean.FALSE);
+
+            assertThatThrownBy(() -> batchService.triggerManualReminder(SCHEDULE_ID, OPERATOR_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ShiftErrorCode.MANUAL_REMINDER_THROTTLED);
+
+            // スケジュール取得・通知・監査ログのいずれも到達しない（ロック失敗で即時短絡）
+            verifyNoInteractions(scheduleRepository, notificationHelper, auditLogService);
+        }
+
+        @Test
+        @DisplayName("Valkey ロック取得 null 返却（Valkey 接続異常時の保守的扱い）_MANUAL_REMINDER_THROTTLED")
+        void Lock取得null_保守的にTHROTTLED扱い() {
+            // setIfAbsent は connection 喪失等で null を返すことがある。Service は
+            // Boolean.TRUE.equals(...) で判定するため null は失敗扱いになる。
+            given(redisTemplate.opsForValue()).willReturn(valueOps);
+            given(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class)))
+                    .willReturn(null);
+
+            assertThatThrownBy(() -> batchService.triggerManualReminder(SCHEDULE_ID, OPERATOR_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ShiftErrorCode.MANUAL_REMINDER_THROTTLED);
+            verifyNoInteractions(scheduleRepository, notificationHelper, auditLogService);
         }
     }
 

@@ -197,7 +197,7 @@ public class AdCampaignModerationService {
                 moderatorUserId,
                 null,
                 null,
-                campaign.getOrganizationId(),
+                campaign.getScopeId(),
                 null,
                 null,
                 null,

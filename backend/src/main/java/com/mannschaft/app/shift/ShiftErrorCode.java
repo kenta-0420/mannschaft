@@ -90,7 +90,10 @@ public enum ShiftErrorCode implements ErrorCode {
     OPEN_CALL_ALREADY_CLAIMED("SHIFT_034", "このオープンコールは既に手挙げされています", Severity.WARN),
 
     /** 候補者の選定権限なし */
-    CLAIMER_SELECT_DENIED("SHIFT_035", "候補者選定はオープンコール申請者または管理者のみ実行できます", Severity.WARN);
+    CLAIMER_SELECT_DENIED("SHIFT_035", "候補者選定はオープンコール申請者または管理者のみ実行できます", Severity.WARN),
+
+    /** 手動リマインドの連打防止スロットリング（Valkey 同時実行ロック取得失敗） */
+    MANUAL_REMINDER_THROTTLED("SHIFT_036", "リマインドは連続して送信できません。15 秒ほど待ってから再操作してください", Severity.WARN);
 
     private final String code;
     private final String message;

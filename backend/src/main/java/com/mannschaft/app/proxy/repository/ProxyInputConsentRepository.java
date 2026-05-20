@@ -100,4 +100,24 @@ public interface ProxyInputConsentRepository extends JpaRepository<ProxyInputCon
     @Modifying
     @Query("UPDATE ProxyInputConsentEntity c SET c.deletedAt = CURRENT_TIMESTAMP WHERE c.subjectUserId = :userId AND c.deletedAt IS NULL")
     void logicalDeleteAllBySubjectUserId(@Param("userId") Long userId);
+
+    /**
+     * 孤児補正バッチ用: 退会済みユーザー（{@code users} テーブルに行が存在しない）が
+     * {@code subject_user_id} として参照されており、かつ論理削除されていない同意書を全件論理削除する。
+     *
+     * <p>{@link com.mannschaft.app.proxy.event.ProxyPurgeEventListener} の処理漏れを
+     * 夜次補正バッチ（Phase D-6）で回収するためのクエリ。
+     * {@link org.hibernate.annotations.SQLRestriction} ({@code deleted_at IS NULL}) が
+     * エンティティに付与されているため nativeQuery を使用する。</p>
+     *
+     * @return 論理削除した件数
+     */
+    @Modifying
+    @Query(value = """
+            UPDATE proxy_input_consents pic
+            LEFT JOIN users u ON pic.subject_user_id = u.id
+            SET pic.deleted_at = NOW()
+            WHERE pic.deleted_at IS NULL AND u.id IS NULL
+            """, nativeQuery = true)
+    int logicalDeleteOrphanBySubjectUserId();
 }

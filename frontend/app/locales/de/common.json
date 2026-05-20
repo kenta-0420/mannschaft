@@ -537,6 +537,7 @@
       "updateFailed": "更新に失敗しました"
     },
     "priorityValue": {
+      "URGENT": "Dringend",
       "HIGH": "高",
       "MEDIUM": "中",
       "LOW": "低"

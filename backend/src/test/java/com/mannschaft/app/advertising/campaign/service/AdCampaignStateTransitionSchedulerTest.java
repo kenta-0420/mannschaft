@@ -38,7 +38,6 @@ class AdCampaignStateTransitionSchedulerTest {
                                               LocalDateTime startsAt, LocalDateTime endsAt) {
         AdMessagingCampaign campaign = AdMessagingCampaign.builder()
                 .advertiserAccountId(100L)
-                .organizationId(1L)
                 .name("test")
                 .status(status)
                 .totalBudgetYen(50_000L)

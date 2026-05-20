@@ -69,7 +69,15 @@ public enum CirculationErrorCode implements ErrorCode {
     ADMIN_REQUIRED("CIRCULATION_019", "この操作には管理者権限が必要です", Severity.WARN),
 
     /** 添付削除は DRAFT のみ可能 (Phase 11 3-B) */
-    ATTACHMENT_NOT_DELETABLE("CIRCULATION_020", "添付ファイルの削除は下書き状態のみ可能です", Severity.WARN);
+    ATTACHMENT_NOT_DELETABLE("CIRCULATION_020", "添付ファイルの削除は下書き状態のみ可能です", Severity.WARN),
+
+    /** PDF エクスポートは COMPLETED 文書のみ対応 (Phase 11 4-C) */
+    EXPORT_NOT_AVAILABLE_NON_COMPLETED("CIRCULATION_021",
+            "押印済み証跡 PDF のエクスポートは完了済みの回覧文書のみ対応しています", Severity.WARN),
+
+    /** エクスポートがまだリクエストされていない (Phase 11 4-C) */
+    EXPORT_NOT_REQUESTED("CIRCULATION_022",
+            "エクスポートはリクエストされていません", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -50,4 +50,47 @@ public record ViewerContext(
     public static ViewerContext anonymous() {
         return new ViewerContext(null, ViewerStatus.ANONYMOUS, Set.of(), Set.of());
     }
+
+    /**
+     * ログイン済みだが対象スコープに所属していない閲覧者用の ViewerContext を構築する。
+     *
+     * @param userId 閲覧者のユーザー ID
+     * @return 非メンバー閲覧者用の不変 ViewerContext
+     */
+    public static ViewerContext nonMember(Long userId) {
+        return new ViewerContext(userId, ViewerStatus.NON_MEMBER, Set.of(), Set.of());
+    }
+
+    /**
+     * 対象スコープの MEMBER ロール閲覧者用の ViewerContext を構築する。
+     * ADMIN / DEPUTY_ADMIN も MEMBER として扱う（ViewerStatus.MEMBER）。
+     *
+     * @param userId       閲覧者のユーザー ID
+     * @param memberScopeIds MEMBER として所属するスコープ ID 集合
+     * @return MEMBER 閲覧者用の不変 ViewerContext
+     */
+    public static ViewerContext member(Long userId, Set<Long> memberScopeIds) {
+        return new ViewerContext(userId, ViewerStatus.MEMBER, memberScopeIds, Set.of());
+    }
+
+    /**
+     * 対象スコープの SUPPORTER ロール閲覧者用の ViewerContext を構築する。
+     *
+     * @param userId           閲覧者のユーザー ID
+     * @param supporterScopeIds SUPPORTER として所属するスコープ ID 集合
+     * @return SUPPORTER 閲覧者用の不変 ViewerContext
+     */
+    public static ViewerContext supporter(Long userId, Set<Long> supporterScopeIds) {
+        return new ViewerContext(userId, ViewerStatus.SUPPORTER, Set.of(), supporterScopeIds);
+    }
+
+    /**
+     * システム管理者用の ViewerContext を構築する。
+     *
+     * @param userId システム管理者のユーザー ID
+     * @return SYSTEM_ADMIN 閲覧者用の不変 ViewerContext
+     */
+    public static ViewerContext systemAdmin(Long userId) {
+        return new ViewerContext(userId, ViewerStatus.SYSTEM_ADMIN, Set.of(), Set.of());
+    }
 }

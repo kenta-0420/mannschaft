@@ -10,7 +10,8 @@ import com.mannschaft.app.analytics.repository.AnalyticsDailyRevenueRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsDailyUsersRepository;
 import com.mannschaft.app.analytics.repository.AnalyticsMonthlySnapshotRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
-import com.mannschaft.app.common.EmailService;
+import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
+import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 月次 KPI スナップショットバッチ。毎月1日 AM 4:00 (JST) に前月のKPIを保存する。
@@ -38,7 +40,7 @@ public class MonthlyKpiSnapshotBatchService {
     private final AnalyticsDailyRevenueRepository revenueRepository;
     private final AnalyticsDailyUsersRepository usersRepository;
     private final MetricCalculationService metricCalculation;
-    private final EmailService emailService;
+    private final EmailOutboxService emailOutboxService;
     private final UserRoleRepository userRoleRepository;
     private final UserRepository userRepository;
 
@@ -127,19 +129,28 @@ public class MonthlyKpiSnapshotBatchService {
                 log.warn("月次レポートメール: SYSTEM_ADMIN ユーザーが見つかりません");
                 return;
             }
-            List<String> emails = userRepository.findAllById(adminIds).stream()
-                    .map(u -> u.getEmail())
-                    .filter(e -> e != null && !e.isBlank())
+            var adminUsers = userRepository.findAllById(adminIds).stream()
+                    .filter(u -> u.getEmail() != null && !u.getEmail().isBlank())
                     .toList();
 
             String subject = "[Mannschaft] 月次KPIレポート " + month;
             String htmlBody = MonthlyReportHtmlBuilder.build(month, snapshot);
-            for (String email : emails) {
-                emailService.sendEmail(email, subject, htmlBody);
+            for (var user : adminUsers) {
+                emailOutboxService.enqueue(new EmailOutboxRequest(
+                        "ANALYTICS_KPI_MONTHLY",
+                        "ja",
+                        user.getEmail(),
+                        Map.of("subject", subject, "body", htmlBody),
+                        "analytics",
+                        "kpi-monthly:" + month + ":" + user.getEmail(),
+                        null,
+                        user.getId(),
+                        null
+                ));
             }
-            log.info("月次レポートメール送信完了: month={}, recipients={}", month, emails.size());
+            log.info("月次レポートメール enqueue 完了: month={}, recipients={}", month, adminUsers.size());
         } catch (Exception e) {
-            log.error("月次レポートメール送信失敗: month={}", month, e);
+            log.error("月次レポートメール enqueue 失敗: month={}", month, e);
         }
     }
 
