@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.advertising.campaign.entity.AdAudienceSegment;
 import com.mannschaft.app.advertising.campaign.enums.AdSegmentType;
 import com.mannschaft.app.advertising.campaign.exception.AdCampaignErrorCode;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EncryptionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -21,17 +23,10 @@ import java.util.Set;
  *
  * <p>設計書 §3.2 例: {@code segment_value = {"genders": ["MALE", "FEMALE", "OTHER", "PREFER_NOT_TO_SAY"]}}。</p>
  *
- * <h2>データソース未整備宣言</h2>
- * <p>{@code users} テーブルには現状 {@code gender} カラムが存在しない。
- * 性別は機微情報のため、安易にカラム追加せず、別途プライバシー設計議論を経て
- * 例えば {@code user_demographics} 表（オプトイン制）として導入する想定。</p>
+ * <p>{@code users.gender_hash} カラム（V68.002 追加、HMAC-SHA256 ブラインドインデックス）を使って
+ * SQL 1 クエリでターゲットユーザーを特定する。</p>
  *
- * <p>本評価器は登録だけ済ませ、評価時は {@link SegmentDataSourceNotAvailableException} を投げる
- * （対処療法の空集合返却は禁止 — CLAUDE.md「障害対応の原則 — 根治治療を徹底すること」）。
- * 後続フェーズでカラム / 表が整備され次第、{@link #resolveUserIds(AdAudienceSegment)} を
- * 本実装に差し替えるだけで切替可能。</p>
- *
- * <p>構造バリデーション（"genders" 配列の存在、ENUM 値の妥当性）は本評価器でも実施し、
+ * <p>構造バリデーション（"genders" 配列の存在、ENUM 値の妥当性）を先行実施し、
  * 不正な segment_value は早期に {@code AD_AUDIENCE_INVALID} で 400 に倒す。</p>
  */
 @Slf4j
@@ -44,12 +39,13 @@ public class GenderSegmentEvaluator implements AdSegmentEvaluator {
 
     /**
      * 性別の許容値（オプトイン未回答含む）。
-     * カラム追加時もこの集合に準拠する。
      */
     private static final Set<String> ALLOWED_GENDERS =
             Set.of("MALE", "FEMALE", "OTHER", "PREFER_NOT_TO_SAY");
 
     private final ObjectMapper objectMapper;
+    private final EncryptionService encryptionService;
+    private final UserRepository userRepository;
 
     @Override
     public boolean supports(AdSegmentType type) {
@@ -65,7 +61,7 @@ public class GenderSegmentEvaluator implements AdSegmentEvaluator {
                     segment.getCampaignId(), segment.getId());
             throw new BusinessException(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
         }
-        Set<String> targets = new HashSet<>();
+        List<String> genders = new java.util.ArrayList<>();
         for (Object raw : rawList) {
             if (!(raw instanceof String str) || str.isBlank()) {
                 continue;
@@ -76,19 +72,18 @@ public class GenderSegmentEvaluator implements AdSegmentEvaluator {
                         str, segment.getCampaignId());
                 throw new BusinessException(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
             }
-            targets.add(normalized);
+            genders.add(normalized);
         }
-        if (targets.isEmpty()) {
+        if (genders.isEmpty()) {
             throw new BusinessException(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
         }
 
-        log.warn("GENDER segment はデータソース未整備のため評価不能です。"
-                        + "users.gender (または user_demographics 表) の追加を待ってください。"
-                        + "campaignId={}, segmentId={}",
-                segment.getCampaignId(), segment.getId());
-        throw new SegmentDataSourceNotAvailableException(
-                AdSegmentType.GENDER,
-                "users.gender (またはオプトイン user_demographics 表)");
+        // segment_value: {"genders":["MALE","FEMALE"]}
+        // gender は AES-256-GCM 暗号化済みのため HMAC ブラインドインデックス (gender_hash) で検索する
+        List<String> hashes = genders.stream()
+                .map(encryptionService::hmac)
+                .toList();
+        return new HashSet<>(userRepository.findUserIdsByGenderHashIn(hashes));
     }
 
     private Map<String, Object> deserialize(String json) {
