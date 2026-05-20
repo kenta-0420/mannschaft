@@ -1127,7 +1127,10 @@
       "createNew": "+ Create new folder",
       "manage": "Manage folders",
       "teams": "Teams",
-      "organizations": "Organizations"
+      "organizations": "Organizations",
+      "showAll": "Show all",
+      "foldersSection": "Folders",
+      "quickJumpSection": "Quick jump"
     },
     "error": {
       "typeMismatch": "Folder scope type mismatch",

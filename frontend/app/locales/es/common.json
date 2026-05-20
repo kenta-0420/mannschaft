@@ -1127,7 +1127,10 @@
       "createNew": "+ Crear nueva carpeta",
       "manage": "Gestionar carpetas",
       "teams": "Equipos",
-      "organizations": "Organizaciones"
+      "organizations": "Organizaciones",
+      "showAll": "Ver todo",
+      "foldersSection": "Carpetas",
+      "quickJumpSection": "Ir directamente"
     },
     "error": {
       "typeMismatch": "El tipo de ámbito no coincide",

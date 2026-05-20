@@ -1127,7 +1127,10 @@
       "createNew": "＋ 새 폴더 만들기",
       "manage": "폴더 관리",
       "teams": "팀",
-      "organizations": "조직"
+      "organizations": "조직",
+      "showAll": "모두 표시",
+      "foldersSection": "폴더",
+      "quickJumpSection": "바로 이동"
     },
     "error": {
       "typeMismatch": "폴더 범위 유형이 일치하지 않습니다",

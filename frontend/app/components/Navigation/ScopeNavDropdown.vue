@@ -8,7 +8,8 @@ import type { ScopeType } from '~/types/scopeFolder'
  * - `scopeType` Prop により basePath を切り替え（TEAM → /teams, ORGANIZATION → /organizations）
  * - チームドロップダウンが組織パスへ遷移することは絶対にない
  * - URL クエリ `?folder=` をソース・オブ・トゥルースとして使用
- * - a11y: aria-haspopup / aria-expanded / role=menu / 矢印キー / Esc 対応
+ * - a11y: aria-haspopup / aria-expanded / role=menu 対応
+ * - PrimeVue Popover によるワイドフライアウトパネルで表示（overflow-x クリッピングを回避）
  */
 
 interface Props {
@@ -24,9 +25,8 @@ const foldersStore = useScopeFoldersStore()
 const teamStore = useTeamStore()
 const orgStore = useOrganizationStore()
 
-const isOpen = ref(false)
-const buttonRef = ref<HTMLButtonElement | null>(null)
-const menuRef = ref<HTMLUListElement | null>(null)
+const popoverRef = ref()
+const isPopoverOpen = ref(false)
 
 /** scopeType に応じたベースパス。チーム→/teams, 組織→/organizations。 */
 const basePath = computed<string>(() =>
@@ -72,91 +72,12 @@ function folderItemCount(folderId: number): number {
   return f?.itemScopeIds.length ?? 0
 }
 
-function open() {
-  isOpen.value = true
-  // 開いた直後に最初のメニュー項目へフォーカス
-  nextTick(() => {
-    const first = menuRef.value?.querySelector<HTMLElement>('[role="menuitem"]')
-    first?.focus()
-  })
+function toggle(event: MouseEvent) {
+  popoverRef.value?.toggle(event)
 }
 
 function close() {
-  isOpen.value = false
-  buttonRef.value?.focus()
-}
-
-function toggle() {
-  if (isOpen.value) {
-    close()
-  }
-  else {
-    open()
-  }
-}
-
-function handleEsc() {
-  if (isOpen.value) {
-    close()
-  }
-}
-
-/** 矢印キーで menuitem 間を移動。 */
-function focusSibling(current: HTMLElement, direction: 1 | -1) {
-  const items = Array.from(
-    menuRef.value?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])') ?? [],
-  )
-  if (items.length === 0) return
-  const idx = items.indexOf(current)
-  const nextIdx = (idx + direction + items.length) % items.length
-  items[nextIdx]?.focus()
-}
-
-function onKeydownItem(e: KeyboardEvent) {
-  const target = e.currentTarget as HTMLElement
-  if (e.key === 'ArrowDown') {
-    e.preventDefault()
-    focusSibling(target, 1)
-  }
-  else if (e.key === 'ArrowUp') {
-    e.preventDefault()
-    focusSibling(target, -1)
-  }
-  else if (e.key === 'Escape') {
-    e.preventDefault()
-    close()
-  }
-}
-
-/** ドロップダウン外クリックで閉じる。 */
-const containerRef = ref<HTMLElement | null>(null)
-
-function onDocClick(e: MouseEvent) {
-  if (!isOpen.value) return
-  const target = e.target as Node
-  if (containerRef.value && !containerRef.value.contains(target)) {
-    isOpen.value = false
-  }
-}
-
-onMounted(() => {
-  if (import.meta.client) {
-    document.addEventListener('click', onDocClick)
-    document.addEventListener('keydown', onKeydownDoc)
-  }
-})
-
-onBeforeUnmount(() => {
-  if (import.meta.client) {
-    document.removeEventListener('click', onDocClick)
-    document.removeEventListener('keydown', onKeydownDoc)
-  }
-})
-
-function onKeydownDoc(e: KeyboardEvent) {
-  if (e.key === 'Escape') {
-    handleEsc()
-  }
+  popoverRef.value?.hide()
 }
 
 /** 「すべて」へ遷移（タブ=すべて）。 */
@@ -189,7 +110,7 @@ function goManage() {
   close()
 }
 
-/** 新規フォルダ作成 — 親へイベントを emit してモーダル表示を委譲（暫定: ハブへ遷移）。 */
+/** 新規フォルダ作成 — ハブの管理タブへ誘導（暫定）。 */
 function goCreateNew() {
   // 簡易実装: ハブの管理タブへ誘導しユーザー自身で作成してもらう。
   // 設計書 §7.2 では「モーダル」だが、F15.3 Phase 2-B 範囲では既存
@@ -213,161 +134,155 @@ async function ensureFoldersLoaded() {
   }
 }
 
-watch(isOpen, async (opened) => {
-  if (opened) {
-    await ensureFoldersLoaded()
-  }
-})
+function onPopoverShow() {
+  isPopoverOpen.value = true
+  ensureFoldersLoaded()
+}
+
+function onPopoverHide() {
+  isPopoverOpen.value = false
+}
 </script>
 
 <template>
-  <div ref="containerRef" class="relative inline-block" :data-testid="`scope-nav-dropdown-${scopeType}`">
+  <div class="relative inline-block" :data-testid="`scope-nav-dropdown-${scopeType}`">
     <button
-      ref="buttonRef"
       type="button"
       class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap text-surface-600 transition-colors hover:bg-surface-100"
       aria-haspopup="menu"
-      :aria-expanded="isOpen ? 'true' : 'false'"
+      :aria-expanded="isPopoverOpen ? 'true' : 'false'"
       :aria-label="label"
       :data-testid="`scope-nav-dropdown-toggle-${scopeType}`"
       @click="toggle"
-      @keydown.enter.prevent="toggle"
-      @keydown.space.prevent="toggle"
-      @keydown.down.prevent="open"
-      @keydown.esc.prevent="handleEsc"
     >
       <i :class="props.scopeType === 'TEAM' ? 'pi pi-users' : 'pi pi-building'" />
       {{ label }}
-      <i class="pi pi-chevron-down text-xs" :class="{ 'rotate-180': isOpen }" />
+      <i class="pi pi-chevron-down text-xs" :class="{ 'rotate-180': isPopoverOpen }" />
     </button>
 
-    <ul
-      v-if="isOpen"
-      ref="menuRef"
-      role="menu"
-      :aria-label="label"
-      class="absolute left-0 z-50 mt-1 max-h-96 w-72 overflow-y-auto rounded-lg border border-surface-200 bg-surface-0 py-2 shadow-lg"
+    <Popover
+      ref="popoverRef"
+      @show="onPopoverShow"
+      @hide="onPopoverHide"
     >
-      <!-- すべて（一覧） -->
-      <li role="none">
-        <button
-          role="menuitem"
-          type="button"
-          class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
-          @click="goAll"
-          @keydown="onKeydownItem"
-        >
-          <i class="pi pi-list text-base text-surface-500" />
-          <span class="flex-1">{{ t('scopeFolder.nav.allList') }}</span>
-        </button>
-      </li>
+      <div class="flex flex-col" style="min-width: 520px; max-width: 700px">
+        <!-- メインコンテンツ: 2カラムレイアウト -->
+        <div class="flex gap-0 divide-x divide-surface-200">
+          <!-- 左カラム: フォルダ一覧 -->
+          <div class="flex-1 min-w-0 py-2">
+            <div class="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-surface-400">
+              {{ t('scopeFolder.nav.foldersSection') }}
+            </div>
 
-      <!-- 区切り線 -->
-      <li role="separator" class="my-1 border-t border-surface-200" />
+            <!-- すべて（一覧） -->
+            <button
+              role="menuitem"
+              type="button"
+              class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+              @click="goAll"
+            >
+              <i class="pi pi-list text-base text-surface-500" />
+              <span class="flex-1">{{ t('scopeFolder.nav.allList') }}</span>
+            </button>
 
-      <!-- ユーザー作成フォルダ一覧 -->
-      <li
-        v-for="folder in customFolders"
-        :key="`folder-${folder.id}`"
-        role="none"
-      >
-        <button
-          role="menuitem"
-          type="button"
-          class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
-          :data-testid="`scope-nav-dropdown-folder-${folder.id}`"
-          @click="goFolder(folder.id)"
-          @keydown="onKeydownItem"
-        >
-          <span
-            class="inline-block h-3 w-3 shrink-0 rounded-full"
-            :style="folder.color ? { backgroundColor: folder.color } : { backgroundColor: '#9CA3AF' }"
-            aria-hidden="true"
-          />
-          <i
-            v-if="folder.icon"
-            :class="['pi', folder.icon, 'text-base text-surface-500']"
-            aria-hidden="true"
-          />
-          <span class="flex-1 truncate">{{ folder.name }}</span>
-          <span class="shrink-0 text-xs text-surface-500">
-            ({{ folderItemCount(folder.id) }})
-          </span>
-        </button>
-      </li>
+            <!-- ユーザー作成フォルダ一覧 -->
+            <button
+              v-for="folder in customFolders"
+              :key="`folder-${folder.id}`"
+              role="menuitem"
+              type="button"
+              class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+              :data-testid="`scope-nav-dropdown-folder-${folder.id}`"
+              @click="goFolder(folder.id)"
+            >
+              <span
+                class="inline-block h-3 w-3 shrink-0 rounded-full"
+                :style="folder.color ? { backgroundColor: folder.color } : { backgroundColor: '#9CA3AF' }"
+                aria-hidden="true"
+              />
+              <i
+                v-if="folder.icon"
+                :class="['pi', folder.icon, 'text-base text-surface-500']"
+                aria-hidden="true"
+              />
+              <span class="flex-1 truncate">{{ folder.name }}</span>
+              <span class="shrink-0 text-xs text-surface-400">
+                {{ folderItemCount(folder.id) }}
+              </span>
+            </button>
 
-      <!-- 未分類フォルダ -->
-      <li v-if="defaultFolder" role="none">
-        <button
-          role="menuitem"
-          type="button"
-          class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
-          @click="goDefault"
-          @keydown="onKeydownItem"
-        >
-          <span
-            class="inline-block h-3 w-3 shrink-0 rounded-full bg-surface-300"
-            aria-hidden="true"
-          />
-          <span class="flex-1 truncate">{{ t('scopeFolder.untagged') }}</span>
-          <span class="shrink-0 text-xs text-surface-500">
-            ({{ folderItemCount(defaultFolder.id) }})
-          </span>
-        </button>
-      </li>
+            <!-- 未分類フォルダ -->
+            <button
+              v-if="defaultFolder"
+              role="menuitem"
+              type="button"
+              class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+              @click="goDefault"
+            >
+              <span
+                class="inline-block h-3 w-3 shrink-0 rounded-full bg-surface-300"
+                aria-hidden="true"
+              />
+              <span class="flex-1 truncate">{{ t('scopeFolder.untagged') }}</span>
+              <span class="shrink-0 text-xs text-surface-400">
+                {{ folderItemCount(defaultFolder.id) }}
+              </span>
+            </button>
+          </div>
 
-      <!-- 区切り線（直接ジャンプセクションの上） -->
-      <li v-if="myScopes.length > 0" role="separator" class="my-1 border-t border-surface-200" />
+          <!-- 右カラム: 直接ジャンプ（スコープが存在する場合のみ表示） -->
+          <div v-if="myScopes.length > 0" class="flex-1 min-w-0 py-2">
+            <div class="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-surface-400">
+              {{ t('scopeFolder.nav.quickJumpSection') }}
+            </div>
 
-      <!-- 直接ジャンプリスト -->
-      <li
-        v-for="scope in myScopes"
-        :key="`scope-${scope.id}`"
-        role="none"
-      >
-        <button
-          role="menuitem"
-          type="button"
-          class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
-          :data-testid="`scope-nav-dropdown-scope-${scope.id}`"
-          @click="goScope(scope.id)"
-          @keydown="onKeydownItem"
-        >
-          <i class="pi pi-arrow-right text-xs text-surface-400" aria-hidden="true" />
-          <span class="flex-1 truncate">{{ scope.nickname1 || scope.name }}</span>
-        </button>
-      </li>
+            <button
+              v-for="scope in myScopes"
+              :key="`scope-${scope.id}`"
+              role="menuitem"
+              type="button"
+              class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+              :data-testid="`scope-nav-dropdown-scope-${scope.id}`"
+              @click="goScope(scope.id)"
+            >
+              <i class="pi pi-arrow-right text-xs text-surface-400" aria-hidden="true" />
+              <span class="flex-1 truncate">{{ scope.nickname1 || scope.name }}</span>
+            </button>
+          </div>
+        </div>
 
-      <!-- 区切り線（操作セクションの上） -->
-      <li role="separator" class="my-1 border-t border-surface-200" />
+        <!-- フッター: アクションボタン -->
+        <div class="flex items-center gap-1 border-t border-surface-200 px-4 py-2">
+          <button
+            type="button"
+            class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-surface-600 hover:bg-surface-100 focus:outline-none"
+            @click="goAll"
+          >
+            <i class="pi pi-list text-xs" aria-hidden="true" />
+            {{ t('scopeFolder.nav.showAll') }}
+          </button>
 
-      <!-- 新規フォルダ作成 -->
-      <li role="none">
-        <button
-          role="menuitem"
-          type="button"
-          class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-primary hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
-          @click="goCreateNew"
-          @keydown="onKeydownItem"
-        >
-          <i class="pi pi-plus" aria-hidden="true" />
-          <span class="flex-1">{{ t('scopeFolder.nav.createNew') }}</span>
-        </button>
-      </li>
+          <div class="ml-auto flex items-center gap-1">
+            <button
+              type="button"
+              class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-primary hover:bg-primary-50 focus:outline-none"
+              @click="goCreateNew"
+            >
+              <i class="pi pi-plus text-xs" aria-hidden="true" />
+              {{ t('scopeFolder.nav.createNew') }}
+            </button>
 
-      <!-- フォルダ管理 -->
-      <li role="none">
-        <button
-          role="menuitem"
-          type="button"
-          class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
-          @click="goManage"
-          @keydown="onKeydownItem"
-        >
-          <i class="pi pi-cog text-surface-500" aria-hidden="true" />
-          <span class="flex-1">{{ t('scopeFolder.nav.manage') }}</span>
-        </button>
-      </li>
-    </ul>
+            <button
+              type="button"
+              class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-surface-600 hover:bg-surface-100 focus:outline-none"
+              @click="goManage"
+            >
+              <i class="pi pi-cog text-xs text-surface-500" aria-hidden="true" />
+              {{ t('scopeFolder.nav.manage') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Popover>
   </div>
 </template>
