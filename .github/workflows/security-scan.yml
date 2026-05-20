@@ -50,15 +50,17 @@ jobs:
       # NVD データベースキャッシュ（CVE データのダウンロードを削減）
       # キャッシュキーを週単位にすることで、毎週月曜に新しい CVE データを取得しつつ
       # 同週内の再実行ではキャッシュを使用する
-      - name: NVD データベースキャッシュ
+      - name: 週番号を取得
+        id: date
+        run: echo "week=$(date +%Y-W%V)" >> $GITHUB_OUTPUT
+
+      - name: NVD キャッシュ（スキャン高速化）
         uses: actions/cache@v4
         with:
           path: backend/.gradle/dependency-check-data
-          key: nvd-${{ runner.os }}-${{ env.week_key }}
+          key: nvd-${{ runner.os }}-${{ steps.date.outputs.week }}
           restore-keys: |
             nvd-${{ runner.os }}-
-        env:
-          week_key: ${{ github.run_id }}
 
       - name: OWASP CVE スキャン実行
         run: ./gradlew dependencyCheckAnalyze --no-daemon
