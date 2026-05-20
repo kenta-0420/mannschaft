@@ -28,3 +28,6 @@ logs
 tests/e2e/.auth/*.json
 playwright-report/
 test-results/
+
+# Lighthouse CI
+.lighthouseci/

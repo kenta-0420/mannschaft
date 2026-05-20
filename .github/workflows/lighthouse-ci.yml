@@ -1,0 +1,63 @@
+# =============================================================================
+# Lighthouse CI — フロントエンドパフォーマンス監視
+# =============================================================================
+# PR ごとに Nuxt 3 をビルド → プレビューサーバー起動 → Lighthouse 計測を実行し、
+# Core Web Vitals の回帰を早期検知する。
+# 公開ページ（F19.1）が SEO に乗るため、パフォーマンス劣化防止が目的。
+#
+# しきい値:
+#   frontend/lighthouserc.js を参照（初期は warn のみ、随時引き締め可）。
+# =============================================================================
+
+name: Lighthouse CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '!frontend/app/types/generated/**'
+      - '.github/workflows/lighthouse-ci.yml'
+
+concurrency:
+  group: lighthouse-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  lighthouse:
+    name: Lighthouse パフォーマンスチェック
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ソースのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js ${{ env.NODE_VERSION }} セットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 依存パッケージインストール
+        working-directory: frontend
+        run: npm ci
+
+      - name: Nuxt ビルド
+        working-directory: frontend
+        run: npm run build
+        env:
+          # ビルド時の API エンドポイント（CI では実 API を呼ばないので dummy 可）
+          NUXT_PUBLIC_API_BASE_URL: http://localhost:8080
+
+      - name: Lighthouse CI 実行
+        working-directory: frontend
+        run: |
+          npm install -g @lhci/cli@0.14.x
+          lhci autorun
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.GITHUB_TOKEN }}
