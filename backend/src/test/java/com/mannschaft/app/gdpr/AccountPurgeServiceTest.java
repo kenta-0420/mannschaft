@@ -10,6 +10,7 @@ import com.mannschaft.app.auth.repository.PasswordResetTokenRepository;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.repository.ParentalConsentLinkRepository;
 import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.storage.StorageService;
@@ -77,6 +78,8 @@ class AccountPurgeServiceTest {
     private TwoFactorAuthRepository twoFactorAuthRepository;
     @Mock
     private WebAuthnCredentialRepository webAuthnCredentialRepository;
+    @Mock
+    private ParentalConsentLinkRepository parentalConsentLinkRepository;
     @Mock
     private AuditLogService auditLogService;
     @Mock

@@ -11,6 +11,7 @@ import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
 import com.mannschaft.app.auth.service.AuthTokenService;
+import com.mannschaft.app.auth.service.ParentalConsentService;
 import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.auth.dto.ChangePasswordRequest;
@@ -84,6 +85,9 @@ class UserServiceTest {
 
     @Mock
     private UserRoleRepository userRoleRepository;
+
+    @Mock
+    private ParentalConsentService parentalConsentService;
 
     @InjectMocks
     private UserService userService;
