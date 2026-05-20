@@ -26,7 +26,8 @@
         "status": "Estado",
         "attemptedAt": "Intentado En",
         "completedAt": "Completado En",
-        "isAlert": "Alerta"
+        "isAlert": "Alerta",
+        "retryCount": "Reintentos"
       },
       "filter": {
         "status": "Estado",
@@ -43,9 +44,19 @@
         "close": "Cerrar"
       },
       "noData": "No hay datos disponibles",
+      "retry": {
+        "button": "Reintentar",
+        "confirm": "¿Reintentar la purga GDPR para el dominio \"{domain}\"?",
+        "success": "Reintento exitoso",
+        "failed": "Reintento fallido (sigue PENDIENTE)",
+        "alreadySuccess": "Ya está completado",
+        "count": "Reintentado {count} vez/veces",
+        "lastRetried": "Último reintento: {datetime}"
+      },
       "toast": {
         "loadFailed": "Error al cargar datos",
-        "detailLoadFailed": "Error al cargar detalle de usuario"
+        "detailLoadFailed": "Error al cargar detalle de usuario",
+        "retryFailed": "La solicitud de reintento falló"
       },
       "quickLinkLabel": "Estado GDPR"
     }

@@ -26,7 +26,8 @@
         "status": "ステータス",
         "attemptedAt": "処理開始日時",
         "completedAt": "処理完了日時",
-        "isAlert": "アラート"
+        "isAlert": "アラート",
+        "retryCount": "retry 回数"
       },
       "filter": {
         "status": "ステータス",
@@ -43,9 +44,19 @@
         "close": "閉じる"
       },
       "noData": "データがありません",
+      "retry": {
+        "button": "再試行",
+        "confirm": "ドメイン「{domain}」の GDPR パージを再試行しますか？",
+        "success": "retry 成功しました",
+        "failed": "retry 失敗（PENDING 継続）",
+        "alreadySuccess": "既に処理済みです",
+        "count": "{count} 回 retry 済み",
+        "lastRetried": "最終 retry: {datetime}"
+      },
       "toast": {
         "loadFailed": "データの取得に失敗しました",
-        "detailLoadFailed": "ユーザー詳細の取得に失敗しました"
+        "detailLoadFailed": "ユーザー詳細の取得に失敗しました",
+        "retryFailed": "retry リクエストに失敗しました"
       },
       "quickLinkLabel": "GDPR パージ状況"
     }

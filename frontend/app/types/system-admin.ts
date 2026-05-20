@@ -451,6 +451,19 @@ export interface GdprPurgeStatusRow {
   attemptedAt: string
   completedAt: string | null
   isAlert: boolean
+  /** Phase F 追加: これまでの retry 試行回数 */
+  retryCount: number
+  /** Phase F 追加: 最後に retry を実行した日時（未実行なら null） */
+  lastRetriedAt: string | null
+}
+
+/** Phase F: ドメイン単位の GDPR パージ手動 retry 結果 */
+export interface GdprPurgeRetryResult {
+  succeeded: boolean
+  domainName: string
+  newStatus: GdprPurgeStatus
+  retryCount: number
+  message: string
 }
 
 /** ドメイン別サマリー */
