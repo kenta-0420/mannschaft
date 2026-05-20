@@ -25,6 +25,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -62,6 +63,8 @@ public class BlogPostService {
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final BlogPostRevisionService revisionService;
     private final BlogPostShareService shareService;
+    // TODO: publicview ドメインが cms ドメインを参照（CLAUDE.md 原則5）。将来はイベント駆動化を検討。
+    private final PostAuthorSnapshotService postAuthorSnapshotService;
 
     /**
      * チーム別記事一覧をページング取得する。
@@ -137,6 +140,16 @@ public class BlogPostService {
         String slug = request.getSlug() != null ? request.getSlug() : generateSlug(request.getTitle());
         short readingTime = calculateReadingTime(request.getBody());
 
+        // F19.1 Phase 2: チーム/組織が REAL_NAME モードの場合に投稿者本名スナップショットを取得する（§4.7 非対称切替ルール対応）
+        String authorRealNameSnapshot;
+        if (request.getTeamId() != null) {
+            authorRealNameSnapshot = postAuthorSnapshotService.resolveForTeamPost(request.getTeamId(), userId);
+        } else if (request.getOrganizationId() != null) {
+            authorRealNameSnapshot = postAuthorSnapshotService.resolveForOrganizationPost(request.getOrganizationId(), userId);
+        } else {
+            authorRealNameSnapshot = null;
+        }
+
         BlogPostEntity entity = BlogPostEntity.builder()
                 .teamId(request.getTeamId())
                 .organizationId(request.getOrganizationId())
@@ -157,6 +170,7 @@ public class BlogPostService {
                 .readingTimeMinutes(readingTime)
                 .seriesId(request.getSeriesId())
                 .seriesOrder(request.getSeriesOrder())
+                .authorRealNameSnapshot(authorRealNameSnapshot)
                 .build();
 
         BlogPostEntity saved = postRepository.save(entity);

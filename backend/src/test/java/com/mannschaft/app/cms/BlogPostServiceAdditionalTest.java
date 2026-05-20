@@ -18,6 +18,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.common.visibility.VisibilityErrorCode;
+import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -64,6 +65,8 @@ class BlogPostServiceAdditionalTest {
     private BlogPostRevisionService revisionService;
     @Mock
     private BlogPostShareService shareService;
+    @Mock
+    private PostAuthorSnapshotService postAuthorSnapshotService;
 
     @InjectMocks
     private BlogPostService service;
