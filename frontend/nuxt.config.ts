@@ -476,6 +476,14 @@ export default defineNuxtConfig({
     },
   },
 
+  build: {
+    // frappe-gantt 1.2.2 の package.json exports フィールドに
+    // ./dist/frappe-gantt.css が列挙されていないため、
+    // nuxt:ssr-styles:client プラグインの静的解析時にエラーが発生する。
+    // transpile に指定することで Vite がパッケージを直接バンドルし解消する。
+    transpile: ['frappe-gantt'],
+  },
+
   vite: {
     server: {
       allowedHosts: true,
