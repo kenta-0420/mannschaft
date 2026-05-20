@@ -1,0 +1,69 @@
+# =============================================================================
+# 型定義自動生成チェック — pull_request 時に generate:types の差分を検出
+# =============================================================================
+# docs/openapi.json が変更されたにもかかわらず
+# npm run generate:types を実行・コミットし忘れた場合に PR をブロックする。
+#
+# 修正方法:
+#   cd frontend && npm run generate:types
+#   git add frontend/app/types/generated/
+#   git commit -m "chore: 型定義を再生成"
+# =============================================================================
+
+name: 型定義自動生成チェック
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "docs/openapi.json"
+      - "frontend/app/types/generated/**"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+      - ".github/workflows/check-generated-types.yml"
+
+concurrency:
+  group: check-generated-types-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  check-generated-types:
+    name: generate:types 差分チェック
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ソースをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js ${{ env.NODE_VERSION }} セットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 依存パッケージインストール
+        working-directory: frontend
+        run: npm ci
+
+      - name: 型定義を再生成
+        working-directory: frontend
+        run: npm run generate:types
+
+      - name: 差分チェック
+        run: |
+          if ! git diff --exit-code frontend/app/types/generated/; then
+            echo ""
+            echo "::error title=型定義ファイルが古い状態です::openapi.json の変更に対して generate:types が未実行です"
+            echo ""
+            echo "以下のコマンドを実行してコミットしてください:"
+            echo "  cd frontend && npm run generate:types"
+            echo "  git add frontend/app/types/generated/"
+            echo "  git commit -m 'chore: 型定義を再生成'"
+            exit 1
+          fi
+          echo "型定義は最新です。"
