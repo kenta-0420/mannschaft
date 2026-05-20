@@ -145,11 +145,11 @@ function handleCancel() {
       <!-- 基本情報 -->
       <div class="flex flex-col gap-1">
         <label class="text-sm font-medium">{{ $t('activity.template.name_label') }} <span class="text-red-500">*</span></label>
-        <InputText v-model="name" : placeholder="$t('activity.template.name_placeholder')" class="w-full" />
+        <InputText v-model="name" :placeholder="$t('activity.template.name_placeholder')" class="w-full" />
       </div>
       <div class="flex flex-col gap-1">
         <label class="text-sm font-medium">説明</label>
-        <Textarea v-model="description" rows="2" : placeholder="$t('activity.template.description_placeholder')" class="w-full" />
+        <Textarea v-model="description" rows="2" :placeholder="$t('activity.template.description_placeholder')" class="w-full" />
       </div>
 
       <!-- フィールド定義テーブル -->
@@ -190,7 +190,7 @@ function handleCancel() {
                 <td class="py-2 pr-2">
                   <InputText
                     v-model="field.label"
-                    : placeholder="$t('activity.template.field_name_placeholder')"
+                    :placeholder="$t('activity.template.field_name_placeholder')"
                     class="w-full"
                     size="small"
                   />
@@ -220,7 +220,7 @@ function handleCancel() {
                   <InputText
                     v-if="field.fieldType === 'SELECT'"
                     v-model="field.optionsRaw"
-                    : placeholder="$t('activity.template.options_placeholder')"
+                    :placeholder="$t('activity.template.options_placeholder')"
                     class="w-full"
                     size="small"
                   />
