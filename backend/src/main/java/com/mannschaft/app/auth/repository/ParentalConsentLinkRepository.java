@@ -2,9 +2,11 @@ package com.mannschaft.app.auth.repository;
 
 import com.mannschaft.app.auth.ParentalConsentLinkStatus;
 import com.mannschaft.app.auth.entity.ParentalConsentLinkEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -95,4 +97,24 @@ public interface ParentalConsentLinkRepository extends JpaRepository<ParentalCon
      * @param childUserId 削除対象の子ユーザー ID
      */
     void deleteByChildUserId(Long childUserId);
+
+    /**
+     * Release バッチ用: 指定ステータスのリンクをページングで取得する。
+     * 主に APPROVED リンクを持つ子ユーザーの成人到達確認バッチで使用する。
+     *
+     * @param status   絞り込むステータス（通常 APPROVED）
+     * @param pageable ページング設定
+     * @return 対象の同意リンクのリスト
+     */
+    List<ParentalConsentLinkEntity> findByStatus(ParentalConsentLinkStatus status, Pageable pageable);
+
+    /**
+     * Cleanup バッチ用: 指定ステータス群のいずれかに該当するリンクが子ユーザーに存在するか確認する。
+     * 期限切れ PENDING 失効後に子アカウントを削除するかどうかの判定に使用する。
+     *
+     * @param childUserId 子ユーザーの ID
+     * @param statuses    絞り込むステータスのコレクション（例: [APPROVED] / [PENDING]）
+     * @return いずれかのステータスに一致するリンクが存在する場合 true
+     */
+    boolean existsByChildUserIdAndStatusIn(Long childUserId, Collection<ParentalConsentLinkStatus> statuses);
 }
