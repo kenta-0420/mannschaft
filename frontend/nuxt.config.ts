@@ -113,7 +113,11 @@ export default defineNuxtConfig({
     },
   },
 
-  css: ['~/assets/css/main.css'],
+  // frappe-gantt の CSS は package.json の exports フィールドに "./dist/frappe-gantt.css"
+  // サブパスが定義されていないため、動的 import('frappe-gantt/dist/frappe-gantt.css') は
+  // プロダクションビルド時に "Missing specifier" エラーになる。
+  // nuxt.config.ts の css: フィールドは Vite のファイルシステム解決を使うため exports 制限を受けない。
+  css: ['~/assets/css/main.css', 'frappe-gantt/dist/frappe-gantt.css'],
 
   runtimeConfig: {
     // F10.6 Phase 10-γ-③-b: SSRエラー転送用内部トークン（サーバーサイドのみ）
