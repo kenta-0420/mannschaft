@@ -162,11 +162,18 @@ dependencies {
 
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
     // Windows での JVM クラッシュ（0xC0000005）対策: 十分なヒープを確保し G1GC を明示指定
+    //
+    // -Dcom.mysql.cj.disableAbandonedConnectionCleanup=true:
+    //   MySQL Connector/J の AbandonedConnectionCleanupThread を無効化する。
+    //   HikariCP は Connection.close() を必ず保証するため cleanup 対象は発生しないが、
+    //   Connection 取得のたびに WeakReference が積まれ続け、~25分後に cleanup スレッドで
+    //   OOM → JVM クラッシュ（0xC0000005）が発生する。tests JVM と同様に抑止する。
     jvmArgs(
         "-Xmx1g",
         "-XX:+UseG1GC",
         "-XX:+HeapDumpOnOutOfMemoryError",
-        "-XX:HeapDumpPath=logs/heap-dump.hprof"
+        "-XX:HeapDumpPath=logs/heap-dump.hprof",
+        "-Dcom.mysql.cj.disableAbandonedConnectionCleanup=true"
     )
 }
 
