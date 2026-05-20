@@ -26,7 +26,8 @@
         "status": "Status",
         "attemptedAt": "Attempted At",
         "completedAt": "Completed At",
-        "isAlert": "Alert"
+        "isAlert": "Alert",
+        "retryCount": "Retries"
       },
       "filter": {
         "status": "Status",
@@ -43,9 +44,19 @@
         "close": "Close"
       },
       "noData": "No data available",
+      "retry": {
+        "button": "Retry",
+        "confirm": "Retry GDPR purge for domain \"{domain}\"?",
+        "success": "Retry succeeded",
+        "failed": "Retry failed (still PENDING)",
+        "alreadySuccess": "Already completed",
+        "count": "Retried {count} time(s)",
+        "lastRetried": "Last retry: {datetime}"
+      },
       "toast": {
         "loadFailed": "Failed to load data",
-        "detailLoadFailed": "Failed to load user detail"
+        "detailLoadFailed": "Failed to load user detail",
+        "retryFailed": "Retry request failed"
       },
       "quickLinkLabel": "GDPR Purge Status"
     }
