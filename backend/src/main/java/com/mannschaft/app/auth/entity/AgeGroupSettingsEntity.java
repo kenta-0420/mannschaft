@@ -86,6 +86,25 @@ public class AgeGroupSettingsEntity {
     private LocalDateTime updatedAt;
 
     // -------------------------------------------------------------------
+    // ビジネスメソッド
+    // -------------------------------------------------------------------
+
+    /**
+     * 機能有効フラグと UI テーマ設定を更新する（管理者操作）。
+     *
+     * @param featuresEnabledJson 機能有効フラグの JSON 文字列
+     * @param themeConfigJson     UI テーマ設定の JSON 文字列
+     */
+    public void update(String featuresEnabledJson, String themeConfigJson) {
+        if (featuresEnabledJson != null) {
+            this.featuresEnabled = featuresEnabledJson;
+        }
+        if (themeConfigJson != null) {
+            this.themeConfig = themeConfigJson;
+        }
+    }
+
+    // -------------------------------------------------------------------
     // ライフサイクルコールバック
     // -------------------------------------------------------------------
 

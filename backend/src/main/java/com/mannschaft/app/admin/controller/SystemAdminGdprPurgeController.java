@@ -3,6 +3,8 @@ package com.mannschaft.app.admin.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.gdpr.dto.PurgeStatusRow;
 import com.mannschaft.app.gdpr.dto.PurgeStatusSummaryData;
+import com.mannschaft.app.gdpr.dto.RetryResultResponse;
+import com.mannschaft.app.gdpr.service.GdprPurgeRetryService;
 import com.mannschaft.app.gdpr.service.GdprPurgeStatusQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,6 +20,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,32 +32,32 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
- * システム管理者向け GDPR パージ状況管理コントローラー（Phase E 読み取り専用）。
+ * システム管理者向け GDPR パージ状況管理コントローラー（Phase E/F）。
  *
  * <p>{@code /api/v1/system-admin/gdpr/**} 配下のエンドポイントを提供する。
  * SecurityConfig で {@code SYSTEM_ADMIN} ロール限定に設定されているため、
  * Controller 側でのロールチェック再記述は不要（既存 SystemAdmin Controller の慣習に従う）。</p>
  *
- * <h2>提供エンドポイント（全て読み取り専用）</h2>
+ * <h2>提供エンドポイント</h2>
  * <ul>
  *   <li>{@code GET /api/v1/system-admin/gdpr/purge-status} — 一覧取得（ページネーション + 動的フィルタ）</li>
  *   <li>{@code GET /api/v1/system-admin/gdpr/purge-status/summary} — サマリー集計</li>
  *   <li>{@code GET /api/v1/system-admin/gdpr/purge-status/{userId}} — ユーザー詳細</li>
  *   <li>{@code GET /api/v1/system-admin/gdpr/purge-status/export.csv} — CSV エクスポート</li>
+ *   <li>{@code POST /api/v1/system-admin/gdpr/purge-status/{userId}/retry/{domainName}} — 手動 retry（Phase F）</li>
  * </ul>
  *
- * <p>再実行機能は Phase F スコープ。</p>
- *
- * <p>設計根拠: {@code docs/architecture/account_purge_cross_domain_refactor.md} §4 Phase E</p>
+ * <p>設計根拠: {@code docs/architecture/account_purge_cross_domain_refactor.md} §4 Phase E / Phase F</p>
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/system-admin/gdpr/purge-status")
-@Tag(name = "システム管理 - GDPR パージ状況", description = "Phase E GDPR パージ状況管理 API（読み取り専用）")
+@Tag(name = "システム管理 - GDPR パージ状況", description = "GDPR パージ状況管理 API（Phase E 読み取り + Phase F retry）")
 @RequiredArgsConstructor
 public class SystemAdminGdprPurgeController {
 
     private final GdprPurgeStatusQueryService queryService;
+    private final GdprPurgeRetryService retryService;
 
     /**
      * GDPR パージ状況一覧を取得する（ページネーション + 動的フィルタ）。
@@ -147,5 +150,27 @@ public class SystemAdminGdprPurgeController {
         return ResponseEntity.ok()
                 .headers(headers)
                 .body(body);
+    }
+
+    /**
+     * 指定ユーザー × ドメインの GDPR パージを手動 retry する（Phase F）。
+     *
+     * <p>PENDING 状態のドメインパージを再実行する。既に SUCCESS の場合は即座に返す。
+     * retry_count と last_retried_at は成功・失敗いずれの場合も必ず更新する。</p>
+     *
+     * @param userId     retry 対象ユーザー ID
+     * @param domainName retry 対象ドメイン（role / team / payment / chart / proxy / errorreport）
+     * @return retry 結果（succeeded=true の場合は SUCCESS に遷移、false の場合は PENDING 継続）
+     */
+    @PostMapping("/{userId}/retry/{domainName}")
+    @Operation(
+            summary = "GDPR パージ手動 retry",
+            description = "PENDING 状態のドメインパージを手動で再実行する。SYSTEM_ADMIN 限定。")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "retry 実行（succeeded フラグで成否を判別）")
+    public ResponseEntity<ApiResponse<RetryResultResponse>> retryDomainPurge(
+            @PathVariable Long userId,
+            @PathVariable String domainName) {
+        RetryResultResponse result = retryService.retryDomainPurge(userId, domainName);
+        return ResponseEntity.ok(ApiResponse.of(result));
     }
 }
