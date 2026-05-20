@@ -135,6 +135,13 @@ public class SecurityConfig {
                 // F09.17 残課題 4 公開 unsubscribe SPA POST（認証不要）
                 .requestMatchers(HttpMethod.POST, "/api/v1/ads/unsubscribe").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/ads/pixels/open").permitAll()
+                // F01.9 保護者同意 API（保護者がメールリンクから直接アクセスする承認・否認）
+                .requestMatchers(
+                    "/api/v1/parental-consent/approve",
+                    "/api/v1/parental-consent/reject"
+                ).permitAll()
+                // F01.9 年齢区分設定管理（SYSTEM_ADMIN 限定）
+                .requestMatchers("/api/v1/admin/age-group-settings/**").hasRole("SYSTEM_ADMIN")
                 // Phase E: GDPR パージ状況管理 API（SYSTEM_ADMIN 限定）
                 // TODO(F09.18 Phase 18-d): /api/v1/system-admin/email-outbox/** に SYSTEM_ADMIN
                 //   ロール限定の包括認可ルールを追加すること。現在は `.anyRequest().permitAll()`
