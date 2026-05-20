@@ -845,7 +845,15 @@
       "Bash(echo \"Spring Boot 起動 PID: $!\")",
       "Bash(JAVA_HOME=\"/c/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot\" ./gradlew test --tests \"com.mannschaft.app.mail.outbox.*\" --no-daemon -q)",
       "PowerShell(Get-ChildItem \"C:\\\\Users\\\\kenta\\\\.claude\\\\projects\\\\C--Claude-mannschaft\\\\memory\\\\\" | Select-Object Name | Sort-Object Name | Where-Object { $_.Name -match \"f09|phase18|email|outbox\" })",
-      "Bash(sort -t'V' -k2 -n)"
+      "Bash(sort -t'V' -k2 -n)",
+      "Bash(xargs -I {} sh -c 'echo \"=== {} ===\" && head -60 {}')",
+      "Bash(rtk npm *)",
+      "Bash(rtk npx *)",
+      "Bash(awk '{sum+=$1} END {print \"合計テスト件数:\", sum}')",
+      "Bash(python -c ' *)",
+      "Bash(echo \"EXIT_CODE=$?\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d['title']\\); print\\('Branch:', d['headRefName']\\); print\\(d['body'][:400]\\)\")",
+      "Bash(echo \"DONE:$?\")"
     ],
     "deny": [
       "Write(**/.env)",
