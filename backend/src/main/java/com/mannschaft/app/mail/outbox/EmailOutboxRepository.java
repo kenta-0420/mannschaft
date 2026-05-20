@@ -1,5 +1,7 @@
 package com.mannschaft.app.mail.outbox;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -83,4 +85,41 @@ public interface EmailOutboxRepository extends JpaRepository<EmailOutboxEntity, 
                AND payload_json IS NOT NULL
             """, nativeQuery = true)
     int purgePayloadBefore(@Param("threshold") LocalDateTime threshold);
+
+    /**
+     * SYSTEM_ADMIN 向け一覧取得。フィルターは NULL で全件対象 (設計書 §6.2)。
+     *
+     * <p>{@code :status} / {@code :sourceDomain} 等はすべて nullable で、
+     * NULL を渡した場合は条件を無視する。</p>
+     */
+    @Query(value = """
+            SELECT * FROM email_outbox
+             WHERE (:status IS NULL OR status = :status)
+               AND (:sourceDomain IS NULL OR source_domain = :sourceDomain)
+               AND (:fromDate IS NULL OR created_at >= :fromDate)
+               AND (:toDate IS NULL OR created_at <= :toDate)
+             ORDER BY created_at DESC
+            """,
+            countQuery = """
+            SELECT COUNT(*) FROM email_outbox
+             WHERE (:status IS NULL OR status = :status)
+               AND (:sourceDomain IS NULL OR source_domain = :sourceDomain)
+               AND (:fromDate IS NULL OR created_at >= :fromDate)
+               AND (:toDate IS NULL OR created_at <= :toDate)
+            """,
+            nativeQuery = true)
+    Page<EmailOutboxEntity> findByFilters(
+            @Param("status") String status,
+            @Param("sourceDomain") String sourceDomain,
+            @Param("fromDate") LocalDateTime fromDate,
+            @Param("toDate") LocalDateTime toDate,
+            Pageable pageable);
+
+    /** 直近 N 時間以内に作成された行のうち、指定ステータスの件数。監視メトリクス用。 */
+    @Query(value = """
+            SELECT COUNT(*) FROM email_outbox
+             WHERE status = :status
+               AND created_at >= :since
+            """, nativeQuery = true)
+    long countByStatusSince(@Param("status") String status, @Param("since") LocalDateTime since);
 }
