@@ -87,8 +87,7 @@ async function renderGantt() {
 
   // 動的 import で SSR 評価を確実に避ける
   const mod = await import('frappe-gantt')
-  // CSS も同様に動的 import（クライアント評価のみ）
-  await import('frappe-gantt/dist/frappe-gantt.css')
+  // CSS は ~/assets/css/frappe-gantt.css から読み込む（nuxt.config.ts の css: 配列で管理）
   const GanttCtor = mod.default
 
   ganttInstance.value = new GanttCtor(containerRef.value, tasks.value, {

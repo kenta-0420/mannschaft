@@ -50,5 +50,3 @@ declare module 'frappe-gantt' {
     change_view_mode(mode: GanttViewMode): void
   }
 }
-
-declare module 'frappe-gantt/dist/frappe-gantt.css'
