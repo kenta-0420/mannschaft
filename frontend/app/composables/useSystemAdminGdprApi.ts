@@ -3,10 +3,11 @@ import type {
   GdprPurgeStatusPage,
   GdprPurgeSummaryData,
   GdprPurgeStatusRow,
+  GdprPurgeRetryResult,
 } from '~/types/system-admin'
 
 /**
- * Phase E — システム管理者向け GDPR パージ状況 API クライアント。
+ * Phase E/F — システム管理者向け GDPR パージ状況 API クライアント。
  *
  * バックエンド: {@code /api/v1/system-admin/gdpr/purge-status} 配下（Phase E で実装済み）。
  * SYSTEM_ADMIN ロールでのみアクセス可能。
@@ -16,6 +17,7 @@ import type {
  *  - {@code getPurgeSummary()} — サマリー取得
  *  - {@code getUserPurgeDetail(userId)} — ユーザー詳細取得（全ドメイン）
  *  - {@code getExportUrl()} — CSV エクスポート URL
+ *  - {@code retryDomainPurge(userId, domainName)} — Phase F: ドメイン単位の手動 retry
  */
 const BASE = '/api/v1/system-admin/gdpr/purge-status'
 
@@ -66,10 +68,24 @@ export function useSystemAdminGdprApi() {
     return `${BASE}/export.csv`
   }
 
+  /**
+   * Phase F — 指定ユーザーの指定ドメインに対して GDPR パージを手動で retry する。
+   *
+   * @param userId - 対象ユーザーの ID
+   * @param domainName - retry 対象のドメイン名（例: 'role', 'team'）
+   */
+  async function retryDomainPurge(userId: number, domainName: string) {
+    return api<{ data: GdprPurgeRetryResult }>(
+      `${BASE}/${encodeURIComponent(userId)}/retry/${encodeURIComponent(domainName)}`,
+      { method: 'POST' },
+    )
+  }
+
   return {
     listPurgeStatus,
     getPurgeSummary,
     getUserPurgeDetail,
     getExportUrl,
+    retryDomainPurge,
   }
 }

@@ -302,7 +302,7 @@
       "iconLabel": "アイコン画像（R2 キー）",
       "coverLabel": "カバー画像（R2 キー）",
       "guidelineLabel": "村ガイドライン (Markdown)",
-      "r2KeyPlaceholder": "villages/<村ID>/icon.png など",
+      "r2KeyPlaceholder": "villages/{villageId}/icon.png など",
       "saveSuccess": "村情報を更新しました",
       "errorNameRequired": "村名は必須です",
       "errorNameTooLong": "村名は {max} 文字以内で入力してください",

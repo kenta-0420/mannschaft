@@ -1,0 +1,36 @@
+# k6 コンテナを Docker Compose に追加するオーバーライドファイル
+#
+# 使い方:
+#   スモークテスト（推奨起点）:
+#     docker-compose -f docker-compose.yml -f k6/docker-compose.k6.yml \
+#       run --rm k6 run /scripts/scenarios/05_smoke.js
+#
+#   シナリオ別実行:
+#     docker-compose -f docker-compose.yml -f k6/docker-compose.k6.yml \
+#       run --rm k6 run /scripts/scenarios/01_auth.js
+#
+#   環境変数上書き例:
+#     docker-compose -f docker-compose.yml -f k6/docker-compose.k6.yml \
+#       run --rm -e SAMPLE_TEAM_ID=42 k6 run /scripts/scenarios/02_schedule.js
+#
+# 注意:
+#   - network_mode: host を使用するため、Spring Boot は localhost:8080 で起動している必要がある
+#   - profiles: [k6] を指定しているため、通常の docker-compose up では k6 は起動しない
+#   - 本番環境のエンドポイントへは絶対に向けないこと
+
+services:
+  k6:
+    image: grafana/k6:latest
+    volumes:
+      # k6/ ディレクトリを /scripts としてマウント
+      - ./k6:/scripts
+    # localhost:8080 の Spring Boot に直接アクセスするためホストネットワーク使用
+    network_mode: host
+    environment:
+      - BASE_URL=${BASE_URL:-http://localhost:8080}
+      - TEST_USER_EMAIL=${TEST_USER_EMAIL:-test@example.com}
+      - TEST_USER_PASSWORD=${TEST_USER_PASSWORD:-password123}
+      - SAMPLE_TEAM_ID=${SAMPLE_TEAM_ID:-1}
+      - SAMPLE_ORG_ID=${SAMPLE_ORG_ID:-1}
+    profiles:
+      - k6  # 通常の docker-compose up では起動しない

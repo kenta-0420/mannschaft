@@ -1,5 +1,22 @@
 {
   "public": {
+    "admin": {
+      "nameDisclosure": {
+        "title": "投稿者識別モード",
+        "displayName": "表示名で表示",
+        "realName": "本名で表示",
+        "warningTitle": "本名表示への切替について",
+        "warningBody": "この設定を有効にすると、以降の投稿に投稿者の本名が表示されます。一度公開された本名は外部に拡散する可能性があり、完全な取り消しはできません。",
+        "warningCheckbox": "上記の内容を理解した上で切り替える",
+        "confirmButton": "確認して切り替える",
+        "cancelButton": "キャンセル",
+        "historyTitle": "切替履歴",
+        "changedAt": "変更日時",
+        "changedBy": "変更者",
+        "fromMode": "変更前",
+        "toMode": "変更後"
+      }
+    },
     "layout": {
       "skipToContent": "本文へスキップ",
       "login": "ログイン",

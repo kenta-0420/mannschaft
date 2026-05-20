@@ -7,13 +7,17 @@ import type {
 } from '~/types/system-admin'
 
 /**
- * Phase E — GDPR パージ状況 管理画面。
+ * Phase E/F — GDPR パージ状況 管理画面。
  *
  * <p>システム管理者が GDPR パージバッチの実行状況をドメイン別・ユーザー別に確認できる
- * 読み取り専用ダッシュボード。CSV エクスポート機能つき。</p>
+ * 管理ダッシュボード。CSV エクスポート機能と PENDING 行の手動 retry 機能つき。</p>
  *
  * <p>アラート（isAlert=true）はバッチが複数回失敗し続けている行を示す。
  * 赤色ハイライトで視覚的に警告する。</p>
+ *
+ * <p>Phase F 追加: 詳細モーダルの PENDING ドメイン行に「再試行」ボタンを追加。
+ * retry 成功時は緑色トースト + 詳細再取得、失敗時は赤色トースト + retryCount 更新。
+ * 一覧テーブルには retryCount 列を追加（>0 はオレンジ色で強調）。</p>
  */
 definePageMeta({ middleware: 'auth' })
 
@@ -32,6 +36,9 @@ const detailDialogOpen = ref(false)
 const detailLoading = ref(false)
 const detailUserId = ref<number | null>(null)
 const detailRows = ref<GdprPurgeStatusRow[]>([])
+
+/** Phase F: retry 中のドメイン名（詳細モーダル内のみ）*/
+const retryingDomain = ref<string | null>(null)
 
 // ===== フィルター =====
 const filterStatus = ref<string>('')
@@ -135,10 +142,58 @@ function closeDetail() {
   detailDialogOpen.value = false
   detailUserId.value = null
   detailRows.value = []
+  retryingDomain.value = null
 }
 
 function downloadCsv() {
   window.location.href = gdprApi.getExportUrl()
+}
+
+/**
+ * Phase F: PENDING ドメインの手動 retry を実行する。
+ *
+ * 確認ダイアログを経由し、成功・失敗それぞれでトーストを表示する。
+ * いずれの場合もメイン一覧を再取得してサマリー数字を更新する。
+ */
+async function retryDomain(row: GdprPurgeStatusRow) {
+  const confirmed = window.confirm(
+    t('systemAdmin.gdpr.retry.confirm', { domain: row.domainName }),
+  )
+  if (!confirmed) return
+
+  retryingDomain.value = row.domainName
+  try {
+    const res = await gdprApi.retryDomainPurge(row.userId, row.domainName)
+    const result = res.data
+
+    if (result.succeeded) {
+      if (result.retryCount === 0) {
+        notification.info(t('systemAdmin.gdpr.retry.alreadySuccess'))
+      } else {
+        notification.success(t('systemAdmin.gdpr.retry.success'))
+      }
+    } else {
+      notification.error(t('systemAdmin.gdpr.retry.failed'))
+    }
+
+    // 詳細行を再取得してモーダル内を更新する
+    if (detailUserId.value !== null) {
+      try {
+        const detailRes = await gdprApi.getUserPurgeDetail(detailUserId.value)
+        detailRows.value = detailRes.data
+      } catch (e) {
+        console.error('gdpr/index.vue: failed to reload user detail after retry', e)
+      }
+    }
+
+    // サマリーカードと一覧テーブルも更新する
+    await Promise.all([loadSummary(), loadList()])
+  } catch (e) {
+    console.error('gdpr/index.vue: failed to retry domain purge', e)
+    notification.error(t('systemAdmin.gdpr.toast.retryFailed'))
+  } finally {
+    retryingDomain.value = null
+  }
 }
 
 // ===== ユーティリティ =====
@@ -375,6 +430,16 @@ onMounted(load)
             {{ formatDateTime(row.completedAt) }}
           </template>
         </Column>
+        <!-- Phase F: retry 回数列（1回以上はオレンジ強調） -->
+        <Column field="retryCount" :header="t('systemAdmin.gdpr.table.retryCount')" style="width: 7rem">
+          <template #body="{ data: row }: { data: GdprPurgeStatusRow }">
+            <span
+              :class="row.retryCount > 0 ? 'font-semibold text-orange-500' : 'text-surface-400'"
+            >
+              {{ row.retryCount }}
+            </span>
+          </template>
+        </Column>
         <Column field="isAlert" :header="t('systemAdmin.gdpr.table.isAlert')" style="width: 7rem">
           <template #body="{ data: row }: { data: GdprPurgeStatusRow }">
             <i v-if="row.isAlert" class="pi pi-exclamation-triangle text-red-500" aria-hidden="true" />
@@ -404,7 +469,7 @@ onMounted(load)
       v-model:visible="detailDialogOpen"
       modal
       :header="t('systemAdmin.gdpr.detail.title')"
-      :style="{ width: '44rem' }"
+      :style="{ width: '52rem' }"
       :draggable="false"
       @hide="closeDetail"
     >
@@ -451,6 +516,39 @@ onMounted(load)
             <template #body="{ data: row }: { data: GdprPurgeStatusRow }">
               <i v-if="row.isAlert" class="pi pi-exclamation-triangle text-red-500" aria-hidden="true" />
               <span v-else class="text-surface-400">-</span>
+            </template>
+          </Column>
+          <!-- Phase F: retry 情報 + ボタン列 -->
+          <Column :header="t('systemAdmin.gdpr.table.retryCount')" style="width: 14rem">
+            <template #body="{ data: row }: { data: GdprPurgeStatusRow }">
+              <div class="flex flex-col gap-1">
+                <!-- retry 回数 -->
+                <span
+                  v-if="row.retryCount > 0"
+                  class="text-xs text-orange-500"
+                >
+                  {{ t('systemAdmin.gdpr.retry.count', { count: row.retryCount }) }}
+                </span>
+                <!-- 最終 retry 日時 -->
+                <span
+                  v-if="row.lastRetriedAt"
+                  class="text-xs text-surface-400"
+                >
+                  {{ t('systemAdmin.gdpr.retry.lastRetried', { datetime: formatDateTime(row.lastRetriedAt) }) }}
+                </span>
+                <!-- retry ボタン（PENDING のみ表示） -->
+                <Button
+                  v-if="row.status === 'PENDING'"
+                  :label="t('systemAdmin.gdpr.retry.button')"
+                  icon="pi pi-refresh"
+                  severity="warning"
+                  size="small"
+                  :loading="retryingDomain === row.domainName"
+                  :disabled="retryingDomain !== null"
+                  class="mt-1 w-full"
+                  @click="retryDomain(row)"
+                />
+              </div>
             </template>
           </Column>
         </DataTable>

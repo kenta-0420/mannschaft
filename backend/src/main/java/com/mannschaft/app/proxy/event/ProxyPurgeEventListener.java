@@ -107,4 +107,33 @@ public class ProxyPurgeEventListener {
                     });
         }
     }
+
+    /**
+     * 管理者からの手動 retry 用。{@link #on(AccountPurgedEvent)} と同じドメイン操作を実行するが、
+     * {@code completionStatusRepository} の更新は {@code GdprPurgeRetryService} が担う。
+     *
+     * @param userId retry 対象ユーザー ID
+     * @return true=全操作成功、false=1 件以上失敗
+     */
+    @Transactional
+    public boolean retryPurge(Long userId) {
+        boolean recordsOk = false;
+        boolean consentsOk = false;
+
+        try {
+            proxyInputRecordRepository.deleteAllBySubjectUserId(userId);
+            recordsOk = true;
+        } catch (Exception e) {
+            log.warn("proxy purge retry: proxy_input_records 物理削除失敗 userId={}", userId, e);
+        }
+
+        try {
+            proxyInputConsentRepository.logicalDeleteAllBySubjectUserId(userId);
+            consentsOk = true;
+        } catch (Exception e) {
+            log.warn("proxy purge retry: proxy_input_consents 論理削除失敗 userId={}", userId, e);
+        }
+
+        return recordsOk && consentsOk;
+    }
 }
