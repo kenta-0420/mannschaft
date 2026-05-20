@@ -26,6 +26,34 @@ docker-compose -f docker-compose.yml -f k6/docker-compose.k6.yml \
   run --rm k6 run /scripts/scenarios/05_smoke.js
 ```
 
+## テスト用ユーザーのセットアップ
+
+k6 の認証シナリオ実行前に、テスト用ユーザーを DB に作成する必要があります。
+
+```bash
+# Docker 経由で MySQL にシードを投入
+docker exec -i mannschaft-mysql mysql -uroot -proot mannschaft < k6/seed-test-user.sql
+```
+
+| 項目 | 値 |
+|---|---|
+| メールアドレス | `k6test@example.com` |
+| パスワード | `Password1!` |
+| ステータス | `ACTIVE` |
+
+### Windows (WSL2) での Docker 実行に関する注意
+
+`docker-compose.k6.yml` の `network_mode: host` は **Linux ネイティブ環境でのみ有効**です。
+Windows (WSL2 + Docker Desktop) では以下の代替手順を使用してください。
+
+```bash
+# Windows / WSL2 の場合: host.docker.internal でホストに接続
+docker run --rm -i grafana/k6:latest run - < k6/scenarios/05_smoke.js \
+  -e BASE_URL=http://host.docker.internal:8080 \
+  -e TEST_USER_EMAIL=k6test@example.com \
+  -e TEST_USER_PASSWORD=Password1!
+```
+
 ## Spring Boot の起動確認
 
 負荷テスト実行前に Spring Boot が起動していることを確認してください。
@@ -155,7 +183,7 @@ http_req_failed..............: 0.00%
 終了コード `99` が返ります。以下を確認してください:
 
 1. Spring Boot が起動しているか（`docker-compose up -d` 後に `/actuator/health` 確認）
-2. テストユーザー（`test@example.com` / `password123`）がローカル DB に存在するか
+2. テストユーザー（`k6test@example.com` / `Password1!`）がローカル DB に存在するか（`k6/seed-test-user.sql` を実行）
 3. `SAMPLE_TEAM_ID` / `SAMPLE_ORG_ID` のデータがローカル DB に存在するか
 
 ## テスト結果の保存
@@ -176,4 +204,4 @@ k6 run --out csv=k6/results/smoke_$(date +%Y%m%d_%H%M%S).csv k6/scenarios/05_smo
 
 - **本番環境禁止**: このテストは必ずローカル Docker Compose 環境でのみ実行してください
 - **レートリミット**: `04_public_pages.js` は `PublicApiRateLimitFilter` の制限（60 req/min/IP）を考慮した VU 数に設定しています。大幅に VU を増やす場合は注意が必要です
-- **テストデータ**: ローカル DB の `test@example.com` ユーザーが必要です。シードスクリプトで事前に作成してください
+- **テストデータ**: ローカル DB の `k6test@example.com` ユーザーが必要です。`docker exec -i mannschaft-mysql mysql -uroot -proot mannschaft < k6/seed-test-user.sql` で作成してください

@@ -15,8 +15,8 @@ export const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
  * 本番環境では絶対に使用しないこと。
  */
 export const TEST_USER = {
-  email: __ENV.TEST_USER_EMAIL || 'test@example.com',
-  password: __ENV.TEST_USER_PASSWORD || 'password123',
+  email: __ENV.TEST_USER_EMAIL || 'k6test@example.com',
+  password: __ENV.TEST_USER_PASSWORD || 'Password1!',
 };
 
 /**
