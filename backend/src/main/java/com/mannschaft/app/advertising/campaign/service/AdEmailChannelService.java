@@ -7,8 +7,9 @@ import com.mannschaft.app.advertising.campaign.entity.UserAdPreference;
 import com.mannschaft.app.advertising.campaign.repository.AdEmailDeliveryRepository;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
-import com.mannschaft.app.directmail.entity.DirectMailRecipientEntity;
 import com.mannschaft.app.directmail.service.DirectMailService;
+
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -140,26 +141,33 @@ public class AdEmailChannelService {
         String htmlBody = buildHtmlBody(body, unsubscribeJwt, /* openPixelToken= */ null);
 
         // 4) SES 送信 + direct_mail_logs/recipients 作成
-        DirectMailRecipientEntity recipient = directMailService.sendSystemAdMail(
+        // F09.18 Phase 18-f: 双方向トレース用に delivery UUID を先行生成
+        // （enqueue 時の source_event_id として渡すため sendSystemAdMail() 呼び出し前に生成する）
+        UUID deliveryId = UUID.randomUUID();
+
+        DirectMailService.AdMailSendResult result = directMailService.sendSystemAdMail(
                 campaign.getAdvertiserAccountId(),
                 userId,
                 email,
                 subject,
-                htmlBody);
+                htmlBody,
+                deliveryId);  // 先行生成した delivery UUID を渡す
 
         // 5) ad_email_deliveries に履歴を残す
         LocalDateTime now = LocalDateTime.now();
         AdEmailDelivery delivery = AdEmailDelivery.builder()
                 .campaignId(campaign.getId())
                 .userId(userId)
-                .directMailRecipientId(recipient.getId())
+                .directMailRecipientId(result.recipient().getId())
+                .emailOutboxId(result.outboxId())     // F09.18 outbox UUID を記録（双方向トレース）
                 .sentAt(now)
                 .monthKey(now.format(MONTH_KEY_FMT))
                 .build();
+        delivery.setId(deliveryId);  // 先行生成した UUID を entity に設定
         deliveryRepository.save(delivery);
 
-        log.info("AD_EMAIL_DELIVERED campaignId={} userId={} recipientId={} deliveryId={}",
-                campaign.getId(), userId, recipient.getId(), delivery.getId());
+        log.info("AD_EMAIL_DELIVERED campaignId={} userId={} recipientId={} deliveryId={} outboxId={}",
+                campaign.getId(), userId, result.recipient().getId(), delivery.getId(), result.outboxId());
         return true;
     }
 

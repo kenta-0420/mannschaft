@@ -1,6 +1,15 @@
 {
   "public": {
     "admin": {
+      "publicVisible": {
+        "label": "Öffentliche Sichtbarkeit",
+        "enabledLabel": "Öffentlich",
+        "disabledLabel": "Verborgen",
+        "toggleAriaLabel": "Sichtbarkeit des Beitrags umschalten",
+        "enableConfirm": "Diesen Beitrag öffentlich machen?",
+        "disableConfirm": "Diesen Beitrag aus der öffentlichen Ansicht ausblenden?",
+        "saveFailed": "Aktualisierung fehlgeschlagen. Bitte erneut versuchen."
+      },
       "nameDisclosure": {
         "title": "投稿者識別モード",
         "displayName": "表示名で表示",

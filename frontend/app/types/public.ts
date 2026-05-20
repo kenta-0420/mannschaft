@@ -128,3 +128,16 @@ export interface NameDisclosureChangeLogResponse {
   changedBy: number
   changedAt: string
 }
+
+// ─── F19.1 Phase 2: public_visible トグル UI 用型 ───
+
+/**
+ * 個別投稿の public_visible を切り替える PATCH リクエスト DTO。
+ *
+ * TODO: バックエンド API は未実装（Phase 3 以降で実装予定）。
+ * エンドポイント: PATCH /api/v1/admin/posts/{postId}/public-visible
+ */
+export interface PublicVisiblePatchRequest {
+  /** true: 公開 / false: 非公開 */
+  publicVisible: boolean
+}
