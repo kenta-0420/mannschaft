@@ -96,4 +96,33 @@ public class TeamPurgeEventListener {
                     });
         }
     }
+
+    /**
+     * 管理者からの手動 retry 用。{@link #on(AccountPurgedEvent)} と同じドメイン操作を実行するが、
+     * {@code completionStatusRepository} の更新は {@code GdprPurgeRetryService} が担う。
+     *
+     * @param userId retry 対象ユーザー ID
+     * @return true=全操作成功、false=1 件以上失敗
+     */
+    @Transactional
+    public boolean retryPurge(Long userId) {
+        boolean invitedByFailed = false;
+        boolean respondedByFailed = false;
+
+        try {
+            teamOrgMembershipRepository.nullifyInvitedBy(userId);
+        } catch (Exception e) {
+            invitedByFailed = true;
+            log.warn("team purge retry: nullifyInvitedBy 失敗 userId={}", userId, e);
+        }
+
+        try {
+            teamOrgMembershipRepository.nullifyRespondedBy(userId);
+        } catch (Exception e) {
+            respondedByFailed = true;
+            log.warn("team purge retry: nullifyRespondedBy 失敗 userId={}", userId, e);
+        }
+
+        return !invitedByFailed && !respondedByFailed;
+    }
 }
