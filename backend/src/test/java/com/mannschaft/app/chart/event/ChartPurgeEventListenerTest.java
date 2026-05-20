@@ -2,6 +2,7 @@ package com.mannschaft.app.chart.event;
 
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,6 +22,9 @@ class ChartPurgeEventListenerTest {
 
     @Mock
     private ChartRecordRepository chartRecordRepository;
+
+    @Mock
+    private AccountPurgeCompletionStatusRepository completionStatusRepository;
 
     @InjectMocks
     private ChartPurgeEventListener listener;

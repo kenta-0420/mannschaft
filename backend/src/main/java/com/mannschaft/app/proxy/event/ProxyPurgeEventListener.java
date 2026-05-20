@@ -1,6 +1,7 @@
 package com.mannschaft.app.proxy.event;
 
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+
+import java.time.LocalDateTime;
 
 /**
  * 30 日後物理削除（{@link AccountPurgedEvent}）を購読し、
@@ -58,6 +61,7 @@ public class ProxyPurgeEventListener {
 
     private final ProxyInputRecordRepository proxyInputRecordRepository;
     private final ProxyInputConsentRepository proxyInputConsentRepository;
+    private final AccountPurgeCompletionStatusRepository completionStatusRepository;
 
     /**
      * {@link AccountPurgedEvent} を購読し、対象ユーザーが本人（subject）として
@@ -92,5 +96,15 @@ public class ProxyPurgeEventListener {
 
         log.info("ユーザー退会 proxy purge 完了: userId={}, recordsDeleted={}, consentsLogicalDeleted={}",
                 userId, recordsOk, consentsOk);
+
+        // Phase D-8: 処理完了を completion_status に記録（両操作とも成功した場合のみ SUCCESS とする）
+        if (recordsOk && consentsOk) {
+            completionStatusRepository.findByUserIdAndDomainName(userId, "proxy")
+                    .ifPresent(entity -> {
+                        entity.setStatus("SUCCESS");
+                        entity.setCompletedAt(LocalDateTime.now());
+                        completionStatusRepository.save(entity);
+                    });
+        }
     }
 }

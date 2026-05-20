@@ -1,6 +1,7 @@
 package com.mannschaft.app.role.event;
 
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.RoleService;
@@ -29,6 +30,8 @@ class RolePurgeEventListenerTest {
     private UserRoleRepository userRoleRepository;
     @Mock
     private RoleService roleService;
+    @Mock
+    private AccountPurgeCompletionStatusRepository completionStatusRepository;
 
     @InjectMocks
     private RolePurgeEventListener listener;

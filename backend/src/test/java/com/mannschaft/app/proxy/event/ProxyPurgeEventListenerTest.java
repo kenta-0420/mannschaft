@@ -1,6 +1,7 @@
 package com.mannschaft.app.proxy.event;
 
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +25,9 @@ class ProxyPurgeEventListenerTest {
 
     @Mock
     private ProxyInputConsentRepository proxyInputConsentRepository;
+
+    @Mock
+    private AccountPurgeCompletionStatusRepository completionStatusRepository;
 
     @InjectMocks
     private ProxyPurgeEventListener listener;
