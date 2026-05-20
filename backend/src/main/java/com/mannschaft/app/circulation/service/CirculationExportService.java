@@ -1,7 +1,6 @@
 package com.mannschaft.app.circulation.service;
 
 import com.mannschaft.app.auth.AuditEventType;
-import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.circulation.CirculationErrorCode;
 import com.mannschaft.app.circulation.CirculationExportStatus;
@@ -10,27 +9,17 @@ import com.mannschaft.app.circulation.RecipientStatus;
 import com.mannschaft.app.circulation.dto.ExportRequestResponse;
 import com.mannschaft.app.circulation.dto.ExportStatusResponse;
 import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
-import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
-import com.mannschaft.app.circulation.entity.CirculationStampCorrectionLogEntity;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
-import com.mannschaft.app.circulation.repository.CirculationStampCorrectionLogRepository;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 /**
  * 押印済み証跡 PDF エクスポートサービス（F05.2 Phase 11 第四陣 4-C）。
@@ -40,15 +29,20 @@ import java.util.UUID;
  * <p>主な責務:
  * <ul>
  *   <li>COMPLETED 状態の回覧文書のみエクスポート対象とする</li>
- *   <li>非同期ジョブ（{@link Async @Async("job-pool")}）で Thymeleaf + Flying Saucer 経由の PDF を生成</li>
- *   <li>R2 にアップロードし {@code export_file_key} を永続化</li>
- *   <li>生成済の場合は 1h Pre-signed URL を返却（Controller 側で 302 リダイレクト）</li>
- *   <li>監査ログ {@code CIRCULATION_EXPORT_REQUESTED / GENERATED} を発火</li>
+ *   <li>非同期ジョブ（{@link CirculationExportAsyncExecutor#generateAsync}）にトリガを渡す</li>
+ *   <li>R2 にアップロードされた {@code export_file_key} 経由で 1h Pre-signed URL を返却</li>
+ *   <li>生成済の場合は Pre-signed URL を返却（Controller 側で 302 リダイレクト）</li>
+ *   <li>監査ログ {@code CIRCULATION_EXPORT_REQUESTED} を発火</li>
  * </ul>
  *
  * <p>認可: Controller 側で作成者 / 受信者 / ADMIN を判定するため、本サービスでは
  * {@link #assertCanAccessExport(CirculationDocumentEntity, Long, boolean)} で
  * 作成者 OR 受信者 OR ADMIN のいずれかを満たすかを確認する。</p>
+ *
+ * <p>非同期ジョブ本体は {@link CirculationExportAsyncExecutor} に分離されている。
+ * これは Spring の {@code @Async} プロキシが同一 Bean 内 self-call では効かないため、
+ * 別 Bean として DI することで確実に非同期実行されることを保証する。
+ * 既存パターン: {@code DigestAsyncExecutor}。</p>
  */
 @Slf4j
 @Service
@@ -59,21 +53,13 @@ public class CirculationExportService {
     /** R2 Pre-signed URL の有効期間（仕様: 1 時間）。 */
     private static final Duration PRESIGN_TTL = Duration.ofHours(1);
 
-    /** Thymeleaf テンプレ名。 */
-    private static final String EXPORT_TEMPLATE = "pdf/circulation-export";
-
     /** PDF 生成完了見込み時間（秒）。202 応答の参考値。 */
     private static final int ESTIMATED_GENERATION_SECONDS = 10;
 
     private final CirculationDocumentRepository documentRepository;
     private final CirculationRecipientRepository recipientRepository;
-    private final CirculationStampCorrectionLogRepository correctionLogRepository;
-    private final PdfGeneratorService pdfGeneratorService;
     private final StorageService storageService;
-
-    /** 受信者表示名解決用（テスト構成では Optional/null 注入される）。 */
-    @Autowired(required = false)
-    private UserRepository userRepository;
+    private final CirculationExportAsyncExecutor asyncExecutor;
 
     /** 監査ログ発火用（テスト構成では null 注入を許容）。 */
     @Autowired(required = false)
@@ -136,7 +122,7 @@ public class CirculationExportService {
         recordAudit(AuditEventType.CIRCULATION_EXPORT_REQUESTED.name(), actorId, entity);
 
         log.info("回覧 PDF エクスポート要求: documentId={}, actorId={}", documentId, actorId);
-        triggerAsyncGeneration(documentId);
+        asyncExecutor.generateAsync(documentId);
 
         return new ExportRequestResponse(
                 entity.getId(),
@@ -178,127 +164,9 @@ public class CirculationExportService {
                 url);
     }
 
-    /**
-     * 非同期 PDF 生成ジョブのトリガーポイント。
-     *
-     * <p>{@code @Async} メソッドは同一 Bean からの呼び出しではプロキシ経由にならないため、
-     * 別メソッドとして切り出し、{@code self} 参照ではなく {@code @Async} アノテーション付きの
-     * {@link #generateAsync(Long)} に委譲する。
-     * 既存パターン: {@code DigestAsyncExecutor}（dispatchAsync → execute）。</p>
-     *
-     * @param documentId 文書 ID
-     */
-    public void triggerAsyncGeneration(Long documentId) {
-        // テストでは Mock により上書き可能。実装は {@link #generateAsync} を呼ぶだけ。
-        generateAsync(documentId);
-    }
-
-    /**
-     * 非同期 PDF 生成ジョブ本体。
-     *
-     * <p>{@code job-pool} スレッドプール（{@code AsyncConfig#jobPoolExecutor}）で実行される。
-     * 例外が発生した場合は {@code FAILED} ステータスを永続化し、ログを出して終了する
-     * （対処療法ではなく根治を意図したエラー要約保存）。</p>
-     *
-     * @param documentId 文書 ID
-     */
-    @Async("job-pool")
-    @Transactional
-    public void generateAsync(Long documentId) {
-        log.info("回覧 PDF 非同期生成 開始: documentId={}", documentId);
-
-        CirculationDocumentEntity entity = documentRepository.findById(documentId).orElse(null);
-        if (entity == null) {
-            log.warn("回覧 PDF 非同期生成: 文書が見つかりません: documentId={}", documentId);
-            return;
-        }
-
-        try {
-            byte[] pdfBytes = buildPdfBytes(entity);
-            String fileKey = "circulation/exports/" + documentId + "/" + UUID.randomUUID() + ".pdf";
-
-            storageService.upload(fileKey, pdfBytes, "application/pdf");
-
-            entity.markExportCompleted(fileKey);
-            documentRepository.save(entity);
-
-            recordAudit(AuditEventType.CIRCULATION_EXPORT_GENERATED.name(), entity.getCreatedBy(), entity);
-
-            log.info("回覧 PDF 非同期生成 完了: documentId={}, fileKey={}", documentId, fileKey);
-        } catch (Exception ex) {
-            log.error("回覧 PDF 非同期生成 失敗: documentId={}", documentId, ex);
-            entity.markExportFailed(ex.getClass().getSimpleName() + ": " + ex.getMessage());
-            documentRepository.save(entity);
-        }
-    }
-
     // ─────────────────────────────────────────────
     // 内部ヘルパー
     // ─────────────────────────────────────────────
-
-    /**
-     * Thymeleaf テンプレ + Flying Saucer で PDF バイト列を構築する。
-     */
-    private byte[] buildPdfBytes(CirculationDocumentEntity entity) {
-        Long documentId = entity.getId();
-        List<CirculationRecipientEntity> recipients =
-                recipientRepository.findByDocumentIdOrderBySortOrderAsc(documentId);
-
-        // 受信者表示名を解決
-        Map<Long, String> displayNameMap = new HashMap<>();
-        if (userRepository != null) {
-            for (CirculationRecipientEntity r : recipients) {
-                userRepository.findMemberSummaryById(r.getUserId())
-                        .ifPresent(ms -> displayNameMap.put(ms.getId(), ms.getDisplayName()));
-            }
-        }
-
-        // 訂正履歴も時系列で取得（受信者ごとに集約）
-        Map<Long, List<CirculationStampCorrectionLogEntity>> correctionsByRecipient = new HashMap<>();
-        for (CirculationRecipientEntity r : recipients) {
-            List<CirculationStampCorrectionLogEntity> logs =
-                    correctionLogRepository.findByRecipientIdOrderByCreatedAtAsc(r.getId());
-            if (!logs.isEmpty()) {
-                correctionsByRecipient.put(r.getId(), logs);
-            }
-        }
-
-        List<Map<String, Object>> recipientView = new ArrayList<>();
-        for (CirculationRecipientEntity r : recipients) {
-            Map<String, Object> row = new HashMap<>();
-            row.put("userId", r.getUserId());
-            row.put("displayName", displayNameMap.getOrDefault(r.getUserId(), "（ID:" + r.getUserId() + "）"));
-            row.put("status", r.getStatus().name());
-            row.put("stampedAt", r.getStampedAt());
-            row.put("sortOrder", r.getSortOrder());
-            row.put("skipReason", r.getSkipReason());
-            row.put("tiltAngle", r.getTiltAngle());
-            row.put("isFlipped", r.getIsFlipped());
-            row.put("corrections", correctionsByRecipient.getOrDefault(r.getId(), List.of()));
-            recipientView.add(row);
-        }
-
-        Map<String, Object> vars = new HashMap<>();
-        vars.put("documentId", entity.getId());
-        vars.put("title", entity.getTitle());
-        vars.put("body", entity.getBody());
-        vars.put("scopeType", entity.getScopeType());
-        vars.put("scopeId", entity.getScopeId());
-        vars.put("createdBy", entity.getCreatedBy());
-        vars.put("createdByName",
-                displayNameMap.getOrDefault(entity.getCreatedBy(),
-                        "（ID:" + entity.getCreatedBy() + "）"));
-        vars.put("completedAt", entity.getCompletedAt());
-        vars.put("dueDate", entity.getDueDate());
-        vars.put("circulationMode", entity.getCirculationMode().name());
-        vars.put("priority", entity.getPriority().name());
-        vars.put("totalRecipientCount", entity.getTotalRecipientCount());
-        vars.put("stampedCount", entity.getStampedCount());
-        vars.put("recipients", recipientView);
-        // フッターには SHA-256 の埋め込みは行わない（PDF 自体のハッシュは将来拡張で内部署名 PDF 化）
-
-        return pdfGeneratorService.generateFromTemplate(EXPORT_TEMPLATE, vars);
-    }
 
     /**
      * 認可判定: 作成者 / 受信者 / ADMIN のいずれかを満たすか。

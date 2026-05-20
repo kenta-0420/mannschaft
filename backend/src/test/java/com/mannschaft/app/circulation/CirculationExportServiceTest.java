@@ -9,12 +9,14 @@ import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.circulation.repository.CirculationStampCorrectionLogRepository;
+import com.mannschaft.app.circulation.service.CirculationExportAsyncExecutor;
 import com.mannschaft.app.circulation.service.CirculationExportService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.storage.StorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -39,6 +41,10 @@ import static org.mockito.Mockito.verify;
 
 /**
  * F05.2 Phase 11 第四陣 4-C: {@link CirculationExportService} 単体テスト。
+ *
+ * <p>非同期実行部分は {@link CirculationExportAsyncExecutor} に分離されているため、
+ * 本テストでは Mock で置き換え、実行を検証する。
+ * Executor 本体の挙動は {@link Async} ネストクラスで別途検証する。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("CirculationExportService 単体テスト")
@@ -56,16 +62,10 @@ class CirculationExportServiceTest {
     private CirculationRecipientRepository recipientRepository;
 
     @Mock
-    private CirculationStampCorrectionLogRepository correctionLogRepository;
-
-    @Mock
-    private PdfGeneratorService pdfGeneratorService;
-
-    @Mock
     private StorageService storageService;
 
     @Mock
-    private UserRepository userRepository;
+    private CirculationExportAsyncExecutor asyncExecutor;
 
     @Mock
     private AuditLogService auditLogService;
@@ -75,7 +75,6 @@ class CirculationExportServiceTest {
 
     @BeforeEach
     void injectOptionalFields() {
-        ReflectionTestUtils.setField(exportService, "userRepository", userRepository);
         ReflectionTestUtils.setField(exportService, "auditLogService", auditLogService);
     }
 
@@ -95,6 +94,7 @@ class CirculationExportServiceTest {
         assertThat(resp.status()).isEqualTo("GENERATING");
         assertThat(entity.getExportStatus()).isEqualTo(CirculationExportStatus.PENDING);
         verify(documentRepository, times(1)).save(any());
+        verify(asyncExecutor, times(1)).generateAsync(DOCUMENT_ID);
     }
 
     @Test
@@ -155,6 +155,7 @@ class CirculationExportServiceTest {
 
         assertThat(result).isInstanceOf(ExportRequestResponse.class);
         verify(documentRepository, never()).save(any());
+        verify(asyncExecutor, never()).generateAsync(any());
     }
 
     @Test
@@ -189,44 +190,6 @@ class CirculationExportServiceTest {
     }
 
     @Test
-    @DisplayName("generateAsync 成功時: PDF を R2 にアップロードし COMPLETED 遷移")
-    void generateAsync_success_uploadsAndCompletes() {
-        CirculationDocumentEntity entity = baseEntity(CirculationStatus.COMPLETED,
-                CirculationExportStatus.PENDING);
-        given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
-        given(documentRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-        given(recipientRepository.findByDocumentIdOrderBySortOrderAsc(DOCUMENT_ID))
-                .willReturn(List.of());
-        given(pdfGeneratorService.generateFromTemplate(eq("pdf/circulation-export"), any()))
-                .willReturn(new byte[]{1, 2, 3});
-
-        exportService.generateAsync(DOCUMENT_ID);
-
-        verify(storageService, times(1)).upload(anyString(), any(byte[].class), eq("application/pdf"));
-        assertThat(entity.getExportStatus()).isEqualTo(CirculationExportStatus.COMPLETED);
-        assertThat(entity.getExportFileKey()).startsWith("circulation/exports/100/");
-        assertThat(entity.getExportCompletedAt()).isNotNull();
-    }
-
-    @Test
-    @DisplayName("generateAsync 失敗時: FAILED 遷移しエラーメッセージを保存")
-    void generateAsync_failure_marksFailed() {
-        CirculationDocumentEntity entity = baseEntity(CirculationStatus.COMPLETED,
-                CirculationExportStatus.PENDING);
-        given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
-        given(documentRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-        given(recipientRepository.findByDocumentIdOrderBySortOrderAsc(DOCUMENT_ID))
-                .willReturn(List.of());
-        given(pdfGeneratorService.generateFromTemplate(anyString(), any()))
-                .willThrow(new RuntimeException("PDF テンプレ生成失敗"));
-
-        exportService.generateAsync(DOCUMENT_ID);
-
-        assertThat(entity.getExportStatus()).isEqualTo(CirculationExportStatus.FAILED);
-        assertThat(entity.getExportErrorMessage()).contains("PDF テンプレ生成失敗");
-    }
-
-    @Test
     @DisplayName("受信者ユーザーはエクスポート要求可能")
     void requestExport_recipientUser_allowed() {
         CirculationDocumentEntity entity = baseEntity(CirculationStatus.COMPLETED,
@@ -246,6 +209,7 @@ class CirculationExportServiceTest {
 
         assertThat(result).isInstanceOf(ExportRequestResponse.class);
         assertThat(entity.getExportStatus()).isEqualTo(CirculationExportStatus.PENDING);
+        verify(asyncExecutor, times(1)).generateAsync(DOCUMENT_ID);
     }
 
     // ─────────────────────────────────────────────
@@ -265,5 +229,87 @@ class CirculationExportServiceTest {
                 .build();
         ReflectionTestUtils.setField(entity, "id", DOCUMENT_ID);
         return entity;
+    }
+
+    // ─────────────────────────────────────────────
+    // CirculationExportAsyncExecutor 単体テスト
+    // ─────────────────────────────────────────────
+
+    /**
+     * 非同期実行ユニット {@link CirculationExportAsyncExecutor} の単体テスト。
+     * Service から分離されたため、本ネストクラスで個別検証する。
+     */
+    @Nested
+    @DisplayName("CirculationExportAsyncExecutor 単体テスト")
+    @ExtendWith(MockitoExtension.class)
+    class AsyncExecutorTest {
+
+        @Mock
+        private CirculationDocumentRepository documentRepository;
+
+        @Mock
+        private CirculationRecipientRepository recipientRepository;
+
+        @Mock
+        private CirculationStampCorrectionLogRepository correctionLogRepository;
+
+        @Mock
+        private PdfGeneratorService pdfGeneratorService;
+
+        @Mock
+        private StorageService storageService;
+
+        @Mock
+        private UserRepository userRepository;
+
+        @Mock
+        private AuditLogService auditLogService;
+
+        @InjectMocks
+        private CirculationExportAsyncExecutor asyncExecutor;
+
+        @BeforeEach
+        void injectOptionalFields() {
+            ReflectionTestUtils.setField(asyncExecutor, "userRepository", userRepository);
+            ReflectionTestUtils.setField(asyncExecutor, "auditLogService", auditLogService);
+        }
+
+        @Test
+        @DisplayName("generateAsync 成功時: PDF を R2 にアップロードし COMPLETED 遷移")
+        void generateAsync_success_uploadsAndCompletes() {
+            CirculationDocumentEntity entity = baseEntity(CirculationStatus.COMPLETED,
+                    CirculationExportStatus.PENDING);
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
+            given(documentRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(recipientRepository.findByDocumentIdOrderBySortOrderAsc(DOCUMENT_ID))
+                    .willReturn(List.of());
+            given(pdfGeneratorService.generateFromTemplate(eq("pdf/circulation-export"), any()))
+                    .willReturn(new byte[]{1, 2, 3});
+
+            asyncExecutor.generateAsync(DOCUMENT_ID);
+
+            verify(storageService, times(1)).upload(anyString(), any(byte[].class), eq("application/pdf"));
+            assertThat(entity.getExportStatus()).isEqualTo(CirculationExportStatus.COMPLETED);
+            assertThat(entity.getExportFileKey()).startsWith("circulation/exports/100/");
+            assertThat(entity.getExportCompletedAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("generateAsync 失敗時: FAILED 遷移しエラーメッセージを保存")
+        void generateAsync_failure_marksFailed() {
+            CirculationDocumentEntity entity = baseEntity(CirculationStatus.COMPLETED,
+                    CirculationExportStatus.PENDING);
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
+            given(documentRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(recipientRepository.findByDocumentIdOrderBySortOrderAsc(DOCUMENT_ID))
+                    .willReturn(List.of());
+            given(pdfGeneratorService.generateFromTemplate(anyString(), any()))
+                    .willThrow(new RuntimeException("PDF テンプレ生成失敗"));
+
+            asyncExecutor.generateAsync(DOCUMENT_ID);
+
+            assertThat(entity.getExportStatus()).isEqualTo(CirculationExportStatus.FAILED);
+            assertThat(entity.getExportErrorMessage()).contains("PDF テンプレ生成失敗");
+        }
     }
 }
