@@ -1127,7 +1127,10 @@
       "createNew": "＋ 新建文件夹",
       "manage": "文件夹管理",
       "teams": "团队",
-      "organizations": "组织"
+      "organizations": "组织",
+      "showAll": "显示全部",
+      "foldersSection": "文件夹",
+      "quickJumpSection": "直接跳转"
     },
     "error": {
       "typeMismatch": "文件夹作用域类型不匹配",

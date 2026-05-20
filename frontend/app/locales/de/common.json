@@ -1127,7 +1127,10 @@
       "createNew": "+ Neuen Ordner",
       "manage": "Ordner verwalten",
       "teams": "Teams",
-      "organizations": "Organisationen"
+      "organizations": "Organisationen",
+      "showAll": "Alle anzeigen",
+      "foldersSection": "Ordner",
+      "quickJumpSection": "Direkt springen"
     },
     "error": {
       "typeMismatch": "Ordner-Bereichstyp stimmt nicht überein",
