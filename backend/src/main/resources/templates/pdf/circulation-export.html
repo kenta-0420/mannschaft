@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="stylesheet" href="/css/pdf-common.css"/>
+    <style>
+        /*
+         * 回覧押印証跡 PDF 専用スタイル（F05.2 Phase 11 第四陣 4-C）
+         * Flying Saucer は flexbox/grid 未対応のため float / table レイアウトを採用。
+         */
+        .export-title {
+            text-align: center;
+            font-size: 18pt;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-family: 'NotoSerifJP', 'NotoSansJP', serif;
+        }
+        .export-subtitle {
+            text-align: center;
+            font-size: 10pt;
+            color: #666;
+            margin-bottom: 24px;
+        }
+        .meta-table {
+            width: 100%;
+            margin: 16px 0;
+            border-collapse: collapse;
+        }
+        .meta-table td {
+            border: 1px solid #999;
+            padding: 6px 10px;
+            font-size: 10pt;
+        }
+        .meta-table .label {
+            background-color: #f0f0f0;
+            width: 25%;
+            font-weight: bold;
+        }
+        .body-block {
+            border: 1px solid #ccc;
+            padding: 12px 16px;
+            margin: 16px 0;
+            background-color: #fafafa;
+            font-size: 10pt;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        .section-heading {
+            font-size: 12pt;
+            border-left: 4px solid #444;
+            padding-left: 8px;
+            margin: 20px 0 8px;
+        }
+        .recipient-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+        }
+        .recipient-table th, .recipient-table td {
+            border: 1px solid #999;
+            padding: 5px 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+        .recipient-table th {
+            background-color: #e8e8e8;
+            font-weight: bold;
+        }
+        .status-stamped { color: #157a3f; font-weight: bold; }
+        .status-pending { color: #999; }
+        .status-skipped { color: #b97600; }
+        .status-rejected { color: #b40000; }
+        .corrections-block {
+            margin-top: 4px;
+            padding-left: 12px;
+            font-size: 8pt;
+            color: #666;
+        }
+        .footer-note {
+            margin-top: 24px;
+            padding-top: 8px;
+            border-top: 1px solid #ccc;
+            font-size: 8pt;
+            color: #777;
+        }
+    </style>
+</head>
+<body class="font-serif">
+    <div>
+        <p class="export-title">回覧押印証跡</p>
+        <p class="export-subtitle">F05.2 / 押印済み証跡 PDF — Mannschaft</p>
+
+        <table class="meta-table">
+            <tr>
+                <td class="label">文書ID</td>
+                <td th:text="${documentId}">123</td>
+                <td class="label">スコープ</td>
+                <td th:text="${scopeType} + ' / ' + ${scopeId}">TEAM / 1</td>
+            </tr>
+            <tr>
+                <td class="label">タイトル</td>
+                <td colspan="3" th:text="${title}">回覧タイトル</td>
+            </tr>
+            <tr>
+                <td class="label">作成者</td>
+                <td th:text="${createdByName}">作成者名</td>
+                <td class="label">回覧方式</td>
+                <td th:text="${circulationMode}">SIMULTANEOUS</td>
+            </tr>
+            <tr>
+                <td class="label">完了日時</td>
+                <td th:text="${completedAt != null} ? ${#temporals.format(completedAt, 'yyyy/MM/dd HH:mm')} : '-'">2026/05/17 10:00</td>
+                <td class="label">期限日</td>
+                <td th:text="${dueDate != null} ? ${#temporals.format(dueDate, 'yyyy/MM/dd')} : '-'">2026/05/20</td>
+            </tr>
+            <tr>
+                <td class="label">優先度</td>
+                <td th:text="${priority}">NORMAL</td>
+                <td class="label">押印数</td>
+                <td th:text="${stampedCount} + ' / ' + ${totalRecipientCount}">3 / 5</td>
+            </tr>
+        </table>
+
+        <h2 class="section-heading">本文</h2>
+        <div class="body-block" th:text="${body}">本文がここに表示されます。</div>
+
+        <h2 class="section-heading">押印一覧</h2>
+        <table class="recipient-table">
+            <thead>
+                <tr>
+                    <th style="width: 8%;">順序</th>
+                    <th style="width: 25%;">受信者</th>
+                    <th style="width: 14%;">ステータス</th>
+                    <th style="width: 18%;">押印日時</th>
+                    <th style="width: 35%;">備考 / 訂正履歴</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="r : ${recipients}">
+                    <td th:text="${r.sortOrder}">0</td>
+                    <td th:text="${r.displayName}">受信者名</td>
+                    <td>
+                        <span th:if="${r.status == 'STAMPED'}" class="status-stamped">押印済み</span>
+                        <span th:if="${r.status == 'PENDING'}" class="status-pending">未押印</span>
+                        <span th:if="${r.status == 'SKIPPED'}" class="status-skipped">スキップ</span>
+                        <span th:if="${r.status == 'REJECTED'}" class="status-rejected">拒否</span>
+                    </td>
+                    <td th:text="${r.stampedAt != null} ? ${#temporals.format(r.stampedAt, 'yyyy/MM/dd HH:mm')} : '-'">2026/05/17 10:00</td>
+                    <td>
+                        <div th:if="${r.skipReason != null}" th:text="'スキップ理由: ' + ${r.skipReason}">スキップ理由: ...</div>
+                        <div th:if="${r.isFlipped}" style="color: #b97600;">※ 逆さまハンコ</div>
+                        <div th:if="${r.tiltAngle != null and r.tiltAngle != 0}"
+                             th:text="'傾き: ' + ${r.tiltAngle} + '度'">傾き: 8度</div>
+                        <div th:if="${not #lists.isEmpty(r.corrections)}" class="corrections-block">
+                            訂正履歴:
+                            <ul>
+                                <li th:each="c : ${r.corrections}">
+                                    <span th:text="${#temporals.format(c.createdAt, 'yyyy/MM/dd HH:mm')}">2026/05/17 10:00</span>
+                                    <span th:if="${c.reason != null}" th:text="' — ' + ${c.reason}"> — 理由</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="footer-note">
+            本書は Mannschaft により電子的に生成された押印証跡です。
+            生成日時: <span th:text="${#dates.format(#dates.createNow(), 'yyyy/MM/dd HH:mm:ss')}">2026/05/17 10:30:00</span>
+        </div>
+    </div>
+</body>
+</html>
