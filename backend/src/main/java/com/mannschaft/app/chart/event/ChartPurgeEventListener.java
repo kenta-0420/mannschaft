@@ -82,4 +82,22 @@ public class ChartPurgeEventListener {
                     });
         }
     }
+
+    /**
+     * 管理者からの手動 retry 用。{@link #on(AccountPurgedEvent)} と同じドメイン操作を実行するが、
+     * {@code completionStatusRepository} の更新は {@code GdprPurgeRetryService} が担う。
+     *
+     * @param userId retry 対象ユーザー ID
+     * @return true=成功、false=失敗
+     */
+    @Transactional
+    public boolean retryPurge(Long userId) {
+        try {
+            chartRecordRepository.anonymizeCustomerUserId(userId);
+            return true;
+        } catch (Exception e) {
+            log.warn("chart purge retry: 匿名化失敗 userId={}", userId, e);
+            return false;
+        }
+    }
 }

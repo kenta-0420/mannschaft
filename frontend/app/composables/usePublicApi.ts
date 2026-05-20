@@ -1,9 +1,12 @@
 import type {
+  NameDisclosureChangeLogResponse,
   PublicOrganizationResponse,
   PublicPostDetail,
   PublicPostSummary,
   PublicTeamResponse,
   SpringPage,
+  SupporterNameDisclosureResponse,
+  NameDisclosureMode,
 } from '~/types/public'
 
 /**
@@ -74,6 +77,67 @@ export function usePublicApi() {
     return api<PublicPostDetail>(`/api/v1/public/organizations/${orgId}/posts/${postId}`)
   }
 
+  // ─── F19.1 Phase 2: Admin 向け supporter_name_disclosure 切替 API ───
+
+  /**
+   * チームの投稿者識別モードを切り替える（ADMIN / SYSTEM_ADMIN 限定）。
+   *
+   * confirmed=true が必須。DISPLAY_NAME → REAL_NAME の切替時は
+   * SupporterNameDisclosureWarningDialog で確認を取ってから呼び出すこと。
+   */
+  async function patchTeamNameDisclosure(
+    teamId: number,
+    mode: NameDisclosureMode,
+    confirmed: boolean,
+  ): Promise<SupporterNameDisclosureResponse> {
+    return api<SupporterNameDisclosureResponse>(
+      `/api/v1/admin/teams/${teamId}/supporter-name-disclosure`,
+      {
+        method: 'PATCH',
+        body: { mode, confirmed },
+      },
+    )
+  }
+
+  /**
+   * 組織の投稿者識別モードを切り替える（ADMIN / SYSTEM_ADMIN 限定）。
+   */
+  async function patchOrganizationNameDisclosure(
+    organizationId: number,
+    mode: NameDisclosureMode,
+    confirmed: boolean,
+  ): Promise<SupporterNameDisclosureResponse> {
+    return api<SupporterNameDisclosureResponse>(
+      `/api/v1/admin/organizations/${organizationId}/supporter-name-disclosure`,
+      {
+        method: 'PATCH',
+        body: { mode, confirmed },
+      },
+    )
+  }
+
+  /**
+   * チームの投稿者識別モード変更履歴を取得する（ADMIN / SYSTEM_ADMIN 限定）。
+   */
+  async function fetchTeamNameDisclosureHistory(
+    teamId: number,
+  ): Promise<NameDisclosureChangeLogResponse[]> {
+    return api<NameDisclosureChangeLogResponse[]>(
+      `/api/v1/admin/teams/${teamId}/supporter-name-disclosure/history`,
+    )
+  }
+
+  /**
+   * 組織の投稿者識別モード変更履歴を取得する（ADMIN / SYSTEM_ADMIN 限定）。
+   */
+  async function fetchOrganizationNameDisclosureHistory(
+    organizationId: number,
+  ): Promise<NameDisclosureChangeLogResponse[]> {
+    return api<NameDisclosureChangeLogResponse[]>(
+      `/api/v1/admin/organizations/${organizationId}/supporter-name-disclosure/history`,
+    )
+  }
+
   return {
     fetchPublicTeam,
     fetchPublicOrganization,
@@ -81,5 +145,9 @@ export function usePublicApi() {
     fetchPublicTeamPostDetail,
     fetchPublicOrganizationPosts,
     fetchPublicOrganizationPostDetail,
+    patchTeamNameDisclosure,
+    patchOrganizationNameDisclosure,
+    fetchTeamNameDisclosureHistory,
+    fetchOrganizationNameDisclosureHistory,
   }
 }

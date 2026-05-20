@@ -84,4 +84,22 @@ public class ErrorReportPurgeEventListener {
                     });
         }
     }
+
+    /**
+     * 管理者からの手動 retry 用。{@link #on(AccountPurgedEvent)} と同じドメイン操作を実行するが、
+     * {@code completionStatusRepository} の更新は {@code GdprPurgeRetryService} が担う。
+     *
+     * @param userId retry 対象ユーザー ID
+     * @return true=成功、false=失敗
+     */
+    @Transactional
+    public boolean retryPurge(Long userId) {
+        try {
+            errorReportOccurrenceRepository.anonymizeByUserId(userId);
+            return true;
+        } catch (Exception e) {
+            log.warn("errorreport purge retry: 匿名化失敗 userId={}", userId, e);
+            return false;
+        }
+    }
 }
