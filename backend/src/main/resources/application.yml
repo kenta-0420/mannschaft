@@ -179,6 +179,17 @@ management:
     metrics:
       export:
         enabled: true
+  # F10.5 Phase 10-β: 分散トレーシング（Micrometer Tracing + OpenTelemetry OTLP）
+  # - sampling.probability: 本番は 10% サンプリング（全件取得はコスト高）
+  # - otlp.tracing.endpoint: OTEL_EXPORTER_OTLP_ENDPOINT 環境変数で上書き可能。
+  #   ローカルは application-local.yml で Jaeger に送信（docker-compose --profile observability）
+  #   本番は OTEL_EXPORTER_OTLP_ENDPOINT を設定した Collector/Tempo エンドポイントに差し替え。
+  tracing:
+    sampling:
+      probability: 0.1
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
 
 # 備品ランキング集計バッチ設定（F09.12）
 equipment:

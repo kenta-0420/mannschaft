@@ -53,6 +53,24 @@ services:
     volumes:
       - valkey-data:/data
 
+  # OpenTelemetry トレース可視化（ローカル開発用）
+  # F10.5 Phase 10-β: 分散トレーシング可視化
+  # 起動: docker-compose --profile observability up -d jaeger
+  # UI:   http://localhost:16686
+  # Service 名: mannschaft
+  # 通常の docker-compose up では起動しない（profiles: observability で隔離）
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    container_name: mannschaft-jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    profiles:
+      - observability
+
 volumes:
   mysql-data:
   valkey-data:
