@@ -48,6 +48,7 @@ class EmailOutboxServiceTest {
     @Mock private SesExceptionClassifier classifier;
     @Spy private IdempotencyKeyGenerator keyGen = new IdempotencyKeyGenerator();
     @Spy private MeterRegistry meterRegistry = new SimpleMeterRegistry();
+    @Mock private EmailOutboxMicrometerMetrics metrics;
     @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks private EmailOutboxServiceImpl service;
