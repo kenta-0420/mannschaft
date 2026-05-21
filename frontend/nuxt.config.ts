@@ -484,14 +484,10 @@ export default defineNuxtConfig({
     transpile: ['frappe-gantt'],
   },
 
-  nitro: {
-    prerender: {
-      // GitHub Actions (CI=true) では全ページクロールが 4GB OOM を引き起こすため、
-      // root のみプリレンダリングして Lighthouse CI の計測対象とする。
-      crawlLinks: process.env.CI !== 'true',
-      ...(process.env.CI === 'true' ? { routes: ['/'] } : {}),
-    },
-  },
+  // GitHub Actions (CI=true) では SSR バンドルロード自体が 4GB OOM を引き起こすため
+  // SPA モード（ssr: false）で Nitro SSR バンドルをスキップする。
+  // nuxt generate が index.html + クライアント資産のみ生成し Lighthouse CI で計測可能。
+  ...(process.env.CI === 'true' ? { ssr: false } : {}),
 
   vite: {
     server: {
