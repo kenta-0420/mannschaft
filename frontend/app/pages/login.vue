@@ -48,8 +48,14 @@ async function handleLogin() {
             avatarUrl: string | null
             systemRole: string | null
             locale: string
+            status: string | null
           }
         }>('/api/v1/users/me')
+        // PENDING_PARENTAL_CONSENT: 保護者同意待ち → 専用ページへリダイレクト
+        if (profile.data.status === 'PENDING_PARENTAL_CONSENT') {
+          navigateTo('/parental-consent/pending')
+          return
+        }
         authStore.setUser({
           id: profile.data.id,
           email: profile.data.email,
