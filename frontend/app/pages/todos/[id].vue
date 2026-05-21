@@ -107,6 +107,10 @@ function cancelEdit() {
   editing.value = false
 }
 
+function toLocalDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 async function saveEdit() {
   if (!editForm.value.title.trim()) return
   saving.value = true
@@ -115,8 +119,8 @@ async function saveEdit() {
       title: editForm.value.title.trim(),
       description: editForm.value.description.trim() || null,
       priority: editForm.value.priority,
-      startDate: editForm.value.startDate ? editForm.value.startDate.toISOString().slice(0, 10) : null,
-      dueDate: editForm.value.dueDate ? editForm.value.dueDate.toISOString().slice(0, 10) : null,
+      startDate: editForm.value.startDate ? toLocalDateStr(editForm.value.startDate) : null,
+      dueDate: editForm.value.dueDate ? toLocalDateStr(editForm.value.dueDate) : null,
     })
     notification.success(t('todo.action.updated'))
     editing.value = false

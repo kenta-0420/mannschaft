@@ -27,12 +27,16 @@ const priorityOptions = [
   { label: t('todo.priorityValue.LOW'), value: 'LOW' },
 ]
 
+function toLocalDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 async function submit() {
   loading.value = true
   try {
     const body: ConvertToTodoRequest = {
       priority: form.value.priority,
-      dueDate: dueDateObj.value ? dueDateObj.value.toISOString().slice(0, 10) : undefined,
+      dueDate: dueDateObj.value ? toLocalDateStr(dueDateObj.value) : undefined,
     }
     const res = await memoApi.convertToTodo(props.memo.id, body)
     visible.value = false
