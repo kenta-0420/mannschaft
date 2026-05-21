@@ -433,6 +433,41 @@
       "messaging_campaigns": "メッセージ型キャンペーン"
     }
   },
+  "creative": {
+    "title": "広告クリエイティブ一覧",
+    "description": "キャンペーンに紐づく広告クリエイティブを管理します。",
+    "empty": "まだクリエイティブはありません。",
+    "create_button": "新規作成",
+    "status": {
+      "DRAFT": "下書き",
+      "ACTIVE": "有効",
+      "PAUSED": "一時停止",
+      "ENDED": "終了"
+    },
+    "column_title": "タイトル",
+    "column_status": "ステータス",
+    "column_destination": "リンク先",
+    "column_created_at": "作成日時",
+    "column_actions": "操作",
+    "form": {
+      "title_label": "タイトル",
+      "title_placeholder": "例: 春のセール広告",
+      "image_url_label": "画像 URL（任意）",
+      "image_url_placeholder": "https://example.com/image.png",
+      "destination_url_label": "リンク先 URL",
+      "destination_url_placeholder": "https://example.com/landing"
+    },
+    "dialog_create_title": "クリエイティブを作成",
+    "dialog_edit_title": "クリエイティブを編集",
+    "delete_confirm": "このクリエイティブを削除します（ENDED 状態に変更されます）。よろしいですか？",
+    "created_toast": "クリエイティブを作成しました。",
+    "updated_toast": "クリエイティブを更新しました。",
+    "deleted_toast": "クリエイティブを削除しました。",
+    "error_load": "クリエイティブの取得に失敗しました。",
+    "error_save": "保存に失敗しました。",
+    "error_delete": "削除に失敗しました。",
+    "back_to_advertiser": "広告主ダッシュボードへ"
+  },
   "teams_page": {
     "title": "チーム広告主管理",
     "description": "チーム単位でメッセージ型広告キャンペーンを作成・配信します。",

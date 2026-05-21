@@ -118,6 +118,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/contact-invite/*").permitAll()
                 // F15.4 組織内チーム（店舗）検索（認証不要・レート制限あり）
                 .requestMatchers(HttpMethod.GET, "/api/v1/organizations/*/teams/search").permitAll()
+                // F19.1 Phase 3 SEO: sitemap.xml / robots.txt（認証不要）
+                // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §9.2 / §9.3
+                .requestMatchers(HttpMethod.GET, "/sitemap.xml", "/robots.txt").permitAll()
+                .requestMatchers(HttpMethod.GET, "/sitemap-*.xml").permitAll()
                 // F19.1 Phase 1 公開ページ API（認証不要・レート制限あり）。
                 // F15.4 Phase 5-α `/api/v1/public/teams/*` も本 F19.1 規約に統合・置換した。
                 // 設計書 §7.4: パターンは `*`（1 階層厳格）で限定。`/**`（再帰）は使わない。

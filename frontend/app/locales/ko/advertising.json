@@ -433,6 +433,41 @@
       "messaging_campaigns": "메시지형 캠페인"
     }
   },
+  "creative": {
+    "title": "광고 소재 목록",
+    "description": "캠페인에 연결된 광고 소재를 관리합니다.",
+    "empty": "소재가 없습니다.",
+    "create_button": "새로 만들기",
+    "status": {
+      "DRAFT": "초안",
+      "ACTIVE": "활성",
+      "PAUSED": "일시 중지",
+      "ENDED": "종료"
+    },
+    "column_title": "제목",
+    "column_status": "상태",
+    "column_destination": "목적지 URL",
+    "column_created_at": "생성일",
+    "column_actions": "작업",
+    "form": {
+      "title_label": "제목",
+      "title_placeholder": "예: 봄 세일 광고",
+      "image_url_label": "이미지 URL (선택)",
+      "image_url_placeholder": "https://example.com/image.png",
+      "destination_url_label": "목적지 URL",
+      "destination_url_placeholder": "https://example.com/landing"
+    },
+    "dialog_create_title": "소재 만들기",
+    "dialog_edit_title": "소재 편집",
+    "delete_confirm": "이 소재는 ENDED 상태로 변경됩니다. 계속하시겠습니까?",
+    "created_toast": "소재가 생성되었습니다.",
+    "updated_toast": "소재가 업데이트되었습니다.",
+    "deleted_toast": "소재가 삭제되었습니다.",
+    "error_load": "소재 로드에 실패했습니다.",
+    "error_save": "저장에 실패했습니다.",
+    "error_delete": "삭제에 실패했습니다.",
+    "back_to_advertiser": "광고주 대시보드로 돌아가기"
+  },
   "teams_page": {
     "title": "팀 광고주 관리",
     "description": "팀 단위로 메시지형 광고 캠페인을 생성하고 배포합니다.",

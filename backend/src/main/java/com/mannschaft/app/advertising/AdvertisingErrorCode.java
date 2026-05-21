@@ -78,7 +78,16 @@ public enum AdvertisingErrorCode implements ErrorCode {
     AD_022("AD_022", "指定されたコンバージョンが見つかりません", Severity.WARN),
 
     /** コンバージョン期間が不正 */
-    AD_023("AD_023", "コンバージョン取得期間の指定が不正です", Severity.WARN);
+    AD_023("AD_023", "コンバージョン取得期間の指定が不正です", Severity.WARN),
+
+    /** クリエイティブが見つからない */
+    AD_024("AD_024", "指定された広告クリエイティブが見つかりません", Severity.WARN),
+
+    /** 削除済みクリエイティブは更新不可 */
+    AD_025("AD_025", "削除済みの広告クリエイティブは更新できません", Severity.WARN),
+
+    /** キャンペーンとクリエイティブの不一致 */
+    AD_026("AD_026", "指定されたキャンペーンに属するクリエイティブが見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;
