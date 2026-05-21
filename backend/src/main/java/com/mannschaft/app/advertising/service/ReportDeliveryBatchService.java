@@ -11,6 +11,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +50,7 @@ public class ReportDeliveryBatchService {
      */
     @BatchEndpoint(name = "advertising-report-delivery-weekly", description = "広告主向け週次レポートを毎週月曜 09:00 に配信する")
     @Scheduled(cron = "0 0 9 * * MON", zone = "Asia/Tokyo")
+    @SchedulerLock(name = "reportDeliveryWeekly", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @Transactional
     public void deliverWeeklyReports() {
         LocalDate today = LocalDate.now();
@@ -62,6 +64,7 @@ public class ReportDeliveryBatchService {
      */
     @BatchEndpoint(name = "advertising-report-delivery-monthly", description = "広告主向け月次レポートを毎月 1 日 09:00 に配信する")
     @Scheduled(cron = "0 0 9 1 * *", zone = "Asia/Tokyo")
+    @SchedulerLock(name = "reportDeliveryMonthly", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @Transactional
     public void deliverMonthlyReports() {
         YearMonth lastMonth = YearMonth.now().minusMonths(1);
