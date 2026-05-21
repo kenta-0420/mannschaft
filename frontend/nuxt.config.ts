@@ -484,6 +484,11 @@ export default defineNuxtConfig({
     transpile: ['frappe-gantt'],
   },
 
+  // GitHub Actions (CI=true) では SSR バンドルロード自体が 4GB OOM を引き起こすため
+  // SPA モード（ssr: false）で Nitro SSR バンドルをスキップする。
+  // nuxt generate が index.html + クライアント資産のみ生成し Lighthouse CI で計測可能。
+  ...(process.env.CI === 'true' ? { ssr: false } : {}),
+
   vite: {
     server: {
       allowedHosts: true,
