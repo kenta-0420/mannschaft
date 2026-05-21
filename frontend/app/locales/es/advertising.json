@@ -433,6 +433,41 @@
       "messaging_campaigns": "Campañas de mensajería"
     }
   },
+  "creative": {
+    "title": "Lista de creativos",
+    "description": "Gestiona los creativos vinculados a tu campaña.",
+    "empty": "Aún no hay creativos.",
+    "create_button": "Crear nuevo",
+    "status": {
+      "DRAFT": "Borrador",
+      "ACTIVE": "Activo",
+      "PAUSED": "Pausado",
+      "ENDED": "Finalizado"
+    },
+    "column_title": "Título",
+    "column_status": "Estado",
+    "column_destination": "URL de destino",
+    "column_created_at": "Creado el",
+    "column_actions": "Acciones",
+    "form": {
+      "title_label": "Título",
+      "title_placeholder": "Ej.: Anuncio de rebajas de primavera",
+      "image_url_label": "URL de imagen (opcional)",
+      "image_url_placeholder": "https://example.com/image.png",
+      "destination_url_label": "URL de destino",
+      "destination_url_placeholder": "https://example.com/landing"
+    },
+    "dialog_create_title": "Crear creativo",
+    "dialog_edit_title": "Editar creativo",
+    "delete_confirm": "Este creativo pasará a estado ENDED. ¿Continuar?",
+    "created_toast": "Creativo creado.",
+    "updated_toast": "Creativo actualizado.",
+    "deleted_toast": "Creativo eliminado.",
+    "error_load": "Error al cargar los creativos.",
+    "error_save": "Error al guardar.",
+    "error_delete": "Error al eliminar.",
+    "back_to_advertiser": "Volver al panel del anunciante"
+  },
   "teams_page": {
     "title": "Gestión de anunciante del equipo",
     "description": "Crea y entrega campañas de mensajería a nivel de equipo.",

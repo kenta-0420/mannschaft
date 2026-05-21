@@ -43,4 +43,40 @@ public class AdEntity extends BaseEntity {
     public enum AdStatus {
         DRAFT, ACTIVE, PAUSED, ENDED
     }
+
+    /**
+     * クリエイティブ情報を更新する。null の場合は現在の値を保持する。
+     */
+    public void updateCreative(String title, String imageUrl, String destinationUrl) {
+        if (title != null) {
+            this.title = title;
+        }
+        if (imageUrl != null) {
+            this.imageUrl = imageUrl;
+        }
+        if (destinationUrl != null) {
+            this.destinationUrl = destinationUrl;
+        }
+    }
+
+    /**
+     * 論理削除（ENDED状態にする）。
+     */
+    public void softDelete() {
+        this.status = AdStatus.ENDED;
+    }
+
+    /**
+     * 審査承認（ACTIVE状態にする）。
+     */
+    public void approve() {
+        this.status = AdStatus.ACTIVE;
+    }
+
+    /**
+     * 審査却下（ENDED状態にする）。
+     */
+    public void reject() {
+        this.status = AdStatus.ENDED;
+    }
 }

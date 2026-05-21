@@ -358,3 +358,30 @@ export interface SuspendAdvertiserRequest {
 export interface UpdateCreditLimitRequest {
   creditLimit: number
 }
+
+// === Ad Creatives ===
+
+export type AdCreativeStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ENDED'
+
+export interface AdCreativeResponse {
+  id: number
+  campaignId: number
+  title: string
+  imageUrl: string | null
+  destinationUrl: string
+  status: AdCreativeStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateAdCreativeRequest {
+  title: string
+  imageUrl?: string
+  destinationUrl: string
+}
+
+export interface UpdateAdCreativeRequest {
+  title?: string
+  imageUrl?: string
+  destinationUrl?: string
+}

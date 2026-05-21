@@ -433,6 +433,41 @@
       "messaging_campaigns": "Messaging-Kampagnen"
     }
   },
+  "creative": {
+    "title": "Werbemittel-Liste",
+    "description": "Verwalten Sie die mit Ihrer Kampagne verknüpften Werbemittel.",
+    "empty": "Noch keine Werbemittel vorhanden.",
+    "create_button": "Neu erstellen",
+    "status": {
+      "DRAFT": "Entwurf",
+      "ACTIVE": "Aktiv",
+      "PAUSED": "Pausiert",
+      "ENDED": "Beendet"
+    },
+    "column_title": "Titel",
+    "column_status": "Status",
+    "column_destination": "Ziel-URL",
+    "column_created_at": "Erstellt am",
+    "column_actions": "Aktionen",
+    "form": {
+      "title_label": "Titel",
+      "title_placeholder": "z.B. Frühjahrsangebot-Anzeige",
+      "image_url_label": "Bild-URL (optional)",
+      "image_url_placeholder": "https://example.com/image.png",
+      "destination_url_label": "Ziel-URL",
+      "destination_url_placeholder": "https://example.com/landing"
+    },
+    "dialog_create_title": "Werbemittel erstellen",
+    "dialog_edit_title": "Werbemittel bearbeiten",
+    "delete_confirm": "Dieses Werbemittel wird auf ENDED gesetzt. Fortfahren?",
+    "created_toast": "Werbemittel erstellt.",
+    "updated_toast": "Werbemittel aktualisiert.",
+    "deleted_toast": "Werbemittel gelöscht.",
+    "error_load": "Laden der Werbemittel fehlgeschlagen.",
+    "error_save": "Speichern fehlgeschlagen.",
+    "error_delete": "Löschen fehlgeschlagen.",
+    "back_to_advertiser": "Zurück zum Werbe-Dashboard"
+  },
   "teams_page": {
     "title": "Team-Werbetreibenden-Verwaltung",
     "description": "Erstellen und liefern Sie Messaging-Kampagnen auf Teamebene.",
