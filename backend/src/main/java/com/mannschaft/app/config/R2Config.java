@@ -5,6 +5,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.retry.RetryMode;
+import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
@@ -12,6 +15,7 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.sesv2.SesV2Client;
 
 import java.net.URI;
+import java.time.Duration;
 
 /**
  * Cloudflare R2 / AWS SES クライアント設定。
@@ -20,6 +24,19 @@ import java.net.URI;
  */
 @Configuration
 public class R2Config {
+
+    /**
+     * AWS SDK クライアント共通のオーバーライド設定。
+     * リトライポリシー（STANDARD モード: 最大3回）と、1回あたり30秒・全体90秒の
+     * タイムアウトを設定し、AWS/Cloudflare 側の無応答による無限ハングアップを防ぐ。
+     */
+    private ClientOverrideConfiguration awsClientOverrideConfig() {
+        return ClientOverrideConfiguration.builder()
+                .retryPolicy(RetryPolicy.forRetryMode(RetryMode.STANDARD))
+                .apiCallAttemptTimeout(Duration.ofSeconds(30))
+                .apiCallTimeout(Duration.ofSeconds(90))
+                .build();
+    }
 
     /**
      * R2 用 S3Client Bean。
@@ -31,7 +48,8 @@ public class R2Config {
             @Value("${mannschaft.storage.secret-key:}") String secretAccessKey,
             @Value("${mannschaft.storage.endpoint:}") String endpoint) {
         S3ClientBuilder builder = S3Client.builder()
-                .region(Region.of("auto"));
+                .region(Region.of("auto"))
+                .overrideConfiguration(awsClientOverrideConfig());
         if (!endpoint.isBlank()) {
             builder.endpointOverride(URI.create(endpoint))
                     .forcePathStyle(true);
@@ -75,7 +93,9 @@ public class R2Config {
     public SesV2Client sesV2Client(
             @Value("${mannschaft.ses.region:ap-northeast-1}") String sesRegion,
             @Value("${mannschaft.ses.endpoint:}") String sesEndpoint) {
-        var builder = SesV2Client.builder().region(Region.of(sesRegion));
+        var builder = SesV2Client.builder()
+                .region(Region.of(sesRegion))
+                .overrideConfiguration(awsClientOverrideConfig());
         if (!sesEndpoint.isBlank()) {
             builder.endpointOverride(URI.create(sesEndpoint));
         }
