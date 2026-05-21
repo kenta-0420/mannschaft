@@ -1,0 +1,15 @@
+{
+  "systemAdmin": {
+    "securityScan": {
+      "title": "Sicherheitsscan",
+      "status": {
+        "SUCCESS": "Normal",
+        "FAILURE": "Schwachstelle erkannt",
+        "IN_PROGRESS": "Scan läuft",
+        "UNKNOWN": "Nicht verfügbar"
+      },
+      "viewDetails": "Details anzeigen",
+      "lastScanned": "Letzter Scan"
+    }
+  }
+}

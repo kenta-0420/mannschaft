@@ -1,0 +1,15 @@
+{
+  "systemAdmin": {
+    "securityScan": {
+      "title": "Security Scan",
+      "status": {
+        "SUCCESS": "Passed",
+        "FAILURE": "Vulnerability Detected",
+        "IN_PROGRESS": "Scanning",
+        "UNKNOWN": "Unavailable"
+      },
+      "viewDetails": "View Details",
+      "lastScanned": "Last Scanned"
+    }
+  }
+}

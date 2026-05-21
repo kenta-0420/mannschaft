@@ -73,6 +73,7 @@ onMounted(load)
     <PageLoading v-if="loading" />
 
     <template v-else>
+      <SystemAdminSecurityScanCard />
       <SystemAdminModerationKpi :stats="moderationStats" />
       <SystemAdminErrorKpi :stats="errorStats" />
       <SystemAdminBatchSummary />
