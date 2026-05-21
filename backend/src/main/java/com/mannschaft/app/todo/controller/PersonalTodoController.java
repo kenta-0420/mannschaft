@@ -12,10 +12,13 @@ import com.mannschaft.app.todo.dto.PersonalMemoResponse;
 import com.mannschaft.app.todo.dto.ProgressModeRequest;
 import com.mannschaft.app.todo.dto.ProgressRateRequest;
 import com.mannschaft.app.todo.dto.TodoResponse;
+import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
+import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
 import com.mannschaft.app.todo.service.TodoGanttService;
 import com.mannschaft.app.todo.service.TodoPersonalMemoService;
 import com.mannschaft.app.todo.service.TodoScheduleLinkService;
 import com.mannschaft.app.todo.service.TodoService;
+import com.mannschaft.app.todo.service.TodoStatusService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -49,6 +52,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class PersonalTodoController {
 
     private final TodoService todoService;
+    private final TodoStatusService todoStatusService;
     private final TodoGanttService ganttService;
     private final TodoScheduleLinkService scheduleLinkService;
     private final TodoPersonalMemoService personalMemoService;
@@ -90,6 +94,19 @@ public class PersonalTodoController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<TodoResponse>> getPersonalTodo(@PathVariable Long id) {
         return ResponseEntity.ok(todoService.getTodo(id));
+    }
+
+    /**
+     * 個人TODOステータスを変更する。
+     */
+    @PatchMapping("/{id}/status")
+    @Operation(summary = "個人TODO ステータス変更")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "変更成功")
+    public ResponseEntity<ApiResponse<TodoStatusChangeResponse>> changeStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody TodoStatusChangeRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(todoStatusService.changeStatus(id, request, userId));
     }
 
     /**
