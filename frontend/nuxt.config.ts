@@ -476,6 +476,23 @@ export default defineNuxtConfig({
     },
   },
 
+  build: {
+    // frappe-gantt 1.2.2 の package.json exports フィールドに
+    // ./dist/frappe-gantt.css が列挙されていないため、
+    // nuxt:ssr-styles:client プラグインの静的解析時にエラーが発生する。
+    // transpile に指定することで Vite がパッケージを直接バンドルし解消する。
+    transpile: ['frappe-gantt'],
+  },
+
+  nitro: {
+    prerender: {
+      // GitHub Actions (CI=true) では全ページクロールが 4GB OOM を引き起こすため、
+      // root のみプリレンダリングして Lighthouse CI の計測対象とする。
+      crawlLinks: process.env.CI !== 'true',
+      ...(process.env.CI === 'true' ? { routes: ['/'] } : {}),
+    },
+  },
+
   vite: {
     server: {
       allowedHosts: true,
