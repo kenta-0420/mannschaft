@@ -318,6 +318,18 @@ app:
       # hikari:
       #   maximum-pool-size: 5
       #   read-only: true
+  # セキュリティスキャン状態ウィジェット — GitHub Actions API プロキシ設定
+  # OWASP Dependency-Check の週次スキャン（security-scan.yml）の最新実行状態を
+  # システム管理画面に表示するために使用する。
+  # - owner: GitHub リポジトリのオーナー
+  # - repo: GitHub リポジトリ名
+  # - token: GitHub Personal Access Token（空文字で公開リポジトリは匿名アクセス可）
+  #   ※ public リポジトリでも API rate limit（60 req/h 未認証）に注意。
+  #   ※ 本番では GitHub PAT を環境変数 GITHUB_API_TOKEN で設定すること。
+  github:
+    owner: ${GITHUB_REPO_OWNER:kenta-0420}
+    repo: ${GITHUB_REPO_NAME:mannschaft}
+    token: ${GITHUB_API_TOKEN:}
 
 # F02.10 天気ウィジェット — WeatherAPI.com クライアント + 座標導出・GeoNames 取り込み設定
 # 設計書: docs/features/F02.10_weather_widget.md §3 / §7.3 / §7.3.1 / §8 / §10.3
@@ -409,3 +421,4 @@ resilience4j:
       simulation-pool:
         maxConcurrentCalls: 4
         maxWaitDuration: 0
+

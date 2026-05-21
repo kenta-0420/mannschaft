@@ -499,3 +499,18 @@ export interface GdprPurgeStatusQuery {
   page?: number
   size?: number
 }
+
+// ===== セキュリティスキャン状態 =====
+
+/** OWASP Dependency-Check スキャンの結論ステータス */
+export type SecurityScanConclusion = 'SUCCESS' | 'FAILURE' | 'IN_PROGRESS' | 'UNKNOWN'
+
+/** セキュリティスキャン状態レスポンス（GET /api/v1/system-admin/security-scan/status） */
+export interface SecurityScanStatusResponse {
+  /** スキャン結論（"SUCCESS" | "FAILURE" | "IN_PROGRESS" | "UNKNOWN"） */
+  conclusion: SecurityScanConclusion
+  /** GitHub Actions の実行 URL（null の場合は取得失敗） */
+  runUrl: string | null
+  /** 最終実行日時 ISO 8601 文字列（null の場合は実行履歴なし） */
+  runAt: string | null
+}
