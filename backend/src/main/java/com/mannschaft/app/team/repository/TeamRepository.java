@@ -164,4 +164,17 @@ public interface TeamRepository
            "AND t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC " +
            "AND t.archivedAt IS NULL")
     Optional<TeamEntity> findPublicTeamById(@Param("id") Long id);
+
+    /**
+     * F19.1 Phase 3 sitemap.xml 用: PUBLIC かつ未アーカイブのチームを全件取得する。
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは自動除外される。</p>
+     *
+     * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §9.2</p>
+     */
+    @Query("SELECT t FROM TeamEntity t " +
+           "WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC " +
+           "AND t.archivedAt IS NULL " +
+           "ORDER BY t.id ASC")
+    List<TeamEntity> findAllPublicTeams();
 }
