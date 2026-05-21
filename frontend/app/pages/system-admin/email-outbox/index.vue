@@ -3,8 +3,8 @@ import type {
   EmailOutboxSummary,
   EmailOutboxMetrics,
   EmailOutboxStatus,
+  PageMeta,
 } from '~/composables/useEmailOutboxAdminApi'
-import type { PageMeta } from '~/composables/useEmailOutboxAdminApi'
 
 definePageMeta({ middleware: 'auth' })
 

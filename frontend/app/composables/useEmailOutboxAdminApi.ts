@@ -121,7 +121,7 @@ export function useEmailOutboxAdminApi() {
    * @throws 404 Not Found / 409 Conflict
    */
   async function retryDeadLetter(id: string): Promise<void> {
-    await api<void>(`${BASE}/${encodeURIComponent(id)}/retry`, { method: 'POST' })
+    await api(`${BASE}/${encodeURIComponent(id)}/retry`, { method: 'POST' })
   }
 
   /**
@@ -131,7 +131,7 @@ export function useEmailOutboxAdminApi() {
    * @throws 404 Not Found / 409 Conflict
    */
   async function cancelPending(id: string): Promise<void> {
-    await api<void>(`${BASE}/${encodeURIComponent(id)}/cancel`, { method: 'POST' })
+    await api(`${BASE}/${encodeURIComponent(id)}/cancel`, { method: 'POST' })
   }
 
   return {
