@@ -1,48 +1,84 @@
 package com.mannschaft.app.advertising.campaign.service;
 
+import com.mannschaft.app.advertising.campaign.entity.AdBannerDelivery;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaignChannel;
+import com.mannschaft.app.advertising.campaign.repository.AdBannerDeliveryRepository;
+import com.mannschaft.app.advertising.service.AdImpressionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
- * F09.17 Phase 11-b ε-B バナーチャネル配信サービス（スタブ実装）。
+ * F09.17 Phase 11-b ε-B / Phase 10 第二陣-A バナーチャネル配信サービス。
  *
- * <p>BANNER チャネルは F09.7 既存バナー抽選機構との統合が必要なため、ε-B では
- * 抽選器に「次の serve 機会で出すべき広告」をキューイングする責務だけを持つ予定。
- * 実装は後続フェーズ（ε-C 以降）に委ねる。</p>
- *
- * <p>現状は呼び出されたことをログに残すのみで {@code ad_banner_deliveries} 書き込みも行わない。
- * 真の impression / click は F09.7 が serve した瞬間に callback で記録する設計（設計書 §5）。</p>
+ * <p>BANNER チャネルの配信予約を担う。F09.7 {@link AdImpressionService} を呼んで
+ * インプレッションを記録し、{@code ad_banner_deliveries} に保存する。
+ * 真の click は F09.7 が serve した瞬間に記録する設計（設計書 §5）。</p>
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class AdBannerChannelService {
 
+    private final AdImpressionService adImpressionService;
+    private final AdBannerDeliveryRepository adBannerDeliveryRepository;
+
+    private static final DateTimeFormatter MONTH_KEY_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
+
     /**
-     * 1 ユーザーへのバナー配信予約（スタブ）。
+     * 1 ユーザーへのバナー配信予約。
      *
-     * <p>TODO(F09.17 ε-C): F09.7 {@code AdImpressionService.scheduleServe()} を呼び、
-     * {@code serving_strategy='MESSAGING_CAMPAIGN'} で抽選プールに入れる。
-     * 実 impression / click は F09.7 が記録し、本ドメインの {@code ad_banner_deliveries} は
-     * F09.7 の dispatch event を購読する別 Listener で埋まる想定。</p>
+     * <p>F09.7 {@code AdImpressionService.scheduleServe()} を呼んでインプレッションを記録し、
+     * {@code ad_banner_deliveries} に {@code ad_impression_id} を保存する。</p>
+     *
+     * <p>注: {@code AdImpressionEntity.campaignId} は F09.7 の {@code ad_campaigns.id}（Long）を
+     * 保持するフィールドだが、F09.17 メッセージ型キャンペーンの ID は UUID のため、
+     * 現フェーズでは {@code bannerCreativeId}（F09.7 の {@code ads.id}）を代替値として渡す。
+     * 将来的に F09.7 バナー抽選機構との統合が進んだ段階で {@code ad_campaigns.id} を
+     * 正確に引くよう修正すること（TODO: F09.7 Phase 11 統合フェーズで対応）。</p>
      *
      * @param campaign キャンペーン本体
      * @param channel  BANNER チャネル設定（banner_creative_id を含む）
      * @param userId   受信者
      * @return 常に true（FreqCap は消費したことにする / 設計書 §5 末尾の方針）
      */
+    @Transactional
     public boolean deliver(AdMessagingCampaign campaign,
                            AdMessagingCampaignChannel channel,
                            Long userId) {
         if (campaign == null || channel == null || userId == null) {
             throw new IllegalArgumentException("campaign, channel, userId は必須です");
         }
-        log.info("AD_BANNER_QUEUED (stub) campaignId={} userId={} creativeId={}",
-                campaign.getId(), userId, channel.getBannerCreativeId());
-        // TODO(F09.17 ε-C): F09.7 統合
+
+        Long bannerCreativeId = channel.getBannerCreativeId();
+
+        // F09.7 AdImpressionService にインプレッションを記録する。
+        // campaignId には現フェーズでは bannerCreativeId（ads.id）を代替使用する。
+        // （F09.17 の UUID キャンペーン ID は Long 型フィールドに格納できないため）
+        Long adImpressionId = adImpressionService.scheduleServe(
+                "MESSAGING_CAMPAIGN",
+                bannerCreativeId,
+                bannerCreativeId,
+                userId);
+
+        LocalDateTime now = LocalDateTime.now();
+        AdBannerDelivery delivery = AdBannerDelivery.builder()
+                .campaignId(campaign.getId())
+                .userId(userId)
+                .adImpressionId(adImpressionId)
+                .servedAt(now)
+                .monthKey(now.format(MONTH_KEY_FORMATTER))
+                .build();
+        adBannerDeliveryRepository.save(delivery);
+
+        log.info("AD_BANNER_DELIVERED campaignId={} userId={} creativeId={} impressionId={}",
+                campaign.getId(), userId, bannerCreativeId, adImpressionId);
+
         return true;
     }
 }
