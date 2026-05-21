@@ -4,6 +4,7 @@ import type { QuickMemoResponse, TagResponse } from '~/types/quickMemo'
 definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
+const router = useRouter()
 const notification = useNotification()
 const memoApi = useQuickMemoApi()
 const tagApi = useTagApi()
@@ -260,7 +261,7 @@ const showLimitBanner = computed(
     @updated="loadMemos"
     @archived="loadMemos"
     @deleted="loadMemos"
-    @converted="loadMemos"
+    @converted="(todoId) => router.push(`/todos/${todoId}`)"
   />
 
   <!-- 常駐フローティングボタン（ページ内に入れないよう注意：layout側推奨だが暫定） -->
