@@ -72,6 +72,27 @@ useSeoMeta({
   twitterDescription: () => excerptForOgp.value,
 })
 
+// F19.1 Phase 3: hreflang 6言語 + canonical + JSON-LD Article スキーマ
+useSeoPublicPage({
+  canonicalPath: `/public/teams/${teamId}/posts/${postId}`,
+  title: () => post.value?.title ?? '',
+  description: () => excerptForOgp.value,
+  jsonLd: () => post.value ? {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.value.title,
+    datePublished: post.value.publishedAt,
+    author: {
+      '@type': 'Person',
+      name: post.value.author?.displayLabel ?? '投稿者',
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: post.value.scope?.scopeName ?? '',
+    },
+  } : undefined,
+})
+
 const scopeHref = computed(() => `/public/teams/${teamId}`)
 </script>
 

@@ -85,6 +85,22 @@ useSeoMeta({
   twitterImage: () => organization.value?.bannerUrl ?? organization.value?.iconUrl ?? '',
 })
 
+// F19.1 Phase 3: hreflang 6言語 + canonical + JSON-LD Organization スキーマ
+useSeoPublicPage({
+  canonicalPath: `/public/organizations/${orgId}`,
+  title: () => t('public.organization.title', { name: organization.value?.name ?? '' }),
+  description: () => organization.value?.philosophy ?? t('public.meta.ogDescriptionDefault'),
+  imageUrl: () => organization.value?.bannerUrl ?? organization.value?.iconUrl ?? undefined,
+  jsonLd: () => organization.value ? {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: organization.value.name,
+    url: canonicalUrl.value,
+    logo: organization.value.iconUrl ?? undefined,
+    description: organization.value.philosophy ?? undefined,
+  } : undefined,
+})
+
 function detailHref(postId: number): string {
   return `/public/organizations/${orgId}/posts/${postId}`
 }
