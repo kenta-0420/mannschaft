@@ -105,6 +105,18 @@ public class PublicApiRateLimitFilter extends OncePerRequestFilter {
     private static final Pattern PUBLIC_API_PATH =
             Pattern.compile("^/api/v1/public/(teams|organizations)/([^/]+)(/posts(/[^/]+)?|/events)?$");
 
+    /**
+     * F19.1 Phase 4: 公開検索 API パスパターン。
+     * {@code GET /api/v1/public/(teams|organizations)/search} をマッチする。
+     *
+     * <p>capture グループ:
+     * <ol>
+     *   <li>scopeType: {@code teams} or {@code organizations}</li>
+     * </ol>
+     */
+    private static final Pattern PUBLIC_SEARCH_PATH =
+            Pattern.compile("^/api/v1/public/(teams|organizations)/search$");
+
     /** F15.4 Phase 5-α 互換: 単独詳細パスのみマッチ（PUBLIC_TEAM_DETAIL_RATE_LIMIT_EXCEEDED 維持用）。 */
     private static final Pattern PUBLIC_TEAM_DETAIL_PATH =
             Pattern.compile("^/api/v1/public/teams/([^/]+)$");
@@ -162,7 +174,8 @@ public class PublicApiRateLimitFilter extends OncePerRequestFilter {
         }
         String path = request.getServletPath();
         return !ORG_TEAM_SEARCH_PATH.matcher(path).matches()
-                && !PUBLIC_API_PATH.matcher(path).matches();
+                && !PUBLIC_API_PATH.matcher(path).matches()
+                && !PUBLIC_SEARCH_PATH.matcher(path).matches();
     }
 
     @Override
@@ -173,9 +186,10 @@ public class PublicApiRateLimitFilter extends OncePerRequestFilter {
         Target target;
         Matcher orgMatcher = ORG_TEAM_SEARCH_PATH.matcher(path);
         Matcher publicMatcher = PUBLIC_API_PATH.matcher(path);
+        Matcher searchMatcher = PUBLIC_SEARCH_PATH.matcher(path);
         if (orgMatcher.matches()) {
             target = Target.ORG_TEAM_SEARCH;
-        } else if (publicMatcher.matches()) {
+        } else if (publicMatcher.matches() || searchMatcher.matches()) {
             target = Target.PUBLIC_API;
         } else {
             // shouldNotFilter で弾いているので通常到達しないが、念のため透過
@@ -237,12 +251,18 @@ public class PublicApiRateLimitFilter extends OncePerRequestFilter {
         String metadata;
         Long organizationId = null;
         AuditEventType eventType;
+        Matcher searchMatcher = PUBLIC_SEARCH_PATH.matcher(request.getServletPath());
 
         if (target == Target.ORG_TEAM_SEARCH && orgMatcher.matches()) {
             String orgIdStr = orgMatcher.group(1);
             organizationId = parseLongOrNull(orgIdStr);
             metadata = buildMetadataJson("orgId", orgIdStr, ipHash);
             eventType = AuditEventType.TEAM_SEARCH_RATE_LIMITED;
+        } else if (target == Target.PUBLIC_API && searchMatcher.matches()) {
+            // F19.1 Phase 4 公開検索 API（ID なし）
+            String scopeType = searchMatcher.group(1);
+            metadata = buildMetadataJson("scopeType", scopeType, ipHash);
+            eventType = AuditEventType.PUBLIC_API_RATE_LIMIT_EXCEEDED;
         } else if (target == Target.PUBLIC_API && publicMatcher.matches()) {
             String scopeType = publicMatcher.group(1);
             String scopeIdStr = publicMatcher.group(2);
