@@ -476,6 +476,14 @@ export default defineNuxtConfig({
     },
   },
 
+  build: {
+    // frappe-gantt 1.2.2 の package.json exports フィールドに
+    // ./dist/frappe-gantt.css が列挙されていないため、
+    // nuxt:ssr-styles:client プラグインの静的解析時にエラーが発生する。
+    // transpile に指定することで Vite がパッケージを直接バンドルし解消する。
+    transpile: ['frappe-gantt'],
+  },
+
   // GitHub Actions (CI=true) では SSR バンドルロード自体が 4GB OOM を引き起こすため
   // SPA モード（ssr: false）で Nitro SSR バンドルをスキップする。
   // nuxt generate が index.html + クライアント資産のみ生成し Lighthouse CI で計測可能。
