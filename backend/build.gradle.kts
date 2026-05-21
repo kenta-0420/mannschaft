@@ -42,6 +42,11 @@ dependencies {
     // F10.5 Phase 10-α: Micrometer Prometheus registry — /actuator/prometheus 公開と
     // http.server.requests / cache.gets / hikaricp.* 等の自動計測点を有効化
     implementation("io.micrometer:micrometer-registry-prometheus")
+    // === OpenTelemetry トレーシング（F10.5 Phase 10-β: 分散トレーシング） ===
+    // Micrometer Tracing Bridge: Spring Boot の @Observed / TraceContext を OTel に接続
+    implementation("io.micrometer:micrometer-tracing-bridge-otel")
+    // OpenTelemetry OTLP エクスポーター: Jaeger/Tempo 等へ gRPC でスパンを送信
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp")
     implementation("org.springframework.boot:spring-boot-starter-aop")
     implementation("org.springframework.retry:spring-retry")
 
