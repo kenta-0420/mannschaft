@@ -118,7 +118,8 @@ async function handleDelete(creative: AdCreativeResponse) {
     await advertiserApi.deleteCreative(orgId, campaignId, creative.id)
     const idx = creatives.value.findIndex(c => c.id === creative.id)
     if (idx !== -1) {
-      creatives.value[idx] = { ...creatives.value[idx], status: 'ENDED' }
+      const current = creatives.value[idx]!
+      creatives.value[idx] = { ...current, status: 'ENDED' }
     }
     toast.add({ severity: 'success', summary: t('advertising.creative.deleted_toast'), life: 3000 })
   }
