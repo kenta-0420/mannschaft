@@ -141,4 +141,17 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
            "AND o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC " +
            "AND o.archivedAt IS NULL")
     Optional<OrganizationEntity> findPublicOrganizationById(@Param("id") Long id);
+
+    /**
+     * F19.1 Phase 3 sitemap.xml 用: PUBLIC かつ未アーカイブの組織を全件取得する。
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは自動除外される。</p>
+     *
+     * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §9.2</p>
+     */
+    @Query("SELECT o FROM OrganizationEntity o " +
+           "WHERE o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC " +
+           "AND o.archivedAt IS NULL " +
+           "ORDER BY o.id ASC")
+    List<OrganizationEntity> findAllPublicOrganizations();
 }

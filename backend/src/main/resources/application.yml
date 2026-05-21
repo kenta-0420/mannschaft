@@ -303,6 +303,10 @@ mannschaft.system-log:
 # 本番でリードレプリカを有効化する場合は環境変数 DB_REPLICA_URL / DB_REPLICA_USER / DB_REPLICA_PASSWORD を設定し、
 # application-prod.yml（または環境変数）で app.datasource.replica.enabled=true に変更すること。
 app:
+  # F19.1 Phase 3 SEO: sitemap.xml / robots.txt で使用するフロントエンドのベース URL。
+  # 本番環境では環境変数 APP_BASE_URL を設定すること。
+  # 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §9.2 / §9.3
+  base-url: ${APP_BASE_URL:https://mannschaft.example}
   datasource:
     replica:
       enabled: false

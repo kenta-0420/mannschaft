@@ -160,4 +160,34 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
             + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED")
     Optional<BlogPostEntity> findPublicPostByOrganizationIdAndId(
             @Param("organizationId") Long organizationId, @Param("postId") Long postId);
+
+    /**
+     * F19.1 Phase 3 sitemap.xml 用: チーム配下の PUBLIC + PUBLISHED 投稿を全件取得する。
+     *
+     * <p>sitemap は1時間キャッシュ前提のため N+1 を気にせず一括取得してよい。
+     * {@code @SQLRestriction} により論理削除済み投稿は自動除外される。</p>
+     *
+     * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §9.2</p>
+     */
+    @Query("SELECT bp FROM BlogPostEntity bp "
+            + "WHERE bp.teamId IS NOT NULL "
+            + "AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC "
+            + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED "
+            + "ORDER BY bp.teamId ASC, bp.id ASC")
+    List<BlogPostEntity> findAllPublicPostsByTeam();
+
+    /**
+     * F19.1 Phase 3 sitemap.xml 用: 組織配下の PUBLIC + PUBLISHED 投稿を全件取得する。
+     *
+     * <p>sitemap は1時間キャッシュ前提のため N+1 を気にせず一括取得してよい。
+     * {@code @SQLRestriction} により論理削除済み投稿は自動除外される。</p>
+     *
+     * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §9.2</p>
+     */
+    @Query("SELECT bp FROM BlogPostEntity bp "
+            + "WHERE bp.organizationId IS NOT NULL "
+            + "AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC "
+            + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED "
+            + "ORDER BY bp.organizationId ASC, bp.id ASC")
+    List<BlogPostEntity> findAllPublicPostsByOrganization();
 }
