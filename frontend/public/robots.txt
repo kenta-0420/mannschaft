@@ -1,5 +1,8 @@
 User-agent: *
 Allow: /
+Allow: /public/
+Allow: /api/v1/public/
+Disallow: /api/v1/
 Disallow: /dashboard
 Disallow: /teams/
 Disallow: /organizations/
@@ -7,3 +10,5 @@ Disallow: /settings/
 Disallow: /admin/
 Disallow: /chat/
 Disallow: /my/
+
+Sitemap: https://mannschaft.example/sitemap.xml
