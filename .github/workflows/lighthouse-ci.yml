@@ -47,19 +47,17 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Nuxt ビルド
+      - name: Nuxt 静的生成（nuxt generate — Nitro SSR ビルド不要で OOM 回避）
         working-directory: frontend
-        run: npm run build
+        run: npm run generate
         env:
           # ビルド時の API エンドポイント（CI では実 API を呼ばないので dummy 可）
           NUXT_PUBLIC_API_BASE_URL: http://localhost:8080
-          # Nitro ビルドが OOM にならないようヒープ上限を引き上げる
-          NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Lighthouse CI 実行
         working-directory: frontend
         run: |
-          npm install -g @lhci/cli@0.14.x
+          npm install -g @lhci/cli@0.14.x serve
           lhci autorun
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.GITHUB_TOKEN }}

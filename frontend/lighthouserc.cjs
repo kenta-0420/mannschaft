@@ -9,8 +9,8 @@
 module.exports = {
   ci: {
     collect: {
-      // Nuxt 3 の静的プレビューサーバーを起動して計測
-      startServerCommand: 'npm run preview',
+      // nuxt generate の静的出力を serve で配信（Nitro SSR 不要・OOM 回避）
+      startServerCommand: 'npx serve .output/public -l 3000',
       startServerReadyPattern: 'Listening',
       startServerReadyTimeout: 60000,
       url: [
