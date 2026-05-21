@@ -570,4 +570,21 @@ class IdentityVisibilityResolverTest {
                 resolver.resolveIdentityForViewer(SAMPLE_AUTHOR, null, TEAM_SCOPE, DISPLAY_NAME_MODE));
     }
 
+    @Test
+    @DisplayName("MEMBER かつ MINOR の場合: MEMBER ステータスでも REAL_NAME mode で強制匿名")
+    void member_minor_overridesRealName_returnsAnonymousLabel() {
+        // REAL_NAME mode でも minor=true は汎用ラベル（§11.3）
+        PostAuthor minorAuthor = new PostAuthor(
+                42L, "やまだ太郎", "山田 太郎", "山田太郎", "/images/users/42/avatar.png", true);
+        ViewerContext memberViewer = new ViewerContext(
+                51L, ViewerStatus.MEMBER, Set.of(100L), Set.of());
+
+        DisplayIdentity identity = resolver.resolveIdentityForViewer(
+                minorAuthor, memberViewer, TEAM_SCOPE, REAL_NAME_MODE);
+
+        assertThat(identity.displayLabel()).isEqualTo(AnonymousLabels.POSTER);
+        assertThat(identity.teamAffiliationVisible()).isFalse();
+        assertThat(identity.anonymized()).isTrue();
+    }
+
 }

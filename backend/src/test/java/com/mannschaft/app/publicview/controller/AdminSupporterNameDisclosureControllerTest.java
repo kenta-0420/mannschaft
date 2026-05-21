@@ -2,6 +2,7 @@ package com.mannschaft.app.publicview.controller;
 
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
@@ -261,5 +262,50 @@ class AdminSupporterNameDisclosureControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].oldMode").value("DISPLAY_NAME"))
                 .andExpect(jsonPath("$[0].newMode").value("REAL_NAME"));
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // 認証・認可テスト
+    // ─────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("PATCH /admin/teams/{teamId}/supporter-name-disclosure: 未認証 → 401")
+    void patchTeamDisclosure_unauthorized_returns401() throws Exception {
+        // SecurityContextHolder をクリアして未認証状態にする。
+        // SecurityUtils.getCurrentUserId() は authentication=null の場合に
+        // BusinessException(COMMON_000) をスローし、GlobalExceptionHandler が 401 に変換する。
+        SecurityContextHolder.clearContext();
+
+        willThrow(new BusinessException(CommonErrorCode.COMMON_000))
+                .given(service).patchTeamDisclosure(any(), any(), any());
+
+        mockMvc.perform(patch("/api/v1/admin/teams/{teamId}/supporter-name-disclosure", TEAM_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "mode": "REAL_NAME",
+                                  "confirmed": true
+                                }
+                                """))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("PATCH /admin/teams/{teamId}/supporter-name-disclosure: ADMIN ロールなし → 403")
+    void patchTeamDisclosure_forbidden_returns403() throws Exception {
+        // ADMIN ロールを持たないユーザーが切替を試みると、Service 層が
+        // BusinessException(NAME_DISCLOSURE_FORBIDDEN) をスローし、403 が返る。
+        willThrow(new BusinessException(PublicViewErrorCode.NAME_DISCLOSURE_FORBIDDEN))
+                .given(service).patchTeamDisclosure(eq(TEAM_ID), any(), any());
+
+        mockMvc.perform(patch("/api/v1/admin/teams/{teamId}/supporter-name-disclosure", TEAM_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "mode": "REAL_NAME",
+                                  "confirmed": true
+                                }
+                                """))
+                .andExpect(status().isForbidden());
     }
 }
