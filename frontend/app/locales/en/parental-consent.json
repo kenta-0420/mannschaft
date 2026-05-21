@@ -47,6 +47,7 @@
     "error_auth_067": "You can send up to 3 invitations at a time",
     "error_auth_068": "An invitation to this email address has already been sent",
     "error_auth_069": "You cannot send an invitation to your own email address",
-    "error_auth_070": "This feature is available after parental consent is completed"
+    "error_auth_070": "This feature is available after parental consent is completed",
+    "link_removed": "Link removed"
   }
 }
