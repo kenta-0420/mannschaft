@@ -29,6 +29,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -136,8 +137,19 @@ public class ReportDeliveryBatchService {
         String subject = String.format("[Mannschaft] %s Advertising Report (%s ~ %s)",
                 schedule.getFrequency().name(), from, to);
 
+        List<String> failedRecipients = new ArrayList<>();
         for (String recipient : recipients) {
-            sendEmail(recipient, subject, html);
+            try {
+                sendEmail(recipient, subject, html);
+            } catch (Exception e) {
+                failedRecipients.add(recipient);
+                log.error("SES送信失敗: to={}, subject={}", recipient, subject, e);
+            }
+        }
+        if (!failedRecipients.isEmpty()) {
+            throw new IllegalStateException(
+                "一部の受信者へのメール送信に失敗しました: scheduleId=" + schedule.getId()
+                + ", failed=" + failedRecipients);
         }
 
         log.info("レポート配信完了: scheduleId={}, recipients={}, impressions={}, clicks={}, cost={}",
@@ -182,23 +194,19 @@ public class ReportDeliveryBatchService {
     }
 
     private void sendEmail(String recipient, String subject, String htmlBody) {
-        try {
-            SendEmailResponse response = sesV2Client.sendEmail(SendEmailRequest.builder()
-                    .fromEmailAddress(FROM_ADDRESS)
-                    .destination(Destination.builder().toAddresses(recipient).build())
-                    .content(EmailContent.builder()
-                            .simple(Message.builder()
-                                    .subject(Content.builder().data(subject).build())
-                                    .body(Body.builder()
-                                            .html(Content.builder().data(htmlBody).build())
-                                            .build())
-                                    .build())
-                            .build())
-                    .build());
-            log.info("SES送信成功: to={}, messageId={}", recipient, response.messageId());
-        } catch (Exception e) {
-            log.error("SES送信失敗: to={}, subject={}", recipient, subject, e);
-        }
+        SendEmailResponse response = sesV2Client.sendEmail(SendEmailRequest.builder()
+                .fromEmailAddress(FROM_ADDRESS)
+                .destination(Destination.builder().toAddresses(recipient).build())
+                .content(EmailContent.builder()
+                        .simple(Message.builder()
+                                .subject(Content.builder().data(subject).build())
+                                .body(Body.builder()
+                                        .html(Content.builder().data(htmlBody).build())
+                                        .build())
+                                .build())
+                        .build())
+                .build());
+        log.info("SES送信成功: to={}, messageId={}", recipient, response.messageId());
     }
 
     @SuppressWarnings("unchecked")
