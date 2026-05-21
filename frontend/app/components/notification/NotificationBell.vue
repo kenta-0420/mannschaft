@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { getUnreadCount } = useNotificationApi()
+const { getUnreadCount, markAllAsRead } = useNotificationApi()
 const { getChannels } = useChatApi()
 const api = useApi()
 const router = useRouter()
@@ -39,6 +39,13 @@ async function fetchCounts() {
   ])
 }
 
+function onPopoverShow() {
+  // ポップオーバーを開いた時点で通知を既読にし、バッジを即座にクリアする
+  notifCount.value = 0
+  markAllAsRead().catch((err) => console.error('[NotificationBell] markAllAsRead failed:', err))
+  fetchCounts()
+}
+
 function navigate(to: string) {
   popover.value?.hide()
   router.push(to)
@@ -71,7 +78,7 @@ defineExpose({ refresh: fetchCounts })
       class="absolute -right-1 -top-1 pointer-events-none"
     />
 
-    <Popover ref="popover">
+    <Popover ref="popover" @show="onPopoverShow">
       <div class="flex flex-col gap-1 py-1" style="min-width: 200px">
         <!-- 通知 -->
         <button class="notif-row" @click="navigate('/notifications')">
