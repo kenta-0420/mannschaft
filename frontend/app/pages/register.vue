@@ -44,6 +44,20 @@ const schema = toTypedSchema(
       .string()
       .min(1, '郵便番号は必須です')
       .regex(/^\d{3}-?\d{4}$/, '郵便番号の形式が正しくありません（例: 123-4567）'),
+    birthDate: z
+      .string()
+      .min(1, 'parental_consent.error_auth_050')
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'parental_consent.error_auth_051')
+      .refine((val) => {
+        const d = new Date(val)
+        return !isNaN(d.getTime()) && d <= new Date()
+      }, 'parental_consent.error_auth_052')
+      .refine((val) => {
+        const d = new Date(val)
+        const limit = new Date()
+        limit.setFullYear(limit.getFullYear() - 100)
+        return d >= limit
+      }, 'parental_consent.error_auth_053'),
   }),
 )
 
@@ -56,6 +70,7 @@ const { defineField, handleSubmit, errors } = useForm({
     firstName: '',
     displayName: '',
     postalCode: '',
+    birthDate: '',
   },
 })
 
@@ -65,6 +80,7 @@ const [lastName, lastNameProps] = defineField('lastName')
 const [firstName, firstNameProps] = defineField('firstName')
 const [displayName, displayNameProps] = defineField('displayName')
 const [postalCode, postalCodeProps] = defineField('postalCode')
+const [birthDate, birthDateProps] = defineField('birthDate')
 
 const submitted = ref(false)
 
@@ -81,6 +97,7 @@ const onSubmit = handleSubmit(async (values) => {
         firstName: values.firstName,
         nickname: values.displayName,
         postalCode: values.postalCode,
+        birth_date: values.birthDate,
         locale: 'ja',
         timezone: 'Asia/Tokyo',
         ...(inviteToken.value ? { inviteToken: inviteToken.value } : {}),
@@ -159,6 +176,19 @@ const onSubmit = handleSubmit(async (values) => {
           errors.postalCode
         }}</small>
         <small class="text-surface-400">郵便番号は暗号化された状態で保存されます。</small>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="birthDate">{{ $t('parental_consent.birth_date_label') }} <span class="text-red-500">※</span></label>
+        <input
+          id="birthDate"
+          v-bind="birthDateProps"
+          v-model="birthDate"
+          type="date"
+          :max="new Date().toISOString().split('T')[0]"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+        />
+        <small v-if="submitted && errors.birthDate" class="text-red-500">{{ $t(errors.birthDate) }}</small>
       </div>
 
       <div class="flex gap-4">
