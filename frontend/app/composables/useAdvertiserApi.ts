@@ -26,6 +26,10 @@ import type {
   AdvertiserAccountStatus,
   InvoiceStatus,
   CreditLimitRequestStatus,
+  AdCreativeResponse,
+  CreateAdCreativeRequest,
+  UpdateAdCreativeRequest,
+  AdCreativeStatus,
 } from '~/types/advertiser'
 
 export function useAdvertiserApi() {
@@ -170,7 +174,52 @@ export function useAdvertiserApi() {
     })
   }
 
+  // ─── 広告主向け クリエイティブ API ───
+
+  async function createCreative(organizationId: number, campaignId: number, body: CreateAdCreativeRequest) {
+    return api<{ data: AdCreativeResponse }>(
+      `/api/v1/organizations/${organizationId}/advertiser/ad-campaigns/${campaignId}/creatives`,
+      { method: 'POST', body },
+    )
+  }
+
+  async function listCreatives(organizationId: number, campaignId: number) {
+    return api<{ data: AdCreativeResponse[] }>(
+      `/api/v1/organizations/${organizationId}/advertiser/ad-campaigns/${campaignId}/creatives`,
+    )
+  }
+
+  async function updateCreative(organizationId: number, campaignId: number, adId: number, body: UpdateAdCreativeRequest) {
+    return api<{ data: AdCreativeResponse }>(
+      `/api/v1/organizations/${organizationId}/advertiser/ad-campaigns/${campaignId}/creatives/${adId}`,
+      { method: 'PUT', body },
+    )
+  }
+
+  async function deleteCreative(organizationId: number, campaignId: number, adId: number) {
+    return api(
+      `/api/v1/organizations/${organizationId}/advertiser/ad-campaigns/${campaignId}/creatives/${adId}`,
+      { method: 'DELETE' },
+    )
+  }
+
   // ─── SYSTEM_ADMIN 向け API ───
+
+  async function adminListCreatives(params?: { status?: AdCreativeStatus }) {
+    return api<{ data: AdCreativeResponse[] }>('/api/v1/system-admin/ad-creatives', { params })
+  }
+
+  async function adminApproveCreative(adId: number) {
+    return api<{ data: AdCreativeResponse }>(`/api/v1/system-admin/ad-creatives/${adId}/approve`, {
+      method: 'PATCH',
+    })
+  }
+
+  async function adminRejectCreative(adId: number) {
+    return api<{ data: AdCreativeResponse }>(`/api/v1/system-admin/ad-creatives/${adId}/reject`, {
+      method: 'PATCH',
+    })
+  }
 
   async function adminGetRateCards(params?: { pricingModel?: PricingModel; prefecture?: string; activeOnly?: boolean; page?: number; size?: number }) {
     return api<{ data: AdRateCardResponse[]; meta: { totalElements: number; page: number; size: number; totalPages: number } }>('/api/v1/system-admin/ad-rate-cards', {
@@ -264,6 +313,15 @@ export function useAdvertiserApi() {
     deleteReportSchedule,
     createCreditLimitRequest,
     getCreditLimitRequests,
+    // Creatives（広告主向け）
+    createCreative,
+    listCreatives,
+    updateCreative,
+    deleteCreative,
+    // Creatives（SYSTEM_ADMIN向け）
+    adminListCreatives,
+    adminApproveCreative,
+    adminRejectCreative,
     // Admin
     adminGetRateCards,
     adminCreateRateCard,

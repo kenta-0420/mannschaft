@@ -433,6 +433,41 @@
       "messaging_campaigns": "Messaging campaigns"
     }
   },
+  "creative": {
+    "title": "Ad Creatives",
+    "description": "Manage ad creatives linked to your campaign.",
+    "empty": "No creatives yet.",
+    "create_button": "Create New",
+    "status": {
+      "DRAFT": "Draft",
+      "ACTIVE": "Active",
+      "PAUSED": "Paused",
+      "ENDED": "Ended"
+    },
+    "column_title": "Title",
+    "column_status": "Status",
+    "column_destination": "Destination URL",
+    "column_created_at": "Created At",
+    "column_actions": "Actions",
+    "form": {
+      "title_label": "Title",
+      "title_placeholder": "e.g. Spring Sale Ad",
+      "image_url_label": "Image URL (optional)",
+      "image_url_placeholder": "https://example.com/image.png",
+      "destination_url_label": "Destination URL",
+      "destination_url_placeholder": "https://example.com/landing"
+    },
+    "dialog_create_title": "Create Creative",
+    "dialog_edit_title": "Edit Creative",
+    "delete_confirm": "This creative will be marked as ENDED. Continue?",
+    "created_toast": "Creative created.",
+    "updated_toast": "Creative updated.",
+    "deleted_toast": "Creative deleted.",
+    "error_load": "Failed to load creatives.",
+    "error_save": "Failed to save.",
+    "error_delete": "Failed to delete.",
+    "back_to_advertiser": "Back to Advertiser Dashboard"
+  },
   "teams_page": {
     "title": "Team advertiser management",
     "description": "Create and deliver messaging-type ad campaigns at the team level.",

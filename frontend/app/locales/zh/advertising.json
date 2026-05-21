@@ -433,6 +433,41 @@
       "messaging_campaigns": "消息型广告活动"
     }
   },
+  "creative": {
+    "title": "广告素材列表",
+    "description": "管理与广告活动关联的广告素材。",
+    "empty": "暂无素材。",
+    "create_button": "新建",
+    "status": {
+      "DRAFT": "草稿",
+      "ACTIVE": "有效",
+      "PAUSED": "暂停",
+      "ENDED": "已结束"
+    },
+    "column_title": "标题",
+    "column_status": "状态",
+    "column_destination": "目标链接",
+    "column_created_at": "创建时间",
+    "column_actions": "操作",
+    "form": {
+      "title_label": "标题",
+      "title_placeholder": "例：春季促销广告",
+      "image_url_label": "图片 URL（可选）",
+      "image_url_placeholder": "https://example.com/image.png",
+      "destination_url_label": "目标链接 URL",
+      "destination_url_placeholder": "https://example.com/landing"
+    },
+    "dialog_create_title": "创建素材",
+    "dialog_edit_title": "编辑素材",
+    "delete_confirm": "此素材将被标记为 ENDED。是否继续？",
+    "created_toast": "素材已创建。",
+    "updated_toast": "素材已更新。",
+    "deleted_toast": "素材已删除。",
+    "error_load": "加载素材失败。",
+    "error_save": "保存失败。",
+    "error_delete": "删除失败。",
+    "back_to_advertiser": "返回广告主控制台"
+  },
   "teams_page": {
     "title": "团队广告主管理",
     "description": "在团队级别创建和投放消息型广告活动。",
