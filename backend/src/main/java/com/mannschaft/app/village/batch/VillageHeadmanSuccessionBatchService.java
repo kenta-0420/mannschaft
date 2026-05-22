@@ -18,8 +18,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -68,28 +71,32 @@ public class VillageHeadmanSuccessionBatchService {
         int archived = 0;
         int skipped = 0;
         int failed = 0;
+        int totalVillages = 0;
 
-        List<VillageEntity> villages = villageRepository.findAll();
-        for (VillageEntity village : villages) {
-            if (village.getDeletedAt() != null || village.getArchivedAt() != null) {
-                skipped++;
-                continue;
-            }
-            try {
-                SuccessionResult result = processVillage(village.getId());
-                switch (result) {
-                    case PROMOTED -> promoted++;
-                    case ARCHIVED -> archived++;
-                    case NOT_NEEDED -> skipped++;
+        final int CHUNK_SIZE = 500;
+        Pageable pageable = PageRequest.of(0, CHUNK_SIZE);
+        Page<VillageEntity> page;
+        do {
+            page = villageRepository.findByDeletedAtIsNullAndArchivedAtIsNull(pageable);
+            for (VillageEntity village : page.getContent()) {
+                totalVillages++;
+                try {
+                    SuccessionResult result = processVillage(village.getId());
+                    switch (result) {
+                        case PROMOTED -> promoted++;
+                        case ARCHIVED -> archived++;
+                        case NOT_NEEDED -> skipped++;
+                    }
+                } catch (Exception e) {
+                    failed++;
+                    log.error("村長引き継ぎ処理失敗: villageId={}", village.getId(), e);
                 }
-            } catch (Exception e) {
-                failed++;
-                log.error("村長引き継ぎ処理失敗: villageId={}", village.getId(), e);
             }
-        }
+            pageable = pageable.next();
+        } while (page.hasNext());
 
         log.info("村長引き継ぎバッチ完了: 総村数={} 昇格={} 凍結={} スキップ={} 失敗={}",
-                villages.size(), promoted, archived, skipped, failed);
+                totalVillages, promoted, archived, skipped, failed);
     }
 
     enum SuccessionResult { PROMOTED, ARCHIVED, NOT_NEEDED }
