@@ -14,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * 広告クリックエンティティ。
@@ -34,8 +35,19 @@ public class AdClickEntity {
     @Column(nullable = false)
     private Long adId;
 
-    @Column(nullable = false)
+    /**
+     * F09.7 の ad_campaigns.id（Long）。F09.17 メッセージキャンペーン用ルートでは NULL。
+     * F09.17 用は {@link #messagingCampaignId} を使うこと。
+     */
+    @Column(nullable = true)
     private Long campaignId;
+
+    /**
+     * F09.17 の ad_messaging_campaigns.id（UUID）。F09.7 用ルートでは NULL。
+     * F09.7 用は {@link #campaignId} を使うこと。
+     */
+    @Column(name = "messaging_campaign_id", columnDefinition = "BINARY(16)")
+    private UUID messagingCampaignId;
 
     /** インプレッションなしの直接クリックは NULL */
     @Column
@@ -56,10 +68,10 @@ public class AdClickEntity {
     }
 
     /**
-     * クリック記録を生成するファクトリメソッド。
+     * F09.7 用クリック記録を生成するファクトリメソッド。
      *
-     * @param adId         広告ID
-     * @param campaignId   キャンペーンID
+     * @param adId         広告ID (ads.id)
+     * @param campaignId   F09.7 キャンペーンID (ad_campaigns.id)
      * @param impressionId インプレッションID（直接クリックの場合は null）
      * @param userId       ユーザーID（未ログインの場合は null）
      * @return 新規 AdClickEntity
@@ -68,6 +80,27 @@ public class AdClickEntity {
         return AdClickEntity.builder()
                 .adId(adId)
                 .campaignId(campaignId)
+                .impressionId(impressionId)
+                .userId(userId)
+                .occurredAt(LocalDateTime.now())
+                .build();
+    }
+
+    /**
+     * F09.17 メッセージキャンペーン用クリック記録を生成するファクトリメソッド。
+     *
+     * @param adId                広告ID (ads.id)
+     * @param messagingCampaignId F09.17 メッセージキャンペーンID (ad_messaging_campaigns.id, UUID)
+     * @param impressionId        インプレッションID（直接クリックの場合は null）
+     * @param userId              ユーザーID（未ログインの場合は null）
+     * @return 新規 AdClickEntity
+     */
+    public static AdClickEntity createForMessagingCampaign(Long adId, UUID messagingCampaignId,
+                                                           Long impressionId, Long userId) {
+        return AdClickEntity.builder()
+                .adId(adId)
+                .campaignId(null)
+                .messagingCampaignId(messagingCampaignId)
                 .impressionId(impressionId)
                 .userId(userId)
                 .occurredAt(LocalDateTime.now())

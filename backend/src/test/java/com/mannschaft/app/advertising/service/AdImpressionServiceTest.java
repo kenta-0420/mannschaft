@@ -10,6 +10,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -111,5 +113,63 @@ class AdImpressionServiceTest {
 
         // then
         assertThat(result).isEqualTo(888L);
+    }
+
+    /**
+     * F09.17 型不一致根治: messaging_campaign_id (UUID) を持つ entity を返す mock 用ヘルパー。
+     */
+    private AdImpressionEntity buildSavedEntityForMessaging(Long id, Long adId, UUID messagingCampaignId, Long userId) {
+        AdImpressionEntity entity = AdImpressionEntity.createForMessagingCampaign(adId, messagingCampaignId, userId);
+        try {
+            java.lang.reflect.Field f = AdImpressionEntity.class.getDeclaredField("id");
+            f.setAccessible(true);
+            f.set(entity, id);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return entity;
+    }
+
+    @Test
+    @DisplayName("recordForMessagingCampaign: messaging_campaign_id (UUID) で AdImpressionEntity を保存し ID を返す")
+    void recordForMessagingCampaign_正常系() {
+        // given
+        UUID messagingCampaignId = UUID.randomUUID();
+        AdImpressionEntity saved = buildSavedEntityForMessaging(111L, 7L, messagingCampaignId, 99L);
+        given(adImpressionRepository.save(any(AdImpressionEntity.class))).willReturn(saved);
+
+        // when
+        Long result = service.recordForMessagingCampaign(7L, messagingCampaignId, 99L);
+
+        // then
+        assertThat(result).isEqualTo(111L);
+        ArgumentCaptor<AdImpressionEntity> captor = ArgumentCaptor.forClass(AdImpressionEntity.class);
+        verify(adImpressionRepository, times(1)).save(captor.capture());
+        AdImpressionEntity captured = captor.getValue();
+        assertThat(captured.getAdId()).isEqualTo(7L);
+        assertThat(captured.getCampaignId()).isNull();
+        assertThat(captured.getMessagingCampaignId()).isEqualTo(messagingCampaignId);
+        assertThat(captured.getUserId()).isEqualTo(99L);
+        assertThat(captured.getOccurredAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("recordForMessagingCampaign: userId が null でも正常動作する（未ログインユーザー）")
+    void recordForMessagingCampaign_userId_null() {
+        // given
+        UUID messagingCampaignId = UUID.randomUUID();
+        AdImpressionEntity saved = buildSavedEntityForMessaging(222L, 8L, messagingCampaignId, null);
+        given(adImpressionRepository.save(any(AdImpressionEntity.class))).willReturn(saved);
+
+        // when
+        Long result = service.recordForMessagingCampaign(8L, messagingCampaignId, null);
+
+        // then
+        assertThat(result).isEqualTo(222L);
+        ArgumentCaptor<AdImpressionEntity> captor = ArgumentCaptor.forClass(AdImpressionEntity.class);
+        verify(adImpressionRepository, times(1)).save(captor.capture());
+        assertThat(captor.getValue().getUserId()).isNull();
+        assertThat(captor.getValue().getCampaignId()).isNull();
+        assertThat(captor.getValue().getMessagingCampaignId()).isEqualTo(messagingCampaignId);
     }
 }

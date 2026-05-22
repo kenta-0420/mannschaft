@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 /**
  * 広告インプレッション記録サービス。
  *
@@ -20,10 +22,10 @@ public class AdImpressionService {
     private final AdImpressionRepository adImpressionRepository;
 
     /**
-     * インプレッション記録。
+     * F09.7 用インプレッション記録。
      *
      * @param adId       ads.id（クリエイティブ ID）
-     * @param campaignId ad_campaigns.id（F09.7 の広告キャンペーン ID）
+     * @param campaignId F09.7 キャンペーンID (ad_campaigns.id)
      * @param userId     閲覧ユーザー ID（未ログインの場合は null）
      * @return 作成した ad_impressions.id
      */
@@ -42,14 +44,33 @@ public class AdImpressionService {
      *
      * @param servingStrategy 配信戦略（例: {@code "MESSAGING_CAMPAIGN"}）
      * @param adId            ads.id（クリエイティブ ID）
-     * @param campaignId      キャンペーン ID
+     * @param campaignId      F09.7 キャンペーン ID (ad_campaigns.id)
      * @param userId          閲覧ユーザー ID（未ログインの場合は null）
      * @return 作成した ad_impressions.id
+     * @deprecated F09.17 メッセージキャンペーン用には {@link #recordForMessagingCampaign} を使うこと
      */
     @Transactional
     public Long scheduleServe(String servingStrategy, Long adId, Long campaignId, Long userId) {
         // 現フェーズでは即時記録。将来的に serving_strategy='MESSAGING_CAMPAIGN' で
         // 抽選プール管理が必要になった場合はここを拡張する。
         return record(adId, campaignId, userId);
+    }
+
+    /**
+     * F09.17 メッセージキャンペーン用インプレッション記録。
+     *
+     * <p>F09.17 の {@code ad_messaging_campaigns.id}（UUID）を正確に記録する。
+     * {@code ad_impressions.campaign_id}（Long）は NULL とし、
+     * {@code ad_impressions.messaging_campaign_id}（BINARY(16)）に UUID を格納する。</p>
+     *
+     * @param adId                広告ID (ads.id / バナークリエイティブ ID)
+     * @param messagingCampaignId F09.17 メッセージキャンペーンID (ad_messaging_campaigns.id)
+     * @param userId              閲覧ユーザー ID（未ログインの場合は null）
+     * @return 作成した ad_impressions.id
+     */
+    @Transactional
+    public Long recordForMessagingCampaign(Long adId, UUID messagingCampaignId, Long userId) {
+        AdImpressionEntity impression = AdImpressionEntity.createForMessagingCampaign(adId, messagingCampaignId, userId);
+        return adImpressionRepository.save(impression).getId();
     }
 }
