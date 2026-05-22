@@ -11,8 +11,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -56,32 +59,42 @@ public class MembershipConsistencyChecker {
      * <p>対称差 = (memberships のみに存在する組み合わせ) + (user_roles のみに存在する組み合わせ)</p>
      */
     long computeDiff() {
-        // memberships 側: アクティブ（left_at IS NULL）の全件を取得
-        List<MembershipEntity> allMemberships = membershipRepository.findAll().stream()
-                .filter(m -> m.getLeftAt() == null && m.getUserId() != null)
-                .toList();
+        final int CHUNK_SIZE = 500;
 
-        // memberships 側の (userId, scopeType, scopeId) トリプルセット
+        // memberships 側: アクティブ（left_at IS NULL）の (userId, scopeType, scopeId) トリプルセット
+        // チャンク処理で全件をページングしながら読み込む
         Set<String> membershipKeys = new HashSet<>();
-        for (MembershipEntity m : allMemberships) {
-            String key = m.getUserId() + ":" + m.getScopeType().name() + ":" + m.getScopeId();
-            membershipKeys.add(key);
-        }
-
-        // user_roles 側: MEMBER/SUPPORTER の行を全件取得（findAll でスキャン）
-        List<UserRoleEntity> allUserRoles = userRoleRepository.findAll().stream()
-                .filter(ur -> ur.getUserId() != null)
-                .toList();
-
-        // user_roles 側の (userId, scopeType, scopeId) トリプルセット（TEAM/ORGANIZATION のみ対象）
-        Set<String> userRoleKeys = new HashSet<>();
-        for (UserRoleEntity ur : allUserRoles) {
-            if (ur.getTeamId() != null) {
-                userRoleKeys.add(ur.getUserId() + ":TEAM:" + ur.getTeamId());
-            } else if (ur.getOrganizationId() != null) {
-                userRoleKeys.add(ur.getUserId() + ":ORGANIZATION:" + ur.getOrganizationId());
+        Pageable membershipPageable = PageRequest.of(0, CHUNK_SIZE);
+        Page<MembershipEntity> membershipPage;
+        do {
+            membershipPage = membershipRepository.findAll(membershipPageable);
+            for (MembershipEntity m : membershipPage.getContent()) {
+                if (m.getLeftAt() == null && m.getUserId() != null) {
+                    String key = m.getUserId() + ":" + m.getScopeType().name() + ":" + m.getScopeId();
+                    membershipKeys.add(key);
+                }
             }
-        }
+            membershipPageable = membershipPageable.next();
+        } while (membershipPage.hasNext());
+
+        // user_roles 側: TEAM/ORGANIZATION の (userId, scopeType, scopeId) トリプルセット
+        // チャンク処理で全件をページングしながら読み込む
+        Set<String> userRoleKeys = new HashSet<>();
+        Pageable userRolePageable = PageRequest.of(0, CHUNK_SIZE);
+        Page<UserRoleEntity> userRolePage;
+        do {
+            userRolePage = userRoleRepository.findAll(userRolePageable);
+            for (UserRoleEntity ur : userRolePage.getContent()) {
+                if (ur.getUserId() != null) {
+                    if (ur.getTeamId() != null) {
+                        userRoleKeys.add(ur.getUserId() + ":TEAM:" + ur.getTeamId());
+                    } else if (ur.getOrganizationId() != null) {
+                        userRoleKeys.add(ur.getUserId() + ":ORGANIZATION:" + ur.getOrganizationId());
+                    }
+                }
+            }
+            userRolePageable = userRolePageable.next();
+        } while (userRolePage.hasNext());
 
         // 対称差: memberships にのみある組み合わせ
         Set<String> onlyInMemberships = new HashSet<>(membershipKeys);

@@ -14,6 +14,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -42,7 +47,16 @@ public class ShiftSwapService {
         if (status != null) {
             entities = swapRepository.findByStatusOrderByCreatedAtAsc(SwapRequestStatus.valueOf(status));
         } else {
-            entities = swapRepository.findAll();
+            // status 未指定時は全件をチャンク処理（500件ずつ）でリスト収集する
+            final int CHUNK_SIZE = 500;
+            entities = new ArrayList<>();
+            Pageable pageable = PageRequest.of(0, CHUNK_SIZE);
+            Page<ShiftSwapRequestEntity> page;
+            do {
+                page = swapRepository.findAll(pageable);
+                entities.addAll(page.getContent());
+                pageable = pageable.next();
+            } while (page.hasNext());
         }
         return shiftMapper.toSwapResponseList(entities);
     }

@@ -15,9 +15,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.math.BigDecimal;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -69,38 +72,45 @@ public class MilestoneReconciliationBatch {
     public void reconcile() {
         log.info("マイルストーン整合性バッチ開始");
 
-        List<ProjectMilestoneEntity> allMilestones = milestoneRepository.findAll();
+        final int CHUNK_SIZE = 500;
         int checked = 0;
         int progressFixed = 0;
         Set<Long> chainRebuildTargetProjectIds = new HashSet<>();
 
-        for (ProjectMilestoneEntity milestone : allMilestones) {
-            // 削除済みプロジェクトのマイルストーンは対象外
-            ProjectEntity project = projectRepository
-                    .findByIdAndDeletedAtIsNull(milestone.getProjectId())
-                    .orElse(null);
-            if (project == null) {
-                continue;
+        // 全マイルストーンをチャンク処理で走査（500件ずつページング取得）
+        Pageable pageable = PageRequest.of(0, CHUNK_SIZE);
+        Page<ProjectMilestoneEntity> milestonePage;
+        do {
+            milestonePage = milestoneRepository.findAll(pageable);
+            for (ProjectMilestoneEntity milestone : milestonePage.getContent()) {
+                // 削除済みプロジェクトのマイルストーンは対象外
+                ProjectEntity project = projectRepository
+                        .findByIdAndDeletedAtIsNull(milestone.getProjectId())
+                        .orElse(null);
+                if (project == null) {
+                    continue;
+                }
+                checked++;
+
+                long total = todoRepository.countByMilestoneIdAndDeletedAtIsNull(milestone.getId());
+                long completed = todoRepository.countByMilestoneIdAndStatusAndDeletedAtIsNull(
+                        milestone.getId(), TodoStatus.COMPLETED);
+
+                BigDecimal currentRate = milestone.getProgressRate();
+                milestone.updateProgressRate(total, completed);
+                BigDecimal newRate = milestone.getProgressRate();
+
+                if (currentRate == null || currentRate.compareTo(newRate) != 0) {
+                    milestoneRepository.save(milestone);
+                    progressFixed++;
+                    chainRebuildTargetProjectIds.add(milestone.getProjectId());
+                    log.debug("progress_rate 補正: milestoneId={}, projectId={}, old={}, new={}, total={}, completed={}",
+                            milestone.getId(), milestone.getProjectId(),
+                            currentRate, newRate, total, completed);
+                }
             }
-            checked++;
-
-            long total = todoRepository.countByMilestoneIdAndDeletedAtIsNull(milestone.getId());
-            long completed = todoRepository.countByMilestoneIdAndStatusAndDeletedAtIsNull(
-                    milestone.getId(), TodoStatus.COMPLETED);
-
-            BigDecimal currentRate = milestone.getProgressRate();
-            milestone.updateProgressRate(total, completed);
-            BigDecimal newRate = milestone.getProgressRate();
-
-            if (currentRate == null || currentRate.compareTo(newRate) != 0) {
-                milestoneRepository.save(milestone);
-                progressFixed++;
-                chainRebuildTargetProjectIds.add(milestone.getProjectId());
-                log.debug("progress_rate 補正: milestoneId={}, projectId={}, old={}, new={}, total={}, completed={}",
-                        milestone.getId(), milestone.getProjectId(),
-                        currentRate, newRate, total, completed);
-            }
-        }
+            pageable = pageable.next();
+        } while (milestonePage.hasNext());
 
         // 差分が出たプロジェクトはロック連鎖も再評価（進捗率とロック状態の二重整合性保証）
         int chainsRebuilt = 0;
