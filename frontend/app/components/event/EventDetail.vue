@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { statusLabel, statusSeverity, formatDateTime } from '~/utils/eventFormat'
-const { formatDateTime: formatIsoDateTime } = useDatetime()
 import AdvanceNoticeList from '~/components/event/advanceNotice/AdvanceNoticeList.vue'
 import LateAbsenceNoticeBar from '~/components/event/advanceNotice/LateAbsenceNoticeBar.vue'
 import DismissalDialog from '~/components/event/dismissal/DismissalDialog.vue'
 import DismissalStatusBadge from '~/components/event/dismissal/DismissalStatusBadge.vue'
+
+const { formatDateTime: formatIsoDateTime } = useDatetime()
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
