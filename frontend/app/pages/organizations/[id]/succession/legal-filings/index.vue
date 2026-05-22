@@ -8,7 +8,7 @@ const orgId = computed(() => Number(route.params.id))
 const { t } = useI18n()
 const toast = useToast()
 const { listByOrganization, createLegalFiling, buildEvidencePackage, getEvidenceDownloadUrl } = useLegalFilingApi()
-const { formatDateTime } = useDatetime()
+const { formatDateTime: _fmt } = useDatetime()
 
 const filings = ref<LegalFiling[]>([])
 const loading = ref(false)
@@ -31,8 +31,7 @@ const filingTypeOptions: Array<{ label: string, value: LegalFilingType }> = [
 ]
 
 function formatDateTime(iso?: string | null): string {
-  if (!iso) return '-'
-  return formatDateTime(iso)
+  return _fmt(iso) || '-'
 }
 
 function filingTypeLabel(type: LegalFilingType): string {
