@@ -269,15 +269,23 @@ public class EquipmentRankingBatchService {
     }
 
     /**
-     * チームIDとtemplateのマッピングを一括取得。
-     * 全チームをメモリに乗せる（チーム数が多い場合はページング対応を検討）。
+     * チームIDとtemplateのマッピングをチャンク単位で取得。
+     * template が設定されているチームのみをページング取得し、メモリに積む。
      */
     private Map<Long, String> buildTeamTemplateMap() {
-        return teamRepository.findAll().stream()
-                .filter(t -> t.getTemplate() != null)
-                .collect(Collectors.toMap(
-                        TeamEntity::getId,
-                        TeamEntity::getTemplate));
+        final int CHUNK_SIZE = 500;
+        Map<Long, String> result = new HashMap<>();
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(0, CHUNK_SIZE);
+        org.springframework.data.domain.Page<TeamEntity> page;
+        do {
+            page = teamRepository.findByTemplateIsNotNull(pageable);
+            for (TeamEntity team : page.getContent()) {
+                result.put(team.getId(), team.getTemplate());
+            }
+            pageable = pageable.next();
+        } while (page.hasNext());
+        return result;
     }
 
     /** グループ集計用ローカルクラス */

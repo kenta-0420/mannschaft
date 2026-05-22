@@ -3,6 +3,8 @@ package com.mannschaft.app.recruitment.repository;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -55,6 +57,20 @@ public interface RecruitmentUserPenaltyRepository extends JpaRepository<Recruitm
               AND p.expiresAt <= :now
             """)
     List<RecruitmentUserPenaltyEntity> findExpiredPenalties(@Param("now") LocalDateTime now);
+
+    /**
+     * アクティブペナルティをチャンク単位で取得する（バッチ処理用）。
+     * アクティブ条件: liftedAt IS NULL かつ expiresAt が now より未来。
+     */
+    @Query("""
+            SELECT p FROM RecruitmentUserPenaltyEntity p
+            WHERE p.liftedAt IS NULL
+              AND p.expiresAt > :now
+            ORDER BY p.id ASC
+            """)
+    Page<RecruitmentUserPenaltyEntity> findActivePenaltiesPage(
+            @Param("now") LocalDateTime now,
+            Pageable pageable);
 
     /** ユーザーの全ペナルティ履歴（マイページ用）。 */
     List<RecruitmentUserPenaltyEntity> findByUserIdOrderByCreatedAtDesc(Long userId);

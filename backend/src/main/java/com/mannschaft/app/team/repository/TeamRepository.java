@@ -177,4 +177,15 @@ public interface TeamRepository
            "AND t.archivedAt IS NULL " +
            "ORDER BY t.id ASC")
     List<TeamEntity> findAllPublicTeams();
+
+    /**
+     * 備品ランキングバッチ用: template が設定されているチームをチャンク単位で取得する。
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは自動除外される。</p>
+     *
+     * <p>設計書: 備品ランキングバッチ（EquipmentRankingBatchService#buildTeamTemplateMap）
+     * での findAll() 無制限全件取得をチャンク処理に切り替えるために追加。</p>
+     */
+    @Query("SELECT t FROM TeamEntity t WHERE t.template IS NOT NULL ORDER BY t.id ASC")
+    Page<TeamEntity> findByTemplateIsNotNull(Pageable pageable);
 }

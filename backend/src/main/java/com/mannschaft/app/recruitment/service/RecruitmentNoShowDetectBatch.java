@@ -11,6 +11,9 @@ import com.mannschaft.app.recruitment.repository.RecruitmentPenaltySettingReposi
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,46 +49,48 @@ public class RecruitmentNoShowDetectBatch {
     @SchedulerLock(name = "recruitment-no-show-detect-batch", lockAtMostFor = "55m", lockAtLeastFor = "5m")
     @Transactional
     public void detectNoShows() {
-        // 自動検出が有効な設定を取得
-        List<RecruitmentPenaltySettingEntity> autoDetectSettings =
-                settingRepository.findAll().stream()
-                        .filter(RecruitmentPenaltySettingEntity::isAutoNoShowDetection)
-                        .toList();
-
-        if (autoDetectSettings.isEmpty()) {
-            return;
-        }
-
+        final int CHUNK_SIZE = 500;
         LocalDateTime threshold = LocalDateTime.now().minusHours(24);
         int detected = 0;
 
-        for (RecruitmentPenaltySettingEntity setting : autoDetectSettings) {
-            // このスコープの終了済み募集で CONFIRMED のままの参加者を抽出
-            List<RecruitmentParticipantEntity> targets =
-                    participantRepository.findConfirmedInEndedListings(
-                            setting.getScopeType(), setting.getScopeId(), threshold);
-
-            for (RecruitmentParticipantEntity participant : targets) {
-                // 既に NO_SHOW 記録があればスキップ
-                if (noShowRepository.findByParticipantId(participant.getId()).isPresent()) {
-                    continue;
-                }
-
-                // NO_SHOW マーク（仮マーク = confirmed=false）
-                participant.markNoShow();
-                participantRepository.save(participant);
-
-                RecruitmentNoShowRecordEntity record = RecruitmentNoShowRecordEntity.builder()
-                        .participantId(participant.getId())
-                        .listingId(participant.getListingId())
-                        .userId(participant.getUserId())
-                        .reason(NoShowReason.AUTO_DETECTED)
-                        .recordedBy(null)
-                        .build();
-                noShowRepository.save(record);
-                detected++;
+        // autoNoShowDetection=true の設定をチャンク処理で走査（500件ずつページング取得）
+        Pageable pageable = PageRequest.of(0, CHUNK_SIZE);
+        Page<RecruitmentPenaltySettingEntity> settingPage;
+        do {
+            settingPage = settingRepository.findByAutoNoShowDetectionTrue(pageable);
+            if (settingPage.isEmpty()) {
+                break;
             }
-        }
+
+            for (RecruitmentPenaltySettingEntity setting : settingPage.getContent()) {
+                // このスコープの終了済み募集で CONFIRMED のままの参加者を抽出
+                List<RecruitmentParticipantEntity> targets =
+                        participantRepository.findConfirmedInEndedListings(
+                                setting.getScopeType(), setting.getScopeId(), threshold);
+
+                for (RecruitmentParticipantEntity participant : targets) {
+                    // 既に NO_SHOW 記録があればスキップ
+                    if (noShowRepository.findByParticipantId(participant.getId()).isPresent()) {
+                        continue;
+                    }
+
+                    // NO_SHOW マーク（仮マーク = confirmed=false）
+                    participant.markNoShow();
+                    participantRepository.save(participant);
+
+                    RecruitmentNoShowRecordEntity record = RecruitmentNoShowRecordEntity.builder()
+                            .participantId(participant.getId())
+                            .listingId(participant.getListingId())
+                            .userId(participant.getUserId())
+                            .reason(NoShowReason.AUTO_DETECTED)
+                            .recordedBy(null)
+                            .build();
+                    noShowRepository.save(record);
+                    detected++;
+                }
+            }
+            pageable = pageable.next();
+        } while (settingPage.hasNext());
 
         if (detected > 0) {
             log.info("F03.11 Phase5b NO_SHOW自動検出バッチ: detected={}件", detected);
