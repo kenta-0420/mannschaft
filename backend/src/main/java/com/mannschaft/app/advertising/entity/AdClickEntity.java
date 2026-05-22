@@ -14,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 /**
  * 広告クリックエンティティ。
@@ -65,6 +66,8 @@ public class AdClickEntity {
      * @return 新規 AdClickEntity
      */
     public static AdClickEntity create(Long adId, Long campaignId, Long impressionId, Long userId) {
+        Objects.requireNonNull(adId, "adId is required");
+        Objects.requireNonNull(campaignId, "campaignId is required");
         return AdClickEntity.builder()
                 .adId(adId)
                 .campaignId(campaignId)

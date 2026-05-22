@@ -14,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 /**
  * 広告インプレッションエンティティ。
@@ -60,6 +61,8 @@ public class AdImpressionEntity {
      * @return 新規 AdImpressionEntity
      */
     public static AdImpressionEntity create(Long adId, Long campaignId, Long userId) {
+        Objects.requireNonNull(adId, "adId is required");
+        Objects.requireNonNull(campaignId, "campaignId is required");
         return AdImpressionEntity.builder()
                 .adId(adId)
                 .campaignId(campaignId)

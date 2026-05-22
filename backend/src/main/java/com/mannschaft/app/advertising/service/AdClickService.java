@@ -29,6 +29,9 @@ public class AdClickService {
      */
     @Transactional
     public Long record(Long adId, Long campaignId, Long impressionId, Long userId) {
+        if (adId == null || campaignId == null) {
+            throw new IllegalArgumentException("adId と campaignId は必須です");
+        }
         AdClickEntity click = AdClickEntity.create(adId, campaignId, impressionId, userId);
         return adClickRepository.save(click).getId();
     }

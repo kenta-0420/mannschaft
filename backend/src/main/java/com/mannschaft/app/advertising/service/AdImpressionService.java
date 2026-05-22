@@ -29,6 +29,9 @@ public class AdImpressionService {
      */
     @Transactional
     public Long record(Long adId, Long campaignId, Long userId) {
+        if (adId == null || campaignId == null) {
+            throw new IllegalArgumentException("adId と campaignId は必須です");
+        }
         AdImpressionEntity impression = AdImpressionEntity.create(adId, campaignId, userId);
         return adImpressionRepository.save(impression).getId();
     }
