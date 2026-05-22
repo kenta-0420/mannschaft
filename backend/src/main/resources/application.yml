@@ -31,6 +31,14 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 
+  # Pageable — ページサイズ上限設定（F19.1 Phase 4: 公開検索APIの巨大リクエスト防止）
+  # size=100000 などのリクエストを自動的に max-page-size の 100 件に丸める
+  data:
+    web:
+      pageable:
+        max-page-size: 100
+        default-page-size: 20
+
   # i18n メッセージソース（F11.3）
   messages:
     basename: messages,ValidationMessages
