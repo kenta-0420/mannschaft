@@ -101,6 +101,7 @@ useSeoPublicPage({
             v-model="prefecture"
             :options="['', ...PREFECTURES]"
             class="w-full"
+            data-testid="prefecture-select"
           >
             <template #value="{ value }">
               {{ value || t('public.discover.filter.all') }}

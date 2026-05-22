@@ -20,7 +20,7 @@ function formatDate(isoDate: string | null): string {
 </script>
 
 <template>
-  <Card class="h-full">
+  <Card class="h-full" data-testid="discover-team-card">
     <template #content>
       <div class="flex items-start gap-3">
         <!-- アイコン -->
