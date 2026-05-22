@@ -3,6 +3,8 @@ package com.mannschaft.app.auth.event;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.circulation.event.CirculationExportGeneratedEvent;
+import com.mannschaft.app.circulation.event.CirculationExportRequestedEvent;
 import com.mannschaft.app.common.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -635,6 +637,42 @@ public class AuditLogEventListener {
             event.getProvider() != null
                 ? toJson(Map.of("provider", event.getProvider()))
                 : null
+        );
+    }
+
+    // ─────────────────────────────────────────────
+    // CIRCULATION (F05.2 Phase 11 4-C)
+    // ─────────────────────────────────────────────
+
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleCirculationExportRequested(CirculationExportRequestedEvent event) {
+        auditLogService.record(
+            AuditEventType.CIRCULATION_EXPORT_REQUESTED.name(),
+            event.getActorId(),
+            null,
+            event.getTeamId(),
+            event.getOrganizationId(),
+            null,
+            null,
+            null,
+            toJson(Map.of("documentId", event.getDocumentId()))
+        );
+    }
+
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleCirculationExportGenerated(CirculationExportGeneratedEvent event) {
+        auditLogService.record(
+            AuditEventType.CIRCULATION_EXPORT_GENERATED.name(),
+            event.getActorId(),
+            null,
+            event.getTeamId(),
+            event.getOrganizationId(),
+            null,
+            null,
+            null,
+            toJson(Map.of("documentId", event.getDocumentId()))
         );
     }
 }

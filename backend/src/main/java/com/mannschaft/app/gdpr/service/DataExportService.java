@@ -1,10 +1,10 @@
 package com.mannschaft.app.gdpr.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
-import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.gdpr.GdprErrorCode;
+import com.mannschaft.app.gdpr.dto.UserEmailInfo;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
@@ -46,7 +46,6 @@ public class DataExportService {
     private final PersonalDataCollector personalDataCollector;
     private final StorageService storageService;
     private final EmailOutboxService emailOutboxService;
-    private final UserRepository userRepository;
 
     /**
      * エクスポートリクエストを受け付け、DataExportEntityを作成する。
@@ -88,13 +87,18 @@ public class DataExportService {
     /**
      * バックグラウンドでエクスポート処理を実行する。
      *
-     * @param exportId   エクスポートID
-     * @param userId     対象ユーザーID
+     * <p>メール送信に必要なユーザー情報（氏名・メアド）は呼び出し元（{@code GdprController}）で
+     * 事前に取得して {@link UserEmailInfo} として渡すことで、auth ドメインの
+     * {@code UserRepository} への直接参照を避けるドメイン境界設計を実現している。</p>
+     *
+     * @param exportId エクスポートID
+     * @param userInfo メール送信に必要なユーザー情報（userId / email / lastName / firstName）
      * @param categories 収集カテゴリ
      */
     @Async("job-pool")
     @Transactional
-    public void processExportAsync(Long exportId, Long userId, Set<String> categories) {
+    public void processExportAsync(Long exportId, UserEmailInfo userInfo, Set<String> categories) {
+        Long userId = userInfo.userId();
         DataExportEntity entity = dataExportRepository.findById(exportId)
                 .orElseThrow(() -> new IllegalStateException("ExportEntity not found: " + exportId));
 
@@ -142,13 +146,13 @@ public class DataExportService {
             dataExportRepository.save(entity);
 
             // 完了通知メール（ZIPパスワード平文をメールで送信）
-            sendCompletionEmail(userId, zipPassword, expiresAt, exportId);
+            sendCompletionEmail(userInfo, zipPassword, expiresAt, exportId);
 
         } catch (Exception e) {
             log.error("データエクスポート処理失敗: exportId={}, userId={}", exportId, userId, e);
             entity.markFailed(e.getMessage() != null ? e.getMessage() : "不明なエラー");
             dataExportRepository.save(entity);
-            sendFailureEmail(userId, exportId);
+            sendFailureEmail(userInfo, exportId);
         }
     }
 
@@ -251,49 +255,56 @@ public class DataExportService {
         return generatePasswordProtectedZip(data, password);
     }
 
-    // #9: エクスポート完了通知
-    private void sendCompletionEmail(Long userId, String zipPassword, LocalDateTime expiresAt, Long exportId) {
-        userRepository.findById(userId).ifPresent(user -> {
-            String subject = "個人データエクスポートが完了しました";
-            String htmlBody = "<p>" + user.getLastName() + " " + user.getFirstName() + " 様</p>" +
-                    "<p>個人データのエクスポートが完了しました。</p>" +
-                    "<p>ダウンロード有効期限: " + expiresAt + "</p>" +
-                    "<p>ZIPパスワード: <strong>" + zipPassword + "</strong></p>" +
-                    "<p>パスワードは安全な場所に保管してください。</p>";
-            emailOutboxService.enqueue(new EmailOutboxRequest(
-                    "GDPR_EXPORT_READY",
-                    "ja",
-                    user.getEmail(),
-                    Map.of("subject", subject, "body", htmlBody),
-                    "gdpr",
-                    "gdpr-export-ready:" + exportId,
-                    null,
-                    userId,
-                    null
-            ));
-            log.info("エクスポート完了メール enqueue: userId={}, exportId={}", userId, exportId);
-        });
+    /**
+     * エクスポート完了通知メールを送信する。
+     *
+     * <p>メール宛先・氏名は呼び出し元から {@link UserEmailInfo} として受け取ることで、
+     * auth ドメインの {@code UserRepository} への直接参照を回避している。</p>
+     */
+    private void sendCompletionEmail(UserEmailInfo userInfo, String zipPassword,
+                                     LocalDateTime expiresAt, Long exportId) {
+        String subject = "個人データエクスポートが完了しました";
+        String htmlBody = "<p>" + userInfo.lastName() + " " + userInfo.firstName() + " 様</p>" +
+                "<p>個人データのエクスポートが完了しました。</p>" +
+                "<p>ダウンロード有効期限: " + expiresAt + "</p>" +
+                "<p>ZIPパスワード: <strong>" + zipPassword + "</strong></p>" +
+                "<p>パスワードは安全な場所に保管してください。</p>";
+        emailOutboxService.enqueue(new EmailOutboxRequest(
+                "GDPR_EXPORT_READY",
+                "ja",
+                userInfo.email(),
+                Map.of("subject", subject, "body", htmlBody),
+                "gdpr",
+                "gdpr-export-ready:" + exportId,
+                null,
+                userInfo.userId(),
+                null
+        ));
+        log.info("エクスポート完了メール enqueue: userId={}, exportId={}", userInfo.userId(), exportId);
     }
 
-    // #10: エクスポート失敗通知
-    private void sendFailureEmail(Long userId, Long exportId) {
-        userRepository.findById(userId).ifPresent(user -> {
-            String subject = "個人データエクスポートに失敗しました";
-            String htmlBody = "<p>" + user.getLastName() + " " + user.getFirstName() + " 様</p>" +
-                    "<p>個人データのエクスポート処理中にエラーが発生しました。</p>" +
-                    "<p>お手数ですが、しばらく経ってから再度お試しください。</p>";
-            emailOutboxService.enqueue(new EmailOutboxRequest(
-                    "GDPR_EXPORT_FAILED",
-                    "ja",
-                    user.getEmail(),
-                    Map.of("subject", subject, "body", htmlBody),
-                    "gdpr",
-                    "gdpr-export-failed:" + exportId,
-                    null,
-                    userId,
-                    null
-            ));
-            log.warn("エクスポート失敗メール enqueue: userId={}, exportId={}", userId, exportId);
-        });
+    /**
+     * エクスポート失敗通知メールを送信する。
+     *
+     * <p>メール宛先・氏名は呼び出し元から {@link UserEmailInfo} として受け取ることで、
+     * auth ドメインの {@code UserRepository} への直接参照を回避している。</p>
+     */
+    private void sendFailureEmail(UserEmailInfo userInfo, Long exportId) {
+        String subject = "個人データエクスポートに失敗しました";
+        String htmlBody = "<p>" + userInfo.lastName() + " " + userInfo.firstName() + " 様</p>" +
+                "<p>個人データのエクスポート処理中にエラーが発生しました。</p>" +
+                "<p>お手数ですが、しばらく経ってから再度お試しください。</p>";
+        emailOutboxService.enqueue(new EmailOutboxRequest(
+                "GDPR_EXPORT_FAILED",
+                "ja",
+                userInfo.email(),
+                Map.of("subject", subject, "body", htmlBody),
+                "gdpr",
+                "gdpr-export-failed:" + exportId,
+                null,
+                userInfo.userId(),
+                null
+        ));
+        log.warn("エクスポート失敗メール enqueue: userId={}, exportId={}", userInfo.userId(), exportId);
     }
 }
