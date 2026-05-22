@@ -106,6 +106,7 @@ class AdCreativeServiceTest {
             Long campaignId = 10L;
             AdEntity entity = buildEntity(adId, campaignId, AdEntity.AdStatus.DRAFT);
             given(adEntityRepository.findByIdAndCampaignId(adId, campaignId)).willReturn(Optional.of(entity));
+            given(adEntityRepository.save(any(AdEntity.class))).willReturn(entity);
             UpdateAdCreativeRequest req = new UpdateAdCreativeRequest("新しいタイトル", null, null);
 
             // When
@@ -113,6 +114,7 @@ class AdCreativeServiceTest {
 
             // Then
             assertThat(result.title()).isEqualTo("新しいタイトル");
+            verify(adEntityRepository).save(entity);
         }
 
         @Test

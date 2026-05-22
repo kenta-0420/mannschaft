@@ -58,7 +58,8 @@ public class AdCreativeService {
             throw new BusinessException(AdvertisingErrorCode.AD_025);
         }
         entity.updateCreative(request.title(), request.imageUrl(), request.destinationUrl());
-        return toResponse(entity);
+        AdEntity saved = adEntityRepository.save(entity);
+        return toResponse(saved);
     }
 
     /**
