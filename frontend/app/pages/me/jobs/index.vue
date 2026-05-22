@@ -292,7 +292,7 @@ onMounted(async () => {
         v-if="applicationsLoading"
         class="flex justify-center p-8"
       >
-        <ProgressSpinner />
+        <LoadingBounce />
       </div>
 
       <div
@@ -370,7 +370,7 @@ onMounted(async () => {
         v-if="contractsLoading"
         class="flex justify-center p-8"
       >
-        <ProgressSpinner />
+        <LoadingBounce />
       </div>
 
       <div

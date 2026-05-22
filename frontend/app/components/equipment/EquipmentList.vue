@@ -57,7 +57,7 @@ defineExpose({ refresh: loadItems })
     </div>
 
     <div v-if="loading" class="flex justify-center py-8">
-      <ProgressSpinner style="width: 40px; height: 40px" />
+      <LoadingBounce />
     </div>
 
     <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

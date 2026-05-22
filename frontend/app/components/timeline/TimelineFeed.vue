@@ -219,7 +219,7 @@ defineExpose({ refresh })
 
     <!-- ローディング -->
     <div v-if="loading && !initialLoaded" class="flex justify-center py-8">
-      <ProgressSpinner style="width: 40px; height: 40px" />
+      <LoadingBounce />
     </div>
   </div>
 

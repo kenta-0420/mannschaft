@@ -67,7 +67,7 @@ onMounted(fetchModules)
     </div>
 
     <div v-if="loading" class="flex justify-center py-10">
-      <ProgressSpinner style="width: 36px; height: 36px" />
+      <LoadingBounce />
     </div>
 
     <div

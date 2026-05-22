@@ -62,7 +62,7 @@ onMounted(() => load())
   <div class="mx-auto max-w-2xl px-4 py-8">
     <!-- ロード中 -->
     <div v-if="loading" class="flex flex-col items-center gap-4 p-8">
-      <ProgressSpinner />
+      <LoadingBounce />
       <p class="text-surface-500">{{ $t('common.button.loading') }}</p>
     </div>
 

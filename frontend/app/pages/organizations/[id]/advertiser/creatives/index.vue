@@ -153,7 +153,7 @@ onMounted(load)
     </div>
 
     <!-- ローディング -->
-    <ProgressSpinner v-if="loading" class="flex justify-center py-20" />
+    <div v-if="loading" class="flex justify-center py-20"><LoadingBounce /></div>
 
     <!-- 空状態 -->
     <div v-else-if="creatives.length === 0" class="py-20 text-center">

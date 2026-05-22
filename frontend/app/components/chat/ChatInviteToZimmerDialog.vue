@@ -121,7 +121,7 @@ watch(visible, (v) => {
         class="max-h-52 overflow-y-auto rounded-lg border border-surface-300 dark:border-surface-600"
       >
         <div v-if="membersLoading" class="flex justify-center py-6">
-          <ProgressSpinner style="width: 30px; height: 30px" />
+          <LoadingBounce />
         </div>
         <div
           v-else-if="filteredMembers.length === 0"

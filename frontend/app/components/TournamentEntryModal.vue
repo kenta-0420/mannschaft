@@ -318,7 +318,7 @@ watch(
   >
     <!-- ローディング -->
     <div v-if="loading" class="flex justify-center py-8">
-      <ProgressSpinner />
+      <LoadingBounce />
     </div>
 
     <div v-else class="flex flex-col gap-6">

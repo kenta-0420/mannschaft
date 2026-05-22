@@ -126,7 +126,7 @@ watch([dateFrom, dateTo], load)
       </div>
     </div>
 
-    <ProgressSpinner v-if="loading" class="flex justify-center py-20" />
+    <div v-if="loading" class="flex justify-center py-20"><LoadingBounce /></div>
 
     <template v-else-if="performance">
       <AdvertiserCampaignMetricsCards :performance="performance" />

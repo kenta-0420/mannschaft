@@ -74,7 +74,7 @@ function onDismissalSubmitted() {
 <template>
   <div>
     <div v-if="loading" class="flex items-center justify-center py-12">
-      <ProgressSpinner />
+      <LoadingBounce />
     </div>
 
     <div v-else-if="event">

@@ -77,7 +77,7 @@ onMounted(() => loadRecipients())
   <div class="p-4">
     <!-- ローディング -->
     <div v-if="loading" class="flex justify-center py-6">
-      <ProgressSpinner style="width: 32px; height: 32px" />
+      <LoadingBounce />
     </div>
 
     <template v-else>

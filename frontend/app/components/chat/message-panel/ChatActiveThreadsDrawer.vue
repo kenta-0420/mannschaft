@@ -37,7 +37,7 @@ function onUpdateVisible(value: boolean) {
     @update:visible="onUpdateVisible"
   >
     <div v-if="loading && threads.length === 0" class="flex justify-center py-8">
-      <ProgressSpinner style="width: 32px; height: 32px" />
+      <LoadingBounce />
     </div>
     <div v-else-if="threads.length === 0" class="py-8 text-center text-sm text-surface-400">
       進行中のスレッドはありません

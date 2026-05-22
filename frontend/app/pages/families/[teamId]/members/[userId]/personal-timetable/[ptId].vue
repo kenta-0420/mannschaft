@@ -71,7 +71,7 @@ onMounted(load)
     </div>
 
     <div v-if="loading" class="text-center py-12">
-      <ProgressSpinner />
+      <LoadingBounce />
     </div>
 
     <div v-else-if="!view" class="text-center py-12 text-gray-500">

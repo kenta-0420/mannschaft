@@ -70,7 +70,7 @@ onMounted(loadInvoices)
       <Select v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" placeholder="ステータス" class="w-40" />
     </div>
 
-    <ProgressSpinner v-if="loading" class="flex justify-center py-10" />
+    <div v-if="loading" class="flex justify-center py-10"><LoadingBounce /></div>
 
     <DataTable v-else :value="invoices" striped-rows @row-click="(e: { data: InvoiceSummaryResponse }) => viewDetail(e.data)">
       <Column field="invoiceNumber" header="請求書番号" />

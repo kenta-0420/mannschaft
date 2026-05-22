@@ -384,7 +384,7 @@ onMounted(loadScreens)
 
     <!-- Screen list -->
     <div v-if="loadingScreens" class="flex justify-center py-10">
-      <ProgressSpinner style="width: 40px; height: 40px" />
+      <LoadingBounce />
     </div>
 
     <div v-else>
@@ -499,7 +499,7 @@ onMounted(loadScreens)
           </div>
 
           <div v-if="loadingSlots" class="flex justify-center py-4">
-            <ProgressSpinner style="width: 32px; height: 32px" />
+            <LoadingBounce />
           </div>
 
           <DataTable
@@ -558,7 +558,7 @@ onMounted(loadScreens)
           </div>
 
           <div v-if="loadingTokens" class="flex justify-center py-4">
-            <ProgressSpinner style="width: 32px; height: 32px" />
+            <LoadingBounce />
           </div>
 
           <div v-else-if="tokens.length === 0" class="py-4 text-center text-sm text-surface-400">

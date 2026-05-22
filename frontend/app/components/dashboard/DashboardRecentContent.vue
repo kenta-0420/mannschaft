@@ -100,7 +100,7 @@ onMounted(() => {
       </div>
 
       <div v-if="postsLoading" class="flex justify-center py-6">
-        <ProgressSpinner style="width: 32px; height: 32px" />
+        <LoadingBounce />
       </div>
 
       <div v-else-if="recentPosts.length === 0" class="py-6 text-center text-sm text-surface-400">
@@ -162,7 +162,7 @@ onMounted(() => {
       </div>
 
       <div v-if="threadsLoading" class="flex justify-center py-6">
-        <ProgressSpinner style="width: 32px; height: 32px" />
+        <LoadingBounce />
       </div>
 
       <div v-else-if="recentThreads.length === 0" class="py-6 text-center text-sm text-surface-400">

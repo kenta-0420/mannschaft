@@ -120,7 +120,7 @@ async function handleDelete() {
     :header="memo?.title ?? t('quick_memo.detail')"
   >
     <div v-if="loading" class="flex items-center justify-center py-8">
-      <ProgressSpinner />
+      <LoadingBounce />
     </div>
 
     <div v-else-if="memo" class="space-y-4 p-1">

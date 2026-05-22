@@ -196,7 +196,7 @@ onMounted(async () => {
       <!-- ダッシュボードタブ -->
       <TabPanel value="dashboard" header="ダッシュボード">
         <div v-if="loadingDashboard" class="flex items-center justify-center py-12">
-          <ProgressSpinner />
+          <LoadingBounce />
         </div>
         <div v-else-if="dashboard" class="flex flex-col gap-6">
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -278,7 +278,7 @@ onMounted(async () => {
           </div>
 
           <div v-if="loadingReviews" class="flex items-center justify-center py-12">
-            <ProgressSpinner />
+            <LoadingBounce />
           </div>
           <DataTable
             v-else
@@ -428,7 +428,7 @@ onMounted(async () => {
           </div>
 
           <div v-if="loadingVisits" class="flex items-center justify-center py-12">
-            <ProgressSpinner />
+            <LoadingBounce />
           </div>
           <DataTable
             v-else
