@@ -270,7 +270,7 @@ function onPopoverHide() {
             {{ t('scopeFolder.nav.showAll') }}
           </button>
 
-          <div class="ml-auto flex items-center gap-1">
+          <div class="flex items-center gap-1">
             <button
               type="button"
               class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-primary hover:bg-primary-50 focus:outline-none"
