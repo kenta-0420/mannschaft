@@ -14,6 +14,7 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const { success, error: showError } = useNotification()
+const { formatDateTime } = useDatetime()
 const adminWalletApi = useAdminWalletApi()
 const walletApi = useWalletApi()
 
@@ -179,7 +180,7 @@ const providerOptions = computed(() =>
       </Column>
       <Column :header="t('wallet.synonym_admin.col_created')" style="width: 180px">
         <template #body="{ data }">
-          <span class="text-sm">{{ new Date(data.createdAt).toLocaleString('ja-JP') }}</span>
+          <span class="text-sm">{{ formatDateTime(data.createdAt) }}</span>
         </template>
       </Column>
       <Column header="" style="width: 120px">

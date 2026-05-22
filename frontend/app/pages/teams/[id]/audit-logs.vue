@@ -7,6 +7,7 @@ const route = useRoute()
 const teamId = computed(() => Number(route.params.id))
 const auditLogApi = useAuditLogApi()
 const notification = useNotification()
+const { formatDateTime } = useDatetime()
 
 const logs = ref<AuditLog[]>([])
 const totalRecords = ref(0)
@@ -34,7 +35,7 @@ onMounted(loadLogs)
     <PageHeader title="監査ログ" class="mb-6" />
     <DataTable :value="logs" :loading="loading" :lazy="true" :paginator="true" :rows="30" :total-records="totalRecords" :first="page * 30" data-key="id" striped-rows @page="(e: { page: number }) => { page = e.page; loadLogs() }">
       <template #empty><div class="py-8 text-center text-surface-500">ログがありません</div></template>
-      <Column header="日時" style="width: 160px"><template #body="{ data }">{{ new Date(data.createdAt).toLocaleString('ja-JP') }}</template></Column>
+      <Column header="日時" style="width: 160px"><template #body="{ data }">{{ formatDateTime(data.createdAt) }}</template></Column>
       <Column field="userName" header="ユーザー" />
       <Column header="カテゴリ"><template #body="{ data }"><Badge :value="data.eventCategory" severity="secondary" /></template></Column>
       <Column field="eventType" header="イベント" />

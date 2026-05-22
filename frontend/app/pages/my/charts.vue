@@ -5,6 +5,7 @@ definePageMeta({ middleware: 'auth' })
 
 const chartApi = useChartApi()
 const notification = useNotification()
+const { formatDate } = useDatetime()
 
 const charts = ref<Chart[]>([])
 const totalRecords = ref(0)
@@ -52,7 +53,7 @@ onMounted(() => loadData())
       >
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-semibold">
-            {{ new Date(chart.visitDate).toLocaleDateString('ja-JP') }}
+            {{ formatDate(chart.visitDate) }}
           </h3>
           <Badge
             :value="chart.status === 'DRAFT' ? '下書き' : '確定'"
@@ -73,7 +74,7 @@ onMounted(() => loadData())
           <div class="grid gap-3 md:grid-cols-2">
             <div>
               <span class="text-sm text-surface-500">来店日:</span>
-              {{ new Date(selectedChart.visitDate).toLocaleDateString('ja-JP') }}
+              {{ formatDate(selectedChart.visitDate) }}
             </div>
             <div>
               <span class="text-sm text-surface-500">担当:</span> {{ selectedChart.staffName }}

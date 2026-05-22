@@ -5,6 +5,7 @@ definePageMeta({ middleware: 'auth' })
 
 const { getTaxSettings, createTaxSetting, updateTaxSetting, deleteTaxSetting } = useTaxSettingApi()
 const { success, error: showError } = useNotification()
+const { formatDate } = useDatetime()
 
 const taxSettings = ref<TaxSettingResponse[]>([])
 const loading = ref(true)
@@ -143,7 +144,7 @@ onMounted(load)
       <Column header="更新日" style="width: 140px">
         <template #body="{ data }">
           <span class="text-sm">
-            {{ new Date(data.updatedAt).toLocaleDateString('ja-JP') }}
+            {{ formatDate(data.updatedAt) }}
           </span>
         </template>
       </Column>

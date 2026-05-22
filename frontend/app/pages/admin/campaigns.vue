@@ -8,6 +8,7 @@ definePageMeta({ middleware: 'auth' })
 
 const campaignApi = useCampaignApi()
 const { success, error: showError } = useNotification()
+const { formatDate, formatDateTime } = useDatetime()
 
 const activeTab = ref('campaigns')
 const loading = ref(false)
@@ -165,7 +166,7 @@ onMounted(loadCampaigns)
                 <template #body="{ data }"><span class="text-sm">{{ targetMap[data.target as CampaignTarget] ?? data.target }}</span></template>
               </Column>
               <Column header="期間" style="width: 220px">
-                <template #body="{ data }"><span class="text-sm">{{ new Date(data.startDate).toLocaleDateString('ja-JP') }} 〜 {{ new Date(data.endDate).toLocaleDateString('ja-JP') }}</span></template>
+                <template #body="{ data }"><span class="text-sm">{{ formatDate(data.startDate) }} 〜 {{ formatDate(data.endDate) }}</span></template>
               </Column>
               <Column header="操作" style="width: 170px">
                 <template #body="{ data }">
@@ -200,7 +201,7 @@ onMounted(loadCampaigns)
                   <template #body="{ data }"><Tag :value="data.isActive ? '有効' : '無効'" :severity="data.isActive ? 'success' : 'secondary'" /></template>
                 </Column>
                 <Column header="発行日" style="width: 140px">
-                  <template #body="{ data }"><span class="text-sm">{{ new Date(data.createdAt).toLocaleDateString('ja-JP') }}</span></template>
+                  <template #body="{ data }"><span class="text-sm">{{ formatDate(data.createdAt) }}</span></template>
                 </Column>
                 <Column header="操作" style="width: 110px">
                   <template #body="{ data }"><Button label="利用履歴" size="small" severity="secondary" outlined @click="viewUsage(data.id)" /></template>
@@ -287,7 +288,7 @@ onMounted(loadCampaigns)
         <template #empty><div class="py-8 text-center"><p class="text-surface-400">利用履歴がありません</p></div></template>
         <Column field="userDisplayName" header="ユーザー" />
         <Column header="利用日時" style="width: 180px">
-          <template #body="{ data }"><span class="text-sm">{{ new Date(data.redeemedAt).toLocaleString('ja-JP') }}</span></template>
+          <template #body="{ data }"><span class="text-sm">{{ formatDateTime(data.redeemedAt) }}</span></template>
         </Column>
       </DataTable>
     </Dialog>

@@ -8,6 +8,7 @@ const teamId = computed(() => Number(route.params.id))
 const chartApi = useChartApi()
 const notification = useNotification()
 const { loadPermissions } = useRoleAccess('team', teamId)
+const { formatDate } = useDatetime()
 
 const charts = ref<Chart[]>([])
 const totalRecords = ref(0)
@@ -129,7 +130,7 @@ onMounted(loadData)
             </div>
             <div>
               <span class="text-sm text-surface-500">来店日:</span>
-              {{ new Date(selectedChart.visitDate).toLocaleDateString('ja-JP') }}
+              {{ formatDate(selectedChart.visitDate) }}
             </div>
             <div>
               <span class="text-sm text-surface-500">担当:</span> {{ selectedChart.staffName }}

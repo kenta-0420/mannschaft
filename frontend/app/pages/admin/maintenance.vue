@@ -8,6 +8,7 @@ definePageMeta({ middleware: 'auth' })
 
 const systemAdminApi = useSystemAdminApi()
 const { success, error: showError } = useNotification()
+const { formatDateTime } = useDatetime()
 
 const items = ref<MaintenanceScheduleResponse[]>([])
 const loading = ref(true)
@@ -137,12 +138,12 @@ onMounted(load)
       </Column>
       <Column header="開始日時" style="width: 160px">
         <template #body="{ data }">
-          <span class="text-sm">{{ new Date(data.startsAt).toLocaleString('ja-JP') }}</span>
+          <span class="text-sm">{{ formatDateTime(data.startsAt) }}</span>
         </template>
       </Column>
       <Column header="終了日時" style="width: 160px">
         <template #body="{ data }">
-          <span class="text-sm">{{ new Date(data.endsAt).toLocaleString('ja-JP') }}</span>
+          <span class="text-sm">{{ formatDateTime(data.endsAt) }}</span>
         </template>
       </Column>
       <Column header="操作" style="width: 280px">

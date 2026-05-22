@@ -8,6 +8,7 @@ definePageMeta({
 const { t } = useI18n()
 const { sendInvitation, getInvitations, cancelInvitation, getParents } = useParentalConsentApi()
 const notification = useNotification()
+const { formatDate } = useDatetime()
 
 const invitations = ref<InvitationResponse[]>([])
 const loading = ref(true)
@@ -110,7 +111,7 @@ onMounted(loadData)
                 'text-red-600': inv.status === 'REJECTED' || inv.status === 'REVOKED',
               }"
             >{{ $t(`parental_consent.status_${inv.status.toLowerCase()}`) }}</span>
-            · {{ $t('parental_consent.expires_at', { date: new Date(inv.expiresAt).toLocaleDateString() }) }}
+            · {{ $t('parental_consent.expires_at', { date: formatDate(inv.expiresAt) }) }}
           </p>
         </div>
         <button

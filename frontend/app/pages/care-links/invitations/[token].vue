@@ -7,6 +7,7 @@ definePageMeta({ auth: false })
 const { t } = useI18n()
 const api = useCareLinkApi()
 const notification = useNotification()
+const { formatDateTime } = useDatetime()
 const route = useRoute()
 const router = useRouter()
 
@@ -60,9 +61,6 @@ async function reject() {
   }
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleString()
-}
 
 onMounted(() => loadInvitation())
 </script>
@@ -141,7 +139,7 @@ onMounted(() => loadInvitation())
           </div>
           <div class="flex items-center justify-between">
             <span class="text-sm text-surface-500">{{ $t('care.label.expiresAt') }}</span>
-            <span class="text-sm">{{ formatDate(invitation.expiresAt) }}</span>
+            <span class="text-sm">{{ formatDateTime(invitation.expiresAt) }}</span>
           </div>
         </div>
 

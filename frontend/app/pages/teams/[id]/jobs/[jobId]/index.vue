@@ -17,7 +17,8 @@ import type {
 
 const route = useRoute()
 const router = useRouter()
-const { t, locale } = useI18n()
+const { t } = useI18n()
+const { formatDateTime } = useDatetime()
 const postingApi = useJobPostingApi()
 const applicationApi = useJobApplicationApi()
 const contractApi = useJobContractApi()
@@ -221,22 +222,6 @@ async function confirmReject() {
 }
 
 // --- 表示ヘルパ ---
-
-function formatDateTime(iso: string | null): string {
-  if (!iso) return '-'
-  try {
-    return new Date(iso).toLocaleString(locale.value, {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-  catch {
-    return iso
-  }
-}
 
 function fmtJpy(v: number): string {
   return `¥${v.toLocaleString()}`

@@ -7,6 +7,7 @@ definePageMeta({
 
 const notification = useNotification()
 const { getLoginHistory } = useUserSettingsApi()
+const { formatDateTime } = useDatetime()
 
 const loading = ref(true)
 const history = ref<LoginHistoryResponse[]>([])
@@ -47,9 +48,6 @@ function loadMore() {
   }
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleString('ja-JP')
-}
 
 function eventLabel(eventType: string) {
   const labels: Record<string, string> = {
@@ -101,7 +99,7 @@ function eventSeverity(eventType: string) {
                 {{ item.userAgent || '-' }}
               </p>
             </div>
-            <span class="text-xs text-surface-400">{{ formatDate(item.createdAt) }}</span>
+            <span class="text-xs text-surface-400">{{ formatDateTime(item.createdAt) }}</span>
           </div>
         </SectionCard>
       </div>

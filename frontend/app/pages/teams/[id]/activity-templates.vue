@@ -8,6 +8,7 @@ const teamId = computed(() => Number(route.params.id))
 
 const { getTemplates, deleteTemplate, duplicateTemplate } = useActivityApi()
 const { showError, showSuccess } = useNotification()
+const { formatDate } = useDatetime()
 
 const templates = ref<ActivityTemplate[]>([])
 const loading = ref(false)
@@ -59,13 +60,6 @@ async function handleDuplicate(id: number) {
   }
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
-}
 </script>
 
 <template>

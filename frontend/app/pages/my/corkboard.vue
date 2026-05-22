@@ -25,11 +25,12 @@ import type { PinnedCardItem, PinnedCardListResponse } from '~/types/pinnedCard'
 
 definePageMeta({ middleware: 'auth' })
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const api = useApi()
 const toast = useToast()
 const { captureQuiet } = useErrorReport()
 const { confirmAction } = useConfirmDialog()
+const { formatDateTime } = useDatetime()
 
 // ----- 状態 -----
 const items = ref<PinnedCardItem[]>([])
@@ -308,22 +309,6 @@ function iconFor(item: PinnedCardItem): string {
   }
 }
 
-function formatDateTime(iso: string): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  try {
-    return new Intl.DateTimeFormat(locale.value, {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(d)
-  } catch {
-    return d.toLocaleString()
-  }
-}
 
 function ariaLabelFor(item: PinnedCardItem): string {
   const typeLabel = item.cardType

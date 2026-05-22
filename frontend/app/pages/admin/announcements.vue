@@ -5,6 +5,7 @@ definePageMeta({ middleware: 'auth' })
 
 const systemAdminApi = useSystemAdminApi()
 const { success, error: showError } = useNotification()
+const { formatDateTime } = useDatetime()
 
 const items = ref<AnnouncementResponse[]>([])
 const loading = ref(true)
@@ -134,7 +135,7 @@ onMounted(load)
       <Column header="公開日" style="width: 160px">
         <template #body="{ data }">
           <span class="text-sm">{{
-            data.publishedAt ? new Date(data.publishedAt).toLocaleString('ja-JP') : '未公開'
+            data.publishedAt ? formatDateTime(data.publishedAt) : '未公開'
           }}</span>
         </template>
       </Column>

@@ -19,6 +19,7 @@ const { t } = useI18n()
 const notification = useNotification()
 const prefsApi = useAdPreferencesApi()
 const confirm = useConfirm()
+const { formatDateTime } = useDatetime()
 
 const preferences = ref<UserAdPreferences | null>(null)
 const loading = ref(false)
@@ -149,7 +150,7 @@ const blockLimitReached = computed(() => blockedCount.value >= 100)
 const formattedConsentedAt = computed(() => {
   const v = preferences.value?.consentedAt
   if (!v) return t('advertising.pages.settings_ad_preferences.not_consented')
-  return new Date(v).toLocaleString()
+  return formatDateTime(v)
 })
 
 onMounted(loadPreferences)

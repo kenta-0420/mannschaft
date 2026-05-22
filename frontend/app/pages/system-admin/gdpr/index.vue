@@ -24,6 +24,7 @@ definePageMeta({ middleware: 'auth' })
 const { t } = useI18n()
 const notification = useNotification()
 const gdprApi = useSystemAdminGdprApi()
+const { formatDateTime } = useDatetime()
 
 // ===== 状態 =====
 const summary = ref<GdprPurgeSummaryData | null>(null)
@@ -197,16 +198,6 @@ async function retryDomain(row: GdprPurgeStatusRow) {
 }
 
 // ===== ユーティリティ =====
-function formatDateTime(value: string | null): string {
-  if (!value) return '-'
-  try {
-    const d = new Date(value)
-    if (Number.isNaN(d.getTime())) return value
-    return d.toLocaleString()
-  } catch {
-    return value
-  }
-}
 
 function hashShort(hash: string): string {
   return hash.length > 8 ? `${hash.slice(0, 8)}...` : hash

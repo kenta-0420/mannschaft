@@ -10,6 +10,7 @@ const teamId = computed(() => Number(route.params.id))
 const { getTimeline } = useRepairPlanTimelineApi()
 const { listKanbans, createKanban, moveCard } = useRepairPlanKanbanApi()
 const notification = useNotification()
+const { formatDate } = useDatetime()
 const teamApi = useTeamApi()
 const { isAdminOrDeputy, isAdmin, loadPermissions } = useRoleAccess('team', teamId)
 
@@ -298,7 +299,7 @@ onMounted(async () => {
             </div>
             <p class="text-xs text-surface-500 dark:text-surface-400">
               {{ $t('repair_plan.kanban.deadline.label') }}:
-              {{ new Date(kanban.bidDeadlineAt).toLocaleDateString('ja-JP') }}
+              {{ formatDate(kanban.bidDeadlineAt) }}
             </p>
             <p class="mt-1 text-xs text-surface-400">
               {{ $t('repair_plan.kanban.card_count', { count: kanban.cards.length }) }}
