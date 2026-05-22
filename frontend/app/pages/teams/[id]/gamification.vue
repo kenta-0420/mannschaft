@@ -7,6 +7,7 @@ const route = useRoute()
 const teamId = computed(() => Number(route.params.id))
 const gamificationApi = useGamificationApi()
 const notification = useNotification()
+const { formatDate } = useDatetime()
 
 const points = ref<PointSummary | null>(null)
 const badges = ref<UserBadge[]>([])
@@ -108,7 +109,7 @@ onMounted(loadData)
                 <p class="text-sm font-semibold text-center">{{ ub.badge.name }}</p>
                 <p class="text-xs text-surface-500 text-center">{{ ub.badge.description }}</p>
                 <p class="mt-1 text-xs text-surface-400">
-                  {{ new Date(ub.awardedAt).toLocaleDateString('ja-JP') }}
+                  {{ formatDate(ub.awardedAt) }}
                 </p>
               </SectionCard>
             </div>

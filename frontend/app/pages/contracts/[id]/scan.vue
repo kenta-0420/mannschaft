@@ -151,7 +151,7 @@ onMounted(() => {
       v-if="loading"
       class="flex justify-center p-8"
     >
-      <ProgressSpinner />
+      <LoadingBounce />
     </div>
 
     <div
@@ -191,9 +191,7 @@ onMounted(() => {
         class="flex items-center justify-center gap-2 text-sm text-surface-500"
         data-testid="qr-scanner-submitting"
       >
-        <ProgressSpinner
-          style="width: 18px; height: 18px"
-        />
+        <LoadingBounce />
         <span>{{ t('jobmatching.qr.scanner.submitting') }}</span>
       </div>
     </template>

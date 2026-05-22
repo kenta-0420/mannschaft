@@ -1107,7 +1107,7 @@
     "moveToFolder": "フォルダへ移動",
     "removeFromFolder": "フォルダから外す",
     "noFolders": "フォルダはまだありません",
-    "emptyFolder": "このフォルダは空です",
+    "emptyFolder": "이 폴더는 비어 있습니다",
     "limitExceeded": "フォルダは最大20個まで作成できます",
     "nameDuplicate": "同じ名前のフォルダが既に存在します",
     "title": "내 폴더",
@@ -1124,7 +1124,7 @@
     },
     "nav": {
       "allList": "전체 (목록)",
-      "createNew": "＋ 새 폴더 만들기",
+      "createNew": "폴더 추가",
       "manage": "폴더 관리",
       "teams": "팀",
       "organizations": "조직",

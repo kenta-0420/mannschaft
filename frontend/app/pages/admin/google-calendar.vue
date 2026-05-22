@@ -6,6 +6,7 @@ const scopeType = computed(() => scopeStore.current.type as 'team' | 'organizati
 const scopeId = computed(() => scopeStore.current.id ?? 0)
 const { success, error: showError } = useNotification()
 const { getConnectionStatus, connect, disconnect, toggleTeamSync, toggleOrgSync } = useGoogleCalendarApi()
+const { formatDateTime } = useDatetime()
 
 interface ConnectionStatus {
   isConnected: boolean
@@ -127,7 +128,7 @@ onMounted(load)
           />
         </div>
         <div v-if="status?.lastSyncedAt" class="mt-4 text-xs text-surface-400">
-          最終同期: {{ new Date(status.lastSyncedAt).toLocaleString('ja-JP') }}
+          最終同期: {{ formatDateTime(status.lastSyncedAt) }}
         </div>
       </SectionCard>
     </div>

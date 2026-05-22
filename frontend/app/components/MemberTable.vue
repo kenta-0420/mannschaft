@@ -26,6 +26,7 @@ interface PagedMembers {
 
 const api = useApi()
 const notification = useNotification()
+const { formatDate } = useDatetime()
 const members = ref<Member[]>([])
 const totalRecords = ref(0)
 const loading = ref(false)
@@ -86,8 +87,8 @@ function onPage(event: { page: number; rows: number }) {
   loadMembers()
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('ja-JP')
+function formatMemberDate(dateStr: string): string {
+  return formatDate(dateStr)
 }
 
 onMounted(() => loadMembers())
@@ -127,7 +128,7 @@ defineExpose({ refresh: loadMembers, changeRole: onChangeRole })
     </Column>
     <Column header="参加日" field="joinedAt" style="width: 120px">
       <template #body="{ data }">
-        {{ formatDate(data.joinedAt) }}
+        {{ formatMemberDate(data.joinedAt) }}
       </template>
     </Column>
     <Column v-if="canChangeRole || canRemove" header="操作" style="width: 100px">

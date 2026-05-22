@@ -5,6 +5,7 @@ definePageMeta({ middleware: 'auth' })
 
 const { getAppeals, reviewAppeal } = useModerationApi()
 const { error: showError, success: showSuccess } = useNotification()
+const { formatDateTime } = useDatetime()
 
 const appeals = ref<ModerationAppeal[]>([])
 const loading = ref(false)
@@ -149,7 +150,7 @@ onMounted(() => load())
 
       <Column header="作成日" style="width: 160px">
         <template #body="{ data }">
-          <span class="text-sm">{{ new Date(data.createdAt).toLocaleString('ja-JP') }}</span>
+          <span class="text-sm">{{ formatDateTime(data.createdAt) }}</span>
         </template>
       </Column>
 

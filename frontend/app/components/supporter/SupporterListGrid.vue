@@ -6,9 +6,7 @@ defineProps<{
   loading: boolean
 }>()
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('ja-JP')
-}
+const { formatDate } = useDatetime()
 </script>
 
 <template>
@@ -18,7 +16,7 @@ function formatDate(dateStr: string) {
       <span class="ml-1 text-sm font-normal text-gray-500">（{{ supporters.length }}人）</span>
     </h3>
     <div v-if="loading" class="flex justify-center py-6">
-      <ProgressSpinner style="width: 32px; height: 32px" />
+      <LoadingBounce />
     </div>
     <div
       v-else-if="supporters.length === 0"

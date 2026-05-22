@@ -82,6 +82,30 @@
       "rateLimit": "アクセスが集中しています。しばらく経ってから再度お試しください",
       "backToHome": "トップへ戻る"
     },
+    "discover": {
+      "teams": {
+        "title": "查找公开团队",
+        "searchPlaceholder": "按团队名称搜索",
+        "noResults": "未找到符合条件的团队"
+      },
+      "organizations": {
+        "title": "查找公开组织",
+        "searchPlaceholder": "按组织名称搜索",
+        "noResults": "未找到符合条件的组织"
+      },
+      "filter": {
+        "keyword": "关键词",
+        "prefecture": "都道府县",
+        "all": "全部",
+        "search": "搜索"
+      },
+      "card": {
+        "memberCount": "{count}人",
+        "lastPost": "最后投稿: {date}",
+        "noPost": "暂无投稿",
+        "viewDetail": "查看详情"
+      }
+    },
     "meta": {
       "ogDescriptionDefault": "Mannschaft の公開ページ",
       "ogSiteName": "Mannschaft"

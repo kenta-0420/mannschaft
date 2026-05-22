@@ -123,7 +123,7 @@ function isActive(path: string): boolean {
     class="flex min-h-screen items-center justify-center dark:bg-surface-ground"
     style="background-color: var(--bg-color, #f3efe0)"
   >
-    <ProgressSpinner style="width: 48px; height: 48px" />
+    <LoadingBounce />
   </div>
 
   <div v-else class="min-h-screen dark:bg-surface-ground" style="background-color: var(--bg-color, #f3efe0)">

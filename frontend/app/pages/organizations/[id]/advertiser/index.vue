@@ -33,7 +33,7 @@ onMounted(load)
 
 <template>
   <div>
-    <ProgressSpinner v-if="loading" class="flex justify-center py-20" />
+    <div v-if="loading" class="flex justify-center py-20"><LoadingBounce /></div>
 
     <!-- 未登録 -->
     <div v-else-if="notRegistered" class="mx-auto max-w-lg py-20 text-center">

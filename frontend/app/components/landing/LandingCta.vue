@@ -24,6 +24,15 @@ const { t } = useI18n()
           />
         </NuxtLink>
       </div>
+
+      <div class="mt-4 flex flex-col items-center justify-center gap-2 sm:flex-row">
+        <NuxtLink to="/discover/teams">
+          <Button :label="t('landing.hero.discoverTeams')" text size="small" class="px-6 text-white/80 hover:text-white" icon="pi pi-search" />
+        </NuxtLink>
+        <NuxtLink to="/discover/organizations">
+          <Button :label="t('landing.hero.discoverOrganizations')" text size="small" class="px-6 text-white/80 hover:text-white" icon="pi pi-search" />
+        </NuxtLink>
+      </div>
     </div>
   </section>
 </template>

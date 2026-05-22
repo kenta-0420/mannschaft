@@ -8,6 +8,7 @@ import type { ScopeType } from '~/types/scopeFolder'
  * - `scopeType` Prop により basePath を切り替え（TEAM → /teams, ORGANIZATION → /organizations）
  * - チームドロップダウンが組織パスへ遷移することは絶対にない
  * - URL クエリ `?folder=` をソース・オブ・トゥルースとして使用
+ * - フォルダ行クリックでサブリスト展開（インライン展開）。外部リンクアイコンでハブ遷移。
  * - a11y: aria-haspopup / aria-expanded / role=menu 対応
  * - PrimeVue Popover によるワイドフライアウトパネルで表示（overflow-x クリッピングを回避）
  */
@@ -27,6 +28,10 @@ const orgStore = useOrganizationStore()
 
 const popoverRef = ref()
 const isPopoverOpen = ref(false)
+const showCreateDialog = ref(false)
+
+/** 展開中のフォルダID（null = すべて折りたたみ）。 */
+const expandedFolderId = ref<number | null>(null)
 
 /** scopeType に応じたベースパス。チーム→/teams, 組織→/organizations。 */
 const basePath = computed<string>(() =>
@@ -86,10 +91,20 @@ function goAll() {
   close()
 }
 
-/** フォルダクリックで `?folder=<id>` を付けて遷移。 */
+/** フォルダ行クリック → 展開/折りたたみトグル（ハブへは遷移しない）。 */
+function toggleFolder(folderId: number) {
+  expandedFolderId.value = expandedFolderId.value === folderId ? null : folderId
+}
+
+/** フォルダ外部リンクアイコンクリックで `?folder=<id>` を付けてハブへ遷移。 */
 function goFolder(folderId: number) {
   router.push({ path: basePath.value, query: { folder: String(folderId) } })
   close()
+}
+
+/** フォルダ内のスコープ一覧を返す。 */
+function scopesInFolder(folder: { itemScopeIds: number[] }): NavScopeItem[] {
+  return myScopes.value.filter(s => folder.itemScopeIds.includes(s.id))
 }
 
 /** 未分類フォルダへ遷移（`?folder=default`）。 */
@@ -110,13 +125,15 @@ function goManage() {
   close()
 }
 
-/** 新規フォルダ作成 — ハブの管理タブへ誘導（暫定）。 */
+/** 新規フォルダ作成ダイアログを直接開く。 */
 function goCreateNew() {
-  // 簡易実装: ハブの管理タブへ誘導しユーザー自身で作成してもらう。
-  // 設計書 §7.2 では「モーダル」だが、F15.3 Phase 2-B 範囲では既存
-  // `ScopeFolderEditDialog` をハブで開く運用に倒し、別 Phase で改善する。
-  router.push({ path: basePath.value, query: { folder: 'manage', create: '1' } })
   close()
+  showCreateDialog.value = true
+}
+
+/** フォルダ保存後にフォルダ一覧を再フェッチ。 */
+async function onFolderSaved() {
+  await foldersStore.fetchAll(props.scopeType)
 }
 
 /**
@@ -141,11 +158,17 @@ function onPopoverShow() {
 
 function onPopoverHide() {
   isPopoverOpen.value = false
+  expandedFolderId.value = null
 }
 </script>
 
 <template>
   <div class="relative inline-block" :data-testid="`scope-nav-dropdown-${scopeType}`">
+    <ScopeFolderEditDialog
+      v-model:visible="showCreateDialog"
+      :scope-type="scopeType"
+      @saved="onFolderSaved"
+    />
     <button
       type="button"
       class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap text-surface-600 transition-colors hover:bg-surface-100"
@@ -185,31 +208,69 @@ function onPopoverHide() {
               <span class="flex-1">{{ t('scopeFolder.nav.allList') }}</span>
             </button>
 
-            <!-- ユーザー作成フォルダ一覧 -->
-            <button
+            <!-- ユーザー作成フォルダ一覧（展開トグル + サブリスト） -->
+            <div
               v-for="folder in customFolders"
               :key="`folder-${folder.id}`"
-              role="menuitem"
-              type="button"
-              class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
-              :data-testid="`scope-nav-dropdown-folder-${folder.id}`"
-              @click="goFolder(folder.id)"
+              class="flex flex-col"
             >
-              <span
-                class="inline-block h-3 w-3 shrink-0 rounded-full"
-                :style="folder.color ? { backgroundColor: folder.color } : { backgroundColor: '#9CA3AF' }"
-                aria-hidden="true"
-              />
-              <i
-                v-if="folder.icon"
-                :class="['pi', folder.icon, 'text-base text-surface-500']"
-                aria-hidden="true"
-              />
-              <span class="flex-1 truncate">{{ folder.name }}</span>
-              <span class="shrink-0 text-xs text-surface-400">
-                {{ folderItemCount(folder.id) }}
-              </span>
-            </button>
+              <!-- フォルダ行（展開トグル） -->
+              <button
+                role="menuitem"
+                type="button"
+                class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+                :data-testid="`scope-nav-dropdown-folder-${folder.id}`"
+                @click="toggleFolder(folder.id)"
+              >
+                <span
+                  class="inline-block h-3 w-3 shrink-0 rounded-full"
+                  :style="folder.color ? { backgroundColor: folder.color } : { backgroundColor: '#9CA3AF' }"
+                  aria-hidden="true"
+                />
+                <i
+                  v-if="folder.icon"
+                  :class="['pi', folder.icon, 'text-base text-surface-500']"
+                  aria-hidden="true"
+                />
+                <span class="flex-1 truncate">{{ folder.name }}</span>
+                <span class="shrink-0 text-xs text-surface-400">{{ folderItemCount(folder.id) }}</span>
+                <i
+                  class="pi pi-chevron-down text-xs text-surface-400 transition-transform"
+                  :class="{ 'rotate-180': expandedFolderId === folder.id }"
+                  aria-hidden="true"
+                />
+                <!-- ハブ遷移ボタン（外部リンクアイコン） -->
+                <span
+                  class="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-surface-200"
+                  :title="t('scopeFolder.nav.manage')"
+                  @click.stop="goFolder(folder.id)"
+                >
+                  <i class="pi pi-arrow-up-right text-xs text-surface-400" aria-hidden="true" />
+                </span>
+              </button>
+
+              <!-- サブリスト（展開時のみ） -->
+              <template v-if="expandedFolderId === folder.id">
+                <button
+                  v-for="scope in scopesInFolder(folder)"
+                  :key="`folder-${folder.id}-scope-${scope.id}`"
+                  role="menuitem"
+                  type="button"
+                  class="flex w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+                  @click="goScope(scope.id)"
+                >
+                  <i class="pi pi-arrow-right text-xs text-surface-400 shrink-0" aria-hidden="true" />
+                  <span class="flex-1 truncate">{{ scope.nickname1 || scope.name }}</span>
+                </button>
+                <!-- フォルダが空の場合 -->
+                <p
+                  v-if="scopesInFolder(folder).length === 0"
+                  class="py-1.5 pl-10 pr-4 text-xs text-surface-400"
+                >
+                  {{ t('scopeFolder.emptyFolder') }}
+                </p>
+              </template>
+            </div>
 
             <!-- 未分類フォルダ -->
             <button
@@ -262,7 +323,7 @@ function onPopoverHide() {
             {{ t('scopeFolder.nav.showAll') }}
           </button>
 
-          <div class="ml-auto flex items-center gap-1">
+          <div class="flex items-center gap-1">
             <button
               type="button"
               class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-primary hover:bg-primary-50 focus:outline-none"

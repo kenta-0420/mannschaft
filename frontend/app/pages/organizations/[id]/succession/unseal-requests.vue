@@ -55,7 +55,7 @@ function onRefresh() {
         />
       </div>
       <div v-else-if="loadingDetail" class="flex items-center justify-center p-8">
-        <ProgressSpinner />
+        <LoadingBounce />
       </div>
       <div v-else class="flex items-center justify-center p-8 text-surface-400">
         {{ t('succession.unseal.selectPrompt') }}

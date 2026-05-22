@@ -101,7 +101,7 @@ defineExpose({ refresh: () => loadNotifications() })
 
     <!-- ローディング -->
     <div v-if="loading && notifications.length === 0" class="flex justify-center py-8">
-      <ProgressSpinner style="width: 40px; height: 40px" />
+      <LoadingBounce />
     </div>
 
     <!-- 空状態 -->

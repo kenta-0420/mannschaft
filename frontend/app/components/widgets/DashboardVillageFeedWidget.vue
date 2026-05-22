@@ -39,6 +39,7 @@ const { t } = useI18n()
 const villageApi = useVillageApi()
 const config = useRuntimeConfig()
 const { captureQuiet } = useErrorReport()
+const { formatDateTime } = useDatetime()
 
 // =============================================================================
 // 状態管理
@@ -130,14 +131,7 @@ function feedTypeIcon(type: VillageFeedItemResponse['type']): string {
 
 function formatCreatedAt(iso: string): string {
   if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('ja-JP', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return formatDateTime(iso)
 }
 
 /** 村名のイニシャル（アイコンが無いピン村用フォールバック） */

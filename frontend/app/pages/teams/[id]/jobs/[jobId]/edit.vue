@@ -168,7 +168,7 @@ onMounted(() => load())
       v-if="loading"
       class="flex justify-center p-8"
     >
-      <ProgressSpinner />
+      <LoadingBounce />
     </div>
 
     <div

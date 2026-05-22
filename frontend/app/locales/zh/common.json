@@ -1107,7 +1107,7 @@
     "moveToFolder": "フォルダへ移動",
     "removeFromFolder": "フォルダから外す",
     "noFolders": "フォルダはまだありません",
-    "emptyFolder": "このフォルダは空です",
+    "emptyFolder": "此文件夹为空",
     "limitExceeded": "フォルダは最大20個まで作成できます",
     "nameDuplicate": "同じ名前のフォルダが既に存在します",
     "title": "我的文件夹",
@@ -1124,7 +1124,7 @@
     },
     "nav": {
       "allList": "全部（列表）",
-      "createNew": "＋ 新建文件夹",
+      "createNew": "添加文件夹",
       "manage": "文件夹管理",
       "teams": "团队",
       "organizations": "组织",

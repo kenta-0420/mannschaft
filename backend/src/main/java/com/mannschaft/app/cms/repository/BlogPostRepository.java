@@ -190,4 +190,48 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
             + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED "
             + "ORDER BY bp.organizationId ASC, bp.id ASC")
     List<BlogPostEntity> findAllPublicPostsByOrganization();
+
+    // ========================================================================
+    // F19.1 Phase 4: 公開検索用 lastPostDate 一括取得（N+1 防止）
+    // ========================================================================
+
+    /**
+     * F19.1 Phase 4 公開チーム検索用: チーム ID 集合に対する最新投稿日時を一括取得する。
+     *
+     * <p>N+1 を防ぐために、チームのページ取得後に 1 本のクエリで全 lastPostDate を取得する。
+     * 戻り値は {@code Object[]{teamId, maxCreatedAt}} の List。呼び出し側でマップに変換する。</p>
+     *
+     * <p>削除済み投稿は {@code @SQLRestriction} により自動除外される。</p>
+     *
+     * @param teamIds 対象チーム ID 集合（空の場合は空リストを返す）
+     * @return チームごとの最新投稿日時（{@code [teamId, maxCreatedAt]} の形式）
+     */
+    @Query("""
+            SELECT bp.teamId, MAX(bp.createdAt)
+            FROM BlogPostEntity bp
+            WHERE bp.teamId IN :teamIds
+              AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED
+            GROUP BY bp.teamId
+            """)
+    List<Object[]> findMaxCreatedAtByTeamIdIn(@Param("teamIds") Collection<Long> teamIds);
+
+    /**
+     * F19.1 Phase 4 公開組織検索用: 組織 ID 集合に対する最新投稿日時を一括取得する。
+     *
+     * <p>N+1 を防ぐために、組織のページ取得後に 1 本のクエリで全 lastPostDate を取得する。
+     * 戻り値は {@code Object[]{organizationId, maxCreatedAt}} の List。呼び出し側でマップに変換する。</p>
+     *
+     * <p>削除済み投稿は {@code @SQLRestriction} により自動除外される。</p>
+     *
+     * @param organizationIds 対象組織 ID 集合（空の場合は空リストを返す）
+     * @return 組織ごとの最新投稿日時（{@code [organizationId, maxCreatedAt]} の形式）
+     */
+    @Query("""
+            SELECT bp.organizationId, MAX(bp.createdAt)
+            FROM BlogPostEntity bp
+            WHERE bp.organizationId IN :organizationIds
+              AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED
+            GROUP BY bp.organizationId
+            """)
+    List<Object[]> findMaxCreatedAtByOrganizationIdIn(@Param("organizationIds") Collection<Long> organizationIds);
 }

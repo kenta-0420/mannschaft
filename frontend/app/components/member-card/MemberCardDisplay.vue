@@ -81,7 +81,7 @@ onUnmounted(() => {
 
         <div v-if="card.status === 'ACTIVE'" class="mb-4">
           <div v-if="loadingQr" class="flex justify-center py-8">
-            <ProgressSpinner style="width: 40px; height: 40px" />
+            <LoadingBounce />
           </div>
           <div v-else-if="qrData" class="inline-block rounded-lg border border-surface-300 bg-white p-4 dark:border-surface-600">
             <img

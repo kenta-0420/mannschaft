@@ -8,6 +8,7 @@ definePageMeta({ middleware: 'auth' })
 
 const modulePricingApi = useModulePricingApi()
 const { success, error: showError } = useNotification()
+const { formatDateTime } = useDatetime()
 
 const modules = ref<ModulePricingResponse[]>([])
 const loading = ref(true)
@@ -78,10 +79,6 @@ async function openHistory(mod: ModulePricingResponse) {
 
 function formatCurrency(value: number, currency: string): string {
   return new Intl.NumberFormat('ja-JP', { style: 'currency', currency }).format(value)
-}
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('ja-JP')
 }
 
 function fieldLabel(field: string): string {
@@ -219,7 +216,7 @@ onMounted(load)
 
         <Column header="日時" style="width: 160px">
           <template #body="{ data }">
-            <span class="text-sm">{{ formatDate(data.changedAt) }}</span>
+            <span class="text-sm">{{ formatDateTime(data.changedAt) }}</span>
           </template>
         </Column>
       </DataTable>

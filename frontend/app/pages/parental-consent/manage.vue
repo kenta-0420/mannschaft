@@ -8,6 +8,7 @@ definePageMeta({
 const { t } = useI18n()
 const { getParents, removeParent, getChildren, removeChild } = useParentalConsentApi()
 const notification = useNotification()
+const { formatDate } = useDatetime()
 
 const parents = ref<ParentLinkResponse[]>([])
 const children = ref<ChildLinkResponse[]>([])
@@ -75,7 +76,7 @@ onMounted(loadData)
           >
             <div>
               <p class="font-medium">{{ p.parentEmail }}</p>
-              <p class="text-sm text-gray-500">{{ new Date(p.approvedAt).toLocaleDateString() }}</p>
+              <p class="text-sm text-gray-500">{{ formatDate(p.approvedAt) }}</p>
             </div>
             <button
               class="text-sm text-red-600 hover:text-red-800"
@@ -99,7 +100,7 @@ onMounted(loadData)
           >
             <div>
               <p class="font-medium">{{ c.childDisplayName ?? '—' }}</p>
-              <p class="text-sm text-gray-500">{{ new Date(c.approvedAt).toLocaleDateString() }}</p>
+              <p class="text-sm text-gray-500">{{ formatDate(c.approvedAt) }}</p>
             </div>
             <button
               class="text-sm text-red-600 hover:text-red-800"

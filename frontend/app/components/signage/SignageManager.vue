@@ -30,6 +30,7 @@ const {
   sendEmergency,
 } = useSignageApi()
 const { success, error: showError } = useNotification()
+const { formatDateTime } = useDatetime()
 
 // --- スコープごとの表示差分 ---
 const screenNamePlaceholder = computed(() =>
@@ -383,7 +384,7 @@ onMounted(loadScreens)
 
     <!-- Screen list -->
     <div v-if="loadingScreens" class="flex justify-center py-10">
-      <ProgressSpinner style="width: 40px; height: 40px" />
+      <LoadingBounce />
     </div>
 
     <div v-else>
@@ -498,7 +499,7 @@ onMounted(loadScreens)
           </div>
 
           <div v-if="loadingSlots" class="flex justify-center py-4">
-            <ProgressSpinner style="width: 32px; height: 32px" />
+            <LoadingBounce />
           </div>
 
           <DataTable
@@ -557,7 +558,7 @@ onMounted(loadScreens)
           </div>
 
           <div v-if="loadingTokens" class="flex justify-center py-4">
-            <ProgressSpinner style="width: 32px; height: 32px" />
+            <LoadingBounce />
           </div>
 
           <div v-else-if="tokens.length === 0" class="py-4 text-center text-sm text-surface-400">
@@ -574,7 +575,7 @@ onMounted(loadScreens)
                 <p v-if="token.label" class="text-sm font-medium">{{ token.label }}</p>
                 <p class="truncate font-mono text-xs text-surface-500">{{ token.token }}</p>
                 <p v-if="token.lastSeenAt" class="mt-0.5 text-xs text-surface-400">
-                  最終接続: {{ new Date(token.lastSeenAt).toLocaleString('ja-JP') }}
+                  最終接続: {{ formatDateTime(token.lastSeenAt) }}
                 </p>
               </div>
               <Button

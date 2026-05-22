@@ -5,6 +5,7 @@ definePageMeta({ middleware: 'auth' })
 
 const systemAdminApi = useSystemAdminApi()
 const { success, error: showError } = useNotification()
+const { formatDateTime } = useDatetime()
 
 const flags = ref<FeatureFlagResponse[]>([])
 const loading = ref(true)
@@ -56,7 +57,7 @@ onMounted(load)
       </Column>
       <Column header="更新日" style="width: 160px">
         <template #body="{ data }">
-          <span class="text-sm">{{ new Date(data.updatedAt).toLocaleString('ja-JP') }}</span>
+          <span class="text-sm">{{ formatDateTime(data.updatedAt) }}</span>
         </template>
       </Column>
       <Column header="切替" style="width: 100px">

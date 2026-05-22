@@ -16,8 +16,9 @@ import type {
  * 契約タブ: GET /api/v1/me/contracts（Worker 視点で完了報告・キャンセル可能）</p>
  */
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const authStore = useAuthStore()
+const { formatDateTime } = useDatetime()
 const applicationApi = useJobApplicationApi()
 const contractApi = useJobContractApi()
 const { success, error } = useNotification()
@@ -211,21 +212,6 @@ async function confirmCancel() {
 
 // --- ヘルパ ---
 
-function formatDateTime(iso: string | null): string {
-  if (!iso) return '-'
-  try {
-    return new Date(iso).toLocaleString(locale.value, {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-  catch {
-    return iso
-  }
-}
 
 function fmtJpy(v: number): string {
   return `¥${v.toLocaleString()}`
@@ -306,7 +292,7 @@ onMounted(async () => {
         v-if="applicationsLoading"
         class="flex justify-center p-8"
       >
-        <ProgressSpinner />
+        <LoadingBounce />
       </div>
 
       <div
@@ -384,7 +370,7 @@ onMounted(async () => {
         v-if="contractsLoading"
         class="flex justify-center p-8"
       >
-        <ProgressSpinner />
+        <LoadingBounce />
       </div>
 
       <div

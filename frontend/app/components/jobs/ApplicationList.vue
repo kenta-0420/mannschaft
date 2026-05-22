@@ -24,22 +24,8 @@ const emit = defineEmits<{
   (e: 'accept' | 'reject' | 'show-qr', id: number): void
 }>()
 
-const { t, locale } = useI18n()
-
-function formatDateTime(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString(locale.value, {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-  catch {
-    return iso
-  }
-}
+const { t } = useI18n()
+const { formatDateTime } = useDatetime()
 
 function isBusy(applicationId: number): boolean {
   return props.busyApplicationId === applicationId
@@ -60,7 +46,7 @@ function contractIdOf(app: JobApplicationResponse): number | null {
       v-if="loading"
       class="flex justify-center p-6"
     >
-      <ProgressSpinner />
+      <LoadingBounce />
     </div>
 
     <div

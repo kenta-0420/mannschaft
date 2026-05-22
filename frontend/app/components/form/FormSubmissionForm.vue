@@ -189,7 +189,7 @@ function close() {
     @update:visible="close"
   >
     <div v-if="loading" class="flex items-center justify-center py-8">
-      <ProgressSpinner />
+      <LoadingBounce />
     </div>
 
     <div v-else-if="template" class="flex flex-col gap-4">

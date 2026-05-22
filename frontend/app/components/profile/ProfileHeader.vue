@@ -161,7 +161,7 @@ const initialsColorClass = computed(() => {
         v-if="uploadingBanner"
         class="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-2"
       >
-        <ProgressSpinner style="width: 40px; height: 40px" />
+        <LoadingBounce />
         <span class="text-white text-sm">{{ t('profile_media.uploading') }}</span>
       </div>
 

@@ -17,9 +17,7 @@ const emit = defineEmits<{
   toggleSelect: [id: number]
 }>()
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('ja-JP')
-}
+const { formatDate } = useDatetime()
 </script>
 
 <template>
@@ -46,7 +44,7 @@ function formatDate(dateStr: string) {
     </div>
 
     <div v-if="loading" class="flex justify-center py-6">
-      <ProgressSpinner style="width: 32px; height: 32px" />
+      <LoadingBounce />
     </div>
     <div
       v-else-if="applications.length === 0"

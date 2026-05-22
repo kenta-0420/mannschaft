@@ -16,14 +16,11 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+const { formatDate } = useDatetime()
 
 const publishedDate = computed(() => {
   if (!props.post.publishedAt) return ''
-  try {
-    return new Date(props.post.publishedAt).toLocaleDateString()
-  } catch {
-    return props.post.publishedAt
-  }
+  return formatDate(props.post.publishedAt)
 })
 
 const sanitizedBody = computed(() => sanitizeHtml(props.post.bodyHtml ?? ''))

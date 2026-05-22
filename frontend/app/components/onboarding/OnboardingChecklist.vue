@@ -14,6 +14,8 @@ const progressPercent = computed(() => {
   return Math.round((props.progress.completedSteps / props.progress.totalSteps) * 100)
 })
 
+const { formatDate } = useDatetime()
+
 const statusSeverity = computed(() => {
   const map: Record<string, string> = { IN_PROGRESS: 'info', COMPLETED: 'success', SKIPPED: 'warn' }
   return map[props.progress.status] ?? 'info'
@@ -53,7 +55,7 @@ function stepIcon(stepType: string) {
           {{ progress.completedSteps }} / {{ progress.totalSteps }} ステップ完了
         </p>
         <p v-if="progress.deadlineAt" class="text-xs text-surface-400">
-          期限: {{ new Date(progress.deadlineAt).toLocaleDateString('ja-JP') }}
+          期限: {{ formatDate(progress.deadlineAt) }}
         </p>
       </div>
     </template>

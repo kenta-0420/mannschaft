@@ -16,6 +16,7 @@ const { getDashboard } = useActivitySnapshotApi()
 const { listReviews, createReview, closeReview } = useAnnualReviewApi()
 const { listVisitsByCommittee } = useMonitoringVisitApi()
 const { triggerSafetyCheck } = useOrgWideSafetyCheckApi()
+const { formatDate } = useDatetime()
 
 // ダッシュボード
 const dashboard = ref<ResidenceStatusDashboard | null>(null)
@@ -43,11 +44,6 @@ const showSafetyCheckDialog = ref(false)
 const triggerReason = ref('')
 const submittingSafetyCheck = ref(false)
 
-// 日付フォーマット
-function formatDate(iso: string | null): string {
-  if (!iso) return '-'
-  return new Date(iso).toLocaleDateString('ja-JP')
-}
 
 // ContactResult の Tag severity
 function contactResultSeverity(result: ContactResult): string {
@@ -200,7 +196,7 @@ onMounted(async () => {
       <!-- ダッシュボードタブ -->
       <TabPanel value="dashboard" header="ダッシュボード">
         <div v-if="loadingDashboard" class="flex items-center justify-center py-12">
-          <ProgressSpinner />
+          <LoadingBounce />
         </div>
         <div v-else-if="dashboard" class="flex flex-col gap-6">
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -282,7 +278,7 @@ onMounted(async () => {
           </div>
 
           <div v-if="loadingReviews" class="flex items-center justify-center py-12">
-            <ProgressSpinner />
+            <LoadingBounce />
           </div>
           <DataTable
             v-else
@@ -432,7 +428,7 @@ onMounted(async () => {
           </div>
 
           <div v-if="loadingVisits" class="flex items-center justify-center py-12">
-            <ProgressSpinner />
+            <LoadingBounce />
           </div>
           <DataTable
             v-else

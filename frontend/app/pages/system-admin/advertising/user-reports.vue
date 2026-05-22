@@ -13,6 +13,7 @@ import type { AdUserReportListParams } from '~/composables/useSystemAdminAdCampa
 definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
+const { formatDateTime } = useDatetime()
 const router = useRouter()
 const systemAdminAdApi = useSystemAdminAdCampaignApi()
 const notification = useNotification()
@@ -159,7 +160,7 @@ function rowClasses(row: AdUserReport): string {
           :header="t('advertising.pages.system_admin_user_reports.column_reported_at')"
         >
           <template #body="{ data }: { data: AdUserReport }">
-            {{ new Date(data.reportedAt).toLocaleString() }}
+            {{ formatDateTime(data.reportedAt) }}
           </template>
         </Column>
         <Column

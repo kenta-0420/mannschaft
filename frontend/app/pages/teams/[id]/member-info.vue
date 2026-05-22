@@ -8,6 +8,7 @@ const route = useRoute()
 const teamId = Number(route.params.id)
 const notification = useNotification()
 const memberInfoApi = useMemberInfoApi()
+const { formatDate } = useDatetime()
 
 const items = ref<MemberInfoResponseMeItem[]>([])
 const loading = ref(false)
@@ -113,11 +114,11 @@ onMounted(loadResponses)
         <div class="flex flex-wrap gap-4 text-xs text-surface-400 dark:text-surface-500">
           <span>
             {{ $t('memberInfo.response.confirmedAt') }}:
-            {{ item.confirmedAt ? new Date(item.confirmedAt).toLocaleDateString('ja-JP') : $t('memberInfo.response.notAnswered') }}
+            {{ item.confirmedAt ? formatDate(item.confirmedAt) : $t('memberInfo.response.notAnswered') }}
           </span>
           <span v-if="item.nextDueAt">
             {{ $t('memberInfo.response.nextDue') }}:
-            {{ new Date(item.nextDueAt).toLocaleDateString('ja-JP') }}
+            {{ formatDate(item.nextDueAt) }}
           </span>
         </div>
       </div>

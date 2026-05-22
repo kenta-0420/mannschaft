@@ -155,7 +155,7 @@ defineExpose({ refresh: loadRespondents })
 
     <!-- ローディング -->
     <div v-if="loading" class="flex justify-center py-8">
-      <ProgressSpinner style="width: 36px; height: 36px" />
+      <LoadingBounce />
     </div>
 
     <!-- エラー -->

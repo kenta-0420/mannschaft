@@ -82,6 +82,30 @@
       "rateLimit": "アクセスが集中しています。しばらく経ってから再度お試しください",
       "backToHome": "トップへ戻る"
     },
+    "discover": {
+      "teams": {
+        "title": "Buscar equipos públicos",
+        "searchPlaceholder": "Buscar por nombre de equipo",
+        "noResults": "No se encontraron equipos que coincidan con los criterios"
+      },
+      "organizations": {
+        "title": "Buscar organizaciones públicas",
+        "searchPlaceholder": "Buscar por nombre de organización",
+        "noResults": "No se encontraron organizaciones que coincidan con los criterios"
+      },
+      "filter": {
+        "keyword": "Palabra clave",
+        "prefecture": "Prefectura",
+        "all": "Todas",
+        "search": "Buscar"
+      },
+      "card": {
+        "memberCount": "{count} miembros",
+        "lastPost": "Última publicación: {date}",
+        "noPost": "Sin publicaciones",
+        "viewDetail": "Ver detalles"
+      }
+    },
     "meta": {
       "ogDescriptionDefault": "Mannschaft の公開ページ",
       "ogSiteName": "Mannschaft"

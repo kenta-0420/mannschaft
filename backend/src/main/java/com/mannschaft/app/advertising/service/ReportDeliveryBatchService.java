@@ -9,20 +9,14 @@ import com.mannschaft.app.advertising.repository.AdDailyStatsRepository;
 import com.mannschaft.app.advertising.repository.AdReportScheduleRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
+import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import software.amazon.awssdk.services.sesv2.SesV2Client;
-import software.amazon.awssdk.services.sesv2.model.Body;
-import software.amazon.awssdk.services.sesv2.model.Content;
-import software.amazon.awssdk.services.sesv2.model.Destination;
-import software.amazon.awssdk.services.sesv2.model.EmailContent;
-import software.amazon.awssdk.services.sesv2.model.Message;
-import software.amazon.awssdk.services.sesv2.model.SendEmailRequest;
-import software.amazon.awssdk.services.sesv2.model.SendEmailResponse;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -31,19 +25,18 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class ReportDeliveryBatchService {
 
-    private static final String FROM_ADDRESS = "noreply@mannschaft.app";
-
     private final AdReportScheduleRepository adReportScheduleRepository;
     private final AdCampaignRepository adCampaignRepository;
     private final AdDailyStatsRepository adDailyStatsRepository;
     private final ObjectMapper objectMapper;
-    private final SesV2Client sesV2Client;
+    private final EmailOutboxService emailOutboxService;
 
     /**
      * 週次レポート配信バッチ。毎週月曜 AM 9:00 (JST)。
@@ -135,12 +128,22 @@ public class ReportDeliveryBatchService {
         String html = buildReportHtml(schedule.getFrequency(), from, to,
                 totalImpressions, totalClicks, avgCtr, totalCost);
 
-        // メール送信
+        // メール送信（EmailOutboxService 経由で非同期・リトライ対応）
         String subject = String.format("[Mannschaft] %s Advertising Report (%s ~ %s)",
                 schedule.getFrequency().name(), from, to);
 
         for (String recipient : recipients) {
-            sendEmail(recipient, subject, html);
+            emailOutboxService.enqueue(new EmailOutboxRequest(
+                    "ADVERTISING_REPORT",
+                    "ja",
+                    recipient,
+                    Map.of("subject", subject, "body", html),
+                    "advertising",
+                    "report-" + schedule.getId() + "-" + schedule.getFrequency().name() + "-" + from,
+                    null,
+                    null,
+                    null
+            ));
         }
 
         log.info("レポート配信完了: scheduleId={}, recipients={}, impressions={}, clicks={}, cost={}",
@@ -182,26 +185,6 @@ public class ReportDeliveryBatchService {
                 </body>
                 </html>
                 """.formatted(frequency.name(), from, to, impressions, clicks, ctr, cost.setScale(0, RoundingMode.FLOOR));
-    }
-
-    private void sendEmail(String recipient, String subject, String htmlBody) {
-        try {
-            SendEmailResponse response = sesV2Client.sendEmail(SendEmailRequest.builder()
-                    .fromEmailAddress(FROM_ADDRESS)
-                    .destination(Destination.builder().toAddresses(recipient).build())
-                    .content(EmailContent.builder()
-                            .simple(Message.builder()
-                                    .subject(Content.builder().data(subject).build())
-                                    .body(Body.builder()
-                                            .html(Content.builder().data(htmlBody).build())
-                                            .build())
-                                    .build())
-                            .build())
-                    .build());
-            log.info("SES送信成功: to={}, messageId={}", recipient, response.messageId());
-        } catch (Exception e) {
-            log.error("SES送信失敗: to={}, subject={}", recipient, subject, e);
-        }
     }
 
     @SuppressWarnings("unchecked")

@@ -18,6 +18,7 @@ definePageMeta({
 
 const { t } = useI18n()
 const notification = useNotification()
+const { formatDateTime } = useDatetime()
 const confirm = useConfirm()
 const deliveriesApi = useAdDeliveriesApi()
 
@@ -111,9 +112,6 @@ function engagementLabel(item: AdDelivery): string {
   return t('advertising.pages.me_ad_deliveries.engagement_none')
 }
 
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString()
-}
 
 onMounted(loadInitial)
 </script>

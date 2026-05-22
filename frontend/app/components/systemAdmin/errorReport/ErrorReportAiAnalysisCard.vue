@@ -13,10 +13,11 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { formatDateTime } = useDatetime()
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return '-'
-  return new Date(value).toLocaleString()
+  return formatDateTime(value)
 }
 
 function onReanalyze() {

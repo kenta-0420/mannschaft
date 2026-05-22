@@ -10,10 +10,11 @@ import type { JobPostingResponse } from '~/types/jobmatching'
 
 const route = useRoute()
 const router = useRouter()
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const postingApi = useJobPostingApi()
 const applicationApi = useJobApplicationApi()
 const { success, error } = useNotification()
+const { formatDateTime } = useDatetime()
 
 const jobId = computed(() => Number(route.params.id))
 
@@ -64,21 +65,6 @@ async function submitApply() {
   }
 }
 
-function formatDateTime(iso: string | null): string {
-  if (!iso) return '-'
-  try {
-    return new Date(iso).toLocaleString(locale.value, {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-  catch {
-    return iso
-  }
-}
 
 function fmtJpy(v: number): string {
   return `¥${v.toLocaleString()}`
@@ -95,7 +81,7 @@ onMounted(() => load())
       v-if="loading"
       class="flex justify-center p-8"
     >
-      <ProgressSpinner />
+      <LoadingBounce />
     </div>
 
     <div

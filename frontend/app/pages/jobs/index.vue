@@ -132,7 +132,7 @@ onMounted(async () => {
       v-else-if="loading"
       class="flex justify-center p-8"
     >
-      <ProgressSpinner />
+      <LoadingBounce />
     </div>
 
     <!-- 空 -->

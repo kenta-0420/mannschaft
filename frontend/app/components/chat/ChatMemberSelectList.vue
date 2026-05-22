@@ -20,7 +20,7 @@ const emit = defineEmits<{
     :class="maxHeight ?? 'max-h-64'"
   >
     <div v-if="loading" class="flex justify-center py-6">
-      <ProgressSpinner :style="{ width: spinnerSize ?? '30px', height: spinnerSize ?? '30px' }" />
+      <LoadingBounce />
     </div>
     <div
       v-else-if="members.length === 0"

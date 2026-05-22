@@ -12,6 +12,7 @@ const { t } = useI18n()
 const notification = useNotification()
 const memoApi = useQuickMemoApi()
 const tagApi = useTagApi()
+const { formatDateTime } = useDatetime()
 
 const memo = ref<QuickMemoResponse | null>(null)
 const personalTags = ref<TagResponse[]>([])
@@ -119,7 +120,7 @@ async function handleDelete() {
     :header="memo?.title ?? t('quick_memo.detail')"
   >
     <div v-if="loading" class="flex items-center justify-center py-8">
-      <ProgressSpinner />
+      <LoadingBounce />
     </div>
 
     <div v-else-if="memo" class="space-y-4 p-1">
@@ -153,7 +154,7 @@ async function handleDelete() {
           <ul class="space-y-0.5 text-amber-600 dark:text-amber-400">
             <li v-for="r in memo.reminders.filter((r) => r.scheduledAt)" :key="r.slot">
               {{ t(`quick_memo.reminder.slot${r.slot}`) }}:
-              {{ r.scheduledAt ? new Date(r.scheduledAt).toLocaleString('ja-JP') : '-' }}
+              {{ r.scheduledAt ? formatDateTime(r.scheduledAt) : '-' }}
               <span v-if="r.sentAt" class="ml-1 text-green-600">✓</span>
             </li>
           </ul>

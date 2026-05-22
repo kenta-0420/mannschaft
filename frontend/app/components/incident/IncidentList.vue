@@ -16,6 +16,7 @@ const emit = defineEmits<{
 const { listIncidents } = useIncidentApi()
 const { error: showError } = useNotification()
 const { relativeTime } = useRelativeTime()
+const { formatDateTime } = useDatetime()
 
 const items = ref<IncidentSummaryResponse[]>([])
 const loading = ref(false)
@@ -151,7 +152,7 @@ defineExpose({ refresh: loadItems })
 
     <!-- ローディング -->
     <div v-if="loading" class="flex justify-center py-8">
-      <ProgressSpinner style="width: 40px; height: 40px" />
+      <LoadingBounce />
     </div>
 
     <!-- リスト -->
@@ -193,7 +194,7 @@ defineExpose({ refresh: loadItems })
           <h3 class="text-sm font-semibold">{{ item.title }}</h3>
           <div class="mt-1 text-xs text-surface-400">
             <span>{{ relativeTime(item.createdAt) }}</span>
-            <span v-if="item.slaDeadline"> / 期限: {{ new Date(item.slaDeadline).toLocaleString('ja-JP') }}</span>
+            <span v-if="item.slaDeadline"> / 期限: {{ formatDateTime(item.slaDeadline) }}</span>
           </div>
         </div>
         <i class="pi pi-chevron-right mt-1 text-surface-300" />

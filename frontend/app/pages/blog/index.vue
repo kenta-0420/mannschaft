@@ -6,6 +6,7 @@ definePageMeta({ middleware: 'auth' })
 const { getMyPosts, deleteMyPost, publishMyPost } = useBlogApi()
 const { handleError } = useErrorHandler()
 const { success } = useNotification()
+const { formatDate } = useDatetime()
 
 const myPosts = ref<BlogPostResponse[]>([])
 const loadingMine = ref(false)
@@ -158,7 +159,7 @@ onMounted(() => loadMyPosts())
             {{ post.title }}
           </h3>
           <p v-if="post.publishedAt" class="text-[10px] text-surface-400">
-            {{ new Date(post.publishedAt).toLocaleDateString('ja-JP') }}
+            {{ formatDate(post.publishedAt) }}
           </p>
 
           <!-- 操作ボタン -->

@@ -92,10 +92,7 @@ function fmtJpy(v: number): string {
       v-else-if="loading"
       class="flex justify-center py-3"
     >
-      <ProgressSpinner
-        style="width: 32px; height: 32px"
-        stroke-width="4"
-      />
+      <LoadingBounce />
     </div>
 
     <div

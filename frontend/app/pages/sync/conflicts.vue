@@ -76,7 +76,7 @@ onMounted(() => {
 
     <!-- 読み込み中 -->
     <div v-if="loading" class="flex items-center justify-center py-12">
-      <ProgressSpinner style="width: 40px; height: 40px" />
+      <LoadingBounce />
     </div>
 
     <!-- エラー -->

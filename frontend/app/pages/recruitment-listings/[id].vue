@@ -56,7 +56,7 @@ onMounted(() => load())
 
 <template>
   <div v-if="loading && !listing" class="flex justify-center p-8">
-    <ProgressSpinner />
+    <LoadingBounce />
   </div>
 
   <div v-else-if="listing" class="container mx-auto max-w-3xl p-4">

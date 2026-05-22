@@ -11,6 +11,7 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const { listRequests } = useUnsealRequestApi()
+const { formatDateTime } = useDatetime()
 
 const requests = ref<UnsealRequestResponse[]>([])
 const loading = ref(false)
@@ -62,10 +63,10 @@ function shortId(id: string) {
     <Column field="firstApproverUserId" :header="t('succession.unseal.field.firstApprover')" />
     <Column field="secondApproverUserId" :header="t('succession.unseal.field.secondApprover')" />
     <Column :header="t('succession.unseal.field.autoResealAt')">
-      <template #body="{ data }">{{ data.autoResealAt ? new Date(data.autoResealAt).toLocaleString() : '-' }}</template>
+      <template #body="{ data }">{{ data.autoResealAt ? formatDateTime(data.autoResealAt) : '-' }}</template>
     </Column>
     <Column :header="t('succession.unseal.field.createdAt')">
-      <template #body="{ data }">{{ new Date(data.createdAt).toLocaleString() }}</template>
+      <template #body="{ data }">{{ formatDateTime(data.createdAt) }}</template>
     </Column>
   </DataTable>
 </template>

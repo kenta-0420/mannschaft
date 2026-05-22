@@ -14,6 +14,7 @@ const emit = defineEmits<{
 
 const { searchSkills, deleteSkill, verifySkill, getCertificateUrl } = useSkillApi()
 const notification = useNotification()
+const { formatDate } = useDatetime()
 
 const items = ref<MemberSkillResponse[]>([])
 const categories = ref<SkillCategoryResponse[]>([])
@@ -80,9 +81,9 @@ function getStatusLabel(status: SkillStatus): string {
   return labels[status] || status
 }
 
-function formatDate(dateStr: string | null): string {
+function formatSkillDate(dateStr: string | null): string {
   if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString('ja-JP')
+  return formatDate(dateStr)
 }
 
 async function handleDelete(skill: MemberSkillResponse) {
@@ -157,7 +158,7 @@ defineExpose({ refresh: loadItems })
     </div>
 
     <div v-if="loading" class="flex justify-center py-8">
-      <ProgressSpinner style="width: 40px; height: 40px" />
+      <LoadingBounce />
     </div>
 
     <div v-else-if="items.length === 0" class="py-12 text-center">
@@ -191,11 +192,11 @@ defineExpose({ refresh: loadItems })
             <span v-if="skill.issuer">{{ skill.issuer }}</span>
             <span v-if="skill.issuer && skill.credentialNumber"> / </span>
             <span v-if="skill.credentialNumber">{{ skill.credentialNumber }}</span>
-            <span v-if="skill.acquiredOn"> ・ 取得: {{ formatDate(skill.acquiredOn) }}</span>
-            <span v-if="skill.expiresAt"> ・ 有効期限: {{ formatDate(skill.expiresAt) }}</span>
+            <span v-if="skill.acquiredOn"> ・ 取得: {{ formatSkillDate(skill.acquiredOn) }}</span>
+            <span v-if="skill.expiresAt"> ・ 有効期限: {{ formatSkillDate(skill.expiresAt) }}</span>
           </div>
           <div v-if="skill.verifiedAt" class="mt-1 text-xs text-green-600 dark:text-green-400">
-            <i class="pi pi-check-circle mr-1" />承認済み ({{ formatDate(skill.verifiedAt) }})
+            <i class="pi pi-check-circle mr-1" />承認済み ({{ formatSkillDate(skill.verifiedAt) }})
           </div>
         </div>
         <div class="flex shrink-0 gap-1">

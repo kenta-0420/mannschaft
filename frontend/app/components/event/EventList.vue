@@ -14,6 +14,7 @@ const emit = defineEmits<{
 
 const eventApi = useEventApi()
 const notification = useNotification()
+const { formatDate } = useDatetime()
 
 const events = ref<EventResponse[]>([])
 const totalRecords = ref(0)
@@ -96,9 +97,9 @@ function onPage(event: { page: number; rows: number }) {
   loadEvents()
 }
 
-function formatDate(dateStr: string | null): string {
+function formatEventDate(dateStr: string | null): string {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('ja-JP')
+  return formatDate(dateStr)
 }
 
 watch(statusFilter, () => {
@@ -177,12 +178,12 @@ defineExpose({ refresh: loadEvents })
       </Column>
       <Column header="受付開始" style="width: 120px">
         <template #body="{ data }">
-          {{ formatDate(data.registrationStartsAt) }}
+          {{ formatEventDate(data.registrationStartsAt) }}
         </template>
       </Column>
       <Column header="作成日" field="createdAt" style="width: 120px">
         <template #body="{ data }">
-          {{ formatDate(data.createdAt) }}
+          {{ formatEventDate(data.createdAt) }}
         </template>
       </Column>
       <Column v-if="canEdit || canDelete" header="操作" style="width: 100px">

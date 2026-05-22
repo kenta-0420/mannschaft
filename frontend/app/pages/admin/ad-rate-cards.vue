@@ -73,7 +73,7 @@ onMounted(load)
       <Button label="新規作成" icon="pi pi-plus" @click="showCreate = true" />
     </div>
 
-    <ProgressSpinner v-if="loading" class="flex justify-center py-10" />
+    <div v-if="loading" class="flex justify-center py-10"><LoadingBounce /></div>
 
     <DataTable v-else :value="rateCards" striped-rows>
       <Column field="targetPrefecture" header="都道府県">

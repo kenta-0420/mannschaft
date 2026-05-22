@@ -10,6 +10,8 @@ defineProps<{
 const visible = defineModel<boolean>('visible', { required: true })
 const newNote = defineModel<string>('newNote', { required: true })
 
+const { formatDateTime } = useDatetime()
+
 const emit = defineEmits<{
   addNote: []
   hideContent: [id: number]
@@ -40,7 +42,7 @@ const emit = defineEmits<{
         </div>
         <div>
           <p class="text-xs text-surface-500">報告日</p>
-          <p class="text-sm">{{ new Date(report.createdAt).toLocaleString('ja-JP') }}</p>
+          <p class="text-sm">{{ formatDateTime(report.createdAt) }}</p>
         </div>
       </div>
       <div v-if="report.description">
@@ -68,7 +70,7 @@ const emit = defineEmits<{
         <div v-for="note in notes" :key="note.id" class="rounded border border-surface-300 p-2">
           <p class="text-sm">{{ note.note }}</p>
           <p class="text-xs text-surface-400">
-            {{ new Date(note.createdAt).toLocaleString('ja-JP') }}
+            {{ formatDateTime(note.createdAt) }}
           </p>
         </div>
         <p v-if="notes.length === 0" class="text-sm text-surface-400">メモがありません</p>

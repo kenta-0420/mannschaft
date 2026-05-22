@@ -3,6 +3,7 @@ import type { DataExportResponse } from '~/composables/useGdprApi'
 
 const { requestDataExport, getExportStatus, getExportDownloadUrl } = useGdprApi()
 const notification = useNotification()
+const { formatDateTime } = useDatetime()
 
 const exportStatus = ref<DataExportResponse | null>(null)
 const exporting = ref(false)
@@ -42,7 +43,7 @@ function isFinished(status: DataExportResponse): boolean {
 
 function formatExpiry(dateStr: string): string {
   if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('ja-JP')
+  return formatDateTime(dateStr)
 }
 
 async function pollStatus() {

@@ -5,6 +5,7 @@ definePageMeta({ middleware: 'auth' })
 
 const systemAdminApi = useSystemAdminApi()
 const { success, error: showError } = useNotification()
+const { formatDate, formatDateTime } = useDatetime()
 
 const PROVIDERS = [
   { label: 'Amazon', value: 'AMAZON' },
@@ -159,7 +160,7 @@ onMounted(load)
           <div><dt>優先度:</dt> <dd>{{ cfg.displayPriority }}</dd></div>
           <div v-if="cfg.activeFrom || cfg.activeUntil">
             <dt>期間:</dt>
-            <dd class="text-xs">{{ cfg.activeFrom ? new Date(cfg.activeFrom).toLocaleDateString('ja-JP') : '---' }} 〜 {{ cfg.activeUntil ? new Date(cfg.activeUntil).toLocaleDateString('ja-JP') : '---' }}</dd>
+            <dd class="text-xs">{{ cfg.activeFrom ? formatDate(cfg.activeFrom) : '---' }} 〜 {{ cfg.activeUntil ? formatDate(cfg.activeUntil) : '---' }}</dd>
           </div>
         </dl>
 
@@ -186,7 +187,7 @@ onMounted(load)
             @click="remove(cfg.id)"
           />
           <span class="ml-auto text-xs text-surface-400">
-            {{ new Date(cfg.updatedAt).toLocaleString('ja-JP') }}
+            {{ formatDateTime(cfg.updatedAt) }}
           </span>
         </div>
       </div>

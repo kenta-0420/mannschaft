@@ -7,6 +7,7 @@ definePageMeta({
 
 const notification = useNotification()
 const { getOAuthProviders, unlinkOAuthProvider, getLineStatus, unlinkLine } = useUserSettingsApi()
+const { formatDateTime } = useDatetime()
 
 const loading = ref(true)
 const oauthProviders = ref<OAuthProviderResponse[]>([])
@@ -78,7 +79,7 @@ function providerIcon(provider: string) {
 
 function formatDate(dateStr: string | null) {
   if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('ja-JP')
+  return formatDateTime(dateStr)
 }
 </script>
 

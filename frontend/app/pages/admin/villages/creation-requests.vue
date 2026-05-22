@@ -21,6 +21,7 @@ const { t } = useI18n()
 const authStore = useAuthStore()
 const { listAdminCreationRequests, reviewCreationRequest } = useVillageApi()
 const { error: showError, success: showSuccess } = useNotification()
+const { formatDateTime } = useDatetime()
 
 // 権限判定 — SYSTEM_ADMIN 以外は閲覧不可
 const isAllowed = computed(() => authStore.isSystemAdmin)
@@ -182,15 +183,6 @@ function truncate(text: string | null | undefined, max = 60): string {
   return text.length > max ? `${text.slice(0, max)}…` : text
 }
 
-function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return ''
-  try {
-    return new Date(iso).toLocaleString()
-  }
-  catch {
-    return iso
-  }
-}
 
 // =====================================================================
 // ライフサイクル

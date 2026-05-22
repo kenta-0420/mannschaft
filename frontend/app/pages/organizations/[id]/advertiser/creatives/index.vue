@@ -8,6 +8,7 @@ const route = useRoute()
 const toast = useToast()
 const confirm = useConfirm()
 const advertiserApi = useAdvertiserApi()
+const { formatDate } = useDatetime()
 
 const orgId = Number(route.params.id)
 // クエリパラメータからキャンペーンIDを取得
@@ -152,7 +153,7 @@ onMounted(load)
     </div>
 
     <!-- ローディング -->
-    <ProgressSpinner v-if="loading" class="flex justify-center py-20" />
+    <div v-if="loading" class="flex justify-center py-20"><LoadingBounce /></div>
 
     <!-- 空状態 -->
     <div v-else-if="creatives.length === 0" class="py-20 text-center">
@@ -193,7 +194,7 @@ onMounted(load)
       </Column>
       <Column :header="t('advertising.creative.column_created_at')">
         <template #body="{ data }">
-          {{ new Date(data.createdAt).toLocaleDateString() }}
+          {{ formatDate(data.createdAt) }}
         </template>
       </Column>
       <Column :header="t('advertising.creative.column_actions')">

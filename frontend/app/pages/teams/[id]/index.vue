@@ -114,7 +114,7 @@ onMounted(async () => {
 <template>
   <div class="mx-auto max-w-6xl p-6">
     <div v-if="loading || roleLoading" class="flex justify-center py-12">
-      <ProgressSpinner style="width: 48px; height: 48px" />
+      <LoadingBounce />
     </div>
 
     <template v-else-if="team">

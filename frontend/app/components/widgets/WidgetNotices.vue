@@ -53,31 +53,37 @@ interface NotificationItem {
   createdAt: string
 }
 
-/** 「すべて」タブの一覧をロード（既存ダッシュボード API）。 */
-async function loadAll() {
-  const res = await getNotices({ limit: 5 })
-  notices.value = res.data.items.map(n => ({
-    id: n.id,
-    type: n.type,
-    title: n.title,
-    message: n.body,
-    isRead: n.is_read,
-    createdAt: n.created_at,
-    linkUrl: n.action_url,
-  }))
+/** タブキーを文字列化（キャッシュのキーとして使用）。 */
+function tabCacheKey(tab: TabKey): string {
+  return tab.kind === 'all' ? 'all' : `${tab.scopeType}-${tab.folderId}`
 }
 
-/** フォルダ絞り込みタブの一覧をロード（F15.3 新規 API）。 */
-async function loadByFolder(scopeType: ScopeType, folderId: number) {
+/** タブ別データキャッシュ。初回マウント時に全タブ分を一括取得して保持する。 */
+const noticeCache = new Map<string, Notice[]>()
+
+/** 指定タブのデータを API から取得して返す。 */
+async function fetchForTab(tab: TabKey): Promise<Notice[]> {
+  if (tab.kind === 'all') {
+    const res = await getNotices({ limit: 5 })
+    return res.data.items.map(n => ({
+      id: n.id,
+      type: n.type,
+      title: n.title,
+      message: n.body,
+      isRead: n.is_read,
+      createdAt: n.created_at,
+      linkUrl: n.action_url,
+    }))
+  }
   const params = new URLSearchParams()
-  params.set('folderId', String(folderId))
-  params.set('scopeType', scopeType)
+  params.set('folderId', String(tab.folderId))
+  params.set('scopeType', tab.scopeType)
   params.set('size', '5')
   params.set('page', '0')
   const res = await api<{ data: NotificationItem[] }>(
     `/api/v1/notifications?${params.toString()}`,
   )
-  notices.value = res.data.map(n => ({
+  return res.data.map(n => ({
     id: n.id,
     type: n.notificationType,
     title: n.title,
@@ -88,21 +94,25 @@ async function loadByFolder(scopeType: ScopeType, folderId: number) {
   }))
 }
 
+/** 全タブ分を並列プリフェッチしてキャッシュに保存し、現在タブを表示する。 */
 async function load() {
   loading.value = true
+  noticeCache.clear()
   try {
-    if (currentTab.value.kind === 'all') {
-      await loadAll()
-    }
-    else {
-      await loadByFolder(currentTab.value.scopeType, currentTab.value.folderId)
-    }
-  }
-  catch (error) {
-    captureQuiet(error, { context: 'WidgetNotices: お知らせ取得' })
-    notices.value = []
+    await Promise.all(
+      tabs.value.map(async (tabDef) => {
+        try {
+          noticeCache.set(tabCacheKey(tabDef.tab), await fetchForTab(tabDef.tab))
+        }
+        catch (error) {
+          captureQuiet(error, { context: `WidgetNotices: ${tabDef.key} 取得` })
+          noticeCache.set(tabCacheKey(tabDef.tab), [])
+        }
+      }),
+    )
   }
   finally {
+    notices.value = noticeCache.get(tabCacheKey(currentTab.value)) ?? []
     loading.value = false
   }
 }
@@ -123,10 +133,10 @@ async function onMarkAllRead() {
 
 const unreadCount = computed(() => notices.value.filter(n => !n.isRead).length)
 
-/** タブ切替。state を更新後にロード＆未読サマリ再取得。 */
-async function switchTab(tab: TabKey) {
+/** タブ切替。キャッシュから即座に表示するだけ（API呼び出しなし）。 */
+function switchTab(tab: TabKey) {
   currentTab.value = tab
-  await load()
+  notices.value = noticeCache.get(tabCacheKey(tab)) ?? []
 }
 
 /**

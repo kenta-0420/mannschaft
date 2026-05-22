@@ -12,6 +12,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { formatDateTime } = useDatetime()
 
 // stage → cards のグルーピング
 const cardsByStage = computed(() => {
@@ -25,16 +26,7 @@ const cardsByStage = computed(() => {
 })
 
 // 締切日時のフォーマット
-const deadlineLabel = computed(() => {
-  const d = new Date(props.kanban.bidDeadlineAt)
-  return d.toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-})
+const deadlineLabel = computed(() => formatDateTime(props.kanban.bidDeadlineAt))
 
 const isPastDeadline = computed(() => new Date() > new Date(props.kanban.bidDeadlineAt))
 

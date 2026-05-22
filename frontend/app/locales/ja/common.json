@@ -1124,7 +1124,7 @@
     },
     "nav": {
       "allList": "すべて（一覧）",
-      "createNew": "＋ 新規フォルダ作成",
+      "createNew": "フォルダ追加",
       "manage": "フォルダ管理",
       "teams": "チーム",
       "organizations": "組織",
