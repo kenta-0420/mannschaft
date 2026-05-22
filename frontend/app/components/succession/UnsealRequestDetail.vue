@@ -11,6 +11,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { formatDateTime } = useDatetime()
 const dialogVisible = ref(false)
 const dialogMode = ref<'FIRST_APPROVE' | 'SECOND_APPROVE' | 'CANCEL'>('FIRST_APPROVE')
 
@@ -61,10 +62,10 @@ function statusSeverity(status: UnsealRequestStatus) {
       <div>{{ request.secondApproverUserId ?? '-' }}</div>
 
       <div class="text-surface-500">{{ t('succession.unseal.field.autoResealAt') }}</div>
-      <div>{{ request.autoResealAt ? new Date(request.autoResealAt).toLocaleString() : '-' }}</div>
+      <div>{{ request.autoResealAt ? formatDateTime(request.autoResealAt) : '-' }}</div>
 
       <div class="text-surface-500">{{ t('succession.unseal.field.createdAt') }}</div>
-      <div>{{ new Date(request.createdAt).toLocaleString() }}</div>
+      <div>{{ formatDateTime(request.createdAt) }}</div>
     </div>
 
     <div v-if="request.status === 'PENDING' || request.status === 'FIRST_APPROVED'" class="flex gap-2 pt-2 border-t border-surface-200 dark:border-surface-700">

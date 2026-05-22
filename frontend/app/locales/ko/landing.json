@@ -8,7 +8,9 @@
       "subtitle": "Mannschaft는 팀·조직 운영에 필요한 모든 기능을 하나로 묶은 올인원 관리 플랫폼입니다.\n\n스포츠팀은 물론, 미용실·정골원·동창회·반 등, \"활용법은 무궁무진\".",
       "cta_register": "무료로 시작하기",
       "cta_login": "로그인",
-      "note": "기본 무료. 개인 계정을 만들어 시작하세요."
+      "note": "기본 무료. 개인 계정을 만들어 시작하세요.",
+      "discoverTeams": "공개 팀 찾기",
+      "discoverOrganizations": "공개 조직 찾기"
     },
     "stats": {
       "heading": "현재 등록 현황",

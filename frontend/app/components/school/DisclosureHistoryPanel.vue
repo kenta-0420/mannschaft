@@ -17,12 +17,14 @@ onMounted(fetchHistory)
 
 watch(() => props.evaluationId, fetchHistory)
 
+const { formatDateTime } = useDatetime()
+
 function severityForDecision(decision: string): string {
   return decision === 'DISCLOSED' ? 'success' : 'warn'
 }
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleString()
+  return formatDateTime(dateStr)
 }
 </script>
 

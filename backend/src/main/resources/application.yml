@@ -11,6 +11,21 @@ spring:
     virtual:
       enabled: true
 
+  # グレースフルシャットダウン猶予時間（Spot 終了通知から最大 30 秒でリクエストを完了させる）
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  # HikariCP 接続プール（AWS 本番チューニング）
+  # maximum-pool-size: 環境変数で上書き可（t4g.large=50、r6g.xlarge=100 など）
+  # Virtual Threads 採用のため CPU コア数ではなく RDS の接続上限を基準に設定する
+  datasource:
+    hikari:
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:50}
+      minimum-idle: ${HIKARI_MIN_IDLE:10}
+      connection-timeout: 3000    # 3 秒以内に接続取得できなければ例外（デフォルト 30 秒は長すぎる）
+      idle-timeout: 600000        # 10 分アイドルで接続を返却
+      max-lifetime: 1800000       # 30 分で接続を強制リフレッシュ（RDS のタイムアウトより短く設定）
+
   # JPA / Hibernate（共通設定。環境依存は各プロファイルで上書き）
   jpa:
     hibernate:
@@ -31,6 +46,14 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 
+  # Pageable — ページサイズ上限設定（F19.1 Phase 4: 公開検索APIの巨大リクエスト防止）
+  # size=100000 などのリクエストを自動的に max-page-size の 100 件に丸める
+  data:
+    web:
+      pageable:
+        max-page-size: 100
+        default-page-size: 20
+
   # i18n メッセージソース（F11.3）
   messages:
     basename: messages,ValidationMessages
@@ -41,6 +64,8 @@ spring:
 # Server
 server:
   port: 8080
+  # Spot インスタンス終了時・ローリングデプロイ時に処理中リクエストを完了させてから停止する
+  shutdown: graceful
 
 # JWT（アプリ固有設定。本番は環境変数で上書き）
 mannschaft:

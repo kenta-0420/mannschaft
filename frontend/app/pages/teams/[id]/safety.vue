@@ -6,6 +6,7 @@ const teamId = Number(route.params.id)
 const safetyApi = useSafetyCheckApi()
 const notification = useNotification()
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const { formatDateTime } = useDatetime()
 
 interface SafetyCheck {
   id: number
@@ -39,14 +40,6 @@ function selectCheck(checkId: number) {
   selectedCheckId.value = checkId
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('ja-JP', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 onMounted(async () => {
   await loadPermissions()
@@ -93,7 +86,7 @@ onMounted(async () => {
               />
             </div>
             <div class="mt-1 flex items-center gap-3 text-xs text-surface-500">
-              <span>{{ formatDate(check.createdAt) }}</span>
+              <span>{{ formatDateTime(check.createdAt) }}</span>
               <span>回答率: {{ Math.round(check.responseStats.responseRate) }}%</span>
             </div>
           </div>

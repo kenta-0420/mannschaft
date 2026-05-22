@@ -7,6 +7,7 @@ const props = defineProps<{
 
 const sealApi = useSealApi()
 const notification = useNotification()
+const { formatDateTime } = useDatetime()
 
 const logs = ref<StampLogType[]>([])
 const loading = ref(true)
@@ -58,7 +59,7 @@ onMounted(loadLogs)
       <DataTable :value="logs" data-key="stampId" striped-rows>
         <Column header="押印日時">
           <template #body="{ data }">
-            {{ new Date(data.stampedAt).toLocaleString('ja-JP') }}
+            {{ formatDateTime(data.stampedAt) }}
           </template>
         </Column>
         <Column header="バリアント">

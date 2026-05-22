@@ -8,6 +8,7 @@ const route = useRoute()
 const orgId = computed(() => Number(route.params.id))
 
 const { listVisitsByCommittee, listVisitsByResident } = useMonitoringVisitApi()
+const { formatDate } = useDatetime()
 
 // フィルターモード: 'committee' | 'resident'
 type FilterMode = 'committee' | 'resident'
@@ -48,11 +49,6 @@ function contactResultLabel(result: ContactResult): string {
   return map[result] ?? result
 }
 
-// 日付フォーマット
-function formatDate(iso: string | null): string {
-  if (!iso) return '-'
-  return new Date(iso).toLocaleDateString('ja-JP')
-}
 
 // メモの先頭20文字
 function truncateMemo(memo: string | null): string {

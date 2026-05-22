@@ -19,6 +19,7 @@ definePageMeta({ middleware: 'auth' })
 const { t } = useI18n()
 const notification = useNotification()
 const batchApi = useSystemAdminBatchApi()
+const { formatDateTime } = useDatetime()
 
 const batches = ref<BatchEndpointSummary[]>([])
 const loading = ref(false)
@@ -159,16 +160,6 @@ function statusSeverity(status: string | null): 'success' | 'danger' | 'info' | 
   }
 }
 
-function formatDateTime(value: string | null): string {
-  if (!value) return '-'
-  try {
-    const d = new Date(value)
-    if (Number.isNaN(d.getTime())) return value
-    return d.toLocaleString()
-  } catch {
-    return value
-  }
-}
 
 onMounted(load)
 </script>

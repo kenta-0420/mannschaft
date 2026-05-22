@@ -21,9 +21,10 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { formatDateTime } = useDatetime()
 
 function formatDate(value: string): string {
-  return new Date(value).toLocaleString()
+  return formatDateTime(value)
 }
 
 function actorLabel(item: TimelineItem): string {

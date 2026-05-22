@@ -11,6 +11,7 @@ const emit = defineEmits<{
 }>()
 
 const workflowApi = useWorkflowApi()
+const { formatDate } = useDatetime()
 
 const requests = ref<WorkflowRequestResponse[]>([])
 const totalRecords = ref(0)
@@ -86,9 +87,9 @@ function onPage(event: { page: number; rows: number }) {
   loadRequests()
 }
 
-function formatDate(dateStr: string | null): string {
+function formatRequestDate(dateStr: string | null): string {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('ja-JP')
+  return formatDate(dateStr)
 }
 
 watch(statusFilter, () => {
@@ -152,12 +153,12 @@ defineExpose({ refresh: loadRequests })
       </Column>
       <Column header="申請日" style="width: 120px">
         <template #body="{ data }">
-          {{ formatDate(data.requestedAt) }}
+          {{ formatRequestDate(data.requestedAt) }}
         </template>
       </Column>
       <Column header="作成日" style="width: 120px">
         <template #body="{ data }">
-          {{ formatDate(data.createdAt) }}
+          {{ formatRequestDate(data.createdAt) }}
         </template>
       </Column>
       <Column header="操作" style="width: 80px">

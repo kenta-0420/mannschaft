@@ -154,4 +154,30 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
            "AND o.archivedAt IS NULL " +
            "ORDER BY o.id ASC")
     List<OrganizationEntity> findAllPublicOrganizations();
+
+    /**
+     * F19.1 Phase 4 公開組織検索: keyword / prefecture でフィルタリングして PUBLIC 組織をページ取得する。
+     *
+     * <p>認証不要の横断検索のため、{@code AbstractTenantAwareRepository} は継承しない
+     * （CLAUDE.md アーキテクチャ原則 7 の「公開横断検索」例外）。</p>
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは自動除外される。
+     * {@code archivedAt IS NULL} を明示的に追加して archived も除外する。</p>
+     *
+     * @param keyword    組織名・説明の部分一致キーワード（null の場合は絞り込みなし）
+     * @param prefecture 都道府県名の完全一致（null の場合は絞り込みなし）
+     * @param pageable   ページング情報
+     * @return PUBLIC かつアクティブな組織のページ
+     */
+    @Query("""
+            SELECT o FROM OrganizationEntity o
+            WHERE o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC
+              AND o.archivedAt IS NULL
+              AND (:keyword IS NULL OR o.name LIKE %:keyword% OR o.nameKana LIKE %:keyword%)
+              AND (:prefecture IS NULL OR o.prefecture = :prefecture)
+            """)
+    Page<OrganizationEntity> searchPublicOrganizations(
+            @Param("keyword") String keyword,
+            @Param("prefecture") String prefecture,
+            Pageable pageable);
 }

@@ -6,10 +6,11 @@ defineProps<{
 }>()
 
 const { t } = useI18n()
+const { formatDateTime } = useDatetime()
 
 function formatDate(value: string | null): string {
   if (!value) return '-'
-  return new Date(value).toLocaleString()
+  return formatDateTime(value)
 }
 
 function severityClass(severity: string): string {

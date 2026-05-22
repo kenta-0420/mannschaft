@@ -31,6 +31,7 @@ const {
   onPage,
   resolve,
 } = useAdminReports()
+const { formatDateTime } = useDatetime()
 </script>
 
 <template>
@@ -78,7 +79,7 @@ const {
       <Column field="reason" header="理由" />
       <Column header="報告日" style="width: 140px">
         <template #body="{ data }">
-          <span class="text-sm">{{ new Date(data.createdAt).toLocaleString('ja-JP') }}</span>
+          <span class="text-sm">{{ formatDateTime(data.createdAt) }}</span>
         </template>
       </Column>
       <Column header="操作" style="width: 300px">

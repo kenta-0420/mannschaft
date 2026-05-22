@@ -177,4 +177,30 @@ public interface TeamRepository
            "AND t.archivedAt IS NULL " +
            "ORDER BY t.id ASC")
     List<TeamEntity> findAllPublicTeams();
+
+    /**
+     * F19.1 Phase 4 公開チーム検索: keyword / prefecture でフィルタリングして PUBLIC チームをページ取得する。
+     *
+     * <p>認証不要の横断検索のため、{@code AbstractTenantAwareRepository} は継承しない
+     * （CLAUDE.md アーキテクチャ原則 7 の「公開横断検索」例外）。</p>
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは自動除外される。
+     * {@code archivedAt IS NULL} を明示的に追加して archived も除外する。</p>
+     *
+     * @param keyword    チーム名・説明の部分一致キーワード（null の場合は絞り込みなし）
+     * @param prefecture 都道府県名の完全一致（null の場合は絞り込みなし）
+     * @param pageable   ページング情報
+     * @return PUBLIC かつアクティブなチームのページ
+     */
+    @Query("""
+            SELECT t FROM TeamEntity t
+            WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.archivedAt IS NULL
+              AND (:keyword IS NULL OR t.name LIKE %:keyword% OR t.nameKana LIKE %:keyword%)
+              AND (:prefecture IS NULL OR t.prefecture = :prefecture)
+            """)
+    Page<TeamEntity> searchPublicTeams(
+            @Param("keyword") String keyword,
+            @Param("prefecture") String prefecture,
+            Pageable pageable);
 }

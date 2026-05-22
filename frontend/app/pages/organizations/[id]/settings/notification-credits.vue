@@ -4,6 +4,7 @@ import type { NotificationCreditBalance, NotificationCreditPurchase } from '~/ty
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
+const { formatDate: formatDateBase } = useDatetime()
 const route = useRoute()
 const toast = useToast()
 const orgId = Number(route.params.id)
@@ -119,11 +120,7 @@ function statusColor(status: NotificationCreditPurchase['paymentStatus']): strin
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
+  return formatDateBase(dateStr)
 }
 
 function formatNumber(n: number): string {

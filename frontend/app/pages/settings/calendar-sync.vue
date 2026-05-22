@@ -5,6 +5,7 @@ const gcalApi = useGoogleCalendarApi()
 const teamStore = useTeamStore()
 const orgStore = useOrganizationStore()
 const notification = useNotification()
+const { formatDateTime } = useDatetime()
 
 interface ConnectionStatus {
   isConnected: boolean
@@ -99,7 +100,7 @@ function toggleOrgSync(orgId: number) {
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '未同期'
-  return new Date(dateStr).toLocaleString('ja-JP')
+  return formatDateTime(dateStr)
 }
 
 onMounted(load)

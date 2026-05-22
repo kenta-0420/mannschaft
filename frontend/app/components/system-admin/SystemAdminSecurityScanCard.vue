@@ -9,6 +9,7 @@ import type { SecurityScanConclusion, SecurityScanStatusResponse } from '~/types
  */
 const { t } = useI18n()
 const securityScanApi = useSecurityScanApi()
+const { formatDateTime } = useDatetime()
 
 const status = ref<SecurityScanStatusResponse | null>(null)
 const loading = ref(true)
@@ -56,14 +57,7 @@ const conclusionLabel = computed(() => {
 
 const formattedRunAt = computed(() => {
   if (!status.value?.runAt) return null
-  return new Date(status.value.runAt).toLocaleString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Asia/Tokyo',
-  })
+  return formatDateTime(status.value.runAt)
 })
 </script>
 

@@ -16,6 +16,7 @@ const { getDashboard } = useActivitySnapshotApi()
 const { listReviews, createReview, closeReview } = useAnnualReviewApi()
 const { listVisitsByCommittee } = useMonitoringVisitApi()
 const { triggerSafetyCheck } = useOrgWideSafetyCheckApi()
+const { formatDate } = useDatetime()
 
 // ダッシュボード
 const dashboard = ref<ResidenceStatusDashboard | null>(null)
@@ -43,11 +44,6 @@ const showSafetyCheckDialog = ref(false)
 const triggerReason = ref('')
 const submittingSafetyCheck = ref(false)
 
-// 日付フォーマット
-function formatDate(iso: string | null): string {
-  if (!iso) return '-'
-  return new Date(iso).toLocaleDateString('ja-JP')
-}
 
 // ContactResult の Tag severity
 function contactResultSeverity(result: ContactResult): string {

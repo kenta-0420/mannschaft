@@ -24,6 +24,7 @@ const {
 } = useIncidentApi()
 const { success: showSuccess, error: showError } = useNotification()
 const { relativeTime } = useRelativeTime()
+const { formatDateTime } = useDatetime()
 
 const incident = ref<IncidentResponse | null>(null)
 const comments = ref<IncidentCommentResponse[]>([])
@@ -213,7 +214,7 @@ watch(() => props.incidentId, () => loadIncident())
         <span>報告日: {{ relativeTime(incident.createdAt) }}</span>
         <span>更新日: {{ relativeTime(incident.updatedAt) }}</span>
         <span v-if="incident.slaDeadline">
-          期限: {{ new Date(incident.slaDeadline).toLocaleString('ja-JP') }}
+          期限: {{ formatDateTime(incident.slaDeadline) }}
         </span>
       </div>
 

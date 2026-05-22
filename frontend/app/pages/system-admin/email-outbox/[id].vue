@@ -8,6 +8,7 @@ const router = useRouter()
 const { t } = useI18n()
 const { fetchDetail, retryDeadLetter, cancelPending } = useEmailOutboxAdminApi()
 const { error: showError, success: showSuccess } = useNotification()
+const { formatDateTime: formatDateTimeBase } = useDatetime()
 
 const outboxId = computed(() => String(route.params.id))
 
@@ -75,14 +76,7 @@ async function onCancel() {
 
 function formatDateTime(dt: string | null): string {
   if (!dt) return t('email_outbox.na')
-  return new Date(dt).toLocaleString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
+  return formatDateTimeBase(dt)
 }
 
 onMounted(() => {

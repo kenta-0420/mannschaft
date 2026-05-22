@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const { getUpcomingEvents } = useDashboardApi()
 const { captureQuiet } = useErrorReport()
+const { formatDate, formatDateTime } = useDatetime()
 
 interface UpcomingEvent {
   id: number
@@ -31,12 +32,7 @@ async function load() {
 }
 
 function formatTime(dateStr: string): string {
-  const d = new Date(dateStr)
-  return (
-    d.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' }) +
-    ' ' +
-    d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
-  )
+  return formatDateTime(dateStr)
 }
 
 onMounted(load)
@@ -62,10 +58,7 @@ onMounted(load)
           <p class="text-xs text-surface-500">
             <i class="pi pi-clock mr-1" />{{
               event.all_day
-                ? new Date(event.start_at).toLocaleDateString('ja-JP', {
-                    month: 'short',
-                    day: 'numeric',
-                  })
+                ? formatDate(event.start_at)
                 : formatTime(event.start_at)
             }}
           </p>

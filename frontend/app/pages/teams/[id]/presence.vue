@@ -12,6 +12,7 @@ const teamId = Number(route.params.id)
 const { loadPermissions } = useRoleAccess('team', teamId)
 const presenceApi = usePresenceApi()
 const { showError } = useNotification()
+const { formatDateTime } = useDatetime()
 
 const statuses = ref<PresenceStatusResponse[]>([])
 const historyList = ref<PresenceEventResponse[]>([])
@@ -163,7 +164,7 @@ watch(activeTab, (tab) => {
                 <i class="pi pi-map-marker mr-1" />{{ s.destination }}
               </div>
               <div v-if="s.expectedReturnAt" class="mt-1 text-xs text-surface-400">
-                帰宅予定: {{ new Date(s.expectedReturnAt).toLocaleString('ja-JP') }}
+                帰宅予定: {{ formatDateTime(s.expectedReturnAt) }}
               </div>
             </SectionCard>
             <DashboardEmptyState
@@ -196,7 +197,7 @@ watch(activeTab, (tab) => {
                 </div>
               </div>
               <span class="text-xs text-surface-400">{{
-                new Date(event.createdAt).toLocaleString('ja-JP')
+                formatDateTime(event.createdAt)
               }}</span>
             </div>
             <div v-if="historyList.length === 0" class="py-8 text-center text-surface-400">

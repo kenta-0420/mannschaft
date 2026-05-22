@@ -13,6 +13,7 @@ const {
   sendReceiptEmail,
 } = useReceiptApi()
 const { success, error: showError } = useNotification()
+const { formatDate } = useDatetime()
 
 const receipts = ref<ReceiptResponse[]>([])
 const loading = ref(false)
@@ -168,7 +169,7 @@ onMounted(() => load())
       <Column header="発行日" style="width: 140px">
         <template #body="{ data }">
           <span class="text-sm">
-            {{ data.issuedAt ? new Date(data.issuedAt).toLocaleDateString('ja-JP') : '-' }}
+            {{ data.issuedAt ? formatDate(data.issuedAt) : '-' }}
           </span>
         </template>
       </Column>

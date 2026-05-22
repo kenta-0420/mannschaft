@@ -5,6 +5,7 @@ const scopeStore = useScopeStore()
 const scopeType = computed(() => scopeStore.current.type as 'team' | 'organization')
 const scopeId = computed(() => scopeStore.current.id ?? 0)
 const { success, error: showError } = useNotification()
+const { formatDate } = useDatetime()
 const {
   getPosts,
   changePublishStatus,
@@ -149,7 +150,7 @@ onMounted(() => { if (scopeId.value) loadPosts() })
             </Column>
             <Column header="更新日" style="width: 140px">
               <template #body="{ data }">
-                <span class="text-sm">{{ data.updatedAt ? new Date(data.updatedAt as string).toLocaleDateString('ja-JP') : '-' }}</span>
+                <span class="text-sm">{{ data.updatedAt ? formatDate(data.updatedAt as string) : '-' }}</span>
               </template>
             </Column>
             <Column header="操作" style="width: 200px">
