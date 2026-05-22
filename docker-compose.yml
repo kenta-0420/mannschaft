@@ -29,6 +29,9 @@ services:
     # Spring Boot バックエンドコンテナ（ローカル開発用）
     # F10.6 Phase 10-γ-③-a: スロークエリログをコンテナ内から読み取るため
     # MySQL コンテナが出力したスロークエリログディレクトリを読み取り専用でマウントする
+    # 通常の docker compose up -d では起動しない（bootRun を使う）
+    # 起動: docker compose --profile dev-docker up -d backend
+    profiles: [dev-docker]
     build:
       context: ./backend
       dockerfile: Dockerfile
