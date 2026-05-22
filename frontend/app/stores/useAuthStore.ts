@@ -6,6 +6,8 @@ interface AuthUser {
   fullName: string
   profileImageUrl: string | null
   systemRole?: string
+  /** IANA タイムゾーン識別子（例: Asia/Tokyo）。未設定時は 'Asia/Tokyo' をデフォルトとして使用する。 */
+  timezone?: string
 }
 
 interface AuthState {

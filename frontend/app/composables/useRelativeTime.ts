@@ -1,17 +1,18 @@
-function computeRelativeTime(dateStr: string): string {
-  const now = Date.now()
-  const target = new Date(dateStr).getTime()
-  const diffMs = now - target
-  const diffSec = Math.floor(diffMs / 1000)
-  const diffMin = Math.floor(diffSec / 60)
-  const diffHour = Math.floor(diffMin / 60)
-  const diffDay = Math.floor(diffHour / 24)
+/**
+ * 相対時間表示 composable。
+ * dayjs の relativeTime プラグイン（日本語）を使用して日時文字列を相対表示に変換する。
+ *
+ * 後方互換性のため以下のオーバーロードを維持する：
+ * - useRelativeTime(dateStr) → ComputedRef<string>（リアクティブな相対時間）
+ * - useRelativeTime()        → { relativeTime, formatRelative }（関数オブジェクト）
+ */
+import dayjs from 'dayjs'
 
-  if (diffSec < 60) return 'たった今'
-  if (diffMin < 60) return `${diffMin}分前`
-  if (diffHour < 24) return `${diffHour}時間前`
-  if (diffDay < 7) return `${diffDay}日前`
-  return new Date(dateStr).toLocaleDateString('ja-JP')
+function computeRelativeTime(dateStr: string): string {
+  if (!dateStr) return ''
+  const d = dayjs(dateStr)
+  if (!d.isValid()) return ''
+  return d.fromNow()
 }
 
 // Overload: called with a date ref/string → returns reactive ComputedRef<string>

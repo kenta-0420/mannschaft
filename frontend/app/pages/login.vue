@@ -48,6 +48,7 @@ async function handleLogin() {
             avatarUrl: string | null
             systemRole: string | null
             locale: string
+            timezone: string | null
             status: string | null
           }
         }>('/api/v1/users/me')
@@ -62,6 +63,7 @@ async function handleLogin() {
           fullName: profile.data.lastName + ' ' + profile.data.firstName,
           profileImageUrl: profile.data.avatarUrl,
           systemRole: profile.data.systemRole ?? undefined,
+          timezone: profile.data.timezone ?? undefined,
         })
         if (profile.data.locale) {
           await applyUserLocale(profile.data.locale)
