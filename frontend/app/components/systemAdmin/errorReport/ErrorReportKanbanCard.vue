@@ -16,6 +16,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { formatDateTime } = useDatetime()
 
 function severityBarClass(severity: string): string {
   switch (severity) {
@@ -31,7 +32,7 @@ function severityBarClass(severity: string): string {
 }
 
 function formatRelative(value: string): string {
-  return new Date(value).toLocaleString()
+  return formatDateTime(value)
 }
 
 function onClick() {

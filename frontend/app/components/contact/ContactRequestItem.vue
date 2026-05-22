@@ -12,8 +12,10 @@ const emit = defineEmits<{
   cancel: [id: number]
 }>()
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })
+const { formatDate } = useDatetime()
+
+function formatShortDate(iso: string): string {
+  return formatDate(iso)
 }
 </script>
 
@@ -39,7 +41,7 @@ function formatDate(iso: string) {
         @{{ (type === 'received' ? request.requester : request.target).contactHandle }}
       </div>
       <div v-if="request.message" class="mt-1 text-sm text-gray-600">{{ request.message }}</div>
-      <div class="mt-1 text-xs text-gray-400">{{ formatDate(request.createdAt) }}</div>
+      <div class="mt-1 text-xs text-gray-400">{{ formatShortDate(request.createdAt) }}</div>
       <div class="mt-2 flex gap-2">
         <template v-if="type === 'received'">
           <Button

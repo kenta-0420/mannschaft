@@ -11,15 +11,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-
-/** 日付文字列を yyyy/MM/dd 形式にフォーマット */
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
-}
+const { formatDate } = useDatetime()
 
 /** consentMethod の i18n キーへのマッピング */
 const consentMethodKey = computed(() => {

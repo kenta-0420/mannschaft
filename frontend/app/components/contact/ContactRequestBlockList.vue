@@ -4,6 +4,7 @@ import type { ContactRequestBlockResponse } from '~/types/contact'
 const contactApi = useContactApi()
 const { captureQuiet } = useErrorReport()
 const notification = useNotification()
+const { formatDate } = useDatetime()
 
 const blocks = ref<ContactRequestBlockResponse[]>([])
 const loading = ref(false)
@@ -31,12 +32,8 @@ async function remove(blockedUserId: number) {
   }
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+function formatBlockDate(iso: string): string {
+  return formatDate(iso)
 }
 
 onMounted(fetchBlocks)
@@ -71,7 +68,7 @@ onMounted(fetchBlocks)
           <div v-if="block.blockedUser.contactHandle" class="text-xs text-gray-400">
             @{{ block.blockedUser.contactHandle }}
           </div>
-          <div class="text-xs text-gray-400">{{ formatDate(block.createdAt) }}に設定</div>
+          <div class="text-xs text-gray-400">{{ formatBlockDate(block.createdAt) }}に設定</div>
         </div>
         <Button
           label="解除"

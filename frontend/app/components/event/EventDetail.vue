@@ -5,6 +5,8 @@ import LateAbsenceNoticeBar from '~/components/event/advanceNotice/LateAbsenceNo
 import DismissalDialog from '~/components/event/dismissal/DismissalDialog.vue'
 import DismissalStatusBadge from '~/components/event/dismissal/DismissalStatusBadge.vue'
 
+const { formatDateTime: formatIsoDateTime } = useDatetime()
+
 const props = defineProps<{
   scopeType: 'team' | 'organization'
   scopeId: number
@@ -225,7 +227,7 @@ function onDismissalSubmitted() {
               <Column field="comment" header="コメント" />
               <Column field="respondedAt" header="回答日時">
                 <template #body="{ data }">
-                  {{ data.respondedAt ? new Date(data.respondedAt).toLocaleString('ja-JP') : '—' }}
+                  {{ data.respondedAt ? formatIsoDateTime(data.respondedAt) : '—' }}
                 </template>
               </Column>
               <template #empty>

@@ -1,9 +1,6 @@
 <script setup lang="ts">
 const { myDisclosedEvaluations, loadingInbox } = useAttendanceDisclosure()
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString()
-}
+const { formatDate } = useDatetime()
 
 function formatRate(rate: number): string {
   return `${(rate * 100).toFixed(1)}%`

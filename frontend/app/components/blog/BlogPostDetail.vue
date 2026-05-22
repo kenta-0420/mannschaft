@@ -10,6 +10,7 @@ const emit = defineEmits<{
 }>()
 
 const { renderMarkdown } = useMarkdownRenderer()
+const { formatDate } = useDatetime()
 
 const renderedBody = computed(() => {
   return props.post.body ? renderMarkdown(props.post.body) : ''
@@ -17,11 +18,7 @@ const renderedBody = computed(() => {
 
 const formattedPublishedAt = computed(() => {
   if (!props.post.publishedAt) return null
-  return new Date(props.post.publishedAt).toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  return formatDate(props.post.publishedAt)
 })
 </script>
 

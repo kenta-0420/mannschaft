@@ -26,9 +26,11 @@ defineEmits<{
   'update:newDeviceName': [value: string]
 }>()
 
-function formatDate(dateStr: string | null) {
+const { formatDateTime } = useDatetime()
+
+function formatDate(dateStr: string | null): string {
   if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('ja-JP')
+  return formatDateTime(dateStr)
 }
 </script>
 

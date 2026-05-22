@@ -4,6 +4,7 @@ import type { ContactInviteTokenResponse, CreateInviteTokenBody } from '~/types/
 const contactApi = useContactApi()
 const { captureQuiet } = useErrorReport()
 const notification = useNotification()
+const { formatDate } = useDatetime()
 
 const tokens = ref<ContactInviteTokenResponse[]>([])
 const loading = ref(false)
@@ -82,11 +83,11 @@ async function copyUrl(url: string) {
   }
 }
 
-function formatExpiry(token: ContactInviteTokenResponse) {
+function formatExpiry(token: ContactInviteTokenResponse): string {
   if (!token.expiresAt) return '無期限'
   const d = new Date(token.expiresAt)
   if (d < new Date()) return '期限切れ'
-  return d.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' }) + ' まで'
+  return formatDate(token.expiresAt) + ' まで'
 }
 
 onMounted(fetchTokens)

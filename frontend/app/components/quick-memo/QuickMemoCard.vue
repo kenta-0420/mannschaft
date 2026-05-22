@@ -21,6 +21,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { formatDate } = useDatetime()
 
 const nextReminder = computed(() => {
   return (
@@ -30,8 +31,8 @@ const nextReminder = computed(() => {
   )
 })
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })
+function formatCardDate(iso: string): string {
+  return formatDate(iso)
 }
 </script>
 
@@ -66,7 +67,7 @@ function formatDate(iso: string) {
     <!-- リマインダー -->
     <div v-if="nextReminder?.scheduledAt" class="mt-2 flex items-center gap-1 text-xs text-amber-600">
       <i class="pi pi-bell" />
-      {{ formatDate(nextReminder.scheduledAt) }}
+      {{ formatCardDate(nextReminder.scheduledAt) }}
     </div>
 
     <!-- 画像サムネイル（1枚目） -->
@@ -78,7 +79,7 @@ function formatDate(iso: string) {
 
     <!-- フッター: 日時 + アクション -->
     <div class="mt-3 flex items-center justify-between">
-      <span class="text-xs text-surface-400">{{ formatDate(memo.createdAt) }}</span>
+      <span class="text-xs text-surface-400">{{ formatCardDate(memo.createdAt) }}</span>
 
       <div
         class="flex gap-1 transition-opacity"

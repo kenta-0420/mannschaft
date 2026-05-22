@@ -17,13 +17,11 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { formatDateTime } = useDatetime()
 
 const formattedSubmittedAt = computed(() => {
   if (!props.item.createdAt) return ''
-  // 日時の整形は既存 useFormat があるが、ここではブラウザ Intl を直接使用
-  const d = new Date(props.item.createdAt)
-  if (Number.isNaN(d.getTime())) return props.item.createdAt
-  return d.toLocaleString()
+  return formatDateTime(props.item.createdAt)
 })
 
 const moderationStatusSeverity = computed<'info' | 'warn' | 'secondary'>(() => {

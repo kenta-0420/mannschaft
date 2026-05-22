@@ -3,6 +3,7 @@ import type { RecruitmentFeedItem } from '~/types/recruitment'
 
 const { getMyFeed } = useRecruitmentApi()
 const { captureQuiet } = useErrorReport()
+const { formatDateTime } = useDatetime()
 
 const items = ref<RecruitmentFeedItem[]>([])
 const loading = ref(true)
@@ -23,8 +24,7 @@ async function load() {
 }
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return formatDateTime(dateStr)
 }
 
 onMounted(load)

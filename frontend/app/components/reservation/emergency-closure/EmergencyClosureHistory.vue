@@ -16,6 +16,8 @@ const emit = defineEmits<{
   'reload': []
   'toggle-confirmations': [closureId: number]
 }>()
+
+const { formatDateTime } = useDatetime()
 </script>
 
 <template>
@@ -53,7 +55,7 @@ const emit = defineEmits<{
           >
             <tr class="border-b border-surface-100 dark:border-surface-700">
               <td class="py-2 pr-4 text-surface-600 dark:text-surface-300">
-                {{ new Date(item.createdAt).toLocaleString('ja-JP') }}
+                {{ formatDateTime(item.createdAt) }}
               </td>
               <td class="py-2 pr-4">
                 <div>
@@ -104,7 +106,7 @@ const emit = defineEmits<{
                       >
                         <td class="py-1 pr-4">{{ conf.userDisplayName }}</td>
                         <td class="py-1 pr-4 text-surface-500">
-                          {{ new Date(conf.appointmentAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+                          {{ formatDateTime(conf.appointmentAt) }}
                         </td>
                         <td class="py-1 pr-4">
                           <span v-if="conf.confirmed" class="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
