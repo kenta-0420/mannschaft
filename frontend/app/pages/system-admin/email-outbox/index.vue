@@ -175,11 +175,6 @@ function shortId(id: string): string {
   return id.slice(0, 8)
 }
 
-function formatDateTimeOrNa(dt: string | null): string {
-  if (!dt) return t('email_outbox.na')
-  return formatDateTime(dt)
-}
-
 function formatSuccessRate(rate: number | null): string {
   if (rate === null) return t('email_outbox.na')
   return `${(rate * 100).toFixed(1)}%`
