@@ -19,9 +19,11 @@ import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.util.SessionHashUtil;
 import com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
+import com.mannschaft.app.gdpr.entity.GdprS3PurgeFailureEntity;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
+import com.mannschaft.app.gdpr.repository.GdprS3PurgeFailureRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -69,6 +71,7 @@ public class AccountPurgeService {
     private final ApplicationEventPublisher eventPublisher;
     private final ParentalConsentLinkRepository parentalConsentLinkRepository;
     private final AccountPurgeCompletionStatusRepository completionStatusRepository;
+    private final GdprS3PurgeFailureRepository gdprS3PurgeFailureRepository;
 
     @BatchEndpoint(name = "gdpr-account-purge-daily", description = "退会後 30 日経過アカウントを毎日 04:00 に物理削除する")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
@@ -152,7 +155,13 @@ public class AccountPurgeService {
                         storageService.delete(de.getS3Key());
                         log.debug("data_export S3削除: userId={}, s3Key={}", userId, de.getS3Key());
                     } catch (Exception e) {
-                        log.warn("data_export S3削除失敗（続行）: userId={}, s3Key={}", userId, de.getS3Key(), e);
+                        log.error("data_export S3削除失敗（失敗テーブルに記録）: userId={}, s3Key={}", userId, de.getS3Key(), e);
+                        GdprS3PurgeFailureEntity failure = new GdprS3PurgeFailureEntity();
+                        failure.setUserId(userId);
+                        failure.setS3Key(de.getS3Key());
+                        failure.setFailedAt(LocalDateTime.now());
+                        failure.setLastError(truncate(e.getMessage(), 500));
+                        gdprS3PurgeFailureRepository.save(failure);
                     }
                     dataExportRepository.delete(de);
                 });
@@ -197,9 +206,23 @@ public class AccountPurgeService {
         });
 
         // Phase 7: AccountPurgedEvent 発火（クロスドメイン整合性のイベント駆動化）
+        // NOTE: S3 削除失敗は gdprS3PurgeFailureRepository に記録済み。
+        //       GdprPurgeAuditBatchService が毎日 05:00 にリトライする。
         // 設計書: docs/architecture/account_purge_cross_domain_refactor.md §3.1 / §3.2 / §4 Phase C
         // 各ドメインの *PurgeEventListener（B-1〜B-6）が AFTER_COMMIT で購読し、
         // 自ドメインの関連データを片付ける。越境 DML は Phase C で全廃済み。
         eventPublisher.publishEvent(new AccountPurgedEvent(userId, emailHash));
+    }
+
+    /**
+     * 文字列を指定バイト数以内に切り詰める。null 安全。
+     *
+     * @param s   対象文字列
+     * @param max 最大文字数
+     * @return 切り詰めた文字列、または null（s が null の場合）
+     */
+    private static String truncate(String s, int max) {
+        if (s == null) return null;
+        return s.length() <= max ? s : s.substring(0, max);
     }
 }

@@ -16,9 +16,11 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
+import com.mannschaft.app.gdpr.entity.GdprS3PurgeFailureEntity;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import com.mannschaft.app.gdpr.repository.DataExportRepository;
+import com.mannschaft.app.gdpr.repository.GdprS3PurgeFailureRepository;
 import com.mannschaft.app.gdpr.service.AccountPurgeService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -90,6 +92,8 @@ class AccountPurgeServiceTest {
     private ApplicationEventPublisher eventPublisher;
     @Mock
     private AccountPurgeCompletionStatusRepository completionStatusRepository;
+    @Mock
+    private GdprS3PurgeFailureRepository gdprS3PurgeFailureRepository;
 
     @InjectMocks
     private AccountPurgeService service;
@@ -271,6 +275,81 @@ class AccountPurgeServiceTest {
 
             verify(storageService).delete("exports/100/data.zip");
             verify(dataExportRepository).delete(dataExport);
+        }
+
+        @Test
+        @DisplayName("異常系: S3削除失敗時に GdprS3PurgeFailureRepository.save が呼ばれる（失敗テーブルへ記録）")
+        void 異常_S3削除失敗_失敗テーブルへ記録() {
+            UserEntity user = buildUser(USER_ID);
+            given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
+                    .willReturn(List.of(user));
+
+            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
+            given(oAuthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webAuthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+
+            // DataExport が 1 件あり、S3削除が失敗する場合
+            DataExportEntity dataExport = DataExportEntity.builder()
+                    .userId(USER_ID)
+                    .status("COMPLETED")
+                    .s3Key("exports/100/data.zip")
+                    .build();
+            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any()))
+                    .willReturn(List.of(dataExport));
+            org.mockito.Mockito.doThrow(new RuntimeException("S3 connection refused"))
+                    .when(storageService).delete("exports/100/data.zip");
+
+            // S3削除失敗でも例外はスローされず処理継続する
+            assertThatCode(() -> service.purgeExpiredAccounts())
+                    .doesNotThrowAnyException();
+
+            // GdprS3PurgeFailureRepository.save が呼ばれ、失敗情報が記録されること
+            verify(gdprS3PurgeFailureRepository).save(argThat(failure ->
+                    failure.getUserId().equals(USER_ID)
+                            && failure.getS3Key().equals("exports/100/data.zip")
+                            && failure.getFailedAt() != null
+                            && failure.getLastError() != null
+                            && failure.getLastError().contains("S3 connection refused")
+            ));
+
+            // dataExport レコードは（S3失敗後でも）削除されること
+            verify(dataExportRepository).delete(dataExport);
+        }
+
+        @Test
+        @DisplayName("異常系: S3削除失敗エラーメッセージが500文字を超える場合、切り詰めて記録する")
+        void 異常_S3削除失敗_エラーメッセージ切り詰め() {
+            UserEntity user = buildUser(USER_ID);
+            given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
+                    .willReturn(List.of(user));
+
+            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
+            given(oAuthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webAuthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+
+            DataExportEntity dataExport = DataExportEntity.builder()
+                    .userId(USER_ID)
+                    .status("COMPLETED")
+                    .s3Key("exports/100/data.zip")
+                    .build();
+            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any()))
+                    .willReturn(List.of(dataExport));
+
+            // 501文字のエラーメッセージ
+            String longMessage = "E".repeat(501);
+            org.mockito.Mockito.doThrow(new RuntimeException(longMessage))
+                    .when(storageService).delete("exports/100/data.zip");
+
+            assertThatCode(() -> service.purgeExpiredAccounts())
+                    .doesNotThrowAnyException();
+
+            // lastError が 500 文字に切り詰められていること
+            verify(gdprS3PurgeFailureRepository).save(argThat(failure ->
+                    failure.getLastError() != null
+                            && failure.getLastError().length() == 500
+            ));
         }
     }
 }
