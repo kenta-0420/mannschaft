@@ -1124,7 +1124,7 @@
     },
     "nav": {
       "allList": "全部（列表）",
-      "createNew": "＋ 新建文件夹",
+      "createNew": "添加文件夹",
       "manage": "文件夹管理",
       "teams": "团队",
       "organizations": "组织",

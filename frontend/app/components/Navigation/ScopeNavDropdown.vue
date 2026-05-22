@@ -27,6 +27,7 @@ const orgStore = useOrganizationStore()
 
 const popoverRef = ref()
 const isPopoverOpen = ref(false)
+const showCreateDialog = ref(false)
 
 /** scopeType に応じたベースパス。チーム→/teams, 組織→/organizations。 */
 const basePath = computed<string>(() =>
@@ -110,13 +111,15 @@ function goManage() {
   close()
 }
 
-/** 新規フォルダ作成 — ハブの管理タブへ誘導（暫定）。 */
+/** 新規フォルダ作成ダイアログを直接開く。 */
 function goCreateNew() {
-  // 簡易実装: ハブの管理タブへ誘導しユーザー自身で作成してもらう。
-  // 設計書 §7.2 では「モーダル」だが、F15.3 Phase 2-B 範囲では既存
-  // `ScopeFolderEditDialog` をハブで開く運用に倒し、別 Phase で改善する。
-  router.push({ path: basePath.value, query: { folder: 'manage', create: '1' } })
   close()
+  showCreateDialog.value = true
+}
+
+/** フォルダ保存後にフォルダ一覧を再フェッチ。 */
+async function onFolderSaved() {
+  await foldersStore.fetchAll(props.scopeType)
 }
 
 /**
@@ -146,6 +149,11 @@ function onPopoverHide() {
 
 <template>
   <div class="relative inline-block" :data-testid="`scope-nav-dropdown-${scopeType}`">
+    <ScopeFolderEditDialog
+      v-model:visible="showCreateDialog"
+      :scope-type="scopeType"
+      @saved="onFolderSaved"
+    />
     <button
       type="button"
       class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap text-surface-600 transition-colors hover:bg-surface-100"

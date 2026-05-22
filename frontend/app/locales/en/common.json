@@ -1124,7 +1124,7 @@
     },
     "nav": {
       "allList": "All (list)",
-      "createNew": "+ Create new folder",
+      "createNew": "Add Folder",
       "manage": "Manage folders",
       "teams": "Teams",
       "organizations": "Organizations",

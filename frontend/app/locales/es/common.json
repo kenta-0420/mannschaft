@@ -1124,7 +1124,7 @@
     },
     "nav": {
       "allList": "Todo (lista)",
-      "createNew": "+ Crear nueva carpeta",
+      "createNew": "Agregar carpeta",
       "manage": "Gestionar carpetas",
       "teams": "Equipos",
       "organizations": "Organizaciones",
