@@ -7,6 +7,7 @@ const route = useRoute()
 const api = useApi()
 const authStore = useAuthStore()
 const notification = useNotification()
+const { applyUserLocale } = useLocale()
 
 const totpCode = ref('')
 const loading = ref(false)
@@ -39,6 +40,37 @@ async function handleVerify() {
     })
     authStore.setTokens(data.data.accessToken, data.data.refreshToken)
     authStore.setUser(data.data.user)
+
+    // フルプロフィール（timezone・locale 等）を取得して store を更新
+    try {
+      const profile = await api<{
+        data: {
+          id: number
+          email: string
+          lastName: string
+          firstName: string
+          avatarUrl: string | null
+          systemRole: string | null
+          locale: string
+          timezone: string | null
+        }
+      }>('/api/v1/users/me')
+      authStore.setUser({
+        id: profile.data.id,
+        email: profile.data.email,
+        fullName: profile.data.lastName + ' ' + profile.data.firstName,
+        profileImageUrl: profile.data.avatarUrl,
+        systemRole: profile.data.systemRole ?? undefined,
+        timezone: profile.data.timezone ?? undefined,
+      })
+      if (profile.data.locale) {
+        await applyUserLocale(profile.data.locale)
+      }
+    }
+    catch {
+      // プロフィール取得失敗時は 2FA 認証レスポンスの基本情報で続行
+    }
+
     navigateTo('/')
   }
   catch {
