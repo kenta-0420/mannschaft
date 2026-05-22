@@ -32,6 +32,8 @@ public enum EmailTemplateKind {
     // 広告主・請求系 (Phase 18-c)
     /** #6 広告主向け請求書期限切れ通知 (複数受信者ループ) */
     ADVERTISING_INVOICE_OVERDUE,
+    /** 広告主向け週次/月次パフォーマンスレポート */
+    ADVERTISING_REPORT,
 
     // エラー・運用系 (Phase 18-c)
     /** #7 SYSTEM_ADMIN 向けエラー週次サマリー */
