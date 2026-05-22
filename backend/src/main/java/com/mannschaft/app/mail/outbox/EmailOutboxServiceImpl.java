@@ -278,6 +278,7 @@ public class EmailOutboxServiceImpl implements EmailOutboxService {
                  "ANALYTICS_KPI_MONTHLY",
                  "ANALYTICS_SUMMARY",
                  "ADVERTISING_INVOICE_OVERDUE",
+                 "ADVERTISING_REPORT",
                  "ERROR_REPORT_WEEKLY",
                  "NOTIFICATION_CONFIRM",
                  "GDPR_EXPORT_READY",
