@@ -1,6 +1,8 @@
 package com.mannschaft.app.village.repository;
 
 import com.mannschaft.app.village.entity.VillageEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
@@ -20,4 +22,20 @@ public interface VillageRepository extends JpaRepository<VillageEntity, UUID> {
     boolean existsBySlug(String slug);
 
     boolean existsByName(String name);
+
+    /**
+     * 論理削除されていない村をページネーション取得する（バッチチャンク処理用）。
+     *
+     * <p>findAll() 無制限取得の代替。CHUNK_SIZE=500 で呼び出すことで
+     * 大量データでもヒープを圧迫しない。</p>
+     */
+    Page<VillageEntity> findByDeletedAtIsNull(Pageable pageable);
+
+    /**
+     * 論理削除・凍結どちらもされていない村をページネーション取得する（バッチチャンク処理用）。
+     *
+     * <p>findAll() 無制限取得の代替。CHUNK_SIZE=500 で呼び出すことで
+     * 大量データでもヒープを圧迫しない。</p>
+     */
+    Page<VillageEntity> findByDeletedAtIsNullAndArchivedAtIsNull(Pageable pageable);
 }
