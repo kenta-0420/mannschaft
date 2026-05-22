@@ -8,7 +8,9 @@
       "subtitle": "Mannschaft 是一站式管理平台，集合了团队运营所需的一切功能。\n\n从运动队到美容院、整骨院、同学会、班级等，\"用途无限\"。",
       "cta_register": "免费开始",
       "cta_login": "登录",
-      "note": "基本免费。先创建一个个人账号"
+      "note": "基本免费。先创建一个个人账号",
+      "discoverTeams": "探索公开团队",
+      "discoverOrganizations": "探索公开组织"
     },
     "stats": {
       "heading": "当前注册情况",

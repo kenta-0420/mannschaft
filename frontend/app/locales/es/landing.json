@@ -8,7 +8,9 @@
       "subtitle": "Mannschaft es una plataforma de gestión todo en uno que reúne todo lo que tu equipo u organización necesita.\n\nDesde equipos deportivos hasta salones, clínicas, reuniones de exalumnos y clases — \"posibilidades infinitas\".",
       "cta_register": "Empieza gratis",
       "cta_login": "Iniciar sesión",
-      "note": "Básicamente gratis. Solo crea una cuenta personal."
+      "note": "Básicamente gratis. Solo crea una cuenta personal.",
+      "discoverTeams": "Explorar Equipos",
+      "discoverOrganizations": "Explorar Organizaciones"
     },
     "stats": {
       "heading": "Registros actuales",

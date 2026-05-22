@@ -46,6 +46,15 @@ const { t } = useI18n()
         </NuxtLink>
       </div>
 
+      <div class="mt-4 flex flex-col items-center justify-center gap-2 sm:flex-row">
+        <NuxtLink to="/discover/teams">
+          <Button :label="t('landing.hero.discoverTeams')" severity="secondary" outlined size="small" class="px-6" icon="pi pi-search" />
+        </NuxtLink>
+        <NuxtLink to="/discover/organizations">
+          <Button :label="t('landing.hero.discoverOrganizations')" severity="secondary" outlined size="small" class="px-6" icon="pi pi-search" />
+        </NuxtLink>
+      </div>
+
       <p class="mt-4 text-sm text-surface-400">{{ t('landing.hero.note') }}</p>
     </div>
   </section>
