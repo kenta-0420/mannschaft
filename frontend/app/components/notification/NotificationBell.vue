@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { getUnreadCount, markAllAsRead } = useNotificationApi()
+const { getUnreadCount } = useNotificationApi()
 const { getChannels } = useChatApi()
 const api = useApi()
 const router = useRouter()
@@ -40,9 +40,6 @@ async function fetchCounts() {
 }
 
 function onPopoverShow() {
-  // ポップオーバーを開いた時点で通知を既読にし、バッジを即座にクリアする
-  notifCount.value = 0
-  markAllAsRead().catch(() => {})
   fetchCounts()
 }
 
