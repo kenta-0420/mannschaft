@@ -10,7 +10,8 @@ const emit = defineEmits<{
   click: [id: number]
 }>()
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
+const { formatDate } = useDatetime()
 
 /** 提出率（%）: submittedCount / totalMembers */
 const submissionRate = computed<number>(() => {
@@ -18,12 +19,8 @@ const submissionRate = computed<number>(() => {
   return Math.round((props.summary.submittedCount / props.summary.totalMembers) * 100)
 })
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString(locale.value, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+function formatScheduleDate(dateStr: string): string {
+  return formatDate(dateStr)
 }
 </script>
 
@@ -42,7 +39,7 @@ function formatDate(dateStr: string): string {
 
     <!-- 期間 -->
     <p class="mb-3 text-xs text-surface-500">
-      {{ formatDate(schedule.startDate) }} 〜 {{ formatDate(schedule.endDate) }}
+      {{ formatScheduleDate(schedule.startDate) }} 〜 {{ formatScheduleDate(schedule.endDate) }}
     </p>
 
     <!-- 提出率 -->
@@ -60,7 +57,7 @@ function formatDate(dateStr: string): string {
 
     <!-- 締切 -->
     <p v-if="schedule.requestDeadline" class="mt-2 text-xs text-surface-400">
-      {{ t('shift.index.deadline') }}: {{ formatDate(schedule.requestDeadline) }}
+      {{ t('shift.index.deadline') }}: {{ formatScheduleDate(schedule.requestDeadline) }}
     </p>
   </div>
 </template>

@@ -29,11 +29,11 @@ const emit = defineEmits<{
   responded: []
 }>()
 
+const { formatDate, formatDateTime: isoFormatDateTime } = useDatetime()
+
 function formatDateTime(dateStr: string, allDay: boolean): string {
-  const d = new Date(dateStr)
-  if (allDay) return d.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })
-  return d.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' }) + ' ' +
-    d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+  if (allDay) return formatDate(dateStr)
+  return isoFormatDateTime(dateStr)
 }
 
 const statusConfig: Record<string, { label: string; severity: string }> = {

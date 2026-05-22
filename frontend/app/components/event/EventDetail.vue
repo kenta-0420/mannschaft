@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { statusLabel, statusSeverity, formatDateTime } from '~/utils/eventFormat'
+const { formatDateTime: formatIsoDateTime } = useDatetime()
 import AdvanceNoticeList from '~/components/event/advanceNotice/AdvanceNoticeList.vue'
 import LateAbsenceNoticeBar from '~/components/event/advanceNotice/LateAbsenceNoticeBar.vue'
 import DismissalDialog from '~/components/event/dismissal/DismissalDialog.vue'
@@ -225,7 +226,7 @@ function onDismissalSubmitted() {
               <Column field="comment" header="コメント" />
               <Column field="respondedAt" header="回答日時">
                 <template #body="{ data }">
-                  {{ data.respondedAt ? new Date(data.respondedAt).toLocaleString('ja-JP') : '—' }}
+                  {{ data.respondedAt ? formatIsoDateTime(data.respondedAt) : '—' }}
                 </template>
               </Column>
               <template #empty>

@@ -9,6 +9,7 @@ const props = defineProps<{
 
 const formApi = useFormApi()
 const notification = useNotification()
+const { formatDate } = useDatetime()
 
 const templates = ref<FormTemplateResponse[]>([])
 const totalRecords = ref(0)
@@ -105,9 +106,9 @@ function onPage(event: { page: number; rows: number }) {
   loadTemplates()
 }
 
-function formatDate(dateStr: string | null): string {
+function formatDateOrDash(dateStr: string | null): string {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('ja-JP')
+  return formatDate(dateStr)
 }
 
 watch(statusFilter, () => {
@@ -167,12 +168,12 @@ defineExpose({ refresh: loadTemplates })
       </Column>
       <Column header="期限" style="width: 120px">
         <template #body="{ data }">
-          {{ formatDate(data.deadline) }}
+          {{ formatDateOrDash(data.deadline) }}
         </template>
       </Column>
       <Column header="作成日" style="width: 120px">
         <template #body="{ data }">
-          {{ formatDate(data.createdAt) }}
+          {{ formatDateOrDash(data.createdAt) }}
         </template>
       </Column>
       <Column v-if="canEdit" header="操作" style="width: 160px">

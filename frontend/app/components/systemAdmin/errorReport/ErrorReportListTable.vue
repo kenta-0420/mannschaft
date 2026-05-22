@@ -14,6 +14,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { formatDateTime } = useDatetime()
 
 function severityClass(severity: string): string {
   switch (severity) {
@@ -30,7 +31,7 @@ function severityClass(severity: string): string {
 
 function formatDate(value: string | null): string {
   if (!value) return '-'
-  return new Date(value).toLocaleString()
+  return formatDateTime(value)
 }
 
 function onPage(event: { page: number; rows: number }) {

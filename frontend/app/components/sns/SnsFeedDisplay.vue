@@ -25,17 +25,14 @@ function providerIcon(provider: string) {
   return provider === 'INSTAGRAM' ? 'pi pi-instagram' : 'pi pi-twitter'
 }
 
+const { formatDateTime } = useDatetime()
+
 function providerLabel(provider: string) {
   return provider === 'INSTAGRAM' ? 'Instagram' : 'X（旧Twitter）'
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleString('ja-JP', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+function formatDate(dateStr: string): string {
+  return formatDateTime(dateStr)
 }
 
 function truncateCaption(caption: string | null, max = 150) {

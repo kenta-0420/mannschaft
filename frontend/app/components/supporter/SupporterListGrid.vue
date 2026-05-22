@@ -6,9 +6,7 @@ defineProps<{
   loading: boolean
 }>()
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('ja-JP')
-}
+const { formatDate } = useDatetime()
 </script>
 
 <template>

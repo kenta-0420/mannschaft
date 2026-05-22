@@ -105,7 +105,7 @@ interface Props {
 
 defineProps<Props>()
 
-const { locale } = useI18n()
+const { formatDateTime } = useDatetime()
 
 const selectedRun = ref<AssignmentRun | null>(null)
 const detailVisible = ref(false)
@@ -116,7 +116,7 @@ function onRowClick(event: { data: AssignmentRun }): void {
 }
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleString(locale.value)
+  return formatDateTime(dateStr)
 }
 
 function statusSeverity(
