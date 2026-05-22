@@ -1124,7 +1124,7 @@
     },
     "nav": {
       "allList": "전체 (목록)",
-      "createNew": "＋ 새 폴더 만들기",
+      "createNew": "폴더 추가",
       "manage": "폴더 관리",
       "teams": "팀",
       "organizations": "조직",
