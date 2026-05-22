@@ -1,9 +1,11 @@
 import type {
   NameDisclosureChangeLogResponse,
   PublicOrganizationResponse,
+  PublicOrganizationSearchResult,
   PublicPostDetail,
   PublicPostSummary,
   PublicTeamResponse,
+  PublicTeamSearchResult,
   SpringPage,
   SupporterNameDisclosureResponse,
   NameDisclosureMode,
@@ -77,6 +79,54 @@ export function usePublicApi() {
     return api<PublicPostDetail>(`/api/v1/public/organizations/${orgId}/posts/${postId}`)
   }
 
+  // ─── F19.1 Phase 4: 公開チーム・組織検索 API ───
+
+  /**
+   * 公開チームを検索する（ページング）。
+   *
+   * @param params.keyword チーム名キーワード（部分一致）
+   * @param params.prefecture 都道府県名（完全一致）
+   * @param params.page ページ番号（0 始まり）
+   * @param params.size 1 ページあたりの件数
+   */
+  async function searchPublicTeams(params: {
+    keyword?: string
+    prefecture?: string
+    page?: number
+    size?: number
+  }): Promise<SpringPage<PublicTeamSearchResult>> {
+    const query = new URLSearchParams()
+    if (params.keyword) query.set('keyword', params.keyword)
+    if (params.prefecture) query.set('prefecture', params.prefecture)
+    if (params.page !== undefined) query.set('page', String(params.page))
+    if (params.size !== undefined) query.set('size', String(params.size))
+    return api<SpringPage<PublicTeamSearchResult>>(`/api/v1/public/teams/search?${query.toString()}`)
+  }
+
+  /**
+   * 公開組織を検索する（ページング）。
+   *
+   * @param params.keyword 組織名キーワード（部分一致）
+   * @param params.prefecture 都道府県名（完全一致）
+   * @param params.page ページ番号（0 始まり）
+   * @param params.size 1 ページあたりの件数
+   */
+  async function searchPublicOrganizations(params: {
+    keyword?: string
+    prefecture?: string
+    page?: number
+    size?: number
+  }): Promise<SpringPage<PublicOrganizationSearchResult>> {
+    const query = new URLSearchParams()
+    if (params.keyword) query.set('keyword', params.keyword)
+    if (params.prefecture) query.set('prefecture', params.prefecture)
+    if (params.page !== undefined) query.set('page', String(params.page))
+    if (params.size !== undefined) query.set('size', String(params.size))
+    return api<SpringPage<PublicOrganizationSearchResult>>(
+      `/api/v1/public/organizations/search?${query.toString()}`,
+    )
+  }
+
   // ─── F19.1 Phase 2: Admin 向け supporter_name_disclosure 切替 API ───
 
   /**
@@ -145,6 +195,8 @@ export function usePublicApi() {
     fetchPublicTeamPostDetail,
     fetchPublicOrganizationPosts,
     fetchPublicOrganizationPostDetail,
+    searchPublicTeams,
+    searchPublicOrganizations,
     patchTeamNameDisclosure,
     patchOrganizationNameDisclosure,
     fetchTeamNameDisclosureHistory,

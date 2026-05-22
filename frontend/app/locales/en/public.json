@@ -82,6 +82,30 @@
       "rateLimit": "Too many requests. Please try again later.",
       "backToHome": "Back to home"
     },
+    "discover": {
+      "teams": {
+        "title": "Find Public Teams",
+        "searchPlaceholder": "Search by team name",
+        "noResults": "No teams found matching your criteria"
+      },
+      "organizations": {
+        "title": "Find Public Organizations",
+        "searchPlaceholder": "Search by organization name",
+        "noResults": "No organizations found matching your criteria"
+      },
+      "filter": {
+        "keyword": "Keyword",
+        "prefecture": "Prefecture",
+        "all": "All",
+        "search": "Search"
+      },
+      "card": {
+        "memberCount": "{count} members",
+        "lastPost": "Last post: {date}",
+        "noPost": "No posts yet",
+        "viewDetail": "View details"
+      }
+    },
     "meta": {
       "ogDescriptionDefault": "Public page on Mannschaft",
       "ogSiteName": "Mannschaft"

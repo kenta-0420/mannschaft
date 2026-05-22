@@ -82,6 +82,30 @@
       "rateLimit": "アクセスが集中しています。しばらく経ってから再度お試しください",
       "backToHome": "トップへ戻る"
     },
+    "discover": {
+      "teams": {
+        "title": "공개 팀 찾기",
+        "searchPlaceholder": "팀 이름으로 검색",
+        "noResults": "조건에 맞는 팀을 찾을 수 없습니다"
+      },
+      "organizations": {
+        "title": "공개 조직 찾기",
+        "searchPlaceholder": "조직 이름으로 검색",
+        "noResults": "조건에 맞는 조직을 찾을 수 없습니다"
+      },
+      "filter": {
+        "keyword": "키워드",
+        "prefecture": "도도부현",
+        "all": "전체",
+        "search": "검색"
+      },
+      "card": {
+        "memberCount": "{count}명",
+        "lastPost": "마지막 게시: {date}",
+        "noPost": "게시물 없음",
+        "viewDetail": "자세히 보기"
+      }
+    },
     "meta": {
       "ogDescriptionDefault": "Mannschaft の公開ページ",
       "ogSiteName": "Mannschaft"
