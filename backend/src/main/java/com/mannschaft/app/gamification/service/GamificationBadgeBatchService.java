@@ -13,6 +13,9 @@ import com.mannschaft.app.gamification.repository.UserBadgeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -41,6 +44,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RequiredArgsConstructor
 public class GamificationBadgeBatchService {
 
+    private static final int CHUNK_SIZE = 500;
+
     private final GamificationConfigRepository gamificationConfigRepository;
     private final BadgeRepository badgeRepository;
     private final UserBadgeRepository userBadgeRepository;
@@ -66,38 +71,45 @@ public class GamificationBadgeBatchService {
     public void runBadgeEvaluation() {
         log.info("バッジ評価バッチ開始");
 
-        List<GamificationConfigEntity> enabledConfigs = gamificationConfigRepository.findAll()
-                .stream()
-                .filter(c -> Boolean.TRUE.equals(c.getIsEnabled()))
-                .toList();
-
         AtomicInteger processedCount = new AtomicInteger(0);
         AtomicInteger grantedCount = new AtomicInteger(0);
+        AtomicInteger scopeCount = new AtomicInteger(0);
 
-        for (GamificationConfigEntity config : enabledConfigs) {
-            String scopeType = config.getScopeType();
-            Long scopeId = config.getScopeId();
+        // isEnabled=true の設定をDB側でフィルタしてチャンク処理
+        Pageable pageable = PageRequest.of(0, CHUNK_SIZE);
+        Page<GamificationConfigEntity> page;
+        do {
+            page = gamificationConfigRepository.findByIsEnabledTrue(pageable);
 
-            List<BadgeEntity> activeBadges =
-                    badgeRepository.findByScopeTypeAndScopeIdAndIsActiveTrueAndDeletedAtIsNull(
-                            scopeType, scopeId);
+            for (GamificationConfigEntity config : page.getContent()) {
+                String scopeType = config.getScopeType();
+                Long scopeId = config.getScopeId();
 
-            for (BadgeEntity badge : activeBadges) {
-                processedCount.incrementAndGet();
+                List<BadgeEntity> activeBadges =
+                        badgeRepository.findByScopeTypeAndScopeIdAndIsActiveTrueAndDeletedAtIsNull(
+                                scopeType, scopeId);
 
-                if (BadgeConditionType.MANUAL == badge.getConditionType()) {
-                    log.debug("MANUALバッジのためスキップ: badgeId={}, scopeType={}, scopeId={}",
-                            badge.getId(), scopeType, scopeId);
-                    continue;
+                for (BadgeEntity badge : activeBadges) {
+                    processedCount.incrementAndGet();
+
+                    if (BadgeConditionType.MANUAL == badge.getConditionType()) {
+                        log.debug("MANUALバッジのためスキップ: badgeId={}, scopeType={}, scopeId={}",
+                                badge.getId(), scopeType, scopeId);
+                        continue;
+                    }
+
+                    int awarded = evaluateBadge(badge, scopeType, scopeId);
+                    grantedCount.addAndGet(awarded);
                 }
 
-                int awarded = evaluateBadge(badge, scopeType, scopeId);
-                grantedCount.addAndGet(awarded);
+                scopeCount.incrementAndGet();
             }
-        }
+
+            pageable = pageable.next();
+        } while (page.hasNext());
 
         log.info("バッジ評価バッチ完了: スコープ数={}, バッジ総数={}, 付与数={}",
-                enabledConfigs.size(), processedCount.get(), grantedCount.get());
+                scopeCount.get(), processedCount.get(), grantedCount.get());
     }
 
     private int evaluateBadge(BadgeEntity badge, String scopeType, Long scopeId) {

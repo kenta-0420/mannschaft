@@ -16,7 +16,6 @@ import com.mannschaft.app.gamification.repository.PointTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -105,33 +104,22 @@ public class GamificationPointService {
         // cursor はトランザクションIDの文字列表現
         Long cursorId = (cursor != null && !cursor.isBlank()) ? Long.parseLong(cursor) : null;
 
-        // JPA クエリ: id < cursorId の条件でID降順取得
-        List<PointTransactionEntity> transactions;
+        // DB側でユーザー・スコープ・カーソルをフィルタしてID降順取得
         int fetchSize = limit + 1; // hasNext判定のため1件多く取得
+        List<PointTransactionEntity> transactions;
 
         if (cursorId == null) {
-            transactions = pointTransactionRepository.findAll(
-                    PageRequest.of(
-                            0, fetchSize,
-                            Sort.by(Sort.Direction.DESC, "id"))
-            ).getContent().stream()
-                    .filter(t -> t.getUserId().equals(userId)
-                            && t.getScopeType().equals(scopeType)
-                            && t.getScopeId().equals(scopeId))
-                    .limit(fetchSize)
-                    .toList();
+            transactions = pointTransactionRepository
+                    .findByUserIdAndScopeTypeAndScopeIdOrderByIdDesc(
+                            userId, scopeType, scopeId,
+                            PageRequest.of(0, fetchSize))
+                    .getContent();
         } else {
-            transactions = pointTransactionRepository.findAll(
-                    PageRequest.of(
-                            0, fetchSize,
-                            Sort.by(Sort.Direction.DESC, "id"))
-            ).getContent().stream()
-                    .filter(t -> t.getUserId().equals(userId)
-                            && t.getScopeType().equals(scopeType)
-                            && t.getScopeId().equals(scopeId)
-                            && t.getId() < cursorId)
-                    .limit(fetchSize)
-                    .toList();
+            transactions = pointTransactionRepository
+                    .findByUserIdAndScopeTypeAndScopeIdAndIdLessThanOrderByIdDesc(
+                            userId, scopeType, scopeId, cursorId,
+                            PageRequest.of(0, fetchSize))
+                    .getContent();
         }
 
         boolean hasNext = transactions.size() > limit;
@@ -250,13 +238,9 @@ public class GamificationPointService {
         LocalDate today = LocalDate.now();
         LocalDate epoch = LocalDate.of(2000, 1, 1);
 
-        // スコープ内のユーザーIDを取得
-        List<PointTransactionEntity> allTransactions = pointTransactionRepository.findAll();
-        List<Long> userIds = allTransactions.stream()
-                .filter(t -> t.getScopeType().equals(scopeType) && t.getScopeId().equals(scopeId))
-                .map(PointTransactionEntity::getUserId)
-                .distinct()
-                .toList();
+        // スコープ内でポイントトランザクションを持つユーザーIDをDB側で集約して取得
+        List<Long> userIds = pointTransactionRepository
+                .findDistinctUserIdByScopeTypeAndScopeId(scopeType, scopeId);
 
         for (Long userId : userIds) {
             int total = pointTransactionQueryRepository.sumPointsByUserAndPeriod(

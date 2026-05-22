@@ -10,6 +10,9 @@ import com.mannschaft.app.gamification.repository.PointTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -28,6 +31,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RequiredArgsConstructor
 public class GamificationResetBatchService {
 
+    private static final int CHUNK_SIZE = 500;
+
     private final GamificationConfigRepository gamificationConfigRepository;
     private final PointTransactionQueryRepository pointTransactionQueryRepository;
     private final PointTransactionRepository pointTransactionRepository;
@@ -38,8 +43,7 @@ public class GamificationResetBatchService {
      *
      * <p>処理フロー:</p>
      * <ol>
-     *   <li>全GamificationConfigを取得</li>
-     *   <li>point_reset_month が現在月と一致するスコープをフィルタ</li>
+     *   <li>point_reset_month が現在月と一致するスコープをDB側でフィルタしてチャンク取得</li>
      *   <li>当月1日にリセット済みでないか確認（同月のRESETトランザクション存在チェック）</li>
      *   <li>対象スコープの全ユーザーの現在ポイント合計を取得</li>
      *   <li>マイナスのADJUST（RESET type）PointTransactionをINSERT（相殺）</li>
@@ -57,60 +61,61 @@ public class GamificationResetBatchService {
         int currentMonth = today.getMonthValue();
         LocalDate monthStart = today.withDayOfMonth(1);
 
-        List<GamificationConfigEntity> allConfigs = gamificationConfigRepository.findAll();
-
-        // point_reset_monthが現在月と一致するスコープをフィルタ
-        List<GamificationConfigEntity> targetConfigs = allConfigs.stream()
-                .filter(c -> c.getPointResetMonth() != null
-                        && c.getPointResetMonth() == currentMonth)
-                .toList();
-
         AtomicInteger resetScopeCount = new AtomicInteger(0);
         AtomicInteger resetTransactionCount = new AtomicInteger(0);
 
-        for (GamificationConfigEntity config : targetConfigs) {
-            String scopeType = config.getScopeType();
-            Long scopeId = config.getScopeId();
+        // point_reset_monthが現在月と一致するスコープをDB側でフィルタしてチャンク処理
+        Pageable pageable = PageRequest.of(0, CHUNK_SIZE);
+        Page<GamificationConfigEntity> page;
+        do {
+            page = gamificationConfigRepository.findByPointResetMonth((byte) currentMonth, pageable);
 
-            // 当月1日にリセット済みか確認（同月のRESETトランザクション存在チェック）
-            boolean alreadyReset = isAlreadyResetThisMonth(scopeType, scopeId, monthStart);
-            if (alreadyReset) {
-                log.info("当月リセット済みのためスキップ: scopeType={}, scopeId={}", scopeType, scopeId);
-                continue;
-            }
+            for (GamificationConfigEntity config : page.getContent()) {
+                String scopeType = config.getScopeType();
+                Long scopeId = config.getScopeId();
 
-            // 対象スコープの全ユーザーとポイント合計を取得
-            List<java.util.Map<String, Object>> userPoints = getUserPointsInScope(scopeType, scopeId);
-
-            for (java.util.Map<String, Object> row : userPoints) {
-                Long userId = ((Number) row.get("user_id")).longValue();
-                int totalPoints = ((Number) row.get("total_points")).intValue();
-
-                if (totalPoints == 0) {
+                // 当月1日にリセット済みか確認（同月のRESETトランザクション存在チェック）
+                boolean alreadyReset = isAlreadyResetThisMonth(scopeType, scopeId, monthStart);
+                if (alreadyReset) {
+                    log.info("当月リセット済みのためスキップ: scopeType={}, scopeId={}", scopeType, scopeId);
                     continue;
                 }
 
-                // マイナスのRESETトランザクションをINSERT（相殺）
-                PointTransactionEntity resetTransaction = PointTransactionEntity.builder()
-                        .userId(userId)
-                        .scopeType(scopeType)
-                        .scopeId(scopeId)
-                        .transactionType(TransactionType.RESET)
-                        .points(-totalPoints)
-                        .earnedOn(today)
-                        .build();
+                // 対象スコープの全ユーザーとポイント合計を取得
+                List<java.util.Map<String, Object>> userPoints = getUserPointsInScope(scopeType, scopeId);
 
-                pointTransactionRepository.save(resetTransaction);
-                resetTransactionCount.incrementAndGet();
+                for (java.util.Map<String, Object> row : userPoints) {
+                    Long userId = ((Number) row.get("user_id")).longValue();
+                    int totalPoints = ((Number) row.get("total_points")).intValue();
 
-                log.debug("ポイントリセット: userId={}, scopeType={}, scopeId={}, points={}",
-                        userId, scopeType, scopeId, -totalPoints);
+                    if (totalPoints == 0) {
+                        continue;
+                    }
+
+                    // マイナスのRESETトランザクションをINSERT（相殺）
+                    PointTransactionEntity resetTransaction = PointTransactionEntity.builder()
+                            .userId(userId)
+                            .scopeType(scopeType)
+                            .scopeId(scopeId)
+                            .transactionType(TransactionType.RESET)
+                            .points(-totalPoints)
+                            .earnedOn(today)
+                            .build();
+
+                    pointTransactionRepository.save(resetTransaction);
+                    resetTransactionCount.incrementAndGet();
+
+                    log.debug("ポイントリセット: userId={}, scopeType={}, scopeId={}, points={}",
+                            userId, scopeType, scopeId, -totalPoints);
+                }
+
+                resetScopeCount.incrementAndGet();
+                log.info("スコープリセット完了: scopeType={}, scopeId={}, ユーザー数={}",
+                        scopeType, scopeId, userPoints.size());
             }
 
-            resetScopeCount.incrementAndGet();
-            log.info("スコープリセット完了: scopeType={}, scopeId={}, ユーザー数={}",
-                    scopeType, scopeId, userPoints.size());
-        }
+            pageable = pageable.next();
+        } while (page.hasNext());
 
         log.info("ポイントリセットバッチ完了: 対象スコープ数={}, リセットトランザクション件数={}",
                 resetScopeCount.get(), resetTransactionCount.get());
