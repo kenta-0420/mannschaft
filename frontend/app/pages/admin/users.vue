@@ -5,6 +5,7 @@ definePageMeta({ middleware: 'auth' })
 
 const systemAdminApi = useSystemAdminApi()
 const { success, error: showError } = useNotification()
+const { formatDateTime } = useDatetime()
 
 const users = ref<Record<string, unknown>[]>([])
 const loading = ref(true)
@@ -186,7 +187,7 @@ onMounted(load)
             </Column>
             <Column header="日時" style="width: 140px">
               <template #body="{ data }">
-                <span class="text-sm">{{ new Date(data.createdAt).toLocaleString('ja-JP') }}</span>
+                <span class="text-sm">{{ formatDateTime(data.createdAt) }}</span>
               </template>
             </Column>
           </DataTable>

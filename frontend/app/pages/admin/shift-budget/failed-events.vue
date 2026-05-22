@@ -18,6 +18,7 @@ definePageMeta({ middleware: 'auth' })
 const { t } = useI18n()
 const scopeStore = useScopeStore()
 const notification = useNotification()
+const { formatDateTime } = useDatetime()
 const api = useShiftBudgetApi()
 
 const organizationId = computed(() => {
@@ -88,10 +89,6 @@ function statusLabel(status: string): string {
   return t(key, status)
 }
 
-function formatDateTime(value: string | null): string {
-  if (!value) return '-'
-  return new Date(value).toLocaleString('ja-JP')
-}
 
 function openRetry(event: FailedEventResponse) {
   retryTarget.value = event

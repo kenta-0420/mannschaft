@@ -38,6 +38,7 @@ definePageMeta({
 const { t } = useI18n()
 const villageApi = useVillageApi()
 const { showSuccess, showError, showWarn } = useNotification()
+const { formatDateTime } = useDatetime()
 
 // =============================================================================
 // 定数
@@ -279,13 +280,6 @@ function statusSeverity(status: VillageRequestStatus): 'info' | 'success' | 'dan
   }
 }
 
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString()
-  } catch {
-    return iso
-  }
-}
 
 // =============================================================================
 // 初期化
@@ -515,7 +509,7 @@ onMounted(() => {
         </Column>
         <Column :header="t('village.field.createdAt')">
           <template #body="slotProps">
-            {{ formatDate((slotProps.data as VillageCreationRequestResponse).createdAt) }}
+            {{ formatDateTime((slotProps.data as VillageCreationRequestResponse).createdAt) }}
           </template>
         </Column>
         <Column :header="t('village.action.submit')">

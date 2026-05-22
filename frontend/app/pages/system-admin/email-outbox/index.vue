@@ -11,6 +11,7 @@ definePageMeta({ middleware: 'auth' })
 const { t } = useI18n()
 const { fetchList, fetchMetrics, retryDeadLetter, cancelPending } = useEmailOutboxAdminApi()
 const { error: showError, success: showSuccess } = useNotification()
+const { formatDateTime } = useDatetime()
 const router = useRouter()
 
 // ===== フィルタ状態 =====
@@ -172,17 +173,6 @@ function openDetail(id: string) {
 
 function shortId(id: string): string {
   return id.slice(0, 8)
-}
-
-function formatDateTime(dt: string | null): string {
-  if (!dt) return t('email_outbox.na')
-  return new Date(dt).toLocaleString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 function formatSuccessRate(rate: number | null): string {

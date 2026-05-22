@@ -8,6 +8,7 @@ const teamId = computed(() => Number(route.params.id))
 const { listDigests, deleteDigest, publishDigest, regenerateDigest } = useTimelineDigestApi()
 const notification = useNotification()
 const { t } = useI18n()
+const { formatDate } = useDatetime()
 
 const digests = ref<DigestSummaryResponse[]>([])
 const loading = ref(false)
@@ -21,13 +22,6 @@ const styleLabels = computed((): Record<string, string> => ({
   TEMPLATE: t('timeline_digest.style_template'),
 }))
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
-}
 
 async function loadDigests() {
   loading.value = true

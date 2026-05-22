@@ -6,7 +6,7 @@ definePageMeta({
   middleware: 'auth',
 })
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const route = useRoute()
 const orgId = Number(route.params.id)
 const todoId = Number(route.params.todoId)
@@ -16,6 +16,7 @@ const progressApi = useTodoProgress()
 const notification = useNotification()
 const errorHandler = useErrorHandler()
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const { formatDate, formatDateTime } = useDatetime()
 
 interface TodoDetail {
   id: number
@@ -133,14 +134,6 @@ async function onProgressManualUpdate(manual: boolean) {
   }
 }
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString(locale.value)
-}
-
-function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString(locale.value)
-}
 
 onMounted(async () => {
   await Promise.all([loadTodo(), loadPermissions()])

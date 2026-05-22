@@ -7,6 +7,7 @@ definePageMeta({ middleware: 'auth' })
 
 const api = useApi()
 const { success, error: showError } = useNotification()
+const { formatDate } = useDatetime()
 
 interface Permission {
   key: string
@@ -213,7 +214,7 @@ onMounted(load)
       </Column>
       <Column header="作成日" style="width: 140px">
         <template #body="{ data }">
-          <span class="text-sm">{{ new Date(data.createdAt).toLocaleDateString('ja-JP') }}</span>
+          <span class="text-sm">{{ formatDate(data.createdAt) }}</span>
         </template>
       </Column>
       <Column header="操作" style="width: 220px">

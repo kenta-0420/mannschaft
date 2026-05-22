@@ -5,6 +5,7 @@ definePageMeta({ middleware: 'auth' })
 
 const auditLogApi = useAuditLogApi()
 const notification = useNotification()
+const { formatDateTime } = useDatetime()
 
 const logs = ref<AuditLog[]>([])
 const totalRecords = ref(0)
@@ -99,7 +100,7 @@ onMounted(loadLogs)
       </template>
       <Column header="日時" style="width: 160px">
         <template #body="{ data }">
-          <span class="text-sm">{{ new Date(data.createdAt).toLocaleString('ja-JP') }}</span>
+          <span class="text-sm">{{ formatDateTime(data.createdAt) }}</span>
         </template>
       </Column>
       <Column field="userName" header="ユーザー" />

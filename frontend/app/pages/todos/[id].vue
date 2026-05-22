@@ -13,6 +13,7 @@ const todoApi = useTodoApi()
 const notification = useNotification()
 const errorHandler = useErrorHandler()
 const authStore = useAuthStore()
+const { formatDate, formatDateTime } = useDatetime()
 
 interface PersonalTodoDetail {
   id: number
@@ -134,23 +135,12 @@ async function saveEdit() {
   }
 }
 
-const { locale } = useI18n()
-
 const priorityOptions = computed(() => [
   { label: t('todo.priorityValue.HIGH'), value: 'HIGH' },
   { label: t('todo.priorityValue.MEDIUM'), value: 'MEDIUM' },
   { label: t('todo.priorityValue.LOW'), value: 'LOW' },
 ])
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—'
-  // i18n locale を toLocaleDateString に渡す（ja → ja-JP, en → en-US 等の自動判定で OK）
-  return new Date(dateStr).toLocaleDateString(locale.value)
-}
-
-function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString(locale.value)
-}
 
 onMounted(loadTodo)
 </script>

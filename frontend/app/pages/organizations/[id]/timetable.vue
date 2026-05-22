@@ -9,6 +9,7 @@ const orgId = computed(() => Number(route.params.id))
 const timetableApi = useTimetableApi()
 const notification = useNotification()
 const { isAdmin, loadPermissions } = useRoleAccess('organization', orgId)
+const { formatDate } = useDatetime()
 
 const periods = ref<TimetablePeriod[]>([])
 const terms = ref<TimetableTerm[]>([])
@@ -150,12 +151,12 @@ onMounted(loadData)
               <Column field="name" :header="$t('timetable.term_name')" />
               <Column :header="$t('timetable.term_start')">
                 <template #body="{ data }">
-                  {{ new Date(data.startDate).toLocaleDateString('ja-JP') }}
+                  {{ formatDate(data.startDate) }}
                 </template>
               </Column>
               <Column :header="$t('timetable.term_end')">
                 <template #body="{ data }">
-                  {{ new Date(data.endDate).toLocaleDateString('ja-JP') }}
+                  {{ formatDate(data.endDate) }}
                 </template>
               </Column>
               <Column

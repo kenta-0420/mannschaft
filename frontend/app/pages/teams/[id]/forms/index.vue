@@ -10,6 +10,7 @@ const teamId = Number(route.params.id)
 const { loadPermissions } = useRoleAccess('team', teamId)
 
 const formApi = useFormApi()
+const { formatDate } = useDatetime()
 
 const templates = ref<FormTemplateResponse[]>([])
 const loading = ref(true)
@@ -80,7 +81,7 @@ onMounted(async () => {
               }}<span v-if="tpl.targetCount"> / {{ tpl.targetCount }}</span></span
             >
             <span v-if="tpl.deadline"
-              >期限: {{ new Date(tpl.deadline).toLocaleDateString('ja-JP') }}</span
+              >期限: {{ formatDate(tpl.deadline) }}</span
             >
           </div>
         </template>

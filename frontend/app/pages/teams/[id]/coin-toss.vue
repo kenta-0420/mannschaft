@@ -7,6 +7,7 @@ const route = useRoute()
 const teamId = Number(route.params.id)
 const { toss, getHistory, shareToChat } = useCoinTossApi()
 const { showError } = useNotification()
+const { formatDateTime } = useDatetime()
 
 type CoinMode = 'COIN' | 'DICE' | 'CUSTOM'
 const mode = ref<CoinMode>('COIN')
@@ -167,7 +168,7 @@ async function share(item: CoinTossResponse) {
             <p v-if="item.question" class="text-sm text-surface-500">{{ item.question }}</p>
             <p class="font-semibold">{{ item.result }}</p>
             <p class="text-xs text-surface-400">
-              {{ new Date(item.createdAt).toLocaleString('ja-JP') }}
+              {{ formatDateTime(item.createdAt) }}
             </p>
           </div>
           <Tag :value="item.mode" severity="info" />

@@ -7,6 +7,7 @@ const route = useRoute()
 const { getPromotions, createPromotion, publishPromotion, cancelPromotion, deletePromotion } =
   usePromotionApi()
 const { success, error: showError } = useNotification()
+const { formatDate } = useDatetime()
 
 // スコープ設定（クエリパラメータから取得、なければデフォルト）
 const scopeType = ref<'team' | 'organization'>(
@@ -184,7 +185,7 @@ onMounted(() => load())
       <Column header="開始日" style="width: 140px">
         <template #body="{ data }">
           <span class="text-sm">
-            {{ data.scheduledAt ? new Date(data.scheduledAt).toLocaleDateString('ja-JP') : '-' }}
+            {{ data.scheduledAt ? formatDate(data.scheduledAt) : '-' }}
           </span>
         </template>
       </Column>
@@ -192,7 +193,7 @@ onMounted(() => load())
       <Column header="終了日" style="width: 140px">
         <template #body="{ data }">
           <span class="text-sm">
-            {{ data.expiresAt ? new Date(data.expiresAt).toLocaleDateString('ja-JP') : '-' }}
+            {{ data.expiresAt ? formatDate(data.expiresAt) : '-' }}
           </span>
         </template>
       </Column>
