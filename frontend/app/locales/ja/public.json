@@ -82,6 +82,30 @@
       "rateLimit": "アクセスが集中しています。しばらく経ってから再度お試しください",
       "backToHome": "トップへ戻る"
     },
+    "discover": {
+      "teams": {
+        "title": "公開チームを探す",
+        "searchPlaceholder": "チーム名で検索",
+        "noResults": "該当するチームが見つかりませんでした"
+      },
+      "organizations": {
+        "title": "公開組織を探す",
+        "searchPlaceholder": "組織名で検索",
+        "noResults": "該当する組織が見つかりませんでした"
+      },
+      "filter": {
+        "keyword": "キーワード",
+        "prefecture": "都道府県",
+        "all": "すべて",
+        "search": "検索"
+      },
+      "card": {
+        "memberCount": "{count}人",
+        "lastPost": "最終投稿: {date}",
+        "noPost": "投稿なし",
+        "viewDetail": "詳細を見る"
+      }
+    },
     "meta": {
       "ogDescriptionDefault": "Mannschaft の公開ページ",
       "ogSiteName": "Mannschaft"

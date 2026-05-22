@@ -101,6 +101,26 @@ export interface PublicPostDetail {
   publishedAt: string
 }
 
+// ─── F19.1 Phase 4: 公開チーム・組織検索 API 型 ───
+
+/** F19.1 公開チーム検索結果 1 件の DTO。 */
+export interface PublicTeamSearchResult {
+  id: number
+  name: string
+  iconUrl: string | null
+  memberCount: number
+  lastPostDate: string | null
+}
+
+/** F19.1 公開組織検索結果 1 件の DTO。 */
+export interface PublicOrganizationSearchResult {
+  id: number
+  name: string
+  iconUrl: string | null
+  memberCount: number
+  lastPostDate: string | null
+}
+
 // ─── F19.1 Phase 2: Admin 向け supporter_name_disclosure 切替 API 型 ───
 
 /** supporter_name_disclosure の値。 */
