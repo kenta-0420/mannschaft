@@ -16,6 +16,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -101,7 +106,8 @@ class VillageLobbyDailyThreadBatchServiceTest {
     void runBatch_processesAllActiveVillages() {
         VillageEntity v1 = active(V1);
         VillageEntity v2 = active(V2);
-        given(villageRepository.findAll()).willReturn(List.of(v1, v2));
+        given(villageRepository.findByDeletedAtIsNullAndArchivedAtIsNull(any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of(v1, v2), PageRequest.of(0, 500), 2));
         // v1: 既存あり → 監査ログ無し、 v2: 新規作成 → 監査ログ記録
         given(villageLobbyService.findDailyThread(eq(V1), any(LocalDate.class)))
                 .willReturn(Optional.of(thread(V1)));
@@ -125,7 +131,9 @@ class VillageLobbyDailyThreadBatchServiceTest {
     @Test
     @DisplayName("削除済 / 凍結中の村は ensureDailyThread をスキップする")
     void runBatch_skipsDeletedAndArchived() {
-        given(villageRepository.findAll()).willReturn(List.of(deleted(V1), archived(V2), active(V3)));
+        // 削除済/凍結中はDBクエリで除外済みのため、Pageにはアクティブな村のみ入る
+        given(villageRepository.findByDeletedAtIsNullAndArchivedAtIsNull(any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of(active(V3)), PageRequest.of(0, 500), 1));
         given(villageLobbyService.findDailyThread(eq(V3), any(LocalDate.class)))
                 .willReturn(Optional.empty());
         given(villageLobbyService.ensureDailyThread(eq(V3), any(LocalDate.class)))
@@ -143,7 +151,8 @@ class VillageLobbyDailyThreadBatchServiceTest {
     void runBatch_continuesOnException() {
         VillageEntity v1 = active(V1);
         VillageEntity v2 = active(V2);
-        given(villageRepository.findAll()).willReturn(List.of(v1, v2));
+        given(villageRepository.findByDeletedAtIsNullAndArchivedAtIsNull(any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of(v1, v2), PageRequest.of(0, 500), 2));
         given(villageLobbyService.findDailyThread(eq(V1), any(LocalDate.class)))
                 .willReturn(Optional.empty());
         given(villageLobbyService.ensureDailyThread(eq(V1), any(LocalDate.class)))
@@ -161,7 +170,8 @@ class VillageLobbyDailyThreadBatchServiceTest {
     @Test
     @DisplayName("村ゼロ件でも例外を投げない")
     void runBatch_emptyList() {
-        given(villageRepository.findAll()).willReturn(List.of());
+        given(villageRepository.findByDeletedAtIsNullAndArchivedAtIsNull(any(Pageable.class)))
+                .willReturn(Page.empty());
 
         batch.runBatch();
 
@@ -174,7 +184,8 @@ class VillageLobbyDailyThreadBatchServiceTest {
     @DisplayName("既存スレッドのみの場合は監査ログを記録しない")
     void runBatch_existingThreads_noAudit() {
         VillageEntity v1 = active(V1);
-        given(villageRepository.findAll()).willReturn(List.of(v1));
+        given(villageRepository.findByDeletedAtIsNullAndArchivedAtIsNull(any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of(v1), PageRequest.of(0, 500), 1));
         given(villageLobbyService.findDailyThread(eq(V1), any(LocalDate.class)))
                 .willReturn(Optional.of(thread(V1)));
         given(villageLobbyService.ensureDailyThread(eq(V1), any(LocalDate.class)))
