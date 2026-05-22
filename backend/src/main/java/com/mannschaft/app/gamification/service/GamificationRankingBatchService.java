@@ -10,6 +10,9 @@ import com.mannschaft.app.gamification.repository.RankingSnapshotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +36,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RequiredArgsConstructor
 public class GamificationRankingBatchService {
 
+    private static final int CHUNK_SIZE = 500;
+
     private final GamificationConfigRepository gamificationConfigRepository;
     private final PointTransactionQueryRepository pointTransactionQueryRepository;
     private final RankingSnapshotRepository rankingSnapshotRepository;
@@ -42,7 +47,7 @@ public class GamificationRankingBatchService {
      *
      * <p>処理フロー:</p>
      * <ol>
-     *   <li>isEnabled=true かつ isRankingEnabled=true の全GamificationConfigを取得</li>
+     *   <li>isEnabled=true かつ isRankingEnabled=true の GamificationConfig をチャンクで取得</li>
      *   <li>各スコープについて WEEKLY/MONTHLY/YEARLY の期間ラベルを計算</li>
      *   <li>PointTransactionQueryRepository.findTopUsersByPeriod() でポイント集計</li>
      *   <li>RankingSnapshotEntityをdelete and insertで更新</li>
@@ -58,66 +63,72 @@ public class GamificationRankingBatchService {
 
         LocalDate today = LocalDate.now();
 
-        List<GamificationConfigEntity> targetConfigs = gamificationConfigRepository.findAll()
-                .stream()
-                .filter(c -> Boolean.TRUE.equals(c.getIsEnabled())
-                        && Boolean.TRUE.equals(c.getIsRankingEnabled()))
-                .toList();
-
         AtomicInteger processedCount = new AtomicInteger(0);
+        AtomicInteger scopeCount = new AtomicInteger(0);
 
-        for (GamificationConfigEntity config : targetConfigs) {
-            String scopeType = config.getScopeType();
-            Long scopeId = config.getScopeId();
-            int displayCount = config.getRankingDisplayCount() > 0 ? config.getRankingDisplayCount() : 10;
+        // isEnabled=true かつ isRankingEnabled=true の設定をDB側でフィルタしてチャンク処理
+        Pageable pageable = PageRequest.of(0, CHUNK_SIZE);
+        Page<GamificationConfigEntity> page;
+        do {
+            page = gamificationConfigRepository.findByIsEnabledTrueAndIsRankingEnabledTrue(pageable);
 
-            for (PeriodType periodType : PeriodType.values()) {
-                String periodLabel = buildPeriodLabel(periodType, today);
-                LocalDate[] range = buildPeriodRange(periodType, today);
-                LocalDate from = range[0];
-                LocalDate to = range[1];
+            for (GamificationConfigEntity config : page.getContent()) {
+                String scopeType = config.getScopeType();
+                Long scopeId = config.getScopeId();
+                int displayCount = config.getRankingDisplayCount() > 0 ? config.getRankingDisplayCount() : 10;
 
-                List<Map<String, Object>> topUsers = pointTransactionQueryRepository
-                        .findTopUsersByPeriod(scopeType, scopeId, from, to, displayCount);
+                for (PeriodType periodType : PeriodType.values()) {
+                    String periodLabel = buildPeriodLabel(periodType, today);
+                    LocalDate[] range = buildPeriodRange(periodType, today);
+                    LocalDate from = range[0];
+                    LocalDate to = range[1];
 
-                // 既存スナップショットを削除して再挿入（delete and insert）
-                List<RankingSnapshotEntity> existing = rankingSnapshotRepository
-                        .findByScopeTypeAndScopeIdAndPeriodTypeAndPeriodLabelOrderByRankPositionAsc(
-                                scopeType, scopeId, periodType, periodLabel);
+                    List<Map<String, Object>> topUsers = pointTransactionQueryRepository
+                            .findTopUsersByPeriod(scopeType, scopeId, from, to, displayCount);
 
-                if (!existing.isEmpty()) {
-                    rankingSnapshotRepository.deleteAll(existing);
+                    // 既存スナップショットを削除して再挿入（delete and insert）
+                    List<RankingSnapshotEntity> existing = rankingSnapshotRepository
+                            .findByScopeTypeAndScopeIdAndPeriodTypeAndPeriodLabelOrderByRankPositionAsc(
+                                    scopeType, scopeId, periodType, periodLabel);
+
+                    if (!existing.isEmpty()) {
+                        rankingSnapshotRepository.deleteAll(existing);
+                    }
+
+                    List<RankingSnapshotEntity> newSnapshots = new ArrayList<>();
+                    for (int i = 0; i < topUsers.size(); i++) {
+                        Map<String, Object> row = topUsers.get(i);
+                        Long userId = ((Number) row.get("user_id")).longValue();
+                        int totalPoints = ((Number) row.get("total_points")).intValue();
+
+                        RankingSnapshotEntity snapshot = RankingSnapshotEntity.builder()
+                                .scopeType(scopeType)
+                                .scopeId(scopeId)
+                                .periodType(periodType)
+                                .periodLabel(periodLabel)
+                                .userId(userId)
+                                .totalPoints(totalPoints)
+                                .rankPosition(i + 1)
+                                .build();
+
+                        newSnapshots.add(snapshot);
+                    }
+
+                    rankingSnapshotRepository.saveAll(newSnapshots);
+                    processedCount.addAndGet(newSnapshots.size());
+
+                    log.debug("ランキングスナップショット生成: scopeType={}, scopeId={}, periodType={}, periodLabel={}, 件数={}",
+                            scopeType, scopeId, periodType, periodLabel, newSnapshots.size());
                 }
 
-                List<RankingSnapshotEntity> newSnapshots = new ArrayList<>();
-                for (int i = 0; i < topUsers.size(); i++) {
-                    Map<String, Object> row = topUsers.get(i);
-                    Long userId = ((Number) row.get("user_id")).longValue();
-                    int totalPoints = ((Number) row.get("total_points")).intValue();
-
-                    RankingSnapshotEntity snapshot = RankingSnapshotEntity.builder()
-                            .scopeType(scopeType)
-                            .scopeId(scopeId)
-                            .periodType(periodType)
-                            .periodLabel(periodLabel)
-                            .userId(userId)
-                            .totalPoints(totalPoints)
-                            .rankPosition(i + 1)
-                            .build();
-
-                    newSnapshots.add(snapshot);
-                }
-
-                rankingSnapshotRepository.saveAll(newSnapshots);
-                processedCount.addAndGet(newSnapshots.size());
-
-                log.debug("ランキングスナップショット生成: scopeType={}, scopeId={}, periodType={}, periodLabel={}, 件数={}",
-                        scopeType, scopeId, periodType, periodLabel, newSnapshots.size());
+                scopeCount.incrementAndGet();
             }
-        }
+
+            pageable = pageable.next();
+        } while (page.hasNext());
 
         log.info("ランキングスナップショットバッチ完了: スコープ数={}, 総スナップショット件数={}",
-                targetConfigs.size(), processedCount.get());
+                scopeCount.get(), processedCount.get());
     }
 
     /**
