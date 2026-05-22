@@ -5,6 +5,8 @@ defineProps<{
   result: SearchResult
 }>()
 
+const { formatDate } = useDatetime()
+
 const typeIcon = (type: string) => {
   const map: Record<string, string> = {
     POST: 'pi pi-comment',
@@ -54,7 +56,7 @@ const typeLabel = (type: string) => {
           <span v-if="result.author">
             <i class="pi pi-user mr-1" />{{ result.author.displayName }}
           </span>
-          <span>{{ new Date(result.createdAt).toLocaleDateString('ja-JP') }}</span>
+          <span>{{ formatDate(result.createdAt) }}</span>
         </div>
       </div>
     </div>

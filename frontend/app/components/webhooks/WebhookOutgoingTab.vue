@@ -12,6 +12,7 @@ const props = defineProps<{
 
 const webhookApi = useWebhookApi()
 const { success, error: showError } = useNotification()
+const { formatDateTime } = useDatetime()
 
 const scopePrefix = computed(() => props.scopeType === 'TEAM' ? 'team' : 'organization')
 
@@ -225,7 +226,7 @@ onMounted(async () => {
         <template #body="{ data }">
           <span class="text-sm">
             {{ data.lastDeliveredAt
-              ? new Date(data.lastDeliveredAt).toLocaleString('ja-JP')
+              ? formatDateTime(data.lastDeliveredAt)
               : '—' }}
           </span>
         </template>
@@ -278,7 +279,7 @@ onMounted(async () => {
           <div class="mb-1 flex items-center gap-2 text-xs text-surface-500">
             <span>{{ d.responseStatus ? `HTTP ${d.responseStatus}` : 'タイムアウト' }}</span>
             <span>•</span>
-            <span>{{ new Date(d.deliveredAt).toLocaleString('ja-JP') }}</span>
+            <span>{{ formatDateTime(d.deliveredAt) }}</span>
           </div>
           <div v-if="!d.success" class="mt-2">
             <Button

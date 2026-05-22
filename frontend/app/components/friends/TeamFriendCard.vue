@@ -32,21 +32,16 @@ const emit = defineEmits<{
   toggleVisibility: [teamFriendId: number, isPublic: boolean]
 }>()
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
+const { formatDate } = useDatetime()
 
 const displayName = computed(
   () => props.friend.friendTeamName ?? t('friends.list.visibility_private'),
 )
 
 const establishedLabel = computed(() => {
-  const dt = new Date(props.friend.establishedAt)
-  if (Number.isNaN(dt.getTime())) return ''
-  // ロケールに従って相対的かつ読みやすい形式で整形
-  return dt.toLocaleString(locale.value, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+  if (!props.friend.establishedAt) return ''
+  return formatDate(props.friend.establishedAt)
 })
 
 const menu = ref<{ toggle: (event: Event) => void } | null>(null)

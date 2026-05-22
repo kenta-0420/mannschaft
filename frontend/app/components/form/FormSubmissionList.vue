@@ -11,6 +11,7 @@ const props = defineProps<{
 
 const formApi = useFormApi()
 const notification = useNotification()
+const { formatDate } = useDatetime()
 
 const submissions = ref<FormSubmissionResponse[]>([])
 const totalRecords = ref(0)
@@ -129,8 +130,8 @@ function onPage(event: { page: number; rows: number }) {
   loadSubmissions()
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('ja-JP')
+function formatSubmissionDate(dateStr: string): string {
+  return formatDate(dateStr)
 }
 
 onMounted(loadSubmissions)
@@ -164,12 +165,12 @@ defineExpose({ refresh: loadSubmissions })
       <Column header="提出回数" field="submissionCountForUser" style="width: 100px" />
       <Column header="作成日" style="width: 120px">
         <template #body="{ data }">
-          {{ formatDate(data.createdAt) }}
+          {{ formatSubmissionDate(data.createdAt) }}
         </template>
       </Column>
       <Column header="更新日" style="width: 120px">
         <template #body="{ data }">
-          {{ formatDate(data.updatedAt) }}
+          {{ formatSubmissionDate(data.updatedAt) }}
         </template>
       </Column>
       <Column v-if="canManage" header="操作" style="width: 160px">

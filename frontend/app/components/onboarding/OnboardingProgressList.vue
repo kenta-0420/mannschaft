@@ -12,6 +12,7 @@ const emit = defineEmits<{
 }>()
 
 const statusFilter = ref<OnboardingProgressStatus | 'ALL'>('ALL')
+const { formatDate } = useDatetime()
 
 const statusOptions = [
   { label: 'すべて', value: 'ALL' },
@@ -68,14 +69,14 @@ const statusLabel = (status: OnboardingProgressStatus) => {
       <Column header="期限">
         <template #body="{ data }">
           <span v-if="data.deadlineAt" class="text-sm">
-            {{ new Date(data.deadlineAt).toLocaleDateString('ja-JP') }}
+            {{ formatDate(data.deadlineAt) }}
           </span>
           <span v-else class="text-surface-400">-</span>
         </template>
       </Column>
       <Column header="開始日">
         <template #body="{ data }">
-          <span class="text-sm">{{ new Date(data.startedAt).toLocaleDateString('ja-JP') }}</span>
+          <span class="text-sm">{{ formatDate(data.startedAt) }}</span>
         </template>
       </Column>
     </DataTable>

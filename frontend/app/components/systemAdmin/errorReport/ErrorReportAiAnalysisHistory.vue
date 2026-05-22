@@ -12,11 +12,12 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { formatDateTime } = useDatetime()
 
 const expanded = ref(false)
 
 function formatDate(value: string): string {
-  return new Date(value).toLocaleString()
+  return formatDateTime(value)
 }
 
 function toggle() {

@@ -25,10 +25,11 @@ withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 const { t } = useI18n()
+const { formatDateTime: dtFormat } = useDatetime()
 
 function formatDateTime(value: string | null): string {
   if (!value) return '-'
-  return new Date(value).toLocaleString('ja-JP')
+  return dtFormat(value)
 }
 
 function thresholdSeverity(percent: number): 'warn' | 'danger' {

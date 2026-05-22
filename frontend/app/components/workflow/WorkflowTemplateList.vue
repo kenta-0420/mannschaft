@@ -9,6 +9,7 @@ const props = defineProps<{
 
 const workflowApi = useWorkflowApi()
 const notification = useNotification()
+const { formatDate } = useDatetime()
 
 const templates = ref<WorkflowTemplateResponse[]>([])
 const totalRecords = ref(0)
@@ -130,8 +131,8 @@ function onPage(event: { page: number; rows: number }) {
   loadTemplates()
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('ja-JP')
+function formatTemplateDate(dateStr: string): string {
+  return formatDate(dateStr)
 }
 
 onMounted(loadTemplates)
@@ -183,7 +184,7 @@ defineExpose({ refresh: loadTemplates })
       </Column>
       <Column header="作成日" style="width: 120px">
         <template #body="{ data }">
-          {{ formatDate(data.createdAt) }}
+          {{ formatTemplateDate(data.createdAt) }}
         </template>
       </Column>
       <Column v-if="canEdit" header="操作" style="width: 160px">

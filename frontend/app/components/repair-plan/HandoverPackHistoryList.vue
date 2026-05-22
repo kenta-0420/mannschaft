@@ -9,6 +9,7 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const notification = useNotification()
+const { formatDateTime } = useDatetime()
 const { listPacks, getDownloadUrl, deletePack, generatePack } = useHandoverPackApi(
   props.scopeType,
   props.scopeId,
@@ -82,7 +83,7 @@ function formatFileSize(bytes: number | null): string {
 
 function formatDate(iso: string | null): string {
   if (!iso) return '-'
-  return new Date(iso).toLocaleString('ja-JP')
+  return formatDateTime(iso)
 }
 
 const statusSeverityMap: Record<string, 'info' | 'success' | 'danger'> = {

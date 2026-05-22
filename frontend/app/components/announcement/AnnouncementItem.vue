@@ -14,6 +14,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const router = useRouter()
+const { formatDate, fromNow } = useDatetime()
 
 /** ソース種別アイコン（PrimeIcons）のマップ */
 const sourceTypeIconMap: Record<string, string> = {
@@ -71,17 +72,9 @@ const reportCampaignId = computed<string | null>(() => {
   return props.item.messagingCampaignId
 })
 
-/** 相対時刻表示（シンプル実装）*/
+/** 相対時刻表示 */
 function relativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return 'たった今'
-  if (minutes < 60) return `${minutes}分前`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}時間前`
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}日前`
-  return new Date(dateStr).toLocaleDateString('ja-JP')
+  return fromNow(dateStr) || formatDate(dateStr)
 }
 
 function handleClick() {
@@ -145,7 +138,7 @@ function handleClick() {
         <span v-if="item.author">• {{ item.author.displayName }}</span>
         <span>• {{ relativeTime(item.createdAt) }}</span>
         <span v-if="item.expiresAt" class="text-orange-500">
-          {{ t('announcement.expires_at') }}: {{ new Date(item.expiresAt).toLocaleDateString('ja-JP') }}
+          {{ t('announcement.expires_at') }}: {{ formatDate(item.expiresAt) }}
         </span>
       </div>
     </div>

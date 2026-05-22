@@ -88,7 +88,7 @@ const emit = defineEmits<{
   revokeAutoAssign: []
 }>()
 
-const { locale } = useI18n()
+const { formatDate } = useDatetime()
 
 // スロットをそのまま並べ（日付順にソート済みと仮定）
 const groupedSlots = computed(() => {
@@ -119,7 +119,7 @@ function getSlotWarnings(slotId: number): Array<{ userId: number; message: strin
 }
 
 function formatSlotDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString(locale.value)
+  return formatDate(dateStr)
 }
 
 function onConfirmAutoAssign(note: string | undefined): void {

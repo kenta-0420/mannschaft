@@ -30,6 +30,7 @@ const {
   sendEmergency,
 } = useSignageApi()
 const { success, error: showError } = useNotification()
+const { formatDateTime } = useDatetime()
 
 // --- スコープごとの表示差分 ---
 const screenNamePlaceholder = computed(() =>
@@ -574,7 +575,7 @@ onMounted(loadScreens)
                 <p v-if="token.label" class="text-sm font-medium">{{ token.label }}</p>
                 <p class="truncate font-mono text-xs text-surface-500">{{ token.token }}</p>
                 <p v-if="token.lastSeenAt" class="mt-0.5 text-xs text-surface-400">
-                  最終接続: {{ new Date(token.lastSeenAt).toLocaleString('ja-JP') }}
+                  最終接続: {{ formatDateTime(token.lastSeenAt) }}
                 </p>
               </div>
               <Button

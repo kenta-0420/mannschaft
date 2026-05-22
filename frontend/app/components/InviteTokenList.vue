@@ -18,6 +18,7 @@ interface InviteToken {
 const { t } = useI18n()
 const api = useApi()
 const notification = useNotification()
+const { formatDate } = useDatetime()
 const tokens = ref<InviteToken[]>([])
 const loading = ref(false)
 const showCreateDialog = ref(false)
@@ -129,9 +130,9 @@ function isExpired(token: InviteToken): boolean {
   return false
 }
 
-function formatDate(dateStr: string | null): string {
+function formatTokenDate(dateStr: string | null): string {
   if (!dateStr) return '無期限'
-  return new Date(dateStr).toLocaleDateString('ja-JP')
+  return formatDate(dateStr)
 }
 
 onMounted(() => loadTokens())
@@ -158,7 +159,7 @@ onMounted(() => loadTokens())
       <Column header="有効期限" style="width: 120px">
         <template #body="{ data }">
           <span :class="{ 'text-red-500 line-through': isExpired(data) }">
-            {{ formatDate(data.expiresAt) }}
+            {{ formatTokenDate(data.expiresAt) }}
           </span>
         </template>
       </Column>

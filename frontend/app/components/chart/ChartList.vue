@@ -16,6 +16,7 @@ const emit = defineEmits<{
 
 const statusLabel = (s: string) => s === 'DRAFT' ? '下書き' : '確定'
 const statusSeverity = (s: string) => s === 'DRAFT' ? 'warn' : 'success'
+const { formatDate } = useDatetime()
 </script>
 
 <template>
@@ -54,7 +55,7 @@ const statusSeverity = (s: string) => s === 'DRAFT' ? 'warn' : 'success'
       <Column field="clientName" header="顧客名" />
       <Column header="来店日">
         <template #body="{ data }">
-          {{ new Date(data.visitDate).toLocaleDateString('ja-JP') }}
+          {{ formatDate(data.visitDate) }}
         </template>
       </Column>
       <Column field="staffName" header="担当スタッフ" />
