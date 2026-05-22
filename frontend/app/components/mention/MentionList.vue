@@ -53,7 +53,7 @@ onMounted(loadMentions)
 <template>
   <div>
     <div v-if="loading" class="flex justify-center py-8">
-      <ProgressSpinner />
+      <LoadingBounce />
     </div>
 
     <div v-else-if="mentions.length === 0" class="py-12 text-center text-surface-500">

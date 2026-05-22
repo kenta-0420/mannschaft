@@ -43,7 +43,7 @@ onMounted(() => loadRelatedPosts())
     </h2>
 
     <div v-if="loading" class="flex justify-center py-6">
-      <ProgressSpinner style="width: 32px; height: 32px" />
+      <LoadingBounce />
     </div>
 
     <div v-else class="grid gap-4 sm:grid-cols-3">

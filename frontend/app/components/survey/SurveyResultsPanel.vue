@@ -47,7 +47,7 @@ onMounted(loadResults)
 
     <!-- ローディング -->
     <div v-if="loading" class="flex justify-center py-8">
-      <ProgressSpinner style="width: 40px; height: 40px" />
+      <LoadingBounce />
     </div>
 
     <!-- 失敗時の再試行 -->

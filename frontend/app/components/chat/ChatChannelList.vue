@@ -82,7 +82,7 @@ defineExpose({ refresh: loadChannels, refreshAndSelect })
 
     <div class="flex-1 overflow-y-auto">
       <div v-if="loading" class="flex justify-center py-8">
-        <ProgressSpinner style="width: 30px; height: 30px" />
+        <LoadingBounce />
       </div>
 
       <template v-else>

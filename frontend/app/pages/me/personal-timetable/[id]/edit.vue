@@ -241,7 +241,7 @@ onMounted(load)
     </div>
 
     <div v-if="loading" class="text-center py-12">
-      <ProgressSpinner />
+      <LoadingBounce />
     </div>
 
     <div v-else>
@@ -331,7 +331,7 @@ onMounted(load)
           </p>
 
           <div v-if="shareLoading" class="text-center py-4">
-            <ProgressSpinner />
+            <LoadingBounce />
           </div>
 
           <div v-else>

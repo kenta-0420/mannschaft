@@ -112,7 +112,7 @@ onMounted(() => loadFolder(null))
     </div>
 
     <div v-if="loading" class="flex justify-center py-8">
-      <ProgressSpinner style="width: 40px; height: 40px" />
+      <LoadingBounce />
     </div>
 
     <div v-else class="flex flex-col gap-1">

@@ -67,10 +67,7 @@ onMounted(() => {
     <!-- トークン検証中 -->
     <template v-if="token">
       <template v-if="verifying">
-        <ProgressSpinner
-          style="width: 50px; height: 50px"
-          stroke-width="4"
-        />
+        <LoadingBounce />
         <p class="text-center text-lg">メールアドレスを認証しています...</p>
       </template>
 

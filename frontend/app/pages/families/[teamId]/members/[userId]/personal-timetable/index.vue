@@ -43,7 +43,7 @@ onMounted(load)
     </header>
 
     <div v-if="loading" class="text-center py-12">
-      <ProgressSpinner />
+      <LoadingBounce />
     </div>
 
     <div v-else-if="items.length === 0" class="text-center py-12 text-gray-500">

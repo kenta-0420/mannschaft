@@ -316,6 +316,6 @@ watch(() => props.pageId, () => {
   </div>
 
   <div v-else class="flex justify-center py-12">
-    <ProgressSpinner style="width: 40px; height: 40px" />
+    <LoadingBounce />
   </div>
 </template>

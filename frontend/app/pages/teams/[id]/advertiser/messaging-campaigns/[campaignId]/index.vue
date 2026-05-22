@@ -139,7 +139,7 @@ onMounted(load)
       </NuxtLink>
     </div>
 
-    <ProgressSpinner v-if="loading" class="flex justify-center py-20" />
+    <div v-if="loading" class="flex justify-center py-20"><LoadingBounce /></div>
 
     <div v-else-if="campaign">
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">

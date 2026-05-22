@@ -51,7 +51,7 @@ onMounted(load)
       <Button label="新規申請" icon="pi pi-plus" @click="showCreate = true" />
     </div>
 
-    <ProgressSpinner v-if="loading" class="flex justify-center py-10" />
+    <div v-if="loading" class="flex justify-center py-10"><LoadingBounce /></div>
 
     <DataTable v-else :value="requests" striped-rows>
       <Column field="requestedLimit" header="希望額">

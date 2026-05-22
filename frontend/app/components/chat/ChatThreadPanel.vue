@@ -161,7 +161,7 @@ watch(() => props.rootMessageId, () => {
     <!-- スレッドメッセージ一覧 -->
     <div class="flex-1 overflow-y-auto">
       <div v-if="loading && messages.length === 0" class="flex justify-center py-6">
-        <ProgressSpinner style="width: 32px; height: 32px" />
+        <LoadingBounce />
       </div>
 
       <div

@@ -55,7 +55,7 @@ onMounted(async () => {
       <h2 class="text-lg font-semibold">リスク分布サマリ</h2>
 
       <div v-if="loadingDashboard" class="flex items-center justify-center py-8">
-        <ProgressSpinner />
+        <LoadingBounce />
       </div>
 
       <div v-else-if="dashboard" class="grid grid-cols-2 md:grid-cols-4 gap-4">

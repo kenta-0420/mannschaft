@@ -89,7 +89,7 @@ onMounted(load)
       <Select v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" class="w-40" />
     </div>
 
-    <ProgressSpinner v-if="loading" class="flex justify-center py-10" />
+    <div v-if="loading" class="flex justify-center py-10"><LoadingBounce /></div>
 
     <DataTable v-else :value="accounts" striped-rows>
       <Column field="companyName" header="会社名" />

@@ -165,7 +165,7 @@ onMounted(async () => {
       <PageHeader :title="t('recruitment.penalty.pageTitle')" />
 
       <div v-if="settingLoading" class="flex justify-center p-8">
-        <ProgressSpinner />
+        <LoadingBounce />
       </div>
 
       <SectionCard v-else class="flex flex-col gap-4">
@@ -257,7 +257,7 @@ onMounted(async () => {
       </h2>
 
       <div v-if="penaltiesLoading" class="flex justify-center p-8">
-        <ProgressSpinner />
+        <LoadingBounce />
       </div>
 
       <div

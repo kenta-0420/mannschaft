@@ -167,7 +167,7 @@ onBeforeUnmount(() => {
         v-if="loading"
         class="flex flex-col items-center gap-2"
       >
-        <ProgressSpinner />
+        <LoadingBounce />
         <p class="text-sm text-surface-500">
           {{ t('jobmatching.qr.display.loading') }}
         </p>

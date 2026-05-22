@@ -138,7 +138,7 @@ onMounted(async () => {
     </Message>
 
     <div v-if="loading" class="flex items-center justify-center py-12">
-      <ProgressSpinner />
+      <LoadingBounce />
     </div>
     <DataTable
       v-else

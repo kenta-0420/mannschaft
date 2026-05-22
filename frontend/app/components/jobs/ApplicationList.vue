@@ -46,7 +46,7 @@ function contractIdOf(app: JobApplicationResponse): number | null {
       v-if="loading"
       class="flex justify-center p-6"
     >
-      <ProgressSpinner />
+      <LoadingBounce />
     </div>
 
     <div

@@ -65,7 +65,7 @@ onMounted(load)
       <Button label="新規作成" icon="pi pi-plus" :disabled="schedules.length >= 3" @click="showCreate = true" />
     </div>
 
-    <ProgressSpinner v-if="loading" class="flex justify-center py-10" />
+    <div v-if="loading" class="flex justify-center py-10"><LoadingBounce /></div>
 
     <div v-else-if="schedules.length === 0" class="py-10 text-center text-surface-500">
       定期レポートはまだ設定されていません。

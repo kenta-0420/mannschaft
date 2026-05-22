@@ -16,7 +16,7 @@ const channelOrder: AdChannelType[] = ['ANNOUNCEMENT', 'EMAIL', 'PUSH', 'BANNER'
 <template>
   <SectionCard :title="t('advertising.advertiser_crud.preview.title')">
     <div v-if="loading" class="flex justify-center py-6">
-      <ProgressSpinner style="width:32px;height:32px" />
+      <LoadingBounce />
       <span class="ml-3 text-sm text-surface-500">{{ t('advertising.advertiser_crud.preview.loading') }}</span>
     </div>
     <div v-else-if="!preview" class="py-6 text-center text-sm text-surface-500">

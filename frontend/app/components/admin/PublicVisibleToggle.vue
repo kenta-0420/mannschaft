@@ -114,12 +114,7 @@ async function handleToggle(newValue: boolean) {
     />
 
     <!-- ローディングインジケーター -->
-    <ProgressSpinner
-      v-if="loading"
-      style="width: 16px; height: 16px"
-      stroke-width="4"
-      :aria-label="t('public.admin.publicVisible.label')"
-    />
+    <LoadingBounce />
   </div>
 
   <!-- エラーメッセージ -->

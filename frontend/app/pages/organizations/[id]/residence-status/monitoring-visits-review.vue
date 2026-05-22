@@ -191,7 +191,7 @@ function handleBackToDashboard() {
       v-if="loading"
       class="flex items-center justify-center py-12"
     >
-      <ProgressSpinner />
+      <LoadingBounce />
     </div>
 
     <!-- 一覧テーブル -->

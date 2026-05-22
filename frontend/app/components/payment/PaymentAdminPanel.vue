@@ -60,7 +60,7 @@ onMounted(() => loadItems())
         <h3 class="text-lg font-semibold">{{ selectedItem.name }}</h3>
         <Button label="未払いリマインド" icon="pi pi-bell" text size="small" @click="onRemind" />
       </div>
-      <div v-if="loading" class="flex justify-center py-8"><ProgressSpinner style="width: 40px; height: 40px" /></div>
+      <div v-if="loading" class="flex justify-center py-8"><LoadingBounce /></div>
       <div v-else-if="selectedItem" class="flex flex-col gap-1">
         <div v-for="p in payments" :key="p.id" class="flex items-center gap-3 rounded-lg border border-surface-100 px-4 py-2">
           <Avatar :label="p.displayName.charAt(0)" shape="circle" size="small" />
