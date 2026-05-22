@@ -4,8 +4,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.core.Authentication;
@@ -30,18 +30,19 @@ import java.time.ZoneId;
  *   <li>ログイン済み（SecurityContext に Authentication あり）
  *       → {@link UserTimezoneCache#getTimezone(Long)} でキャッシュ参照（TTL 5分）
  *       → 不正な timezone 文字列は catch して "Asia/Tokyo" にフォールバック</li>
- *   <li>未ログイン → デフォルト UTC（{@link TimezoneContextHolder#get()} が UTC を返す）</li>
+ *   <li>未ログイン、またはキャッシュ未利用時（@WebMvcTest スライス等）→ UTC</li>
  * </ol>
  */
 @Slf4j
 @Component
 @Order(Ordered.LOWEST_PRECEDENCE - 9)
-@RequiredArgsConstructor
 public class UserTimezoneFilter extends OncePerRequestFilter {
 
     private static final ZoneId SERVER_ZONE = ZoneId.of("Asia/Tokyo");
 
-    private final UserTimezoneCache userTimezoneCache;
+    /** @WebMvcTest スライスではキャッシュ Bean が存在しないため required = false で注入する */
+    @Autowired(required = false)
+    private UserTimezoneCache userTimezoneCache;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
