@@ -134,6 +134,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/posts").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/posts/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/events").permitAll()
+                // F19.1 Phase 4 公開チーム・組織検索 API（認証不要・レート制限あり）
+                // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §7.x Phase 4
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/search").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/search").permitAll()
                 // F09.17 Phase 11-b 広告 unsubscribe / 開封ピクセル（認証不要・IP レート制限あり）
                 .requestMatchers(HttpMethod.GET, "/api/v1/ads/unsubscribe").permitAll()
                 // F09.17 残課題 4 公開 unsubscribe SPA POST（認証不要）
