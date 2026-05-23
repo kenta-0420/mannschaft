@@ -2,6 +2,7 @@ package com.mannschaft.app.cms.controller;
 
 import com.mannschaft.app.cms.dto.AutoSaveRequest;
 import com.mannschaft.app.cms.dto.BlogPostResponse;
+import com.mannschaft.app.cms.dto.UpdatePublicVisibleRequest;
 import com.mannschaft.app.cms.dto.BlogReactionResponse;
 import com.mannschaft.app.cms.dto.BulkActionRequest;
 import com.mannschaft.app.cms.dto.BulkActionResponse;
@@ -256,6 +257,22 @@ public class BlogPostController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "無効化成功")
     public ResponseEntity<Void> revokePreviewToken(@PathVariable Long id) {
         postService.revokePreviewToken(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * F19.1 Phase 7: ブログ投稿の public_visible フラグを切り替える。
+     *
+     * <p>投稿者本人のみ操作可能。他のユーザーは 403 を返す。</p>
+     */
+    @PatchMapping("/posts/{id}/public-visible")
+    @Operation(summary = "投稿公開設定変更", description = "投稿者本人が public_visible フラグを切り替える（F19.1 Phase 7）。")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "更新成功")
+    public ResponseEntity<Void> patchPublicVisible(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdatePublicVisibleRequest req) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        postService.patchPublicVisible(id, userId, req.getPublicVisible());
         return ResponseEntity.noContent().build();
     }
 }

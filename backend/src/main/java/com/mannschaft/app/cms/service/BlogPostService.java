@@ -2,6 +2,7 @@ package com.mannschaft.app.cms.service;
 
 import com.mannschaft.app.cms.CmsErrorCode;
 import com.mannschaft.app.cms.CmsMapper;
+import com.mannschaft.app.publicview.error.PublicViewErrorCode;
 import com.mannschaft.app.cms.PostPriority;
 import com.mannschaft.app.cms.PostStatus;
 import com.mannschaft.app.cms.PostType;
@@ -470,6 +471,31 @@ public class BlogPostService {
         // プレビュートークン検証はgetBySlug内で将来実装
         // 現時点ではパラメータを受け取るのみ
         return response;
+    }
+
+    /**
+     * F19.1 Phase 7: 投稿の public_visible フラグを切り替える。
+     *
+     * <p>投稿者本人のみ操作可能。それ以外は {@link PublicViewErrorCode#PUBLIC_011}（403）を返す。</p>
+     *
+     * <p>TODO: BlogPostService (cms ドメイン) が PublicViewErrorCode (publicview ドメイン) を参照している。
+     *          将来はイベント駆動化 or cms ドメイン内に独自エラーコードを定義することで解消する。</p>
+     *
+     * @param postId        対象 BlogPost の ID
+     * @param requestUserId 操作ユーザー ID
+     * @param publicVisible true=公開ページに表示 / false=非表示
+     * @throws BusinessException 記事が存在しない場合（CMS_001、404）
+     * @throws BusinessException 投稿者本人以外が操作した場合（PUBLIC_011、403）
+     */
+    @Transactional
+    public void patchPublicVisible(Long postId, Long requestUserId, boolean publicVisible) {
+        BlogPostEntity post = findPostOrThrow(postId);
+        if (!post.getAuthorId().equals(requestUserId)) {
+            throw new BusinessException(PublicViewErrorCode.PUBLIC_011);
+        }
+        post.updatePublicVisible(publicVisible);
+        postRepository.save(post);
+        log.info("public_visible 更新: postId={}, publicVisible={}, userId={}", postId, publicVisible, requestUserId);
     }
 
     /**

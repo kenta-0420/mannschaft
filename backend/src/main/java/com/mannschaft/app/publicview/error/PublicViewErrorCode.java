@@ -79,6 +79,22 @@ public enum PublicViewErrorCode implements ErrorCode {
      */
     PUBLIC_010("PUBLIC_010",
             "このコメントを削除する権限がありません",
+            Severity.WARN),
+
+    /**
+     * F19.1 Phase 7: この投稿の public_visible フラグを変更する権限がありません (403 へ正規化)。
+     * 投稿者本人以外が操作しようとした場合。
+     */
+    PUBLIC_011("PUBLIC_011",
+            "この投稿の公開設定を変更する権限がありません",
+            Severity.WARN),
+
+    /**
+     * F19.1 Phase 7: 公開設定を変更する権限がありません (403 へ正規化)。
+     * チーム/組織の公開設定（タイムライン/イベント）を権限なしで変更しようとした場合。
+     */
+    PUBLIC_012("PUBLIC_012",
+            "公開設定を変更する権限がありません",
             Severity.WARN);
 
     private final String code;

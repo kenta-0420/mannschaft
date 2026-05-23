@@ -94,6 +94,9 @@ public class GlobalExceptionHandler {
             Map.entry("PUBLIC_008", HttpStatus.NOT_FOUND),         // 対象投稿が存在しないか非公開
             Map.entry("PUBLIC_009", HttpStatus.NOT_FOUND),         // コメントが見つからない
             Map.entry("PUBLIC_010", HttpStatus.FORBIDDEN),         // コメント削除権限なし
+            // F19.1 Phase 7: ブログ投稿 public_visible / 公開設定変更
+            Map.entry("PUBLIC_011", HttpStatus.FORBIDDEN),         // 投稿 public_visible 変更権限なし（投稿者本人以外）
+            Map.entry("PUBLIC_012", HttpStatus.FORBIDDEN),         // チーム/組織 公開設定変更権限なし
             Map.entry("AD_006", HttpStatus.CONFLICT),
             Map.entry("AD_007", HttpStatus.CONFLICT),
             Map.entry("AD_010", HttpStatus.FORBIDDEN),

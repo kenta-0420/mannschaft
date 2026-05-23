@@ -215,6 +215,17 @@ public class BlogPostEntity extends BaseEntity {
     }
 
     /**
+     * F19.1 Phase 7: public_visible フラグを更新する。
+     *
+     * <p>投稿者本人のみ操作可能（権限チェックは BlogPostService 層で実施）。</p>
+     *
+     * @param visible true=公開ページに表示する / false=非表示にする
+     */
+    public void updatePublicVisible(boolean visible) {
+        this.publicVisible = visible;
+    }
+
+    /**
      * 論理削除を行う。
      */
     public void softDelete() {
