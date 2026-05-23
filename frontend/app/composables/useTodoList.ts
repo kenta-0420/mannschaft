@@ -50,6 +50,7 @@ export function useTodoList() {
   const teamStore = useTeamStore()
   const orgStore = useOrganizationStore()
   const notification = useNotification()
+  const { formatDate } = useDatetime()
 
   const todos = ref<MyTodo[]>([])
   const loading = ref(true)
@@ -259,11 +260,6 @@ export function useTodoList() {
     if (current === 'OPEN') return '進行中にする'
     if (current === 'IN_PROGRESS') return '完了にする'
     return '未着手に戻す'
-  }
-
-  function formatDate(d: string | null): string {
-    if (!d) return ''
-    return new Date(d).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })
   }
 
   function isOverdue(todo: MyTodo): boolean {
