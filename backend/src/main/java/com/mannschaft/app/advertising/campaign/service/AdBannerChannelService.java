@@ -33,14 +33,11 @@ public class AdBannerChannelService {
     /**
      * 1 ユーザーへのバナー配信予約。
      *
-     * <p>F09.7 {@code AdImpressionService.scheduleServe()} を呼んでインプレッションを記録し、
+     * <p>F09.7 {@link AdImpressionService#recordForMessagingCampaign} を呼んでインプレッションを記録し、
      * {@code ad_banner_deliveries} に {@code ad_impression_id} を保存する。</p>
      *
-     * <p>注: {@code AdImpressionEntity.campaignId} は F09.7 の {@code ad_campaigns.id}（Long）を
-     * 保持するフィールドだが、F09.17 メッセージ型キャンペーンの ID は UUID のため、
-     * 現フェーズでは {@code bannerCreativeId}（F09.7 の {@code ads.id}）を代替値として渡す。
-     * 将来的に F09.7 バナー抽選機構との統合が進んだ段階で {@code ad_campaigns.id} を
-     * 正確に引くよう修正すること（TODO: F09.7 Phase 11 統合フェーズで対応）。</p>
+     * <p>F09.17 の {@code ad_messaging_campaigns.id}（UUID）を {@code ad_impressions.messaging_campaign_id}
+     * に正確に記録する（F09.7 / F09.17 の campaignId 型不一致根治）。</p>
      *
      * @param campaign キャンペーン本体
      * @param channel  BANNER チャネル設定（banner_creative_id を含む）
@@ -57,13 +54,11 @@ public class AdBannerChannelService {
 
         Long bannerCreativeId = channel.getBannerCreativeId();
 
-        // F09.7 AdImpressionService にインプレッションを記録する。
-        // campaignId には現フェーズでは bannerCreativeId（ads.id）を代替使用する。
-        // （F09.17 の UUID キャンペーン ID は Long 型フィールドに格納できないため）
-        Long adImpressionId = adImpressionService.scheduleServe(
-                "MESSAGING_CAMPAIGN",
+        // F09.17 メッセージキャンペーン用インプレッション記録。
+        // messaging_campaign_id (UUID) を正確に記録する（F09.7 Long vs F09.17 UUID 型不一致根治）。
+        Long adImpressionId = adImpressionService.recordForMessagingCampaign(
                 bannerCreativeId,
-                bannerCreativeId,
+                campaign.getId(),
                 userId);
 
         LocalDateTime now = LocalDateTime.now();
