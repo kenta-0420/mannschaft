@@ -6,6 +6,8 @@ import type {
   PublicPostSummary,
   PublicTeamResponse,
   PublicTeamSearchResult,
+  PublicUserPostSummary,
+  PublicUserProfile,
   SpringPage,
   SupporterNameDisclosureResponse,
   NameDisclosureMode,
@@ -127,6 +129,38 @@ export function usePublicApi() {
     )
   }
 
+  // ─── F19.1 Phase 6: 個人プロフィール公開 API ───
+
+  /**
+   * 公開ユーザープロフィールを取得する。
+   *
+   * {@code public_profile_enabled = true} のユーザーのみ 200 を返す。
+   * 不在 / 非公開 / 削除済みは一律 404（IDOR 対策）。
+   * 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §6.6 Phase 6
+   */
+  async function fetchPublicUserProfile(userId: number | string): Promise<PublicUserProfile> {
+    return api<PublicUserProfile>(`/api/v1/public/users/${userId}`)
+  }
+
+  /**
+   * 公開ユーザーの投稿一覧を取得する（ページング）。
+   *
+   * visibility=PUBLIC かつ status=PUBLISHED かつ public_visible=true の投稿のみ。
+   * ユーザー自体が非公開の場合は 404（IDOR 対策）。
+   */
+  async function fetchPublicUserPosts(
+    userId: number | string,
+    page = 0,
+    size = 20,
+  ): Promise<SpringPage<PublicUserPostSummary>> {
+    const query = new URLSearchParams()
+    query.set('page', String(page))
+    query.set('size', String(size))
+    return api<SpringPage<PublicUserPostSummary>>(
+      `/api/v1/public/users/${userId}/posts?${query.toString()}`,
+    )
+  }
+
   // ─── F19.1 Phase 2: Admin 向け supporter_name_disclosure 切替 API ───
 
   /**
@@ -197,6 +231,8 @@ export function usePublicApi() {
     fetchPublicOrganizationPostDetail,
     searchPublicTeams,
     searchPublicOrganizations,
+    fetchPublicUserProfile,
+    fetchPublicUserPosts,
     patchTeamNameDisclosure,
     patchOrganizationNameDisclosure,
     fetchTeamNameDisclosureHistory,

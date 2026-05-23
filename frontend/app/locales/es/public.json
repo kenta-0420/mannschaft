@@ -109,6 +109,19 @@
     "meta": {
       "ogDescriptionDefault": "Mannschaft の公開ページ",
       "ogSiteName": "Mannschaft"
+    },
+    "userProfile": {
+      "title": "Perfil de {name}",
+      "memberSince": "Miembro desde {date}",
+      "posts": "Publicaciones públicas",
+      "noPosts": "No hay publicaciones públicas aún"
+    },
+    "profileVisibility": {
+      "title": "Configuración de visibilidad del perfil",
+      "description": "Cuando el perfil público está activado, los usuarios no registrados también pueden ver tu perfil",
+      "enable": "Activar perfil público",
+      "comingSoon": "Esta configuración estará disponible próximamente",
+      "apiNotReady": "La función de configuración de visibilidad del perfil está en preparación. Por favor, vuelva a intentarlo más tarde."
     }
   }
 }

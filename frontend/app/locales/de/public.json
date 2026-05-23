@@ -109,6 +109,19 @@
     "meta": {
       "ogDescriptionDefault": "Mannschaft の公開ページ",
       "ogSiteName": "Mannschaft"
+    },
+    "userProfile": {
+      "title": "Profil von {name}",
+      "memberSince": "Mitglied seit {date}",
+      "posts": "Öffentliche Beiträge",
+      "noPosts": "Noch keine öffentlichen Beiträge"
+    },
+    "profileVisibility": {
+      "title": "Profil-Sichtbarkeitseinstellungen",
+      "description": "Wenn das öffentliche Profil aktiviert ist, können auch nicht angemeldete Benutzer Ihr Profil sehen",
+      "enable": "Öffentliches Profil aktivieren",
+      "comingSoon": "Diese Einstellung wird in Kürze verfügbar sein",
+      "apiNotReady": "Die Funktion für Profil-Sichtbarkeitseinstellungen ist derzeit in Vorbereitung. Bitte versuchen Sie es später erneut."
     }
   }
 }

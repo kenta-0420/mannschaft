@@ -109,6 +109,19 @@
     "meta": {
       "ogDescriptionDefault": "Public page on Mannschaft",
       "ogSiteName": "Mannschaft"
+    },
+    "userProfile": {
+      "title": "{name}'s Profile",
+      "memberSince": "Member since {date}",
+      "posts": "Public Posts",
+      "noPosts": "No public posts yet"
+    },
+    "profileVisibility": {
+      "title": "Profile Visibility Settings",
+      "description": "When public profile is enabled, users who are not logged in can also view your profile",
+      "enable": "Enable public profile",
+      "comingSoon": "This setting is coming soon",
+      "apiNotReady": "Profile visibility settings are currently being prepared. Please check back later."
     }
   }
 }

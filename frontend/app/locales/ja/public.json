@@ -109,6 +109,19 @@
     "meta": {
       "ogDescriptionDefault": "Mannschaft の公開ページ",
       "ogSiteName": "Mannschaft"
+    },
+    "userProfile": {
+      "title": "{name}さんのプロフィール",
+      "memberSince": "{date}から参加",
+      "posts": "公開投稿",
+      "noPosts": "公開投稿はありません"
+    },
+    "profileVisibility": {
+      "title": "プロフィール公開設定",
+      "description": "公開プロフィールを有効にすると、未ログインのユーザーもあなたのプロフィールを閲覧できます",
+      "enable": "公開プロフィールを有効にする",
+      "comingSoon": "この設定は近日公開予定です",
+      "apiNotReady": "プロフィール公開設定機能は現在準備中です。しばらくお待ちください。"
     }
   }
 }

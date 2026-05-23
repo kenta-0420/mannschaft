@@ -161,3 +161,38 @@ export interface PublicVisiblePatchRequest {
   /** true: 公開 / false: 非公開 */
   publicVisible: boolean
 }
+
+// ─── F19.1 Phase 6: 個人プロフィール公開 API 型 ───
+
+/**
+ * F19.1 Phase 6: 公開ユーザープロフィール取得レスポンス。
+ *
+ * エンドポイント: GET /api/v1/public/users/{userId}
+ * {@code public_profile_enabled = true} のユーザーのみ返却される。
+ *
+ * Defense in Depth 原則: PII（氏名・メール等）は含まない。
+ */
+export interface PublicUserProfile {
+  userId: number
+  displayName: string
+  avatarUrl: string | null
+  /** ISO date string "YYYY-MM-DD" — バックエンドの LocalDate に対応 */
+  memberSince: string
+}
+
+/**
+ * F19.1 Phase 6: 公開ユーザーの投稿サマリー。
+ *
+ * エンドポイント: GET /api/v1/public/users/{userId}/posts
+ * visibility=PUBLIC かつ status=PUBLISHED かつ public_visible=true の投稿のみ。
+ */
+export interface PublicUserPostSummary {
+  postId: number
+  title: string
+  scopeType: 'TEAM' | 'ORGANIZATION'
+  scopeName: string
+  /** チーム ID / 組織 ID の文字列表現（リンク生成用） */
+  scopeId: string
+  /** ISO datetime string — バックエンドの LocalDateTime に対応 */
+  createdAt: string
+}
