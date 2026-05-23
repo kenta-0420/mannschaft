@@ -141,10 +141,12 @@ public class ErrorReportQueryService {
 
     /**
      * URL からパス部分を抽出する。
+     * 不透明URI（"health:backend" 等）は getPath() が null を返すため、その場合は元の url をそのまま返す。
      */
     private String extractPath(String url) {
         try {
-            return URI.create(url).getPath();
+            String path = URI.create(url).getPath();
+            return path != null ? path : url;
         } catch (Exception e) {
             // URL パースに失敗した場合はそのまま返す
             return url;
