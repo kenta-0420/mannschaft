@@ -142,6 +142,10 @@ public class SecurityConfig {
                 // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §6.6 Phase 6
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/users/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/users/*/posts").permitAll()
+                // F19.1 Phase 6-B 公開投稿コメント一覧 GET（認証不要・レート制限あり）
+                // POST（投稿）/ DELETE（削除）は認証必須（anyRequest().permitAll() のフォールバック + JwtFilter が制御）
+                // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §6.7 Phase 6-B
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/blog-posts/*/comments").permitAll()
                 // F09.7 クリック計測（認証不要・未ログインユーザーのクリックにも対応）
                 // TODO: 将来 IP ベースのレート制限を AdPublicEndpointRateLimitFilter に追加して不正クリックを防止する
                 .requestMatchers(HttpMethod.POST, "/api/v1/ads/*/click").permitAll()

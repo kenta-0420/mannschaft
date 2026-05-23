@@ -89,6 +89,10 @@ public class GlobalExceptionHandler {
             Map.entry("PUBLIC_006", HttpStatus.FORBIDDEN),         // NAME_DISCLOSURE_FORBIDDEN
             // F19.1 Phase 6: 公開ユーザープロフィール（IDOR 対策で 404）
             Map.entry("PUBLIC_007", HttpStatus.NOT_FOUND),         // 非公開 / 不在 / 削除済みを 404 で隠蔽
+            // F19.1 Phase 6-B: 公開投稿コメント
+            Map.entry("PUBLIC_008", HttpStatus.NOT_FOUND),         // 対象投稿が存在しないか非公開
+            Map.entry("PUBLIC_009", HttpStatus.NOT_FOUND),         // コメントが見つからない
+            Map.entry("PUBLIC_010", HttpStatus.FORBIDDEN),         // コメント削除権限なし
             Map.entry("AD_006", HttpStatus.CONFLICT),
             Map.entry("AD_007", HttpStatus.CONFLICT),
             Map.entry("AD_010", HttpStatus.FORBIDDEN),
