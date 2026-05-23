@@ -232,7 +232,7 @@ public class UserEntity extends BaseEntity {
      *
      * <p>Flyway V68.006 で追加。</p>
      */
-    @Column(name = "public_profile_enabled", nullable = false)
+    @Column(name = "public_profile_enabled", nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
     @Builder.Default
     private boolean publicProfileEnabled = false;
 
