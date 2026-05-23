@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useMyCalendarData, PERSONAL_KEY, FILTER_OVERFLOW } from '~/composables/useMyCalendarData'
+import { useMyCalendarData, FILTER_OVERFLOW } from '~/composables/useMyCalendarData'
 
 const {
   currentYear, currentMonth, loading, loadEvents,

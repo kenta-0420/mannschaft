@@ -59,7 +59,7 @@ const ganttLoading = ref(false)
 const pad = (n: number) => String(n).padStart(2, '0')
 
 const {
-  currentYear, currentMonth, events, loading, loadEvents, refresh,
+  currentYear, currentMonth, loading, loadEvents, refresh,
   onPrevMonth: calPrevMonth, onNextMonth: calNextMonth,
   extendedEvents, availableScopes, allScopeOptions, selectedScopes,
   filteredEvents, toggleScope, multiSelectScopes, initStorage,
