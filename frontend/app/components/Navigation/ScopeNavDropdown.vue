@@ -399,7 +399,7 @@ function onPopoverHide() {
           <button
             type="button"
             class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-surface-600 hover:bg-surface-100 focus:outline-none"
-            @click="goAll"
+            @click="goAllHub"
           >
             <i class="pi pi-list text-xs" aria-hidden="true" />
             {{ t('scopeFolder.nav.showAll') }}
