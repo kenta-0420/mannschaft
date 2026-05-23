@@ -23,9 +23,7 @@ import com.mannschaft.app.auth.dto.UserProfileResponse;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.EncryptionService;
-import com.mannschaft.app.gdpr.GdprErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -44,7 +42,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -91,9 +88,6 @@ class UserServiceTest {
 
     @Mock
     private ParentalConsentService parentalConsentService;
-
-    @Mock
-    private AccessControlService accessControlService;
 
     @InjectMocks
     private UserService userService;
@@ -306,6 +300,8 @@ class UserServiceTest {
             given(passwordEncoder.matches("Password1!", ENCODED_PASSWORD)).willReturn(true);
             given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
             given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
+            // SYSTEM_ADMINチェック: 唯一の管理者ではない
+            given(userRoleRepository.countSystemAdmins()).willReturn(2L);
 
             // When
             userService.requestWithdrawal(USER_ID, req);
@@ -692,6 +688,7 @@ class UserServiceTest {
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(oauthUser));
             given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
             given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.countSystemAdmins()).willReturn(2L);
 
             // When
             userService.requestWithdrawal(USER_ID, req);
@@ -708,6 +705,7 @@ class UserServiceTest {
             RequestWithdrawalRequest req = new RequestWithdrawalRequest("WrongPassword!");
             UserEntity user = createActiveUser();
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(userRoleRepository.countSystemAdmins()).willReturn(2L);
             given(passwordEncoder.matches("WrongPassword!", ENCODED_PASSWORD)).willReturn(false);
 
             // When / Then
@@ -825,6 +823,7 @@ class UserServiceTest {
             // Given
             UserEntity user = createActiveUser();
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(userRoleRepository.countSystemAdmins()).willReturn(2L); // 唯一でない
             given(userRepository.save(any(UserEntity.class))).willAnswer(inv -> inv.getArgument(0));
 
             // When
@@ -855,8 +854,8 @@ class UserServiceTest {
         @DisplayName("異常系: 唯一の SYSTEM_ADMIN 退会はブロックされる (GDPR_006)")
         void withdrawUser_唯一のSYSTEM_ADMIN_例外() {
             // Given
-            doThrow(new BusinessException(GdprErrorCode.GDPR_006))
-                    .when(accessControlService).checkNotLastSystemAdmin(USER_ID);
+            given(userRoleRepository.countSystemAdmins()).willReturn(1L);
+            given(userRoleRepository.isSystemAdmin(USER_ID)).willReturn(1L);
 
             // When / Then
             assertThatThrownBy(() -> userService.withdrawUser(USER_ID))
