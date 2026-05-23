@@ -34,6 +34,7 @@ import org.springframework.data.domain.Pageable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -372,7 +373,7 @@ class FacilityBookingServiceTest {
             SharedFacilityEntity facility = createActiveFacility();
             CreateBookingRequest request = new CreateBookingRequest(
                     FACILITY_ID,
-                    LocalDate.now().minusDays(1),
+                    LocalDate.now(ZoneOffset.UTC).minusDays(1),
                     null, null,
                     LocalTime.of(10, 0), LocalTime.of(12, 0),
                     "打ち合わせ", 5, null

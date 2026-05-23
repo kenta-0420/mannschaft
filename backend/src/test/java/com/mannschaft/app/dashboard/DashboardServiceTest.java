@@ -41,6 +41,7 @@ import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -278,19 +279,19 @@ class DashboardServiceTest {
                     .title("期限超過タスク")
                     .status(TodoStatus.IN_PROGRESS)
                     .priority(com.mannschaft.app.todo.TodoPriority.HIGH)
-                    .dueDate(LocalDate.now().minusDays(1))
+                    .dueDate(LocalDate.now(ZoneOffset.UTC).minusDays(1))
                     .build();
             TodoEntity activeTodo = TodoEntity.builder()
                     .title("アクティブタスク")
                     .status(TodoStatus.OPEN)
                     .priority(com.mannschaft.app.todo.TodoPriority.MEDIUM)
-                    .dueDate(LocalDate.now().plusDays(3))
+                    .dueDate(LocalDate.now(ZoneOffset.UTC).plusDays(3))
                     .build();
             TodoEntity completedTodo = TodoEntity.builder()
                     .title("完了済みタスク")
                     .status(TodoStatus.COMPLETED)
                     .priority(com.mannschaft.app.todo.TodoPriority.LOW)
-                    .dueDate(LocalDate.now().minusDays(2))
+                    .dueDate(LocalDate.now(ZoneOffset.UTC).minusDays(2))
                     .build();
             given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of(overdueTodo, activeTodo, completedTodo));
 
@@ -581,7 +582,7 @@ class DashboardServiceTest {
                     .title("期限超過")
                     .status(TodoStatus.IN_PROGRESS)
                     .priority(com.mannschaft.app.todo.TodoPriority.HIGH)
-                    .dueDate(LocalDate.now().minusDays(1))
+                    .dueDate(LocalDate.now(ZoneOffset.UTC).minusDays(1))
                     .build();
             given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(any(), eq(TEAM_ID), any(PageRequest.class)))
                     .willReturn(new PageImpl<>(List.of(overdueTodo)));
@@ -679,13 +680,13 @@ class DashboardServiceTest {
                     .title("期限超過")
                     .status(TodoStatus.IN_PROGRESS)
                     .priority(com.mannschaft.app.todo.TodoPriority.HIGH)
-                    .dueDate(LocalDate.now().minusDays(1))
+                    .dueDate(LocalDate.now(ZoneOffset.UTC).minusDays(1))
                     .build();
             TodoEntity activeTodo = TodoEntity.builder()
                     .title("アクティブ")
                     .status(TodoStatus.OPEN)
                     .priority(com.mannschaft.app.todo.TodoPriority.MEDIUM)
-                    .dueDate(LocalDate.now().plusDays(5))
+                    .dueDate(LocalDate.now(ZoneOffset.UTC).plusDays(5))
                     .build();
             given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(any(), eq(ORG_ID), any(PageRequest.class)))
                     .willReturn(new PageImpl<>(List.of(overdueTodo, activeTodo)));
