@@ -2,6 +2,7 @@ import type {
   NameDisclosureChangeLogResponse,
   PublicOrganizationResponse,
   PublicOrganizationSearchResult,
+  PublicPostComment,
   PublicPostDetail,
   PublicPostSummary,
   PublicTeamResponse,
@@ -129,6 +130,55 @@ export function usePublicApi() {
     )
   }
 
+  // ─── F19.1 Phase 6-B: 公開投稿コメント API ───
+
+  /**
+   * 公開投稿のコメント一覧を取得する（ページング）。
+   *
+   * 未ログインでも閲覧可能。
+   * エンドポイント: GET /api/v1/public/blog-posts/{postId}/comments
+   */
+  async function fetchPostComments(
+    postId: number | string,
+    page = 0,
+    size = 20,
+  ): Promise<SpringPage<PublicPostComment>> {
+    const query = new URLSearchParams()
+    query.set('page', String(page))
+    query.set('size', String(size))
+    return api<SpringPage<PublicPostComment>>(
+      `/api/v1/public/blog-posts/${postId}/comments?${query.toString()}`,
+    )
+  }
+
+  /**
+   * 公開投稿にコメントを投稿する。
+   *
+   * 認証必須。
+   * エンドポイント: POST /api/v1/public/blog-posts/{postId}/comments
+   */
+  async function postComment(postId: number | string, content: string): Promise<PublicPostComment> {
+    return api<PublicPostComment>(`/api/v1/public/blog-posts/${postId}/comments`, {
+      method: 'POST',
+      body: { content },
+    })
+  }
+
+  /**
+   * 公開投稿のコメントを削除する。
+   *
+   * 認証必須（作者 or ADMIN）。
+   * エンドポイント: DELETE /api/v1/public/blog-posts/{postId}/comments/{commentId}
+   */
+  async function deleteComment(
+    postId: number | string,
+    commentId: string,
+  ): Promise<void> {
+    await api(`/api/v1/public/blog-posts/${postId}/comments/${commentId}`, {
+      method: 'DELETE',
+    })
+  }
+
   // ─── F19.1 Phase 6: 個人プロフィール公開 API ───
 
   /**
@@ -231,6 +281,9 @@ export function usePublicApi() {
     fetchPublicOrganizationPostDetail,
     searchPublicTeams,
     searchPublicOrganizations,
+    fetchPostComments,
+    postComment,
+    deleteComment,
     fetchPublicUserProfile,
     fetchPublicUserPosts,
     patchTeamNameDisclosure,
