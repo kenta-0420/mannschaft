@@ -1130,7 +1130,9 @@
       "organizations": "Organizaciones",
       "showAll": "Ver todo",
       "foldersSection": "Carpetas",
-      "quickJumpSection": "Ir directamente"
+      "quickJumpSection": "Ir directamente",
+      "sectionMember": "Miembros",
+      "sectionSupporter": "Seguidores"
     },
     "error": {
       "typeMismatch": "El tipo de ámbito no coincide",

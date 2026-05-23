@@ -1130,7 +1130,9 @@
       "organizations": "Organizations",
       "showAll": "Show all",
       "foldersSection": "Folders",
-      "quickJumpSection": "Quick jump"
+      "quickJumpSection": "Quick jump",
+      "sectionMember": "Members",
+      "sectionSupporter": "Supporters"
     },
     "error": {
       "typeMismatch": "Folder scope type mismatch",
