@@ -215,6 +215,37 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
             """)
     List<Object[]> findMaxCreatedAtByTeamIdIn(@Param("teamIds") Collection<Long> teamIds);
 
+    // ========================================================================
+    // F19.1 Phase 6: 公開ユーザープロフィール — 著者単位の公開投稿一覧
+    // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §6.6
+    // ========================================================================
+
+    /**
+     * F19.1 Phase 6: 著者 ID に紐づく公開ブログ記事一覧を取得する。
+     *
+     * <p>条件:</p>
+     * <ul>
+     *   <li>{@code authorId} が一致する</li>
+     *   <li>{@code visibility = PUBLIC} かつ {@code status = PUBLISHED}</li>
+     *   <li>{@code public_visible = true}（F19.1 Phase 2 で追加されたフラグ）</li>
+     *   <li>未削除（{@code @SQLRestriction} により自動適用）</li>
+     * </ul>
+     *
+     * <p>チーム/組織スコープを問わず authorId で横断検索する。
+     * TODO: publicview → cms のクロスドメイン参照。将来はイベント駆動化候補。</p>
+     *
+     * @param authorId 著者ユーザー ID
+     * @param pageable ページネーション
+     * @return 公開投稿ページ（作成日時 DESC）
+     */
+    @Query("SELECT bp FROM BlogPostEntity bp "
+            + "WHERE bp.authorId = :authorId "
+            + "AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC "
+            + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED "
+            + "AND bp.publicVisible = true "
+            + "ORDER BY bp.createdAt DESC, bp.id DESC")
+    Page<BlogPostEntity> findPublicPostsByAuthorId(@Param("authorId") Long authorId, Pageable pageable);
+
     /**
      * F19.1 Phase 4 公開組織検索用: 組織 ID 集合に対する最新投稿日時を一括取得する。
      *

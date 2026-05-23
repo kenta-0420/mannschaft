@@ -87,6 +87,8 @@ public class GlobalExceptionHandler {
             Map.entry("PUBLIC_004", HttpStatus.NOT_FOUND),         // NAME_DISCLOSURE_NOT_FOUND
             Map.entry("PUBLIC_005", HttpStatus.BAD_REQUEST),       // NAME_DISCLOSURE_CONFIRM_REQUIRED
             Map.entry("PUBLIC_006", HttpStatus.FORBIDDEN),         // NAME_DISCLOSURE_FORBIDDEN
+            // F19.1 Phase 6: 公開ユーザープロフィール（IDOR 対策で 404）
+            Map.entry("PUBLIC_007", HttpStatus.NOT_FOUND),         // 非公開 / 不在 / 削除済みを 404 で隠蔽
             Map.entry("AD_006", HttpStatus.CONFLICT),
             Map.entry("AD_007", HttpStatus.CONFLICT),
             Map.entry("AD_010", HttpStatus.FORBIDDEN),

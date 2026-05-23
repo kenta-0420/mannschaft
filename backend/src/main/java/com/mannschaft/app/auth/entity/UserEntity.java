@@ -225,6 +225,18 @@ public class UserEntity extends BaseEntity {
     private Integer birthYear;
 
     /**
+     * F19.1 Phase 6: 個人プロフィール公開フラグ。
+     *
+     * <p>true に設定すると未ログイン訪問者も {@code GET /api/v1/public/users/{userId}} で
+     * プロフィールと公開投稿一覧を閲覧できる。デフォルト false（非公開）。</p>
+     *
+     * <p>Flyway V68.006 で追加。</p>
+     */
+    @Column(name = "public_profile_enabled", nullable = false)
+    @Builder.Default
+    private boolean publicProfileEnabled = false;
+
+    /**
      * ユーザーステータス
      */
     public enum UserStatus {
@@ -452,6 +464,13 @@ public class UserEntity extends BaseEntity {
      */
     public void updateBannerUrl(String bannerUrl) {
         this.bannerUrl = bannerUrl;
+    }
+
+    /**
+     * F19.1 Phase 6: 個人プロフィール公開設定を更新する。
+     */
+    public void updatePublicProfileEnabled(boolean enabled) {
+        this.publicProfileEnabled = enabled;
     }
 
     /**

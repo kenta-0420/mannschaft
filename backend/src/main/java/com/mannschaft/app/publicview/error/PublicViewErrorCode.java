@@ -46,6 +46,16 @@ public enum PublicViewErrorCode implements ErrorCode {
     /** 切替権限がありません (403)。 */
     NAME_DISCLOSURE_FORBIDDEN("PUBLIC_006",
             "投稿者識別モードの切替権限がありません",
+            Severity.WARN),
+
+    /**
+     * F19.1 Phase 6: 指定されたユーザーのプロフィールは公開されていません (404 へ正規化)。
+     *
+     * <p>IDOR / エニュメレーション対策の観点から、存在しないユーザー・非公開ユーザー・
+     * 削除済みユーザーを区別せず一律 404 で返す。</p>
+     */
+    PUBLIC_007("PUBLIC_007",
+            "ユーザープロフィールが公開されていません",
             Severity.WARN);
 
     private final String code;
