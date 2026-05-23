@@ -27,6 +27,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mannschaft.app.common.timezone.TimezoneContextHolder;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -119,7 +120,7 @@ public class AuthRegistrationService {
         } catch (DateTimeParseException e) {
             throw new BusinessException(AuthErrorCode.AUTH_051);
         }
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(TimezoneContextHolder.get());
         if (birthDate.isAfter(today)) {
             throw new BusinessException(AuthErrorCode.AUTH_052);
         }
@@ -206,7 +207,7 @@ public class AuthRegistrationService {
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_005));
         if (user.getBirthDate() != null) {
             LocalDate parsedBirthDate = LocalDate.parse(user.getBirthDate());
-            if (AgeGroupCalculator.isMinor(parsedBirthDate, LocalDate.now())) {
+            if (AgeGroupCalculator.isMinor(parsedBirthDate, LocalDate.now(TimezoneContextHolder.get()))) {
                 // 18歳未満: 保護者同意待ちステータスに遷移
                 user.pendingParentalConsent();
             } else {

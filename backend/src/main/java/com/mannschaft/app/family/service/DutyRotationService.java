@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mannschaft.app.common.timezone.TimezoneContextHolder;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -80,7 +81,7 @@ public class DutyRotationService {
 
     private Long calculateTodayAssignee(DutyRotationEntity entity, List<Long> members) {
         if (members == null || members.isEmpty()) { return null; }
-        long daysDiff = ChronoUnit.DAYS.between(entity.getStartDate(), LocalDate.now());
+        long daysDiff = ChronoUnit.DAYS.between(entity.getStartDate(), LocalDate.now(TimezoneContextHolder.get()));
         if (daysDiff < 0) { return members.get(0); }
         int rotationDays = RotationType.WEEKLY.equals(entity.getRotationType()) ? 7 : 1;
         int index = (int) ((daysDiff / rotationDays) % members.size());

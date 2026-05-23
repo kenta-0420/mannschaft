@@ -38,6 +38,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mannschaft.app.common.timezone.TimezoneContextHolder;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -199,7 +200,7 @@ public class BudgetTransactionService {
                         original.getTransactionType() == BudgetTransactionType.INCOME
                                 ? BudgetTransactionType.EXPENSE : BudgetTransactionType.INCOME)
                 .amount(original.getAmount())
-                .transactionDate(LocalDate.now())
+                .transactionDate(LocalDate.now(TimezoneContextHolder.get()))
                 .title("[取消] " + original.getTitle() + " - " + request.reason())
                 .approvalStatus(BudgetApprovalStatus.APPROVED)
                 .reversalOfId(original.getId())
@@ -308,7 +309,7 @@ public class BudgetTransactionService {
                 .scopeId(scopeId)
                 .transactionType(BudgetTransactionType.INCOME)
                 .amount(amount)
-                .transactionDate(LocalDate.now())
+                .transactionDate(LocalDate.now(TimezoneContextHolder.get()))
                 .title("[自動記帳] " + description)
                 .approvalStatus(BudgetApprovalStatus.APPROVED)
                 .paymentMethod(paymentMethod)

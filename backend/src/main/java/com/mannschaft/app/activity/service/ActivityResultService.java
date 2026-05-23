@@ -27,6 +27,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mannschaft.app.common.timezone.TimezoneContextHolder;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -220,7 +221,7 @@ public class ActivityResultService {
         String title = request != null && request.getTitle() != null
                 ? request.getTitle() : original.getTitle();
         LocalDate activityDate = request != null && request.getActivityDate() != null
-                ? request.getActivityDate() : LocalDate.now();
+                ? request.getActivityDate() : LocalDate.now(TimezoneContextHolder.get());
 
         ActivityResultEntity copy = ActivityResultEntity.builder()
                 .scopeType(original.getScopeType())
