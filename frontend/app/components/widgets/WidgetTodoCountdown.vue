@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
+
 const { getPersonalTodos } = useDashboardApi()
 const { captureQuiet } = useErrorReport()
+const { userTimezone } = useDatetime()
 
 interface TodoItem {
   id: number
@@ -19,7 +22,10 @@ async function load() {
     const res = await getPersonalTodos()
     todos.value = (res.data ?? [])
       .filter((t) => t.dueDate && t.status !== 'COMPLETED' && t.status !== 'CANCELLED')
-      .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
+      .sort((a, b) =>
+        dayjs.tz(a.dueDate!, userTimezone.value).valueOf()
+        - dayjs.tz(b.dueDate!, userTimezone.value).valueOf(),
+      )
       .slice(0, 5) as TodoItem[]
   }
   catch (e) {
@@ -28,7 +34,9 @@ async function load() {
 }
 
 function formatCountdown(dueDate: string): { text: string; urgent: boolean; overdue: boolean } {
-  const ms = new Date(dueDate).getTime() - now.value
+  // ユーザーのTZで dueDate の midnight を取得することで UTC 解析による時刻ズレを防ぐ
+  const dueDateMs = dayjs.tz(dueDate, userTimezone.value).valueOf()
+  const ms = dueDateMs - now.value
   if (ms < 0) {
     const overMs = -ms
     const h = Math.floor(overMs / 3600000)
