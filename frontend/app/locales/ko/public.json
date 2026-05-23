@@ -122,6 +122,16 @@
       "enable": "공개 프로필 활성화",
       "comingSoon": "이 설정은 곧 제공될 예정입니다",
       "apiNotReady": "프로필 공개 설정 기능은 현재 준비 중입니다. 잠시 후 다시 확인해 주세요."
+    },
+    "comments": {
+      "title": "댓글",
+      "empty": "아직 댓글이 없습니다",
+      "placeholder": "댓글을 입력하세요（최대 1000자）",
+      "submit": "게시",
+      "delete": "삭제",
+      "loginToComment": "댓글을 남기려면 로그인하세요",
+      "loginLink": "로그인",
+      "deleteConfirm": "이 댓글을 삭제하시겠습니까？"
     }
   }
 }

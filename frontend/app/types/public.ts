@@ -101,6 +101,22 @@ export interface PublicPostDetail {
   publishedAt: string
 }
 
+// ─── F19.1 Phase 6-B: 公開投稿コメント API 型 ───
+
+/**
+ * F19.1 Phase 6-B: 公開投稿コメント DTO。
+ *
+ * エンドポイント: GET /api/v1/public/blog-posts/{postId}/comments
+ * 未ログインでも閲覧可能。
+ */
+export interface PublicPostComment {
+  commentId: string
+  authorId: number
+  authorDisplayName: string
+  content: string
+  createdAt: string
+}
+
 // ─── F19.1 Phase 4: 公開チーム・組織検索 API 型 ───
 
 /** F19.1 公開チーム検索結果 1 件の DTO。 */

@@ -101,6 +101,8 @@ const scopeHref = computed(() => `/public/organizations/${orgId}`)
 
     <PublicPostDetail :post="post" />
 
+    <PublicPostCommentSection :post-id="postId" />
+
     <LoginCtaCard scope-kind="ORGANIZATION" :scope-id="orgId" />
   </div>
 </template>

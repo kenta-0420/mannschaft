@@ -122,6 +122,16 @@
       "enable": "Öffentliches Profil aktivieren",
       "comingSoon": "Diese Einstellung wird in Kürze verfügbar sein",
       "apiNotReady": "Die Funktion für Profil-Sichtbarkeitseinstellungen ist derzeit in Vorbereitung. Bitte versuchen Sie es später erneut."
+    },
+    "comments": {
+      "title": "Kommentare",
+      "empty": "Noch keine Kommentare",
+      "placeholder": "Kommentar eingeben (max. 1000 Zeichen)",
+      "submit": "Absenden",
+      "delete": "Löschen",
+      "loginToComment": "Bitte melden Sie sich an, um zu kommentieren",
+      "loginLink": "Anmelden",
+      "deleteConfirm": "Möchten Sie diesen Kommentar wirklich löschen?"
     }
   }
 }

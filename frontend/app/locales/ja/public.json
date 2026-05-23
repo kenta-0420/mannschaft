@@ -122,6 +122,16 @@
       "enable": "公開プロフィールを有効にする",
       "comingSoon": "この設定は近日公開予定です",
       "apiNotReady": "プロフィール公開設定機能は現在準備中です。しばらくお待ちください。"
+    },
+    "comments": {
+      "title": "コメント",
+      "empty": "まだコメントがありません",
+      "placeholder": "コメントを入力（最大1000文字）",
+      "submit": "投稿する",
+      "delete": "削除",
+      "loginToComment": "コメントするにはログインしてください",
+      "loginLink": "ログイン",
+      "deleteConfirm": "このコメントを削除しますか？"
     }
   }
 }
