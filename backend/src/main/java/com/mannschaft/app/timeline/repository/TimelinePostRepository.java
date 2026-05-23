@@ -2,6 +2,7 @@ package com.mannschaft.app.timeline.repository;
 
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -57,6 +58,53 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
     @Query(value = SEARCH_QUERY, nativeQuery = true)
     List<TimelinePostEntity> searchByKeyword(
             @Param("keyword") String keyword, @Param("limit") int limit);
+
+    // ====================================================================
+    // F19.1 Phase 7 — 公開タイムライン投稿（未ログインアクセス用）
+    // TODO: クロスドメイン参照(publicview→timeline)。将来はイベント駆動で分離予定
+    // ====================================================================
+
+    /**
+     * チームスコープの公開タイムライン投稿一覧を取得する（F19.1 Phase 7）。
+     *
+     * <p>対象: scopeType=TEAM、scopeId=teamId、status=PUBLISHED、public_visible=true、
+     * 根投稿のみ（parentId IS NULL）。</p>
+     *
+     * @param teamId   チーム ID
+     * @param pageable ページネーション
+     * @return 公開タイムライン投稿のページ
+     */
+    @Query("""
+            SELECT p FROM TimelinePostEntity p
+            WHERE p.scopeType = com.mannschaft.app.timeline.PostScopeType.TEAM
+              AND p.scopeId = :teamId
+              AND p.parentId IS NULL
+              AND p.status = com.mannschaft.app.timeline.PostStatus.PUBLISHED
+              AND p.publicVisible = true
+            ORDER BY p.createdAt DESC
+            """)
+    Page<TimelinePostEntity> findPublicByTeamId(@Param("teamId") Long teamId, Pageable pageable);
+
+    /**
+     * 組織スコープの公開タイムライン投稿一覧を取得する（F19.1 Phase 7）。
+     *
+     * <p>対象: scopeType=ORGANIZATION、scopeId=orgId、status=PUBLISHED、public_visible=true、
+     * 根投稿のみ（parentId IS NULL）。</p>
+     *
+     * @param orgId    組織 ID
+     * @param pageable ページネーション
+     * @return 公開タイムライン投稿のページ
+     */
+    @Query("""
+            SELECT p FROM TimelinePostEntity p
+            WHERE p.scopeType = com.mannschaft.app.timeline.PostScopeType.ORGANIZATION
+              AND p.scopeId = :orgId
+              AND p.parentId IS NULL
+              AND p.status = com.mannschaft.app.timeline.PostStatus.PUBLISHED
+              AND p.publicVisible = true
+            ORDER BY p.createdAt DESC
+            """)
+    Page<TimelinePostEntity> findPublicByOrganizationId(@Param("orgId") Long orgId, Pageable pageable);
 
     // ====================================================================
     // F17.1 Phase 1 — 村スコープ検索 / フィード（B10 担当範囲：読み取り専用）
