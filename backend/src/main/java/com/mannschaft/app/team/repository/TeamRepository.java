@@ -179,6 +179,17 @@ public interface TeamRepository
     List<TeamEntity> findAllPublicTeams();
 
     /**
+     * 備品ランキングバッチ用: template が設定されているチームをチャンク単位で取得する。
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは自動除外される。</p>
+     *
+     * <p>設計書: 備品ランキングバッチ（EquipmentRankingBatchService#buildTeamTemplateMap）
+     * での findAll() 無制限全件取得をチャンク処理に切り替えるために追加。</p>
+     */
+    @Query("SELECT t FROM TeamEntity t WHERE t.template IS NOT NULL ORDER BY t.id ASC")
+    Page<TeamEntity> findByTemplateIsNotNull(Pageable pageable);
+
+    /**
      * F19.1 Phase 4 公開チーム検索: keyword / prefecture でフィルタリングして PUBLIC チームをページ取得する。
      *
      * <p>認証不要の横断検索のため、{@code AbstractTenantAwareRepository} は継承しない

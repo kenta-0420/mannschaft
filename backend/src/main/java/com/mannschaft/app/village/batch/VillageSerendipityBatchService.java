@@ -13,6 +13,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -69,24 +73,27 @@ public class VillageSerendipityBatchService {
         LocalDate targetDate = LocalDate.now().minusDays(1);
         log.info("ご縁スコア日次バッチ開始: targetDate={} now={}", targetDate, now);
 
-        List<VillageEntity> activeVillages = villageRepository.findAll().stream()
-                .filter(v -> v.getDeletedAt() == null)
-                .toList();
-
         int totalVillages = 0;
         int totalUpdatedUsers = 0;
 
-        for (VillageEntity village : activeVillages) {
-            try {
-                int updated = processVillage(village.getId(), targetDate);
-                totalUpdatedUsers += updated;
-                totalVillages++;
-            } catch (RuntimeException ex) {
-                // 1 件失敗しても次に進む（バッチ全体を巻き戻さない）
-                log.error("ご縁スコア集計失敗: villageId={} error={}",
-                        village.getId(), ex.getMessage(), ex);
+        final int CHUNK_SIZE = 500;
+        Pageable pageable = PageRequest.of(0, CHUNK_SIZE);
+        Page<VillageEntity> page;
+        do {
+            page = villageRepository.findByDeletedAtIsNull(pageable);
+            for (VillageEntity village : page.getContent()) {
+                try {
+                    int updated = processVillage(village.getId(), targetDate);
+                    totalUpdatedUsers += updated;
+                    totalVillages++;
+                } catch (RuntimeException ex) {
+                    // 1 件失敗しても次に進む（バッチ全体を巻き戻さない）
+                    log.error("ご縁スコア集計失敗: villageId={} error={}",
+                            village.getId(), ex.getMessage(), ex);
+                }
             }
-        }
+            pageable = pageable.next();
+        } while (page.hasNext());
 
         auditLogService.record(
                 AuditEventType.VILLAGE_SERENDIPITY_UPDATED.name(),

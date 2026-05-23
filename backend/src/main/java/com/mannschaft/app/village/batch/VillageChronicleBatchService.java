@@ -10,6 +10,10 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.time.LocalDate;
 
 /**
@@ -52,20 +56,22 @@ public class VillageChronicleBatchService {
         int generated = 0;
         int failed = 0;
 
-        // 全村を列挙（村は通常数千〜数万件規模を想定）。
-        // 巨大化したらストリーミング/Pageable 化に拡張する。
-        for (VillageEntity v : villageRepository.findAll()) {
-            if (v.getDeletedAt() != null) {
-                continue;
+        final int CHUNK_SIZE = 500;
+        Pageable pageable = PageRequest.of(0, CHUNK_SIZE);
+        Page<VillageEntity> page;
+        do {
+            page = villageRepository.findByDeletedAtIsNull(pageable);
+            for (VillageEntity v : page.getContent()) {
+                try {
+                    chronicleService.generateForVillage(v.getId(), previousMonth);
+                    generated++;
+                } catch (Exception e) {
+                    failed++;
+                    log.error("村史生成失敗: villageId={} yearMonth={}", v.getId(), previousMonth, e);
+                }
             }
-            try {
-                chronicleService.generateForVillage(v.getId(), previousMonth);
-                generated++;
-            } catch (Exception e) {
-                failed++;
-                log.error("村史生成失敗: villageId={} yearMonth={}", v.getId(), previousMonth, e);
-            }
-        }
+            pageable = pageable.next();
+        } while (page.hasNext());
 
         log.info("村史月次生成バッチ完了: 生成={} 失敗={} 対象月={}",
                 generated, failed, previousMonth);

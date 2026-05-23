@@ -13,9 +13,12 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.List;
 
 /**
  * F17.1 Phase 1 B11 — 井戸端会議「本日の日次スレッド」自動生成バッチ。
@@ -66,38 +69,41 @@ public class VillageLobbyDailyThreadBatchService {
         int created = 0;
         int skipped = 0;
         int failed = 0;
+        int totalVillages = 0;
 
-        List<VillageEntity> villages = villageRepository.findAll();
-        for (VillageEntity village : villages) {
-            // 削除済 / 凍結中の村はスキップ
-            if (village.getDeletedAt() != null || village.getArchivedAt() != null) {
-                skipped++;
-                continue;
-            }
-            try {
-                boolean existed = villageLobbyService.findDailyThread(village.getId(), today).isPresent();
-                VillageLobbyDailyThreadEntity thread =
-                        villageLobbyService.ensureDailyThread(village.getId(), today);
-                if (existed) {
-                    skipped++;
-                } else {
-                    created++;
-                    auditLogService.record(
-                            AuditEventType.VILLAGE_LOBBY_THREAD_CREATED.name(),
-                            null, null, null, null,
-                            null, null, null,
-                            "{\"villageId\":\"" + village.getId()
-                                    + "\",\"threadId\":\"" + thread.getId()
-                                    + "\",\"date\":\"" + today + "\"}"
-                    );
+        final int CHUNK_SIZE = 500;
+        Pageable pageable = PageRequest.of(0, CHUNK_SIZE);
+        Page<VillageEntity> page;
+        do {
+            page = villageRepository.findByDeletedAtIsNullAndArchivedAtIsNull(pageable);
+            for (VillageEntity village : page.getContent()) {
+                totalVillages++;
+                try {
+                    boolean existed = villageLobbyService.findDailyThread(village.getId(), today).isPresent();
+                    VillageLobbyDailyThreadEntity thread =
+                            villageLobbyService.ensureDailyThread(village.getId(), today);
+                    if (existed) {
+                        skipped++;
+                    } else {
+                        created++;
+                        auditLogService.record(
+                                AuditEventType.VILLAGE_LOBBY_THREAD_CREATED.name(),
+                                null, null, null, null,
+                                null, null, null,
+                                "{\"villageId\":\"" + village.getId()
+                                        + "\",\"threadId\":\"" + thread.getId()
+                                        + "\",\"date\":\"" + today + "\"}"
+                        );
+                    }
+                } catch (Exception e) {
+                    failed++;
+                    log.error("井戸端日次スレッド生成失敗: villageId={} date={}", village.getId(), today, e);
                 }
-            } catch (Exception e) {
-                failed++;
-                log.error("井戸端日次スレッド生成失敗: villageId={} date={}", village.getId(), today, e);
             }
-        }
+            pageable = pageable.next();
+        } while (page.hasNext());
 
         log.info("井戸端会議日次スレッドバッチ完了: date={} 総村数={} 作成={} スキップ={} 失敗={}",
-                today, villages.size(), created, skipped, failed);
+                today, totalVillages, created, skipped, failed);
     }
 }
