@@ -22,6 +22,7 @@ interface FilterState {
   keyword: string
   from: string
   to: string
+  overdueOnly: boolean
 }
 
 const filters = ref<FilterState>({
@@ -30,6 +31,7 @@ const filters = ref<FilterState>({
   keyword: '',
   from: '',
   to: '',
+  overdueOnly: false,
 })
 
 const reports = ref<ErrorReportDetail[]>([])
@@ -99,6 +101,7 @@ function clearFilters() {
     keyword: '',
     from: '',
     to: '',
+    overdueOnly: false,
   }
   currentPage.value = 0
   void load()
