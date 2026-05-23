@@ -149,7 +149,7 @@ onMounted(load)
                 @update:model-value="onToggle(todo)"
               />
               <span
-                class="shrink-0 text-[9px] font-medium"
+                class="shrink-0 text-[13px] font-medium"
                 :class="priorityTextColor[todo.priority]"
               >{{ $t('todo.priorityValue.' + todo.priority) }}</span>
             </div>
@@ -197,7 +197,7 @@ onMounted(load)
                 @update:model-value="onToggle(todo)"
               />
               <span
-                class="shrink-0 text-[9px] font-medium"
+                class="shrink-0 text-[13px] font-medium"
                 :class="priorityTextColor[todo.priority]"
               >{{ $t('todo.priorityValue.' + todo.priority) }}</span>
             </div>
