@@ -120,8 +120,8 @@
       "title": "Configuración de visibilidad del perfil",
       "description": "Cuando el perfil público está activado, los usuarios no registrados también pueden ver tu perfil",
       "enable": "Activar perfil público",
-      "comingSoon": "Esta configuración estará disponible próximamente",
-      "apiNotReady": "La función de configuración de visibilidad del perfil está en preparación. Por favor, vuelva a intentarlo más tarde."
+      "saved": "Configuración de visibilidad del perfil guardada",
+      "saveError": "Error al guardar la configuración de visibilidad del perfil"
     },
     "comments": {
       "title": "Comentarios",

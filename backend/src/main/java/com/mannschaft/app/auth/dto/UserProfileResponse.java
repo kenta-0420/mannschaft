@@ -36,4 +36,6 @@ public class UserProfileResponse {
     private final LocalDateTime lastLoginAt;
     private final LocalDateTime createdAt;
     private final String systemRole;
+    /** F19.1 Phase 6: プロフィール公開設定。true で未ログインユーザーに公開。 */
+    private final boolean publicProfileEnabled;
 }

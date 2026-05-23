@@ -10,6 +10,7 @@ import com.mannschaft.app.auth.dto.MessageResponse;
 import com.mannschaft.app.auth.dto.RequestEmailChangeRequest;
 import com.mannschaft.app.auth.dto.RequestWithdrawalRequest;
 import com.mannschaft.app.auth.dto.UpdateProfileRequest;
+import com.mannschaft.app.auth.dto.UpdatePublicProfileRequest;
 import com.mannschaft.app.auth.dto.UserProfileResponse;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.CursorPagedResponse;
@@ -100,7 +101,7 @@ class UserControllerTest {
                 "ja", null, "Asia/Tokyo", "ACTIVE",
                 true, false, 0, List.of("GOOGLE"),
                 LocalDateTime.of(2026, 3, 1, 10, 0),
-                LocalDateTime.of(2026, 1, 1, 0, 0), null);
+                LocalDateTime.of(2026, 1, 1, 0, 0), null, false);
         given(userService.getUserProfile(anyLong()))
                 .willReturn(ApiResponse.of(profile));
 
@@ -126,7 +127,7 @@ class UserControllerTest {
                 "ja", null, "Asia/Tokyo", "ACTIVE",
                 true, false, 0, List.of(),
                 LocalDateTime.of(2026, 3, 1, 10, 0),
-                LocalDateTime.of(2026, 1, 1, 0, 0), null);
+                LocalDateTime.of(2026, 1, 1, 0, 0), null, false);
         given(userService.updateProfile(anyLong(), any(UpdateProfileRequest.class)))
                 .willReturn(ApiResponse.of(updatedProfile));
 
@@ -247,6 +248,72 @@ class UserControllerTest {
     }
 
     // ──────────────────────────────────────────────
+    // PATCH /api/v1/users/me/public-profile (VIS-001〜003)
+    // ──────────────────────────────────────────────
+
+    @Test
+    @DisplayName("VIS-001: PATCH /me/public-profile — enabled=true で 204 を返す")
+    void updatePublicProfile_enableTrue_returns204() throws Exception {
+        doNothing().when(userService).updatePublicProfileEnabled(anyLong(), any(Boolean.class));
+
+        String body = """
+                {
+                  "publicProfileEnabled": true
+                }
+                """;
+
+        mockMvc.perform(patch("/api/v1/users/me/public-profile")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("VIS-002: PATCH /me/public-profile — enabled=false で 204 を返す（トグル OFF）")
+    void updatePublicProfile_enableFalse_returns204() throws Exception {
+        doNothing().when(userService).updatePublicProfileEnabled(anyLong(), any(Boolean.class));
+
+        String body = """
+                {
+                  "publicProfileEnabled": false
+                }
+                """;
+
+        mockMvc.perform(patch("/api/v1/users/me/public-profile")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("VIS-003: PATCH /me/public-profile — publicProfileEnabled 欠落で 400 を返す")
+    void updatePublicProfile_missingField_returns400() throws Exception {
+        mockMvc.perform(patch("/api/v1/users/me/public-profile")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("VIS-004: GET /me — publicProfileEnabled フィールドが返却される")
+    void getMe_publicProfileEnabled_presentInResponse() throws Exception {
+        var profile = new UserProfileResponse(
+                1L, "test@example.com", "田中", "太郎",
+                "タナカ", "タロウ", "taro", null,
+                true, null, "090-1234-5678",
+                "ja", null, "Asia/Tokyo", "ACTIVE",
+                true, false, 0, List.of("GOOGLE"),
+                LocalDateTime.of(2026, 3, 1, 10, 0),
+                LocalDateTime.of(2026, 1, 1, 0, 0), null, true);
+        given(userService.getUserProfile(anyLong()))
+                .willReturn(ApiResponse.of(profile));
+
+        mockMvc.perform(get("/api/v1/users/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.publicProfileEnabled").value(true));
+    }
+
+    // ──────────────────────────────────────────────
     // PUT /me — バリデーション確認（追加ケース）
     // ──────────────────────────────────────────────
 
@@ -259,7 +326,7 @@ class UserControllerTest {
                 null, null, null,
                 "ja", null, "Asia/Tokyo", "ACTIVE",
                 true, false, 0, List.of(),
-                null, LocalDateTime.of(2026, 1, 1, 0, 0), null);
+                null, LocalDateTime.of(2026, 1, 1, 0, 0), null, false);
         given(userService.updateProfile(anyLong(), any(UpdateProfileRequest.class)))
                 .willReturn(ApiResponse.of(profile));
 

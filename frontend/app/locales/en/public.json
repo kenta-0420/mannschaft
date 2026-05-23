@@ -120,8 +120,8 @@
       "title": "Profile Visibility Settings",
       "description": "When public profile is enabled, users who are not logged in can also view your profile",
       "enable": "Enable public profile",
-      "comingSoon": "This setting is coming soon",
-      "apiNotReady": "Profile visibility settings are currently being prepared. Please check back later."
+      "saved": "Profile visibility settings saved",
+      "saveError": "Failed to save profile visibility settings"
     },
     "comments": {
       "title": "Comments",

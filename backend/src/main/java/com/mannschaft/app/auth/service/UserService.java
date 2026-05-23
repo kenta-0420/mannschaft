@@ -126,7 +126,8 @@ public class UserService {
                 oauthProviders,
                 user.getLastLoginAt(),
                 user.getCreatedAt(),
-                systemRole);
+                systemRole,
+                user.isPublicProfileEnabled());
 
         return ApiResponse.of(response);
     }
@@ -511,6 +512,19 @@ public class UserService {
         eventPublisher.publish(new UserAnonymizedEvent(userId, originalEmail));
 
         log.info("ユーザー退会（即時匿名化）完了: userId={}", userId);
+    }
+
+    /**
+     * F19.1 Phase 6: プロフィール公開設定を更新する。
+     *
+     * @param userId  ユーザーID
+     * @param enabled true にすると未ログインユーザーもプロフィールを閲覧できる
+     */
+    @Transactional
+    public void updatePublicProfileEnabled(Long userId, boolean enabled) {
+        UserEntity user = findUserOrThrow(userId);
+        user.updatePublicProfileEnabled(enabled);
+        userRepository.save(user);
     }
 
     // === ヘルパーメソッド ===
