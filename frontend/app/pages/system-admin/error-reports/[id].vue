@@ -11,6 +11,7 @@ definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+const { slaStatus, slaLabel } = useSlaDueAt()
 const {
   get,
   updateWorkflowStage,
@@ -258,6 +259,25 @@ watch(report, (val) => {
         <TabPanels>
           <TabPanel value="summary">
             <div class="space-y-4">
+              <div
+                v-if="report.slaDueAt"
+                class="rounded-xl border border-surface-300 bg-surface-0 p-5 dark:border-surface-600 dark:bg-surface-800"
+              >
+                <ClientOnly>
+                  <div class="flex items-center gap-2 text-sm">
+                    <span class="text-surface-500 text-xs">{{ t('error_report.detail.sla_due') }}:</span>
+                    <span
+                      :class="{
+                        'text-red-600 font-semibold dark:text-red-400': slaStatus(report.slaDueAt) === 'overdue',
+                        'text-orange-500 dark:text-orange-400': slaStatus(report.slaDueAt) === 'warning',
+                        'text-surface-700 dark:text-surface-300': slaStatus(report.slaDueAt) === 'ok',
+                      }"
+                    >
+                      {{ slaLabel(report.slaDueAt) }}
+                    </span>
+                  </div>
+                </ClientOnly>
+              </div>
               <div
                 class="rounded-xl border border-surface-300 bg-surface-0 p-5 dark:border-surface-600 dark:bg-surface-800"
               >

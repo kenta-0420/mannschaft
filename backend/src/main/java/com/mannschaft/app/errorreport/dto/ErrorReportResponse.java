@@ -47,6 +47,11 @@ public class ErrorReportResponse {
     /** ワークフロー段階（NULL は未着手）。 */
     private String workflowStage;
 
+    // ===== F10.6 Phase 10-δ 追加 =====
+
+    /** SLA 対応期限。severity=LOW は NULL。 */
+    private LocalDateTime slaDueAt;
+
     /** 担当管理者ユーザーID。 */
     private Long assigneeId;
 

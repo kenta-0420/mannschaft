@@ -105,6 +105,12 @@ public class ErrorReportEntity extends BaseEntity {
     @Setter
     private LocalDateTime lastAiAnalysisAt;
 
+    /**
+     * F10.6 Phase 10-δ — SLA 対応期限。severity=LOW は NULL。
+     */
+    @Setter
+    private LocalDateTime slaDueAt;
+
     @Setter
     @Column(length = 1000)
     private String latestUserComment;

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * F12.5 Phase 2 — 担当者セレクター。
- * 現状は数値ID直接入力 + 解除ボタンの簡易UI。
- * SYSTEM_ADMIN 検索 API は P2-C 以降で実装する。
+ * F10.6 Phase 10-δ — 担当者セレクター。
+ * SYSTEM_ADMIN ユーザーをドロップダウンで選択する改善版 UI。
  */
+import type { AssignableUser } from '~/types/error-report'
 
 const props = defineProps<{
   assigneeId: number | null
@@ -16,23 +16,43 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const inputId = ref<number | null>(props.assigneeId)
+const { fetchAssignableUsers } = useErrorReportAdmin()
+
+const adminUsers = ref<AssignableUser[]>([])
+const fetchLoading = ref(false)
+const selectedId = ref<number | null>(props.assigneeId)
 
 watch(
   () => props.assigneeId,
   (v) => {
-    inputId.value = v
+    selectedId.value = v
   },
 )
 
+async function loadAdminUsers() {
+  fetchLoading.value = true
+  try {
+    const res = await fetchAssignableUsers()
+    adminUsers.value = res.data
+  } catch (e) {
+    console.error('担当者候補の取得に失敗しました', e)
+  } finally {
+    fetchLoading.value = false
+  }
+}
+
 function commit() {
-  emit('change', inputId.value)
+  emit('change', selectedId.value)
 }
 
 function unassign() {
-  inputId.value = null
+  selectedId.value = null
   emit('change', null)
 }
+
+onMounted(() => {
+  void loadAdminUsers()
+})
 </script>
 
 <template>
@@ -48,19 +68,21 @@ function unassign() {
       <span v-else class="text-xs text-surface-400">-</span>
     </div>
     <div class="flex gap-2">
-      <InputNumber
-        v-model="inputId"
+      <Select
+        v-model="selectedId"
+        :options="adminUsers"
+        option-label="displayName"
+        option-value="id"
         :placeholder="t('error_report.actions.select_assignee')"
-        :use-grouping="false"
-        :disabled="loading"
-        show-buttons
-        :min="1"
+        :disabled="loading || fetchLoading"
+        :loading="fetchLoading"
+        show-clear
         class="flex-1"
       />
       <Button
         :label="t('error_report.actions.assign')"
         size="small"
-        :disabled="loading || inputId === null"
+        :disabled="loading || selectedId === null"
         @click="commit"
       />
       <Button

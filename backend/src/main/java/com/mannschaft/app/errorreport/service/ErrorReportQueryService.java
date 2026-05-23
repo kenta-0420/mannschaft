@@ -105,17 +105,29 @@ public class ErrorReportQueryService {
     }
 
     /**
-     * エラーレポートを検索する（ステータス・重要度・日付範囲でフィルタ）。
+     * エラーレポートを検索する（ステータス・重要度・日付範囲・SLA超過でフィルタ）。
      *
-     * @param status   ステータス文字列（nullable）
-     * @param severity 重要度文字列（nullable）
-     * @param from     開始日（nullable）
-     * @param to       終了日（nullable）
-     * @param pageable ページング情報
+     * @param status      ステータス文字列（nullable）
+     * @param severity    重要度文字列（nullable）
+     * @param from        開始日（nullable）
+     * @param to          終了日（nullable）
+     * @param overdueOnly true の場合、SLA超過かつ未対応のレポートのみ返す
+     * @param pageable    ページング情報
      * @return ページングされたエラーレポート
      */
     public Page<ErrorReportEntity> search(String status, String severity,
-                                           LocalDate from, LocalDate to, Pageable pageable) {
+                                           LocalDate from, LocalDate to,
+                                           boolean overdueOnly, Pageable pageable) {
+        // F10.6 Phase 10-δ — overdueOnly=true のとき他のフィルタより優先
+        if (overdueOnly) {
+            List<ErrorReportStatus> activeStatuses = List.of(
+                ErrorReportStatus.NEW,
+                ErrorReportStatus.INVESTIGATING,
+                ErrorReportStatus.REOPENED);
+            return errorReportRepository.findOverdueByStatusIn(
+                LocalDateTime.now(), activeStatuses, pageable);
+        }
+
         ErrorReportStatus statusEnum = null;
         ErrorReportSeverity severityEnum = null;
         try {
@@ -137,6 +149,14 @@ public class ErrorReportQueryService {
                     from.atStartOfDay(), to.plusDays(1).atStartOfDay(), pageable);
         }
         return errorReportRepository.findAll(pageable);
+    }
+
+    /**
+     * 後方互換性維持のためのオーバーロード（overdueOnly=false として委譲）。
+     */
+    public Page<ErrorReportEntity> search(String status, String severity,
+                                           LocalDate from, LocalDate to, Pageable pageable) {
+        return search(status, severity, from, to, false, pageable);
     }
 
     /**

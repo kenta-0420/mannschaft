@@ -8,6 +8,9 @@ import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
+import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +37,8 @@ public class ErrorReportWeeklySummaryService {
     private final UserRoleRepository userRoleRepository;
     private final UserRepository userRepository;
     private final EmailOutboxService emailOutboxService;
+    /** F10.6 Phase 10-δ — Mannschaft 内通知（主系チャネル）。 */
+    private final NotificationHelper notificationHelper;
 
     @BatchEndpoint(name = "errorreport-weekly-summary", description = "エラーレポートの週次サマリーを毎週月曜 09:00 に SYSTEM_ADMIN へ配信する")
     @Scheduled(cron = "0 0 9 * * MON", zone = "Asia/Tokyo")
@@ -106,6 +111,38 @@ public class ErrorReportWeeklySummaryService {
 
             log.info("[ErrorReportWeeklySummary] 週次サマリー送信完了: recipients={}, newCount={}, unresolvedCount={}",
                     adminUsers.size(), newCount, unresolvedCount);
+
+            // F10.6 Phase 10-δ — Mannschaft 内通知（Slack はオプション・環境変数依存）
+            try {
+                long criticalUnresolved = errorReportRepository
+                        .countBySeverityInAndStatusIn(
+                                List.of(ErrorReportSeverity.CRITICAL),
+                                List.of(ErrorReportStatus.NEW, ErrorReportStatus.INVESTIGATING, ErrorReportStatus.REOPENED));
+                long overdueCount = errorReportRepository
+                        .countBySlaDueAtBeforeAndStatusIn(
+                                LocalDateTime.now(),
+                                List.of(ErrorReportStatus.NEW, ErrorReportStatus.INVESTIGATING, ErrorReportStatus.REOPENED));
+
+                String notifTitle = criticalUnresolved > 0
+                        ? String.format("未対応エラー %d 件（CRITICAL %d 件）", unresolvedCount, criticalUnresolved)
+                        : String.format("未対応エラー %d 件", unresolvedCount);
+                String notifBody = String.format("今週の新規: %d 件 / CRITICAL: %d 件%s",
+                        newCount, criticalUnresolved,
+                        overdueCount > 0 ? " / SLA超過: " + overdueCount + " 件" : "");
+
+                notificationHelper.notifyAll(
+                        adminIds,
+                        "ERROR_REPORT_WEEKLY_DIGEST",
+                        NotificationPriority.NORMAL,
+                        notifTitle,
+                        notifBody,
+                        "ERROR_REPORT", null,
+                        NotificationScopeType.SYSTEM, null,
+                        "/system-admin/error-reports", null);
+                log.info("[ErrorReportWeeklySummary] Mannschaft 内通知送信完了: adminCount={}", adminIds.size());
+            } catch (Exception e) {
+                log.warn("[ErrorReportWeeklySummary] Mannschaft 内通知送信失敗", e);
+            }
         } catch (Exception e) {
             log.error("[ErrorReportWeeklySummary] 週次サマリー送信失敗", e);
         }

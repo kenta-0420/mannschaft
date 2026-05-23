@@ -7,6 +7,8 @@ interface FilterState {
   keyword: string
   from: string
   to: string
+  /** F10.6 Phase 10-δ — SLA超過のみ表示フィルタ。 */
+  overdueOnly: boolean
 }
 
 const props = defineProps<{
@@ -88,14 +90,27 @@ function update<K extends keyof FilterState>(key: K, value: FilterState[K]) {
           @update:model-value="(v) => update('to', String(v ?? ''))"
         />
       </div>
-      <div class="flex items-end gap-2">
-        <Button
-          :label="t('error_report.filters.clear')"
-          severity="secondary"
-          outlined
-          @click="emit('clear')"
-        />
-        <Button :label="t('common.search')" icon="pi pi-search" @click="emit('apply')" />
+      <div class="flex flex-col gap-1 justify-end">
+        <div class="flex items-center gap-2 mb-1">
+          <Checkbox
+            :model-value="modelValue.overdueOnly"
+            :binary="true"
+            input-id="overdue-only-check"
+            @update:model-value="(v) => update('overdueOnly', !!v)"
+          />
+          <label for="overdue-only-check" class="text-xs text-surface-600 dark:text-surface-300 cursor-pointer select-none">
+            {{ t('error_report.filters.overdue_only') }}
+          </label>
+        </div>
+        <div class="flex items-end gap-2">
+          <Button
+            :label="t('error_report.filters.clear')"
+            severity="secondary"
+            outlined
+            @click="emit('clear')"
+          />
+          <Button :label="t('common.search')" icon="pi pi-search" @click="emit('apply')" />
+        </div>
       </div>
     </div>
   </div>
