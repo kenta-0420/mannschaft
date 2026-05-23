@@ -13,6 +13,9 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      fontSize: {
+        xs: ['0.9rem', { lineHeight: '1.25rem' }],
+      },
       fontFamily: {
         sans: [
           'Noto Sans JP',
