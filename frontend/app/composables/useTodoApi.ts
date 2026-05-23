@@ -30,6 +30,7 @@ interface TodoBase {
   dueDate: string | null
   dueTime: string | null
   daysRemaining: number | null
+  progressRate: number | null
   completedAt: string | null
   completedBy: { id: number; displayName: string } | null
   createdBy: { id: number; displayName: string }
