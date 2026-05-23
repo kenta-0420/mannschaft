@@ -639,7 +639,7 @@ public class ProjectService {
         if (dueDate == null) {
             return null;
         }
-        return ChronoUnit.DAYS.between(LocalDate.now(), dueDate);
+        return ChronoUnit.DAYS.between(LocalDate.now(java.time.ZoneId.of("Asia/Tokyo")), dueDate);
     }
 
     /**
