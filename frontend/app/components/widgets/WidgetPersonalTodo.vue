@@ -90,11 +90,11 @@ async function onToggle(todo: TodoItem) {
   }
 }
 
-const priorityDotColor: Record<string, string> = {
-  HIGH: 'bg-red-500',
-  MEDIUM: 'bg-yellow-500',
-  LOW: 'bg-green-500',
-  URGENT: 'bg-red-600',
+const priorityTextColor: Record<string, string> = {
+  HIGH: 'text-red-500',
+  MEDIUM: 'text-yellow-500',
+  LOW: 'text-green-500',
+  URGENT: 'text-red-600',
 }
 
 function isOverdue(dueDate: string | null): boolean {
@@ -149,9 +149,9 @@ onMounted(load)
                 @update:model-value="onToggle(todo)"
               />
               <span
-                class="inline-block h-2 w-2 shrink-0 rounded-full"
-                :class="priorityDotColor[todo.priority]"
-              />
+                class="shrink-0 text-[9px] font-medium"
+                :class="priorityTextColor[todo.priority]"
+              >{{ $t('todo.priorityValue.' + todo.priority) }}</span>
             </div>
             <p
               class="line-clamp-2 text-xs leading-tight"
@@ -197,9 +197,9 @@ onMounted(load)
                 @update:model-value="onToggle(todo)"
               />
               <span
-                class="inline-block h-2 w-2 shrink-0 rounded-full"
-                :class="priorityDotColor[todo.priority]"
-              />
+                class="shrink-0 text-[9px] font-medium"
+                :class="priorityTextColor[todo.priority]"
+              >{{ $t('todo.priorityValue.' + todo.priority) }}</span>
             </div>
             <p
               class="line-clamp-2 text-xs leading-tight"
