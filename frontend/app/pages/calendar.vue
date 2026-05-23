@@ -86,6 +86,11 @@ function onDateClick(date: string) {
 
 // イベントクリック
 async function onEventClick(eventId: number, isPersonal: boolean) {
+  // TODO イベントは負数 ID（-(todoId + 1) で格納）
+  if (eventId < 0) {
+    await router.push(`/todos/${-(eventId + 1)}`)
+    return
+  }
   try {
     selectedEventId.value = eventId
     selectedEventIsPersonal.value = isPersonal

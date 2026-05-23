@@ -67,7 +67,9 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
         startAt: `${t.startDate || t.dueDate}T00:00:00`,
         endAt: `${t.dueDate}T23:59:59`,
         allDay: true,
-        color: '#f97316',
+        color: t.priority === 'HIGH' ? '#f97316'
+          : t.priority === 'LOW' ? '#22c55e'
+          : '#3b82f6',
         isPersonal: true,
         scopeType: 'PERSONAL',
         scopeId: undefined,

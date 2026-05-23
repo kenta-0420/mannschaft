@@ -122,6 +122,16 @@
       "enable": "Öffentliches Profil aktivieren",
       "saved": "Profil-Sichtbarkeitseinstellungen gespeichert",
       "saveError": "Fehler beim Speichern der Profil-Sichtbarkeitseinstellungen"
+    },
+    "comments": {
+      "title": "Kommentare",
+      "empty": "Noch keine Kommentare",
+      "placeholder": "Kommentar eingeben (max. 1000 Zeichen)",
+      "submit": "Absenden",
+      "delete": "Löschen",
+      "loginToComment": "Bitte melden Sie sich an, um zu kommentieren",
+      "loginLink": "Anmelden",
+      "deleteConfirm": "Möchten Sie diesen Kommentar wirklich löschen?"
     }
   }
 }

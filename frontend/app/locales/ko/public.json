@@ -122,6 +122,16 @@
       "enable": "공개 프로필 활성화",
       "saved": "프로필 공개 설정이 저장되었습니다",
       "saveError": "프로필 공개 설정 저장에 실패했습니다"
+    },
+    "comments": {
+      "title": "댓글",
+      "empty": "아직 댓글이 없습니다",
+      "placeholder": "댓글을 입력하세요（최대 1000자）",
+      "submit": "게시",
+      "delete": "삭제",
+      "loginToComment": "댓글을 남기려면 로그인하세요",
+      "loginLink": "로그인",
+      "deleteConfirm": "이 댓글을 삭제하시겠습니까？"
     }
   }
 }

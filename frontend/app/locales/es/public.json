@@ -122,6 +122,16 @@
       "enable": "Activar perfil público",
       "saved": "Configuración de visibilidad del perfil guardada",
       "saveError": "Error al guardar la configuración de visibilidad del perfil"
+    },
+    "comments": {
+      "title": "Comentarios",
+      "empty": "Aún no hay comentarios",
+      "placeholder": "Escribe un comentario (máx. 1000 caracteres)",
+      "submit": "Publicar",
+      "delete": "Eliminar",
+      "loginToComment": "Inicia sesión para comentar",
+      "loginLink": "Iniciar sesión",
+      "deleteConfirm": "¿Estás seguro de que quieres eliminar este comentario?"
     }
   }
 }
