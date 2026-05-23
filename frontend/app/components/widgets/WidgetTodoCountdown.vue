@@ -19,7 +19,11 @@ async function load() {
     const res = await getPersonalTodos()
     todos.value = (res.data ?? [])
       .filter((t) => t.dueDate && t.status !== 'COMPLETED' && t.status !== 'CANCELLED')
-      .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
+      .sort((a, b) => {
+        const [ay, am, ad] = a.dueDate!.split('-').map(Number)
+        const [by, bm, bd] = b.dueDate!.split('-').map(Number)
+        return new Date(ay, am - 1, ad).getTime() - new Date(by, bm - 1, bd).getTime()
+      })
       .slice(0, 5) as TodoItem[]
   }
   catch (e) {
@@ -28,7 +32,8 @@ async function load() {
 }
 
 function formatCountdown(dueDate: string): { text: string; urgent: boolean; overdue: boolean } {
-  const ms = new Date(dueDate).getTime() - now.value
+  const [y, mo, d] = dueDate.split('-').map(Number)
+  const ms = new Date(y, mo - 1, d).getTime() - now.value
   if (ms < 0) {
     const overMs = -ms
     const h = Math.floor(overMs / 3600000)
