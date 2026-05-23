@@ -120,8 +120,8 @@
       "title": "Profil-Sichtbarkeitseinstellungen",
       "description": "Wenn das öffentliche Profil aktiviert ist, können auch nicht angemeldete Benutzer Ihr Profil sehen",
       "enable": "Öffentliches Profil aktivieren",
-      "comingSoon": "Diese Einstellung wird in Kürze verfügbar sein",
-      "apiNotReady": "Die Funktion für Profil-Sichtbarkeitseinstellungen ist derzeit in Vorbereitung. Bitte versuchen Sie es später erneut."
+      "saved": "Profil-Sichtbarkeitseinstellungen gespeichert",
+      "saveError": "Fehler beim Speichern der Profil-Sichtbarkeitseinstellungen"
     }
   }
 }

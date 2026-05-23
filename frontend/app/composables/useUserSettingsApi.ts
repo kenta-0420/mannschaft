@@ -1,6 +1,7 @@
 import type {
   UserProfileResponse,
   UpdateProfileRequest,
+  UpdatePublicProfileRequest,
   RequestEmailChangeRequest,
   ChangePasswordRequest,
   LoginHistoryResponse,
@@ -37,6 +38,14 @@ export function useUserSettingsApi() {
   async function updateProfile(body: UpdateProfileRequest) {
     return api<{ data: UserProfileResponse }>('/api/v1/users/me', {
       method: 'PUT',
+      body,
+    })
+  }
+
+  // F19.1 Phase 6: プロフィール公開設定
+  async function updatePublicProfile(body: UpdatePublicProfileRequest) {
+    return api('/api/v1/users/me/public-profile', {
+      method: 'PATCH',
       body,
     })
   }
@@ -215,6 +224,7 @@ export function useUserSettingsApi() {
   return {
     getProfile,
     updateProfile,
+    updatePublicProfile,
     changeEmail,
     confirmEmailChange,
     changePassword,

@@ -27,6 +27,13 @@ export interface UserProfileResponse {
   contactApprovalRequired: boolean
   dmReceiveFrom: 'ANYONE' | 'TEAM_MEMBERS_ONLY' | 'CONTACTS_ONLY'
   onlineVisibility: 'NOBODY' | 'CONTACTS_ONLY' | 'EVERYONE'
+  /** F19.1 Phase 6: プロフィール公開フラグ。true で未ログインユーザーに公開。 */
+  publicProfileEnabled: boolean
+}
+
+// === Public Profile ===
+export interface UpdatePublicProfileRequest {
+  publicProfileEnabled: boolean
 }
 
 export interface UpdateProfileRequest {

@@ -7,6 +7,7 @@ import com.mannschaft.app.auth.dto.OAuthProviderResponse;
 import com.mannschaft.app.auth.dto.RequestEmailChangeRequest;
 import com.mannschaft.app.auth.dto.RequestWithdrawalRequest;
 import com.mannschaft.app.auth.dto.UpdateProfileRequest;
+import com.mannschaft.app.auth.dto.UpdatePublicProfileRequest;
 import com.mannschaft.app.auth.dto.UserProfileResponse;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.CursorPagedResponse;
@@ -161,6 +162,22 @@ public class UserController {
         Long userId = SecurityUtils.getCurrentUserId();
         authOAuthService.disconnectProvider(userId, provider);
         return ResponseEntity.ok(ApiResponse.of(MessageResponse.of("OAuth連携を解除しました")));
+    }
+
+    /**
+     * F19.1 Phase 6: プロフィール公開設定を更新する。
+     *
+     * <p>{@code public_profile_enabled = true} にすると未ログインユーザーも
+     * {@code GET /api/v1/public/users/{userId}} でプロフィールを閲覧できる。</p>
+     */
+    @PatchMapping("/me/public-profile")
+    @Operation(summary = "プロフィール公開設定更新",
+            description = "public_profile_enabled フラグを更新する。true で未ログインユーザーに公開、false で非公開。")
+    public ResponseEntity<Void> updatePublicProfile(
+            @Valid @RequestBody UpdatePublicProfileRequest req) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        userService.updatePublicProfileEnabled(userId, req.getPublicProfileEnabled());
+        return ResponseEntity.noContent().build();
     }
 
     /**
