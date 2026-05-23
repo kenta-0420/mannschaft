@@ -62,6 +62,12 @@ onMounted(async () => {
       <div class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         <WidgetFamilyHub v-if="hasFamilyTeam" />
         <WidgetNotices />
+        <!-- マイカレンダー（lg:col-span-2 で広く取る） -->
+        <div class="lg:col-span-2">
+          <SectionCard>
+            <WidgetMyCalendar />
+          </SectionCard>
+        </div>
         <WidgetUpcomingEvents />
         <WidgetPersonalTodo />
         <!-- F02.10: 天気ウィジェット（sort_order=3、NOTICES/UPCOMING_EVENTS/PERSONAL_TODO の次） -->

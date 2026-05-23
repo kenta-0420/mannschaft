@@ -157,8 +157,8 @@ function barStyle(slot: MultiDaySlot): Record<string, string> {
     left: `calc(${slot.startCol * colW}% + ${slot.continuesBefore ? '0px' : '2px'})`,
     width: `calc(${(slot.endCol - slot.startCol + 1) * colW}% - ${slot.continuesBefore || slot.continuesAfter ? '2px' : '4px'})`,
     height: `${BAR_H}px`,
-    backgroundColor: color + '28',
-    color,
+    backgroundColor: color,
+    color: '#ffffff',
     borderRadius: r,
   }
 }
@@ -248,7 +248,7 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
       <!-- 複数日バー絶対レイヤー -->
       <div
         v-if="week.slots.length"
-        class="pointer-events-none absolute inset-x-0"
+        class="pointer-events-none absolute inset-x-0 z-10"
         :style="{ top: `${DATE_HEADER_H}px` }"
       >
         <div class="relative" :style="{ height: `${week.lanesUsed * BAR_STRIDE}px` }">
