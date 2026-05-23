@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.errorreport.ErrorReportErrorCode;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
+import com.mannschaft.app.errorreport.SlaPolicy;
 import com.mannschaft.app.errorreport.dto.ErrorReportBulkUpdateRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportUpdateRequest;
@@ -78,6 +79,9 @@ public class ErrorReportService {
                 // F12.5 Phase 2 — リグレッション時に workflow_stage / assignee_id をリセット
                 report.setWorkflowStage(null);
                 report.setAssigneeId(null);
+                // F10.6 Phase 10-δ — REOPENED 時に SLA 期限を再設定し、通知済みフラグをリセット
+                report.setSlaDueAt(SlaPolicy.calcDueAt(report.getSeverity(), LocalDateTime.now()));
+                redisTemplate.delete("error-report:sla-overdue-notified:" + report.getId());
                 int affectedCount = trackAffectedUser(errorHash, request.getUserId());
                 if (affectedCount > 0) {
                     report.setAffectedUserCount(affectedCount);
@@ -128,6 +132,7 @@ public class ErrorReportService {
         // IGNORED または該当なし → 新規作成
         ErrorReportSeverity severity = determineSeverity(request.getPageUrl(), request.getErrorMessage());
         Long organizationId = resolveOrganizationId(request.getUserId());
+        LocalDateTime now = LocalDateTime.now();
 
         ErrorReportEntity newReport = ErrorReportEntity.builder()
                 .errorMessage(request.getErrorMessage())
@@ -142,6 +147,7 @@ public class ErrorReportService {
                 .occurredAt(request.getOccurredAt())
                 .status(ErrorReportStatus.NEW)
                 .severity(severity)
+                .slaDueAt(SlaPolicy.calcDueAt(severity, now))
                 .errorHash(errorHash)
                 .occurrenceCount(1)
                 .affectedUserCount(1)
@@ -278,6 +284,7 @@ public class ErrorReportService {
                 .occurredAt(now)
                 .status(ErrorReportStatus.NEW)
                 .severity(ErrorReportSeverity.CRITICAL)
+                .slaDueAt(SlaPolicy.calcDueAt(ErrorReportSeverity.CRITICAL, now))
                 .errorHash(errorHash)
                 .occurrenceCount(1)
                 .affectedUserCount(0)

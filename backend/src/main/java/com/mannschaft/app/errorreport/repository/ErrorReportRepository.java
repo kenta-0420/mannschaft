@@ -185,4 +185,40 @@ public interface ErrorReportRepository extends JpaRepository<ErrorReportEntity, 
      */
     Page<ErrorReportEntity> findByWorkflowStageOrderByLastOccurredAtDesc(
             ErrorReportWorkflowStage stage, Pageable pageable);
+
+    /**
+     * F10.6 Phase 10-δ — SLA期限超過かつ未対応のレポートを取得する（アラートバッチ用）。
+     */
+    @Query("SELECT e FROM ErrorReportEntity e "
+        + "WHERE e.slaDueAt IS NOT NULL "
+        + "AND e.slaDueAt < :now "
+        + "AND e.status IN :statuses "
+        + "ORDER BY e.slaDueAt ASC")
+    List<ErrorReportEntity> findOverdueReports(
+        @Param("now") LocalDateTime now,
+        @Param("statuses") List<ErrorReportStatus> statuses);
+
+    /**
+     * F10.6 Phase 10-δ — overdueOnly フィルタ用のページネーションクエリ。
+     */
+    @Query("SELECT e FROM ErrorReportEntity e "
+        + "WHERE e.slaDueAt IS NOT NULL "
+        + "AND e.slaDueAt < :now "
+        + "AND e.status IN :statuses")
+    Page<ErrorReportEntity> findOverdueByStatusIn(
+        @Param("now") LocalDateTime now,
+        @Param("statuses") List<ErrorReportStatus> statuses,
+        Pageable pageable);
+
+    /**
+     * F10.6 Phase 10-δ — 指定重要度リスト・ステータスリストの件数を取得する（週次ダイジェスト / SLA超過カウント用）。
+     */
+    long countBySeverityInAndStatusIn(List<ErrorReportSeverity> severities,
+                                       List<ErrorReportStatus> statuses);
+
+    /**
+     * F10.6 Phase 10-δ — SLA期限超過かつ未対応の件数（週次ダイジェスト用）。
+     */
+    long countBySlaDueAtBeforeAndStatusIn(LocalDateTime slaDueAt,
+                                           List<ErrorReportStatus> statuses);
 }

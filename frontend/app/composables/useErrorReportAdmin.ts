@@ -8,6 +8,7 @@
 import type {
   AiAnalysisListResponse,
   AiAnalysisResponse,
+  AssignableUser,
   ErrorReportConfig,
   ErrorReportDetail,
   GitHubIssueCreateResponse,
@@ -34,6 +35,7 @@ export function useErrorReportAdmin() {
     if (params.page !== undefined) query.page = params.page
     if (params.size !== undefined) query.size = params.size
     if (params.sort) query.sort = params.sort
+    if (params.overdueOnly) query.overdueOnly = 'true'
     return api<ListResponse>(BASE_URL, { params: query })
   }
 
@@ -114,6 +116,13 @@ export function useErrorReportAdmin() {
     return api<ApiResponse<KanbanResponse>>(`${BASE_URL}/kanban`)
   }
 
+  /**
+   * F10.6 Phase 10-δ — 担当者候補となる SYSTEM_ADMIN ユーザー一覧を取得する。
+   */
+  function fetchAssignableUsers() {
+    return api<ApiResponse<AssignableUser[]>>(`${BASE_URL}/assignable-users`)
+  }
+
   return {
     list,
     get,
@@ -126,5 +135,6 @@ export function useErrorReportAdmin() {
     createGithubIssue,
     fetchConfig,
     fetchKanban,
+    fetchAssignableUsers,
   }
 }

@@ -15,6 +15,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const { formatDateTime } = useDatetime()
+const { slaStatus, slaLabel } = useSlaDueAt()
 
 function severityClass(severity: string): string {
   switch (severity) {
@@ -111,6 +112,22 @@ function onPage(event: { page: number; rows: number }) {
     <Column field="affectedUserCount" :header="t('error_report.table.affected')" style="width: 80px">
       <template #body="{ data }">
         <span class="font-mono text-xs">{{ data.affectedUserCount }}</span>
+      </template>
+    </Column>
+    <Column field="slaDueAt" :header="t('error_report.table.sla')" style="width: 110px">
+      <template #body="{ data }">
+        <ClientOnly>
+          <span
+            class="text-xs font-mono"
+            :class="{
+              'text-red-600 font-bold dark:text-red-400': slaStatus(data.slaDueAt) === 'overdue',
+              'text-orange-500 dark:text-orange-400': slaStatus(data.slaDueAt) === 'warning',
+              'text-surface-500': slaStatus(data.slaDueAt) === 'ok' || slaStatus(data.slaDueAt) === 'none',
+            }"
+          >
+            {{ slaLabel(data.slaDueAt) }}
+          </span>
+        </ClientOnly>
       </template>
     </Column>
     <Column

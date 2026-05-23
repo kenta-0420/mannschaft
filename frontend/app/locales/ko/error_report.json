@@ -15,7 +15,8 @@
       "from": "開始日",
       "to": "終了日",
       "all": "すべて",
-      "clear": "クリア"
+      "clear": "クリア",
+      "overdue_only": "SLA超過のみ"
     },
     "table": {
       "id": "#",
@@ -27,6 +28,7 @@
       "status": "状態",
       "stage": "工程",
       "assignee": "担当",
+      "sla": "SLA",
       "last_occurred": "最終発生"
     },
     "stage": {
@@ -73,7 +75,14 @@
       "admin_note": "管理者メモ",
       "comments": "コメント",
       "no_comments": "まだコメントはありません",
-      "comment_placeholder": "コメントを入力（最大2000文字）"
+      "comment_placeholder": "コメントを入力（最大2000文字）",
+      "sla_due": "SLA期限"
+    },
+    "sla": {
+      "overdue_by": "{hours}時間超過",
+      "remaining_days": "残り{days}日",
+      "remaining_hours": "残り{hours}時間",
+      "remaining_minutes": "残り{minutes}分"
     },
     "timeline": {
       "deleted_actor": "退会した管理者",

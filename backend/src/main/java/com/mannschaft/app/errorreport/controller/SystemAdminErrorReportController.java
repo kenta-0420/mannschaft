@@ -1,11 +1,13 @@
 package com.mannschaft.app.errorreport.controller;
 
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.errorreport.ErrorReportMapper;
 import com.mannschaft.app.errorreport.ErrorReportProperties;
+import com.mannschaft.app.errorreport.dto.AssignableUserResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportAiAnalysisResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportAssigneeRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportBulkUpdateRequest;
@@ -27,6 +29,7 @@ import com.mannschaft.app.errorreport.service.ErrorReportQueryService;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
 import com.mannschaft.app.errorreport.service.ErrorReportTimelineService;
 import com.mannschaft.app.errorreport.service.GitHubIssueService;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -47,6 +50,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -68,6 +73,9 @@ public class SystemAdminErrorReportController {
     private final ErrorReportAiAnalysisRepository aiAnalysisRepository;
     private final GitHubIssueService gitHubIssueService;
     private final ErrorReportProperties errorReportProperties;
+    /** F10.6 Phase 10-δ — 担当者候補一覧取得用。 */
+    private final UserRoleRepository userRoleRepository;
+    private final UserRepository userRepository;
 
     @Value("${mannschaft.claude.api-key:}")
     private String claudeApiKey;
@@ -83,12 +91,13 @@ public class SystemAdminErrorReportController {
             @RequestParam(required = false) String severity,
             @RequestParam(required = false) LocalDate from,
             @RequestParam(required = false) LocalDate to,
+            @RequestParam(defaultValue = "false") boolean overdueOnly,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "lastOccurredAt,desc") String sort) {
         int cappedSize = Math.min(size, 100);
         Pageable pageable = buildPageable(page, cappedSize, sort);
-        Page<ErrorReportEntity> result = errorReportQueryService.search(status, severity, from, to, pageable);
+        Page<ErrorReportEntity> result = errorReportQueryService.search(status, severity, from, to, overdueOnly, pageable);
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(
@@ -301,6 +310,30 @@ public class SystemAdminErrorReportController {
                 .aiMonthlyBudgetJpy(errorReportProperties.getAi().getMonthlyBudgetJpy())
                 .build();
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * F10.6 Phase 10-δ — 担当者候補となる SYSTEM_ADMIN ユーザー一覧を返す。
+     * ErrorReportAssigneeSelector のドロップダウン表示用。
+     */
+    @GetMapping("/assignable-users")
+    @Operation(summary = "担当者候補一覧取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<List<AssignableUserResponse>>> assignableUsers() {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkSystemAdmin(currentUserId);
+
+        List<Long> adminIds = userRoleRepository.findSystemAdminUserIds();
+        List<AssignableUserResponse> users = userRepository.findAllById(adminIds).stream()
+                .map(u -> AssignableUserResponse.builder()
+                        .id(u.getId())
+                        .displayName(u.getDisplayName())
+                        .profileImageUrl(u.getAvatarUrl())
+                        .build())
+                .sorted(Comparator.comparing(AssignableUserResponse::getDisplayName,
+                        Comparator.nullsLast(String::compareTo)))
+                .toList();
+        return ResponseEntity.ok(ApiResponse.of(users));
     }
 
     /**

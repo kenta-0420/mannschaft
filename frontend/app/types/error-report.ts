@@ -72,6 +72,10 @@ export interface ErrorReportDetail {
   githubIssueUrl: string | null
   lastAiAnalysisAt: string | null
   latestAiAnalysis: ErrorReportAiAnalysisSummary | null
+
+  // F10.6 Phase 10-δ 追加
+  /** SLA 対応期限。severity=LOW は NULL。 */
+  slaDueAt: string | null
 }
 
 export interface TimelineItem {
@@ -106,6 +110,8 @@ export interface ListParams {
   page?: number
   size?: number
   sort?: string
+  /** F10.6 Phase 10-δ — SLA超過のみ表示フィルタ。 */
+  overdueOnly?: boolean
 }
 
 export interface ListResponse {
@@ -181,4 +187,12 @@ export interface KanbanColumn {
 
 export interface KanbanResponse {
   columns: KanbanColumn[]
+}
+
+// ===== F10.6 Phase 10-δ — 担当者候補 =====
+
+export interface AssignableUser {
+  id: number
+  displayName: string
+  profileImageUrl: string | null
 }
