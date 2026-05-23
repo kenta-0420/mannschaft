@@ -1,6 +1,7 @@
 package com.mannschaft.app.todo.service;
 
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.timezone.TimezoneContextHolder;
 import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.TodoStatusBucket;
 import com.mannschaft.app.todo.dto.AssigneeResponse;
@@ -224,12 +225,12 @@ public class TodoResponseConverter {
     }
 
     /**
-     * 残日数を算出する。
+     * 残日数を算出する。ユーザーのタイムゾーン設定に基づいて「今日」を決定する。
      */
     private Long calculateDaysRemaining(LocalDate dueDate) {
         if (dueDate == null) {
             return null;
         }
-        return ChronoUnit.DAYS.between(LocalDate.now(), dueDate);
+        return ChronoUnit.DAYS.between(LocalDate.now(TimezoneContextHolder.get()), dueDate);
     }
 }

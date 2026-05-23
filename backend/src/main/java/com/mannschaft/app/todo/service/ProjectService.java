@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.timezone.TimezoneContextHolder;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.todo.ProjectStatus;
 import com.mannschaft.app.todo.ProjectVisibility;
@@ -633,13 +634,13 @@ public class ProjectService {
     }
 
     /**
-     * 残日数を算出する。
+     * 残日数を算出する。ユーザーのタイムゾーン設定に基づいて「今日」を決定する。
      */
     private Long calculateDaysRemaining(LocalDate dueDate) {
         if (dueDate == null) {
             return null;
         }
-        return ChronoUnit.DAYS.between(LocalDate.now(), dueDate);
+        return ChronoUnit.DAYS.between(LocalDate.now(TimezoneContextHolder.get()), dueDate);
     }
 
     /**
