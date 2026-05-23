@@ -132,6 +132,23 @@
       "loginToComment": "Inicia sesión para comentar",
       "loginLink": "Iniciar sesión",
       "deleteConfirm": "¿Estás seguro de que quieres eliminar este comentario?"
+    },
+    "publicSettings": {
+      "title": "Configuración pública",
+      "timelinePostsPublic": "Hacer públicas las publicaciones del timeline",
+      "timelinePostsPublicDescription": "Cuando está activado, los usuarios no registrados también pueden ver las publicaciones del timeline",
+      "publicEventsEnabled": "Hacer públicos los eventos",
+      "publicEventsEnabledDescription": "Cuando está activado, los usuarios no registrados también pueden ver la información de eventos",
+      "saved": "Guardado",
+      "saveError": "Error al guardar"
+    },
+    "timeline": {
+      "title": "Publicaciones del timeline",
+      "empty": "No hay publicaciones en el timeline"
+    },
+    "events": {
+      "title": "Eventos",
+      "empty": "No hay eventos"
     }
   }
 }

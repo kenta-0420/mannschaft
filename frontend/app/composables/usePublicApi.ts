@@ -1,5 +1,6 @@
 import type {
   NameDisclosureChangeLogResponse,
+  PublicEventResponse,
   PublicOrganizationResponse,
   PublicOrganizationSearchResult,
   PublicPostComment,
@@ -7,11 +8,13 @@ import type {
   PublicPostSummary,
   PublicTeamResponse,
   PublicTeamSearchResult,
+  PublicTimelinePostResponse,
   PublicUserPostSummary,
   PublicUserProfile,
   SpringPage,
   SupporterNameDisclosureResponse,
   NameDisclosureMode,
+  UpdatePublicSettingsRequest,
 } from '~/types/public'
 
 /**
@@ -128,6 +131,113 @@ export function usePublicApi() {
     return api<SpringPage<PublicOrganizationSearchResult>>(
       `/api/v1/public/organizations/search?${query.toString()}`,
     )
+  }
+
+  // ─── F19.1 Phase 7: タイムライン投稿・イベント 公開 API ───
+
+  /**
+   * チームのタイムライン投稿一覧を取得する（ページング）。
+   *
+   * timelinePostsPublic = true のチームのみ返却される。
+   * エンドポイント: GET /api/v1/public/teams/{teamId}/timeline-posts
+   */
+  async function fetchPublicTeamTimelinePosts(
+    teamId: number,
+    page = 0,
+    size = 20,
+  ): Promise<SpringPage<PublicTimelinePostResponse>> {
+    const query = new URLSearchParams()
+    query.set('page', String(page))
+    query.set('size', String(size))
+    return api<SpringPage<PublicTimelinePostResponse>>(
+      `/api/v1/public/teams/${teamId}/timeline-posts?${query.toString()}`,
+    )
+  }
+
+  /**
+   * 組織のタイムライン投稿一覧を取得する（ページング）。
+   *
+   * エンドポイント: GET /api/v1/public/organizations/{orgId}/timeline-posts
+   */
+  async function fetchPublicOrgTimelinePosts(
+    orgId: number,
+    page = 0,
+    size = 20,
+  ): Promise<SpringPage<PublicTimelinePostResponse>> {
+    const query = new URLSearchParams()
+    query.set('page', String(page))
+    query.set('size', String(size))
+    return api<SpringPage<PublicTimelinePostResponse>>(
+      `/api/v1/public/organizations/${orgId}/timeline-posts?${query.toString()}`,
+    )
+  }
+
+  /**
+   * チームのイベント一覧を取得する（ページング）。
+   *
+   * エンドポイント: GET /api/v1/public/teams/{teamId}/events
+   */
+  async function fetchPublicTeamEvents(
+    teamId: number,
+    page = 0,
+    size = 20,
+  ): Promise<SpringPage<PublicEventResponse>> {
+    const query = new URLSearchParams()
+    query.set('page', String(page))
+    query.set('size', String(size))
+    return api<SpringPage<PublicEventResponse>>(
+      `/api/v1/public/teams/${teamId}/events?${query.toString()}`,
+    )
+  }
+
+  /**
+   * 組織のイベント一覧を取得する（ページング）。
+   *
+   * エンドポイント: GET /api/v1/public/organizations/{orgId}/events
+   */
+  async function fetchPublicOrgEvents(
+    orgId: number,
+    page = 0,
+    size = 20,
+  ): Promise<SpringPage<PublicEventResponse>> {
+    const query = new URLSearchParams()
+    query.set('page', String(page))
+    query.set('size', String(size))
+    return api<SpringPage<PublicEventResponse>>(
+      `/api/v1/public/organizations/${orgId}/events?${query.toString()}`,
+    )
+  }
+
+  // ─── F19.1 Phase 7: Admin 向け 公開設定 PATCH API ───
+
+  /**
+   * チームの公開設定を更新する（ADMIN / SYSTEM_ADMIN 限定）。
+   *
+   * エンドポイント: PATCH /api/v1/admin/teams/{teamId}/public-settings
+   */
+  async function updateTeamPublicSettings(
+    teamId: number,
+    req: UpdatePublicSettingsRequest,
+  ): Promise<void> {
+    await api(`/api/v1/admin/teams/${teamId}/public-settings`, {
+      method: 'PATCH',
+      body: req,
+    })
+  }
+
+  /**
+   * 組織の公開設定を更新する（ADMIN / SYSTEM_ADMIN 限定）。
+   *
+   * エンドポイント: PATCH /api/v1/admin/organizations/{orgId}/public-settings
+   */
+  async function updateOrgPublicSettings(
+    orgId: number,
+    req: UpdatePublicSettingsRequest,
+  ): Promise<void> {
+    await api(`/api/v1/admin/organizations/${orgId}/public-settings`, {
+      method: 'PATCH',
+      body: req,
+    })
   }
 
   // ─── F19.1 Phase 6-B: 公開投稿コメント API ───
@@ -290,5 +400,12 @@ export function usePublicApi() {
     patchOrganizationNameDisclosure,
     fetchTeamNameDisclosureHistory,
     fetchOrganizationNameDisclosureHistory,
+    // Phase 7
+    fetchPublicTeamTimelinePosts,
+    fetchPublicOrgTimelinePosts,
+    fetchPublicTeamEvents,
+    fetchPublicOrgEvents,
+    updateTeamPublicSettings,
+    updateOrgPublicSettings,
   }
 }

@@ -132,6 +132,23 @@
       "loginToComment": "댓글을 남기려면 로그인하세요",
       "loginLink": "로그인",
       "deleteConfirm": "이 댓글을 삭제하시겠습니까？"
+    },
+    "publicSettings": {
+      "title": "공개 설정",
+      "timelinePostsPublic": "타임라인 게시물 공개",
+      "timelinePostsPublicDescription": "활성화하면 로그인하지 않은 사용자도 타임라인 게시물을 볼 수 있습니다",
+      "publicEventsEnabled": "이벤트 공개",
+      "publicEventsEnabledDescription": "활성화하면 로그인하지 않은 사용자도 이벤트 정보를 볼 수 있습니다",
+      "saved": "저장되었습니다",
+      "saveError": "저장에 실패했습니다"
+    },
+    "timeline": {
+      "title": "타임라인 게시물",
+      "empty": "타임라인 게시물이 없습니다"
+    },
+    "events": {
+      "title": "이벤트",
+      "empty": "이벤트가 없습니다"
     }
   }
 }

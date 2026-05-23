@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { FetchError } from 'ofetch'
 import type {
+  PublicEventResponse,
   PublicOrganizationResponse,
   PublicPostSummary,
+  PublicTimelinePostResponse,
   SpringPage,
 } from '~/types/public'
 
@@ -17,7 +19,12 @@ definePageMeta({
 
 const route = useRoute()
 const { t } = useI18n()
-const { fetchPublicOrganization, fetchPublicOrganizationPosts } = usePublicApi()
+const {
+  fetchPublicOrganization,
+  fetchPublicOrganizationPosts,
+  fetchPublicOrgTimelinePosts,
+  fetchPublicOrgEvents,
+} = usePublicApi()
 
 const rawId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
 const orgId = Number(rawId)
@@ -61,6 +68,46 @@ async function goPage(next: number) {
   if (next < 0 || next >= totalPages.value) return
   currentPage.value = next
   await refreshPosts()
+}
+
+// F19.1 Phase 7: タイムライン投稿一覧（timelinePostsPublic = true の場合のみ表示）
+const timelineCurrentPage = ref(0)
+const { data: timelinePage, refresh: refreshTimeline } = await useAsyncData<SpringPage<PublicTimelinePostResponse>>(
+  `public-org-${orgId}-timeline`,
+  () => organization.value?.timelinePostsPublic
+    ? fetchPublicOrgTimelinePosts(orgId, timelineCurrentPage.value, pageSize)
+    : Promise.resolve({ content: [], totalElements: 0, totalPages: 0, number: 0, size: pageSize, first: true, last: true, empty: true, numberOfElements: 0 }),
+  { watch: [timelineCurrentPage] },
+)
+
+const timelinePosts = computed(() => timelinePage.value?.content ?? [])
+const timelineTotalPages = computed(() => timelinePage.value?.totalPages ?? 1)
+const timelineTotalElements = computed(() => timelinePage.value?.totalElements ?? 0)
+
+async function goTimelinePage(next: number) {
+  if (next < 0 || next >= timelineTotalPages.value) return
+  timelineCurrentPage.value = next
+  await refreshTimeline()
+}
+
+// F19.1 Phase 7: イベント一覧（publicEventsEnabled = true の場合のみ表示）
+const eventCurrentPage = ref(0)
+const { data: eventsPage, refresh: refreshEvents } = await useAsyncData<SpringPage<PublicEventResponse>>(
+  `public-org-${orgId}-events`,
+  () => organization.value?.publicEventsEnabled
+    ? fetchPublicOrgEvents(orgId, eventCurrentPage.value, pageSize)
+    : Promise.resolve({ content: [], totalElements: 0, totalPages: 0, number: 0, size: pageSize, first: true, last: true, empty: true, numberOfElements: 0 }),
+  { watch: [eventCurrentPage] },
+)
+
+const events = computed(() => eventsPage.value?.content ?? [])
+const eventsTotalPages = computed(() => eventsPage.value?.totalPages ?? 1)
+const eventsTotalElements = computed(() => eventsPage.value?.totalElements ?? 0)
+
+async function goEventsPage(next: number) {
+  if (next < 0 || next >= eventsTotalPages.value) return
+  eventCurrentPage.value = next
+  await refreshEvents()
 }
 
 const config = useRuntimeConfig()
@@ -152,6 +199,130 @@ function detailHref(postId: number): string {
           size="small"
           :label="t('public.posts.next')"
           @click="goPage(currentPage + 1)"
+        />
+      </nav>
+    </section>
+
+    <!-- F19.1 Phase 7: タイムライン投稿セクション（timelinePostsPublic = true の場合のみ） -->
+    <section
+      v-if="organization.timelinePostsPublic"
+      data-testid="timeline-posts-section"
+      aria-labelledby="public-org-timeline-heading"
+      class="space-y-4"
+    >
+      <div class="flex items-center justify-between">
+        <h2 id="public-org-timeline-heading" class="text-xl font-bold">
+          {{ t('public.timeline.title') }}
+        </h2>
+        <span v-if="timelineTotalElements > 0" class="text-sm text-surface-500">
+          {{ t('public.posts.totalCount', { n: timelineTotalElements }) }}
+        </span>
+      </div>
+
+      <p v-if="timelinePosts.length === 0" class="rounded-lg bg-surface-50 p-6 text-center text-sm text-surface-500 dark:bg-surface-800">
+        {{ t('public.timeline.empty') }}
+      </p>
+
+      <div v-else class="flex flex-col gap-4">
+        <div
+          v-for="post in timelinePosts"
+          :key="post.id"
+          data-testid="timeline-post-item"
+          class="rounded-lg border border-surface-200 p-4 dark:border-surface-700"
+        >
+          <div class="mb-2 flex items-center gap-2">
+            <img
+              v-if="post.authorIconUrl"
+              :src="post.authorIconUrl"
+              :alt="post.authorDisplayName"
+              class="size-8 rounded-full object-cover"
+            >
+            <span class="text-sm font-medium">{{ post.authorDisplayName }}</span>
+            <span class="ml-auto text-xs text-surface-400">{{ post.createdAt }}</span>
+          </div>
+          <p class="text-sm">{{ post.content }}</p>
+        </div>
+      </div>
+
+      <nav v-if="timelineTotalPages > 1" class="flex items-center justify-between pt-2" aria-label="timeline-pagination">
+        <Button
+          :disabled="timelineCurrentPage <= 0"
+          severity="secondary"
+          outlined
+          size="small"
+          :label="t('public.posts.prev')"
+          @click="goTimelinePage(timelineCurrentPage - 1)"
+        />
+        <span class="text-sm text-surface-500">
+          {{ t('public.posts.page', { page: timelineCurrentPage + 1, total: timelineTotalPages }) }}
+        </span>
+        <Button
+          :disabled="timelineCurrentPage >= timelineTotalPages - 1"
+          severity="secondary"
+          outlined
+          size="small"
+          :label="t('public.posts.next')"
+          @click="goTimelinePage(timelineCurrentPage + 1)"
+        />
+      </nav>
+    </section>
+
+    <!-- F19.1 Phase 7: イベントセクション（publicEventsEnabled = true の場合のみ） -->
+    <section
+      v-if="organization.publicEventsEnabled"
+      data-testid="public-events-section"
+      aria-labelledby="public-org-events-heading"
+      class="space-y-4"
+    >
+      <div class="flex items-center justify-between">
+        <h2 id="public-org-events-heading" class="text-xl font-bold">
+          {{ t('public.events.title') }}
+        </h2>
+        <span v-if="eventsTotalElements > 0" class="text-sm text-surface-500">
+          {{ t('public.posts.totalCount', { n: eventsTotalElements }) }}
+        </span>
+      </div>
+
+      <p v-if="events.length === 0" class="rounded-lg bg-surface-50 p-6 text-center text-sm text-surface-500 dark:bg-surface-800">
+        {{ t('public.events.empty') }}
+      </p>
+
+      <div v-else class="flex flex-col gap-4">
+        <div
+          v-for="event in events"
+          :key="event.id"
+          data-testid="public-event-item"
+          class="rounded-lg border border-surface-200 p-4 dark:border-surface-700"
+        >
+          <h3 class="mb-1 text-base font-semibold">{{ event.title }}</h3>
+          <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-surface-500">
+            <span>{{ event.startDate }}</span>
+            <span v-if="event.endDate">〜 {{ event.endDate }}</span>
+            <span v-if="event.location">{{ event.location }}</span>
+          </div>
+          <p v-if="event.description" class="mt-2 text-sm">{{ event.description }}</p>
+        </div>
+      </div>
+
+      <nav v-if="eventsTotalPages > 1" class="flex items-center justify-between pt-2" aria-label="events-pagination">
+        <Button
+          :disabled="eventCurrentPage <= 0"
+          severity="secondary"
+          outlined
+          size="small"
+          :label="t('public.posts.prev')"
+          @click="goEventsPage(eventCurrentPage - 1)"
+        />
+        <span class="text-sm text-surface-500">
+          {{ t('public.posts.page', { page: eventCurrentPage + 1, total: eventsTotalPages }) }}
+        </span>
+        <Button
+          :disabled="eventCurrentPage >= eventsTotalPages - 1"
+          severity="secondary"
+          outlined
+          size="small"
+          :label="t('public.posts.next')"
+          @click="goEventsPage(eventCurrentPage + 1)"
         />
       </nav>
     </section>

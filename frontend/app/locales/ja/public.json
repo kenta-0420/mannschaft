@@ -132,6 +132,23 @@
       "loginToComment": "コメントするにはログインしてください",
       "loginLink": "ログイン",
       "deleteConfirm": "このコメントを削除しますか？"
+    },
+    "publicSettings": {
+      "title": "公開設定",
+      "timelinePostsPublic": "タイムライン投稿を公開する",
+      "timelinePostsPublicDescription": "有効にすると、未ログインのユーザーもタイムライン投稿を閲覧できます",
+      "publicEventsEnabled": "イベントを公開する",
+      "publicEventsEnabledDescription": "有効にすると、未ログインのユーザーもイベント情報を閲覧できます",
+      "saved": "保存しました",
+      "saveError": "保存に失敗しました"
+    },
+    "timeline": {
+      "title": "タイムライン投稿",
+      "empty": "タイムライン投稿はありません"
+    },
+    "events": {
+      "title": "イベント",
+      "empty": "イベントはありません"
     }
   }
 }
