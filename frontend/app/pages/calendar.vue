@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { GanttResponse, GanttTodo } from '~/types/todo'
+import { useMyCalendarData, PERSONAL_KEY, FILTER_OVERFLOW } from '~/composables/useMyCalendarData'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -57,121 +58,12 @@ const ganttLoading = ref(false)
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
-interface CalEvent {
-  id: number
-  title: string
-  startAt: string
-  endAt: string
-  allDay: boolean
-  color: string | null
-  scopeType: string
-  scopeId?: number
-  scopeName?: string | null
-  scopeIconUrl?: string | null
-  isPersonal: boolean
-}
-
-// events を CalEvent として拡張して保持するための ref
-const extendedEvents = ref<CalEvent[]>([])
-
-const fetcher = async (from: string, to: string) => {
-  const year = parseInt(from.slice(0, 4), 10)
-  const month = parseInt(from.slice(5, 7), 10)
-  const [personal, shared] = await Promise.all([
-    scheduleApi.listPersonalSchedules({ from, to }),
-    scheduleApi.getCalendarMonth(year, month),
-  ])
-  const personalEvents = ((personal.data ?? []) as CalEvent[]).map((e) => ({
-    ...e,
-    allDay: e.allDay ?? false,
-    color: e.color ?? '#22c55e',
-    isPersonal: true,
-    scopeType: 'PERSONAL',
-    scopeId: undefined,
-    scopeName: null,
-  }))
-  const sharedEvents = ((shared.data as unknown as CalEvent[]) ?? [])
-    .filter((e) => e.scopeType !== 'PERSONAL')
-    .map((e) => ({
-    ...e,
-    allDay: e.allDay ?? false,
-    color: e.color ?? null,
-    isPersonal: false,
-    scopeType: e.scopeType ?? '',
-    scopeId: e.scopeId,
-    scopeName: e.scopeName ?? null,
-    scopeIconUrl: e.scopeIconUrl ?? null,
-  }))
-  const merged = [...personalEvents, ...sharedEvents]
-  extendedEvents.value = merged
-  return merged
-}
-
-const { currentYear, currentMonth, events, loading, loadEvents, refresh, onPrevMonth: calPrevMonth, onNextMonth: calNextMonth } =
-  useCalendarEvents(fetcher, { cacheHalfMonths: 0 })
-
-// #51: スコープフィルタ
-interface ScopeOption {
-  label: string
-  value: string
-  scopeType: string
-  scopeId: number
-}
-
-const availableScopes = computed<ScopeOption[]>(() => {
-  const seen = new Set<string>()
-  const result: ScopeOption[] = []
-  for (const e of extendedEvents.value) {
-    const st = e.scopeType
-    const sid = e.scopeId
-    const name = e.scopeName
-    if (!st || st === 'PERSONAL' || !sid) continue
-    const key = `${st}:${sid}`
-    if (!seen.has(key)) {
-      seen.add(key)
-      result.push({ label: name ?? `${st} ${sid}`, value: key, scopeType: st, scopeId: sid })
-    }
-  }
-  return result
-})
-
-const SCOPE_FILTER_KEY = 'mannschaft:calendar:scopeFilter'
-const PERSONAL_KEY = 'PERSONAL'
-const selectedScopes = ref<string[]>([])
-
-// 個人を含む全スコープ（フィルタ・MultiSelect 共通ソース）
-const allScopeOptions = computed<ScopeOption[]>(() => [
-  { label: '個人', value: PERSONAL_KEY, scopeType: 'PERSONAL', scopeId: 0 },
-  ...availableScopes.value,
-])
-
-const filteredEvents = computed(() => {
-  return events.value.filter(e => {
-    const ext = extendedEvents.value.find(x => x.id === e.id && x.isPersonal === e.isPersonal)
-    if (!ext) return false
-    if (ext.isPersonal || ext.scopeType === 'PERSONAL') {
-      return selectedScopes.value.includes(PERSONAL_KEY)
-    }
-    const key = `${ext.scopeType}:${ext.scopeId}`
-    return selectedScopes.value.includes(key)
-  })
-})
-
-function toggleScope(value: string) {
-  const idx = selectedScopes.value.indexOf(value)
-  if (idx >= 0) {
-    selectedScopes.value = selectedScopes.value.filter((_, i) => i !== idx)
-  } else {
-    selectedScopes.value = [...selectedScopes.value, value]
-  }
-}
-
-const FILTER_OVERFLOW = 5
-
-const multiSelectScopes = computed({
-  get: () => [...selectedScopes.value],
-  set: (vals: string[]) => { selectedScopes.value = vals },
-})
+const {
+  currentYear, currentMonth, events, loading, loadEvents, refresh,
+  onPrevMonth: calPrevMonth, onNextMonth: calNextMonth,
+  extendedEvents, availableScopes, allScopeOptions, selectedScopes,
+  filteredEvents, toggleScope, multiSelectScopes, initStorage,
+} = useMyCalendarData()
 
 // #49-B: 日別一覧
 const dayEvents = computed(() => {
@@ -363,37 +255,12 @@ function onNextMonth() {
   if (activeTab.value === 'gantt') loadGantt()
 }
 
-let hasSavedFilter = false
-
 onMounted(() => {
-  try {
-    const saved = localStorage.getItem(SCOPE_FILTER_KEY)
-    if (saved) {
-      selectedScopes.value = JSON.parse(saved)
-      hasSavedFilter = true
-    }
-  } catch { /* 無視 */ }
+  initStorage()
   loadEvents()
   // クエリパラメータ ?tab=gantt で直接ガントタブを開いた場合は初期読み込みを行う
   if (activeTab.value === 'gantt') {
     loadGantt()
-  }
-})
-
-watch(selectedScopes, (val) => {
-  try {
-    localStorage.setItem(SCOPE_FILTER_KEY, JSON.stringify(val))
-  } catch { /* 無視 */ }
-}, { deep: true })
-
-// allScopeOptions が初めて確定したとき、localStorage がなければ全選択で初期化
-let scopesInitialized = false
-watch(allScopeOptions, (opts) => {
-  if (!scopesInitialized && opts.length > 1) {
-    scopesInitialized = true
-    if (!hasSavedFilter) {
-      selectedScopes.value = opts.map(s => s.value)
-    }
   }
 })
 </script>
