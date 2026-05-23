@@ -1,7 +1,5 @@
 package com.mannschaft.app.circulation.service;
 
-import com.mannschaft.app.auth.AuditEventType;
-import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.circulation.CirculationErrorCode;
 import com.mannschaft.app.circulation.CirculationExportStatus;
 import com.mannschaft.app.circulation.CirculationStatus;
@@ -9,13 +7,14 @@ import com.mannschaft.app.circulation.RecipientStatus;
 import com.mannschaft.app.circulation.dto.ExportRequestResponse;
 import com.mannschaft.app.circulation.dto.ExportStatusResponse;
 import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
+import com.mannschaft.app.circulation.event.CirculationExportRequestedEvent;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,10 +59,7 @@ public class CirculationExportService {
     private final CirculationRecipientRepository recipientRepository;
     private final StorageService storageService;
     private final CirculationExportAsyncExecutor asyncExecutor;
-
-    /** 監査ログ発火用（テスト構成では null 注入を許容）。 */
-    @Autowired(required = false)
-    private AuditLogService auditLogService;
+    private final DomainEventPublisher eventPublisher;
 
     /**
      * 押印済み証跡 PDF のエクスポートを要求する。
@@ -119,7 +115,12 @@ public class CirculationExportService {
         entity.markExportPending();
         documentRepository.save(entity);
 
-        recordAudit(AuditEventType.CIRCULATION_EXPORT_REQUESTED.name(), actorId, entity);
+        // 監査ログはイベント経由（circulation ドメインから auth.AuditLogService を直接呼ぶとドメイン境界原則5違反）
+        eventPublisher.publish(new CirculationExportRequestedEvent(
+                actorId,
+                entity.getId(),
+                "TEAM".equals(entity.getScopeType()) ? entity.getScopeId() : null,
+                "ORGANIZATION".equals(entity.getScopeType()) ? entity.getScopeId() : null));
 
         log.info("回覧 PDF エクスポート要求: documentId={}, actorId={}", documentId, actorId);
         asyncExecutor.generateAsync(documentId);
@@ -171,7 +172,7 @@ public class CirculationExportService {
     /**
      * 認可判定: 作成者 / 受信者 / ADMIN のいずれかを満たすか。
      *
-     * @throws BusinessException {@code COMMON_001} 権限不足
+     * @throws BusinessException {@code COMMON_002} 権限不足
      */
     private void assertCanAccessExport(CirculationDocumentEntity entity, Long actorId, boolean isAdmin) {
         if (isAdmin) {
@@ -192,20 +193,4 @@ public class CirculationExportService {
         }
     }
 
-    /**
-     * 監査ログ発火（{@link AuditLogService} 未設定時はスキップ）。
-     */
-    private void recordAudit(String eventType, Long actorId, CirculationDocumentEntity entity) {
-        if (auditLogService == null) {
-            return;
-        }
-        auditLogService.record(
-                eventType,
-                actorId,
-                null,
-                "TEAM".equals(entity.getScopeType()) ? entity.getScopeId() : null,
-                "ORGANIZATION".equals(entity.getScopeType()) ? entity.getScopeId() : null,
-                null, null, null,
-                "{\"documentId\":" + entity.getId() + "}");
-    }
 }

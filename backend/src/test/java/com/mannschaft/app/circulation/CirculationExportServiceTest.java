@@ -1,8 +1,8 @@
 package com.mannschaft.app.circulation;
 
 import com.mannschaft.app.auth.repository.UserRepository;
-import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.circulation.dto.ExportRequestResponse;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.circulation.dto.ExportStatusResponse;
 import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
 import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
@@ -68,15 +68,10 @@ class CirculationExportServiceTest {
     private CirculationExportAsyncExecutor asyncExecutor;
 
     @Mock
-    private AuditLogService auditLogService;
+    private DomainEventPublisher eventPublisher;
 
     @InjectMocks
     private CirculationExportService exportService;
-
-    @BeforeEach
-    void injectOptionalFields() {
-        ReflectionTestUtils.setField(exportService, "auditLogService", auditLogService);
-    }
 
     @Test
     @DisplayName("COMPLETED 文書 + NOT_GENERATED → 202 受付 + PENDING に遷移")
@@ -263,7 +258,7 @@ class CirculationExportServiceTest {
         private UserRepository userRepository;
 
         @Mock
-        private AuditLogService auditLogService;
+        private DomainEventPublisher eventPublisher;
 
         @InjectMocks
         private CirculationExportAsyncExecutor asyncExecutor;
@@ -271,7 +266,6 @@ class CirculationExportServiceTest {
         @BeforeEach
         void injectOptionalFields() {
             ReflectionTestUtils.setField(asyncExecutor, "userRepository", userRepository);
-            ReflectionTestUtils.setField(asyncExecutor, "auditLogService", auditLogService);
         }
 
         @Test

@@ -26,11 +26,11 @@ import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.auth.event.WithdrawalCancelledEvent;
 import com.mannschaft.app.auth.event.WithdrawalRequestedEvent;
 import com.mannschaft.app.weather.event.UserPostalCodeUpdatedEvent;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
-import com.mannschaft.app.gdpr.GdprErrorCode;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -67,6 +67,7 @@ public class UserService {
     private final EncryptionService encryptionService;
     private final UserRoleRepository userRoleRepository;
     private final ParentalConsentService parentalConsentService;
+    private final AccessControlService accessControlService;
 
     /**
      * パスワードポリシー: 8文字以上、大文字・小文字・数字・記号をそれぞれ1文字以上含む
@@ -99,6 +100,8 @@ public class UserService {
                 .map(oa -> oa.getProvider().name())
                 .collect(Collectors.toList());
 
+        // TODO: userRoleRepository.isSystemAdmin() は role ドメイン直接参照。
+        //   将来は accessControlService.isSystemAdmin(userId) に移行予定（既存 API の変更影響を考慮し現状維持）
         String systemRole = userRoleRepository.isSystemAdmin(userId) > 0 ? "SYSTEM_ADMIN" : null;
 
         UserProfileResponse response = new UserProfileResponse(
@@ -406,10 +409,9 @@ public class UserService {
      * @param req    退会リクエスト
      */
     @Transactional
-    // TODO: authドメインとroleドメインをまたいでいる（UserRoleRepository.countSystemAdmins/isSystemAdminを直接呼び出し）。将来はUserWithdrawalRequestedEventで分離予定
     public void requestWithdrawal(Long userId, RequestWithdrawalRequest req) {
-        // 唯一の SYSTEM_ADMIN であれば退会をブロック
-        checkNotLastSystemAdmin(userId);
+        // 唯一の SYSTEM_ADMIN であれば退会をブロック（role ドメイン参照は AccessControlService 経由に集約）
+        accessControlService.checkNotLastSystemAdmin(userId);
 
         // F01.9: 唯一の保護者退会ブロック
         parentalConsentService.checkWithdrawalBlock(userId);
@@ -487,10 +489,9 @@ public class UserService {
      * @param userId 退会対象ユーザーID
      */
     @Transactional
-    // TODO: authドメインとroleドメインをまたいでいる（UserRoleRepository.countSystemAdmins/isSystemAdminを直接呼び出し）。将来はUserWithdrawnEventで分離予定
     public void withdrawUser(Long userId) {
-        // 唯一の SYSTEM_ADMIN であれば退会をブロック
-        checkNotLastSystemAdmin(userId);
+        // 唯一の SYSTEM_ADMIN であれば退会をブロック（role ドメイン参照は AccessControlService 経由に集約）
+        accessControlService.checkNotLastSystemAdmin(userId);
 
         UserEntity user = findUserOrThrow(userId);
 
@@ -513,17 +514,6 @@ public class UserService {
     }
 
     // === ヘルパーメソッド ===
-
-    /**
-     * 対象ユーザーがプラットフォームレベルの唯一のSYSTEM_ADMINである場合、退会をブロックする。
-     * ロールは user_roles JOIN roles で管理（team_id・organization_id が NULL のプラットフォームスコープ）。
-     */
-    private void checkNotLastSystemAdmin(Long userId) {
-        long systemAdminCount = userRoleRepository.countSystemAdmins();
-        if (systemAdminCount <= 1 && userRoleRepository.isSystemAdmin(userId) > 0) {
-            throw new BusinessException(GdprErrorCode.GDPR_006);
-        }
-    }
 
     /**
      * ユーザーを取得する。見つからない場合は AUTH_015 をスロー。

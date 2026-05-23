@@ -2,6 +2,7 @@ package com.mannschaft.app.common;
 
 import com.mannschaft.app.family.CareLinkStatus;
 import com.mannschaft.app.family.repository.UserCareLinkRepository;
+import com.mannschaft.app.gdpr.GdprErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.repository.MembershipRepository;
@@ -187,6 +188,25 @@ public class AccessControlService {
     public void checkSystemAdmin(Long userId) {
         if (!isSystemAdmin(userId)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    /**
+     * 対象ユーザーがプラットフォームレベルの唯一の SYSTEM_ADMIN である場合、退会をブロックする。
+     *
+     * <p>本メソッドは auth ドメインの {@code UserService} がクロスドメイン参照なしに
+     * ロール判定を行えるよう、共通ヘルパー ({@code common} パッケージ) に集約したものである。
+     * {@code UserRoleRepository} は role ドメインに属するため、直接 auth から呼ぶと
+     * ドメイン境界原則5（@Transactional はドメイン内に閉じる）に違反する。
+     * {@code AccessControlService} を経由することでドメイン越境を解消している。</p>
+     *
+     * @param userId 退会対象ユーザーID
+     * @throws BusinessException {@code GDPR_006}: 唯一の SYSTEM_ADMIN は退会不可
+     */
+    public void checkNotLastSystemAdmin(Long userId) {
+        long systemAdminCount = userRoleRepository.countSystemAdmins();
+        if (systemAdminCount <= 1 && userRoleRepository.isSystemAdmin(userId) > 0) {
+            throw new BusinessException(GdprErrorCode.GDPR_006);
         }
     }
 

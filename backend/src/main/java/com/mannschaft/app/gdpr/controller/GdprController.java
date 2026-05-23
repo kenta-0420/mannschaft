@@ -1,14 +1,18 @@
 package com.mannschaft.app.gdpr.controller;
 
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.gdpr.dto.DataExportRequest;
 import com.mannschaft.app.gdpr.dto.DataExportResponse;
 import com.mannschaft.app.gdpr.dto.DeletionPreviewResponse;
+import com.mannschaft.app.gdpr.dto.UserEmailInfo;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.service.DataExportService;
+import com.mannschaft.app.auth.AuthErrorCode;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,6 +44,7 @@ public class GdprController {
     private final ChartRecordRepository chartRecordRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final MemberPaymentRepository memberPaymentRepository;
+    private final UserRepository userRepository;
 
     /**
      * POST /api/v1/account/data-export
@@ -54,7 +59,11 @@ public class GdprController {
             @Valid @RequestBody DataExportRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         DataExportEntity entity = dataExportService.requestExport(userId, request.getCategories());
-        dataExportService.processExportAsync(entity.getId(), userId, request.getCategories());
+        // ユーザー情報をコントローラー層で先取り（DataExportService から auth.UserRepository を呼ばないドメイン境界設計）
+        UserEmailInfo userInfo = userRepository.findById(userId)
+                .map(u -> new UserEmailInfo(u.getId(), u.getEmail(), u.getLastName(), u.getFirstName()))
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_015));
+        dataExportService.processExportAsync(entity.getId(), userInfo, request.getCategories());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.of(toResponse(entity)));
     }
 

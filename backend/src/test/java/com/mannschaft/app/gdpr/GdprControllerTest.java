@@ -1,5 +1,7 @@
 package com.mannschaft.app.gdpr;
 
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
@@ -15,6 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -25,6 +28,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -69,6 +73,9 @@ class GdprControllerTest {
     @MockitoBean
     private MemberPaymentRepository memberPaymentRepository;
 
+    @MockitoBean
+    private UserRepository userRepository;
+
     @BeforeEach
     void setUpSecurityContext() {
         UsernamePasswordAuthenticationToken auth =
@@ -87,6 +94,12 @@ class GdprControllerTest {
                     .userId(1L)
                     .status("PENDING")
                     .build();
+            UserEntity mockUser = Mockito.mock(UserEntity.class);
+            given(mockUser.getId()).willReturn(1L);
+            given(mockUser.getEmail()).willReturn("test@example.com");
+            given(mockUser.getLastName()).willReturn("山田");
+            given(mockUser.getFirstName()).willReturn("太郎");
+            given(userRepository.findById(1L)).willReturn(Optional.of(mockUser));
             given(dataExportService.requestExport(anyLong(), any())).willReturn(entity);
 
             mockMvc.perform(post("/api/v1/account/data-export")

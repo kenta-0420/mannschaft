@@ -1,14 +1,14 @@
 package com.mannschaft.app.circulation.service;
 
-import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.repository.UserRepository;
-import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
 import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
 import com.mannschaft.app.circulation.entity.CirculationStampCorrectionLogEntity;
+import com.mannschaft.app.circulation.event.CirculationExportGeneratedEvent;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.circulation.repository.CirculationStampCorrectionLogRepository;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.storage.StorageService;
 import lombok.RequiredArgsConstructor;
@@ -47,14 +47,11 @@ public class CirculationExportAsyncExecutor {
     private final CirculationStampCorrectionLogRepository correctionLogRepository;
     private final PdfGeneratorService pdfGeneratorService;
     private final StorageService storageService;
+    private final DomainEventPublisher eventPublisher;
 
     /** 受信者表示名解決用（テスト構成では null 注入を許容）。 */
     @Autowired(required = false)
     private UserRepository userRepository;
-
-    /** 監査ログ発火用（テスト構成では null 注入を許容）。 */
-    @Autowired(required = false)
-    private AuditLogService auditLogService;
 
     /**
      * 非同期 PDF 生成ジョブ本体。
@@ -85,7 +82,12 @@ public class CirculationExportAsyncExecutor {
             entity.markExportCompleted(fileKey);
             documentRepository.save(entity);
 
-            recordAudit(AuditEventType.CIRCULATION_EXPORT_GENERATED.name(), entity.getCreatedBy(), entity);
+            // 監査ログはイベント経由（circulation ドメインから auth.AuditLogService を直接呼ぶとドメイン境界原則5違反）
+            eventPublisher.publish(new CirculationExportGeneratedEvent(
+                    entity.getCreatedBy(),
+                    entity.getId(),
+                    "TEAM".equals(entity.getScopeType()) ? entity.getScopeId() : null,
+                    "ORGANIZATION".equals(entity.getScopeType()) ? entity.getScopeId() : null));
 
             log.info("回覧 PDF 非同期生成 完了: documentId={}, fileKey={}", documentId, fileKey);
         } catch (Exception ex) {
@@ -159,20 +161,4 @@ public class CirculationExportAsyncExecutor {
         return pdfGeneratorService.generateFromTemplate(EXPORT_TEMPLATE, vars);
     }
 
-    /**
-     * 監査ログ発火（{@link AuditLogService} 未設定時はスキップ）。
-     */
-    private void recordAudit(String eventType, Long actorId, CirculationDocumentEntity entity) {
-        if (auditLogService == null) {
-            return;
-        }
-        auditLogService.record(
-                eventType,
-                actorId,
-                null,
-                "TEAM".equals(entity.getScopeType()) ? entity.getScopeId() : null,
-                "ORGANIZATION".equals(entity.getScopeType()) ? entity.getScopeId() : null,
-                null, null, null,
-                "{\"documentId\":" + entity.getId() + "}");
-    }
 }
