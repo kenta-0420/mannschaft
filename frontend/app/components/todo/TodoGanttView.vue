@@ -9,6 +9,10 @@ const props = defineProps<{
   toDate: string
 }>()
 
+const emit = defineEmits<{
+  todoClick: [id: number]
+}>()
+
 /** 2つの日付文字列（yyyy-MM-dd）の差分日数を計算する */
 function dateDiffDays(from: string, to: string): number {
   const f = new Date(from)
@@ -113,8 +117,9 @@ const headerCellWidth = computed(() => `${(100 / totalDays.value).toFixed(4)}%`)
         <div
           v-for="todo in todos"
           :key="todo.id"
-          class="flex border-b border-surface-200 hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-800/50"
+          class="flex cursor-pointer border-b border-surface-200 hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-800/50"
           :class="{ 'opacity-60': todo.status === 'COMPLETED' }"
+          @click="emit('todoClick', todo.id)"
         >
           <!-- タイトル列 -->
           <div

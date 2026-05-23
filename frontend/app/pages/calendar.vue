@@ -458,6 +458,7 @@ onMounted(() => {
             :todos="ganttTodos"
             :from-date="ganttFromDate"
             :to-date="ganttToDate"
+            @todo-click="(id) => router.push(`/todos/${id}`)"
           />
         </Transition>
       </div>
