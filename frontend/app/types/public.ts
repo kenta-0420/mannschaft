@@ -58,6 +58,8 @@ export interface PublicTeamResponse {
   philosophy: string | null
   memberCount: number | null
   mapEmbedUrl: string | null
+  /** F19.1 Phase 7: タイムライン投稿の公開設定 */
+  timelinePostsPublic: boolean
 }
 
 /** F19.1 公開組織ページ用の抑制版レスポンス。 */
@@ -77,6 +79,54 @@ export interface PublicOrganizationResponse {
   establishedDatePrecision: string | null
   philosophy: string | null
   mapEmbedUrl: string | null
+  /** F19.1 Phase 7: タイムライン投稿の公開設定 */
+  timelinePostsPublic: boolean
+  /** F19.1 Phase 7: イベントの公開設定 */
+  publicEventsEnabled: boolean
+}
+
+// ─── F19.1 Phase 7: タイムライン投稿・イベント 公開 API 型 ───
+
+/**
+ * F19.1 Phase 7: 公開タイムライン投稿サマリー DTO。
+ *
+ * エンドポイント: GET /api/v1/public/teams/{teamId}/timeline-posts
+ *                GET /api/v1/public/organizations/{orgId}/timeline-posts
+ */
+export interface PublicTimelinePostResponse {
+  id: string
+  content: string
+  authorDisplayName: string
+  authorIconUrl: string | null
+  createdAt: string
+}
+
+/**
+ * F19.1 Phase 7: 公開イベント DTO。
+ *
+ * エンドポイント: GET /api/v1/public/teams/{teamId}/events
+ *                GET /api/v1/public/organizations/{orgId}/events
+ */
+export interface PublicEventResponse {
+  id: string
+  title: string
+  startDate: string
+  endDate: string | null
+  location: string | null
+  description: string | null
+  visibility: string
+  createdAt: string
+}
+
+/**
+ * F19.1 Phase 7: 管理者用 公開設定更新リクエスト。
+ *
+ * エンドポイント: PATCH /api/v1/admin/teams/{teamId}/public-settings
+ *                PATCH /api/v1/admin/organizations/{orgId}/public-settings
+ */
+export interface UpdatePublicSettingsRequest {
+  timelinePostsPublic?: boolean
+  publicEventsEnabled?: boolean
 }
 
 /** F19.1 公開投稿一覧用の summary DTO。 */

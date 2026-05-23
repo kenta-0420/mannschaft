@@ -132,6 +132,23 @@
       "loginToComment": "请登录后发表评论",
       "loginLink": "登录",
       "deleteConfirm": "确定要删除此评论吗？"
+    },
+    "publicSettings": {
+      "title": "公开设置",
+      "timelinePostsPublic": "公开时间线帖子",
+      "timelinePostsPublicDescription": "启用后，未登录的用户也可以查看时间线帖子",
+      "publicEventsEnabled": "公开活动信息",
+      "publicEventsEnabledDescription": "启用后，未登录的用户也可以查看活动信息",
+      "saved": "已保存",
+      "saveError": "保存失败"
+    },
+    "timeline": {
+      "title": "时间线帖子",
+      "empty": "暂无时间线帖子"
+    },
+    "events": {
+      "title": "活动",
+      "empty": "暂无活动"
     }
   }
 }

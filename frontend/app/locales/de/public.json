@@ -132,6 +132,23 @@
       "loginToComment": "Bitte melden Sie sich an, um zu kommentieren",
       "loginLink": "Anmelden",
       "deleteConfirm": "Möchten Sie diesen Kommentar wirklich löschen?"
+    },
+    "publicSettings": {
+      "title": "Öffentlichkeitseinstellungen",
+      "timelinePostsPublic": "Timeline-Beiträge öffentlich machen",
+      "timelinePostsPublicDescription": "Wenn aktiviert, können auch nicht angemeldete Benutzer Timeline-Beiträge sehen",
+      "publicEventsEnabled": "Veranstaltungen öffentlich machen",
+      "publicEventsEnabledDescription": "Wenn aktiviert, können auch nicht angemeldete Benutzer Veranstaltungsinformationen sehen",
+      "saved": "Gespeichert",
+      "saveError": "Fehler beim Speichern"
+    },
+    "timeline": {
+      "title": "Timeline-Beiträge",
+      "empty": "Keine Timeline-Beiträge"
+    },
+    "events": {
+      "title": "Veranstaltungen",
+      "empty": "Keine Veranstaltungen"
     }
   }
 }
