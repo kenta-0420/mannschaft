@@ -138,6 +138,12 @@ public class TeamEntity extends BaseEntity {
     @Builder.Default
     private Boolean publicEventsEnabled = Boolean.FALSE;
 
+    /** F19.1 Phase 7: タイムライン投稿を公開ページに表示するか。 */
+    @Column(name = "timeline_posts_public", nullable = false,
+            columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    @Builder.Default
+    private boolean timelinePostsPublic = false;
+
     /**
      * チーム公開範囲
      */
@@ -187,5 +193,15 @@ public class TeamEntity extends BaseEntity {
      */
     public void updateBannerUrl(String bannerUrl) {
         this.bannerUrl = bannerUrl;
+    }
+
+    /** F19.1 Phase 7: タイムライン公開設定を更新する。 */
+    public void updateTimelinePostsPublic(boolean enabled) {
+        this.timelinePostsPublic = enabled;
+    }
+
+    /** F19.1 Phase 7: イベント公開設定を更新する。 */
+    public void updatePublicEventsEnabled(boolean enabled) {
+        this.publicEventsEnabled = enabled;
     }
 }
