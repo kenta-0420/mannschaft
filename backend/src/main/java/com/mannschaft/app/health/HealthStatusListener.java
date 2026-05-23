@@ -155,7 +155,7 @@ public class HealthStatusListener {
                 log.warn("Health DOWN error_reports 記録失敗: component={}", component, e);
             }
         } else if (Status.DOWN.equals(prev) && Status.UP.equals(currentStatus)) {
-            // F10.6 Phase 10-γ-① — 復旧を error_report_activities に HEALTH_RECOVERED として記録する
+            // F10.6 Phase 10-γ-① — 復旧を error_report_activities に HEALTH_RECOVERED として記録し、ステータスを RESOLVED に変更する
             log.info("Health 状態遷移 DOWN→UP 復旧: component={}", component);
             Long reportId = componentToReportId.get(component);
             if (reportId != null) {
@@ -166,6 +166,8 @@ public class HealthStatusListener {
                     );
                     errorReportActivityService.recordSystemActivity(reportId, ErrorReportActivityType.HEALTH_RECOVERED, metadata);
                     log.info("Health 復旧アクティビティ記録完了: component={}, reportId={}", component, reportId);
+                    // ヘルス復旧時はエラーレポートを自動解決してインシデントバナーを消す
+                    errorReportService.resolveHealthReport(reportId);
                 } catch (Exception e) {
                     log.warn("Health 復旧 activity 記録失敗: component={}, reportId={}", component, reportId, e);
                 }
