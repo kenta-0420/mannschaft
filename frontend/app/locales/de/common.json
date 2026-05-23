@@ -1130,7 +1130,9 @@
       "organizations": "Organisationen",
       "showAll": "Alle anzeigen",
       "foldersSection": "Ordner",
-      "quickJumpSection": "Direkt springen"
+      "quickJumpSection": "Direkt springen",
+      "sectionMember": "Mitglieder",
+      "sectionSupporter": "Unterstützer"
     },
     "error": {
       "typeMismatch": "Ordner-Bereichstyp stimmt nicht überein",

@@ -1130,7 +1130,9 @@
       "organizations": "조직",
       "showAll": "모두 표시",
       "foldersSection": "폴더",
-      "quickJumpSection": "바로 이동"
+      "quickJumpSection": "바로 이동",
+      "sectionMember": "멤버",
+      "sectionSupporter": "서포터"
     },
     "error": {
       "typeMismatch": "폴더 범위 유형이 일치하지 않습니다",
