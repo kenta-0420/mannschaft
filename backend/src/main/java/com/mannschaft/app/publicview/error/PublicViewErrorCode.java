@@ -56,6 +56,29 @@ public enum PublicViewErrorCode implements ErrorCode {
      */
     PUBLIC_007("PUBLIC_007",
             "ユーザープロフィールが公開されていません",
+            Severity.WARN),
+
+    /**
+     * F19.1 Phase 6-B: コメント対象の投稿が存在しないか公開されていません (404 へ正規化)。
+     *
+     * <p>IDOR 対策のため、存在しない投稿・非公開投稿・削除済み投稿を区別しない。</p>
+     */
+    PUBLIC_008("PUBLIC_008",
+            "コメント対象の投稿が存在しないか公開されていません",
+            Severity.WARN),
+
+    /**
+     * F19.1 Phase 6-B: コメントが見つかりません (404 へ正規化)。
+     */
+    PUBLIC_009("PUBLIC_009",
+            "コメントが見つかりません",
+            Severity.WARN),
+
+    /**
+     * F19.1 Phase 6-B: このコメントを削除する権限がありません (403 へ正規化)。
+     */
+    PUBLIC_010("PUBLIC_010",
+            "このコメントを削除する権限がありません",
             Severity.WARN);
 
     private final String code;
