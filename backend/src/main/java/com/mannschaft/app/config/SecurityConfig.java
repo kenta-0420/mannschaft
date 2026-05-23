@@ -138,6 +138,10 @@ public class SecurityConfig {
                 // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §7.x Phase 4
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/search").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/search").permitAll()
+                // F19.1 Phase 6 公開ユーザープロフィール API（認証不要・レート制限あり）
+                // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §6.6 Phase 6
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/users/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/users/*/posts").permitAll()
                 // F09.7 クリック計測（認証不要・未ログインユーザーのクリックにも対応）
                 // TODO: 将来 IP ベースのレート制限を AdPublicEndpointRateLimitFilter に追加して不正クリックを防止する
                 .requestMatchers(HttpMethod.POST, "/api/v1/ads/*/click").permitAll()
