@@ -135,9 +135,12 @@ class ActuatorEndpointSecurityTest {
         @Bean
         @SuppressWarnings("unchecked")
         PublicApiRateLimitFilter publicApiRateLimitFilter() {
-            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.auth.service.AuditLogService> provider =
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.auth.service.AuditLogService> auditProvider =
                     mock(org.springframework.beans.factory.ObjectProvider.class);
-            return new PublicApiRateLimitFilter(provider);
+            // F19.1 Phase 5: MeterRegistry ObjectProvider も渡す（何もしない Empty Provider）
+            org.springframework.beans.factory.ObjectProvider<io.micrometer.core.instrument.MeterRegistry> meterProvider =
+                    mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new PublicApiRateLimitFilter(auditProvider, meterProvider);
         }
 
         /**
