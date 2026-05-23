@@ -8,6 +8,8 @@ import com.mannschaft.app.common.util.SessionHashUtil;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +24,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -152,11 +155,21 @@ public class PublicApiRateLimitFilter extends OncePerRequestFilter {
      */
     private final ObjectProvider<AuditLogService> auditLogServiceProvider;
 
+    /**
+     * F19.1 Phase 5: Micrometer メトリクス記録用。
+     *
+     * <p>{@link ObjectProvider} 経由で弱結合化し、{@code @WebMvcTest} 最小コンテキストでも
+     * インスタンス化できるようにする。</p>
+     */
+    private final ObjectProvider<MeterRegistry> meterRegistryProvider;
+
     public PublicApiRateLimitFilter(
-            ObjectProvider<AuditLogService> auditLogServiceProvider) {
+            ObjectProvider<AuditLogService> auditLogServiceProvider,
+            ObjectProvider<MeterRegistry> meterRegistryProvider) {
         this.authenticatedBuckets = newCache();
         this.anonymousBuckets = newCache();
         this.auditLogServiceProvider = auditLogServiceProvider;
+        this.meterRegistryProvider = meterRegistryProvider;
     }
 
     private static Cache<String, Bucket> newCache() {
@@ -217,7 +230,10 @@ public class PublicApiRateLimitFilter extends OncePerRequestFilter {
         }
 
         if (bucket.tryConsume(1)) {
+            // リクエスト通過時: doFilter 後にレスポンスステータスを取得してカウンターに記録
             chain.doFilter(request, response);
+            // F19.1 Phase 5: リクエストカウンター記録
+            recordRequestMetric(path, request.getMethod(), response.getStatus());
         } else {
             // レート違反時の AuditEvent 記録（非同期 fire-and-forget）
             recordRateLimitAudit(request, target, userId, orgMatcher, publicMatcher);
@@ -227,6 +243,104 @@ public class PublicApiRateLimitFilter extends OncePerRequestFilter {
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setCharacterEncoding(StandardCharsets.UTF_8.name());
             response.getWriter().write("{\"error\":\"Too many requests\"}");
+
+            // F19.1 Phase 5: レート超過カウンター記録
+            recordRateLimitExceededMetric(path, request.getRemoteAddr());
+        }
+    }
+
+    /**
+     * F19.1 Phase 5: 公開 API へのリクエストを Counter に記録する。
+     *
+     * <p>path の {@code {id}} 部分（数値 or UUID）を {@code *} に正規化して
+     * cardinality 爆発を防ぐ。</p>
+     *
+     * @param rawPath    リクエストパス（正規化前）
+     * @param method     HTTP メソッド
+     * @param statusCode HTTP レスポンスステータスコード
+     */
+    private void recordRequestMetric(String rawPath, String method, int statusCode) {
+        meterRegistryProvider.ifAvailable(registry -> {
+            String normalizedPath = normalizePath(rawPath);
+            Counter.builder("public.api.requests")
+                    .description("公開ページ API へのリクエスト数")
+                    .tag("path", normalizedPath)
+                    .tag("method", method)
+                    .tag("status", String.valueOf(statusCode))
+                    .register(registry)
+                    .increment();
+        });
+    }
+
+    /**
+     * F19.1 Phase 5: レート制限超過を Counter に記録する。
+     *
+     * <p>IP アドレスは SHA-256 先頭 8 文字のハッシュ値に変換してから tag に格納する
+     * （生 IP の記録を避けて GDPR リスクを低減する）。</p>
+     *
+     * @param rawPath    リクエストパス（正規化前）
+     * @param remoteAddr クライアント IP アドレス
+     */
+    private void recordRateLimitExceededMetric(String rawPath, String remoteAddr) {
+        meterRegistryProvider.ifAvailable(registry -> {
+            String normalizedPath = normalizePath(rawPath);
+            String ipHash = sha256Prefix8(remoteAddr);
+            Counter.builder("public.api.rate_limit.exceeded")
+                    .description("公開ページ API のレート制限超過回数")
+                    .tag("path", normalizedPath)
+                    .tag("ip_hash", ipHash)
+                    .register(registry)
+                    .increment();
+        });
+    }
+
+    /**
+     * パスの数値 ID 部分を {@code *} に正規化する（cardinality 爆発防止）。
+     *
+     * <p>例:</p>
+     * <ul>
+     *   <li>/api/v1/public/teams/123/posts -&gt; /api/v1/public/teams/{@literal *}/posts</li>
+     *   <li>/api/v1/public/teams/123/posts/456 -&gt; /api/v1/public/teams/{@literal *}/posts/{@literal *}</li>
+     *   <li>/api/v1/organizations/789/teams/search -&gt; /api/v1/organizations/{@literal *}/teams/search</li>
+     * </ul>
+     *
+     * @param path 生パス
+     * @return 正規化後パス
+     */
+    static String normalizePath(String path) {
+        if (path == null) {
+            return "*";
+        }
+        // 数値（Long range）を * に置換
+        return path.replaceAll("/[0-9]+", "/*");
+    }
+
+    /**
+     * 入力文字列の SHA-256 ハッシュ値の先頭 8 文字を返す。
+     *
+     * <p>IP アドレスを tag に格納する際の GDPR リスク低減目的で使用する。
+     * 変換に失敗した場合は {@code "unknown"} を返す。</p>
+     *
+     * @param input ハッシュ対象の文字列
+     * @return SHA-256 ハッシュ先頭 8 文字
+     */
+    static String sha256Prefix8(String input) {
+        if (input == null) {
+            return "unknown";
+        }
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+                if (sb.length() >= 8) {
+                    break;
+                }
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return "unknown";
         }
     }
 

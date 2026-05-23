@@ -2,6 +2,8 @@ package com.mannschaft.app.publicview.filter;
 
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -57,20 +59,31 @@ class PublicApiRateLimitFilterTest {
 
     private PublicApiRateLimitFilter filter;
     private AuditLogService auditLogService;
+    private MeterRegistry meterRegistry;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
     void setUp() {
         auditLogService = mock(AuditLogService.class);
-        ObjectProvider<AuditLogService> provider = mock(ObjectProvider.class);
+        ObjectProvider<AuditLogService> auditProvider = mock(ObjectProvider.class);
         // ifAvailable(Consumer) は AuditLogService が利用可能なときに Consumer を実行する。
         // テストでは Mock を常に注入したいので、Consumer を即座に実行する。
         org.mockito.Mockito.doAnswer(invocation -> {
             Consumer<AuditLogService> consumer = invocation.getArgument(0);
             consumer.accept(auditLogService);
             return null;
-        }).when(provider).ifAvailable(any());
-        filter = new PublicApiRateLimitFilter(provider);
+        }).when(auditProvider).ifAvailable(any());
+
+        // F19.1 Phase 5: MeterRegistry は SimpleMeterRegistry を ObjectProvider でラップして渡す
+        meterRegistry = new SimpleMeterRegistry();
+        ObjectProvider<MeterRegistry> meterRegistryProvider = mock(ObjectProvider.class);
+        org.mockito.Mockito.doAnswer(invocation -> {
+            Consumer<MeterRegistry> consumer = invocation.getArgument(0);
+            consumer.accept(meterRegistry);
+            return null;
+        }).when(meterRegistryProvider).ifAvailable(any());
+
+        filter = new PublicApiRateLimitFilter(auditProvider, meterRegistryProvider);
     }
 
     @AfterEach
