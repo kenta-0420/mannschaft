@@ -159,6 +159,7 @@ public class HealthStatusListener {
             log.info("Health 状態遷移 DOWN→UP 復旧: component={}", component);
             Long reportId = componentToReportId.get(component);
             if (reportId != null) {
+                // アクティビティ記録と自動解決は独立して実行する（一方が失敗しても他方を継続）
                 try {
                     Map<String, Object> metadata = Map.of(
                             "component", component,
@@ -166,10 +167,14 @@ public class HealthStatusListener {
                     );
                     errorReportActivityService.recordSystemActivity(reportId, ErrorReportActivityType.HEALTH_RECOVERED, metadata);
                     log.info("Health 復旧アクティビティ記録完了: component={}, reportId={}", component, reportId);
-                    // ヘルス復旧時はエラーレポートを自動解決してインシデントバナーを消す
-                    errorReportService.resolveHealthReport(reportId);
                 } catch (Exception e) {
                     log.warn("Health 復旧 activity 記録失敗: component={}, reportId={}", component, reportId, e);
+                }
+                // ヘルス復旧時はエラーレポートを自動解決してインシデントバナーを消す（アクティビティ記録の失敗に関わらず実行）
+                try {
+                    errorReportService.resolveHealthReport(reportId);
+                } catch (Exception e) {
+                    log.warn("Health 復旧 エラーレポート自動解決失敗: component={}, reportId={}", component, reportId, e);
                 }
             } else {
                 log.warn("Health 復旧時の error_report_id が見つからない（初回復旧または再起動後）: component={}", component);
