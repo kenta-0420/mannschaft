@@ -90,22 +90,11 @@ async function onToggle(todo: TodoItem) {
   }
 }
 
-function dismissTodo(todo: TodoItem) {
-  todos.value = todos.value.filter((t) => t.id !== todo.id)
-}
-
-const priorityColor: Record<string, string> = {
-  HIGH: 'text-red-500',
-  MEDIUM: 'text-yellow-500',
-  LOW: 'text-green-500',
-  URGENT: 'text-red-600',
-}
-
-const priorityIcon: Record<string, string> = {
-  HIGH: 'pi pi-exclamation-triangle',
-  MEDIUM: 'pi pi-minus',
-  LOW: 'pi pi-chevron-down',
-  URGENT: 'pi pi-exclamation-circle',
+const priorityDotColor: Record<string, string> = {
+  HIGH: 'bg-red-500',
+  MEDIUM: 'bg-yellow-500',
+  LOW: 'bg-green-500',
+  URGENT: 'bg-red-600',
 }
 
 function isOverdue(dueDate: string | null): boolean {
@@ -159,21 +148,10 @@ onMounted(load)
                 @click.stop
                 @update:model-value="onToggle(todo)"
               />
-              <div class="flex items-center gap-1">
-                <i
-                  v-if="priorityIcon[todo.priority]"
-                  :class="[priorityIcon[todo.priority], priorityColor[todo.priority]]"
-                  class="shrink-0 text-[11px]"
-                />
-                <button
-                  type="button"
-                  class="shrink-0 text-[9px] text-surface-400 hover:text-surface-600 leading-none"
-                  title="非表示"
-                  @click.stop="dismissTodo(todo)"
-                >
-                  <i class="pi pi-times" />
-                </button>
-              </div>
+              <span
+                class="inline-block h-2 w-2 shrink-0 rounded-full"
+                :class="priorityDotColor[todo.priority]"
+              />
             </div>
             <p
               class="line-clamp-2 text-xs leading-tight"
@@ -218,21 +196,10 @@ onMounted(load)
                 @click.stop
                 @update:model-value="onToggle(todo)"
               />
-              <div class="flex items-center gap-1">
-                <i
-                  v-if="priorityIcon[todo.priority]"
-                  :class="[priorityIcon[todo.priority], priorityColor[todo.priority]]"
-                  class="shrink-0 text-[11px]"
-                />
-                <button
-                  type="button"
-                  class="shrink-0 text-[9px] text-surface-400 hover:text-surface-600 leading-none"
-                  title="非表示"
-                  @click.stop="dismissTodo(todo)"
-                >
-                  <i class="pi pi-times" />
-                </button>
-              </div>
+              <span
+                class="inline-block h-2 w-2 shrink-0 rounded-full"
+                :class="priorityDotColor[todo.priority]"
+              />
             </div>
             <p
               class="line-clamp-2 text-xs leading-tight"
