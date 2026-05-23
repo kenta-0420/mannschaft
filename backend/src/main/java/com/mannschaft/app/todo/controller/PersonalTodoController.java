@@ -110,6 +110,23 @@ public class PersonalTodoController {
     }
 
     /**
+     * ダッシュボードウィジェット用: TODO を完了/未完了トグル。
+     * completed=true → COMPLETED、false → OPEN に切り替える。
+     */
+    @PatchMapping("/{id}/toggle")
+    @Operation(summary = "個人TODO 完了トグル（ダッシュボード用）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "変更成功")
+    public ResponseEntity<ApiResponse<TodoStatusChangeResponse>> toggleTodo(
+            @PathVariable Long id,
+            @RequestBody ToggleTodoRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        String newStatus = request.completed() ? "COMPLETED" : "OPEN";
+        return ResponseEntity.ok(todoStatusService.changeStatus(id, new TodoStatusChangeRequest(newStatus), userId));
+    }
+
+    record ToggleTodoRequest(boolean completed) {}
+
+    /**
      * 個人TODOを更新する（タイトル・説明・優先度・開始日・期限）。
      */
     @PutMapping("/{id}")
