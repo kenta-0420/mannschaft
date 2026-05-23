@@ -520,7 +520,8 @@
       "descriptionOptional": "Description (optional)",
       "startDate": "Start date",
       "startDateOptional": "Start date (optional)",
-      "dueDateOptional": "Due date (optional)"
+      "dueDateOptional": "Due date (optional)",
+      "progressRate": "Progress"
     },
     "detail": {
       "loadFailed": "Failed to load TODO",

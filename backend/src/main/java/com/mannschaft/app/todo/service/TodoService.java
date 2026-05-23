@@ -284,6 +284,8 @@ public class TodoService {
                 .dueDate(request.getDueDate())
                 .dueTime(request.getDueTime())
                 .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : todo.getSortOrder())
+                .progressRate(request.getProgressRate() != null ? request.getProgressRate() : todo.getProgressRate())
+                .progressManual(request.getProgressRate() != null ? Boolean.TRUE : todo.getProgressManual())
                 .build();
 
         todo = todoRepository.save(todo);

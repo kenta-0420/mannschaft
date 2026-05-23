@@ -31,6 +31,7 @@ interface PersonalTodoDetail {
   dueTime: string | null
   startDate: string | null
   daysRemaining: number | null
+  progressRate: number | null
   completedAt: string | null
   completedBy: { id: number; displayName: string } | null
   createdBy: { id: number; displayName: string }
@@ -51,6 +52,7 @@ const editForm = ref({
   title: '',
   description: '',
   priority: 'MEDIUM',
+  progressRate: 0,
   projectId: null as number | null,
   milestoneId: null as number | null,
   startDate: null as Date | null,
@@ -102,6 +104,7 @@ function startEdit() {
     title: todo.value.title,
     description: todo.value.description ?? '',
     priority: todo.value.priority,
+    progressRate: todo.value.progressRate ?? 0,
     projectId: todo.value.projectId,
     milestoneId: todo.value.milestoneId,
     startDate: todo.value.startDate ? new Date(todo.value.startDate) : null,
@@ -126,6 +129,7 @@ async function saveEdit() {
       title: editForm.value.title.trim(),
       description: editForm.value.description.trim() || null,
       priority: editForm.value.priority,
+      progressRate: editForm.value.progressRate,
       projectId: editForm.value.projectId,
       milestoneId: editForm.value.milestoneId,
       startDate: editForm.value.startDate ? toLocalDateStr(editForm.value.startDate) : null,
@@ -211,6 +215,10 @@ onMounted(loadTodo)
             {{ formatDate(todo.dueDate) }}
           </p>
         </div>
+        <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
+          <p class="text-xs text-surface-500">{{ t('todo.field.progressRate') }}</p>
+          <p class="mt-1 text-sm font-medium">{{ todo.progressRate ?? 0 }}%</p>
+        </div>
       </div>
 
       <!-- ステータス変更 UI -->
@@ -293,6 +301,20 @@ onMounted(loadTodo)
               class="w-full"
               date-format="yy/mm/dd"
               show-icon
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="mb-1 block text-sm font-medium">{{ t('todo.field.progressRate') }}</label>
+          <div class="flex items-center gap-2">
+            <InputNumber
+              v-model="editForm.progressRate"
+              :min="0"
+              :max="100"
+              :step="5"
+              class="w-32"
+              suffix="%"
             />
           </div>
         </div>

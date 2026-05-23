@@ -520,7 +520,8 @@
       "descriptionOptional": "説明（任意）",
       "startDate": "開始日",
       "startDateOptional": "開始日（任意）",
-      "dueDateOptional": "期限（任意）"
+      "dueDateOptional": "期限（任意）",
+      "progressRate": "進捗率"
     },
     "detail": {
       "loadFailed": "TODOの取得に失敗しました",
