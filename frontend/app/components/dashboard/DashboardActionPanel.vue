@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { SurveyResponse } from '~/types/survey'
 import type { MatchRequestResponse } from '~/types/matching'
 
@@ -25,6 +26,7 @@ const { getPersonalTodos } = useDashboardApi()
 const { getSurveys } = useSurveyApi()
 const { listSchedules } = useScheduleApi()
 const { getTeamRequests } = useMatchingApi()
+const { userTimezone } = useDatetime()
 
 const items = ref<ActionItem[]>([])
 const loading = ref(false)
@@ -60,10 +62,9 @@ const typeConfig = {
 }
 
 function formatDeadline(dateStr: string): string {
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diffMs = date.getTime() - now.getTime()
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+  const target = dayjs.tz(dateStr, userTimezone.value)
+  const now = dayjs().tz(userTimezone.value)
+  const diffDays = Math.ceil(target.diff(now, 'minute') / (60 * 24))
   if (diffDays < 0) return '期限切れ'
   if (diffDays === 0) return '今日まで'
   if (diffDays === 1) return '明日まで'
@@ -72,7 +73,9 @@ function formatDeadline(dateStr: string): string {
 
 function deadlineUrgency(dateStr: string | null): string {
   if (!dateStr) return ''
-  const diffDays = Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000)
+  const target = dayjs.tz(dateStr, userTimezone.value)
+  const now = dayjs().tz(userTimezone.value)
+  const diffDays = Math.ceil(target.diff(now, 'minute') / (60 * 24))
   if (diffDays <= 1) return 'text-red-600 font-semibold'
   if (diffDays <= 3) return 'text-orange-500 font-medium'
   return 'text-surface-400'
@@ -83,9 +86,9 @@ async function load() {
   const result: ActionItem[] = []
 
   try {
-    const now = new Date()
-    const fromStr = now.toISOString().slice(0, 10)
-    const toStr = new Date(now.getTime() + 30 * 86400000).toISOString().slice(0, 10)
+    const nowInTz = dayjs().tz(userTimezone.value)
+    const fromStr = nowInTz.format('YYYY-MM-DD')
+    const toStr = nowInTz.add(30, 'day').format('YYYY-MM-DD')
 
     const [todoRes, ...scopeResults] = await Promise.allSettled([
       // 1. TODO 期限切れ
@@ -141,8 +144,9 @@ async function load() {
 
     // TODO 期限切れ
     if (todoRes.status === 'fulfilled') {
+      const nowTs = Date.now()
       const overdueTodos = todoRes.value.data.filter(
-        (t) => t.dueDate !== null && new Date(t.dueDate) < new Date() && t.status !== 'DONE',
+        (t) => t.dueDate !== null && dayjs.tz(t.dueDate, userTimezone.value).valueOf() < nowTs && t.status !== 'DONE',
       )
       if (overdueTodos.length > 0) {
         result.push({
@@ -217,7 +221,7 @@ async function load() {
       if (!a.deadline && !b.deadline) return 0
       if (!a.deadline) return 1
       if (!b.deadline) return -1
-      return new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+      return dayjs.tz(a.deadline, userTimezone.value).valueOf() - dayjs.tz(b.deadline, userTimezone.value).valueOf()
     })
 
     items.value = result

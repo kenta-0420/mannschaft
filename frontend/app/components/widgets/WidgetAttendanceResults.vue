@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { ScheduleResponse } from '~/types/schedule'
 
 const props = defineProps<{
@@ -8,6 +9,7 @@ const props = defineProps<{
 
 const { listSchedules, getAttendances } = useScheduleApi()
 const { captureQuiet } = useErrorReport()
+const { userTimezone } = useDatetime()
 
 interface AttendanceItem {
   userId: number
@@ -60,8 +62,10 @@ async function toggleExpand(schedule: ScheduleResponse) {
 }
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' })
+  const d = dayjs.tz(dateStr, userTimezone.value)
+  // 例: "5月20日(火)" 形式
+  const weekdays = ['日', '月', '火', '水', '木', '金', '土']
+  return `${d.month() + 1}月${d.date()}日(${weekdays[d.day()]})`
 }
 
 // 出欠率バーの幅(%)

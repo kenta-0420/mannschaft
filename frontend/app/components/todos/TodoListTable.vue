@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TodoStatusLabelInfo } from '~/types/todoStatusLabel'
+import dayjs from 'dayjs'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
@@ -15,6 +16,7 @@ const emit = defineEmits<{
 
 const todoApi = useTodoApi()
 const notification = useNotification()
+const { userTimezone } = useDatetime()
 
 interface Todo {
   id: number
@@ -120,7 +122,7 @@ function isOverdue(todo: Todo): boolean {
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('ja-JP')
+  return dayjs.tz(dateStr, userTimezone.value).format('YYYY/MM/DD')
 }
 
 watch([statusFilter, priorityFilter], () => {
