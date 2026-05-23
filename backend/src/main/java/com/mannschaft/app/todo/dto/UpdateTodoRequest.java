@@ -1,10 +1,11 @@
 package com.mannschaft.app.todo.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -13,7 +14,6 @@ import java.time.LocalTime;
  * TODO更新リクエストDTO。
  */
 @Getter
-@RequiredArgsConstructor
 public class UpdateTodoRequest {
 
     @NotBlank
@@ -38,4 +38,26 @@ public class UpdateTodoRequest {
     private final LocalTime dueTime;
 
     private final Integer sortOrder;
+
+    @JsonCreator
+    public UpdateTodoRequest(
+            @JsonProperty("title") String title,
+            @JsonProperty("description") String description,
+            @JsonProperty("projectId") Long projectId,
+            @JsonProperty("milestoneId") Long milestoneId,
+            @JsonProperty("priority") String priority,
+            @JsonProperty("startDate") @JsonFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
+            @JsonProperty("dueDate") @JsonFormat(pattern = "yyyy-MM-dd") LocalDate dueDate,
+            @JsonProperty("dueTime") LocalTime dueTime,
+            @JsonProperty("sortOrder") Integer sortOrder) {
+        this.title = title;
+        this.description = description;
+        this.projectId = projectId;
+        this.milestoneId = milestoneId;
+        this.priority = priority;
+        this.startDate = startDate;
+        this.dueDate = dueDate;
+        this.dueTime = dueTime;
+        this.sortOrder = sortOrder;
+    }
 }

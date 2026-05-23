@@ -19,6 +19,8 @@ interface PersonalTodoDetail {
   id: number
   scopeType: string
   scopeId: number
+  projectId: number | null
+  milestoneId: number | null
   title: string
   description: string | null
   status: string
@@ -49,6 +51,8 @@ const editForm = ref({
   title: '',
   description: '',
   priority: 'MEDIUM',
+  projectId: null as number | null,
+  milestoneId: null as number | null,
   startDate: null as Date | null,
   dueDate: null as Date | null,
 })
@@ -98,6 +102,8 @@ function startEdit() {
     title: todo.value.title,
     description: todo.value.description ?? '',
     priority: todo.value.priority,
+    projectId: todo.value.projectId,
+    milestoneId: todo.value.milestoneId,
     startDate: todo.value.startDate ? new Date(todo.value.startDate) : null,
     dueDate: todo.value.dueDate ? new Date(todo.value.dueDate) : null,
   }
@@ -120,6 +126,8 @@ async function saveEdit() {
       title: editForm.value.title.trim(),
       description: editForm.value.description.trim() || null,
       priority: editForm.value.priority,
+      projectId: editForm.value.projectId,
+      milestoneId: editForm.value.milestoneId,
       startDate: editForm.value.startDate ? toLocalDateStr(editForm.value.startDate) : null,
       dueDate: editForm.value.dueDate ? toLocalDateStr(editForm.value.dueDate) : null,
     })

@@ -1,12 +1,13 @@
 package com.mannschaft.app.todo.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,7 +18,6 @@ import java.util.List;
  * TODO作成リクエストDTO。
  */
 @Getter
-@RequiredArgsConstructor
 public class CreateTodoRequest {
 
     @NotBlank
@@ -41,7 +41,7 @@ public class CreateTodoRequest {
 
     private final List<Long> assigneeIds;
 
-    private final Long parentId;  // nullable。指定時は子TODOとして作成
+    private final Long parentId;
 
     /** 開始日（nullable）。ガントバー表示に使用する。 */
     @JsonFormat(pattern = "yyyy-MM-dd")
@@ -59,4 +59,36 @@ public class CreateTodoRequest {
      * trueの場合、TODO作成時に新規スケジュールも自動生成する（デフォルトfalse）。
      */
     private final Boolean createLinkedSchedule;
+
+    @JsonCreator
+    public CreateTodoRequest(
+            @JsonProperty("title") String title,
+            @JsonProperty("description") String description,
+            @JsonProperty("projectId") Long projectId,
+            @JsonProperty("milestoneId") Long milestoneId,
+            @JsonProperty("priority") String priority,
+            @JsonProperty("dueDate") @JsonFormat(pattern = "yyyy-MM-dd") LocalDate dueDate,
+            @JsonProperty("dueTime") LocalTime dueTime,
+            @JsonProperty("sortOrder") Integer sortOrder,
+            @JsonProperty("assigneeIds") List<Long> assigneeIds,
+            @JsonProperty("parentId") Long parentId,
+            @JsonProperty("startDate") @JsonFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
+            @JsonProperty("linkedScheduleId") Long linkedScheduleId,
+            @JsonProperty("progressRate") BigDecimal progressRate,
+            @JsonProperty("createLinkedSchedule") Boolean createLinkedSchedule) {
+        this.title = title;
+        this.description = description;
+        this.projectId = projectId;
+        this.milestoneId = milestoneId;
+        this.priority = priority;
+        this.dueDate = dueDate;
+        this.dueTime = dueTime;
+        this.sortOrder = sortOrder;
+        this.assigneeIds = assigneeIds;
+        this.parentId = parentId;
+        this.startDate = startDate;
+        this.linkedScheduleId = linkedScheduleId;
+        this.progressRate = progressRate;
+        this.createLinkedSchedule = createLinkedSchedule;
+    }
 }
