@@ -76,12 +76,22 @@ async function load() {
 async function onToggle(todo: TodoItem) {
   try {
     await toggleTodoComplete(todo.id, !todo.completed)
-    todo.completed = !todo.completed
-    if (todo.completed) notification.success('TODO完了！')
+    if (!todo.completed) {
+      // 完了にした → ウィジェットから消す
+      todos.value = todos.value.filter((t) => t.id !== todo.id)
+      notification.success('TODO完了！')
+    } else {
+      // 未完了に戻した → completed フラグを下げる
+      todo.completed = false
+    }
   } catch (error) {
     captureQuiet(error, { context: 'WidgetPersonalTodo: TODO完了切り替え' })
     notification.error('更新に失敗しました')
   }
+}
+
+function dismissTodo(todo: TodoItem) {
+  todos.value = todos.value.filter((t) => t.id !== todo.id)
 }
 
 const priorityColor: Record<string, string> = {
@@ -139,7 +149,7 @@ onMounted(load)
             v-for="todo in todosWithDue"
             :key="todo.id"
             class="flex cursor-pointer flex-col gap-1 rounded-lg border border-surface-200 p-2 transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-700/50"
-            @click="onToggle(todo)"
+            @click="navigateTo('/todos/' + todo.id)"
           >
             <div class="flex items-center justify-between gap-1">
               <Checkbox
@@ -149,11 +159,21 @@ onMounted(load)
                 @click.stop
                 @update:model-value="onToggle(todo)"
               />
-              <i
-                v-if="priorityIcon[todo.priority]"
-                :class="[priorityIcon[todo.priority], priorityColor[todo.priority]]"
-                class="shrink-0 text-[11px]"
-              />
+              <div class="flex items-center gap-1">
+                <i
+                  v-if="priorityIcon[todo.priority]"
+                  :class="[priorityIcon[todo.priority], priorityColor[todo.priority]]"
+                  class="shrink-0 text-[11px]"
+                />
+                <button
+                  type="button"
+                  class="shrink-0 text-[9px] text-surface-400 hover:text-surface-600 leading-none"
+                  title="非表示"
+                  @click.stop="dismissTodo(todo)"
+                >
+                  <i class="pi pi-times" />
+                </button>
+              </div>
             </div>
             <p
               class="line-clamp-2 text-xs leading-tight"
@@ -188,7 +208,7 @@ onMounted(load)
             v-for="todo in todosNoDue"
             :key="todo.id"
             class="flex cursor-pointer flex-col gap-1 rounded-lg border border-surface-200 p-2 transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-700/50"
-            @click="onToggle(todo)"
+            @click="navigateTo('/todos/' + todo.id)"
           >
             <div class="flex items-center justify-between gap-1">
               <Checkbox
@@ -198,11 +218,21 @@ onMounted(load)
                 @click.stop
                 @update:model-value="onToggle(todo)"
               />
-              <i
-                v-if="priorityIcon[todo.priority]"
-                :class="[priorityIcon[todo.priority], priorityColor[todo.priority]]"
-                class="shrink-0 text-[11px]"
-              />
+              <div class="flex items-center gap-1">
+                <i
+                  v-if="priorityIcon[todo.priority]"
+                  :class="[priorityIcon[todo.priority], priorityColor[todo.priority]]"
+                  class="shrink-0 text-[11px]"
+                />
+                <button
+                  type="button"
+                  class="shrink-0 text-[9px] text-surface-400 hover:text-surface-600 leading-none"
+                  title="非表示"
+                  @click.stop="dismissTodo(todo)"
+                >
+                  <i class="pi pi-times" />
+                </button>
+              </div>
             </div>
             <p
               class="line-clamp-2 text-xs leading-tight"
