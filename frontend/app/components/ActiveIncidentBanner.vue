@@ -42,9 +42,17 @@ function dismiss(index: number) {
   dismissed.value = new Set([...dismissed.value, index])
 }
 
-const visibleIncidents = computed(() =>
-  incidents.value.map((incident, index) => ({ incident, index })).filter(({ index }) => !dismissed.value.has(index))
-)
+const visibleIncidents = computed(() => {
+  const seenMessages = new Set<string>()
+  return incidents.value
+    .map((incident, index) => ({ incident, index }))
+    .filter(({ incident, index }) => {
+      if (dismissed.value.has(index)) return false
+      if (seenMessages.has(incident.message)) return false
+      seenMessages.add(incident.message)
+      return true
+    })
+})
 
 let intervalId: ReturnType<typeof setInterval> | null = null
 
