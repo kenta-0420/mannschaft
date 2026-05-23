@@ -214,4 +214,39 @@ public interface TeamRepository
             @Param("keyword") String keyword,
             @Param("prefecture") String prefecture,
             Pageable pageable);
+
+    // ========================================================================
+    // F19.1 Phase 5: supporter_name_disclosure メトリクス計算用
+    // ========================================================================
+
+    /**
+     * F19.1 Phase 5: PUBLIC かつ未削除チームのうち REAL_NAME モード有効の件数を返す。
+     *
+     * <p>Gauge 計算（REAL_NAME 有効率）の分子として使用する。
+     * 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §6</p>
+     *
+     * @return supporter_name_disclosure = 'REAL_NAME' かつ visibility = PUBLIC かつ未削除の件数
+     */
+    @Query("""
+            SELECT COUNT(t) FROM TeamEntity t
+            WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.deletedAt IS NULL
+              AND t.supporterNameDisclosure
+                  = com.mannschaft.app.publicview.enums.NameDisclosureMode.REAL_NAME
+            """)
+    long countPublicTeamsWithRealName();
+
+    /**
+     * F19.1 Phase 5: PUBLIC かつ未削除チームの総件数を返す。
+     *
+     * <p>Gauge 計算（REAL_NAME 有効率）の分母として使用する。</p>
+     *
+     * @return visibility = PUBLIC かつ未削除の件数
+     */
+    @Query("""
+            SELECT COUNT(t) FROM TeamEntity t
+            WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.deletedAt IS NULL
+            """)
+    long countPublicTeams();
 }

@@ -78,7 +78,7 @@ class AdBannerChannelServiceTest {
     }
 
     @Test
-    @DisplayName("deliver: AdImpressionService.scheduleServe を呼び、AdBannerDelivery を保存して true を返す")
+    @DisplayName("deliver: AdImpressionService.recordForMessagingCampaign を呼び、AdBannerDelivery を保存して true を返す")
     void deliver_正常系() {
         // given
         AdMessagingCampaign campaign = buildCampaign();
@@ -87,10 +87,9 @@ class AdBannerChannelServiceTest {
         long userId = 42L;
         long impressionId = 999L;
 
-        given(adImpressionService.scheduleServe(
-                eq("MESSAGING_CAMPAIGN"),
+        given(adImpressionService.recordForMessagingCampaign(
                 eq(bannerCreativeId),
-                eq(bannerCreativeId),
+                eq(campaign.getId()),
                 eq(userId)))
                 .willReturn(impressionId);
         given(adBannerDeliveryRepository.save(any(AdBannerDelivery.class)))
@@ -102,10 +101,10 @@ class AdBannerChannelServiceTest {
         // then
         assertThat(result).isTrue();
 
-        verify(adImpressionService, times(1)).scheduleServe(
-                eq("MESSAGING_CAMPAIGN"),
+        // recordForMessagingCampaign を 1 回だけ呼ぶこと（F09.7/F09.17 型不一致根治確認）
+        verify(adImpressionService, times(1)).recordForMessagingCampaign(
                 eq(bannerCreativeId),
-                eq(bannerCreativeId),
+                eq(campaign.getId()),
                 eq(userId));
 
         ArgumentCaptor<AdBannerDelivery> captor = ArgumentCaptor.forClass(AdBannerDelivery.class);

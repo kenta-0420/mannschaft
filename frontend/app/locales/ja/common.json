@@ -1130,7 +1130,9 @@
       "organizations": "組織",
       "showAll": "すべて表示",
       "foldersSection": "フォルダ",
-      "quickJumpSection": "直接ジャンプ"
+      "quickJumpSection": "直接ジャンプ",
+      "sectionMember": "メンバー",
+      "sectionSupporter": "サポーター"
     },
     "error": {
       "typeMismatch": "フォルダのスコープ種別が一致しません",

@@ -1130,7 +1130,9 @@
       "organizations": "组织",
       "showAll": "显示全部",
       "foldersSection": "文件夹",
-      "quickJumpSection": "直接跳转"
+      "quickJumpSection": "直接跳转",
+      "sectionMember": "成员",
+      "sectionSupporter": "支持者"
     },
     "error": {
       "typeMismatch": "文件夹作用域类型不匹配",

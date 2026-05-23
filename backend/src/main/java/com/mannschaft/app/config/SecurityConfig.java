@@ -138,6 +138,9 @@ public class SecurityConfig {
                 // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §7.x Phase 4
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/search").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/search").permitAll()
+                // F09.7 クリック計測（認証不要・未ログインユーザーのクリックにも対応）
+                // TODO: 将来 IP ベースのレート制限を AdPublicEndpointRateLimitFilter に追加して不正クリックを防止する
+                .requestMatchers(HttpMethod.POST, "/api/v1/ads/*/click").permitAll()
                 // F09.17 Phase 11-b 広告 unsubscribe / 開封ピクセル（認証不要・IP レート制限あり）
                 .requestMatchers(HttpMethod.GET, "/api/v1/ads/unsubscribe").permitAll()
                 // F09.17 残課題 4 公開 unsubscribe SPA POST（認証不要）

@@ -52,6 +52,7 @@ interface NavScopeItem {
   id: number
   name: string
   nickname1: string | null
+  role: string
 }
 
 const myScopes = computed<NavScopeItem[]>(() => {
@@ -60,14 +61,29 @@ const myScopes = computed<NavScopeItem[]>(() => {
       id: team.id,
       name: team.name,
       nickname1: team.nickname1,
+      role: team.role,
     }))
   }
   return orgStore.myOrganizations.map(org => ({
     id: org.id,
     name: org.name,
     nickname1: org.nickname1,
+    role: org.role,
   }))
 })
+
+/** メンバー（SUPPORTER 以外）スコープ一覧。 */
+const memberScopes = computed(() =>
+  myScopes.value.filter(s => s.role !== 'SUPPORTER'),
+)
+
+/** サポータースコープ一覧。 */
+const supporterScopes = computed(() =>
+  myScopes.value.filter(s => s.role === 'SUPPORTER'),
+)
+
+/** 「すべて（一覧）」行の展開状態。 */
+const showAllExpanded = ref(false)
 
 /**
  * フォルダ内アイテム件数（未読件数ではなく item 件数）。
@@ -85,8 +101,13 @@ function close() {
   popoverRef.value?.hide()
 }
 
-/** 「すべて」へ遷移（タブ=すべて）。 */
+/** 「すべて（一覧）」行クリック → ドロップダウン内でメンバー/サポーター別リストをインライン展開トグル。 */
 function goAll() {
+  showAllExpanded.value = !showAllExpanded.value
+}
+
+/** 「すべて」ハブ画面への遷移（外部リンクアイコン用）。 */
+function goAllHub() {
   router.push(basePath.value)
   close()
 }
@@ -159,6 +180,7 @@ function onPopoverShow() {
 function onPopoverHide() {
   isPopoverOpen.value = false
   expandedFolderId.value = null
+  showAllExpanded.value = false
 }
 </script>
 
@@ -197,7 +219,7 @@ function onPopoverHide() {
               {{ t('scopeFolder.nav.foldersSection') }}
             </div>
 
-            <!-- すべて（一覧） -->
+            <!-- すべて（一覧）→ 展開トグル -->
             <button
               role="menuitem"
               type="button"
@@ -206,7 +228,67 @@ function onPopoverHide() {
             >
               <i class="pi pi-list text-base text-surface-500" />
               <span class="flex-1">{{ t('scopeFolder.nav.allList') }}</span>
+              <i
+                class="pi pi-chevron-down text-xs text-surface-400 transition-transform"
+                :class="{ 'rotate-180': showAllExpanded }"
+                aria-hidden="true"
+              />
+              <!-- ハブ画面への遷移アイコン -->
+              <span
+                class="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-surface-200"
+                :title="t('scopeFolder.nav.showAll')"
+                @click.stop="goAllHub"
+              >
+                <i class="pi pi-arrow-up-right text-xs text-surface-400" aria-hidden="true" />
+              </span>
             </button>
+
+            <!-- すべて展開時のサブリスト（メンバー/サポーター区分） -->
+            <template v-if="showAllExpanded">
+              <!-- メンバーセクション -->
+              <template v-if="memberScopes.length > 0">
+                <div class="px-4 pt-2 pb-0.5 text-xs font-semibold text-surface-400">
+                  {{ t('scopeFolder.nav.sectionMember') }}
+                </div>
+                <button
+                  v-for="scope in memberScopes"
+                  :key="`all-member-${scope.id}`"
+                  role="menuitem"
+                  type="button"
+                  class="flex w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+                  @click="goScope(scope.id)"
+                >
+                  <i class="pi pi-arrow-right text-xs text-surface-400 shrink-0" aria-hidden="true" />
+                  <span class="flex-1 truncate">{{ scope.nickname1 || scope.name }}</span>
+                </button>
+              </template>
+
+              <!-- サポーターセクション -->
+              <template v-if="supporterScopes.length > 0">
+                <div class="px-4 pt-2 pb-0.5 text-xs font-semibold text-surface-400">
+                  {{ t('scopeFolder.nav.sectionSupporter') }}
+                </div>
+                <button
+                  v-for="scope in supporterScopes"
+                  :key="`all-supporter-${scope.id}`"
+                  role="menuitem"
+                  type="button"
+                  class="flex w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+                  @click="goScope(scope.id)"
+                >
+                  <i class="pi pi-arrow-right text-xs text-surface-400 shrink-0" aria-hidden="true" />
+                  <span class="flex-1 truncate">{{ scope.nickname1 || scope.name }}</span>
+                </button>
+              </template>
+
+              <!-- どちらも空の場合 -->
+              <p
+                v-if="memberScopes.length === 0 && supporterScopes.length === 0"
+                class="py-1.5 pl-10 pr-4 text-xs text-surface-400"
+              >
+                {{ t('scopeFolder.emptyFolder') }}
+              </p>
+            </template>
 
             <!-- ユーザー作成フォルダ一覧（展開トグル + サブリスト） -->
             <div
@@ -317,7 +399,7 @@ function onPopoverHide() {
           <button
             type="button"
             class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-surface-600 hover:bg-surface-100 focus:outline-none"
-            @click="goAll"
+            @click="goAllHub"
           >
             <i class="pi pi-list text-xs" aria-hidden="true" />
             {{ t('scopeFolder.nav.showAll') }}

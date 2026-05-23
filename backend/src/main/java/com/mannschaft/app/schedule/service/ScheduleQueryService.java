@@ -7,6 +7,7 @@ import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.EventCategoryResponse;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.repository.ScheduleEventCategoryRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +36,7 @@ public class ScheduleQueryService {
     private final ScheduleRepository scheduleRepository;
     private final NameResolverService nameResolverService;
     private final UserRoleRepository userRoleRepository;
-    private final ScheduleEventCategoryService eventCategoryService;
+    private final ScheduleEventCategoryRepository categoryRepository;
 
     /**
      * チームスコープのスケジュール一覧を取得する。
@@ -125,22 +126,26 @@ public class ScheduleQueryService {
     }
 
     /**
-     * eventCategoryId から EventCategoryResponse を生成する。null の場合は null を返す。
+     * eventCategoryId から EventCategoryResponse を生成する。null または削除済みの場合は null を返す。
+     *
+     * <p>ScheduleEventCategoryService.getById() は存在しない場合に BusinessException をスローする。
+     * 呼び出し元と同一トランザクションで例外が発生すると rollback-only フラグが立ち、
+     * UnexpectedRollbackException を引き起こす。
+     * Repository の findById() (Optional を返す) を直接使用することで、
+     * トランザクションを汚染せずに安全に null を返せる。</p>
      */
     private EventCategoryResponse resolveEventCategoryResponse(Long eventCategoryId) {
         if (eventCategoryId == null) {
             return null;
         }
-        try {
-            var cat = eventCategoryService.getById(eventCategoryId);
-            String scope = cat.isTeamScope() ? "TEAM" : "ORGANIZATION";
-            return new EventCategoryResponse(
-                    cat.getId(), cat.getName(), cat.getColor(), cat.getIcon(),
-                    cat.getIsDayOffCategory(), cat.getSortOrder(), scope);
-        } catch (Exception e) {
-            // カテゴリが削除済みの場合は null を返す
-            return null;
-        }
+        return categoryRepository.findById(eventCategoryId)
+                .map(cat -> {
+                    String scope = cat.isTeamScope() ? "TEAM" : "ORGANIZATION";
+                    return new EventCategoryResponse(
+                            cat.getId(), cat.getName(), cat.getColor(), cat.getIcon(),
+                            cat.getIsDayOffCategory(), cat.getSortOrder(), scope);
+                })
+                .orElse(null);
     }
 
     /**
