@@ -25,6 +25,9 @@ public enum CommonErrorCode implements ErrorCode {
             "他のユーザーがデータを更新しました。最新の内容を確認して再度お試しください",
             Severity.WARN),
 
+    /** HTTPメソッド不一致（405 Method Not Allowed） */
+    COMMON_004("COMMON_004", "このエンドポイントでは指定されたHTTPメソッドは使用できません", Severity.WARN),
+
     /** 予期しないシステムエラー */
     COMMON_999("COMMON_999", "システムエラーが発生しました", Severity.ERROR);
 

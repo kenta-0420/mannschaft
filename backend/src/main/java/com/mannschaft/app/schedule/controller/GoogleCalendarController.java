@@ -93,7 +93,7 @@ public class GoogleCalendarController {
             @PathVariable Long teamId,
             @Valid @RequestBody CalendarSyncToggleRequest request) {
         CalendarSyncToggleResponse response = googleCalendarService.toggleTeamSync(
-                teamId, request.getIsEnabled(), SecurityUtils.getCurrentUserId());
+                teamId, request.isEnabled(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -107,7 +107,7 @@ public class GoogleCalendarController {
             @PathVariable Long orgId,
             @Valid @RequestBody CalendarSyncToggleRequest request) {
         CalendarSyncToggleResponse response = googleCalendarService.toggleOrgSync(
-                orgId, request.getIsEnabled(), SecurityUtils.getCurrentUserId());
+                orgId, request.isEnabled(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -120,7 +120,7 @@ public class GoogleCalendarController {
     public ResponseEntity<ApiResponse<PersonalSyncToggleResponse>> togglePersonalSync(
             @Valid @RequestBody CalendarSyncToggleRequest request) {
         PersonalSyncToggleResponse response = googleCalendarService.togglePersonalSync(
-                request.getIsEnabled(), SecurityUtils.getCurrentUserId());
+                request.isEnabled(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
