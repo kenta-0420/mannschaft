@@ -75,11 +75,15 @@ class PersonalBlogControllerTest {
     }
 
     private BlogPostResponse mockResponse() {
-        return new BlogPostResponse(POST_ID, null, null, USER_ID, USER_ID,
-                "個人記事", "my-post", "本文", null, null,
-                "BLOG", "PUBLIC", "NORMAL", "PUBLISHED",
-                null, false, false, 0, (short) 1, 1, null, null,
-                List.of(), null, null, false, 0);
+        return BlogPostResponse.builder()
+                .id(POST_ID)
+                .scope(new BlogPostResponse.BlogPostScopeDto(null, null, USER_ID, USER_ID))
+                .content(new BlogPostResponse.BlogPostContentDto("個人記事", "my-post", "本文", null, null))
+                .meta(new BlogPostResponse.BlogPostMetaDto("BLOG", "PUBLIC", "NORMAL", "PUBLISHED", false, false))
+                .stats(new BlogPostResponse.BlogPostStatisticsDto(0, (short) 1, false, 0))
+                .audit(new BlogPostResponse.BlogPostAuditDto(null, 1, null, null))
+                .tags(List.of())
+                .build();
     }
 
     // ========================================
@@ -123,7 +127,7 @@ class PersonalBlogControllerTest {
                     controller.getUserPost(USER_ID, "my-post");
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData().getTitle()).isEqualTo("個人記事");
+            assertThat(result.getBody().getData().getContent().title()).isEqualTo("個人記事");
         }
     }
 

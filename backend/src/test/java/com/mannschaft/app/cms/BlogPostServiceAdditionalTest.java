@@ -92,10 +92,9 @@ class BlogPostServiceAdditionalTest {
     }
 
     private BlogPostResponse createPostResponse() {
-        return new BlogPostResponse(
-                null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, false, 0);
+        return BlogPostResponse.builder()
+                .stats(new BlogPostResponse.BlogPostStatisticsDto(null, null, false, 0))
+                .build();
     }
 
     // ========================================

@@ -55,7 +55,7 @@ public class BlogFeedService {
 
         if (!posts.isEmpty()) {
             LocalDateTime latest = posts.stream()
-                    .map(BlogPostResponse::getPublishedAt)
+                    .map(p -> p.getAudit() != null ? p.getAudit().publishedAt() : null)
                     .filter(p -> p != null)
                     .max(LocalDateTime::compareTo)
                     .orElse(LocalDateTime.now());
@@ -78,20 +78,21 @@ public class BlogFeedService {
 
     private SyndEntry toSyndEntry(BlogPostResponse post) {
         SyndEntry entry = new SyndEntryImpl();
-        entry.setTitle(post.getTitle());
+        entry.setTitle(post.getContent() != null ? post.getContent().title() : null);
         entry.setLink(buildPostLink(post));
         entry.setUri(buildPostLink(post));
 
-        if (post.getPublishedAt() != null) {
-            entry.setPublishedDate(toDate(post.getPublishedAt()));
-            entry.setUpdatedDate(toDate(
-                    post.getUpdatedAt() != null ? post.getUpdatedAt() : post.getPublishedAt()));
+        if (post.getAudit() != null && post.getAudit().publishedAt() != null) {
+            entry.setPublishedDate(toDate(post.getAudit().publishedAt()));
+            LocalDateTime updatedAt = post.getAudit().updatedAt() != null
+                    ? post.getAudit().updatedAt() : post.getAudit().publishedAt();
+            entry.setUpdatedDate(toDate(updatedAt));
         }
 
-        if (post.getExcerpt() != null) {
+        if (post.getContent() != null && post.getContent().excerpt() != null) {
             SyndContent description = new SyndContentImpl();
             description.setType("text/html");
-            description.setValue(post.getExcerpt());
+            description.setValue(post.getContent().excerpt());
             entry.setDescription(description);
         }
 
@@ -100,7 +101,7 @@ public class BlogFeedService {
                     .map(tag -> {
                         com.rometools.rome.feed.synd.SyndCategoryImpl cat =
                                 new com.rometools.rome.feed.synd.SyndCategoryImpl();
-                        cat.setName(tag.getName());
+                        cat.setName(tag.name());
                         return (com.rometools.rome.feed.synd.SyndCategory) cat;
                     })
                     .toList());
@@ -120,13 +121,16 @@ public class BlogFeedService {
     }
 
     private String buildPostLink(BlogPostResponse post) {
-        if (post.getTeamId() != null) {
-            return BASE_URL + "/teams/" + post.getTeamId() + "/blog/" + post.getSlug();
+        Long teamId = post.getScope() != null ? post.getScope().teamId() : null;
+        Long organizationId = post.getScope() != null ? post.getScope().organizationId() : null;
+        String slug = post.getContent() != null ? post.getContent().slug() : null;
+        if (teamId != null) {
+            return BASE_URL + "/teams/" + teamId + "/blog/" + slug;
         }
-        if (post.getOrganizationId() != null) {
-            return BASE_URL + "/organizations/" + post.getOrganizationId() + "/blog/" + post.getSlug();
+        if (organizationId != null) {
+            return BASE_URL + "/organizations/" + organizationId + "/blog/" + slug;
         }
-        return BASE_URL + "/blog/" + post.getSlug();
+        return BASE_URL + "/blog/" + slug;
     }
 
     private Date toDate(LocalDateTime ldt) {
