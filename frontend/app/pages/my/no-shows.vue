@@ -87,6 +87,7 @@ onMounted(() => load())
 
 <template>
   <div class="container mx-auto max-w-3xl p-4">
+    <BackButton to="/my" />
     <PageHeader :title="t('recruitment.noShow.pageTitle')" />
 
     <div v-if="loading" class="flex justify-center p-8">

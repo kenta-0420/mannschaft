@@ -40,6 +40,7 @@ onMounted(() => loadData())
 
 <template>
   <div class="mx-auto max-w-3xl">
+    <BackButton to="/my" />
     <PageHeader title="マイカルテ" />
 
     <PageLoading v-if="loading" />

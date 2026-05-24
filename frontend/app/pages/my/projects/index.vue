@@ -94,6 +94,7 @@ onMounted(async () => {
 
 <template>
   <div>
+    <BackButton to="/my" />
     <div class="mb-4 flex items-center justify-between">
       <div>
         <PageHeader :title="$t('project.my_projects')" />

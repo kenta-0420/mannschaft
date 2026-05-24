@@ -42,6 +42,7 @@ onMounted(loadProgresses)
 
 <template>
   <div class="mx-auto max-w-3xl">
+    <BackButton to="/my" />
     <PageHeader title="オンボーディング" />
 
     <PageLoading v-if="loading" />
