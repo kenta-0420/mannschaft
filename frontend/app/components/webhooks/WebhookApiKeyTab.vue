@@ -11,6 +11,7 @@ const props = defineProps<{
 
 const webhookApi = useWebhookApi()
 const { success, error: showError } = useNotification()
+const { formatDate } = useDatetime()
 
 const API_KEY_PERMISSIONS = [
   { key: 'read:members', label: 'メンバー読み取り' },
@@ -176,7 +177,7 @@ onMounted(async () => {
       <Column header="有効期限" style="width: 130px">
         <template #body="{ data }">
           <span v-if="data.expiresAt" class="text-sm">
-            {{ new Date(data.expiresAt).toLocaleDateString('ja-JP') }}
+            {{ formatDate(data.expiresAt) }}
           </span>
           <span v-else class="text-sm text-surface-400">無期限</span>
         </template>
@@ -185,7 +186,7 @@ onMounted(async () => {
         <template #body="{ data }">
           <span class="text-sm">
             {{ data.lastUsedAt
-              ? new Date(data.lastUsedAt).toLocaleDateString('ja-JP')
+              ? formatDate(data.lastUsedAt)
               : '未使用' }}
           </span>
         </template>

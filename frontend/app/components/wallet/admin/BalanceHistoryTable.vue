@@ -18,22 +18,13 @@ interface Props {
 
 withDefaults(defineProps<Props>(), { loading: false })
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
+const { formatDateTime: formatDateTimeTz } = useDatetime()
 
 const copiedCardId = ref<string | null>(null)
 
 function formatDateTime(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString(locale.value, {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return iso
-  }
+  return formatDateTimeTz(iso) || iso
 }
 
 function formatAmount(value: string): string {

@@ -16,6 +16,7 @@ const props = defineProps<{
 const { t } = useI18n()
 const todoApi = useTodoApi()
 const notification = useNotification()
+const { formatDateTime: formatDateTimeTz } = useDatetime()
 
 const history = ref<HandoffResponse[]>([])
 const loading = ref(false)
@@ -43,7 +44,7 @@ watch(() => [props.scopeType, props.scopeId, props.todoId], () => {
 })
 
 function formatDateTime(s: string): string {
-  return new Date(s).toLocaleString()
+  return formatDateTimeTz(s)
 }
 
 function labelColor(info: HandoffLabelInfo | null): string {

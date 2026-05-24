@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import dayjs from 'dayjs'
 import type {
   AttendanceRequirementRule,
   CreateRequirementRuleRequest,
   RequirementCategory,
   UpdateRequirementRuleRequest,
 } from '~/types/school'
+
+const { userTimezone } = useDatetime()
 
 const props = defineProps<{
   rule?: AttendanceRequirementRule
@@ -50,7 +53,7 @@ function buildInitialForm(): CreateRequirementRuleRequest {
     }
   }
   return {
-    academicYear: new Date().getFullYear(),
+    academicYear: dayjs().tz(userTimezone.value).year(),
     category: 'GRADE_PROMOTION',
     name: '',
     description: null,
@@ -64,7 +67,7 @@ function buildInitialForm(): CreateRequirementRuleRequest {
     countHomeLearningAsOfficialAbsence: false,
     countLateAsAbsenceThreshold: 0,
     warningThresholdRate: null,
-    effectiveFrom: new Date().toISOString().slice(0, 10),
+    effectiveFrom: dayjs().tz(userTimezone.value).format('YYYY-MM-DD'),
     effectiveUntil: null,
   }
 }

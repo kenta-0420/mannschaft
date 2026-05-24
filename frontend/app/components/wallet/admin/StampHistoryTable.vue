@@ -9,6 +9,7 @@
  *
  * <p>無限スクロール対応はせず、親が page/size を渡してページングを制御する設計。
  */
+import dayjs from 'dayjs'
 import type { StampEventResponse } from '~/types/orgPointCard'
 
 interface Props {
@@ -18,20 +19,14 @@ interface Props {
 
 withDefaults(defineProps<Props>(), { loading: false })
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
+const { userTimezone } = useDatetime()
 
 const copiedCardId = ref<string | null>(null)
 
 function formatDateTime(iso: string): string {
   try {
-    return new Date(iso).toLocaleString(locale.value, {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    })
+    return dayjs(iso).tz(userTimezone.value).format('YYYY/MM/DD HH:mm:ss')
   } catch {
     return iso
   }

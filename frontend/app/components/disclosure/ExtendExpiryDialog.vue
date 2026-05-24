@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { DisclosureExport } from '~/types/disclosure'
 
 /**
@@ -28,8 +29,9 @@ const emit = defineEmits<{
   extended: [updated: DisclosureExport]
 }>()
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const { success, error: notifyError } = useNotification()
+const { userTimezone } = useDatetime()
 
 const orgIdRef = computed(() => props.organizationId)
 const api = computed(() => useDisclosureApi(orgIdRef.value))
@@ -116,14 +118,14 @@ function toLocalDateTimeString(d: Date): string {
 }
 
 function formatDate(d: Date): string {
-  return d.toLocaleString(locale.value)
+  return dayjs(d).tz(userTimezone.value).format('YYYY/MM/DD HH:mm')
 }
 
 function currentExpiryLabel(): string {
   if (!props.export.expiresAt) return '-'
-  const d = new Date(props.export.expiresAt)
-  if (Number.isNaN(d.getTime())) return props.export.expiresAt
-  return d.toLocaleString(locale.value)
+  const d = dayjs(props.export.expiresAt)
+  if (!d.isValid()) return props.export.expiresAt
+  return d.tz(userTimezone.value).format('YYYY/MM/DD HH:mm')
 }
 
 async function handleSubmit() {

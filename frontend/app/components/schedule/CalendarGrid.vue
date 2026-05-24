@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
+
+const { userTimezone } = useDatetime()
 
 const props = defineProps<{
   year: number
@@ -131,7 +134,7 @@ const weeks = computed<WeekData[]>(() =>
 )
 
 function isToday(d: string) {
-  return d === new Date().toISOString().split('T')[0]
+  return d === dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
 }
 
 function fmtTime(iso: string): string {
