@@ -537,6 +537,32 @@
         "MONTHLY": "毎月",
         "NEVER": "停止"
       }
+    },
+    "slug": {
+      "helpTitle": "スラッグとは",
+      "helpBody": "URLに使われる英数字・ハイフンの識別子です。村のURLとして使用され、後から変更できません。",
+      "helpExample": "例: my-village, soccer-club-tokyo"
+    },
+    "categorySelect": {
+      "fromList": "リストから選ぶ",
+      "freeInput": "直接入力",
+      "level1Placeholder": "大分類を選択",
+      "level2Placeholder": "中分類を選択",
+      "level3Placeholder": "小分類を選択",
+      "customPlaceholder": "カテゴリを入力"
+    },
+    "categoryManagement": {
+      "title": "村カテゴリ管理",
+      "addCategory": "カテゴリを追加",
+      "editCategory": "カテゴリを編集",
+      "deleteConfirm": "このカテゴリを削除してよいですか？子カテゴリも削除されます。",
+      "nameLabel": "カテゴリ名",
+      "parentLabel": "親カテゴリ",
+      "parentNone": "なし（ルート）",
+      "orderLabel": "表示順",
+      "levelRoot": "ルート",
+      "level2": "中分類",
+      "level3": "小分類"
     }
   }
 }

@@ -537,6 +537,32 @@
         "MONTHLY": "毎月",
         "NEVER": "停止"
       }
+    },
+    "slug": {
+      "helpTitle": "What is a slug?",
+      "helpBody": "A URL-safe identifier using lowercase letters, numbers, and hyphens. Used in the village URL and cannot be changed later.",
+      "helpExample": "e.g. my-village, soccer-club-tokyo"
+    },
+    "categorySelect": {
+      "fromList": "Choose from list",
+      "freeInput": "Enter manually",
+      "level1Placeholder": "Select main category",
+      "level2Placeholder": "Select sub-category",
+      "level3Placeholder": "Select detail category",
+      "customPlaceholder": "Enter category"
+    },
+    "categoryManagement": {
+      "title": "Village Category Management",
+      "addCategory": "Add Category",
+      "editCategory": "Edit Category",
+      "deleteConfirm": "Are you sure you want to delete this category? Child categories will also be deleted.",
+      "nameLabel": "Category Name",
+      "parentLabel": "Parent Category",
+      "parentNone": "None (Root)",
+      "orderLabel": "Display Order",
+      "levelRoot": "Root",
+      "level2": "Sub-category",
+      "level3": "Detail"
     }
   }
 }
