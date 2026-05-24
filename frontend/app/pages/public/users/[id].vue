@@ -174,7 +174,7 @@ function formatMemberSince(dateStr: string): string {
             <p class="text-xs text-surface-500">
               {{ post.scopeName }}
               &middot;
-              {{ dayjs.tz(post.createdAt, userTimezone.value).format('YYYY/MM/DD') }}
+              {{ dayjs.tz(post.createdAt, userTimezone).format('YYYY/MM/DD') }}
             </p>
           </NuxtLink>
         </li>
