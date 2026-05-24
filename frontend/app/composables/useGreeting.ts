@@ -1,7 +1,10 @@
+import dayjs from 'dayjs'
+
 export function useGreeting() {
   const { t } = useI18n()
+  const { userTimezone } = useDatetime()
 
-  const hour = new Date().getHours()
+  const hour = dayjs().tz(userTimezone.value).hour()
   const key =
     hour >= 5 && hour < 9
       ? 'greeting.earlyMorning'

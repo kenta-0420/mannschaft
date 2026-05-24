@@ -1,4 +1,7 @@
+import dayjs from 'dayjs'
+
 export function useWorkflowStatus() {
+  const { userTimezone } = useDatetime()
   function statusSeverity(status: string) {
     switch (status) {
       case 'DRAFT':
@@ -50,7 +53,7 @@ export function useWorkflowStatus() {
 
   function formatDateTime(dateStr: string | null): string {
     if (!dateStr) return '—'
-    return new Date(dateStr).toLocaleString('ja-JP')
+    return dayjs(dateStr).tz(userTimezone.value).format('YYYY/MM/DD HH:mm')
   }
 
   return { statusSeverity, statusLabel, decisionLabel, formatDateTime }

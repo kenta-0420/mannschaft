@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { BlogPostResponse } from '~/types/cms'
 
 const { getMyPosts } = useBlogApi()
 const { captureQuiet } = useErrorReport()
+const { userTimezone } = useDatetime()
 
 const posts = ref<BlogPostResponse[]>([])
 const loading = ref(true)
@@ -60,7 +62,7 @@ onMounted(load)
           <div class="min-w-0 flex-1">
             <p class="truncate text-sm font-medium">{{ post.title }}</p>
             <p class="text-xs text-surface-400">
-              {{ new Date(post.publishedAt || post.createdAt).toLocaleDateString('ja-JP') }}
+              {{ dayjs(post.publishedAt || post.createdAt).tz(userTimezone).format('YYYY/MM/DD') }}
             </p>
           </div>
           <Tag

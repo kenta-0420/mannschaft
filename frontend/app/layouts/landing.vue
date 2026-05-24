@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
+
 const { t } = useI18n()
 const { locale, setLocale, availableLocales } = useI18n()
+const { userTimezone } = useDatetime()
 const showMobileMenu = ref(false)
 
 const localeLabels: Record<string, string> = {
@@ -126,7 +129,7 @@ const localeLabels: Record<string, string> = {
           </div>
         </div>
         <div class="border-t border-surface-200 pt-6 text-center text-xs text-surface-400">
-          © {{ new Date().getFullYear() }} Mannschaft. All rights reserved.
+          © {{ dayjs().tz(userTimezone).year() }} Mannschaft. All rights reserved.
         </div>
       </div>
     </footer>
