@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import dayjs from 'dayjs'
 import type { RecruitmentFeedItem } from '~/types/recruitment'
 
 const api = useRecruitmentApi()
 const { error } = useNotification()
 const router = useRouter()
+const { userTimezone } = useDatetime()
 
 const feedItems = ref<RecruitmentFeedItem[]>([])
 const loading = ref(false)
@@ -28,14 +30,7 @@ function goToListing(id: number) {
 }
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return dayjs.tz(dateStr, userTimezone.value).format('YYYY年M月D日 HH:mm')
 }
 
 onMounted(() => load())

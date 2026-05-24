@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { FetchError } from 'ofetch'
 import type { PublicUserPostSummary, PublicUserProfile, SpringPage } from '~/types/public'
 
@@ -18,6 +19,7 @@ definePageMeta({
 const route = useRoute()
 const { t } = useI18n()
 const { fetchPublicUserProfile, fetchPublicUserPosts } = usePublicApi()
+const { userTimezone } = useDatetime()
 
 const rawId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
 const userId = Number(rawId)
@@ -111,10 +113,10 @@ function postDetailHref(post: PublicUserPostSummary): string {
 
 /** "YYYY-MM-DD" 形式の日付を年月表示に変換する（例: "2024年3月"）。 */
 function formatMemberSince(dateStr: string): string {
-  const d = new Date(dateStr)
-  if (Number.isNaN(d.getTime())) return dateStr
+  const d = dayjs.tz(dateStr, userTimezone.value)
+  if (!d.isValid()) return dateStr
   return t('public.userProfile.memberSince', {
-    date: d.toLocaleDateString(undefined, { year: 'numeric', month: 'long' }),
+    date: `${d.year()}年${d.month() + 1}月`,
   })
 }
 </script>
@@ -172,7 +174,7 @@ function formatMemberSince(dateStr: string): string {
             <p class="text-xs text-surface-500">
               {{ post.scopeName }}
               &middot;
-              {{ new Date(post.createdAt).toLocaleDateString() }}
+              {{ dayjs.tz(post.createdAt, userTimezone).format('YYYY/MM/DD') }}
             </p>
           </NuxtLink>
         </li>

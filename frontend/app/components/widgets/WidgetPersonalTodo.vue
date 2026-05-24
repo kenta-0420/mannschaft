@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
+
 const { getPersonalTodos, toggleTodoComplete } = useDashboardApi()
 const { captureQuiet } = useErrorReport()
 const notification = useNotification()
 const teamStore = useTeamStore()
 const orgStore = useOrganizationStore()
+const { userTimezone } = useDatetime()
 
 interface TodoItem {
   id: number
@@ -48,8 +51,7 @@ async function load() {
       teamStore.myTeams.length === 0 ? teamStore.fetchMyTeams() : Promise.resolve(),
       orgStore.myOrganizations.length === 0 ? orgStore.fetchMyOrganizations() : Promise.resolve(),
     ])
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const todayStart = dayjs().tz(userTimezone.value).startOf('day')
     todos.value = res.data
       .filter((t) => t.status !== 'COMPLETED')
       .map((t) => ({
@@ -63,7 +65,7 @@ async function load() {
       }))
       .slice(0, 15)
     overdueCount.value = todos.value.filter(
-      (t) => t.dueDate !== null && new Date(t.dueDate) < today,
+      (t) => t.dueDate !== null && dayjs.tz(t.dueDate, userTimezone.value).isBefore(todayStart),
     ).length
   } catch (error) {
     captureQuiet(error, { context: 'WidgetPersonalTodo: TODO一覧取得' })
@@ -99,7 +101,11 @@ const priorityTextColor: Record<string, string> = {
 
 function isOverdue(dueDate: string | null): boolean {
   if (!dueDate) return false
-  return new Date(dueDate) < new Date()
+  return dayjs.tz(dueDate, userTimezone.value).valueOf() < Date.now()
+}
+
+function formatDueDate(dueDate: string): string {
+  return dayjs.tz(dueDate, userTimezone.value).format('M/D')
 }
 
 const todosWithDue = computed(() =>
@@ -163,7 +169,7 @@ onMounted(load)
               class="text-[10px] font-medium"
               :class="isOverdue(todo.dueDate) ? 'text-red-500' : 'text-surface-400'"
             >
-              {{ new Date(todo.dueDate).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) }}
+              {{ formatDueDate(todo.dueDate) }}
             </p>
             <span
               v-if="scopeLabel(todo)"

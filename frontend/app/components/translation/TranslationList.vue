@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { TranslationResponse, TranslationStatus, TranslationSourceType } from '~/types/translation'
 
 const props = defineProps<{
@@ -7,6 +8,7 @@ const props = defineProps<{
 
 const { listTranslations, updateStatus, publishTranslation, getDashboard } = useTranslationApi()
 const { t } = useI18n()
+const { userTimezone } = useDatetime()
 
 const filterStatus = ref<string>('')
 const filterLanguage = ref<string>('')
@@ -114,11 +116,7 @@ async function onPublish(row: TranslationResponse) {
 }
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
+  return dayjs.tz(dateStr, userTimezone.value).format('YYYY/MM/DD')
 }
 
 const statusCardItems = computed(() => {

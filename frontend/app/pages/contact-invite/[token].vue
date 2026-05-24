@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { ContactInvitePreviewResponse } from '~/types/contact'
 
 definePageMeta({
@@ -10,6 +11,7 @@ const contactApi = useContactApi()
 const authStore = useAuthStore()
 const { captureQuiet } = useErrorReport()
 const notification = useNotification()
+const { userTimezone } = useDatetime()
 
 const token = computed(() => route.params.token as string)
 const preview = ref<ContactInvitePreviewResponse | null>(null)
@@ -57,11 +59,7 @@ async function acceptInvite() {
 
 function formatExpiry(iso: string | null) {
   if (!iso) return '無期限'
-  return new Date(iso).toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  return dayjs.tz(iso, userTimezone.value).format('YYYY年M月D日')
 }
 
 onMounted(fetchPreview)
