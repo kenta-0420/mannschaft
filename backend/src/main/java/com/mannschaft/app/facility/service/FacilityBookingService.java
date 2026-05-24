@@ -29,6 +29,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mannschaft.app.common.timezone.TimezoneContextHolder;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -98,7 +99,7 @@ public class FacilityBookingService {
         }
 
         // 日付バリデーション
-        if (request.getBookingDate().isBefore(LocalDate.now())) {
+        if (request.getBookingDate().isBefore(LocalDate.now(TimezoneContextHolder.get()))) {
             throw new BusinessException(FacilityErrorCode.PAST_DATE_BOOKING);
         }
 
@@ -322,7 +323,7 @@ public class FacilityBookingService {
         }
 
         // 最大予約可能日数チェック
-        long daysUntilBooking = ChronoUnit.DAYS.between(LocalDate.now(), bookingDate);
+        long daysUntilBooking = ChronoUnit.DAYS.between(LocalDate.now(TimezoneContextHolder.get()), bookingDate);
         if (daysUntilBooking > rule.getMaxAdvanceDays()) {
             throw new BusinessException(FacilityErrorCode.EXCEED_MAX_ADVANCE_DAYS);
         }

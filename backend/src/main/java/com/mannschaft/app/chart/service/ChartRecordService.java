@@ -40,6 +40,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mannschaft.app.common.timezone.TimezoneContextHolder;
 import java.time.LocalDate;
 import java.util.Base64;
 import java.util.HashMap;
@@ -244,7 +245,7 @@ public class ChartRecordService {
     public ChartRecordResponse copyChart(Long teamId, Long chartId, CopyChartRequest request) {
         ChartRecordEntity source = findChartOrThrow(teamId, chartId);
 
-        LocalDate visitDate = request.getVisitDate() != null ? request.getVisitDate() : LocalDate.now();
+        LocalDate visitDate = request.getVisitDate() != null ? request.getVisitDate() : LocalDate.now(TimezoneContextHolder.get());
 
         ChartRecordEntity copy = ChartRecordEntity.builder()
                 .teamId(teamId)

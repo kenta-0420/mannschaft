@@ -48,6 +48,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.mannschaft.app.common.timezone.TimezoneContextHolder;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -294,8 +295,8 @@ public class DashboardController {
             @RequestParam(required = false) String month) {
         Long userId = SecurityUtils.getCurrentUserId();
 
-        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-        LocalDateTime todayEnd = LocalDate.now().atTime(LocalTime.MAX);
+        LocalDateTime todayStart = LocalDate.now(TimezoneContextHolder.get()).atStartOfDay();
+        LocalDateTime todayEnd = LocalDate.now(TimezoneContextHolder.get()).atTime(LocalTime.MAX);
         LocalDateTime weekEnd = todayStart.plusDays(7);
         LocalDateTime monthEnd = todayStart.plusMonths(1);
 

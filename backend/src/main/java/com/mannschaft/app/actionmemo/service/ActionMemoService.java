@@ -18,6 +18,7 @@ import com.mannschaft.app.actionmemo.repository.ActionMemoTagLinkRepository;
 import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.TimezoneContextHolder;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
@@ -33,7 +34,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -77,8 +77,7 @@ public class ActionMemoService {
     /** ログ出力時の content マスキング上限（ERROR レベル用） */
     private static final int CONTENT_ERROR_LOG_MAX_LENGTH = 20;
 
-    /** JST タイムゾーン（設計書 §3 memo_date の自動セット） */
-    private static final ZoneId ZONE_JST = ZoneId.of("Asia/Tokyo");
+    // memo_date 自動セット時はユーザー TZ を使用（TimezoneContextHolder.get() 経由）
 
     private final ActionMemoRepository memoRepository;
     private final ActionMemoTagRepository tagRepository;
@@ -112,7 +111,7 @@ public class ActionMemoService {
         }
 
         // 2. memo_date のデフォルト設定 + 未来日付バリデーション
-        LocalDate today = LocalDate.now(ZONE_JST);
+        LocalDate today = LocalDate.now(TimezoneContextHolder.get());
         LocalDate memoDate = request.getMemoDate() != null ? request.getMemoDate() : today;
         if (memoDate.isAfter(today)) {
             throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_FUTURE_DATE);
@@ -329,7 +328,7 @@ public class ActionMemoService {
         }
 
         if (request.getMemoDate() != null) {
-            LocalDate today = LocalDate.now(ZONE_JST);
+            LocalDate today = LocalDate.now(TimezoneContextHolder.get());
             if (request.getMemoDate().isAfter(today)) {
                 throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_FUTURE_DATE);
             }

@@ -42,6 +42,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mannschaft.app.common.timezone.TimezoneContextHolder;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -141,7 +142,7 @@ public class DashboardService {
                 .filter(t -> t.getStatus() == TodoStatus.OPEN || t.getStatus() == TodoStatus.IN_PROGRESS)
                 .toList();
         long overdueCount = incompleteTodos.stream()
-                .filter(t -> t.getDueDate() != null && t.getDueDate().isBefore(LocalDate.now()))
+                .filter(t -> t.getDueDate() != null && t.getDueDate().isBefore(LocalDate.now(TimezoneContextHolder.get())))
                 .count();
         List<Map<String, Object>> todoItems = incompleteTodos.stream()
                 .limit(DASHBOARD_ITEM_LIMIT)
@@ -209,8 +210,8 @@ public class DashboardService {
                     .toList());
 
             // schedules 個人 + チーム公開イベント連携: 件数集計
-            LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-            LocalDateTime todayEnd = LocalDate.now().atTime(LocalTime.MAX);
+            LocalDateTime todayStart = LocalDate.now(TimezoneContextHolder.get()).atStartOfDay();
+            LocalDateTime todayEnd = LocalDate.now(TimezoneContextHolder.get()).atTime(LocalTime.MAX);
             LocalDateTime weekStart = todayStart;
             LocalDateTime weekEnd = todayStart.plusDays(7);
             LocalDateTime monthEnd = todayStart.plusMonths(1);
@@ -253,7 +254,7 @@ public class DashboardService {
                 .filter(t -> t.getStatus() == TodoStatus.OPEN || t.getStatus() == TodoStatus.IN_PROGRESS)
                 .toList();
         long overdueCount = incompleteTodos.stream()
-                .filter(t -> t.getDueDate() != null && t.getDueDate().isBefore(LocalDate.now()))
+                .filter(t -> t.getDueDate() != null && t.getDueDate().isBefore(LocalDate.now(TimezoneContextHolder.get())))
                 .count();
         List<Map<String, Object>> todoItems = incompleteTodos.stream()
                 .limit(DASHBOARD_ITEM_LIMIT)
@@ -299,7 +300,7 @@ public class DashboardService {
                 .filter(t -> t.getStatus() == TodoStatus.OPEN || t.getStatus() == TodoStatus.IN_PROGRESS)
                 .toList();
         long teamOverdue = incompleteTeamTodos.stream()
-                .filter(t -> t.getDueDate() != null && t.getDueDate().isBefore(LocalDate.now()))
+                .filter(t -> t.getDueDate() != null && t.getDueDate().isBefore(LocalDate.now(TimezoneContextHolder.get())))
                 .count();
         List<Map<String, Object>> teamTodoItems = incompleteTeamTodos.stream()
                 .limit(DASHBOARD_ITEM_LIMIT)
@@ -430,7 +431,7 @@ public class DashboardService {
                 .filter(t -> t.getStatus() == TodoStatus.OPEN || t.getStatus() == TodoStatus.IN_PROGRESS)
                 .toList();
         long orgOverdue = incompleteOrgTodos.stream()
-                .filter(t -> t.getDueDate() != null && t.getDueDate().isBefore(LocalDate.now()))
+                .filter(t -> t.getDueDate() != null && t.getDueDate().isBefore(LocalDate.now(TimezoneContextHolder.get())))
                 .count();
         List<Map<String, Object>> orgTodoItems = incompleteOrgTodos.stream()
                 .limit(DASHBOARD_ITEM_LIMIT)
