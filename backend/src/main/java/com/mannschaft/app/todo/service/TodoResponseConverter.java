@@ -149,25 +149,44 @@ public class TodoResponseConverter {
         TodoResponse.TodoStatusLabelInfo labelInfo = resolveLabelInfo(
                 entity.getStatusLabelId(), entity.getStatus());
 
-        return new TodoResponse(
-                entity.getId(), entity.getScopeType().name(), entity.getScopeId(),
-                entity.getProjectId(), entity.getMilestoneId(),
-                entity.getTitle(), entity.getDescription(),
-                entity.getStatus().name(), entity.getPriority().name(),
-                entity.getDueDate(), entity.getDueTime(),
-                calculateDaysRemaining(entity.getDueDate()),
-                entity.getCompletedAt(), completedByInfo,
-                new ProjectResponse.UserInfo(entity.getCreatedBy(), nameMap.getOrDefault(entity.getCreatedBy(), "")),
-                entity.getSortOrder(), assignees,
-                entity.getCreatedAt(), entity.getUpdatedAt(),
-                entity.getParentId(), entity.getDepth(),
-                children, (int) childCount,
-                (int) descendantCompleted, (int) descendantTotal,
-                // Phase 2 フィールド
-                entity.getStartDate(), entity.getLinkedScheduleId(),
-                entity.getProgressRate(), entity.getProgressManual(),
-                // F02.3.1 カスタムステータスラベル
-                labelInfo);
+        return TodoResponse.builder()
+                .id(entity.getId())
+                .scope(new TodoResponse.TodoScopeDto(
+                        entity.getScopeType().name(),
+                        entity.getScopeId(),
+                        entity.getProjectId(),
+                        entity.getMilestoneId()))
+                .content(new TodoResponse.TodoContentDto(
+                        entity.getTitle(),
+                        entity.getDescription(),
+                        entity.getStartDate(),
+                        entity.getProgressRate(),
+                        entity.getProgressManual(),
+                        entity.getSortOrder()))
+                .schedule(new TodoResponse.TodoScheduleDto(
+                        entity.getDueDate(),
+                        entity.getDueTime(),
+                        calculateDaysRemaining(entity.getDueDate()),
+                        entity.getLinkedScheduleId()))
+                .status(new TodoResponse.TodoStatusDto(
+                        entity.getStatus().name(),
+                        entity.getPriority().name(),
+                        entity.getCompletedAt(),
+                        labelInfo))
+                .assignees(assignees)
+                .hierarchy(new TodoResponse.TodoHierarchyDto(
+                        entity.getParentId(),
+                        entity.getDepth(),
+                        children,
+                        (int) childCount,
+                        (int) descendantCompleted,
+                        (int) descendantTotal))
+                .audit(new TodoResponse.TodoAuditDto(
+                        entity.getCreatedAt(),
+                        entity.getUpdatedAt(),
+                        new ProjectResponse.UserInfo(entity.getCreatedBy(), nameMap.getOrDefault(entity.getCreatedBy(), "")),
+                        completedByInfo))
+                .build();
     }
 
     /**
@@ -203,25 +222,42 @@ public class TodoResponseConverter {
                 ? new ProjectResponse.UserInfo(entity.getCompletedBy(), nameMap.getOrDefault(entity.getCompletedBy(), ""))
                 : null;
 
-        return new TodoResponse(
-                entity.getId(), entity.getScopeType().name(), entity.getScopeId(),
-                entity.getProjectId(), entity.getMilestoneId(),
-                entity.getTitle(), entity.getDescription(),
-                entity.getStatus().name(), entity.getPriority().name(),
-                entity.getDueDate(), entity.getDueTime(),
-                calculateDaysRemaining(entity.getDueDate()),
-                entity.getCompletedAt(), completedByInfo,
-                new ProjectResponse.UserInfo(entity.getCreatedBy(), nameMap.getOrDefault(entity.getCreatedBy(), "")),
-                entity.getSortOrder(), assignees,
-                entity.getCreatedAt(), entity.getUpdatedAt(),
-                // 親子情報
-                entity.getParentId(), entity.getDepth(),
-                java.util.List.of(), 0, 0, 0,  // 一覧では統計なし
-                // Phase 2 フィールド
-                entity.getStartDate(), entity.getLinkedScheduleId(),
-                entity.getProgressRate(), entity.getProgressManual(),
-                // F02.3.1 カスタムステータスラベル
-                labelInfo);
+        return TodoResponse.builder()
+                .id(entity.getId())
+                .scope(new TodoResponse.TodoScopeDto(
+                        entity.getScopeType().name(),
+                        entity.getScopeId(),
+                        entity.getProjectId(),
+                        entity.getMilestoneId()))
+                .content(new TodoResponse.TodoContentDto(
+                        entity.getTitle(),
+                        entity.getDescription(),
+                        entity.getStartDate(),
+                        entity.getProgressRate(),
+                        entity.getProgressManual(),
+                        entity.getSortOrder()))
+                .schedule(new TodoResponse.TodoScheduleDto(
+                        entity.getDueDate(),
+                        entity.getDueTime(),
+                        calculateDaysRemaining(entity.getDueDate()),
+                        entity.getLinkedScheduleId()))
+                .status(new TodoResponse.TodoStatusDto(
+                        entity.getStatus().name(),
+                        entity.getPriority().name(),
+                        entity.getCompletedAt(),
+                        labelInfo))
+                .assignees(assignees)
+                .hierarchy(new TodoResponse.TodoHierarchyDto(
+                        entity.getParentId(),
+                        entity.getDepth(),
+                        java.util.List.of(), // 一覧では統計なし
+                        0, 0, 0))
+                .audit(new TodoResponse.TodoAuditDto(
+                        entity.getCreatedAt(),
+                        entity.getUpdatedAt(),
+                        new ProjectResponse.UserInfo(entity.getCreatedBy(), nameMap.getOrDefault(entity.getCreatedBy(), "")),
+                        completedByInfo))
+                .build();
     }
 
     /**
