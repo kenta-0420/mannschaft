@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { AnnualViewMonth, EventCategory, CopyPreviewItem } from '~/types/annual-plan'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
@@ -8,12 +9,14 @@ const route = useRoute()
 const orgId = computed(() => Number(route.params.id))
 const annualPlanApi = useAnnualPlanApi()
 const notification = useNotification()
+const { userTimezone } = useDatetime()
 
 const months = ref<AnnualViewMonth[]>([])
 const categories = ref<EventCategory[]>([])
 const loading = ref(true)
+const _now = dayjs().tz(userTimezone.value)
 const selectedYear = ref(
-  new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1,
+  _now.month() >= 3 ? _now.year() : _now.year() - 1,
 )
 const selectedCategoryId = ref<number | undefined>()
 const showCopyDialog = ref(false)

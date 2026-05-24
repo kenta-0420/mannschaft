@@ -12,6 +12,7 @@
  *       - HEADMAN/ELDER のみ「行事を追加」ボタン
  *   - 行事クリックで詳細 Dialog（HEADMAN/ELDER は編集 / 削除も可能）
  */
+import dayjs from 'dayjs'
 import type {
   MembershipResponse,
   VillageCalendarEventCreateRequest,
@@ -27,11 +28,12 @@ definePageMeta({
 
 const route = useRoute()
 const villageId = String(route.params.id)
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const villageApi = useVillageApi()
 const authStore = useAuthStore()
 const { handleApiError } = useErrorHandler()
 const toast = useToast()
+const { userTimezone } = useDatetime()
 
 // =====================================================================
 // State — 村本体
@@ -47,8 +49,8 @@ const myMembership = ref<MembershipResponse | null>(null)
 // =====================================================================
 
 /** 現在表示中の年月（1 始まり） */
-const currentYear = ref<number>(new Date().getFullYear())
-const currentMonth = ref<number>(new Date().getMonth() + 1)
+const currentYear = ref<number>(dayjs().tz(userTimezone.value).year())
+const currentMonth = ref<number>(dayjs().tz(userTimezone.value).month() + 1)
 
 const events = ref<VillageCalendarEventResponse[]>([])
 const eventsLoading = ref(false)
@@ -117,17 +119,16 @@ function goNextMonth() {
 }
 
 function goToday() {
-  const now = new Date()
-  currentYear.value = now.getFullYear()
-  currentMonth.value = now.getMonth() + 1
+  const now = dayjs().tz(userTimezone.value)
+  currentYear.value = now.year()
+  currentMonth.value = now.month() + 1
   loadEvents()
 }
 
-/** 表示用ラベル「2026年5月」など。i18n の locale に依存 */
+/** 表示用ラベル「2026年5月」など */
 const monthLabel = computed(() => {
   try {
-    const d = new Date(currentYear.value, currentMonth.value - 1, 1)
-    return d.toLocaleDateString(locale.value, { year: 'numeric', month: 'long' })
+    return dayjs.tz(`${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-01`, userTimezone.value).format('YYYY年M月')
   }
   catch {
     return `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}`

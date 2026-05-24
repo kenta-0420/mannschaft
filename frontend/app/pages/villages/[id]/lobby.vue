@@ -21,6 +21,7 @@
  *     バックエンド DTO (DailyThreadResponse.java) でも threadDate を返している。
  *     型補強のため、本ファイル内で拡張インターフェースを用意する（FE1 の改変はしない）。
  */
+import dayjs from 'dayjs'
 import type { Ref } from 'vue'
 import type { ChatMessageResponse } from '~/types/chat'
 import type {
@@ -55,9 +56,10 @@ interface LobbyDailyThreadDetail extends DailyThreadResponse {
 // =============================================================================
 
 const route = useRoute()
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const villageApi = useVillageApi()
 const chatApi = useChatApi()
+const { userTimezone } = useDatetime()
 
 const villageId = String(route.params.id)
 
@@ -76,16 +78,8 @@ const scrollPanelRef = ref<{ $el?: HTMLElement } | null>(null)
 // 日付ヘルパ
 // =============================================================================
 
-/** Date → ISO 日付（YYYY-MM-DD、ローカル時刻基準） */
-function toIsoDate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-/** 本日の ISO 日付 */
-const todayIso = computed(() => toIsoDate(new Date()))
+/** 本日の ISO 日付（ユーザーTZ基準） */
+const todayIso = computed(() => dayjs().tz(userTimezone.value).format('YYYY-MM-DD'))
 
 /** 「今日」ボタンが選択されているか */
 const isTodaySelected = computed(() => selectedDate.value === todayIso.value)
@@ -93,13 +87,12 @@ const isTodaySelected = computed(() => selectedDate.value === todayIso.value)
 /** 日付の表示ラベル（今日 / 昨日 / それ以外は localized 短縮形） */
 function formatDateLabel(iso: string): string {
   if (iso === todayIso.value) return t('village.lobby.today')
-  const today = new Date(todayIso.value)
-  const target = new Date(iso)
-  const diffMs = today.getTime() - target.getTime()
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+  const today = dayjs.tz(todayIso.value, userTimezone.value)
+  const target = dayjs.tz(iso, userTimezone.value)
+  const diffDays = today.diff(target, 'day')
   if (diffDays === 1) return t('village.lobby.yesterday')
-  // 言語に合わせた月日表記
-  return target.toLocaleDateString(locale.value, { month: 'short', day: 'numeric' })
+  // 月日表記
+  return target.format('M月D日')
 }
 
 // =============================================================================
@@ -298,7 +291,7 @@ async function initialize() {
         threadDate: todayIso.value,
         messageCount: 0,
         summary: null,
-        createdAt: new Date().toISOString(),
+        createdAt: dayjs().toISOString(),
       } as LobbyDailyThreadItem,
       ...dailyThreads.value,
     ]
@@ -437,7 +430,7 @@ const villageRef = village as Ref<VillageResponse | null>
                   <span class="font-semibold text-surface-700 dark:text-surface-200">
                     {{ msg.sender?.displayName ?? '—' }}
                   </span>
-                  <span>{{ new Date(msg.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) }}</span>
+                  <span>{{ dayjs.tz(msg.createdAt, userTimezone).format('HH:mm') }}</span>
                   <span v-if="msg.isEdited" class="italic">*</span>
                 </div>
                 <div

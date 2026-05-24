@@ -9,6 +9,7 @@
  * - 「出力履歴」リンク
  * - ドラフト件数 50 件上限警告（45 件超で表示）
  */
+import dayjs from 'dayjs'
 import type {
   DisclosureFormDraft,
   DisclosureFormTemplate,
@@ -17,8 +18,9 @@ import type {
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const { success: showSuccess, error: showError } = useNotification()
+const { userTimezone } = useDatetime()
 
 const organizationId = computed<number>(() => {
   const raw = route.query.organizationId
@@ -144,9 +146,9 @@ const showLimitWarning = computed(
 
 function formatDate(iso: string): string {
   if (!iso) return '-'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleString(locale.value)
+  const d = dayjs(iso)
+  if (!d.isValid()) return iso
+  return d.tz(userTimezone.value).format('YYYY/MM/DD HH:mm')
 }
 
 function statusSeverity(status: string): 'info' | 'success' | 'warn' | 'secondary' {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type {
   AnnualReviewCreateRequest,
   AnnualReviewResponse,
@@ -16,7 +17,7 @@ const { getDashboard } = useActivitySnapshotApi()
 const { listReviews, createReview, closeReview } = useAnnualReviewApi()
 const { listVisitsByCommittee } = useMonitoringVisitApi()
 const { triggerSafetyCheck } = useOrgWideSafetyCheckApi()
-const { formatDate } = useDatetime()
+const { formatDate, userTimezone } = useDatetime()
 
 // ダッシュボード
 const dashboard = ref<ResidenceStatusDashboard | null>(null)
@@ -26,7 +27,7 @@ const loadingDashboard = ref(false)
 const reviews = ref<AnnualReviewResponse[]>([])
 const loadingReviews = ref(false)
 const showCreateDialog = ref(false)
-const targetYearInput = ref<string>(String(new Date().getFullYear()))
+const targetYearInput = ref<string>(String(dayjs().tz(userTimezone.value).year()))
 const createForm = ref<Omit<AnnualReviewCreateRequest, 'targetYear'>>({
   title: '',
   deadlineDate: '',
@@ -112,7 +113,7 @@ async function handleCreateReview() {
       targetYear: Number(targetYearInput.value),
     })
     showCreateDialog.value = false
-    targetYearInput.value = String(new Date().getFullYear())
+    targetYearInput.value = String(dayjs().tz(userTimezone.value).year())
     createForm.value = {
       title: '',
       deadlineDate: '',

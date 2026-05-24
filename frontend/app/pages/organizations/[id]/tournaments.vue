@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { TournamentResponse } from '~/types/tournament'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
@@ -7,6 +8,7 @@ const orgId = Number(route.params.id)
 
 const notification = useNotification()
 const { getTournaments, createTournament } = useTournamentApi()
+const { userTimezone } = useDatetime()
 
 const tournaments = ref<TournamentResponse[]>([])
 const loading = ref(false)
@@ -17,7 +19,7 @@ const form = ref({
   title: '',
   sportCategory: '',
   format: 'LEAGUE' as 'LEAGUE' | 'KNOCKOUT' | 'GROUP_KNOCKOUT',
-  seasonYear: new Date().getFullYear(),
+  seasonYear: dayjs().tz(userTimezone.value).year(),
   isPublic: false,
   description: '',
   winPoints: 3,
@@ -70,7 +72,7 @@ function openCreateDialog() {
     title: '',
     sportCategory: '',
     format: 'LEAGUE',
-    seasonYear: new Date().getFullYear(),
+    seasonYear: dayjs().tz(userTimezone.value).year(),
     isPublic: false,
     description: '',
     winPoints: 3,

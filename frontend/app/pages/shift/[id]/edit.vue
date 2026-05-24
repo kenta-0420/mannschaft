@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type {
   ShiftScheduleResponse,
   ShiftSlotResponse,
@@ -8,7 +9,7 @@ import type {
 
 definePageMeta({ middleware: 'auth' })
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const route = useRoute()
 const teamStore = useTeamStore()
 const { getSchedule } = useShiftApi()
@@ -16,6 +17,7 @@ const { listSlots, deleteSlot, bulkCreateSlots } = useShiftSlotApi()
 const { listPositions } = useShiftPositionApi()
 const { handleApiError } = useErrorHandler()
 const { success } = useNotification()
+const { userTimezone } = useDatetime()
 
 const scheduleId = computed(() => Number(route.params.id))
 
@@ -182,7 +184,7 @@ const sortedSlots = computed(() =>
 )
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString(locale.value, { month: 'short', day: 'numeric', weekday: 'short' })
+  return dayjs.tz(dateStr, userTimezone.value).format('M月D日(ddd)')
 }
 </script>
 

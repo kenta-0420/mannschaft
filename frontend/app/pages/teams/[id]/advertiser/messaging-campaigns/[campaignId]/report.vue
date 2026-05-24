@@ -6,6 +6,7 @@
  * を複製し layout='team' / scope='TEAM' 化したもの。Report API は backend 側で
  * SecurityContext から所有 scope を判定するため、composable 自体は scope を渡さない。</p>
  */
+import dayjs from 'dayjs'
 import type { AdCampaignReport } from '~/types/adMessagingCampaign'
 
 definePageMeta({ layout: 'team', middleware: 'auth' })
@@ -14,6 +15,7 @@ const route = useRoute()
 const { t } = useI18n()
 const reportApi = useAdMessagingCampaignReportApi()
 const notification = useNotification()
+const { userTimezone } = useDatetime()
 
 const campaignId = computed(() => String(route.params.campaignId))
 
@@ -22,16 +24,13 @@ const report = ref<AdCampaignReport | null>(null)
 const exportingCsv = ref(false)
 
 // 既定期間: 直近 30 日
-const today = new Date()
-const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
+const today = dayjs().tz(userTimezone.value).toDate()
+const thirtyDaysAgo = dayjs().tz(userTimezone.value).subtract(30, 'day').toDate()
 const fromDate = ref<Date>(thirtyDaysAgo)
 const toDate = ref<Date>(today)
 
 function formatYmd(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  return dayjs(d).tz(userTimezone.value).format('YYYY-MM-DD')
 }
 
 async function load() {

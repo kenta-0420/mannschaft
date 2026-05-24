@@ -8,13 +8,15 @@
  * - ダウンロードボタン → GET /{exportId}/download → presigned URL → window.open
  * - SHA-256 検証失敗時（DISCLOSURE_010 / 503）はトーストでエラー通知
  */
+import dayjs from 'dayjs'
 import type { DisclosureExport } from '~/types/disclosure'
 
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const { error: showError } = useNotification()
+const { userTimezone } = useDatetime()
 
 const organizationId = computed<number>(() => {
   const raw = route.query.organizationId
@@ -108,9 +110,9 @@ function back() {
 
 function formatDate(iso: string): string {
   if (!iso) return '-'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleString(locale.value)
+  const d = dayjs(iso)
+  if (!d.isValid()) return iso
+  return d.tz(userTimezone.value).format('YYYY/MM/DD HH:mm')
 }
 
 function shortSha(sha: string): string {
