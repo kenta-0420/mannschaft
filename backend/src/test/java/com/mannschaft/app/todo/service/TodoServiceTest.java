@@ -101,36 +101,43 @@ class TodoServiceTest {
      * テスト用の最小限のレスポンスを構築する。
      */
     private com.mannschaft.app.todo.dto.TodoResponse buildMinimalResponse(TodoEntity entity) {
-        return new com.mannschaft.app.todo.dto.TodoResponse(
-                entity.getId(),
-                entity.getScopeType() != null ? entity.getScopeType().name() : null,
-                entity.getScopeId(),
-                entity.getProjectId(),
-                entity.getMilestoneId(),
-                entity.getTitle(),
-                entity.getDescription(),
-                entity.getStatus() != null ? entity.getStatus().name() : null,
-                entity.getPriority() != null ? entity.getPriority().name() : null,
-                entity.getDueDate(),
-                entity.getDueTime(),
-                null,
-                entity.getCompletedAt(),
-                null,
-                entity.getCreatedBy() != null
-                        ? new com.mannschaft.app.todo.dto.ProjectResponse.UserInfo(entity.getCreatedBy(), "テストユーザー")
-                        : null,
-                entity.getSortOrder(),
-                List.of(),
-                entity.getCreatedAt(),
-                entity.getUpdatedAt(),
-                entity.getParentId(),
-                entity.getDepth() != null ? entity.getDepth() : 0,
-                List.of(), 0, 0, 0,
-                entity.getStartDate(),
-                entity.getLinkedScheduleId(),
-                entity.getProgressRate(),
-                entity.getProgressManual(),
-                null);
+        return com.mannschaft.app.todo.dto.TodoResponse.builder()
+                .id(entity.getId())
+                .scope(new com.mannschaft.app.todo.dto.TodoResponse.TodoScopeDto(
+                        entity.getScopeType() != null ? entity.getScopeType().name() : null,
+                        entity.getScopeId(),
+                        entity.getProjectId(),
+                        entity.getMilestoneId()))
+                .content(new com.mannschaft.app.todo.dto.TodoResponse.TodoContentDto(
+                        entity.getTitle(),
+                        entity.getDescription(),
+                        entity.getStartDate(),
+                        entity.getProgressRate(),
+                        entity.getProgressManual(),
+                        entity.getSortOrder()))
+                .schedule(new com.mannschaft.app.todo.dto.TodoResponse.TodoScheduleDto(
+                        entity.getDueDate(),
+                        entity.getDueTime(),
+                        null,
+                        entity.getLinkedScheduleId()))
+                .status(new com.mannschaft.app.todo.dto.TodoResponse.TodoStatusDto(
+                        entity.getStatus() != null ? entity.getStatus().name() : null,
+                        entity.getPriority() != null ? entity.getPriority().name() : null,
+                        entity.getCompletedAt(),
+                        null))
+                .assignees(List.of())
+                .hierarchy(new com.mannschaft.app.todo.dto.TodoResponse.TodoHierarchyDto(
+                        entity.getParentId(),
+                        entity.getDepth() != null ? entity.getDepth() : 0,
+                        List.of(), 0, 0, 0))
+                .audit(new com.mannschaft.app.todo.dto.TodoResponse.TodoAuditDto(
+                        entity.getCreatedAt(),
+                        entity.getUpdatedAt(),
+                        entity.getCreatedBy() != null
+                                ? new com.mannschaft.app.todo.dto.ProjectResponse.UserInfo(entity.getCreatedBy(), "テストユーザー")
+                                : null,
+                        null))
+                .build();
     }
 
     // ========================================

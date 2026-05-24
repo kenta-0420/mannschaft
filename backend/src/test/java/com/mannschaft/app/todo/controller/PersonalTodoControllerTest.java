@@ -92,38 +92,22 @@ class PersonalTodoControllerTest {
     }
 
     private TodoResponse sampleTodo() {
-        return new TodoResponse(
-                TODO_ID,
-                TodoScopeType.PERSONAL.name(),
-                USER_ID,
-                null,
-                null,
-                "テスト個人TODO",
-                "説明",
-                TodoStatus.OPEN.name(),
-                "MEDIUM",
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                0,
-                List.of(),
-                null,
-                null,
-                null,
-                0,
-                List.of(),
-                0,
-                0,
-                0,
-                null,
-                null,
-                null,
-                false,
-                null
-        );
+        return TodoResponse.builder()
+                .id(TODO_ID)
+                .scope(new TodoResponse.TodoScopeDto(
+                        TodoScopeType.PERSONAL.name(), USER_ID, null, null))
+                .content(new TodoResponse.TodoContentDto(
+                        "テスト個人TODO", "説明", null, null, false, 0))
+                .schedule(new TodoResponse.TodoScheduleDto(
+                        null, null, null, null))
+                .status(new TodoResponse.TodoStatusDto(
+                        TodoStatus.OPEN.name(), "MEDIUM", null, null))
+                .assignees(List.of())
+                .hierarchy(new TodoResponse.TodoHierarchyDto(
+                        null, 0, List.of(), 0, 0, 0))
+                .audit(new TodoResponse.TodoAuditDto(
+                        null, null, null, null))
+                .build();
     }
 
     // ============================================================
@@ -213,7 +197,7 @@ class PersonalTodoControllerTest {
                 mockMvc.perform(get("/api/v1/todos/my"))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data[0].id").value(TODO_ID))
-                        .andExpect(jsonPath("$.data[0].scopeType").value("PERSONAL"));
+                        .andExpect(jsonPath("$.data[0].scope.scopeType").value("PERSONAL"));
             }
         }
     }

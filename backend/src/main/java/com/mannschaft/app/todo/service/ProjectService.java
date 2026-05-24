@@ -104,9 +104,17 @@ public class ProjectService {
                             ? BigDecimal.valueOf(completedInMilestone * 100.0 / totalInMilestone)
                                     .setScale(2, RoundingMode.HALF_UP)
                             : BigDecimal.ZERO;
-                    return new ProjectDetailResponse.MilestoneDetail(
-                            m.getId(), m.getTitle(), m.getDueDate(), m.getIsCompleted(),
-                            m.getCompletedAt(), rate, totalInMilestone, completedInMilestone, m.getSortOrder());
+                    return ProjectDetailResponse.MilestoneDetail.builder()
+                            .id(m.getId())
+                            .title(m.getTitle())
+                            .dueDate(m.getDueDate())
+                            .isCompleted(Boolean.TRUE.equals(m.getIsCompleted()))
+                            .completedAt(m.getCompletedAt())
+                            .progressRate(rate)
+                            .totalTodos(totalInMilestone)
+                            .completedTodos(completedInMilestone)
+                            .sortOrder(m.getSortOrder())
+                            .build();
                 })
                 .toList();
 
@@ -114,16 +122,31 @@ public class ProjectService {
         long unassignedCompleted = todoRepository.countByProjectIdAndMilestoneIdIsNullAndStatusAndDeletedAtIsNull(
                 projectId, TodoStatus.COMPLETED);
 
-        ProjectDetailResponse response = new ProjectDetailResponse(
-                project.getId(), project.getTitle(), project.getDescription(),
-                project.getEmoji(), project.getColor(), project.getDueDate(),
-                calculateDaysRemaining(project.getDueDate()),
-                project.getStatus().name(), project.getProgressRate(),
-                project.getTotalTodos(), project.getCompletedTodos(),
-                project.getVisibility().name(),
-                milestoneDetails,
-                new ProjectDetailResponse.UnassignedTodos(unassignedTotal, unassignedCompleted),
-                resolveUserInfo(project.getCreatedBy()));
+        ProjectDetailResponse response = ProjectDetailResponse.builder()
+                .id(project.getId())
+                .meta(new ProjectDetailResponse.ProjectMetaDto(
+                        project.getStatus().name(),
+                        project.getVisibility().name()))
+                .content(new ProjectDetailResponse.ProjectContentDto(
+                        project.getTitle(),
+                        project.getDescription(),
+                        project.getEmoji(),
+                        project.getColor()))
+                .schedule(new ProjectDetailResponse.ProjectScheduleDto(
+                        project.getDueDate(),
+                        calculateDaysRemaining(project.getDueDate())))
+                .progress(new ProjectDetailResponse.ProjectProgressDto(
+                        project.getProgressRate(),
+                        project.getTotalTodos(),
+                        project.getCompletedTodos()))
+                .milestones(milestoneDetails)
+                .unassignedTodos(ProjectDetailResponse.UnassignedTodos.builder()
+                        .total(unassignedTotal)
+                        .completed(unassignedCompleted)
+                        .build())
+                .audit(new ProjectDetailResponse.ProjectAuditDto(
+                        resolveUserInfo(project.getCreatedBy())))
+                .build();
 
         return ApiResponse.of(response);
     }
