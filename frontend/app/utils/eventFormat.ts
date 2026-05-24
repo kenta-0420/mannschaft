@@ -1,3 +1,5 @@
+import dayjs from 'dayjs'
+
 export function statusSeverity(status: string) {
   switch (status) {
     case 'DRAFT':
@@ -58,7 +60,7 @@ export function regStatusSeverity(status: string) {
   }
 }
 
-export function formatDateTime(dateStr: string | null): string {
+export function formatDateTime(dateStr: string | null, timezone = 'Asia/Tokyo'): string {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleString('ja-JP')
+  return dayjs(dateStr).tz(timezone).format('YYYY/MM/DD HH:mm')
 }

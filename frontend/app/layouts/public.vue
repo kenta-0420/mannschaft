@@ -9,7 +9,10 @@
  *
  * 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §8.1 / §8.6
  */
+import dayjs from 'dayjs'
+
 const { t, locale, setLocale, availableLocales } = useI18n()
+const { userTimezone } = useDatetime()
 const showMobileMenu = ref(false)
 
 const localeLabels: Record<string, string> = {
@@ -115,7 +118,7 @@ const localeLabels: Record<string, string> = {
     <footer
       class="border-t border-surface-200 bg-surface-50 py-6 text-center text-xs text-surface-400 dark:border-surface-700 dark:bg-surface-800"
     >
-      © {{ new Date().getFullYear() }} Mannschaft. All rights reserved.
+      © {{ dayjs().tz(userTimezone).year() }} Mannschaft. All rights reserved.
     </footer>
   </div>
 </template>

@@ -1,9 +1,12 @@
+import dayjs from 'dayjs'
+
 export function useTimedMessage() {
   const { tm, rt } = useI18n()
+  const { userTimezone } = useDatetime()
   const message = ref('')
 
   function pick() {
-    const hour = new Date().getHours()
+    const hour = dayjs().tz(userTimezone.value).hour()
     let period: string
     if (hour >= 5 && hour < 9) period = 'earlyMorning'
     else if (hour >= 9 && hour < 12) period = 'morning'
