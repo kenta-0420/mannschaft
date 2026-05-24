@@ -93,57 +93,59 @@ function onKeydown(event: KeyboardEvent) {
 </script>
 
 <template>
-  <form
-    class="flex flex-col gap-2 rounded-2xl border border-surface-300 bg-surface-0 p-3 dark:border-surface-600 dark:bg-surface-800"
-    data-testid="action-memo-input"
-    @submit.prevent="submit"
-  >
-    <textarea
-      v-model="content"
-      data-testid="action-memo-input-textarea"
-      :placeholder="t('action_memo.input.placeholder')"
-      rows="3"
-      class="w-full resize-y rounded-lg border border-surface-200 bg-transparent p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:border-surface-700"
-      @keydown="onKeydown"
-    />
+  <DashboardWidgetCard :scrollable="false">
+    <form
+      class="flex flex-col gap-2"
+      data-testid="action-memo-input"
+      @submit.prevent="submit"
+    >
+      <textarea
+        v-model="content"
+        data-testid="action-memo-input-textarea"
+        :placeholder="t('action_memo.input.placeholder')"
+        rows="3"
+        class="w-full resize-y rounded-lg border border-surface-200 bg-transparent p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:border-surface-700"
+        @keydown="onKeydown"
+      />
 
-    <div v-if="store.isMoodEnabled" class="px-1">
-      <MoodSelector v-model="mood" />
-    </div>
-
-    <div class="px-1">
-      <TagPicker v-model="selectedTagIds" />
-    </div>
-
-    <div class="flex flex-wrap items-center justify-between gap-2 px-1 text-xs">
-      <div class="flex items-center gap-3">
-        <span
-          :class="
-            tooLong ? 'text-rose-600' : 'text-surface-500 dark:text-surface-400'
-          "
-          data-testid="action-memo-input-charcount"
-        >
-          {{ t('action_memo.input.char_count', { count: charCount }) }}
-        </span>
-        <span class="hidden text-surface-400 sm:inline">
-          {{ t('action_memo.input.shift_enter_hint') }}
-        </span>
-        <span
-          v-if="draftSavedFlash"
-          class="text-emerald-500"
-          data-testid="action-memo-input-draftsaved"
-        >
-          {{ t('action_memo.input.draft_saved') }}
-        </span>
+      <div v-if="store.isMoodEnabled" class="px-1">
+        <MoodSelector v-model="mood" />
       </div>
-      <button
-        type="submit"
-        data-testid="action-memo-input-submit"
-        :disabled="!canSubmit"
-        class="rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {{ t('action_memo.input.submit') }}
-      </button>
-    </div>
-  </form>
+
+      <div class="px-1">
+        <TagPicker v-model="selectedTagIds" />
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 px-1 text-xs">
+        <div class="flex items-center gap-3">
+          <span
+            :class="
+              tooLong ? 'text-rose-600' : 'text-surface-500 dark:text-surface-400'
+            "
+            data-testid="action-memo-input-charcount"
+          >
+            {{ t('action_memo.input.char_count', { count: charCount }) }}
+          </span>
+          <span class="hidden text-surface-400 sm:inline">
+            {{ t('action_memo.input.shift_enter_hint') }}
+          </span>
+          <span
+            v-if="draftSavedFlash"
+            class="text-emerald-500"
+            data-testid="action-memo-input-draftsaved"
+          >
+            {{ t('action_memo.input.draft_saved') }}
+          </span>
+        </div>
+        <button
+          type="submit"
+          data-testid="action-memo-input-submit"
+          :disabled="!canSubmit"
+          class="rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {{ t('action_memo.input.submit') }}
+        </button>
+      </div>
+    </form>
+  </DashboardWidgetCard>
 </template>

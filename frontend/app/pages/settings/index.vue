@@ -189,7 +189,7 @@ const searchResults = computed(() => {
           v-for="item in searchResults"
           :key="item.to"
           :to="item.to"
-          class="flex items-center gap-4 rounded-xl border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md dark:border-surface-500 dark:bg-surface-800"
+          class="flex items-center gap-4 rounded-xl border-[3px] border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md dark:border-surface-500 dark:bg-surface-800"
           @click="handleNavigate(item.to)"
         >
           <div
@@ -226,7 +226,7 @@ const searchResults = computed(() => {
 
       <!-- 個別設定一覧（アコーディオン） -->
       <button
-        class="flex w-full items-center justify-between rounded-xl border-2 border-surface-400 bg-surface-0 px-5 py-4 text-left transition-colors hover:bg-surface-50 dark:border-surface-500 dark:bg-surface-800 dark:hover:bg-surface-700"
+        class="flex w-full items-center justify-between rounded-xl border-[3px] border-surface-400 bg-surface-0 px-5 py-4 text-left transition-colors hover:bg-surface-50 dark:border-surface-500 dark:bg-surface-800 dark:hover:bg-surface-700"
         @click="showIndividual = !showIndividual"
       >
         <div class="flex items-center gap-3">
@@ -246,7 +246,7 @@ const searchResults = computed(() => {
             v-for="item in individualItems"
             :key="item.to"
             :to="item.to"
-            class="flex items-center gap-4 rounded-xl border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md dark:border-surface-500 dark:bg-surface-800"
+            class="flex items-center gap-4 rounded-xl border-[3px] border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md dark:border-surface-500 dark:bg-surface-800"
             @click="handleNavigate(item.to)"
           >
             <div

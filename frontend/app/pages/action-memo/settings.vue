@@ -104,100 +104,98 @@ function goBack() {
     </div>
 
     <!-- 気分入力 -->
-    <section
-      class="flex flex-col gap-3 rounded-2xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
-    >
-      <div class="flex items-start justify-between gap-3">
-        <div class="flex-1">
-          <p class="text-sm font-semibold text-surface-800 dark:text-surface-100">
-            {{ t('action_memo.settings.mood_enabled.label') }}
-          </p>
-          <p class="mt-1 text-xs text-surface-500 dark:text-surface-400">
-            {{ t('action_memo.settings.mood_enabled.description') }}
-          </p>
+    <DashboardWidgetCard :scrollable="false">
+      <div class="flex flex-col gap-3">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-surface-800 dark:text-surface-100">
+              {{ t('action_memo.settings.mood_enabled.label') }}
+            </p>
+            <p class="mt-1 text-xs text-surface-500 dark:text-surface-400">
+              {{ t('action_memo.settings.mood_enabled.description') }}
+            </p>
+          </div>
+          <label class="inline-flex cursor-pointer items-center" data-testid="mood-enabled-toggle">
+            <input
+              type="checkbox"
+              class="peer sr-only"
+              :checked="moodEnabled"
+              data-testid="mood-enabled-checkbox"
+              @change="onToggle(($event.target as HTMLInputElement).checked)"
+            >
+            <span
+              class="relative h-6 w-11 rounded-full bg-surface-300 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-5 dark:bg-surface-600"
+            />
+          </label>
         </div>
-        <label class="inline-flex cursor-pointer items-center" data-testid="mood-enabled-toggle">
-          <input
-            type="checkbox"
-            class="peer sr-only"
-            :checked="moodEnabled"
-            data-testid="mood-enabled-checkbox"
-            @change="onToggle(($event.target as HTMLInputElement).checked)"
-          >
-          <span
-            class="relative h-6 w-11 rounded-full bg-surface-300 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-5 dark:bg-surface-600"
-          />
-        </label>
       </div>
-    </section>
+    </DashboardWidgetCard>
 
     <!-- Phase 3: デフォルトカテゴリ -->
-    <section
-      class="flex flex-col gap-3 rounded-2xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
-    >
-      <p class="text-sm font-semibold text-surface-800 dark:text-surface-100">
-        {{ t('action_memo.phase3.settings.default_category') }}
-      </p>
-      <CategorySelector
-        :model-value="defaultCategory"
-        data-testid="settings-default-category"
-        @update:model-value="onDefaultCategoryChange"
-      />
-    </section>
+    <DashboardWidgetCard :scrollable="false">
+      <div class="flex flex-col gap-3">
+        <p class="text-sm font-semibold text-surface-800 dark:text-surface-100">
+          {{ t('action_memo.phase3.settings.default_category') }}
+        </p>
+        <CategorySelector
+          :model-value="defaultCategory"
+          data-testid="settings-default-category"
+          @update:model-value="onDefaultCategoryChange"
+        />
+      </div>
+    </DashboardWidgetCard>
 
     <!-- Phase 3: デフォルト投稿先チーム -->
-    <section
-      class="flex flex-col gap-3 rounded-2xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
-      data-testid="settings-default-team-section"
-    >
-      <DefaultTeamPicker
-        :available-teams="store.availableTeams"
-        :model-value="defaultPostTeamId"
-        @update:model-value="onDefaultTeamChange"
-      />
-    </section>
+    <DashboardWidgetCard :scrollable="false" data-testid="settings-default-team-section">
+      <div class="flex flex-col gap-3">
+        <DefaultTeamPicker
+          :available-teams="store.availableTeams"
+          :model-value="defaultPostTeamId"
+          @update:model-value="onDefaultTeamChange"
+        />
+      </div>
+    </DashboardWidgetCard>
 
     <!-- Phase 4-β: リマインド設定 -->
-    <section
-      class="flex flex-col gap-3 rounded-2xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
-      data-testid="settings-reminder-section"
-    >
-      <div class="flex items-start justify-between gap-3">
-        <div class="flex-1">
-          <p class="text-sm font-semibold text-surface-800 dark:text-surface-100">
-            {{ t('action_memo.settings.reminder.label') }}
-          </p>
-          <p class="mt-1 text-xs text-surface-500 dark:text-surface-400">
-            {{ t('action_memo.settings.reminder.description') }}
-          </p>
+    <DashboardWidgetCard :scrollable="false" data-testid="settings-reminder-section">
+      <div class="flex flex-col gap-3">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-surface-800 dark:text-surface-100">
+              {{ t('action_memo.settings.reminder.label') }}
+            </p>
+            <p class="mt-1 text-xs text-surface-500 dark:text-surface-400">
+              {{ t('action_memo.settings.reminder.description') }}
+            </p>
+          </div>
+          <label class="inline-flex cursor-pointer items-center" data-testid="reminder-enabled-toggle">
+            <input
+              type="checkbox"
+              class="peer sr-only"
+              :checked="reminderEnabled"
+              data-testid="reminder-enabled-checkbox"
+              @change="onReminderToggle(($event.target as HTMLInputElement).checked)"
+            >
+            <span
+              class="relative h-6 w-11 rounded-full bg-surface-300 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-5 dark:bg-surface-600"
+            />
+          </label>
         </div>
-        <label class="inline-flex cursor-pointer items-center" data-testid="reminder-enabled-toggle">
+        <div v-show="reminderEnabled" class="flex items-center gap-3 pt-1">
+          <label class="text-sm text-surface-700 dark:text-surface-300" for="reminder-time">
+            {{ t('action_memo.settings.reminder.time_label') }}
+          </label>
           <input
-            type="checkbox"
-            class="peer sr-only"
-            :checked="reminderEnabled"
-            data-testid="reminder-enabled-checkbox"
-            @change="onReminderToggle(($event.target as HTMLInputElement).checked)"
+            id="reminder-time"
+            ref="reminderTimeInputRef"
+            type="time"
+            :value="reminderTime"
+            class="rounded-lg border border-surface-300 bg-surface-0 px-3 py-1.5 text-sm dark:border-surface-600 dark:bg-surface-900"
+            data-testid="reminder-time-input"
+            @change="onReminderTimeChange($event)"
           >
-          <span
-            class="relative h-6 w-11 rounded-full bg-surface-300 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-5 dark:bg-surface-600"
-          />
-        </label>
+        </div>
       </div>
-      <div v-show="reminderEnabled" class="flex items-center gap-3 pt-1">
-        <label class="text-sm text-surface-700 dark:text-surface-300" for="reminder-time">
-          {{ t('action_memo.settings.reminder.time_label') }}
-        </label>
-        <input
-          id="reminder-time"
-          ref="reminderTimeInputRef"
-          type="time"
-          :value="reminderTime"
-          class="rounded-lg border border-surface-300 bg-surface-0 px-3 py-1.5 text-sm dark:border-surface-600 dark:bg-surface-900"
-          data-testid="reminder-time-input"
-          @change="onReminderTimeChange($event)"
-        >
-      </div>
-    </section>
+    </DashboardWidgetCard>
   </div>
 </template>

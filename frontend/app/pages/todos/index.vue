@@ -68,18 +68,18 @@ onMounted(load)
     </div>
 
     <!-- 進捗バー -->
-    <div
-      class="mb-5 rounded-xl border-2 border-surface-400 bg-surface-0 p-4 dark:border-surface-500 dark:bg-surface-800"
-    >
-      <div class="mb-2 flex items-center justify-between text-sm">
-        <span class="font-medium text-surface-600 dark:text-surface-300">
-          完了 <span class="font-bold text-primary">{{ progress.completed }}</span> /
-          {{ progress.total }}件
-        </span>
-        <span class="font-bold text-primary">{{ progress.pct }}%</span>
+    <DashboardWidgetCard :scrollable="false" class="mb-5">
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between text-sm">
+          <span class="font-medium text-surface-600 dark:text-surface-300">
+            完了 <span class="font-bold text-primary">{{ progress.completed }}</span> /
+            {{ progress.total }}件
+          </span>
+          <span class="font-bold text-primary">{{ progress.pct }}%</span>
+        </div>
+        <ProgressBar :value="progress.pct" :show-value="false" style="height: 8px" />
       </div>
-      <ProgressBar :value="progress.pct" :show-value="false" style="height: 8px" />
-    </div>
+    </DashboardWidgetCard>
 
     <!-- スコープタブ -->
     <div class="mb-5 flex flex-wrap gap-2">
