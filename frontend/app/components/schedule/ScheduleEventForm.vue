@@ -187,8 +187,8 @@ watch(
   },
 )
 
-function buildDateTimeStr(date: Date | null, time: string): string {
-  if (!date) return ''
+function buildDateTimeStr(date: Date | null, time: string): string | null {
+  if (!date) return null
   const dateStr = date.toISOString().split('T')[0]
   return time ? `${dateStr}T${time}:00` : `${dateStr}T00:00:00`
 }
@@ -206,14 +206,14 @@ async function submit() {
     description: form.value.description.trim() || undefined,
     location: form.value.location.trim() || undefined,
     allDay: form.value.allDay,
-    startAt: buildDateTimeStr(form.value.startDate, form.value.allDay ? '' : form.value.startTime),
+    startAt: buildDateTimeStr(form.value.startDate, form.value.allDay ? '' : form.value.startTime) ?? undefined,
     endAt: (() => {
       if (form.value.allDay && form.value.endDate) {
         const d = new Date(form.value.endDate)
         d.setDate(d.getDate() + 1)
-        return buildDateTimeStr(d, '')
+        return buildDateTimeStr(d, '') ?? undefined
       }
-      return buildDateTimeStr(form.value.endDate, form.value.allDay ? '' : form.value.endTime)
+      return buildDateTimeStr(form.value.endDate, form.value.allDay ? '' : form.value.endTime) ?? undefined
     })(),
   }
   if (effectiveScope.value.isPersonal) {

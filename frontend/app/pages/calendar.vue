@@ -323,7 +323,7 @@ onMounted(() => {
         <!-- カレンダー（2列） -->
         <div class="lg:col-span-2">
           <div
-            class="rounded-xl border-2 border-surface-400 bg-surface-0 p-4 dark:border-surface-500 dark:bg-surface-800"
+            class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
           >
             <CalendarGrid
               :year="currentYear"
@@ -447,7 +447,7 @@ onMounted(() => {
     <!-- ガントビュー -->
     <template v-else>
       <div
-        class="rounded-xl border-2 border-surface-400 bg-surface-0 p-4 dark:border-surface-500 dark:bg-surface-800"
+        class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
       >
         <div v-if="ganttLoading" class="space-y-3">
           <Skeleton v-for="i in 5" :key="i" height="2rem" />
