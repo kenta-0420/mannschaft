@@ -24,19 +24,21 @@ export const useAuthStore = defineStore('auth', {
   }),
 
   getters: {
-    isAuthenticated: (state): boolean => !!state.accessToken,
+    // accessToken は in-memory のみで管理（localStorage 非使用）。
+    // ページリロード後はトークンがメモリから消えるが、user オブジェクトは localStorage に残るため
+    // user の有無で認証状態を判定する。未認証の API 呼び出しは 401 → リフレッシュフローで自動復旧する。
+    isAuthenticated: (state): boolean => !!state.user,
     currentUser: (state): AuthUser | null => state.user,
     isSystemAdmin: (state): boolean => state.user?.systemRole === 'SYSTEM_ADMIN',
   },
 
   actions: {
     setTokens(accessToken: string, refreshToken: string) {
+      // トークンは Pinia in-memory のみで保持する。
+      // localStorage への保存は XSS でトークンを盗まれる脆弱性の原因となるため廃止。
+      // accessToken は HttpOnly Cookie でも管理されており、Cookie はブラウザが自動送信する。
       this.accessToken = accessToken
       this.refreshToken = refreshToken
-      if (import.meta.client) {
-        localStorage.setItem('accessToken', accessToken)
-        localStorage.setItem('refreshToken', refreshToken)
-      }
     },
 
     setUser(user: AuthUser) {
@@ -47,9 +49,10 @@ export const useAuthStore = defineStore('auth', {
     },
 
     loadFromStorage() {
+      // accessToken・refreshToken は localStorage に保存しなくなったため読み込まない。
+      // user 情報のみ復元し、isAuthenticated の判定に使用する。
+      // アクセストークンは HttpOnly Cookie から自動送信されるため、ページリロード後も API は正常動作する。
       if (import.meta.client) {
-        this.accessToken = localStorage.getItem('accessToken')
-        this.refreshToken = localStorage.getItem('refreshToken')
         const savedUser = localStorage.getItem('currentUser')
         if (savedUser) {
           try {
@@ -66,6 +69,8 @@ export const useAuthStore = defineStore('auth', {
       this.refreshToken = null
       this.user = null
       if (import.meta.client) {
+        // accessToken・refreshToken の localStorage エントリは廃止済みだが、
+        // 移行前の古いデータが残っている場合のクリーンアップとして削除する。
         localStorage.removeItem('accessToken')
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('currentUser')
@@ -106,7 +111,6 @@ export const useAuthStore = defineStore('auth', {
         const api = useApi()
         await api('/api/v1/auth/logout', {
           method: 'POST',
-          body: { refreshToken: this.refreshToken },
         })
       } catch {
         // ignore errors - we're logging out anyway
