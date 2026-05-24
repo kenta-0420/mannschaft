@@ -136,6 +136,10 @@ async function saveEdit() {
       dueDate: editForm.value.dueDate ? toLocalDateStr(editForm.value.dueDate) : null,
     })
     notification.success(t('todo.action.updated'))
+    // 楽観的更新: API再取得を待たずに即時反映
+    if (todo.value) {
+      todo.value = { ...todo.value, progressRate: editForm.value.progressRate }
+    }
     editing.value = false
     await loadTodo()
   }
@@ -307,15 +311,9 @@ onMounted(loadTodo)
 
         <div>
           <label class="mb-1 block text-sm font-medium">{{ t('todo.field.progressRate') }}</label>
-          <div class="flex items-center gap-2">
-            <InputNumber
-              v-model="editForm.progressRate"
-              :min="0"
-              :max="100"
-              :step="5"
-              class="w-32"
-              suffix="%"
-            />
+          <div class="mt-3 flex items-center gap-4">
+            <Slider v-model="editForm.progressRate" :step="5" :min="0" :max="100" class="flex-1" />
+            <span class="w-12 shrink-0 text-right text-sm font-semibold">{{ editForm.progressRate }}%</span>
           </div>
         </div>
 

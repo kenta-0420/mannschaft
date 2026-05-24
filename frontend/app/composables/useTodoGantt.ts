@@ -14,7 +14,10 @@ export function useTodoGantt() {
    * GET /api/v1/todos/gantt?from=yyyy-MM-dd&to=yyyy-MM-dd
    */
   async function getPersonalGanttTodos(from: string, to: string): Promise<GanttResponse> {
-    return api<GanttResponse>(`/api/v1/todos/gantt?from=${from}&to=${to}`)
+    // コントローラーは yyyy-MM-dd 形式の LocalDate を期待 — 時刻部分を除去
+    const fromDate = from.slice(0, 10)
+    const toDate = to.slice(0, 10)
+    return api<GanttResponse>(`/api/v1/todos/gantt?from=${fromDate}&to=${toDate}`)
   }
 
   /**
