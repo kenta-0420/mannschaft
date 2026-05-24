@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { ShiftRequestResponse } from '~/types/shift'
 import { preferenceToI18nKey } from '~/utils/shiftPreference'
 
@@ -12,7 +13,8 @@ import { preferenceToI18nKey } from '~/utils/shiftPreference'
 
 definePageMeta({ middleware: 'auth' })
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
+const { userTimezone } = useDatetime()
 const { error: showError, success: showSuccess } = useNotification()
 const { listMyRequests } = useMyShiftApi()
 const { createSwapRequest } = useShiftSwapApi()
@@ -47,7 +49,7 @@ const weekDates = computed(() => {
 })
 
 const monthLabel = computed(() =>
-  currentDate.value.toLocaleDateString(locale.value, { year: 'numeric', month: 'long' }),
+  dayjs.tz(currentDate.value, userTimezone.value).format('YYYY年M月'),
 )
 
 const weekLabel = computed(() => {
@@ -223,7 +225,7 @@ onMounted(() => load())
               {{ date.getDate() }}
             </span>
             <span class="text-xs text-surface-500">
-              {{ date.toLocaleDateString(locale, { weekday: 'short' }) }}
+              {{ dayjs.tz(date, userTimezone).format('ddd') }}
             </span>
           </div>
 

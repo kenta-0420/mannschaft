@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type {
   AllocationResponse,
   ConsumptionStatus,
@@ -14,6 +15,7 @@ import type {
 definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
+const { userTimezone } = useDatetime()
 const scopeStore = useScopeStore()
 const notification = useNotification()
 const api = useShiftBudgetApi()
@@ -31,11 +33,7 @@ const monthlyCloseForm = ref<{ yearMonth: string }>({ yearMonth: '' })
 const monthlyCloseExecuting = ref(false)
 
 function defaultPreviousMonth(): string {
-  const now = new Date()
-  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const yyyy = prev.getFullYear()
-  const mm = String(prev.getMonth() + 1).padStart(2, '0')
-  return `${yyyy}-${mm}`
+  return dayjs().tz(userTimezone.value).subtract(1, 'month').format('YYYY-MM')
 }
 
 async function load() {

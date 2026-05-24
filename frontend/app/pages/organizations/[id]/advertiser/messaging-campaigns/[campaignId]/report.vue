@@ -5,6 +5,7 @@
  * <p>期間指定で配信実績を集計表示。KPI カード 4 枚 + 日次推移グラフ (chart.js)
  * + チャネル別ブレークダウン表 + CSV エクスポートボタン。</p>
  */
+import dayjs from 'dayjs'
 import type { AdCampaignReport } from '~/types/adMessagingCampaign'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
@@ -15,22 +16,19 @@ const reportApi = useAdMessagingCampaignReportApi()
 const notification = useNotification()
 
 const campaignId = computed(() => String(route.params.campaignId))
+const { userTimezone } = useDatetime()
 
 const loading = ref(true)
 const report = ref<AdCampaignReport | null>(null)
 const exportingCsv = ref(false)
 
-// 既定期間: 直近 30 日
-const today = new Date()
-const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
-const fromDate = ref<Date>(thirtyDaysAgo)
-const toDate = ref<Date>(today)
+// 既定期間: 直近 30 日（ユーザーTZで「今日」を計算）
+const todayInTz = dayjs().tz(userTimezone.value)
+const fromDate = ref<Date>(todayInTz.subtract(30, 'day').toDate())
+const toDate = ref<Date>(todayInTz.toDate())
 
 function formatYmd(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  return dayjs.tz(d, userTimezone.value).format('YYYY-MM-DD')
 }
 
 async function load() {
