@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { FiscalYearResponse, BudgetSummary } from '~/types/budget'
 
 definePageMeta({ middleware: 'auth' })
@@ -7,6 +8,7 @@ const teamId = Number(route.params.id)
 
 const notification = useNotification()
 const { getFiscalYears, getSummary, createFiscalYear } = useBudgetApi()
+const { userTimezone } = useDatetime()
 
 const fiscalYears = ref<FiscalYearResponse[]>([])
 const selectedFy = ref<FiscalYearResponse | null>(null)
@@ -16,7 +18,7 @@ const loading = ref(false)
 const showCreateDialog = ref(false)
 const saving = ref(false)
 
-const currentYear = new Date().getFullYear()
+const currentYear = dayjs().tz(userTimezone.value).year()
 const form = ref({
   name: `${currentYear}年度`,
   startDate: `${currentYear}-04-01`,
@@ -24,7 +26,7 @@ const form = ref({
 })
 
 function openCreateDialog() {
-  const y = new Date().getFullYear()
+  const y = dayjs().tz(userTimezone.value).year()
   form.value = {
     name: `${y}年度`,
     startDate: `${y}-04-01`,

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import dayjs from 'dayjs'
 
 definePageMeta({
   middleware: 'auth',
@@ -7,8 +8,9 @@ definePageMeta({
 
 const route = useRoute()
 const teamId = computed(() => Number(route.params.id))
+const { userTimezone } = useDatetime()
 
-const currentYear = new Date().getFullYear()
+const currentYear = dayjs().tz(userTimezone.value).year()
 const selectedYear = ref(currentYear)
 
 const yearOptions = Array.from({ length: 5 }, (_, i) => ({

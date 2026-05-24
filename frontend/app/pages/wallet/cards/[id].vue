@@ -28,6 +28,8 @@ import type { UpdateUserPointCardRequest, UserPointCardDetail } from '~/types/po
  * API 呼び出し・state・ハンドラはすべて本ページに残り、振る舞いは完全同一。</p>
  */
 
+import dayjs from 'dayjs'
+
 definePageMeta({
   middleware: ['auth'],
 })
@@ -37,6 +39,7 @@ const route = useRoute()
 const router = useRouter()
 const walletApi = useWalletApi()
 const runtimeConfig = useRuntimeConfig()
+const { userTimezone } = useDatetime()
 
 const cardId = computed(() => route.params.id as string)
 
@@ -93,8 +96,7 @@ const draft = ref<CardDetailDraft>({
 
 const lastUsedDisplay = computed(() => {
   if (!card.value?.lastUsedAt) return '—'
-  const d = new Date(card.value.lastUsedAt)
-  return d.toLocaleString()
+  return dayjs.tz(card.value.lastUsedAt, userTimezone.value).format('YYYY/MM/DD HH:mm')
 })
 
 /**

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { CreateKanbanRequest, KanbanStage, QuoteKanban } from '~/types/repairPlanKanban'
 import type { RepairPlanTimelineResponse } from '~/types/repairPlanTimeline'
 
@@ -10,7 +11,7 @@ const teamId = computed(() => Number(route.params.id))
 const { getTimeline } = useRepairPlanTimelineApi()
 const { listKanbans, createKanban, moveCard } = useRepairPlanKanbanApi()
 const notification = useNotification()
-const { formatDate } = useDatetime()
+const { formatDate, userTimezone } = useDatetime()
 const teamApi = useTeamApi()
 const { isAdminOrDeputy, isAdmin, loadPermissions } = useRoleAccess('team', teamId)
 
@@ -19,7 +20,7 @@ type Tab = 'timeline' | 'kanban' | 'handover'
 const activeTab = ref<Tab>('timeline')
 
 // --- タイムライン ---
-const currentYear = new Date().getFullYear()
+const currentYear = dayjs().tz(userTimezone.value).year()
 const yearFrom = ref(currentYear - 20)
 const yearTo = ref(currentYear + 10)
 const timelineData = ref<RepairPlanTimelineResponse | null>(null)

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { TimetablePeriod, TimetableTerm } from '~/types/timetable'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
@@ -9,7 +10,7 @@ const orgId = computed(() => Number(route.params.id))
 const timetableApi = useTimetableApi()
 const notification = useNotification()
 const { isAdmin, loadPermissions } = useRoleAccess('organization', orgId)
-const { formatDate } = useDatetime()
+const { formatDate, userTimezone } = useDatetime()
 
 const periods = ref<TimetablePeriod[]>([])
 const terms = ref<TimetableTerm[]>([])
@@ -23,7 +24,7 @@ const termForm = ref({
   name: '',
   startDate: '',
   endDate: '',
-  academicYear: new Date().getFullYear(),
+  academicYear: dayjs().tz(userTimezone.value).year(),
   sortOrder: 0,
 })
 
@@ -64,7 +65,7 @@ async function submitTerm() {
       name: '',
       startDate: '',
       endDate: '',
-      academicYear: new Date().getFullYear(),
+      academicYear: dayjs().tz(userTimezone.value).year(),
       sortOrder: 0,
     }
     terms.value = await timetableApi.listTerms('organization', orgId.value)

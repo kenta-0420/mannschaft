@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import {
   Chart,
   LineController,
@@ -32,6 +33,7 @@ definePageMeta({ middleware: 'auth' })
 
 const analyticsApi = useSystemAdminAnalyticsApi()
 const notification = useNotification()
+const { userTimezone } = useDatetime()
 
 // ---- 期間選択 ----
 const periodOptions = [
@@ -43,26 +45,21 @@ const periodOptions = [
 const selectedPeriod = ref<string>('this_month')
 
 function getPeriodRange(period: string): { from: string; to: string } {
-  const now = new Date()
-  const fmt = (d: Date) => d.toISOString().slice(0, 10)
+  const now = dayjs().tz(userTimezone.value)
+  const fmt = (d: dayjs.Dayjs) => d.format('YYYY-MM-DD')
 
   if (period === 'this_month') {
-    const from = new Date(now.getFullYear(), now.getMonth(), 1)
-    const to = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    return { from: fmt(from), to: fmt(to) }
+    return { from: fmt(now.startOf('month')), to: fmt(now.endOf('month')) }
   }
   if (period === 'last_month') {
-    const from = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const to = new Date(now.getFullYear(), now.getMonth(), 0)
-    return { from: fmt(from), to: fmt(to) }
+    const last = now.subtract(1, 'month')
+    return { from: fmt(last.startOf('month')), to: fmt(last.endOf('month')) }
   }
   if (period === 'last_3_months') {
-    const from = new Date(now.getFullYear(), now.getMonth() - 3, 1)
-    return { from: fmt(from), to: fmt(now) }
+    return { from: fmt(now.subtract(3, 'month').startOf('month')), to: fmt(now) }
   }
   // this_year
-  const from = new Date(now.getFullYear(), 0, 1)
-  return { from: fmt(from), to: fmt(now) }
+  return { from: fmt(now.startOf('year')), to: fmt(now) }
 }
 
 // ---- データ ----
