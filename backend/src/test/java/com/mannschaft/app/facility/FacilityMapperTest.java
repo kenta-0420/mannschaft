@@ -324,27 +324,92 @@ class FacilityMapperTest {
     class ToBookingDetailResponse {
 
         @Test
-        @DisplayName("正常系: 詳細レスポンス変換")
+        @DisplayName("正常系: 詳細レスポンス変換（ネスト設計）")
         void 詳細レスポンス変換() throws Exception {
             FacilityBookingEntity entity = FacilityBookingEntity.builder()
                     .facilityId(2L).bookedBy(5L)
                     .bookingDate(LocalDate.of(2026, 4, 15))
+                    .checkOutDate(null).stayNights(0)
                     .timeFrom(LocalTime.of(13, 0)).timeTo(LocalTime.of(15, 0))
                     .slotCount(4).purpose("研修").attendeeCount(20)
                     .usageFee(BigDecimal.valueOf(3000))
                     .equipmentFee(BigDecimal.valueOf(500))
                     .totalFee(BigDecimal.valueOf(3500))
                     .status(BookingStatus.CHECKED_IN)
-                    .stayNights(0).build();
+                    .build();
             setId(entity, 200L);
+            LocalDateTime now = LocalDateTime.of(2026, 4, 15, 13, 0);
+            setCreatedAt(entity, now);
+            setUpdatedAt(entity, now);
 
             BookingDetailResponse response = mapper.toBookingDetailResponse(entity);
 
             assertThat(response.getId()).isEqualTo(200L);
             assertThat(response.getStatus()).isEqualTo("CHECKED_IN");
-            assertThat(response.getAttendeeCount()).isEqualTo(20);
-            assertThat(response.getEquipment()).isNull(); // ignore
-            assertThat(response.getFacilityName()).isNull(); // ignore
+
+            // facility サブDTO
+            assertThat(response.getFacility()).isNotNull();
+            assertThat(response.getFacility().facilityId()).isEqualTo(2L);
+            assertThat(response.getFacility().bookedBy()).isEqualTo(5L);
+            assertThat(response.getFacility().facilityName()).isNull(); // ignore のため null
+
+            // schedule サブDTO
+            assertThat(response.getSchedule()).isNotNull();
+            assertThat(response.getSchedule().bookingDate()).isEqualTo(LocalDate.of(2026, 4, 15));
+            assertThat(response.getSchedule().timeFrom()).isEqualTo(LocalTime.of(13, 0));
+            assertThat(response.getSchedule().timeTo()).isEqualTo(LocalTime.of(15, 0));
+            assertThat(response.getSchedule().slotCount()).isEqualTo(4);
+
+            // usage サブDTO
+            assertThat(response.getUsage()).isNotNull();
+            assertThat(response.getUsage().purpose()).isEqualTo("研修");
+            assertThat(response.getUsage().attendeeCount()).isEqualTo(20);
+
+            // fee サブDTO
+            assertThat(response.getFee()).isNotNull();
+            assertThat(response.getFee().usageFee()).isEqualByComparingTo(BigDecimal.valueOf(3000));
+            assertThat(response.getFee().equipmentFee()).isEqualByComparingTo(BigDecimal.valueOf(500));
+            assertThat(response.getFee().totalFee()).isEqualByComparingTo(BigDecimal.valueOf(3500));
+
+            // audit サブDTO
+            assertThat(response.getAudit()).isNotNull();
+            assertThat(response.getAudit().createdAt()).isEqualTo(now);
+
+            // equipment は ignore のため null
+            assertThat(response.getEquipment()).isNull();
+        }
+
+        @Test
+        @DisplayName("正常系: withEquipment() で備品を後設定できる")
+        void withEquipment後設定() throws Exception {
+            FacilityBookingEntity entity = FacilityBookingEntity.builder()
+                    .facilityId(3L).bookedBy(6L)
+                    .bookingDate(LocalDate.of(2026, 5, 1))
+                    .stayNights(0)
+                    .timeFrom(LocalTime.of(10, 0)).timeTo(LocalTime.of(12, 0))
+                    .slotCount(4).status(BookingStatus.CONFIRMED)
+                    .usageFee(BigDecimal.valueOf(2000))
+                    .equipmentFee(BigDecimal.ZERO).totalFee(BigDecimal.valueOf(2000))
+                    .build();
+            setId(entity, 300L);
+
+            BookingDetailResponse base = mapper.toBookingDetailResponse(entity);
+            assertThat(base.getEquipment()).isNull();
+
+            List<BookingDetailResponse.BookingEquipmentResponse> equipList = List.of(
+                    BookingDetailResponse.BookingEquipmentResponse.builder()
+                            .equipmentId(10L).equipmentName("プロジェクター")
+                            .quantity(1).unitPrice(BigDecimal.valueOf(500))
+                            .subtotal(BigDecimal.valueOf(500)).build()
+            );
+
+            BookingDetailResponse withEquip = base.withEquipment(equipList);
+
+            assertThat(withEquip.getEquipment()).hasSize(1);
+            assertThat(withEquip.getEquipment().get(0).getEquipmentId()).isEqualTo(10L);
+            assertThat(withEquip.getEquipment().get(0).getEquipmentName()).isEqualTo("プロジェクター");
+            // 元のオブジェクトには影響しない（immutable）
+            assertThat(base.getEquipment()).isNull();
         }
     }
 

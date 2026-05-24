@@ -52,8 +52,14 @@ public interface FacilityMapper {
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")
     BookingResponse toBookingResponse(FacilityBookingEntity entity);
 
-    @Mapping(target = "facilityName", ignore = true)
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")
+    @Mapping(target = "facility", expression = "java(new com.mannschaft.app.facility.dto.BookingDetailResponse.BookingFacilityDto(entity.getFacilityId(), null, entity.getBookedBy(), entity.getCreatedByAdmin()))")
+    @Mapping(target = "schedule", expression = "java(new com.mannschaft.app.facility.dto.BookingDetailResponse.BookingScheduleDto(entity.getBookingDate(), entity.getCheckOutDate(), entity.getStayNights(), entity.getTimeFrom(), entity.getTimeTo(), entity.getSlotCount()))")
+    @Mapping(target = "usage", expression = "java(new com.mannschaft.app.facility.dto.BookingDetailResponse.BookingUsageDto(entity.getPurpose(), entity.getAttendeeCount()))")
+    @Mapping(target = "fee", expression = "java(new com.mannschaft.app.facility.dto.BookingDetailResponse.BookingFeeDto(entity.getUsageFee(), entity.getEquipmentFee(), entity.getTotalFee()))")
+    @Mapping(target = "approval", expression = "java(new com.mannschaft.app.facility.dto.BookingDetailResponse.BookingApprovalDto(entity.getApprovedBy(), entity.getApprovedAt(), entity.getAdminComment()))")
+    @Mapping(target = "lifecycle", expression = "java(new com.mannschaft.app.facility.dto.BookingDetailResponse.BookingLifecycleDto(entity.getCheckedInAt(), entity.getCompletedAt(), entity.getCancelledAt(), entity.getCancelledBy(), entity.getCancellationReason()))")
+    @Mapping(target = "audit", expression = "java(new com.mannschaft.app.facility.dto.BookingDetailResponse.BookingAuditDto(entity.getCreatedAt(), entity.getUpdatedAt()))")
     @Mapping(target = "equipment", ignore = true)
     BookingDetailResponse toBookingDetailResponse(FacilityBookingEntity entity);
 

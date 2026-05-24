@@ -1,7 +1,8 @@
 package com.mannschaft.app.facility.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -11,50 +12,96 @@ import java.util.List;
 
 /**
  * 施設予約詳細レスポンスDTO。
+ * フィールドを論理グループ（サブDTO）にネストして整理する。
  */
 @Getter
-@RequiredArgsConstructor
+@Builder(toBuilder = true)
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class BookingDetailResponse {
 
-    private final Long id;
-    private final Long facilityId;
-    private final String facilityName;
-    private final Long bookedBy;
-    private final Long createdByAdmin;
-    private final LocalDate bookingDate;
-    private final LocalDate checkOutDate;
-    private final Integer stayNights;
-    private final LocalTime timeFrom;
-    private final LocalTime timeTo;
-    private final Integer slotCount;
-    private final String purpose;
-    private final Integer attendeeCount;
-    private final BigDecimal usageFee;
-    private final BigDecimal equipmentFee;
-    private final BigDecimal totalFee;
-    private final String status;
-    private final String adminComment;
-    private final Long approvedBy;
-    private final LocalDateTime approvedAt;
-    private final LocalDateTime checkedInAt;
-    private final LocalDateTime completedAt;
-    private final LocalDateTime cancelledAt;
-    private final Long cancelledBy;
-    private final String cancellationReason;
-    private final List<BookingEquipmentResponse> equipment;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    private Long id;
+    private String status;
+    private BookingFacilityDto facility;
+    private BookingScheduleDto schedule;
+    private BookingUsageDto usage;
+    private BookingFeeDto fee;
+    private BookingApprovalDto approval;
+    private BookingLifecycleDto lifecycle;
+    private List<BookingEquipmentResponse> equipment;
+    private BookingAuditDto audit;
+
+    /** 施設・予約者情報 */
+    public record BookingFacilityDto(
+            Long facilityId,
+            String facilityName,
+            Long bookedBy,
+            Long createdByAdmin
+    ) {}
+
+    /** 日程・時間スロット情報 */
+    public record BookingScheduleDto(
+            LocalDate bookingDate,
+            LocalDate checkOutDate,
+            Integer stayNights,
+            LocalTime timeFrom,
+            LocalTime timeTo,
+            Integer slotCount
+    ) {}
+
+    /** 利用目的・参加者情報 */
+    public record BookingUsageDto(
+            String purpose,
+            Integer attendeeCount
+    ) {}
+
+    /** 料金情報 */
+    public record BookingFeeDto(
+            BigDecimal usageFee,
+            BigDecimal equipmentFee,
+            BigDecimal totalFee
+    ) {}
+
+    /** 承認情報 */
+    public record BookingApprovalDto(
+            Long approvedBy,
+            LocalDateTime approvedAt,
+            String adminComment
+    ) {}
+
+    /** ライフサイクル情報（チェックイン・完了・キャンセル） */
+    public record BookingLifecycleDto(
+            LocalDateTime checkedInAt,
+            LocalDateTime completedAt,
+            LocalDateTime cancelledAt,
+            Long cancelledBy,
+            String cancellationReason
+    ) {}
+
+    /** 監査情報（作成・更新日時） */
+    public record BookingAuditDto(
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt
+    ) {}
 
     /**
      * 予約備品レスポンス。
+     * equipment は MapStruct で ignore=true のため toBuilder() で後設定する。
      */
     @Getter
-    @RequiredArgsConstructor
+    @Builder
     public static class BookingEquipmentResponse {
         private final Long equipmentId;
         private final String equipmentName;
         private final Integer quantity;
         private final BigDecimal unitPrice;
         private final BigDecimal subtotal;
+    }
+
+    /**
+     * equipment を後から設定するファクトリメソッド。
+     * mapper では equipment=ignore のため、サービス層でこのメソッドを使って設定する。
+     */
+    public BookingDetailResponse withEquipment(List<BookingEquipmentResponse> equipment) {
+        return this.toBuilder().equipment(equipment).build();
     }
 }

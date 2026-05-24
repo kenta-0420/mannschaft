@@ -243,8 +243,9 @@ public class TeamFacilityBookingController {
         byte[] pdfBytes = pdfGeneratorService.generateFromTemplate("pdf/facility-booking", variables);
 
         String fileName = PdfFileNameBuilder.of("施設予約")
-                .date(booking.getBookingDate())
-                .identifier(booking.getFacilityName() + "_予約" + booking.getId())
+                .date(booking.getSchedule() != null ? booking.getSchedule().bookingDate() : null)
+                .identifier((booking.getFacility() != null && booking.getFacility().facilityName() != null
+                        ? booking.getFacility().facilityName() : "施設") + "_予約" + booking.getId())
                 .build();
 
         return PdfResponseHelper.toResponse(pdfBytes, fileName);
