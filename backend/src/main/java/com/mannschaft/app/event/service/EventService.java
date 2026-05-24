@@ -385,7 +385,7 @@ public class EventService {
             long maybe        = rsvpResponseRepository.countByEventIdAndResponse(eventId, "MAYBE");
             long undecided    = rsvpResponseRepository.countByEventIdAndResponse(eventId, "UNDECIDED");
             long total        = attending + notAttending + maybe + undecided;
-            response.setRsvpSummary(new EventRsvpSummaryResponse(attending, notAttending, maybe, undecided, total));
+            response = response.withRsvpSummary(new EventRsvpSummaryResponse(attending, notAttending, maybe, undecided, total));
         }
         return response;
     }

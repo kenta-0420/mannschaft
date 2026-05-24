@@ -3,6 +3,12 @@ package com.mannschaft.app.event;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.event.dto.CreateEventRequest;
 import com.mannschaft.app.event.dto.EventDetailResponse;
+import com.mannschaft.app.event.dto.EventDetailResponse.EventAuditDto;
+import com.mannschaft.app.event.dto.EventDetailResponse.EventContentDto;
+import com.mannschaft.app.event.dto.EventDetailResponse.EventMetaDto;
+import com.mannschaft.app.event.dto.EventDetailResponse.EventRegistrationDto;
+import com.mannschaft.app.event.dto.EventDetailResponse.EventScopeDto;
+import com.mannschaft.app.event.dto.EventDetailResponse.EventVenueDto;
 import com.mannschaft.app.event.dto.EventResponse;
 import com.mannschaft.app.event.dto.EventStatsResponse;
 import com.mannschaft.app.event.entity.EventAttendanceMode;
@@ -94,14 +100,17 @@ class EventServiceTest {
     }
 
     private EventDetailResponse createEventDetailResponse() {
-        return new EventDetailResponse(
-                EVENT_ID, "TEAM", SCOPE_ID, null, "test-event", "テストイベント",
-                "テスト用イベントの説明", null, null, null, null, null, null,
-                "DRAFT", "MEMBERS_ONLY", null, null, null, false,
-                EventAttendanceMode.REGISTRATION, null,
-                null, null, null, null, null, 0, 0, USER_ID, 0L,
-                LocalDateTime.now(), LocalDateTime.now()
-        );
+        LocalDateTime now = LocalDateTime.now();
+        return EventDetailResponse.builder()
+                .id(EVENT_ID)
+                .scope(new EventScopeDto("TEAM", SCOPE_ID, null, null))
+                .content(new EventContentDto("test-event", "テストイベント", "テスト用イベントの説明", null))
+                .venue(new EventVenueDto(null, null, null, null, null))
+                .registration(new EventRegistrationDto(null, null, null, false,
+                        EventAttendanceMode.REGISTRATION, null, null, 0, 0))
+                .meta(new EventMetaDto("DRAFT", "MEMBERS_ONLY", null, null, null))
+                .audit(new EventAuditDto(USER_ID, now, now, 0L))
+                .build();
     }
 
     // ========================================
@@ -178,7 +187,7 @@ class EventServiceTest {
             EventDetailResponse result = eventService.getEvent(EVENT_ID);
 
             // Then
-            assertThat(result.getSlug()).isEqualTo("test-event");
+            assertThat(result.getContent().slug()).isEqualTo("test-event");
         }
 
         @Test
@@ -215,7 +224,7 @@ class EventServiceTest {
             EventDetailResponse result = eventService.getEventBySlug("test-event");
 
             // Then
-            assertThat(result.getSlug()).isEqualTo("test-event");
+            assertThat(result.getContent().slug()).isEqualTo("test-event");
         }
 
         @Test
@@ -258,7 +267,7 @@ class EventServiceTest {
             EventDetailResponse result = eventService.createEvent(SCOPE_TYPE, SCOPE_ID, USER_ID, request);
 
             // Then
-            assertThat(result.getSlug()).isEqualTo("test-event");
+            assertThat(result.getContent().slug()).isEqualTo("test-event");
             verify(eventRepository).save(any(EventEntity.class));
         }
 

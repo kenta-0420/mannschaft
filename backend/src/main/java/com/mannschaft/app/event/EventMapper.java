@@ -33,9 +33,12 @@ public interface EventMapper {
 
     List<EventResponse> toEventResponseList(List<EventEntity> entities);
 
-    @Mapping(target = "scopeType", expression = "java(entity.getScopeType().name())")
-    @Mapping(target = "status", expression = "java(entity.getStatus().name())")
-    @Mapping(target = "visibility", expression = "java(entity.getVisibility().name())")
+    @Mapping(target = "scope", expression = "java(new com.mannschaft.app.event.dto.EventDetailResponse.EventScopeDto(entity.getScopeType().name(), entity.getScopeId(), entity.getScheduleId(), entity.getWorkflowRequestId()))")
+    @Mapping(target = "content", expression = "java(new com.mannschaft.app.event.dto.EventDetailResponse.EventContentDto(entity.getSlug(), entity.getSubtitle(), entity.getSummary(), entity.getCoverImageKey()))")
+    @Mapping(target = "venue", expression = "java(new com.mannschaft.app.event.dto.EventDetailResponse.EventVenueDto(entity.getVenueName(), entity.getVenueAddress(), entity.getVenueLatitude(), entity.getVenueLongitude(), entity.getVenueAccessInfo()))")
+    @Mapping(target = "registration", expression = "java(new com.mannschaft.app.event.dto.EventDetailResponse.EventRegistrationDto(entity.getRegistrationStartsAt(), entity.getRegistrationEndsAt(), entity.getMaxCapacity(), entity.getIsApprovalRequired(), entity.getAttendanceMode(), entity.getPreSurveyId(), entity.getPostSurveyId(), entity.getRegistrationCount(), entity.getCheckinCount()))")
+    @Mapping(target = "meta", expression = "java(new com.mannschaft.app.event.dto.EventDetailResponse.EventMetaDto(entity.getStatus() != null ? entity.getStatus().name() : null, entity.getVisibility() != null ? entity.getVisibility().name() : null, entity.getOgpTitle(), entity.getOgpDescription(), entity.getOgpImageKey()))")
+    @Mapping(target = "audit", expression = "java(new com.mannschaft.app.event.dto.EventDetailResponse.EventAuditDto(entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt(), entity.getVersion()))")
     @Mapping(target = "rsvpSummary", ignore = true)
     EventDetailResponse toEventDetailResponse(EventEntity entity);
 

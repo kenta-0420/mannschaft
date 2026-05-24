@@ -2,6 +2,10 @@ package com.mannschaft.app.event;
 
 import com.mannschaft.app.event.dto.CheckinResponse;
 import com.mannschaft.app.event.dto.EventDetailResponse;
+import com.mannschaft.app.event.dto.EventDetailResponse.EventContentDto;
+import com.mannschaft.app.event.dto.EventDetailResponse.EventMetaDto;
+import com.mannschaft.app.event.dto.EventDetailResponse.EventScopeDto;
+import com.mannschaft.app.event.dto.EventDetailResponse.EventVenueDto;
 import com.mannschaft.app.event.dto.EventResponse;
 import com.mannschaft.app.event.dto.InviteTokenResponse;
 import com.mannschaft.app.event.dto.RegistrationResponse;
@@ -132,10 +136,10 @@ class EventMapperTest {
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result.getScopeType()).isEqualTo("TEAM");
-            assertThat(result.getStatus()).isEqualTo("REGISTRATION_OPEN");
-            assertThat(result.getSlug()).isEqualTo("detail-event");
-            assertThat(result.getVenueName()).isEqualTo("会場名");
+            assertThat(result.getScope().scopeType()).isEqualTo("TEAM");
+            assertThat(result.getMeta().status()).isEqualTo("REGISTRATION_OPEN");
+            assertThat(result.getContent().slug()).isEqualTo("detail-event");
+            assertThat(result.getVenue().venueName()).isEqualTo("会場名");
         }
     }
 
