@@ -111,7 +111,6 @@ export const useAuthStore = defineStore('auth', {
         const api = useApi()
         await api('/api/v1/auth/logout', {
           method: 'POST',
-          body: { refreshToken: this.refreshToken },
         })
       } catch {
         // ignore errors - we're logging out anyway
