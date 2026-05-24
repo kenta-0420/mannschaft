@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Route } from '@playwright/test'
+﻿import { test, expect, type Page, type Route } from '@playwright/test'
 
 /**
  * F15.4 組織内チーム（店舗）検索 — E2E 一連シナリオ
@@ -15,8 +15,8 @@ import { test, expect, type Page, type Route } from '@playwright/test'
  * 設計思想:
  *   - F15.3 等の既存 E2E と同じく `page.route()` で API レスポンスをモック化して安定動作させる。
  *   - dev サーバ + バックエンドの状態に依存しない（CI 環境でも同一動作）。
- *   - 認証注入は localStorage に accessToken を addInitScript で書き込むパターン
- *     （care-events/_helpers.ts と同じ流儀）。
+ *   - 認証注入は PR #1000 以降の方式に準拠: addInitScript で localStorage の currentUser を
+ *     書き込み、/api/v1/auth/refresh を route.fulfill() でモックして in-memory トークンを注入する。
  */
 
 // ──────────────────────────────────────────────────────────────────────────
