@@ -1,54 +1,88 @@
 package com.mannschaft.app.event.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.mannschaft.app.event.entity.EventAttendanceMode;
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
  * イベント詳細レスポンスDTO。
+ * トップレベル8フィールド＋サブレコード構成でネスト設計を採用。
  */
 @Getter
-@RequiredArgsConstructor
+@Builder(toBuilder = true)
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class EventDetailResponse {
 
-    private final Long id;
-    private final String scopeType;
-    private final Long scopeId;
-    private final Long scheduleId;
-    private final String slug;
-    private final String subtitle;
-    private final String summary;
-    private final String coverImageKey;
-    private final String venueName;
-    private final String venueAddress;
-    private final BigDecimal venueLatitude;
-    private final BigDecimal venueLongitude;
-    private final String venueAccessInfo;
-    private final String status;
-    private final String visibility;
-    private final LocalDateTime registrationStartsAt;
-    private final LocalDateTime registrationEndsAt;
-    private final Integer maxCapacity;
-    private final Boolean isApprovalRequired;
-    private final EventAttendanceMode attendanceMode;
-    private final Long preSurveyId;
-    private final Long postSurveyId;
-    private final Long workflowRequestId;
-    private final String ogpTitle;
-    private final String ogpDescription;
-    private final String ogpImageKey;
-    private final Integer registrationCount;
-    private final Integer checkinCount;
-    private final Long createdBy;
-    private final Long version;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
-
-    /** attendance_mode=RSVP 時のみ非null。MapperはignoreするためSetterで後から設定する */
-    @Setter
+    private Long id;
+    private EventScopeDto scope;
+    private EventContentDto content;
+    private EventVenueDto venue;
+    private EventRegistrationDto registration;
+    private EventMetaDto meta;
+    /** attendance_mode=RSVP 時のみ非null。withRsvpSummary() で後から設定する */
     private EventRsvpSummaryResponse rsvpSummary;
+    private EventAuditDto audit;
+
+    public record EventScopeDto(
+            String scopeType,
+            Long scopeId,
+            Long scheduleId,
+            Long workflowRequestId
+    ) {}
+
+    public record EventContentDto(
+            String slug,
+            String subtitle,
+            String summary,
+            String coverImageKey
+    ) {}
+
+    public record EventVenueDto(
+            String venueName,
+            String venueAddress,
+            BigDecimal venueLatitude,
+            BigDecimal venueLongitude,
+            String venueAccessInfo
+    ) {}
+
+    public record EventRegistrationDto(
+            LocalDateTime registrationStartsAt,
+            LocalDateTime registrationEndsAt,
+            Integer maxCapacity,
+            Boolean isApprovalRequired,
+            EventAttendanceMode attendanceMode,
+            Long preSurveyId,
+            Long postSurveyId,
+            Integer registrationCount,
+            Integer checkinCount
+    ) {}
+
+    public record EventMetaDto(
+            String status,
+            String visibility,
+            String ogpTitle,
+            String ogpDescription,
+            String ogpImageKey
+    ) {}
+
+    public record EventAuditDto(
+            Long createdBy,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt,
+            Long version
+    ) {}
+
+    /**
+     * rsvpSummary は mapper 後に設定するため toBuilder() を使うファクトリメソッドを提供。
+     *
+     * @param rsvpSummary 設定するRSVPサマリー
+     * @return rsvpSummary がセットされた新しいインスタンス
+     */
+    public EventDetailResponse withRsvpSummary(EventRsvpSummaryResponse rsvpSummary) {
+        return this.toBuilder().rsvpSummary(rsvpSummary).build();
+    }
 }

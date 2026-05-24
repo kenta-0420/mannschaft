@@ -2,6 +2,12 @@ package com.mannschaft.app.event;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.event.dto.EventDetailResponse;
+import com.mannschaft.app.event.dto.EventDetailResponse.EventAuditDto;
+import com.mannschaft.app.event.dto.EventDetailResponse.EventContentDto;
+import com.mannschaft.app.event.dto.EventDetailResponse.EventMetaDto;
+import com.mannschaft.app.event.dto.EventDetailResponse.EventRegistrationDto;
+import com.mannschaft.app.event.dto.EventDetailResponse.EventScopeDto;
+import com.mannschaft.app.event.dto.EventDetailResponse.EventVenueDto;
 import com.mannschaft.app.event.dto.EventStatsResponse;
 import com.mannschaft.app.event.dto.UpdateEventRequest;
 import com.mannschaft.app.event.entity.EventAttendanceMode;
@@ -74,14 +80,17 @@ class EventServiceAdditionalTest {
     }
 
     private EventDetailResponse createDetailResponse() {
-        return new EventDetailResponse(
-                EVENT_ID, "TEAM", SCOPE_ID, null, "test-event", null,
-                null, null, null, null, null, null, null,
-                "DRAFT", "MEMBERS_ONLY", null, null, null, false,
-                EventAttendanceMode.REGISTRATION, null,
-                null, null, null, null, null, 0, 0, USER_ID, 0L,
-                LocalDateTime.now(), LocalDateTime.now()
-        );
+        LocalDateTime now = LocalDateTime.now();
+        return EventDetailResponse.builder()
+                .id(EVENT_ID)
+                .scope(new EventScopeDto("TEAM", SCOPE_ID, null, null))
+                .content(new EventContentDto("test-event", null, null, null))
+                .venue(new EventVenueDto(null, null, null, null, null))
+                .registration(new EventRegistrationDto(null, null, null, false,
+                        EventAttendanceMode.REGISTRATION, null, null, 0, 0))
+                .meta(new EventMetaDto("DRAFT", "MEMBERS_ONLY", null, null, null))
+                .audit(new EventAuditDto(USER_ID, now, now, 0L))
+                .build();
     }
 
     // ========================================
