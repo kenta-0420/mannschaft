@@ -16,28 +16,32 @@ export function useVillageCategoryApi() {
 
   /** 一般ユーザー向け: 村カテゴリ一覧取得（ツリー構造） */
   async function fetchCategories(): Promise<VillageCategoryResponse[]> {
-    return api<VillageCategoryResponse[]>('/api/v1/village-categories')
+    const res = await api<{ data: VillageCategoryResponse[] }>('/api/v1/village-categories')
+    return res.data
   }
 
   /** SYSTEM_ADMIN 向け: 村カテゴリ一覧取得（ツリー構造） */
   async function fetchAdminCategories(): Promise<VillageCategoryResponse[]> {
-    return api<VillageCategoryResponse[]>('/api/v1/system-admin/village-categories')
+    const res = await api<{ data: VillageCategoryResponse[] }>('/api/v1/system-admin/village-categories')
+    return res.data
   }
 
   /** SYSTEM_ADMIN 向け: 村カテゴリ作成 */
   async function createCategory(req: VillageCategoryRequest): Promise<VillageCategoryResponse> {
-    return api<VillageCategoryResponse>('/api/v1/system-admin/village-categories', {
+    const res = await api<{ data: VillageCategoryResponse }>('/api/v1/system-admin/village-categories', {
       method: 'POST',
       body: req,
     })
+    return res.data
   }
 
   /** SYSTEM_ADMIN 向け: 村カテゴリ更新 */
   async function updateCategory(id: string, req: VillageCategoryRequest): Promise<VillageCategoryResponse> {
-    return api<VillageCategoryResponse>(`/api/v1/system-admin/village-categories/${id}`, {
+    const res = await api<{ data: VillageCategoryResponse }>(`/api/v1/system-admin/village-categories/${id}`, {
       method: 'PUT',
       body: req,
     })
+    return res.data
   }
 
   /** SYSTEM_ADMIN 向け: 村カテゴリ論理削除（204 No Content） */
