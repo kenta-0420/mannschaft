@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Route } from '@playwright/test'
+﻿import { test, expect, type Page, type Route } from '@playwright/test'
 
 /**
  * F15.4 組織内チーム（店舗）検索 — E2E 一連シナリオ
@@ -15,8 +15,8 @@ import { test, expect, type Page, type Route } from '@playwright/test'
  * 設計思想:
  *   - F15.3 等の既存 E2E と同じく `page.route()` で API レスポンスをモック化して安定動作させる。
  *   - dev サーバ + バックエンドの状態に依存しない（CI 環境でも同一動作）。
- *   - 認証注入は localStorage に accessToken を addInitScript で書き込むパターン
- *     （care-events/_helpers.ts と同じ流儀）。
+ *   - 認証注入は PR #1000 以降の方式に準拠: addInitScript で localStorage の currentUser を
+ *     書き込み、/api/v1/auth/refresh を route.fulfill() でモックして in-memory トークンを注入する。
  */
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -167,26 +167,48 @@ async function mockApis(page: Page, opts: SearchMockOptions = {}): Promise<void>
 
 /**
  * 認証ペイロードを localStorage に注入する。
- * care-events/_helpers.ts と同じ流儀。
+ *
+ * PR #1000 以降: accessToken は HttpOnly Cookie 管理に移行したため localStorage に保存しない。
+ * currentUser だけ設定して isAuthenticated = true にする。
+ * レイアウトの NotificationBell / ScopeNavDropdown 等が発する未モック API コールで
+ * 401 → リフレッシュ → ログアウト の連鎖が起きないよう refresh エンドポイントもモックする。
  */
 async function loginAsMember(page: Page): Promise<void> {
   await page.addInitScript(() => {
-    localStorage.setItem(
-      'accessToken',
-      'eyJhbGciOiJIUzM4NCJ9.e2UyZV9mMTU0X21lbWJlcn0.placeholder_for_e2e',
-    )
-    localStorage.setItem('refreshToken', 'e2e-refresh-token-placeholder')
     localStorage.setItem(
       'currentUser',
       JSON.stringify({
         id: 101,
         email: 'e2e-f154-member@example.com',
-        displayName: 'F15.4 メンバー',
+        fullName: 'F15.4 メンバー',
         profileImageUrl: null,
-        role: 'MEMBER',
+        systemRole: undefined,
       }),
     )
   })
+  // レイアウトコンポーネントが発する未モック 401 でログアウトしないようリフレッシュをモック
+  await page.route('**/api/v1/auth/refresh', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: { accessToken: 'mock-e2e-access-token', refreshToken: 'mock-e2e-refresh-token' },
+      }),
+    })
+  })
+}
+
+/**
+ * レイアウトがマウント完了するまで待機する。
+ *
+ * default.vue は SSR 直後 `isMounted=false` でローディングスピナーを表示し、
+ * クライアント側 onMounted で `isMounted=true` に切り替わって <header> が現れる。
+ * Nuxt dev mode のコールドスタートでは hydration に数秒かかるため、
+ * `goto()` 直後に <header> の出現を最大 30 秒待つことで
+ * タイムアウト起因の誤失敗を防ぐ。
+ */
+async function waitForLayoutMounted(page: Page): Promise<void> {
+  await page.locator('header').waitFor({ state: 'visible', timeout: 30000 })
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -227,6 +249,7 @@ test('F15.4-1: 未ログインで公開組織のチームを検索し、カー�
   })
 
   await page.goto(`/organizations/${PUBLIC_ORG_ID}/teams/search`)
+  await waitForLayoutMounted(page)
 
   // タイトルが表示される
   await expect(page.getByRole('heading', { name: '店舗を検索' })).toBeVisible()
@@ -256,7 +279,45 @@ test('F15.4-2: ログイン会員はカードから詳細遷移できる（CTA �
   // ログイン会員にはメンバー向け詳細 DTO（visibility あり）を返す
   await mockApis(page, { teamItems: MOCK_TEAMS_MEMBER_VIEW })
 
+  // チーム詳細遷移先のAPI をモック（dev mode でのコンポーネントコンパイル後に呼ばれる）
+  await page.route('**/api/v1/teams/8001/me/permissions', async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { roleName: 'GUEST', permissions: [] } }),
+    })
+  })
+  await page.route('**/api/v1/teams/8001', async (route: Route) => {
+    const url = new URL(route.request().url())
+    if (url.pathname.endsWith('/api/v1/teams/8001')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            id: 8001,
+            name: 'みどり町第一支部',
+            nameKana: 'ミドリチョウダイイチシブ',
+            nickname1: null,
+            nickname2: null,
+            template: 'NEIGHBORHOOD',
+            prefecture: '東京都',
+            city: '渋谷区',
+            iconUrl: null,
+            bannerUrl: null,
+            supporterEnabled: false,
+            supporterCount: 0,
+            memberCount: 5,
+          },
+        }),
+      })
+    } else {
+      await route.continue()
+    }
+  })
+
   await page.goto(`/organizations/${PUBLIC_ORG_ID}/teams/search`)
+  await waitForLayoutMounted(page)
 
   // 結果カードが描画される
   const cardLink = page
@@ -271,9 +332,12 @@ test('F15.4-2: ログイン会員はカードから詳細遷移できる（CTA �
 
   // 注: メンバー数表示は将来課題（設計書 §11.4 NOTE）。本テストでは検証範囲外。
 
-  // カードクリックで /teams/{id} に遷移する
+  // カードリンクが会員向け詳細 URL（/teams/{id}）を指していること（未ログイン時の /public/teams/{id} ではない）
+  await expect(cardLink).toHaveAttribute('href', '/teams/8001')
+
+  // カードクリックで /teams/{id} に遷移する（dev mode のコンポーネントコンパイル待ちのため長めのタイムアウト）
   await cardLink.click()
-  await expect(page).toHaveURL(/\/teams\/8001/)
+  await page.waitForURL(/\/teams\/8001/, { timeout: 30000 })
 })
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -296,6 +360,7 @@ test('F15.4-3: 都道府県のみ指定で検索が成功し、クエリパラ�
   })
 
   await page.goto(`/organizations/${PUBLIC_ORG_ID}/teams/search`)
+  await waitForLayoutMounted(page)
 
   // 初回の onMounted 検索を待つ
   await expect(page.getByText('みどり町第一支部', { exact: true })).toBeVisible()
@@ -331,6 +396,7 @@ test('F15.4-4: 存在しない orgId にアクセスすると 404 エラーメ�
   })
 
   await page.goto(`/organizations/${NOT_FOUND_ORG_ID}/teams/search`)
+  await waitForLayoutMounted(page)
 
   // 設計書 §5.1: 404 時は OrganizationNotFoundError をスローし、
   // 「指定された組織が見つかりませんでした」メッセージを表示する。
@@ -359,6 +425,7 @@ test('F15.4-5: 未ログインで PRIVATE 組織にアクセスするとバッ�
   })
 
   await page.goto(`/organizations/${PRIVATE_ORG_ID}/teams/search`)
+  await waitForLayoutMounted(page)
 
   // 本文と toast の二重マッチを first() で一意化
   await expect(
@@ -464,6 +531,7 @@ test('F15.4-6: 組織トップ「所属チーム」タブで「店舗を検索�
   await mockApis(page, { teamItems: MOCK_TEAMS_PUBLIC })
 
   await page.goto(`/organizations/${PUBLIC_ORG_ID}`)
+  await waitForLayoutMounted(page)
 
   // 組織名（タイトル）が表示されるまで待つ
   await expect(
