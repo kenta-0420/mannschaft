@@ -30,10 +30,10 @@ public enum ScheduleErrorCode implements ErrorCode {
     SCHEDULE_ALREADY_COMPLETED("SCHEDULE_006", "スケジュールは既に完了しています", Severity.WARN),
 
     /** アンケート設問数上限超過 */
-    MAX_SURVEYS_EXCEEDED("SCHEDULE_007", "アンケート設問は最大10件です", Severity.ERROR),
+    MAX_SURVEYS_EXCEEDED("SCHEDULE_007", "アンケート設問は最大10件です", Severity.WARN),
 
     /** リマインダー数上限超過 */
-    MAX_REMINDERS_EXCEEDED("SCHEDULE_008", "リマインダーは最大5件です", Severity.ERROR),
+    MAX_REMINDERS_EXCEEDED("SCHEDULE_008", "リマインダーは最大5件です", Severity.WARN),
 
     /** 同一招待先への重複招待 */
     CROSS_INVITE_ALREADY_EXISTS("SCHEDULE_009", "同じ招待先への招待が既に存在します", Severity.WARN),
@@ -45,28 +45,28 @@ public enum ScheduleErrorCode implements ErrorCode {
     CROSS_INVITE_INVALID_STATUS("SCHEDULE_011", "この操作は現在の招待状態では実行できません", Severity.WARN),
 
     /** 繰り返しルール不正 */
-    INVALID_RECURRENCE_RULE("SCHEDULE_012", "繰り返しルールが不正です", Severity.ERROR),
+    INVALID_RECURRENCE_RULE("SCHEDULE_012", "繰り返しルールが不正です", Severity.WARN),
 
     /** アンケート設問が見つからない */
     SURVEY_NOT_FOUND("SCHEDULE_013", "アンケート設問が見つかりません", Severity.WARN),
 
     /** コメント必須エラー */
-    COMMENT_REQUIRED("SCHEDULE_014", "コメントは必須です", Severity.ERROR),
+    COMMENT_REQUIRED("SCHEDULE_014", "コメントは必須です", Severity.WARN),
 
     /** スコープ不正 */
-    INVALID_SCOPE("SCHEDULE_015", "スケジュールのスコープが不正です", Severity.ERROR),
+    INVALID_SCOPE("SCHEDULE_015", "スケジュールのスコープが不正です", Severity.WARN),
 
     /** アクセス権なし */
     ACCESS_DENIED("SCHEDULE_016", "このスケジュールへのアクセス権がありません", Severity.WARN),
 
     /** 個人リマインダー上限超過 */
-    PERSONAL_REMINDER_LIMIT_EXCEEDED("SCHEDULE_019", "個人スケジュールのリマインダーは最大3件です", Severity.ERROR),
+    PERSONAL_REMINDER_LIMIT_EXCEEDED("SCHEDULE_019", "個人スケジュールのリマインダーは最大3件です", Severity.WARN),
 
     /** 個人スケジュール上限超過 */
     PERSONAL_SCHEDULE_LIMIT_EXCEEDED("SCHEDULE_020", "個人スケジュールの上限（1000件）に達しています", Severity.WARN),
 
     /** 一括削除上限超過 */
-    BATCH_DELETE_LIMIT_EXCEEDED("SCHEDULE_021", "一括削除は最大50件までです", Severity.ERROR),
+    BATCH_DELETE_LIMIT_EXCEEDED("SCHEDULE_021", "一括削除は最大50件までです", Severity.WARN),
 
     /** スケジュール所有者不一致 */
     NOT_SCHEDULE_OWNER("SCHEDULE_022", "このスケジュールの所有者ではありません", Severity.WARN),
@@ -116,16 +116,16 @@ public enum ScheduleErrorCode implements ErrorCode {
     SCHEDULE_MEDIA_OPERATION_FORBIDDEN("SCHEDULE_062", "このメディアを操作する権限がありません", Severity.WARN),
 
     /** 画像上限超過 */
-    SCHEDULE_MEDIA_IMAGE_LIMIT_EXCEEDED("SCHEDULE_063", "1スケジュールあたりの画像上限（50枚）を超えています", Severity.ERROR),
+    SCHEDULE_MEDIA_IMAGE_LIMIT_EXCEEDED("SCHEDULE_063", "1スケジュールあたりの画像上限（50枚）を超えています", Severity.WARN),
 
     /** 動画上限超過 */
-    SCHEDULE_MEDIA_VIDEO_LIMIT_EXCEEDED("SCHEDULE_064", "1スケジュールあたりの動画上限（5本）を超えています", Severity.ERROR),
+    SCHEDULE_MEDIA_VIDEO_LIMIT_EXCEEDED("SCHEDULE_064", "1スケジュールあたりの動画上限（5本）を超えています", Severity.WARN),
 
     /** サポート外の MIME タイプ */
-    SCHEDULE_MEDIA_UNSUPPORTED_TYPE("SCHEDULE_065", "サポートされていないファイル形式です", Severity.ERROR),
+    SCHEDULE_MEDIA_UNSUPPORTED_TYPE("SCHEDULE_065", "サポートされていないファイル形式です", Severity.WARN),
 
     /** ファイルサイズ超過 */
-    SCHEDULE_MEDIA_SIZE_EXCEEDED("SCHEDULE_066", "ファイルサイズが上限を超えています", Severity.ERROR),
+    SCHEDULE_MEDIA_SIZE_EXCEEDED("SCHEDULE_066", "ファイルサイズが上限を超えています", Severity.WARN),
 
     /** is_cover 変更権限なし（MEMBER は変更不可） */
     SCHEDULE_MEDIA_COVER_FORBIDDEN("SCHEDULE_067", "カバー写真の設定はADMIN/DEPUTY_ADMINのみ可能です", Severity.WARN);
