@@ -195,6 +195,65 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
     List<EventVisibilityProjection> findVisibilityProjectionsByIdIn(
             @Param("ids") Collection<Long> ids);
 
+    // ====================================================================
+    // F19.1 Phase 7 — 公開イベント（未ログインアクセス用）
+    // TODO: クロスドメイン参照(publicview→event)。将来はイベント駆動で分離予定
+    // ====================================================================
+
+    /**
+     * チームスコープの公開イベント一覧を取得する（F19.1 Phase 7）。
+     *
+     * <p>対象: scopeType=TEAM、scopeId=teamId、visibility=PUBLIC、
+     * status が PUBLISHED / REGISTRATION_OPEN / REGISTRATION_CLOSED / IN_PROGRESS のいずれか、
+     * public_visible=true。</p>
+     *
+     * @param teamId   チーム ID
+     * @param pageable ページネーション
+     * @return 公開イベントのページ（開催日時の新しい順）
+     */
+    @Query("""
+            SELECT e FROM EventEntity e
+            WHERE e.scopeType = com.mannschaft.app.event.EventScopeType.TEAM
+              AND e.scopeId = :teamId
+              AND e.visibility = com.mannschaft.app.event.entity.EventVisibility.PUBLIC
+              AND e.status IN (
+                  com.mannschaft.app.event.EventStatus.PUBLISHED,
+                  com.mannschaft.app.event.EventStatus.REGISTRATION_OPEN,
+                  com.mannschaft.app.event.EventStatus.REGISTRATION_CLOSED,
+                  com.mannschaft.app.event.EventStatus.IN_PROGRESS
+              )
+              AND e.publicVisible = true
+            ORDER BY e.createdAt DESC
+            """)
+    Page<EventEntity> findPublicByTeamId(@Param("teamId") Long teamId, Pageable pageable);
+
+    /**
+     * 組織スコープの公開イベント一覧を取得する（F19.1 Phase 7）。
+     *
+     * <p>対象: scopeType=ORGANIZATION、scopeId=orgId、visibility=PUBLIC、
+     * status が PUBLISHED / REGISTRATION_OPEN / REGISTRATION_CLOSED / IN_PROGRESS のいずれか、
+     * public_visible=true。</p>
+     *
+     * @param orgId    組織 ID
+     * @param pageable ページネーション
+     * @return 公開イベントのページ（作成日時の新しい順）
+     */
+    @Query("""
+            SELECT e FROM EventEntity e
+            WHERE e.scopeType = com.mannschaft.app.event.EventScopeType.ORGANIZATION
+              AND e.scopeId = :orgId
+              AND e.visibility = com.mannschaft.app.event.entity.EventVisibility.PUBLIC
+              AND e.status IN (
+                  com.mannschaft.app.event.EventStatus.PUBLISHED,
+                  com.mannschaft.app.event.EventStatus.REGISTRATION_OPEN,
+                  com.mannschaft.app.event.EventStatus.REGISTRATION_CLOSED,
+                  com.mannschaft.app.event.EventStatus.IN_PROGRESS
+              )
+              AND e.publicVisible = true
+            ORDER BY e.createdAt DESC
+            """)
+    Page<EventEntity> findPublicByOrganizationId(@Param("orgId") Long orgId, Pageable pageable);
+
     /**
      * {@link #findMyOrganizingUndismissedExpiredEvents} の投影インターフェース。
      *

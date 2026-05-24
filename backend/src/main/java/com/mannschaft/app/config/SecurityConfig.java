@@ -130,10 +130,14 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/posts").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/posts/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/events").permitAll()
+                // F19.1 Phase 7: タイムライン投稿公開 API（認証不要・レート制限あり）
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/timeline-posts").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/posts").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/posts/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/events").permitAll()
+                // F19.1 Phase 7: 組織タイムライン投稿公開 API（認証不要・レート制限あり）
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/timeline-posts").permitAll()
                 // F19.1 Phase 4 公開チーム・組織検索 API（認証不要・レート制限あり）
                 // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §7.x Phase 4
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/search").permitAll()
