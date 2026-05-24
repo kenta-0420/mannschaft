@@ -20,6 +20,9 @@ export function useApi() {
 
   const api = ofetch.create({
     baseURL: config.public.apiBase as string,
+    // HttpOnly Cookie を自動送信するために credentials: 'include' を設定する。
+    // これにより access_token Cookie がすべての API リクエストに付与される。
+    credentials: 'include',
 
     onRequest({ options }) {
       if (authStore.accessToken) {
@@ -42,7 +45,8 @@ export function useApi() {
 
     async onResponseError({ request, response }) {
       // 401: Refresh Token ローテーション
-      if (response.status === 401 && authStore.refreshToken) {
+      // user オブジェクトが存在する間はリフレッシュを試行する（ページリロード後もトークン再取得可能）
+      if (response.status === 401 && authStore.user) {
         const success = await refreshAccessToken()
         if (!success) {
           authStore.logout()
@@ -105,12 +109,14 @@ export function useApi() {
 
     refreshPromise = (async () => {
       try {
+        // バックエンドは refresh_token Cookie を読むため、body への refreshToken 送信は不要。
+        // credentials: 'include' で Cookie が自動送信される。
         const data = await ofetch<{ data: { accessToken: string; refreshToken: string } }>(
           '/api/v1/auth/refresh',
           {
             baseURL: config.public.apiBase as string,
             method: 'POST',
-            body: { refreshToken: authStore.refreshToken },
+            credentials: 'include',
           },
         )
         authStore.setTokens(data.data.accessToken, data.data.refreshToken)

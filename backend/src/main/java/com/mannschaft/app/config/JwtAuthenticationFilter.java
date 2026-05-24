@@ -5,6 +5,7 @@ import com.mannschaft.app.common.BusinessException;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -18,12 +19,19 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 /**
- * JWT認証フィルター。Authorization ヘッダーの Bearer トークンを検証し、
- * SecurityContextHolder に認証情報をセットする。
+ * JWT認証フィルター。Authorization ヘッダーの Bearer トークン、または
+ * HttpOnly Cookie の access_token を検証し、SecurityContextHolder に認証情報をセットする。
+ *
+ * <p>優先順位:</p>
+ * <ol>
+ *   <li>Authorization: Bearer ヘッダー（後方互換）</li>
+ *   <li>access_token Cookie（HttpOnly Cookie 移行後のブラウザクライアント）</li>
+ * </ol>
  */
 @Component
 @RequiredArgsConstructor
@@ -31,6 +39,7 @@ import java.util.Map;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String ACCESS_TOKEN_COOKIE = "access_token";
 
     private final AuthTokenService tokenService;
 
@@ -39,14 +48,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        String header = request.getHeader(HttpHeaders.AUTHORIZATION);
+        String token = extractToken(request);
 
-        if (header == null || !header.startsWith(BEARER_PREFIX)) {
+        if (token == null) {
             filterChain.doFilter(request, response);
             return;
         }
-
-        String token = header.substring(BEARER_PREFIX.length());
 
         try {
             Claims claims = tokenService.parseAccessToken(token);
@@ -78,5 +85,32 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * リクエストから JWT アクセストークンを取り出す。
+     * Authorization: Bearer ヘッダーを優先し、なければ access_token Cookie を確認する。
+     *
+     * @param request HTTP リクエスト
+     * @return トークン文字列、取得できなかった場合は null
+     */
+    private String extractToken(HttpServletRequest request) {
+        // 1. Authorization: Bearer ヘッダー（後方互換 / モバイルアプリ向け）
+        String header = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (header != null && header.startsWith(BEARER_PREFIX)) {
+            return header.substring(BEARER_PREFIX.length());
+        }
+
+        // 2. access_token HttpOnly Cookie（ブラウザクライアント向け）
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            return Arrays.stream(cookies)
+                    .filter(c -> ACCESS_TOKEN_COOKIE.equals(c.getName()))
+                    .map(Cookie::getValue)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        return null;
     }
 }

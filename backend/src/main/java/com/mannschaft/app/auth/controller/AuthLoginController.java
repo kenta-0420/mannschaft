@@ -2,6 +2,7 @@ package com.mannschaft.app.auth.controller;
 
 import com.mannschaft.app.auth.service.AuthService;
 import com.mannschaft.app.auth.dto.ConfirmPasswordResetRequest;
+import com.mannschaft.app.auth.dto.LoginResponse;
 import com.mannschaft.app.auth.dto.RequestPasswordResetRequest;
 import com.mannschaft.app.auth.dto.LoginRequest;
 import com.mannschaft.app.auth.dto.MessageResponse;
@@ -14,9 +15,12 @@ import com.mannschaft.app.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -88,21 +92,33 @@ public class AuthLoginController {
 
     /**
      * ログイン。
+     * ログイン成功時（2FA なし）は access_token を HttpOnly Cookie にセットする。
+     * 2FA が必要な場合は MfaRequiredResponse を返し、Cookie はセットしない。
      */
     @PostMapping("/login")
     @Operation(summary = "ログイン")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "ログイン成功")
     public ResponseEntity<ApiResponse<?>> login(
             @Valid @RequestBody LoginRequest req,
-            HttpServletRequest request) {
+            HttpServletRequest request,
+            HttpServletResponse response) {
 
         String ipAddress = com.mannschaft.app.common.IpAddressUtils.getClientIp(request);
         String userAgent = request.getHeader("User-Agent");
-        return ResponseEntity.ok(authService.login(req, ipAddress, userAgent));
+        ApiResponse<?> apiResponse = authService.login(req, ipAddress, userAgent);
+
+        // 2FA が不要でトークンが発行された場合のみ Cookie をセット
+        if (apiResponse.getData() instanceof LoginResponse loginResponse) {
+            response.addHeader(HttpHeaders.SET_COOKIE,
+                    buildAccessTokenCookie(loginResponse.getAccessToken()).toString());
+        }
+
+        return ResponseEntity.ok(apiResponse);
     }
 
     /**
      * ログアウト（単一デバイス）。
+     * access_token Cookie を削除する。
      */
     @PostMapping("/logout")
     @Operation(summary = "ログアウト")
@@ -110,9 +126,11 @@ public class AuthLoginController {
     public ResponseEntity<Void> logout(
             @CookieValue(name = "refresh_token_hash", required = false) String refreshTokenHash,
             @RequestParam(required = false) String jti,
-            @RequestParam(required = false, defaultValue = "0") long exp) {
+            @RequestParam(required = false, defaultValue = "0") long exp,
+            HttpServletResponse response) {
 
         authService.logout(refreshTokenHash, jti, exp);
+        response.addHeader(HttpHeaders.SET_COOKIE, clearAccessTokenCookie().toString());
         return ResponseEntity.ok().build();
     }
 
@@ -193,16 +211,54 @@ public class AuthLoginController {
     }
 
     /**
+     * access_token HttpOnly Cookie を生成する。
+     * secure=false は開発環境用（HTTP を許可）。本番環境では HTTPS を前提に true に変更すること。
+     *
+     * @param token アクセストークン（JWT）
+     * @return ResponseCookie
+     */
+    private ResponseCookie buildAccessTokenCookie(String token) {
+        return ResponseCookie.from("access_token", token)
+                .httpOnly(true)
+                .secure(false)  // TODO: 本番環境では環境変数で true に切り替える
+                .path("/")
+                .sameSite("Strict")
+                .maxAge(15 * 60)  // 15分（JWT アクセストークンの有効期限に合わせる）
+                .build();
+    }
+
+    /**
+     * access_token Cookie を削除するための Set-Cookie ヘッダーを生成する。
+     * maxAge=0 を設定してブラウザに Cookie の即時削除を指示する。
+     *
+     * @return ResponseCookie（maxAge=0）
+     */
+    private ResponseCookie clearAccessTokenCookie() {
+        return ResponseCookie.from("access_token", "")
+                .httpOnly(true)
+                .path("/")
+                .maxAge(0)
+                .build();
+    }
+
+    /**
      * アクセストークンリフレッシュ。
+     * リフレッシュ成功時は新しい access_token を HttpOnly Cookie にセットする。
      */
     @PostMapping("/refresh")
     @Operation(summary = "アクセストークンリフレッシュ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "リフレッシュ成功")
     public ResponseEntity<ApiResponse<TokenResponse>> refresh(
             @CookieValue(name = "refresh_token", required = false) String rawRefreshToken,
-            @RequestParam(required = false) String deviceFingerprint) {
+            @RequestParam(required = false) String deviceFingerprint,
+            HttpServletResponse response) {
 
-        return ResponseEntity.ok(authService.refreshAccessToken(rawRefreshToken, deviceFingerprint));
+        ApiResponse<TokenResponse> apiResponse = authService.refreshAccessToken(rawRefreshToken, deviceFingerprint);
+        if (apiResponse.getData() != null && apiResponse.getData().getAccessToken() != null) {
+            response.addHeader(HttpHeaders.SET_COOKIE,
+                    buildAccessTokenCookie(apiResponse.getData().getAccessToken()).toString());
+        }
+        return ResponseEntity.ok(apiResponse);
     }
 
     /**
