@@ -537,6 +537,33 @@
         "MONTHLY": "毎月",
         "NEVER": "停止"
       }
+    },
+    "slug": {
+      "helpTitle": "¿Qué es un slug?",
+      "helpBody": "Un identificador formado por letras, números y guiones usado en la URL. Se usa como URL del pueblo y no se puede cambiar después.",
+      "helpExample": "ej: my-village, soccer-club-tokyo"
+    },
+    "categorySelect": {
+      "fromList": "Seleccionar de la lista",
+      "freeInput": "Ingresar directamente",
+      "level1Placeholder": "Seleccionar categoría principal",
+      "level2Placeholder": "Seleccionar subcategoría",
+      "level3Placeholder": "Seleccionar categoría menor",
+      "customPlaceholder": "Ingresar categoría",
+      "loading": "Cargando..."
+    },
+    "categoryManagement": {
+      "title": "Gestión de categorías de pueblo",
+      "addCategory": "Agregar categoría",
+      "editCategory": "Editar categoría",
+      "deleteConfirm": "¿Eliminar esta categoría? Las subcategorías también se eliminarán.",
+      "nameLabel": "Nombre de categoría",
+      "parentLabel": "Categoría padre",
+      "parentNone": "Ninguna（raíz）",
+      "orderLabel": "Orden de visualización",
+      "levelRoot": "Raíz",
+      "level2": "Subcategoría",
+      "level3": "Categoría menor"
     }
   }
 }

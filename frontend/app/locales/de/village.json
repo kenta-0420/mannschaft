@@ -537,6 +537,33 @@
         "MONTHLY": "毎月",
         "NEVER": "停止"
       }
+    },
+    "slug": {
+      "helpTitle": "Was ist ein Slug?",
+      "helpBody": "Ein URL-sicherer Bezeichner aus Kleinbuchstaben, Zahlen und Bindestrichen. Wird als Dorf-URL verwendet und kann spaeter nicht geaendert werden.",
+      "helpExample": "z.B.: my-village, soccer-club-tokyo"
+    },
+    "categorySelect": {
+      "fromList": "Aus Liste waehlen",
+      "freeInput": "Direkt eingeben",
+      "level1Placeholder": "Hauptkategorie waehlen",
+      "level2Placeholder": "Unterkategorie waehlen",
+      "level3Placeholder": "Unterkategorie (3. Ebene) waehlen",
+      "customPlaceholder": "Kategorie eingeben",
+      "loading": "Wird geladen..."
+    },
+    "categoryManagement": {
+      "title": "Dorf-Kategorie-Verwaltung",
+      "addCategory": "Kategorie hinzufuegen",
+      "editCategory": "Kategorie bearbeiten",
+      "deleteConfirm": "Diese Kategorie loeschen? Unterkategorien werden ebenfalls geloescht.",
+      "nameLabel": "Kategoriename",
+      "parentLabel": "Uebergeordnete Kategorie",
+      "parentNone": "Keine（Wurzel）",
+      "orderLabel": "Anzeigereihenfolge",
+      "levelRoot": "Wurzel",
+      "level2": "Unterkategorie",
+      "level3": "Unterkategorie (3. Ebene)"
     }
   }
 }

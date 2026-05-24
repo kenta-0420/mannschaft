@@ -537,6 +537,33 @@
         "MONTHLY": "毎月",
         "NEVER": "停止"
       }
+    },
+    "slug": {
+      "helpTitle": "슬러그란?",
+      "helpBody": "URL에 사용되는 영문자·숫자·하이픈으로 구성된 식별자입니다. 마을 URL로 사용되며 나중에 변경할 수 없습니다.",
+      "helpExample": "예: my-village, soccer-club-tokyo"
+    },
+    "categorySelect": {
+      "fromList": "목록에서 선택",
+      "freeInput": "직접 입력",
+      "level1Placeholder": "대분류 선택",
+      "level2Placeholder": "중분류 선택",
+      "level3Placeholder": "소분류 선택",
+      "customPlaceholder": "카테고리 입력",
+      "loading": "불러오는 중..."
+    },
+    "categoryManagement": {
+      "title": "마을 카테고리 관리",
+      "addCategory": "카테고리 추가",
+      "editCategory": "카테고리 편집",
+      "deleteConfirm": "이 카테고리를 삭제하시겠습니까? 하위 카테고리도 삭제됩니다.",
+      "nameLabel": "카테고리명",
+      "parentLabel": "상위 카테고리",
+      "parentNone": "없음（루트）",
+      "orderLabel": "표시 순서",
+      "levelRoot": "루트",
+      "level2": "중분류",
+      "level3": "소분류"
     }
   }
 }
