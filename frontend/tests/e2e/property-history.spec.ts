@@ -154,6 +154,20 @@ const FAKE_PDF_BYTES = Buffer.from('%PDF-1.4\n%mock\n', 'utf-8')
 const FAKE_XLSX_BYTES = Buffer.from('PK\x03\x04mock-xlsx', 'binary')
 
 async function setupMocks(page: Page, state: MockState): Promise<void> {
+  // PR #1000 以降 isAuthenticated = !!state.user。user.json が空のため addInitScript で注入する。
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'currentUser',
+      JSON.stringify({
+        id: 1,
+        email: 'admin@example.com',
+        fullName: 'Test Admin',
+        profileImageUrl: null,
+        systemRole: 'SYSTEM_ADMIN',
+      }),
+    )
+  })
+
   // 認証関連のモック（storageState に依存しないテスト環境向け）
   await page.route('**/api/v1/auth/me', async (route) => {
     await route.fulfill({
