@@ -191,6 +191,8 @@ async function deleteCategory(cat: FlatCategory) {
 // 表示ヘルパ
 // =============================================================================
 
+// level は 0-indexed（0=大分類/ルート, 1=中分類, 2=小分類）
+// i18n キーは人間向け表示名（levelRoot=1階層目, level2=2階層目, level3=3階層目）
 function levelLabel(level: number): string {
   switch (level) {
     case 0:

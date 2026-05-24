@@ -549,7 +549,8 @@
       "level1Placeholder": "대분류 선택",
       "level2Placeholder": "중분류 선택",
       "level3Placeholder": "소분류 선택",
-      "customPlaceholder": "카테고리 입력"
+      "customPlaceholder": "카테고리 입력",
+      "loading": "불러오는 중..."
     },
     "categoryManagement": {
       "title": "마을 카테고리 관리",

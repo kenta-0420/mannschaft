@@ -549,7 +549,8 @@
       "level1Placeholder": "大分類を選択",
       "level2Placeholder": "中分類を選択",
       "level3Placeholder": "小分類を選択",
-      "customPlaceholder": "カテゴリを入力"
+      "customPlaceholder": "カテゴリを入力",
+      "loading": "読み込み中..."
     },
     "categoryManagement": {
       "title": "村カテゴリ管理",

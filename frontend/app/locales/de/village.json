@@ -549,7 +549,8 @@
       "level1Placeholder": "Hauptkategorie waehlen",
       "level2Placeholder": "Unterkategorie waehlen",
       "level3Placeholder": "Unterkategorie (3. Ebene) waehlen",
-      "customPlaceholder": "Kategorie eingeben"
+      "customPlaceholder": "Kategorie eingeben",
+      "loading": "Wird geladen..."
     },
     "categoryManagement": {
       "title": "Dorf-Kategorie-Verwaltung",

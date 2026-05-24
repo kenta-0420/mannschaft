@@ -549,7 +549,8 @@
       "level1Placeholder": "Select main category",
       "level2Placeholder": "Select sub-category",
       "level3Placeholder": "Select detail category",
-      "customPlaceholder": "Enter category"
+      "customPlaceholder": "Enter category",
+      "loading": "Loading..."
     },
     "categoryManagement": {
       "title": "Village Category Management",

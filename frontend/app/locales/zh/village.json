@@ -549,7 +549,8 @@
       "level1Placeholder": "选择大分类",
       "level2Placeholder": "选择中分类",
       "level3Placeholder": "选择小分类",
-      "customPlaceholder": "输入类别"
+      "customPlaceholder": "输入类别",
+      "loading": "加载中..."
     },
     "categoryManagement": {
       "title": "村庄类别管理",

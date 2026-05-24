@@ -549,7 +549,8 @@
       "level1Placeholder": "Seleccionar categoría principal",
       "level2Placeholder": "Seleccionar subcategoría",
       "level3Placeholder": "Seleccionar categoría menor",
-      "customPlaceholder": "Ingresar categoría"
+      "customPlaceholder": "Ingresar categoría",
+      "loading": "Cargando..."
     },
     "categoryManagement": {
       "title": "Gestión de categorías de pueblo",

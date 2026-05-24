@@ -182,7 +182,7 @@ function emitCurrentValue() {
     <template v-if="selectMode === 'list'">
       <div v-if="loading" class="flex items-center gap-2 py-2 text-sm text-surface-500">
         <i class="pi pi-spin pi-spinner" aria-hidden="true" />
-        <span>読み込み中...</span>
+        <span>{{ $t('village.categorySelect.loading') }}</span>
       </div>
       <template v-else>
         <!-- 大分類 -->
