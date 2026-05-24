@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type {
   AvailabilityDefaultResponse,
   CreateShiftRequestRequest,
@@ -22,7 +23,8 @@ import { preferenceToI18nKey } from '~/utils/shiftPreference'
 
 definePageMeta({ middleware: 'auth' })
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
+const { userTimezone } = useDatetime()
 const { error: showError, success: showSuccess } = useNotification()
 const { listSchedules } = useShiftApi()
 const { listSlots } = useShiftSlotApi()
@@ -224,8 +226,7 @@ const slotsByDate = computed(() => {
 const sortedDates = computed(() => [...slotsByDate.value.keys()].sort())
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString(locale.value, { month: 'numeric', day: 'numeric', weekday: 'short' })
+  return dayjs.tz(dateStr, userTimezone.value).format('M/D (ddd)')
 }
 
 function formatTime(timeStr: string): string {
