@@ -322,9 +322,7 @@ onMounted(() => {
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <!-- カレンダー（2列） -->
         <div class="lg:col-span-2">
-          <div
-            class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
-          >
+          <DashboardWidgetCard :scrollable="false">
             <CalendarGrid
               :year="currentYear"
               :month="currentMonth"
@@ -334,7 +332,7 @@ onMounted(() => {
               @prev-month="onPrevMonth"
               @next-month="onNextMonth"
             />
-          </div>
+          </DashboardWidgetCard>
 
           <!-- 凡例 + フィルタ -->
           <div class="mt-4 flex flex-wrap items-center gap-4 text-xs text-surface-500">
@@ -446,9 +444,7 @@ onMounted(() => {
 
     <!-- ガントビュー -->
     <template v-else>
-      <div
-        class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
-      >
+      <DashboardWidgetCard :scrollable="false">
         <div v-if="ganttLoading" class="space-y-3">
           <Skeleton v-for="i in 5" :key="i" height="2rem" />
         </div>
@@ -461,7 +457,7 @@ onMounted(() => {
             @todo-click="(id) => router.push(`/todos/${id}`)"
           />
         </Transition>
-      </div>
+      </DashboardWidgetCard>
     </template>
 
     <!-- 作成ダイアログ -->

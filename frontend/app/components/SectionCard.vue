@@ -6,7 +6,7 @@ defineProps<{
 
 <template>
   <div
-    class="rounded-xl border-2 border-surface-400 bg-surface-0 p-6 dark:border-surface-500 dark:bg-surface-800"
+    class="rounded-xl border-[3px] border-surface-400 bg-surface-0 p-6 dark:border-surface-500 dark:bg-surface-800"
   >
     <div v-if="$slots.header" class="mb-4">
       <slot name="header" />

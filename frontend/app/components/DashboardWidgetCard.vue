@@ -45,7 +45,7 @@ const collapsed = ref(false)
 <template>
   <div
     v-bind="$attrs"
-    class="relative rounded-xl border-[3px] bg-surface-0 p-4 shadow-sm transition-shadow hover:shadow-md dark:bg-surface-800"
+    class="relative rounded-xl border-[3px] bg-surface-0 p-4 shadow-sm transition-all hover:shadow-md focus-within:shadow-lg focus-within:-translate-y-0.5 dark:bg-surface-800"
     :class="{
       'col-span-1': !colSpan || colSpan === 1,
       'md:col-span-2': colSpan === 2,

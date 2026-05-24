@@ -69,64 +69,64 @@ async function onLoadMore() {
     </div>
 
     <!-- チーム選択 + メンバーID入力 -->
-    <section
-      class="flex flex-col gap-3 rounded-2xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
-    >
-      <div class="flex flex-col gap-2">
-        <label class="text-sm font-medium text-surface-700 dark:text-surface-300">
-          {{ t('action_memo.dashboard.select_team') }}
-        </label>
-        <select
-          :value="selectedTeamId ?? ''"
-          class="rounded-lg border border-surface-300 bg-surface-0 p-2 text-sm dark:border-surface-600 dark:bg-surface-800"
-          data-testid="dashboard-team-select"
-          @change="onTeamChange(($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null)"
-        >
-          <option value="">—</option>
-          <option
-            v-for="team in store.availableTeams"
-            :key="team.id"
-            :value="team.id"
-          >
-            {{ team.name }}
-          </option>
-        </select>
-      </div>
-
-      <div class="flex gap-2">
-        <div class="flex flex-1 flex-col gap-1">
+    <DashboardWidgetCard :scrollable="false">
+      <div class="flex flex-col gap-3">
+        <div class="flex flex-col gap-2">
           <label class="text-sm font-medium text-surface-700 dark:text-surface-300">
-            {{ t('action_memo.dashboard.select_member') }}
+            {{ t('action_memo.dashboard.select_team') }}
           </label>
           <select
-            :value="selectedMemberId ?? ''"
-            :disabled="!selectedTeamId || membersLoading"
-            class="rounded-lg border border-surface-300 bg-surface-0 p-2 text-sm disabled:opacity-50 dark:border-surface-600 dark:bg-surface-800"
-            data-testid="dashboard-member-input"
-            @change="selectedMemberId = ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null"
+            :value="selectedTeamId ?? ''"
+            class="rounded-lg border border-surface-300 bg-surface-0 p-2 text-sm dark:border-surface-600 dark:bg-surface-800"
+            data-testid="dashboard-team-select"
+            @change="onTeamChange(($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null)"
           >
-            <option value="">{{ membersLoading ? '…' : '—' }}</option>
+            <option value="">—</option>
             <option
-              v-for="member in teamMembers"
-              :key="member.userId"
-              :value="member.userId"
+              v-for="team in store.availableTeams"
+              :key="team.id"
+              :value="team.id"
             >
-              {{ member.displayName }}
+              {{ team.name }}
             </option>
           </select>
         </div>
-        <div class="flex items-end">
-          <button
-            :disabled="!selectedTeamId || !selectedMemberId"
-            class="rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
-            data-testid="dashboard-search-btn"
-            @click="onSearch"
-          >
-            {{ t('action_memo.input.submit') }}
-          </button>
+
+        <div class="flex gap-2">
+          <div class="flex flex-1 flex-col gap-1">
+            <label class="text-sm font-medium text-surface-700 dark:text-surface-300">
+              {{ t('action_memo.dashboard.select_member') }}
+            </label>
+            <select
+              :value="selectedMemberId ?? ''"
+              :disabled="!selectedTeamId || membersLoading"
+              class="rounded-lg border border-surface-300 bg-surface-0 p-2 text-sm disabled:opacity-50 dark:border-surface-600 dark:bg-surface-800"
+              data-testid="dashboard-member-input"
+              @change="selectedMemberId = ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null"
+            >
+              <option value="">{{ membersLoading ? '…' : '—' }}</option>
+              <option
+                v-for="member in teamMembers"
+                :key="member.userId"
+                :value="member.userId"
+              >
+                {{ member.displayName }}
+              </option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button
+              :disabled="!selectedTeamId || !selectedMemberId"
+              class="rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+              data-testid="dashboard-search-btn"
+              @click="onSearch"
+            >
+              {{ t('action_memo.input.submit') }}
+            </button>
+          </div>
         </div>
       </div>
-    </section>
+    </DashboardWidgetCard>
 
     <!-- エラー -->
     <div
