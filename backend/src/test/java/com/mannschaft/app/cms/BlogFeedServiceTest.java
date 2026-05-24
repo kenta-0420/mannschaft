@@ -22,10 +22,12 @@ class BlogFeedServiceTest {
     private BlogFeedService service;
 
     private BlogPostResponse createPost(String title, String slug, Long teamId) {
-        return new BlogPostResponse(
-                null, teamId, null, null, null, title, slug, null, null, null,
-                null, null, null, null, LocalDateTime.now(), null, null, null,
-                null, null, null, null, null, null, null, false, 0);
+        return BlogPostResponse.builder()
+                .scope(new BlogPostResponse.BlogPostScopeDto(teamId, null, null, null))
+                .content(new BlogPostResponse.BlogPostContentDto(title, slug, null, null, null))
+                .audit(new BlogPostResponse.BlogPostAuditDto(LocalDateTime.now(), null, null, null))
+                .stats(new BlogPostResponse.BlogPostStatisticsDto(null, null, false, 0))
+                .build();
     }
 
     @Nested

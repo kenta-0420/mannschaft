@@ -55,12 +55,12 @@ class CmsMapperTest {
             BlogPostResponse result = mapper.toBlogPostResponse(entity);
 
             assertThat(result).isNotNull();
-            assertThat(result.getTitle()).isEqualTo("テスト記事");
-            assertThat(result.getSlug()).isEqualTo("test-post");
-            assertThat(result.getPostType()).isEqualTo("BLOG");
-            assertThat(result.getVisibility()).isEqualTo("MEMBERS_ONLY");
-            assertThat(result.getPriority()).isEqualTo("NORMAL");
-            assertThat(result.getStatus()).isEqualTo("DRAFT");
+            assertThat(result.getContent().title()).isEqualTo("テスト記事");
+            assertThat(result.getContent().slug()).isEqualTo("test-post");
+            assertThat(result.getMeta().postType()).isEqualTo("BLOG");
+            assertThat(result.getMeta().visibility()).isEqualTo("MEMBERS_ONLY");
+            assertThat(result.getMeta().priority()).isEqualTo("NORMAL");
+            assertThat(result.getMeta().status()).isEqualTo("DRAFT");
             assertThat(result.getTags()).isEmpty();
         }
 
@@ -81,10 +81,10 @@ class CmsMapperTest {
 
             BlogPostResponse result = mapper.toBlogPostResponse(entity);
 
-            assertThat(result.getPostType()).isEqualTo("ANNOUNCEMENT");
-            assertThat(result.getVisibility()).isEqualTo("PUBLIC");
-            assertThat(result.getPriority()).isEqualTo("IMPORTANT");
-            assertThat(result.getStatus()).isEqualTo("PUBLISHED");
+            assertThat(result.getMeta().postType()).isEqualTo("ANNOUNCEMENT");
+            assertThat(result.getMeta().visibility()).isEqualTo("PUBLIC");
+            assertThat(result.getMeta().priority()).isEqualTo("IMPORTANT");
+            assertThat(result.getMeta().status()).isEqualTo("PUBLISHED");
         }
     }
 
@@ -111,8 +111,8 @@ class CmsMapperTest {
             List<BlogPostResponse> result = mapper.toBlogPostResponseList(List.of(e1, e2));
 
             assertThat(result).hasSize(2);
-            assertThat(result.get(0).getTitle()).isEqualTo("記事1");
-            assertThat(result.get(1).getTitle()).isEqualTo("記事2");
+            assertThat(result.get(0).getContent().title()).isEqualTo("記事1");
+            assertThat(result.get(1).getContent().title()).isEqualTo("記事2");
         }
 
         @Test
