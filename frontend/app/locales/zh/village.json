@@ -537,6 +537,33 @@
         "MONTHLY": "毎月",
         "NEVER": "停止"
       }
+    },
+    "slug": {
+      "helpTitle": "什么是Slug？",
+      "helpBody": "URL中使用的由英文字母、数字和连字符组成的标识符。用于村庄URL，创建后无法更改。",
+      "helpExample": "例: my-village, soccer-club-tokyo"
+    },
+    "categorySelect": {
+      "fromList": "从列表选择",
+      "freeInput": "直接输入",
+      "level1Placeholder": "选择大分类",
+      "level2Placeholder": "选择中分类",
+      "level3Placeholder": "选择小分类",
+      "customPlaceholder": "输入类别",
+      "loading": "加载中..."
+    },
+    "categoryManagement": {
+      "title": "村庄类别管理",
+      "addCategory": "添加类别",
+      "editCategory": "编辑类别",
+      "deleteConfirm": "确定删除此类别？子类别也将被删除。",
+      "nameLabel": "类别名称",
+      "parentLabel": "父类别",
+      "parentNone": "无（根类别）",
+      "orderLabel": "显示顺序",
+      "levelRoot": "根",
+      "level2": "中分类",
+      "level3": "小分类"
     }
   }
 }

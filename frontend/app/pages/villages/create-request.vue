@@ -18,6 +18,7 @@ import Checkbox from 'primevue/checkbox'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
 import InputText from 'primevue/inputtext'
+import Popover from 'primevue/popover'
 import RadioButton from 'primevue/radiobutton'
 import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
@@ -67,6 +68,15 @@ const formJoinPolicy = ref<VillageJoinPolicy>('FREE')
 const formVisibility = ref<VillageVisibility>('PUBLIC')
 
 const submitting = ref(false)
+
+// =============================================================================
+// スラッグ Popover
+// =============================================================================
+
+const slugHelpPopover = ref()
+const toggleSlugHelp = (event: Event) => {
+  slugHelpPopover.value?.toggle(event)
+}
 
 // =============================================================================
 // 一覧状態
@@ -343,6 +353,21 @@ onMounted(() => {
           <label for="village-slug" class="mb-1 block text-sm font-medium">
             {{ t('village.field.slug') }}
             <span class="text-red-600">*</span>
+            <!-- ヘルプボタン -->
+            <button
+              type="button"
+              class="ml-1 inline-flex items-center text-gray-400 hover:text-gray-600"
+              @click="toggleSlugHelp"
+            >
+              <i class="pi pi-question-circle text-sm" />
+            </button>
+            <Popover ref="slugHelpPopover">
+              <div class="max-w-xs text-sm">
+                <p class="mb-1 font-semibold">{{ t('village.slug.helpTitle') }}</p>
+                <p>{{ t('village.slug.helpBody') }}</p>
+                <p class="mt-2 font-mono text-xs text-gray-500">{{ t('village.slug.helpExample') }}</p>
+              </div>
+            </Popover>
           </label>
           <InputText
             id="village-slug"
@@ -361,15 +386,12 @@ onMounted(() => {
 
         <!-- カテゴリ -->
         <div>
-          <label for="village-category" class="mb-1 block text-sm font-medium">
+          <label class="mb-1 block text-sm font-medium">
             {{ t('village.field.category') }}
             <span class="text-red-600">*</span>
           </label>
-          <InputText
-            id="village-category"
+          <VillageCategorySelect
             v-model="formCategory"
-            :maxlength="CATEGORY_MAX"
-            class="w-full"
             :invalid="!!categoryError && formCategory.length > 0"
           />
           <p v-if="categoryError && formCategory.length > 0" class="mt-1 text-xs text-red-600">
