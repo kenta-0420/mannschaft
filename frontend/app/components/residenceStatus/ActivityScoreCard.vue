@@ -5,6 +5,8 @@ const props = defineProps<{
   lastSeenAt?: string | null
 }>()
 
+const { formatDate } = useDatetime()
+
 // スコアに応じたリスクレベルを返す
 const riskLevel = computed<'high' | 'mid' | 'low'>(() => {
   if (props.score >= 40) return 'high'
@@ -38,7 +40,7 @@ const bgColorClass = computed<string>(() => {
 
 function formatLastSeen(iso: string | null | undefined): string {
   if (!iso) return ''
-  return new Date(iso).toLocaleDateString('ja-JP')
+  return formatDate(iso)
 }
 </script>
 

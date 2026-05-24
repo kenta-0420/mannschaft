@@ -11,6 +11,7 @@ const props = defineProps<{
 
 const webhookApi = useWebhookApi()
 const { success, error: showError } = useNotification()
+const { formatDate } = useDatetime()
 
 // ===== 受信Webhook =====
 const incomingWebhooks = ref<IncomingWebhook[]>([])
@@ -175,7 +176,7 @@ onMounted(async () => {
       </Column>
       <Column header="作成日" style="width: 120px">
         <template #body="{ data }">
-          <span class="text-sm">{{ new Date(data.createdAt).toLocaleDateString('ja-JP') }}</span>
+          <span class="text-sm">{{ formatDate(data.createdAt) }}</span>
         </template>
       </Column>
       <Column header="操作" style="width: 100px">

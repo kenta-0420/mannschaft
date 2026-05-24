@@ -40,6 +40,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { formatDateTime } = useDatetime()
 
 // =============================================================================
 // 表示ヘルパ
@@ -79,12 +80,7 @@ function displayName(m: MembershipResponse): string {
 }
 
 function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString()
-  }
-  catch {
-    return iso
-  }
+  return formatDateTime(iso) || iso
 }
 
 /** 自分自身の membership 行かどうか（自分への操作は禁止） */

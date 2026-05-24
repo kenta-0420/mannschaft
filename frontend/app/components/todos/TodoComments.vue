@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
+
+const { userTimezone } = useDatetime()
+
 const props = defineProps<{
   scopeType: 'team' | 'organization'
   scopeId: number
@@ -75,7 +79,7 @@ async function deleteComment(commentId: number) {
 }
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return dayjs(dateStr).tz(userTimezone.value).format('M月D日 HH:mm')
 }
 
 onMounted(loadComments)

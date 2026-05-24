@@ -30,22 +30,12 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
+const { formatDateTime: formatDateTimeTz } = useDatetime()
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return '-'
-  try {
-    return new Date(iso).toLocaleString(locale.value, {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-  catch {
-    return iso
-  }
+  return formatDateTimeTz(iso) || iso
 }
 
 const hasAny = computed(() => {
