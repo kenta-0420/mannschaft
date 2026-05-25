@@ -1,18 +1,44 @@
 import type { TodoStatusLabelInfo } from '~/types/todoStatusLabel'
 
+/** Wave 1 DTO刷新: MyTodo はネスト構造の TodoResponse を反映 */
 export interface MyTodo {
   id: number
+  /** @deprecated 旧フラットフィールド互換 — scope?.scopeType を優先使用 */
   scopeType: string
+  /** @deprecated 旧フラットフィールド互換 — scope?.scopeId を優先使用 */
   scopeId: number | null
-  title: string
-  description: string | null
+  scope?: {
+    scopeType?: string
+    scopeId?: number | null
+    projectId?: number | null
+    milestoneId?: number | null
+  }
+  content?: {
+    title?: string
+    description?: string | null
+    startDate?: string | null
+    progressRate?: number | null
+    progressManual?: boolean
+    sortOrder?: number
+  }
+  schedule?: {
+    dueDate?: string | null
+    dueTime?: string | null
+    daysRemaining?: number | null
+    linkedScheduleId?: number | null
+  }
+  /** @deprecated 旧フラットフィールド互換 — ステータスバケット */
   status: string
-  /** F02.3.1 — カスタムステータスラベル（NULL の場合は SYSTEM 既定にフォールバック） */
+  /** F02.3.1 — カスタムステータスラベル（NULL の場合は SYSTEM 既定にフォールバック） — @deprecated 旧フラットフィールド互換 */
   statusLabel: TodoStatusLabelInfo | null
+  /** @deprecated 旧フラットフィールド互換 */
   priority: string
-  startDate: string | null
+  /** @deprecated 旧フラットフィールド互換 — schedule?.dueDate を優先使用 */
   dueDate: string | null
+  /** @deprecated 旧フラットフィールド互換 — schedule?.daysRemaining を優先使用 */
   daysRemaining: number | null
+  /** @deprecated 旧フラットフィールド互換 — content?.startDate を優先使用 */
+  startDate: string | null
   assignees: Array<{ id: number; userId: number; displayName: string; avatarUrl: string | null }>
   createdAt: string
 }
@@ -207,7 +233,18 @@ export function useTodoList() {
         teamStore.myTeams.length === 0 ? teamStore.fetchMyTeams() : Promise.resolve(),
         orgStore.myOrganizations.length === 0 ? orgStore.fetchMyOrganizations() : Promise.resolve(),
       ])
-      todos.value = todosRes.data
+      // Wave 1 DTO刷新: ネスト構造から旧フラットフィールドへ正規化マッピング（後方互換）
+      todos.value = (todosRes.data as unknown as MyTodo[]).map((item) => ({
+        ...item,
+        scopeType: item.scope?.scopeType ?? item.scopeType ?? '',
+        scopeId: item.scope?.scopeId ?? item.scopeId ?? null,
+        status: item.status ?? '',
+        priority: item.priority ?? '',
+        statusLabel: item.statusLabel ?? null,
+        dueDate: item.schedule?.dueDate ?? item.dueDate ?? null,
+        daysRemaining: item.schedule?.daysRemaining ?? item.daysRemaining ?? null,
+        startDate: item.content?.startDate ?? item.startDate ?? null,
+      }))
     } catch {
       // silent モードのときは既存の todos を維持し、画面のちらつきを避ける
       if (!silent) {

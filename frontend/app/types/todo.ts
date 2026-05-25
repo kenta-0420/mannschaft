@@ -4,33 +4,69 @@ export type TodoStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED'
 export type TodoPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
 export type TodoScopeType = 'PERSONAL' | 'TEAM' | 'ORGANIZATION'
 
+/** Wave 1 DTO刷新: TodoResponse ネスト構造 */
+
+export interface TodoScopeDto {
+  scopeType?: string
+  scopeId?: number
+  projectId?: number | null
+  milestoneId?: number | null
+}
+
+export interface TodoContentDto {
+  title?: string
+  description?: string | null
+  startDate?: string | null
+  progressRate?: number
+  progressManual?: boolean
+  sortOrder?: number
+}
+
+export interface TodoScheduleDto {
+  dueDate?: string | null
+  dueTime?: string | null
+  daysRemaining?: number | null
+  linkedScheduleId?: number | null
+}
+
+export interface TodoStatusDto {
+  status?: TodoStatus
+  priority?: TodoPriority
+  completedAt?: string | null
+  completedBy?: { id: number; displayName: string } | null
+  statusLabel?: TodoStatusLabelInfo | null
+}
+
+export interface TodoHierarchyDto {
+  parentId?: number | null
+  depth?: number
+  children?: TodoResponse[]
+  childCount?: number
+  descendantCompletedCount?: number
+  descendantTotalCount?: number
+}
+
+export interface TodoAuditDto {
+  createdAt?: string
+  updatedAt?: string
+  createdBy?: { id: number; displayName: string }
+  completedBy?: { id: number; displayName: string } | null
+}
+
 export interface TodoResponse {
   id: number
-  scopeType: TodoScopeType
-  scopeId: number
-  projectId: number | null
-  milestoneId: number | null
-  title: string
-  description: string | null
-  status: TodoStatus
-  /** F02.3.1 — カスタムステータスラベル情報（NULL の場合は SYSTEM 既定にフォールバック描画） */
-  statusLabel: TodoStatusLabelInfo | null
-  priority: TodoPriority
-  dueDate: string | null
-  dueTime: string | null
-  daysRemaining: number | null
-  completedAt: string | null
-  completedBy: { id: number; displayName: string } | null
-  createdBy: { id: number; displayName: string }
-  sortOrder: number
+  scope?: TodoScopeDto
+  content?: TodoContentDto
+  schedule?: TodoScheduleDto
+  /** ステータスバケット — @deprecated 旧フラットフィールド互換 */
+  status?: TodoStatus
+  /** @deprecated 旧フラットフィールド互換 */
+  priority?: TodoPriority
+  /** F02.3.1 — カスタムステータスラベル情報 — @deprecated 旧フラットフィールド互換 */
+  statusLabel?: TodoStatusLabelInfo | null
+  hierarchy?: TodoHierarchyDto
+  audit?: TodoAuditDto
   assignees: TodoAssigneeResponse[]
-  createdAt: string
-  updatedAt: string
-  // Phase 4 拡張フィールド
-  startDate: string | null
-  linkedScheduleId: number | null
-  progressRate: string
-  progressManual: boolean
   // F02.7 マイルストーンゲート関連
   milestoneLocked: boolean
   position: number
