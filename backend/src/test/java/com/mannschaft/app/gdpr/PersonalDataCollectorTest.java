@@ -112,17 +112,6 @@ class PersonalDataCollectorTest {
     private PointCardGroupRepository pointCardGroupRepository;
     @Mock
     private PointCardGroupItemRepository pointCardGroupItemRepository;
-    // F01.10 履歴書・職務経歴書
-    @Mock
-    private ResumeRepository resumeRepository;
-    @Mock
-    private ResumeEducationRepository resumeEducationRepository;
-    @Mock
-    private ResumeCareerRepository resumeCareerRepository;
-    @Mock
-    private ResumeQualificationRepository resumeQualificationRepository;
-    @Mock
-    private ResumeSkillRepository resumeSkillRepository;
 
     @InjectMocks
     private PersonalDataCollector collector;
