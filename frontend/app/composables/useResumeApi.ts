@@ -115,7 +115,7 @@ export function useResumeApi() {
    * Blob URL を作成して iframe / 新規タブで表示する。
    */
   async function previewResume(id: string, type: DocumentType, format: OutputFormat): Promise<Blob> {
-    return api<Blob>(`/api/v1/resumes/${id}/preview?type=${type}&format=${format}`, {
+    return api<Blob, 'blob'>(`/api/v1/resumes/${id}/preview?type=${type}&format=${format}`, {
       method: 'GET',
       responseType: 'blob',
     })
