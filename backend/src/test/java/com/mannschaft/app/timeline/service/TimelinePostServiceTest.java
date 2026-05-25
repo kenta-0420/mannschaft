@@ -107,9 +107,14 @@ class TimelinePostServiceTest {
     }
 
     private PostResponse createPostResponse() {
-        return new PostResponse(POST_ID, "PUBLIC", 0L, USER_ID, null, "USER", null,
-                null, "テスト投稿", null, 0, "PUBLISHED", null, false, 0, 0, (short) 0, (short) 0,
-                LocalDateTime.now(), LocalDateTime.now());
+        return PostResponse.builder()
+                .id(POST_ID)
+                .scope(new PostResponse.PostScopeDto("PUBLIC", 0L))
+                .author(new PostResponse.PostAuthorDto(USER_ID, null, "USER", null))
+                .content(new PostResponse.PostContentDto("テスト投稿", null, null, "PUBLISHED", null, false))
+                .stats(new PostResponse.PostStatsDto(0, 0, 0, (short) 0, (short) 0))
+                .audit(new PostResponse.PostAuditDto(LocalDateTime.now(), LocalDateTime.now()))
+                .build();
     }
 
     // ========================================
@@ -598,8 +603,8 @@ class TimelinePostServiceTest {
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result.getContent()).isEqualTo("テスト投稿");
-            assertThat(result.getUserId()).isEqualTo(USER_ID);
+            assertThat(result.getContent().content()).isEqualTo("テスト投稿");
+            assertThat(result.getAuthor().userId()).isEqualTo(USER_ID);
         }
 
         // リアクションサマリーテストは絵文字リアクション機能（countByPostIdGroupByEmoji）実装時に追加予定
@@ -852,9 +857,14 @@ class TimelinePostServiceTest {
                         return entity;
                     });
             given(timelineMapper.toPostResponse(any(TimelinePostEntity.class)))
-                    .willReturn(new PostResponse(POST_ID, "TEAM", TEAM_ID, USER_ID, null, "USER", null,
-                            null, "チーム投稿", null, 0, "PUBLISHED", null, false, 0, 0, (short) 0, (short) 0,
-                            LocalDateTime.now(), LocalDateTime.now()));
+                    .willReturn(PostResponse.builder()
+                            .id(POST_ID)
+                            .scope(new PostResponse.PostScopeDto("TEAM", TEAM_ID))
+                            .author(new PostResponse.PostAuthorDto(USER_ID, null, "USER", null))
+                            .content(new PostResponse.PostContentDto("チーム投稿", null, null, "PUBLISHED", null, false))
+                            .stats(new PostResponse.PostStatsDto(0, 0, 0, (short) 0, (short) 0))
+                            .audit(new PostResponse.PostAuditDto(LocalDateTime.now(), LocalDateTime.now()))
+                            .build());
 
             // when
             timelinePostService.createPost(req, USER_ID);

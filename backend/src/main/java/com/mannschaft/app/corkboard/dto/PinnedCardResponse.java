@@ -1,7 +1,7 @@
 package com.mannschaft.app.corkboard.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 
@@ -13,25 +13,24 @@ import java.time.LocalDateTime;
  *
  * <p>JSON は camelCase（プロジェクト規約）。</p>
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class PinnedCardResponse {
 
     private final Long cardId;
     private final Long corkboardId;
     private final String corkboardName;
     private final String cardType;
-    private final String colorLabel;
-    private final String title;
-    private final String body;
-    private final String userNote;
-    /**
-     * F09.8 件3' (V9.098): ピン止め時付箋メモの専用色。
-     * {@code null} はカラーラベル ({@link #colorLabel}) と同色とみなす。
-     */
-    private final String noteColor;
+    private final PinnedCardContentDto cardContent;
     private final LocalDateTime pinnedAt;
 
     /** 参照先メタ。MEMO / SECTION_HEADER 等の純メモカードでは null。 */
     private final PinnedCardReferenceResponse reference;
+
+    public record PinnedCardContentDto(String colorLabel, String title, String body, String userNote,
+                                       /**
+                                        * F09.8 件3' (V9.098): ピン止め時付箋メモの専用色。
+                                        * {@code null} はカラーラベルと同色とみなす。
+                                        */
+                                       String noteColor) {}
 }

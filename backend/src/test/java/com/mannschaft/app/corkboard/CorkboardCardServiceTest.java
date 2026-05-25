@@ -60,8 +60,15 @@ class CorkboardCardServiceTest {
             given(cardRepository.countByCorkboardId(1L)).willReturn(0L);
             given(cardRepository.save(any(CorkboardCardEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(corkboardMapper.toCardResponse(any(CorkboardCardEntity.class)))
-                    .willReturn(new CorkboardCardResponse(1L, 1L, null, "NOTE", null, null,
-                            null, "タイトル", "本文", null, null, null, null, "NONE", "MEDIUM", 0, 0, 0, null, null, null, false, false, null, false, 1L, null, null));
+                    .willReturn(CorkboardCardResponse.builder()
+                            .id(1L).corkboardId(1L)
+                            .reference(new CorkboardCardResponse.CardReferenceDto(null, "NOTE", null, null, null))
+                            .content(new CorkboardCardResponse.CardContentDto("タイトル", "本文", null, null, null, null))
+                            .layout(new CorkboardCardResponse.CardLayoutDto(0, 0, 0, "MEDIUM"))
+                            .style(new CorkboardCardResponse.CardStyleDto("NONE", null))
+                            .state(new CorkboardCardResponse.CardStateDto(false, false, null, null, false))
+                            .audit(new CorkboardCardResponse.CardAuditDto(null, 1L, null, null))
+                            .build());
 
             CreateCardRequest req = new CreateCardRequest("NOTE", null, null,
                     "タイトル", "本文", null, null, null, null, null, null, null, null);
@@ -70,7 +77,7 @@ class CorkboardCardServiceTest {
             CorkboardCardResponse result = service.createCard(1L, 1L, req);
 
             // Then
-            assertThat(result.getTitle()).isEqualTo("タイトル");
+            assertThat(result.getContent().title()).isEqualTo("タイトル");
             verify(cardRepository).save(any(CorkboardCardEntity.class));
         }
 

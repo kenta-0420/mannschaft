@@ -49,9 +49,15 @@ class CorkboardCardServiceEventTest {
     }
 
     private CorkboardCardResponse stubResponse() {
-        return new CorkboardCardResponse(
-                1L, 1L, null, "MEMO", null, null, null, "t", null, null, null, null, null,
-                "NONE", "MEDIUM", 0, 0, 0, null, null, null, false, false, null, false, 1L, null, null);
+        return CorkboardCardResponse.builder()
+                .id(1L).corkboardId(1L)
+                .reference(new CorkboardCardResponse.CardReferenceDto(null, "MEMO", null, null, null))
+                .content(new CorkboardCardResponse.CardContentDto("t", null, null, null, null, null))
+                .layout(new CorkboardCardResponse.CardLayoutDto(0, 0, 0, "MEDIUM"))
+                .style(new CorkboardCardResponse.CardStyleDto("NONE", null))
+                .state(new CorkboardCardResponse.CardStateDto(false, false, null, null, false))
+                .audit(new CorkboardCardResponse.CardAuditDto(null, 1L, null, null))
+                .build();
     }
 
     @Test

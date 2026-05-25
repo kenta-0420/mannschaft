@@ -64,7 +64,12 @@ class CorkboardGroupServiceTest {
             given(corkboardService.findBoardOrThrow(1L)).willReturn(personalBoard());
             given(groupRepository.save(any(CorkboardGroupEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(corkboardMapper.toGroupResponse(any(CorkboardGroupEntity.class)))
-                    .willReturn(new CorkboardGroupResponse(1L, 1L, "セクション", false, 0, 0, 400, 300, (short) 0, null, null));
+                    .willReturn(CorkboardGroupResponse.builder()
+                            .id(1L).corkboardId(1L).name("セクション").isCollapsed(false)
+                            .layout(new CorkboardGroupResponse.GroupLayoutDto(0, 0, 400, 300))
+                            .displayOrder((short) 0)
+                            .audit(new CorkboardGroupResponse.GroupAuditDto(null, null))
+                            .build());
 
             CreateGroupRequest req = new CreateGroupRequest("セクション", null, null, null, null, null, null);
 

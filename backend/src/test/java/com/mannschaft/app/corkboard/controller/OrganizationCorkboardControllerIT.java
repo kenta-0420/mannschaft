@@ -90,10 +90,16 @@ class OrganizationCorkboardControllerIT {
 
     /** mock 用に最小限の組織ボード詳細レスポンスを生成する。 */
     private CorkboardDetailResponse stubDetail() {
-        return new CorkboardDetailResponse(
-                BOARD_ID, "ORGANIZATION", ORG_ID, null, "組織ボード",
-                "CORK", "ADMIN_ONLY", false, 0L,
-                List.of(), List.of(), null, null, false);
+        return CorkboardDetailResponse.builder()
+                .id(BOARD_ID)
+                .scope(new CorkboardDetailResponse.BoardScopeDto("ORGANIZATION", ORG_ID))
+                .ownerId(null)
+                .name("組織ボード")
+                .settings(new CorkboardDetailResponse.BoardSettingsDto("CORK", "ADMIN_ONLY", false))
+                .version(0L)
+                .boardContent(new CorkboardDetailResponse.BoardContentDto(List.of(), List.of(), null, null))
+                .viewerCanEdit(false)
+                .build();
     }
 
     @Nested
@@ -109,11 +115,11 @@ class OrganizationCorkboardControllerIT {
             mockMvc.perform(get("/api/v1/organizations/{orgId}/corkboards/{boardId}", ORG_ID, BOARD_ID))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.id").value(BOARD_ID))
-                    .andExpect(jsonPath("$.data.scopeType").value("ORGANIZATION"))
-                    .andExpect(jsonPath("$.data.scopeId").value(ORG_ID))
+                    .andExpect(jsonPath("$.data.scope.scopeType").value("ORGANIZATION"))
+                    .andExpect(jsonPath("$.data.scope.scopeId").value(ORG_ID))
                     .andExpect(jsonPath("$.data.name").value("組織ボード"))
-                    .andExpect(jsonPath("$.data.cards").isArray())
-                    .andExpect(jsonPath("$.data.groups").isArray());
+                    .andExpect(jsonPath("$.data.boardContent.cards").isArray())
+                    .andExpect(jsonPath("$.data.boardContent.groups").isArray());
 
             verify(corkboardService).getOrganizationBoardDetail(ORG_ID, BOARD_ID, USER_ID);
         }

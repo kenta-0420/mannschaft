@@ -139,10 +139,14 @@ class PropertyWorkPackageServiceTest {
     }
 
     private PostResponse stubPostResponse(Long id) {
-        return new PostResponse(
-                id, "TEAM", TEAM_ID, USER_ID, null, null, null, null,
-                "content", null, 0, "PUBLISHED", null, false, 0, 0, (short) 0, (short) 0,
-                java.time.LocalDateTime.now(), java.time.LocalDateTime.now());
+        return PostResponse.builder()
+                .id(id)
+                .scope(new PostResponse.PostScopeDto("TEAM", TEAM_ID))
+                .author(new PostResponse.PostAuthorDto(USER_ID, null, null, null))
+                .content(new PostResponse.PostContentDto("content", null, null, "PUBLISHED", null, false))
+                .stats(new PostResponse.PostStatsDto(0, 0, 0, (short) 0, (short) 0))
+                .audit(new PostResponse.PostAuditDto(java.time.LocalDateTime.now(), java.time.LocalDateTime.now()))
+                .build();
     }
 
     // =========================================================================

@@ -179,7 +179,7 @@ class MyPinnedCardsServiceTest {
         PinnedCardResponse item1 = response.getItems().get(0);
         assertThat(item1.getCardId()).isEqualTo(345L);
         assertThat(item1.getCorkboardName()).isEqualTo("仕事メモ");
-        assertThat(item1.getColorLabel()).isEqualTo("YELLOW");
+        assertThat(item1.getCardContent().colorLabel()).isEqualTo("YELLOW");
         assertThat(item1.getReference()).isNotNull();
         assertThat(item1.getReference().getType()).isEqualTo("TIMELINE_POST");
         // 保守的フォールバック適用中: isAccessible=false、navigateTo=null

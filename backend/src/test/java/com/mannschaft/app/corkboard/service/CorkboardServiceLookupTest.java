@@ -62,10 +62,16 @@ class CorkboardServiceLookupTest {
 
     @BeforeEach
     void setUp() {
-        stubDetail = new CorkboardDetailResponse(
-                BOARD_ID, "PERSONAL", null, USER_ID, "詳細スタブ",
-                "CORK", "ADMIN_ONLY", false, 0L,
-                List.of(), List.of(), null, null, false);
+        stubDetail = CorkboardDetailResponse.builder()
+                .id(BOARD_ID)
+                .scope(new CorkboardDetailResponse.BoardScopeDto("PERSONAL", null))
+                .ownerId(USER_ID)
+                .name("詳細スタブ")
+                .settings(new CorkboardDetailResponse.BoardSettingsDto("CORK", "ADMIN_ONLY", false))
+                .version(0L)
+                .boardContent(new CorkboardDetailResponse.BoardContentDto(List.of(), List.of(), null, null))
+                .viewerCanEdit(false)
+                .build();
     }
 
     /**
@@ -293,10 +299,16 @@ class CorkboardServiceLookupTest {
             given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(corkboardPermissionService.canEdit(board, USER_ID)).willReturn(true);
 
-            CorkboardDetailResponse trueDetail = new CorkboardDetailResponse(
-                    BOARD_ID, "TEAM", TEAM_ID, null, "チームボード",
-                    "CORK", "ADMIN_ONLY", false, 0L,
-                    List.of(), List.of(), null, null, true);
+            CorkboardDetailResponse trueDetail = CorkboardDetailResponse.builder()
+                    .id(BOARD_ID)
+                    .scope(new CorkboardDetailResponse.BoardScopeDto("TEAM", TEAM_ID))
+                    .ownerId(null)
+                    .name("チームボード")
+                    .settings(new CorkboardDetailResponse.BoardSettingsDto("CORK", "ADMIN_ONLY", false))
+                    .version(0L)
+                    .boardContent(new CorkboardDetailResponse.BoardContentDto(List.of(), List.of(), null, null))
+                    .viewerCanEdit(true)
+                    .build();
 
             given(cardRepository.findByCorkboardIdAndIsArchivedFalseOrderByZIndexDesc(any()))
                     .willReturn(List.of());

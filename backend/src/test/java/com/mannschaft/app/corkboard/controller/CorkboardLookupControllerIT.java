@@ -89,10 +89,16 @@ class CorkboardLookupControllerIT {
 
     /** mock 用に最小限の詳細レスポンスを生成する。 */
     private CorkboardDetailResponse stubDetail(String scopeType) {
-        return new CorkboardDetailResponse(
-                BOARD_ID, scopeType, null, USER_ID, "テストボード",
-                "CORK", "ADMIN_ONLY", false, 0L,
-                List.of(), List.of(), null, null, false);
+        return CorkboardDetailResponse.builder()
+                .id(BOARD_ID)
+                .scope(new CorkboardDetailResponse.BoardScopeDto(scopeType, null))
+                .ownerId(USER_ID)
+                .name("テストボード")
+                .settings(new CorkboardDetailResponse.BoardSettingsDto("CORK", "ADMIN_ONLY", false))
+                .version(0L)
+                .boardContent(new CorkboardDetailResponse.BoardContentDto(List.of(), List.of(), null, null))
+                .viewerCanEdit(false)
+                .build();
     }
 
     @Nested
@@ -108,12 +114,12 @@ class CorkboardLookupControllerIT {
             mockMvc.perform(get("/api/v1/corkboards/{boardId}", BOARD_ID))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.id").value(BOARD_ID))
-                    .andExpect(jsonPath("$.data.scopeType").value("PERSONAL"))
+                    .andExpect(jsonPath("$.data.scope.scopeType").value("PERSONAL"))
                     .andExpect(jsonPath("$.data.name").value("テストボード"))
-                    .andExpect(jsonPath("$.data.backgroundStyle").value("CORK"))
-                    .andExpect(jsonPath("$.data.editPolicy").value("ADMIN_ONLY"))
-                    .andExpect(jsonPath("$.data.cards").isArray())
-                    .andExpect(jsonPath("$.data.groups").isArray());
+                    .andExpect(jsonPath("$.data.settings.backgroundStyle").value("CORK"))
+                    .andExpect(jsonPath("$.data.settings.editPolicy").value("ADMIN_ONLY"))
+                    .andExpect(jsonPath("$.data.boardContent.cards").isArray())
+                    .andExpect(jsonPath("$.data.boardContent.groups").isArray());
 
             verify(corkboardService).getBoardDetailByIdOnly(BOARD_ID, USER_ID);
         }

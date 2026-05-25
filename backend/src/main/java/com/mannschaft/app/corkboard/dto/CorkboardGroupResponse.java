@@ -1,26 +1,26 @@
 package com.mannschaft.app.corkboard.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 
 /**
  * コルクボードセクションレスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class CorkboardGroupResponse {
 
     private final Long id;
     private final Long corkboardId;
     private final String name;
     private final Boolean isCollapsed;
-    private final Integer positionX;
-    private final Integer positionY;
-    private final Integer width;
-    private final Integer height;
+    private final GroupLayoutDto layout;
     private final Short displayOrder;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    private final GroupAuditDto audit;
+
+    public record GroupLayoutDto(Integer positionX, Integer positionY, Integer width, Integer height) {}
+
+    public record GroupAuditDto(LocalDateTime createdAt, LocalDateTime updatedAt) {}
 }
