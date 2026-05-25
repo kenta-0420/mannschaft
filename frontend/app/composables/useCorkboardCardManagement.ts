@@ -53,8 +53,8 @@ export function useCorkboardCardManagement(
     let x = 40
     let y = 40
     for (const c of (board.value?.cards ?? [])) {
-      if (c.positionX + 40 > x) x = c.positionX + 40
-      if (c.positionY + 40 > y) y = c.positionY + 40
+      if ((c.layout?.positionX ?? 0) + 40 > x) x = (c.layout?.positionX ?? 0) + 40
+      if ((c.layout?.positionY ?? 0) + 40 > y) y = (c.layout?.positionY ?? 0) + 40
     }
     return { x: Math.min(x, 1000), y: Math.min(y, 600) }
   })
@@ -111,7 +111,7 @@ export function useCorkboardCardManagement(
 
   /** アーカイブ状態を切り替え、成功時はローカル状態を最新 DTO で置換する。 */
   async function toggleArchive(card: CorkboardCardDetail) {
-    const next = !card.isArchived
+    const next = !card.state?.isArchived
     try {
       const res = await apiArchiveCard(boardId.value, card.id, next)
       if (board.value) {

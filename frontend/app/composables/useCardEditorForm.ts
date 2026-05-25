@@ -141,18 +141,18 @@ export function useCardEditorForm(
     errors.value = {}
     if (mode.value === 'edit' && card.value) {
       const c = card.value
-      cardType.value = (c.cardType as CorkboardCardType) ?? 'MEMO'
-      colorLabel.value = (c.colorLabel as CorkboardColor) ?? 'WHITE'
-      positionX.value = c.positionX ?? 0
-      positionY.value = c.positionY ?? 0
-      referenceType.value = (c.referenceType as CorkboardReferenceType) ?? 'TIMELINE_POST'
-      referenceId.value = c.referenceId ?? null
+      cardType.value = (c.reference?.cardType as CorkboardCardType) ?? 'MEMO'
+      colorLabel.value = (c.style?.colorLabel as CorkboardColor) ?? 'WHITE'
+      positionX.value = c.layout?.positionX ?? 0
+      positionY.value = c.layout?.positionY ?? 0
+      referenceType.value = (c.reference?.referenceType as CorkboardReferenceType) ?? 'TIMELINE_POST'
+      referenceId.value = c.reference?.referenceId ?? null
       referenceUrlPaste.value = ''
       referenceUrlPasteMessage.value = null
-      title.value = c.title ?? ''
-      body.value = c.body ?? ''
-      url.value = c.url ?? ''
-      userNote.value = c.userNote ?? ''
+      title.value = c.content?.title ?? ''
+      body.value = c.content?.body ?? ''
+      url.value = c.content?.url ?? ''
+      userNote.value = c.audit?.userNote ?? ''
     } else {
       cardType.value = 'MEMO'
       colorLabel.value = 'WHITE'

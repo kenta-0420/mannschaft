@@ -39,16 +39,16 @@ const avatarUrl = computed(() => {
 })
 
 const displayContent = computed(() => {
-  if (!props.post.content) return ''
-  if (expanded.value || !props.post.isTruncated) return props.post.content
-  return props.post.content.substring(0, CONTENT_TRUNCATE_LENGTH)
+  if (!props.post.content?.content) return ''
+  if (expanded.value || !props.post.isTruncated) return props.post.content.content
+  return props.post.content.content.substring(0, CONTENT_TRUNCATE_LENGTH)
 })
 
 const menuItems = computed(() => {
   const items = []
   if (props.canPin) {
     items.push({
-      label: props.post.isPinned ? 'ピン解除' : 'ピン留め',
+      label: props.post.content?.isPinned ? 'ピン解除' : 'ピン留め',
       icon: 'pi pi-thumbtack',
       command: () => emit('pin', props.post.id),
     })
@@ -90,7 +90,7 @@ async function handleToggleMitayo() {
     @click="emit('clickPost', post.id)"
   >
     <!-- ピン表示 -->
-    <div v-if="post.isPinned" class="mb-2 flex items-center gap-1 text-xs text-surface-400">
+    <div v-if="post.content?.isPinned" class="mb-2 flex items-center gap-1 text-xs text-surface-400">
       <i class="pi pi-thumbtack" />
       <span>ピン留め</span>
     </div>
@@ -112,7 +112,7 @@ async function handleToggleMitayo() {
             </span>
           </div>
           <div class="flex items-center gap-1 text-xs text-surface-400">
-            <span>{{ relativeTime(post.createdAt) }}</span>
+            <span>{{ relativeTime(post.audit?.createdAt) }}</span>
             <span v-if="post.isEdited" class="text-surface-300">・編集済み</span>
           </div>
         </div>
@@ -147,7 +147,7 @@ async function handleToggleMitayo() {
     </div>
 
     <!-- 本文 -->
-    <div v-if="post.content" class="mb-3">
+    <div v-if="post.content?.content" class="mb-3">
       <p class="whitespace-pre-wrap text-sm leading-relaxed text-surface-700">
         {{ displayContent }}
       </p>
@@ -260,15 +260,15 @@ async function handleToggleMitayo() {
         @click="emit('reply', post.id)"
       >
         <i class="pi pi-comment" />
-        <span v-if="post.replyCount">{{ post.replyCount }}</span>
+        <span v-if="post.stats?.replyCount">{{ post.stats.replyCount }}</span>
       </button>
       <button
         class="flex items-center gap-1 text-xs transition-colors hover:text-green-500"
-        :class="post.repostCount > 0 ? 'text-green-500' : 'text-surface-400'"
+        :class="(post.stats?.repostCount ?? 0) > 0 ? 'text-green-500' : 'text-surface-400'"
         @click="emit('repost', post.id)"
       >
         <i class="pi pi-replay" />
-        <span v-if="post.repostCount">{{ post.repostCount }}</span>
+        <span v-if="post.stats?.repostCount">{{ post.stats.repostCount }}</span>
       </button>
       <button
         class="flex items-center gap-1 text-xs transition-colors hover:text-amber-500"

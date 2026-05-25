@@ -73,37 +73,52 @@ const { useCorkboardPinManagement } = await import('~/composables/useCorkboardPi
 // テストヘルパ
 // ============================================================
 
-function makeCard(overrides: Partial<CorkboardCardDetail> = {}): CorkboardCardDetail {
+function makeCard(overrides: {
+  id?: number
+  isPinned?: boolean
+  pinnedAt?: string | null
+} = {}): CorkboardCardDetail {
   return {
-    id: 10,
+    id: overrides.id ?? 10,
     corkboardId: 100,
-    sectionId: null,
-    cardType: 'MEMO',
-    referenceType: null,
-    referenceId: null,
-    contentSnapshot: null,
-    title: 'テストカード',
-    body: null,
-    url: null,
-    ogTitle: null,
-    ogImageUrl: null,
-    ogDescription: null,
-    colorLabel: 'YELLOW',
-    cardSize: 'MEDIUM',
-    positionX: 100,
-    positionY: 100,
-    zIndex: 1,
-    userNote: null,
-    noteColor: null,
-    autoArchiveAt: null,
-    isArchived: false,
-    isPinned: false,
-    pinnedAt: null,
-    isRefDeleted: false,
-    createdBy: null,
-    createdAt: '2026-05-01T00:00:00',
-    updatedAt: '2026-05-01T00:00:00',
-    ...overrides,
+    reference: {
+      sectionId: null,
+      cardType: 'MEMO',
+      referenceType: null,
+      referenceId: null,
+      contentSnapshot: null,
+    },
+    content: {
+      title: 'テストカード',
+      body: null,
+      url: null,
+      ogTitle: null,
+      ogImageUrl: null,
+      ogDescription: null,
+    },
+    layout: {
+      positionX: 100,
+      positionY: 100,
+      zIndex: 1,
+      cardSize: 'MEDIUM',
+    },
+    style: {
+      colorLabel: 'YELLOW',
+      noteColor: null,
+    },
+    state: {
+      isArchived: false,
+      isPinned: overrides.isPinned ?? false,
+      pinnedAt: overrides.pinnedAt ?? null,
+      autoArchiveAt: null,
+      isRefDeleted: false,
+    },
+    audit: {
+      userNote: null,
+      createdBy: null,
+      createdAt: '2026-05-01T00:00:00',
+      updatedAt: '2026-05-01T00:00:00',
+    },
   }
 }
 
@@ -237,9 +252,9 @@ describe('useCorkboardPinManagement — doTogglePin', () => {
     await doTogglePin(card, true, '覚書', 'YELLOW')
 
     const updated = board.value!.cards.find((c) => c.id === 10)
-    expect(updated?.isPinned).toBe(true)
-    expect(updated?.userNote).toBe('覚書')
-    expect(updated?.noteColor).toBe('YELLOW')
+    expect(updated?.state?.isPinned).toBe(true)
+    expect(updated?.audit?.userNote).toBe('覚書')
+    expect(updated?.style?.noteColor).toBe('YELLOW')
   })
 
   it('CORK-PIN-UNIT-007: doTogglePin(true) 成功後に pinPopoverTargetCard が null にリセット', async () => {
@@ -278,8 +293,8 @@ describe('useCorkboardPinManagement — doTogglePin', () => {
     await doTogglePin(card, false, null, null)
 
     const updated = board.value!.cards.find((c) => c.id === 10)
-    expect(updated?.isPinned).toBe(false)
-    expect(updated?.pinnedAt).toBeNull()
+    expect(updated?.state?.isPinned).toBe(false)
+    expect(updated?.state?.pinnedAt).toBeNull()
   })
 
   it('CORK-PIN-UNIT-009: 上限エラー（status 409）で warn toast が表示される', async () => {
