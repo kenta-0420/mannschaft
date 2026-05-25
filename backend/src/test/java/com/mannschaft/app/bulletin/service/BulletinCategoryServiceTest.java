@@ -5,9 +5,11 @@ import com.mannschaft.app.bulletin.BulletinMapper;
 import com.mannschaft.app.bulletin.ScopeType;
 import com.mannschaft.app.bulletin.dto.CategoryResponse;
 import com.mannschaft.app.bulletin.dto.CreateCategoryRequest;
+import com.mannschaft.app.bulletin.dto.DeleteCategoryResponse;
 import com.mannschaft.app.bulletin.dto.UpdateCategoryRequest;
 import com.mannschaft.app.bulletin.entity.BulletinCategoryEntity;
 import com.mannschaft.app.bulletin.repository.BulletinCategoryRepository;
+import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.common.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -24,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -36,6 +39,9 @@ class BulletinCategoryServiceTest {
 
     @Mock
     private BulletinCategoryRepository categoryRepository;
+
+    @Mock
+    private BulletinThreadRepository threadRepository;
 
     @Mock
     private BulletinMapper bulletinMapper;
@@ -192,6 +198,7 @@ class BulletinCategoryServiceTest {
             BulletinCategoryEntity entity = createDefaultCategory();
             given(categoryRepository.findByIdAndScopeTypeAndScopeId(CATEGORY_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(entity));
+            given(threadRepository.bulkSetCategoryIdNullByCategoryId(CATEGORY_ID)).willReturn(0);
 
             // When
             bulletinCategoryService.deleteCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID);
@@ -199,6 +206,41 @@ class BulletinCategoryServiceTest {
             // Then
             verify(categoryRepository).save(entity);
             assertThat(entity.getDeletedAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("カテゴリ削除_正常_配下スレッドを未分類化しスレッドは残す")
+        void カテゴリ削除_正常_配下スレッドを未分類化しスレッドは残す() {
+            // Given: 配下に 12 件のスレッドが存在する状態
+            BulletinCategoryEntity entity = createDefaultCategory();
+            given(categoryRepository.findByIdAndScopeTypeAndScopeId(CATEGORY_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(threadRepository.bulkSetCategoryIdNullByCategoryId(CATEGORY_ID)).willReturn(12);
+
+            // When
+            DeleteCategoryResponse response =
+                    bulletinCategoryService.deleteCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID);
+
+            // Then: 未分類化（category_id = NULL）が呼ばれ、カテゴリは論理削除される。スレッド削除は行わない
+            verify(threadRepository).bulkSetCategoryIdNullByCategoryId(CATEGORY_ID);
+            verify(categoryRepository).save(entity);
+            assertThat(entity.getDeletedAt()).isNotNull();
+            assertThat(response.getId()).isEqualTo(CATEGORY_ID);
+            assertThat(response.getAffectedThreadCount()).isEqualTo(12);
+            assertThat(response.getMessage()).contains("12件");
+        }
+
+        @Test
+        @DisplayName("カテゴリ削除_存在しない場合は未分類化を呼ばない")
+        void カテゴリ削除_存在しない場合は未分類化を呼ばない() {
+            // Given
+            given(categoryRepository.findByIdAndScopeTypeAndScopeId(CATEGORY_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.empty());
+
+            // When & Then: カテゴリが見つからない場合、未分類化処理は実行されない
+            assertThatThrownBy(() -> bulletinCategoryService.deleteCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID))
+                    .isInstanceOf(BusinessException.class);
+            verify(threadRepository, never()).bulkSetCategoryIdNullByCategoryId(any());
         }
 
         @Test

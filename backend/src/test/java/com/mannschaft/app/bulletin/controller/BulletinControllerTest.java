@@ -4,6 +4,7 @@ import com.mannschaft.app.bulletin.dto.CategoryResponse;
 import com.mannschaft.app.bulletin.dto.CreateCategoryRequest;
 import com.mannschaft.app.bulletin.dto.CreateReplyRequest;
 import com.mannschaft.app.bulletin.dto.CreateThreadRequest;
+import com.mannschaft.app.bulletin.dto.DeleteCategoryResponse;
 import com.mannschaft.app.bulletin.dto.ReplyResponse;
 import com.mannschaft.app.bulletin.dto.ThreadResponse;
 import com.mannschaft.app.bulletin.dto.UpdateCategoryRequest;
@@ -155,13 +156,21 @@ class BulletinControllerTest {
         }
 
         @Test
-        @DisplayName("正常系: カテゴリ削除が204で返る")
-        void deleteCategory_正常_204() {
+        @DisplayName("正常系: カテゴリ削除が200で返り未分類化件数を含む")
+        void deleteCategory_正常_200() {
+            // Given
+            given(categoryService.deleteCategory(any(), eq(SCOPE_ID), eq(CATEGORY_ID)))
+                    .willReturn(new DeleteCategoryResponse(CATEGORY_ID, 3,
+                            "カテゴリを削除しました。3件のスレッドが未分類に移行しました"));
+
             // When
-            ResponseEntity<Void> response = categoryController.deleteCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID);
+            ResponseEntity<ApiResponse<DeleteCategoryResponse>> response =
+                    categoryController.deleteCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID);
 
             // Then
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody().getData()).isNotNull();
+            assertThat(response.getBody().getData().getAffectedThreadCount()).isEqualTo(3);
             verify(categoryService).deleteCategory(any(), eq(SCOPE_ID), eq(CATEGORY_ID));
         }
     }
