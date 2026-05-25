@@ -206,6 +206,12 @@
         "LOBBY": "ロビー"
       }
     },
+    "widget": {
+      "lobbyDigest": {
+        "presence": "今{count}人が井戸端にいます",
+        "empty": "ピン留めした村がありません"
+      }
+    },
     "search": {
       "placeholder": "村を検索...",
       "internalPlaceholder": "この村の中を検索...",

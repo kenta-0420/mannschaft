@@ -206,6 +206,12 @@
         "LOBBY": "Lobby"
       }
     },
+    "widget": {
+      "lobbyDigest": {
+        "presence": "{count} people at the well",
+        "empty": "No pinned villages yet"
+      }
+    },
     "search": {
       "placeholder": "村を検索...",
       "internalPlaceholder": "この村の中を検索...",

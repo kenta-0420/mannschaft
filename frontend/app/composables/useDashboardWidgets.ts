@@ -222,6 +222,14 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     description: '登録郵便番号から導出した居住地点の今日・明日の予報',
     scope: ['personal'],
   },
+  // F17.1 §3.12.5: 井戸端ダイジェストウィジェット
+  {
+    key: 'village-lobby-digest',
+    label: '井戸端ダイジェスト',
+    icon: 'pi pi-comments',
+    description: 'ピン留め村の本日の井戸端在席状況',
+    scope: ['personal'],
+  },
 ]
 
 function hiddenStorageKey(scopeType: string, scopeId?: number): string {

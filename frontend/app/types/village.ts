@@ -176,6 +176,20 @@ export interface LobbyChannelResponse {
   todayThreadId: string | null
 }
 
+/** §4.10.5 ロビー在席メンバー */
+export interface PresenceMember {
+  userId: number
+  displayName: string
+  avatarR2Key: string | null
+  joinedAt: string
+}
+
+/** §4.10.5 ロビー在席状況レスポンス */
+export interface LobbyPresenceResponse {
+  count: number
+  members: PresenceMember[]
+}
+
 export interface DailyThreadResponse {
   id: string
   villageId: string

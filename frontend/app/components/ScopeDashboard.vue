@@ -88,6 +88,8 @@ const DATA_WIDGET_KEYS = new Set([
   'my-corkboard',
   // F14.2: チームメンバー定期更新フォーム
   'member-info',
+  // F17.1 §3.12.5: 井戸端ダイジェストはデータ表示型ウィジェット
+  'village-lobby-digest',
 ])
 
 function isDataWidget(key: string): boolean {
@@ -335,6 +337,10 @@ function onDragEnd() {
               v-else-if="w.key === 'member-info' && scopeId && scopeType === 'team'"
               :scope-type="scopeType"
               :scope-id="scopeId"
+            />
+            <!-- F17.1 §3.12.5: 井戸端ダイジェスト（個人ダッシュボードのみ） -->
+            <WidgetVillageLobbyDigest
+              v-else-if="w.key === 'village-lobby-digest' && scopeType === 'personal'"
             />
           </div>
         </template>
