@@ -47,10 +47,11 @@ class ScheduleDelegationMigrationIntegrationTest {
             .withPassword("test")
             .withCommand("--log_bin_trust_function_creators=1");
 
-    private static final long SCHEDULE_ID = 9001L;
-    private static final long DELEGATOR_ID = 7001L;
     private static final long DELEGATE_ID = 7002L;
     private static final long ORG_ID = 1001L;
+
+    /** @BeforeAll で作成する親スケジュールの id（FK fk_sched_deleg_schedule を満たすため）。 */
+    private long scheduleId;
 
     public static boolean isDockerAvailable() {
         try {
@@ -61,7 +62,7 @@ class ScheduleDelegationMigrationIntegrationTest {
     }
 
     @BeforeAll
-    void startAndMigrate() {
+    void startAndMigrate() throws SQLException {
         MYSQL.start();
         Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
@@ -69,6 +70,21 @@ class ScheduleDelegationMigrationIntegrationTest {
                 .outOfOrder(false)
                 .load()
                 .migrate();
+        // FK 制約（schedule_id → schedules.id）を満たすため親スケジュールを 1 件作成する。
+        // team_id / organization_id / user_id は NULL（schedules 側の FK を回避）。
+        try (Connection c = conn();
+             PreparedStatement ps = c.prepareStatement(
+                     "INSERT INTO schedules (title, start_at, event_type, visibility, min_view_role, "
+                             + "min_response_role, status, attendance_status, comment_option, created_at, updated_at) "
+                             + "VALUES ('代理出席テスト', NOW(), 'OTHER', 'MEMBERS_ONLY', 'MEMBER_PLUS', "
+                             + "'MEMBER_PLUS', 'SCHEDULED', 'READY', 'OPTIONAL', NOW(), NOW())",
+                     PreparedStatement.RETURN_GENERATED_KEYS)) {
+            ps.executeUpdate();
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                rs.next();
+                this.scheduleId = rs.getLong(1);
+            }
+        }
     }
 
     @AfterAll
@@ -88,7 +104,7 @@ class ScheduleDelegationMigrationIntegrationTest {
                 VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
                 """)) {
             ps.setBytes(1, toBytes(id));
-            ps.setLong(2, SCHEDULE_ID);
+            ps.setLong(2, scheduleId);
             ps.setLong(3, delegatorId);
             ps.setLong(4, DELEGATE_ID);
             ps.setLong(5, ORG_ID);

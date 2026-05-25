@@ -44,9 +44,11 @@ class EventDelegationMigrationIntegrationTest {
             .withPassword("test")
             .withCommand("--log_bin_trust_function_creators=1");
 
-    private static final long EVENT_ID = 9501L;
     private static final long DELEGATE_ID = 7102L;
     private static final long ORG_ID = 1101L;
+
+    /** @BeforeAll で作成する親イベントの id（FK fk_event_deleg_event を満たすため）。 */
+    private long eventId;
 
     public static boolean isDockerAvailable() {
         try {
@@ -57,7 +59,7 @@ class EventDelegationMigrationIntegrationTest {
     }
 
     @BeforeAll
-    void startAndMigrate() {
+    void startAndMigrate() throws SQLException {
         MYSQL.start();
         Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
@@ -65,6 +67,20 @@ class EventDelegationMigrationIntegrationTest {
                 .outOfOrder(false)
                 .load()
                 .migrate();
+        // FK 制約（event_id → events.id）を満たすため親イベントを 1 件作成する。
+        // events の NOT NULL かつ DEFAULT 無しのカラムは scope_type / scope_id / slug のみ（他は DEFAULT あり）。
+        // scope_id にクロスドメイン FK は無いため任意値で可（原則1）。
+        try (Connection c = conn();
+             PreparedStatement ps = c.prepareStatement(
+                     "INSERT INTO events (scope_type, scope_id, slug, created_at, updated_at) "
+                             + "VALUES ('TEAM', 1, 'proxy-attendance-test', NOW(), NOW())",
+                     PreparedStatement.RETURN_GENERATED_KEYS)) {
+            ps.executeUpdate();
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                rs.next();
+                this.eventId = rs.getLong(1);
+            }
+        }
     }
 
     @AfterAll
@@ -86,7 +102,7 @@ class EventDelegationMigrationIntegrationTest {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
                 """)) {
             ps.setBytes(1, toBytes(id));
-            ps.setLong(2, EVENT_ID);
+            ps.setLong(2, eventId);
             ps.setLong(3, delegatorId);
             ps.setLong(4, DELEGATE_ID);
             ps.setLong(5, ORG_ID);
