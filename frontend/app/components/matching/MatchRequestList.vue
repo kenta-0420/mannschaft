@@ -44,16 +44,16 @@ defineExpose({ refresh: load })
     <div v-else class="flex flex-col gap-3">
       <button v-for="req in requests" :key="req.id" class="rounded-xl border border-surface-300 bg-surface-0 p-4 text-left transition-shadow hover:shadow-sm" @click="emit('select', req)">
         <div class="mb-2 flex items-center gap-2">
-          <span :class="getStatusClass(req.status)" class="rounded px-2 py-0.5 text-xs font-medium">{{ req.status }}</span>
-          <span class="rounded bg-surface-100 px-1.5 py-0.5 text-xs">{{ req.activity_type }}</span>
-          <span v-if="req.level !== 'ANY'" class="text-xs text-surface-400">{{ req.level }}</span>
+          <span :class="getStatusClass(req.status?.status ?? '')" class="rounded px-2 py-0.5 text-xs font-medium">{{ req.status?.status }}</span>
+          <span class="rounded bg-surface-100 px-1.5 py-0.5 text-xs">{{ req.content?.activityType }}</span>
+          <span v-if="req.participants?.level !== 'ANY'" class="text-xs text-surface-400">{{ req.participants?.level }}</span>
         </div>
-        <h3 class="mb-1 text-sm font-semibold">{{ req.title }}</h3>
+        <h3 class="mb-1 text-sm font-semibold">{{ req.content?.title }}</h3>
         <div class="flex items-center gap-3 text-xs text-surface-400">
-          <span>{{ req.team.name }}</span>
-          <span v-if="req.team.average_rating"><i class="pi pi-star-fill text-amber-400" /> {{ req.team.average_rating?.toFixed(1) }}</span>
-          <span>{{ relativeTime(req.created_at) }}</span>
-          <span><i class="pi pi-users" /> {{ req.proposal_count }}件の応募</span>
+          <span>{{ req.team?.name }}</span>
+          <span v-if="req.team?.averageRating"><i class="pi pi-star-fill text-amber-400" /> {{ req.team.averageRating?.toFixed(1) }}</span>
+          <span>{{ relativeTime(req.createdAt) }}</span>
+          <span><i class="pi pi-users" /> {{ req.status?.proposalCount }}件の応募</span>
         </div>
       </button>
       <div v-if="requests.length === 0" class="py-12 text-center"><i class="pi pi-search mb-3 text-4xl text-surface-300" /><p class="text-surface-400">募集がありません</p></div>

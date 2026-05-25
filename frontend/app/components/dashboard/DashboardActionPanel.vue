@@ -167,13 +167,13 @@ async function load() {
 
       if (r.type === 'survey') {
         const surveys = r.data as SurveyResponse[]
-        for (const s of surveys.filter((s) => !s.hasResponded)) {
+        for (const s of surveys.filter((s) => !(s as any).hasResponded)) {
           result.push({
             key: `survey-${r.scopeKind}-${r.scopeId}-${s.id}`,
             type: 'survey',
-            title: s.title,
+            title: s.content?.title ?? '',
             scopeName: r.scopeName,
-            deadline: s.deadline,
+            deadline: s.schedule?.expiresAt ?? null,
             linkTo: `/${r.scopeKind === 'team' ? 'teams' : 'organizations'}/${r.scopeId}/surveys`,
           })
         }
@@ -198,14 +198,14 @@ async function load() {
       if (r.type === 'matching') {
         const requests = r.data as MatchRequestResponse[]
         for (const req of requests.filter(
-          (req) => req.status === 'OPEN' && req.proposal_count > 0,
+          (req) => req.status?.status === 'OPEN' && (req.status?.proposalCount ?? 0) > 0,
         )) {
           result.push({
             key: `matching-${r.scopeId}-${req.id}`,
             type: 'matching',
-            title: `${req.title}（提案 ${req.proposal_count}件）`,
+            title: `${req.content?.title ?? ''}（提案 ${req.status?.proposalCount ?? 0}件）`,
             scopeName: r.scopeName,
-            deadline: req.expires_at,
+            deadline: req.status?.expiresAt ?? null,
             linkTo: `/teams/${r.scopeId}/matching`,
           })
         }

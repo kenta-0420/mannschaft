@@ -1,30 +1,52 @@
 // === Form Template ===
-export interface FormTemplateResponse {
-  id: number
+export interface FormTemplateScopeDto {
   scopeType: string
   scopeId: number
+}
+export interface FormTemplateContentDto {
   name: string
   description: string | null
   icon: string | null
   color: string | null
-  status: string
+  sortOrder: number
+}
+export interface FormTemplateWorkflowDto {
   requiresApproval: boolean
   workflowTemplateId: number | null
   isSealOnPdf: boolean
-  deadline: string | null
+}
+export interface FormTemplateEditPolicyDto {
   allowEditAfterSubmit: boolean
   autoFillEnabled: boolean
   maxSubmissionsPerUser: number | null
-  sortOrder: number
-  presetId: number | null
+}
+export interface FormTemplateStatsDto {
   submissionCount: number
   targetCount: number | null
-  createdBy: number
+  presetId: number | null
+}
+export interface FormTemplateTimelineDto {
+  deadline: string | null
   publishedAt: string | null
   closedAt: string | null
+}
+export interface FormTemplateAuditDto {
   version: number
+  createdBy: number
   createdAt: string
   updatedAt: string
+}
+
+export interface FormTemplateResponse {
+  id: number
+  status: string
+  scope: FormTemplateScopeDto
+  content: FormTemplateContentDto
+  workflow: FormTemplateWorkflowDto
+  editPolicy: FormTemplateEditPolicyDto
+  stats: FormTemplateStatsDto
+  timeline: FormTemplateTimelineDto
+  audit: FormTemplateAuditDto
   fields: FormFieldResponse[]
 }
 
@@ -88,19 +110,32 @@ export interface UpdateFormTemplateRequest {
 }
 
 // === Form Submission ===
-export interface FormSubmissionResponse {
-  id: number
-  templateId: number
+export interface FormSubmissionScopeDto {
   scopeType: string
   scopeId: number
-  status: string
+}
+export interface FormSubmissionMetaDto {
+  templateId: number
   submittedBy: number
   workflowRequestId: number | null
-  pdfFileKey: string | null
   submissionCountForUser: number
   version: number
+}
+export interface FormSubmissionPdfDto {
+  pdfFileKey: string | null
+}
+export interface FormSubmissionAuditDto {
   createdAt: string
   updatedAt: string
+}
+
+export interface FormSubmissionResponse {
+  id: number
+  status: string
+  scope: FormSubmissionScopeDto
+  meta: FormSubmissionMetaDto
+  pdf: FormSubmissionPdfDto
+  audit: FormSubmissionAuditDto
   values: SubmissionValueResponse[]
 }
 
