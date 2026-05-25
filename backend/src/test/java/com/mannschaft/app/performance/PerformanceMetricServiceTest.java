@@ -65,9 +65,14 @@ class PerformanceMetricServiceTest {
                     .teamId(TEAM_ID).name("50m走").unit("秒").dataType(MetricDataType.DECIMAL)
                     .aggregationType(AggregationType.SUM).build();
             given(metricRepository.save(any())).willReturn(saved);
-            given(performanceMapper.toMetricResponse(saved)).willReturn(new MetricResponse(
-                    1L, "50m走", "秒", "DECIMAL", "SUM", null, null, null, null, null,
-                    0, true, false, null, true, null, null));
+            given(performanceMapper.toMetricResponse(saved)).willReturn(MetricResponse.builder()
+                    .id(1L)
+                    .definition(new MetricResponse.MetricDefinitionDto("50m走", "秒", "DECIMAL", "SUM", null, null))
+                    .valueRange(new MetricResponse.MetricValueRangeDto(null, null, null))
+                    .access(new MetricResponse.MetricAccessDto(true, false, null, true))
+                    .sortOrder(0)
+                    .audit(new MetricResponse.MetricAuditDto(null, null))
+                    .build());
 
             MetricResponse result = service.createMetric(TEAM_ID, request);
             assertThat(result).isNotNull();

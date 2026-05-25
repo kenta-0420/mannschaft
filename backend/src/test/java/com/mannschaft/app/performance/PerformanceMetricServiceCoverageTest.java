@@ -238,16 +238,21 @@ class PerformanceMetricServiceCoverageTest {
                     .build();
             given(metricRepository.save(any())).willReturn(saved);
             given(performanceMapper.toMetricResponse(saved)).willReturn(
-                    new MetricResponse(1L, "ゴール数", "本", "INTEGER", "AVG",
-                            null, null, null, null, null,
-                            1, false, true, null, true, null, null));
+                    MetricResponse.builder()
+                            .id(1L)
+                            .definition(new MetricResponse.MetricDefinitionDto("ゴール数", "本", "INTEGER", "AVG", null, null))
+                            .valueRange(new MetricResponse.MetricValueRangeDto(null, null, null))
+                            .access(new MetricResponse.MetricAccessDto(false, true, null, true))
+                            .sortOrder(1)
+                            .audit(new MetricResponse.MetricAuditDto(null, null))
+                            .build());
 
             // When
             MetricResponse result = service.createMetric(TEAM_ID, request);
 
             // Then
             assertThat(result).isNotNull();
-            assertThat(result.getAggregationType()).isEqualTo("AVG");
+            assertThat(result.getDefinition().aggregationType()).isEqualTo("AVG");
         }
 
         @Test
@@ -265,9 +270,14 @@ class PerformanceMetricServiceCoverageTest {
                     .build();
             given(metricRepository.save(any())).willReturn(saved);
             given(performanceMapper.toMetricResponse(saved)).willReturn(
-                    new MetricResponse(2L, "最高速度", "km/h", "DECIMAL", "MAX",
-                            null, null, null, null, null,
-                            0, true, false, null, true, null, null));
+                    MetricResponse.builder()
+                            .id(2L)
+                            .definition(new MetricResponse.MetricDefinitionDto("最高速度", "km/h", "DECIMAL", "MAX", null, null))
+                            .valueRange(new MetricResponse.MetricValueRangeDto(null, null, null))
+                            .access(new MetricResponse.MetricAccessDto(true, false, null, true))
+                            .sortOrder(0)
+                            .audit(new MetricResponse.MetricAuditDto(null, null))
+                            .build());
 
             // When
             MetricResponse result = service.createMetric(TEAM_ID, request);
@@ -291,9 +301,14 @@ class PerformanceMetricServiceCoverageTest {
                     .build();
             given(metricRepository.save(any())).willReturn(saved);
             given(performanceMapper.toMetricResponse(saved)).willReturn(
-                    new MetricResponse(3L, "最低タイム", "秒", "DECIMAL", "MIN",
-                            null, null, null, null, null,
-                            0, true, false, null, true, null, null));
+                    MetricResponse.builder()
+                            .id(3L)
+                            .definition(new MetricResponse.MetricDefinitionDto("最低タイム", "秒", "DECIMAL", "MIN", null, null))
+                            .valueRange(new MetricResponse.MetricValueRangeDto(null, null, null))
+                            .access(new MetricResponse.MetricAccessDto(true, false, null, true))
+                            .sortOrder(0)
+                            .audit(new MetricResponse.MetricAuditDto(null, null))
+                            .build());
 
             // When
             MetricResponse result = service.createMetric(TEAM_ID, request);
@@ -317,9 +332,14 @@ class PerformanceMetricServiceCoverageTest {
                     .build();
             given(metricRepository.save(any())).willReturn(saved);
             given(performanceMapper.toMetricResponse(saved)).willReturn(
-                    new MetricResponse(4L, "体重", "kg", "DECIMAL", "LATEST",
-                            null, null, null, null, null,
-                            0, true, false, null, true, null, null));
+                    MetricResponse.builder()
+                            .id(4L)
+                            .definition(new MetricResponse.MetricDefinitionDto("体重", "kg", "DECIMAL", "LATEST", null, null))
+                            .valueRange(new MetricResponse.MetricValueRangeDto(null, null, null))
+                            .access(new MetricResponse.MetricAccessDto(true, false, null, true))
+                            .sortOrder(0)
+                            .audit(new MetricResponse.MetricAuditDto(null, null))
+                            .build());
 
             // When
             MetricResponse result = service.createMetric(TEAM_ID, request);
@@ -345,9 +365,14 @@ class PerformanceMetricServiceCoverageTest {
                     .build();
             given(metricRepository.save(any())).willReturn(saved);
             given(performanceMapper.toMetricResponse(saved)).willReturn(
-                    new MetricResponse(5L, "アシスト数", "本", "DECIMAL", "SUM",
-                            null, null, null, null, null,
-                            3, false, true, 999L, true, null, null));
+                    MetricResponse.builder()
+                            .id(5L)
+                            .definition(new MetricResponse.MetricDefinitionDto("アシスト数", "本", "DECIMAL", "SUM", null, null))
+                            .valueRange(new MetricResponse.MetricValueRangeDto(null, null, null))
+                            .access(new MetricResponse.MetricAccessDto(false, true, 999L, true))
+                            .sortOrder(3)
+                            .audit(new MetricResponse.MetricAuditDto(null, null))
+                            .build());
 
             // When
             MetricResponse result = service.createMetric(TEAM_ID, request);

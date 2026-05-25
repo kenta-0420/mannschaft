@@ -276,16 +276,24 @@ public class MatchRequestService {
         TeamSummaryResponse teamSummary = new TeamSummaryResponse(
                 entity.getTeamId(), null, displayRating, reviewCount, cancelCount);
 
-        return new MatchRequestResponse(
-                entity.getId(), teamSummary, entity.getTitle(), entity.getDescription(),
-                entity.getActivityType().name(), entity.getActivityDetail(),
-                entity.getCategory().name(), entity.getVisibility().name(),
-                entity.getPrefectureCode(), entity.getCityCode(), entity.getVenueName(),
-                entity.getPreferredDateFrom(), entity.getPreferredDateTo(),
-                entity.getPreferredTimeFrom(), entity.getPreferredTimeTo(),
-                entity.getLevel().name(), entity.getMinParticipants(), entity.getMaxParticipants(),
-                entity.getStatus().name(), entity.getProposalCount(),
-                entity.getExpiresAt(), entity.getCancelCount(),
-                entity.getCreatedAt());
+        return MatchRequestResponse.builder()
+                .id(entity.getId())
+                .team(teamSummary)
+                .content(new MatchRequestResponse.RequestContentDto(
+                        entity.getTitle(), entity.getDescription(),
+                        entity.getActivityType().name(), entity.getActivityDetail(),
+                        entity.getCategory().name(), entity.getVisibility().name()))
+                .location(new MatchRequestResponse.RequestLocationDto(
+                        entity.getPrefectureCode(), entity.getCityCode(), entity.getVenueName()))
+                .schedule(new MatchRequestResponse.RequestScheduleDto(
+                        entity.getPreferredDateFrom(), entity.getPreferredDateTo(),
+                        entity.getPreferredTimeFrom(), entity.getPreferredTimeTo()))
+                .participants(new MatchRequestResponse.RequestParticipantsDto(
+                        entity.getLevel().name(), entity.getMinParticipants(), entity.getMaxParticipants()))
+                .status(new MatchRequestResponse.RequestStatusDto(
+                        entity.getStatus().name(), entity.getProposalCount(),
+                        entity.getExpiresAt(), entity.getCancelCount()))
+                .createdAt(entity.getCreatedAt())
+                .build();
     }
 }

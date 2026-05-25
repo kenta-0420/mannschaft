@@ -1,7 +1,7 @@
 package com.mannschaft.app.matching.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -9,21 +9,30 @@ import java.util.List;
 /**
  * 応募レスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class ProposalResponse {
 
     private final Long id;
     private final Long requestId;
     private final Long proposingTeamId;
-    private final String message;
-    private final String proposedVenue;
-    private final String status;
-    private final String statusReason;
-    private final Long cancelledByTeamId;
-    private final String cancellationType;
-    private final LocalDateTime mutualAgreedAt;
+    private final ProposalContentDto content;
+    private final ProposalStatusDto status;
     private final List<ProposedDateResponse> proposedDates;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    private final ProposalAuditDto audit;
+
+    public record ProposalContentDto(
+            String message,
+            String proposedVenue) {}
+
+    public record ProposalStatusDto(
+            String status,
+            String statusReason,
+            Long cancelledByTeamId,
+            String cancellationType,
+            LocalDateTime mutualAgreedAt) {}
+
+    public record ProposalAuditDto(
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {}
 }

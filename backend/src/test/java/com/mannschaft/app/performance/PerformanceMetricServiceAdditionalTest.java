@@ -85,9 +85,14 @@ class PerformanceMetricServiceAdditionalTest {
         void listMetrics_正常_一覧が返る() {
             // Given
             PerformanceMetricEntity entity = createMetric(METRIC_ID);
-            MetricResponse response = new MetricResponse(
-                    METRIC_ID, "テスト指標", "km", "DECIMAL", "SUM", null, null, null, null, null,
-                    0, true, false, null, true, null, null);
+            MetricResponse response = MetricResponse.builder()
+                    .id(METRIC_ID)
+                    .definition(new MetricResponse.MetricDefinitionDto("テスト指標", "km", "DECIMAL", "SUM", null, null))
+                    .valueRange(new MetricResponse.MetricValueRangeDto(null, null, null))
+                    .access(new MetricResponse.MetricAccessDto(true, false, null, true))
+                    .sortOrder(0)
+                    .audit(new MetricResponse.MetricAuditDto(null, null))
+                    .build();
 
             given(metricRepository.findByTeamIdOrderBySortOrderAsc(TEAM_ID)).willReturn(List.of(entity));
             given(performanceMapper.toMetricResponseList(List.of(entity))).willReturn(List.of(response));
@@ -97,7 +102,7 @@ class PerformanceMetricServiceAdditionalTest {
 
             // Then
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getName()).isEqualTo("テスト指標");
+            assertThat(result.get(0).getDefinition().name()).isEqualTo("テスト指標");
         }
 
         @Test
@@ -130,9 +135,14 @@ class PerformanceMetricServiceAdditionalTest {
             PerformanceMetricEntity entity = createMetric(METRIC_ID);
             UpdateMetricRequest request = new UpdateMetricRequest(
                     "新しい指標名", "m", null, null, null, null, null, null, null, null, null, null, null);
-            MetricResponse response = new MetricResponse(
-                    METRIC_ID, "新しい指標名", "m", "DECIMAL", "SUM", null, null, null, null, null,
-                    0, true, false, null, true, null, null);
+            MetricResponse response = MetricResponse.builder()
+                    .id(METRIC_ID)
+                    .definition(new MetricResponse.MetricDefinitionDto("新しい指標名", "m", "DECIMAL", "SUM", null, null))
+                    .valueRange(new MetricResponse.MetricValueRangeDto(null, null, null))
+                    .access(new MetricResponse.MetricAccessDto(true, false, null, true))
+                    .sortOrder(0)
+                    .audit(new MetricResponse.MetricAuditDto(null, null))
+                    .build();
 
             given(metricRepository.findByIdAndTeamId(METRIC_ID, TEAM_ID)).willReturn(Optional.of(entity));
             given(metricRepository.save(any())).willReturn(entity);
