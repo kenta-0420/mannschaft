@@ -52,6 +52,9 @@ class ReservationServiceTest {
     @Mock
     private ReservationMapper reservationMapper;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     @InjectMocks
     private ReservationService service;
 
