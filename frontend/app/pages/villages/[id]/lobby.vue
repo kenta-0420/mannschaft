@@ -62,6 +62,7 @@ const chatApi = useChatApi()
 const { userTimezone } = useDatetime()
 
 const villageId = String(route.params.id)
+const presence = useVillageLobbyPresence(villageId)
 
 // 状態
 const village = ref<VillageResponse | null>(null)
@@ -303,6 +304,8 @@ async function initialize() {
   if (lobbyChannel.value) {
     chatApi.subscribeChannel(lobbyChannel.value.chatChannelId)
   }
+  // 在席インジケーター開始（今日のみ）
+  presence.start()
 }
 
 onMounted(() => {
@@ -314,6 +317,7 @@ onBeforeUnmount(() => {
   if (lobbyChannel.value) {
     chatApi.unsubscribeChannel(lobbyChannel.value.chatChannelId)
   }
+  presence.stop()
 })
 
 // =============================================================================
@@ -398,6 +402,23 @@ const villageRef = village as Ref<VillageResponse | null>
             <i class="pi pi-bolt" />
             {{ t('village.lobby.realtime') }}
           </span>
+          <!-- 在席インジケーター（今日のみ） -->
+          <div
+            v-if="isTodaySelected && presence.activeCount.value > 0"
+            class="flex items-center gap-1.5 text-xs text-surface-500 dark:text-surface-400"
+          >
+            <div class="flex -space-x-1.5">
+              <div
+                v-for="m in presence.members.value.slice(0, 5)"
+                :key="m.userId"
+                class="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-800 border-2 border-white dark:border-surface-900 flex items-center justify-center text-[9px] font-bold text-primary-700 dark:text-primary-200 uppercase"
+                :title="m.nickname || '?'"
+              >
+                {{ m.nickname ? m.nickname[0] : '?' }}
+              </div>
+            </div>
+            <span>{{ t('village.lobby.presence.count', { count: presence.activeCount.value }) }}</span>
+          </div>
         </header>
 
         <!-- メッセージ表示 -->

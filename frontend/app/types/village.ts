@@ -832,3 +832,19 @@ export interface VillageNewsletterOptOutResponse {
   optedOut: boolean
   optedOutAt: string | null
 }
+
+// -----------------------------------------------------------------------------
+// F17.1 Phase 2 — ロビー在席インジケーター (lobby presence)
+// -----------------------------------------------------------------------------
+
+/** ロビー在席メンバー */
+export interface PresenceMember {
+  userId: number
+  nickname: string
+}
+
+/** ロビー在席レスポンス (GET /api/v1/villages/{villageId}/lobby/presence) */
+export interface LobbyPresenceResponse {
+  members: PresenceMember[]
+  activeCount: number
+}

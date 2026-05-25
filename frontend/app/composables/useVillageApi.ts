@@ -6,12 +6,14 @@ import { useVillageFeatureApi } from './village/useVillageFeatureApi'
 import { useVillageEventApi } from './village/useVillageEventApi'
 import { useVillageMatchApi } from './village/useVillageMatchApi'
 import { useVillagePhase3Api } from './village/useVillagePhase3Api'
+import { useVillageLobbyPresence } from './village/useVillageLobbyPresence'
 
 export { useVillageMembershipApi }
 export { useVillageFeatureApi }
 export { useVillageEventApi }
 export { useVillageMatchApi }
 export { useVillagePhase3Api }
+export { useVillageLobbyPresence }
 
 export function useVillageApi() {
   return {
