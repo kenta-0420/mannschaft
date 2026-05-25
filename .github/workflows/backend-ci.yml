@@ -69,7 +69,10 @@ jobs:
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           HEAD_SHA="${{ github.event.pull_request.head.sha }}"
           echo "[INFO] diff range: ${BASE_SHA}...${HEAD_SHA}"
-          CHANGED=$(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}")
+          # 3 ドット（merge-base...head）= PR が実際に加えた純変更のみを対象とする。
+          # 2 ドットだと base が分岐後に進めた backend 変更まで拾い、docs-only PR でも
+          # 無駄にフルテストが走るため避ける。
+          CHANGED=$(git diff --name-only "${BASE_SHA}...${HEAD_SHA}")
           echo "----- changed files -----"
           echo "${CHANGED}"
           echo "-------------------------"
