@@ -11,6 +11,7 @@ import com.mannschaft.app.chat.dto.ChannelResponse;
 import com.mannschaft.app.chat.dto.CreateChannelRequest;
 import com.mannschaft.app.chat.dto.InviteToZimmerRequest;
 import com.mannschaft.app.chat.dto.UpdateChannelRequest;
+import com.mannschaft.app.chat.dto.UpdateInquiryChannelRequest;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
@@ -486,6 +487,50 @@ public class ChatChannelService {
             }
         }
         // ANYONE の場合はスルー
+    }
+
+    /**
+     * F10.7: 問い合わせチャンネル設定を更新する。
+     *
+     * <p>バリデーション:</p>
+     * <ul>
+     *   <li>{@code channelType = TEAM} のみ設定可能（それ以外は 400 Bad Request）</li>
+     *   <li>アーカイブ済み（{@code is_archived = TRUE}）には設定不可（400 Bad Request）</li>
+     *   <li>{@code is_inquiry_channel = TRUE} にする場合、同チームに既に別の問い合わせチャンネルがあれば 409 Conflict</li>
+     * </ul>
+     *
+     * @param channelId チャンネルID
+     * @param request   更新リクエスト
+     * @return 更新後のチャンネルレスポンス
+     */
+    @Transactional
+    public ChannelResponse updateInquiryChannel(Long channelId, UpdateInquiryChannelRequest request) {
+        ChatChannelEntity channel = findChannelOrThrow(channelId);
+
+        // TEAM_PUBLIC / TEAM_PRIVATE チャンネルのみ設定可能
+        if (channel.getChannelType() != ChannelType.TEAM_PUBLIC
+                && channel.getChannelType() != ChannelType.TEAM_PRIVATE) {
+            throw new BusinessException(ChatErrorCode.INQUIRY_CHANNEL_TEAM_ONLY);
+        }
+
+        // アーカイブ済みには設定不可
+        if (Boolean.TRUE.equals(channel.getIsArchived())) {
+            throw new BusinessException(ChatErrorCode.INQUIRY_CHANNEL_ARCHIVED);
+        }
+
+        // is_inquiry_channel = TRUE にする場合、同チームに既に別の問い合わせチャンネルがあれば 409 Conflict
+        if (Boolean.TRUE.equals(request.getIsInquiryChannel())) {
+            channelRepository.findByTeamIdAndIsInquiryChannelTrue(channel.getTeamId())
+                    .filter(existing -> !existing.getId().equals(channelId))
+                    .ifPresent(existing -> {
+                        throw new BusinessException(ChatErrorCode.INQUIRY_CHANNEL_ALREADY_EXISTS);
+                    });
+        }
+
+        channel.updateInquiryChannel(request.getIsInquiryChannel());
+        ChatChannelEntity saved = channelRepository.save(channel);
+        log.info("問い合わせチャンネル設定更新: channelId={}, isInquiryChannel={}", channelId, request.getIsInquiryChannel());
+        return chatMapper.toChannelResponse(saved);
     }
 
     private void validateChannelNameUniqueness(CreateChannelRequest request, ChannelType channelType) {
