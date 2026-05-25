@@ -77,4 +77,10 @@ public interface ChatChannelRepository extends JpaRepository<ChatChannelEntity, 
      * 村ロビーは 1 村 1 チャネルゆえ Optional で返す。
      */
     Optional<ChatChannelEntity> findByVillageIdAndChannelType(UUID villageId, com.mannschaft.app.chat.ChannelType channelType);
+
+    /**
+     * F10.7: 指定チームの問い合わせチャンネルを取得する（PATCH バリデーション用）。
+     * 1 チームにつき問い合わせチャンネルは 1 件のみ許可するため Optional で返す。
+     */
+    Optional<ChatChannelEntity> findByTeamIdAndIsInquiryChannelTrue(Long teamId);
 }

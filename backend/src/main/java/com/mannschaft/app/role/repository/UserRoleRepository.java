@@ -576,6 +576,19 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     List<Long> findAdminUserIdsByTeamId(@Param("teamId") Long teamId);
 
     /**
+     * 指定チームの DEPUTY_ADMIN ユーザー ID 一覧を全件取得する（F10.7 問い合わせ通知用）。
+     */
+    @Query(value =
+            "SELECT DISTINCT ur.user_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.team_id = :teamId " +
+            "AND r.name = 'DEPUTY_ADMIN' " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<Long> findAllDeputyAdminUserIdsByTeamId(@Param("teamId") Long teamId);
+
+    /**
      * 指定チームで特定権限を持つ DEPUTY_ADMIN ユーザー ID 一覧を取得する（F10.7 予約通知用）。
      *
      * <p>権限保有判定は role_permissions（ロール定義）と user_permission_groups（個別付与）を OR で集約する。</p>

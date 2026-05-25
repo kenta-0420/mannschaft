@@ -11,6 +11,7 @@ import com.mannschaft.app.chat.dto.InviteToZimmerRequest;
 import com.mannschaft.app.chat.dto.MemberResponse;
 import com.mannschaft.app.chat.dto.StartConversationRequest;
 import com.mannschaft.app.chat.dto.UpdateChannelRequest;
+import com.mannschaft.app.chat.dto.UpdateInquiryChannelRequest;
 import com.mannschaft.app.chat.dto.UpdateMyChannelSettingsRequest;
 import com.mannschaft.app.chat.dto.UploadUrlResponse;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
@@ -40,6 +41,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * チャットチャンネルコントローラー。チャンネルのCRUD・メンバー管理APIを提供する。
@@ -278,6 +280,30 @@ public class ChatChannelController {
             @Valid @RequestBody UpdateMyChannelSettingsRequest request) {
         MemberResponse response = memberService.updateMySettings(
                 channelId, SecurityUtils.getCurrentUserId(), request);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * F10.7: 問い合わせチャンネル設定を更新する。
+     *
+     * <p>チームの ADMIN のみ操作可能。</p>
+     *
+     * <ul>
+     *   <li>チームチャンネル（{@code channelType=TEAM}）のみ設定可能</li>
+     *   <li>アーカイブ済みのチャンネルへの設定変更は不可</li>
+     *   <li>{@code is_inquiry_channel=true} にする場合、同チームに既に問い合わせチャンネルがあれば 409 Conflict</li>
+     * </ul>
+     */
+    @PatchMapping("/{channelId}/inquiry")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "問い合わせチャンネル設定更新（F10.7）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "チームチャンネル以外 / アーカイブ済み")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "同チームに問い合わせチャンネルが既に存在する")
+    public ResponseEntity<ApiResponse<ChannelResponse>> updateInquiryChannel(
+            @PathVariable Long channelId,
+            @Valid @RequestBody UpdateInquiryChannelRequest request) {
+        ChannelResponse response = channelService.updateInquiryChannel(channelId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

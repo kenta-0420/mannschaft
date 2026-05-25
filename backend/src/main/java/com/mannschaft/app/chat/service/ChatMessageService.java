@@ -1,5 +1,6 @@
 package com.mannschaft.app.chat.service;
 
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chat.ChannelType;
 import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.ChatMapper;
@@ -15,16 +16,19 @@ import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.entity.ChatMessageReactionEntity;
+import com.mannschaft.app.chat.event.InquiryReceivedEvent;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatMessageAttachmentRepository;
 import com.mannschaft.app.chat.repository.ChatMessageReactionRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -62,6 +66,12 @@ public class ChatMessageService {
     private final ChatMessagePublisher chatMessagePublisher;
     /** F17.1 Phase 3: VILLAGE_LOBBY での postedAs 検証用。 */
     private final PostingIdentityService postingIdentityService;
+    /** F10.7: 問い合わせ通知イベント発行用。 */
+    private final ApplicationEventPublisher eventPublisher;
+    /** F10.7: 送信者 displayName 取得 / ADMIN・DEPUTY_ADMIN ロール確認用。 */
+    private final UserRepository userRepository;
+    /** F10.7: 送信者の ADMIN / DEPUTY_ADMIN ロール確認用。 */
+    private final UserRoleRepository userRoleRepository;
 
     /**
      * チャンネルのメッセージ一覧を取得する（カーソルベースページネーション）。
@@ -201,6 +211,25 @@ public class ChatMessageService {
         MessageResponse response = chatMapper.toMessageResponseWithDetails(saved, attachmentResponses, List.of());
         // F04.2: WebSocket でチャンネル参加者全員に配信（@Transactional 内だが配信タイミングは送信後で許容）
         chatMessagePublisher.publishCreated(channelId, response);
+
+        // F10.7: 問い合わせチャンネルへのメッセージ送信時に InquiryReceivedEvent を発行する。
+        // 送信者が ADMIN / DEPUTY_ADMIN の場合は通知しない（スタッフ間の返信は通知不要）。
+        if (Boolean.TRUE.equals(channel.getIsInquiryChannel()) && channel.getTeamId() != null) {
+            boolean isSenderAdmin = userRoleRepository.countTeamAdminByUserIdAndTeamId(senderId, channel.getTeamId()) > 0;
+            if (!isSenderAdmin) {
+                String senderDisplayName = userRepository.findById(senderId)
+                        .map(u -> u.getDisplayName() != null ? u.getDisplayName() : "ユーザー")
+                        .orElse("ユーザー");
+                eventPublisher.publishEvent(new InquiryReceivedEvent(
+                        channel.getTeamId(),
+                        channelId,
+                        channel.getName() != null ? channel.getName() : "問い合わせ",
+                        senderId,
+                        senderDisplayName
+                ));
+            }
+        }
+
         return response;
     }
 

@@ -26,6 +26,8 @@ public class ChannelResponse {
     private final String sourceType;
     private final Long sourceId;
     private final Boolean isArchived;
+    /** F10.7: 問い合わせチャンネルフラグ */
+    private final Boolean isInquiryChannel;
     private final Long version;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
