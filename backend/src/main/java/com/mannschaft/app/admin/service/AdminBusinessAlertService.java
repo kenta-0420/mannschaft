@@ -116,17 +116,10 @@ public class AdminBusinessAlertService {
         }
 
         // 2. 予約カウント対象チームを絞り込む
-        //    ADMIN のチーム は無条件対象
+        //    ADMIN のチームは無条件対象
         //    DEPUTY_ADMIN のチームは MANAGE_RESERVATIONS 権限保有時のみ
-        Set<Long> deputyTeamsWithPermission = userRoleRepository
-                .findDeputyAdminUserIdsByTeamIdAndPermission(
-                        // このメソッドは teamId 単位のため、各チームで個別チェックが必要。
-                        // N+1 になるが管理チーム数は通常少ない（< 10 チーム）ため許容する。
-                        // TODO: チーム群一括判定クエリを追加して最適化する候補
-                        /* dummy */ allAdminTeamIds.get(0), MANAGE_RESERVATIONS_PERMISSION)
-                .stream()
-                .collect(Collectors.toSet());
-        // 実際には各チームごとに確認する必要があるため、チームループで判定
+        // N+1 になるが管理チーム数は通常少ない（< 10 チーム）ため許容する。
+        // TODO: チーム群一括判定クエリを追加して最適化する候補
         Set<Long> reservationTargetTeamIds = allAdminTeamIds.stream()
                 .filter(teamId -> isReservationTarget(userId, teamId))
                 .collect(Collectors.toSet());
@@ -251,10 +244,6 @@ public class AdminBusinessAlertService {
      * <p>ADMIN は無条件対象。DEPUTY_ADMIN は MANAGE_RESERVATIONS 権限保有時のみ対象。</p>
      */
     private boolean isReservationTarget(Long userId, Long teamId) {
-        // ADMIN かどうかを確認
-        long adminCount = userRoleRepository.countTeamAdminByUserIdAndTeamId(userId, teamId);
-        // countTeamAdminByUserIdAndTeamId は ADMIN + DEPUTY_ADMIN の合計なので、
-        // ADMIN のみで判定するためロール名で直接確認する
         List<Long> adminUserIds = userRoleRepository.findAdminUserIdsByTeamId(teamId);
         if (adminUserIds.contains(userId)) {
             return true;
