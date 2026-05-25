@@ -1,4 +1,4 @@
-export type ChatChannelType = 'TEAM' | 'ORGANIZATION' | 'CROSS_TEAM' | 'DIRECT'
+export type ChatChannelType = 'TEAM' | 'ORGANIZATION' | 'CROSS_TEAM' | 'DIRECT' | 'EVENT_CHAT'
 export type ChatMemberRole = 'OWNER' | 'ADMIN' | 'MEMBER'
 
 export interface ChatUser {

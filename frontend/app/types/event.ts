@@ -294,3 +294,26 @@ export interface EventCategoryItem {
   sortOrder: number
   scope: string | null
 }
+
+// === EventChatChannel ===
+// GET /api/v1/events/{eventId}/channel のレスポンス型
+// バックエンドの com.mannschaft.app.chat.dto.ChannelResponse に対応
+export interface EventChatChannelResponse {
+  id: number
+  channelType: string
+  teamId: number | null
+  organizationId: number | null
+  name: string | null
+  iconKey: string | null
+  description: string | null
+  isPrivate: boolean
+  createdBy: number | null
+  lastMessageAt: string | null
+  lastMessagePreview: string | null
+  sourceType: string | null
+  sourceId: number | null
+  isArchived: boolean
+  version: number | null
+  createdAt: string
+  updatedAt: string
+}

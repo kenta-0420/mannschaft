@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SurveyDetailResponse } from '~/types/survey'
+import type { BulletinThreadResponse } from '~/types/bulletin'
 import SurveyRespondentsList from '~/components/survey/SurveyRespondentsList.vue'
 
 definePageMeta({ middleware: 'auth' })
@@ -14,9 +15,13 @@ const scopeId = Number(route.query.scopeId)
 
 const { t } = useI18n()
 const { getSurvey, publishSurvey, closeSurvey, deleteSurvey } = useSurveyApi()
+const { getSurveyThread } = useSurveyBulletinThread()
 const { error: showError, success: showSuccess } = useNotification()
 const { confirmAction } = useConfirmDialog()
 const authStore = useAuthStore()
+
+// アンケートに紐づく掲示板スレッド（null = スレッド未生成 = 表示しない）
+const bulletinThread = ref<BulletinThreadResponse | null>(null)
 
 // scope / scopeId 欠落・不正な場合は即トップへ
 if (!scopeType || !Number.isFinite(scopeId) || scopeId <= 0 || !Number.isFinite(surveyId)) {
@@ -135,6 +140,17 @@ const scopeListPath = computed(() => {
   return '/'
 })
 
+/**
+ * 掲示板スレッドのページパス。
+ * スレッドが存在する場合、そのスレッドが属するスコープの掲示板一覧ページへ遷移する。
+ */
+const bulletinThreadPath = computed(() => {
+  if (!bulletinThread.value) return null
+  const thread = bulletinThread.value
+  const scope = thread.scopeType === 'TEAM' ? 'teams' : 'organizations'
+  return `/${scope}/${thread.scopeId}/bulletin`
+})
+
 async function onPublish() {
   if (!survey.value) return
   actionLoading.value = true
@@ -194,7 +210,14 @@ async function onSubmitted() {
 }
 
 onMounted(async () => {
-  await Promise.all([fetchDetail(), loadPermissions()])
+  await Promise.all([
+    fetchDetail(),
+    loadPermissions(),
+    // 掲示板スレッド情報を取得（404 の場合は null のまま = 表示しない）
+    getSurveyThread(surveyId).then((thread) => {
+      bulletinThread.value = thread
+    }),
+  ])
 })
 </script>
 
@@ -267,6 +290,18 @@ onMounted(async () => {
           data-testid="survey-close-button"
           @click="onCloseSurvey"
         />
+      </div>
+
+      <!-- 掲示板スレッドリンク（スレッドが存在する場合のみ表示） -->
+      <div v-if="bulletinThread && bulletinThreadPath" class="mb-4">
+        <NuxtLink
+          :to="bulletinThreadPath"
+          class="inline-flex items-center gap-2 rounded-lg border border-surface-300 bg-surface-50 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-100 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-200 dark:hover:bg-surface-700"
+          data-testid="survey-bulletin-thread-link"
+        >
+          <i class="pi pi-comments" />
+          {{ t('surveyPage.bulletinOpen') }}
+        </NuxtLink>
       </div>
 
       <!-- モード別表示 -->
