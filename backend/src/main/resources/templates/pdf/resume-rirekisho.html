@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<!--
+  F01.10 履歴書（厚労省2021推奨様式）PDF テンプレート
+  設計書: docs/features/F01.10_mypage_resume.md §7.1 / §7.9
+  Flying Saucer 制限: flexbox/grid/rgba()は未サポート。table/position/floatで構成。
+-->
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        /* === 基本設定 === */
+        @page {
+            size: A4;
+            margin: 10mm 10mm 10mm 10mm;
+        }
+        body {
+            font-family: 'Noto Sans JP', 'NotoSansJP', sans-serif;
+            font-size: 8pt;
+            color: #000000;
+            line-height: 1.4;
+        }
+        /* === タイトル === */
+        .doc-title {
+            text-align: center;
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .doc-date {
+            text-align: right;
+            font-size: 8pt;
+            margin-bottom: 6px;
+        }
+        /* === メインテーブル === */
+        .main-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .main-table td, .main-table th {
+            border: 1px solid #000000;
+            padding: 2px 3px;
+            vertical-align: top;
+            word-break: break-all;
+        }
+        .label-cell {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            font-size: 7pt;
+            white-space: nowrap;
+        }
+        .section-header {
+            background-color: #d0d0d0;
+            font-weight: bold;
+            font-size: 8pt;
+            text-align: center;
+        }
+        /* === 証明写真エリア === */
+        .photo-cell {
+            width: 30mm;
+            height: 40mm;
+            text-align: center;
+            vertical-align: middle;
+            border: 1px solid #000000;
+        }
+        .photo-img {
+            max-width: 28mm;
+            max-height: 38mm;
+        }
+        .photo-placeholder {
+            color: #999999;
+            font-size: 7pt;
+        }
+        /* === 長文テキスト欄 === */
+        .text-area-cell {
+            min-height: 18mm;
+            vertical-align: top;
+        }
+        /* === 年月・内容 テーブル（学歴職歴・免許資格）=== */
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .history-table td {
+            border: 1px solid #000000;
+            padding: 1px 3px;
+            font-size: 7.5pt;
+            word-break: break-all;
+        }
+        .year-col { width: 22mm; }
+        .desc-col { width: auto; }
+    </style>
+</head>
+<body>
+
+<div class="doc-title">履 歴 書</div>
+
+<!-- 氏名・写真ブロック -->
+<table class="main-table">
+    <tr>
+        <!-- 氏名・カナ・生年月日 -->
+        <td style="width: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td class="label-cell" style="width: 18mm; border: none;">フリガナ</td>
+                    <td style="border: none; font-size: 8pt;" th:text="${fullNameKana}"></td>
+                </tr>
+                <tr>
+                    <td class="label-cell" style="width: 18mm; border: none;">氏　名</td>
+                    <td style="border: none; font-size: 12pt; font-weight: bold;" th:text="${fullName}"></td>
+                </tr>
+                <tr>
+                    <td class="label-cell" style="width: 18mm; border: none;">生年月日</td>
+                    <td style="border: none;" th:text="${birthDate}"></td>
+                </tr>
+                <!-- 性別（任意表示: 厚労省2021様式では任意記載）-->
+                <tr th:if="${gender != null and gender != ''}">
+                    <td class="label-cell" style="width: 18mm; border: none;">性　別</td>
+                    <td style="border: none;" th:text="${gender}"></td>
+                </tr>
+            </table>
+        </td>
+        <!-- 証明写真 -->
+        <td class="photo-cell">
+            <img th:if="${photoBase64 != null}"
+                 class="photo-img"
+                 th:src="'data:' + ${photoMimeType} + ';base64,' + ${photoBase64}"
+                 alt="証明写真"/>
+            <span th:if="${photoBase64 == null}" class="photo-placeholder">
+                証明写真<br/>（3cm×4cm）
+            </span>
+        </td>
+    </tr>
+</table>
+
+<!-- 現住所・連絡先 -->
+<table class="main-table" style="margin-top: -1px;">
+    <tr>
+        <td class="label-cell" style="width: 18mm;">現住所<br/>フリガナ</td>
+        <td th:text="${currentAddressKana}"></td>
+    </tr>
+    <tr>
+        <td class="label-cell" style="width: 18mm;">現住所</td>
+        <td th:text="${currentAddress}"></td>
+    </tr>
+    <tr th:if="${contactAddress != null and contactAddress != ''}">
+        <td class="label-cell" style="width: 18mm;">連絡先</td>
+        <td th:text="${contactAddress}"></td>
+    </tr>
+    <tr>
+        <td class="label-cell" style="width: 18mm;">電　話</td>
+        <td th:text="${contactPhone}"></td>
+    </tr>
+    <tr>
+        <td class="label-cell" style="width: 18mm;">メール</td>
+        <td th:text="${contactEmail}"></td>
+    </tr>
+</table>
+
+<!-- 学歴・職歴セクション -->
+<table class="main-table" style="margin-top: -1px;">
+    <tr>
+        <td class="section-header" colspan="2">学 歴 ・ 職 歴</td>
+    </tr>
+</table>
+<table class="history-table" style="margin-top: -1px;">
+    <tr th:each="edu : ${educationRows}">
+        <td class="year-col" th:text="${edu.yearMonth}"></td>
+        <td class="desc-col" th:text="${edu.description}"></td>
+    </tr>
+    <tr th:each="career : ${careerRows}">
+        <td class="year-col" th:text="${career.yearMonth}"></td>
+        <td class="desc-col" th:text="${career.description}"></td>
+    </tr>
+    <!-- 最終行に余白を確保 -->
+    <tr>
+        <td class="year-col" style="height: 6mm;"></td>
+        <td class="desc-col"></td>
+    </tr>
+</table>
+
+<!-- 免許・資格セクション -->
+<table class="main-table" style="margin-top: -1px;">
+    <tr>
+        <td class="section-header" colspan="2">免 許 ・ 資 格</td>
+    </tr>
+</table>
+<table class="history-table" style="margin-top: -1px;">
+    <tr th:each="qual : ${qualificationRows}">
+        <td class="year-col" th:text="${qual.yearMonth}"></td>
+        <td class="desc-col">
+            <span th:text="${qual.name}"></span>
+            <span th:if="${qual.note != null and qual.note != ''}"
+                  th:text="'（' + ${qual.note} + '）'"></span>
+        </td>
+    </tr>
+    <tr>
+        <td class="year-col" style="height: 6mm;"></td>
+        <td class="desc-col"></td>
+    </tr>
+</table>
+
+<!-- 志望動機 -->
+<table class="main-table" style="margin-top: -1px;">
+    <tr>
+        <td class="label-cell" style="width: 18mm;">志望動機</td>
+        <td class="text-area-cell" th:text="${motivation}"></td>
+    </tr>
+</table>
+
+<!-- 自己PR・特技・趣味 -->
+<table class="main-table" style="margin-top: -1px;">
+    <tr>
+        <td class="label-cell" style="width: 18mm;">自己PR<br/>特技・趣味</td>
+        <td class="text-area-cell" th:text="${selfPr}"></td>
+    </tr>
+</table>
+
+<!-- 本人希望記入欄 -->
+<table class="main-table" style="margin-top: -1px;">
+    <tr>
+        <td class="label-cell" style="width: 18mm;">本人希望</td>
+        <td class="text-area-cell" th:text="${personalRequest}"></td>
+    </tr>
+</table>
+
+<!-- 配偶者・扶養家族・通勤時間（任意表示: 厚労省2021様式では任意記載）-->
+<table class="main-table" style="margin-top: -1px;"
+       th:if="${hasSpouse != null or dependentsCount != null or commuteMinutes != null}">
+    <tr>
+        <td class="label-cell" style="width: 18mm;">配偶者</td>
+        <td style="width: 30mm;"
+            th:text="${hasSpouse != null ? (hasSpouse ? '有' : '無') : '―'}"></td>
+        <td class="label-cell" style="width: 22mm;">扶養家族数</td>
+        <td style="width: 25mm;"
+            th:text="${dependentsCount != null ? dependentsCount + '人' : '―'}"></td>
+        <td class="label-cell" style="width: 18mm;">通勤時間</td>
+        <td th:text="${commuteMinutes != null ? (commuteMinutes / 60) + '時間' + (commuteMinutes % 60) + '分' : '―'}"></td>
+    </tr>
+</table>
+
+</body>
+</html>

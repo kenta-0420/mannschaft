@@ -382,4 +382,202 @@ public class ExcelGeneratorService {
         style.setDataFormat(helper.createDataFormat().getFormat("yyyy/MM/dd HH:mm"));
         return style;
     }
+
+    // ========================================================================
+    // テンプレート差込 + 繰り返し行ブロック（F01.10 Phase 3）
+    // ========================================================================
+
+    /**
+     * テンプレート XLSX へのヘッダ値差込 + 繰り返し行ブロック差込。
+     *
+     * <p>設計書: {@code docs/features/F01.10_mypage_resume.md} §7.4（案 A 確定）
+     *
+     * <h3>動作仕様</h3>
+     * <ol>
+     *   <li>テンプレート内の {@code ${key}} プレースホルダーを {@code headerData} で置換する
+     *       （{@link #fillTemplate(InputStream, Map)} と同じロジック）。</li>
+     *   <li>行内のセルに {@code ${rowMarkerPrefix.key}} 形式（例: {@code ${rows[].yearMonth}}）を
+     *       持つ「マーカー行」を検出する。マーカー行が見つかったら以下を行う:
+     *       <ul>
+     *         <li>マーカー行を {@code rows} の件数分だけ複製（行をコピーして下に挿入）</li>
+     *         <li>各複製行の {@code ${rowMarkerPrefix.key}} を {@code rows.get(i).get("key")} で置換</li>
+     *         <li>元のマーカー行は削除（先頭 1 行分が定義行のため）</li>
+     *       </ul>
+     *   </li>
+     * </ol>
+     *
+     * <p><b>制限事項</b>: マーカー行は各シートにつき 1 ブロックのみ対応。
+     * 複数ブロックが必要な場合は本メソッドを複数回呼ぶか、
+     * {@link #generateMultiSheetExcel(List)} を使用すること。
+     *
+     * <p>テンプレートに使用するクラスは {@link XSSFWorkbook}（ランダムアクセス必要）。
+     * 大量データ向けには {@link #generateMultiSheetExcel(List)} を使うこと。
+     *
+     * @param templateStream  テンプレート XLSX の InputStream
+     * @param headerData      単発値の Map（{@code ${key}} を置換）
+     * @param rows            繰り返し行のデータリスト（各行は {@code Map<String, Object>}）
+     * @param rowMarkerPrefix 行マーカーの識別プレフィックス（例: {@code "rows[]"}）
+     * @return 生成された XLSX の byte 配列
+     */
+    public byte[] fillTemplateWithRows(
+            InputStream templateStream,
+            Map<String, Object> headerData,
+            List<Map<String, Object>> rows,
+            String rowMarkerPrefix) {
+
+        if (templateStream == null) {
+            throw new ExcelGenerationException("templateStream が null", null);
+        }
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook(templateStream);
+                ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            CellStyle numberStyle = createNumberStyle(workbook);
+            CellStyle dateStyle = createDateStyleForTemplate(workbook);
+            CellStyle dateTimeStyle = createDateTimeStyleForTemplate(workbook);
+
+            for (int sheetIdx = 0; sheetIdx < workbook.getNumberOfSheets(); sheetIdx++) {
+                Sheet sheet = workbook.getSheetAt(sheetIdx);
+
+                // ── ステップ 1: マーカー行を検出 ──
+                int markerRowIndex = findMarkerRowIndex(sheet, rowMarkerPrefix);
+
+                if (markerRowIndex >= 0 && rows != null && !rows.isEmpty()) {
+                    // ── ステップ 2: マーカー行テンプレートを rows.size() 行に展開 ──
+                    expandMarkerRows(workbook, sheet, markerRowIndex, rows, rowMarkerPrefix,
+                            numberStyle, dateStyle, dateTimeStyle);
+                }
+
+                // ── ステップ 3: ヘッダ値の ${key} を置換 ──
+                if (headerData != null) {
+                    for (Row row : sheet) {
+                        for (Cell cell : row) {
+                            if (cell.getCellType() == org.apache.poi.ss.usermodel.CellType.STRING) {
+                                String original = cell.getStringCellValue();
+                                if (original != null && original.contains("${")) {
+                                    replacePlaceholders(cell, original, headerData,
+                                            numberStyle, dateStyle, dateTimeStyle);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new ExcelGenerationException("Excel テンプレート差込（繰り返し行）失敗", e);
+        }
+    }
+
+    /**
+     * シート内でマーカー行（{@code ${rowMarkerPrefix.xxx}} を持つセルがある行）のインデックスを返す。
+     * 見つからない場合は -1 を返す。
+     */
+    private int findMarkerRowIndex(Sheet sheet, String rowMarkerPrefix) {
+        String markerStart = "${" + rowMarkerPrefix + ".";
+        for (Row row : sheet) {
+            for (Cell cell : row) {
+                if (cell.getCellType() == org.apache.poi.ss.usermodel.CellType.STRING) {
+                    String val = cell.getStringCellValue();
+                    if (val != null && val.contains(markerStart)) {
+                        return row.getRowNum();
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * マーカー行を {@code rows} の件数分だけ展開・置換し、元のマーカー行を削除する。
+     *
+     * <p>展開方式:
+     * <ol>
+     *   <li>マーカー行より下の既存行を {@code rows.size() - 1} 行分だけ下にシフトして空白行を確保する。</li>
+     *   <li>各データ行（{@code rows.get(i)}）の内容を挿入する。</li>
+     *   <li>元のマーカー行は最初のデータ行で上書きする（行シフト前に複製して対処）。</li>
+     * </ol>
+     */
+    private void expandMarkerRows(XSSFWorkbook workbook, Sheet sheet, int markerRowIndex,
+                                   List<Map<String, Object>> rows,
+                                   String rowMarkerPrefix,
+                                   CellStyle numberStyle, CellStyle dateStyle, CellStyle dateTimeStyle) {
+        String markerPrefix = "${" + rowMarkerPrefix + ".";
+        int rowCount = rows.size();
+        int lastRowNum = sheet.getLastRowNum();
+
+        // rows が 1 件より多い場合は下の行を rows.size()-1 行分シフトして空白を確保する
+        if (rowCount > 1) {
+            sheet.shiftRows(markerRowIndex + 1, lastRowNum, rowCount - 1);
+        }
+
+        // マーカー行のセル定義を取得（スタイル・列数を保持するため）
+        Row templateRow = sheet.getRow(markerRowIndex);
+        if (templateRow == null) {
+            return;
+        }
+
+        // 各データ行を書き込む
+        for (int i = 0; i < rowCount; i++) {
+            Row targetRow;
+            if (i == 0) {
+                // 最初のデータはマーカー行（テンプレート行）をそのまま上書き
+                targetRow = templateRow;
+            } else {
+                // 2 件目以降はシフトで確保した空白行に書き込む
+                targetRow = sheet.getRow(markerRowIndex + i);
+                if (targetRow == null) {
+                    targetRow = sheet.createRow(markerRowIndex + i);
+                }
+                // テンプレート行のスタイル・列数を複製
+                copyRowStyle(templateRow, targetRow);
+            }
+
+            Map<String, Object> rowData = rows.get(i);
+            // 各セルの ${rowMarkerPrefix.key} プレースホルダーを rowData の値で置換
+            for (Cell cell : targetRow) {
+                if (cell.getCellType() == org.apache.poi.ss.usermodel.CellType.STRING) {
+                    String original = cell.getStringCellValue();
+                    if (original != null && original.contains(markerPrefix)) {
+                        String replaced = replaceRowMarkers(original, rowData, markerPrefix);
+                        cell.setCellValue(replaced);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * セル内の {@code ${rowMarkerPrefix.key}} を {@code rowData} の値で置換した文字列を返す。
+     */
+    private String replaceRowMarkers(String original, Map<String, Object> rowData,
+                                     String markerPrefix) {
+        String result = original;
+        for (Map.Entry<String, Object> entry : rowData.entrySet()) {
+            String placeholder = markerPrefix + entry.getKey() + "}";
+            String value = entry.getValue() != null ? entry.getValue().toString() : "";
+            result = result.replace(placeholder, value);
+        }
+        return result;
+    }
+
+    /**
+     * テンプレート行のセルスタイルを対象行にコピーする。
+     */
+    private void copyRowStyle(Row source, Row target) {
+        target.setHeight(source.getHeight());
+        for (Cell sourceCell : source) {
+            Cell targetCell = target.getCell(sourceCell.getColumnIndex());
+            if (targetCell == null) {
+                targetCell = target.createCell(sourceCell.getColumnIndex());
+            }
+            targetCell.setCellStyle(sourceCell.getCellStyle());
+            // 値はプレースホルダーのまま複製（後で replaceRowMarkers で置換される）
+            if (sourceCell.getCellType() == org.apache.poi.ss.usermodel.CellType.STRING) {
+                targetCell.setCellValue(sourceCell.getStringCellValue());
+            }
+        }
+    }
 }

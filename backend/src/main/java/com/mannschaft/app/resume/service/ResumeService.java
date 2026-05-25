@@ -200,7 +200,9 @@ public class ResumeService {
                 upsertSkills(resume.getId(), req.skills());
             }
 
-        } catch (ObjectOptimisticLockingFailureException | OptimisticLockingFailureException e) {
+        } catch (OptimisticLockingFailureException e) {
+            // ObjectOptimisticLockingFailureException は OptimisticLockingFailureException の
+            // サブクラスであるため、親クラスのみキャッチすれば両方を補足できる。
             log.warn("履歴書の楽観ロック競合が発生しました: resumeId={}, userId={}", id, userId);
             throw new BusinessException(ResumeErrorCode.RESUME_010);
         }
