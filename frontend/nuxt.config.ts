@@ -28,7 +28,7 @@ export default defineNuxtConfig({
   components: [{ path: '~/components', pathPrefix: false }],
 
   imports: {
-    dirs: ['composables', 'composables/jobs', 'composables/wallet-group-show', 'composables/village'],
+    dirs: ['composables', 'composables/jobs', 'composables/wallet-group-show'],
   },
 
   devServer: {
