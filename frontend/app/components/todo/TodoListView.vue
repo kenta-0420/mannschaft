@@ -161,7 +161,7 @@ void props
           :key="todo.id"
           role="link"
           tabindex="0"
-          :aria-label="todo.title"
+          :aria-label="todo.content?.title ?? ''"
           class="block cursor-pointer rounded-xl border-2 border-surface-400 bg-surface-0 transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary dark:border-surface-500 dark:bg-surface-800"
           :class="priorityBorder[todo.priority]"
           @click="navigateTo(todo)"
@@ -194,7 +194,7 @@ void props
                       : 'text-surface-800 dark:text-surface-100'
                   "
                 >
-                  {{ todo.title }}
+                  {{ todo.content?.title }}
                 </span>
                 <span
                   class="rounded-full px-2 py-0.5 text-[11px] font-medium"

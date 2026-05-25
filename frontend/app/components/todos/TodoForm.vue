@@ -41,10 +41,10 @@ watch(
     if (visible && todoId) {
       try {
         const res = await todoApi.getTodo(props.scopeType, props.scopeId, todoId as number)
-        form.value.title = res.data.title
-        form.value.description = res.data.description ?? ''
+        form.value.title = res.data.content?.title ?? ''
+        form.value.description = res.data.content?.description ?? ''
         form.value.priority = res.data.priority
-        form.value.dueDate = res.data.dueDate ? new Date(res.data.dueDate) : null
+        form.value.dueDate = res.data.schedule?.dueDate ? new Date(res.data.schedule.dueDate) : null
         form.value.assigneeIds = res.data.assignees.map((a: { userId: number }) => a.userId)
       } catch {
         notification.error('TODO情報の取得に失敗しました')

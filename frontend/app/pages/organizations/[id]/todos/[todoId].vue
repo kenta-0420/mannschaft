@@ -179,7 +179,7 @@ onMounted(async () => {
     <div class="mb-6">
       <BackButton :to="`/organizations/${orgId}/todos`" :label="t('todo.backToList')" />
       <div class="flex items-start justify-between">
-        <PageHeader :title="todo.content?.title" />
+        <PageHeader :title="todo.content?.title ?? ''" />
         <div class="flex gap-2">
           <Button
             :label="t('handoff.button.passToOther')"
@@ -212,7 +212,7 @@ onMounted(async () => {
       <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
         <p class="text-xs text-surface-500">{{ t('todo.field.priority') }}</p>
         <div class="mt-1">
-          <TodoPriorityBadge :priority="todo.priority" />
+          <TodoPriorityBadge :priority="todo.priority ?? ''" />
         </div>
       </div>
       <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
