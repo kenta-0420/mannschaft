@@ -36,6 +36,16 @@ import com.mannschaft.app.pointcard.repository.PointCardGroupItemRepository;
 import com.mannschaft.app.pointcard.repository.PointCardGroupRepository;
 import com.mannschaft.app.pointcard.repository.PointCardUserSettingsRepository;
 import com.mannschaft.app.pointcard.repository.UserPointCardRepository;
+import com.mannschaft.app.resume.entity.ResumeCareerEntity;
+import com.mannschaft.app.resume.entity.ResumeEducationEntity;
+import com.mannschaft.app.resume.entity.ResumeEntity;
+import com.mannschaft.app.resume.entity.ResumeQualificationEntity;
+import com.mannschaft.app.resume.entity.ResumeSkillEntity;
+import com.mannschaft.app.resume.repository.ResumeCareerRepository;
+import com.mannschaft.app.resume.repository.ResumeEducationRepository;
+import com.mannschaft.app.resume.repository.ResumeQualificationRepository;
+import com.mannschaft.app.resume.repository.ResumeRepository;
+import com.mannschaft.app.resume.repository.ResumeSkillRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.weather.entity.UserWeatherLocationEntity;
 import com.mannschaft.app.weather.repository.UserWeatherLocationRepository;
@@ -82,6 +92,12 @@ public class PersonalDataCollector {
     private final PointCardUserSettingsRepository pointCardUserSettingsRepository;
     private final PointCardGroupRepository pointCardGroupRepository;
     private final PointCardGroupItemRepository pointCardGroupItemRepository;
+    // F01.10 履歴書・職務経歴書（Phase 5 で追加）
+    private final ResumeRepository resumeRepository;
+    private final ResumeEducationRepository resumeEducationRepository;
+    private final ResumeCareerRepository resumeCareerRepository;
+    private final ResumeQualificationRepository resumeQualificationRepository;
+    private final ResumeSkillRepository resumeSkillRepository;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .registerModule(new JavaTimeModule());
@@ -108,7 +124,9 @@ public class PersonalDataCollector {
             // F02.10 天気ウィジェット — ユーザー地点キャッシュ（嗜好情報レベル）
             Map.entry("location_preference", "weather_locations.json"),
             // F18 個人ポイントカードウォレット（第二陣 2C スケルトン、第三陣で完成）
-            Map.entry("point_cards", "point_cards.json")
+            Map.entry("point_cards", "point_cards.json"),
+            // F01.10 履歴書・職務経歴書（Phase 5 で追加）
+            Map.entry("resumes", "resumes.json")
     );
 
     /**
@@ -163,6 +181,7 @@ public class PersonalDataCollector {
             case "proxy_records" -> collectProxyRecords(userId);
             case "location_preference" -> collectLocationPreference(userId);
             case "point_cards" -> collectPointCards(userId);
+            case "resumes" -> collectResumes(userId);
             default -> "[]";
         };
     }
@@ -234,6 +253,143 @@ public class PersonalDataCollector {
         payload.put("settings", settings.orElse(null));
         payload.put("cards", cardDtos);
         payload.put("groups", groupOutput);
+        return OBJECT_MAPPER.writeValueAsString(payload);
+    }
+
+    /**
+     * F01.10 履歴書・職務経歴書データを収集する（GDPR エクスポート用）。
+     *
+     * <p>設計書: {@code docs/features/F01.10_mypage_resume.md} §9.3
+     *
+     * <p>収集対象:
+     * <ul>
+     *   <li>履歴書バージョンごとにヘッダ + 学歴 + 職歴 + 免許資格 + スキル</li>
+     *   <li>暗号化カラム（住所・電話・メール）は {@link EncryptionService} で復号して出力（GDPR 第 15 条アクセス権）</li>
+     *   <li>証明写真はストレージキー（{@code photo_key}）のみ出力（バイナリは含めない）</li>
+     *   <li>論理削除済み（{@code deleted_at IS NOT NULL}）は {@code @SQLRestriction} により除外される</li>
+     * </ul>
+     *
+     * <p>返される JSON の構造:
+     * <pre>
+     * {
+     *   "resumes": [
+     *     {
+     *       "id": "...",
+     *       "title": "標準",
+     *       "current_address": "東京都...",
+     *       ...
+     *       "educations": [ ... ],
+     *       "careers": [ ... ],
+     *       "qualifications": [ ... ],
+     *       "skills": [ ... ]
+     *     }
+     *   ]
+     * }
+     * </pre>
+     */
+    private String collectResumes(Long userId) throws Exception {
+        List<ResumeEntity> resumes = resumeRepository.findByUserIdOrderByCreatedAtDesc(userId);
+
+        List<Map<String, Object>> resumeList = new java.util.ArrayList<>(resumes.size());
+        for (ResumeEntity resume : resumes) {
+            java.util.UUID resumeId = resume.getId();
+
+            // 学歴
+            List<ResumeEducationEntity> educations =
+                    resumeEducationRepository.findByResumeIdAndDeletedAtIsNullOrderByDisplayOrderAsc(resumeId);
+            List<Map<String, Object>> educationList = educations.stream().map(edu -> {
+                Map<String, Object> entry = new LinkedHashMap<>();
+                entry.put("id", edu.getId());
+                entry.put("entryYear", edu.getEntryYear());
+                entry.put("entryMonth", edu.getEntryMonth());
+                entry.put("description", edu.getDescription());
+                entry.put("displayOrder", edu.getDisplayOrder());
+                return entry;
+            }).toList();
+
+            // 職歴
+            List<ResumeCareerEntity> careers =
+                    resumeCareerRepository.findByResumeIdAndDeletedAtIsNullOrderByDisplayOrderAsc(resumeId);
+            List<Map<String, Object>> careerList = careers.stream().map(career -> {
+                Map<String, Object> entry = new LinkedHashMap<>();
+                entry.put("id", career.getId());
+                entry.put("entryYear", career.getEntryYear());
+                entry.put("entryMonth", career.getEntryMonth());
+                entry.put("endYear", career.getEndYear());
+                entry.put("endMonth", career.getEndMonth());
+                entry.put("isCurrent", career.isCurrent());
+                entry.put("companyName", career.getCompanyName());
+                entry.put("department", career.getDepartment());
+                entry.put("employmentType", career.getEmploymentType());
+                entry.put("businessSummary", career.getBusinessSummary());
+                entry.put("jobDescription", career.getJobDescription());
+                entry.put("achievements", career.getAchievements());
+                entry.put("includeInRirekisho", career.isIncludeInRirekisho());
+                entry.put("includeInShokumukeireki", career.isIncludeInShokumukeireki());
+                entry.put("displayOrder", career.getDisplayOrder());
+                return entry;
+            }).toList();
+
+            // 免許・資格
+            List<ResumeQualificationEntity> qualifications =
+                    resumeQualificationRepository.findByResumeIdAndDeletedAtIsNullOrderByDisplayOrderAsc(resumeId);
+            List<Map<String, Object>> qualificationList = qualifications.stream().map(qual -> {
+                Map<String, Object> entry = new LinkedHashMap<>();
+                entry.put("id", qual.getId());
+                entry.put("acquiredYear", qual.getAcquiredYear());
+                entry.put("acquiredMonth", qual.getAcquiredMonth());
+                entry.put("name", qual.getName());
+                entry.put("note", qual.getNote());
+                entry.put("displayOrder", qual.getDisplayOrder());
+                return entry;
+            }).toList();
+
+            // 構造化スキル
+            List<ResumeSkillEntity> skills =
+                    resumeSkillRepository.findByResumeIdAndDeletedAtIsNullOrderByDisplayOrderAsc(resumeId);
+            List<Map<String, Object>> skillList = skills.stream().map(skill -> {
+                Map<String, Object> entry = new LinkedHashMap<>();
+                entry.put("id", skill.getId());
+                entry.put("skillName", skill.getSkillName());
+                entry.put("level", skill.getLevel() != null ? skill.getLevel().name() : null);
+                entry.put("description", skill.getDescription());
+                entry.put("displayOrder", skill.getDisplayOrder());
+                return entry;
+            }).toList();
+
+            // 履歴書ヘッダー（暗号化カラムは復号して出力）
+            Map<String, Object> resumeEntry = new LinkedHashMap<>();
+            resumeEntry.put("id", resume.getId());
+            resumeEntry.put("title", resume.getTitle());
+            resumeEntry.put("eraFormat", resume.getEraFormat().name());
+            resumeEntry.put("photoKey", resume.getPhotoKey());
+            resumeEntry.put("currentAddress", decryptSafe(resume.getCurrentAddress()));
+            resumeEntry.put("currentAddressKana", decryptSafe(resume.getCurrentAddressKana()));
+            resumeEntry.put("contactAddress", decryptSafe(resume.getContactAddress()));
+            resumeEntry.put("contactAddressKana", decryptSafe(resume.getContactAddressKana()));
+            resumeEntry.put("contactPhone", decryptSafe(resume.getContactPhone()));
+            resumeEntry.put("contactEmail", decryptSafe(resume.getContactEmail()));
+            resumeEntry.put("motivation", resume.getMotivation());
+            resumeEntry.put("selfPr", resume.getSelfPr());
+            resumeEntry.put("personalRequest", resume.getPersonalRequest());
+            resumeEntry.put("commuteMinutes", resume.getCommuteMinutes());
+            resumeEntry.put("dependentsCount", resume.getDependentsCount());
+            resumeEntry.put("hasSpouse", resume.getHasSpouse());
+            resumeEntry.put("spouseSupport", resume.getSpouseSupport());
+            resumeEntry.put("careerSummary", resume.getCareerSummary());
+            resumeEntry.put("skillsSummary", resume.getSkillsSummary());
+            resumeEntry.put("createdAt", resume.getCreatedAt());
+            resumeEntry.put("updatedAt", resume.getUpdatedAt());
+            resumeEntry.put("educations", educationList);
+            resumeEntry.put("careers", careerList);
+            resumeEntry.put("qualifications", qualificationList);
+            resumeEntry.put("skills", skillList);
+
+            resumeList.add(resumeEntry);
+        }
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("resumes", resumeList);
         return OBJECT_MAPPER.writeValueAsString(payload);
     }
 
