@@ -86,7 +86,10 @@
       "realtime": "リアルタイム",
       "placeholder": "メッセージを入力...",
       "empty": "まだメッセージはありません",
-      "loadMore": "もっと見る"
+      "loadMore": "もっと見る",
+      "presence": {
+        "count": "{count}人在这里"
+      }
     },
     "pin": {
       "title": "お気に入りの村",

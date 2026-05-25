@@ -311,6 +311,38 @@ export function useChatWebSocket() {
     }
   }
 
+  /**
+   * 任意の STOMP トピックを購読する（在席等チャット以外の用途向け）。
+   * @returns 購読解除関数（onBeforeUnmount 等で呼ぶこと）
+   */
+  function subscribeRaw(topic: string, callback: (body: string) => void): () => void {
+    let subscription: StompSubscription | null = null
+    ensureConnected()
+      .then(() => {
+        if (_stompClient === null) return
+        subscription = _stompClient.subscribe(topic, (frame: IFrame) => {
+          callback(frame.body)
+        })
+      })
+      .catch(() => {})
+    return () => {
+      subscription?.unsubscribe()
+      subscription = null
+    }
+  }
+
+  /**
+   * 任意の宛先に STOMP メッセージを送信する（在席等チャット以外の用途向け）。
+   */
+  function publishRaw(destination: string, body = '{}'): void {
+    ensureConnected()
+      .then(() => {
+        if (_stompClient === null || !_stompClient.connected) return
+        _stompClient.publish({ destination, body })
+      })
+      .catch(() => {})
+  }
+
   return {
     sendTyping,
     subscribeChannel,
@@ -318,6 +350,8 @@ export function useChatWebSocket() {
     subscribeChannelEvents,
     unsubscribeChannelEvents,
     wsConnectionFailed: _wsConnectionFailed,
+    subscribeRaw,
+    publishRaw,
   }
 }
 
