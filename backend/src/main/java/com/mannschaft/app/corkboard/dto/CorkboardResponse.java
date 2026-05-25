@@ -1,26 +1,28 @@
 package com.mannschaft.app.corkboard.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 
 /**
  * コルクボードレスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class CorkboardResponse {
 
     private final Long id;
-    private final String scopeType;
-    private final Long scopeId;
+    private final BoardScopeDto scope;
     private final Long ownerId;
     private final String name;
-    private final String backgroundStyle;
-    private final String editPolicy;
-    private final Boolean isDefault;
+    private final BoardSettingsDto settings;
     private final Long version;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    private final BoardAuditDto audit;
+
+    public record BoardScopeDto(String scopeType, Long scopeId) {}
+
+    public record BoardSettingsDto(String backgroundStyle, String editPolicy, Boolean isDefault) {}
+
+    public record BoardAuditDto(LocalDateTime createdAt, LocalDateTime updatedAt) {}
 }

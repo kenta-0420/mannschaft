@@ -96,12 +96,17 @@ class MyCorkboardPinControllerIT {
 
     /** mock 用に最小限のレスポンスを生成する。 */
     private CorkboardCardResponse stubResponse(boolean isPinned) {
-        return new CorkboardCardResponse(
-                CARD_ID, BOARD_ID, null, "MEMO", null, null, null,
-                "メモ", "本文", null, null, null, null,
-                "NONE", "MEDIUM", 0, 0, 0, null, null, null,
-                false, isPinned, isPinned ? LocalDateTime.now() : null,
-                false, USER_ID, null, null);
+        return CorkboardCardResponse.builder()
+                .id(CARD_ID)
+                .corkboardId(BOARD_ID)
+                .reference(new CorkboardCardResponse.CardReferenceDto(null, "MEMO", null, null, null))
+                .content(new CorkboardCardResponse.CardContentDto("メモ", "本文", null, null, null, null))
+                .layout(new CorkboardCardResponse.CardLayoutDto(0, 0, 0, "MEDIUM"))
+                .style(new CorkboardCardResponse.CardStyleDto("NONE", null))
+                .state(new CorkboardCardResponse.CardStateDto(false, isPinned,
+                        isPinned ? LocalDateTime.now() : null, null, false))
+                .audit(new CorkboardCardResponse.CardAuditDto(null, USER_ID, null, null))
+                .build();
     }
 
     @Nested
@@ -126,8 +131,8 @@ class MyCorkboardPinControllerIT {
                             .content(body))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.id").value(CARD_ID))
-                    .andExpect(jsonPath("$.data.isPinned").value(true))
-                    .andExpect(jsonPath("$.data.pinnedAt").exists());
+                    .andExpect(jsonPath("$.data.state.isPinned").value(true))
+                    .andExpect(jsonPath("$.data.state.pinnedAt").exists());
 
             verify(pinService).togglePin(BOARD_ID, CARD_ID, true, null, null, USER_ID);
         }
@@ -147,8 +152,8 @@ class MyCorkboardPinControllerIT {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.isPinned").value(false))
-                    .andExpect(jsonPath("$.data.pinnedAt").doesNotExist());
+                    .andExpect(jsonPath("$.data.state.isPinned").value(false))
+                    .andExpect(jsonPath("$.data.state.pinnedAt").doesNotExist());
         }
 
         @Test
@@ -166,7 +171,7 @@ class MyCorkboardPinControllerIT {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.isPinned").value(true));
+                    .andExpect(jsonPath("$.data.state.isPinned").value(true));
 
             verify(pinService).togglePin(BOARD_ID, CARD_ID, true, "重要な確認事項", "BLUE", USER_ID);
         }

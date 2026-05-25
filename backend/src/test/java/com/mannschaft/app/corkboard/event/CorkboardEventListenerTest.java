@@ -175,13 +175,23 @@ class CorkboardEventListenerTest {
     }
 
     private static CorkboardCardResponse stubCard(Long id) {
-        return new CorkboardCardResponse(
-                id, 42L, null, "MEMO", null, null, null, "title", null, null, null, null, null,
-                "NONE", "MEDIUM", 0, 0, 0, null, null, null, false, false, null, false, 1L, null, null);
+        return CorkboardCardResponse.builder()
+                .id(id).corkboardId(42L)
+                .reference(new CorkboardCardResponse.CardReferenceDto(null, "MEMO", null, null, null))
+                .content(new CorkboardCardResponse.CardContentDto("title", null, null, null, null, null))
+                .layout(new CorkboardCardResponse.CardLayoutDto(0, 0, 0, "MEDIUM"))
+                .style(new CorkboardCardResponse.CardStyleDto("NONE", null))
+                .state(new CorkboardCardResponse.CardStateDto(false, false, null, null, false))
+                .audit(new CorkboardCardResponse.CardAuditDto(null, 1L, null, null))
+                .build();
     }
 
     private static CorkboardGroupResponse stubSection(Long id) {
-        return new CorkboardGroupResponse(
-                id, 42L, "section name", false, 0, 0, 400, 300, (short) 0, null, null);
+        return CorkboardGroupResponse.builder()
+                .id(id).corkboardId(42L).name("section name").isCollapsed(false)
+                .layout(new CorkboardGroupResponse.GroupLayoutDto(0, 0, 400, 300))
+                .displayOrder((short) 0)
+                .audit(new CorkboardGroupResponse.GroupAuditDto(null, null))
+                .build();
     }
 }
