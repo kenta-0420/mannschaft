@@ -26,6 +26,11 @@ import com.mannschaft.app.pointcard.repository.PointCardUserSettingsRepository;
 import com.mannschaft.app.pointcard.repository.UserPointCardRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
+import com.mannschaft.app.resume.repository.ResumeCareerRepository;
+import com.mannschaft.app.resume.repository.ResumeEducationRepository;
+import com.mannschaft.app.resume.repository.ResumeQualificationRepository;
+import com.mannschaft.app.resume.repository.ResumeRepository;
+import com.mannschaft.app.resume.repository.ResumeSkillRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.weather.repository.UserWeatherLocationRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -96,6 +101,17 @@ class PersonalDataCollectorTest {
     private PointCardGroupRepository pointCardGroupRepository;
     @Mock
     private PointCardGroupItemRepository pointCardGroupItemRepository;
+    // F01.10 履歴書・職務経歴書
+    @Mock
+    private ResumeRepository resumeRepository;
+    @Mock
+    private ResumeEducationRepository resumeEducationRepository;
+    @Mock
+    private ResumeCareerRepository resumeCareerRepository;
+    @Mock
+    private ResumeQualificationRepository resumeQualificationRepository;
+    @Mock
+    private ResumeSkillRepository resumeSkillRepository;
 
     @InjectMocks
     private PersonalDataCollector collector;
@@ -105,7 +121,7 @@ class PersonalDataCollectorTest {
     class Collect {
 
         @Test
-        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（16カテゴリ）")
+        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（17カテゴリ）")
         void 正常_nullカテゴリ_全カテゴリ収集() {
             given(userRepository.findById(anyLong())).willReturn(Optional.empty());
             given(oAuthAccountRepository.findByUserId(anyLong())).willReturn(List.of());
@@ -142,16 +158,19 @@ class PersonalDataCollectorTest {
                     .willReturn(List.of());
             given(pointCardGroupRepository.findAllByUserIdOrderByDisplayOrderAscCreatedAtAsc(anyLong()))
                     .willReturn(List.of());
+            // F01.10 履歴書・職務経歴書
+            given(resumeRepository.findByUserIdOrderByCreatedAtDesc(anyLong()))
+                    .willReturn(List.of());
 
             Map<String, String> result = collector.collect(1L, null);
 
-            assertThat(result).hasSize(16);
+            assertThat(result).hasSize(17);
             assertThat(result.keySet()).containsExactlyInAnyOrder(
                     "account.json", "oauth_accounts.json", "memberships.json", "profiles.json",
                     "payments.json", "charts.json", "chat_messages.json", "timeline_posts.json",
                     "audit_logs.json", "notifications.json", "action_memos.json",
                     "error_reports.json", "proxy_input_consents.json", "proxy_input_records.json",
-                    "weather_locations.json", "point_cards.json"
+                    "weather_locations.json", "point_cards.json", "resumes.json"
             );
         }
 
@@ -184,16 +203,16 @@ class PersonalDataCollectorTest {
     class GetCategoryKeys {
 
         @Test
-        @DisplayName("正常系: 16カテゴリキーが返る")
-        void 正常_16カテゴリキー返却() {
+        @DisplayName("正常系: 17カテゴリキーが返る")
+        void 正常_17カテゴリキー返却() {
             Set<String> keys = collector.getCategoryKeys();
 
-            assertThat(keys).hasSize(16);
+            assertThat(keys).hasSize(17);
             assertThat(keys).containsExactlyInAnyOrder(
                     "account", "oauth", "memberships", "profiles", "payments",
                     "charts", "chat_messages", "timeline", "audit_logs", "notifications",
                     "action_memos", "error_reports", "proxy_consents", "proxy_records",
-                    "location_preference", "point_cards"
+                    "location_preference", "point_cards", "resumes"
             );
         }
     }
