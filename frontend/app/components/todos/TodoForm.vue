@@ -43,7 +43,7 @@ watch(
         const res = await todoApi.getTodo(props.scopeType, props.scopeId, todoId as number)
         form.value.title = res.data.content?.title ?? ''
         form.value.description = res.data.content?.description ?? ''
-        form.value.priority = res.data.priority
+        form.value.priority = res.data.priority ?? 'MEDIUM'
         form.value.dueDate = res.data.schedule?.dueDate ? new Date(res.data.schedule.dueDate) : null
         form.value.assigneeIds = res.data.assignees.map((a: { userId: number }) => a.userId)
       } catch {
