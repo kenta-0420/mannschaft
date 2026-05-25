@@ -46,5 +46,9 @@ export async function loginAs(
 
   await page.getByRole('button', { name: 'ログイン' }).click()
   // ログイン成功後は '/' にリダイレクトされる（login.vue の navigateTo(redirect) デフォルト値）
-  await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15_000 })
+  // dev サーバーはダッシュボード SSR が重いため commit まで待ち、タイムアウトを 30s に延ばす
+  await page.waitForURL((url) => !url.pathname.includes('/login'), {
+    timeout: 30_000,
+    waitUntil: 'commit',
+  })
 }
