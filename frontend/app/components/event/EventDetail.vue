@@ -4,6 +4,7 @@ import AdvanceNoticeList from '~/components/event/advanceNotice/AdvanceNoticeLis
 import LateAbsenceNoticeBar from '~/components/event/advanceNotice/LateAbsenceNoticeBar.vue'
 import DismissalDialog from '~/components/event/dismissal/DismissalDialog.vue'
 import DismissalStatusBadge from '~/components/event/dismissal/DismissalStatusBadge.vue'
+import type { EventChatChannelResponse } from '~/types/event'
 
 const { formatDateTime: formatIsoDateTime } = useDatetime()
 
@@ -17,6 +18,10 @@ const props = defineProps<{
 const showEditDialog = ref(false)
 const showDismissalDialog = ref(false)
 const activeTab = ref(0)
+
+// チャットチャンネル情報
+const chatChannel = ref<EventChatChannelResponse | null>(null)
+const { getEventChannel } = useEventChatChannel()
 
 const {
   event,
@@ -58,11 +63,31 @@ const showRollCallTab = computed(
 )
 const showAdvanceNoticeTab = computed(() => isTeamScope.value && props.canEdit)
 
+/** RSVP あり/なし基底オフセット（0 または 1） */
+const rsvpOffset = computed(() =>
+  (event.value?.registration?.attendanceMode ?? 'NONE') === 'RSVP' ? 1 : 0,
+)
+
+/**
+ * チャットタブの value。
+ * 固定タブ（参加者/チェックイン/タイムテーブル）の後に
+ * 点呼タブ・事前連絡タブが続き、その後にチャットタブを置く。
+ */
+const chatTabValue = computed(() => {
+  // 基底: RSVP(+1) + 参加者/チェックイン/タイムテーブル(+3) = 基底+3
+  let val = rsvpOffset.value + 3
+  if (showRollCallTab.value) val++
+  if (showAdvanceNoticeTab.value) val++
+  return val
+})
+
 onMounted(async () => {
   await init()
   if (isTeamScope.value) {
     await loadDismissalStatus()
   }
+  // チャットチャンネル情報を取得（404 の場合は null のまま = 表示しない）
+  chatChannel.value = await getEventChannel(props.eventId)
 })
 
 function onDismissalSubmitted() {
@@ -203,6 +228,10 @@ function onDismissalSubmitted() {
           >
             {{ $t('event.advanceNotice.tab') }}
           </Tab>
+          <!-- チャットタブ（チャンネルが存在する場合のみ表示） -->
+          <Tab v-if="chatChannel" :value="chatTabValue">
+            {{ $t('event.chatOpen') }}
+          </Tab>
         </TabList>
         <TabPanels>
           <TabPanel v-if="(event.registration?.attendanceMode ?? 'NONE') === 'RSVP'" :value="0">
@@ -276,6 +305,20 @@ function onDismissalSubmitted() {
             "
           >
             <AdvanceNoticeList :team-id="props.scopeId" :event-id="event.id" />
+          </TabPanel>
+          <!-- チャットパネル（チャンネルが存在する場合のみ表示） -->
+          <TabPanel v-if="chatChannel" :value="chatTabValue">
+            <div
+              class="flex flex-col items-start gap-3 rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-900"
+            >
+              <NuxtLink
+                :to="`/chat?channel=${chatChannel.id}`"
+                class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-contrast hover:bg-primary-emphasis"
+              >
+                <i class="pi pi-comments" />
+                {{ $t('event.chatOpen') }}
+              </NuxtLink>
+            </div>
           </TabPanel>
         </TabPanels>
       </Tabs>

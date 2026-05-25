@@ -1338,5 +1338,11 @@
     "mapEmbedUrlHelp": "Google Maps で「共有 > 地図を埋め込む > HTML をコピー」して src= の URL を貼り付けてください",
     "mapEmbedUrlInvalidFormat": "Google Maps 埋め込み URL（https://www.google.com/maps/embed?...）の形式である必要があります",
     "mapEmbedUrlSaved": "店舗地図 URL を保存しました"
+  },
+  "event": {
+    "chatOpen": "チャットを開く"
+  },
+  "surveyPage": {
+    "bulletinOpen": "掲示板で議論する"
   }
 }
