@@ -83,4 +83,9 @@ public interface ChatChannelRepository extends JpaRepository<ChatChannelEntity, 
      * 1 チームにつき問い合わせチャンネルは 1 件のみ許可するため Optional で返す。
      */
     Optional<ChatChannelEntity> findByTeamIdAndIsInquiryChannelTrue(Long teamId);
+
+    /**
+     * 指定チーム群の問い合わせチャンネル（is_inquiry_channel = TRUE）を取得する（F10.7 業務アラート用）。
+     */
+    List<ChatChannelEntity> findByTeamIdInAndIsInquiryChannelTrue(List<Long> teamIds);
 }

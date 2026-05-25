@@ -2,6 +2,8 @@ package com.mannschaft.app.chat.repository;
 
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -45,4 +47,12 @@ public interface ChatChannelMemberRepository extends JpaRepository<ChatChannelMe
      * チャンネルとユーザーでメンバーを削除する。
      */
     void deleteByChannelIdAndUserId(Long channelId, Long userId);
+
+    /**
+     * 指定ユーザーの指定チャンネル群における未読件数の合計を返す（F10.7 業務アラート用）。
+     */
+    @Query("SELECT COALESCE(SUM(m.unreadCount), 0) FROM ChatChannelMemberEntity m " +
+           "WHERE m.userId = :userId AND m.channelId IN :channelIds")
+    int sumUnreadCountByUserIdAndChannelIds(@Param("userId") Long userId,
+                                            @Param("channelIds") List<Long> channelIds);
 }
