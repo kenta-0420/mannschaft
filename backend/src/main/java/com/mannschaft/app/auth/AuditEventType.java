@@ -38,6 +38,12 @@ public enum AuditEventType {
     PENDING_USER_CLEANED_UP(AuditEventCategory.ACCOUNT),
     /** Phase F: SYSTEM_ADMIN が GDPR ドメインパージを手動で retry した。 */
     DOMAIN_PURGE_RETRIED(AuditEventCategory.ACCOUNT),
+    /** F01.10 履歴書/職務経歴書の正式出力。 */
+    RESUME_EXPORTED(AuditEventCategory.ACCOUNT),
+    /** F01.10 証明写真アップロード。 */
+    RESUME_PHOTO_UPLOADED(AuditEventCategory.ACCOUNT),
+    /** F01.10 出力レート制限到達。 */
+    RESUME_EXPORT_RATE_LIMITED(AuditEventCategory.ACCOUNT),
 
     // ─── OAUTH ──────────────────────────────────────────────
     OAUTH_LINK_REQUESTED(AuditEventCategory.OAUTH),
