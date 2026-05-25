@@ -499,7 +499,14 @@ public class GlobalExceptionHandler {
             Map.entry("AD_CAMPAIGN_NOT_REVIEWABLE", HttpStatus.BAD_REQUEST),  // 審査対象外状態
             Map.entry("AD_CAMPAIGN_ALREADY_BLOCKED", HttpStatus.CONFLICT),    // 既に BLOCKED
             // F09.17 残課題 3 UNBLOCK
-            Map.entry("AD_CAMPAIGN_NOT_UNBLOCKABLE", HttpStatus.BAD_REQUEST)  // status != BLOCKED で UNBLOCK 試行
+            Map.entry("AD_CAMPAIGN_NOT_UNBLOCKABLE", HttpStatus.BAD_REQUEST), // status != BLOCKED で UNBLOCK 試行
+            // F01.10 履歴書・職務経歴書
+            Map.entry("RESUME_001", HttpStatus.NOT_FOUND),            // RESUME_NOT_FOUND（IDOR 対策で 404）
+            Map.entry("RESUME_006", HttpStatus.PAYLOAD_TOO_LARGE),    // PHOTO_SIZE_EXCEEDED (413)
+            Map.entry("RESUME_007", HttpStatus.UNSUPPORTED_MEDIA_TYPE), // PHOTO_UNSUPPORTED_FORMAT (415)
+            Map.entry("RESUME_008", HttpStatus.TOO_MANY_REQUESTS),    // EXPORT_RATE_LIMITED (429)
+            Map.entry("RESUME_009", HttpStatus.INTERNAL_SERVER_ERROR), // REPORT_GENERATION_FAILED (500)
+            Map.entry("RESUME_010", HttpStatus.CONFLICT)              // OPTIMISTIC_LOCK_CONFLICT (409)
     );
 
     /**
