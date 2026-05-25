@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * イベントチェックインリポジトリ。
@@ -25,6 +26,18 @@ public interface EventCheckinRepository extends JpaRepository<EventCheckinEntity
      * チケットIDでチェックインが存在するか確認する。
      */
     boolean existsByTicketId(Long ticketId);
+
+    /**
+     * 代理委任IDで代理チェックインが既に存在するか確認する（F03.10）。
+     *
+     * <p>同一 {@code delegationId} の二重チェックインを防ぐため、代理チェックイン実行前に呼ぶ。
+     * 既に存在すれば 409 Conflict を返す（§3.5 / §4.2 / §5.7）。
+     * {@code idx_ec_delegation} を存在チェックのインデックスとして利用する。</p>
+     *
+     * @param delegationId event_delegations.id
+     * @return チェックイン済みの場合 true
+     */
+    boolean existsByDelegationId(UUID delegationId);
 
     /**
      * イベントのチェックイン数を取得する。

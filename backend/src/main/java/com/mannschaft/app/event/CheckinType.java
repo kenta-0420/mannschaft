@@ -9,5 +9,7 @@ public enum CheckinType {
     /** 点呼（個別）。F03.12 ケア対象者見守り通知で使用。 */
     ROLL_CALL,
     /** 点呼（一括）。F03.12 ケア対象者見守り通知で使用。 */
-    ROLL_CALL_BATCH
+    ROLL_CALL_BATCH,
+    /** 代理チェックイン。F03.10 代理出席で代理人が委任者の代わりにチェックインする際に使用。 */
+    PROXY
 }

@@ -79,6 +79,14 @@ public class EventCheckinEntity {
     @Column(length = 30)
     private String absenceReason;
 
+    /**
+     * F03.10 代理チェックイン時の event_delegations.id。
+     * 通常チェックイン時は NULL。代理チェックイン（checkinType = PROXY）時のみ設定される。
+     * 二重チェックイン防止はアプリ層 + idx_ec_delegation での存在チェックで保証する（§3.5）。
+     */
+    @Column(name = "delegation_id")
+    private java.util.UUID delegationId;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
