@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -54,9 +55,11 @@ public class BulletinReadStatusController {
     public ResponseEntity<ApiResponse<List<ReadStatusResponse>>> listReadUsers(
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
-            @PathVariable Long threadId) {
+            @PathVariable Long threadId,
+            @RequestParam(required = false) String filter) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        List<ReadStatusResponse> responses = readStatusService.listReadUsers(type, scopeId, threadId);
+        List<ReadStatusResponse> responses =
+                readStatusService.listReadUsers(type, scopeId, threadId, SecurityUtils.getCurrentUserId(), filter);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 }

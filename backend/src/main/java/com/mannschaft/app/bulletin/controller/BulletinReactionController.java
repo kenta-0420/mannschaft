@@ -69,7 +69,7 @@ public class BulletinReactionController {
     public ResponseEntity<ApiResponse<List<ReactionResponse>>> listReactions(
             @RequestParam String targetType,
             @RequestParam Long targetId) {
-        List<ReactionResponse> responses = reactionService.listReactions(targetType, targetId);
+        List<ReactionResponse> responses = reactionService.listReactions(SecurityUtils.getCurrentUserId(), targetType, targetId);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -82,7 +82,7 @@ public class BulletinReactionController {
     public ResponseEntity<ApiResponse<List<ReactionSummaryResponse>>> getReactionSummary(
             @RequestParam String targetType,
             @RequestParam Long targetId) {
-        List<ReactionSummaryResponse> responses = reactionService.getReactionSummary(targetType, targetId);
+        List<ReactionSummaryResponse> responses = reactionService.getReactionSummary(SecurityUtils.getCurrentUserId(), targetType, targetId);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 }

@@ -317,7 +317,13 @@ public enum AuditEventType {
     /** SYSTEM_ADMIN が DEAD_LETTER をリトライキューに戻した。 */
     SYSTEM_ADMIN_EMAIL_OUTBOX_RETRIED(AuditEventCategory.ADMIN_ACTION),
     /** SYSTEM_ADMIN が PENDING メールをキャンセルした。 */
-    SYSTEM_ADMIN_EMAIL_OUTBOX_CANCELLED(AuditEventCategory.ADMIN_ACTION);
+    SYSTEM_ADMIN_EMAIL_OUTBOX_CANCELLED(AuditEventCategory.ADMIN_ACTION),
+
+    // ─── BULLETIN (F05.1 掲示板モデレーション) ──────────────────
+    /** 他者の掲示板スレッドを削除した（管理者/DEPUTY による削除）。本人削除は記録しない。 */
+    BULLETIN_THREAD_DELETED(AuditEventCategory.BULLETIN),
+    /** 他者の掲示板返信を削除した（管理者/DEPUTY による削除）。本人削除は記録しない。 */
+    BULLETIN_REPLY_DELETED(AuditEventCategory.BULLETIN);
 
     private final AuditEventCategory category;
 }

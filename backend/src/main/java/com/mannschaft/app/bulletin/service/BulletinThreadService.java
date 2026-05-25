@@ -8,8 +8,11 @@ import com.mannschaft.app.bulletin.ScopeType;
 import com.mannschaft.app.bulletin.dto.CreateThreadRequest;
 import com.mannschaft.app.bulletin.dto.ThreadResponse;
 import com.mannschaft.app.bulletin.dto.UpdateThreadRequest;
+import com.mannschaft.app.bulletin.entity.BulletinCategoryEntity;
 import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
@@ -32,9 +35,14 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class BulletinThreadService {
 
+    /** 安否確認由来スレッドの source_type（手動削除を禁止する。設計書 §6）。 */
+    private static final String SOURCE_TYPE_SAFETY_CHECK = "SAFETY_CHECK";
+
     private final BulletinThreadRepository threadRepository;
     private final BulletinCategoryService categoryService;
     private final BulletinMapper bulletinMapper;
+    private final BulletinAccessGuard accessGuard;
+    private final AuditLogService auditLogService;
     /** F17.1 Phase 3: scope=VILLAGE 投稿の主体検証。null 安全のため Optional 注入は使わず常時 inject。 */
     private final PostingIdentityService postingIdentityService;
 
@@ -46,34 +54,41 @@ public class BulletinThreadService {
      * @param pageable  ページング情報
      * @return スレッドレスポンスのページ
      */
-    public Page<ThreadResponse> listThreads(ScopeType scopeType, Long scopeId, Pageable pageable) {
+    public Page<ThreadResponse> listThreads(ScopeType scopeType, Long scopeId, Long userId, Pageable pageable) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
         Page<BulletinThreadEntity> page =
                 threadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(scopeType, scopeId, pageable);
         return page.map(bulletinMapper::toThreadResponse);
     }
 
     /**
-     * カテゴリ指定でスレッド一覧をページング取得する。
+     * カテゴリ指定でスレッド一覧をページング取得する。所属メンバーのみ。
      *
+     * @param scopeType  スコープ種別
+     * @param scopeId    スコープID
      * @param categoryId カテゴリID
+     * @param userId     操作ユーザーID
      * @param pageable   ページング情報
      * @return スレッドレスポンスのページ
      */
-    public Page<ThreadResponse> listThreadsByCategory(Long categoryId, Pageable pageable) {
+    public Page<ThreadResponse> listThreadsByCategory(ScopeType scopeType, Long scopeId, Long categoryId, Long userId, Pageable pageable) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
         Page<BulletinThreadEntity> page =
                 threadRepository.findByCategoryIdOrderByIsPinnedDescUpdatedAtDesc(categoryId, pageable);
         return page.map(bulletinMapper::toThreadResponse);
     }
 
     /**
-     * スレッド詳細を取得する。
+     * スレッド詳細を取得する。所属メンバーのみ。
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
      * @param threadId  スレッドID
+     * @param userId    操作ユーザーID
      * @return スレッドレスポンス
      */
-    public ThreadResponse getThread(ScopeType scopeType, Long scopeId, Long threadId) {
+    public ThreadResponse getThread(ScopeType scopeType, Long scopeId, Long threadId, Long userId) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
         BulletinThreadEntity entity = findThreadOrThrow(scopeType, scopeId, threadId);
         return bulletinMapper.toThreadResponse(entity);
     }
@@ -83,11 +98,13 @@ public class BulletinThreadService {
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
+     * @param userId    操作ユーザーID
      * @param keyword   検索キーワード
      * @param pageable  ページング情報
      * @return スレッドレスポンスのページ
      */
-    public Page<ThreadResponse> searchThreads(ScopeType scopeType, Long scopeId, String keyword, Pageable pageable) {
+    public Page<ThreadResponse> searchThreads(ScopeType scopeType, Long scopeId, Long userId, String keyword, Pageable pageable) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
         Page<BulletinThreadEntity> page =
                 threadRepository.searchByKeyword(scopeType.name(), scopeId, keyword, pageable);
         return page.map(bulletinMapper::toThreadResponse);
@@ -104,8 +121,18 @@ public class BulletinThreadService {
      */
     @Transactional
     public ThreadResponse createThread(ScopeType scopeType, Long scopeId, Long userId, CreateThreadRequest request) {
-        // カテゴリの存在確認
-        categoryService.findCategoryOrThrow(scopeType, scopeId, request.getCategoryId());
+        accessGuard.checkMembership(userId, scopeType, scopeId);
+
+        // カテゴリの存在確認 + post_min_role の取得（未分類=null の場合はデフォルト MEMBER 扱い）
+        String postMinRole = null;
+        if (request.getCategoryId() != null) {
+            BulletinCategoryEntity category =
+                    categoryService.findCategoryOrThrow(scopeType, scopeId, request.getCategoryId());
+            postMinRole = category.getPostMinRole();
+        }
+
+        // スレッド作成権限の検証（SUPPORTER 不可 + カテゴリ post_min_role 充足）
+        accessGuard.requireCanCreateThread(userId, scopeType, scopeId, postMinRole);
 
         Priority priority = request.getPriority() != null
                 ? Priority.valueOf(request.getPriority()) : Priority.INFO;
@@ -166,10 +193,19 @@ public class BulletinThreadService {
      */
     @Transactional
     public ThreadResponse updateThread(ScopeType scopeType, Long scopeId, Long threadId, Long userId, UpdateThreadRequest request) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
         BulletinThreadEntity entity = findThreadOrThrow(scopeType, scopeId, threadId);
 
-        if (!entity.getAuthorId().equals(userId)) {
+        // 投稿者本人 or ADMIN（現状 NOT_AUTHOR のみで ADMIN が編集できないバグを是正）
+        boolean isOwner = entity.getAuthorId() != null && entity.getAuthorId().equals(userId);
+        boolean isAdmin = accessGuard.isAdminOrAbove(userId, scopeType, scopeId);
+        if (!isOwner && !isAdmin) {
             throw new BusinessException(BulletinErrorCode.NOT_AUTHOR);
+        }
+
+        // ロック中の本文編集は ADMIN のみ許可（設計書 §4: 423）
+        if (Boolean.TRUE.equals(entity.getIsLocked()) && !isAdmin) {
+            throw new BusinessException(BulletinErrorCode.THREAD_LOCKED);
         }
 
         Priority priority = request.getPriority() != null
@@ -182,30 +218,56 @@ public class BulletinThreadService {
     }
 
     /**
-     * スレッドを論理削除する。
+     * スレッドを論理削除する。投稿者本人 or ADMIN（DEPUTY は MANAGE_CONTENT 明示時）。
+     *
+     * <p>設計書 §6: {@code source_type = 'SAFETY_CHECK'} のスレッドは手動削除不可。
+     * 他者のコンテンツを削除した場合は監査ログを記録する（本人削除は記録不要）。</p>
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
      * @param threadId  スレッドID
+     * @param userId    操作ユーザーID
      */
     @Transactional
-    public void deleteThread(ScopeType scopeType, Long scopeId, Long threadId) {
+    public void deleteThread(ScopeType scopeType, Long scopeId, Long threadId, Long userId) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
         BulletinThreadEntity entity = findThreadOrThrow(scopeType, scopeId, threadId);
+
+        // 安否確認スレッドは手動削除不可（設計書 §6）
+        if (SOURCE_TYPE_SAFETY_CHECK.equals(entity.getSourceType())) {
+            throw new BusinessException(BulletinErrorCode.SAFETY_THREAD_DELETE_FORBIDDEN);
+        }
+
+        // 投稿者本人 or ADMIN/DEPUTY（DEPUTY は MANAGE_CONTENT 明示付与時のみ）
+        boolean isOwner = entity.getAuthorId() != null && entity.getAuthorId().equals(userId);
+        if (!isOwner) {
+            accessGuard.requireManageContent(userId, scopeType, scopeId);
+        }
+
         entity.softDelete();
         threadRepository.save(entity);
-        log.info("スレッド削除: threadId={}", threadId);
+        log.info("スレッド削除: threadId={}, by={}", threadId, userId);
+
+        // 他者コンテンツの削除のみ監査ログを記録（本人削除は記録不要）
+        if (!isOwner) {
+            recordContentDeletionAudit(AuditEventType.BULLETIN_THREAD_DELETED, scopeType, scopeId,
+                    userId, entity.getAuthorId(), threadId);
+        }
     }
 
     /**
-     * ピン留めを切り替える。
+     * ピン留めを切り替える。ADMIN or DEPUTY(MANAGE_CONTENT) のみ。
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
      * @param threadId  スレッドID
+     * @param userId    操作ユーザーID
      * @return 更新されたスレッドレスポンス
      */
     @Transactional
-    public ThreadResponse togglePin(ScopeType scopeType, Long scopeId, Long threadId) {
+    public ThreadResponse togglePin(ScopeType scopeType, Long scopeId, Long threadId, Long userId) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
+        accessGuard.requireManageContent(userId, scopeType, scopeId);
         BulletinThreadEntity entity = findThreadOrThrow(scopeType, scopeId, threadId);
         entity.togglePin();
         BulletinThreadEntity saved = threadRepository.save(entity);
@@ -214,15 +276,18 @@ public class BulletinThreadService {
     }
 
     /**
-     * ロックを切り替える。
+     * ロックを切り替える。ADMIN or DEPUTY(MANAGE_CONTENT) のみ。
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
      * @param threadId  スレッドID
+     * @param userId    操作ユーザーID
      * @return 更新されたスレッドレスポンス
      */
     @Transactional
-    public ThreadResponse toggleLock(ScopeType scopeType, Long scopeId, Long threadId) {
+    public ThreadResponse toggleLock(ScopeType scopeType, Long scopeId, Long threadId, Long userId) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
+        accessGuard.requireManageContent(userId, scopeType, scopeId);
         BulletinThreadEntity entity = findThreadOrThrow(scopeType, scopeId, threadId);
         entity.toggleLock();
         BulletinThreadEntity saved = threadRepository.save(entity);
@@ -231,20 +296,37 @@ public class BulletinThreadService {
     }
 
     /**
-     * アーカイブする。
+     * アーカイブする。ADMIN or DEPUTY(MANAGE_CONTENT) のみ。
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
      * @param threadId  スレッドID
+     * @param userId    操作ユーザーID
      * @return 更新されたスレッドレスポンス
      */
     @Transactional
-    public ThreadResponse archive(ScopeType scopeType, Long scopeId, Long threadId) {
+    public ThreadResponse archive(ScopeType scopeType, Long scopeId, Long threadId, Long userId) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
+        accessGuard.requireManageContent(userId, scopeType, scopeId);
         BulletinThreadEntity entity = findThreadOrThrow(scopeType, scopeId, threadId);
         entity.archive();
         BulletinThreadEntity saved = threadRepository.save(entity);
         log.info("スレッドアーカイブ: threadId={}", threadId);
         return bulletinMapper.toThreadResponse(saved);
+    }
+
+    /**
+     * 他者コンテンツ削除の監査ログを非同期記録する。
+     */
+    private void recordContentDeletionAudit(AuditEventType eventType, ScopeType scopeType, Long scopeId,
+                                            Long actorUserId, Long ownerUserId, Long resourceId) {
+        Long teamId = scopeType == ScopeType.TEAM ? scopeId : null;
+        Long organizationId = scopeType == ScopeType.ORGANIZATION ? scopeId : null;
+        String metadata = String.format(
+                "{\"source\":\"BULLETIN\",\"resource_id\":%d,\"owner_user_id\":%s,\"scope_type\":\"%s\",\"scope_id\":%d}",
+                resourceId, ownerUserId, scopeType.name(), scopeId);
+        auditLogService.record(eventType.name(), actorUserId, ownerUserId,
+                teamId, organizationId, null, null, null, metadata);
     }
 
     /**

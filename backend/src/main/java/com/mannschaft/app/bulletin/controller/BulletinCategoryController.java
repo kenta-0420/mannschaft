@@ -47,7 +47,7 @@ public class BulletinCategoryController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        List<CategoryResponse> categories = categoryService.listCategories(type, scopeId);
+        List<CategoryResponse> categories = categoryService.listCategories(type, scopeId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(categories));
     }
 
@@ -62,7 +62,7 @@ public class BulletinCategoryController {
             @PathVariable Long scopeId,
             @PathVariable Long categoryId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        CategoryResponse response = categoryService.getCategory(type, scopeId, categoryId);
+        CategoryResponse response = categoryService.getCategory(type, scopeId, categoryId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -93,7 +93,7 @@ public class BulletinCategoryController {
             @PathVariable Long categoryId,
             @Valid @RequestBody UpdateCategoryRequest request) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        CategoryResponse response = categoryService.updateCategory(type, scopeId, categoryId, request);
+        CategoryResponse response = categoryService.updateCategory(type, scopeId, categoryId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -111,7 +111,7 @@ public class BulletinCategoryController {
             @PathVariable Long scopeId,
             @PathVariable Long categoryId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        DeleteCategoryResponse response = categoryService.deleteCategory(type, scopeId, categoryId);
+        DeleteCategoryResponse response = categoryService.deleteCategory(type, scopeId, categoryId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

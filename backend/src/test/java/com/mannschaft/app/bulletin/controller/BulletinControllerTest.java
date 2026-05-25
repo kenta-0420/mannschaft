@@ -92,7 +92,7 @@ class BulletinControllerTest {
         @DisplayName("正常系: カテゴリ一覧が200で返る")
         void listCategories_正常_200() {
             // Given
-            given(categoryService.listCategories(any(), eq(SCOPE_ID)))
+            given(categoryService.listCategories(any(), eq(SCOPE_ID), eq(USER_ID)))
                     .willReturn(List.of(createCategoryResponse()));
 
             // When
@@ -102,14 +102,14 @@ class BulletinControllerTest {
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody().getData()).hasSize(1);
-            verify(categoryService).listCategories(any(), eq(SCOPE_ID));
+            verify(categoryService).listCategories(any(), eq(SCOPE_ID), eq(USER_ID));
         }
 
         @Test
         @DisplayName("正常系: カテゴリ詳細が200で返る")
         void getCategory_正常_200() {
             // Given
-            given(categoryService.getCategory(any(), eq(SCOPE_ID), eq(CATEGORY_ID)))
+            given(categoryService.getCategory(any(), eq(SCOPE_ID), eq(CATEGORY_ID), eq(USER_ID)))
                     .willReturn(createCategoryResponse());
 
             // When
@@ -143,7 +143,7 @@ class BulletinControllerTest {
         void updateCategory_正常_200() {
             // Given
             UpdateCategoryRequest request = new UpdateCategoryRequest("更新カテゴリ", "更新説明", 2, "#FFFFFF", "ADMIN");
-            given(categoryService.updateCategory(any(), eq(SCOPE_ID), eq(CATEGORY_ID), eq(request)))
+            given(categoryService.updateCategory(any(), eq(SCOPE_ID), eq(CATEGORY_ID), eq(USER_ID), eq(request)))
                     .willReturn(createCategoryResponse());
 
             // When
@@ -159,7 +159,7 @@ class BulletinControllerTest {
         @DisplayName("正常系: カテゴリ削除が200で返り未分類化件数を含む")
         void deleteCategory_正常_200() {
             // Given
-            given(categoryService.deleteCategory(any(), eq(SCOPE_ID), eq(CATEGORY_ID)))
+            given(categoryService.deleteCategory(any(), eq(SCOPE_ID), eq(CATEGORY_ID), eq(USER_ID)))
                     .willReturn(new DeleteCategoryResponse(CATEGORY_ID, 3,
                             "カテゴリを削除しました。3件のスレッドが未分類に移行しました"));
 
@@ -171,7 +171,7 @@ class BulletinControllerTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody().getData()).isNotNull();
             assertThat(response.getBody().getData().getAffectedThreadCount()).isEqualTo(3);
-            verify(categoryService).deleteCategory(any(), eq(SCOPE_ID), eq(CATEGORY_ID));
+            verify(categoryService).deleteCategory(any(), eq(SCOPE_ID), eq(CATEGORY_ID), eq(USER_ID));
         }
     }
 
@@ -202,7 +202,7 @@ class BulletinControllerTest {
             // Given
             Page<ThreadResponse> page = new PageImpl<>(
                     List.of(createThreadResponse()), PageRequest.of(0, 20), 1);
-            given(threadService.listThreads(any(), eq(SCOPE_ID), any())).willReturn(page);
+            given(threadService.listThreads(any(), eq(SCOPE_ID), eq(USER_ID), any())).willReturn(page);
 
             // When
             ResponseEntity<PagedResponse<ThreadResponse>> response =
@@ -219,7 +219,7 @@ class BulletinControllerTest {
             // Given
             Page<ThreadResponse> page = new PageImpl<>(
                     List.of(createThreadResponse()), PageRequest.of(0, 20), 1);
-            given(threadService.listThreadsByCategory(eq(CATEGORY_ID), any())).willReturn(page);
+            given(threadService.listThreadsByCategory(any(), eq(SCOPE_ID), eq(CATEGORY_ID), eq(USER_ID), any())).willReturn(page);
 
             // When
             ResponseEntity<PagedResponse<ThreadResponse>> response =
@@ -234,7 +234,7 @@ class BulletinControllerTest {
         @DisplayName("正常系: スレッド詳細が200で返る")
         void getThread_正常_200() {
             // Given
-            given(threadService.getThread(any(), eq(SCOPE_ID), eq(THREAD_ID)))
+            given(threadService.getThread(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID)))
                     .willReturn(createThreadResponse());
 
             // When
@@ -252,7 +252,7 @@ class BulletinControllerTest {
             // Given
             Page<ThreadResponse> page = new PageImpl<>(
                     List.of(createThreadResponse()), PageRequest.of(0, 20), 1);
-            given(threadService.searchThreads(any(), eq(SCOPE_ID), eq("テスト"), any())).willReturn(page);
+            given(threadService.searchThreads(any(), eq(SCOPE_ID), eq(USER_ID), eq("テスト"), any())).willReturn(page);
 
             // When
             ResponseEntity<PagedResponse<ThreadResponse>> response =
@@ -304,14 +304,14 @@ class BulletinControllerTest {
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-            verify(threadService).deleteThread(any(), eq(SCOPE_ID), eq(THREAD_ID));
+            verify(threadService).deleteThread(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID));
         }
 
         @Test
         @DisplayName("正常系: ピン留め切替が200で返る")
         void togglePin_正常_200() {
             // Given
-            given(threadService.togglePin(any(), eq(SCOPE_ID), eq(THREAD_ID)))
+            given(threadService.togglePin(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID)))
                     .willReturn(createThreadResponse());
 
             // When
@@ -326,7 +326,7 @@ class BulletinControllerTest {
         @DisplayName("正常系: ロック切替が200で返る")
         void toggleLock_正常_200() {
             // Given
-            given(threadService.toggleLock(any(), eq(SCOPE_ID), eq(THREAD_ID)))
+            given(threadService.toggleLock(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID)))
                     .willReturn(createThreadResponse());
 
             // When
@@ -341,7 +341,7 @@ class BulletinControllerTest {
         @DisplayName("正常系: アーカイブが200で返る")
         void archive_正常_200() {
             // Given
-            given(threadService.archive(any(), eq(SCOPE_ID), eq(THREAD_ID)))
+            given(threadService.archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID)))
                     .willReturn(createThreadResponse());
 
             // When
@@ -358,7 +358,7 @@ class BulletinControllerTest {
             // Given
             Page<ThreadResponse> emptyPage = new PageImpl<>(
                     Collections.emptyList(), PageRequest.of(0, 20), 0);
-            given(threadService.searchThreads(any(), eq(SCOPE_ID), eq("存在しない"), any())).willReturn(emptyPage);
+            given(threadService.searchThreads(any(), eq(SCOPE_ID), eq(USER_ID), eq("存在しない"), any())).willReturn(emptyPage);
 
             // When
             ResponseEntity<PagedResponse<ThreadResponse>> response =
@@ -396,7 +396,7 @@ class BulletinControllerTest {
             // Given
             Page<ReplyResponse> page = new PageImpl<>(
                     List.of(createReplyResponse()), PageRequest.of(0, 20), 1);
-            given(replyService.listReplies(any(), eq(SCOPE_ID), eq(THREAD_ID), any())).willReturn(page);
+            given(replyService.listReplies(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), any())).willReturn(page);
 
             // When
             ResponseEntity<PagedResponse<ReplyResponse>> response =
@@ -450,7 +450,7 @@ class BulletinControllerTest {
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-            verify(replyService).deleteReply(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(REPLY_ID));
+            verify(replyService).deleteReply(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(REPLY_ID), eq(USER_ID));
         }
 
         @Test

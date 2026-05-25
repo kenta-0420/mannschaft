@@ -10,6 +10,8 @@ import com.mannschaft.app.bulletin.entity.BulletinReplyEntity;
 import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
 import com.mannschaft.app.bulletin.repository.BulletinReplyRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,17 +35,21 @@ public class BulletinReplyService {
     private final BulletinThreadRepository threadRepository;
     private final BulletinThreadService threadService;
     private final BulletinMapper bulletinMapper;
+    private final BulletinAccessGuard accessGuard;
+    private final AuditLogService auditLogService;
 
     /**
-     * スレッドの返信一覧をページング取得する（トップレベルのみ）。
+     * スレッドの返信一覧をページング取得する（トップレベルのみ）。所属メンバーのみ。
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
      * @param threadId  スレッドID
+     * @param userId    操作ユーザーID
      * @param pageable  ページング情報
      * @return 返信レスポンスのページ（子返信付き）
      */
-    public Page<ReplyResponse> listReplies(ScopeType scopeType, Long scopeId, Long threadId, Pageable pageable) {
+    public Page<ReplyResponse> listReplies(ScopeType scopeType, Long scopeId, Long threadId, Long userId, Pageable pageable) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
         threadService.findThreadOrThrow(scopeType, scopeId, threadId);
 
         Page<BulletinReplyEntity> page =
@@ -52,7 +58,7 @@ public class BulletinReplyService {
     }
 
     /**
-     * 返信を作成する。
+     * 返信を作成する。所属メンバー（SUPPORTER も可）。ロック中は不可。
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
@@ -63,6 +69,7 @@ public class BulletinReplyService {
      */
     @Transactional
     public ReplyResponse createReply(ScopeType scopeType, Long scopeId, Long threadId, Long userId, CreateReplyRequest request) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
         BulletinThreadEntity thread = threadService.findThreadOrThrow(scopeType, scopeId, threadId);
 
         if (!thread.isWritable()) {
@@ -108,11 +115,18 @@ public class BulletinReplyService {
      */
     @Transactional
     public ReplyResponse updateReply(ScopeType scopeType, Long scopeId, Long threadId, Long replyId, Long userId, UpdateReplyRequest request) {
-        threadService.findThreadOrThrow(scopeType, scopeId, threadId);
+        accessGuard.checkMembership(userId, scopeType, scopeId);
+        BulletinThreadEntity thread = threadService.findThreadOrThrow(scopeType, scopeId, threadId);
         BulletinReplyEntity entity = findReplyOrThrow(threadId, replyId);
 
-        if (!entity.getAuthorId().equals(userId)) {
+        // 返信更新は投稿者本人のみ
+        if (entity.getAuthorId() == null || !entity.getAuthorId().equals(userId)) {
             throw new BusinessException(BulletinErrorCode.NOT_AUTHOR);
+        }
+
+        // ロック中は返信編集不可（設計書 §5）
+        if (Boolean.TRUE.equals(thread.getIsLocked())) {
+            throw new BusinessException(BulletinErrorCode.THREAD_LOCKED);
         }
 
         entity.updateBody(request.getBody());
@@ -130,9 +144,16 @@ public class BulletinReplyService {
      * @param replyId   返信ID
      */
     @Transactional
-    public void deleteReply(ScopeType scopeType, Long scopeId, Long threadId, Long replyId) {
+    public void deleteReply(ScopeType scopeType, Long scopeId, Long threadId, Long replyId, Long userId) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
         BulletinThreadEntity thread = threadService.findThreadOrThrow(scopeType, scopeId, threadId);
         BulletinReplyEntity entity = findReplyOrThrow(threadId, replyId);
+
+        // 投稿者本人 or ADMIN/DEPUTY（DEPUTY は MANAGE_CONTENT 明示付与時のみ）
+        boolean isOwner = entity.getAuthorId() != null && entity.getAuthorId().equals(userId);
+        if (!isOwner) {
+            accessGuard.requireManageContent(userId, scopeType, scopeId);
+        }
 
         entity.softDelete();
         replyRepository.save(entity);
@@ -149,7 +170,26 @@ public class BulletinReplyService {
         thread.decrementReplyCount();
         threadRepository.save(thread);
 
-        log.info("返信削除: replyId={}", replyId);
+        log.info("返信削除: replyId={}, by={}", replyId, userId);
+
+        // 他者コンテンツの削除のみ監査ログを記録（本人削除は記録不要）
+        if (!isOwner) {
+            recordReplyDeletionAudit(scopeType, scopeId, userId, entity.getAuthorId(), replyId);
+        }
+    }
+
+    /**
+     * 他者返信削除の監査ログを非同期記録する。
+     */
+    private void recordReplyDeletionAudit(ScopeType scopeType, Long scopeId,
+                                          Long actorUserId, Long ownerUserId, Long replyId) {
+        Long teamId = scopeType == ScopeType.TEAM ? scopeId : null;
+        Long organizationId = scopeType == ScopeType.ORGANIZATION ? scopeId : null;
+        String metadata = String.format(
+                "{\"source\":\"BULLETIN\",\"resource_id\":%d,\"owner_user_id\":%s,\"scope_type\":\"%s\",\"scope_id\":%d}",
+                replyId, ownerUserId, scopeType.name(), scopeId);
+        auditLogService.record(AuditEventType.BULLETIN_REPLY_DELETED.name(), actorUserId, ownerUserId,
+                teamId, organizationId, null, null, null, metadata);
     }
 
     /**

@@ -30,35 +30,43 @@ public class BulletinCategoryService {
     private final BulletinCategoryRepository categoryRepository;
     private final BulletinThreadRepository threadRepository;
     private final BulletinMapper bulletinMapper;
+    private final BulletinAccessGuard accessGuard;
+
+    /** post_min_role のデフォルト（設計書 F05.1 §3）。権限ロール体系に実在する値のみ使用する。 */
+    private static final String DEFAULT_POST_MIN_ROLE = "MEMBER";
 
     /**
-     * スコープのカテゴリ一覧を取得する。
+     * スコープのカテゴリ一覧を取得する。所属メンバーのみ。
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
+     * @param userId    操作ユーザーID
      * @return カテゴリレスポンスリスト
      */
-    public List<CategoryResponse> listCategories(ScopeType scopeType, Long scopeId) {
+    public List<CategoryResponse> listCategories(ScopeType scopeType, Long scopeId, Long userId) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
         List<BulletinCategoryEntity> categories =
                 categoryRepository.findByScopeTypeAndScopeIdOrderByDisplayOrderAsc(scopeType, scopeId);
         return bulletinMapper.toCategoryResponseList(categories);
     }
 
     /**
-     * カテゴリ詳細を取得する。
+     * カテゴリ詳細を取得する。所属メンバーのみ。
      *
      * @param scopeType  スコープ種別
      * @param scopeId    スコープID
      * @param categoryId カテゴリID
+     * @param userId     操作ユーザーID
      * @return カテゴリレスポンス
      */
-    public CategoryResponse getCategory(ScopeType scopeType, Long scopeId, Long categoryId) {
+    public CategoryResponse getCategory(ScopeType scopeType, Long scopeId, Long categoryId, Long userId) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
         BulletinCategoryEntity entity = findCategoryOrThrow(scopeType, scopeId, categoryId);
         return bulletinMapper.toCategoryResponse(entity);
     }
 
     /**
-     * カテゴリを作成する。
+     * カテゴリを作成する。ADMIN or DEPUTY(MANAGE_CONTENT) のみ。
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
@@ -68,6 +76,9 @@ public class BulletinCategoryService {
      */
     @Transactional
     public CategoryResponse createCategory(ScopeType scopeType, Long scopeId, Long userId, CreateCategoryRequest request) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
+        accessGuard.requireManageContent(userId, scopeType, scopeId);
+
         if (categoryRepository.existsByScopeTypeAndScopeIdAndName(scopeType, scopeId, request.getName())) {
             throw new BusinessException(BulletinErrorCode.DUPLICATE_CATEGORY_NAME);
         }
@@ -79,7 +90,7 @@ public class BulletinCategoryService {
                 .description(request.getDescription())
                 .displayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 0)
                 .color(request.getColor())
-                .postMinRole(request.getPostMinRole() != null ? request.getPostMinRole() : "MEMBER_PLUS")
+                .postMinRole(request.getPostMinRole() != null ? request.getPostMinRole() : DEFAULT_POST_MIN_ROLE)
                 .createdBy(userId)
                 .build();
 
@@ -89,16 +100,20 @@ public class BulletinCategoryService {
     }
 
     /**
-     * カテゴリを更新する。
+     * カテゴリを更新する。ADMIN or DEPUTY(MANAGE_CONTENT) のみ。
      *
      * @param scopeType  スコープ種別
      * @param scopeId    スコープID
      * @param categoryId カテゴリID
+     * @param userId     操作ユーザーID
      * @param request    更新リクエスト
      * @return 更新されたカテゴリレスポンス
      */
     @Transactional
-    public CategoryResponse updateCategory(ScopeType scopeType, Long scopeId, Long categoryId, UpdateCategoryRequest request) {
+    public CategoryResponse updateCategory(ScopeType scopeType, Long scopeId, Long categoryId, Long userId, UpdateCategoryRequest request) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
+        accessGuard.requireManageContent(userId, scopeType, scopeId);
+
         BulletinCategoryEntity entity = findCategoryOrThrow(scopeType, scopeId, categoryId);
 
         if (categoryRepository.existsByScopeTypeAndScopeIdAndNameAndIdNot(scopeType, scopeId, request.getName(), categoryId)) {
@@ -128,10 +143,14 @@ public class BulletinCategoryService {
      * @param scopeType  スコープ種別
      * @param scopeId    スコープID
      * @param categoryId カテゴリID
+     * @param userId     操作ユーザーID
      * @return 削除結果（未分類へ移行したスレッド件数を含む）
      */
     @Transactional
-    public DeleteCategoryResponse deleteCategory(ScopeType scopeType, Long scopeId, Long categoryId) {
+    public DeleteCategoryResponse deleteCategory(ScopeType scopeType, Long scopeId, Long categoryId, Long userId) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
+        accessGuard.requireManageContent(userId, scopeType, scopeId);
+
         BulletinCategoryEntity entity = findCategoryOrThrow(scopeType, scopeId, categoryId);
 
         // 1. 配下スレッドを未分類（category_id = NULL）へ退避（スレッドは削除しない）

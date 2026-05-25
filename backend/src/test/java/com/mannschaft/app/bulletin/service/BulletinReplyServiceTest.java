@@ -8,9 +8,11 @@ import com.mannschaft.app.bulletin.dto.ReplyResponse;
 import com.mannschaft.app.bulletin.dto.UpdateReplyRequest;
 import com.mannschaft.app.bulletin.entity.BulletinReplyEntity;
 import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.bulletin.repository.BulletinReplyRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -24,7 +26,10 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -46,6 +51,12 @@ class BulletinReplyServiceTest {
 
     @Mock
     private BulletinMapper bulletinMapper;
+
+    @Mock
+    private BulletinAccessGuard accessGuard;
+
+    @Mock
+    private AuditLogService auditLogService;
 
     @InjectMocks
     private BulletinReplyService bulletinReplyService;
@@ -219,6 +230,24 @@ class BulletinReplyServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(BulletinErrorCode.NOT_AUTHOR));
         }
+
+        @Test
+        @DisplayName("返信更新_ロック中スレッド_本人でも423")
+        void 返信更新_ロック中_423() {
+            // Given: ロック中のスレッドでは本人でも返信編集不可
+            UpdateReplyRequest request = new UpdateReplyRequest("更新本文");
+            BulletinThreadEntity thread = createLockedThread();
+            BulletinReplyEntity entity = createDefaultReply();
+
+            given(threadService.findThreadOrThrow(SCOPE_TYPE, SCOPE_ID, THREAD_ID)).willReturn(thread);
+            given(replyRepository.findByIdAndThreadId(REPLY_ID, THREAD_ID)).willReturn(Optional.of(entity));
+
+            // When & Then（USER_ID は本人）
+            assertThatThrownBy(() -> bulletinReplyService.updateReply(SCOPE_TYPE, SCOPE_ID, THREAD_ID, REPLY_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(BulletinErrorCode.THREAD_LOCKED));
+        }
     }
 
     @Nested
@@ -226,8 +255,8 @@ class BulletinReplyServiceTest {
     class DeleteReply {
 
         @Test
-        @DisplayName("返信削除_正常_論理削除とカウントデクリメント")
-        void 返信削除_正常_論理削除とカウントデクリメント() {
+        @DisplayName("返信削除_本人_論理削除とカウントデクリメント_監査ログなし")
+        void 返信削除_本人_論理削除とカウントデクリメント() {
             // Given
             BulletinThreadEntity thread = createWritableThread();
             thread.incrementReplyCount();
@@ -236,13 +265,56 @@ class BulletinReplyServiceTest {
             given(threadService.findThreadOrThrow(SCOPE_TYPE, SCOPE_ID, THREAD_ID)).willReturn(thread);
             given(replyRepository.findByIdAndThreadId(REPLY_ID, THREAD_ID)).willReturn(Optional.of(entity));
 
-            // When
-            bulletinReplyService.deleteReply(SCOPE_TYPE, SCOPE_ID, THREAD_ID, REPLY_ID);
+            // When: 投稿者本人（USER_ID）が削除
+            bulletinReplyService.deleteReply(SCOPE_TYPE, SCOPE_ID, THREAD_ID, REPLY_ID, USER_ID);
 
             // Then
             assertThat(entity.getDeletedAt()).isNotNull();
             assertThat(thread.getReplyCount()).isEqualTo(0);
             verify(threadRepository).save(thread);
+            verify(auditLogService, never()).record(any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("返信削除_他者をADMINが削除_監査ログ記録")
+        void 返信削除_他者ADMIN_監査ログ() {
+            // Given
+            BulletinThreadEntity thread = createWritableThread();
+            thread.incrementReplyCount();
+            BulletinReplyEntity entity = createDefaultReply(); // authorId = USER_ID
+            Long adminUserId = 999L;
+
+            given(threadService.findThreadOrThrow(SCOPE_TYPE, SCOPE_ID, THREAD_ID)).willReturn(thread);
+            given(replyRepository.findByIdAndThreadId(REPLY_ID, THREAD_ID)).willReturn(Optional.of(entity));
+
+            // When: 他者（adminUserId）が削除
+            bulletinReplyService.deleteReply(SCOPE_TYPE, SCOPE_ID, THREAD_ID, REPLY_ID, adminUserId);
+
+            // Then: 管理権限チェック通過 + 監査ログ記録
+            verify(accessGuard).requireManageContent(adminUserId, SCOPE_TYPE, SCOPE_ID);
+            verify(auditLogService).record(eq("BULLETIN_REPLY_DELETED"), eq(adminUserId), eq(USER_ID),
+                    any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("返信削除_他者を非管理者が削除_403")
+        void 返信削除_他者_非管理者_403() {
+            // Given
+            BulletinThreadEntity thread = createWritableThread();
+            BulletinReplyEntity entity = createDefaultReply();
+            Long otherUserId = 999L;
+
+            given(threadService.findThreadOrThrow(SCOPE_TYPE, SCOPE_ID, THREAD_ID)).willReturn(thread);
+            given(replyRepository.findByIdAndThreadId(REPLY_ID, THREAD_ID)).willReturn(Optional.of(entity));
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessGuard).requireManageContent(otherUserId, SCOPE_TYPE, SCOPE_ID);
+
+            // When & Then
+            assertThatThrownBy(() -> bulletinReplyService.deleteReply(SCOPE_TYPE, SCOPE_ID, THREAD_ID, REPLY_ID, otherUserId))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            verify(replyRepository, never()).save(any());
         }
     }
 }

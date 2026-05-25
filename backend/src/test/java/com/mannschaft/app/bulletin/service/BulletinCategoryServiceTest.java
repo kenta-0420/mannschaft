@@ -11,10 +11,12 @@ import com.mannschaft.app.bulletin.entity.BulletinCategoryEntity;
 import com.mannschaft.app.bulletin.repository.BulletinCategoryRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -26,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -46,6 +49,9 @@ class BulletinCategoryServiceTest {
     @Mock
     private BulletinMapper bulletinMapper;
 
+    @Mock
+    private BulletinAccessGuard accessGuard;
+
     @InjectMocks
     private BulletinCategoryService bulletinCategoryService;
 
@@ -62,14 +68,14 @@ class BulletinCategoryServiceTest {
                 .description("お知らせカテゴリ")
                 .displayOrder(1)
                 .color("#FF0000")
-                .postMinRole("MEMBER_PLUS")
+                .postMinRole("MEMBER")
                 .createdBy(USER_ID)
                 .build();
     }
 
     private CategoryResponse createCategoryResponse() {
         return new CategoryResponse(CATEGORY_ID, "TEAM", SCOPE_ID, "お知らせ",
-                "お知らせカテゴリ", 1, "#FF0000", "MEMBER_PLUS", USER_ID, null, null);
+                "お知らせカテゴリ", 1, "#FF0000", "MEMBER", USER_ID, null, null);
     }
 
     @Nested
@@ -87,10 +93,25 @@ class BulletinCategoryServiceTest {
                     .willReturn(List.of(createCategoryResponse()));
 
             // When
-            List<CategoryResponse> result = bulletinCategoryService.listCategories(SCOPE_TYPE, SCOPE_ID);
+            List<CategoryResponse> result = bulletinCategoryService.listCategories(SCOPE_TYPE, SCOPE_ID, USER_ID);
 
             // Then
             assertThat(result).hasSize(1);
+            verify(accessGuard).checkMembership(USER_ID, SCOPE_TYPE, SCOPE_ID);
+        }
+
+        @Test
+        @DisplayName("カテゴリ一覧取得_非メンバー_403")
+        void カテゴリ一覧取得_非メンバー_403() {
+            // Given
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessGuard).checkMembership(USER_ID, SCOPE_TYPE, SCOPE_ID);
+
+            // When & Then
+            assertThatThrownBy(() -> bulletinCategoryService.listCategories(SCOPE_TYPE, SCOPE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
         }
     }
 
@@ -118,6 +139,45 @@ class BulletinCategoryServiceTest {
 
             // Then
             assertThat(result).isNotNull();
+            verify(accessGuard).requireManageContent(USER_ID, SCOPE_TYPE, SCOPE_ID);
+        }
+
+        @Test
+        @DisplayName("カテゴリ作成_post_min_role未指定_MEMBERが既定値")
+        void カテゴリ作成_post_min_role既定値MEMBER() {
+            // Given: post_min_role 未指定（MEMBER_PLUS ではなく MEMBER が入ること）
+            CreateCategoryRequest request = new CreateCategoryRequest(
+                    "新カテゴリ", "説明", 1, "#00FF00", null);
+            BulletinCategoryEntity savedEntity = createDefaultCategory();
+            given(categoryRepository.existsByScopeTypeAndScopeIdAndName(SCOPE_TYPE, SCOPE_ID, "新カテゴリ"))
+                    .willReturn(false);
+            given(categoryRepository.save(any(BulletinCategoryEntity.class))).willReturn(savedEntity);
+            given(bulletinMapper.toCategoryResponse(savedEntity)).willReturn(createCategoryResponse());
+
+            // When
+            bulletinCategoryService.createCategory(SCOPE_TYPE, SCOPE_ID, USER_ID, request);
+
+            // Then: 保存される Entity の post_min_role は MEMBER
+            ArgumentCaptor<BulletinCategoryEntity> captor = ArgumentCaptor.forClass(BulletinCategoryEntity.class);
+            verify(categoryRepository).save(captor.capture());
+            assertThat(captor.getValue().getPostMinRole()).isEqualTo("MEMBER");
+        }
+
+        @Test
+        @DisplayName("カテゴリ作成_管理権限なし_403")
+        void カテゴリ作成_権限なし_403() {
+            // Given
+            CreateCategoryRequest request = new CreateCategoryRequest(
+                    "新カテゴリ", "説明", 1, "#00FF00", null);
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessGuard).requireManageContent(USER_ID, SCOPE_TYPE, SCOPE_ID);
+
+            // When & Then
+            assertThatThrownBy(() -> bulletinCategoryService.createCategory(SCOPE_TYPE, SCOPE_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            verify(categoryRepository, never()).save(any());
         }
 
         @Test
@@ -160,10 +220,11 @@ class BulletinCategoryServiceTest {
             given(bulletinMapper.toCategoryResponse(entity)).willReturn(response);
 
             // When
-            CategoryResponse result = bulletinCategoryService.updateCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID, request);
+            CategoryResponse result = bulletinCategoryService.updateCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID, USER_ID, request);
 
             // Then
             assertThat(result).isNotNull();
+            verify(accessGuard).requireManageContent(USER_ID, SCOPE_TYPE, SCOPE_ID);
         }
 
         @Test
@@ -180,7 +241,7 @@ class BulletinCategoryServiceTest {
                     SCOPE_TYPE, SCOPE_ID, "重複名", CATEGORY_ID)).willReturn(true);
 
             // When & Then
-            assertThatThrownBy(() -> bulletinCategoryService.updateCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID, request))
+            assertThatThrownBy(() -> bulletinCategoryService.updateCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(BulletinErrorCode.DUPLICATE_CATEGORY_NAME));
@@ -201,11 +262,12 @@ class BulletinCategoryServiceTest {
             given(threadRepository.bulkSetCategoryIdNullByCategoryId(CATEGORY_ID)).willReturn(0);
 
             // When
-            bulletinCategoryService.deleteCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID);
+            bulletinCategoryService.deleteCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID, USER_ID);
 
             // Then
             verify(categoryRepository).save(entity);
             assertThat(entity.getDeletedAt()).isNotNull();
+            verify(accessGuard).requireManageContent(USER_ID, SCOPE_TYPE, SCOPE_ID);
         }
 
         @Test
@@ -219,7 +281,7 @@ class BulletinCategoryServiceTest {
 
             // When
             DeleteCategoryResponse response =
-                    bulletinCategoryService.deleteCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID);
+                    bulletinCategoryService.deleteCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID, USER_ID);
 
             // Then: 未分類化（category_id = NULL）が呼ばれ、カテゴリは論理削除される。スレッド削除は行わない
             verify(threadRepository).bulkSetCategoryIdNullByCategoryId(CATEGORY_ID);
@@ -238,7 +300,7 @@ class BulletinCategoryServiceTest {
                     .willReturn(Optional.empty());
 
             // When & Then: カテゴリが見つからない場合、未分類化処理は実行されない
-            assertThatThrownBy(() -> bulletinCategoryService.deleteCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID))
+            assertThatThrownBy(() -> bulletinCategoryService.deleteCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID, USER_ID))
                     .isInstanceOf(BusinessException.class);
             verify(threadRepository, never()).bulkSetCategoryIdNullByCategoryId(any());
         }
@@ -251,7 +313,7 @@ class BulletinCategoryServiceTest {
                     .willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> bulletinCategoryService.deleteCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID))
+            assertThatThrownBy(() -> bulletinCategoryService.deleteCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(BulletinErrorCode.CATEGORY_NOT_FOUND));

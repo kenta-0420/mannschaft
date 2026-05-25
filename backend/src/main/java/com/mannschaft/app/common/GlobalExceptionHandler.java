@@ -506,7 +506,21 @@ public class GlobalExceptionHandler {
             Map.entry("RESUME_007", HttpStatus.UNSUPPORTED_MEDIA_TYPE), // PHOTO_UNSUPPORTED_FORMAT (415)
             Map.entry("RESUME_008", HttpStatus.TOO_MANY_REQUESTS),    // EXPORT_RATE_LIMITED (429)
             Map.entry("RESUME_009", HttpStatus.INTERNAL_SERVER_ERROR), // REPORT_GENERATION_FAILED (500)
-            Map.entry("RESUME_010", HttpStatus.CONFLICT)              // OPTIMISTIC_LOCK_CONFLICT (409)
+            Map.entry("RESUME_010", HttpStatus.CONFLICT),             // OPTIMISTIC_LOCK_CONFLICT (409)
+            // F05.1 掲示板
+            Map.entry("BULLETIN_001", HttpStatus.NOT_FOUND),          // CATEGORY_NOT_FOUND
+            Map.entry("BULLETIN_002", HttpStatus.NOT_FOUND),          // THREAD_NOT_FOUND
+            Map.entry("BULLETIN_003", HttpStatus.NOT_FOUND),          // REPLY_NOT_FOUND
+            Map.entry("BULLETIN_004", HttpStatus.LOCKED),             // THREAD_LOCKED (423)
+            Map.entry("BULLETIN_005", HttpStatus.CONFLICT),           // THREAD_ARCHIVED (409)
+            Map.entry("BULLETIN_006", HttpStatus.FORBIDDEN),          // INSUFFICIENT_POST_ROLE
+            Map.entry("BULLETIN_007", HttpStatus.NOT_FOUND),          // ATTACHMENT_NOT_FOUND
+            Map.entry("BULLETIN_008", HttpStatus.NOT_FOUND),          // REACTION_NOT_FOUND
+            Map.entry("BULLETIN_009", HttpStatus.CONFLICT),           // DUPLICATE_REACTION
+            Map.entry("BULLETIN_010", HttpStatus.CONFLICT),           // DUPLICATE_CATEGORY_NAME
+            Map.entry("BULLETIN_011", HttpStatus.FORBIDDEN),          // NOT_AUTHOR
+            Map.entry("BULLETIN_013", HttpStatus.BAD_REQUEST),        // INVALID_EMOJI
+            Map.entry("BULLETIN_014", HttpStatus.FORBIDDEN)           // SAFETY_THREAD_DELETE_FORBIDDEN
     );
 
     /**
