@@ -207,33 +207,17 @@ class SurveyAnnouncementAdapterTest {
     // ──────────────────────────────────────────────────────────────────────────
 
     private SurveyDetailResponse buildSurveyDetailResponse(Long id) {
-        SurveyResponse surveyResponse = new SurveyResponse(
-                id,                     // id
-                "TEAM",                 // scopeType
-                SCOPE_ID,              // scopeId
-                "テストアンケート",       // title
-                "説明",                 // description
-                "OPEN",                 // status
-                false,                  // isAnonymous
-                false,                  // allowMultipleSubmissions
-                "ALL_MEMBERS",          // resultsVisibility
-                "ALL",                  // distributionMode
-                "CREATOR_AND_ADMIN",    // unrespondedVisibility
-                false,                  // autoPostToTimeline
-                null,                   // seriesId
-                null,                   // remindBeforeHours
-                0,                      // manualRemindCount
-                null,                   // startsAt
-                CLOSES_AT,              // expiresAt
-                0,                      // responseCount
-                0,                      // targetCount
-                USER_ID,               // createdBy
-                null,                   // publishedAt
-                null,                   // closedAt
-                1L,                     // version
-                LocalDateTime.now(),    // createdAt
-                LocalDateTime.now()     // updatedAt
-        );
+        LocalDateTime now = LocalDateTime.now();
+        SurveyResponse surveyResponse = SurveyResponse.builder()
+                .id(id).status("OPEN")
+                .scope(new SurveyResponse.SurveyScopeDto("TEAM", SCOPE_ID))
+                .content(new SurveyResponse.SurveyContentDto("テストアンケート", "説明"))
+                .policy(new SurveyResponse.SurveyPolicyDto(false, false, "ALL_MEMBERS", "CREATOR_AND_ADMIN"))
+                .distribution(new SurveyResponse.SurveyDistributionDto("ALL", false, null, null, 0))
+                .schedule(new SurveyResponse.SurveyScheduleDto(null, CLOSES_AT, null, null))
+                .stats(new SurveyResponse.SurveyStatsDto(0, 0))
+                .audit(new SurveyResponse.SurveyAuditDto(1L, USER_ID, now, now))
+                .build();
         return new SurveyDetailResponse(surveyResponse, Collections.emptyList());
     }
 }
