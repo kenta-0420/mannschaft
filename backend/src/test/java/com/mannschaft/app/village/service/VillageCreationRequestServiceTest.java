@@ -28,6 +28,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -86,7 +88,7 @@ class VillageCreationRequestServiceTest {
                 "casual-baseball",
                 "スポーツ",
                 "草野球チーム同士の交流の場が欲しい",
-                LocalDateTime.now().minusMinutes(5),
+                OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(5),
                 VillageJoinPolicy.FREE,
                 VillageVisibility.PUBLIC,
                 VillageType.COMMUNITY,
@@ -183,7 +185,7 @@ class VillageCreationRequestServiceTest {
     void createRequest_guidelineExpired() {
         VillageCreationRequestCreateRequest req = new VillageCreationRequestCreateRequest(
                 "草野球村", "casual-baseball", null, "p",
-                LocalDateTime.now().minusHours(2),
+                OffsetDateTime.now(ZoneOffset.UTC).minusHours(2),
                 VillageJoinPolicy.FREE, VillageVisibility.PUBLIC, VillageType.COMMUNITY, null);
 
         assertThatThrownBy(() -> service.createRequest(REQUESTER_ID, req))
@@ -408,7 +410,7 @@ class VillageCreationRequestServiceTest {
     void createRequest_officialForbiddenForNonAdmin() {
         VillageCreationRequestCreateRequest req = new VillageCreationRequestCreateRequest(
                 "公式村", "official-slug", null, "p",
-                LocalDateTime.now().minusMinutes(5),
+                OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(5),
                 VillageJoinPolicy.FREE, VillageVisibility.PUBLIC, VillageType.OFFICIAL, null);
         given(userRoleRepository.existsSystemAdminByUserId(REQUESTER_ID)).willReturn(0L);
 

@@ -26,6 +26,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -112,7 +114,7 @@ class VillageCreationRequestControllerTest {
                   "visibility": "PUBLIC",
                   "type": "COMMUNITY"
                 }
-                """.formatted(LocalDateTime.now().minusMinutes(1));
+                """.formatted(OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(1));
 
         mockMvc.perform(post("/api/v1/villages/creation-requests")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -138,7 +140,7 @@ class VillageCreationRequestControllerTest {
                   "visibility": "PUBLIC",
                   "type": "COMMUNITY"
                 }
-                """.formatted(LocalDateTime.now().minusMinutes(1));
+                """.formatted(OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(1));
 
         mockMvc.perform(post("/api/v1/villages/creation-requests")
                         .contentType(MediaType.APPLICATION_JSON)

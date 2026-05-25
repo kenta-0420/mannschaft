@@ -8,7 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * 村作成申請の作成リクエスト（F17.1 Phase 1 B5）。
@@ -43,7 +43,7 @@ public record VillageCreationRequestCreateRequest(
         String purpose,
 
         @NotNull
-        LocalDateTime guidelineAgreedAt,
+        OffsetDateTime guidelineAgreedAt,
 
         @NotNull
         VillageJoinPolicy joinPolicy,

@@ -25,6 +25,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -75,15 +77,16 @@ public class VillageCreationRequestService {
             throw new BusinessException(VillageErrorCode.OFFICIAL_VILLAGE_FORBIDDEN);
         }
 
-        // ガイドライン同意が直近1時間以内であること
-        LocalDateTime now = LocalDateTime.now();
+        // ガイドライン同意が直近1時間以内であること（OffsetDateTime でタイムゾーンを正しく比較）
+        OffsetDateTime nowOffset = OffsetDateTime.now(ZoneOffset.UTC);
         if (req.guidelineAgreedAt() == null
-                || req.guidelineAgreedAt().isBefore(now.minusHours(GUIDELINE_AGREED_WITHIN_HOURS))
-                || req.guidelineAgreedAt().isAfter(now.plusMinutes(5))) {
+                || req.guidelineAgreedAt().isBefore(nowOffset.minusHours(GUIDELINE_AGREED_WITHIN_HOURS))
+                || req.guidelineAgreedAt().isAfter(nowOffset.plusMinutes(5))) {
             throw new BusinessException(VillageErrorCode.GUIDELINE_NOT_AGREED);
         }
 
         // レートリミット: 1 日 3 件
+        LocalDateTime now = LocalDateTime.now();
         long dailyCount = requestRepository.countByRequesterUserIdAndCreatedAtAfter(
                 requesterUserId, now.minusDays(1));
         if (dailyCount >= DAILY_RATE_LIMIT) {
