@@ -47,14 +47,6 @@ interface TodoAuditDto {
   completedAt?: string | null
 }
 
-interface TodoStatusDto {
-  status?: string
-  priority?: string
-  completedAt?: string | null
-  completedBy?: { id: number; displayName: string } | null
-  statusLabel?: TodoStatusLabelInfo | null
-}
-
 interface TodoBase {
   id: number
   scope?: TodoScopeDto
