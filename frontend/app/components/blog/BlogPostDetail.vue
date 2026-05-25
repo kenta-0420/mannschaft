@@ -42,16 +42,16 @@ const formattedPublishedAt = computed(() => {
       <!-- 著者 -->
       <div class="flex items-center gap-2">
         <img
-          v-if="post.author.avatarUrl"
+          v-if="post.author?.avatarUrl"
           :src="post.author.avatarUrl"
-          :alt="post.author.displayName"
+          :alt="post.author?.displayName"
           class="h-7 w-7 rounded-full object-cover"
         >
-        <span v-else class="flex h-7 w-7 items-center justify-center rounded-full bg-surface-200 text-xs">
+        <span v-else-if="post.author?.displayName" class="flex h-7 w-7 items-center justify-center rounded-full bg-surface-200 text-xs">
           {{ post.author.displayName.charAt(0) }}
         </span>
         <span class="font-medium text-surface-700 dark:text-surface-200">
-          {{ post.author.displayName }}
+          {{ post.author?.displayName }}
         </span>
       </div>
 

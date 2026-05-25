@@ -137,7 +137,7 @@ defineExpose({ refresh: loadPosts })
             {{ post.content.excerpt }}
           </p>
           <div class="flex items-center gap-2 text-xs text-surface-400">
-            <span>{{ post.author.displayName }}</span>
+            <span v-if="post.author?.displayName">{{ post.author.displayName }}</span>
             <span>{{ relativeTime(post.audit?.publishedAt || post.audit?.createdAt || '') }}</span>
             <span v-if="post.stats?.viewCount"><i class="pi pi-eye" /> {{ post.stats.viewCount }}</span>
           </div>
