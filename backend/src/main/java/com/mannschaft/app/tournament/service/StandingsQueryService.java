@@ -113,18 +113,21 @@ public class StandingsQueryService {
             int losses = standingOpt.map(TournamentStandingEntity::getLosses).orElse(0);
             int points = standingOpt.map(TournamentStandingEntity::getPoints).orElse(0);
 
-            entries.add(new TeamTournamentHistoryResponse.TournamentHistoryEntry(
-                    tournament.getOrganizationId(),
-                    division.getId(),
-                    p.getId(),
-                    tournament.getId(),
-                    tournament.getName(),
-                    tournament.getSeason(),
-                    division.getName(),
-                    finalRank, played, wins, draws, losses, points
-            ));
+            entries.add(TeamTournamentHistoryResponse.TournamentHistoryEntry.builder()
+                    .organizationId(tournament.getOrganizationId())
+                    .meta(new TeamTournamentHistoryResponse.TournamentHistoryEntry.TournamentHistoryEntryMeta(
+                            tournament.getName(), tournament.getSeason(),
+                            division.getName(), finalRank))
+                    .identifiers(new TeamTournamentHistoryResponse.TournamentHistoryEntry.TournamentHistoryEntryIdentifiers(
+                            tournament.getId(), division.getId(), p.getId()))
+                    .record(new TeamTournamentHistoryResponse.TournamentHistoryEntry.TournamentHistoryEntryRecord(
+                            played, wins, draws, losses, points))
+                    .build());
         }
-        return new TeamTournamentHistoryResponse(teamId, entries);
+        return TeamTournamentHistoryResponse.builder()
+                .teamId(teamId)
+                .history(entries)
+                .build();
     }
 
     /**

@@ -1,7 +1,7 @@
 package com.mannschaft.app.tournament.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -10,20 +10,20 @@ import java.time.LocalTime;
 /**
  * 個人ランキングレスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class IndividualRankingResponse {
 
-    private final Long id;
-    private final Long tournamentId;
-    private final Long userId;
-    private final Long participantId;
-    private final String statKey;
-    private final String rankingLabel;
-    private final Integer rank;
-    private final Integer totalValueInt;
-    private final BigDecimal totalValueDecimal;
-    private final LocalTime totalValueTime;
-    private final Integer matchesPlayed;
-    private final LocalDateTime lastCalculatedAt;
+    private Long id;
+    private IndividualRankingContextDto context;
+    private IndividualRankingStatDto stat;
+    private Integer rank;
+    private LocalDateTime lastCalculatedAt;
+
+    public record IndividualRankingContextDto(
+            Long tournamentId, Long userId, Long participantId, Integer matchesPlayed) {}
+
+    public record IndividualRankingStatDto(
+            String statKey, String rankingLabel,
+            Integer totalValueInt, BigDecimal totalValueDecimal, LocalTime totalValueTime) {}
 }

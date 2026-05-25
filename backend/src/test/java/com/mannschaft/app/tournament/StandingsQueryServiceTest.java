@@ -129,15 +129,15 @@ class StandingsQueryServiceTest {
             assertThat(result.getHistory()).hasSize(2);
 
             TeamTournamentHistoryResponse.TournamentHistoryEntry entry1 = result.getHistory().get(0);
-            assertThat(entry1.getTournamentName()).isEqualTo("春季大会");
-            assertThat(entry1.getSeason()).isEqualTo("2025");
-            assertThat(entry1.getDivisionName()).isEqualTo("1部");
-            assertThat(entry1.getFinalRank()).isEqualTo(1);
-            assertThat(entry1.getPlayed()).isEqualTo(10);
-            assertThat(entry1.getWins()).isEqualTo(7);
-            assertThat(entry1.getDraws()).isEqualTo(2);
-            assertThat(entry1.getLosses()).isEqualTo(1);
-            assertThat(entry1.getPoints()).isEqualTo(23);
+            assertThat(entry1.getMeta().tournamentName()).isEqualTo("春季大会");
+            assertThat(entry1.getMeta().season()).isEqualTo("2025");
+            assertThat(entry1.getMeta().divisionName()).isEqualTo("1部");
+            assertThat(entry1.getMeta().finalRank()).isEqualTo(1);
+            assertThat(entry1.getRecord().played()).isEqualTo(10);
+            assertThat(entry1.getRecord().wins()).isEqualTo(7);
+            assertThat(entry1.getRecord().draws()).isEqualTo(2);
+            assertThat(entry1.getRecord().losses()).isEqualTo(1);
+            assertThat(entry1.getRecord().points()).isEqualTo(23);
             assertThat(entry1.getOrganizationId()).isEqualTo(50L);
         }
 
@@ -163,12 +163,12 @@ class StandingsQueryServiceTest {
 
             assertThat(result.getHistory()).hasSize(1);
             TeamTournamentHistoryResponse.TournamentHistoryEntry entry = result.getHistory().get(0);
-            assertThat(entry.getFinalRank()).isNull();
-            assertThat(entry.getPlayed()).isEqualTo(0);
-            assertThat(entry.getWins()).isEqualTo(0);
-            assertThat(entry.getDraws()).isEqualTo(0);
-            assertThat(entry.getLosses()).isEqualTo(0);
-            assertThat(entry.getPoints()).isEqualTo(0);
+            assertThat(entry.getMeta().finalRank()).isNull();
+            assertThat(entry.getRecord().played()).isEqualTo(0);
+            assertThat(entry.getRecord().wins()).isEqualTo(0);
+            assertThat(entry.getRecord().draws()).isEqualTo(0);
+            assertThat(entry.getRecord().losses()).isEqualTo(0);
+            assertThat(entry.getRecord().points()).isEqualTo(0);
         }
 
         @Test

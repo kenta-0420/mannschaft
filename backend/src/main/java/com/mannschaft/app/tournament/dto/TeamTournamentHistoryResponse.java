@@ -1,35 +1,35 @@
 package com.mannschaft.app.tournament.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
 /**
  * チーム大会参加履歴レスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class TeamTournamentHistoryResponse {
 
-    private final Long teamId;
-    private final List<TournamentHistoryEntry> history;
+    private Long teamId;
+    private List<TournamentHistoryEntry> history;
 
+    @Builder(toBuilder = true)
     @Getter
-    @RequiredArgsConstructor
     public static class TournamentHistoryEntry {
-        private final Long organizationId;
-        private final Long divisionId;
-        private final Long participantId;
-        private final Long tournamentId;
-        private final String tournamentName;
-        private final String season;
-        private final String divisionName;
-        private final Integer finalRank;
-        private final Integer played;
-        private final Integer wins;
-        private final Integer draws;
-        private final Integer losses;
-        private final Integer points;
+        private Long organizationId;
+        private TournamentHistoryEntryMeta meta;
+        private TournamentHistoryEntryIdentifiers identifiers;
+        private TournamentHistoryEntryRecord record;
+
+        public record TournamentHistoryEntryMeta(
+                String tournamentName, String season, String divisionName, Integer finalRank) {}
+
+        public record TournamentHistoryEntryIdentifiers(
+                Long tournamentId, Long divisionId, Long participantId) {}
+
+        public record TournamentHistoryEntryRecord(
+                Integer played, Integer wins, Integer draws, Integer losses, Integer points) {}
     }
 }

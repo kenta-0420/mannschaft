@@ -105,7 +105,8 @@ public class TournamentPdfController {
 
         // statKey のラベルを先頭レコードから取得（なければ statKey をそのまま使用）
         String statKeyLabel = rankings.isEmpty() ? statKey
-                : (rankings.get(0).getRankingLabel() != null ? rankings.get(0).getRankingLabel() : statKey);
+                : (rankings.get(0).getStat() != null && rankings.get(0).getStat().rankingLabel() != null
+                        ? rankings.get(0).getStat().rankingLabel() : statKey);
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("title", "ランキング - " + statKeyLabel);

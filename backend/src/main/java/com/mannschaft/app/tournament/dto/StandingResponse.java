@@ -1,35 +1,35 @@
 package com.mannschaft.app.tournament.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 
 /**
  * 順位表レスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class StandingResponse {
 
-    private final Long id;
-    private final Long divisionId;
-    private final Long participantId;
-    private final Long teamId;
-    private final String teamName;
-    private final Integer rank;
-    private final Integer played;
-    private final Integer wins;
-    private final Integer draws;
-    private final Integer losses;
-    private final Integer scoreFor;
-    private final Integer scoreAgainst;
-    private final Integer scoreDifference;
-    private final Integer points;
-    private final Integer bonusPoints;
-    private final Integer setsWon;
-    private final Integer setsLost;
-    private final String form;
-    private final String promotionZone;
-    private final LocalDateTime lastCalculatedAt;
+    private Long id;
+    private StandingMetaDto meta;
+    private StandingTeamDto team;
+    private StandingRecordDto record;
+    private StandingScoreDto score;
+    private String form;
+    private StandingStatusDto status;
+
+    public record StandingMetaDto(Long divisionId, Long participantId) {}
+
+    public record StandingTeamDto(Long teamId, String teamName, Integer rank) {}
+
+    public record StandingRecordDto(Integer played, Integer wins, Integer draws, Integer losses) {}
+
+    public record StandingScoreDto(
+            Integer scoreFor, Integer scoreAgainst, Integer scoreDifference,
+            Integer points, Integer bonusPoints,
+            Integer setsWon, Integer setsLost) {}
+
+    public record StandingStatusDto(String promotionZone, LocalDateTime lastCalculatedAt) {}
 }

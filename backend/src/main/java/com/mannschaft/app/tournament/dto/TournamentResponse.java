@@ -1,7 +1,7 @@
 package com.mannschaft.app.tournament.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -10,38 +10,36 @@ import java.util.List;
 /**
  * 大会レスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class TournamentResponse {
 
-    private final Long id;
-    private final Long organizationId;
-    private final Long templateId;
-    private final Long previousTournamentId;
-    private final String name;
-    private final String description;
-    private final String format;
-    private final String season;
-    private final LocalDate startDate;
-    private final LocalDate endDate;
-    private final Integer winPoints;
-    private final Integer drawPoints;
-    private final Integer lossPoints;
-    private final Boolean hasDraw;
-    private final Boolean hasSets;
-    private final Integer setsToWin;
-    private final Boolean hasExtraTime;
-    private final Boolean hasPenalties;
-    private final String scoreUnitLabel;
-    private final String bonusPointRules;
-    private final String leagueRoundType;
-    private final Integer knockoutLegs;
-    private final String visibility;
-    private final String status;
-    private final Long version;
-    private final Long createdBy;
-    private final List<TiebreakerResponse> tiebreakers;
-    private final List<StatDefResponse> statDefs;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    private Long id;
+    private TournamentScopeDto scope;
+    private TournamentContentDto content;
+    private TournamentScoringDto scoring;
+    private TournamentStructureDto structure;
+    private List<TiebreakerResponse> tiebreakers;
+    private List<StatDefResponse> statDefs;
+    private TournamentAuditDto audit;
+
+    public record TournamentScopeDto(Long organizationId, Long templateId, Long previousTournamentId) {}
+
+    public record TournamentContentDto(
+            String name, String description, String format, String season,
+            LocalDate startDate, LocalDate endDate) {}
+
+    public record TournamentScoringDto(
+            Integer winPoints, Integer drawPoints, Integer lossPoints,
+            Boolean hasDraw, Boolean hasSets, Integer setsToWin,
+            Boolean hasExtraTime, Boolean hasPenalties,
+            String scoreUnitLabel, String bonusPointRules) {}
+
+    public record TournamentStructureDto(
+            String leagueRoundType, Integer knockoutLegs,
+            String visibility, String status) {}
+
+    public record TournamentAuditDto(
+            Long version, Long createdBy,
+            LocalDateTime createdAt, LocalDateTime updatedAt) {}
 }

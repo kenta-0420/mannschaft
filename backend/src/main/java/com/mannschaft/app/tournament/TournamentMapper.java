@@ -51,15 +51,21 @@ public interface TournamentMapper {
     default PresetResponse toPresetResponse(SystemTournamentPresetEntity entity,
                                             List<TiebreakerResponse> tiebreakers,
                                             List<StatDefResponse> statDefs) {
-        return new PresetResponse(
-                entity.getId(), entity.getName(), entity.getSportCategory(),
-                entity.getDescription(), entity.getIcon(), entity.getSupportedFormats(),
-                entity.getWinPoints(), entity.getDrawPoints(), entity.getLossPoints(),
-                entity.getHasDraw(), entity.getHasSets(), entity.getSetsToWin(),
-                entity.getHasExtraTime(), entity.getHasPenalties(), entity.getScoreUnitLabel(),
-                entity.getBonusPointRules(), entity.getSortOrder(),
-                tiebreakers, statDefs,
-                entity.getCreatedAt(), entity.getUpdatedAt());
+        return PresetResponse.builder()
+                .id(entity.getId())
+                .content(new PresetResponse.PresetContentDto(
+                        entity.getName(), entity.getSportCategory(),
+                        entity.getDescription(), entity.getIcon(), entity.getSupportedFormats()))
+                .scoring(new PresetResponse.PresetScoringDto(
+                        entity.getWinPoints(), entity.getDrawPoints(), entity.getLossPoints(),
+                        entity.getHasDraw(), entity.getHasSets(), entity.getSetsToWin(),
+                        entity.getHasExtraTime(), entity.getHasPenalties(),
+                        entity.getScoreUnitLabel(), entity.getBonusPointRules()))
+                .sortOrder(entity.getSortOrder())
+                .tiebreakers(tiebreakers)
+                .statDefs(statDefs)
+                .audit(new PresetResponse.PresetAuditDto(entity.getCreatedAt(), entity.getUpdatedAt()))
+                .build();
     }
 
     default PresetResponse toPresetSummaryResponse(SystemTournamentPresetEntity entity) {
@@ -82,15 +88,23 @@ public interface TournamentMapper {
     default TemplateResponse toTemplateResponse(TournamentTemplateEntity entity,
                                                 List<TiebreakerResponse> tiebreakers,
                                                 List<StatDefResponse> statDefs) {
-        return new TemplateResponse(
-                entity.getId(), entity.getOrganizationId(), entity.getSourcePresetId(),
-                entity.getName(), entity.getDescription(), entity.getIcon(),
-                entity.getSupportedFormats(), entity.getWinPoints(), entity.getDrawPoints(),
-                entity.getLossPoints(), entity.getHasDraw(), entity.getHasSets(),
-                entity.getSetsToWin(), entity.getHasExtraTime(), entity.getHasPenalties(),
-                entity.getScoreUnitLabel(), entity.getBonusPointRules(), entity.getVersion(),
-                entity.getCreatedBy(), tiebreakers, statDefs,
-                entity.getCreatedAt(), entity.getUpdatedAt());
+        return TemplateResponse.builder()
+                .id(entity.getId())
+                .scope(new TemplateResponse.TemplateScopeDto(
+                        entity.getOrganizationId(), entity.getSourcePresetId(), entity.getCreatedBy()))
+                .content(new TemplateResponse.TemplateContentDto(
+                        entity.getName(), entity.getDescription(),
+                        entity.getIcon(), entity.getSupportedFormats()))
+                .scoring(new TemplateResponse.TemplateScoringDto(
+                        entity.getWinPoints(), entity.getDrawPoints(), entity.getLossPoints(),
+                        entity.getHasDraw(), entity.getHasSets(), entity.getSetsToWin(),
+                        entity.getHasExtraTime(), entity.getHasPenalties(),
+                        entity.getScoreUnitLabel(), entity.getBonusPointRules()))
+                .tiebreakers(tiebreakers)
+                .statDefs(statDefs)
+                .audit(new TemplateResponse.TemplateAuditDto(
+                        entity.getVersion(), entity.getCreatedAt(), entity.getUpdatedAt()))
+                .build();
     }
 
     default TiebreakerResponse toTiebreakerResponse(TournamentTemplateTiebreakerEntity entity) {
@@ -109,19 +123,28 @@ public interface TournamentMapper {
     default TournamentResponse toTournamentResponse(TournamentEntity entity,
                                                     List<TiebreakerResponse> tiebreakers,
                                                     List<StatDefResponse> statDefs) {
-        return new TournamentResponse(
-                entity.getId(), entity.getOrganizationId(), entity.getTemplateId(),
-                entity.getPreviousTournamentId(), entity.getName(), entity.getDescription(),
-                entity.getFormat().name(), entity.getSeason(), entity.getStartDate(),
-                entity.getEndDate(), entity.getWinPoints(), entity.getDrawPoints(),
-                entity.getLossPoints(), entity.getHasDraw(), entity.getHasSets(),
-                entity.getSetsToWin(), entity.getHasExtraTime(), entity.getHasPenalties(),
-                entity.getScoreUnitLabel(), entity.getBonusPointRules(),
-                entity.getLeagueRoundType().name(), entity.getKnockoutLegs(),
-                entity.getVisibility().name(), entity.getStatus().name(),
-                entity.getVersion(), entity.getCreatedBy(),
-                tiebreakers, statDefs,
-                entity.getCreatedAt(), entity.getUpdatedAt());
+        return TournamentResponse.builder()
+                .id(entity.getId())
+                .scope(new TournamentResponse.TournamentScopeDto(
+                        entity.getOrganizationId(), entity.getTemplateId(),
+                        entity.getPreviousTournamentId()))
+                .content(new TournamentResponse.TournamentContentDto(
+                        entity.getName(), entity.getDescription(), entity.getFormat().name(),
+                        entity.getSeason(), entity.getStartDate(), entity.getEndDate()))
+                .scoring(new TournamentResponse.TournamentScoringDto(
+                        entity.getWinPoints(), entity.getDrawPoints(), entity.getLossPoints(),
+                        entity.getHasDraw(), entity.getHasSets(), entity.getSetsToWin(),
+                        entity.getHasExtraTime(), entity.getHasPenalties(),
+                        entity.getScoreUnitLabel(), entity.getBonusPointRules()))
+                .structure(new TournamentResponse.TournamentStructureDto(
+                        entity.getLeagueRoundType().name(), entity.getKnockoutLegs(),
+                        entity.getVisibility().name(), entity.getStatus().name()))
+                .tiebreakers(tiebreakers)
+                .statDefs(statDefs)
+                .audit(new TournamentResponse.TournamentAuditDto(
+                        entity.getVersion(), entity.getCreatedBy(),
+                        entity.getCreatedAt(), entity.getUpdatedAt()))
+                .build();
     }
 
     default TournamentResponse toTournamentSummaryResponse(TournamentEntity entity) {
@@ -141,8 +164,21 @@ public interface TournamentMapper {
 
     // ===== Division =====
 
-    @Mapping(target = "tournamentId", source = "tournamentId")
-    DivisionResponse toDivisionResponse(TournamentDivisionEntity entity);
+    default DivisionResponse toDivisionResponse(TournamentDivisionEntity entity) {
+        return DivisionResponse.builder()
+                .id(entity.getId())
+                .tournamentId(entity.getTournamentId())
+                .name(entity.getName())
+                .level(entity.getLevel())
+                .slots(new DivisionResponse.DivisionSlotsDto(
+                        entity.getPromotionSlots(), entity.getRelegationSlots(),
+                        entity.getPlayoffPromotionSlots(), entity.getMaxParticipants(),
+                        entity.getMinEntryCount(), entity.getMaxEntryCount(),
+                        entity.getSortOrder()))
+                .audit(new DivisionResponse.DivisionAuditDto(
+                        entity.getCreatedAt(), entity.getUpdatedAt()))
+                .build();
+    }
 
     // ===== Participant =====
 
@@ -162,18 +198,27 @@ public interface TournamentMapper {
     default MatchResponse toMatchResponse(TournamentMatchEntity entity,
                                           List<MatchSetResponse> sets,
                                           List<PlayerStatResponse> playerStats) {
-        return new MatchResponse(
-                entity.getId(), entity.getMatchdayId(), entity.getHomeParticipantId(),
-                entity.getAwayParticipantId(), entity.getMatchNumber(), entity.getScheduledDatetime(),
-                entity.getVenue(), entity.getHomeScore(), entity.getAwayScore(),
-                entity.getHomeExtraScore(), entity.getAwayExtraScore(),
-                entity.getHomePenaltyScore(), entity.getAwayPenaltyScore(),
-                entity.getWinnerParticipantId(), entity.getResult().name(),
-                entity.getLeg(), entity.getNextMatchId(),
-                entity.getNextMatchSlot() != null ? entity.getNextMatchSlot().name() : null,
-                entity.getNotes(), entity.getScheduleId(), entity.getVersion(),
-                entity.getStatus().name(), sets, playerStats,
-                entity.getCreatedAt(), entity.getUpdatedAt());
+        return MatchResponse.builder()
+                .id(entity.getId())
+                .matchdayId(entity.getMatchdayId())
+                .participants(new MatchResponse.MatchParticipantsDto(
+                        entity.getHomeParticipantId(), entity.getAwayParticipantId(),
+                        entity.getWinnerParticipantId()))
+                .score(new MatchResponse.MatchScoreDto(
+                        entity.getHomeScore(), entity.getAwayScore(),
+                        entity.getHomeExtraScore(), entity.getAwayExtraScore(),
+                        entity.getHomePenaltyScore(), entity.getAwayPenaltyScore()))
+                .info(new MatchResponse.MatchInfoDto(
+                        entity.getMatchNumber(), entity.getScheduledDatetime(), entity.getVenue(),
+                        entity.getResult().name(), entity.getLeg(), entity.getNotes(),
+                        entity.getStatus().name(), entity.getNextMatchId(),
+                        entity.getNextMatchSlot() != null ? entity.getNextMatchSlot().name() : null,
+                        entity.getScheduleId()))
+                .sets(sets)
+                .playerStats(playerStats)
+                .audit(new MatchResponse.MatchAuditDto(
+                        entity.getVersion(), entity.getCreatedAt(), entity.getUpdatedAt()))
+                .build();
     }
 
     default MatchSetResponse toMatchSetResponse(TournamentMatchSetEntity entity) {
@@ -195,31 +240,55 @@ public interface TournamentMapper {
 
     default StandingResponse toStandingResponse(TournamentStandingEntity entity,
                                                 Long teamId, String teamName) {
-        return new StandingResponse(
-                entity.getId(), entity.getDivisionId(), entity.getParticipantId(),
-                teamId, teamName, entity.getRank(), entity.getPlayed(),
-                entity.getWins(), entity.getDraws(), entity.getLosses(),
-                entity.getScoreFor(), entity.getScoreAgainst(), entity.getScoreDifference(),
-                entity.getPoints(), entity.getBonusPoints(), entity.getSetsWon(),
-                entity.getSetsLost(), entity.getForm(),
-                entity.getPromotionZone() != null ? entity.getPromotionZone().name() : null,
-                entity.getLastCalculatedAt());
+        return StandingResponse.builder()
+                .id(entity.getId())
+                .meta(new StandingResponse.StandingMetaDto(
+                        entity.getDivisionId(), entity.getParticipantId()))
+                .team(new StandingResponse.StandingTeamDto(teamId, teamName, entity.getRank()))
+                .record(new StandingResponse.StandingRecordDto(
+                        entity.getPlayed(), entity.getWins(),
+                        entity.getDraws(), entity.getLosses()))
+                .score(new StandingResponse.StandingScoreDto(
+                        entity.getScoreFor(), entity.getScoreAgainst(), entity.getScoreDifference(),
+                        entity.getPoints(), entity.getBonusPoints(),
+                        entity.getSetsWon(), entity.getSetsLost()))
+                .form(entity.getForm())
+                .status(new StandingResponse.StandingStatusDto(
+                        entity.getPromotionZone() != null ? entity.getPromotionZone().name() : null,
+                        entity.getLastCalculatedAt()))
+                .build();
     }
 
     // ===== Individual Ranking =====
 
     default IndividualRankingResponse toIndividualRankingResponse(
             TournamentIndividualRankingEntity entity, String rankingLabel) {
-        return new IndividualRankingResponse(
-                entity.getId(), entity.getTournamentId(), entity.getUserId(),
-                entity.getParticipantId(), entity.getStatKey(), rankingLabel,
-                entity.getRank(), entity.getTotalValueInt(), entity.getTotalValueDecimal(),
-                entity.getTotalValueTime(), entity.getMatchesPlayed(),
-                entity.getLastCalculatedAt());
+        return IndividualRankingResponse.builder()
+                .id(entity.getId())
+                .context(new IndividualRankingResponse.IndividualRankingContextDto(
+                        entity.getTournamentId(), entity.getUserId(),
+                        entity.getParticipantId(), entity.getMatchesPlayed()))
+                .stat(new IndividualRankingResponse.IndividualRankingStatDto(
+                        entity.getStatKey(), rankingLabel,
+                        entity.getTotalValueInt(), entity.getTotalValueDecimal(),
+                        entity.getTotalValueTime()))
+                .rank(entity.getRank())
+                .lastCalculatedAt(entity.getLastCalculatedAt())
+                .build();
     }
 
     // ===== Promotion Record =====
 
-    @Mapping(target = "type", expression = "java(entity.getType().name())")
-    PromotionRecordResponse toPromotionRecordResponse(TournamentPromotionRecordEntity entity);
+    default PromotionRecordResponse toPromotionRecordResponse(TournamentPromotionRecordEntity entity) {
+        return PromotionRecordResponse.builder()
+                .id(entity.getId())
+                .context(new PromotionRecordResponse.PromotionRecordContextDto(
+                        entity.getTournamentId(), entity.getTeamId()))
+                .detail(new PromotionRecordResponse.PromotionRecordDetailDto(
+                        entity.getFromDivisionId(), entity.getToDivisionId(),
+                        entity.getType().name(), entity.getFinalRank(), entity.getReason()))
+                .execution(new PromotionRecordResponse.PromotionRecordExecutionDto(
+                        entity.getExecutedBy(), entity.getExecutedAt()))
+                .build();
+    }
 }
