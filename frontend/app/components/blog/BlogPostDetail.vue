@@ -13,12 +13,12 @@ const { renderMarkdown } = useMarkdownRenderer()
 const { formatDate } = useDatetime()
 
 const renderedBody = computed(() => {
-  return props.post.body ? renderMarkdown(props.post.body) : ''
+  return props.post.content?.body ? renderMarkdown(props.post.content.body) : ''
 })
 
 const formattedPublishedAt = computed(() => {
-  if (!props.post.publishedAt) return null
-  return formatDate(props.post.publishedAt)
+  if (!props.post.audit?.publishedAt) return null
+  return formatDate(props.post.audit.publishedAt)
 })
 </script>
 
@@ -26,15 +26,15 @@ const formattedPublishedAt = computed(() => {
   <article class="mx-auto max-w-3xl">
     <!-- カバー画像 -->
     <img
-      v-if="post.coverImageUrl"
-      :src="post.coverImageUrl"
-      :alt="post.title"
+      v-if="post.content?.coverImageUrl"
+      :src="post.content.coverImageUrl"
+      :alt="post.content?.title"
       class="mb-8 h-64 w-full rounded-xl object-cover shadow-sm"
     >
 
     <!-- タイトル -->
     <h1 class="mb-4 text-3xl font-bold leading-tight text-surface-900 dark:text-surface-0">
-      {{ post.title }}
+      {{ post.content?.title }}
     </h1>
 
     <!-- メタ情報 -->
@@ -62,9 +62,9 @@ const formattedPublishedAt = computed(() => {
       </div>
 
       <!-- 閲覧数 -->
-      <div v-if="post.viewCount" class="flex items-center gap-1">
+      <div v-if="post.stats?.viewCount" class="flex items-center gap-1">
         <i class="pi pi-eye text-xs" />
-        <span>{{ post.viewCount }}</span>
+        <span>{{ post.stats.viewCount }}</span>
       </div>
     </div>
 

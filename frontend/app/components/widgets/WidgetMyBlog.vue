@@ -60,14 +60,14 @@ onMounted(load)
           @click="navigateTo(`/blog/posts/${post.id}/edit`)"
         >
           <div class="min-w-0 flex-1">
-            <p class="truncate text-sm font-medium">{{ post.title }}</p>
+            <p class="truncate text-sm font-medium">{{ post.content?.title }}</p>
             <p class="text-xs text-surface-400">
-              {{ dayjs(post.publishedAt || post.createdAt).tz(userTimezone).format('YYYY/MM/DD') }}
+              {{ dayjs(post.audit?.publishedAt || post.audit?.createdAt).tz(userTimezone).format('YYYY/MM/DD') }}
             </p>
           </div>
           <Tag
-            :value="statusLabel[post.status] ?? post.status"
-            :severity="statusSeverity[post.status] ?? 'secondary'"
+            :value="statusLabel[post.meta?.status ?? ''] ?? post.meta?.status ?? ''"
+            :severity="statusSeverity[post.meta?.status ?? ''] ?? 'secondary'"
             rounded
           />
         </div>

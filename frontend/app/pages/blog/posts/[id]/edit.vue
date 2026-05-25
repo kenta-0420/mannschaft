@@ -50,10 +50,10 @@ async function load() {
   try {
     const res = await getMyPost(postId)
     const post = res.data
-    title.value = post.title ?? ''
-    const rawBody = post.body ?? ''
+    title.value = post.content?.title ?? ''
+    const rawBody = post.content?.body ?? ''
     body.value = rawBody === '.' ? '' : rawBody
-    status.value = post.status ?? 'DRAFT'
+    status.value = post.meta?.status ?? 'DRAFT'
     scopeType.value = post.scopeType ?? null
     scopeId.value = post.scopeId ?? null
     rejectionReason.value = (post as unknown as Record<string, unknown>).rejectionReason as string | null ?? null

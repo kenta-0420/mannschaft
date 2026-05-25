@@ -37,7 +37,9 @@ async function loadPosts() {
 }
 
 async function togglePublish(post: Record<string, unknown>) {
-  const newStatus = post.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED'
+  const meta = post.meta as Record<string, unknown> | undefined
+  const currentStatus = meta?.status as string | undefined
+  const newStatus = currentStatus === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED'
   try {
     await changePublishStatus(post.id as number, newStatus)
     success(newStatus === 'PUBLISHED' ? '公開しました' : '非公開にしました')
@@ -139,27 +141,31 @@ onMounted(() => { if (scopeId.value) loadPosts() })
             @page="(e: { page: number }) => { postsPage = e.page; loadPosts() }"
           >
             <template #empty><div class="py-8 text-center text-surface-500">記事がありません</div></template>
-            <Column field="title" header="タイトル" />
+            <Column header="タイトル">
+              <template #body="{ data }">
+                <span>{{ (data.content as Record<string, unknown>)?.title }}</span>
+              </template>
+            </Column>
             <Column header="ステータス" style="width: 100px">
               <template #body="{ data }">
                 <Tag
-                  :value="data.status === 'PUBLISHED' ? '公開' : '下書き'"
-                  :severity="data.status === 'PUBLISHED' ? 'success' : 'secondary'"
+                  :value="(data.meta as Record<string, unknown>)?.status === 'PUBLISHED' ? '公開' : '下書き'"
+                  :severity="(data.meta as Record<string, unknown>)?.status === 'PUBLISHED' ? 'success' : 'secondary'"
                 />
               </template>
             </Column>
             <Column header="更新日" style="width: 140px">
               <template #body="{ data }">
-                <span class="text-sm">{{ data.updatedAt ? formatDate(data.updatedAt as string) : '-' }}</span>
+                <span class="text-sm">{{ (data.audit as Record<string, unknown>)?.updatedAt ? formatDate((data.audit as Record<string, unknown>).updatedAt as string) : '-' }}</span>
               </template>
             </Column>
             <Column header="操作" style="width: 200px">
               <template #body="{ data }">
                 <div class="flex gap-1">
                   <Button
-                    :label="data.status === 'PUBLISHED' ? '非公開' : '公開'"
+                    :label="(data.meta as Record<string, unknown>)?.status === 'PUBLISHED' ? '非公開' : '公開'"
                     size="small"
-                    :severity="data.status === 'PUBLISHED' ? 'secondary' : 'success'"
+                    :severity="(data.meta as Record<string, unknown>)?.status === 'PUBLISHED' ? 'secondary' : 'success'"
                     outlined
                     @click="togglePublish(data)"
                   />

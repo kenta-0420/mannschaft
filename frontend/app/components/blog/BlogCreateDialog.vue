@@ -48,7 +48,7 @@ async function submit() {
       scopeId: form.value.scopeId,
     })
     visible.value = false
-    const q = new URLSearchParams({ title: res.data.title })
+    const q = new URLSearchParams({ title: res.data.content?.title ?? '' })
     if (res.data.scopeType) q.set('scopeType', res.data.scopeType)
     if (res.data.scopeId != null) q.set('scopeId', String(res.data.scopeId))
     navigateTo(`/blog/posts/${res.data.id}/edit?${q.toString()}`)

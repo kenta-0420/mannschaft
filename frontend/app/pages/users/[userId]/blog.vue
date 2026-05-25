@@ -101,13 +101,13 @@ onMounted(() => loadPosts())
         <NuxtLink
           v-for="post in filteredPosts"
           :key="post.id"
-          :to="`/users/${userId}/blog/posts/${post.slug}`"
+          :to="`/users/${userId}/blog/posts/${post.content?.slug}`"
           class="group overflow-hidden rounded-xl border border-surface-200 bg-surface-0 transition-shadow hover:shadow-md dark:border-surface-700 dark:bg-surface-900"
         >
           <img
-            v-if="post.coverImageUrl"
-            :src="post.coverImageUrl"
-            :alt="post.title"
+            v-if="post.content?.coverImageUrl"
+            :src="post.content.coverImageUrl"
+            :alt="post.content?.title"
             class="h-40 w-full object-cover"
           >
           <div class="p-4">
@@ -121,14 +121,14 @@ onMounted(() => loadPosts())
               </span>
             </div>
             <h3 class="mb-1 text-sm font-semibold text-surface-800 line-clamp-2 group-hover:text-primary-600 dark:text-surface-100">
-              {{ post.title }}
+              {{ post.content?.title }}
             </h3>
-            <p v-if="post.excerpt" class="mb-2 text-xs text-surface-400 line-clamp-2">
-              {{ post.excerpt }}
+            <p v-if="post.content?.excerpt" class="mb-2 text-xs text-surface-400 line-clamp-2">
+              {{ post.content.excerpt }}
             </p>
             <div class="flex items-center gap-2 text-xs text-surface-400">
-              <span>{{ relativeTime(post.publishedAt || post.createdAt) }}</span>
-              <span v-if="post.viewCount"><i class="pi pi-eye" /> {{ post.viewCount }}</span>
+              <span>{{ relativeTime(post.audit?.publishedAt || post.audit?.createdAt || '') }}</span>
+              <span v-if="post.stats?.viewCount"><i class="pi pi-eye" /> {{ post.stats.viewCount }}</span>
             </div>
           </div>
         </NuxtLink>
