@@ -1,28 +1,28 @@
 package com.mannschaft.app.tournament.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 
 /**
  * ディビジョンレスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class DivisionResponse {
 
-    private final Long id;
-    private final Long tournamentId;
-    private final String name;
-    private final Integer level;
-    private final Integer promotionSlots;
-    private final Integer relegationSlots;
-    private final Integer playoffPromotionSlots;
-    private final Integer maxParticipants;
-    private final Integer minEntryCount;
-    private final Integer maxEntryCount;
-    private final Integer sortOrder;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    private Long id;
+    private Long tournamentId;
+    private String name;
+    private Integer level;
+    private DivisionSlotsDto slots;
+    private DivisionAuditDto audit;
+
+    public record DivisionSlotsDto(
+            Integer promotionSlots, Integer relegationSlots, Integer playoffPromotionSlots,
+            Integer maxParticipants, Integer minEntryCount, Integer maxEntryCount,
+            Integer sortOrder) {}
+
+    public record DivisionAuditDto(LocalDateTime createdAt, LocalDateTime updatedAt) {}
 }

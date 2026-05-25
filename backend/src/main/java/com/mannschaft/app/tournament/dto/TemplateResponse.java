@@ -1,7 +1,7 @@
 package com.mannschaft.app.tournament.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -9,31 +9,28 @@ import java.util.List;
 /**
  * テンプレートレスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class TemplateResponse {
 
-    private final Long id;
-    private final Long organizationId;
-    private final Long sourcePresetId;
-    private final String name;
-    private final String description;
-    private final String icon;
-    private final String supportedFormats;
-    private final Integer winPoints;
-    private final Integer drawPoints;
-    private final Integer lossPoints;
-    private final Boolean hasDraw;
-    private final Boolean hasSets;
-    private final Integer setsToWin;
-    private final Boolean hasExtraTime;
-    private final Boolean hasPenalties;
-    private final String scoreUnitLabel;
-    private final String bonusPointRules;
-    private final Long version;
-    private final Long createdBy;
-    private final List<TiebreakerResponse> tiebreakers;
-    private final List<StatDefResponse> statDefs;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    private Long id;
+    private TemplateScopeDto scope;
+    private TemplateContentDto content;
+    private TemplateScoringDto scoring;
+    private List<TiebreakerResponse> tiebreakers;
+    private List<StatDefResponse> statDefs;
+    private TemplateAuditDto audit;
+
+    public record TemplateScopeDto(Long organizationId, Long sourcePresetId, Long createdBy) {}
+
+    public record TemplateContentDto(
+            String name, String description, String icon, String supportedFormats) {}
+
+    public record TemplateScoringDto(
+            Integer winPoints, Integer drawPoints, Integer lossPoints,
+            Boolean hasDraw, Boolean hasSets, Integer setsToWin,
+            Boolean hasExtraTime, Boolean hasPenalties,
+            String scoreUnitLabel, String bonusPointRules) {}
+
+    public record TemplateAuditDto(Long version, LocalDateTime createdAt, LocalDateTime updatedAt) {}
 }
