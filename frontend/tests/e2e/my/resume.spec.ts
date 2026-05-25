@@ -88,7 +88,7 @@ async function setupAuthMock(page: Page) {
         timezone: 'Asia/Tokyo',
         systemRole: 'MEMBER',
       }))
-    } catch (e) {
+    } catch {
       // ignore
     }
   })
