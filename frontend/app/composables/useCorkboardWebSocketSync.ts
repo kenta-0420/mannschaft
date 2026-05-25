@@ -154,7 +154,9 @@ export function useCorkboardWebSocketSync(
             ...board.value,
             groups: board.value.groups.filter((g) => g.id !== removedSectionId),
             cards: board.value.cards.map((c) =>
-              c.sectionId === removedSectionId ? { ...c, sectionId: null } : c,
+              c.reference?.sectionId === removedSectionId
+                ? { ...c, reference: { ...c.reference, sectionId: null } }
+                : c,
             ),
           }
         } else {

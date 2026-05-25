@@ -451,8 +451,8 @@ setReloadFn(() => { void load() })
     <PinNoteEditorPopover
       v-if="pinPopoverTargetCard"
       v-model:visible="pinPopoverVisible"
-      :default-color="pinPopoverTargetCard.colorLabel"
-      :initial-user-note="pinPopoverTargetCard.userNote"
+      :default-color="pinPopoverTargetCard.style?.colorLabel"
+      :initial-user-note="pinPopoverTargetCard.audit?.userNote"
       :testid-suffix="pinPopoverTargetCard.id"
       @confirm="onPinNoteConfirm"
       @cancel="pinPopoverTargetCard = null"

@@ -5,7 +5,7 @@ import type {
   TournamentMatch,
   TournamentRoster,
   TournamentStanding,
-  TournamentPromotion,
+  PromotionRecord,
   IndividualRanking,
 } from '~/types/tournament'
 
@@ -145,13 +145,13 @@ export function useTournamentBracket() {
 
   // === Promotions ===
   async function getPromotions(orgId: number, tId: number) {
-    return api<{ data: TournamentPromotion[] }>(`${b(orgId)}/tournaments/${tId}/promotions`)
+    return api<{ data: PromotionRecord[] }>(`${b(orgId)}/tournaments/${tId}/promotions`)
   }
   async function createPromotion(orgId: number, tId: number, body: Record<string, unknown>) {
     return api(`${b(orgId)}/tournaments/${tId}/promotions`, { method: 'POST', body })
   }
   async function previewPromotions(orgId: number, tId: number) {
-    return api<{ data: TournamentPromotion[] }>(
+    return api<{ data: PromotionRecord[] }>(
       `${b(orgId)}/tournaments/${tId}/promotions/preview`,
       { method: 'POST' },
     )

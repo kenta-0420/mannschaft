@@ -120,10 +120,8 @@ onMounted(async () => {
     await loadPermissions()
     const res = await getTournament(orgId, tId)
     tournament.value = res.data
-    if (res.data.divisions.length > 0) {
-      const firstDivId = res.data.divisions[0]!.id
-      activeDivisionId.value = firstDivId
-      await loadParticipantsForDivision(firstDivId)
+    if ((res.data.tiebreakers?.length ?? 0) > 0 || (res.data.statDefs?.length ?? 0) > 0) {
+      // tiebreakers/statDefs は将来用。現在は divisions 相当の情報なし
     }
   } catch {
     notification.error('大会情報の取得に失敗しました')
@@ -145,69 +143,68 @@ onMounted(async () => {
       <div class="mb-6">
         <div class="mb-1 flex flex-wrap items-center gap-2">
           <span
-            :class="getStatusClass(tournament.status)"
+            :class="getStatusClass(tournament.structure?.status ?? '')"
             class="rounded px-2 py-0.5 text-xs font-medium"
           >
-            {{ getStatusLabel(tournament.status) }}
+            {{ getStatusLabel(tournament.structure?.status ?? '') }}
           </span>
           <span class="rounded bg-surface-100 px-1.5 py-0.5 text-xs">
-            {{ getFormatLabel(tournament.format) }}
+            {{ getFormatLabel(tournament.content?.format ?? '') }}
           </span>
         </div>
-        <h1 class="text-xl font-bold">{{ tournament.title }}</h1>
+        <h1 class="text-xl font-bold">{{ tournament.content?.name }}</h1>
         <div class="mt-1 flex flex-wrap items-center gap-3 text-sm text-surface-500">
-          <span>{{ tournament.sportCategory }}</span>
-          <span>{{ tournament.seasonYear }}年度</span>
-          <span v-if="tournament.startDate || tournament.endDate">
-            <template v-if="tournament.startDate">{{ tournament.startDate }}</template>
-            <template v-if="tournament.startDate && tournament.endDate">〜</template>
-            <template v-if="tournament.endDate">{{ tournament.endDate }}</template>
+          <span v-if="tournament.content?.season">{{ tournament.content.season }}</span>
+          <span v-if="tournament.content?.startDate || tournament.content?.endDate">
+            <template v-if="tournament.content?.startDate">{{ tournament.content.startDate }}</template>
+            <template v-if="tournament.content?.startDate && tournament.content?.endDate">〜</template>
+            <template v-if="tournament.content?.endDate">{{ tournament.content.endDate }}</template>
           </span>
         </div>
-        <p v-if="tournament.description" class="mt-2 text-sm text-surface-600">
-          {{ tournament.description }}
+        <p v-if="tournament.content?.description" class="mt-2 text-sm text-surface-600">
+          {{ tournament.content.description }}
         </p>
       </div>
 
-      <!-- ディビジョンがない場合 -->
+      <!-- ディビジョン情報なし（新DTO では divisions は別エンドポイント管理のためメッセージのみ表示） -->
       <DashboardEmptyState
-        v-if="tournament.divisions.length === 0"
+        v-if="!activeDivisionId"
         icon="pi pi-sitemap"
         message="部門が登録されていません"
       />
 
-      <!-- ディビジョンタブ -->
+      <!-- ディビジョンタブ（部門がある場合のみ表示） -->
       <Tabs
         v-else
-        :value="activeDivisionId ?? tournament.divisions[0]!.id"
+        :value="activeDivisionId"
         @update:value="onTabChange($event as number)"
       >
         <TabList>
-          <Tab v-for="div in tournament.divisions" :key="div.id" :value="div.id">
-            {{ div.name }}
+          <Tab :value="activeDivisionId">
+            部門
           </Tab>
         </TabList>
 
         <TabPanels>
-          <TabPanel v-for="div in tournament.divisions" :key="div.id" :value="div.id">
+          <TabPanel :value="activeDivisionId">
             <div class="mt-4">
-              <PageLoading v-if="participantsLoading[div.id]" size="32px" />
+              <PageLoading v-if="activeDivisionId && participantsLoading[activeDivisionId]" size="32px" />
               <template v-else>
                 <DashboardEmptyState
-                  v-if="!participantsMap[div.id] || participantsMap[div.id]!.length === 0"
+                  v-if="!activeDivisionId || !participantsMap[activeDivisionId] || participantsMap[activeDivisionId]!.length === 0"
                   icon="pi pi-users"
                   message="参加チームがいません"
                 />
                 <DataTable
                   v-else
-                  :value="participantsMap[div.id]"
+                  :value="participantsMap[activeDivisionId]"
                   class="text-sm"
                   striped-rows
                 >
                   <Column field="teamName" header="チーム名" />
                   <Column header="エントリー数">
                     <template #body="{ data }">
-                      {{ getEntryCount(div.id, data.id) }}
+                      {{ activeDivisionId ? getEntryCount(activeDivisionId, data.id) : '-' }}
                     </template>
                   </Column>
                   <Column v-if="isAdminOrDeputy" header="操作" style="width: 8rem">
@@ -217,7 +214,7 @@ onMounted(async () => {
                         icon="pi pi-list"
                         size="small"
                         text
-                        @click="openEntryModal(data, div.id)"
+                        @click="activeDivisionId && openEntryModal(data, activeDivisionId)"
                       />
                     </template>
                   </Column>

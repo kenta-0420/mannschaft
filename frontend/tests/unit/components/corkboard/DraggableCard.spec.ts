@@ -67,32 +67,44 @@ function makeCard(over: Partial<CorkboardCardDetail> = {}): CorkboardCardDetail 
   return {
     id: 1,
     corkboardId: 10,
-    sectionId: null,
-    cardType: 'MEMO',
-    referenceType: null,
-    referenceId: null,
-    contentSnapshot: null,
-    title: 'テストカード',
-    body: null,
-    url: null,
-    ogTitle: null,
-    ogImageUrl: null,
-    ogDescription: null,
-    colorLabel: null,
-    cardSize: 'MEDIUM',
-    positionX: 100,
-    positionY: 200,
-    zIndex: null,
-    userNote: null,
-    noteColor: null,
-    autoArchiveAt: null,
-    isArchived: false,
-    isPinned: false,
-    pinnedAt: null,
-    isRefDeleted: false,
-    createdBy: null,
-    createdAt: '2026-01-01T00:00:00',
-    updatedAt: '2026-01-01T00:00:00',
+    reference: {
+      sectionId: null,
+      cardType: 'MEMO',
+      referenceType: null,
+      referenceId: null,
+      contentSnapshot: null,
+    },
+    content: {
+      title: 'テストカード',
+      body: null,
+      url: null,
+      ogTitle: null,
+      ogImageUrl: null,
+      ogDescription: null,
+    },
+    layout: {
+      positionX: 100,
+      positionY: 200,
+      zIndex: null,
+      cardSize: 'MEDIUM',
+    },
+    style: {
+      colorLabel: null,
+      noteColor: null,
+    },
+    state: {
+      isArchived: false,
+      isPinned: false,
+      pinnedAt: null,
+      autoArchiveAt: null,
+      isRefDeleted: false,
+    },
+    audit: {
+      userNote: null,
+      createdBy: null,
+      createdAt: '2026-01-01T00:00:00',
+      updatedAt: '2026-01-01T00:00:00',
+    },
     ...over,
   }
 }
@@ -135,7 +147,7 @@ describe('DraggableCard.vue', () => {
   describe('isDraggable（data-draggable 属性で検証）', () => {
     it('DRAG-CARD-001: isPinned=true のとき isDraggable=false（data-draggable="false"）', async () => {
       const wrapper = await mountSuspended(DraggableCard, {
-        props: makeProps({ isPinned: true }, { canEdit: true }),
+        props: makeProps({ state: { isPinned: true, isArchived: false, pinnedAt: null, autoArchiveAt: null, isRefDeleted: false } }, { canEdit: true }),
       })
       const article = wrapper.find('[data-testid="corkboard-card-1"]')
       expect(article.attributes('data-draggable')).toBe('false')
@@ -143,7 +155,7 @@ describe('DraggableCard.vue', () => {
 
     it('DRAG-CARD-002: canEdit=false のとき isDraggable=false（data-draggable="false"）', async () => {
       const wrapper = await mountSuspended(DraggableCard, {
-        props: makeProps({ isPinned: false }, { canEdit: false }),
+        props: makeProps({ state: { isPinned: false, isArchived: false, pinnedAt: null, autoArchiveAt: null, isRefDeleted: false } }, { canEdit: false }),
       })
       const article = wrapper.find('[data-testid="corkboard-card-1"]')
       expect(article.attributes('data-draggable')).toBe('false')
@@ -151,7 +163,7 @@ describe('DraggableCard.vue', () => {
 
     it('DRAG-CARD-003: isPinned=false && canEdit=true のとき isDraggable=true（data-draggable="true"）', async () => {
       const wrapper = await mountSuspended(DraggableCard, {
-        props: makeProps({ isPinned: false }, { canEdit: true }),
+        props: makeProps({ state: { isPinned: false, isArchived: false, pinnedAt: null, autoArchiveAt: null, isRefDeleted: false } }, { canEdit: true }),
       })
       const article = wrapper.find('[data-testid="corkboard-card-1"]')
       expect(article.attributes('data-draggable')).toBe('true')
@@ -165,7 +177,10 @@ describe('DraggableCard.vue', () => {
   describe('cardSize computed（style width/height で検証）', () => {
     it('DRAG-CARD-004: cardSize=SMALL のとき width=150px, height=100px', async () => {
       const wrapper = await mountSuspended(DraggableCard, {
-        props: makeProps({ cardSize: 'SMALL', cardType: 'MEMO' }),
+        props: makeProps({
+          layout: { cardSize: 'SMALL', positionX: 100, positionY: 200, zIndex: null },
+          reference: { cardType: 'MEMO', sectionId: null, referenceType: null, referenceId: null, contentSnapshot: null },
+        }),
       })
       const article = wrapper.find('[data-testid="corkboard-card-1"]')
       const style = (article.element as HTMLElement).style
@@ -175,7 +190,10 @@ describe('DraggableCard.vue', () => {
 
     it('DRAG-CARD-005: cardSize=LARGE のとき width=300px, height=200px', async () => {
       const wrapper = await mountSuspended(DraggableCard, {
-        props: makeProps({ cardSize: 'LARGE', cardType: 'MEMO' }),
+        props: makeProps({
+          layout: { cardSize: 'LARGE', positionX: 100, positionY: 200, zIndex: null },
+          reference: { cardType: 'MEMO', sectionId: null, referenceType: null, referenceId: null, contentSnapshot: null },
+        }),
       })
       const article = wrapper.find('[data-testid="corkboard-card-1"]')
       const style = (article.element as HTMLElement).style
@@ -185,7 +203,10 @@ describe('DraggableCard.vue', () => {
 
     it('DRAG-CARD-006: cardType=SECTION_HEADER のとき width=320px, height=40px（サイズ優先）', async () => {
       const wrapper = await mountSuspended(DraggableCard, {
-        props: makeProps({ cardType: 'SECTION_HEADER', cardSize: 'MEDIUM' }),
+        props: makeProps({
+          reference: { cardType: 'SECTION_HEADER', sectionId: null, referenceType: null, referenceId: null, contentSnapshot: null },
+          layout: { cardSize: 'MEDIUM', positionX: 100, positionY: 200, zIndex: null },
+        }),
       })
       const article = wrapper.find('[data-testid="corkboard-card-1"]')
       const style = (article.element as HTMLElement).style
@@ -195,7 +216,10 @@ describe('DraggableCard.vue', () => {
 
     it('DRAG-CARD-007: cardSize=MEDIUM（デフォルト）のとき width=200px, height=150px', async () => {
       const wrapper = await mountSuspended(DraggableCard, {
-        props: makeProps({ cardSize: 'MEDIUM', cardType: 'MEMO' }),
+        props: makeProps({
+          layout: { cardSize: 'MEDIUM', positionX: 100, positionY: 200, zIndex: null },
+          reference: { cardType: 'MEMO', sectionId: null, referenceType: null, referenceId: null, contentSnapshot: null },
+        }),
       })
       const article = wrapper.find('[data-testid="corkboard-card-1"]')
       const style = (article.element as HTMLElement).style
@@ -212,7 +236,10 @@ describe('DraggableCard.vue', () => {
     it('DRAG-CARD-008: 100文字以下の body はそのままレンダリングされる', async () => {
       const shortText = 'あいうえお'.repeat(10) // 50文字
       const wrapper = await mountSuspended(DraggableCard, {
-        props: makeProps({ cardType: 'MEMO', body: shortText, title: null }),
+        props: makeProps({
+          reference: { cardType: 'MEMO', sectionId: null, referenceType: null, referenceId: null, contentSnapshot: null },
+          content: { title: null, body: shortText, url: null, ogTitle: null, ogImageUrl: null, ogDescription: null },
+        }),
       })
       expect(wrapper.text()).toContain(shortText)
     })
@@ -220,7 +247,10 @@ describe('DraggableCard.vue', () => {
     it('DRAG-CARD-009: 101文字の body は100文字で切り捨てられ「…」が付く', async () => {
       const longText = 'a'.repeat(101)
       const wrapper = await mountSuspended(DraggableCard, {
-        props: makeProps({ cardType: 'MEMO', body: longText, title: null }),
+        props: makeProps({
+          reference: { cardType: 'MEMO', sectionId: null, referenceType: null, referenceId: null, contentSnapshot: null },
+          content: { title: null, body: longText, url: null, ogTitle: null, ogImageUrl: null, ogDescription: null },
+        }),
       })
       // 「aaaa...（100文字）…」が含まれること
       expect(wrapper.text()).toContain('a'.repeat(100) + '…')
@@ -236,7 +266,7 @@ describe('DraggableCard.vue', () => {
   describe('colorBarClass', () => {
     it('DRAG-CARD-010: colorLabel=RED のとき bg-red-400 クラスが付く', async () => {
       const wrapper = await mountSuspended(DraggableCard, {
-        props: makeProps({ colorLabel: 'RED' }),
+        props: makeProps({ style: { colorLabel: 'RED', noteColor: null } }),
       })
       // カラーバーは article の直下の最初の span
       const colorBar = wrapper.find('article > span')
@@ -245,7 +275,7 @@ describe('DraggableCard.vue', () => {
 
     it('DRAG-CARD-011: colorLabel=null のとき bg-surface-200（デフォルト）が付く', async () => {
       const wrapper = await mountSuspended(DraggableCard, {
-        props: makeProps({ colorLabel: null }),
+        props: makeProps({ style: { colorLabel: null, noteColor: null } }),
       })
       const colorBar = wrapper.find('article > span')
       expect(colorBar.classes()).toContain('bg-surface-200')
@@ -259,7 +289,7 @@ describe('DraggableCard.vue', () => {
   describe('iconClass', () => {
     it('DRAG-CARD-012: cardType=MEMO のとき pi-pencil クラスが付く', async () => {
       const wrapper = await mountSuspended(DraggableCard, {
-        props: makeProps({ cardType: 'MEMO' }),
+        props: makeProps({ reference: { cardType: 'MEMO', sectionId: null, referenceType: null, referenceId: null, contentSnapshot: null } }),
       })
       // ヘッダアイコン（pi クラスを持つ最初の i 要素）
       const icon = wrapper.find('.pi.mt-0\\.5')
@@ -268,7 +298,7 @@ describe('DraggableCard.vue', () => {
 
     it('DRAG-CARD-013: cardType=SECTION_HEADER のとき pi-tag クラスが付く', async () => {
       const wrapper = await mountSuspended(DraggableCard, {
-        props: makeProps({ cardType: 'SECTION_HEADER' }),
+        props: makeProps({ reference: { cardType: 'SECTION_HEADER', sectionId: null, referenceType: null, referenceId: null, contentSnapshot: null } }),
       })
       const icon = wrapper.find('.pi.mt-0\\.5')
       expect(icon.classes()).toContain('pi-tag')
@@ -315,7 +345,7 @@ describe('DraggableCard.vue', () => {
   describe('ロックアイコン表示', () => {
     it('DRAG-CARD-017: isPinned=true のときピン止めアイコン（bookmark-fill）が表示される', async () => {
       const wrapper = await mountSuspended(DraggableCard, {
-        props: makeProps({ isPinned: true }, { canEdit: true }),
+        props: makeProps({ state: { isPinned: true, isArchived: false, pinnedAt: null, autoArchiveAt: null, isRefDeleted: false } }, { canEdit: true }),
       })
       const lockIcon = wrapper.find('[data-testid="corkboard-card-lock-icon-1"]')
       expect(lockIcon.exists()).toBe(true)
@@ -324,7 +354,7 @@ describe('DraggableCard.vue', () => {
 
     it('DRAG-CARD-018: canEdit=false && isPinned=false のとき鍵アイコン（pi-lock）が表示される', async () => {
       const wrapper = await mountSuspended(DraggableCard, {
-        props: makeProps({ isPinned: false }, { canEdit: false }),
+        props: makeProps({ state: { isPinned: false, isArchived: false, pinnedAt: null, autoArchiveAt: null, isRefDeleted: false } }, { canEdit: false }),
       })
       const lockIcon = wrapper.find('[data-testid="corkboard-card-lock-icon-1"]')
       expect(lockIcon.exists()).toBe(true)

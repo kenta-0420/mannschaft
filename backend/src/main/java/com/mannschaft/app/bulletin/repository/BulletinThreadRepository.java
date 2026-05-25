@@ -6,6 +6,7 @@ import com.mannschaft.app.bulletin.visibility.BulletinThreadVisibilityProjection
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -59,6 +60,21 @@ public interface BulletinThreadRepository extends JpaRepository<BulletinThreadEn
      * カテゴリに属するスレッド数を取得する。
      */
     long countByCategoryId(Long categoryId);
+
+    /**
+     * 指定カテゴリ配下の未削除スレッドを一括で未分類（category_id = NULL）に更新する。
+     *
+     * <p>設計書 F05.1 §5 に従い、カテゴリ削除時に配下スレッドを巻き添え削除せず
+     * 「未分類」として残すための処理。論理削除でも物理削除（FK ON DELETE SET NULL）でも
+     * スレッド自体は保持される。</p>
+     *
+     * @param categoryId 削除対象カテゴリ ID
+     * @return 未分類化したスレッド件数
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE BulletinThreadEntity t SET t.categoryId = NULL "
+            + "WHERE t.categoryId = :categoryId AND t.deletedAt IS NULL")
+    int bulkSetCategoryIdNullByCategoryId(@Param("categoryId") Long categoryId);
 
     /**
      * F00 共通可視性基盤 — {@link BulletinThreadVisibilityProjection} を 1 SQL でバルク取得する。

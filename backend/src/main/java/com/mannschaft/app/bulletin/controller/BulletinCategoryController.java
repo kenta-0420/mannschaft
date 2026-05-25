@@ -3,6 +3,7 @@ package com.mannschaft.app.bulletin.controller;
 import com.mannschaft.app.bulletin.ScopeType;
 import com.mannschaft.app.bulletin.dto.CategoryResponse;
 import com.mannschaft.app.bulletin.dto.CreateCategoryRequest;
+import com.mannschaft.app.bulletin.dto.DeleteCategoryResponse;
 import com.mannschaft.app.bulletin.dto.UpdateCategoryRequest;
 import com.mannschaft.app.bulletin.service.BulletinCategoryService;
 import com.mannschaft.app.common.ApiResponse;
@@ -98,16 +99,19 @@ public class BulletinCategoryController {
 
     /**
      * カテゴリを削除する。
+     *
+     * <p>設計書 F05.1 §4/§5 に従い、配下スレッドを未分類（category_id = NULL）へ移行したうえで
+     * カテゴリを論理削除し、未分類化したスレッド件数を含むレスポンスを返す。</p>
      */
     @DeleteMapping("/{categoryId}")
     @Operation(summary = "カテゴリ削除")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
-    public ResponseEntity<Void> deleteCategory(
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "削除成功")
+    public ResponseEntity<ApiResponse<DeleteCategoryResponse>> deleteCategory(
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long categoryId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        categoryService.deleteCategory(type, scopeId, categoryId);
-        return ResponseEntity.noContent().build();
+        DeleteCategoryResponse response = categoryService.deleteCategory(type, scopeId, categoryId);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

@@ -67,7 +67,7 @@ function onMitayoToggled(postId: number, mitayo: boolean, mitayoCount: number) {
   if (!post) return
   post.mitayo = mitayo
   post.mitayoCount = mitayoCount
-  post.reactionCount = mitayoCount
+  if (post.stats) post.stats.reactionCount = mitayoCount
 }
 
 async function onBookmark(postId: number) {
@@ -91,7 +91,7 @@ async function onPin(postId: number) {
   if (!post) return
   try {
     await pinPost(postId)
-    showSuccess(post.isPinned ? 'ピン解除しました' : 'ピン留めしました')
+    showSuccess(post.content?.isPinned ? 'ピン解除しました' : 'ピン留めしました')
     refresh()
   } catch {
     showError('ピン操作に失敗しました')

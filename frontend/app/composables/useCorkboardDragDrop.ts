@@ -39,8 +39,8 @@ export function useCorkboardDragDrop(
    * `boardContentSize` 算出やボード描画領域計算に使用する。
    */
   function cardSizePixels(card: CorkboardCardDetail): { width: number; height: number } {
-    const size = (card.cardSize ?? 'MEDIUM').toUpperCase()
-    if (card.cardType === 'SECTION_HEADER') {
+    const size = (card.layout?.cardSize ?? 'MEDIUM').toUpperCase()
+    if (card.reference?.cardType === 'SECTION_HEADER') {
       return { width: 320, height: 40 }
     }
     if (size === 'SMALL') return { width: 150, height: 100 }
@@ -59,8 +59,8 @@ export function useCorkboardDragDrop(
     let maxY = 800
     for (const c of (board.value?.cards ?? [])) {
       const { width, height } = cardSizePixels(c)
-      maxX = Math.max(maxX, c.positionX + width + 40)
-      maxY = Math.max(maxY, c.positionY + height + 40)
+      maxX = Math.max(maxX, (c.layout?.positionX ?? 0) + width + 40)
+      maxY = Math.max(maxY, (c.layout?.positionY ?? 0) + height + 40)
     }
     for (const s of (board.value?.groups ?? [])) {
       maxX = Math.max(maxX, s.positionX + s.width + 40)
@@ -82,15 +82,17 @@ export function useCorkboardDragDrop(
     const target = board.value.cards.find((c) => c.id === cardId)
     if (!target) return
 
-    const prevX = target.positionX
-    const prevY = target.positionY
-    const zIndex = target.zIndex ?? 1
+    const prevX = target.layout?.positionX ?? 0
+    const prevY = target.layout?.positionY ?? 0
+    const zIndex = target.layout?.zIndex ?? 1
 
     // 楽観的更新: 先に UI を新座標へ反映
     board.value = {
       ...board.value,
       cards: board.value.cards.map((c) =>
-        c.id === cardId ? { ...c, positionX: x, positionY: y } : c,
+        c.id === cardId
+          ? { ...c, layout: { ...c.layout, positionX: x, positionY: y, zIndex: c.layout?.zIndex ?? 1, cardSize: c.layout?.cardSize ?? null } }
+          : c,
       ),
     }
 
@@ -106,7 +108,9 @@ export function useCorkboardDragDrop(
         board.value = {
           ...board.value,
           cards: board.value.cards.map((c) =>
-            c.id === cardId ? { ...c, positionX: prevX, positionY: prevY } : c,
+            c.id === cardId
+              ? { ...c, layout: { ...c.layout, positionX: prevX, positionY: prevY, zIndex: c.layout?.zIndex ?? 1, cardSize: c.layout?.cardSize ?? null } }
+              : c,
           ),
         }
       }

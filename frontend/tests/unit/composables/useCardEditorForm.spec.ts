@@ -75,37 +75,61 @@ import { useCardEditorForm } from '~/composables/useCardEditorForm'
  */
 const mockT = (key: string) => key
 
-function makeCardDetail(overrides: Partial<CorkboardCardDetail> = {}): CorkboardCardDetail {
+function makeCardDetail(overrides: {
+  cardType?: CorkboardCardDetail['reference']['cardType']
+  referenceType?: CorkboardCardDetail['reference']['referenceType']
+  referenceId?: CorkboardCardDetail['reference']['referenceId']
+  sectionId?: CorkboardCardDetail['reference']['sectionId']
+  contentSnapshot?: CorkboardCardDetail['reference']['contentSnapshot']
+  title?: CorkboardCardDetail['content']['title']
+  body?: CorkboardCardDetail['content']['body']
+  url?: CorkboardCardDetail['content']['url']
+  colorLabel?: CorkboardCardDetail['style']['colorLabel']
+  positionX?: CorkboardCardDetail['layout']['positionX']
+  positionY?: CorkboardCardDetail['layout']['positionY']
+  userNote?: CorkboardCardDetail['audit']['userNote']
+} = {}): CorkboardCardDetail {
   return {
     id: 1,
     corkboardId: 10,
-    sectionId: null,
-    cardType: 'MEMO',
-    referenceType: null,
-    referenceId: null,
-    contentSnapshot: null,
-    title: '既存タイトル',
-    body: '既存本文',
-    url: null,
-    ogTitle: null,
-    ogImageUrl: null,
-    ogDescription: null,
-    colorLabel: 'YELLOW',
-    cardSize: null,
-    positionX: 100,
-    positionY: 200,
-    zIndex: null,
-    userNote: '既存メモ',
-    noteColor: null,
-    autoArchiveAt: null,
-    isArchived: false,
-    isPinned: false,
-    pinnedAt: null,
-    isRefDeleted: false,
-    createdBy: null,
-    createdAt: '2026-01-01T00:00:00',
-    updatedAt: '2026-01-01T00:00:00',
-    ...overrides,
+    reference: {
+      sectionId: overrides.sectionId ?? null,
+      cardType: overrides.cardType ?? 'MEMO',
+      referenceType: overrides.referenceType ?? null,
+      referenceId: overrides.referenceId ?? null,
+      contentSnapshot: overrides.contentSnapshot ?? null,
+    },
+    content: {
+      title: overrides.title ?? '既存タイトル',
+      body: overrides.body ?? '既存本文',
+      url: overrides.url ?? null,
+      ogTitle: null,
+      ogImageUrl: null,
+      ogDescription: null,
+    },
+    layout: {
+      positionX: overrides.positionX ?? 100,
+      positionY: overrides.positionY ?? 200,
+      zIndex: null,
+      cardSize: 'MEDIUM',
+    },
+    style: {
+      colorLabel: overrides.colorLabel ?? 'YELLOW',
+      noteColor: null,
+    },
+    state: {
+      isArchived: false,
+      isPinned: false,
+      pinnedAt: null,
+      autoArchiveAt: null,
+      isRefDeleted: false,
+    },
+    audit: {
+      userNote: overrides.userNote ?? '既存メモ',
+      createdBy: null,
+      createdAt: '2026-01-01T00:00:00',
+      updatedAt: '2026-01-01T00:00:00',
+    },
   }
 }
 
