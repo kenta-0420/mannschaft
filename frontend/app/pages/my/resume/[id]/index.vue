@@ -64,7 +64,14 @@ async function doSave() {
   if (!form.value) return
   saveStatus.value = 'saving'
   try {
-    const res = await saveResume(resumeId.value, form.value)
+    const payload = {
+      ...form.value,
+      educations: form.value.educations.filter(e => e.description?.trim()),
+      careers: form.value.careers.filter(c => c.companyName?.trim()),
+      qualifications: form.value.qualifications.filter(q => q.name?.trim()),
+      skills: form.value.skills.filter(s => s.skillName?.trim()),
+    }
+    const res = await saveResume(resumeId.value, payload)
     // バージョンを最新値で更新（楽観ロック）
     form.value.version = res.data.version
     saveStatus.value = 'saved'
