@@ -92,6 +92,17 @@ class PersonalDataCollectorTest {
     private UserWeatherLocationRepository userWeatherLocationRepository;
     @Mock
     private EncryptionService encryptionService;
+    // F01.10 職務経歴書（履歴書）
+    @Mock
+    private ResumeRepository resumeRepository;
+    @Mock
+    private ResumeEducationRepository resumeEducationRepository;
+    @Mock
+    private ResumeCareerRepository resumeCareerRepository;
+    @Mock
+    private ResumeQualificationRepository resumeQualificationRepository;
+    @Mock
+    private ResumeSkillRepository resumeSkillRepository;
     // F18 個人ポイントカードウォレット S3
     @Mock
     private UserPointCardRepository userPointCardRepository;
@@ -150,6 +161,9 @@ class PersonalDataCollectorTest {
             given(proxyInputRecordRepository.findBySubjectUserId(anyLong()))
                     .willReturn(List.of());
             given(userWeatherLocationRepository.findByUserId(anyLong()))
+                    .willReturn(List.of());
+            // F01.10 職務経歴書（履歴書）
+            given(resumeRepository.findByUserIdOrderByCreatedAtDesc(anyLong()))
                     .willReturn(List.of());
             // F18 個人ポイントカードウォレット S3
             given(pointCardUserSettingsRepository.findById(anyLong()))
