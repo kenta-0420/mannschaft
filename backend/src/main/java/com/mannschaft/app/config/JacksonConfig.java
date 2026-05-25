@@ -1,9 +1,11 @@
 package com.mannschaft.app.config;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import com.mannschaft.app.config.jackson.LocalDateTimeTimezoneSerializer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -50,7 +52,7 @@ public class JacksonConfig {
 
         return builder
                 .featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-                .modules(new JavaTimeModule(), timezoneModule)
+                .modules(new JavaTimeModule(), timezoneModule, new ParameterNamesModule(JsonCreator.Mode.DEFAULT))
                 .build();
     }
 }
