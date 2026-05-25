@@ -85,6 +85,8 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // CORS プリフライトリクエストは認証不要
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Swagger UI・OpenAPI ドキュメント
                 .requestMatchers(
                     "/swagger-ui/**",
