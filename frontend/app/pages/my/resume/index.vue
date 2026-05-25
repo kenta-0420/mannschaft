@@ -9,6 +9,7 @@
  */
 import type { ResumeSummary } from '~/types/resume'
 
+const NuxtLink = resolveComponent('NuxtLink')
 const { t } = useI18n()
 const { listResumes, createResume, deleteResume, duplicateResume } = useResumeApi()
 const { success, error } = useNotification()

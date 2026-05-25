@@ -116,8 +116,8 @@ function moveEducation(index: number, direction: -1 | 1) {
   const arr = form.value.educations
   const newIdx = index + direction
   if (newIdx < 0 || newIdx >= arr.length) return
-  const tmp = arr[index]
-  arr[index] = arr[newIdx]
+  const tmp = arr[index]!
+  arr[index] = arr[newIdx]!
   arr[newIdx] = tmp
   reorderEducations()
 }
@@ -156,8 +156,8 @@ function moveCareer(index: number, direction: -1 | 1) {
   const arr = form.value.careers
   const newIdx = index + direction
   if (newIdx < 0 || newIdx >= arr.length) return
-  const tmp = arr[index]
-  arr[index] = arr[newIdx]
+  const tmp = arr[index]!
+  arr[index] = arr[newIdx]!
   arr[newIdx] = tmp
   reorderCareers()
 }
@@ -187,8 +187,8 @@ function moveQualification(index: number, direction: -1 | 1) {
   const arr = form.value.qualifications
   const newIdx = index + direction
   if (newIdx < 0 || newIdx >= arr.length) return
-  const tmp = arr[index]
-  arr[index] = arr[newIdx]
+  const tmp = arr[index]!
+  arr[index] = arr[newIdx]!
   arr[newIdx] = tmp
   reorderQualifications()
 }
