@@ -36,7 +36,13 @@ import java.util.UUID;
 @Builder(toBuilder = true)
 public class BulletinThreadEntity extends BaseEntity {
 
-    @Column(nullable = false)
+    /**
+     * カテゴリID。
+     *
+     * <p>設計書 F05.1 §3 に従い NULL 許容。カテゴリ削除時の既存スレッドや、
+     * システム生成スレッド（アンケート等の自動作成）では NULL となる場合がある。</p>
+     */
+    @Column(nullable = true)
     private Long categoryId;
 
     @Enumerated(EnumType.STRING)
