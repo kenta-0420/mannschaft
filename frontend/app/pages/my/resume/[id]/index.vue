@@ -297,7 +297,7 @@ onBeforeUnmount(() => {
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
         <NuxtLink
-          to="/mypage/resume"
+          to="/my/resume"
           class="flex items-center gap-1 text-sm text-surface-500 hover:text-primary"
         >
           <i class="pi pi-arrow-left" />
@@ -332,7 +332,7 @@ onBeforeUnmount(() => {
       <!-- 出力ボタン（上部） -->
       <SectionCard>
         <div class="flex flex-wrap gap-2">
-          <NuxtLink :to="`/mypage/resume/${resumeId}/preview?type=rirekisho&format=pdf`">
+          <NuxtLink :to="`/my/resume/${resumeId}/preview?type=rirekisho&format=pdf`">
             <Button
               :label="t('common.resume.previewPdf') + '（' + t('common.resume.rirekisho') + '）'"
               icon="pi pi-eye"
@@ -340,7 +340,7 @@ onBeforeUnmount(() => {
               size="small"
             />
           </NuxtLink>
-          <NuxtLink :to="`/mypage/resume/${resumeId}/preview?type=shokumukeirekisho&format=pdf`">
+          <NuxtLink :to="`/my/resume/${resumeId}/preview?type=shokumukeirekisho&format=pdf`">
             <Button
               :label="t('common.resume.previewPdf') + '（' + t('common.resume.shokumukeirekisho') + '）'"
               icon="pi pi-eye"

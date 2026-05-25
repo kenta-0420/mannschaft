@@ -51,7 +51,7 @@ async function handleCreate() {
   try {
     const res = await createResume(newTitle.value.trim() ? { title: newTitle.value.trim() } : undefined)
     // 作成後すぐにエディタへ遷移
-    await navigateTo(`/mypage/resume/${res.data.id}`)
+    await navigateTo(`/my/resume/${res.data.id}`)
   }
   catch (e) {
     error(t('common.resume.saveError'), String(e))
@@ -161,7 +161,7 @@ onMounted(fetchResumes)
             icon="pi pi-pencil"
             size="small"
             :as="NuxtLink"
-            :to="`/mypage/resume/${resume.id}`"
+            :to="`/my/resume/${resume.id}`"
           />
           <Button
             :label="t('common.resume.duplicate')"

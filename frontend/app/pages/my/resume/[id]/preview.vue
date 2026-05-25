@@ -111,7 +111,7 @@ onMounted(loadPreview)
     <div class="flex flex-shrink-0 items-center justify-between gap-3 border-b border-surface-200 bg-surface-0 px-4 py-2 dark:border-surface-700 dark:bg-surface-900">
       <!-- 戻るボタン -->
       <NuxtLink
-        :to="`/mypage/resume/${resumeId}`"
+        :to="`/my/resume/${resumeId}`"
         class="flex items-center gap-1 text-sm text-surface-500 hover:text-primary"
       >
         <i class="pi pi-arrow-left" />
@@ -124,7 +124,7 @@ onMounted(loadPreview)
           <NuxtLink
             v-for="opt in previewTypeOptions"
             :key="opt.type"
-            :to="`/mypage/resume/${resumeId}/preview?type=${opt.type}&format=${format}`"
+            :to="`/my/resume/${resumeId}/preview?type=${opt.type}&format=${format}`"
             class="px-3 py-1.5 text-sm transition-colors"
             :class="type === opt.type
               ? 'bg-primary text-white rounded-lg'
@@ -137,7 +137,7 @@ onMounted(loadPreview)
         <!-- フォーマット切替 -->
         <div class="flex rounded-lg border border-surface-200 dark:border-surface-700">
           <NuxtLink
-            :to="`/mypage/resume/${resumeId}/preview?type=${type}&format=pdf`"
+            :to="`/my/resume/${resumeId}/preview?type=${type}&format=pdf`"
             class="px-3 py-1.5 text-sm transition-colors"
             :class="format === 'pdf'
               ? 'bg-primary text-white rounded-lg'
@@ -146,7 +146,7 @@ onMounted(loadPreview)
             PDF
           </NuxtLink>
           <NuxtLink
-            :to="`/mypage/resume/${resumeId}/preview?type=${type}&format=excel`"
+            :to="`/my/resume/${resumeId}/preview?type=${type}&format=excel`"
             class="px-3 py-1.5 text-sm transition-colors"
             :class="format === 'excel'
               ? 'bg-primary text-white rounded-lg'

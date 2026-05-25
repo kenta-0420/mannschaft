@@ -64,6 +64,12 @@ const cards: MyPageCard[] = [
     icon: 'pi pi-times-circle',
     to: '/my/no-shows',
   },
+  {
+    label: '履歴書・職務経歴書',
+    description: '履歴書・職務経歴書の作成・出力',
+    icon: 'pi pi-file-pdf',
+    to: '/my/resume',
+  },
 ]
 
 onMounted(async () => {
