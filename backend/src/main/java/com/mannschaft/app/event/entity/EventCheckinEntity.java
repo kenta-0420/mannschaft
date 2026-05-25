@@ -40,7 +40,7 @@ public class EventCheckinEntity {
      * チケットID。QR/セルフチェックイン時は必須。
      * 点呼（ROLL_CALL / ROLL_CALL_BATCH）の場合はチケットが存在しないため null を許容する。
      * チケット式（STAFF_SCAN / SELF）は必須・チケットレス（ROLL_CALL / ROLL_CALL_BATCH / PROXY）は NULL を、
-     * DB レベルの CHECK 制約 {@code chk_event_checkins_ticket_by_type}（V70.007）で保証する。
+     * DB レベルの CHECK 制約 {@code chk_event_checkins_ticket_by_type}（V70.008）で保証する。
      */
     private Long ticketId;
 

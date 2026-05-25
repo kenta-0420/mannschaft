@@ -19,14 +19,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * {@code event_checkins.ticket_id} に種別連動 CHECK 制約を追加した V70.007 の挙動検証テスト。
+ * {@code event_checkins.ticket_id} に種別連動 CHECK 制約を追加した V70.008 の挙動検証テスト。
  *
  * <p><b>このテストが検証する制約</b>:</p>
  * <ul>
  *   <li>{@code ticket_id} は点呼・代理チェックインのため V70.006 で NULL 許可になった。</li>
  *   <li>その副作用として「チケット式（{@link CheckinType#STAFF_SCAN} / {@link CheckinType#SELF}）なのに
  *       {@code ticket_id} が無い不正行」を DB が許してしまう状態になっていた。</li>
- *   <li>V70.007 で CHECK 制約 {@code chk_event_checkins_ticket_by_type} を追加し、
+ *   <li>V70.008 で CHECK 制約 {@code chk_event_checkins_ticket_by_type} を追加し、
  *       「チケット式は {@code ticket_id} 必須」「チケットレス
  *       （{@code ROLL_CALL} / {@code ROLL_CALL_BATCH} / {@code PROXY}）は {@code ticket_id = NULL}」を
  *       DB レベルで強制する。</li>
@@ -40,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * そこで本テストは {@link EventCheckinTicketIdNullableIntegrationTest} と同じく、
  * Testcontainers の実 MySQL 8.0 に対し本番同一の DDL
  * （V3.104 で {@code event_checkins} を作成 → V70.006 で {@code ticket_id} を NULL 許可へ
- * → V70.007 で CHECK 制約を追加）を JDBC で直接適用し、制約が期待どおり効くことを検証する。</p>
+ * → V70.008 で CHECK 制約を追加）を JDBC で直接適用し、制約が期待どおり効くことを検証する。</p>
  *
  * <p>全 Flyway マイグレーションを通さず event_checkins ドメインの DDL のみを忠実に再現するのは、
  * {@link EventCheckinTicketIdNullableIntegrationTest} と同じ理由（無関係なマイグレーション順序問題で
@@ -72,8 +72,8 @@ class EventCheckinTicketCheckConstraintIntegrationTest {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """;
 
-    /** V70.007 が適用する CHECK 制約（種別連動）。本番マイグレーションと同一文。 */
-    private static final String DDL_V70_007 = """
+    /** V70.008 が適用する CHECK 制約（種別連動）。本番マイグレーションと同一文。 */
+    private static final String DDL_V70_008 = """
             ALTER TABLE event_checkins
               ADD CONSTRAINT chk_event_checkins_ticket_by_type CHECK (
                 (checkin_type IN ('STAFF_SCAN', 'SELF') AND ticket_id IS NOT NULL)
@@ -115,7 +115,7 @@ class EventCheckinTicketCheckConstraintIntegrationTest {
         try (Statement st = conn.createStatement()) {
             st.execute("DROP TABLE IF EXISTS event_checkins");
             st.execute(DDL_TABLE);
-            st.execute(DDL_V70_007);
+            st.execute(DDL_V70_008);
         }
     }
 
