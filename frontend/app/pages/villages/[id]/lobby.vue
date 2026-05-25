@@ -29,6 +29,7 @@ import type {
   LobbyChannelResponse,
   VillageResponse,
 } from '~/types/village'
+import { useVillageLobbyPresence } from '~/composables/village/useVillageLobbyPresence'
 
 definePageMeta({
   middleware: 'auth',
