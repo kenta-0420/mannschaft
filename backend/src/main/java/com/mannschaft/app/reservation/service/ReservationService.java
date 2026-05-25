@@ -13,15 +13,19 @@ import com.mannschaft.app.reservation.dto.ReservationResponse;
 import com.mannschaft.app.reservation.dto.ReservationStatsResponse;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
+import com.mannschaft.app.reservation.event.ReservationCancelledByMemberEvent;
+import com.mannschaft.app.reservation.event.ReservationCreatedEvent;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -36,9 +40,13 @@ public class ReservationService {
     private static final List<ReservationStatus> ACTIVE_STATUSES =
             List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED);
 
+    private static final DateTimeFormatter BOOKED_AT_FORMATTER =
+            DateTimeFormatter.ofPattern("M月d日 HH:mm");
+
     private final ReservationRepository reservationRepository;
     private final ReservationSlotService slotService;
     private final ReservationMapper reservationMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * チームの予約一覧をページング取得する。
@@ -106,6 +114,16 @@ public class ReservationService {
 
         ReservationEntity saved = reservationRepository.save(entity);
         slotService.incrementAndCheckFull(slot);
+
+        String bookedAtFormatted = saved.getBookedAt().format(BOOKED_AT_FORMATTER);
+        eventPublisher.publishEvent(new ReservationCreatedEvent(
+                saved.getTeamId(),
+                saved.getId(),
+                userId,
+                slot.getApprovalMode(),
+                slot.getTitle(),
+                bookedAtFormatted
+        ));
 
         log.info("予約作成: teamId={}, reservationId={}, userId={}", teamId, saved.getId(), userId);
         return reservationMapper.toReservationResponse(saved);
@@ -175,11 +193,19 @@ public class ReservationService {
             throw new BusinessException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
         }
 
+        ReservationSlotEntity slot = slotService.getSlotEntity(entity.getReservationSlotId());
+
         entity.cancel(request.getReason(), CancelledBy.USER);
         ReservationEntity saved = reservationRepository.save(entity);
 
-        ReservationSlotEntity slot = slotService.getSlotEntity(entity.getReservationSlotId());
         slotService.decrementAndReopen(slot);
+
+        eventPublisher.publishEvent(new ReservationCancelledByMemberEvent(
+                saved.getTeamId(),
+                saved.getId(),
+                userId,
+                slot.getTitle()
+        ));
 
         log.info("予約キャンセル(ユーザー): userId={}, reservationId={}", userId, reservationId);
         return reservationMapper.toReservationResponse(saved);
