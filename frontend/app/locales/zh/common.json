@@ -1152,9 +1152,18 @@
       "previewLoading": "プレビューを生成中...",
       "exportLoading": "出力ファイルを生成中...",
       "previewError": "プレビューの生成に失敗しました",
-      "backToList": "一覧に戻る",
-      "backToEditor": "エディタに戻る",
-      "description": "内容"
+      "backToList": "返回列表",
+      "backToEditor": "返回编辑器",
+      "description": "内容",
+      "addressSection": "地址・联系方式",
+      "entryDate": "入职",
+      "endDate": "离职",
+      "acquiredYear": "取得年份",
+      "acquiredMonth": "取得月份",
+      "photoHint": "JPEG / PNG，最大 5MB，推荐比例 3:4",
+      "skillsSummaryHint": "自由填写可发挥的经验、知识和技术（结构化技能请在下方技能区填写）",
+      "excelPreviewUnavailable": "浏览器无法预览 Excel 文件",
+      "downloadLabel": "下载 {format}（{type}）"
     }
   },
   "teamHub": {

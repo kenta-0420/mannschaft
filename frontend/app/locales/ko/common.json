@@ -1152,9 +1152,18 @@
       "previewLoading": "プレビューを生成中...",
       "exportLoading": "出力ファイルを生成中...",
       "previewError": "プレビューの生成に失敗しました",
-      "backToList": "一覧に戻る",
-      "backToEditor": "エディタに戻る",
-      "description": "内容"
+      "backToList": "목록으로 돌아가기",
+      "backToEditor": "에디터로 돌아가기",
+      "description": "내용",
+      "addressSection": "주소・연락처",
+      "entryDate": "입사",
+      "endDate": "퇴사",
+      "acquiredYear": "취득 연도",
+      "acquiredMonth": "취득 월",
+      "photoHint": "JPEG / PNG, 최대 5MB, 권장 비율 3:4",
+      "skillsSummaryHint": "활용 가능한 경험·지식·기술을 자유롭게 기술해 주세요（구조화된 스킬은 아래 스킬 섹션에 입력）",
+      "excelPreviewUnavailable": "브라우저에서 Excel 파일을 미리 볼 수 없습니다",
+      "downloadLabel": "{format} 다운로드（{type}）"
     }
   },
   "teamHub": {

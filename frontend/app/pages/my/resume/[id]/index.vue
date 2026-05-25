@@ -463,7 +463,7 @@ onBeforeUnmount(() => {
               :loading="photoLoading"
               @click="handleDeletePhoto"
             />
-            <p class="text-xs text-surface-500">JPEG / PNG, 最大 5MB, 推奨比率 3:4</p>
+            <p class="text-xs text-surface-500">{{ t('common.resume.photoHint') }}</p>
           </div>
         </div>
         <input
@@ -477,7 +477,7 @@ onBeforeUnmount(() => {
 
       <!-- 住所・連絡先 -->
       <SectionCard>
-        <h2 class="mb-4 text-lg font-semibold">住所・連絡先</h2>
+        <h2 class="mb-4 text-lg font-semibold">{{ t('common.resume.addressSection') }}</h2>
         <div class="grid grid-cols-1 gap-4">
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
@@ -659,14 +659,14 @@ onBeforeUnmount(() => {
               </div>
               <div class="flex items-end gap-2">
                 <div class="flex-shrink-0">
-                  <label class="mb-1 block text-xs">入社</label>
+                  <label class="mb-1 block text-xs">{{ t('common.resume.entryDate') }}</label>
                   <div class="flex gap-1">
                     <InputNumber v-model="career.entryYear" :min="1900" :max="2099" :use-grouping="false" class="w-20" />
                     <InputNumber v-model="career.entryMonth" :min="1" :max="12" class="w-14" />
                   </div>
                 </div>
                 <div v-if="!career.isCurrent" class="flex-shrink-0">
-                  <label class="mb-1 block text-xs">退社</label>
+                  <label class="mb-1 block text-xs">{{ t('common.resume.endDate') }}</label>
                   <div class="flex gap-1">
                     <InputNumber v-model="career.endYear" :min="1900" :max="2099" :use-grouping="false" class="w-20" />
                     <InputNumber v-model="career.endMonth" :min="1" :max="12" class="w-14" />
@@ -728,11 +728,11 @@ onBeforeUnmount(() => {
             class="flex flex-wrap items-start gap-2 rounded-lg border border-surface-200 p-3 dark:border-surface-600"
           >
             <div class="flex-shrink-0">
-              <label class="mb-1 block text-xs">取得年</label>
+              <label class="mb-1 block text-xs">{{ t('common.resume.acquiredYear') }}</label>
               <InputNumber v-model="qual.acquiredYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" />
             </div>
             <div class="flex-shrink-0">
-              <label class="mb-1 block text-xs">取得月</label>
+              <label class="mb-1 block text-xs">{{ t('common.resume.acquiredMonth') }}</label>
               <InputNumber v-model="qual.acquiredMonth" :min="1" :max="12" class="w-16" />
             </div>
             <div class="min-w-48 flex-1">
@@ -799,7 +799,7 @@ onBeforeUnmount(() => {
           </div>
           <div>
             <label class="mb-1 block text-sm font-medium">{{ t('common.resume.skillsSummary') }}</label>
-            <p class="mb-1 text-xs text-surface-500">活かせる経験・知識・技術を自由に記述してください（構造化スキルは下のスキルセクションに入力）</p>
+            <p class="mb-1 text-xs text-surface-500">{{ t('common.resume.skillsSummaryHint') }}</p>
             <Textarea v-model="form.skillsSummary" rows="4" class="w-full" auto-resize />
           </div>
         </div>
