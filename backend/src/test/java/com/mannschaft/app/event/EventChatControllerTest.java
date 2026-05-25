@@ -59,7 +59,7 @@ class EventChatControllerTest {
             ChannelResponse channelResponse = new ChannelResponse(
                     1L, "EVENT_CHAT", 10L, null, "テストイベント チャット",
                     null, null, false, null, null, null,
-                    "EVENT", EVENT_ID, false, 1L, null, null
+                    "EVENT", EVENT_ID, false, false, 1L, null, null
             );
             given(eventChatChannelService.findByEventId(EVENT_ID)).willReturn(Optional.of(channelEntity));
             given(chatMapper.toChannelResponse(channelEntity)).willReturn(channelResponse);
