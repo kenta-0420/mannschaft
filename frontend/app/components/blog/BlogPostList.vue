@@ -56,7 +56,7 @@ async function submitCreate() {
       scopeId: props.scopeId ?? null,
     })
     showCreateDialog.value = false
-    const q = new URLSearchParams({ title: res.data.title })
+    const q = new URLSearchParams({ title: res.data.content?.title ?? '' })
     if (res.data.scopeType) q.set('scopeType', res.data.scopeType)
     if (res.data.scopeId != null) q.set('scopeId', String(res.data.scopeId))
     navigateTo(`/blog/posts/${res.data.id}/edit?${q.toString()}`)
@@ -117,13 +117,13 @@ defineExpose({ refresh: loadPosts })
         class="overflow-hidden rounded-xl border border-surface-300 bg-surface-0 text-left transition-shadow hover:shadow-md"
         @click="emit('select', post); navigateTo(`/blog/posts/${post.id}/edit`)"
       >
-        <img v-if="post.coverImageUrl" :src="post.coverImageUrl" class="h-40 w-full object-cover" >
+        <img v-if="post.content?.coverImageUrl" :src="post.content.coverImageUrl" class="h-40 w-full object-cover" >
         <div class="p-4">
           <div class="mb-2 flex flex-wrap items-center gap-2">
             <span
-              :class="getStatusClass(post.status)"
+              :class="getStatusClass(post.meta?.status ?? 'DRAFT')"
               class="rounded px-2 py-0.5 text-xs font-medium"
-              >{{ getStatusLabel(post.status) }}</span
+              >{{ getStatusLabel(post.meta?.status ?? 'DRAFT') }}</span
             >
             <span
               v-for="tag in post.tags.slice(0, 3)"
@@ -132,14 +132,14 @@ defineExpose({ refresh: loadPosts })
               >{{ tag.name }}</span
             >
           </div>
-          <h3 class="mb-1 text-sm font-semibold line-clamp-2">{{ post.title }}</h3>
-          <p v-if="post.excerpt" class="mb-2 text-xs text-surface-400 line-clamp-2">
-            {{ post.excerpt }}
+          <h3 class="mb-1 text-sm font-semibold line-clamp-2">{{ post.content?.title }}</h3>
+          <p v-if="post.content?.excerpt" class="mb-2 text-xs text-surface-400 line-clamp-2">
+            {{ post.content.excerpt }}
           </p>
           <div class="flex items-center gap-2 text-xs text-surface-400">
-            <span>{{ post.author.displayName }}</span>
-            <span>{{ relativeTime(post.publishedAt || post.createdAt) }}</span>
-            <span v-if="post.viewCount"><i class="pi pi-eye" /> {{ post.viewCount }}</span>
+            <span v-if="post.author?.displayName">{{ post.author.displayName }}</span>
+            <span>{{ relativeTime(post.audit?.publishedAt || post.audit?.createdAt || '') }}</span>
+            <span v-if="post.stats?.viewCount"><i class="pi pi-eye" /> {{ post.stats.viewCount }}</span>
           </div>
         </div>
       </button>

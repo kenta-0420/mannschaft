@@ -50,21 +50,21 @@ onMounted(() => loadRelatedPosts())
       <NuxtLink
         v-for="post in relatedPosts"
         :key="post.id"
-        :to="`/blog/posts/${post.slug}`"
+        :to="`/blog/posts/${post.content?.slug}`"
         class="group overflow-hidden rounded-xl border border-surface-200 bg-surface-0 transition-shadow hover:shadow-md dark:border-surface-700 dark:bg-surface-900"
       >
         <img
-          v-if="post.coverImageUrl"
-          :src="post.coverImageUrl"
-          :alt="post.title"
+          v-if="post.content?.coverImageUrl"
+          :src="post.content.coverImageUrl"
+          :alt="post.content?.title"
           class="h-32 w-full object-cover"
         >
         <div class="p-3">
           <p class="mb-1 text-sm font-medium text-surface-800 line-clamp-2 group-hover:text-primary-600 dark:text-surface-100">
-            {{ post.title }}
+            {{ post.content?.title }}
           </p>
           <p class="text-xs text-surface-400">
-            {{ relativeTime(post.publishedAt || post.createdAt) }}
+            {{ relativeTime(post.audit?.publishedAt || post.audit?.createdAt || '') }}
           </p>
         </div>
       </NuxtLink>

@@ -1,28 +1,57 @@
 export type BlogPostStatus = 'DRAFT' | 'PUBLISHED' | 'SCHEDULED' | 'ARCHIVED'
 export type BlogPostScope = 'TEAM' | 'ORGANIZATION' | 'PUBLIC' | 'PERSONAL'
 
-export interface BlogPostResponse {
-  id: number
-  slug: string
+export interface BlogPostContent {
   title: string
+  slug: string
   body: string | null
   excerpt: string | null
   coverImageUrl: string | null
+}
+
+export interface BlogPostMeta {
   status: BlogPostStatus
-  scopeType: BlogPostScope
-  scopeId: number | null
+  visibility: string | null
+  postType: string | null
+}
+
+export interface BlogPostAudit {
+  publishedAt: string | null
+  createdAt: string
+  updatedAt: string
+  createdBy: { id: number; displayName: string; avatarUrl: string | null } | null
+}
+
+export interface BlogPostScope2 {
+  teamId: number | null
+  organizationId: number | null
+  userId: number | null
+}
+
+export interface BlogPostStats {
+  viewCount: number
+  readingTimeMinutes: number | null
+  mitayo: boolean
+  mitayoCount: number
+}
+
+export interface BlogPostResponse {
+  id: number
+  content?: BlogPostContent
+  meta?: BlogPostMeta
+  audit?: BlogPostAudit
+  scope?: BlogPostScope2
+  stats?: BlogPostStats
   author: { id: number; displayName: string; avatarUrl: string | null }
   tags: BlogTag[]
   seriesId: number | null
   seriesName: string | null
   seriesOrder: number | null
-  publishedAt: string | null
   scheduledAt: string | null
-  viewCount: number
-  createdAt: string
-  updatedAt: string
-  mitayo: boolean
-  mitayoCount: number
+  /** @deprecated scopeType は scope?.organizationId / scope?.teamId / scope?.userId で判定 */
+  scopeType?: BlogPostScope
+  /** @deprecated scopeId は scope?.organizationId / scope?.teamId / scope?.userId で判定 */
+  scopeId?: number | null
 }
 
 export interface BlogReactionResponse {

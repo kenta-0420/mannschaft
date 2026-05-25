@@ -52,14 +52,14 @@ onMounted(() => loadSeriesPosts())
       <!-- 前の記事 -->
       <NuxtLink
         v-if="prevPost"
-        :to="`/blog/posts/${prevPost.slug}`"
+        :to="`/blog/posts/${prevPost.content?.slug}`"
         class="group flex flex-1 items-center gap-3 rounded-lg border border-surface-200 bg-surface-0 px-4 py-3 transition-shadow hover:shadow-md dark:border-surface-700 dark:bg-surface-900"
       >
         <i class="pi pi-chevron-left text-surface-400 group-hover:text-primary-500" />
         <div class="min-w-0">
           <p class="mb-0.5 text-xs text-surface-400">前の記事</p>
           <p class="truncate text-sm font-medium text-surface-700 dark:text-surface-200">
-            {{ prevPost.title }}
+            {{ prevPost.content?.title }}
           </p>
         </div>
       </NuxtLink>
@@ -68,13 +68,13 @@ onMounted(() => loadSeriesPosts())
       <!-- 次の記事 -->
       <NuxtLink
         v-if="nextPost"
-        :to="`/blog/posts/${nextPost.slug}`"
+        :to="`/blog/posts/${nextPost.content?.slug}`"
         class="group flex flex-1 items-center justify-end gap-3 rounded-lg border border-surface-200 bg-surface-0 px-4 py-3 text-right transition-shadow hover:shadow-md dark:border-surface-700 dark:bg-surface-900"
       >
         <div class="min-w-0">
           <p class="mb-0.5 text-xs text-surface-400">次の記事</p>
           <p class="truncate text-sm font-medium text-surface-700 dark:text-surface-200">
-            {{ nextPost.title }}
+            {{ nextPost.content?.title }}
           </p>
         </div>
         <i class="pi pi-chevron-right text-surface-400 group-hover:text-primary-500" />
