@@ -15,29 +15,48 @@ const errorHandler = useErrorHandler()
 const authStore = useAuthStore()
 const { formatDate, formatDateTime } = useDatetime()
 
+/** Wave 1 DTO刷新: ネスト構造 */
 interface PersonalTodoDetail {
   id: number
-  scopeType: string
-  scopeId: number
-  projectId: number | null
-  milestoneId: number | null
-  title: string
-  description: string | null
-  status: string
-  /** F02.3.1 — カスタムステータスラベル */
-  statusLabel: TodoStatusLabelInfo | null
-  priority: string
-  dueDate: string | null
-  dueTime: string | null
-  startDate: string | null
-  daysRemaining: number | null
-  progressRate: number | null
-  completedAt: string | null
-  completedBy: { id: number; displayName: string } | null
-  createdBy: { id: number; displayName: string }
+  scope?: {
+    scopeType?: string
+    scopeId?: number
+    projectId?: number | null
+    milestoneId?: number | null
+  }
+  content?: {
+    title?: string
+    description?: string | null
+    startDate?: string | null
+    progressRate?: number | null
+    progressManual?: boolean
+    sortOrder?: number
+  }
+  schedule?: {
+    dueDate?: string | null
+    dueTime?: string | null
+    daysRemaining?: number | null
+    linkedScheduleId?: number | null
+  }
+  audit?: {
+    createdAt?: string
+    updatedAt?: string
+    createdBy?: { id: number; displayName: string }
+    completedBy?: { id: number; displayName: string } | null
+  }
+  /** @deprecated 旧フラットフィールド互換 — ステータスバケット */
+  status?: string
+  /** @deprecated 旧フラットフィールド互換 */
+  priority?: string
+  /** @deprecated 旧フラットフィールド互換 */
+  statusLabel?: TodoStatusLabelInfo | null
+  /** @deprecated 旧フラットフィールド互換 */
+  daysRemaining?: number | null
+  /** @deprecated 旧フラットフィールド互換 */
+  completedAt?: string | null
+  /** @deprecated 旧フラットフィールド互換 */
+  completedBy?: { id: number; displayName: string } | null
   assignees: Array<{ userId: number; displayName: string; avatarUrl: string | null }>
-  createdAt: string
-  updatedAt: string
 }
 
 const todo = ref<PersonalTodoDetail | null>(null)
@@ -101,14 +120,14 @@ async function applyStatusChange() {
 function startEdit() {
   if (!todo.value) return
   editForm.value = {
-    title: todo.value.title,
-    description: todo.value.description ?? '',
-    priority: todo.value.priority,
-    progressRate: todo.value.progressRate ?? 0,
-    projectId: todo.value.projectId,
-    milestoneId: todo.value.milestoneId,
-    startDate: todo.value.startDate ? new Date(todo.value.startDate) : null,
-    dueDate: todo.value.dueDate ? new Date(todo.value.dueDate) : null,
+    title: todo.value.content?.title ?? '',
+    description: todo.value.content?.description ?? '',
+    priority: todo.value.priority ?? 'MEDIUM',
+    progressRate: todo.value.content?.progressRate ?? 0,
+    projectId: todo.value.scope?.projectId ?? null,
+    milestoneId: todo.value.scope?.milestoneId ?? null,
+    startDate: todo.value.content?.startDate ? new Date(todo.value.content.startDate) : null,
+    dueDate: todo.value.schedule?.dueDate ? new Date(todo.value.schedule.dueDate) : null,
   }
   editing.value = true
 }
@@ -138,7 +157,10 @@ async function saveEdit() {
     notification.success(t('todo.action.updated'))
     // 楽観的更新: API再取得を待たずに即時反映
     if (todo.value) {
-      todo.value = { ...todo.value, progressRate: editForm.value.progressRate }
+      todo.value = {
+        ...todo.value,
+        content: { ...todo.value.content, progressRate: editForm.value.progressRate },
+      }
     }
     editing.value = false
     await loadTodo()
@@ -173,7 +195,7 @@ onMounted(loadTodo)
     <div class="mb-6">
       <BackButton to="/todos" :label="t('todo.backToList')" />
       <div class="flex items-center justify-between gap-3">
-        <PageHeader :title="todo.title" />
+        <PageHeader :title="todo.content?.title" />
         <Button
           v-if="!editing"
           icon="pi pi-pencil"
@@ -204,7 +226,7 @@ onMounted(loadTodo)
         <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
           <p class="text-xs text-surface-500">{{ t('todo.field.startDate') }}</p>
           <p class="mt-1 text-sm font-medium">
-            {{ formatDate(todo.startDate) }}
+            {{ formatDate(todo.content?.startDate ?? null) }}
           </p>
         </div>
         <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
@@ -213,15 +235,17 @@ onMounted(loadTodo)
             class="mt-1 text-sm font-medium"
             :class="{
               'text-red-500':
-                todo.daysRemaining !== null && todo.daysRemaining < 0 && todo.status !== 'COMPLETED',
+                todo.schedule?.daysRemaining !== null &&
+                (todo.schedule?.daysRemaining ?? 0) < 0 &&
+                todo.status !== 'COMPLETED',
             }"
           >
-            {{ formatDate(todo.dueDate) }}
+            {{ formatDate(todo.schedule?.dueDate ?? null) }}
           </p>
         </div>
         <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
           <p class="text-xs text-surface-500">{{ t('todo.field.progressRate') }}</p>
-          <p class="mt-1 text-sm font-medium">{{ todo.progressRate ?? 0 }}%</p>
+          <p class="mt-1 text-sm font-medium">{{ todo.content?.progressRate ?? 0 }}%</p>
         </div>
       </div>
 
@@ -246,9 +270,9 @@ onMounted(loadTodo)
       </SectionCard>
 
       <!-- 説明 -->
-      <SectionCard v-if="todo.description" :title="t('todo.field.description')" class="mb-6">
+      <SectionCard v-if="todo.content?.description" :title="t('todo.field.description')" class="mb-6">
         <p class="whitespace-pre-wrap text-sm text-surface-700 dark:text-surface-300">
-          {{ todo.description }}
+          {{ todo.content?.description }}
         </p>
       </SectionCard>
 

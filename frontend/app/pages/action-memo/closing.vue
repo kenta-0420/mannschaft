@@ -48,6 +48,7 @@ const today = ref(todayJst())
 const todaysMemos = computed<ActionMemo[]>(() => store.currentDayMemos(today.value))
 
 // === TODO 一覧 ===
+/** Wave 1 DTO刷新: TodoItem はネスト構造から必要フィールドを正規化したローカル型 */
 interface TodoItem {
   id: number
   scopeType: string
@@ -71,25 +72,29 @@ async function loadTodos() {
   todosLoading.value = true
   try {
     const res = await todoApi.getMyTodos()
-    // 当日 dueDate + PERSONAL スコープのみ
+    // Wave 1 DTO刷新: ネスト構造から必要フィールドを正規化
     const list = (res?.data ?? []) as Array<{
       id: number
-      scopeType: string
-      scopeId: number
-      title: string
-      status: string
-      dueDate: string | null
+      scope?: { scopeType?: string; scopeId?: number }
+      content?: { title?: string }
+      schedule?: { dueDate?: string | null }
+      status?: string
+      // @deprecated 旧フラットフィールド互換
+      scopeType?: string
+      scopeId?: number
+      title?: string
+      dueDate?: string | null
     }>
     todos.value = list
-      .filter((item) => item.scopeType === 'PERSONAL' && item.dueDate === today.value)
       .map((item) => ({
         id: item.id,
-        scopeType: item.scopeType,
-        scopeId: item.scopeId,
-        title: item.title,
-        status: item.status,
-        dueDate: item.dueDate,
+        scopeType: item.scope?.scopeType ?? item.scopeType ?? '',
+        scopeId: item.scope?.scopeId ?? item.scopeId ?? 0,
+        title: item.content?.title ?? item.title ?? '',
+        status: item.status ?? '',
+        dueDate: item.schedule?.dueDate ?? item.dueDate ?? null,
       }))
+      .filter((item) => item.scopeType === 'PERSONAL' && item.dueDate === today.value)
   } catch {
     todos.value = []
   } finally {
