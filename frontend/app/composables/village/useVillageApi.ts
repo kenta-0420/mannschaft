@@ -8,6 +8,7 @@ import type {
   VillageSearchResponse,
   VillageUpdateRequest,
   LobbyChannelResponse,
+  LobbyPresenceResponse,
   DailyThreadListResponse,
   DailyThreadResponse,
 } from '~/types/village'
@@ -87,6 +88,11 @@ export function useVillageApi() {
     return api<DailyThreadResponse>(`/api/v1/villages/${villageId}/lobby/daily/${date}`)
   }
 
+  /** §4.10.5 ロビー在席状況取得 */
+  async function getLobbyPresence(villageId: string) {
+    return api<LobbyPresenceResponse>(`/api/v1/villages/${villageId}/lobby/presence`)
+  }
+
   // =====================================================================
   // 村内検索 (VillageSearchController)
   // =====================================================================
@@ -119,6 +125,7 @@ export function useVillageApi() {
     getLobbyChannel,
     listDailyThreads,
     getDailyThread,
+    getLobbyPresence,
     // 村内検索
     searchVillageInternal,
     // 横断フィード

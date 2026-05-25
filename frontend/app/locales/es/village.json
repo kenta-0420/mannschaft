@@ -203,6 +203,12 @@
         "LOBBY": "Lobby"
       }
     },
+    "widget": {
+      "lobbyDigest": {
+        "presence": "{count} personas en el pozo",
+        "empty": "Aún no hay aldeas fijadas"
+      }
+    },
     "search": {
       "placeholder": "村を検索...",
       "internalPlaceholder": "この村の中を検索...",

@@ -203,6 +203,12 @@
         "LOBBY": "Lobby"
       }
     },
+    "widget": {
+      "lobbyDigest": {
+        "presence": "{count}명이 우물가에 있습니다",
+        "empty": "아직 고정된 마을이 없습니다"
+      }
+    },
     "search": {
       "placeholder": "村を検索...",
       "internalPlaceholder": "この村の中を検索...",

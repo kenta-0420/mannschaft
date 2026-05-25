@@ -203,6 +203,12 @@
         "LOBBY": "Lobby"
       }
     },
+    "widget": {
+      "lobbyDigest": {
+        "presence": "{count}人正在井边",
+        "empty": "还没有收藏的村庄"
+      }
+    },
     "search": {
       "placeholder": "村を検索...",
       "internalPlaceholder": "この村の中を検索...",

@@ -203,6 +203,12 @@
         "LOBBY": "Lobby"
       }
     },
+    "widget": {
+      "lobbyDigest": {
+        "presence": "{count} Personen am Brunnen",
+        "empty": "Noch keine angehefteten Dörfer"
+      }
+    },
     "search": {
       "placeholder": "村を検索...",
       "internalPlaceholder": "この村の中を検索...",
