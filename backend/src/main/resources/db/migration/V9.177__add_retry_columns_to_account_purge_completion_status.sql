@@ -1,7 +1,15 @@
--- account_purge_completion_status に retry 追跡カラムを追加（Phase F）
--- 管理者による手動 retry の実行回数と最終実行日時を記録する。
-ALTER TABLE account_purge_completion_status
-    ADD COLUMN retry_count     TINYINT UNSIGNED NOT NULL DEFAULT 0
-        COMMENT 'retry 実行回数（管理者による手動 retry 累計）',
-    ADD COLUMN last_retried_at DATETIME(6)      NULL
-        COMMENT '最後に retry を実行した日時（管理者操作）';
+-- account_purge_completion_status に retry 追跡カラム（retry_count / last_retried_at）を
+-- 追加する Phase F のマイグレーションだったが、対象テーブルを作成する CREATE が
+-- V9.172→V9.179 に採番し直された結果、本マイグレーション（先発の V9.177）が
+-- 後発の V9.179 が作成するテーブルを参照する順序逆転となり、fresh DB で
+-- 「Table 'account_purge_completion_status' doesn't exist」で失敗していた。
+--
+-- 【順序逆転の根治 / 2026-05-25】
+-- CLAUDE.md「障害対応の原則（根治治療）」に従い、retry 系 2 カラムの定義を
+-- V9.179 の CREATE TABLE 文へ統合した。本マイグレーションは V9.175 / V9.176 と同じく
+-- no-op（SELECT 1）化する。
+--   - fresh DB: V9.177 は何もせず、V9.179 がカラム込みでテーブルを作成する。
+--   - 既存 DB: 本マイグレーションは適用済み（ALTER で 2 カラムは既に存在）。
+--     本ファイルの checksum が変わるため、デプロイ前に `flyway repair` が必要。
+--     repair 後も実スキーマは不変（カラムは既存の ALTER 適用分がそのまま残る）。
+SELECT 1;

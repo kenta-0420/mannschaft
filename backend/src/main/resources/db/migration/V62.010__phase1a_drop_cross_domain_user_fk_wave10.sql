@@ -27,7 +27,7 @@
 --     blog_post_revisions.fk_bpr_editor            (editor_id,   ON DELETE SET NULL)
 --     blog_post_shares.fk_bps_shared_by            (shared_by,   ON DELETE SET NULL)
 --     user_blog_settings.fk_ubs_user               (user_id,     ON DELETE CASCADE)
---     blog_image_uploads.fk_biu_uploader           (uploader_id, ON DELETE SET NULL)
+--     blog_media_uploads.fk_biu_uploader           (uploader_id, ON DELETE SET NULL)  ※V9.065 で blog_image_uploads からリネーム
 --
 --   form ドメイン:
 --     survey_targets.fk_survey_targets_user        (user_id,     ON DELETE CASCADE)
@@ -115,10 +115,15 @@ CREATE INDEX idx_bps_shared_by ON blog_post_shares (shared_by);
 ALTER TABLE user_blog_settings
     DROP FOREIGN KEY fk_ubs_user;
 
--- blog_image_uploads.fk_biu_uploader (ON DELETE SET NULL → 撤廃, uploader_id への idx 追加)
-ALTER TABLE blog_image_uploads
+-- blog_media_uploads.fk_biu_uploader (ON DELETE SET NULL → 撤廃, uploader_id への idx 追加)
+-- 【順序逆転の根治 / 2026-05-25】
+-- 当初 blog_image_uploads を対象としていたが、当テーブルは V9.065 で
+-- blog_media_uploads にリネーム済み（FK fk_biu_uploader もリネーム後のテーブルに引き継がれる）。
+-- fresh DB では V62.010 時点で旧名テーブルが存在せず「Table doesn't exist」で失敗していたため、
+-- 実テーブル名 blog_media_uploads に修正する（撤廃対象の FK・意味は不変）。
+ALTER TABLE blog_media_uploads
     DROP FOREIGN KEY fk_biu_uploader;
-CREATE INDEX idx_biu_uploader ON blog_image_uploads (uploader_id);
+CREATE INDEX idx_biu_uploader ON blog_media_uploads (uploader_id);
 
 -- =============================================================================
 -- form ドメイン（4件）
