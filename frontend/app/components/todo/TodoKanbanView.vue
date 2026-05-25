@@ -123,7 +123,7 @@ const safeKanbanCols = computed<SafeKanbanCol[]>(() =>
                 : 'text-surface-800 dark:text-surface-100'
             "
           >
-            {{ todo.title }}
+            {{ todo.content?.title }}
           </NuxtLink>
 
           <div class="flex flex-wrap items-center gap-1.5">

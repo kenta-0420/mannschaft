@@ -49,7 +49,7 @@ function sortTodos(list: TodoResponse[]): TodoResponse[] {
 function rebuildLocalTodos() {
   const next: Record<number, TodoResponse[]> = {}
   for (const ms of props.milestones) {
-    next[ms.id] = sortTodos(props.todos.filter((todo) => todo.milestoneId === ms.id))
+    next[ms.id] = sortTodos(props.todos.filter((todo) => todo.scope?.milestoneId === ms.id))
   }
   localTodosByMilestone.value = next
 }
@@ -193,7 +193,7 @@ async function onDrop(ms: MilestoneResponse, toIndex: number) {
   }
 }
 
-function todoStatusSeverity(status: TodoResponse['status']): 'secondary' | 'info' | 'success' {
+function todoStatusSeverity(status: TodoResponse['status'] | undefined): 'secondary' | 'info' | 'success' {
   switch (status) {
     case 'COMPLETED':
       return 'success'
@@ -372,10 +372,10 @@ function todoStatusSeverity(status: TodoResponse['status']): 'secondary' | 'info
               class="flex-1 truncate text-sm"
               :class="todo.status === 'COMPLETED' ? 'text-surface-400 line-through' : ''"
             >
-              {{ todo.title }}
+              {{ todo.content?.title }}
             </span>
-            <span v-if="todo.dueDate" class="text-xs text-surface-500">
-              {{ todo.dueDate }}
+            <span v-if="todo.schedule?.dueDate" class="text-xs text-surface-500">
+              {{ todo.schedule?.dueDate }}
             </span>
           </div>
         </div>

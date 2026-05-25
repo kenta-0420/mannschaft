@@ -193,7 +193,7 @@ public class AccountPurgeService {
         // 設計書: docs/architecture/account_purge_cross_domain_refactor.md §4 Phase D-8
         // 各 *PurgeEventListener が処理完了時に SUCCESS に更新する。
         // 2 時間後も PENDING のまま = リスナーが未処理 → GdprPurgeAuditBatchService がアラート検出する。
-        List<String> purgeTargetDomains = List.of("role", "team", "payment", "chart", "proxy", "errorreport");
+        List<String> purgeTargetDomains = List.of("role", "team", "payment", "chart", "proxy", "errorreport", "resume");
         LocalDateTime purgeAttemptedAt = LocalDateTime.now();
         purgeTargetDomains.forEach(domain -> {
             AccountPurgeCompletionStatusEntity pending = new AccountPurgeCompletionStatusEntity();

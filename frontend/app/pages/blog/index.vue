@@ -44,11 +44,15 @@ async function handleDelete(postId: number) {
 async function handleTogglePublish(post: BlogPostResponse) {
   publishingId.value = post.id
   try {
-    const newStatus = post.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED'
+    const currentStatus = post.meta?.status ?? 'DRAFT'
+    const newStatus = currentStatus === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED'
     await publishMyPost(post.id, { status: newStatus })
     const idx = myPosts.value.findIndex((p) => p.id === post.id)
     if (idx >= 0 && myPosts.value[idx]) {
-      myPosts.value[idx] = { ...myPosts.value[idx]!, status: newStatus as BlogPostStatus }
+      myPosts.value[idx] = {
+        ...myPosts.value[idx]!,
+        meta: { ...myPosts.value[idx]!.meta, status: newStatus as BlogPostStatus, visibility: myPosts.value[idx]!.meta?.visibility ?? null, postType: myPosts.value[idx]!.meta?.postType ?? null },
+      }
     }
     success(newStatus === 'PUBLISHED' ? '記事を公開しました' : '下書きに戻しました')
   } catch (error) {
@@ -135,9 +139,9 @@ onMounted(() => loadMyPosts())
           <!-- サムネイル -->
           <div class="relative">
             <img
-              v-if="post.coverImageUrl"
-              :src="post.coverImageUrl"
-              :alt="post.title"
+              v-if="post.content?.coverImageUrl"
+              :src="post.content.coverImageUrl"
+              :alt="post.content?.title"
               class="h-28 w-full rounded-lg object-cover"
             >
             <div
@@ -147,26 +151,26 @@ onMounted(() => loadMyPosts())
               <i class="pi pi-book text-3xl text-surface-300" />
             </div>
             <span
-              :class="getStatusClass(post.status)"
+              :class="getStatusClass(post.meta?.status ?? 'DRAFT')"
               class="absolute top-1.5 left-1.5 rounded px-1.5 py-0.5 text-[10px] font-medium"
             >
-              {{ getStatusLabel(post.status) }}
+              {{ getStatusLabel(post.meta?.status ?? 'DRAFT') }}
             </span>
           </div>
 
           <!-- 記事情報 -->
           <h3 class="line-clamp-2 text-sm font-semibold text-surface-800 dark:text-surface-100">
-            {{ post.title }}
+            {{ post.content?.title }}
           </h3>
-          <p v-if="post.publishedAt" class="text-[10px] text-surface-400">
-            {{ formatDate(post.publishedAt) }}
+          <p v-if="post.audit?.publishedAt" class="text-[10px] text-surface-400">
+            {{ formatDate(post.audit.publishedAt) }}
           </p>
 
           <!-- 操作ボタン -->
           <div class="mt-auto flex items-center justify-end gap-0.5 border-t border-surface-100 pt-1.5 dark:border-surface-800">
             <Button
-              v-if="post.status !== 'ARCHIVED'"
-              :icon="post.status === 'PUBLISHED' ? 'pi pi-eye-slash' : 'pi pi-eye'"
+              v-if="post.meta?.status !== 'ARCHIVED'"
+              :icon="post.meta?.status === 'PUBLISHED' ? 'pi pi-eye-slash' : 'pi pi-eye'"
               :loading="publishingId === post.id"
               text
               severity="secondary"

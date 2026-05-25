@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.reservation.SlotStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -65,6 +66,11 @@ public class ReservationSlotEntity extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private Boolean isException = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approval_mode", nullable = false)
+    @Builder.Default
+    private ApprovalMode approvalMode = ApprovalMode.AUTO;
 
     @Column(precision = 10, scale = 2)
     private BigDecimal price;

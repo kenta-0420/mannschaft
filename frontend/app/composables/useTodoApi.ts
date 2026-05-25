@@ -15,29 +15,59 @@ interface TodoListParams {
   sort?: string
 }
 
+/** Wave 1 DTO刷新: ネスト構造サブDTO */
+interface TodoScopeDto {
+  scopeType?: string
+  scopeId?: number
+  projectId?: number | null
+  milestoneId?: number | null
+}
+
+interface TodoContentDto {
+  title?: string
+  description?: string | null
+  startDate?: string | null
+  progressRate?: number | null
+  progressManual?: boolean
+  sortOrder?: number
+}
+
+interface TodoScheduleDto {
+  dueDate?: string | null
+  dueTime?: string | null
+  daysRemaining?: number | null
+  linkedScheduleId?: number | null
+}
+
+interface TodoAuditDto {
+  createdAt?: string
+  updatedAt?: string
+  createdBy?: { id: number; displayName: string }
+  completedBy?: { id: number; displayName: string } | null
+  completedAt?: string | null
+}
+
 interface TodoBase {
   id: number
-  scopeType: string
-  scopeId: number
-  title: string
-  description: string | null
-  status: string
-  /** F02.3.1 — カスタムステータスラベル情報（バックエンド側で SYSTEM 既定にフォールバック済み） */
-  statusLabel: TodoStatusLabelInfo | null
-  priority: string
-  /** main 由来 — TODO 開始日 */
-  startDate: string | null
-  dueDate: string | null
-  dueTime: string | null
-  daysRemaining: number | null
-  progressRate: number | null
-  completedAt: string | null
-  completedBy: { id: number; displayName: string } | null
-  createdBy: { id: number; displayName: string }
-  sortOrder: number
+  scope?: TodoScopeDto
+  content?: TodoContentDto
+  schedule?: TodoScheduleDto
+  /** @deprecated 旧フラットフィールド互換 */
+  status?: string
+  /** F02.3.1 — カスタムステータスラベル情報（バックエンド側で SYSTEM 既定にフォールバック済み） — @deprecated 旧フラットフィールド互換 */
+  statusLabel?: TodoStatusLabelInfo | null
+  /** @deprecated 旧フラットフィールド互換 */
+  priority?: string
+  hierarchy?: {
+    parentId?: number | null
+    depth?: number
+    children?: TodoBase[]
+    childCount?: number
+    descendantCompletedCount?: number
+    descendantTotalCount?: number
+  }
+  audit?: TodoAuditDto
   assignees: Array<{ id: number; userId: number; displayName: string; avatarUrl: string | null }>
-  createdAt: string
-  updatedAt: string
 }
 
 interface PagedTodos {

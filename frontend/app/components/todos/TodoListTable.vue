@@ -18,18 +18,33 @@ const todoApi = useTodoApi()
 const notification = useNotification()
 const { userTimezone } = useDatetime()
 
+/** Wave 1 DTO刷新: ネスト構造 */
 interface Todo {
   id: number
-  title: string
-  status: string
-  /** F02.3.1 — カスタムステータスラベル */
-  statusLabel: TodoStatusLabelInfo | null
-  priority: string
-  dueDate: string | null
-  daysRemaining: number | null
+  content?: {
+    title?: string
+    description?: string | null
+    startDate?: string | null
+    progressRate?: number | null
+  }
+  schedule?: {
+    dueDate?: string | null
+    dueTime?: string | null
+    daysRemaining?: number | null
+  }
+  audit?: {
+    createdAt?: string
+    createdBy?: { id: number; displayName: string }
+  }
+  /** @deprecated 旧フラットフィールド互換 — ステータスバケット */
+  status?: string
+  /** @deprecated 旧フラットフィールド互換 */
+  priority?: string
+  /** @deprecated 旧フラットフィールド互換 */
+  statusLabel?: TodoStatusLabelInfo | null
+  /** @deprecated 旧フラットフィールド互換 */
+  daysRemaining?: number | null
   assignees: Array<{ userId: number; displayName: string; avatarUrl: string | null }>
-  createdBy: { id: number; displayName: string }
-  createdAt: string
 }
 
 const todos = ref<Todo[]>([])
@@ -117,10 +132,14 @@ function onPage(event: { page: number; rows: number }) {
 }
 
 function isOverdue(todo: Todo): boolean {
-  return todo.daysRemaining !== null && todo.daysRemaining < 0 && todo.status !== 'COMPLETED'
+  return (
+    todo.schedule?.daysRemaining !== null &&
+    (todo.schedule?.daysRemaining ?? 0) < 0 &&
+    todo.status !== 'COMPLETED'
+  )
 }
 
-function formatDate(dateStr: string | null): string {
+function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—'
   return dayjs.tz(dateStr, userTimezone.value).format('YYYY/MM/DD')
 }
@@ -169,14 +188,14 @@ defineExpose({ refresh: loadTodos, changeStatus: onStatusChange })
       @page="onPage"
     >
       <Column selection-mode="multiple" header-style="width: 3rem" />
-      <Column header="タイトル" field="title" style="min-width: 200px">
+      <Column header="タイトル" field="content.title" style="min-width: 200px">
         <template #body="{ data }">
           <div>
             <NuxtLink
               :to="`/${props.scopeType === 'team' ? 'teams' : 'organizations'}/${props.scopeId}/todos/${data.id}`"
               class="font-medium hover:text-primary"
             >
-              {{ data.title }}
+              {{ data.content?.title }}
             </NuxtLink>
             <div v-if="data.assignees.length > 0" class="mt-1 flex -space-x-1">
               <Avatar
@@ -205,10 +224,10 @@ defineExpose({ refresh: loadTodos, changeStatus: onStatusChange })
           <TodoPriorityBadge :priority="data.priority" />
         </template>
       </Column>
-      <Column header="期限" field="dueDate" style="width: 120px">
+      <Column header="期限" field="schedule.dueDate" style="width: 120px">
         <template #body="{ data }">
           <span :class="{ 'font-semibold text-red-500': isOverdue(data) }">
-            {{ formatDate(data.dueDate) }}
+            {{ formatDate(data.schedule?.dueDate) }}
           </span>
         </template>
       </Column>

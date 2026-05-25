@@ -17,23 +17,44 @@ const errorHandler = useErrorHandler()
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
 const { formatDate, formatDateTime } = useDatetime()
 
+/** Wave 1 DTO刷新: ネスト構造 */
 interface TodoDetail {
   id: number
-  title: string
-  description: string | null
-  status: string
-  /** F02.3.1 — カスタムステータスラベル */
-  statusLabel: TodoStatusLabelInfo | null
-  priority: string
-  dueDate: string | null
-  dueTime: string | null
-  daysRemaining: number | null
-  completedAt: string | null
-  completedBy: { id: number; displayName: string } | null
-  createdBy: { id: number; displayName: string }
+  content?: {
+    title?: string
+    description?: string | null
+    startDate?: string | null
+    progressRate?: string
+    progressManual?: boolean
+    sortOrder?: number
+  }
+  schedule?: {
+    dueDate?: string | null
+    dueTime?: string | null
+    daysRemaining?: number | null
+    linkedScheduleId?: number | null
+  }
+  audit?: {
+    createdAt?: string
+    updatedAt?: string
+    createdBy?: { id: number; displayName: string }
+    completedBy?: { id: number; displayName: string } | null
+  }
+  /** @deprecated 旧フラットフィールド互換 — ステータスバケット */
+  status?: string
+  /** @deprecated 旧フラットフィールド互換 */
+  priority?: string
+  /** @deprecated 旧フラットフィールド互換 */
+  statusLabel?: TodoStatusLabelInfo | null
+  /** @deprecated 旧フラットフィールド互換 */
+  daysRemaining?: number | null
+  /** @deprecated 旧フラットフィールド互換 */
+  completedAt?: string | null
+  /** @deprecated 旧フラットフィールド互換 */
+  completedBy?: { id: number; displayName: string } | null
+  /** @deprecated 旧フラットフィールド互換 */
+  createdBy?: { id: number; displayName: string }
   assignees: Array<{ userId: number; displayName: string; avatarUrl: string | null }>
-  createdAt: string
-  updatedAt: string
   progressRate: string
   progressManual: boolean
 }
@@ -65,8 +86,8 @@ async function loadTodo() {
     }
     todo.value = {
       ...data,
-      progressRate: data.progressRate ?? '0.00',
-      progressManual: data.progressManual ?? false,
+      progressRate: data.content?.progressRate ?? data.progressRate ?? '0.00',
+      progressManual: data.content?.progressManual ?? data.progressManual ?? false,
     }
     newLabelId.value = data.statusLabel?.id ?? null
   }
@@ -119,6 +140,9 @@ async function onProgressRateUpdate(rate: string) {
   try {
     await progressApi.updateProgress('team', teamId, todoId, { progressRate: rate })
     todo.value.progressRate = rate
+    if (todo.value.content) {
+      todo.value.content.progressRate = rate
+    }
   } catch {
     notification.error(t('todo.progress.updateRateFailed'))
   }
@@ -129,6 +153,9 @@ async function onProgressManualUpdate(manual: boolean) {
   try {
     await progressApi.updateProgressMode('team', teamId, todoId, { progressManual: manual })
     todo.value.progressManual = manual
+    if (todo.value.content) {
+      todo.value.content.progressManual = manual
+    }
     if (!manual) {
       // 自動モードに切り替えた場合は最新値を再取得
       await loadTodo()
@@ -156,7 +183,7 @@ onMounted(async () => {
     <div class="mb-6">
       <BackButton :to="`/teams/${teamId}/todos`" :label="t('todo.backToList')" />
       <div class="flex items-start justify-between">
-        <PageHeader :title="todo.title" />
+        <PageHeader :title="todo.content?.title ?? ''" />
         <div class="flex gap-2">
           <Button
             :label="t('handoff.button.passToOther')"
@@ -182,18 +209,26 @@ onMounted(async () => {
       <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
         <p class="text-xs text-surface-500">{{ t('todo.field.priority') }}</p>
         <div class="mt-1">
-          <TodoPriorityBadge :priority="todo.priority" />
+          <TodoPriorityBadge :priority="todo.priority ?? ''" />
         </div>
       </div>
       <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
         <p class="text-xs text-surface-500">{{ t('todo.field.dueDate') }}</p>
-        <p class="mt-1 text-sm font-medium" :class="{ 'text-red-500': todo.daysRemaining !== null && todo.daysRemaining < 0 && todo.status !== 'COMPLETED' }">
-          {{ formatDate(todo.dueDate) }}
+        <p
+          class="mt-1 text-sm font-medium"
+          :class="{
+            'text-red-500':
+              todo.schedule?.daysRemaining !== null &&
+              (todo.schedule?.daysRemaining ?? 0) < 0 &&
+              todo.status !== 'COMPLETED',
+          }"
+        >
+          {{ formatDate(todo.schedule?.dueDate ?? null) }}
         </p>
       </div>
       <div class="rounded-lg border border-surface-400 p-3 dark:border-surface-600">
         <p class="text-xs text-surface-500">{{ t('todo.field.creator') }}</p>
-        <p class="mt-1 text-sm font-medium">{{ todo.createdBy.displayName }}</p>
+        <p class="mt-1 text-sm font-medium">{{ todo.audit?.createdBy?.displayName ?? todo.createdBy?.displayName }}</p>
       </div>
     </div>
 
@@ -216,8 +251,8 @@ onMounted(async () => {
     </SectionCard>
 
     <!-- 説明 -->
-    <SectionCard v-if="todo.description" :title="t('todo.field.description')" class="mb-6">
-      <p class="whitespace-pre-wrap text-sm text-surface-700 dark:text-surface-300">{{ todo.description }}</p>
+    <SectionCard v-if="todo.content?.description" :title="t('todo.field.description')" class="mb-6">
+      <p class="whitespace-pre-wrap text-sm text-surface-700 dark:text-surface-300">{{ todo.content?.description }}</p>
     </SectionCard>
 
     <!-- 担当者 -->
@@ -364,7 +399,7 @@ onMounted(async () => {
       scope-type="team"
       :scope-id="teamId"
       :todo-id="todoId"
-      :todo-title="todo.title"
+      :todo-title="todo.content?.title ?? ''"
       @handoff-complete="async () => { await loadTodo(); timelineRef?.reload() }"
     />
   </div>

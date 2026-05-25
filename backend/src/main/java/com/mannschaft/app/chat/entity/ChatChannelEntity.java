@@ -77,6 +77,10 @@ public class ChatChannelEntity extends BaseEntity {
     @Builder.Default
     private Boolean isArchived = false;
 
+    @Column(name = "is_inquiry_channel", nullable = false)
+    @Builder.Default
+    private Boolean isInquiryChannel = false;
+
     @Column(nullable = false)
     @Builder.Default
     private Integer activeThreadCount = 0;

@@ -98,35 +98,65 @@ export interface FacilityStatsResponse {
   totalPlatformFee: number
 }
 
+// Wave 1 DTO刷新: フラット構造からネスト構造へ移行
+
+export interface BookingFacilityDto {
+  facilityId?: number
+  facilityName?: string | null
+  bookedBy?: number
+  createdByAdmin?: number | null
+}
+
+export interface BookingScheduleDto {
+  bookingDate?: string
+  checkOutDate?: string | null
+  stayNights?: number | null
+  timeFrom?: string
+  timeTo?: string
+  slotCount?: number
+}
+
+export interface BookingUsageDto {
+  purpose?: string | null
+  attendeeCount?: number | null
+}
+
+export interface BookingFeeDto {
+  usageFee?: number
+  equipmentFee?: number
+  totalFee?: number
+}
+
+export interface BookingApprovalDto {
+  approvedBy?: number | null
+  approvedAt?: string | null
+  adminComment?: string | null
+}
+
+export interface BookingLifecycleDto {
+  checkedInAt?: string | null
+  completedAt?: string | null
+  cancelledAt?: string | null
+  cancelledBy?: number | null
+  cancellationReason?: string | null
+}
+
+export interface BookingAuditDto {
+  createdAt?: string
+  updatedAt?: string
+}
+
 export interface BookingDetailResponse {
-  id: number
-  facilityId: number
-  facilityName: string
-  bookedBy: number
-  createdByAdmin: number | null
-  bookingDate: string
-  checkOutDate: string | null
-  stayNights: number | null
-  timeFrom: string
-  timeTo: string
-  slotCount: number
-  purpose: string | null
-  attendeeCount: number | null
-  usageFee: number
-  equipmentFee: number
-  totalFee: number
-  status: string
-  adminComment: string | null
-  approvedBy: number | null
-  approvedAt: string | null
-  checkedInAt: string | null
-  completedAt: string | null
-  cancelledAt: string | null
-  cancelledBy: number | null
-  cancellationReason: string | null
-  equipment: BookingEquipmentResponse[]
-  createdAt: string
-  updatedAt: string
+  id?: number
+  status?: string
+  facility?: BookingFacilityDto
+  schedule?: BookingScheduleDto
+  usage?: BookingUsageDto
+  fee?: BookingFeeDto
+  approval?: BookingApprovalDto
+  lifecycle?: BookingLifecycleDto
+  audit?: BookingAuditDto
+  equipment?: BookingEquipmentResponse[]
 }
 
 export interface BookingEquipmentResponse {

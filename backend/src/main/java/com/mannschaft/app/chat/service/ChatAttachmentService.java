@@ -180,6 +180,17 @@ public class ChatAttachmentService {
             // F17.1 Phase 1: 村ロビーチャネルは添付スコープ未サポート（村スコープのストレージは Phase 2 以降）
             case VILLAGE_LOBBY -> throw new UnsupportedOperationException(
                     "VILLAGE_LOBBY 添付はまだサポートされていません (channelId=" + channel.getId() + ")");
+            // イベント専用チャンネルはチームまたは組織スコープにフォールバックする
+            case EVENT_CHAT -> {
+                if (channel.getTeamId() != null) {
+                    yield new ScopeResolution(StorageScopeType.TEAM, channel.getTeamId());
+                } else if (channel.getOrganizationId() != null) {
+                    yield new ScopeResolution(StorageScopeType.ORGANIZATION, channel.getOrganizationId());
+                } else {
+                    throw new IllegalStateException(
+                            "EVENT_CHAT channel has null teamId and organizationId: channelId=" + channel.getId());
+                }
+            }
         };
     }
 

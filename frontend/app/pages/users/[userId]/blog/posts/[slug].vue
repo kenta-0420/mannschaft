@@ -28,10 +28,19 @@ async function handleToggleMitayo() {
   if (!post.value || mitayoLoading.value) return
   mitayoLoading.value = true
   try {
-    const res = post.value.mitayo
+    const res = post.value.stats?.mitayo
       ? await removeMitayo(post.value.id)
       : await addMitayo(post.value.id)
-    post.value = { ...post.value, mitayo: res.data.mitayo, mitayoCount: res.data.mitayoCount }
+    post.value = {
+      ...post.value,
+      stats: {
+        ...post.value.stats,
+        viewCount: post.value.stats?.viewCount ?? 0,
+        readingTimeMinutes: post.value.stats?.readingTimeMinutes ?? null,
+        mitayo: res.data.mitayo,
+        mitayoCount: res.data.mitayoCount,
+      },
+    }
   } catch (error) {
     handleError(error)
   } finally {
@@ -40,16 +49,16 @@ async function handleToggleMitayo() {
 }
 
 useHead(() => ({
-  title: post.value?.title ?? 'ブログ記事',
+  title: post.value?.content?.title ?? 'ブログ記事',
   meta: [
     {
       name: 'description',
-      content: post.value?.excerpt ?? post.value?.title ?? '',
+      content: post.value?.content?.excerpt ?? post.value?.content?.title ?? '',
     },
-    { property: 'og:title', content: post.value?.title ?? '' },
-    { property: 'og:description', content: post.value?.excerpt ?? '' },
-    ...(post.value?.coverImageUrl
-      ? [{ property: 'og:image', content: post.value.coverImageUrl }]
+    { property: 'og:title', content: post.value?.content?.title ?? '' },
+    { property: 'og:description', content: post.value?.content?.excerpt ?? '' },
+    ...(post.value?.content?.coverImageUrl
+      ? [{ property: 'og:image', content: post.value.content.coverImageUrl }]
       : []),
   ],
 }))
@@ -90,8 +99,8 @@ onMounted(() => loadPost())
 
       <div class="mt-4 flex justify-center">
         <TimelineMitayoButton
-          :mitayo="post.mitayo"
-          :mitayo-count="post.mitayoCount"
+          :mitayo="post.stats?.mitayo ?? false"
+          :mitayo-count="post.stats?.mitayoCount ?? 0"
           :loading="mitayoLoading"
           @toggle="handleToggleMitayo"
         />
