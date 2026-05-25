@@ -128,7 +128,9 @@ export function useCorkboardSectionManagement(
           ...board.value,
           groups: board.value.groups.filter((g) => g.id !== section.id),
           cards: board.value.cards.map((c) =>
-            c.sectionId === section.id ? { ...c, sectionId: null } : c,
+            c.reference?.sectionId === section.id
+              ? { ...c, reference: { ...c.reference, sectionId: null } }
+              : c,
           ),
         }
       }
@@ -156,7 +158,7 @@ export function useCorkboardSectionManagement(
    * カード DTO の `sectionId` を直接参照する。
    */
   function getCardSectionId(card: CorkboardCardDetail): number | null {
-    return card.sectionId ?? null
+    return card.reference?.sectionId ?? null
   }
 
   /** ボード内の特定カードの sectionId をローカル状態で楽観的に更新する。 */
@@ -164,7 +166,11 @@ export function useCorkboardSectionManagement(
     if (!board.value) return
     board.value = {
       ...board.value,
-      cards: board.value.cards.map((c) => (c.id === cardId ? { ...c, sectionId } : c)),
+      cards: board.value.cards.map((c) =>
+        c.id === cardId
+          ? { ...c, reference: { ...c.reference, sectionId } }
+          : c,
+      ),
     }
   }
 

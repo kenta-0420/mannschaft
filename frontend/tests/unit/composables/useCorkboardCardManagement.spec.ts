@@ -80,37 +80,53 @@ vi.mock('~/composables/useConfirmDialog', () => ({
 // テスト用ヘルパー
 // ============================================================
 
-function makeCard(over: Partial<CorkboardCardDetail> = {}): CorkboardCardDetail {
+function makeCard(over: {
+  id?: number
+  positionX?: number
+  positionY?: number
+  isArchived?: boolean
+} = {}): CorkboardCardDetail {
   return {
-    id: 1,
+    id: over.id ?? 1,
     corkboardId: 100,
-    sectionId: null,
-    cardType: 'MEMO',
-    referenceType: null,
-    referenceId: null,
-    contentSnapshot: null,
-    title: 'テストカード',
-    body: 'テスト本文',
-    url: null,
-    ogTitle: null,
-    ogImageUrl: null,
-    ogDescription: null,
-    colorLabel: 'YELLOW',
-    cardSize: 'MEDIUM',
-    positionX: 100,
-    positionY: 200,
-    zIndex: 1,
-    userNote: null,
-    noteColor: null,
-    autoArchiveAt: null,
-    isArchived: false,
-    isPinned: false,
-    pinnedAt: null,
-    isRefDeleted: false,
-    createdBy: null,
-    createdAt: '2026-05-01T00:00:00',
-    updatedAt: '2026-05-01T00:00:00',
-    ...over,
+    reference: {
+      sectionId: null,
+      cardType: 'MEMO',
+      referenceType: null,
+      referenceId: null,
+      contentSnapshot: null,
+    },
+    content: {
+      title: 'テストカード',
+      body: 'テスト本文',
+      url: null,
+      ogTitle: null,
+      ogImageUrl: null,
+      ogDescription: null,
+    },
+    layout: {
+      positionX: over.positionX ?? 100,
+      positionY: over.positionY ?? 200,
+      zIndex: 1,
+      cardSize: 'MEDIUM',
+    },
+    style: {
+      colorLabel: 'YELLOW',
+      noteColor: null,
+    },
+    state: {
+      isArchived: over.isArchived ?? false,
+      isPinned: false,
+      pinnedAt: null,
+      autoArchiveAt: null,
+      isRefDeleted: false,
+    },
+    audit: {
+      userNote: null,
+      createdBy: null,
+      createdAt: '2026-05-01T00:00:00',
+      updatedAt: '2026-05-01T00:00:00',
+    },
   }
 }
 
@@ -333,7 +349,7 @@ describe('useCorkboardCardManagement', () => {
       await toggleArchive(card)
 
       const found = board.value?.cards.find((c) => c.id === 7)
-      expect(found?.isArchived).toBe(true)
+      expect(found?.state?.isArchived).toBe(true)
       expect(mockArchiveCard).toHaveBeenCalledWith(100, 7, true)
     })
 
@@ -363,7 +379,7 @@ describe('useCorkboardCardManagement', () => {
 
       // アーカイブ状態が変化していない
       const found = board.value?.cards.find((c) => c.id === 9)
-      expect(found?.isArchived).toBe(false)
+      expect(found?.state?.isArchived).toBe(false)
       // エラートーストが表示される
       expect(mockToastAdd).toHaveBeenCalledWith(
         expect.objectContaining({ severity: 'error' }),

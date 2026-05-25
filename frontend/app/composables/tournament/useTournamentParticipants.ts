@@ -1,8 +1,8 @@
 // 参加者・チーム単位履歴・エントリーメンバー・エントリーテンプレートを担当
 import type {
   TournamentParticipant,
-  TournamentHistory,
-  TournamentTeamStats,
+  TeamTournamentHistoryResponse,
+  TeamTournamentStatsResponse,
   EntryMemberListResponse,
   EntryLoadResponse,
   EntryMemberSummary,
@@ -52,10 +52,10 @@ export function useTournamentParticipants() {
 
   // === Team-scoped ===
   async function getTeamTournamentHistory(teamId: number) {
-    return api<{ data: TournamentHistory[] }>(`/api/v1/teams/${teamId}/tournament-history`)
+    return api<{ data: TeamTournamentHistoryResponse }>(`/api/v1/teams/${teamId}/tournament-history`)
   }
   async function getTeamTournamentStats(teamId: number) {
-    return api<{ data: TournamentTeamStats }>(`/api/v1/teams/${teamId}/tournament-stats`)
+    return api<{ data: TeamTournamentStatsResponse }>(`/api/v1/teams/${teamId}/tournament-stats`)
   }
 
   // ===== Phase 9: エントリーメンバー =====

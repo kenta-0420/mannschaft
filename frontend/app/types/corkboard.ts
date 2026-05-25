@@ -121,48 +121,72 @@ export interface CorkboardSummary {
   updatedAt: string
 }
 
-/**
- * カード詳細（{@link com.mannschaft.app.corkboard.dto.CorkboardCardResponse} と 1:1）。
- */
-export interface CorkboardCardDetail {
-  id: number
-  corkboardId: number
-  /**
-   * F09.8 積み残し件1 (V9.097): カードが現在所属する主セクション ID。未所属時は `null`。
-   * これまで `cardSectionMap` でフロント保持していた紐付け情報を、サーバ側 DTO に正規化した。
-   */
+// ===== CorkboardCardDetail のネスト化 DTO =====
+
+export interface CardReferenceDto {
   sectionId: number | null
   cardType: CorkboardCardType | string
   referenceType: CorkboardReferenceType | string | null
   referenceId: number | null
   contentSnapshot: string | null
+}
+
+export interface CardContentDto {
   title: string | null
   body: string | null
   url: string | null
   ogTitle: string | null
   ogImageUrl: string | null
   ogDescription: string | null
-  colorLabel: CorkboardColor | string | null
-  cardSize: CorkboardCardSize | string | null
+}
+
+export interface CardLayoutDto {
   positionX: number
   positionY: number
   zIndex: number | null
-  userNote: string | null
-  /**
-   * F09.8 件3' (V9.098): ピン止め時付箋メモの専用色。
-   * `null` のときはカラーラベル (`colorLabel`) と同色とみなす。
-   * 値ありはピン時に明示的に選択された付箋色（YELLOW / BLUE / GREEN / RED / PURPLE / GRAY 等）。
-   */
+  cardSize: CorkboardCardSize | string | null
+}
+
+export interface CardStyleDto {
+  colorLabel: CorkboardColor | string | null
   noteColor: string | null
-  autoArchiveAt: string | null
+}
+
+export interface CardStateDto {
   isArchived: boolean
   isPinned: boolean
   pinnedAt: string | null
-  /** 参照先削除済みフラグ（REFERENCE のみ。デッドリファレンス検知バッチが設定） */
+  autoArchiveAt: string | null
   isRefDeleted: boolean
+}
+
+export interface CardAuditDto {
+  userNote: string | null
   createdBy: number | null
   createdAt: string
   updatedAt: string
+}
+
+/**
+ * カード詳細（{@link com.mannschaft.app.corkboard.dto.CorkboardCardResponse} と 1:1）。
+ *
+ * Wave 2-A でネスト化:
+ *  - reference: sectionId / cardType / referenceType / referenceId / contentSnapshot
+ *  - content:   title / body / url / ogTitle / ogImageUrl / ogDescription
+ *  - layout:    positionX / positionY / zIndex / cardSize
+ *  - style:     colorLabel / noteColor
+ *  - state:     isArchived / isPinned / pinnedAt / autoArchiveAt / isRefDeleted
+ *  - audit:     userNote / createdBy / createdAt / updatedAt
+ */
+export interface CorkboardCardDetail {
+  id: number
+  corkboardId: number
+  reference: CardReferenceDto
+  content: CardContentDto
+  layout: CardLayoutDto
+  style: CardStyleDto
+  state: CardStateDto
+  audit: CardAuditDto
 }
 
 /**

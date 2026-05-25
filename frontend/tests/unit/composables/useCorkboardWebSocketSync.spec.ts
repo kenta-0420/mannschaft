@@ -84,37 +84,54 @@ function makeBoard(
   }
 }
 
-function makeCard(id: number, overrides: Partial<CorkboardCardDetail> = {}): CorkboardCardDetail {
+function makeCard(id: number, overrides: {
+  title?: string
+  positionX?: number
+  positionY?: number
+  isArchived?: boolean
+  sectionId?: number | null
+} = {}): CorkboardCardDetail {
   return {
     id,
     corkboardId: 42,
-    sectionId: null,
-    cardType: 'MEMO',
-    referenceType: null,
-    referenceId: null,
-    contentSnapshot: null,
-    title: `カード${id}`,
-    body: null,
-    url: null,
-    ogTitle: null,
-    ogImageUrl: null,
-    ogDescription: null,
-    colorLabel: 'YELLOW',
-    cardSize: 'MEDIUM',
-    positionX: 10,
-    positionY: 20,
-    zIndex: 1,
-    userNote: null,
-    noteColor: null,
-    autoArchiveAt: null,
-    isArchived: false,
-    isPinned: false,
-    pinnedAt: null,
-    isRefDeleted: false,
-    createdBy: null,
-    createdAt: '2026-05-01T00:00:00',
-    updatedAt: '2026-05-01T00:00:00',
-    ...overrides,
+    reference: {
+      sectionId: overrides.sectionId ?? null,
+      cardType: 'MEMO',
+      referenceType: null,
+      referenceId: null,
+      contentSnapshot: null,
+    },
+    content: {
+      title: overrides.title ?? `カード${id}`,
+      body: null,
+      url: null,
+      ogTitle: null,
+      ogImageUrl: null,
+      ogDescription: null,
+    },
+    layout: {
+      positionX: overrides.positionX ?? 10,
+      positionY: overrides.positionY ?? 20,
+      zIndex: 1,
+      cardSize: 'MEDIUM',
+    },
+    style: {
+      colorLabel: 'YELLOW',
+      noteColor: null,
+    },
+    state: {
+      isArchived: overrides.isArchived ?? false,
+      isPinned: false,
+      pinnedAt: null,
+      autoArchiveAt: null,
+      isRefDeleted: false,
+    },
+    audit: {
+      userNote: null,
+      createdBy: null,
+      createdAt: '2026-05-01T00:00:00',
+      updatedAt: '2026-05-01T00:00:00',
+    },
   }
 }
 
@@ -257,7 +274,7 @@ describe('useCorkboardWebSocketSync', () => {
       result.handleCorkboardEvent(event)
 
       expect(board.value?.cards).toHaveLength(1)
-      expect(board.value?.cards[0]?.title).toBe('新タイトル')
+      expect(board.value?.cards[0]?.content?.title).toBe('新タイトル')
     })
 
     it('CORK-SYNC-014: card ペイロードが null のとき フルリロードにフォールバックすること', async () => {
@@ -302,7 +319,7 @@ describe('useCorkboardWebSocketSync', () => {
       result.handleCorkboardEvent(event)
 
       expect(board.value?.cards).toHaveLength(2)
-      expect(board.value?.cards[0]?.title).toBe('新タイトル')
+      expect(board.value?.cards[0]?.content?.title).toBe('新タイトル')
       expect(board.value?.cards[1]?.id).toBe(2)
     })
   })
@@ -325,8 +342,8 @@ describe('useCorkboardWebSocketSync', () => {
 
       result.handleCorkboardEvent(event)
 
-      expect(board.value?.cards[0]?.positionX).toBe(100)
-      expect(board.value?.cards[0]?.positionY).toBe(200)
+      expect(board.value?.cards[0]?.layout?.positionX).toBe(100)
+      expect(board.value?.cards[0]?.layout?.positionY).toBe(200)
     })
 
     it('CORK-SYNC-009b: CARD_ARCHIVED — カードが置換されること', async () => {
@@ -346,7 +363,7 @@ describe('useCorkboardWebSocketSync', () => {
 
       result.handleCorkboardEvent(event)
 
-      expect(board.value?.cards[0]?.isArchived).toBe(true)
+      expect(board.value?.cards[0]?.state?.isArchived).toBe(true)
     })
   })
 
@@ -389,7 +406,7 @@ describe('useCorkboardWebSocketSync', () => {
 
       result.handleCorkboardEvent(event)
 
-      expect(board.value?.cards[0]?.sectionId).toBe(10)
+      expect(board.value?.cards[0]?.reference?.sectionId).toBe(10)
     })
   })
 
@@ -468,11 +485,11 @@ describe('useCorkboardWebSocketSync', () => {
       expect(board.value?.groups).toHaveLength(0)
 
       // sectionId が 10 だったカードは null になること
-      expect(board.value?.cards[0]?.sectionId).toBeNull()
+      expect(board.value?.cards[0]?.reference?.sectionId).toBeNull()
       // sectionId が 20 だったカードは変わらないこと
-      expect(board.value?.cards[1]?.sectionId).toBe(20)
+      expect(board.value?.cards[1]?.reference?.sectionId).toBe(20)
       // sectionId が 10 だったカードは null になること
-      expect(board.value?.cards[2]?.sectionId).toBeNull()
+      expect(board.value?.cards[2]?.reference?.sectionId).toBeNull()
     })
 
     it('CORK-SYNC-017: sectionId が null のとき フルリロードにフォールバックすること', async () => {

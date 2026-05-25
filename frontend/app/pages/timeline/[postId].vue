@@ -55,7 +55,7 @@ async function onReply() {
   try {
     const res = await createReply(postId, replyContent.value.trim())
     replies.value.unshift(res.data)
-    if (post.value) post.value.replyCount++
+    if (post.value?.stats) post.value.stats.replyCount++
     replyContent.value = ''
     showSuccess('返信しました')
   } catch {
@@ -70,7 +70,7 @@ function onMitayoToggled(targetId: number, mitayo: boolean, mitayoCount: number)
   if (!target) return
   target.mitayo = mitayo
   target.mitayoCount = mitayoCount
-  target.reactionCount = mitayoCount
+  if (target.stats) target.stats.reactionCount = mitayoCount
 }
 
 async function onBookmark(targetId: number) {
@@ -133,7 +133,7 @@ onMounted(() => loadPost())
       <!-- リプライ一覧 -->
       <div class="mt-4 flex flex-col gap-3">
         <p v-if="replies.length > 0" class="text-sm font-medium text-surface-500">
-          返信 {{ post.replyCount }}件
+          返信 {{ post.stats?.replyCount }}件
         </p>
         <TimelinePostCard
           v-for="reply in replies"

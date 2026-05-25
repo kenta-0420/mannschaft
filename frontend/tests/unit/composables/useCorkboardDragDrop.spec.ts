@@ -68,37 +68,55 @@ vi.mock('vue-i18n', () => ({
 // テスト用ヘルパー
 // ============================================================
 
-function makeCard(over: Partial<CorkboardCardDetail> = {}): CorkboardCardDetail {
+function makeCard(over: {
+  id?: number
+  cardType?: CorkboardCardDetail['reference']['cardType']
+  cardSize?: CorkboardCardDetail['layout']['cardSize']
+  positionX?: number
+  positionY?: number
+  zIndex?: number | null
+} = {}): CorkboardCardDetail {
   return {
-    id: 1,
+    id: over.id ?? 1,
     corkboardId: 100,
-    sectionId: null,
-    cardType: 'MEMO',
-    referenceType: null,
-    referenceId: null,
-    contentSnapshot: null,
-    title: 'テストカード',
-    body: null,
-    url: null,
-    ogTitle: null,
-    ogImageUrl: null,
-    ogDescription: null,
-    colorLabel: 'YELLOW',
-    cardSize: 'MEDIUM',
-    positionX: 100,
-    positionY: 200,
-    zIndex: 1,
-    userNote: null,
-    noteColor: null,
-    autoArchiveAt: null,
-    isArchived: false,
-    isPinned: false,
-    pinnedAt: null,
-    isRefDeleted: false,
-    createdBy: null,
-    createdAt: '2026-05-01T00:00:00',
-    updatedAt: '2026-05-01T00:00:00',
-    ...over,
+    reference: {
+      sectionId: null,
+      cardType: over.cardType ?? 'MEMO',
+      referenceType: null,
+      referenceId: null,
+      contentSnapshot: null,
+    },
+    content: {
+      title: 'テストカード',
+      body: null,
+      url: null,
+      ogTitle: null,
+      ogImageUrl: null,
+      ogDescription: null,
+    },
+    layout: {
+      positionX: over.positionX ?? 100,
+      positionY: over.positionY ?? 200,
+      zIndex: over.zIndex !== undefined ? over.zIndex : 1,
+      cardSize: over.cardSize ?? 'MEDIUM',
+    },
+    style: {
+      colorLabel: 'YELLOW',
+      noteColor: null,
+    },
+    state: {
+      isArchived: false,
+      isPinned: false,
+      pinnedAt: null,
+      autoArchiveAt: null,
+      isRefDeleted: false,
+    },
+    audit: {
+      userNote: null,
+      createdBy: null,
+      createdAt: '2026-05-01T00:00:00',
+      updatedAt: '2026-05-01T00:00:00',
+    },
   }
 }
 
@@ -239,8 +257,8 @@ describe('useCorkboardDragDrop', () => {
 
       // API 完了前でも楽観的更新が適用されている
       const found = board.value?.cards.find((c) => c.id === 1)
-      expect(found?.positionX).toBe(300)
-      expect(found?.positionY).toBe(400)
+      expect(found?.layout?.positionX).toBe(300)
+      expect(found?.layout?.positionY).toBe(400)
 
       // API を解決してテスト後処理をクリーンアップ
       resolveApi()
@@ -258,8 +276,8 @@ describe('useCorkboardDragDrop', () => {
       await onPositionChange(2, 500, 600)
 
       const found = board.value?.cards.find((c) => c.id === 2)
-      expect(found?.positionX).toBe(500)
-      expect(found?.positionY).toBe(600)
+      expect(found?.layout?.positionX).toBe(500)
+      expect(found?.layout?.positionY).toBe(600)
       // 成功時はサイレント（toast なし）
       expect(mockToastAdd).not.toHaveBeenCalled()
     })
@@ -276,8 +294,8 @@ describe('useCorkboardDragDrop', () => {
 
       const found = board.value?.cards.find((c) => c.id === 3)
       // ロールバックで旧座標に戻っている
-      expect(found?.positionX).toBe(100)
-      expect(found?.positionY).toBe(200)
+      expect(found?.layout?.positionX).toBe(100)
+      expect(found?.layout?.positionY).toBe(200)
     })
 
     it('CORK-DND-UNIT-008: API エラー時に toast が severity: error で表示される', async () => {

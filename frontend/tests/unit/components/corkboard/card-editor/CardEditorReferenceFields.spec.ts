@@ -44,9 +44,13 @@ describe('CardEditorReferenceFields.vue', () => {
 
   it('CERF-003: edit モードでは refType / refId が disabled になる', async () => {
     const card = makeCardDetail({
-      cardType: 'REFERENCE',
-      referenceType: 'TIMELINE_POST',
-      referenceId: 42,
+      reference: {
+        cardType: 'REFERENCE',
+        referenceType: 'TIMELINE_POST',
+        referenceId: 42,
+        sectionId: null,
+        contentSnapshot: null,
+      },
     })
     const { wrapper } = await mountWithContext(CardEditorReferenceFields, {
       mode: 'edit',
@@ -115,9 +119,13 @@ describe('CardEditorReferenceFields.vue', () => {
 
   it('CERF-007: edit モードでは URL ペースト補助欄が描画されない', async () => {
     const card = makeCardDetail({
-      cardType: 'REFERENCE',
-      referenceType: 'TIMELINE_POST',
-      referenceId: 1,
+      reference: {
+        cardType: 'REFERENCE',
+        referenceType: 'TIMELINE_POST',
+        referenceId: 1,
+        sectionId: null,
+        contentSnapshot: null,
+      },
     })
     const { wrapper } = await mountWithContext(CardEditorReferenceFields, {
       mode: 'edit',
