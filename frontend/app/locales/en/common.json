@@ -1152,9 +1152,18 @@
       "previewLoading": "プレビューを生成中...",
       "exportLoading": "出力ファイルを生成中...",
       "previewError": "プレビューの生成に失敗しました",
-      "backToList": "一覧に戻る",
-      "backToEditor": "エディタに戻る",
-      "description": "内容"
+      "backToList": "Back to List",
+      "backToEditor": "Back to Editor",
+      "description": "Description",
+      "addressSection": "Address & Contact",
+      "entryDate": "Joined",
+      "endDate": "Left",
+      "acquiredYear": "Year Acquired",
+      "acquiredMonth": "Month Acquired",
+      "photoHint": "JPEG / PNG, max 5MB, recommended ratio 3:4",
+      "skillsSummaryHint": "Describe your experience, knowledge, and skills freely (add structured skills in the skills section below)",
+      "excelPreviewUnavailable": "Excel file preview is not available in the browser",
+      "downloadLabel": "Download {format} ({type})"
     }
   },
   "teamHub": {

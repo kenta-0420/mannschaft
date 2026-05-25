@@ -1154,7 +1154,16 @@
       "previewError": "プレビューの生成に失敗しました",
       "backToList": "一覧に戻る",
       "backToEditor": "エディタに戻る",
-      "description": "内容"
+      "description": "内容",
+      "addressSection": "住所・連絡先",
+      "entryDate": "入社",
+      "endDate": "退社",
+      "acquiredYear": "取得年",
+      "acquiredMonth": "取得月",
+      "photoHint": "JPEG / PNG, 最大 5MB, 推奨比率 3:4",
+      "skillsSummaryHint": "活かせる経験・知識・技術を自由に記述してください（構造化スキルは下のスキルセクションに入力）",
+      "excelPreviewUnavailable": "Excel ファイルのプレビューはブラウザで表示できません",
+      "downloadLabel": "{format}ダウンロード（{type}）"
     }
   },
   "teamHub": {
