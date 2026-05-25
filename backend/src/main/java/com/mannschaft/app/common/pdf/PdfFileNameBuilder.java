@@ -62,6 +62,43 @@ public class PdfFileNameBuilder {
     }
 
     /**
+     * 拡張子を指定してファイル名を生成する（PDF 以外の形式にも対応）。
+     *
+     * <p>{@link #build()} と同じ命名規約（禁止文字 sanitize・最大長 100・{yyyyMMdd}_{文書種別}_{識別名}）を
+     * 使用するが、拡張子を引数で受け取る。{@link #build()} の後方互換は維持する。
+     *
+     * <p>設計書: {@code docs/features/F01.10_mypage_resume.md} §7.3（案 a 確定）
+     *
+     * @param extension 拡張子（例: ".xlsx", ".pdf"。先頭ドットを含む）
+     * @return ファイル名（例: "20260525_履歴書_山田太郎.xlsx"）
+     */
+    public String buildWithExtension(String extension) {
+        Objects.requireNonNull(date, "date は必須です。date() を呼び出してください");
+        Objects.requireNonNull(extension, "extension は必須です");
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(date.format(DATE_FORMAT));
+        sb.append("_");
+        sb.append(sanitize(documentType));
+
+        if (identifier != null && !identifier.isBlank()) {
+            sb.append("_");
+            sb.append(sanitize(identifier));
+        }
+
+        sb.append(extension);
+
+        String result = sb.toString();
+        if (result.length() > MAX_LENGTH) {
+            // 拡張子部分の長さを確保してから切り詰める
+            int extLen = extension.length();
+            result = result.substring(0, MAX_LENGTH - extLen) + extension;
+        }
+
+        return result;
+    }
+
+    /**
      * RFC 5987 UTF-8 エンコード済みファイル名を返す（Content-Disposition 用）。
      */
     public String buildEncoded() {

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<!--
+  F01.10 職務経歴書 PDF テンプレート
+  設計書: docs/features/F01.10_mypage_resume.md §7.1 / §7.7
+  Flying Saucer 制限: flexbox/grid/rgba()は未サポート。table/position/floatで構成。
+  枚数制限なし（続紙対応: Flying Saucerの自動改ページで対応）。
+-->
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        /* === 基本設定 === */
+        @page {
+            size: A4;
+            margin: 12mm 12mm 12mm 12mm;
+        }
+        body {
+            font-family: 'Noto Sans JP', 'NotoSansJP', sans-serif;
+            font-size: 9pt;
+            color: #000000;
+            line-height: 1.5;
+        }
+        /* === タイトル === */
+        .doc-title {
+            text-align: center;
+            font-size: 16pt;
+            font-weight: bold;
+            margin-bottom: 8px;
+            border-bottom: 2px solid #000000;
+            padding-bottom: 4px;
+        }
+        .applicant-name {
+            text-align: right;
+            font-size: 10pt;
+            margin-bottom: 12px;
+        }
+        /* === セクション見出し === */
+        .section-title {
+            font-size: 11pt;
+            font-weight: bold;
+            border-left: 4px solid #333333;
+            padding-left: 6px;
+            margin: 12px 0 6px 0;
+        }
+        /* === テキストブロック === */
+        .text-block {
+            border: 1px solid #cccccc;
+            padding: 6px 8px;
+            margin-bottom: 8px;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+        /* === 職歴詳細テーブル === */
+        .career-block {
+            border: 1px solid #666666;
+            padding: 6px 8px;
+            margin-bottom: 10px;
+        }
+        .career-company {
+            font-size: 10pt;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .career-period {
+            font-size: 8pt;
+            color: #444444;
+            margin-bottom: 4px;
+        }
+        .career-detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 4px;
+        }
+        .career-detail-table td {
+            border: 1px solid #cccccc;
+            padding: 3px 5px;
+            vertical-align: top;
+            word-break: break-all;
+        }
+        .career-detail-label {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            font-size: 8pt;
+            width: 22mm;
+            white-space: nowrap;
+        }
+        /* === スキル一覧テーブル === */
+        .skill-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 4px;
+        }
+        .skill-table th {
+            background-color: #d0d0d0;
+            border: 1px solid #666666;
+            padding: 3px 5px;
+            font-size: 8pt;
+            text-align: center;
+        }
+        .skill-table td {
+            border: 1px solid #cccccc;
+            padding: 3px 5px;
+            font-size: 8pt;
+            word-break: break-all;
+        }
+        .skill-name-col { width: 35%; }
+        .skill-level-col { width: 18%; text-align: center; }
+        .skill-desc-col { width: auto; }
+    </style>
+</head>
+<body>
+
+<div class="doc-title">職 務 経 歴 書</div>
+<div class="applicant-name" th:text="${fullName} + ' 　'"></div>
+
+<!-- 職務要約 -->
+<div class="section-title" th:if="${careerSummary != null and careerSummary != ''}">職務要約</div>
+<div class="text-block" th:if="${careerSummary != null and careerSummary != ''}"
+     th:text="${careerSummary}"></div>
+
+<!-- 活かせる経験・知識・技術（散文ブロック）-->
+<div class="section-title"
+     th:if="${skillsSummary != null and skillsSummary != ''}">活かせる経験・知識・技術</div>
+<div class="text-block"
+     th:if="${skillsSummary != null and skillsSummary != ''}"
+     th:text="${skillsSummary}"></div>
+
+<!-- 職務詳細 -->
+<div class="section-title" th:if="${not #lists.isEmpty(careerDetails)}">職務詳細</div>
+
+<div th:each="career : ${careerDetails}" class="career-block">
+    <!-- 会社名 -->
+    <div class="career-company" th:text="${career.companyName}"></div>
+    <!-- 在職期間 -->
+    <div class="career-period">
+        <span th:text="${career.entryPeriod}"></span>
+        <span> ～ </span>
+        <span th:text="${career.isCurrent} ? '現在' : ${career.endPeriod}"></span>
+        <span th:if="${career.employmentType != null and career.employmentType != ''}"
+              th:text="'　(' + ${career.employmentType} + ')'"></span>
+        <span th:if="${career.department != null and career.department != ''}"
+              th:text="'　' + ${career.department}"></span>
+    </div>
+    <!-- 詳細テーブル -->
+    <table class="career-detail-table">
+        <tr th:if="${career.businessSummary != null and career.businessSummary != ''}">
+            <td class="career-detail-label">事業内容</td>
+            <td th:text="${career.businessSummary}"></td>
+        </tr>
+        <tr th:if="${career.jobDescription != null and career.jobDescription != ''}">
+            <td class="career-detail-label">職務内容</td>
+            <td style="white-space: pre-wrap;" th:text="${career.jobDescription}"></td>
+        </tr>
+        <tr th:if="${career.achievements != null and career.achievements != ''}">
+            <td class="career-detail-label">実績・成果</td>
+            <td style="white-space: pre-wrap;" th:text="${career.achievements}"></td>
+        </tr>
+    </table>
+</div>
+
+<!-- スキル一覧（構造化スキルリスト）-->
+<div class="section-title" th:if="${not #lists.isEmpty(skillRows)}">スキル一覧</div>
+
+<table class="skill-table" th:if="${not #lists.isEmpty(skillRows)}">
+    <thead>
+        <tr>
+            <th class="skill-name-col">スキル名</th>
+            <th class="skill-level-col">習熟度</th>
+            <th class="skill-desc-col">補足</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="skill : ${skillRows}">
+            <td th:text="${skill.skillName}"></td>
+            <td style="text-align: center;" th:text="${skill.level}"></td>
+            <td th:text="${skill.description}"></td>
+        </tr>
+    </tbody>
+</table>
+
+</body>
+</html>
