@@ -132,7 +132,7 @@ onMounted(() => {
               {{ post.content?.excerpt }}
             </p>
             <div class="flex items-center gap-2 text-xs text-surface-400">
-              <span>{{ relativeTime(post.audit?.publishedAt || post.audit?.createdAt) }}</span>
+              <span>{{ relativeTime(post.audit?.publishedAt ?? post.audit?.createdAt ?? '') }}</span>
             </div>
           </div>
         </NuxtLink>
