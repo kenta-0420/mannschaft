@@ -161,9 +161,6 @@ class PersonalDataCollectorTest {
                     .willReturn(List.of());
             given(pointCardGroupRepository.findAllByUserIdOrderByDisplayOrderAscCreatedAtAsc(anyLong()))
                     .willReturn(List.of());
-            // F01.10 履歴書・職務経歴書
-            given(resumeRepository.findByUserIdOrderByCreatedAtDesc(anyLong()))
-                    .willReturn(List.of());
 
             Map<String, String> result = collector.collect(1L, null);
 
