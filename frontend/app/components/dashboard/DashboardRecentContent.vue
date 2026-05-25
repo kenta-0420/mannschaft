@@ -44,7 +44,7 @@ async function loadPosts() {
         page: 0,
         size: 3,
       })
-      recentPosts.value = res.data.filter((p) => p.status === 'PUBLISHED')
+      recentPosts.value = res.data.filter((p) => p.meta?.status === 'PUBLISHED')
     } else {
       const res = await getFeed({ page: 0, size: 3 })
       recentPosts.value = res.data
@@ -118,22 +118,21 @@ onMounted(() => {
           class="group overflow-hidden rounded-lg border border-surface-300 bg-surface-50 transition-shadow hover:shadow-md dark:border-surface-600 dark:bg-surface-900"
         >
           <img
-            v-if="post.coverImageUrl"
-            :src="post.coverImageUrl"
+            v-if="post.content?.coverImageUrl"
+            :src="post.content.coverImageUrl"
             class="h-32 w-full object-cover"
           >
           <div class="p-3">
             <h3
               class="mb-1 text-sm font-semibold text-surface-800 line-clamp-2 group-hover:text-primary dark:text-surface-100"
             >
-              {{ post.title }}
+              {{ post.content?.title }}
             </h3>
-            <p v-if="post.excerpt" class="mb-2 text-xs text-surface-400 line-clamp-2">
-              {{ post.excerpt }}
+            <p v-if="post.content?.excerpt" class="mb-2 text-xs text-surface-400 line-clamp-2">
+              {{ post.content?.excerpt }}
             </p>
             <div class="flex items-center gap-2 text-xs text-surface-400">
-              <span>{{ post.author.displayName }}</span>
-              <span>{{ relativeTime(post.publishedAt || post.createdAt) }}</span>
+              <span>{{ relativeTime(post.audit?.publishedAt || post.audit?.createdAt) }}</span>
             </div>
           </div>
         </NuxtLink>
