@@ -1,6 +1,7 @@
 package com.mannschaft.app.event;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.event.dto.CreateEventRequest;
 import com.mannschaft.app.event.dto.EventDetailResponse;
 import com.mannschaft.app.event.dto.EventDetailResponse.EventAuditDto;
@@ -60,6 +61,9 @@ class EventServiceTest {
 
     @Mock
     private EventMapper eventMapper;
+
+    @Mock
+    private DomainEventPublisher domainEventPublisher;
 
     @InjectMocks
     private EventService eventService;

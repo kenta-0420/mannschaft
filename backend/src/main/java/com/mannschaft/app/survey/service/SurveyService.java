@@ -15,6 +15,8 @@ import com.mannschaft.app.survey.SurveyMapper;
 import com.mannschaft.app.survey.SurveyNotificationType;
 import com.mannschaft.app.survey.SurveyStatus;
 import com.mannschaft.app.survey.UnrespondedVisibility;
+import com.mannschaft.app.survey.event.SurveyCreatedEvent;
+import com.mannschaft.app.survey.event.SurveyStatusChangedEvent;
 import com.mannschaft.app.survey.dto.CreateOptionRequest;
 import com.mannschaft.app.survey.dto.CreateQuestionRequest;
 import com.mannschaft.app.survey.dto.CreateSurveyRequest;
@@ -37,6 +39,7 @@ import com.mannschaft.app.survey.repository.SurveyTargetRepository;
 import com.mannschaft.app.survey.repository.SurveyResponseRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -65,6 +68,7 @@ public class SurveyService {
     private final AccessControlService accessControlService;
     private final UserRoleRepository userRoleRepository;
     private final NotificationHelper notificationHelper;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * アンケート一覧をページング取得する。
@@ -161,6 +165,10 @@ public class SurveyService {
         }
 
         log.info("アンケート作成: scopeType={}, scopeId={}, surveyId={}", scopeType, scopeId, saved.getId());
+
+        // 掲示板スレッド自動作成イベントを発行（AFTER_COMMIT で非同期実行）
+        eventPublisher.publishEvent(new SurveyCreatedEvent(saved.getId(), scopeType, scopeId, saved.getTitle()));
+
         return getSurveyDetail(scopeType, scopeId, saved.getId());
     }
 
@@ -263,6 +271,10 @@ public class SurveyService {
         entity.close();
         SurveyEntity saved = surveyRepository.save(entity);
         log.info("アンケート締め切り: surveyId={}", surveyId);
+
+        // 掲示板スレッドロックイベントを発行（AFTER_COMMIT で非同期実行）
+        eventPublisher.publishEvent(new SurveyStatusChangedEvent(surveyId, SurveyStatus.CLOSED));
+
         return surveyMapper.toSurveyResponse(saved);
     }
 

@@ -1,6 +1,7 @@
 package com.mannschaft.app.event.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.event.EventErrorCode;
@@ -16,6 +17,8 @@ import com.mannschaft.app.event.dto.UpdateEventRequest;
 import com.mannschaft.app.event.entity.EventAttendanceMode;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.entity.EventVisibility;
+import com.mannschaft.app.event.event.EventCreatedEvent;
+import com.mannschaft.app.event.event.EventStatusChangedEvent;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRegistrationRepository;
 import com.mannschaft.app.event.repository.EventRepository;
@@ -42,6 +45,7 @@ public class EventService {
     private final EventCheckinRepository checkinRepository;
     private final EventRsvpResponseRepository rsvpResponseRepository;
     private final EventMapper eventMapper;
+    private final DomainEventPublisher domainEventPublisher;
 
     /**
      * F00 Phase B 試験的置換 — 共通可視性ファサード。
@@ -145,6 +149,11 @@ public class EventService {
 
         EventEntity saved = eventRepository.save(entity);
         log.info("イベント作成: scopeType={}, scopeId={}, eventId={}", scopeType, scopeId, saved.getId());
+
+        // イベント専用チャットチャンネル自動生成のためにドメインイベントを発行する
+        String title = request.getSubtitle() != null ? request.getSubtitle() : request.getSlug();
+        domainEventPublisher.publish(new EventCreatedEvent(saved.getId(), scopeType, scopeId, title));
+
         return toDetailResponseWithRsvp(saved);
     }
 
@@ -267,6 +276,10 @@ public class EventService {
         entity.cancel();
         EventEntity saved = eventRepository.save(entity);
         log.info("イベントキャンセル: eventId={}", eventId);
+
+        // イベント専用チャットチャンネルアーカイブのためにドメインイベントを発行する
+        domainEventPublisher.publish(new EventStatusChangedEvent(eventId, EventStatus.CANCELLED));
+
         return toDetailResponseWithRsvp(saved);
     }
 
@@ -286,6 +299,10 @@ public class EventService {
         entity.complete();
         EventEntity saved = eventRepository.save(entity);
         log.info("イベント完了: eventId={}", eventId);
+
+        // イベント専用チャットチャンネルアーカイブのためにドメインイベントを発行する
+        domainEventPublisher.publish(new EventStatusChangedEvent(eventId, EventStatus.COMPLETED));
+
         return toDetailResponseWithRsvp(saved);
     }
 

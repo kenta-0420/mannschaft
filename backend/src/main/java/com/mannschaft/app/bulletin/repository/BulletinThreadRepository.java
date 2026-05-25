@@ -96,6 +96,18 @@ public interface BulletinThreadRepository extends JpaRepository<BulletinThreadEn
             @Param("ids") Collection<Long> ids);
 
     // ====================================================================
+    // source_type / source_id による関連スレッド検索
+    // ====================================================================
+
+    /**
+     * ソース種別・ソースIDからスレッドを取得する（アンケート・安否確認等のシステム連携用）。
+     *
+     * <p>{@code source_type} と {@code source_id} の組み合わせで識別する。
+     * 例: {@code source_type="SURVEY"}, {@code source_id=surveyId}</p>
+     */
+    Optional<BulletinThreadEntity> findBySourceTypeAndSourceIdAndDeletedAtIsNull(String sourceType, Long sourceId);
+
+    // ====================================================================
     // F17.1 Phase 1 — 村スコープ検索 / フィード（B10 担当範囲：読み取り専用）
     // ====================================================================
 

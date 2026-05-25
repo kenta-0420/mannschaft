@@ -28,5 +28,12 @@ public enum ChannelType {
      * villages.id を {@code chat_channels.village_id} に紐付けて一意に払い出される。
      * チーム/組織と独立した第三のスコープであり、{@code teamId}/{@code organizationId} は NULL。
      */
-    VILLAGE_LOBBY
+    VILLAGE_LOBBY,
+
+    /**
+     * イベント専用チャット。
+     * {@code chat_channels.source_type="EVENT"}, {@code source_id=eventId} に紐付けて一意に払い出される。
+     * イベント作成時に自動生成され、イベント完了・キャンセル時にアーカイブされる。
+     */
+    EVENT_CHAT
 }
