@@ -16,6 +16,7 @@ export function useVillageLobbyPresence(villageId: string) {
 
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null
   let _unsubscribe: (() => void) | null = null
+  let _started = false
 
   async function fetchPresence(): Promise<void> {
     try {
@@ -45,6 +46,8 @@ export function useVillageLobbyPresence(villageId: string) {
   }
 
   function start(): void {
+    if (_started) return
+    _started = true
     fetchPresence()
     _unsubscribe = subscribeRaw(
       `/topic/villages/${villageId}/lobby/presence`,
@@ -65,6 +68,7 @@ export function useVillageLobbyPresence(villageId: string) {
     leave()
     _unsubscribe?.()
     _unsubscribe = null
+    _started = false
   }
 
   return { members, activeCount, start, stop }
