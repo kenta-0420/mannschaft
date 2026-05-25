@@ -1,8 +1,6 @@
 package com.mannschaft.app.village.dto;
 
-import com.mannschaft.app.village.entity.enums.VillageJoinPolicy;
 import com.mannschaft.app.village.entity.enums.VillageType;
-import com.mannschaft.app.village.entity.enums.VillageVisibility;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -21,8 +19,6 @@ import java.time.OffsetDateTime;
  * @param category 任意カテゴリ
  * @param purpose 申請理由（必須）
  * @param guidelineAgreedAt ガイドライン同意時刻（直近1時間以内であること）
- * @param joinPolicy 参加方式（FREE / APPROVAL）
- * @param visibility 可視性（PUBLIC / UNLISTED）
  * @param type 村種別。一般ユーザーは COMMUNITY のみ可（OFFICIAL は VILLAGE_028）
  * @param guidelineMd 任意の独自ガイドライン Markdown
  */
@@ -44,12 +40,6 @@ public record VillageCreationRequestCreateRequest(
 
         @NotNull
         OffsetDateTime guidelineAgreedAt,
-
-        @NotNull
-        VillageJoinPolicy joinPolicy,
-
-        @NotNull
-        VillageVisibility visibility,
 
         @NotNull
         VillageType type,

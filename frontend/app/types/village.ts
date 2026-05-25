@@ -314,8 +314,6 @@ export interface VillageCreationRequestCreateRequest {
   slug: string
   category?: string | null
   purpose?: string | null
-  joinPolicy: VillageJoinPolicy
-  visibility: VillageVisibility
   type: VillageType
   guidelineMd?: string | null
   guidelineAgreedAt: string
