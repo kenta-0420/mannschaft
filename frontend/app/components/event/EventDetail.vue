@@ -65,7 +65,7 @@ const showAdvanceNoticeTab = computed(() => isTeamScope.value && props.canEdit)
 
 /** RSVP あり/なし基底オフセット（0 または 1） */
 const rsvpOffset = computed(() =>
-  (event.value?.attendanceMode ?? 'NONE') === 'RSVP' ? 1 : 0,
+  (event.value?.registration?.attendanceMode ?? 'NONE') === 'RSVP' ? 1 : 0,
 )
 
 /**
