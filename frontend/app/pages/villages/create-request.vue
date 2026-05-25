@@ -19,16 +19,13 @@ import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
 import InputText from 'primevue/inputtext'
 import Popover from 'primevue/popover'
-import RadioButton from 'primevue/radiobutton'
 import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
 
 import type {
   VillageCreationRequestCreateRequest,
   VillageCreationRequestResponse,
-  VillageJoinPolicy,
   VillageRequestStatus,
-  VillageVisibility,
 } from '~/types/village'
 
 definePageMeta({
@@ -69,8 +66,6 @@ const formName = ref('')
 const formSlug = ref('')
 const formCategory = ref('')
 const formPurpose = ref('')
-const formJoinPolicy = ref<VillageJoinPolicy>('FREE')
-const formVisibility = ref<VillageVisibility>('PUBLIC')
 
 const submitting = ref(false)
 
@@ -207,8 +202,6 @@ function resetForm() {
   formSlug.value = ''
   formCategory.value = ''
   formPurpose.value = ''
-  formJoinPolicy.value = 'FREE'
-  formVisibility.value = 'PUBLIC'
   guidelineAgreed.value = false
   guidelineAgreedAt.value = null
 }
@@ -222,9 +215,8 @@ async function submit() {
       slug: formSlug.value.trim(),
       category: formCategory.value.trim(),
       purpose: formPurpose.value.trim(),
-      joinPolicy: formJoinPolicy.value,
-      visibility: formVisibility.value,
       // 設計書 §3.6: 一般ユーザーが申請するのは常に COMMUNITY 村
+      // joinPolicy / visibility は常に FREE / PUBLIC のためユーザーに選択させない
       type: 'COMMUNITY',
       guidelineAgreedAt: guidelineAgreedAt.value!,
     }
@@ -425,70 +417,6 @@ onMounted(() => {
             {{ purposeError }}
           </p>
           <p class="mt-1 text-xs text-surface-500">{{ formPurpose.length }} / {{ PURPOSE_MAX }}</p>
-        </div>
-
-        <!-- 参加方式 -->
-        <div>
-          <span class="mb-2 block text-sm font-medium">
-            {{ t('village.field.joinPolicy') }}
-            <span class="text-red-600">*</span>
-          </span>
-          <div class="flex flex-wrap gap-4">
-            <div class="flex items-center gap-2">
-              <RadioButton
-                v-model="formJoinPolicy"
-                input-id="join-policy-free"
-                name="joinPolicy"
-                value="FREE"
-              />
-              <label for="join-policy-free" class="cursor-pointer text-sm">
-                {{ t('village.joinPolicy.FREE') }}
-              </label>
-            </div>
-            <div class="flex items-center gap-2">
-              <RadioButton
-                v-model="formJoinPolicy"
-                input-id="join-policy-approval"
-                name="joinPolicy"
-                value="APPROVAL"
-              />
-              <label for="join-policy-approval" class="cursor-pointer text-sm">
-                {{ t('village.joinPolicy.APPROVAL') }}
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <!-- 可視性 -->
-        <div>
-          <span class="mb-2 block text-sm font-medium">
-            {{ t('village.field.visibility') }}
-            <span class="text-red-600">*</span>
-          </span>
-          <div class="flex flex-wrap gap-4">
-            <div class="flex items-center gap-2">
-              <RadioButton
-                v-model="formVisibility"
-                input-id="visibility-public"
-                name="visibility"
-                value="PUBLIC"
-              />
-              <label for="visibility-public" class="cursor-pointer text-sm">
-                {{ t('village.visibility.PUBLIC') }}
-              </label>
-            </div>
-            <div class="flex items-center gap-2">
-              <RadioButton
-                v-model="formVisibility"
-                input-id="visibility-unlisted"
-                name="visibility"
-                value="UNLISTED"
-              />
-              <label for="visibility-unlisted" class="cursor-pointer text-sm">
-                {{ t('village.visibility.UNLISTED') }}
-              </label>
-            </div>
-          </div>
         </div>
 
         <!-- 送信ボタン -->
