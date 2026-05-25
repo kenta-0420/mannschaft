@@ -54,7 +54,7 @@ const { status: dismissalStatus, loadStatus: loadDismissalStatus } = useDismissa
 // F03.12 Phase 10 §14/§15 タブ表示判定
 const isTeamScope = computed(() => props.scopeType === 'team')
 const showRollCallTab = computed(
-  () => isTeamScope.value && props.canEdit && event.value?.status === 'IN_PROGRESS',
+  () => isTeamScope.value && props.canEdit && event.value?.meta?.status === 'IN_PROGRESS',
 )
 const showAdvanceNoticeTab = computed(() => isTeamScope.value && props.canEdit)
 
@@ -81,14 +81,14 @@ function onDismissalSubmitted() {
       <div class="mb-6 flex items-start justify-between">
         <div>
           <h1 class="text-2xl font-bold">
-            {{ event.subtitle || event.slug || `イベント #${event.id}` }}
+            {{ event.content?.subtitle || event.content?.slug || `イベント #${event.id}` }}
           </h1>
           <div class="mt-2 flex items-center gap-3">
-            <Tag :value="statusLabel(event.status)" :severity="statusSeverity(event.status)" />
-            <span v-if="event.visibility === 'PUBLIC'" class="text-sm text-green-600">
+            <Tag :value="statusLabel(event.meta?.status ?? '')" :severity="statusSeverity(event.meta?.status ?? '')" />
+            <span v-if="event.meta?.visibility === 'PUBLIC'" class="text-sm text-green-600">
               <i class="pi pi-eye mr-1" />{{ $t('event.visibility.PUBLIC') }}
             </span>
-            <span v-else-if="event.visibility === 'SUPPORTERS_AND_ABOVE'" class="text-sm text-blue-500">
+            <span v-else-if="event.meta?.visibility === 'SUPPORTERS_AND_ABOVE'" class="text-sm text-blue-500">
               <i class="pi pi-eye mr-1" />{{ $t('event.visibility.SUPPORTERS_AND_ABOVE') }}
             </span>
             <span v-else class="text-sm text-surface-500">
@@ -100,7 +100,7 @@ function onDismissalSubmitted() {
         </div>
         <EventActionButtons
           v-if="canEdit"
-          :status="event.status"
+          :status="event.meta?.status ?? ''"
           :dismissal-status="dismissalStatus"
           :show-dismissal-button="isTeamScope"
           @edit="showEditDialog = true"
@@ -117,47 +117,47 @@ function onDismissalSubmitted() {
           <div class="grid grid-cols-2 gap-4 md:grid-cols-3">
             <div>
               <p class="text-sm text-surface-500">会場</p>
-              <p class="font-medium">{{ event.venueName || '—' }}</p>
-              <p v-if="event.venueAddress" class="text-sm text-surface-500">
-                {{ event.venueAddress }}
+              <p class="font-medium">{{ event.venue?.venueName || '—' }}</p>
+              <p v-if="event.venue?.venueAddress" class="text-sm text-surface-500">
+                {{ event.venue?.venueAddress }}
               </p>
             </div>
             <div>
               <p class="text-sm text-surface-500">定員</p>
               <p class="font-medium">
                 {{
-                  event.maxCapacity
-                    ? `${event.registrationCount} / ${event.maxCapacity}`
-                    : `${event.registrationCount}名`
+                  event.registration?.maxCapacity
+                    ? `${event.registration?.registrationCount} / ${event.registration?.maxCapacity}`
+                    : `${event.registration?.registrationCount}名`
                 }}
               </p>
             </div>
             <div>
               <p class="text-sm text-surface-500">チェックイン数</p>
-              <p class="font-medium">{{ event.checkinCount }}名</p>
+              <p class="font-medium">{{ event.registration?.checkinCount }}名</p>
             </div>
             <div>
               <p class="text-sm text-surface-500">受付開始</p>
-              <p class="font-medium">{{ formatDateTime(event.registrationStartsAt) }}</p>
+              <p class="font-medium">{{ formatDateTime(event.registration?.registrationStartsAt ?? null) }}</p>
             </div>
             <div>
               <p class="text-sm text-surface-500">受付終了</p>
-              <p class="font-medium">{{ formatDateTime(event.registrationEndsAt) }}</p>
+              <p class="font-medium">{{ formatDateTime(event.registration?.registrationEndsAt ?? null) }}</p>
             </div>
             <div>
               <p class="text-sm text-surface-500">承認制</p>
-              <p class="font-medium">{{ event.isApprovalRequired ? 'はい' : 'いいえ' }}</p>
+              <p class="font-medium">{{ event.registration?.isApprovalRequired ? 'はい' : 'いいえ' }}</p>
             </div>
           </div>
-          <div v-if="event.summary" class="mt-4">
+          <div v-if="event.content?.summary" class="mt-4">
             <p class="text-sm text-surface-500">概要</p>
-            <p class="mt-1 whitespace-pre-wrap">{{ event.summary }}</p>
+            <p class="mt-1 whitespace-pre-wrap">{{ event.content?.summary }}</p>
           </div>
         </template>
       </Card>
 
       <!-- RSVP ウィジェット -->
-      <div v-if="(event.attendanceMode ?? 'NONE') === 'RSVP'" class="mb-4">
+      <div v-if="(event.registration?.attendanceMode ?? 'NONE') === 'RSVP'" class="mb-4">
         <RsvpWidget
           :event-id="event.id"
           :scope-type="props.scopeType"
@@ -170,7 +170,7 @@ function onDismissalSubmitted() {
 
       <!-- F03.12 §15 事前遅刻・欠席連絡バー（チームイベントのみ） -->
       <div
-        v-if="isTeamScope && (event.attendanceMode ?? 'NONE') === 'RSVP'"
+        v-if="isTeamScope && (event.registration?.attendanceMode ?? 'NONE') === 'RSVP'"
         class="mb-4"
       >
         <LateAbsenceNoticeBar
@@ -182,30 +182,30 @@ function onDismissalSubmitted() {
 
       <Tabs v-model:value="activeTab">
         <TabList>
-          <Tab v-if="(event.attendanceMode ?? 'NONE') === 'RSVP'" :value="0">
+          <Tab v-if="(event.registration?.attendanceMode ?? 'NONE') === 'RSVP'" :value="0">
             {{ $t('event.rsvpList') }}
           </Tab>
-          <Tab :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 1 : 0">
+          <Tab :value="(event.registration?.attendanceMode ?? 'NONE') === 'RSVP' ? 1 : 0">
             {{ $t('event.participants') }}
           </Tab>
-          <Tab :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 2 : 1">チェックイン</Tab>
-          <Tab :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 3 : 2">タイムテーブル</Tab>
+          <Tab :value="(event.registration?.attendanceMode ?? 'NONE') === 'RSVP' ? 2 : 1">チェックイン</Tab>
+          <Tab :value="(event.registration?.attendanceMode ?? 'NONE') === 'RSVP' ? 3 : 2">タイムテーブル</Tab>
           <!-- F03.12 §14 主催者点呼タブ -->
-          <Tab v-if="showRollCallTab" :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 4 : 3">
+          <Tab v-if="showRollCallTab" :value="(event.registration?.attendanceMode ?? 'NONE') === 'RSVP' ? 4 : 3">
             {{ $t('event.rollCall.tab') }}
           </Tab>
           <!-- F03.12 §15 事前連絡タブ -->
           <Tab
             v-if="showAdvanceNoticeTab"
             :value="
-              ((event.attendanceMode ?? 'NONE') === 'RSVP' ? 4 : 3) + (showRollCallTab ? 1 : 0)
+              ((event.registration?.attendanceMode ?? 'NONE') === 'RSVP' ? 4 : 3) + (showRollCallTab ? 1 : 0)
             "
           >
             {{ $t('event.advanceNotice.tab') }}
           </Tab>
         </TabList>
         <TabPanels>
-          <TabPanel v-if="(event.attendanceMode ?? 'NONE') === 'RSVP'" :value="0">
+          <TabPanel v-if="(event.registration?.attendanceMode ?? 'NONE') === 'RSVP'" :value="0">
             <DataTable :value="rsvpList" data-key="id">
               <Column field="userName" header="氏名" />
               <Column field="response" header="回答">
@@ -235,7 +235,7 @@ function onDismissalSubmitted() {
               </template>
             </DataTable>
           </TabPanel>
-          <TabPanel :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 1 : 0">
+          <TabPanel :value="(event.registration?.attendanceMode ?? 'NONE') === 'RSVP' ? 1 : 0">
             <EventRegistrationTable
               :registrations="registrations"
               :can-edit="canEdit"
@@ -243,16 +243,16 @@ function onDismissalSubmitted() {
               @reject="rejectRegistration"
             />
           </TabPanel>
-          <TabPanel :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 2 : 1">
+          <TabPanel :value="(event.registration?.attendanceMode ?? 'NONE') === 'RSVP' ? 2 : 1">
             <EventCheckinTable :checkins="checkins" />
           </TabPanel>
-          <TabPanel :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 3 : 2">
+          <TabPanel :value="(event.registration?.attendanceMode ?? 'NONE') === 'RSVP' ? 3 : 2">
             <EventTimetableTable :timetable-items="timetableItems" />
           </TabPanel>
           <!-- F03.12 §14 主催者点呼パネル -->
           <TabPanel
             v-if="showRollCallTab"
-            :value="(event.attendanceMode ?? 'NONE') === 'RSVP' ? 4 : 3"
+            :value="(event.registration?.attendanceMode ?? 'NONE') === 'RSVP' ? 4 : 3"
           >
             <div
               class="flex flex-col items-start gap-3 rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-900"
@@ -272,7 +272,7 @@ function onDismissalSubmitted() {
           <TabPanel
             v-if="showAdvanceNoticeTab"
             :value="
-              ((event.attendanceMode ?? 'NONE') === 'RSVP' ? 4 : 3) + (showRollCallTab ? 1 : 0)
+              ((event.registration?.attendanceMode ?? 'NONE') === 'RSVP' ? 4 : 3) + (showRollCallTab ? 1 : 0)
             "
           >
             <AdvanceNoticeList :team-id="props.scopeId" :event-id="event.id" />

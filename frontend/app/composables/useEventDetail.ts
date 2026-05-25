@@ -75,7 +75,7 @@ export function useEventDetail({ scopeType, scopeId, eventId }: UseEventDetailOp
   }
 
   async function loadRsvp() {
-    if (!event.value || (event.value.attendanceMode ?? 'NONE') !== 'RSVP') return
+    if (!event.value || (event.value.registration?.attendanceMode ?? 'NONE') !== 'RSVP') return
     try {
       const [listRes, summaryRes] = await Promise.all([
         rsvpApi.fetchRsvpList(scopeType.value, scopeId.value, eventId.value),

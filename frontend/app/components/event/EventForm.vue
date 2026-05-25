@@ -51,21 +51,23 @@ watch(
       try {
         const res = await eventApi.getEvent(props.scopeType, props.scopeId, eventId as number)
         const d = res.data
-        form.value.subtitle = d.subtitle ?? ''
-        form.value.slug = d.slug ?? ''
-        form.value.summary = d.summary ?? ''
-        form.value.venueName = d.venueName ?? ''
-        form.value.venueAddress = d.venueAddress ?? ''
-        form.value.visibility = d.visibility ?? 'MEMBERS_ONLY'
-        form.value.maxCapacity = d.maxCapacity
-        form.value.isApprovalRequired = d.isApprovalRequired
-        form.value.registrationStartsAt = d.registrationStartsAt
-          ? new Date(d.registrationStartsAt)
+        form.value.subtitle = d.content?.subtitle ?? ''
+        form.value.slug = d.content?.slug ?? ''
+        form.value.summary = d.content?.summary ?? ''
+        form.value.venueName = d.venue?.venueName ?? ''
+        form.value.venueAddress = d.venue?.venueAddress ?? ''
+        form.value.visibility = d.meta?.visibility ?? 'MEMBERS_ONLY'
+        form.value.maxCapacity = d.registration?.maxCapacity ?? null
+        form.value.isApprovalRequired = d.registration?.isApprovalRequired ?? false
+        form.value.registrationStartsAt = d.registration?.registrationStartsAt
+          ? new Date(d.registration.registrationStartsAt)
           : null
-        form.value.registrationEndsAt = d.registrationEndsAt ? new Date(d.registrationEndsAt) : null
-        form.value.attendanceMode = (d.attendanceMode ?? 'NONE') as AttendanceMode
-        form.value.preSurveyId = d.preSurveyId ?? null
-        form.value.postSurveyId = d.postSurveyId ?? null
+        form.value.registrationEndsAt = d.registration?.registrationEndsAt
+          ? new Date(d.registration.registrationEndsAt)
+          : null
+        form.value.attendanceMode = (d.registration?.attendanceMode ?? 'NONE') as AttendanceMode
+        form.value.preSurveyId = d.registration?.preSurveyId ?? null
+        form.value.postSurveyId = d.registration?.postSurveyId ?? null
       } catch {
         notification.error('イベント情報の取得に失敗しました')
       }

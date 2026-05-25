@@ -48,40 +48,66 @@ export interface EventResponse {
   updatedAt: string
 }
 
+// Wave 1 DTO刷新: フラット構造からネスト構造へ移行
+
+export interface EventScopeDto {
+  scopeType?: string
+  scopeId?: number
+  scheduleId?: number | null
+  workflowRequestId?: number | null
+}
+
+export interface EventContentDto {
+  slug?: string | null
+  subtitle?: string | null
+  summary?: string | null
+  coverImageKey?: string | null
+}
+
+export interface EventVenueDto {
+  venueName?: string | null
+  venueAddress?: string | null
+  venueLatitude?: number | null
+  venueLongitude?: number | null
+  venueAccessInfo?: string | null
+}
+
+export interface EventRegistrationDto {
+  registrationStartsAt?: string | null
+  registrationEndsAt?: string | null
+  maxCapacity?: number | null
+  isApprovalRequired?: boolean
+  attendanceMode?: AttendanceMode | null
+  preSurveyId?: number | null
+  postSurveyId?: number | null
+  registrationCount?: number
+  checkinCount?: number
+}
+
+export interface EventMetaDto {
+  status?: string
+  visibility?: EventVisibility
+  ogpTitle?: string | null
+  ogpDescription?: string | null
+  ogpImageKey?: string | null
+}
+
+export interface EventAuditDto {
+  createdBy?: number | null
+  createdAt?: string
+  updatedAt?: string
+  version?: number
+}
+
 export interface EventDetailResponse {
   id: number
-  scopeType: string
-  scopeId: number
-  scheduleId: number | null
-  slug: string | null
-  subtitle: string | null
-  summary: string | null
-  coverImageKey: string | null
-  venueName: string | null
-  venueAddress: string | null
-  venueLatitude: number | null
-  venueLongitude: number | null
-  venueAccessInfo: string | null
-  status: string
-  visibility: EventVisibility
-  registrationStartsAt: string | null
-  registrationEndsAt: string | null
-  maxCapacity: number | null
-  isApprovalRequired: boolean
-  attendanceMode: AttendanceMode | null
-  preSurveyId: number | null
-  postSurveyId: number | null
-  workflowRequestId: number | null
-  ogpTitle: string | null
-  ogpDescription: string | null
-  ogpImageKey: string | null
-  registrationCount: number
-  checkinCount: number
-  rsvpSummary: EventRsvpSummary | null
-  createdBy: number
-  version: number
-  createdAt: string
-  updatedAt: string
+  scope?: EventScopeDto
+  content?: EventContentDto
+  venue?: EventVenueDto
+  registration?: EventRegistrationDto
+  meta?: EventMetaDto
+  audit?: EventAuditDto
+  rsvpSummary?: EventRsvpSummary | null
 }
 
 export interface CreateEventRequest {
