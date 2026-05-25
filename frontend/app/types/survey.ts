@@ -66,6 +66,7 @@ export interface SurveyResponse {
   schedule: SurveyScheduleDto
   stats: SurveyStatsDto
   audit: SurveyAuditDto
+  hasResponded?: boolean
 }
 
 export interface SurveyQuestion {

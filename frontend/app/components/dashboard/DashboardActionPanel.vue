@@ -167,7 +167,7 @@ async function load() {
 
       if (r.type === 'survey') {
         const surveys = r.data as SurveyResponse[]
-        for (const s of surveys.filter((s) => !(s as any).hasResponded)) {
+        for (const s of surveys.filter((s) => !s.hasResponded)) {
           result.push({
             key: `survey-${r.scopeKind}-${r.scopeId}-${s.id}`,
             type: 'survey',
