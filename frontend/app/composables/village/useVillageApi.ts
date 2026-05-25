@@ -39,12 +39,14 @@ export function useVillageApi() {
 
   /** §4.2 村検索 */
   async function searchVillages(params?: VillageSearchParams) {
-    return api<VillageSearchResponse>(`/api/v1/villages/search${qs(params)}`)
+    const res = await api<{ data: VillageSearchResponse }>(`/api/v1/villages/search${qs(params)}`)
+    return res.data
   }
 
   /** §4.1.2 村詳細 */
   async function getVillage(villageId: string) {
-    return api<VillageResponse>(`/api/v1/villages/${villageId}`)
+    const res = await api<{ data: VillageResponse }>(`/api/v1/villages/${villageId}`)
+    return res.data
   }
 
   /** §4.1.1 村作成（運営/承認自動経路） */

@@ -102,33 +102,55 @@ class VillageCreationRequestServiceTest {
     }
 
     // ---------------------------------------------------------------
-    // 1. 申請作成成功
+    // 1. 申請作成成功（自動承認）
     // ---------------------------------------------------------------
     @Test
-    @DisplayName("01. 申請作成成功 — PENDING で保存される")
+    @DisplayName("01. 申請作成成功 — 自動承認で APPROVED になり villageId が返る")
     void createRequest_success() {
         given(requestRepository.countByRequesterUserIdAndCreatedAtAfter(eq(REQUESTER_ID), any())).willReturn(0L);
         given(requestRepository.findByRequesterUserIdOrderByCreatedAtDesc(REQUESTER_ID))
                 .willReturn(Collections.emptyList());
         given(villageRepository.existsBySlug("casual-baseball")).willReturn(false);
+        // 1回目（初回保存）と2回目（自動承認後更新）の両方に対応
         given(requestRepository.save(any())).willAnswer(inv -> {
             VillageCreationRequestEntity e = inv.getArgument(0);
-            ReflectionTestUtils.setField(e, "id", UUID.randomUUID());
+            if (e.getId() == null) {
+                ReflectionTestUtils.setField(e, "id", UUID.randomUUID());
+            }
             e.setCreatedAt(LocalDateTime.now());
             return e;
         });
+        given(villageRepository.save(any())).willAnswer(inv -> {
+            VillageEntity v = inv.getArgument(0);
+            ReflectionTestUtils.setField(v, "id", UUID.randomUUID());
+            return v;
+        });
+        given(membershipRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         VillageCreationRequestResponse res = service.createRequest(REQUESTER_ID, validRequest());
 
-        assertThat(res.status()).isEqualTo(VillageRequestStatus.PENDING);
+        // 自動承認されるので APPROVED
+        assertThat(res.status()).isEqualTo(VillageRequestStatus.APPROVED);
         assertThat(res.slug()).isEqualTo("casual-baseball");
         assertThat(res.requesterUserId()).isEqualTo(REQUESTER_ID);
+        // createdVillageId が設定されていること
+        assertThat(res.createdVillageId()).isNotNull();
 
-        ArgumentCaptor<VillageCreationRequestEntity> captor =
-                ArgumentCaptor.forClass(VillageCreationRequestEntity.class);
-        verify(requestRepository).save(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo(VillageRequestStatus.PENDING);
-        assertThat(captor.getValue().getProposedName()).isEqualTo("草野球村");
+        // 村レコードが作成された
+        ArgumentCaptor<VillageEntity> vCap = ArgumentCaptor.forClass(VillageEntity.class);
+        verify(villageRepository).save(vCap.capture());
+        assertThat(vCap.getValue().getSlug()).isEqualTo("casual-baseball");
+        assertThat(vCap.getValue().getName()).isEqualTo("草野球村");
+        assertThat(vCap.getValue().getCreatedByUserId()).isEqualTo(REQUESTER_ID);
+
+        // HEADMAN として membership が作成された
+        ArgumentCaptor<VillageMembershipEntity> mCap = ArgumentCaptor.forClass(VillageMembershipEntity.class);
+        verify(membershipRepository).save(mCap.capture());
+        assertThat(mCap.getValue().getSubjectId()).isEqualTo(REQUESTER_ID);
+        assertThat(mCap.getValue().getRole()).isEqualTo(VillageRole.HEADMAN);
+
+        // requestRepository.save は 2 回呼ばれる（初回保存 + 承認更新）
+        verify(requestRepository, times(2)).save(any());
     }
 
     // ---------------------------------------------------------------

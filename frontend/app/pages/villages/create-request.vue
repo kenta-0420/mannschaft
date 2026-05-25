@@ -228,8 +228,14 @@ async function submit() {
       type: 'COMMUNITY',
       guidelineAgreedAt: guidelineAgreedAt.value!,
     }
-    await villageApi.createCreationRequest(body)
+    const res = await villageApi.createCreationRequest(body)
+    // 自動承認により createdVillageId が返るので村詳細ページへリダイレクト
+    const createdVillageId = res.createdVillageId
     showSuccess(t('village.creationRequest.submitted'))
+    if (createdVillageId) {
+      await navigateTo(`/villages/${createdVillageId}`)
+      return
+    }
     resetForm()
     await loadRequests()
   } catch (err) {

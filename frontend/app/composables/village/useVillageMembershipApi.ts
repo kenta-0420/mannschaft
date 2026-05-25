@@ -55,9 +55,10 @@ export function useVillageMembershipApi() {
 
   /** §4.4.3 メンバー一覧 */
   async function listMembers(villageId: string, params?: MembershipListParams) {
-    return api<MembershipListResponse>(
+    const res = await api<{ data: MembershipListResponse }>(
       `/api/v1/villages/${villageId}/memberships${qs(params)}`,
     )
+    return res.data
   }
 
   /** §4.4.4 ロール変更 */
@@ -82,15 +83,17 @@ export function useVillageMembershipApi() {
 
   /** §4.6.1 申請作成 */
   async function createCreationRequest(body: VillageCreationRequestCreateRequest) {
-    return api<VillageCreationRequestResponse>('/api/v1/villages/creation-requests', {
+    const res = await api<{ data: VillageCreationRequestResponse }>('/api/v1/villages/creation-requests', {
       method: 'POST',
       body,
     })
+    return res.data
   }
 
   /** §4.6.2 自分の申請一覧 */
   async function listMyCreationRequests() {
-    return api<VillageCreationRequestResponse[]>('/api/v1/me/village-creation-requests')
+    const res = await api<{ data: VillageCreationRequestResponse[] }>('/api/v1/me/village-creation-requests')
+    return res.data
   }
 
   /** §4.6.3 管理者向け一覧 */
