@@ -304,6 +304,7 @@ export interface VillageCreationRequestCreateRequest {
   visibility: VillageVisibility
   type: VillageType
   guidelineMd?: string | null
+  guidelineAgreedAt: string
 }
 
 export interface VillageCreationRequestReviewRequest {

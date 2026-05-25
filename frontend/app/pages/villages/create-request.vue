@@ -59,6 +59,11 @@ const CATEGORY_MAX = 40
 // =============================================================================
 
 const guidelineAgreed = ref(false)
+const guidelineAgreedAt = ref<string | null>(null)
+
+watch(guidelineAgreed, (agreed) => {
+  guidelineAgreedAt.value = agreed ? new Date().toISOString() : null
+})
 
 const formName = ref('')
 const formSlug = ref('')
@@ -205,6 +210,7 @@ function resetForm() {
   formJoinPolicy.value = 'FREE'
   formVisibility.value = 'PUBLIC'
   guidelineAgreed.value = false
+  guidelineAgreedAt.value = null
 }
 
 async function submit() {
@@ -220,6 +226,7 @@ async function submit() {
       visibility: formVisibility.value,
       // 設計書 §3.6: 一般ユーザーが申請するのは常に COMMUNITY 村
       type: 'COMMUNITY',
+      guidelineAgreedAt: guidelineAgreedAt.value!,
     }
     await villageApi.createCreationRequest(body)
     showSuccess(t('village.creationRequest.submitted'))
