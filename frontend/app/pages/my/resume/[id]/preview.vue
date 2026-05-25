@@ -23,10 +23,6 @@ const resumeId = computed(() => route.params.id as string)
 const type = computed(() => (route.query.type as DocumentType) ?? 'rirekisho')
 const format = computed(() => (route.query.format as OutputFormat) ?? 'pdf')
 
-useHead({
-  title: () => `${t('common.resume.preview')} — ${typeLabel.value}`,
-})
-
 // === ラベル ===
 const typeLabel = computed(() =>
   type.value === 'rirekisho'
@@ -36,6 +32,10 @@ const typeLabel = computed(() =>
 const formatLabel = computed(() =>
   format.value === 'pdf' ? 'PDF' : 'Excel',
 )
+
+useHead({
+  title: () => `${t('common.resume.preview')} — ${typeLabel.value}`,
+})
 
 // === プレビュー状態 ===
 const previewLoading = ref(true)
