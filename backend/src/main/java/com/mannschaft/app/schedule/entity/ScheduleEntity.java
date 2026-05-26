@@ -171,6 +171,33 @@ public class ScheduleEntity extends BaseEntity {
     }
 
     /**
+     * 個人スケジュールのPATCH更新を適用する。
+     * toBuilder() は BaseEntity の id を継承しないため、直接フィールド変更方式を採用する。
+     * null の項目はスキップ（PATCHセマンティクス）。
+     */
+    public void applyPersonalScheduleUpdate(String title, String description, String location,
+                                             LocalDateTime startAt, LocalDateTime endAt,
+                                             Boolean allDay, EventType eventType, String color) {
+        if (title != null) this.title = title;
+        if (description != null) this.description = description;
+        if (location != null) this.location = location;
+        if (startAt != null) this.startAt = startAt;
+        if (endAt != null) this.endAt = endAt;
+        if (allDay != null) this.allDay = allDay;
+        if (eventType != null) this.eventType = eventType;
+        if (color != null) this.color = color;
+    }
+
+    /**
+     * 繰り返しスケジュールの例外フラグを立てる（THIS_ONLY更新時に使用）。
+     * toBuilder().isException(true).build() は BaseEntity の id を引き継がないため、
+     * このメソッドで直接フィールドを変更する。
+     */
+    public void markAsException() {
+        this.isException = true;
+    }
+
+    /**
      * スケジュールをキャンセルする。
      */
     public void cancel() {

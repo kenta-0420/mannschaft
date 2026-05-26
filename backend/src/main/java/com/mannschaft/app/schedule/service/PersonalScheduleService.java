@@ -387,9 +387,11 @@ public class PersonalScheduleService {
             case UPDATE_SCOPE_THIS_ONLY -> {
                 applyUpdateToSchedule(schedule, req);
                 if (schedule.getParentScheduleId() != null) {
-                    ScheduleEntity marked = schedule.toBuilder().isException(true).build();
-                    scheduleRepository.save(marked);
+                    // toBuilder().isException(true).build() は BaseEntity の id を引き継がないため、
+                    // 直接フィールド変更方式で例外フラグを立てる
+                    schedule.markAsException();
                 }
+                // save は呼び出し元（updatePersonalSchedule）に委ねる
             }
             case UPDATE_SCOPE_THIS_AND_FOLLOWING -> {
                 applyUpdateToSchedule(schedule, req);
@@ -409,23 +411,24 @@ public class PersonalScheduleService {
 
     /**
      * スケジュールに更新リクエストの内容を適用する。個人スケジュール固定値は無視する。
+     * toBuilder().build() は BaseEntity の id を引き継がないため、
+     * 直接フィールド変更方式（applyPersonalScheduleUpdate）を使用する。
+     * save() は呼び出し元に委ねる。
      */
     private void applyUpdateToSchedule(ScheduleEntity schedule, UpdatePersonalScheduleRequest req) {
-        ScheduleEntity.ScheduleEntityBuilder builder = schedule.toBuilder();
-
-        if (req.getTitle() != null) builder.title(req.getTitle());
-        if (req.getDescription() != null) builder.description(req.getDescription());
-        if (req.getLocation() != null) builder.location(req.getLocation());
-        if (req.getStartAt() != null) builder.startAt(req.getStartAt());
-        if (req.getEndAt() != null) builder.endAt(req.getEndAt());
-        if (req.getAllDay() != null) builder.allDay(req.getAllDay());
-        if (req.getEventType() != null) builder.eventType(EventType.valueOf(req.getEventType()));
-        if (req.getColor() != null) builder.color(req.getColor());
-
+        EventType eventType = req.getEventType() != null ? EventType.valueOf(req.getEventType()) : null;
+        schedule.applyPersonalScheduleUpdate(
+                req.getTitle(),
+                req.getDescription(),
+                req.getLocation(),
+                req.getStartAt(),
+                req.getEndAt(),
+                req.getAllDay(),
+                eventType,
+                req.getColor()
+        );
         // 個人スケジュール固定値は変更不可（無視）
-
-        ScheduleEntity updated = builder.build();
-        scheduleRepository.save(updated);
+        // save() は呼び出し元（updatePersonalSchedule / updateFollowingSchedules / updateAllChildSchedules）で実行する
     }
 
     /**
@@ -440,7 +443,10 @@ public class PersonalScheduleService {
         children.stream()
                 .filter(child -> !child.getIsException())
                 .filter(child -> !child.getStartAt().isBefore(schedule.getStartAt()))
-                .forEach(child -> applyUpdateToSchedule(child, req));
+                .forEach(child -> {
+                    applyUpdateToSchedule(child, req);
+                    scheduleRepository.save(child);
+                });
     }
 
     /**
@@ -452,7 +458,10 @@ public class PersonalScheduleService {
 
         children.stream()
                 .filter(child -> !child.getIsException())
-                .forEach(child -> applyUpdateToSchedule(child, req));
+                .forEach(child -> {
+                    applyUpdateToSchedule(child, req);
+                    scheduleRepository.save(child);
+                });
     }
 
     /**

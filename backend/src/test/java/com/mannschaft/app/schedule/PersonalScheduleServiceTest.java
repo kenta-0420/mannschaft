@@ -339,6 +339,60 @@ class PersonalScheduleServiceTest {
         }
 
         @Test
+        @DisplayName("更新_正常_同一エンティティのフィールドが直接変更される（INSERT発生しない）")
+        void 更新_正常_同一エンティティのフィールドが直接変更される() {
+            // given: toBuilder().build()のバグでは新規エンティティが生成されsave()がINSERTになる。
+            // このテストはentityのフィールドが直接変更されることを検証する。
+            ScheduleEntity entity = createPersonalScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            given(reminderRepository.findByScheduleIdOrderByRemindBeforeMinutesAsc(any()))
+                    .willReturn(List.of());
+
+            UpdatePersonalScheduleRequest req = new UpdatePersonalScheduleRequest(
+                    "更新タイトル", "更新説明", "更新場所", null, null, null, null, "#00FF00", null, null, null);
+
+            // when
+            PersonalScheduleResponse result = personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, USER_ID);
+
+            // then: save()に渡されたエンティティがfindById()で取得した同一オブジェクトであること（INSERTでなくUPDATE）
+            assertThat(result.getTitle()).isEqualTo("更新タイトル");
+            assertThat(result.getDescription()).isEqualTo("更新説明");
+            assertThat(result.getLocation()).isEqualTo("更新場所");
+            assertThat(result.getColor()).isEqualTo("#00FF00");
+            // nullのフィールドは元の値が保持される
+            assertThat(result.getStartAt()).isEqualTo(START);
+            assertThat(result.getEndAt()).isEqualTo(END);
+        }
+
+        @Test
+        @DisplayName("更新_部分更新_nullフィールドは元の値が保持される")
+        void 更新_部分更新_nullフィールドは元の値が保持される() {
+            // given
+            ScheduleEntity entity = createPersonalScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            given(reminderRepository.findByScheduleIdOrderByRemindBeforeMinutesAsc(any()))
+                    .willReturn(List.of());
+
+            // titleのみ更新（他はnull→変更なし）
+            UpdatePersonalScheduleRequest req = new UpdatePersonalScheduleRequest(
+                    "タイトルのみ更新", null, null, null, null, null, null, null, null, null, null);
+
+            // when
+            PersonalScheduleResponse result = personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, USER_ID);
+
+            // then
+            assertThat(result.getTitle()).isEqualTo("タイトルのみ更新");
+            // 変更されていないフィールドは元の値が保持される
+            assertThat(result.getDescription()).isEqualTo("テスト");
+            assertThat(result.getLocation()).isEqualTo("自宅");
+            assertThat(result.getColor()).isEqualTo("#FF0000");
+        }
+
+        @Test
         @DisplayName("更新_他人のスケジュール_例外スロー")
         void 更新_他人のスケジュール_例外スロー() {
             // given
