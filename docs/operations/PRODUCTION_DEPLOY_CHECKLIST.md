@@ -74,6 +74,35 @@ PR/migration ごとに該当セクションを追加し、デプロイ判断の�
 
 ## PR別 個別チェック
 
+### Security Hardening Phase 1 — セキュリティ強化 (2026-05-26)
+
+設計: `docs/security/`。実装 PR: #1069（設計書）/ #1070（Dependabot）/ #1072（BE 認可・Cookie）/ #1086（FE CSP）= 全て main マージ済み。本番投入前に以下を確認すること。
+
+**🔴 FE 実機 CSP 検証（未実施・本番前必須）**
+
+nuxt-security による CSP を強制適用済み。実装時にブラウザ実機確認ができていないため、デプロイ前に dev もしくは staging で **ブラウザ DevTools の Console/Network** を開き、CSP 違反（`Refused to load/execute ...` エラー）がゼロであることを確認する。
+
+- [ ] ログイン・主要画面の表示と hydration が正常
+- [ ] PrimeVue ダイアログ/ドロップダウン等の動的スタイルが適用される
+- [ ] Google Maps 埋め込み（`PublicMapEmbed.vue`）が表示される
+- [ ] 画像表示（アバター/アップロード画像、R2/CDN 経由）が表示される
+- [ ] PWA インストール・service worker 登録・オフライン動作が機能する
+- 確認: `cd frontend && npm run dev`（または staging URL）。違反が出たら `frontend/nuxt.config.ts` の `security.headers.contentSecurityPolicy` を `docs/security/03_security_headers_and_csp.md` §2.1 に沿って調整
+
+**🔴 環境変数（本番必須）**
+
+- [ ] `MANNSCHAFT_COOKIE_SECURE=true`（本番 HTTPS。未設定だと Cookie に Secure 属性が付かない）
+
+**🟠 認可 deny-by-default の疎通（staging 推奨）**
+
+- [ ] webhook 4 系統（`POST /api/v1/webhooks/stripe`・`/api/v1/webhooks/ses`・`/api/v1/line/webhook/{x}`・`/incoming/{x}`）が無認証で到達する（認証起因の 401/403 にならない）
+- [ ] 一般 API が未認証で 401、`/api/v1/system-admin/**` が一般権限で 403
+- [ ] WebSocket（`/ws`）ハンドシェイクが成功する
+
+**🟡 Swagger 本番遮断**
+
+- [ ] Swagger UI / `/v3/api-docs` が本番で遮断されている（`docs/security/01_authorization_baseline.md` §8）
+
 ### V9.091.1 — 組織タイプ未知値の救済 (2026-04-21)
 
 **背景**:
