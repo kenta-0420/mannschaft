@@ -94,12 +94,16 @@ class FriendNotificationControllerTest {
         @Test
         @DisplayName("認証あり・MANAGE_FRIEND_TEAMS 権限あり → 200 OK でページが返る")
         void list_認証あり_200() throws Exception {
-            NotificationResponse notif = new NotificationResponse(
-                    1L, USER_ID, "FRIEND_ANNOUNCEMENT", "NORMAL",
-                    "テスト通知", "本文", "FRIEND_TEAM", TEAM_ID,
-                    "FRIEND_TEAM", TARGET_TEAM_ID, null, USER_ID,
-                    false, null, null, null, LocalDateTime.of(2026, 4, 17, 10, 0)
-            );
+            NotificationResponse notif = NotificationResponse.builder()
+                    .id(1L)
+                    .userId(USER_ID)
+                    .content(new NotificationResponse.NotificationContentDto(
+                            "FRIEND_ANNOUNCEMENT", "NORMAL", "テスト通知", "本文", null))
+                    .source(new NotificationResponse.NotificationSourceDto("FRIEND_TEAM", TEAM_ID))
+                    .scope(new NotificationResponse.NotificationScopeDto("FRIEND_TEAM", TARGET_TEAM_ID, USER_ID))
+                    .status(new NotificationResponse.NotificationStatusDto(false, null, null, null))
+                    .createdAt(LocalDateTime.of(2026, 4, 17, 10, 0))
+                    .build();
             Page<NotificationResponse> page = new PageImpl<>(List.of(notif));
 
             given(friendNotificationService.listFriendNotifications(eq(TEAM_ID), eq(USER_ID), isNull(), any()))
