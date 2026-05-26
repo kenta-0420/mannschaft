@@ -116,3 +116,4 @@ PrimeVue/Tailwind は動的インラインスタイルを多用するため、**
 | 日付 | 変更 |
 |---|---|
 | 2026-05-26 | 新規作成。nuxt-security による nonce CSP・各ヘッダー・責務分担を定義 |
+| 2026-05-26 | フロント実装（`feature/security-fe-csp`）。`nuxt-security@2.6.0` 導入、`frontend/nuxt.config.ts` に `security: {...}` を追加。nonce 有効・CSRF/rateLimiter/xssValidator/corsHandler 等は無効化（API 防御はバックエンド責務）。Permissions-Policy は実コード棚卸し結果（geolocation/camera/screen-wake-lock/publickey-credentials-get/web-share/fullscreen を `self` 許可、その他無効化）を反映。devtools を本番無効化。実機 CSP 検証（PrimeVue ダイアログ・Google Maps 埋め込み・画像表示・PWA SW 登録）は残課題 |
