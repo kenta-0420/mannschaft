@@ -56,17 +56,22 @@ async function isFrontendAlive(request: APIRequestContext): Promise<boolean> {
 // ヘルパー: ログイン（storageState フォールバック）
 // ---------------------------------------------------------------------------
 async function loginIfNeeded(page: Page, email = E2E_USER.email, password = E2E_USER.password): Promise<void> {
-  await page.goto('/my/dashboard')
-  if (page.url().includes('/login')) {
-    const emailInput = page.locator('input#email')
-    await emailInput.click()
-    await emailInput.pressSequentially(email, { delay: 10 })
-    const passwordInput = page.locator('input[type="password"]')
-    await passwordInput.click()
-    await passwordInput.pressSequentially(password, { delay: 10 })
-    await page.getByRole('button', { name: 'ログイン' }).click()
-    await page.waitForURL(/.*\/my\/.*|.*\/dashboard.*/, { timeout: 30_000 })
+  // /login に直接遷移して確実に新規トークンを取得する。
+  // /my/dashboard 経由だと localStorage の古い currentUser で isAuthenticated=true と誤判定し、
+  // 期限切れ Cookie での API 呼び出し → 401 → refresh 失敗 → logout → /login リダイレクトが発生する。
+  await page.goto('/login')
+  await waitForHydration(page)
+  if (!page.url().includes('/login')) {
+    return
   }
+  const emailInput = page.locator('input#email')
+  await emailInput.click()
+  await emailInput.pressSequentially(email, { delay: 10 })
+  const passwordInput = page.locator('input[type="password"]')
+  await passwordInput.click()
+  await passwordInput.pressSequentially(password, { delay: 10 })
+  await page.getByRole('button', { name: 'ログイン' }).click()
+  await page.waitForURL(/.*\/my\/.*|.*\/dashboard.*/, { timeout: 30_000 })
 }
 
 // ---------------------------------------------------------------------------
@@ -128,7 +133,10 @@ async function createTestSurvey(
       data: {
         title,
         description: 'E2Eテスト用アンケート',
-        resultsVisibility: 'ALL',
+        isAnonymous: false,
+        allowMultipleSubmissions: false,
+        resultsVisibility: 'AFTER_CLOSE',
+        distributionMode: 'ALL',
       },
       headers: {
         'Content-Type': 'application/json',
@@ -234,6 +242,7 @@ async function deleteSurvey(
 // EC-001〜EC-004: イベント → チャット自動連携
 // ---------------------------------------------------------------------------
 test.describe('EC-001〜EC-004: イベント→チャット自動連携', () => {
+  test.describe.configure({ mode: 'serial' })
   let userToken: string | null = null
   let adminToken: string | null = null
   let testEventId: number | null = null
@@ -424,6 +433,7 @@ test.describe('EC-001〜EC-004: イベント→チャット自動連携', () => 
 // ES-001〜ES-003: アンケート → 掲示板自動連携
 // ---------------------------------------------------------------------------
 test.describe('ES-001〜ES-003: アンケート→掲示板自動連携', () => {
+  test.describe.configure({ mode: 'serial' })
   let userToken: string | null = null
   let adminToken: string | null = null
   let testSurveyId: number | null = null
