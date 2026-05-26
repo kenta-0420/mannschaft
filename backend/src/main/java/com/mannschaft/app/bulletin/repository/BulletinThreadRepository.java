@@ -61,6 +61,61 @@ public interface BulletinThreadRepository extends JpaRepository<BulletinThreadEn
      */
     long countByCategoryId(Long categoryId);
 
+    // ====================================================================
+    // F05.1 保管庫フォルダ — アーカイブ済みスレッドの取得・集計・退避
+    // ====================================================================
+
+    /**
+     * 保管庫直下（未分類）スレッド数。{@code archive_folder_id IS NULL かつ is_archived = TRUE}。
+     */
+    long countByScopeTypeAndScopeIdAndIsArchivedTrueAndArchiveFolderIdIsNull(
+            ScopeType scopeType, Long scopeId);
+
+    /**
+     * フォルダ別のアーカイブ済みスレッド数を一括集計する（ツリーの threadCount 算出・1 クエリ）。
+     *
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープ ID
+     * @return {@code [archive_folder_id(UUID), count(Long)]} の配列リスト（archive_folder_id 非 NULL のみ）
+     */
+    @Query("SELECT t.archiveFolderId, COUNT(t) FROM BulletinThreadEntity t "
+            + "WHERE t.scopeType = :scopeType AND t.scopeId = :scopeId "
+            + "AND t.isArchived = TRUE AND t.archiveFolderId IS NOT NULL "
+            + "GROUP BY t.archiveFolderId")
+    List<Object[]> countArchivedThreadsByFolder(
+            @Param("scopeType") ScopeType scopeType, @Param("scopeId") Long scopeId);
+
+    /**
+     * 指定フォルダ直下のアーカイブ済みスレッド一覧（保管庫ビュー）。
+     */
+    Page<BulletinThreadEntity> findByScopeTypeAndScopeIdAndIsArchivedTrueAndArchiveFolderId(
+            ScopeType scopeType, Long scopeId, UUID archiveFolderId, Pageable pageable);
+
+    /**
+     * 保管庫直下（未分類）のアーカイブ済みスレッド一覧。
+     */
+    Page<BulletinThreadEntity> findByScopeTypeAndScopeIdAndIsArchivedTrueAndArchiveFolderIdIsNull(
+            ScopeType scopeType, Long scopeId, Pageable pageable);
+
+    /**
+     * 全保管庫スレッド一覧（フォルダ問わず is_archived = TRUE 全件。folder_id=all）。
+     */
+    Page<BulletinThreadEntity> findByScopeTypeAndScopeIdAndIsArchivedTrue(
+            ScopeType scopeType, Long scopeId, Pageable pageable);
+
+    /**
+     * フォルダ削除時の退避: 指定フォルダ直下のアーカイブ済みスレッドの archive_folder_id を NULL（保管庫直下）に退避する。
+     *
+     * <p>{@code is_archived = TRUE} は維持（スレッド自体は削除しない。設計書 §5 退避ロジック）。</p>
+     *
+     * @param archiveFolderId 削除対象フォルダ ID
+     * @return 退避したスレッド件数
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE BulletinThreadEntity t SET t.archiveFolderId = NULL "
+            + "WHERE t.archiveFolderId = :archiveFolderId AND t.deletedAt IS NULL")
+    int bulkClearArchiveFolderId(@Param("archiveFolderId") UUID archiveFolderId);
+
     /**
      * 指定カテゴリ配下の未削除スレッドを一括で未分類（category_id = NULL）に更新する。
      *
