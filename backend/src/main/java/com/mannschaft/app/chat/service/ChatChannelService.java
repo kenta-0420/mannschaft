@@ -22,9 +22,11 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.dashboard.FolderItemType;
 import com.mannschaft.app.dashboard.repository.ChatContactFolderItemRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.chat.event.InquiryChannelChangedEvent;
 import com.mannschaft.app.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +50,7 @@ public class ChatChannelService {
     private final UserRoleRepository userRoleRepository;
     private final ChatContactFolderItemRepository chatContactFolderItemRepository;
     private final ChatChannelEventPublisher eventPublisher;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     /**
      * ユーザーが参加しているチャンネル一覧を取得する。
@@ -530,6 +533,11 @@ public class ChatChannelService {
         channel.updateInquiryChannel(request.getIsInquiryChannel());
         ChatChannelEntity saved = channelRepository.save(channel);
         log.info("問い合わせチャンネル設定更新: channelId={}, isInquiryChannel={}", channelId, request.getIsInquiryChannel());
+        // 業務アラートキャッシュを即時無効化するためにイベントを発行する。
+        // AdminBusinessAlertService がこのイベントを受信してキャッシュを削除し、
+        // ウィジェットに inquiry 設定が即時反映されるようにする（F10.7）。
+        applicationEventPublisher.publishEvent(
+                new InquiryChannelChangedEvent(saved.getTeamId(), saved.getId()));
         return chatMapper.toChannelResponse(saved);
     }
 
