@@ -17,6 +17,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -28,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -96,7 +98,7 @@ class BulletinReplyServiceTest {
 
             BulletinThreadEntity thread = createWritableThread();
             BulletinReplyEntity savedReply = createDefaultReply();
-            ReplyResponse response = new ReplyResponse(REPLY_ID, THREAD_ID, null, USER_ID, "返信本文", false, 0, null, null, null);
+            ReplyResponse response = new ReplyResponse(REPLY_ID, THREAD_ID, null, USER_ID, "返信本文", false, 0, null, null, 0, null);
 
             given(threadService.findThreadOrThrow(SCOPE_TYPE, SCOPE_ID, THREAD_ID)).willReturn(thread);
             given(replyRepository.save(any(BulletinReplyEntity.class))).willReturn(savedReply);
@@ -154,7 +156,7 @@ class BulletinReplyServiceTest {
             BulletinReplyEntity parentReply = BulletinReplyEntity.builder()
                     .threadId(THREAD_ID).authorId(USER_ID).body("親返信").build();
             BulletinReplyEntity savedReply = createDefaultReply();
-            ReplyResponse response = new ReplyResponse(REPLY_ID, THREAD_ID, parentId, USER_ID, "子返信", false, 0, null, null, null);
+            ReplyResponse response = new ReplyResponse(REPLY_ID, THREAD_ID, parentId, USER_ID, "子返信", false, 0, null, null, 1, null);
 
             given(threadService.findThreadOrThrow(SCOPE_TYPE, SCOPE_ID, THREAD_ID)).willReturn(thread);
             given(replyRepository.findByIdAndThreadId(parentId, THREAD_ID)).willReturn(Optional.of(parentReply));
@@ -184,6 +186,77 @@ class BulletinReplyServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(BulletinErrorCode.PARENT_REPLY_MISMATCH));
         }
+
+        @Test
+        @DisplayName("返信作成_トップレベル_depthが0で保存される")
+        void 返信作成_トップレベル_depth0() {
+            // Given
+            CreateReplyRequest request = new CreateReplyRequest(null, "トップレベル返信");
+            BulletinThreadEntity thread = createWritableThread();
+            ReplyResponse response = new ReplyResponse(REPLY_ID, THREAD_ID, null, USER_ID, "トップレベル返信", false, 0, null, null, 0, null);
+
+            given(threadService.findThreadOrThrow(SCOPE_TYPE, SCOPE_ID, THREAD_ID)).willReturn(thread);
+            given(replyRepository.save(any(BulletinReplyEntity.class))).willReturn(createDefaultReply());
+            given(bulletinMapper.toReplyResponse(any(BulletinReplyEntity.class))).willReturn(response);
+
+            // When
+            bulletinReplyService.createReply(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID, request);
+
+            // Then: 保存される entity の depth は 0
+            ArgumentCaptor<BulletinReplyEntity> captor = ArgumentCaptor.forClass(BulletinReplyEntity.class);
+            verify(replyRepository).save(captor.capture());
+            assertThat(captor.getValue().getDepth()).isZero();
+        }
+
+        @Test
+        @DisplayName("返信作成_5階層目まで作成可_depthは親+1で保存される")
+        void 返信作成_5階層目まで作成可() {
+            // Given: 親 depth=3（4階層目）に対し depth=4（5階層目）の返信を作成
+            Long parentId = 50L;
+            CreateReplyRequest request = new CreateReplyRequest(parentId, "5階層目の返信");
+            BulletinThreadEntity thread = createWritableThread();
+            BulletinReplyEntity parentReply = BulletinReplyEntity.builder()
+                    .threadId(THREAD_ID).parentId(40L).depth(3).authorId(USER_ID).body("4階層目").build();
+            ReplyResponse response = new ReplyResponse(REPLY_ID, THREAD_ID, parentId, USER_ID, "5階層目の返信", false, 0, null, null, 4, null);
+
+            given(threadService.findThreadOrThrow(SCOPE_TYPE, SCOPE_ID, THREAD_ID)).willReturn(thread);
+            given(replyRepository.findByIdAndThreadId(parentId, THREAD_ID)).willReturn(Optional.of(parentReply));
+            given(replyRepository.save(any(BulletinReplyEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toReplyResponse(any(BulletinReplyEntity.class))).willReturn(response);
+
+            // When
+            bulletinReplyService.createReply(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID, request);
+
+            // Then: 新規返信 entity（最後に save された方）の depth は 4
+            ArgumentCaptor<BulletinReplyEntity> captor = ArgumentCaptor.forClass(BulletinReplyEntity.class);
+            verify(replyRepository, atLeastOnce()).save(captor.capture());
+            BulletinReplyEntity newReply = captor.getAllValues().stream()
+                    .filter(e -> "5階層目の返信".equals(e.getBody()))
+                    .findFirst().orElseThrow();
+            assertThat(newReply.getDepth()).isEqualTo(4);
+        }
+
+        @Test
+        @DisplayName("返信作成_6階層目_REPLY_DEPTH_EXCEEDEDで400")
+        void 返信作成_6階層目_400() {
+            // Given: 親 depth=4（5階層目）に対する返信は depth=5（6階層目）となり上限超過
+            Long parentId = 60L;
+            CreateReplyRequest request = new CreateReplyRequest(parentId, "6階層目の返信");
+            BulletinThreadEntity thread = createWritableThread();
+            BulletinReplyEntity parentReply = BulletinReplyEntity.builder()
+                    .threadId(THREAD_ID).parentId(50L).depth(4).authorId(USER_ID).body("5階層目").build();
+
+            given(threadService.findThreadOrThrow(SCOPE_TYPE, SCOPE_ID, THREAD_ID)).willReturn(thread);
+            given(replyRepository.findByIdAndThreadId(parentId, THREAD_ID)).willReturn(Optional.of(parentReply));
+
+            // When & Then
+            assertThatThrownBy(() -> bulletinReplyService.createReply(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(BulletinErrorCode.REPLY_DEPTH_EXCEEDED));
+            // 深さ超過時は新規返信を保存しない
+            verify(replyRepository, never()).save(any(BulletinReplyEntity.class));
+        }
     }
 
     @Nested
@@ -198,7 +271,7 @@ class BulletinReplyServiceTest {
 
             BulletinThreadEntity thread = createWritableThread();
             BulletinReplyEntity entity = createDefaultReply();
-            ReplyResponse response = new ReplyResponse(REPLY_ID, THREAD_ID, null, USER_ID, "更新本文", true, 0, null, null, null);
+            ReplyResponse response = new ReplyResponse(REPLY_ID, THREAD_ID, null, USER_ID, "更新本文", true, 0, null, null, 0, null);
 
             given(threadService.findThreadOrThrow(SCOPE_TYPE, SCOPE_ID, THREAD_ID)).willReturn(thread);
             given(replyRepository.findByIdAndThreadId(REPLY_ID, THREAD_ID)).willReturn(Optional.of(entity));

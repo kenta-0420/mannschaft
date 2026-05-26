@@ -1,5 +1,6 @@
 package com.mannschaft.app.bulletin.controller;
 
+import com.mannschaft.app.bulletin.dto.ArchiveThreadRequest;
 import com.mannschaft.app.bulletin.dto.CategoryResponse;
 import com.mannschaft.app.bulletin.dto.CreateCategoryRequest;
 import com.mannschaft.app.bulletin.dto.CreateReplyRequest;
@@ -338,18 +339,55 @@ class BulletinControllerTest {
         }
 
         @Test
-        @DisplayName("正常系: アーカイブが200で返る")
-        void archive_正常_200() {
-            // Given
-            given(threadService.archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID)))
+        @DisplayName("正常系: アーカイブ（body無し=後方互換でtrue）が200で返る")
+        void archive_body無し_200() {
+            // Given: body 無しは後方互換で isArchived=true として委譲される
+            given(threadService.archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(true)))
                     .willReturn(createThreadResponse());
 
             // When
             ResponseEntity<ApiResponse<ThreadResponse>> response =
-                    threadController.archive(SCOPE_TYPE, SCOPE_ID, THREAD_ID);
+                    threadController.archive(SCOPE_TYPE, SCOPE_ID, THREAD_ID, null);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            verify(threadService).archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(true));
+        }
+
+        @Test
+        @DisplayName("正常系: is_archived=true でアーカイブが200で返る")
+        void archive_true_200() {
+            // Given
+            ArchiveThreadRequest request = new ArchiveThreadRequest();
+            request.setIsArchived(true);
+            given(threadService.archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(true)))
+                    .willReturn(createThreadResponse());
+
+            // When
+            ResponseEntity<ApiResponse<ThreadResponse>> response =
+                    threadController.archive(SCOPE_TYPE, SCOPE_ID, THREAD_ID, request);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            verify(threadService).archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(true));
+        }
+
+        @Test
+        @DisplayName("正常系: is_archived=false でアーカイブ解除が200で返る")
+        void archive_false_解除_200() {
+            // Given
+            ArchiveThreadRequest request = new ArchiveThreadRequest();
+            request.setIsArchived(false);
+            given(threadService.archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(false)))
+                    .willReturn(createThreadResponse());
+
+            // When
+            ResponseEntity<ApiResponse<ThreadResponse>> response =
+                    threadController.archive(SCOPE_TYPE, SCOPE_ID, THREAD_ID, request);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            verify(threadService).archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(false));
         }
 
         @Test
@@ -387,7 +425,7 @@ class BulletinControllerTest {
         private ReplyResponse createReplyResponse() {
             return new ReplyResponse(
                     REPLY_ID, THREAD_ID, null, USER_ID,
-                    "返信の本文", false, 0, null, null, Collections.emptyList());
+                    "返信の本文", false, 0, null, null, 0, Collections.emptyList());
         }
 
         @Test
@@ -460,7 +498,7 @@ class BulletinControllerTest {
             CreateReplyRequest request = new CreateReplyRequest(REPLY_ID, "子返信本文");
             ReplyResponse childReply = new ReplyResponse(
                     201L, THREAD_ID, REPLY_ID, USER_ID,
-                    "子返信本文", false, 0, null, null, Collections.emptyList());
+                    "子返信本文", false, 0, null, null, 1, Collections.emptyList());
             given(replyService.createReply(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(request)))
                     .willReturn(childReply);
 

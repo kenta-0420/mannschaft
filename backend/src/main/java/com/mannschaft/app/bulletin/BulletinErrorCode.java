@@ -51,7 +51,10 @@ public enum BulletinErrorCode implements ErrorCode {
     INVALID_EMOJI("BULLETIN_013", "許可されていない絵文字です", Severity.WARN),
 
     /** 安否確認スレッドは手動削除できない（設計書 §6） */
-    SAFETY_THREAD_DELETE_FORBIDDEN("BULLETIN_014", "安否確認スレッドは削除できません", Severity.WARN);
+    SAFETY_THREAD_DELETE_FORBIDDEN("BULLETIN_014", "安否確認スレッドは削除できません", Severity.WARN),
+
+    /** 返信のネスト深さが上限（5階層）を超過した（設計書 §5） */
+    REPLY_DEPTH_EXCEEDED("BULLETIN_015", "返信のネストは最大5階層までです", Severity.WARN);
 
     private final String code;
     private final String message;

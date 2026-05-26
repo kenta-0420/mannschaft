@@ -620,8 +620,8 @@ class BulletinThreadServiceTest {
     class Archive {
 
         @Test
-        @DisplayName("アーカイブ_正常_状態変更")
-        void アーカイブ_正常_状態変更() {
+        @DisplayName("アーカイブ_isArchived=true_アーカイブ状態になる")
+        void アーカイブ_true_状態変更() {
             // Given
             BulletinThreadEntity entity = createDefaultThread();
             ThreadResponse response = createThreadResponse();
@@ -631,11 +631,46 @@ class BulletinThreadServiceTest {
             given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
 
             // When
-            bulletinThreadService.archive(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID);
+            bulletinThreadService.archive(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID, true);
 
             // Then
             assertThat(entity.getIsArchived()).isTrue();
             verify(accessGuard).requireManageContent(USER_ID, SCOPE_TYPE, SCOPE_ID);
+        }
+
+        @Test
+        @DisplayName("アーカイブ_isArchived=false_アーカイブ解除される")
+        void アーカイブ_false_解除() {
+            // Given: 既にアーカイブ済みのスレッド
+            BulletinThreadEntity entity = createDefaultThread();
+            entity.archive();
+            ThreadResponse response = createThreadResponse();
+            given(threadRepository.findByIdAndScopeTypeAndScopeId(THREAD_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(threadRepository.save(entity)).willReturn(entity);
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            // When
+            bulletinThreadService.archive(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID, false);
+
+            // Then
+            assertThat(entity.getIsArchived()).isFalse();
+            verify(accessGuard).requireManageContent(USER_ID, SCOPE_TYPE, SCOPE_ID);
+        }
+
+        @Test
+        @DisplayName("アーカイブ_管理権限なし_403_認可維持")
+        void アーカイブ_権限なし_403() {
+            // Given: 非管理者は requireManageContent で 403（双方向化しても認可は維持）
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessGuard).requireManageContent(USER_ID, SCOPE_TYPE, SCOPE_ID);
+
+            // When & Then
+            assertThatThrownBy(() -> bulletinThreadService.archive(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID, true))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            verify(threadRepository, never()).findByIdAndScopeTypeAndScopeId(anyLong(), any(), anyLong());
         }
     }
 }

@@ -57,6 +57,7 @@ public interface BulletinMapper {
                 entity.getReplyCount(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
+                entity.getDepth(),
                 children
         );
     }

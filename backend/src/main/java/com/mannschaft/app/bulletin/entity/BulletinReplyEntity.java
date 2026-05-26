@@ -32,6 +32,14 @@ public class BulletinReplyEntity extends BaseEntity {
 
     private Long parentId;
 
+    /**
+     * ネストの深さ（設計書 F05.1 §5）。
+     * 0 = スレッド直下、1 = 返信の返信、… 最大4（= 5階層目）。6階層目（depth 5）の作成は 400 で弾く。
+     */
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
+    @Builder.Default
+    private Integer depth = 0;
+
     private Long authorId;
 
     /**

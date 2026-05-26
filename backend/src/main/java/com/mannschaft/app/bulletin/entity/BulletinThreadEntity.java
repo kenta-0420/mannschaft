@@ -151,10 +151,17 @@ public class BulletinThreadEntity extends BaseEntity {
     }
 
     /**
-     * アーカイブする。
+     * アーカイブする（設計書 F05.1 §4）。
      */
     public void archive() {
         this.isArchived = true;
+    }
+
+    /**
+     * アーカイブを解除する（設計書 F05.1 §4: is_archived 双方向）。
+     */
+    public void unarchive() {
+        this.isArchived = false;
     }
 
     /**
