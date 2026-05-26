@@ -45,7 +45,13 @@ public enum BulletinErrorCode implements ErrorCode {
     NOT_AUTHOR("BULLETIN_011", "自分の投稿のみ編集できます", Severity.WARN),
 
     /** 親返信が異なるスレッドに属している */
-    PARENT_REPLY_MISMATCH("BULLETIN_012", "親返信が異なるスレッドに属しています", Severity.ERROR);
+    PARENT_REPLY_MISMATCH("BULLETIN_012", "親返信が異なるスレッドに属しています", Severity.ERROR),
+
+    /** 許可されていない絵文字（プリセット以外のリアクション） */
+    INVALID_EMOJI("BULLETIN_013", "許可されていない絵文字です", Severity.WARN),
+
+    /** 安否確認スレッドは手動削除できない（設計書 §6） */
+    SAFETY_THREAD_DELETE_FORBIDDEN("BULLETIN_014", "安否確認スレッドは削除できません", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -27,5 +27,7 @@ public enum AuditEventCategory {
     /** F05.7 書類テンプレート・フォームビルダー系（PDF / CSV / 複製 / リマインド等）。 */
     FORM,
     /** F03.5 シフト管理（手動リマインド送信等）。 */
-    SHIFT
+    SHIFT,
+    /** F05.1 掲示板（他者コンテンツ削除等のモデレーション操作）。 */
+    BULLETIN
 }

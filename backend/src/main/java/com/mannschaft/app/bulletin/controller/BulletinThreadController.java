@@ -51,11 +51,12 @@ public class BulletinThreadController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         Page<ThreadResponse> result;
         if (categoryId != null) {
-            result = threadService.listThreadsByCategory(categoryId, PageRequest.of(page, size));
+            result = threadService.listThreadsByCategory(type, scopeId, categoryId, currentUserId, PageRequest.of(page, size));
         } else {
-            result = threadService.listThreads(type, scopeId, PageRequest.of(page, size));
+            result = threadService.listThreads(type, scopeId, currentUserId, PageRequest.of(page, size));
         }
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -73,7 +74,7 @@ public class BulletinThreadController {
             @PathVariable Long scopeId,
             @PathVariable Long threadId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        ThreadResponse response = threadService.getThread(type, scopeId, threadId);
+        ThreadResponse response = threadService.getThread(type, scopeId, threadId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -90,7 +91,7 @@ public class BulletinThreadController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        Page<ThreadResponse> result = threadService.searchThreads(type, scopeId, keyword, PageRequest.of(page, size));
+        Page<ThreadResponse> result = threadService.searchThreads(type, scopeId, SecurityUtils.getCurrentUserId(), keyword, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -138,7 +139,7 @@ public class BulletinThreadController {
             @PathVariable Long scopeId,
             @PathVariable Long threadId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        threadService.deleteThread(type, scopeId, threadId);
+        threadService.deleteThread(type, scopeId, threadId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -153,7 +154,7 @@ public class BulletinThreadController {
             @PathVariable Long scopeId,
             @PathVariable Long threadId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        ThreadResponse response = threadService.togglePin(type, scopeId, threadId);
+        ThreadResponse response = threadService.togglePin(type, scopeId, threadId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -168,7 +169,7 @@ public class BulletinThreadController {
             @PathVariable Long scopeId,
             @PathVariable Long threadId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        ThreadResponse response = threadService.toggleLock(type, scopeId, threadId);
+        ThreadResponse response = threadService.toggleLock(type, scopeId, threadId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -183,7 +184,7 @@ public class BulletinThreadController {
             @PathVariable Long scopeId,
             @PathVariable Long threadId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        ThreadResponse response = threadService.archive(type, scopeId, threadId);
+        ThreadResponse response = threadService.archive(type, scopeId, threadId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

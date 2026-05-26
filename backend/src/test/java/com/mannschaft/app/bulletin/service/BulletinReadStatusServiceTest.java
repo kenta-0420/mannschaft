@@ -1,12 +1,16 @@
 package com.mannschaft.app.bulletin.service;
 
 import com.mannschaft.app.bulletin.BulletinMapper;
+import com.mannschaft.app.bulletin.Priority;
+import com.mannschaft.app.bulletin.ReadTrackingMode;
 import com.mannschaft.app.bulletin.ScopeType;
 import com.mannschaft.app.bulletin.dto.ReadStatusResponse;
 import com.mannschaft.app.bulletin.entity.BulletinReadStatusEntity;
 import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
 import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -15,9 +19,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -43,6 +49,9 @@ class BulletinReadStatusServiceTest {
     @Mock
     private BulletinMapper bulletinMapper;
 
+    @Mock
+    private BulletinAccessGuard accessGuard;
+
     @InjectMocks
     private BulletinReadStatusService bulletinReadStatusService;
 
@@ -51,10 +60,21 @@ class BulletinReadStatusServiceTest {
     private static final Long USER_ID = 10L;
     private static final ScopeType SCOPE_TYPE = ScopeType.TEAM;
 
+    /** デフォルト（COUNT_ONLY モード）のスレッド。 */
     private BulletinThreadEntity createDefaultThread() {
         return BulletinThreadEntity.builder()
                 .categoryId(5L).scopeType(SCOPE_TYPE).scopeId(SCOPE_ID)
-                .authorId(USER_ID).title("テスト").body("本文").build();
+                .authorId(USER_ID).title("テスト").body("本文")
+                .readTrackingMode(ReadTrackingMode.COUNT_ONLY).build();
+    }
+
+    /** INDIVIDUAL モード（= 設計書 SHOW_READERS）のスレッド。 */
+    private BulletinThreadEntity createIndividualThread() {
+        return BulletinThreadEntity.builder()
+                .categoryId(5L).scopeType(SCOPE_TYPE).scopeId(SCOPE_ID)
+                .authorId(USER_ID).title("テスト").body("本文")
+                .priority(Priority.INFO)
+                .readTrackingMode(ReadTrackingMode.INDIVIDUAL).build();
     }
 
     @Nested
@@ -99,20 +119,57 @@ class BulletinReadStatusServiceTest {
     class ListReadUsers {
 
         @Test
-        @DisplayName("既読者一覧取得_正常_リスト返却")
-        void 既読者一覧取得_正常_リスト返却() {
+        @DisplayName("既読者一覧取得_INDIVIDUALモード_readers返却")
+        void 既読者一覧取得_INDIVIDUAL_readers返却() {
+            // Given: INDIVIDUAL（SHOW_READERS）モードは readers をフル返却
+            BulletinThreadEntity thread = createIndividualThread();
+            given(threadService.findThreadOrThrow(SCOPE_TYPE, SCOPE_ID, THREAD_ID)).willReturn(thread);
+            BulletinReadStatusEntity reader = BulletinReadStatusEntity.builder()
+                    .threadId(THREAD_ID).userId(11L).build();
+            List<BulletinReadStatusEntity> entities = List.of(reader);
+            given(readStatusRepository.findByThreadIdOrderByReadAtDesc(THREAD_ID)).willReturn(entities);
+            given(bulletinMapper.toReadStatusResponseList(entities))
+                    .willReturn(List.of(new ReadStatusResponse(1L, THREAD_ID, 11L, LocalDateTime.now())));
+
+            // When
+            List<ReadStatusResponse> result =
+                    bulletinReadStatusService.listReadUsers(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID, null);
+
+            // Then
+            assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("既読者一覧取得_COUNT_ONLYモード_非ADMINはreaders非返却")
+        void 既読者一覧取得_COUNT_ONLY_非ADMIN_空() {
+            // Given: COUNT_ONLY モードかつ非 ADMIN は個人情報を返さない
+            BulletinThreadEntity thread = createDefaultThread();
+            given(threadService.findThreadOrThrow(SCOPE_TYPE, SCOPE_ID, THREAD_ID)).willReturn(thread);
+            given(accessGuard.isAdmin(USER_ID, SCOPE_TYPE, SCOPE_ID)).willReturn(false);
+
+            // When
+            List<ReadStatusResponse> result =
+                    bulletinReadStatusService.listReadUsers(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID, null);
+
+            // Then: readers は返さない（件数は getReadCount で取得）
+            assertThat(result).isEmpty();
+            verify(readStatusRepository, never()).findByThreadIdOrderByReadAtDesc(any());
+        }
+
+        @Test
+        @DisplayName("既読者一覧取得_filter=unread_非ADMIN_403")
+        void 既読者一覧取得_unread_非ADMIN_403() {
             // Given
             BulletinThreadEntity thread = createDefaultThread();
             given(threadService.findThreadOrThrow(SCOPE_TYPE, SCOPE_ID, THREAD_ID)).willReturn(thread);
-            List<BulletinReadStatusEntity> entities = List.of();
-            given(readStatusRepository.findByThreadIdOrderByReadAtDesc(THREAD_ID)).willReturn(entities);
-            given(bulletinMapper.toReadStatusResponseList(entities)).willReturn(List.of());
+            given(accessGuard.isAdmin(USER_ID, SCOPE_TYPE, SCOPE_ID)).willReturn(false);
 
-            // When
-            List<ReadStatusResponse> result = bulletinReadStatusService.listReadUsers(SCOPE_TYPE, SCOPE_ID, THREAD_ID);
-
-            // Then
-            assertThat(result).isEmpty();
+            // When & Then
+            assertThatThrownBy(() ->
+                    bulletinReadStatusService.listReadUsers(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID, "unread"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
         }
     }
 

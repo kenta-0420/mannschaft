@@ -7,7 +7,11 @@ import com.mannschaft.app.bulletin.dto.CreateReactionRequest;
 import com.mannschaft.app.bulletin.dto.ReactionResponse;
 import com.mannschaft.app.bulletin.dto.ReactionSummaryResponse;
 import com.mannschaft.app.bulletin.entity.BulletinReactionEntity;
+import com.mannschaft.app.bulletin.entity.BulletinReplyEntity;
+import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
 import com.mannschaft.app.bulletin.repository.BulletinReactionRepository;
+import com.mannschaft.app.bulletin.repository.BulletinReplyRepository;
+import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * 掲示板リアクションサービス。リアクションの追加・削除・集計を担当する。
@@ -25,11 +30,17 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class BulletinReactionService {
 
+    /** 許可される絵文字（プリセット 5 種。設計書 §6 / DB 備考）。 */
+    private static final Set<String> ALLOWED_EMOJIS = Set.of("👍", "👏", "🙏", "😊", "❤️");
+
     private final BulletinReactionRepository reactionRepository;
+    private final BulletinThreadRepository threadRepository;
+    private final BulletinReplyRepository replyRepository;
     private final BulletinMapper bulletinMapper;
+    private final BulletinAccessGuard accessGuard;
 
     /**
-     * リアクションを追加する。
+     * リアクションを追加する。所属メンバーのみ + プリセット絵文字のみ。
      *
      * @param userId  ユーザーID
      * @param request 作成リクエスト
@@ -38,6 +49,14 @@ public class BulletinReactionService {
     @Transactional
     public ReactionResponse addReaction(Long userId, CreateReactionRequest request) {
         TargetType targetType = TargetType.valueOf(request.getTargetType());
+
+        // 絵文字ホワイトリスト検証（設計書 §6）
+        if (!ALLOWED_EMOJIS.contains(request.getEmoji())) {
+            throw new BusinessException(BulletinErrorCode.INVALID_EMOJI);
+        }
+
+        // target → スレッド → スコープを解決して所属メンバー検証
+        checkTargetMembership(userId, targetType, request.getTargetId());
 
         if (reactionRepository.existsByTargetTypeAndTargetIdAndUserIdAndEmoji(
                 targetType, request.getTargetId(), userId, request.getEmoji())) {
@@ -68,6 +87,7 @@ public class BulletinReactionService {
     @Transactional
     public void removeReaction(Long userId, String targetType, Long targetId, String emoji) {
         TargetType type = TargetType.valueOf(targetType);
+        checkTargetMembership(userId, type, targetId);
         BulletinReactionEntity entity = reactionRepository
                 .findByTargetTypeAndTargetIdAndUserIdAndEmoji(type, targetId, userId, emoji)
                 .orElseThrow(() -> new BusinessException(BulletinErrorCode.REACTION_NOT_FOUND));
@@ -78,30 +98,54 @@ public class BulletinReactionService {
     }
 
     /**
-     * ターゲットのリアクション一覧を取得する。
+     * ターゲットのリアクション一覧を取得する。所属メンバーのみ。
      *
+     * @param userId     操作ユーザーID
      * @param targetType ターゲット種別
      * @param targetId   ターゲットID
      * @return リアクションレスポンスリスト
      */
-    public List<ReactionResponse> listReactions(String targetType, Long targetId) {
+    public List<ReactionResponse> listReactions(Long userId, String targetType, Long targetId) {
         TargetType type = TargetType.valueOf(targetType);
+        checkTargetMembership(userId, type, targetId);
         List<BulletinReactionEntity> reactions = reactionRepository.findByTargetTypeAndTargetId(type, targetId);
         return bulletinMapper.toReactionResponseList(reactions);
     }
 
     /**
-     * ターゲットのリアクション集計を取得する。
+     * ターゲットのリアクション集計を取得する。所属メンバーのみ。
      *
+     * @param userId     操作ユーザーID
      * @param targetType ターゲット種別
      * @param targetId   ターゲットID
      * @return リアクション集計レスポンスリスト
      */
-    public List<ReactionSummaryResponse> getReactionSummary(String targetType, Long targetId) {
+    public List<ReactionSummaryResponse> getReactionSummary(Long userId, String targetType, Long targetId) {
         TargetType type = TargetType.valueOf(targetType);
+        checkTargetMembership(userId, type, targetId);
         List<Object[]> results = reactionRepository.countByTargetGroupedByEmoji(type, targetId);
         return results.stream()
                 .map(row -> new ReactionSummaryResponse((String) row[0], (Long) row[1]))
                 .toList();
+    }
+
+    /**
+     * リアクション対象（スレッド/返信）から所属スコープを解決し、所属メンバーであることを検証する。
+     *
+     * <p>対象が存在しない場合は {@link BulletinErrorCode#THREAD_NOT_FOUND} /
+     * {@link BulletinErrorCode#REPLY_NOT_FOUND} を投げる。</p>
+     */
+    private void checkTargetMembership(Long userId, TargetType targetType, Long targetId) {
+        BulletinThreadEntity thread;
+        if (targetType == TargetType.THREAD) {
+            thread = threadRepository.findById(targetId)
+                    .orElseThrow(() -> new BusinessException(BulletinErrorCode.THREAD_NOT_FOUND));
+        } else {
+            BulletinReplyEntity reply = replyRepository.findById(targetId)
+                    .orElseThrow(() -> new BusinessException(BulletinErrorCode.REPLY_NOT_FOUND));
+            thread = threadRepository.findById(reply.getThreadId())
+                    .orElseThrow(() -> new BusinessException(BulletinErrorCode.THREAD_NOT_FOUND));
+        }
+        accessGuard.checkMembership(userId, thread.getScopeType(), thread.getScopeId());
     }
 }

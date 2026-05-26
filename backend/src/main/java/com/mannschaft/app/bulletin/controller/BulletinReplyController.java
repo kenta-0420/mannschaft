@@ -51,7 +51,7 @@ public class BulletinReplyController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        Page<ReplyResponse> result = replyService.listReplies(type, scopeId, threadId, PageRequest.of(page, size));
+        Page<ReplyResponse> result = replyService.listReplies(type, scopeId, threadId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -102,7 +102,7 @@ public class BulletinReplyController {
             @PathVariable Long threadId,
             @PathVariable Long replyId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        replyService.deleteReply(type, scopeId, threadId, replyId);
+        replyService.deleteReply(type, scopeId, threadId, replyId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }
