@@ -128,7 +128,42 @@ public enum ScheduleErrorCode implements ErrorCode {
     SCHEDULE_MEDIA_SIZE_EXCEEDED("SCHEDULE_066", "ファイルサイズが上限を超えています", Severity.WARN),
 
     /** is_cover 変更権限なし（MEMBER は変更不可） */
-    SCHEDULE_MEDIA_COVER_FORBIDDEN("SCHEDULE_067", "カバー写真の設定はADMIN/DEPUTY_ADMINのみ可能です", Severity.WARN);
+    SCHEDULE_MEDIA_COVER_FORBIDDEN("SCHEDULE_067", "カバー写真の設定はADMIN/DEPUTY_ADMINのみ可能です", Severity.WARN),
+
+    // --- F03.10 代理出席（§4.1 / §5.6） ---
+
+    /** 代理委任が見つからない（404） */
+    SCHEDULE_DELEGATION_NOT_FOUND("SCHEDULE_070", "代理委任が見つかりません", Severity.WARN),
+
+    /** 委任者がスコープのメンバーでない（403） */
+    SCHEDULE_DELEGATION_DELEGATOR_NOT_MEMBER("SCHEDULE_071", "委任者はスコープのメンバーではありません", Severity.WARN),
+
+    /** 代理人がスコープのメンバーでない（422） */
+    SCHEDULE_DELEGATION_DELEGATE_NOT_MEMBER("SCHEDULE_072", "代理人はスコープのメンバーではありません", Severity.WARN),
+
+    /** 自己代理（422） */
+    SCHEDULE_DELEGATION_SELF_DELEGATION("SCHEDULE_073", "自分自身を代理人に指定することはできません", Severity.WARN),
+
+    /** 委任者のアクティブ代理が既に存在する（409） */
+    SCHEDULE_DELEGATION_ALREADY_EXISTS("SCHEDULE_074", "この委任者のアクティブな代理が既に存在します", Severity.WARN),
+
+    /** 連鎖代理禁止違反（422） */
+    SCHEDULE_DELEGATION_CHAINED("SCHEDULE_075", "代理人が既に他者の代理を引き受けているため指定できません（連鎖代理禁止）", Severity.WARN),
+
+    /** 代理出席が許可されていない（422） */
+    SCHEDULE_DELEGATION_NOT_ALLOWED("SCHEDULE_076", "このスケジュールは代理出席を許可していません", Severity.WARN),
+
+    /** スケジュールが CANCELLED/COMPLETED（422） */
+    SCHEDULE_DELEGATION_INVALID_SCHEDULE_STATUS("SCHEDULE_077", "キャンセル済み・完了済みのスケジュールには代理指定できません", Severity.WARN),
+
+    /** 親（繰り返し）スケジュールへの指定（422） */
+    SCHEDULE_DELEGATION_PARENT_SCHEDULE("SCHEDULE_078", "繰り返しの親スケジュールには代理指定できません。各回に個別指定してください", Severity.WARN),
+
+    /** 代理人本人でない（403） */
+    SCHEDULE_DELEGATION_NOT_DELEGATE("SCHEDULE_079", "代理人本人のみ承認・拒否できます", Severity.WARN),
+
+    /** ステータスが PENDING でない（422） */
+    SCHEDULE_DELEGATION_NOT_PENDING("SCHEDULE_080", "承認待ち（PENDING）状態の代理のみ承認・拒否できます", Severity.WARN);
 
     private final String code;
     private final String message;

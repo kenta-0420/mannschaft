@@ -14,7 +14,7 @@ const route = useRoute()
 const api = useApi()
 
 const incidents = ref<Incident[]>([])
-const dismissed = ref<Set<number>>(new Set())
+const dismissedMessages = ref<Set<string>>(new Set())
 
 function matchesRoute(pattern: string, path: string): boolean {
   if (pattern === '*') return true
@@ -26,7 +26,7 @@ async function fetchIncidents() {
   try {
     const res = await api<ActiveIncidentResponse>('/api/v1/active-incidents')
     incidents.value = res.incidents.filter(i => matchesRoute(i.pagePattern, route.path))
-    dismissed.value = new Set()
+    dismissedMessages.value = new Set()
   } catch {
     // サイレント失敗 — インシデントバナーの失敗でアプリを壊さない
   }
@@ -38,16 +38,16 @@ function severityToPrimeVue(severity: string): string {
   return 'info'
 }
 
-function dismiss(index: number) {
-  dismissed.value = new Set([...dismissed.value, index])
+function dismiss(message: string) {
+  dismissedMessages.value = new Set([...dismissedMessages.value, message])
 }
 
 const visibleIncidents = computed(() => {
   const seenMessages = new Set<string>()
   return incidents.value
     .map((incident, index) => ({ incident, index }))
-    .filter(({ incident, index }) => {
-      if (dismissed.value.has(index)) return false
+    .filter(({ incident }) => {
+      if (dismissedMessages.value.has(incident.message)) return false
       if (seenMessages.has(incident.message)) return false
       seenMessages.add(incident.message)
       return true
@@ -73,7 +73,7 @@ onUnmounted(() => {
       :key="index"
       :severity="severityToPrimeVue(incident.severity)"
       :closable="true"
-      @close="dismiss(index)"
+      @close="dismiss(incident.message)"
     >
       {{ incident.message }}
     </Message>

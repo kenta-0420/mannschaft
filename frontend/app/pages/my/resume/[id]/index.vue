@@ -315,20 +315,39 @@ onBeforeUnmount(() => {
         </h1>
       </div>
 
-      <!-- 保存ステータス -->
-      <div class="flex items-center gap-2 text-sm">
-        <span v-if="saveStatus === 'saving'" class="flex items-center gap-1 text-primary">
-          <i class="pi pi-spin pi-spinner" />
-          {{ t('common.resume.saving') }}
-        </span>
-        <span v-else-if="saveStatus === 'saved'" class="flex items-center gap-1 text-green-600">
-          <i class="pi pi-check" />
-          {{ t('common.resume.saved') }}
-        </span>
-        <span v-else-if="saveStatus === 'error'" class="flex items-center gap-1 text-red-500">
-          <i class="pi pi-exclamation-circle" />
-          {{ t('common.resume.saveError') }}
-        </span>
+      <!-- 保存ステータス＋手動保存ボタン -->
+      <div class="flex items-center gap-3">
+        <Transition name="fade">
+          <span
+            v-if="saveStatus === 'saving'"
+            class="flex items-center gap-1.5 rounded-full bg-primary-50 px-3 py-1 text-sm text-primary dark:bg-primary-950"
+          >
+            <i class="pi pi-spin pi-spinner text-xs" />
+            {{ t('common.resume.saving') }}
+          </span>
+          <span
+            v-else-if="saveStatus === 'saved'"
+            class="flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-sm text-green-600 dark:bg-green-950"
+          >
+            <i class="pi pi-check text-xs" />
+            {{ t('common.resume.saved') }}
+          </span>
+          <span
+            v-else-if="saveStatus === 'error'"
+            class="flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-sm text-red-500 dark:bg-red-950"
+          >
+            <i class="pi pi-exclamation-circle text-xs" />
+            {{ t('common.resume.saveError') }}
+          </span>
+        </Transition>
+        <Button
+          :label="t('common.resume.save')"
+          icon="pi pi-save"
+          size="small"
+          :loading="saveStatus === 'saving'"
+          :disabled="saveStatus === 'saving'"
+          @click="doSave"
+        />
       </div>
     </div>
 
@@ -664,6 +683,12 @@ onBeforeUnmount(() => {
               <!-- 入社/退社日 グループ -->
               <div class="sm:col-span-2">
                 <div class="rounded-md bg-surface-50 p-3 dark:bg-surface-800">
+                  <div class="mb-2 flex items-center justify-end">
+                    <label class="flex cursor-pointer items-center gap-2">
+                      <Checkbox v-model="career.isCurrent" :binary="true" />
+                      <span class="text-sm">{{ t('common.resume.isCurrent') }}</span>
+                    </label>
+                  </div>
                   <div class="flex flex-wrap items-end gap-6">
                     <div>
                       <label class="mb-1.5 block text-sm font-medium">{{ t('common.resume.entryDate') }}</label>
@@ -691,10 +716,6 @@ onBeforeUnmount(() => {
                         </div>
                       </div>
                     </div>
-                    <label class="flex cursor-pointer items-center gap-2 self-end pb-0.5">
-                      <Checkbox v-model="career.isCurrent" :binary="true" />
-                      <span class="text-sm">{{ t('common.resume.isCurrent') }}</span>
-                    </label>
                   </div>
                 </div>
               </div>
@@ -923,3 +944,14 @@ onBeforeUnmount(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

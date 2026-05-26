@@ -37,6 +37,7 @@ class ProxyDelegationServiceTest {
     @Mock private ProxyVoteRepository voteRepository;
     @Mock private ProxyVoteMotionRepository motionRepository;
     @Mock private ProxyVoteMapper mapper;
+    @Mock private com.mannschaft.app.membership.repository.MembershipRepository membershipRepository;
 
     @InjectMocks
     private ProxyDelegationService service;
@@ -129,6 +130,96 @@ class ProxyDelegationServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ProxyVoteErrorCode.DELEGATION_NOT_SUBMITTED);
+        }
+    }
+
+    @Nested
+    @DisplayName("createFromEventDelegation (F03.10 §5.5)")
+    class CreateFromEventDelegation {
+
+        private static final Long DELEGATOR = 100L;
+        private static final Long DELEGATE = 200L;
+        private static final Long TEAM_ID = 5L;
+
+        private ProxyVoteSessionEntity openSession(boolean anonymous, boolean autoAccept) {
+            return ProxyVoteSessionEntity.builder()
+                    .scopeType(com.mannschaft.app.proxyvote.ProxyVoteScopeType.TEAM)
+                    .teamId(TEAM_ID)
+                    .status(SessionStatus.OPEN)
+                    .isAnonymous(anonymous)
+                    .isAutoAcceptDelegation(autoAccept)
+                    .build();
+        }
+
+        @org.junit.jupiter.api.Test
+        @DisplayName("正常系: OPEN/記名/同スコープ/投票資格あり/既存委任なし で proxy_delegation を作成")
+        void 連携作成成功() {
+            given(sessionService.findSessionOptional(SESSION_ID)).willReturn(Optional.of(openSession(false, false)));
+            given(membershipRepository.existsActiveByUserAndScope(
+                    DELEGATE, com.mannschaft.app.membership.domain.ScopeType.TEAM, TEAM_ID)).willReturn(true);
+            given(delegationRepository.existsBySessionIdAndDelegatorId(SESSION_ID, DELEGATOR)).willReturn(false);
+            given(delegationRepository.save(org.mockito.ArgumentMatchers.any()))
+                    .willAnswer(inv -> {
+                        ProxyDelegationEntity d = inv.getArgument(0);
+                        return d;
+                    });
+
+            Long result = service.createFromEventDelegation(SESSION_ID, DELEGATOR, DELEGATE, "TEAM", TEAM_ID);
+
+            // save が呼ばれた（id は BaseEntity 採番のため null だが、スキップでないことを検証）
+            org.mockito.Mockito.verify(delegationRepository).save(org.mockito.ArgumentMatchers.any());
+        }
+
+        @org.junit.jupiter.api.Test
+        @DisplayName("スキップ: OPEN 以外なら作成しない（null 返却）")
+        void OPEN以外スキップ() {
+            ProxyVoteSessionEntity closed = openSession(false, false).toBuilder().status(SessionStatus.CLOSED).build();
+            given(sessionService.findSessionOptional(SESSION_ID)).willReturn(Optional.of(closed));
+
+            Long result = service.createFromEventDelegation(SESSION_ID, DELEGATOR, DELEGATE, "TEAM", TEAM_ID);
+
+            org.assertj.core.api.Assertions.assertThat(result).isNull();
+            org.mockito.Mockito.verify(delegationRepository, org.mockito.Mockito.never())
+                    .save(org.mockito.ArgumentMatchers.any());
+        }
+
+        @org.junit.jupiter.api.Test
+        @DisplayName("スキップ: 無記名なら作成しない")
+        void 無記名スキップ() {
+            given(sessionService.findSessionOptional(SESSION_ID)).willReturn(Optional.of(openSession(true, false)));
+
+            Long result = service.createFromEventDelegation(SESSION_ID, DELEGATOR, DELEGATE, "TEAM", TEAM_ID);
+
+            org.assertj.core.api.Assertions.assertThat(result).isNull();
+            org.mockito.Mockito.verify(delegationRepository, org.mockito.Mockito.never())
+                    .save(org.mockito.ArgumentMatchers.any());
+        }
+
+        @org.junit.jupiter.api.Test
+        @DisplayName("スキップ: 委任者の既存委任ありなら作成しない（warning）")
+        void 既存委任ありスキップ() {
+            given(sessionService.findSessionOptional(SESSION_ID)).willReturn(Optional.of(openSession(false, false)));
+            given(membershipRepository.existsActiveByUserAndScope(
+                    DELEGATE, com.mannschaft.app.membership.domain.ScopeType.TEAM, TEAM_ID)).willReturn(true);
+            given(delegationRepository.existsBySessionIdAndDelegatorId(SESSION_ID, DELEGATOR)).willReturn(true);
+
+            Long result = service.createFromEventDelegation(SESSION_ID, DELEGATOR, DELEGATE, "TEAM", TEAM_ID);
+
+            org.assertj.core.api.Assertions.assertThat(result).isNull();
+            org.mockito.Mockito.verify(delegationRepository, org.mockito.Mockito.never())
+                    .save(org.mockito.ArgumentMatchers.any());
+        }
+
+        @org.junit.jupiter.api.Test
+        @DisplayName("スキップ: スコープ不一致なら作成しない")
+        void スコープ不一致スキップ() {
+            given(sessionService.findSessionOptional(SESSION_ID)).willReturn(Optional.of(openSession(false, false)));
+
+            Long result = service.createFromEventDelegation(SESSION_ID, DELEGATOR, DELEGATE, "TEAM", 999L);
+
+            org.assertj.core.api.Assertions.assertThat(result).isNull();
+            org.mockito.Mockito.verify(delegationRepository, org.mockito.Mockito.never())
+                    .save(org.mockito.ArgumentMatchers.any());
         }
     }
 }
