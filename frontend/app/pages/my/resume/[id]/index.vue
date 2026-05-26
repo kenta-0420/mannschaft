@@ -664,6 +664,12 @@ onBeforeUnmount(() => {
               <!-- 入社/退社日 グループ -->
               <div class="sm:col-span-2">
                 <div class="rounded-md bg-surface-50 p-3 dark:bg-surface-800">
+                  <div class="mb-2 flex items-center justify-end">
+                    <label class="flex cursor-pointer items-center gap-2">
+                      <Checkbox v-model="career.isCurrent" :binary="true" />
+                      <span class="text-sm">{{ t('common.resume.isCurrent') }}</span>
+                    </label>
+                  </div>
                   <div class="flex flex-wrap items-end gap-6">
                     <div>
                       <label class="mb-1.5 block text-sm font-medium">{{ t('common.resume.entryDate') }}</label>
@@ -691,10 +697,6 @@ onBeforeUnmount(() => {
                         </div>
                       </div>
                     </div>
-                    <label class="flex cursor-pointer items-center gap-2 self-end pb-0.5">
-                      <Checkbox v-model="career.isCurrent" :binary="true" />
-                      <span class="text-sm">{{ t('common.resume.isCurrent') }}</span>
-                    </label>
                   </div>
                 </div>
               </div>
