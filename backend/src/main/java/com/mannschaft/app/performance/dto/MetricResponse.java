@@ -1,7 +1,7 @@
 package com.mannschaft.app.performance.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -9,25 +9,37 @@ import java.time.LocalDateTime;
 /**
  * 指標定義レスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class MetricResponse {
 
     private final Long id;
-    private final String name;
-    private final String unit;
-    private final String dataType;
-    private final String aggregationType;
-    private final String description;
-    private final String groupName;
-    private final BigDecimal targetValue;
-    private final BigDecimal minValue;
-    private final BigDecimal maxValue;
+    private final MetricDefinitionDto definition;
+    private final MetricValueRangeDto valueRange;
+    private final MetricAccessDto access;
     private final Integer sortOrder;
-    private final Boolean isVisibleToMembers;
-    private final Boolean isSelfRecordable;
-    private final Long linkedActivityFieldId;
-    private final Boolean isActive;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    private final MetricAuditDto audit;
+
+    public record MetricDefinitionDto(
+            String name,
+            String unit,
+            String dataType,
+            String aggregationType,
+            String description,
+            String groupName) {}
+
+    public record MetricValueRangeDto(
+            BigDecimal targetValue,
+            BigDecimal minValue,
+            BigDecimal maxValue) {}
+
+    public record MetricAccessDto(
+            Boolean isVisibleToMembers,
+            Boolean isSelfRecordable,
+            Long linkedActivityFieldId,
+            Boolean isActive) {}
+
+    public record MetricAuditDto(
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {}
 }

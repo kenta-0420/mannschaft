@@ -102,9 +102,14 @@ class PerformanceRecordServiceAdditionalTest {
             LocalDate sameDate = LocalDate.of(2026, 2, 1);
             UpdateRecordRequest request = new UpdateRecordRequest(
                     BigDecimal.valueOf(60), "更新メモ", sameDate);
-            RecordResponse response = new RecordResponse(
-                    1L, METRIC_ID, "テスト指標", USER_ID, null, null, sameDate,
-                    BigDecimal.valueOf(60), "km", "更新メモ", "ADMIN", USER_ID, null, null);
+            RecordResponse response = RecordResponse.builder()
+                    .id(1L)
+                    .metric(new RecordResponse.RecordMetricDto(METRIC_ID, "テスト指標"))
+                    .actor(new RecordResponse.RecordActorDto(USER_ID, null, null))
+                    .record(new RecordResponse.RecordValueDto(sameDate, BigDecimal.valueOf(60), "km", "更新メモ"))
+                    .source(new RecordResponse.RecordSourceDto("ADMIN", USER_ID))
+                    .audit(new RecordResponse.RecordAuditDto(null, null))
+                    .build();
 
             given(recordRepository.findById(1L)).willReturn(Optional.of(entity));
             given(metricService.getMetricEntity(TEAM_ID, METRIC_ID)).willReturn(metric);
@@ -128,9 +133,14 @@ class PerformanceRecordServiceAdditionalTest {
             LocalDate newDate = LocalDate.of(2026, 3, 1); // 旧日付は2026-02-01
             UpdateRecordRequest request = new UpdateRecordRequest(
                     BigDecimal.valueOf(60), null, newDate);
-            RecordResponse response = new RecordResponse(
-                    1L, METRIC_ID, "テスト指標", USER_ID, null, null, newDate,
-                    BigDecimal.valueOf(60), "km", null, "ADMIN", USER_ID, null, null);
+            RecordResponse response = RecordResponse.builder()
+                    .id(1L)
+                    .metric(new RecordResponse.RecordMetricDto(METRIC_ID, "テスト指標"))
+                    .actor(new RecordResponse.RecordActorDto(USER_ID, null, null))
+                    .record(new RecordResponse.RecordValueDto(newDate, BigDecimal.valueOf(60), "km", null))
+                    .source(new RecordResponse.RecordSourceDto("ADMIN", USER_ID))
+                    .audit(new RecordResponse.RecordAuditDto(null, null))
+                    .build();
 
             given(recordRepository.findById(1L)).willReturn(Optional.of(entity));
             given(metricService.getMetricEntity(TEAM_ID, METRIC_ID)).willReturn(metric);

@@ -354,13 +354,19 @@ public class MatchProposalService {
                 .findByProposalIdOrderByProposedDateAsc(entity.getId());
         List<ProposedDateResponse> dateResponses = matchingMapper.toProposedDateResponseList(dates);
 
-        return new ProposalResponse(
-                entity.getId(), entity.getRequestId(), entity.getProposingTeamId(),
-                entity.getMessage(), entity.getProposedVenue(),
-                entity.getStatus().name(), entity.getStatusReason(),
-                entity.getCancelledByTeamId(),
-                entity.getCancellationType() != null ? entity.getCancellationType().name() : null,
-                entity.getMutualAgreedAt(), dateResponses,
-                entity.getCreatedAt(), entity.getUpdatedAt());
+        return ProposalResponse.builder()
+                .id(entity.getId())
+                .requestId(entity.getRequestId())
+                .proposingTeamId(entity.getProposingTeamId())
+                .content(new ProposalResponse.ProposalContentDto(
+                        entity.getMessage(), entity.getProposedVenue()))
+                .status(new ProposalResponse.ProposalStatusDto(
+                        entity.getStatus().name(), entity.getStatusReason(),
+                        entity.getCancelledByTeamId(),
+                        entity.getCancellationType() != null ? entity.getCancellationType().name() : null,
+                        entity.getMutualAgreedAt()))
+                .proposedDates(dateResponses)
+                .audit(new ProposalResponse.ProposalAuditDto(entity.getCreatedAt(), entity.getUpdatedAt()))
+                .build();
     }
 }
