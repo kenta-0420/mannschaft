@@ -50,4 +50,26 @@ public interface EventDelegationRepository
      * 指定イベントの委任総件数（一覧 total 算出用）。
      */
     long countByEventId(Long eventId);
+
+    /**
+     * 退会連動（§5.8）/ クリーンアップバッチ用: 指定スコープ（org または team）で、委任者または代理人が
+     * 指定ユーザーであるアクティブな委任を取得する。
+     */
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT d FROM EventDelegationEntity d
+            WHERE d.status IN :statuses
+              AND (d.delegatorId = :userId OR d.delegateId = :userId)
+              AND ((:organizationId IS NOT NULL AND d.organizationId = :organizationId)
+                OR (:teamId IS NOT NULL AND d.teamId = :teamId))
+            """)
+    List<EventDelegationEntity> findActiveByScopeAndInvolvedUser(
+            @org.springframework.data.repository.query.Param("organizationId") Long organizationId,
+            @org.springframework.data.repository.query.Param("teamId") Long teamId,
+            @org.springframework.data.repository.query.Param("userId") Long userId,
+            @org.springframework.data.repository.query.Param("statuses") Collection<EventDelegationStatus> statuses);
+
+    /**
+     * クリーンアップバッチ用: アクティブ（PENDING/ACCEPTED）委任を全件取得する。
+     */
+    List<EventDelegationEntity> findByStatusIn(Collection<EventDelegationStatus> statuses);
 }

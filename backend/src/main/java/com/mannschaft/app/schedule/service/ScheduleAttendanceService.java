@@ -56,6 +56,7 @@ public class ScheduleAttendanceService {
     private final ApplicationEventPublisher eventPublisher;
     private final ProxyInputContext proxyInputContext;
     private final ProxyInputRecordRepository proxyInputRecordRepository;
+    private final ScheduleDelegationService scheduleDelegationService;
 
     /**
      * 出欠回答を行う。期限チェック・コメント必須チェックを実施し、
@@ -99,6 +100,9 @@ public class ScheduleAttendanceService {
                 eventSurveyService.respondToSurvey(surveyReq.getSurveyId(), userId, surveyReq);
             }
         }
+
+        // F03.10 §5.3: 委任者が自分の出欠を ATTENDING に更新したら PENDING 代理を自動 CANCELLED にする
+        scheduleDelegationService.onDelegatorAttendanceChanged(scheduleId, userId, newStatus);
 
         // イベント発行（トランザクションコミット後に発行）
         eventPublisher.publishEvent(new AttendanceRespondedEvent(
