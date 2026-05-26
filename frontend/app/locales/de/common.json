@@ -1286,6 +1286,14 @@
       "betaRestriction": "Beta-Einschränkung",
       "errorReports": "Fehlerberichte",
       "gdprPurge": "DSGVO Bereinigungsstatus"
+    },
+    "businessAlert": {
+      "title": "Geschäftswarnungen",
+      "newReservations": "Neue Reservierungen",
+      "pendingApproval": "Ausstehende Genehmigung",
+      "unreadInquiries": "Anfragen",
+      "noAlerts": "Keine Warnungen",
+      "viewAll": "Alle anzeigen"
     }
   },
   "notificationCredit": {
