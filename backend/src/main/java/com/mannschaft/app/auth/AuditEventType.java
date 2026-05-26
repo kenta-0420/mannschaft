@@ -323,7 +323,15 @@ public enum AuditEventType {
     /** 他者の掲示板スレッドを削除した（管理者/DEPUTY による削除）。本人削除は記録しない。 */
     BULLETIN_THREAD_DELETED(AuditEventCategory.BULLETIN),
     /** 他者の掲示板返信を削除した（管理者/DEPUTY による削除）。本人削除は記録しない。 */
-    BULLETIN_REPLY_DELETED(AuditEventCategory.BULLETIN);
+    BULLETIN_REPLY_DELETED(AuditEventCategory.BULLETIN),
+    /** 保管庫フォルダを作成した（設計書 F05.1 §6）。 */
+    BULLETIN_ARCHIVE_FOLDER_CREATED(AuditEventCategory.BULLETIN),
+    /** 保管庫フォルダを更新・移動した（設計書 F05.1 §6）。 */
+    BULLETIN_ARCHIVE_FOLDER_UPDATED(AuditEventCategory.BULLETIN),
+    /** 保管庫フォルダを削除した（設計書 F05.1 §6）。 */
+    BULLETIN_ARCHIVE_FOLDER_DELETED(AuditEventCategory.BULLETIN),
+    /** スレッドの保管庫フォルダ振り分けを変更した（設計書 F05.1 §6）。 */
+    BULLETIN_THREAD_ARCHIVE_FOLDER_CHANGED(AuditEventCategory.BULLETIN);
 
     private final AuditEventCategory category;
 }

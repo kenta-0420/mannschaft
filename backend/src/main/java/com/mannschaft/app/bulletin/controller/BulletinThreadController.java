@@ -193,7 +193,10 @@ public class BulletinThreadController {
         boolean isArchived = request == null || request.getIsArchived() == null
                 ? true
                 : request.getIsArchived();
-        ThreadResponse response = threadService.archive(type, scopeId, threadId, SecurityUtils.getCurrentUserId(), isArchived);
+        // 保管庫フォルダ振り分け（任意。null = 保管庫直下。is_archived=false 時はサービス層で無視）
+        java.util.UUID archiveFolderId = request == null ? null : request.getArchiveFolderId();
+        ThreadResponse response = threadService.archive(
+                type, scopeId, threadId, SecurityUtils.getCurrentUserId(), isArchived, archiveFolderId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }
