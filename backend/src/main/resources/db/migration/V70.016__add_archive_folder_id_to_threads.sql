@@ -19,3 +19,4 @@ ALTER TABLE bulletin_threads
 CREATE INDEX idx_bulletin_threads_archive_folder
     ON bulletin_threads (archive_folder_id);
 
+-- trigger
