@@ -176,6 +176,8 @@ export default defineNuxtConfig({
       // 注: Permissions-Policy の自オリジン許可は CSP と異なり引用符なしの
       //     キーワード `self` を用いる（`self` → `geolocation=(self)`）。
       //     引用符付き `'self'` だと `(’self’)` となり仕様上不正なため使わない。
+      // vue-tsc の PermissionsPolicyValue 型定義に含まれないキー（bluetooth 等）が
+      // あるため Record<string, string[]> でキャストして型エラーを回避する
       permissionsPolicy: {
         geolocation: ['self'],
         camera: ['self'],
@@ -193,7 +195,7 @@ export default defineNuxtConfig({
         gyroscope: [], // 未使用 → 無効化
         accelerometer: [], // 未使用 → 無効化
         'idle-detection': [], // 未使用 → 無効化
-      },
+      } as Record<string, string[]>,
     },
   },
 
