@@ -520,7 +520,14 @@ public class GlobalExceptionHandler {
             Map.entry("BULLETIN_010", HttpStatus.CONFLICT),           // DUPLICATE_CATEGORY_NAME
             Map.entry("BULLETIN_011", HttpStatus.FORBIDDEN),          // NOT_AUTHOR
             Map.entry("BULLETIN_013", HttpStatus.BAD_REQUEST),        // INVALID_EMOJI
-            Map.entry("BULLETIN_014", HttpStatus.FORBIDDEN)           // SAFETY_THREAD_DELETE_FORBIDDEN
+            Map.entry("BULLETIN_014", HttpStatus.FORBIDDEN),          // SAFETY_THREAD_DELETE_FORBIDDEN
+            // F05.1 保管庫フォルダ
+            Map.entry("BULLETIN_016", HttpStatus.NOT_FOUND),          // ARCHIVE_FOLDER_NOT_FOUND
+            Map.entry("BULLETIN_017", HttpStatus.BAD_REQUEST),        // ARCHIVE_FOLDER_DEPTH_EXCEEDED
+            Map.entry("BULLETIN_018", HttpStatus.BAD_REQUEST),        // ARCHIVE_FOLDER_CYCLE
+            Map.entry("BULLETIN_019", HttpStatus.CONFLICT),           // ARCHIVE_FOLDER_LIMIT_EXCEEDED
+            Map.entry("BULLETIN_020", HttpStatus.CONFLICT),           // ARCHIVE_FOLDER_SCOPE_MISMATCH
+            Map.entry("BULLETIN_021", HttpStatus.CONFLICT)            // THREAD_NOT_ARCHIVED
     );
 
     /**

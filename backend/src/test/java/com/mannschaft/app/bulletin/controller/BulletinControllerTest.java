@@ -39,6 +39,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -194,7 +195,7 @@ class BulletinControllerTest {
             return new ThreadResponse(
                     THREAD_ID, CATEGORY_ID, "TEAM", SCOPE_ID, USER_ID,
                     "テストスレッド", "本文", "INFO", "COUNT_ONLY",
-                    false, false, false, 0, 0, null, null, null, null, null);
+                    false, false, false, null, 0, 0, null, null, null, null, null);
         }
 
         @Test
@@ -342,7 +343,7 @@ class BulletinControllerTest {
         @DisplayName("正常系: アーカイブ（body無し=後方互換でtrue）が200で返る")
         void archive_body無し_200() {
             // Given: body 無しは後方互換で isArchived=true として委譲される
-            given(threadService.archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(true)))
+            given(threadService.archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(true), isNull()))
                     .willReturn(createThreadResponse());
 
             // When
@@ -351,7 +352,7 @@ class BulletinControllerTest {
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            verify(threadService).archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(true));
+            verify(threadService).archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(true), isNull());
         }
 
         @Test
@@ -360,7 +361,7 @@ class BulletinControllerTest {
             // Given
             ArchiveThreadRequest request = new ArchiveThreadRequest();
             request.setIsArchived(true);
-            given(threadService.archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(true)))
+            given(threadService.archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(true), isNull()))
                     .willReturn(createThreadResponse());
 
             // When
@@ -369,7 +370,7 @@ class BulletinControllerTest {
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            verify(threadService).archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(true));
+            verify(threadService).archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(true), isNull());
         }
 
         @Test
@@ -378,7 +379,7 @@ class BulletinControllerTest {
             // Given
             ArchiveThreadRequest request = new ArchiveThreadRequest();
             request.setIsArchived(false);
-            given(threadService.archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(false)))
+            given(threadService.archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(false), isNull()))
                     .willReturn(createThreadResponse());
 
             // When
@@ -387,7 +388,7 @@ class BulletinControllerTest {
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            verify(threadService).archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(false));
+            verify(threadService).archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(false), isNull());
         }
 
         @Test

@@ -43,6 +43,8 @@ public class BulletinThreadService {
     private final BulletinMapper bulletinMapper;
     private final BulletinAccessGuard accessGuard;
     private final AuditLogService auditLogService;
+    /** F05.1 保管庫フォルダ: フォルダ存在 + scope 一致検証に利用する。 */
+    private final BulletinArchiveFolderService archiveFolderService;
     /** F17.1 Phase 3: scope=VILLAGE 投稿の主体検証。null 安全のため Optional 注入は使わず常時 inject。 */
     private final PostingIdentityService postingIdentityService;
 
@@ -301,25 +303,126 @@ public class BulletinThreadService {
      * <p>{@code isArchived=true} でアーカイブ（保管庫へ格納）、{@code false} でアーカイブ解除
      * （一覧へ戻す）を行う双方向操作。認可は従来どおり {@code requireManageContent} で硬化する。</p>
      *
-     * @param scopeType  スコープ種別
-     * @param scopeId    スコープID
-     * @param threadId   スレッドID
-     * @param userId     操作ユーザーID
-     * @param isArchived 設定するアーカイブ状態（true=アーカイブ / false=解除）
+     * <p>保管庫フォルダ振り分け（{@code archiveFolderId}）を任意指定可能（後方互換）。
+     * is_archived=true 時に指定するとアーカイブと同時に振り分ける（省略・null = 保管庫直下）。
+     * 指定フォルダはスレッドと同一スコープに存在し論理削除されていないこと（不一致は 409 / 不存在は 404）。
+     * is_archived=false（解除）時は archiveFolderId を無視し、自動 NULL リセットされる。</p>
+     *
+     * @param scopeType       スコープ種別
+     * @param scopeId         スコープID
+     * @param threadId        スレッドID
+     * @param userId          操作ユーザーID
+     * @param isArchived      設定するアーカイブ状態（true=アーカイブ / false=解除）
+     * @param archiveFolderId 振り分け先フォルダ（任意。null = 保管庫直下。is_archived=false 時は無視）
      * @return 更新されたスレッドレスポンス
      */
     @Transactional
-    public ThreadResponse archive(ScopeType scopeType, Long scopeId, Long threadId, Long userId, boolean isArchived) {
+    public ThreadResponse archive(ScopeType scopeType, Long scopeId, Long threadId, Long userId,
+                                  boolean isArchived, UUID archiveFolderId) {
         accessGuard.checkMembership(userId, scopeType, scopeId);
         accessGuard.requireManageContent(userId, scopeType, scopeId);
         BulletinThreadEntity entity = findThreadOrThrow(scopeType, scopeId, threadId);
         if (isArchived) {
             entity.archive();
+            if (archiveFolderId != null) {
+                // フォルダ存在 + scope 一致を検証（404 / 409）
+                archiveFolderService.validateFolderInScope(scopeType, scopeId, archiveFolderId);
+                entity.assignArchiveFolder(archiveFolderId);
+            } else {
+                entity.clearArchiveFolder();
+            }
         } else {
+            // 解除時は folder を自動 NULL リセット（unarchive 内で実施）
             entity.unarchive();
         }
         BulletinThreadEntity saved = threadRepository.save(entity);
-        log.info("スレッドアーカイブ状態変更: threadId={}, isArchived={}", threadId, saved.getIsArchived());
+        log.info("スレッドアーカイブ状態変更: threadId={}, isArchived={}, folderId={}",
+                threadId, saved.getIsArchived(), saved.getArchiveFolderId());
+        return bulletinMapper.toThreadResponse(saved);
+    }
+
+    /**
+     * 保管庫内のアーカイブ済みスレッド一覧を取得する（設計書 F05.1 §4 GET .../archive/threads）。
+     *
+     * <p>閲覧は所属メンバーなら可（MEMBER/SUPPORTER も閲覧可）。</p>
+     *
+     * <ul>
+     *   <li>{@code folderId == null かつ !allFolders}: 保管庫直下（未分類）</li>
+     *   <li>{@code allFolders == true}: 全保管庫スレッド（フォルダ問わず is_archived=TRUE 全件）</li>
+     *   <li>{@code folderId != null}: 指定フォルダ直下（フォルダ存在 + scope 一致を検証）</li>
+     * </ul>
+     *
+     * @param scopeType  スコープ種別
+     * @param scopeId    スコープID
+     * @param userId     操作ユーザーID
+     * @param folderId   絞り込みフォルダ（null = 未分類 or 全件）
+     * @param allFolders {@code folder_id=all} 指定（全保管庫横断）
+     * @param pageable   ページング情報
+     * @return アーカイブ済みスレッドのページ
+     */
+    public Page<ThreadResponse> listArchiveThreads(ScopeType scopeType, Long scopeId, Long userId,
+                                                   UUID folderId, boolean allFolders, Pageable pageable) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
+        Page<BulletinThreadEntity> page;
+        if (allFolders) {
+            page = threadRepository.findByScopeTypeAndScopeIdAndIsArchivedTrue(scopeType, scopeId, pageable);
+        } else if (folderId != null) {
+            // フォルダ存在 + scope 一致を検証（404 / 409）
+            archiveFolderService.validateFolderInScope(scopeType, scopeId, folderId);
+            page = threadRepository.findByScopeTypeAndScopeIdAndIsArchivedTrueAndArchiveFolderId(
+                    scopeType, scopeId, folderId, pageable);
+        } else {
+            page = threadRepository.findByScopeTypeAndScopeIdAndIsArchivedTrueAndArchiveFolderIdIsNull(
+                    scopeType, scopeId, pageable);
+        }
+        return page.map(bulletinMapper::toThreadResponse);
+    }
+
+    /**
+     * アーカイブ済みスレッドを別の保管庫フォルダへ振り分ける
+     * （設計書 F05.1 §4 PATCH .../archive/threads/{threadId}/folder）。ADMIN or DEPUTY(MANAGE_CONTENT) のみ。
+     *
+     * <p>対象スレッドは is_archived=TRUE であること（未アーカイブは 409）。
+     * 移動先フォルダ（null 以外）はスレッドと同一スコープに存在する有効フォルダであること（404 / 409）。</p>
+     *
+     * @param scopeType       スコープ種別
+     * @param scopeId         スコープID
+     * @param threadId        スレッドID
+     * @param userId          操作ユーザーID
+     * @param archiveFolderId 移動先フォルダ（null = 保管庫直下・未分類）
+     * @return 更新されたスレッドレスポンス
+     */
+    @Transactional
+    public ThreadResponse moveThreadToFolder(ScopeType scopeType, Long scopeId, Long threadId, Long userId,
+                                             UUID archiveFolderId) {
+        accessGuard.checkMembership(userId, scopeType, scopeId);
+        accessGuard.requireManageContent(userId, scopeType, scopeId);
+        BulletinThreadEntity entity = findThreadOrThrow(scopeType, scopeId, threadId);
+
+        // 未アーカイブのスレッドはフォルダ振り分け不可（409）
+        if (!Boolean.TRUE.equals(entity.getIsArchived())) {
+            throw new BusinessException(BulletinErrorCode.THREAD_NOT_ARCHIVED);
+        }
+
+        if (archiveFolderId != null) {
+            archiveFolderService.validateFolderInScope(scopeType, scopeId, archiveFolderId);
+            entity.assignArchiveFolder(archiveFolderId);
+        } else {
+            entity.clearArchiveFolder();
+        }
+        BulletinThreadEntity saved = threadRepository.save(entity);
+        log.info("スレッドフォルダ振り分け: threadId={}, folderId={}", threadId, archiveFolderId);
+
+        // 振り分け操作の監査ログ（設計書 §6）
+        Long teamId = scopeType == ScopeType.TEAM ? scopeId : null;
+        Long organizationId = scopeType == ScopeType.ORGANIZATION ? scopeId : null;
+        String metadata = String.format(
+                "{\"source\":\"BULLETIN\",\"thread_id\":%d,\"archive_folder_id\":%s,\"scope_type\":\"%s\",\"scope_id\":%d}",
+                threadId, archiveFolderId == null ? "null" : "\"" + archiveFolderId + "\"",
+                scopeType.name(), scopeId);
+        auditLogService.record(AuditEventType.BULLETIN_THREAD_ARCHIVE_FOLDER_CHANGED.name(),
+                userId, null, teamId, organizationId, null, null, null, metadata);
+
         return bulletinMapper.toThreadResponse(saved);
     }
 
