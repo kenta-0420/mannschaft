@@ -17,21 +17,39 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface NotificationMapper {
 
-    @Mapping(target = "content.notificationType", source = "notificationType")
-    @Mapping(target = "content.priority", expression = "java(entity.getPriority().name())")
-    @Mapping(target = "content.title", source = "title")
-    @Mapping(target = "content.body", source = "body")
-    @Mapping(target = "content.actionUrl", source = "actionUrl")
-    @Mapping(target = "source.sourceType", source = "sourceType")
-    @Mapping(target = "source.sourceId", source = "sourceId")
-    @Mapping(target = "scope.scopeType", expression = "java(entity.getScopeType().name())")
-    @Mapping(target = "scope.scopeId", source = "scopeId")
-    @Mapping(target = "scope.actorId", source = "actorId")
-    @Mapping(target = "status.isRead", source = "isRead")
-    @Mapping(target = "status.readAt", source = "readAt")
-    @Mapping(target = "status.channelsSent", source = "channelsSent")
-    @Mapping(target = "status.snoozedUntil", source = "snoozedUntil")
-    NotificationResponse toNotificationResponse(NotificationEntity entity);
+    /**
+     * Enum → String 変換（priority / scopeType）を含むため、
+     * MapStruct の expression がネスト記法のサブメソッドでスコープ外になる問題を回避すべく
+     * default メソッドで手動実装する。
+     */
+    default NotificationResponse toNotificationResponse(NotificationEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+        return NotificationResponse.builder()
+                .id(entity.getId())
+                .userId(entity.getUserId())
+                .content(new NotificationResponse.NotificationContentDto(
+                        entity.getNotificationType(),
+                        entity.getPriority().name(),
+                        entity.getTitle(),
+                        entity.getBody(),
+                        entity.getActionUrl()))
+                .source(new NotificationResponse.NotificationSourceDto(
+                        entity.getSourceType(),
+                        entity.getSourceId()))
+                .scope(new NotificationResponse.NotificationScopeDto(
+                        entity.getScopeType().name(),
+                        entity.getScopeId(),
+                        entity.getActorId()))
+                .status(new NotificationResponse.NotificationStatusDto(
+                        entity.getIsRead(),
+                        entity.getReadAt(),
+                        entity.getChannelsSent(),
+                        entity.getSnoozedUntil()))
+                .createdAt(entity.getCreatedAt())
+                .build();
+    }
 
     List<NotificationResponse> toNotificationResponseList(List<NotificationEntity> entities);
 
