@@ -99,9 +99,6 @@ export default defineNuxtConfig({
     xssValidator: false,
     corsHandler: false,
     allowedMethodsRestricter: false,
-    // Phase 1 は Report-Only ではなく強制モードで導入する。
-    // 段階観測が必要になった場合は true に切り替える（設計書 §2.2）。
-    contentSecurityPolicyReportOnly: false,
     // removeLoggers（本番で console.* を除去）は既定 true だが、F10.6 の SSR エラー
     // 転送など意図的なログ出力に影響しうるため、本タスクのスコープ外として無効化する。
     removeLoggers: false,
