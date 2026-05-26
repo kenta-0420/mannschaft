@@ -189,7 +189,6 @@ export default defineNuxtConfig({
         fullscreen: ['self'],
         payment: [], // 未使用 → 無効化
         usb: [], // 未使用 → 無効化
-        bluetooth: [], // 未使用 → 無効化
         serial: [], // 未使用 → 無効化
         midi: [], // 未使用 → 無効化
         hid: [], // 未使用 → 無効化
