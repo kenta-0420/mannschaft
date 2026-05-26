@@ -1,6 +1,7 @@
 import type { Page, Route } from '@playwright/test'
 import type {
   SurveyResponse,
+  SurveyStatus,
   SurveyQuestion,
   SurveyDetailResponse,
   SurveyResultSummary,
