@@ -13,6 +13,7 @@ const { t } = useI18n()
 const route = useRoute()
 const teamStore = useTeamStore()
 const { getSchedule } = useShiftApi()
+const { userTimezone } = useDatetime()
 const { listSlots, deleteSlot, bulkCreateSlots } = useShiftSlotApi()
 const { listPositions } = useShiftPositionApi()
 const { handleApiError } = useErrorHandler()
@@ -150,7 +151,7 @@ async function handleBulkCreate() {
         bulkForm.value.dayOfWeeks.length === 0 || bulkForm.value.dayOfWeeks.includes(dow)
       if (shouldInclude) {
         generatedSlots.push({
-          slotDate: cur.toISOString().split('T')[0]!,
+          slotDate: dayjs(cur).tz(userTimezone.value).format('YYYY-MM-DD'),
           startTime: bulkForm.value.startTime,
           endTime: bulkForm.value.endTime,
           positionId: bulkForm.value.positionId ?? undefined,

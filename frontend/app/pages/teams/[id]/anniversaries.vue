@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { AnniversaryResponse, AnniversaryRequest } from '~/types/anniversary'
 
 definePageMeta({ middleware: 'auth' })
@@ -8,6 +9,7 @@ const teamId = Number(route.params.id)
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
 const anniversaryApi = useAnniversaryApi()
 const { showError } = useNotification()
+const { userTimezone } = useDatetime()
 
 const anniversaries = ref<AnniversaryResponse[]>([])
 const upcoming = ref<AnniversaryResponse[]>([])
@@ -17,7 +19,7 @@ const editingItem = ref<AnniversaryResponse | null>(null)
 
 const form = reactive<AnniversaryRequest>({
   name: '',
-  date: new Date().toISOString().split('T')[0] ?? '',
+  date: dayjs().tz(userTimezone.value).format('YYYY-MM-DD'),
   repeatAnnually: true,
   notifyDaysBefore: 7,
 })
@@ -42,7 +44,7 @@ function openCreate() {
   editingItem.value = null
   Object.assign(form, {
     name: '',
-    date: new Date().toISOString().split('T')[0] ?? '',
+    date: dayjs().tz(userTimezone.value).format('YYYY-MM-DD'),
     repeatAnnually: true,
     notifyDaysBefore: 7,
   })

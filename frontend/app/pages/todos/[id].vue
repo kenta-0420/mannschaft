@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { TodoStatusLabelInfo } from '~/types/todoStatusLabel'
 
 definePageMeta({
@@ -13,6 +14,7 @@ const todoApi = useTodoApi()
 const notification = useNotification()
 const errorHandler = useErrorHandler()
 const authStore = useAuthStore()
+const { userTimezone } = useDatetime()
 const { formatDate, formatDateTime } = useDatetime()
 
 /** Wave 1 DTO刷新: ネスト構造 */
@@ -137,7 +139,7 @@ function cancelEdit() {
 }
 
 function toLocalDateStr(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return dayjs(d).tz(userTimezone.value).format('YYYY-MM-DD')
 }
 
 async function saveEdit() {

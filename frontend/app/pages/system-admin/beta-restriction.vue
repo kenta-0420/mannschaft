@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { BetaRestrictionConfigResponse } from '~/types/system-admin'
 
 definePageMeta({ middleware: 'auth' })
@@ -6,6 +7,7 @@ definePageMeta({ middleware: 'auth' })
 const { t } = useI18n()
 const systemAdminApi = useSystemAdminApi()
 const notification = useNotification()
+const { userTimezone } = useDatetime()
 
 const config = ref<BetaRestrictionConfigResponse | null>(null)
 const loading = ref(true)
@@ -49,8 +51,7 @@ async function save() {
 }
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  return dayjs(dateStr).tz(userTimezone.value).format('YYYY/MM/DD HH:mm')
 }
 
 onMounted(() => {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { computed, ref, onMounted, watch } from 'vue'
 
 definePageMeta({
@@ -9,15 +10,14 @@ const route = useRoute()
 const teamId = computed(() => Number(route.params.id))
 const { monthlyStats, termStats, loadingMonthly, loadingTerm, exporting, loadMonthlyStatistics, loadTermStatistics, downloadCsv } =
   useAttendanceStatistics(teamId)
+const { userTimezone } = useDatetime()
 
-const today = new Date()
+const today = dayjs().tz(userTimezone.value)
 const selectedYear = ref(today.getFullYear())
 const selectedMonth = ref(today.getMonth() + 1)
 
-const termFrom = ref(
-  new Date(today.getFullYear(), today.getMonth() - 2, 1).toISOString().slice(0, 10),
-)
-const termTo = ref(today.toISOString().slice(0, 10))
+const termFrom = ref(today.subtract(2, 'month').startOf('month').format('YYYY-MM-DD'))
+const termTo = ref(today.format('YYYY-MM-DD'))
 
 const activeTab = ref<'monthly' | 'term'>('monthly')
 

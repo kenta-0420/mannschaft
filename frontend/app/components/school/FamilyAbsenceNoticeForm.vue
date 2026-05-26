@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { ref, computed } from 'vue'
 import type { FamilyAttendanceNoticeRequest, FamilyNoticeType, FamilyNoticeReason } from '~/types/school'
 
@@ -13,8 +14,9 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { userTimezone } = useDatetime()
 
-const today = new Date().toISOString().slice(0, 10)
+const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
 
 const attendanceDate = ref(today)
 const noticeType = ref<FamilyNoticeType>('ABSENCE')

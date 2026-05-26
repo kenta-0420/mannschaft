@@ -1,3 +1,4 @@
+import dayjs from 'dayjs'
 import { defineStore } from 'pinia'
 import type {
   ActionMemo,
@@ -96,13 +97,11 @@ function nowIso(): string {
 }
 
 /**
- * JST の今日（YYYY-MM-DD）。サーバー側の判定基準と合わせる。
+ * ユーザーのタイムゾーン設定に基づく今日の日付（YYYY-MM-DD）。
  */
-function todayJst(): string {
-  const now = new Date()
-  // UTC → JST (+9h)
-  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
-  return jst.toISOString().slice(0, 10)
+function today(): string {
+  const authStore = useAuthStore()
+  return dayjs().tz(authStore.user?.timezone ?? 'Asia/Tokyo').format('YYYY-MM-DD')
 }
 
 export const useActionMemoStore = defineStore('actionMemo', {
@@ -160,7 +159,7 @@ export const useActionMemoStore = defineStore('actionMemo', {
       const tempId = nextTempId()
       const optimistic: ActionMemo = {
         id: tempId,
-        memoDate: payload.memoDate ?? todayJst(),
+        memoDate: payload.memoDate ?? today(),
         content: payload.content,
         // mood_enabled = false の場合、サーバー側で silent NULL 化されるため
         // ローカルでも同様に NULL にしておく
@@ -254,7 +253,7 @@ export const useActionMemoStore = defineStore('actionMemo', {
       // （flushQueue の返す createdId だけでは、並列送信された別デバイスのメモや
       //  同日の並び順を正しく反映できないため）
       if (results.length > 0) {
-        const targetDate = results[0]?.queued.payload.memoDate ?? todayJst()
+        const targetDate = results[0]?.queued.payload.memoDate ?? today()
         await this.fetchMemosForDate(targetDate)
       }
       this.offlineQueueCount = await queue.count()
@@ -371,7 +370,7 @@ export const useActionMemoStore = defineStore('actionMemo', {
         const api = useActionMemoApi()
         const response = await api.publishDaily(payload)
         // 各メモの timeline_post_id を反映するため対象日を再取得する
-        const targetDate = payload.memoDate ?? response.memoDate ?? todayJst()
+        const targetDate = payload.memoDate ?? response.memoDate ?? today()
         await this.fetchMemosForDate(targetDate)
         return response
       } catch (error) {
@@ -714,7 +713,7 @@ export const useActionMemoStore = defineStore('actionMemo', {
 // === エクスポート（テスト用にユーティリティを公開） ===
 export const __actionMemoInternals = {
   draftKey,
-  todayJst,
+  today,
 }
 
 /** 型再エクスポート（呼び出し側の便宜のため） */

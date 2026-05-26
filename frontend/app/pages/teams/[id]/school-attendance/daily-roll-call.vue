@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { computed, ref, onMounted } from 'vue'
 import type { DailyRollCallEntry, DailyRollCallSummary } from '~/types/school'
 
@@ -15,8 +16,9 @@ const teamId = computed(() => Number(route.params.id))
 
 const { records, loading, submitting, lastSummary, loadRecords, submitRollCall } =
   useDailyRollCall(teamId)
+const { userTimezone } = useDatetime()
 
-const today = new Date().toISOString().slice(0, 10)
+const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
 const selectedDate = ref(today)
 
 const entries = ref<StudentEntry[]>([])
