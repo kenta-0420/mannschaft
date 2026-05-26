@@ -212,6 +212,33 @@ public class GlobalExceptionHandler {
             Map.entry("SCHOOL_FAMILY_NOTICE_ALREADY_APPLIED", HttpStatus.CONFLICT),
             Map.entry("SCHOOL_TRANSITION_ALERT_NOT_FOUND", HttpStatus.NOT_FOUND),
             Map.entry("SCHOOL_TRANSITION_ALERT_ALREADY_RESOLVED", HttpStatus.CONFLICT),
+            // F03.10 代理出席（スケジュール側 §4.1 / §5.6）
+            Map.entry("SCHEDULE_070", HttpStatus.NOT_FOUND),                // SCHEDULE_DELEGATION_NOT_FOUND
+            Map.entry("SCHEDULE_071", HttpStatus.FORBIDDEN),                // 委任者がスコープ外
+            Map.entry("SCHEDULE_072", HttpStatus.UNPROCESSABLE_ENTITY),     // 代理人がスコープ外
+            Map.entry("SCHEDULE_073", HttpStatus.UNPROCESSABLE_ENTITY),     // 自己代理
+            Map.entry("SCHEDULE_074", HttpStatus.CONFLICT),                 // アクティブ代理重複
+            Map.entry("SCHEDULE_075", HttpStatus.UNPROCESSABLE_ENTITY),     // 連鎖代理禁止
+            Map.entry("SCHEDULE_076", HttpStatus.UNPROCESSABLE_ENTITY),     // allow_proxy_attendance=FALSE
+            Map.entry("SCHEDULE_077", HttpStatus.UNPROCESSABLE_ENTITY),     // CANCELLED/COMPLETED
+            Map.entry("SCHEDULE_078", HttpStatus.UNPROCESSABLE_ENTITY),     // 親スケジュール
+            Map.entry("SCHEDULE_079", HttpStatus.FORBIDDEN),                // 代理人本人でない
+            Map.entry("SCHEDULE_080", HttpStatus.UNPROCESSABLE_ENTITY),     // PENDING でない
+            // F03.10 代理出席（イベント側 §4.2 / §5.6 / §5.7）
+            Map.entry("EVENT_030", HttpStatus.NOT_FOUND),                   // DELEGATION_NOT_FOUND
+            Map.entry("EVENT_031", HttpStatus.FORBIDDEN),                   // 委任者がスコープ外
+            Map.entry("EVENT_032", HttpStatus.UNPROCESSABLE_ENTITY),        // 代理人がスコープ外
+            Map.entry("EVENT_033", HttpStatus.UNPROCESSABLE_ENTITY),        // 自己代理
+            Map.entry("EVENT_034", HttpStatus.CONFLICT),                    // アクティブ代理重複
+            Map.entry("EVENT_035", HttpStatus.UNPROCESSABLE_ENTITY),        // 連鎖代理禁止
+            Map.entry("EVENT_036", HttpStatus.UNPROCESSABLE_ENTITY),        // allow_proxy_attendance=FALSE
+            Map.entry("EVENT_037", HttpStatus.UNPROCESSABLE_ENTITY),        // CANCELLED/COMPLETED
+            Map.entry("EVENT_038", HttpStatus.FORBIDDEN),                   // 代理人本人でない
+            Map.entry("EVENT_039", HttpStatus.UNPROCESSABLE_ENTITY),        // PENDING でない
+            Map.entry("EVENT_040", HttpStatus.UNPROCESSABLE_ENTITY),        // 投票セッション事前条件違反
+            Map.entry("EVENT_041", HttpStatus.UNPROCESSABLE_ENTITY),        // 代理チェックイン: ACCEPTED でない
+            Map.entry("EVENT_042", HttpStatus.CONFLICT),                    // 代理チェックイン: 既にチェックイン済み
+            Map.entry("EVENT_043", HttpStatus.FORBIDDEN),                   // 代理チェックイン: 権限なし
             // F03.5 シフト管理（Phase 11 第二陣で summary / remind 追加）
             Map.entry("SHIFT_001", HttpStatus.NOT_FOUND),                   // SHIFT_SCHEDULE_NOT_FOUND
             Map.entry("SHIFT_012", HttpStatus.CONFLICT),                    // INVALID_SCHEDULE_STATUS

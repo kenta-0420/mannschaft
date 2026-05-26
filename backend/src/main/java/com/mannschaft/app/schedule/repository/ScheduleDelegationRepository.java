@@ -53,4 +53,30 @@ public interface ScheduleDelegationRepository
      * 指定スケジュールの委任総件数（一覧 total 算出用）。
      */
     long countByScheduleId(Long scheduleId);
+
+    /**
+     * 退会連動（§5.8）/ クリーンアップバッチ用: 指定スコープ（org または team）で、委任者または代理人が
+     * 指定ユーザーであるアクティブな委任を取得する。
+     *
+     * <p>organization_id / team_id は親スケジュールから非正規化済みのため、スコープ単位で直接絞り込める。</p>
+     */
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT d FROM ScheduleDelegationEntity d
+            WHERE d.status IN :statuses
+              AND (d.delegatorId = :userId OR d.delegateId = :userId)
+              AND ((:organizationId IS NOT NULL AND d.organizationId = :organizationId)
+                OR (:teamId IS NOT NULL AND d.teamId = :teamId))
+            """)
+    List<ScheduleDelegationEntity> findActiveByScopeAndInvolvedUser(
+            @org.springframework.data.repository.query.Param("organizationId") Long organizationId,
+            @org.springframework.data.repository.query.Param("teamId") Long teamId,
+            @org.springframework.data.repository.query.Param("userId") Long userId,
+            @org.springframework.data.repository.query.Param("statuses") Collection<ScheduleDelegationStatus> statuses);
+
+    /**
+     * クリーンアップバッチ用: アクティブ（PENDING/ACCEPTED）委任を全件取得する。
+     *
+     * <p>孤立代理（当事者がスコープ在籍不可）の補完クリーンアップで使用する。件数は限定的（アクティブのみ）。</p>
+     */
+    List<ScheduleDelegationEntity> findByStatusIn(Collection<ScheduleDelegationStatus> statuses);
 }
