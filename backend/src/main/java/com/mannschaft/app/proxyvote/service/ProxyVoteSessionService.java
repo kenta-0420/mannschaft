@@ -45,6 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 投票セッションサービス（ファサード）。
@@ -416,6 +417,17 @@ public class ProxyVoteSessionService {
     ProxyVoteSessionEntity findSessionOrThrow(Long id) {
         return sessionRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ProxyVoteErrorCode.SESSION_NOT_FOUND));
+    }
+
+    /**
+     * セッションを Optional で取得する（存在しなくても例外を投げない）。
+     *
+     * <p>F03.10 代理出席連携（{@link ProxyDelegationService}）で、セッション不在を warning として
+     * スキップ判定するために使用する。{@code @SQLRestriction("deleted_at IS NULL")} により
+     * 論理削除済みは取得されない。</p>
+     */
+    public Optional<ProxyVoteSessionEntity> findSessionOptional(Long id) {
+        return sessionRepository.findById(id);
     }
 
     ProxyVoteMotionEntity findMotionOrThrow(Long id) {
