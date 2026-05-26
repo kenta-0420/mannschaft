@@ -106,6 +106,15 @@ public class BulletinThreadEntity extends BaseEntity {
     @Builder.Default
     private Boolean isArchived = false;
 
+    /**
+     * 保管庫フォルダ（{@code bulletin_archive_folders.id}）。
+     *
+     * <p>NULL かつ {@code isArchived=TRUE} = 保管庫直下（未分類）。{@code isArchived=FALSE} のときは
+     * 無視（NULL 運用）。スレッドは 1 フォルダのみ所属。FK は張らない（bulletin 慣習・原則1）。</p>
+     */
+    @Column(name = "archive_folder_id", columnDefinition = "BINARY(16)")
+    private UUID archiveFolderId;
+
     @Column(nullable = false)
     @Builder.Default
     private Integer replyCount = 0;
@@ -151,10 +160,37 @@ public class BulletinThreadEntity extends BaseEntity {
     }
 
     /**
-     * アーカイブする。
+     * アーカイブする（設計書 F05.1 §4）。
      */
     public void archive() {
         this.isArchived = true;
+    }
+
+    /**
+     * アーカイブを解除する（設計書 F05.1 §4: is_archived 双方向）。
+     *
+     * <p>一覧へ戻したスレッドにフォルダ所属を残さないため、{@code archiveFolderId} も NULL に
+     * リセットする（設計書 §4 アーカイブ拡張）。</p>
+     */
+    public void unarchive() {
+        this.isArchived = false;
+        this.archiveFolderId = null;
+    }
+
+    /**
+     * 保管庫フォルダを割り当てる（設計書 F05.1 §4 / §5 振り分け）。
+     *
+     * @param archiveFolderId 振り分け先フォルダ ID（NULL = 保管庫直下）
+     */
+    public void assignArchiveFolder(UUID archiveFolderId) {
+        this.archiveFolderId = archiveFolderId;
+    }
+
+    /**
+     * 保管庫フォルダ所属をクリアする（保管庫直下 = 未分類へ退避）。
+     */
+    public void clearArchiveFolder() {
+        this.archiveFolderId = null;
     }
 
     /**

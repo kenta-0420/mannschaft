@@ -118,9 +118,10 @@ export function useBulletinThreads() {
   }
 
   async function toggleArchive(threadId: number, archived: boolean) {
+    // BE は POST + body { is_archived: boolean } の双方向 API（設計書 F05.1 §4）
     return api(`/api/v1/bulletin/threads/${threadId}/archive`, {
-      method: 'PATCH',
-      body: { archived },
+      method: 'POST',
+      body: { is_archived: archived },
     })
   }
 
@@ -195,9 +196,17 @@ export function useBulletinThreads() {
     return api(`/api/v1/${scopeType}/${scopeId}/bulletin/threads/${threadId}`, { method: 'DELETE' })
   }
 
-  async function archiveScopedThread(scopeType: string, scopeId: number, threadId: number) {
+  async function archiveScopedThread(
+    scopeType: string,
+    scopeId: number,
+    threadId: number,
+    isArchived = true,
+  ) {
+    // BE は POST + body { is_archived: boolean } の双方向 API（設計書 F05.1 §4）。
+    // 後方互換のため未指定時は true（アーカイブ）。
     return api(`/api/v1/${scopeType}/${scopeId}/bulletin/threads/${threadId}/archive`, {
       method: 'POST',
+      body: { is_archived: isArchived },
     })
   }
 

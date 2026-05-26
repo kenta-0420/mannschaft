@@ -1,0 +1,60 @@
+package com.mannschaft.app.schedule.listener;
+
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.event.MembershipEndedEvent;
+import com.mannschaft.app.schedule.entity.ScheduleDelegationEntity;
+import com.mannschaft.app.schedule.service.ScheduleDelegationService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+
+import java.util.List;
+
+/**
+ * F03.10 §5.8: メンバー退会時にスケジュール代理出席を自動取消するリスナー。
+ *
+ * <p>{@link MembershipEndedEvent}（{@code MembershipService.leave} の AFTER_COMMIT 相当）を受信し、
+ * 退会したユーザーが委任者または代理人として関与する PENDING/ACCEPTED 代理を CANCELLED にして
+ * 相手方に通知する。手本: {@code com.mannschaft.app.scopefolder.listener.MembershipEventListener}。</p>
+ *
+ * <p>クロスドメインデッドロック回避のため {@code AFTER_COMMIT} + {@code REQUIRES_NEW} で処理する
+ * （CLAUDE.md 原則5）。</p>
+ */
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class ScheduleDelegationMembershipListener {
+
+    private final ScheduleDelegationService delegationService;
+
+    /**
+     * メンバー退会時に該当ユーザーが関与するスケジュール代理を取り消す。
+     *
+     * @param event メンバーシップ終了イベント
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleMembershipEnded(MembershipEndedEvent event) {
+        try {
+            Long organizationId = event.scopeType() == ScopeType.ORGANIZATION ? event.scopeId() : null;
+            Long teamId = event.scopeType() == ScopeType.TEAM ? event.scopeId() : null;
+
+            List<ScheduleDelegationEntity> delegations =
+                    delegationService.findActiveByScopeAndInvolvedUser(organizationId, teamId, event.userId());
+            for (ScheduleDelegationEntity delegation : delegations) {
+                delegationService.cancelOnMemberLeft(delegation, event.userId());
+            }
+            if (!delegations.isEmpty()) {
+                log.info("退会連動 スケジュール代理取消: userId={}, scopeType={}, scopeId={}, 件数={}",
+                        event.userId(), event.scopeType(), event.scopeId(), delegations.size());
+            }
+        } catch (Exception ex) {
+            log.warn("MembershipEndedEvent スケジュール代理取消失敗: userId={}, scopeType={}, scopeId={}, error={}",
+                    event.userId(), event.scopeType(), event.scopeId(), ex.getMessage(), ex);
+        }
+    }
+}

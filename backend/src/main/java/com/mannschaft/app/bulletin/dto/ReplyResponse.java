@@ -22,5 +22,7 @@ public class ReplyResponse {
     private final Integer replyCount;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
+    /** ネストの深さ（設計書 F05.1 §5）。0 = スレッド直下、最大4。 */
+    private final Integer depth;
     private final List<ReplyResponse> children;
 }

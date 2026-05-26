@@ -31,6 +31,12 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class BulletinReplyService {
 
+    /**
+     * 返信ネストの最大 depth（設計書 F05.1 §5: 最大5階層 = depth 0〜4）。
+     * 新規返信の depth がこれを超える（= 6階層目）場合は 400 で弾く。
+     */
+    private static final int MAX_REPLY_DEPTH = 4;
+
     private final BulletinReplyRepository replyRepository;
     private final BulletinThreadRepository threadRepository;
     private final BulletinThreadService threadService;
@@ -77,10 +83,17 @@ public class BulletinReplyService {
                     thread.getIsLocked() ? BulletinErrorCode.THREAD_LOCKED : BulletinErrorCode.THREAD_ARCHIVED);
         }
 
-        // 親返信の存在確認
+        // 親返信の存在確認 + ネスト深さ算出（設計書 §5: 親 depth + 1。スレッド直下は 0）
+        int depth = 0;
         if (request.getParentId() != null) {
             BulletinReplyEntity parent = replyRepository.findByIdAndThreadId(request.getParentId(), threadId)
                     .orElseThrow(() -> new BusinessException(BulletinErrorCode.PARENT_REPLY_MISMATCH));
+            int parentDepth = parent.getDepth() != null ? parent.getDepth() : 0;
+            depth = parentDepth + 1;
+            // 最大5階層（depth 0〜4）。6階層目（depth 5）は 400 で弾く
+            if (depth > MAX_REPLY_DEPTH) {
+                throw new BusinessException(BulletinErrorCode.REPLY_DEPTH_EXCEEDED);
+            }
             parent.incrementReplyCount();
             replyRepository.save(parent);
         }
@@ -88,6 +101,7 @@ public class BulletinReplyService {
         BulletinReplyEntity entity = BulletinReplyEntity.builder()
                 .threadId(threadId)
                 .parentId(request.getParentId())
+                .depth(depth)
                 .authorId(userId)
                 .body(request.getBody())
                 .build();
