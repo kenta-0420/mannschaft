@@ -41,7 +41,7 @@
     "@types/dompurify": "^3.0.5",
     "@vee-validate/zod": "^4.15.1",
     "@vite-pwa/nuxt": "^1.1.1",
-    "@vueuse/nuxt": "^14.2.1",
+    "@vueuse/nuxt": "^14.3.0",
     "@zxing/browser": "^0.1.5",
     "bwip-js": "^4.10.1",
     "chart.js": "^4.5.1",
