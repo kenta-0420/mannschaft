@@ -71,18 +71,33 @@ class ScheduleDelegationMigrationIntegrationTest {
                 .load()
                 .migrate();
         // FK 制約（schedule_id → schedules.id）を満たすため親スケジュールを 1 件作成する。
-        // team_id / organization_id / user_id は NULL（schedules 側の FK を回避）。
-        try (Connection c = conn();
-             PreparedStatement ps = c.prepareStatement(
-                     "INSERT INTO schedules (title, start_at, event_type, visibility, min_view_role, "
-                             + "min_response_role, status, attendance_status, comment_option, created_at, updated_at) "
-                             + "VALUES ('代理出席テスト', NOW(), 'OTHER', 'MEMBERS_ONLY', 'MEMBER_PLUS', "
-                             + "'MEMBER_PLUS', 'SCHEDULED', 'READY', 'OPTIONAL', NOW(), NOW())",
-                     PreparedStatement.RETURN_GENERATED_KEYS)) {
-            ps.executeUpdate();
-            try (ResultSet rs = ps.getGeneratedKeys()) {
-                rs.next();
-                this.scheduleId = rs.getLong(1);
+        // schedules には scope XOR の CHECK 制約（ck_schedules_scope_xor: team/org/user/committee の
+        // いずれか 1 つだけ NOT NULL）があるため、親 organizations を 1 件作って organization_id をセットする。
+        try (Connection c = conn()) {
+            long orgId;
+            try (PreparedStatement ps = c.prepareStatement(
+                    "INSERT INTO organizations (name, org_type, created_at, updated_at) "
+                            + "VALUES ('代理出席テスト組織', 'OTHER', NOW(), NOW())",
+                    PreparedStatement.RETURN_GENERATED_KEYS)) {
+                ps.executeUpdate();
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    rs.next();
+                    orgId = rs.getLong(1);
+                }
+            }
+            try (PreparedStatement ps = c.prepareStatement(
+                    "INSERT INTO schedules (organization_id, title, start_at, event_type, visibility, "
+                            + "min_view_role, min_response_role, status, attendance_status, comment_option, "
+                            + "created_at, updated_at) "
+                            + "VALUES (?, '代理出席テスト', NOW(), 'OTHER', 'MEMBERS_ONLY', 'MEMBER_PLUS', "
+                            + "'MEMBER_PLUS', 'SCHEDULED', 'READY', 'OPTIONAL', NOW(), NOW())",
+                    PreparedStatement.RETURN_GENERATED_KEYS)) {
+                ps.setLong(1, orgId);
+                ps.executeUpdate();
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    rs.next();
+                    this.scheduleId = rs.getLong(1);
+                }
             }
         }
     }
