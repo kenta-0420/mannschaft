@@ -136,6 +136,23 @@ public class EventEntity extends BaseEntity {
     @Builder.Default
     private boolean publicVisible = true;
 
+    /**
+     * F03.10 代理出席: 代理出席を許可するか。
+     * TRUE のイベントのみ代理指定 API が有効になる。
+     */
+    @Column(name = "allow_proxy_attendance", nullable = false,
+            columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    @Builder.Default
+    private Boolean allowProxyAttendance = false;
+
+    /**
+     * F03.10 代理出席: 代理人の承認不要（TRUE = 指定時に即 ACCEPTED）。
+     */
+    @Column(name = "is_proxy_auto_accept", nullable = false,
+            columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    @Builder.Default
+    private Boolean isProxyAutoAccept = false;
+
     private LocalDateTime deletedAt;
 
     // F03.12 解散通知・リマインド
