@@ -81,4 +81,37 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      */
     List<ReservationEntity> findByReservationSlotIdInAndStatusIn(
             List<Long> slotIds, List<ReservationStatus> statuses);
+
+    /**
+     * 当日（JST 0時以降）に作成された CONFIRMED 予約をチーム別に集計する（F10.7 業務アラート用）。
+     *
+     * @param teamIds    対象チーム ID リスト
+     * @param todayStart 本日 0:00:00 JST を UTC に変換した LocalDateTime
+     * @return [teamId, count] の配列リスト
+     */
+    @Query(value =
+            "SELECT r.team_id, COUNT(*) as cnt FROM reservations r " +
+            "WHERE r.team_id IN (:teamIds) " +
+            "AND r.status = 'CONFIRMED' " +
+            "AND r.created_at >= :todayStart " +
+            "AND r.deleted_at IS NULL " +
+            "GROUP BY r.team_id",
+            nativeQuery = true)
+    List<Object[]> countTodayConfirmedByTeamIds(@Param("teamIds") List<Long> teamIds,
+                                                @Param("todayStart") LocalDateTime todayStart);
+
+    /**
+     * PENDING 状態の予約をチーム別に集計する（F10.7 業務アラート用）。
+     *
+     * @param teamIds 対象チーム ID リスト
+     * @return [teamId, count] の配列リスト
+     */
+    @Query(value =
+            "SELECT r.team_id, COUNT(*) as cnt FROM reservations r " +
+            "WHERE r.team_id IN (:teamIds) " +
+            "AND r.status = 'PENDING' " +
+            "AND r.deleted_at IS NULL " +
+            "GROUP BY r.team_id",
+            nativeQuery = true)
+    List<Object[]> countPendingByTeamIds(@Param("teamIds") List<Long> teamIds);
 }
