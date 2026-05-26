@@ -1,8 +1,10 @@
 package com.mannschaft.app.config;
 
 import com.mannschaft.app.advertising.campaign.filter.AdPublicEndpointRateLimitFilter;
+import com.mannschaft.app.event.EventDelegationRateLimitFilter;
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
 import com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter;
+import com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.actuate.health.HealthEndpoint;
@@ -30,6 +32,8 @@ public class SecurityConfig {
     private final ProxyInputContextFilter proxyInputContextFilter;
     private final PublicApiRateLimitFilter publicApiRateLimitFilter;
     private final AdPublicEndpointRateLimitFilter adPublicEndpointRateLimitFilter;
+    private final ScheduleDelegationRateLimitFilter scheduleDelegationRateLimitFilter;
+    private final EventDelegationRateLimitFilter eventDelegationRateLimitFilter;
 
     /**
      * ProxyInputContextFilter の @Component によるサーブレットフィルター自動登録を無効化。
@@ -74,6 +78,35 @@ public class SecurityConfig {
             adPublicEndpointRateLimitFilterRegistration() {
         FilterRegistrationBean<AdPublicEndpointRateLimitFilter> registration =
                 new FilterRegistrationBean<>(adPublicEndpointRateLimitFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    /**
+     * F03.10 第三陣: {@link ScheduleDelegationRateLimitFilter} の @Component による
+     * サーブレットフィルター自動登録を無効化。
+     * Spring Security フィルターチェーン経由（addFilterAfter）のみで動作させ、
+     * JWT 認証後の確定した SecurityContext から userId を解決できるようにする。
+     */
+    @Bean
+    public FilterRegistrationBean<ScheduleDelegationRateLimitFilter>
+            scheduleDelegationRateLimitFilterRegistration() {
+        FilterRegistrationBean<ScheduleDelegationRateLimitFilter> registration =
+                new FilterRegistrationBean<>(scheduleDelegationRateLimitFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    /**
+     * F03.10 第三陣: {@link EventDelegationRateLimitFilter} の @Component による
+     * サーブレットフィルター自動登録を無効化。
+     * Spring Security フィルターチェーン経由（addFilterAfter）のみで動作させる。
+     */
+    @Bean
+    public FilterRegistrationBean<EventDelegationRateLimitFilter>
+            eventDelegationRateLimitFilterRegistration() {
+        FilterRegistrationBean<EventDelegationRateLimitFilter> registration =
+                new FilterRegistrationBean<>(eventDelegationRateLimitFilter);
         registration.setEnabled(false);
         return registration;
     }
@@ -208,7 +241,11 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(publicApiRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(adPublicEndpointRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(proxyInputContextFilter, JwtAuthenticationFilter.class);
+            .addFilterAfter(proxyInputContextFilter, JwtAuthenticationFilter.class)
+            // F03.10 代理指定レートリミット（§6・10req/分/ユーザー）。
+            // JWT 認証後に動かし、確定した SecurityContext から userId を解決する。
+            .addFilterAfter(scheduleDelegationRateLimitFilter, JwtAuthenticationFilter.class)
+            .addFilterAfter(eventDelegationRateLimitFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 }
