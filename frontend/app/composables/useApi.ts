@@ -55,6 +55,12 @@ export function useApi() {
         return
       }
 
+      // 403: セッション切れ（Spring Security が CORS ヘッダーなしで弾く）→ ログインへ
+      if (response.status === 403) {
+        authStore.logout()
+        return
+      }
+
       // 5xx: トースト集約 + エラー報告
       if (response.status >= 500) {
         const requestId = response.headers.get('X-Request-ID') ?? undefined
