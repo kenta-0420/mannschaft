@@ -2,23 +2,27 @@ import { useBulletinCategories } from './bulletin/useBulletinCategories'
 import { useBulletinThreads } from './bulletin/useBulletinThreads'
 import { useBulletinReplies } from './bulletin/useBulletinReplies'
 import { useBulletinReactions } from './bulletin/useBulletinReactions'
+import { useBulletinArchiveFolders } from './bulletin/useBulletinArchiveFolders'
 
 /**
  * 掲示板 API ファサード。
  *
  * リファクタリング第10弾（2026-05-17）でドメイン別 4 ファイルに分割した。
+ * F05.1 保管庫フォルダ機能で `useBulletinArchiveFolders` を追加（2026-05-26）。
  * 公開関数のシグネチャは分割前と完全互換。
  *
  * - `useBulletinCategories` — カテゴリ（グローバル / スコープ別）
  * - `useBulletinThreads` — スレッド + 既読状態（グローバル / スコープ別）
  * - `useBulletinReplies` — 返信（グローバル / スコープ別）
  * - `useBulletinReactions` — リアクション
+ * - `useBulletinArchiveFolders` — 保管庫（アーカイブ）フォルダ CRUD・スレッド振り分け
  */
 export function useBulletinApi() {
   const categories = useBulletinCategories()
   const threads = useBulletinThreads()
   const replies = useBulletinReplies()
   const reactions = useBulletinReactions()
+  const archiveFolders = useBulletinArchiveFolders()
 
   return {
     getCategories: categories.getCategories,
@@ -65,5 +69,12 @@ export function useBulletinApi() {
     addReaction: reactions.addReaction,
     removeReaction: reactions.removeReaction,
     getReactionSummary: reactions.getReactionSummary,
+    // 保管庫（アーカイブ）フォルダ（F05.1）
+    getArchiveFolderTree: archiveFolders.getFolderTree,
+    createArchiveFolder: archiveFolders.createFolder,
+    updateArchiveFolder: archiveFolders.updateFolder,
+    deleteArchiveFolder: archiveFolders.deleteFolder,
+    getArchiveThreads: archiveFolders.getArchiveThreads,
+    moveThreadToFolder: archiveFolders.moveThreadToFolder,
   }
 }
