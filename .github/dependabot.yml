@@ -1,0 +1,24 @@
+# Dependabot 依存関係自動更新設定
+# 設計書: docs/security/04_dependency_and_supply_chain.md §3
+# 3 エコシステム（gradle / npm / github-actions）を週次でチェックし、自動更新 PR を作成する。
+# PR 上限はレビュー負荷を制御するために設定（運用方針は設計書 §3「運用方針」を参照）。
+version: 2
+updates:
+  # バックエンド（Spring Boot / Gradle）
+  - package-ecosystem: "gradle"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+  # フロントエンド（Nuxt 3 / npm）
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+  # GitHub Actions ワークフロー
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
