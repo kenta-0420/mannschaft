@@ -17,7 +17,8 @@
       "readAllDone": "すべて既読にしました",
       "readAllFailed": "一括既読に失敗しました",
       "archivedDone": "保管庫に格納しました",
-      "archiveFailed": "保管庫への格納に失敗しました"
+      "archiveFailed": "保管庫への格納に失敗しました",
+      "loadFailed": "掲示板の取得に失敗しました"
     },
     "archive": {
       "title": "保管庫",

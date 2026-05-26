@@ -47,7 +47,7 @@ async function loadThreads(page = 0) {
     totalPages.value = res.meta.totalPages
     currentPage.value = res.meta.page
   } catch {
-    showError('掲示板の取得に失敗しました')
+    showError(t('bulletin.list.loadFailed'))
   } finally {
     loading.value = false
   }
