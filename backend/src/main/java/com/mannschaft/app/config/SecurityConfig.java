@@ -170,19 +170,41 @@ public class SecurityConfig {
                 // F01.10 履歴書・職務経歴書（本人のみ完全非公開・全エンドポイント認証必須）
                 .requestMatchers("/api/v1/resumes/**").authenticated()
                 // Phase E: GDPR パージ状況管理 API（SYSTEM_ADMIN 限定）
-                // TODO(F09.18 Phase 18-d): /api/v1/system-admin/email-outbox/** に SYSTEM_ADMIN
-                //   ロール限定の包括認可ルールを追加すること。現在は `.anyRequest().permitAll()`
-                //   が末尾でフォールバックしており Controller 側の @PreAuthorize に依存している。
-                //   本番移行時 (.anyRequest().authenticated() 化) 前に
-                //   `.requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN")` 系の
-                //   明示ルールを追加して二重ガードとすること。設計書 §6.2 / §8 参照。
                 .requestMatchers("/api/v1/system-admin/gdpr/**").hasRole("SYSTEM_ADMIN")
+                // 外部 webhook（署名検証で認証＝JWT 非依存。docs/security/01 §3.6）
+                // JWT を持たない外部システムが叩くため deny-by-default 反転後も permitAll が必須。
+                // 各 Controller が署名/トークンを検証する（Stripe-Signature / SNS 署名 /
+                // X-Line-Signature + パスシークレット / パストークン DB 照合）。
+                .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/stripe").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/stripe/*").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/ses").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/line/webhook/*").permitAll()
+                .requestMatchers(HttpMethod.POST, "/incoming/*").permitAll()
+                // WebSocket ハンドシェイク（SockJS）。STOMP CONNECT 時に
+                // WebSocketAuthChannelInterceptor が JWT を検証するため、ハンドシェイク自体は
+                // permitAll で許容する（docs/security/01 §5）。
+                .requestMatchers("/ws/**").permitAll()
                 // F19.1 Phase 2: Admin 向け投稿者識別モード切替 API（ADMIN / SYSTEM_ADMIN 限定）
-                // 現状は Controller 側の @PreAuthorize に委ねているが、
-                // 本番移行時に明示的なルールを追加すること（上記 TODO と同様）。
-                // 開発中は全エンドポイントを許可（本番移行時に .authenticated() に変更）
-                .anyRequest().permitAll()
+                // は Controller 側の @PreAuthorize で制御。下記 system-admin 包括ルールと
+                // .anyRequest().authenticated() で二重にガードされる。
+                // system-admin 包括ルール（既存 gdpr ルールに加え二重ガード。docs/security/01 §4）。
+                // SecurityConfig:173-178 の旧 TODO（email-outbox 等の permitAll フォールバック依存）を解消。
+                .requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN")
+                // deny-by-default: 上記許可リスト / ロール必須に該当しない全リクエストは認証必須。
+                // 新規 Controller を追加した際に認可設定を忘れても無防備に公開されない
+                // フェイルセーフ構造（docs/security/01 §1）。
+                .anyRequest().authenticated()
             )
+            // API JSON 応答向けのセキュリティヘッダー（docs/security/03 §3）。
+            // - frameOptions(deny): クリックジャッキング防止（X-Frame-Options: DENY）
+            // - contentTypeOptions: MIME スニッフィング防止（X-Content-Type-Options: nosniff）
+            // - referrerPolicy: クロスオリジンへの Referer 漏洩を最小化
+            .headers(headers -> headers
+                .frameOptions(frame -> frame.deny())
+                .contentTypeOptions(org.springframework.security.config.Customizer.withDefaults())
+                .referrerPolicy(referrer -> referrer.policy(
+                    org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
+                        .ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)))
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(publicApiRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(adPublicEndpointRateLimitFilter, UsernamePasswordAuthenticationFilter.class)

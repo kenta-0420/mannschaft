@@ -28,6 +28,10 @@ mannschaft:
     secret: ${MANNSCHAFT_JWT_SECRET}
     access-token-expiration: ${MANNSCHAFT_JWT_ACCESS_EXPIRATION:900}
     refresh-token-expiration: ${MANNSCHAFT_JWT_REFRESH_EXPIRATION:604800}
+  # 認証 Cookie の Secure 属性。本番は HTTPS 前提のためデフォルト true。
+  # 設計書: docs/security/02_cookie_and_session.md §2.1
+  cookie:
+    secure: ${MANNSCHAFT_COOKIE_SECURE:true}
   # F13.1 Phase 13.1.2: QR 署名鍵は環境変数から必須注入（デフォルト値なし＝未設定時は起動失敗）
   jobs:
     qr:
