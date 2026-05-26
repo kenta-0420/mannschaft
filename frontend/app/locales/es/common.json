@@ -1286,6 +1286,14 @@
       "betaRestriction": "Restricción beta",
       "errorReports": "Informes de errores",
       "gdprPurge": "Estado de Purga GDPR"
+    },
+    "businessAlert": {
+      "title": "Alertas de negocio",
+      "newReservations": "Nuevas reservas",
+      "pendingApproval": "Pendiente aprobación",
+      "unreadInquiries": "Consultas",
+      "noAlerts": "Sin alertas",
+      "viewAll": "Ver todo"
     }
   },
   "notificationCredit": {
