@@ -1,0 +1,136 @@
+# セキュリティ横断設計（docs/security/）
+
+> **ステータス**: 🟢 設計確定
+> **実装フェーズ**: Security Hardening Phase 1
+> **最終更新**: 2026-05-26
+> **関連ドキュメント**: F01.1 認証, F01.2-04 セキュリティ運用, F03.5-04 セキュリティ運用, F10.3 監査ログ, F12.3 GDPR, F12.4 セッション管理, docs/architecture/db_scalability.md
+
+---
+
+## 1. 概要
+
+本ディレクトリは **インフラ / 設定レイヤーの横断的セキュリティ方針** を集約する。
+
+機能ごとのセキュリティ考慮事項（認可チェック・プライバシー・監査イベント定義など）は従来どおり各機能ドキュメント（`features/Fxx.y/04_security_operations.md` 等）に記載し、本ディレクトリでは **複数機能をまたぐ設定・基盤レベルの方針**（認可の既定値・Cookie/セッション・セキュリティヘッダー/CSP・依存関係管理・インジェクション横断ルール）を扱う。
+
+### スコープの線引き
+
+| ここで扱う（横断） | features/ で扱う（機能別） |
+|---|---|
+| SecurityFilterChain の既定認可方針 | 各 API の所有権/ロールチェック |
+| Cookie/セッションの属性ポリシー | 認証フローそのもの（F01.1） |
+| CSP・セキュリティヘッダー | 各画面の XSS 個別対策 |
+| 依存関係の脆弱性管理 | — |
+| インジェクション横断ルール | 各機能の入力バリデーション仕様 |
+
+### なぜ作ったか
+
+セキュリティ調査（2026-05-26）で、認証・認可・XSS 対策は高水準に実装されている一方、**インフラ/設定レイヤーの方針が文書化されておらず、本番前に塞ぐべき穴**（`anyRequest().permitAll()` フォールバック、Cookie `secure` ハードコード、CSP/セキュリティヘッダー未設定、Dependabot 未導入）が残っていることが判明した。これらを設計として明文化し、エンドポイント追加時や本番移行時の判断基準を残すために本ディレクトリを新設した。
+
+---
+
+## 2. 脅威モデル（OWASP Top 10:2021 対応表）
+
+| OWASP カテゴリ | 主な対策 | 文書 |
+|---|---|---|
+| A01 アクセス制御の不備 | deny-by-default 認可 / `AbstractTenantAwareRepository` によるテナント絞り込み / IDOR 防止（`*` 1 階層厳格パターン） | [01](01_authorization_baseline.md), F01.2-04, F03.5-04 |
+| A02 暗号化の失敗 | TLS/HSTS / AES-256-GCM（`birth_date` 等）/ JWT HMAC-SHA256 / 機密は環境変数 | [03](03_security_headers_and_csp.md) §TLS, [§6 本書](#6-シークレット管理ポリシー現状記録), F01.1 |
+| A03 インジェクション | JPA パラメータバインディング / DOMPurify / CSP | [05](05_injection_and_input_validation.md) |
+| A04 安全が考慮されない設計 | レートリミット（公開 API/ログイン）/ 退会時匿名化 / モジュラーモノリスのドメイン境界 | F01.2-04, F19.1, CLAUDE.md |
+| A05 セキュリティの設定ミス | CSP / セキュリティヘッダー / CORS / devtools 本番無効化 / Actuator は SYSTEM_ADMIN 限定 | [03](03_security_headers_and_csp.md) |
+| A06 脆弱で古いコンポーネント | Dependabot / OWASP Dependency-Check / npm audit | [04](04_dependency_and_supply_chain.md) |
+| A07 識別と認証の失敗 | BCrypt(12) / アカウントロック / トークンローテーション / HttpOnly+Secure+SameSite Cookie | [02](02_cookie_and_session.md), F01.1, F12.4 |
+| A08 ソフトウェアとデータの整合性の不備 | webhook 署名検証（Stripe/SNS/LINE）/ 内部トークン / SRI は今後検討 | [01](01_authorization_baseline.md) §webhook, [04](04_dependency_and_supply_chain.md) |
+| A09 ログとモニタリングの不備 | 監査ログ基盤 / セキュリティスキャン状態表示 | F10.3 |
+| A10 SSRF | 外部 URL はサーバーから fetch しない方針（表示用のみ） | [05](05_injection_and_input_validation.md), F01.2-04 |
+
+---
+
+## 3. 文書一覧とステータス
+
+| 文書 | 扱う範囲 | ステータス |
+|---|---|---|
+| [01_authorization_baseline.md](01_authorization_baseline.md) | 認可の既定値・公開エンドポイント許可リスト・webhook | 🟢 設計確定 |
+| [02_cookie_and_session.md](02_cookie_and_session.md) | Cookie 属性・セッション無効化 | 🟢 設計確定 |
+| [03_security_headers_and_csp.md](03_security_headers_and_csp.md) | CSP・セキュリティヘッダー・CORS・TLS | 🟢 設計確定 |
+| [04_dependency_and_supply_chain.md](04_dependency_and_supply_chain.md) | Dependabot・脆弱性管理 | 🟢 設計確定 |
+| [05_injection_and_input_validation.md](05_injection_and_input_validation.md) | SQL/XSS/入力検証 | 🟢 設計確定 |
+
+### 機能別セキュリティ文書（参照）
+
+| 文書 | 内容 |
+|---|---|
+| `features/F01.1_auth.md` | 認証基盤（JWT・2FA・WebAuthn・OAuth・パスワードポリシー） |
+| `features/F01.2_org_team_member_role/04_security_operations.md` | RBAC・URL スキーム検証・SSRF 回避・プロフィール可視性 |
+| `features/F03.5_shift/04_security_operations.md` | シフトの IDOR 防止・PDF 情報露出制御 |
+| `features/F10.3_audit_logs.md` | 監査ログ・イベントカタログ |
+| `features/F12.3_gdpr_personal_data.md` | GDPR・個人情報削除 |
+| `features/F12.4_session_management.md` | セッション一覧・無効化・新規デバイス検知 |
+
+---
+
+## 4. セキュリティ原則（横断）
+
+1. **deny-by-default** — 認可は「明示的に許可したものだけ公開、それ以外は認証必須」を既定とする（[01](01_authorization_baseline.md)）
+2. **多層防御** — SecurityFilterChain（粗い境界）+ `@PreAuthorize`/Service 層（細かい所有権）の二重ガード
+3. **秘密はコードに置かない** — 全機密は環境変数。`.gitignore` で `.env`/`*.key`/`*.pem` を除外
+4. **症状を隠さない** — 障害は根治治療（CLAUDE.md「障害対応の原則」と整合）。認可エラーを握りつぶさない
+5. **テナント分離** — `organization_id` 絞り込みを `AbstractTenantAwareRepository` で統一（将来のシャーディング前提）
+
+---
+
+## 5. 本番移行チェックリスト（セキュリティ関連）
+
+本番デプロイ時に必須の環境変数・確認項目。詳細は `docs/operations/PRODUCTION_DEPLOY_CHECKLIST.md` に統合する。
+
+- [ ] `MANNSCHAFT_COOKIE_SECURE=true`（[02](02_cookie_and_session.md)）
+- [ ] `MANNSCHAFT_JWT_SECRET` を 256bit 以上のランダム値に設定
+- [ ] `MANNSCHAFT_ALLOWED_ORIGINS` を本番フロントオリジンに設定（ワイルドカード禁止）
+- [ ] `MANNSCHAFT_ENCRYPTION_KEY` / `MANNSCHAFT_HMAC_KEY` / `JOB_QR_SIGNING_SECRET` を設定
+- [ ] 認可既定値が `.authenticated()` で動作（webhook 4 系統が無認証到達することを確認）
+- [ ] CSP 違反がブラウザコンソールに出ないことを主要画面で確認
+- [ ] HTTPS/HSTS が有効（アプリ層 or Cloudflare/LB 層、[03](03_security_headers_and_csp.md) §TLS）
+
+---
+
+## 6. シークレット管理ポリシー（現状記録）
+
+全ての機密情報は **環境変数経由で注入** し、コード・リポジトリにハードコードしない。`application.yml` のデフォルト値は開発用ダミーのみ、`application-prod.yml` はデフォルト値を持たず未設定なら起動失敗（fail-fast）。
+
+### `.gitignore` 除外（確認済み）
+`.env` / `secrets.yml` / `credentials.yml` / `*.key` / `*.pem`
+
+### 主なセキュリティ関連環境変数
+
+| 変数 | 用途 | 本番必須 |
+|---|---|---|
+| `MANNSCHAFT_JWT_SECRET` | JWT 署名鍵（HMAC-SHA256, 256bit+） | ✅ |
+| `MANNSCHAFT_COOKIE_SECURE` | Cookie の secure 属性（本番 true）※本 Phase で新設 | ✅ |
+| `MANNSCHAFT_ENCRYPTION_KEY` | データ暗号化（AES-256-GCM） | ✅ |
+| `MANNSCHAFT_HMAC_KEY` | 整合性 HMAC | ✅ |
+| `MANNSCHAFT_ALLOWED_ORIGINS` | CORS 許可オリジン | ✅ |
+| `MANNSCHAFT_R2_ACCESS_KEY` / `_SECRET_KEY` | R2 認証 | ✅ |
+| `JOB_QR_SIGNING_SECRET` | チェックイン QR 署名（256bit+） | ✅ |
+| `MANNSCHAFT_AD_UNSUBSCRIBE_SECRET` / `_AD_OPEN_PIXEL_SECRET` | 広告 unsubscribe/開封ピクセル署名 | ✅ |
+| `INTERNAL_LOG_TOKEN` | `/api/internal/ssr-logs` 内部認証 | ✅ |
+| `MANNSCHAFT_*_CLIENT_SECRET`（Google/LINE/Apple） | OAuth | OAuth 利用時 |
+
+> 鍵ローテーション手順は機能別ドキュメントを参照（例: `docs/operations/weather_api_key_rotation.md`）。JWT 秘密鍵のローテーションは全 access_token 失効を伴うため計画的に行う。
+
+---
+
+## 7. 今後の拡張（スコープ外・意思決定済み）
+
+本 Phase（Security Hardening Phase 1）では下記を意図的にスコープ外とした。いずれも「未決の設計課題」ではなく「次フェーズへ送ると決定した拡張」である。
+
+- **script-src の `'unsafe-inline'` 完全排除（nonce 化完了）** — PrimeVue の対応状況に依存。[03](03_security_headers_and_csp.md) §4 ロードマップ Phase 2
+- **refresh_token の Cookie 発行一元化** — F01.1 デュアルモード設計との整合確認後。[02](02_cookie_and_session.md) §6
+- **Argon2id 移行 / Subresource Integrity (SRI) / CSP reportUri 収集** — 将来の認証・配信基盤改修時に評価
+
+---
+
+## 8. 変更履歴
+
+| 日付 | 変更 |
+|---|---|
+| 2026-05-26 | 新規作成（Security Hardening Phase 1）。横断セキュリティ設計を集約 |
