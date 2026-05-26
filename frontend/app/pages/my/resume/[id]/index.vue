@@ -619,10 +619,10 @@ onBeforeUnmount(() => {
           <div
             v-for="(career, idx) in form.careers"
             :key="idx"
-            class="rounded-lg border border-surface-200 p-4 dark:border-surface-600"
+            class="rounded-lg border border-surface-200 p-5 shadow-sm transition-colors hover:border-surface-300 dark:border-surface-600 dark:hover:border-surface-500"
           >
-            <!-- 操作ボタン -->
-            <div class="mb-3 flex justify-end gap-1">
+            <!-- 操作ボタン帯 -->
+            <div class="-mx-5 -mt-5 mb-4 flex justify-end gap-1 rounded-t-lg border-b border-surface-200 bg-surface-50 px-3 py-1.5 dark:border-surface-600 dark:bg-surface-800">
               <Button
                 icon="pi pi-arrow-up"
                 text
@@ -648,72 +648,82 @@ onBeforeUnmount(() => {
                 @click="removeCareer(idx)"
               />
             </div>
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label class="mb-1 block text-xs">{{ t('common.resume.companyName') }} *</label>
+                <label class="mb-1 block text-sm">{{ t('common.resume.companyName') }} *</label>
                 <InputText v-model="career.companyName" class="w-full" />
               </div>
               <div>
-                <label class="mb-1 block text-xs">{{ t('common.resume.department') }}</label>
+                <label class="mb-1 block text-sm">{{ t('common.resume.department') }}</label>
                 <InputText v-model="career.department" class="w-full" />
               </div>
               <div>
-                <label class="mb-1 block text-xs">{{ t('common.resume.employmentType') }}</label>
+                <label class="mb-1 block text-sm">{{ t('common.resume.employmentType') }}</label>
                 <InputText v-model="career.employmentType" class="w-full" />
               </div>
-              <div>
-                <label class="mb-1 block text-xs">{{ t('common.resume.entryDate') }}</label>
-                <div class="flex gap-2">
-                  <div>
-                    <label class="mb-0.5 block text-xs text-surface-400">{{ t('common.resume.entryYear') }}</label>
-                    <InputNumber v-model="career.entryYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" inputClass="w-full" />
-                  </div>
-                  <div>
-                    <label class="mb-0.5 block text-xs text-surface-400">{{ t('common.resume.entryMonth') }}</label>
-                    <InputNumber v-model="career.entryMonth" :min="1" :max="12" class="w-16" inputClass="w-full" />
+              <!-- 入社/退社日 グループ -->
+              <div class="sm:col-span-2">
+                <div class="rounded-md bg-surface-50 p-3 dark:bg-surface-800">
+                  <div class="flex flex-wrap items-end gap-6">
+                    <div>
+                      <label class="mb-1.5 block text-sm font-medium">{{ t('common.resume.entryDate') }}</label>
+                      <div class="flex items-center gap-2">
+                        <div class="flex items-baseline gap-1">
+                          <InputNumber v-model="career.entryYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" inputClass="w-full" />
+                          <span class="text-sm text-surface-600 dark:text-surface-400">{{ t('common.resume.entryYear') }}</span>
+                        </div>
+                        <div class="flex items-baseline gap-1">
+                          <InputNumber v-model="career.entryMonth" :min="1" :max="12" class="w-16" inputClass="w-full" />
+                          <span class="text-sm text-surface-600 dark:text-surface-400">{{ t('common.resume.entryMonth') }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-if="!career.isCurrent">
+                      <label class="mb-1.5 block text-sm font-medium">{{ t('common.resume.endDate') }}</label>
+                      <div class="flex items-center gap-2">
+                        <div class="flex items-baseline gap-1">
+                          <InputNumber v-model="career.endYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" inputClass="w-full" />
+                          <span class="text-sm text-surface-600 dark:text-surface-400">{{ t('common.resume.entryYear') }}</span>
+                        </div>
+                        <div class="flex items-baseline gap-1">
+                          <InputNumber v-model="career.endMonth" :min="1" :max="12" class="w-16" inputClass="w-full" />
+                          <span class="text-sm text-surface-600 dark:text-surface-400">{{ t('common.resume.entryMonth') }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <label class="flex cursor-pointer items-center gap-2 self-end pb-0.5">
+                      <Checkbox v-model="career.isCurrent" :binary="true" />
+                      <span class="text-sm">{{ t('common.resume.isCurrent') }}</span>
+                    </label>
                   </div>
                 </div>
               </div>
-              <div class="flex items-center gap-4">
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <Checkbox v-model="career.isCurrent" :binary="true" />
-                  {{ t('common.resume.isCurrent') }}
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <Checkbox v-model="career.includeInRirekisho" :binary="true" />
-                  {{ t('common.resume.includeInRirekisho') }}
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <Checkbox v-model="career.includeInShokumukeireki" :binary="true" />
-                  {{ t('common.resume.includeInShokumukeireki') }}
-                </label>
-              </div>
-              <div v-if="!career.isCurrent">
-                <label class="mb-1 block text-xs">{{ t('common.resume.endDate') }}</label>
-                <div class="flex gap-2">
-                  <div>
-                    <label class="mb-0.5 block text-xs text-surface-400">{{ t('common.resume.entryYear') }}</label>
-                    <InputNumber v-model="career.endYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" inputClass="w-full" />
-                  </div>
-                  <div>
-                    <label class="mb-0.5 block text-xs text-surface-400">{{ t('common.resume.entryMonth') }}</label>
-                    <InputNumber v-model="career.endMonth" :min="1" :max="12" class="w-16" inputClass="w-full" />
-                  </div>
+              <!-- チェックボックス群 -->
+              <div class="sm:col-span-2">
+                <div class="flex flex-wrap gap-6">
+                  <label class="flex cursor-pointer items-center gap-2">
+                    <Checkbox v-model="career.includeInRirekisho" :binary="true" />
+                    <span class="text-sm">{{ t('common.resume.includeInRirekisho') }}</span>
+                  </label>
+                  <label class="flex cursor-pointer items-center gap-2">
+                    <Checkbox v-model="career.includeInShokumukeireki" :binary="true" />
+                    <span class="text-sm">{{ t('common.resume.includeInShokumukeireki') }}</span>
+                  </label>
                 </div>
               </div>
             </div>
             <!-- 職務経歴書用フィールド -->
-            <div class="mt-3 space-y-3">
+            <div class="mt-4 space-y-3">
               <div>
-                <label class="mb-1 block text-xs">{{ t('common.resume.businessSummary') }}</label>
+                <label class="mb-1 block text-sm">{{ t('common.resume.businessSummary') }}</label>
                 <InputText v-model="career.businessSummary" class="w-full" />
               </div>
               <div>
-                <label class="mb-1 block text-xs">{{ t('common.resume.jobDescription') }}</label>
+                <label class="mb-1 block text-sm">{{ t('common.resume.jobDescription') }}</label>
                 <Textarea v-model="career.jobDescription" rows="3" class="w-full" auto-resize />
               </div>
               <div>
-                <label class="mb-1 block text-xs">{{ t('common.resume.achievements') }}</label>
+                <label class="mb-1 block text-sm">{{ t('common.resume.achievements') }}</label>
                 <Textarea v-model="career.achievements" rows="2" class="w-full" auto-resize />
               </div>
             </div>
