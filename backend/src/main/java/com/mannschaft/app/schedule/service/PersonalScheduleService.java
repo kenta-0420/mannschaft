@@ -524,24 +524,20 @@ public class PersonalScheduleService {
     private PersonalScheduleResponse toPersonalScheduleResponse(ScheduleEntity entity,
                                                                  List<Integer> reminders) {
         String createdByDisplayName = nameResolverService.resolveUserDisplayName(entity.getCreatedBy());
-        return new PersonalScheduleResponse(
-                entity.getId(),
-                entity.getTitle(),
-                entity.getDescription(),
-                entity.getLocation(),
-                entity.getStartAt(),
-                entity.getEndAt(),
-                entity.getAllDay(),
-                entity.getEventType().name(),
-                entity.getColor(),
-                entity.getStatus().name(),
-                entity.getParentScheduleId(),
-                deserializeRecurrenceRule(entity.getRecurrenceRule()),
-                entity.getIsException(),
-                reminders,
-                entity.getGoogleCalendarEventId() != null,
-                entity.getCreatedAt(),
-                entity.getUpdatedAt(),
-                createdByDisplayName);
+        return PersonalScheduleResponse.builder()
+                .id(entity.getId())
+                .content(new PersonalScheduleResponse.PersonalContentDto(
+                        entity.getTitle(), entity.getDescription(), entity.getEventType().name(),
+                        entity.getColor(), entity.getLocation()))
+                .time(new PersonalScheduleResponse.PersonalTimeDto(
+                        entity.getStartAt(), entity.getEndAt(), entity.getAllDay()))
+                .status(new PersonalScheduleResponse.PersonalStatusDto(
+                        entity.getStatus().name(), entity.getIsException(), entity.getParentScheduleId(),
+                        deserializeRecurrenceRule(entity.getRecurrenceRule()),
+                        entity.getGoogleCalendarEventId() != null))
+                .reminders(reminders)
+                .audit(new PersonalScheduleResponse.PersonalAuditDto(
+                        entity.getCreatedAt(), entity.getUpdatedAt(), createdByDisplayName))
+                .build();
     }
 }

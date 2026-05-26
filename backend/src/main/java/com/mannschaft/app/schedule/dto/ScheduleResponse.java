@@ -1,41 +1,40 @@
 package com.mannschaft.app.schedule.dto;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
 /**
  * スケジュール一覧用レスポンスDTO。
  */
+@SuperBuilder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class ScheduleResponse {
 
-    private final Long id;
-    private final String title;
-    private final LocalDateTime startAt;
-    private final LocalDateTime endAt;
-    private final Boolean allDay;
-    private final String eventType;
-    private final String status;
-    private final Boolean attendanceRequired;
-    private final String location;
-    private final LocalDateTime createdAt;
+    Long id;
 
-    /** 行事カテゴリ（F03.10 拡張フィールド。未設定の場合 null）。 */
-    private final EventCategoryResponse eventCategory;
+    ScheduleContentDto content;     // title, status, eventType, location, attendanceRequired
+    ScheduleTimeDto    time;        // startAt, endAt, allDay
+    ScheduleScopeDto   scope;       // scopeName, scopeIconUrl
+    ScheduleAcademicDto academic;   // eventCategory, academicYear, sourceScheduleId
+    ScheduleAuditDto   audit;       // createdAt, createdByDisplayName
+    String             myAttendanceStatus;
 
-    /** 年度（F03.10 拡張フィールド。未設定の場合 null）。 */
-    private final Integer academicYear;
+    public record ScheduleContentDto(String title, String status, String eventType, String location,
+                                     Boolean attendanceRequired) {
+    }
 
-    /** コピー元スケジュールID（F03.10 拡張フィールド。前年度トレース時のみ設定）。 */
-    private final Long sourceScheduleId;
+    public record ScheduleTimeDto(LocalDateTime startAt, LocalDateTime endAt, Boolean allDay) {
+    }
 
-    private final String createdByDisplayName;
-    private final String scopeName;
-    private final String scopeIconUrl;
+    public record ScheduleScopeDto(String scopeName, String scopeIconUrl) {
+    }
 
-    /** ログインユーザーの出欠回答ステータス（YES/NO/MAYBE。未回答の場合 null）。 */
-    private final String myAttendanceStatus;
+    public record ScheduleAcademicDto(EventCategoryResponse eventCategory, Integer academicYear,
+                                      Long sourceScheduleId) {
+    }
+
+    public record ScheduleAuditDto(LocalDateTime createdAt, String createdByDisplayName) {
+    }
 }

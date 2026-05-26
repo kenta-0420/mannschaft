@@ -89,10 +89,10 @@ class ScheduleMapperTest {
             ScheduleResponse response = mapper.toResponse(entity);
 
             assertThat(response.getId()).isEqualTo(1L);
-            assertThat(response.getEventType()).isEqualTo("PRACTICE");
-            assertThat(response.getStatus()).isEqualTo("SCHEDULED");
-            assertThat(response.getTitle()).isEqualTo("練習試合");
-            assertThat(response.getAttendanceRequired()).isTrue();
+            assertThat(response.getContent().eventType()).isEqualTo("PRACTICE");
+            assertThat(response.getContent().status()).isEqualTo("SCHEDULED");
+            assertThat(response.getContent().title()).isEqualTo("練習試合");
+            assertThat(response.getContent().attendanceRequired()).isTrue();
         }
 
         @Test
@@ -102,8 +102,8 @@ class ScheduleMapperTest {
 
             ScheduleResponse response = mapper.toResponse(entity);
 
-            assertThat(response.getEventType()).isEqualTo("MATCH");
-            assertThat(response.getStatus()).isEqualTo("CANCELLED");
+            assertThat(response.getContent().eventType()).isEqualTo("MATCH");
+            assertThat(response.getContent().status()).isEqualTo("CANCELLED");
         }
 
         @Test
@@ -115,8 +115,8 @@ class ScheduleMapperTest {
             List<ScheduleResponse> list = mapper.toResponseList(List.of(e1, e2));
 
             assertThat(list).hasSize(2);
-            assertThat(list.get(0).getEventType()).isEqualTo("EVENT");
-            assertThat(list.get(1).getEventType()).isEqualTo("MEETING");
+            assertThat(list.get(0).getContent().eventType()).isEqualTo("EVENT");
+            assertThat(list.get(1).getContent().eventType()).isEqualTo("MEETING");
         }
     }
 
@@ -135,18 +135,15 @@ class ScheduleMapperTest {
             ScheduleDetailResponse response = mapper.toDetailResponse(entity);
 
             assertThat(response.getId()).isEqualTo(10L);
-            assertThat(response.getEventType()).isEqualTo("PRACTICE");
-            assertThat(response.getStatus()).isEqualTo("SCHEDULED");
-            assertThat(response.getVisibility()).isEqualTo("MEMBERS_ONLY");
-            assertThat(response.getMinViewRole()).isEqualTo("MEMBER_PLUS");
-            assertThat(response.getMinResponseRole()).isEqualTo("MEMBER_PLUS");
+            assertThat(response.getContent().eventType()).isEqualTo("PRACTICE");
+            assertThat(response.getContent().status()).isEqualTo("SCHEDULED");
+            assertThat(response.getDetail().visibility()).isEqualTo("MEMBERS_ONLY");
+            assertThat(response.getRoles().minViewRole()).isEqualTo("MEMBER_PLUS");
+            assertThat(response.getRoles().minResponseRole()).isEqualTo("MEMBER_PLUS");
             // ignore フィールド
-            assertThat(response.getSurveys()).isNull();
-            assertThat(response.getReminders()).isNull();
-            assertThat(response.getMyAttendance()).isNull();
-            assertThat(response.getAttendanceSummary()).isNull();
-            assertThat(response.getCrossInvitations()).isNull();
-            assertThat(response.getRecurrenceRule()).isNull();
+            assertThat(response.getRelations()).isNull();
+            assertThat(response.getAttendance()).isNull();
+            assertThat(response.getRecurrence()).isNull();
         }
 
         @Test
@@ -166,9 +163,9 @@ class ScheduleMapperTest {
 
             ScheduleDetailResponse response = mapper.toDetailResponse(entity);
 
-            assertThat(response.getMinViewRole()).isEqualTo("ANYONE");
-            assertThat(response.getMinResponseRole()).isNull();
-            assertThat(response.getCommentOption()).isNull();
+            assertThat(response.getRoles().minViewRole()).isEqualTo("ANYONE");
+            assertThat(response.getRoles().minResponseRole()).isNull();
+            assertThat(response.getDetail().commentOption()).isNull();
         }
     }
 
@@ -331,11 +328,11 @@ class ScheduleMapperTest {
 
             assertThat(response.getId()).isEqualTo(300L);
             assertThat(response.getSourceScheduleId()).isEqualTo(1L);
-            assertThat(response.getTargetType()).isEqualTo("TEAM");
-            assertThat(response.getTargetId()).isEqualTo(20L);
-            assertThat(response.getTargetScheduleId()).isEqualTo(30L);
-            assertThat(response.getStatus()).isEqualTo("ACCEPTED");
-            assertThat(response.getMessage()).isEqualTo("招待します");
+            assertThat(response.getTarget().targetType()).isEqualTo("TEAM");
+            assertThat(response.getTarget().targetId()).isEqualTo(20L);
+            assertThat(response.getTarget().targetScheduleId()).isEqualTo(30L);
+            assertThat(response.getTarget().status()).isEqualTo("ACCEPTED");
+            assertThat(response.getAudit().message()).isEqualTo("招待します");
         }
 
         @Test
@@ -350,7 +347,7 @@ class ScheduleMapperTest {
             setDirectId(entity, 301L);
 
             CrossRefResponse response = mapper.toCrossRefResponse(entity);
-            assertThat(response.getStatus()).isEqualTo("PENDING");
+            assertThat(response.getTarget().status()).isEqualTo("PENDING");
 
             // リスト変換
             List<CrossRefResponse> list = mapper.toCrossRefResponseList(List.of(entity));

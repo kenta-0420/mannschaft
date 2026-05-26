@@ -99,14 +99,24 @@ public class TeamScheduleController {
         String myAttendanceStatus = attendanceService
                 .getMyAttendanceStatus(scheduleId, SecurityUtils.getCurrentUserId())
                 .orElse(null);
-        ScheduleResponse response = new ScheduleResponse(
-                entity.getId(), entity.getTitle(), entity.getStartAt(), entity.getEndAt(),
-                entity.getAllDay(), entity.getEventType().name(), entity.getStatus().name(),
-                entity.getAttendanceRequired(), entity.getLocation(), entity.getCreatedAt(),
-                null,
-                entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null,
-                entity.getSourceScheduleId(),
-                createdByDisplayName, scopeName, scopeIconUrl, myAttendanceStatus);
+        ScheduleResponse response = ScheduleResponse.builder()
+                .id(entity.getId())
+                .content(new ScheduleResponse.ScheduleContentDto(
+                        entity.getTitle(),
+                        entity.getStatus().name(),
+                        entity.getEventType().name(),
+                        entity.getLocation(),
+                        entity.getAttendanceRequired()))
+                .time(new ScheduleResponse.ScheduleTimeDto(
+                        entity.getStartAt(), entity.getEndAt(), entity.getAllDay()))
+                .scope(new ScheduleResponse.ScheduleScopeDto(scopeName, scopeIconUrl))
+                .academic(new ScheduleResponse.ScheduleAcademicDto(
+                        null,
+                        entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null,
+                        entity.getSourceScheduleId()))
+                .audit(new ScheduleResponse.ScheduleAuditDto(entity.getCreatedAt(), createdByDisplayName))
+                .myAttendanceStatus(myAttendanceStatus)
+                .build();
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

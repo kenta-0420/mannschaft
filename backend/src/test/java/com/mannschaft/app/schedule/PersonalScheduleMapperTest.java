@@ -76,17 +76,17 @@ class PersonalScheduleMapperTest {
             PersonalScheduleResponse response = mapper.toResponse(entity);
 
             assertThat(response.getId()).isEqualTo(1L);
-            assertThat(response.getTitle()).isEqualTo("個人予定");
-            assertThat(response.getDescription()).isEqualTo("メモ");
-            assertThat(response.getLocation()).isEqualTo("自宅");
-            assertThat(response.getEventType()).isEqualTo("EVENT");
-            assertThat(response.getStatus()).isEqualTo("SCHEDULED");
-            assertThat(response.getColor()).isEqualTo("#FF0000");
-            assertThat(response.isGoogleSynced()).isFalse();
+            assertThat(response.getContent().title()).isEqualTo("個人予定");
+            assertThat(response.getContent().description()).isEqualTo("メモ");
+            assertThat(response.getContent().location()).isEqualTo("自宅");
+            assertThat(response.getContent().eventType()).isEqualTo("EVENT");
+            assertThat(response.getStatus().status()).isEqualTo("SCHEDULED");
+            assertThat(response.getContent().color()).isEqualTo("#FF0000");
+            assertThat(response.getStatus().googleSynced()).isFalse();
             // ignore フィールド
-            assertThat(response.getRecurrenceRule()).isNull();
+            assertThat(response.getStatus().recurrenceRule()).isNull();
             assertThat(response.getReminders()).isNull();
-            assertThat(response.getCreatedAt()).isEqualTo(now);
+            assertThat(response.getAudit().createdAt()).isEqualTo(now);
         }
 
         @Test
@@ -107,8 +107,8 @@ class PersonalScheduleMapperTest {
 
             PersonalScheduleResponse response = mapper.toResponse(entity);
 
-            assertThat(response.getEventType()).isEqualTo("MEETING");
-            assertThat(response.isGoogleSynced()).isTrue();
+            assertThat(response.getContent().eventType()).isEqualTo("MEETING");
+            assertThat(response.getStatus().googleSynced()).isTrue();
         }
 
         @Test
@@ -128,9 +128,9 @@ class PersonalScheduleMapperTest {
 
             PersonalScheduleResponse response = mapper.toResponse(entity);
 
-            assertThat(response.getAllDay()).isTrue();
-            assertThat(response.getStatus()).isEqualTo("CANCELLED");
-            assertThat(response.isGoogleSynced()).isFalse();
+            assertThat(response.getTime().allDay()).isTrue();
+            assertThat(response.getStatus().status()).isEqualTo("CANCELLED");
+            assertThat(response.getStatus().googleSynced()).isFalse();
         }
 
         @Test
@@ -158,8 +158,8 @@ class PersonalScheduleMapperTest {
             List<PersonalScheduleResponse> list = mapper.toResponseList(List.of(e1, e2));
 
             assertThat(list).hasSize(2);
-            assertThat(list.get(0).getEventType()).isEqualTo("EVENT");
-            assertThat(list.get(1).getEventType()).isEqualTo("MEETING");
+            assertThat(list.get(0).getContent().eventType()).isEqualTo("EVENT");
+            assertThat(list.get(1).getContent().eventType()).isEqualTo("MEETING");
         }
     }
 }
