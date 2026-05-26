@@ -1,7 +1,7 @@
 package com.mannschaft.app.survey.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -9,21 +9,21 @@ import java.util.List;
 /**
  * 設問レスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class QuestionResponse {
 
-    private final Long id;
-    private final Long surveyId;
-    private final String questionType;
-    private final String questionText;
-    private final Boolean isRequired;
-    private final Integer displayOrder;
-    private final Integer maxSelections;
-    private final Integer scaleMin;
-    private final Integer scaleMax;
-    private final String scaleMinLabel;
-    private final String scaleMaxLabel;
-    private final LocalDateTime createdAt;
-    private final List<OptionResponse> options;
+    Long id;
+    Long surveyId;
+    String questionType;
+    QuestionContentDto content;
+    QuestionScaleConfigDto scaleConfig;
+    LocalDateTime createdAt;
+    List<OptionResponse> options;
+
+    public record QuestionContentDto(String questionText, Boolean isRequired, Integer displayOrder,
+                                      Integer maxSelections) {}
+
+    public record QuestionScaleConfigDto(Integer scaleMin, Integer scaleMax,
+                                          String scaleMinLabel, String scaleMaxLabel) {}
 }

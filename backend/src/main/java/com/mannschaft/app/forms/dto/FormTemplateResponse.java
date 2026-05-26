@@ -1,7 +1,7 @@
 package com.mannschaft.app.forms.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -9,34 +9,33 @@ import java.util.List;
 /**
  * フォームテンプレートレスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class FormTemplateResponse {
 
-    private final Long id;
-    private final String scopeType;
-    private final Long scopeId;
-    private final String name;
-    private final String description;
-    private final String icon;
-    private final String color;
-    private final String status;
-    private final Boolean requiresApproval;
-    private final Long workflowTemplateId;
-    private final Boolean isSealOnPdf;
-    private final LocalDateTime deadline;
-    private final Boolean allowEditAfterSubmit;
-    private final Boolean autoFillEnabled;
-    private final Integer maxSubmissionsPerUser;
-    private final Integer sortOrder;
-    private final Long presetId;
-    private final Integer submissionCount;
-    private final Integer targetCount;
-    private final Long createdBy;
-    private final LocalDateTime publishedAt;
-    private final LocalDateTime closedAt;
-    private final Long version;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
-    private final List<FormFieldResponse> fields;
+    Long id;
+    String status;
+    FormScopeDto scope;
+    FormContentDto content;
+    FormWorkflowDto workflow;
+    FormEditPolicyDto editPolicy;
+    FormStatsDto stats;
+    FormTimelineDto timeline;
+    FormAuditDto audit;
+    List<FormFieldResponse> fields;
+
+    public record FormScopeDto(String scopeType, Long scopeId) {}
+
+    public record FormContentDto(String name, String description, String icon, String color, Integer sortOrder) {}
+
+    public record FormWorkflowDto(Boolean requiresApproval, Long workflowTemplateId, Boolean isSealOnPdf) {}
+
+    public record FormEditPolicyDto(Boolean allowEditAfterSubmit, Boolean autoFillEnabled,
+                                    Integer maxSubmissionsPerUser) {}
+
+    public record FormStatsDto(Integer submissionCount, Integer targetCount, Long presetId) {}
+
+    public record FormTimelineDto(LocalDateTime deadline, LocalDateTime publishedAt, LocalDateTime closedAt) {}
+
+    public record FormAuditDto(Long version, Long createdBy, LocalDateTime createdAt, LocalDateTime updatedAt) {}
 }

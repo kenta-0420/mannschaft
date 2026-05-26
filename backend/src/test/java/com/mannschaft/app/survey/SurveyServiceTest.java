@@ -99,10 +99,16 @@ class SurveyServiceTest {
     }
 
     private SurveyResponse createSurveyResponse() {
-        return new SurveyResponse(SURVEY_ID, SCOPE_TYPE, SCOPE_ID, "テストアンケート",
-                "説明", "DRAFT", false, false, "AFTER_RESPONSE", "ALL",
-                "CREATOR_AND_ADMIN",
-                false, null, null, 0, null, null, 0, 0, USER_ID, null, null, null, null, null);
+        return SurveyResponse.builder()
+                .id(SURVEY_ID).status("DRAFT")
+                .scope(new SurveyResponse.SurveyScopeDto(SCOPE_TYPE, SCOPE_ID))
+                .content(new SurveyResponse.SurveyContentDto("テストアンケート", "説明"))
+                .policy(new SurveyResponse.SurveyPolicyDto(false, false, "AFTER_RESPONSE", "CREATOR_AND_ADMIN"))
+                .distribution(new SurveyResponse.SurveyDistributionDto("ALL", false, null, null, 0))
+                .schedule(new SurveyResponse.SurveyScheduleDto(null, null, null, null))
+                .stats(new SurveyResponse.SurveyStatsDto(0, 0))
+                .audit(new SurveyResponse.SurveyAuditDto(null, USER_ID, null, null))
+                .build();
     }
 
     @Nested
