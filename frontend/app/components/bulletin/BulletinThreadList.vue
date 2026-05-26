@@ -12,7 +12,8 @@ const emit = defineEmits<{
   create: []
 }>()
 
-const { getThreads, getCategories, readAll } = useBulletinApi()
+const { t } = useI18n()
+const { getThreads, getCategories, readAll, archiveScopedThread } = useBulletinApi()
 const { showError, showSuccess } = useNotification()
 
 const threads = ref<BulletinThreadResponse[]>([])
@@ -56,9 +57,20 @@ async function onReadAll() {
   try {
     await readAll(props.scopeType, props.scopeId)
     threads.value.forEach(t => t.isRead = true)
-    showSuccess('すべて既読にしました')
+    showSuccess(t('bulletin.list.readAllDone'))
   } catch {
-    showError('一括既読に失敗しました')
+    showError(t('bulletin.list.readAllFailed'))
+  }
+}
+
+/** スレッドを保管庫へ格納（ワンクリック・フォルダ指定は任意で後回し）。ADMIN/DEPUTY のみ。 */
+async function onArchive(threadId: number) {
+  try {
+    await archiveScopedThread(props.scopeType, props.scopeId, threadId, true)
+    showSuccess(t('bulletin.list.archivedDone'))
+    await loadThreads(currentPage.value)
+  } catch {
+    showError(t('bulletin.list.archiveFailed'))
   }
 }
 
@@ -73,8 +85,7 @@ function getPriorityClass(priority: string): string {
 }
 
 function getPriorityLabel(priority: string): string {
-  const labels: Record<string, string> = { CRITICAL: '緊急', IMPORTANT: '重要', WARNING: '注意', INFO: '情報', LOW: '低' }
-  return labels[priority] || priority
+  return t(`bulletin.archive.priority.${priority}`)
 }
 
 watch([selectedCategoryId, searchQuery], () => loadThreads())
@@ -87,18 +98,18 @@ defineExpose({ refresh: () => loadThreads() })
   <div>
     <!-- ヘッダー -->
     <div class="mb-4 flex flex-wrap items-center gap-3">
-      <InputText v-model="searchQuery" placeholder="検索..." class="w-48" />
+      <InputText v-model="searchQuery" :placeholder="t('bulletin.list.searchPlaceholder')" class="w-48" />
       <Select
         v-model="selectedCategoryId"
-        :options="[{ id: undefined, name: 'すべて' }, ...categories]"
+        :options="[{ id: undefined, name: t('bulletin.list.allCategories') }, ...categories]"
         option-label="name"
         option-value="id"
-        placeholder="カテゴリ"
+        :placeholder="t('bulletin.list.category')"
         class="w-40"
       />
       <div class="ml-auto flex items-center gap-2">
-        <Button label="一括既読" text size="small" @click="onReadAll" />
-        <Button label="新規スレッド" icon="pi pi-plus" @click="emit('create')" />
+        <Button :label="t('bulletin.list.readAll')" text size="small" @click="onReadAll" />
+        <Button :label="t('bulletin.list.newThread')" icon="pi pi-plus" @click="emit('create')" />
       </div>
     </div>
 
@@ -108,17 +119,20 @@ defineExpose({ refresh: () => loadThreads() })
     </div>
 
     <div v-else class="flex flex-col gap-2">
-      <button
+      <div
         v-for="thread in threads"
         :key="thread.id"
-        class="flex items-start gap-3 rounded-xl border border-surface-300 bg-surface-0 p-4 text-left transition-shadow hover:shadow-sm"
+        class="group flex items-start gap-3 rounded-xl border border-surface-300 bg-surface-0 p-4 transition-shadow hover:shadow-sm"
         :class="!thread.isRead ? 'border-l-4 border-l-primary' : ''"
-        @click="emit('select', thread)"
       >
         <!-- ピン -->
         <i v-if="thread.isPinned" class="pi pi-thumbtack mt-1 text-amber-500" />
 
-        <div class="min-w-0 flex-1">
+        <button
+          type="button"
+          class="min-w-0 flex-1 text-left"
+          @click="emit('select', thread)"
+        >
           <div class="mb-1 flex flex-wrap items-center gap-2">
             <span :class="getPriorityClass(thread.priority)" class="rounded px-1.5 py-0.5 text-xs font-medium">
               {{ getPriorityLabel(thread.priority) }}
@@ -126,7 +140,7 @@ defineExpose({ refresh: () => loadThreads() })
             <span v-if="thread.categoryName" class="rounded px-1.5 py-0.5 text-xs" :style="thread.categoryColor ? `background-color: ${thread.categoryColor}20; color: ${thread.categoryColor}` : ''">
               {{ thread.categoryName }}
             </span>
-            <span v-if="thread.isLocked" class="text-xs text-surface-400"><i class="pi pi-lock" /> ロック中</span>
+            <span v-if="thread.isLocked" class="text-xs text-surface-400"><i class="pi pi-lock" /> {{ t('bulletin.list.locked') }}</span>
           </div>
 
           <h3 class="text-sm font-semibold" :class="!thread.isRead ? 'font-bold' : ''">
@@ -139,10 +153,22 @@ defineExpose({ refresh: () => loadThreads() })
             <span v-if="thread.replyCount"><i class="pi pi-comment" /> {{ thread.replyCount }}</span>
             <span v-if="thread.readTrackingMode !== 'NONE'"><i class="pi pi-eye" /> {{ thread.readCount }}</span>
           </div>
-        </div>
-      </button>
+        </button>
 
-      <DashboardEmptyState v-if="threads.length === 0" icon="pi pi-clipboard" message="スレッドがありません" />
+        <!-- 保管庫へ（ADMIN/DEPUTY のみ・ワンクリック） -->
+        <Button
+          v-if="canManage"
+          icon="pi pi-inbox"
+          :label="t('bulletin.list.archiveAction')"
+          text
+          size="small"
+          severity="secondary"
+          class="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+          @click.stop="onArchive(thread.id)"
+        />
+      </div>
+
+      <DashboardEmptyState v-if="threads.length === 0" icon="pi pi-clipboard" :message="t('bulletin.list.empty')" />
     </div>
 
     <!-- ページネーション -->

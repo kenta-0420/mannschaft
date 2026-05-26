@@ -317,6 +317,7 @@ export default defineNuxtConfig({
           'ja/advertising.json',
           'ja/public.json',
           'ja/proxy.json',
+          'ja/bulletin.json',
         ],
       },
       {
@@ -368,6 +369,7 @@ export default defineNuxtConfig({
           'en/advertising.json',
           'en/public.json',
           'en/proxy.json',
+          'en/bulletin.json',
         ],
       },
       {
@@ -419,6 +421,7 @@ export default defineNuxtConfig({
           'zh/advertising.json',
           'zh/public.json',
           'zh/proxy.json',
+          'zh/bulletin.json',
         ],
       },
       {
@@ -470,6 +473,7 @@ export default defineNuxtConfig({
           'ko/advertising.json',
           'ko/public.json',
           'ko/proxy.json',
+          'ko/bulletin.json',
         ],
       },
       {
@@ -521,6 +525,7 @@ export default defineNuxtConfig({
           'es/advertising.json',
           'es/public.json',
           'es/proxy.json',
+          'es/bulletin.json',
         ],
       },
       {
@@ -572,6 +577,7 @@ export default defineNuxtConfig({
           'de/advertising.json',
           'de/public.json',
           'de/proxy.json',
+          'de/bulletin.json',
         ],
       },
     ],
