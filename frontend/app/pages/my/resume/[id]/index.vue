@@ -558,11 +558,11 @@ onBeforeUnmount(() => {
               <div class="flex items-end gap-2">
                 <div class="flex-shrink-0">
                   <label class="mb-1 block text-xs">{{ t('common.resume.entryYear') }}</label>
-                  <InputNumber v-model="edu.entryYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" />
+                  <InputNumber v-model="edu.entryYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" inputClass="w-full" />
                 </div>
                 <div class="flex-shrink-0">
                   <label class="mb-1 block text-xs">{{ t('common.resume.entryMonth') }}</label>
-                  <InputNumber v-model="edu.entryMonth" :min="1" :max="12" class="w-16" />
+                  <InputNumber v-model="edu.entryMonth" :min="1" :max="12" class="w-16" inputClass="w-full" />
                 </div>
                 <div class="ml-auto flex items-end gap-1">
                   <Button
@@ -661,31 +661,16 @@ onBeforeUnmount(() => {
                 <label class="mb-1 block text-xs">{{ t('common.resume.employmentType') }}</label>
                 <InputText v-model="career.employmentType" class="w-full" />
               </div>
-              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label class="mb-1 block text-xs">{{ t('common.resume.entryDate') }}</label>
-                  <div class="flex gap-2">
-                    <div>
-                      <label class="mb-0.5 block text-xs text-surface-400">{{ t('common.resume.entryYear') }}</label>
-                      <InputNumber v-model="career.entryYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" />
-                    </div>
-                    <div>
-                      <label class="mb-0.5 block text-xs text-surface-400">{{ t('common.resume.entryMonth') }}</label>
-                      <InputNumber v-model="career.entryMonth" :min="1" :max="12" class="w-16" />
-                    </div>
+              <div>
+                <label class="mb-1 block text-xs">{{ t('common.resume.entryDate') }}</label>
+                <div class="flex gap-2">
+                  <div>
+                    <label class="mb-0.5 block text-xs text-surface-400">{{ t('common.resume.entryYear') }}</label>
+                    <InputNumber v-model="career.entryYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" inputClass="w-full" />
                   </div>
-                </div>
-                <div v-if="!career.isCurrent">
-                  <label class="mb-1 block text-xs">{{ t('common.resume.endDate') }}</label>
-                  <div class="flex gap-2">
-                    <div>
-                      <label class="mb-0.5 block text-xs text-surface-400">{{ t('common.resume.entryYear') }}</label>
-                      <InputNumber v-model="career.endYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" />
-                    </div>
-                    <div>
-                      <label class="mb-0.5 block text-xs text-surface-400">{{ t('common.resume.entryMonth') }}</label>
-                      <InputNumber v-model="career.endMonth" :min="1" :max="12" class="w-16" />
-                    </div>
+                  <div>
+                    <label class="mb-0.5 block text-xs text-surface-400">{{ t('common.resume.entryMonth') }}</label>
+                    <InputNumber v-model="career.entryMonth" :min="1" :max="12" class="w-16" inputClass="w-full" />
                   </div>
                 </div>
               </div>
@@ -702,6 +687,19 @@ onBeforeUnmount(() => {
                   <Checkbox v-model="career.includeInShokumukeireki" :binary="true" />
                   {{ t('common.resume.includeInShokumukeireki') }}
                 </label>
+              </div>
+              <div v-if="!career.isCurrent">
+                <label class="mb-1 block text-xs">{{ t('common.resume.endDate') }}</label>
+                <div class="flex gap-2">
+                  <div>
+                    <label class="mb-0.5 block text-xs text-surface-400">{{ t('common.resume.entryYear') }}</label>
+                    <InputNumber v-model="career.endYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" inputClass="w-full" />
+                  </div>
+                  <div>
+                    <label class="mb-0.5 block text-xs text-surface-400">{{ t('common.resume.entryMonth') }}</label>
+                    <InputNumber v-model="career.endMonth" :min="1" :max="12" class="w-16" inputClass="w-full" />
+                  </div>
+                </div>
               </div>
             </div>
             <!-- 職務経歴書用フィールド -->
@@ -747,11 +745,11 @@ onBeforeUnmount(() => {
             <div class="flex items-end gap-2">
               <div class="flex-shrink-0">
                 <label class="mb-1 block text-xs">{{ t('common.resume.acquiredYear') }}</label>
-                <InputNumber v-model="qual.acquiredYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" />
+                <InputNumber v-model="qual.acquiredYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" inputClass="w-full" />
               </div>
               <div class="flex-shrink-0">
                 <label class="mb-1 block text-xs">{{ t('common.resume.acquiredMonth') }}</label>
-                <InputNumber v-model="qual.acquiredMonth" :min="1" :max="12" class="w-16" />
+                <InputNumber v-model="qual.acquiredMonth" :min="1" :max="12" class="w-16" inputClass="w-full" />
               </div>
               <div class="ml-auto flex items-end gap-1">
                 <Button
