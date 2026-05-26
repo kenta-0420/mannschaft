@@ -1,6 +1,7 @@
 import { test, expect, type Route } from '@playwright/test'
 import type { CreateSurveyRequest, SurveyResponse } from '../../../app/types/survey'
 import {
+  type BuildSurveyOptions,
   buildQuestion,
   buildResultSummary,
   buildSurvey,
@@ -74,7 +75,7 @@ const PUBLISHED_OPTION_BLUE_ID = 9002
  * ALL_MEMBERS にすると displayMode が常に 'results' となり、回答送信フロー
  * （未回答→response→送信→results）の検証ができなくなる。</p>
  */
-function buildPublishedSurvey(overrides: Partial<SurveyResponse> = {}): SurveyResponse {
+function buildPublishedSurvey(overrides: BuildSurveyOptions = {}): SurveyResponse {
   return buildSurvey({
     id: PUBLISHED_SURVEY_ID,
     title: '春の好みアンケート',
@@ -193,7 +194,7 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
         // body には CreateSurveyRequest 相当が入る
         const req = body as CreateSurveyRequest
         const merged = buildCreatedSurvey()
-        if (req?.title) merged.title = req.title
+        if (req?.title) merged.content.title = req.title
         currentSurveys = [merged]
         return merged
       },
@@ -214,7 +215,7 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
         }
         const req = (postBody ?? {}) as CreateSurveyRequest
         const responseSurvey = buildCreatedSurvey()
-        if (req?.title) responseSurvey.title = req.title
+        if (req?.title) responseSurvey.content.title = req.title
         currentSurveys = [responseSurvey]
         await route.fulfill({
           status: 201,

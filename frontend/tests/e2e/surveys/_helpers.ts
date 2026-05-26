@@ -167,33 +167,93 @@ export async function applyLocaleViaVueApp(page: Page, locale: Locale): Promise<
 // fixture ビルダ（BE DTO 準拠）
 // ---------------------------------------------------------------------------
 
-/** {@link buildSurvey} の overrides 引数。 */
-export type BuildSurveyOptions = Partial<SurveyResponse>
+/**
+ * {@link buildSurvey} の overrides 引数。旧フラット設計の利便性を保持したヘルパー専用型。
+ * ネスト化後の SurveyResponse には存在しないフラットフィールドを使ってテストデータを
+ * 組み立てられるよう、E2E テスト内部でのみ使用する。
+ */
+export interface BuildSurveyOptions {
+  id?: number
+  status?: SurveyStatus
+  // scope
+  scopeType?: string
+  scopeId?: number
+  // content
+  title?: string
+  description?: string | null
+  // policy
+  isAnonymous?: boolean
+  allowMultipleSubmissions?: boolean
+  resultsVisibility?: string
+  unrespondedVisibility?: string
+  // schedule
+  expiresAt?: string | null
+  deadline?: string | null
+  // stats
+  responseCount?: number
+  targetCount?: number | null
+  // audit
+  version?: number
+  createdBy?: number | { id: number; displayName?: string }
+  createdAt?: string
+  updatedAt?: string
+  // top-level enrichment
+  hasResponded?: boolean
+}
 
 /**
  * SurveyResponse の雛形を生成する。
  * 全フィールドにデフォルト値を持たせ、opts でフィールド単位に上書き可能。
+ * E2E テストの利便性のため、旧フラット設計の opts を受け取り内部でネスト構造に変換する。
  */
 export function buildSurvey(opts: BuildSurveyOptions = {}): SurveyResponse {
+  const createdById =
+    opts.createdBy != null && typeof opts.createdBy === 'object'
+      ? opts.createdBy.id
+      : (opts.createdBy ?? 1)
+  const expiresAt =
+    opts.deadline !== undefined ? opts.deadline : (opts.expiresAt !== undefined ? opts.expiresAt : '2026-05-31T23:59:59Z')
   return {
-    id: 1,
-    scopeType: 'TEAM',
-    scopeId: 1,
-    title: 'E2Eテスト用アンケート',
-    description: 'これは E2E テスト用のアンケートです。',
-    status: 'PUBLISHED',
-    isAnonymous: false,
-    allowMultipleSubmissions: false,
-    resultsVisibility: 'ALL_MEMBERS',
-    unrespondedVisibility: 'CREATOR_AND_ADMIN',
-    deadline: '2026-05-31T23:59:59Z',
-    createdBy: { id: 1, displayName: 'e2e_admin' },
-    responseCount: 0,
-    targetCount: 10,
-    hasResponded: false,
-    createdAt: '2026-04-20T00:00:00Z',
-    updatedAt: '2026-04-20T00:00:00Z',
-    ...opts,
+    id: opts.id ?? 1,
+    status: opts.status ?? 'PUBLISHED',
+    scope: {
+      scopeType: opts.scopeType ?? 'TEAM',
+      scopeId: opts.scopeId ?? 1,
+    },
+    content: {
+      title: opts.title ?? 'E2Eテスト用アンケート',
+      description: opts.description !== undefined ? opts.description : 'これは E2E テスト用のアンケートです。',
+    },
+    policy: {
+      isAnonymous: opts.isAnonymous ?? false,
+      allowMultipleSubmissions: opts.allowMultipleSubmissions ?? false,
+      resultsVisibility: opts.resultsVisibility ?? 'ALL_MEMBERS',
+      unrespondedVisibility: opts.unrespondedVisibility ?? 'CREATOR_AND_ADMIN',
+    },
+    distribution: {
+      distributionMode: null,
+      autoPostToTimeline: null,
+      seriesId: null,
+      remindBeforeHours: null,
+      manualRemindCount: null,
+    },
+    schedule: {
+      startsAt: null,
+      expiresAt,
+      publishedAt: null,
+      closedAt: null,
+    },
+    stats: {
+      responseCount: opts.responseCount ?? 0,
+      targetCount: opts.targetCount !== undefined ? opts.targetCount : 10,
+    },
+    audit: {
+      version: opts.version ?? 1,
+      createdBy: createdById,
+      createdAt: opts.createdAt ?? '2026-04-20T00:00:00Z',
+      updatedAt: opts.updatedAt ?? '2026-04-20T00:00:00Z',
+    },
+    hasResponded: opts.hasResponded ?? false,
   }
 }
 

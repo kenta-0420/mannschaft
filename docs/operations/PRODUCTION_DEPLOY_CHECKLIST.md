@@ -39,6 +39,12 @@ PR/migration ごとに該当セクションを追加し、デプロイ判断の�
 - [ ] 依存パッケージの脆弱性スキャン（`npm audit` / `gradle dependencyCheck`）でCriticalゼロ
 - [ ] 新規エンドポイントは適切な権限チェック（`@PreAuthorize` 等）が設定されている
 - [ ] 個人情報を扱う処理に監査ログが仕込まれている
+- [ ] `MANNSCHAFT_COOKIE_SECURE=true` が設定されている（本番は HTTPS のため必須。`docs/security/02_cookie_and_session.md`）
+- [ ] 認可の既定値が deny-by-default（`.authenticated()`）で動作し、webhook 4 系統（Stripe / SES / LINE / incoming）が無認証で到達することを確認（`docs/security/01_authorization_baseline.md` §3.6）
+- [ ] 主要画面でブラウザコンソールに CSP 違反が出ないことを確認（`docs/security/03_security_headers_and_csp.md`）
+- [ ] Swagger UI / `/v3/api-docs` が本番で遮断されている（`docs/security/01_authorization_baseline.md` §8）
+
+> セキュリティ横断方針の全体は `docs/security/README.md` を参照。本番必須の環境変数は同 §5/§6 にまとまっている。
 
 ### パフォーマンス
 
