@@ -112,7 +112,7 @@ class FriendNotificationControllerTest {
             mockMvc.perform(get("/api/v1/teams/{id}/friend-notifications", TEAM_ID))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.content[0].id").value(1))
-                    .andExpect(jsonPath("$.data.content[0].title").value("テスト通知"))
+                    .andExpect(jsonPath("$.data.content[0].content.title").value("テスト通知"))
                     .andExpect(jsonPath("$.data.totalElements").value(1));
         }
 
