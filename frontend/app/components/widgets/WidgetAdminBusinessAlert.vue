@@ -8,6 +8,11 @@ const teams = ref<AdminBusinessAlertTeam[]>([])
 const totalPending = ref(0)
 const loading = ref(true)
 
+/** 問い合わせチャンネルが設定されているチームが1件以上あるか */
+const hasAnyInquiryChannel = computed(() =>
+  teams.value.some(t => t.links.inquiryChannelUrl !== null),
+)
+
 async function fetchSummary() {
   try {
     const res = await getSummary()
@@ -38,7 +43,7 @@ onUnmounted(() => clearInterval(timer))
     refreshable
     @refresh="fetchSummary"
   >
-    <div v-if="totalPending === 0 && !loading">
+    <div v-if="totalPending === 0 && !loading && !hasAnyInquiryChannel">
       <DashboardEmptyState icon="pi pi-check-circle" :message="t('admin.businessAlert.noAlerts')" />
     </div>
     <div v-else class="divide-y divide-surface-100 dark:divide-surface-700">

@@ -3,6 +3,7 @@ package com.mannschaft.app.admin.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.admin.dto.AdminBusinessAlertSummaryResponse;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
+import com.mannschaft.app.chat.event.InquiryChannelChangedEvent;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
@@ -12,7 +13,9 @@ import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.template.service.ModuleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -102,6 +105,28 @@ public class AdminBusinessAlertService {
      */
     public void invalidateCache(Long userId) {
         redisTemplate.delete(CACHE_KEY_PREFIX + userId);
+    }
+
+    /**
+     * inquiry チャンネル設定変更時に、該当チームの ADMIN/DEPUTY_ADMIN ユーザーの
+     * 業務アラートキャッシュを非同期で削除する。
+     *
+     * <p>{@link com.mannschaft.app.chat.service.ChatChannelService#updateInquiryChannel} が
+     * {@link InquiryChannelChangedEvent} を発行した直後に呼び出される。
+     * これにより、inquiry チャンネル設定変更がウィジェットに即時反映される（F10.7）。</p>
+     *
+     * @param event inquiry チャンネル変更イベント
+     */
+    @Async("event-pool")
+    @EventListener
+    public void onInquiryChannelChanged(InquiryChannelChangedEvent event) {
+        // ADMIN ユーザーのキャッシュを削除
+        List<Long> adminUserIds = userRoleRepository.findAdminUserIdsByTeamId(event.getTeamId());
+        log.debug("業務アラートキャッシュ削除: teamId={}, channelId={}, 対象ユーザー数={}",
+                event.getTeamId(), event.getChannelId(), adminUserIds.size());
+        for (Long userId : adminUserIds) {
+            invalidateCache(userId);
+        }
     }
 
     // -------------------------------------------------------------------------
