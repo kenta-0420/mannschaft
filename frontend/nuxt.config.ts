@@ -1,9 +1,35 @@
 import Aura from '@primeuix/themes/aura'
 
+// ──────────────────────────────────────────────────────────────────────────
+// セキュリティヘッダー / CSP（nuxt-security）
+// 設計書: docs/security/03_security_headers_and_csp.md §2.1 / §3 / §7
+// ──────────────────────────────────────────────────────────────────────────
+
+// API ベース URL。connect-src に追加する必要がある（同一オリジンでない場合）。
+// E2E プロキシ（NUXT_API_PROXY=true）時は API が Nuxt 同一オリジン経由になるため 'self' で足りる。
+const apiBase = process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8080'
+
+// connect-src の許可リストを構成する。
+// - 'self'（同一オリジン API / SSR エラー転送 / PWA）
+// - apiBase（バックエンド API オリジン。プロキシ時も無害なので含める）
+// - Google Fonts（preconnect / CSS 取得）
+// - ws:/wss:（STOMP WebSocket / dev HMR。apiBase 由来の ws もカバー）
+const connectSrc = [
+  "'self'",
+  apiBase,
+  'https://fonts.googleapis.com',
+  'https://fonts.gstatic.com',
+  // STOMP WebSocket（@stomp/stompjs）と dev サーバ HMR。
+  // 本番 API が wss、dev が ws のため双方を許可する。
+  'ws:',
+  'wss:',
+]
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
-  devtools: { enabled: true },
+  // 本番では Nuxt DevTools を無効化（情報露出・バンドル肥大の抑止）。
+  devtools: { enabled: process.env.NODE_ENV !== 'production' },
 
   app: {
     head: {
@@ -44,7 +70,107 @@ export default defineNuxtConfig({
     '@nuxt/image',
     '@nuxt/eslint',
     '@vite-pwa/nuxt',
+    'nuxt-security',
   ],
+
+  // ──────────────────────────────────────────────────────────────────────
+  // nuxt-security: CSP / セキュリティヘッダー
+  // 設計書: docs/security/03_security_headers_and_csp.md
+  // ──────────────────────────────────────────────────────────────────────
+  security: {
+    // nonce ベース CSP。SSR レスポンスの <script>/<style> に nonce を自動付与し、
+    // CSP の script-src に nonce-{{nonce}} を自動展開する。
+    nonce: true,
+    // CSRF はバックエンド（JWT + HttpOnly Cookie のステートレス認証）が管理し、
+    // Spring Security 側で disable 済み。nuxt-security の CSRF を有効化すると
+    // 二重防御で正規リクエストが壊れるため明示的に無効化する。
+    csrf: false,
+    // 以下はバックエンド API 側の責務 or 本アプリ構成と相性が悪いため無効化。
+    // （フロントは HTML 配信に専念し、API 防御はバックエンドに委ねる方針）
+    rateLimiter: false,
+    requestSizeLimiter: false,
+    xssValidator: false,
+    corsHandler: false,
+    allowedMethodsRestricter: false,
+    // Phase 1 は Report-Only ではなく強制モードで導入する。
+    // 段階観測が必要になった場合は true に切り替える（設計書 §2.2）。
+    contentSecurityPolicyReportOnly: false,
+    // removeLoggers（本番で console.* を除去）は既定 true だが、F10.6 の SSR エラー
+    // 転送など意図的なログ出力に影響しうるため、本タスクのスコープ外として無効化する。
+    removeLoggers: false,
+    headers: {
+      // COEP は既定で本番 'credentialless' になり、CORP ヘッダーを持たない
+      // クロスオリジン埋め込み（Google Maps iframe・外部 https: 画像）を阻害しうる。
+      // 設計書は COEP を要求しておらず、埋め込み・画像表示を壊さないため明示的に無効化する。
+      crossOriginEmbedderPolicy: false,
+      // 自オリジン資源への影響を避けるため CORP は cross-origin 許容に緩める
+      // （アバター/画像 CDN・OGP を考慮）。X-Frame-Options/frame-ancestors で
+      // クリックジャッキングは別途防御する。
+      crossOriginResourcePolicy: 'cross-origin',
+      contentSecurityPolicy: {
+        'default-src': ["'self'"],
+        // script-src: nonce は nuxt-security が自動付与。
+        // 'strict-dynamic' により nonce 付きスクリプトがロードする子スクリプトを許可。
+        'script-src': ["'self'", "'nonce-{{nonce}}'", "'strict-dynamic'"],
+        // style-src: PrimeVue(Aura)/Tailwind の動的インラインスタイルのため
+        // 'unsafe-inline' を当面維持（設計書 §4 ロードマップ Phase 1 方針）。
+        'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        'font-src': ["'self'", 'https://fonts.gstatic.com', 'data:'],
+        // img-src: アバター/アップロード画像/OGP。R2/CDN は環境依存のため https: を許容。
+        // @nuxt/image の最適化経路（/_ipx/）は 'self' でカバーされる。
+        'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+        'connect-src': connectSrc,
+        // frame-src: PublicMapEmbed.vue の Google Maps 埋め込み。
+        'frame-src': ['https://www.google.com'],
+        // worker-src: @vite-pwa/nuxt の service worker。
+        'worker-src': ["'self'", 'blob:'],
+        'manifest-src': ["'self'"],
+        'frame-ancestors': ["'none'"],
+        'base-uri': ["'self'"],
+        'form-action': ["'self'"],
+        'upgrade-insecure-requests': true,
+      },
+      // HSTS は HTTPS 経由でのみ有効化される（nuxt-security の既定挙動）。
+      // 一次責務はエッジ層（Cloudflare/LB）、アプリ層でも多層化する（設計書 §5）。
+      strictTransportSecurity: {
+        maxAge: 15768000, // 約 6 ヶ月
+        includeSubdomains: true,
+      },
+      xFrameOptions: 'DENY',
+      xContentTypeOptions: 'nosniff',
+      referrerPolicy: 'strict-origin-when-cross-origin',
+      // Permissions-Policy: 最小権限。利用機能のみ自オリジンに許可する（設計書 §7）。
+      // 棚卸し結果（frontend/app 配下の grep）:
+      //   geolocation … useGeolocation.ts（求人マッチング）
+      //   camera … useQrScanner.ts / BarcodeCapture.vue（QR/バーコード読取）
+      //   screen-wake-lock … useWakeLockWithFallback.ts（ウォレット提示画面）
+      //   publickey-credentials-get … useBiometricGate.ts（生体認証）
+      //   web-share … ActivitySharePanel.vue（ネイティブ共有）
+      //   fullscreen … PrimeVue 等の全画面表示
+      // 注: Permissions-Policy の自オリジン許可は CSP と異なり引用符なしの
+      //     キーワード `self` を用いる（`self` → `geolocation=(self)`）。
+      //     引用符付き `'self'` だと `(’self’)` となり仕様上不正なため使わない。
+      permissionsPolicy: {
+        geolocation: ['self'],
+        camera: ['self'],
+        microphone: [], // 未使用 → 無効化
+        'screen-wake-lock': ['self'],
+        'publickey-credentials-get': ['self'],
+        'web-share': ['self'],
+        fullscreen: ['self'],
+        payment: [], // 未使用 → 無効化
+        usb: [], // 未使用 → 無効化
+        bluetooth: [], // 未使用 → 無効化
+        serial: [], // 未使用 → 無効化
+        midi: [], // 未使用 → 無効化
+        hid: [], // 未使用 → 無効化
+        magnetometer: [], // 未使用 → 無効化
+        gyroscope: [], // 未使用 → 無効化
+        accelerometer: [], // 未使用 → 無効化
+        'idle-detection': [], // 未使用 → 無効化
+      },
+    },
+  },
 
   pwa: {
     registerType: 'autoUpdate',
