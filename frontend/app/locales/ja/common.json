@@ -1286,6 +1286,14 @@
       "betaRestriction": "ベータ制限",
       "errorReports": "エラーレポート",
       "gdprPurge": "GDPR パージ状況"
+    },
+    "businessAlert": {
+      "title": "業務アラート",
+      "newReservations": "新規予約",
+      "pendingApproval": "承認待ち",
+      "unreadInquiries": "問い合わせ",
+      "noAlerts": "アラートはありません",
+      "viewAll": "全件を見る"
     }
   },
   "notificationCredit": {

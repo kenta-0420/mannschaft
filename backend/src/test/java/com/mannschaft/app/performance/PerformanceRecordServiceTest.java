@@ -65,9 +65,14 @@ class PerformanceRecordServiceTest {
                     .metricId(METRIC_ID).userId(USER_ID).value(BigDecimal.valueOf(170.5))
                     .recordedDate(LocalDate.now()).source(RecordSource.ADMIN).build();
             given(recordRepository.save(any())).willReturn(saved);
-            given(performanceMapper.toRecordResponse(any(), any(), any())).willReturn(new RecordResponse(
-                    1L, METRIC_ID, "テスト", USER_ID, null, null, LocalDate.now(),
-                    BigDecimal.valueOf(170.5), "cm", null, "ADMIN", USER_ID, null, null));
+            given(performanceMapper.toRecordResponse(any(), any(), any())).willReturn(RecordResponse.builder()
+                    .id(1L)
+                    .metric(new RecordResponse.RecordMetricDto(METRIC_ID, "テスト"))
+                    .actor(new RecordResponse.RecordActorDto(USER_ID, null, null))
+                    .record(new RecordResponse.RecordValueDto(LocalDate.now(), BigDecimal.valueOf(170.5), "cm", null))
+                    .source(new RecordResponse.RecordSourceDto("ADMIN", USER_ID))
+                    .audit(new RecordResponse.RecordAuditDto(null, null))
+                    .build());
 
             RecordResponse result = service.createRecord(TEAM_ID, USER_ID, request);
             assertThat(result).isNotNull();

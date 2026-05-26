@@ -9,7 +9,6 @@ import com.mannschaft.app.survey.entity.SurveyOptionEntity;
 import com.mannschaft.app.survey.entity.SurveyQuestionEntity;
 import com.mannschaft.app.survey.entity.SurveyResponseEntity;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 
 import java.util.List;
 
@@ -19,17 +18,44 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface SurveyMapper {
 
-    @Mapping(target = "status", expression = "java(entity.getStatus().name())")
-    @Mapping(target = "resultsVisibility", expression = "java(entity.getResultsVisibility().name())")
-    @Mapping(target = "distributionMode", expression = "java(entity.getDistributionMode().name())")
-    @Mapping(target = "unrespondedVisibility", expression = "java(entity.getUnrespondedVisibility().name())")
-    SurveyResponse toSurveyResponse(SurveyEntity entity);
+    default SurveyResponse toSurveyResponse(SurveyEntity entity) {
+        return SurveyResponse.builder()
+                .id(entity.getId())
+                .status(entity.getStatus().name())
+                .scope(new SurveyResponse.SurveyScopeDto(entity.getScopeType(), entity.getScopeId()))
+                .content(new SurveyResponse.SurveyContentDto(entity.getTitle(), entity.getDescription()))
+                .policy(new SurveyResponse.SurveyPolicyDto(
+                        entity.getIsAnonymous(), entity.getAllowMultipleSubmissions(),
+                        entity.getResultsVisibility().name(), entity.getUnrespondedVisibility().name()))
+                .distribution(new SurveyResponse.SurveyDistributionDto(
+                        entity.getDistributionMode().name(), entity.getAutoPostToTimeline(),
+                        entity.getSeriesId(), entity.getRemindBeforeHours(), entity.getManualRemindCount()))
+                .schedule(new SurveyResponse.SurveyScheduleDto(
+                        entity.getStartsAt(), entity.getExpiresAt(),
+                        entity.getPublishedAt(), entity.getClosedAt()))
+                .stats(new SurveyResponse.SurveyStatsDto(entity.getResponseCount(), entity.getTargetCount()))
+                .audit(new SurveyResponse.SurveyAuditDto(
+                        entity.getVersion(), entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt()))
+                .build();
+    }
 
     List<SurveyResponse> toSurveyResponseList(List<SurveyEntity> entities);
 
-    @Mapping(target = "questionType", expression = "java(entity.getQuestionType().name())")
-    @Mapping(target = "options", ignore = true)
-    QuestionResponse toQuestionResponse(SurveyQuestionEntity entity);
+    default QuestionResponse toQuestionResponse(SurveyQuestionEntity entity) {
+        return QuestionResponse.builder()
+                .id(entity.getId())
+                .surveyId(entity.getSurveyId())
+                .questionType(entity.getQuestionType().name())
+                .content(new QuestionResponse.QuestionContentDto(
+                        entity.getQuestionText(), entity.getIsRequired(),
+                        entity.getDisplayOrder(), entity.getMaxSelections()))
+                .scaleConfig(new QuestionResponse.QuestionScaleConfigDto(
+                        entity.getScaleMin(), entity.getScaleMax(),
+                        entity.getScaleMinLabel(), entity.getScaleMaxLabel()))
+                .createdAt(entity.getCreatedAt())
+                .options(null)
+                .build();
+    }
 
     List<QuestionResponse> toQuestionResponseList(List<SurveyQuestionEntity> entities);
 
@@ -49,21 +75,9 @@ public interface SurveyMapper {
      * @return 設問レスポンス
      */
     default QuestionResponse toQuestionResponseWithOptions(SurveyQuestionEntity entity,
-                                                           List<SurveyOptionEntity> options) {
-        return new QuestionResponse(
-                entity.getId(),
-                entity.getSurveyId(),
-                entity.getQuestionType().name(),
-                entity.getQuestionText(),
-                entity.getIsRequired(),
-                entity.getDisplayOrder(),
-                entity.getMaxSelections(),
-                entity.getScaleMin(),
-                entity.getScaleMax(),
-                entity.getScaleMinLabel(),
-                entity.getScaleMaxLabel(),
-                entity.getCreatedAt(),
-                toOptionResponseList(options)
-        );
+                                                            List<SurveyOptionEntity> options) {
+        return toQuestionResponse(entity).toBuilder()
+                .options(toOptionResponseList(options))
+                .build();
     }
 }

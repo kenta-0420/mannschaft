@@ -58,9 +58,17 @@ class FormTemplateDuplicateTest {
                 .willAnswer(inv -> inv.getArgument(0));
         given(fieldRepository.saveAll(any())).willAnswer(inv -> inv.getArgument(0));
         given(formMapper.toTemplateResponseWithFields(any(), any()))
-                .willReturn(new FormTemplateResponse(101L, "teams", 7L, "入会申込書 (コピー)",
-                        null, null, null, "DRAFT", false, null, false, null, false, false, 0, 0,
-                        null, 0, 0, 99L, null, null, 0L, null, null, List.of()));
+                .willReturn(FormTemplateResponse.builder()
+                        .id(101L).status("DRAFT")
+                        .scope(new FormTemplateResponse.FormScopeDto("teams", 7L))
+                        .content(new FormTemplateResponse.FormContentDto("入会申込書 (コピー)", null, null, null, 0))
+                        .workflow(new FormTemplateResponse.FormWorkflowDto(false, null, false))
+                        .editPolicy(new FormTemplateResponse.FormEditPolicyDto(false, false, 0))
+                        .stats(new FormTemplateResponse.FormStatsDto(0, 0, null))
+                        .timeline(new FormTemplateResponse.FormTimelineDto(null, null, null))
+                        .audit(new FormTemplateResponse.FormAuditDto(0L, 99L, null, null))
+                        .fields(List.of())
+                        .build());
 
         FormTemplateResponse response = templateService.duplicateTemplate("teams", 7L, 100L, 99L);
 

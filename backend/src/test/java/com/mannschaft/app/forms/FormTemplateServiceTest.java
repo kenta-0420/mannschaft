@@ -71,9 +71,17 @@ class FormTemplateServiceTest {
         void テンプレート公開_正常_PUBLISHED状態に遷移() {
             // Given
             FormTemplateEntity entity = createDraftTemplate();
-            FormTemplateResponse response = new FormTemplateResponse(TEMPLATE_ID, SCOPE_TYPE, SCOPE_ID,
-                    "休暇届", null, null, null, "PUBLISHED", false, null, false,
-                    null, false, false, 0, 0, null, 0, 0, USER_ID, null, null, null, null, null, List.of());
+            FormTemplateResponse response = FormTemplateResponse.builder()
+                    .id(TEMPLATE_ID).status("PUBLISHED")
+                    .scope(new FormTemplateResponse.FormScopeDto(SCOPE_TYPE, SCOPE_ID))
+                    .content(new FormTemplateResponse.FormContentDto("休暇届", null, null, null, 0))
+                    .workflow(new FormTemplateResponse.FormWorkflowDto(false, null, false))
+                    .editPolicy(new FormTemplateResponse.FormEditPolicyDto(false, false, 0))
+                    .stats(new FormTemplateResponse.FormStatsDto(0, 0, null))
+                    .timeline(new FormTemplateResponse.FormTimelineDto(null, null, null))
+                    .audit(new FormTemplateResponse.FormAuditDto(null, USER_ID, null, null))
+                    .fields(List.of())
+                    .build();
 
             given(templateRepository.findByIdAndScopeTypeAndScopeId(TEMPLATE_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(entity));
@@ -132,9 +140,17 @@ class FormTemplateServiceTest {
         void テンプレート閉鎖_正常_CLOSED状態に遷移() {
             // Given
             FormTemplateEntity entity = createPublishedTemplate();
-            FormTemplateResponse response = new FormTemplateResponse(TEMPLATE_ID, SCOPE_TYPE, SCOPE_ID,
-                    "休暇届", null, null, null, "CLOSED", false, null, false,
-                    null, false, false, 0, 0, null, 0, 0, USER_ID, null, null, null, null, null, List.of());
+            FormTemplateResponse response = FormTemplateResponse.builder()
+                    .id(TEMPLATE_ID).status("CLOSED")
+                    .scope(new FormTemplateResponse.FormScopeDto(SCOPE_TYPE, SCOPE_ID))
+                    .content(new FormTemplateResponse.FormContentDto("休暇届", null, null, null, 0))
+                    .workflow(new FormTemplateResponse.FormWorkflowDto(false, null, false))
+                    .editPolicy(new FormTemplateResponse.FormEditPolicyDto(false, false, 0))
+                    .stats(new FormTemplateResponse.FormStatsDto(0, 0, null))
+                    .timeline(new FormTemplateResponse.FormTimelineDto(null, null, null))
+                    .audit(new FormTemplateResponse.FormAuditDto(null, USER_ID, null, null))
+                    .fields(List.of())
+                    .build();
 
             given(templateRepository.findByIdAndScopeTypeAndScopeId(TEMPLATE_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(entity));
