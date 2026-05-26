@@ -108,6 +108,26 @@ class SecurityConfigAuthorizationTest {
         AdPublicEndpointRateLimitFilter adPublicEndpointRateLimitFilter() {
             return new AdPublicEndpointRateLimitFilter();
         }
+
+        /**
+         * F03.10 第三陣: SecurityConfig が依存する ScheduleDelegationRateLimitFilter の
+         * 本物インスタンス。本テストは対象パス（POST /api/v1/schedules/{id}/delegations）を
+         * 叩かないため、何もせず chain.doFilter に通す挙動になる。
+         */
+        @Bean
+        com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter scheduleDelegationRateLimitFilter() {
+            return new com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter();
+        }
+
+        /**
+         * F03.10 第三陣: SecurityConfig が依存する EventDelegationRateLimitFilter の
+         * 本物インスタンス。本テストは対象パス（POST /api/v1/events/{id}/delegations）を
+         * 叩かないため、何もせず chain.doFilter に通す挙動になる。
+         */
+        @Bean
+        com.mannschaft.app.event.EventDelegationRateLimitFilter eventDelegationRateLimitFilter() {
+            return new com.mannschaft.app.event.EventDelegationRateLimitFilter();
+        }
     }
 
     @Autowired
