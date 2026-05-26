@@ -120,6 +120,12 @@ public class AuthLoginController {
         if (apiResponse.getData() instanceof LoginResponse loginResponse) {
             response.addHeader(HttpHeaders.SET_COOKIE,
                     buildAccessTokenCookie(loginResponse.getAccessToken()).toString());
+            // refresh_token もデュアルモードで Cookie 発行（body にも残しモバイル互換を維持）
+            // F01.1 §203 / docs/security/02_cookie_and_session.md §3
+            if (loginResponse.getRefreshToken() != null) {
+                response.addHeader(HttpHeaders.SET_COOKIE,
+                        buildRefreshTokenCookie(loginResponse.getRefreshToken()).toString());
+            }
         }
 
         return ResponseEntity.ok(apiResponse);
@@ -140,6 +146,8 @@ public class AuthLoginController {
 
         authService.logout(refreshTokenHash, jti, exp);
         response.addHeader(HttpHeaders.SET_COOKIE, clearAccessTokenCookie().toString());
+        // refresh_token Cookie もクリア（発行と属性を揃える）
+        response.addHeader(HttpHeaders.SET_COOKIE, clearRefreshTokenCookie().toString());
         return ResponseEntity.ok().build();
     }
 
@@ -259,6 +267,50 @@ public class AuthLoginController {
     }
 
     /**
+     * refresh_token HttpOnly Cookie を生成する。
+     * <p>
+     * F01.1 のデュアルモード設計（Web=Cookie / モバイル=レスポンスボディ）に従い、
+     * login / refresh 成功時に refresh_token を Set-Cookie で発行する。body での返却は
+     * モバイル互換のため維持する（削除しない）。
+     * <p>
+     * Secure 属性は access_token と同じく {@code mannschaft.cookie.secure}（環境変数
+     * MANNSCHAFT_COOKIE_SECURE）で制御する。maxAge は Refresh Token の有効期限
+     * （{@link AuthTokenService#getRefreshTokenExpirationSeconds()}、既定 604800 秒=7日）に揃える。
+     * これにより Cookie の寿命と DB トークンの有効期限が一致する。
+     * 設計書: docs/security/02_cookie_and_session.md §2 / docs/features/F01.1_auth.md §203
+     *
+     * @param token リフレッシュトークン（平文）
+     * @return ResponseCookie
+     */
+    private ResponseCookie buildRefreshTokenCookie(String token) {
+        return ResponseCookie.from("refresh_token", token)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .sameSite("Strict")
+                .maxAge(authTokenService.getRefreshTokenExpirationSeconds())
+                .build();
+    }
+
+    /**
+     * refresh_token Cookie を削除するための Set-Cookie ヘッダーを生成する。
+     * maxAge=0 を設定してブラウザに Cookie の即時削除を指示する。
+     * 発行側（{@link #buildRefreshTokenCookie}）と属性（Secure / SameSite / Path）を揃える。
+     * 設計書: docs/security/02_cookie_and_session.md §2.2
+     *
+     * @return ResponseCookie（maxAge=0）
+     */
+    private ResponseCookie clearRefreshTokenCookie() {
+        return ResponseCookie.from("refresh_token", "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .sameSite("Strict")
+                .maxAge(0)
+                .build();
+    }
+
+    /**
      * アクセストークンリフレッシュ。
      * リフレッシュ成功時は新しい access_token を HttpOnly Cookie にセットする。
      */
@@ -274,6 +326,12 @@ public class AuthLoginController {
         if (apiResponse.getData() != null && apiResponse.getData().getAccessToken() != null) {
             response.addHeader(HttpHeaders.SET_COOKIE,
                     buildAccessTokenCookie(apiResponse.getData().getAccessToken()).toString());
+            // ローテーションで新しい refresh_token を Cookie にセット（旧トークンは DB で失効済み）。
+            // body にも残しモバイル互換を維持。F01.1 §203 / ローテーション §1229
+            if (apiResponse.getData().getRefreshToken() != null) {
+                response.addHeader(HttpHeaders.SET_COOKIE,
+                        buildRefreshTokenCookie(apiResponse.getData().getRefreshToken()).toString());
+            }
         }
         return ResponseEntity.ok(apiResponse);
     }

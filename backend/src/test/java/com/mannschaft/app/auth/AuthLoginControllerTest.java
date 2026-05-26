@@ -23,12 +23,15 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -143,6 +146,46 @@ class AuthLoginControllerTest {
     }
 
     @Test
+    @DisplayName("POST /login — refresh_token を Set-Cookie（HttpOnly/SameSite=Strict）し body にも残す")
+    void login_success_setsRefreshTokenCookie() throws Exception {
+        var loginResp = new LoginResponse(
+                "access-token-xxx", "refresh-token-yyy", 3600L,
+                1L, "taro", "test@example.com", null, false);
+        given(authService.login(any(LoginRequest.class), any(), any()))
+                .willAnswer(invocation -> ApiResponse.of(loginResp));
+        // refresh_token Cookie の maxAge に使用される
+        given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
+
+        String body = """
+                {
+                  "email": "test@example.com",
+                  "password": "Passw0rd!",
+                  "rememberMe": false
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("User-Agent", "TestAgent")
+                        .content(body))
+                .andExpect(status().isOk())
+                // body にも refresh_token が残る（モバイル互換）
+                .andExpect(jsonPath("$.data.refreshToken").value("refresh-token-yyy"))
+                // refresh_token Cookie が発行される（値・属性）
+                .andExpect(cookie().value("refresh_token", "refresh-token-yyy"))
+                .andExpect(cookie().httpOnly("refresh_token", true))
+                .andExpect(cookie().maxAge("refresh_token", 604800))
+                .andExpect(header().stringValues(org.springframework.http.HttpHeaders.SET_COOKIE,
+                        org.hamcrest.Matchers.hasItem(containsString("refresh_token=refresh-token-yyy"))))
+                .andExpect(header().stringValues(org.springframework.http.HttpHeaders.SET_COOKIE,
+                        org.hamcrest.Matchers.hasItem(
+                                org.hamcrest.Matchers.allOf(
+                                        containsString("refresh_token=refresh-token-yyy"),
+                                        containsString("SameSite=Strict"),
+                                        containsString("HttpOnly")))));
+    }
+
+    @Test
     @DisplayName("POST /login — 異常系: 認証失敗で 400（AUTH_001）を返却する")
     void login_authFailed_returns400() throws Exception {
         given(authService.login(any(LoginRequest.class), any(), any()))
@@ -203,6 +246,25 @@ class AuthLoginControllerTest {
                 .andExpect(jsonPath("$.data.tokenType").value("Bearer"));
     }
 
+    @Test
+    @DisplayName("POST /refresh — ローテーション後の refresh_token を Set-Cookie し body にも残す")
+    void refresh_success_setsRefreshTokenCookie() throws Exception {
+        var tokenResp = new TokenResponse("new-access-token", "new-refresh-token", 3600L);
+        given(authService.refreshAccessToken(anyString(), any()))
+                .willReturn(ApiResponse.of(tokenResp));
+        given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("refresh_token", "old-refresh-token")))
+                .andExpect(status().isOk())
+                // body にも refresh_token が残る（モバイル互換）
+                .andExpect(jsonPath("$.data.refreshToken").value("new-refresh-token"))
+                // 新しい refresh_token Cookie が発行される
+                .andExpect(cookie().value("refresh_token", "new-refresh-token"))
+                .andExpect(cookie().httpOnly("refresh_token", true))
+                .andExpect(cookie().maxAge("refresh_token", 604800));
+    }
+
     // ──────────────────────────────────────────────
     // POST /api/v1/auth/logout
     // ──────────────────────────────────────────────
@@ -217,6 +279,27 @@ class AuthLoginControllerTest {
                         .param("jti", "jti-123")
                         .param("exp", "9999999999"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("POST /logout — access_token と refresh_token の両方を maxAge=0 でクリアする")
+    void logout_clearsBothCookies() throws Exception {
+        doNothing().when(authService).logout(any(), any(), any(Long.class));
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .param("jti", "jti-123")
+                        .param("exp", "9999999999"))
+                .andExpect(status().isOk())
+                // access_token クリア（maxAge=0）
+                .andExpect(cookie().maxAge("access_token", 0))
+                // refresh_token クリア（maxAge=0）
+                .andExpect(cookie().maxAge("refresh_token", 0))
+                .andExpect(cookie().value("refresh_token", ""))
+                .andExpect(header().stringValues(org.springframework.http.HttpHeaders.SET_COOKIE,
+                        org.hamcrest.Matchers.hasItem(
+                                org.hamcrest.Matchers.allOf(
+                                        containsString("refresh_token="),
+                                        containsString("Max-Age=0")))));
     }
 
     // ──────────────────────────────────────────────

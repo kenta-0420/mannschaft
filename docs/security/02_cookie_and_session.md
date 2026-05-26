@@ -53,9 +53,9 @@ ResponseCookie.from("access_token", "")
 | トークン | 保存 | 備考 |
 |---|---|---|
 | **access_token** | HttpOnly Cookie（本書の属性） | 15 分。ログイン成功・リフレッシュ成功で発行、ログアウトで削除 |
-| **refresh_token** | クライアントが保持し、リクエスト時に Cookie で送る（`@CookieValue`）。サーバーは DB に **SHA-256 ハッシュ** を保存 | 7 日。リプレイ検出は `AuthTokenRotationService` |
+| **refresh_token** | サーバーが HttpOnly+Secure+SameSite Cookie として明示発行（`Set-Cookie`）。body にも返却（モバイル互換）。サーバーは DB に **SHA-256 ハッシュ** を保存 | 7 日（604800 秒、`mannschaft.jwt.refresh-token-expiration`）。リプレイ検出は `AuthTokenRotationService` |
 
-> **整合に関する注記**: 現状、access_token はサーバーが Cookie として明示発行するが、refresh_token はサーバー側で `ResponseCookie` として明示発行していない（読み取りのみ）。refresh_token も HttpOnly+Secure+SameSite Cookie として発行・削除を一元管理するのが望ましいが、F01.1 のデュアルモード（Web/モバイル）設計との整合が必要なため、本 Phase では **access_token Cookie の属性統一を確実に行う** ことを最小スコープとし、refresh_token Cookie の発行一元化は §6 未解決事項として追跡する。
+> **整合に関する注記（2026-05-26 更新・実装済み）**: refresh_token も access_token と同様、サーバーが `ResponseCookie` として明示発行・削除する一元管理に移行した（`AuthLoginController#buildRefreshTokenCookie` / `#clearRefreshTokenCookie`）。F01.1 §203 のデュアルモード設計に合わせ、**login/refresh 成功時は Set-Cookie とレスポンスボディの両方**で返し（Web は Cookie・モバイルは body を使用）、**logout で maxAge=0 のクリア Cookie** を返す。Cookie の maxAge は DB トークンの有効期限（`getRefreshTokenExpirationSeconds()`）と一致させる。属性は access_token と統一（HttpOnly / Secure=`mannschaft.cookie.secure` / SameSite=Strict / Path=/）。
 
 ---
 
@@ -72,18 +72,20 @@ ResponseCookie.from("access_token", "")
 
 | 対策 | 値 | 実装 |
 |---|---|---|
-| パスワードハッシュ | BCrypt strength 12（本番）/ 8（ローカル） | `AuthConfig` |
+| パスワードハッシュ | **Argon2id**（OWASP 準拠 `Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8()`）。既存ハッシュは生 BCrypt を段階移行 | `AuthConfig`（`DelegatingPasswordEncoder`） |
 | ログインレートリミット | 1 分窓・最大試行数 | `AuthService`（Valkey） |
 | アカウントロック | 5 回失敗で 30 分ロック（HTTP 423） | `AuthService` / F01.1 |
 
-> Argon2id への移行は将来検討。現状 BCrypt(12) は OWASP 許容範囲。
+> **Argon2id 段階移行（2026-05-26 実装済み）**: `passwordEncoder` を `DelegatingPasswordEncoder`（既定 ID = `argon2`）に変更。新規エンコード（登録・パスワードリセット・変更）は `{argon2}` プレフィックス付きハッシュを生成する。既存の `{id}` プレフィックスなしの生 BCrypt ハッシュは `setDefaultPasswordEncoderForMatches(BCryptPasswordEncoder)` により BCrypt として検証されるため、**DB の既存ハッシュは無変更**。さらにログイン成功時に `PasswordEncoder#upgradeEncoding` が true なら検証済み平文を Argon2id で再エンコードして保存し、**既存ユーザーはログインのたびに透過的に Argon2id へ移行**する（強制リセット不要・ユーザー影響なし）。`password_hash` 列は当初から `VARCHAR(255)`（V1.001）で Argon2id ハッシュ（~96 文字）を十分格納できるため Flyway migration は不要。
 
 ---
 
-## 6. 今後の拡張（スコープ外・意思決定済み）
+## 6. 実装済み（2026-05-26 認証コア強化）
 
-- **refresh_token の Cookie 発行一元化**: サーバーが refresh_token も `ResponseCookie` として明示発行・削除する一元管理は望ましいが、F01.1 の Web/モバイル デュアルモード設計との整合確認が必要なため、本 Phase ではスコープ外と決定。本 Phase は access_token Cookie の属性統一（`MANNSCHAFT_COOKIE_SECURE` + 発行/削除の属性一致）を確実に行う
-- **Argon2id への移行**: BCrypt(12) は OWASP 許容範囲のため現状維持と決定。移行はコスト/互換性評価の上、将来の認証基盤改修時に検討
+以下は当初スコープ外としていたが、認証コア強化フェーズで実装した。
+
+- **refresh_token の Cookie 発行一元化**: F01.1 §203 のデュアルモード設計に合わせ、login/refresh 成功で `Set-Cookie` + body 両方を返し、logout で maxAge=0 のクリア Cookie を返すよう一元管理した（§3 参照）。ローテーション時は新トークンを Cookie にセット、旧トークンは DB で失効。既存の取得優先順位（Authorization ヘッダー > Cookie）とローテーション/リプレイ検出ロジックは不変。
+- **Argon2id への移行**: `DelegatingPasswordEncoder` による段階移行を実装（§5 参照）。既存ハッシュ無変更・ログイン時透過的 upgrade。
 
 ---
 
@@ -92,3 +94,4 @@ ResponseCookie.from("access_token", "")
 | 日付 | 変更 |
 |---|---|
 | 2026-05-26 | 新規作成。`MANNSCHAFT_COOKIE_SECURE` 環境変数化と Cookie 属性統一を定義 |
+| 2026-05-26 | 認証コア強化: Argon2id 段階移行（`DelegatingPasswordEncoder`・ログイン時透過 upgrade）と refresh_token Cookie 発行一元化（デュアルモード）を実装。§3/§5/§6 を実装済みに更新 |
