@@ -18,6 +18,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -50,6 +51,14 @@ public class AuthLoginController {
 
     private final AuthService authService;
     private final AuthTokenService authTokenService;
+
+    /**
+     * Cookie の Secure 属性。本番（HTTPS）では true、ローカル開発（HTTP）では false。
+     * 環境変数 MANNSCHAFT_COOKIE_SECURE で制御する。
+     * 設計書: docs/security/02_cookie_and_session.md §2 / §2.1
+     */
+    @Value("${mannschaft.cookie.secure:false}")
+    private boolean cookieSecure;
 
     /**
      * ユーザー登録。
@@ -212,7 +221,9 @@ public class AuthLoginController {
 
     /**
      * access_token HttpOnly Cookie を生成する。
-     * secure=false は開発環境用（HTTP を許可）。本番環境では HTTPS を前提に true に変更すること。
+     * Secure 属性は {@code mannschaft.cookie.secure}（環境変数 MANNSCHAFT_COOKIE_SECURE）で制御する。
+     * 本番は true（HTTPS 必須）、ローカル開発は false（HTTP 許可）。
+     * 設計書: docs/security/02_cookie_and_session.md §2
      *
      * @param token アクセストークン（JWT）
      * @return ResponseCookie
@@ -220,7 +231,7 @@ public class AuthLoginController {
     private ResponseCookie buildAccessTokenCookie(String token) {
         return ResponseCookie.from("access_token", token)
                 .httpOnly(true)
-                .secure(false)  // TODO: 本番環境では環境変数で true に切り替える
+                .secure(cookieSecure)
                 .path("/")
                 .sameSite("Strict")
                 .maxAge(15 * 60)  // 15分（JWT アクセストークンの有効期限に合わせる）
@@ -230,13 +241,19 @@ public class AuthLoginController {
     /**
      * access_token Cookie を削除するための Set-Cookie ヘッダーを生成する。
      * maxAge=0 を設定してブラウザに Cookie の即時削除を指示する。
+     * <p>
+     * ブラウザは同名 Cookie でも属性（特に Secure / SameSite / Path）が発行時と異なると
+     * 削除に失敗することがあるため、発行側（{@link #buildAccessTokenCookie}）と属性を揃える。
+     * 設計書: docs/security/02_cookie_and_session.md §2.2
      *
      * @return ResponseCookie（maxAge=0）
      */
     private ResponseCookie clearAccessTokenCookie() {
         return ResponseCookie.from("access_token", "")
                 .httpOnly(true)
+                .secure(cookieSecure)
                 .path("/")
+                .sameSite("Strict")
                 .maxAge(0)
                 .build();
     }

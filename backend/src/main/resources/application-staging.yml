@@ -29,6 +29,12 @@ logging:
     # Hibernate 統計初期化ログを INFO で表示
     org.hibernate.stat.internal.StatisticsInitiator: INFO
 
+# 認証 Cookie の Secure 属性。staging も HTTPS 前提のためデフォルト true。
+# 設計書: docs/security/02_cookie_and_session.md §2.1
+mannschaft:
+  cookie:
+    secure: ${MANNSCHAFT_COOKIE_SECURE:true}
+
 # F10.5 Phase 10-α: staging では全 Actuator メトリクスを SYSTEM_ADMIN 認証下で公開
 management:
   endpoints:
