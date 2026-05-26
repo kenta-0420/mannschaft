@@ -87,19 +87,18 @@ defineExpose({ refresh: loadSurveys })
             <span :class="getStatusClass(survey.status)" class="rounded px-2 py-0.5 text-xs font-medium" :data-testid="`survey-item-status-${survey.id}`">
               {{ t(`surveys.statusLabel.${survey.status}`) }}
             </span>
-            <span v-if="survey.isAnonymous" class="text-xs text-surface-400"><i class="pi pi-eye-slash" /> {{ t('surveys.list.anonymous') }}</span>
+            <span v-if="survey.policy?.isAnonymous" class="text-xs text-surface-400"><i class="pi pi-eye-slash" /> {{ t('surveys.list.anonymous') }}</span>
           </div>
-          <h3 class="text-sm font-semibold">{{ survey.title }}</h3>
+          <h3 class="text-sm font-semibold">{{ survey.content?.title }}</h3>
           <div class="mt-1 flex items-center gap-3 text-xs text-surface-400">
-            <span>{{ survey.createdBy?.displayName }}</span>
-            <span>{{ relativeTime(survey.createdAt) }}</span>
-            <span v-if="survey.deadline"><i class="pi pi-clock" /> {{ survey.deadline }}</span>
+            <span>{{ relativeTime(survey.audit?.createdAt) }}</span>
+            <span v-if="survey.schedule?.expiresAt"><i class="pi pi-clock" /> {{ survey.schedule.expiresAt }}</span>
           </div>
         </div>
         <div class="text-right">
-          <div class="text-sm font-medium">{{ survey.responseCount }}{{ survey.targetCount ? `/${survey.targetCount}` : '' }}</div>
+          <div class="text-sm font-medium">{{ survey.stats?.responseCount }}{{ survey.stats?.targetCount ? `/${survey.stats.targetCount}` : '' }}</div>
           <div class="text-xs text-surface-400">{{ t('surveys.list.responseCountUnit') }}</div>
-          <Badge v-if="survey.hasResponded" :value="t('surveys.list.answeredBadge')" severity="success" class="mt-1" />
+          <Badge v-if="(survey as any).hasResponded" :value="t('surveys.list.answeredBadge')" severity="success" class="mt-1" />
         </div>
       </button>
 

@@ -17,24 +17,56 @@ export type QuestionType = 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'TEXT' | 'RATIN
 export type ResultsVisibility = 'CREATOR_ONLY' | 'RESPONDENTS' | 'ALL_MEMBERS' | 'AFTER_CLOSE'
 export type UnrespondedVisibility = 'HIDDEN' | 'CREATOR_AND_ADMIN' | 'ALL_MEMBERS'
 
-export interface SurveyResponse {
-  id: number
-  scopeType: 'TEAM' | 'ORGANIZATION'
+// === Survey Response ===
+export interface SurveyScopeDto {
+  scopeType: string
   scopeId: number
+}
+export interface SurveyContentDto {
   title: string
   description: string | null
-  status: SurveyStatus
+}
+export interface SurveyPolicyDto {
   isAnonymous: boolean
   allowMultipleSubmissions: boolean
-  resultsVisibility: ResultsVisibility
-  unrespondedVisibility: UnrespondedVisibility
-  deadline: string | null
-  createdBy: { id: number; displayName: string } | null
+  resultsVisibility: string
+  unrespondedVisibility: string
+}
+export interface SurveyDistributionDto {
+  distributionMode: string | null
+  autoPostToTimeline: boolean | null
+  seriesId: string | null
+  remindBeforeHours: string | null
+  manualRemindCount: number | null
+}
+export interface SurveyScheduleDto {
+  startsAt: string | null
+  expiresAt: string | null
+  publishedAt: string | null
+  closedAt: string | null
+}
+export interface SurveyStatsDto {
   responseCount: number
   targetCount: number | null
-  hasResponded: boolean
+}
+export interface SurveyAuditDto {
+  version: number
+  createdBy: number
   createdAt: string
   updatedAt: string
+}
+
+export interface SurveyResponse {
+  id: number
+  status: SurveyStatus
+  scope: SurveyScopeDto
+  content: SurveyContentDto
+  policy: SurveyPolicyDto
+  distribution: SurveyDistributionDto
+  schedule: SurveyScheduleDto
+  stats: SurveyStatsDto
+  audit: SurveyAuditDto
+  hasResponded?: boolean
 }
 
 export interface SurveyQuestion {
@@ -55,6 +87,7 @@ export interface SurveyOption {
 export interface SurveyDetailResponse {
   data: SurveyResponse & {
     questions: SurveyQuestion[]
+    hasResponded?: boolean
   }
 }
 

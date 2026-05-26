@@ -112,8 +112,9 @@
 | `backend/BACKEND_CODING_CONVENTION.md` | Javaコーディング規約 |
 | `frontend/FRONTEND_CODING_CONVENTION.md` | TypeScript / Nuxt.jsコーディング規約 |
 | `TEST_CONVENTION.md` | テスト規約 |
+| `docs/security/README.md` | セキュリティ横断方針（認可基盤・Cookie/セッション・CSP/ヘッダー・依存管理・インジェクション）|
 
-実装前に必ず確認すること。
+実装前に必ず確認すること。**認可・Cookie・セキュリティヘッダー・依存関係に関わる変更時は `docs/security/` を参照**すること。
 
 ---
 

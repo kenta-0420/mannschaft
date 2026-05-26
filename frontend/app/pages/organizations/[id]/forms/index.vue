@@ -72,19 +72,19 @@ onMounted(async () => {
       >
         <template #title>
           <div class="flex items-center gap-2">
-            <i v-if="tpl.icon" :class="tpl.icon" :style="tpl.color ? { color: tpl.color } : {}" />
-            <span>{{ tpl.name }}</span>
+            <i v-if="tpl.content?.icon" :class="tpl.content.icon" :style="tpl.content?.color ? { color: tpl.content.color } : {}" />
+            <span>{{ tpl.content?.name }}</span>
           </div>
         </template>
         <template #content>
-          <p v-if="tpl.description" class="mb-2 text-sm text-surface-500">{{ tpl.description }}</p>
+          <p v-if="tpl.content?.description" class="mb-2 text-sm text-surface-500">{{ tpl.content.description }}</p>
           <div class="flex items-center justify-between text-xs text-surface-400">
             <span
-              >提出数: {{ tpl.submissionCount
-              }}<span v-if="tpl.targetCount"> / {{ tpl.targetCount }}</span></span
+              >提出数: {{ tpl.stats?.submissionCount
+              }}<span v-if="tpl.stats?.targetCount"> / {{ tpl.stats.targetCount }}</span></span
             >
-            <span v-if="tpl.deadline"
-              >期限: {{ formatDate(tpl.deadline) }}</span
+            <span v-if="tpl.timeline?.deadline"
+              >期限: {{ formatDate(tpl.timeline.deadline) }}</span
             >
           </div>
         </template>

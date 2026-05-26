@@ -77,15 +77,15 @@ watch(
         const res = await formApi.getTemplate(props.scopeType, props.scopeId, templateId as number)
         const d = res.data
         setValues({
-          name: d.name,
-          description: d.description ?? '',
-          requiresApproval: d.requiresApproval,
-          allowEditAfterSubmit: d.allowEditAfterSubmit,
-          maxSubmissionsPerUser: d.maxSubmissionsPerUser,
-          deadline: d.deadline ? new Date(d.deadline) : null,
-          targetCount: d.targetCount,
+          name: d.content?.name ?? '',
+          description: d.content?.description ?? '',
+          requiresApproval: d.workflow?.requiresApproval ?? false,
+          allowEditAfterSubmit: d.editPolicy?.allowEditAfterSubmit ?? false,
+          maxSubmissionsPerUser: d.editPolicy?.maxSubmissionsPerUser ?? null,
+          deadline: d.timeline?.deadline ? new Date(d.timeline.deadline) : null,
+          targetCount: d.stats?.targetCount ?? null,
         })
-        fields.value = d.fields.map((f) => ({
+        fields.value = d.fields?.map((f) => ({
           fieldKey: f.fieldKey,
           fieldLabel: f.fieldLabel ?? '',
           fieldType: f.fieldType ?? 'TEXT',

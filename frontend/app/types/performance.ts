@@ -1,33 +1,70 @@
 export type MetricType = 'NUMBER' | 'TIME' | 'PERCENTAGE' | 'RATING'
 export type AggregationType = 'SUM' | 'AVERAGE' | 'MAX' | 'MIN' | 'COUNT'
 
+export interface MetricDefinitionDto {
+  name: string
+  unit: string | null
+  dataType: string
+  aggregationType: string
+  description: string | null
+  groupName: string | null
+}
+export interface MetricValueRangeDto {
+  targetValue: number | null
+  minValue: number | null
+  maxValue: number | null
+}
+export interface MetricAccessDto {
+  isVisibleToMembers: boolean
+  isSelfRecordable: boolean
+  linkedActivityFieldId: number | null
+  isActive: boolean
+}
+export interface MetricAuditDto {
+  createdAt: string
+  updatedAt: string
+}
+
 export interface PerformanceMetric {
   id: number
-  teamId: number
-  name: string
-  description: string | null
-  unit: string | null
-  metricType: MetricType
-  aggregationType: AggregationType
+  definition: MetricDefinitionDto
+  valueRange: MetricValueRangeDto
+  access: MetricAccessDto
   sortOrder: number
-  isActive: boolean
+  audit: MetricAuditDto
+}
+
+export interface RecordMetricDto {
+  metricId: number
+  metricName: string
+}
+export interface RecordActorDto {
+  userId: number
+  scheduleId: number | null
+  activityResultId: number | null
+}
+export interface RecordValueDto {
+  recordedDate: string
+  value: number
+  unit: string | null
+  note: string | null
+}
+export interface RecordSourceDto {
+  source: string
+  recordedBy: number | null
+}
+export interface RecordAuditDto {
   createdAt: string
+  updatedAt: string
 }
 
 export interface PerformanceRecord {
   id: number
-  teamId: number
-  userId: number
-  user: { id: number; displayName: string; avatarUrl: string | null }
-  metricId: number
-  metricName: string
-  value: number
-  recordDate: string
-  scheduleId: number | null
-  activityId: number | null
-  note: string | null
-  recordedBy: { id: number; displayName: string } | null
-  createdAt: string
+  metric: RecordMetricDto
+  actor: RecordActorDto
+  record: RecordValueDto
+  source: RecordSourceDto
+  audit: RecordAuditDto
 }
 
 export interface PerformanceStats {

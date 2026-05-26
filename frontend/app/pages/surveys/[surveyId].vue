@@ -56,7 +56,7 @@ async function fetchDetail() {
 
 const isCreator = computed(() => {
   if (!survey.value || currentUserId.value === null) return false
-  return survey.value.createdBy?.id === currentUserId.value
+  return survey.value.audit?.createdBy === currentUserId.value
 })
 
 /** ADMIN+（ADMIN または SYSTEM_ADMIN）の判定 */
@@ -79,11 +79,11 @@ const canViewResults = computed(() => {
   if (!s) return false
   if (isCreator.value) return true
   if (isAdminPlus.value) return true
-  switch (s.resultsVisibility) {
+  switch (s.policy?.resultsVisibility) {
     case 'CREATOR_ONLY':
       return false
     case 'RESPONDENTS':
-      return s.hasResponded === true
+      return (s as SurveyDetailResponse['data']).hasResponded === true
     case 'ALL_MEMBERS':
       return true
     case 'AFTER_CLOSE':
@@ -127,10 +127,10 @@ function statusClass(status: string): string {
 const responseCountLabel = computed(() => {
   const s = survey.value
   if (!s) return ''
-  if (s.targetCount && s.targetCount > 0) {
-    return `${s.responseCount} / ${s.targetCount}`
+  if (s.stats?.targetCount && s.stats.targetCount > 0) {
+    return `${s.stats.responseCount} / ${s.stats.targetCount}`
   }
-  return String(s.responseCount)
+  return String(s.stats?.responseCount ?? 0)
 })
 
 /** スコープ一覧画面のパス（戻り先） */
@@ -240,12 +240,12 @@ onMounted(async () => {
 
     <template v-else>
       <!-- ヘッダー -->
-      <PageHeader :title="survey.title" size="sm">
+      <PageHeader :title="survey.content?.title ?? ''" size="sm">
         <span :class="statusClass(survey.status)" class="rounded px-2 py-0.5 text-xs font-medium" data-testid="survey-detail-status">
           {{ t(`surveys.statusLabel.${survey.status}`) }}
         </span>
         <Badge
-          v-if="survey.hasResponded"
+          v-if="(survey as SurveyDetailResponse['data']).hasResponded"
           :value="t('surveys.detail.answeredBadge')"
           severity="success"
         />
@@ -253,26 +253,23 @@ onMounted(async () => {
 
       <!-- メタ情報 -->
       <div class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-surface-500 dark:text-surface-400">
-        <span v-if="survey.createdBy">
-          <i class="pi pi-user mr-1" />{{ survey.createdBy.displayName }}
-        </span>
-        <span v-if="survey.deadline">
-          <i class="pi pi-clock mr-1" />{{ t('surveys.detail.deadline') }}: {{ survey.deadline }}
+        <span v-if="survey.schedule?.expiresAt">
+          <i class="pi pi-clock mr-1" />{{ t('surveys.detail.deadline') }}: {{ survey.schedule.expiresAt }}
         </span>
         <span>
           <i class="pi pi-users mr-1" />{{ t('surveys.detail.responseCount') }}: {{ responseCountLabel }}
         </span>
-        <span v-if="survey.isAnonymous" class="text-surface-400">
+        <span v-if="survey.policy?.isAnonymous" class="text-surface-400">
           <i class="pi pi-eye-slash mr-1" />{{ t('surveys.detail.anonymous') }}
         </span>
       </div>
 
       <!-- 説明文 -->
       <p
-        v-if="survey.description"
+        v-if="survey.content?.description"
         class="mb-6 whitespace-pre-line rounded-lg bg-surface-50 p-3 text-sm text-surface-700 dark:bg-surface-800 dark:text-surface-200"
       >
-        {{ survey.description }}
+        {{ survey.content.description }}
       </p>
 
       <!-- 操作ボタン群（作成者 or ADMIN+） -->
@@ -339,8 +336,8 @@ onMounted(async () => {
       <SurveyResponseForm
         v-else-if="displayMode === 'response'"
         :survey="survey"
-        :already-responded="survey.hasResponded"
-        :allow-multiple="survey.allowMultipleSubmissions"
+        :already-responded="(survey as SurveyDetailResponse['data']).hasResponded ?? false"
+        :allow-multiple="survey.policy?.allowMultipleSubmissions ?? false"
         data-testid="survey-mode-response"
         @submitted="onSubmitted"
       />
