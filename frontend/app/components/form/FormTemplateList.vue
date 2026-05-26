@@ -149,10 +149,14 @@ defineExpose({ refresh: loadTemplates })
       row-hover
       @page="onPage"
     >
-      <Column header="フォーム名" field="name" style="min-width: 200px" />
-      <Column header="説明" field="description" style="min-width: 200px">
+      <Column header="フォーム名" style="min-width: 200px">
         <template #body="{ data }">
-          {{ data.description || '—' }}
+          {{ data.content?.name || '—' }}
+        </template>
+      </Column>
+      <Column header="説明" style="min-width: 200px">
+        <template #body="{ data }">
+          {{ data.content?.description || '—' }}
         </template>
       </Column>
       <Column header="ステータス" style="width: 120px">
@@ -162,13 +166,13 @@ defineExpose({ refresh: loadTemplates })
       </Column>
       <Column header="提出数" style="width: 120px">
         <template #body="{ data }">
-          {{ data.submissionCount
-          }}<span v-if="data.targetCount" class="text-surface-400"> / {{ data.targetCount }}</span>
+          {{ data.stats?.submissionCount
+          }}<span v-if="data.stats?.targetCount" class="text-surface-400"> / {{ data.stats?.targetCount }}</span>
         </template>
       </Column>
       <Column header="期限" style="width: 120px">
         <template #body="{ data }">
-          {{ formatDateOrDash(data.deadline) }}
+          {{ formatDateOrDash(data.timeline?.deadline ?? null) }}
         </template>
       </Column>
       <Column header="作成日" style="width: 120px">

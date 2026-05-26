@@ -1,7 +1,7 @@
 package com.mannschaft.app.corkboard.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -9,23 +9,17 @@ import java.util.List;
 /**
  * コルクボード詳細レスポンスDTO（カード・セクション含む）。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class CorkboardDetailResponse {
 
     private final Long id;
-    private final String scopeType;
-    private final Long scopeId;
+    private final BoardScopeDto scope;
     private final Long ownerId;
     private final String name;
-    private final String backgroundStyle;
-    private final String editPolicy;
-    private final Boolean isDefault;
+    private final BoardSettingsDto settings;
     private final Long version;
-    private final List<CorkboardCardResponse> cards;
-    private final List<CorkboardGroupResponse> groups;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    private final BoardContentDto boardContent;
 
     /**
      * F09.8 件A: 現在の閲覧ユーザーがこのボードを編集可能か。
@@ -41,4 +35,11 @@ public class CorkboardDetailResponse {
      * </ul>
      */
     private final Boolean viewerCanEdit;
+
+    public record BoardScopeDto(String scopeType, Long scopeId) {}
+
+    public record BoardSettingsDto(String backgroundStyle, String editPolicy, Boolean isDefault) {}
+
+    public record BoardContentDto(List<CorkboardCardResponse> cards, List<CorkboardGroupResponse> groups,
+                                  LocalDateTime createdAt, LocalDateTime updatedAt) {}
 }

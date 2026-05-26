@@ -125,19 +125,17 @@ onMounted(() => load())
         class="block rounded-xl border border-surface-300 bg-surface-0 p-4 transition hover:border-primary-400 hover:shadow-sm"
       >
         <div class="mb-2 flex items-center gap-2">
-          <span :class="getStatusClass(t.status)" class="rounded px-2 py-0.5 text-xs font-medium">{{
-            t.status
+          <span :class="getStatusClass(t.structure?.status ?? '')" class="rounded px-2 py-0.5 text-xs font-medium">{{
+            t.structure?.status
           }}</span>
           <span class="rounded bg-surface-100 px-1.5 py-0.5 text-xs">{{
-            getFormatLabel(t.format)
+            getFormatLabel(t.content?.format ?? '')
           }}</span>
-          <span class="text-xs text-surface-400">{{ t.sportCategory }}</span>
         </div>
-        <h3 class="text-sm font-semibold">{{ t.title }}</h3>
+        <h3 class="text-sm font-semibold">{{ t.content?.name }}</h3>
         <div class="mt-2 flex items-center gap-3 text-xs text-surface-400">
-          <span>{{ t.seasonYear }}年度</span>
-          <span>{{ t.divisions.length }}部門</span>
-          <span>勝{{ t.winPoints }} 分{{ t.drawPoints }} 負{{ t.lossPoints }}</span>
+          <span v-if="t.content?.season">{{ t.content.season }}</span>
+          <span>勝{{ t.scoring?.winPoints }} 分{{ t.scoring?.drawPoints }} 負{{ t.scoring?.lossPoints }}</span>
         </div>
       </NuxtLink>
       <DashboardEmptyState v-if="tournaments.length === 0" class="col-span-full" icon="pi pi-trophy" message="大会がありません" />

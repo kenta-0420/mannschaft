@@ -112,6 +112,7 @@ class PersonalDataCollectorTest {
     private PointCardGroupRepository pointCardGroupRepository;
     @Mock
     private PointCardGroupItemRepository pointCardGroupItemRepository;
+
     @InjectMocks
     private PersonalDataCollector collector;
 
@@ -159,9 +160,6 @@ class PersonalDataCollectorTest {
             given(userPointCardRepository.findByUserId(anyLong()))
                     .willReturn(List.of());
             given(pointCardGroupRepository.findAllByUserIdOrderByDisplayOrderAscCreatedAtAsc(anyLong()))
-                    .willReturn(List.of());
-            // F01.10 履歴書・職務経歴書
-            given(resumeRepository.findByUserIdOrderByCreatedAtDesc(anyLong()))
                     .willReturn(List.of());
 
             Map<String, String> result = collector.collect(1L, null);

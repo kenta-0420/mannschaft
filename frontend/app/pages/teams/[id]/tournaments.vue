@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { TournamentHistory, TournamentTeamStats, IndividualRanking } from '~/types/tournament'
+import type {
+  TeamTournamentHistoryResponse,
+  TeamTournamentStatsResponse,
+  TournamentHistoryEntry,
+  IndividualRanking,
+} from '~/types/tournament'
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
@@ -11,12 +16,14 @@ const {
 } = useTournamentApi()
 const { showError } = useNotification()
 
-const history = ref<TournamentHistory[]>([])
-const stats = ref<TournamentTeamStats | null>(null)
+const historyResponse = ref<TeamTournamentHistoryResponse | null>(null)
+const stats = ref<TeamTournamentStatsResponse | null>(null)
 const scoringRankings = ref<IndividualRanking[]>([])
 const loading = ref(false)
 const rankingLoading = ref(false)
 const activeTab = ref<'history' | 'stats' | 'ranking'>('history')
+
+const history = computed<TournamentHistoryEntry[]>(() => historyResponse.value?.history ?? [])
 
 async function load() {
   loading.value = true
@@ -25,7 +32,7 @@ async function load() {
       getTeamTournamentHistory(teamId),
       getTeamTournamentStats(teamId),
     ])
-    history.value = histRes.data
+    historyResponse.value = histRes.data
     stats.value = statsRes.data
   } catch {
     showError('大会履歴の取得に失敗しました')
@@ -47,13 +54,13 @@ function getFinalRankClass(rank: number | null): string {
 }
 
 const winRate = computed(() => {
-  if (!stats.value || stats.value.totalMatches === 0) return 0
-  return Math.round((stats.value.wins / stats.value.totalMatches) * 100)
+  if (!stats.value || (stats.value.totalPlayed ?? 0) === 0) return 0
+  return Math.round(((stats.value.totalWins ?? 0) / (stats.value.totalPlayed ?? 1)) * 100)
 })
 
-const goalDifference = computed(() => {
+const scoreDifference = computed(() => {
   if (!stats.value) return 0
-  return stats.value.goalsFor - stats.value.goalsAgainst
+  return (stats.value.totalScoreFor ?? 0) - (stats.value.totalScoreAgainst ?? 0)
 })
 
 onMounted(() => load())
@@ -76,15 +83,15 @@ onMounted(() => load())
           <p class="text-xs text-surface-400">参加大会数</p>
         </SectionCard>
         <SectionCard class="text-center">
-          <p class="text-2xl font-bold text-green-600">{{ stats.wins }}</p>
+          <p class="text-2xl font-bold text-green-600">{{ stats.totalWins }}</p>
           <p class="text-xs text-surface-400">勝利</p>
         </SectionCard>
         <SectionCard class="text-center">
-          <p class="text-2xl font-bold text-surface-500">{{ stats.draws }}</p>
+          <p class="text-2xl font-bold text-surface-500">{{ stats.totalDraws }}</p>
           <p class="text-xs text-surface-400">引き分け</p>
         </SectionCard>
         <SectionCard class="text-center">
-          <p class="text-2xl font-bold text-red-500">{{ stats.losses }}</p>
+          <p class="text-2xl font-bold text-red-500">{{ stats.totalLosses }}</p>
           <p class="text-xs text-surface-400">敗北</p>
         </SectionCard>
       </div>
@@ -131,26 +138,26 @@ onMounted(() => load())
         <div v-if="history.length > 0" class="grid gap-4 sm:grid-cols-2">
           <NuxtLink
             v-for="t in history"
-            :key="`${t.tournamentId}-${t.divisionName}`"
-            :to="`/organizations/${t.organizationId}/tournaments/${t.tournamentId}`"
+            :key="`${t.identifiers?.tournamentId}-${t.meta?.divisionName}`"
+            :to="`/organizations/${t.organizationId}/tournaments/${t.identifiers?.tournamentId}`"
             class="block rounded-xl border border-surface-300 bg-surface-0 p-4 transition hover:border-primary-400 hover:shadow-sm"
           >
             <div class="mb-2 flex items-center justify-between gap-2">
               <span class="rounded bg-surface-100 px-2 py-0.5 text-xs text-surface-600">
-                {{ t.seasonYear }}年度
+                {{ t.meta?.season }}
               </span>
-              <span :class="getFinalRankClass(t.finalRank)" class="text-sm">
-                {{ getFinalRankLabel(t.finalRank) }}
+              <span :class="getFinalRankClass(t.meta?.finalRank ?? null)" class="text-sm">
+                {{ getFinalRankLabel(t.meta?.finalRank ?? null) }}
               </span>
             </div>
-            <h3 class="text-sm font-semibold">{{ t.title }}</h3>
-            <p class="mt-0.5 text-xs text-surface-400">{{ t.divisionName }}</p>
+            <h3 class="text-sm font-semibold">{{ t.meta?.tournamentName }}</h3>
+            <p class="mt-0.5 text-xs text-surface-400">{{ t.meta?.divisionName }}</p>
             <div class="mt-3 flex items-center gap-3 text-xs text-surface-500">
-              <span>{{ t.played }}試合</span>
-              <span class="text-green-600">{{ t.won }}勝</span>
-              <span>{{ t.drawn }}分</span>
-              <span class="text-red-500">{{ t.lost }}敗</span>
-              <span class="ml-auto font-medium">{{ t.points }}pt</span>
+              <span>{{ t.record?.played }}試合</span>
+              <span class="text-green-600">{{ t.record?.wins }}勝</span>
+              <span>{{ t.record?.draws }}分</span>
+              <span class="text-red-500">{{ t.record?.losses }}敗</span>
+              <span class="ml-auto font-medium">{{ t.record?.points }}pt</span>
             </div>
           </NuxtLink>
         </div>
@@ -172,32 +179,32 @@ onMounted(() => load())
             </div>
             <div class="rounded-lg bg-surface-50 p-4">
               <p class="text-xs text-surface-400">総試合数</p>
-              <p class="mt-1 text-2xl font-bold">{{ stats.totalMatches }} 試合</p>
+              <p class="mt-1 text-2xl font-bold">{{ stats.totalPlayed }} 試合</p>
             </div>
             <div class="rounded-lg bg-green-50 p-4">
               <p class="text-xs text-green-500">勝利</p>
-              <p class="mt-1 text-2xl font-bold text-green-700">{{ stats.wins }} 勝</p>
+              <p class="mt-1 text-2xl font-bold text-green-700">{{ stats.totalWins }} 勝</p>
             </div>
             <div class="rounded-lg bg-surface-50 p-4">
               <p class="text-xs text-surface-400">引き分け</p>
-              <p class="mt-1 text-2xl font-bold">{{ stats.draws }} 分</p>
+              <p class="mt-1 text-2xl font-bold">{{ stats.totalDraws }} 分</p>
             </div>
             <div class="rounded-lg bg-red-50 p-4">
               <p class="text-xs text-red-400">敗北</p>
-              <p class="mt-1 text-2xl font-bold text-red-600">{{ stats.losses }} 負</p>
+              <p class="mt-1 text-2xl font-bold text-red-600">{{ stats.totalLosses }} 負</p>
             </div>
             <div class="rounded-lg bg-surface-50 p-4">
               <p class="text-xs text-surface-400">得点 / 失点</p>
               <p class="mt-1 text-2xl font-bold">
-                {{ stats.goalsFor }}
+                {{ stats.totalScoreFor }}
                 <span class="text-base text-surface-400">/</span>
-                {{ stats.goalsAgainst }}
+                {{ stats.totalScoreAgainst }}
               </p>
               <p
                 class="text-xs font-medium"
-                :class="goalDifference >= 0 ? 'text-green-600' : 'text-red-500'"
+                :class="scoreDifference >= 0 ? 'text-green-600' : 'text-red-500'"
               >
-                得失点差: {{ goalDifference >= 0 ? '+' : '' }}{{ goalDifference }}
+                得失点差: {{ scoreDifference >= 0 ? '+' : '' }}{{ scoreDifference }}
               </p>
             </div>
           </div>
@@ -234,7 +241,7 @@ onMounted(() => load())
                 <tbody class="divide-y divide-surface-100">
                   <tr
                     v-for="r in scoringRankings"
-                    :key="r.userId"
+                    :key="r.context?.userId ?? r.id"
                     class="transition-colors hover:bg-surface-50"
                   >
                     <td class="px-4 py-3">
@@ -253,9 +260,9 @@ onMounted(() => load())
                         {{ r.rank }}
                       </span>
                     </td>
-                    <td class="px-4 py-3 font-medium">{{ r.displayName }}</td>
-                    <td class="px-4 py-3 text-surface-500">{{ r.teamName }}</td>
-                    <td class="px-4 py-3 text-right font-bold text-primary-600">{{ r.value }}</td>
+                    <td class="px-4 py-3 font-medium">{{ r.stat?.rankingLabel }}</td>
+                    <td class="px-4 py-3 text-surface-500">{{ r.stat?.statKey }}</td>
+                    <td class="px-4 py-3 text-right font-bold text-primary-600">{{ r.stat?.totalValueInt ?? r.stat?.totalValueDecimal }}</td>
                   </tr>
                 </tbody>
               </table>

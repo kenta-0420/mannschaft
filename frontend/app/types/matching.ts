@@ -13,34 +13,55 @@ export type MatchRequestSort = 'newest' | 'expiring_soon' | 'most_proposals'
 export interface MatchTeamSummary {
   id: number
   name: string
-  average_rating: number | null
-  review_count: number
-  cancel_count: number
+  averageRating: number | null
+  reviewCount: number
+  cancelCount: number
+}
+
+export interface RequestContentDto {
+  title: string
+  description: string | null
+  activityType: string
+  activityDetail: string | null
+  category: string
+  visibility: string
+}
+
+export interface RequestLocationDto {
+  prefectureCode: string
+  cityCode: string | null
+  venueName: string | null
+}
+
+export interface RequestScheduleDto {
+  preferredDateFrom: string | null
+  preferredDateTo: string | null
+  preferredTimeFrom: string | null
+  preferredTimeTo: string | null
+}
+
+export interface RequestParticipantsDto {
+  level: string
+  minParticipants: number | null
+  maxParticipants: number | null
+}
+
+export interface RequestStatusDto {
+  status: string
+  proposalCount: number
+  expiresAt: string | null
+  cancelCount: number
 }
 
 export interface MatchRequestResponse {
   id: number
   team: MatchTeamSummary
-  title: string
-  description: string | null
-  activity_type: MatchActivityType
-  activity_detail: string | null
-  category: MatchCategory
-  visibility: MatchVisibility
-  prefecture_code: string
-  city_code: string | null
-  venue_name: string | null
-  preferred_date_from: string | null
-  preferred_date_to: string | null
-  preferred_time_from: string | null
-  preferred_time_to: string | null
-  level: MatchLevel
-  min_participants: number | null
-  max_participants: number | null
-  status: MatchRequestStatus
-  proposal_count: number
-  expires_at: string | null
-  created_at: string
+  content: RequestContentDto
+  location: RequestLocationDto
+  schedule: RequestScheduleDto
+  participants: RequestParticipantsDto
+  status: RequestStatusDto
+  createdAt: string
 }
 
 export interface MatchProposalDateResponse {
@@ -51,27 +72,33 @@ export interface MatchProposalDateResponse {
   is_selected: boolean
 }
 
+export interface ProposalContentDto {
+  message: string | null
+  proposedVenue: string | null
+}
+
+export interface ProposalStatusDto {
+  status: string
+  statusReason: string | null
+  cancelledByTeamId: number | null
+  cancellationType: string | null
+  mutualAgreedAt: string | null
+}
+
+export interface ProposalAuditDto {
+  createdAt: string
+  updatedAt: string
+}
+
 export interface MatchProposalResponse {
   id: number
-  request_id: number
-  proposing_team_id: number
-  proposing_team_name: string
-  message: string | null
-  proposed_venue: string | null
-  proposed_dates: MatchProposalDateResponse[]
-  status: MatchProposalStatus
-  status_reason: string | null
-  cancelled_by_team_id: number | null
-  cancellation_type: MatchCancellationType | null
-  mutual_agreed_at: string | null
-  request?: {
-    title: string
-    activity_type: MatchActivityType
-    prefecture_code: string
-    status: MatchRequestStatus
-  }
-  created_at: string
-  updated_at: string
+  requestId: number
+  proposingTeamId: number
+  proposingTeamName?: string
+  content: ProposalContentDto
+  status: ProposalStatusDto
+  proposedDates: MatchProposalDateResponse[]
+  audit: ProposalAuditDto
 }
 
 export interface MatchReviewResponse {

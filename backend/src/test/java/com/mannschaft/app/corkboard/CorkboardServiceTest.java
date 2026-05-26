@@ -53,8 +53,13 @@ class CorkboardServiceTest {
             given(corkboardRepository.countByOwnerId(USER_ID)).willReturn(0L);
             given(corkboardRepository.save(any(CorkboardEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(corkboardMapper.toBoardResponse(any(CorkboardEntity.class)))
-                    .willReturn(new CorkboardResponse(1L, "PERSONAL", null, USER_ID,
-                            "マイボード", "CORK", "ADMIN_ONLY", false, null, null, null));
+                    .willReturn(CorkboardResponse.builder()
+                            .id(1L)
+                            .scope(new CorkboardResponse.BoardScopeDto("PERSONAL", null))
+                            .ownerId(USER_ID)
+                            .name("マイボード")
+                            .settings(new CorkboardResponse.BoardSettingsDto("CORK", "ADMIN_ONLY", false))
+                            .build());
 
             CreateCorkboardRequest req = new CreateCorkboardRequest("マイボード", null, null, null);
 

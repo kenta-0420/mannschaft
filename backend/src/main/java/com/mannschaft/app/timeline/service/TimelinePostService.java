@@ -277,31 +277,37 @@ public class TimelinePostService {
 
         PollResponse pollResponse = pollService.getPollByPostId(postId, userId);
 
-        return new PostDetailResponse(
-                post.getId(),
-                post.getScopeType().name(),
-                post.getScopeId(),
-                post.getUserId(),
-                post.getSocialProfileId(),
-                post.getPostedAsType().name(),
-                post.getPostedAsId(),
-                post.getParentId(),
-                post.getContent(),
-                post.getRepostOfId(),
-                post.getRepostCount(),
-                post.getStatus().name(),
-                post.getScheduledAt(),
-                post.getIsPinned(),
-                post.getReactionCount(),
-                post.getReplyCount(),
-                post.getAttachmentCount(),
-                post.getEditCount(),
-                attachments,
-                mitayo,
-                mitayoCount,
-                pollResponse,
-                post.getCreatedAt(),
-                post.getUpdatedAt());
+        return PostDetailResponse.builder()
+                .id(post.getId())
+                .scope(new PostDetailResponse.PostScopeDto(
+                        post.getScopeType().name(),
+                        post.getScopeId()))
+                .author(new PostDetailResponse.PostAuthorDto(
+                        post.getUserId(),
+                        post.getSocialProfileId(),
+                        post.getPostedAsType().name(),
+                        post.getPostedAsId()))
+                .content(new PostDetailResponse.PostContentDto(
+                        post.getContent(),
+                        post.getParentId(),
+                        post.getRepostOfId(),
+                        post.getStatus().name(),
+                        post.getScheduledAt(),
+                        post.getIsPinned()))
+                .stats(new PostDetailResponse.PostStatsDto(
+                        post.getRepostCount(),
+                        post.getReactionCount(),
+                        post.getReplyCount(),
+                        post.getAttachmentCount(),
+                        post.getEditCount(),
+                        mitayoCount,
+                        mitayo))
+                .attachments(attachments)
+                .poll(pollResponse)
+                .audit(new PostDetailResponse.PostAuditDto(
+                        post.getCreatedAt(),
+                        post.getUpdatedAt()))
+                .build();
     }
 
     /**

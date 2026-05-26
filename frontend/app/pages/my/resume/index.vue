@@ -9,7 +9,6 @@
  */
 import type { ResumeSummary } from '~/types/resume'
 
-const NuxtLink = resolveComponent('NuxtLink')
 const { t } = useI18n()
 const { listResumes, createResume, deleteResume, duplicateResume } = useResumeApi()
 const { success, error } = useNotification()
@@ -157,13 +156,13 @@ onMounted(fetchResumes)
 
         <!-- 操作ボタン -->
         <div class="flex flex-wrap gap-2">
-          <Button
-            :label="t('common.resume.edit')"
-            icon="pi pi-pencil"
-            size="small"
-            :as="NuxtLink"
-            :to="`/my/resume/${resume.id}`"
-          />
+          <NuxtLink :to="`/my/resume/${resume.id}`">
+            <Button
+              :label="t('common.resume.edit')"
+              icon="pi pi-pencil"
+              size="small"
+            />
+          </NuxtLink>
           <Button
             :label="t('common.resume.duplicate')"
             icon="pi pi-copy"

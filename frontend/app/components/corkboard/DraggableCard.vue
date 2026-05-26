@@ -89,7 +89,7 @@ const { t } = useI18n()
  * - 編集権限が無いユーザー（共有ボードで edit_policy=ADMIN_ONLY + 非 ADMIN 等）も移動不可
  */
 const isDraggable = computed<boolean>(
-  () => !props.card.isPinned && props.canEdit,
+  () => !props.card.state?.isPinned && props.canEdit,
 )
 
 /** ドラッグ操作にバインドする要素 ref */
@@ -103,7 +103,7 @@ const cardEl = ref<HTMLElement | null>(null)
  * `disabled` が `true` の間はイベントハンドラが発火せず、x/y は initialValue で固定される。
  */
 const { x, y, isDragging } = useDraggable(cardEl, {
-  initialValue: { x: props.card.positionX, y: props.card.positionY },
+  initialValue: { x: props.card.layout?.positionX ?? 0, y: props.card.layout?.positionY ?? 0 },
   preventDefault: true,
   disabled: computed(() => !isDraggable.value),
   // ドラッグ範囲の参照要素は親（ボードキャンバス）。
@@ -117,10 +117,10 @@ const { x, y, isDragging } = useDraggable(cardEl, {
  *   （親が batch-position 成功後に props を更新すれば自然に反映される）
  */
 const displayX = computed<number>(() =>
-  isDragging.value ? x.value : props.card.positionX,
+  isDragging.value ? x.value : (props.card.layout?.positionX ?? 0),
 )
 const displayY = computed<number>(() =>
-  isDragging.value ? y.value : props.card.positionY,
+  isDragging.value ? y.value : (props.card.layout?.positionY ?? 0),
 )
 
 /**
@@ -131,17 +131,17 @@ watch(isDragging, (dragging, wasDragging) => {
   if (wasDragging && !dragging) {
     const nx = Math.max(0, Math.round(x.value))
     const ny = Math.max(0, Math.round(y.value))
-    if (nx === props.card.positionX && ny === props.card.positionY) {
+    if (nx === (props.card.layout?.positionX ?? 0) && ny === (props.card.layout?.positionY ?? 0)) {
       return
     }
     emit('update:position', props.card.id, nx, ny)
   }
 })
 
-// props.card.positionX/Y が外部から変わった場合（API 失敗時のロールバック等）、
+// props.card.layout.positionX/Y が外部から変わった場合（API 失敗時のロールバック等）、
 // useDraggable 内部の x/y を追従させる。
 watch(
-  () => [props.card.positionX, props.card.positionY] as const,
+  () => [props.card.layout?.positionX ?? 0, props.card.layout?.positionY ?? 0] as const,
   ([nx, ny]) => {
     if (!isDragging.value) {
       x.value = nx
@@ -179,8 +179,8 @@ function iconClass(cardType: string | null): string {
 }
 
 const cardSize = computed<{ width: number; height: number }>(() => {
-  const size = (props.card.cardSize ?? 'MEDIUM').toUpperCase()
-  if (props.card.cardType === 'SECTION_HEADER') {
+  const size = (props.card.layout?.cardSize ?? 'MEDIUM').toUpperCase()
+  if (props.card.reference?.cardType === 'SECTION_HEADER') {
     return { width: 320, height: 40 }
   }
   if (size === 'SMALL') return { width: 150, height: 100 }
@@ -189,7 +189,7 @@ const cardSize = computed<{ width: number; height: number }>(() => {
 })
 
 function previewText(card: CorkboardCardDetail): string {
-  const raw = card.body ?? card.contentSnapshot ?? card.title ?? ''
+  const raw = card.content?.body ?? card.reference?.contentSnapshot ?? card.content?.title ?? ''
   if (raw.length <= 100) return raw
   return raw.slice(0, 100) + '…'
 }
@@ -217,10 +217,10 @@ function cardTypeLabel(cardType: string | null): string {
  */
 const ariaLabel = computed<string>(() => {
   const base = t('corkboard.ariaCard', {
-    cardType: cardTypeLabel(props.card.cardType),
-    title: props.card.title ?? props.card.body?.slice(0, 30) ?? '',
+    cardType: cardTypeLabel(props.card.reference?.cardType ?? null),
+    title: props.card.content?.title ?? props.card.content?.body?.slice(0, 30) ?? '',
   })
-  if (props.card.isPinned) {
+  if (props.card.state?.isPinned) {
     return `${base}, ${t('corkboard.dnd.pinned')}`
   }
   if (!props.canEdit) {
@@ -240,7 +240,7 @@ const ariaLabel = computed<string>(() => {
     :data-dragging="isDragging ? 'true' : 'false'"
     class="corkboard-card group absolute flex overflow-hidden rounded-md border border-surface-200 bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-800"
     :class="[
-      card.isArchived ? 'opacity-60' : '',
+      card.state?.isArchived ? 'opacity-60' : '',
       isDraggable ? 'cursor-move' : 'cursor-default',
       isDragging ? 'select-none shadow-lg ring-2 ring-primary/40' : '',
     ]"
@@ -249,7 +249,7 @@ const ariaLabel = computed<string>(() => {
       top: displayY + 'px',
       width: cardSize.width + 'px',
       height: cardSize.height + 'px',
-      zIndex: isDragging ? 1000 : (card.zIndex ?? 1),
+      zIndex: isDragging ? 1000 : (card.layout?.zIndex ?? 1),
       touchAction: isDraggable ? 'none' : 'auto',
     }"
     :tabindex="0"
@@ -277,22 +277,22 @@ const ariaLabel = computed<string>(() => {
         type="button"
         class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] hover:bg-surface-100 dark:hover:bg-surface-700"
         :class="
-          card.isPinned
+          card.state?.isPinned
             ? 'text-amber-500'
             : 'text-surface-600 dark:text-surface-300 hover:text-amber-500'
         "
         :aria-label="
-          card.isPinned ? t('corkboard.ariaCardUnpin') : t('corkboard.ariaCardPin')
+          card.state?.isPinned ? t('corkboard.ariaCardUnpin') : t('corkboard.ariaCardPin')
         "
-        :aria-pressed="card.isPinned"
-        :title="card.isPinned ? t('corkboard.actions.unpinCard') : t('corkboard.actions.pinCard')"
+        :aria-pressed="card.state?.isPinned"
+        :title="card.state?.isPinned ? t('corkboard.actions.unpinCard') : t('corkboard.actions.pinCard')"
         :data-testid="`corkboard-card-pin-button-${card.id}`"
         @pointerdown.stop
         @click.stop="emit('pin', card)"
       >
         <i
           class="pi"
-          :class="card.isPinned ? 'pi-bookmark-fill' : 'pi-bookmark'"
+          :class="card.state?.isPinned ? 'pi-bookmark-fill' : 'pi-bookmark'"
           aria-hidden="true"
         />
       </button>
@@ -318,12 +318,12 @@ const ariaLabel = computed<string>(() => {
         type="button"
         class="inline-flex h-5 w-5 items-center justify-center rounded text-[10px] text-surface-600 hover:bg-surface-100 hover:text-amber-500 dark:text-surface-300 dark:hover:bg-surface-700"
         :aria-label="
-          card.isArchived
+          card.state?.isArchived
             ? t('corkboard.ariaCardUnarchive')
             : t('corkboard.ariaCardArchive')
         "
         :title="
-          card.isArchived
+          card.state?.isArchived
             ? t('corkboard.actions.unarchiveCard')
             : t('corkboard.actions.archiveCard')
         "
@@ -333,7 +333,7 @@ const ariaLabel = computed<string>(() => {
       >
         <i
           class="pi"
-          :class="card.isArchived ? 'pi-undo' : 'pi-inbox'"
+          :class="card.state?.isArchived ? 'pi-undo' : 'pi-inbox'"
           aria-hidden="true"
         />
       </button>
@@ -354,7 +354,7 @@ const ariaLabel = computed<string>(() => {
     <!-- カラーラベル（左端） -->
     <span
       class="w-1.5 shrink-0"
-      :class="colorBarClass(card.colorLabel)"
+      :class="colorBarClass(card.style?.colorLabel ?? null)"
       aria-hidden="true"
     />
 
@@ -363,18 +363,18 @@ const ariaLabel = computed<string>(() => {
       <div class="flex items-start gap-1.5">
         <i
           class="pi mt-0.5 shrink-0 text-[10px] text-surface-500"
-          :class="iconClass(card.cardType)"
+          :class="iconClass(card.reference?.cardType ?? null)"
           aria-hidden="true"
         />
         <p
-          v-if="card.title"
+          v-if="card.content?.title"
           class="min-w-0 flex-1 truncate text-xs font-semibold text-surface-800 dark:text-surface-100"
         >
-          {{ card.title }}
+          {{ card.content.title }}
         </p>
         <!-- ピン止めマーク（移動不可表示も兼ねる） -->
         <i
-          v-if="card.isPinned"
+          v-if="card.state?.isPinned"
           class="pi pi-bookmark-fill text-[10px] text-amber-500"
           :title="t('corkboard.dnd.pinned')"
           aria-hidden="true"
@@ -392,7 +392,7 @@ const ariaLabel = computed<string>(() => {
 
       <!-- 本文プレビュー（MEMO のみ。REFERENCE / URL は専用コンポーネントで描画） -->
       <p
-        v-if="card.cardType !== 'SECTION_HEADER' && card.cardType !== 'REFERENCE' && card.cardType !== 'URL'"
+        v-if="card.reference?.cardType !== 'SECTION_HEADER' && card.reference?.cardType !== 'REFERENCE' && card.reference?.cardType !== 'URL'"
         class="line-clamp-3 whitespace-pre-wrap text-[11px] text-surface-600 dark:text-surface-300"
       >
         {{ previewText(card) }}
@@ -400,7 +400,7 @@ const ariaLabel = computed<string>(() => {
 
       <!-- F09.8 Phase G: URL カード OGP プレビュー -->
       <CardOgpPreview
-        v-if="card.cardType === 'URL'"
+        v-if="card.reference?.cardType === 'URL'"
         :card="card"
         size="sm"
         class="mt-1"
@@ -409,7 +409,7 @@ const ariaLabel = computed<string>(() => {
 
       <!-- F09.8 Phase G: REFERENCE カードのスナップショット（削除済みバッジ込み） -->
       <CardSnapshot
-        v-else-if="card.cardType === 'REFERENCE'"
+        v-else-if="card.reference?.cardType === 'REFERENCE'"
         :card="card"
         compact
         class="mt-1"

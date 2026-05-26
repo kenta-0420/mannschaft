@@ -185,18 +185,20 @@ public class MyPinnedCardsService {
             reference = referenceTypeResolver.resolve(card, accessible, deleted, chatChannelIdMap);
         }
 
-        return new PinnedCardResponse(
-                card.getId(),
-                card.getCorkboardId(),
-                boardNameMap.get(card.getCorkboardId()),
-                card.getCardType(),
-                card.getColorLabel(),
-                card.getTitle(),
-                card.getBody(),
-                card.getUserNote(),
-                card.getNoteColor(),
-                card.getPinnedAt(),
-                reference);
+        return PinnedCardResponse.builder()
+                .cardId(card.getId())
+                .corkboardId(card.getCorkboardId())
+                .corkboardName(boardNameMap.get(card.getCorkboardId()))
+                .cardType(card.getCardType())
+                .cardContent(new PinnedCardResponse.PinnedCardContentDto(
+                        card.getColorLabel(),
+                        card.getTitle(),
+                        card.getBody(),
+                        card.getUserNote(),
+                        card.getNoteColor()))
+                .pinnedAt(card.getPinnedAt())
+                .reference(reference)
+                .build();
     }
 
     /**

@@ -169,4 +169,13 @@ public class ChatChannelEntity extends BaseEntity {
     public void convertToGroupDm() {
         this.channelType = ChannelType.GROUP_DM;
     }
+
+    /**
+     * F10.7: 問い合わせチャンネルフラグを更新する。
+     *
+     * @param isInquiryChannel 問い合わせチャンネルに設定する場合 true
+     */
+    public void updateInquiryChannel(Boolean isInquiryChannel) {
+        this.isInquiryChannel = isInquiryChannel != null ? isInquiryChannel : false;
+    }
 }

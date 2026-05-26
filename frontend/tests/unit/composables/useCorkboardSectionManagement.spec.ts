@@ -109,37 +109,51 @@ function makeSection(overrides: Partial<CorkboardGroupDetail> = {}): CorkboardGr
   }
 }
 
-function makeCard(overrides: Partial<CorkboardCardDetail> = {}): CorkboardCardDetail {
+function makeCard(overrides: {
+  id?: number
+  sectionId?: number | null
+} = {}): CorkboardCardDetail {
   return {
-    id: 10,
+    id: overrides.id ?? 10,
     corkboardId: 100,
-    sectionId: null,
-    cardType: 'MEMO',
-    referenceType: null,
-    referenceId: null,
-    contentSnapshot: null,
-    title: 'テストカード',
-    body: null,
-    url: null,
-    ogTitle: null,
-    ogImageUrl: null,
-    ogDescription: null,
-    colorLabel: 'YELLOW',
-    cardSize: 'MEDIUM',
-    positionX: 100,
-    positionY: 100,
-    zIndex: 1,
-    userNote: null,
-    noteColor: null,
-    autoArchiveAt: null,
-    isArchived: false,
-    isPinned: false,
-    pinnedAt: null,
-    isRefDeleted: false,
-    createdBy: null,
-    createdAt: '2026-05-01T00:00:00',
-    updatedAt: '2026-05-01T00:00:00',
-    ...overrides,
+    reference: {
+      sectionId: overrides.sectionId ?? null,
+      cardType: 'MEMO',
+      referenceType: null,
+      referenceId: null,
+      contentSnapshot: null,
+    },
+    content: {
+      title: 'テストカード',
+      body: null,
+      url: null,
+      ogTitle: null,
+      ogImageUrl: null,
+      ogDescription: null,
+    },
+    layout: {
+      positionX: 100,
+      positionY: 100,
+      zIndex: 1,
+      cardSize: 'MEDIUM',
+    },
+    style: {
+      colorLabel: 'YELLOW',
+      noteColor: null,
+    },
+    state: {
+      isArchived: false,
+      isPinned: false,
+      pinnedAt: null,
+      autoArchiveAt: null,
+      isRefDeleted: false,
+    },
+    audit: {
+      userNote: null,
+      createdBy: null,
+      createdAt: '2026-05-01T00:00:00',
+      updatedAt: '2026-05-01T00:00:00',
+    },
   }
 }
 
@@ -398,7 +412,7 @@ describe('useCorkboardSectionManagement — カード紐付け', () => {
     await addCardToSection(card, 55)
 
     const updated = board.value!.cards.find((c) => c.id === 10)
-    expect(updated?.sectionId).toBe(55)
+    expect(updated?.reference?.sectionId).toBe(55)
   })
 
   it('CORK-SEC-UNIT-012: addCardToSection — 旧セクションがある場合は先に removeCardFromGroup を呼ぶ', async () => {
@@ -441,7 +455,7 @@ describe('useCorkboardSectionManagement — カード紐付け', () => {
 
     expect(mockRemoveCardFromGroup).toHaveBeenCalledWith(100, 77, 20)
     const updated = board.value!.cards.find((c) => c.id === 20)
-    expect(updated?.sectionId).toBeNull()
+    expect(updated?.reference?.sectionId).toBeNull()
   })
 })
 
@@ -481,10 +495,10 @@ describe('useCorkboardSectionManagement — confirmDeleteSection', () => {
     expect(board.value!.groups.find((g) => g.id === 5)).toBeUndefined()
     // section に属していたカードの sectionId が null になっている
     const updated = board.value!.cards.find((c) => c.id === 10)
-    expect(updated?.sectionId).toBeNull()
+    expect(updated?.reference?.sectionId).toBeNull()
     // 無関係なカードは変更なし
     const unchanged = board.value!.cards.find((c) => c.id === 11)
-    expect(unchanged?.sectionId).toBeNull()
+    expect(unchanged?.reference?.sectionId).toBeNull()
   })
 
   // ---- エッジケース追加テスト ----
@@ -635,7 +649,7 @@ describe('useCorkboardSectionManagement — toggleSection エッジケース', (
 
     // ローカル state は変化しない（楽観的更新なし）
     const updated = board.value!.cards.find((c) => c.id === 50)
-    expect(updated?.sectionId).toBeNull()
+    expect(updated?.reference?.sectionId).toBeNull()
     // error toast が表示される
     expect(mockToastAdd).toHaveBeenCalledWith(
       expect.objectContaining({ severity: 'error' }),

@@ -73,31 +73,58 @@ export interface RepostOf {
   postedAs?: PostedAs | null
 }
 
-export interface TimelinePostResponse {
-  id: number
+export interface PostScopeDto {
   scopeType: TimelineScopeType
   scopeId: number
-  user: TimelineUser | null
-  postedAs: PostedAs | null
-  parentId: number | null
+}
+
+export interface PostAuthorDto {
+  userId: number
+  socialProfileId: number | null
+  postedAsType: string | null
+  postedAsId: number | null
+}
+
+export interface PostContentDto {
   content: string | null
+  parentId: number | null
+  repostOfId: number | null
+  status: TimelinePostStatus
+  scheduledAt: string | null
   isPinned: boolean
-  isBookmarked: boolean
-  isEdited: boolean
-  isTruncated: boolean
+}
+
+export interface PostStatsDto {
+  repostCount: number
   reactionCount: number
   replyCount: number
   attachmentCount: number
-  repostCount: number
-  attachments: TimelineAttachment[]
-  mitayo: boolean
-  mitayoCount: number
-  repostOf: RepostOf | null
-  poll: TimelinePoll | null
-  status: TimelinePostStatus
-  scheduledAt: string | null
+  editCount: number
+}
+
+export interface PostAuditDto {
   createdAt: string
   updatedAt: string
+}
+
+export interface TimelinePostResponse {
+  id: number
+  scope: PostScopeDto
+  author: PostAuthorDto
+  content: PostContentDto
+  stats: PostStatsDto
+  audit: PostAuditDto
+  // --- フィード固有の enrichment フィールド（バックエンドから付加されるが PostResponse 外） ---
+  user: TimelineUser | null
+  postedAs: PostedAs | null
+  isBookmarked: boolean
+  isEdited: boolean
+  isTruncated: boolean
+  mitayo: boolean
+  mitayoCount: number
+  attachments: TimelineAttachment[]
+  repostOf: RepostOf | null
+  poll: TimelinePoll | null
 }
 
 export interface TimelineFeedResponse {

@@ -109,14 +109,24 @@ onMounted(loadPreview)
   <div class="flex h-screen flex-col">
     <!-- ツールバー -->
     <div class="flex flex-shrink-0 items-center justify-between gap-3 border-b border-surface-200 bg-surface-0 px-4 py-2 dark:border-surface-700 dark:bg-surface-900">
-      <!-- 戻るボタン -->
-      <NuxtLink
-        :to="`/my/resume/${resumeId}`"
-        class="flex items-center gap-1 text-sm text-surface-500 hover:text-primary"
-      >
-        <i class="pi pi-arrow-left" />
-        {{ t('common.resume.backToEditor') }}
-      </NuxtLink>
+      <!-- 戻るボタン群 -->
+      <div class="flex items-center gap-3">
+        <NuxtLink
+          to="/my/resume"
+          class="flex items-center gap-1 text-sm text-surface-500 hover:text-primary"
+        >
+          <i class="pi pi-list" />
+          {{ t('common.resume.backToList') }}
+        </NuxtLink>
+        <span class="text-surface-300">/</span>
+        <NuxtLink
+          :to="`/my/resume/${resumeId}`"
+          class="flex items-center gap-1 text-sm text-surface-500 hover:text-primary"
+        >
+          <i class="pi pi-arrow-left" />
+          {{ t('common.resume.backToEditor') }}
+        </NuxtLink>
+      </div>
 
       <!-- 書類種別切替 -->
       <div class="flex flex-wrap items-center gap-2">
@@ -158,7 +168,7 @@ onMounted(loadPreview)
 
         <!-- 正式出力ボタン -->
         <Button
-          :label="`${formatLabel}ダウンロード（${typeLabel}）`"
+          :label="t('common.resume.downloadLabel', { format: formatLabel, type: typeLabel })"
           icon="pi pi-download"
           size="small"
           :loading="exportLoading"
@@ -206,7 +216,7 @@ onMounted(loadPreview)
         v-else-if="previewBlobUrl && format === 'pdf'"
         :src="previewBlobUrl"
         class="h-full w-full border-0"
-        :title="`${typeLabel} プレビュー`"
+        :title="`${typeLabel} ${t('common.resume.preview')}`"
       />
 
       <!-- Excel プレビュー（ダウンロード案内） -->
@@ -217,7 +227,7 @@ onMounted(loadPreview)
         <div class="flex flex-col items-center gap-4 rounded-xl bg-surface-0 p-8 shadow dark:bg-surface-900">
           <i class="pi pi-file-excel text-5xl text-green-600" />
           <p class="text-lg font-semibold">{{ typeLabel }} Excel</p>
-          <p class="text-sm text-surface-500">Excel ファイルのプレビューはブラウザで表示できません</p>
+          <p class="text-sm text-surface-500">{{ t('common.resume.excelPreviewUnavailable') }}</p>
           <a
             :href="previewBlobUrl"
             :download="`${typeLabel}.xlsx`"

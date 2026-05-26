@@ -90,12 +90,17 @@ class MyCorkboardPinServiceTest {
         given(corkboardMapper.toCardResponse(any(CorkboardCardEntity.class)))
                 .willAnswer(inv -> {
                     CorkboardCardEntity e = inv.getArgument(0);
-                    return new CorkboardCardResponse(
-                            CARD_ID, BOARD_ID, null, e.getCardType(), null, null, null,
-                            null, null, null, null, null, null,
-                            "NONE", "MEDIUM", 0, 0, 0, null, e.getNoteColor(), null,
-                            e.getIsArchived(), e.getIsPinned(), e.getPinnedAt(),
-                            false, USER_ID, null, null);
+                    return CorkboardCardResponse.builder()
+                            .id(CARD_ID)
+                            .corkboardId(BOARD_ID)
+                            .reference(new CorkboardCardResponse.CardReferenceDto(null, e.getCardType(), null, null, null))
+                            .content(new CorkboardCardResponse.CardContentDto(null, null, null, null, null, null))
+                            .layout(new CorkboardCardResponse.CardLayoutDto(0, 0, 0, "MEDIUM"))
+                            .style(new CorkboardCardResponse.CardStyleDto("NONE", e.getNoteColor()))
+                            .state(new CorkboardCardResponse.CardStateDto(
+                                    e.getIsArchived(), e.getIsPinned(), e.getPinnedAt(), null, false))
+                            .audit(new CorkboardCardResponse.CardAuditDto(null, USER_ID, null, null))
+                            .build();
                 });
     }
 
@@ -120,8 +125,8 @@ class MyCorkboardPinServiceTest {
             CorkboardCardResponse result = service.togglePin(BOARD_ID, CARD_ID, true, USER_ID);
 
             // Then
-            assertThat(result.getIsPinned()).isTrue();
-            assertThat(result.getPinnedAt()).isNotNull();
+            assertThat(result.getState().isPinned()).isTrue();
+            assertThat(result.getState().pinnedAt()).isNotNull();
             assertThat(activeCard.getIsPinned()).isTrue();
             assertThat(activeCard.getPinnedAt()).isNotNull();
             verify(cardRepository).save(activeCard);
@@ -151,8 +156,8 @@ class MyCorkboardPinServiceTest {
             CorkboardCardResponse result = service.togglePin(BOARD_ID, CARD_ID, false, USER_ID);
 
             // Then
-            assertThat(result.getIsPinned()).isFalse();
-            assertThat(result.getPinnedAt()).isNull();
+            assertThat(result.getState().isPinned()).isFalse();
+            assertThat(result.getState().pinnedAt()).isNull();
             assertThat(pinnedCard.getIsPinned()).isFalse();
             assertThat(pinnedCard.getPinnedAt()).isNull();
             // unpin では上限カウントは不要
@@ -183,7 +188,7 @@ class MyCorkboardPinServiceTest {
             CorkboardCardResponse result = service.togglePin(BOARD_ID, CARD_ID, true, USER_ID);
 
             // Then
-            assertThat(result.getIsPinned()).isTrue();
+            assertThat(result.getState().isPinned()).isTrue();
             // 既にピン済みなので countPinned は呼ばれない
             verify(cardRepository, never()).countPinnedByOwnerIdAndScopePersonal(any());
         }
@@ -212,7 +217,7 @@ class MyCorkboardPinServiceTest {
             CorkboardCardResponse result = service.togglePin(BOARD_ID, CARD_ID, false, USER_ID);
 
             // Then
-            assertThat(result.getIsPinned()).isFalse();
+            assertThat(result.getState().isPinned()).isFalse();
             assertThat(archivedPinned.getIsPinned()).isFalse();
         }
     }

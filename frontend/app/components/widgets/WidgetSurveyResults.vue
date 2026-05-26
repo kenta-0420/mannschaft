@@ -31,8 +31,8 @@ async function load() {
     const closed = closedRes.status === 'fulfilled' ? closedRes.value.data : []
     // 受付中を先頭、次に締切（作成日降順）
     surveys.value = [
-      ...pub.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-      ...closed.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      ...pub.sort((a, b) => new Date(b.audit?.createdAt ?? 0).getTime() - new Date(a.audit?.createdAt ?? 0).getTime()),
+      ...closed.sort((a, b) => new Date(b.audit?.createdAt ?? 0).getTime() - new Date(a.audit?.createdAt ?? 0).getTime()),
     ]
   } catch (err) {
     captureQuiet(err, { context: 'WidgetSurveyResults: アンケート取得' })
@@ -62,8 +62,8 @@ async function toggleExpand(survey: SurveyResponse) {
 }
 
 function responseRate(survey: SurveyResponse): number {
-  if (!survey.targetCount) return 0
-  return Math.min(100, Math.round((survey.responseCount / survey.targetCount) * 100))
+  if (!survey.stats?.targetCount) return 0
+  return Math.min(100, Math.round(((survey.stats?.responseCount ?? 0) / survey.stats.targetCount) * 100))
 }
 
 function rateColor(rate: number): string {
@@ -110,19 +110,19 @@ onMounted(load)
 
           <!-- タイトル -->
           <span class="min-w-0 flex-1 truncate text-sm font-medium text-surface-700 dark:text-surface-200">
-            {{ survey.title }}
+            {{ survey.content?.title }}
           </span>
 
           <!-- 回答率 -->
           <div class="shrink-0 text-right">
             <div class="mb-0.5 flex items-center justify-end gap-1.5">
               <span class="text-xs font-semibold" :style="{ color: rateColor(responseRate(survey)) }">
-                {{ survey.responseCount }}{{ survey.targetCount ? `/${survey.targetCount}` : '' }}
+                {{ survey.stats?.responseCount }}{{ survey.stats?.targetCount ? `/${survey.stats.targetCount}` : '' }}
               </span>
               <span class="text-xs text-surface-400">件</span>
             </div>
             <!-- 進捗バー -->
-            <div v-if="survey.targetCount" class="h-1.5 w-20 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-600">
+            <div v-if="survey.stats?.targetCount" class="h-1.5 w-20 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-600">
               <div
                 class="h-full rounded-full transition-all"
                 :style="{ width: `${responseRate(survey)}%`, backgroundColor: rateColor(responseRate(survey)) }"
@@ -154,7 +154,7 @@ onMounted(load)
             class="py-4 text-center text-sm text-surface-400"
           >
             <i class="pi pi-chart-bar mb-2 block text-2xl" />
-            {{ survey.responseCount === 0 ? 'まだ回答がありません' : '結果を表示できません' }}
+            {{ (survey.stats?.responseCount ?? 0) === 0 ? 'まだ回答がありません' : '結果を表示できません' }}
           </div>
 
           <!-- 質問ごとのグラフ -->

@@ -57,9 +57,9 @@ function validateFields(): boolean {
   if (!template.value) return false
   fieldErrors.value = {}
 
-  const schema = buildValidationSchema(template.value.fields)
+  const schema = buildValidationSchema(template.value.fields ?? [])
   const data: Record<string, string | number | Date | null> = {}
-  for (const field of template.value.fields) {
+  for (const field of template.value.fields ?? []) {
     const val = fieldValues.value[field.fieldKey]
     if (field.fieldType === 'NUMBER') {
       data[field.fieldKey] = val?.numberValue ?? null
@@ -91,7 +91,7 @@ watch(
       try {
         const res = await formApi.getTemplate(props.scopeType, props.scopeId, props.templateId)
         template.value = res.data
-        initFieldValues(res.data.fields)
+        initFieldValues(res.data.fields ?? [])
 
         if (props.submissionId) {
           const subRes = await formApi.getSubmission(
@@ -137,7 +137,7 @@ async function submit() {
 
   submitting.value = true
 
-  const values: SubmissionValueRequest[] = template.value.fields.map((field) => {
+  const values: SubmissionValueRequest[] = (template.value.fields ?? []).map((field) => {
     const val = fieldValues.value[field.fieldKey] ?? { textValue: '', numberValue: null, dateValue: null }
     return {
       fieldKey: field.fieldKey,
@@ -194,13 +194,13 @@ function close() {
 
     <div v-else-if="template" class="flex flex-col gap-4">
       <div
-        v-if="template.description"
+        v-if="template.content?.description"
         class="rounded bg-surface-100 p-3 text-sm dark:bg-surface-800"
       >
-        {{ template.description }}
+        {{ template.content.description }}
       </div>
 
-      <div v-for="field in template.fields" :key="field.id">
+      <div v-for="field in template.fields ?? []" :key="field.id">
         <label class="mb-1 block text-sm font-medium">
           {{ field.fieldLabel || field.fieldKey }}
           <span v-if="field.isRequired" class="text-red-500">*</span>

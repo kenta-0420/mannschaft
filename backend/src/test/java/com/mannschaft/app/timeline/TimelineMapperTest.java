@@ -1,5 +1,6 @@
 package com.mannschaft.app.timeline;
 
+import com.mannschaft.app.timeline.dto.AttachmentResponse;
 import com.mannschaft.app.timeline.dto.BookmarkResponse;
 import com.mannschaft.app.timeline.dto.PostResponse;
 import com.mannschaft.app.timeline.entity.TimelineBookmarkEntity;
@@ -35,8 +36,8 @@ class TimelineMapperTest {
                     .postedAsType(PostedAsType.USER).content("テスト").status(PostStatus.PUBLISHED).build();
             PostResponse response = mapper.toPostResponse(entity);
             assertThat(response).isNotNull();
-            assertThat(response.getScopeType()).isEqualTo("TEAM");
-            assertThat(response.getStatus()).isEqualTo("PUBLISHED");
+            assertThat(response.getScope().scopeType()).isEqualTo("TEAM");
+            assertThat(response.getContent().status()).isEqualTo("PUBLISHED");
         }
 
         @Test
@@ -51,7 +52,7 @@ class TimelineMapperTest {
             TimelinePostEntity entity = TimelinePostEntity.builder()
                     .scopeType(PostScopeType.ORGANIZATION).scopeId(5L).userId(2L)
                     .postedAsType(PostedAsType.TEAM).status(PostStatus.DRAFT).build();
-            assertThat(mapper.toPostResponse(entity).getPostedAsType()).isEqualTo("TEAM");
+            assertThat(mapper.toPostResponse(entity).getAuthor().postedAsType()).isEqualTo("TEAM");
         }
     }
 
@@ -91,7 +92,9 @@ class TimelineMapperTest {
             TimelinePostAttachmentEntity entity = TimelinePostAttachmentEntity.builder()
                     .timelinePostId(100L).attachmentType(AttachmentType.IMAGE)
                     .fileKey("images/test.jpg").build();
-            assertThat(mapper.toAttachmentResponse(entity).getAttachmentType()).isEqualTo("IMAGE");
+            AttachmentResponse response = mapper.toAttachmentResponse(entity);
+            assertThat(response.getAttachmentType()).isEqualTo("IMAGE");
+            assertThat(response.getFile().fileKey()).isEqualTo("images/test.jpg");
         }
 
         @Test

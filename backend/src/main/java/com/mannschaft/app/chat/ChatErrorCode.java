@@ -78,7 +78,16 @@ public enum ChatErrorCode implements ErrorCode {
     ICON_SIZE_EXCEEDED("CHAT_022", "チャンネルアイコンのファイルサイズが上限（2MB）を超えています", Severity.WARN),
 
     /** チャンネルアイコン変更権限がない（OWNER/ADMIN ではない） */
-    CHANNEL_ICON_PERMISSION_DENIED("CHAT_023", "チャンネルアイコンを変更する権限がありません", Severity.WARN);
+    CHANNEL_ICON_PERMISSION_DENIED("CHAT_023", "チャンネルアイコンを変更する権限がありません", Severity.WARN),
+
+    /** F10.7: 問い合わせチャンネルはチームチャンネルのみ設定可能 */
+    INQUIRY_CHANNEL_TEAM_ONLY("CHAT_024", "問い合わせチャンネルはチームチャンネルのみ設定できます", Severity.WARN),
+
+    /** F10.7: アーカイブ済みチャンネルには問い合わせ設定不可 */
+    INQUIRY_CHANNEL_ARCHIVED("CHAT_025", "アーカイブ済みのチャンネルには問い合わせ設定を変更できません", Severity.WARN),
+
+    /** F10.7: 同チームに問い合わせチャンネルが既に存在する */
+    INQUIRY_CHANNEL_ALREADY_EXISTS("CHAT_026", "このチームには既に問い合わせチャンネルが設定されています", Severity.WARN);
 
     private final String code;
     private final String message;

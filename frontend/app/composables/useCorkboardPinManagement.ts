@@ -51,7 +51,7 @@ export function useCorkboardPinManagement(
    * - ピン済カードの押下 → 即時アンピン（付箋メモは触らない）
    */
   function togglePin(card: CorkboardCardDetail) {
-    if (card.isPinned) {
+    if (card.state?.isPinned) {
       // アンピン（即時）
       void doTogglePin(card, false, null, null)
       return
@@ -98,11 +98,27 @@ export function useCorkboardPinManagement(
             c.id === card.id
               ? {
                   ...c,
-                  isPinned: res.data.isPinned,
-                  pinnedAt: res.data.pinnedAt,
+                  state: {
+                    ...c.state,
+                    isPinned: res.data.isPinned,
+                    pinnedAt: res.data.pinnedAt,
+                    isArchived: c.state?.isArchived ?? false,
+                    autoArchiveAt: c.state?.autoArchiveAt ?? null,
+                    isRefDeleted: c.state?.isRefDeleted ?? false,
+                  },
                   // pin 時に書き込んだ値があればローカル state へも反映
-                  userNote: next && userNote !== null ? userNote : c.userNote,
-                  noteColor: next && noteColor !== null ? noteColor : c.noteColor,
+                  audit: {
+                    ...c.audit,
+                    userNote: next && userNote !== null ? userNote : (c.audit?.userNote ?? null),
+                    createdBy: c.audit?.createdBy ?? null,
+                    createdAt: c.audit?.createdAt ?? '',
+                    updatedAt: c.audit?.updatedAt ?? '',
+                  },
+                  style: {
+                    ...c.style,
+                    colorLabel: c.style?.colorLabel ?? null,
+                    noteColor: next && noteColor !== null ? noteColor : (c.style?.noteColor ?? null),
+                  },
                 }
               : c,
           ),

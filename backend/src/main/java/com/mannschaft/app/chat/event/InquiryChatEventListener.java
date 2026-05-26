@@ -1,0 +1,85 @@
+package com.mannschaft.app.chat.event;
+
+import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationService;
+import com.mannschaft.app.role.repository.UserRoleRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * F10.7 問い合わせ通知イベントリスナー。
+ *
+ * <p>{@link InquiryReceivedEvent} を受信し、対象チームの ADMIN / DEPUTY_ADMIN 全員へ
+ * 通知を送信する。Valkey を使った重複抑制（5分以内の同一チャンネルへの連続通知は1通のみ）を実装する。</p>
+ *
+ * <h3>重複抑制キー設計</h3>
+ * <ul>
+ *   <li>{@code inquiry_notified:{channelId}} — TTL 300秒（5分）</li>
+ * </ul>
+ */
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class InquiryChatEventListener {
+
+    private static final long DEDUP_TTL_SECONDS = 300L;
+
+    private final UserRoleRepository userRoleRepository;
+    private final NotificationService notificationService;
+    private final StringRedisTemplate redisTemplate;
+
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onInquiryReceived(InquiryReceivedEvent event) {
+        String dedupKey = "inquiry_notified:" + event.getChannelId();
+        Boolean isNew = redisTemplate.opsForValue()
+                .setIfAbsent(dedupKey, "1", DEDUP_TTL_SECONDS, TimeUnit.SECONDS);
+        if (!Boolean.TRUE.equals(isNew)) {
+            log.debug("問い合わせ通知スキップ（重複抑制）: channelId={}", event.getChannelId());
+            return; // 5分以内の重複通知をスキップ
+        }
+
+        List<Long> recipientIds = new ArrayList<>();
+        recipientIds.addAll(userRoleRepository.findAdminUserIdsByTeamId(event.getTeamId()));
+        recipientIds.addAll(userRoleRepository.findAllDeputyAdminUserIdsByTeamId(event.getTeamId()));
+        recipientIds = recipientIds.stream().distinct().toList();
+
+        String title = "問い合わせが届きました";
+        String body = event.getSenderDisplayName() + "から「" + event.getChannelName() + "」に問い合わせが届きました";
+
+        for (Long recipientId : recipientIds) {
+            if (recipientId.equals(event.getActorUserId())) {
+                continue;
+            }
+            try {
+                notificationService.createNotification(
+                        recipientId,
+                        "INQUIRY_RECEIVED",
+                        NotificationPriority.HIGH,
+                        title,
+                        body,
+                        "CHAT_MESSAGE",
+                        event.getChannelId(),
+                        NotificationScopeType.TEAM,
+                        event.getTeamId(),
+                        "/teams/" + event.getTeamId() + "/chat?channel=" + event.getChannelId(),
+                        event.getActorUserId()
+                );
+            } catch (Exception e) {
+                log.warn("問い合わせ通知の送信に失敗しました: recipientId={}, channelId={}", recipientId, event.getChannelId(), e);
+            }
+        }
+
+        log.info("問い合わせ通知送信完了: channelId={}, teamId={}, recipientCount={}", event.getChannelId(), event.getTeamId(), recipientIds.size());
+    }
+}

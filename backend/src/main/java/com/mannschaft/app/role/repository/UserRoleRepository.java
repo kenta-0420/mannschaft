@@ -547,4 +547,72 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     List<UserRoleProjection> findByUserIdAndOrganizationIdInInternal(
             @Param("userId") Long userId,
             @Param("organizationIds") Set<Long> organizationIds);
+
+    /**
+     * 指定ユーザーが ADMIN または DEPUTY_ADMIN を持つチーム ID 一覧を取得する（F10.7 業務アラート用）。
+     */
+    @Query(value =
+            "SELECT DISTINCT ur.team_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.user_id = :userId " +
+            "AND ur.team_id IS NOT NULL " +
+            "AND r.name IN ('ADMIN', 'DEPUTY_ADMIN') " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<Long> findAdminAndDeputyAdminTeamIds(@Param("userId") Long userId);
+
+    /**
+     * 指定チームの ADMIN ユーザー ID 一覧を取得する（F10.7 予約・問い合わせ通知用）。
+     */
+    @Query(value =
+            "SELECT DISTINCT ur.user_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.team_id = :teamId " +
+            "AND r.name = 'ADMIN' " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<Long> findAdminUserIdsByTeamId(@Param("teamId") Long teamId);
+
+    /**
+     * 指定チームの DEPUTY_ADMIN ユーザー ID 一覧を全件取得する（F10.7 問い合わせ通知用）。
+     */
+    @Query(value =
+            "SELECT DISTINCT ur.user_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.team_id = :teamId " +
+            "AND r.name = 'DEPUTY_ADMIN' " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<Long> findAllDeputyAdminUserIdsByTeamId(@Param("teamId") Long teamId);
+
+    /**
+     * 指定チームで特定権限を持つ DEPUTY_ADMIN ユーザー ID 一覧を取得する（F10.7 予約通知用）。
+     *
+     * <p>権限保有判定は role_permissions（ロール定義）と user_permission_groups（個別付与）を OR で集約する。</p>
+     */
+    @Query(value =
+            "SELECT DISTINCT ur.user_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.team_id = :teamId " +
+            "AND r.name = 'DEPUTY_ADMIN' " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "AND ( " +
+            "  EXISTS ( " +
+            "    SELECT 1 FROM role_permissions rp " +
+            "    JOIN permissions p ON p.id = rp.permission_id " +
+            "    WHERE rp.role_id = ur.role_id AND p.name = :permissionName " +
+            "  ) OR EXISTS ( " +
+            "    SELECT 1 FROM user_permission_groups upg " +
+            "    JOIN permission_group_permissions pgp ON pgp.permission_group_id = upg.permission_group_id " +
+            "    JOIN permissions p ON p.id = pgp.permission_id " +
+            "    WHERE upg.user_id = ur.user_id AND p.name = :permissionName " +
+            "  ) " +
+            ")",
+            nativeQuery = true)
+    List<Long> findDeputyAdminUserIdsByTeamIdAndPermission(@Param("teamId") Long teamId,
+                                                            @Param("permissionName") String permissionName);
 }

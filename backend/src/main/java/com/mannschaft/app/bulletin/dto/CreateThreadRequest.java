@@ -2,7 +2,6 @@ package com.mannschaft.app.bulletin.dto;
 
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 
@@ -18,7 +17,12 @@ import java.util.UUID;
 @Getter
 public class CreateThreadRequest {
 
-    @NotNull
+    /**
+     * カテゴリID。
+     *
+     * <p>設計書 F05.1 §3 に従い任意（NULL = 未分類）。通常の UI 投稿でカテゴリ指定は任意であり、
+     * 自動生成スレッド（SAFETY_CHECK / SURVEY 連携）は NULL で作成される。</p>
+     */
     private final Long categoryId;
 
     @NotBlank

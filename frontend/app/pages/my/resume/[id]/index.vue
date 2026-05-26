@@ -463,7 +463,7 @@ onBeforeUnmount(() => {
               :loading="photoLoading"
               @click="handleDeletePhoto"
             />
-            <p class="text-xs text-surface-500">JPEG / PNG, 最大 5MB, 推奨比率 3:4</p>
+            <p class="text-xs text-surface-500">{{ t('common.resume.photoHint') }}</p>
           </div>
         </div>
         <input
@@ -477,7 +477,7 @@ onBeforeUnmount(() => {
 
       <!-- 住所・連絡先 -->
       <SectionCard>
-        <h2 class="mb-4 text-lg font-semibold">住所・連絡先</h2>
+        <h2 class="mb-4 text-lg font-semibold">{{ t('common.resume.addressSection') }}</h2>
         <div class="grid grid-cols-1 gap-4">
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
@@ -553,44 +553,48 @@ onBeforeUnmount(() => {
             :key="idx"
             class="rounded-lg border border-surface-200 p-3 dark:border-surface-600"
           >
-            <div class="flex flex-wrap gap-2">
-              <div class="flex-shrink-0">
-                <label class="mb-1 block text-xs">{{ t('common.resume.entryYear') }}</label>
-                <InputNumber v-model="edu.entryYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" />
+            <div class="space-y-2">
+              <!-- 上行: 年・月 + 操作ボタン -->
+              <div class="flex items-end gap-2">
+                <div class="flex-shrink-0">
+                  <label class="mb-1 block text-xs">{{ t('common.resume.entryYear') }}</label>
+                  <InputNumber v-model="edu.entryYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" />
+                </div>
+                <div class="flex-shrink-0">
+                  <label class="mb-1 block text-xs">{{ t('common.resume.entryMonth') }}</label>
+                  <InputNumber v-model="edu.entryMonth" :min="1" :max="12" class="w-16" />
+                </div>
+                <div class="ml-auto flex items-end gap-1">
+                  <Button
+                    icon="pi pi-arrow-up"
+                    text
+                    size="small"
+                    :aria-label="t('common.resume.moveUp')"
+                    :disabled="idx === 0"
+                    @click="moveEducation(idx, -1)"
+                  />
+                  <Button
+                    icon="pi pi-arrow-down"
+                    text
+                    size="small"
+                    :aria-label="t('common.resume.moveDown')"
+                    :disabled="idx === form.educations.length - 1"
+                    @click="moveEducation(idx, 1)"
+                  />
+                  <Button
+                    icon="pi pi-trash"
+                    text
+                    size="small"
+                    severity="danger"
+                    :aria-label="t('common.resume.deleteRow')"
+                    @click="removeEducation(idx)"
+                  />
+                </div>
               </div>
-              <div class="flex-shrink-0">
-                <label class="mb-1 block text-xs">{{ t('common.resume.entryMonth') }}</label>
-                <InputNumber v-model="edu.entryMonth" :min="1" :max="12" class="w-16" />
-              </div>
-              <div class="min-w-0 flex-1">
+              <!-- 下行: 内容（全幅） -->
+              <div>
                 <label class="mb-1 block text-xs">{{ t('common.resume.description') }}</label>
                 <InputText v-model="edu.description" class="w-full" />
-              </div>
-              <div class="flex flex-shrink-0 items-end gap-1">
-                <Button
-                  icon="pi pi-arrow-up"
-                  text
-                  size="small"
-                  :aria-label="t('common.resume.moveUp')"
-                  :disabled="idx === 0"
-                  @click="moveEducation(idx, -1)"
-                />
-                <Button
-                  icon="pi pi-arrow-down"
-                  text
-                  size="small"
-                  :aria-label="t('common.resume.moveDown')"
-                  :disabled="idx === form.educations.length - 1"
-                  @click="moveEducation(idx, 1)"
-                />
-                <Button
-                  icon="pi pi-trash"
-                  text
-                  size="small"
-                  severity="danger"
-                  :aria-label="t('common.resume.deleteRow')"
-                  @click="removeEducation(idx)"
-                />
               </div>
             </div>
           </div>
@@ -657,19 +661,31 @@ onBeforeUnmount(() => {
                 <label class="mb-1 block text-xs">{{ t('common.resume.employmentType') }}</label>
                 <InputText v-model="career.employmentType" class="w-full" />
               </div>
-              <div class="flex items-end gap-2">
-                <div class="flex-shrink-0">
-                  <label class="mb-1 block text-xs">入社</label>
-                  <div class="flex gap-1">
-                    <InputNumber v-model="career.entryYear" :min="1900" :max="2099" :use-grouping="false" class="w-20" />
-                    <InputNumber v-model="career.entryMonth" :min="1" :max="12" class="w-14" />
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label class="mb-1 block text-xs">{{ t('common.resume.entryDate') }}</label>
+                  <div class="flex gap-2">
+                    <div>
+                      <label class="mb-0.5 block text-xs text-surface-400">{{ t('common.resume.entryYear') }}</label>
+                      <InputNumber v-model="career.entryYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" />
+                    </div>
+                    <div>
+                      <label class="mb-0.5 block text-xs text-surface-400">{{ t('common.resume.entryMonth') }}</label>
+                      <InputNumber v-model="career.entryMonth" :min="1" :max="12" class="w-16" />
+                    </div>
                   </div>
                 </div>
-                <div v-if="!career.isCurrent" class="flex-shrink-0">
-                  <label class="mb-1 block text-xs">退社</label>
-                  <div class="flex gap-1">
-                    <InputNumber v-model="career.endYear" :min="1900" :max="2099" :use-grouping="false" class="w-20" />
-                    <InputNumber v-model="career.endMonth" :min="1" :max="12" class="w-14" />
+                <div v-if="!career.isCurrent">
+                  <label class="mb-1 block text-xs">{{ t('common.resume.endDate') }}</label>
+                  <div class="flex gap-2">
+                    <div>
+                      <label class="mb-0.5 block text-xs text-surface-400">{{ t('common.resume.entryYear') }}</label>
+                      <InputNumber v-model="career.endYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" />
+                    </div>
+                    <div>
+                      <label class="mb-0.5 block text-xs text-surface-400">{{ t('common.resume.entryMonth') }}</label>
+                      <InputNumber v-model="career.endMonth" :min="1" :max="12" class="w-16" />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -725,46 +741,52 @@ onBeforeUnmount(() => {
           <div
             v-for="(qual, idx) in form.qualifications"
             :key="idx"
-            class="flex flex-wrap items-start gap-2 rounded-lg border border-surface-200 p-3 dark:border-surface-600"
+            class="space-y-2 rounded-lg border border-surface-200 p-3 dark:border-surface-600"
           >
-            <div class="flex-shrink-0">
-              <label class="mb-1 block text-xs">取得年</label>
-              <InputNumber v-model="qual.acquiredYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" />
+            <!-- 上行: 取得年月 + 操作ボタン -->
+            <div class="flex items-end gap-2">
+              <div class="flex-shrink-0">
+                <label class="mb-1 block text-xs">{{ t('common.resume.acquiredYear') }}</label>
+                <InputNumber v-model="qual.acquiredYear" :min="1900" :max="2099" :use-grouping="false" class="w-24" />
+              </div>
+              <div class="flex-shrink-0">
+                <label class="mb-1 block text-xs">{{ t('common.resume.acquiredMonth') }}</label>
+                <InputNumber v-model="qual.acquiredMonth" :min="1" :max="12" class="w-16" />
+              </div>
+              <div class="ml-auto flex items-end gap-1">
+                <Button
+                  icon="pi pi-arrow-up"
+                  text
+                  size="small"
+                  :disabled="idx === 0"
+                  @click="moveQualification(idx, -1)"
+                />
+                <Button
+                  icon="pi pi-arrow-down"
+                  text
+                  size="small"
+                  :disabled="idx === form.qualifications.length - 1"
+                  @click="moveQualification(idx, 1)"
+                />
+                <Button
+                  icon="pi pi-trash"
+                  text
+                  size="small"
+                  severity="danger"
+                  @click="removeQualification(idx)"
+                />
+              </div>
             </div>
-            <div class="flex-shrink-0">
-              <label class="mb-1 block text-xs">取得月</label>
-              <InputNumber v-model="qual.acquiredMonth" :min="1" :max="12" class="w-16" />
-            </div>
-            <div class="min-w-48 flex-1">
-              <label class="mb-1 block text-xs">{{ t('common.resume.qualificationName') }} *</label>
-              <InputText v-model="qual.name" class="w-full" />
-            </div>
-            <div class="min-w-32 flex-1">
-              <label class="mb-1 block text-xs">{{ t('common.resume.note') }}</label>
-              <InputText v-model="qual.note" class="w-full" />
-            </div>
-            <div class="flex flex-shrink-0 items-end gap-1">
-              <Button
-                icon="pi pi-arrow-up"
-                text
-                size="small"
-                :disabled="idx === 0"
-                @click="moveQualification(idx, -1)"
-              />
-              <Button
-                icon="pi pi-arrow-down"
-                text
-                size="small"
-                :disabled="idx === form.qualifications.length - 1"
-                @click="moveQualification(idx, 1)"
-              />
-              <Button
-                icon="pi pi-trash"
-                text
-                size="small"
-                severity="danger"
-                @click="removeQualification(idx)"
-              />
+            <!-- 下行: 資格名・備考 -->
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div>
+                <label class="mb-1 block text-xs">{{ t('common.resume.qualificationName') }} *</label>
+                <InputText v-model="qual.name" class="w-full" />
+              </div>
+              <div>
+                <label class="mb-1 block text-xs">{{ t('common.resume.note') }}</label>
+                <InputText v-model="qual.note" class="w-full" />
+              </div>
             </div>
           </div>
         </div>
@@ -799,7 +821,7 @@ onBeforeUnmount(() => {
           </div>
           <div>
             <label class="mb-1 block text-sm font-medium">{{ t('common.resume.skillsSummary') }}</label>
-            <p class="mb-1 text-xs text-surface-500">活かせる経験・知識・技術を自由に記述してください（構造化スキルは下のスキルセクションに入力）</p>
+            <p class="mb-1 text-xs text-surface-500">{{ t('common.resume.skillsSummaryHint') }}</p>
             <Textarea v-model="form.skillsSummary" rows="4" class="w-full" auto-resize />
           </div>
         </div>

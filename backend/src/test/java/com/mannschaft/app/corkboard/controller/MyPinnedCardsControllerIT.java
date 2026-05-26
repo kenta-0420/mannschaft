@@ -82,9 +82,12 @@ class MyPinnedCardsControllerIT {
                 "TIMELINE_POST", 9876L, "10月の活動報告", "10月の活動を以下にまとめました...",
                 Boolean.TRUE, Boolean.FALSE,
                 "/timeline/posts/9876", null, null, null);
-        PinnedCardResponse item = new PinnedCardResponse(
-                345L, 12L, "仕事メモ", "REFERENCE", "YELLOW",
-                null, null, "重要！来週までに対応", null, now, ref);
+        PinnedCardResponse item = PinnedCardResponse.builder()
+                .cardId(345L).corkboardId(12L).corkboardName("仕事メモ").cardType("REFERENCE")
+                .cardContent(new PinnedCardResponse.PinnedCardContentDto("YELLOW", null, null, "重要！来週までに対応", null))
+                .pinnedAt(now)
+                .reference(ref)
+                .build();
         PinnedCardListResponse stub = new PinnedCardListResponse(List.of(item), null, 1L);
 
         given(pinnedCardsService.list(eq(USER_ID), eq(20), eq(null))).willReturn(stub);
@@ -97,8 +100,8 @@ class MyPinnedCardsControllerIT {
                 .andExpect(jsonPath("$.data.items[0].corkboardId").value(12))
                 .andExpect(jsonPath("$.data.items[0].corkboardName").value("仕事メモ"))
                 .andExpect(jsonPath("$.data.items[0].cardType").value("REFERENCE"))
-                .andExpect(jsonPath("$.data.items[0].colorLabel").value("YELLOW"))
-                .andExpect(jsonPath("$.data.items[0].userNote").value("重要！来週までに対応"))
+                .andExpect(jsonPath("$.data.items[0].cardContent.colorLabel").value("YELLOW"))
+                .andExpect(jsonPath("$.data.items[0].cardContent.userNote").value("重要！来週までに対応"))
                 .andExpect(jsonPath("$.data.items[0].pinnedAt").exists())
                 .andExpect(jsonPath("$.data.items[0].reference.type").value("TIMELINE_POST"))
                 .andExpect(jsonPath("$.data.items[0].reference.id").value(9876))
@@ -151,9 +154,12 @@ class MyPinnedCardsControllerIT {
                 "https://booking.example.com/rooms",
                 "会議室予約 - Example Corp",
                 "https://booking.example.com/og.png");
-        PinnedCardResponse item = new PinnedCardResponse(
-                312L, 12L, "仕事メモ", "URL", "BLUE",
-                "会議室予約システム", null, null, null, now, ref);
+        PinnedCardResponse item = PinnedCardResponse.builder()
+                .cardId(312L).corkboardId(12L).corkboardName("仕事メモ").cardType("URL")
+                .cardContent(new PinnedCardResponse.PinnedCardContentDto("BLUE", "会議室予約システム", null, null, null))
+                .pinnedAt(now)
+                .reference(ref)
+                .build();
         PinnedCardListResponse stub = new PinnedCardListResponse(List.of(item), null, 1L);
 
         given(pinnedCardsService.list(eq(USER_ID), eq(null), eq(null))).willReturn(stub);
@@ -171,9 +177,12 @@ class MyPinnedCardsControllerIT {
     @DisplayName("MEMO カードは reference を含まない")
     void MEMOカード_referenceなし() throws Exception {
         LocalDateTime now = LocalDateTime.now();
-        PinnedCardResponse item = new PinnedCardResponse(
-                270L, 13L, "プロジェクト資料", "MEMO", "GREEN",
-                "買い出しリスト", "- マーカー\n- 付箋", null, null, now, null);
+        PinnedCardResponse item = PinnedCardResponse.builder()
+                .cardId(270L).corkboardId(13L).corkboardName("プロジェクト資料").cardType("MEMO")
+                .cardContent(new PinnedCardResponse.PinnedCardContentDto("GREEN", "買い出しリスト", "- マーカー\n- 付箋", null, null))
+                .pinnedAt(now)
+                .reference(null)
+                .build();
         PinnedCardListResponse stub = new PinnedCardListResponse(List.of(item), null, 1L);
 
         given(pinnedCardsService.list(eq(USER_ID), eq(null), eq(null))).willReturn(stub);
@@ -181,7 +190,7 @@ class MyPinnedCardsControllerIT {
         mockMvc.perform(get("/api/v1/users/me/corkboards/pinned-cards"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items[0].cardType").value("MEMO"))
-                .andExpect(jsonPath("$.data.items[0].title").value("買い出しリスト"))
+                .andExpect(jsonPath("$.data.items[0].cardContent.title").value("買い出しリスト"))
                 .andExpect(jsonPath("$.data.items[0].reference").value(Matchers.nullValue()));
     }
 
@@ -193,9 +202,12 @@ class MyPinnedCardsControllerIT {
                 "CHAT_MESSAGE", 5555L, "重要メッセージ", "プロジェクトの方針について...",
                 Boolean.TRUE, Boolean.FALSE,
                 "/chat/channels/42?messageId=5555", null, null, null);
-        PinnedCardResponse item = new PinnedCardResponse(
-                900L, 12L, "仕事メモ", "REFERENCE", "BLUE",
-                null, null, "あとで確認", null, now, ref);
+        PinnedCardResponse item = PinnedCardResponse.builder()
+                .cardId(900L).corkboardId(12L).corkboardName("仕事メモ").cardType("REFERENCE")
+                .cardContent(new PinnedCardResponse.PinnedCardContentDto("BLUE", null, null, "あとで確認", null))
+                .pinnedAt(now)
+                .reference(ref)
+                .build();
         PinnedCardListResponse stub = new PinnedCardListResponse(List.of(item), null, 1L);
 
         given(pinnedCardsService.list(eq(USER_ID), eq(null), eq(null))).willReturn(stub);
@@ -216,9 +228,12 @@ class MyPinnedCardsControllerIT {
                 "TIMELINE_POST", 9000L, "（スナップショット）月次振り返り", "9月の活動を...",
                 Boolean.FALSE, Boolean.FALSE,
                 null, null, null, null);
-        PinnedCardResponse item = new PinnedCardResponse(
-                251L, 12L, "仕事メモ", "REFERENCE", "RED",
-                null, null, "退会したメンバーの投稿", null, now, ref);
+        PinnedCardResponse item = PinnedCardResponse.builder()
+                .cardId(251L).corkboardId(12L).corkboardName("仕事メモ").cardType("REFERENCE")
+                .cardContent(new PinnedCardResponse.PinnedCardContentDto("RED", null, null, "退会したメンバーの投稿", null))
+                .pinnedAt(now)
+                .reference(ref)
+                .build();
         PinnedCardListResponse stub = new PinnedCardListResponse(List.of(item), null, 1L);
 
         given(pinnedCardsService.list(eq(USER_ID), eq(null), eq(null))).willReturn(stub);

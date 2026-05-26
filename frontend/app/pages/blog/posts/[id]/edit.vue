@@ -54,8 +54,8 @@ async function load() {
     const rawBody = post.content?.body ?? ''
     body.value = rawBody === '.' ? '' : rawBody
     status.value = post.meta?.status ?? 'DRAFT'
-    scopeType.value = post.scopeType ?? null
-    scopeId.value = post.scopeId ?? null
+    scopeType.value = post.scope?.organizationId ? 'ORGANIZATION' : post.scope?.teamId ? 'TEAM' : null
+    scopeId.value = post.scope?.organizationId ?? post.scope?.teamId ?? null
     rejectionReason.value = (post as unknown as Record<string, unknown>).rejectionReason as string | null ?? null
   } catch {
     // タイトルはクエリパラメータから引き継いでいるので画面表示は継続
