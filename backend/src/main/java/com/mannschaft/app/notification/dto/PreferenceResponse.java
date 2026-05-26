@@ -1,22 +1,25 @@
 package com.mannschaft.app.notification.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 
 /**
  * 通知設定レスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class PreferenceResponse {
 
-    private final Long id;
-    private final Long userId;
-    private final String scopeType;
-    private final Long scopeId;
-    private final Boolean isEnabled;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    Long    id;
+    Long    userId;
+
+    PreferenceScopeDto scope;
+    Boolean            isEnabled;
+    PreferenceAuditDto audit;
+
+    public record PreferenceScopeDto(String scopeType, Long scopeId) {}
+
+    public record PreferenceAuditDto(LocalDateTime createdAt, LocalDateTime updatedAt) {}
 }
