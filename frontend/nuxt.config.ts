@@ -9,6 +9,13 @@ import Aura from '@primeuix/themes/aura'
 // E2E プロキシ（NUXT_API_PROXY=true）時は API が Nuxt 同一オリジン経由になるため 'self' で足りる。
 const apiBase = process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8080'
 
+// CSP 違反レポートの送信先（report-uri）。
+// 将来の違反レポート収集基盤（F12.5 エラー追跡）へ向ける。バックエンドの受信エンドポイントは
+// 別途実装が必要（未実装でも 404 が記録されるだけで CSP 強制自体は機能する）。
+// 環境変数で差し替え可能とし、既定は同一オリジンの収集エンドポイント想定パスとする。
+// 設計書: docs/security/03_security_headers_and_csp.md §4.1 / §8
+const cspReportUri = process.env.NUXT_PUBLIC_CSP_REPORT_URI ?? '/api/v1/security/csp-reports'
+
 // connect-src の許可リストを構成する。
 // - 'self'（同一オリジン API / SSR エラー転送 / PWA）
 // - apiBase（バックエンド API オリジン。プロキシ時も無害なので含める）
@@ -113,7 +120,21 @@ export default defineNuxtConfig({
         // 'strict-dynamic' により nonce 付きスクリプトがロードする子スクリプトを許可。
         'script-src': ["'self'", "'nonce-{{nonce}}'", "'strict-dynamic'"],
         // style-src: PrimeVue(Aura)/Tailwind の動的インラインスタイルのため
-        // 'unsafe-inline' を当面維持（設計書 §4 ロードマップ Phase 1 方針）。
+        // 'unsafe-inline' を当面維持する。
+        // 【実地検証の結論（2026-05-26 / feature/security-fe-csp-refine）】
+        // nonce 化（'unsafe-inline' 排除）は現状不可。
+        //   - PrimeVue 4.5.4 はテーマ/コンポーネントの CSS を `useStyle`
+        //     （@primevue/core/usestyle）でクライアント実行時に <style> を
+        //     document.head へ動的注入する（createElement('style') + appendChild）。
+        //   - その <style> の nonce は PrimeVue 静的設定 `csp.nonce` 由来であり、
+        //     nuxt-security がリクエストごとに発番するランダム nonce とは一致し得ない
+        //     （SSR の per-request nonce をクライアント実行時設定へ橋渡しする
+        //      仕組みが当スタックに存在しない）。
+        //   - よって style-src を nonce 化すると PrimeVue 注入スタイルが CSP 違反で
+        //     ブロックされ UI が崩壊する。Tailwind/Vue scoped style も同様の懸念。
+        //   - 症状を作らない方針（根治治療原則）に基づき 'unsafe-inline' を維持する。
+        //   - 排除は Phase 2 で PrimeVue 側の per-request nonce 対応を待って再評価する。
+        // 設計書: docs/security/03_security_headers_and_csp.md §4.0 / §4 ロードマップ Phase 2
         'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         'font-src': ["'self'", 'https://fonts.gstatic.com', 'data:'],
         // img-src: アバター/アップロード画像/OGP。R2/CDN は環境依存のため https: を許容。
@@ -129,6 +150,14 @@ export default defineNuxtConfig({
         'base-uri': ["'self'"],
         'form-action': ["'self'"],
         'upgrade-insecure-requests': true,
+        // report-uri: CSP 違反レポートの送信先。将来の収集基盤（F12.5 エラー追跡）へ向ける。
+        // report-uri は非推奨化されつつあるが広範なブラウザ互換のため採用する。
+        // report-to（後継）は CSP ディレクティブ単体では機能せず、別途
+        // `Reporting-Endpoints`/`Report-To` レスポンスヘッダーの付与が必要。
+        // nuxt-security はこのヘッダーを自動出力しないため、本 Phase では report-to は
+        // 見送り、report-uri のみ設定する（バックエンド受信エンドポイントは別途実装）。
+        // 設計書: docs/security/03_security_headers_and_csp.md §4.1
+        'report-uri': [cspReportUri],
       },
       // HSTS は HTTPS 経由でのみ有効化される（nuxt-security の既定挙動）。
       // 一次責務はエッジ層（Cloudflare/LB）、アプリ層でも多層化する（設計書 §5）。

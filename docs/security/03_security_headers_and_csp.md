@@ -40,6 +40,7 @@
 | `frame-ancestors` | `'none'` | クリックジャッキング防止（自サイトの iframe 埋め込み禁止） |
 | `base-uri` | `'self'` | `<base>` タグ injection 防止 |
 | `form-action` | `'self'` | フォーム送信先を自オリジンに限定 |
+| `report-uri` | `/api/v1/security/csp-reports`（`NUXT_PUBLIC_CSP_REPORT_URI` で差替可） | CSP 違反レポート送信先。受信エンドポイントは未実装（§4.1）|
 
 > R2 エンドポイント（`*.r2.cloudflarestorage.com`）と CDN Workers ドメイン（`MANNSCHAFT_CDN_WORKERS_DOMAIN`）は環境ごとに異なるため、CSP 文字列を環境変数から構成する。`@nuxt/image` の最適化経路も img-src に含まれることを確認する。
 
@@ -76,6 +77,57 @@ PrimeVue/Tailwind は動的インラインスタイルを多用するため、**
 1. **Phase 1（本 Phase）**: nonce ベース CSP を導入。script-src は nonce + 必要最小限。style-src は `'unsafe-inline'` 許容。Report-Only で観測
 2. **Phase 2（将来）**: style-src の nonce/hash 化を検討（PrimeVue の対応状況次第）
 
+### 4.0 style-src の `'unsafe-inline'` 排除可否 — 実地検証の結論（2026-05-26）
+
+**結論: 現状 nonce 化は不可。`'unsafe-inline'` を維持する（Phase 2 へ繰り越し）。**
+
+`feature/security-fe-csp-refine` で style-src を nonce ベース（`'nonce-{{nonce}}'`、`'unsafe-inline'` 排除）へ切り替える可否をコードレベルで実地検証した。結果は以下のとおり。
+
+- **PrimeVue 4.5.4 はテーマ/コンポーネント CSS をクライアント実行時に動的注入する。**
+  `@primevue/core/usestyle` の `useStyle()` が `document.createElement('style')` →
+  `document.head.appendChild()` でハイドレーション後に `<style>` を注入する
+  （`node_modules/@primevue/core/usestyle/index.mjs`）。
+- **その `<style>` の nonce は PrimeVue 静的設定 `csp.nonce` 由来であり、nuxt-security が
+  リクエストごとに発番するランダム nonce とは構造的に一致し得ない。** `useStyle` は
+  `options.nonce` を受け付けるが、その値は PrimeVue の app レベル設定（ビルド時固定）であって、
+  SSR レスポンスごとに変わる per-request nonce をクライアント実行時へ橋渡しする仕組みが
+  当スタック（nuxt-security + @primevue/nuxt-module 4.x / PrimeVue 4.5.4）に存在しない。
+
+> 検証時の依存実バージョン: PrimeVue `4.5.4`、nuxt-security `1.4.3`（`package-lock.json` 実体。
+> `package.json` の宣言は `^2.6.0` だが現行 main のロックは 1.4.3 にピンされている。
+> 本結論は nuxt-security のバージョンに依存しない（根本原因は PrimeVue のクライアント実行時注入）。
+- したがって style-src を nonce 化すると、PrimeVue が実行時注入する `<style>` が CSP 違反で
+  ブロックされ **UI が崩壊する**。Tailwind の `@nuxtjs/tailwindcss` および Vue scoped style も
+  SSR インライン化されるため同様の懸念がある。
+- `'strict-dynamic'` は script にのみ作用し、style には効かないため救済にならない。
+
+**判断**: 障害対応の原則（症状を作らない＝根治治療）に従い、`'unsafe-inline'` を**維持**する。
+無理に排除して PrimeVue スタイルを壊すことはしない。排除は **Phase 2** で PrimeVue 側の
+per-request nonce 対応（SSR nonce をクライアント `csp.nonce` へ伝播する公式機構）が
+整った時点で再評価する。
+
+> 補足: `script-src` は既に nonce + `'strict-dynamic'` で `'unsafe-inline'` を排除済み
+> （`nuxt.config.ts` の `script-src`）。スクリプト側は Nuxt の SSR が nonce を自動付与するため成立する。
+> 問題は **style 側のみ**、かつ **PrimeVue のクライアント実行時注入**に起因する。
+
+### 4.1 CSP 違反レポート（report-uri / report-to）
+
+CSP 違反を収集できるよう、`report-uri` ディレクティブを追加した（`nuxt.config.ts` の CSP `report-uri`）。
+
+- **採用: `report-uri`**（既定値 `/api/v1/security/csp-reports`、`NUXT_PUBLIC_CSP_REPORT_URI` で差し替え可）。
+  非推奨化されつつあるが、ブラウザ互換が最も広く、companion ヘッダー不要で単体機能するため採用。
+- **見送り: `report-to`**（後継仕様）。`report-to` は CSP ディレクティブ単体では機能せず、
+  別途 `Reporting-Endpoints`（または旧 `Report-To`）レスポンスヘッダーで endpoint グループを
+  定義する必要がある。**nuxt-security はこのヘッダーを自動出力しない**ため、本 Phase では
+  見送る。将来導入する場合は Nitro プラグイン/route rules で当該ヘッダーを付与する。
+- **スコープ**: 本 Phase はディレクティブ追加と方針確定に留める。**バックエンドの受信
+  エンドポイント（`POST /api/v1/security/csp-reports`、`Content-Type: application/csp-report`/
+  `application/reports+json`）は未実装**。未実装の間はブラウザの違反レポート送信が 404 になるだけで、
+  **CSP 強制（強制モード）自体は正常に機能する**。受信エンドポイントの実装は F12.5 エラー追跡基盤
+  への統合として別途起票する（過剰実装回避のため本 Phase ではスコープ外）。
+- 強制モード（`contentSecurityPolicyReportOnly: false`）は維持する。Report-Only への切替は
+  §2.2 のとおり観測が必要になった場合に行う。
+
 ---
 
 ## 5. TLS / HTTPS 強制（方針確定）
@@ -107,7 +159,26 @@ PrimeVue/Tailwind は動的インラインスタイルを多用するため、**
 ## 8. 今後の拡張（スコープ外・意思決定済み）
 
 - **script-src の `'unsafe-inline'` 完全排除**: §4 ロードマップ Phase 2 で実施（PrimeVue の nonce/hash 対応状況に依存するため Phase 1 ではスコープ外と決定）
-- **CSP `reportUri` による違反レポート収集**: F12.5 エラー追跡基盤への統合は将来検討（Phase 1 では Report-Only モードでの観測に留める）
+- **CSP 違反レポート収集（report-uri 受信エンドポイント）**: §4.1 のとおり `report-uri` ディレクティブは設定済み。バックエンドの受信エンドポイント（`POST /api/v1/security/csp-reports`）実装と F12.5 エラー追跡基盤への統合は将来別途起票（本 Phase はディレクティブ追加と方針確定まで）
+
+### 8.1 SRI（Subresource Integrity）— 現状 N/A（実地検証の結論 2026-05-26）
+
+**結論: 外部リソースへの SRI 適用は現状 N/A（適用対象なし）。コード変更不要。**
+
+- **外部から読み込む JS は存在しない。** 全 JS は Nuxt/Vite がバンドルした自オリジン資産であり、
+  外部 CDN からの `<script src>` 読み込みは無い。
+- **外部 CSS は Google Fonts（`https://fonts.googleapis.com/css2?...`）のみ。** Google Fonts の
+  CSS はブラウザ/プラットフォームごとに `@font-face` の内容が動的に出し分けられるため、固定の
+  SRI ハッシュを付けると配信内容が変わった瞬間に**読み込みが壊れる**。Google 自身も Fonts CSS への
+  SRI 付与を非推奨としている。よって Google Fonts には SRI を適用しない。
+- **自オリジンのバンドル資産には nuxt-security が既に SRI を自動付与している。**
+  nuxt-security の `sri` オプションは既定 `true` で、SSR の `render:html` フックにて
+  バンドル済みローカル `<script src>` / `<link rel=stylesheet|preload|modulepreload>` に
+  `integrity` 属性を自動付与する（`subresourceIntegrity` プラグイン。ハッシュは
+  バンドル資産から算出される）。外部 URL はハッシュ辞書に無いため対象外で、Google Fonts は
+  そのまま素通しされる（壊れない）。
+- **将来、セルフホストしない外部スクリプト（解析タグ・ウィジェット等）を追加する場合は、
+  その時点で個別に SRI ハッシュ付与を検討する。** 現状は該当なし。
 
 ---
 
@@ -117,3 +188,4 @@ PrimeVue/Tailwind は動的インラインスタイルを多用するため、**
 |---|---|
 | 2026-05-26 | 新規作成。nuxt-security による nonce CSP・各ヘッダー・責務分担を定義 |
 | 2026-05-26 | フロント実装（`feature/security-fe-csp`）。`nuxt-security@2.6.0` 導入、`frontend/nuxt.config.ts` に `security: {...}` を追加。nonce 有効・CSRF/rateLimiter/xssValidator/corsHandler 等は無効化（API 防御はバックエンド責務）。Permissions-Policy は実コード棚卸し結果（geolocation/camera/screen-wake-lock/publickey-credentials-get/web-share/fullscreen を `self` 許可、その他無効化）を反映。devtools を本番無効化。実機 CSP 検証（PrimeVue ダイアログ・Google Maps 埋め込み・画像表示・PWA SW 登録）は残課題 |
+| 2026-05-26 | CSP 精緻化（`feature/security-fe-csp-refine`）。①style-src の nonce 化可否を実地検証し「現状不可（PrimeVue 4.5.4 のクライアント実行時 `useStyle` 注入 vs nuxt-security の per-request nonce 不一致）」と結論、`'unsafe-inline'` 維持を確定（§4.0）。②CSP `report-uri` を追加（`/api/v1/security/csp-reports`、受信 EP は未実装＝別途起票、§4.1）。`report-to` は companion ヘッダー不在のため見送り。③SRI は外部 JS なし・Google Fonts は SRI 非推奨で現状 N/A、自オリジンバンドルは nuxt-security `sri:true` が自動付与済みと整理（§8.1） |
