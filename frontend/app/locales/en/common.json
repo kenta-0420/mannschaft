@@ -1286,6 +1286,14 @@
       "betaRestriction": "Beta Restriction",
       "errorReports": "Error Reports",
       "gdprPurge": "GDPR Purge Status"
+    },
+    "businessAlert": {
+      "title": "Business Alerts",
+      "newReservations": "New Reservations",
+      "pendingApproval": "Pending Approval",
+      "unreadInquiries": "Inquiries",
+      "noAlerts": "No alerts",
+      "viewAll": "View all"
     }
   },
   "notificationCredit": {

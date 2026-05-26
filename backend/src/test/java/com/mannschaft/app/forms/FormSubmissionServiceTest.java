@@ -129,8 +129,14 @@ class FormSubmissionServiceTest {
         void 提出承認_SUBMITTED状態_正常() {
             // Given
             FormSubmissionEntity entity = createSubmittedSubmission();
-            FormSubmissionResponse response = new FormSubmissionResponse(SUBMISSION_ID, TEMPLATE_ID,
-                    SCOPE_TYPE, SCOPE_ID, "APPROVED", USER_ID, null, null, 1, null, null, null, List.of());
+            FormSubmissionResponse response = FormSubmissionResponse.builder()
+                    .id(SUBMISSION_ID).status("APPROVED")
+                    .scope(new FormSubmissionResponse.FormScopeDto(SCOPE_TYPE, SCOPE_ID))
+                    .meta(new FormSubmissionResponse.FormSubmissionMetaDto(TEMPLATE_ID, USER_ID, null, 1, null))
+                    .pdf(new FormSubmissionResponse.FormSubmissionPdfDto(null))
+                    .audit(new FormSubmissionResponse.FormSubmissionAuditDto(null, null))
+                    .values(List.of())
+                    .build();
 
             given(submissionRepository.findById(SUBMISSION_ID)).willReturn(Optional.of(entity));
             given(submissionRepository.save(entity)).willReturn(entity);
@@ -168,8 +174,14 @@ class FormSubmissionServiceTest {
         void 提出却下_SUBMITTED状態_正常() {
             // Given
             FormSubmissionEntity entity = createSubmittedSubmission();
-            FormSubmissionResponse response = new FormSubmissionResponse(SUBMISSION_ID, TEMPLATE_ID,
-                    SCOPE_TYPE, SCOPE_ID, "REJECTED", USER_ID, null, null, 1, null, null, null, List.of());
+            FormSubmissionResponse response = FormSubmissionResponse.builder()
+                    .id(SUBMISSION_ID).status("REJECTED")
+                    .scope(new FormSubmissionResponse.FormScopeDto(SCOPE_TYPE, SCOPE_ID))
+                    .meta(new FormSubmissionResponse.FormSubmissionMetaDto(TEMPLATE_ID, USER_ID, null, 1, null))
+                    .pdf(new FormSubmissionResponse.FormSubmissionPdfDto(null))
+                    .audit(new FormSubmissionResponse.FormSubmissionAuditDto(null, null))
+                    .values(List.of())
+                    .build();
 
             given(submissionRepository.findById(SUBMISSION_ID)).willReturn(Optional.of(entity));
             given(submissionRepository.save(entity)).willReturn(entity);
@@ -193,8 +205,14 @@ class FormSubmissionServiceTest {
         void 提出差し戻し_SUBMITTED状態_正常() {
             // Given
             FormSubmissionEntity entity = createSubmittedSubmission();
-            FormSubmissionResponse response = new FormSubmissionResponse(SUBMISSION_ID, TEMPLATE_ID,
-                    SCOPE_TYPE, SCOPE_ID, "RETURNED", USER_ID, null, null, 1, null, null, null, List.of());
+            FormSubmissionResponse response = FormSubmissionResponse.builder()
+                    .id(SUBMISSION_ID).status("RETURNED")
+                    .scope(new FormSubmissionResponse.FormScopeDto(SCOPE_TYPE, SCOPE_ID))
+                    .meta(new FormSubmissionResponse.FormSubmissionMetaDto(TEMPLATE_ID, USER_ID, null, 1, null))
+                    .pdf(new FormSubmissionResponse.FormSubmissionPdfDto(null))
+                    .audit(new FormSubmissionResponse.FormSubmissionAuditDto(null, null))
+                    .values(List.of())
+                    .build();
 
             given(submissionRepository.findById(SUBMISSION_ID)).willReturn(Optional.of(entity));
             given(submissionRepository.save(entity)).willReturn(entity);
@@ -262,10 +280,14 @@ class FormSubmissionServiceTest {
             given(templateService.getTemplateEntity(TEMPLATE_ID)).willReturn(template);
             given(submissionRepository.save(entity)).willReturn(entity);
             given(valueRepository.findBySubmissionId(SUBMISSION_ID)).willReturn(List.of());
-            FormSubmissionResponse stub = new FormSubmissionResponse(
-                    SUBMISSION_ID, TEMPLATE_ID, SCOPE_TYPE, SCOPE_ID,
-                    "SUBMITTED", USER_ID, null, null, 1, 0L,
-                    null, null, List.of());
+            FormSubmissionResponse stub = FormSubmissionResponse.builder()
+                    .id(SUBMISSION_ID).status("SUBMITTED")
+                    .scope(new FormSubmissionResponse.FormScopeDto(SCOPE_TYPE, SCOPE_ID))
+                    .meta(new FormSubmissionResponse.FormSubmissionMetaDto(TEMPLATE_ID, USER_ID, null, 1, 0L))
+                    .pdf(new FormSubmissionResponse.FormSubmissionPdfDto(null))
+                    .audit(new FormSubmissionResponse.FormSubmissionAuditDto(null, null))
+                    .values(List.of())
+                    .build();
             given(formMapper.toSubmissionResponseWithValues(entity, List.of()))
                     .willReturn(stub);
 

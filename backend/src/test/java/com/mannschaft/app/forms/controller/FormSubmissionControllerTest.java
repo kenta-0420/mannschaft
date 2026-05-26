@@ -57,10 +57,14 @@ class FormSubmissionControllerTest {
     @Test
     @DisplayName("POST submit 正常系: 200 + Service の結果を ApiResponse でラップ")
     void submit_200() {
-        FormSubmissionResponse stub = new FormSubmissionResponse(
-                SUBMISSION_ID, 100L, SCOPE_TYPE, SCOPE_ID,
-                "SUBMITTED", USER_ID, null, null, 1, 0L,
-                null, null, List.of());
+        FormSubmissionResponse stub = FormSubmissionResponse.builder()
+                .id(SUBMISSION_ID).status("SUBMITTED")
+                .scope(new FormSubmissionResponse.FormScopeDto(SCOPE_TYPE, SCOPE_ID))
+                .meta(new FormSubmissionResponse.FormSubmissionMetaDto(100L, USER_ID, null, 1, 0L))
+                .pdf(new FormSubmissionResponse.FormSubmissionPdfDto(null))
+                .audit(new FormSubmissionResponse.FormSubmissionAuditDto(null, null))
+                .values(List.of())
+                .build();
         given(submissionService.submit(SUBMISSION_ID, USER_ID)).willReturn(stub);
 
         ResponseEntity<ApiResponse<FormSubmissionResponse>> response =

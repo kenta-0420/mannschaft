@@ -7,9 +7,9 @@ import com.mannschaft.app.performance.entity.PerformanceMetricEntity;
 import com.mannschaft.app.performance.entity.PerformanceMetricTemplateEntity;
 import com.mannschaft.app.performance.entity.PerformanceRecordEntity;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * パフォーマンス管理機能の Entity → DTO 変換マッパー。
@@ -17,32 +17,41 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface PerformanceMapper {
 
-    @Mapping(target = "dataType", expression = "java(entity.getDataType().name())")
-    @Mapping(target = "aggregationType", expression = "java(entity.getAggregationType().name())")
-    MetricResponse toMetricResponse(PerformanceMetricEntity entity);
+    default MetricResponse toMetricResponse(PerformanceMetricEntity entity) {
+        return MetricResponse.builder()
+                .id(entity.getId())
+                .definition(new MetricResponse.MetricDefinitionDto(
+                        entity.getName(), entity.getUnit(),
+                        entity.getDataType().name(), entity.getAggregationType().name(),
+                        entity.getDescription(), entity.getGroupName()))
+                .valueRange(new MetricResponse.MetricValueRangeDto(
+                        entity.getTargetValue(), entity.getMinValue(), entity.getMaxValue()))
+                .access(new MetricResponse.MetricAccessDto(
+                        entity.getIsVisibleToMembers(), entity.getIsSelfRecordable(),
+                        entity.getLinkedActivityFieldId(), entity.getIsActive()))
+                .sortOrder(entity.getSortOrder())
+                .audit(new MetricResponse.MetricAuditDto(entity.getCreatedAt(), entity.getUpdatedAt()))
+                .build();
+    }
 
-    List<MetricResponse> toMetricResponseList(List<PerformanceMetricEntity> entities);
+    default List<MetricResponse> toMetricResponseList(List<PerformanceMetricEntity> entities) {
+        return entities.stream().map(this::toMetricResponse).collect(Collectors.toList());
+    }
 
     /**
      * 記録エンティティをレスポンスに変換する。metricName と unit は呼び出し元で設定する。
      */
     default RecordResponse toRecordResponse(PerformanceRecordEntity entity, String metricName, String unit) {
-        return new RecordResponse(
-                entity.getId(),
-                entity.getMetricId(),
-                metricName,
-                entity.getUserId(),
-                entity.getScheduleId(),
-                entity.getActivityResultId(),
-                entity.getRecordedDate(),
-                entity.getValue(),
-                unit,
-                entity.getNote(),
-                entity.getSource().name(),
-                entity.getRecordedBy(),
-                entity.getCreatedAt(),
-                entity.getUpdatedAt()
-        );
+        return RecordResponse.builder()
+                .id(entity.getId())
+                .metric(new RecordResponse.RecordMetricDto(entity.getMetricId(), metricName))
+                .actor(new RecordResponse.RecordActorDto(
+                        entity.getUserId(), entity.getScheduleId(), entity.getActivityResultId()))
+                .record(new RecordResponse.RecordValueDto(
+                        entity.getRecordedDate(), entity.getValue(), unit, entity.getNote()))
+                .source(new RecordResponse.RecordSourceDto(entity.getSource().name(), entity.getRecordedBy()))
+                .audit(new RecordResponse.RecordAuditDto(entity.getCreatedAt(), entity.getUpdatedAt()))
+                .build();
     }
 
     default TemplateListResponse.TemplateMetric toTemplateMetric(PerformanceMetricTemplateEntity entity) {

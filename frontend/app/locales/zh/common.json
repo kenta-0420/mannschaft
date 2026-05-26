@@ -1286,6 +1286,14 @@
       "betaRestriction": "测试版限制",
       "errorReports": "错误报告",
       "gdprPurge": "GDPR 清除状态"
+    },
+    "businessAlert": {
+      "title": "业务提醒",
+      "newReservations": "新预约",
+      "pendingApproval": "待审批",
+      "unreadInquiries": "咨询",
+      "noAlerts": "暂无提醒",
+      "viewAll": "查看全部"
     }
   },
   "notificationCredit": {

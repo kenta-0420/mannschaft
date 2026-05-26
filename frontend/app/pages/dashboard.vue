@@ -12,6 +12,13 @@ const timedMessage = useTimedMessage()
 
 const hasFamilyTeam = computed(() => teamStore.myTeams.some((t) => t.template === 'FAMILY'))
 
+// ADMIN / DEPUTY_ADMIN ロールを1件以上持つ場合にウィジェットを表示
+const hasAdminOrDeputyRole = computed(() =>
+  teamStore.myTeams.some(t =>
+    t.role === 'ADMIN' || t.role === 'SYSTEM_ADMIN' || t.role === 'DEPUTY_ADMIN',
+  ),
+)
+
 const showTeamCreateDialog = ref(false)
 const showOrgCreateDialog = ref(false)
 
@@ -83,6 +90,8 @@ onMounted(async () => {
         <WidgetMyBlog />
         <WidgetMyTeams />
         <WidgetMyOrganizations />
+        <!-- F10.7: 業務アラートウィジェット（ADMIN/DEPUTY_ADMIN のみ） -->
+        <WidgetAdminBusinessAlert v-if="hasAdminOrDeputyRole" />
         <!-- F02.9 Phase 2: お気に入りウィジェット -->
         <WidgetFavorites />
         <WidgetAmazonAd scope-type="personal" />

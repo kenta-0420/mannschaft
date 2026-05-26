@@ -1,7 +1,7 @@
 package com.mannschaft.app.forms.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -9,21 +9,24 @@ import java.util.List;
 /**
  * フォーム提出レスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class FormSubmissionResponse {
 
-    private final Long id;
-    private final Long templateId;
-    private final String scopeType;
-    private final Long scopeId;
-    private final String status;
-    private final Long submittedBy;
-    private final Long workflowRequestId;
-    private final String pdfFileKey;
-    private final Integer submissionCountForUser;
-    private final Long version;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
-    private final List<SubmissionValueResponse> values;
+    Long id;
+    String status;
+    FormScopeDto scope;
+    FormSubmissionMetaDto meta;
+    FormSubmissionPdfDto pdf;
+    FormSubmissionAuditDto audit;
+    List<SubmissionValueResponse> values;
+
+    public record FormScopeDto(String scopeType, Long scopeId) {}
+
+    public record FormSubmissionMetaDto(Long templateId, Long submittedBy, Long workflowRequestId,
+                                        Integer submissionCountForUser, Long version) {}
+
+    public record FormSubmissionPdfDto(String pdfFileKey) {}
+
+    public record FormSubmissionAuditDto(LocalDateTime createdAt, LocalDateTime updatedAt) {}
 }
