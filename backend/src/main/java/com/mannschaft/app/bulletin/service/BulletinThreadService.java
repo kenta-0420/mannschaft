@@ -296,22 +296,30 @@ public class BulletinThreadService {
     }
 
     /**
-     * アーカイブする。ADMIN or DEPUTY(MANAGE_CONTENT) のみ。
+     * アーカイブ状態を変更する。ADMIN or DEPUTY(MANAGE_CONTENT) のみ（設計書 F05.1 §4）。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param threadId  スレッドID
-     * @param userId    操作ユーザーID
+     * <p>{@code isArchived=true} でアーカイブ（保管庫へ格納）、{@code false} でアーカイブ解除
+     * （一覧へ戻す）を行う双方向操作。認可は従来どおり {@code requireManageContent} で硬化する。</p>
+     *
+     * @param scopeType  スコープ種別
+     * @param scopeId    スコープID
+     * @param threadId   スレッドID
+     * @param userId     操作ユーザーID
+     * @param isArchived 設定するアーカイブ状態（true=アーカイブ / false=解除）
      * @return 更新されたスレッドレスポンス
      */
     @Transactional
-    public ThreadResponse archive(ScopeType scopeType, Long scopeId, Long threadId, Long userId) {
+    public ThreadResponse archive(ScopeType scopeType, Long scopeId, Long threadId, Long userId, boolean isArchived) {
         accessGuard.checkMembership(userId, scopeType, scopeId);
         accessGuard.requireManageContent(userId, scopeType, scopeId);
         BulletinThreadEntity entity = findThreadOrThrow(scopeType, scopeId, threadId);
-        entity.archive();
+        if (isArchived) {
+            entity.archive();
+        } else {
+            entity.unarchive();
+        }
         BulletinThreadEntity saved = threadRepository.save(entity);
-        log.info("スレッドアーカイブ: threadId={}", threadId);
+        log.info("スレッドアーカイブ状態変更: threadId={}, isArchived={}", threadId, saved.getIsArchived());
         return bulletinMapper.toThreadResponse(saved);
     }
 
