@@ -43,8 +43,8 @@ class ShiftMapperTest {
                     .status(ShiftScheduleStatus.DRAFT).note("備考テスト").build();
             ShiftScheduleResponse response = mapper.toScheduleResponse(entity);
             assertThat(response).isNotNull();
-            assertThat(response.getPeriodType()).isEqualTo("WEEKLY");
-            assertThat(response.getStatus()).isEqualTo("DRAFT");
+            assertThat(response.getContent().periodType()).isEqualTo("WEEKLY");
+            assertThat(response.getStatus().status()).isEqualTo("DRAFT");
         }
 
         @Test
@@ -60,7 +60,7 @@ class ShiftMapperTest {
                     .teamId(1L).title("月次").periodType(ShiftPeriodType.MONTHLY)
                     .startDate(LocalDate.of(2026, 4, 1)).endDate(LocalDate.of(2026, 4, 30))
                     .status(ShiftScheduleStatus.PUBLISHED).build();
-            assertThat(mapper.toScheduleResponse(entity).getPeriodType()).isEqualTo("MONTHLY");
+            assertThat(mapper.toScheduleResponse(entity).getContent().periodType()).isEqualTo("MONTHLY");
         }
     }
 

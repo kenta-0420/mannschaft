@@ -101,7 +101,7 @@ class ShiftSlotServiceTest {
 
             // Then
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getPositionName()).isEqualTo("キッチン");
+            assertThat(result.get(0).getPosition().positionName()).isEqualTo("キッチン");
         }
 
         @Test
@@ -124,7 +124,7 @@ class ShiftSlotServiceTest {
 
             // Then
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getPositionName()).isNull();
+            assertThat(result.get(0).getPosition().positionName()).isNull();
         }
     }
 

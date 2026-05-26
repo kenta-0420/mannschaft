@@ -94,11 +94,15 @@ class ShiftScheduleServiceTest {
     }
 
     private ShiftScheduleResponse createScheduleResponse() {
-        return new ShiftScheduleResponse(
-                SCHEDULE_ID, TEAM_ID, "3月第1週シフト", "WEEKLY",
-                LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 7),
-                "DRAFT", null, null, USER_ID, null, null,
-                LocalDateTime.now(), LocalDateTime.now());
+        return ShiftScheduleResponse.builder()
+                .id(SCHEDULE_ID)
+                .teamId(TEAM_ID)
+                .content(new ShiftScheduleResponse.ShiftContentDto("3月第1週シフト", "WEEKLY", null))
+                .period(new ShiftScheduleResponse.ShiftPeriodDto(
+                        LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 7), null))
+                .status(new ShiftScheduleResponse.ShiftStatusDto("DRAFT", null, null))
+                .audit(new ShiftScheduleResponse.ShiftAuditDto(USER_ID, LocalDateTime.now(), LocalDateTime.now()))
+                .build();
     }
 
     // ========================================
@@ -125,7 +129,7 @@ class ShiftScheduleServiceTest {
 
             // Then
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getTitle()).isEqualTo("3月第1週シフト");
+            assertThat(result.get(0).getContent().title()).isEqualTo("3月第1週シフト");
             verify(scheduleRepository).findByTeamIdOrderByStartDateDesc(TEAM_ID);
         }
     }
@@ -180,7 +184,7 @@ class ShiftScheduleServiceTest {
             ShiftScheduleResponse result = shiftScheduleService.getSchedule(SCHEDULE_ID);
 
             // Then
-            assertThat(result.getTitle()).isEqualTo("3月第1週シフト");
+            assertThat(result.getContent().title()).isEqualTo("3月第1週シフト");
         }
 
         @Test
@@ -222,7 +226,7 @@ class ShiftScheduleServiceTest {
             ShiftScheduleResponse result = shiftScheduleService.createSchedule(TEAM_ID, req, USER_ID);
 
             // Then
-            assertThat(result.getTitle()).isEqualTo("3月第1週シフト");
+            assertThat(result.getContent().title()).isEqualTo("3月第1週シフト");
             verify(scheduleRepository).save(any(ShiftScheduleEntity.class));
         }
 

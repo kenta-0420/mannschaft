@@ -1,7 +1,7 @@
 package com.mannschaft.app.shift.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -9,22 +9,20 @@ import java.time.LocalDateTime;
 /**
  * シフトスケジュールレスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class ShiftScheduleResponse {
 
-    private final Long id;
-    private final Long teamId;
-    private final String title;
-    private final String periodType;
-    private final LocalDate startDate;
-    private final LocalDate endDate;
-    private final String status;
-    private final LocalDateTime requestDeadline;
-    private final String note;
-    private final Long createdBy;
-    private final LocalDateTime publishedAt;
-    private final Long publishedBy;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    Long id;
+    Long teamId;
+
+    ShiftContentDto  content;  // title, periodType, note
+    ShiftPeriodDto   period;   // startDate, endDate, requestDeadline
+    ShiftStatusDto   status;   // status, publishedAt, publishedBy
+    ShiftAuditDto    audit;    // createdBy, createdAt, updatedAt
+
+    public record ShiftContentDto(String title, String periodType, String note) {}
+    public record ShiftPeriodDto(LocalDate startDate, LocalDate endDate, LocalDateTime requestDeadline) {}
+    public record ShiftStatusDto(String status, LocalDateTime publishedAt, Long publishedBy) {}
+    public record ShiftAuditDto(Long createdBy, LocalDateTime createdAt, LocalDateTime updatedAt) {}
 }
