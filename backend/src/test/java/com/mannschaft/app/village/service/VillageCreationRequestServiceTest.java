@@ -9,11 +9,9 @@ import com.mannschaft.app.village.dto.VillageCreationRequestReviewRequest;
 import com.mannschaft.app.village.entity.VillageCreationRequestEntity;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
-import com.mannschaft.app.village.entity.enums.VillageJoinPolicy;
 import com.mannschaft.app.village.entity.enums.VillageRequestStatus;
 import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageType;
-import com.mannschaft.app.village.entity.enums.VillageVisibility;
 import com.mannschaft.app.village.repository.VillageCreationRequestRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
@@ -89,8 +87,6 @@ class VillageCreationRequestServiceTest {
                 "スポーツ",
                 "草野球チーム同士の交流の場が欲しい",
                 OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(5),
-                VillageJoinPolicy.FREE,
-                VillageVisibility.PUBLIC,
                 VillageType.COMMUNITY,
                 "## ガイドライン"
         );
@@ -208,7 +204,7 @@ class VillageCreationRequestServiceTest {
         VillageCreationRequestCreateRequest req = new VillageCreationRequestCreateRequest(
                 "草野球村", "casual-baseball", null, "p",
                 OffsetDateTime.now(ZoneOffset.UTC).minusHours(2),
-                VillageJoinPolicy.FREE, VillageVisibility.PUBLIC, VillageType.COMMUNITY, null);
+                VillageType.COMMUNITY, null);
 
         assertThatThrownBy(() -> service.createRequest(REQUESTER_ID, req))
                 .isInstanceOf(BusinessException.class)
@@ -433,7 +429,7 @@ class VillageCreationRequestServiceTest {
         VillageCreationRequestCreateRequest req = new VillageCreationRequestCreateRequest(
                 "公式村", "official-slug", null, "p",
                 OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(5),
-                VillageJoinPolicy.FREE, VillageVisibility.PUBLIC, VillageType.OFFICIAL, null);
+                VillageType.OFFICIAL, null);
         given(userRoleRepository.existsSystemAdminByUserId(REQUESTER_ID)).willReturn(0L);
 
         assertThatThrownBy(() -> service.createRequest(REQUESTER_ID, req))
