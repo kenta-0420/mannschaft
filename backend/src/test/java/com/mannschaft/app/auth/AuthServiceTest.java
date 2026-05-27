@@ -360,5 +360,62 @@ class AuthServiceTest {
             // アカウントロックキーが設定されることを確認
             verify(valueOperations).set(contains("account_lock"), eq("1"), anyLong(), any());
         }
+
+        @Test
+        @DisplayName("正常系: 旧BCryptハッシュはログイン成功時にArgon2idへ透過的に再ハッシュされる")
+        void login_旧BCryptハッシュ_Argon2idへ段階移行() {
+            // Given: upgradeEncoding が true（旧アルゴリズム＝生BCrypt）を返す
+            LoginRequest req = createLoginRequest();
+            UserEntity user = createActiveUser();
+            given(userRepository.findByEmail(TEST_EMAIL)).willReturn(Optional.of(user));
+            given(passwordEncoder.matches(TEST_PASSWORD, ENCODED_PASSWORD)).willReturn(true);
+            given(passwordEncoder.upgradeEncoding(ENCODED_PASSWORD)).willReturn(true);
+            given(passwordEncoder.encode(TEST_PASSWORD)).willReturn("{argon2}$argon2id$v=19$rehashed");
+            given(twoFactorAuthRepository.findByUserId(any())).willReturn(Optional.empty());
+            given(authTokenService.issueAccessToken(any(), any())).willReturn("jwt-access-token");
+            given(authTokenService.generateRefreshToken()).willReturn("raw-refresh-token");
+            given(authTokenService.hashToken("raw-refresh-token")).willReturn("hashed-refresh-token");
+            given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
+            given(authTokenService.getAccessTokenExpirationSeconds()).willReturn(900L);
+            given(refreshTokenRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+            given(redisTemplate.hasKey(anyString())).willReturn(false);
+
+            // When
+            ApiResponse<?> response = authService.login(req, TEST_IP, TEST_USER_AGENT);
+
+            // Then: 再エンコードされた Argon2id ハッシュで保存され、ログインも成功する
+            assertThat(response.getData()).isInstanceOf(LoginResponse.class);
+            verify(passwordEncoder).encode(TEST_PASSWORD);
+            verify(userRepository).save(user);
+            assertThat(user.getPasswordHash()).isEqualTo("{argon2}$argon2id$v=19$rehashed");
+        }
+
+        @Test
+        @DisplayName("正常系: 既にArgon2idのハッシュはログイン成功時に再ハッシュしない")
+        void login_Argon2idハッシュ_再ハッシュしない() {
+            // Given: upgradeEncoding が false（既に最新アルゴリズム）を返す
+            LoginRequest req = createLoginRequest();
+            UserEntity user = createActiveUser();
+            given(userRepository.findByEmail(TEST_EMAIL)).willReturn(Optional.of(user));
+            given(passwordEncoder.matches(TEST_PASSWORD, ENCODED_PASSWORD)).willReturn(true);
+            given(passwordEncoder.upgradeEncoding(ENCODED_PASSWORD)).willReturn(false);
+            given(twoFactorAuthRepository.findByUserId(any())).willReturn(Optional.empty());
+            given(authTokenService.issueAccessToken(any(), any())).willReturn("jwt-access-token");
+            given(authTokenService.generateRefreshToken()).willReturn("raw-refresh-token");
+            given(authTokenService.hashToken("raw-refresh-token")).willReturn("hashed-refresh-token");
+            given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
+            given(authTokenService.getAccessTokenExpirationSeconds()).willReturn(900L);
+            given(refreshTokenRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+            given(redisTemplate.hasKey(anyString())).willReturn(false);
+
+            // When
+            ApiResponse<?> response = authService.login(req, TEST_IP, TEST_USER_AGENT);
+
+            // Then: encode（再ハッシュ）は呼ばれず、ユーザーの save も発生しない
+            assertThat(response.getData()).isInstanceOf(LoginResponse.class);
+            verify(passwordEncoder, never()).encode(anyString());
+            verify(userRepository, never()).save(any());
+            assertThat(user.getPasswordHash()).isEqualTo(ENCODED_PASSWORD);
+        }
     }
 }

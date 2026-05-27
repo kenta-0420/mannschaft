@@ -191,10 +191,14 @@ class ScheduleServiceTest {
         @DisplayName("チームスケジュール一覧_正常_QueryServiceに委譲する")
         void チームスケジュール一覧_正常_QueryServiceに委譲する() {
             // given
-            ScheduleResponse stub = new ScheduleResponse(
-                    SCHEDULE_ID, "練習", START, END, false,
-                    "PRACTICE", "SCHEDULED", true, null, null,
-                    null, null, null, null, null, null, null);
+            ScheduleResponse stub = ScheduleResponse.builder()
+                    .id(SCHEDULE_ID)
+                    .content(new ScheduleResponse.ScheduleContentDto("練習", "SCHEDULED", "PRACTICE", null, true))
+                    .time(new ScheduleResponse.ScheduleTimeDto(START, END, false))
+                    .scope(new ScheduleResponse.ScheduleScopeDto(null, null))
+                    .academic(new ScheduleResponse.ScheduleAcademicDto(null, null, null))
+                    .audit(new ScheduleResponse.ScheduleAuditDto(null, null))
+                    .build();
             given(queryService.listTeamSchedules(TEAM_ID, START, END))
                     .willReturn(List.of(stub));
 
@@ -203,7 +207,7 @@ class ScheduleServiceTest {
 
             // then
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getTitle()).isEqualTo("練習");
+            assertThat(result.get(0).getContent().title()).isEqualTo("練習");
             verify(queryService).listTeamSchedules(TEAM_ID, START, END);
         }
     }
@@ -244,7 +248,7 @@ class ScheduleServiceTest {
             ScheduleResponse result = scheduleService.createSchedule(req, TEAM_ID, "TEAM", USER_ID);
 
             // then
-            assertThat(result.getTitle()).isEqualTo("練習");
+            assertThat(result.getContent().title()).isEqualTo("練習");
             verify(scheduleRepository).save(any(ScheduleEntity.class));
             verify(eventPublisher).publishEvent(any(Object.class));
         }
@@ -435,8 +439,8 @@ class ScheduleServiceTest {
             ScheduleResponse result = scheduleService.duplicateSchedule(SCHEDULE_ID, USER_ID);
 
             // then
-            assertThat(result.getTitle()).isEqualTo("練習");
-            assertThat(result.getStatus()).isEqualTo("SCHEDULED");
+            assertThat(result.getContent().title()).isEqualTo("練習");
+            assertThat(result.getContent().status()).isEqualTo("SCHEDULED");
             verify(scheduleRepository).save(any(ScheduleEntity.class));
         }
     }
@@ -454,10 +458,14 @@ class ScheduleServiceTest {
         void 組織スケジュール一覧_正常_QueryServiceに委譲する() {
             // given
             Long ORG_ID = 20L;
-            ScheduleResponse stub = new ScheduleResponse(
-                    SCHEDULE_ID, "全体集会", START, END, false,
-                    "EVENT", "SCHEDULED", null, null, null,
-                    null, null, null, null, null, null, null);
+            ScheduleResponse stub = ScheduleResponse.builder()
+                    .id(SCHEDULE_ID)
+                    .content(new ScheduleResponse.ScheduleContentDto("全体集会", "SCHEDULED", "EVENT", null, null))
+                    .time(new ScheduleResponse.ScheduleTimeDto(START, END, false))
+                    .scope(new ScheduleResponse.ScheduleScopeDto(null, null))
+                    .academic(new ScheduleResponse.ScheduleAcademicDto(null, null, null))
+                    .audit(new ScheduleResponse.ScheduleAuditDto(null, null))
+                    .build();
             given(queryService.listOrgSchedules(ORG_ID, START, END))
                     .willReturn(List.of(stub));
 
@@ -466,7 +474,7 @@ class ScheduleServiceTest {
 
             // then
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getTitle()).isEqualTo("全体集会");
+            assertThat(result.get(0).getContent().title()).isEqualTo("全体集会");
             verify(queryService).listOrgSchedules(ORG_ID, START, END);
         }
     }
@@ -555,7 +563,7 @@ class ScheduleServiceTest {
             ScheduleResponse result = scheduleService.createSchedule(req, USER_ID, "PERSONAL", USER_ID);
 
             // then
-            assertThat(result.getTitle()).isEqualTo("個人予定");
+            assertThat(result.getContent().title()).isEqualTo("個人予定");
         }
 
         @Test
@@ -574,7 +582,7 @@ class ScheduleServiceTest {
             ScheduleResponse result = scheduleService.createSchedule(req, ORG_ID, "ORGANIZATION", USER_ID);
 
             // then
-            assertThat(result.getTitle()).isEqualTo("組織イベント");
+            assertThat(result.getContent().title()).isEqualTo("組織イベント");
         }
     }
 
@@ -590,10 +598,12 @@ class ScheduleServiceTest {
         @DisplayName("横断カレンダー取得_QueryServiceに委譲する")
         void 横断カレンダー取得_QueryServiceに委譲する() {
             // given
-            CalendarEntryResponse stub = new CalendarEntryResponse(
-                    SCHEDULE_ID, "個人予定", START, END, false,
-                    "OTHER", "SCHEDULED", "PERSONAL", USER_ID, "個人",
-                    null, null);
+            CalendarEntryResponse stub = CalendarEntryResponse.builder()
+                    .id(SCHEDULE_ID)
+                    .content(new CalendarEntryResponse.CalendarContentDto("個人予定", "OTHER", "SCHEDULED"))
+                    .time(new CalendarEntryResponse.CalendarTimeDto(START, END, false))
+                    .scope(new CalendarEntryResponse.CalendarScopeDto("PERSONAL", USER_ID, "個人", null))
+                    .build();
             given(queryService.getMyCalendar(USER_ID, START, END))
                     .willReturn(List.of(stub));
 
@@ -602,7 +612,7 @@ class ScheduleServiceTest {
 
             // then
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getTitle()).isEqualTo("個人予定");
+            assertThat(result.get(0).getContent().title()).isEqualTo("個人予定");
             verify(queryService).getMyCalendar(USER_ID, START, END);
         }
     }

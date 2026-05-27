@@ -1,32 +1,33 @@
 package com.mannschaft.app.notification.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 
 /**
  * 通知レスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class NotificationResponse {
 
-    private final Long id;
-    private final Long userId;
-    private final String notificationType;
-    private final String priority;
-    private final String title;
-    private final String body;
-    private final String sourceType;
-    private final Long sourceId;
-    private final String scopeType;
-    private final Long scopeId;
-    private final String actionUrl;
-    private final Long actorId;
-    private final Boolean isRead;
-    private final LocalDateTime readAt;
-    private final String channelsSent;
-    private final LocalDateTime snoozedUntil;
-    private final LocalDateTime createdAt;
+    Long id;
+    Long userId;
+
+    NotificationContentDto content;
+    NotificationSourceDto  source;
+    NotificationScopeDto   scope;
+    NotificationStatusDto  status;
+    LocalDateTime          createdAt;
+
+    public record NotificationContentDto(
+            String notificationType, String priority, String title, String body, String actionUrl) {}
+
+    public record NotificationSourceDto(String sourceType, Long sourceId) {}
+
+    public record NotificationScopeDto(String scopeType, Long scopeId, Long actorId) {}
+
+    public record NotificationStatusDto(
+            Boolean isRead, LocalDateTime readAt, String channelsSent, LocalDateTime snoozedUntil) {}
 }

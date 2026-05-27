@@ -53,6 +53,10 @@ public class RedisConfig {
                         .allowIfSubType("com.mannschaft")
                         .allowIfSubType("java.util")
                         .allowIfSubType("java.time")
+                        // java.lang.Long / Integer / Boolean / String 等のボックス型が
+                        // DefaultTyping.EVERYTHING により ["java.lang.Long", 123] 形式でシリアライズされるため許可。
+                        // 許可しない場合 BasicPolymorphicTypeValidator が拒否し InvalidTypeIdException が発生する。
+                        .allowIfSubType("java.lang")
                         // F15.4 Phase 3: team-search キャッシュで Page<TeamEntity> をシリアライズするため
                         // org.springframework.data.domain.PageImpl 等を許可
                         .allowIfSubType("org.springframework.data")

@@ -73,13 +73,23 @@ class NotificationPreferenceServiceTest {
     }
 
     private PreferenceResponse createPreferenceResponse(boolean enabled) {
-        return new PreferenceResponse(1L, USER_ID, SCOPE_TYPE, SCOPE_ID, enabled,
-                LocalDateTime.now(), LocalDateTime.now());
+        return PreferenceResponse.builder()
+                .id(1L)
+                .userId(USER_ID)
+                .scope(new PreferenceResponse.PreferenceScopeDto(SCOPE_TYPE, SCOPE_ID))
+                .isEnabled(enabled)
+                .audit(new PreferenceResponse.PreferenceAuditDto(LocalDateTime.now(), LocalDateTime.now()))
+                .build();
     }
 
     private TypePreferenceResponse createTypePreferenceResponse(boolean enabled) {
-        return new TypePreferenceResponse(1L, USER_ID, NOTIFICATION_TYPE, enabled,
-                LocalDateTime.now(), LocalDateTime.now());
+        return TypePreferenceResponse.builder()
+                .id(1L)
+                .userId(USER_ID)
+                .notificationType(NOTIFICATION_TYPE)
+                .isEnabled(enabled)
+                .audit(new TypePreferenceResponse.TypePrefAuditDto(LocalDateTime.now(), LocalDateTime.now()))
+                .build();
     }
 
     // ========================================

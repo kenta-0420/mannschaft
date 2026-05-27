@@ -209,24 +209,14 @@ class ScheduleAnnouncementAdapterTest {
     // ──────────────────────────────────────────────────────────────────────────
 
     private ScheduleResponse buildScheduleResponse(Long id) {
-        return new ScheduleResponse(
-                id,               // id
-                "テストスケジュール", // title
-                START_AT,         // startAt
-                END_AT,           // endAt
-                false,            // allDay
-                "NORMAL",         // eventType
-                "SCHEDULED",      // status
-                false,            // attendanceRequired
-                null,             // location
-                LocalDateTime.now(), // createdAt
-                null,             // eventCategory
-                null,             // academicYear
-                null,             // sourceScheduleId
-                null,             // createdByDisplayName
-                null,             // scopeName
-                null,             // scopeIconUrl
-                null              // myAttendanceStatus
-        );
+        return ScheduleResponse.builder()
+                .id(id)
+                .content(new ScheduleResponse.ScheduleContentDto(
+                        "テストスケジュール", "SCHEDULED", "NORMAL", null, false))
+                .time(new ScheduleResponse.ScheduleTimeDto(START_AT, END_AT, false))
+                .scope(new ScheduleResponse.ScheduleScopeDto(null, null))
+                .academic(new ScheduleResponse.ScheduleAcademicDto(null, null, null))
+                .audit(new ScheduleResponse.ScheduleAuditDto(LocalDateTime.now(), null))
+                .build();
     }
 }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { ref, onMounted, watch } from 'vue'
 
 definePageMeta({
@@ -6,8 +7,9 @@ definePageMeta({
 })
 
 const { timeline, loading, loadTimeline } = useStudentTimeline()
+const { userTimezone } = useDatetime()
 
-const today = new Date().toISOString().slice(0, 10)
+const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
 const selectedDate = ref(today)
 
 watch(selectedDate, () => {

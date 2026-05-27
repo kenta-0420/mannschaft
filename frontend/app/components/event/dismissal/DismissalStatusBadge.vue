@@ -7,24 +7,22 @@
  * - {@code status.dismissed === true}: 「✓ 解散済み（YYYY-MM-DD HH:mm 送信）」
  * - {@code status.reminderCount >= 1}: ツールチップで「主催者にN回リマインド済み」</p>
  */
+import dayjs from 'dayjs'
 import type { DismissalStatusResponse } from '~/types/care'
 
 const props = defineProps<{
   status: DismissalStatusResponse
 }>()
 
+const { userTimezone } = useDatetime()
+
 /** 表示用にフォーマットした送信日時（YYYY-MM-DD HH:mm）。 */
 const sentAtLabel = computed<string>(() => {
   const iso = props.status.dismissalNotificationSentAt
   if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  const yyyy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  const hh = String(d.getHours()).padStart(2, '0')
-  const mi = String(d.getMinutes()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd} ${hh}:${mi}`
+  const d = dayjs(iso)
+  if (!d.isValid()) return ''
+  return d.tz(userTimezone.value).format('YYYY-MM-DD HH:mm')
 })
 
 const reminderTooltip = computed<string | null>(() => {

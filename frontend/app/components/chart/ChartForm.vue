@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { Chart, CreateChartRequest, ChartSectionConfig } from '~/types/chart'
 
 const props = defineProps<{
   chart?: Chart
 }>()
+const { userTimezone } = useDatetime()
 
 const emit = defineEmits<{
   save: [data: CreateChartRequest]
@@ -12,7 +14,7 @@ const emit = defineEmits<{
 
 const form = ref<CreateChartRequest>({
   clientName: props.chart?.clientName ?? '',
-  visitDate: props.chart?.visitDate ?? new Date().toISOString().slice(0, 10),
+  visitDate: props.chart?.visitDate ?? dayjs().tz(userTimezone.value).format('YYYY-MM-DD'),
   chiefComplaint: props.chart?.chiefComplaint ?? '',
   notes: props.chart?.notes ?? '',
   nextVisitRecommendation: props.chart?.nextVisitRecommendation ?? '',

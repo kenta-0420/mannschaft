@@ -12,8 +12,11 @@
 --           （カラム値が参照する先のテーブルが存在している状態にしておく）。
 ALTER TABLE bulletin_threads
     ADD COLUMN archive_folder_id BINARY(16) NULL
-        COMMENT '保管庫フォルダ（bulletin_archive_folders.id）。NULL かつ is_archived=TRUE = 保管庫直下（未分類）。FK なし' AFTER is_archived;
+        COMMENT '保管庫フォルダ（bulletin_archive_folders.id）。NULL かつ is_archived=TRUE = 保管庫直下（未分類）。FK なし'
+        AFTER is_archived;
 
 -- 保管庫フォルダ別スレッド一覧の取得を高速化する
 CREATE INDEX idx_bulletin_threads_archive_folder
     ON bulletin_threads (archive_folder_id);
+
+-- trigger

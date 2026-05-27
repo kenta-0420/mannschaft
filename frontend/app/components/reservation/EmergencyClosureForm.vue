@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { ClosurePreviewItem, ClosureHistoryItem, ClosureConfirmationItem } from '~/composables/useEmergencyClosureApi'
 
 const props = defineProps<{
@@ -8,9 +9,10 @@ const props = defineProps<{
 const { t } = useI18n()
 const closureApi = useEmergencyClosureApi()
 const notification = useNotification()
+const { userTimezone } = useDatetime()
 
 // --- 日付 ---
-const today = new Date().toISOString().slice(0, 10)
+const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
 const startDate = ref(today)
 const endDate = ref(today)
 

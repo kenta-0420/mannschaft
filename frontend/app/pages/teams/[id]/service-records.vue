@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { ServiceRecordResponse } from '~/types/service'
 
 definePageMeta({ middleware: 'auth' })
@@ -8,6 +9,7 @@ const teamId = Number(route.params.id)
 const { getRecords, createRecord } = useServiceRecordApi()
 const notification = useNotification()
 const authStore = useAuthStore()
+const { userTimezone } = useDatetime()
 
 const records = ref<ServiceRecordResponse[]>([])
 const loading = ref(false)
@@ -16,7 +18,7 @@ const showCreateDialog = ref(false)
 const saving = ref(false)
 const form = ref({
   targetUserId: authStore.currentUser?.id ?? 0,
-  serviceDate: new Date().toISOString().slice(0, 10),
+  serviceDate: dayjs().tz(userTimezone.value).format('YYYY-MM-DD'),
   title: '',
   body: '',
 })
@@ -36,7 +38,7 @@ async function load() {
 function openCreateDialog() {
   form.value = {
     targetUserId: authStore.currentUser?.id ?? 0,
-    serviceDate: new Date().toISOString().slice(0, 10),
+    serviceDate: dayjs().tz(userTimezone.value).format('YYYY-MM-DD'),
     title: '',
     body: '',
   }

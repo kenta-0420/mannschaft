@@ -39,22 +39,26 @@ export function useVillageApi() {
 
   /** §4.2 村検索 */
   async function searchVillages(params?: VillageSearchParams) {
-    return api<VillageSearchResponse>(`/api/v1/villages/search${qs(params)}`)
+    const res = await api<{ data: VillageSearchResponse }>(`/api/v1/villages/search${qs(params)}`)
+    return res.data
   }
 
   /** §4.1.2 村詳細 */
   async function getVillage(villageId: string) {
-    return api<VillageResponse>(`/api/v1/villages/${villageId}`)
+    const res = await api<{ data: VillageResponse }>(`/api/v1/villages/${villageId}`)
+    return res.data
   }
 
   /** §4.1.1 村作成（運営/承認自動経路） */
   async function createVillage(body: VillageCreateRequest) {
-    return api<VillageResponse>('/api/v1/villages', { method: 'POST', body })
+    const res = await api<{ data: VillageResponse }>('/api/v1/villages', { method: 'POST', body })
+    return res.data
   }
 
   /** §4.1.3 村更新 */
   async function updateVillage(villageId: string, body: VillageUpdateRequest) {
-    return api<VillageResponse>(`/api/v1/villages/${villageId}`, { method: 'PATCH', body })
+    const res = await api<{ data: VillageResponse }>(`/api/v1/villages/${villageId}`, { method: 'PATCH', body })
+    return res.data
   }
 
   /** §4.1.4 村削除（論理削除） */
@@ -64,7 +68,8 @@ export function useVillageApi() {
 
   /** §4.1.5 村凍結 */
   async function archiveVillage(villageId: string) {
-    return api<VillageResponse>(`/api/v1/villages/${villageId}/archive`, { method: 'POST' })
+    const res = await api<{ data: VillageResponse }>(`/api/v1/villages/${villageId}/archive`, { method: 'POST' })
+    return res.data
   }
 
   // =====================================================================
@@ -73,24 +78,28 @@ export function useVillageApi() {
 
   /** §4.10.1 ロビーチャネル取得 */
   async function getLobbyChannel(villageId: string) {
-    return api<LobbyChannelResponse>(`/api/v1/villages/${villageId}/lobby`)
+    const res = await api<{ data: LobbyChannelResponse }>(`/api/v1/villages/${villageId}/lobby`)
+    return res.data
   }
 
   /** §4.10.2 日次スレッド一覧 */
   async function listDailyThreads(villageId: string, days?: number) {
-    return api<DailyThreadListResponse>(
+    const res = await api<{ data: DailyThreadListResponse }>(
       `/api/v1/villages/${villageId}/lobby/daily${qs({ days })}`,
     )
+    return res.data
   }
 
   /** §4.10.3 指定日の日次スレッド */
   async function getDailyThread(villageId: string, date: string) {
-    return api<DailyThreadResponse>(`/api/v1/villages/${villageId}/lobby/daily/${date}`)
+    const res = await api<{ data: DailyThreadResponse }>(`/api/v1/villages/${villageId}/lobby/daily/${date}`)
+    return res.data
   }
 
   /** §4.10.5 ロビー在席状況取得 */
   async function getLobbyPresence(villageId: string) {
-    return api<LobbyPresenceResponse>(`/api/v1/villages/${villageId}/lobby/presence`)
+    const res = await api<{ data: LobbyPresenceResponse }>(`/api/v1/villages/${villageId}/lobby/presence`)
+    return res.data
   }
 
   // =====================================================================
@@ -99,9 +108,10 @@ export function useVillageApi() {
 
   /** §4.13 村内検索（投稿/メッセージ/メンバー） */
   async function searchVillageInternal(villageId: string, params: VillageInternalSearchParams) {
-    return api<VillageInternalSearchResponse>(
+    const res = await api<{ data: VillageInternalSearchResponse }>(
       `/api/v1/villages/${villageId}/search${qs(params)}`,
     )
+    return res.data
   }
 
   // =====================================================================
@@ -110,7 +120,8 @@ export function useVillageApi() {
 
   /** §4.12 自分の横断フィード（ピン村サマリ同梱） */
   async function getFeed() {
-    return api<VillageFeedResponse>('/api/v1/me/village-feed')
+    const res = await api<{ data: VillageFeedResponse }>('/api/v1/me/village-feed')
+    return res.data
   }
 
   return {

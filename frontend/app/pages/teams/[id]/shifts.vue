@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
@@ -6,6 +7,7 @@ const teamId = Number(route.params.id)
 const shiftApi = useShiftApi()
 const notification = useNotification()
 const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const { userTimezone } = useDatetime()
 
 const activeTab = ref(0)
 const showCreateDialog = ref(false)
@@ -31,8 +33,8 @@ async function createSchedule() {
   try {
     await shiftApi.createSchedule(teamId, {
       title: createForm.value.title.trim(),
-      startDate: createForm.value.periodStart.toISOString().split('T')[0] ?? '',
-      endDate: createForm.value.periodEnd.toISOString().split('T')[0] ?? '',
+      startDate: dayjs(createForm.value.periodStart).tz(userTimezone.value).format('YYYY-MM-DD'),
+      endDate: dayjs(createForm.value.periodEnd).tz(userTimezone.value).format('YYYY-MM-DD'),
     })
     notification.success('シフト表を作成しました')
     showCreateDialog.value = false

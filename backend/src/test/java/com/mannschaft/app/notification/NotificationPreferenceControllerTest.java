@@ -48,13 +48,23 @@ class NotificationPreferenceControllerTest {
     private static final Long USER_ID = 1L;
 
     private PreferenceResponse createPreferenceResponse() {
-        return new PreferenceResponse(1L, USER_ID, "TEAM", 5L, true,
-                LocalDateTime.now(), LocalDateTime.now());
+        return PreferenceResponse.builder()
+                .id(1L)
+                .userId(USER_ID)
+                .scope(new PreferenceResponse.PreferenceScopeDto("TEAM", 5L))
+                .isEnabled(true)
+                .audit(new PreferenceResponse.PreferenceAuditDto(LocalDateTime.now(), LocalDateTime.now()))
+                .build();
     }
 
     private TypePreferenceResponse createTypePreferenceResponse() {
-        return new TypePreferenceResponse(1L, USER_ID, "SCHEDULE_REMINDER", true,
-                LocalDateTime.now(), LocalDateTime.now());
+        return TypePreferenceResponse.builder()
+                .id(1L)
+                .userId(USER_ID)
+                .notificationType("SCHEDULE_REMINDER")
+                .isEnabled(true)
+                .audit(new TypePreferenceResponse.TypePrefAuditDto(LocalDateTime.now(), LocalDateTime.now()))
+                .build();
     }
 
     // ========================================

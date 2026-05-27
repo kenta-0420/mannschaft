@@ -264,12 +264,16 @@ class FriendNotificationServiceTest {
     }
 
     private NotificationResponse buildNotificationResponse(Long id) {
-        return new NotificationResponse(
-                id, USER_ID, "FRIEND_ANNOUNCEMENT", "NORMAL",
-                "テスト通知", "本文", "FRIEND_TEAM", TEAM_ID,
-                "FRIEND_TEAM", TARGET_TEAM_ID, null, USER_ID,
-                false, null, null, null, LocalDateTime.now()
-        );
+        return NotificationResponse.builder()
+                .id(id)
+                .userId(USER_ID)
+                .content(new NotificationResponse.NotificationContentDto(
+                        "FRIEND_ANNOUNCEMENT", "NORMAL", "テスト通知", "本文", null))
+                .source(new NotificationResponse.NotificationSourceDto("FRIEND_TEAM", TEAM_ID))
+                .scope(new NotificationResponse.NotificationScopeDto("FRIEND_TEAM", TARGET_TEAM_ID, USER_ID))
+                .status(new NotificationResponse.NotificationStatusDto(false, null, null, null))
+                .createdAt(LocalDateTime.now())
+                .build();
     }
 
     private FriendNotificationSendRequest buildTeamsRequest(List<Long> teamIds) {

@@ -155,21 +155,24 @@ public class ScheduleCrossRefService {
 
         log.info("クロス招待承認: invitationId={}, targetScheduleId={}", invitationId, duplicate.getId());
 
-        return new ScheduleResponse(
-                duplicate.getId(),
-                duplicate.getTitle(),
-                duplicate.getStartAt(),
-                duplicate.getEndAt(),
-                duplicate.getAllDay(),
-                duplicate.getEventType().name(),
-                duplicate.getStatus().name(),
-                duplicate.getAttendanceRequired(),
-                duplicate.getLocation(),
-                duplicate.getCreatedAt(),
-                null,
-                duplicate.getAcademicYear() != null ? duplicate.getAcademicYear().intValue() : null,
-                duplicate.getSourceScheduleId(),
-                null, null, null, null);
+        return ScheduleResponse.builder()
+                .id(duplicate.getId())
+                .content(new ScheduleResponse.ScheduleContentDto(
+                        duplicate.getTitle(),
+                        duplicate.getStatus().name(),
+                        duplicate.getEventType().name(),
+                        duplicate.getLocation(),
+                        duplicate.getAttendanceRequired()))
+                .time(new ScheduleResponse.ScheduleTimeDto(
+                        duplicate.getStartAt(), duplicate.getEndAt(), duplicate.getAllDay()))
+                .scope(new ScheduleResponse.ScheduleScopeDto(null, null))
+                .academic(new ScheduleResponse.ScheduleAcademicDto(
+                        null,
+                        duplicate.getAcademicYear() != null ? duplicate.getAcademicYear().intValue() : null,
+                        duplicate.getSourceScheduleId()))
+                .audit(new ScheduleResponse.ScheduleAuditDto(duplicate.getCreatedAt(), null))
+                .myAttendanceStatus(null)
+                .build();
     }
 
     /**
@@ -232,16 +235,19 @@ public class ScheduleCrossRefService {
      * エンティティをクロスリファレンスレスポンスDTOに変換する。
      */
     private CrossRefResponse toCrossRefResponse(ScheduleCrossRefEntity entity) {
-        return new CrossRefResponse(
-                entity.getId(),
-                entity.getSourceScheduleId(),
-                entity.getTargetType().name(),
-                entity.getTargetId(),
-                entity.getTargetScheduleId(),
-                entity.getStatus().name(),
-                entity.getMessage(),
-                entity.getInvitedBy(),
-                entity.getCreatedAt(),
-                entity.getRespondedAt());
+        return CrossRefResponse.builder()
+                .id(entity.getId())
+                .sourceScheduleId(entity.getSourceScheduleId())
+                .target(new CrossRefResponse.CrossRefTargetDto(
+                        entity.getTargetType().name(),
+                        entity.getTargetId(),
+                        entity.getTargetScheduleId(),
+                        entity.getStatus().name()))
+                .audit(new CrossRefResponse.CrossRefAuditDto(
+                        entity.getInvitedBy(),
+                        entity.getMessage(),
+                        entity.getCreatedAt(),
+                        entity.getRespondedAt()))
+                .build();
     }
 }

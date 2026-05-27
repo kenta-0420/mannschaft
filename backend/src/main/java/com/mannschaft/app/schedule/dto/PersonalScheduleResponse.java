@@ -1,7 +1,7 @@
 package com.mannschaft.app.schedule.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -9,26 +9,29 @@ import java.util.List;
 /**
  * 個人スケジュールレスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class PersonalScheduleResponse {
 
-    private final Long id;
-    private final String title;
-    private final String description;
-    private final String location;
-    private final LocalDateTime startAt;
-    private final LocalDateTime endAt;
-    private final Boolean allDay;
-    private final String eventType;
-    private final String color;
-    private final String status;
-    private final Long parentScheduleId;
-    private final RecurrenceRuleDto recurrenceRule;
-    private final Boolean isException;
-    private final List<Integer> reminders;
-    private final boolean googleSynced;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
-    private final String createdByDisplayName;
+    Long               id;
+    PersonalContentDto content;   // title, description, eventType, color, location
+    PersonalTimeDto    time;      // startAt, endAt, allDay
+    PersonalStatusDto  status;    // status, isException, parentScheduleId, recurrenceRule, googleSynced
+    List<Integer>      reminders;
+    PersonalAuditDto   audit;     // createdAt, updatedAt, createdByDisplayName
+
+    public record PersonalContentDto(String title, String description, String eventType, String color,
+                                     String location) {
+    }
+
+    public record PersonalTimeDto(LocalDateTime startAt, LocalDateTime endAt, Boolean allDay) {
+    }
+
+    public record PersonalStatusDto(String status, Boolean isException, Long parentScheduleId,
+                                    RecurrenceRuleDto recurrenceRule, boolean googleSynced) {
+    }
+
+    public record PersonalAuditDto(LocalDateTime createdAt, LocalDateTime updatedAt,
+                                   String createdByDisplayName) {
+    }
 }

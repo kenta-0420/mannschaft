@@ -63,7 +63,11 @@ public class VillageCreationRequestService {
     // ------------------------------------------------------------------
 
     /**
-     * 村作成申請を新規作成する。
+     * 村作成申請を新規作成し、即時自動承認する。
+     *
+     * <p>申請保存後、同一トランザクション内で village レコードを自動生成し、
+     * 申請者を HEADMAN として membership に追加する。
+     * これにより申請者は申請完了後すぐに村を利用できる。</p>
      */
     @Transactional
     public VillageCreationRequestResponse createRequest(Long requesterUserId,
@@ -93,7 +97,7 @@ public class VillageCreationRequestService {
             throw new BusinessException(VillageErrorCode.CREATION_REQUEST_THROTTLED);
         }
 
-        // 保有 PENDING 上限
+        // 保有 PENDING 上限（自動承認するため実質チェック不要だが念のため残す）
         long pendingCount = countPending(requesterUserId);
         if (pendingCount >= PENDING_LIMIT) {
             throw new BusinessException(VillageErrorCode.CREATION_REQUEST_THROTTLED);
@@ -117,7 +121,42 @@ public class VillageCreationRequestService {
         VillageCreationRequestEntity saved = requestRepository.save(entity);
         log.info("村作成申請を受理: requesterUserId={}, requestId={}, slug={}",
                 requesterUserId, saved.getId(), saved.getProposedSlug());
-        return VillageCreationRequestResponse.from(saved);
+
+        // 申請直後に自動承認 — 同一トランザクション内で村レコードを生成する
+        VillageEntity village = VillageEntity.builder()
+                .slug(saved.getProposedSlug())
+                .name(saved.getProposedName())
+                .description(saved.getPurpose())
+                .type(VillageType.COMMUNITY)
+                .joinPolicy(com.mannschaft.app.village.entity.enums.VillageJoinPolicy.FREE)
+                .visibility(com.mannschaft.app.village.entity.enums.VillageVisibility.PUBLIC)
+                .category(saved.getProposedCategory())
+                .guidelineMd(saved.getProposedGuidelineMd())
+                .memberCountCache(1L)
+                .createdByUserId(requesterUserId)
+                .build();
+        VillageEntity savedVillage = villageRepository.save(village);
+
+        // 申請者を HEADMAN として membership に追加
+        VillageMembershipEntity membership = VillageMembershipEntity.builder()
+                .villageId(savedVillage.getId())
+                .subjectType(VillageSubjectType.USER)
+                .subjectId(requesterUserId)
+                .role(VillageRole.HEADMAN)
+                .build();
+        membershipRepository.save(membership);
+
+        // 申請を APPROVED に更新
+        saved.setStatus(VillageRequestStatus.APPROVED);
+        saved.setReviewerUserId(requesterUserId); // 自動承認のため申請者自身を reviewer とする
+        saved.setReviewedAt(LocalDateTime.now());
+        saved.setReviewComment("自動承認");
+        saved.setCreatedVillageId(savedVillage.getId());
+
+        VillageCreationRequestEntity approved = requestRepository.save(saved);
+        log.info("村作成申請を自動承認: requestId={}, villageId={}, requesterUserId={}",
+                approved.getId(), savedVillage.getId(), requesterUserId);
+        return VillageCreationRequestResponse.from(approved);
     }
 
     /**

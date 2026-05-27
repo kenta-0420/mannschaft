@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { ActionMemo, ActionMemoCategory, OrgVisibility } from '~/types/actionMemo'
 
 /**
@@ -15,15 +16,9 @@ const router = useRouter()
 const route = useRoute()
 const { t } = useI18n()
 const store = useActionMemoStore()
+const authStore = useAuthStore()
 
-/** JST の今日（YYYY-MM-DD） */
-function todayJst(): string {
-  const now = new Date()
-  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
-  return jst.toISOString().slice(0, 10)
-}
-
-const today = ref(todayJst())
+const today = ref(dayjs().tz(authStore.user?.timezone ?? 'Asia/Tokyo').format('YYYY-MM-DD'))
 
 const todaysMemos = computed(() => store.currentDayMemos(today.value))
 
@@ -31,10 +26,7 @@ const todaysMemos = computed(() => store.currentDayMemos(today.value))
  * 直近7日間の日付範囲（mood-stats 取得用）。
  */
 function sevenDaysAgo(): string {
-  const now = new Date()
-  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
-  jst.setDate(jst.getDate() - 6)
-  return jst.toISOString().slice(0, 10)
+  return dayjs().tz(authStore.user?.timezone ?? 'Asia/Tokyo').subtract(6, 'day').format('YYYY-MM-DD')
 }
 
 // === 編集ダイアログ ===

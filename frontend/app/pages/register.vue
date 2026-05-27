@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
@@ -12,6 +13,7 @@ const { t } = useI18n()
 const api = useApi()
 const route = useRoute()
 const notification = useNotification()
+const { userTimezone } = useDatetime()
 const loading = ref(false)
 
 // クエリパラメータから招待トークンを取得（ベータ制限対応）
@@ -185,7 +187,7 @@ const onSubmit = handleSubmit(async (values) => {
           v-bind="birthDateProps"
           v-model="birthDate"
           type="date"
-          :max="new Date().toISOString().split('T')[0]"
+          :max="dayjs().tz(userTimezone).format('YYYY-MM-DD')"
           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
         />
         <small v-if="submitted && errors.birthDate" class="text-red-500">{{ $t(errors.birthDate) }}</small>

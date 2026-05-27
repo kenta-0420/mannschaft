@@ -39,16 +39,18 @@ export function useVillageEventApi() {
     villageId: string,
     params?: VillageCalendarEventListParams,
   ) {
-    return api<VillageCalendarEventResponse[]>(
+    const res = await api<{ data: VillageCalendarEventResponse[] }>(
       `/api/v1/villages/${villageId}/calendar-events${qs(params)}`,
     )
+    return res.data
   }
 
   /** 歳時記カレンダー詳細 */
   async function getCalendarEvent(villageId: string, id: string) {
-    return api<VillageCalendarEventResponse>(
+    const res = await api<{ data: VillageCalendarEventResponse }>(
       `/api/v1/villages/${villageId}/calendar-events/${id}`,
     )
+    return res.data
   }
 
   /** 歳時記カレンダー作成 */
@@ -56,10 +58,11 @@ export function useVillageEventApi() {
     villageId: string,
     body: VillageCalendarEventCreateRequest,
   ) {
-    return api<VillageCalendarEventResponse>(
+    const res = await api<{ data: VillageCalendarEventResponse }>(
       `/api/v1/villages/${villageId}/calendar-events`,
       { method: 'POST', body },
     )
+    return res.data
   }
 
   /** 歳時記カレンダー更新 */
@@ -68,10 +71,11 @@ export function useVillageEventApi() {
     id: string,
     body: VillageCalendarEventUpdateRequest,
   ) {
-    return api<VillageCalendarEventResponse>(
+    const res = await api<{ data: VillageCalendarEventResponse }>(
       `/api/v1/villages/${villageId}/calendar-events/${id}`,
       { method: 'PATCH', body },
     )
+    return res.data
   }
 
   /** 歳時記カレンダー削除 */
@@ -88,16 +92,18 @@ export function useVillageEventApi() {
 
   /** お祭り一覧 */
   async function listFestivals(villageId: string, status?: VillageFestivalStatus) {
-    return api<VillageFestivalResponse[]>(
+    const res = await api<{ data: VillageFestivalResponse[] }>(
       `/api/v1/villages/${villageId}/festivals${qs({ status })}`,
     )
+    return res.data
   }
 
   /** お祭り詳細 */
   async function getFestival(villageId: string, id: string) {
-    return api<VillageFestivalResponse>(
+    const res = await api<{ data: VillageFestivalResponse }>(
       `/api/v1/villages/${villageId}/festivals/${id}`,
     )
+    return res.data
   }
 
   /** お祭り作成 */
@@ -105,10 +111,11 @@ export function useVillageEventApi() {
     villageId: string,
     body: VillageFestivalCreateRequest,
   ) {
-    return api<VillageFestivalResponse>(
+    const res = await api<{ data: VillageFestivalResponse }>(
       `/api/v1/villages/${villageId}/festivals`,
       { method: 'POST', body },
     )
+    return res.data
   }
 
   /** お祭り更新 */
@@ -117,18 +124,20 @@ export function useVillageEventApi() {
     id: string,
     body: VillageFestivalUpdateRequest,
   ) {
-    return api<VillageFestivalResponse>(
+    const res = await api<{ data: VillageFestivalResponse }>(
       `/api/v1/villages/${villageId}/festivals/${id}`,
       { method: 'PATCH', body },
     )
+    return res.data
   }
 
   /** お祭り中止 */
   async function cancelFestival(villageId: string, id: string) {
-    return api<VillageFestivalResponse>(
+    const res = await api<{ data: VillageFestivalResponse }>(
       `/api/v1/villages/${villageId}/festivals/${id}/cancel`,
       { method: 'POST' },
     )
+    return res.data
   }
 
   return {

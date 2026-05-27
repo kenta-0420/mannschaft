@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type {
   PersonalTimetable,
   PersonalWeeklyView,
@@ -11,13 +12,14 @@ const { t } = useI18n()
 const route = useRoute()
 const api = useMyPersonalTimetableApi()
 const { error } = useNotification()
+const { userTimezone } = useDatetime()
 
 const id = computed(() => Number(route.params.id))
 
 const detail = ref<PersonalTimetable | null>(null)
 const weekly = ref<PersonalWeeklyView | null>(null)
 const loading = ref(true)
-const weekOf = ref<string>(new Date().toISOString().slice(0, 10))
+const weekOf = ref<string>(dayjs().tz(userTimezone.value).format('YYYY-MM-DD'))
 
 const DAY_KEYS: DayOfWeekKey[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
 
@@ -50,14 +52,12 @@ async function load() {
 }
 
 function shiftWeek(deltaDays: number) {
-  const d = new Date(weekOf.value)
-  d.setDate(d.getDate() + deltaDays)
-  weekOf.value = d.toISOString().slice(0, 10)
+  weekOf.value = dayjs(weekOf.value).tz(userTimezone.value).add(deltaDays, 'day').format('YYYY-MM-DD')
   void load()
 }
 
 function goToday() {
-  weekOf.value = new Date().toISOString().slice(0, 10)
+  weekOf.value = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
   void load()
 }
 

@@ -132,8 +132,8 @@ class PersonalScheduleServiceTest {
             PersonalScheduleResponse result = personalScheduleService.createPersonalSchedule(req, USER_ID);
 
             // then
-            assertThat(result.getTitle()).isEqualTo("個人予定");
-            assertThat(result.getStatus()).isEqualTo("SCHEDULED");
+            assertThat(result.getContent().title()).isEqualTo("個人予定");
+            assertThat(result.getStatus().status()).isEqualTo("SCHEDULED");
             verify(scheduleRepository).save(any(ScheduleEntity.class));
             verify(eventPublisher).publishEvent(any(Object.class));
         }
@@ -223,7 +223,7 @@ class PersonalScheduleServiceTest {
 
             // then
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getTitle()).isEqualTo("個人予定");
+            assertThat(result.get(0).getContent().title()).isEqualTo("個人予定");
         }
 
         @Test
@@ -278,7 +278,7 @@ class PersonalScheduleServiceTest {
             PersonalScheduleResponse result = personalScheduleService.getPersonalSchedule(SCHEDULE_ID, USER_ID);
 
             // then
-            assertThat(result.getTitle()).isEqualTo("個人予定");
+            assertThat(result.getContent().title()).isEqualTo("個人予定");
         }
 
         @Test
@@ -357,13 +357,13 @@ class PersonalScheduleServiceTest {
             PersonalScheduleResponse result = personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, USER_ID);
 
             // then: save()に渡されたエンティティがfindById()で取得した同一オブジェクトであること（INSERTでなくUPDATE）
-            assertThat(result.getTitle()).isEqualTo("更新タイトル");
-            assertThat(result.getDescription()).isEqualTo("更新説明");
-            assertThat(result.getLocation()).isEqualTo("更新場所");
-            assertThat(result.getColor()).isEqualTo("#00FF00");
+            assertThat(result.getContent().title()).isEqualTo("更新タイトル");
+            assertThat(result.getContent().description()).isEqualTo("更新説明");
+            assertThat(result.getContent().location()).isEqualTo("更新場所");
+            assertThat(result.getContent().color()).isEqualTo("#00FF00");
             // nullのフィールドは元の値が保持される
-            assertThat(result.getStartAt()).isEqualTo(START);
-            assertThat(result.getEndAt()).isEqualTo(END);
+            assertThat(result.getTime().startAt()).isEqualTo(START);
+            assertThat(result.getTime().endAt()).isEqualTo(END);
         }
 
         @Test
@@ -385,11 +385,11 @@ class PersonalScheduleServiceTest {
             PersonalScheduleResponse result = personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, USER_ID);
 
             // then
-            assertThat(result.getTitle()).isEqualTo("タイトルのみ更新");
+            assertThat(result.getContent().title()).isEqualTo("タイトルのみ更新");
             // 変更されていないフィールドは元の値が保持される
-            assertThat(result.getDescription()).isEqualTo("テスト");
-            assertThat(result.getLocation()).isEqualTo("自宅");
-            assertThat(result.getColor()).isEqualTo("#FF0000");
+            assertThat(result.getContent().description()).isEqualTo("テスト");
+            assertThat(result.getContent().location()).isEqualTo("自宅");
+            assertThat(result.getContent().color()).isEqualTo("#FF0000");
         }
 
         @Test

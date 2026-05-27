@@ -108,21 +108,24 @@ public class ScheduleQueryService {
      */
     ScheduleResponse toScheduleResponse(ScheduleEntity entity) {
         EventCategoryResponse categoryResponse = resolveEventCategoryResponse(entity.getEventCategoryId());
-        return new ScheduleResponse(
-                entity.getId(),
-                entity.getTitle(),
-                entity.getStartAt(),
-                entity.getEndAt(),
-                entity.getAllDay(),
-                entity.getEventType().name(),
-                entity.getStatus().name(),
-                entity.getAttendanceRequired(),
-                entity.getLocation(),
-                entity.getCreatedAt(),
-                categoryResponse,
-                entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null,
-                entity.getSourceScheduleId(),
-                null, null, null, null);
+        return ScheduleResponse.builder()
+                .id(entity.getId())
+                .content(new ScheduleResponse.ScheduleContentDto(
+                        entity.getTitle(),
+                        entity.getStatus().name(),
+                        entity.getEventType().name(),
+                        entity.getLocation(),
+                        entity.getAttendanceRequired()))
+                .time(new ScheduleResponse.ScheduleTimeDto(
+                        entity.getStartAt(), entity.getEndAt(), entity.getAllDay()))
+                .scope(new ScheduleResponse.ScheduleScopeDto(null, null))
+                .academic(new ScheduleResponse.ScheduleAcademicDto(
+                        categoryResponse,
+                        entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null,
+                        entity.getSourceScheduleId()))
+                .audit(new ScheduleResponse.ScheduleAuditDto(entity.getCreatedAt(), null))
+                .myAttendanceStatus(null)
+                .build();
     }
 
     /**
@@ -152,19 +155,16 @@ public class ScheduleQueryService {
      * エンティティをカレンダーエントリーレスポンスDTOに変換する。
      */
     private CalendarEntryResponse toCalendarEntry(ScheduleEntity entity, String scopeType, Long scopeId) {
+        String scopeName = nameResolverService.resolveScopeName(scopeType, scopeId);
         String iconUrl = nameResolverService.resolveIconUrl(scopeType, scopeId);
-        return new CalendarEntryResponse(
-                entity.getId(),
-                entity.getTitle(),
-                entity.getStartAt(),
-                entity.getEndAt(),
-                entity.getAllDay(),
-                entity.getEventType().name(),
-                entity.getStatus().name(),
-                scopeType,
-                scopeId,
-                nameResolverService.resolveScopeName(scopeType, scopeId),
-                null,
-                iconUrl);
+        return CalendarEntryResponse.builder()
+                .id(entity.getId())
+                .content(new CalendarEntryResponse.CalendarContentDto(
+                        entity.getTitle(), entity.getEventType().name(), entity.getStatus().name()))
+                .time(new CalendarEntryResponse.CalendarTimeDto(
+                        entity.getStartAt(), entity.getEndAt(), entity.getAllDay()))
+                .scope(new CalendarEntryResponse.CalendarScopeDto(scopeType, scopeId, scopeName, iconUrl))
+                .myAttendanceStatus(null)
+                .build();
     }
 }

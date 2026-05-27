@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { computed, ref, onMounted } from 'vue'
 import type { ClassHomeroomCreateRequest, ClassHomeroomUpdateRequest } from '~/types/school'
 
@@ -10,6 +11,7 @@ const props = defineProps<{
 const teamIdRef = computed(() => props.teamId)
 const { homerooms, loading, submitting, loadHomerooms, addHomeroom, editHomeroom } =
   useClassHomeroom(teamIdRef)
+const { userTimezone } = useDatetime()
 
 const showAddForm = ref(false)
 const editingId = ref<number | null>(null)
@@ -19,7 +21,7 @@ const newForm = ref<ClassHomeroomCreateRequest>({
   homeroomTeacherUserId: 0,
   assistantTeacherUserIds: [],
   academicYear: props.academicYear,
-  effectiveFrom: new Date().toISOString().slice(0, 10),
+  effectiveFrom: dayjs().tz(userTimezone.value).format('YYYY-MM-DD'),
   effectiveUntil: undefined,
 })
 
@@ -29,7 +31,7 @@ const editForm = ref<ClassHomeroomUpdateRequest>({
 })
 
 function isCurrentlyActive(effectiveFrom: string, effectiveUntil?: string): boolean {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
   if (effectiveUntil && effectiveUntil < today) return false
   return effectiveFrom <= today
 }
@@ -39,7 +41,7 @@ function resetNewForm(): void {
     homeroomTeacherUserId: 0,
     assistantTeacherUserIds: [],
     academicYear: props.academicYear,
-    effectiveFrom: new Date().toISOString().slice(0, 10),
+    effectiveFrom: dayjs().tz(userTimezone.value).format('YYYY-MM-DD'),
     effectiveUntil: undefined,
   }
   showAddForm.value = false

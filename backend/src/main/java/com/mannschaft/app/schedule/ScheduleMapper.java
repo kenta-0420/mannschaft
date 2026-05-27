@@ -24,43 +24,60 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface ScheduleMapper {
 
-    @Mapping(target = "eventType", expression = "java(entity.getEventType().name())")
-    @Mapping(target = "status", expression = "java(entity.getStatus().name())")
-    @Mapping(target = "eventCategory", ignore = true)
-    @Mapping(target = "academicYear", expression = "java(entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null)")
-    @Mapping(target = "createdByDisplayName", ignore = true)
-    @Mapping(target = "scopeName", ignore = true)
-    @Mapping(target = "scopeIconUrl", ignore = true)
+    @Mapping(target = "content.title", source = "title")
+    @Mapping(target = "content.status", expression = "java(scheduleEntity.getStatus().name())")
+    @Mapping(target = "content.eventType", expression = "java(scheduleEntity.getEventType().name())")
+    @Mapping(target = "content.location", source = "location")
+    @Mapping(target = "content.attendanceRequired", source = "attendanceRequired")
+    @Mapping(target = "time.startAt", source = "startAt")
+    @Mapping(target = "time.endAt", source = "endAt")
+    @Mapping(target = "time.allDay", source = "allDay")
+    @Mapping(target = "scope", ignore = true)
+    @Mapping(target = "academic.eventCategory", ignore = true)
+    @Mapping(target = "academic.academicYear", expression = "java(scheduleEntity.getAcademicYear() != null ? scheduleEntity.getAcademicYear().intValue() : null)")
+    @Mapping(target = "academic.sourceScheduleId", source = "sourceScheduleId")
+    @Mapping(target = "audit.createdAt", source = "createdAt")
+    @Mapping(target = "audit.createdByDisplayName", ignore = true)
     @Mapping(target = "myAttendanceStatus", ignore = true)
-    ScheduleResponse toResponse(ScheduleEntity entity);
+    ScheduleResponse toResponse(ScheduleEntity scheduleEntity);
 
     List<ScheduleResponse> toResponseList(List<ScheduleEntity> entities);
 
-    @Mapping(target = "eventType", expression = "java(entity.getEventType().name())")
-    @Mapping(target = "status", expression = "java(entity.getStatus().name())")
-    @Mapping(target = "visibility", expression = "java(entity.getVisibility().name())")
-    @Mapping(target = "minViewRole", expression = "java(entity.getMinViewRole().name())")
-    @Mapping(target = "minResponseRole", expression = "java(entity.getMinResponseRole() != null ? entity.getMinResponseRole().name() : null)")
-    @Mapping(target = "commentOption", expression = "java(entity.getCommentOption() != null ? entity.getCommentOption().name() : null)")
-    @Mapping(target = "surveys", ignore = true)
-    @Mapping(target = "reminders", ignore = true)
-    @Mapping(target = "myAttendance", ignore = true)
-    @Mapping(target = "attendanceSummary", ignore = true)
-    @Mapping(target = "crossInvitations", ignore = true)
-    @Mapping(target = "recurrenceRule", ignore = true)
-    @Mapping(target = "eventCategory", ignore = true)
-    @Mapping(target = "academicYear", expression = "java(entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null)")
+    @Mapping(target = "content.title", source = "title")
+    @Mapping(target = "content.status", expression = "java(scheduleEntity.getStatus().name())")
+    @Mapping(target = "content.eventType", expression = "java(scheduleEntity.getEventType().name())")
+    @Mapping(target = "content.location", source = "location")
+    @Mapping(target = "content.attendanceRequired", source = "attendanceRequired")
+    @Mapping(target = "time.startAt", source = "startAt")
+    @Mapping(target = "time.endAt", source = "endAt")
+    @Mapping(target = "time.allDay", source = "allDay")
+    @Mapping(target = "scope", ignore = true)
+    @Mapping(target = "academic.eventCategory", ignore = true)
+    @Mapping(target = "academic.academicYear", expression = "java(scheduleEntity.getAcademicYear() != null ? scheduleEntity.getAcademicYear().intValue() : null)")
+    @Mapping(target = "academic.sourceScheduleId", source = "sourceScheduleId")
+    @Mapping(target = "audit.createdAt", source = "createdAt")
+    @Mapping(target = "audit.createdByDisplayName", ignore = true)
     @Mapping(target = "myAttendanceStatus", ignore = true)
-    ScheduleDetailResponse toDetailResponse(ScheduleEntity entity);
+    @Mapping(target = "detail.description", source = "description")
+    @Mapping(target = "detail.visibility", expression = "java(scheduleEntity.getVisibility().name())")
+    @Mapping(target = "detail.color", source = "color")
+    @Mapping(target = "detail.commentOption", expression = "java(scheduleEntity.getCommentOption() != null ? scheduleEntity.getCommentOption().name() : null)")
+    @Mapping(target = "roles.minViewRole", expression = "java(scheduleEntity.getMinViewRole().name())")
+    @Mapping(target = "roles.minResponseRole", expression = "java(scheduleEntity.getMinResponseRole() != null ? scheduleEntity.getMinResponseRole().name() : null)")
+    @Mapping(target = "recurrence", ignore = true)
+    @Mapping(target = "attendance", ignore = true)
+    @Mapping(target = "relations", ignore = true)
+    @Mapping(target = "createdBy", source = "createdBy")
+    ScheduleDetailResponse toDetailResponse(ScheduleEntity scheduleEntity);
 
-    @Mapping(target = "status", expression = "java(entity.getStatus().name())")
-    AttendanceResponse toAttendanceResponse(ScheduleAttendanceEntity entity);
+    @Mapping(target = "status", expression = "java(scheduleAttendanceEntity.getStatus().name())")
+    AttendanceResponse toAttendanceResponse(ScheduleAttendanceEntity scheduleAttendanceEntity);
 
     List<AttendanceResponse> toAttendanceResponseList(List<ScheduleAttendanceEntity> entities);
 
-    @Mapping(target = "questionType", expression = "java(entity.getQuestionType().name())")
+    @Mapping(target = "questionType", expression = "java(eventSurveyEntity.getQuestionType().name())")
     @Mapping(target = "options", ignore = true)
-    EventSurveyResponse toSurveyResponse(EventSurveyEntity entity);
+    EventSurveyResponse toSurveyResponse(EventSurveyEntity eventSurveyEntity);
 
     List<EventSurveyResponse> toSurveyResponseList(List<EventSurveyEntity> entities);
 
@@ -68,9 +85,15 @@ public interface ScheduleMapper {
 
     List<ReminderResponse> toReminderResponseList(List<ScheduleAttendanceReminderEntity> entities);
 
-    @Mapping(target = "targetType", expression = "java(entity.getTargetType().name())")
-    @Mapping(target = "status", expression = "java(entity.getStatus().name())")
-    CrossRefResponse toCrossRefResponse(ScheduleCrossRefEntity entity);
+    @Mapping(target = "target.targetType", expression = "java(scheduleCrossRefEntity.getTargetType().name())")
+    @Mapping(target = "target.targetId", source = "targetId")
+    @Mapping(target = "target.targetScheduleId", source = "targetScheduleId")
+    @Mapping(target = "target.status", expression = "java(scheduleCrossRefEntity.getStatus().name())")
+    @Mapping(target = "audit.invitedBy", source = "invitedBy")
+    @Mapping(target = "audit.message", source = "message")
+    @Mapping(target = "audit.createdAt", source = "createdAt")
+    @Mapping(target = "audit.respondedAt", source = "respondedAt")
+    CrossRefResponse toCrossRefResponse(ScheduleCrossRefEntity scheduleCrossRefEntity);
 
     List<CrossRefResponse> toCrossRefResponseList(List<ScheduleCrossRefEntity> entities);
 

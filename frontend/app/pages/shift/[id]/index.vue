@@ -5,6 +5,7 @@ import type {
   ShiftScheduleStatus,
   UpdateShiftScheduleRequest,
 } from '~/types/shift'
+import dayjs from 'dayjs'
 import { statusToStep } from '~/utils/shiftStatus'
 
 definePageMeta({ middleware: 'auth' })
@@ -13,6 +14,7 @@ const { t } = useI18n()
 const route = useRoute()
 const teamStore = useTeamStore()
 const { getSchedule, updateSchedule, transitionStatus } = useShiftApi()
+const { userTimezone } = useDatetime()
 const { listSlots } = useShiftSlotApi()
 const { handleApiError } = useErrorHandler()
 const { success } = useNotification()
@@ -108,7 +110,7 @@ const dateList = computed<string[]>(() => {
   const end = new Date(schedule.value.endDate)
   const cur = new Date(start)
   while (cur <= end && dates.length <= 60) {
-    dates.push(cur.toISOString().split('T')[0]!)
+    dates.push(dayjs(cur).tz(userTimezone.value).format('YYYY-MM-DD'))
     cur.setDate(cur.getDate() + 1)
   }
   return dates

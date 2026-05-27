@@ -1,25 +1,27 @@
 package com.mannschaft.app.schedule.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 
 /**
  * クロスリファレンスレスポンスDTO。チーム・組織間招待の状態を返す。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class CrossRefResponse {
 
-    private final Long id;
-    private final Long sourceScheduleId;
-    private final String targetType;
-    private final Long targetId;
-    private final Long targetScheduleId;
-    private final String status;
-    private final String message;
-    private final Long invitedBy;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime respondedAt;
+    Long              id;
+    Long              sourceScheduleId;
+    CrossRefTargetDto target;  // targetType, targetId, targetScheduleId, status
+    CrossRefAuditDto  audit;   // invitedBy, message, createdAt, respondedAt
+
+    public record CrossRefTargetDto(String targetType, Long targetId, Long targetScheduleId,
+                                    String status) {
+    }
+
+    public record CrossRefAuditDto(Long invitedBy, String message, LocalDateTime createdAt,
+                                   LocalDateTime respondedAt) {
+    }
 }
