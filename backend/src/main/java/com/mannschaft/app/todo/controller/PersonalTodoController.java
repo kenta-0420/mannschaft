@@ -145,8 +145,9 @@ public class PersonalTodoController {
     @Operation(summary = "個人TODO削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePersonalTodo(@PathVariable Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
         todoService.assertTodoScope(id, TodoScopeType.PERSONAL, null);
-        todoService.deleteTodo(id);
+        todoService.deletePersonalTodo(id, userId);
         return ResponseEntity.noContent().build();
     }
 

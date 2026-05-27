@@ -304,6 +304,22 @@ public class TodoService {
     }
 
     /**
+     * 個人TODOを論理削除する。担当者であることを検証する（IDOR対策）。
+     *
+     * @param todoId Todo ID
+     * @param userId 操作ユーザーID
+     */
+    @Transactional
+    public void deletePersonalTodo(Long todoId, Long userId) {
+        // 担当者であることを検証（IDOR対策: 他人のTODOはNOT_FOUNDで返す）
+        boolean isAssignee = assigneeRepository.existsByTodoIdAndUserId(todoId, userId);
+        if (!isAssignee) {
+            throw new BusinessException(TodoErrorCode.TODO_NOT_FOUND);
+        }
+        deleteTodo(todoId);
+    }
+
+    /**
      * TODOを論理削除する。
      *
      * @param todoId Todo ID
