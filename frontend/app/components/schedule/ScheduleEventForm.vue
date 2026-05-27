@@ -187,9 +187,15 @@ watch(
   },
 )
 
+// toISOString() は常にUTCで出力するため、JSTユーザーの場合に日付が1日ずれる問題がある。
+// ローカル日付コンポーネントを使ってUTC変換を避ける。
+function toLocalDateStr(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
 function buildDateTimeStr(date: Date | null, time: string): string | null {
   if (!date) return null
-  const dateStr = date.toISOString().split('T')[0]
+  const dateStr = toLocalDateStr(date)
   return time ? `${dateStr}T${time}:00` : `${dateStr}T00:00:00`
 }
 
@@ -232,7 +238,7 @@ async function submit() {
         : undefined,
       endType: form.value.recurrenceEndType,
       endDate: form.value.recurrenceEndType === 'DATE' && form.value.recurrenceEndDate
-        ? form.value.recurrenceEndDate.toISOString().split('T')[0]
+        ? toLocalDateStr(form.value.recurrenceEndDate)
         : undefined,
       count: form.value.recurrenceEndType === 'COUNT'
         ? form.value.recurrenceCount

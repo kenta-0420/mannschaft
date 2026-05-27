@@ -1064,7 +1064,7 @@
       "edit": "編集",
       "duplicate": "複製",
       "delete": "削除",
-      "save": "保存",
+      "save": "Guardar",
       "saved": "保存しました",
       "saving": "保存中...",
       "conflictError": "編集が競合しました。最新を再取得します",
@@ -1286,6 +1286,14 @@
       "betaRestriction": "Restricción beta",
       "errorReports": "Informes de errores",
       "gdprPurge": "Estado de Purga GDPR"
+    },
+    "businessAlert": {
+      "title": "Alertas de negocio",
+      "newReservations": "Nuevas reservas",
+      "pendingApproval": "Pendiente aprobación",
+      "unreadInquiries": "Consultas",
+      "noAlerts": "Sin alertas",
+      "viewAll": "Ver todo"
     }
   },
   "notificationCredit": {

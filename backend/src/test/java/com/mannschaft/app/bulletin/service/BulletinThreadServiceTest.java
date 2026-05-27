@@ -65,6 +65,9 @@ class BulletinThreadServiceTest {
     private AuditLogService auditLogService;
 
     @Mock
+    private BulletinArchiveFolderService archiveFolderService;
+
+    @Mock
     private PostingIdentityService postingIdentityService;
 
     @InjectMocks
@@ -93,7 +96,7 @@ class BulletinThreadServiceTest {
         return new ThreadResponse(
                 THREAD_ID, CATEGORY_ID, "TEAM", SCOPE_ID, USER_ID,
                 "テストスレッド", "テスト本文", "INFO", "COUNT_ONLY",
-                false, false, false, 0, 0, null, null, null, null, null);
+                false, false, false, null, 0, 0, null, null, null, null, null);
     }
 
     // ========================================
@@ -620,8 +623,8 @@ class BulletinThreadServiceTest {
     class Archive {
 
         @Test
-        @DisplayName("アーカイブ_正常_状態変更")
-        void アーカイブ_正常_状態変更() {
+        @DisplayName("アーカイブ_isArchived=true_アーカイブ状態になる")
+        void アーカイブ_true_状態変更() {
             // Given
             BulletinThreadEntity entity = createDefaultThread();
             ThreadResponse response = createThreadResponse();
@@ -631,11 +634,176 @@ class BulletinThreadServiceTest {
             given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
 
             // When
-            bulletinThreadService.archive(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID);
+            bulletinThreadService.archive(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID, true, null);
 
             // Then
             assertThat(entity.getIsArchived()).isTrue();
             verify(accessGuard).requireManageContent(USER_ID, SCOPE_TYPE, SCOPE_ID);
+        }
+
+        @Test
+        @DisplayName("アーカイブ_isArchived=false_アーカイブ解除される")
+        void アーカイブ_false_解除() {
+            // Given: 既にアーカイブ済みのスレッド
+            BulletinThreadEntity entity = createDefaultThread();
+            entity.archive();
+            ThreadResponse response = createThreadResponse();
+            given(threadRepository.findByIdAndScopeTypeAndScopeId(THREAD_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(threadRepository.save(entity)).willReturn(entity);
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            // When
+            bulletinThreadService.archive(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID, false, null);
+
+            // Then
+            assertThat(entity.getIsArchived()).isFalse();
+            verify(accessGuard).requireManageContent(USER_ID, SCOPE_TYPE, SCOPE_ID);
+        }
+
+        @Test
+        @DisplayName("アーカイブ_管理権限なし_403_認可維持")
+        void アーカイブ_権限なし_403() {
+            // Given: 非管理者は requireManageContent で 403（双方向化しても認可は維持）
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessGuard).requireManageContent(USER_ID, SCOPE_TYPE, SCOPE_ID);
+
+            // When & Then
+            assertThatThrownBy(() -> bulletinThreadService.archive(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID, true, null))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            verify(threadRepository, never()).findByIdAndScopeTypeAndScopeId(anyLong(), any(), anyLong());
+        }
+    }
+
+    // ========================================
+    // 保管庫フォルダ連携（archive 拡張 / listArchiveThreads / moveThreadToFolder）
+    // ========================================
+
+    @Nested
+    @DisplayName("保管庫フォルダ連携")
+    class ArchiveFolderIntegration {
+
+        @Test
+        @DisplayName("アーカイブ時にフォルダ指定_検証してフォルダ割当")
+        void アーカイブ_フォルダ指定_割当() {
+            UUID folderId = UUID.randomUUID();
+            BulletinThreadEntity entity = createDefaultThread();
+            ThreadResponse response = createThreadResponse();
+            given(threadRepository.findByIdAndScopeTypeAndScopeId(THREAD_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(threadRepository.save(entity)).willReturn(entity);
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            bulletinThreadService.archive(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID, true, folderId);
+
+            assertThat(entity.getIsArchived()).isTrue();
+            assertThat(entity.getArchiveFolderId()).isEqualTo(folderId);
+            verify(archiveFolderService).validateFolderInScope(SCOPE_TYPE, SCOPE_ID, folderId);
+        }
+
+        @Test
+        @DisplayName("アーカイブ解除時_フォルダがNULLにリセットされる")
+        void アーカイブ解除_フォルダNULL() {
+            UUID folderId = UUID.randomUUID();
+            BulletinThreadEntity entity = createDefaultThread();
+            entity.archive();
+            entity.assignArchiveFolder(folderId);
+            ThreadResponse response = createThreadResponse();
+            given(threadRepository.findByIdAndScopeTypeAndScopeId(THREAD_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(threadRepository.save(entity)).willReturn(entity);
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            bulletinThreadService.archive(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID, false, folderId);
+
+            assertThat(entity.getIsArchived()).isFalse();
+            assertThat(entity.getArchiveFolderId()).isNull();
+        }
+
+        @Test
+        @DisplayName("フォルダ振り分け_未アーカイブスレッド_409")
+        void 振り分け_未アーカイブ_409() {
+            BulletinThreadEntity entity = createDefaultThread(); // is_archived=false
+            given(threadRepository.findByIdAndScopeTypeAndScopeId(THREAD_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> bulletinThreadService.moveThreadToFolder(
+                    SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID, UUID.randomUUID()))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(BulletinErrorCode.THREAD_NOT_ARCHIVED));
+        }
+
+        @Test
+        @DisplayName("フォルダ振り分け_アーカイブ済み_フォルダ割当")
+        void 振り分け_正常() {
+            UUID folderId = UUID.randomUUID();
+            BulletinThreadEntity entity = createDefaultThread();
+            entity.archive();
+            ThreadResponse response = createThreadResponse();
+            given(threadRepository.findByIdAndScopeTypeAndScopeId(THREAD_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(threadRepository.save(entity)).willReturn(entity);
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            bulletinThreadService.moveThreadToFolder(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID, folderId);
+
+            assertThat(entity.getArchiveFolderId()).isEqualTo(folderId);
+            verify(archiveFolderService).validateFolderInScope(SCOPE_TYPE, SCOPE_ID, folderId);
+            verify(accessGuard).requireManageContent(USER_ID, SCOPE_TYPE, SCOPE_ID);
+        }
+
+        @Test
+        @DisplayName("保管庫スレッド一覧_未分類_直下クエリ")
+        void 保管庫一覧_未分類() {
+            BulletinThreadEntity entity = createDefaultThread();
+            ThreadResponse response = createThreadResponse();
+            Page<BulletinThreadEntity> page = new PageImpl<>(List.of(entity), PageRequest.of(0, 20), 1);
+            given(threadRepository.findByScopeTypeAndScopeIdAndIsArchivedTrueAndArchiveFolderIdIsNull(
+                    SCOPE_TYPE, SCOPE_ID, PageRequest.of(0, 20))).willReturn(page);
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            Page<ThreadResponse> result = bulletinThreadService.listArchiveThreads(
+                    SCOPE_TYPE, SCOPE_ID, USER_ID, null, false, PageRequest.of(0, 20));
+
+            assertThat(result.getContent()).hasSize(1);
+            verify(accessGuard).checkMembership(USER_ID, SCOPE_TYPE, SCOPE_ID);
+        }
+
+        @Test
+        @DisplayName("保管庫スレッド一覧_全件_allクエリ")
+        void 保管庫一覧_全件() {
+            BulletinThreadEntity entity = createDefaultThread();
+            ThreadResponse response = createThreadResponse();
+            Page<BulletinThreadEntity> page = new PageImpl<>(List.of(entity), PageRequest.of(0, 20), 1);
+            given(threadRepository.findByScopeTypeAndScopeIdAndIsArchivedTrue(
+                    SCOPE_TYPE, SCOPE_ID, PageRequest.of(0, 20))).willReturn(page);
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            Page<ThreadResponse> result = bulletinThreadService.listArchiveThreads(
+                    SCOPE_TYPE, SCOPE_ID, USER_ID, null, true, PageRequest.of(0, 20));
+
+            assertThat(result.getContent()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("保管庫スレッド一覧_フォルダ指定_scope検証してフォルダクエリ")
+        void 保管庫一覧_フォルダ指定() {
+            UUID folderId = UUID.randomUUID();
+            BulletinThreadEntity entity = createDefaultThread();
+            ThreadResponse response = createThreadResponse();
+            Page<BulletinThreadEntity> page = new PageImpl<>(List.of(entity), PageRequest.of(0, 20), 1);
+            given(threadRepository.findByScopeTypeAndScopeIdAndIsArchivedTrueAndArchiveFolderId(
+                    SCOPE_TYPE, SCOPE_ID, folderId, PageRequest.of(0, 20))).willReturn(page);
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            Page<ThreadResponse> result = bulletinThreadService.listArchiveThreads(
+                    SCOPE_TYPE, SCOPE_ID, USER_ID, folderId, false, PageRequest.of(0, 20));
+
+            assertThat(result.getContent()).hasSize(1);
+            verify(archiveFolderService).validateFolderInScope(SCOPE_TYPE, SCOPE_ID, folderId);
         }
     }
 }

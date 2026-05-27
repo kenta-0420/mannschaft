@@ -15,6 +15,7 @@ import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.service.EventSurveyService;
 import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
+import com.mannschaft.app.schedule.service.ScheduleDelegationService;
 import com.mannschaft.app.schedule.service.ScheduleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -66,6 +67,9 @@ class ScheduleAttendanceServiceTest {
 
     @Mock
     private ProxyInputRecordRepository proxyInputRecordRepository;
+
+    @Mock
+    private ScheduleDelegationService scheduleDelegationService;
 
     @InjectMocks
     private ScheduleAttendanceService attendanceService;

@@ -60,7 +60,7 @@ class SurveyThreadControllerTest {
             ThreadResponse threadResponse = new ThreadResponse(
                     1L, null, "ORGANIZATION", 10L, null,
                     "テストアンケート — 掲示板", "", "NORMAL", "ALL",
-                    false, false, false, 0, 0, null,
+                    false, false, false, null, 0, 0, null,
                     "SURVEY", SURVEY_ID, null, null
             );
             given(surveyBulletinThreadService.findBySurveyId(SURVEY_ID)).willReturn(Optional.of(threadEntity));

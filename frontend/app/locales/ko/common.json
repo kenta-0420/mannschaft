@@ -1064,7 +1064,7 @@
       "edit": "編集",
       "duplicate": "複製",
       "delete": "削除",
-      "save": "保存",
+      "save": "저장",
       "saved": "保存しました",
       "saving": "保存中...",
       "conflictError": "編集が競合しました。最新を再取得します",
@@ -1286,6 +1286,14 @@
       "betaRestriction": "베타 제한",
       "errorReports": "오류 보고서",
       "gdprPurge": "GDPR 삭제 현황"
+    },
+    "businessAlert": {
+      "title": "업무 알림",
+      "newReservations": "신규 예약",
+      "pendingApproval": "승인 대기",
+      "unreadInquiries": "문의",
+      "noAlerts": "알림이 없습니다",
+      "viewAll": "전체 보기"
     }
   },
   "notificationCredit": {

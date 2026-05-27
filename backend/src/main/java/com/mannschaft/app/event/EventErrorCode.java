@@ -81,7 +81,51 @@ public enum EventErrorCode implements ErrorCode {
     RSVP_MODE_REQUIRED("EVENT_023", "このイベントはRSVP出欠確認モードではありません", Severity.WARN),
 
     /** 既に解散通知済み（F03.12 §16） */
-    ALREADY_DISMISSED("EVENT_024", "このイベントには既に解散通知が送信されています", Severity.WARN);
+    ALREADY_DISMISSED("EVENT_024", "このイベントには既に解散通知が送信されています", Severity.WARN),
+
+    // --- F03.10 代理出席（§4.2 / §5.6 / §5.7） ---
+
+    /** 代理委任が見つからない（404） */
+    DELEGATION_NOT_FOUND("EVENT_030", "代理委任が見つかりません", Severity.WARN),
+
+    /** 委任者がスコープのメンバーでない（403） */
+    DELEGATION_DELEGATOR_NOT_MEMBER("EVENT_031", "委任者はスコープのメンバーではありません", Severity.WARN),
+
+    /** 代理人がスコープのメンバーでない（422） */
+    DELEGATION_DELEGATE_NOT_MEMBER("EVENT_032", "代理人はスコープのメンバーではありません", Severity.WARN),
+
+    /** 自己代理（422） */
+    DELEGATION_SELF_DELEGATION("EVENT_033", "自分自身を代理人に指定することはできません", Severity.WARN),
+
+    /** 委任者のアクティブ代理が既に存在する（409） */
+    DELEGATION_ALREADY_EXISTS("EVENT_034", "この委任者のアクティブな代理が既に存在します", Severity.WARN),
+
+    /** 連鎖代理禁止違反（422） */
+    DELEGATION_CHAINED("EVENT_035", "代理人が既に他者の代理を引き受けているため指定できません（連鎖代理禁止）", Severity.WARN),
+
+    /** 代理出席が許可されていない（422） */
+    DELEGATION_NOT_ALLOWED("EVENT_036", "このイベントは代理出席を許可していません", Severity.WARN),
+
+    /** イベントが CANCELLED/COMPLETED（422） */
+    DELEGATION_INVALID_EVENT_STATUS("EVENT_037", "キャンセル済み・完了済みのイベントには代理指定できません", Severity.WARN),
+
+    /** 代理人本人でない（403） */
+    DELEGATION_NOT_DELEGATE("EVENT_038", "代理人本人のみ承認・拒否できます", Severity.WARN),
+
+    /** ステータスが PENDING でない（422） */
+    DELEGATION_NOT_PENDING("EVENT_039", "承認待ち（PENDING）状態の代理のみ承認・拒否できます", Severity.WARN),
+
+    /** 投票セッションが代理連携の事前条件を満たさない（422） */
+    DELEGATION_PROXY_VOTE_INVALID("EVENT_040", "指定された投票セッションは代理連携の条件を満たしません", Severity.WARN),
+
+    /** 代理チェックインの delegation が ACCEPTED でない（422） */
+    DELEGATION_CHECKIN_NOT_ACCEPTED("EVENT_041", "確定（ACCEPTED）状態の代理のみチェックインできます", Severity.WARN),
+
+    /** 既に代理チェックイン済み（409） */
+    DELEGATION_ALREADY_CHECKED_IN("EVENT_042", "この代理は既にチェックイン済みです", Severity.WARN),
+
+    /** 代理チェックインの実行権限なし（403） */
+    DELEGATION_CHECKIN_FORBIDDEN("EVENT_043", "代理チェックインを実行する権限がありません", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -1,6 +1,7 @@
 package com.mannschaft.app.bulletin.controller;
 
 import com.mannschaft.app.bulletin.ScopeType;
+import com.mannschaft.app.bulletin.dto.ArchiveThreadRequest;
 import com.mannschaft.app.bulletin.dto.CreateThreadRequest;
 import com.mannschaft.app.bulletin.dto.ThreadResponse;
 import com.mannschaft.app.bulletin.dto.UpdateThreadRequest;
@@ -174,17 +175,28 @@ public class BulletinThreadController {
     }
 
     /**
-     * アーカイブする。
+     * アーカイブ状態を変更する（設計書 F05.1 §4: is_archived 双方向）。
+     *
+     * <p>body の {@code is_archived} が true ならアーカイブ、false なら解除。
+     * 後方互換のため body が無い／{@code is_archived} 未指定の場合は true（アーカイブ）として扱う。</p>
      */
     @PostMapping("/{threadId}/archive")
-    @Operation(summary = "アーカイブ")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ成功")
+    @Operation(summary = "アーカイブ状態変更")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ状態変更成功")
     public ResponseEntity<ApiResponse<ThreadResponse>> archive(
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
-            @PathVariable Long threadId) {
+            @PathVariable Long threadId,
+            @RequestBody(required = false) ArchiveThreadRequest request) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        ThreadResponse response = threadService.archive(type, scopeId, threadId, SecurityUtils.getCurrentUserId());
+        // 後方互換: body が無い or isArchived 未指定なら true（従来のアーカイブ挙動）
+        boolean isArchived = request == null || request.getIsArchived() == null
+                ? true
+                : request.getIsArchived();
+        // 保管庫フォルダ振り分け（任意。null = 保管庫直下。is_archived=false 時はサービス層で無視）
+        java.util.UUID archiveFolderId = request == null ? null : request.getArchiveFolderId();
+        ThreadResponse response = threadService.archive(
+                type, scopeId, threadId, SecurityUtils.getCurrentUserId(), isArchived, archiveFolderId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

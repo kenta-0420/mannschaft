@@ -51,7 +51,28 @@ public enum BulletinErrorCode implements ErrorCode {
     INVALID_EMOJI("BULLETIN_013", "許可されていない絵文字です", Severity.WARN),
 
     /** 安否確認スレッドは手動削除できない（設計書 §6） */
-    SAFETY_THREAD_DELETE_FORBIDDEN("BULLETIN_014", "安否確認スレッドは削除できません", Severity.WARN);
+    SAFETY_THREAD_DELETE_FORBIDDEN("BULLETIN_014", "安否確認スレッドは削除できません", Severity.WARN),
+
+    /** 返信のネスト深さが上限（5階層）を超過した（設計書 §5） */
+    REPLY_DEPTH_EXCEEDED("BULLETIN_015", "返信のネストは最大5階層までです", Severity.WARN),
+
+    /** 保管庫フォルダが見つからない（設計書 §4） */
+    ARCHIVE_FOLDER_NOT_FOUND("BULLETIN_016", "保管庫フォルダが見つかりません", Severity.WARN),
+
+    /** 保管庫フォルダのネスト深さが上限（5階層）を超過した（設計書 §5） */
+    ARCHIVE_FOLDER_DEPTH_EXCEEDED("BULLETIN_017", "保管庫フォルダのネストは最大5階層までです", Severity.WARN),
+
+    /** 保管庫フォルダの循環参照（自分自身・子孫への移動）（設計書 §5） */
+    ARCHIVE_FOLDER_CYCLE("BULLETIN_018", "自分自身または子孫フォルダへは移動できません", Severity.WARN),
+
+    /** 保管庫フォルダ数が上限（200）に達した（設計書 §5） */
+    ARCHIVE_FOLDER_LIMIT_EXCEEDED("BULLETIN_019", "保管庫フォルダ数が上限に達しています", Severity.WARN),
+
+    /** 保管庫フォルダ・スレッドの scope が一致しない（scope 越境）（設計書 §5/§6） */
+    ARCHIVE_FOLDER_SCOPE_MISMATCH("BULLETIN_020", "保管庫フォルダのスコープが一致しません", Severity.WARN),
+
+    /** 未アーカイブのスレッドはフォルダ振り分けできない（設計書 §4 PATCH .../folder） */
+    THREAD_NOT_ARCHIVED("BULLETIN_021", "アーカイブされていないスレッドはフォルダへ振り分けできません", Severity.WARN);
 
     private final String code;
     private final String message;
