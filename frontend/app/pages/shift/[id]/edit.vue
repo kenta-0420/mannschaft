@@ -18,7 +18,6 @@ const { listSlots, deleteSlot, bulkCreateSlots } = useShiftSlotApi()
 const { listPositions } = useShiftPositionApi()
 const { handleApiError } = useErrorHandler()
 const { success } = useNotification()
-const { userTimezone } = useDatetime()
 
 const scheduleId = computed(() => Number(route.params.id))
 
