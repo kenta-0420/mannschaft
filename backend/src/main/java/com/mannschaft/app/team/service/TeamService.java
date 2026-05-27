@@ -443,14 +443,22 @@ public class TeamService {
 
     private TeamResponse toResponse(TeamEntity team, int memberCount,
                                      long teamFriendCount, long supporterCount) {
-        return new TeamResponse(
-                team.getId(), team.getName(), team.getNameKana(),
-                team.getNickname1(), team.getNickname2(), team.getTemplate(),
-                team.getPrefecture(), team.getCity(), team.getVisibility().name(),
-                team.getSupporterEnabled(), team.getVersion(),
-                memberCount, team.getIconUrl(), team.getBannerUrl(),
-                team.getArchivedAt(), team.getCreatedAt(),
-                teamFriendCount, supporterCount,
-                team.getMapEmbedUrl());
+        return TeamResponse.builder()
+                .id(team.getId())
+                .basicInfo(new TeamResponse.TeamBasicInfoDto(
+                        team.getName(), team.getNameKana(),
+                        team.getNickname1(), team.getNickname2()))
+                .location(new TeamResponse.TeamLocationDto(
+                        team.getPrefecture(), team.getCity(), team.getTemplate()))
+                .visibility(new TeamResponse.TeamVisibilityDto(
+                        team.getVisibility() != null ? team.getVisibility().name() : null,
+                        team.getSupporterEnabled()))
+                .metadata(new TeamResponse.TeamMetadataDto(
+                        team.getVersion(), memberCount,
+                        team.getIconUrl(), team.getBannerUrl(), team.getMapEmbedUrl()))
+                .social(new TeamResponse.TeamSocialDto(teamFriendCount, supporterCount))
+                .timestamps(new TeamResponse.TeamTimestampsDto(
+                        team.getArchivedAt(), team.getCreatedAt()))
+                .build();
     }
 }
