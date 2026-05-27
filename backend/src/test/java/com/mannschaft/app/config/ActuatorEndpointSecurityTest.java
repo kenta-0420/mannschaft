@@ -155,6 +155,28 @@ class ActuatorEndpointSecurityTest {
         AdPublicEndpointRateLimitFilter adPublicEndpointRateLimitFilter() {
             return new AdPublicEndpointRateLimitFilter();
         }
+
+        /**
+         * F03.10 第三陣: SecurityConfig が依存する ScheduleDelegationRateLimitFilter の
+         * 本物インスタンス。引数なしコンストラクタで、内部の Caffeine + Bucket4j は
+         * 本テストの localhost 単発リクエストでは枯渇しない。本テストは /actuator/** のみを
+         * 叩くため、対象パス（POST /api/v1/schedules/{id}/delegations）に一致せず、
+         * 何もせず chain.doFilter に通す挙動になる。
+         */
+        @Bean
+        com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter scheduleDelegationRateLimitFilter() {
+            return new com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter();
+        }
+
+        /**
+         * F03.10 第三陣: SecurityConfig が依存する EventDelegationRateLimitFilter の
+         * 本物インスタンス。スケジュール側と同型で、本テストは対象パス
+         * （POST /api/v1/events/{id}/delegations）に一致せず素通しする。
+         */
+        @Bean
+        com.mannschaft.app.event.EventDelegationRateLimitFilter eventDelegationRateLimitFilter() {
+            return new com.mannschaft.app.event.EventDelegationRateLimitFilter();
+        }
     }
 
     @Autowired
