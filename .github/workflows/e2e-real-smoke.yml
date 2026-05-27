@@ -112,6 +112,14 @@ jobs:
         working-directory: backend/scripts
         run: npm ci
 
+      # GitHub Actions の MySQL 8.0 サービスコンテナはバイナリロギングが有効なため、
+      # CREATE TRIGGER / CREATE FUNCTION を SUPER 権限なしで実行するには
+      # log_bin_trust_function_creators を有効にする必要がある。
+      - name: Configure MySQL for triggers/functions
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -u root -proot_password -e \
+            "SET GLOBAL log_bin_trust_function_creators = 1;"
+
       # Backend を ci プロファイルで起動する。
       # Flyway が自動でマイグレーションを適用してからバックエンドが起動する。
       # JAR ファイルは *-SNAPSHOT.jar（plain は除外）。
