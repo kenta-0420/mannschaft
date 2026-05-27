@@ -187,7 +187,11 @@ public class AuthTokenService {
             return;
         }
         String key = BLACKLIST_KEY_PREFIX + jti;
-        redisTemplate.opsForValue().set(key, "1", remainingTtlSeconds, TimeUnit.SECONDS);
+        try {
+            redisTemplate.opsForValue().set(key, "1", remainingTtlSeconds, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.warn("Valkey unavailable during blacklist write, skipping: {}", e.getMessage());
+        }
     }
 
     /**
@@ -199,7 +203,11 @@ public class AuthTokenService {
     public void setUserInvalidationTimestamp(Long userId) {
         String key = USER_INVALIDATED_KEY_PREFIX + userId;
         long now = Instant.now().getEpochSecond();
-        redisTemplate.opsForValue().set(key, String.valueOf(now), USER_INVALIDATION_TTL_SECONDS, TimeUnit.SECONDS);
+        try {
+            redisTemplate.opsForValue().set(key, String.valueOf(now), USER_INVALIDATION_TTL_SECONDS, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.warn("Valkey unavailable during user invalidation timestamp write, skipping: {}", e.getMessage());
+        }
     }
 
     /**
@@ -207,7 +215,11 @@ public class AuthTokenService {
      */
     public void clearUserInvalidationTimestamp(Long userId) {
         String key = USER_INVALIDATED_KEY_PREFIX + userId;
-        redisTemplate.delete(key);
+        try {
+            redisTemplate.delete(key);
+        } catch (Exception e) {
+            log.warn("Valkey unavailable during user invalidation timestamp clear, skipping: {}", e.getMessage());
+        }
     }
 
     /**
@@ -285,15 +297,20 @@ public class AuthTokenService {
      * @return インクリメント後のカウント値
      */
     public long incrementRateLimit(String key, Duration window) {
-        Long count = redisTemplate.opsForValue().increment(key);
-        if (count == null) {
-            count = 1L;
+        try {
+            Long count = redisTemplate.opsForValue().increment(key);
+            if (count == null) {
+                count = 1L;
+            }
+            // 初回インクリメント時のみTTLを設定
+            if (count == 1L) {
+                redisTemplate.expire(key, window.getSeconds(), TimeUnit.SECONDS);
+            }
+            return count;
+        } catch (Exception e) {
+            log.warn("Valkey unavailable during rate limit increment, failing open: {}", e.getMessage());
+            return 0L;
         }
-        // 初回インクリメント時のみTTLを設定
-        if (count == 1L) {
-            redisTemplate.expire(key, window.getSeconds(), TimeUnit.SECONDS);
-        }
-        return count;
     }
 
 }

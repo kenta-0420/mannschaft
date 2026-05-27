@@ -29,9 +29,11 @@ import java.util.concurrent.TimeUnit;
 import javax.crypto.SecretKey;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -361,6 +363,201 @@ class AuthTokenServiceTest {
 
             // Then: redisTemplate.opsForValue() が呼ばれないことを確認
             // (Mockitoのデフォルトで verify されていないことが証明)
+        }
+
+        @Test
+        @DisplayName("Valkey障害系: 例外が外部に伝播しない（fail-silent）")
+        void addJtiToBlacklist_Valkey障害_例外が伝播しない() {
+            // Given
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            willThrow(new RuntimeException("Valkey connection refused"))
+                    .given(valueOperations).set(anyString(), anyString(), anyLong(), any());
+
+            // When / Then: 例外が外に出ないことを確認
+            assertThatCode(() -> authTokenService.addJtiToBlacklist("test-jti", 300L))
+                    .doesNotThrowAnyException();
+        }
+    }
+
+    // ========================================
+    // isJtiBlacklisted
+    // ========================================
+
+    @Nested
+    @DisplayName("isJtiBlacklisted")
+    class IsJtiBlacklisted {
+
+        @Test
+        @DisplayName("正常系: ブラックリスト登録済みの場合true")
+        void isJtiBlacklisted_登録済み_true() {
+            // Given
+            given(redisTemplate.hasKey(argThat(k -> k.startsWith("mannschaft:auth:blacklist:"))))
+                    .willReturn(true);
+
+            // When / Then
+            assertThat(authTokenService.isJtiBlacklisted("some-jti")).isTrue();
+        }
+
+        @Test
+        @DisplayName("正常系: ブラックリスト未登録の場合false")
+        void isJtiBlacklisted_未登録_false() {
+            // Given
+            given(redisTemplate.hasKey(anyString())).willReturn(false);
+
+            // When / Then
+            assertThat(authTokenService.isJtiBlacklisted("some-jti")).isFalse();
+        }
+
+        @Test
+        @DisplayName("Valkey障害系: 例外が発生してもfalseを返す（fail-open）")
+        void isJtiBlacklisted_Valkey障害_falseを返す() {
+            // Given
+            given(redisTemplate.hasKey(anyString()))
+                    .willThrow(new RuntimeException("Valkey connection refused"));
+
+            // When / Then
+            assertThat(authTokenService.isJtiBlacklisted("some-jti")).isFalse();
+        }
+    }
+
+    // ========================================
+    // isTokenInvalidated
+    // ========================================
+
+    @Nested
+    @DisplayName("isTokenInvalidated")
+    class IsTokenInvalidated {
+
+        @Test
+        @DisplayName("正常系: 無効化タイムスタンプなし → false")
+        void isTokenInvalidated_タイムスタンプなし_false() {
+            // Given
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(anyString())).willReturn(null);
+
+            // When / Then
+            assertThat(authTokenService.isTokenInvalidated(1L, 1000L)).isFalse();
+        }
+
+        @Test
+        @DisplayName("正常系: iatが無効化タイムスタンプより前 → true（無効）")
+        void isTokenInvalidated_IAT前_true() {
+            // Given: 無効化タイムスタンプ=1000、iat=999（前）
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(anyString())).willReturn("1000");
+
+            // When / Then
+            assertThat(authTokenService.isTokenInvalidated(1L, 999L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("正常系: iatが無効化タイムスタンプ以降 → false（有効）")
+        void isTokenInvalidated_IAT以降_false() {
+            // Given: 無効化タイムスタンプ=1000、iat=1001（後）
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(anyString())).willReturn("1000");
+
+            // When / Then
+            assertThat(authTokenService.isTokenInvalidated(1L, 1001L)).isFalse();
+        }
+
+        @Test
+        @DisplayName("Valkey障害系: 例外が発生してもfalseを返す（fail-open）")
+        void isTokenInvalidated_Valkey障害_falseを返す() {
+            // Given
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(anyString()))
+                    .willThrow(new RuntimeException("Valkey connection refused"));
+
+            // When / Then
+            assertThat(authTokenService.isTokenInvalidated(1L, 999L)).isFalse();
+        }
+    }
+
+    // ========================================
+    // setUserInvalidationTimestamp / clearUserInvalidationTimestamp
+    // ========================================
+
+    @Nested
+    @DisplayName("setUserInvalidationTimestamp")
+    class SetUserInvalidationTimestamp {
+
+        @Test
+        @DisplayName("Valkey障害系: 例外が外部に伝播しない（fail-silent）")
+        void setUserInvalidationTimestamp_Valkey障害_例外が伝播しない() {
+            // Given
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            willThrow(new RuntimeException("Valkey connection refused"))
+                    .given(valueOperations).set(anyString(), anyString(), anyLong(), any());
+
+            // When / Then
+            assertThatCode(() -> authTokenService.setUserInvalidationTimestamp(1L))
+                    .doesNotThrowAnyException();
+        }
+    }
+
+    @Nested
+    @DisplayName("clearUserInvalidationTimestamp")
+    class ClearUserInvalidationTimestamp {
+
+        @Test
+        @DisplayName("Valkey障害系: 例外が外部に伝播しない（fail-silent）")
+        void clearUserInvalidationTimestamp_Valkey障害_例外が伝播しない() {
+            // Given
+            given(redisTemplate.delete(anyString()))
+                    .willThrow(new RuntimeException("Valkey connection refused"));
+
+            // When / Then
+            assertThatCode(() -> authTokenService.clearUserInvalidationTimestamp(1L))
+                    .doesNotThrowAnyException();
+        }
+    }
+
+    // ========================================
+    // incrementRateLimit (Valkey障害)
+    // ========================================
+
+    @Nested
+    @DisplayName("incrementRateLimit Valkey障害")
+    class IncrementRateLimitValkeyDown {
+
+        @Test
+        @DisplayName("Valkey障害系: 例外が発生してもカウント0を返す（fail-open）")
+        void incrementRateLimit_Valkey障害_0を返す() {
+            // Given
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.increment(anyString()))
+                    .willThrow(new RuntimeException("Valkey connection refused"));
+
+            // When
+            long count = authTokenService.incrementRateLimit("some-key", Duration.ofMinutes(1));
+
+            // Then: fail-openでカウント0（レート制限スキップ）
+            assertThat(count).isZero();
+        }
+    }
+
+    // ========================================
+    // parseAccessToken Valkey障害（統合確認）
+    // ========================================
+
+    @Nested
+    @DisplayName("parseAccessToken Valkey障害")
+    class ParseAccessTokenValkeyDown {
+
+        @Test
+        @DisplayName("Valkey障害系: ブラックリスト確認で例外が発生してもClaimsを返す（fail-open）")
+        void parseAccessToken_Valkey障害_Claimsを返す() {
+            // Given
+            String token = authTokenService.issueAccessToken(1L, List.of("MEMBER"));
+            given(redisTemplate.hasKey(anyString()))
+                    .willThrow(new RuntimeException("Valkey connection refused"));
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(anyString())).willReturn(null);
+
+            // When / Then: 例外なくClaimsが取得できる
+            assertThatCode(() -> authTokenService.parseAccessToken(token))
+                    .doesNotThrowAnyException();
         }
     }
 }
