@@ -145,7 +145,8 @@ async function createTestSurvey(
     })
     if (!res.ok()) return null
     const body = await res.json()
-    return body?.data?.id ?? null
+    // SurveyDetailResponse は { survey: { id, ... }, questions: [] } のネスト構造
+    return body?.data?.survey?.id ?? body?.data?.id ?? null
   } catch {
     return null
   }
@@ -384,7 +385,7 @@ test.describe('EC-001〜EC-004: イベント→チャット自動連携', () => 
 
     // イベントをキャンセル（DRAFT → キャンセル不可なので、まず PUBLISHED にしてからキャンセル）
     // DRAFT → PUBLISHED → CANCEL のフローを確認
-    const publishRes = await request.patch(
+    const publishRes = await request.post(
       `${BACKEND_URL}/api/v1/teams/${TEAM_ID}/events/${testEventId}/publish`,
       { headers: { Authorization: `Bearer ${userToken}` } },
     )
@@ -395,7 +396,7 @@ test.describe('EC-001〜EC-004: イベント→チャット自動連携', () => 
       return
     }
 
-    const cancelRes = await request.patch(
+    const cancelRes = await request.post(
       `${BACKEND_URL}/api/v1/teams/${TEAM_ID}/events/${testEventId}/cancel`,
       { headers: { Authorization: `Bearer ${userToken}` } },
     )
@@ -608,22 +609,39 @@ test.describe('ES-001〜ES-003: アンケート→掲示板自動連携', () => 
       return
     }
 
-    // アンケートを PUBLISHED → CLOSED にする
-    // まず公開
-    const publishRes = await request.patch(
-      `${BACKEND_URL}/api/v1/teams/${TEAM_ID}/surveys/${testSurveyId}/publish`,
-      { headers: { Authorization: `Bearer ${userToken}` } },
-    )
+    // アンケートを PUBLISHED → CLOSED にする（管理者権限が必要なため adminToken 優先）
+    const operationToken = adminToken ?? userToken
 
-    if (!publishRes.ok()) {
-      test.skip(true, 'アンケート公開失敗のためスキップ（権限不足の可能性）')
+    // 公開前に設問を1件追加する（設問なしでは公開不可: SURVEY_012）
+    const questionRes = await request.post(
+      `${BACKEND_URL}/api/v1/teams/${TEAM_ID}/surveys/${testSurveyId}/questions`,
+      {
+        data: { questionType: 'FREE_TEXT', questionText: 'E2Eテスト設問', isRequired: false, displayOrder: 1 },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${operationToken}` },
+      },
+    )
+    if (!questionRes.ok()) {
+      test.skip(true, `設問追加失敗のためスキップ (status=${questionRes.status()})`)
       return
     }
 
-    // クローズ
-    const closeRes = await request.patch(
+    // まず公開（POST: not PATCH）
+    const publishRes = await request.post(
+      `${BACKEND_URL}/api/v1/teams/${TEAM_ID}/surveys/${testSurveyId}/publish`,
+      { headers: { Authorization: `Bearer ${operationToken}` } },
+    )
+
+    if (!publishRes.ok()) {
+      const body = await publishRes.text()
+      console.warn(`アンケート公開失敗: status=${publishRes.status()}, body=${body}`)
+      test.skip(true, `アンケート公開失敗のためスキップ (status=${publishRes.status()})`)
+      return
+    }
+
+    // クローズ（POST: not PATCH）
+    const closeRes = await request.post(
       `${BACKEND_URL}/api/v1/teams/${TEAM_ID}/surveys/${testSurveyId}/close`,
-      { headers: { Authorization: `Bearer ${userToken}` } },
+      { headers: { Authorization: `Bearer ${operationToken}` } },
     )
 
     if (!closeRes.ok()) {
