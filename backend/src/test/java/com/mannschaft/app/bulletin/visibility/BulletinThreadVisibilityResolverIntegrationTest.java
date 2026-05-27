@@ -48,7 +48,8 @@ class BulletinThreadVisibilityResolverIntegrationTest {
     static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
             .withDatabaseName("mannschaft_test")
             .withUsername("test")
-            .withPassword("test");
+            .withPassword("test")
+            .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"));
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {

@@ -73,7 +73,10 @@ public abstract class AbstractMySqlIntegrationTest {
             .withDatabaseName("mannschaft_test")
             .withUsername("test")
             .withPassword("test")
-            .withReuse(false);
+            .withReuse(false)
+            // WSL2 環境でMySQL初期化がVHDのI/O待ちで2分超になりTestcontainersのタイムアウトを超える問題を回避するため、
+            // /var/lib/mysql をtmpfs(RAM)に置くことで初期化を数秒に短縮する。
+            .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"));
 
     static {
         if (isDockerAvailable()) {
