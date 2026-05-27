@@ -171,18 +171,16 @@ public class ShiftChangeRequestService {
      * エンティティをレスポンス DTO に変換する。
      */
     private ChangeRequestResponse toResponse(ShiftChangeRequestEntity entity) {
-        return new ChangeRequestResponse(
-                entity.getId(),
-                entity.getScheduleId(),
-                entity.getSlotId(),
-                entity.getRequestType(),
-                entity.getStatus(),
-                entity.getRequestedBy(),
-                entity.getReason(),
-                entity.getReviewerId(),
-                entity.getReviewComment(),
-                entity.getReviewedAt(),
-                entity.getExpiresAt(),
-                entity.getCreatedAt());
+        return ChangeRequestResponse.builder()
+                .id(entity.getId())
+                .scheduleId(entity.getScheduleId())
+                .slotId(entity.getSlotId())
+                .requestInfo(new ChangeRequestResponse.ChangeRequestTypeDto(
+                        entity.getRequestType(), entity.getReason(), entity.getRequestedBy()))
+                .reviewInfo(new ChangeRequestResponse.ChangeRequestStatusDto(
+                        entity.getStatus(), entity.getReviewerId(), entity.getReviewComment(), entity.getReviewedAt()))
+                .timing(new ChangeRequestResponse.ChangeRequestTimingDto(
+                        entity.getExpiresAt(), entity.getCreatedAt()))
+                .build();
     }
 }

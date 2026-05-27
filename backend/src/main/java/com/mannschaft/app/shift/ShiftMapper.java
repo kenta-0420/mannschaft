@@ -25,9 +25,36 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface ShiftMapper {
 
-    @Mapping(target = "periodType", expression = "java(entity.getPeriodType().name())")
-    @Mapping(target = "status", expression = "java(entity.getStatus().name())")
-    ShiftScheduleResponse toScheduleResponse(ShiftScheduleEntity entity);
+    /**
+     * ShiftScheduleEntity を ShiftScheduleResponse に変換する。
+     * Enum → String の変換（periodType / status）は MapStruct のネストサブメソッド内で
+     * expression の変数スコープが変わるため、default メソッドで手動実装する。
+     */
+    default ShiftScheduleResponse toScheduleResponse(ShiftScheduleEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+        return ShiftScheduleResponse.builder()
+                .id(entity.getId())
+                .teamId(entity.getTeamId())
+                .content(new ShiftScheduleResponse.ShiftContentDto(
+                        entity.getTitle(),
+                        entity.getPeriodType().name(),
+                        entity.getNote()))
+                .period(new ShiftScheduleResponse.ShiftPeriodDto(
+                        entity.getStartDate(),
+                        entity.getEndDate(),
+                        entity.getRequestDeadline()))
+                .status(new ShiftScheduleResponse.ShiftStatusDto(
+                        entity.getStatus().name(),
+                        entity.getPublishedAt(),
+                        entity.getPublishedBy()))
+                .audit(new ShiftScheduleResponse.ShiftAuditDto(
+                        entity.getCreatedBy(),
+                        entity.getCreatedAt(),
+                        entity.getUpdatedAt()))
+                .build();
+    }
 
     List<ShiftScheduleResponse> toScheduleResponseList(List<ShiftScheduleEntity> entities);
 

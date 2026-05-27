@@ -1,7 +1,7 @@
 package com.mannschaft.app.shift.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -10,18 +10,18 @@ import java.util.List;
 /**
  * シフト枠レスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class ShiftSlotResponse {
 
-    private final Long id;
-    private final Long scheduleId;
-    private final LocalDate slotDate;
-    private final LocalTime startTime;
-    private final LocalTime endTime;
-    private final Long positionId;
-    private final String positionName;
-    private final Integer requiredCount;
-    private final List<Long> assignedUserIds;
-    private final String note;
+    Long id;
+    Long scheduleId;
+
+    ShiftSlotTimeDto     time;      // slotDate, startTime, endTime
+    ShiftSlotPositionDto position;  // positionId, positionName, requiredCount
+    List<Long>           assignedUserIds;
+    String               note;
+
+    public record ShiftSlotTimeDto(LocalDate slotDate, LocalTime startTime, LocalTime endTime) {}
+    public record ShiftSlotPositionDto(Long positionId, String positionName, Integer requiredCount) {}
 }

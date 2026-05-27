@@ -215,17 +215,16 @@ public class ShiftSlotService {
                     .orElse(null);
         }
 
-        return new ShiftSlotResponse(
-                entity.getId(),
-                entity.getScheduleId(),
-                entity.getSlotDate(),
-                entity.getStartTime(),
-                entity.getEndTime(),
-                entity.getPositionId(),
-                positionName,
-                entity.getRequiredCount(),
-                deserializeUserIds(entity.getAssignedUserIds()),
-                entity.getNote());
+        return ShiftSlotResponse.builder()
+                .id(entity.getId())
+                .scheduleId(entity.getScheduleId())
+                .time(new ShiftSlotResponse.ShiftSlotTimeDto(
+                        entity.getSlotDate(), entity.getStartTime(), entity.getEndTime()))
+                .position(new ShiftSlotResponse.ShiftSlotPositionDto(
+                        entity.getPositionId(), positionName, entity.getRequiredCount()))
+                .assignedUserIds(deserializeUserIds(entity.getAssignedUserIds()))
+                .note(entity.getNote())
+                .build();
     }
 
     /**

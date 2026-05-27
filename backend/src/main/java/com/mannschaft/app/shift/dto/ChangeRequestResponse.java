@@ -2,48 +2,27 @@ package com.mannschaft.app.shift.dto;
 
 import com.mannschaft.app.shift.ChangeRequestStatus;
 import com.mannschaft.app.shift.ChangeRequestType;
+import lombok.Builder;
+import lombok.Getter;
 
 import java.time.LocalDateTime;
 
 /**
  * シフト変更依頼レスポンス DTO。
  */
-public record ChangeRequestResponse(
+@Builder(toBuilder = true)
+@Getter
+public class ChangeRequestResponse {
 
-        /** 変更依頼ID */
-        Long id,
+    Long id;
+    Long scheduleId;
+    Long slotId;
 
-        /** 対象スケジュールID */
-        Long scheduleId,
+    ChangeRequestTypeDto   requestInfo;  // requestType, reason, requestedBy
+    ChangeRequestStatusDto reviewInfo;   // status, reviewerId, reviewComment, reviewedAt
+    ChangeRequestTimingDto timing;       // expiresAt, createdAt
 
-        /** 対象シフト枠ID（NULL=スケジュール全体） */
-        Long slotId,
-
-        /** 変更依頼種別 */
-        ChangeRequestType requestType,
-
-        /** ステータス */
-        ChangeRequestStatus status,
-
-        /** 依頼者ユーザーID */
-        Long requestedBy,
-
-        /** 依頼理由 */
-        String reason,
-
-        /** 審査者ユーザーID */
-        Long reviewerId,
-
-        /** 審査コメント */
-        String reviewComment,
-
-        /** 審査日時 */
-        LocalDateTime reviewedAt,
-
-        /** 有効期限 */
-        LocalDateTime expiresAt,
-
-        /** 作成日時 */
-        LocalDateTime createdAt
-) {
+    public record ChangeRequestTypeDto(ChangeRequestType requestType, String reason, Long requestedBy) {}
+    public record ChangeRequestStatusDto(ChangeRequestStatus status, Long reviewerId, String reviewComment, LocalDateTime reviewedAt) {}
+    public record ChangeRequestTimingDto(LocalDateTime expiresAt, LocalDateTime createdAt) {}
 }
