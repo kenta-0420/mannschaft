@@ -218,7 +218,12 @@ public class AuthTokenService {
      */
     public boolean isJtiBlacklisted(String jti) {
         String key = BLACKLIST_KEY_PREFIX + jti;
-        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+        try {
+            return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+        } catch (Exception e) {
+            log.warn("Valkey unavailable during blacklist check, failing open: {}", e.getMessage());
+            return false;
+        }
     }
 
     /**
@@ -231,12 +236,17 @@ public class AuthTokenService {
      */
     public boolean isTokenInvalidated(Long userId, long iatEpochSeconds) {
         String key = USER_INVALIDATED_KEY_PREFIX + userId;
-        String value = redisTemplate.opsForValue().get(key);
-        if (value == null) {
+        try {
+            String value = redisTemplate.opsForValue().get(key);
+            if (value == null) {
+                return false;
+            }
+            long invalidatedAt = Long.parseLong(value);
+            return iatEpochSeconds < invalidatedAt;
+        } catch (Exception e) {
+            log.warn("Valkey unavailable during token invalidation check, failing open: {}", e.getMessage());
             return false;
         }
-        long invalidatedAt = Long.parseLong(value);
-        return iatEpochSeconds < invalidatedAt;
     }
 
     // ========================================
