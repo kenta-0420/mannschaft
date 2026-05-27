@@ -139,6 +139,18 @@ public class PersonalTodoController {
     }
 
     /**
+     * 個人TODOを削除する（論理削除）。
+     */
+    @DeleteMapping("/{id}")
+    @Operation(summary = "個人TODO削除")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    public ResponseEntity<Void> deletePersonalTodo(@PathVariable Long id) {
+        todoService.assertTodoScope(id, TodoScopeType.PERSONAL, null);
+        todoService.deleteTodo(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
      * 個人TODOを部分更新する（dueDate等）。
      */
     @PatchMapping("/{id}")
