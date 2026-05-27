@@ -157,6 +157,8 @@ public class AuthService {
                 UserEntity pendingUser = pendingDeletionOpt.get();
                 if (passwordEncoder.matches(req.getPassword(), pendingUser.getPasswordHash())) {
                     // 正しいパスワード → 退会取り消しして通常ログインへ
+                    // 旧アルゴリズム（BCrypt）なら Argon2id へ透過的に再ハッシュ（段階移行）
+                    upgradePasswordHashIfNeeded(pendingUser, req.getPassword());
                     pendingUser.cancelDeletion();
                     userRepository.save(pendingUser);
                     authTokenService.clearUserInvalidationTimestamp(pendingUser.getId());
@@ -209,6 +211,10 @@ public class AuthService {
         // パスワード検証成功 → 失敗カウンタをリセット
         String failCountKey = LOGIN_FAIL_COUNT_KEY_PREFIX + user.getId();
         redisTemplate.delete(failCountKey);
+
+        // パスワードハッシュの段階移行: 旧アルゴリズム（BCrypt）なら Argon2id へ透過的に再ハッシュ。
+        // 既存ユーザーはログインのたびに自動で Argon2id へ移行する（強制リセット不要・ユーザー影響なし）。
+        upgradePasswordHashIfNeeded(user, req.getPassword());
 
         // 6. ARCHIVED状態 → 自動復帰
         if (user.getStatus() == UserEntity.UserStatus.ARCHIVED) {
@@ -358,6 +364,33 @@ public class AuthService {
 
         // ログイン失敗イベント発行
         eventPublisher.publish(new LoginFailedEvent(email, ipAddress, userAgent, "INVALID_PASSWORD"));
+    }
+
+    /**
+     * パスワードハッシュのアルゴリズム段階移行（透過的再ハッシュ）。
+     *
+     * <p>{@link PasswordEncoder#upgradeEncoding} が true（=保存済みハッシュが旧アルゴリズム、
+     * 具体的には {@code {id}} プレフィックスのない生 BCrypt）の場合のみ、
+     * 検証済みの平文パスワードを既定アルゴリズム（Argon2id）で再エンコードして保存する。</p>
+     *
+     * <p>呼び出し条件: <b>パスワード検証に成功した直後のみ</b>。平文 {@code rawPassword} は
+     * すでに {@code passwordEncoder.matches} で照合済みのものを渡すこと。これにより
+     * 既存ユーザーはログインのたびに透過的に Argon2id へ移行し、強制リセットは不要。</p>
+     *
+     * <p>{@link #login} は {@code @Transactional} 境界内であり、ここでの save は
+     * 既存のアカウントロック / レートリミット / イベント発行ロジックに影響しない。</p>
+     *
+     * 設計書: docs/security/02_cookie_and_session.md §5 / docs/features/F01.1_auth.md
+     *
+     * @param user        対象ユーザー（管理対象エンティティ）
+     * @param rawPassword 検証済みの平文パスワード
+     */
+    private void upgradePasswordHashIfNeeded(UserEntity user, String rawPassword) {
+        if (passwordEncoder.upgradeEncoding(user.getPasswordHash())) {
+            user.updatePasswordHash(passwordEncoder.encode(rawPassword));
+            userRepository.save(user);
+            log.info("パスワードハッシュを Argon2id へ段階移行しました: userId={}", user.getId());
+        }
     }
 
     /**
