@@ -1,34 +1,53 @@
 package com.mannschaft.app.chat.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 
 /**
  * チャンネルレスポンスDTO。
+ * 識別情報・メタ情報・設定・最終メッセージ・ソース・監査情報をネストで表現する。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class ChannelResponse {
 
-    private final Long id;
-    private final String channelType;
-    private final Long teamId;
-    private final Long organizationId;
-    private final String name;
-    private final String iconKey;
-    private final String description;
-    private final Boolean isPrivate;
-    private final Long createdBy;
-    private final LocalDateTime lastMessageAt;
-    private final String lastMessagePreview;
-    private final String sourceType;
-    private final Long sourceId;
-    private final Boolean isArchived;
-    /** F10.7: 問い合わせチャンネルフラグ */
-    private final Boolean isInquiryChannel;
-    private final Long version;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    private Long id;
+
+    private ChannelIdentityDto identity;
+    private ChannelMetaDto meta;
+    private ChannelSettingsDto settings;
+    private ChannelLastMessageDto lastMessage;
+    private ChannelSourceDto source;
+    private ChannelAuditDto audit;
+
+    public record ChannelIdentityDto(
+            String channelType,
+            Long teamId,
+            Long organizationId) {}
+
+    public record ChannelMetaDto(
+            String name,
+            String iconKey,
+            String description) {}
+
+    public record ChannelSettingsDto(
+            Boolean isPrivate,
+            Boolean isInquiryChannel,
+            Boolean isArchived,
+            Long version) {}
+
+    public record ChannelLastMessageDto(
+            LocalDateTime lastMessageAt,
+            String lastMessagePreview) {}
+
+    public record ChannelSourceDto(
+            String sourceType,
+            Long sourceId) {}
+
+    public record ChannelAuditDto(
+            Long createdBy,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {}
 }

@@ -105,8 +105,15 @@ class ChatMessageServiceTest {
     }
 
     private MessageResponse createMessageResponse() {
-        return new MessageResponse(MESSAGE_ID, CHANNEL_ID, SENDER_ID, null, null, 0, false,
-                "テストメッセージ", null, false, false, null, 0, 0, false, List.of(), List.of(), null, null);
+        return MessageResponse.builder()
+                .id(MESSAGE_ID)
+                .channelId(CHANNEL_ID)
+                .senderId(SENDER_ID)
+                .thread(new MessageResponse.MessageThreadDto(null, null, 0, false))
+                .content(new MessageResponse.MessageContentDto("テストメッセージ", null, false, false, null))
+                .engagement(new MessageResponse.MessageEngagementDto(0, 0, false, List.of(), List.of()))
+                .audit(new MessageResponse.MessageAuditDto(null, null))
+                .build();
     }
 
     // ========================================
@@ -848,10 +855,16 @@ class ChatMessageServiceTest {
             // ChatMapper.BOARD_MIGRATION_SUGGEST_DEPTH = 10
             assertThat(deepMessage.getDepth()).isGreaterThanOrEqualTo(10);
             // MessageResponse の suggestBoardMigration は depth >= 10 で true
-            MessageResponse deepResponse = new MessageResponse(
-                    1L, CHANNEL_ID, SENDER_ID, null, null, 10, true,
-                    "深いメッセージ", null, false, false, null, 0, 0, false, List.of(), List.of(), null, null);
-            assertThat(deepResponse.isSuggestBoardMigration()).isTrue();
+            MessageResponse deepResponse = MessageResponse.builder()
+                    .id(1L)
+                    .channelId(CHANNEL_ID)
+                    .senderId(SENDER_ID)
+                    .thread(new MessageResponse.MessageThreadDto(null, null, 10, true))
+                    .content(new MessageResponse.MessageContentDto("深いメッセージ", null, false, false, null))
+                    .engagement(new MessageResponse.MessageEngagementDto(0, 0, false, List.of(), List.of()))
+                    .audit(new MessageResponse.MessageAuditDto(null, null))
+                    .build();
+            assertThat(deepResponse.getThread().suggestBoardMigration()).isTrue();
         }
     }
 }

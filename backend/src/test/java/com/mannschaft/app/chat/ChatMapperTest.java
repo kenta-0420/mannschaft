@@ -37,7 +37,7 @@ class ChatMapperTest {
                     .channelType(ChannelType.TEAM_PUBLIC).teamId(10L).name("一般").build();
             ChannelResponse response = mapper.toChannelResponse(entity);
             assertThat(response).isNotNull();
-            assertThat(response.getChannelType()).isEqualTo("TEAM_PUBLIC");
+            assertThat(response.getIdentity().channelType()).isEqualTo("TEAM_PUBLIC");
         }
 
         @Test
@@ -51,7 +51,7 @@ class ChatMapperTest {
         void チャンネルエンティティ変換_DM_正常変換() {
             ChatChannelEntity entity = ChatChannelEntity.builder()
                     .channelType(ChannelType.DM).isPrivate(true).build();
-            assertThat(mapper.toChannelResponse(entity).getChannelType()).isEqualTo("DM");
+            assertThat(mapper.toChannelResponse(entity).getIdentity().channelType()).isEqualTo("DM");
         }
     }
 
@@ -91,7 +91,7 @@ class ChatMapperTest {
                     .channelId(10L).senderId(1L).body("こんにちは！").build();
             MessageResponse response = mapper.toMessageResponse(entity);
             assertThat(response).isNotNull();
-            assertThat(response.getBody()).isEqualTo("こんにちは！");
+            assertThat(response.getContent().body()).isEqualTo("こんにちは！");
         }
 
         @Test
@@ -295,8 +295,8 @@ class ChatMapperTest {
             AttachmentResponse att = new AttachmentResponse(1L, 1L, "f.jpg", "f.jpg", 1024L, "image/jpeg", null);
             ReactionResponse rxn = new ReactionResponse(1L, null, 1L, "👍", null);
             MessageResponse response = mapper.toMessageResponseWithDetails(entity, List.of(att), List.of(rxn));
-            assertThat(response.getAttachments()).hasSize(1);
-            assertThat(response.getReactions()).hasSize(1);
+            assertThat(response.getEngagement().attachments()).hasSize(1);
+            assertThat(response.getEngagement().reactions()).hasSize(1);
         }
     }
 }
