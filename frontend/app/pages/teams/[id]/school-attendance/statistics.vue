@@ -13,8 +13,8 @@ const { monthlyStats, termStats, loadingMonthly, loadingTerm, exporting, loadMon
 const { userTimezone } = useDatetime()
 
 const today = dayjs().tz(userTimezone.value)
-const selectedYear = ref(today.getFullYear())
-const selectedMonth = ref(today.getMonth() + 1)
+const selectedYear = ref(today.year())
+const selectedMonth = ref(today.month() + 1)
 
 const termFrom = ref(today.subtract(2, 'month').startOf('month').format('YYYY-MM-DD'))
 const termTo = ref(today.format('YYYY-MM-DD'))
@@ -22,8 +22,8 @@ const termTo = ref(today.format('YYYY-MM-DD'))
 const activeTab = ref<'monthly' | 'term'>('monthly')
 
 const yearOptions = Array.from({ length: 5 }, (_, i) => ({
-  value: today.getFullYear() - 2 + i,
-  label: String(today.getFullYear() - 2 + i),
+  value: today.year() - 2 + i,
+  label: String(today.year() - 2 + i),
 }))
 
 const monthOptions = Array.from({ length: 12 }, (_, i) => ({

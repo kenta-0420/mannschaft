@@ -18,12 +18,9 @@ const { t } = useI18n()
 const store = useActionMemoStore()
 const authStore = useAuthStore()
 
-/** ユーザーのタイムゾーン設定に基づく今日の日付（YYYY-MM-DD）。 */
-function today(): string {
-  return dayjs().tz(authStore.user?.timezone ?? 'Asia/Tokyo').format('YYYY-MM-DD')
-}
+const today = ref(dayjs().tz(authStore.user?.timezone ?? 'Asia/Tokyo').format('YYYY-MM-DD'))
 
-const todaysMemos = computed(() => store.currentDayMemos(today()))
+const todaysMemos = computed(() => store.currentDayMemos(today.value))
 
 /**
  * 直近7日間の日付範囲（mood-stats 取得用）。
