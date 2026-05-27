@@ -1,0 +1,24 @@
+name: Seed Enum Validation
+
+# seed-e2e-data.js の enum 文字列値が Java enum 定義と一致するか静的に検証する。
+# DB・バックエンド起動は不要。Node.js のみで完結する軽量ジョブ。
+on:
+  pull_request:
+    paths:
+      - 'backend/scripts/seed-e2e-data.js'
+      - 'backend/src/main/java/**/schedule/**/*.java'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/scripts/seed-e2e-data.js'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate seed script enum values
+        run: node backend/scripts/validate-seed-enums.js
