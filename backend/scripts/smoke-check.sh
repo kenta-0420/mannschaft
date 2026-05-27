@@ -31,14 +31,20 @@ except Exception:
 
 # --- ステップ 1: ログイン ---
 echo "→ POST /api/v1/auth/login"
-LOGIN_RESPONSE=$(curl -sf -X POST "$BASE_URL/api/v1/auth/login" \
+LOGIN_HTTP_CODE=""
+LOGIN_RESPONSE=$(curl -s -o /tmp/login_body.txt -w "%{http_code}" -X POST "$BASE_URL/api/v1/auth/login" \
   -H 'Content-Type: application/json' \
   -d '{"email":"e2e-user@test.mannschaft.local","password":"TestPass2026!"}' \
-  2>&1) || {
-    echo "❌ FAIL: ログインリクエスト失敗（curl エラー）"
-    echo "$LOGIN_RESPONSE"
-    exit 1
-  }
+  2>/tmp/login_err.txt) || true
+LOGIN_HTTP_CODE="$LOGIN_RESPONSE"
+LOGIN_BODY=$(cat /tmp/login_body.txt 2>/dev/null || echo "")
+if [ "$LOGIN_HTTP_CODE" != "200" ]; then
+  echo "❌ FAIL: ログインリクエスト失敗（HTTP $LOGIN_HTTP_CODE）"
+  echo "レスポンスボディ: $LOGIN_BODY"
+  cat /tmp/login_err.txt 2>/dev/null || true
+  exit 1
+fi
+LOGIN_RESPONSE="$LOGIN_BODY"
 
 # レスポンスは ApiResponse<LoginResponse> = { "data": { "accessToken": "...", ... } }
 ACCESS_TOKEN=$(extract_json "$LOGIN_RESPONSE" ".data.accessToken")
