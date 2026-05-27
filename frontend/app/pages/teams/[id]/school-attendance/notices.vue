@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { computed, ref, onMounted } from 'vue'
 
 definePageMeta({
@@ -10,8 +11,9 @@ const teamId = computed(() => Number(route.params.id))
 
 const { noticeList, loading, processing, loadTeamNotices, acknowledge, apply } =
   useFamilyAttendanceNotice(teamId)
+const { userTimezone } = useDatetime()
 
-const today = new Date().toISOString().slice(0, 10)
+const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
 const selectedDate = ref(today)
 
 async function onDateChange(): Promise<void> {

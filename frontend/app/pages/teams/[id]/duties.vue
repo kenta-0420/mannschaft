@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { DutyRotationResponse, DutyRotationRequest, DutyTodayResponse } from '~/types/duty'
 
 definePageMeta({ middleware: 'auth' })
@@ -8,6 +9,7 @@ const teamId = Number(route.params.id)
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
 const { listDuties, createDuty, updateDuty, deleteDuty, getTodayDuties } = useDutyApi()
 const { showError } = useNotification()
+const { userTimezone } = useDatetime()
 
 const duties = ref<DutyRotationResponse[]>([])
 const todayDuties = ref<DutyTodayResponse[]>([])
@@ -19,7 +21,7 @@ const form = reactive<DutyRotationRequest>({
   dutyName: '',
   rotationType: 'DAILY',
   memberOrder: [],
-  startDate: new Date().toISOString().split('T')[0] ?? '',
+  startDate: dayjs().tz(userTimezone.value).format('YYYY-MM-DD'),
   icon: '📋',
   isEnabled: true,
 })
@@ -49,7 +51,7 @@ function openCreate() {
     dutyName: '',
     rotationType: 'DAILY',
     memberOrder: [],
-    startDate: new Date().toISOString().split('T')[0] ?? '',
+    startDate: dayjs().tz(userTimezone.value).format('YYYY-MM-DD'),
     icon: '📋',
     isEnabled: true,
   })

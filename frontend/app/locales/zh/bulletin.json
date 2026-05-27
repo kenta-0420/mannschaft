@@ -1,0 +1,67 @@
+{
+  "bulletin": {
+    "title": "掲示板",
+    "tab": {
+      "threads": "一覧",
+      "archive": "保管庫"
+    },
+    "list": {
+      "searchPlaceholder": "検索...",
+      "category": "カテゴリ",
+      "allCategories": "すべて",
+      "readAll": "一括既読",
+      "newThread": "新規スレッド",
+      "locked": "ロック中",
+      "empty": "スレッドがありません",
+      "archiveAction": "保管庫へ",
+      "readAllDone": "すべて既読にしました",
+      "readAllFailed": "一括既読に失敗しました",
+      "archivedDone": "保管庫に格納しました",
+      "archiveFailed": "保管庫への格納に失敗しました",
+      "loadFailed": "掲示板の取得に失敗しました"
+    },
+    "archive": {
+      "title": "保管庫",
+      "folders": "フォルダ",
+      "allArchived": "すべての保管庫",
+      "unfiled": "未分類",
+      "createFolder": "フォルダを作成",
+      "editFolder": "フォルダを編集",
+      "deleteFolder": "フォルダを削除",
+      "addSubFolder": "サブフォルダを作成",
+      "moveToFolder": "フォルダへ移動",
+      "selectFolder": "移動先フォルダ",
+      "move": "移動",
+      "moved": "フォルダを移動しました",
+      "moveFailed": "フォルダの移動に失敗しました",
+      "unarchive": "保管庫から戻す",
+      "unarchiveConfirm": "このスレッドを保管庫から一覧へ戻します。よろしいですか？",
+      "unarchived": "保管庫から戻しました",
+      "unarchiveFailed": "保管庫からの解除に失敗しました",
+      "folderName": "フォルダ名",
+      "folderNamePlaceholder": "フォルダ名を入力",
+      "folderColor": "カラー",
+      "folderIcon": "アイコン",
+      "noColor": "色なし",
+      "noIcon": "アイコンなし",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "delete": "削除",
+      "saveFailed": "フォルダの保存に失敗しました",
+      "deleteConfirm": "このフォルダを削除します。配下のスレッドは保管庫直下（未分類）へ移動し、子フォルダは親フォルダへ繰り上げられます。よろしいですか？",
+      "deleted": "フォルダを削除しました",
+      "deleteFailed": "フォルダの削除に失敗しました",
+      "breadcrumb": "保管庫の現在位置",
+      "emptyThreads": "このフォルダにスレッドはありません",
+      "loadTreeFailed": "フォルダの取得に失敗しました",
+      "loadThreadsFailed": "保管庫スレッドの取得に失敗しました",
+      "priority": {
+        "CRITICAL": "緊急",
+        "IMPORTANT": "重要",
+        "WARNING": "注意",
+        "INFO": "情報",
+        "LOW": "低"
+      }
+    }
+  }
+}

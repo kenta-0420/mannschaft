@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { CommitteeDetail, CommitteeMember, CommitteeInvitation, CommitteeRole } from '~/types/committee'
 
 definePageMeta({ middleware: 'auth' })
@@ -10,6 +11,7 @@ const committeeApi = useCommitteeApi()
 const invitationApi = useCommitteeInvitationApi()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
+const { userTimezone } = useDatetime()
 
 const committee = ref<CommitteeDetail | null>(null)
 const members = ref<CommitteeMember[]>([])
@@ -136,8 +138,7 @@ async function onCancelInvitation(invitationId: number) {
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—'
-  const d = new Date(dateStr)
-  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
+  return dayjs(dateStr).tz(userTimezone.value).format('YYYY/MM/DD')
 }
 
 onMounted(async () => {

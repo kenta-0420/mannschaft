@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { ScheduleEventFormState, TimeHistoryEntry } from './event-form/types'
 
 interface ScopeOption {
@@ -57,6 +58,7 @@ const effectiveScope = computed(() => {
 const scheduleApi = useScheduleApi()
 const notification = useNotification()
 const { handleApiError, getFieldErrors } = useErrorHandler()
+const { userTimezone } = useDatetime()
 
 const submitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
@@ -187,10 +189,9 @@ watch(
   },
 )
 
-// toISOString() は常にUTCで出力するため、JSTユーザーの場合に日付が1日ずれる問題がある。
-// ローカル日付コンポーネントを使ってUTC変換を避ける。
+// ユーザーのタイムゾーン設定に基づいてDateをYYYY-MM-DD文字列に変換する。
 function toLocalDateStr(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  return dayjs(date).tz(userTimezone.value).format('YYYY-MM-DD')
 }
 
 function buildDateTimeStr(date: Date | null, time: string): string | null {

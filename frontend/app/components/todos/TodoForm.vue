@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 const props = defineProps<{
   scopeType: 'team' | 'organization'
   scopeId: number
@@ -13,6 +14,7 @@ const emit = defineEmits<{
 
 const todoApi = useTodoApi()
 const notification = useNotification()
+const { userTimezone } = useDatetime()
 const { handleApiError, getFieldErrors } = useErrorHandler()
 
 const submitting = ref(false)
@@ -68,7 +70,7 @@ async function submit() {
     title: form.value.title.trim(),
     description: form.value.description.trim() || undefined,
     priority: form.value.priority,
-    dueDate: form.value.dueDate ? form.value.dueDate.toISOString().split('T')[0] : undefined,
+    dueDate: form.value.dueDate ? dayjs(form.value.dueDate).tz(userTimezone.value).format('YYYY-MM-DD') : undefined,
     assigneeIds: form.value.assigneeIds.length > 0 ? form.value.assigneeIds : undefined,
   }
 

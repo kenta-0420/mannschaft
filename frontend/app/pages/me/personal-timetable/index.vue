@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type {
   CreatePersonalTimetableInput,
   PersonalPeriodTemplateKind,
@@ -11,6 +12,7 @@ const { t } = useI18n()
 const router = useRouter()
 const api = useMyPersonalTimetableApi()
 const { success, error } = useNotification()
+const { userTimezone } = useDatetime()
 
 const items = ref<PersonalTimetable[]>([])
 const loading = ref(true)
@@ -18,7 +20,7 @@ const loading = ref(true)
 const showCreateDialog = ref(false)
 const createForm = ref<CreatePersonalTimetableInput>({
   name: '',
-  effective_from: new Date().toISOString().slice(0, 10),
+  effective_from: dayjs().tz(userTimezone.value).format('YYYY-MM-DD'),
   effective_until: null,
   visibility: 'PRIVATE',
   week_pattern_enabled: false,

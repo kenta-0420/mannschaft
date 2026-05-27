@@ -1,0 +1,67 @@
+{
+  "bulletin": {
+    "title": "Bulletin Board",
+    "tab": {
+      "threads": "Threads",
+      "archive": "Archive"
+    },
+    "list": {
+      "searchPlaceholder": "Search...",
+      "category": "Category",
+      "allCategories": "All",
+      "readAll": "Mark all read",
+      "newThread": "New thread",
+      "locked": "Locked",
+      "empty": "No threads",
+      "archiveAction": "Archive",
+      "readAllDone": "Marked all as read",
+      "readAllFailed": "Failed to mark all as read",
+      "archivedDone": "Moved to archive",
+      "archiveFailed": "Failed to archive",
+      "loadFailed": "Failed to load threads"
+    },
+    "archive": {
+      "title": "Archive",
+      "folders": "Folders",
+      "allArchived": "All archived",
+      "unfiled": "Unfiled",
+      "createFolder": "Create folder",
+      "editFolder": "Edit folder",
+      "deleteFolder": "Delete folder",
+      "addSubFolder": "Add subfolder",
+      "moveToFolder": "Move to folder",
+      "selectFolder": "Destination folder",
+      "move": "Move",
+      "moved": "Moved to folder",
+      "moveFailed": "Failed to move",
+      "unarchive": "Restore from archive",
+      "unarchiveConfirm": "Restore this thread from the archive back to the list. Continue?",
+      "unarchived": "Restored from archive",
+      "unarchiveFailed": "Failed to restore from archive",
+      "folderName": "Folder name",
+      "folderNamePlaceholder": "Enter folder name",
+      "folderColor": "Color",
+      "folderIcon": "Icon",
+      "noColor": "No color",
+      "noIcon": "No icon",
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "saveFailed": "Failed to save folder",
+      "deleteConfirm": "Delete this folder? Threads inside will move to the archive root (unfiled), and subfolders will be promoted to the parent folder. Continue?",
+      "deleted": "Folder deleted",
+      "deleteFailed": "Failed to delete folder",
+      "breadcrumb": "Archive location",
+      "emptyThreads": "No threads in this folder",
+      "loadTreeFailed": "Failed to load folders",
+      "loadThreadsFailed": "Failed to load archived threads",
+      "priority": {
+        "CRITICAL": "Critical",
+        "IMPORTANT": "Important",
+        "WARNING": "Warning",
+        "INFO": "Info",
+        "LOW": "Low"
+      }
+    }
+  }
+}

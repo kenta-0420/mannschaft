@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { z } from 'zod'
 import type { FormFieldResponse, FormTemplateResponse, SubmissionValueRequest } from '~/types/form'
 
@@ -18,6 +19,7 @@ const emit = defineEmits<{
 const formApi = useFormApi()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
+const { userTimezone } = useDatetime()
 
 const template = ref<FormTemplateResponse | null>(null)
 const submitting = ref(false)
@@ -144,7 +146,7 @@ async function submit() {
       fieldType: field.fieldType ?? 'TEXT',
       textValue: val.textValue,
       numberValue: val.numberValue ?? undefined,
-      dateValue: val.dateValue ? val.dateValue.toISOString().split('T')[0] : undefined,
+      dateValue: val.dateValue ? dayjs(val.dateValue).tz(userTimezone.value).format('YYYY-MM-DD') : undefined,
     }
   })
 

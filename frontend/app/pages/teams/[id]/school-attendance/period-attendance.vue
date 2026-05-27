@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { computed, ref, watch, onMounted } from 'vue'
 import type { CandidateItem, PeriodAttendanceEntry, PeriodAttendanceSummary } from '~/types/school'
 
@@ -17,8 +18,9 @@ const teamId = computed(() => Number(route.params.id))
 
 const { candidates, loading, submitting, lastSummary, loadCandidates, submitPeriodAttendance } =
   usePeriodAttendance(teamId)
+const { userTimezone } = useDatetime()
 
-const today = new Date().toISOString().slice(0, 10)
+const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
 const selectedDate = ref(today)
 const selectedPeriod = ref(1)
 

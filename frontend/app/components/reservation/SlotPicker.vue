@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 const props = defineProps<{
   teamId: number
 }>()
@@ -8,6 +9,7 @@ const emit = defineEmits<{
 }>()
 
 const reservationApi = useReservationApi()
+const { userTimezone } = useDatetime()
 
 interface Line { id: number; name: string; isActive: boolean }
 interface Slot { id: number; lineId: number; lineName: string; date: string; startTime: string; endTime: string; capacity: number; bookedCount: number; isClosed: boolean }
@@ -30,7 +32,7 @@ async function loadSlots() {
   if (!selectedDate.value || !selectedLineId.value) return
   loading.value = true
   try {
-    const dateStr = selectedDate.value.toISOString().split('T')[0]
+    const dateStr = dayjs(selectedDate.value).tz(userTimezone.value).format('YYYY-MM-DD')
     const res = await reservationApi.getSlots(props.teamId, { date: dateStr, lineId: selectedLineId.value })
     slots.value = (res.data as Slot[]).filter(s => !s.isClosed)
   }
