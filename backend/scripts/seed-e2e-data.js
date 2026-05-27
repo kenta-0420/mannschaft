@@ -272,7 +272,7 @@ function encryptForTest(plain) {
          attendance_status, comment_option, is_exception, created_by, created_at, updated_at)
        VALUES (?,?,?,?,?,?,?,0,?,?,?,?,?,?,?,0,?,?,?)`,
       [teamId, orgId, title, eventType, startAt, endAt, location,
-       'MEMBERS_ONLY', 'MEMBER_PLUS', 'MEMBER_PLUS', 'SCHEDULED', 1, 'READY', 'ALLOWED', createdBy, now, now]
+       'MEMBERS_ONLY', 'MEMBER_PLUS', 'MEMBER_PLUS', 'SCHEDULED', 1, 'READY', 'OPTIONAL', createdBy, now, now]
     );
   }
 
