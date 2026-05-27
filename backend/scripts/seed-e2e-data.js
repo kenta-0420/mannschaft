@@ -55,7 +55,7 @@ function encryptForTest(plain) {
        status, reporting_restricted, created_at, updated_at)
      VALUES (?,?,?,?,?,1,1,?,?,?,0,?,?)`,
     ['e2e-user@test.mannschaft.local', e2eUserHash,
-     'E2Eユーザー', '一般', 'E2E一般ユーザー',
+     encryptForTest('E2Eユーザー'), encryptForTest('一般'), 'E2E一般ユーザー',
      'ja', 'Asia/Tokyo', 'ACTIVE', now, now]
   );
   const [[e2eUserRow]] = await conn.execute(
@@ -71,7 +71,7 @@ function encryptForTest(plain) {
        status, reporting_restricted, created_at, updated_at)
      VALUES (?,?,?,?,?,1,1,?,?,?,0,?,?)`,
     ['e2e-admin@test.mannschaft.local', e2eAdminHash,
-     'E2E管理者', '管理', 'E2E管理者',
+     encryptForTest('E2E管理者'), encryptForTest('管理'), 'E2E管理者',
      'ja', 'Asia/Tokyo', 'ACTIVE', now, now]
   );
   const [[e2eAdminRow]] = await conn.execute(
@@ -106,7 +106,7 @@ function encryptForTest(plain) {
          is_searchable, encryption_key_version, locale, timezone,
          status, reporting_restricted, created_at, updated_at)
        VALUES (?,?,?,?,?,1,1,?,?,?,0,?,?)`,
-      [email, hash, last, first, display, 'ja', 'Asia/Tokyo', 'ACTIVE', now, now]
+      [email, hash, encryptForTest(last), encryptForTest(first), display, 'ja', 'Asia/Tokyo', 'ACTIVE', now, now]
     );
     const [[r]] = await conn.execute('SELECT id FROM users WHERE email = ?', [email]);
     userIds.push(Number(r.id));
