@@ -100,12 +100,16 @@ class NotificationDispatchServiceTest {
     }
 
     private NotificationResponse createNotificationResponse() {
-        return new NotificationResponse(
-                100L, USER_ID, "SCHEDULE_REMINDER", "NORMAL",
-                "リマインド", "出欠未回答です", "SCHEDULE", 10L,
-                "TEAM", 5L, "/schedules/10", 2L,
-                false, null, null, null, LocalDateTime.now()
-        );
+        return NotificationResponse.builder()
+                .id(100L)
+                .userId(USER_ID)
+                .content(new NotificationResponse.NotificationContentDto(
+                        "SCHEDULE_REMINDER", "NORMAL", "リマインド", "出欠未回答です", "/schedules/10"))
+                .source(new NotificationResponse.NotificationSourceDto("SCHEDULE", 10L))
+                .scope(new NotificationResponse.NotificationScopeDto("TEAM", 5L, 2L))
+                .status(new NotificationResponse.NotificationStatusDto(false, null, null, null))
+                .createdAt(LocalDateTime.now())
+                .build();
     }
 
     private PushSubscriptionEntity createSubscription() {

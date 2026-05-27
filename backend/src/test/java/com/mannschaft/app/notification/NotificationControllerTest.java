@@ -51,12 +51,16 @@ class NotificationControllerTest {
     private static final Long NOTIFICATION_ID = 100L;
 
     private NotificationResponse createNotificationResponse() {
-        return new NotificationResponse(
-                NOTIFICATION_ID, USER_ID, "SCHEDULE_REMINDER", "NORMAL",
-                "リマインド", "出欠未回答です", "SCHEDULE", 10L,
-                "TEAM", 5L, "/schedules/10", 2L,
-                false, null, null, null, LocalDateTime.now()
-        );
+        return NotificationResponse.builder()
+                .id(NOTIFICATION_ID)
+                .userId(USER_ID)
+                .content(new NotificationResponse.NotificationContentDto(
+                        "SCHEDULE_REMINDER", "NORMAL", "リマインド", "出欠未回答です", "/schedules/10"))
+                .source(new NotificationResponse.NotificationSourceDto("SCHEDULE", 10L))
+                .scope(new NotificationResponse.NotificationScopeDto("TEAM", 5L, 2L))
+                .status(new NotificationResponse.NotificationStatusDto(false, null, null, null))
+                .createdAt(LocalDateTime.now())
+                .build();
     }
 
     // ========================================
