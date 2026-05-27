@@ -57,12 +57,15 @@ class SurveyThreadControllerTest {
                     .sourceType("SURVEY")
                     .sourceId(SURVEY_ID)
                     .build();
-            ThreadResponse threadResponse = new ThreadResponse(
-                    1L, null, "ORGANIZATION", 10L, null,
-                    "テストアンケート — 掲示板", "", "NORMAL", "ALL",
-                    false, false, false, null, 0, 0, null,
-                    "SURVEY", SURVEY_ID, null, null
-            );
+            ThreadResponse threadResponse = ThreadResponse.builder()
+                    .id(1L)
+                    .scope(new ThreadResponse.ThreadScopeDto(null, "ORGANIZATION", 10L))
+                    .content(new ThreadResponse.ThreadContentDto("テストアンケート — 掲示板", "", "NORMAL", "ALL"))
+                    .state(new ThreadResponse.ThreadStateDto(false, false, false, null))
+                    .stats(new ThreadResponse.ThreadStatsDto(0, 0, null))
+                    .source(new ThreadResponse.ThreadSourceDto("SURVEY", SURVEY_ID))
+                    .audit(new ThreadResponse.ThreadAuditDto(null, null, null))
+                    .build();
             given(surveyBulletinThreadService.findBySurveyId(SURVEY_ID)).willReturn(Optional.of(threadEntity));
             given(bulletinMapper.toThreadResponse(threadEntity)).willReturn(threadResponse);
 

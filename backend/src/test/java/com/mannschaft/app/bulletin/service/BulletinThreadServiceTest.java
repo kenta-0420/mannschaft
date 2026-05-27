@@ -93,10 +93,15 @@ class BulletinThreadServiceTest {
     }
 
     private ThreadResponse createThreadResponse() {
-        return new ThreadResponse(
-                THREAD_ID, CATEGORY_ID, "TEAM", SCOPE_ID, USER_ID,
-                "テストスレッド", "テスト本文", "INFO", "COUNT_ONLY",
-                false, false, false, null, 0, 0, null, null, null, null, null);
+        return ThreadResponse.builder()
+                .id(THREAD_ID)
+                .scope(new ThreadResponse.ThreadScopeDto(CATEGORY_ID, "TEAM", SCOPE_ID))
+                .content(new ThreadResponse.ThreadContentDto("テストスレッド", "テスト本文", "INFO", "COUNT_ONLY"))
+                .state(new ThreadResponse.ThreadStateDto(false, false, false, null))
+                .stats(new ThreadResponse.ThreadStatsDto(0, 0, null))
+                .source(new ThreadResponse.ThreadSourceDto(null, null))
+                .audit(new ThreadResponse.ThreadAuditDto(USER_ID, null, null))
+                .build();
     }
 
     // ========================================
@@ -192,7 +197,7 @@ class BulletinThreadServiceTest {
             ThreadResponse result = bulletinThreadService.getThread(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID);
 
             // Then
-            assertThat(result.getTitle()).isEqualTo("テストスレッド");
+            assertThat(result.getContent().title()).isEqualTo("テストスレッド");
         }
 
         @Test
