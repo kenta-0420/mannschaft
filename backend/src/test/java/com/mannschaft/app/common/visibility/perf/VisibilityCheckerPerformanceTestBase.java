@@ -56,7 +56,8 @@ public abstract class VisibilityCheckerPerformanceTestBase {
     static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
         .withDatabaseName("mannschaft_test")
         .withUsername("test")
-        .withPassword("test");
+        .withPassword("test")
+        .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"));
 
     /**
      * Spring Boot のデータソース URL を Testcontainers の動的 URL に差し替える。

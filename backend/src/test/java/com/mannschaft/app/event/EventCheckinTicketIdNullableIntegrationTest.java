@@ -92,7 +92,8 @@ class EventCheckinTicketIdNullableIntegrationTest {
     private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
             .withDatabaseName("mannschaft_test")
             .withUsername("test")
-            .withPassword("test");
+            .withPassword("test")
+            .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"));
 
     public static boolean isDockerAvailable() {
         try {

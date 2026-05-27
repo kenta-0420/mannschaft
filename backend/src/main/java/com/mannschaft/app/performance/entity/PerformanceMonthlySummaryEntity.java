@@ -29,7 +29,7 @@ public class PerformanceMonthlySummaryEntity extends BaseEntity {
     @Column(nullable = false)
     private Long userId;
 
-    @Column(nullable = false, length = 7)
+    @Column(name = "`year_month`", nullable = false, length = 7)
     private String yearMonth;
 
     @Column(nullable = false, precision = 15, scale = 4)

@@ -42,7 +42,7 @@ public class VillageChronicleEntity extends UuidV7Entity {
     private UUID villageId;
 
     /** 対象年月の 1 日（例: 2026-05-01）。UTC 基準。 */
-    @Column(name = "year_month", nullable = false)
+    @Column(name = "`year_month`", nullable = false)
     private LocalDate yearMonth;
 
     /** 本レコード生成時刻。 */
