@@ -195,6 +195,7 @@ tasks.withType<Test> {
     // WeakReference 監視している放置 Connection オブジェクトの累積）をリセットする。
     // forkEvery を入れないと全 ~1500 テストを 1 JVM で走らせるため、後半でヒープが枯渇する。
     setForkEvery(100L)
+    maxParallelForks = 2
     // GC を明示し OOM 時にヒープダンプを残す（CI で再発時の調査用）
     //
     // -Dcom.mysql.cj.disableAbandonedConnectionCleanup=true:
