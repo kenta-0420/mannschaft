@@ -114,7 +114,7 @@ class ScheduleCrossRefServiceTest {
             CrossRefResponse result = crossRefService.sendCrossInvite(SOURCE_SCHEDULE_ID, req, USER_ID);
 
             // then
-            assertThat(result.getStatus()).isEqualTo("PENDING");
+            assertThat(result.getTarget().status()).isEqualTo("PENDING");
             verify(eventPublisher).publishEvent(any(Object.class));
         }
 
@@ -218,7 +218,7 @@ class ScheduleCrossRefServiceTest {
 
             // then
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getStatus()).isEqualTo("PENDING");
+            assertThat(result.get(0).getTarget().status()).isEqualTo("PENDING");
         }
     }
 
