@@ -56,7 +56,7 @@ mannschaft:
     secure: false
   encryption:
     key: pE8ozQmki8gdQ1nCFC86zcK1SSNJuVRLd7uhdpO4ihc=
-    hmac-key: ci-test-hmac-key-for-github-actions-only-minimum-256-bits-long
+    hmac-key: Y2ktaG1hYy1naXRodWItYWN0aW9ucy1rZXktZml4ZWQ=
   security:
     # PDF 署名キー（CI テスト用固定値）
     internal-signing-key: ci-test-internal-pdf-signing-key-fixed-32bytes-xxxx
