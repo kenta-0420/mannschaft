@@ -103,21 +103,20 @@ echo "✅ GET /api/v1/notifications → 200"
 # chat_channels の channel_type カラムに TEAM_PUBLIC / ORG_PUBLIC が入っている。
 # 過去に TEAM / ORGANIZATION という不正値を投入してしまい 500 になった経緯があるため、
 # このチェックが最も重要な smoke テストとなっている。
-if [ -n "$TEAM_ID" ]; then
-  echo "→ GET /api/v1/teams/$TEAM_ID/channels"
-  CHANNEL_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
-    "$BASE_URL/api/v1/teams/$TEAM_ID/channels" \
-    -H "Authorization: Bearer $ACCESS_TOKEN" \
-    2>/dev/null || echo "000")
-  if [ "$CHANNEL_STATUS" != "200" ]; then
-    echo "❌ FAIL: GET /api/v1/teams/$TEAM_ID/channels → HTTP $CHANNEL_STATUS"
-    curl -s "$BASE_URL/api/v1/teams/$TEAM_ID/channels" \
-      -H "Authorization: Bearer $ACCESS_TOKEN" | head -c 2000 || true
-    echo ""
-    exit 1
-  fi
-  echo "✅ GET /api/v1/teams/$TEAM_ID/channels → 200"
+# エンドポイント: GET /api/v1/chat/channels（ログインユーザーが属するチャンネル一覧）
+echo "→ GET /api/v1/chat/channels"
+CHANNEL_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+  "$BASE_URL/api/v1/chat/channels" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  2>/dev/null || echo "000")
+if [ "$CHANNEL_STATUS" != "200" ]; then
+  echo "❌ FAIL: GET /api/v1/chat/channels → HTTP $CHANNEL_STATUS"
+  curl -s "$BASE_URL/api/v1/chat/channels" \
+    -H "Authorization: Bearer $ACCESS_TOKEN" | head -c 2000 || true
+  echo ""
+  exit 1
 fi
+echo "✅ GET /api/v1/chat/channels → 200"
 
 echo ""
 echo "✅ All smoke checks passed"
