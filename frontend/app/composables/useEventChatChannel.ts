@@ -17,7 +17,8 @@ export function useEventChatChannel() {
    */
   async function getEventChannel(eventId: number | string): Promise<EventChatChannelResponse | null> {
     try {
-      return await api<EventChatChannelResponse>(`/api/v1/events/${eventId}/channel`)
+      const res = await api<{ data: EventChatChannelResponse }>(`/api/v1/events/${eventId}/channel`)
+      return res.data
     } catch (err: unknown) {
       // 404 は「チャンネル未生成」を意味するため null を返す（エラーは出さない）
       if (

@@ -17,7 +17,8 @@ export function useSurveyBulletinThread() {
    */
   async function getSurveyThread(surveyId: number | string): Promise<BulletinThreadResponse | null> {
     try {
-      return await api<BulletinThreadResponse>(`/api/v1/surveys/${surveyId}/thread`)
+      const res = await api<{ data: BulletinThreadResponse }>(`/api/v1/surveys/${surveyId}/thread`)
+      return res.data
     } catch (err: unknown) {
       // 404 は「スレッド未生成」を意味するため null を返す（エラーは出さない）
       if (

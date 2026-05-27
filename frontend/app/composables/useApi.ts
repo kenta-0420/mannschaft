@@ -49,15 +49,18 @@ export function useApi() {
       if (response.status === 401 && authStore.user) {
         const success = await refreshAccessToken()
         if (!success) {
-          authStore.logout()
+          await authStore.logout()
         }
         // リトライは呼び出し元で行う（ofetch.create の onResponseError では戻り値不可）
         return
       }
 
-      // 403: セッション切れ（Spring Security が CORS ヘッダーなしで弾く）→ ログインへ
-      if (response.status === 403) {
-        authStore.logout()
+      // 403: Spring Security がセッション切れ・CSRF 不正などで返す場合のみログインへ誘導する。
+      // 認証済み（user が存在する）状態での 403 は通常の認可エラー（Forbidden）であり
+      // ログアウトすべきではない。未認証状態（user が null）での 403 のみセッション不整合
+      // とみなしてログイン画面へリダイレクトする。
+      if (response.status === 403 && !authStore.user) {
+        await navigateTo('/login')
         return
       }
 

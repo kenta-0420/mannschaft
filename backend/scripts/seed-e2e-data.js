@@ -317,14 +317,26 @@ function encryptForTest(plain) {
     return Number(r.id);
   }
 
-  const ch1 = await createChannel('TEAM', teams.fcTokyoU18, null, '全体連絡', userIds[0]);
-  const ch2 = await createChannel('TEAM', teams.fcTokyoU18, null, '試合速報', userIds[0]);
-  const ch3 = await createChannel('TEAM', teams.fcTokyoU18, null, 'コーチ専用', userIds[0]);
-  const ch4 = await createChannel('TEAM', teams.yokohamaJr, null, '全体連絡', userIds[9]);
-  const ch5 = await createChannel('ORGANIZATION', null, orgs.tokyo, '理事会連絡', E2E_ADMIN);
-  const ch6 = await createChannel('ORGANIZATION', null, orgs.tokyo, '大会運営', userIds[12]);
-  const ch7 = await createChannel('TEAM', teams.fcTokyoU15, null, '全体連絡', userIds[5]);
-  const ch8 = await createChannel('TEAM', teams.indieFC, null, '雑談', userIds[18]);
+  // channel_type は ChannelType Java enum に合わせて TEAM_PUBLIC / ORG_PUBLIC を使う
+  // （旧値 'TEAM' / 'ORGANIZATION' は enum に存在せず 500 エラーを引き起こす）
+  const ch1 = await createChannel('TEAM_PUBLIC', teams.fcTokyoU18, null, '全体連絡', userIds[0]);
+  const ch2 = await createChannel('TEAM_PUBLIC', teams.fcTokyoU18, null, '試合速報', userIds[0]);
+  const ch3 = await createChannel('TEAM_PUBLIC', teams.fcTokyoU18, null, 'コーチ専用', userIds[0]);
+  const ch4 = await createChannel('TEAM_PUBLIC', teams.yokohamaJr, null, '全体連絡', userIds[9]);
+  const ch5 = await createChannel('ORG_PUBLIC', null, orgs.tokyo, '理事会連絡', E2E_ADMIN);
+  const ch6 = await createChannel('ORG_PUBLIC', null, orgs.tokyo, '大会運営', userIds[12]);
+  const ch7 = await createChannel('TEAM_PUBLIC', teams.fcTokyoU15, null, '全体連絡', userIds[5]);
+  const ch8 = await createChannel('TEAM_PUBLIC', teams.indieFC, null, '雑談', userIds[18]);
+
+  // E2E_ADMIN を FC東京U-18 チャンネル (ch1) の ADMIN メンバーとして追加
+  // BA-005/BA-006 (業務アラート E2E テスト) が PATCH inquiry API を叩くために必要
+  await conn.execute(
+    `INSERT IGNORE INTO chat_channel_members
+      (channel_id, user_id, role, unread_count, is_muted, is_pinned, joined_at, created_at, updated_at)
+     VALUES (?, ?, 'ADMIN', 0, 0, 0, ?, ?, ?)`,
+    [ch1, E2E_ADMIN, now, now, now]
+  );
+  console.log(`E2E_ADMIN (id=${E2E_ADMIN}) を ch1 (id=${ch1}) の ADMIN メンバーとして追加`);
 
   // チャットメッセージ
   const [chatMsgTable] = await conn.execute("SHOW TABLES LIKE 'chat_messages'");

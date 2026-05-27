@@ -115,7 +115,7 @@ export const useAuthStore = defineStore('auth', {
       } catch {
         // ignore errors - we're logging out anyway
       } finally {
-        this.logout()
+        await this.logout()
       }
     },
   },
