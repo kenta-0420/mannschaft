@@ -9,6 +9,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -262,9 +263,16 @@ public class AuthTokenService {
      * @throws BusinessException レートリミット超過時（AUTH_031）
      */
     public void checkRateLimit(String key, int maxAttempts, Duration window) {
-        long currentCount = incrementRateLimit(key, window);
-        if (currentCount > maxAttempts) {
-            throw new BusinessException(AuthErrorCode.AUTH_031);
+        try {
+            long currentCount = incrementRateLimit(key, window);
+            if (currentCount > maxAttempts) {
+                throw new BusinessException(AuthErrorCode.AUTH_031);
+            }
+        } catch (BusinessException e) {
+            throw e;
+        } catch (DataAccessException e) {
+            // Valkey障害時はfail-openでレートリミットチェックをスキップ
+            log.warn("レートリミットチェックをスキップ（Valkey接続失敗）: {}", e.getMessage());
         }
     }
 
