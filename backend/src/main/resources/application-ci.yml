@@ -1,0 +1,103 @@
+# =============================================================================
+# CI プロファイル（GitHub Actions 専用）
+# =============================================================================
+# - GitHub Actions の MySQL サービスコンテナに接続する設定。
+# - JWT・暗号化キーはテスト専用の固定値を使用する（本番環境では使用しない）。
+# - Valkey/Redis は CI に存在しないため、既存の fail-open 機構でスキップされる。
+# - このファイルは application.yml を上書きする形で適用される。
+#   起動コマンド: java -jar app.jar --spring.profiles.active=ci
+# =============================================================================
+
+spring:
+  # --- データソース（GitHub Actions MySQL サービスコンテナ）---
+  datasource:
+    url: jdbc:mysql://localhost:3306/mannschaft?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Tokyo&characterEncoding=UTF-8
+    username: mannschaft
+    password: mannschaft
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      # CI は短命なため接続プールを最小限に抑える
+      maximum-pool-size: 5
+      minimum-idle: 2
+      connection-timeout: 10000
+
+  # --- JPA ---
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+
+  # --- Flyway（CI では自動マイグレーションを有効化）---
+  flyway:
+    enabled: true
+    out-of-order: true
+
+  # --- Valkey/Redis ---
+  # CI 環境には Valkey が存在しない。
+  # 既存の fail-open 機構（ValkeyFailSilentAspect 等）が接続失敗をスキップするため
+  # 接続先としてローカルホストを指定しておくだけでよい。
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+# --- サーバー ---
+server:
+  port: 8080
+
+# --- JWT・暗号化（CI テスト専用固定値）---
+# 警告: 本番環境では絶対に使用しないこと。
+mannschaft:
+  jwt:
+    secret: ci-test-secret-key-for-github-actions-only-minimum-256-bits-long
+    access-token-expiration: 900
+    refresh-token-expiration: 3456000
+  cookie:
+    secure: false
+  encryption:
+    key: pE8ozQmki8gdQ1nCFC86zcK1SSNJuVRLd7uhdpO4ihc=
+    hmac-key: ci-test-hmac-key-for-github-actions-only-minimum-256-bits-long
+  security:
+    # PDF 署名キー（CI テスト用固定値）
+    internal-signing-key: ci-test-internal-pdf-signing-key-fixed-32bytes-xxxx
+  # メール配信ワーカーは CI では無効化（SES 未接続）
+  email-outbox:
+    worker:
+      enabled: false
+  # WebAuthn は CI では使用しない
+  webauthn:
+    origin: http://localhost:8080
+  jobs:
+    qr:
+      signing-keys:
+        - kid: v1
+          secret: ci-test-qr-signing-key-fixed-32bytes-testingxxxx
+          active: true
+
+# --- ログレベル（CI では INFO で十分）---
+logging:
+  level:
+    com.mannschaft: INFO
+    org.springframework.web: WARN
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+
+# --- パフォーマンス監視・エラー監視（CI では無効化）---
+mannschaft.error-monitoring:
+  aggregation:
+    enabled: false
+  health-polling:
+    enabled: false
+
+# --- F08.7 シフト予算（CI では有効化）---
+feature:
+  shift-budget:
+    enabled: true
+    monthly-close-cron-enabled: false
+    retry-batch-enabled: false
+
+# --- QR チェックイン設定（CI テスト用固定値）---
+# ポイントカード再マッチバッチは CI では無効化
+pointcard:
+  rematch-batch:
+    enabled: false
