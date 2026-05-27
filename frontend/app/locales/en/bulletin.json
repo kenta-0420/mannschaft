@@ -17,7 +17,8 @@
       "readAllDone": "Marked all as read",
       "readAllFailed": "Failed to mark all as read",
       "archivedDone": "Moved to archive",
-      "archiveFailed": "Failed to archive"
+      "archiveFailed": "Failed to archive",
+      "loadFailed": "Failed to load threads"
     },
     "archive": {
       "title": "Archive",
