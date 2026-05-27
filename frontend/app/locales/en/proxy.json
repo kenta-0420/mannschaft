@@ -72,6 +72,51 @@
       "byPerson": "Self Input",
       "byProxy": "Proxy Input",
       "total": "Total"
+    },
+    "delegation": {
+      "title": "Proxy Attendance",
+      "description": "If you cannot respond to attendance, you can delegate to another member in the same scope",
+      "specify": "Specify a delegate (optional)",
+      "delegate_label": "Delegate",
+      "delegate_placeholder": "Select a member",
+      "reason_label": "Reason for delegation (optional)",
+      "reason_placeholder": "Shared with administrators (max 500 characters)",
+      "proxy_vote_label": "Also delegate voting",
+      "proxy_vote_session": "Voting session",
+      "proxy_vote_session_placeholder": "Select session to delegate",
+      "cancel": "Cancel delegation",
+      "status": {
+        "pending": "Pending",
+        "accepted": "Accepted",
+        "rejected": "Rejected",
+        "cancelled": "Cancelled"
+      },
+      "my_requests": {
+        "title": "Delegation Requests",
+        "description": "List of pending proxy attendance requests",
+        "empty": "No delegation requests",
+        "accept": "Accept",
+        "reject": "Reject",
+        "as_delegator": "Requested (awaiting delegate)",
+        "as_delegate": "You have a delegation request"
+      },
+      "admin": {
+        "tab": "Proxy Attendance",
+        "empty": "No proxy attendance settings",
+        "delegator": "Delegator",
+        "delegate": "Delegate"
+      },
+      "auto_accept_note": "Auto-accept is enabled. Delegation becomes effective without delegate confirmation",
+      "grandfathering_note": "Existing delegations are retained even if this setting is turned off",
+      "allow_proxy": "Allow proxy attendance",
+      "auto_accept": "Auto-accept (no delegate confirmation required)",
+      "errors": {
+        "self": "You cannot delegate to yourself",
+        "already_exists": "A delegate has already been assigned",
+        "not_member": "The specified member does not belong to this scope",
+        "not_allowed": "Proxy attendance is not allowed for this schedule/event",
+        "rate_limit": "Too many requests. Please try again in 1 minute"
+      }
     }
   }
 }

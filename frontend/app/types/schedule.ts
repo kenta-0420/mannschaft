@@ -196,3 +196,36 @@ export interface ScheduleStatsResponse {
   maybe: number
   pending: number
 }
+
+// ─── F03.10 代理出席 ───────────────────────────────────────
+export type ScheduleDelegationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED'
+
+export interface ScheduleDelegationResponse {
+  id: string  // UUIDv7
+  scheduleId: number
+  delegatorId: number
+  delegatorName: string
+  delegateId: number
+  delegateName: string
+  status: ScheduleDelegationStatus
+  reason: string | null
+  reviewedAt: string | null
+  createdAt: string
+}
+
+export interface CreateScheduleDelegationRequest {
+  delegateId: number
+  reason?: string
+}
+
+export interface ScheduleDelegationListResponse {
+  data: ScheduleDelegationResponse[]
+  total: number
+  page: number
+  size: number
+}
+
+export interface ScheduleDelegationMeResponse {
+  asDelegator: ScheduleDelegationResponse | null  // 自分が委任者
+  asDelegate: ScheduleDelegationResponse | null   // 自分が代理人
+}

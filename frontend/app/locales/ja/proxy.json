@@ -72,6 +72,51 @@
       "byPerson": "本人入力",
       "byProxy": "代理入力",
       "total": "合計"
+    },
+    "delegation": {
+      "title": "代理出席",
+      "description": "出欠回答できない場合、同スコープのメンバーに出席を代理委任できます",
+      "specify": "代理人を指定する（任意）",
+      "delegate_label": "代理人",
+      "delegate_placeholder": "メンバーを選択",
+      "reason_label": "委任理由（任意）",
+      "reason_placeholder": "管理者に共有されます（最大500文字）",
+      "proxy_vote_label": "投票も代理委任する",
+      "proxy_vote_session": "投票セッション",
+      "proxy_vote_session_placeholder": "委任するセッションを選択",
+      "cancel": "代理委任を取り消す",
+      "status": {
+        "pending": "承認待ち",
+        "accepted": "承認済み",
+        "rejected": "拒否済み",
+        "cancelled": "取り消し済み"
+      },
+      "my_requests": {
+        "title": "代理依頼",
+        "description": "承認待ちの代理出席依頼一覧",
+        "empty": "代理依頼はありません",
+        "accept": "承認する",
+        "reject": "拒否する",
+        "as_delegator": "依頼中（代理人待ち）",
+        "as_delegate": "依頼を受けています"
+      },
+      "admin": {
+        "tab": "代理出席",
+        "empty": "代理出席の設定はありません",
+        "delegator": "委任者",
+        "delegate": "代理人"
+      },
+      "auto_accept_note": "自動承認が設定されています。代理人の確認なしに有効になります",
+      "grandfathering_note": "設定をOFFにしても既存の代理委任は維持されます",
+      "allow_proxy": "代理出席を許可する",
+      "auto_accept": "自動承認（代理人確認不要）",
+      "errors": {
+        "self": "自分自身は代理人に指定できません",
+        "already_exists": "すでに代理人が指定されています",
+        "not_member": "指定したメンバーはこのスコープに所属していません",
+        "not_allowed": "このスケジュール/イベントでは代理出席が許可されていません",
+        "rate_limit": "操作が多すぎます。1分後に再試行してください"
+      }
     }
   }
 }
