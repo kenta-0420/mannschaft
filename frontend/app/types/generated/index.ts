@@ -5238,7 +5238,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** アーカイブ */
+        /** アーカイブ状態変更 */
         post: operations["archive"];
         delete?: never;
         options?: never;
@@ -24532,6 +24532,23 @@ export interface paths {
         patch: operations["updateMySettings"];
         trace?: never;
     };
+    "/api/v1/chat/channels/{channelId}/inquiry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 問い合わせチャンネル設定更新（F10.7） */
+        patch: operations["updateInquiryChannel"];
+        trace?: never;
+    };
     "/api/v1/chat-folders/items/{itemType}/{itemId}": {
         parameters: {
             query?: never;
@@ -36473,6 +36490,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/business-alerts/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 業務アラートサマリー取得
+         * @description 認証済み ADMIN/DEPUTY_ADMIN ユーザーが管理するチームの予約・問い合わせ件数サマリーを返す。少なくとも 1 チームで ADMIN/DEPUTY_ADMIN ロールを持たない場合は 403。
+         */
+        get: operations["getSummary_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/audit-logs": {
         parameters: {
             query?: never;
@@ -38591,6 +38628,30 @@ export interface components {
         ApiResponseFormTemplateResponse: {
             data?: components["schemas"]["FormTemplateResponse"];
         };
+        FormAuditDto: {
+            /** Format: int64 */
+            version?: number;
+            /** Format: int64 */
+            createdBy?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        FormContentDto: {
+            name?: string;
+            description?: string;
+            icon?: string;
+            color?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+        };
+        FormEditPolicyDto: {
+            allowEditAfterSubmit?: boolean;
+            autoFillEnabled?: boolean;
+            /** Format: int32 */
+            maxSubmissionsPerUser?: number;
+        };
         FormFieldResponse: {
             /** Format: int64 */
             id?: number;
@@ -38606,48 +38667,45 @@ export interface components {
             optionsJson?: string;
             placeholder?: string;
         };
-        FormTemplateResponse: {
-            /** Format: int64 */
-            id?: number;
+        FormScopeDto: {
             scopeType?: string;
             /** Format: int64 */
             scopeId?: number;
-            name?: string;
-            description?: string;
-            icon?: string;
-            color?: string;
-            status?: string;
-            requiresApproval?: boolean;
-            /** Format: int64 */
-            workflowTemplateId?: number;
-            isSealOnPdf?: boolean;
-            /** Format: date-time */
-            deadline?: string;
-            allowEditAfterSubmit?: boolean;
-            autoFillEnabled?: boolean;
-            /** Format: int32 */
-            maxSubmissionsPerUser?: number;
-            /** Format: int32 */
-            sortOrder?: number;
-            /** Format: int64 */
-            presetId?: number;
+        };
+        FormStatsDto: {
             /** Format: int32 */
             submissionCount?: number;
             /** Format: int32 */
             targetCount?: number;
             /** Format: int64 */
-            createdBy?: number;
+            presetId?: number;
+        };
+        FormTemplateResponse: {
+            /** Format: int64 */
+            id?: number;
+            status?: string;
+            scope?: components["schemas"]["FormScopeDto"];
+            content?: components["schemas"]["FormContentDto"];
+            workflow?: components["schemas"]["FormWorkflowDto"];
+            editPolicy?: components["schemas"]["FormEditPolicyDto"];
+            stats?: components["schemas"]["FormStatsDto"];
+            timeline?: components["schemas"]["FormTimelineDto"];
+            audit?: components["schemas"]["FormAuditDto"];
+            fields?: components["schemas"]["FormFieldResponse"][];
+        };
+        FormTimelineDto: {
+            /** Format: date-time */
+            deadline?: string;
             /** Format: date-time */
             publishedAt?: string;
             /** Format: date-time */
             closedAt?: string;
+        };
+        FormWorkflowDto: {
+            requiresApproval?: boolean;
             /** Format: int64 */
-            version?: number;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-            fields?: components["schemas"]["FormFieldResponse"][];
+            workflowTemplateId?: number;
+            isSealOnPdf?: boolean;
         };
         SubmissionValueRequest: {
             fieldKey?: string;
@@ -38666,28 +38724,35 @@ export interface components {
         ApiResponseFormSubmissionResponse: {
             data?: components["schemas"]["FormSubmissionResponse"];
         };
-        FormSubmissionResponse: {
-            /** Format: int64 */
-            id?: number;
-            /** Format: int64 */
-            templateId?: number;
-            scopeType?: string;
-            /** Format: int64 */
-            scopeId?: number;
-            status?: string;
-            /** Format: int64 */
-            submittedBy?: number;
-            /** Format: int64 */
-            workflowRequestId?: number;
-            pdfFileKey?: string;
-            /** Format: int32 */
-            submissionCountForUser?: number;
-            /** Format: int64 */
-            version?: number;
+        FormSubmissionAuditDto: {
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        FormSubmissionMetaDto: {
+            /** Format: int64 */
+            templateId?: number;
+            /** Format: int64 */
+            submittedBy?: number;
+            /** Format: int64 */
+            workflowRequestId?: number;
+            /** Format: int32 */
+            submissionCountForUser?: number;
+            /** Format: int64 */
+            version?: number;
+        };
+        FormSubmissionPdfDto: {
+            pdfFileKey?: string;
+        };
+        FormSubmissionResponse: {
+            /** Format: int64 */
+            id?: number;
+            status?: string;
+            scope?: components["schemas"]["FormScopeDto"];
+            meta?: components["schemas"]["FormSubmissionMetaDto"];
+            pdf?: components["schemas"]["FormSubmissionPdfDto"];
+            audit?: components["schemas"]["FormSubmissionAuditDto"];
             values?: components["schemas"]["SubmissionValueResponse"][];
         };
         SubmissionValueResponse: {
@@ -38768,6 +38833,8 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+            /** Format: int32 */
+            depth?: number;
             children?: components["schemas"]["ReplyResponse"][];
         };
         UpdateCategoryRequest: {
@@ -39042,24 +39109,33 @@ export interface components {
         ApiResponseCorkboardResponse: {
             data?: components["schemas"]["CorkboardResponse"];
         };
-        CorkboardResponse: {
-            /** Format: int64 */
-            id?: number;
-            scopeType?: string;
-            /** Format: int64 */
-            scopeId?: number;
-            /** Format: int64 */
-            ownerId?: number;
-            name?: string;
-            backgroundStyle?: string;
-            editPolicy?: string;
-            isDefault?: boolean;
-            /** Format: int64 */
-            version?: number;
+        BoardAuditDto: {
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        BoardScopeDto: {
+            scopeType?: string;
+            /** Format: int64 */
+            scopeId?: number;
+        };
+        BoardSettingsDto: {
+            backgroundStyle?: string;
+            editPolicy?: string;
+            isDefault?: boolean;
+        };
+        CorkboardResponse: {
+            /** Format: int64 */
+            id?: number;
+            scope?: components["schemas"]["BoardScopeDto"];
+            /** Format: int64 */
+            ownerId?: number;
+            name?: string;
+            settings?: components["schemas"]["BoardSettingsDto"];
+            /** Format: int64 */
+            version?: number;
+            audit?: components["schemas"]["BoardAuditDto"];
         };
         ContactPrivacyRequest: {
             handleSearchable?: boolean;
@@ -39269,11 +39345,6 @@ export interface components {
             hierarchy?: components["schemas"]["TodoHierarchyDto"];
             audit?: components["schemas"]["TodoAuditDto"];
             /**
-             * Format: int64
-             * @deprecated
-             */
-            daysRemaining?: number;
-            /**
              * Format: int32
              * @deprecated
              */
@@ -39285,6 +39356,11 @@ export interface components {
              * @deprecated
              */
             descendantTotalCount?: number;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            daysRemaining?: number;
             /** @deprecated */
             title?: string;
             /** @deprecated */
@@ -40284,30 +40360,45 @@ export interface components {
         ApiResponseRecordResponse: {
             data?: components["schemas"]["RecordResponse"];
         };
-        RecordResponse: {
-            /** Format: int64 */
-            id?: number;
-            /** Format: int64 */
-            metricId?: number;
-            metricName?: string;
+        RecordActorDto: {
             /** Format: int64 */
             userId?: number;
             /** Format: int64 */
             scheduleId?: number;
             /** Format: int64 */
             activityResultId?: number;
+        };
+        RecordAuditDto: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        RecordMetricDto: {
+            /** Format: int64 */
+            metricId?: number;
+            metricName?: string;
+        };
+        RecordResponse: {
+            /** Format: int64 */
+            id?: number;
+            metric?: components["schemas"]["RecordMetricDto"];
+            actor?: components["schemas"]["RecordActorDto"];
+            record?: components["schemas"]["RecordValueDto"];
+            source?: components["schemas"]["RecordSourceDto"];
+            audit?: components["schemas"]["RecordAuditDto"];
+        };
+        RecordSourceDto: {
+            source?: string;
+            /** Format: int64 */
+            recordedBy?: number;
+        };
+        RecordValueDto: {
             /** Format: date */
             recordedDate?: string;
             value?: number;
             unit?: string;
             note?: string;
-            source?: string;
-            /** Format: int64 */
-            recordedBy?: number;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
         };
         UpdateMetricRequest: {
             name?: string;
@@ -40329,29 +40420,41 @@ export interface components {
         ApiResponseMetricResponse: {
             data?: components["schemas"]["MetricResponse"];
         };
-        MetricResponse: {
+        MetricAccessDto: {
+            isVisibleToMembers?: boolean;
+            isSelfRecordable?: boolean;
             /** Format: int64 */
-            id?: number;
+            linkedActivityFieldId?: number;
+            isActive?: boolean;
+        };
+        MetricAuditDto: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        MetricDefinitionDto: {
             name?: string;
             unit?: string;
             dataType?: string;
             aggregationType?: string;
             description?: string;
             groupName?: string;
+        };
+        MetricResponse: {
+            /** Format: int64 */
+            id?: number;
+            definition?: components["schemas"]["MetricDefinitionDto"];
+            valueRange?: components["schemas"]["MetricValueRangeDto"];
+            access?: components["schemas"]["MetricAccessDto"];
+            /** Format: int32 */
+            sortOrder?: number;
+            audit?: components["schemas"]["MetricAuditDto"];
+        };
+        MetricValueRangeDto: {
             targetValue?: number;
             minValue?: number;
             maxValue?: number;
-            /** Format: int32 */
-            sortOrder?: number;
-            isVisibleToMembers?: boolean;
-            isSelfRecordable?: boolean;
-            /** Format: int64 */
-            linkedActivityFieldId?: number;
-            isActive?: boolean;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
         };
         UpdateVisitorRecurringRequest: {
             recurrenceType: string;
@@ -43351,15 +43454,35 @@ export interface components {
             /** Format: int64 */
             id?: number;
             team?: components["schemas"]["TeamSummaryResponse"];
+            content?: components["schemas"]["RequestContentDto"];
+            location?: components["schemas"]["RequestLocationDto"];
+            schedule?: components["schemas"]["RequestScheduleDto"];
+            participants?: components["schemas"]["RequestParticipantsDto"];
+            status?: components["schemas"]["RequestStatusDto"];
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        RequestContentDto: {
             title?: string;
             description?: string;
             activityType?: string;
             activityDetail?: string;
             category?: string;
             visibility?: string;
+        };
+        RequestLocationDto: {
             prefectureCode?: string;
             cityCode?: string;
             venueName?: string;
+        };
+        RequestParticipantsDto: {
+            level?: string;
+            /** Format: int32 */
+            minParticipants?: number;
+            /** Format: int32 */
+            maxParticipants?: number;
+        };
+        RequestScheduleDto: {
             /** Format: date */
             preferredDateFrom?: string;
             /** Format: date */
@@ -43368,11 +43491,8 @@ export interface components {
             preferredTimeFrom?: string;
             /** @example 14:30:00 */
             preferredTimeTo?: string;
-            level?: string;
-            /** Format: int32 */
-            minParticipants?: number;
-            /** Format: int32 */
-            maxParticipants?: number;
+        };
+        RequestStatusDto: {
             status?: string;
             /** Format: int32 */
             proposalCount?: number;
@@ -43380,8 +43500,6 @@ export interface components {
             expiresAt?: string;
             /** Format: int32 */
             cancelCount?: number;
-            /** Format: date-time */
-            createdAt?: string;
         };
         TeamSummaryResponse: {
             /** Format: int64 */
@@ -43644,6 +43762,18 @@ export interface components {
             corkboardId?: number;
             name?: string;
             isCollapsed?: boolean;
+            layout?: components["schemas"]["GroupLayoutDto"];
+            /** Format: int32 */
+            displayOrder?: number;
+            audit?: components["schemas"]["GroupAuditDto"];
+        };
+        GroupAuditDto: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        GroupLayoutDto: {
             /** Format: int32 */
             positionX?: number;
             /** Format: int32 */
@@ -43652,12 +43782,6 @@ export interface components {
             width?: number;
             /** Format: int32 */
             height?: number;
-            /** Format: int32 */
-            displayOrder?: number;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
         };
         UpdateCardRequest: {
             title?: string;
@@ -43678,11 +43802,33 @@ export interface components {
         ApiResponseCorkboardCardResponse: {
             data?: components["schemas"]["CorkboardCardResponse"];
         };
-        CorkboardCardResponse: {
+        CardAuditDto: {
+            userNote?: string;
             /** Format: int64 */
-            id?: number;
-            /** Format: int64 */
-            corkboardId?: number;
+            createdBy?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        CardContentDto: {
+            title?: string;
+            body?: string;
+            url?: string;
+            ogTitle?: string;
+            ogImageUrl?: string;
+            ogDescription?: string;
+        };
+        CardLayoutDto: {
+            /** Format: int32 */
+            positionX?: number;
+            /** Format: int32 */
+            positionY?: number;
+            /** Format: int32 */
+            zIndex?: number;
+            cardSize?: string;
+        };
+        CardReferenceDto: {
             /** Format: int64 */
             sectionId?: number;
             cardType?: string;
@@ -43690,35 +43836,31 @@ export interface components {
             /** Format: int64 */
             referenceId?: number;
             contentSnapshot?: string;
-            title?: string;
-            body?: string;
-            url?: string;
-            ogTitle?: string;
-            ogImageUrl?: string;
-            ogDescription?: string;
-            colorLabel?: string;
-            cardSize?: string;
-            /** Format: int32 */
-            positionX?: number;
-            /** Format: int32 */
-            positionY?: number;
-            userNote?: string;
-            noteColor?: string;
-            /** Format: date-time */
-            autoArchiveAt?: string;
+        };
+        CardStateDto: {
             isArchived?: boolean;
             isPinned?: boolean;
             /** Format: date-time */
             pinnedAt?: string;
+            /** Format: date-time */
+            autoArchiveAt?: string;
             isRefDeleted?: boolean;
+        };
+        CardStyleDto: {
+            colorLabel?: string;
+            noteColor?: string;
+        };
+        CorkboardCardResponse: {
             /** Format: int64 */
-            createdBy?: number;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-            /** Format: int32 */
-            zindex?: number;
+            id?: number;
+            /** Format: int64 */
+            corkboardId?: number;
+            reference?: components["schemas"]["CardReferenceDto"];
+            content?: components["schemas"]["CardContentDto"];
+            layout?: components["schemas"]["CardLayoutDto"];
+            style?: components["schemas"]["CardStyleDto"];
+            state?: components["schemas"]["CardStateDto"];
+            audit?: components["schemas"]["CardAuditDto"];
         };
         UpdateChatFolderRequest: {
             name?: string;
@@ -44200,71 +44342,98 @@ export interface components {
             /** Format: int32 */
             displayOrder?: number;
         };
-        QuestionResponse: {
-            /** Format: int64 */
-            id?: number;
-            /** Format: int64 */
-            surveyId?: number;
-            questionType?: string;
+        QuestionContentDto: {
             questionText?: string;
             isRequired?: boolean;
             /** Format: int32 */
             displayOrder?: number;
             /** Format: int32 */
             maxSelections?: number;
+        };
+        QuestionResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            surveyId?: number;
+            questionType?: string;
+            content?: components["schemas"]["QuestionContentDto"];
+            scaleConfig?: components["schemas"]["QuestionScaleConfigDto"];
+            /** Format: date-time */
+            createdAt?: string;
+            options?: components["schemas"]["OptionResponse"][];
+        };
+        QuestionScaleConfigDto: {
             /** Format: int32 */
             scaleMin?: number;
             /** Format: int32 */
             scaleMax?: number;
             scaleMinLabel?: string;
             scaleMaxLabel?: string;
+        };
+        SurveyAuditDto: {
+            /** Format: int64 */
+            version?: number;
+            /** Format: int64 */
+            createdBy?: number;
             /** Format: date-time */
             createdAt?: string;
-            options?: components["schemas"]["OptionResponse"][];
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        SurveyContentDto: {
+            title?: string;
+            description?: string;
         };
         SurveyDetailResponse: {
             survey?: components["schemas"]["SurveyResponse"];
             questions?: components["schemas"]["QuestionResponse"][];
         };
-        SurveyResponse: {
-            /** Format: int64 */
-            id?: number;
-            scopeType?: string;
-            /** Format: int64 */
-            scopeId?: number;
-            title?: string;
-            description?: string;
-            status?: string;
-            isAnonymous?: boolean;
-            allowMultipleSubmissions?: boolean;
-            resultsVisibility?: string;
+        SurveyDistributionDto: {
             distributionMode?: string;
-            unrespondedVisibility?: string;
             autoPostToTimeline?: boolean;
             seriesId?: string;
             remindBeforeHours?: string;
             /** Format: int32 */
             manualRemindCount?: number;
+        };
+        SurveyPolicyDto: {
+            isAnonymous?: boolean;
+            allowMultipleSubmissions?: boolean;
+            resultsVisibility?: string;
+            unrespondedVisibility?: string;
+        };
+        SurveyResponse: {
+            /** Format: int64 */
+            id?: number;
+            status?: string;
+            scope?: components["schemas"]["SurveyScopeDto"];
+            content?: components["schemas"]["SurveyContentDto"];
+            policy?: components["schemas"]["SurveyPolicyDto"];
+            distribution?: components["schemas"]["SurveyDistributionDto"];
+            schedule?: components["schemas"]["SurveyScheduleDto"];
+            stats?: components["schemas"]["SurveyStatsDto"];
+            audit?: components["schemas"]["SurveyAuditDto"];
+        };
+        SurveyScheduleDto: {
             /** Format: date-time */
             startsAt?: string;
             /** Format: date-time */
             expiresAt?: string;
-            /** Format: int32 */
-            responseCount?: number;
-            /** Format: int32 */
-            targetCount?: number;
-            /** Format: int64 */
-            createdBy?: number;
             /** Format: date-time */
             publishedAt?: string;
             /** Format: date-time */
             closedAt?: string;
+        };
+        SurveyScopeDto: {
+            scopeType?: string;
             /** Format: int64 */
-            version?: number;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
+            scopeId?: number;
+        };
+        SurveyStatsDto: {
+            /** Format: int32 */
+            responseCount?: number;
+            /** Format: int32 */
+            targetCount?: number;
         };
         ApiResponseQuestionResponse: {
             data?: components["schemas"]["QuestionResponse"];
@@ -44678,7 +44847,7 @@ export interface components {
         };
         CreateThreadRequest: {
             /** Format: int64 */
-            categoryId: number;
+            categoryId?: number;
             title?: string;
             body?: string;
             priority?: string;
@@ -44697,6 +44866,9 @@ export interface components {
             /** Format: int64 */
             parentId?: number;
             body?: string;
+        };
+        ArchiveThreadRequest: {
+            isArchived?: boolean;
         };
         CreateCategoryRequest: {
             name?: string;
@@ -45648,12 +45820,13 @@ export interface components {
         ApiResponsePostResponse: {
             data?: components["schemas"]["PostResponse"];
         };
-        PostResponse: {
-            /** Format: int64 */
-            id?: number;
-            scopeType?: string;
-            /** Format: int64 */
-            scopeId?: number;
+        PostAuditDto: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        PostAuthorDto: {
             /** Format: int64 */
             userId?: number;
             /** Format: int64 */
@@ -45661,17 +45834,35 @@ export interface components {
             postedAsType?: string;
             /** Format: int64 */
             postedAsId?: number;
-            /** Format: int64 */
-            parentId?: number;
+        };
+        PostContentDto: {
             content?: string;
             /** Format: int64 */
+            parentId?: number;
+            /** Format: int64 */
             repostOfId?: number;
-            /** Format: int32 */
-            repostCount?: number;
             status?: string;
             /** Format: date-time */
             scheduledAt?: string;
             isPinned?: boolean;
+        };
+        PostResponse: {
+            /** Format: int64 */
+            id?: number;
+            scope?: components["schemas"]["PostScopeDto"];
+            author?: components["schemas"]["PostAuthorDto"];
+            content?: components["schemas"]["PostContentDto"];
+            stats?: components["schemas"]["PostStatsDto"];
+            audit?: components["schemas"]["PostAuditDto"];
+        };
+        PostScopeDto: {
+            scopeType?: string;
+            /** Format: int64 */
+            scopeId?: number;
+        };
+        PostStatsDto: {
+            /** Format: int32 */
+            repostCount?: number;
             /** Format: int32 */
             reactionCount?: number;
             /** Format: int32 */
@@ -45680,10 +45871,6 @@ export interface components {
             attachmentCount?: number;
             /** Format: int32 */
             editCount?: number;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
         };
         ApiResponseReactionResponse: {
             data?: components["schemas"]["ReactionResponse"];
@@ -53297,6 +53484,7 @@ export interface components {
             /** Format: int64 */
             sourceId?: number;
             isArchived?: boolean;
+            isInquiryChannel?: boolean;
             /** Format: int64 */
             version?: number;
             /** Format: date-time */
@@ -56064,6 +56252,9 @@ export interface components {
             is_pinned?: boolean;
             category?: string;
         };
+        UpdateInquiryChannelRequest: {
+            is_inquiry_channel: boolean;
+        };
         UpdateFolderItemRequest: {
             customName?: string;
             isPinned?: boolean;
@@ -57018,30 +57209,36 @@ export interface components {
         ApiResponseCorkboardDetailResponse: {
             data?: components["schemas"]["CorkboardDetailResponse"];
         };
-        CorkboardDetailResponse: {
-            /** Format: int64 */
-            id?: number;
-            scopeType?: string;
-            /** Format: int64 */
-            scopeId?: number;
-            /** Format: int64 */
-            ownerId?: number;
-            name?: string;
-            backgroundStyle?: string;
-            editPolicy?: string;
-            isDefault?: boolean;
-            /** Format: int64 */
-            version?: number;
+        BoardContentDto: {
             cards?: components["schemas"]["CorkboardCardResponse"][];
             groups?: components["schemas"]["CorkboardGroupResponse"][];
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        CorkboardDetailResponse: {
+            /** Format: int64 */
+            id?: number;
+            scope?: components["schemas"]["BoardScopeDto"];
+            /** Format: int64 */
+            ownerId?: number;
+            name?: string;
+            settings?: components["schemas"]["BoardSettingsDto"];
+            /** Format: int64 */
+            version?: number;
+            boardContent?: components["schemas"]["BoardContentDto"];
             viewerCanEdit?: boolean;
         };
         ApiResponsePinnedCardListResponse: {
             data?: components["schemas"]["PinnedCardListResponse"];
+        };
+        PinnedCardContentDto: {
+            colorLabel?: string;
+            title?: string;
+            body?: string;
+            userNote?: string;
+            noteColor?: string;
         };
         PinnedCardListResponse: {
             items?: components["schemas"]["PinnedCardResponse"][];
@@ -57069,11 +57266,7 @@ export interface components {
             corkboardId?: number;
             corkboardName?: string;
             cardType?: string;
-            colorLabel?: string;
-            title?: string;
-            body?: string;
-            userNote?: string;
-            noteColor?: string;
+            cardContent?: components["schemas"]["PinnedCardContentDto"];
             /** Format: date-time */
             pinnedAt?: string;
             reference?: components["schemas"]["PinnedCardReferenceResponse"];
@@ -57191,44 +57384,13 @@ export interface components {
         PostDetailResponse: {
             /** Format: int64 */
             id?: number;
-            scopeType?: string;
-            /** Format: int64 */
-            scopeId?: number;
-            /** Format: int64 */
-            userId?: number;
-            /** Format: int64 */
-            socialProfileId?: number;
-            postedAsType?: string;
-            /** Format: int64 */
-            postedAsId?: number;
-            /** Format: int64 */
-            parentId?: number;
-            content?: string;
-            /** Format: int64 */
-            repostOfId?: number;
-            /** Format: int32 */
-            repostCount?: number;
-            status?: string;
-            /** Format: date-time */
-            scheduledAt?: string;
-            isPinned?: boolean;
-            /** Format: int32 */
-            reactionCount?: number;
-            /** Format: int32 */
-            replyCount?: number;
-            /** Format: int32 */
-            attachmentCount?: number;
-            /** Format: int32 */
-            editCount?: number;
+            scope?: components["schemas"]["PostScopeDto"];
+            author?: components["schemas"]["PostAuthorDto"];
+            content?: components["schemas"]["PostContentDto"];
+            stats?: components["schemas"]["PostStatsDto"];
             attachments?: components["schemas"]["AttachmentResponse"][];
-            mitayo?: boolean;
-            /** Format: int32 */
-            mitayoCount?: number;
             poll?: components["schemas"]["PollResponse"];
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
+            audit?: components["schemas"]["PostAuditDto"];
         };
         ApiResponseListMuteResponse: {
             data?: components["schemas"]["MuteResponse"][];
@@ -58410,6 +58572,16 @@ export interface components {
             data?: components["schemas"]["ProposalResponse"][];
             meta?: components["schemas"]["PageMeta"];
         };
+        ProposalAuditDto: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ProposalContentDto: {
+            message?: string;
+            proposedVenue?: string;
+        };
         ProposalResponse: {
             /** Format: int64 */
             id?: number;
@@ -58417,8 +58589,12 @@ export interface components {
             requestId?: number;
             /** Format: int64 */
             proposingTeamId?: number;
-            message?: string;
-            proposedVenue?: string;
+            content?: components["schemas"]["ProposalContentDto"];
+            status?: components["schemas"]["ProposalStatusDto"];
+            proposedDates?: components["schemas"]["ProposedDateResponse"][];
+            audit?: components["schemas"]["ProposalAuditDto"];
+        };
+        ProposalStatusDto: {
             status?: string;
             statusReason?: string;
             /** Format: int64 */
@@ -58426,11 +58602,6 @@ export interface components {
             cancellationType?: string;
             /** Format: date-time */
             mutualAgreedAt?: string;
-            proposedDates?: components["schemas"]["ProposedDateResponse"][];
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
         };
         ProposedDateResponse: {
             /** Format: int64 */
@@ -64081,6 +64252,37 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        AdminBusinessAlertSummaryResponse: {
+            data?: components["schemas"]["Data"];
+        };
+        Alerts: {
+            /** Format: int32 */
+            newReservations?: number;
+            /** Format: int32 */
+            pendingApproval?: number;
+            /** Format: int32 */
+            unreadInquiries?: number;
+        };
+        ApiResponseAdminBusinessAlertSummaryResponse: {
+            data?: components["schemas"]["AdminBusinessAlertSummaryResponse"];
+        };
+        Data: {
+            teams?: components["schemas"]["TeamAlert"][];
+            /** Format: int32 */
+            totalPending?: number;
+        };
+        Links: {
+            reservationsUrl?: string;
+            inquiryChannelUrl?: string;
+        };
+        TeamAlert: {
+            /** Format: int64 */
+            teamId?: number;
+            teamName?: string;
+            reservationModuleEnabled?: boolean;
+            alerts?: components["schemas"]["Alerts"];
+            links?: components["schemas"]["Links"];
+        };
         PagedResponseAuditLogResponse: {
             data?: components["schemas"]["AuditLogResponse"][];
             meta?: components["schemas"]["PageMeta"];
@@ -64241,6 +64443,16 @@ export interface components {
         };
         ApiResponseListApiKeyResponse: {
             data?: components["schemas"]["ApiKeyResponse"][];
+        };
+        ApiResponseDeleteCategoryResponse: {
+            data?: components["schemas"]["DeleteCategoryResponse"];
+        };
+        DeleteCategoryResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int32 */
+            affectedThreadCount?: number;
+            message?: string;
         };
         RepresentativeRevokeRequest: {
             note?: string;
@@ -64999,11 +65211,13 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description 削除成功 */
-            204: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "*/*": components["schemas"]["ApiResponseDeleteCategoryResponse"];
+                };
             };
         };
     };
@@ -78493,7 +78707,9 @@ export interface operations {
     };
     listReadUsers: {
         parameters: {
-            query?: never;
+            query?: {
+                filter?: string;
+            };
             header?: never;
             path: {
                 scopeType: string;
@@ -78596,9 +78812,13 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ArchiveThreadRequest"];
+            };
+        };
         responses: {
-            /** @description アーカイブ成功 */
+            /** @description アーカイブ状態変更成功 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -116080,6 +116300,50 @@ export interface operations {
             };
         };
     };
+    updateInquiryChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channelId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInquiryChannelRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseChannelResponse"];
+                };
+            };
+            /** @description チームチャンネル以外 / アーカイブ済み */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseChannelResponse"];
+                };
+            };
+            /** @description 同チームに問い合わせチャンネルが既に存在する */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseChannelResponse"];
+                };
+            };
+        };
+    };
     removeItem: {
         parameters: {
             query?: never;
@@ -118703,7 +118967,7 @@ export interface operations {
         parameters: {
             query?: {
                 eventType?: string;
-                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT")[];
+                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN")[];
                 from?: string;
                 to?: string;
                 cursor?: string;
@@ -122132,7 +122396,7 @@ export interface operations {
             query?: {
                 userId?: number;
                 eventType?: string;
-                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT")[];
+                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN")[];
                 from?: string;
                 to?: string;
                 cursor?: string;
@@ -128311,7 +128575,7 @@ export interface operations {
             query?: {
                 userId?: number;
                 eventType?: string;
-                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT")[];
+                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN")[];
                 from?: string;
                 to?: string;
                 cursor?: string;
@@ -132824,6 +133088,44 @@ export interface operations {
             };
         };
     };
+    getSummary_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdminBusinessAlertSummaryResponse"];
+                };
+            };
+            /** @description 未認証 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdminBusinessAlertSummaryResponse"];
+                };
+            };
+            /** @description ADMIN/DEPUTY_ADMIN ロールなし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdminBusinessAlertSummaryResponse"];
+                };
+            };
+        };
+    };
     getAdminLogs: {
         parameters: {
             query?: {
@@ -132832,7 +133134,7 @@ export interface operations {
                 teamId?: number;
                 organizationId?: number;
                 eventType?: string;
-                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT")[];
+                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN")[];
                 sessionHash?: string;
                 from?: string;
                 to?: string;
