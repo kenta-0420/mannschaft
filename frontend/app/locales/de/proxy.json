@@ -98,7 +98,8 @@
         "accept": "Akzeptieren",
         "reject": "Ablehnen",
         "as_delegator": "Angefragt (warte auf Stellvertreter)",
-        "as_delegate": "Sie haben eine Beauftragungsanfrage"
+        "as_delegate": "Sie haben eine Beauftragungsanfrage",
+        "how_to_check": "Bitte bestätigen und genehmigen Sie auf der Detailseite des jeweiligen Zeitplans oder Ereignisses"
       },
       "admin": {
         "tab": "Stellvertretende Teilnahme",

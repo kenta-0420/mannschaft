@@ -98,7 +98,8 @@
         "accept": "承認する",
         "reject": "拒否する",
         "as_delegator": "依頼中（代理人待ち）",
-        "as_delegate": "依頼を受けています"
+        "as_delegate": "依頼を受けています",
+        "how_to_check": "各スケジュール・イベントの詳細ページから確認・承認してください"
       },
       "admin": {
         "tab": "代理出席",

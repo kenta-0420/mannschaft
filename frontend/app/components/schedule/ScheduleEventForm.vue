@@ -114,6 +114,8 @@ const form = ref<ScheduleEventFormState>({
   recurrenceEndType: 'NEVER',
   recurrenceEndDate: null,
   recurrenceCount: 10,
+  allowProxyAttendance: false,
+  isProxyAutoAccept: false,
 })
 
 // 開始時刻が変わったら終了時刻を1時間後に自動設定
@@ -166,6 +168,8 @@ watch(
         form.value.location = (data.location as string) ?? ''
         form.value.allDay = (data.allDay as boolean) ?? false
         form.value.attendanceRequired = (data.attendanceRequired as boolean) ?? false
+        form.value.allowProxyAttendance = (data.allowProxyAttendance as boolean) ?? false
+        form.value.isProxyAutoAccept = (data.isProxyAutoAccept as boolean) ?? false
         if (data.startAt) {
           const start = new Date(data.startAt as string)
           form.value.startDate = start
@@ -228,6 +232,8 @@ async function submit() {
   } else {
     body.eventType = 'OTHER'
     body.attendanceRequired = form.value.attendanceRequired
+    body.allow_proxy_attendance = form.value.allowProxyAttendance
+    body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
   }
 
   if (form.value.recurrence) {
@@ -302,6 +308,8 @@ function resetForm() {
     recurrenceEndType: 'NEVER',
     recurrenceEndDate: null,
     recurrenceCount: 10,
+    allowProxyAttendance: false,
+    isProxyAutoAccept: false,
   }
   fieldErrors.value = {}
 }
@@ -342,6 +350,35 @@ function close() {
         :time-history="timeHistory"
         :time-options="timeOptions"
       />
+      <!-- 代理出席設定（チームまたは組織スコープのみ） -->
+      <div v-if="!effectiveScope.isPersonal" class="flex flex-col gap-2">
+        <div class="flex items-center gap-3">
+          <Checkbox
+            v-model="form.allowProxyAttendance"
+            :binary="true"
+            input-id="scheduleAllowProxy"
+          />
+          <label for="scheduleAllowProxy" class="text-sm text-gray-700 dark:text-gray-300">
+            {{ $t('proxy.delegation.allow_proxy') }}
+          </label>
+        </div>
+        <div v-if="form.allowProxyAttendance" class="ml-6 flex flex-col gap-1">
+          <div class="flex items-center gap-3">
+            <Checkbox
+              v-model="form.isProxyAutoAccept"
+              :binary="true"
+              input-id="scheduleAutoAccept"
+            />
+            <label for="scheduleAutoAccept" class="text-sm text-gray-700 dark:text-gray-300">
+              {{ $t('proxy.delegation.auto_accept') }}
+            </label>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            {{ $t('proxy.delegation.auto_accept_note') }}
+          </p>
+        </div>
+      </div>
+
       <ScheduleEventRecurrenceInput v-model:form="form" />
       <div>
         <label class="mb-1 block text-sm font-medium">説明</label>

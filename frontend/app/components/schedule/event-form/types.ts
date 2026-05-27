@@ -22,6 +22,8 @@ export interface ScheduleEventFormState {
   recurrenceEndType: RecurrenceEndType
   recurrenceEndDate: Date | null
   recurrenceCount: number
+  allowProxyAttendance: boolean   // F03.10 代理出席を許可するか
+  isProxyAutoAccept: boolean      // F03.10 代理委任を自動承認するか
 }
 
 export interface TimeHistoryEntry {

@@ -42,6 +42,8 @@ const form = ref({
   attendanceMode: 'NONE' as AttendanceMode,
   preSurveyId: null as number | null,
   postSurveyId: null as number | null,
+  allowProxyAttendance: false,
+  isProxyAutoAccept: false,
 })
 
 watch(
@@ -68,6 +70,8 @@ watch(
         form.value.attendanceMode = (d.registration?.attendanceMode ?? 'NONE') as AttendanceMode
         form.value.preSurveyId = d.registration?.preSurveyId ?? null
         form.value.postSurveyId = d.registration?.postSurveyId ?? null
+        form.value.allowProxyAttendance = (d.registration as Record<string, unknown>)?.allowProxyAttendance as boolean ?? false
+        form.value.isProxyAutoAccept = (d.registration as Record<string, unknown>)?.isProxyAutoAccept as boolean ?? false
       } catch {
         notification.error('イベント情報の取得に失敗しました')
       }
@@ -104,6 +108,8 @@ async function submit() {
     attendanceMode: form.value.attendanceMode,
     preSurveyId: form.value.preSurveyId ?? undefined,
     postSurveyId: form.value.postSurveyId ?? undefined,
+    allow_proxy_attendance: form.value.allowProxyAttendance,
+    is_proxy_auto_accept: form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false,
   }
 
   try {
@@ -141,6 +147,8 @@ function resetForm() {
     attendanceMode: 'NONE',
     preSurveyId: null,
     postSurveyId: null,
+    allowProxyAttendance: false,
+    isProxyAutoAccept: false,
   }
   fieldErrors.value = {}
 }
@@ -249,6 +257,35 @@ function close() {
 
       <!-- 参加方式 -->
       <AttendanceModeSelector v-model="form.attendanceMode" />
+
+      <!-- 代理出席設定 -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center gap-3">
+          <Checkbox
+            v-model="form.allowProxyAttendance"
+            :binary="true"
+            input-id="allowProxy"
+          />
+          <label for="allowProxy" class="text-sm text-gray-700 dark:text-gray-300">
+            {{ $t('proxy.delegation.allow_proxy') }}
+          </label>
+        </div>
+        <div v-if="form.allowProxyAttendance" class="ml-6 flex flex-col gap-1">
+          <div class="flex items-center gap-3">
+            <Checkbox
+              v-model="form.isProxyAutoAccept"
+              :binary="true"
+              input-id="autoAccept"
+            />
+            <label for="autoAccept" class="text-sm text-gray-700 dark:text-gray-300">
+              {{ $t('proxy.delegation.auto_accept') }}
+            </label>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            {{ $t('proxy.delegation.auto_accept_note') }}
+          </p>
+        </div>
+      </div>
 
       <!-- アンケート -->
       <div class="grid grid-cols-2 gap-3">
