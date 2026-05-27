@@ -84,6 +84,34 @@ class AuthTokenServiceTest {
             // JWT形式（ヘッダー.ペイロード.署名）であることを確認
             assertThat(token.split("\\.")).hasSize(3);
         }
+
+        @Test
+        @DisplayName("タイムスタンプ: iat が UTC 現在時刻に一致し exp-iat == ACCESS_TOKEN_EXPIRATION")
+        void issueAccessToken_タイムスタンプ_iatがUTCでTTL正確() {
+            // JVM タイムゾーンに依存した LocalDateTime を使うと iat が UTC から大きくずれる。
+            // このテストは Instant.now() ベースの実装でのみ通過する（再発防止）。
+            long before = Instant.now().getEpochSecond();
+
+            String token = authTokenService.issueAccessToken(1L, List.of("MEMBER"));
+
+            long after = Instant.now().getEpochSecond();
+
+            // JWT ペイロードを直接解析してタイムスタンプを検証
+            SecretKey key = Keys.hmacShaKeyFor(TEST_SECRET.getBytes(StandardCharsets.UTF_8));
+            Claims claims = Jwts.parser()
+                    .verifyWith(key)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+
+            long iat = claims.getIssuedAt().toInstant().getEpochSecond();
+            long exp = claims.getExpiration().toInstant().getEpochSecond();
+
+            // iat が UTC 現在時刻と一致すること（JVM タイムゾーンに依存しない実装の保証）
+            assertThat(iat).isBetween(before, after);
+            // TTL がちょうど ACCESS_TOKEN_EXPIRATION 秒であること
+            assertThat(exp - iat).isEqualTo(ACCESS_TOKEN_EXPIRATION);
+        }
     }
 
     // ========================================
