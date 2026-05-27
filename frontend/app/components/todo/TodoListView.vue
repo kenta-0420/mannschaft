@@ -33,6 +33,8 @@ const emit = defineEmits<{
     todo: MyTodo,
     payload: { status?: string; statusLabelId?: number },
   ]
+  /** TODO 削除要求 */
+  'delete-todo': [todo: MyTodo]
 }>()
 
 const { t } = useI18n()
@@ -126,6 +128,21 @@ function colorOfLabel(label: TodoStatusLabel | TodoStatusLabelInfo): string {
   return '#22c55e'
 }
 
+// === TODO削除 ================================================================
+
+const confirm = useConfirm()
+
+function confirmDelete(todo: MyTodo, ev: Event) {
+  ev.stopPropagation()
+  confirm.require({
+    message: t('todo.list.deleteConfirm'),
+    header: t('todo.list.deleteButton'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    accept: () => emit('delete-todo', todo),
+  })
+}
+
 // 未使用警告抑止
 void props
 </script>
@@ -162,7 +179,7 @@ void props
           role="link"
           tabindex="0"
           :aria-label="todo.content?.title ?? ''"
-          class="block cursor-pointer rounded-xl border-2 border-surface-400 bg-surface-0 transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary dark:border-surface-500 dark:bg-surface-800"
+          class="group block cursor-pointer rounded-xl border-2 border-surface-400 bg-surface-0 transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary dark:border-surface-500 dark:bg-surface-800"
           :class="priorityBorder[todo.priority]"
           @click="navigateTo(todo)"
           @keydown.enter="navigateTo(todo)"
@@ -243,6 +260,16 @@ void props
             >
               {{ priorityLabel[todo.priority] }}
             </span>
+            <!-- 削除ボタン -->
+            <button
+              type="button"
+              class="ml-1 shrink-0 rounded p-1 text-surface-300 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/30 focus:opacity-100 focus:outline-none"
+              :title="t('todo.list.deleteButton')"
+              :aria-label="t('todo.list.deleteAriaLabel')"
+              @click.stop="confirmDelete(todo, $event)"
+            >
+              <i class="pi pi-trash text-xs" />
+            </button>
           </div>
         </div>
       </div>
@@ -279,5 +306,8 @@ void props
         </button>
       </div>
     </Popover>
+
+    <!-- 削除確認ダイアログ -->
+    <ConfirmDialog />
   </div>
 </template>

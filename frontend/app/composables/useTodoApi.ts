@@ -119,6 +119,10 @@ export function useTodoApi() {
     return api<TodoDetail>(`/api/v1/todos/${todoId}`, { method: 'PUT', body })
   }
 
+  async function deletePersonalTodo(todoId: number) {
+    return api(`/api/v1/todos/${todoId}`, { method: 'DELETE' })
+  }
+
   /**
    * スコープを問わず使える汎用ステータス変更
    *
@@ -332,6 +336,7 @@ export function useTodoApi() {
     getPersonalTodo,
     createPersonalTodo,
     updatePersonalTodo,
+    deletePersonalTodo,
     changeTodoStatusById,
     listTodos,
     getTodo,

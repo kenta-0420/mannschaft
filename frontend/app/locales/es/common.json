@@ -508,7 +508,12 @@
       "changeLabelAria": "ステータスラベルを変更",
       "popoverTitle": "ステータスを変更",
       "popoverLoading": "読み込み中...",
-      "popoverEmpty": "ラベルがありません"
+      "popoverEmpty": "ラベルがありません",
+      "viewModeList": "Vista de lista",
+      "viewModeKanban": "Vista Kanban",
+      "deleteButton": "Eliminar",
+      "deleteAriaLabel": "Eliminar este TODO",
+      "deleteConfirm": "¿Eliminar este TODO? Esta acción no se puede deshacer."
     },
     "field": {
       "status": "ステータス",
