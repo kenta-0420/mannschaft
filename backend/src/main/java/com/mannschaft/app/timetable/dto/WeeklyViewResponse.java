@@ -1,7 +1,7 @@
 package com.mannschaft.app.timetable.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -11,8 +11,8 @@ import java.util.Map;
 /**
  * 週間時間割ビューレスポンス。月曜〜日曜のスロット・臨時変更を含む。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class WeeklyViewResponse {
     private final Long timetableId;
     private final String timetableName;
@@ -27,8 +27,8 @@ public class WeeklyViewResponse {
     /**
      * コマ情報（時限番号・ラベル・開始終了時刻・休み時間フラグ）。
      */
+    @Builder(toBuilder = true)
     @Getter
-    @RequiredArgsConstructor
     public static class PeriodInfo {
         private final Integer periodNumber;
         private final String label;
@@ -40,8 +40,8 @@ public class WeeklyViewResponse {
     /**
      * 曜日ごとの日次情報。日付・休校フラグ・スロット一覧を保持する。
      */
+    @Builder(toBuilder = true)
     @Getter
-    @RequiredArgsConstructor
     public static class DayInfo {
         private final LocalDate date;
         private final Boolean isDayOff;
@@ -52,8 +52,8 @@ public class WeeklyViewResponse {
     /**
      * 時限ごとのスロット情報（臨時変更情報を含む）。
      */
+    @Builder(toBuilder = true)
     @Getter
-    @RequiredArgsConstructor
     public static class SlotInfo {
         private final Integer periodNumber;
         private final String subjectName;
