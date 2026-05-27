@@ -82,7 +82,7 @@ const ENUM_CHECKS = [
 
 /**
  * Java enum ファイルを読み込み、定数名のセットを返す。
- * `    [A-Z][A-Z0-9_]*[,;]` のパターンにマッチする行から抽出する。
+ * `    [A-Z][A-Z0-9_]*` で始まる行（末尾のカンマ・セミコロン有無を問わず）から抽出する。
  *
  * @param {string} absPath - Java enum ファイルの絶対パス
  * @returns {Set<string>|null} - 定数名のセット。ファイルが存在しない場合は null
@@ -93,8 +93,8 @@ function extractEnumValues(absPath) {
   }
   const content = fs.readFileSync(absPath, 'utf8');
   const values = new Set();
-  // 行頭スペース4つ＋大文字始まりの定数名＋カンマまたはセミコロン
-  const pattern = /^\s{4}([A-Z][A-Z0-9_]*)[,;]/gm;
+  // 行頭スペース4つ＋大文字始まりの定数名。末尾がカンマ/セミコロン/空白/行末のいずれでもマッチ（最終定数の取りこぼしを防ぐ）
+  const pattern = /^\s{4}([A-Z][A-Z0-9_]*)(?:[,;]|\s|$)/gm;
   let match;
   while ((match = pattern.exec(content)) !== null) {
     values.add(match[1]);
