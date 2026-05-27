@@ -53,13 +53,7 @@ onMounted(load)
           option-label="value"
         >
           <template #option="{ option }">
-            <div class="group/tip relative flex items-center justify-center">
-              <i :class="option.icon" />
-              <div class="pointer-events-none absolute top-full left-1/2 z-[100] mt-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-surface-200 bg-white px-2 py-0.5 text-xs text-surface-600 opacity-0 shadow-sm transition-opacity group-hover/tip:opacity-100 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-300">
-                <span class="absolute -top-[5px] left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45 border-l border-t border-surface-200 bg-white dark:border-surface-600 dark:bg-surface-800" />
-                {{ option.tooltip }}
-              </div>
-            </div>
+            <i v-tooltip.bottom="option.tooltip" :class="option.icon" />
           </template>
         </SelectButton>
         <Button
