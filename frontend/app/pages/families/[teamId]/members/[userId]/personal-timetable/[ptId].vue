@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { FamilyWeeklyView } from '~/types/personal-timetable'
 import type { DayOfWeekKey } from '~/types/timetable'
 
@@ -8,6 +9,7 @@ const { t } = useI18n()
 const route = useRoute()
 const api = useFamilyPersonalTimetableApi()
 const { error } = useNotification()
+const { userTimezone } = useDatetime()
 
 const teamId = computed(() => Number(route.params.teamId))
 const userId = computed(() => Number(route.params.userId))
@@ -44,10 +46,8 @@ async function load() {
 }
 
 function shiftWeek(days: number) {
-  const base = view.value?.week_start ?? new Date().toISOString().slice(0, 10)
-  const date = new Date(base + 'T00:00:00Z')
-  date.setUTCDate(date.getUTCDate() + days)
-  weekOf.value = date.toISOString().slice(0, 10)
+  const base = view.value?.week_start ?? dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
+  weekOf.value = dayjs(base).tz(userTimezone.value).add(days, 'day').format('YYYY-MM-DD')
   load()
 }
 

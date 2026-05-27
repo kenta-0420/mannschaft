@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 const props = defineProps<{
   visible: boolean
   initialDate?: string
@@ -13,6 +14,7 @@ const emit = defineEmits<{
 }>()
 
 const scheduleApi = useScheduleApi()
+const { userTimezone } = useDatetime()
 const notification = useNotification()
 const { handleApiError, getFieldErrors } = useErrorHandler()
 
@@ -43,7 +45,7 @@ watch(
 
 function buildDateTimeStr(date: Date | null, time: string): string {
   if (!date) return ''
-  const dateStr = date.toISOString().split('T')[0]
+  const dateStr = dayjs(date).tz(userTimezone.value).format('YYYY-MM-DD')
   return time ? `${dateStr}T${time}:00` : `${dateStr}T00:00:00`
 }
 

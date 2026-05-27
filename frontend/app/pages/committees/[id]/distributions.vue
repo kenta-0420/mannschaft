@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { CommitteeDistributionLog } from '~/types/committee'
 
 definePageMeta({ middleware: 'auth' })
@@ -7,6 +8,7 @@ const route = useRoute()
 const committeeId = Number(route.params.id)
 const committeeApi = useCommitteeApi()
 const { handleApiError } = useErrorHandler()
+const { userTimezone } = useDatetime()
 
 const distributions = ref<CommitteeDistributionLog[]>([])
 const loading = ref(true)
@@ -25,8 +27,7 @@ async function loadDistributions() {
 }
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  return dayjs(dateStr).tz(userTimezone.value).format('YYYY/MM/DD HH:mm')
 }
 
 onMounted(async () => {

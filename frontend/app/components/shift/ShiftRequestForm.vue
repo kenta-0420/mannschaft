@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { ShiftPreference } from '~/types/shift'
 const props = defineProps<{
   teamId: number
@@ -13,6 +14,7 @@ const emit = defineEmits<{
 
 const shiftApi = useShiftApi()
 const notification = useNotification()
+const { userTimezone } = useDatetime()
 
 const submitting = ref(false)
 const form = ref({
@@ -31,7 +33,7 @@ async function submit() {
   if (!form.value.slotDate) return
   submitting.value = true
   try {
-    const slotDate = form.value.slotDate.toISOString().split('T')[0] ?? ''
+    const slotDate = dayjs(form.value.slotDate).tz(userTimezone.value).format('YYYY-MM-DD')
     await shiftApi.submitShiftRequest({
       scheduleId: props.scheduleId,
       slotDate,

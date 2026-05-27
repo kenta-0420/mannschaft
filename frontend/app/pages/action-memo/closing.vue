@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { ActionMemo } from '~/types/actionMemo'
 
 /**
@@ -28,21 +29,18 @@ const store = useActionMemoStore()
 const todoApi = useTodoApi()
 const notification = useNotification()
 const api = useApi()
+const authStore = useAuthStore()
 
-// === 日付ユーティリティ（JST 基準）===
-function todayJst(): string {
-  const now = new Date()
-  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
-  return jst.toISOString().slice(0, 10)
+// === 日付ユーティリティ（ユーザーTZ基準）===
+function todayDate(): string {
+  return dayjs().tz(authStore.user?.timezone ?? 'Asia/Tokyo').format('YYYY-MM-DD')
 }
 
-function tomorrowJst(): string {
-  const now = new Date()
-  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000 + 24 * 60 * 60 * 1000)
-  return jst.toISOString().slice(0, 10)
+function tomorrowDate(): string {
+  return dayjs().tz(authStore.user?.timezone ?? 'Asia/Tokyo').add(1, 'day').format('YYYY-MM-DD')
 }
 
-const today = ref(todayJst())
+const today = ref(todayDate())
 
 // === メモ一覧 ===
 const todaysMemos = computed<ActionMemo[]>(() => store.currentDayMemos(today.value))
@@ -111,7 +109,7 @@ async function addTomorrowTodo() {
   try {
     await todoApi.createPersonalTodo({
       title,
-      dueDate: tomorrowJst(),
+      dueDate: tomorrowDate(),
       priority: 'MEDIUM',
     })
     tomorrowInput.value = ''
@@ -127,7 +125,7 @@ async function moveToTomorrow(todo: TodoItem) {
     // 設計書 §5.4 に基づき PATCH /api/v1/todos/{id} に dueDate 更新を送る
     await api(`/api/v1/todos/${todo.id}`, {
       method: 'PATCH',
-      body: { dueDate: tomorrowJst() },
+      body: { dueDate: tomorrowDate() },
     })
     // 対象 TODO をローカルリストから取り除く（当日一覧なので表示対象外になる）
     todos.value = todos.value.filter((t2) => t2.id !== todo.id)

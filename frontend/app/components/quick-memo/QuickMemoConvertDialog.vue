@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import type { QuickMemoResponse, ConvertToTodoRequest } from '~/types/quickMemo'
 
 const props = defineProps<{
@@ -11,6 +12,7 @@ const emit = defineEmits<{ converted: [todoId: number] }>()
 const { t } = useI18n()
 const notification = useNotification()
 const memoApi = useQuickMemoApi()
+const { userTimezone } = useDatetime()
 
 const form = ref<ConvertToTodoRequest>({
   priority: 'MEDIUM',
@@ -28,7 +30,7 @@ const priorityOptions = [
 ]
 
 function toLocalDateStr(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return dayjs(d).tz(userTimezone.value).format('YYYY-MM-DD')
 }
 
 async function submit() {

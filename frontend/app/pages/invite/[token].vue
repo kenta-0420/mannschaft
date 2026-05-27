@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import dayjs from 'dayjs'
 definePageMeta({
   layout: 'auth',
 })
@@ -8,6 +9,7 @@ const api = useApi()
 const authStore = useAuthStore()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
+const { userTimezone } = useDatetime()
 
 const token = computed(() => String(route.params.token))
 
@@ -90,8 +92,7 @@ function goToRegister() {
 
 function formatExpiry(expiresAt: string | null): string {
   if (!expiresAt) return '無期限'
-  const date = new Date(expiresAt)
-  return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} まで有効`
+  return `${dayjs(expiresAt).tz(userTimezone.value).format('YYYY/MM/DD')} まで有効`
 }
 
 onMounted(() => {
