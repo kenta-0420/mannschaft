@@ -13,6 +13,7 @@ const {
   kanbanCols,
   load,
   changeStatus,
+  deleteTodo,
   scopeDisplayName,
   scopeColor,
   formatDate,
@@ -45,14 +46,14 @@ onMounted(load)
         <SelectButton
           v-model="viewMode"
           :options="[
-            { value: 'list', icon: 'pi pi-list' },
-            { value: 'kanban', icon: 'pi pi-th-large' },
+            { value: 'list', icon: 'pi pi-list', tooltip: t('todo.list.viewModeList') },
+            { value: 'kanban', icon: 'pi pi-th-large', tooltip: t('todo.list.viewModeKanban') },
           ]"
           option-value="value"
           option-label="value"
         >
           <template #option="{ option }">
-            <i :class="option.icon" />
+            <i v-tooltip.bottom="option.tooltip" :class="option.icon" />
           </template>
         </SelectButton>
         <Button
@@ -122,6 +123,7 @@ onMounted(load)
       :format-date="formatDate"
       :is-overdue="isOverdue"
       @change-status="changeStatus"
+      @delete-todo="deleteTodo"
     />
 
     <TodoKanbanView

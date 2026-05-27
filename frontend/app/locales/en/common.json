@@ -508,7 +508,12 @@
       "changeLabelAria": "Change status label",
       "popoverTitle": "Change status",
       "popoverLoading": "Loading...",
-      "popoverEmpty": "No labels available"
+      "popoverEmpty": "No labels available",
+      "viewModeList": "List view",
+      "viewModeKanban": "Kanban view",
+      "deleteButton": "Delete",
+      "deleteAriaLabel": "Delete this TODO",
+      "deleteConfirm": "Delete this TODO? This cannot be undone."
     },
     "field": {
       "status": "Status",

@@ -81,7 +81,21 @@ export function useTodoList() {
   const todos = ref<MyTodo[]>([])
   const loading = ref(true)
   const scopeTab = ref<'all' | 'personal' | 'team' | 'organization'>('all')
-  const showCompleted = ref(false)
+
+  // localStorage で状態を永続化（ブラウザ再起動後も維持）
+  const SHOW_COMPLETED_KEY = 'mannschaft:todo:showCompleted'
+  const showCompleted = ref<boolean>(
+    typeof localStorage !== 'undefined'
+      ? localStorage.getItem(SHOW_COMPLETED_KEY) === 'true'
+      : false,
+  )
+
+  // 変更時に保存
+  watch(showCompleted, (val) => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(SHOW_COMPLETED_KEY, String(val))
+    }
+  })
 
   const teamNameMap = computed(() =>
     Object.fromEntries(teamStore.myTeams.map((t) => [t.id, t.nickname1 || t.name])),
@@ -303,6 +317,22 @@ export function useTodoList() {
     return !!todo.dueDate && (todo.daysRemaining ?? 0) < 0 && todo.status !== 'COMPLETED'
   }
 
+  async function deleteTodo(todo: MyTodo) {
+    try {
+      if (todo.scopeType === 'PERSONAL' || !todo.scopeId) {
+        await todoApi.deletePersonalTodo(todo.id)
+      } else {
+        // チーム・組織TODOの削除はスコープ別APIを使用（現状は個人のみ対応）
+        notification.error('チーム・組織TODOの削除はTODO詳細画面から行ってください')
+        return
+      }
+      // 楽観更新: ローカルから即時除去
+      todos.value = todos.value.filter((t) => t.id !== todo.id)
+    } catch {
+      notification.error('TODOの削除に失敗しました')
+    }
+  }
+
   return {
     todos,
     loading,
@@ -313,6 +343,7 @@ export function useTodoList() {
     kanbanCols,
     load,
     changeStatus,
+    deleteTodo,
     nextStatus,
     nextStatusLabel,
     scopeDisplayName,

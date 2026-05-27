@@ -508,7 +508,12 @@
       "changeLabelAria": "ステータスラベルを変更",
       "popoverTitle": "ステータスを変更",
       "popoverLoading": "読み込み中...",
-      "popoverEmpty": "ラベルがありません"
+      "popoverEmpty": "ラベルがありません",
+      "viewModeList": "목록 보기",
+      "viewModeKanban": "칸반 보기",
+      "deleteButton": "삭제",
+      "deleteAriaLabel": "이 할 일 삭제",
+      "deleteConfirm": "이 할 일을 삭제하시겠습니까？삭제 후에는 복구할 수 없습니다。"
     },
     "field": {
       "status": "ステータス",
