@@ -74,6 +74,17 @@ mannschaft:
           secret: ci-test-qr-signing-key-fixed-32bytes-testingxxxx
           active: true
 
+# --- Actuator ヘルスチェック（CI では Redis が存在しないため無効化）---
+# Redis が DOWN の場合 /actuator/health が HTTP 503 を返し、ヘルスチェックが失敗する。
+# application-test.yml と同様に Redis ヘルスインジケーターを無効化する。
+management:
+  endpoint:
+    health:
+      show-details: always
+  health:
+    redis:
+      enabled: false
+
 # --- ログレベル（CI では INFO で十分）---
 logging:
   level:
