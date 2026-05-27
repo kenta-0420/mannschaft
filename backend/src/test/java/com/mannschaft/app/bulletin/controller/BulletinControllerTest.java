@@ -192,10 +192,15 @@ class BulletinControllerTest {
         private BulletinThreadController threadController;
 
         private ThreadResponse createThreadResponse() {
-            return new ThreadResponse(
-                    THREAD_ID, CATEGORY_ID, "TEAM", SCOPE_ID, USER_ID,
-                    "テストスレッド", "本文", "INFO", "COUNT_ONLY",
-                    false, false, false, null, 0, 0, null, null, null, null, null);
+            return ThreadResponse.builder()
+                    .id(THREAD_ID)
+                    .scope(new ThreadResponse.ThreadScopeDto(CATEGORY_ID, "TEAM", SCOPE_ID))
+                    .content(new ThreadResponse.ThreadContentDto("テストスレッド", "本文", "INFO", "COUNT_ONLY"))
+                    .state(new ThreadResponse.ThreadStateDto(false, false, false, null))
+                    .stats(new ThreadResponse.ThreadStatsDto(0, 0, null))
+                    .source(new ThreadResponse.ThreadSourceDto(null, null))
+                    .audit(new ThreadResponse.ThreadAuditDto(USER_ID, null, null))
+                    .build();
         }
 
         @Test
@@ -245,7 +250,7 @@ class BulletinControllerTest {
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody().getData().getTitle()).isEqualTo("テストスレッド");
+            assertThat(response.getBody().getData().getContent().title()).isEqualTo("テストスレッド");
         }
 
         @Test
