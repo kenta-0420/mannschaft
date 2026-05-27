@@ -1,5 +1,6 @@
 package com.mannschaft.app.chat.event;
 
+import com.mannschaft.app.admin.service.AdminBusinessAlertService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
@@ -37,6 +38,7 @@ public class InquiryChatEventListener {
     private final UserRoleRepository userRoleRepository;
     private final NotificationService notificationService;
     private final StringRedisTemplate redisTemplate;
+    private final AdminBusinessAlertService adminBusinessAlertService;
 
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -75,6 +77,7 @@ public class InquiryChatEventListener {
                         "/teams/" + event.getTeamId() + "/chat?channel=" + event.getChannelId(),
                         event.getActorUserId()
                 );
+                adminBusinessAlertService.invalidateCache(recipientId);
             } catch (Exception e) {
                 log.warn("問い合わせ通知の送信に失敗しました: recipientId={}, channelId={}", recipientId, event.getChannelId(), e);
             }

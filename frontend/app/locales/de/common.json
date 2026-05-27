@@ -1289,11 +1289,13 @@
     },
     "businessAlert": {
       "title": "Geschäftswarnungen",
-      "newReservations": "Neue Reservierungen",
-      "pendingApproval": "Ausstehende Genehmigung",
+      "viewAll": "Alle anzeigen",
+      "newReservations": "Neue Buchungen",
+      "pendingApproval": "Genehmigung ausstehend",
       "unreadInquiries": "Anfragen",
+      "totalPending": "{count} Elemente erfordern Aufmerksamkeit",
       "noAlerts": "Keine Warnungen",
-      "viewAll": "Alle anzeigen"
+      "allClear": "Keine ausstehenden Aufgaben"
     }
   },
   "notificationCredit": {

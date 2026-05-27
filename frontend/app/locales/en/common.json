@@ -1289,11 +1289,13 @@
     },
     "businessAlert": {
       "title": "Business Alerts",
+      "viewAll": "View all",
       "newReservations": "New Reservations",
-      "pendingApproval": "Pending Approval",
+      "pendingApproval": "Awaiting Approval",
       "unreadInquiries": "Inquiries",
+      "totalPending": "{count} items need attention",
       "noAlerts": "No alerts",
-      "viewAll": "View all"
+      "allClear": "No pending items"
     }
   },
   "notificationCredit": {

@@ -1289,11 +1289,13 @@
     },
     "businessAlert": {
       "title": "业务提醒",
+      "viewAll": "查看全部",
       "newReservations": "新预约",
       "pendingApproval": "待审批",
       "unreadInquiries": "咨询",
+      "totalPending": "有{count}件待处理",
       "noAlerts": "暂无提醒",
-      "viewAll": "查看全部"
+      "allClear": "暂无待处理事项"
     }
   },
   "notificationCredit": {

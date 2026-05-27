@@ -1289,11 +1289,13 @@
     },
     "businessAlert": {
       "title": "업무 알림",
-      "newReservations": "신규 예약",
+      "viewAll": "전체 보기",
+      "newReservations": "새 예약",
       "pendingApproval": "승인 대기",
       "unreadInquiries": "문의",
+      "totalPending": "{count}건 처리 필요",
       "noAlerts": "알림이 없습니다",
-      "viewAll": "전체 보기"
+      "allClear": "처리 필요한 업무가 없습니다"
     }
   },
   "notificationCredit": {
