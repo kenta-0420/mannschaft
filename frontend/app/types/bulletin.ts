@@ -28,6 +28,11 @@ export interface BulletinThreadResponse {
   isPinned: boolean
   isLocked: boolean
   isArchived: boolean
+  /**
+   * 保管庫フォルダ ID（UUID 文字列）。
+   * NULL かつ isArchived=true = 保管庫直下（未分類）。F05.1 保管庫フォルダ機能で追加。
+   */
+  archiveFolderId?: string | null
   replyCount: number
   readCount: number
   isRead: boolean
@@ -96,4 +101,101 @@ export interface BulletinThreadSearchParams {
   keyword: string
   page?: number
   size?: number
+}
+
+// =====================================================================
+// 保管庫（アーカイブ）フォルダ（F05.1 §4 / §5）
+// =====================================================================
+
+/**
+ * 保管庫フォルダ（単一ノード）。
+ *
+ * Backend `ArchiveFolderResponse` と意味的に同一。ツリー取得時は `children` に
+ * 子フォルダを再帰ネストする。単一作成・更新レスポンスでは `children` は空配列。
+ */
+export interface BulletinArchiveFolder {
+  /** フォルダ UUID。 */
+  id: string
+  /** 親フォルダ UUID（null = ルート＝保管庫直下のトップレベル）。 */
+  parentId: string | null
+  name: string
+  /** カラー（HEX #RRGGBB）。 */
+  color: string | null
+  /** アイコン（PrimeIcons 名）。 */
+  icon: string | null
+  /** ネスト深さ（0 = ルート、最大 4）。 */
+  depth: number
+  displayOrder: number
+  /** 直下の子フォルダ数。 */
+  childCount: number
+  /** このフォルダ直下に所属するアーカイブ済みスレッド数。 */
+  threadCount: number
+  /** 子フォルダ（ツリー構造）。 */
+  children: BulletinArchiveFolder[]
+}
+
+/**
+ * 保管庫フォルダツリーの再帰ノード型エイリアス（設計書 §5 で用いる呼称）。
+ * 構造は {@link BulletinArchiveFolder} と同一。
+ */
+export type ArchiveFolderTreeNode = BulletinArchiveFolder
+
+/** 保管庫フォルダツリーのメタ情報（GET .../archive/folders の meta）。 */
+export interface ArchiveFolderTreeMeta {
+  /** 保管庫直下（archive_folder_id=NULL かつ is_archived=true）の未分類スレッド数。 */
+  unfiledThreadCount: number
+  /** アクティブなフォルダ総数。 */
+  totalFolderCount: number
+  /** ネスト最大階層（= 5）。 */
+  maxDepth: number
+  /** フォルダ数上限（= 200）。 */
+  maxFolderCount: number
+}
+
+/** 保管庫フォルダツリーレスポンス（GET .../archive/folders）。 */
+export interface ArchiveFolderTreeResponse {
+  data: ArchiveFolderTreeNode[]
+  meta: ArchiveFolderTreeMeta
+}
+
+/** 保管庫フォルダ作成リクエスト（POST .../archive/folders）。 */
+export interface CreateArchiveFolderRequest {
+  name: string
+  /** 親フォルダ UUID（省略・null = 保管庫直下のルート）。 */
+  parentFolderId?: string | null
+  /** カラー（HEX #RRGGBB）。 */
+  color?: string | null
+  /** アイコン（PrimeIcons 名）。 */
+  icon?: string | null
+}
+
+/**
+ * 保管庫フォルダ更新・移動リクエスト（PUT .../archive/folders/{folderId}）。
+ *
+ * すべて任意。`parentFolderId` を指定すると移動（サブツリーごと）。
+ * ルートへ移動する場合は `parentFolderId: null` を明示送信する。
+ */
+export interface UpdateArchiveFolderRequest {
+  name?: string
+  color?: string | null
+  icon?: string | null
+  displayOrder?: number
+  parentFolderId?: string | null
+}
+
+/** スレッドのフォルダ振り分けリクエスト（PATCH .../archive/threads/{threadId}/folder）。 */
+export interface MoveThreadFolderRequest {
+  /** 移動先フォルダ UUID。null = 保管庫直下（未分類）。 */
+  archiveFolderId: string | null
+}
+
+/** 保管庫フォルダ削除レスポンス（DELETE .../archive/folders/{folderId}）。 */
+export interface DeleteArchiveFolderResponse {
+  id: string
+  deletedAt: string
+  /** 保管庫直下（未分類）へ退避したスレッド件数。 */
+  movedThreadCount: number
+  /** 親へ繰り上げた子フォルダ件数。 */
+  promotedFolderCount: number
+  message: string
 }
