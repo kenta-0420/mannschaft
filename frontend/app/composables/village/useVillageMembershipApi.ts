@@ -42,10 +42,11 @@ export function useVillageMembershipApi() {
 
   /** §4.4.1 参加 */
   async function joinVillage(villageId: string, body: MembershipJoinRequest) {
-    return api<MembershipResponse>(`/api/v1/villages/${villageId}/memberships`, {
+    const res = await api<{ data: MembershipResponse }>(`/api/v1/villages/${villageId}/memberships`, {
       method: 'POST',
       body,
     })
+    return res.data
   }
 
   /** §4.4.2 退村 */
@@ -55,25 +56,28 @@ export function useVillageMembershipApi() {
 
   /** §4.4.3 メンバー一覧 */
   async function listMembers(villageId: string, params?: MembershipListParams) {
-    return api<MembershipListResponse>(
+    const res = await api<{ data: MembershipListResponse }>(
       `/api/v1/villages/${villageId}/memberships${qs(params)}`,
     )
+    return res.data
   }
 
   /** §4.4.4 ロール変更 */
   async function changeRole(villageId: string, membershipId: string, body: RoleChangeRequest) {
-    return api<MembershipResponse>(
+    const res = await api<{ data: MembershipResponse }>(
       `/api/v1/villages/${villageId}/memberships/${membershipId}/role`,
       { method: 'PATCH', body },
     )
+    return res.data
   }
 
   /** §4.4.5 BAN */
   async function banMember(villageId: string, membershipId: string, body: MembershipBanRequest) {
-    return api<MembershipResponse>(
+    const res = await api<{ data: MembershipResponse }>(
       `/api/v1/villages/${villageId}/memberships/${membershipId}/ban`,
       { method: 'POST', body },
     )
+    return res.data
   }
 
   // =====================================================================
@@ -82,46 +86,52 @@ export function useVillageMembershipApi() {
 
   /** §4.6.1 申請作成 */
   async function createCreationRequest(body: VillageCreationRequestCreateRequest) {
-    return api<VillageCreationRequestResponse>('/api/v1/villages/creation-requests', {
+    const res = await api<{ data: VillageCreationRequestResponse }>('/api/v1/villages/creation-requests', {
       method: 'POST',
       body,
     })
+    return res.data
   }
 
   /** §4.6.2 自分の申請一覧 */
   async function listMyCreationRequests() {
-    return api<VillageCreationRequestResponse[]>('/api/v1/me/village-creation-requests')
+    const res = await api<{ data: VillageCreationRequestResponse[] }>('/api/v1/me/village-creation-requests')
+    return res.data
   }
 
   /** §4.6.3 管理者向け一覧 */
   async function listAdminCreationRequests(params?: CreationRequestListParams) {
-    return api<VillageCreationRequestResponse[]>(
+    const res = await api<{ data: VillageCreationRequestResponse[] }>(
       `/api/v1/admin/village-creation-requests${qs(params)}`,
     )
+    return res.data
   }
 
   /** §4.6.4 承認 */
   async function approveCreationRequest(id: string, body: VillageCreationRequestReviewRequest) {
-    return api<VillageCreationRequestResponse>(
+    const res = await api<{ data: VillageCreationRequestResponse }>(
       `/api/v1/admin/village-creation-requests/${id}/approve`,
       { method: 'POST', body },
     )
+    return res.data
   }
 
   /** §4.6.5 却下 */
   async function rejectCreationRequest(id: string, body: VillageCreationRequestReviewRequest) {
-    return api<VillageCreationRequestResponse>(
+    const res = await api<{ data: VillageCreationRequestResponse }>(
       `/api/v1/admin/village-creation-requests/${id}/reject`,
       { method: 'POST', body },
     )
+    return res.data
   }
 
   /** §4.6.6 取下げ */
   async function withdrawCreationRequest(id: string) {
-    return api<VillageCreationRequestResponse>(
+    const res = await api<{ data: VillageCreationRequestResponse }>(
       `/api/v1/admin/village-creation-requests/${id}/withdraw`,
       { method: 'POST' },
     )
+    return res.data
   }
 
   /**
@@ -150,17 +160,19 @@ export function useVillageMembershipApi() {
 
   /** §4.5.1 参加申請作成 */
   async function createJoinRequest(villageId: string, body: JoinRequestCreateRequest) {
-    return api<JoinRequestResponse>(`/api/v1/villages/${villageId}/join-requests`, {
+    const res = await api<{ data: JoinRequestResponse }>(`/api/v1/villages/${villageId}/join-requests`, {
       method: 'POST',
       body,
     })
+    return res.data
   }
 
   /** §4.5.2 申請一覧（村長/長老向け） */
   async function listJoinRequests(villageId: string, status?: VillageRequestStatus) {
-    return api<JoinRequestResponse[]>(
+    const res = await api<{ data: JoinRequestResponse[] }>(
       `/api/v1/villages/${villageId}/join-requests${qs({ status })}`,
     )
+    return res.data
   }
 
   /** §4.5.3 承認 */
@@ -169,10 +181,11 @@ export function useVillageMembershipApi() {
     id: string,
     body: JoinRequestReviewRequest,
   ) {
-    return api<JoinRequestResponse>(
+    const res = await api<{ data: JoinRequestResponse }>(
       `/api/v1/villages/${villageId}/join-requests/${id}/approve`,
       { method: 'POST', body },
     )
+    return res.data
   }
 
   /** §4.5.4 却下 */
@@ -181,18 +194,20 @@ export function useVillageMembershipApi() {
     id: string,
     body: JoinRequestReviewRequest,
   ) {
-    return api<JoinRequestResponse>(
+    const res = await api<{ data: JoinRequestResponse }>(
       `/api/v1/villages/${villageId}/join-requests/${id}/reject`,
       { method: 'POST', body },
     )
+    return res.data
   }
 
   /** §4.5.5 取下げ */
   async function withdrawJoinRequest(villageId: string, id: string) {
-    return api<JoinRequestResponse>(
+    const res = await api<{ data: JoinRequestResponse }>(
       `/api/v1/villages/${villageId}/join-requests/${id}/withdraw`,
       { method: 'POST' },
     )
+    return res.data
   }
 
   /** §4.5 統合 reviewer ヘルパ */
