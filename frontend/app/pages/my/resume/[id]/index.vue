@@ -315,20 +315,39 @@ onBeforeUnmount(() => {
         </h1>
       </div>
 
-      <!-- 保存ステータス -->
-      <div class="flex items-center gap-2 text-sm">
-        <span v-if="saveStatus === 'saving'" class="flex items-center gap-1 text-primary">
-          <i class="pi pi-spin pi-spinner" />
-          {{ t('common.resume.saving') }}
-        </span>
-        <span v-else-if="saveStatus === 'saved'" class="flex items-center gap-1 text-green-600">
-          <i class="pi pi-check" />
-          {{ t('common.resume.saved') }}
-        </span>
-        <span v-else-if="saveStatus === 'error'" class="flex items-center gap-1 text-red-500">
-          <i class="pi pi-exclamation-circle" />
-          {{ t('common.resume.saveError') }}
-        </span>
+      <!-- 保存ステータス＋手動保存ボタン -->
+      <div class="flex items-center gap-3">
+        <Transition name="fade">
+          <span
+            v-if="saveStatus === 'saving'"
+            class="flex items-center gap-1.5 rounded-full bg-primary-50 px-3 py-1 text-sm text-primary dark:bg-primary-950"
+          >
+            <i class="pi pi-spin pi-spinner text-xs" />
+            {{ t('common.resume.saving') }}
+          </span>
+          <span
+            v-else-if="saveStatus === 'saved'"
+            class="flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-sm text-green-600 dark:bg-green-950"
+          >
+            <i class="pi pi-check text-xs" />
+            {{ t('common.resume.saved') }}
+          </span>
+          <span
+            v-else-if="saveStatus === 'error'"
+            class="flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-sm text-red-500 dark:bg-red-950"
+          >
+            <i class="pi pi-exclamation-circle text-xs" />
+            {{ t('common.resume.saveError') }}
+          </span>
+        </Transition>
+        <Button
+          :label="t('common.resume.save')"
+          icon="pi pi-save"
+          size="small"
+          :loading="saveStatus === 'saving'"
+          :disabled="saveStatus === 'saving'"
+          @click="doSave"
+        />
       </div>
     </div>
 
@@ -925,3 +944,14 @@ onBeforeUnmount(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

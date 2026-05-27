@@ -40,6 +40,15 @@ mannschaft:
           secret: ${JOB_QR_SIGNING_SECRET}
           active: true
 
+# セキュリティ: 本番では Swagger UI / OpenAPI エンドポイントを無効化（情報漏洩防止）。
+# 設計書: docs/security/01_authorization_baseline.md §8
+# ※ 型生成用 generateOpenApiDocs タスクは別プロファイル openapi-gen で起動するため影響なし。
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
 server:
   port: ${SERVER_PORT:8080}
 

@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * スレッドレスポンスDTO。
@@ -24,6 +25,8 @@ public class ThreadResponse {
     private final Boolean isPinned;
     private final Boolean isLocked;
     private final Boolean isArchived;
+    /** 保管庫フォルダ ID（NULL かつ isArchived=true = 保管庫直下・未分類）。 */
+    private final UUID archiveFolderId;
     private final Integer replyCount;
     private final Integer readCount;
     private final LocalDateTime lastRepliedAt;
