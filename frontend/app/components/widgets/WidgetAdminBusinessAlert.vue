@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { watch } from 'vue'
 import type { AdminBusinessAlertTeam } from '~/types/admin-business-alert'
 
 const { getSummary } = useAdminBusinessAlertApi()
@@ -26,6 +27,29 @@ async function fetchSummary() {
     loading.value = false
   }
 }
+
+/**
+ * 業務アラートに関連する通知種別一覧。
+ * これらの通知を受信した際にサマリーを即時再取得する。
+ */
+const ALERT_TYPES = [
+  'RESERVATION_RECEIVED',
+  'RESERVATION_PENDING_APPROVAL',
+  'RESERVATION_CANCELLED_BY_MEMBER',
+  'INQUIRY_RECEIVED',
+]
+
+// WebSocket経由の通知受信時にサマリーを即時更新する（F10.7 WebSocket連動）
+const notificationStore = useNotificationStore()
+
+watch(
+  () => notificationStore.latestNotification,
+  (notification) => {
+    if (notification && ALERT_TYPES.includes(notification.notificationType)) {
+      fetchSummary()
+    }
+  },
+)
 
 let timer: ReturnType<typeof setInterval>
 onMounted(() => {

@@ -1,5 +1,6 @@
 package com.mannschaft.app.reservation.event;
 
+import com.mannschaft.app.admin.service.AdminBusinessAlertService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
@@ -28,6 +29,7 @@ public class ReservationAdminNotificationEventListener {
 
     private final UserRoleRepository userRoleRepository;
     private final NotificationService notificationService;
+    private final AdminBusinessAlertService adminBusinessAlertService;
 
     /**
      * 予約作成イベントを受信し、管理者へ通知する。
@@ -70,6 +72,7 @@ public class ReservationAdminNotificationEventListener {
                         "/teams/" + event.getTeamId() + "/reservations",
                         event.getActorUserId()
                 );
+                adminBusinessAlertService.invalidateCache(recipientId);
             } catch (Exception e) {
                 log.warn("予約通知の送信に失敗しました: recipientId={}, reservationId={}",
                         recipientId, event.getReservationId(), e);
@@ -105,6 +108,7 @@ public class ReservationAdminNotificationEventListener {
                         "/teams/" + event.getTeamId() + "/reservations",
                         event.getActorUserId()
                 );
+                adminBusinessAlertService.invalidateCache(recipientId);
             } catch (Exception e) {
                 log.warn("予約キャンセル通知の送信に失敗しました: recipientId={}, reservationId={}",
                         recipientId, event.getReservationId(), e);

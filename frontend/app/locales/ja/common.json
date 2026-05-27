@@ -1289,11 +1289,13 @@
     },
     "businessAlert": {
       "title": "業務アラート",
+      "viewAll": "全件を見る",
       "newReservations": "新規予約",
       "pendingApproval": "承認待ち",
       "unreadInquiries": "問い合わせ",
+      "totalPending": "{count}件の対応が必要です",
       "noAlerts": "アラートはありません",
-      "viewAll": "全件を見る"
+      "allClear": "対応が必要な業務はありません"
     }
   },
   "notificationCredit": {
