@@ -82,10 +82,16 @@ class OrganizationControllerTest {
     }
 
     private OrganizationResponse orgResponse() {
-        return new OrganizationResponse(
-                ORG_ID, "テスト組織", null, null, null, "SCHOOL",
-                null, "東京都", "渋谷区", "PUBLIC", "NONE", false,
-                0L, 3, null, null, null, LocalDateTime.now());
+        return OrganizationResponse.builder()
+                .id(ORG_ID)
+                .basicInfo(new OrganizationResponse.OrgBasicInfoDto(
+                        "テスト組織", null, null, null))
+                .hierarchy(new OrganizationResponse.OrgHierarchyDto("SCHOOL", null))
+                .location(new OrganizationResponse.OrgLocationDto("東京都", "渋谷区"))
+                .visibility(new OrganizationResponse.OrgVisibilityDto("PUBLIC", "NONE", false))
+                .metadata(new OrganizationResponse.OrgMetadataDto(0L, 3, null, null))
+                .timestamps(new OrganizationResponse.OrgTimestampsDto(null, LocalDateTime.now()))
+                .build();
     }
 
     @Test

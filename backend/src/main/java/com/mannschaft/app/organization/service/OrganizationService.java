@@ -311,12 +311,25 @@ public class OrganizationService {
     }
 
     private OrganizationResponse toResponse(OrganizationEntity org, int memberCount) {
-        return new OrganizationResponse(
-                org.getId(), org.getName(), org.getNameKana(),
-                org.getNickname1(), org.getNickname2(), org.getOrgType().name(),
-                org.getParentOrganizationId(), org.getPrefecture(), org.getCity(),
-                org.getVisibility().name(), org.getHierarchyVisibility().name(), org.getSupporterEnabled(),
-                org.getVersion(), memberCount, org.getIconUrl(), org.getBannerUrl(),
-                org.getArchivedAt(), org.getCreatedAt());
+        return OrganizationResponse.builder()
+                .id(org.getId())
+                .basicInfo(new OrganizationResponse.OrgBasicInfoDto(
+                        org.getName(), org.getNameKana(),
+                        org.getNickname1(), org.getNickname2()))
+                .hierarchy(new OrganizationResponse.OrgHierarchyDto(
+                        org.getOrgType() != null ? org.getOrgType().name() : null,
+                        org.getParentOrganizationId()))
+                .location(new OrganizationResponse.OrgLocationDto(
+                        org.getPrefecture(), org.getCity()))
+                .visibility(new OrganizationResponse.OrgVisibilityDto(
+                        org.getVisibility() != null ? org.getVisibility().name() : null,
+                        org.getHierarchyVisibility() != null ? org.getHierarchyVisibility().name() : null,
+                        org.getSupporterEnabled()))
+                .metadata(new OrganizationResponse.OrgMetadataDto(
+                        org.getVersion(), memberCount,
+                        org.getIconUrl(), org.getBannerUrl()))
+                .timestamps(new OrganizationResponse.OrgTimestampsDto(
+                        org.getArchivedAt(), org.getCreatedAt()))
+                .build();
     }
 }
