@@ -44,4 +44,16 @@
             <appender-ref ref="CONSOLE_TEST" />
         </root>
     </springProfile>
+
+    <!-- ci プロファイル（GitHub Actions）: アペンダーがないと全ログが無音になるため明示定義 -->
+    <springProfile name="ci">
+        <appender name="CONSOLE_CI" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_CI" />
+        </root>
+    </springProfile>
 </configuration>

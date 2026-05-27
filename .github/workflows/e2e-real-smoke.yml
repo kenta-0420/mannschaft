@@ -1,0 +1,177 @@
+# =============================================================================
+# E2E Real Smoke — seed データ投入 + Backend API smoke チェック
+# =============================================================================
+# 概要:
+#   1. MySQL サービスコンテナを起動
+#   2. Spring Boot を ci プロファイルで起動（Flyway マイグレーションを自動適用）
+#   3. seed-e2e-data.js で E2E テスト用データを投入
+#   4. smoke-check.sh で API を叩き、HTTP 200 を確認する
+#
+# なぜこれが必要か:
+#   seed-e2e-data.js は MySQL に直接 INSERT するため、Hibernate の
+#   @Enumerated(EnumType.STRING) 変換をバイパスする。
+#   その結果、不正な enum 値（例: channel_type='TEAM'）があっても
+#   INSERT 時には検出されず、API 呼び出し時に HTTP 500 として顕在化する。
+#   このワークフローはその「API 経由での検出」を自動化する。
+#
+# トリガー:
+#   - seed スクリプト変更時（PR）
+#   - schedule 関連 Java ファイル変更時（PR）
+#   - 毎週日曜 JST 05:00（定期チェック）
+#   - 手動実行
+#
+# 実行時間の見積もり: 約 12〜20 分
+#   - JAR ビルド（キャッシュなし）: 約 8〜12 分
+#   - JAR ビルド（キャッシュあり）: 約 3〜5 分
+#   - バックエンド起動 + Flyway: 約 2〜3 分
+#   - seed 実行: 約 30 秒
+#   - smoke チェック: 約 30 秒
+#
+# 制限事項:
+#   - Valkey (Redis) は CI 環境に存在しない。
+#     既存の fail-open 機構（ValkeyFailSilentAspect 等）が接続失敗をスキップするため、
+#     Valkey を使用する機能（セッション管理・レートリミット等）は smoke 対象外とする。
+#   - bcrypt ハッシュ（seed スクリプトが投入した $2a$ 形式）は DelegatingPasswordEncoder の
+#     setDefaultPasswordEncoderForMatches(BCrypt) により正常に検証できる。
+#     Argon2id 移行（PR #1094）の影響でログインが失敗することはない。
+# =============================================================================
+
+name: E2E Real Smoke (Seed + API)
+
+on:
+  pull_request:
+    paths:
+      - 'backend/scripts/seed-e2e-data.js'
+      - 'backend/src/main/java/**/schedule/**/*.java'
+      - '.github/workflows/e2e-real-smoke.yml'
+  schedule:
+    # 毎週日曜 20:00 UTC = 月曜 JST 05:00
+    - cron: '0 20 * * 0'
+  workflow_dispatch:
+
+jobs:
+  seed-and-api-smoke:
+    name: Seed + API Smoke Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: mannschaft
+          MYSQL_USER: mannschaft
+          MYSQL_PASSWORD: mannschaft
+          MYSQL_ROOT_PASSWORD: root_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost -u mannschaft -pmannschaft"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          # setup-java 組み込みの Gradle キャッシュ（~/.gradle/caches と ~/.gradle/wrapper）
+          cache: gradle
+
+      # プロジェクト内の .gradle ディレクトリ（ビルドキャッシュ本体）を別途キャッシュする。
+      # backend-ci.yml と同じ key を使うことでキャッシュを共有できる。
+      - name: Gradle ビルドキャッシュ（プロジェクト内）
+        uses: actions/cache@v4
+        with:
+          path: backend/.gradle/buildOutputCleanup
+          key: gradle-build-cache-${{ runner.os }}-${{ hashFiles('backend/**/*.gradle*', 'backend/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-build-cache-${{ runner.os }}-
+
+      - name: Grant Gradle wrapper execute permission
+        working-directory: backend
+        run: chmod +x gradlew
+
+      # テストをスキップして JAR のみビルド（bootJar は Spring Boot Gradle プラグインが自動で追加する）
+      - name: Build backend JAR (テストスキップ)
+        working-directory: backend
+        run: ./gradlew bootJar -x test --no-daemon --build-cache
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # seed スクリプトの依存関係（mysql2 + bcryptjs）をインストール
+      - name: Install seed script dependencies
+        working-directory: backend/scripts
+        run: npm ci
+
+      # GitHub Actions の MySQL 8.0 サービスコンテナはバイナリロギングが有効なため、
+      # CREATE TRIGGER / CREATE FUNCTION を SUPER 権限なしで実行するには
+      # log_bin_trust_function_creators を有効にする必要がある。
+      - name: Configure MySQL for triggers/functions
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -u root -proot_password -e \
+            "SET GLOBAL log_bin_trust_function_creators = 1;"
+
+      # Backend を ci プロファイルで起動する。
+      # Flyway が自動でマイグレーションを適用してからバックエンドが起動する。
+      # JAR ファイルは *-SNAPSHOT.jar（plain は除外）。
+      - name: Start backend (with Flyway migration)
+        run: |
+          JAR=$(ls backend/build/libs/*.jar | grep -v plain | head -1)
+          echo "起動する JAR: $JAR"
+          java -jar "$JAR" \
+            --spring.profiles.active=ci \
+            > /tmp/backend.log 2>&1 &
+          echo "BACKEND_PID=$!" >> "$GITHUB_ENV"
+          echo "バックエンドを起動しました（PID: $!）"
+
+      # actuator/health が UP になるまで最大 5 分待機する
+      - name: Wait for backend health
+        run: |
+          echo "バックエンドの起動を待機しています..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; then
+              echo "✅ Backend is UP (試行 ${i}/30)"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "❌ FAIL: バックエンドが 5 分以内に起動しませんでした"
+              echo "=== backend.log の末尾 ==="
+              tail -100 /tmp/backend.log || true
+              exit 1
+            fi
+            echo "待機中... ($i/30)"
+            sleep 10
+          done
+
+      # Flyway マイグレーション完了後に seed データを投入する
+      - name: Run seed script
+        working-directory: backend/scripts
+        run: node seed-e2e-data.js
+
+      # seed データが Hibernate 経由で正常に読み取れるかを API で確認する
+      - name: Run API smoke check
+        run: |
+          chmod +x backend/scripts/smoke-check.sh
+          bash backend/scripts/smoke-check.sh http://localhost:8080
+
+      # 失敗時のデバッグ用にバックエンドログをアップロードする
+      - name: バックエンドログをアップロード（失敗時）
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-log-${{ github.run_id }}
+          path: /tmp/backend.log
+          retention-days: 3
+
+      - name: Stop backend
+        if: always()
+        run: kill "$BACKEND_PID" 2>/dev/null || true
