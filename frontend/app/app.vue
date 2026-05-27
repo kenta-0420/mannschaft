@@ -8,3 +8,31 @@
   <DynamicDialog />
   <ErrorReportModal />
 </template>
+
+<style>
+/* ツールチップ: 小さめの吹き出しスタイル（全体適用） */
+.p-tooltip {
+  animation-duration: 0.1s !important;
+}
+.p-tooltip .p-tooltip-text {
+  background: white;
+  color: #4b5563;
+  font-size: 0.7rem;
+  padding: 3px 8px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 4px 0 rgb(0 0 0 / 0.08);
+  border-radius: 6px;
+}
+.p-tooltip.p-tooltip-bottom .p-tooltip-arrow {
+  border-bottom-color: #e5e7eb;
+}
+/* ダークモード */
+.p-dark .p-tooltip .p-tooltip-text {
+  background: #1e293b;
+  color: #cbd5e1;
+  border-color: #334155;
+}
+.p-dark .p-tooltip.p-tooltip-bottom .p-tooltip-arrow {
+  border-bottom-color: #334155;
+}
+</style>

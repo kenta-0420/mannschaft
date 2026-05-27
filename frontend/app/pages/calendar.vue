@@ -192,8 +192,9 @@ watch(createScopeKey, (key) => {
   } else {
     selectedScopes.value = [PERSONAL_KEY, key]
   }
-  // ガントタブが表示中であればスコープ変更に合わせて再読み込みとフェードアニメーション
+  // スコープ変更時はキャッシュを破棄して再取得
   if (activeTab.value === 'gantt') {
+    ganttCache.clear()
     ganttKey.value++
     loadGantt()
   }
@@ -207,45 +208,73 @@ function getMonthRange(year: number, month: number) {
   }
 }
 
+// ガントデータのキャッシュ（スコープ×年月をキーに保持）
+const ganttCache = new Map<string, GanttTodo[]>()
+
+function ganttCacheKey(year: number, month: number): string {
+  return `${year}-${pad(month)}-${createScopeKey.value}`
+}
+
+async function fetchGanttMonth(year: number, month: number): Promise<GanttTodo[]> {
+  const key = ganttCacheKey(year, month)
+  if (ganttCache.has(key)) return ganttCache.get(key)!
+
+  const { from, to } = getMonthRange(year, month)
+  const scopeKey = createScopeKey.value
+  let res: GanttResponse
+
+  if (scopeKey === 'personal') {
+    res = await ganttApi.getPersonalGanttTodos(from, to)
+  } else {
+    const scope = createScopeOptions.value.find(o => o.value === scopeKey)
+    if (!scope) return []
+    res = await ganttApi.getGanttTodos(scope.scopeType, scope.scopeId, from, to)
+  }
+
+  ganttCache.set(key, res.data)
+  return res.data
+}
+
+function prefetchAdjacentMonths(year: number, month: number) {
+  for (let delta = -2; delta <= 2; delta++) {
+    if (delta === 0) continue
+    const d = new Date(year, month - 1 + delta, 1)
+    const y = d.getFullYear()
+    const m = d.getMonth() + 1
+    if (!ganttCache.has(ganttCacheKey(y, m))) {
+      fetchGanttMonth(y, m).catch(() => {})
+    }
+  }
+}
+
 async function loadGantt() {
-  ganttLoading.value = true
-  try {
-    const { from, to } = getMonthRange(currentYear.value, currentMonth.value)
-    ganttFromDate.value = from
-    ganttToDate.value = to
+  const year = currentYear.value
+  const month = currentMonth.value
+  const { from, to } = getMonthRange(year, month)
+  ganttFromDate.value = from
+  ganttToDate.value = to
 
-    const key = createScopeKey.value
+  if (ganttCache.has(ganttCacheKey(year, month))) {
+    // キャッシュヒット: ローディングなしで即表示
+    ganttTodos.value = ganttCache.get(ganttCacheKey(year, month))!
+  } else {
+    ganttLoading.value = true
+    try {
+      ganttTodos.value = await fetchGanttMonth(year, month)
+    } catch {
+      ganttTodos.value = []
+    } finally {
+      ganttLoading.value = false
+    }
+  }
 
-    let res: GanttResponse
-    if (key === 'personal') {
-      // 個人スコープ: 個人 TODO ガントエンドポイントを使用
-      res = await ganttApi.getPersonalGanttTodos(from, to)
-    }
-    else {
-      // チーム/組織スコープ: createScopeOptions から対応スコープを探す
-      const scope = createScopeOptions.value.find(o => o.value === key)
-      if (scope) {
-        res = await ganttApi.getGanttTodos(scope.scopeType, scope.scopeId, from, to)
-      }
-      else {
-        ganttTodos.value = []
-        return
-      }
-    }
-    ganttTodos.value = res.data
-  }
-  catch {
-    ganttTodos.value = []
-  }
-  finally {
-    ganttLoading.value = false
-  }
+  // 表示後に前後2か月をバックグラウンドでプリフェッチ
+  prefetchAdjacentMonths(year, month)
 }
 
 async function onTabChange(tab: CalendarTab) {
   activeTab.value = tab
   if (tab === 'gantt') {
-    // スコープが変わっている可能性があるため常に再読み込み
     await loadGantt()
   }
 }
@@ -454,7 +483,11 @@ onMounted(() => {
             :todos="ganttTodos"
             :from-date="ganttFromDate"
             :to-date="ganttToDate"
+            :current-year="currentYear"
+            :current-month="currentMonth"
             @todo-click="(id) => router.push(`/todos/${id}`)"
+            @prev-month="onPrevMonth"
+            @next-month="onNextMonth"
           />
         </Transition>
       </DashboardWidgetCard>

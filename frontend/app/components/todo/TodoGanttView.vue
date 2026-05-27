@@ -2,15 +2,20 @@
 import type { GanttTodo } from '~/types/todo'
 
 const { t } = useI18n()
+const { getHoliday } = useHolidays()
 
 const props = defineProps<{
   todos: GanttTodo[]
   fromDate: string
   toDate: string
+  currentYear: number
+  currentMonth: number
 }>()
 
 const emit = defineEmits<{
   todoClick: [id: number]
+  prevMonth: []
+  nextMonth: []
 }>()
 
 /** 2つの日付文字列（yyyy-MM-dd）の差分日数を計算する */
@@ -45,7 +50,7 @@ function barWidth(todo: GanttTodo): string {
 
 /** バーの色（ステータス別） */
 function barBgClass(todo: GanttTodo): string {
-  if (todo.status === 'COMPLETED') return 'bg-surface-400 dark:bg-surface-500'
+  if (todo.status === 'COMPLETED') return 'bg-emerald-400 dark:bg-emerald-500'
   if (todo.priority === 'URGENT') return 'bg-red-500'
   if (todo.priority === 'HIGH') return 'bg-orange-400'
   if (todo.priority === 'MEDIUM') return 'bg-blue-500'
@@ -58,19 +63,32 @@ function progressFillWidth(progressRate: string): string {
   return `${Math.min(100, Math.max(0, rate)).toFixed(2)}%`
 }
 
+/** 表示範囲が単一月かどうか */
+const isSingleMonth = computed(() => {
+  const f = new Date(props.fromDate)
+  const t = new Date(props.toDate)
+  return f.getFullYear() === t.getFullYear() && f.getMonth() === t.getMonth()
+})
+
 /** 日付ヘッダー用の日付配列（fromDate から toDate まで） */
-const dateHeaders = computed<Array<{ date: string; label: string }>>(() => {
-  const result: Array<{ date: string; label: string }> = []
+const dateHeaders = computed<Array<{ date: string; label: string; colorClass: string }>>(() => {
+  const result: Array<{ date: string; label: string; colorClass: string }> = []
   const from = new Date(props.fromDate)
   const to = new Date(props.toDate)
   const cur = new Date(from)
   while (cur <= to) {
     const m = cur.getMonth() + 1
     const d = cur.getDate()
-    result.push({
-      date: cur.toISOString().slice(0, 10),
-      label: `${m}/${d}`,
-    })
+    const dow = cur.getDay() // 0=日, 6=土
+    const dateStr = cur.toISOString().slice(0, 10)
+    const label = isSingleMonth.value ? `${d}` : (d === 1 ? `${m}/${d}` : `${d}`)
+    const isHoliday = !!getHoliday(dateStr)
+    const colorClass = (dow === 0 || isHoliday)
+      ? 'bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400'
+      : dow === 6
+        ? 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'
+        : 'text-surface-400 dark:text-surface-500'
+    result.push({ date: dateStr, label, colorClass })
     cur.setDate(cur.getDate() + 1)
   }
   return result
@@ -82,30 +100,39 @@ const headerCellWidth = computed(() => `${(100 / totalDays.value).toFixed(4)}%`)
 
 <template>
   <div>
-    <!-- データなし -->
-    <div
-      v-if="todos.length === 0"
-      class="flex items-center justify-center rounded-xl border border-surface-300 bg-surface-50 py-16 dark:border-surface-600 dark:bg-surface-800"
-    >
-      <p class="text-sm text-surface-400">{{ t('todo.enhancement.gantt.no_data') }}</p>
-    </div>
-
-    <div v-else class="overflow-x-auto rounded-xl border border-surface-300 dark:border-surface-600">
+    <div class="overflow-x-auto rounded-xl border border-surface-400 dark:border-surface-500">
       <!-- ガントテーブル -->
       <div class="min-w-max">
 
         <!-- ヘッダー行（日付） -->
-        <div class="flex border-b border-surface-300 bg-surface-100 dark:border-surface-600 dark:bg-surface-700">
-          <!-- タイトル列のヘッダー -->
-          <div class="w-56 shrink-0 border-r border-surface-300 px-3 py-2 text-xs font-semibold text-surface-500 dark:border-surface-600 dark:text-surface-400">
-            {{ t('todo.enhancement.gantt.title') }}
+        <div class="flex border-b border-primary/20 bg-primary/5 dark:border-primary/20 dark:bg-primary/10">
+          <!-- タイトル列のヘッダー（月ナビ） -->
+          <div class="flex w-56 shrink-0 items-center justify-between border-r border-primary/20 px-2 py-1.5 dark:border-primary/20">
+            <button
+              type="button"
+              class="rounded p-1 text-surface-400 hover:bg-primary/10 hover:text-primary dark:text-surface-500"
+              @click="emit('prevMonth')"
+            >
+              <i class="pi pi-chevron-left text-xs" />
+            </button>
+            <span class="text-xs font-semibold text-primary dark:text-primary">
+              {{ currentYear }}年{{ currentMonth }}月
+            </span>
+            <button
+              type="button"
+              class="rounded p-1 text-surface-400 hover:bg-primary/10 hover:text-primary dark:text-surface-500"
+              @click="emit('nextMonth')"
+            >
+              <i class="pi pi-chevron-right text-xs" />
+            </button>
           </div>
           <!-- 日付ヘッダーエリア -->
           <div class="relative flex flex-1">
             <div
               v-for="h in dateHeaders"
               :key="h.date"
-              class="shrink-0 border-r border-surface-200 px-0.5 py-2 text-center text-[10px] text-surface-400 dark:border-surface-600 dark:text-surface-500"
+              class="shrink-0 border-r border-surface-300 px-0.5 py-2 text-center text-[10px] dark:border-surface-500"
+              :class="h.colorClass"
               :style="{ width: headerCellWidth }"
             >
               {{ h.label }}
@@ -117,13 +144,13 @@ const headerCellWidth = computed(() => `${(100 / totalDays.value).toFixed(4)}%`)
         <div
           v-for="todo in todos"
           :key="todo.id"
-          class="flex cursor-pointer border-b border-surface-200 hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-800/50"
-          :class="{ 'opacity-60': todo.status === 'COMPLETED' }"
+          class="flex cursor-pointer border-b border-surface-300 hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-800/50"
+          :class="{ 'opacity-75': todo.status === 'COMPLETED' }"
           @click="emit('todoClick', todo.id)"
         >
           <!-- タイトル列 -->
           <div
-            class="flex w-56 shrink-0 items-center gap-1 border-r border-surface-300 px-2 py-2 dark:border-surface-600"
+            class="flex w-56 shrink-0 items-center gap-1 border-r border-surface-400 px-2 py-2 dark:border-surface-500"
             :style="{ paddingLeft: `${8 + todo.depth * 16}px` }"
           >
             <!-- 深さインジケーター -->
@@ -135,6 +162,15 @@ const headerCellWidth = computed(() => `${(100 / totalDays.value).toFixed(4)}%`)
 
           <!-- バーエリア -->
           <div class="relative flex-1 py-2">
+            <!-- 日付区切り点線（ヘッダーと同幅のセルを重ねる） -->
+            <div class="absolute inset-0 flex pointer-events-none">
+              <div
+                v-for="h in dateHeaders"
+                :key="h.date"
+                class="shrink-0 h-full border-r border-dashed border-surface-400 dark:border-surface-500"
+                :style="{ width: headerCellWidth }"
+              />
+            </div>
             <div class="relative h-5" style="width: 100%">
               <!-- ガントバー -->
               <div
@@ -157,6 +193,14 @@ const headerCellWidth = computed(() => `${(100 / totalDays.value).toFixed(4)}%`)
           </div>
         </div>
 
+      </div>
+
+      <!-- データなし -->
+      <div
+        v-if="todos.length === 0"
+        class="flex items-center justify-center py-16"
+      >
+        <p class="text-sm text-surface-400">{{ t('todo.enhancement.gantt.no_data') }}</p>
       </div>
     </div>
   </div>
