@@ -27,6 +27,7 @@ import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.util.SessionHashUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -193,12 +194,18 @@ public class AuthService {
             throw new BusinessException(AuthErrorCode.AUTH_003);
         }
 
-        // 4. アカウントロックチェック
+        // 4. アカウントロックチェック（Valkey障害時はfail-openでスキップ）
         String lockKey = ACCOUNT_LOCK_KEY_PREFIX + user.getId();
-        if (Boolean.TRUE.equals(redisTemplate.hasKey(lockKey))) {
-            eventPublisher.publish(new LoginFailedEvent(
-                    req.getEmail(), ipAddress, userAgent, "ACCOUNT_LOCKED"));
-            throw new BusinessException(AuthErrorCode.AUTH_003);
+        try {
+            if (Boolean.TRUE.equals(redisTemplate.hasKey(lockKey))) {
+                eventPublisher.publish(new LoginFailedEvent(
+                        req.getEmail(), ipAddress, userAgent, "ACCOUNT_LOCKED"));
+                throw new BusinessException(AuthErrorCode.AUTH_003);
+            }
+        } catch (BusinessException e) {
+            throw e;
+        } catch (DataAccessException e) {
+            log.warn("アカウントロックチェックをスキップ（Valkey接続失敗）: {}", e.getMessage());
         }
 
         // 5. パスワード検証
@@ -208,9 +215,13 @@ public class AuthService {
             throw new BusinessException(AuthErrorCode.AUTH_009);
         }
 
-        // パスワード検証成功 → 失敗カウンタをリセット
+        // パスワード検証成功 → 失敗カウンタをリセット（Valkey障害時はサイレント）
         String failCountKey = LOGIN_FAIL_COUNT_KEY_PREFIX + user.getId();
-        redisTemplate.delete(failCountKey);
+        try {
+            redisTemplate.delete(failCountKey);
+        } catch (DataAccessException e) {
+            log.warn("ログイン失敗カウンタリセットをスキップ（Valkey接続失敗）: {}", e.getMessage());
+        }
 
         // パスワードハッシュの段階移行: 旧アルゴリズム（BCrypt）なら Argon2id へ透過的に再ハッシュ。
         // 既存ユーザーはログインのたびに自動で Argon2id へ移行する（強制リセット不要・ユーザー影響なし）。
