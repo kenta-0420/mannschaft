@@ -19,8 +19,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.Instant;
 import java.util.Date;
 import java.util.HexFormat;
 import java.util.List;
@@ -72,16 +71,16 @@ public class AuthTokenService {
      * @return JWT文字列
      */
     public String issueAccessToken(Long userId, List<String> roles) {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expiry = now.plusSeconds(accessTokenExpirationSeconds);
+        Instant now = Instant.now();
+        Instant expiry = now.plusSeconds(accessTokenExpirationSeconds);
 
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .id(UUID.randomUUID().toString())
                 .claim("roles", roles)
                 .issuer(ISSUER)
-                .issuedAt(toDate(now))
-                .expiration(toDate(expiry))
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiry))
                 .signWith(signingKey)
                 .compact();
     }
@@ -198,7 +197,7 @@ public class AuthTokenService {
      */
     public void setUserInvalidationTimestamp(Long userId) {
         String key = USER_INVALIDATED_KEY_PREFIX + userId;
-        long now = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC);
+        long now = Instant.now().getEpochSecond();
         redisTemplate.opsForValue().set(key, String.valueOf(now), USER_INVALIDATION_TTL_SECONDS, TimeUnit.SECONDS);
     }
 
@@ -289,11 +288,4 @@ public class AuthTokenService {
         return count;
     }
 
-    // ========================================
-    // ヘルパー（private）
-    // ========================================
-
-    private Date toDate(LocalDateTime dateTime) {
-        return Date.from(dateTime.toInstant(ZoneOffset.UTC));
-    }
 }
