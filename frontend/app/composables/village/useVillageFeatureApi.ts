@@ -41,15 +41,17 @@ export function useVillageFeatureApi() {
 
   /** §4.7.1 取得 */
   async function getMyNickname() {
-    return api<VillageNicknameResponse>('/api/v1/me/village-nickname')
+    const res = await api<{ data: VillageNicknameResponse }>('/api/v1/me/village-nickname')
+    return res.data
   }
 
   /** §4.7.2 更新 */
   async function updateNickname(body: VillageNicknameUpdateRequest) {
-    return api<VillageNicknameResponse>('/api/v1/me/village-nickname', {
+    const res = await api<{ data: VillageNicknameResponse }>('/api/v1/me/village-nickname', {
       method: 'PUT',
       body,
     })
+    return res.data
   }
 
   // =====================================================================
@@ -59,9 +61,10 @@ export function useVillageFeatureApi() {
 
   /** §4.8 投稿可能な主体一覧 */
   async function listPostingIdentities(villageId: string) {
-    return api<PostingIdentityListResponse>(
+    const res = await api<{ data: PostingIdentityListResponse }>(
       `/api/v1/me/villages/${villageId}/posting-identities`,
     )
+    return res.data
   }
 
   // =====================================================================
@@ -70,12 +73,14 @@ export function useVillageFeatureApi() {
 
   /** §4.9.1 一覧 */
   async function listPins() {
-    return api<PinListResponse>('/api/v1/me/village-pins')
+    const res = await api<{ data: PinListResponse }>('/api/v1/me/village-pins')
+    return res.data
   }
 
   /** §4.9.2 追加 */
   async function addPin(villageId: string) {
-    return api<PinResponse>(`/api/v1/me/village-pins/${villageId}`, { method: 'POST' })
+    const res = await api<{ data: PinResponse }>(`/api/v1/me/village-pins/${villageId}`, { method: 'POST' })
+    return res.data
   }
 
   /** §4.9.3 解除 */
@@ -85,7 +90,8 @@ export function useVillageFeatureApi() {
 
   /** §4.9.4 並び替え */
   async function updatePinOrder(body: PinOrderUpdateRequest) {
-    return api<PinListResponse>('/api/v1/me/village-pins/order', { method: 'PATCH', body })
+    const res = await api<{ data: PinListResponse }>('/api/v1/me/village-pins/order', { method: 'PATCH', body })
+    return res.data
   }
 
   // =====================================================================
@@ -94,25 +100,28 @@ export function useVillageFeatureApi() {
 
   /** §4.11.1 通報送信 */
   async function createReport(villageId: string, body: ReportCreateRequest) {
-    return api<ReportResponse>(`/api/v1/villages/${villageId}/reports`, {
+    const res = await api<{ data: ReportResponse }>(`/api/v1/villages/${villageId}/reports`, {
       method: 'POST',
       body,
     })
+    return res.data
   }
 
   /** §4.11.2 通報一覧（村長/長老/運営向け） */
   async function listReports(villageId: string, params?: ReportListParams) {
-    return api<ReportResponse[]>(
+    const res = await api<{ data: ReportResponse[] }>(
       `/api/v1/villages/${villageId}/reports${qs(params)}`,
     )
+    return res.data
   }
 
   /** §4.11.3 通報解決 */
   async function resolveReport(villageId: string, reportId: string, body: ReportResolveRequest) {
-    return api<ReportResponse>(
+    const res = await api<{ data: ReportResponse }>(
       `/api/v1/villages/${villageId}/reports/${reportId}/resolve`,
       { method: 'POST', body },
     )
+    return res.data
   }
 
   // =====================================================================
@@ -126,9 +135,10 @@ export function useVillageFeatureApi() {
 
   /** 代表委任一覧 */
   async function listRepresentatives(villageId: string) {
-    return api<VillageRepresentativeResponse[]>(
+    const res = await api<{ data: VillageRepresentativeResponse[] }>(
       `/api/v1/villages/${villageId}/representatives`,
     )
+    return res.data
   }
 
   /** 代表委任を発行 */
@@ -136,10 +146,11 @@ export function useVillageFeatureApi() {
     villageId: string,
     body: VillageRepresentativeGrantRequest,
   ) {
-    return api<VillageRepresentativeResponse>(
+    const res = await api<{ data: VillageRepresentativeResponse }>(
       `/api/v1/villages/${villageId}/representatives`,
       { method: 'POST', body },
     )
+    return res.data
   }
 
   /** 代表委任を取消 */
@@ -148,10 +159,11 @@ export function useVillageFeatureApi() {
     id: string,
     body: VillageRepresentativeRevokeRequest,
   ) {
-    return api<VillageRepresentativeResponse>(
+    const res = await api<{ data: VillageRepresentativeResponse }>(
       `/api/v1/villages/${villageId}/representatives/${id}/revoke`,
       { method: 'POST', body },
     )
+    return res.data
   }
 
   // =====================================================================
@@ -166,10 +178,11 @@ export function useVillageFeatureApi() {
   async function uploadMonsho(villageId: string, file: File) {
     const form = new FormData()
     form.append('file', file)
-    return api<VillageResponse>(
+    const res = await api<{ data: VillageResponse }>(
       `/api/v1/villages/${villageId}/monsho`,
       { method: 'POST', body: form },
     )
+    return res.data
   }
 
   return {

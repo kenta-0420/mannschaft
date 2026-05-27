@@ -46,22 +46,25 @@ export function useVillagePhase3Api() {
   // ==========================================================================
 
   async function createMeetup(villageId: string, body: VillageMeetupCreateRequest) {
-    return api<VillageMeetupResponse>(
+    const res = await api<{ data: VillageMeetupResponse }>(
       `/api/v1/villages/${villageId}/meetups`,
       { method: 'POST', body },
     )
+    return res.data
   }
 
   async function listMeetups(villageId: string, params?: VillageMeetupListParams) {
-    return api<VillageMeetupResponse[]>(
+    const res = await api<{ data: VillageMeetupResponse[] }>(
       `/api/v1/villages/${villageId}/meetups${qs(params)}`,
     )
+    return res.data
   }
 
   async function getMeetup(villageId: string, meetupId: string) {
-    return api<VillageMeetupResponse>(
+    const res = await api<{ data: VillageMeetupResponse }>(
       `/api/v1/villages/${villageId}/meetups/${meetupId}`,
     )
+    return res.data
   }
 
   async function updateMeetup(
@@ -69,10 +72,11 @@ export function useVillagePhase3Api() {
     meetupId: string,
     body: VillageMeetupUpdateRequest,
   ) {
-    return api<VillageMeetupResponse>(
+    const res = await api<{ data: VillageMeetupResponse }>(
       `/api/v1/villages/${villageId}/meetups/${meetupId}`,
       { method: 'PATCH', body },
     )
+    return res.data
   }
 
   async function confirmMeetup(
@@ -80,17 +84,19 @@ export function useVillagePhase3Api() {
     meetupId: string,
     candidateDateId: string,
   ) {
-    return api<VillageMeetupResponse>(
+    const res = await api<{ data: VillageMeetupResponse }>(
       `/api/v1/villages/${villageId}/meetups/${meetupId}/confirm`,
       { method: 'POST', body: { candidateDateId } },
     )
+    return res.data
   }
 
   async function cancelMeetup(villageId: string, meetupId: string) {
-    return api<VillageMeetupResponse>(
+    const res = await api<{ data: VillageMeetupResponse }>(
       `/api/v1/villages/${villageId}/meetups/${meetupId}/cancel`,
       { method: 'POST' },
     )
+    return res.data
   }
 
   async function addCandidateDate(
@@ -98,10 +104,11 @@ export function useVillagePhase3Api() {
     meetupId: string,
     body: VillageMeetupCandidateDateAddRequest,
   ) {
-    return api<VillageMeetupResponse>(
+    const res = await api<{ data: VillageMeetupResponse }>(
       `/api/v1/villages/${villageId}/meetups/${meetupId}/candidate-dates`,
       { method: 'POST', body },
     )
+    return res.data
   }
 
   async function removeCandidateDate(
@@ -109,10 +116,11 @@ export function useVillagePhase3Api() {
     meetupId: string,
     candidateDateId: string,
   ) {
-    return api<VillageMeetupResponse>(
+    const res = await api<{ data: VillageMeetupResponse }>(
       `/api/v1/villages/${villageId}/meetups/${meetupId}/candidate-dates/${candidateDateId}`,
       { method: 'DELETE' },
     )
+    return res.data
   }
 
   async function castVote(
@@ -120,16 +128,18 @@ export function useVillagePhase3Api() {
     meetupId: string,
     body: VillageMeetupVoteRequest,
   ) {
-    return api<VillageMeetupResponse>(
+    const res = await api<{ data: VillageMeetupResponse }>(
       `/api/v1/villages/${villageId}/meetups/${meetupId}/votes`,
       { method: 'POST', body },
     )
+    return res.data
   }
 
   async function getVoteSummary(villageId: string, meetupId: string) {
-    return api<VillageMeetupVoteSummary>(
+    const res = await api<{ data: VillageMeetupVoteSummary }>(
       `/api/v1/villages/${villageId}/meetups/${meetupId}/votes/summary`,
     )
+    return res.data
   }
 
   // ==========================================================================
@@ -137,15 +147,17 @@ export function useVillagePhase3Api() {
   // ==========================================================================
 
   async function listChronicles(villageId: string, page?: number, size?: number) {
-    return api<VillageChronicleListResponse>(
+    const res = await api<{ data: VillageChronicleListResponse }>(
       `/api/v1/villages/${villageId}/chronicles${qs({ page, size })}`,
     )
+    return res.data
   }
 
   async function getChronicle(villageId: string, chronicleId: string) {
-    return api<VillageChronicleResponse>(
+    const res = await api<{ data: VillageChronicleResponse }>(
       `/api/v1/villages/${villageId}/chronicles/${chronicleId}`,
     )
+    return res.data
   }
 
   // ==========================================================================
@@ -157,15 +169,17 @@ export function useVillagePhase3Api() {
     page?: number,
     size?: number,
   ) {
-    return api<VillageSerendipityRankingResponse>(
+    const res = await api<{ data: VillageSerendipityRankingResponse }>(
       `/api/v1/villages/${villageId}/serendipity/ranking${qs({ page, size })}`,
     )
+    return res.data
   }
 
   async function getMyScore(villageId: string) {
-    return api<VillageSerendipityScoreResponse>(
+    const res = await api<{ data: VillageSerendipityScoreResponse }>(
       `/api/v1/villages/${villageId}/serendipity/me`,
     )
+    return res.data
   }
 
   // ==========================================================================
@@ -173,22 +187,25 @@ export function useVillagePhase3Api() {
   // ==========================================================================
 
   async function getTodaysPilgrimage() {
-    return api<VillagePilgrimageRecommendationResponse>(
+    const res = await api<{ data: VillagePilgrimageRecommendationResponse }>(
       '/api/v1/pilgrimage/today',
     )
+    return res.data
   }
 
   async function recordVisit(body: VillagePilgrimageVisitRecordRequest) {
-    return api<VillagePilgrimageVisitResponse>(
+    const res = await api<{ data: VillagePilgrimageVisitResponse }>(
       '/api/v1/pilgrimage/visits',
       { method: 'POST', body },
     )
+    return res.data
   }
 
   async function listMyVisits(page?: number, size?: number) {
-    return api<VillagePilgrimageVisitResponse[]>(
+    const res = await api<{ data: VillagePilgrimageVisitResponse[] }>(
       `/api/v1/pilgrimage/visits${qs({ page, size })}`,
     )
+    return res.data
   }
 
   // ==========================================================================
@@ -196,30 +213,34 @@ export function useVillagePhase3Api() {
   // ==========================================================================
 
   async function getNewsletterSettings() {
-    return api<VillageNewsletterSettingsResponse>(
+    const res = await api<{ data: VillageNewsletterSettingsResponse }>(
       '/api/v1/villages/newsletter/settings',
     )
+    return res.data
   }
 
   async function updateNewsletterSettings(body: VillageNewsletterSettingsRequest) {
-    return api<VillageNewsletterSettingsResponse>(
+    const res = await api<{ data: VillageNewsletterSettingsResponse }>(
       '/api/v1/villages/newsletter/settings',
       { method: 'PUT', body },
     )
+    return res.data
   }
 
   async function optOut() {
-    return api<VillageNewsletterOptOutResponse>(
+    const res = await api<{ data: VillageNewsletterOptOutResponse }>(
       '/api/v1/villages/newsletter/opt-out',
       { method: 'POST' },
     )
+    return res.data
   }
 
   async function optIn() {
-    return api<VillageNewsletterOptOutResponse>(
+    const res = await api<{ data: VillageNewsletterOptOutResponse }>(
       '/api/v1/villages/newsletter/opt-in',
       { method: 'POST' },
     )
+    return res.data
   }
 
   return {

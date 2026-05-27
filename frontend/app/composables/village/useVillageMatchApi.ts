@@ -38,16 +38,18 @@ export function useVillageMatchApi() {
     villageId: string,
     params?: VillageMatchRecruitListParams,
   ) {
-    return api<VillageMatchRecruitResponse[]>(
+    const res = await api<{ data: VillageMatchRecruitResponse[] }>(
       `/api/v1/villages/${villageId}/match-recruits${qs(params)}`,
     )
+    return res.data
   }
 
   /** 練習試合募集詳細 */
   async function getMatchRecruit(villageId: string, id: string) {
-    return api<VillageMatchRecruitResponse>(
+    const res = await api<{ data: VillageMatchRecruitResponse }>(
       `/api/v1/villages/${villageId}/match-recruits/${id}`,
     )
+    return res.data
   }
 
   /** 練習試合募集作成 */
@@ -55,10 +57,11 @@ export function useVillageMatchApi() {
     villageId: string,
     body: VillageMatchRecruitCreateRequest,
   ) {
-    return api<VillageMatchRecruitResponse>(
+    const res = await api<{ data: VillageMatchRecruitResponse }>(
       `/api/v1/villages/${villageId}/match-recruits`,
       { method: 'POST', body },
     )
+    return res.data
   }
 
   /** 練習試合募集更新 */
@@ -67,18 +70,20 @@ export function useVillageMatchApi() {
     id: string,
     body: VillageMatchRecruitUpdateRequest,
   ) {
-    return api<VillageMatchRecruitResponse>(
+    const res = await api<{ data: VillageMatchRecruitResponse }>(
       `/api/v1/villages/${villageId}/match-recruits/${id}`,
       { method: 'PATCH', body },
     )
+    return res.data
   }
 
   /** 練習試合募集を締切（CLOSED 化） */
   async function closeMatchRecruit(villageId: string, id: string) {
-    return api<VillageMatchRecruitResponse>(
+    const res = await api<{ data: VillageMatchRecruitResponse }>(
       `/api/v1/villages/${villageId}/match-recruits/${id}/close`,
       { method: 'POST' },
     )
+    return res.data
   }
 
   // =====================================================================
@@ -92,17 +97,19 @@ export function useVillageMatchApi() {
     recruitId: string,
     body: VillageMatchApplicationCreateRequest,
   ) {
-    return api<VillageMatchApplicationResponse>(
+    const res = await api<{ data: VillageMatchApplicationResponse }>(
       `/api/v1/villages/${villageId}/match-recruits/${recruitId}/applications`,
       { method: 'POST', body },
     )
+    return res.data
   }
 
   /** 応募一覧（募集主向け） */
   async function listApplications(villageId: string, recruitId: string) {
-    return api<VillageMatchApplicationResponse[]>(
+    const res = await api<{ data: VillageMatchApplicationResponse[] }>(
       `/api/v1/villages/${villageId}/match-recruits/${recruitId}/applications`,
     )
+    return res.data
   }
 
   /** 応募を審査（ACCEPT/REJECT） */
@@ -113,10 +120,11 @@ export function useVillageMatchApi() {
     body: VillageMatchApplicationReviewRequest & { action: 'accept' | 'reject' },
   ) {
     const { action, ...reviewBody } = body
-    return api<VillageMatchApplicationResponse>(
+    const res = await api<{ data: VillageMatchApplicationResponse }>(
       `/api/v1/villages/${villageId}/match-recruits/${recruitId}/applications/${applicationId}/${action}`,
       { method: 'POST', body: reviewBody },
     )
+    return res.data
   }
 
   /** 応募を取り下げる */
@@ -125,10 +133,11 @@ export function useVillageMatchApi() {
     recruitId: string,
     applicationId: string,
   ) {
-    return api<VillageMatchApplicationResponse>(
+    const res = await api<{ data: VillageMatchApplicationResponse }>(
       `/api/v1/villages/${villageId}/match-recruits/${recruitId}/applications/${applicationId}/withdraw`,
       { method: 'POST' },
     )
+    return res.data
   }
 
   return {
