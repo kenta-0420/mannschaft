@@ -104,8 +104,12 @@
         "tab": "대리 출석",
         "empty": "대리 출석 설정이 없습니다",
         "delegator": "위임자",
-        "delegate": "대리인"
+        "delegate": "대리인",
+        "count_suffix": "건의 대리 설정이 있습니다",
+        "checkin": "대리 체크인",
+        "checkin_done": "체크인 완료"
       },
+      "roll_call_proxy_label": "{name}의 대리",
       "auto_accept_note": "자동 승인이 설정되어 있습니다. 대리인 확인 없이 유효합니다",
       "grandfathering_note": "설정을 OFF해도 기존 대리 위임은 유지됩니다",
       "allow_proxy": "대리 출석 허용",

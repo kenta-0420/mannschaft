@@ -104,8 +104,12 @@
         "tab": "Asistencia por representación",
         "empty": "No hay configuración de asistencia por representación",
         "delegator": "Delegante",
-        "delegate": "Delegado"
+        "delegate": "Delegado",
+        "count_suffix": " configuración(es) de representación",
+        "checkin": "Check-in por representación",
+        "checkin_done": "Ya registrado"
       },
+      "roll_call_proxy_label": "Representante de {name}",
       "auto_accept_note": "La aceptación automática está activada. La delegación es efectiva sin confirmación del delegado",
       "grandfathering_note": "Las delegaciones existentes se mantienen aunque esta opción se desactive",
       "allow_proxy": "Permitir asistencia por representación",

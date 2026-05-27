@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   event: {
     id: number
     title: string
@@ -41,6 +41,22 @@ const statusConfig: Record<string, { label: string; severity: string }> = {
   PUBLISHED: { label: '公開中', severity: 'success' },
   CANCELLED: { label: 'キャンセル', severity: 'danger' },
 }
+
+// F03.10 第四陣 Wave2-B 代理出席件数バッジ
+const { fetchDelegations } = useEventDelegationApi()
+const delegationCount = ref(0)
+
+onMounted(async () => {
+  if (props.canEdit) {
+    try {
+      const res = await fetchDelegations(props.event.id, 1, 1)
+      delegationCount.value = res.total ?? 0
+    } catch {
+      // サイドパネルの補助情報なので失敗しても 0 件扱いで継続
+      delegationCount.value = 0
+    }
+  }
+})
 </script>
 
 <template>
@@ -108,5 +124,14 @@ const statusConfig: Record<string, { label: string; severity: string }> = {
       :stats="event.attendanceStats"
       @responded="emit('responded')"
     />
+
+    <!-- F03.10 第四陣 Wave2-B 代理出席件数バッジ（管理者 + 1件以上の場合のみ表示） -->
+    <div
+      v-if="canEdit && delegationCount > 0"
+      class="mt-3 rounded border border-yellow-200 bg-yellow-50 p-2 text-sm dark:border-yellow-800 dark:bg-yellow-900/20"
+    >
+      <span class="font-medium text-yellow-800 dark:text-yellow-200">{{ $t('proxy.delegation.admin.tab') }}: </span>
+      <span class="text-yellow-700 dark:text-yellow-300">{{ delegationCount }}{{ $t('proxy.delegation.admin.count_suffix') }}</span>
+    </div>
   </div>
 </template>

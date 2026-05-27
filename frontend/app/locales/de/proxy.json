@@ -104,8 +104,12 @@
         "tab": "Stellvertretende Teilnahme",
         "empty": "Keine Einstellungen für stellvertretende Teilnahme",
         "delegator": "Auftraggeber",
-        "delegate": "Stellvertreter"
+        "delegate": "Stellvertreter",
+        "count_suffix": " Stellvertretungseinstellung(en)",
+        "checkin": "Stellvertretendes Check-in",
+        "checkin_done": "Bereits eingecheckt"
       },
+      "roll_call_proxy_label": "Stellvertreter für {name}",
       "auto_accept_note": "Automatische Annahme ist aktiviert. Die Beauftragung wird ohne Bestätigung des Stellvertreters wirksam",
       "grandfathering_note": "Bestehende Beauftragungen bleiben auch nach Deaktivierung dieser Einstellung erhalten",
       "allow_proxy": "Stellvertretende Teilnahme erlauben",
