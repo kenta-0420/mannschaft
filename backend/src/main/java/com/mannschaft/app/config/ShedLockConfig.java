@@ -34,7 +34,7 @@ import javax.sql.DataSource;
  * <p>新しいバッチを追加する場合は本 Javadoc にロック名と一行説明を追記すること。
  */
 @Configuration
-@Profile("!openapi-gen")
+@Profile("!test & !openapi-gen")
 @EnableScheduling
 @EnableSchedulerLock(defaultLockAtMostFor = "30m")
 public class ShedLockConfig {
