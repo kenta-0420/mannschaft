@@ -1,25 +1,133 @@
 <script setup lang="ts">
 import { useMyCalendarData, FILTER_OVERFLOW } from '~/composables/useMyCalendarData'
 
+interface EventDetail {
+  id: number
+  title: string
+  description: string | null
+  location: string | null
+  startAt: string
+  endAt: string
+  allDay: boolean
+  color?: string | null
+  scopeType?: string
+  scopeId?: number
+  scopeName?: string | null
+  scopeIconUrl?: string | null
+  attendanceRequired?: boolean
+  myAttendance?: string | null
+  attendanceStats?: { yes: number; no: number; maybe: number; pending: number; total: number } | null
+  createdBy?: { displayName: string }
+  status?: string
+  categoryName?: string | null
+  categoryColor?: string | null
+}
+
+interface PersonalScheduleRaw {
+  id: number
+  content: { title: string; description: string | null; eventType: string; color: string | null; location: string | null }
+  time: { startAt: string; endAt: string; allDay: boolean }
+  status: { status: string; isException: boolean; parentScheduleId: number | null; recurrenceRule: unknown; googleSynced: boolean }
+  reminders: number[]
+  audit: { createdAt: string; updatedAt: string; createdByDisplayName: string | null }
+}
+
+const scheduleApi = useScheduleApi()
+
 const {
-  currentYear, currentMonth, loading, loadEvents,
+  currentYear, currentMonth, loading, loadEvents, refresh,
   onPrevMonth, onNextMonth,
-  allScopeOptions, selectedScopes, filteredEvents,
+  extendedEvents, allScopeOptions, selectedScopes, filteredEvents,
   toggleScope, multiSelectScopes, initStorage,
 } = useMyCalendarData({ storageKey: 'mannschaft:widget:calendar:scopeFilter' })
+
+const selectedEventId = ref<number | null>(null)
+const selectedEvent = ref<EventDetail | null>(null)
+const selectedEventIsPersonal = ref(false)
+const showEventDialog = ref(false)
+const showEditDialog = ref(false)
 
 function onDateClick(date: string) {
   navigateTo(`/calendar?date=${date}`)
 }
 
-function onEventClick(eventId: number, _isPersonal: boolean) {
+async function onEventClick(eventId: number, isPersonal: boolean) {
   if (eventId < 0) {
-    // TODO: todo 詳細へ
-    navigateTo(`/todos/${Math.abs(eventId) - 1}`)
+    await navigateTo(`/todos/${-(eventId + 1)}`)
+    return
   }
-  else {
-    navigateTo('/calendar')
+  try {
+    selectedEventId.value = eventId
+    selectedEventIsPersonal.value = isPersonal
+    if (isPersonal) {
+      const res = await scheduleApi.getMyScheduleDetail(eventId)
+      const d = res.data as PersonalScheduleRaw
+      selectedEvent.value = {
+        id: d.id,
+        title: d.content?.title ?? '',
+        description: d.content?.description ?? null,
+        location: d.content?.location ?? null,
+        startAt: d.time?.startAt ?? '',
+        endAt: d.time?.endAt ?? '',
+        allDay: d.time?.allDay ?? false,
+        color: d.content?.color ?? null,
+        status: d.status?.status ?? undefined,
+        createdBy: d.audit?.createdByDisplayName
+          ? { displayName: d.audit.createdByDisplayName }
+          : undefined,
+      }
+    }
+    else {
+      const ext = extendedEvents.value.find(e => e.id === eventId && !e.isPersonal)
+      if (!ext) return
+      const st = (ext.scopeType ?? '').toLowerCase() as 'team' | 'organization'
+      const sid = ext.scopeId ?? 0
+      const res = await scheduleApi.getSchedule(st, sid, eventId)
+      const d = res.data as EventDetail & { createdByDisplayName?: string; myAttendanceStatus?: string }
+      selectedEvent.value = {
+        ...d,
+        scopeType: ext.scopeType,
+        scopeId: ext.scopeId,
+        scopeName: (d as EventDetail).scopeName ?? ext.scopeName,
+        scopeIconUrl: (d as EventDetail).scopeIconUrl ?? null,
+        createdBy: d.createdByDisplayName ? { displayName: d.createdByDisplayName } : d.createdBy,
+        myAttendance: d.myAttendanceStatus ?? null,
+      }
+    }
+    showEventDialog.value = true
   }
+  catch {
+    // エラーはapi側で処理
+  }
+}
+
+function onEditEvent() {
+  showEventDialog.value = false
+  showEditDialog.value = true
+}
+
+async function onDeleteEvent() {
+  if (!selectedEventId.value) return
+  try {
+    if (selectedEventIsPersonal.value) {
+      await scheduleApi.deletePersonalSchedule(selectedEventId.value)
+      showEventDialog.value = false
+      selectedEvent.value = null
+      await refresh()
+    }
+    else {
+      showEventDialog.value = false
+      await navigateTo('/calendar')
+    }
+  }
+  catch {
+    // エラーはapi側で処理
+  }
+}
+
+async function onSaved() {
+  showEditDialog.value = false
+  await refresh()
 }
 
 onMounted(() => {
@@ -90,5 +198,52 @@ onMounted(() => {
         <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-indigo-500" />チーム/組織</span>
       </div>
     </template>
+
+    <Dialog
+      v-model:visible="showEventDialog"
+      modal
+      :header="selectedEvent?.title ?? ''"
+      :style="{ width: '480px', maxWidth: '95vw' }"
+      :pt="{ header: { class: 'pb-2' } }"
+    >
+      <EventDetailPanel
+        v-if="selectedEvent"
+        :event="{
+          id: selectedEvent.id,
+          title: selectedEvent.title,
+          description: selectedEvent.description,
+          location: selectedEvent.location,
+          startAt: selectedEvent.startAt,
+          endAt: selectedEvent.endAt,
+          allDay: selectedEvent.allDay,
+          status: selectedEvent.status ?? 'PUBLISHED',
+          categoryName: selectedEvent.categoryName ?? null,
+          categoryColor: selectedEvent.categoryColor ?? null,
+          createdBy: selectedEvent.createdBy ?? { displayName: '' },
+          attendanceRequired: selectedEvent.attendanceRequired ?? false,
+          myAttendance: selectedEvent.myAttendance ?? null,
+          attendanceStats: selectedEvent.attendanceStats ?? null,
+        }"
+        :scope-type="selectedEventIsPersonal ? 'team' : ((selectedEvent.scopeType ?? '').toLowerCase() as 'team' | 'organization')"
+        :scope-id="selectedEvent.scopeId ?? 0"
+        :can-edit="true"
+        :skip-delegations="selectedEventIsPersonal"
+        :scope-name="selectedEvent.scopeName ?? null"
+        :scope-icon-url="selectedEvent.scopeIconUrl ?? null"
+        @edit="onEditEvent"
+        @delete="onDeleteEvent"
+        @responded="refresh"
+      />
+    </Dialog>
+
+    <ScheduleEventForm
+      v-if="selectedEvent && selectedEventId"
+      v-model:visible="showEditDialog"
+      :schedule-id="selectedEventId"
+      :scope-type="selectedEventIsPersonal ? 'team' : ((selectedEvent?.scopeType ?? '').toLowerCase() as 'team' | 'organization')"
+      :scope-id="selectedEvent?.scopeId ?? 0"
+      :is-personal="selectedEventIsPersonal"
+      @saved="onSaved"
+    />
   </div>
 </template>
