@@ -93,34 +93,34 @@ async function onSubmit() {
   if (!canSubmit.value) return
   submitting.value = true
   try {
-    const formData = new FormData()
-    formData.append('scope_type', props.scopeType)
-    // VILLAGE スコープ: scope_id=0 + scope_village_id=UUID（設計書 §3.12.2）
-    if (props.scopeId) {
-      const isVillage = props.scopeType === 'VILLAGE'
-      formData.append('scope_id', isVillage ? '0' : String(props.scopeId))
-      if (isVillage) formData.append('scope_village_id', String(props.scopeId))
-    }
-    formData.append('content', content.value.trim())
-    images.value.forEach(img => formData.append('images', img))
-    if (videoUrl.value.trim()) {
-      formData.append('video_urls', videoUrl.value.trim())
-    }
+    const attachments: Array<{
+      attachmentType: string
+      fileKey: string
+      originalFilename?: string | null
+      fileSize?: number | null
+      mimeType?: string | null
+      videoProcessingStatus?: string
+    }> = []
     if (videoFileKey.value) {
-      formData.append('attachments', JSON.stringify({
+      attachments.push({
         attachmentType: 'VIDEO_FILE',
         fileKey: videoFileKey.value,
         originalFilename: videoFileName.value,
         fileSize: videoFileSize.value,
         mimeType: videoContentType.value,
         videoProcessingStatus: 'PENDING',
-      }))
-    }
-    if (poll.value) {
-      formData.append('poll', JSON.stringify(poll.value))
+      })
     }
 
-    const res = await createPost(formData)
+    const isVillage = props.scopeType === 'VILLAGE'
+    const res = await createPost({
+      content: content.value.trim(),
+      scopeType: props.scopeType,
+      scopeId: isVillage ? undefined : (typeof props.scopeId === 'number' ? props.scopeId : undefined),
+      ...(isVillage && props.scopeId ? { scopeVillageId: String(props.scopeId) } : {}),
+      attachments: attachments.length > 0 ? attachments : undefined,
+      poll: poll.value || undefined,
+    })
     // お知らせウィジェットに表示する場合、投稿後に登録（VILLAGE スコープは非対応）
     if (displayInAnnouncement.value && isTeamOrOrgScope.value && res?.data?.id && typeof props.scopeId === 'number') {
       const { createAnnouncement } = useAnnouncementFeed(

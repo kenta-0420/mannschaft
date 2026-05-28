@@ -78,10 +78,24 @@ export function useTimelineApi() {
     return api<TimelinePostDetailResponse>(`/api/v1/timeline/posts/${postId}`)
   }
 
-  async function createPost(formData: FormData) {
+  async function createPost(data: {
+    content: string
+    scopeType: TimelineScopeType
+    scopeId?: number
+    scopeVillageId?: string
+    attachments?: Array<{
+      attachmentType: string
+      fileKey: string
+      originalFilename?: string | null
+      fileSize?: number | null
+      mimeType?: string | null
+      videoProcessingStatus?: string
+    }>
+    poll?: { question: string; options: string[]; expiresAt?: string } | null
+  }) {
     return api<{ data: TimelinePostResponse }>('/api/v1/timeline/posts', {
       method: 'POST',
-      body: formData,
+      body: data,
     })
   }
 
