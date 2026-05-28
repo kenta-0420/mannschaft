@@ -24,6 +24,8 @@ const props = withDefaults(
 const { sortedWidgets, visibleWidgets, isVisible, toggleWidget, reorder } = useDashboardWidgets(
   props.scopeType,
   props.scopeId,
+  props.viewerRole,
+  props.visibilityMap,
 )
 
 const publicHintDismissed = ref(false)

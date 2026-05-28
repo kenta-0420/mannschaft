@@ -20,6 +20,11 @@ const {
 const viewerRole = computed<ViewerRole>(() => (roleName.value as ViewerRole | null) ?? 'PUBLIC')
 
 const {
+  settings: widgetVisibilitySettings,
+  fetch: fetchWidgetVisibility,
+} = useDashboardWidgetVisibility('organization', orgId)
+
+const {
   org,
   orgTeams,
   permissionGroups,
@@ -74,6 +79,8 @@ onMounted(async () => {
     fetchAncestors(),
     fetchChildren(true),
   ])
+  // ウィジェット可視性設定を取得（非メンバー・サポーターは403になるため catch して空のまま = デフォルト適用）
+  fetchWidgetVisibility().catch(() => {})
 })
 </script>
 
@@ -211,6 +218,7 @@ onMounted(async () => {
                 :scope-template="org.template"
                 :viewer-role="viewerRole"
                 :is-admin-or-deputy="isAdminOrDeputy"
+                :visibility-map="widgetVisibilitySettings"
               />
             </div>
           </TabPanel>
