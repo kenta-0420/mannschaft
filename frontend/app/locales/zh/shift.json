@@ -265,7 +265,8 @@
         "label": "换班候选人",
         "placeholder": "选择成员...",
         "dayShift": "白班成员",
-        "nightShift": "夜班成员"
+        "nightShift": "夜班成员",
+        "selectedCount": "已选{count}名"
       },
       "templateHint": "向同一排班中{period}班次的所有成员批量发送"
     },
@@ -325,7 +326,7 @@
       "fetchError": "排班信息获取失败"
     },
     "myShift": {
-      "confirmedTitle": "确定シフト",
+      "confirmedTitle": "确定排班",
       "teamFilter": {
         "all": "所有团队",
         "label": "按团队筛选"

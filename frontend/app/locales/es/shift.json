@@ -265,7 +265,8 @@
         "label": "Candidatos al Cambio",
         "placeholder": "Seleccionar miembros...",
         "dayShift": "Miembros del turno de día",
-        "nightShift": "Miembros del turno de noche"
+        "nightShift": "Miembros del turno de noche",
+        "selectedCount": "{count} seleccionados"
       },
       "templateHint": "Enviar a todos los miembros del turno {period} en el mismo horario"
     },

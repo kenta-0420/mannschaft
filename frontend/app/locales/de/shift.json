@@ -265,7 +265,8 @@
         "label": "Tauschkandidaten",
         "placeholder": "Mitglieder auswählen...",
         "dayShift": "Tagschicht-Mitglieder",
-        "nightShift": "Nachtschicht-Mitglieder"
+        "nightShift": "Nachtschicht-Mitglieder",
+        "selectedCount": "{count} ausgewählt"
       },
       "templateHint": "An alle {period}-Schichtmitglieder im gleichen Plan senden"
     },

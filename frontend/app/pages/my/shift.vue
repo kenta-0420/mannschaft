@@ -1,65 +1,83 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import type { ShiftRequestResponse } from '~/types/shift'
-import { preferenceToI18nKey } from '~/utils/shiftPreference'
+import type { MyConfirmedSlotResponse } from '~/types/shift'
 
 /**
- * F03.5 マイシフト — 確定シフト一覧ページ
+ * F03.5 マイシフト — 確定シフト 月次カレンダービュー
  *
- * - 月/週ビュー切り替え
- * - 日付ごとのシフトカード（開始/終了時刻・ポジション）
- * - 交代依頼作成ボタン
+ * - 月次カレンダー（デフォルト）/ 週次リストビュー切り替え
+ * - チームフィルタ（確定スロットのチームから一意抽出）
+ * - 日付セルタップで右パネルにシフト詳細を表示
+ * - 交代依頼ダイアログ（3モード）
  */
 
 definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const { userTimezone } = useDatetime()
-const { error: showError, success: showSuccess } = useNotification()
-const { listMyRequests } = useMyShiftApi()
-const { createSwapRequest } = useShiftSwapApi()
+const { error: showError } = useNotification()
+const { listMyConfirmedSlots } = useMyShiftApi()
 
+// ---- ビュー状態 ----
 type ViewMode = 'monthly' | 'weekly'
-const viewMode = ref<ViewMode>('weekly')
-const loading = ref(false)
-const myRequests = ref<ShiftRequestResponse[]>([])
+const viewMode = ref<ViewMode>('monthly')
 const currentDate = ref(new Date())
+const loading = ref(false)
+const confirmedSlots = ref<MyConfirmedSlotResponse[]>([])
 
-// 交代依頼ダイアログ用
+// ---- チームフィルタ ----
+const selectedTeamId = ref<number | null>(null)
+
+// ---- 詳細パネル ----
+const selectedDate = ref<string | null>(null)
+
+// ---- 交代依頼ダイアログ ----
 const swapDialogVisible = ref(false)
-const swapTargetSlotId = ref<number | null>(null)
-const swapReason = ref('')
-const swapLoading = ref(false)
+const swapSlotId = ref<number>(0)
+const swapSlotDate = ref<string>('')
+const swapScheduleId = ref<number>(0)
+const swapTeamId = ref<number>(0)
 
-// 週の範囲計算（月曜始まり）
-const weekStart = computed(() => {
-  const d = new Date(currentDate.value)
-  const day = d.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  d.setDate(d.getDate() + diff)
-  return d
+// ---- データ取得 ----
+async function load() {
+  loading.value = true
+  try {
+    confirmedSlots.value = await listMyConfirmedSlots()
+  } catch {
+    showError(t('shift.notification.errorLoad'))
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => load())
+
+// ---- チーム一覧（一意抽出） ----
+const teamOptions = computed(() => {
+  const map = new Map<number, string>()
+  for (const slot of confirmedSlots.value) {
+    map.set(slot.teamId, slot.teamName)
+  }
+  return [...map.entries()].map(([id, name]) => ({ id, name }))
 })
 
-const weekDates = computed(() => {
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart.value)
-    d.setDate(d.getDate() + i)
-    return d
-  })
+// ---- フィルタ済みスロット ----
+const filteredSlots = computed((): MyConfirmedSlotResponse[] => {
+  if (selectedTeamId.value === null) return confirmedSlots.value
+  return confirmedSlots.value.filter((s) => s.teamId === selectedTeamId.value)
 })
 
-const monthLabel = computed(() =>
-  dayjs.tz(currentDate.value, userTimezone.value).format('YYYY年M月'),
-)
-
-const weekLabel = computed(() => {
-  const start = weekStart.value
-  const end = new Date(start)
-  end.setDate(end.getDate() + 6)
-  const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`
-  return `${fmt(start)} 〜 ${fmt(end)}`
+// ---- 日付ごとのスロットマップ ----
+const slotsByDate = computed(() => {
+  const map = new Map<string, MyConfirmedSlotResponse[]>()
+  for (const slot of filteredSlots.value) {
+    if (!map.has(slot.slotDate)) map.set(slot.slotDate, [])
+    map.get(slot.slotDate)!.push(slot)
+  }
+  return map
 })
 
+// ---- 日付ユーティリティ ----
 function dateKey(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -71,27 +89,56 @@ function todayKey(): string {
   return dateKey(new Date())
 }
 
-// 日付ごとにリクエストをグループ化
-const requestsByDate = computed(() => {
-  const map = new Map<string, ShiftRequestResponse[]>()
-  for (const req of myRequests.value) {
-    const key = req.slotDate
-    if (!map.has(key)) map.set(key, [])
-    map.get(key)!.push(req)
-  }
-  return map
-})
+function formatTime(timeStr: string): string {
+  return timeStr.substring(0, 5)
+}
 
-// 表示対象の日付一覧
-const visibleDates = computed((): Date[] => {
-  if (viewMode.value === 'weekly') return weekDates.value
-  // 月ビュー: 当月全日
+// ---- 月次カレンダー生成 ----
+const calendarDays = computed((): (Date | null)[] => {
   const y = currentDate.value.getFullYear()
   const m = currentDate.value.getMonth()
-  const daysInMonth = new Date(y, m + 1, 0).getDate()
-  return Array.from({ length: daysInMonth }, (_, i) => new Date(y, m, i + 1))
+  const firstDay = new Date(y, m, 1)
+  const lastDay = new Date(y, m + 1, 0)
+  // 月曜始まり: 月=0, ..., 日=6
+  const startDow = (firstDay.getDay() + 6) % 7
+  const days: (Date | null)[] = []
+  for (let i = 0; i < startDow; i++) days.push(null)
+  for (let i = 1; i <= lastDay.getDate(); i++) days.push(new Date(y, m, i))
+  // 末尾を7の倍数に揃える
+  while (days.length % 7 !== 0) days.push(null)
+  return days
 })
 
+// ---- 週次ビュー ----
+const weekStart = computed(() => {
+  const d = new Date(currentDate.value)
+  const day = d.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  d.setDate(d.getDate() + diff)
+  return d
+})
+
+const weekDates = computed((): Date[] => {
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart.value)
+    d.setDate(d.getDate() + i)
+    return d
+  })
+})
+
+// ---- ラベル ----
+const periodLabel = computed(() => {
+  if (viewMode.value === 'monthly') {
+    return dayjs.tz(currentDate.value, userTimezone.value).format('YYYY年M月')
+  }
+  const start = weekStart.value
+  const end = new Date(start)
+  end.setDate(end.getDate() + 6)
+  const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`
+  return `${fmt(start)} 〜 ${fmt(end)}`
+})
+
+// ---- ナビゲーション ----
 function prevPeriod() {
   const d = new Date(currentDate.value)
   if (viewMode.value === 'weekly') {
@@ -114,62 +161,60 @@ function nextPeriod() {
 
 function goToToday() {
   currentDate.value = new Date()
+  // 今日の日付を選択
+  selectedDate.value = todayKey()
 }
 
-async function load() {
-  loading.value = true
-  try {
-    myRequests.value = await listMyRequests()
-  } catch {
-    showError(t('shift.notification.errorLoad'))
-  } finally {
-    loading.value = false
-  }
+// ---- 詳細パネル ----
+function selectDate(key: string) {
+  selectedDate.value = selectedDate.value === key ? null : key
 }
 
-function openSwapDialog(slotId: number) {
-  swapTargetSlotId.value = slotId
-  swapReason.value = ''
+const selectedDateSlots = computed((): MyConfirmedSlotResponse[] => {
+  if (!selectedDate.value) return []
+  return slotsByDate.value.get(selectedDate.value) ?? []
+})
+
+const selectedDateFormatted = computed((): string => {
+  if (!selectedDate.value) return ''
+  return dayjs.tz(selectedDate.value, userTimezone.value).format('M月D日 (ddd)')
+})
+
+// ---- 交代依頼ダイアログ ----
+function openSwapDialog(slot: MyConfirmedSlotResponse) {
+  swapSlotId.value = slot.slotId
+  swapSlotDate.value = slot.slotDate
+  swapScheduleId.value = slot.scheduleId
+  swapTeamId.value = slot.teamId
   swapDialogVisible.value = true
 }
 
-async function submitSwapRequest() {
-  if (!swapTargetSlotId.value) return
-  swapLoading.value = true
-  try {
-    await createSwapRequest({
-      slotId: swapTargetSlotId.value,
-      reason: swapReason.value || undefined,
-    })
-    showSuccess(t('shift.notification.submitSuccess'))
-    swapDialogVisible.value = false
-  } catch {
-    showError(t('shift.notification.errorSubmit'))
-  } finally {
-    swapLoading.value = false
-  }
+function onSwapSubmitted() {
+  // 交代依頼送信後にリロード
+  load()
 }
 
-onMounted(() => load())
+// ---- 週次の曜日ヘッダー ----
+const DOW_KEYS = ['月', '火', '水', '木', '金', '土', '日'] as const
 </script>
 
 <template>
-  <div class="mx-auto max-w-4xl">
+  <div class="mx-auto max-w-5xl">
     <PageHeader :title="t('shift.page.myShift')" />
 
     <!-- ビュー切り替え・ナビゲーション -->
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
       <!-- 月/週切り替え -->
-      <div class="flex overflow-hidden rounded-lg border border-surface-200">
+      <div class="flex overflow-hidden rounded-lg border border-surface-200 dark:border-surface-700">
         <button
-          v-for="mode in (['weekly', 'monthly'] as const)"
+          v-for="mode in (['monthly', 'weekly'] as const)"
           :key="mode"
           type="button"
           class="min-h-[44px] px-4 py-2 text-sm font-medium transition-colors"
           :class="
             viewMode === mode
               ? 'bg-primary text-white'
-              : 'bg-surface-0 text-surface-600 hover:bg-surface-50'
+              : 'bg-surface-0 text-surface-600 hover:bg-surface-50 dark:bg-surface-900 dark:text-surface-400 dark:hover:bg-surface-800'
           "
           @click="viewMode = mode"
         >
@@ -187,8 +232,8 @@ onMounted(() => load())
           :aria-label="t('shift.view.prev')"
           @click="prevPeriod"
         />
-        <span class="min-w-[120px] text-center text-sm font-semibold text-surface-700">
-          {{ viewMode === 'weekly' ? weekLabel : monthLabel }}
+        <span class="min-w-[120px] text-center text-sm font-semibold text-surface-700 dark:text-surface-300">
+          {{ periodLabel }}
         </span>
         <Button
           icon="pi pi-chevron-right"
@@ -202,115 +247,322 @@ onMounted(() => load())
       </div>
     </div>
 
+    <!-- チームフィルタ -->
+    <div
+      v-if="teamOptions.length > 0"
+      class="mb-4 flex flex-wrap items-center gap-2"
+    >
+      <span class="text-xs text-surface-500 dark:text-surface-400">
+        {{ t('shift.myShift.teamFilter.label') }}:
+      </span>
+      <button
+        type="button"
+        class="min-h-[32px] rounded-full px-3 py-1 text-xs font-medium transition-colors"
+        :class="
+          selectedTeamId === null
+            ? 'bg-primary text-white'
+            : 'bg-surface-100 text-surface-600 hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-400 dark:hover:bg-surface-700'
+        "
+        @click="selectedTeamId = null"
+      >
+        {{ t('shift.myShift.teamFilter.all') }}
+      </button>
+      <button
+        v-for="team in teamOptions"
+        :key="team.id"
+        type="button"
+        class="min-h-[32px] rounded-full px-3 py-1 text-xs font-medium transition-colors"
+        :class="
+          selectedTeamId === team.id
+            ? 'bg-primary text-white'
+            : 'bg-surface-100 text-surface-600 hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-400 dark:hover:bg-surface-700'
+        "
+        @click="selectedTeamId = team.id"
+      >
+        {{ team.name }}
+      </button>
+    </div>
+
     <PageLoading v-if="loading" size="40px" />
 
     <template v-else>
-      <!-- シフトカード一覧 -->
-      <div class="flex flex-col gap-3">
-        <div
-          v-for="date in visibleDates"
-          :key="dateKey(date)"
-          class="rounded-xl border border-surface-200 bg-surface-0 p-3"
-        >
-          <!-- 日付ヘッダー -->
-          <div class="mb-2 flex items-center gap-2">
-            <span
-              class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold"
-              :class="
-                dateKey(date) === todayKey()
-                  ? 'bg-primary text-white'
-                  : 'bg-surface-100 text-surface-700'
-              "
-            >
-              {{ date.getDate() }}
-            </span>
-            <span class="text-xs text-surface-500">
-              {{ dayjs.tz(date, userTimezone).format('ddd') }}
-            </span>
-          </div>
-
-          <!-- その日のシフト -->
-          <template v-if="(requestsByDate.get(dateKey(date)) ?? []).length > 0">
-            <div
-              v-for="req in requestsByDate.get(dateKey(date))"
-              :key="req.id"
-              class="mb-2 rounded-lg bg-surface-50 p-3 last:mb-0"
-            >
-              <div class="flex items-start justify-between gap-2">
-                <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-surface-800">
-                    {{ t('shift.page.schedules') }} #{{ req.scheduleId }}
-                  </p>
-                  <p class="mt-0.5 text-xs text-surface-500">
-                    {{ t('shift.field.preference') }}: {{ t(preferenceToI18nKey(req.preference)) }}
-                  </p>
-                  <p v-if="req.note" class="mt-0.5 truncate text-xs text-surface-400">
-                    {{ req.note }}
-                  </p>
-                </div>
-                <!-- 交代依頼ボタン（slotIdがある場合のみ） -->
-                <Button
-                  v-if="req.slotId != null"
-                  :label="t('shift.swap.create')"
-                  size="small"
-                  outlined
-                  severity="secondary"
-                  class="shrink-0"
-                  @click="openSwapDialog(req.slotId as number)"
-                />
-              </div>
-            </div>
-          </template>
-          <template v-else>
-            <p class="text-xs text-surface-400">—</p>
-          </template>
-        </div>
-      </div>
-
       <!-- 空状態 -->
       <DashboardEmptyState
-        v-if="myRequests.length === 0"
-        icon="pi-clock"
+        v-if="confirmedSlots.length === 0"
+        icon="pi-calendar"
         :message="t('shift.empty.noShifts')"
       />
+
+      <div v-else class="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <!-- ===== 月次カレンダー ===== -->
+        <div
+          v-if="viewMode === 'monthly'"
+          class="w-full sm:flex-1"
+        >
+          <!-- 曜日ヘッダー -->
+          <div class="mb-1 grid grid-cols-7 text-center">
+            <div
+              v-for="dow in DOW_KEYS"
+              :key="dow"
+              class="py-1 text-xs font-medium"
+              :class="dow === '土' ? 'text-blue-500' : dow === '日' ? 'text-red-500' : 'text-surface-500 dark:text-surface-400'"
+            >
+              {{ dow }}
+            </div>
+          </div>
+
+          <!-- 日付グリッド -->
+          <div class="grid grid-cols-7 gap-px rounded-xl overflow-hidden border border-surface-200 dark:border-surface-700">
+            <div
+              v-for="(day, idx) in calendarDays"
+              :key="idx"
+              class="min-h-[64px] sm:min-h-[80px] p-1 bg-surface-0 dark:bg-surface-900 transition-colors"
+              :class="[
+                day ? 'cursor-pointer hover:bg-surface-50 dark:hover:bg-surface-800' : 'opacity-0 pointer-events-none',
+                day && dateKey(day) === todayKey() ? 'ring-2 ring-inset ring-primary' : '',
+                day && selectedDate === dateKey(day) ? 'bg-primary/10 dark:bg-primary/20' : '',
+              ]"
+              @click="day && selectDate(dateKey(day))"
+            >
+              <template v-if="day">
+                <!-- 日付番号 -->
+                <div class="flex items-center justify-between">
+                  <span
+                    class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold"
+                    :class="
+                      dateKey(day) === todayKey()
+                        ? 'bg-primary text-white'
+                        : (day.getDay() === 6 ? 'text-blue-500' : day.getDay() === 0 ? 'text-red-500' : 'text-surface-700 dark:text-surface-300')
+                    "
+                  >
+                    {{ day.getDate() }}
+                  </span>
+                  <!-- シフト件数バッジ -->
+                  <span
+                    v-if="(slotsByDate.get(dateKey(day)) ?? []).length > 0"
+                    class="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white"
+                  >
+                    {{ (slotsByDate.get(dateKey(day)) ?? []).length }}
+                  </span>
+                </div>
+                <!-- シフト時間帯（最初の1件のみ表示） -->
+                <div
+                  v-if="(slotsByDate.get(dateKey(day)) ?? []).length > 0"
+                  class="mt-1 hidden sm:block"
+                >
+                  <span class="block truncate rounded bg-primary/10 px-1 py-0.5 text-[10px] text-primary dark:bg-primary/20 dark:text-primary-300">
+                    {{ formatTime(slotsByDate.get(dateKey(day))![0]!.startTime) }}
+                    〜
+                    {{ formatTime(slotsByDate.get(dateKey(day))![0]!.endTime) }}
+                  </span>
+                  <span
+                    v-if="(slotsByDate.get(dateKey(day)) ?? []).length > 1"
+                    class="mt-0.5 block text-[9px] text-surface-400"
+                  >
+                    +{{ (slotsByDate.get(dateKey(day)) ?? []).length - 1 }}
+                  </span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== 週次リストビュー ===== -->
+        <div
+          v-else
+          class="w-full sm:flex-1 flex flex-col gap-3"
+        >
+          <div
+            v-for="day in weekDates"
+            :key="dateKey(day)"
+            class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 overflow-hidden"
+          >
+            <!-- 日付ヘッダー -->
+            <button
+              type="button"
+              class="flex w-full items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800"
+              @click="selectDate(dateKey(day))"
+            >
+              <span
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold"
+                :class="
+                  dateKey(day) === todayKey()
+                    ? 'bg-primary text-white'
+                    : (day.getDay() === 6 ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300' : day.getDay() === 0 ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300' : 'bg-surface-100 text-surface-700 dark:bg-surface-800 dark:text-surface-300')
+                "
+              >
+                {{ day.getDate() }}
+              </span>
+              <div class="min-w-0 flex-1 text-left">
+                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
+                  {{ dayjs.tz(day, userTimezone).format('M月D日 (ddd)') }}
+                </span>
+                <span
+                  v-if="(slotsByDate.get(dateKey(day)) ?? []).length > 0"
+                  class="ml-2 text-xs text-surface-400"
+                >
+                  {{ (slotsByDate.get(dateKey(day)) ?? []).length }} {{ t('shift.myShift.confirmedTitle') }}
+                </span>
+              </div>
+              <span
+                v-if="(slotsByDate.get(dateKey(day)) ?? []).length > 0"
+                class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white"
+              >
+                {{ (slotsByDate.get(dateKey(day)) ?? []).length }}
+              </span>
+            </button>
+
+            <!-- シフト一覧（展開時） -->
+            <Transition name="slide-down">
+              <div
+                v-if="selectedDate === dateKey(day) && (slotsByDate.get(dateKey(day)) ?? []).length > 0"
+                class="border-t border-surface-200 dark:border-surface-700 divide-y divide-surface-100 dark:divide-surface-800"
+              >
+                <div
+                  v-for="slot in slotsByDate.get(dateKey(day))"
+                  :key="slot.slotId"
+                  class="px-4 py-3"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0 flex-1">
+                      <div class="flex flex-wrap items-center gap-1.5 mb-1">
+                        <Tag :value="slot.teamName" severity="secondary" class="text-xs" />
+                        <span
+                          v-if="slot.positionName"
+                          class="rounded bg-surface-100 dark:bg-surface-800 px-1.5 py-0.5 text-xs text-surface-600 dark:text-surface-400"
+                        >
+                          {{ slot.positionName }}
+                        </span>
+                      </div>
+                      <p class="text-sm font-medium text-surface-800 dark:text-surface-200">
+                        {{ formatTime(slot.startTime) }} 〜 {{ formatTime(slot.endTime) }}
+                      </p>
+                      <p class="mt-0.5 text-xs text-surface-500 dark:text-surface-400">
+                        {{ slot.scheduleName }}
+                      </p>
+                    </div>
+                    <Button
+                      :label="t('shift.swap.create')"
+                      size="small"
+                      outlined
+                      severity="secondary"
+                      class="shrink-0"
+                      @click="openSwapDialog(slot)"
+                    />
+                  </div>
+                </div>
+              </div>
+            </Transition>
+          </div>
+        </div>
+
+        <!-- ===== 詳細パネル（月次ビュー + 日付選択時） ===== -->
+        <Transition name="slide-panel">
+          <div
+            v-if="viewMode === 'monthly' && selectedDate"
+            class="w-full sm:w-80 shrink-0 rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900"
+          >
+            <div class="flex items-center justify-between border-b border-surface-200 dark:border-surface-700 px-4 py-3">
+              <h3 class="text-sm font-semibold text-surface-800 dark:text-surface-200">
+                {{ selectedDateFormatted }}
+              </h3>
+              <button
+                type="button"
+                class="flex h-8 w-8 items-center justify-center rounded-full text-surface-400 transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+                @click="selectedDate = null"
+              >
+                <i class="pi pi-times text-xs" />
+              </button>
+            </div>
+
+            <!-- シフト詳細一覧 -->
+            <div class="p-3">
+              <div
+                v-if="selectedDateSlots.length === 0"
+                class="py-6 text-center text-sm text-surface-400"
+              >
+                {{ t('shift.myShift.slot.noSlot') }}
+              </div>
+              <div v-else class="flex flex-col gap-3">
+                <div
+                  v-for="slot in selectedDateSlots"
+                  :key="slot.slotId"
+                  class="rounded-lg border border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-800 p-3"
+                >
+                  <!-- チームバッジ + ポジション -->
+                  <div class="mb-2 flex flex-wrap items-center gap-1.5">
+                    <Tag :value="slot.teamName" severity="secondary" class="text-xs" />
+                    <span
+                      v-if="slot.positionName"
+                      class="rounded bg-surface-200 dark:bg-surface-700 px-1.5 py-0.5 text-xs text-surface-600 dark:text-surface-400"
+                    >
+                      {{ slot.positionName }}
+                    </span>
+                  </div>
+
+                  <!-- 時刻 -->
+                  <p class="text-sm font-semibold text-surface-800 dark:text-surface-200">
+                    {{ formatTime(slot.startTime) }} 〜 {{ formatTime(slot.endTime) }}
+                  </p>
+
+                  <!-- スケジュール名 -->
+                  <p class="mt-0.5 text-xs text-surface-500 dark:text-surface-400">
+                    {{ slot.scheduleName }}
+                  </p>
+
+                  <!-- 交代依頼ボタン -->
+                  <div class="mt-3">
+                    <Button
+                      :label="t('shift.swap.create')"
+                      size="small"
+                      outlined
+                      severity="secondary"
+                      class="w-full"
+                      @click="openSwapDialog(slot)"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </div>
     </template>
 
     <!-- 交代依頼ダイアログ -->
-    <Dialog
+    <ShiftSwapRequestFormDialog
       v-model:visible="swapDialogVisible"
-      :header="t('shift.swap.create')"
-      modal
-      class="w-full max-w-md"
-    >
-      <div class="flex flex-col gap-4">
-        <div>
-          <label class="mb-1 block text-sm font-medium text-surface-700">
-            {{ t('shift.field.reason') }}
-            <span class="text-xs text-surface-400">（{{ t('common.label.optional') }}）</span>
-          </label>
-          <Textarea
-            v-model="swapReason"
-            :placeholder="t('shift.field.reason')"
-            rows="3"
-            class="w-full"
-          />
-        </div>
-      </div>
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <Button
-            :label="t('common.button.cancel')"
-            text
-            severity="secondary"
-            @click="swapDialogVisible = false"
-          />
-          <Button
-            :label="t('shift.action.submit')"
-            :loading="swapLoading"
-            @click="submitSwapRequest"
-          />
-        </div>
-      </template>
-    </Dialog>
+      :slot-id="swapSlotId"
+      :slot-date="swapSlotDate"
+      :schedule-id="swapScheduleId"
+      :team-id="swapTeamId"
+      @submitted="onSwapSubmitted"
+    />
   </div>
 </template>
+
+<style scoped>
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition:
+    max-height 0.25s ease,
+    opacity 0.2s ease;
+  overflow: hidden;
+  max-height: 600px;
+}
+.slide-down-enter-from,
+.slide-down-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
+
+.slide-panel-enter-active,
+.slide-panel-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.slide-panel-enter-from,
+.slide-panel-leave-to {
+  opacity: 0;
+  transform: translateX(16px);
+}
+</style>

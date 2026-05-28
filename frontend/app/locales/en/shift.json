@@ -79,7 +79,7 @@
       "fetchError": "Failed to fetch shift information"
     },
     "myShift": {
-      "confirmedTitle": "確定シフト",
+      "confirmedTitle": "Confirmed Shifts",
       "teamFilter": {
         "all": "All Teams",
         "label": "Filter by Team"
@@ -278,7 +278,8 @@
         "label": "Swap Candidates",
         "placeholder": "Select members...",
         "dayShift": "Day shift members",
-        "nightShift": "Night shift members"
+        "nightShift": "Night shift members",
+        "selectedCount": "{count} selected"
       },
       "templateHint": "Send to all {period} shift members in the same schedule"
     },

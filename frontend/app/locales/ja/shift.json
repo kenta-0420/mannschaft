@@ -187,7 +187,8 @@
         "label": "交代候補者",
         "placeholder": "メンバーを選択...",
         "dayShift": "昼シフト担当者",
-        "nightShift": "夜シフト担当者"
+        "nightShift": "夜シフト担当者",
+        "selectedCount": "{count}名を選択中"
       },
       "templateHint": "同じスケジュールの{period}シフト担当者に一括送信します"
     },

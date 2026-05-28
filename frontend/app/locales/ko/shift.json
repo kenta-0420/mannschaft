@@ -265,7 +265,8 @@
         "label": "교대 후보자",
         "placeholder": "멤버를 선택...",
         "dayShift": "주간 근무자",
-        "nightShift": "야간 근무자"
+        "nightShift": "야간 근무자",
+        "selectedCount": "{count}명 선택됨"
       },
       "templateHint": "같은 스케줄의 {period} 근무 담당자에게 일괄 전송합니다"
     },
