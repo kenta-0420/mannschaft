@@ -84,7 +84,7 @@ class TeamServiceTest {
             ApiResponse<TeamResponse> result = service.createTeam(USER_ID, req);
 
             // Then
-            assertThat(result.getData().getName()).isEqualTo("テストチーム");
+            assertThat(result.getData().getBasicInfo().name()).isEqualTo("テストチーム");
             verify(teamRepository).save(any(TeamEntity.class));
             verify(userRoleRepository).save(any(UserRoleEntity.class));
         }
