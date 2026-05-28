@@ -600,9 +600,9 @@
     },
     "enhancement": {
       "gantt": {
-        "title": "Gantt View",
+        "title": "TODO Gantt View",
         "no_data": "No tasks with date ranges to display in the Gantt chart",
-        "gantt_view_link": "Gantt View"
+        "gantt_view_link": "TODO Gantt View"
       },
       "progress": {
         "tab_label": "Progress",

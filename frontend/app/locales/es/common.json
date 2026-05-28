@@ -600,9 +600,9 @@
     },
     "enhancement": {
       "gantt": {
-        "title": "ガントビュー",
+        "title": "TODO Vista Gantt",
         "no_data": "ガントバーに表示できる期間のある課題がありません",
-        "gantt_view_link": "Vista Gantt"
+        "gantt_view_link": "TODO Vista Gantt"
       },
       "progress": {
         "tab_label": "進捗",
