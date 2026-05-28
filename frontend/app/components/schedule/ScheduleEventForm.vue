@@ -163,22 +163,45 @@ watch(
           ? await scheduleApi.getMyScheduleDetail(scheduleId as number)
           : await scheduleApi.getSchedule(effectiveScope.value.scopeType, effectiveScope.value.scopeId, scheduleId as number)
         const data = (res as { data: Record<string, unknown> }).data as Record<string, unknown>
-        form.value.title = (data.title as string) ?? ''
-        form.value.description = (data.description as string) ?? ''
-        form.value.location = (data.location as string) ?? ''
-        form.value.allDay = (data.allDay as boolean) ?? false
-        form.value.attendanceRequired = (data.attendanceRequired as boolean) ?? false
-        form.value.allowProxyAttendance = (data.allowProxyAttendance as boolean) ?? false
-        form.value.isProxyAutoAccept = (data.isProxyAutoAccept as boolean) ?? false
-        if (data.startAt) {
-          const start = new Date(data.startAt as string)
-          form.value.startDate = start
-          form.value.startTime = start.toTimeString().slice(0, 5)
+        if (effectiveScope.value.isPersonal) {
+          const content = (data.content as Record<string, unknown>) ?? {}
+          const time = (data.time as Record<string, unknown>) ?? {}
+          form.value.title = (content.title as string) ?? ''
+          form.value.description = (content.description as string) ?? ''
+          form.value.location = (content.location as string) ?? ''
+          form.value.allDay = (time.allDay as boolean) ?? false
+          form.value.attendanceRequired = false
+          form.value.allowProxyAttendance = false
+          form.value.isProxyAutoAccept = false
+          if (time.startAt) {
+            const start = new Date(time.startAt as string)
+            form.value.startDate = start
+            form.value.startTime = start.toTimeString().slice(0, 5)
+          }
+          if (time.endAt) {
+            const end = new Date(time.endAt as string)
+            form.value.endDate = end
+            form.value.endTime = end.toTimeString().slice(0, 5)
+          }
         }
-        if (data.endAt) {
-          const end = new Date(data.endAt as string)
-          form.value.endDate = end
-          form.value.endTime = end.toTimeString().slice(0, 5)
+        else {
+          form.value.title = (data.title as string) ?? ''
+          form.value.description = (data.description as string) ?? ''
+          form.value.location = (data.location as string) ?? ''
+          form.value.allDay = (data.allDay as boolean) ?? false
+          form.value.attendanceRequired = (data.attendanceRequired as boolean) ?? false
+          form.value.allowProxyAttendance = (data.allowProxyAttendance as boolean) ?? false
+          form.value.isProxyAutoAccept = (data.isProxyAutoAccept as boolean) ?? false
+          if (data.startAt) {
+            const start = new Date(data.startAt as string)
+            form.value.startDate = start
+            form.value.startTime = start.toTimeString().slice(0, 5)
+          }
+          if (data.endAt) {
+            const end = new Date(data.endAt as string)
+            form.value.endDate = end
+            form.value.endTime = end.toTimeString().slice(0, 5)
+          }
         }
       } catch {
         notification.error('イベント情報の取得に失敗しました')
