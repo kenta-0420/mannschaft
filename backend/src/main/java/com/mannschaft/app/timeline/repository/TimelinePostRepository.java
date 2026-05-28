@@ -154,6 +154,27 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
     List<TimelinePostEntity> findLatestByVillageId(
             @Param("villageId") UUID villageId, Pageable pageable);
 
+    /**
+     * 村スコープ（scope_village_id）でタイムラインフィードを取得する。
+     *
+     * <p>getFeed エンドポイントから scopeType=VILLAGE で呼ばれる。
+     * scope_village_id に村 UUID を保持する投稿を新着順で返す。</p>
+     *
+     * @param villageId 村 ID（UUIDv7）
+     * @param pageable  ページネーション
+     * @return 村スコープのフィード投稿一覧
+     */
+    @Query("""
+            SELECT p FROM TimelinePostEntity p
+            WHERE p.scopeVillageId = :villageId
+              AND p.parentId IS NULL
+              AND p.status = com.mannschaft.app.timeline.PostStatus.PUBLISHED
+            ORDER BY p.createdAt DESC
+            """)
+    List<TimelinePostEntity> findFeedByVillageId(
+            @Param("villageId") UUID villageId,
+            Pageable pageable);
+
     // ====================================================================
     // F17.1 Phase 3-β — 村史月次集計（村ドメインから read-only 呼出）
     // TODO: 将来は VillagePostCreatedEvent によるカウンタ非同期更新へ分離予定。

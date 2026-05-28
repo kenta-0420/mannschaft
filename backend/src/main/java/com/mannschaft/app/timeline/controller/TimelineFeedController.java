@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * タイムラインフィードコントローラー。フィード取得・検索APIを提供する。
@@ -28,6 +29,9 @@ public class TimelineFeedController {
 
     /**
      * スコープ別フィードを取得する。
+     *
+     * <p>scopeType=VILLAGE の場合は scopeVillageId を指定すること。
+     * scopeVillageId が省略された場合は空リストを返す。</p>
      */
     @GetMapping("/feed")
     @Operation(summary = "タイムラインフィード取得")
@@ -35,8 +39,9 @@ public class TimelineFeedController {
     public ResponseEntity<ApiResponse<List<PostResponse>>> getFeed(
             @RequestParam(defaultValue = "PUBLIC") String scopeType,
             @RequestParam(defaultValue = "0") Long scopeId,
+            @RequestParam(required = false) UUID scopeVillageId,
             @RequestParam(defaultValue = "20") int size) {
-        List<PostResponse> posts = postService.getFeed(scopeType, scopeId, size);
+        List<PostResponse> posts = postService.getFeed(scopeType, scopeId, scopeVillageId, size);
         return ResponseEntity.ok(ApiResponse.of(posts));
     }
 

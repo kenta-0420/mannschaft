@@ -313,16 +313,28 @@ public class TimelinePostService {
     /**
      * スコープ別フィードを取得する。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param size      取得件数
+     * <p>scopeType=VILLAGE の場合は scopeVillageId（UUID）で絞り込む。
+     * scopeVillageId が null の場合は空リストを返す。</p>
+     *
+     * @param scopeType      スコープ種別
+     * @param scopeId        スコープID（VILLAGE スコープでは未使用）
+     * @param scopeVillageId 村 ID（scopeType=VILLAGE 時に使用）
+     * @param size           取得件数
      * @return 投稿一覧
      */
-    public List<PostResponse> getFeed(String scopeType, Long scopeId, int size) {
+    public List<PostResponse> getFeed(String scopeType, Long scopeId, UUID scopeVillageId, int size) {
         int feedSize = size > 0 ? size : DEFAULT_FEED_SIZE;
         PostScopeType scopeTypeEnum = PostScopeType.valueOf(scopeType);
-        List<TimelinePostEntity> posts = postRepository.findFeedByScopeType(
-                scopeTypeEnum, scopeId, PageRequest.of(0, feedSize));
+        List<TimelinePostEntity> posts;
+        if (scopeTypeEnum == PostScopeType.VILLAGE) {
+            // 村スコープは scope_village_id（UUID）で絞り込む
+            if (scopeVillageId == null) {
+                return List.of();
+            }
+            posts = postRepository.findFeedByVillageId(scopeVillageId, PageRequest.of(0, feedSize));
+        } else {
+            posts = postRepository.findFeedByScopeType(scopeTypeEnum, scopeId, PageRequest.of(0, feedSize));
+        }
         return timelineMapper.toPostResponseList(posts);
     }
 
