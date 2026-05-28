@@ -57,7 +57,7 @@ onMounted(() => {
       v-for="item in items"
       :id="`qa-${item.id}`"
       :key="item.id"
-      class="overflow-hidden rounded-xl border border-surface-200 bg-white dark:border-surface-700 dark:bg-surface-800"
+      class="overflow-hidden rounded-xl border-[3px] border-surface-400 bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-surface-500 dark:bg-surface-800"
     >
       <button
         :id="`qa-button-${item.id}`"

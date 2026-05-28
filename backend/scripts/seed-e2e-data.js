@@ -213,6 +213,36 @@ function encryptForTest(plain) {
        VALUES (?,?,?,?,?,?,?)`,
       [userId, roleId, teamId || null, orgId || null, SYS, now, now]
     );
+
+    // F00.5 Phase 3: memberships 基盤への同期。
+    // isMember() は user_roles ではなく memberships.left_at IS NULL を参照するため、
+    // ロール付与と同時に対応するアクティブ memberships 行を投入しないと、
+    // 掲示板など memberships 認可ガード配下のドメインが全員 403 になる（このシードが欠落していた根本原因）。
+    //   - スコープ（team_id / organization_id）が無い SYSTEM_ADMIN(role_id=1) はプラットフォーム全体ロールのため対象外
+    //   - GUEST(role_id=6) はメンバーシップを伴わないため対象外
+    //   - role_kind は SUPPORTER(role_id=5) のみ SUPPORTER、その他（ADMIN/DEPUTY_ADMIN/MEMBER）は MEMBER
+    const isScopedMembershipRole = roleId >= 2 && roleId <= 5 && (teamId || orgId);
+    if (isScopedMembershipRole) {
+      const scopeType = teamId ? 'TEAM' : 'ORGANIZATION';
+      const scopeId = teamId || orgId;
+      const roleKind = roleId === 5 ? 'SUPPORTER' : 'MEMBER';
+      // 冪等性: 同一 (user, scope) のアクティブ行が無ければ作成する。
+      // memberships には UNIQUE 制約が無いため、存在チェックで重複投入を防ぐ。
+      const [rows] = await conn.execute(
+        `SELECT id FROM memberships
+          WHERE user_id = ? AND scope_type = ? AND scope_id = ? AND left_at IS NULL
+          LIMIT 1`,
+        [userId, scopeType, scopeId]
+      );
+      if (rows.length === 0) {
+        await conn.execute(
+          `INSERT INTO memberships
+            (user_id, scope_type, scope_id, role_kind, joined_at, invited_by, created_at, updated_at)
+           VALUES (?,?,?,?,?,?,?,?)`,
+          [userId, scopeType, scopeId, roleKind, now, SYS, now, now]
+        );
+      }
+    }
   }
 
   // E2E admin: SYSTEM_ADMIN（プラットフォーム全体） + JFA ADMIN + FC東京U-18 ADMIN
