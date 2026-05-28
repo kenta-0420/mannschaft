@@ -10,8 +10,7 @@ interface DelegationItem {
   createdAt: string
 }
 
-const props = defineProps<{ item: DelegationItem }>()
-const { t } = useI18n()
+defineProps<{ item: DelegationItem }>()
 </script>
 
 <template>

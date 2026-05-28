@@ -106,9 +106,9 @@ class OrganizationServiceTest {
             ApiResponse<OrganizationResponse> response =
                     organizationService.createOrganization(USER_ID, req);
 
-            assertThat(response.getData().getName()).isEqualTo("テスト組織");
-            assertThat(response.getData().getOrgType()).isEqualTo("SCHOOL");
-            assertThat(response.getData().getVisibility()).isEqualTo("PUBLIC");
+            assertThat(response.getData().getBasicInfo().name()).isEqualTo("テスト組織");
+            assertThat(response.getData().getHierarchy().orgType()).isEqualTo("SCHOOL");
+            assertThat(response.getData().getVisibility().visibility()).isEqualTo("PUBLIC");
             verify(organizationRepository).save(any(OrganizationEntity.class));
             verify(userRoleRepository).save(any(UserRoleEntity.class));
         }
@@ -162,7 +162,7 @@ class OrganizationServiceTest {
             ApiResponse<OrganizationResponse> response =
                     organizationService.createOrganization(USER_ID, req);
 
-            assertThat(response.getData().getVisibility()).isEqualTo("PRIVATE");
+            assertThat(response.getData().getVisibility().visibility()).isEqualTo("PRIVATE");
         }
 
         @Test
@@ -187,7 +187,7 @@ class OrganizationServiceTest {
             ApiResponse<OrganizationResponse> response =
                     organizationService.createOrganization(USER_ID, req);
 
-            assertThat(response.getData().getName()).isEqualTo("子組織");
+            assertThat(response.getData().getBasicInfo().name()).isEqualTo("子組織");
         }
     }
 
@@ -209,8 +209,8 @@ class OrganizationServiceTest {
             ApiResponse<OrganizationResponse> response =
                     organizationService.getOrganization(ORG_ID);
 
-            assertThat(response.getData().getName()).isEqualTo("テスト組織");
-            assertThat(response.getData().getMemberCount()).isEqualTo(5);
+            assertThat(response.getData().getBasicInfo().name()).isEqualTo("テスト組織");
+            assertThat(response.getData().getMetadata().memberCount()).isEqualTo(5);
         }
 
         @Test
@@ -248,10 +248,10 @@ class OrganizationServiceTest {
             ApiResponse<OrganizationResponse> response =
                     organizationService.updateOrganization(ORG_ID, req);
 
-            assertThat(response.getData().getName()).isEqualTo("更新後の名前");
-            assertThat(response.getData().getPrefecture()).isEqualTo("大阪府");
+            assertThat(response.getData().getBasicInfo().name()).isEqualTo("更新後の名前");
+            assertThat(response.getData().getLocation().prefecture()).isEqualTo("大阪府");
             // 未指定フィールドは元のまま
-            assertThat(response.getData().getOrgType()).isEqualTo("SCHOOL");
+            assertThat(response.getData().getHierarchy().orgType()).isEqualTo("SCHOOL");
         }
 
         @Test
@@ -299,13 +299,13 @@ class OrganizationServiceTest {
             ApiResponse<OrganizationResponse> response =
                     organizationService.updateOrganization(ORG_ID, req);
 
-            assertThat(response.getData().getName()).isEqualTo("新名前");
-            assertThat(response.getData().getNameKana()).isEqualTo("しんなまえ");
-            assertThat(response.getData().getNickname1()).isEqualTo("ニックネーム1");
-            assertThat(response.getData().getNickname2()).isEqualTo("ニックネーム2");
-            assertThat(response.getData().getPrefecture()).isEqualTo("大阪府");
-            assertThat(response.getData().getCity()).isEqualTo("大阪市");
-            assertThat(response.getData().getSupporterEnabled()).isTrue();
+            assertThat(response.getData().getBasicInfo().name()).isEqualTo("新名前");
+            assertThat(response.getData().getBasicInfo().nameKana()).isEqualTo("しんなまえ");
+            assertThat(response.getData().getBasicInfo().nickname1()).isEqualTo("ニックネーム1");
+            assertThat(response.getData().getBasicInfo().nickname2()).isEqualTo("ニックネーム2");
+            assertThat(response.getData().getLocation().prefecture()).isEqualTo("大阪府");
+            assertThat(response.getData().getLocation().city()).isEqualTo("大阪市");
+            assertThat(response.getData().getVisibility().supporterEnabled()).isTrue();
         }
     }
 

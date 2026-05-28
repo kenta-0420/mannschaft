@@ -150,18 +150,18 @@ class BulletinMapperTest {
             ThreadResponse response = mapper.toThreadResponse(entity);
 
             // Then
-            assertThat(response.getCategoryId()).isEqualTo(5L);
-            assertThat(response.getScopeType()).isEqualTo("TEAM");
-            assertThat(response.getScopeId()).isEqualTo(1L);
-            assertThat(response.getAuthorId()).isEqualTo(10L);
-            assertThat(response.getTitle()).isEqualTo("テストスレッド");
-            assertThat(response.getBody()).isEqualTo("スレッドの本文");
-            assertThat(response.getPriority()).isEqualTo("IMPORTANT");
-            assertThat(response.getReadTrackingMode()).isEqualTo("INDIVIDUAL");
-            assertThat(response.getIsPinned()).isFalse();
-            assertThat(response.getIsLocked()).isFalse();
-            assertThat(response.getIsArchived()).isFalse();
-            assertThat(response.getReplyCount()).isZero();
+            assertThat(response.getScope().categoryId()).isEqualTo(5L);
+            assertThat(response.getScope().scopeType()).isEqualTo("TEAM");
+            assertThat(response.getScope().scopeId()).isEqualTo(1L);
+            assertThat(response.getAudit().authorId()).isEqualTo(10L);
+            assertThat(response.getContent().title()).isEqualTo("テストスレッド");
+            assertThat(response.getContent().body()).isEqualTo("スレッドの本文");
+            assertThat(response.getContent().priority()).isEqualTo("IMPORTANT");
+            assertThat(response.getContent().readTrackingMode()).isEqualTo("INDIVIDUAL");
+            assertThat(response.getState().isPinned()).isFalse();
+            assertThat(response.getState().isLocked()).isFalse();
+            assertThat(response.getState().isArchived()).isFalse();
+            assertThat(response.getStats().replyCount()).isZero();
         }
 
         @Test
@@ -183,9 +183,9 @@ class BulletinMapperTest {
             ThreadResponse response = mapper.toThreadResponse(entity);
 
             // Then
-            assertThat(response.getScopeType()).isEqualTo("ORGANIZATION");
-            assertThat(response.getPriority()).isEqualTo("INFO");
-            assertThat(response.getReadTrackingMode()).isEqualTo("COUNT_ONLY");
+            assertThat(response.getScope().scopeType()).isEqualTo("ORGANIZATION");
+            assertThat(response.getContent().priority()).isEqualTo("INFO");
+            assertThat(response.getContent().readTrackingMode()).isEqualTo("COUNT_ONLY");
         }
 
         @Test
@@ -209,9 +209,9 @@ class BulletinMapperTest {
             ThreadResponse response = mapper.toThreadResponse(entity);
 
             // Then
-            assertThat(response.getIsPinned()).isTrue();
-            assertThat(response.getIsLocked()).isTrue();
-            assertThat(response.getPriority()).isEqualTo("URGENT");
+            assertThat(response.getState().isPinned()).isTrue();
+            assertThat(response.getState().isLocked()).isTrue();
+            assertThat(response.getContent().priority()).isEqualTo("URGENT");
         }
     }
 
@@ -239,8 +239,8 @@ class BulletinMapperTest {
 
             // Then
             assertThat(responses).hasSize(2);
-            assertThat(responses.get(0).getTitle()).isEqualTo("スレッド1");
-            assertThat(responses.get(1).getTitle()).isEqualTo("スレッド2");
+            assertThat(responses.get(0).getContent().title()).isEqualTo("スレッド1");
+            assertThat(responses.get(1).getContent().title()).isEqualTo("スレッド2");
         }
 
         @Test

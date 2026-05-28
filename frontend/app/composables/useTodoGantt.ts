@@ -31,8 +31,10 @@ export function useTodoGantt() {
     from: string,
     to: string,
   ): Promise<GanttResponse> {
+    const fromDate = from.slice(0, 10)
+    const toDate = to.slice(0, 10)
     return api<GanttResponse>(
-      `${buildBase(scopeType, scopeId)}/todos/gantt?from=${from}&to=${to}`,
+      `${buildBase(scopeType, scopeId)}/todos/gantt?from=${fromDate}&to=${toDate}`,
     )
   }
 

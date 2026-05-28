@@ -17,6 +17,7 @@ import org.mapstruct.Mapping;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 掲示板機能の Entity → DTO 変換マッパー。
@@ -29,12 +30,50 @@ public interface BulletinMapper {
 
     List<CategoryResponse> toCategoryResponseList(List<BulletinCategoryEntity> entities);
 
-    @Mapping(target = "scopeType", expression = "java(entity.getScopeType().name())")
-    @Mapping(target = "priority", expression = "java(entity.getPriority().name())")
-    @Mapping(target = "readTrackingMode", expression = "java(entity.getReadTrackingMode().name())")
-    ThreadResponse toThreadResponse(BulletinThreadEntity entity);
+    /**
+     * スレッドエンティティをネスト設計の ThreadResponse に変換する。
+     * MapStruct の自動マッピングはフラット→ネスト構造では機能しないため、
+     * default メソッドでビルダーを明示的に使用する。
+     */
+    default ThreadResponse toThreadResponse(BulletinThreadEntity entity) {
+        if (entity == null) return null;
+        return ThreadResponse.builder()
+                .id(entity.getId())
+                .scope(new ThreadResponse.ThreadScopeDto(
+                        entity.getCategoryId(),
+                        entity.getScopeType() != null ? entity.getScopeType().name() : null,
+                        entity.getScopeId()))
+                .content(new ThreadResponse.ThreadContentDto(
+                        entity.getTitle(),
+                        entity.getBody(),
+                        entity.getPriority() != null ? entity.getPriority().name() : null,
+                        entity.getReadTrackingMode() != null ? entity.getReadTrackingMode().name() : null))
+                .state(new ThreadResponse.ThreadStateDto(
+                        entity.getIsPinned(),
+                        entity.getIsLocked(),
+                        entity.getIsArchived(),
+                        entity.getArchiveFolderId()))
+                .stats(new ThreadResponse.ThreadStatsDto(
+                        entity.getReplyCount(),
+                        entity.getReadCount(),
+                        entity.getLastRepliedAt()))
+                .source(new ThreadResponse.ThreadSourceDto(
+                        entity.getSourceType(),
+                        entity.getSourceId()))
+                .audit(new ThreadResponse.ThreadAuditDto(
+                        entity.getAuthorId(),
+                        entity.getCreatedAt(),
+                        entity.getUpdatedAt()))
+                .build();
+    }
 
-    List<ThreadResponse> toThreadResponseList(List<BulletinThreadEntity> entities);
+    /**
+     * スレッドエンティティのリストを ThreadResponse リストに変換する。
+     */
+    default List<ThreadResponse> toThreadResponseList(List<BulletinThreadEntity> entities) {
+        if (entities == null) return Collections.emptyList();
+        return entities.stream().map(this::toThreadResponse).collect(Collectors.toList());
+    }
 
     /**
      * 返信エンティティをレスポンスに変換する（子返信なし）。

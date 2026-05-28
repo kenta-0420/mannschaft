@@ -194,8 +194,12 @@ tasks.withType<Test> {
     // 100 テストごとに JVM を fork し直し、累積メモリ（特に MySQL Connector の AbandonedConnectionCleanup が
     // WeakReference 監視している放置 Connection オブジェクトの累積）をリセットする。
     // forkEvery を入れないと全 ~1500 テストを 1 JVM で走らせるため、後半でヒープが枯渇する。
-    setForkEvery(100L)
-    maxParallelForks = 2
+    // ローカル（WSL2 Docker）環境では -Pfork.every=0 で無効化し、1コンテナ共有で高速化できる。
+    setForkEvery((project.findProperty("fork.every") as String?)?.toLong() ?: 100L)
+    // ローカル（WSL2 Docker）環境では Testcontainers の並列コンテナ起動が WSL2 ポートミラーリングの
+    // タイミング問題を引き起こすため、-Pmax.parallel.forks=1 で上書きできるようにする。
+    // CI 環境ではデフォルト 2 のまま動作する。
+    maxParallelForks = (project.findProperty("max.parallel.forks") as String?)?.toInt() ?: 2
     // GC を明示し OOM 時にヒープダンプを残す（CI で再発時の調査用）
     //
     // -Dcom.mysql.cj.disableAbandonedConnectionCleanup=true:

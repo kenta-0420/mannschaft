@@ -119,19 +119,19 @@ useHead({
 
     <!-- チュートリアル誘導バナー -->
     <section
-      class="mb-8 overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-6 text-white shadow-md"
+      class="mb-8 overflow-hidden rounded-2xl border-[3px] border-surface-400 bg-surface-0 p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-surface-500 dark:bg-surface-800"
       :aria-label="t('qa.tutorial_banner.title')"
     >
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div class="flex items-start gap-4">
-          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20">
+          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
             <i class="pi pi-book text-2xl" />
           </div>
           <div>
-            <h2 class="text-lg font-bold">
+            <h2 class="text-lg font-bold text-surface-900 dark:text-surface-0">
               {{ t('qa.tutorial_banner.title') }}
             </h2>
-            <p class="mt-1 text-sm text-white/90">
+            <p class="mt-1 text-sm text-surface-600 dark:text-surface-400">
               {{ t('qa.tutorial_banner.description') }}
             </p>
           </div>
@@ -141,7 +141,6 @@ useHead({
             :label="t('qa.tutorial_banner.button')"
             icon="pi pi-arrow-right"
             icon-pos="right"
-            severity="contrast"
           />
         </NuxtLink>
       </div>
@@ -159,7 +158,7 @@ useHead({
           id="qa-search"
           v-model="searchQuery"
           :placeholder="t('qa.search_placeholder')"
-          class="w-full pl-10"
+          class="w-full pl-10 !border-[3px] !border-surface-400 dark:!border-surface-500"
           :aria-label="t('qa.search_placeholder')"
         />
       </div>
@@ -176,11 +175,10 @@ useHead({
         :key="category"
         :label="t(`qa.category.${category}`)"
         :severity="selectedCategory === category ? 'primary' : 'secondary'"
-        :outlined="selectedCategory !== category"
         size="small"
         role="tab"
         :aria-selected="selectedCategory === category"
-        class="shrink-0"
+        class="shrink-0 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm !border-[3px]"
         @click="selectCategory(category)"
       />
     </section>

@@ -35,4 +35,12 @@
 .p-dark .p-tooltip.p-tooltip-bottom .p-tooltip-arrow {
   border-bottom-color: #334155;
 }
+
+/* secondary outlined ボタン: #f3efe0 クリーム背景での視認性確保（全ページ共通） */
+.p-button-outlined.p-button-secondary {
+  background: rgba(255, 255, 255, 0.5) !important;
+}
+.p-dark .p-button-outlined.p-button-secondary {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
 </style>

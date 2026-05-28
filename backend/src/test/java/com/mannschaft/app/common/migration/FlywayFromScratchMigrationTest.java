@@ -72,6 +72,7 @@ class FlywayFromScratchMigrationTest {
             .withDatabaseName("mannschaft_fromscratch")
             .withUsername("test")
             .withPassword("test")
+            .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"))
             .withCommand("--log_bin_trust_function_creators=1");
 
     public static boolean isDockerAvailable() {
