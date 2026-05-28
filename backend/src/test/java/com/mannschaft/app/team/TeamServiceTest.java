@@ -264,7 +264,7 @@ class TeamServiceTest {
             ApiResponse<TeamResponse> result = service.updateTeam(TEAM_ID, req);
 
             // Then
-            assertThat(result.getData().getMapEmbedUrl()).isEqualTo(embedUrl);
+            assertThat(result.getData().getMetadata().mapEmbedUrl()).isEqualTo(embedUrl);
             verify(teamRepository).save(any(TeamEntity.class));
         }
 
@@ -291,7 +291,7 @@ class TeamServiceTest {
             ApiResponse<TeamResponse> result = service.updateTeam(TEAM_ID, req);
 
             // Then
-            assertThat(result.getData().getMapEmbedUrl()).isEqualTo("https://www.google.com/maps/embed?pb=existing");
+            assertThat(result.getData().getMetadata().mapEmbedUrl()).isEqualTo("https://www.google.com/maps/embed?pb=existing");
         }
     }
 
