@@ -43,7 +43,7 @@ onMounted(() => load())
     <BackButton to="/my" />
     <div class="mb-4 flex items-center justify-between">
       <PageHeader :title="$t('shift.myShifts.title')" />
-      <NuxtLink to="/teams">
+      <NuxtLink to="/my/shift-request">
         <Button
           :label="$t('shift.changeRequest.submit')"
           icon="pi pi-plus"
