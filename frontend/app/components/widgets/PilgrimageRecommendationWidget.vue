@@ -11,7 +11,7 @@
 import type { VillagePilgrimageRecommendationResponse } from '~/types/village'
 
 const { t } = useI18n()
-const villageApi = useVillageApi()
+const villagePhase3Api = useVillagePhase3Api()
 const { captureQuiet } = useErrorReport()
 
 const loading = ref(true)
@@ -22,7 +22,7 @@ async function load() {
   loading.value = true
   error.value = null
   try {
-    recommendation.value = await villageApi.getTodaysPilgrimage()
+    recommendation.value = await villagePhase3Api.getTodaysPilgrimage()
   }
   catch (err) {
     captureQuiet(err, { context: 'PilgrimageRecommendationWidget: 取得失敗' })
@@ -39,7 +39,7 @@ async function visit() {
   const villageId = recommendation.value.recommendedVillageId
   const recommendationId = recommendation.value.id
   try {
-    await villageApi.recordVisit({ villageId, recommendationId })
+    await villagePhase3Api.recordVisit(recommendationId)
   }
   catch (err) {
     // 訪問記録失敗は遷移をブロックしない（捕捉のみ）

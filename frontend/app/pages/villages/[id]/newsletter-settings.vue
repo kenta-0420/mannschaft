@@ -28,6 +28,7 @@ const route = useRoute()
 const villageId = String(route.params.id)
 const { t } = useI18n()
 const villageApi = useVillageApi()
+const villagePhase3Api = useVillagePhase3Api()
 const { handleApiError } = useErrorHandler()
 const toast = useToast()
 
@@ -58,7 +59,7 @@ const selectedFrequency = ref<VillageNewsletterFrequency>('WEEKLY')
 async function loadSettings() {
   settingsLoading.value = true
   try {
-    settings.value = await villageApi.getNewsletterSettings()
+    settings.value = await villagePhase3Api.getNewsletterSettings(villageId)
     selectedFrequency.value = settings.value.frequency
   }
   catch (error) {
@@ -73,9 +74,8 @@ async function loadSettings() {
 async function saveSettings() {
   saving.value = true
   try {
-    settings.value = await villageApi.updateNewsletterSettings({
+    settings.value = await villagePhase3Api.updateNewsletterSettings(villageId, {
       frequency: selectedFrequency.value,
-      villageId,
     })
     toast.add({
       severity: 'success',
@@ -95,7 +95,7 @@ async function toggleOptOut() {
   if (!settings.value) return
   try {
     if (settings.value.optedOut) {
-      await villageApi.optIn()
+      await villagePhase3Api.optIn(villageId)
       toast.add({
         severity: 'success',
         summary: t('village.newsletter.optInSuccess'),
@@ -103,7 +103,7 @@ async function toggleOptOut() {
       })
     }
     else {
-      await villageApi.optOut()
+      await villagePhase3Api.optOut(villageId)
       toast.add({
         severity: 'success',
         summary: t('village.newsletter.optOutSuccess'),
