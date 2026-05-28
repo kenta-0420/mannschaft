@@ -178,7 +178,7 @@ useHead({
         size="small"
         role="tab"
         :aria-selected="selectedCategory === category"
-        class="shrink-0 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm !border-[3px]"
+        class="shrink-0 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm"
         @click="selectCategory(category)"
       />
     </section>
@@ -225,3 +225,9 @@ useHead({
     </section>
   </main>
 </template>
+
+<style scoped>
+[role="tablist"] :deep(.p-button) {
+  border-width: 3px;
+}
+</style>
