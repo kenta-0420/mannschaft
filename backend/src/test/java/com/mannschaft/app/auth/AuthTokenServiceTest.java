@@ -366,16 +366,16 @@ class AuthTokenServiceTest {
         }
 
         @Test
-        @DisplayName("Valkey障害系: 例外が外部に伝播しない（fail-silent）")
-        void addJtiToBlacklist_Valkey障害_例外が伝播しない() {
+        @DisplayName("Valkey障害系: 例外が呼び元に伝播する（fail-closed）")
+        void addJtiToBlacklist_Valkey障害_例外が伝播する() {
             // Given
             given(redisTemplate.opsForValue()).willReturn(valueOperations);
             willThrow(new RuntimeException("Valkey connection refused"))
                     .given(valueOperations).set(anyString(), anyString(), anyLong(), any());
 
-            // When / Then: 例外が外に出ないことを確認
-            assertThatCode(() -> authTokenService.addJtiToBlacklist("test-jti", 300L))
-                    .doesNotThrowAnyException();
+            // When / Then: 例外が外に伝播してログアウト操作が5xx扱いになることを確認
+            assertThatThrownBy(() -> authTokenService.addJtiToBlacklist("test-jti", 300L))
+                    .isInstanceOf(RuntimeException.class);
         }
     }
 
@@ -483,16 +483,16 @@ class AuthTokenServiceTest {
     class SetUserInvalidationTimestamp {
 
         @Test
-        @DisplayName("Valkey障害系: 例外が外部に伝播しない（fail-silent）")
-        void setUserInvalidationTimestamp_Valkey障害_例外が伝播しない() {
+        @DisplayName("Valkey障害系: 例外が呼び元に伝播する（fail-closed）")
+        void setUserInvalidationTimestamp_Valkey障害_例外が伝播する() {
             // Given
             given(redisTemplate.opsForValue()).willReturn(valueOperations);
             willThrow(new RuntimeException("Valkey connection refused"))
                     .given(valueOperations).set(anyString(), anyString(), anyLong(), any());
 
             // When / Then
-            assertThatCode(() -> authTokenService.setUserInvalidationTimestamp(1L))
-                    .doesNotThrowAnyException();
+            assertThatThrownBy(() -> authTokenService.setUserInvalidationTimestamp(1L))
+                    .isInstanceOf(RuntimeException.class);
         }
     }
 
@@ -501,15 +501,15 @@ class AuthTokenServiceTest {
     class ClearUserInvalidationTimestamp {
 
         @Test
-        @DisplayName("Valkey障害系: 例外が外部に伝播しない（fail-silent）")
-        void clearUserInvalidationTimestamp_Valkey障害_例外が伝播しない() {
+        @DisplayName("Valkey障害系: 例外が呼び元に伝播する（fail-closed）")
+        void clearUserInvalidationTimestamp_Valkey障害_例外が伝播する() {
             // Given
             given(redisTemplate.delete(anyString()))
                     .willThrow(new RuntimeException("Valkey connection refused"));
 
             // When / Then
-            assertThatCode(() -> authTokenService.clearUserInvalidationTimestamp(1L))
-                    .doesNotThrowAnyException();
+            assertThatThrownBy(() -> authTokenService.clearUserInvalidationTimestamp(1L))
+                    .isInstanceOf(RuntimeException.class);
         }
     }
 
@@ -522,18 +522,16 @@ class AuthTokenServiceTest {
     class IncrementRateLimitValkeyDown {
 
         @Test
-        @DisplayName("Valkey障害系: 例外が発生してもカウント0を返す（fail-open）")
-        void incrementRateLimit_Valkey障害_0を返す() {
+        @DisplayName("Valkey障害系: 例外が呼び元に伝播する（fail-closed）")
+        void incrementRateLimit_Valkey障害_例外が伝播する() {
             // Given
             given(redisTemplate.opsForValue()).willReturn(valueOperations);
             given(valueOperations.increment(anyString()))
                     .willThrow(new RuntimeException("Valkey connection refused"));
 
-            // When
-            long count = authTokenService.incrementRateLimit("some-key", Duration.ofMinutes(1));
-
-            // Then: fail-openでカウント0（レート制限スキップ）
-            assertThat(count).isZero();
+            // When / Then: 例外が伝播する
+            assertThatThrownBy(() -> authTokenService.incrementRateLimit("some-key", Duration.ofMinutes(1)))
+                    .isInstanceOf(RuntimeException.class);
         }
     }
 
