@@ -175,7 +175,6 @@ useHead({
         :key="category"
         :label="t(`qa.category.${category}`)"
         :severity="selectedCategory === category ? 'primary' : 'secondary'"
-        :outlined="selectedCategory !== category"
         size="small"
         role="tab"
         :aria-selected="selectedCategory === category"
