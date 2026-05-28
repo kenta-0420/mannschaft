@@ -25,6 +25,11 @@ const {
 
 const viewerRole = computed<ViewerRole>(() => (roleName.value as ViewerRole | null) ?? 'PUBLIC')
 
+const {
+  settings: widgetVisibilitySettings,
+  fetch: fetchWidgetVisibility,
+} = useDashboardWidgetVisibility('team', teamId)
+
 const followStatus = ref<'NONE' | 'PENDING' | 'APPROVED'>('NONE')
 const followLoading = ref(false)
 const showCancelSupporterConfirm = ref(false)
@@ -108,6 +113,8 @@ async function leaveTeam() {
 onMounted(async () => {
   await Promise.all([fetchTeam(), loadPermissions()])
   await fetchFollowStatus()
+  // ウィジェット可視性設定を取得（非メンバー・サポーターは403になるため catch して空のまま = デフォルト適用）
+  fetchWidgetVisibility().catch(() => {})
 })
 </script>
 
@@ -191,6 +198,7 @@ onMounted(async () => {
                 :scope-template="team.template"
                 :viewer-role="viewerRole"
                 :is-admin-or-deputy="isAdminOrDeputy"
+                :visibility-map="widgetVisibilitySettings"
               />
             </div>
           </TabPanel>

@@ -1,4 +1,29 @@
-import type { MinRole } from '~/types/dashboard'
+import type { MinRole, ViewerRole, WidgetVisibilitySetting } from '~/types/dashboard'
+
+const MIN_ROLE_LEVEL: Record<MinRole, number> = { PUBLIC: 0, SUPPORTER: 1, MEMBER: 2 }
+
+function viewerRoleLevel(viewerRole: ViewerRole | undefined): number {
+  if (!viewerRole || viewerRole === 'PUBLIC') return 0
+  if (viewerRole === 'SUPPORTER') return 1
+  return 2 // MEMBER / DEPUTY_ADMIN / ADMIN / SYSTEM_ADMIN
+}
+
+function effectiveMinRole(
+  widget: WidgetDefinition,
+  scopeType: 'personal' | 'team' | 'organization',
+  visibilityMap: WidgetVisibilitySetting[],
+): MinRole {
+  // バックエンドキーがある場合は visibilityMap（admin設定）を優先する
+  if (scopeType !== 'personal') {
+    const backendKey = backendKeyForWidget(widget.key, scopeType as 'team' | 'organization')
+    if (backendKey) {
+      const setting = visibilityMap.find((s) => s.widget_key === backendKey)
+      if (setting) return setting.min_role
+    }
+  }
+  // バックエンドキーなし or visibilityMap未取得時はウィジェット定義のデフォルトを使用
+  return widget.defaultMinRole ?? 'PUBLIC'
+}
 
 export interface WidgetDefinition {
   key: string
@@ -213,6 +238,7 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     icon: 'pi pi-id-card',
     description: '連絡先・緊急連絡先等の定期更新フォーム',
     scope: ['team'],
+    defaultMinRole: 'MEMBER' as MinRole,
   },
   // F02.10: 天気ウィジェット
   {
@@ -245,6 +271,8 @@ function orderStorageKey(scopeType: string, scopeId?: number): string {
 export function useDashboardWidgets(
   scopeType: 'personal' | 'team' | 'organization',
   scopeId?: Ref<number> | number,
+  viewerRole?: ViewerRole,
+  visibilityMap?: WidgetVisibilitySetting[],
 ) {
   const resolvedId = typeof scopeId === 'number' ? scopeId : scopeId?.value
 
@@ -315,7 +343,13 @@ export function useDashboardWidgets(
     })
   })
 
-  const visibleWidgets = computed(() => sortedWidgets.value.filter((w) => isVisible(w.key)))
+  const visibleWidgets = computed(() =>
+    sortedWidgets.value.filter((w) => {
+      if (!isVisible(w.key)) return false
+      const minRole = effectiveMinRole(w, scopeType, visibilityMap ?? [])
+      return viewerRoleLevel(viewerRole) >= MIN_ROLE_LEVEL[minRole]
+    }),
+  )
 
   function reorder(fromIndex: number, toIndex: number) {
     const list = sortedWidgets.value.map((w) => w.key)
