@@ -213,6 +213,7 @@
       }
     },
     "search": {
+      "title": "마을 찾기",
       "placeholder": "村を検索...",
       "internalPlaceholder": "この村の中を検索...",
       "filterType": "種別で絞り込み",
