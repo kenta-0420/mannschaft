@@ -242,11 +242,18 @@ public class TicketBookService {
 
         Long daysUntilExpiry = ticketMapper.calculateDaysUntilExpiry(book.getExpiresAt());
 
-        return new TicketBookDetailResponse(
-                book.getId(), productName, book.getTotalTickets(), book.getUsedTickets(),
-                book.getRemainingTickets(), book.getStatus().name(), book.getPurchasedAt(),
-                book.getExpiresAt(), daysUntilExpiry, book.getNote(),
-                paymentSummary, consumptionResponses, book.getCreatedAt(), book.getUpdatedAt());
+        return TicketBookDetailResponse.builder()
+                .id(book.getId())
+                .productName(productName)
+                .quantity(new TicketBookDetailResponse.TicketQuantityDto(
+                        book.getTotalTickets(), book.getUsedTickets(), book.getRemainingTickets()))
+                .status(new TicketBookDetailResponse.TicketStatusDto(
+                        book.getStatus().name(), book.getPurchasedAt(), book.getExpiresAt(), daysUntilExpiry))
+                .payment(paymentSummary)
+                .consumptions(consumptionResponses)
+                .audit(new TicketBookDetailResponse.DetailAuditDto(
+                        book.getNote(), book.getCreatedAt(), book.getUpdatedAt()))
+                .build();
     }
 
     /**
@@ -667,11 +674,17 @@ public class TicketBookService {
 
     private TicketBookResponse toBookResponseWithProductName(TicketBookEntity book, String productName) {
         Long daysUntilExpiry = ticketMapper.calculateDaysUntilExpiry(book.getExpiresAt());
-        return new TicketBookResponse(
-                book.getId(), productName, book.getTotalTickets(), book.getUsedTickets(),
-                book.getTotalTickets() - book.getUsedTickets(),
-                book.getStatus().name(), book.getPurchasedAt(), book.getExpiresAt(),
-                daysUntilExpiry, book.getNote(), book.getCreatedAt(), book.getUpdatedAt());
+        return TicketBookResponse.builder()
+                .id(book.getId())
+                .productName(productName)
+                .quantity(new TicketBookResponse.TicketQuantityDto(
+                        book.getTotalTickets(), book.getUsedTickets(),
+                        book.getTotalTickets() - book.getUsedTickets()))
+                .status(new TicketBookResponse.TicketStatusDto(
+                        book.getStatus().name(), book.getPurchasedAt(), book.getExpiresAt(), daysUntilExpiry))
+                .note(new TicketBookResponse.NoteDto(book.getNote()))
+                .audit(new TicketBookResponse.BookAuditDto(book.getCreatedAt(), book.getUpdatedAt()))
+                .build();
     }
 
     private String calculateUrgency(Long daysUntilExpiry) {
