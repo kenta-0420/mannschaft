@@ -23,25 +23,37 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface ReservationMapper {
 
+    @Mapping(target = "meta", expression = "java(new com.mannschaft.app.reservation.dto.ReservationLineResponse.LineMetaDto(entity.getName(), entity.getDescription(), entity.getDisplayOrder(), entity.getIsActive(), entity.getDefaultStaffUserId()))")
+    @Mapping(target = "audit", expression = "java(new com.mannschaft.app.reservation.dto.ReservationLineResponse.ReservationLineAuditDto(entity.getCreatedAt(), entity.getUpdatedAt()))")
     ReservationLineResponse toLineResponse(ReservationLineEntity entity);
 
     List<ReservationLineResponse> toLineResponseList(List<ReservationLineEntity> entities);
 
-    @Mapping(target = "slotStatus", expression = "java(entity.getSlotStatus().name())")
+    @Mapping(target = "basic", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotBasicDto(entity.getTitle(), entity.getSlotDate(), entity.getStartTime(), entity.getEndTime()))")
+    @Mapping(target = "status", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotStatusDto(entity.getSlotStatus() != null ? entity.getSlotStatus().name() : null, entity.getBookedCount(), entity.getIsException(), entity.getClosedReason(), entity.getNote()))")
+    @Mapping(target = "recurrence", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.RecurrenceDto(entity.getRecurrenceRule(), entity.getParentSlotId()))")
+    @Mapping(target = "pricing", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotPricingDto(entity.getPrice()))")
+    @Mapping(target = "audit", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotAuditDto(entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt()))")
     ReservationSlotResponse toSlotResponse(ReservationSlotEntity entity);
 
     List<ReservationSlotResponse> toSlotResponseList(List<ReservationSlotEntity> entities);
 
-    @Mapping(target = "status", expression = "java(entity.getStatus().name())")
-    @Mapping(target = "cancelledBy", expression = "java(entity.getCancelledBy() != null ? entity.getCancelledBy().name() : null)")
+    @Mapping(target = "identifier", expression = "java(new com.mannschaft.app.reservation.dto.ReservationResponse.ReservationIdentifierDto(entity.getReservationSlotId(), entity.getLineId(), entity.getTeamId(), entity.getUserId()))")
+    @Mapping(target = "status", expression = "java(new com.mannschaft.app.reservation.dto.ReservationResponse.ReservationStatusDto(entity.getStatus() != null ? entity.getStatus().name() : null, entity.getBookedAt(), entity.getConfirmedAt(), entity.getCompletedAt()))")
+    @Mapping(target = "cancellation", expression = "java(new com.mannschaft.app.reservation.dto.ReservationResponse.CancellationDto(entity.getCancelledAt(), entity.getCancelReason(), entity.getCancelledBy() != null ? entity.getCancelledBy().name() : null))")
+    @Mapping(target = "notes", expression = "java(new com.mannschaft.app.reservation.dto.ReservationResponse.NotesDto(entity.getUserNote(), entity.getAdminNote()))")
+    @Mapping(target = "audit", expression = "java(new com.mannschaft.app.reservation.dto.ReservationResponse.ReservationAuditDto(entity.getCreatedAt(), entity.getUpdatedAt()))")
     ReservationResponse toReservationResponse(ReservationEntity entity);
 
     List<ReservationResponse> toReservationResponseList(List<ReservationEntity> entities);
 
+    @Mapping(target = "businessStatus", expression = "java(new com.mannschaft.app.reservation.dto.BusinessHourResponse.BusinessStatusDto(entity.getDayOfWeek(), entity.getIsOpen(), entity.getOpenTime(), entity.getCloseTime()))")
     BusinessHourResponse toBusinessHourResponse(ReservationBusinessHourEntity entity);
 
     List<BusinessHourResponse> toBusinessHourResponseList(List<ReservationBusinessHourEntity> entities);
 
+    @Mapping(target = "timeSlot", expression = "java(new com.mannschaft.app.reservation.dto.BlockedTimeResponse.TimeSlotDto(entity.getBlockedDate(), entity.getStartTime(), entity.getEndTime()))")
+    @Mapping(target = "audit", expression = "java(new com.mannschaft.app.reservation.dto.BlockedTimeResponse.BlockedAuditDto(entity.getReason(), entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt()))")
     BlockedTimeResponse toBlockedTimeResponse(ReservationBlockedTimeEntity entity);
 
     List<BlockedTimeResponse> toBlockedTimeResponseList(List<ReservationBlockedTimeEntity> entities);

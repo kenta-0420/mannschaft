@@ -1,24 +1,23 @@
 package com.mannschaft.app.reservation.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 
 /**
  * 予約ラインレスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class ReservationLineResponse {
 
-    private final Long id;
-    private final Long teamId;
-    private final String name;
-    private final String description;
-    private final Integer displayOrder;
-    private final Boolean isActive;
-    private final Long defaultStaffUserId;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    Long id;
+    Long teamId;
+    LineMetaDto meta;
+    ReservationLineAuditDto audit;
+
+    public record LineMetaDto(String name, String description, Integer displayOrder, Boolean isActive, Long defaultStaffUserId) {}
+
+    public record ReservationLineAuditDto(LocalDateTime createdAt, LocalDateTime updatedAt) {}
 }
