@@ -98,7 +98,8 @@
         "accept": "Accept",
         "reject": "Reject",
         "as_delegator": "Requested (awaiting delegate)",
-        "as_delegate": "You have a delegation request"
+        "as_delegate": "You have a delegation request",
+        "how_to_check": "Please check and approve from the detail page of each schedule or event"
       },
       "admin": {
         "tab": "Proxy Attendance",

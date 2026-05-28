@@ -98,7 +98,8 @@
         "accept": "승인",
         "reject": "거부",
         "as_delegator": "요청 중（대리인 대기）",
-        "as_delegate": "대리 요청을 받았습니다"
+        "as_delegate": "대리 요청을 받았습니다",
+        "how_to_check": "각 일정·이벤트의 상세 페이지에서 확인하고 승인해 주세요"
       },
       "admin": {
         "tab": "대리 출석",

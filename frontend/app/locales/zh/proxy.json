@@ -98,7 +98,8 @@
         "accept": "接受",
         "reject": "拒绝",
         "as_delegator": "申请中（等待代理人）",
-        "as_delegate": "您有委托申请"
+        "as_delegate": "您有委托申请",
+        "how_to_check": "请从各日程或活动的详情页面进行确认和批准"
       },
       "admin": {
         "tab": "代理出席",
