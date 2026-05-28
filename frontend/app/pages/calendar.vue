@@ -49,6 +49,15 @@ interface EventDetail {
   categoryColor?: string | null
 }
 
+interface PersonalScheduleRaw {
+  id: number
+  content: { title: string; description: string | null; eventType: string; color: string | null; location: string | null }
+  time: { startAt: string; endAt: string; allDay: boolean }
+  status: { status: string; isException: boolean; parentScheduleId: number | null; recurrenceRule: unknown; googleSynced: boolean }
+  reminders: number[]
+  audit: { createdAt: string; updatedAt: string; createdByDisplayName: string | null }
+}
+
 const selectedEvent = ref<EventDetail | null>(null)
 
 const ganttTodos = ref<GanttTodo[]>([])
@@ -96,10 +105,20 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
     selectedEventIsPersonal.value = isPersonal
     if (isPersonal) {
       const res = await scheduleApi.getMyScheduleDetail(eventId)
-      const d = res.data as EventDetail & { createdByDisplayName?: string }
+      const d = res.data as PersonalScheduleRaw
       selectedEvent.value = {
-        ...d,
-        createdBy: d.createdByDisplayName ? { displayName: d.createdByDisplayName } : d.createdBy,
+        id: d.id,
+        title: d.content?.title ?? '',
+        description: d.content?.description ?? null,
+        location: d.content?.location ?? null,
+        startAt: d.time?.startAt ?? '',
+        endAt: d.time?.endAt ?? '',
+        allDay: d.time?.allDay ?? false,
+        color: d.content?.color ?? null,
+        status: d.status?.status ?? undefined,
+        createdBy: d.audit?.createdByDisplayName
+          ? { displayName: d.audit.createdByDisplayName }
+          : undefined,
       }
     }
     else {
