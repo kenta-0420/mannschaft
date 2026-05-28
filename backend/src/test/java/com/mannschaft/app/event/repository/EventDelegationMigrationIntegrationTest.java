@@ -42,6 +42,7 @@ class EventDelegationMigrationIntegrationTest {
             .withDatabaseName("mannschaft_event_deleg")
             .withUsername("test")
             .withPassword("test")
+            .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"))
             .withCommand("--log_bin_trust_function_creators=1");
 
     private static final long DELEGATE_ID = 7102L;

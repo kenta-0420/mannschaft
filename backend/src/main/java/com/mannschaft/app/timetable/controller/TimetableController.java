@@ -183,23 +183,25 @@ public class TimetableController {
                         entry -> {
                             TimetableSlotService.DayViewData dayData = entry.getValue();
                             List<WeeklyViewResponse.SlotInfo> slotInfos = dayData.slots().stream()
-                                    .map(slot -> new WeeklyViewResponse.SlotInfo(
-                                            slot.periodNumber(),
-                                            slot.subjectName(),
-                                            slot.teacherName(),
-                                            slot.roomName(),
-                                            slot.color(),
-                                            slot.notes(),
-                                            slot.isChanged(),
-                                            slot.originalSubject(),
-                                            slot.changeType() != null ? slot.changeType().name() : null,
-                                            slot.changeReason()))
+                                    .map(slot -> WeeklyViewResponse.SlotInfo.builder()
+                                            .periodNumber(slot.periodNumber())
+                                            .subjectName(slot.subjectName())
+                                            .teacherName(slot.teacherName())
+                                            .roomName(slot.roomName())
+                                            .color(slot.color())
+                                            .notes(slot.notes())
+                                            .isChanged(slot.isChanged())
+                                            .originalSubject(slot.originalSubject())
+                                            .changeType(slot.changeType() != null ? slot.changeType().name() : null)
+                                            .changeReason(slot.changeReason())
+                                            .build())
                                     .toList();
-                            return new WeeklyViewResponse.DayInfo(
-                                    dayData.date(),
-                                    dayData.isDayOff(),
-                                    dayData.dayOffReason(),
-                                    slotInfos);
+                            return WeeklyViewResponse.DayInfo.builder()
+                                    .date(dayData.date())
+                                    .isDayOff(dayData.isDayOff())
+                                    .dayOffReason(dayData.dayOffReason())
+                                    .slots(slotInfos)
+                                    .build();
                         },
                         (a, b) -> a,
                         java.util.LinkedHashMap::new
@@ -210,15 +212,16 @@ public class TimetableController {
         // フロントエンドは別途 GET /organizations/{id}/timetable-periods で取得する）
         List<WeeklyViewResponse.PeriodInfo> periodInfos = List.of();
 
-        var response = new WeeklyViewResponse(
-                viewData.timetableId(),
-                timetable.getName(),
-                viewData.weekStart(),
-                viewData.weekEnd(),
-                viewData.weekPatternEnabled(),
-                viewData.currentWeekPattern().name(),
-                periodInfos,
-                days);
+        var response = WeeklyViewResponse.builder()
+                .timetableId(viewData.timetableId())
+                .timetableName(timetable.getName())
+                .weekStart(viewData.weekStart())
+                .weekEnd(viewData.weekEnd())
+                .weekPatternEnabled(viewData.weekPatternEnabled())
+                .currentWeekPattern(viewData.currentWeekPattern().name())
+                .periods(periodInfos)
+                .days(days)
+                .build();
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

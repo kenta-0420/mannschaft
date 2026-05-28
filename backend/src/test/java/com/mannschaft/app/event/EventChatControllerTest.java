@@ -56,11 +56,13 @@ class EventChatControllerTest {
                     .sourceType("EVENT")
                     .sourceId(EVENT_ID)
                     .build();
-            ChannelResponse channelResponse = new ChannelResponse(
-                    1L, "EVENT_CHAT", 10L, null, "テストイベント チャット",
-                    null, null, false, null, null, null,
-                    "EVENT", EVENT_ID, false, false, 1L, null, null
-            );
+            ChannelResponse channelResponse = ChannelResponse.builder()
+                    .id(1L)
+                    .identity(new ChannelResponse.ChannelIdentityDto("EVENT_CHAT", 10L, null))
+                    .meta(new ChannelResponse.ChannelMetaDto("テストイベント チャット", null, null))
+                    .settings(new ChannelResponse.ChannelSettingsDto(false, false, false, 1L))
+                    .source(new ChannelResponse.ChannelSourceDto("EVENT", EVENT_ID))
+                    .build();
             given(eventChatChannelService.findByEventId(EVENT_ID)).willReturn(Optional.of(channelEntity));
             given(chatMapper.toChannelResponse(channelEntity)).willReturn(channelResponse);
 

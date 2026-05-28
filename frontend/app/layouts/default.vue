@@ -75,7 +75,7 @@ const navItems = computed(() => [
   { label: 'タイムライン', icon: 'pi pi-comments', to: '/timeline' },
   { label: 'チャット', icon: 'pi pi-comment', to: '/chat' },
   { label: t('shift.page.myShift'), icon: 'pi pi-clock', to: '/my/shift' },
-  { label: 'マイページ', icon: 'pi pi-user', to: '/my' },
+  { label: 'マイページ', icon: 'pi pi-user', to: '/my', exact: true },
   { label: 'Q&A', icon: 'pi pi-question-circle', to: '/help/qa' },
   { label: '設定', icon: 'pi pi-cog', to: '/settings' },
 ])
@@ -92,7 +92,7 @@ const mobileNavItems = computed(() => [
   { label: 'タイムライン', icon: 'pi pi-comments', to: '/timeline' },
   { label: 'チャット', icon: 'pi pi-comment', to: '/chat' },
   { label: t('shift.page.myShift'), icon: 'pi pi-clock', to: '/my/shift' },
-  { label: 'マイページ', icon: 'pi pi-user', to: '/my' },
+  { label: 'マイページ', icon: 'pi pi-user', to: '/my', exact: true },
   { label: 'Q&A', icon: 'pi pi-question-circle', to: '/help/qa' },
   { label: '設定', icon: 'pi pi-cog', to: '/settings' },
 ])
@@ -111,8 +111,10 @@ const systemAdminItem = { label: 'SYSTEM', icon: 'pi pi-shield', to: '/system-ad
 
 const proxyDeskItem = { label: t('proxy.title'), icon: 'pi pi-tablet', to: '/admin/proxy-desk' }
 
-function isActive(path: string): boolean {
-  return route.path.startsWith(path)
+function isActive(path: string, exact = false): boolean {
+  if (exact) return route.path === path
+  // スラッシュ境界で判定: /my/shift が /my にマッチしないよう path + '/' で比較
+  return route.path === path || route.path.startsWith(path + '/')
 }
 </script>
 
@@ -186,7 +188,7 @@ function isActive(path: string): boolean {
                 :key="item.to"
                 :to="item.to"
                 class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100"
-                :class="isActive(item.to) ? 'bg-primary/10 text-primary' : 'text-surface-600'"
+                :class="isActive(item.to, item.exact) ? 'bg-primary/10 text-primary' : 'text-surface-600'"
               >
                 <i :class="item.icon" />
                 {{ item.label }}
@@ -306,7 +308,7 @@ function isActive(path: string): boolean {
             :key="item.to"
             :to="item.to"
             class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-100"
-            :class="isActive(item.to) ? 'bg-primary/10 text-primary' : 'text-surface-700'"
+            :class="isActive(item.to, item.exact) ? 'bg-primary/10 text-primary' : 'text-surface-700'"
           >
             <i :class="[item.icon, 'text-base']" />
             {{ item.label }}

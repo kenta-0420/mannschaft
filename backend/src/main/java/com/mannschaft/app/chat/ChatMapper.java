@@ -19,19 +19,67 @@ import java.util.List;
 
 /**
  * チャット機能の Entity → DTO 変換マッパー。
+ *
+ * <p>ChannelResponse・MessageResponse はネスト設計のため MapStruct の自動マッピングは使用せず、
+ * default メソッドで手動マッピングする。</p>
  */
 @Mapper(componentModel = "spring")
 public interface ChatMapper {
 
-    @Mapping(target = "channelType", expression = "java(entity.getChannelType().name())")
-    ChannelResponse toChannelResponse(ChatChannelEntity entity);
+    /** depth がこの値以上の場合、掲示板移行を促す */
+    int BOARD_MIGRATION_SUGGEST_DEPTH = 10;
+
+    /**
+     * チャンネルエンティティをネスト設計の ChannelResponse に変換する。
+     */
+    default ChannelResponse toChannelResponse(ChatChannelEntity entity) {
+        if (entity == null) return null;
+        return ChannelResponse.builder()
+                .id(entity.getId())
+                .identity(new ChannelResponse.ChannelIdentityDto(
+                        entity.getChannelType() != null ? entity.getChannelType().name() : null,
+                        entity.getTeamId(),
+                        entity.getOrganizationId()))
+                .meta(new ChannelResponse.ChannelMetaDto(
+                        entity.getName(), entity.getIconKey(), entity.getDescription()))
+                .settings(new ChannelResponse.ChannelSettingsDto(
+                        entity.getIsPrivate(), entity.getIsInquiryChannel(),
+                        entity.getIsArchived(), entity.getVersion()))
+                .lastMessage(new ChannelResponse.ChannelLastMessageDto(
+                        entity.getLastMessageAt(), entity.getLastMessagePreview()))
+                .source(new ChannelResponse.ChannelSourceDto(
+                        entity.getSourceType(), entity.getSourceId()))
+                .audit(new ChannelResponse.ChannelAuditDto(
+                        entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt()))
+                .build();
+    }
 
     List<ChannelResponse> toChannelResponseList(List<ChatChannelEntity> entities);
 
-    @Mapping(target = "attachments", ignore = true)
-    @Mapping(target = "reactions", ignore = true)
-    @Mapping(target = "suggestBoardMigration", ignore = true)
-    MessageResponse toMessageResponse(ChatMessageEntity entity);
+    /**
+     * メッセージエンティティをネスト設計の MessageResponse に変換する。
+     * attachments/reactions は空リストで初期化する。
+     */
+    default MessageResponse toMessageResponse(ChatMessageEntity entity) {
+        if (entity == null) return null;
+        int depth = entity.getDepth() != null ? entity.getDepth() : 0;
+        return MessageResponse.builder()
+                .id(entity.getId())
+                .channelId(entity.getChannelId())
+                .senderId(entity.getSenderId())
+                .thread(new MessageResponse.MessageThreadDto(
+                        entity.getParentId(), entity.getRootId(),
+                        depth, depth >= BOARD_MIGRATION_SUGGEST_DEPTH))
+                .content(new MessageResponse.MessageContentDto(
+                        entity.getBody(), entity.getForwardedFromId(),
+                        entity.getIsEdited(), entity.getIsSystem(), entity.getScheduledAt()))
+                .engagement(new MessageResponse.MessageEngagementDto(
+                        entity.getReplyCount(), entity.getReactionCount(),
+                        entity.getIsPinned(), List.of(), List.of()))
+                .audit(new MessageResponse.MessageAuditDto(
+                        entity.getCreatedAt(), entity.getUpdatedAt()))
+                .build();
+    }
 
     List<MessageResponse> toMessageResponseList(List<ChatMessageEntity> entities);
 
@@ -52,9 +100,6 @@ public interface ChatMapper {
 
     List<BookmarkResponse> toBookmarkResponseList(List<ChatMessageBookmarkEntity> entities);
 
-    /** depth がこの値以上の場合、掲示板移行を促す */
-    int BOARD_MIGRATION_SUGGEST_DEPTH = 10;
-
     /**
      * メッセージエンティティに添付ファイルとリアクションを付与してレスポンスを構築する。
      */
@@ -62,27 +107,15 @@ public interface ChatMapper {
             ChatMessageEntity entity,
             List<AttachmentResponse> attachments,
             List<ReactionResponse> reactions) {
-        int depth = entity.getDepth() != null ? entity.getDepth() : 0;  // @Builder.Default により通常非null
-        return new MessageResponse(
-                entity.getId(),
-                entity.getChannelId(),
-                entity.getSenderId(),
-                entity.getParentId(),
-                entity.getRootId(),
-                depth,
-                depth >= BOARD_MIGRATION_SUGGEST_DEPTH,
-                entity.getBody(),
-                entity.getForwardedFromId(),
-                entity.getIsEdited(),
-                entity.getIsSystem(),
-                entity.getScheduledAt(),
-                entity.getReplyCount(),
-                entity.getReactionCount(),
-                entity.getIsPinned(),
-                attachments,
-                reactions,
-                entity.getCreatedAt(),
-                entity.getUpdatedAt()
-        );
+        MessageResponse base = toMessageResponse(entity);
+        if (base == null) return null;
+        return base.toBuilder()
+                .engagement(new MessageResponse.MessageEngagementDto(
+                        base.getEngagement().replyCount(),
+                        base.getEngagement().reactionCount(),
+                        base.getEngagement().isPinned(),
+                        attachments != null ? attachments : List.of(),
+                        reactions != null ? reactions : List.of()))
+                .build();
     }
 }

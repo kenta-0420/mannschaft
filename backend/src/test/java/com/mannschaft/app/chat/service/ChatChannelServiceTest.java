@@ -121,8 +121,12 @@ class ChatChannelServiceTest {
             CreateChannelRequest req = new CreateChannelRequest("TEAM_PUBLIC", TEAM_ID, null,
                     "新チャンネル", "説明", null, false, null);
             ChatChannelEntity saved = createChannel();
-            ChannelResponse expected = new ChannelResponse(CHANNEL_ID, "TEAM", TEAM_ID, null,
-                    "新チャンネル", null, "説明", false, null, null, null, null, null, false, false, null, null, null);
+            ChannelResponse expected = ChannelResponse.builder()
+                    .id(CHANNEL_ID)
+                    .identity(new ChannelResponse.ChannelIdentityDto("TEAM", TEAM_ID, null))
+                    .meta(new ChannelResponse.ChannelMetaDto("新チャンネル", null, "説明"))
+                    .settings(new ChannelResponse.ChannelSettingsDto(false, false, false, null))
+                    .build();
 
             given(channelRepository.existsByTeamIdAndNameAndDeletedAtIsNull(TEAM_ID, "新チャンネル"))
                     .willReturn(false);
@@ -156,8 +160,12 @@ class ChatChannelServiceTest {
             given(memberRepository.save(any(ChatChannelMemberEntity.class)))
                     .willReturn(ChatChannelMemberEntity.builder().build());
             given(chatMapper.toChannelResponse(any(ChatChannelEntity.class))).willReturn(
-                    new ChannelResponse(CHANNEL_ID, "TEAM", TEAM_ID, null, "新チャンネル",
-                            null, null, false, null, null, null, null, null, false, false, null, null, null));
+                    ChannelResponse.builder()
+                            .id(CHANNEL_ID)
+                            .identity(new ChannelResponse.ChannelIdentityDto("TEAM", TEAM_ID, null))
+                            .meta(new ChannelResponse.ChannelMetaDto("新チャンネル", null, null))
+                            .settings(new ChannelResponse.ChannelSettingsDto(false, false, false, null))
+                            .build());
 
             // when
             chatChannelService.createChannel(req, USER_ID);
@@ -197,8 +205,12 @@ class ChatChannelServiceTest {
             // given
             ChatChannelEntity channel = createChannel();
             UpdateChannelRequest req = new UpdateChannelRequest("更新名", "更新説明", null);
-            ChannelResponse expected = new ChannelResponse(CHANNEL_ID, "TEAM", TEAM_ID, null,
-                    "更新名", null, "更新説明", false, null, null, null, null, null, false, false, null, null, null);
+            ChannelResponse expected = ChannelResponse.builder()
+                    .id(CHANNEL_ID)
+                    .identity(new ChannelResponse.ChannelIdentityDto("TEAM", TEAM_ID, null))
+                    .meta(new ChannelResponse.ChannelMetaDto("更新名", null, "更新説明"))
+                    .settings(new ChannelResponse.ChannelSettingsDto(false, false, false, null))
+                    .build();
 
             given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channel));
             given(channelRepository.save(any(ChatChannelEntity.class))).willReturn(channel);
@@ -208,7 +220,7 @@ class ChatChannelServiceTest {
             ChannelResponse result = chatChannelService.updateChannel(CHANNEL_ID, req);
 
             // then
-            assertThat(result.getName()).isEqualTo("更新名");
+            assertThat(result.getMeta().name()).isEqualTo("更新名");
         }
 
         @Test
@@ -279,8 +291,12 @@ class ChatChannelServiceTest {
         void チャンネルをアーカイブできる() {
             // given
             ChatChannelEntity channel = createChannel();
-            ChannelResponse expected = new ChannelResponse(CHANNEL_ID, "TEAM", TEAM_ID, null,
-                    "テストチャンネル", null, "テスト説明", false, null, null, null, null, null, true, false, null, null, null);
+            ChannelResponse expected = ChannelResponse.builder()
+                    .id(CHANNEL_ID)
+                    .identity(new ChannelResponse.ChannelIdentityDto("TEAM", TEAM_ID, null))
+                    .meta(new ChannelResponse.ChannelMetaDto("テストチャンネル", null, "テスト説明"))
+                    .settings(new ChannelResponse.ChannelSettingsDto(false, false, true, null))
+                    .build();
 
             given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channel));
             given(channelRepository.save(any(ChatChannelEntity.class))).willReturn(channel);
@@ -309,8 +325,12 @@ class ChatChannelServiceTest {
             // given
             ChatChannelEntity channel = createChannel();
             channel.archive(); // アーカイブ状態にセット
-            ChannelResponse expected = new ChannelResponse(CHANNEL_ID, "TEAM", TEAM_ID, null,
-                    "テストチャンネル", null, "テスト説明", false, null, null, null, null, null, false, false, null, null, null);
+            ChannelResponse expected = ChannelResponse.builder()
+                    .id(CHANNEL_ID)
+                    .identity(new ChannelResponse.ChannelIdentityDto("TEAM", TEAM_ID, null))
+                    .meta(new ChannelResponse.ChannelMetaDto("テストチャンネル", null, "テスト説明"))
+                    .settings(new ChannelResponse.ChannelSettingsDto(false, false, false, null))
+                    .build();
 
             given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channel));
             given(channelRepository.save(any(ChatChannelEntity.class))).willReturn(channel);
@@ -371,8 +391,11 @@ class ChatChannelServiceTest {
     class StartConversation {
 
         private ChannelResponse stubResponse() {
-            return new ChannelResponse(CHANNEL_ID, "DM", null, null,
-                    null, null, null, false, null, null, null, null, null, false, false, null, null, null);
+            return ChannelResponse.builder()
+                    .id(CHANNEL_ID)
+                    .identity(new ChannelResponse.ChannelIdentityDto("DM", null, null))
+                    .settings(new ChannelResponse.ChannelSettingsDto(false, false, false, null))
+                    .build();
         }
 
         @Test
@@ -428,8 +451,11 @@ class ChatChannelServiceTest {
             given(memberRepository.save(any(ChatChannelMemberEntity.class)))
                     .willReturn(ChatChannelMemberEntity.builder().build());
             given(chatMapper.toChannelResponse(saved)).willReturn(
-                    new ChannelResponse(2L, "GROUP_DM", null, null,
-                            null, null, null, false, null, null, null, null, null, false, false, null, null, null));
+                    ChannelResponse.builder()
+                            .id(2L)
+                            .identity(new ChannelResponse.ChannelIdentityDto("GROUP_DM", null, null))
+                            .settings(new ChannelResponse.ChannelSettingsDto(false, false, false, null))
+                            .build());
 
             // when
             ChatChannelService.ConversationResult result =
@@ -505,8 +531,11 @@ class ChatChannelServiceTest {
         }
 
         private ChannelResponse stubZimmerResponse() {
-            return new ChannelResponse(99L, "GROUP_DM", null, null,
-                    null, null, null, false, null, null, null, null, null, false, false, null, null, null);
+            return ChannelResponse.builder()
+                    .id(99L)
+                    .identity(new ChannelResponse.ChannelIdentityDto("GROUP_DM", null, null))
+                    .settings(new ChannelResponse.ChannelSettingsDto(false, false, false, null))
+                    .build();
         }
 
         @Test
@@ -537,7 +566,7 @@ class ChatChannelServiceTest {
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result.getChannelType()).isEqualTo("GROUP_DM");
+            assertThat(result.getIdentity().channelType()).isEqualTo("GROUP_DM");
             verify(channelRepository).save(any(ChatChannelEntity.class)); // Zimmer作成
         }
 

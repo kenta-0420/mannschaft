@@ -26,7 +26,7 @@ const cards: MyPageCard[] = [
     label: 'マイシフト',
     description: '自分のシフトの確認',
     icon: 'pi pi-calendar',
-    to: '/my/shifts',
+    to: '/my/shift',
   },
   {
     label: 'マイ予約',

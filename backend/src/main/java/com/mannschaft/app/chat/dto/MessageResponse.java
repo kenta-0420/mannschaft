@@ -1,38 +1,49 @@
 package com.mannschaft.app.chat.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 /**
  * メッセージレスポンスDTO。
+ * スレッド情報・コンテンツ・エンゲージメント・監査情報をネストで表現する。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class MessageResponse {
 
-    private final Long id;
-    private final Long channelId;
-    private final Long senderId;
-    private final Long parentId;
-    /** スレッドルートメッセージID。null の場合は自身がルート。 */
-    private final Long rootId;
-    /** ネスト深度（0=トップレベル）。 */
-    private final int depth;
-    /** depth >= 10 の場合 true。掲示板への移行を促す。 */
-    private final boolean suggestBoardMigration;
-    private final String body;
-    private final Long forwardedFromId;
-    private final Boolean isEdited;
-    private final Boolean isSystem;
-    private final LocalDateTime scheduledAt;
-    private final Integer replyCount;
-    private final Integer reactionCount;
-    private final Boolean isPinned;
-    private final List<AttachmentResponse> attachments;
-    private final List<ReactionResponse> reactions;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    private Long id;
+    private Long channelId;
+    private Long senderId;
+
+    private MessageThreadDto thread;
+    private MessageContentDto content;
+    private MessageEngagementDto engagement;
+    private MessageAuditDto audit;
+
+    public record MessageThreadDto(
+            Long parentId,
+            Long rootId,
+            int depth,
+            boolean suggestBoardMigration) {}
+
+    public record MessageContentDto(
+            String body,
+            Long forwardedFromId,
+            Boolean isEdited,
+            Boolean isSystem,
+            LocalDateTime scheduledAt) {}
+
+    public record MessageEngagementDto(
+            Integer replyCount,
+            Integer reactionCount,
+            Boolean isPinned,
+            List<AttachmentResponse> attachments,
+            List<ReactionResponse> reactions) {}
+
+    public record MessageAuditDto(
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {}
 }
