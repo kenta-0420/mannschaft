@@ -29,24 +29,20 @@ public interface NotificationMapper {
         return NotificationResponse.builder()
                 .id(entity.getId())
                 .userId(entity.getUserId())
-                .content(new NotificationResponse.NotificationContentDto(
-                        entity.getNotificationType(),
-                        entity.getPriority().name(),
-                        entity.getTitle(),
-                        entity.getBody(),
-                        entity.getActionUrl()))
-                .source(new NotificationResponse.NotificationSourceDto(
-                        entity.getSourceType(),
-                        entity.getSourceId()))
-                .scope(new NotificationResponse.NotificationScopeDto(
-                        entity.getScopeType().name(),
-                        entity.getScopeId(),
-                        entity.getActorId()))
-                .status(new NotificationResponse.NotificationStatusDto(
-                        entity.getIsRead(),
-                        entity.getReadAt(),
-                        entity.getChannelsSent(),
-                        entity.getSnoozedUntil()))
+                .notificationType(entity.getNotificationType())
+                .priority(entity.getPriority().name())
+                .title(entity.getTitle())
+                .body(entity.getBody())
+                .actionUrl(entity.getActionUrl())
+                .sourceType(entity.getSourceType())
+                .sourceId(entity.getSourceId())
+                .scopeType(entity.getScopeType().name())
+                .scopeId(entity.getScopeId())
+                .actorId(entity.getActorId())
+                .isRead(entity.getIsRead())
+                .readAt(entity.getReadAt())
+                .channelsSent(entity.getChannelsSent())
+                .snoozedUntil(entity.getSnoozedUntil())
                 .createdAt(entity.getCreatedAt())
                 .build();
     }

@@ -63,13 +63,13 @@ class NotificationMapperTest {
             // Then
             assertThat(response.getId()).isEqualTo(100L);
             assertThat(response.getUserId()).isEqualTo(1L);
-            assertThat(response.getContent().notificationType()).isEqualTo("SCHEDULE_REMINDER");
-            assertThat(response.getContent().priority()).isEqualTo("NORMAL");
-            assertThat(response.getContent().title()).isEqualTo("リマインド");
-            assertThat(response.getContent().body()).isEqualTo("出欠未回答です");
-            assertThat(response.getScope().scopeType()).isEqualTo("TEAM");
-            assertThat(response.getScope().scopeId()).isEqualTo(5L);
-            assertThat(response.getStatus().isRead()).isFalse();
+            assertThat(response.getNotificationType()).isEqualTo("SCHEDULE_REMINDER");
+            assertThat(response.getPriority()).isEqualTo("NORMAL");
+            assertThat(response.getTitle()).isEqualTo("リマインド");
+            assertThat(response.getBody()).isEqualTo("出欠未回答です");
+            assertThat(response.getScopeType()).isEqualTo("TEAM");
+            assertThat(response.getScopeId()).isEqualTo(5L);
+            assertThat(response.getIsRead()).isFalse();
         }
 
         @Test
@@ -91,8 +91,8 @@ class NotificationMapperTest {
             NotificationResponse response = notificationMapper.toNotificationResponse(entity);
 
             // Then
-            assertThat(response.getContent().priority()).isEqualTo("HIGH");
-            assertThat(response.getScope().scopeType()).isEqualTo("SYSTEM");
+            assertThat(response.getPriority()).isEqualTo("HIGH");
+            assertThat(response.getScopeType()).isEqualTo("SYSTEM");
         }
 
         @Test
@@ -115,8 +115,8 @@ class NotificationMapperTest {
             NotificationResponse response = notificationMapper.toNotificationResponse(entity);
 
             // Then
-            assertThat(response.getContent().priority()).isEqualTo("URGENT");
-            assertThat(response.getScope().scopeType()).isEqualTo("ORGANIZATION");
+            assertThat(response.getPriority()).isEqualTo("URGENT");
+            assertThat(response.getScopeType()).isEqualTo("ORGANIZATION");
         }
 
         @Test
@@ -140,8 +140,8 @@ class NotificationMapperTest {
             NotificationResponse response = notificationMapper.toNotificationResponse(entity);
 
             // Then
-            assertThat(response.getStatus().isRead()).isTrue();
-            assertThat(response.getStatus().readAt()).isNotNull();
+            assertThat(response.getIsRead()).isTrue();
+            assertThat(response.getReadAt()).isNotNull();
         }
 
         @Test
@@ -164,8 +164,8 @@ class NotificationMapperTest {
             NotificationResponse response = notificationMapper.toNotificationResponse(entity);
 
             // Then
-            assertThat(response.getScope().scopeType()).isEqualTo("PERSONAL");
-            assertThat(response.getContent().priority()).isEqualTo("LOW");
+            assertThat(response.getScopeType()).isEqualTo("PERSONAL");
+            assertThat(response.getPriority()).isEqualTo("LOW");
         }
 
         @Test
@@ -188,8 +188,8 @@ class NotificationMapperTest {
 
             // Then
             assertThat(responses).hasSize(2);
-            assertThat(responses.get(0).getContent().title()).isEqualTo("通知A");
-            assertThat(responses.get(1).getContent().priority()).isEqualTo("HIGH");
+            assertThat(responses.get(0).getTitle()).isEqualTo("通知A");
+            assertThat(responses.get(1).getPriority()).isEqualTo("HIGH");
         }
     }
 
