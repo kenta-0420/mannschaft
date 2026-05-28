@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -64,8 +65,18 @@ public class AuthSessionService {
                     Long userId = token.getUserId();
 
                     // 2. JTIブラックリスト追加（残存TTL）
-                    long remainingTtl = expEpoch - (LocalDateTime.now().toEpochSecond(java.time.ZoneOffset.UTC));
-                    authTokenService.addJtiToBlacklist(jti, remainingTtl);
+                    // Instant.now() で UTC epoch 秒を正確に取得する。
+                    // LocalDateTime.now().toEpochSecond(UTC) は JVM TZ が非 UTC の場合にズレが生じるため使用禁止。
+                    long remainingTtl = expEpoch - Instant.now().getEpochSecond();
+                    // Valkey 障害時も @Transactional によるDB ロールバックを防ぐため try-catch で囲む。
+                    // リフレッシュトークンは DB 側で失効済みのため新トークン発行は不可。
+                    // アクセストークンは最大 remainingTtl 秒後に自然失効する（許容範囲）。
+                    try {
+                        authTokenService.addJtiToBlacklist(jti, remainingTtl);
+                    } catch (Exception e) {
+                        log.error("ログアウト時のJTIブラックリスト追加失敗（アクセストークンが{}秒有効なままになる可能性）: jti={}, error={}",
+                                remainingTtl, jti, e.getMessage());
+                    }
 
                     // 3. session_hash 計算（refresh_token の jti から）
                     String sessionHash = token.getJti() != null && !token.getJti().isBlank()
@@ -118,8 +129,13 @@ public class AuthSessionService {
                         deviceCount++;
                     }
                 }
-                // user_invalidated_at設定（Valkey）
-                authTokenService.setUserInvalidationTimestamp(userId);
+                // user_invalidated_at設定（Valkey）。障害時もDB revoke は維持する。
+                try {
+                    authTokenService.setUserInvalidationTimestamp(userId);
+                } catch (Exception e) {
+                    log.error("全デバイスログアウト時のuser_invalidated_at設定失敗（既存トークンが最大15分有効なままになる可能性）: userId={}, error={}",
+                            userId, e.getMessage());
+                }
                 eventPublisher.publish(new LogoutEvent(userId, deviceCount, LogoutType.ALL_SESSIONS));
                 return;
             }
@@ -130,8 +146,13 @@ public class AuthSessionService {
         int deviceCount = activeTokens.size();
         activeTokens.forEach(RefreshTokenEntity::revoke);
 
-        // 2. user_invalidated_at設定（Valkey）
-        authTokenService.setUserInvalidationTimestamp(userId);
+        // 2. user_invalidated_at設定（Valkey）。障害時もDB revoke は維持する。
+        try {
+            authTokenService.setUserInvalidationTimestamp(userId);
+        } catch (Exception e) {
+            log.error("全デバイスログアウト時のuser_invalidated_at設定失敗（既存トークンが最大15分有効なままになる可能性）: userId={}, error={}",
+                    userId, e.getMessage());
+        }
 
         // 3. イベント発行
         eventPublisher.publish(new LogoutEvent(userId, deviceCount, LogoutType.ALL_SESSIONS));
