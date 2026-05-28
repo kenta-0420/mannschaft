@@ -39,8 +39,7 @@ export function useVillageApi() {
 
   /** §4.2 村検索 */
   async function searchVillages(params?: VillageSearchParams) {
-    const res = await api<{ data: VillageSearchResponse }>(`/api/v1/villages/search${qs(params)}`)
-    return res.data
+    return api<VillageSearchResponse>(`/api/v1/villages/search${qs(params)}`)
   }
 
   /** §4.1.2 村詳細 */
