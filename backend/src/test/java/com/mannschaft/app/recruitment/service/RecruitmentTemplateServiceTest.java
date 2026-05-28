@@ -126,7 +126,7 @@ class RecruitmentTemplateServiceTest {
             RecruitmentTemplateResponse result = service.getTemplate(TEMPLATE_ID, USER_ID);
 
             // then
-            assertThat(result.getScopeType()).isEqualTo(SCOPE_TYPE);
+            assertThat(result.getScope().scopeType()).isEqualTo(SCOPE_TYPE.name());
             verify(accessControlService).checkMembership(USER_ID, SCOPE_ID, SCOPE_TYPE.name());
         }
 
