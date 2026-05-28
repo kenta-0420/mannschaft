@@ -119,7 +119,7 @@ useHead({
 
     <!-- チュートリアル誘導バナー -->
     <section
-      class="mb-8 overflow-hidden rounded-2xl border border-surface-200 bg-surface-50 p-6 shadow-sm dark:border-surface-700 dark:bg-surface-800"
+      class="mb-8 overflow-hidden rounded-2xl border-[3px] border-surface-400 bg-surface-0 p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-surface-500 dark:bg-surface-800"
       :aria-label="t('qa.tutorial_banner.title')"
     >
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -179,7 +179,7 @@ useHead({
         size="small"
         role="tab"
         :aria-selected="selectedCategory === category"
-        class="shrink-0"
+        class="shrink-0 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm"
         @click="selectCategory(category)"
       />
     </section>
