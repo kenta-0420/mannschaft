@@ -78,6 +78,19 @@
       "empty": "No shifts found",
       "fetchError": "Failed to fetch shift information"
     },
+    "myShift": {
+      "confirmedTitle": "Confirmed Shifts",
+      "teamFilter": {
+        "all": "All Teams",
+        "label": "Filter by Team"
+      },
+      "slot": {
+        "time": "{start} – {end}",
+        "position": "Position",
+        "schedule": "Schedule",
+        "noSlot": "No shifts on this day"
+      }
+    },
     "page": {
       "title": "Shift",
       "myShift": "My Shift",
@@ -254,7 +267,21 @@
       "approve": "Approve",
       "pending": "Pending Approval",
       "openCall": "Open Call",
-      "claimed": "Claimed"
+      "claimed": "Claimed",
+      "recipientMode": {
+        "label": "Recipients",
+        "specific": "Specify Members",
+        "template": "By Shift Period",
+        "openCall": "Open to All"
+      },
+      "targetUsers": {
+        "label": "Swap Candidates",
+        "placeholder": "Select members...",
+        "dayShift": "Day shift members",
+        "nightShift": "Night shift members",
+        "selectedCount": "{count} selected"
+      },
+      "templateHint": "Send to all {period} shift members in the same schedule"
     },
     "reminder": {
       "send": "Send Reminder",

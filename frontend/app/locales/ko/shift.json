@@ -254,7 +254,21 @@
       "approve": "승인",
       "pending": "승인 대기",
       "openCall": "공개 모집",
-      "claimed": "신청됨"
+      "claimed": "신청됨",
+      "recipientMode": {
+        "label": "수신 대상",
+        "specific": "멤버 지정",
+        "template": "근무 시간대별",
+        "openCall": "전체 공개"
+      },
+      "targetUsers": {
+        "label": "교대 후보자",
+        "placeholder": "멤버를 선택...",
+        "dayShift": "주간 근무자",
+        "nightShift": "야간 근무자",
+        "selectedCount": "{count}명 선택됨"
+      },
+      "templateHint": "같은 스케줄의 {period} 근무 담당자에게 일괄 전송합니다"
     },
     "reminder": {
       "send": "리마인더 전송",
@@ -305,6 +319,24 @@
       "totalCount": "합계: {count} 건",
       "totalLabel": "합계",
       "confirmSubmit": "이 내용으로 제출하시겠습니까？"
+    },
+    "myShifts": {
+      "title": "내 근무",
+      "empty": "근무가 없습니다",
+      "fetchError": "근무 정보 조회에 실패했습니다"
+    },
+    "myShift": {
+      "confirmedTitle": "확정 근무",
+      "teamFilter": {
+        "all": "모든 팀",
+        "label": "팀으로 필터"
+      },
+      "slot": {
+        "time": "{start} 〜 {end}",
+        "position": "포지션",
+        "schedule": "스케줄",
+        "noSlot": "이 날의 근무가 없습니다"
+      }
     }
   }
 }

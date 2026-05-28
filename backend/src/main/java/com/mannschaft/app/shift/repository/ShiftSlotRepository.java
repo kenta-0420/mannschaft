@@ -4,6 +4,7 @@ import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -20,6 +21,11 @@ public interface ShiftSlotRepository extends JpaRepository<ShiftSlotEntity, Long
      * スケジュールの特定日のシフト枠を取得する。
      */
     List<ShiftSlotEntity> findByScheduleIdAndSlotDateOrderByStartTimeAsc(Long scheduleId, LocalDate slotDate);
+
+    /**
+     * ID一覧でシフト枠を一括取得する（N+1 防止用）。
+     */
+    List<ShiftSlotEntity> findAllByIdIn(Collection<Long> ids);
 
     /**
      * スケジュールIDで全シフト枠を削除する。

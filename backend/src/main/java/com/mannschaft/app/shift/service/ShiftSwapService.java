@@ -1,5 +1,7 @@
 package com.mannschaft.app.shift.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftMapper;
@@ -35,6 +37,7 @@ public class ShiftSwapService {
 
     private final ShiftSwapRequestRepository swapRepository;
     private final ShiftMapper shiftMapper;
+    private final ObjectMapper objectMapper;
 
     /**
      * 交代リクエスト一覧を取得する（管理者用）。
@@ -75,20 +78,43 @@ public class ShiftSwapService {
     /**
      * 交代リクエストを作成する。
      *
+     * <p>受信者モードは以下のルールで決定する:
+     * <ul>
+     *   <li>openCall=true → OPEN_CALL（全体公開）</li>
+     *   <li>openCall=false → SPECIFIC（特定ユーザー指定）</li>
+     * </ul>
+     * targetUserIds が指定されている場合は JSON 配列文字列に変換して保存する。
+     * 後方互換のため targetUserIds が null でも SPECIFIC として扱う。
+     *
      * @param req    作成リクエスト
      * @param userId リクエスターID
      * @return 作成された交代リクエスト
      */
     @Transactional
     public SwapRequestResponse createSwapRequest(CreateSwapRequestRequest req, Long userId) {
+        // 受信者モードの決定
+        String recipientMode = req.isOpenCall() ? "OPEN_CALL" : "SPECIFIC";
+
         ShiftSwapRequestEntity entity = ShiftSwapRequestEntity.builder()
                 .slotId(req.getSlotId())
                 .requesterId(userId)
                 .reason(req.getReason())
+                .isOpenCall(req.isOpenCall())
+                .recipientMode(recipientMode)
                 .build();
 
+        // SPECIFIC モードで targetUserIds が指定されている場合は JSON 文字列に変換して保存
+        if (req.getTargetUserIds() != null && !req.getTargetUserIds().isEmpty()) {
+            try {
+                entity.setTargetUserIds(objectMapper.writeValueAsString(req.getTargetUserIds()));
+            } catch (JsonProcessingException e) {
+                log.warn("targetUserIds の JSON 変換に失敗しました: {}", e.getMessage());
+            }
+        }
+
         entity = swapRepository.save(entity);
-        log.info("交代リクエスト作成: id={}, slotId={}, requesterId={}", entity.getId(), req.getSlotId(), userId);
+        log.info("交代リクエスト作成: id={}, slotId={}, requesterId={}, recipientMode={}",
+                entity.getId(), req.getSlotId(), userId, recipientMode);
         return shiftMapper.toSwapResponse(entity);
     }
 
@@ -161,6 +187,8 @@ public class ShiftSwapService {
     /**
      * オープンコール交代リクエストを作成する（is_open_call=true で作成）。
      *
+     * <p>recipientMode を OPEN_CALL に設定する。
+     *
      * @param slotId   対象シフト枠ID
      * @param reason   理由
      * @param userId   依頼者ユーザーID
@@ -173,6 +201,7 @@ public class ShiftSwapService {
                 .requesterId(userId)
                 .reason(reason)
                 .isOpenCall(true)
+                .recipientMode("OPEN_CALL")
                 .status(SwapRequestStatus.OPEN_CALL)
                 .build();
 

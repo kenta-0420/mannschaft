@@ -254,7 +254,21 @@
       "approve": "Genehmigen",
       "pending": "Genehmigung ausstehend",
       "openCall": "Offene Anfrage",
-      "claimed": "Beansprucht"
+      "claimed": "Beansprucht",
+      "recipientMode": {
+        "label": "Empfänger",
+        "specific": "Mitglieder angeben",
+        "template": "Nach Schichtzeit",
+        "openCall": "Für alle öffnen"
+      },
+      "targetUsers": {
+        "label": "Tauschkandidaten",
+        "placeholder": "Mitglieder auswählen...",
+        "dayShift": "Tagschicht-Mitglieder",
+        "nightShift": "Nachtschicht-Mitglieder",
+        "selectedCount": "{count} ausgewählt"
+      },
+      "templateHint": "An alle {period}-Schichtmitglieder im gleichen Plan senden"
     },
     "reminder": {
       "send": "Erinnerung senden",
@@ -305,6 +319,24 @@
       "totalCount": "Gesamt: {count}",
       "totalLabel": "Gesamt",
       "confirmSubmit": "Mit diesen Einstellungen einreichen?"
+    },
+    "myShifts": {
+      "title": "Meine Schichten",
+      "empty": "Keine Schichten gefunden",
+      "fetchError": "Schichtinformationen konnten nicht abgerufen werden"
+    },
+    "myShift": {
+      "confirmedTitle": "Bestätigte Schicht",
+      "teamFilter": {
+        "all": "Alle Teams",
+        "label": "Nach Team filtern"
+      },
+      "slot": {
+        "time": "{start} – {end}",
+        "position": "Position",
+        "schedule": "Schichtplan",
+        "noSlot": "Keine Schichten an diesem Tag"
+      }
     }
   }
 }

@@ -254,7 +254,21 @@
       "approve": "Aprobar",
       "pending": "Pendiente de Aprobación",
       "openCall": "Convocatoria Abierta",
-      "claimed": "Reclamado"
+      "claimed": "Reclamado",
+      "recipientMode": {
+        "label": "Destinatarios",
+        "specific": "Especificar Miembros",
+        "template": "Por Período de Turno",
+        "openCall": "Abierto a Todos"
+      },
+      "targetUsers": {
+        "label": "Candidatos al Cambio",
+        "placeholder": "Seleccionar miembros...",
+        "dayShift": "Miembros del turno de día",
+        "nightShift": "Miembros del turno de noche",
+        "selectedCount": "{count} seleccionados"
+      },
+      "templateHint": "Enviar a todos los miembros del turno {period} en el mismo horario"
     },
     "reminder": {
       "send": "Enviar Recordatorio",
@@ -305,6 +319,24 @@
       "totalCount": "Total: {count}",
       "totalLabel": "Total",
       "confirmSubmit": "¿Enviar con esta configuración?"
+    },
+    "myShifts": {
+      "title": "Mis Turnos",
+      "empty": "No hay turnos",
+      "fetchError": "Error al obtener la información de turnos"
+    },
+    "myShift": {
+      "confirmedTitle": "Turno Confirmado",
+      "teamFilter": {
+        "all": "Todos los Equipos",
+        "label": "Filtrar por Equipo"
+      },
+      "slot": {
+        "time": "{start} – {end}",
+        "position": "Posición",
+        "schedule": "Horario",
+        "noSlot": "No hay turnos este día"
+      }
     }
   }
 }
