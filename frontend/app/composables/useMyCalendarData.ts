@@ -1,6 +1,14 @@
 import type { CalendarEventItem } from './useCalendarEvents'
 import type { GanttTodo } from '~/types/todo'
 
+interface CalendarEntryRaw {
+  id: number
+  content: { title: string; eventType: string; status: string }
+  time: { startAt: string; endAt: string; allDay: boolean }
+  scope: { scopeType: string; scopeId: number; scopeName: string | null; scopeIconUrl: string | null }
+  myAttendanceStatus: string
+}
+
 export interface CalEvent extends CalendarEventItem {
   scopeId?: number
   scopeIconUrl?: string | null
@@ -43,17 +51,20 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
       scopeName: null,
     }))
 
-    const sharedEvents = ((shared.data as unknown as CalEvent[]) ?? [])
-      .filter((e) => e.scopeType !== 'PERSONAL')
-      .map((e) => ({
-        ...e,
-        allDay: e.allDay ?? false,
-        color: e.color ?? null,
+    const sharedEvents = ((shared.data as unknown as CalendarEntryRaw[]) ?? [])
+      .filter((e) => e.scope?.scopeType !== 'PERSONAL')
+      .map((e): CalEvent => ({
+        id: e.id,
+        title: e.content?.title ?? '',
+        startAt: e.time?.startAt ?? '',
+        endAt: e.time?.endAt ?? '',
+        allDay: e.time?.allDay ?? false,
+        color: null,
         isPersonal: false,
-        scopeType: e.scopeType ?? '',
-        scopeId: e.scopeId,
-        scopeName: e.scopeName ?? null,
-        scopeIconUrl: e.scopeIconUrl ?? null,
+        scopeType: e.scope?.scopeType ?? '',
+        scopeId: e.scope?.scopeId,
+        scopeName: e.scope?.scopeName ?? null,
+        scopeIconUrl: e.scope?.scopeIconUrl ?? null,
       }))
 
     // 期限付き TODO をカレンダーに追加（完了済みは除外）
