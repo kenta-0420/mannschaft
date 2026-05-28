@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift.repository;
 
+import com.mannschaft.app.shift.ShiftAssignmentStatus;
 import com.mannschaft.app.shift.entity.ShiftAssignmentEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -34,4 +35,9 @@ public interface ShiftAssignmentRepository extends JpaRepository<ShiftAssignment
     @Query("SELECT a FROM ShiftAssignmentEntity a "
             + "WHERE a.slotId IN (SELECT s.id FROM ShiftSlotEntity s WHERE s.scheduleId = :scheduleId)")
     List<ShiftAssignmentEntity> findAllByScheduleId(@Param("scheduleId") Long scheduleId);
+
+    /**
+     * ユーザーIDとステータスで割当一覧を取得する（確定シフト取得用）。
+     */
+    List<ShiftAssignmentEntity> findAllByUserIdAndStatus(Long userId, ShiftAssignmentStatus status);
 }
