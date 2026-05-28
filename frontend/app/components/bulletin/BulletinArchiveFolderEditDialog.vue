@@ -9,7 +9,8 @@ import type {
 interface Props {
   visible: boolean
   scopeType: BulletinScopeType
-  scopeId: number
+  /** TEAM/ORGANIZATION は数値ID、VILLAGE は UUID 文字列 */
+  scopeId: string | number
   /** 編集対象。未指定なら新規作成。 */
   editTarget?: BulletinArchiveFolder | null
   /** 新規作成時の親フォルダ UUID（ルート直下なら null）。 */

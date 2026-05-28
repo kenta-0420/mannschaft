@@ -3,7 +3,8 @@ import type { TimelineScopeType } from '~/types/timeline'
 
 interface Props {
   scopeType: TimelineScopeType
-  scopeId?: number
+  /** TEAM/ORGANIZATION は数値ID、VILLAGE は UUID 文字列 */
+  scopeId?: string | number
   disabled?: boolean
 }
 
@@ -50,7 +51,8 @@ async function handleFileChange(event: Event) {
       body: {
         content_type: file.type,
         scope_type: props.scopeType,
-        scope_id: props.scopeId ?? 0,
+        // VILLAGE スコープでは scope_id は不要（scope_village_id が主キー）なので 0 を送る
+        scope_id: typeof props.scopeId === 'number' ? props.scopeId : 0,
       },
     })
 
