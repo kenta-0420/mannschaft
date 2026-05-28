@@ -158,7 +158,7 @@ useHead({
           id="qa-search"
           v-model="searchQuery"
           :placeholder="t('qa.search_placeholder')"
-          class="w-full pl-10"
+          class="w-full pl-10 !border-[3px] !border-surface-400 dark:!border-surface-500"
           :aria-label="t('qa.search_placeholder')"
         />
       </div>
@@ -178,7 +178,7 @@ useHead({
         size="small"
         role="tab"
         :aria-selected="selectedCategory === category"
-        class="shrink-0 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm"
+        class="shrink-0 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm !border-[3px]"
         @click="selectCategory(category)"
       />
     </section>
