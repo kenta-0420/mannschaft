@@ -136,6 +136,42 @@ export interface SwapRequestResponse {
   isOpenCall?: boolean
   /** v2.1: 手挙げしたユーザー ID */
   claimedBy?: number | null
+  /**
+   * v2.2: 送信先モード（'SPECIFIC' | 'OPEN_CALL'）
+   * 部隊Aが実装した SwapRequest 拡張に対応
+   */
+  recipientMode?: 'SPECIFIC' | 'OPEN_CALL'
+  /** v2.2: 交代候補者として指定されたユーザー ID リスト */
+  targetUserIds?: number[]
+  /** v2.2: 手挙げした日時 */
+  claimedAt?: string | null
+}
+
+/**
+ * 確定シフト枠レスポンス
+ *
+ * `GET /api/v1/shifts/my/confirmed-slots` のレスポンス型。
+ * 部隊A が実装したマイシフトページ刷新 API に対応（F03.5 Phase 3）。
+ */
+export interface MyConfirmedSlotResponse {
+  /** シフト枠 ID */
+  slotId: number
+  /** シフト日（YYYY-MM-DD） */
+  slotDate: string
+  /** 開始時刻（HH:mm:ss） */
+  startTime: string
+  /** 終了時刻（HH:mm:ss） */
+  endTime: string
+  /** チーム ID */
+  teamId: number
+  /** チーム名 */
+  teamName: string
+  /** スケジュール ID */
+  scheduleId: number
+  /** スケジュール名 */
+  scheduleName: string
+  /** ポジション名（未設定の場合は null） */
+  positionName: string | null
 }
 
 /** デフォルト勤務可能時間レスポンス */
@@ -249,6 +285,16 @@ export interface UpdateShiftRequestRequest {
 export interface CreateSwapRequestRequest {
   slotId: number
   reason?: string
+  /**
+   * v2.2: オープンコールフラグ。true の場合、全メンバーに公開募集する。
+   * false または未指定の場合は `targetUserIds` を優先する。
+   */
+  openCall?: boolean
+  /**
+   * v2.2: 交代候補者として指定するユーザー ID リスト。
+   * `openCall` が false のとき有効（SPECIFIC モード）。
+   */
+  targetUserIds?: number[]
 }
 
 /** シフト交代リクエスト承認・却下 */

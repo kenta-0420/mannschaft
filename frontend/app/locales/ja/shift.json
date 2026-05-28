@@ -176,7 +176,20 @@
       "approve": "承認",
       "pending": "承認待ち",
       "openCall": "オープン募集",
-      "claimed": "手挙げ済み"
+      "claimed": "手挙げ済み",
+      "recipientMode": {
+        "label": "送信先",
+        "specific": "メンバーを指定",
+        "template": "シフト帯でまとめて",
+        "openCall": "全員に公開"
+      },
+      "targetUsers": {
+        "label": "交代候補者",
+        "placeholder": "メンバーを選択...",
+        "dayShift": "昼シフト担当者",
+        "nightShift": "夜シフト担当者"
+      },
+      "templateHint": "同じスケジュールの{period}シフト担当者に一括送信します"
     },
     "reminder": {
       "send": "リマインダーを送信",
@@ -305,6 +318,19 @@
       "title": "マイシフト",
       "empty": "シフトがありません",
       "fetchError": "シフト情報の取得に失敗しました"
+    },
+    "myShift": {
+      "confirmedTitle": "確定シフト",
+      "teamFilter": {
+        "all": "すべてのチーム",
+        "label": "チームで絞り込み"
+      },
+      "slot": {
+        "time": "{start} 〜 {end}",
+        "position": "ポジション",
+        "schedule": "スケジュール",
+        "noSlot": "この日のシフトはありません"
+      }
     }
   }
 }
