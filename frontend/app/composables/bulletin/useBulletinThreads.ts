@@ -8,7 +8,8 @@ import type {
 
 interface ThreadListParams {
   scopeType: string
-  scopeId: number
+  /** TEAM/ORGANIZATION は数値ID、VILLAGE は UUID 文字列 */
+  scopeId: string | number
   categoryId?: number
   priority?: string
   isArchived?: boolean
@@ -39,9 +40,12 @@ export function useBulletinThreads() {
 
   // === Threads ===
   async function getThreads(params: ThreadListParams) {
+    // VILLAGE スコープ: scope_id=0 + scope_village_id=UUID（設計書 §3.12.1）
+    const isVillage = params.scopeType === 'VILLAGE'
     const qs = buildQuery({
       scope_type: params.scopeType,
-      scope_id: params.scopeId,
+      scope_id: isVillage ? 0 : params.scopeId,
+      ...(isVillage ? { scope_village_id: params.scopeId } : {}),
       category_id: params.categoryId,
       priority: params.priority,
       is_archived: params.isArchived,
@@ -63,13 +67,18 @@ export function useBulletinThreads() {
 
   async function createThread(
     scopeType: string,
-    scopeId: number,
+    /** TEAM/ORGANIZATION は数値ID、VILLAGE は UUID 文字列 */
+    scopeId: string | number,
     body: Record<string, unknown>,
     files?: File[],
   ) {
+    // VILLAGE スコープ: scope_id=0 + scopeVillageId=UUID（設計書 §3.12.1）
+    const isVillage = scopeType === 'VILLAGE'
+    const resolvedScopeId = isVillage ? 0 : scopeId
+    const extraFields = isVillage ? { scopeVillageId: scopeId } : {}
     if (files && files.length > 0) {
       const formData = new FormData()
-      formData.append('data', JSON.stringify({ ...body, scopeType, scopeId }))
+      formData.append('data', JSON.stringify({ ...body, scopeType, scopeId: resolvedScopeId, ...extraFields }))
       files.forEach((file) => formData.append('files[]', file))
       return api<{ data: BulletinThreadResponse }>('/api/v1/bulletin/threads', {
         method: 'POST',
@@ -78,7 +87,7 @@ export function useBulletinThreads() {
     }
     return api<{ data: BulletinThreadResponse }>('/api/v1/bulletin/threads', {
       method: 'POST',
-      body: { ...body, scopeType, scopeId },
+      body: { ...body, scopeType, scopeId: resolvedScopeId, ...extraFields },
     })
   }
 
@@ -125,10 +134,15 @@ export function useBulletinThreads() {
     })
   }
 
-  async function readAll(scopeType: string, scopeId: number) {
+  async function readAll(scopeType: string, scopeId: string | number) {
+    const isVillage = scopeType === 'VILLAGE'
     return api('/api/v1/bulletin/threads/read-all', {
       method: 'POST',
-      body: { scopeType, scopeId },
+      body: {
+        scopeType,
+        scopeId: isVillage ? 0 : scopeId,
+        ...(isVillage ? { scopeVillageId: scopeId } : {}),
+      },
     })
   }
 
@@ -198,7 +212,7 @@ export function useBulletinThreads() {
 
   async function archiveScopedThread(
     scopeType: string,
-    scopeId: number,
+    scopeId: string | number,
     threadId: number,
     isArchived = true,
     archiveFolderId?: string | null,

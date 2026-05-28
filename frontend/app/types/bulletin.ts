@@ -1,4 +1,4 @@
-export type BulletinScopeType = 'TEAM' | 'ORGANIZATION'
+export type BulletinScopeType = 'TEAM' | 'ORGANIZATION' | 'VILLAGE'
 export type BulletinPriority = 'CRITICAL' | 'IMPORTANT' | 'WARNING' | 'INFO' | 'LOW'
 export type ReadTrackingMode = 'NONE' | 'COUNT_ONLY' | 'SHOW_READERS'
 

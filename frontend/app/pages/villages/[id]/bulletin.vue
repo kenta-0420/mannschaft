@@ -1,20 +1,19 @@
 <script setup lang="ts">
 /**
- * F17.1 村機能 — 村詳細 / 掲示板タブ
+ * F17.1 村機能 — 村詳細 / 掲示板タブ（Phase 2 本実装）
  *
  * 設計書: docs/features/F17.1_village_community.md §4.1 / §4.9 (scope=VILLAGE)
  *
  * 構成:
- *   - 上段: <VillageHeader> （FE2 完成版）
- *   - 下段: 掲示板一覧（Phase 2 で本格実装。本フェーズはプレースホルダー）
+ *   - 上段: <VillageHeader>
+ *   - 下段: 掲示板スレッド一覧（BulletinThreadList + BulletinThreadForm）
  *
- * VillageHeader emit:
- *   - join / leave / pin / unpin / report-click / edit
- *
- * 既存 BulletinThreadList は scopeType:'TEAM' | 'ORGANIZATION' のみ受付ける設計のため、
- * scope=VILLAGE 対応は Phase 2 で BulletinThreadList 側を拡張する。
- * 本ページでは Phase 2 への TODO コメントと一緒に簡易プレースホルダーを表示する。
+ * Phase 2 変更点:
+ *   - BulletinScopeType に 'VILLAGE' を追加
+ *   - BulletinThreadList.scopeId を string | number に拡張（UUID 対応）
+ *   - VILLAGE スコープでは保管庫タブを非表示（バックエンド未対応）
  */
+import type { BulletinThreadResponse } from '~/types/bulletin'
 import type { MembershipResponse, VillageResponse } from '~/types/village'
 
 definePageMeta({
@@ -38,6 +37,26 @@ const loading = ref(true)
 const notFound = ref(false)
 /** 自分のメンバーシップ（退村時に id が必要） */
 const myMembership = ref<MembershipResponse | null>(null)
+
+// =====================================================================
+// 掲示板 State（Phase 2 追加）
+// =====================================================================
+
+/** 選択中のスレッド（詳細表示） */
+const selectedThread = ref<BulletinThreadResponse | null>(null)
+/** スレッド作成ダイアログ表示フラグ */
+const showCreateDialog = ref(false)
+/** BulletinThreadList の ref（スレッド保存後にリフレッシュするため） */
+const listRef = ref<{ refresh: () => void } | null>(null)
+
+/** 村長（HEADMAN）または長老（ELDER）の場合は管理権限あり */
+const isAdmin = computed(() =>
+  village.value?.myRole === 'HEADMAN' || village.value?.myRole === 'ELDER',
+)
+
+function onSaved() {
+  listRef.value?.refresh()
+}
 
 // =====================================================================
 // Fetch
@@ -213,24 +232,40 @@ onMounted(() => {
 
       <!-- 掲示板本体 -->
       <div class="mx-auto max-w-3xl p-4 sm:p-6">
-        <!--
-          TODO (Phase 2):
-            - BulletinThreadList の scopeType を 'VILLAGE' へ拡張する
-              (frontend/app/types/bulletin.ts / components/bulletin/*)
-            - 既存 useBulletinApi に scope=VILLAGE を渡せるよう拡張
-            - BulletinThreadForm も同様に拡張
-            - 投稿主体 (PostingIdentity) 連携で as TEAM/ORG 投稿を選択可能にする
-        -->
-        <DashboardEmptyState
-          icon="pi pi-megaphone"
-          :message="t('village.placeholder.bulletinComingSoon')"
-        />
+        <!-- スレッド詳細（選択時） -->
+        <div v-if="selectedThread" class="mx-auto max-w-3xl">
+          <BulletinThreadDetail
+            :thread-id="selectedThread.id"
+            :can-manage="isAdmin"
+            @back="selectedThread = null"
+          />
+        </div>
+
+        <!-- スレッド一覧 -->
+        <template v-else>
+          <BulletinThreadList
+            ref="listRef"
+            scope-type="VILLAGE"
+            :scope-id="villageId"
+            :can-manage="isAdmin"
+            @select="(thread) => selectedThread = thread"
+            @create="showCreateDialog = true"
+          />
+        </template>
 
         <!-- ご縁ランキング (Phase 3) — 村人のみ表示 -->
-        <section v-if="village.isMember" class="mt-6 rounded-lg border border-surface-200 p-4 dark:border-surface-700">
+        <section v-if="village.isMember && !selectedThread" class="mt-6 rounded-lg border border-surface-200 p-4 dark:border-surface-700">
           <VillageSerendipityRankingWidget :village-id="village.id" />
         </section>
       </div>
+
+      <!-- スレッド作成ダイアログ -->
+      <BulletinThreadForm
+        v-model:visible="showCreateDialog"
+        scope-type="VILLAGE"
+        :scope-id="villageId"
+        @saved="onSaved"
+      />
 
       <!-- 通報ダイアログ — 対象は村本体 (VILLAGE) -->
       <VillageReportDialog

@@ -3,7 +3,8 @@ import type { TimelinePostResponse, TimelineScopeType } from '~/types/timeline'
 
 const props = defineProps<{
   scopeType: TimelineScopeType
-  scopeId?: number
+  /** TEAM/ORGANIZATION は数値ID、VILLAGE は UUID 文字列 */
+  scopeId?: string | number
   canPin?: boolean
   canDeleteOthers?: boolean
 }>()

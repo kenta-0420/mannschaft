@@ -19,7 +19,8 @@ import type {
  */
 interface Props {
   scopeType: BulletinScopeType
-  scopeId: number
+  /** TEAM/ORGANIZATION は数値ID、VILLAGE は UUID 文字列 */
+  scopeId: string | number
   canManage?: boolean
 }
 

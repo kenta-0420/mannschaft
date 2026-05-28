@@ -1,15 +1,17 @@
 <script setup lang="ts">
 /**
- * F17.1 村機能 — 村詳細 / タイムラインタブ
+ * F17.1 村機能 — 村詳細 / タイムラインタブ（Phase 2 本実装）
  *
  * 設計書: docs/features/F17.1_village_community.md §4.1 / §4.9 (scope=VILLAGE)
  *
  * 構成:
- *   - 上段: <VillageHeader> （FE2 完成版）
- *   - 下段: タイムライン一覧（Phase 2 で本格実装。本フェーズはプレースホルダー）
+ *   - 上段: <VillageHeader>
+ *   - 下段: タイムラインフィード（TimelineFeed + TimelinePostForm）
  *
- * 既存 TimelineFeed / TimelinePostForm は scopeType:'TEAM' | 'ORGANIZATION' | 'PUBLIC' のみ
- * 受付ける設計のため、scope=VILLAGE 対応は Phase 2 で拡張する。
+ * Phase 2 変更点:
+ *   - TimelineScopeType に 'VILLAGE' を追加
+ *   - TimelineFeed.scopeId を string | number に拡張（UUID 対応）
+ *   - scope_village_id クエリパラメーターで村 UUID を送信
  */
 import type { MembershipResponse, VillageResponse } from '~/types/village'
 
@@ -33,6 +35,22 @@ const village = ref<VillageResponse | null>(null)
 const loading = ref(true)
 const notFound = ref(false)
 const myMembership = ref<MembershipResponse | null>(null)
+
+// =====================================================================
+// タイムライン State（Phase 2 追加）
+// =====================================================================
+
+/** タイムラインフィードの ref（投稿後にリフレッシュするため） */
+const feedRef = ref<{ refresh: () => void } | null>(null)
+
+/** 村長（HEADMAN）または長老（ELDER）の場合は管理権限あり */
+const isAdmin = computed(() =>
+  village.value?.myRole === 'HEADMAN' || village.value?.myRole === 'ELDER',
+)
+
+function onPosted() {
+  feedRef.value?.refresh()
+}
 
 // =====================================================================
 // Fetch
@@ -198,17 +216,22 @@ onMounted(() => {
 
       <!-- タイムライン本体 -->
       <div class="mx-auto max-w-2xl p-4 sm:p-6">
-        <!--
-          TODO (Phase 2):
-            - TimelineFeed / TimelinePostForm の scopeType を 'VILLAGE' へ拡張する
-              (frontend/app/types/timeline.ts / components/timeline/*)
-            - 既存 useTimelineApi に scope=VILLAGE を渡せるよう拡張
-            - 投稿主体 (PostingIdentity) 連携で as TEAM/ORG 投稿を選択可能にする
-            - 投稿時の村スコープ可視性制御を適用
-        -->
-        <DashboardEmptyState
-          icon="pi pi-clock"
-          :message="t('village.placeholder.timelineComingSoon')"
+        <!-- 投稿フォーム（メンバーのみ表示） -->
+        <TimelinePostForm
+          v-if="village.isMember"
+          scope-type="VILLAGE"
+          :scope-id="villageId"
+          class="mb-4"
+          @posted="onPosted"
+        />
+
+        <!-- タイムラインフィード -->
+        <TimelineFeed
+          ref="feedRef"
+          scope-type="VILLAGE"
+          :scope-id="villageId"
+          :can-pin="isAdmin"
+          :can-delete-others="isAdmin"
         />
       </div>
 
