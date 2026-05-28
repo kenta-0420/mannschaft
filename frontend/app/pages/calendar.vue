@@ -447,6 +447,7 @@ onMounted(() => {
               :scope-type="selectedEventIsPersonal ? 'team' : ((selectedEvent.scopeType ?? '').toLowerCase() as 'team' | 'organization')"
               :scope-id="selectedEvent.scopeId ?? 0"
               :can-edit="true"
+              :skip-delegations="selectedEventIsPersonal"
               :scope-name="selectedEvent.scopeName ?? null"
               :scope-icon-url="selectedEvent.scopeIconUrl ?? null"
               @edit="onEditEvent"

@@ -19,6 +19,7 @@ const props = defineProps<{
   scopeType: 'team' | 'organization'
   scopeId: number
   canEdit: boolean
+  skipDelegations?: boolean
   scopeName?: string | null
   scopeIconUrl?: string | null
 }>()
@@ -47,7 +48,7 @@ const { fetchDelegations } = useEventDelegationApi()
 const delegationCount = ref(0)
 
 onMounted(async () => {
-  if (props.canEdit) {
+  if (props.canEdit && !props.skipDelegations) {
     try {
       const res = await fetchDelegations(props.event.id, 1, 1)
       delegationCount.value = res.total ?? 0
