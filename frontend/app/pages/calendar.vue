@@ -366,7 +366,7 @@ onMounted(() => {
     </div>
 
     <!-- カレンダービュー -->
-    <template v-if="activeTab === 'calendar'">
+    <div v-show="activeTab === 'calendar'">
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <!-- カレンダー（2列） -->
         <div class="lg:col-span-2">
@@ -489,10 +489,10 @@ onMounted(() => {
           </SectionCard>
         </div>
       </div>
-    </template>
+    </div>
 
-    <!-- ガントビュー -->
-    <template v-else>
+    <!-- TODOガントビュー -->
+    <div v-show="activeTab === 'gantt'">
       <DashboardWidgetCard :scrollable="false">
         <div v-if="ganttLoading" class="space-y-3">
           <Skeleton v-for="i in 5" :key="i" height="2rem" />
@@ -511,7 +511,7 @@ onMounted(() => {
           />
         </Transition>
       </DashboardWidgetCard>
-    </template>
+    </div>
 
     <!-- 作成ダイアログ -->
     <ScheduleEventForm
