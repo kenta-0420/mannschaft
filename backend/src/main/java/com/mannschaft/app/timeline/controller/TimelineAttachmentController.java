@@ -2,8 +2,11 @@ package com.mannschaft.app.timeline.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.timeline.dto.ImageUploadUrlRequest;
+import com.mannschaft.app.timeline.dto.ImageUploadUrlResponse;
 import com.mannschaft.app.timeline.dto.VideoUploadUrlRequest;
 import com.mannschaft.app.timeline.dto.VideoUploadUrlResponse;
+import com.mannschaft.app.timeline.service.TimelineImageAttachmentService;
 import com.mannschaft.app.timeline.service.TimelineVideoAttachmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,15 +20,16 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * タイムライン添付ファイル管理コントローラー。
- * 動画ファイルの R2 直アップロード用 Presigned URL 発行 API を提供する。
+ * 動画・画像ファイルの R2 直アップロード用 Presigned URL 発行 API を提供する。
  */
 @RestController
 @RequestMapping("/api/v1/timeline/attachments")
-@Tag(name = "タイムライン添付ファイル", description = "F04.1 タイムライン動画 Presigned URL")
+@Tag(name = "タイムライン添付ファイル", description = "F04.1 タイムライン動画・画像 Presigned URL")
 @RequiredArgsConstructor
 public class TimelineAttachmentController {
 
     private final TimelineVideoAttachmentService videoAttachmentService;
+    private final TimelineImageAttachmentService imageAttachmentService;
 
     /**
      * 動画ファイル用 R2 Presigned PUT URL を発行する。
@@ -39,6 +43,21 @@ public class TimelineAttachmentController {
             @Valid @RequestBody VideoUploadUrlRequest request) {
         VideoUploadUrlResponse response = videoAttachmentService.generateUploadUrl(
                 request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 画像ファイル用 R2 Presigned PUT URL を発行する。
+     * 対応 MIME: image/jpeg, image/png, image/gif, image/webp, image/heic
+     * Presigned URL 取得後は R2 に直 PUT し、返却された fileKey を投稿 API に渡す。
+     */
+    @PostMapping("/upload-url/image")
+    @Operation(summary = "画像アップロード用Presigned URL生成")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "URL 発行成功")
+    public ResponseEntity<ApiResponse<ImageUploadUrlResponse>> generateImageUploadUrl(
+            @Valid @RequestBody ImageUploadUrlRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        ImageUploadUrlResponse response = imageAttachmentService.generateUploadUrl(request, userId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }
