@@ -63,7 +63,7 @@ const showChildrenTab = computed(() => isAdmin.value || children.value.length > 
  */
 const showTeamSearchLink = computed(() => {
   if (!org.value) return false
-  if (org.value.visibility === 'PUBLIC') return true
+  if (org.value.visibility?.visibility === 'PUBLIC') return true
   return Boolean(roleName.value)
 })
 
@@ -94,7 +94,7 @@ onMounted(async () => {
           <Button icon="pi pi-arrow-left" text rounded @click="navigateTo('/dashboard')" />
           <div>
             <h1 class="text-4xl font-bold">
-              {{ org.nickname1 || org.name }}
+              {{ org.basicInfo?.nickname1 || org.basicInfo?.name }}
             </h1>
             <div class="mt-1 flex items-center gap-2">
               <RoleBadge v-if="roleName" :role="roleName" />
@@ -102,10 +102,10 @@ onMounted(async () => {
             <div class="mt-2 flex items-center gap-4 text-sm text-surface-500">
               <span class="flex items-center gap-1">
                 <i class="pi pi-users text-xs" />
-                メンバー <strong class="text-surface-700">{{ org.memberCount }}</strong
+                メンバー <strong class="text-surface-700">{{ org.metadata?.memberCount }}</strong
                 >人
               </span>
-              <span v-if="org.supporterEnabled" class="flex items-center gap-1">
+              <span v-if="org.visibility?.supporterEnabled" class="flex items-center gap-1">
                 <i class="pi pi-heart text-xs" />
                 サポーター <strong class="text-surface-700">{{ org.supporterCount ?? '—' }}</strong
                 >人
@@ -113,7 +113,7 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-        <template v-if="org.supporterEnabled && !roleName">
+        <template v-if="org.visibility?.supporterEnabled && !roleName">
           <Button
             v-if="followStatus === 'APPROVED'"
             icon="pi pi-heart-fill"
@@ -153,7 +153,7 @@ onMounted(async () => {
         <FavoriteToggleButton
           entity-type="ORGANIZATION"
           :entity-id="String(org.id)"
-          :entity-name="org.nickname1 || org.name"
+          :entity-name="org.basicInfo?.nickname1 || org.basicInfo?.name || ''"
         />
         <!-- F02.8 告知ウィザード：MEMBER以上に表示 -->
         <Button
@@ -178,19 +178,19 @@ onMounted(async () => {
       <OrgAncestorsBreadcrumb
         v-if="ancestors.length > 0"
         :ancestors="ancestors"
-        :current-org-name="org.nickname1 || org.name"
+        :current-org-name="org.basicInfo?.nickname1 || org.basicInfo?.name || ''"
         class="mb-4"
       />
 
       <ProfileHeader
-        :icon-url="org.iconUrl ?? null"
-        :banner-url="org.bannerUrl ?? null"
-        :name="org.nickname1 || org.name"
+        :icon-url="org.metadata?.iconUrl ?? null"
+        :banner-url="org.metadata?.bannerUrl ?? null"
+        :name="org.basicInfo?.nickname1 || org.basicInfo?.name || ''"
         scope="organization"
         :scope-id="orgId"
         :editable="isAdminOrDeputy"
-        @icon-updated="(url) => { if (org) org.iconUrl = url }"
-        @banner-updated="(url) => { if (org) org.bannerUrl = url }"
+        @icon-updated="(url) => { if (org && org.metadata) org.metadata.iconUrl = url }"
+        @banner-updated="(url) => { if (org && org.metadata) org.metadata.bannerUrl = url }"
       />
 
       <Tabs v-model:value="activeTab">
@@ -204,7 +204,7 @@ onMounted(async () => {
           </Tab>
           <Tab v-if="isAdminOrDeputy" :value="4"> 招待 </Tab>
           <Tab v-if="isAdmin" :value="5"> 権限グループ </Tab>
-          <Tab v-if="isAdmin && org.supporterEnabled" :value="6"> サポーター管理 </Tab>
+          <Tab v-if="isAdmin && org.visibility?.supporterEnabled" :value="6"> サポーター管理 </Tab>
           <Tab v-if="isAdmin" :value="7"> 機能設定 </Tab>
         </TabList>
 
@@ -214,8 +214,8 @@ onMounted(async () => {
               <ScopeDashboard
                 scope-type="organization"
                 :scope-id="orgId"
-                :scope-name="org.nickname1 || org.name"
-                :scope-template="org.template"
+                :scope-name="org.basicInfo?.nickname1 || org.basicInfo?.name || ''"
+                :scope-template="org.hierarchy?.orgType"
                 :viewer-role="viewerRole"
                 :is-admin-or-deputy="isAdminOrDeputy"
                 :visibility-map="widgetVisibilitySettings"
@@ -274,7 +274,7 @@ onMounted(async () => {
             <OrgPermissionGroupList :groups="permissionGroups" />
           </TabPanel>
 
-          <TabPanel v-if="isAdmin && org.supporterEnabled" :value="6">
+          <TabPanel v-if="isAdmin && org.visibility?.supporterEnabled" :value="6">
             <div class="mt-4">
               <SupporterManagementPanel scope-type="organization" :scope-id="orgId" />
             </div>
@@ -302,7 +302,7 @@ onMounted(async () => {
         :style="{ width: '400px' }"
         modal
       >
-        <p>{{ org.nickname1 || org.name }}のサポーターをやめます。よろしいですか？</p>
+        <p>{{ org.basicInfo?.nickname1 || org.basicInfo?.name }}のサポーターをやめます。よろしいですか？</p>
         <template #footer>
           <Button label="キャンセル" text @click="showCancelSupporterConfirm = false" />
           <Button

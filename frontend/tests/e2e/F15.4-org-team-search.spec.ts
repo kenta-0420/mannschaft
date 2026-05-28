@@ -27,11 +27,38 @@ const PUBLIC_ORG_ID = 7001
 const PRIVATE_ORG_ID = 7002
 const NOT_FOUND_ORG_ID = 9999999
 
+// Wave 3-B: OrganizationResponse ネスト構造に合わせたモック
 const MOCK_PUBLIC_ORG = {
   id: PUBLIC_ORG_ID,
-  name: 'テスト町内会（公開）',
-  description: 'F15.4 E2E 用',
-  visibility: 'PUBLIC',
+  basicInfo: {
+    name: 'テスト町内会（公開）',
+    nameKana: null,
+    nickname1: null,
+    nickname2: null,
+  },
+  hierarchy: {
+    orgType: 'NEIGHBORHOOD',
+    parentOrganizationId: null,
+  },
+  location: {
+    prefecture: null,
+    city: null,
+  },
+  visibility: {
+    visibility: 'PUBLIC',
+    hierarchyVisibility: 'NONE',
+    supporterEnabled: false,
+  },
+  metadata: {
+    version: 1,
+    memberCount: 0,
+    iconUrl: null,
+    bannerUrl: null,
+  },
+  timestamps: {
+    archivedAt: null,
+    createdAt: '2024-01-01T00:00:00',
+  },
 }
 
 const MOCK_TEAMS_PUBLIC = [

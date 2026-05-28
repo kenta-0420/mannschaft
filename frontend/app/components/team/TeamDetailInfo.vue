@@ -62,7 +62,7 @@ async function saveMapEmbedUrl() {
     const trimmed = mapEmbedUrlInput.value.trim()
     const payload = { mapEmbedUrl: trimmed === '' ? null : trimmed }
     const res = await teamApi.updateTeam(props.teamId, payload)
-    const newUrl = res.data?.mapEmbedUrl ?? null
+    const newUrl = res.data?.metadata?.mapEmbedUrl ?? null
     emit('updated:mapEmbedUrl', newUrl)
     notification.success(t('team.mapEmbedUrlSaved'))
   } catch (error) {

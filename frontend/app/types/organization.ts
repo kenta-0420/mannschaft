@@ -1,24 +1,48 @@
 // === レスポンス ===
+// Wave 3-B: OrganizationResponse ネスト構造（BE側変更に対応）
+export interface OrgBasicInfoDto {
+  name?: string
+  nameKana?: string | null
+  nickname1?: string | null
+  nickname2?: string | null
+}
+
+export interface OrgHierarchyDto {
+  orgType?: 'GOVERNMENT' | 'MUNICIPALITY' | 'COMPANY' | 'HOSPITAL' | 'ASSOCIATION' | 'SCHOOL' | 'NPO' | 'COMMUNITY' | 'OTHER'
+  parentOrganizationId?: number | null
+}
+
+export interface OrgLocationDto {
+  prefecture?: string | null
+  city?: string | null
+}
+
+export interface OrgVisibilityDto {
+  visibility?: 'PUBLIC' | 'PRIVATE'
+  hierarchyVisibility?: 'NONE' | 'BASIC' | 'FULL'
+  supporterEnabled?: boolean
+}
+
+export interface OrgMetadataDto {
+  version?: number
+  memberCount?: number
+  iconUrl?: string | null
+  bannerUrl?: string | null
+}
+
+export interface OrgTimestampsDto {
+  archivedAt?: string | null
+  createdAt?: string
+}
+
 export interface OrganizationResponse {
   id: number
-  name: string
-  nameKana: string | null
-  nickname1: string | null
-  nickname2: string | null
-  orgType: 'GOVERNMENT' | 'MUNICIPALITY' | 'COMPANY' | 'HOSPITAL' | 'ASSOCIATION' | 'SCHOOL' | 'NPO' | 'COMMUNITY' | 'OTHER'
-  parentOrganizationId: number | null
-  prefecture: string | null
-  city: string | null
-  description: string | null
-  visibility: 'PUBLIC' | 'PRIVATE'
-  hierarchyVisibility: 'NONE' | 'BASIC' | 'FULL'
-  supporterEnabled: boolean
-  version: number
-  memberCount: number
-  archivedAt: string | null
-  createdAt: string
-  iconUrl: string | null
-  bannerUrl: string | null
+  basicInfo?: OrgBasicInfoDto
+  hierarchy?: OrgHierarchyDto
+  location?: OrgLocationDto
+  visibility?: OrgVisibilityDto
+  metadata?: OrgMetadataDto
+  timestamps?: OrgTimestampsDto
 }
 
 export interface OrganizationSummaryResponse {

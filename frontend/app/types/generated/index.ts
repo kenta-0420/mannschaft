@@ -184,6 +184,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/{scopeType}/{scopeId}/bulletin/archive/folders/{folderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 保管庫フォルダ更新・移動 */
+        put: operations["updateFolder"];
+        post?: never;
+        /** 保管庫フォルダ削除 */
+        delete: operations["deleteFolder"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workflow-requests/{requestId}/comments/{commentId}": {
         parameters: {
             query?: never;
@@ -1976,13 +1994,13 @@ export interface paths {
          * フレンドフォルダ更新
          * @description フォルダの名前・色・説明・並び順を更新する。
          */
-        put: operations["updateFolder"];
+        put: operations["updateFolder_1"];
         post?: never;
         /**
          * フレンドフォルダ削除
          * @description フォルダを論理削除する（90日経過後に物理削除される運用）。
          */
-        delete: operations["deleteFolder"];
+        delete: operations["deleteFolder_1"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3675,13 +3693,13 @@ export interface paths {
          * フォルダ更新
          * @description フォルダの名前・色・アイコンを更新する
          */
-        put: operations["updateFolder_1"];
+        put: operations["updateFolder_2"];
         post?: never;
         /**
          * フォルダ削除
          * @description フォルダを論理削除する。アイテムは未分類フォルダへ自動再配置される
          */
-        delete: operations["deleteFolder_1"];
+        delete: operations["deleteFolder_2"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4058,13 +4076,13 @@ export interface paths {
          * フォルダ更新
          * @description カスタムフォルダの名前・アイコン・色・並び順を更新する
          */
-        put: operations["updateFolder_2"];
+        put: operations["updateFolder_3"];
         post?: never;
         /**
          * フォルダ削除
          * @description カスタムフォルダを削除する（配下アイテムは未分類に戻る）
          */
-        delete: operations["deleteFolder_2"];
+        delete: operations["deleteFolder_3"];
         options?: never;
         head?: never;
         patch?: never;
@@ -5258,6 +5276,24 @@ export interface paths {
         put?: never;
         /** カテゴリ作成 */
         post: operations["createCategory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/{scopeType}/{scopeId}/bulletin/archive/folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 保管庫フォルダ一覧（ツリー） */
+        get: operations["getFolderTree"];
+        put?: never;
+        /** 保管庫フォルダ作成 */
+        post: operations["createFolder"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8844,7 +8880,7 @@ export interface paths {
         get: operations["listRootFolders"];
         put?: never;
         /** チームフォルダ作成 */
-        post: operations["createFolder"];
+        post: operations["createFolder_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10533,7 +10569,7 @@ export interface paths {
          * フレンドフォルダ作成
          * @description 新規フォルダを作成する。1チームあたり20個が上限。
          */
-        post: operations["createFolder_1"];
+        post: operations["createFolder_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13165,7 +13201,7 @@ export interface paths {
         get: operations["listRootFolders_1"];
         put?: never;
         /** 組織フォルダ作成 */
-        post: operations["createFolder_2"];
+        post: operations["createFolder_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16137,7 +16173,7 @@ export interface paths {
          * フォルダ作成
          * @description 新しいスコープフォルダを作成する（1スコープタイプあたり上限20件）
          */
-        post: operations["createFolder_3"];
+        post: operations["createFolder_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16403,7 +16439,7 @@ export interface paths {
         get: operations["listRootFolders_2"];
         put?: never;
         /** 個人フォルダ作成 */
-        post: operations["createFolder_4"];
+        post: operations["createFolder_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18142,7 +18178,7 @@ export interface paths {
          * フォルダ作成
          * @description 新しいカスタムフォルダを作成する（上限20件）
          */
-        post: operations["createFolder_5"];
+        post: operations["createFolder_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20032,6 +20068,23 @@ export interface paths {
         patch: operations["update_36"];
         trace?: never;
     };
+    "/api/v1/{scopeType}/{scopeId}/bulletin/archive/threads/{threadId}/folder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 保管庫スレッドのフォルダ振り分け */
+        patch: operations["moveThreadToFolder"];
+        trace?: never;
+    };
     "/api/v1/warnings/{actionId}/self-correct": {
         parameters: {
             query?: never;
@@ -21396,11 +21449,11 @@ export interface paths {
         put?: never;
         post?: never;
         /** フォルダ削除 */
-        delete: operations["deleteFolder_3"];
+        delete: operations["deleteFolder_4"];
         options?: never;
         head?: never;
         /** フォルダ更新 */
-        patch: operations["updateFolder_3"];
+        patch: operations["updateFolder_4"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/facilities/bookings/{bookingId}": {
@@ -25642,6 +25695,23 @@ export interface paths {
         };
         /** スレッド検索 */
         get: operations["searchThreads"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/{scopeType}/{scopeId}/bulletin/archive/threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 保管庫スレッド一覧 */
+        get: operations["listArchiveThreads"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38796,6 +38866,8 @@ export interface components {
             isPinned?: boolean;
             isLocked?: boolean;
             isArchived?: boolean;
+            /** Format: uuid */
+            archiveFolderId?: string;
             /** Format: int32 */
             replyCount?: number;
             /** Format: int32 */
@@ -38866,6 +38938,37 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        UpdateArchiveFolderRequest: {
+            name?: string;
+            color?: string;
+            icon?: string;
+            /** Format: int32 */
+            displayOrder?: number;
+            /** Format: uuid */
+            parentFolderId?: string;
+            parentFolderIdPresent?: boolean;
+        };
+        ApiResponseArchiveFolderResponse: {
+            data?: components["schemas"]["ArchiveFolderResponse"];
+        };
+        ArchiveFolderResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            parentId?: string;
+            name?: string;
+            color?: string;
+            icon?: string;
+            /** Format: int32 */
+            depth?: number;
+            /** Format: int32 */
+            displayOrder?: number;
+            /** Format: int32 */
+            childCount?: number;
+            /** Format: int32 */
+            threadCount?: number;
+            children?: components["schemas"]["ArchiveFolderResponse"][];
         };
         WorkflowCommentRequest: {
             body?: string;
@@ -43159,6 +43262,12 @@ export interface components {
         ApiResponseListTypePreferenceResponse: {
             data?: components["schemas"]["TypePreferenceResponse"][];
         };
+        TypePrefAuditDto: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         TypePreferenceResponse: {
             /** Format: int64 */
             id?: number;
@@ -43166,10 +43275,7 @@ export interface components {
             userId?: number;
             notificationType?: string;
             isEnabled?: boolean;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
+            audit?: components["schemas"]["TypePrefAuditDto"];
         };
         PreferenceUpdateRequest: {
             scopeType?: string;
@@ -43180,19 +43286,25 @@ export interface components {
         ApiResponsePreferenceResponse: {
             data?: components["schemas"]["PreferenceResponse"];
         };
+        PreferenceAuditDto: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         PreferenceResponse: {
             /** Format: int64 */
             id?: number;
             /** Format: int64 */
             userId?: number;
+            scope?: components["schemas"]["PreferenceScopeDto"];
+            isEnabled?: boolean;
+            audit?: components["schemas"]["PreferenceAuditDto"];
+        };
+        PreferenceScopeDto: {
             scopeType?: string;
             /** Format: int64 */
             scopeId?: number;
-            isEnabled?: boolean;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
         };
         VillageNicknameUpdateRequest: {
             nickname?: string;
@@ -44869,6 +44981,8 @@ export interface components {
         };
         ArchiveThreadRequest: {
             isArchived?: boolean;
+            /** Format: uuid */
+            archiveFolderId?: string;
         };
         CreateCategoryRequest: {
             name?: string;
@@ -44877,6 +44991,13 @@ export interface components {
             displayOrder?: number;
             color?: string;
             postMinRole?: string;
+        };
+        CreateArchiveFolderRequest: {
+            name?: string;
+            /** Format: uuid */
+            parentFolderId?: string;
+            color?: string;
+            icon?: string;
         };
         CreateUnflagRequest: {
             reason?: string;
@@ -45394,10 +45515,6 @@ export interface components {
             purpose?: string;
             /** Format: date-time */
             guidelineAgreedAt: string;
-            /** @enum {string} */
-            joinPolicy: "FREE" | "APPROVAL";
-            /** @enum {string} */
-            visibility: "PUBLIC" | "UNLISTED";
             /** @enum {string} */
             type: "OFFICIAL" | "COMMUNITY";
             guidelineMd?: string;
@@ -46033,30 +46150,48 @@ export interface components {
         TeamResponse: {
             /** Format: int64 */
             id?: number;
+            basicInfo?: components["schemas"]["TeamBasicInfoDto"];
+            location?: components["schemas"]["TeamLocationDto"];
+            visibility?: components["schemas"]["TeamVisibilityDto"];
+            metadata?: components["schemas"]["TeamMetadataDto"];
+            social?: components["schemas"]["TeamSocialDto"];
+            timestamps?: components["schemas"]["TeamTimestampsDto"];
+        };
+        TeamBasicInfoDto: {
             name?: string;
             nameKana?: string;
             nickname1?: string;
             nickname2?: string;
-            template?: string;
+        };
+        TeamLocationDto: {
             prefecture?: string;
             city?: string;
+            template?: string;
+        };
+        TeamVisibilityDto: {
             visibility?: string;
             supporterEnabled?: boolean;
+        };
+        TeamMetadataDto: {
             /** Format: int64 */
             version?: number;
             /** Format: int32 */
             memberCount?: number;
             iconUrl?: string;
             bannerUrl?: string;
-            /** Format: date-time */
-            archivedAt?: string;
-            /** Format: date-time */
-            createdAt?: string;
+            mapEmbedUrl?: string;
+        };
+        TeamSocialDto: {
             /** Format: int64 */
             teamFriendCount?: number;
             /** Format: int64 */
             supporterCount?: number;
-            mapEmbedUrl?: string;
+        };
+        TeamTimestampsDto: {
+            /** Format: date-time */
+            archivedAt?: string;
+            /** Format: date-time */
+            createdAt?: string;
         };
         CreateTranslationRequest: {
             scopeType?: string;
@@ -46588,30 +46723,45 @@ export interface components {
             sortOrder?: number;
             scope?: string;
         };
-        ScheduleResponse: {
-            /** Format: int64 */
-            id?: number;
-            title?: string;
-            /** Format: date-time */
-            startAt?: string;
-            /** Format: date-time */
-            endAt?: string;
-            allDay?: boolean;
-            eventType?: string;
-            status?: string;
-            attendanceRequired?: boolean;
-            location?: string;
-            /** Format: date-time */
-            createdAt?: string;
+        ScheduleAcademicDto: {
             eventCategory?: components["schemas"]["EventCategoryResponse"];
             /** Format: int32 */
             academicYear?: number;
             /** Format: int64 */
             sourceScheduleId?: number;
+        };
+        ScheduleAuditDto: {
+            /** Format: date-time */
+            createdAt?: string;
             createdByDisplayName?: string;
+        };
+        ScheduleContentDto: {
+            title?: string;
+            status?: string;
+            eventType?: string;
+            location?: string;
+            attendanceRequired?: boolean;
+        };
+        ScheduleResponse: {
+            /** Format: int64 */
+            id?: number;
+            content?: components["schemas"]["ScheduleContentDto"];
+            time?: components["schemas"]["ScheduleTimeDto"];
+            scope?: components["schemas"]["ScheduleScopeDto"];
+            academic?: components["schemas"]["ScheduleAcademicDto"];
+            audit?: components["schemas"]["ScheduleAuditDto"];
+            myAttendanceStatus?: string;
+        };
+        ScheduleScopeDto: {
             scopeName?: string;
             scopeIconUrl?: string;
-            myAttendanceStatus?: string;
+        };
+        ScheduleTimeDto: {
+            /** Format: date-time */
+            startAt?: string;
+            /** Format: date-time */
+            endAt?: string;
+            allDay?: boolean;
         };
         Entry: {
             /** Format: int64 */
@@ -46645,24 +46795,30 @@ export interface components {
         ApiResponseCrossRefResponse: {
             data?: components["schemas"]["CrossRefResponse"];
         };
+        CrossRefAuditDto: {
+            /** Format: int64 */
+            invitedBy?: number;
+            message?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            respondedAt?: string;
+        };
         CrossRefResponse: {
             /** Format: int64 */
             id?: number;
             /** Format: int64 */
             sourceScheduleId?: number;
+            target?: components["schemas"]["CrossRefTargetDto"];
+            audit?: components["schemas"]["CrossRefAuditDto"];
+        };
+        CrossRefTargetDto: {
             targetType?: string;
             /** Format: int64 */
             targetId?: number;
             /** Format: int64 */
             targetScheduleId?: number;
             status?: string;
-            message?: string;
-            /** Format: int64 */
-            invitedBy?: number;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            respondedAt?: string;
         };
         CopyItem: {
             /** Format: int64 */
@@ -46951,6 +47107,14 @@ export interface components {
         RecruitmentTemplateResponse: {
             /** Format: int64 */
             id?: number;
+            scope?: components["schemas"]["TemplateScope"];
+            content?: components["schemas"]["TemplateContent"];
+            defaultSettings?: components["schemas"]["TemplateDefaults"];
+            defaultPayment?: components["schemas"]["TemplatePayment"];
+            defaultResource?: components["schemas"]["TemplateResource"];
+            audit?: components["schemas"]["TemplateAudit"];
+        };
+        TemplateScope: {
             /** @enum {string} */
             scopeType?: "TEAM" | "ORGANIZATION";
             /** Format: int64 */
@@ -46959,9 +47123,13 @@ export interface components {
             categoryId?: number;
             /** Format: int64 */
             subcategoryId?: number;
+        };
+        TemplateContent: {
             templateName?: string;
             title?: string;
             description?: string;
+        };
+        TemplateDefaults: {
             /** @enum {string} */
             participationType?: "INDIVIDUAL" | "TEAM";
             /** Format: int32 */
@@ -46974,9 +47142,13 @@ export interface components {
             defaultApplicationDeadlineHours?: number;
             /** Format: int32 */
             defaultAutoCancelHours?: number;
+        };
+        TemplatePayment: {
             defaultPaymentEnabled?: boolean;
             /** Format: int32 */
             defaultPrice?: number;
+        };
+        TemplateResource: {
             /** @enum {string} */
             defaultVisibility?: "PUBLIC" | "SCOPE_ONLY" | "SUPPORTERS_ONLY" | "CUSTOM_TEMPLATE";
             defaultLocation?: string;
@@ -46985,6 +47157,8 @@ export interface components {
             defaultImageUrl?: string;
             /** Format: int64 */
             defaultCancellationPolicyId?: number;
+        };
+        TemplateAudit: {
             /** Format: int64 */
             createdBy?: number;
             /** Format: date-time */
@@ -50154,31 +50328,43 @@ export interface components {
         ApiResponseShiftScheduleResponse: {
             data?: components["schemas"]["ShiftScheduleResponse"];
         };
+        ShiftAuditDto: {
+            /** Format: int64 */
+            createdBy?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ShiftContentDto: {
+            title?: string;
+            periodType?: string;
+            note?: string;
+        };
+        ShiftPeriodDto: {
+            /** Format: date */
+            startDate?: string;
+            /** Format: date */
+            endDate?: string;
+            /** Format: date-time */
+            requestDeadline?: string;
+        };
         ShiftScheduleResponse: {
             /** Format: int64 */
             id?: number;
             /** Format: int64 */
             teamId?: number;
-            title?: string;
-            periodType?: string;
-            /** Format: date */
-            startDate?: string;
-            /** Format: date */
-            endDate?: string;
+            content?: components["schemas"]["ShiftContentDto"];
+            period?: components["schemas"]["ShiftPeriodDto"];
+            status?: components["schemas"]["ShiftStatusDto"];
+            audit?: components["schemas"]["ShiftAuditDto"];
+        };
+        ShiftStatusDto: {
             status?: string;
-            /** Format: date-time */
-            requestDeadline?: string;
-            note?: string;
-            /** Format: int64 */
-            createdBy?: number;
             /** Format: date-time */
             publishedAt?: string;
             /** Format: int64 */
             publishedBy?: number;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
         };
         CreateShiftSlotRequest: {
             /** Format: date */
@@ -50196,24 +50382,30 @@ export interface components {
         ApiResponseShiftSlotResponse: {
             data?: components["schemas"]["ShiftSlotResponse"];
         };
+        ShiftSlotPositionDto: {
+            /** Format: int64 */
+            positionId?: number;
+            positionName?: string;
+            /** Format: int32 */
+            requiredCount?: number;
+        };
         ShiftSlotResponse: {
             /** Format: int64 */
             id?: number;
             /** Format: int64 */
             scheduleId?: number;
+            time?: components["schemas"]["ShiftSlotTimeDto"];
+            position?: components["schemas"]["ShiftSlotPositionDto"];
+            assignedUserIds?: number[];
+            note?: string;
+        };
+        ShiftSlotTimeDto: {
             /** Format: date */
             slotDate?: string;
             /** @example 14:30:00 */
             startTime?: string;
             /** @example 14:30:00 */
             endTime?: string;
-            /** Format: int64 */
-            positionId?: number;
-            positionName?: string;
-            /** Format: int32 */
-            requiredCount?: number;
-            assignedUserIds?: number[];
-            note?: string;
         };
         BulkCreateShiftSlotRequest: {
             slots?: components["schemas"]["CreateShiftSlotRequest"][];
@@ -50393,22 +50585,31 @@ export interface components {
             scheduleId?: number;
             /** Format: int64 */
             slotId?: number;
-            /** @enum {string} */
-            requestType?: "PRE_CONFIRM_EDIT" | "INDIVIDUAL_SWAP" | "OPEN_CALL";
+            requestInfo?: components["schemas"]["ChangeRequestTypeDto"];
+            reviewInfo?: components["schemas"]["ChangeRequestStatusDto"];
+            timing?: components["schemas"]["ChangeRequestTimingDto"];
+        };
+        ChangeRequestStatusDto: {
             /** @enum {string} */
             status?: "OPEN" | "ACCEPTED" | "REJECTED" | "WITHDRAWN" | "EXPIRED";
-            /** Format: int64 */
-            requestedBy?: number;
-            reason?: string;
             /** Format: int64 */
             reviewerId?: number;
             reviewComment?: string;
             /** Format: date-time */
             reviewedAt?: string;
+        };
+        ChangeRequestTimingDto: {
             /** Format: date-time */
             expiresAt?: string;
             /** Format: date-time */
             createdAt?: string;
+        };
+        ChangeRequestTypeDto: {
+            /** @enum {string} */
+            requestType?: "PRE_CONFIRM_EDIT" | "INDIVIDUAL_SWAP" | "OPEN_CALL";
+            reason?: string;
+            /** Format: int64 */
+            requestedBy?: number;
         };
         VisualReviewConfirmRequest: {
             note?: string;
@@ -51045,24 +51246,42 @@ export interface components {
         OrganizationResponse: {
             /** Format: int64 */
             id?: number;
+            basicInfo?: components["schemas"]["OrgBasicInfoDto"];
+            hierarchy?: components["schemas"]["OrgHierarchyDto"];
+            location?: components["schemas"]["OrgLocationDto"];
+            visibility?: components["schemas"]["OrgVisibilityDto"];
+            metadata?: components["schemas"]["OrgMetadataDto"];
+            timestamps?: components["schemas"]["OrgTimestampsDto"];
+        };
+        OrgBasicInfoDto: {
             name?: string;
             nameKana?: string;
             nickname1?: string;
             nickname2?: string;
+        };
+        OrgHierarchyDto: {
             orgType?: string;
             /** Format: int64 */
             parentOrganizationId?: number;
+        };
+        OrgLocationDto: {
             prefecture?: string;
             city?: string;
+        };
+        OrgVisibilityDto: {
             visibility?: string;
             hierarchyVisibility?: string;
             supporterEnabled?: boolean;
+        };
+        OrgMetadataDto: {
             /** Format: int64 */
             version?: number;
             /** Format: int32 */
             memberCount?: number;
             iconUrl?: string;
             bannerUrl?: string;
+        };
+        OrgTimestampsDto: {
             /** Format: date-time */
             archivedAt?: string;
             /** Format: date-time */
@@ -52054,32 +52273,44 @@ export interface components {
         ApiResponseNotificationResponse: {
             data?: components["schemas"]["NotificationResponse"];
         };
+        NotificationContentDto: {
+            notificationType?: string;
+            priority?: string;
+            title?: string;
+            body?: string;
+            actionUrl?: string;
+        };
         NotificationResponse: {
             /** Format: int64 */
             id?: number;
             /** Format: int64 */
             userId?: number;
-            notificationType?: string;
-            priority?: string;
-            title?: string;
-            body?: string;
-            sourceType?: string;
-            /** Format: int64 */
-            sourceId?: number;
+            content?: components["schemas"]["NotificationContentDto"];
+            source?: components["schemas"]["NotificationSourceDto"];
+            scope?: components["schemas"]["NotificationScopeDto"];
+            status?: components["schemas"]["NotificationStatusDto"];
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        NotificationScopeDto: {
             scopeType?: string;
             /** Format: int64 */
             scopeId?: number;
-            actionUrl?: string;
             /** Format: int64 */
             actorId?: number;
+        };
+        NotificationSourceDto: {
+            sourceType?: string;
+            /** Format: int64 */
+            sourceId?: number;
+        };
+        NotificationStatusDto: {
             isRead?: boolean;
             /** Format: date-time */
             readAt?: string;
             channelsSent?: string;
             /** Format: date-time */
             snoozedUntil?: string;
-            /** Format: date-time */
-            createdAt?: string;
         };
         SnoozeRequest: {
             /** Format: date-time */
@@ -52244,31 +52475,43 @@ export interface components {
         ApiResponsePersonalScheduleResponse: {
             data?: components["schemas"]["PersonalScheduleResponse"];
         };
-        PersonalScheduleResponse: {
-            /** Format: int64 */
-            id?: number;
-            title?: string;
-            description?: string;
-            location?: string;
-            /** Format: date-time */
-            startAt?: string;
-            /** Format: date-time */
-            endAt?: string;
-            allDay?: boolean;
-            eventType?: string;
-            color?: string;
-            status?: string;
-            /** Format: int64 */
-            parentScheduleId?: number;
-            recurrenceRule?: components["schemas"]["RecurrenceRuleDto"];
-            isException?: boolean;
-            reminders?: number[];
-            googleSynced?: boolean;
+        PersonalAuditDto: {
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
             createdByDisplayName?: string;
+        };
+        PersonalContentDto: {
+            title?: string;
+            description?: string;
+            eventType?: string;
+            color?: string;
+            location?: string;
+        };
+        PersonalScheduleResponse: {
+            /** Format: int64 */
+            id?: number;
+            content?: components["schemas"]["PersonalContentDto"];
+            time?: components["schemas"]["PersonalTimeDto"];
+            status?: components["schemas"]["PersonalStatusDto"];
+            reminders?: number[];
+            audit?: components["schemas"]["PersonalAuditDto"];
+        };
+        PersonalStatusDto: {
+            status?: string;
+            isException?: boolean;
+            /** Format: int64 */
+            parentScheduleId?: number;
+            recurrenceRule?: components["schemas"]["RecurrenceRuleDto"];
+            googleSynced?: boolean;
+        };
+        PersonalTimeDto: {
+            /** Format: date-time */
+            startAt?: string;
+            /** Format: date-time */
+            endAt?: string;
+            allDay?: boolean;
         };
         ApiResponsePilgrimageRecommendationResponse: {
             data?: components["schemas"]["PilgrimageRecommendationResponse"];
@@ -54498,6 +54741,10 @@ export interface components {
             linkedWorkPackageId?: number;
             tags?: string;
         };
+        MoveThreadFolderRequest: {
+            /** Format: uuid */
+            archiveFolderId?: string;
+        };
         SelfCorrectRequest: {
             correctionNote?: string;
         };
@@ -56702,6 +56949,20 @@ export interface components {
         };
         ApiResponseListCategoryResponse: {
             data?: components["schemas"]["CategoryResponse"][];
+        };
+        ArchiveFolderTreeResponse: {
+            data?: components["schemas"]["ArchiveFolderResponse"][];
+            meta?: components["schemas"]["Meta"];
+        };
+        Meta: {
+            /** Format: int64 */
+            unfiledThreadCount?: number;
+            /** Format: int64 */
+            totalFolderCount?: number;
+            /** Format: int32 */
+            maxDepth?: number;
+            /** Format: int32 */
+            maxFolderCount?: number;
         };
         ApiResponseListWorkflowCommentResponse: {
             data?: components["schemas"]["WorkflowCommentResponse"][];
@@ -62531,23 +62792,32 @@ export interface components {
         ApiResponseListCalendarEntryResponse: {
             data?: components["schemas"]["CalendarEntryResponse"][];
         };
+        CalendarContentDto: {
+            title?: string;
+            eventType?: string;
+            status?: string;
+        };
         CalendarEntryResponse: {
             /** Format: int64 */
             id?: number;
-            title?: string;
+            content?: components["schemas"]["CalendarContentDto"];
+            time?: components["schemas"]["CalendarTimeDto"];
+            scope?: components["schemas"]["CalendarScopeDto"];
+            myAttendanceStatus?: string;
+        };
+        CalendarScopeDto: {
+            scopeType?: string;
+            /** Format: int64 */
+            scopeId?: number;
+            scopeName?: string;
+            scopeIconUrl?: string;
+        };
+        CalendarTimeDto: {
             /** Format: date-time */
             startAt?: string;
             /** Format: date-time */
             endAt?: string;
             allDay?: boolean;
-            eventType?: string;
-            status?: string;
-            scopeType?: string;
-            /** Format: int64 */
-            scopeId?: number;
-            scopeName?: string;
-            myAttendanceStatus?: string;
-            scopeIconUrl?: string;
         };
         ApiResponseListMentionResponse: {
             data?: components["schemas"]["MentionResponse"][];
@@ -64454,6 +64724,20 @@ export interface components {
             affectedThreadCount?: number;
             message?: string;
         };
+        ApiResponseDeleteArchiveFolderResponse: {
+            data?: components["schemas"]["DeleteArchiveFolderResponse"];
+        };
+        DeleteArchiveFolderResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: date-time */
+            deletedAt?: string;
+            /** Format: int32 */
+            movedThreadCount?: number;
+            /** Format: int32 */
+            promotedFolderCount?: number;
+            message?: string;
+        };
         RepresentativeRevokeRequest: {
             note?: string;
         };
@@ -65217,6 +65501,58 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseDeleteCategoryResponse"];
+                };
+            };
+        };
+    };
+    updateFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scopeType: string;
+                scopeId: number;
+                folderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateArchiveFolderRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseArchiveFolderResponse"];
+                };
+            };
+        };
+    };
+    deleteFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scopeType: string;
+                scopeId: number;
+                folderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 削除成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseDeleteArchiveFolderResponse"];
                 };
             };
         };
@@ -70396,7 +70732,7 @@ export interface operations {
             };
         };
     };
-    updateFolder: {
+    updateFolder_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -70423,7 +70759,7 @@ export interface operations {
             };
         };
     };
-    deleteFolder: {
+    deleteFolder_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -75286,7 +75622,7 @@ export interface operations {
             };
         };
     };
-    updateFolder_1: {
+    updateFolder_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -75312,7 +75648,7 @@ export interface operations {
             };
         };
     };
-    deleteFolder_1: {
+    deleteFolder_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -76222,7 +76558,7 @@ export interface operations {
             };
         };
     };
-    updateFolder_2: {
+    updateFolder_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -76248,7 +76584,7 @@ export interface operations {
             };
         };
     };
-    deleteFolder_2: {
+    deleteFolder_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -78875,6 +79211,56 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseCategoryResponse"];
+                };
+            };
+        };
+    };
+    getFolderTree: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scopeType: string;
+                scopeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ArchiveFolderTreeResponse"];
+                };
+            };
+        };
+    };
+    createFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scopeType: string;
+                scopeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateArchiveFolderRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseArchiveFolderResponse"];
                 };
             };
         };
@@ -86073,7 +86459,7 @@ export interface operations {
             };
         };
     };
-    createFolder: {
+    createFolder_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -89339,7 +89725,7 @@ export interface operations {
             };
         };
     };
-    createFolder_1: {
+    createFolder_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -94273,7 +94659,7 @@ export interface operations {
             };
         };
     };
-    createFolder_2: {
+    createFolder_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -100199,7 +100585,7 @@ export interface operations {
             };
         };
     };
-    createFolder_3: {
+    createFolder_4: {
         parameters: {
             query: {
                 scopeType: "TEAM" | "ORGANIZATION";
@@ -100666,7 +101052,7 @@ export interface operations {
             };
         };
     };
-    createFolder_4: {
+    createFolder_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -103940,7 +104326,7 @@ export interface operations {
             };
         };
     };
-    createFolder_5: {
+    createFolder_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -107390,6 +107776,34 @@ export interface operations {
             };
         };
     };
+    moveThreadToFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scopeType: string;
+                scopeId: number;
+                threadId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MoveThreadFolderRequest"];
+            };
+        };
+        responses: {
+            /** @description 振り分け成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                };
+            };
+        };
+    };
     selfCorrect: {
         parameters: {
             query?: never;
@@ -110004,7 +110418,7 @@ export interface operations {
             };
         };
     };
-    deleteFolder_3: {
+    deleteFolder_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -110025,7 +110439,7 @@ export interface operations {
             };
         };
     };
-    updateFolder_3: {
+    updateFolder_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -118146,6 +118560,33 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description 検索成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseThreadResponse"];
+                };
+            };
+        };
+    };
+    listArchiveThreads: {
+        parameters: {
+            query?: {
+                folder_id?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                scopeType: string;
+                scopeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
             200: {
                 headers: {
                     [name: string]: unknown;

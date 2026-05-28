@@ -50,7 +50,7 @@ async function loadOrganizationName() {
   if (!Number.isFinite(organizationId.value)) return
   try {
     const res = await orgApi.getOrganization(organizationId.value)
-    organizationName.value = res.data.name
+    organizationName.value = res.data.basicInfo?.name ?? ''
   } catch {
     // 404 のときは検索 API 側でも 404 が返るため、ここではエラー表示しない
   }
