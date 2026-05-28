@@ -30,5 +30,27 @@
   },
   "signature": {
     "clear": "クリア"
+  },
+  "nav": {
+    "calendar": "Calendar",
+    "settings": "Settings",
+    "todo": "TODO",
+    "shiftManagement": "Shift Management",
+    "timeline": "Timeline",
+    "chat": "Chat",
+    "myShift": "My Shift",
+    "myPage": "My Page",
+    "qa": "Q&A",
+    "blog": "Blog"
+  },
+  "settings": {
+    "navigation": {
+      "title": "Navigation Settings",
+      "description": "Customize which navigation items are displayed",
+      "required": "Required",
+      "resetToDefault": "Reset to Default",
+      "saveSuccess": "Settings saved",
+      "saveError": "Failed to save settings"
+    }
   }
 }
