@@ -1,14 +1,17 @@
 package com.mannschaft.app.shift;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.shift.dto.HourlyRateResponse;
 import com.mannschaft.app.shift.dto.ShiftPositionResponse;
 import com.mannschaft.app.shift.dto.ShiftScheduleResponse;
+import com.mannschaft.app.shift.dto.SwapRequestResponse;
 import com.mannschaft.app.shift.entity.MemberAvailabilityDefaultEntity;
 import com.mannschaft.app.shift.entity.ShiftHourlyRateEntity;
 import com.mannschaft.app.shift.entity.ShiftPositionEntity;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSwapRequestEntity;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,11 +26,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * {@link ShiftMapper} (MapStruct生成実装) の単体テスト。
  * エンティティからDTOへの変換を検証する。
+ *
+ * <p>ShiftMapper は abstract class のため、MapStruct が生成する {@code ShiftMapperImpl} を
+ * 使用し、{@link ObjectMapper} をフィールド注入する。
  */
 @DisplayName("ShiftMapper 単体テスト")
 class ShiftMapperTest {
 
-    private final ShiftMapper mapper = new ShiftMapperImpl();
+    private ShiftMapper mapper;
+
+    @BeforeEach
+    void setUp() {
+        ShiftMapperImpl impl = new ShiftMapperImpl();
+        impl.objectMapper = new ObjectMapper();
+        mapper = impl;
+    }
 
     @Nested
     @DisplayName("toScheduleResponse")
@@ -205,6 +218,40 @@ class ShiftMapperTest {
                     .slotId(1L).requesterId(1L).status(SwapRequestStatus.APPROVED).build();
             assertThat(mapper.toSwapResponse(entity).getStatus()).isEqualTo("APPROVED");
         }
+
+        @Test
+        @DisplayName("交代リクエストエンティティ変換_recipientMode_OPEN_CALL正常変換")
+        void 交代リクエストエンティティ変換_recipientMode_OPEN_CALL正常変換() {
+            ShiftSwapRequestEntity entity = ShiftSwapRequestEntity.builder()
+                    .slotId(1L).requesterId(1L).status(SwapRequestStatus.OPEN_CALL)
+                    .recipientMode("OPEN_CALL").build();
+            SwapRequestResponse response = mapper.toSwapResponse(entity);
+            assertThat(response.getRecipientMode()).isEqualTo("OPEN_CALL");
+            assertThat(response.getTargetUserIds()).isNull();
+        }
+
+        @Test
+        @DisplayName("交代リクエストエンティティ変換_targetUserIds_JSON配列をListに変換")
+        void 交代リクエストエンティティ変換_targetUserIds_JSON配列をListに変換() {
+            ShiftSwapRequestEntity entity = ShiftSwapRequestEntity.builder()
+                    .slotId(1L).requesterId(1L).status(SwapRequestStatus.PENDING)
+                    .recipientMode("SPECIFIC").build();
+            entity.setTargetUserIds("[10,20,30]");
+            SwapRequestResponse response = mapper.toSwapResponse(entity);
+            assertThat(response.getRecipientMode()).isEqualTo("SPECIFIC");
+            assertThat(response.getTargetUserIds()).containsExactly(10L, 20L, 30L);
+        }
+
+        @Test
+        @DisplayName("交代リクエストエンティティ変換_targetUserIds_不正JSON_空リストを返す")
+        void 交代リクエストエンティティ変換_targetUserIds_不正JSON_空リストを返す() {
+            ShiftSwapRequestEntity entity = ShiftSwapRequestEntity.builder()
+                    .slotId(1L).requesterId(1L).status(SwapRequestStatus.PENDING)
+                    .recipientMode("SPECIFIC").build();
+            entity.setTargetUserIds("invalid_json");
+            SwapRequestResponse response = mapper.toSwapResponse(entity);
+            assertThat(response.getTargetUserIds()).isEmpty();
+        }
     }
 
     @Nested
@@ -212,9 +259,10 @@ class ShiftMapperTest {
     class ToSwapResponseList {
 
         @Test
-        @DisplayName("交代リクエストリスト変換_null_nullを返す")
-        void 交代リクエストリスト変換_null_nullを返す() {
-            assertThat(mapper.toSwapResponseList(null)).isNull();
+        @DisplayName("交代リクエストリスト変換_null_空リストを返す")
+        void 交代リクエストリスト変換_null_空リストを返す() {
+            // toSwapResponseList は手動実装のため null 入力時は空リストを返す
+            assertThat(mapper.toSwapResponseList(null)).isEmpty();
         }
 
         @Test

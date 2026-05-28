@@ -58,6 +58,21 @@ public class ShiftSwapRequestEntity extends BaseEntity {
     /** 指定交代相手ユーザーID（is_open_call=false の場合） */
     private Long targetUserId;
 
+    /**
+     * 受信者モード。SPECIFIC=特定ユーザー指定 / OPEN_CALL=全体公開。
+     * isOpenCall フラグから移行した後継カラム。
+     */
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private String recipientMode = "SPECIFIC";
+
+    /**
+     * 交代対象ユーザーIDリスト（JSON 配列文字列）。SPECIFIC モード時に使用。
+     * 例: "[1,2,3]"
+     */
+    @Column(columnDefinition = "JSON")
+    private String targetUserIds;
+
     /** 手挙げユーザーID（先着1名） */
     private Long claimedBy;
 
@@ -133,5 +148,23 @@ public class ShiftSwapRequestEntity extends BaseEntity {
         this.claimedBy = claimedBy;
         this.accepterId = claimedBy;
         this.status = SwapRequestStatus.ACCEPTED;
+    }
+
+    /**
+     * 受信者モードを設定する。
+     *
+     * @param recipientMode "SPECIFIC" または "OPEN_CALL"
+     */
+    public void setRecipientMode(String recipientMode) {
+        this.recipientMode = recipientMode;
+    }
+
+    /**
+     * 交代対象ユーザーIDリスト（JSON 配列文字列）を設定する。
+     *
+     * @param targetUserIds JSON 配列文字列（例: "[1,2,3]"）
+     */
+    public void setTargetUserIds(String targetUserIds) {
+        this.targetUserIds = targetUserIds;
     }
 }

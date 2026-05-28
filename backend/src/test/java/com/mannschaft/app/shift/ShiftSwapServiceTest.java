@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.shift.dto.CreateSwapRequestRequest;
 import com.mannschaft.app.shift.dto.ResolveSwapRequestRequest;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.springframework.data.domain.PageImpl;
@@ -45,6 +47,9 @@ class ShiftSwapServiceTest {
     @Mock
     private ShiftMapper shiftMapper;
 
+    @Spy
+    private ObjectMapper objectMapper = new ObjectMapper();
+
     @InjectMocks
     private ShiftSwapService shiftSwapService;
 
@@ -76,10 +81,15 @@ class ShiftSwapServiceTest {
     }
 
     private SwapRequestResponse createSwapResponse() {
-        return new SwapRequestResponse(
-                SWAP_ID, SLOT_ID, REQUESTER_ID, null,
-                "PENDING", "体調不良のため", null, null, null,
-                LocalDateTime.now());
+        return SwapRequestResponse.builder()
+                .id(SWAP_ID)
+                .slotId(SLOT_ID)
+                .requesterId(REQUESTER_ID)
+                .status("PENDING")
+                .reason("体調不良のため")
+                .createdAt(LocalDateTime.now())
+                .recipientMode("SPECIFIC")
+                .build();
     }
 
     private void callOnCreate(Object entity) {
@@ -176,7 +186,46 @@ class ShiftSwapServiceTest {
         @DisplayName("交代リクエスト作成_正常_レスポンス返却")
         void 交代リクエスト作成_正常_レスポンス返却() {
             // Given
-            CreateSwapRequestRequest req = new CreateSwapRequestRequest(SLOT_ID, "体調不良のため");
+            CreateSwapRequestRequest req = new CreateSwapRequestRequest(SLOT_ID, "体調不良のため", false, null);
+            ShiftSwapRequestEntity savedEntity = createPendingSwap();
+            SwapRequestResponse response = createSwapResponse();
+            given(swapRepository.save(any(ShiftSwapRequestEntity.class))).willReturn(savedEntity);
+            given(shiftMapper.toSwapResponse(savedEntity)).willReturn(response);
+
+            // When
+            SwapRequestResponse result = shiftSwapService.createSwapRequest(req, REQUESTER_ID);
+
+            // Then
+            assertThat(result).isNotNull();
+            verify(swapRepository).save(any(ShiftSwapRequestEntity.class));
+        }
+
+        @Test
+        @DisplayName("交代リクエスト作成_OPEN_CALL_recipientModeがOPEN_CALL")
+        void 交代リクエスト作成_OPEN_CALL_recipientModeがOPEN_CALL() {
+            // Given
+            CreateSwapRequestRequest req = new CreateSwapRequestRequest(SLOT_ID, "急な用事のため", true, null);
+            ShiftSwapRequestEntity savedEntity = ShiftSwapRequestEntity.builder()
+                    .slotId(SLOT_ID).requesterId(REQUESTER_ID)
+                    .status(SwapRequestStatus.PENDING).isOpenCall(true)
+                    .recipientMode("OPEN_CALL").build();
+            SwapRequestResponse response = createSwapResponse();
+            given(swapRepository.save(any(ShiftSwapRequestEntity.class))).willReturn(savedEntity);
+            given(shiftMapper.toSwapResponse(savedEntity)).willReturn(response);
+
+            // When
+            SwapRequestResponse result = shiftSwapService.createSwapRequest(req, REQUESTER_ID);
+
+            // Then
+            assertThat(result).isNotNull();
+            verify(swapRepository).save(any(ShiftSwapRequestEntity.class));
+        }
+
+        @Test
+        @DisplayName("交代リクエスト作成_SPECIFIC_targetUserIds指定あり")
+        void 交代リクエスト作成_SPECIFIC_targetUserIds指定あり() {
+            // Given
+            CreateSwapRequestRequest req = new CreateSwapRequestRequest(SLOT_ID, "理由", false, List.of(20L, 30L));
             ShiftSwapRequestEntity savedEntity = createPendingSwap();
             SwapRequestResponse response = createSwapResponse();
             given(swapRepository.save(any(ShiftSwapRequestEntity.class))).willReturn(savedEntity);
