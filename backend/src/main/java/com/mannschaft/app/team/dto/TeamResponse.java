@@ -1,37 +1,66 @@
 package com.mannschaft.app.team.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 
 /**
  * チーム詳細レスポンス。
+ * ネストDTOで関心ごとを分類して返す。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class TeamResponse {
 
-    private final Long id;
-    private final String name;
-    private final String nameKana;
-    private final String nickname1;
-    private final String nickname2;
-    private final String template;
-    private final String prefecture;
-    private final String city;
-    private final String visibility;
-    private final Boolean supporterEnabled;
-    private final Long version;
-    private final int memberCount;
-    private final String iconUrl;
-    private final String bannerUrl;
-    private final LocalDateTime archivedAt;
-    private final LocalDateTime createdAt;
-    private final long teamFriendCount;
-    private final long supporterCount;
-    /**
-     * F15.4 Phase 5-β: Google Maps 埋め込み URL（管理画面表示用、null 許容）
-     */
-    private final String mapEmbedUrl;
+    private Long id;
+    private TeamBasicInfoDto basicInfo;
+    private TeamLocationDto location;
+    private TeamVisibilityDto visibility;
+    private TeamMetadataDto metadata;
+    private TeamSocialDto social;
+    private TeamTimestampsDto timestamps;
+
+    /** チームの基本情報（名称・ニックネーム）。 */
+    public record TeamBasicInfoDto(
+            String name,
+            String nameKana,
+            String nickname1,
+            String nickname2
+    ) {}
+
+    /** チームの所在地情報。 */
+    public record TeamLocationDto(
+            String prefecture,
+            String city,
+            String template
+    ) {}
+
+    /** チームの公開設定。 */
+    public record TeamVisibilityDto(
+            String visibility,
+            Boolean supporterEnabled
+    ) {}
+
+    /** チームのメタデータ（バージョン・メンバー数・画像URL等）。 */
+    public record TeamMetadataDto(
+            Long version,
+            int memberCount,
+            String iconUrl,
+            String bannerUrl,
+            String mapEmbedUrl
+    ) {}
+
+    /** チームのソーシャル情報（フレンド数・サポーター数）。 */
+    public record TeamSocialDto(
+            long teamFriendCount,
+            long supporterCount
+    ) {}
+
+    /** チームのタイムスタンプ情報。 */
+    public record TeamTimestampsDto(
+            LocalDateTime archivedAt,
+            LocalDateTime createdAt
+    ) {}
+
 }
