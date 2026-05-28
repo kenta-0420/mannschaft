@@ -187,11 +187,7 @@ public class AuthTokenService {
             return;
         }
         String key = BLACKLIST_KEY_PREFIX + jti;
-        try {
-            redisTemplate.opsForValue().set(key, "1", remainingTtlSeconds, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            log.warn("Valkey unavailable during blacklist write, skipping: {}", e.getMessage());
-        }
+        redisTemplate.opsForValue().set(key, "1", remainingTtlSeconds, TimeUnit.SECONDS);
     }
 
     /**
@@ -203,11 +199,7 @@ public class AuthTokenService {
     public void setUserInvalidationTimestamp(Long userId) {
         String key = USER_INVALIDATED_KEY_PREFIX + userId;
         long now = Instant.now().getEpochSecond();
-        try {
-            redisTemplate.opsForValue().set(key, String.valueOf(now), USER_INVALIDATION_TTL_SECONDS, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            log.warn("Valkey unavailable during user invalidation timestamp write, skipping: {}", e.getMessage());
-        }
+        redisTemplate.opsForValue().set(key, String.valueOf(now), USER_INVALIDATION_TTL_SECONDS, TimeUnit.SECONDS);
     }
 
     /**
@@ -308,8 +300,8 @@ public class AuthTokenService {
             }
             return count;
         } catch (Exception e) {
-            log.warn("Valkey unavailable during rate limit increment, failing open: {}", e.getMessage());
-            return 0L;
+            log.warn("Valkey unavailable during rate limit increment, failing closed: {}", e.getMessage());
+            return Long.MAX_VALUE;
         }
     }
 
