@@ -8,7 +8,8 @@ import type {
 
 interface FeedParams {
   scopeType: TimelineScopeType
-  scopeId?: number
+  /** TEAM/ORGANIZATION は数値ID、VILLAGE は UUID 文字列 */
+  scopeId?: string | number
   cursor?: number
   limit?: number
   feed?: 'all' | 'following'
@@ -16,7 +17,8 @@ interface FeedParams {
 
 interface SearchParams {
   scopeType: TimelineScopeType
-  scopeId?: number
+  /** TEAM/ORGANIZATION は数値ID、VILLAGE は UUID 文字列 */
+  scopeId?: string | number
   q: string
   cursor?: number
   limit?: number
@@ -37,9 +39,12 @@ export function useTimelineApi() {
 
   // === Feed ===
   async function getFeed(params: FeedParams) {
+    // VILLAGE スコープ: scope_id=0 + scope_village_id=UUID（設計書 §3.12.2）
+    const isVillage = params.scopeType === 'VILLAGE'
     const qs = buildQuery({
       scope_type: params.scopeType,
-      scope_id: params.scopeId,
+      scope_id: isVillage ? 0 : params.scopeId,
+      ...(isVillage ? { scope_village_id: params.scopeId } : {}),
       cursor: params.cursor,
       limit: params.limit,
       feed: params.feed,

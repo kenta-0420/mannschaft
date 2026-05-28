@@ -5,7 +5,8 @@ const visible = defineModel<boolean>('visible', { default: false })
 
 const props = defineProps<{
   scopeType: BulletinScopeType
-  scopeId: number
+  /** TEAM/ORGANIZATION は数値ID、VILLAGE は UUID 文字列 */
+  scopeId: string | number
 }>()
 
 const emit = defineEmits<{
@@ -14,10 +15,15 @@ const emit = defineEmits<{
 
 const { createThread, getCategories } = useBulletinApi()
 const { showSuccess, showError } = useNotification()
+// VILLAGE スコープはお知らせウィジェット非対応のため、TEAM/ORGANIZATION 時のみ有効な scopeId を渡す
+const announceScopeId = typeof props.scopeId === 'number' ? props.scopeId : 0
 const { createAnnouncement } = useAnnouncementFeed(
   props.scopeType as 'TEAM' | 'ORGANIZATION',
-  props.scopeId,
+  announceScopeId,
 )
+
+/** VILLAGE スコープではお知らせウィジェット連携を表示しない */
+const supportsAnnouncement = computed(() => props.scopeType !== 'VILLAGE')
 
 const title = ref('')
 const body = ref('')
@@ -191,8 +197,8 @@ watch(visible, (v) => {
         </div>
       </div>
 
-      <!-- お知らせウィジェット表示フラグ -->
-      <AnnouncementAnnouncementToggle v-model="displayInAnnouncement" />
+      <!-- お知らせウィジェット表示フラグ（VILLAGE スコープでは非表示） -->
+      <AnnouncementAnnouncementToggle v-if="supportsAnnouncement" v-model="displayInAnnouncement" />
 
       <!-- 下書き保存インジケーター -->
       <div v-if="title || body" class="text-right text-xs text-surface-400">

@@ -27,7 +27,7 @@ export function useBulletinArchiveFolders() {
       : 'teams'
   }
 
-  function basePath(scopeType: string, scopeId: number): string {
+  function basePath(scopeType: string, scopeId: string | number): string {
     return `/api/v1/${scopeSegment(scopeType)}/${scopeId}/bulletin/archive`
   }
 
@@ -37,7 +37,7 @@ export function useBulletinArchiveFolders() {
    */
   async function getFolderTree(
     scopeType: string,
-    scopeId: number,
+    scopeId: string | number,
   ): Promise<ArchiveFolderTreeResponse> {
     return api<ArchiveFolderTreeResponse>(`${basePath(scopeType, scopeId)}/folders`)
   }
@@ -45,7 +45,7 @@ export function useBulletinArchiveFolders() {
   /** 保管庫フォルダを作成する。 */
   async function createFolder(
     scopeType: string,
-    scopeId: number,
+    scopeId: string | number,
     body: CreateArchiveFolderRequest,
   ): Promise<{ data: BulletinArchiveFolder }> {
     return api<{ data: BulletinArchiveFolder }>(`${basePath(scopeType, scopeId)}/folders`, {
@@ -60,7 +60,7 @@ export function useBulletinArchiveFolders() {
    */
   async function updateFolder(
     scopeType: string,
-    scopeId: number,
+    scopeId: string | number,
     folderId: string,
     body: UpdateArchiveFolderRequest,
   ): Promise<{ data: BulletinArchiveFolder }> {
@@ -76,7 +76,7 @@ export function useBulletinArchiveFolders() {
    */
   async function deleteFolder(
     scopeType: string,
-    scopeId: number,
+    scopeId: string | number,
     folderId: string,
   ): Promise<{ data: DeleteArchiveFolderResponse }> {
     return api<{ data: DeleteArchiveFolderResponse }>(
@@ -95,7 +95,7 @@ export function useBulletinArchiveFolders() {
    */
   async function getArchiveThreads(
     scopeType: string,
-    scopeId: number,
+    scopeId: string | number,
     params?: { folderId?: string | null; page?: number; size?: number },
   ): Promise<{
     data: BulletinThreadResponse[]
@@ -114,7 +114,7 @@ export function useBulletinArchiveFolders() {
    */
   async function moveThreadToFolder(
     scopeType: string,
-    scopeId: number,
+    scopeId: string | number,
     threadId: number,
     archiveFolderId: string | null,
   ): Promise<{ data: BulletinThreadResponse }> {

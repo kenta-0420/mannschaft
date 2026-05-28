@@ -20,8 +20,13 @@ export function useBulletinCategories() {
   }
 
   // === Categories ===
-  async function getCategories(scopeType: string, scopeId: number) {
-    const qs = buildQuery({ scope_type: scopeType, scope_id: scopeId })
+  async function getCategories(scopeType: string, scopeId: string | number) {
+    const isVillage = scopeType === 'VILLAGE'
+    const qs = buildQuery({
+      scope_type: scopeType,
+      scope_id: isVillage ? 0 : scopeId,
+      ...(isVillage ? { scope_village_id: scopeId } : {}),
+    })
     return api<{ data: BulletinCategory[] }>(`/api/v1/bulletin/categories?${qs}`)
   }
 

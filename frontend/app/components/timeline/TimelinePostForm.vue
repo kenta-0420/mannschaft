@@ -3,7 +3,8 @@ import type { TimelineScopeType } from '~/types/timeline'
 
 const props = defineProps<{
   scopeType: TimelineScopeType
-  scopeId?: number
+  /** TEAM/ORGANIZATION は数値ID、VILLAGE は UUID 文字列 */
+  scopeId?: string | number
 }>()
 
 const emit = defineEmits<{
@@ -94,7 +95,12 @@ async function onSubmit() {
   try {
     const formData = new FormData()
     formData.append('scope_type', props.scopeType)
-    if (props.scopeId) formData.append('scope_id', String(props.scopeId))
+    // VILLAGE スコープ: scope_id=0 + scope_village_id=UUID（設計書 §3.12.2）
+    if (props.scopeId) {
+      const isVillage = props.scopeType === 'VILLAGE'
+      formData.append('scope_id', isVillage ? '0' : String(props.scopeId))
+      if (isVillage) formData.append('scope_village_id', String(props.scopeId))
+    }
     formData.append('content', content.value.trim())
     images.value.forEach(img => formData.append('images', img))
     if (videoUrl.value.trim()) {
@@ -115,8 +121,8 @@ async function onSubmit() {
     }
 
     const res = await createPost(formData)
-    // お知らせウィジェットに表示する場合、投稿後に登録
-    if (displayInAnnouncement.value && isTeamOrOrgScope.value && res?.data?.id && props.scopeId) {
+    // お知らせウィジェットに表示する場合、投稿後に登録（VILLAGE スコープは非対応）
+    if (displayInAnnouncement.value && isTeamOrOrgScope.value && res?.data?.id && typeof props.scopeId === 'number') {
       const { createAnnouncement } = useAnnouncementFeed(
         props.scopeType as 'TEAM' | 'ORGANIZATION',
         props.scopeId,
