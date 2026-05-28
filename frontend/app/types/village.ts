@@ -799,10 +799,9 @@ export interface VillagePilgrimageRecommendationResponse {
   visitedAt: string | null
 }
 
-/** 訪問記録リクエスト */
+/** 訪問記録リクエスト（recommendationId はパス変数に移行済み） */
 export interface VillagePilgrimageVisitRecordRequest {
   villageId: string
-  recommendationId?: string | null
 }
 
 /** 訪問記録 */
@@ -836,7 +835,6 @@ export interface VillageNewsletterSettingsResponse {
 /** ニュースレター設定更新リクエスト */
 export interface VillageNewsletterSettingsRequest {
   frequency: VillageNewsletterFrequency
-  villageId?: string | null
 }
 
 /** ニュースレター購読停止レスポンス */
@@ -844,6 +842,15 @@ export interface VillageNewsletterOptOutResponse {
   userId: number
   optedOut: boolean
   optedOutAt: string | null
+}
+
+/** ニュースレター配信ログ */
+export interface VillageNewsletterSendLogResponse {
+  id: string
+  villageId: string
+  frequency: string
+  sentAt: string
+  recipientCount: number
 }
 
 // -----------------------------------------------------------------------------
