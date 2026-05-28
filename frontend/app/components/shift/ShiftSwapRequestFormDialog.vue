@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import type { CreateSwapRequestOptions } from '~/composables/shift/useShiftSwapApi'
 import type { MemberResponse } from '~/types/member'
-import type { ShiftSlotResponse } from '~/types/shift'
+import type { CreateSwapRequestRequest, ShiftSlotResponse } from '~/types/shift'
 
 /**
  * シフト交代依頼フォームダイアログ（3モード対応）
@@ -36,8 +35,8 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const { error: showError, success: showSuccess } = useNotification()
 const { createSwapRequest } = useShiftSwapApi()
-const { getShiftSlots } = useShiftSlotApi()
-const { getMembers } = useTeamMembers()
+const { listSlots } = useShiftSlotApi()
+const { getMembers } = useTeamApi()
 
 // ---- ダイアログ表示制御 ----
 const dialogVisible = computed({
@@ -90,8 +89,7 @@ async function loadSlots() {
   if (slots.value.length > 0) return
   slotsLoading.value = true
   try {
-    const res = await getShiftSlots(props.scheduleId)
-    slots.value = res.data
+    slots.value = await listSlots(props.scheduleId)
   } catch {
     // スロット取得失敗時は TEMPLATE モードが無効になる
   } finally {
@@ -137,27 +135,21 @@ const templateTargetUserIds = computed(() =>
 async function submit() {
   submitting.value = true
   try {
-    let options: CreateSwapRequestOptions | undefined
-
+    const body: CreateSwapRequestRequest = {
+      slotId: props.slotId,
+      reason: reason.value || undefined,
+    }
     if (recipientMode.value === 'OPEN_CALL') {
-      options = { recipientMode: 'OPEN_CALL' }
+      body.openCall = true
     } else if (recipientMode.value === 'TEMPLATE') {
-      options = {
-        recipientMode: 'SPECIFIC',
-        targetUserIds: templateTargetUserIds.value,
-      }
+      body.openCall = false
+      body.targetUserIds = templateTargetUserIds.value
     } else {
-      // SPECIFIC
-      options = {
-        recipientMode: 'SPECIFIC',
-        targetUserIds: selectedUserIds.value,
-      }
+      body.openCall = false
+      body.targetUserIds = selectedUserIds.value
     }
 
-    await createSwapRequest(
-      { slotId: props.slotId, reason: reason.value || undefined },
-      options,
-    )
+    await createSwapRequest(body)
     showSuccess(t('shift.notification.submitSuccess'))
     emit('submitted')
     dialogVisible.value = false
