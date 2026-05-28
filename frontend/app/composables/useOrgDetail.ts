@@ -1,24 +1,26 @@
-import type { OrgTeam, OrgPermissionGroup } from '~/types/organization'
+import type {
+  OrgTeam,
+  OrgPermissionGroup,
+  OrgBasicInfoDto,
+  OrgHierarchyDto,
+  OrgLocationDto,
+  OrgVisibilityDto,
+  OrgMetadataDto,
+  OrgTimestampsDto,
+} from '~/types/organization'
 
+// Wave 3-B: OrganizationResponse ネスト構造に対応
 export interface OrgDetail {
   id: number
-  name: string
-  nameKana: string | null
-  nickname1: string | null
-  nickname2: string | null
-  template: string
-  prefecture: string | null
-  city: string | null
-  description: string | null
-  visibility: string
-  supporterEnabled: boolean
-  version: number
-  memberCount: number
+  basicInfo?: OrgBasicInfoDto
+  hierarchy?: OrgHierarchyDto
+  location?: OrgLocationDto
+  visibility?: OrgVisibilityDto
+  metadata?: OrgMetadataDto
+  timestamps?: OrgTimestampsDto
+  // 旧フラット互換（別エンドポイントや内部追加フィールド）
   supporterCount?: number
-  archivedAt: string | null
-  createdAt: string
-  iconUrl: string | null
-  bannerUrl: string | null
+  description?: string | null
 }
 
 export function useOrgDetail(orgId: Ref<number>) {

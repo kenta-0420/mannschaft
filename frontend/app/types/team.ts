@@ -17,30 +17,54 @@ export type TeamTemplate =
   | 'OTHER'
 export type TeamVisibility = 'PUBLIC' | 'ORGANIZATION_ONLY' | 'PRIVATE'
 
-export interface TeamResponse {
-  id: number
-  name: string
-  nameKana: string | null
-  nickname1: string | null
-  nickname2: string | null
-  template: TeamTemplate
-  prefecture: string | null
-  city: string | null
-  description: string | null
-  visibility: TeamVisibility
-  supporterEnabled: boolean
-  version: number
-  memberCount: number
-  archivedAt: string | null
-  createdAt: string
-  iconUrl: string | null
-  bannerUrl: string | null
-  teamFriendCount: number
-  supporterCount: number
+// Wave 3-B: TeamResponse ネスト構造（BE側変更に対応）
+export interface TeamBasicInfoDto {
+  name?: string
+  nameKana?: string | null
+  nickname1?: string | null
+  nickname2?: string | null
+}
+
+export interface TeamLocationDto {
+  template?: string
+  prefecture?: string | null
+  city?: string | null
+}
+
+export interface TeamVisibilityDto {
+  visibility?: TeamVisibility
+  supporterEnabled?: boolean
+}
+
+export interface TeamMetadataDto {
+  version?: number
+  memberCount?: number
+  iconUrl?: string | null
+  bannerUrl?: string | null
   /**
    * F15.4 Phase 5-β: Google Maps 埋め込み URL（管理画面表示用、null 許容）
    */
-  mapEmbedUrl: string | null
+  mapEmbedUrl?: string | null
+}
+
+export interface TeamSocialDto {
+  teamFriendCount?: number
+  supporterCount?: number
+}
+
+export interface TeamTimestampsDto {
+  archivedAt?: string | null
+  createdAt?: string
+}
+
+export interface TeamResponse {
+  id: number
+  basicInfo?: TeamBasicInfoDto
+  location?: TeamLocationDto
+  visibility?: TeamVisibilityDto
+  metadata?: TeamMetadataDto
+  social?: TeamSocialDto
+  timestamps?: TeamTimestampsDto
 }
 
 export interface TeamSummaryResponse {

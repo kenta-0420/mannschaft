@@ -1,21 +1,5 @@
 import type { MemberResponse } from '~/types/member'
-
-interface OrganizationResponse {
-  id: number
-  name: string
-  nameKana: string | null
-  nickname1: string | null
-  nickname2: string | null
-  prefecture: string | null
-  city: string | null
-  description: string | null
-  visibility: string
-  supporterEnabled: boolean
-  version: number
-  memberCount: number
-  archivedAt: string | null
-  createdAt: string
-}
+import type { OrganizationResponse } from '~/types/organization'
 
 interface OrganizationSummaryResponse {
   id: number

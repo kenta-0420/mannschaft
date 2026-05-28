@@ -84,7 +84,7 @@ const loading = ref(false)
 const activeTab = ref(0)
 const showLeaveConfirm = ref(false)
 
-const displayName = computed(() => team.value?.nickname1 || team.value?.name || '')
+const displayName = computed(() => team.value?.basicInfo?.nickname1 || team.value?.basicInfo?.name || '')
 
 async function fetchTeam() {
   loading.value = true
@@ -127,13 +127,13 @@ onMounted(async () => {
     <template v-else-if="team">
       <TeamHeaderBar
         :team-name="displayName"
-        :template="team.template"
-        :template-label="templateLabel[team.template] ?? team.template"
+        :template="team.location?.template"
+        :template-label="templateLabel[team.location?.template ?? ''] ?? team.location?.template"
         :role-name="roleName"
         :is-admin="isAdmin"
-        :member-count="team.memberCount"
-        :supporter-enabled="team.supporterEnabled"
-        :supporter-count="team.supporterCount"
+        :member-count="team.metadata?.memberCount"
+        :supporter-enabled="team.visibility?.supporterEnabled"
+        :supporter-count="team.social?.supporterCount"
         :follow-status="followStatus"
         :follow-loading="followLoading"
         @back="navigateTo('/dashboard')"
@@ -167,14 +167,14 @@ onMounted(async () => {
       />
 
       <ProfileHeader
-        :icon-url="team.iconUrl"
-        :banner-url="team.bannerUrl"
+        :icon-url="team.metadata?.iconUrl"
+        :banner-url="team.metadata?.bannerUrl"
         :name="displayName"
         scope="team"
         :scope-id="teamId"
         :editable="isAdminOrDeputy"
-        @icon-updated="(url) => { if (team) team.iconUrl = url }"
-        @banner-updated="(url) => { if (team) team.bannerUrl = url }"
+        @icon-updated="(url) => { if (team && team.metadata) team.metadata.iconUrl = url }"
+        @banner-updated="(url) => { if (team && team.metadata) team.metadata.bannerUrl = url }"
       />
 
       <Tabs v-model:value="activeTab">
@@ -183,7 +183,7 @@ onMounted(async () => {
           <Tab :value="1"> 基本情報 </Tab>
           <Tab :value="2"> メンバー </Tab>
           <Tab v-if="isAdminOrDeputy" :value="3"> 招待 </Tab>
-          <Tab v-if="isAdmin && team.supporterEnabled" :value="4"> サポーター管理 </Tab>
+          <Tab v-if="isAdmin && team.visibility?.supporterEnabled" :value="4"> サポーター管理 </Tab>
           <Tab v-if="isAdmin" :value="5"> 機能設定 </Tab>
           <Tab v-if="isAdmin" :value="6"> {{ $t('nav.tab') }} </Tab>
         </TabList>
@@ -195,7 +195,7 @@ onMounted(async () => {
                 scope-type="team"
                 :scope-id="teamId"
                 :scope-name="displayName"
-                :scope-template="team.template"
+                :scope-template="team.location?.template"
                 :viewer-role="viewerRole"
                 :is-admin-or-deputy="isAdminOrDeputy"
                 :visibility-map="widgetVisibilitySettings"
@@ -206,24 +206,24 @@ onMounted(async () => {
           <TabPanel :value="1">
             <TeamDetailInfo
               :team-id="teamId"
-              :name="team.name"
-              :name-kana="team.nameKana"
-              :nickname1="team.nickname1"
-              :nickname2="team.nickname2"
-              :template="team.template"
-              :template-label="templateLabel[team.template] ?? team.template"
-              :prefecture="team.prefecture"
-              :city="team.city"
-              :visibility="team.visibility"
-              :visibility-label="visibilityLabel[team.visibility] ?? team.visibility"
-              :member-count="team.memberCount"
-              :team-friend-count="team.teamFriendCount"
-              :supporter-count="team.supporterCount"
-              :supporter-enabled="team.supporterEnabled"
-              :description="team.description ?? null"
+              :name="team.basicInfo?.name ?? ''"
+              :name-kana="team.basicInfo?.nameKana ?? null"
+              :nickname1="team.basicInfo?.nickname1 ?? null"
+              :nickname2="team.basicInfo?.nickname2 ?? null"
+              :template="team.location?.template ?? ''"
+              :template-label="templateLabel[team.location?.template ?? ''] ?? team.location?.template ?? ''"
+              :prefecture="team.location?.prefecture ?? null"
+              :city="team.location?.city ?? null"
+              :visibility="team.visibility?.visibility ?? ''"
+              :visibility-label="visibilityLabel[team.visibility?.visibility ?? ''] ?? team.visibility?.visibility ?? ''"
+              :member-count="team.metadata?.memberCount ?? 0"
+              :team-friend-count="team.social?.teamFriendCount ?? 0"
+              :supporter-count="team.social?.supporterCount ?? 0"
+              :supporter-enabled="team.visibility?.supporterEnabled ?? false"
+              :description="null"
               :is-admin="isAdmin"
-              :map-embed-url="team.mapEmbedUrl ?? null"
-              @updated:map-embed-url="(url) => { if (team) team.mapEmbedUrl = url }"
+              :map-embed-url="team.metadata?.mapEmbedUrl ?? null"
+              @updated:map-embed-url="(url) => { if (team && team.metadata) team.metadata.mapEmbedUrl = url }"
             />
           </TabPanel>
 
@@ -244,7 +244,7 @@ onMounted(async () => {
             </div>
           </TabPanel>
 
-          <TabPanel v-if="isAdmin && team.supporterEnabled" :value="4">
+          <TabPanel v-if="isAdmin && team.visibility?.supporterEnabled" :value="4">
             <div class="mt-4">
               <SupporterManagementPanel scope-type="team" :scope-id="teamId" />
             </div>
