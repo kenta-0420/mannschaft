@@ -60,9 +60,12 @@ class ReservationLineServiceTest {
     }
 
     private ReservationLineResponse createLineResponse() {
-        return new ReservationLineResponse(
-                LINE_ID, TEAM_ID, "カウンセリング", "個別カウンセリング60分",
-                1, true, STAFF_USER_ID, null, null);
+        return ReservationLineResponse.builder()
+                .id(LINE_ID)
+                .teamId(TEAM_ID)
+                .meta(new ReservationLineResponse.LineMetaDto("カウンセリング", "個別カウンセリング60分", 1, true, STAFF_USER_ID))
+                .audit(new ReservationLineResponse.ReservationLineAuditDto(null, null))
+                .build();
     }
 
     // ========================================
@@ -87,7 +90,7 @@ class ReservationLineServiceTest {
 
             // Then
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getName()).isEqualTo("カウンセリング");
+            assertThat(result.get(0).getMeta().name()).isEqualTo("カウンセリング");
         }
     }
 

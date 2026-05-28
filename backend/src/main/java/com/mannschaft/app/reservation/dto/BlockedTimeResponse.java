@@ -1,7 +1,7 @@
 package com.mannschaft.app.reservation.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -10,17 +10,16 @@ import java.time.LocalTime;
 /**
  * ブロック時間レスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class BlockedTimeResponse {
 
-    private final Long id;
-    private final Long teamId;
-    private final LocalDate blockedDate;
-    private final LocalTime startTime;
-    private final LocalTime endTime;
-    private final String reason;
-    private final Long createdBy;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    Long id;
+    Long teamId;
+    TimeSlotDto timeSlot;
+    BlockedAuditDto audit;
+
+    public record TimeSlotDto(LocalDate blockedDate, LocalTime startTime, LocalTime endTime) {}
+
+    public record BlockedAuditDto(String reason, Long createdBy, LocalDateTime createdAt, LocalDateTime updatedAt) {}
 }

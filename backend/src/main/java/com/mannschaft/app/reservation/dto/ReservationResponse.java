@@ -1,31 +1,31 @@
 package com.mannschaft.app.reservation.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 
 /**
  * 予約レスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class ReservationResponse {
 
-    private final Long id;
-    private final Long reservationSlotId;
-    private final Long lineId;
-    private final Long teamId;
-    private final Long userId;
-    private final String status;
-    private final LocalDateTime bookedAt;
-    private final LocalDateTime confirmedAt;
-    private final LocalDateTime cancelledAt;
-    private final String cancelReason;
-    private final String cancelledBy;
-    private final LocalDateTime completedAt;
-    private final String userNote;
-    private final String adminNote;
-    private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    Long id;
+    ReservationIdentifierDto identifier;
+    ReservationStatusDto status;
+    CancellationDto cancellation;
+    NotesDto notes;
+    ReservationAuditDto audit;
+
+    public record ReservationIdentifierDto(Long reservationSlotId, Long lineId, Long teamId, Long userId) {}
+
+    public record ReservationStatusDto(String status, LocalDateTime bookedAt, LocalDateTime confirmedAt, LocalDateTime completedAt) {}
+
+    public record CancellationDto(LocalDateTime cancelledAt, String cancelReason, String cancelledBy) {}
+
+    public record NotesDto(String userNote, String adminNote) {}
+
+    public record ReservationAuditDto(LocalDateTime createdAt, LocalDateTime updatedAt) {}
 }

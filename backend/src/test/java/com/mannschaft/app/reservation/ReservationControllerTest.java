@@ -75,29 +75,36 @@ class ReservationControllerTest {
     private static final Long REMINDER_ID = 400L;
 
     private ReservationResponse createReservationResponse() {
-        return new ReservationResponse(
-                RESERVATION_ID, SLOT_ID, LINE_ID, TEAM_ID, USER_ID,
-                "CONFIRMED", LocalDateTime.now(), LocalDateTime.now(),
-                null, null, null, null, null, null,
-                LocalDateTime.now(), LocalDateTime.now()
-        );
+        return ReservationResponse.builder()
+                .id(RESERVATION_ID)
+                .identifier(new ReservationResponse.ReservationIdentifierDto(SLOT_ID, LINE_ID, TEAM_ID, USER_ID))
+                .status(new ReservationResponse.ReservationStatusDto("CONFIRMED", LocalDateTime.now(), LocalDateTime.now(), null))
+                .cancellation(new ReservationResponse.CancellationDto(null, null, null))
+                .notes(new ReservationResponse.NotesDto(null, null))
+                .audit(new ReservationResponse.ReservationAuditDto(LocalDateTime.now(), LocalDateTime.now()))
+                .build();
     }
 
     private ReservationSlotResponse createSlotResponse() {
-        return new ReservationSlotResponse(
-                SLOT_ID, TEAM_ID, USER_ID, "相談枠",
-                LocalDate.now(), LocalTime.of(10, 0), LocalTime.of(11, 0),
-                0, "OPEN", null, null, false,
-                BigDecimal.ZERO, null, null, USER_ID,
-                LocalDateTime.now(), LocalDateTime.now()
-        );
+        return ReservationSlotResponse.builder()
+                .id(SLOT_ID)
+                .teamId(TEAM_ID)
+                .staffUserId(USER_ID)
+                .basic(new ReservationSlotResponse.SlotBasicDto("相談枠", LocalDate.now(), LocalTime.of(10, 0), LocalTime.of(11, 0)))
+                .status(new ReservationSlotResponse.SlotStatusDto("OPEN", 0, false, null, null))
+                .recurrence(new ReservationSlotResponse.RecurrenceDto(null, null))
+                .pricing(new ReservationSlotResponse.SlotPricingDto(BigDecimal.ZERO))
+                .audit(new ReservationSlotResponse.SlotAuditDto(USER_ID, LocalDateTime.now(), LocalDateTime.now()))
+                .build();
     }
 
     private ReservationLineResponse createLineResponse() {
-        return new ReservationLineResponse(
-                LINE_ID, TEAM_ID, "一般予約", null, 1, true,
-                null, LocalDateTime.now(), LocalDateTime.now()
-        );
+        return ReservationLineResponse.builder()
+                .id(LINE_ID)
+                .teamId(TEAM_ID)
+                .meta(new ReservationLineResponse.LineMetaDto("一般予約", null, 1, true, null))
+                .audit(new ReservationLineResponse.ReservationLineAuditDto(LocalDateTime.now(), LocalDateTime.now()))
+                .build();
     }
 
     private ReminderResponse createReminderResponse() {
@@ -108,14 +115,20 @@ class ReservationControllerTest {
     }
 
     private BusinessHourResponse createBusinessHourResponse() {
-        return new BusinessHourResponse(1L, TEAM_ID, "MONDAY", true,
-                LocalTime.of(9, 0), LocalTime.of(18, 0));
+        return BusinessHourResponse.builder()
+                .id(1L)
+                .teamId(TEAM_ID)
+                .businessStatus(new BusinessHourResponse.BusinessStatusDto("MONDAY", true, LocalTime.of(9, 0), LocalTime.of(18, 0)))
+                .build();
     }
 
     private BlockedTimeResponse createBlockedTimeResponse() {
-        return new BlockedTimeResponse(1L, TEAM_ID, LocalDate.now(),
-                LocalTime.of(12, 0), LocalTime.of(13, 0), "昼休憩",
-                USER_ID, LocalDateTime.now(), LocalDateTime.now());
+        return BlockedTimeResponse.builder()
+                .id(1L)
+                .teamId(TEAM_ID)
+                .timeSlot(new BlockedTimeResponse.TimeSlotDto(LocalDate.now(), LocalTime.of(12, 0), LocalTime.of(13, 0)))
+                .audit(new BlockedTimeResponse.BlockedAuditDto("昼休憩", USER_ID, LocalDateTime.now(), LocalDateTime.now()))
+                .build();
     }
 
     // ========================================
