@@ -100,10 +100,6 @@ async function loadSlots() {
 }
 
 // ---- TEMPLATEモード: 同日の昼/夜スロット担当者を抽出 ----
-function formatTime(timeStr: string): string {
-  return timeStr.substring(0, 5)
-}
-
 function isDayShift(startTime: string): boolean {
   const hour = parseInt(startTime.substring(0, 2), 10)
   return hour < 12
