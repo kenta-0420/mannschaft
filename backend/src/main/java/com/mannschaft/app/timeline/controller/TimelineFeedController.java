@@ -2,6 +2,7 @@ package com.mannschaft.app.timeline.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.timeline.dto.PostResponse;
+import com.mannschaft.app.timeline.dto.TimelineFeedPageResponse;
 import com.mannschaft.app.timeline.service.TimelinePostService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,16 +29,31 @@ public class TimelineFeedController {
 
     /**
      * スコープ別フィードを取得する。
+     *
+     * <p>フロントエンドが期待する {@code {data: {pinned, posts}, meta: {...}}} 構造を返す。
+     * ピン留め投稿と通常投稿を分離してまとめて返す。</p>
      */
     @GetMapping("/feed")
     @Operation(summary = "タイムラインフィード取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<PostResponse>>> getFeed(
+    public ResponseEntity<TimelineFeedPageResponse> getFeed(
             @RequestParam(defaultValue = "PUBLIC") String scopeType,
             @RequestParam(defaultValue = "0") Long scopeId,
             @RequestParam(defaultValue = "20") int size) {
+        List<PostResponse> pinned = postService.getPinnedPosts(scopeType, scopeId);
         List<PostResponse> posts = postService.getFeed(scopeType, scopeId, size);
-        return ResponseEntity.ok(ApiResponse.of(posts));
+        TimelineFeedPageResponse response = TimelineFeedPageResponse.builder()
+                .data(TimelineFeedPageResponse.Data.builder()
+                        .pinned(pinned)
+                        .posts(posts)
+                        .build())
+                .meta(TimelineFeedPageResponse.Meta.builder()
+                        .nextCursor(null)
+                        .limit(size)
+                        .hasNext(false)
+                        .build())
+                .build();
+        return ResponseEntity.ok(response);
     }
 
     /**
