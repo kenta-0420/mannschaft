@@ -16,6 +16,7 @@ import type {
   VillageNewsletterSettingsResponse,
   VillageNewsletterSettingsRequest,
   VillageNewsletterOptOutResponse,
+  VillageNewsletterSendLogResponse,
 } from '~/types/village'
 
 /**
@@ -170,14 +171,14 @@ export function useVillagePhase3Api() {
     size?: number,
   ) {
     const res = await api<{ data: VillageSerendipityRankingResponse }>(
-      `/api/v1/villages/${villageId}/serendipity/ranking${qs({ page, size })}`,
+      `/api/v1/villages/${villageId}/serendipity-scores/ranking${qs({ page, size })}`,
     )
     return res.data
   }
 
   async function getMyScore(villageId: string) {
     const res = await api<{ data: VillageSerendipityScoreResponse }>(
-      `/api/v1/villages/${villageId}/serendipity/me`,
+      `/api/v1/villages/${villageId}/serendipity-scores/me`,
     )
     return res.data
   }
@@ -188,14 +189,14 @@ export function useVillagePhase3Api() {
 
   async function getTodaysPilgrimage() {
     const res = await api<{ data: VillagePilgrimageRecommendationResponse }>(
-      '/api/v1/pilgrimage/today',
+      '/api/v1/me/pilgrimage/today',
     )
     return res.data
   }
 
-  async function recordVisit(body: VillagePilgrimageVisitRecordRequest) {
+  async function recordVisit(recommendationId: string, body?: VillagePilgrimageVisitRecordRequest) {
     const res = await api<{ data: VillagePilgrimageVisitResponse }>(
-      '/api/v1/pilgrimage/visits',
+      `/api/v1/me/pilgrimage/${recommendationId}/visit`,
       { method: 'POST', body },
     )
     return res.data
@@ -203,7 +204,7 @@ export function useVillagePhase3Api() {
 
   async function listMyVisits(page?: number, size?: number) {
     const res = await api<{ data: VillagePilgrimageVisitResponse[] }>(
-      `/api/v1/pilgrimage/visits${qs({ page, size })}`,
+      `/api/v1/me/pilgrimage/history${qs({ page, size })}`,
     )
     return res.data
   }
@@ -212,33 +213,40 @@ export function useVillagePhase3Api() {
   // ニュースレター
   // ==========================================================================
 
-  async function getNewsletterSettings() {
+  async function getNewsletterSettings(villageId: string) {
     const res = await api<{ data: VillageNewsletterSettingsResponse }>(
-      '/api/v1/villages/newsletter/settings',
+      `/api/v1/villages/${villageId}/newsletter`,
     )
     return res.data
   }
 
-  async function updateNewsletterSettings(body: VillageNewsletterSettingsRequest) {
+  async function updateNewsletterSettings(villageId: string, body: VillageNewsletterSettingsRequest) {
     const res = await api<{ data: VillageNewsletterSettingsResponse }>(
-      '/api/v1/villages/newsletter/settings',
+      `/api/v1/villages/${villageId}/newsletter`,
       { method: 'PUT', body },
     )
     return res.data
   }
 
-  async function optOut() {
+  async function optOut(villageId: string) {
     const res = await api<{ data: VillageNewsletterOptOutResponse }>(
-      '/api/v1/villages/newsletter/opt-out',
+      `/api/v1/villages/${villageId}/newsletter/opt-out`,
       { method: 'POST' },
     )
     return res.data
   }
 
-  async function optIn() {
+  async function optIn(villageId: string) {
     const res = await api<{ data: VillageNewsletterOptOutResponse }>(
-      '/api/v1/villages/newsletter/opt-in',
-      { method: 'POST' },
+      `/api/v1/villages/${villageId}/newsletter/opt-out`,
+      { method: 'DELETE' },
+    )
+    return res.data
+  }
+
+  async function listSendLogs(villageId: string, frequency: string) {
+    const res = await api<{ data: VillageNewsletterSendLogResponse[] }>(
+      `/api/v1/villages/${villageId}/newsletter/send-logs?frequency=${frequency}`,
     )
     return res.data
   }
@@ -265,5 +273,6 @@ export function useVillagePhase3Api() {
     updateNewsletterSettings,
     optOut,
     optIn,
+    listSendLogs,
   }
 }
