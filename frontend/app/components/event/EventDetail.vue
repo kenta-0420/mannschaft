@@ -4,6 +4,7 @@ import AdvanceNoticeList from '~/components/event/advanceNotice/AdvanceNoticeLis
 import LateAbsenceNoticeBar from '~/components/event/advanceNotice/LateAbsenceNoticeBar.vue'
 import DismissalDialog from '~/components/event/dismissal/DismissalDialog.vue'
 import DismissalStatusBadge from '~/components/event/dismissal/DismissalStatusBadge.vue'
+import EventDelegationAdminPanel from '~/components/event/EventDelegationAdminPanel.vue'
 import type { EventChatChannelResponse } from '~/types/event'
 
 const { formatDateTime: formatIsoDateTime } = useDatetime()
@@ -63,21 +64,35 @@ const showRollCallTab = computed(
 )
 const showAdvanceNoticeTab = computed(() => isTeamScope.value && props.canEdit)
 
+// F03.10 第四陣 Wave2-B §管理者向け代理出席タブ（管理者のみ表示）
+const showDelegationTab = computed(() => props.canEdit)
+
 /** RSVP あり/なし基底オフセット（0 または 1） */
 const rsvpOffset = computed(() =>
   (event.value?.registration?.attendanceMode ?? 'NONE') === 'RSVP' ? 1 : 0,
 )
 
 /**
- * チャットタブの value。
- * 固定タブ（参加者/チェックイン/タイムテーブル）の後に
- * 点呼タブ・事前連絡タブが続き、その後にチャットタブを置く。
+ * 代理出席タブの value。
+ * 固定タブ（RSVP/参加者/チェックイン/タイムテーブル）と
+ * 点呼タブ・事前連絡タブの後に置く。
  */
-const chatTabValue = computed(() => {
+const delegationTabValue = computed(() => {
   // 基底: RSVP(+1) + 参加者/チェックイン/タイムテーブル(+3) = 基底+3
   let val = rsvpOffset.value + 3
   if (showRollCallTab.value) val++
   if (showAdvanceNoticeTab.value) val++
+  return val
+})
+
+/**
+ * チャットタブの value。
+ * 固定タブ（参加者/チェックイン/タイムテーブル）の後に
+ * 点呼タブ・事前連絡タブ・代理出席タブが続き、その後にチャットタブを置く。
+ */
+const chatTabValue = computed(() => {
+  let val = delegationTabValue.value
+  if (showDelegationTab.value) val++
   return val
 })
 
@@ -228,6 +243,10 @@ function onDismissalSubmitted() {
           >
             {{ $t('event.advanceNotice.tab') }}
           </Tab>
+          <!-- F03.10 第四陣 Wave2-B 代理出席タブ（管理者のみ表示） -->
+          <Tab v-if="showDelegationTab" :value="delegationTabValue">
+            {{ $t('proxy.delegation.admin.tab') }}
+          </Tab>
           <!-- チャットタブ（チャンネルが存在する場合のみ表示） -->
           <Tab v-if="chatChannel" :value="chatTabValue">
             {{ $t('event.chatOpen') }}
@@ -305,6 +324,14 @@ function onDismissalSubmitted() {
             "
           >
             <AdvanceNoticeList :team-id="props.scopeId" :event-id="event.id" />
+          </TabPanel>
+          <!-- F03.10 第四陣 Wave2-B 代理出席パネル（管理者のみ表示） -->
+          <TabPanel v-if="showDelegationTab" :value="delegationTabValue">
+            <EventDelegationAdminPanel
+              :scope-type="props.scopeType"
+              :scope-id="props.scopeId"
+              :event-id="props.eventId"
+            />
           </TabPanel>
           <!-- チャットパネル（チャンネルが存在する場合のみ表示） -->
           <TabPanel v-if="chatChannel" :value="chatTabValue">

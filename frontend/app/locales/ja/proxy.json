@@ -104,8 +104,12 @@
         "tab": "代理出席",
         "empty": "代理出席の設定はありません",
         "delegator": "委任者",
-        "delegate": "代理人"
+        "delegate": "代理人",
+        "count_suffix": "件の代理設定があります",
+        "checkin": "代理チェックイン",
+        "checkin_done": "チェックイン済み"
       },
+      "roll_call_proxy_label": "{name}の代理",
       "auto_accept_note": "自動承認が設定されています。代理人の確認なしに有効になります",
       "grandfathering_note": "設定をOFFにしても既存の代理委任は維持されます",
       "allow_proxy": "代理出席を許可する",

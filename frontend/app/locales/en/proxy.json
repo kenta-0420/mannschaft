@@ -104,8 +104,12 @@
         "tab": "Proxy Attendance",
         "empty": "No proxy attendance settings",
         "delegator": "Delegator",
-        "delegate": "Delegate"
+        "delegate": "Delegate",
+        "count_suffix": " proxy setting(s)",
+        "checkin": "Proxy Check-in",
+        "checkin_done": "Checked in"
       },
+      "roll_call_proxy_label": "Proxy for {name}",
       "auto_accept_note": "Auto-accept is enabled. Delegation becomes effective without delegate confirmation",
       "grandfathering_note": "Existing delegations are retained even if this setting is turned off",
       "allow_proxy": "Allow proxy attendance",

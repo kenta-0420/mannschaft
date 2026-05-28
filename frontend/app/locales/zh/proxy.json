@@ -104,8 +104,12 @@
         "tab": "代理出席",
         "empty": "没有代理出席设置",
         "delegator": "委托人",
-        "delegate": "代理人"
+        "delegate": "代理人",
+        "count_suffix": "件代理设置",
+        "checkin": "代理签到",
+        "checkin_done": "已签到"
       },
+      "roll_call_proxy_label": "{name}的代理",
       "auto_accept_note": "已设置自动接受。无需代理人确认即可生效",
       "grandfathering_note": "即使关闭此设置，现有委托仍将保留",
       "allow_proxy": "允许代理出席",

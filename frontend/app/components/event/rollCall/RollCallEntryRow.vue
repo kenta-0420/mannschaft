@@ -79,6 +79,11 @@ function updateAbsenceReason(reason: AbsenceReason): void {
 const isGuardianMissingWarn = computed(
   () => props.candidate.isUnderCare && props.candidate.watcherCount === 0,
 )
+
+/** F03.10 代理チェックイン済みかどうか。 */
+const isProxyCheckin = computed(
+  () => props.candidate.isAlreadyCheckedIn && props.candidate.checkinType === 'PROXY',
+)
 </script>
 
 <template>
@@ -105,6 +110,10 @@ const isGuardianMissingWarn = computed(
         <div class="rc-row__badges">
           <span v-if="candidate.isAlreadyCheckedIn" class="rc-badge rc-badge--checked">
             ✓ {{ $t('event.rollCall.alreadyCheckedIn') }}
+          </span>
+          <!-- F03.10 代理チェックイン済みバッジ -->
+          <span v-if="isProxyCheckin" class="rc-badge rc-badge--proxy">
+            {{ $t('proxy.delegation.roll_call_proxy_label', { name: candidate.delegatorName ?? '' }) }}
           </span>
           <span
             v-if="candidate.isUnderCare"
@@ -264,6 +273,7 @@ const isGuardianMissingWarn = computed(
 .rc-badge--care { background: rgba(59, 130, 246, 0.15); color: #1d4ed8; }
 .rc-badge--warn { background: rgba(239, 68, 68, 0.15); color: #b91c1c; font-weight: 600; }
 .rc-badge--rsvp { background: rgba(99, 102, 241, 0.12); color: #4338ca; }
+.rc-badge--proxy { background: rgba(59, 130, 246, 0.15); color: #1d4ed8; }
 
 .rc-row__seg {
   display: flex;

@@ -25,6 +25,14 @@ export type RollCallStatus = 'PRESENT' | 'LATE' | 'ABSENT'
 export type RsvpStatus = 'ATTENDING' | 'MAYBE' | 'NOT_ATTENDING' | 'NO_RESPONSE'
 
 /**
+ * 点呼のチェックイン種別。
+ *
+ * - {@code NORMAL} 本人チェックイン
+ * - {@code PROXY} 代理チェックイン（F03.10）
+ */
+export type CheckinType = 'NORMAL' | 'PROXY'
+
+/**
  * 点呼候補者 1 名のスナップショット。
  *
  * BE は RSVP=ATTENDING/MAYBE のメンバーをこの形で返す。
@@ -44,6 +52,18 @@ export interface RollCallCandidate {
   isUnderCare: boolean
   /** 登録済み見守り者数。isUnderCare=true && watcherCount=0 で警告対象。 */
   watcherCount: number
+  /**
+   * F03.10 チェックイン種別。
+   *
+   * isAlreadyCheckedIn=true の場合に設定される。PROXY の場合は delegatorName も参照。
+   */
+  checkinType?: CheckinType
+  /**
+   * F03.10 代理元（委任者）の表示名。
+   *
+   * checkinType=PROXY の場合のみ設定される。
+   */
+  delegatorName?: string
 }
 
 /**
