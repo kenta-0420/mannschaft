@@ -247,5 +247,26 @@ onMounted(() => {
         @updated="onVillageUpdated"
       />
     </template>
+
+    <!-- 読み込みエラー（非 404）: village=null かつ notFound=false の状態 -->
+    <div v-else class="mx-auto max-w-2xl p-6 text-center">
+      <i class="pi pi-exclamation-triangle text-4xl text-surface-400" aria-hidden="true" />
+      <p class="mt-4 text-lg text-surface-700 dark:text-surface-200">
+        {{ t('village.error.generic') }}
+      </p>
+      <div class="mt-4 flex justify-center gap-3">
+        <Button
+          :label="t('village.feed.retry')"
+          icon="pi pi-refresh"
+          @click="loadVillage()"
+        />
+        <NuxtLink to="/villages">
+          <Button
+            :label="t('village.error.backToList')"
+            severity="secondary"
+          />
+        </NuxtLink>
+      </div>
+    </div>
   </div>
 </template>
