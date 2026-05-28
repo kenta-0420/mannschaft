@@ -490,7 +490,7 @@ class TimelinePostServiceTest {
             given(timelineMapper.toPostResponseList(posts)).willReturn(expected);
 
             // when
-            List<PostResponse> result = timelinePostService.getFeed("PUBLIC", 0L, 10);
+            List<PostResponse> result = timelinePostService.getFeed("PUBLIC", 0L, null, 10);
 
             // then
             assertThat(result).hasSize(1);
@@ -505,10 +505,42 @@ class TimelinePostServiceTest {
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
 
             // when
-            timelinePostService.getFeed("PUBLIC", 0L, 0);
+            timelinePostService.getFeed("PUBLIC", 0L, null, 0);
 
             // then
             verify(postRepository).findFeedByScopeType(eq(PostScopeType.PUBLIC), eq(0L), eq(PageRequest.of(0, 20)));
+        }
+
+        @Test
+        @DisplayName("正常系: VILLAGEスコープはscopeVillageIdで絞り込まれる")
+        void VILLAGEスコープはscopeVillageIdで絞り込まれる() {
+            // given
+            UUID villageId = UUID.randomUUID();
+            List<TimelinePostEntity> posts = List.of(createPost());
+            List<PostResponse> expected = List.of(createPostResponse());
+
+            given(postRepository.findFeedByVillageId(eq(villageId), any(PageRequest.class)))
+                    .willReturn(posts);
+            given(timelineMapper.toPostResponseList(posts)).willReturn(expected);
+
+            // when
+            List<PostResponse> result = timelinePostService.getFeed("VILLAGE", 0L, villageId, 20);
+
+            // then
+            assertThat(result).hasSize(1);
+            verify(postRepository).findFeedByVillageId(eq(villageId), any(PageRequest.class));
+        }
+
+        @Test
+        @DisplayName("正常系: VILLAGEスコープでscopeVillageIdがnullの場合は空リストを返す")
+        void VILLAGEスコープでscopeVillageIdがnullの場合は空リストを返す() {
+            // when
+            List<PostResponse> result = timelinePostService.getFeed("VILLAGE", 0L, null, 20);
+
+            // then
+            assertThat(result).isEmpty();
+            verify(postRepository, org.mockito.Mockito.never())
+                    .findFeedByVillageId(any(), any());
         }
     }
 
