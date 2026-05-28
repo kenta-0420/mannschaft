@@ -146,7 +146,7 @@ class NotificationServiceTest {
 
             // Then
             assertThat(result.getContent()).hasSize(1);
-            assertThat(result.getContent().get(0).getContent().title()).isEqualTo("リマインド");
+            assertThat(result.getContent().get(0).getTitle()).isEqualTo("リマインド");
             verify(notificationRepository).findByUserIdOrderByCreatedAtDesc(USER_ID, pageable);
         }
 
