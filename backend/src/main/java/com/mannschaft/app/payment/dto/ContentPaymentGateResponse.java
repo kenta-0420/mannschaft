@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment.dto;
 
+import lombok.Builder;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -9,17 +10,17 @@ import java.time.LocalDateTime;
 /**
  * コンテンツゲートレスポンスDTO。
  */
+@Builder(toBuilder = true)
 @Getter
-@RequiredArgsConstructor
 public class ContentPaymentGateResponse {
 
-    private final Long id;
-    private final String contentType;
-    private final Long contentId;
-    private final Boolean isTitleHidden;
-    private final PaymentItemDetail paymentItem;
-    private final Long createdBy;
-    private final LocalDateTime createdAt;
+    Long id;
+    ContentIdentifierDto content;
+    PaymentItemDetail paymentItem;
+    GateAuditDto audit;
+
+    public record ContentIdentifierDto(String contentType, Long contentId, Boolean isTitleHidden) {}
+    public record GateAuditDto(Long createdBy, LocalDateTime createdAt) {}
 
     /**
      * 支払い項目の詳細情報。

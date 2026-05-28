@@ -160,16 +160,15 @@ public class ContentPaymentGateService {
 
     private ContentPaymentGateResponse toResponse(ContentPaymentGateEntity entity) {
         PaymentItemEntity item = paymentItemService.findByIdOrThrow(entity.getPaymentItemId());
-        return new ContentPaymentGateResponse(
-                entity.getId(),
-                entity.getContentType(),
-                entity.getContentId(),
-                entity.getIsTitleHidden(),
-                new ContentPaymentGateResponse.PaymentItemDetail(
+        return ContentPaymentGateResponse.builder()
+                .id(entity.getId())
+                .content(new ContentPaymentGateResponse.ContentIdentifierDto(
+                        entity.getContentType(), entity.getContentId(), entity.getIsTitleHidden()))
+                .paymentItem(new ContentPaymentGateResponse.PaymentItemDetail(
                         item.getId(), item.getName(), item.getType().name(),
-                        item.getAmount(), item.getCurrency()),
-                entity.getCreatedBy(),
-                entity.getCreatedAt()
-        );
+                        item.getAmount(), item.getCurrency()))
+                .audit(new ContentPaymentGateResponse.GateAuditDto(
+                        entity.getCreatedBy(), entity.getCreatedAt()))
+                .build();
     }
 }
