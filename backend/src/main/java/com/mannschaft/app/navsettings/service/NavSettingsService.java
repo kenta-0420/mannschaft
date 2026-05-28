@@ -81,17 +81,17 @@ public class NavSettingsService {
 
     private Set<String> loadHiddenKeys(Long userId) {
         return userNavSettingsRepository.findById(userId)
-                .map(entity -> {
-                    try {
-                        List<String> list = objectMapper.readValue(
-                                entity.getHiddenNavKeys(),
-                                new TypeReference<List<String>>() {});
-                        return new java.util.HashSet<>(list);
-                    } catch (Exception e) {
-                        log.warn("hiddenNavKeys のパース失敗 userId={}", userId, e);
-                        return new java.util.HashSet<String>();
-                    }
-                })
+                .map(entity -> parseHiddenKeys(entity.getHiddenNavKeys(), userId))
                 .orElse(Collections.emptySet());
+    }
+
+    private Set<String> parseHiddenKeys(String json, Long userId) {
+        try {
+            List<String> list = objectMapper.readValue(json, new TypeReference<List<String>>() {});
+            return new java.util.HashSet<>(list);
+        } catch (Exception e) {
+            log.warn("hiddenNavKeys のパース失敗 userId={}", userId, e);
+            return Collections.emptySet();
+        }
     }
 }

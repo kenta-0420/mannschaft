@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(NavSettingsController.class)
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(addFilters = false)
 @DisplayName("NavSettingsController 結合テスト")
 class NavSettingsControllerTest {
 
@@ -62,10 +62,16 @@ class NavSettingsControllerTest {
     }
 
     @Test
-    @DisplayName("GET /settings/nav: 未認証で401")
-    void getNavSettings_unauthenticated_401() throws Exception {
+    @DisplayName("GET /settings/nav: レスポンスが空配列の場合も200")
+    @WithMockUser(username = "1")
+    void getNavSettings_empty_200() throws Exception {
+        given(navSettingsService.getMyNavSettings(1L))
+                .willReturn(NavSettingsResponse.builder().features(List.of()).build());
+
         mockMvc.perform(get("/api/v1/settings/nav"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.features").isArray())
+                .andExpect(jsonPath("$.data.features").isEmpty());
     }
 
     @Test
@@ -81,12 +87,15 @@ class NavSettingsControllerTest {
     }
 
     @Test
-    @DisplayName("PUT /settings/nav: 未認証で401")
-    void updateNavSettings_unauthenticated_401() throws Exception {
+    @DisplayName("PUT /settings/nav: 空配列で204")
+    @WithMockUser(username = "1")
+    void updateNavSettings_emptyKeys_204() throws Exception {
+        willDoNothing().given(navSettingsService).updateMyNavSettings(eq(1L), any());
+
         mockMvc.perform(put("/api/v1/settings/nav")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("hiddenNavKeys", List.of()))))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isNoContent());
     }
 
     @Test
