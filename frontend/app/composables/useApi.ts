@@ -45,20 +45,25 @@ export function useApi() {
 
     async onResponseError({ request, response }) {
       // 401: Refresh Token ローテーション
-      // user オブジェクトが存在する間はリフレッシュを試行する（ページリロード後もトークン再取得可能）
-      if (response.status === 401 && authStore.user) {
-        const success = await refreshAccessToken()
-        if (!success) {
-          await authStore.logout()
+      // バックエンドは未認証リクエストに必ず 401 を返す（SecurityConfig.exceptionHandling 参照）。
+      // user が存在する場合はリフレッシュを試みて、失敗したらログアウトする。
+      // user が null（localStorage に残っていない）場合は直接ログイン画面へ遷移する。
+      if (response.status === 401) {
+        if (authStore.user) {
+          const success = await refreshAccessToken()
+          if (!success) {
+            await authStore.logout()
+          }
+          // リトライは呼び出し元で行う（ofetch.create の onResponseError では戻り値不可）
+        } else {
+          await navigateTo('/login')
         }
-        // リトライは呼び出し元で行う（ofetch.create の onResponseError では戻り値不可）
         return
       }
 
-      // 403: Spring Security がセッション切れ・CSRF 不正などで返す場合のみログインへ誘導する。
-      // 認証済み（user が存在する）状態での 403 は通常の認可エラー（Forbidden）であり
-      // ログアウトすべきではない。未認証状態（user が null）での 403 のみセッション不整合
-      // とみなしてログイン画面へリダイレクトする。
+      // 403: 認証済みだが権限不足の場合（Forbidden）。
+      // ログアウトせず、呼び出し元でエラーを処理する（例: 「アクセス権がありません」表示）。
+      // 未認証状態（user が null）での 403 は想定外だが、フォールバックとしてログインへ誘導する。
       if (response.status === 403 && !authStore.user) {
         await navigateTo('/login')
         return

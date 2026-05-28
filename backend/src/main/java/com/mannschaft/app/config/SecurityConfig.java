@@ -12,11 +12,13 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
@@ -230,6 +232,14 @@ public class SecurityConfig {
                 // フェイルセーフ構造（docs/security/01 §1）。
                 .anyRequest().authenticated()
             )
+            // 未認証リクエストには 403 ではなく 401 を返す。
+            // Spring Security のデフォルトでは匿名ユーザーが認証必須エンドポイントに
+            // アクセスした場合 AccessDeniedException → 403 になる。
+            // REST API ではアクセストークン期限切れ = 401 が正しいセマンティクスであり、
+            // フロントエンドの refreshAccessToken() フローが 401 をトリガーとして
+            // リフレッシュトークンによる再認証を行う設計のため明示的に 401 を設定する。
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
             // API JSON 応答向けのセキュリティヘッダー（docs/security/03 §3）。
             // - frameOptions(deny): クリックジャッキング防止（X-Frame-Options: DENY）
             // - contentTypeOptions: MIME スニッフィング防止（X-Content-Type-Options: nosniff）
