@@ -72,6 +72,51 @@
       "byPerson": "Entrada propia",
       "byProxy": "Entrada por representación",
       "total": "Total"
+    },
+    "delegation": {
+      "title": "Asistencia por representación",
+      "description": "Si no puede responder a la asistencia, puede delegar a otro miembro del mismo ámbito",
+      "specify": "Especificar un delegado (opcional)",
+      "delegate_label": "Delegado",
+      "delegate_placeholder": "Seleccionar miembro",
+      "reason_label": "Motivo de la delegación (opcional)",
+      "reason_placeholder": "Compartido con los administradores (máx. 500 caracteres)",
+      "proxy_vote_label": "Delegar también la votación",
+      "proxy_vote_session": "Sesión de votación",
+      "proxy_vote_session_placeholder": "Seleccionar sesión a delegar",
+      "cancel": "Cancelar delegación",
+      "status": {
+        "pending": "Pendiente",
+        "accepted": "Aceptado",
+        "rejected": "Rechazado",
+        "cancelled": "Cancelado"
+      },
+      "my_requests": {
+        "title": "Solicitudes de delegación",
+        "description": "Lista de solicitudes de asistencia por representación pendientes",
+        "empty": "No hay solicitudes de delegación",
+        "accept": "Aceptar",
+        "reject": "Rechazar",
+        "as_delegator": "Solicitado (esperando delegado)",
+        "as_delegate": "Tiene una solicitud de delegación"
+      },
+      "admin": {
+        "tab": "Asistencia por representación",
+        "empty": "No hay configuración de asistencia por representación",
+        "delegator": "Delegante",
+        "delegate": "Delegado"
+      },
+      "auto_accept_note": "La aceptación automática está activada. La delegación es efectiva sin confirmación del delegado",
+      "grandfathering_note": "Las delegaciones existentes se mantienen aunque esta opción se desactive",
+      "allow_proxy": "Permitir asistencia por representación",
+      "auto_accept": "Aceptación automática (sin confirmación del delegado)",
+      "errors": {
+        "self": "No puede delegarse a sí mismo",
+        "already_exists": "Ya se ha asignado un delegado",
+        "not_member": "El miembro especificado no pertenece a este ámbito",
+        "not_allowed": "La asistencia por representación no está permitida para este horario/evento",
+        "rate_limit": "Demasiadas solicitudes. Por favor, inténtelo de nuevo en 1 minuto"
+      }
     }
   }
 }

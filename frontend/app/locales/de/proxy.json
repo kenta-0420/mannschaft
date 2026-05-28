@@ -72,6 +72,51 @@
       "byPerson": "Eigeneingabe",
       "byProxy": "Stellvertretende Eingabe",
       "total": "Gesamt"
+    },
+    "delegation": {
+      "title": "Stellvertretende Teilnahme",
+      "description": "Wenn Sie nicht auf die Anwesenheit antworten können, können Sie ein Mitglied desselben Bereichs beauftragen",
+      "specify": "Stellvertreter angeben (optional)",
+      "delegate_label": "Stellvertreter",
+      "delegate_placeholder": "Mitglied auswählen",
+      "reason_label": "Grund der Beauftragung (optional)",
+      "reason_placeholder": "Wird mit Administratoren geteilt (max. 500 Zeichen)",
+      "proxy_vote_label": "Auch Abstimmung delegieren",
+      "proxy_vote_session": "Abstimmungssitzung",
+      "proxy_vote_session_placeholder": "Zu delegierende Sitzung auswählen",
+      "cancel": "Beauftragung aufheben",
+      "status": {
+        "pending": "Ausstehend",
+        "accepted": "Akzeptiert",
+        "rejected": "Abgelehnt",
+        "cancelled": "Abgebrochen"
+      },
+      "my_requests": {
+        "title": "Beauftragungsanfragen",
+        "description": "Liste der ausstehenden Beauftragungsanfragen",
+        "empty": "Keine Beauftragungsanfragen",
+        "accept": "Akzeptieren",
+        "reject": "Ablehnen",
+        "as_delegator": "Angefragt (warte auf Stellvertreter)",
+        "as_delegate": "Sie haben eine Beauftragungsanfrage"
+      },
+      "admin": {
+        "tab": "Stellvertretende Teilnahme",
+        "empty": "Keine Einstellungen für stellvertretende Teilnahme",
+        "delegator": "Auftraggeber",
+        "delegate": "Stellvertreter"
+      },
+      "auto_accept_note": "Automatische Annahme ist aktiviert. Die Beauftragung wird ohne Bestätigung des Stellvertreters wirksam",
+      "grandfathering_note": "Bestehende Beauftragungen bleiben auch nach Deaktivierung dieser Einstellung erhalten",
+      "allow_proxy": "Stellvertretende Teilnahme erlauben",
+      "auto_accept": "Automatische Annahme (keine Bestätigung des Stellvertreters erforderlich)",
+      "errors": {
+        "self": "Sie können sich nicht selbst als Stellvertreter angeben",
+        "already_exists": "Es wurde bereits ein Stellvertreter zugewiesen",
+        "not_member": "Das angegebene Mitglied gehört nicht zu diesem Bereich",
+        "not_allowed": "Stellvertretende Teilnahme ist für diesen Zeitplan/dieses Ereignis nicht erlaubt",
+        "rate_limit": "Zu viele Anfragen. Bitte versuchen Sie es in 1 Minute erneut"
+      }
     }
   }
 }

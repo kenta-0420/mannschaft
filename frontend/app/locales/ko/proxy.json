@@ -72,6 +72,51 @@
       "byPerson": "본인 입력",
       "byProxy": "대리 입력",
       "total": "합계"
+    },
+    "delegation": {
+      "title": "대리 출석",
+      "description": "출결에 응답할 수 없는 경우 같은 스코프의 멤버에게 대리 출석을 위임할 수 있습니다",
+      "specify": "대리인 지정（선택사항）",
+      "delegate_label": "대리인",
+      "delegate_placeholder": "멤버 선택",
+      "reason_label": "위임 사유（선택사항）",
+      "reason_placeholder": "관리자와 공유됩니다（최대 500자）",
+      "proxy_vote_label": "투표도 대리 위임",
+      "proxy_vote_session": "투표 세션",
+      "proxy_vote_session_placeholder": "위임할 세션 선택",
+      "cancel": "대리 위임 취소",
+      "status": {
+        "pending": "승인 대기",
+        "accepted": "승인됨",
+        "rejected": "거부됨",
+        "cancelled": "취소됨"
+      },
+      "my_requests": {
+        "title": "대리 요청",
+        "description": "승인 대기 중인 대리 출석 요청 목록",
+        "empty": "대리 요청이 없습니다",
+        "accept": "승인",
+        "reject": "거부",
+        "as_delegator": "요청 중（대리인 대기）",
+        "as_delegate": "대리 요청을 받았습니다"
+      },
+      "admin": {
+        "tab": "대리 출석",
+        "empty": "대리 출석 설정이 없습니다",
+        "delegator": "위임자",
+        "delegate": "대리인"
+      },
+      "auto_accept_note": "자동 승인이 설정되어 있습니다. 대리인 확인 없이 유효합니다",
+      "grandfathering_note": "설정을 OFF해도 기존 대리 위임은 유지됩니다",
+      "allow_proxy": "대리 출석 허용",
+      "auto_accept": "자동 승인（대리인 확인 불필요）",
+      "errors": {
+        "self": "자신을 대리인으로 지정할 수 없습니다",
+        "already_exists": "이미 대리인이 지정되어 있습니다",
+        "not_member": "지정된 멤버는 이 스코프에 속하지 않습니다",
+        "not_allowed": "이 일정/이벤트에서는 대리 출석이 허용되지 않습니다",
+        "rate_limit": "요청이 너무 많습니다. 1분 후에 다시 시도해주세요"
+      }
     }
   }
 }

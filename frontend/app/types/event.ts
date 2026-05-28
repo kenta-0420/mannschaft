@@ -343,3 +343,51 @@ export interface EventChatChannelResponse {
   createdAt: string
   updatedAt: string
 }
+
+// ─── F03.10 代理出席 ───────────────────────────────────────
+export type EventDelegationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED'
+
+export interface EventDelegationResponse {
+  id: string  // UUIDv7
+  eventId: number
+  delegatorId: number
+  delegatorName: string
+  delegateId: number
+  delegateName: string
+  status: EventDelegationStatus
+  reason: string | null
+  proxyVoteSessionId: number | null   // F08.3 投票代理連携
+  proxyDelegationId: number | null    // F08.3 連携作成後設定
+  reviewedAt: string | null
+  createdAt: string
+}
+
+export interface CreateEventDelegationRequest {
+  delegateId: number
+  reason?: string
+  proxyVoteSessionId?: number  // 任意: 投票セッションも委任する場合
+}
+
+export interface EventDelegationListResponse {
+  data: EventDelegationResponse[]
+  total: number
+  page: number
+  size: number
+}
+
+export interface EventDelegationMeResponse {
+  asDelegator: EventDelegationResponse | null
+  asDelegate: EventDelegationResponse | null
+}
+
+export interface ProxyCheckinResponse {
+  checkinId: number
+  eventId: number
+  delegationId: string
+  delegateId: number
+  delegateName: string
+  delegatorId: number
+  delegatorName: string
+  checkinType: 'PROXY'
+  checkedInAt: string
+}
