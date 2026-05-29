@@ -222,7 +222,20 @@ async function saveFieldEdit() {
       })
     }
     else {
-      const payload: Record<string, unknown> = {}
+      // PUT /todos/{id} は全項目置換（title が @NotBlank 必須）。
+      // インライン編集は1項目のみ変更するため、現在値をベースに変更項目だけ上書きして送信する。
+      const payload: Record<string, unknown> = {
+        title: todo.value?.content?.title ?? '',
+        description: todo.value?.content?.description ?? null,
+        priority: todo.value?.priority ?? 'MEDIUM',
+        projectId: todo.value?.scope?.projectId ?? null,
+        milestoneId: todo.value?.scope?.milestoneId ?? null,
+        startDate: todo.value?.content?.startDate ?? null,
+        dueDate: todo.value?.schedule?.dueDate ?? null,
+        // dueTime は updateTodo() で無条件上書きされるため、現在値を保持して消失を防ぐ
+        dueTime: todo.value?.schedule?.dueTime ?? null,
+        progressRate: todo.value?.content?.progressRate ?? null,
+      }
       if (editingField.value === 'priority') payload.priority = inlinePriority.value
       if (editingField.value === 'startDate') payload.startDate = inlineStartDate.value ? toLocalDateStr(inlineStartDate.value) : null
       if (editingField.value === 'dueDate') payload.dueDate = inlineDueDate.value ? toLocalDateStr(inlineDueDate.value) : null
@@ -282,13 +295,14 @@ onUnmounted(() => {
     <!-- 閲覧モード -->
     <template v-if="!editing">
       <!-- メタ情報 -->
-      <div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div class="mb-6">
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
         <!-- ステータスカード -->
         <div
-          class="rounded-lg border p-3 transition-colors"
+          class="rounded-lg border-2 p-3 transition-colors bg-surface-0 dark:bg-surface-800"
           :class="editingField === 'status'
             ? 'border-primary cursor-default'
-            : 'border-surface-400 dark:border-surface-600 cursor-pointer hover:border-primary/70'"
+            : 'border-surface-400 dark:border-surface-500 cursor-pointer hover:border-primary/70'"
           @click="editingField !== 'status' && startFieldEdit('status')"
         >
           <p class="text-xs text-surface-500">{{ t('todo.field.status') }}</p>
@@ -313,10 +327,10 @@ onUnmounted(() => {
 
         <!-- 優先度カード -->
         <div
-          class="rounded-lg border p-3 transition-colors"
+          class="rounded-lg border-2 p-3 transition-colors bg-surface-0 dark:bg-surface-800"
           :class="editingField === 'priority'
             ? 'border-primary cursor-default'
-            : 'border-surface-400 dark:border-surface-600 cursor-pointer hover:border-primary/70'"
+            : 'border-surface-400 dark:border-surface-500 cursor-pointer hover:border-primary/70'"
           @click="editingField !== 'priority' && startFieldEdit('priority')"
         >
           <p class="text-xs text-surface-500">{{ t('todo.field.priority') }}</p>
@@ -342,10 +356,10 @@ onUnmounted(() => {
 
         <!-- 開始日カード -->
         <div
-          class="rounded-lg border p-3 transition-colors"
+          class="rounded-lg border-2 p-3 transition-colors bg-surface-0 dark:bg-surface-800"
           :class="editingField === 'startDate'
             ? 'border-primary cursor-default'
-            : 'border-surface-400 dark:border-surface-600 cursor-pointer hover:border-primary/70'"
+            : 'border-surface-400 dark:border-surface-500 cursor-pointer hover:border-primary/70'"
           @click="editingField !== 'startDate' && startFieldEdit('startDate')"
         >
           <p class="text-xs text-surface-500">{{ t('todo.field.startDate') }}</p>
@@ -363,10 +377,10 @@ onUnmounted(() => {
 
         <!-- 期限カード -->
         <div
-          class="rounded-lg border p-3 transition-colors"
+          class="rounded-lg border-2 p-3 transition-colors bg-surface-0 dark:bg-surface-800"
           :class="editingField === 'dueDate'
             ? 'border-primary cursor-default'
-            : 'border-surface-400 dark:border-surface-600 cursor-pointer hover:border-primary/70'"
+            : 'border-surface-400 dark:border-surface-500 cursor-pointer hover:border-primary/70'"
           @click="editingField !== 'dueDate' && startFieldEdit('dueDate')"
         >
           <p class="text-xs text-surface-500">{{ t('todo.field.dueDate') }}</p>
@@ -395,17 +409,17 @@ onUnmounted(() => {
 
         <!-- 進捗率カード -->
         <div
-          class="rounded-lg border p-3 transition-colors"
+          class="rounded-lg border-2 p-3 transition-colors bg-surface-0 dark:bg-surface-800"
           :class="editingField === 'progressRate'
             ? 'border-primary cursor-default'
-            : 'border-surface-400 dark:border-surface-600 cursor-pointer hover:border-primary/70'"
+            : 'border-surface-400 dark:border-surface-500 cursor-pointer hover:border-primary/70'"
           @click="editingField !== 'progressRate' && startFieldEdit('progressRate')"
         >
           <p class="text-xs text-surface-500">{{ t('todo.field.progressRate') }}</p>
           <template v-if="editingField === 'progressRate'">
             <div class="mt-1 space-y-2" @click.stop>
               <div class="flex items-center gap-3">
-                <Slider v-model="inlineProgressRate" :step="5" :min="0" :max="100" class="flex-1" />
+                <Slider v-model="inlineProgressRate" :step="5" :min="0" :max="100" class="progress-slider flex-1" />
                 <span class="w-12 shrink-0 text-right text-sm font-semibold">{{ inlineProgressRate }}%</span>
               </div>
               <div class="flex justify-end gap-1">
@@ -416,6 +430,7 @@ onUnmounted(() => {
           </template>
           <p v-else class="mt-1 text-sm font-medium">{{ todo.content?.progressRate ?? 0 }}%</p>
         </div>
+      </div>
       </div>
 
       <!-- ステータス変更 UI -->
@@ -505,7 +520,7 @@ onUnmounted(() => {
         <div>
           <label class="mb-1 block text-sm font-medium">{{ t('todo.field.progressRate') }}</label>
           <div class="mt-3 flex items-center gap-4">
-            <Slider v-model="editForm.progressRate" :step="5" :min="0" :max="100" class="flex-1" />
+            <Slider v-model="editForm.progressRate" :step="5" :min="0" :max="100" class="progress-slider flex-1" />
             <span class="w-12 shrink-0 text-right text-sm font-semibold">{{ editForm.progressRate }}%</span>
           </div>
         </div>
@@ -528,3 +543,18 @@ onUnmounted(() => {
     <Button icon="pi pi-arrow-left" text rounded @click="router.push('/todos')" />
   </div>
 </template>
+
+<style scoped>
+/* 進捗スライダー: 線上の任意の位置をクリックするとハンドルが移動するよう、
+   トラックの高さ（＝クリック可能領域）を広げて押しやすくする。 */
+.progress-slider {
+  height: 0.625rem;
+  cursor: pointer;
+}
+.progress-slider :deep(.p-slider-handle) {
+  cursor: grab;
+}
+.progress-slider :deep(.p-slider-handle):active {
+  cursor: grabbing;
+}
+</style>
