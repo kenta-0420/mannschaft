@@ -108,25 +108,35 @@ public class ScheduleService {
     /**
      * チームスコープのスケジュール一覧を取得する。
      *
-     * @param teamId チームID
-     * @param from   期間開始
-     * @param to     期間終了
-     * @return スケジュール一覧
+     * <p>F00 認可基盤連携（2026-05-29）: 閲覧者 {@code viewerUserId} の可視性で
+     * 一覧を絞り込む（{@link ScheduleQueryService#listTeamSchedules} を参照）。</p>
+     *
+     * @param teamId       チームID
+     * @param from         期間開始
+     * @param to           期間終了
+     * @param viewerUserId 閲覧者ユーザーID
+     * @return 閲覧可能なスケジュール一覧
      */
-    public List<ScheduleResponse> listTeamSchedules(Long teamId, LocalDateTime from, LocalDateTime to) {
-        return queryService.listTeamSchedules(teamId, from, to);
+    public List<ScheduleResponse> listTeamSchedules(
+            Long teamId, LocalDateTime from, LocalDateTime to, Long viewerUserId) {
+        return queryService.listTeamSchedules(teamId, from, to, viewerUserId);
     }
 
     /**
      * 組織スコープのスケジュール一覧を取得する。
      *
-     * @param orgId 組織ID
-     * @param from  期間開始
-     * @param to    期間終了
-     * @return スケジュール一覧
+     * <p>F00 認可基盤連携（2026-05-29）: 閲覧者 {@code viewerUserId} の可視性で
+     * 一覧を絞り込む（{@link ScheduleQueryService#listOrgSchedules} を参照）。</p>
+     *
+     * @param orgId        組織ID
+     * @param from         期間開始
+     * @param to           期間終了
+     * @param viewerUserId 閲覧者ユーザーID
+     * @return 閲覧可能なスケジュール一覧
      */
-    public List<ScheduleResponse> listOrgSchedules(Long orgId, LocalDateTime from, LocalDateTime to) {
-        return queryService.listOrgSchedules(orgId, from, to);
+    public List<ScheduleResponse> listOrgSchedules(
+            Long orgId, LocalDateTime from, LocalDateTime to, Long viewerUserId) {
+        return queryService.listOrgSchedules(orgId, from, to, viewerUserId);
     }
 
     /**
