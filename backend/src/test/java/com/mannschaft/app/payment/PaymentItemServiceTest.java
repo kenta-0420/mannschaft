@@ -66,14 +66,18 @@ class PaymentItemServiceTest {
             given(paymentItemRepository.save(any())).willReturn(saved);
             given(stripePaymentProvider.createProduct(any(), any())).willReturn("prod_xxx");
             given(stripePaymentProvider.createPrice(any(), any(), any())).willReturn("price_xxx");
-            PaymentItemResponse response = new PaymentItemResponse(
-                    ITEM_ID, "年会費", "2026年度", "ANNUAL_FEE", new BigDecimal("5000"),
-                    "JPY", null, null, true, (short) 0, (short) 0, null, null);
+            PaymentItemResponse response = PaymentItemResponse.builder()
+                    .id(ITEM_ID)
+                    .meta(new PaymentItemResponse.PaymentItemMetaDto("年会費", "2026年度", "ANNUAL_FEE", (short) 0, (short) 0))
+                    .money(new PaymentItemResponse.PaymentMoneyDto(new BigDecimal("5000"), "JPY"))
+                    .stripe(new PaymentItemResponse.StripeIntegrationDto(null, null))
+                    .audit(new PaymentItemResponse.PaymentItemAuditDto(true, null, null))
+                    .build();
             given(paymentMapper.toPaymentItemResponse(any())).willReturn(response);
 
             PaymentItemResponse result = service.createTeamPaymentItem(TEAM_ID, USER_ID, request);
 
-            assertThat(result.getName()).isEqualTo("年会費");
+            assertThat(result.getMeta().name()).isEqualTo("年会費");
         }
     }
 

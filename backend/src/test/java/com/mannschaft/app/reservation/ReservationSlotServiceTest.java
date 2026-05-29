@@ -72,11 +72,16 @@ class ReservationSlotServiceTest {
     }
 
     private ReservationSlotResponse createSlotResponse() {
-        return new ReservationSlotResponse(
-                SLOT_ID, TEAM_ID, STAFF_USER_ID, "テストスロット",
-                SLOT_DATE, START_TIME, END_TIME, 0, "AVAILABLE",
-                null, null, false, new BigDecimal("1000"),
-                null, "テストメモ", CREATED_BY, null, null);
+        return ReservationSlotResponse.builder()
+                .id(SLOT_ID)
+                .teamId(TEAM_ID)
+                .staffUserId(STAFF_USER_ID)
+                .basic(new ReservationSlotResponse.SlotBasicDto("テストスロット", SLOT_DATE, START_TIME, END_TIME))
+                .status(new ReservationSlotResponse.SlotStatusDto("AVAILABLE", 0, false, null, "テストメモ"))
+                .recurrence(new ReservationSlotResponse.RecurrenceDto(null, null))
+                .pricing(new ReservationSlotResponse.SlotPricingDto(new BigDecimal("1000")))
+                .audit(new ReservationSlotResponse.SlotAuditDto(CREATED_BY, null, null))
+                .build();
     }
 
     // ========================================
@@ -104,7 +109,7 @@ class ReservationSlotServiceTest {
 
             // Then
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getTitle()).isEqualTo("テストスロット");
+            assertThat(result.get(0).getBasic().title()).isEqualTo("テストスロット");
         }
     }
 
@@ -158,7 +163,7 @@ class ReservationSlotServiceTest {
 
             // Then
             assertThat(result).isNotNull();
-            assertThat(result.getTitle()).isEqualTo("テストスロット");
+            assertThat(result.getBasic().title()).isEqualTo("テストスロット");
         }
 
         @Test

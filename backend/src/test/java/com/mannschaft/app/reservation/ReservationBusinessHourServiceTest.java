@@ -69,8 +69,11 @@ class ReservationBusinessHourServiceTest {
     }
 
     private BusinessHourResponse createBusinessHourResponse() {
-        return new BusinessHourResponse(
-                1L, TEAM_ID, "MON", true, LocalTime.of(9, 0), LocalTime.of(18, 0));
+        return BusinessHourResponse.builder()
+                .id(1L)
+                .teamId(TEAM_ID)
+                .businessStatus(new BusinessHourResponse.BusinessStatusDto("MON", true, LocalTime.of(9, 0), LocalTime.of(18, 0)))
+                .build();
     }
 
     private ReservationBlockedTimeEntity createBlockedTimeEntity() {
@@ -85,10 +88,12 @@ class ReservationBusinessHourServiceTest {
     }
 
     private BlockedTimeResponse createBlockedTimeResponse() {
-        return new BlockedTimeResponse(
-                BLOCKED_ID, TEAM_ID, LocalDate.of(2026, 4, 1),
-                LocalTime.of(12, 0), LocalTime.of(13, 0),
-                "昼休み", CREATED_BY, null, null);
+        return BlockedTimeResponse.builder()
+                .id(BLOCKED_ID)
+                .teamId(TEAM_ID)
+                .timeSlot(new BlockedTimeResponse.TimeSlotDto(LocalDate.of(2026, 4, 1), LocalTime.of(12, 0), LocalTime.of(13, 0)))
+                .audit(new BlockedTimeResponse.BlockedAuditDto("昼休み", CREATED_BY, null, null))
+                .build();
     }
 
     // ========================================
@@ -113,7 +118,7 @@ class ReservationBusinessHourServiceTest {
 
             // Then
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getDayOfWeek()).isEqualTo("MON");
+            assertThat(result.get(0).getBusinessStatus().dayOfWeek()).isEqualTo("MON");
         }
     }
 
@@ -162,8 +167,11 @@ class ReservationBusinessHourServiceTest {
                     .openTime(LocalTime.of(9, 0))
                     .closeTime(LocalTime.of(17, 0))
                     .build();
-            BusinessHourResponse response = new BusinessHourResponse(
-                    2L, TEAM_ID, "TUE", true, LocalTime.of(9, 0), LocalTime.of(17, 0));
+            BusinessHourResponse response = BusinessHourResponse.builder()
+                    .id(2L)
+                    .teamId(TEAM_ID)
+                    .businessStatus(new BusinessHourResponse.BusinessStatusDto("TUE", true, LocalTime.of(9, 0), LocalTime.of(17, 0)))
+                    .build();
 
             given(businessHourRepository.findByTeamIdAndDayOfWeek(TEAM_ID, "TUE"))
                     .willReturn(Optional.empty());
@@ -204,8 +212,11 @@ class ReservationBusinessHourServiceTest {
                     .dayOfWeek("SUN")
                     .isOpen(false)
                     .build();
-            BusinessHourResponse response = new BusinessHourResponse(
-                    3L, TEAM_ID, "SUN", false, null, null);
+            BusinessHourResponse response = BusinessHourResponse.builder()
+                    .id(3L)
+                    .teamId(TEAM_ID)
+                    .businessStatus(new BusinessHourResponse.BusinessStatusDto("SUN", false, null, null))
+                    .build();
 
             given(businessHourRepository.findByTeamIdAndDayOfWeek(TEAM_ID, "SUN"))
                     .willReturn(Optional.empty());
@@ -217,7 +228,7 @@ class ReservationBusinessHourServiceTest {
 
             // Then
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getIsOpen()).isFalse();
+            assertThat(result.get(0).getBusinessStatus().isOpen()).isFalse();
         }
     }
 
@@ -245,7 +256,7 @@ class ReservationBusinessHourServiceTest {
 
             // Then
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getReason()).isEqualTo("昼休み");
+            assertThat(result.get(0).getAudit().reason()).isEqualTo("昼休み");
         }
     }
 
@@ -302,7 +313,7 @@ class ReservationBusinessHourServiceTest {
 
             // Then
             assertThat(result).isNotNull();
-            assertThat(result.getReason()).isEqualTo("昼休み");
+            assertThat(result.getAudit().reason()).isEqualTo("昼休み");
             verify(blockedTimeRepository).save(any(ReservationBlockedTimeEntity.class));
         }
 

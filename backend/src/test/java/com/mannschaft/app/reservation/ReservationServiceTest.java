@@ -106,10 +106,14 @@ class ReservationServiceTest {
     }
 
     private ReservationResponse createReservationResponse() {
-        return new ReservationResponse(
-                RESERVATION_ID, SLOT_ID, LINE_ID, TEAM_ID, USER_ID,
-                "PENDING", LocalDateTime.now(), null, null, null, null,
-                null, "テスト備考", null, null, null);
+        return ReservationResponse.builder()
+                .id(RESERVATION_ID)
+                .identifier(new ReservationResponse.ReservationIdentifierDto(SLOT_ID, LINE_ID, TEAM_ID, USER_ID))
+                .status(new ReservationResponse.ReservationStatusDto("PENDING", LocalDateTime.now(), null, null))
+                .cancellation(new ReservationResponse.CancellationDto(null, null, null))
+                .notes(new ReservationResponse.NotesDto("テスト備考", null))
+                .audit(new ReservationResponse.ReservationAuditDto(null, null))
+                .build();
     }
 
     // ========================================
@@ -184,7 +188,7 @@ class ReservationServiceTest {
 
             // Then
             assertThat(result).isNotNull();
-            assertThat(result.getTeamId()).isEqualTo(TEAM_ID);
+            assertThat(result.getIdentifier().teamId()).isEqualTo(TEAM_ID);
         }
 
         @Test
