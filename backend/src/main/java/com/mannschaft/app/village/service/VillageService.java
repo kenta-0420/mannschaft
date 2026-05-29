@@ -9,6 +9,7 @@ import com.mannschaft.app.village.dto.VillageSearchResponse;
 import com.mannschaft.app.village.dto.VillageUpdateRequest;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
+import com.mannschaft.app.village.entity.enums.VillageBulletinVisibility;
 import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.entity.enums.VillageType;
@@ -116,6 +117,9 @@ public class VillageService {
                 .type(req.type())
                 .joinPolicy(req.joinPolicy())
                 .visibility(req.visibility())
+                .bulletinVisibility(req.bulletinVisibility() != null
+                        ? req.bulletinVisibility()
+                        : VillageBulletinVisibility.MEMBERS_ONLY)
                 .category(req.category())
                 .guidelineMd(req.guidelineMd())
                 .memberCountCache(0L)
@@ -180,6 +184,7 @@ public class VillageService {
         if (req.description() != null) entity.setDescription(req.description());
         if (req.joinPolicy() != null) entity.setJoinPolicy(req.joinPolicy());
         if (req.visibility() != null) entity.setVisibility(req.visibility());
+        if (req.bulletinVisibility() != null) entity.setBulletinVisibility(req.bulletinVisibility());
         if (req.category() != null) entity.setCategory(req.category());
         if (req.iconR2Key() != null) entity.setIconR2Key(req.iconR2Key());
         if (req.coverR2Key() != null) entity.setCoverR2Key(req.coverR2Key());
@@ -408,6 +413,7 @@ public class VillageService {
                 .type(v.getType())
                 .joinPolicy(v.getJoinPolicy())
                 .visibility(v.getVisibility())
+                .bulletinVisibility(v.getBulletinVisibility())
                 .category(v.getCategory())
                 .iconR2Key(v.getIconR2Key())
                 .coverR2Key(v.getCoverR2Key())

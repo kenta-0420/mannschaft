@@ -183,6 +183,28 @@ public interface BulletinThreadRepository extends JpaRepository<BulletinThreadEn
     // ====================================================================
 
     /**
+     * 村スコープのスレッドをページング取得する（ピン留め優先→更新日時降順）。
+     *
+     * <p>{@code findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc}（組織/チーム/個人版）の
+     * 村スコープ対称メソッド。論理削除は Entity の {@code @SQLRestriction} により自動除外される。</p>
+     */
+    Page<BulletinThreadEntity> findByScopeVillageIdOrderByIsPinnedDescUpdatedAtDesc(
+            UUID scopeVillageId, Pageable pageable);
+
+    /**
+     * 村スコープのスレッドをカテゴリ指定でページング取得する（ピン留め優先→更新日時降順）。
+     */
+    Page<BulletinThreadEntity> findByScopeVillageIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
+            UUID scopeVillageId, Long categoryId, Pageable pageable);
+
+    /**
+     * ID と村スコープでスレッドを取得する（詳細／更新／削除の所有確認用）。
+     *
+     * <p>{@code findByIdAndScopeTypeAndScopeId} の村スコープ対称メソッド。</p>
+     */
+    Optional<BulletinThreadEntity> findByIdAndScopeVillageId(Long id, UUID scopeVillageId);
+
+    /**
      * 村スコープのスレッドを LIKE で部分一致検索する（F17.1 §4.12）。
      *
      * <p>{@code scope_village_id} 一致 + 未削除のみ。
