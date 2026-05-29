@@ -199,23 +199,26 @@ public class DashboardController {
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getUpcomingEvents(
             @RequestParam(defaultValue = "7") Integer days) {
         Long userId = SecurityUtils.getCurrentUserId();
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime until = now.plusDays(days);
+        // ユーザーTZの当日0時を起点とすることで、今日すでに始まった予定・終日予定（start_at=当日00:00）を含める。
+        // getCalendar と同じパターンで LocalDate.now(zone).atStartOfDay() を使用する。
+        java.time.ZoneId zone = TimezoneContextHolder.get();
+        LocalDateTime from = LocalDate.now(zone).atStartOfDay();
+        LocalDateTime until = from.plusDays(days);
 
         // 個人スケジュール（チーム・組織に紐付かないもののみ）
         List<ScheduleEntity> personalSchedules = scheduleRepository
-                .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(userId, now, until);
+                .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(userId, from, until);
         // 所属チームのスケジュール
         List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
         List<ScheduleEntity> teamSchedules = teamRoles.stream()
                 .flatMap(role -> scheduleRepository
-                        .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), now, until).stream())
+                        .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), from, until).stream())
                 .toList();
         // 所属組織のスケジュール
         List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
         List<ScheduleEntity> orgSchedules = orgRoles.stream()
                 .flatMap(role -> scheduleRepository
-                        .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(role.getOrganizationId(), now, until).stream())
+                        .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(role.getOrganizationId(), from, until).stream())
                 .toList();
 
         List<Map<String, Object>> items = new ArrayList<>();

@@ -38,6 +38,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import com.mannschaft.app.common.timezone.TimezoneContextHolder;
+import org.mockito.ArgumentCaptor;
+
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 
@@ -366,13 +372,22 @@ class DashboardControllerTest {
     @DisplayName("getUpcomingEvents")
     class GetUpcomingEvents {
 
+        @AfterEach
+        void clearTimezone() {
+            TimezoneContextHolder.clear();
+        }
+
         @Test
         @DisplayName("正常系: 直近イベントが200で返る")
         void getUpcomingEvents_正常_200() {
             // Given
-            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
+            // コントローラは findByUserIdAndTeamIdIsNullAndOrganizationIdIsNull... を呼ぶため正しいメソッドをモック
+            given(scheduleRepository
+                    .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(
+                            eq(USER_ID), any(), any()))
                     .willReturn(List.of());
             given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
 
             // When
             ResponseEntity<ApiResponse<List<Map<String, Object>>>> response =
@@ -381,6 +396,38 @@ class DashboardControllerTest {
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody().getData()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("回帰: 取得ウィンドウの開始がユーザーTZの当日00:00（start-of-day）であること（欠陥②の回帰防止）")
+        void getUpcomingEvents_ウィンドウ開始が当日0時() {
+            // Given: UTC タイムゾーンをセット（テストの安定性のため明示指定）
+            TimezoneContextHolder.set(ZoneOffset.UTC);
+
+            ArgumentCaptor<LocalDateTime> fromCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+            ArgumentCaptor<LocalDateTime> untilCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+
+            given(scheduleRepository
+                    .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(
+                            eq(USER_ID), fromCaptor.capture(), untilCaptor.capture()))
+                    .willReturn(List.of());
+            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+
+            // When
+            ResponseEntity<ApiResponse<List<Map<String, Object>>>> response =
+                    dashboardController.getUpcomingEvents(7);
+
+            // Then: ウィンドウ開始が当日00:00であること（現在時刻起点ではなく当日0時起点）
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            LocalDateTime capturedFrom = fromCaptor.getValue();
+            assertThat(capturedFrom.toLocalTime())
+                    .as("getUpcomingEvents の from は当日00:00（LocalTime.MIDNIGHT）であること")
+                    .isEqualTo(LocalTime.MIDNIGHT);
+            // untilは from + days 日後の同時刻
+            assertThat(untilCaptor.getValue())
+                    .as("until は from の 7 日後であること")
+                    .isEqualTo(capturedFrom.plusDays(7));
         }
     }
 
