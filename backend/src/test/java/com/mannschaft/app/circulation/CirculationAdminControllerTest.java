@@ -146,7 +146,7 @@ class CirculationAdminControllerTest {
                     DOC_ID, "ACTIVE",
                     List.of(new RecipientStatusEntry(50L, "佐藤", "STAMPED", null, 0),
                             new RecipientStatusEntry(51L, "鈴木", "PENDING", null, 1)));
-            given(circulationService.getDocumentStatus(DOC_ID)).willReturn(svc);
+            given(circulationService.getDocumentStatus(DOC_ID, USER_ID)).willReturn(svc);
 
             ResponseEntity<ApiResponse<DocumentStatusResponse>> result = adminController.getStatus(DOC_ID);
 

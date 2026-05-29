@@ -37,7 +37,9 @@ import com.mannschaft.app.circulation.event.CirculationDocumentDeletedEvent;
 import com.mannschaft.app.circulation.repository.CirculationAttachmentRepository;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
@@ -100,6 +102,19 @@ public class CirculationService {
 
     /** Phase 11 第三陣 3-A: 手動リマインド送信に使用。 */
     private final NotificationService notificationService;
+
+    /**
+     * 管理操作の per-scope 認可に使用する（2026-05-29 fixup）。
+     *
+     * <p>本アプリは {@code @EnableMethodSecurity} が未有効のため、Controller の
+     * {@code @PreAuthorize("hasRole('ADMIN')")} は実機では強制力を持たない（将来の method-security
+     * 有効化に備えた宣言に留まる）。さらに JWT には {@code MEMBER} しか乗らず、ADMIN/DEPUTY_ADMIN は
+     * {@code user_roles} にスコープ別保持されるため {@code hasRole} では per-scope 判定にならない。
+     * そこで強制完了・一括強制完了・手動リマインド・複製・押印状況閲覧の各管理操作で、処理本体の前に
+     * {@link AccessControlService} による per-scope 認可（当該文書のスコープの ADMIN/DEPUTY_ADMIN、
+     * または SYSTEM_ADMIN）を実施し、他団体の回覧文書への管理操作を遮断する。</p>
+     */
+    private final AccessControlService accessControlService;
 
     /**
      * Phase 11 第三陣 3-A/3-B: 監査ログサービス。
@@ -573,6 +588,7 @@ public class CirculationService {
     @Transactional
     public DocumentResponse forceCompleteDocument(Long documentId, Long actorId) {
         CirculationDocumentEntity entity = findDocumentById(documentId);
+        checkScopeAdminAccess(entity, actorId);
 
         if (entity.getStatus() == CirculationStatus.COMPLETED
                 || entity.getStatus() == CirculationStatus.CANCELLED
@@ -644,6 +660,7 @@ public class CirculationService {
     @Transactional
     public RemindResponse remindDocument(Long documentId, Long actorId) {
         CirculationDocumentEntity entity = findDocumentById(documentId);
+        checkScopeAdminAccess(entity, actorId);
 
         if (entity.getStatus() != CirculationStatus.ACTIVE) {
             throw new BusinessException(CirculationErrorCode.INVALID_DOCUMENT_STATUS);
@@ -687,6 +704,8 @@ public class CirculationService {
     @Transactional
     public DocumentResponse duplicateDocument(Long sourceDocumentId, Long actorId) {
         CirculationDocumentEntity source = findDocumentById(sourceDocumentId);
+        // 元文書のスコープの管理者のみ複製可能（新文書は同一スコープを継承する）
+        checkScopeAdminAccess(source, actorId);
 
         CirculationDocumentEntity newEntity = CirculationDocumentEntity.builder()
                 .scopeType(source.getScopeType())
@@ -728,10 +747,12 @@ public class CirculationService {
      * を返す。表示名は {@link UserRepository#findMemberSummaryById} で軽量取得する。</p>
      *
      * @param documentId 文書 ID
+     * @param actorId    操作者ユーザー ID（per-scope 認可に使用）
      * @return 受信者ごとの押印状況一覧
      */
-    public DocumentStatusResponse getDocumentStatus(Long documentId) {
+    public DocumentStatusResponse getDocumentStatus(Long documentId, Long actorId) {
         CirculationDocumentEntity entity = findDocumentById(documentId);
+        checkScopeAdminAccess(entity, actorId);
         List<CirculationRecipientEntity> recipients =
                 recipientRepository.findByDocumentIdOrderBySortOrderAsc(documentId);
 
@@ -766,6 +787,33 @@ public class CirculationService {
             return NotificationScopeType.ORGANIZATION;
         }
         return NotificationScopeType.PERSONAL;
+    }
+
+    /**
+     * 管理操作に対する per-scope 認可を実施する（2026-05-29 fixup）。
+     *
+     * <p>対象文書の {@code scopeType}/{@code scopeId} を基に、現在のユーザーが当該スコープの
+     * ADMIN/DEPUTY_ADMIN であることを要求する。SYSTEM_ADMIN は全スコープ許可。
+     * scopeId は <b>文書エンティティ由来</b>で解決するため、URL の {@code documentId} が指す文書の
+     * 実スコープと認可スコープが必ず一致する（別スコープの ID を使った IDOR を防ぐ）。</p>
+     *
+     * <p>{@code PERSONAL} スコープの文書には team/org の管理者という概念が無いため、
+     * SYSTEM_ADMIN 以外は一律 {@code COMMON_002}（403）で遮断する。</p>
+     *
+     * @param document   対象文書エンティティ
+     * @param actorUserId 操作者ユーザー ID（Controller では {@code SecurityUtils.getCurrentUserId()}）
+     * @throws BusinessException 当該スコープの管理者でない場合（COMMON_002、403）
+     */
+    private void checkScopeAdminAccess(CirculationDocumentEntity document, Long actorUserId) {
+        if (accessControlService.isSystemAdmin(actorUserId)) {
+            return;
+        }
+        String scopeType = document.getScopeType();
+        if (!"TEAM".equals(scopeType) && !"ORGANIZATION".equals(scopeType)) {
+            // PERSONAL 等、team/org 管理者の概念が無いスコープは SYSTEM_ADMIN のみ許可
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        accessControlService.checkAdminOrAbove(actorUserId, document.getScopeId(), scopeType);
     }
 
     /**
