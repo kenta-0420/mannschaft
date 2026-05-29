@@ -1,6 +1,7 @@
 package com.mannschaft.app.faq.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.faq.FaqCategory;
 import com.mannschaft.app.faq.FixedFaqQuestion;
 import com.mannschaft.app.faq.ScopeType;
 import com.mannschaft.app.faq.dto.FaqEditorResponse;
@@ -34,9 +35,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link FaqAdminService} の単体テスト（F21.1 §5.5）。
+ * {@link FaqAdminService} の単体テスト（F21.1 §5.5、カテゴリ別固定質問対応）。
  *
- * <p>取得ペイロード生成・バリデーション・固定 UPSERT / 自由差分適用のロジックを検証する。
+ * <p>カテゴリ解決・取得ペイロード生成・バリデーション（カテゴリ外キー拒否含む）・
+ * 固定 UPSERT / 自由差分適用のロジックを検証する。
  * 本格的な統合テストは後続の足軽が担当する。</p>
  */
 @ExtendWith(MockitoExtension.class)
@@ -49,15 +51,27 @@ class FaqAdminServiceTest {
     private TeamRepository teamRepository;
     @Mock
     private OrganizationRepository organizationRepository;
+    // 実 Resolver を使う（純粋関数のためモック不要）。@InjectMocks には実インスタンスを注入する。
+    private final FaqCategoryResolver faqCategoryResolver = new FaqCategoryResolver();
 
-    @InjectMocks
     private FaqAdminService service;
 
     private static final Long TEAM_ID = 1L;
 
-    private void givenTeamExists() {
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        service = new FaqAdminService(faqRepository, teamRepository, organizationRepository, faqCategoryResolver);
+    }
+
+    /**
+     * 指定 template を持つチームの存在を仕込む。
+     *
+     * @param template チームの template（カテゴリ解決に用いる。例: "CLUB"→SPORTS、null→GENERAL）
+     */
+    private void givenTeamExists(String template) {
         TeamEntity team = mock(TeamEntity.class);
         lenient().when(team.getDeletedAt()).thenReturn(null);
+        lenient().when(team.getTemplate()).thenReturn(template);
         given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
     }
 
@@ -66,13 +80,13 @@ class FaqAdminServiceTest {
     class GetEditorPayload {
 
         @Test
-        @DisplayName("正常系: 固定6問を全件・自由質問を返す（未回答は answer=null）")
+        @DisplayName("正常系: GENERAL カテゴリ団体の固定6問を全件・自由質問を返す（未回答は answer=null）")
         void 固定6問と自由質問を返す() {
-            givenTeamExists();
+            givenTeamExists(null); // null → GENERAL
             FaqEntity activity = FaqEntity.builder()
                     .scopeType(ScopeType.TEAM).scopeId(TEAM_ID)
-                    .questionKey(FixedFaqQuestion.ACTIVITY.name())
-                    .answerText("サッカーをしています").displayOrder(1).build();
+                    .questionKey(FixedFaqQuestion.GENERAL_ACTIVITY.name())
+                    .answerText("地域清掃をしています").displayOrder(1).build();
             FaqEntity custom = FaqEntity.builder()
                     .scopeType(ScopeType.TEAM).scopeId(TEAM_ID)
                     .questionText("駐車場はありますか").answerText("あります").displayOrder(10).build();
@@ -82,14 +96,38 @@ class FaqAdminServiceTest {
 
             FaqEditorResponse res = service.getEditorPayload(ScopeType.TEAM, TEAM_ID);
 
+            assertThat(res.category()).isEqualTo(FaqCategory.GENERAL.name());
             assertThat(res.fixedQuestions()).hasSize(6);
             assertThat(res.fixedQuestions().get(0).questionKey())
-                    .isEqualTo(FixedFaqQuestion.ACTIVITY.name());
-            assertThat(res.fixedQuestions().get(0).answer()).isEqualTo("サッカーをしています");
-            // LOCATION は未回答 → answer=null
+                    .isEqualTo(FixedFaqQuestion.GENERAL_ACTIVITY.name());
+            assertThat(res.fixedQuestions().get(0).answer()).isEqualTo("地域清掃をしています");
+            // 2問目（GENERAL_LOCATION）は未回答 → answer=null
             assertThat(res.fixedQuestions().get(1).answer()).isNull();
             assertThat(res.customFaqs()).hasSize(1);
             assertThat(res.customFaqs().get(0).questionText()).isEqualTo("駐車場はありますか");
+        }
+
+        @Test
+        @DisplayName("正常系: SPORTS カテゴリ団体（template=CLUB）は SPORTS の6問を displayOrder 順で返す")
+        void スポーツカテゴリの6問を返す() {
+            givenTeamExists("CLUB"); // CLUB → SPORTS
+            given(faqRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNullOrderByDisplayOrderAsc(
+                    ScopeType.TEAM, TEAM_ID)).willReturn(List.of());
+
+            FaqEditorResponse res = service.getEditorPayload(ScopeType.TEAM, TEAM_ID);
+
+            assertThat(res.category()).isEqualTo(FaqCategory.SPORTS.name());
+            assertThat(res.fixedQuestions()).hasSize(6);
+            assertThat(res.fixedQuestions())
+                    .extracting(FaqEditorResponse.FixedFaqItem::questionKey)
+                    .containsExactly(
+                            FixedFaqQuestion.SPORTS_ACTIVITY.name(),
+                            FixedFaqQuestion.SPORTS_LOCATION.name(),
+                            FixedFaqQuestion.SPORTS_SCHEDULE.name(),
+                            FixedFaqQuestion.SPORTS_JOIN.name(),
+                            FixedFaqQuestion.SPORTS_COST.name(),
+                            FixedFaqQuestion.SPORTS_LEVEL.name());
+            assertThat(res.fixedQuestions()).allSatisfy(item -> assertThat(item.answer()).isNull());
         }
 
         @Test
@@ -111,7 +149,7 @@ class FaqAdminServiceTest {
         @Test
         @DisplayName("異常系: 自由質問が8件で FAQ_001")
         void 自由質問上限超過() {
-            givenTeamExists();
+            givenTeamExists(null);
             SaveFaqRequest req = new SaveFaqRequest();
             for (int i = 0; i < 8; i++) {
                 req.getCustomFaqs().add(new SaveFaqRequest.CustomFaqInput(null, "Q" + i, "A" + i, i));
@@ -126,7 +164,7 @@ class FaqAdminServiceTest {
         @Test
         @DisplayName("異常系: 不正な固定質問キーで FAQ_002")
         void 不正な固定キー() {
-            givenTeamExists();
+            givenTeamExists(null);
             SaveFaqRequest req = new SaveFaqRequest();
             req.getFixedAnswers().add(new SaveFaqRequest.FixedAnswer("UNKNOWN_KEY", "回答"));
 
@@ -137,12 +175,29 @@ class FaqAdminServiceTest {
         }
 
         @Test
+        @DisplayName("異常系: カテゴリ外の固定質問キー（GENERAL団体に SPORTS キー）で FAQ_002")
+        void カテゴリ外の固定キー() {
+            givenTeamExists(null); // GENERAL カテゴリ
+            SaveFaqRequest req = new SaveFaqRequest();
+            // SPORTS_ACTIVITY は実在するキーだが GENERAL 団体には属さない → FAQ_002
+            req.getFixedAnswers().add(new SaveFaqRequest.FixedAnswer(
+                    FixedFaqQuestion.SPORTS_ACTIVITY.name(), "回答"));
+
+            assertThatThrownBy(() -> service.save(ScopeType.TEAM, TEAM_ID, req, 100L))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(FaqErrorCode.FAQ_002);
+        }
+
+        @Test
         @DisplayName("異常系: 固定質問キー重複で FAQ_003")
         void 固定キー重複() {
-            givenTeamExists();
+            givenTeamExists(null);
             SaveFaqRequest req = new SaveFaqRequest();
-            req.getFixedAnswers().add(new SaveFaqRequest.FixedAnswer("ACTIVITY", "回答1"));
-            req.getFixedAnswers().add(new SaveFaqRequest.FixedAnswer("ACTIVITY", "回答2"));
+            req.getFixedAnswers().add(new SaveFaqRequest.FixedAnswer(
+                    FixedFaqQuestion.GENERAL_ACTIVITY.name(), "回答1"));
+            req.getFixedAnswers().add(new SaveFaqRequest.FixedAnswer(
+                    FixedFaqQuestion.GENERAL_ACTIVITY.name(), "回答2"));
 
             assertThatThrownBy(() -> service.save(ScopeType.TEAM, TEAM_ID, req, 100L))
                     .isInstanceOf(BusinessException.class)
@@ -153,7 +208,7 @@ class FaqAdminServiceTest {
         @Test
         @DisplayName("異常系: 自由質問の質問文が空で FAQ_004")
         void 自由質問文空() {
-            givenTeamExists();
+            givenTeamExists(null);
             SaveFaqRequest req = new SaveFaqRequest();
             req.getCustomFaqs().add(new SaveFaqRequest.CustomFaqInput(null, "   ", "回答", 0));
 
@@ -171,40 +226,47 @@ class FaqAdminServiceTest {
         @Test
         @DisplayName("固定: answer 非空かつ既存なしで新規作成（createdBy=操作ユーザー）")
         void 固定新規作成() {
-            givenTeamExists();
+            givenTeamExists(null); // GENERAL
             given(faqRepository.findByScopeTypeAndScopeIdAndQuestionKeyAndDeletedAtIsNull(
-                    ScopeType.TEAM, TEAM_ID, "ACTIVITY")).willReturn(Optional.empty());
+                    ScopeType.TEAM, TEAM_ID, FixedFaqQuestion.GENERAL_ACTIVITY.name()))
+                    .willReturn(Optional.empty());
             given(faqRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNullOrderByDisplayOrderAsc(
                     ScopeType.TEAM, TEAM_ID)).willReturn(List.of());
 
             SaveFaqRequest req = new SaveFaqRequest();
-            req.getFixedAnswers().add(new SaveFaqRequest.FixedAnswer("ACTIVITY", "サッカー"));
+            req.getFixedAnswers().add(new SaveFaqRequest.FixedAnswer(
+                    FixedFaqQuestion.GENERAL_ACTIVITY.name(), "ボランティア活動"));
 
             service.save(ScopeType.TEAM, TEAM_ID, req, 100L);
 
             ArgumentCaptor<FaqEntity> captor = ArgumentCaptor.forClass(FaqEntity.class);
             verify(faqRepository, atLeastOnce()).save(captor.capture());
             FaqEntity saved = captor.getAllValues().stream()
-                    .filter(e -> "ACTIVITY".equals(e.getQuestionKey())).findFirst().orElseThrow();
-            assertThat(saved.getAnswerText()).isEqualTo("サッカー");
+                    .filter(e -> FixedFaqQuestion.GENERAL_ACTIVITY.name().equals(e.getQuestionKey()))
+                    .findFirst().orElseThrow();
+            assertThat(saved.getAnswerText()).isEqualTo("ボランティア活動");
             assertThat(saved.getCreatedBy()).isEqualTo(100L);
-            assertThat(saved.getDisplayOrder()).isEqualTo(FixedFaqQuestion.ACTIVITY.displayOrder());
+            assertThat(saved.getDisplayOrder())
+                    .isEqualTo(FixedFaqQuestion.GENERAL_ACTIVITY.displayOrder());
         }
 
         @Test
         @DisplayName("固定: answer 空かつ既存ありで論理削除")
         void 固定論理削除() {
-            givenTeamExists();
+            givenTeamExists(null);
             FaqEntity existing = FaqEntity.builder()
                     .scopeType(ScopeType.TEAM).scopeId(TEAM_ID)
-                    .questionKey("ACTIVITY").answerText("旧回答").displayOrder(1).build();
+                    .questionKey(FixedFaqQuestion.GENERAL_ACTIVITY.name())
+                    .answerText("旧回答").displayOrder(1).build();
             given(faqRepository.findByScopeTypeAndScopeIdAndQuestionKeyAndDeletedAtIsNull(
-                    ScopeType.TEAM, TEAM_ID, "ACTIVITY")).willReturn(Optional.of(existing));
+                    ScopeType.TEAM, TEAM_ID, FixedFaqQuestion.GENERAL_ACTIVITY.name()))
+                    .willReturn(Optional.of(existing));
             given(faqRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNullOrderByDisplayOrderAsc(
                     ScopeType.TEAM, TEAM_ID)).willReturn(List.of());
 
             SaveFaqRequest req = new SaveFaqRequest();
-            req.getFixedAnswers().add(new SaveFaqRequest.FixedAnswer("ACTIVITY", ""));
+            req.getFixedAnswers().add(new SaveFaqRequest.FixedAnswer(
+                    FixedFaqQuestion.GENERAL_ACTIVITY.name(), ""));
 
             service.save(ScopeType.TEAM, TEAM_ID, req, 100L);
 
@@ -214,7 +276,7 @@ class FaqAdminServiceTest {
         @Test
         @DisplayName("自由: リクエストに無い既存自由質問は論理削除される")
         void 自由質問差分削除() {
-            givenTeamExists();
+            givenTeamExists(null);
             FaqEntity orphan = FaqEntity.builder()
                     .scopeType(ScopeType.TEAM).scopeId(TEAM_ID)
                     .questionText("消える質問").answerText("回答").displayOrder(10).build();
@@ -231,14 +293,16 @@ class FaqAdminServiceTest {
         @Test
         @DisplayName("固定: answer 空かつ既存なしでは何も保存しない")
         void 固定空既存なしでノーオペ() {
-            givenTeamExists();
+            givenTeamExists(null);
             given(faqRepository.findByScopeTypeAndScopeIdAndQuestionKeyAndDeletedAtIsNull(
-                    ScopeType.TEAM, TEAM_ID, "COST")).willReturn(Optional.empty());
+                    ScopeType.TEAM, TEAM_ID, FixedFaqQuestion.GENERAL_COST.name()))
+                    .willReturn(Optional.empty());
             given(faqRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNullOrderByDisplayOrderAsc(
                     ScopeType.TEAM, TEAM_ID)).willReturn(List.of());
 
             SaveFaqRequest req = new SaveFaqRequest();
-            req.getFixedAnswers().add(new SaveFaqRequest.FixedAnswer("COST", null));
+            req.getFixedAnswers().add(new SaveFaqRequest.FixedAnswer(
+                    FixedFaqQuestion.GENERAL_COST.name(), null));
 
             service.save(ScopeType.TEAM, TEAM_ID, req, 100L);
 

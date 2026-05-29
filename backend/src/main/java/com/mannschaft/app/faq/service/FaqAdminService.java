@@ -1,6 +1,7 @@
 package com.mannschaft.app.faq.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.faq.FaqCategory;
 import com.mannschaft.app.faq.FixedFaqQuestion;
 import com.mannschaft.app.faq.ScopeType;
 import com.mannschaft.app.faq.dto.FaqEditorResponse;
@@ -45,10 +46,11 @@ import java.util.UUID;
 public class FaqAdminService {
 
     private final FaqRepository faqRepository;
-    // TODO: faq → team のクロスドメイン参照（存在確認のみ）。将来はイベント駆動化候補。
+    // TODO: faq → team のクロスドメイン参照（存在確認・カテゴリ解決のみ）。将来はイベント駆動化候補。
     private final TeamRepository teamRepository;
-    // TODO: faq → organization のクロスドメイン参照（存在確認のみ）。将来はイベント駆動化候補。
+    // TODO: faq → organization のクロスドメイン参照（存在確認・カテゴリ解決のみ）。将来はイベント駆動化候補。
     private final OrganizationRepository organizationRepository;
+    private final FaqCategoryResolver faqCategoryResolver;
 
     /**
      * 指定スコープの FAQ 編集画面用ペイロードを取得する。
@@ -63,7 +65,7 @@ public class FaqAdminService {
      */
     @Transactional(readOnly = true)
     public FaqEditorResponse getEditorPayload(ScopeType scopeType, Long scopeId) {
-        verifyScopeExists(scopeType, scopeId);
+        FaqCategory category = resolveCategory(scopeType, scopeId);
 
         List<FaqEntity> existing =
                 faqRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNullOrderByDisplayOrderAsc(scopeType, scopeId);
@@ -79,9 +81,10 @@ public class FaqAdminService {
             }
         }
 
-        // 固定6問は enum の displayOrder 昇順で全件返す（未回答は answer=null）
+        // 解決カテゴリの固定6問のみを displayOrder 昇順で全件返す（未回答は answer=null）。
+        // カテゴリ外の question_key（団体がカテゴリ変更した場合の残骸）は編集画面に出さない。
         List<FaqEditorResponse.FixedFaqItem> fixedItems = new ArrayList<>();
-        for (FixedFaqQuestion q : FixedFaqQuestion.values()) {
+        for (FixedFaqQuestion q : FixedFaqQuestion.ofCategory(category)) {
             FaqEntity e = fixedByKey.get(q.name());
             fixedItems.add(FaqEditorResponse.FixedFaqItem.builder()
                     .questionKey(q.name())
@@ -89,7 +92,6 @@ public class FaqAdminService {
                     .answer(e != null ? e.getAnswerText() : null)
                     .build());
         }
-        fixedItems.sort((a, b) -> Integer.compare(a.displayOrder(), b.displayOrder()));
 
         // 自由質問は display_order 昇順（リポジトリで既にソート済）
         List<FaqEditorResponse.CustomFaqItem> customItems = new ArrayList<>();
@@ -103,6 +105,7 @@ public class FaqAdminService {
         }
 
         return FaqEditorResponse.builder()
+                .category(category.name())
                 .fixedQuestions(fixedItems)
                 .customFaqs(customItems)
                 .build();
@@ -123,8 +126,8 @@ public class FaqAdminService {
      */
     @Transactional
     public void save(ScopeType scopeType, Long scopeId, SaveFaqRequest req, Long operatorId) {
-        verifyScopeExists(scopeType, scopeId);
-        validate(req);
+        FaqCategory category = resolveCategory(scopeType, scopeId);
+        validate(req, category);
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -249,19 +252,25 @@ public class FaqAdminService {
 
     /**
      * サービス層バリデーション（Bean Validation で表現できない業務制約）。
+     *
+     * @param req      一括 upsert リクエスト
+     * @param category 対象団体のFAQカテゴリ（固定質問キーの所属検証に用いる）
      */
-    private void validate(SaveFaqRequest req) {
+    private void validate(SaveFaqRequest req, FaqCategory category) {
         // 自由質問件数上限（Bean Validation の @Size と二重防御）
         if (req.getCustomFaqs() != null && req.getCustomFaqs().size() > SaveFaqRequest.MAX_CUSTOM_FAQS) {
             throw new BusinessException(FaqErrorCode.FAQ_001);
         }
 
-        // 固定質問: questionKey 妥当性 + 重複チェック
+        // 固定質問: questionKey 妥当性（存在 + 対象団体のカテゴリに属する）+ 重複チェック
         if (req.getFixedAnswers() != null) {
             Set<String> seen = new HashSet<>();
             for (SaveFaqRequest.FixedAnswer fa : req.getFixedAnswers()) {
                 String key = fa.getQuestionKey();
-                if (FixedFaqQuestion.fromKey(key).isEmpty()) {
+                FixedFaqQuestion fixed = FixedFaqQuestion.fromKey(key)
+                        .orElseThrow(() -> new BusinessException(FaqErrorCode.FAQ_002));
+                // カテゴリ外の固定質問キーは不正キー扱い（FAQ_002）
+                if (fixed.category() != category) {
                     throw new BusinessException(FaqErrorCode.FAQ_002);
                 }
                 if (!seen.add(key)) {
@@ -290,21 +299,29 @@ public class FaqAdminService {
     }
 
     /**
-     * 対象スコープ（チーム / 組織）の存在確認。IDOR 対策で不在は FAQ_010（404）。
+     * 対象スコープ（チーム / 組織）の存在確認とFAQカテゴリ解決を同時に行う。
+     *
+     * <p>IDOR 対策で不在（削除済含む）は FAQ_010（404）。存在する場合は団体の種別
+     * （チーム template / 組織 orgType）から {@link FaqCategoryResolver} でカテゴリを解決して返す。</p>
+     *
+     * @param scopeType スコープ種別
+     * @param scopeId   チーム / 組織 ID
+     * @return 解決された {@link FaqCategory}
+     * @throws BusinessException 対象不在（FAQ_010、404）
      */
-    private void verifyScopeExists(ScopeType scopeType, Long scopeId) {
-        boolean exists = switch (scopeType) {
-            // TODO: faq → team クロスドメイン参照（存在確認のみ）
+    private FaqCategory resolveCategory(ScopeType scopeType, Long scopeId) {
+        return switch (scopeType) {
+            // TODO: faq → team クロスドメイン参照（存在確認・カテゴリ解決のみ）
             case TEAM -> teamRepository.findById(scopeId)
                     .filter(t -> t.getDeletedAt() == null)
-                    .isPresent();
-            // TODO: faq → organization クロスドメイン参照（存在確認のみ）
+                    .map(t -> faqCategoryResolver.resolve(t.getTemplate()))
+                    .orElseThrow(() -> new BusinessException(FaqErrorCode.FAQ_010));
+            // TODO: faq → organization クロスドメイン参照（存在確認・カテゴリ解決のみ）
             case ORGANIZATION -> organizationRepository.findById(scopeId)
                     .filter(o -> o.getDeletedAt() == null)
-                    .isPresent();
+                    .map(o -> faqCategoryResolver.resolve(
+                            o.getOrgType() != null ? o.getOrgType().name() : null))
+                    .orElseThrow(() -> new BusinessException(FaqErrorCode.FAQ_010));
         };
-        if (!exists) {
-            throw new BusinessException(FaqErrorCode.FAQ_010);
-        }
     }
 }

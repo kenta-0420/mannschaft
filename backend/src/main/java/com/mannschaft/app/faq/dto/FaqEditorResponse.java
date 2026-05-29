@@ -8,20 +8,29 @@ import java.util.List;
 /**
  * F21.1 §5.5: FAQ 編集画面用ペイロード（管理 GET レスポンス）。
  *
- * <p>固定6問（未回答含む全件）と自由質問（display_order 昇順）を返す。
+ * <p>対象団体のカテゴリ（{@code category}）と、そのカテゴリの固定6問（未回答含む全件）、
+ * 自由質問（display_order 昇順）を返す。
  * 固定質問の文言はバックエンドに保持せず、{@code questionKey}（i18n キー解決用の enum 名）のみ返す。
  * フロントエンドが i18n で質問文を描画する。</p>
  *
+ * <p>カテゴリは団体の種別（チーム template / 組織 orgType）から
+ * {@code com.mannschaft.app.faq.service.FaqCategoryResolver} で解決される。
+ * {@code fixedQuestions} は解決カテゴリに属する 6 問のみを displayOrder 昇順で返す。</p>
+ *
  * <p>設計書: docs/features/F21.1_geo_optimization.md §5.5.6</p>
  *
- * @param fixedQuestions 固定6問（displayOrder 昇順・全件。未回答は answer=null）
+ * @param category       対象団体のFAQカテゴリ（{@code FaqCategory} の name。例: {@code "SPORTS"}）
+ * @param fixedQuestions 解決カテゴリの固定6問（displayOrder 昇順・全件。未回答は answer=null）
  * @param customFaqs     自由質問（displayOrder 昇順）
  */
 @Builder
-@Schema(description = "FAQ 編集画面用ペイロード（固定6問 + 自由質問）")
+@Schema(description = "FAQ 編集画面用ペイロード（カテゴリ + 固定6問 + 自由質問）")
 public record FaqEditorResponse(
 
-        @Schema(description = "固定6問（displayOrder 昇順・全件）")
+        @Schema(description = "対象団体のFAQカテゴリ（FaqCategory の name）", example = "SPORTS")
+        String category,
+
+        @Schema(description = "解決カテゴリの固定6問（displayOrder 昇順・全件）")
         List<FixedFaqItem> fixedQuestions,
 
         @Schema(description = "自由質問（displayOrder 昇順）")

@@ -1,11 +1,13 @@
 package com.mannschaft.app.faq.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.faq.FaqCategory;
 import com.mannschaft.app.faq.FixedFaqQuestion;
 import com.mannschaft.app.faq.ScopeType;
 import com.mannschaft.app.faq.dto.PublicFaqResponse;
 import com.mannschaft.app.faq.entity.FaqEntity;
 import com.mannschaft.app.faq.repository.FaqRepository;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.publicview.error.PublicViewErrorCode;
 import com.mannschaft.app.publicview.service.PublicTeamQueryService;
@@ -16,7 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * F21.1 §5.5.6: 公開FAQ取得クエリサービス。
@@ -50,6 +54,7 @@ public class PublicFaqQueryService {
     private final FaqRepository faqRepository;
     private final PublicTeamQueryService publicTeamQueryService;
     private final OrganizationRepository organizationRepository;
+    private final FaqCategoryResolver faqCategoryResolver;
 
     /**
      * 公開チームのFAQを取得する。
@@ -60,8 +65,9 @@ public class PublicFaqQueryService {
      */
     public List<PublicFaqResponse> getPublicTeamFaqs(Long teamId) {
         // 公開可否判定（PRIVATE / archived / 削除済 / 不在は 404 へ正規化）。
-        publicTeamQueryService.requirePublicTeam(teamId);
-        return toResponses(ScopeType.TEAM, teamId);
+        var team = publicTeamQueryService.requirePublicTeam(teamId);
+        FaqCategory category = faqCategoryResolver.resolve(team.getTemplate());
+        return toResponses(ScopeType.TEAM, teamId, category);
     }
 
     /**
@@ -73,25 +79,40 @@ public class PublicFaqQueryService {
      */
     public List<PublicFaqResponse> getPublicOrganizationFaqs(Long orgId) {
         // 公開可否判定（PRIVATE / archived / 削除済 / 不在は 404 へ正規化）。
-        organizationRepository.findPublicOrganizationById(orgId)
+        OrganizationEntity org = organizationRepository.findPublicOrganizationById(orgId)
                 .orElseThrow(() -> new BusinessException(PublicViewErrorCode.PUBLIC_001));
-        return toResponses(ScopeType.ORGANIZATION, orgId);
+        FaqCategory category = faqCategoryResolver.resolve(
+                org.getOrgType() != null ? org.getOrgType().name() : null);
+        return toResponses(ScopeType.ORGANIZATION, orgId, category);
     }
 
     /**
      * 指定スコープの有効FAQから回答済みのみを抽出・整列し DTO 化する。
      *
+     * <p>固定質問は<strong>現カテゴリに属するキーのみ</strong>を含める。団体がカテゴリを変更した
+     * 場合に残る旧カテゴリの question_key は公開出力に含めない（現カテゴリの固定質問 + 自由質問のみ）。</p>
+     *
      * @param scopeType スコープ種別
      * @param scopeId   スコープ ID（チーム / 組織 ID）
+     * @param category  対象団体の現FAQカテゴリ
      * @return 公開レスポンスリスト（固定質問 displayOrder 昇順 → 自由質問 displayOrder 昇順）
      */
-    private List<PublicFaqResponse> toResponses(ScopeType scopeType, Long scopeId) {
+    private List<PublicFaqResponse> toResponses(ScopeType scopeType, Long scopeId, FaqCategory category) {
+        // 現カテゴリに属する固定質問キーの集合
+        Set<String> categoryKeys = new HashSet<>();
+        for (FixedFaqQuestion q : FixedFaqQuestion.ofCategory(category)) {
+            categoryKeys.add(q.name());
+        }
+
         List<FaqEntity> faqs = faqRepository
                 .findByScopeTypeAndScopeIdAndDeletedAtIsNullOrderByDisplayOrderAsc(scopeType, scopeId);
 
         return faqs.stream()
                 // 回答済みのみ（answer_text が非空）。deleted_at が NULL なのはクエリで担保済み。
                 .filter(f -> StringUtils.hasText(f.getAnswerText()))
+                // 固定質問は現カテゴリに属するキーのみ残す（カテゴリ変更後の旧キー残骸を除外）。
+                // 自由質問（questionKey NULL）は常に残す。
+                .filter(f -> f.getQuestionKey() == null || categoryKeys.contains(f.getQuestionKey()))
                 // 固定質問（questionKey 非NULL）を先に、その中は FixedFaqQuestion.displayOrder 昇順。
                 // 自由質問（questionKey NULL）を後に、その中は entity.displayOrder 昇順。
                 .sorted(Comparator
