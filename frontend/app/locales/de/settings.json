@@ -30,5 +30,27 @@
   },
   "signature": {
     "clear": "クリア"
+  },
+  "nav": {
+    "calendar": "Kalender",
+    "settings": "Einstellungen",
+    "todo": "Aufgaben",
+    "shiftManagement": "Schichtverwaltung",
+    "timeline": "Zeitlinie",
+    "chat": "Chat",
+    "myShift": "Meine Schicht",
+    "myPage": "Meine Seite",
+    "qa": "FAQ",
+    "blog": "Blog"
+  },
+  "settings": {
+    "navigation": {
+      "title": "Navigationseinstellungen",
+      "description": "Passe die angezeigten Navigationselemente an",
+      "required": "Erforderlich",
+      "resetToDefault": "Auf Standard zurücksetzen",
+      "saveSuccess": "Einstellungen gespeichert",
+      "saveError": "Einstellungen konnten nicht gespeichert werden"
+    }
   }
 }

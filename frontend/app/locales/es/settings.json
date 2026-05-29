@@ -30,5 +30,27 @@
   },
   "signature": {
     "clear": "クリア"
+  },
+  "nav": {
+    "calendar": "Calendario",
+    "settings": "Configuración",
+    "todo": "Tareas",
+    "shiftManagement": "Gestión de Turnos",
+    "timeline": "Línea de Tiempo",
+    "chat": "Chat",
+    "myShift": "Mi Turno",
+    "myPage": "Mi Página",
+    "qa": "P&R",
+    "blog": "Blog"
+  },
+  "settings": {
+    "navigation": {
+      "title": "Configuración de Navegación",
+      "description": "Personaliza los elementos de navegación mostrados",
+      "required": "Obligatorio",
+      "resetToDefault": "Restablecer valores predeterminados",
+      "saveSuccess": "Configuración guardada",
+      "saveError": "Error al guardar la configuración"
+    }
   }
 }

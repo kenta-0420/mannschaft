@@ -64,38 +64,11 @@ watch(
 )
 
 /**
- * F15.3: チーム/組織は ScopeNavDropdown に分離。
- * desktop ヘッダーでは navItems から外し、モバイル Drawer では従来通り表示する。
+ * F20.1: ナビゲーション設定ストアから動的に表示項目を取得する。
+ * ハードコード navItems / mobileNavItems を廃止し、store の visibleFeatures /
+ * visibleMobileFeatures に一元化。
  */
-const navItems = computed(() => [
-  { label: 'ダッシュボード', icon: 'pi pi-home', to: '/dashboard' },
-  { label: 'TODO', icon: 'pi pi-check-square', to: '/todos' },
-  { label: 'カレンダー', icon: 'pi pi-calendar', to: '/calendar' },
-  { label: 'シフト管理', icon: 'pi pi-table', to: '/shift' },
-  { label: 'タイムライン', icon: 'pi pi-comments', to: '/timeline' },
-  { label: 'チャット', icon: 'pi pi-comment', to: '/chat' },
-  { label: t('shift.page.myShift'), icon: 'pi pi-clock', to: '/my/shift' },
-  { label: 'マイページ', icon: 'pi pi-user', to: '/my', exact: true },
-  { label: 'Q&A', icon: 'pi pi-question-circle', to: '/help/qa' },
-  { label: '設定', icon: 'pi pi-cog', to: '/settings' },
-])
-
-/** モバイル Drawer 用は従来通りチーム/組織のリンクを含める。F17: 村も追加。 */
-const mobileNavItems = computed(() => [
-  { label: 'ダッシュボード', icon: 'pi pi-home', to: '/dashboard' },
-  { label: t('scopeFolder.nav.teams'), icon: 'pi pi-users', to: '/teams' },
-  { label: t('scopeFolder.nav.organizations'), icon: 'pi pi-building', to: '/organizations' },
-  { label: t('village.title'), icon: 'pi pi-th-large', to: '/villages' },
-  { label: 'TODO', icon: 'pi pi-check-square', to: '/todos' },
-  { label: 'カレンダー', icon: 'pi pi-calendar', to: '/calendar' },
-  { label: 'シフト管理', icon: 'pi pi-table', to: '/shift' },
-  { label: 'タイムライン', icon: 'pi pi-comments', to: '/timeline' },
-  { label: 'チャット', icon: 'pi pi-comment', to: '/chat' },
-  { label: t('shift.page.myShift'), icon: 'pi pi-clock', to: '/my/shift' },
-  { label: 'マイページ', icon: 'pi pi-user', to: '/my', exact: true },
-  { label: 'Q&A', icon: 'pi pi-question-circle', to: '/help/qa' },
-  { label: '設定', icon: 'pi pi-cog', to: '/settings' },
-])
+const navSettingsStore = useNavSettingsStore()
 
 /** 未解決コンフリクトがある場合のみ「同期」ナビを表示 */
 const showSyncNav = computed(() => syncStore.hasConflicts)
@@ -174,24 +147,16 @@ function isActive(path: string, exact = false): boolean {
                 scope-type="ORGANIZATION"
                 :label="t('scopeFolder.nav.organizations')"
               />
-              <!-- F17: 村への独立リンク（チーム/組織と並列。ScopeNavDropdown は使わず単純リンク） -->
+              <!-- F20.1: ナビ設定ストアから動的生成（村・ブログ等を含む） -->
               <NuxtLink
-                to="/villages"
+                v-for="item in navSettingsStore.visibleFeatures"
+                :key="item.key"
+                :to="item.path"
                 class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100"
-                :class="isActive('/villages') ? 'bg-primary/10 text-primary' : 'text-surface-600'"
-              >
-                <i class="pi pi-th-large" />
-                {{ t('village.title') }}
-              </NuxtLink>
-              <NuxtLink
-                v-for="item in navItems.filter(i => i.to !== '/dashboard')"
-                :key="item.to"
-                :to="item.to"
-                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100"
-                :class="isActive(item.to, item.exact) ? 'bg-primary/10 text-primary' : 'text-surface-600'"
+                :class="isActive(item.path) ? 'bg-primary/10 text-primary' : 'text-surface-600'"
               >
                 <i :class="item.icon" />
-                {{ item.label }}
+                {{ $t(item.labelKey, item.labelKey) }}
               </NuxtLink>
               <!-- 代理入力デスク（DEPUTY_ADMIN 以上のみ表示） -->
               <NuxtLink
@@ -211,15 +176,6 @@ function isActive(path: string, exact = false): boolean {
               >
                 <i :class="systemAdminItem.icon" />
                 {{ systemAdminItem.label }}
-              </NuxtLink>
-              <!-- ブログ -->
-              <NuxtLink
-                to="/blog"
-                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100"
-                :class="isActive('/blog') ? 'bg-primary/10 text-primary' : 'text-surface-600'"
-              >
-                <i class="pi pi-book" />
-                ブログ
               </NuxtLink>
               <!-- 同期（コンフリクトがある場合のみ表示） -->
               <NuxtLink
@@ -303,25 +259,17 @@ function isActive(path: string, exact = false): boolean {
           <span class="text-xl font-bold text-primary">Mannschaft</span>
         </template>
         <nav class="flex flex-col gap-1 pt-2">
+          <!-- F20.1: ナビ設定ストアから動的生成 -->
           <NuxtLink
-            v-for="item in mobileNavItems"
-            :key="item.to"
-            :to="item.to"
+            v-for="item in navSettingsStore.visibleMobileFeatures"
+            :key="item.key"
+            :to="item.path"
             class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-100"
-            :class="isActive(item.to, item.exact) ? 'bg-primary/10 text-primary' : 'text-surface-700'"
-          >
-            <i :class="[item.icon, 'text-base']" />
-            {{ item.label }}
-          </NuxtLink>
-          <!-- ブログ -->
-          <NuxtLink
-            to="/blog"
-            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-100"
-            :class="isActive('/blog') ? 'bg-primary/10 text-primary' : 'text-surface-700'"
+            :class="isActive(item.path) ? 'bg-primary/10 text-primary' : 'text-surface-700'"
             @click="showMobileMenu = false"
           >
-            <i class="pi pi-book text-base" />
-            ブログ
+            <i :class="[item.icon, 'text-base']" />
+            {{ $t(item.labelKey, item.labelKey) }}
           </NuxtLink>
           <!-- 同期（コンフリクトがある場合のみ） -->
           <NuxtLink

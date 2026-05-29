@@ -30,5 +30,27 @@
   },
   "signature": {
     "clear": "クリア"
+  },
+  "nav": {
+    "calendar": "日历",
+    "settings": "设置",
+    "todo": "待办",
+    "shiftManagement": "班次管理",
+    "timeline": "时间线",
+    "chat": "聊天",
+    "myShift": "我的班次",
+    "myPage": "我的页面",
+    "qa": "问答",
+    "blog": "博客"
+  },
+  "settings": {
+    "navigation": {
+      "title": "导航栏设置",
+      "description": "自定义显示的导航项目",
+      "required": "必须",
+      "resetToDefault": "恢复默认",
+      "saveSuccess": "设置已保存",
+      "saveError": "保存失败"
+    }
   }
 }

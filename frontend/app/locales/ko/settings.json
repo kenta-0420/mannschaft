@@ -30,5 +30,27 @@
   },
   "signature": {
     "clear": "クリア"
+  },
+  "nav": {
+    "calendar": "캘린더",
+    "settings": "설정",
+    "todo": "할 일",
+    "shiftManagement": "시프트 관리",
+    "timeline": "타임라인",
+    "chat": "채팅",
+    "myShift": "내 시프트",
+    "myPage": "마이페이지",
+    "qa": "Q&A",
+    "blog": "블로그"
+  },
+  "settings": {
+    "navigation": {
+      "title": "내비게이션 설정",
+      "description": "표시할 내비게이션 항목을 커스터마이즈",
+      "required": "필수",
+      "resetToDefault": "기본값으로 초기화",
+      "saveSuccess": "설정이 저장되었습니다",
+      "saveError": "설정 저장에 실패했습니다"
+    }
   }
 }

@@ -60,6 +60,12 @@ const individualItems = [
     to: '/settings/appearance',
   },
   {
+    label: 'ナビゲーション',
+    description: '表示するナビゲーション項目をカスタマイズ',
+    icon: 'pi pi-bars',
+    to: '/settings/navigation',
+  },
+  {
     label: 'QR会員証',
     description: '会員証の表示・チェックイン履歴',
     icon: 'pi pi-id-card',

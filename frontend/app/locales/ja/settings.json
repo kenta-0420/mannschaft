@@ -30,5 +30,27 @@
   },
   "signature": {
     "clear": "クリア"
+  },
+  "nav": {
+    "calendar": "カレンダー",
+    "settings": "設定",
+    "todo": "TODO",
+    "shiftManagement": "シフト管理",
+    "timeline": "タイムライン",
+    "chat": "チャット",
+    "myShift": "マイシフト",
+    "myPage": "マイページ",
+    "qa": "Q&A",
+    "blog": "ブログ"
+  },
+  "settings": {
+    "navigation": {
+      "title": "ナビゲーション設定",
+      "description": "表示するナビゲーション項目をカスタマイズ",
+      "required": "必須",
+      "resetToDefault": "デフォルトに戻す",
+      "saveSuccess": "設定を保存しました",
+      "saveError": "設定の保存に失敗しました"
+    }
   }
 }
