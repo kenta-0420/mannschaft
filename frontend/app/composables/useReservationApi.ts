@@ -14,7 +14,13 @@ export function useReservationApi() {
 
   async function createLine(
     teamId: number,
-    body: { name: string; description?: string; capacity?: number },
+    body: {
+      name: string
+      description?: string
+      displayOrder?: number
+      defaultStaffUserId?: number
+      isActive?: boolean
+    },
   ) {
     return api<{ data: unknown }>(`${base(teamId)}/reservation-lines`, { method: 'POST', body })
   }

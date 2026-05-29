@@ -49,12 +49,12 @@ onMounted(() => load())
         :key="r.id"
       >
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold">{{ r.lineName }}</h3>
-          <span :class="getStatusClass(r.status)" class="rounded px-2 py-0.5 text-xs font-medium">{{
-            r.status
+          <h3 class="text-sm font-semibold">{{ r.slot?.lineName }}</h3>
+          <span :class="getStatusClass(r.status?.status ?? '')" class="rounded px-2 py-0.5 text-xs font-medium">{{
+            r.status?.status
           }}</span>
         </div>
-        <p class="mt-1 text-xs text-surface-400">{{ r.date }} {{ r.startTime }} - {{ r.endTime }}</p>
+        <p class="mt-1 text-xs text-surface-400">{{ r.slot?.slotDate }} {{ r.slot?.startTime }} - {{ r.slot?.endTime }}</p>
       </SectionCard>
       <DashboardEmptyState v-if="reservations.length === 0" icon="pi-calendar" message="予約がありません" />
     </div>
