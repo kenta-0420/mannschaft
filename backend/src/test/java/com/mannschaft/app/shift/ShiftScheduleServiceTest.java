@@ -1,6 +1,8 @@
 package com.mannschaft.app.shift;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.shift.dto.CreateShiftScheduleRequest;
 import com.mannschaft.app.shift.dto.ShiftScheduleResponse;
@@ -35,7 +37,11 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -69,6 +75,9 @@ class ShiftScheduleServiceTest {
 
     @Mock
     private DomainEventPublisher eventPublisher;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private ShiftScheduleService shiftScheduleService;
@@ -557,7 +566,8 @@ class ShiftScheduleServiceTest {
                     .willReturn(List.of(r1, r2));
 
             // When
-            ShiftScheduleSummaryResponse response = shiftScheduleService.getScheduleSummary(SCHEDULE_ID);
+            ShiftScheduleSummaryResponse response =
+                    shiftScheduleService.getScheduleSummary(SCHEDULE_ID, USER_ID);
 
             // Then
             assertThat(response.getScheduleId()).isEqualTo(SCHEDULE_ID);
@@ -580,7 +590,7 @@ class ShiftScheduleServiceTest {
         @DisplayName("スケジュール非存在_BusinessException")
         void 非存在_BusinessException() {
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> shiftScheduleService.getScheduleSummary(SCHEDULE_ID))
+            assertThatThrownBy(() -> shiftScheduleService.getScheduleSummary(SCHEDULE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class);
         }
 
@@ -597,10 +607,54 @@ class ShiftScheduleServiceTest {
             given(positionRepository.findByTeamIdOrderByDisplayOrderAsc(TEAM_ID))
                     .willReturn(List.of());
 
-            ShiftScheduleSummaryResponse response = shiftScheduleService.getScheduleSummary(SCHEDULE_ID);
+            ShiftScheduleSummaryResponse response =
+                    shiftScheduleService.getScheduleSummary(SCHEDULE_ID, USER_ID);
 
             assertThat(response.getScheduleId()).isEqualTo(SCHEDULE_ID);
             assertThat(response.getSummaryByDate()).isEmpty();
+        }
+
+        // ========================================
+        // per-scope 認可（Track2 第二陣 / 2026-05-29）
+        // ========================================
+
+        @Test
+        @DisplayName("非権限者_COMMON_002")
+        void 非権限者_COMMON_002() {
+            ShiftScheduleEntity schedule = createScheduleEntity();
+            ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            // 当該チームの ADMIN/DEPUTY_ADMIN でない → checkAdminOrAbove が COMMON_002 を投げる
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+
+            assertThatThrownBy(() -> shiftScheduleService.getScheduleSummary(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("SYSTEM_ADMIN_短絡で通過")
+        void SYSTEM_ADMIN_短絡で通過() {
+            ShiftScheduleEntity schedule = createScheduleEntity();
+            ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
+            given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
+                    .willReturn(List.of());
+            given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
+                    .willReturn(List.of());
+            given(positionRepository.findByTeamIdOrderByDisplayOrderAsc(TEAM_ID))
+                    .willReturn(List.of());
+
+            ShiftScheduleSummaryResponse response =
+                    shiftScheduleService.getScheduleSummary(SCHEDULE_ID, USER_ID);
+
+            assertThat(response.getScheduleId()).isEqualTo(SCHEDULE_ID);
+            // SYSTEM_ADMIN は team ADMIN チェックを経由しない
+            verify(accessControlService, never()).checkAdminOrAbove(anyLong(), anyLong(), anyString());
         }
     }
 }

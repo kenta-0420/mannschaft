@@ -16,7 +16,10 @@ import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
+import com.mannschaft.app.chat.dto.UpdateInquiryChannelRequest;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.dashboard.FolderItemType;
 import com.mannschaft.app.dashboard.repository.ChatContactFolderItemRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -36,6 +39,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -73,6 +78,12 @@ class ChatChannelServiceTest {
 
     @Mock
     private ChatChannelEventPublisher eventPublisher;
+
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher applicationEventPublisher;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private ChatChannelService chatChannelService;
@@ -660,6 +671,71 @@ class ChatChannelServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.CHANNEL_ACCESS_DENIED));
+        }
+    }
+
+    // ========================================
+    // updateInquiryChannel per-scope 認可（Track2 第二陣 / 2026-05-29）
+    // ========================================
+    @Nested
+    @DisplayName("updateInquiryChannel per-scope 認可")
+    class UpdateInquiryChannelAuthz {
+
+        private UpdateInquiryChannelRequest buildInquiryRequest(boolean isInquiry) {
+            UpdateInquiryChannelRequest req = new UpdateInquiryChannelRequest();
+            org.springframework.test.util.ReflectionTestUtils.setField(req, "isInquiryChannel", isInquiry);
+            return req;
+        }
+
+        @Test
+        @DisplayName("非権限者（当該チームの ADMIN でない）_COMMON_002 で遮断")
+        void 非権限者_COMMON_002() {
+            ChatChannelEntity channel = createChannel();
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channel));
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+
+            assertThatThrownBy(() ->
+                    chatChannelService.updateInquiryChannel(CHANNEL_ID, buildInquiryRequest(true), USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            // 認可で弾かれるため保存は発生しない
+            verify(channelRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("当該チーム ADMIN_設定更新が通過する")
+        void チームADMIN_通過() {
+            ChatChannelEntity channel = createChannel();
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channel));
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            // checkAdminOrAbove は void no-op（= 認可成功）
+            given(channelRepository.findByTeamIdAndIsInquiryChannelTrue(TEAM_ID)).willReturn(Optional.empty());
+            given(channelRepository.save(any(ChatChannelEntity.class))).willReturn(channel);
+            given(chatMapper.toChannelResponse(channel)).willReturn(ChannelResponse.builder().build());
+
+            chatChannelService.updateInquiryChannel(CHANNEL_ID, buildInquiryRequest(true), USER_ID);
+
+            verify(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            verify(channelRepository).save(channel);
+        }
+
+        @Test
+        @DisplayName("SYSTEM_ADMIN_短絡でチーム ADMIN チェックを経ずに通過")
+        void SYSTEM_ADMIN_短絡で通過() {
+            ChatChannelEntity channel = createChannel();
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channel));
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
+            given(channelRepository.findByTeamIdAndIsInquiryChannelTrue(TEAM_ID)).willReturn(Optional.empty());
+            given(channelRepository.save(any(ChatChannelEntity.class))).willReturn(channel);
+            given(chatMapper.toChannelResponse(channel)).willReturn(ChannelResponse.builder().build());
+
+            chatChannelService.updateInquiryChannel(CHANNEL_ID, buildInquiryRequest(true), USER_ID);
+
+            verify(accessControlService, never()).checkAdminOrAbove(anyLong(), anyLong(), anyString());
+            verify(channelRepository).save(channel);
         }
     }
 }

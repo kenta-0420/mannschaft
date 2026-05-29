@@ -137,7 +137,8 @@ public class ShiftScheduleController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ShiftScheduleSummaryResponse>> getScheduleSummary(
             @PathVariable Long scheduleId) {
-        ShiftScheduleSummaryResponse response = scheduleService.getScheduleSummary(scheduleId);
+        ShiftScheduleSummaryResponse response =
+                scheduleService.getScheduleSummary(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
