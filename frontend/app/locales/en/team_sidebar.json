@@ -34,7 +34,8 @@
       "files": "Files",
       "analytics": "Analytics",
       "audit_logs": "Audit Logs",
-      "settings": "Settings"
+      "settings": "Settings",
+      "faqSettings": "FAQ Settings"
     }
   }
 }

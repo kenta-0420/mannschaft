@@ -55,6 +55,7 @@
     "webhooks": "Webhook",
     "settingsModules": "기능 설정",
     "notificationCredits": "알림 크레딧",
-    "todoStatusLabels": "TODO 레이블"
+    "todoStatusLabels": "TODO 레이블",
+    "faqSettings": "FAQ設定"
   }
 }

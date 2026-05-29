@@ -34,7 +34,8 @@
       "files": "Archivos",
       "analytics": "Análisis",
       "audit_logs": "Registros de auditoría",
-      "settings": "Configuración"
+      "settings": "Configuración",
+      "faqSettings": "FAQ設定"
     }
   }
 }

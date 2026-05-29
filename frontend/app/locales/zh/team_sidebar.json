@@ -34,7 +34,8 @@
       "files": "文件",
       "analytics": "分析",
       "audit_logs": "审计日志",
-      "settings": "设置"
+      "settings": "设置",
+      "faqSettings": "FAQ設定"
     }
   }
 }
