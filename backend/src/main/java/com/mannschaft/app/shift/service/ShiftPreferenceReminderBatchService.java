@@ -3,6 +3,7 @@ package com.mannschaft.app.shift.service;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -48,6 +49,7 @@ public class ShiftPreferenceReminderBatchService {
     private final TeamShiftSettingsRepository teamShiftSettingsRepository;
     private final AuditLogService auditLogService;
     private final StringRedisTemplate redisTemplate;
+    private final AccessControlService accessControlService;
 
     /**
      * 手動リマインド二重起動防止用 Valkey ロックの設定値。
@@ -182,12 +184,14 @@ public class ShiftPreferenceReminderBatchService {
      * 手動 API は別ロックとして競合しない（業務的にも cron と手動は別文脈）。</p>
      *
      * @throws BusinessException スケジュールが存在しない場合 ({@link ShiftErrorCode#SHIFT_SCHEDULE_NOT_FOUND}) /
+     *                           当該チームの ADMIN/DEPUTY_ADMIN でも SYSTEM_ADMIN でもない場合（COMMON_002）/
      *                           COLLECTING 以外の場合 ({@link ShiftErrorCode#INVALID_SCHEDULE_STATUS}) /
      *                           15 秒以内に同一 scheduleId への連打があった場合 ({@link ShiftErrorCode#MANUAL_REMINDER_THROTTLED})
      */
     @Transactional
     public ManualRemindResponse triggerManualReminder(Long scheduleId, Long userId) {
         // Valkey ロック取得（SET NX EX）。失敗時は連打とみなして 429 相当で短絡。
+        // 連打防止のため認可より先にロックを取得する（throttle-first 維持）。
         String lockKey = MANUAL_REMINDER_LOCK_KEY_PREFIX + scheduleId;
         Boolean acquired = redisTemplate.opsForValue().setIfAbsent(
                 lockKey,
@@ -200,6 +204,14 @@ public class ShiftPreferenceReminderBatchService {
 
         ShiftScheduleEntity schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+
+        // per-scope 認可（Track2 第二陣 / 2026-05-29）:
+        // コントローラーの @PreAuthorize("hasRole('ADMIN')") は @EnableMethodSecurity 未有効ゆえ
+        // 実機では効かないため、ここで「当該シフトが属するチームの ADMIN/DEPUTY_ADMIN、
+        // または SYSTEM_ADMIN」を強制する。
+        if (!accessControlService.isSystemAdmin(userId)) {
+            accessControlService.checkAdminOrAbove(userId, schedule.getTeamId(), "TEAM");
+        }
 
         if (schedule.getStatus() != ShiftScheduleStatus.COLLECTING) {
             throw new BusinessException(ShiftErrorCode.INVALID_SCHEDULE_STATUS);

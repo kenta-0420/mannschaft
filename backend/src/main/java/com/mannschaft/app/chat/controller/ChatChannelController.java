@@ -303,7 +303,8 @@ public class ChatChannelController {
     public ResponseEntity<ApiResponse<ChannelResponse>> updateInquiryChannel(
             @PathVariable Long channelId,
             @Valid @RequestBody UpdateInquiryChannelRequest request) {
-        ChannelResponse response = channelService.updateInquiryChannel(channelId, request);
+        ChannelResponse response = channelService.updateInquiryChannel(
+                channelId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

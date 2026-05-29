@@ -18,6 +18,7 @@ import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.dashboard.FolderItemType;
 import com.mannschaft.app.dashboard.repository.ChatContactFolderItemRepository;
@@ -51,6 +52,7 @@ public class ChatChannelService {
     private final ChatContactFolderItemRepository chatContactFolderItemRepository;
     private final ChatChannelEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final AccessControlService accessControlService;
 
     /**
      * ユーザーが参加しているチャンネル一覧を取得する。
@@ -502,13 +504,26 @@ public class ChatChannelService {
      *   <li>{@code is_inquiry_channel = TRUE} にする場合、同チームに既に別の問い合わせチャンネルがあれば 409 Conflict</li>
      * </ul>
      *
+     * <p><b>認可の真の強制点（Track2 第二陣 / 2026-05-29）</b>: コントローラーの
+     * {@code @PreAuthorize("hasRole('ADMIN')")} は {@code @EnableMethodSecurity} 未有効ゆえ
+     * 実機では効かないため、本メソッド内で per-scope 認可（当該チャンネルが属するチームの
+     * ADMIN/DEPUTY_ADMIN、または SYSTEM_ADMIN）を強制する。
+     * circulation ドメインの {@code CirculationService#checkScopeAdminAccess}（#1183）と同一の方針。</p>
+     *
      * @param channelId チャンネルID
      * @param request   更新リクエスト
+     * @param userId    操作ユーザー ID（認可チェック用）
      * @return 更新後のチャンネルレスポンス
+     * @throws BusinessException 当該チームの ADMIN/DEPUTY_ADMIN でも SYSTEM_ADMIN でもない場合（COMMON_002）
      */
     @Transactional
-    public ChannelResponse updateInquiryChannel(Long channelId, UpdateInquiryChannelRequest request) {
+    public ChannelResponse updateInquiryChannel(Long channelId, UpdateInquiryChannelRequest request, Long userId) {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
+
+        // per-scope 認可: SYSTEM_ADMIN 短絡 → そのチャンネルのチーム ADMIN/DEPUTY_ADMIN 必須。
+        if (!accessControlService.isSystemAdmin(userId)) {
+            accessControlService.checkAdminOrAbove(userId, channel.getTeamId(), "TEAM");
+        }
 
         // TEAM_PUBLIC / TEAM_PRIVATE チャンネルのみ設定可能
         if (channel.getChannelType() != ChannelType.TEAM_PUBLIC

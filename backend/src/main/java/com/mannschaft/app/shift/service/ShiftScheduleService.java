@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.shift.ShiftAssignmentStatus;
@@ -52,6 +53,7 @@ public class ShiftScheduleService {
     private final ShiftPositionRepository positionRepository;
     private final ShiftMapper shiftMapper;
     private final DomainEventPublisher eventPublisher;
+    private final AccessControlService accessControlService;
 
     /** 循環依存を避けるため @Lazy で注入する */
     @Lazy
@@ -235,15 +237,20 @@ public class ShiftScheduleService {
      * <p>管理者のシフト調整画面の概観表示で使用する。スロット・確定アサイン・希望提出を
      * それぞれ集計し、未充足の箇所を一望できるマトリクスとして返す。</p>
      *
-     * <p>認可は Controller 側で {@code @PreAuthorize("hasRole('ADMIN')")} を付与しているため、
-     * 本メソッドでは追加チェックを行わない（既存パターン踏襲）。</p>
+     * <p><b>認可の真の強制点（Track2 第二陣 / 2026-05-29）</b>: コントローラーの
+     * {@code @PreAuthorize("hasRole('ADMIN')")} は {@code @EnableMethodSecurity} 未有効のため
+     * 実機では効かず、かつ JWT には {@code MEMBER} しか乗らないため per-scope 認可にならない。
+     * 本メソッド内の {@link #checkScheduleAdminAccess} が実際の per-scope 認可
+     * （当該シフトが属するチームの ADMIN/DEPUTY_ADMIN、または SYSTEM_ADMIN）を強制する。</p>
      *
-     * @param id スケジュール ID
+     * @param id     スケジュール ID
+     * @param userId 操作ユーザー ID（認可チェック用）
      * @return 日付別・ポジション別の充足状況サマリー
-     * @throws BusinessException スケジュールが存在しない場合
+     * @throws BusinessException スケジュールが存在しない場合 / 権限がない場合（COMMON_002）
      */
-    public ShiftScheduleSummaryResponse getScheduleSummary(Long id) {
+    public ShiftScheduleSummaryResponse getScheduleSummary(Long id, Long userId) {
         ShiftScheduleEntity schedule = findScheduleOrThrow(id);
+        checkScheduleAdminAccess(schedule, userId);
 
         // 1) スロット一覧（日付・開始時刻昇順）を取得
         List<ShiftSlotEntity> slots = slotRepository
@@ -346,6 +353,24 @@ public class ShiftScheduleService {
     ShiftScheduleEntity findScheduleOrThrow(Long id) {
         return scheduleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+    }
+
+    /**
+     * シフトスケジュールに対する管理操作の per-scope 認可を強制する。
+     *
+     * <p>SYSTEM_ADMIN は短絡的に許可する。それ以外は、当該スケジュールが属するチームの
+     * ADMIN/DEPUTY_ADMIN でなければ {@code COMMON_002}（403）をスローする。
+     * circulation ドメインの {@code CirculationService#checkScopeAdminAccess}（#1183）と同一の方針。</p>
+     *
+     * @param schedule 対象スケジュール
+     * @param userId   操作ユーザー ID
+     * @throws BusinessException 権限がない場合（COMMON_002）
+     */
+    void checkScheduleAdminAccess(ShiftScheduleEntity schedule, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        accessControlService.checkAdminOrAbove(userId, schedule.getTeamId(), "TEAM");
     }
 
     /**
