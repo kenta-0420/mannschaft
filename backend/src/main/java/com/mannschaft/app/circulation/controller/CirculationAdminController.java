@@ -52,6 +52,15 @@ import org.springframework.web.bind.annotation.RestController;
  * 現状は宣言だけ済ませた状態であり、{@code .anyRequest().permitAll()} の暫定フォールバック下では
  * フィルターチェーン認可が走らない。F09.18 Phase 18-d で {@code @EnableMethodSecurity} を
  * 付与し、本クラスを含むメソッドレベル認可が一斉発火する設計とする（#829 と同じパターン）。</p>
+ *
+ * <p><b>真の認可強制点（2026-05-29 fixup）:</b>
+ * 上記の通り {@code @PreAuthorize} は実機で効かず、かつ JWT には {@code MEMBER} しか乗らないため
+ * {@code hasRole('ADMIN')} は per-scope（その team / org の管理者か）の判定にならない。
+ * そこで本コントローラーの 5 エンドポイントが収束する {@link CirculationService} の各メソッド
+ * （{@code forceCompleteDocument} / {@code forceCompleteBatch} / {@code remindDocument} /
+ * {@code duplicateDocument} / {@code getDocumentStatus}）の処理本体前で、対象文書のスコープに対する
+ * per-scope 認可（{@code AccessControlService} による ADMIN/DEPUTY_ADMIN 必須、SYSTEM_ADMIN は全許可）を
+ * 実施する。scopeId は文書エンティティ由来で解決するため、別スコープの文書を操作する IDOR を防ぐ。</p>
  */
 @RestController
 @RequestMapping("/api/v1/circulation-documents")
@@ -126,7 +135,8 @@ public class CirculationAdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<DocumentStatusResponse>> getStatus(
             @PathVariable Long documentId) {
-        DocumentStatusResponse response = circulationService.getDocumentStatus(documentId);
+        DocumentStatusResponse response = circulationService.getDocumentStatus(
+                documentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }
