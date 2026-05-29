@@ -1,6 +1,8 @@
 package com.mannschaft.app.faq.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.faq.FaqCategory;
 import com.mannschaft.app.faq.FixedFaqQuestion;
 import com.mannschaft.app.faq.ScopeType;
@@ -31,8 +33,23 @@ import java.util.UUID;
  * <p>固定質問は (scope, questionKey) で UPSERT、自由質問は差分適用する。
  * 論理削除（deletedAt）を用い、物理削除はしない。</p>
  *
- * <p><strong>権限チェック:</strong> Controller の {@code @PreAuthorize} に委ねる。
- * 本サービスでは対象スコープ（チーム / 組織）の存在確認のみ実施する。</p>
+ * <p><strong>権限チェック（per-scope 認可の真の強制点）:</strong>
+ * 本アプリは {@code @EnableMethodSecurity} が未有効のため、Controller の
+ * {@code @PreAuthorize("hasRole('ADMIN') ...")} は実機では強制力を持たない（将来の
+ * method-security 有効化に備えた宣言・防御多重に留まる）。さらに JWT には {@code MEMBER}
+ * しか乗らず、ADMIN/DEPUTY_ADMIN は {@code user_roles} にスコープ別保持されるため
+ * {@code hasRole} では per-scope（その team / org の管理者か）の判定にならない。</p>
+ *
+ * <p>そこで本サービスの {@code getEditorPayload} / {@code save} の双方で、処理本体の前に
+ * {@link AccessControlService#checkAdminOrAbove(Long, Long, String)} による per-scope 認可を
+ * 実施し、**他団体の FAQ 編集・閲覧を遮断する**。SYSTEM_ADMIN は全スコープ許可。
+ * 認可の置き場所を Service 層に集中させているのは、4 つの Controller 入口
+ * （team/org × GET/PUT）すべてが本サービスの 2 メソッドへ収束するため、ここ 1 箇所で
+ * 確実かつ重複なく効かせられるからである（手本の TeamBudgetConfigController /
+ * OrganizationAdMessagingCampaignTransitionController は Controller 層に置くが、FAQ は
+ * 入口が複数・サービスが choke point となる構造ゆえ Service 集中が馴染む）。</p>
+ *
+ * <p>本サービスでは加えて対象スコープ（チーム / 組織）の存在確認も実施する（IDOR 対策）。</p>
  *
  * <p><strong>クロスドメイン参照:</strong> faq → team / organization の存在確認は
  * クロスドメイン参照（CLAUDE.md 原則5）。読み取りのみで faq ドメイン内の
@@ -51,6 +68,7 @@ public class FaqAdminService {
     // TODO: faq → organization のクロスドメイン参照（存在確認・カテゴリ解決のみ）。将来はイベント駆動化候補。
     private final OrganizationRepository organizationRepository;
     private final FaqCategoryResolver faqCategoryResolver;
+    private final AccessControlService accessControlService;
 
     /**
      * 指定スコープの FAQ 編集画面用ペイロードを取得する。
@@ -65,6 +83,8 @@ public class FaqAdminService {
      */
     @Transactional(readOnly = true)
     public FaqEditorResponse getEditorPayload(ScopeType scopeType, Long scopeId) {
+        // per-scope 認可（編集画面の取得も管理者限定）。SYSTEM_ADMIN は全スコープ許可。
+        checkScopeAdminAccess(scopeType, scopeId);
         FaqCategory category = resolveCategory(scopeType, scopeId);
 
         List<FaqEntity> existing =
@@ -126,6 +146,8 @@ public class FaqAdminService {
      */
     @Transactional
     public void save(ScopeType scopeType, Long scopeId, SaveFaqRequest req, Long operatorId) {
+        // per-scope 認可（保存は当該 team / org の管理者のみ）。SYSTEM_ADMIN は全スコープ許可。
+        checkScopeAdminAccess(scopeType, scopeId);
         FaqCategory category = resolveCategory(scopeType, scopeId);
         validate(req, category);
 
@@ -296,6 +318,28 @@ public class FaqAdminService {
                 }
             }
         }
+    }
+
+    /**
+     * 対象スコープ（チーム / 組織）に対する per-scope 認可を実施する。
+     *
+     * <p>SYSTEM_ADMIN は全スコープ許可。それ以外は当該スコープの ADMIN / DEPUTY_ADMIN のみ許可し、
+     * 違反時は {@link AccessControlService#checkAdminOrAbove} が {@code COMMON_002}（403）を投げる。
+     * これにより、別の team / org の管理者が他団体の FAQ を編集・閲覧することを遮断する。</p>
+     *
+     * <p>{@code AccessControlService} が期待する scopeType 文字列は {@code "TEAM"} / {@code "ORGANIZATION"}
+     * であり、{@link ScopeType#name()}（{@code TEAM} / {@code ORGANIZATION}）がそのまま一致する。</p>
+     *
+     * @param scopeType スコープ種別
+     * @param scopeId   チーム / 組織 ID
+     * @throws BusinessException 当該スコープの管理者でない場合（COMMON_002、403）
+     */
+    private void checkScopeAdminAccess(ScopeType scopeType, Long scopeId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType.name());
     }
 
     /**

@@ -1,6 +1,9 @@
 package com.mannschaft.app.faq.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.faq.FaqCategory;
 import com.mannschaft.app.faq.FixedFaqQuestion;
 import com.mannschaft.app.faq.ScopeType;
@@ -12,14 +15,17 @@ import com.mannschaft.app.faq.repository.FaqRepository;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 import java.util.Optional;
@@ -51,16 +57,31 @@ class FaqAdminServiceTest {
     private TeamRepository teamRepository;
     @Mock
     private OrganizationRepository organizationRepository;
-    // 実 Resolver を使う（純粋関数のためモック不要）。@InjectMocks には実インスタンスを注入する。
+    @Mock
+    private AccessControlService accessControlService;
+    // 実 Resolver を使う（純粋関数のためモック不要）。手動で実インスタンスを注入する。
     private final FaqCategoryResolver faqCategoryResolver = new FaqCategoryResolver();
 
     private FaqAdminService service;
 
     private static final Long TEAM_ID = 1L;
+    private static final Long CURRENT_USER_ID = 100L;
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
-        service = new FaqAdminService(faqRepository, teamRepository, organizationRepository, faqCategoryResolver);
+        service = new FaqAdminService(
+                faqRepository, teamRepository, organizationRepository, faqCategoryResolver, accessControlService);
+        // SecurityUtils.getCurrentUserId() が参照する SecurityContext に認証済みユーザーを仕込む。
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        String.valueOf(CURRENT_USER_ID), null, AuthorityUtils.NO_AUTHORITIES));
+        // 既定では per-scope 認可を通す（既存 12 件の正常系を維持）。
+        lenient().when(accessControlService.isSystemAdmin(CURRENT_USER_ID)).thenReturn(false);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     /**
@@ -307,6 +328,77 @@ class FaqAdminServiceTest {
             service.save(ScopeType.TEAM, TEAM_ID, req, 100L);
 
             verify(faqRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("per-scope 認可（AccessControlService）")
+    class ScopeAuthorization {
+
+        @Test
+        @DisplayName("異常系: 非管理者は getEditorPayload で COMMON_002（403相当）")
+        void 非管理者は取得で403() {
+            // checkAdminOrAbove が COMMON_002 を投げるよう仕込む（非管理者）
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService)
+                    .checkAdminOrAbove(CURRENT_USER_ID, TEAM_ID, ScopeType.TEAM.name());
+
+            assertThatThrownBy(() -> service.getEditorPayload(ScopeType.TEAM, TEAM_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+
+            // 認可で弾かれるため、本体処理（スコープ解決のための teamRepository 参照）には到達しない
+            verify(teamRepository, never()).findById(any());
+        }
+
+        @Test
+        @DisplayName("異常系: 非管理者は save で COMMON_002（403相当）")
+        void 非管理者は保存で403() {
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService)
+                    .checkAdminOrAbove(CURRENT_USER_ID, TEAM_ID, ScopeType.TEAM.name());
+
+            SaveFaqRequest req = new SaveFaqRequest();
+            req.getFixedAnswers().add(new SaveFaqRequest.FixedAnswer(
+                    FixedFaqQuestion.GENERAL_ACTIVITY.name(), "回答"));
+
+            assertThatThrownBy(() -> service.save(ScopeType.TEAM, TEAM_ID, req, CURRENT_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+
+            // 認可で弾かれるため、永続化（save）には到達しない
+            verify(faqRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("正常系: 当該スコープの管理者は getEditorPayload が通る")
+        void 管理者は取得が通る() {
+            // checkAdminOrAbove は no-op（既定）= 管理者として通過
+            givenTeamExists(null);
+            given(faqRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNullOrderByDisplayOrderAsc(
+                    ScopeType.TEAM, TEAM_ID)).willReturn(List.of());
+
+            FaqEditorResponse res = service.getEditorPayload(ScopeType.TEAM, TEAM_ID);
+
+            assertThat(res.fixedQuestions()).hasSize(6);
+            verify(accessControlService).checkAdminOrAbove(CURRENT_USER_ID, TEAM_ID, ScopeType.TEAM.name());
+        }
+
+        @Test
+        @DisplayName("正常系: SYSTEM_ADMIN は checkAdminOrAbove を経ず全スコープで通る")
+        void システム管理者は短絡で通る() {
+            given(accessControlService.isSystemAdmin(CURRENT_USER_ID)).willReturn(true);
+            givenTeamExists(null);
+            given(faqRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNullOrderByDisplayOrderAsc(
+                    ScopeType.TEAM, TEAM_ID)).willReturn(List.of());
+
+            FaqEditorResponse res = service.getEditorPayload(ScopeType.TEAM, TEAM_ID);
+
+            assertThat(res.fixedQuestions()).hasSize(6);
+            // SYSTEM_ADMIN は短絡許可のため checkAdminOrAbove は呼ばれない
+            verify(accessControlService, never()).checkAdminOrAbove(any(), any(), any());
         }
     }
 }

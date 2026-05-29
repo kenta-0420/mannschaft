@@ -23,8 +23,13 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>編集画面用の取得（固定6問 + 自由質問）と一括 upsert（固定 UPSERT・自由差分適用）を提供する。
  * 公開（permitAll）の取得 API は別 Controller（足軽C 担当）で実装する。</p>
  *
- * <p><strong>認可:</strong> F19.1 {@code AdminPublicSettingsController} の方式を踏襲し、
- * {@code @PreAuthorize("hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')")} を付与する。
+ * <p><strong>認可（真の強制点は Service 層）:</strong>
+ * 各メソッドの {@code @PreAuthorize("hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')")} は
+ * 本アプリで {@code @EnableMethodSecurity} が未有効のため実機では効かず、かつ JWT に ADMIN が
+ * 乗らない（user_roles にスコープ別保持）ため per-scope 認可にもならない。よって**宣言・防御多重**に留める。
+ * **真の per-scope 認可は {@link FaqAdminService} 内で
+ * {@code AccessControlService.checkAdminOrAbove(userId, scopeId, scopeType)}（SYSTEM_ADMIN は短絡許可）
+ * として強制**しており、他団体の管理者による他団体 FAQ の編集・閲覧を遮断する。
  * 操作ユーザー ID は {@link SecurityUtils#getCurrentUserId()} で取得する。</p>
  *
  * <p>設計書: docs/features/F21.1_geo_optimization.md §5.5.6</p>
