@@ -14,8 +14,10 @@ import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
+import com.mannschaft.app.village.service.VillageBulletinAccessService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -70,8 +72,14 @@ class BulletinThreadServiceTest {
     @Mock
     private PostingIdentityService postingIdentityService;
 
+    @Mock
+    private VillageBulletinAccessService villageBulletinAccessService;
+
     @InjectMocks
     private BulletinThreadService bulletinThreadService;
+
+    private static final UUID VILLAGE_ID = UUID.fromString("00000000-0000-0000-0000-0000000000aa");
+    private static final UUID OTHER_VILLAGE_ID = UUID.fromString("00000000-0000-0000-0000-0000000000bb");
 
     private static final Long THREAD_ID = 100L;
     private static final Long SCOPE_ID = 1L;
@@ -809,6 +817,160 @@ class BulletinThreadServiceTest {
 
             assertThat(result.getContent()).hasSize(1);
             verify(archiveFolderService).validateFolderInScope(SCOPE_TYPE, SCOPE_ID, folderId);
+        }
+    }
+
+    // ========================================================================
+    // F17.1 村掲示板グローバル方式 — 村スレッド一覧・詳細（読取経路 + 可視性認可）
+    // ========================================================================
+
+    private BulletinThreadEntity createVillageThread() {
+        return BulletinThreadEntity.builder()
+                .categoryId(CATEGORY_ID)
+                .scopeType(ScopeType.VILLAGE)
+                .scopeId(0L)
+                .scopeVillageId(VILLAGE_ID)
+                .authorId(USER_ID)
+                .title("村のスレッド")
+                .body("村の本文")
+                .priority(Priority.INFO)
+                .readTrackingMode(ReadTrackingMode.COUNT_ONLY)
+                .build();
+    }
+
+    @Nested
+    @DisplayName("listVillageThreads（村スレッド一覧）")
+    class ListVillageThreads {
+
+        @Test
+        @DisplayName("村スレッド一覧_カテゴリ未指定_可視性認可してピン優先一覧")
+        void 村一覧_カテゴリ未指定() {
+            BulletinThreadEntity entity = createVillageThread();
+            ThreadResponse response = createThreadResponse();
+            Page<BulletinThreadEntity> page = new PageImpl<>(List.of(entity), PageRequest.of(0, 20), 1);
+            given(threadRepository.findByScopeVillageIdOrderByIsPinnedDescUpdatedAtDesc(
+                    VILLAGE_ID, PageRequest.of(0, 20))).willReturn(page);
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            Page<ThreadResponse> result = bulletinThreadService.listVillageThreads(
+                    VILLAGE_ID, null, USER_ID, PageRequest.of(0, 20));
+
+            assertThat(result.getContent()).hasSize(1);
+            // 可視性認可が呼ばれること
+            verify(villageBulletinAccessService).checkVillageBulletinViewAccess(VILLAGE_ID, USER_ID);
+            // カテゴリ未指定なので全件メソッドを使う
+            verify(threadRepository).findByScopeVillageIdOrderByIsPinnedDescUpdatedAtDesc(
+                    VILLAGE_ID, PageRequest.of(0, 20));
+        }
+
+        @Test
+        @DisplayName("村スレッド一覧_カテゴリ指定_カテゴリ絞り込みクエリ")
+        void 村一覧_カテゴリ指定() {
+            BulletinThreadEntity entity = createVillageThread();
+            ThreadResponse response = createThreadResponse();
+            Page<BulletinThreadEntity> page = new PageImpl<>(List.of(entity), PageRequest.of(0, 20), 1);
+            given(threadRepository.findByScopeVillageIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
+                    VILLAGE_ID, CATEGORY_ID, PageRequest.of(0, 20))).willReturn(page);
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            Page<ThreadResponse> result = bulletinThreadService.listVillageThreads(
+                    VILLAGE_ID, CATEGORY_ID, USER_ID, PageRequest.of(0, 20));
+
+            assertThat(result.getContent()).hasSize(1);
+            verify(threadRepository).findByScopeVillageIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
+                    VILLAGE_ID, CATEGORY_ID, PageRequest.of(0, 20));
+        }
+
+        @Test
+        @DisplayName("村スレッド一覧_MEMBERS_ONLY非メンバー_403で弾かれクエリは走らない")
+        void 村一覧_認可失敗_403() {
+            doThrow(new BusinessException(VillageErrorCode.VILLAGE_BULLETIN_VIEW_FORBIDDEN))
+                    .when(villageBulletinAccessService)
+                    .checkVillageBulletinViewAccess(VILLAGE_ID, USER_ID);
+
+            assertThatThrownBy(() -> bulletinThreadService.listVillageThreads(
+                    VILLAGE_ID, null, USER_ID, PageRequest.of(0, 20)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(VillageErrorCode.VILLAGE_BULLETIN_VIEW_FORBIDDEN);
+
+            verify(threadRepository, never()).findByScopeVillageIdOrderByIsPinnedDescUpdatedAtDesc(
+                    any(), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("getVillageThread / getThreadGlobal（村スレッド詳細）")
+    class GetVillageThread {
+
+        @Test
+        @DisplayName("村スレッド詳細_所有村一致_可視性認可して200相当")
+        void 村詳細_正常() {
+            BulletinThreadEntity entity = createVillageThread();
+            ThreadResponse response = createThreadResponse();
+            given(threadRepository.findByIdAndScopeVillageId(THREAD_ID, VILLAGE_ID))
+                    .willReturn(Optional.of(entity));
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            ThreadResponse result = bulletinThreadService.getVillageThread(VILLAGE_ID, THREAD_ID, USER_ID);
+
+            assertThat(result).isNotNull();
+            verify(villageBulletinAccessService).checkVillageBulletinViewAccess(VILLAGE_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("村スレッド詳細_他村のスレッド_THREAD_NOT_FOUND（404相当）")
+        void 村詳細_他村_404() {
+            given(threadRepository.findByIdAndScopeVillageId(THREAD_ID, OTHER_VILLAGE_ID))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> bulletinThreadService.getVillageThread(OTHER_VILLAGE_ID, THREAD_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(BulletinErrorCode.THREAD_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("グローバル詳細_VILLAGEスレッド_村可視性認可経路")
+        void グローバル詳細_村スレッド() {
+            BulletinThreadEntity entity = createVillageThread();
+            ThreadResponse response = createThreadResponse();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            ThreadResponse result = bulletinThreadService.getThreadGlobal(THREAD_ID, USER_ID);
+
+            assertThat(result).isNotNull();
+            // VILLAGE は村可視性認可、所属認可（accessGuard）は呼ばれない
+            verify(villageBulletinAccessService).checkVillageBulletinViewAccess(VILLAGE_ID, USER_ID);
+            verify(accessGuard, never()).checkMembership(anyLong(), any(), anyLong());
+        }
+
+        @Test
+        @DisplayName("グローバル詳細_TEAMスレッド_所属認可経路へ委譲")
+        void グローバル詳細_チームスレッド() {
+            BulletinThreadEntity entity = createDefaultThread();
+            ThreadResponse response = createThreadResponse();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            ThreadResponse result = bulletinThreadService.getThreadGlobal(THREAD_ID, USER_ID);
+
+            assertThat(result).isNotNull();
+            // TEAM は所属認可、村可視性認可は呼ばれない
+            verify(accessGuard).checkMembership(USER_ID, ScopeType.TEAM, SCOPE_ID);
+            verify(villageBulletinAccessService, never()).checkVillageBulletinViewAccess(any(), any());
+        }
+
+        @Test
+        @DisplayName("グローバル詳細_スレッド不在_THREAD_NOT_FOUND（404相当）")
+        void グローバル詳細_不在_404() {
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> bulletinThreadService.getThreadGlobal(THREAD_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(BulletinErrorCode.THREAD_NOT_FOUND);
         }
     }
 }

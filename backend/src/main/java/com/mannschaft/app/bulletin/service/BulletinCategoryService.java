@@ -11,12 +11,14 @@ import com.mannschaft.app.bulletin.entity.BulletinCategoryEntity;
 import com.mannschaft.app.bulletin.repository.BulletinCategoryRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.village.service.VillageBulletinAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 掲示板カテゴリサービス。カテゴリのCRUDを担当する。
@@ -31,6 +33,8 @@ public class BulletinCategoryService {
     private final BulletinThreadRepository threadRepository;
     private final BulletinMapper bulletinMapper;
     private final BulletinAccessGuard accessGuard;
+    /** F17.1 村掲示板グローバル方式: 村スコープの閲覧認可（可視性ゲート）を委譲する。 */
+    private final VillageBulletinAccessService villageBulletinAccessService;
 
     /** post_min_role のデフォルト（設計書 F05.1 §3）。権限ロール体系に実在する値のみ使用する。 */
     private static final String DEFAULT_POST_MIN_ROLE = "MEMBER";
@@ -47,6 +51,23 @@ public class BulletinCategoryService {
         accessGuard.checkMembership(userId, scopeType, scopeId);
         List<BulletinCategoryEntity> categories =
                 categoryRepository.findByScopeTypeAndScopeIdOrderByDisplayOrderAsc(scopeType, scopeId);
+        return bulletinMapper.toCategoryResponseList(categories);
+    }
+
+    /**
+     * 村スコープのカテゴリ一覧を取得する（F17.1 村掲示板グローバル方式）。
+     *
+     * <p>村の {@code bulletin_visibility} に基づく閲覧認可を {@link VillageBulletinAccessService}
+     * に委譲し、許可された場合のみ {@code scope_village_id} 一致のカテゴリを表示順で返す。</p>
+     *
+     * @param villageId 村 ID（必須）
+     * @param userId    操作ユーザーID
+     * @return カテゴリレスポンスリスト
+     */
+    public List<CategoryResponse> listVillageCategories(UUID villageId, Long userId) {
+        villageBulletinAccessService.checkVillageBulletinViewAccess(villageId, userId);
+        List<BulletinCategoryEntity> categories =
+                categoryRepository.findByScopeVillageIdOrderByDisplayOrderAsc(villageId);
         return bulletinMapper.toCategoryResponseList(categories);
     }
 

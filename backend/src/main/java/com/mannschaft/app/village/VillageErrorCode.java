@@ -336,7 +336,22 @@ public enum VillageErrorCode implements ErrorCode {
 
     /** VILLAGE_080: opt-out していないのに opt-in しようとした（409、対称性）。 */
     NEWSLETTER_NOT_OPTED_OUT("VILLAGE_080",
-            "このニュースレターは配信停止されていません", Severity.WARN);
+            "このニュースレターは配信停止されていません", Severity.WARN),
+
+    // ==================================================================
+    // F17.1 村掲示板グローバル方式 — 掲示板閲覧認可（VILLAGE_081）
+    // ==================================================================
+
+    /**
+     * VILLAGE_081: MEMBERS_ONLY の村掲示板を非メンバーが閲覧しようとした（403）。
+     *
+     * <p>村本体の {@code bulletin_visibility = MEMBERS_ONLY} の場合、村メンバーまたは
+     * SYSTEM_ADMIN のみが掲示板（スレッド／カテゴリ）を閲覧できる。非メンバーのログイン済
+     * ユーザーが閲覧を試みた場合に投げる。{@code bulletin_visibility = PUBLIC} の村では
+     * ログイン済ユーザーなら誰でも閲覧可能なため本コードは発生しない。</p>
+     */
+    VILLAGE_BULLETIN_VIEW_FORBIDDEN("VILLAGE_081",
+            "この村の掲示板は村人のみが閲覧できます", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -17,6 +17,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
+import com.mannschaft.app.village.service.VillageBulletinAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -47,6 +48,8 @@ public class BulletinThreadService {
     private final BulletinArchiveFolderService archiveFolderService;
     /** F17.1 Phase 3: scope=VILLAGE 投稿の主体検証。null 安全のため Optional 注入は使わず常時 inject。 */
     private final PostingIdentityService postingIdentityService;
+    /** F17.1 村掲示板グローバル方式: 村スコープの閲覧認可（可視性ゲート）を委譲する。 */
+    private final VillageBulletinAccessService villageBulletinAccessService;
 
     /**
      * スコープのスレッド一覧をページング取得する。
@@ -92,6 +95,77 @@ public class BulletinThreadService {
     public ThreadResponse getThread(ScopeType scopeType, Long scopeId, Long threadId, Long userId) {
         accessGuard.checkMembership(userId, scopeType, scopeId);
         BulletinThreadEntity entity = findThreadOrThrow(scopeType, scopeId, threadId);
+        return bulletinMapper.toThreadResponse(entity);
+    }
+
+    /**
+     * 村スコープのスレッド一覧をページング取得する（F17.1 村掲示板グローバル方式）。
+     *
+     * <p>村の {@code bulletin_visibility} に基づく閲覧認可を {@link VillageBulletinAccessService}
+     * に委譲し、許可された場合のみ {@code scope_village_id} 一致のスレッドを
+     * ピン留め優先→更新日時降順で返す。{@code categoryId} 指定時はカテゴリで絞り込む。</p>
+     *
+     * @param villageId  村 ID（必須）
+     * @param categoryId カテゴリ ID（null = 全件）
+     * @param userId     操作ユーザーID
+     * @param pageable   ページング情報
+     * @return スレッドレスポンスのページ
+     */
+    public Page<ThreadResponse> listVillageThreads(UUID villageId, Long categoryId, Long userId, Pageable pageable) {
+        villageBulletinAccessService.checkVillageBulletinViewAccess(villageId, userId);
+        Page<BulletinThreadEntity> page;
+        if (categoryId != null) {
+            page = threadRepository.findByScopeVillageIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
+                    villageId, categoryId, pageable);
+        } else {
+            page = threadRepository.findByScopeVillageIdOrderByIsPinnedDescUpdatedAtDesc(villageId, pageable);
+        }
+        return page.map(bulletinMapper::toThreadResponse);
+    }
+
+    /**
+     * 村スコープのスレッド詳細を取得する（F17.1 村掲示板グローバル方式）。
+     *
+     * <p>{@code scope_village_id} 一致で所有確認したうえで（他村のスレッドは 404）、
+     * 村の {@code bulletin_visibility} に基づく閲覧認可を行う。</p>
+     *
+     * @param villageId 村 ID（必須）
+     * @param threadId  スレッド ID
+     * @param userId    操作ユーザーID
+     * @return スレッドレスポンス
+     * @throws BusinessException スレッドが当該村に存在しない（{@link BulletinErrorCode#THREAD_NOT_FOUND}・404）
+     */
+    public ThreadResponse getVillageThread(UUID villageId, Long threadId, Long userId) {
+        villageBulletinAccessService.checkVillageBulletinViewAccess(villageId, userId);
+        BulletinThreadEntity entity = threadRepository.findByIdAndScopeVillageId(threadId, villageId)
+                .orElseThrow(() -> new BusinessException(BulletinErrorCode.THREAD_NOT_FOUND));
+        return bulletinMapper.toThreadResponse(entity);
+    }
+
+    /**
+     * グローバル方式のスレッド詳細を取得する（F17.1 村掲示板グローバル方式 / 既存スコープ方式の双方を吸収）。
+     *
+     * <p>FE のグローバル詳細 API（{@code GET /api/v1/bulletin/threads/{threadId}}）は
+     * スコープ情報を伴わず {@code threadId} のみで叩かれるため、まず threadId でスレッドを引き、
+     * その {@code scopeType} に応じて認可経路を分岐する:</p>
+     * <ul>
+     *   <li>{@code VILLAGE}: 当該スレッドの {@code scope_village_id} で村可視性認可（PUBLIC/MEMBERS_ONLY）</li>
+     *   <li>{@code TEAM/ORGANIZATION/PERSONAL}: 既存の {@link BulletinAccessGuard#checkMembership} で所属認可</li>
+     * </ul>
+     *
+     * @param threadId スレッド ID
+     * @param userId   操作ユーザーID
+     * @return スレッドレスポンス
+     * @throws BusinessException スレッドが存在しない（{@link BulletinErrorCode#THREAD_NOT_FOUND}・404）
+     */
+    public ThreadResponse getThreadGlobal(Long threadId, Long userId) {
+        BulletinThreadEntity entity = threadRepository.findById(threadId)
+                .orElseThrow(() -> new BusinessException(BulletinErrorCode.THREAD_NOT_FOUND));
+        if (entity.getScopeType() == ScopeType.VILLAGE) {
+            villageBulletinAccessService.checkVillageBulletinViewAccess(entity.getScopeVillageId(), userId);
+        } else {
+            accessGuard.checkMembership(userId, entity.getScopeType(), entity.getScopeId());
+        }
         return bulletinMapper.toThreadResponse(entity);
     }
 

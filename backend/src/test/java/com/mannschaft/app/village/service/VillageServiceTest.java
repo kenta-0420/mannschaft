@@ -103,7 +103,7 @@ class VillageServiceTest {
             VillageCreateRequest req = new VillageCreateRequest(
                     "integral-clinic", "整骨院村", "整骨院に関わる人が集う場",
                     VillageType.OFFICIAL, VillageJoinPolicy.FREE, VillageVisibility.PUBLIC,
-                    "業種", null);
+                    "業種", null, null);
 
             VillageResponse res = service.create(req, ADMIN_USER_ID);
 
@@ -122,7 +122,7 @@ class VillageServiceTest {
             VillageCreateRequest req = new VillageCreateRequest(
                     "user-village", "ユーザー村", null,
                     VillageType.COMMUNITY, VillageJoinPolicy.FREE, VillageVisibility.PUBLIC,
-                    null, null);
+                    null, null, null);
 
             assertThatThrownBy(() -> service.create(req, REGULAR_USER_ID))
                     .isInstanceOf(BusinessException.class)
@@ -139,7 +139,7 @@ class VillageServiceTest {
             VillageCreateRequest req = new VillageCreateRequest(
                     "Bad_Slug!", "村", null,
                     VillageType.OFFICIAL, VillageJoinPolicy.FREE, VillageVisibility.PUBLIC,
-                    null, null);
+                    null, null, null);
 
             assertThatThrownBy(() -> service.create(req, ADMIN_USER_ID))
                     .isInstanceOf(BusinessException.class)
@@ -156,7 +156,7 @@ class VillageServiceTest {
             VillageCreateRequest req = new VillageCreateRequest(
                     "integral-clinic", "別の名前", null,
                     VillageType.OFFICIAL, VillageJoinPolicy.FREE, VillageVisibility.PUBLIC,
-                    null, null);
+                    null, null, null);
 
             assertThatThrownBy(() -> service.create(req, ADMIN_USER_ID))
                     .isInstanceOf(BusinessException.class)
@@ -174,7 +174,7 @@ class VillageServiceTest {
             VillageCreateRequest req = new VillageCreateRequest(
                     "integral-clinic", "整骨院村", null,
                     VillageType.OFFICIAL, VillageJoinPolicy.FREE, VillageVisibility.PUBLIC,
-                    null, null);
+                    null, null, null);
 
             assertThatThrownBy(() -> service.create(req, ADMIN_USER_ID))
                     .isInstanceOf(BusinessException.class)
@@ -193,7 +193,7 @@ class VillageServiceTest {
             VillageCreateRequest req = new VillageCreateRequest(
                     "fourth-village", "4つ目の村", null,
                     VillageType.OFFICIAL, VillageJoinPolicy.FREE, VillageVisibility.PUBLIC,
-                    null, null);
+                    null, null, null);
 
             assertThatThrownBy(() -> service.create(req, ADMIN_USER_ID))
                     .isInstanceOf(BusinessException.class)
@@ -304,7 +304,7 @@ class VillageServiceTest {
             when(villageRepository.save(any(VillageEntity.class))).thenAnswer(inv -> inv.getArgument(0));
 
             VillageUpdateRequest req = new VillageUpdateRequest(
-                    "新しい名前", null, null, null, null, null, null, null);
+                    "新しい名前", null, null, null, null, null, null, null, null);
 
             VillageResponse res = service.update(VILLAGE_ID, req, HEADMAN_USER_ID, 0L);
 
@@ -323,7 +323,7 @@ class VillageServiceTest {
                     .thenReturn(Optional.of(membership(VillageRole.VILLAGER)));
 
             VillageUpdateRequest req = new VillageUpdateRequest(
-                    "新しい名前", null, null, null, null, null, null, null);
+                    "新しい名前", null, null, null, null, null, null, null, null);
 
             assertThatThrownBy(() -> service.update(VILLAGE_ID, req, REGULAR_USER_ID, null))
                     .isInstanceOf(BusinessException.class)
@@ -343,7 +343,7 @@ class VillageServiceTest {
                     .thenReturn(Optional.of(membership(VillageRole.HEADMAN)));
 
             VillageUpdateRequest req = new VillageUpdateRequest(
-                    null, "説明変更", null, null, null, null, null, null);
+                    null, "説明変更", null, null, null, null, null, null, null);
 
             assertThatThrownBy(() -> service.update(VILLAGE_ID, req, HEADMAN_USER_ID, 99L))
                     .isInstanceOf(ObjectOptimisticLockingFailureException.class);
@@ -362,7 +362,7 @@ class VillageServiceTest {
             when(villageRepository.existsByName("既存名前")).thenReturn(true);
 
             VillageUpdateRequest req = new VillageUpdateRequest(
-                    "既存名前", null, null, null, null, null, null, null);
+                    "既存名前", null, null, null, null, null, null, null, null);
 
             assertThatThrownBy(() -> service.update(VILLAGE_ID, req, HEADMAN_USER_ID, null))
                     .isInstanceOf(BusinessException.class)
