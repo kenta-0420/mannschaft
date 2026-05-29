@@ -68,5 +68,6 @@ export const useSeoPublicPage = (options: {
     }),
   })
 
-  return { canonicalUrl }
+  // F21.1: BreadcrumbList の item に絶対 URL が必要なため baseUrl も露出する。
+  return { canonicalUrl, baseUrl: resolvedBaseUrl }
 }

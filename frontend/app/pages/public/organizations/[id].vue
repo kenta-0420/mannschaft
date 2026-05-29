@@ -115,36 +115,86 @@ const canonicalUrl = computed(
   () => `${config.public.apiBase}`.replace(/\/api\/v1$/, '') + `/public/organizations/${orgId}`,
 )
 
+// F21.1 GEO: 引用されやすい定義文。philosophy があればそれを、無ければ
+// 地理情報入りの定義文を i18n で動的生成する。meta / og / twitter / JSON-LD で共有する。
+const seoDescription = computed((): string => {
+  const philosophy = organization.value?.philosophy?.trim()
+  if (philosophy) return philosophy
+  const name = organization.value?.name ?? ''
+  const prefecture = organization.value?.prefecture ?? ''
+  const city = organization.value?.city ?? ''
+  // 地理情報が一切無い場合は名前のみの自然な定義文にフォールバックする。
+  if (!prefecture && !city) {
+    return t('public.organization.geoDescriptionNoLocation', { name })
+  }
+  return t('public.organization.geoDescription', { prefecture, city, name })
+})
+
 useSeoMeta({
   title: () => t('public.organization.title', { name: organization.value?.name ?? '' }),
-  description: () => organization.value?.philosophy ?? t('public.meta.ogDescriptionDefault'),
+  description: () => seoDescription.value,
   ogTitle: () =>
     t('public.organization.title', { name: organization.value?.name ?? '' }),
-  ogDescription: () => organization.value?.philosophy ?? t('public.meta.ogDescriptionDefault'),
+  ogDescription: () => seoDescription.value,
   ogImage: () => organization.value?.bannerUrl ?? organization.value?.iconUrl ?? '',
   ogType: 'website',
   ogUrl: () => canonicalUrl.value,
   twitterCard: 'summary_large_image',
   twitterTitle: () =>
     t('public.organization.title', { name: organization.value?.name ?? '' }),
-  twitterDescription: () =>
-    organization.value?.philosophy ?? t('public.meta.ogDescriptionDefault'),
+  twitterDescription: () => seoDescription.value,
   twitterImage: () => organization.value?.bannerUrl ?? organization.value?.iconUrl ?? '',
 })
 
-// F19.1 Phase 3: hreflang 6言語 + canonical + JSON-LD Organization スキーマ
-useSeoPublicPage({
+// F19.1 Phase 3 / F21.1: hreflang 6言語 + canonical + JSON-LD（@graph 化）
+const { baseUrl } = useSeoPublicPage({
   canonicalPath: `/public/organizations/${orgId}`,
   title: () => t('public.organization.title', { name: organization.value?.name ?? '' }),
-  description: () => organization.value?.philosophy ?? t('public.meta.ogDescriptionDefault'),
+  description: () => seoDescription.value,
   imageUrl: () => organization.value?.bannerUrl ?? organization.value?.iconUrl ?? undefined,
+  // F21.1 GEO: Organization（address=PostalAddress + sameAs + description）と
+  // BreadcrumbList を @graph 配列にまとめて注入する。undefined フィールドは
+  // JSON.stringify が自動的に省くため出力はクリーンになる。
   jsonLd: () => organization.value ? {
     '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: organization.value.name,
-    url: canonicalUrl.value,
-    logo: organization.value.iconUrl ?? undefined,
-    description: organization.value.philosophy ?? undefined,
+    '@graph': [
+      {
+        '@type': 'Organization',
+        name: organization.value.name,
+        url: canonicalUrl.value,
+        logo: organization.value.iconUrl ?? undefined,
+        description: seoDescription.value,
+        address: (organization.value.prefecture || organization.value.city) ? {
+          '@type': 'PostalAddress',
+          addressCountry: 'JP',
+          addressRegion: organization.value.prefecture ?? undefined,
+          addressLocality: organization.value.city ?? undefined,
+        } : undefined,
+        sameAs: organization.value.homepageUrl ? [organization.value.homepageUrl] : undefined,
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: t('public.breadcrumb.home'),
+            item: baseUrl.value,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: t('public.breadcrumb.discoverOrganizations'),
+            item: `${baseUrl.value}/discover/organizations`,
+          },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: organization.value.name,
+          },
+        ],
+      },
+    ],
   } : undefined,
 })
 

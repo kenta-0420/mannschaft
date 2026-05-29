@@ -66,7 +66,7 @@ test.describe('F19.1 Phase 3 公開ページ SEO タグ検証 (BE 統合環境�
     expect(href).toContain(`/public/teams/${TEAM_ID}`)
   })
 
-  test('F19.1-SEO-003: チームページに JSON-LD Organization スキーマが存在する', async ({ page }) => {
+  test('F19.1-SEO-003: チームページに JSON-LD Organization スキーマが存在する（@graph 内）', async ({ page }) => {
     await page.goto(`/public/teams/${TEAM_ID}`)
 
     const jsonLdScript = await page.$('script[type="application/ld+json"]')
@@ -75,11 +75,16 @@ test.describe('F19.1 Phase 3 公開ページ SEO タグ検証 (BE 統合環境�
     const content = await jsonLdScript?.textContent()
     const schema = JSON.parse(content ?? '{}')
     expect(schema['@context']).toBe('https://schema.org')
-    expect(schema['@type']).toBe('Organization')
-    expect(typeof schema.name).toBe('string')
+
+    // F21.1: @graph 化後は Organization は @graph 配列内に存在する
+    expect(Array.isArray(schema['@graph'])).toBe(true)
+    const graph = schema['@graph'] as Array<Record<string, unknown>>
+    const org = graph.find((node) => node['@type'] === 'Organization')
+    expect(org, 'Organization ノードが @graph に存在しない').toBeTruthy()
+    expect(typeof org?.name).toBe('string')
   })
 
-  test('F19.1-SEO-004: 組織ページに JSON-LD Organization スキーマが存在する', async ({ page }) => {
+  test('F19.1-SEO-004: 組織ページに JSON-LD Organization スキーマが存在する（@graph 内）', async ({ page }) => {
     test.skip(ORG_ID === 0, 'E2E_PUBLIC_ORG_ID 未設定のためスキップ')
 
     await page.goto(`/public/organizations/${ORG_ID}`)
@@ -90,7 +95,12 @@ test.describe('F19.1 Phase 3 公開ページ SEO タグ検証 (BE 統合環境�
     const content = await jsonLdScript?.textContent()
     const schema = JSON.parse(content ?? '{}')
     expect(schema['@context']).toBe('https://schema.org')
-    expect(schema['@type']).toBe('Organization')
+
+    // F21.1: @graph 化後は Organization は @graph 配列内に存在する
+    expect(Array.isArray(schema['@graph'])).toBe(true)
+    const graph = schema['@graph'] as Array<Record<string, unknown>>
+    const org = graph.find((node) => node['@type'] === 'Organization')
+    expect(org, 'Organization ノードが @graph に存在しない').toBeTruthy()
   })
 
   test('F19.1-SEO-005: チーム投稿詳細ページに JSON-LD Article スキーマが存在する', async ({ page }) => {
@@ -129,5 +139,72 @@ test.describe('F19.1 Phase 3 公開ページ SEO タグ検証 (BE 統合環境�
       const link = await page.$(`link[rel="alternate"][hreflang="${lang}"]`)
       expect(link, `hreflang="${lang}" が存在しない`).toBeTruthy()
     }
+  })
+
+  // ─── F21.1 GEO最適化: @graph + BreadcrumbList + PostalAddress ───
+
+  test('F21.1-GEO-001: チームページの JSON-LD に @graph があり BreadcrumbList を含む', async ({ page }) => {
+    await page.goto(`/public/teams/${TEAM_ID}`)
+
+    const jsonLdScript = await page.$('script[type="application/ld+json"]')
+    expect(jsonLdScript).toBeTruthy()
+
+    const content = await jsonLdScript?.textContent()
+    const schema = JSON.parse(content ?? '{}')
+    expect(schema['@context']).toBe('https://schema.org')
+    expect(Array.isArray(schema['@graph'])).toBe(true)
+
+    const graph = schema['@graph'] as Array<Record<string, unknown>>
+    const breadcrumb = graph.find((node) => node['@type'] === 'BreadcrumbList')
+    expect(breadcrumb, 'BreadcrumbList ノードが @graph に存在しない').toBeTruthy()
+
+    const items = breadcrumb?.itemListElement as Array<Record<string, unknown>> | undefined
+    expect(Array.isArray(items)).toBe(true)
+    expect(items?.length).toBe(3)
+    // position 1 = ホーム / position 3 = チーム名（item 無し）
+    expect(items?.[0]?.position).toBe(1)
+    expect(typeof items?.[0]?.item).toBe('string')
+    expect(items?.[2]?.position).toBe(3)
+    expect(typeof items?.[2]?.name).toBe('string')
+  })
+
+  test('F21.1-GEO-002: チームページの Organization に address(PostalAddress) が含まれる', async ({ page }) => {
+    await page.goto(`/public/teams/${TEAM_ID}`)
+
+    const jsonLdScript = await page.$('script[type="application/ld+json"]')
+    const content = await jsonLdScript?.textContent()
+    const schema = JSON.parse(content ?? '{}')
+    const graph = schema['@graph'] as Array<Record<string, unknown>>
+    const org = graph.find((node) => node['@type'] === 'Organization')
+    expect(org).toBeTruthy()
+
+    // prefecture / city を持たないテストデータでは address が省略されるためガードする。
+    const address = org?.address as Record<string, unknown> | undefined
+    test.skip(
+      address === undefined,
+      'テストチームに prefecture / city が無いため address 検証をスキップ',
+    )
+    expect(address?.['@type']).toBe('PostalAddress')
+    expect(address?.addressCountry).toBe('JP')
+  })
+
+  test('F21.1-GEO-003: 組織ページの JSON-LD に @graph があり BreadcrumbList を含む', async ({ page }) => {
+    test.skip(ORG_ID === 0, 'E2E_PUBLIC_ORG_ID 未設定のためスキップ')
+
+    await page.goto(`/public/organizations/${ORG_ID}`)
+
+    const jsonLdScript = await page.$('script[type="application/ld+json"]')
+    expect(jsonLdScript).toBeTruthy()
+
+    const content = await jsonLdScript?.textContent()
+    const schema = JSON.parse(content ?? '{}')
+    expect(Array.isArray(schema['@graph'])).toBe(true)
+
+    const graph = schema['@graph'] as Array<Record<string, unknown>>
+    const breadcrumb = graph.find((node) => node['@type'] === 'BreadcrumbList')
+    expect(breadcrumb, 'BreadcrumbList ノードが @graph に存在しない').toBeTruthy()
+
+    const items = breadcrumb?.itemListElement as Array<Record<string, unknown>> | undefined
+    expect(items?.length).toBe(3)
   })
 })
