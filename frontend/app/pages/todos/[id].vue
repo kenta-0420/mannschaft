@@ -285,10 +285,10 @@ onUnmounted(() => {
       <div class="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
         <!-- ステータスカード -->
         <div
-          class="rounded-lg border p-3 transition-colors"
+          class="rounded-lg border p-3 transition-colors bg-surface-0 dark:bg-surface-800"
           :class="editingField === 'status'
             ? 'border-primary cursor-default'
-            : 'border-surface-400 dark:border-surface-600 cursor-pointer hover:border-primary/70'"
+            : 'border-surface-200 dark:border-surface-600 cursor-pointer hover:border-primary/70'"
           @click="editingField !== 'status' && startFieldEdit('status')"
         >
           <p class="text-xs text-surface-500">{{ t('todo.field.status') }}</p>
@@ -313,10 +313,10 @@ onUnmounted(() => {
 
         <!-- 優先度カード -->
         <div
-          class="rounded-lg border p-3 transition-colors"
+          class="rounded-lg border p-3 transition-colors bg-surface-0 dark:bg-surface-800"
           :class="editingField === 'priority'
             ? 'border-primary cursor-default'
-            : 'border-surface-400 dark:border-surface-600 cursor-pointer hover:border-primary/70'"
+            : 'border-surface-200 dark:border-surface-600 cursor-pointer hover:border-primary/70'"
           @click="editingField !== 'priority' && startFieldEdit('priority')"
         >
           <p class="text-xs text-surface-500">{{ t('todo.field.priority') }}</p>
@@ -342,10 +342,10 @@ onUnmounted(() => {
 
         <!-- 開始日カード -->
         <div
-          class="rounded-lg border p-3 transition-colors"
+          class="rounded-lg border p-3 transition-colors bg-surface-0 dark:bg-surface-800"
           :class="editingField === 'startDate'
             ? 'border-primary cursor-default'
-            : 'border-surface-400 dark:border-surface-600 cursor-pointer hover:border-primary/70'"
+            : 'border-surface-200 dark:border-surface-600 cursor-pointer hover:border-primary/70'"
           @click="editingField !== 'startDate' && startFieldEdit('startDate')"
         >
           <p class="text-xs text-surface-500">{{ t('todo.field.startDate') }}</p>
@@ -363,10 +363,10 @@ onUnmounted(() => {
 
         <!-- 期限カード -->
         <div
-          class="rounded-lg border p-3 transition-colors"
+          class="rounded-lg border p-3 transition-colors bg-surface-0 dark:bg-surface-800"
           :class="editingField === 'dueDate'
             ? 'border-primary cursor-default'
-            : 'border-surface-400 dark:border-surface-600 cursor-pointer hover:border-primary/70'"
+            : 'border-surface-200 dark:border-surface-600 cursor-pointer hover:border-primary/70'"
           @click="editingField !== 'dueDate' && startFieldEdit('dueDate')"
         >
           <p class="text-xs text-surface-500">{{ t('todo.field.dueDate') }}</p>
@@ -395,10 +395,10 @@ onUnmounted(() => {
 
         <!-- 進捗率カード -->
         <div
-          class="rounded-lg border p-3 transition-colors"
+          class="rounded-lg border p-3 transition-colors bg-surface-0 dark:bg-surface-800"
           :class="editingField === 'progressRate'
             ? 'border-primary cursor-default'
-            : 'border-surface-400 dark:border-surface-600 cursor-pointer hover:border-primary/70'"
+            : 'border-surface-200 dark:border-surface-600 cursor-pointer hover:border-primary/70'"
           @click="editingField !== 'progressRate' && startFieldEdit('progressRate')"
         >
           <p class="text-xs text-surface-500">{{ t('todo.field.progressRate') }}</p>
