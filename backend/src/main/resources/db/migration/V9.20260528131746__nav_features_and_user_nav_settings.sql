@@ -1,7 +1,7 @@
 -- F20.1: ナビゲーションバーカスタマイズ & 機能管理
 
 CREATE TABLE nav_features (
-    key                   VARCHAR(50)    NOT NULL COMMENT 'ナビ項目識別キー（ケバブケース。例: shift-management）',
+    `key`                 VARCHAR(50)    NOT NULL COMMENT 'ナビ項目識別キー（ケバブケース。例: shift-management）',
     label_key             VARCHAR(100)   NOT NULL COMMENT 'フロントエンド i18n キー（例: nav.shiftManagement）',
     icon                  VARCHAR(50)    NOT NULL COMMENT 'PrimeVue アイコンクラス（例: pi pi-table）',
     path                  VARCHAR(200)   NOT NULL COMMENT 'Nuxt ルートパス（例: /shift）',
@@ -12,12 +12,12 @@ CREATE TABLE nav_features (
     mobile_visible        BOOLEAN        NOT NULL DEFAULT TRUE  COMMENT 'FALSE = PCのみ表示',
     created_at            DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at            DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
-    PRIMARY KEY (key)
+    PRIMARY KEY (`key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='ナビゲーション項目マスタ（シスアド管理）';
 
 CREATE INDEX idx_nav_features_enabled_sort ON nav_features (is_enabled, sort_order);
 
-INSERT INTO nav_features (key, label_key, icon, path, is_fixed, is_enabled, subscription_required, sort_order, mobile_visible) VALUES
+INSERT INTO nav_features (`key`, label_key, icon, path, is_fixed, is_enabled, subscription_required, sort_order, mobile_visible) VALUES
     ('calendar',         'nav.calendar',        'pi pi-calendar',        '/calendar',  TRUE,  TRUE,  FALSE,  20, TRUE),
     ('settings',         'nav.settings',        'pi pi-cog',             '/settings',  TRUE,  TRUE,  FALSE, 100, TRUE),
     ('todo',             'nav.todo',            'pi pi-check-square',    '/todos',     FALSE, TRUE,  FALSE,  30, TRUE),
