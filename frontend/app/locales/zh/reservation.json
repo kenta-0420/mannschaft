@@ -1,4 +1,4 @@
-{
+﻿{
   "emergency_closure": {
     "section": {
       "period": "休业期间",
@@ -104,108 +104,110 @@
       "REJECTED": "已拒绝"
     }
   },
-  "status": {
-    "PENDING": "待确认",
-    "CONFIRMED": "已确认",
-    "CANCELLED": "已取消",
-    "COMPLETED": "已完成",
-    "NO_SHOW": "未到场"
-  },
-  "filter": {
-    "all": "全部"
-  },
-  "page": {
-    "my_title": "我的预约",
-    "team_title": "预约管理",
-    "settings_title": "预约管理设置",
-    "settings_subtitle": "管理预约线路（员工 / 窗口）"
-  },
-  "tab": {
-    "book": "预约",
-    "list": "预约列表",
-    "line_manage": "线路管理"
-  },
-  "column": {
-    "datetime": "日期时间",
-    "line": "线路",
-    "reserver": "预约人",
-    "status": "状态",
-    "action": "操作",
-    "line_name": "线路名称",
-    "description": "说明",
-    "display_order": "显示顺序",
-    "state": "状态"
-  },
-  "field": {
-    "date": "日期",
-    "line": "线路",
-    "name": "名称",
-    "description": "说明",
-    "display_order": "显示顺序",
-    "active": "启用",
-    "line_name_required": "线路名称",
-    "note": "备注（可选）",
-    "time": "时间"
-  },
-  "placeholder": {
-    "select": "请选择",
-    "note": "菜单、症状等",
-    "line_name": "例如：负责人A",
-    "line_description": "例如：接待窗口"
-  },
-  "state": {
-    "active": "启用",
-    "inactive": "停用"
-  },
-  "slot": {
-    "available": "有空位",
-    "full": "已满"
-  },
-  "button": {
-    "add_line": "添加线路",
-    "add_line_long": "添加线路",
-    "save": "保存",
-    "cancel": "取消",
-    "reserve": "预约",
-    "cancel_reservation": "取消预约",
-    "back": "返回"
-  },
-  "dialog": {
-    "title": "确认",
-    "line_create": "创建线路",
-    "line_edit": "编辑线路",
-    "line_create_long": "添加预约线路",
-    "line_edit_long": "编辑预约线路",
-    "reserve_confirm": "预约确认",
-    "cancel_confirm": "要取消此预约吗？",
-    "line_delete_confirm": "要删除此线路吗？",
-    "line_delete_named_confirm": "要删除「{name}」吗？"
-  },
-  "message": {
-    "confirm_success": "已确认预约",
-    "reject_success": "已拒绝预约",
-    "cancel_success": "已取消预约",
-    "reserve_success": "预约完成",
-    "reserve_failed": "预约失败",
-    "line_create_success": "已创建线路",
-    "line_update_success": "已更新线路",
-    "line_delete_success": "已删除线路",
-    "line_save_failed": "保存失败",
-    "line_create_success_long": "已创建预约线路",
-    "line_update_success_long": "已更新预约线路",
-    "line_delete_success_long": "已删除预约线路",
-    "line_load_failed": "获取预约线路失败",
-    "save_failed": "保存失败",
-    "delete_failed": "删除失败",
-    "my_load_failed": "获取预约信息失败",
-    "reject_reason": "由管理员拒绝"
-  },
-  "empty": {
-    "no_reservations": "没有预约",
-    "no_my_reservations": "没有预约",
-    "no_lines": "没有预约线路",
-    "no_lines_yet": "还没有线路",
-    "no_available_slots": "当天没有空闲时段"
-  },
-  "line_manage_title": "预约线路管理"
+  "reservation": {
+    "status": {
+      "PENDING": "待确认",
+      "CONFIRMED": "已确认",
+      "CANCELLED": "已取消",
+      "COMPLETED": "已完成",
+      "NO_SHOW": "未到场"
+    },
+    "filter": {
+      "all": "全部"
+    },
+    "page": {
+      "my_title": "我的预约",
+      "team_title": "预约管理",
+      "settings_title": "预约管理设置",
+      "settings_subtitle": "管理预约线路（员工 / 窗口）"
+    },
+    "tab": {
+      "book": "预约",
+      "list": "预约列表",
+      "line_manage": "线路管理"
+    },
+    "column": {
+      "datetime": "日期时间",
+      "line": "线路",
+      "reserver": "预约人",
+      "status": "状态",
+      "action": "操作",
+      "line_name": "线路名称",
+      "description": "说明",
+      "display_order": "显示顺序",
+      "state": "状态"
+    },
+    "field": {
+      "date": "日期",
+      "line": "线路",
+      "name": "名称",
+      "description": "说明",
+      "display_order": "显示顺序",
+      "active": "启用",
+      "line_name_required": "线路名称",
+      "note": "备注（可选）",
+      "time": "时间"
+    },
+    "placeholder": {
+      "select": "请选择",
+      "note": "菜单、症状等",
+      "line_name": "例如：负责人A",
+      "line_description": "例如：接待窗口"
+    },
+    "state": {
+      "active": "启用",
+      "inactive": "停用"
+    },
+    "slot": {
+      "available": "有空位",
+      "full": "已满"
+    },
+    "button": {
+      "add_line": "添加线路",
+      "add_line_long": "添加线路",
+      "save": "保存",
+      "cancel": "取消",
+      "reserve": "预约",
+      "cancel_reservation": "取消预约",
+      "back": "返回"
+    },
+    "dialog": {
+      "title": "确认",
+      "line_create": "创建线路",
+      "line_edit": "编辑线路",
+      "line_create_long": "添加预约线路",
+      "line_edit_long": "编辑预约线路",
+      "reserve_confirm": "预约确认",
+      "cancel_confirm": "要取消此预约吗？",
+      "line_delete_confirm": "要删除此线路吗？",
+      "line_delete_named_confirm": "要删除「{name}」吗？"
+    },
+    "message": {
+      "confirm_success": "已确认预约",
+      "reject_success": "已拒绝预约",
+      "cancel_success": "已取消预约",
+      "reserve_success": "预约完成",
+      "reserve_failed": "预约失败",
+      "line_create_success": "已创建线路",
+      "line_update_success": "已更新线路",
+      "line_delete_success": "已删除线路",
+      "line_save_failed": "保存失败",
+      "line_create_success_long": "已创建预约线路",
+      "line_update_success_long": "已更新预约线路",
+      "line_delete_success_long": "已删除预约线路",
+      "line_load_failed": "获取预约线路失败",
+      "save_failed": "保存失败",
+      "delete_failed": "删除失败",
+      "my_load_failed": "获取预约信息失败",
+      "reject_reason": "由管理员拒绝"
+    },
+    "empty": {
+      "no_reservations": "没有预约",
+      "no_my_reservations": "没有预约",
+      "no_lines": "没有预约线路",
+      "no_lines_yet": "还没有线路",
+      "no_available_slots": "当天没有空闲时段"
+    },
+    "line_manage_title": "预约线路管理"
+  }
 }

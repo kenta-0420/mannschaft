@@ -1,4 +1,4 @@
-{
+﻿{
   "emergency_closure": {
     "section": {
       "period": "Período de cierre",
@@ -104,108 +104,110 @@
       "REJECTED": "Rechazado"
     }
   },
-  "status": {
-    "PENDING": "Pendiente",
-    "CONFIRMED": "Confirmado",
-    "CANCELLED": "Cancelado",
-    "COMPLETED": "Completado",
-    "NO_SHOW": "No presentado"
-  },
-  "filter": {
-    "all": "Todos"
-  },
-  "page": {
-    "my_title": "Mis reservas",
-    "team_title": "Gestión de reservas",
-    "settings_title": "Configuración de reservas",
-    "settings_subtitle": "Gestione las líneas de reserva (personal / mostradores)"
-  },
-  "tab": {
-    "book": "Reservar",
-    "list": "Reservas",
-    "line_manage": "Gestionar líneas"
-  },
-  "column": {
-    "datetime": "Fecha y hora",
-    "line": "Línea",
-    "reserver": "Reservante",
-    "status": "Estado",
-    "action": "Acciones",
-    "line_name": "Nombre de línea",
-    "description": "Descripción",
-    "display_order": "Orden",
-    "state": "Estado"
-  },
-  "field": {
-    "date": "Fecha",
-    "line": "Línea",
-    "name": "Nombre",
-    "description": "Descripción",
-    "display_order": "Orden de visualización",
-    "active": "Activo",
-    "line_name_required": "Nombre de línea",
-    "note": "Notas (opcional)",
-    "time": "Hora"
-  },
-  "placeholder": {
-    "select": "Seleccione",
-    "note": "Menú, síntomas, etc.",
-    "line_name": "ej. Personal A",
-    "line_description": "ej. Mostrador de recepción"
-  },
-  "state": {
-    "active": "Activo",
-    "inactive": "Inactivo"
-  },
-  "slot": {
-    "available": "Disponible",
-    "full": "Completo"
-  },
-  "button": {
-    "add_line": "Agregar línea",
-    "add_line_long": "Agregar línea",
-    "save": "Guardar",
-    "cancel": "Cancelar",
-    "reserve": "Reservar",
-    "cancel_reservation": "Cancelar",
-    "back": "Volver"
-  },
-  "dialog": {
-    "title": "Confirmar",
-    "line_create": "Crear línea",
-    "line_edit": "Editar línea",
-    "line_create_long": "Agregar línea de reserva",
-    "line_edit_long": "Editar línea de reserva",
-    "reserve_confirm": "Confirmar reserva",
-    "cancel_confirm": "¿Cancelar esta reserva?",
-    "line_delete_confirm": "¿Eliminar esta línea?",
-    "line_delete_named_confirm": "¿Eliminar \"{name}\"?"
-  },
-  "message": {
-    "confirm_success": "Reserva confirmada",
-    "reject_success": "Reserva rechazada",
-    "cancel_success": "Reserva cancelada",
-    "reserve_success": "Reserva completada",
-    "reserve_failed": "No se pudo realizar la reserva",
-    "line_create_success": "Línea creada",
-    "line_update_success": "Línea actualizada",
-    "line_delete_success": "Línea eliminada",
-    "line_save_failed": "No se pudo guardar",
-    "line_create_success_long": "Línea de reserva creada",
-    "line_update_success_long": "Línea de reserva actualizada",
-    "line_delete_success_long": "Línea de reserva eliminada",
-    "line_load_failed": "No se pudieron cargar las líneas de reserva",
-    "save_failed": "No se pudo guardar",
-    "delete_failed": "No se pudo eliminar",
-    "my_load_failed": "No se pudo cargar la información de reservas",
-    "reject_reason": "Rechazado por el administrador"
-  },
-  "empty": {
-    "no_reservations": "No hay reservas",
-    "no_my_reservations": "No hay reservas",
-    "no_lines": "No hay líneas de reserva",
-    "no_lines_yet": "Aún no hay líneas",
-    "no_available_slots": "No hay horarios disponibles este día"
-  },
-  "line_manage_title": "Gestión de líneas de reserva"
+  "reservation": {
+    "status": {
+      "PENDING": "Pendiente",
+      "CONFIRMED": "Confirmado",
+      "CANCELLED": "Cancelado",
+      "COMPLETED": "Completado",
+      "NO_SHOW": "No presentado"
+    },
+    "filter": {
+      "all": "Todos"
+    },
+    "page": {
+      "my_title": "Mis reservas",
+      "team_title": "Gestión de reservas",
+      "settings_title": "Configuración de reservas",
+      "settings_subtitle": "Gestione las líneas de reserva (personal / mostradores)"
+    },
+    "tab": {
+      "book": "Reservar",
+      "list": "Reservas",
+      "line_manage": "Gestionar líneas"
+    },
+    "column": {
+      "datetime": "Fecha y hora",
+      "line": "Línea",
+      "reserver": "Reservante",
+      "status": "Estado",
+      "action": "Acciones",
+      "line_name": "Nombre de línea",
+      "description": "Descripción",
+      "display_order": "Orden",
+      "state": "Estado"
+    },
+    "field": {
+      "date": "Fecha",
+      "line": "Línea",
+      "name": "Nombre",
+      "description": "Descripción",
+      "display_order": "Orden de visualización",
+      "active": "Activo",
+      "line_name_required": "Nombre de línea",
+      "note": "Notas (opcional)",
+      "time": "Hora"
+    },
+    "placeholder": {
+      "select": "Seleccione",
+      "note": "Menú, síntomas, etc.",
+      "line_name": "ej. Personal A",
+      "line_description": "ej. Mostrador de recepción"
+    },
+    "state": {
+      "active": "Activo",
+      "inactive": "Inactivo"
+    },
+    "slot": {
+      "available": "Disponible",
+      "full": "Completo"
+    },
+    "button": {
+      "add_line": "Agregar línea",
+      "add_line_long": "Agregar línea",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "reserve": "Reservar",
+      "cancel_reservation": "Cancelar",
+      "back": "Volver"
+    },
+    "dialog": {
+      "title": "Confirmar",
+      "line_create": "Crear línea",
+      "line_edit": "Editar línea",
+      "line_create_long": "Agregar línea de reserva",
+      "line_edit_long": "Editar línea de reserva",
+      "reserve_confirm": "Confirmar reserva",
+      "cancel_confirm": "¿Cancelar esta reserva?",
+      "line_delete_confirm": "¿Eliminar esta línea?",
+      "line_delete_named_confirm": "¿Eliminar \"{name}\"?"
+    },
+    "message": {
+      "confirm_success": "Reserva confirmada",
+      "reject_success": "Reserva rechazada",
+      "cancel_success": "Reserva cancelada",
+      "reserve_success": "Reserva completada",
+      "reserve_failed": "No se pudo realizar la reserva",
+      "line_create_success": "Línea creada",
+      "line_update_success": "Línea actualizada",
+      "line_delete_success": "Línea eliminada",
+      "line_save_failed": "No se pudo guardar",
+      "line_create_success_long": "Línea de reserva creada",
+      "line_update_success_long": "Línea de reserva actualizada",
+      "line_delete_success_long": "Línea de reserva eliminada",
+      "line_load_failed": "No se pudieron cargar las líneas de reserva",
+      "save_failed": "No se pudo guardar",
+      "delete_failed": "No se pudo eliminar",
+      "my_load_failed": "No se pudo cargar la información de reservas",
+      "reject_reason": "Rechazado por el administrador"
+    },
+    "empty": {
+      "no_reservations": "No hay reservas",
+      "no_my_reservations": "No hay reservas",
+      "no_lines": "No hay líneas de reserva",
+      "no_lines_yet": "Aún no hay líneas",
+      "no_available_slots": "No hay horarios disponibles este día"
+    },
+    "line_manage_title": "Gestión de líneas de reserva"
+  }
 }
