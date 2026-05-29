@@ -12,14 +12,18 @@ import com.mannschaft.app.reservation.dto.RescheduleRequest;
 import com.mannschaft.app.reservation.dto.ReservationResponse;
 import com.mannschaft.app.reservation.dto.ReservationStatsResponse;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
+import com.mannschaft.app.reservation.entity.ReservationLineEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.event.ReservationCancelledByMemberEvent;
 import com.mannschaft.app.reservation.event.ReservationCreatedEvent;
+import com.mannschaft.app.reservation.repository.ReservationLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
+import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +31,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 予約サービス。予約のCRUD・ステータス遷移・統計を担当する。
@@ -44,6 +51,8 @@ public class ReservationService {
             DateTimeFormatter.ofPattern("M月d日 HH:mm");
 
     private final ReservationRepository reservationRepository;
+    private final ReservationSlotRepository slotRepository;
+    private final ReservationLineRepository lineRepository;
     private final ReservationSlotService slotService;
     private final ReservationMapper reservationMapper;
     private final ApplicationEventPublisher eventPublisher;
@@ -64,7 +73,7 @@ public class ReservationService {
         } else {
             page = reservationRepository.findByTeamIdOrderByBookedAtDesc(teamId, pageable);
         }
-        return page.map(reservationMapper::toReservationResponse);
+        return new PageImpl<>(enrichList(page.getContent()), pageable, page.getTotalElements());
     }
 
     /**
@@ -76,7 +85,7 @@ public class ReservationService {
      */
     public ReservationResponse getReservation(Long teamId, Long reservationId) {
         ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
-        return reservationMapper.toReservationResponse(entity);
+        return enrich(entity);
     }
 
     /**
@@ -126,7 +135,7 @@ public class ReservationService {
         ));
 
         log.info("予約作成: teamId={}, reservationId={}, userId={}", teamId, saved.getId(), userId);
-        return reservationMapper.toReservationResponse(saved);
+        return enrich(saved);
     }
 
     /**
@@ -147,7 +156,7 @@ public class ReservationService {
         entity.confirm();
         ReservationEntity saved = reservationRepository.save(entity);
         log.info("予約確定: teamId={}, reservationId={}", teamId, reservationId);
-        return reservationMapper.toReservationResponse(saved);
+        return enrich(saved);
     }
 
     /**
@@ -173,7 +182,7 @@ public class ReservationService {
         slotService.decrementAndReopen(slot);
 
         log.info("予約キャンセル(管理者): teamId={}, reservationId={}", teamId, reservationId);
-        return reservationMapper.toReservationResponse(saved);
+        return enrich(saved);
     }
 
     /**
@@ -208,7 +217,7 @@ public class ReservationService {
         ));
 
         log.info("予約キャンセル(ユーザー): userId={}, reservationId={}", userId, reservationId);
-        return reservationMapper.toReservationResponse(saved);
+        return enrich(saved);
     }
 
     /**
@@ -224,7 +233,7 @@ public class ReservationService {
         entity.complete();
         ReservationEntity saved = reservationRepository.save(entity);
         log.info("予約完了: teamId={}, reservationId={}", teamId, reservationId);
-        return reservationMapper.toReservationResponse(saved);
+        return enrich(saved);
     }
 
     /**
@@ -240,7 +249,7 @@ public class ReservationService {
         entity.noShow();
         ReservationEntity saved = reservationRepository.save(entity);
         log.info("予約ノーショー: teamId={}, reservationId={}", teamId, reservationId);
-        return reservationMapper.toReservationResponse(saved);
+        return enrich(saved);
     }
 
     /**
@@ -268,7 +277,7 @@ public class ReservationService {
         slotService.incrementAndCheckFull(newSlot);
 
         log.info("予約リスケジュール: teamId={}, reservationId={}, newSlotId={}", teamId, reservationId, request.getNewSlotId());
-        return reservationMapper.toReservationResponse(saved);
+        return enrich(saved);
     }
 
     /**
@@ -285,7 +294,7 @@ public class ReservationService {
         entity.updateAdminNote(request.getNote());
         ReservationEntity saved = reservationRepository.save(entity);
         log.info("管理者メモ更新: teamId={}, reservationId={}", teamId, reservationId);
-        return reservationMapper.toReservationResponse(saved);
+        return enrich(saved);
     }
 
     /**
@@ -297,7 +306,7 @@ public class ReservationService {
     public List<ReservationResponse> listReservationsBySlot(Long slotId) {
         List<ReservationEntity> reservations =
                 reservationRepository.findByReservationSlotIdOrderByBookedAtAsc(slotId);
-        return reservationMapper.toReservationResponseList(reservations);
+        return enrichList(reservations);
     }
 
     /**
@@ -308,7 +317,7 @@ public class ReservationService {
      */
     public List<ReservationResponse> listMyReservations(Long userId) {
         List<ReservationEntity> reservations = reservationRepository.findByUserIdOrderByBookedAtDesc(userId);
-        return reservationMapper.toReservationResponseList(reservations);
+        return enrichList(reservations);
     }
 
     /**
@@ -320,7 +329,7 @@ public class ReservationService {
     public List<ReservationResponse> listUpcomingReservations(Long userId) {
         List<ReservationEntity> reservations =
                 reservationRepository.findUpcomingByUserId(userId, LocalDateTime.now());
-        return reservationMapper.toReservationResponseList(reservations);
+        return enrichList(reservations);
     }
 
     /**
@@ -346,5 +355,44 @@ public class ReservationService {
     private ReservationEntity findReservationOrThrow(Long teamId, Long reservationId) {
         return reservationRepository.findByIdAndTeamId(reservationId, teamId)
                 .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+    }
+
+    /**
+     * 予約リストにスロット・ラインのサマリを付与して変換する。
+     * スロット/ラインはバッチ取得し N+1 を回避する。
+     *
+     * @param entities 予約エンティティリスト
+     * @return スロットサマリを含む予約レスポンスリスト
+     */
+    private List<ReservationResponse> enrichList(List<ReservationEntity> entities) {
+        if (entities.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> slotIds = entities.stream()
+                .map(ReservationEntity::getReservationSlotId)
+                .collect(Collectors.toSet());
+        Set<Long> lineIds = entities.stream()
+                .map(ReservationEntity::getLineId)
+                .collect(Collectors.toSet());
+        Map<Long, ReservationSlotEntity> slots = slotRepository.findAllById(slotIds).stream()
+                .collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
+        Map<Long, ReservationLineEntity> lines = lineRepository.findAllById(lineIds).stream()
+                .collect(Collectors.toMap(ReservationLineEntity::getId, l -> l));
+        return entities.stream()
+                .map(e -> reservationMapper.toReservationResponse(
+                        e, slots.get(e.getReservationSlotId()), lines.get(e.getLineId())))
+                .toList();
+    }
+
+    /**
+     * 単一の予約にスロット・ラインのサマリを付与して変換する。
+     *
+     * @param entity 予約エンティティ
+     * @return スロットサマリを含む予約レスポンス
+     */
+    private ReservationResponse enrich(ReservationEntity entity) {
+        ReservationSlotEntity slot = slotRepository.findById(entity.getReservationSlotId()).orElse(null);
+        ReservationLineEntity line = lineRepository.findById(entity.getLineId()).orElse(null);
+        return reservationMapper.toReservationResponse(entity, slot, line);
     }
 }

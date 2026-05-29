@@ -84,11 +84,15 @@ public class TicketExpiryBatchService {
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
     @Transactional(readOnly = true)
     public void sendExpiryNotifications() {
-        LocalDateTime now = LocalDateTime.now();
+        java.time.LocalDate today = java.time.LocalDate.now();
         int[] notificationDays = {30, 7, 3, 1};
 
         for (int days : notificationDays) {
-            List<TicketBookEntity> books = bookRepository.findBooksExpiringInDays(now, days);
+            // DATEDIFF(expiresAt, now) == days と等価: 期限日が「今日 + days 日」の暦日に該当するチケットを抽出する。
+            java.time.LocalDate targetDate = today.plusDays(days);
+            LocalDateTime from = targetDate.atStartOfDay();
+            LocalDateTime to = targetDate.plusDays(1).atStartOfDay();
+            List<TicketBookEntity> books = bookRepository.findBooksExpiringBetween(from, to);
             for (TicketBookEntity book : books) {
                 notificationHelper.notify(book.getUserId(), "TICKET_EXPIRY_WARNING",
                         "チケット期限切れ予告",

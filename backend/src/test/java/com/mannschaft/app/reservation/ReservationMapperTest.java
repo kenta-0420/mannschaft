@@ -262,6 +262,70 @@ class ReservationMapperTest {
         }
 
         @Test
+        @DisplayName("正常系: スロット・ラインを付与したオーバーロードでスロットサマリが設定される")
+        void toReservationResponse_スロットライン付与_サマリ設定() {
+            // Given
+            ReservationEntity entity = ReservationEntity.builder()
+                    .reservationSlotId(10L)
+                    .lineId(20L)
+                    .teamId(30L)
+                    .userId(100L)
+                    .status(ReservationStatus.CONFIRMED)
+                    .build();
+            ReflectionTestUtils.setField(entity, "id", 60L);
+
+            ReservationSlotEntity slot = ReservationSlotEntity.builder()
+                    .teamId(30L)
+                    .title("午前の枠")
+                    .slotDate(LocalDate.of(2026, 4, 1))
+                    .startTime(LocalTime.of(10, 0))
+                    .endTime(LocalTime.of(11, 0))
+                    .build();
+            ReservationLineEntity line = ReservationLineEntity.builder()
+                    .teamId(30L)
+                    .name("カット")
+                    .build();
+
+            // When
+            ReservationResponse response = reservationMapper.toReservationResponse(entity, slot, line);
+
+            // Then
+            assertThat(response.getId()).isEqualTo(60L);
+            assertThat(response.getStatus().status()).isEqualTo("CONFIRMED");
+            assertThat(response.getSlot()).isNotNull();
+            assertThat(response.getSlot().lineName()).isEqualTo("カット");
+            assertThat(response.getSlot().title()).isEqualTo("午前の枠");
+            assertThat(response.getSlot().slotDate()).isEqualTo(LocalDate.of(2026, 4, 1));
+            assertThat(response.getSlot().startTime()).isEqualTo(LocalTime.of(10, 0));
+            assertThat(response.getSlot().endTime()).isEqualTo(LocalTime.of(11, 0));
+        }
+
+        @Test
+        @DisplayName("正常系: スロット・ラインがnullの場合サマリ各項目はnull")
+        void toReservationResponse_スロットラインnull_サマリnull() {
+            // Given
+            ReservationEntity entity = ReservationEntity.builder()
+                    .reservationSlotId(10L)
+                    .lineId(20L)
+                    .teamId(30L)
+                    .userId(100L)
+                    .status(ReservationStatus.PENDING)
+                    .build();
+            ReflectionTestUtils.setField(entity, "id", 61L);
+
+            // When
+            ReservationResponse response = reservationMapper.toReservationResponse(entity, null, null);
+
+            // Then
+            assertThat(response.getSlot()).isNotNull();
+            assertThat(response.getSlot().lineName()).isNull();
+            assertThat(response.getSlot().title()).isNull();
+            assertThat(response.getSlot().slotDate()).isNull();
+            assertThat(response.getSlot().startTime()).isNull();
+            assertThat(response.getSlot().endTime()).isNull();
+        }
+
+        @Test
         @DisplayName("正常系: 予約リストが変換される")
         void toReservationResponseList_正常_リスト変換() {
             // Given

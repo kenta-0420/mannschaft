@@ -2,53 +2,52 @@ import { test, expect } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
 import { TEAM_ID, mockTeam, mockTeamFeatureApis } from '../teams/helpers'
 
+// ネストDTO構造（BE #1174 追従）
 const MOCK_PRODUCTS = [
   {
     id: 1,
-    name: '10回券',
-    description: 'トレーニング参加用',
-    price: 8000,
-    totalTickets: 10,
-    validityDays: 180,
-    isActive: true,
-    createdAt: '2026-01-01T00:00:00Z',
+    meta: { name: '10回券', description: 'トレーニング参加用', totalTickets: 10, sortOrder: 0 },
+    pricing: { price: 8000, priceExcludingTax: 7273, taxRate: 0.1, validityDays: 180 },
+    stripe: { stripeProductId: null, stripePriceId: null },
+    display: { imageUrl: null, isOnlinePurchasable: true, isActive: true },
+    audit: { createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z', deletedAt: null },
   },
   {
     id: 2,
-    name: '5回券',
-    description: '体験用',
-    price: 4500,
-    totalTickets: 5,
-    validityDays: 90,
-    isActive: true,
-    createdAt: '2026-02-01T00:00:00Z',
+    meta: { name: '5回券', description: '体験用', totalTickets: 5, sortOrder: 1 },
+    pricing: { price: 4500, priceExcludingTax: 4091, taxRate: 0.1, validityDays: 90 },
+    stripe: { stripeProductId: null, stripePriceId: null },
+    display: { imageUrl: null, isOnlinePurchasable: true, isActive: true },
+    audit: { createdAt: '2026-02-01T00:00:00Z', updatedAt: '2026-02-01T00:00:00Z', deletedAt: null },
   },
 ]
 
 const MOCK_BOOKS = [
   {
     id: 1,
-    productId: 1,
     productName: '10回券',
-    userId: 10,
-    displayName: '山田 太郎',
-    totalTickets: 10,
-    remainingTickets: 7,
-    status: 'ACTIVE',
-    expiresAt: '2026-09-30T23:59:59Z',
-    createdAt: '2026-04-01T00:00:00Z',
+    quantity: { totalTickets: 10, usedTickets: 3, remainingTickets: 7 },
+    status: {
+      status: 'ACTIVE',
+      purchasedAt: '2026-04-01T00:00:00Z',
+      expiresAt: '2026-09-30T23:59:59Z',
+      daysUntilExpiry: 152,
+    },
+    note: { note: null },
+    audit: { createdAt: '2026-04-01T00:00:00Z', updatedAt: '2026-04-01T00:00:00Z' },
   },
   {
     id: 2,
-    productId: 2,
     productName: '5回券',
-    userId: 11,
-    displayName: '田中 花子',
-    totalTickets: 5,
-    remainingTickets: 0,
-    status: 'EXHAUSTED',
-    expiresAt: '2026-06-30T23:59:59Z',
-    createdAt: '2026-03-01T00:00:00Z',
+    quantity: { totalTickets: 5, usedTickets: 5, remainingTickets: 0 },
+    status: {
+      status: 'EXHAUSTED',
+      purchasedAt: '2026-03-01T00:00:00Z',
+      expiresAt: '2026-06-30T23:59:59Z',
+      daysUntilExpiry: 31,
+    },
+    note: { note: null },
+    audit: { createdAt: '2026-03-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z' },
   },
 ]
 
@@ -223,7 +222,8 @@ test.describe('TICKET-001〜006: 回数券', () => {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            data: { ...MOCK_BOOKS[0], remainingTickets: 6 },
+            // consume は ConsumeResultResponse（フラット）を返す
+            data: { consumptionId: 1, bookId: 1, remainingTickets: 6, status: 'ACTIVE', consumedAt: '2026-05-01T00:00:00Z' },
           }),
         })
       } else {

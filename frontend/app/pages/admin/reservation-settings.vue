@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ReservationLineResponse } from '~/types/reservation'
+
 definePageMeta({ middleware: 'auth' })
 
 const scopeStore = useScopeStore()
@@ -9,26 +11,25 @@ const scopeType = computed((): 'TEAM' | 'ORGANIZATION' =>
 const { success, error: showError } = useNotification()
 const { getLines, createLine, updateLine, deleteLine } = useReservationApi()
 
-interface ReservationLine {
-  id: number
+interface ReservationLineForm {
   name: string
-  capacity: number
-  slotDurationMinutes: number
+  description: string
+  displayOrder: string
   isActive: boolean
 }
 
-const lines = ref<ReservationLine[]>([])
+const lines = ref<ReservationLineResponse[]>([])
 const loading = ref(true)
 const showDialog = ref(false)
-const editingItem = ref<ReservationLine | null>(null)
-const form = ref({ name: '', capacity: '1', slotDurationMinutes: '60', isActive: true })
+const editingItem = ref<ReservationLineResponse | null>(null)
+const form = ref<ReservationLineForm>({ name: '', description: '', displayOrder: '1', isActive: true })
 const saving = ref(false)
 
 async function load() {
   loading.value = true
   try {
     const res = await getLines(scopeId.value)
-    lines.value = (res as { data: ReservationLine[] }).data
+    lines.value = (res as { data: ReservationLineResponse[] }).data
   } catch {
     showError('予約ラインの取得に失敗しました')
   } finally {
@@ -38,17 +39,17 @@ async function load() {
 
 function openCreate() {
   editingItem.value = null
-  form.value = { name: '', capacity: '1', slotDurationMinutes: '60', isActive: true }
+  form.value = { name: '', description: '', displayOrder: '1', isActive: true }
   showDialog.value = true
 }
 
-function openEdit(item: ReservationLine) {
+function openEdit(item: ReservationLineResponse) {
   editingItem.value = item
   form.value = {
-    name: item.name,
-    capacity: String(item.capacity),
-    slotDurationMinutes: String(item.slotDurationMinutes),
-    isActive: item.isActive,
+    name: item.meta?.name ?? '',
+    description: item.meta?.description ?? '',
+    displayOrder: String(item.meta?.displayOrder ?? 1),
+    isActive: item.meta?.isActive ?? true,
   }
   showDialog.value = true
 }
@@ -59,12 +60,12 @@ async function save() {
   try {
     const body = {
       name: form.value.name,
-      capacity: Number(form.value.capacity) || 1,
-      slotDurationMinutes: Number(form.value.slotDurationMinutes) || 60,
+      description: form.value.description || undefined,
+      displayOrder: Number(form.value.displayOrder) || 1,
       isActive: form.value.isActive,
     }
     if (editingItem.value) {
-      await updateLine(scopeId.value, editingItem.value.id, body)
+      await updateLine(scopeId.value, editingItem.value.id ?? 0, body)
       success('予約ラインを更新しました')
     } else {
       await createLine(scopeId.value, body)
@@ -79,10 +80,10 @@ async function save() {
   }
 }
 
-async function remove(item: ReservationLine) {
-  if (!confirm(`「${item.name}」を削除しますか？`)) return
+async function remove(item: ReservationLineResponse) {
+  if (!confirm(`「${item.meta?.name}」を削除しますか？`)) return
   try {
-    await deleteLine(scopeId.value, item.id)
+    await deleteLine(scopeId.value, item.id ?? 0)
     success('予約ラインを削除しました')
     await load()
   } catch {
@@ -114,16 +115,18 @@ function onNotificationSent() {
       <template #empty>
         <DashboardEmptyState icon="pi pi-calendar" message="予約ラインがありません" />
       </template>
-      <Column field="name" header="ライン名" />
-      <Column header="定員" style="width: 80px">
-        <template #body="{ data }">{{ data.capacity }}人</template>
+      <Column header="ライン名">
+        <template #body="{ data }">{{ data.meta?.name }}</template>
       </Column>
-      <Column header="枠時間" style="width: 100px">
-        <template #body="{ data }">{{ data.slotDurationMinutes }}分</template>
+      <Column header="説明">
+        <template #body="{ data }">{{ data.meta?.description }}</template>
+      </Column>
+      <Column header="表示順" style="width: 100px">
+        <template #body="{ data }">{{ data.meta?.displayOrder }}</template>
       </Column>
       <Column header="状態" style="width: 100px">
         <template #body="{ data }">
-          <Tag :value="data.isActive ? '有効' : '無効'" :severity="data.isActive ? 'success' : 'secondary'" />
+          <Tag :value="data.meta?.isActive ? '有効' : '無効'" :severity="data.meta?.isActive ? 'success' : 'secondary'" />
         </template>
       </Column>
       <Column header="操作" style="width: 100px">
@@ -176,15 +179,13 @@ function onNotificationSent() {
           <label class="mb-1 block text-sm font-medium">ライン名 <span class="text-red-500">*</span></label>
           <InputText v-model="form.name" class="w-full" placeholder="例: 担当A" />
         </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="mb-1 block text-sm font-medium">定員（人）</label>
-            <InputText v-model="form.capacity" type="number" class="w-full" />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm font-medium">枠時間（分）</label>
-            <InputText v-model="form.slotDurationMinutes" type="number" class="w-full" />
-          </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium">説明</label>
+          <InputText v-model="form.description" class="w-full" placeholder="例: 受付窓口" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium">表示順</label>
+          <InputText v-model="form.displayOrder" type="number" class="w-full" />
         </div>
         <div class="flex items-center gap-2">
           <ToggleSwitch v-model="form.isActive" input-id="isActive" />

@@ -103,15 +103,15 @@ onMounted(() => load())
       <SectionCard
         v-for="p in products"
         :key="p.id"
-        :title="p.name"
+        :title="p.meta.name"
       >
-        <p class="mt-1 text-xs text-surface-400">{{ p.description }}</p>
+        <p class="mt-1 text-xs text-surface-400">{{ p.meta.description }}</p>
         <div class="mt-3 flex items-end justify-between">
           <div>
-            <span class="text-lg font-bold">¥{{ p.price.toLocaleString() }}</span
-            ><span class="text-xs text-surface-400"> / {{ p.totalTickets }}回</span>
+            <span class="text-lg font-bold">¥{{ p.pricing.price.toLocaleString() }}</span
+            ><span class="text-xs text-surface-400"> / {{ p.meta.totalTickets }}回</span>
           </div>
-          <span class="text-xs text-surface-400">有効{{ p.validityDays }}日</span>
+          <span class="text-xs text-surface-400">有効{{ p.pricing.validityDays }}日</span>
         </div>
       </SectionCard>
     </div>
@@ -121,18 +121,16 @@ onMounted(() => load())
         :key="b.id"
         class="flex items-center gap-4"
       >
-        <Avatar :label="b.displayName.charAt(0)" shape="circle" />
         <div class="flex-1">
-          <p class="text-sm font-medium">{{ b.displayName }}</p>
-          <p class="text-xs text-surface-400">{{ b.productName }}</p>
+          <p class="text-sm font-medium">{{ b.productName }}</p>
         </div>
         <div class="text-right">
           <span
-            :class="getBookStatusClass(b.status)"
+            :class="getBookStatusClass(b.status.status)"
             class="rounded px-2 py-0.5 text-xs font-medium"
-            >{{ b.status }}</span
+            >{{ b.status.status }}</span
           >
-          <p class="mt-1 text-sm font-bold">残 {{ b.remainingTickets }}/{{ b.totalTickets }}</p>
+          <p class="mt-1 text-sm font-bold">残 {{ b.quantity.remainingTickets }}/{{ b.quantity.totalTickets }}</p>
         </div>
       </SectionCard>
     </div>
