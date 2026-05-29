@@ -103,5 +103,109 @@
       "NO_SHOW": "無断不参加",
       "REJECTED": "拒否"
     }
-  }
+  },
+  "status": {
+    "PENDING": "保留中",
+    "CONFIRMED": "承認済",
+    "CANCELLED": "キャンセル",
+    "COMPLETED": "完了",
+    "NO_SHOW": "無断欠席"
+  },
+  "filter": {
+    "all": "全て"
+  },
+  "page": {
+    "my_title": "マイ予約",
+    "team_title": "予約管理",
+    "settings_title": "予約管理設定",
+    "settings_subtitle": "予約ライン（スタッフ・窓口）を管理します"
+  },
+  "tab": {
+    "book": "予約する",
+    "list": "予約一覧",
+    "line_manage": "ライン管理"
+  },
+  "column": {
+    "datetime": "日時",
+    "line": "ライン",
+    "reserver": "予約者",
+    "status": "ステータス",
+    "action": "操作",
+    "line_name": "ライン名",
+    "description": "説明",
+    "display_order": "表示順",
+    "state": "状態"
+  },
+  "field": {
+    "date": "日付",
+    "line": "ライン",
+    "name": "名前",
+    "description": "説明",
+    "display_order": "表示順",
+    "active": "有効",
+    "line_name_required": "ライン名",
+    "note": "備考（任意）",
+    "time": "時間"
+  },
+  "placeholder": {
+    "select": "選択してください",
+    "note": "メニュー・症状など",
+    "line_name": "例: 担当A",
+    "line_description": "例: 受付窓口"
+  },
+  "state": {
+    "active": "有効",
+    "inactive": "無効"
+  },
+  "slot": {
+    "available": "空きあり",
+    "full": "満席"
+  },
+  "button": {
+    "add_line": "ライン追加",
+    "add_line_long": "ラインを追加",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "reserve": "予約する",
+    "cancel_reservation": "キャンセルする",
+    "back": "戻る"
+  },
+  "dialog": {
+    "title": "確認",
+    "line_create": "ライン作成",
+    "line_edit": "ライン編集",
+    "line_create_long": "予約ライン追加",
+    "line_edit_long": "予約ライン編集",
+    "reserve_confirm": "予約確認",
+    "cancel_confirm": "この予約をキャンセルしますか？",
+    "line_delete_confirm": "このラインを削除しますか？",
+    "line_delete_named_confirm": "「{name}」を削除しますか？"
+  },
+  "message": {
+    "confirm_success": "予約を承認しました",
+    "reject_success": "予約を却下しました",
+    "cancel_success": "予約をキャンセルしました",
+    "reserve_success": "予約が完了しました",
+    "reserve_failed": "予約に失敗しました",
+    "line_create_success": "ラインを作成しました",
+    "line_update_success": "ラインを更新しました",
+    "line_delete_success": "ラインを削除しました",
+    "line_save_failed": "保存に失敗しました",
+    "line_create_success_long": "予約ラインを作成しました",
+    "line_update_success_long": "予約ラインを更新しました",
+    "line_delete_success_long": "予約ラインを削除しました",
+    "line_load_failed": "予約ラインの取得に失敗しました",
+    "save_failed": "保存に失敗しました",
+    "delete_failed": "削除に失敗しました",
+    "my_load_failed": "予約情報の取得に失敗しました",
+    "reject_reason": "管理者により却下されました"
+  },
+  "empty": {
+    "no_reservations": "予約はありません",
+    "no_my_reservations": "予約がありません",
+    "no_lines": "予約ラインがありません",
+    "no_lines_yet": "ラインはまだありません",
+    "no_available_slots": "この日の空き枠はありません"
+  },
+  "line_manage_title": "予約ライン管理"
 }
