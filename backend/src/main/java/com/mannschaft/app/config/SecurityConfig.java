@@ -177,6 +177,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/events").permitAll()
                 // F19.1 Phase 7: 組織タイムライン投稿公開 API（認証不要・レート制限あり）
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/timeline-posts").permitAll()
+                // F21.1 §5.5 公開FAQ API（認証不要・レート制限あり）
+                // 設計書: docs/features/F21.1_geo_optimization.md §5.5.6
+                // IDOR 防止のため `*`（1 階層厳格）で限定。回答済み FAQ のみ返す。
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/faqs").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/faqs").permitAll()
                 // F19.1 Phase 4 公開チーム・組織検索 API（認証不要・レート制限あり）
                 // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §7.x Phase 4
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/search").permitAll()

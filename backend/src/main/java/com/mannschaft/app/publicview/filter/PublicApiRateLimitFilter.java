@@ -105,8 +105,9 @@ public class PublicApiRateLimitFilter extends OncePerRequestFilter {
      *   <li>サブパス: {@code /posts} / {@code /posts/<id>} / {@code /events}（or 空）</li>
      * </ol>
      */
+    // F21.1 §5.5: 公開FAQ（/faqs）をレート制限対象に追加（PUBLIC_API バケットを共有）。
     private static final Pattern PUBLIC_API_PATH =
-            Pattern.compile("^/api/v1/public/(teams|organizations)/([^/]+)(/posts(/[^/]+)?|/events)?$");
+            Pattern.compile("^/api/v1/public/(teams|organizations)/([^/]+)(/posts(/[^/]+)?|/events|/faqs)?$");
 
     /**
      * F19.1 Phase 4: 公開検索 API パスパターン。
