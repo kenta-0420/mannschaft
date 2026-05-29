@@ -331,7 +331,17 @@ public enum AuditEventType {
     /** 保管庫フォルダを削除した（設計書 F05.1 §6）。 */
     BULLETIN_ARCHIVE_FOLDER_DELETED(AuditEventCategory.BULLETIN),
     /** スレッドの保管庫フォルダ振り分けを変更した（設計書 F05.1 §6）。 */
-    BULLETIN_THREAD_ARCHIVE_FOLDER_CHANGED(AuditEventCategory.BULLETIN);
+    BULLETIN_THREAD_ARCHIVE_FOLDER_CHANGED(AuditEventCategory.BULLETIN),
+
+    // ─── NAV_SETTINGS (F20.1 ナビゲーションバーカスタマイズ) ─────────────
+    /** ユーザーが個人ナビ設定を更新した。 */
+    NAV_SETTINGS_UPDATED(AuditEventCategory.ADMIN_ACTION),
+    /** SYSTEM_ADMIN がナビ項目マスタを作成した。 */
+    NAV_FEATURE_CREATED(AuditEventCategory.ADMIN_ACTION),
+    /** SYSTEM_ADMIN がナビ項目マスタを更新した。 */
+    NAV_FEATURE_UPDATED(AuditEventCategory.ADMIN_ACTION),
+    /** SYSTEM_ADMIN がナビ項目マスタを削除した。 */
+    NAV_FEATURE_DELETED(AuditEventCategory.ADMIN_ACTION);
 
     private final AuditEventCategory category;
 }
