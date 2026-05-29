@@ -232,6 +232,8 @@ async function saveFieldEdit() {
         milestoneId: todo.value?.scope?.milestoneId ?? null,
         startDate: todo.value?.content?.startDate ?? null,
         dueDate: todo.value?.schedule?.dueDate ?? null,
+        // dueTime は updateTodo() で無条件上書きされるため、現在値を保持して消失を防ぐ
+        dueTime: todo.value?.schedule?.dueTime ?? null,
         progressRate: todo.value?.content?.progressRate ?? null,
       }
       if (editingField.value === 'priority') payload.priority = inlinePriority.value
