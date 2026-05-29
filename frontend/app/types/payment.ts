@@ -30,6 +30,7 @@ export interface PaymentItemResponse {
 export interface MemberPaymentResponse {
   id: number
   userId: number
+  userName: string
   paymentItemId: number
   paymentMethod: PaymentMethod | null
   money: {

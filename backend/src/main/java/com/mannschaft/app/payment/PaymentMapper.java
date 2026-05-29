@@ -23,6 +23,7 @@ public interface PaymentMapper {
 
     List<PaymentItemResponse> toPaymentItemResponseList(List<PaymentItemEntity> entities);
 
+    @Mapping(target = "userName", ignore = true)
     @Mapping(target = "paymentMethod", expression = "java(entity.getPaymentMethod() != null ? entity.getPaymentMethod().name() : null)")
     @Mapping(target = "money", expression = "java(new com.mannschaft.app.payment.dto.MemberPaymentResponse.PaymentMoneyDto(entity.getAmountPaid(), entity.getCurrency()))")
     @Mapping(target = "statusInfo", expression = "java(new com.mannschaft.app.payment.dto.MemberPaymentResponse.PaymentStatusDto(entity.getStatus() != null ? entity.getStatus().name() : null, entity.getValidFrom(), entity.getValidUntil(), entity.getPaidAt()))")

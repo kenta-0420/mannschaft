@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.reservation.CancelledBy;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.ReservationMapper;
@@ -55,6 +56,7 @@ public class ReservationService {
     private final ReservationLineRepository lineRepository;
     private final ReservationSlotService slotService;
     private final ReservationMapper reservationMapper;
+    private final NameResolverService nameResolverService;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -378,9 +380,16 @@ public class ReservationService {
                 .collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
         Map<Long, ReservationLineEntity> lines = lineRepository.findAllById(lineIds).stream()
                 .collect(Collectors.toMap(ReservationLineEntity::getId, l -> l));
+        Set<Long> userIds = entities.stream()
+                .map(ReservationEntity::getUserId)
+                .collect(Collectors.toSet());
+        Map<Long, String> userNames = nameResolverService.resolveUserFullNames(userIds);
         return entities.stream()
-                .map(e -> reservationMapper.toReservationResponse(
-                        e, slots.get(e.getReservationSlotId()), lines.get(e.getLineId())))
+                .map(e -> withUserName(
+                        reservationMapper.toReservationResponse(
+                                e, slots.get(e.getReservationSlotId()), lines.get(e.getLineId())),
+                        e.getUserId(),
+                        userNames.getOrDefault(e.getUserId(), "不明なユーザー")))
                 .toList();
     }
 
@@ -393,6 +402,24 @@ public class ReservationService {
     private ReservationResponse enrich(ReservationEntity entity) {
         ReservationSlotEntity slot = slotRepository.findById(entity.getReservationSlotId()).orElse(null);
         ReservationLineEntity line = lineRepository.findById(entity.getLineId()).orElse(null);
-        return reservationMapper.toReservationResponse(entity, slot, line);
+        String userName = nameResolverService.resolveUserFullName(entity.getUserId());
+        return withUserName(reservationMapper.toReservationResponse(entity, slot, line),
+                entity.getUserId(), userName);
+    }
+
+    /**
+     * 既存レスポンスの identifier を会員実名（userName）付きで再構築する。
+     *
+     * @param response 元のレスポンス
+     * @param userId   ユーザーID
+     * @param userName 会員実名
+     * @return userName を含む identifier を持つレスポンス
+     */
+    private ReservationResponse withUserName(ReservationResponse response, Long userId, String userName) {
+        ReservationResponse.ReservationIdentifierDto base = response.getIdentifier();
+        return response.toBuilder()
+                .identifier(new ReservationResponse.ReservationIdentifierDto(
+                        base.reservationSlotId(), base.lineId(), base.teamId(), userId, userName))
+                .build();
     }
 }

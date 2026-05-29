@@ -63,8 +63,8 @@ onMounted(() => loadItems())
       <div v-if="loading" class="flex justify-center py-8"><LoadingBounce /></div>
       <div v-else-if="selectedItem" class="flex flex-col gap-1">
         <div v-for="p in payments" :key="p.id" class="flex items-center gap-3 rounded-lg border border-surface-100 px-4 py-2">
-          <Avatar icon="pi pi-user" shape="circle" size="small" />
-          <span class="flex-1 text-sm">{{ `会員 #${p.userId}` }}</span>
+          <Avatar :label="p.userName?.charAt(0)" shape="circle" size="small" />
+          <span class="flex-1 text-sm">{{ p.userName }}</span>
           <span :class="getStatusClass(p.statusInfo.status)" class="rounded px-2 py-0.5 text-xs font-medium">{{ p.statusInfo.status }}</span>
           <span v-if="p.statusInfo.paidAt" class="text-xs text-surface-400">{{ p.statusInfo.paidAt }}</span>
         </div>

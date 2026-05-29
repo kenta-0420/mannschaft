@@ -3,6 +3,7 @@ package com.mannschaft.app.payment;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.payment.dto.CreateManualPaymentRequest;
+import com.mannschaft.app.payment.dto.MemberPaymentResponse;
 import com.mannschaft.app.payment.entity.MemberPaymentEntity;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
@@ -22,6 +23,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -90,6 +92,31 @@ class MemberPaymentServiceTest {
             service.createManualPayment(PAYMENT_ITEM_ID, USER_ID, request);
 
             verify(memberPaymentRepository).save(any());
+        }
+
+        @Test
+        @DisplayName("正常系: レスポンスに会員実名(userName)が充填される")
+        void 会員実名が充填される() {
+            PaymentItemEntity item = PaymentItemEntity.builder()
+                    .type(PaymentItemType.ANNUAL_FEE).currency("JPY").build();
+            given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(item);
+            given(memberPaymentRepository.existsValidPaidPayment(USER_ID, PAYMENT_ITEM_ID)).willReturn(false);
+
+            MemberPaymentEntity saved = MemberPaymentEntity.builder()
+                    .userId(USER_ID).paymentItemId(PAYMENT_ITEM_ID).build();
+            given(memberPaymentRepository.save(any())).willReturn(saved);
+            given(paymentMapper.toMemberPaymentResponse(any()))
+                    .willReturn(MemberPaymentResponse.builder().userId(USER_ID).build());
+            given(nameResolverService.resolveUserFullName(USER_ID)).willReturn("山田 太郎");
+
+            CreateManualPaymentRequest request = new CreateManualPaymentRequest(
+                    USER_ID, new BigDecimal("5000"), LocalDateTime.now(),
+                    null, null, null);
+
+            MemberPaymentResponse response = service.createManualPayment(PAYMENT_ITEM_ID, USER_ID, request);
+
+            assertThat(response.getUserName()).isEqualTo("山田 太郎");
+            assertThat(response.getUserId()).isEqualTo(USER_ID);
         }
     }
 

@@ -210,6 +210,7 @@ class ReservationMapperTest {
             assertThat(response.getIdentifier().lineId()).isEqualTo(20L);
             assertThat(response.getIdentifier().teamId()).isEqualTo(30L);
             assertThat(response.getIdentifier().userId()).isEqualTo(100L);
+            assertThat(response.getIdentifier().userName()).isNull();
             assertThat(response.getStatus().status()).isEqualTo("PENDING");
             assertThat(response.getCancellation().cancelledBy()).isNull();
             assertThat(response.getNotes().userNote()).isEqualTo("ご希望メモ");
