@@ -160,19 +160,22 @@ void props
     <div
       v-for="group in listGroups"
       :key="group.key"
-      class="rounded-xl border border-surface-200 bg-surface-50 p-3 dark:border-surface-700 dark:bg-surface-900/40"
+      class="field-bordered overflow-hidden rounded-xl"
     >
-      <div class="mb-2 flex items-center gap-2">
-        <i :class="[group.icon, group.color, 'text-sm']" />
-        <span :class="[group.color, 'text-sm font-semibold']">{{ group.label }}</span>
+      <div class="flex items-center justify-between px-4 py-3" :class="group.headerBg">
+        <div class="flex items-center gap-2">
+          <i :class="[group.icon, group.color, 'text-sm']" />
+          <span :class="[group.color, 'text-sm font-semibold']">{{ group.label }}</span>
+        </div>
         <span
-          class="rounded-full bg-surface-100 px-2 py-0.5 text-xs text-surface-500 dark:bg-surface-700"
+          class="rounded-full bg-white/60 px-2 py-0.5 text-xs font-bold dark:bg-black/20"
+          :class="group.color"
         >
           {{ group.todos.length }}
         </span>
       </div>
 
-      <div class="space-y-2">
+      <div class="space-y-2 p-3">
         <div
           v-for="todo in group.todos"
           :key="todo.id"

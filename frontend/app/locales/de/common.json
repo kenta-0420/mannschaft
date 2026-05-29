@@ -1062,6 +1062,7 @@
   },
   "common": {
     "cancel": "キャンセル",
+    "search": "Suchen",
     "resume": {
       "title": "履歴書・職務経歴書",
       "listTitle": "履歴書バージョン一覧",
