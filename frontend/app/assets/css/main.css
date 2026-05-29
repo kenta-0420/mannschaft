@@ -42,6 +42,27 @@ body {
   }
 }
 
+@layer components {
+  /*
+   * アプリ共通の枠線スタイル「field-bordered」。
+   * - 既定で 2px の外枠（色は surface-400 = 旧ホバー時の色に統一。薄さを解消）
+   * - ホバー時に影を付けて浮き上がらせる
+   * フォーム入力・タブ・カードなどの既定の外枠として再利用する。
+   * クラス名を二重指定して PrimeVue コンポーネント（.p-inputtext 等）の
+   * 単一クラスセレクタより詳細度を高め、確実に上書きする。
+   */
+  .field-bordered.field-bordered {
+    border-width: 2px;
+    border-color: var(--p-surface-400, #9ca3af);
+    transition:
+      box-shadow 0.15s ease,
+      border-color 0.15s ease;
+  }
+  .field-bordered.field-bordered:hover {
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+  }
+}
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;

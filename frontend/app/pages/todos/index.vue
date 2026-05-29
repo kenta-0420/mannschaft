@@ -95,8 +95,8 @@ onMounted(load)
         class="rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
         :class="
           scopeTab === tab.key
-            ? 'bg-primary text-white'
-            : 'bg-surface-100 text-surface-600 hover:bg-surface-200 dark:bg-surface-700 dark:text-surface-300'
+            ? 'border-2 border-primary bg-primary text-white'
+            : 'field-bordered bg-surface-100 text-surface-600 hover:bg-surface-200 dark:bg-surface-700 dark:text-surface-300'
         "
         @click="scopeTab = tab.key as typeof scopeTab"
       >
