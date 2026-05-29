@@ -48,6 +48,8 @@ export interface ListGroup {
   label: string
   icon: string
   color: string
+  /** ヘッダー帯の背景色（看板ビューの列ヘッダーと揃える） */
+  headerBg: string
   todos: MyTodo[]
 }
 
@@ -177,15 +179,31 @@ export function useTodoList() {
         label: '期限切れ',
         icon: 'pi pi-exclamation-circle',
         color: 'text-red-500',
+        headerBg: 'bg-red-50 dark:bg-red-900/10',
         todos: overdue,
       },
-      { key: 'today', label: '今日', icon: 'pi pi-sun', color: 'text-orange-500', todos: todayItems },
-      { key: 'week', label: '今週', icon: 'pi pi-calendar', color: 'text-blue-500', todos: thisWeek },
+      {
+        key: 'today',
+        label: '今日',
+        icon: 'pi pi-sun',
+        color: 'text-orange-500',
+        headerBg: 'bg-orange-50 dark:bg-orange-900/10',
+        todos: todayItems,
+      },
+      {
+        key: 'week',
+        label: '今週',
+        icon: 'pi pi-calendar',
+        color: 'text-blue-500',
+        headerBg: 'bg-blue-50 dark:bg-blue-900/10',
+        todos: thisWeek,
+      },
       {
         key: 'later',
         label: 'それ以降',
         icon: 'pi pi-clock',
         color: 'text-surface-500',
+        headerBg: 'bg-surface-100 dark:bg-surface-700',
         todos: later,
       },
       {
@@ -193,6 +211,7 @@ export function useTodoList() {
         label: '期限なし',
         icon: 'pi pi-minus',
         color: 'text-surface-400',
+        headerBg: 'bg-surface-100 dark:bg-surface-700',
         todos: noDue,
       },
       {
@@ -200,6 +219,7 @@ export function useTodoList() {
         label: '完了済み',
         icon: 'pi pi-check-circle',
         color: 'text-green-500',
+        headerBg: 'bg-green-50 dark:bg-green-900/10',
         todos: completed,
       },
     ].filter((g) => g.todos.length > 0)
