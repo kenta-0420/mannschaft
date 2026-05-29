@@ -66,6 +66,9 @@ class ReservationServiceTest {
     private ReservationMapper reservationMapper;
 
     @Mock
+    private com.mannschaft.app.common.NameResolverService nameResolverService;
+
+    @Mock
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
@@ -95,6 +98,9 @@ class ReservationServiceTest {
         given(lineRepository.findAllById(anyIterable())).willReturn(List.of());
         given(reservationMapper.toReservationResponse(any(ReservationEntity.class), any(), any()))
                 .willReturn(createReservationResponse());
+        given(nameResolverService.resolveUserFullNames(org.mockito.ArgumentMatchers.anyCollection()))
+                .willReturn(java.util.Map.of(USER_ID, "山田 太郎"));
+        given(nameResolverService.resolveUserFullName(any(Long.class))).willReturn("山田 太郎");
     }
 
     private ReservationEntity createReservationEntity() {
@@ -137,7 +143,7 @@ class ReservationServiceTest {
     private ReservationResponse createReservationResponse() {
         return ReservationResponse.builder()
                 .id(RESERVATION_ID)
-                .identifier(new ReservationResponse.ReservationIdentifierDto(SLOT_ID, LINE_ID, TEAM_ID, USER_ID))
+                .identifier(new ReservationResponse.ReservationIdentifierDto(SLOT_ID, LINE_ID, TEAM_ID, USER_ID, null))
                 .status(new ReservationResponse.ReservationStatusDto("PENDING", LocalDateTime.now(), null, null))
                 .cancellation(new ReservationResponse.CancellationDto(null, null, null))
                 .notes(new ReservationResponse.NotesDto("テスト備考", null))
@@ -218,6 +224,7 @@ class ReservationServiceTest {
             // Then
             assertThat(result).isNotNull();
             assertThat(result.getIdentifier().teamId()).isEqualTo(TEAM_ID);
+            assertThat(result.getIdentifier().userName()).isEqualTo("山田 太郎");
         }
 
         @Test
@@ -230,7 +237,7 @@ class ReservationServiceTest {
                     .teamId(TEAM_ID).name("カット").build();
             ReservationResponse enriched = ReservationResponse.builder()
                     .id(RESERVATION_ID)
-                    .identifier(new ReservationResponse.ReservationIdentifierDto(SLOT_ID, LINE_ID, TEAM_ID, USER_ID))
+                    .identifier(new ReservationResponse.ReservationIdentifierDto(SLOT_ID, LINE_ID, TEAM_ID, USER_ID, null))
                     .slot(new ReservationResponse.SlotSummaryDto(
                             "カット", null,
                             java.time.LocalDate.of(2026, 4, 1),

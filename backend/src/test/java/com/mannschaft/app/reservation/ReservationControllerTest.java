@@ -77,7 +77,7 @@ class ReservationControllerTest {
     private ReservationResponse createReservationResponse() {
         return ReservationResponse.builder()
                 .id(RESERVATION_ID)
-                .identifier(new ReservationResponse.ReservationIdentifierDto(SLOT_ID, LINE_ID, TEAM_ID, USER_ID))
+                .identifier(new ReservationResponse.ReservationIdentifierDto(SLOT_ID, LINE_ID, TEAM_ID, USER_ID, "山田 太郎"))
                 .status(new ReservationResponse.ReservationStatusDto("CONFIRMED", LocalDateTime.now(), LocalDateTime.now(), null))
                 .cancellation(new ReservationResponse.CancellationDto(null, null, null))
                 .notes(new ReservationResponse.NotesDto(null, null))
