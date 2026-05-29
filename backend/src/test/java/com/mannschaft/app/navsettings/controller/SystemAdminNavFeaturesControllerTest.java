@@ -82,9 +82,9 @@ class SystemAdminNavFeaturesControllerTest {
 
     @Test
     @DisplayName("POST /system-admin/nav-features: 正常リクエストで201+作成レスポンス")
-    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @WithMockUser(username = "1", roles = "SYSTEM_ADMIN")
     void create_201() throws Exception {
-        given(service.create(any())).willReturn(sampleFeature());
+        given(service.create(any(), eq(1L))).willReturn(sampleFeature());
 
         var body = Map.of(
                 "key", "shift-management",
@@ -107,9 +107,9 @@ class SystemAdminNavFeaturesControllerTest {
 
     @Test
     @DisplayName("PUT /system-admin/nav-features/{key}: 正常リクエストで200+更新レスポンス")
-    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @WithMockUser(username = "1", roles = "SYSTEM_ADMIN")
     void update_200() throws Exception {
-        given(service.update(eq("shift-management"), any())).willReturn(sampleFeature());
+        given(service.update(eq("shift-management"), any(), eq(1L))).willReturn(sampleFeature());
 
         var body = Map.of(
                 "labelKey", "nav.shiftManagement",
@@ -131,9 +131,9 @@ class SystemAdminNavFeaturesControllerTest {
 
     @Test
     @DisplayName("DELETE /system-admin/nav-features/{key}: 正常リクエストで204")
-    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @WithMockUser(username = "1", roles = "SYSTEM_ADMIN")
     void delete_204() throws Exception {
-        willDoNothing().given(service).delete("shift-management");
+        willDoNothing().given(service).delete(eq("shift-management"), eq(1L));
 
         mockMvc.perform(delete("/api/v1/system-admin/nav-features/shift-management"))
                 .andExpect(status().isNoContent());

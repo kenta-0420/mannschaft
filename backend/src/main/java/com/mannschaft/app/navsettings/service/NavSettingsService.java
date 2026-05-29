@@ -2,6 +2,8 @@ package com.mannschaft.app.navsettings.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.navsettings.dto.NavFeatureResponse;
 import com.mannschaft.app.navsettings.dto.NavSettingsResponse;
@@ -26,6 +28,7 @@ public class NavSettingsService {
     private final NavFeatureRepository navFeatureRepository;
     private final UserNavSettingsRepository userNavSettingsRepository;
     private final ObjectMapper objectMapper;
+    private final AuditLogService auditLogService;
 
     @Transactional(readOnly = true)
     public NavSettingsResponse getMyNavSettings(Long userId) {
@@ -70,6 +73,11 @@ public class NavSettingsService {
             log.error("ナビ設定の保存に失敗", e);
             throw new BusinessException(NavSettingsErrorCode.NAV_SETTINGS_004);
         }
+
+        // 監査ログ記録（保存成功後のみ。PII は含めず非表示件数のみ記録する）
+        String metadata = String.format("{\"source\":\"NAV_SETTINGS\",\"hidden_count\":%d}", hiddenNavKeys.size());
+        auditLogService.record(AuditEventType.NAV_SETTINGS_UPDATED.name(),
+                userId, null, null, null, null, null, null, metadata);
     }
 
     private boolean isVisible(NavFeatureEntity feature, Set<String> hiddenKeys) {

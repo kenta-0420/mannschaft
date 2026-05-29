@@ -1,6 +1,8 @@
 package com.mannschaft.app.navsettings.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.navsettings.entity.NavFeatureEntity;
 import com.mannschaft.app.navsettings.entity.UserNavSettingsEntity;
@@ -25,6 +27,7 @@ class NavSettingsServiceTest {
 
     @Mock NavFeatureRepository navFeatureRepository;
     @Mock UserNavSettingsRepository userNavSettingsRepository;
+    @Mock AuditLogService auditLogService;
 
     private NavSettingsService service;
 
@@ -32,7 +35,7 @@ class NavSettingsServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new NavSettingsService(navFeatureRepository, userNavSettingsRepository, objectMapper);
+        service = new NavSettingsService(navFeatureRepository, userNavSettingsRepository, objectMapper, auditLogService);
     }
 
     private NavFeatureEntity makeFeature(String key, boolean fixed) {
@@ -106,6 +109,20 @@ class NavSettingsServiceTest {
         service.updateMyNavSettings(1L, List.of("todo"));
 
         then(userNavSettingsRepository).should().upsertHiddenKeys(eq(1L), any());
+    }
+
+    @Test
+    @DisplayName("updateMyNavSettings: 正常ケースで監査ログが記録される")
+    void updateMyNavSettings_normal_auditRecorded() {
+        given(navFeatureRepository.findByEnabledTrueOrderBySortOrderAsc())
+                .willReturn(List.of(makeFeature("todo", false)));
+
+        service.updateMyNavSettings(1L, List.of("todo"));
+
+        // NAV_SETTINGS_UPDATED が操作者 userId 付きで記録されること
+        then(auditLogService).should().record(
+                eq(AuditEventType.NAV_SETTINGS_UPDATED.name()),
+                eq(1L), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any());
     }
 
     private UserNavSettingsEntity hiddenSettings(String json) {
