@@ -84,6 +84,12 @@ public class CirculationRecipientController {
      *
      * <p>F05.2 Phase 11 第三陣 3-B: 退職者・休職者などへの対応として、ADMIN が
      * 特定受信者を SKIPPED 状態に強制遷移させる。{@code reason} は必須。</p>
+     *
+     * <p><b>認可（2026-05-29 fixup）:</b> {@code @PreAuthorize("hasRole('ADMIN')")} は
+     * {@code @EnableMethodSecurity} 未有効ゆえ実機で効かない（将来宣言）。真の per-scope 認可は
+     * {@code CirculationStampService.adminSkipRecipient} の処理本体前で
+     * {@code AccessControlService} により実施する（対象文書スコープの ADMIN/DEPUTY_ADMIN、
+     * または SYSTEM_ADMIN）。</p>
      */
     @PostMapping("/{userId}/skip")
     @PreAuthorize("hasRole('ADMIN')")
