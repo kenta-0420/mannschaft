@@ -200,6 +200,7 @@ function openDetail(scheduleId: number) {
         icon="pi pi-search"
         :label="t('common.search')"
         severity="secondary"
+        class="field-bordered"
         @click="load"
       />
     </div>
