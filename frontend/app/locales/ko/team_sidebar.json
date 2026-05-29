@@ -34,7 +34,8 @@
       "files": "파일",
       "analytics": "분석",
       "audit_logs": "감사 로그",
-      "settings": "설정"
+      "settings": "설정",
+      "faqSettings": "FAQ設定"
     }
   }
 }

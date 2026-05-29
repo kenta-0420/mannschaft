@@ -7,6 +7,12 @@
  *  3. 組織ページに JSON-LD Organization スキーマが存在する
  *  4. 投稿詳細ページに JSON-LD Article スキーマが存在する
  *  5. canonical タグが正しいパスを指す
+ *  6. (F21.1 §5.5) FAQPage JSON-LD（@graph #faq）と可視 FAQ の構造化×可視一致
+ *
+ * 【F21.1 FAQ テストの追加環境変数】
+ *   - `E2E_PUBLIC_TEAM_HAS_FAQ`     : 指定チームに回答済み FAQ がある場合に set（FAQ-001/002 を有効化）
+ *   - `E2E_PUBLIC_TEAM_NO_FAQ_ID`   : 回答済み FAQ が 0 件のチーム ID（FAQ-003 を有効化）
+ *   - `E2E_PUBLIC_ORG_HAS_FAQ`      : 指定組織に回答済み FAQ がある場合に set（FAQ-004 を有効化）
  *
  * 【実行前提】
  * 本 spec は <strong>バックエンド + フロントエンド統合環境</strong> で実行する:
@@ -231,5 +237,121 @@ test.describe('F19.1 Phase 3 公開ページ SEO タグ検証 (BE 統合環境�
     const canonicalOrigin = new URL(canonicalHref ?? '').origin
     const orgOrigin = new URL(orgUrl ?? '').origin
     expect(orgOrigin).toBe(canonicalOrigin)
+  })
+
+  // ─── F21.1 §5.5 FAQ駆動GEO: FAQPage JSON-LD + 構造化×可視の一致 ───
+
+  test("F21.1-FAQ-001: 回答済みFAQがあるチームの @graph に @type:'FAQPage'（@id が #faq）が含まれる", async ({ page }) => {
+    // データ依存: 回答済み FAQ が 0 件のチームでは FAQPage ノードが付かない（FAQ-003 参照）。
+    test.skip(
+      process.env.E2E_PUBLIC_TEAM_HAS_FAQ === undefined,
+      'E2E_PUBLIC_TEAM_HAS_FAQ 未設定（回答済みFAQ前提のテストデータが無い）のためスキップ',
+    )
+
+    await page.goto(`/public/teams/${TEAM_ID}`)
+
+    const jsonLdScript = await page.$('script[type="application/ld+json"]')
+    expect(jsonLdScript).toBeTruthy()
+
+    const content = await jsonLdScript?.textContent()
+    const schema = JSON.parse(content ?? '{}')
+    expect(Array.isArray(schema['@graph'])).toBe(true)
+
+    const graph = schema['@graph'] as Array<Record<string, unknown>>
+    const faqPage = graph.find((node) => node['@type'] === 'FAQPage')
+    expect(faqPage, 'FAQPage ノードが @graph に存在しない').toBeTruthy()
+    // @id は canonical + "#faq"
+    expect(typeof faqPage?.['@id']).toBe('string')
+    expect(faqPage?.['@id'] as string).toMatch(/#faq$/)
+    // mainEntity は Question 配列
+    const mainEntity = faqPage?.mainEntity as Array<Record<string, unknown>> | undefined
+    expect(Array.isArray(mainEntity)).toBe(true)
+    expect((mainEntity?.length ?? 0)).toBeGreaterThan(0)
+    expect(mainEntity?.[0]?.['@type']).toBe('Question')
+    expect((mainEntity?.[0]?.acceptedAnswer as Record<string, unknown> | undefined)?.['@type']).toBe('Answer')
+  })
+
+  test('F21.1-FAQ-002: 可視FAQ（public-faq-question）が FAQPage mainEntity[].name と一致する（構造化×可視の一致）', async ({ page }) => {
+    test.skip(
+      process.env.E2E_PUBLIC_TEAM_HAS_FAQ === undefined,
+      'E2E_PUBLIC_TEAM_HAS_FAQ 未設定（回答済みFAQ前提のテストデータが無い）のためスキップ',
+    )
+
+    await page.goto(`/public/teams/${TEAM_ID}`)
+
+    // 可視 FAQ セクションが表示されている
+    await expect(page.getByTestId('public-faq-section')).toBeVisible()
+
+    // 可視の質問テキスト集合（trim・出現順）
+    const visibleQuestions = (
+      await page.getByTestId('public-faq-question').allTextContents()
+    ).map((s) => s.trim())
+    expect(visibleQuestions.length).toBeGreaterThan(0)
+
+    // FAQPage の mainEntity[].name 集合
+    const jsonLdScript = await page.$('script[type="application/ld+json"]')
+    const content = await jsonLdScript?.textContent()
+    const schema = JSON.parse(content ?? '{}')
+    const graph = schema['@graph'] as Array<Record<string, unknown>>
+    const faqPage = graph.find((node) => node['@type'] === 'FAQPage')
+    expect(faqPage).toBeTruthy()
+    const mainEntity = faqPage?.mainEntity as Array<Record<string, unknown>>
+    const structuredNames = mainEntity.map((q) => String(q.name).trim())
+
+    // 構造化データと可視内容が完全一致（集合として一致・件数一致）
+    expect(structuredNames.length).toBe(visibleQuestions.length)
+    expect([...structuredNames].sort()).toEqual([...visibleQuestions].sort())
+  })
+
+  test('F21.1-FAQ-003: 回答済みFAQ 0件のチームでは @graph に FAQPage ノードが無い（Organization+BreadcrumbList のみ）', async ({ page }) => {
+    // データ依存: 回答済み FAQ が 0 件のチーム ID を指定して実行する。
+    const noFaqTeamRaw = process.env.E2E_PUBLIC_TEAM_NO_FAQ_ID
+    test.skip(
+      noFaqTeamRaw === undefined,
+      'E2E_PUBLIC_TEAM_NO_FAQ_ID 未設定（FAQ 0件チームのテストデータが無い）のためスキップ',
+    )
+
+    await page.goto(`/public/teams/${Number(noFaqTeamRaw)}`)
+
+    const jsonLdScript = await page.$('script[type="application/ld+json"]')
+    expect(jsonLdScript).toBeTruthy()
+
+    const content = await jsonLdScript?.textContent()
+    const schema = JSON.parse(content ?? '{}')
+    expect(Array.isArray(schema['@graph'])).toBe(true)
+
+    const graph = schema['@graph'] as Array<Record<string, unknown>>
+    // FAQPage ノードは存在しない
+    expect(graph.find((node) => node['@type'] === 'FAQPage')).toBeUndefined()
+    // Organization と BreadcrumbList は存在する
+    expect(graph.find((node) => node['@type'] === 'Organization')).toBeTruthy()
+    expect(graph.find((node) => node['@type'] === 'BreadcrumbList')).toBeTruthy()
+
+    // 可視 FAQ セクションも描画されない
+    await expect(page.getByTestId('public-faq-section')).toHaveCount(0)
+  })
+
+  test("F21.1-FAQ-004: 回答済みFAQがある組織の @graph に @type:'FAQPage'（@id が #faq）が含まれる", async ({ page }) => {
+    test.skip(
+      ORG_ID === 0 || process.env.E2E_PUBLIC_ORG_HAS_FAQ === undefined,
+      'E2E_PUBLIC_ORG_ID / E2E_PUBLIC_ORG_HAS_FAQ 未設定のためスキップ',
+    )
+
+    await page.goto(`/public/organizations/${ORG_ID}`)
+
+    const jsonLdScript = await page.$('script[type="application/ld+json"]')
+    expect(jsonLdScript).toBeTruthy()
+
+    const content = await jsonLdScript?.textContent()
+    const schema = JSON.parse(content ?? '{}')
+    expect(Array.isArray(schema['@graph'])).toBe(true)
+
+    const graph = schema['@graph'] as Array<Record<string, unknown>>
+    const faqPage = graph.find((node) => node['@type'] === 'FAQPage')
+    expect(faqPage, 'FAQPage ノードが @graph に存在しない').toBeTruthy()
+    expect(faqPage?.['@id'] as string).toMatch(/#faq$/)
+    const mainEntity = faqPage?.mainEntity as Array<Record<string, unknown>> | undefined
+    expect(Array.isArray(mainEntity)).toBe(true)
+    expect((mainEntity?.length ?? 0)).toBeGreaterThan(0)
   })
 })

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { FetchError } from 'ofetch'
+import type { PublicFaqItem } from '~/types/faq'
 import type {
   PublicEventResponse,
   PublicPostSummary,
@@ -117,6 +118,27 @@ async function goEventsPage(next: number) {
   await refreshEvents()
 }
 
+// F21.1 §5.5 FAQ駆動GEO: 公開 FAQ 一覧（認証不要・回答済みのみ・固定→自由順で BE が返す）。
+// 公開チームでも FAQ 0 件は正常状態（セクション非表示）なので 404/空は握りつぶさず空配列扱いとする。
+const { fetchPublicTeamFaqs } = useFaqApi()
+const { data: faqsData } = await useAsyncData<PublicFaqItem[]>(
+  `public-team-${teamId}-faqs`,
+  () => fetchPublicTeamFaqs(teamId),
+  { default: () => [] },
+)
+const faqs = computed((): PublicFaqItem[] => faqsData.value ?? [])
+
+/**
+ * 公開 FAQ 1 件の表示用質問文を解決する。
+ * 固定質問（questionKey 非 null）は i18n `faq.fixed.{key小文字}` で描画し、
+ * 自由質問（questionKey null）は保存値 questionText をそのまま用いる。
+ */
+function faqQuestion(item: PublicFaqItem): string {
+  return item.questionKey
+    ? t(`faq.fixed.${item.questionKey.toLowerCase()}`)
+    : (item.questionText ?? '')
+}
+
 // F21.1 GEO: 引用されやすい定義文。philosophy があればそれを、無ければ
 // 地理情報入りの定義文を i18n で動的生成する。meta / og / twitter / JSON-LD で共有する。
 const seoDescription = computed((): string => {
@@ -144,9 +166,9 @@ const { canonicalUrl } = useSeoPublicPage({
   // BreadcrumbList（@id）を @graph 配列にまとめて注入する。canonical / baseUrl は
   // ctx 経由で受け取り単一ソース化する。undefined フィールドは
   // JSON.stringify が自動的に省くため出力はクリーンになる。
-  jsonLd: (ctx) => team.value ? {
-    '@context': 'https://schema.org',
-    '@graph': [
+  jsonLd: (ctx) => {
+    if (!team.value) return undefined
+    const graph: Record<string, unknown>[] = [
       {
         '@type': 'Organization',
         '@id': `${ctx?.canonicalUrl ?? ''}#organization`,
@@ -185,8 +207,23 @@ const { canonicalUrl } = useSeoPublicPage({
           },
         ],
       },
-    ],
-  } : undefined,
+    ]
+    // F21.1 §5.5 FAQ駆動GEO: 回答済み FAQ が 1 件以上のときのみ FAQPage ノードを追加する。
+    // mainEntity は可視アコーディオン（faqQuestion / answer）と完全一致させる
+    // （Google の「構造化データと可視内容の一致」要件）。
+    if (faqs.value.length > 0) {
+      graph.push({
+        '@type': 'FAQPage',
+        '@id': `${ctx?.canonicalUrl ?? ''}#faq`,
+        mainEntity: faqs.value.map(f => ({
+          '@type': 'Question',
+          name: faqQuestion(f),
+          acceptedAnswer: { '@type': 'Answer', text: f.answer },
+        })),
+      })
+    }
+    return { '@context': 'https://schema.org', '@graph': graph }
+  },
 })
 
 // OGP / SEO メタタグ（§9.1 Phase 1 最小タグ）。ogUrl は単一ソースの canonicalUrl を使う。
@@ -381,6 +418,39 @@ function detailHref(postId: number): string {
           @click="goEventsPage(eventCurrentPage + 1)"
         />
       </nav>
+    </section>
+
+    <!-- F21.1 §5.5 FAQ駆動GEO: よくあるご質問（回答済み FAQ が 1 件以上のときのみ表示）。
+         可視内容は FAQPage JSON-LD の mainEntity と完全一致させる。 -->
+    <section
+      v-if="faqs.length > 0"
+      data-testid="public-faq-section"
+      aria-labelledby="public-faq-heading"
+      class="space-y-4"
+    >
+      <h2 id="public-faq-heading" class="text-xl font-bold">
+        {{ t('faq.public.title') }}
+      </h2>
+
+      <Accordion multiple>
+        <AccordionPanel
+          v-for="(item, index) in faqs"
+          :key="index"
+          :value="String(index)"
+          data-testid="public-faq-item"
+        >
+          <AccordionHeader>
+            <span class="text-sm font-medium" data-testid="public-faq-question">
+              {{ faqQuestion(item) }}
+            </span>
+          </AccordionHeader>
+          <AccordionContent>
+            <p class="whitespace-pre-line text-sm text-surface-700 dark:text-surface-200" data-testid="public-faq-answer">
+              {{ item.answer }}
+            </p>
+          </AccordionContent>
+        </AccordionPanel>
+      </Accordion>
     </section>
 
     <LoginCtaCard scope-kind="TEAM" :scope-id="teamId" />

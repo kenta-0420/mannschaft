@@ -554,7 +554,9 @@ public class GlobalExceptionHandler {
             Map.entry("BULLETIN_018", HttpStatus.BAD_REQUEST),        // ARCHIVE_FOLDER_CYCLE
             Map.entry("BULLETIN_019", HttpStatus.CONFLICT),           // ARCHIVE_FOLDER_LIMIT_EXCEEDED
             Map.entry("BULLETIN_020", HttpStatus.CONFLICT),           // ARCHIVE_FOLDER_SCOPE_MISMATCH
-            Map.entry("BULLETIN_021", HttpStatus.CONFLICT)            // THREAD_NOT_ARCHIVED
+            Map.entry("BULLETIN_021", HttpStatus.CONFLICT),           // THREAD_NOT_ARCHIVED
+            // F21.1 §5.5 FAQ駆動GEO（FAQ_001〜005 はバリデーション = Severity.WARN 既定 400 / FAQ_010 は IDOR 対策で 404）
+            Map.entry("FAQ_010", HttpStatus.NOT_FOUND)                // 対象チーム / 組織が存在しない（IDOR 対策で 404）
     );
 
     /**
