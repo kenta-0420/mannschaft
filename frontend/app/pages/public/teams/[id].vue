@@ -117,40 +117,91 @@ async function goEventsPage(next: number) {
   await refreshEvents()
 }
 
-// OGP / SEO メタタグ（§9.1 Phase 1 最小タグ）
-const config = useRuntimeConfig()
-const canonicalUrl = computed(
-  () => `${config.public.apiBase}`.replace(/\/api\/v1$/, '') + `/public/teams/${teamId}`,
-)
+// F21.1 GEO: 引用されやすい定義文。philosophy があればそれを、無ければ
+// 地理情報入りの定義文を i18n で動的生成する。meta / og / twitter / JSON-LD で共有する。
+const seoDescription = computed((): string => {
+  const philosophy = team.value?.philosophy?.trim()
+  if (philosophy) return philosophy
+  const name = team.value?.name ?? ''
+  const prefecture = team.value?.prefecture ?? ''
+  const city = team.value?.city ?? ''
+  // 地理情報が一切無い場合は名前のみの自然な定義文にフォールバックする。
+  if (!prefecture && !city) {
+    return t('public.team.geoDescriptionNoLocation', { name })
+  }
+  return t('public.team.geoDescription', { prefecture, city, name })
+})
 
+// F19.1 Phase 3 / F21.1: hreflang 6言語 + canonical + JSON-LD（@graph 化）。
+// F21.1: canonical / baseUrl は useSeoPublicPage が単一ソースとして算出する。
+// 先に呼び出して戻り値（canonicalUrl / baseUrl）を後続の useSeoMeta に流用する。
+const { canonicalUrl } = useSeoPublicPage({
+  canonicalPath: `/public/teams/${teamId}`,
+  title: () => t('public.team.title', { name: team.value?.name ?? '' }),
+  description: () => seoDescription.value,
+  imageUrl: () => team.value?.bannerUrl ?? team.value?.iconUrl ?? undefined,
+  // F21.1 GEO: Organization（@id + address=PostalAddress + sameAs + description）と
+  // BreadcrumbList（@id）を @graph 配列にまとめて注入する。canonical / baseUrl は
+  // ctx 経由で受け取り単一ソース化する。undefined フィールドは
+  // JSON.stringify が自動的に省くため出力はクリーンになる。
+  jsonLd: (ctx) => team.value ? {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': `${ctx?.canonicalUrl ?? ''}#organization`,
+        name: team.value.name,
+        url: ctx?.canonicalUrl,
+        logo: team.value.iconUrl ?? undefined,
+        description: seoDescription.value,
+        address: (team.value.prefecture || team.value.city) ? {
+          '@type': 'PostalAddress',
+          addressCountry: 'JP',
+          addressRegion: team.value.prefecture ?? undefined,
+          addressLocality: team.value.city ?? undefined,
+        } : undefined,
+        sameAs: team.value.homepageUrl ? [team.value.homepageUrl] : undefined,
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${ctx?.canonicalUrl ?? ''}#breadcrumb`,
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: t('public.breadcrumb.home'),
+            item: ctx?.baseUrl,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: t('public.breadcrumb.discoverTeams'),
+            item: `${ctx?.baseUrl ?? ''}/discover/teams`,
+          },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: team.value.name,
+          },
+        ],
+      },
+    ],
+  } : undefined,
+})
+
+// OGP / SEO メタタグ（§9.1 Phase 1 最小タグ）。ogUrl は単一ソースの canonicalUrl を使う。
 useSeoMeta({
   title: () => t('public.team.title', { name: team.value?.name ?? '' }),
-  description: () => team.value?.philosophy ?? t('public.meta.ogDescriptionDefault'),
+  description: () => seoDescription.value,
   ogTitle: () => t('public.team.title', { name: team.value?.name ?? '' }),
-  ogDescription: () => team.value?.philosophy ?? t('public.meta.ogDescriptionDefault'),
+  ogDescription: () => seoDescription.value,
   ogImage: () => team.value?.bannerUrl ?? team.value?.iconUrl ?? '',
   ogType: 'website',
   ogUrl: () => canonicalUrl.value,
   twitterCard: 'summary_large_image',
   twitterTitle: () => t('public.team.title', { name: team.value?.name ?? '' }),
-  twitterDescription: () => team.value?.philosophy ?? t('public.meta.ogDescriptionDefault'),
+  twitterDescription: () => seoDescription.value,
   twitterImage: () => team.value?.bannerUrl ?? team.value?.iconUrl ?? '',
-})
-
-// F19.1 Phase 3: hreflang 6言語 + canonical + JSON-LD Organization スキーマ
-useSeoPublicPage({
-  canonicalPath: `/public/teams/${teamId}`,
-  title: () => t('public.team.title', { name: team.value?.name ?? '' }),
-  description: () => team.value?.philosophy ?? t('public.meta.ogDescriptionDefault'),
-  imageUrl: () => team.value?.bannerUrl ?? team.value?.iconUrl ?? undefined,
-  jsonLd: () => team.value ? {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: team.value.name,
-    url: canonicalUrl.value,
-    logo: team.value.iconUrl ?? undefined,
-    description: team.value.philosophy ?? undefined,
-  } : undefined,
 })
 
 function detailHref(postId: number): string {

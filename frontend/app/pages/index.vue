@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { escapeJsonLdForHtml } from '~/utils/escapeJsonLdForHtml'
+
 const { t, locale } = useI18n()
 
 definePageMeta({
@@ -20,7 +22,9 @@ useHead({
   script: [
     {
       type: 'application/ld+json',
-      innerHTML: JSON.stringify({
+      // F21.1 セキュリティ（XSS 対策）: 現状は静的値のみだが、JSON-LD 注入箇所は
+      // 一律で小なり記号をエスケープし、将来の動的化でもブレイクアウトを防ぐ。
+      innerHTML: escapeJsonLdForHtml(JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'SoftwareApplication',
         'name': 'Mannschaft',
@@ -31,7 +35,7 @@ useHead({
           'price': '0',
           'priceCurrency': 'JPY',
         },
-      }),
+      })),
     },
   ],
 })
