@@ -7,6 +7,7 @@
  * 「調べる」から「解決する」への導線を一枚で完結させる。
  */
 import type { QaItem } from '~/composables/useQaSearch'
+import { escapeJsonLdForHtml } from '~/utils/escapeJsonLdForHtml'
 
 definePageMeta({
   middleware: 'auth',
@@ -86,8 +87,10 @@ useHead({
   script: [
     {
       type: 'application/ld+json',
+      // F21.1 セキュリティ（XSS 対策）: i18n 由来の question / answer に小なり記号が
+      // 含まれてもスクリプトブレイクアウトしないよう一律でエスケープする。
       innerHTML: computed(() =>
-        JSON.stringify({
+        escapeJsonLdForHtml(JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'FAQPage',
           mainEntity: allItems.value.map((item) => ({
@@ -98,7 +101,7 @@ useHead({
               text: item.answer,
             },
           })),
-        }),
+        })),
       ),
     },
   ],

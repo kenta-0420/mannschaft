@@ -207,4 +207,29 @@ test.describe('F19.1 Phase 3 公開ページ SEO タグ検証 (BE 統合環境�
     const items = breadcrumb?.itemListElement as Array<Record<string, unknown>> | undefined
     expect(items?.length).toBe(3)
   })
+
+  test('F21.1-GEO-004: チームページの Organization.url と canonical が同一オリジン', async ({ page }) => {
+    await page.goto(`/public/teams/${TEAM_ID}`)
+
+    // canonical link の href を取得
+    const canonical = await page.$('link[rel="canonical"]')
+    expect(canonical).toBeTruthy()
+    const canonicalHref = await canonical?.getAttribute('href')
+    expect(canonicalHref).toBeTruthy()
+
+    // @graph 内 Organization の url を取得
+    const jsonLdScript = await page.$('script[type="application/ld+json"]')
+    const content = await jsonLdScript?.textContent()
+    const schema = JSON.parse(content ?? '{}')
+    const graph = schema['@graph'] as Array<Record<string, unknown>>
+    const org = graph.find((node) => node['@type'] === 'Organization')
+    expect(org).toBeTruthy()
+    const orgUrl = org?.url as string | undefined
+    expect(typeof orgUrl).toBe('string')
+
+    // canonical と Organization.url のオリジンが一致すること（単一ソース化の検証）
+    const canonicalOrigin = new URL(canonicalHref ?? '').origin
+    const orgOrigin = new URL(orgUrl ?? '').origin
+    expect(orgOrigin).toBe(canonicalOrigin)
+  })
 })
