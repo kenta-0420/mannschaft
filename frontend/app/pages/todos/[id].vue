@@ -82,8 +82,14 @@ const editForm = ref({
 
 const userId = computed<number | null>(() => authStore.user?.id ?? null)
 
-async function loadTodo() {
-  loading.value = true
+/**
+ * TODO詳細を取得する。
+ * @param silent true の場合はスケルトン（loading）を出さずに裏で再取得する。
+ *   更新後の再取得に使うと、画面全体の再描画（チラつき）を避け、
+ *   Vue の差分更新で変更された箇所だけが書き換わる。
+ */
+async function loadTodo(silent = false) {
+  if (!silent) loading.value = true
   try {
     const res = await todoApi.getPersonalTodo(todoId)
     todo.value = res.data as unknown as PersonalTodoDetail
@@ -91,10 +97,10 @@ async function loadTodo() {
   }
   catch (e) {
     errorHandler.handleApiError(e, 'personal-todo:load')
-    todo.value = null
+    if (!silent) todo.value = null
   }
   finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
 }
 
@@ -107,7 +113,7 @@ async function applyStatusChange() {
     await todoApi.changeTodoStatusById('PERSONAL', null, todoId, {
       statusLabelId: newLabelId.value,
     })
-    await loadTodo()
+    await loadTodo(true)
     const labelName = todo.value?.statusLabel?.name ?? ''
     notification.success(t('todo.statusChange.success', { name: labelName }))
   }
@@ -165,7 +171,7 @@ async function saveEdit() {
       }
     }
     editing.value = false
-    await loadTodo()
+    await loadTodo(true)
   }
   catch {
     notification.error(t('todo.action.updateFailed'))
@@ -244,7 +250,7 @@ async function saveFieldEdit() {
     }
     notification.success(t('todo.action.updated'))
     editingField.value = null
-    await loadTodo()
+    await loadTodo(true)
   }
   catch {
     notification.error(t('todo.action.updateFailed'))
