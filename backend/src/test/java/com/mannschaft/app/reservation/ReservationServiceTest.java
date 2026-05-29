@@ -8,8 +8,11 @@ import com.mannschaft.app.reservation.dto.RescheduleRequest;
 import com.mannschaft.app.reservation.dto.ReservationResponse;
 import com.mannschaft.app.reservation.dto.ReservationStatsResponse;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
+import com.mannschaft.app.reservation.entity.ReservationLineEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
+import com.mannschaft.app.reservation.repository.ReservationLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
+import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import com.mannschaft.app.reservation.service.ReservationService;
 import com.mannschaft.app.reservation.service.ReservationSlotService;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +22,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -31,6 +36,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
@@ -40,11 +46,18 @@ import static org.mockito.Mockito.verify;
  * 予約のCRUD・ステータス遷移・統計を検証する。
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("ReservationService 単体テスト")
 class ReservationServiceTest {
 
     @Mock
     private ReservationRepository reservationRepository;
+
+    @Mock
+    private ReservationSlotRepository slotRepository;
+
+    @Mock
+    private ReservationLineRepository lineRepository;
 
     @Mock
     private ReservationSlotService slotService;
@@ -67,6 +80,22 @@ class ReservationServiceTest {
     private static final Long RESERVATION_ID = 10L;
     private static final Long SLOT_ID = 20L;
     private static final Long LINE_ID = 30L;
+
+    /**
+     * enrich/enrichList のスロット・ライン取得プラミングを共通スタブ化する。
+     * 各テストはスロット/ラインを保持しないため空を返し、
+     * マッパーの 3 引数オーバーロードが (entity, null, null) で呼ばれた際に
+     * 既定の予約レスポンスを返すよう設定する。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void setUpEnrichPlumbing() {
+        given(slotRepository.findById(any())).willReturn(Optional.empty());
+        given(lineRepository.findById(any())).willReturn(Optional.empty());
+        given(slotRepository.findAllById(anyIterable())).willReturn(List.of());
+        given(lineRepository.findAllById(anyIterable())).willReturn(List.of());
+        given(reservationMapper.toReservationResponse(any(ReservationEntity.class), any(), any()))
+                .willReturn(createReservationResponse());
+    }
 
     private ReservationEntity createReservationEntity() {
         return ReservationEntity.builder()
@@ -189,6 +218,41 @@ class ReservationServiceTest {
             // Then
             assertThat(result).isNotNull();
             assertThat(result.getIdentifier().teamId()).isEqualTo(TEAM_ID);
+        }
+
+        @Test
+        @DisplayName("正常系: スロット・ラインのサマリが付与される")
+        void 予約詳細_スロットサマリ付与() {
+            // Given
+            ReservationEntity entity = createReservationEntity();
+            ReservationSlotEntity slot = createAvailableSlotEntity();
+            ReservationLineEntity line = ReservationLineEntity.builder()
+                    .teamId(TEAM_ID).name("カット").build();
+            ReservationResponse enriched = ReservationResponse.builder()
+                    .id(RESERVATION_ID)
+                    .identifier(new ReservationResponse.ReservationIdentifierDto(SLOT_ID, LINE_ID, TEAM_ID, USER_ID))
+                    .slot(new ReservationResponse.SlotSummaryDto(
+                            "カット", null,
+                            java.time.LocalDate.of(2026, 4, 1),
+                            java.time.LocalTime.of(10, 0),
+                            java.time.LocalTime.of(11, 0)))
+                    .build();
+            given(reservationRepository.findByIdAndTeamId(RESERVATION_ID, TEAM_ID))
+                    .willReturn(Optional.of(entity));
+            given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(slot));
+            given(lineRepository.findById(LINE_ID)).willReturn(Optional.of(line));
+            given(reservationMapper.toReservationResponse(entity, slot, line)).willReturn(enriched);
+
+            // When
+            ReservationResponse result = service.getReservation(TEAM_ID, RESERVATION_ID);
+
+            // Then
+            assertThat(result.getSlot()).isNotNull();
+            assertThat(result.getSlot().lineName()).isEqualTo("カット");
+            assertThat(result.getSlot().slotDate()).isEqualTo(java.time.LocalDate.of(2026, 4, 1));
+            assertThat(result.getSlot().startTime()).isEqualTo(java.time.LocalTime.of(10, 0));
+            assertThat(result.getSlot().endTime()).isEqualTo(java.time.LocalTime.of(11, 0));
+            verify(reservationMapper).toReservationResponse(entity, slot, line);
         }
 
         @Test
