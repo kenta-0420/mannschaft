@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
+import type { ReservationLineResponse, ReservationSlotResponse } from '~/types/reservation'
+
 const props = defineProps<{
   teamId: number
 }>()
@@ -11,18 +13,23 @@ const emit = defineEmits<{
 const reservationApi = useReservationApi()
 const { userTimezone } = useDatetime()
 
-interface Line { id: number; name: string; isActive: boolean }
-interface Slot { id: number; lineId: number; lineName: string; date: string; startTime: string; endTime: string; capacity: number; bookedCount: number; isClosed: boolean }
+interface LineOption { id: number; name: string }
 
-const lines = ref<Line[]>([])
-const slots = ref<Slot[]>([])
+const lines = ref<LineOption[]>([])
+const slots = ref<ReservationSlotResponse[]>([])
 const selectedDate = ref<Date | null>(new Date())
 const selectedLineId = ref<number | null>(null)
 const loading = ref(false)
 
+const selectedLineName = computed(
+  () => lines.value.find(l => l.id === selectedLineId.value)?.name ?? '',
+)
+
 async function loadLines() {
   const res = await reservationApi.getLines(props.teamId)
-  lines.value = (res.data as Line[]).filter(l => l.isActive)
+  lines.value = (res.data as ReservationLineResponse[])
+    .filter(l => l.meta?.isActive)
+    .map(l => ({ id: l.id ?? 0, name: l.meta?.name ?? '' }))
   if (lines.value.length > 0 && !selectedLineId.value) {
     selectedLineId.value = lines.value[0]!.id
   }
@@ -34,20 +41,28 @@ async function loadSlots() {
   try {
     const dateStr = dayjs(selectedDate.value).tz(userTimezone.value).format('YYYY-MM-DD')
     const res = await reservationApi.getSlots(props.teamId, { date: dateStr, lineId: selectedLineId.value })
-    slots.value = (res.data as Slot[]).filter(s => !s.isClosed)
+    slots.value = (res.data as ReservationSlotResponse[]).filter(
+      s => s.status?.slotStatus !== 'CLOSED',
+    )
   }
   catch { slots.value = [] }
   finally { loading.value = false }
 }
 
-function isAvailable(slot: Slot): boolean {
-  return slot.bookedCount < slot.capacity
+function isAvailable(slot: ReservationSlotResponse): boolean {
+  return slot.status?.slotStatus === 'AVAILABLE'
 }
 
-function selectSlot(slot: Slot) {
+function selectSlot(slot: ReservationSlotResponse) {
   if (!isAvailable(slot)) return
-  const line = lines.value.find(l => l.id === slot.lineId)
-  emit('slotSelected', slot.id, line?.name ?? '', slot.date, slot.startTime, slot.endTime)
+  emit(
+    'slotSelected',
+    slot.id ?? 0,
+    selectedLineName.value,
+    slot.basic?.slotDate ?? '',
+    slot.basic?.startTime ?? '',
+    slot.basic?.endTime ?? '',
+  )
 }
 
 watch([selectedDate, selectedLineId], loadSlots)
@@ -87,9 +102,9 @@ onMounted(async () => { await loadLines(); await loadSlots() })
           : 'cursor-not-allowed border-surface-100 bg-surface-50 opacity-50 dark:border-surface-600'"
         @click="selectSlot(slot)"
       >
-        <p class="text-sm font-medium">{{ slot.startTime }} - {{ slot.endTime }}</p>
+        <p class="text-sm font-medium">{{ slot.basic?.startTime }} - {{ slot.basic?.endTime }}</p>
         <p class="text-xs" :class="isAvailable(slot) ? 'text-green-600' : 'text-red-500'">
-          残{{ slot.capacity - slot.bookedCount }}/{{ slot.capacity }}
+          {{ isAvailable(slot) ? '空きあり' : '満席' }}
         </p>
       </button>
     </div>
