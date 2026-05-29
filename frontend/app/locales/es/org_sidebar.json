@@ -55,6 +55,7 @@
     "webhooks": "Webhooks",
     "settingsModules": "Configuración de módulos",
     "notificationCredits": "Créditos de notificación",
-    "todoStatusLabels": "Etiquetas de tareas"
+    "todoStatusLabels": "Etiquetas de tareas",
+    "faqSettings": "FAQ設定"
   }
 }

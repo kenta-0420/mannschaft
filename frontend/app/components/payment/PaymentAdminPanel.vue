@@ -49,24 +49,24 @@ onMounted(() => loadItems())
     <div class="w-64 shrink-0 rounded-xl border border-surface-300 bg-surface-0 p-3">
       <h3 class="mb-3 text-sm font-semibold">支払い項目</h3>
       <button v-for="item in items" :key="item.id" class="mb-1 w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-surface-100" :class="selectedItem?.id === item.id ? 'bg-primary/10 text-primary' : ''" @click="loadPayments(item)">
-        <div class="font-medium">{{ item.name }}</div>
-        <div class="text-xs text-surface-400">¥{{ item.amount.toLocaleString() }}</div>
+        <div class="font-medium">{{ item.meta.name }}</div>
+        <div class="text-xs text-surface-400">¥{{ item.money.amount.toLocaleString() }}</div>
       </button>
     </div>
 
     <!-- 支払い状況 -->
     <div class="flex-1">
       <div v-if="selectedItem" class="mb-4 flex items-center justify-between">
-        <h3 class="text-lg font-semibold">{{ selectedItem.name }}</h3>
+        <h3 class="text-lg font-semibold">{{ selectedItem.meta.name }}</h3>
         <Button label="未払いリマインド" icon="pi pi-bell" text size="small" @click="onRemind" />
       </div>
       <div v-if="loading" class="flex justify-center py-8"><LoadingBounce /></div>
       <div v-else-if="selectedItem" class="flex flex-col gap-1">
         <div v-for="p in payments" :key="p.id" class="flex items-center gap-3 rounded-lg border border-surface-100 px-4 py-2">
-          <Avatar :label="p.displayName.charAt(0)" shape="circle" size="small" />
-          <span class="flex-1 text-sm">{{ p.displayName }}</span>
-          <span :class="getStatusClass(p.status)" class="rounded px-2 py-0.5 text-xs font-medium">{{ p.status }}</span>
-          <span v-if="p.paidAt" class="text-xs text-surface-400">{{ p.paidAt }}</span>
+          <Avatar icon="pi pi-user" shape="circle" size="small" />
+          <span class="flex-1 text-sm">{{ `会員 #${p.userId}` }}</span>
+          <span :class="getStatusClass(p.statusInfo.status)" class="rounded px-2 py-0.5 text-xs font-medium">{{ p.statusInfo.status }}</span>
+          <span v-if="p.statusInfo.paidAt" class="text-xs text-surface-400">{{ p.statusInfo.paidAt }}</span>
         </div>
       </div>
       <div v-else class="py-12 text-center text-surface-400">支払い項目を選択してください</div>

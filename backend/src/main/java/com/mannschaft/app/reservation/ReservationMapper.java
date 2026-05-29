@@ -38,6 +38,7 @@ public interface ReservationMapper {
 
     List<ReservationSlotResponse> toSlotResponseList(List<ReservationSlotEntity> entities);
 
+    @Mapping(target = "slot", ignore = true)
     @Mapping(target = "identifier", expression = "java(new com.mannschaft.app.reservation.dto.ReservationResponse.ReservationIdentifierDto(entity.getReservationSlotId(), entity.getLineId(), entity.getTeamId(), entity.getUserId()))")
     @Mapping(target = "status", expression = "java(new com.mannschaft.app.reservation.dto.ReservationResponse.ReservationStatusDto(entity.getStatus() != null ? entity.getStatus().name() : null, entity.getBookedAt(), entity.getConfirmedAt(), entity.getCompletedAt()))")
     @Mapping(target = "cancellation", expression = "java(new com.mannschaft.app.reservation.dto.ReservationResponse.CancellationDto(entity.getCancelledAt(), entity.getCancelReason(), entity.getCancelledBy() != null ? entity.getCancelledBy().name() : null))")
@@ -46,6 +47,29 @@ public interface ReservationMapper {
     ReservationResponse toReservationResponse(ReservationEntity entity);
 
     List<ReservationResponse> toReservationResponseList(List<ReservationEntity> entities);
+
+    /**
+     * 予約に紐付くスロット・ラインのサマリ情報を付与して変換する。
+     *
+     * @param entity 予約エンティティ
+     * @param slot   紐付くスロットエンティティ（null 可）
+     * @param line   紐付くラインエンティティ（null 可）
+     * @return スロットサマリを含む予約レスポンス
+     */
+    default ReservationResponse toReservationResponse(
+            ReservationEntity entity,
+            ReservationSlotEntity slot,
+            ReservationLineEntity line) {
+        ReservationResponse base = toReservationResponse(entity);
+        return base.toBuilder()
+                .slot(new ReservationResponse.SlotSummaryDto(
+                        line != null ? line.getName() : null,
+                        slot != null ? slot.getTitle() : null,
+                        slot != null ? slot.getSlotDate() : null,
+                        slot != null ? slot.getStartTime() : null,
+                        slot != null ? slot.getEndTime() : null))
+                .build();
+    }
 
     @Mapping(target = "businessStatus", expression = "java(new com.mannschaft.app.reservation.dto.BusinessHourResponse.BusinessStatusDto(entity.getDayOfWeek(), entity.getIsOpen(), entity.getOpenTime(), entity.getCloseTime()))")
     BusinessHourResponse toBusinessHourResponse(ReservationBusinessHourEntity entity);

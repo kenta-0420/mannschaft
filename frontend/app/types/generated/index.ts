@@ -523,7 +523,8 @@ export interface paths {
         /** 個人TODO更新 */
         put: operations["updatePersonalTodo"];
         post?: never;
-        delete?: never;
+        /** 個人TODO削除 */
+        delete: operations["deletePersonalTodo"];
         options?: never;
         head?: never;
         /** 個人TODO部分更新（PATCH） */
@@ -12105,6 +12106,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/schedules/{scheduleId}/delegations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 代理一覧（ADMIN）
+         * @description F03.10 §4.1: 管理者が代理委任の一覧を取得する
+         */
+        get: operations["list_34"];
+        put?: never;
+        /**
+         * 代理指定
+         * @description F03.10 §4.1: 委任者が代理人を指定する
+         */
+        post: operations["create_32"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/safety-checks": {
         parameters: {
             query?: never;
@@ -12936,10 +12961,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織ウォッチリスト一覧 */
-        get: operations["list_34"];
+        get: operations["list_35"];
         put?: never;
         /** 組織ウォッチリスト追加 */
-        post: operations["create_32"];
+        post: operations["create_33"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12990,10 +13015,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織サブリース一覧 */
-        get: operations["list_35"];
+        get: operations["list_36"];
         put?: never;
         /** 組織サブリース作成 */
-        post: operations["create_33"];
+        post: operations["create_34"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13128,10 +13153,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織譲渡希望一覧 */
-        get: operations["list_36"];
+        get: operations["list_37"];
         put?: never;
         /** 組織譲渡希望作成 */
-        post: operations["create_34"];
+        post: operations["create_35"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13163,10 +13188,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織申請一覧 */
-        get: operations["list_37"];
+        get: operations["list_38"];
         put?: never;
         /** 組織区画申請 */
-        post: operations["create_35"];
+        post: operations["create_36"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13288,7 +13313,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["create_36"];
+        post: operations["create_37"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13318,9 +13343,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_38"];
+        get: operations["list_39"];
         put?: never;
-        post: operations["create_37"];
+        post: operations["create_38"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13366,9 +13391,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_39"];
+        get: operations["list_40"];
         put?: never;
-        post: operations["create_38"];
+        post: operations["create_39"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13494,9 +13519,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_40"];
+        get: operations["list_41"];
         put?: never;
-        post: operations["create_39"];
+        post: operations["create_40"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13944,10 +13969,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織ステータスラベル一覧（SYSTEM 既定 + 組織スコープ） */
-        get: operations["list_41"];
+        get: operations["list_42"];
         put?: never;
         /** 組織ステータスラベル作成（ADMIN/DEPUTY_ADMIN） */
-        post: operations["create_40"];
+        post: operations["create_41"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14203,10 +14228,10 @@ export interface paths {
             cookie?: never;
         };
         /** プリセット一覧 */
-        get: operations["list_42"];
+        get: operations["list_43"];
         put?: never;
         /** プリセット作成 */
-        post: operations["create_41"];
+        post: operations["create_42"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14324,7 +14349,7 @@ export interface paths {
             cookie?: never;
         };
         /** 書類一覧 */
-        get: operations["list_43"];
+        get: operations["list_44"];
         put?: never;
         /** 書類アップロード */
         post: operations["upload_1"];
@@ -14436,10 +14461,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織募集枠一覧 */
-        get: operations["list_44"];
+        get: operations["list_45"];
         put?: never;
         /** 組織募集枠作成 (DRAFT で作成) */
-        post: operations["create_42"];
+        post: operations["create_43"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14509,10 +14534,10 @@ export interface paths {
             cookie?: never;
         };
         /** 物件一覧 */
-        get: operations["list_45"];
+        get: operations["list_46"];
         put?: never;
         /** 物件掲示作成 */
-        post: operations["create_43"];
+        post: operations["create_44"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14545,10 +14570,10 @@ export interface paths {
             cookie?: never;
         };
         /** プロモーション一覧 */
-        get: operations["list_46"];
+        get: operations["list_47"];
         put?: never;
         /** プロモーション作成 */
-        post: operations["create_44"];
+        post: operations["create_45"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14756,9 +14781,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_47"];
+        get: operations["list_48"];
         put?: never;
-        post: operations["create_45"];
+        post: operations["create_46"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15030,10 +15055,10 @@ export interface paths {
             cookie?: never;
         };
         /** 居室一覧 */
-        get: operations["list_48"];
+        get: operations["list_49"];
         put?: never;
         /** 居室作成 */
-        post: operations["create_46"];
+        post: operations["create_47"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15051,7 +15076,7 @@ export interface paths {
         get: operations["listByUnit_1"];
         put?: never;
         /** 居住者登録 */
-        post: operations["create_47"];
+        post: operations["create_48"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15221,10 +15246,10 @@ export interface paths {
             cookie?: never;
         };
         /** クーポン一覧 */
-        get: operations["list_49"];
+        get: operations["list_50"];
         put?: never;
         /** クーポン作成 */
-        post: operations["create_48"];
+        post: operations["create_49"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15257,7 +15282,7 @@ export interface paths {
             cookie?: never;
         };
         /** 確認通知一覧取得（組織） */
-        get: operations["list_50"];
+        get: operations["list_51"];
         put?: never;
         /** 確認通知送信（組織） */
         post: operations["send_1"];
@@ -15309,10 +15334,10 @@ export interface paths {
             cookie?: never;
         };
         /** 確認通知テンプレート一覧取得（組織） */
-        get: operations["list_51"];
+        get: operations["list_52"];
         put?: never;
         /** 確認通知テンプレート作成（組織） */
-        post: operations["create_49"];
+        post: operations["create_50"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15396,9 +15421,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_52"];
+        get: operations["list_53"];
         put?: never;
-        post: operations["create_50"];
+        post: operations["create_51"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16128,10 +16153,10 @@ export interface paths {
             cookie?: never;
         };
         /** カスタム項目一覧 */
-        get: operations["list_53"];
+        get: operations["list_54"];
         put?: never;
         /** カスタム項目作成（最大10件） */
-        post: operations["create_51"];
+        post: operations["create_52"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16263,10 +16288,10 @@ export interface paths {
             cookie?: never;
         };
         /** 個人時間割一覧（自分） */
-        get: operations["list_54"];
+        get: operations["list_55"];
         put?: never;
         /** 個人時間割作成（DRAFT） */
-        post: operations["create_52"];
+        post: operations["create_53"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16281,7 +16306,7 @@ export interface paths {
             cookie?: never;
         };
         /** 共有先一覧（自分の個人時間割） */
-        get: operations["list_55"];
+        get: operations["list_56"];
         put?: never;
         /** 共有先追加（最大3、家族チームのみ） */
         post: operations["add"];
@@ -17223,6 +17248,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events/{eventId}/delegations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 代理一覧（ADMIN）
+         * @description F03.10 §4.2: 管理者が代理委任の一覧を取得する
+         */
+        get: operations["list_57"];
+        put?: never;
+        /**
+         * 代理指定
+         * @description F03.10 §4.2: 委任者が代理人を指定する
+         */
+        post: operations["create_54"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{eventId}/delegations/{delegationId}/checkin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 代理チェックイン
+         * @description F03.10 §4.2 / §5.7: 代理人または管理者が委任者の代わりにチェックインする
+         */
+        post: operations["proxyCheckin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/events/checkin": {
         parameters: {
             query?: never;
@@ -17267,7 +17336,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** エラーレポート送信 */
-        post: operations["create_53"];
+        post: operations["create_55"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18312,7 +18381,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["create_54"];
+        post: operations["create_56"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18408,7 +18477,7 @@ export interface paths {
         };
         get: operations["listByFiscalYear_2"];
         put?: never;
-        post: operations["create_55"];
+        post: operations["create_57"];
         delete?: never;
         options?: never;
         head?: never;
@@ -19551,7 +19620,7 @@ export interface paths {
          * 同義語新規登録
          * @description synonymDisplay をサーバー側で正規化して保存。正規化キー UNIQUE 違反時は 409 SYNONYM_DUPLICATE。
          */
-        post: operations["create_56"];
+        post: operations["create_58"];
         delete?: never;
         options?: never;
         head?: never;
@@ -19602,7 +19671,7 @@ export interface paths {
         };
         get: operations["listAll_1"];
         put?: never;
-        post: operations["create_57"];
+        post: operations["create_59"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22699,6 +22768,46 @@ export interface paths {
         patch: operations["updateMedia"];
         trace?: never;
     };
+    "/api/v1/schedule-delegations/{delegationId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 代理拒否
+         * @description F03.10 §4.1: 代理人が代理を拒否する
+         */
+        patch: operations["reject_6"];
+        trace?: never;
+    };
+    "/api/v1/schedule-delegations/{delegationId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 代理承認
+         * @description F03.10 §4.1: 代理人が代理を承認する
+         */
+        patch: operations["accept"];
+        trace?: never;
+    };
     "/api/v1/safety-checks/templates/{templateId}": {
         parameters: {
             query?: never;
@@ -23220,7 +23329,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 組織申請拒否 */
-        patch: operations["reject_6"];
+        patch: operations["reject_7"];
         trace?: never;
     };
     "/api/v1/organizations/{organizationId}/parking/applications/{id}/approve": {
@@ -24370,6 +24479,46 @@ export interface paths {
         head?: never;
         /** チケット種別更新 */
         patch: operations["updateTicketType"];
+        trace?: never;
+    };
+    "/api/v1/event-delegations/{delegationId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 代理拒否
+         * @description F03.10 §4.2: 代理人が代理を拒否する
+         */
+        patch: operations["reject_8"];
+        trace?: never;
+    };
+    "/api/v1/event-delegations/{delegationId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 代理承認
+         * @description F03.10 §4.2: 代理人が代理を承認する
+         */
+        patch: operations["accept_1"];
         trace?: never;
     };
     "/api/v1/event-categories/{categoryId}": {
@@ -25935,7 +26084,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村の村史一覧（月次ダイジェスト）を取得する */
-        get: operations["list_56"];
+        get: operations["list_58"];
         put?: never;
         post?: never;
         delete?: never;
@@ -26601,7 +26750,7 @@ export interface paths {
             cookie?: never;
         };
         /** ダイジェスト履歴一覧取得 */
-        get: operations["list_57"];
+        get: operations["list_59"];
         put?: never;
         post?: never;
         delete?: never;
@@ -27647,7 +27796,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_58"];
+        get: operations["list_60"];
         put?: never;
         post?: never;
         delete?: never;
@@ -28723,7 +28872,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_59"];
+        get: operations["list_61"];
         put?: never;
         post?: never;
         delete?: never;
@@ -29439,7 +29588,7 @@ export interface paths {
             cookie?: never;
         };
         /** 課金状況一覧 */
-        get: operations["list_60"];
+        get: operations["list_62"];
         put?: never;
         post?: never;
         delete?: never;
@@ -29655,7 +29804,7 @@ export interface paths {
             cookie?: never;
         };
         /** エラーレポート一覧取得 */
-        get: operations["list_61"];
+        get: operations["list_63"];
         put?: never;
         post?: never;
         delete?: never;
@@ -30241,7 +30390,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_62"];
+        get: operations["list_64"];
         put?: never;
         post?: never;
         delete?: never;
@@ -30656,6 +30805,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shifts/my/confirmed-slots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 確定シフト一覧取得
+         * @description ログインユーザーの確定済みシフト枠を一覧で取得する
+         */
+        get: operations["getMyConfirmedSlots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/shifts/change-requests/{id}": {
         parameters: {
             query?: never;
@@ -30699,7 +30868,7 @@ export interface paths {
             cookie?: never;
         };
         /** 失敗イベント一覧を取得 (status で絞り込み可、新しい順) */
-        get: operations["list_63"];
+        get: operations["list_65"];
         put?: never;
         post?: never;
         delete?: never;
@@ -30877,6 +31046,30 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedules/{scheduleId}/delegations/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 自分の代理状況
+         * @description F03.10 §4.1: 委任者/代理人としての自分の代理状況を取得する
+         */
+        get: operations["me"];
+        put?: never;
+        post?: never;
+        /**
+         * 代理取り消し
+         * @description F03.10 §4.1: 委任者が自分の代理を取り消す
+         */
+        delete: operations["withdraw_3"];
         options?: never;
         head?: never;
         patch?: never;
@@ -32969,7 +33162,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_64"];
+        get: operations["list_66"];
         put?: never;
         post?: never;
         delete?: never;
@@ -33290,7 +33483,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_65"];
+        get: operations["list_67"];
         put?: never;
         post?: never;
         delete?: never;
@@ -33583,7 +33776,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_66"];
+        get: operations["list_68"];
         put?: never;
         post?: never;
         delete?: never;
@@ -33897,7 +34090,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村でなれる投稿主体一覧を取得する（村人のみ） */
-        get: operations["list_67"];
+        get: operations["list_69"];
         put?: never;
         post?: never;
         delete?: never;
@@ -33965,7 +34158,7 @@ export interface paths {
             cookie?: never;
         };
         /** メモ添付一覧 */
-        get: operations["list_68"];
+        get: operations["list_70"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34857,7 +35050,7 @@ export interface paths {
             cookie?: never;
         };
         /** 家族メンバーの個人時間割一覧（status=ACTIVE のみ、共有設定済みのみ） */
-        get: operations["list_69"];
+        get: operations["list_71"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34946,6 +35139,30 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{eventId}/delegations/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 自分の代理状況
+         * @description F03.10 §4.2: 委任者/代理人としての自分の代理状況を取得する
+         */
+        get: operations["me_1"];
+        put?: never;
+        post?: never;
+        /**
+         * 代理取り消し
+         * @description F03.10 §4.2: 委任者が自分の代理を取り消す
+         */
+        delete: operations["withdraw_4"];
         options?: never;
         head?: never;
         patch?: never;
@@ -38849,38 +39066,56 @@ export interface components {
         ApiResponseThreadResponse: {
             data?: components["schemas"]["ThreadResponse"];
         };
+        ThreadAuditDto: {
+            /** Format: int64 */
+            authorId?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ThreadContentDto: {
+            title?: string;
+            body?: string;
+            priority?: string;
+            readTrackingMode?: string;
+        };
         ThreadResponse: {
             /** Format: int64 */
             id?: number;
+            scope?: components["schemas"]["ThreadScopeDto"];
+            content?: components["schemas"]["ThreadContentDto"];
+            state?: components["schemas"]["ThreadStateDto"];
+            stats?: components["schemas"]["ThreadStatsDto"];
+            source?: components["schemas"]["ThreadSourceDto"];
+            audit?: components["schemas"]["ThreadAuditDto"];
+        };
+        ThreadScopeDto: {
             /** Format: int64 */
             categoryId?: number;
             scopeType?: string;
             /** Format: int64 */
             scopeId?: number;
+        };
+        ThreadSourceDto: {
+            sourceType?: string;
             /** Format: int64 */
-            authorId?: number;
-            title?: string;
-            body?: string;
-            priority?: string;
-            readTrackingMode?: string;
+            sourceId?: number;
+        };
+        ThreadStateDto: {
             isPinned?: boolean;
             isLocked?: boolean;
             isArchived?: boolean;
             /** Format: uuid */
             archiveFolderId?: string;
+        };
+        ThreadStatsDto: {
             /** Format: int32 */
             replyCount?: number;
             /** Format: int32 */
             readCount?: number;
             /** Format: date-time */
             lastRepliedAt?: string;
-            sourceType?: string;
-            /** Format: int64 */
-            sourceId?: number;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
         };
         UpdateReplyRequest: {
             body?: string;
@@ -39447,25 +39682,6 @@ export interface components {
             assignees?: components["schemas"]["AssigneeResponse"][];
             hierarchy?: components["schemas"]["TodoHierarchyDto"];
             audit?: components["schemas"]["TodoAuditDto"];
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            descendantCompletedCount?: number;
-            /** @deprecated */
-            statusLabel?: components["schemas"]["TodoStatusLabelInfo"];
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            descendantTotalCount?: number;
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            daysRemaining?: number;
-            /** @deprecated */
-            title?: string;
             /** @deprecated */
             priority?: string;
             /**
@@ -39484,33 +39700,36 @@ export interface components {
              * Format: int64
              * @deprecated
              */
-            parentId?: number;
+            daysRemaining?: number;
             /** @deprecated */
-            description?: string;
+            statusLabel?: components["schemas"]["TodoStatusLabelInfo"];
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            linkedScheduleId?: number;
             /**
              * Format: int32
              * @deprecated
              */
             depth?: number;
             /** @deprecated */
-            progressRate?: number;
+            description?: string;
             /**
-             * Format: date-time
+             * Format: int64
              * @deprecated
              */
-            createdAt?: string;
+            parentId?: number;
             /**
-             * Format: date-time
+             * Format: int64
              * @deprecated
              */
-            updatedAt?: string;
+            milestoneId?: number;
             /**
              * Format: int32
              * @deprecated
              */
             sortOrder?: number;
-            /** @deprecated */
-            scopeType?: string;
             /** @deprecated */
             createdBy?: components["schemas"]["UserInfo"];
             /**
@@ -39519,39 +39738,55 @@ export interface components {
              */
             dueDate?: string;
             /**
-             * Format: date
+             * Format: int64
              * @deprecated
              */
-            startDate?: string;
+            projectId?: number;
+            /** @deprecated */
+            title?: string;
+            /** @deprecated */
+            progressManual?: boolean;
+            /** @deprecated */
+            completedBy?: components["schemas"]["UserInfo"];
             /**
              * Format: date-time
              * @deprecated
              */
             completedAt?: string;
             /**
-             * Format: int64
+             * Format: date-time
              * @deprecated
              */
-            milestoneId?: number;
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            projectId?: number;
+            updatedAt?: string;
             /** @deprecated */
-            progressManual?: boolean;
+            progressRate?: number;
+            /**
+             * Format: date-time
+             * @deprecated
+             */
+            createdAt?: string;
+            /** @deprecated */
+            scopeType?: string;
+            /**
+             * Format: date
+             * @deprecated
+             */
+            startDate?: string;
             /**
              * @deprecated
              * @example 14:30:00
              */
             dueTime?: string;
             /**
-             * Format: int64
+             * Format: int32
              * @deprecated
              */
-            linkedScheduleId?: number;
-            /** @deprecated */
-            completedBy?: components["schemas"]["UserInfo"];
+            descendantCompletedCount?: number;
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            descendantTotalCount?: number;
         };
         TodoScheduleDto: {
             /** Format: date */
@@ -39764,8 +39999,8 @@ export interface components {
             updatedAt?: string;
             /** Format: date-time */
             deletedAt?: string;
-            editable?: boolean;
             ownMemo?: boolean;
+            editable?: boolean;
         };
         UpdateCommentRequest: {
             body?: string;
@@ -39802,13 +40037,28 @@ export interface components {
         ApiResponseTicketProductResponse: {
             data?: components["schemas"]["TicketProductResponse"];
         };
-        TicketProductResponse: {
-            /** Format: int64 */
-            id?: number;
+        ProductAuditDto: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+            /** Format: date-time */
+            deletedAt?: string;
+        };
+        ProductDisplayDto: {
+            imageUrl?: string;
+            isOnlinePurchasable?: boolean;
+            isActive?: boolean;
+        };
+        ProductMetaDto: {
             name?: string;
             description?: string;
             /** Format: int32 */
             totalTickets?: number;
+            /** Format: int32 */
+            sortOrder?: number;
+        };
+        ProductPricingDto: {
             /** Format: int32 */
             price?: number;
             /** Format: int32 */
@@ -39816,19 +40066,19 @@ export interface components {
             taxRate?: number;
             /** Format: int32 */
             validityDays?: number;
-            isOnlinePurchasable?: boolean;
+        };
+        StripeIntegrationDto: {
             stripeProductId?: string;
             stripePriceId?: string;
-            imageUrl?: string;
-            isActive?: boolean;
-            /** Format: int32 */
-            sortOrder?: number;
-            /** Format: date-time */
-            deletedAt?: string;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
+        };
+        TicketProductResponse: {
+            /** Format: int64 */
+            id?: number;
+            meta?: components["schemas"]["ProductMetaDto"];
+            pricing?: components["schemas"]["ProductPricingDto"];
+            stripe?: components["schemas"]["StripeIntegrationDto"];
+            display?: components["schemas"]["ProductDisplayDto"];
+            audit?: components["schemas"]["ProductAuditDto"];
         };
         UpdateTagRequest: {
             name?: string;
@@ -40262,6 +40512,9 @@ export interface components {
             id?: number;
             /** Format: int64 */
             teamId?: number;
+            businessStatus?: components["schemas"]["BusinessStatusDto"];
+        };
+        BusinessStatusDto: {
             dayOfWeek?: string;
             isOpen?: boolean;
             /** @example 14:30:00 */
@@ -45929,10 +46182,10 @@ export interface components {
             status?: "PUBLISHED" | "DRAFT" | "SCHEDULED" | "HIDDEN" | "DELETED";
             /** Format: uuid */
             scopeVillageId?: string;
-            scopeTypeOrDefault?: string;
-            postedAsTypeOrDefault?: string;
             /** Format: int64 */
             scopeIdOrDefault?: number;
+            scopeTypeOrDefault?: string;
+            postedAsTypeOrDefault?: string;
         };
         ApiResponsePostResponse: {
             data?: components["schemas"]["PostResponse"];
@@ -46147,16 +46400,6 @@ export interface components {
         ApiResponseTeamResponse: {
             data?: components["schemas"]["TeamResponse"];
         };
-        TeamResponse: {
-            /** Format: int64 */
-            id?: number;
-            basicInfo?: components["schemas"]["TeamBasicInfoDto"];
-            location?: components["schemas"]["TeamLocationDto"];
-            visibility?: components["schemas"]["TeamVisibilityDto"];
-            metadata?: components["schemas"]["TeamMetadataDto"];
-            social?: components["schemas"]["TeamSocialDto"];
-            timestamps?: components["schemas"]["TeamTimestampsDto"];
-        };
         TeamBasicInfoDto: {
             name?: string;
             nameKana?: string;
@@ -46168,10 +46411,6 @@ export interface components {
             city?: string;
             template?: string;
         };
-        TeamVisibilityDto: {
-            visibility?: string;
-            supporterEnabled?: boolean;
-        };
         TeamMetadataDto: {
             /** Format: int64 */
             version?: number;
@@ -46180,6 +46419,16 @@ export interface components {
             iconUrl?: string;
             bannerUrl?: string;
             mapEmbedUrl?: string;
+        };
+        TeamResponse: {
+            /** Format: int64 */
+            id?: number;
+            basicInfo?: components["schemas"]["TeamBasicInfoDto"];
+            location?: components["schemas"]["TeamLocationDto"];
+            visibility?: components["schemas"]["TeamVisibilityDto"];
+            metadata?: components["schemas"]["TeamMetadataDto"];
+            social?: components["schemas"]["TeamSocialDto"];
+            timestamps?: components["schemas"]["TeamTimestampsDto"];
         };
         TeamSocialDto: {
             /** Format: int64 */
@@ -46192,6 +46441,10 @@ export interface components {
             archivedAt?: string;
             /** Format: date-time */
             createdAt?: string;
+        };
+        TeamVisibilityDto: {
+            visibility?: string;
+            supporterEnabled?: boolean;
         };
         CreateTranslationRequest: {
             scopeType?: string;
@@ -46413,6 +46666,13 @@ export interface components {
             /** Format: date-time */
             voidedAt?: string;
         };
+        DetailAuditDto: {
+            note?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         PaymentSummary: {
             paymentMethod?: string;
             /** Format: int32 */
@@ -46425,12 +46685,21 @@ export interface components {
             /** Format: int64 */
             id?: number;
             productName?: string;
+            quantity?: components["schemas"]["TicketQuantityDto"];
+            status?: components["schemas"]["TicketStatusDto"];
+            payment?: components["schemas"]["PaymentSummary"];
+            consumptions?: components["schemas"]["ConsumptionResponse"][];
+            audit?: components["schemas"]["DetailAuditDto"];
+        };
+        TicketQuantityDto: {
             /** Format: int32 */
             totalTickets?: number;
             /** Format: int32 */
             usedTickets?: number;
             /** Format: int32 */
             remainingTickets?: number;
+        };
+        TicketStatusDto: {
             status?: string;
             /** Format: date-time */
             purchasedAt?: string;
@@ -46438,13 +46707,6 @@ export interface components {
             expiresAt?: string;
             /** Format: int64 */
             daysUntilExpiry?: number;
-            note?: string;
-            payment?: components["schemas"]["PaymentSummary"];
-            consumptions?: components["schemas"]["ConsumptionResponse"][];
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
         };
         ConsumeTicketRequest: {
             /** Format: int64 */
@@ -46482,9 +46744,18 @@ export interface components {
         ApiResponseIssueResultResponse: {
             data?: components["schemas"]["IssueResultResponse"];
         };
+        BookAuditDto: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         IssueResultResponse: {
             ticketBook?: components["schemas"]["TicketBookResponse"];
             payment?: components["schemas"]["PaymentResponse"];
+        };
+        NoteDto: {
+            note?: string;
         };
         PaymentResponse: {
             /** Format: int64 */
@@ -46498,24 +46769,10 @@ export interface components {
             /** Format: int64 */
             id?: number;
             productName?: string;
-            /** Format: int32 */
-            totalTickets?: number;
-            /** Format: int32 */
-            usedTickets?: number;
-            /** Format: int32 */
-            remainingTickets?: number;
-            status?: string;
-            /** Format: date-time */
-            purchasedAt?: string;
-            /** Format: date-time */
-            expiresAt?: string;
-            /** Format: int64 */
-            daysUntilExpiry?: number;
-            note?: string;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
+            quantity?: components["schemas"]["TicketQuantityDto"];
+            status?: components["schemas"]["TicketStatusDto"];
+            note?: components["schemas"]["NoteDto"];
+            audit?: components["schemas"]["BookAuditDto"];
         };
         ConsumeByQrRequest: {
             qrPayload?: string;
@@ -46886,9 +47143,23 @@ export interface components {
         ApiResponseReservationResponse: {
             data?: components["schemas"]["ReservationResponse"];
         };
-        ReservationResponse: {
-            /** Format: int64 */
-            id?: number;
+        CancellationDto: {
+            /** Format: date-time */
+            cancelledAt?: string;
+            cancelReason?: string;
+            cancelledBy?: string;
+        };
+        NotesDto: {
+            userNote?: string;
+            adminNote?: string;
+        };
+        ReservationAuditDto: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ReservationIdentifierDto: {
             /** Format: int64 */
             reservationSlotId?: number;
             /** Format: int64 */
@@ -46897,23 +47168,35 @@ export interface components {
             teamId?: number;
             /** Format: int64 */
             userId?: number;
+        };
+        ReservationResponse: {
+            /** Format: int64 */
+            id?: number;
+            identifier?: components["schemas"]["ReservationIdentifierDto"];
+            slot?: components["schemas"]["SlotSummaryDto"];
+            status?: components["schemas"]["ReservationStatusDto"];
+            cancellation?: components["schemas"]["CancellationDto"];
+            notes?: components["schemas"]["NotesDto"];
+            audit?: components["schemas"]["ReservationAuditDto"];
+        };
+        ReservationStatusDto: {
             status?: string;
             /** Format: date-time */
             bookedAt?: string;
             /** Format: date-time */
             confirmedAt?: string;
             /** Format: date-time */
-            cancelledAt?: string;
-            cancelReason?: string;
-            cancelledBy?: string;
-            /** Format: date-time */
             completedAt?: string;
-            userNote?: string;
-            adminNote?: string;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
+        };
+        SlotSummaryDto: {
+            lineName?: string;
+            title?: string;
+            /** Format: date */
+            slotDate?: string;
+            /** @example 14:30:00 */
+            startTime?: string;
+            /** @example 14:30:00 */
+            endTime?: string;
         };
         RescheduleRequest: {
             /** Format: int64 */
@@ -46955,6 +47238,11 @@ export interface components {
         ApiResponseReservationSlotResponse: {
             data?: components["schemas"]["ReservationSlotResponse"];
         };
+        RecurrenceDto: {
+            recurrenceRule?: string;
+            /** Format: int64 */
+            parentSlotId?: number;
+        };
         ReservationSlotResponse: {
             /** Format: int64 */
             id?: number;
@@ -46962,6 +47250,21 @@ export interface components {
             teamId?: number;
             /** Format: int64 */
             staffUserId?: number;
+            basic?: components["schemas"]["SlotBasicDto"];
+            status?: components["schemas"]["SlotStatusDto"];
+            recurrence?: components["schemas"]["RecurrenceDto"];
+            pricing?: components["schemas"]["SlotPricingDto"];
+            audit?: components["schemas"]["SlotAuditDto"];
+        };
+        SlotAuditDto: {
+            /** Format: int64 */
+            createdBy?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        SlotBasicDto: {
             title?: string;
             /** Format: date */
             slotDate?: string;
@@ -46969,22 +47272,17 @@ export interface components {
             startTime?: string;
             /** @example 14:30:00 */
             endTime?: string;
+        };
+        SlotPricingDto: {
+            price?: number;
+        };
+        SlotStatusDto: {
+            slotStatus?: string;
             /** Format: int32 */
             bookedCount?: number;
-            slotStatus?: string;
-            recurrenceRule?: string;
-            /** Format: int64 */
-            parentSlotId?: number;
             isException?: boolean;
-            price?: number;
             closedReason?: string;
             note?: string;
-            /** Format: int64 */
-            createdBy?: number;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
         };
         CloseSlotRequest: {
             reason?: string;
@@ -47001,17 +47299,7 @@ export interface components {
         ApiResponseBlockedTimeResponse: {
             data?: components["schemas"]["BlockedTimeResponse"];
         };
-        BlockedTimeResponse: {
-            /** Format: int64 */
-            id?: number;
-            /** Format: int64 */
-            teamId?: number;
-            /** Format: date */
-            blockedDate?: string;
-            /** @example 14:30:00 */
-            startTime?: string;
-            /** @example 14:30:00 */
-            endTime?: string;
+        BlockedAuditDto: {
             reason?: string;
             /** Format: int64 */
             createdBy?: number;
@@ -47019,6 +47307,22 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        BlockedTimeResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            teamId?: number;
+            timeSlot?: components["schemas"]["TimeSlotDto"];
+            audit?: components["schemas"]["BlockedAuditDto"];
+        };
+        TimeSlotDto: {
+            /** Format: date */
+            blockedDate?: string;
+            /** @example 14:30:00 */
+            startTime?: string;
+            /** @example 14:30:00 */
+            endTime?: string;
         };
         CreateReservationLineRequest: {
             name?: string;
@@ -47031,11 +47335,7 @@ export interface components {
         ApiResponseReservationLineResponse: {
             data?: components["schemas"]["ReservationLineResponse"];
         };
-        ReservationLineResponse: {
-            /** Format: int64 */
-            id?: number;
-            /** Format: int64 */
-            teamId?: number;
+        LineMetaDto: {
             name?: string;
             description?: string;
             /** Format: int32 */
@@ -47043,10 +47343,20 @@ export interface components {
             isActive?: boolean;
             /** Format: int64 */
             defaultStaffUserId?: number;
+        };
+        ReservationLineAuditDto: {
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        ReservationLineResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            teamId?: number;
+            meta?: components["schemas"]["LineMetaDto"];
+            audit?: components["schemas"]["ReservationLineAuditDto"];
         };
         ApiResponseTermDto: {
             data?: components["schemas"]["TermDto"];
@@ -47114,15 +47424,15 @@ export interface components {
             defaultResource?: components["schemas"]["TemplateResource"];
             audit?: components["schemas"]["TemplateAudit"];
         };
-        TemplateScope: {
-            /** @enum {string} */
-            scopeType?: "TEAM" | "ORGANIZATION";
+        TemplateAudit: {
             /** Format: int64 */
-            scopeId?: number;
-            /** Format: int64 */
-            categoryId?: number;
-            /** Format: int64 */
-            subcategoryId?: number;
+            createdBy?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+            /** Format: date-time */
+            deletedAt?: string;
         };
         TemplateContent: {
             templateName?: string;
@@ -47130,8 +47440,7 @@ export interface components {
             description?: string;
         };
         TemplateDefaults: {
-            /** @enum {string} */
-            participationType?: "INDIVIDUAL" | "TEAM";
+            participationType?: string;
             /** Format: int32 */
             defaultCapacity?: number;
             /** Format: int32 */
@@ -47149,8 +47458,7 @@ export interface components {
             defaultPrice?: number;
         };
         TemplateResource: {
-            /** @enum {string} */
-            defaultVisibility?: "PUBLIC" | "SCOPE_ONLY" | "SUPPORTERS_ONLY" | "CUSTOM_TEMPLATE";
+            defaultVisibility?: string;
             defaultLocation?: string;
             /** Format: int64 */
             defaultReservationLineId?: number;
@@ -47158,15 +47466,14 @@ export interface components {
             /** Format: int64 */
             defaultCancellationPolicyId?: number;
         };
-        TemplateAudit: {
+        TemplateScope: {
+            scopeType?: string;
             /** Format: int64 */
-            createdBy?: number;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-            /** Format: date-time */
-            deletedAt?: string;
+            scopeId?: number;
+            /** Format: int64 */
+            categoryId?: number;
+            /** Format: int64 */
+            subcategoryId?: number;
         };
         CreateRecruitmentSubcategoryRequest: {
             /** Format: int64 */
@@ -49299,25 +49606,33 @@ export interface components {
         ApiResponsePaymentItemResponse: {
             data?: components["schemas"]["PaymentItemResponse"];
         };
-        PaymentItemResponse: {
-            /** Format: int64 */
-            id?: number;
-            name?: string;
-            description?: string;
-            type?: string;
-            amount?: number;
-            currency?: string;
-            stripeProductId?: string;
-            stripePriceId?: string;
+        PaymentItemAuditDto: {
             isActive?: boolean;
-            /** Format: int32 */
-            displayOrder?: number;
-            /** Format: int32 */
-            gracePeriodDays?: number;
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        PaymentItemMetaDto: {
+            name?: string;
+            description?: string;
+            type?: string;
+            /** Format: int32 */
+            displayOrder?: number;
+            /** Format: int32 */
+            gracePeriodDays?: number;
+        };
+        PaymentItemResponse: {
+            /** Format: int64 */
+            id?: number;
+            meta?: components["schemas"]["PaymentItemMetaDto"];
+            money?: components["schemas"]["PaymentMoneyDto"];
+            stripe?: components["schemas"]["StripeIntegrationDto"];
+            audit?: components["schemas"]["PaymentItemAuditDto"];
+        };
+        PaymentMoneyDto: {
+            amount?: number;
+            currency?: string;
         };
         CreateManualPaymentRequest: {
             /** Format: int64 */
@@ -49341,9 +49656,26 @@ export interface components {
             userId?: number;
             /** Format: int64 */
             paymentItemId?: number;
-            amountPaid?: number;
-            currency?: string;
             paymentMethod?: string;
+            money?: components["schemas"]["PaymentMoneyDto"];
+            statusInfo?: components["schemas"]["PaymentStatusDto"];
+            refund?: components["schemas"]["PaymentRefundDto"];
+            audit?: components["schemas"]["PaymentAuditDto"];
+        };
+        PaymentAuditDto: {
+            note?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        PaymentRefundDto: {
+            stripeRefundId?: string;
+            stripeReceiptUrl?: string;
+            /** Format: date-time */
+            refundedAt?: string;
+        };
+        PaymentStatusDto: {
             status?: string;
             /** Format: date */
             validFrom?: string;
@@ -49351,15 +49683,6 @@ export interface components {
             validUntil?: string;
             /** Format: date-time */
             paidAt?: string;
-            note?: string;
-            stripeRefundId?: string;
-            stripeReceiptUrl?: string;
-            /** Format: date-time */
-            refundedAt?: string;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
         };
         BulkPaymentRequest: {
             payments: components["schemas"]["CreateManualPaymentRequest"][];
@@ -50287,6 +50610,8 @@ export interface components {
             /** Format: int64 */
             slotId: number;
             reason?: string;
+            openCall?: boolean;
+            targetUserIds?: number[];
         };
         ApiResponseSwapRequestResponse: {
             data?: components["schemas"]["SwapRequestResponse"];
@@ -50309,6 +50634,12 @@ export interface components {
             resolvedAt?: string;
             /** Format: date-time */
             createdAt?: string;
+            recipientMode?: string;
+            targetUserIds?: number[];
+            /** Format: int64 */
+            claimedBy?: number;
+            /** Format: date-time */
+            claimedAt?: string;
         };
         ResolveSwapRequestRequest: {
             action: string;
@@ -50844,6 +51175,31 @@ export interface components {
             /** Format: int64 */
             partSize?: number;
         };
+        CreateScheduleDelegationRequest: {
+            /** Format: int64 */
+            delegateId: number;
+            reason?: string;
+        };
+        ApiResponseScheduleDelegationResponse: {
+            data?: components["schemas"]["ScheduleDelegationResponse"];
+        };
+        ScheduleDelegationResponse: {
+            id?: string;
+            /** Format: int64 */
+            scheduleId?: number;
+            /** Format: int64 */
+            delegatorId?: number;
+            delegatorName?: string;
+            /** Format: int64 */
+            delegateId?: number;
+            delegateName?: string;
+            status?: string;
+            reason?: string;
+            /** Format: date-time */
+            reviewedAt?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
         CreateSafetyCheckRequest: {
             title?: string;
             message?: string;
@@ -51243,16 +51599,6 @@ export interface components {
         ApiResponseOrganizationResponse: {
             data?: components["schemas"]["OrganizationResponse"];
         };
-        OrganizationResponse: {
-            /** Format: int64 */
-            id?: number;
-            basicInfo?: components["schemas"]["OrgBasicInfoDto"];
-            hierarchy?: components["schemas"]["OrgHierarchyDto"];
-            location?: components["schemas"]["OrgLocationDto"];
-            visibility?: components["schemas"]["OrgVisibilityDto"];
-            metadata?: components["schemas"]["OrgMetadataDto"];
-            timestamps?: components["schemas"]["OrgTimestampsDto"];
-        };
         OrgBasicInfoDto: {
             name?: string;
             nameKana?: string;
@@ -51268,11 +51614,6 @@ export interface components {
             prefecture?: string;
             city?: string;
         };
-        OrgVisibilityDto: {
-            visibility?: string;
-            hierarchyVisibility?: string;
-            supporterEnabled?: boolean;
-        };
         OrgMetadataDto: {
             /** Format: int64 */
             version?: number;
@@ -51286,6 +51627,21 @@ export interface components {
             archivedAt?: string;
             /** Format: date-time */
             createdAt?: string;
+        };
+        OrgVisibilityDto: {
+            visibility?: string;
+            hierarchyVisibility?: string;
+            supporterEnabled?: boolean;
+        };
+        OrganizationResponse: {
+            /** Format: int64 */
+            id?: number;
+            basicInfo?: components["schemas"]["OrgBasicInfoDto"];
+            hierarchy?: components["schemas"]["OrgHierarchyDto"];
+            location?: components["schemas"]["OrgLocationDto"];
+            visibility?: components["schemas"]["OrgVisibilityDto"];
+            metadata?: components["schemas"]["OrgMetadataDto"];
+            timestamps?: components["schemas"]["OrgTimestampsDto"];
         };
         DisclosureCirculationStartRequest: {
             recipientUserIds: number[];
@@ -52273,44 +52629,32 @@ export interface components {
         ApiResponseNotificationResponse: {
             data?: components["schemas"]["NotificationResponse"];
         };
-        NotificationContentDto: {
-            notificationType?: string;
-            priority?: string;
-            title?: string;
-            body?: string;
-            actionUrl?: string;
-        };
         NotificationResponse: {
             /** Format: int64 */
             id?: number;
             /** Format: int64 */
             userId?: number;
-            content?: components["schemas"]["NotificationContentDto"];
-            source?: components["schemas"]["NotificationSourceDto"];
-            scope?: components["schemas"]["NotificationScopeDto"];
-            status?: components["schemas"]["NotificationStatusDto"];
-            /** Format: date-time */
-            createdAt?: string;
-        };
-        NotificationScopeDto: {
+            notificationType?: string;
+            priority?: string;
+            title?: string;
+            body?: string;
+            actionUrl?: string;
+            sourceType?: string;
+            /** Format: int64 */
+            sourceId?: number;
             scopeType?: string;
             /** Format: int64 */
             scopeId?: number;
             /** Format: int64 */
             actorId?: number;
-        };
-        NotificationSourceDto: {
-            sourceType?: string;
-            /** Format: int64 */
-            sourceId?: number;
-        };
-        NotificationStatusDto: {
             isRead?: boolean;
             /** Format: date-time */
             readAt?: string;
             channelsSent?: string;
             /** Format: date-time */
             snoozedUntil?: string;
+            /** Format: date-time */
+            createdAt?: string;
         };
         SnoozeRequest: {
             /** Format: date-time */
@@ -53291,6 +53635,56 @@ export interface components {
             note?: string;
             inviteToken?: string;
         };
+        CreateEventDelegationRequest: {
+            /** Format: int64 */
+            delegateId: number;
+            reason?: string;
+            /** Format: int64 */
+            proxyVoteSessionId?: number;
+        };
+        ApiResponseEventDelegationResponse: {
+            data?: components["schemas"]["EventDelegationResponse"];
+        };
+        EventDelegationResponse: {
+            id?: string;
+            /** Format: int64 */
+            eventId?: number;
+            /** Format: int64 */
+            delegatorId?: number;
+            delegatorName?: string;
+            /** Format: int64 */
+            delegateId?: number;
+            delegateName?: string;
+            status?: string;
+            reason?: string;
+            /** Format: int64 */
+            proxyVoteSessionId?: number;
+            /** Format: int64 */
+            proxyDelegationId?: number;
+            /** Format: date-time */
+            reviewedAt?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        ApiResponseProxyCheckinResponse: {
+            data?: components["schemas"]["ProxyCheckinResponse"];
+        };
+        ProxyCheckinResponse: {
+            /** Format: int64 */
+            checkinId?: number;
+            /** Format: int64 */
+            eventId?: number;
+            delegationId?: string;
+            /** Format: int64 */
+            delegateId?: number;
+            delegateName?: string;
+            /** Format: int64 */
+            delegatorId?: number;
+            delegatorName?: string;
+            checkinType?: string;
+            /** Format: date-time */
+            checkedInAt?: string;
+        };
         CheckinRequest: {
             qrToken?: string;
             note?: string;
@@ -53706,34 +54100,52 @@ export interface components {
         ApiResponseChannelResponse: {
             data?: components["schemas"]["ChannelResponse"];
         };
-        ChannelResponse: {
+        ChannelAuditDto: {
             /** Format: int64 */
-            id?: number;
+            createdBy?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ChannelIdentityDto: {
             channelType?: string;
             /** Format: int64 */
             teamId?: number;
             /** Format: int64 */
             organizationId?: number;
-            name?: string;
-            iconKey?: string;
-            description?: string;
-            isPrivate?: boolean;
-            /** Format: int64 */
-            createdBy?: number;
+        };
+        ChannelLastMessageDto: {
             /** Format: date-time */
             lastMessageAt?: string;
             lastMessagePreview?: string;
+        };
+        ChannelMetaDto: {
+            name?: string;
+            iconKey?: string;
+            description?: string;
+        };
+        ChannelResponse: {
+            /** Format: int64 */
+            id?: number;
+            identity?: components["schemas"]["ChannelIdentityDto"];
+            meta?: components["schemas"]["ChannelMetaDto"];
+            settings?: components["schemas"]["ChannelSettingsDto"];
+            lastMessage?: components["schemas"]["ChannelLastMessageDto"];
+            source?: components["schemas"]["ChannelSourceDto"];
+            audit?: components["schemas"]["ChannelAuditDto"];
+        };
+        ChannelSettingsDto: {
+            isPrivate?: boolean;
+            isInquiryChannel?: boolean;
+            isArchived?: boolean;
+            /** Format: int64 */
+            version?: number;
+        };
+        ChannelSourceDto: {
             sourceType?: string;
             /** Format: int64 */
             sourceId?: number;
-            isArchived?: boolean;
-            isInquiryChannel?: boolean;
-            /** Format: int64 */
-            version?: number;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
         };
         AttachmentRequest: {
             fileKey?: string;
@@ -55573,9 +55985,9 @@ export interface components {
             philosophy?: boolean;
             officers?: boolean;
             custom_fields?: boolean;
-            officersVisible?: boolean;
             customFieldsVisible?: boolean;
             philosophyVisible?: boolean;
+            officersVisible?: boolean;
             homepageUrlVisible?: boolean;
             establishedDateVisible?: boolean;
         };
@@ -57193,10 +57605,12 @@ export interface components {
             data?: components["schemas"]["PageJoinRequestResponse"];
         };
         PageJoinRequestResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["JoinRequestResponse"][];
@@ -57206,20 +57620,18 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         PageableObject: {
             /** Format: int64 */
             offset?: number;
             sort?: components["schemas"]["SortObject"];
-            paged?: boolean;
-            /** Format: int32 */
-            pageNumber?: number;
             /** Format: int32 */
             pageSize?: number;
+            /** Format: int32 */
+            pageNumber?: number;
             unpaged?: boolean;
+            paged?: boolean;
         };
         SortObject: {
             empty?: boolean;
@@ -58322,17 +58734,9 @@ export interface components {
              */
             daysRemaining?: number;
             /** @deprecated */
-            visibility?: string;
-            /** @deprecated */
-            title?: string;
-            /** @deprecated */
-            description?: string;
-            /** @deprecated */
             status?: string;
             /** @deprecated */
-            progressRate?: number;
-            /** @deprecated */
-            color?: string;
+            description?: string;
             /** @deprecated */
             createdBy?: components["schemas"]["UserInfo"];
             /**
@@ -58341,17 +58745,25 @@ export interface components {
              */
             dueDate?: string;
             /** @deprecated */
-            emoji?: string;
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            totalTodos?: number;
+            visibility?: string;
+            /** @deprecated */
+            title?: string;
             /**
              * Format: int32
              * @deprecated
              */
             completedTodos?: number;
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            totalTodos?: number;
+            /** @deprecated */
+            progressRate?: number;
+            /** @deprecated */
+            emoji?: string;
+            /** @deprecated */
+            color?: string;
         };
         ProjectMetaDto: {
             status?: string;
@@ -59163,8 +59575,8 @@ export interface components {
             rsvpStatus?: string;
             /** Format: int32 */
             watcherCount?: number;
-            underCare?: boolean;
             alreadyCheckedIn?: boolean;
+            underCare?: boolean;
         };
         ApiResponseDismissalStatusResponse: {
             data?: components["schemas"]["DismissalStatusResponse"];
@@ -59939,10 +60351,12 @@ export interface components {
             data?: components["schemas"]["PageNotificationResponse"];
         };
         PageNotificationResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["NotificationResponse"][];
@@ -59952,8 +60366,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         FriendForwardExportListResponse: {
@@ -59981,14 +60393,20 @@ export interface components {
         ApiResponseListTeamCustomFieldResponse: {
             data?: components["schemas"]["TeamCustomFieldResponse"][];
         };
-        ContentPaymentGateResponse: {
-            /** Format: int64 */
-            id?: number;
+        ContentIdentifierDto: {
             contentType?: string;
             /** Format: int64 */
             contentId?: number;
             isTitleHidden?: boolean;
+        };
+        ContentPaymentGateResponse: {
+            /** Format: int64 */
+            id?: number;
+            content?: components["schemas"]["ContentIdentifierDto"];
             paymentItem?: components["schemas"]["PaymentItemDetail"];
+            audit?: components["schemas"]["GateAuditDto"];
+        };
+        GateAuditDto: {
             /** Format: int64 */
             createdBy?: number;
             /** Format: date-time */
@@ -60234,10 +60652,12 @@ export interface components {
             data?: components["schemas"]["PagePurgeStatusRow"];
         };
         PagePurgeStatusRow: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PurgeStatusRow"][];
@@ -60247,8 +60667,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         PurgeStatusRow: {
@@ -60449,10 +60867,12 @@ export interface components {
             lastError?: string;
         };
         PageEmailOutboxSummaryResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["EmailOutboxSummaryResponse"][];
@@ -60462,8 +60882,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         ApiResponseEmailOutboxDetailResponse: {
@@ -60534,10 +60952,12 @@ export interface components {
             data?: components["schemas"]["PageUserEntity"];
         };
         PageUserEntity: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["UserEntity"][];
@@ -60547,8 +60967,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         UserEntity: {
@@ -60623,10 +61041,12 @@ export interface components {
             data?: components["schemas"]["PageTeamEntity"];
         };
         PageTeamEntity: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["TeamEntity"][];
@@ -60636,8 +61056,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         TeamEntity: {
@@ -60727,10 +61145,12 @@ export interface components {
             timelinePostsPublic?: boolean;
         };
         PageOrganizationEntity: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["OrganizationEntity"][];
@@ -60740,8 +61160,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         ApiResponseListBatchEndpointSummary: {
@@ -61388,6 +61806,26 @@ export interface components {
         ApiResponseListShiftPositionResponse: {
             data?: components["schemas"]["ShiftPositionResponse"][];
         };
+        ApiResponseListMyConfirmedSlotResponse: {
+            data?: components["schemas"]["MyConfirmedSlotResponse"][];
+        };
+        MyConfirmedSlotResponse: {
+            /** Format: int64 */
+            slotId?: number;
+            /** Format: date */
+            slotDate?: string;
+            /** @example 14:30:00 */
+            startTime?: string;
+            /** @example 14:30:00 */
+            endTime?: string;
+            /** Format: int64 */
+            teamId?: number;
+            teamName?: string;
+            /** Format: int64 */
+            scheduleId?: number;
+            scheduleName?: string;
+            positionName?: string;
+        };
         ApiResponseListHourlyRateResponse: {
             data?: components["schemas"]["HourlyRateResponse"][];
         };
@@ -61488,6 +61926,25 @@ export interface components {
             /** Format: int32 */
             size?: number;
             hasNext?: boolean;
+        };
+        ApiResponseScheduleDelegationListResponse: {
+            data?: components["schemas"]["ScheduleDelegationListResponse"];
+        };
+        ScheduleDelegationListResponse: {
+            delegations?: components["schemas"]["ScheduleDelegationResponse"][];
+            /** Format: int64 */
+            total?: number;
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+        };
+        ApiResponseScheduleDelegationMeResponse: {
+            data?: components["schemas"]["ScheduleDelegationMeResponse"];
+        };
+        ScheduleDelegationMeResponse: {
+            asDelegator?: components["schemas"]["ScheduleDelegationResponse"];
+            asDelegate?: components["schemas"]["ScheduleDelegationResponse"];
         };
         PagedResponseSafetyCheckResponse: {
             data?: components["schemas"]["SafetyCheckResponse"][];
@@ -61618,10 +62075,12 @@ export interface components {
             memberSince?: string;
         };
         PagePublicUserPostSummaryResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicUserPostSummaryResponse"][];
@@ -61631,8 +62090,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         PublicUserPostSummaryResponse: {
@@ -61646,10 +62103,12 @@ export interface components {
             createdAt?: string;
         };
         PagePublicTimelinePostResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicTimelinePostResponse"][];
@@ -61659,8 +62118,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         PublicScopeRef: {
@@ -61678,10 +62135,12 @@ export interface components {
             createdAt?: string;
         };
         PagePublicPostSummary: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicPostSummary"][];
@@ -61691,8 +62150,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         PublicAuthorIdentity: {
@@ -61724,10 +62181,12 @@ export interface components {
             publishedAt?: string;
         };
         PagePublicEventResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicEventResponse"][];
@@ -61737,8 +62196,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         PublicEventResponse: {
@@ -61783,10 +62240,12 @@ export interface components {
             mapEmbedUrl?: string;
         };
         PagePublicTeamSearchResultResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicTeamSearchResultResponse"][];
@@ -61796,8 +62255,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         PublicTeamSearchResultResponse: {
@@ -61974,10 +62431,12 @@ export interface components {
             mapEmbedUrl?: string;
         };
         PagePublicOrganizationSearchResultResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicOrganizationSearchResultResponse"][];
@@ -61987,8 +62446,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         PublicOrganizationSearchResultResponse: {
@@ -62002,10 +62459,12 @@ export interface components {
             lastPostDate?: string;
         };
         PagePublicPostCommentResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicPostCommentResponse"][];
@@ -62015,8 +62474,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         PagedResponseSessionListResponse: {
@@ -62358,10 +62815,12 @@ export interface components {
             data?: components["schemas"]["PageSuccessionCovenantResponse"];
         };
         PageSuccessionCovenantResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["SuccessionCovenantResponse"][];
@@ -62371,8 +62830,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         ApiResponseListOrgWideSafetyCheckDto: {
@@ -62435,10 +62892,12 @@ export interface components {
             data?: components["schemas"]["BalanceEventResponse"][];
         };
         PageStampEventResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["StampEventResponse"][];
@@ -62448,8 +62907,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         ApiResponseListPointCardProviderResponse: {
@@ -62466,10 +62923,12 @@ export interface components {
             webUrl?: string;
         };
         PageBalanceEventResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["BalanceEventResponse"][];
@@ -62479,8 +62938,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         ApiResponseListNotificationCreditPurchaseResponse: {
@@ -62553,10 +63010,12 @@ export interface components {
             createdAt?: string;
         };
         PageCommitteeSummaryResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["CommitteeSummaryResponse"][];
@@ -62566,8 +63025,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         ApiResponseListOrgTeamSummaryResponse: {
@@ -63514,6 +63971,25 @@ export interface components {
             data?: components["schemas"]["RegistrationResponse"][];
             meta?: components["schemas"]["PageMeta"];
         };
+        ApiResponseEventDelegationListResponse: {
+            data?: components["schemas"]["EventDelegationListResponse"];
+        };
+        EventDelegationListResponse: {
+            delegations?: components["schemas"]["EventDelegationResponse"][];
+            /** Format: int64 */
+            total?: number;
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+        };
+        ApiResponseEventDelegationMeResponse: {
+            data?: components["schemas"]["EventDelegationMeResponse"];
+        };
+        EventDelegationMeResponse: {
+            asDelegator?: components["schemas"]["EventDelegationResponse"];
+            asDelegate?: components["schemas"]["EventDelegationResponse"];
+        };
         PagedResponseCheckinResponse: {
             data?: components["schemas"]["CheckinResponse"][];
             meta?: components["schemas"]["PageMeta"];
@@ -63842,10 +64318,12 @@ export interface components {
             data?: components["schemas"]["PageCommitteeDistributionLogResponse"];
         };
         PageCommitteeDistributionLogResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["CommitteeDistributionLogResponse"][];
@@ -63855,8 +64333,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         ApiResponseExportStatusResponse: {
@@ -64343,10 +64819,12 @@ export interface components {
             data?: components["schemas"]["PageVillageCreationRequestResponse"];
         };
         PageVillageCreationRequestResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["VillageCreationRequestResponse"][];
@@ -64356,8 +64834,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         NameDisclosureChangeLogResponse: {
@@ -64486,10 +64962,12 @@ export interface components {
             data?: components["schemas"]["PageUserRoleEntity"];
         };
         PageUserRoleEntity: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["UserRoleEntity"][];
@@ -64499,8 +64977,6 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            last?: boolean;
             empty?: boolean;
         };
         UserRoleEntity: {
@@ -66405,6 +66881,26 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ApiResponseTodoResponse"];
                 };
+            };
+        };
+    };
+    deletePersonalTodo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 削除成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -92679,6 +93175,57 @@ export interface operations {
             };
         };
     };
+    list_34: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleDelegationListResponse"];
+                };
+            };
+        };
+    };
+    create_32: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduleDelegationRequest"];
+            };
+        };
+        responses: {
+            /** @description 指定成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleDelegationResponse"];
+                };
+            };
+        };
+    };
     listSafetyChecks: {
         parameters: {
             query: {
@@ -94073,7 +94620,7 @@ export interface operations {
             };
         };
     };
-    list_34: {
+    list_35: {
         parameters: {
             query?: never;
             header?: never;
@@ -94095,7 +94642,7 @@ export interface operations {
             };
         };
     };
-    create_32: {
+    create_33: {
         parameters: {
             query?: never;
             header?: never;
@@ -94221,7 +94768,7 @@ export interface operations {
             };
         };
     };
-    list_35: {
+    list_36: {
         parameters: {
             query?: {
                 status?: string;
@@ -94247,7 +94794,7 @@ export interface operations {
             };
         };
     };
-    create_33: {
+    create_34: {
         parameters: {
             query?: never;
             header?: never;
@@ -94482,7 +95029,7 @@ export interface operations {
             };
         };
     };
-    list_36: {
+    list_37: {
         parameters: {
             query?: {
                 status?: string;
@@ -94508,7 +95055,7 @@ export interface operations {
             };
         };
     };
-    create_34: {
+    create_35: {
         parameters: {
             query?: never;
             header?: never;
@@ -94561,7 +95108,7 @@ export interface operations {
             };
         };
     };
-    list_37: {
+    list_38: {
         parameters: {
             query?: {
                 status?: string;
@@ -94587,7 +95134,7 @@ export interface operations {
             };
         };
     };
-    create_35: {
+    create_36: {
         parameters: {
             query?: never;
             header?: never;
@@ -94864,7 +95411,7 @@ export interface operations {
             };
         };
     };
-    create_36: {
+    create_37: {
         parameters: {
             query?: never;
             header?: never;
@@ -94917,7 +95464,7 @@ export interface operations {
             };
         };
     };
-    list_38: {
+    list_39: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "READY" | "EXPORTED";
@@ -94943,7 +95490,7 @@ export interface operations {
             };
         };
     };
-    create_37: {
+    create_38: {
         parameters: {
             query?: never;
             header?: never;
@@ -95023,7 +95570,7 @@ export interface operations {
             };
         };
     };
-    list_39: {
+    list_40: {
         parameters: {
             query: {
                 status?: "DRAFT" | "REVIEW" | "APPROVED" | "SCHEDULED" | "DELIVERING" | "PAUSED" | "COMPLETED" | "BLOCKED" | "CANCELLED";
@@ -95048,7 +95595,7 @@ export interface operations {
             };
         };
     };
-    create_38: {
+    create_39: {
         parameters: {
             query?: never;
             header?: never;
@@ -95243,7 +95790,7 @@ export interface operations {
             };
         };
     };
-    list_40: {
+    list_41: {
         parameters: {
             query?: never;
             header?: never;
@@ -95266,7 +95813,7 @@ export interface operations {
             };
         };
     };
-    create_39: {
+    create_40: {
         parameters: {
             query?: never;
             header?: never;
@@ -96269,7 +96816,7 @@ export interface operations {
             };
         };
     };
-    list_41: {
+    list_42: {
         parameters: {
             query?: never;
             header?: never;
@@ -96291,7 +96838,7 @@ export interface operations {
             };
         };
     };
-    create_40: {
+    create_41: {
         parameters: {
             query?: never;
             header?: never;
@@ -96812,7 +97359,7 @@ export interface operations {
             };
         };
     };
-    list_42: {
+    list_43: {
         parameters: {
             query?: never;
             header?: never;
@@ -96834,7 +97381,7 @@ export interface operations {
             };
         };
     };
-    create_41: {
+    create_42: {
         parameters: {
             query?: never;
             header?: never;
@@ -97028,7 +97575,7 @@ export interface operations {
             };
         };
     };
-    list_43: {
+    list_44: {
         parameters: {
             query?: never;
             header?: never;
@@ -97277,7 +97824,7 @@ export interface operations {
             };
         };
     };
-    list_44: {
+    list_45: {
         parameters: {
             query?: {
                 status?: string;
@@ -97303,7 +97850,7 @@ export interface operations {
             };
         };
     };
-    create_42: {
+    create_43: {
         parameters: {
             query?: never;
             header?: never;
@@ -97425,7 +97972,7 @@ export interface operations {
             };
         };
     };
-    list_45: {
+    list_46: {
         parameters: {
             query?: {
                 status?: string;
@@ -97452,7 +97999,7 @@ export interface operations {
             };
         };
     };
-    create_43: {
+    create_44: {
         parameters: {
             query?: never;
             header?: never;
@@ -97528,7 +98075,7 @@ export interface operations {
             };
         };
     };
-    list_46: {
+    list_47: {
         parameters: {
             query?: {
                 status?: string;
@@ -97554,7 +98101,7 @@ export interface operations {
             };
         };
     };
-    create_44: {
+    create_45: {
         parameters: {
             query?: never;
             header?: never;
@@ -97905,7 +98452,7 @@ export interface operations {
             };
         };
     };
-    list_47: {
+    list_48: {
         parameters: {
             query?: never;
             header?: never;
@@ -97927,7 +98474,7 @@ export interface operations {
             };
         };
     };
-    create_45: {
+    create_46: {
         parameters: {
             query?: never;
             header?: never;
@@ -98430,7 +98977,7 @@ export interface operations {
             };
         };
     };
-    list_48: {
+    list_49: {
         parameters: {
             query?: {
                 page?: number;
@@ -98455,7 +99002,7 @@ export interface operations {
             };
         };
     };
-    create_46: {
+    create_47: {
         parameters: {
             query?: never;
             header?: never;
@@ -98504,7 +99051,7 @@ export interface operations {
             };
         };
     };
-    create_47: {
+    create_48: {
         parameters: {
             query?: never;
             header?: never;
@@ -98809,7 +99356,7 @@ export interface operations {
             };
         };
     };
-    list_49: {
+    list_50: {
         parameters: {
             query?: {
                 page?: number;
@@ -98834,7 +99381,7 @@ export interface operations {
             };
         };
     };
-    create_48: {
+    create_49: {
         parameters: {
             query?: never;
             header?: never;
@@ -98908,7 +99455,7 @@ export interface operations {
             };
         };
     };
-    list_50: {
+    list_51: {
         parameters: {
             query?: never;
             header?: never;
@@ -98998,7 +99545,7 @@ export interface operations {
             };
         };
     };
-    list_51: {
+    list_52: {
         parameters: {
             query?: never;
             header?: never;
@@ -99020,7 +99567,7 @@ export interface operations {
             };
         };
     };
-    create_49: {
+    create_50: {
         parameters: {
             query?: never;
             header?: never;
@@ -99195,7 +99742,7 @@ export interface operations {
             };
         };
     };
-    list_52: {
+    list_53: {
         parameters: {
             query?: never;
             header?: never;
@@ -99217,7 +99764,7 @@ export interface operations {
             };
         };
     };
-    create_50: {
+    create_51: {
         parameters: {
             query?: never;
             header?: never;
@@ -100472,7 +101019,7 @@ export interface operations {
             };
         };
     };
-    list_53: {
+    list_54: {
         parameters: {
             query?: never;
             header?: never;
@@ -100492,7 +101039,7 @@ export interface operations {
             };
         };
     };
-    create_51: {
+    create_52: {
         parameters: {
             query?: never;
             header?: never;
@@ -100734,7 +101281,7 @@ export interface operations {
             };
         };
     };
-    list_54: {
+    list_55: {
         parameters: {
             query?: never;
             header?: never;
@@ -100754,7 +101301,7 @@ export interface operations {
             };
         };
     };
-    create_52: {
+    create_53: {
         parameters: {
             query?: never;
             header?: never;
@@ -100778,7 +101325,7 @@ export interface operations {
             };
         };
     };
-    list_55: {
+    list_56: {
         parameters: {
             query?: never;
             header?: never;
@@ -102687,6 +103234,80 @@ export interface operations {
             };
         };
     };
+    list_57: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                eventId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseEventDelegationListResponse"];
+                };
+            };
+        };
+    };
+    create_54: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEventDelegationRequest"];
+            };
+        };
+        responses: {
+            /** @description 指定成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseEventDelegationResponse"];
+                };
+            };
+        };
+    };
+    proxyCheckin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: number;
+                delegationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description チェックイン成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseProxyCheckinResponse"];
+                };
+            };
+        };
+    };
     staffCheckin: {
         parameters: {
             query?: never;
@@ -102735,7 +103356,7 @@ export interface operations {
             };
         };
     };
-    create_53: {
+    create_55: {
         parameters: {
             query?: never;
             header?: never;
@@ -104558,7 +105179,7 @@ export interface operations {
             };
         };
     };
-    create_54: {
+    create_56: {
         parameters: {
             query?: never;
             header?: never;
@@ -104753,7 +105374,7 @@ export interface operations {
             };
         };
     };
-    create_55: {
+    create_57: {
         parameters: {
             query: {
                 scopeId: number;
@@ -106650,7 +107271,7 @@ export interface operations {
             };
         };
     };
-    create_56: {
+    create_58: {
         parameters: {
             query?: never;
             header?: never;
@@ -106766,7 +107387,7 @@ export interface operations {
             };
         };
     };
-    create_57: {
+    create_59: {
         parameters: {
             query?: never;
             header?: never;
@@ -112870,6 +113491,50 @@ export interface operations {
             };
         };
     };
+    reject_6: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                delegationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 拒否成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleDelegationResponse"];
+                };
+            };
+        };
+    };
+    accept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                delegationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 承認成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleDelegationResponse"];
+                };
+            };
+        };
+    };
     getTemplate_5: {
         parameters: {
             query?: never;
@@ -113701,7 +114366,7 @@ export interface operations {
             };
         };
     };
-    reject_6: {
+    reject_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -116238,6 +116903,50 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseTicketTypeResponse"];
+                };
+            };
+        };
+    };
+    reject_8: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                delegationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 拒否成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseEventDelegationResponse"];
+                };
+            };
+        };
+    };
+    accept_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                delegationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 承認成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseEventDelegationResponse"];
                 };
             };
         };
@@ -118876,7 +119585,7 @@ export interface operations {
             };
         };
     };
-    list_56: {
+    list_58: {
         parameters: {
             query?: never;
             header?: never;
@@ -119728,6 +120437,7 @@ export interface operations {
             query?: {
                 scopeType?: string;
                 scopeId?: number;
+                scopeVillageId?: string;
                 size?: number;
             };
             header?: never;
@@ -119769,7 +120479,7 @@ export interface operations {
             };
         };
     };
-    list_57: {
+    list_59: {
         parameters: {
             query: {
                 scopeType: string;
@@ -121295,7 +122005,7 @@ export interface operations {
             };
         };
     };
-    list_58: {
+    list_60: {
         parameters: {
             query: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -122807,7 +123517,7 @@ export interface operations {
             };
         };
     };
-    list_59: {
+    list_61: {
         parameters: {
             query: {
                 fiscalYearId: number;
@@ -123754,7 +124464,7 @@ export interface operations {
             };
         };
     };
-    list_60: {
+    list_62: {
         parameters: {
             query?: {
                 billingStatus?: string;
@@ -124016,7 +124726,7 @@ export interface operations {
             };
         };
     };
-    list_61: {
+    list_63: {
         parameters: {
             query?: {
                 status?: string;
@@ -124831,7 +125541,7 @@ export interface operations {
             };
         };
     };
-    list_62: {
+    list_64: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -125405,6 +126115,26 @@ export interface operations {
             };
         };
     };
+    getMyConfirmedSlots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListMyConfirmedSlotResponse"];
+                };
+            };
+        };
+    };
     getChangeRequest: {
         parameters: {
             query?: never;
@@ -125469,7 +126199,7 @@ export interface operations {
             };
         };
     };
-    list_63: {
+    list_65: {
         parameters: {
             query?: {
                 status?: "PENDING" | "RETRYING" | "SUCCEEDED" | "EXHAUSTED" | "MANUAL_RESOLVED";
@@ -125748,6 +126478,48 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ApiResponseScheduleMediaListResponse"];
                 };
+            };
+        };
+    };
+    me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleDelegationMeResponse"];
+                };
+            };
+        };
+    };
+    withdraw_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取り消し成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -128533,7 +129305,7 @@ export interface operations {
             };
         };
     };
-    list_64: {
+    list_66: {
         parameters: {
             query: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -128986,7 +129758,7 @@ export interface operations {
             };
         };
     };
-    list_65: {
+    list_67: {
         parameters: {
             query: {
                 fiscalYearId: number;
@@ -129445,7 +130217,7 @@ export interface operations {
             };
         };
     };
-    list_66: {
+    list_68: {
         parameters: {
             query?: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -129860,7 +130632,7 @@ export interface operations {
             };
         };
     };
-    list_67: {
+    list_69: {
         parameters: {
             query?: never;
             header?: never;
@@ -129944,7 +130716,7 @@ export interface operations {
             };
         };
     };
-    list_68: {
+    list_70: {
         parameters: {
             query?: never;
             header?: never;
@@ -131172,7 +131944,7 @@ export interface operations {
             };
         };
     };
-    list_69: {
+    list_71: {
         parameters: {
             query?: never;
             header?: never;
@@ -131314,6 +132086,48 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ApiResponseRegistrationResponse"];
                 };
+            };
+        };
+    };
+    me_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseEventDelegationMeResponse"];
+                };
+            };
+        };
+    };
+    withdraw_4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取り消し成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

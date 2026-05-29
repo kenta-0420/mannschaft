@@ -55,6 +55,7 @@
     "webhooks": "Webhook",
     "settingsModules": "機能設定",
     "notificationCredits": "通知クレジット",
-    "todoStatusLabels": "TODOラベル"
+    "todoStatusLabels": "TODOラベル",
+    "faqSettings": "FAQ設定"
   }
 }

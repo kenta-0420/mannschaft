@@ -78,6 +78,7 @@ const categories: SidebarCategory[] = [
     icon: 'pi pi-cog',
     items: [
       { labelKey: 'teamSidebar.item.settings', icon: 'pi pi-sliders-h', path: 'settings/shift', moduleSlug: null, requiredRole: 'ADMIN' },
+      { labelKey: 'teamSidebar.item.faqSettings', icon: 'pi pi-question-circle', path: 'settings/faq-settings', moduleSlug: null, requiredRole: 'ADMIN' },
     ],
   },
 ]
