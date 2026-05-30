@@ -34,7 +34,7 @@ public class AdminPublicSettingsController {
      * <p>ADMIN または SYSTEM_ADMIN のみ操作可能。</p>
      */
     @PatchMapping("/api/v1/admin/teams/{teamId}/public-settings")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     @Operation(
             summary = "チーム公開設定更新",
             description = "ADMIN または SYSTEM_ADMIN が teams の timeline_posts_public / public_events_enabled を変更する（F19.1 Phase 7）。")
@@ -52,7 +52,7 @@ public class AdminPublicSettingsController {
      * <p>ADMIN または SYSTEM_ADMIN のみ操作可能。</p>
      */
     @PatchMapping("/api/v1/admin/organizations/{organizationId}/public-settings")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #organizationId, 'ORGANIZATION')")
     @Operation(
             summary = "組織公開設定更新",
             description = "ADMIN または SYSTEM_ADMIN が organizations の timeline_posts_public / public_events_enabled を変更する（F19.1 Phase 7）。")

@@ -184,7 +184,7 @@ public class ContentTranslationController {
      * 認可: ADMIN以上
      */
     @PostMapping("/api/v1/teams/{teamId}/translations/mark-stale")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ApiResponse<Integer> markTeamTranslationsAsStale(
             @PathVariable Long teamId,
             @RequestParam String contentType,
@@ -335,7 +335,7 @@ public class ContentTranslationController {
     }
 
     @PostMapping("/api/v1/organizations/{orgId}/translations/mark-stale")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     public ApiResponse<Integer> markOrgTranslationsAsStale(
             @PathVariable Long orgId,
             @RequestParam String contentType,

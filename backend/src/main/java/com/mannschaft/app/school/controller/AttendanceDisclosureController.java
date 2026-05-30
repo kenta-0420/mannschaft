@@ -43,7 +43,7 @@ public class AttendanceDisclosureController {
     @PostMapping("/teams/{teamId}/attendance/requirements/evaluations/{evaluationId}/disclose")
     @Operation(summary = "出席要件評価結果の開示")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ApiResponse<DisclosureResponse> disclose(
             @PathVariable Long teamId,
             @PathVariable Long evaluationId,
@@ -63,7 +63,7 @@ public class AttendanceDisclosureController {
     @PostMapping("/teams/{teamId}/attendance/requirements/evaluations/{evaluationId}/withhold")
     @Operation(summary = "出席要件評価結果の非開示")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ApiResponse<DisclosureResponse> withhold(
             @PathVariable Long teamId,
             @PathVariable Long evaluationId,
@@ -81,11 +81,12 @@ public class AttendanceDisclosureController {
      */
     @GetMapping("/teams/{teamId}/attendance/requirements/evaluations/{evaluationId}/disclosure-history")
     @Operation(summary = "開示・非開示判断の履歴取得")
-    @PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ApiResponse<List<DisclosureResponse>> getDisclosureHistory(
             @PathVariable Long teamId,
             @PathVariable Long evaluationId) {
-        return ApiResponse.of(disclosureService.getDisclosureHistory(teamId, evaluationId));
+        Long operatorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(disclosureService.getDisclosureHistory(teamId, evaluationId, operatorUserId));
     }
 
     /**

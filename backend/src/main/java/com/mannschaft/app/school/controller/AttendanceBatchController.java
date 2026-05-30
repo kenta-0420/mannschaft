@@ -32,7 +32,7 @@ import java.time.LocalDateTime;
 @RestController
 @RequestMapping("/api/v1/admin/batch/attendance")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasRole('SYSTEM_ADMIN')")
 @Tag(name = "Attendance Batch", description = "出席要件評価バッチの手動実行 API（SYSTEM_ADMIN 限定）")
 public class AttendanceBatchController {
 
