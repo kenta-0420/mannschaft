@@ -93,23 +93,23 @@ class BulletinAttachmentServiceTest {
 
     private BulletinThreadEntity teamThread() {
         return BulletinThreadEntity.builder()
-                .id(THREAD_ID).scopeType(ScopeType.TEAM).scopeId(TEAM_ID).authorId(USER_ID).build();
+                .scopeType(ScopeType.TEAM).scopeId(TEAM_ID).authorId(USER_ID).build();
     }
 
     private BulletinThreadEntity orgThread() {
         return BulletinThreadEntity.builder()
-                .id(THREAD_ID).scopeType(ScopeType.ORGANIZATION).scopeId(ORG_ID).authorId(USER_ID).build();
+                .scopeType(ScopeType.ORGANIZATION).scopeId(ORG_ID).authorId(USER_ID).build();
     }
 
     private BulletinThreadEntity villageThread() {
         return BulletinThreadEntity.builder()
-                .id(THREAD_ID).scopeType(ScopeType.VILLAGE).scopeId(0L)
+                .scopeType(ScopeType.VILLAGE).scopeId(0L)
                 .scopeVillageId(VILLAGE_ID).authorId(USER_ID).build();
     }
 
     private BulletinThreadEntity personalThread(Long ownerId) {
         return BulletinThreadEntity.builder()
-                .id(THREAD_ID).scopeType(ScopeType.PERSONAL).scopeId(ownerId).authorId(ownerId).build();
+                .scopeType(ScopeType.PERSONAL).scopeId(ownerId).authorId(ownerId).build();
     }
 
     private AttachmentPresignRequest presignReq(TargetType type, Long targetId) {
@@ -153,7 +153,7 @@ class BulletinAttachmentServiceTest {
         @DisplayName("REPLY 対象は返信→スレッドを逆引きして認可する")
         void replyTargetReverseLookup() {
             BulletinReplyEntity reply = BulletinReplyEntity.builder()
-                    .id(REPLY_ID).threadId(THREAD_ID).authorId(USER_ID).build();
+                    .threadId(THREAD_ID).authorId(USER_ID).build();
             given(replyRepository.findById(REPLY_ID)).willReturn(Optional.of(reply));
             given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(teamThread()));
             given(attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.REPLY, REPLY_ID))
@@ -326,7 +326,7 @@ class BulletinAttachmentServiceTest {
         @DisplayName("返信一覧は返信→スレッド逆引きで閲覧認可する")
         void listReply() {
             BulletinReplyEntity reply = BulletinReplyEntity.builder()
-                    .id(REPLY_ID).threadId(THREAD_ID).authorId(USER_ID).build();
+                    .threadId(THREAD_ID).authorId(USER_ID).build();
             given(replyRepository.findById(REPLY_ID)).willReturn(Optional.of(reply));
             given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(orgThread()));
             given(attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.REPLY, REPLY_ID))
