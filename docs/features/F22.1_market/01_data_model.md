@@ -14,7 +14,7 @@
 | 1 | 地域列の追加 | **ALTER**（既存テーブル拡張） | `recruitment_listings` | 張らない（マスタ参照はService検証） |
 | 2 | visibility に `FRIEND_TEAMS_ONLY` 追加 | **Java enum追加のみ・DDL不要** | `RecruitmentVisibility`（列は `VARCHAR(20)`） | — |
 | 3 | フレンド宛先テーブルの新設 | **CREATE**（新規・UUIDv7） | `recruitment_friend_targets` | 張らない（friend/team 参照はService検証） |
-| 4 | confirmable の source_type に `MARKET_FINALIZE` 追加 | **ALTER**（ENUM拡張） | `confirmable_notifications` | — |
+| 4 | confirmable の source_type/source_id 連携 | **source_type は ALTER 不要（VARCHAR）／ source_id 列を新規追加** | `confirmable_notifications` | — |
 
 > **地域マスタは新規作成しない。** 既存 `prefectures`（`code CHAR(2)`）/ `cities`（`code CHAR(5)`, `prefecture_code CHAR(2)` FK）を正典として参照する（F08.1 由来・全国約1,900件 seed 済）。市ドメインは**参照のみ**。二重マスタを作らない（CLAUDE.md 原則6 マスタ例外・再利用原則）。
 
@@ -116,7 +116,8 @@ UNIQUE KEY uk_rft_listing_kind_ref
   - 指定 `team_id` が札主チームと **`team_friends` で成立済みフレンド**であること（未成立は `MARKET_003`）。
     - **正規化キーで検索すること**: `team_friends` は `CHECK(team_a_id < team_b_id)`・`UNIQUE(team_a_id, team_b_id)` で正規化保存される（V9.072・実装済）。検証は `team_a_id = MIN(札主teamId, 宛先teamId) AND team_b_id = MAX(...)` で引く。単純な片側一致検索は誤判定するため不可。
   - 指定 `folder_id` が**札主チームの所有フォルダ**であること（他人のフォルダ指定は `MARKET_004`）。
-- **依存関係（実装順）**: 本テーブルが参照する F01.5 のうち、`team_friends`（V9.072）は実装済のため `ALL_FRIENDS`/`TEAM` 粒度は Phase 1 で実装可能。`FOLDER` 粒度は F01.5 の**フレンドフォルダ（`team_friend_folders`）実装が前提**。未実装なら `FOLDER` は当該実装完了後に有効化（UI/APIで gating。README §4 ロードマップ参照）。
+- **依存関係（実装順）**: 本テーブルが参照する F01.5 のうち、`team_friends`（V9.072）/ フレンドフォルダ `team_friend_folders`（**V9.073・実装済**）はいずれも実装済。
+  > **乖離C 是正（第一陣 / 2026-05-30）**: 当初「`FOLDER` は未実装ゆえ gating」としていたが、`team_friend_folders` は **V9.073 で既に実装済**であることを確認した。よって **`ALL_FRIENDS`/`FOLDER`/`TEAM` の3粒度すべてを Phase 1 で実装する（FOLDER の gating は不要）**。README §4 の gating 記述も同様に是正済。
 - **フォルダ削除時の孤立対策**: フレンドフォルダ削除時、`target_kind='FOLDER'` の宛先が孤立する。F01.5 のフォルダ削除フックで該当 `recruitment_friend_targets` 行を削除する（イベント連携）。万一孤立した場合、配信/アクセス解決（§02_api_design §7）で**存在しないフォルダは「該当フレンドなし」として安全に無視**（NPEを出さず空集合扱い）し、症状を隠さずログ記録する。
 - 論理削除は持たない（札の従属データ。札の取下げ＝`recruitment_listings.status` 側で表現、行は CASCADE で物理削除されても監査は `recruitment_participant_history` 側に残る）。
 - **宛先の具体化（誰に届くか）は保存時に固定しない**。`ALL_FRIENDS`/`FOLDER` は配信・アクセス判定の都度 F01.5 サービスで「現在の成立フレンド集合」へ解決する（フレンド増減に追従。§02_api_design の配信フロー参照）。
@@ -127,14 +128,24 @@ UNIQUE KEY uk_rft_listing_kind_ref
 
 「札を下げる」の**最終認証**を、F04.9 確認通知（確認応答型）で実装する。札が要件充足（`FULL`）した際、札主に「この募集を確定して札を下げますか？」の確認通知を送り、確認応答で `COMPLETED` へ遷移させる。
 
+> **⚠ 乖離是正（第一陣・部隊1 / 2026-05-30）— 実コードと設計の差分を本実装で根治した:**
+> - **乖離A（JPAマッピング欠落）**: `ConfirmableNotificationEntity` には `source_type`/`source_id` が **JPAマッピングされていなかった**。本実装で `@Column(name="source_type")`（`String`）と `@Column(name="source_id")`（`Long`）の **JPAマッピングを追加**した。最終認証の連携（`MARKET_FINALIZE` 発火＋確認後リスナ）は **新規実装**である（「source_type 拡張のみで済む」は誤り。第二陣で send() オーバーロード＋確認後イベントリスナを実装する）。
+> - **乖離B（source_type は VARCHAR）**: `confirmable_notifications.source_type` の実体は **`VARCHAR(40) NOT NULL DEFAULT 'EMERGENCY_CLOSURE'`**（MySQL ENUM ではない・V13.006 の CREATE TABLE で確認）。よって `MARKET_FINALIZE` 追加に **Flyway ALTER は不要**（Java 側で文字列を渡すのみ。`'MARKET_FINALIZE'` は14文字 ≤ VARCHAR(40)）。下記の旧 `MODIFY COLUMN ... ENUM(...)` は **誤り**。
+> - **source_id 列の新設**: 一方 `source_id` 列は DB に **存在しなかった**ため、`source_id = recruitment_listings.id` を保持できるよう Flyway で `source_id BIGINT UNSIGNED NULL` を追加した（FK なし・`idx_cn_source(source_type, source_id)` 付与）。
+
 ```sql
--- 既存: source_type ENUM('EMERGENCY_CLOSURE','RECRUITMENT_LISTING')（F03.11 V3.124で拡張済）
+-- ❌ 旧設計（誤り・ENUM 前提）。実コードは source_type が VARCHAR(40) なので ALTER 不要。
+-- ALTER TABLE confirmable_notifications
+--   MODIFY COLUMN source_type
+--     ENUM('EMERGENCY_CLOSURE','RECRUITMENT_LISTING','MARKET_FINALIZE') NOT NULL;
+
+-- ✅ 実装（第一陣）: source_id 列のみ追加（source_type は VARCHAR ゆえ追加変更不要）
 ALTER TABLE confirmable_notifications
-  MODIFY COLUMN source_type
-    ENUM('EMERGENCY_CLOSURE','RECRUITMENT_LISTING','MARKET_FINALIZE') NOT NULL;
+  ADD COLUMN source_id BIGINT UNSIGNED NULL AFTER source_type;
+CREATE INDEX idx_cn_source ON confirmable_notifications (source_type, source_id);
 ```
 
-- `source_type='MARKET_FINALIZE'`、`source_id = recruitment_listings.id`。
+- `source_type='MARKET_FINALIZE'`（文字列値）、`source_id = recruitment_listings.id`。
 - **⚠ デプロイ順序の厳守**（F03.11 §8.5 と同じ轍）: F04.9 の Service/Batch/UI が**未知の source_type を安全に無視する防御コード**を**先に**デプロイしてから、`MARKET_FINALIZE` を発火する側を投入する。順序を誤ると既存確認通知処理が `IllegalArgumentException` で連鎖故障する。
 - 既存の `RECRUITMENT_LISTING`（募集の確認済みボタン用）とは別用途のため、新値で分離する（混在させない）。
 
@@ -142,17 +153,19 @@ ALTER TABLE confirmable_notifications
 
 ## 6. Flyway マイグレーション
 
-> **版番号は仮（`V3.1NN`）**。F03.11 が `V3.118`〜`V3.124` を使用済み。**マージ直前に `origin/main` の `recruitment` 系および全体の最大版番号を再確認し、連番でリネームする**こと（並行PRとの番号衝突は「マージ時」に確定するため。memory: migration_version_collision）。
+> **乖離D 是正（第一陣 / 2026-05-30）— Flyway 版番号はタイムスタンプ形式**: 当プロジェクトの現行採番は `V3.1NN`（連番）ではなく **`V9.YYYYMMDDhhmmss__...`（タイムスタンプ形式）** に移行済（`db/migration/` の最大版番は `V9.20260529140529`）。連番 `V3.*` を新規に切らないこと。**マージ直前に `origin/main` の最大タイムスタンプを再確認**し、衝突しない採番に調整する（並行PRとの衝突は「マージ時」に確定するため。memory: migration_version_collision）。
 
 ```
-V3.1NN__alter_recruitment_listings_add_region.sql        -- §2 地域列 + idx_rl_market_region
-V3.1NN__create_recruitment_friend_targets.sql            -- §4 フレンド宛先テーブル
-V3.1NN__alter_confirmable_source_type_market.sql         -- §5 source_type ENUM 拡張
+-- 第一陣で実際に採番したファイル（2026-05-30）
+V9.20260530100000__alter_recruitment_listings_add_region.sql       -- §2 地域列 + idx_rl_market_region
+V9.20260530100100__create_recruitment_friend_targets.sql           -- §4 フレンド宛先テーブル
+V9.20260530100200__add_source_id_to_confirmable_notifications.sql  -- §5 source_id 列追加（source_type は VARCHAR ゆえ ALTER 不要）
 ```
 > §3 の `FRIEND_TEAMS_ONLY` 追加は **Flyway 不要**（`visibility` は VARCHAR(20)・Java enum 管理）。Java 定数追加のみ。
+> §5 の `source_type='MARKET_FINALIZE'` も **Flyway 不要**（VARCHAR・乖離B）。追加が必要だったのは `source_id` 列のみ。
 
 **注意点**
-- §5 の `confirmable_notifications` ENUM 拡張は、防御コード先行デプロイ後に適用（§5 警告）。
+- §5 の `confirmable_notifications` 連携は、`source_type='MARKET_FINALIZE'` を**発火する側**（第二陣の send() オーバーロード）を投入する**前に**、未知 source_type を安全に無視する防御コードを先行デプロイすること（§5 警告）。本第一陣で投入する DDL（`source_id` 列追加）は防御コードに依存せず単独適用可。
 - 地域列の ALTER は既存行を NULL 埋めするのみ（バックフィル不要）。
 - `recruitment_friend_targets` は `recruitment_listings` 作成後に作成（同一ドメイン・依存順）。
 - from-scratch 番人テスト（Flyway 全適用）で番号衝突・順序破綻を検知する。
