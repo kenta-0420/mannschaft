@@ -973,4 +973,278 @@ class BulletinThreadServiceTest {
                     .isEqualTo(BulletinErrorCode.THREAD_NOT_FOUND);
         }
     }
+
+    // ========================================================================
+    // F17.1 村掲示板グローバル方式 — 書込・モデレーション（足軽C）
+    // ========================================================================
+
+    private static final Long OTHER_USER_ID = 99L;
+
+    /** author が別ユーザーの村スレッド（モデレーション/他者投稿の検証用）。 */
+    private BulletinThreadEntity villageThreadByOther() {
+        return BulletinThreadEntity.builder()
+                .categoryId(CATEGORY_ID)
+                .scopeType(ScopeType.VILLAGE)
+                .scopeId(0L)
+                .scopeVillageId(VILLAGE_ID)
+                .authorId(OTHER_USER_ID)
+                .title("他者の村スレッド")
+                .body("本文")
+                .priority(Priority.INFO)
+                .readTrackingMode(ReadTrackingMode.COUNT_ONLY)
+                .build();
+    }
+
+    @Nested
+    @DisplayName("updateThreadGlobal（グローバル更新）")
+    class UpdateThreadGlobal {
+
+        @Test
+        @DisplayName("村スレッド_投稿者本人_モデレーター認可不要で更新")
+        void 村_本人更新() {
+            BulletinThreadEntity entity = createVillageThread(); // author = USER_ID
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            UpdateThreadRequest req = new UpdateThreadRequest("新題名", "新本文", "URGENT");
+            bulletinThreadService.updateThreadGlobal(THREAD_ID, USER_ID, req);
+
+            // 本人なのでモデレーター認可は呼ばれない
+            verify(villageBulletinAccessService, never()).checkVillageBulletinModerator(any(), any());
+            assertThat(entity.getTitle()).isEqualTo("新題名");
+        }
+
+        @Test
+        @DisplayName("村スレッド_他者投稿_モデレーターなら更新可")
+        void 村_他者投稿モデレーター更新() {
+            BulletinThreadEntity entity = villageThreadByOther();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            UpdateThreadRequest req = new UpdateThreadRequest("題名", "本文", null);
+            bulletinThreadService.updateThreadGlobal(THREAD_ID, USER_ID, req);
+
+            verify(villageBulletinAccessService).checkVillageBulletinModerator(VILLAGE_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("村スレッド_他者投稿_非モデレーター_403")
+        void 村_他者投稿非モデレーター_403() {
+            BulletinThreadEntity entity = villageThreadByOther();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            doThrow(new BusinessException(VillageErrorCode.VILLAGE_BULLETIN_MODERATE_FORBIDDEN))
+                    .when(villageBulletinAccessService).checkVillageBulletinModerator(VILLAGE_ID, USER_ID);
+
+            UpdateThreadRequest req = new UpdateThreadRequest("題名", "本文", null);
+            assertThatThrownBy(() -> bulletinThreadService.updateThreadGlobal(THREAD_ID, USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(VillageErrorCode.VILLAGE_BULLETIN_MODERATE_FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("TEAMスレッド_既存updateThreadへ委譲")
+        void チーム_委譲() {
+            BulletinThreadEntity entity = createDefaultThread(); // TEAM, author = USER_ID
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.findByIdAndScopeTypeAndScopeId(THREAD_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            UpdateThreadRequest req = new UpdateThreadRequest("題名", "本文", null);
+            bulletinThreadService.updateThreadGlobal(THREAD_ID, USER_ID, req);
+
+            // 既存経路の所属認可が効く
+            verify(accessGuard).checkMembership(USER_ID, ScopeType.TEAM, SCOPE_ID);
+            verify(villageBulletinAccessService, never()).checkVillageBulletinModerator(any(), any());
+        }
+
+        @Test
+        @DisplayName("スレッド不在_THREAD_NOT_FOUND")
+        void 不在_404() {
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.empty());
+            UpdateThreadRequest req = new UpdateThreadRequest("題名", "本文", null);
+            assertThatThrownBy(() -> bulletinThreadService.updateThreadGlobal(THREAD_ID, USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(BulletinErrorCode.THREAD_NOT_FOUND);
+        }
+    }
+
+    @Nested
+    @DisplayName("deleteThreadGlobal（グローバル削除）")
+    class DeleteThreadGlobal {
+
+        @Test
+        @DisplayName("村スレッド_本人削除_モデレーター認可不要")
+        void 村_本人削除() {
+            BulletinThreadEntity entity = createVillageThread();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+
+            bulletinThreadService.deleteThreadGlobal(THREAD_ID, USER_ID);
+
+            assertThat(entity.getDeletedAt()).isNotNull();
+            verify(villageBulletinAccessService, never()).checkVillageBulletinModerator(any(), any());
+        }
+
+        @Test
+        @DisplayName("村スレッド_他者投稿_非モデレーター_403")
+        void 村_他者投稿非モデレーター_403() {
+            BulletinThreadEntity entity = villageThreadByOther();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            doThrow(new BusinessException(VillageErrorCode.VILLAGE_BULLETIN_MODERATE_FORBIDDEN))
+                    .when(villageBulletinAccessService).checkVillageBulletinModerator(VILLAGE_ID, USER_ID);
+
+            assertThatThrownBy(() -> bulletinThreadService.deleteThreadGlobal(THREAD_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(VillageErrorCode.VILLAGE_BULLETIN_MODERATE_FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("TEAMスレッド_既存deleteThreadへ委譲")
+        void チーム_委譲() {
+            BulletinThreadEntity entity = createDefaultThread();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.findByIdAndScopeTypeAndScopeId(THREAD_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+
+            bulletinThreadService.deleteThreadGlobal(THREAD_ID, USER_ID);
+
+            verify(accessGuard).checkMembership(USER_ID, ScopeType.TEAM, SCOPE_ID);
+            assertThat(entity.getDeletedAt()).isNotNull();
+        }
+    }
+
+    @Nested
+    @DisplayName("モデレーション set 方式（priority/pin/lock/archive）")
+    class Moderation {
+
+        @Test
+        @DisplayName("村_pin設定_モデレーター認可してset")
+        void 村_pin設定() {
+            BulletinThreadEntity entity = createVillageThread();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            bulletinThreadService.setPinGlobal(THREAD_ID, USER_ID, true);
+
+            verify(villageBulletinAccessService).checkVillageBulletinModerator(VILLAGE_ID, USER_ID);
+            assertThat(entity.getIsPinned()).isTrue();
+        }
+
+        @Test
+        @DisplayName("村_lock解除_set方式でfalseを反映")
+        void 村_lock解除() {
+            BulletinThreadEntity entity = createVillageThread();
+            entity.setLocked(true);
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            bulletinThreadService.setLockGlobal(THREAD_ID, USER_ID, false);
+
+            verify(villageBulletinAccessService).checkVillageBulletinModerator(VILLAGE_ID, USER_ID);
+            assertThat(entity.getIsLocked()).isFalse();
+        }
+
+        @Test
+        @DisplayName("村_priority変更_モデレーターのみ")
+        void 村_priority変更() {
+            BulletinThreadEntity entity = createVillageThread();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            bulletinThreadService.changePriorityGlobal(THREAD_ID, USER_ID, "URGENT");
+
+            verify(villageBulletinAccessService).checkVillageBulletinModerator(VILLAGE_ID, USER_ID);
+            assertThat(entity.getPriority()).isEqualTo(Priority.URGENT);
+        }
+
+        @Test
+        @DisplayName("村_pin設定_非モデレーター_403")
+        void 村_pin非モデレーター_403() {
+            BulletinThreadEntity entity = createVillageThread();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            doThrow(new BusinessException(VillageErrorCode.VILLAGE_BULLETIN_MODERATE_FORBIDDEN))
+                    .when(villageBulletinAccessService).checkVillageBulletinModerator(VILLAGE_ID, USER_ID);
+
+            assertThatThrownBy(() -> bulletinThreadService.setPinGlobal(THREAD_ID, USER_ID, true))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(VillageErrorCode.VILLAGE_BULLETIN_MODERATE_FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("TEAM_pin設定_既存管理権限を要求")
+        void チーム_pin設定_管理権限() {
+            BulletinThreadEntity entity = createDefaultThread();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            bulletinThreadService.setPinGlobal(THREAD_ID, USER_ID, true);
+
+            verify(accessGuard).checkMembership(USER_ID, ScopeType.TEAM, SCOPE_ID);
+            verify(accessGuard).requireManageContent(USER_ID, ScopeType.TEAM, SCOPE_ID);
+            verify(villageBulletinAccessService, never()).checkVillageBulletinModerator(any(), any());
+        }
+
+        @Test
+        @DisplayName("村_archive_モデレーター認可してアーカイブ")
+        void 村_archive() {
+            BulletinThreadEntity entity = createVillageThread();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            bulletinThreadService.archiveGlobal(THREAD_ID, USER_ID, true);
+
+            verify(villageBulletinAccessService).checkVillageBulletinModerator(VILLAGE_ID, USER_ID);
+            assertThat(entity.getIsArchived()).isTrue();
+        }
+
+        @Test
+        @DisplayName("TEAM_archive_既存archiveへ委譲")
+        void チーム_archive委譲() {
+            BulletinThreadEntity entity = createDefaultThread();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.findByIdAndScopeTypeAndScopeId(THREAD_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            bulletinThreadService.archiveGlobal(THREAD_ID, USER_ID, true);
+
+            verify(accessGuard).requireManageContent(USER_ID, ScopeType.TEAM, SCOPE_ID);
+            assertThat(entity.getIsArchived()).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("createThreadGlobal（グローバル作成）")
+    class CreateThreadGlobal {
+
+        @Test
+        @DisplayName("VILLAGE作成_既存createThreadへ委譲_主体検証実行")
+        void 村_作成委譲() {
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            CreateThreadRequest req = new CreateThreadRequest(
+                    null, "題名", "本文", "INFO", "COUNT_ONLY", null, null,
+                    VILLAGE_ID, VillageSubjectType.USER, USER_ID);
+            bulletinThreadService.createThreadGlobal(ScopeType.VILLAGE, 0L, USER_ID, req);
+
+            // VILLAGE 作成は所属認可 + 作成権限 + 投稿主体検証が走る
+            verify(accessGuard).checkMembership(USER_ID, ScopeType.VILLAGE, 0L);
+            verify(postingIdentityService)
+                    .validatePostingIdentity(USER_ID, VILLAGE_ID, VillageSubjectType.USER, USER_ID);
+        }
+    }
 }

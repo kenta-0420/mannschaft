@@ -476,6 +476,8 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_080", HttpStatus.CONFLICT),             // NEWSLETTER_NOT_OPTED_OUT
             // F17.1 村掲示板グローバル方式 — 掲示板閲覧認可（VILLAGE_081）
             Map.entry("VILLAGE_081", HttpStatus.FORBIDDEN),            // VILLAGE_BULLETIN_VIEW_FORBIDDEN
+            // F17.1 村掲示板グローバル方式 — モデレーション認可（VILLAGE_082）
+            Map.entry("VILLAGE_082", HttpStatus.FORBIDDEN),            // VILLAGE_BULLETIN_MODERATE_FORBIDDEN
 
             // F17 Phase 3-β — 村史（VILLAGE_075）
             Map.entry("VILLAGE_075", HttpStatus.NOT_FOUND),            // CHRONICLE_NOT_FOUND

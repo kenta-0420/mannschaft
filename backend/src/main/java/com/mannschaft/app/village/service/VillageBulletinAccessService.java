@@ -4,7 +4,11 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.entity.VillageEntity;
+import com.mannschaft.app.village.entity.VillageMembershipEntity;
 import com.mannschaft.app.village.entity.enums.VillageBulletinVisibility;
+import com.mannschaft.app.village.entity.enums.VillageRole;
+import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +50,7 @@ import java.util.UUID;
 public class VillageBulletinAccessService {
 
     private final VillageRepository villageRepository;
+    private final VillageMembershipRepository membershipRepository;
     private final PostingIdentityService postingIdentityService;
     private final AccessControlService accessControlService;
 
@@ -88,5 +93,52 @@ public class VillageBulletinAccessService {
             return;
         }
         throw new BusinessException(VillageErrorCode.VILLAGE_BULLETIN_VIEW_FORBIDDEN);
+    }
+
+    /**
+     * 村掲示板のモデレーション認可を検証する。認可違反時は例外を投げる（正常時は何も返さない）。
+     *
+     * <p>村掲示板グローバル方式（F17.1）の書込・モデレーション系操作（ピン留め・ロック・優先度変更・
+     * 他者投稿の削除等）に対し、操作者が当該村のモデレーター（村ロール {@code HEADMAN} / {@code ELDER}）
+     * または SYSTEM_ADMIN であることを要求する。村ロールの解決は village ドメインの
+     * {@code village_memberships}（{@link VillageRole}）を正準とし、bulletin ドメインからは
+     * 本メソッド経由で認可結果のみを受け取る（クロスドメイン原則1）。</p>
+     *
+     * <p>村存在性は閲覧認可と同様に削除／凍結済みを 404 として弾く（IDOR 対策で統一）。</p>
+     *
+     * @param villageId 対象村 ID（必須）
+     * @param userId    操作しようとするログイン済ユーザー ID
+     * @throws BusinessException 村が存在しない（{@link VillageErrorCode#VILLAGE_NOT_FOUND}）／
+     *                           モデレーターでない
+     *                           （{@link VillageErrorCode#VILLAGE_BULLETIN_MODERATE_FORBIDDEN}・403）
+     */
+    public void checkVillageBulletinModerator(UUID villageId, Long userId) {
+        if (villageId == null) {
+            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
+        }
+
+        // 削除／凍結済みは 404（IDOR 対策で統一）
+        villageRepository
+                .findByIdAndDeletedAtIsNullAndArchivedAtIsNull(villageId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
+
+        // SYSTEM_ADMIN は常に許可
+        if (userId != null && accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+
+        // 村ロール HEADMAN / ELDER のみモデレーション可（村メンバーシップを正準解決）
+        if (userId != null) {
+            VillageRole role = membershipRepository
+                    .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                            villageId, VillageSubjectType.USER, userId)
+                    .filter(m -> m.getBannedAt() == null)
+                    .map(VillageMembershipEntity::getRole)
+                    .orElse(null);
+            if (role == VillageRole.HEADMAN || role == VillageRole.ELDER) {
+                return;
+            }
+        }
+        throw new BusinessException(VillageErrorCode.VILLAGE_BULLETIN_MODERATE_FORBIDDEN);
     }
 }
