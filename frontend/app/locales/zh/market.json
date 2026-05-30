@@ -79,11 +79,11 @@
     },
     "notify": {
       "applicationReceived": "您的招募收到了申请（{owner} / {title}）",
-      "friendListing": "{team}发来了招募："{title}"",
+      "friendListing": "{team}发来了招募：“{title}”",
       "finalizeRequest": "招募名额已满，确认并关闭招募？",
       "reminderShortfall": "截止日期临近，还需要{count}名申请人。",
-      "autoCancelled": ""{title}"因申请人不足已关闭。",
-      "cancelledToApplicant": "抱歉，"{title}"已被主办方撤下。",
+      "autoCancelled": "“{title}”因申请人不足已关闭。",
+      "cancelledToApplicant": "抱歉，“{title}”已被主办方撤下。",
       "seeOtherListings": "查看{team}的其他招募"
     },
     "error": {
