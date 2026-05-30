@@ -303,7 +303,9 @@ method-security が無効な現状、以下は **認可が事実上ゼロ**で�
 
 ---
 
-## 7. 要マスター判断事項（論点）
+## 7. 論点と決定（2026-05-30 マスター裁可済み）
+
+> **裁可サマリ**: 論点A=**A-1**（出席開示＝学校チームの ADMIN/DEPUTY_ADMIN 相当）／論点B=**SUPPORTER 排除方針は維持し、チーム正式メンバー限定＋scope 検証へ是正**／論点C=**MEMBER に統一**。以下、各論点の決定を確定する。
 
 ### 7.1 【論点 A・要判断】出席開示の正規認可（幻ロール TEACHER）
 
@@ -315,7 +317,7 @@ method-security が無効な現状、以下は **認可が事実上ゼロ**で�
 | **A-2. permission ベースにする** | `ATTENDANCE_DISCLOSE` 等の permission を定義し `@accessGuard.hasScopePermission(..., 'ATTENDANCE_DISCLOSE')` で判定 | 細粒度・将来拡張に強い | permission シード・付与 UI の整備が必要（スコープ増） |
 | **A-3. TEACHER ロールを新規シードする** | `roles` に TEACHER を追加し per-scope ロールとして付与 | ドメイン語彙と一致 | ロール体系の拡張＝広範な影響。付与フロー新設が必要 |
 
-**推奨は A-1（ADMIN/DEPUTY_ADMIN 相当）を暫定とし、F03.13 の学校ドメイン要件次第で A-2 へ発展**。ただし「教員＝管理者ではない」運用が要件にある場合は A-2/A-3 を選ぶ。**マスター判断を仰ぐ。**
+**✅ 決定（2026-05-30 マスター裁可）= A-1 を採用。** 出席開示の 3 EP（disclose/withhold/disclosure-history）は、`@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")` を **`@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')`** に置換し、「学校チーム（クラス）の ADMIN/DEPUTY_ADMIN ＝教員相当」として per-scope 認可する。新ロールは追加しない。将来「教員＝管理者ではない」運用要件（F03.13 学校ドメイン）が確定した場合に A-2（permission `ATTENDANCE_DISCLOSE`）へ発展させる余地を残す。Phase 3 で実装（生穴封鎖と同時）。
 
 ### 7.2 【論点 B・要判断】シフト PDF の認可（負論理 SUPPORTER）
 
@@ -324,11 +326,11 @@ method-security が無効な現状、以下は **認可が事実上ゼロ**で�
 - **SUPPORTER 排除を正しく表現**: `@accessGuard` に「当該スケジュールの所属チームで MEMBER 以上 **かつ** SUPPORTER でない」判定メソッドを追加するか、Service 層 `ShiftPdfService` で `scheduleId → teamId` を解決して `isSupporter` を弾く。
 - **scope 検証を必須化**: PDF 取得前に `scheduleId` がリクエスタの所属チームのものか検証（IDOR 封鎖）。
 
-**論点**: 「SUPPORTER に PDF を見せない」要件が今も有効か（F03.5 の最新仕様確認）。有効なら上記、不要なら単純な scope メンバー検証に簡素化。**マスター判断を仰ぐ。**
+**✅ 決定（2026-05-30 マスター裁可）= SUPPORTER 排除方針は維持し、正しい per-scope 表現へ是正。** `ShiftPdfController` の `!hasRole('SUPPORTER')` を撤廃し、「**当該スケジュールの所属チームの正式メンバー（MEMBER 以上）であり、かつ SUPPORTER ではない**」を満たす場合のみ PDF を取得可能にする。`ShiftPdfService` で `scheduleId → teamId` を解決し（IDOR 封鎖の scope 検証）、`@accessGuard` ないし `AccessControlService` でメンバー判定＋SUPPORTER 除外を行う。Phase 3/4 で実装。
 
 ### 7.3 【論点 C・確認のみ】MEMBER を全ユーザーに付与する妥当性
 
-現状 JWT は全ユーザーに `["MEMBER"]` を付与している。本根治でも「全ユーザーの基底ロール＝ MEMBER」を踏襲する（§3.2.2）。ただし F01.1 §1269 のドキュメントは `["USER"]` 表記とゆれている。**`MEMBER` で統一**し、F01.1 のゆれを是正する（§8.2）。ロール名 `USER` は `roles` シードに存在しないため、`USER` は誤記と判断する。
+現状 JWT は全ユーザーに `["MEMBER"]` を付与している。本根治でも「全ユーザーの基底ロール＝ MEMBER」を踏襲する（§3.2.2）。ただし F01.1 §1269 のドキュメントは `["USER"]` 表記とゆれている。**✅ 決定（2026-05-30 マスター裁可）= `MEMBER` で統一**し、F01.1 のゆれを是正する（§8.2）。ロール名 `USER` は `roles` シードに存在しないため誤記と確定。
 
 ---
 
