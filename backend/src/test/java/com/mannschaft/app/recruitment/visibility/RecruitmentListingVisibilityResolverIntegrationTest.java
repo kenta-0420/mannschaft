@@ -2,6 +2,8 @@ package com.mannschaft.app.recruitment.visibility;
 
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.recruitment.entity.RecruitmentFriendTargetEntity;
+import com.mannschaft.app.recruitment.repository.RecruitmentFriendTargetRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -41,6 +43,9 @@ class RecruitmentListingVisibilityResolverIntegrationTest extends AbstractMySqlI
     @Autowired
     private ContentVisibilityChecker checker;
 
+    @Autowired
+    private RecruitmentFriendTargetRepository friendTargetRepository;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -52,6 +57,10 @@ class RecruitmentListingVisibilityResolverIntegrationTest extends AbstractMySqlI
     private Long teamId;
     private Long orgId;
     private Long categoryId;
+
+    // F22.1 市 FRIEND_TEAMS_ONLY 用の追加 seed。
+    private Long friendTeamId;
+    private Long friendMemberUserId;
 
     @BeforeEach
     void setUp() {
@@ -81,6 +90,13 @@ class RecruitmentListingVisibilityResolverIntegrationTest extends AbstractMySqlI
 
         insertUserRole(memberUserId, memberRoleId, teamId, null);
         insertUserRole(sysAdminUserId, systemAdminRoleId, null, null);
+
+        // F22.1 市: フレンドチームとそのメンバーを seed（FRIEND_TEAMS_ONLY 検証用）。
+        friendTeamId = insertTeam("RL結合 フレンドチーム");
+        friendMemberUserId = insertUser("rl.friend@example.com", "友達", "一郎");
+        insertUserRole(friendMemberUserId, memberRoleId, friendTeamId, null);
+        // 札主チーム ↔ フレンドチームの成立フレンド関係（team_a_id < team_b_id で正規化）。
+        insertTeamFriend(teamId, friendTeamId);
 
         // ddl-auto=create-drop の test 環境では Flyway シードが走らないため
         // テストヘルパーで futsal_open カテゴリを直接 INSERT する。
@@ -224,6 +240,26 @@ class RecruitmentListingVisibilityResolverIntegrationTest extends AbstractMySqlI
                 .getSingleResult()).longValue();
     }
 
+    /** 札主チーム ↔ 宛先チームの成立フレンド関係を直接 INSERT する（team_a_id < team_b_id 正規化）。 */
+    private void insertTeamFriend(Long teamX, Long teamY) {
+        Long a = Math.min(teamX, teamY);
+        Long b = Math.max(teamX, teamY);
+        em.createNativeQuery(
+                "INSERT INTO team_friends ("
+                        + "team_a_id, team_b_id, established_at, a_follow_id, b_follow_id, "
+                        + "is_public, created_at, updated_at) "
+                        + "VALUES (:a, :b, NOW(), 0, 0, 0, NOW(), NOW())")
+                .setParameter("a", a)
+                .setParameter("b", b)
+                .executeUpdate();
+    }
+
+    /** 札に TEAM 粒度のフレンド宛先を 1 件追加する（recruitment_friend_targets）。 */
+    private void insertFriendTargetTeam(Long listingId, Long targetTeamId) {
+        friendTargetRepository.save(
+                RecruitmentFriendTargetEntity.ofTeam(listingId, targetTeamId));
+    }
+
     // =========================================================================
     // シナリオ
     // =========================================================================
@@ -317,5 +353,72 @@ class RecruitmentListingVisibilityResolverIntegrationTest extends AbstractMySqlI
         Set<Long> sysAdmin = checker.filterAccessible(
                 ReferenceType.RECRUITMENT_LISTING, List.of(id1, id2, id3), sysAdminUserId);
         assertThat(sysAdmin).containsExactlyInAnyOrder(id1, id2, id3);
+    }
+
+    // =========================================================================
+    // F22.1 市: FRIEND_TEAMS_ONLY（CUSTOM 正規化 → evaluateCustom）
+    //   🔴-2 根治の回帰テスト（02_api_design §7 / 04_security §1.1）
+    // =========================================================================
+
+    @Test
+    @DisplayName("FRIEND_TEAMS_ONLY: 宛先フレンドチームのメンバーは閲覧可")
+    void friendTeamsOnly_friendMember_visible() {
+        Long id = insertRecruitment("rl-friend-1", memberUserId, "OPEN", "FRIEND_TEAMS_ONLY");
+        insertFriendTargetTeam(id, friendTeamId);
+        em.flush();
+        em.clear();
+
+        assertThat(checker.canView(ReferenceType.RECRUITMENT_LISTING, id, friendMemberUserId))
+                .as("宛先フレンドチームのメンバーは閲覧可")
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("FRIEND_TEAMS_ONLY: 札主チーム自身のメンバーは閲覧可")
+    void friendTeamsOnly_ownerMember_visible() {
+        Long id = insertRecruitment("rl-friend-2", memberUserId, "OPEN", "FRIEND_TEAMS_ONLY");
+        insertFriendTargetTeam(id, friendTeamId);
+        em.flush();
+        em.clear();
+
+        assertThat(checker.canView(ReferenceType.RECRUITMENT_LISTING, id, memberUserId))
+                .as("札主チーム自身のメンバーは閲覧可")
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("FRIEND_TEAMS_ONLY: 第三者（非宛先・非札主）は閲覧不可（404 存在秘匿）")
+    void friendTeamsOnly_thirdParty_invisible() {
+        Long id = insertRecruitment("rl-friend-3", memberUserId, "OPEN", "FRIEND_TEAMS_ONLY");
+        insertFriendTargetTeam(id, friendTeamId);
+        em.flush();
+        em.clear();
+
+        // nonMemberUserId はどのチームにも所属しない第三者。
+        assertThat(checker.canView(ReferenceType.RECRUITMENT_LISTING, id, nonMemberUserId))
+                .as("第三者は閲覧不可")
+                .isFalse();
+        // 未ログインも不可。
+        assertThat(checker.canView(ReferenceType.RECRUITMENT_LISTING, id, null))
+                .as("未ログインは閲覧不可")
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("FRIEND_TEAMS_ONLY: 宛先指定が無ければ札主以外は閲覧不可（fail-closed）")
+    void friendTeamsOnly_noTarget_onlyOwnerVisible() {
+        Long id = insertRecruitment("rl-friend-4", memberUserId, "OPEN", "FRIEND_TEAMS_ONLY");
+        // 宛先を一切登録しない。
+        em.flush();
+        em.clear();
+
+        // 宛先未登録でもフレンドチームメンバーは対象外。
+        assertThat(checker.canView(ReferenceType.RECRUITMENT_LISTING, id, friendMemberUserId))
+                .as("宛先未登録ならフレンドメンバーも不可")
+                .isFalse();
+        // 札主チームメンバーは常に可。
+        assertThat(checker.canView(ReferenceType.RECRUITMENT_LISTING, id, memberUserId))
+                .as("札主チームメンバーは可")
+                .isTrue();
     }
 }

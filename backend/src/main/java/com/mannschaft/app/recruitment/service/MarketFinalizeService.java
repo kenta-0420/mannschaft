@@ -2,6 +2,8 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
+import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationStatus;
+import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
@@ -37,6 +39,7 @@ public class MarketFinalizeService {
 
     private final RecruitmentListingRepository listingRepository;
     private final ConfirmableNotificationService confirmableNotificationService;
+    private final ConfirmableNotificationRepository confirmableNotificationRepository;
     private final UserRoleRepository userRoleRepository;
 
     /**
@@ -52,6 +55,19 @@ public class MarketFinalizeService {
         if (listing.getStatus() != RecruitmentListingStatus.FULL) {
             return;
         }
+
+        // 重複発火ガード（02_api_design §6.1）: FULL→OPEN→再FULL で確認通知が二重送信されるのを防ぐ。
+        // 同一札（source_id）に未確認（ACTIVE）の MARKET_FINALIZE 通知が既に存在すれば再送しない。
+        boolean alreadyPending = confirmableNotificationRepository
+                .existsBySourceTypeAndSourceIdAndStatus(
+                        SOURCE_TYPE_MARKET_FINALIZE, listing.getId(),
+                        ConfirmableNotificationStatus.ACTIVE);
+        if (alreadyPending) {
+            log.info("F22.1 市: 最終認証の確認通知は既に未確認で存在するため再送スキップ: listingId={}",
+                    listing.getId());
+            return;
+        }
+
         ScopeType scopeType = listing.getScopeType() == RecruitmentScopeType.TEAM
                 ? ScopeType.TEAM : ScopeType.ORGANIZATION;
 

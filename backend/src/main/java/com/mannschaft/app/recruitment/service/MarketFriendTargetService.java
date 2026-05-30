@@ -5,7 +5,6 @@ import com.mannschaft.app.market.MarketErrorCode;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.recruitment.RecruitmentDistributionTargetType;
-import com.mannschaft.app.recruitment.RecruitmentFriendTargetKind;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.dto.FriendTargetRequest;
 import com.mannschaft.app.recruitment.dto.FriendTargetView;
@@ -13,21 +12,16 @@ import com.mannschaft.app.recruitment.entity.RecruitmentFriendTargetEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentFriendTargetRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
-import com.mannschaft.app.social.entity.TeamFriendEntity;
-import com.mannschaft.app.social.entity.TeamFriendFolderMemberEntity;
-import com.mannschaft.app.social.repository.TeamFriendFolderMemberRepository;
 import com.mannschaft.app.social.repository.TeamFriendFolderRepository;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -47,14 +41,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MarketFriendTargetService {
 
-    private static final int FRIEND_RESOLVE_PAGE_SIZE = 10_000;
-
     private final RecruitmentFriendTargetRepository friendTargetRepository;
     private final TeamFriendRepository teamFriendRepository;
     private final TeamFriendFolderRepository folderRepository;
-    private final TeamFriendFolderMemberRepository folderMemberRepository;
     private final UserRoleRepository userRoleRepository;
     private final NotificationHelper notificationHelper;
+    /** 宛先集合の解決（NotificationHelper 非依存・Bean サイクル回避）。 */
+    private final MarketFriendTargetResolver friendTargetResolver;
 
     // =====================================================================
     // 検証
@@ -193,94 +186,8 @@ public class MarketFriendTargetService {
      * @return 解決された宛先チームID集合
      */
     public Set<Long> resolveTargetTeamIds(Long ownerTeamId, Long listingId) {
-        Set<Long> result = new LinkedHashSet<>();
-        List<RecruitmentFriendTargetEntity> targets = friendTargetRepository.findByListingId(listingId);
-        if (targets.isEmpty()) {
-            return result;
-        }
-
-        boolean needsAllFriends = targets.stream()
-                .anyMatch(t -> t.getTargetKind() == RecruitmentFriendTargetKind.ALL_FRIENDS);
-        Set<Long> allFriendTeamIds = null;
-        if (needsAllFriends) {
-            allFriendTeamIds = resolveAllFriends(ownerTeamId);
-            result.addAll(allFriendTeamIds);
-        }
-
-        for (RecruitmentFriendTargetEntity target : targets) {
-            switch (target.getTargetKind()) {
-                case ALL_FRIENDS -> { /* 上で解決済み */ }
-                case TEAM -> {
-                    // 成立フレンドであることを再検証（解消後は無視）。
-                    if (isStillFriend(ownerTeamId, target.getTeamId())) {
-                        result.add(target.getTeamId());
-                    }
-                }
-                case FOLDER -> result.addAll(resolveFolder(ownerTeamId, target.getFolderId()));
-            }
-        }
-        result.remove(ownerTeamId);
-        return result;
-    }
-
-    /** 札主チームの全成立フレンドチームID集合を解決する。 */
-    private Set<Long> resolveAllFriends(Long ownerTeamId) {
-        List<TeamFriendEntity> relations = teamFriendRepository
-                .findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(
-                        ownerTeamId, ownerTeamId, PageRequest.of(0, FRIEND_RESOLVE_PAGE_SIZE));
-        Set<Long> result = new LinkedHashSet<>();
-        for (TeamFriendEntity rel : relations) {
-            Long other = rel.getTeamAId().equals(ownerTeamId) ? rel.getTeamBId() : rel.getTeamAId();
-            result.add(other);
-        }
-        return result;
-    }
-
-    /** 単一チームが今なお成立フレンドかを判定する（正規化キー検索）。 */
-    private boolean isStillFriend(Long ownerTeamId, Long targetTeamId) {
-        if (targetTeamId == null || targetTeamId.equals(ownerTeamId)) {
-            return false;
-        }
-        Long teamA = Math.min(ownerTeamId, targetTeamId);
-        Long teamB = Math.max(ownerTeamId, targetTeamId);
-        return teamFriendRepository.findByTeamAIdAndTeamBId(teamA, teamB).isPresent();
-    }
-
-    /**
-     * フォルダ内の成立フレンドチームID集合を解決する。
-     * 存在しない / 他人所有フォルダは空集合として安全に無視する（症状を隠さずログ記録）。
-     */
-    private Set<Long> resolveFolder(Long ownerTeamId, Long folderId) {
-        if (folderId == null) {
-            return Set.of();
-        }
-        // フォルダが札主所有でない / 削除済みなら空集合（孤立対策・01_data_model §4）。
-        if (folderRepository.findByIdAndOwnerTeamIdAndDeletedAtIsNull(folderId, ownerTeamId).isEmpty()) {
-            log.warn("F22.1 市: フォルダ宛先が不在 or 他人所有のため空集合扱い: folderId={}, ownerTeamId={}",
-                    folderId, ownerTeamId);
-            return Set.of();
-        }
-        List<TeamFriendFolderMemberEntity> members = folderMemberRepository.findByFolderId(folderId);
-        if (members.isEmpty()) {
-            return Set.of();
-        }
-        // team_friend_id → 相手チームID（成立フレンドのみ）。
-        Set<Long> friendIds = members.stream()
-                .map(TeamFriendFolderMemberEntity::getTeamFriendId)
-                .collect(Collectors.toSet());
-        Map<Long, TeamFriendEntity> relations = teamFriendRepository.findAllById(friendIds).stream()
-                .collect(Collectors.toMap(TeamFriendEntity::getId, r -> r));
-        Set<Long> result = new LinkedHashSet<>();
-        for (Long friendId : friendIds) {
-            TeamFriendEntity rel = relations.get(friendId);
-            if (rel == null) {
-                // フレンド解消済み（team_friends 物理削除）→ 安全に無視。
-                continue;
-            }
-            Long other = rel.getTeamAId().equals(ownerTeamId) ? rel.getTeamBId() : rel.getTeamAId();
-            result.add(other);
-        }
-        return result;
+        // 解決ロジックは NotificationHelper 非依存の Resolver に委譲する（Bean サイクル回避）。
+        return friendTargetResolver.resolveTargetTeamIds(ownerTeamId, listingId);
     }
 
     // =====================================================================

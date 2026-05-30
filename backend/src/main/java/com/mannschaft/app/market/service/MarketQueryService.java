@@ -12,12 +12,14 @@ import com.mannschaft.app.matching.entity.CityEntity;
 import com.mannschaft.app.matching.entity.PrefectureEntity;
 import com.mannschaft.app.matching.repository.CityRepository;
 import com.mannschaft.app.matching.repository.PrefectureRepository;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentCategoryEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
+import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,8 +29,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * F22.1 市（Market）集約: 公開閲覧・地域ファサード・件数集計の読み取り Service
@@ -78,7 +82,126 @@ public class MarketQueryService {
         Page<RecruitmentListingEntity> page = listingRepository.searchMarketListings(
                 normalizedPref, normalizedCity, categoryId, normalizedKeyword,
                 includeRegionNone, pageable);
-        return page.map(this::toMarketListingResponse);
+
+        // N+1 回避: ページ内の全札からカテゴリ/scope/地域コードを集約し、
+        // それぞれ findAllById で 1 SQL ずつバルク解決して Map 引きでマッピングする。
+        List<RecruitmentListingEntity> listings = page.getContent();
+        MarketResolverMaps maps = buildResolverMaps(listings);
+        return page.map(e -> toMarketListingResponse(e, maps));
+    }
+
+    /** ページ内の全札に必要なマスタを一括取得した参照 Map 群（N+1 回避）。 */
+    private record MarketResolverMaps(
+            Map<Long, RecruitmentCategoryEntity> categories,
+            Map<Long, TeamEntity> teams,
+            Map<Long, OrganizationEntity> organizations,
+            Map<String, PrefectureEntity> prefectures,
+            Map<String, CityEntity> cities) {
+    }
+
+    private MarketResolverMaps buildResolverMaps(List<RecruitmentListingEntity> listings) {
+        Set<Long> categoryIds = new LinkedHashSet<>();
+        Set<Long> teamIds = new LinkedHashSet<>();
+        Set<Long> orgIds = new LinkedHashSet<>();
+        Set<String> prefCodes = new LinkedHashSet<>();
+        Set<String> cityCodes = new LinkedHashSet<>();
+
+        for (RecruitmentListingEntity e : listings) {
+            if (e.getCategoryId() != null) {
+                categoryIds.add(e.getCategoryId());
+            }
+            if (e.getScopeType() == RecruitmentScopeType.TEAM) {
+                if (e.getScopeId() != null) {
+                    teamIds.add(e.getScopeId());
+                }
+            } else if (e.getScopeId() != null) {
+                orgIds.add(e.getScopeId());
+            }
+            if (e.getPrefectureCode() != null) {
+                prefCodes.add(e.getPrefectureCode());
+            }
+            if (e.getCityCode() != null) {
+                cityCodes.add(e.getCityCode());
+            }
+        }
+
+        Map<Long, RecruitmentCategoryEntity> categories = new LinkedHashMap<>();
+        for (RecruitmentCategoryEntity c : categoryRepository.findAllById(categoryIds)) {
+            categories.put(c.getId(), c);
+        }
+        Map<Long, TeamEntity> teams = new LinkedHashMap<>();
+        for (TeamEntity t : teamRepository.findAllById(teamIds)) {
+            teams.put(t.getId(), t);
+        }
+        Map<Long, OrganizationEntity> organizations = new LinkedHashMap<>();
+        for (OrganizationEntity o : organizationRepository.findAllById(orgIds)) {
+            organizations.put(o.getId(), o);
+        }
+        Map<String, PrefectureEntity> prefectures = new LinkedHashMap<>();
+        for (PrefectureEntity p : prefectureRepository.findAllById(prefCodes)) {
+            prefectures.put(p.getCode(), p);
+        }
+        Map<String, CityEntity> cities = new LinkedHashMap<>();
+        for (CityEntity c : cityRepository.findAllById(cityCodes)) {
+            cities.put(c.getCode(), c);
+        }
+        return new MarketResolverMaps(categories, teams, organizations, prefectures, cities);
+    }
+
+    private MarketListingResponse toMarketListingResponse(
+            RecruitmentListingEntity e, MarketResolverMaps maps) {
+        return new MarketListingResponse(
+                e.getId(),
+                e.getTitle(),
+                resolveCategoryFromMap(e.getCategoryId(), maps),
+                resolveOwnerFromMap(e.getScopeType(), e.getScopeId(), maps),
+                resolveRegionFromMap(e.getPrefectureCode(), e.getCityCode(), maps),
+                e.getLocation(),
+                e.getStartAt(),
+                e.getApplicationDeadline(),
+                e.getCapacity(),
+                e.getConfirmedCount(),
+                e.getStatus().name(),
+                // Phase 1 では決済は常に false（謝礼決済は Phase 2）。
+                Boolean.FALSE);
+    }
+
+    private MarketCategoryDto resolveCategoryFromMap(Long categoryId, MarketResolverMaps maps) {
+        if (categoryId == null) {
+            return null;
+        }
+        RecruitmentCategoryEntity c = maps.categories().get(categoryId);
+        return c == null
+                ? new MarketCategoryDto(categoryId, null)
+                : new MarketCategoryDto(c.getId(), categoryNameKey(c));
+    }
+
+    private MarketOwnerDto resolveOwnerFromMap(
+            RecruitmentScopeType scopeType, Long scopeId, MarketResolverMaps maps) {
+        if (scopeType == RecruitmentScopeType.TEAM) {
+            TeamEntity t = maps.teams().get(scopeId);
+            return t == null
+                    ? new MarketOwnerDto("TEAM", scopeId, null, null)
+                    : new MarketOwnerDto("TEAM", scopeId, t.getName(), t.getIconUrl());
+        }
+        OrganizationEntity o = maps.organizations().get(scopeId);
+        return o == null
+                ? new MarketOwnerDto("ORGANIZATION", scopeId, null, null)
+                : new MarketOwnerDto("ORGANIZATION", scopeId, o.getName(), o.getIconUrl());
+    }
+
+    private MarketRegionDto resolveRegionFromMap(
+            String prefectureCode, String cityCode, MarketResolverMaps maps) {
+        if (prefectureCode == null && cityCode == null) {
+            return null;
+        }
+        String prefName = prefectureCode == null ? null
+                : maps.prefectures().containsKey(prefectureCode)
+                        ? maps.prefectures().get(prefectureCode).getName() : null;
+        String cityName = cityCode == null ? null
+                : maps.cities().containsKey(cityCode)
+                        ? maps.cities().get(cityCode).getName() : null;
+        return new MarketRegionDto(prefectureCode, prefName, cityCode, cityName);
     }
 
     // =====================================================================
