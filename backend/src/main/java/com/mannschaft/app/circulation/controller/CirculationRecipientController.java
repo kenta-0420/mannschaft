@@ -85,14 +85,16 @@ public class CirculationRecipientController {
      * <p>F05.2 Phase 11 第三陣 3-B: 退職者・休職者などへの対応として、ADMIN が
      * 特定受信者を SKIPPED 状態に強制遷移させる。{@code reason} は必須。</p>
      *
-     * <p><b>認可（2026-05-29 fixup）:</b> {@code @PreAuthorize("hasRole('ADMIN')")} は
-     * {@code @EnableMethodSecurity} 未有効ゆえ実機で効かない（将来宣言）。真の per-scope 認可は
-     * {@code CirculationStampService.adminSkipRecipient} の処理本体前で
-     * {@code AccessControlService} により実施する（対象文書スコープの ADMIN/DEPUTY_ADMIN、
-     * または SYSTEM_ADMIN）。</p>
+     * <p><b>認可（認可根治 Phase 3-b / 2026-05-30）:</b> 旧 {@code @PreAuthorize("hasRole('ADMIN')")}
+     * は {@code @EnableMethodSecurity} 点火時に JWT へ ROLE_ADMIN が乗らず一斉 403 となるため是正した。
+     * 本 EP の scope は <b>パス変数でなく文書エンティティ由来</b>（{@code documentId} から文書を引き、その
+     * scopeType/scopeId を解決）であり、SpEL からパス変数で scope を参照できない。そこで宣言は
+     * {@code isAuthenticated()} とし、<b>真の per-scope 認可は
+     * {@code CirculationStampService.adminSkipRecipient} の処理本体前で {@code AccessControlService} により
+     * 実施</b>する（対象文書スコープの ADMIN/DEPUTY_ADMIN、または SYSTEM_ADMIN）。</p>
      */
     @PostMapping("/{userId}/skip")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "ADMIN による受信者強制スキップ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "スキップ成功")
     public ResponseEntity<ApiResponse<RecipientResponse>> adminSkipRecipient(
