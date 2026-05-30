@@ -147,6 +147,45 @@ public class CirculationService {
     }
 
     /**
+     * F22.1 第二波: 指定スコープで当該ユーザーが「未確認（未スタンプ・PENDING）」の回覧文書を取得する。
+     *
+     * <p>横スワイプ・ダッシュボードの統合「要対応」集計（{@code ScopeActionRequiredFacade}）から
+     * 呼ばれる読み取り専用メソッド。<b>per-scope 認可をこのメソッド内で必ず通す</b>
+     * （{@link AccessControlService#checkMembership}）。非所属ユーザーは
+     * {@code COMMON_002} で弾かれる（集計バイパス禁止・02 §3.4）。</p>
+     *
+     * <p>未確認件数のカウントとアイテム取得を一度の SQL（JOIN）で行い N+1 を回避する。
+     * アイテムは作成日時の降順で {@code limit} 件に絞る。</p>
+     *
+     * @param scopeType スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   スコープ ID
+     * @param userId    閲覧ユーザー ID
+     * @param limit     直近アイテムの最大件数
+     * @return 未確認文書（全件・カウント用）と limit 件のアイテム
+     */
+    public UnconfirmedCirculations getUnconfirmedForUserInScope(
+            String scopeType, Long scopeId, Long userId, int limit) {
+        if (accessControlService != null) {
+            accessControlService.checkMembership(userId, scopeId, scopeType);
+        }
+        List<CirculationDocumentEntity> all =
+                recipientRepository.findUnconfirmedDocumentsForUserInScope(scopeType, scopeId, userId);
+        List<CirculationDocumentEntity> items = all.size() > limit ? all.subList(0, limit) : all;
+        return new UnconfirmedCirculations(all.size(), List.copyOf(items));
+    }
+
+    /**
+     * F22.1 第二波: 未確認回覧文書の集計結果（件数 + 直近アイテム）。
+     *
+     * @param unconfirmedCount 未確認の総件数
+     * @param items            直近アイテム（limit 件）
+     */
+    public record UnconfirmedCirculations(
+            long unconfirmedCount,
+            List<CirculationDocumentEntity> items) {
+    }
+
+    /**
      * 文書詳細を取得する。
      *
      * <p>F00 Phase C 試験的置換 (2026-05-04 / §12.3 工程 4): 既存のスコープ照合に加えて
