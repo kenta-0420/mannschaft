@@ -336,7 +336,33 @@ public enum VillageErrorCode implements ErrorCode {
 
     /** VILLAGE_080: opt-out していないのに opt-in しようとした（409、対称性）。 */
     NEWSLETTER_NOT_OPTED_OUT("VILLAGE_080",
-            "このニュースレターは配信停止されていません", Severity.WARN);
+            "このニュースレターは配信停止されていません", Severity.WARN),
+
+    // ==================================================================
+    // F17.1 村掲示板グローバル方式 — 掲示板閲覧認可（VILLAGE_081）
+    // ==================================================================
+
+    /**
+     * VILLAGE_081: MEMBERS_ONLY の村掲示板を非メンバーが閲覧しようとした（403）。
+     *
+     * <p>村本体の {@code bulletin_visibility = MEMBERS_ONLY} の場合、村メンバーまたは
+     * SYSTEM_ADMIN のみが掲示板（スレッド／カテゴリ）を閲覧できる。非メンバーのログイン済
+     * ユーザーが閲覧を試みた場合に投げる。{@code bulletin_visibility = PUBLIC} の村では
+     * ログイン済ユーザーなら誰でも閲覧可能なため本コードは発生しない。</p>
+     */
+    VILLAGE_BULLETIN_VIEW_FORBIDDEN("VILLAGE_081",
+            "この村の掲示板は村人のみが閲覧できます", Severity.WARN),
+
+    /**
+     * VILLAGE_082: 村掲示板のモデレーション操作（ピン留め・ロック・優先度変更・他者投稿の削除等）を
+     * 非モデレーター（村長 HEADMAN / 長老 ELDER でも SYSTEM_ADMIN でもないユーザー）が試みた（403）。
+     *
+     * <p>村掲示板グローバル方式（F17.1）の書込・モデレーション系 API で、村ロールが
+     * HEADMAN / ELDER いずれにも該当しないユーザーがモデレーター専用操作を実行しようとした場合に投げる。
+     * 投稿者本人による自分の投稿の更新・削除はモデレーター権限を要しないため本コードは発生しない。</p>
+     */
+    VILLAGE_BULLETIN_MODERATE_FORBIDDEN("VILLAGE_082",
+            "この操作は村の村長または長老のみが行えます", Severity.WARN);
 
     private final String code;
     private final String message;

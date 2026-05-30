@@ -17,6 +17,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
+import com.mannschaft.app.village.service.VillageBulletinAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -47,6 +48,8 @@ public class BulletinThreadService {
     private final BulletinArchiveFolderService archiveFolderService;
     /** F17.1 Phase 3: scope=VILLAGE 投稿の主体検証。null 安全のため Optional 注入は使わず常時 inject。 */
     private final PostingIdentityService postingIdentityService;
+    /** F17.1 村掲示板グローバル方式: 村スコープの閲覧認可（可視性ゲート）を委譲する。 */
+    private final VillageBulletinAccessService villageBulletinAccessService;
 
     /**
      * スコープのスレッド一覧をページング取得する。
@@ -92,6 +95,77 @@ public class BulletinThreadService {
     public ThreadResponse getThread(ScopeType scopeType, Long scopeId, Long threadId, Long userId) {
         accessGuard.checkMembership(userId, scopeType, scopeId);
         BulletinThreadEntity entity = findThreadOrThrow(scopeType, scopeId, threadId);
+        return bulletinMapper.toThreadResponse(entity);
+    }
+
+    /**
+     * 村スコープのスレッド一覧をページング取得する（F17.1 村掲示板グローバル方式）。
+     *
+     * <p>村の {@code bulletin_visibility} に基づく閲覧認可を {@link VillageBulletinAccessService}
+     * に委譲し、許可された場合のみ {@code scope_village_id} 一致のスレッドを
+     * ピン留め優先→更新日時降順で返す。{@code categoryId} 指定時はカテゴリで絞り込む。</p>
+     *
+     * @param villageId  村 ID（必須）
+     * @param categoryId カテゴリ ID（null = 全件）
+     * @param userId     操作ユーザーID
+     * @param pageable   ページング情報
+     * @return スレッドレスポンスのページ
+     */
+    public Page<ThreadResponse> listVillageThreads(UUID villageId, Long categoryId, Long userId, Pageable pageable) {
+        villageBulletinAccessService.checkVillageBulletinViewAccess(villageId, userId);
+        Page<BulletinThreadEntity> page;
+        if (categoryId != null) {
+            page = threadRepository.findByScopeVillageIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
+                    villageId, categoryId, pageable);
+        } else {
+            page = threadRepository.findByScopeVillageIdOrderByIsPinnedDescUpdatedAtDesc(villageId, pageable);
+        }
+        return page.map(bulletinMapper::toThreadResponse);
+    }
+
+    /**
+     * 村スコープのスレッド詳細を取得する（F17.1 村掲示板グローバル方式）。
+     *
+     * <p>{@code scope_village_id} 一致で所有確認したうえで（他村のスレッドは 404）、
+     * 村の {@code bulletin_visibility} に基づく閲覧認可を行う。</p>
+     *
+     * @param villageId 村 ID（必須）
+     * @param threadId  スレッド ID
+     * @param userId    操作ユーザーID
+     * @return スレッドレスポンス
+     * @throws BusinessException スレッドが当該村に存在しない（{@link BulletinErrorCode#THREAD_NOT_FOUND}・404）
+     */
+    public ThreadResponse getVillageThread(UUID villageId, Long threadId, Long userId) {
+        villageBulletinAccessService.checkVillageBulletinViewAccess(villageId, userId);
+        BulletinThreadEntity entity = threadRepository.findByIdAndScopeVillageId(threadId, villageId)
+                .orElseThrow(() -> new BusinessException(BulletinErrorCode.THREAD_NOT_FOUND));
+        return bulletinMapper.toThreadResponse(entity);
+    }
+
+    /**
+     * グローバル方式のスレッド詳細を取得する（F17.1 村掲示板グローバル方式 / 既存スコープ方式の双方を吸収）。
+     *
+     * <p>FE のグローバル詳細 API（{@code GET /api/v1/bulletin/threads/{threadId}}）は
+     * スコープ情報を伴わず {@code threadId} のみで叩かれるため、まず threadId でスレッドを引き、
+     * その {@code scopeType} に応じて認可経路を分岐する:</p>
+     * <ul>
+     *   <li>{@code VILLAGE}: 当該スレッドの {@code scope_village_id} で村可視性認可（PUBLIC/MEMBERS_ONLY）</li>
+     *   <li>{@code TEAM/ORGANIZATION/PERSONAL}: 既存の {@link BulletinAccessGuard#checkMembership} で所属認可</li>
+     * </ul>
+     *
+     * @param threadId スレッド ID
+     * @param userId   操作ユーザーID
+     * @return スレッドレスポンス
+     * @throws BusinessException スレッドが存在しない（{@link BulletinErrorCode#THREAD_NOT_FOUND}・404）
+     */
+    public ThreadResponse getThreadGlobal(Long threadId, Long userId) {
+        BulletinThreadEntity entity = threadRepository.findById(threadId)
+                .orElseThrow(() -> new BusinessException(BulletinErrorCode.THREAD_NOT_FOUND));
+        if (entity.getScopeType() == ScopeType.VILLAGE) {
+            villageBulletinAccessService.checkVillageBulletinViewAccess(entity.getScopeVillageId(), userId);
+        } else {
+            accessGuard.checkMembership(userId, entity.getScopeType(), entity.getScopeId());
+        }
         return bulletinMapper.toThreadResponse(entity);
     }
 
@@ -339,6 +413,207 @@ public class BulletinThreadService {
         log.info("スレッドアーカイブ状態変更: threadId={}, isArchived={}, folderId={}",
                 threadId, saved.getIsArchived(), saved.getArchiveFolderId());
         return bulletinMapper.toThreadResponse(saved);
+    }
+
+    // ========================================================================
+    // F17.1 村掲示板グローバル方式 — 書込・モデレーション
+    // ========================================================================
+
+    /**
+     * グローバル方式でスレッドを作成する（F17.1 村掲示板グローバル方式）。
+     *
+     * <p>FE のグローバル作成 API（{@code POST /api/v1/bulletin/threads}）は body で
+     * {@code scopeType / scopeId / scopeVillageId} を渡す。VILLAGE は村メンバー必須 +
+     * 投稿主体検証（{@link PostingIdentityService#validatePostingIdentity}）を、
+     * ORG/TEAM/PERSONAL は所属認可を既存 {@link #createThread} がそのまま担う。</p>
+     *
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープ ID（VILLAGE 時は 0）
+     * @param userId    作成者 ID
+     * @param request   作成リクエスト（VILLAGE 時は {@code scopeVillageId} 必須）
+     * @return 作成されたスレッドレスポンス
+     */
+    @Transactional
+    public ThreadResponse createThreadGlobal(ScopeType scopeType, Long scopeId, Long userId,
+                                             CreateThreadRequest request) {
+        // 既存 createThread が VILLAGE / ORG / TEAM / PERSONAL の認可・主体検証を内包しているため委譲する。
+        return createThread(scopeType, scopeId, userId, request);
+    }
+
+    /**
+     * グローバル方式でスレッドを更新する（F17.1 村掲示板グローバル方式）。
+     *
+     * <p>{@code threadId} のみで叩かれるため、スレッドの {@code scopeType} を逆引きして認可経路を分岐する。
+     * VILLAGE は投稿者本人 or 村モデレーター（HEADMAN/ELDER/SYSTEM_ADMIN）、
+     * ORG/TEAM/PERSONAL は既存 {@link #updateThread} に委譲する（他村スレッドは認可で弾く）。</p>
+     *
+     * @param threadId スレッド ID
+     * @param userId   操作者 ID
+     * @param request  更新リクエスト
+     * @return 更新されたスレッドレスポンス
+     */
+    @Transactional
+    public ThreadResponse updateThreadGlobal(Long threadId, Long userId, UpdateThreadRequest request) {
+        BulletinThreadEntity entity = findThreadByIdOrThrow(threadId);
+        if (entity.getScopeType() != ScopeType.VILLAGE) {
+            return updateThread(entity.getScopeType(), entity.getScopeId(), threadId, userId, request);
+        }
+        // VILLAGE: 投稿者本人 or 村モデレーター
+        boolean isOwner = entity.getAuthorId() != null && entity.getAuthorId().equals(userId);
+        if (!isOwner) {
+            villageBulletinAccessService.checkVillageBulletinModerator(entity.getScopeVillageId(), userId);
+        }
+        // ロック中の編集はモデレーターのみ（設計書 §4）
+        if (Boolean.TRUE.equals(entity.getIsLocked()) && isOwner) {
+            villageBulletinAccessService.checkVillageBulletinModerator(entity.getScopeVillageId(), userId);
+        }
+        Priority priority = request.getPriority() != null
+                ? Priority.valueOf(request.getPriority()) : entity.getPriority();
+        entity.update(request.getTitle(), request.getBody(), priority);
+        BulletinThreadEntity saved = threadRepository.save(entity);
+        log.info("村スレッド更新: threadId={}, villageId={}", threadId, entity.getScopeVillageId());
+        return bulletinMapper.toThreadResponse(saved);
+    }
+
+    /**
+     * グローバル方式でスレッドを論理削除する（F17.1 村掲示板グローバル方式）。
+     *
+     * <p>VILLAGE は投稿者本人 or 村モデレーター、ORG/TEAM/PERSONAL は既存 {@link #deleteThread} に委譲。
+     * 安否確認由来スレッド（{@code source_type=SAFETY_CHECK}）は手動削除不可（設計書 §6）。
+     * 他者投稿の削除時は監査ログを記録する。</p>
+     *
+     * @param threadId スレッド ID
+     * @param userId   操作者 ID
+     */
+    @Transactional
+    public void deleteThreadGlobal(Long threadId, Long userId) {
+        BulletinThreadEntity entity = findThreadByIdOrThrow(threadId);
+        if (entity.getScopeType() != ScopeType.VILLAGE) {
+            deleteThread(entity.getScopeType(), entity.getScopeId(), threadId, userId);
+            return;
+        }
+        // 安否確認スレッドは手動削除不可（設計書 §6）
+        if (SOURCE_TYPE_SAFETY_CHECK.equals(entity.getSourceType())) {
+            throw new BusinessException(BulletinErrorCode.SAFETY_THREAD_DELETE_FORBIDDEN);
+        }
+        boolean isOwner = entity.getAuthorId() != null && entity.getAuthorId().equals(userId);
+        if (!isOwner) {
+            villageBulletinAccessService.checkVillageBulletinModerator(entity.getScopeVillageId(), userId);
+        }
+        entity.softDelete();
+        threadRepository.save(entity);
+        log.info("村スレッド削除: threadId={}, villageId={}, by={}", threadId, entity.getScopeVillageId(), userId);
+        if (!isOwner) {
+            recordContentDeletionAudit(AuditEventType.BULLETIN_THREAD_DELETED, entity.getScopeType(),
+                    entity.getScopeId(), userId, entity.getAuthorId(), threadId);
+        }
+    }
+
+    /**
+     * グローバル方式でスレッドの優先度を変更する（F17.1 村掲示板グローバル方式）。村モデレーターのみ。
+     *
+     * <p>VILLAGE は村モデレーター（HEADMAN/ELDER/SYSTEM_ADMIN）、ORG/TEAM/PERSONAL は
+     * 既存 {@link BulletinAccessGuard#requireManageContent} による管理権限を要求する。</p>
+     *
+     * @param threadId スレッド ID
+     * @param userId   操作者 ID
+     * @param priority 設定する優先度
+     * @return 更新されたスレッドレスポンス
+     */
+    @Transactional
+    public ThreadResponse changePriorityGlobal(Long threadId, Long userId, String priority) {
+        BulletinThreadEntity entity = findThreadByIdOrThrow(threadId);
+        requireModeration(entity, userId);
+        Priority p = priority != null ? Priority.valueOf(priority) : entity.getPriority();
+        entity.update(entity.getTitle(), entity.getBody(), p);
+        BulletinThreadEntity saved = threadRepository.save(entity);
+        log.info("スレッド優先度変更: threadId={}, priority={}", threadId, saved.getPriority());
+        return bulletinMapper.toThreadResponse(saved);
+    }
+
+    /**
+     * グローバル方式でピン留め状態を設定する（set 方式・F17.1 村掲示板グローバル方式）。村モデレーターのみ。
+     *
+     * @param threadId スレッド ID
+     * @param userId   操作者 ID
+     * @param pinned   設定するピン留め状態
+     * @return 更新されたスレッドレスポンス
+     */
+    @Transactional
+    public ThreadResponse setPinGlobal(Long threadId, Long userId, boolean pinned) {
+        BulletinThreadEntity entity = findThreadByIdOrThrow(threadId);
+        requireModeration(entity, userId);
+        entity.setPinned(pinned);
+        BulletinThreadEntity saved = threadRepository.save(entity);
+        log.info("スレッドピン設定: threadId={}, isPinned={}", threadId, saved.getIsPinned());
+        return bulletinMapper.toThreadResponse(saved);
+    }
+
+    /**
+     * グローバル方式でロック状態を設定する（set 方式・F17.1 村掲示板グローバル方式）。村モデレーターのみ。
+     *
+     * @param threadId スレッド ID
+     * @param userId   操作者 ID
+     * @param locked   設定するロック状態
+     * @return 更新されたスレッドレスポンス
+     */
+    @Transactional
+    public ThreadResponse setLockGlobal(Long threadId, Long userId, boolean locked) {
+        BulletinThreadEntity entity = findThreadByIdOrThrow(threadId);
+        requireModeration(entity, userId);
+        entity.setLocked(locked);
+        BulletinThreadEntity saved = threadRepository.save(entity);
+        log.info("スレッドロック設定: threadId={}, isLocked={}", threadId, saved.getIsLocked());
+        return bulletinMapper.toThreadResponse(saved);
+    }
+
+    /**
+     * グローバル方式でアーカイブ状態を変更する（F17.1 村掲示板グローバル方式）。
+     *
+     * <p>VILLAGE は村モデレーター、ORG/TEAM/PERSONAL は既存 {@link #archive} に委譲する
+     * （管理権限要求は既存仕様どおり）。フォルダ振り分けは村スコープでは未対応のため null 固定。</p>
+     *
+     * @param threadId   スレッド ID
+     * @param userId     操作者 ID
+     * @param isArchived 設定するアーカイブ状態
+     * @return 更新されたスレッドレスポンス
+     */
+    @Transactional
+    public ThreadResponse archiveGlobal(Long threadId, Long userId, boolean isArchived) {
+        BulletinThreadEntity entity = findThreadByIdOrThrow(threadId);
+        if (entity.getScopeType() != ScopeType.VILLAGE) {
+            return archive(entity.getScopeType(), entity.getScopeId(), threadId, userId, isArchived, null);
+        }
+        villageBulletinAccessService.checkVillageBulletinModerator(entity.getScopeVillageId(), userId);
+        if (isArchived) {
+            entity.archive();
+            entity.clearArchiveFolder();
+        } else {
+            entity.unarchive();
+        }
+        BulletinThreadEntity saved = threadRepository.save(entity);
+        log.info("村スレッドアーカイブ状態変更: threadId={}, isArchived={}", threadId, saved.getIsArchived());
+        return bulletinMapper.toThreadResponse(saved);
+    }
+
+    /**
+     * モデレーション認可を適用する。VILLAGE は村モデレーター、それ以外は管理権限を要求する。
+     */
+    private void requireModeration(BulletinThreadEntity entity, Long userId) {
+        if (entity.getScopeType() == ScopeType.VILLAGE) {
+            villageBulletinAccessService.checkVillageBulletinModerator(entity.getScopeVillageId(), userId);
+        } else {
+            accessGuard.checkMembership(userId, entity.getScopeType(), entity.getScopeId());
+            accessGuard.requireManageContent(userId, entity.getScopeType(), entity.getScopeId());
+        }
+    }
+
+    /**
+     * スレッドを ID のみで取得する（グローバル方式の逆引き）。存在しなければ 404。
+     */
+    private BulletinThreadEntity findThreadByIdOrThrow(Long threadId) {
+        return threadRepository.findById(threadId)
+                .orElseThrow(() -> new BusinessException(BulletinErrorCode.THREAD_NOT_FOUND));
     }
 
     /**

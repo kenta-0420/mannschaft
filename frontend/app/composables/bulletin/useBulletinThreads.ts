@@ -1,6 +1,5 @@
 import type {
   BulletinThreadResponse,
-  BulletinReplyResponse,
   BulletinReader,
   BulletinReadStatus,
   BulletinThreadSearchParams,
@@ -60,7 +59,7 @@ export function useBulletinThreads() {
   }
 
   async function getThread(threadId: number) {
-    return api<{ data: BulletinThreadResponse & { replies: BulletinReplyResponse[] } }>(
+    return api<{ data: BulletinThreadResponse }>(
       `/api/v1/bulletin/threads/${threadId}`,
     )
   }
@@ -189,7 +188,7 @@ export function useBulletinThreads() {
   }
 
   async function getScopedThread(scopeType: string, scopeId: number, threadId: number) {
-    return api<{ data: BulletinThreadResponse & { replies: BulletinReplyResponse[] } }>(
+    return api<{ data: BulletinThreadResponse }>(
       `/api/v1/${scopeType}/${scopeId}/bulletin/threads/${threadId}`,
     )
   }

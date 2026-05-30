@@ -22,6 +22,7 @@ import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
 
 import type {
+  VillageBulletinVisibility,
   VillageJoinPolicy,
   VillageResponse,
   VillageUpdateRequest,
@@ -62,6 +63,11 @@ interface VisibilityOption {
   label: string
 }
 
+interface BulletinVisibilityOption {
+  value: VillageBulletinVisibility
+  label: string
+}
+
 const joinPolicyOptions = computed<JoinPolicyOption[]>(() => [
   { value: 'FREE', label: t('village.joinPolicy.FREE') },
   { value: 'APPROVAL', label: t('village.joinPolicy.APPROVAL') },
@@ -70,6 +76,11 @@ const joinPolicyOptions = computed<JoinPolicyOption[]>(() => [
 const visibilityOptions = computed<VisibilityOption[]>(() => [
   { value: 'PUBLIC', label: t('village.visibility.PUBLIC') },
   { value: 'UNLISTED', label: t('village.visibility.UNLISTED') },
+])
+
+const bulletinVisibilityOptions = computed<BulletinVisibilityOption[]>(() => [
+  { value: 'PUBLIC', label: t('village.bulletinVisibility.PUBLIC') },
+  { value: 'MEMBERS_ONLY', label: t('village.bulletinVisibility.MEMBERS_ONLY') },
 ])
 
 // =============================================================================
@@ -82,6 +93,7 @@ interface FormState {
   category: string
   joinPolicy: VillageJoinPolicy
   visibility: VillageVisibility
+  bulletinVisibility: VillageBulletinVisibility
   iconR2Key: string
   coverR2Key: string
   guidelineMd: string
@@ -94,6 +106,7 @@ function buildFormFromVillage(v: VillageResponse): FormState {
     category: v.category ?? '',
     joinPolicy: v.joinPolicy,
     visibility: v.visibility,
+    bulletinVisibility: v.bulletinVisibility ?? 'MEMBERS_ONLY',
     iconR2Key: v.iconR2Key ?? '',
     coverR2Key: v.coverR2Key ?? '',
     guidelineMd: v.guidelineMd ?? '',
@@ -243,6 +256,7 @@ async function submit() {
       category: emptyToNull(form.value.category),
       joinPolicy: form.value.joinPolicy,
       visibility: form.value.visibility,
+      bulletinVisibility: form.value.bulletinVisibility,
       iconR2Key: emptyToNull(form.value.iconR2Key),
       coverR2Key: emptyToNull(form.value.coverR2Key),
       guidelineMd: emptyToNull(form.value.guidelineMd),
@@ -364,6 +378,22 @@ async function submit() {
             :disabled="submitting"
           />
         </div>
+      </div>
+
+      <!-- 掲示板公開範囲 -->
+      <div>
+        <label for="village-edit-bulletin-visibility" class="mb-1 block text-sm font-medium">
+          {{ t('village.field.bulletinVisibility') }}
+        </label>
+        <Select
+          id="village-edit-bulletin-visibility"
+          v-model="form.bulletinVisibility"
+          :options="bulletinVisibilityOptions"
+          option-label="label"
+          option-value="value"
+          class="w-full"
+          :disabled="submitting"
+        />
       </div>
 
       <!-- アイコン / カバー R2 キー -->

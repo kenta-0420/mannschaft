@@ -1,5 +1,6 @@
 package com.mannschaft.app.village.dto;
 
+import com.mannschaft.app.village.entity.enums.VillageBulletinVisibility;
 import com.mannschaft.app.village.entity.enums.VillageJoinPolicy;
 import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageType;
@@ -21,6 +22,7 @@ import java.util.UUID;
  * @param type             村種別
  * @param joinPolicy       参加方式
  * @param visibility       可視性
+ * @param bulletinVisibility 掲示板公開範囲（PUBLIC / MEMBERS_ONLY）
  * @param category         カテゴリ
  * @param iconR2Key        アイコン R2 キー
  * @param coverR2Key       カバー画像 R2 キー
@@ -44,6 +46,7 @@ public record VillageResponse(
         VillageType type,
         VillageJoinPolicy joinPolicy,
         VillageVisibility visibility,
+        VillageBulletinVisibility bulletinVisibility,
         String category,
         String iconR2Key,
         String coverR2Key,
