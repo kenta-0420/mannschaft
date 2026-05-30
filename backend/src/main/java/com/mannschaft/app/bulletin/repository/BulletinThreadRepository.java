@@ -41,6 +41,24 @@ public interface BulletinThreadRepository extends JpaRepository<BulletinThreadEn
     Optional<BulletinThreadEntity> findByIdAndScopeTypeAndScopeId(Long id, ScopeType scopeType, Long scopeId);
 
     /**
+     * スコープ内の全スレッド ID を取得する（一括既読の対象抽出用）。
+     *
+     * <p>F17.1 村掲示板グローバル方式の一括既読（{@code POST /threads/read-all}）で
+     * ORG/TEAM/PERSONAL スコープの未読スレッドを抽出する起点として使う。
+     * 論理削除済みは Entity の {@code @SQLRestriction} により自動除外される。</p>
+     */
+    @Query("SELECT t.id FROM BulletinThreadEntity t WHERE t.scopeType = :scopeType AND t.scopeId = :scopeId")
+    List<Long> findIdsByScopeTypeAndScopeId(@Param("scopeType") ScopeType scopeType, @Param("scopeId") Long scopeId);
+
+    /**
+     * 村スコープ内の全スレッド ID を取得する（一括既読の対象抽出用）。
+     *
+     * <p>{@link #findIdsByScopeTypeAndScopeId} の村スコープ対称メソッド。</p>
+     */
+    @Query("SELECT t.id FROM BulletinThreadEntity t WHERE t.scopeVillageId = :villageId")
+    List<Long> findIdsByScopeVillageId(@Param("villageId") UUID villageId);
+
+    /**
      * 全文検索でスレッドを取得する。
      */
     @Query(value = SEARCH_QUERY, countQuery = SEARCH_COUNT_QUERY, nativeQuery = true)

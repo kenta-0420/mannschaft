@@ -7,9 +7,12 @@ import com.mannschaft.app.bulletin.dto.ChangePriorityRequest;
 import com.mannschaft.app.bulletin.dto.GlobalCreateThreadRequest;
 import com.mannschaft.app.bulletin.dto.SetArchiveRequest;
 import com.mannschaft.app.bulletin.dto.SetLockRequest;
+import com.mannschaft.app.bulletin.dto.ReadAllRequest;
+import com.mannschaft.app.bulletin.dto.ReadStatusResponse;
 import com.mannschaft.app.bulletin.dto.SetPinRequest;
 import com.mannschaft.app.bulletin.dto.ThreadResponse;
 import com.mannschaft.app.bulletin.dto.UpdateThreadRequest;
+import com.mannschaft.app.bulletin.service.BulletinReadStatusService;
 import com.mannschaft.app.bulletin.service.BulletinThreadService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
@@ -38,6 +41,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -72,6 +76,7 @@ import java.util.UUID;
 public class GlobalBulletinThreadController {
 
     private final BulletinThreadService threadService;
+    private final BulletinReadStatusService readStatusService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -304,6 +309,77 @@ public class GlobalBulletinThreadController {
         ThreadResponse response = threadService.archiveGlobal(threadId, currentUserId, isArchived);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
+
+    // ========================================================================
+    // 既読系（F17.1 村掲示板グローバル方式）
+    // ========================================================================
+
+    /**
+     * スレッドを既読にする（グローバル方式）。
+     *
+     * <p>{@code threadId} のみで叩かれるため、サービス層がスコープを逆引きして認可する
+     * （VILLAGE は村可視性認可、それ以外は所属認可）。既読済みの場合は何もしない（冪等）。</p>
+     *
+     * @param threadId スレッド ID
+     * @return 201 Created
+     */
+    @PostMapping("/{threadId}/read")
+    @Operation(summary = "既読マーク（グローバル）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "既読成功")
+    public ResponseEntity<Void> markRead(@PathVariable Long threadId) {
+        readStatusService.markAsReadGlobal(threadId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    /**
+     * スコープ内の全スレッドを一括既読にする（グローバル方式）。
+     *
+     * <p>body に {@code scopeType / scopeId(VILLAGE 時は 0) / scopeVillageId} を渡す。VILLAGE は村可視性認可、
+     * それ以外は所属認可を行ったうえで、未読スレッドをすべて既読化する。</p>
+     *
+     * @param request 一括既読リクエスト
+     * @return 200 OK（{@code { data: { markedCount } }}）
+     */
+    @PostMapping("/read-all")
+    @Operation(summary = "一括既読（グローバル）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "一括既読成功")
+    public ResponseEntity<ApiResponse<MarkAllReadResult>> markAllRead(
+            @Valid @RequestBody ReadAllRequest request) {
+        ScopeType type = parseScopeType(request.getScopeType());
+        Long scopeId = request.getScopeId() != null ? request.getScopeId() : 0L;
+        int marked = readStatusService.markAllAsReadGlobal(
+                type, scopeId, request.getScopeVillageId(), SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(new MarkAllReadResult(marked)));
+    }
+
+    /**
+     * スレッドの既読者一覧を取得する（グローバル方式）。
+     *
+     * <p>{@code threadId} のみで叩かれるため、サービス層がスコープを逆引きして認可する。
+     * 既読プライバシー（{@code read_tracking_mode}）と {@code filter=unread}（ADMIN/村モデレーターのみ）の
+     * 制御はサービス層に委ねる。</p>
+     *
+     * @param threadId スレッド ID
+     * @param filter   フィルタ（{@code "unread"} 指定時は ADMIN / 村モデレーターのみ）
+     * @return 既読者一覧（{@code { data: [...] }}）
+     */
+    @GetMapping("/{threadId}/readers")
+    @Operation(summary = "既読者一覧（グローバル）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<List<ReadStatusResponse>>> listReaders(
+            @PathVariable Long threadId,
+            @RequestParam(required = false) String filter) {
+        List<ReadStatusResponse> responses =
+                readStatusService.listReadUsersGlobal(threadId, SecurityUtils.getCurrentUserId(), filter);
+        return ResponseEntity.ok(ApiResponse.of(responses));
+    }
+
+    /**
+     * 一括既読の結果（新たに既読化したスレッド件数）。
+     *
+     * @param markedCount 新たに既読化したスレッド件数
+     */
+    public record MarkAllReadResult(int markedCount) {}
 
     /**
      * scope_type をパースする。不正値は {@link CommonErrorCode#COMMON_001}（400）に変換する。

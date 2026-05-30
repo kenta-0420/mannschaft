@@ -2,6 +2,9 @@ package com.mannschaft.app.bulletin.controller;
 
 import com.mannschaft.app.bulletin.ScopeType;
 import com.mannschaft.app.bulletin.dto.CategoryResponse;
+import com.mannschaft.app.bulletin.dto.DeleteCategoryResponse;
+import com.mannschaft.app.bulletin.dto.GlobalCreateCategoryRequest;
+import com.mannschaft.app.bulletin.dto.UpdateCategoryRequest;
 import com.mannschaft.app.bulletin.service.BulletinCategoryService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
@@ -9,9 +12,16 @@ import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -77,6 +87,69 @@ public class GlobalBulletinCategoryController {
             categories = categoryService.listCategories(type, scopeId, currentUserId);
         }
         return ResponseEntity.ok(ApiResponse.of(categories));
+    }
+
+    /**
+     * カテゴリを作成する（グローバル方式）。
+     *
+     * <p>body に {@code scopeType / scopeId(VILLAGE 時は 0) / scopeVillageId} とカテゴリフィールドを同梱する。
+     * VILLAGE は村モデレーター認可 + 村スコープ名称重複チェック、ORG/TEAM/PERSONAL は既存管理権限を
+     * サービス層が担う。</p>
+     *
+     * @param request 作成リクエスト
+     * @return 作成されたカテゴリ（{@code { data: {...} }}・201）
+     */
+    @PostMapping
+    @Operation(summary = "カテゴリ作成（グローバル）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    public ResponseEntity<ApiResponse<CategoryResponse>> createCategory(
+            @Valid @RequestBody GlobalCreateCategoryRequest request) {
+        ScopeType type = parseScopeType(request.getScopeType());
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        Long scopeId = request.getScopeId() != null ? request.getScopeId() : 0L;
+        CategoryResponse response = categoryService.createCategoryGlobal(
+                type, scopeId, request.getScopeVillageId(), currentUserId, request.toCreateCategoryRequest());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    /**
+     * カテゴリを更新する（グローバル方式）。
+     *
+     * <p>{@code categoryId} のみで叩かれるため、サービス層がカテゴリのスコープを逆引きして認可する。
+     * VILLAGE は村モデレーター + 村スコープ名称重複チェック（自身除く）、ORG/TEAM/PERSONAL は既存管理権限。</p>
+     *
+     * @param categoryId カテゴリ ID
+     * @param request    更新リクエスト
+     * @return 更新されたカテゴリ（{@code { data: {...} }}）
+     */
+    @PutMapping("/{categoryId}")
+    @Operation(summary = "カテゴリ更新（グローバル）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<ApiResponse<CategoryResponse>> updateCategory(
+            @PathVariable Long categoryId,
+            @Valid @RequestBody UpdateCategoryRequest request) {
+        CategoryResponse response =
+                categoryService.updateCategoryGlobal(categoryId, SecurityUtils.getCurrentUserId(), request);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * カテゴリを削除する（グローバル方式）。
+     *
+     * <p>配下スレッドを未分類（{@code category_id = NULL}）へ移行してからカテゴリを論理削除し、
+     * 未分類化したスレッド件数を含むレスポンスを返す（設計書 F05.1 §5）。
+     * VILLAGE は村モデレーター、ORG/TEAM/PERSONAL は既存管理権限。</p>
+     *
+     * @param categoryId カテゴリ ID
+     * @return 削除結果（{@code { data: {...} }}）
+     */
+    @DeleteMapping("/{categoryId}")
+    @Operation(summary = "カテゴリ削除（グローバル）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "削除成功")
+    public ResponseEntity<ApiResponse<DeleteCategoryResponse>> deleteCategory(@PathVariable Long categoryId) {
+        DeleteCategoryResponse response =
+                categoryService.deleteCategoryGlobal(categoryId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**

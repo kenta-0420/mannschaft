@@ -13,6 +13,9 @@ import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.service.PostingIdentityService;
+import com.mannschaft.app.village.service.VillageBulletinAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -43,6 +46,10 @@ public class BulletinReplyService {
     private final BulletinMapper bulletinMapper;
     private final BulletinAccessGuard accessGuard;
     private final AuditLogService auditLogService;
+    /** F17.1 村掲示板グローバル方式: 村スコープの閲覧/モデレーション認可を委譲する。 */
+    private final VillageBulletinAccessService villageBulletinAccessService;
+    /** F17.1 村掲示板グローバル方式: scope=VILLAGE 返信投稿の主体検証（村メンバー判定を内包）。 */
+    private final PostingIdentityService postingIdentityService;
 
     /**
      * スレッドの返信一覧をページング取得する（トップレベルのみ）。所属メンバーのみ。
@@ -204,6 +211,198 @@ public class BulletinReplyService {
                 replyId, ownerUserId, scopeType.name(), scopeId);
         auditLogService.record(AuditEventType.BULLETIN_REPLY_DELETED.name(), actorUserId, ownerUserId,
                 teamId, organizationId, null, null, null, metadata);
+    }
+
+    // ========================================================================
+    // F17.1 村掲示板グローバル方式 — 返信 CRUD（グローバル経路）
+    // ========================================================================
+
+    /**
+     * グローバル方式でスレッドの返信一覧を取得する（F17.1 村掲示板グローバル方式）。
+     *
+     * <p>{@code threadId} のみで叩かれるため、スレッドの {@code scopeType} を逆引きして認可経路を分岐する。
+     * VILLAGE は村可視性認可（閲覧）、ORG/TEAM/PERSONAL は既存 {@link #listReplies} に委譲する。
+     * トップレベル返信をページングし、子返信を同梱して返す。</p>
+     *
+     * @param threadId スレッド ID
+     * @param userId   操作ユーザーID
+     * @param pageable ページング情報
+     * @return 返信レスポンスのページ（子返信付き）
+     */
+    public Page<ReplyResponse> listRepliesGlobal(Long threadId, Long userId, Pageable pageable) {
+        BulletinThreadEntity thread = findThreadByIdOrThrow(threadId);
+        if (thread.getScopeType() != ScopeType.VILLAGE) {
+            return listReplies(thread.getScopeType(), thread.getScopeId(), threadId, userId, pageable);
+        }
+        villageBulletinAccessService.checkVillageBulletinViewAccess(thread.getScopeVillageId(), userId);
+        Page<BulletinReplyEntity> page =
+                replyRepository.findByThreadIdAndParentIdIsNullOrderByCreatedAtAsc(threadId, pageable);
+        return page.map(this::toReplyWithChildren);
+    }
+
+    /**
+     * グローバル方式で返信を作成する（F17.1 村掲示板グローバル方式）。
+     *
+     * <p>VILLAGE は村メンバー + 投稿主体検証（{@link PostingIdentityService#validatePostingIdentity}）を行い、
+     * ORG/TEAM/PERSONAL は既存 {@link #createReply} に委譲する。{@code parentId} はネスト返信時に指定する
+     * （URL の {@code replyId} 由来）。ロック／アーカイブ中は投稿不可、ネスト深さは最大5階層（depth 0〜4）。</p>
+     *
+     * @param threadId スレッド ID
+     * @param parentId 親返信 ID（null = スレッド直下）
+     * @param userId   投稿者 ID
+     * @param body     本文
+     * @return 作成された返信レスポンス
+     */
+    @Transactional
+    public ReplyResponse createReplyGlobal(Long threadId, Long parentId, Long userId, String body) {
+        BulletinThreadEntity thread = findThreadByIdOrThrow(threadId);
+        if (thread.getScopeType() != ScopeType.VILLAGE) {
+            return createReply(thread.getScopeType(), thread.getScopeId(), threadId, userId,
+                    new CreateReplyRequest(parentId, body));
+        }
+        // VILLAGE: 投稿主体検証（個人投稿 = USER/userId）。
+        // validatePostingIdentity が村メンバー判定（非メンバーは NOT_MEMBER 403）を内包するため、
+        // ここで重複の member チェックは行わない（既存 BulletinThreadService.createThread と同流儀）。
+        postingIdentityService.validatePostingIdentity(
+                userId, thread.getScopeVillageId(), VillageSubjectType.USER, userId);
+
+        if (!thread.isWritable()) {
+            throw new BusinessException(
+                    thread.getIsLocked() ? BulletinErrorCode.THREAD_LOCKED : BulletinErrorCode.THREAD_ARCHIVED);
+        }
+
+        int depth = 0;
+        if (parentId != null) {
+            BulletinReplyEntity parent = replyRepository.findByIdAndThreadId(parentId, threadId)
+                    .orElseThrow(() -> new BusinessException(BulletinErrorCode.PARENT_REPLY_MISMATCH));
+            int parentDepth = parent.getDepth() != null ? parent.getDepth() : 0;
+            depth = parentDepth + 1;
+            if (depth > MAX_REPLY_DEPTH) {
+                throw new BusinessException(BulletinErrorCode.REPLY_DEPTH_EXCEEDED);
+            }
+            parent.incrementReplyCount();
+            replyRepository.save(parent);
+        }
+
+        BulletinReplyEntity entity = BulletinReplyEntity.builder()
+                .threadId(threadId)
+                .parentId(parentId)
+                .depth(depth)
+                .authorId(userId)
+                .body(body)
+                .build();
+        BulletinReplyEntity saved = replyRepository.save(entity);
+
+        thread.incrementReplyCount();
+        threadRepository.save(thread);
+        log.info("村返信作成: villageId={}, threadId={}, replyId={}",
+                thread.getScopeVillageId(), threadId, saved.getId());
+        return bulletinMapper.toReplyResponse(saved);
+    }
+
+    /**
+     * グローバル方式でネスト返信を作成する（F17.1 村掲示板グローバル方式）。
+     *
+     * <p>FE は {@code POST /api/v1/bulletin/replies/{replyId}/replies} で親返信 ID のみを渡すため、
+     * 親返信からスレッドを逆引きして {@link #createReplyGlobal} に委譲する。</p>
+     *
+     * @param parentReplyId 親返信 ID（URL 由来）
+     * @param userId        投稿者 ID
+     * @param body          本文
+     * @return 作成された返信レスポンス
+     */
+    @Transactional
+    public ReplyResponse createNestedReplyGlobal(Long parentReplyId, Long userId, String body) {
+        BulletinReplyEntity parent = findReplyByIdOrThrow(parentReplyId);
+        return createReplyGlobal(parent.getThreadId(), parentReplyId, userId, body);
+    }
+
+    /**
+     * グローバル方式で返信を更新する（F17.1 村掲示板グローバル方式）。投稿者本人のみ。
+     *
+     * <p>{@code replyId} から返信→スレッドを逆引きし、VILLAGE は投稿者本人かつロック中はモデレーターのみ、
+     * ORG/TEAM/PERSONAL は既存 {@link #updateReply} に委譲する。</p>
+     *
+     * @param replyId 返信 ID
+     * @param userId  操作者 ID
+     * @param body    新しい本文
+     * @return 更新された返信レスポンス
+     */
+    @Transactional
+    public ReplyResponse updateReplyGlobal(Long replyId, Long userId, String body) {
+        BulletinReplyEntity reply = findReplyByIdOrThrow(replyId);
+        BulletinThreadEntity thread = findThreadByIdOrThrow(reply.getThreadId());
+        if (thread.getScopeType() != ScopeType.VILLAGE) {
+            return updateReply(thread.getScopeType(), thread.getScopeId(), thread.getId(), replyId, userId,
+                    new UpdateReplyRequest(body));
+        }
+        // VILLAGE: 投稿者本人のみ編集可
+        if (reply.getAuthorId() == null || !reply.getAuthorId().equals(userId)) {
+            throw new BusinessException(BulletinErrorCode.NOT_AUTHOR);
+        }
+        // ロック中はモデレーターのみ編集可（設計書 §5）
+        if (Boolean.TRUE.equals(thread.getIsLocked())) {
+            villageBulletinAccessService.checkVillageBulletinModerator(thread.getScopeVillageId(), userId);
+        }
+        reply.updateBody(body);
+        BulletinReplyEntity saved = replyRepository.save(reply);
+        log.info("村返信更新: villageId={}, replyId={}", thread.getScopeVillageId(), replyId);
+        return bulletinMapper.toReplyResponse(saved);
+    }
+
+    /**
+     * グローバル方式で返信を論理削除する（F17.1 村掲示板グローバル方式）。
+     *
+     * <p>VILLAGE は投稿者本人 or 村モデレーター、ORG/TEAM/PERSONAL は既存 {@link #deleteReply} に委譲する。
+     * 親返信・スレッドの返信カウントをデクリメントし、他者投稿削除時は監査ログを記録する。</p>
+     *
+     * @param replyId 返信 ID
+     * @param userId  操作者 ID
+     */
+    @Transactional
+    public void deleteReplyGlobal(Long replyId, Long userId) {
+        BulletinReplyEntity reply = findReplyByIdOrThrow(replyId);
+        BulletinThreadEntity thread = findThreadByIdOrThrow(reply.getThreadId());
+        if (thread.getScopeType() != ScopeType.VILLAGE) {
+            deleteReply(thread.getScopeType(), thread.getScopeId(), thread.getId(), replyId, userId);
+            return;
+        }
+        boolean isOwner = reply.getAuthorId() != null && reply.getAuthorId().equals(userId);
+        if (!isOwner) {
+            villageBulletinAccessService.checkVillageBulletinModerator(thread.getScopeVillageId(), userId);
+        }
+        reply.softDelete();
+        replyRepository.save(reply);
+
+        if (reply.getParentId() != null) {
+            replyRepository.findById(reply.getParentId()).ifPresent(parent -> {
+                parent.decrementReplyCount();
+                replyRepository.save(parent);
+            });
+        }
+        thread.decrementReplyCount();
+        threadRepository.save(thread);
+        log.info("村返信削除: villageId={}, replyId={}, by={}", thread.getScopeVillageId(), replyId, userId);
+
+        if (!isOwner) {
+            recordReplyDeletionAudit(thread.getScopeType(), thread.getScopeId(), userId, reply.getAuthorId(), replyId);
+        }
+    }
+
+    /**
+     * スレッドを ID のみで取得する（グローバル方式の逆引き）。存在しなければ 404。
+     */
+    private BulletinThreadEntity findThreadByIdOrThrow(Long threadId) {
+        return threadRepository.findById(threadId)
+                .orElseThrow(() -> new BusinessException(BulletinErrorCode.THREAD_NOT_FOUND));
+    }
+
+    /**
+     * 返信を ID のみで取得する（グローバル方式の逆引き）。存在しなければ 404。
+     */
+    private BulletinReplyEntity findReplyByIdOrThrow(Long replyId) {
+        return replyRepository.findById(replyId)
+                .orElseThrow(() -> new BusinessException(BulletinErrorCode.REPLY_NOT_FOUND));
     }
 
     /**
