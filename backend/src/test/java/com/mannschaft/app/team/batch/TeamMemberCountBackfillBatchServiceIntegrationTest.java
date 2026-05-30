@@ -1,5 +1,6 @@
 package com.mannschaft.app.team.batch;
 
+import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.team.repository.TeamRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -10,16 +11,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.DockerClientFactory;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Optional;
 
@@ -45,39 +38,10 @@ import static org.mockito.Mockito.when;
  *   <li>user_roles が 0 件のチームは 0 に補正されること</li>
  * </ul>
  */
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("test")
 @Transactional
-@EnabledIf("com.mannschaft.app.team.batch.TeamMemberCountBackfillBatchServiceIntegrationTest#isDockerAvailable")
+@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("TeamMemberCountBackfillBatchService 結合テスト")
-class TeamMemberCountBackfillBatchServiceIntegrationTest {
-
-    public static boolean isDockerAvailable() {
-        try {
-            return DockerClientFactory.instance().isDockerAvailable();
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    @Container
-    @SuppressWarnings("resource")
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("mannschaft_test")
-            .withUsername("test")
-            .withPassword("test")
-            .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"));
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-    }
-
-    @MockitoBean
-    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+class TeamMemberCountBackfillBatchServiceIntegrationTest extends AbstractMySqlIntegrationTest {
 
     /**
      * ShedLock の {@code shedlock} テーブルは Flyway 経由で本番に作成されるが、
