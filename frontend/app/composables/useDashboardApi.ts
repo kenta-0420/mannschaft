@@ -1,3 +1,5 @@
+import type { TeamDashboardResponse, OrgDashboardResponse } from '~/types/dashboard-scope'
+
 interface PlatformAnnouncement {
   id: number
   title: string
@@ -142,12 +144,12 @@ export function useDashboardApi() {
   // === Scoped Dashboard ===
   async function getOrganizationDashboard(orgId: number, statsPeriod?: string) {
     const query = statsPeriod ? `?statsPeriod=${statsPeriod}` : ''
-    return api<{ data: unknown }>(`/api/v1/dashboard/organization/${orgId}${query}`)
+    return api<{ data: OrgDashboardResponse }>(`/api/v1/dashboard/organization/${orgId}${query}`)
   }
 
   async function getTeamDashboard(teamId: number, statsPeriod?: string) {
     const query = statsPeriod ? `?statsPeriod=${statsPeriod}` : ''
-    return api<{ data: unknown }>(`/api/v1/dashboard/team/${teamId}${query}`)
+    return api<{ data: TeamDashboardResponse }>(`/api/v1/dashboard/team/${teamId}${query}`)
   }
 
   // Widget settings
