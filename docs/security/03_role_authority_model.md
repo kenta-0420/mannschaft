@@ -263,28 +263,33 @@ circulation / shift / chat / faq の一部 EP は、`@EnableMethodSecurity` 未�
 
 | 分類 | 件数 | 代表 file | 現状の実機挙動 | 根治後の正 | 処置 Phase |
 |---|---|---|---|---|---|
-| **(A) SYSTEM_ADMIN（グローバル）** | 19 | `SystemAdminNavFeaturesController`(4), `SystemAdminSecurityScanController`, `SystemAdminAdCampaignController`, `SystemAdminAdCreativeController`, `AdminActionMemoController`, `SystemAdminEmailOutboxController`, `SystemAdminSystemLogController` | no-op（method-security off）。さらに JWT に SYSTEM_ADMIN 不在で、有効化しても全員 403 | JWT 載せ後に正常動作。`hasRole('SYSTEM_ADMIN')` のまま | Phase 1（JWT）→ Phase 2（有効化） |
-| **(B) per-scope ADMIN** | 17 | `CirculationAdminController`(5), `CirculationRecipientController`, `ShiftScheduleController`(2), `ShiftChangeRequestController`, `ChatChannelController`, `ContentTranslationController`(2), `PdfSignatureVerifyController`, `AttendanceBatchController` | no-op | SpEL ガード `@accessGuard.isScopeAdmin(...)` へ移行（パス変数で scope 判定） | Phase 3 |
-| **(C) per-scope ADMIN or SYSTEM_ADMIN** | 10 | `AdminFaqController`(4), `AdminSupporterNameDisclosureController`(4), `AdminPublicSettingsController`(2) | no-op | SpEL ガード（SYSTEM_ADMIN は内部で常に許可）へ統合 | Phase 3 |
-| **(D) 幻ロール TEACHER** | 3 | `AttendanceDisclosureController`(3) | no-op（現状フリーパス）。有効化後は TEACHER/ADMIN いずれも JWT 不在で全員 403 | **論点**: 出席開示の正規認可をどう定義するか（§7.1）。決定後 SpEL ガード化 | Phase 4 |
-| **(E) 負論理 SUPPORTER** | 1 | `ShiftPdfController` | no-op。有効化後も `!hasRole('SUPPORTER')` は常に true（排除不能）。scope 検証なし | SUPPORTER 排除＋ scope 検証を SpEL ガードで正しく表現（§7.2） | Phase 4 |
-| **(F) SpEL 所有者ガード** | 10 | `QuickMemoController`(7), `QuickMemoAttachmentController`(3) | no-op | `@EnableMethodSecurity` 有効化でそのまま実効化（所有者ガードは設計正） | Phase 2 |
-| **(G) SpEL ロールチェッカー** | 1 | `AdminBusinessAlertController`（`@adminRoleChecker...`） | no-op | 有効化でそのまま実効化 | Phase 2 |
-| **(H) isAuthenticated()** | 36 | `*TimetableController` 群, `*ProfileMediaController` 群, `Announcement*Controller` 群, `NavSettingsController`, `ScheduleMediaController`(4), `BlogMediaController`, `MultipartUploadController`, `VillageCategoryController`, `DashboardWidgetVisibilityController`, `UserAdPreferencesController`(2) | no-op（ただし L1 `.anyRequest().authenticated()` が認証は担保） | 有効化で実効化。ただし **所有者ガードが必要な EP が紛れていないか個別精査**（§3.4） | Phase 2（有効化）＋ Phase 3（精査） |
+| **(A) SYSTEM_ADMIN（グローバル）** | 19 | `SystemAdminNavFeaturesController`(4), `SystemAdminSecurityScanController`, `SystemAdminAdCampaignController`, `SystemAdminAdCreativeController`, `AdminActionMemoController`, `SystemAdminEmailOutboxController`, `SystemAdminSystemLogController` | no-op（method-security off）。さらに JWT に SYSTEM_ADMIN 不在で、有効化しても全員 403 | JWT 載せ後に正常動作。`hasRole('SYSTEM_ADMIN')` のまま | Phase 1（JWT）→ Phase 3（有効化） |
+| **(B) per-scope ADMIN** | 17 | `CirculationAdminController`(5), `CirculationRecipientController`, `ShiftScheduleController`(2), `ShiftChangeRequestController`, `ChatChannelController`, `ContentTranslationController`(2), `PdfSignatureVerifyController`, `AttendanceBatchController` | no-op | SpEL ガード `@accessGuard.isScopeAdmin(...)` へ移行（パス変数で scope 判定）。スコープがパス変数で表せない EP（`ShiftChangeRequestController` の review・`PdfSignatureVerifyController`）は Service 層明示認可を真の強制点とする | Phase 2 |
+| **(C) per-scope ADMIN or SYSTEM_ADMIN** | 10 | `AdminFaqController`(4), `AdminSupporterNameDisclosureController`(4), `AdminPublicSettingsController`(2) | no-op | SpEL ガード（SYSTEM_ADMIN は内部で常に許可）へ統合 | Phase 2 |
+| **(D) 幻ロール TEACHER** | 3 | `AttendanceDisclosureController`(3) | no-op（現状フリーパス）。有効化後は TEACHER/ADMIN いずれも JWT 不在で全員 403 | §7.1 決定（A-1）= 学校チームの ADMIN/DEPUTY_ADMIN ＝教員相当。`@accessGuard.isScopeAdmin(..., #teamId, 'TEAM')` へ置換＋ Service 層明示認可 | Phase 2 |
+| **(E) 負論理 SUPPORTER** | 1 | `ShiftPdfController` | no-op。有効化後も `!hasRole('SUPPORTER')` は常に true（排除不能）。scope 検証なし | SUPPORTER 排除＋ scope 検証を SpEL ガードで正しく表現（§7.2） | Phase 2 |
+| **(F) SpEL 所有者ガード** | 10 | `QuickMemoController`(7), `QuickMemoAttachmentController`(3) | no-op | `@EnableMethodSecurity` 有効化でそのまま実効化（所有者ガードは設計正） | Phase 3 |
+| **(G) SpEL ロールチェッカー** | 1 | `AdminBusinessAlertController`（`@adminRoleChecker...`） | no-op | 有効化でそのまま実効化 | Phase 3 |
+| **(H) isAuthenticated()** | 36 | `*TimetableController` 群, `*ProfileMediaController` 群, `Announcement*Controller` 群, `NavSettingsController`, `ScheduleMediaController`(4), `BlogMediaController`, `MultipartUploadController`, `VillageCategoryController`, `DashboardWidgetVisibilityController`, `UserAdPreferencesController`(2) | no-op（ただし L1 `.anyRequest().authenticated()` が認証は担保） | 有効化で実効化。ただし **所有者ガードが必要な EP が紛れていないか個別精査**（§3.4） | Phase 3（有効化）＋ Phase 2（精査） |
 
 **合計: 19 + 17 + 10 + 3 + 1 + 10 + 1 + 36 = 97**
 
 ### 5.1 「生穴」リスト（無認可・誤認可で稼働中の EP）
 
-method-security が無効な現状、以下は **認可が事実上ゼロ**で動いている。Phase 3〜4 で確実に封鎖する。
+method-security が無効な現状、以下は **認可が事実上ゼロ**で動いている。**Phase 2（per-scope SpEL 化＋生穴封鎖）で method-security OFF のまま明示 Service 層認可を注入して即封鎖**する（点火＝Phase 3 を待たない）。
 
-| EP | file:line | 現状リスク | 封鎖方針 |
-|---|---|---|---|
-| 出席開示 3 EP | `AttendanceDisclosureController.java:43,63,82` | 教員以外でも開示/非開示/履歴操作が可能（現状フリーパス。有効化すると逆に全員 403） | §7.1 の論点決定後、正規ロールで SpEL ガード化 |
-| シフト PDF | `ShiftPdfController.java:39` | 任意 `scheduleId` の PDF にアクセス可（負論理＋ scope 検証なし＝ IDOR） | §7.2 の方針で scope 検証付き SpEL ガード化。Service 層でも `scheduleId` の所属チェックを追加 |
-| per-scope ADMIN 系（B/C 27 EP） | §5 (B)(C) | 非 ADMIN が回覧・シフト・FAQ 等の管理操作を実行可（一部は Service 層呼出で緩和済） | SpEL ガード化。未だ Service 層呼出のない EP を優先 |
+| EP | file:line | 現状リスク | 封鎖方針 | 状態 |
+|---|---|---|---|---|
+| 出席開示 3 EP | `AttendanceDisclosureController.java:43,63,82` | 教員以外でも開示/非開示/履歴操作が可能（現状フリーパス。有効化すると逆に全員 403） | §7.1 決定（A-1）で `DisclosureService` に `checkAdminOrAbove(teamId, "TEAM")` を注入＋注釈 SpEL 化 | ✅ Phase 2 完了（Phase 3-a） |
+| シフト PDF | `ShiftPdfController.java:39` | 任意 `scheduleId` の PDF にアクセス可（負論理＋ scope 検証なし＝ IDOR） | §7.2 の方針で scope 検証付き SpEL ガード化。Service 層でも `scheduleId` の所属チェックを追加 | ⏳ 未着手（負論理 (E)） |
+| シフト変更依頼 review | `ShiftChangeRequestController.java:82` | 誰でも任意の変更依頼を承認/却下可能 | `ShiftChangeRequestService.review` で `scheduleId → teamId` 解決し `checkAdminOrAbove`（IDOR 封鎖込み） | ✅ Phase 2 完了（Phase 3-a） |
+| 公開設定 PATCH 2 EP | `AdminPublicSettingsController` | 誰でも他団体のタイムライン/イベント公開設定を変更可能 | `AdminPublicSettingsService` に `checkAdminOrAbove` 注入＋注釈 SpEL 化 | ✅ Phase 2 完了（Phase 3-a） |
+| 投稿者識別モード切替・履歴 4 EP | `AdminSupporterNameDisclosureController` | 誰でも他団体の識別モード切替・履歴閲覧が可能 | `SupporterNameDisclosureService` に `checkAdminOrAbove` 注入＋注釈 SpEL 化 | ✅ Phase 2 完了（Phase 3-a） |
+| PDF 署名検証 | `PdfSignatureVerifyController.java:39` | 誰でも内部署名検証 API を叩ける（スコープ不在） | スコープ不在のため SYSTEM_ADMIN 限定（`checkSystemAdmin`）で厳格化。per-scope ADMIN への緩和は要件次第で再調整 | ✅ Phase 2 完了（Phase 3-a・要再判断） |
+| translation mark-stale 2 EP | `ContentTranslationController` | — | 既に Service 層 `checkAdminOrAbove` 注入済。注釈のみ SpEL 化 | ✅ Phase 2 完了（注釈是正） |
+| attendance batch 2 EP | `AttendanceBatchController` | — | 既に Service 層 `checkSystemAdmin` 注入済。クラス注釈を `hasRole('SYSTEM_ADMIN')` へ是正 | ✅ Phase 2 完了（注釈是正） |
 
-> 注: (B)(C) のうち circulation/shift/chat/faq の主要 EP は PR #1183/#1189/#1178 で Service 層認可が注入済のため、生穴は緩和されている。**Service 層注入がまだ無い EP**（translation・pdf-verify・attendance-batch 等）を Phase 3 の最優先とする。
+> 注: (B)(C) のうち circulation/shift/chat/faq の主要 EP は PR #1183/#1189/#1178 で Service 層認可が注入済のため、生穴は緩和されている。**Service 層注入がまだ無かった EP**（publicview 公開設定・識別モード・出席開示・shift change-request review・pdf-verify）を Phase 2（Phase 3-a 実装陣）で明示認可注入して封鎖済み。残るは負論理 (E) のシフト PDF（`ShiftPdfController`）。
 
 ---
 
@@ -317,7 +322,7 @@ method-security が無効な現状、以下は **認可が事実上ゼロ**で�
 | **A-2. permission ベースにする** | `ATTENDANCE_DISCLOSE` 等の permission を定義し `@accessGuard.hasScopePermission(..., 'ATTENDANCE_DISCLOSE')` で判定 | 細粒度・将来拡張に強い | permission シード・付与 UI の整備が必要（スコープ増） |
 | **A-3. TEACHER ロールを新規シードする** | `roles` に TEACHER を追加し per-scope ロールとして付与 | ドメイン語彙と一致 | ロール体系の拡張＝広範な影響。付与フロー新設が必要 |
 
-**✅ 決定（2026-05-30 マスター裁可）= A-1 を採用。** 出席開示の 3 EP（disclose/withhold/disclosure-history）は、`@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")` を **`@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')`** に置換し、「学校チーム（クラス）の ADMIN/DEPUTY_ADMIN ＝教員相当」として per-scope 認可する。新ロールは追加しない。将来「教員＝管理者ではない」運用要件（F03.13 学校ドメイン）が確定した場合に A-2（permission `ATTENDANCE_DISCLOSE`）へ発展させる余地を残す。Phase 3 で実装（生穴封鎖と同時）。
+**✅ 決定（2026-05-30 マスター裁可）= A-1 を採用。** 出席開示の 3 EP（disclose/withhold/disclosure-history）は、`@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")` を **`@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')`** に置換し、「学校チーム（クラス）の ADMIN/DEPUTY_ADMIN ＝教員相当」として per-scope 認可する。新ロールは追加しない。将来「教員＝管理者ではない」運用要件（F03.13 学校ドメイン）が確定した場合に A-2（permission `ATTENDANCE_DISCLOSE`）へ発展させる余地を残す。**Phase 2（per-scope SpEL 化＋生穴封鎖）で実装済み（Phase 3-a）**: `DisclosureService` に `checkAdminOrAbove(teamId, "TEAM")`（SYSTEM_ADMIN 短絡）を注入し、3 EP の注釈を `@accessGuard.isScopeAdmin(...)` へ置換。
 
 ### 7.2 【論点 B・要判断】シフト PDF の認可（負論理 SUPPORTER）
 
@@ -326,7 +331,7 @@ method-security が無効な現状、以下は **認可が事実上ゼロ**で�
 - **SUPPORTER 排除を正しく表現**: `@accessGuard` に「当該スケジュールの所属チームで MEMBER 以上 **かつ** SUPPORTER でない」判定メソッドを追加するか、Service 層 `ShiftPdfService` で `scheduleId → teamId` を解決して `isSupporter` を弾く。
 - **scope 検証を必須化**: PDF 取得前に `scheduleId` がリクエスタの所属チームのものか検証（IDOR 封鎖）。
 
-**✅ 決定（2026-05-30 マスター裁可）= SUPPORTER 排除方針は維持し、正しい per-scope 表現へ是正。** `ShiftPdfController` の `!hasRole('SUPPORTER')` を撤廃し、「**当該スケジュールの所属チームの正式メンバー（MEMBER 以上）であり、かつ SUPPORTER ではない**」を満たす場合のみ PDF を取得可能にする。`ShiftPdfService` で `scheduleId → teamId` を解決し（IDOR 封鎖の scope 検証）、`@accessGuard` ないし `AccessControlService` でメンバー判定＋SUPPORTER 除外を行う。Phase 3/4 で実装。
+**✅ 決定（2026-05-30 マスター裁可）= SUPPORTER 排除方針は維持し、正しい per-scope 表現へ是正。** `ShiftPdfController` の `!hasRole('SUPPORTER')` を撤廃し、「**当該スケジュールの所属チームの正式メンバー（MEMBER 以上）であり、かつ SUPPORTER ではない**」を満たす場合のみ PDF を取得可能にする。`ShiftPdfService` で `scheduleId → teamId` を解決し（IDOR 封鎖の scope 検証）、`@accessGuard` ないし `AccessControlService` でメンバー判定＋SUPPORTER 除外を行う。**Phase 2 で実装予定（負論理 (E)・本 Phase 3-a 陣では未着手）。**
 
 ### 7.3 【論点 C・確認のみ】MEMBER を全ユーザーに付与する妥当性
 
@@ -338,16 +343,18 @@ method-security が無効な現状、以下は **認可が事実上ゼロ**で�
 
 各 Phase は **test-first（テスト先行）→ 実装 → 実機テスト** の順で進める（マスター方針）。Phase 間は依存順序があり、原則として前 Phase の実機テスト合格を確認してから次へ進む。
 
+> **順序是正（2026-05-30）**: 当初 Phase 2＝method-security 有効化 → Phase 3＝per-scope SpEL 化 の順だったが、**Phase 3（per-scope SpEL 化＋生穴封鎖）を先、Phase 4（method-security 有効化）を後** に並べ替えた（番号もこの順に振り直し）。理由は §11 のリスク（点火の瞬間に未変換の `hasRole` が一斉 403 化する窓）を**構造的に消す**ためである。先に全 per-scope EP の注釈を `@accessGuard` の正しい SpEL へ変換し、明示 Service 層認可で生穴を塞ぎ切ってから method-security を点火すれば、点火時点では全注釈が既に正しい状態であり、一斉 403 の窓が生じない。なお per-scope の **生穴封鎖（明示 Service 層認可）は method-security OFF のままでも即効く**ため、Phase 3 を先行する利点は「点火前にセキュリティ穴が塞がる」点でも大きい。
+
 | Phase | 名称 | 主タスク | test-first の要点 | 依存 |
 |---|---|---|---|---|
 | **0** | 設計書（本 PR） | 本書新規＋ 02/F01.1 更新＋ README 参照追加＋ §2.4 嘘コメント是正をタスク化 | — | — |
 | **1** | 要石: JWT に SYSTEM_ADMIN | 発行ヘルパー集約 → 5 経路で `isSystemAdmin` ロード注入 → リフレッシュ再判定 → 剥奪経路に `setUserInvalidationTimestamp` 発火 | 「SYSTEM_ADMIN ユーザーの JWT に SYSTEM_ADMIN が載る / 一般ユーザーには載らない / 剥奪後リフレッシュで外れる」を先にテスト化 | 0 |
-| **2** | method-security 有効化 | `@EnableMethodSecurity(prePostEnabled=true)` を `SecurityConfig` に付与 → (A)(F)(G)(H) が実効化 → `@WebMvcTest` 互換改修（method-security 有効下でのスライステスト方針）→ §2.4 の嘘コメント文言是正 | 「SYSTEM_ADMIN 系 EP が SYSTEM_ADMIN で 2xx・一般で 403」「所有者ガード EP が他人で 403」を先に | 1（SYSTEM_ADMIN が JWT に載っていること） |
-| **3** | per-scope SpEL ガード化 | `AccessGuard` Bean 新設 → (B)(C) 27 EP を `@accessGuard.isScopeAdmin(...)` 化 → 既存 Service 層呼出と統合（残置）→ §5.1 生穴のうち未注入 EP を最優先封鎖 | 「他団体 ADMIN が別団体の管理 EP で 403」「自団体 ADMIN は 2xx」を先に | 2 |
-| **4** | 幻ロール・負論理決着 | §7.1（TEACHER）決定後 3 EP を正規化 → §7.2（ShiftPdf 負論理）是正＋ scope 検証 | 「教員相当のみ開示可」「SUPPORTER は PDF 403・他団体は IDOR 403」を先に | 3 ＋ マスター判断（§7.1/§7.2） |
+| **2** | per-scope SpEL ガード化＋生穴封鎖 | `AccessGuard` Bean 新設 → (B)(C) per-scope EP を `@accessGuard.isScopeAdmin(...)` 化 → 既存 Service 層呼出と統合（残置）→ §5.1 生穴のうち**未注入 EP を明示 Service 層認可で最優先封鎖**（method-security OFF でも即効く）→ §7.1（TEACHER＝A-1）/§7.2（ShiftPdf 負論理）の正規化も併せて実施 | 「他団体 ADMIN が別団体の管理 EP で 403」「自団体 ADMIN は 2xx」「非権限者が生穴 EP で COMMON_002」「SYSTEM_ADMIN 短絡」を先に | 1 |
+| **3** | method-security 有効化 | `@EnableMethodSecurity(prePostEnabled=true)` を `SecurityConfig` に付与 → (A)(F)(G)(H) が実効化 → `@WebMvcTest` 互換改修（method-security 有効下でのスライステスト方針）→ §2.4 の嘘コメント文言是正 | 「SYSTEM_ADMIN 系 EP が SYSTEM_ADMIN で 2xx・一般で 403」「所有者ガード EP が他人で 403」を先に | 2（全 per-scope EP の注釈が正しい SpEL に変換済みかつ SYSTEM_ADMIN が JWT に載っていること） |
+| **4** | 幻ロール・負論理の最終確認＋残整理 | Phase 2 で正規化した出席開示（A-1）/ ShiftPdf 負論理の **method-security 有効下での実機検証** → 取りこぼし EP の点検 | 「教員相当のみ開示可」「SUPPORTER は PDF 403・他団体は IDOR 403」を method-security 有効下で再確認 | 3 |
 | **5** | 認可統合テスト＋確定 | 横断統合テスト（SYSTEM_ADMIN 通る/非権限 403/他団体 ADMIN 弾く）→ docs/security 確定（本書ステータス 🟢 へ）→ README 表更新 | 統合テストマトリクス（§10）を網羅 | 4 |
 
-> Phase 2 の `@EnableMethodSecurity` 有効化は **破壊的変更**である（97 個の宣言が一斉に実効化する）。Phase 1 で SYSTEM_ADMIN が JWT に載っていない状態で Phase 2 を先行すると system-admin 系 EP が全員 403 になるため、**Phase 順序の逆転を禁止**する。
+> **点火（Phase 3）の前提**: `@EnableMethodSecurity` 有効化は **破壊的変更**である（97 個の宣言が一斉に実効化する）。点火の瞬間に system-admin 系が全員 403 化しないために Phase 1（SYSTEM_ADMIN を JWT に載せる）が完了していること、**かつ点火の瞬間に未変換の `hasRole('ADMIN')` 等が一斉 403 化しないために Phase 2（全 per-scope EP の注釈を `@accessGuard` の正しい SpEL に変換済み）であること**を必須前提とする。すなわち **Phase 3 は「全注釈が正しい状態である」前提でのみ実施してよい**。Phase 1・2 の実機テスト合格を確認するまで Phase 3 を先行してはならない（**Phase 順序の逆転を禁止**）。
 
 ---
 
@@ -362,16 +369,16 @@ grep -rP '^\s*@PreAuthorize\(' backend/src/main/java --include=*.java | grep -c 
 grep -rn "hasRole('TEACHER')\|hasRole('USER')" backend/src/main/java --include=*.java
 # 負論理検出
 grep -rn "!hasRole" backend/src/main/java --include=*.java
-# @EnableMethodSecurity の付与確認（Phase 2 後に 1 件になること）
+# @EnableMethodSecurity の付与確認（Phase 3 後に 1 件になること）
 grep -rn "@EnableMethodSecurity" backend/src/main/java --include=*.java
 ```
 
 ### 9.2 Phase 別テスト（test-first）
 
 - **Phase 1（JWT）**: `AuthTokenService` / 各 `Auth*Service` のユニットテストで「SYSTEM_ADMIN ユーザーの発行 JWT に `SYSTEM_ADMIN` claim が含まれる / 一般ユーザーには含まれない / リフレッシュで再判定される」を検証。剥奪後の `user_invalidated_at` 発火を検証。
-- **Phase 2（method-security）**: 代表的な (A) EP を `@SpringBootTest` + MockMvc で「SYSTEM_ADMIN トークンで 2xx / 一般トークンで 403 / 未認証で 401」。(F) 所有者ガード EP で「他人の memoId に対し 403」。`@WebMvcTest` スライスは method-security 有効下で `@PreAuthorize` の SpEL Bean（`@accessGuard` 等）をモック注入する方針を確立する。
-- **Phase 3（per-scope）**: 「組織 X の ADMIN が組織 Y の管理 EP を叩くと 403」「組織 X の ADMIN が組織 X の管理 EP を叩くと 2xx」「MEMBER が管理 EP を叩くと 403」。
-- **Phase 4（生穴）**: 出席開示・シフト PDF の IDOR テスト（他団体リソースへのアクセス 403）。
+- **Phase 2（per-scope SpEL 化＋生穴封鎖）**: `AccessGuard` の各メソッド（SYSTEM_ADMIN 短絡 / per-scope ADMID 許可・拒否 / null・非認証 false）をユニットで検証。生穴 EP の Service 層認可を「非権限者→COMMON_002（他団体 ADMIN 含む）/ SYSTEM_ADMIN 短絡で通過 / 取得・保存より前に弾く」でユニット/スライス検証（method-security OFF でも効く）。出席開示・shift review の IDOR（`scheduleId/teamId` 解決後の他団体 403）もここで検証。
+- **Phase 3（method-security）**: 代表的な (A) EP を `@SpringBootTest` + MockMvc で「SYSTEM_ADMIN トークンで 2xx / 一般トークンで 403 / 未認証で 401」。(F) 所有者ガード EP で「他人の memoId に対し 403」。`@WebMvcTest` スライスは method-security 有効下で `@PreAuthorize` の SpEL Bean（`@accessGuard` 等）をモック注入する方針を確立する。点火後に per-scope EP（Phase 2 で SpEL 化済み）が「自団体 ADMIN 2xx / 他団体 ADMIN・MEMBER 403」となることを実機検証。
+- **Phase 4（幻ロール・負論理の実機確認）**: 出席開示（A-1）・シフト PDF の IDOR テスト（他団体リソースへのアクセス 403）を method-security 有効下で再確認。
 - **Phase 5（統合）**: §10 のマトリクスを横断統合テストで網羅。
 
 ### 9.3 `@WebMvcTest` 互換改修方針（Phase 2）
@@ -405,10 +412,10 @@ grep -rn "@EnableMethodSecurity" backend/src/main/java --include=*.java
 
 | リスク | 内容 | 緩和 |
 |---|---|---|
-| **Phase 2 の一斉実効化** | 97 個の宣言が同時に効くため、Phase 1 未完だと system-admin 系が全員 403 化 | Phase 順序厳守（§8 注記）。Phase 2 前に Phase 1 実機テスト合格を必須化 |
-| **幻ロール EP の挙動反転** | 現状フリーパス → 有効化で全員 403。利用中なら機能停止 | Phase 4 で §7.1 決定と同時に正規ロール化。Phase 2 時点では (D) を一時的に `isAuthenticated()` 等の暫定にするか、Phase 4 まで TEACHER 参照を残すかを実装時判断 |
+| **Phase 3（点火）の一斉実効化** | 97 個の宣言が同時に効くため、Phase 1（JWT に SYSTEM_ADMIN）未完だと system-admin 系が全員 403 化、Phase 2（注釈の SpEL 化）未完だと per-scope `hasRole` 系が一斉 403 化 | Phase 順序厳守（§8 注記）。**Phase 3 点火前に Phase 1・2 の実機テスト合格を必須化**。Phase 2 で全注釈を正しい SpEL に変換済みにしておくことで点火の窓を構造的に消す |
+| **幻ロール EP の挙動反転** | 現状フリーパス → 有効化で全員 403。利用中なら機能停止 | **Phase 2 で §7.1 決定（A-1）と同時に正規化済み**（`@accessGuard.isScopeAdmin(..., #teamId, 'TEAM')`）。加えて Service 層で明示認可を注入し、method-security OFF の現状でも生穴を即封鎖。Phase 3 点火時には既に正しい状態 |
 | **per-scope 判定の N+1** | SpEL ガードがリクエスト毎に `user_roles` を参照 | `AccessControlService` の既存クエリは単一 SQL。ホットパスでは必要に応じキャッシュを検討（本根治のスコープ外） |
-| **`@WebMvcTest` 大量改修** | method-security 有効化で既存スライステストが軒並み起動失敗 | §9.3 の方針で `@MockBean` 注入を定型化。Phase 2 のテスト工数を見込む |
+| **`@WebMvcTest` 大量改修** | method-security 有効化で既存スライステストが軒並み起動失敗 | §9.3 の方針で `@MockBean` 注入を定型化。Phase 3 のテスト工数を見込む |
 | **ロール変更の反映遅延（付与）** | SYSTEM_ADMIN 付与は最大 15 分 | 即時付与が要件なら再ログイン導線。剥奪は §6 で即時化 |
 
 ---
@@ -455,3 +462,4 @@ grep -rn "@EnableMethodSecurity" backend/src/main/java --include=*.java
 | 日付 | 変更 |
 |---|---|
 | 2026-05-30 | 新規作成。認可基盤完全根治（案①）の正典モデル・病巣カタログ（file:line 根拠）・SpEL ガード設計・JWT claims 設計・`@PreAuthorize` 97 個分類カタログ・生穴リスト・段階計画 Phase 0〜5・テスト戦略・統合テストマトリクスを定義 |
+| 2026-05-30 | **§8 段階計画の順序是正**: Phase 3（per-scope SpEL 化＋生穴封鎖）を Phase 4（method-security 有効化）より前に並べ替え（番号も振り直し）。点火の瞬間に未変換 `hasRole` が一斉 403 化する窓を構造的に消す方針を明記。§5/§5.1/§7.1/§7.2/§9/§11 の Phase 参照を追従更新。**Phase 3-a 実装**（per-scope 生穴封鎖）として `AccessGuard` Bean 新設、AdminPublicSettings/SupporterNameDisclosure/Disclosure/ShiftChangeRequest.review/PdfSignatureVerify の生穴を明示 Service 層認可で封鎖、対象 EP の `@PreAuthorize` を `@accessGuard.isScopeAdmin(...)`/`hasRole('SYSTEM_ADMIN')` へ是正済み（§5.1 状態列参照）。残: 負論理 (E) シフト PDF |

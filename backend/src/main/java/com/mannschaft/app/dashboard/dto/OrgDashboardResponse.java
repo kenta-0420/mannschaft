@@ -41,4 +41,37 @@ public class OrgDashboardResponse {
     /** ウィジェット可視性マップ（min_role 管理対象ウィジェットのみ含む。ADMIN 限定ウィジェットは除外） */
     @JsonProperty("widget_visibility")
     private final List<WidgetVisibilityRowDto> widgetVisibility;
+
+    // ========================================
+    // F22.1 第二波 追加フィールド（02 §3.3 サマリ追加フィールド・組織スコープは①②③も新設）
+    // is_visible=FALSE のウィジェットはサーバーでスキップ（null）し @JsonInclude(NON_NULL) で省略される
+    // ========================================
+
+    /** ①今後の予定（組織スコープ新設）: 今後 7 日間・最大 10 件。 */
+    @JsonProperty("orgUpcomingEvents")
+    private final List<Map<String, Object>> orgUpcomingEvents;
+
+    /** ②タイムライン（組織スコープ新設）: 直近 3 件。実体なしは空配列。 */
+    @JsonProperty("orgLatestPosts")
+    private final List<Map<String, Object>> orgLatestPosts;
+
+    /** ③掲示板（組織スコープ新設）: { bulletin_count, chat_count }。 */
+    @JsonProperty("orgUnreadThreads")
+    private final Map<String, Object> orgUnreadThreads;
+
+    /** ④ブログ: 直近 3 件（id/title/author/published_at）。 */
+    @JsonProperty("orgLatestBlogPosts")
+    private final List<Map<String, Object>> orgLatestBlogPosts;
+
+    /** ⑤チャット: { total_unread, channels:[...]（直近3）}。 */
+    @JsonProperty("orgChatSummary")
+    private final Map<String, Object> orgChatSummary;
+
+    /** ⑥カレンダー: { events_today, events_this_week, next_event, days_with_events }。 */
+    @JsonProperty("orgCalendarSummary")
+    private final Map<String, Object> orgCalendarSummary;
+
+    /** ⑧要対応: 統合「要対応」集計（回覧板/アンケート/出欠）。 */
+    @JsonProperty("orgActionRequired")
+    private final ActionRequiredSummaryResponse orgActionRequired;
 }

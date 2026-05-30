@@ -78,11 +78,18 @@ public class ShiftChangeRequestController {
 
     /**
      * 変更依頼を審査する（ADMIN のみ）。
+     *
+     * <p>per-scope 認可（SYSTEM_ADMIN 短絡 or 当該シフトの所属チーム ADMIN/DEPUTY_ADMIN）は
+     * {@code scheduleId} がパス変数ではなく依頼エンティティ由来のため、
+     * {@code @accessGuard} の SpEL では表現できない。よって認可の真の強制点は
+     * {@code ShiftChangeRequestService#review} 内の明示呼出（{@code checkReviewerScopeAdminAccess}）に置く。
+     * ここでは Phase 2 の method-security 点火時に一斉 403 化しないよう {@code isAuthenticated()} に留め、
+     * 認証のみを担保する（認可根治 Phase 3-a）。</p>
      */
     @PatchMapping("/{id}/review")
     @Operation(summary = "変更依頼審査")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "審査成功")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChangeRequestResponse>> reviewChangeRequest(
             @PathVariable Long id,
             @Valid @RequestBody ReviewChangeRequestRequest request) {

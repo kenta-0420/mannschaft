@@ -21,7 +21,7 @@ interface PersistedState {
   activePanel: ActivePanel
   teamTabPage: number
   orgTabPage: number
-  activeFolderId: string | null
+  activeFolderId: number | null
   selectedTeamId: number | null
   selectedOrgId: number | null
   tabOrders: Record<ScopeTabType, TabOrderEntry[]>
@@ -43,8 +43,8 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
     teamTabPage: 0,
     /** 組織タグのページ番号（0 始まり）*/
     orgTabPage: 0,
-    /** フォルダフィルタ（F15.3 フォルダ ID / null = すべて）*/
-    activeFolderId: null as string | null,
+    /** フォルダフィルタ（F15.3 フォルダ ID / null = すべて。my_scope_folders.id は数値）*/
+    activeFolderId: null as number | null,
     /** チームパネルで選択中のチーム ID */
     selectedTeamId: null as number | null,
     /** 組織パネルで選択中の組織 ID */
@@ -196,9 +196,9 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
      * フォルダフィルタを変更してページを 0 にリセット後、タグを再取得する。
      * フォルダ切替でページが残ると空表示になるため必ずリセットする（設計書 §3.5）。
      *
-     * @param folderId - フォルダ ID（null = すべて）
+     * @param folderId - フォルダ ID（null = すべて。my_scope_folders.id は数値）
      */
-    async setFolder(folderId: string | null) {
+    async setFolder(folderId: number | null) {
       this.activeFolderId = folderId
       this.teamTabPage = 0
       this.orgTabPage = 0

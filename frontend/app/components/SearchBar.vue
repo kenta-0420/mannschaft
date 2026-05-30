@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { PrefectureResponse } from '~/types/matching'
 
-defineProps<{
+const props = defineProps<{
   placeholder?: string
   showTemplateFilter?: boolean
   showOrgTypeFilter?: boolean
+  /** F22.1: URL クエリ等から渡す初期キーワード（検索ページ遷移時の初期値復元用）。 */
+  initialKeyword?: string
 }>()
 
 const emit = defineEmits<{
@@ -13,7 +15,15 @@ const emit = defineEmits<{
 
 const { getPrefectures } = useMatchingApi()
 
-const keyword = ref('')
+const keyword = ref(props.initialKeyword ?? '')
+
+// 親が initialKeyword を後から確定する場合（onMounted での route.query 読み取り）にも追従する。
+watch(
+  () => props.initialKeyword,
+  (kw) => {
+    if (kw !== undefined) keyword.value = kw
+  },
+)
 const selectedPref = ref<PrefectureResponse | null>(null)
 const template = ref('')
 const orgType = ref('')

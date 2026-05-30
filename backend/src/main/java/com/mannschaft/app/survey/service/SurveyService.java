@@ -94,6 +94,45 @@ public class SurveyService {
     }
 
     /**
+     * F22.1 第二波: 指定スコープで当該ユーザーが「未回答」の公開中アンケートを取得する。
+     *
+     * <p>横スワイプ・ダッシュボードの統合「要対応」集計（{@code ScopeActionRequiredFacade}）から
+     * 呼ばれる読み取り専用メソッド。<b>per-scope 認可をこのメソッド内で必ず通す</b>
+     * （{@link AccessControlService#checkMembership}）。非所属ユーザーは {@code COMMON_002}
+     * で弾かれる（集計バイパス禁止・02 §3.4）。</p>
+     *
+     * <p>未回答判定は NOT EXISTS サブクエリで 1 SQL に閉じ N+1 を回避する。
+     * アイテムは作成日時の降順で {@code limit} 件に絞る。</p>
+     *
+     * @param scopeType スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   スコープ ID
+     * @param userId    閲覧ユーザー ID
+     * @param limit     直近アイテムの最大件数
+     * @return 未回答の総件数と limit 件のアイテム
+     */
+    public UnansweredSurveys getUnansweredForUserInScope(
+            String scopeType, Long scopeId, Long userId, int limit) {
+        if (accessControlService != null) {
+            accessControlService.checkMembership(userId, scopeId, scopeType);
+        }
+        List<SurveyEntity> all =
+                surveyRepository.findUnansweredPublishedForUserInScope(scopeType, scopeId, userId);
+        List<SurveyEntity> items = all.size() > limit ? all.subList(0, limit) : all;
+        return new UnansweredSurveys(all.size(), List.copyOf(items));
+    }
+
+    /**
+     * F22.1 第二波: 未回答アンケートの集計結果（件数 + 直近アイテム）。
+     *
+     * @param unansweredCount 未回答の総件数
+     * @param items           直近アイテム（limit 件）
+     */
+    public record UnansweredSurveys(
+            long unansweredCount,
+            List<SurveyEntity> items) {
+    }
+
+    /**
      * アンケート詳細を取得する（設問・選択肢を含む）。
      *
      * @param scopeType スコープ種別

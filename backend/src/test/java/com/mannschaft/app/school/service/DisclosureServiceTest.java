@@ -1,6 +1,8 @@
 package com.mannschaft.app.school.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.school.dto.DisclosedEvaluationResponse;
 import com.mannschaft.app.school.dto.DisclosureRequest;
 import com.mannschaft.app.school.dto.DisclosureResponse;
@@ -34,7 +36,11 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -57,6 +63,19 @@ class DisclosureServiceTest {
 
     @Mock
     private AttendanceRequirementRuleRepository ruleRepository;
+
+    @Mock
+    private AccessControlService accessControlService;
+
+    /** 操作者のユーザー ID（教員相当 ADMIN を想定）。 */
+    private static final Long OPERATOR_ID = 200L;
+
+    /** 教員相当 ADMIN として認可を通すデフォルトスタブ。 */
+    @org.junit.jupiter.api.BeforeEach
+    void setUpAuthz() {
+        // SYSTEM_ADMIN ではない（per-scope 判定へ進む）。checkAdminOrAbove は no-op（=許可）。
+        lenient().when(accessControlService.isSystemAdmin(anyLong())).thenReturn(false);
+    }
 
     // ========================================
     // disclose
@@ -200,13 +219,97 @@ class DisclosureServiceTest {
             given(disclosureRepository.findByEvaluationIdOrderByDecidedAtDesc(1L))
                     .willReturn(List.of(newer, older));
 
-            List<DisclosureResponse> result = service.getDisclosureHistory(5L, 1L);
+            List<DisclosureResponse> result = service.getDisclosureHistory(5L, 1L, OPERATOR_ID);
 
             assertThat(result).hasSize(2);
             assertThat(result.get(0).id()).isEqualTo(2L);
             assertThat(result.get(0).decision()).isEqualTo("DISCLOSED");
             assertThat(result.get(1).id()).isEqualTo(1L);
             assertThat(result.get(1).decision()).isEqualTo("WITHHELD");
+        }
+    }
+
+    // ========================================
+    // per-scope 認可（認可根治 Phase 3-a / 論点 A 決定 = A-1）
+    // ========================================
+
+    @Nested
+    @DisplayName("per-scope 認可（A-1: 学校チームの ADMIN/DEPUTY_ADMIN ＝教員相当）")
+    class ScopeAuthorization {
+
+        @Test
+        @DisplayName("非権限者が disclose を叩くと COMMON_002（評価取得より前に弾く）")
+        void disclose_非権限者_COMMON_002() {
+            // 非 SYSTEM_ADMIN かつ当該チームの ADMIN/DEPUTY_ADMIN でない → checkAdminOrAbove が COMMON_002
+            given(accessControlService.isSystemAdmin(OPERATOR_ID)).willReturn(false);
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(OPERATOR_ID, 5L, "TEAM");
+
+            DisclosureRequest req = new DisclosureRequest(
+                    DisclosureMode.WITH_NUMBERS, DisclosureRecipients.BOTH, null);
+
+            assertThatThrownBy(() -> service.disclose(5L, 1L, req, OPERATOR_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining(CommonErrorCode.COMMON_002.getMessage());
+
+            // 認可で弾かれたので評価取得・保存は行われない
+            verify(evaluationRepository, org.mockito.Mockito.never()).findById(anyLong());
+            verify(disclosureRepository, org.mockito.Mockito.never()).save(any());
+        }
+
+        @Test
+        @DisplayName("非権限者が withhold を叩くと COMMON_002")
+        void withhold_非権限者_COMMON_002() {
+            given(accessControlService.isSystemAdmin(OPERATOR_ID)).willReturn(false);
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(OPERATOR_ID, 5L, "TEAM");
+
+            WithholdRequest req = new WithholdRequest("保留");
+
+            assertThatThrownBy(() -> service.withhold(5L, 1L, req, OPERATOR_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining(CommonErrorCode.COMMON_002.getMessage());
+        }
+
+        @Test
+        @DisplayName("非権限者が disclosure-history を叩くと COMMON_002")
+        void history_非権限者_COMMON_002() {
+            given(accessControlService.isSystemAdmin(OPERATOR_ID)).willReturn(false);
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(OPERATOR_ID, 5L, "TEAM");
+
+            assertThatThrownBy(() -> service.getDisclosureHistory(5L, 1L, OPERATOR_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining(CommonErrorCode.COMMON_002.getMessage());
+        }
+
+        @Test
+        @DisplayName("SYSTEM_ADMIN は per-scope 判定なしで通過（短絡）")
+        void disclose_SYSTEM_ADMIN_短絡で通過() {
+            given(accessControlService.isSystemAdmin(OPERATOR_ID)).willReturn(true);
+
+            AttendanceRequirementEvaluationEntity evaluation = buildEvaluation(1L, 10L, 100L);
+            AttendanceRequirementRuleEntity rule = buildRule(10L, 5L);
+            given(evaluationRepository.findById(1L)).willReturn(Optional.of(evaluation));
+            given(ruleRepository.findById(10L)).willReturn(Optional.of(rule));
+            AttendanceDisclosureRecordEntity saved = AttendanceDisclosureRecordEntity.builder()
+                    .evaluationId(1L).studentUserId(100L)
+                    .decision(DisclosureDecision.DISCLOSED)
+                    .mode(DisclosureMode.WITHOUT_NUMBERS)
+                    .recipients(DisclosureRecipients.STUDENT_ONLY)
+                    .decidedBy(OPERATOR_ID).build();
+            ReflectionTestUtils.setField(saved, "id", 60L);
+            given(disclosureRepository.save(any())).willReturn(saved);
+
+            DisclosureRequest req = new DisclosureRequest(
+                    DisclosureMode.WITHOUT_NUMBERS, DisclosureRecipients.STUDENT_ONLY, null);
+
+            DisclosureResponse result = service.disclose(5L, 1L, req, OPERATOR_ID);
+
+            assertThat(result.id()).isEqualTo(60L);
+            // SYSTEM_ADMIN 短絡したので per-scope 判定は呼ばれない
+            verify(accessControlService, org.mockito.Mockito.never())
+                    .checkAdminOrAbove(eq(OPERATOR_ID), anyLong(), eq("TEAM"));
         }
     }
 

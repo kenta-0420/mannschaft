@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.proxy.ProxyInputContext;
@@ -57,6 +58,12 @@ public class ScheduleAttendanceService {
     private final ProxyInputContext proxyInputContext;
     private final ProxyInputRecordRepository proxyInputRecordRepository;
     private final ScheduleDelegationService scheduleDelegationService;
+
+    /**
+     * F22.1 第二波: 統合「要対応」集計の per-scope 認可に使用する。
+     * Bean 不在のテスト構成（Mockito {@code @InjectMocks}）では null 注入され、ガードはスキップされる。
+     */
+    private final AccessControlService accessControlService;
 
     /**
      * 出欠回答を行う。期限チェック・コメント必須チェックを実施し、
@@ -215,6 +222,51 @@ public class ScheduleAttendanceService {
     public Optional<String> getMyAttendanceStatus(Long scheduleId, Long userId) {
         return attendanceRepository.findByScheduleIdAndUserId(scheduleId, userId)
                 .map(e -> e.getStatus().name());
+    }
+
+    /**
+     * F22.1 第二波: 指定スコープで当該ユーザーが「未回答（PENDING / UNDECIDED）」の直近イベントを取得する。
+     *
+     * <p>横スワイプ・ダッシュボードの統合「要対応」集計（{@code ScopeActionRequiredFacade}）から
+     * 呼ばれる読み取り専用メソッド。<b>per-scope 認可をこのメソッド内で必ず通す</b>
+     * （{@link AccessControlService#checkMembership}・Bean 不在のテストではスキップ）。
+     * 非所属ユーザーは {@code COMMON_002} で弾かれる（集計バイパス禁止・02 §3.4）。</p>
+     *
+     * <p>未回答 = 出欠行が {@code status = UNDECIDED} かつ {@code respondedAt IS NULL}、
+     * 対象は {@code attendanceRequired = true} かつ開始が現在以降のイベント。N+1 を避けるため
+     * JOIN クエリで判定し、開始時刻の昇順で {@code limit} 件に絞る。</p>
+     *
+     * @param scopeType スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   スコープ ID
+     * @param userId    閲覧ユーザー ID
+     * @param limit     直近アイテムの最大件数
+     * @return 未回答の総件数と limit 件のアイテム
+     */
+    public UnansweredAttendances getUnansweredForUserInScope(
+            String scopeType, Long scopeId, Long userId, int limit) {
+        if (accessControlService != null) {
+            accessControlService.checkMembership(userId, scopeId, scopeType);
+        }
+        LocalDateTime now = LocalDateTime.now();
+        List<ScheduleEntity> all;
+        if ("ORGANIZATION".equalsIgnoreCase(scopeType)) {
+            all = attendanceRepository.findUnansweredUpcomingForUserInOrganization(scopeId, userId, now);
+        } else {
+            all = attendanceRepository.findUnansweredUpcomingForUserInTeam(scopeId, userId, now);
+        }
+        List<ScheduleEntity> items = all.size() > limit ? all.subList(0, limit) : all;
+        return new UnansweredAttendances(all.size(), List.copyOf(items));
+    }
+
+    /**
+     * F22.1 第二波: 未回答出欠の集計結果（件数 + 直近イベント）。
+     *
+     * @param unansweredCount 未回答の総件数
+     * @param items           直近イベント（limit 件）
+     */
+    public record UnansweredAttendances(
+            long unansweredCount,
+            List<ScheduleEntity> items) {
     }
 
     /**

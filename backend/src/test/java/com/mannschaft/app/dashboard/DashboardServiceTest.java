@@ -107,6 +107,15 @@ class DashboardServiceTest {
     @Mock
     private com.mannschaft.app.dashboard.service.WidgetVisibilityResolver widgetVisibilityResolver;
 
+    @Mock
+    private com.mannschaft.app.dashboard.service.ScopeWidgetSummaryService scopeWidgetSummaryService;
+
+    @Mock
+    private com.mannschaft.app.dashboard.service.ScopeActionRequiredFacade scopeActionRequiredFacade;
+
+    @Mock
+    private com.mannschaft.app.dashboard.service.SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
+
     @InjectMocks
     private DashboardService dashboardService;
 
@@ -135,6 +144,18 @@ class DashboardServiceTest {
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.anyLong()))
                 .thenReturn(java.util.Map.of());
+
+        // F22.1 第二波: SWIPE サマリ系のデフォルトスタブ（空可視性マップ + filterIfVisible は素通し）。
+        org.mockito.Mockito.lenient().when(swipeWidgetVisibilityResolver.resolve(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyLong()))
+                .thenReturn(java.util.Map.of());
+        org.mockito.Mockito.lenient().when(swipeWidgetVisibilityResolver.filterIfVisible(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(invocation -> invocation.getArgument(3));
     }
 
     // ========================================

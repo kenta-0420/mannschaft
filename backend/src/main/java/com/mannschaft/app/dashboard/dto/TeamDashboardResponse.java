@@ -46,4 +46,25 @@ public class TeamDashboardResponse {
     /** ウィジェット可視性マップ（min_role 管理対象ウィジェットのみ含む。ADMIN 限定ウィジェットは除外） */
     @JsonProperty("widget_visibility")
     private final List<WidgetVisibilityRowDto> widgetVisibility;
+
+    // ========================================
+    // F22.1 第二波 追加フィールド（02 §3.3 サマリ追加フィールド）
+    // is_visible=FALSE のウィジェットはサーバーでスキップ（null）し @JsonInclude(NON_NULL) で省略される
+    // ========================================
+
+    /** ④ブログ: 直近 3 件（id/title/author/published_at）。 */
+    @JsonProperty("teamLatestBlogPosts")
+    private final List<Map<String, Object>> teamLatestBlogPosts;
+
+    /** ⑤チャット: { total_unread, channels:[{id,name,unread_count,last_message_preview}]（直近3）}。 */
+    @JsonProperty("teamChatSummary")
+    private final Map<String, Object> teamChatSummary;
+
+    /** ⑥カレンダー: { events_today, events_this_week, next_event, days_with_events }。 */
+    @JsonProperty("teamCalendarSummary")
+    private final Map<String, Object> teamCalendarSummary;
+
+    /** ⑧要対応: 統合「要対応」集計（回覧板/アンケート/出欠）。 */
+    @JsonProperty("teamActionRequired")
+    private final ActionRequiredSummaryResponse teamActionRequired;
 }

@@ -226,6 +226,50 @@ tasks.withType<Test> {
         "-Dcom.mysql.cj.disableAbandonedConnectionCleanup=true",
         "-Duser.timezone=Asia/Tokyo"
     )
+
+    // =====================================================================
+    // CI テストシャーディング（backend CI 高速化②）
+    // ---------------------------------------------------------------------
+    // -Pshard.total=N -Pshard.index=i（0 始まり）を受け取り、テストクラスを
+    // 「完全修飾クラス名の安定ハッシュ % total == index」で機械的に N 分割する。
+    //
+    // - プロパティ未指定時は何も除外しない＝全テスト実行（現状動作を完全維持）。
+    // - GitHub Actions の matrix で各 shard を別ランナーへ割り当て、壁時計を縮める。
+    // - クラス名ベースのため、同一クラス内の @Test／@Nested は必ず同じ shard に
+    //   入る（Testcontainers の Spring コンテキスト共有・@DirtiesContext の整合を壊さない）。
+    // - ハッシュは String.hashCode()（JDK 間で仕様安定）を Int.MIN_VALUE 対策で
+    //   Long 化し正規化する決定論的関数。実行環境・実行順に依存しない。
+    //
+    // exclude { FileTreeElement } はテスト候補 .class ファイルごとに呼ばれる。
+    // path 例: "com/mannschaft/app/user/UserServiceTest.class"
+    //   → 末尾 ".class" を除き "/" を "." に変換して完全修飾名を得る。
+    //   → ネストクラス（"Foo$Bar.class"）はトップレベルと同じ shard に乗せるため、
+    //     '$' より前のトップレベル名でハッシュする（取りこぼし・分断を防ぐ）。
+    // =====================================================================
+    val shardTotal = (project.findProperty("shard.total") as String?)?.toIntOrNull()
+    val shardIndex = (project.findProperty("shard.index") as String?)?.toIntOrNull()
+    if (shardTotal != null && shardIndex != null && shardTotal > 1) {
+        require(shardIndex in 0 until shardTotal) {
+            "shard.index ($shardIndex) は 0..${shardTotal - 1} の範囲でなければならない（shard.total=$shardTotal）"
+        }
+        logger.lifecycle("[shard] テストを $shardTotal 分割し index=$shardIndex のみ実行する")
+        exclude { element ->
+            // ディレクトリは除外判定対象外（false=含める）
+            if (element.isDirectory) return@exclude false
+            val path = element.path
+            if (!path.endsWith(".class")) return@exclude false
+            // 完全修飾クラス名へ復元（トップレベル名のみでシャード判定）
+            val fqcnTopLevel = path
+                .removeSuffix(".class")
+                .replace('/', '.')
+                .substringBefore('$')
+            // String.hashCode を Long 化して非負正規化 → 安定・決定論的
+            val bucket = ((fqcnTopLevel.hashCode().toLong() and 0xFFFFFFFFL) % shardTotal).toInt()
+            // 自分の shard 以外を除外（true=除外）
+            bucket != shardIndex
+        }
+    }
+
     finalizedBy(tasks.jacocoTestReport)
     testLogging {
         // 失敗時に完全スタックトレースを出力する。CI ログのみで NPE 起源を追跡できるようにする。
