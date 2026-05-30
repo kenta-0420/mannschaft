@@ -1,6 +1,10 @@
 package com.mannschaft.app.recruitment.repository;
 
+import com.mannschaft.app.recruitment.RecruitmentParticipationType;
+import com.mannschaft.app.recruitment.RecruitmentScopeType;
+import com.mannschaft.app.recruitment.RecruitmentVisibility;
 import com.mannschaft.app.recruitment.entity.RecruitmentFriendTargetEntity;
+import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -19,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link RecruitmentFriendTargetRepository} 結合テスト。F22.1 市・部隊1。
  *
  * <p>実 MySQL（Testcontainers・singleton container）に対し、recruitment_listings の
- * 親行を native SQL で INSERT した上で、3 粒度の宛先を save / find / delete する
+ * 親行をエンティティ経由で永続化した上で、3 粒度の宛先を save / find / delete する
  * 基本動作を検証する。Docker 不在時は {@code @EnabledIf} によりスキップされる。</p>
  *
  * <p>サービスロジックの契約テスト（MARKET_001 等）は第二陣で test-first に実装する
@@ -45,29 +49,27 @@ class RecruitmentFriendTargetRepositoryTest extends AbstractMySqlIntegrationTest
      */
     private Long insertListing(String title) {
         LocalDateTime now = LocalDateTime.now();
-        em.createNativeQuery("""
-                INSERT INTO recruitment_listings
-                  (scope_type, scope_id, category_id, title, participation_type,
-                   start_at, end_at, application_deadline, auto_cancel_at,
-                   capacity, min_capacity, visibility, status, created_by)
-                VALUES
-                  ('TEAM', 1, :cat, :title, 'INDIVIDUAL',
-                   :startAt, :endAt, :deadline, :autoCancel,
-                   10, 4, 'FRIEND_TEAMS_ONLY', 'DRAFT', :createdBy)
-                """)
-                .setParameter("cat", CATEGORY_ID)
-                .setParameter("title", title)
-                .setParameter("startAt", now.plusDays(7))
-                .setParameter("endAt", now.plusDays(7).plusHours(2))
-                .setParameter("deadline", now.plusDays(5))
-                .setParameter("autoCancel", now.plusDays(5))
-                .setParameter("createdBy", CREATED_BY)
-                .executeUpdate();
-        Number id = (Number) em.createNativeQuery(
-                        "SELECT id FROM recruitment_listings WHERE title = :title")
-                .setParameter("title", title)
-                .getSingleResult();
-        return id.longValue();
+        // エンティティ経由で永続化する。native SQL だと ddl-auto:create 生成スキーマで
+        // @Builder.Default 列（confirmed_count 等）が「NOT NULL・DB既定なし」になり INSERT が
+        // 落ちるため不可。ビルダー経由なら @Builder.Default が適用され全列が埋まる。
+        RecruitmentListingEntity listing = RecruitmentListingEntity.builder()
+                .scopeType(RecruitmentScopeType.TEAM)
+                .scopeId(1L)
+                .categoryId(CATEGORY_ID)
+                .title(title)
+                .participationType(RecruitmentParticipationType.INDIVIDUAL)
+                .startAt(now.plusDays(7))
+                .endAt(now.plusDays(7).plusHours(2))
+                .applicationDeadline(now.plusDays(5))
+                .autoCancelAt(now.plusDays(5))
+                .capacity(10)
+                .minCapacity(4)
+                .visibility(RecruitmentVisibility.FRIEND_TEAMS_ONLY)
+                .createdBy(CREATED_BY)
+                .build();
+        em.persist(listing);
+        em.flush();
+        return listing.getId();
     }
 
     @Test
