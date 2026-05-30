@@ -222,19 +222,21 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex flex-col">
+  <div class="flex flex-col" data-testid="scope-carousel">
     <!-- PC: 上部セグメントトグル + 左右矢印 -->
     <div class="mb-4 flex items-center justify-between gap-2">
       <Button
         icon="pi pi-chevron-left"
         text
         rounded
+        data-testid="scope-prev"
         :aria-label="$t('scopeDashboard.prevPanel')"
         @click="prev"
       />
 
       <div
         role="tablist"
+        data-testid="scope-segment-tablist"
         :aria-label="$t('scopeDashboard.tabs.personal')"
         class="flex items-center gap-1 rounded-full bg-surface-100 p-1 dark:bg-surface-800"
       >
@@ -244,6 +246,7 @@ onBeforeUnmount(() => {
           :key="p.panel"
           type="button"
           role="tab"
+          :data-testid="`scope-segment-${p.panel}`"
           :aria-selected="idx === activeIndex"
           :aria-controls="`scope-panel-${p.panel}`"
           class="rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
@@ -262,6 +265,7 @@ onBeforeUnmount(() => {
         icon="pi pi-chevron-right"
         text
         rounded
+        data-testid="scope-next"
         :aria-label="$t('scopeDashboard.nextPanel')"
         @click="next"
       />
