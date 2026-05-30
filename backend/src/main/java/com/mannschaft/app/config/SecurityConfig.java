@@ -16,6 +16,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -26,9 +27,26 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * セキュリティ設定。JwtAuthenticationFilter を UsernamePasswordAuthenticationFilter の前に挿入し、
  * Bearer トークンによるステートレス認証を実現する。
  * ProxyInputContextFilter は JwtAuthenticationFilter の直後に実行される。
+ *
+ * <p><strong>認可基盤完全根治 Phase 2（点火 / docs/security/03_role_authority_model.md §8 Phase 3）:</strong>
+ * {@link EnableMethodSecurity} を有効化し、コード上の {@code @PreAuthorize} 宣言を実効化する。
+ * これにより以下が「宣言＝強制」の単一真実源として機能する:</p>
+ * <ul>
+ *   <li>(A) SYSTEM_ADMIN グローバル権限: {@code @PreAuthorize("hasRole('SYSTEM_ADMIN')")}
+ *       （Phase 1 で RoleClaimResolver が JWT roles に SYSTEM_ADMIN を載せるため機能する）</li>
+ *   <li>(B)(C) per-scope 管理権限: {@code @accessGuard.isScopeAdmin(...)} 等の SpEL ガード
+ *       （Phase 3-a/3-b で全注釈を SpEL へ変換済み。点火時の一斉 403 窓は構造的に解消済み）</li>
+ *   <li>(F)(G) 所有者ガード / ロールチェッカー: {@code @quickMemoAccessGuard.*} / {@code @adminRoleChecker.*}</li>
+ * </ul>
+ *
+ * <p>{@code @EnableMethodSecurity} は Spring AOP の
+ * {@code AuthorizationManagerBeforeMethodInterceptor} を登録するため、サーブレットフィルタ層
+ * （{@code SecurityFilterChain}）とは独立に機能する。すなわち {@code @WebMvcTest} の
+ * {@code addFilters = false} でもメソッド層認可は適用される点に留意（§9.3 互換改修方針）。</p>
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
