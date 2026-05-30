@@ -565,7 +565,14 @@ public class GlobalExceptionHandler {
             Map.entry("SCOPE_TAB_001", HttpStatus.FORBIDDEN),         // 非所属スコープ混入 → 全体拒否
             Map.entry("SCOPE_TAB_002", HttpStatus.BAD_REQUEST),      // sortOrder 重複 / 範囲外
             Map.entry("SCOPE_TAB_003", HttpStatus.BAD_REQUEST),      // scopeType 不正
-            Map.entry("SCOPE_TAB_004", HttpStatus.NOT_FOUND)          // フォルダ不在 / 他人所有（存在隠蔽）
+            Map.entry("SCOPE_TAB_004", HttpStatus.NOT_FOUND),         // フォルダ不在 / 他人所有（存在隠蔽）
+            // F22.1 市（Market）（02_api_design.md §8）
+            Map.entry("MARKET_001", HttpStatus.BAD_REQUEST),         // 地域コード不正 / 不整合
+            Map.entry("MARKET_002", HttpStatus.BAD_REQUEST),         // フレンド宛先 0 件
+            Map.entry("MARKET_003", HttpStatus.FORBIDDEN),           // フレンド未成立チームを宛先指定
+            Map.entry("MARKET_004", HttpStatus.FORBIDDEN),           // 他チーム所有フォルダを宛先指定
+            Map.entry("MARKET_005", HttpStatus.BAD_REQUEST),         // FRIEND_TEAMS_ONLY × distribution_targets 併用
+            Map.entry("MARKET_404", HttpStatus.NOT_FOUND)            // 非公開 / 不在の札（存在秘匿）
     );
 
     /**

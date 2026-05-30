@@ -223,6 +223,13 @@ public class SecurityConfig {
                 // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §7.x Phase 4
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/search").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/search").permitAll()
+                // F22.1 市（Market）公開閲覧 API（認証不要・レート制限あり・PII抑制）
+                // 設計書: docs/features/F22.1_market/04_security.md §1.6
+                // これを怠ると deny-by-default 反転時に市の公開検索/詳細が 401 で死ぬ。
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/market/listings").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/market/listings/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/market/regions").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/market/summary").permitAll()
                 // F19.1 Phase 6 公開ユーザープロフィール API（認証不要・レート制限あり）
                 // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §6.6 Phase 6
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/users/*").permitAll()

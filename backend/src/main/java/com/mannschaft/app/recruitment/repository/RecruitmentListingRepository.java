@@ -76,8 +76,14 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
      * §5.2 申込確定の楽観的ロック原子操作。
      * 戻り値が 1 → 確定成功 / 0 → 満員 or 不正状態 (キャンセル待ちフローへ)。
      * status 自動遷移 (OPEN → FULL) もこの UPDATE 内で完了する。
+     *
+     * <p>F22.1 市（最終認証）の根治: native UPDATE 後に一次キャッシュ（永続化コンテキスト）へ
+     * 古い OPEN エンティティが残ると、後続の {@code findById} が DB の FULL ではなく古い状態を
+     * 返し OPEN→FULL 境界を検知できない。{@code clearAutomatically/flushAutomatically} で
+     * UPDATE 前に flush・UPDATE 後にコンテキストをクリアし、{@code findById} が必ず DB 確定状態を
+     * 読むことを保証する。</p>
      */
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
             UPDATE recruitment_listings
             SET confirmed_count = confirmed_count + 1,
@@ -92,8 +98,11 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
     /**
      * §5.3 キャンセル時の確定数デクリメント。FULL → OPEN 自動復帰込み。
      * 戻り値 1 → 成功 / 0 → 既に 0 件、または存在しない。
+     *
+     * <p>increment と同様に、status を変える native UPDATE のため一次キャッシュを
+     * クリア・flush して後続読み込みが DB 確定状態を見るようにする。</p>
      */
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
             UPDATE recruitment_listings
             SET confirmed_count = confirmed_count - 1,
@@ -108,8 +117,11 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
      * §5.2 step8 キャンセル待ち追加の楽観的ロック原子操作。
      * 戻り値 1 → 採番成功 / 0 → 上限超過。
      * 採番後の next_waitlist_position は別途 SELECT で取得する。
+     *
+     * <p>native UPDATE 後に {@code findById} で next_waitlist_position を再読み込みするため、
+     * 一次キャッシュをクリア・flush して DB 確定値を読むようにする。</p>
      */
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
             UPDATE recruitment_listings
             SET waitlist_count = waitlist_count + 1,
@@ -199,4 +211,102 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             """)
     List<RecruitmentListingVisibilityProjection> findVisibilityProjectionsByIdIn(
             @Param("ids") Collection<Long> ids);
+
+    // ===========================================
+    // F22.1 市（Market）公開ビュー検索（02_api_design §3）
+    // 固定条件: visibility='PUBLIC' AND status IN (OPEN,FULL) AND deleted_at IS NULL
+    //   ※ @SQLRestriction("deleted_at IS NULL") により JPQL は自動で削除済を除外する。
+    // ===========================================
+
+    /**
+     * 市の公開札一覧を地域×ジャンル×キーワードで検索する。
+     *
+     * <p>{@code city} 指定時はその市区町村。{@code prefecture} のみ指定時は配下市区町村を
+     * ロールアップ（{@code SUBSTRING(city_code,1,2)=:pref} または {@code prefecture_code=:pref}）。
+     * {@code includeRegionNone=true} のときは地域未指定（両列 NULL）の札も含める。</p>
+     *
+     * @param prefecture        都道府県コード（null=全国）
+     * @param city              市区町村コード（null=県ロールアップ or 全国）
+     * @param categoryId        ジャンル（null=全ジャンル）
+     * @param keyword           タイトル部分一致（null=無条件）
+     * @param includeRegionNone 地域未指定の札も含めるか
+     * @param pageable          ページング
+     * @return 公開札ページ
+     */
+    @Query("""
+            SELECT l FROM RecruitmentListingEntity l
+            WHERE l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+              AND l.status IN (
+                  com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
+                  com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
+              AND (:categoryId IS NULL OR l.categoryId = :categoryId)
+              AND (:keyword IS NULL OR l.title LIKE %:keyword%)
+              AND (
+                    (:city IS NOT NULL AND l.cityCode = :city)
+                 OR (:city IS NULL AND :prefecture IS NOT NULL
+                       AND (l.prefectureCode = :prefecture OR SUBSTRING(l.cityCode, 1, 2) = :prefecture))
+                 OR (:city IS NULL AND :prefecture IS NULL)
+                 OR (:includeRegionNone = TRUE AND l.prefectureCode IS NULL AND l.cityCode IS NULL)
+              )
+            ORDER BY l.startAt ASC
+            """)
+    Page<RecruitmentListingEntity> searchMarketListings(
+            @Param("prefecture") String prefecture,
+            @Param("city") String city,
+            @Param("categoryId") Long categoryId,
+            @Param("keyword") String keyword,
+            @Param("includeRegionNone") boolean includeRegionNone,
+            Pageable pageable);
+
+    /**
+     * 市の公開札を ID で取得する（PUBLIC かつ OPEN/FULL のみ）。
+     * 非公開・不在は空（呼び出し側で 404 存在秘匿）。
+     *
+     * @param id 札ID
+     * @return 公開札（非公開・不在は空）
+     */
+    @Query("""
+            SELECT l FROM RecruitmentListingEntity l
+            WHERE l.id = :id
+              AND l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+              AND l.status IN (
+                  com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
+                  com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
+            """)
+    Optional<RecruitmentListingEntity> findPublicMarketListingById(@Param("id") Long id);
+
+    /**
+     * 都道府県ノードごとの公開札件数（市の summary・パンくず用）。
+     * city_code の上位 2 桁または prefecture_code で県にロールアップする。
+     *
+     * @return {@code [prefectureCode, count]} の配列リスト
+     */
+    @Query("""
+            SELECT COALESCE(l.prefectureCode, SUBSTRING(l.cityCode, 1, 2)) AS pref, COUNT(l)
+            FROM RecruitmentListingEntity l
+            WHERE l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+              AND l.status IN (
+                  com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
+                  com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
+              AND (l.prefectureCode IS NOT NULL OR l.cityCode IS NOT NULL)
+            GROUP BY COALESCE(l.prefectureCode, SUBSTRING(l.cityCode, 1, 2))
+            """)
+    List<Object[]> countMarketListingsByPrefecture();
+
+    /**
+     * 市区町村ノードごとの公開札件数（市の summary 用）。
+     *
+     * @return {@code [cityCode, count]} の配列リスト
+     */
+    @Query("""
+            SELECT l.cityCode, COUNT(l)
+            FROM RecruitmentListingEntity l
+            WHERE l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+              AND l.status IN (
+                  com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
+                  com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
+              AND l.cityCode IS NOT NULL
+            GROUP BY l.cityCode
+            """)
+    List<Object[]> countMarketListingsByCity();
 }

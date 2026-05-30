@@ -5,11 +5,11 @@ import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.WidgetKey;
 import com.mannschaft.app.dashboard.entity.DashboardWidgetRoleVisibilityEntity;
 import com.mannschaft.app.dashboard.repository.DashboardWidgetRoleVisibilityRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -41,11 +41,23 @@ class WidgetVisibilityResolverTest {
     @Mock
     private DashboardWidgetRoleVisibilityRepository repository;
 
-    @InjectMocks
     private WidgetVisibilityResolver resolver;
 
     private static final Long TEAM_ID = 100L;
     private static final Long ORG_ID = 200L;
+
+    /**
+     * {@link WidgetVisibilityResolver} は {@code @Cacheable} の自己呼び出しのために
+     * 自分自身（プロキシ）を {@code self} として注入する。単体テストでは AOP プロキシが
+     * 介在しないため、{@code self} に同じ実インスタンスを渡して
+     * {@code resolve → resolveRaw} の経路を直接通す。
+     */
+    @BeforeEach
+    void setUp() {
+        resolver = new WidgetVisibilityResolver(repository, null);
+        // self をテスト対象自身に向ける（コンストラクタ循環を避けるため後注入）
+        org.springframework.test.util.ReflectionTestUtils.setField(resolver, "self", resolver);
+    }
 
     // ========================================
     // DB レコードなし → デフォルト値マップ

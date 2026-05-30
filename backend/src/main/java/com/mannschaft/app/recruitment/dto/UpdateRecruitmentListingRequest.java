@@ -1,6 +1,7 @@
 package com.mannschaft.app.recruitment.dto;
 
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -53,4 +54,17 @@ public class UpdateRecruitmentListingRequest {
     private final String imageUrl;
 
     private final Long cancellationPolicyId;
+
+    /**
+     * 都道府県コード（JIS X 0401・CHAR(2)）。任意（§6.5 地域変更）。
+     * §4 と同一の {@code MARKET_001} 整合バリデーションを Service で適用する。
+     */
+    @Pattern(regexp = "\\d{2}", message = "prefecture_code は 2 桁の数字で指定してください")
+    private final String prefectureCode;
+
+    /**
+     * 市区町村コード（JIS X 0402・CHAR(5)）。任意（§6.5 地域変更）。
+     */
+    @Pattern(regexp = "\\d{5}", message = "city_code は 5 桁の数字で指定してください")
+    private final String cityCode;
 }

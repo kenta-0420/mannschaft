@@ -51,6 +51,19 @@ class RecruitmentListingServiceTest {
     @Mock
     private RecruitmentMapper mapper;
 
+    // F22.1 市: 追加依存
+    @Mock
+    private MarketRegionValidator marketRegionValidator;
+
+    @Mock
+    private MarketFriendTargetService marketFriendTargetService;
+
+    @Mock
+    private MarketResponseEnricher marketResponseEnricher;
+
+    @Mock
+    private com.mannschaft.app.recruitment.repository.RecruitmentFriendTargetRepository friendTargetRepository;
+
     @InjectMocks
     private RecruitmentListingService service;
 
@@ -95,7 +108,8 @@ class RecruitmentListingServiceTest {
                     5, 10, // capacity=5, minCapacity=10 → 不正
                     false, null,
                     RecruitmentVisibility.SCOPE_ONLY,
-                    null, null, null, null);
+                    null, null, null, null,
+                    null, null, null, null); // F22.1 地域・フレンド宛先・配信対象
             assertThatThrownBy(() -> service.create(RecruitmentScopeType.TEAM, TEAM_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -117,7 +131,8 @@ class RecruitmentListingServiceTest {
                     10, 1,
                     true, null, // paymentEnabled=true, price=null
                     RecruitmentVisibility.SCOPE_ONLY,
-                    null, null, null, null);
+                    null, null, null, null,
+                    null, null, null, null); // F22.1 地域・フレンド宛先・配信対象
             assertThatThrownBy(() -> service.create(RecruitmentScopeType.TEAM, TEAM_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -142,7 +157,8 @@ class RecruitmentListingServiceTest {
             UpdateRecruitmentListingRequest request = new UpdateRecruitmentListingRequest(
                     null, null, null, null, null, null, null,
                     3, // capacity=3 < confirmed_count=5
-                    null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null,
+                    null, null); // F22.1 prefectureCode, cityCode
 
             assertThatThrownBy(() -> service.update(LISTING_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
@@ -157,7 +173,8 @@ class RecruitmentListingServiceTest {
 
             assertThatThrownBy(() -> service.update(LISTING_ID, USER_ID,
                     new UpdateRecruitmentListingRequest(null, null, null, null, null, null, null,
-                            null, null, null, null, null, null, null, null, null)))
+                            null, null, null, null, null, null, null, null, null,
+                            null, null)))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
@@ -179,7 +196,8 @@ class RecruitmentListingServiceTest {
                 10, 1,
                 false, null,
                 RecruitmentVisibility.SCOPE_ONLY,
-                "東京", null, null, null);
+                "東京", null, null, null,
+                null, null, null, null); // F22.1 地域・フレンド宛先・配信対象
     }
 
     private RecruitmentListingEntity buildListingWithConfirmed(int confirmedCount) throws Exception {

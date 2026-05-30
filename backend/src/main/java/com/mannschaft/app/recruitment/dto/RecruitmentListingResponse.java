@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * F03.11 募集枠の詳細レスポンス。
@@ -45,4 +46,18 @@ public class RecruitmentListingResponse {
     private final String cancelledReason;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
+
+    // ===========================================
+    // F22.1 市: 地域・フレンド宛先（02_api_design §4）
+    // Service 層で enrich する（MapStruct では ignore）。
+    // ===========================================
+
+    private final String prefectureCode;
+    private final String cityCode;
+
+    /** 地域情報（マスタ名込み）。地域未指定の札では null。 */
+    private final RecruitmentRegionView region;
+
+    /** フレンド宛先（{@code FRIEND_TEAMS_ONLY} のときのみ非空。札主 ADMIN 向け）。 */
+    private final List<FriendTargetView> friendTargets;
 }
