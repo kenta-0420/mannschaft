@@ -192,7 +192,7 @@ class AdminSupporterNameDisclosureControllerTest {
     void getTeamDisclosureHistory_returns200WithHistoryList() throws Exception {
         UUID logId = UUID.randomUUID();
         LocalDateTime changedAt = LocalDateTime.of(2026, 5, 19, 10, 0, 0);
-        given(service.getTeamChangeHistory(eq(TEAM_ID)))
+        given(service.getTeamChangeHistory(eq(TEAM_ID), eq(OPERATOR_USER_ID)))
                 .willReturn(List.of(new NameDisclosureChangeLogResponse(
                         logId,
                         NameDisclosureMode.DISPLAY_NAME,
@@ -212,7 +212,7 @@ class AdminSupporterNameDisclosureControllerTest {
     @Test
     @DisplayName("GET /admin/teams/{teamId}/supporter-name-disclosure/history: 履歴なし → 200 + 空リスト")
     void getTeamDisclosureHistory_noHistory_returns200EmptyList() throws Exception {
-        given(service.getTeamChangeHistory(eq(TEAM_ID))).willReturn(List.of());
+        given(service.getTeamChangeHistory(eq(TEAM_ID), eq(OPERATOR_USER_ID))).willReturn(List.of());
 
         mockMvc.perform(get("/api/v1/admin/teams/{teamId}/supporter-name-disclosure/history", TEAM_ID))
                 .andExpect(status().isOk())
@@ -248,7 +248,7 @@ class AdminSupporterNameDisclosureControllerTest {
     void getOrganizationDisclosureHistory_returns200WithHistoryList() throws Exception {
         UUID logId = UUID.randomUUID();
         LocalDateTime changedAt = LocalDateTime.of(2026, 5, 19, 11, 0, 0);
-        given(service.getOrganizationChangeHistory(eq(ORG_ID)))
+        given(service.getOrganizationChangeHistory(eq(ORG_ID), eq(OPERATOR_USER_ID)))
                 .willReturn(List.of(new NameDisclosureChangeLogResponse(
                         logId,
                         NameDisclosureMode.DISPLAY_NAME,
