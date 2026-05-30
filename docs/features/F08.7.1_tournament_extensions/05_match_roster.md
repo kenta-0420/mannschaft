@@ -7,7 +7,7 @@
 > - [F08.7_tournament_league.md](../F08.7_tournament_league.md) — 既存 `tournament_match_rosters` / `tournament_entry_templates` / `tournament_matches` / `tournament_participants`
 > - [docs/security/03_role_authority_model.md](../../security/03_role_authority_model.md) §15 — トーナメント系スコープの認可方針
 
-本書は確定要件 ⑩（**試合メンバー表**＝自チームから作成（エントリーテンプレ流用）＋主催者は締切・閲覧管理）を具体化する。
+本書は確定要件 ⑩（**試合メンバー表**＝自チームから作成（エントリーテンプレ流用）＋主催者は締切・閲覧管理）を具体化する。サッカー対応の**項目拡充**（選手登録番号・ユニフォーム色指定・ベンチ入り役員欄）とメンバー表テンプレの一括保存／1 タップ適用は §8 に詳述する。
 
 ---
 
@@ -107,15 +107,147 @@ ADHD 配慮（入力摩擦最小・必須項目最小）を最優先する。
 
 ---
 
-## 8. 精査ログ
+## 8. 項目拡充（サッカー対応・テンプレ化）
 
-### 8.1 1 回目
-- **不備**: 自チーム作成（PUT rosters/me）・テンプレ適用（apply-template）・主催者閲覧（GET rosters）・締切設定（PATCH roster_deadline）を網羅。DB 変更は `roster_deadline` 1 列のみ。
-- **セキュリティ**: 編集は自チーム ADMIN/DEPUTY のみ・他チーム roster 操作は 403・締切後ロック（409）・提出監査・404 統一・クロスドメイン FK なし。代理入力なし（既定）で権限境界を明確化。
-- **ユーザビリティ**: テンプレ 1 タップ・必須最小・締切ハイライト・モバイル前提（§6・ADHD 配慮）。
-- **見落とし**: 既存 roster CRUD の実装有無確認（§7）、`AuditEventType` 追加、participant 解決の対戦当事者チェック。
-- **保守性**: 既存テーブル（`tournament_match_rosters`/`tournament_entry_templates`）を最大限流用、新規テーブルなし、DB 変更は 1 列のみ。実装時の統合方針（未実装なら新設・実装済みなら差分追加）を明記。
+要件⑩の「項目拡充」を具体化する。**選手登録番号・ユニフォーム色指定・ベンチ入り役員欄**の 3 点をメンバー表に追加し、いずれも「メンバー表テンプレ」として一括保存・1 タップ適用できるようにする（入力摩擦最小／ADHD 配慮）。
 
-### 8.2 未解決事項
+### 8.1 選手登録番号（協会登録番号・背番号とは別）
+
+サッカー協会の選手登録番号は、背番号（`jersey_number`）・チーム内識別とは別の恒久的な番号である。これを保持するため、roster とテンプレ両方に列を追加する。
+
+```sql
+-- 試合メンバー表（既存 BIGINT テーブル・列追加のみ）
+ALTER TABLE tournament_match_rosters
+  ADD COLUMN registration_number VARCHAR(32) NULL;   -- 協会選手登録番号（背番号 jersey_number とは別。NULL 可）
+
+-- エントリーテンプレのメンバー（既存 BIGINT テーブル・列追加のみ）
+ALTER TABLE tournament_entry_template_members
+  ADD COLUMN registration_number VARCHAR(32) NULL;   -- 同上。テンプレ適用時に roster へ複製される
+```
+
+- `registration_number VARCHAR(32) NULL`（協会未登録選手・登録番号未取得の段階を許容するため NULL 可）。
+- テンプレ適用（`apply-template`）時に `tournament_entry_template_members.registration_number` → `tournament_match_rosters.registration_number` へ複製する。
+- いずれも既存 BIGINT テーブルへの列追加のみ。新規テーブルではないため ID 方式は変更しない（原則 6 は新規テーブルのみ対象）。
+
+### 8.2 ユニフォーム色指定（新規テーブル `team_uniform_set`）
+
+メンバー表提出時に「どのユニフォームセットを着用するか」を指定する。相手チームとのカラー衝突回避のため、**試合ごとに使用セットを上書き**できる。セット自体は team_id スコープでテンプレ保存・再利用する。
+
+```sql
+-- ユニフォームセット（チーム単位の色テンプレ。新規テーブル → UUIDv7 / 原則 6）
+CREATE TABLE team_uniform_set (
+    id BINARY(16) NOT NULL,                  -- UUIDv7（UuidV7Entity 継承）
+    team_id BIGINT NOT NULL,                 -- team ドメインへの ID 参照（クロスドメイン FK なし／原則 1）
+    kind ENUM('FP', 'GK_PRIMARY', 'GK_SECONDARY') NOT NULL,  -- フィールドプレイヤー用 / GK 正 / GK 副
+    label VARCHAR(64) NULL,                  -- 表示名（例「ホーム白」）
+    shirt_color VARCHAR(32) NOT NULL,        -- シャツ色（色名 or HEX を文字列で保持）
+    shorts_color VARCHAR(32) NOT NULL,       -- パンツ色
+    socks_color VARCHAR(32) NOT NULL,        -- ソックス色
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    deleted_at DATETIME NULL,                -- soft delete（再利用テンプレの履歴保持）
+    PRIMARY KEY (id),
+    -- 同一チーム・同一 kind は複数セット保持可（ホーム/アウェイ等）。一意制約は設けず label で識別
+    INDEX idx_team_uniform_set_team (team_id, kind)
+);
+```
+
+- `kind ENUM('FP', 'GK_PRIMARY', 'GK_SECONDARY')`：フィールドプレイヤー用・GK 正・GK 副の 3 種を各シャツ/パンツ/ソックス色で保持。
+- 色は色名（"白"）または HEX（"#FFFFFF"）を許容する `VARCHAR(32)`（バリデーションはアプリ層）。
+- `team_id` は team ドメインへの **ID 参照のみ**（クロスドメイン FK なし／原則 1）。`deleted_at` で soft delete（テンプレ削除しても過去試合の参照を壊さない）。
+- **試合ごとの使用セット参照**：roster 提出時に「FP=セットA、GK=セットB」を指定する。具体的には `tournament_match_rosters` へ着用セットを保持する列を追加して試合ごとに上書きできるようにする。
+
+```sql
+-- 試合メンバー表に着用ユニフォームセットの参照を追加（試合ごと上書き＝カラー衝突回避）
+ALTER TABLE tournament_match_rosters
+  ADD COLUMN uniform_set_id BINARY(16) NULL;   -- 着用 team_uniform_set への ID 参照（同一 team ドメイン・NULL 可）
+```
+
+> `tournament_match_rosters.uniform_set_id` は **team ドメイン内**（roster は tournament ドメインだが uniform_set は team ドメイン）への参照になるため、クロスドメイン FK は張らず ID 参照のみとする（原則 1）。値の整合（指定セットが自チームのものか）はアプリ層（Service）で検証する。
+
+- ユニフォームセットは「メンバー表テンプレ」の一部として保存し、試合ごとに 1 タップで適用・必要時のみ上書きする（衝突時のみ手間が発生）。
+
+### 8.3 ベンチ入り役員欄（新規テーブル `match_roster_staff`）
+
+監督・コーチ・トレーナー等、**選手以外のベンチ入り役員**を記載する欄。アプリ未登録者も記載できるよう `user_id` は NULL 可とする。
+
+```sql
+-- ベンチ入り役員（試合単位×参加チーム単位。新規テーブル → UUIDv7 / 原則 6）
+CREATE TABLE match_roster_staff (
+    id BINARY(16) NOT NULL,                  -- UUIDv7（UuidV7Entity 継承）
+    match_id BIGINT NOT NULL,                -- tournament_matches への ID 参照（同一 tournament ドメイン）
+    participant_id BIGINT NOT NULL,          -- tournament_participants への ID 参照（自チーム分の roster と同じ単位）
+    role VARCHAR(32) NOT NULL,               -- 役職（監督/コーチ/トレーナー/帯同審判 等。アプリ層で許容値検証）
+    name VARCHAR(128) NOT NULL,              -- 氏名（アプリ未登録者も記載可のため文字列で保持）
+    user_id BIGINT NULL,                     -- 紐付くユーザー（アプリ登録済みなら設定・NULL 可）
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    INDEX idx_match_roster_staff_match (match_id, participant_id)
+);
+```
+
+- `user_id BIGINT NULL`：アプリ未登録の外部スタッフ（例：協会から派遣の帯同審判）も `name`/`role` だけで記載できる。
+- `match_id`/`participant_id` は同一 tournament ドメイン内テーブルへの ID 参照。`user_id` は user ドメインへの ID 参照（いずれもクロスドメイン FK なし／原則 1）。
+- 編集権限は選手 roster と同一（自チーム ADMIN/DEPUTY のみ。§5 と同じ）。締切（`roster_deadline`）後ロックも roster と同様に適用する。
+- ベンチ役員もテンプレに保持できるよう、テンプレ側にも staff を保存する（§8.4）。
+
+### 8.4 メンバー表テンプレ（一括保存・1 タップ適用）
+
+選手・登録番号・ユニフォームセット・ベンチ役員をまとめて「メンバー表テンプレ」として保存し、試合ごとに 1 タップで適用する（ADHD 配慮＝入力摩擦最小）。
+
+- 選手・登録番号は既存 `tournament_entry_templates` / `tournament_entry_template_members`（§8.1 で `registration_number` を追加）を流用。
+- ベンチ役員のテンプレ保持：`tournament_entry_templates` 配下に staff 用の子テーブル `tournament_entry_template_staff`（テンプレ ID・role・name・user_id NULL 可）を追加する。構造は `match_roster_staff` と対応させ、適用時に複製する。
+
+```sql
+-- エントリーテンプレのベンチ役員（テンプレ ID 配下。同一 tournament ドメイン → CASCADE 可／原則 2）
+CREATE TABLE tournament_entry_template_staff (
+    id BINARY(16) NOT NULL,                  -- UUIDv7（UuidV7Entity 継承）
+    template_id BIGINT NOT NULL,             -- tournament_entry_templates への参照（同一ドメイン）
+    role VARCHAR(32) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    user_id BIGINT NULL,                     -- user ドメインへの ID 参照（クロスドメイン FK なし／原則 1）
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    INDEX idx_template_staff_template (template_id),
+    -- 同一 tournament ドメイン内（template の子）なので CASCADE 可（原則 2）
+    CONSTRAINT fk_template_staff_template FOREIGN KEY (template_id)
+      REFERENCES tournament_entry_templates (id) ON DELETE CASCADE
+);
+```
+
+- ユニフォームセットはチーム単位の独立テンプレ（`team_uniform_set`）として既に再利用可能なため、エントリーテンプレ側には「既定セット ID」を任意で保持する程度に留める（必須ではない）。
+- 適用フロー（`apply-template`）の複製対象を拡張：選手（既存）＋ `registration_number`（§8.1）＋ ベンチ役員（`tournament_entry_template_staff` → `match_roster_staff`）。ユニフォームは roster の `uniform_set_id` に既定セットをセット（衝突時のみ手動上書き）。
+
+### 8.5 認可・締切（拡充項目への適用）
+
+- 登録番号・ユニフォームセット・ベンチ役員の編集も **自チーム ADMIN/DEPUTY のみ**（選手 roster と同一。§5）。
+- `team_uniform_set` の CRUD は当該チーム ADMIN/DEPUTY のみ（team スコープ）。他チームのセット参照（`uniform_set_id`）は 403。
+- 締切（`roster_deadline`）後は選手 roster・ベンチ役員・ユニフォーム指定とも編集ロック（409）。
+- 提出監査は §5 の `TOURNAMENT_ROSTER_SUBMITTED` に集約（拡充項目の変更も同一提出操作の一部として記録）。
+
+### 8.6 DDL まとめ（本章分）
+
+| 種別 | 対象 | 内容 | 原則 |
+|------|------|------|------|
+| 列追加 | `tournament_match_rosters` | `roster_deadline`（§2 は `tournament_matches`）・`registration_number VARCHAR(32) NULL`・`uniform_set_id BINARY(16) NULL` | 既存 BIGINT テーブルゆえ ID 方式不変 |
+| 列追加 | `tournament_entry_template_members` | `registration_number VARCHAR(32) NULL` | 同上 |
+| 新規テーブル | `team_uniform_set` | FP/GK 正・副 × シャツ/パンツ/ソックス色（team スコープ） | UUIDv7（原則 6）・クロスドメイン FK なし（原則 1） |
+| 新規テーブル | `match_roster_staff` | ベンチ入り役員（match×participant 単位・user_id NULL 可） | UUIDv7（原則 6）・クロスドメイン FK なし（原則 1） |
+| 新規テーブル | `tournament_entry_template_staff` | テンプレのベンチ役員（template 配下・CASCADE 可） | UUIDv7（原則 6）・同一ドメイン CASCADE のみ（原則 2） |
+
+---
+
+## 9. 精査ログ
+
+### 9.1 1 回目
+- **不備**: 自チーム作成（PUT rosters/me）・テンプレ適用（apply-template）・主催者閲覧（GET rosters）・締切設定（PATCH roster_deadline）を網羅。項目拡充（登録番号・ユニフォーム色・ベンチ役員）とテンプレ一括保存／1 タップ適用も §8 で網羅。
+- **セキュリティ**: 編集は自チーム ADMIN/DEPUTY のみ・他チーム roster／uniform_set 操作は 403・締切後ロック（409・拡充項目も対象）・提出監査・404 統一・クロスドメイン FK なし（`team_uniform_set.team_id`・`uniform_set_id`・`match_roster_staff.user_id` は ID 参照）。代理入力なし（既定）で権限境界を明確化。
+- **ユーザビリティ**: テンプレ 1 タップ（選手＋登録番号＋ベンチ役員＋既定ユニフォーム）・必須最小（拡充項目は全て NULL 可）・カラー衝突時のみ手動上書き・締切ハイライト・モバイル前提（§6・ADHD 配慮）。
+- **見落とし**: 既存 roster CRUD の実装有無確認（§7）、`AuditEventType` 追加、participant 解決の対戦当事者チェック、`uniform_set_id` のクロスドメイン参照を FK にせずアプリ層検証とする点を明記。
+- **保守性**: 選手・登録番号は既存テーブルへ列追加で済ませ、ユニフォーム/ベンチ役員のみ新規テーブル（いずれも UUIDv7）。テンプレ子テーブルは同一ドメイン CASCADE（原則 2）。実装時の統合方針（未実装なら新設・実装済みなら差分追加）を明記。
+
+### 9.2 未解決事項
 
 **現時点でなし。**
