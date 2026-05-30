@@ -10,6 +10,7 @@ const emit = defineEmits<{
   slotSelected: [slotId: number, lineName: string, date: string, startTime: string, endTime: string]
 }>()
 
+const { t } = useI18n()
 const reservationApi = useReservationApi()
 const { userTimezone } = useDatetime()
 
@@ -73,18 +74,18 @@ onMounted(async () => { await loadLines(); await loadSlots() })
   <div class="space-y-4">
     <div class="grid grid-cols-2 gap-3">
       <div>
-        <label class="mb-1 block text-sm font-medium">日付</label>
+        <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.date') }}</label>
         <DatePicker v-model="selectedDate" date-format="yy/mm/dd" class="w-full" show-icon />
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">ライン</label>
+        <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.line') }}</label>
         <Select
           v-model="selectedLineId"
           :options="lines"
           option-label="name"
           option-value="id"
           class="w-full"
-          placeholder="選択してください"
+          :placeholder="t('reservation.placeholder.select')"
         />
       </div>
     </div>
@@ -104,10 +105,10 @@ onMounted(async () => { await loadLines(); await loadSlots() })
       >
         <p class="text-sm font-medium">{{ slot.basic?.startTime }} - {{ slot.basic?.endTime }}</p>
         <p class="text-xs" :class="isAvailable(slot) ? 'text-green-600' : 'text-red-500'">
-          {{ isAvailable(slot) ? '空きあり' : '満席' }}
+          {{ isAvailable(slot) ? t('reservation.slot.available') : t('reservation.slot.full') }}
         </p>
       </button>
     </div>
-    <DashboardEmptyState v-else icon="pi pi-calendar-times" message="この日の空き枠はありません" />
+    <DashboardEmptyState v-else icon="pi pi-calendar-times" :message="t('reservation.empty.no_available_slots')" />
   </div>
 </template>

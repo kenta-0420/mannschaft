@@ -105,8 +105,11 @@ export function useReservationApi() {
     return api<{ data: unknown }>(`${base(teamId)}/reservations/${reservationId}`)
   }
 
-  async function cancelReservation(teamId: number, reservationId: number) {
-    return api(`${base(teamId)}/reservations/${reservationId}/cancel`, { method: 'POST' })
+  async function cancelReservation(teamId: number, reservationId: number, reason?: string) {
+    return api(`${base(teamId)}/reservations/${reservationId}/cancel`, {
+      method: 'POST',
+      body: { reason: reason ?? null },
+    })
   }
 
   async function confirmReservation(teamId: number, reservationId: number) {
@@ -153,14 +156,6 @@ export function useReservationApi() {
 
   async function getReservationStats(teamId: number) {
     return api<{ data: unknown }>(`${base(teamId)}/reservations/stats`)
-  }
-
-  async function approveReservation(teamId: number, reservationId: number) {
-    return api(`${base(teamId)}/reservations/${reservationId}/approve`, { method: 'POST' })
-  }
-
-  async function rejectReservation(teamId: number, reservationId: number) {
-    return api(`${base(teamId)}/reservations/${reservationId}/reject`, { method: 'POST' })
   }
 
   // === Settings ===
@@ -227,8 +222,12 @@ export function useReservationApi() {
     return api<{ data: unknown[] }>(`/api/v1/reservations/upcoming?${query}`)
   }
 
-  async function cancelMyReservation(reservationId: number) {
-    return api(`/api/v1/reservations/${reservationId}/cancel`, { method: 'POST' })
+  async function cancelMyReservation(reservationId: number, reason?: string) {
+    // BE: ReservationCommonController#cancelMyReservation は CancelReservationRequest を必須とするため body を渡す
+    return api(`/api/v1/reservations/${reservationId}/cancel`, {
+      method: 'POST',
+      body: { reason: reason ?? null },
+    })
   }
 
   return {
@@ -256,8 +255,6 @@ export function useReservationApi() {
     listReminders,
     createReminder,
     getReservationStats,
-    approveReservation,
-    rejectReservation,
     getReservationSettings,
     getBusinessHours,
     updateBusinessHours,

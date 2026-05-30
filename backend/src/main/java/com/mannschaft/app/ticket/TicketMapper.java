@@ -29,6 +29,7 @@ public interface TicketMapper {
     List<TicketProductResponse> toProductResponseList(List<TicketProductEntity> entities);
 
     @Mapping(target = "productName", ignore = true)
+    @Mapping(target = "userName", ignore = true)
     @Mapping(target = "quantity", expression = "java(new com.mannschaft.app.ticket.dto.TicketBookResponse.TicketQuantityDto(entity.getTotalTickets(), entity.getUsedTickets(), entity.getRemainingTickets()))")
     @Mapping(target = "status", expression = "java(new com.mannschaft.app.ticket.dto.TicketBookResponse.TicketStatusDto(entity.getStatus() != null ? entity.getStatus().name() : null, entity.getPurchasedAt(), entity.getExpiresAt(), calculateDaysUntilExpiry(entity.getExpiresAt())))")
     @Mapping(target = "note", expression = "java(new com.mannschaft.app.ticket.dto.TicketBookResponse.NoteDto(entity.getNote()))")

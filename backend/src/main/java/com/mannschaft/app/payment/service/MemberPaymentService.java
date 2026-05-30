@@ -69,7 +69,9 @@ public class MemberPaymentService {
         } else {
             page = memberPaymentRepository.findByPaymentItemId(paymentItemId, pageable);
         }
-        return page.map(paymentMapper::toMemberPaymentResponse);
+        Map<Long, String> nameMap = nameResolverService.resolveUserFullNames(
+                page.getContent().stream().map(MemberPaymentEntity::getUserId).collect(Collectors.toSet()));
+        return page.map(entity -> enrichUserName(paymentMapper.toMemberPaymentResponse(entity), nameMap));
     }
 
     /**
@@ -110,7 +112,7 @@ public class MemberPaymentService {
 
         MemberPaymentEntity saved = memberPaymentRepository.save(entity);
         log.info("手動支払い記録: id={}, userId={}, paymentItemId={}", saved.getId(), request.getUserId(), paymentItemId);
-        return paymentMapper.toMemberPaymentResponse(saved);
+        return enrichUserName(paymentMapper.toMemberPaymentResponse(saved));
     }
 
     /**
@@ -125,7 +127,7 @@ public class MemberPaymentService {
                 request.getValidUntil(), request.getNote());
         MemberPaymentEntity saved = memberPaymentRepository.save(entity);
         log.info("支払い記録修正: id={}", paymentId);
-        return paymentMapper.toMemberPaymentResponse(saved);
+        return enrichUserName(paymentMapper.toMemberPaymentResponse(saved));
     }
 
     /**
@@ -222,7 +224,7 @@ public class MemberPaymentService {
         entity.markAsRefunded(refundId);
         MemberPaymentEntity saved = memberPaymentRepository.save(entity);
         log.info("返金実行: id={}, refundId={}", paymentId, refundId);
-        return paymentMapper.toMemberPaymentResponse(saved);
+        return enrichUserName(paymentMapper.toMemberPaymentResponse(saved));
     }
 
     /**
@@ -353,8 +355,11 @@ public class MemberPaymentService {
      * 自分の支払い記録をページング取得する。
      */
     public Page<MemberPaymentResponse> listMyPayments(Long userId, Pageable pageable) {
-        return memberPaymentRepository.findByUserIdOrderByPaidAtDescCreatedAtDesc(userId, pageable)
-                .map(paymentMapper::toMemberPaymentResponse);
+        Page<MemberPaymentEntity> page =
+                memberPaymentRepository.findByUserIdOrderByPaidAtDescCreatedAtDesc(userId, pageable);
+        Map<Long, String> nameMap = nameResolverService.resolveUserFullNames(
+                page.getContent().stream().map(MemberPaymentEntity::getUserId).collect(Collectors.toSet()));
+        return page.map(entity -> enrichUserName(paymentMapper.toMemberPaymentResponse(entity), nameMap));
     }
 
     /**
@@ -395,6 +400,30 @@ public class MemberPaymentService {
         log.info("Stripe 再同期: paymentId={}, reconciled={}", paymentId, reconciled);
         return new ReconcileResponse(paymentId, previousStatus, entity.getStatus().name(),
                 statusInfo.paymentIntentStatus(), reconciled);
+    }
+
+    /**
+     * 単一レスポンスに会員実名（userName）を充填する。退会者は「不明なユーザー」。
+     */
+    private MemberPaymentResponse enrichUserName(MemberPaymentResponse response) {
+        if (response == null) {
+            return null;
+        }
+        return response.toBuilder()
+                .userName(nameResolverService.resolveUserFullName(response.getUserId()))
+                .build();
+    }
+
+    /**
+     * バッチ解決済みの名前マップを使ってレスポンスに会員実名（userName）を充填する。
+     */
+    private MemberPaymentResponse enrichUserName(MemberPaymentResponse response, Map<Long, String> nameMap) {
+        if (response == null) {
+            return null;
+        }
+        return response.toBuilder()
+                .userName(nameMap.getOrDefault(response.getUserId(), "不明なユーザー"))
+                .build();
     }
 
     /**

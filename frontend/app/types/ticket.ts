@@ -67,6 +67,8 @@ export interface BookAuditDto {
 
 export interface TicketBookResponse {
   id: number
+  userId: number
+  userName: string
   productName: string
   quantity: TicketQuantityDto
   status: TicketStatusDto

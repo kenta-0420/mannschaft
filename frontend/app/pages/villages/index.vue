@@ -134,14 +134,14 @@ function avatarLabel(v: VillageResponse): string {
 
     <!-- 検索 + フィルタバー -->
     <div class="mb-6 flex flex-wrap items-center gap-3">
-      <span class="p-input-icon-left flex-1 min-w-[240px]">
-        <i class="pi pi-search" />
+      <IconField class="flex-1 min-w-[240px]">
+        <InputIcon class="pi pi-search" />
         <InputText
           v-model="searchQuery"
           :placeholder="$t('village.search.placeholder')"
-          class="w-full"
+          class="w-full field-bordered"
         />
-      </span>
+      </IconField>
       <Select
         v-model="filterType"
         :options="typeOptions"
@@ -149,12 +149,12 @@ function avatarLabel(v: VillageResponse): string {
         option-value="value"
         :placeholder="$t('village.search.filterType')"
         show-clear
-        class="w-48"
+        class="w-48 field-bordered"
       />
       <InputText
         v-model="filterCategory"
         :placeholder="$t('village.search.filterCategory')"
-        class="w-48"
+        class="w-48 field-bordered"
       />
     </div>
 

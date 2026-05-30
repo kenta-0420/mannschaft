@@ -14,6 +14,7 @@ const emit = defineEmits<{
   reserved: []
 }>()
 
+const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
 
@@ -28,11 +29,11 @@ async function submit() {
       slotId: props.slotId,
       serviceNotes: serviceNotes.value.trim() || undefined,
     })
-    notification.success('予約が完了しました')
+    notification.success(t('reservation.message.reserve_success'))
     emit('reserved')
     close()
   }
-  catch { notification.error('予約に失敗しました') }
+  catch { notification.error(t('reservation.message.reserve_failed')) }
   finally { submitting.value = false }
 }
 
@@ -43,23 +44,23 @@ function close() {
 </script>
 
 <template>
-  <Dialog :visible="visible" header="予約確認" :style="{ width: '400px' }" modal @update:visible="close">
+  <Dialog :visible="visible" :header="t('reservation.dialog.reserve_confirm')" :style="{ width: '400px' }" modal @update:visible="close">
     <div class="space-y-4">
       <div class="rounded-lg bg-surface-50 p-4 dark:bg-surface-700/50">
         <div class="space-y-2 text-sm">
-          <div class="flex justify-between"><span class="text-surface-500">ライン</span><span class="font-medium">{{ lineName }}</span></div>
-          <div class="flex justify-between"><span class="text-surface-500">日付</span><span class="font-medium">{{ date }}</span></div>
-          <div class="flex justify-between"><span class="text-surface-500">時間</span><span class="font-medium">{{ startTime }} - {{ endTime }}</span></div>
+          <div class="flex justify-between"><span class="text-surface-500">{{ t('reservation.field.line') }}</span><span class="font-medium">{{ lineName }}</span></div>
+          <div class="flex justify-between"><span class="text-surface-500">{{ t('reservation.field.date') }}</span><span class="font-medium">{{ date }}</span></div>
+          <div class="flex justify-between"><span class="text-surface-500">{{ t('reservation.field.time') }}</span><span class="font-medium">{{ startTime }} - {{ endTime }}</span></div>
         </div>
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">備考（任意）</label>
-        <Textarea v-model="serviceNotes" rows="2" class="w-full" placeholder="メニュー・症状など" />
+        <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.note') }}</label>
+        <Textarea v-model="serviceNotes" rows="2" class="w-full" :placeholder="t('reservation.placeholder.note')" />
       </div>
     </div>
     <template #footer>
-      <Button label="キャンセル" text @click="close" />
-      <Button label="予約する" icon="pi pi-check" :loading="submitting" @click="submit" />
+      <Button :label="t('reservation.button.cancel')" text @click="close" />
+      <Button :label="t('reservation.button.reserve')" icon="pi pi-check" :loading="submitting" @click="submit" />
     </template>
   </Dialog>
 </template>

@@ -98,7 +98,7 @@ class ShiftSchedulePhase11ControllerTest {
                         .totalRequested(3)
                         .build()))
                 .build();
-        given(scheduleService.getScheduleSummary(SCHEDULE_ID)).willReturn(summary);
+        given(scheduleService.getScheduleSummary(eq(SCHEDULE_ID), eq(USER_ID))).willReturn(summary);
 
         mockMvc.perform(get("/api/v1/shifts/schedules/{id}/summary", SCHEDULE_ID))
                 .andExpect(status().isOk())
@@ -128,7 +128,7 @@ class ShiftSchedulePhase11ControllerTest {
     @WithMockUser(username = "100", roles = "ADMIN")
     void summary_notFound_404() throws Exception {
         willThrow(new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND))
-                .given(scheduleService).getScheduleSummary(eq(SCHEDULE_ID));
+                .given(scheduleService).getScheduleSummary(eq(SCHEDULE_ID), eq(USER_ID));
 
         mockMvc.perform(get("/api/v1/shifts/schedules/{id}/summary", SCHEDULE_ID))
                 .andExpect(status().isNotFound())

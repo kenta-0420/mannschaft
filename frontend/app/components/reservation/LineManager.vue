@@ -5,6 +5,7 @@ const props = defineProps<{
   teamId: number
 }>()
 
+const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
 
@@ -41,21 +42,21 @@ async function save() {
   try {
     if (editingLine.value) {
       await reservationApi.updateLine(props.teamId, editingLine.value.id ?? 0, form.value)
-      notification.success('ラインを更新しました')
+      notification.success(t('reservation.message.line_update_success'))
     } else {
       await reservationApi.createLine(props.teamId, form.value)
-      notification.success('ラインを作成しました')
+      notification.success(t('reservation.message.line_create_success'))
     }
     showDialog.value = false
     await loadLines()
   }
-  catch { notification.error('保存に失敗しました') }
+  catch { notification.error(t('reservation.message.line_save_failed')) }
 }
 
 async function remove(lineId: number) {
-  if (!confirm('このラインを削除しますか？')) return
+  if (!confirm(t('reservation.dialog.line_delete_confirm'))) return
   await reservationApi.deleteLine(props.teamId, lineId)
-  notification.success('ラインを削除しました')
+  notification.success(t('reservation.message.line_delete_success'))
   await loadLines()
 }
 
@@ -65,36 +66,36 @@ onMounted(loadLines)
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h3 class="text-lg font-semibold">予約ライン管理</h3>
-      <Button label="ライン追加" icon="pi pi-plus" size="small" @click="openCreate" />
+      <h3 class="text-lg font-semibold">{{ t('reservation.line_manage_title') }}</h3>
+      <Button :label="t('reservation.button.add_line')" icon="pi pi-plus" size="small" @click="openCreate" />
     </div>
     <div v-if="loading"><Skeleton v-for="i in 3" :key="i" height="3rem" class="mb-2" /></div>
     <div v-else-if="lines.length > 0" class="space-y-2">
       <div v-for="line in lines" :key="line.id" class="flex items-center gap-3 rounded-lg border border-surface-300 p-3 dark:border-surface-600">
         <div class="min-w-0 flex-1">
           <p class="font-medium">{{ line.meta?.name }}</p>
-          <p class="text-xs text-surface-500">{{ line.meta?.isActive ? '有効' : '無効' }}</p>
+          <p class="text-xs text-surface-500">{{ line.meta?.isActive ? t('reservation.state.active') : t('reservation.state.inactive') }}</p>
         </div>
         <Button icon="pi pi-pencil" text rounded size="small" @click="openEdit(line)" />
         <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="remove(line.id ?? 0)" />
       </div>
     </div>
-    <DashboardEmptyState v-else icon="pi pi-list" message="ラインはまだありません" />
+    <DashboardEmptyState v-else icon="pi pi-list" :message="t('reservation.empty.no_lines_yet')" />
 
-    <Dialog v-model:visible="showDialog" :header="editingLine ? 'ライン編集' : 'ライン作成'" :style="{ width: '400px' }" modal>
+    <Dialog v-model:visible="showDialog" :header="editingLine ? t('reservation.dialog.line_edit') : t('reservation.dialog.line_create')" :style="{ width: '400px' }" modal>
       <div class="flex flex-col gap-3">
         <div>
-          <label class="mb-1 block text-sm font-medium">名前</label>
+          <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.name') }}</label>
           <InputText v-model="form.name" class="w-full" />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">説明</label>
+          <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.description') }}</label>
           <InputText v-model="form.description" class="w-full" />
         </div>
       </div>
       <template #footer>
-        <Button label="キャンセル" text @click="showDialog = false" />
-        <Button label="保存" icon="pi pi-check" @click="save" />
+        <Button :label="t('reservation.button.cancel')" text @click="showDialog = false" />
+        <Button :label="t('reservation.button.save')" icon="pi pi-check" @click="save" />
       </template>
     </Dialog>
   </div>

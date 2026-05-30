@@ -17,6 +17,8 @@ export interface ReservationIdentifierDto {
   lineId?: number
   teamId?: number
   userId?: number
+  /** 予約者の実名（BE が会員名エンリッチで返す）。 */
+  userName?: string
 }
 
 /** 予約の枠サマリ。my予約画面の日時・線名表示はここを使う（既存バグ根治で追加）。 */

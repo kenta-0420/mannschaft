@@ -16,6 +16,7 @@ public class MemberPaymentResponse {
 
     Long id;
     Long userId;
+    String userName;
     Long paymentItemId;
     String paymentMethod;
     PaymentMoneyDto money;
