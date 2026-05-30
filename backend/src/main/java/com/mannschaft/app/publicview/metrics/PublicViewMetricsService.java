@@ -7,7 +7,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
  */
 // TODO: publicviewドメインからteam/organizationドメインのRepositoryを横断参照。将来のイベント駆動化候補
 @Service
-@RequiredArgsConstructor
 public class PublicViewMetricsService {
 
     private final MeterRegistry meterRegistry;
@@ -38,6 +37,25 @@ public class PublicViewMetricsService {
     // TODO: publicviewドメインからteam/organizationドメインのRepositoryを横断参照。将来のイベント駆動化候補
     private final TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
+
+    /**
+     * 明示コンストラクタで両リポジトリを {@code @Lazy} 注入し、早期初期化の連鎖を断つ。
+     *
+     * <p>認可基盤 Phase 2 の {@code @EnableMethodSecurity} 点火に伴う早期初期化で、本 Bean が
+     * JPA リポジトリ登録より前に生成されようとして ApplicationContext 起動が失敗するのを防ぐ。
+     * {@code @PostConstruct registerGauges()} は Gauge を登録するだけ（DB 問い合わせはスクレイプ時に
+     * lambda が遅延実行）なので、{@code @Lazy} プロキシ注入で何ら問題ない。</p>
+     *
+     * <p>本プロジェクトには {@code lombok.config} が無く {@code @Lazy} がコンストラクタ引数へ伝播しないため、
+     * Lombok ではなく明示コンストラクタを用いる（{@link com.mannschaft.app.actionmemo.ActionMemoMetrics} 同様）。</p>
+     */
+    public PublicViewMetricsService(MeterRegistry meterRegistry,
+                                    @Lazy TeamRepository teamRepository,
+                                    @Lazy OrganizationRepository organizationRepository) {
+        this.meterRegistry = meterRegistry;
+        this.teamRepository = teamRepository;
+        this.organizationRepository = organizationRepository;
+    }
 
     /**
      * アプリケーション起動時に Gauge を MeterRegistry に登録する。

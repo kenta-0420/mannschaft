@@ -2,7 +2,7 @@ package com.mannschaft.app.mail.outbox;
 
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
-import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
@@ -27,11 +27,27 @@ import java.time.ZoneId;
  * </ul>
  */
 @Component
-@RequiredArgsConstructor
 public class EmailOutboxMicrometerMetrics {
 
     private final MeterRegistry meterRegistry;
     private final EmailOutboxRepository repository;
+
+    /**
+     * 明示コンストラクタで {@code repository} を {@code @Lazy} 注入し、早期初期化の連鎖を断つ。
+     *
+     * <p>認可基盤 Phase 2 の {@code @EnableMethodSecurity} 点火に伴う早期初期化で、本 Bean が
+     * JPA リポジトリ登録より前に生成されようとして ApplicationContext 起動が失敗するのを防ぐ。
+     * {@code @PostConstruct registerGauges()} は Gauge を登録するだけ（DB 問い合わせはスクレイプ時に
+     * lambda が遅延実行）なので、{@code @Lazy} プロキシ注入で問題ない。</p>
+     *
+     * <p>本プロジェクトには {@code lombok.config} が無く {@code @Lazy} がコンストラクタ引数へ伝播しないため、
+     * Lombok ではなく明示コンストラクタを用いる（{@link com.mannschaft.app.actionmemo.ActionMemoMetrics} 同様）。</p>
+     */
+    public EmailOutboxMicrometerMetrics(MeterRegistry meterRegistry,
+                                        @Lazy EmailOutboxRepository repository) {
+        this.meterRegistry = meterRegistry;
+        this.repository = repository;
+    }
 
     @PostConstruct
     void registerGauges() {

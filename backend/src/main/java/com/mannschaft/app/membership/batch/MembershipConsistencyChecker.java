@@ -6,8 +6,8 @@ import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import io.micrometer.core.instrument.MeterRegistry;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -31,13 +31,30 @@ import java.util.Set;
  * <p>設計書: docs/features/F00.5_membership_basis.md §13.3</p>
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class MembershipConsistencyChecker {
 
     private final MembershipRepository membershipRepository;
     private final UserRoleRepository userRoleRepository;
     private final MeterRegistry meterRegistry;
+
+    /**
+     * 明示コンストラクタで両リポジトリを {@code @Lazy} 注入し、早期初期化の連鎖を断つ。
+     *
+     * <p>認可基盤 Phase 2 の {@code @EnableMethodSecurity} 点火に伴う早期初期化で、本 Bean が
+     * JPA リポジトリ登録より前に生成されようとして ApplicationContext 起動が失敗するのを防ぐ。
+     * リポジトリは {@code @Scheduled} の日次バッチ実行時にのみ使用するため、{@code @Lazy} で何ら問題ない。</p>
+     *
+     * <p>本プロジェクトには {@code lombok.config} が無く {@code @Lazy} がコンストラクタ引数へ伝播しないため、
+     * Lombok ではなく明示コンストラクタを用いる（{@link com.mannschaft.app.actionmemo.ActionMemoMetrics} 同様）。</p>
+     */
+    public MembershipConsistencyChecker(@Lazy MembershipRepository membershipRepository,
+                                        @Lazy UserRoleRepository userRoleRepository,
+                                        MeterRegistry meterRegistry) {
+        this.membershipRepository = membershipRepository;
+        this.userRoleRepository = userRoleRepository;
+        this.meterRegistry = meterRegistry;
+    }
 
     @BatchEndpoint(name = "membership-consistency-check-daily", description = "memberships と user_roles の整合性を毎日 04:00 に検査する")
     @Scheduled(cron = "0 0 4 * * *")

@@ -5,7 +5,9 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -26,11 +28,29 @@ import java.util.concurrent.atomic.AtomicLong;
  * </ul>
  */
 @Component
-@RequiredArgsConstructor
 public class ActionMemoMetrics {
 
     private final MeterRegistry meterRegistry;
     private final UserActionMemoSettingsRepository settingsRepository;
+
+    /**
+     * 明示コンストラクタで {@code settingsRepository} を {@code @Lazy} 注入し、早期初期化の連鎖を断つ。
+     *
+     * <p>認可基盤 Phase 2 で {@code @EnableMethodSecurity} を点火すると、AOP/BeanPostProcessor の登録に伴い
+     * 本 Bean が Spring Data JPA リポジトリ登録より前に生成されようとして
+     * {@code No qualifying bean of type 'UserActionMemoSettingsRepository'} で ApplicationContext 全体の
+     * 起動に失敗していた（CI で多数の {@code @SpringBootTest} が Failed to load ApplicationContext）。</p>
+     *
+     * <p><b>注意</b>: 本プロジェクトには {@code lombok.config} が無く {@code lombok.copyableAnnotations} が
+     * 未設定のため、フィールドに {@code @Lazy} を付けても {@code @RequiredArgsConstructor} 生成コンストラクタの
+     * 引数へは伝播しない（実測で確認）。そのため Lombok ではなく明示コンストラクタを用い、引数に直接
+     * {@code @Lazy} を付与する（{@code ShiftBudgetFailedEventService} と同じ流儀）。</p>
+     */
+    public ActionMemoMetrics(MeterRegistry meterRegistry,
+                             @Lazy UserActionMemoSettingsRepository settingsRepository) {
+        this.meterRegistry = meterRegistry;
+        this.settingsRepository = settingsRepository;
+    }
 
     private Counter createdCounter;
     private Counter publishDailySuccessCounter;
@@ -72,7 +92,18 @@ public class ActionMemoMetrics {
         Gauge.builder("action_memo_mood_enabled_users", moodEnabledUserCount, AtomicLong::get)
                 .description("mood_enabled = true のユーザー数")
                 .register(meterRegistry);
+    }
 
+    /**
+     * アプリ起動完了後に mood_enabled ユーザー数 gauge の初期値を計算する。
+     *
+     * <p>以前は {@code @PostConstruct init()} 内で {@link #refreshMoodEnabledUserCount()} を直接呼んで
+     * いたが、それだと Bean 初期化のタイミングでリポジトリ（DB）へアクセスしてしまう。
+     * Phase 2 点火による早期初期化との競合を確実に避けるため、全 Bean の配線が完了する
+     * {@link ApplicationReadyEvent} まで初期計算を遅延させる。</p>
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    void initMoodEnabledUserCountOnReady() {
         refreshMoodEnabledUserCount();
     }
 
