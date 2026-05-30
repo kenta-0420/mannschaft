@@ -459,7 +459,7 @@ grep -rn "@EnableMethodSecurity" backend/src/main/java --include=*.java
 
 ## 15. トーナメント連絡・成績・移籍スコープの認可方針（F08.7.1）
 
-F08.7.1 で新設する **大会連絡スペース**（掲示板・チャット）・**成績ウィジェット**・**組織またぎリーグ移籍**は、既存の TEAM/ORGANIZATION スコープに収まらない新スコープ（`TOURNAMENT` / `TOURNAMENT_DIVISION` / 組織またぎ移籍）を導入する。本節はその認可方針の正典を定める。設計詳細は [F08.7.1_tournament_extensions/](../features/F08.7.1_tournament_extensions/) を参照。
+F08.7.1 で新設する **大会連絡スペース**（掲示板・チャット）・**成績ウィジェット**・**組織またぎリーグ移籍**・**リーグ単位ファイル置き場**・**試合メンバー表**は、既存の TEAM/ORGANIZATION スコープに収まらない新スコープ（`TOURNAMENT` / `TOURNAMENT_DIVISION` / 組織またぎ移籍）を導入する。本節はその認可方針の正典を定める。設計詳細は [F08.7.1_tournament_extensions/](../features/F08.7.1_tournament_extensions/) を参照。
 
 ### 15.1 連絡スペースの read/write 分離（`TournamentContactAccessService`）
 
@@ -479,17 +479,34 @@ tournament ドメインに `TournamentContactAccessService` を新設し、read�
 - **chat の公開は既定 OFF**（`is_private=TRUE`）。公開トグル ON でも **PUBLIC は read-only**（投稿は常に代表＋主催者）。スペクテーター（観戦者）への露出は閲覧のみに限定する。
 - 公開スペースには「広報目的の連絡」のみを置く運用を推奨し、内部連絡（未確定の対戦相手・運営内部連絡）は非公開カテゴリ/チャンネルに保つ。
 - **成績ウィジェット**（F02.2.1 で min_role を PUBLIC に下げ得る）では、ウィジェット API 側で**大会 visibility を再チェック**し、非公開（DRAFT/private）大会の成績が PUBLIC 閲覧者へ漏れないようにする（特に `ORG_TOURNAMENT_SUMMARY` は DRAFT 大会を PUBLIC レスポンスから除外）。
+- **ファイル置き場**（F08.7.1 領域④・`TOURNAMENT` / `TOURNAMENT_DIVISION` スコープ）の PUBLIC 露出は、**連絡スペースの公開トグル（`tournament_contact_space.is_public`）に追従**する（ファイル専用の公開フラグは持たない）。公開時も**閲覧（VIEW/DOWNLOAD）のみ**で、アップロード/編集（UPLOAD/MANAGE）は常にチーム代表＋主催者に限定する。公開フォルダには広報用資料（大会要項・規約等）のみを置く運用を推奨し、内部資料は非公開フォルダに保つ。判定は連絡スペースと同じ `TournamentContactAccessService.canView/canPost` を流用し、認可規則を二重定義しない。
 
-### 15.3 リーグ移籍 API の認可
+### 15.3 リーグ移籍 API の認可（プッシュ＋承認の対称モデル）
+
+昇格・降格はどちらも「**手放す側 org が送り出し（DISPATCHED）→ 受け入れる側 org が承認（PLACED）**」の対称モデル（F08.7.1 §1.1）。
 
 | 操作 | 許可ロール |
 |------|-----------|
-| 昇格招待送信 / 降格送り出し | 上位リーグ大会の**主催組織 ADMIN** / SYSTEM_ADMIN のみ |
-| 昇格招待への応答（accept/decline） | **招待された team の ADMIN/DEPUTY のみ**（他チームの横取り不可） |
-| 降格チームの配属（place） | **下位（出身県協会）組織 ADMIN のみ** |
+| 昇格送り出し（`promote`） | **下位（手放す側）リーグ大会の主催組織 ADMIN** / SYSTEM_ADMIN のみ |
+| 降格送り出し（`relegate`） | **上位（手放す側）リーグ大会の主催組織 ADMIN** / SYSTEM_ADMIN のみ |
+| 承認・配属（`approve`） | **受け入れ側組織 ADMIN**（昇格=上位 org / 降格=下位 org）のみ |
+| 受け入れ拒否（`decline`） | 受け入れ側組織 ADMIN のみ |
+| 送り出し取消（`cancel`） | 手放す側組織 ADMIN のみ（応答前のみ） |
+| チーム側閲覧（`GET /teams/{teamId}/league-transfers`） | 当該チーム MEMBER 以上（**閲覧のみ**。承認・拒否は org が行う） |
 
-- 出身県協会の解決は `OrganizationHierarchyService` の祖先/子孫判定で「送り出し元の子孫 ASSOCIATION」に限定（無関係 org への降格を防ぐ）。0 件なら保留して ADMIN へ警告（症状を隠さない）。
+- 送り先の正当性を `OrganizationHierarchyService` で必須検証: 昇格の受け入れ先は送り出し元の **親 org 系列（祖先）** に限定、降格の受け入れ先は送り出し元の **子孫 ASSOCIATION** に限定（無関係 org への送り出しを防ぐ）。該当 0 件なら保留して ADMIN へ警告（症状を隠さない）。
+- 送り出し（DISPATCHED 起票）は手放す側 org ADMIN のみ・承認（PLACED）は受け入れ側 org ADMIN のみ＝役割を非対称に分離し、片方の org が単独で移籍を完結できないようにする。
 - 二重起票は `league_transfer` の `UNIQUE(team_id, season, direction)` で抑止。存在しない対象は 404。team_id/division_id/organization_id は ID 参照のみ（クロスドメイン FK なし）。
+
+### 15.4 試合メンバー表の認可（F08.7.1 領域⑤）
+
+| 操作 | 許可ロール |
+|------|-----------|
+| 自チーム roster の提出/テンプレ適用 | **当該チームの ADMIN/DEPUTY のみ**（他チームの roster は操作不可・403） |
+| 全チーム roster 閲覧 | 主催組織 ADMIN / SYSTEM_ADMIN |
+| 締切（`roster_deadline`）設定 | 主催組織 ADMIN / SYSTEM_ADMIN |
+
+- **既定は代理入力なし**（主催者は閲覧・締切管理のみ）。締切超過の提出は 409（締切後ロック）。提出操作は監査ログに残す。存在しない match/roster は 404。
 
 ---
 
@@ -497,6 +514,7 @@ tournament ドメインに `TournamentContactAccessService` を新設し、read�
 
 | 日付 | 変更 |
 |---|---|
-| 2026-05-31 | §15「トーナメント連絡・成績・移籍スコープの認可方針（F08.7.1）」を追加: (1) 連絡スペースの read/write 分離（`TournamentContactAccessService`・閲覧=参加チーム＋公開時 PUBLIC read-only、投稿=各チーム代表＋主催組織 ADMIN）(2) PUBLIC 公開時の成績/chat 露出方針（chat 既定 OFF・PUBLIC は read-only・非公開大会成績の再チェック）(3) リーグ移籍 API の認可（昇格招待=上位主催 ADMIN／応答=招待 team ADMIN／配属=下位 org ADMIN・子孫 ASSOCIATION 限定）。詳細は [F08.7.1](../features/F08.7.1_tournament_extensions/) |
+| 2026-05-31 | §15 を F08.7.1 最新版に**改訂**: (a) §15.2 に**ファイル置き場の PUBLIC 露出方針**を追加（連絡スペースの `is_public` に追従・PUBLIC は VIEW/DOWNLOAD のみ・書込は代表＋主催者・`TournamentContactAccessService.canView/canPost` 流用）。(b) §15.3 リーグ移籍を**プッシュ＋承認の対称モデル**に改訂（昇格=下位 org 送り出し／降格=上位 org 送り出し → 受け入れ側 org が承認。送り先は親系列/子孫 ASSOCIATION に限定。チームは閲覧のみ）。(c) §15.4 **試合メンバー表**の認可を新設（提出=自チーム ADMIN/DEPUTY・閲覧/締切=主催組織 ADMIN・代理入力なし・締切後 409）。 |
+| 2026-05-31 | §15「トーナメント連絡・成績・移籍スコープの認可方針（F08.7.1）」を追加: (1) 連絡スペースの read/write 分離（`TournamentContactAccessService`・閲覧=参加チーム＋公開時 PUBLIC read-only、投稿=各チーム代表＋主催組織 ADMIN）(2) PUBLIC 公開時の成績/chat 露出方針（chat 既定 OFF・PUBLIC は read-only・非公開大会成績の再チェック）(3) リーグ移籍 API の認可。詳細は [F08.7.1](../features/F08.7.1_tournament_extensions/) |
 | 2026-05-30 | 新規作成。認可基盤完全根治（案①）の正典モデル・病巣カタログ（file:line 根拠）・SpEL ガード設計・JWT claims 設計・`@PreAuthorize` 97 個分類カタログ・生穴リスト・段階計画 Phase 0〜5・テスト戦略・統合テストマトリクスを定義 |
 | 2026-05-30 | **§8 段階計画の順序是正**: Phase 3（per-scope SpEL 化＋生穴封鎖）を Phase 4（method-security 有効化）より前に並べ替え（番号も振り直し）。点火の瞬間に未変換 `hasRole` が一斉 403 化する窓を構造的に消す方針を明記。§5/§5.1/§7.1/§7.2/§9/§11 の Phase 参照を追従更新。**Phase 3-a 実装**（per-scope 生穴封鎖）として `AccessGuard` Bean 新設、AdminPublicSettings/SupporterNameDisclosure/Disclosure/ShiftChangeRequest.review/PdfSignatureVerify の生穴を明示 Service 層認可で封鎖、対象 EP の `@PreAuthorize` を `@accessGuard.isScopeAdmin(...)`/`hasRole('SYSTEM_ADMIN')` へ是正済み（§5.1 状態列参照）。残: 負論理 (E) シフト PDF |

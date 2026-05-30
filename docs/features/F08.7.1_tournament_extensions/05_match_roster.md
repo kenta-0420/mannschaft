@@ -1,0 +1,121 @@
+# F08.7.1 / 05: 試合メンバー表（自チーム作成＋エントリーテンプレ流用＋主催者締切管理）
+
+> **ステータス**: 🟢 設計完了
+> **最終更新**: 2026-05-31
+> **関連ドキュメント**:
+> - [README.md](./README.md) — 機能概要・トレーサビリティ
+> - [F08.7_tournament_league.md](../F08.7_tournament_league.md) — 既存 `tournament_match_rosters` / `tournament_entry_templates` / `tournament_matches` / `tournament_participants`
+> - [docs/security/03_role_authority_model.md](../../security/03_role_authority_model.md) §15 — トーナメント系スコープの認可方針
+
+本書は確定要件 ⑩（**試合メンバー表**＝自チームから作成（エントリーテンプレ流用）＋主催者は締切・閲覧管理）を具体化する。
+
+---
+
+## 1. 中核思想 — 既存テーブルを活用、自チーム作成・提出
+
+| 既存資産 | 流用方法 |
+|---------|---------|
+| `tournament_match_rosters`（`match_id`/`participant_id`/`user_id`/`is_starter`/`jersey_number`/`position`、`UNIQUE(match_id, user_id)`） | 試合ごとの出場メンバー表の実体。**そのまま使用** |
+| `tournament_entry_templates` / `tournament_entry_template_members`（team_id スコープ・背番号/ポジション保持） | エントリーテンプレを **1 タップ適用**（テンプレ → roster へ複製）する元データ |
+| `tournament_participants`（チーム → ディビジョン参加） | 呼び出しチーム → participant 解決の源泉 |
+
+- メンバー表は**自チームから作成・提出**する。チーム代表(ADMIN/DEPUTY)が自チーム分のみ編集できる。
+- 主催者（組織 ADMIN）は**締切設定**と**全チームの提出状況・内容の閲覧**を行う（既定は代理入力なし）。
+- 既存 `tournament_match_rosters` の CRUD API/UI が未整備なら新設、実装済みなら自チーム提出フロー/テンプレ適用/締切のみ追加する（§7 の注記参照）。
+
+---
+
+## 2. DDL — 締切カラム追加（唯一の DB 変更）
+
+提出締切を `tournament_matches` に 1 列追加する。
+
+```sql
+ALTER TABLE tournament_matches
+  ADD COLUMN roster_deadline DATETIME NULL;   -- 提出締切（NULL = 締切なし）
+```
+
+- `roster_deadline DATETIME NULL`（NULL = 締切なし＝いつでも提出可）。
+- 既存テーブルへのカラム追加のみ。新規テーブルなし。`tournament_matches` は BIGINT ID の既存テーブルゆえ ID 方式は変更しない（原則 6 は新規テーブルのみ対象）。
+- 締切は試合単位で設定する設計。節（`tournament_matchdays`）一括で設定したい運用は、主催者 UI で「節内の全試合に同じ締切を一括 PATCH」する操作として吸収する（DB は試合単位の `roster_deadline` を正本とする）。
+
+---
+
+## 3. フロー（自チーム作成＋テンプレ流用）
+
+ADHD 配慮（入力摩擦最小・必須項目最小）を最優先する。
+
+1. チーム代表(ADMIN/DEPUTY)が自チームのマイページ/試合詳細から、対象 match の**自チーム分メンバー表**を開く。
+2. 保存済み **エントリーテンプレを 1 タップ適用**（`tournament_entry_templates` → `tournament_match_rosters` へ複製）。
+3. 先発/控え（`is_starter`）・背番号（`jersey_number`）・ポジション（`position`）を調整。
+4. **提出**（保存）。
+5. 主催者（組織 ADMIN）は **提出締切**（`roster_deadline`）を設定し、各チームの**提出状況・内容を閲覧**。締切後は編集ロック。
+
+- テンプレ未作成でも手動で 1 人ずつ追加できる（テンプレは任意・必須ではない）。
+- 提出 = `tournament_match_rosters` への UPSERT（`UNIQUE(match_id, user_id)` で冪等）。提出済みの自チーム行を差し替え可能（締切前に限る）。
+
+---
+
+## 4. API（新設・既存未整備分）
+
+| メソッド | パス | 認可 | 説明 |
+|---------|-----|------|------|
+| GET | `/api/v1/tournaments/{tId}/matches/{matchId}/rosters/me` | 自チーム MEMBER 以上 | 自チーム分の現在の roster を取得（participant は呼び出しチームから解決） |
+| PUT | `/api/v1/tournaments/{tId}/matches/{matchId}/rosters/me` | **自チーム ADMIN/DEPUTY** | 自チーム分 roster を提出（UPSERT）。締切後は 409 でロック |
+| POST | `/api/v1/tournaments/{tId}/matches/{matchId}/rosters/me/apply-template` | **自チーム ADMIN/DEPUTY** | エントリーテンプレを適用（テンプレ → roster 複製）。body: `{ templateId, overwriteExisting? }` |
+| GET | `/api/v1/tournaments/{tId}/matches/{matchId}/rosters` | **主催組織 ADMIN**（＋参加チーム閲覧はオプション） | 全チーム分の提出状況・内容を閲覧（主催者ビュー） |
+| PATCH | `/api/v1/tournaments/{tId}/matches/{matchId}` | **主催組織 ADMIN** | `roster_deadline` 設定（試合メタ更新の一部） |
+
+- `rosters/me` の participant 解決: 呼び出しユーザーの所属チーム → 当該 matchId が属する大会の `tournament_participants` から、ホーム/アウェイいずれかの participant を特定（自チームが対戦当事者でなければ 403）。
+- **IDOR 検証チェーン**（Service 層必須）: `matchId → matchday → division → tId` 帰属、`participant → division` 帰属、`team → participant` 帰属。
+- 主催者ビュー `GET .../rosters` での**相手チーム内容の非公開**はオプション（マスター裁可で「主催者は閲覧可」を既定とし、参加チーム同士で相手 roster を締切前に見せない設定はトグルで提供）。
+
+---
+
+## 5. 認可・セキュリティ
+
+| 操作 | 許可ロール |
+|------|-----------|
+| 自チーム roster の取得（`rosters/me` GET） | 当該チーム MEMBER 以上（対戦当事者チームのみ） |
+| 自チーム roster の提出/テンプレ適用（PUT / apply-template） | **当該チームの ADMIN/DEPUTY のみ** |
+| 全チーム roster 閲覧（`rosters` GET） | 主催組織 ADMIN / SYSTEM_ADMIN |
+| 締切設定（`roster_deadline` PATCH） | 主催組織 ADMIN / SYSTEM_ADMIN |
+
+- **他チームの roster は編集不可**（自チーム ADMIN/DEPUTY は自チーム participant の行のみ操作可。他 participant 行への INSERT/UPDATE は 403）。
+- **既定は代理入力なし**（主催者は閲覧・締切管理のみ。マスター選択肢①）。将来代理入力が必要なら別途要件化。
+- **締切後ロック**: `roster_deadline` を過ぎた match への提出（PUT/apply-template）は **409 Conflict**（締切超過）で拒否。締切 NULL ならロックなし。
+- **提出監査**: 誰がいつ提出したかを記録する。`tournament_match_rosters.created_at` に加え、提出操作を監査ログ（`AuditEventType` に `TOURNAMENT_ROSTER_SUBMITTED` 等を追加）に残す。
+- 存在しない match / roster は **404**（IDOR 統一）。team_id・participant_id・user_id は ID 参照のみ（クロスドメイン FK なし／原則 1）。
+
+---
+
+## 6. ユーザビリティ（ADHD 配慮）
+
+- **エントリーテンプレ 1 タップ適用**で初期入力をゼロ手間に。
+- 必須項目は最小（user_id のみ。背番号・ポジション・先発フラグは任意・後で調整可）。
+- 締切が近い未提出 match を自チームの試合一覧でハイライト（FE）。
+- モバイルでの編集を前提に、先発/控えの並べ替え・チェックボックス操作を主体とする。
+
+---
+
+## 7. 実装時の確認事項（症状を隠さない）
+
+- 既存 `tournament_match_rosters` の **CRUD API/UI の実装有無を実装時に確認**する。
+  - 未実装なら新設（本書の API をフル実装）。
+  - 実装済み（管理者一括登録のみ等）なら、**自チーム提出フロー（`rosters/me`）・テンプレ適用・締切ロック**を追加する形で統合する。
+- `tournament_entry_templates` の適用ロジック（F08.7 の `POST load-from-team` 相当）が roster へ複製する経路を持つか確認し、無ければ `apply-template` で新設する。
+- いずれも「未実装を握りつぶさず、未実装は新設して根治」する（CLAUDE.md 障害対応の原則）。
+
+---
+
+## 8. 精査ログ
+
+### 8.1 1 回目
+- **不備**: 自チーム作成（PUT rosters/me）・テンプレ適用（apply-template）・主催者閲覧（GET rosters）・締切設定（PATCH roster_deadline）を網羅。DB 変更は `roster_deadline` 1 列のみ。
+- **セキュリティ**: 編集は自チーム ADMIN/DEPUTY のみ・他チーム roster 操作は 403・締切後ロック（409）・提出監査・404 統一・クロスドメイン FK なし。代理入力なし（既定）で権限境界を明確化。
+- **ユーザビリティ**: テンプレ 1 タップ・必須最小・締切ハイライト・モバイル前提（§6・ADHD 配慮）。
+- **見落とし**: 既存 roster CRUD の実装有無確認（§7）、`AuditEventType` 追加、participant 解決の対戦当事者チェック。
+- **保守性**: 既存テーブル（`tournament_match_rosters`/`tournament_entry_templates`）を最大限流用、新規テーブルなし、DB 変更は 1 列のみ。実装時の統合方針（未実装なら新設・実装済みなら差分追加）を明記。
+
+### 8.2 未解決事項
+
+**現時点でなし。**
