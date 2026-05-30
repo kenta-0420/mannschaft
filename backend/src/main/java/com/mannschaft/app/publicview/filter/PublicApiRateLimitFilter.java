@@ -121,6 +121,14 @@ public class PublicApiRateLimitFilter extends OncePerRequestFilter {
     private static final Pattern PUBLIC_SEARCH_PATH =
             Pattern.compile("^/api/v1/public/(teams|organizations)/search$");
 
+    /**
+     * F22.1 §1.4: 市（Market）公開閲覧 API パスパターン。
+     * {@code /api/v1/public/market/(listings|listings/{id}|regions|summary)} をマッチする。
+     * PUBLIC_API バケット（60/min/IP・200/min/user）を共有する。
+     */
+    private static final Pattern MARKET_API_PATH =
+            Pattern.compile("^/api/v1/public/market/(listings(/[^/]+)?|regions|summary)$");
+
     /** F15.4 Phase 5-α 互換: 単独詳細パスのみマッチ（PUBLIC_TEAM_DETAIL_RATE_LIMIT_EXCEEDED 維持用）。 */
     private static final Pattern PUBLIC_TEAM_DETAIL_PATH =
             Pattern.compile("^/api/v1/public/teams/([^/]+)$");
@@ -189,7 +197,8 @@ public class PublicApiRateLimitFilter extends OncePerRequestFilter {
         String path = request.getServletPath();
         return !ORG_TEAM_SEARCH_PATH.matcher(path).matches()
                 && !PUBLIC_API_PATH.matcher(path).matches()
-                && !PUBLIC_SEARCH_PATH.matcher(path).matches();
+                && !PUBLIC_SEARCH_PATH.matcher(path).matches()
+                && !MARKET_API_PATH.matcher(path).matches();
     }
 
     @Override
@@ -201,9 +210,10 @@ public class PublicApiRateLimitFilter extends OncePerRequestFilter {
         Matcher orgMatcher = ORG_TEAM_SEARCH_PATH.matcher(path);
         Matcher publicMatcher = PUBLIC_API_PATH.matcher(path);
         Matcher searchMatcher = PUBLIC_SEARCH_PATH.matcher(path);
+        Matcher marketMatcher = MARKET_API_PATH.matcher(path);
         if (orgMatcher.matches()) {
             target = Target.ORG_TEAM_SEARCH;
-        } else if (publicMatcher.matches() || searchMatcher.matches()) {
+        } else if (publicMatcher.matches() || searchMatcher.matches() || marketMatcher.matches()) {
             target = Target.PUBLIC_API;
         } else {
             // shouldNotFilter で弾いているので通常到達しないが、念のため透過

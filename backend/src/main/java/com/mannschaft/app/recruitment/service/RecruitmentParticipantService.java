@@ -61,6 +61,8 @@ public class RecruitmentParticipantService {
     private final RecruitmentListingService listingService;
     private final AccessControlService accessControlService;
     private final RecruitmentMapper mapper;
+    /** F22.1 市: 充足（FULL）到達時の最終認証連携。 */
+    private final MarketFinalizeService marketFinalizeService;
 
     // ===========================================
     // §5.2 参加申込
@@ -130,8 +132,14 @@ public class RecruitmentParticipantService {
 
         boolean isWaitlisted;
         Integer waitlistPosition = null;
+        boolean reachedFull = false;
         if (updated == 1) {
             isWaitlisted = false;
+            // F22.1 市: この申込で OPEN→FULL に遷移したかを再ロードで検知する（§6.1）。
+            // incrementConfirmedAtomic は status=CASE で FULL に遷移させる原子 UPDATE。
+            RecruitmentListingEntity afterIncrement = listingRepository.findById(listingId).orElse(null);
+            reachedFull = afterIncrement != null
+                    && afterIncrement.getStatus() == RecruitmentListingStatus.FULL;
         } else {
             // 満員 → キャンセル待ちフロー (§5.2 step8)
             int waitlistUpdated = listingRepository.incrementWaitlistAtomic(listingId);
@@ -168,6 +176,15 @@ public class RecruitmentParticipantService {
 
         log.info("F03.11 申込: listingId={}, userId={}, status={}, waitlistPos={}",
                 listingId, userId, saved.getStatus(), waitlistPosition);
+
+        // F22.1 市: この申込で FULL に到達したら最終認証の確認通知を送る（§6.1）。
+        if (reachedFull) {
+            RecruitmentListingEntity fullListing = listingRepository.findById(listingId).orElse(null);
+            if (fullListing != null) {
+                marketFinalizeService.sendFinalizeConfirmation(fullListing);
+            }
+        }
+
         return mapper.toParticipantResponse(saved);
     }
 

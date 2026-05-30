@@ -207,6 +207,20 @@ public class RecruitmentListingEntity extends BaseEntity {
     }
 
     /**
+     * F22.1 市: 地域コード（都道府県・市区町村）を更新する。
+     *
+     * <p>呼び出し前に Service 層で {@code MarketRegionValidator} による整合検証
+     * （{@code MARKET_001}）を済ませること。両方 null は「地域を問わない」札を表す。</p>
+     *
+     * @param prefectureCode 正規化済み都道府県コード（null 可）
+     * @param cityCode       市区町村コード（null 可）
+     */
+    public void updateRegion(String prefectureCode, String cityCode) {
+        this.prefectureCode = prefectureCode;
+        this.cityCode = cityCode;
+    }
+
+    /**
      * テンプレートIDを紐付ける。
      * createFromTemplate() 時に、作成後にテンプレートIDを設定するために使用する。
      */
