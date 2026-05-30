@@ -53,9 +53,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * そこで本テストでは以下の二段構えで認可を担保する:</p>
  * <ul>
  *   <li><b>403 相当（非管理者の拒否）</b>: 各ハンドラに
- *       {@code @PreAuthorize("hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')")} が
- *       <em>宣言されていること</em>を Reflection で検証する。
- *       {@code @EnableMethodSecurity} 有効化時に Spring Security が自動的に 403 を返す。</li>
+ *       per-scope の SpEL ガード {@code @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")}
+ *      （org 系は {@code #orgId, 'ORGANIZATION'}）が <em>宣言されていること</em>を Reflection で検証する。
+ *       認可根治 Phase 3-b（2026-05-30）で旧 {@code hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')} から是正した。
+ *       旧式は {@code @EnableMethodSecurity} 点火時に JWT へ ROLE_ADMIN が乗らず一斉 403 になるため、
+ *       パス変数 scope を参照する SpEL ガードへ置換した（{@code @AccessGuard} が SYSTEM_ADMIN を内部短絡）。
+ *       {@code @EnableMethodSecurity} 有効化時に Spring Security が当該 scope の非管理者へ 403 を返す。</li>
  *   <li><b>401 相当（未認証の拒否）</b>: HTTP 層の {@code anyRequest().authenticated()} が
  *       {@code /api/v1/admin/**} を保護することを {@link com.mannschaft.app.config.SecurityConfig}
  *       の構成として担保（{@code SecurityConfigAuthorizationTest} が deny-by-default を別途検証済み）。
@@ -110,23 +113,44 @@ class AdminFaqControllerTest {
     // ─────────────────────────────────────────────────────────────────
 
     @Nested
-    @DisplayName("認可: @PreAuthorize('hasRole(ADMIN) or hasRole(SYSTEM_ADMIN)') が全ハンドラに付与されている")
+    @DisplayName("認可: @PreAuthorize が per-scope SpEL ガード（@accessGuard.isScopeAdmin）で宣言されている")
     class AuthorizationTest {
 
-        private static final String EXPECTED_EXPR = "hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')";
+        private static final String TEAM_EXPR =
+                "@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')";
+        private static final String ORG_EXPR =
+                "@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')";
 
         @Test
-        @DisplayName("getTeamFaqs / saveTeamFaqs / getOrganizationFaqs / saveOrganizationFaqs に @PreAuthorize が宣言されている")
-        void allHandlersDeclarePreAuthorize() throws NoSuchMethodException {
-            assertPreAuthorize("getTeamFaqs", Long.class);
-            assertPreAuthorize("saveTeamFaqs", Long.class,
-                    com.mannschaft.app.faq.dto.SaveFaqRequest.class);
-            assertPreAuthorize("getOrganizationFaqs", Long.class);
-            assertPreAuthorize("saveOrganizationFaqs", Long.class,
+        @DisplayName("team 系ハンドラはパス変数 teamId を参照する SpEL ガードを宣言している")
+        void teamHandlersDeclareScopeGuard() throws NoSuchMethodException {
+            assertPreAuthorize("getTeamFaqs", TEAM_EXPR, Long.class);
+            assertPreAuthorize("saveTeamFaqs", TEAM_EXPR, Long.class,
                     com.mannschaft.app.faq.dto.SaveFaqRequest.class);
         }
 
-        private void assertPreAuthorize(String methodName, Class<?>... paramTypes)
+        @Test
+        @DisplayName("organization 系ハンドラはパス変数 orgId を参照する SpEL ガードを宣言している")
+        void organizationHandlersDeclareScopeGuard() throws NoSuchMethodException {
+            assertPreAuthorize("getOrganizationFaqs", ORG_EXPR, Long.class);
+            assertPreAuthorize("saveOrganizationFaqs", ORG_EXPR, Long.class,
+                    com.mannschaft.app.faq.dto.SaveFaqRequest.class);
+        }
+
+        @Test
+        @DisplayName("点火準備: 旧 hasRole('ADMIN') 形式の注釈は残っていない（点火時の一斉403を防止）")
+        void noLegacyHasRoleAdminRemains() {
+            for (Method m : AdminFaqController.class.getDeclaredMethods()) {
+                PreAuthorize annotation = m.getAnnotation(PreAuthorize.class);
+                if (annotation != null) {
+                    assertThat(annotation.value())
+                            .as("%s に旧 hasRole('ADMIN') が残ると method-security 点火時に 403 になる", m.getName())
+                            .doesNotContain("hasRole('ADMIN')");
+                }
+            }
+        }
+
+        private void assertPreAuthorize(String methodName, String expectedExpr, Class<?>... paramTypes)
                 throws NoSuchMethodException {
             Method m = AdminFaqController.class.getMethod(methodName, paramTypes);
             PreAuthorize annotation = m.getAnnotation(PreAuthorize.class);
@@ -134,8 +158,8 @@ class AdminFaqControllerTest {
                     .as("%s に @PreAuthorize が未付与だと非管理者が FAQ 管理 API を叩けてしまう", methodName)
                     .isNotNull();
             assertThat(annotation.value())
-                    .as("%s は ADMIN / SYSTEM_ADMIN 以外を拒否する式でなければならない", methodName)
-                    .isEqualTo(EXPECTED_EXPR);
+                    .as("%s は当該 scope の管理者のみを許可する SpEL ガードでなければならない", methodName)
+                    .isEqualTo(expectedExpr);
         }
     }
 

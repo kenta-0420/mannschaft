@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.shift.ChangeRequestStatus;
 import com.mannschaft.app.shift.ChangeRequestType;
@@ -32,6 +33,7 @@ public class ShiftChangeRequestService {
 
     private final ShiftChangeRequestRepository changeRequestRepository;
     private final ShiftScheduleRepository scheduleRepository;
+    private final AccessControlService accessControlService;
 
     /**
      * 変更依頼を作成する。
@@ -116,6 +118,11 @@ public class ShiftChangeRequestService {
     public ChangeRequestResponse review(Long id, ReviewChangeRequestRequest request, Long userId) {
         ShiftChangeRequestEntity entity = findOrThrow(id);
 
+        // per-scope 認可（認可根治 Phase 3-a）。
+        // entity の scheduleId からチームを解決して per-scope 認可することで IDOR も同時に封鎖する。
+        // SYSTEM_ADMIN は短絡許可、それ以外は当該チームの ADMIN/DEPUTY_ADMIN のみ審査可。
+        checkReviewerScopeAdminAccess(entity, userId);
+
         if (entity.getStatus() != ChangeRequestStatus.OPEN) {
             throw new BusinessException(ShiftErrorCode.INVALID_CHANGE_REQUEST_STATUS);
         }
@@ -157,6 +164,28 @@ public class ShiftChangeRequestService {
         entity.withdraw();
         changeRequestRepository.save(entity);
         log.info("シフト変更依頼取下: id={}, userId={}", id, userId);
+    }
+
+    /**
+     * 変更依頼審査に対する per-scope 認可を強制する（認可根治 Phase 3-a）。
+     *
+     * <p>Controller の {@code @PreAuthorize("hasRole('ADMIN')")} は per-scope 文脈を持てず
+     * かつ {@code @EnableMethodSecurity} 未有効ゆえ実機 no-op のため、Service 層で明示的に認可する。
+     * 変更依頼の {@code scheduleId} から所属チームを解決し（IDOR 封鎖）、SYSTEM_ADMIN は短絡許可、
+     * それ以外は当該チームの ADMIN/DEPUTY_ADMIN でなければ {@code COMMON_002}（403）をスローする。
+     * {@code ShiftScheduleService#checkScheduleAdminAccess}（#1189）と同一方針。</p>
+     *
+     * @param entity 審査対象の変更依頼
+     * @param userId 審査者ユーザー ID
+     */
+    private void checkReviewerScopeAdminAccess(ShiftChangeRequestEntity entity, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        Long teamId = scheduleRepository.findById(entity.getScheduleId())
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND))
+                .getTeamId();
+        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
     }
 
     /**

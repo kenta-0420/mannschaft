@@ -76,6 +76,9 @@ class DashboardServiceVisibilityFilterTest {
     @Mock private PlatformAnnouncementRepository platformAnnouncementRepository;
     @Mock private UserRoleRepository userRoleRepository;
     @Mock private AnnouncementFeedQueryRepository announcementFeedQueryRepository;
+    @Mock private ScopeWidgetSummaryService scopeWidgetSummaryService;
+    @Mock private ScopeActionRequiredFacade scopeActionRequiredFacade;
+    @Mock private SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
 
     @InjectMocks
     private DashboardService dashboardService;
@@ -118,6 +121,11 @@ class DashboardServiceVisibilityFilterTest {
         given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
         given(widgetService.getWidgetSettings(eq(USER_ID), eq(ScopeType.TEAM), eq(TEAM_ID), anyBoolean()))
                 .willReturn(List.of());
+
+        // F22.1 第二波: SWIPE 可視性は素通し（filterIfVisible は arg3 をそのまま返す）。
+        given(swipeWidgetVisibilityResolver.resolve(any(), any())).willReturn(java.util.Map.of());
+        given(swipeWidgetVisibilityResolver.filterIfVisible(any(), any(), any(), any()))
+                .willAnswer(inv -> inv.getArgument(3));
     }
 
     // ════════════════════════════════════════════════

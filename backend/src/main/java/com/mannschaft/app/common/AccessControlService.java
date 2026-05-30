@@ -218,9 +218,26 @@ public class AccessControlService {
      * ユーザーが特定の権限を持っていることを要求する。違反時は403。
      */
     public void checkPermission(Long userId, Long scopeId, String scopeType, String permissionName) {
-        if (!roleService.hasPermission(userId, scopeId, scopeType, permissionName)) {
+        if (!hasPermission(userId, scopeId, scopeType, permissionName)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
+    }
+
+    /**
+     * ユーザーが指定スコープで特定の権限を持っているかどうかを返す（boolean 版）。
+     *
+     * <p>{@link #checkPermission} の例外を投げない版。{@code @PreAuthorize} の SpEL から
+     * 参照する {@code AccessGuard} 等、boolean を必要とする呼出元のために提供する。
+     * 判定本体は {@code roleService.hasPermission} に委譲する（ロジックの二重化を避ける）。</p>
+     *
+     * @param userId         操作ユーザー
+     * @param scopeId        スコープ ID
+     * @param scopeType      スコープ種別（"TEAM" / "ORGANIZATION"）
+     * @param permissionName 必要な Permission 名
+     * @return 権限を保有していれば true
+     */
+    public boolean hasPermission(Long userId, Long scopeId, String scopeType, String permissionName) {
+        return roleService.hasPermission(userId, scopeId, scopeType, permissionName);
     }
 
     // ========================================

@@ -10,8 +10,10 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.dashboard.MinRole;
 import com.mannschaft.app.dashboard.ScopeType;
+import com.mannschaft.app.dashboard.SwipeWidgetKey;
 import com.mannschaft.app.dashboard.ViewerRole;
 import com.mannschaft.app.dashboard.WidgetKey;
+import com.mannschaft.app.dashboard.dto.ActionRequiredSummaryResponse;
 import com.mannschaft.app.dashboard.dto.ActivityFeedResponse;
 import com.mannschaft.app.dashboard.dto.GreetingResponse;
 import com.mannschaft.app.dashboard.dto.OrgDashboardResponse;
@@ -50,6 +52,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * ダッシュボードデータ集約サービス。
@@ -79,6 +82,11 @@ public class DashboardService {
     private final PlatformAnnouncementRepository platformAnnouncementRepository;
     private final UserRoleRepository userRoleRepository;
     private final AnnouncementFeedQueryRepository announcementFeedQueryRepository;
+
+    // F22.1 第二波: 厳選ウィジェットサマリ + 統合「要対応」集計 + SWIPE 可視性
+    private final ScopeWidgetSummaryService scopeWidgetSummaryService;
+    private final ScopeActionRequiredFacade scopeActionRequiredFacade;
+    private final SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
 
     /** スコープ横断取得の上限スコープ数 */
     private static final int MAX_DISPLAY_SCOPES = 20;
@@ -381,6 +389,30 @@ public class DashboardService {
                 "bulletin_count", unreadBulletinCount, "chat_count", unreadChatCount);
         Map<String, Object> teamAttendanceData = Map.of("attending", 0, "absent", 0, "pending", 0);
 
+        // F22.1 第二波: 厳選ウィジェットサマリ（④ブログ/⑤チャット/⑥カレンダー/⑧要対応）を並行取得し、
+        // SWIPE_* キーの可視性（min_role=MEMBER 既定 + DB 上書き）でフィルタする。
+        Map<SwipeWidgetKey, MinRole> swipeVisibility =
+                swipeWidgetVisibilityResolver.resolve("TEAM", teamId);
+        final java.time.ZoneId userZone = TimezoneContextHolder.get();
+
+        CompletableFuture<List<Map<String, Object>>> blogFuture =
+                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildLatestBlogPosts("TEAM", teamId));
+        CompletableFuture<Map<String, Object>> chatFuture =
+                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildChatSummary("TEAM", teamId, userId));
+        CompletableFuture<Map<String, Object>> calendarFuture =
+                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildCalendarSummary("TEAM", teamId, userZone));
+        CompletableFuture<ActionRequiredSummaryResponse> actionFuture =
+                CompletableFuture.supplyAsync(() -> scopeActionRequiredFacade.getActionRequired(userId, "TEAM", teamId));
+
+        List<Map<String, Object>> teamLatestBlogPosts = swipeWidgetVisibilityResolver.filterIfVisible(
+                viewerRole, swipeVisibility, SwipeWidgetKey.SWIPE_TEAM_BLOG, joinSwipe(blogFuture));
+        Map<String, Object> teamChatSummary = swipeWidgetVisibilityResolver.filterIfVisible(
+                viewerRole, swipeVisibility, SwipeWidgetKey.SWIPE_TEAM_CHAT, joinSwipe(chatFuture));
+        Map<String, Object> teamCalendarSummary = swipeWidgetVisibilityResolver.filterIfVisible(
+                viewerRole, swipeVisibility, SwipeWidgetKey.SWIPE_TEAM_CALENDAR, joinSwipe(calendarFuture));
+        ActionRequiredSummaryResponse teamActionRequired = swipeWidgetVisibilityResolver.filterIfVisible(
+                viewerRole, swipeVisibility, SwipeWidgetKey.SWIPE_TEAM_ACTION_REQUIRED, joinSwipe(actionFuture));
+
         return TeamDashboardResponse.builder()
                 .teamNotices(filterIfVisible(viewerRole, visibilityMap, WidgetKey.TEAM_NOTICES, teamNoticeItems))
                 .teamUpcomingEvents(filterIfVisible(
@@ -404,6 +436,11 @@ public class DashboardService {
                 .platformAnnouncements(announcementItems)
                 .viewerRole(viewerRole)
                 .widgetVisibility(buildVisibilityList(viewerRole, visibilityMap))
+                // F22.1 第二波 追加フィールド
+                .teamLatestBlogPosts(teamLatestBlogPosts)
+                .teamChatSummary(teamChatSummary)
+                .teamCalendarSummary(teamCalendarSummary)
+                .teamActionRequired(teamActionRequired)
                 .build();
     }
 
@@ -468,6 +505,43 @@ public class DashboardService {
                 "new_members_this_month", 0,
                 "active_rate", 0.0);
 
+        // F22.1 第二波: 組織スコープの厳選ウィジェットを並行取得。
+        // ①②③（今後の予定/タイムライン/掲示板）は F02.2 組織未実装のため新規実装、④⑤⑥⑧も新設。
+        // SWIPE_* キーの可視性（min_role=MEMBER 既定 + DB 上書き）でフィルタする。
+        Map<SwipeWidgetKey, MinRole> swipeVisibility =
+                swipeWidgetVisibilityResolver.resolve("ORGANIZATION", orgId);
+        final java.time.ZoneId userZone = TimezoneContextHolder.get();
+
+        CompletableFuture<List<Map<String, Object>>> upcomingFuture =
+                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildOrgUpcomingEvents(orgId));
+        CompletableFuture<List<Map<String, Object>>> postsFuture =
+                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildOrgLatestPosts(orgId));
+        CompletableFuture<Map<String, Object>> unreadFuture =
+                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildOrgUnreadThreads(orgId, userId));
+        CompletableFuture<List<Map<String, Object>>> blogFuture =
+                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildLatestBlogPosts("ORGANIZATION", orgId));
+        CompletableFuture<Map<String, Object>> chatFuture =
+                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildChatSummary("ORGANIZATION", orgId, userId));
+        CompletableFuture<Map<String, Object>> calendarFuture =
+                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildCalendarSummary("ORGANIZATION", orgId, userZone));
+        CompletableFuture<ActionRequiredSummaryResponse> actionFuture =
+                CompletableFuture.supplyAsync(() -> scopeActionRequiredFacade.getActionRequired(userId, "ORGANIZATION", orgId));
+
+        List<Map<String, Object>> orgUpcomingEvents = swipeWidgetVisibilityResolver.filterIfVisible(
+                viewerRole, swipeVisibility, SwipeWidgetKey.SWIPE_ORG_UPCOMING, joinSwipe(upcomingFuture));
+        List<Map<String, Object>> orgLatestPosts = swipeWidgetVisibilityResolver.filterIfVisible(
+                viewerRole, swipeVisibility, SwipeWidgetKey.SWIPE_ORG_TIMELINE, joinSwipe(postsFuture));
+        Map<String, Object> orgUnreadThreads = swipeWidgetVisibilityResolver.filterIfVisible(
+                viewerRole, swipeVisibility, SwipeWidgetKey.SWIPE_ORG_BULLETIN, joinSwipe(unreadFuture));
+        List<Map<String, Object>> orgLatestBlogPosts = swipeWidgetVisibilityResolver.filterIfVisible(
+                viewerRole, swipeVisibility, SwipeWidgetKey.SWIPE_ORG_BLOG, joinSwipe(blogFuture));
+        Map<String, Object> orgChatSummary = swipeWidgetVisibilityResolver.filterIfVisible(
+                viewerRole, swipeVisibility, SwipeWidgetKey.SWIPE_ORG_CHAT, joinSwipe(chatFuture));
+        Map<String, Object> orgCalendarSummary = swipeWidgetVisibilityResolver.filterIfVisible(
+                viewerRole, swipeVisibility, SwipeWidgetKey.SWIPE_ORG_CALENDAR, joinSwipe(calendarFuture));
+        ActionRequiredSummaryResponse orgActionRequired = swipeWidgetVisibilityResolver.filterIfVisible(
+                viewerRole, swipeVisibility, SwipeWidgetKey.SWIPE_ORG_ACTION_REQUIRED, joinSwipe(actionFuture));
+
         return OrgDashboardResponse.builder()
                 .orgTeamList(filterIfVisible(viewerRole, visibilityMap, WidgetKey.ORG_TEAM_LIST, List.of()))
                 .orgNotices(filterIfVisible(viewerRole, visibilityMap, WidgetKey.ORG_NOTICES, orgNoticeItems))
@@ -481,7 +555,31 @@ public class DashboardService {
                 .platformAnnouncements(announcementItems)
                 .viewerRole(viewerRole)
                 .widgetVisibility(buildVisibilityList(viewerRole, visibilityMap))
+                // F22.1 第二波 追加フィールド（①②③ 組織新設 + ④⑤⑥⑧）
+                .orgUpcomingEvents(orgUpcomingEvents)
+                .orgLatestPosts(orgLatestPosts)
+                .orgUnreadThreads(orgUnreadThreads)
+                .orgLatestBlogPosts(orgLatestBlogPosts)
+                .orgChatSummary(orgChatSummary)
+                .orgCalendarSummary(orgCalendarSummary)
+                .orgActionRequired(orgActionRequired)
                 .build();
+    }
+
+    /**
+     * F22.1 第二波: SWIPE サマリの並行取得結果を取り出す。
+     *
+     * <p>各サマリは独立した {@link CompletableFuture} で取得され、本メソッドで結果を join する。
+     * 取得中の例外は握り潰さずログに出し、当該ウィジェットのみ null（＝レスポンスから省略）に縮退する
+     * （対処療法禁止: 1 ウィジェットの一時障害でダッシュボード全体を 500 にしない）。</p>
+     */
+    private <T> T joinSwipe(CompletableFuture<T> future) {
+        try {
+            return future.join();
+        } catch (RuntimeException ex) {
+            log.warn("DashboardService: SWIPE ウィジェットサマリの取得に失敗。当該ウィジェットを省略します。", ex);
+            return null;
+        }
     }
 
     /**

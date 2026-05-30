@@ -293,9 +293,16 @@ public class ChatChannelController {
      *   <li>アーカイブ済みのチャンネルへの設定変更は不可</li>
      *   <li>{@code is_inquiry_channel=true} にする場合、同チームに既に問い合わせチャンネルがあれば 409 Conflict</li>
      * </ul>
+     *
+     * <p><b>認可（認可根治 Phase 3-b / 2026-05-30）:</b> 旧 {@code @PreAuthorize("hasRole('ADMIN')")} は
+     * {@code @EnableMethodSecurity} 点火時に JWT へ ROLE_ADMIN が乗らず一斉 403 となるため是正した。
+     * scope は <b>パス変数でなくチャンネルエンティティ由来</b>（{@code channelId} から取得した teamId）であり
+     * SpEL でパス変数参照できないため、宣言は {@code isAuthenticated()} とし、真の per-scope 認可は
+     * {@code ChatChannelService.updateInquiryChannel} 内で {@code AccessControlService} により強制する
+     *（当該チャンネルのチーム ADMIN/DEPUTY_ADMIN、または SYSTEM_ADMIN 短絡）。</p>
      */
     @PatchMapping("/{channelId}/inquiry")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "問い合わせチャンネル設定更新（F10.7）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "チームチャンネル以外 / アーカイブ済み")
