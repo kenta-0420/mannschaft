@@ -110,6 +110,20 @@ public class RecruitmentListingEntity extends BaseEntity {
     @Column(length = 200)
     private String location;
 
+    /**
+     * 都道府県コード（JIS X 0401・CHAR(2)）。F22.1 市の地域フィルタ用。
+     * {@code prefectures.code} を参照（FK なし・Service 検証）。地域未指定の札は NULL。
+     */
+    @Column(name = "prefecture_code", length = 2)
+    private String prefectureCode;
+
+    /**
+     * 市区町村コード（JIS X 0402・CHAR(5)）。F22.1 市の地域フィルタ用。
+     * {@code cities.code} を参照（FK なし・Service 検証）。市区町村未確定の札は NULL。
+     */
+    @Column(name = "city_code", length = 5)
+    private String cityCode;
+
     private Long reservationLineId;
 
     @Column(length = 500)
@@ -168,6 +182,23 @@ public class RecruitmentListingEntity extends BaseEntity {
             throw new IllegalStateException("OPEN/FULL 以外は autoCancel できません: status=" + this.status);
         }
         this.status = RecruitmentListingStatus.AUTO_CANCELLED;
+    }
+
+    /**
+     * F22.1 市「札を下げる」最終認証: FULL → COMPLETED に遷移する。
+     *
+     * <p>札が要件充足（{@code FULL}）した後、札主が F04.9 確認通知で最終認証
+     * （{@code source_type='MARKET_FINALIZE'}）に応答したときに呼び出す。
+     * 「要件充足だが未認証」は {@code FULL}、「最終認証済み」は {@code COMPLETED} で
+     * 表現する（新カラム不要・02_api_design §6.1）。</p>
+     *
+     * @throws IllegalStateException FULL 以外の状態から呼び出した場合
+     */
+    public void finalizeComplete() {
+        if (this.status != RecruitmentListingStatus.FULL) {
+            throw new IllegalStateException("FULL 以外からは finalizeComplete できません: status=" + this.status);
+        }
+        this.status = RecruitmentListingStatus.COMPLETED;
     }
 
     /** 論理削除を行う。 */

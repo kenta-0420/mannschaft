@@ -41,7 +41,7 @@
 |---|---|---|
 | 札の作成/公開/定員/自動キャンセル/テンプレート/配信先/カテゴリ | **F03.11 募集機能** | ✅ 実装済 |
 | 応募・キャンセル待ち・自動繰上げ・リマインド | **F03.11**（`recruitment_participants` / `recruitment_reminders` + バッチ） | ✅ 実装済 |
-| 最終認証（札主の確認応答） | **F04.9 確認通知**（`confirmable_notifications`） | ✅ 実装済（source_type 拡張のみ） |
+| 最終認証（札主の確認応答） | **F04.9 確認通知**（`confirmable_notifications`） | ✅ 通知基盤は実装済。ただし `source_type`/`source_id` の JPAマッピングが欠落していたため第一陣で追加（乖離A）。`MARKET_FINALIZE` 連携の発火・確認後リスナは第二陣で新規実装 |
 | 懇意のチーム（フレンドチーム）宛の非公開札 | **F01.5 フレンドチーム関係**（`team_friends` / フレンドフォルダ） | 🟢 設計済 |
 | 都道府県・市区町村マスタ | **既存 `prefectures` / `cities`**（全国約1,900件 seed 済、`PrefectureEntity`/`CityEntity`） | ✅ 実装済 |
 | 将来の謝礼決済 | **F13.1 短期業務マッチング**（Stripe Connect / エスクロー） | ✅ 実装済（委譲フックのみ） |
@@ -113,7 +113,9 @@
 
 > Phase 2 は別途 `/軍議` で個別設計する。本書は Phase 2 の**拡張点（フック）が破綻しないこと**だけを保証する。
 
-**実装依存（フレンド宛非公開札）**: 宛先解決は F01.5 に依存する。`team_friends`（V9.072）は**実装済**のため `ALL_FRIENDS`/`TEAM` 粒度は Phase 1 で実装可能。`FOLDER` 粒度は F01.5 の**フレンドフォルダ（`team_friend_folders`）実装完了が前提**で、未実装ならその完了まで gating（UI/APIで「フォルダ指定」を非表示・受付拒否）。3粒度すべての利用可否はこの依存で段階解放する。
+**実装依存（フレンド宛非公開札）**: 宛先解決は F01.5 に依存する。`team_friends`（V9.072）/ フレンドフォルダ `team_friend_folders`（V9.073）はいずれも**実装済**。
+
+> **乖離C 是正（第一陣・部隊1 / 2026-05-30）**: 当初「`FOLDER` 粒度はフレンドフォルダ未実装ゆえ gating」と記していたが、`team_friend_folders` は **V9.073 で既に実装済**であることを確認した。よって **`ALL_FRIENDS`/`FOLDER`/`TEAM` の3粒度すべてを Phase 1 で実装する（FOLDER の UI/API gating は不要）**。
 
 ---
 
