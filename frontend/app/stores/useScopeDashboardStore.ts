@@ -55,6 +55,12 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
     tabPages: {} as Partial<Record<ScopeTabType, ScopeTabPage>>,
     /** 初期ロード完了フラグ */
     loaded: false,
+    /**
+     * 直近のエラー i18n キー（null = エラーなし）。
+     * UI（Wave 3 のコンポーネント）が `$t(lastError)` で表示する。
+     * store 層では生文言を持たない（i18n 直書き禁止・UI 層で翻訳）。
+     */
+    lastError: null as string | null,
   }),
 
   actions: {
@@ -111,36 +117,41 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
         const { getScopeTabs } = useScopeTabApi()
         const result = await getScopeTabs(scopeType, page, this.activeFolderId ?? undefined)
         this.tabPages[scopeType] = result
+        this.lastError = null
+
+        // 先頭スコープ（存在すれば）。undefined ガードで noUncheckedIndexedAccess に適合。
+        const first = result.items[0]
 
         // 先頭スコープを自動選択（未選択の場合のみ）
-        if (result.items.length > 0) {
+        if (first) {
           if (scopeType === 'TEAM' && this.selectedTeamId === null) {
-            this.selectedTeamId = result.items[0].scopeId
+            this.selectedTeamId = first.scopeId
           } else if (scopeType === 'ORGANIZATION' && this.selectedOrgId === null) {
-            this.selectedOrgId = result.items[0].scopeId
+            this.selectedOrgId = first.scopeId
           }
         }
 
         // 選択中スコープが一覧から消えた場合は先頭へフォールバック（退会・権限喪失対応）
         if (scopeType === 'TEAM' && this.selectedTeamId !== null) {
           const exists = result.items.some(item => item.scopeId === this.selectedTeamId)
-          if (!exists && result.items.length > 0) {
-            this.selectedTeamId = result.items[0].scopeId
+          if (!exists && first) {
+            this.selectedTeamId = first.scopeId
             this.persistToStorage()
           }
         } else if (scopeType === 'ORGANIZATION' && this.selectedOrgId !== null) {
           const exists = result.items.some(item => item.scopeId === this.selectedOrgId)
-          if (!exists && result.items.length > 0) {
-            this.selectedOrgId = result.items[0].scopeId
+          if (!exists && first) {
+            this.selectedOrgId = first.scopeId
             this.persistToStorage()
           }
         }
 
         this.loaded = true
-      } catch {
-        // エラーは握りつぶさずトーストで通知し、localStorage の最後の状態で継続
-        const { showError } = useNotification()
-        showError('タグ一覧の取得に失敗しました')
+      } catch (e) {
+        // エラーは握りつぶさない。ログを残し、i18n キーをエラー状態に保持して
+        // （UI 層が $t で表示）localStorage の最後の状態で継続する。
+        console.error('[scopeDashboard] loadTabs failed', e)
+        this.lastError = 'scopeDashboard.tagBar.loadError'
         this.loaded = true
       }
     },
@@ -161,12 +172,13 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
       try {
         const { updateOrder } = useScopeTabApi()
         await updateOrder({ scopeType, orders })
-      } catch {
-        // ロールバック
+        this.lastError = null
+      } catch (e) {
+        // ロールバック。エラーは握りつぶさず、ログ + i18n キーを状態に保持（UI 層が $t 表示）。
         this.tabOrders[scopeType] = prev
         this.persistToStorage()
-        const { showError } = useNotification()
-        showError('表示順の保存に失敗しました')
+        console.error('[scopeDashboard] reorder failed', e)
+        this.lastError = 'scopeDashboard.orderDialog.saveError'
       }
     },
 
