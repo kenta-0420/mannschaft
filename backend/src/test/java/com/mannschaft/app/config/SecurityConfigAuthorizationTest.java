@@ -128,6 +128,16 @@ class SecurityConfigAuthorizationTest {
         com.mannschaft.app.event.EventDelegationRateLimitFilter eventDelegationRateLimitFilter() {
             return new com.mannschaft.app.event.EventDelegationRateLimitFilter();
         }
+
+        /**
+         * F22.1: SecurityConfig が依存する DashboardScopeTabRateLimitFilter の
+         * 本物インスタンス。本テストは対象パス（PUT /api/v1/dashboard/scope-tabs/order）を
+         * 叩かないため、何もせず chain.doFilter に通す挙動になる。
+         */
+        @Bean
+        com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter dashboardScopeTabRateLimitFilter() {
+            return new com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter();
+        }
     }
 
     @Autowired

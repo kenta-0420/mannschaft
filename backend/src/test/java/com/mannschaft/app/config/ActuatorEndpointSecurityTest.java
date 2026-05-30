@@ -177,6 +177,16 @@ class ActuatorEndpointSecurityTest {
         com.mannschaft.app.event.EventDelegationRateLimitFilter eventDelegationRateLimitFilter() {
             return new com.mannschaft.app.event.EventDelegationRateLimitFilter();
         }
+
+        /**
+         * F22.1: SecurityConfig が依存する DashboardScopeTabRateLimitFilter の
+         * 本物インスタンス。スケジュール/イベント側と同型で、本テストは対象パス
+         * （PUT /api/v1/dashboard/scope-tabs/order）に一致せず素通しする。
+         */
+        @Bean
+        com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter dashboardScopeTabRateLimitFilter() {
+            return new com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter();
+        }
     }
 
     @Autowired
