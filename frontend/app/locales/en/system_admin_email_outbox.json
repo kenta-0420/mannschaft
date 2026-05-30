@@ -1,62 +1,62 @@
 {
   "email_outbox": {
-    "title": "メール送信キュー",
+    "title": "Email Delivery Queue",
     "metrics": {
-      "pending": "待機中",
-      "dead_letter": "デッドレター",
-      "success_rate": "24h 成功率",
-      "oldest_pending": "最古待機（秒）"
+      "pending": "Pending",
+      "dead_letter": "Dead Letter",
+      "success_rate": "24h Success Rate",
+      "oldest_pending": "Oldest Pending (sec)"
     },
     "filter": {
-      "status": "ステータス",
-      "source_domain": "送信元ドメイン",
-      "from_date": "開始日",
-      "to_date": "終了日",
-      "all_statuses": "全ステータス",
-      "apply": "適用",
-      "clear": "クリア"
+      "status": "Status",
+      "source_domain": "Source Domain",
+      "from_date": "From Date",
+      "to_date": "To Date",
+      "all_statuses": "All Statuses",
+      "apply": "Apply",
+      "clear": "Clear"
     },
     "table": {
       "id": "ID",
-      "status": "ステータス",
-      "template": "テンプレート",
-      "source": "送信元",
-      "retry_count": "リトライ回数",
-      "created_at": "作成日時",
-      "actions": "操作"
+      "status": "Status",
+      "template": "Template",
+      "source": "Source",
+      "retry_count": "Retry Count",
+      "created_at": "Created At",
+      "actions": "Actions"
     },
     "detail": {
-      "title": "詳細",
-      "to_address": "宛先",
-      "payload_vars": "テンプレート変数",
-      "ses_message_id": "SES メッセージ ID",
-      "body_purged": "本文は GDPR ポリシーにより消去済みです",
-      "next_attempt_at": "次回試行予定",
-      "sent_at": "送信日時",
-      "last_error": "最後のエラー",
-      "locale": "ロケール",
-      "source_domain": "送信元ドメイン",
-      "source_event_id": "送信元イベント ID"
+      "title": "Details",
+      "to_address": "Recipient",
+      "payload_vars": "Template Variables",
+      "ses_message_id": "SES Message ID",
+      "body_purged": "Body has been purged per GDPR policy",
+      "next_attempt_at": "Next Attempt Scheduled",
+      "sent_at": "Sent At",
+      "last_error": "Last Error",
+      "locale": "Locale",
+      "source_domain": "Source Domain",
+      "source_event_id": "Source Event ID"
     },
     "action": {
-      "retry": "再試行",
-      "cancel": "キャンセル",
-      "back": "一覧へ戻る"
+      "retry": "Retry",
+      "cancel": "Cancel",
+      "back": "Back to List"
     },
     "status": {
-      "PENDING": "待機中",
-      "SENDING": "送信中",
-      "SENT": "送信済み",
-      "FAILED": "失敗",
-      "DEAD_LETTER": "デッドレター",
-      "CANCELLED": "キャンセル済み"
+      "PENDING": "Pending",
+      "SENDING": "Sending",
+      "SENT": "Sent",
+      "FAILED": "Failed",
+      "DEAD_LETTER": "Dead Letter",
+      "CANCELLED": "Cancelled"
     },
-    "retry_success": "再試行キューに登録しました",
-    "cancel_success": "キャンセルしました",
-    "retry_conflict": "この状態では再試行できません",
-    "cancel_conflict": "この状態ではキャンセルできません",
-    "load_failed": "データの取得に失敗しました",
-    "no_data": "データがありません",
+    "retry_success": "Added to retry queue",
+    "cancel_success": "Cancelled successfully",
+    "retry_conflict": "Cannot retry in this state",
+    "cancel_conflict": "Cannot cancel in this state",
+    "load_failed": "Failed to load data",
+    "no_data": "No data available",
     "na": "N/A"
   }
 }

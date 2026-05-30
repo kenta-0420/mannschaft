@@ -1,35 +1,35 @@
 {
   "data_export": {
-    "section_title": "データエクスポート",
-    "export_button": "個人データをエクスポート",
-    "status_completed": "完了",
-    "status_failed": "失敗",
-    "status_processing": "処理中",
-    "download_button": "ダウンロード",
-    "fetch_error": "エクスポート状態の取得に失敗しました",
-    "step_completed": "エクスポート完了 — ダウンロード期限: {expiry}",
-    "step_failed": "エクスポートに失敗しました",
-    "step_processing": "エクスポート中...",
-    "step_preparing": "準備中..."
+    "section_title": "Datenexport",
+    "export_button": "Persönliche Daten exportieren",
+    "status_completed": "Abgeschlossen",
+    "status_failed": "Fehlgeschlagen",
+    "status_processing": "In Bearbeitung",
+    "download_button": "Herunterladen",
+    "fetch_error": "Exportstatus konnte nicht abgerufen werden",
+    "step_completed": "Export abgeschlossen — Download läuft ab: {expiry}",
+    "step_failed": "Export fehlgeschlagen",
+    "step_processing": "Exportiere...",
+    "step_preparing": "Wird vorbereitet..."
   },
   "deletion_preview": {
-    "dialog_title": "アカウント削除の確認",
-    "confirm_message": "この操作は取り消せません。本当にアカウントを削除しますか？",
-    "loading": "削除プレビューを読み込み中...",
-    "warning_title": "注意事項",
-    "deleted_data_title": "削除されるデータ",
-    "anonymized_data_title": "匿名化されるデータ",
-    "table_category": "カテゴリ",
-    "table_count": "件数",
-    "table_count_unit": "{count}件",
-    "table_entity": "対象",
-    "table_field": "フィールド",
-    "cancel_button": "キャンセル",
-    "delete_button": "削除する",
-    "fetch_error": "削除プレビューの取得に失敗しました"
+    "dialog_title": "Kontolöschung bestätigen",
+    "confirm_message": "Diese Aktion kann nicht rückgängig gemacht werden. Sind Sie sicher, dass Sie Ihr Konto löschen möchten?",
+    "loading": "Löschvorschau wird geladen...",
+    "warning_title": "Wichtige Hinweise",
+    "deleted_data_title": "Zu löschende Daten",
+    "anonymized_data_title": "Zu anonymisierende Daten",
+    "table_category": "Kategorie",
+    "table_count": "Anzahl",
+    "table_count_unit": "{count} Einträge",
+    "table_entity": "Ziel",
+    "table_field": "Feld",
+    "cancel_button": "Abbrechen",
+    "delete_button": "Löschen",
+    "fetch_error": "Löschvorschau konnte nicht abgerufen werden"
   },
   "signature": {
-    "clear": "クリア"
+    "clear": "Löschen"
   },
   "nav": {
     "calendar": "Kalender",
