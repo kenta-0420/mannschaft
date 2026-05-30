@@ -259,20 +259,29 @@ public class TodoStatusLabelService {
     }
 
     /**
-     * SYSTEM 既定ラベルを bucket → entity の Map で取得する（F02.3.1 後続 B-6）。
+     * SYSTEM 既定ラベルを bucket名 → entity の Map で取得する（F02.3.1 後続 B-6）。
      *
      * <p>{@link TodoStatusBucket} ごとに1件ずつ存在することを想定。SYSTEM 既定ラベルは
      * V19.003 マイグレーションで投入され、論理削除も改名も発生しないため
      * {@link Cacheable} でキャッシュする。バケット → ラベル の即時参照に使用。</p>
      *
-     * @return bucket をキーとした SYSTEM 既定ラベルのマップ（空はあり得ないが、欠落時は空の Map を返す）
+     * <p><strong>キーが {@link TodoStatusBucket} ではなく {@code String}（= {@code bucket.name()}）
+     * である理由:</strong> Redis(Valkey) の JSON シリアライザ（{@code GenericJackson2JsonRedisSerializer}）
+     * は Map を JSON オブジェクト化するが、JSON のキーは常に文字列であり、デシリアライズ時に
+     * 「キーが enum 型である」という情報が失われる。{@code EnumMap<TodoStatusBucket, ...>} を
+     * キャッシュするとキャッシュ HIT 時にキーが {@code String} 化した Map が返り、
+     * {@code map.get(bucket)}（enum キー）が常に null を返して既定ラベル参照が静かに壊れる。
+     * キーを最初から {@code String} にすることで JSON ラウンドトリップで形が崩れない。</p>
+     *
+     * @return bucket名（{@link TodoStatusBucket#name()}）をキーとした SYSTEM 既定ラベルのマップ
+     *         （空はあり得ないが、欠落時は空の Map を返す）
      */
     @Cacheable("systemDefaultLabels")
-    public Map<TodoStatusBucket, TodoStatusLabelEntity> getSystemDefaultsByBucket() {
-        Map<TodoStatusBucket, TodoStatusLabelEntity> result = new java.util.EnumMap<>(TodoStatusBucket.class);
+    public Map<String, TodoStatusLabelEntity> getSystemDefaultsByBucket() {
+        Map<String, TodoStatusLabelEntity> result = new java.util.LinkedHashMap<>();
         for (TodoStatusLabelEntity entity : labelRepository.findAllSystemDefaults()) {
             // 同一 bucket が複数あった場合は sort_order が小さい方を優先（findAllSystemDefaults が ASC 順）
-            result.putIfAbsent(entity.getBucket(), entity);
+            result.putIfAbsent(entity.getBucket().name(), entity);
         }
         return Map.copyOf(result);
     }
@@ -287,7 +296,7 @@ public class TodoStatusLabelService {
         if (bucket == null) {
             return Optional.empty();
         }
-        return Optional.ofNullable(getSystemDefaultsByBucket().get(bucket));
+        return Optional.ofNullable(getSystemDefaultsByBucket().get(bucket.name()));
     }
 
     // ─────────────────────────────────────────────
