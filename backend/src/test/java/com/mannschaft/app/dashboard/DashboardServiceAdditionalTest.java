@@ -73,6 +73,9 @@ class DashboardServiceAdditionalTest {
     @Mock private AnnouncementFeedQueryRepository announcementFeedQueryRepository;
     @Mock private com.mannschaft.app.dashboard.service.RoleResolver roleResolver;
     @Mock private com.mannschaft.app.dashboard.service.WidgetVisibilityResolver widgetVisibilityResolver;
+    @Mock private com.mannschaft.app.dashboard.service.ScopeWidgetSummaryService scopeWidgetSummaryService;
+    @Mock private com.mannschaft.app.dashboard.service.ScopeActionRequiredFacade scopeActionRequiredFacade;
+    @Mock private com.mannschaft.app.dashboard.service.SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
 
     @InjectMocks
     private DashboardService dashboardService;
@@ -92,6 +95,18 @@ class DashboardServiceAdditionalTest {
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.anyLong()))
                 .thenReturn(java.util.Map.of());
+
+        // F22.1 第二波: SWIPE 可視性は素通し。
+        org.mockito.Mockito.lenient().when(swipeWidgetVisibilityResolver.resolve(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyLong()))
+                .thenReturn(java.util.Map.of());
+        org.mockito.Mockito.lenient().when(swipeWidgetVisibilityResolver.filterIfVisible(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(3));
     }
 
     private void stubCommonPersonal() {

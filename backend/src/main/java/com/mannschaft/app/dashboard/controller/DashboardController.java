@@ -88,6 +88,9 @@ public class DashboardController {
     private final OrganizationRepository organizationRepository;
     private final ContentVisibilityChecker contentVisibilityChecker;
 
+    /** F22.1 第二波: 統合「要対応」集計の遅延取得（第 2 段階）に使用する。 */
+    private final com.mannschaft.app.dashboard.service.ScopeActionRequiredFacade scopeActionRequiredFacade;
+
     // ============================================
     // 個人ダッシュボード
     // ============================================
@@ -391,6 +394,40 @@ public class DashboardController {
             @Parameter(description = "統計期間（TODAY / WEEK / MONTH）") @RequestParam(defaultValue = "WEEK") String statsPeriod) {
         Long userId = SecurityUtils.getCurrentUserId();
         OrgDashboardResponse response = dashboardService.getOrgDashboard(userId, orgId, statsPeriod);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * F22.1 第二波: チームの統合「要対応」集計を取得する（第 2 段階・遅延取得）。
+     *
+     * <p>回覧板（未確認）/アンケート（未回答）/出欠（未回答）を 1 つに集約して返す。
+     * 認可は所属検証（{@code checkMembership}）を {@link com.mannschaft.app.dashboard.service.ScopeActionRequiredFacade}
+     * 内で通したうえで、各ドメイン Service が per-scope 認可を再適用する（集計バイパス禁止）。
+     * GET 読み取りのため監査ログ対象外（02 §6）。</p>
+     */
+    @GetMapping("/team/{teamId}/action-required")
+    @Operation(summary = "チーム統合「要対応」集計",
+            description = "回覧板/アンケート/出欠の未対応を集約。横スワイプ・ダッシュボードのビューポート進入時に遅延取得")
+    public ResponseEntity<ApiResponse<com.mannschaft.app.dashboard.dto.ActionRequiredSummaryResponse>>
+            getTeamActionRequired(@PathVariable Long teamId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        com.mannschaft.app.dashboard.dto.ActionRequiredSummaryResponse response =
+                scopeActionRequiredFacade.getActionRequired(userId, "TEAM", teamId);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * F22.1 第二波: 組織の統合「要対応」集計を取得する（第 2 段階・遅延取得）。
+     * 仕様は {@link #getTeamActionRequired} の組織版。
+     */
+    @GetMapping("/organization/{orgId}/action-required")
+    @Operation(summary = "組織統合「要対応」集計",
+            description = "回覧板/アンケート/出欠の未対応を集約（組織スコープ）")
+    public ResponseEntity<ApiResponse<com.mannschaft.app.dashboard.dto.ActionRequiredSummaryResponse>>
+            getOrgActionRequired(@PathVariable Long orgId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        com.mannschaft.app.dashboard.dto.ActionRequiredSummaryResponse response =
+                scopeActionRequiredFacade.getActionRequired(userId, "ORGANIZATION", orgId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
