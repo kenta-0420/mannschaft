@@ -1,5 +1,6 @@
 package com.mannschaft.app.village.dto;
 
+import com.mannschaft.app.village.entity.enums.VillageBulletinVisibility;
 import com.mannschaft.app.village.entity.enums.VillageJoinPolicy;
 import com.mannschaft.app.village.entity.enums.VillageType;
 import com.mannschaft.app.village.entity.enums.VillageVisibility;
@@ -22,8 +23,9 @@ import jakarta.validation.constraints.Size;
  * @param type         村種別（OFFICIAL / COMMUNITY）
  * @param joinPolicy   参加方式（FREE / APPROVAL）
  * @param visibility   可視性（PUBLIC / UNLISTED）
- * @param category     カテゴリ（任意・最大 40 文字）
- * @param guidelineMd  ガイドライン Markdown（任意）
+ * @param category           カテゴリ（任意・最大 40 文字）
+ * @param bulletinVisibility 掲示板公開範囲（任意・null のとき Service で MEMBERS_ONLY 既定）
+ * @param guidelineMd        ガイドライン Markdown（任意）
  */
 public record VillageCreateRequest(
         @NotBlank
@@ -48,6 +50,8 @@ public record VillageCreateRequest(
 
         @Size(max = 40)
         String category,
+
+        VillageBulletinVisibility bulletinVisibility,
 
         String guidelineMd
 ) {}

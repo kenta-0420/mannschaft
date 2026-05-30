@@ -153,10 +153,28 @@ public class BulletinThreadEntity extends BaseEntity {
     }
 
     /**
+     * ピン留め状態を明示値で設定する（F17.1 村掲示板グローバル方式 set 方式）。
+     *
+     * @param pinned 設定するピン留め状態
+     */
+    public void setPinned(boolean pinned) {
+        this.isPinned = pinned;
+    }
+
+    /**
      * ロック状態を切り替える。
      */
     public void toggleLock() {
         this.isLocked = !this.isLocked;
+    }
+
+    /**
+     * ロック状態を明示値で設定する（F17.1 村掲示板グローバル方式 set 方式）。
+     *
+     * @param locked 設定するロック状態
+     */
+    public void setLocked(boolean locked) {
+        this.isLocked = locked;
     }
 
     /**

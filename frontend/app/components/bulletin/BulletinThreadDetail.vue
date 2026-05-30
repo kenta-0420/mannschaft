@@ -10,18 +10,24 @@ const emit = defineEmits<{
   back: []
 }>()
 
-const { getThread, markRead, createReply, togglePin, toggleLock, deleteThread } = useBulletinApi()
+const { getThread, markRead, getReplies, createReply, togglePin, toggleLock, deleteThread } = useBulletinApi()
 const { showSuccess, showError } = useNotification()
 const { relativeTime } = useRelativeTime()
 
-const thread = ref<(BulletinThreadResponse & { replies: BulletinReplyResponse[] }) | null>(null)
+const thread = ref<BulletinThreadResponse | null>(null)
+/** 返信一覧（スレッド詳細とは別APIで取得: GET /api/v1/bulletin/threads/{threadId}/replies） */
+const replies = ref<BulletinReplyResponse[]>([])
 const replyBody = ref('')
 const submitting = ref(false)
 
 async function loadThread() {
   try {
-    const res = await getThread(props.threadId)
-    thread.value = res.data
+    const [threadRes, repliesRes] = await Promise.all([
+      getThread(props.threadId),
+      getReplies(props.threadId),
+    ])
+    thread.value = threadRes.data
+    replies.value = repliesRes.data ?? []
     markRead(props.threadId)
   } catch {
     showError('スレッドの取得に失敗しました')
@@ -33,7 +39,7 @@ async function onReply() {
   submitting.value = true
   try {
     const res = await createReply(props.threadId, replyBody.value.trim())
-    thread.value?.replies.push(res.data)
+    replies.value.push(res.data)
     if (thread.value) thread.value.replyCount++
     replyBody.value = ''
     showSuccess('返信しました')
@@ -110,7 +116,7 @@ watch(() => props.threadId, () => loadThread())
       <h3 class="mb-3 text-sm font-semibold text-surface-500">返信 {{ thread.replyCount }}件</h3>
       <div class="flex flex-col gap-3">
         <div
-          v-for="reply in thread.replies"
+          v-for="reply in replies"
           :key="reply.id"
           class="rounded-lg border border-surface-100 bg-surface-0 p-4"
           :style="{ marginLeft: `${reply.depth * 24}px` }"

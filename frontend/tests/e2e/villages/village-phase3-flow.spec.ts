@@ -44,6 +44,7 @@ const MOCK_VILLAGE: VillageResponse = {
   iconR2Key: null,
   coverR2Key: null,
   guidelineMd: null,
+  bulletinVisibility: 'MEMBERS_ONLY',
   memberCount: 5,
   isOfficial: false,
   isMember: true,

@@ -322,8 +322,19 @@ public class PostingIdentityService {
         return v;
     }
 
-    /** 当該ユーザーが対象村の現役 USER 主体メンバーであるか。 */
-    private boolean isUserVillageMember(UUID villageId, Long userId) {
+    /**
+     * 当該ユーザーが対象村の現役 USER 主体メンバーであるか。
+     *
+     * <p>村メンバーシップ（{@code village_memberships}）に基づく村メンバー判定の正準実装。
+     * 村掲示板グローバル方式の閲覧認可（{@code VillageBulletinAccessService}）など、
+     * village ドメイン内の他サービスからも参照されるため public とする。
+     * 退会（{@code left_at}）・BAN（{@code banned_at}）済みは非メンバー扱い。</p>
+     *
+     * @param villageId 対象村 ID
+     * @param userId    判定対象ユーザー ID
+     * @return 現役 USER メンバーなら {@code true}
+     */
+    public boolean isUserVillageMember(UUID villageId, Long userId) {
         return membershipRepository
                 .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
                         villageId, VillageSubjectType.USER, userId)

@@ -474,6 +474,10 @@ public class GlobalExceptionHandler {
             Map.entry("VILLAGE_078", HttpStatus.NOT_FOUND),            // NEWSLETTER_NOT_FOUND
             Map.entry("VILLAGE_079", HttpStatus.CONFLICT),             // NEWSLETTER_ALREADY_OPTED_OUT
             Map.entry("VILLAGE_080", HttpStatus.CONFLICT),             // NEWSLETTER_NOT_OPTED_OUT
+            // F17.1 村掲示板グローバル方式 — 掲示板閲覧認可（VILLAGE_081）
+            Map.entry("VILLAGE_081", HttpStatus.FORBIDDEN),            // VILLAGE_BULLETIN_VIEW_FORBIDDEN
+            // F17.1 村掲示板グローバル方式 — モデレーション認可（VILLAGE_082）
+            Map.entry("VILLAGE_082", HttpStatus.FORBIDDEN),            // VILLAGE_BULLETIN_MODERATE_FORBIDDEN
 
             // F17 Phase 3-β — 村史（VILLAGE_075）
             Map.entry("VILLAGE_075", HttpStatus.NOT_FOUND),            // CHRONICLE_NOT_FOUND
@@ -556,7 +560,12 @@ public class GlobalExceptionHandler {
             Map.entry("BULLETIN_020", HttpStatus.CONFLICT),           // ARCHIVE_FOLDER_SCOPE_MISMATCH
             Map.entry("BULLETIN_021", HttpStatus.CONFLICT),           // THREAD_NOT_ARCHIVED
             // F21.1 §5.5 FAQ駆動GEO（FAQ_001〜005 はバリデーション = Severity.WARN 既定 400 / FAQ_010 は IDOR 対策で 404）
-            Map.entry("FAQ_010", HttpStatus.NOT_FOUND)                // 対象チーム / 組織が存在しない（IDOR 対策で 404）
+            Map.entry("FAQ_010", HttpStatus.NOT_FOUND),               // 対象チーム / 組織が存在しない（IDOR 対策で 404）
+            // F22.1 横スワイプ・ダッシュボード scope-tabs（02_api_design.md §4）
+            Map.entry("SCOPE_TAB_001", HttpStatus.FORBIDDEN),         // 非所属スコープ混入 → 全体拒否
+            Map.entry("SCOPE_TAB_002", HttpStatus.BAD_REQUEST),      // sortOrder 重複 / 範囲外
+            Map.entry("SCOPE_TAB_003", HttpStatus.BAD_REQUEST),      // scopeType 不正
+            Map.entry("SCOPE_TAB_004", HttpStatus.NOT_FOUND)          // フォルダ不在 / 他人所有（存在隠蔽）
     );
 
     /**

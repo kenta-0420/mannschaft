@@ -128,6 +128,16 @@ class SecurityConfigAuthorizationTest {
         com.mannschaft.app.event.EventDelegationRateLimitFilter eventDelegationRateLimitFilter() {
             return new com.mannschaft.app.event.EventDelegationRateLimitFilter();
         }
+
+        /**
+         * F22.1: SecurityConfig が依存する DashboardScopeTabRateLimitFilter の
+         * 本物インスタンス。本テストは対象パス（PUT /api/v1/dashboard/scope-tabs/order）を
+         * 叩かないため、何もせず chain.doFilter に通す挙動になる。
+         */
+        @Bean
+        com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter dashboardScopeTabRateLimitFilter() {
+            return new com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter();
+        }
     }
 
     @Autowired
@@ -235,6 +245,34 @@ class SecurityConfigAuthorizationTest {
                     if (status != 403) {
                         throw new AssertionError(
                                 "/api/v1/system-admin/** は一般ユーザーで 403 のはずだが status=" + status);
+                    }
+                });
+    }
+
+    /**
+     * 認可基盤完全根治 Phase 1（docs/security/03_role_authority_model.md §3.2）の要石検証。
+     *
+     * <p>ROLE_SYSTEM_ADMIN authority を持つ主体は {@code /api/v1/system-admin/**} で
+     * <b>403 にならない</b>こと。Phase 1 で JWT の roles に SYSTEM_ADMIN を載せ、
+     * {@link JwtAuthenticationFilter} が ROLE_SYSTEM_ADMIN authority を構築することで、
+     * SecurityConfig フィルタ層の {@code hasRole("SYSTEM_ADMIN")} が機能回復する。本テストは
+     * その「authority が付いていれば通過する」性質を {@code @WithMockUser(roles="SYSTEM_ADMIN")}
+     * で直接検証する（フィルタチェーンのみ・Docker 不要）。</p>
+     *
+     * <p>対象 Controller は本最小コンテキストに載らないため、認可通過後はハンドラ不在で 404 等になる。
+     * 「403 でないこと」を hasRole 通過の判定基準とする（ActuatorEndpointSecurityTest と同方針）。</p>
+     */
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DisplayName("SYSTEM_ADMIN: /api/v1/system-admin/** は 403 にならない（hasRole 機能回復）")
+    void systemAdmin_system_admin_endpoint_not_forbidden() throws Exception {
+        mockMvc.perform(get("/api/v1/system-admin/email-outbox"))
+                .andExpect(result -> {
+                    int status = result.getResponse().getStatus();
+                    if (status == 403) {
+                        throw new AssertionError(
+                                "/api/v1/system-admin/** は SYSTEM_ADMIN 権限で 403 になってはならない "
+                                        + "(hasRole が機能していない) status=" + status);
                     }
                 });
     }

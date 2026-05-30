@@ -10,6 +10,26 @@ export function useBulletinReplies() {
   const api = useApi()
 
   // === Replies ===
+
+  /**
+   * スレッドの返信一覧を取得する（グローバル方式）。
+   * BE: GET /api/v1/bulletin/threads/{threadId}/replies
+   * レスポンス: { data: BulletinReplyResponse[], meta: { totalElements, page, size, totalPages } }
+   */
+  async function getReplies(
+    threadId: number,
+    params?: { page?: number; size?: number },
+  ) {
+    const query = new URLSearchParams()
+    if (params?.page !== undefined) query.set('page', String(params.page))
+    if (params?.size !== undefined) query.set('size', String(params.size))
+    const qs = query.toString()
+    return api<{
+      data: BulletinReplyResponse[]
+      meta: { totalElements: number; page: number; size: number; totalPages: number }
+    }>(`/api/v1/bulletin/threads/${threadId}/replies${qs ? `?${qs}` : ''}`)
+  }
+
   async function createReply(threadId: number, body: string) {
     return api<{ data: BulletinReplyResponse }>(`/api/v1/bulletin/threads/${threadId}/replies`, {
       method: 'POST',
@@ -93,6 +113,7 @@ export function useBulletinReplies() {
   }
 
   return {
+    getReplies,
     createReply,
     createNestedReply,
     updateReply,

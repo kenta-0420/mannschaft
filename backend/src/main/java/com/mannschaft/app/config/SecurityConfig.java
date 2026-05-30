@@ -1,6 +1,7 @@
 package com.mannschaft.app.config;
 
 import com.mannschaft.app.advertising.campaign.filter.AdPublicEndpointRateLimitFilter;
+import com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter;
 import com.mannschaft.app.event.EventDelegationRateLimitFilter;
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
 import com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter;
@@ -37,6 +38,7 @@ public class SecurityConfig {
     private final AdPublicEndpointRateLimitFilter adPublicEndpointRateLimitFilter;
     private final ScheduleDelegationRateLimitFilter scheduleDelegationRateLimitFilter;
     private final EventDelegationRateLimitFilter eventDelegationRateLimitFilter;
+    private final DashboardScopeTabRateLimitFilter dashboardScopeTabRateLimitFilter;
 
     /**
      * ProxyInputContextFilter の @Component によるサーブレットフィルター自動登録を無効化。
@@ -114,6 +116,21 @@ public class SecurityConfig {
         return registration;
     }
 
+    /**
+     * F22.1: {@link DashboardScopeTabRateLimitFilter} の @Component による
+     * サーブレットフィルター自動登録を無効化。
+     * Spring Security フィルターチェーン経由（addFilterAfter）のみで動作させ、
+     * JWT 認証後の確定した SecurityContext から userId を解決できるようにする。
+     */
+    @Bean
+    public FilterRegistrationBean<DashboardScopeTabRateLimitFilter>
+            dashboardScopeTabRateLimitFilterRegistration() {
+        FilterRegistrationBean<DashboardScopeTabRateLimitFilter> registration =
+                new FilterRegistrationBean<>(dashboardScopeTabRateLimitFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -134,7 +151,9 @@ public class SecurityConfig {
                 .requestMatchers(EndpointRequest.to(HealthEndpoint.class)).permitAll()
                 // F10.5 Phase 10-α: それ以外の Actuator エンドポイントは SYSTEM_ADMIN 限定
                 // info / metrics / prometheus / caches / threaddump / loggers が対象
-                // JwtAuthenticationFilter が "ROLE_SYSTEM_ADMIN" として authority を付与するため hasRole を使用
+                // 認可基盤完全根治 Phase 1（docs/security/03_role_authority_model.md §3.2）:
+                // 発行時に RoleClaimResolver が user_roles から SYSTEM_ADMIN を判定して roles に載せ、
+                // JwtAuthenticationFilter がそれを "ROLE_SYSTEM_ADMIN" authority へ変換するため hasRole を使用
                 .requestMatchers(EndpointRequest.toAnyEndpoint().excluding(HealthEndpoint.class))
                     .hasRole("SYSTEM_ADMIN")
                 // 認証不要エンドポイント（auth 系）
@@ -262,7 +281,9 @@ public class SecurityConfig {
             // F03.10 代理指定レートリミット（§6・10req/分/ユーザー）。
             // JWT 認証後に動かし、確定した SecurityContext から userId を解決する。
             .addFilterAfter(scheduleDelegationRateLimitFilter, JwtAuthenticationFilter.class)
-            .addFilterAfter(eventDelegationRateLimitFilter, JwtAuthenticationFilter.class);
+            .addFilterAfter(eventDelegationRateLimitFilter, JwtAuthenticationFilter.class)
+            // F22.1 scope-tabs 並べ替え連打防止（§5・30req/分/ユーザー）。JWT 認証後に動かす。
+            .addFilterAfter(dashboardScopeTabRateLimitFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 }

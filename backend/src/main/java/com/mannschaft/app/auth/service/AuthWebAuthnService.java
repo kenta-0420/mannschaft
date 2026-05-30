@@ -73,6 +73,7 @@ public class AuthWebAuthnService {
     private final AuthTokenService authTokenService;
     private final StringRedisTemplate redisTemplate;
     private final DomainEventPublisher eventPublisher;
+    private final RoleClaimResolver roleClaimResolver;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final String CHALLENGE_KEY_PREFIX = "mannschaft:auth:webauthn_challenge:";
@@ -578,7 +579,8 @@ public class AuthWebAuthnService {
      * Access Token + Refresh Token のペアを発行する。
      */
     private TokenResponse issueTokenPair(Long userId, String ipAddress, String userAgent) {
-        String accessToken = authTokenService.issueAccessToken(userId, List.of("MEMBER"));
+        // 認可基盤完全根治 Phase 1（§3.2）: RoleClaimResolver で SYSTEM_ADMIN を判定して roles に載せる。
+        String accessToken = authTokenService.issueAccessToken(userId, roleClaimResolver.resolveRoles(userId));
         String refreshToken = authTokenService.generateRefreshToken();
         String refreshTokenHash = authTokenService.hashToken(refreshToken);
 

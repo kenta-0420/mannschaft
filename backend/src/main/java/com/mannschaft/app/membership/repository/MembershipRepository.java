@@ -121,4 +121,23 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
     List<MembershipEntity> findAllActiveByScope(
             @Param("scopeType") ScopeType scopeType,
             @Param("scopeId") Long scopeId);
+
+    /**
+     * 指定ユーザーが指定スコープ種別に対して持つアクティブメンバーシップを
+     * joined_at 降順で全件取得する（F22.1 横スワイプ・ダッシュボードのタグ候補導出用）。
+     *
+     * <p>「現在の所属スコープ集合」の真実の源。表示順未保存スコープの末尾補完
+     * （02_api_design.md §3.1 の並び順ロジック②）と、退会/権限喪失スコープの除外（同④）に使う。</p>
+     *
+     * <p>本来の既定順は {@code last_accessed_at} 降順だが、memberships テーブルには
+     * {@code last_accessed_at} カラムが存在しないため、利用可能な近似として
+     * {@code joined_at} 降順（最近参加したものを先頭）を採用する。
+     * 将来 last_accessed_at が導入されたら ORDER BY を差し替える。</p>
+     */
+    @Query("SELECT m FROM MembershipEntity m " +
+            "WHERE m.userId = :userId AND m.scopeType = :scopeType AND m.leftAt IS NULL " +
+            "ORDER BY m.joinedAt DESC")
+    List<MembershipEntity> findActiveByUserAndScopeType(
+            @Param("userId") Long userId,
+            @Param("scopeType") ScopeType scopeType);
 }

@@ -71,5 +71,24 @@
       "navigationFailed": "No se puede acceder a la referencia de esta tarjeta",
       "colorLabelAria": "Etiqueta {color}"
     }
+  },
+  "swipeWidgets": {
+    "upcoming": "今後の予定",
+    "timeline": "タイムライン",
+    "bulletin": "掲示板",
+    "blog": "ブログ",
+    "chat": "チャット",
+    "calendar": "カレンダー",
+    "todo": "TODO",
+    "actionRequired": {
+      "title": "要対応",
+      "circulation": "回覧板",
+      "survey": "アンケート",
+      "attendance": "出席確認",
+      "unconfirmed": "{count}件未確認",
+      "unanswered": "{count}件未回答",
+      "empty": "対応が必要な項目はありません"
+    },
+    "emptyState": "まだ投稿がありません"
   }
 }

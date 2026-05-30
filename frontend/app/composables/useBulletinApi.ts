@@ -41,6 +41,7 @@ export function useBulletinApi() {
     toggleLock: threads.toggleLock,
     toggleArchive: threads.toggleArchive,
     readAll: threads.readAll,
+    getReplies: replies.getReplies,
     createReply: replies.createReply,
     createNestedReply: replies.createNestedReply,
     updateReply: replies.updateReply,

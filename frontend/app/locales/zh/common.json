@@ -1468,5 +1468,33 @@
   },
   "surveyPage": {
     "bulletinOpen": "在公告板上讨论"
+  },
+  "scopeDashboard": {
+    "tabs": {
+      "personal": "個人",
+      "team": "チーム",
+      "organization": "組織"
+    },
+    "prevPanel": "前のパネル",
+    "nextPanel": "次のパネル",
+    "switchedTo": "{name}パネルに切り替えました",
+    "searchTeam": "チームを検索",
+    "searchOrganization": "組織を検索",
+    "tagBar": {
+      "filterAll": "すべて",
+      "folderFilter": "フォルダで絞り込み",
+      "prevPage": "前のページ",
+      "nextPage": "次のページ",
+      "reorder": "表示順を変更",
+      "empty": "所属しているチーム/組織がありません",
+      "folderEmpty": "このフォルダにスコープがありません",
+      "loadError": "タグ一覧の取得に失敗しました"
+    },
+    "orderDialog": {
+      "title": "タグの表示順",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "saveError": "表示順の保存に失敗しました"
+    }
   }
 }

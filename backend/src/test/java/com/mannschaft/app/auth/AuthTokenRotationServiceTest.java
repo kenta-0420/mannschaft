@@ -7,6 +7,7 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuthSessionService;
 import com.mannschaft.app.auth.service.AuthTokenRotationService;
 import com.mannschaft.app.auth.service.AuthTokenService;
+import com.mannschaft.app.auth.service.RoleClaimResolver;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
@@ -23,7 +24,10 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import java.util.List;
+
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -53,6 +57,9 @@ class AuthTokenRotationServiceTest {
 
     @Mock
     private DomainEventPublisher eventPublisher;
+
+    @Mock
+    private RoleClaimResolver roleClaimResolver;
 
     @InjectMocks
     private AuthTokenRotationService authTokenRotationService;
@@ -97,6 +104,44 @@ class AuthTokenRotationServiceTest {
             assertThat(response.getData().getAccessToken()).isEqualTo("new-access-token");
             assertThat(response.getData().getRefreshToken()).isEqualTo("new-raw-refresh-token");
             verify(refreshTokenRepository).save(any(RefreshTokenEntity.class));
+        }
+
+        @Test
+        @DisplayName("リフレッシュ時に SYSTEM_ADMIN を再判定し、解決した roles で新トークンを発行する")
+        void refreshAccessToken_リフレッシュ時にSYSTEM_ADMIN再判定() {
+            // Given: SYSTEM_ADMIN ユーザーが RoleClaimResolver で再判定されるケース
+            String rawRefreshToken = "raw-refresh-token";
+            String tokenHash = "hashed-refresh-token";
+            given(authTokenService.hashToken(rawRefreshToken)).willReturn(tokenHash);
+
+            RefreshTokenEntity existingToken = RefreshTokenEntity.builder()
+                    .userId(7L)
+                    .tokenHash(tokenHash)
+                    .rememberMe(false)
+                    .ipAddress(TEST_IP)
+                    .userAgent(TEST_USER_AGENT)
+                    .expiresAt(LocalDateTime.now().plusDays(7))
+                    .build();
+            given(refreshTokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(existingToken));
+            given(userRepository.existsById(7L)).willReturn(true);
+
+            // RoleClaimResolver が SYSTEM_ADMIN を含む roles を返す（=リフレッシュ時の再判定）
+            given(roleClaimResolver.resolveRoles(7L)).willReturn(List.of("MEMBER", "SYSTEM_ADMIN"));
+            given(authTokenService.issueAccessToken(eq(7L), eq(List.of("MEMBER", "SYSTEM_ADMIN"))))
+                    .willReturn("new-access-token-with-sysadmin");
+            given(authTokenService.generateRefreshToken()).willReturn("new-raw-refresh-token");
+            given(authTokenService.hashToken("new-raw-refresh-token")).willReturn("new-hashed-refresh-token");
+            given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
+            given(authTokenService.getAccessTokenExpirationSeconds()).willReturn(900L);
+            given(refreshTokenRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+            // When
+            ApiResponse<TokenResponse> response = authTokenRotationService.refreshAccessToken(rawRefreshToken, null);
+
+            // Then: resolveRoles が当該 userId で呼ばれ、その結果が issueAccessToken に渡る
+            verify(roleClaimResolver).resolveRoles(7L);
+            verify(authTokenService).issueAccessToken(7L, List.of("MEMBER", "SYSTEM_ADMIN"));
+            assertThat(response.getData().getAccessToken()).isEqualTo("new-access-token-with-sysadmin");
         }
 
         @Test
