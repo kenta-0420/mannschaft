@@ -153,13 +153,13 @@ CREATE INDEX idx_cn_source ON confirmable_notifications (source_type, source_id)
 
 ## 6. Flyway マイグレーション
 
-> **乖離D 是正（第一陣 / 2026-05-30）— Flyway 版番号はタイムスタンプ形式**: 当プロジェクトの現行採番は `V3.1NN`（連番）ではなく **`V9.YYYYMMDDhhmmss__...`（タイムスタンプ形式）** に移行済（`db/migration/` の最大版番は `V9.20260529140529`）。連番 `V3.*` を新規に切らないこと。**マージ直前に `origin/main` の最大タイムスタンプを再確認**し、衝突しない採番に調整する（並行PRとの衝突は「マージ時」に確定するため。memory: migration_version_collision）。
+> **乖離D 是正（第一陣 / 2026-05-30）— 採番は「Flyway順序での全体最大の次」**: `db/migration/` は連番 `V{major}.{minor}`（**全体最大は `V70.020`**）に、ごく一部の `V9.YYYYMMDDhhmmss`（タイムスタンプ）が混在する。**踏んだ罠**: タイムスタンプ形式は major=9 のため Flyway 数値順序では `V10`〜`V70` より**前**にソートされる。`confirmable_notifications` は `V13.006` で作成されるため、当初の `V9.*` 採番では from-scratch 適用が「未作成テーブルへの ALTER」となり**番人テストで失敗**した（CI で検知・是正済）。**新規採番は必ず全体最大（現状 `V70.020`）より後の major** を切る（本機能は `V71.001`〜）。マージ直前に `origin/main` の最大版番を再確認しリネーム（並行PR衝突は「マージ時」確定・from-scratch 番人テストが検知。memory: migration_version_collision）。
 
 ```
--- 第一陣で実際に採番したファイル（2026-05-30）
-V9.20260530100000__alter_recruitment_listings_add_region.sql       -- §2 地域列 + idx_rl_market_region
-V9.20260530100100__create_recruitment_friend_targets.sql           -- §4 フレンド宛先テーブル
-V9.20260530100200__add_source_id_to_confirmable_notifications.sql  -- §5 source_id 列追加（source_type は VARCHAR ゆえ ALTER 不要）
+-- 第一陣で実際に採番したファイル（2026-05-30 / 全体最大 V70.020 の次＝V71系）
+V71.001__alter_recruitment_listings_add_region.sql       -- §2 地域列 + idx_rl_market_region
+V71.002__create_recruitment_friend_targets.sql           -- §4 フレンド宛先テーブル
+V71.003__add_source_id_to_confirmable_notifications.sql  -- §5 source_id 列追加（source_type は VARCHAR ゆえ ALTER 不要）
 ```
 > §3 の `FRIEND_TEAMS_ONLY` 追加は **Flyway 不要**（`visibility` は VARCHAR(20)・Java enum 管理）。Java 定数追加のみ。
 > §5 の `source_type='MARKET_FINALIZE'` も **Flyway 不要**（VARCHAR・乖離B）。追加が必要だったのは `source_id` 列のみ。
