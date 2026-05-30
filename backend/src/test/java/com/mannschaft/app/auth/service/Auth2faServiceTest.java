@@ -74,6 +74,10 @@ class Auth2faServiceTest {
     @Mock
     private EncryptionService encryptionService;
 
+    // 認可基盤完全根治 Phase 1: トークン発行時に roles を解決するヘルパ。
+    @Mock
+    private RoleClaimResolver roleClaimResolver;
+
     @InjectMocks
     private Auth2faService auth2faService;
 

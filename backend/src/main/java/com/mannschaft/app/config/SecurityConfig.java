@@ -151,7 +151,9 @@ public class SecurityConfig {
                 .requestMatchers(EndpointRequest.to(HealthEndpoint.class)).permitAll()
                 // F10.5 Phase 10-α: それ以外の Actuator エンドポイントは SYSTEM_ADMIN 限定
                 // info / metrics / prometheus / caches / threaddump / loggers が対象
-                // JwtAuthenticationFilter が "ROLE_SYSTEM_ADMIN" として authority を付与するため hasRole を使用
+                // 認可基盤完全根治 Phase 1（docs/security/03_role_authority_model.md §3.2）:
+                // 発行時に RoleClaimResolver が user_roles から SYSTEM_ADMIN を判定して roles に載せ、
+                // JwtAuthenticationFilter がそれを "ROLE_SYSTEM_ADMIN" authority へ変換するため hasRole を使用
                 .requestMatchers(EndpointRequest.toAnyEndpoint().excluding(HealthEndpoint.class))
                     .hasRole("SYSTEM_ADMIN")
                 // 認証不要エンドポイント（auth 系）

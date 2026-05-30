@@ -73,6 +73,7 @@ public class AuthService {
     private final DomainEventPublisher eventPublisher;
     private final StringRedisTemplate redisTemplate;
     private final NewDeviceDetectionService newDeviceDetectionService;
+    private final RoleClaimResolver roleClaimResolver;
 
     // サブサービス（委譲先）
     private final AuthRegistrationService authRegistrationService;
@@ -411,7 +412,9 @@ public class AuthService {
     private LoginResponse issueLoginTokens(UserEntity user, LoginRequest req,
                                            String ipAddress, String userAgent, boolean reactivated) {
         // Access Token発行
-        String accessToken = authTokenService.issueAccessToken(user.getId(), List.of("MEMBER"));
+        // 認可基盤完全根治 Phase 1（§3.2）: 固定 MEMBER ではなく user_roles から SYSTEM_ADMIN を
+        // 判定した roles を載せる（RoleClaimResolver に一元化。5発行経路で同一ロジック）。
+        String accessToken = authTokenService.issueAccessToken(user.getId(), roleClaimResolver.resolveRoles(user.getId()));
 
         // Refresh Token発行（DB保存）
         String rawRefreshToken = authTokenService.generateRefreshToken();

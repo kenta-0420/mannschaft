@@ -96,6 +96,10 @@ class AuthServiceTest {
     @Mock
     private AuthPasswordResetService authPasswordResetService;
 
+    // 認可基盤完全根治 Phase 1: ログイン成功時のトークン発行で roles を解決するヘルパ。
+    @Mock
+    private com.mannschaft.app.auth.service.RoleClaimResolver roleClaimResolver;
+
     @InjectMocks
     private AuthService authService;
 
