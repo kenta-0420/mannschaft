@@ -208,10 +208,11 @@ public class TicketBookService {
         } else {
             books = bookRepository.findByUserIdAndTeamIdAndStatus(userId, teamId, TicketBookStatus.ACTIVE);
         }
+        String userName = nameResolverService.resolveUserFullName(userId);
         return books.stream().map(book -> {
             String productName = productRepository.findById(book.getProductId())
                     .map(TicketProductEntity::getName).orElse("不明な商品");
-            return toBookResponseWithProductName(book, productName);
+            return toBookResponseWithProductName(book, productName, userName);
         }).toList();
     }
 
@@ -273,10 +274,15 @@ public class TicketBookService {
         } else {
             bookPage = bookRepository.findByTeamIdOrderByCreatedAtDesc(teamId, PageRequest.of(page, size));
         }
+        java.util.Set<Long> userIds = bookPage.getContent().stream()
+                .map(TicketBookEntity::getUserId)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Map<Long, String> userNames = nameResolverService.resolveUserFullNames(userIds);
         return bookPage.map(book -> {
             String productName = productRepository.findById(book.getProductId())
                     .map(TicketProductEntity::getName).orElse("不明な商品");
-            return toBookResponseWithProductName(book, productName);
+            return toBookResponseWithProductName(book, productName,
+                    userNames.getOrDefault(book.getUserId(), "不明なユーザー"));
         });
     }
 
@@ -673,9 +679,17 @@ public class TicketBookService {
     }
 
     private TicketBookResponse toBookResponseWithProductName(TicketBookEntity book, String productName) {
+        return toBookResponseWithProductName(book, productName,
+                nameResolverService.resolveUserFullName(book.getUserId()));
+    }
+
+    private TicketBookResponse toBookResponseWithProductName(TicketBookEntity book, String productName,
+                                                             String userName) {
         Long daysUntilExpiry = ticketMapper.calculateDaysUntilExpiry(book.getExpiresAt());
         return TicketBookResponse.builder()
                 .id(book.getId())
+                .userId(book.getUserId())
+                .userName(userName)
                 .productName(productName)
                 .quantity(new TicketBookResponse.TicketQuantityDto(
                         book.getTotalTickets(), book.getUsedTickets(),

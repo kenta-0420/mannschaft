@@ -20,7 +20,9 @@ import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.circulation.repository.CirculationStampCorrectionLogRepository;
 import com.mannschaft.app.circulation.repository.CirculationStampDelegationRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
@@ -52,6 +54,17 @@ public class CirculationStampService {
     private final CirculationMapper circulationMapper;
     private final ProxyInputContext proxyInputContext;
     private final ProxyInputRecordRepository proxyInputRecordRepository;
+
+    /**
+     * ADMIN 強制スキップの per-scope 認可に使用する（2026-05-29 fixup）。
+     *
+     * <p>本アプリは {@code @EnableMethodSecurity} が未有効のため Controller の
+     * {@code @PreAuthorize("hasRole('ADMIN')")} は実機で効かず、かつ {@code hasRole} は per-scope
+     * 判定にならない。そこで {@code adminSkipRecipient} の処理本体前に、対象文書のスコープの
+     * ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）であることを {@link AccessControlService} で要求し、
+     * 他団体の回覧受信者を強制スキップする操作を遮断する。</p>
+     */
+    private final AccessControlService accessControlService;
 
     /** F05.2 Phase 11 第三陣 3-B: 押印訂正履歴。 */
     @Autowired(required = false)
@@ -314,9 +327,12 @@ public class CirculationStampService {
      * ADMIN による受信者強制スキップ。
      *
      * <p>F05.2 Phase 11 第三陣 3-B: ADMIN が特定受信者（退職者・休職者など）を
-     * SKIPPED に強制遷移させる。ADMIN 権限の判定は Controller 層 ({@code @PreAuthorize})
-     * に委ね、本メソッドは {@code adminUserId} の妥当性（不在の場合は呼び出し側エラー）
-     * のみ前提とする。</p>
+     * SKIPPED に強制遷移させる。</p>
+     *
+     * <p><b>認可（2026-05-29 fixup）:</b> Controller の {@code @PreAuthorize("hasRole('ADMIN')")} は
+     * {@code @EnableMethodSecurity} 未有効ゆえ実機で効かない（将来宣言）。真の強制は本メソッド先頭の
+     * {@link #checkScopeAdminAccess} による per-scope 認可（対象文書スコープの ADMIN/DEPUTY_ADMIN、
+     * または SYSTEM_ADMIN）で行う。</p>
      *
      * @param documentId    文書ID
      * @param targetUserId  対象受信者の user_id
@@ -328,6 +344,10 @@ public class CirculationStampService {
     public RecipientResponse adminSkipRecipient(Long documentId, Long targetUserId,
                                                 Long adminUserId, AdminSkipRecipientRequest request) {
         CirculationDocumentEntity document = findDocumentOrThrow(documentId);
+
+        // per-scope 認可: 対象文書のスコープの ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）のみ許可。
+        // scopeId は文書エンティティ由来で解決するため IDOR を防ぐ。
+        checkScopeAdminAccess(document, adminUserId);
 
         if (!document.isActive()) {
             throw new BusinessException(CirculationErrorCode.INVALID_DOCUMENT_STATUS);
@@ -409,6 +429,29 @@ public class CirculationStampService {
     private CirculationDocumentEntity findDocumentOrThrow(Long documentId) {
         return documentRepository.findById(documentId)
                 .orElseThrow(() -> new BusinessException(CirculationErrorCode.DOCUMENT_NOT_FOUND));
+    }
+
+    /**
+     * 管理操作（強制スキップ）の per-scope 認可を実施する（2026-05-29 fixup）。
+     *
+     * <p>対象文書の {@code scopeType}/{@code scopeId} を基に、操作者が当該スコープの
+     * ADMIN/DEPUTY_ADMIN であることを要求する。SYSTEM_ADMIN は全スコープ許可。
+     * scopeId は文書エンティティ由来で解決するため IDOR を防ぐ。
+     * {@code PERSONAL} 等の team/org 管理者概念が無いスコープは SYSTEM_ADMIN のみ許可。</p>
+     *
+     * @param document   対象文書エンティティ
+     * @param actorUserId 操作者ユーザー ID
+     * @throws BusinessException 当該スコープの管理者でない場合（COMMON_002、403）
+     */
+    private void checkScopeAdminAccess(CirculationDocumentEntity document, Long actorUserId) {
+        if (accessControlService.isSystemAdmin(actorUserId)) {
+            return;
+        }
+        String scopeType = document.getScopeType();
+        if (!"TEAM".equals(scopeType) && !"ORGANIZATION".equals(scopeType)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        accessControlService.checkAdminOrAbove(actorUserId, document.getScopeId(), scopeType);
     }
 
     /**

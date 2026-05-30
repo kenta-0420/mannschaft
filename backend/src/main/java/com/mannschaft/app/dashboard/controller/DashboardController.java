@@ -7,6 +7,8 @@ import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.dto.ActivityFeedResponse;
 import com.mannschaft.app.dashboard.dto.ChatHubResponse;
@@ -57,6 +59,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * ダッシュボードコントローラー。
@@ -83,6 +86,7 @@ public class DashboardController {
     private final ChatChannelMemberRepository chatChannelMemberRepository;
     private final TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     // ============================================
     // 個人ダッシュボード
@@ -199,33 +203,52 @@ public class DashboardController {
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getUpcomingEvents(
             @RequestParam(defaultValue = "7") Integer days) {
         Long userId = SecurityUtils.getCurrentUserId();
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime until = now.plusDays(days);
+        // ユーザーTZの当日0時を起点とすることで、今日すでに始まった予定・終日予定（start_at=当日00:00）を含める。
+        // getCalendar と同じパターンで LocalDate.now(zone).atStartOfDay() を使用する。
+        java.time.ZoneId zone = TimezoneContextHolder.get();
+        LocalDateTime from = LocalDate.now(zone).atStartOfDay();
+        LocalDateTime until = from.plusDays(days);
 
         // 個人スケジュール（チーム・組織に紐付かないもののみ）
         List<ScheduleEntity> personalSchedules = scheduleRepository
-                .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(userId, now, until);
+                .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(userId, from, until);
         // 所属チームのスケジュール
         List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
         List<ScheduleEntity> teamSchedules = teamRoles.stream()
                 .flatMap(role -> scheduleRepository
-                        .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), now, until).stream())
+                        .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), from, until).stream())
                 .toList();
         // 所属組織のスケジュール
         List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
         List<ScheduleEntity> orgSchedules = orgRoles.stream()
                 .flatMap(role -> scheduleRepository
-                        .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(role.getOrganizationId(), now, until).stream())
+                        .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(role.getOrganizationId(), from, until).stream())
                 .toList();
+
+        // F00 認可基盤連携（2026-05-29）: チーム横断・組織横断スケジュールは
+        // これまで visibility 無視で返していた認可漏れがあったため、ID 群を
+        // filterAccessible に通して可視なものだけ採用する（team/org をまとめて 1 回判定）。
+        // 個人スケジュールは本人取得のため対象外で常に含める。
+        List<ScheduleEntity> teamOrgSchedules = new ArrayList<>();
+        teamOrgSchedules.addAll(teamSchedules);
+        teamOrgSchedules.addAll(orgSchedules);
+        Set<Long> visibleTeamOrgIds = teamOrgSchedules.isEmpty()
+                ? Set.of()
+                : contentVisibilityChecker.filterAccessible(
+                        ReferenceType.SCHEDULE,
+                        teamOrgSchedules.stream().map(ScheduleEntity::getId).toList(),
+                        userId);
 
         List<Map<String, Object>> items = new ArrayList<>();
         personalSchedules.stream()
                 .map(e -> toScheduleMapPersonal(e))
                 .forEach(items::add);
         teamSchedules.stream()
+                .filter(e -> visibleTeamOrgIds.contains(e.getId()))
                 .map(e -> toScheduleMapTeam(e))
                 .forEach(items::add);
         orgSchedules.stream()
+                .filter(e -> visibleTeamOrgIds.contains(e.getId()))
                 .map(e -> toScheduleMapOrg(e))
                 .forEach(items::add);
         items.sort((a, b) -> ((LocalDateTime) a.get("start_at")).compareTo((LocalDateTime) b.get("start_at")));

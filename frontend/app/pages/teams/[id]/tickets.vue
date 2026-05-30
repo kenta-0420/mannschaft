@@ -122,7 +122,8 @@ onMounted(() => load())
         class="flex items-center gap-4"
       >
         <div class="flex-1">
-          <p class="text-sm font-medium">{{ b.productName }}</p>
+          <p class="text-sm font-medium">{{ b.userName }}</p>
+          <p class="text-xs text-surface-400">{{ b.productName }}</p>
         </div>
         <div class="text-right">
           <span

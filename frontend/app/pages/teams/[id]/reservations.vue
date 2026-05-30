@@ -1,6 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' })
 
+const { t } = useI18n()
 const route = useRoute()
 const teamId = Number(route.params.id)
 const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
@@ -25,13 +26,13 @@ onMounted(() => loadPermissions())
 
 <template>
   <div>
-    <PageHeader title="予約管理" class="mb-4" />
+    <PageHeader :title="t('reservation.page.team_title')" class="mb-4" />
 
     <Tabs v-model:value="activeTab">
       <TabList>
-        <Tab :value="0">予約する</Tab>
-        <Tab :value="1">予約一覧</Tab>
-        <Tab :value="2">ライン管理</Tab>
+        <Tab :value="0">{{ t('reservation.tab.book') }}</Tab>
+        <Tab :value="1">{{ t('reservation.tab.list') }}</Tab>
+        <Tab :value="2">{{ t('reservation.tab.line_manage') }}</Tab>
       </TabList>
       <TabPanels>
         <TabPanel :value="0">

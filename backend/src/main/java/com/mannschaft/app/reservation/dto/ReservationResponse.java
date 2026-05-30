@@ -22,7 +22,7 @@ public class ReservationResponse {
     NotesDto notes;
     ReservationAuditDto audit;
 
-    public record ReservationIdentifierDto(Long reservationSlotId, Long lineId, Long teamId, Long userId) {}
+    public record ReservationIdentifierDto(Long reservationSlotId, Long lineId, Long teamId, Long userId, String userName) {}
 
     public record SlotSummaryDto(String lineName, String title, LocalDate slotDate, LocalTime startTime, LocalTime endTime) {}
 

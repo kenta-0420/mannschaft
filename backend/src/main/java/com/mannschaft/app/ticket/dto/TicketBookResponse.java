@@ -13,6 +13,8 @@ import java.time.LocalDateTime;
 public class TicketBookResponse {
 
     Long id;
+    Long userId;
+    String userName;
     String productName;
     TicketQuantityDto quantity;
     TicketStatusDto status;

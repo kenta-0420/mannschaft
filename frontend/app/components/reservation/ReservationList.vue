@@ -6,6 +6,7 @@ const props = defineProps<{
   canManage: boolean
 }>()
 
+const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
 const confirm = useConfirm()
@@ -16,23 +17,24 @@ const loading = ref(true)
 const page = ref(0)
 const statusFilter = ref('')
 
-const statusOptions = [
-  { label: '全て', value: '' },
-  { label: '保留中', value: 'PENDING' },
-  { label: '承認済', value: 'CONFIRMED' },
-  { label: 'キャンセル', value: 'CANCELLED' },
-  { label: '完了', value: 'COMPLETED' },
-  { label: '無断欠席', value: 'NO_SHOW' },
-]
+const statusOptions = computed(() => [
+  { label: t('reservation.filter.all'), value: '' },
+  { label: t('reservation.status.PENDING'), value: 'PENDING' },
+  { label: t('reservation.status.CONFIRMED'), value: 'CONFIRMED' },
+  { label: t('reservation.status.CANCELLED'), value: 'CANCELLED' },
+  { label: t('reservation.status.COMPLETED'), value: 'COMPLETED' },
+  { label: t('reservation.status.NO_SHOW'), value: 'NO_SHOW' },
+])
 
 const statusSeverity: Record<string, string> = {
   PENDING: 'warn', CONFIRMED: 'success',
   CANCELLED: 'secondary', COMPLETED: 'info', NO_SHOW: 'danger',
 }
 
-const statusLabel: Record<string, string> = {
-  PENDING: '保留中', CONFIRMED: '承認済',
-  CANCELLED: 'キャンセル', COMPLETED: '完了', NO_SHOW: '無断欠席',
+function statusLabel(status?: string): string {
+  if (!status) return ''
+  const known = ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW']
+  return known.includes(status) ? t(`reservation.status.${status}`) : status
 }
 
 async function loadReservations() {
@@ -49,29 +51,31 @@ async function loadReservations() {
   finally { loading.value = false }
 }
 
+// 承認 = PENDING→CONFIRMED（BE: POST /reservations/{id}/confirm）
 async function approve(id: number) {
-  await reservationApi.approveReservation(props.teamId, id)
-  notification.success('予約を承認しました')
+  await reservationApi.confirmReservation(props.teamId, id)
+  notification.success(t('reservation.message.confirm_success'))
   await loadReservations()
 }
 
+// 却下 = 管理者キャンセル（BE: POST /reservations/{id}/cancel、理由付き）
 async function reject(id: number) {
-  await reservationApi.rejectReservation(props.teamId, id)
-  notification.success('予約を却下しました')
+  await reservationApi.cancelReservation(props.teamId, id, t('reservation.message.reject_reason'))
+  notification.success(t('reservation.message.reject_success'))
   await loadReservations()
 }
 
 async function cancel(id: number) {
   confirm.require({
-    message: 'この予約をキャンセルしますか？',
-    header: '確認',
+    message: t('reservation.dialog.cancel_confirm'),
+    header: t('reservation.dialog.title'),
     icon: 'pi pi-exclamation-triangle',
-    acceptLabel: 'キャンセルする',
-    rejectLabel: '戻る',
+    acceptLabel: t('reservation.button.cancel_reservation'),
+    rejectLabel: t('reservation.button.back'),
     acceptClass: 'p-button-danger',
     accept: async () => {
       await reservationApi.cancelReservation(props.teamId, id)
-      notification.success('予約をキャンセルしました')
+      notification.success(t('reservation.message.cancel_success'))
       await loadReservations()
     },
   })
@@ -88,7 +92,7 @@ onMounted(loadReservations)
       <Select v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" class="w-40" />
     </div>
     <DataTable :value="reservations" :loading="loading" lazy paginator :rows="20" :total-records="totalRecords" data-key="id" row-hover @page="(e: { page: number }) => { page = e.page; loadReservations() }">
-      <Column header="日時" style="width: 160px">
+      <Column :header="t('reservation.column.datetime')" style="width: 160px">
         <template #body="{ data }">
           <div class="text-sm">
             <p class="font-medium">{{ data.slot?.slotDate }}</p>
@@ -96,18 +100,18 @@ onMounted(loadReservations)
           </div>
         </template>
       </Column>
-      <Column header="ライン" style="width: 120px">
+      <Column :header="t('reservation.column.line')" style="width: 120px">
         <template #body="{ data }">{{ data.slot?.lineName }}</template>
       </Column>
-      <Column header="予約者" style="width: 140px">
-        <template #body="{ data }">{{ data.identifier?.userId }}</template>
+      <Column :header="t('reservation.column.reserver')" style="width: 140px">
+        <template #body="{ data }">{{ data.identifier?.userName }}</template>
       </Column>
-      <Column header="ステータス" style="width: 100px">
+      <Column :header="t('reservation.column.status')" style="width: 100px">
         <template #body="{ data }">
-          <Tag :value="statusLabel[data.status?.status] ?? data.status?.status" :severity="statusSeverity[data.status?.status] ?? 'secondary'" rounded />
+          <Tag :value="statusLabel(data.status?.status)" :severity="statusSeverity[data.status?.status] ?? 'secondary'" rounded />
         </template>
       </Column>
-      <Column v-if="canManage" header="操作" style="width: 150px">
+      <Column v-if="canManage" :header="t('reservation.column.action')" style="width: 150px">
         <template #body="{ data }">
           <div v-if="data.status?.status === 'PENDING'" class="flex gap-1">
             <Button icon="pi pi-check" severity="success" text rounded size="small" @click="approve(data.id)" />
@@ -117,7 +121,7 @@ onMounted(loadReservations)
         </template>
       </Column>
       <template #empty>
-        <DashboardEmptyState icon="pi pi-calendar" message="予約はありません" />
+        <DashboardEmptyState icon="pi pi-calendar" :message="t('reservation.empty.no_reservations')" />
       </template>
     </DataTable>
   </div>

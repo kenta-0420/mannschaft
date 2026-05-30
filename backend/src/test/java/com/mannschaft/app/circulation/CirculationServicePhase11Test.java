@@ -12,7 +12,9 @@ import com.mannschaft.app.circulation.repository.CirculationAttachmentRepository
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.circulation.service.CirculationService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.notification.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +38,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -80,6 +83,9 @@ class CirculationServicePhase11Test {
 
     @Mock
     private AuditLogService auditLogService;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private CirculationService circulationService;
@@ -323,7 +329,7 @@ class CirculationServicePhase11Test {
             given(userRepository.findMemberSummaryById(50L)).willReturn(Optional.empty());
             given(userRepository.findMemberSummaryById(51L)).willReturn(Optional.empty());
 
-            DocumentStatusResponse result = circulationService.getDocumentStatus(DOCUMENT_ID);
+            DocumentStatusResponse result = circulationService.getDocumentStatus(DOCUMENT_ID, ACTOR_ID);
 
             assertThat(result.getDocumentId()).isEqualTo(DOCUMENT_ID);
             assertThat(result.getDocumentStatus()).isEqualTo("ACTIVE");
@@ -337,10 +343,83 @@ class CirculationServicePhase11Test {
         void 押印状況一覧_文書なし() {
             given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> circulationService.getDocumentStatus(DOCUMENT_ID))
+            assertThatThrownBy(() -> circulationService.getDocumentStatus(DOCUMENT_ID, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(CirculationErrorCode.DOCUMENT_NOT_FOUND));
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // per-scope 認可（2026-05-29 fixup）
+    // ─────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("per-scope 認可")
+    class ScopeAuthorization {
+
+        @Test
+        @DisplayName("非管理者は強制完了が COMMON_002 で遮断され COMPLETED に遷移しない")
+        void 非管理者_強制完了遮断() {
+            CirculationDocumentEntity entity = buildActive(); // scope=TEAM/1L
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isSystemAdmin(ACTOR_ID)).willReturn(false);
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(ACTOR_ID, SCOPE_ID, "TEAM");
+
+            assertThatThrownBy(() -> circulationService.forceCompleteDocument(DOCUMENT_ID, ACTOR_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            assertThat(entity.getStatus()).isEqualTo(CirculationStatus.ACTIVE);
+            verify(documentRepository, org.mockito.Mockito.never()).save(any());
+        }
+
+        @Test
+        @DisplayName("当該スコープの管理者は強制完了を通過")
+        void 管理者_強制完了通過() {
+            CirculationDocumentEntity entity = buildActive();
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isSystemAdmin(ACTOR_ID)).willReturn(false);
+            // checkAdminOrAbove は void mock = 通過
+            given(documentRepository.save(entity)).willReturn(entity);
+            given(circulationMapper.toDocumentResponse(entity)).willReturn(mockResponse());
+
+            circulationService.forceCompleteDocument(DOCUMENT_ID, ACTOR_ID);
+
+            assertThat(entity.getStatus()).isEqualTo(CirculationStatus.COMPLETED);
+            verify(accessControlService).checkAdminOrAbove(ACTOR_ID, SCOPE_ID, "TEAM");
+        }
+
+        @Test
+        @DisplayName("SYSTEM_ADMIN は per-scope チェックを短絡して通過")
+        void SYSTEM_ADMIN短絡() {
+            CirculationDocumentEntity entity = buildActive();
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isSystemAdmin(ACTOR_ID)).willReturn(true);
+            given(documentRepository.save(entity)).willReturn(entity);
+            given(circulationMapper.toDocumentResponse(entity)).willReturn(mockResponse());
+
+            circulationService.forceCompleteDocument(DOCUMENT_ID, ACTOR_ID);
+
+            assertThat(entity.getStatus()).isEqualTo(CirculationStatus.COMPLETED);
+            verify(accessControlService, org.mockito.Mockito.never())
+                    .checkAdminOrAbove(anyLong(), anyLong(), anyString());
+        }
+
+        @Test
+        @DisplayName("getDocumentStatus も非管理者を COMMON_002 で遮断")
+        void getStatus_非管理者遮断() {
+            CirculationDocumentEntity entity = buildActive();
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isSystemAdmin(ACTOR_ID)).willReturn(false);
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(ACTOR_ID, SCOPE_ID, "TEAM");
+
+            assertThatThrownBy(() -> circulationService.getDocumentStatus(DOCUMENT_ID, ACTOR_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
         }
     }
 }

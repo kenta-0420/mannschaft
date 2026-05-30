@@ -5,6 +5,8 @@ import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.dashboard.controller.DashboardController;
 import com.mannschaft.app.dashboard.dto.ChatHubResponse;
 import com.mannschaft.app.dashboard.dto.OrgDashboardResponse;
@@ -17,8 +19,12 @@ import com.mannschaft.app.dashboard.service.ChatHubService;
 import com.mannschaft.app.dashboard.service.DashboardService;
 import com.mannschaft.app.dashboard.service.DashboardWidgetService;
 import com.mannschaft.app.notification.repository.NotificationRepository;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,14 +43,23 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import com.mannschaft.app.common.timezone.TimezoneContextHolder;
+import org.mockito.ArgumentCaptor;
+
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -68,6 +83,9 @@ class DashboardControllerTest {
     @Mock private BulletinThreadRepository bulletinThreadRepository;
     @Mock private BulletinReadStatusRepository bulletinReadStatusRepository;
     @Mock private ChatChannelMemberRepository chatChannelMemberRepository;
+    @Mock private TeamRepository teamRepository;
+    @Mock private OrganizationRepository organizationRepository;
+    @Mock private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private DashboardController dashboardController;
@@ -366,13 +384,22 @@ class DashboardControllerTest {
     @DisplayName("getUpcomingEvents")
     class GetUpcomingEvents {
 
+        @AfterEach
+        void clearTimezone() {
+            TimezoneContextHolder.clear();
+        }
+
         @Test
         @DisplayName("正常系: 直近イベントが200で返る")
         void getUpcomingEvents_正常_200() {
             // Given
-            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
+            // コントローラは findByUserIdAndTeamIdIsNullAndOrganizationIdIsNull... を呼ぶため正しいメソッドをモック
+            given(scheduleRepository
+                    .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(
+                            eq(USER_ID), any(), any()))
                     .willReturn(List.of());
             given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
 
             // When
             ResponseEntity<ApiResponse<List<Map<String, Object>>>> response =
@@ -381,6 +408,117 @@ class DashboardControllerTest {
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody().getData()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("回帰: 取得ウィンドウの開始がユーザーTZの当日00:00（start-of-day）であること（欠陥②の回帰防止）")
+        void getUpcomingEvents_ウィンドウ開始が当日0時() {
+            // Given: UTC タイムゾーンをセット（テストの安定性のため明示指定）
+            TimezoneContextHolder.set(ZoneOffset.UTC);
+
+            ArgumentCaptor<LocalDateTime> fromCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+            ArgumentCaptor<LocalDateTime> untilCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+
+            given(scheduleRepository
+                    .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(
+                            eq(USER_ID), fromCaptor.capture(), untilCaptor.capture()))
+                    .willReturn(List.of());
+            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+
+            // When
+            ResponseEntity<ApiResponse<List<Map<String, Object>>>> response =
+                    dashboardController.getUpcomingEvents(7);
+
+            // Then: ウィンドウ開始が当日00:00であること（現在時刻起点ではなく当日0時起点）
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            LocalDateTime capturedFrom = fromCaptor.getValue();
+            assertThat(capturedFrom.toLocalTime())
+                    .as("getUpcomingEvents の from は当日00:00（LocalTime.MIDNIGHT）であること")
+                    .isEqualTo(LocalTime.MIDNIGHT);
+            // untilは from + days 日後の同時刻
+            assertThat(untilCaptor.getValue())
+                    .as("until は from の 7 日後であること")
+                    .isEqualTo(capturedFrom.plusDays(7));
+        }
+
+        @Test
+        @DisplayName("認可漏れ回帰: filterAccessible が返さないチーム/組織予定は items に含まれない")
+        void getUpcomingEvents_可視性フィルタで非可視のチーム組織予定を除外する() {
+            // Given: 個人予定は対象外で常に含まれる
+            ScheduleEntity personal = buildSchedule(1L, null, null);
+            ScheduleEntity teamVisible = buildSchedule(10L, TEAM_ID, null);
+            ScheduleEntity teamHidden = buildSchedule(11L, TEAM_ID, null);
+            ScheduleEntity orgVisible = buildSchedule(20L, null, ORG_ID);
+            ScheduleEntity orgHidden = buildSchedule(21L, null, ORG_ID);
+
+            given(scheduleRepository
+                    .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(
+                            eq(USER_ID), any(), any()))
+                    .willReturn(List.of(personal));
+            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
+                    .willReturn(List.of(UserRoleEntity.builder().teamId(TEAM_ID).build()));
+            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID))
+                    .willReturn(List.of(UserRoleEntity.builder().organizationId(ORG_ID).build()));
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(eq(TEAM_ID), any(), any()))
+                    .willReturn(List.of(teamVisible, teamHidden));
+            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(eq(ORG_ID), any(), any()))
+                    .willReturn(List.of(orgVisible, orgHidden));
+
+            // filterAccessible は teamVisible / orgVisible のみを可視とする
+            given(contentVisibilityChecker.filterAccessible(
+                    eq(ReferenceType.SCHEDULE), any(), eq(USER_ID)))
+                    .willReturn(Set.of(10L, 20L));
+
+            // When
+            ResponseEntity<ApiResponse<List<Map<String, Object>>>> response =
+                    dashboardController.getUpcomingEvents(7);
+
+            // Then: 個人(1) + 可視チーム(10) + 可視組織(20) の 3 件。非可視(11/21)は除外。
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            List<Map<String, Object>> items = response.getBody().getData();
+            assertThat(items).extracting(m -> m.get("id"))
+                    .containsExactlyInAnyOrder(1L, 10L, 20L)
+                    .doesNotContain(11L, 21L);
+        }
+
+        @Test
+        @DisplayName("認可漏れ回帰: 個人予定は filterAccessible を通さず常に含まれる")
+        void getUpcomingEvents_個人予定はフィルタ対象外で常に含まれる() {
+            // Given: チーム/組織は無く、個人予定のみ
+            ScheduleEntity personal = buildSchedule(1L, null, null);
+            given(scheduleRepository
+                    .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(
+                            eq(USER_ID), any(), any()))
+                    .willReturn(List.of(personal));
+            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+
+            // When
+            ResponseEntity<ApiResponse<List<Map<String, Object>>>> response =
+                    dashboardController.getUpcomingEvents(7);
+
+            // Then: 個人予定は含まれ、team/org が空のため filterAccessible は呼ばれない
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody().getData()).extracting(m -> m.get("id")).containsExactly(1L);
+            verify(contentVisibilityChecker, never())
+                    .filterAccessible(eq(ReferenceType.SCHEDULE), any(), eq(USER_ID));
+        }
+
+        /**
+         * テスト用スケジュールを構築する。toScheduleBaseMap が参照する最小フィールドのみ設定する。
+         */
+        private ScheduleEntity buildSchedule(Long id, Long teamId, Long orgId) {
+            ScheduleEntity entity = ScheduleEntity.builder()
+                    .teamId(teamId)
+                    .organizationId(orgId)
+                    .title("予定" + id)
+                    .startAt(LocalDateTime.of(2026, 6, 1, 10, 0))
+                    .endAt(LocalDateTime.of(2026, 6, 1, 11, 0))
+                    .allDay(false)
+                    .build();
+            ReflectionTestUtils.setField(entity, "id", id);
+            return entity;
         }
     }
 

@@ -65,7 +65,8 @@ public class TeamScheduleController {
             @RequestParam(required = false) String eventType,
             @RequestParam(defaultValue = "50") int size,
             @RequestParam(required = false) String cursor) {
-        List<ScheduleResponse> schedules = scheduleService.listTeamSchedules(teamId, from, to);
+        List<ScheduleResponse> schedules = scheduleService.listTeamSchedules(
+                teamId, from, to, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(schedules));
     }
 

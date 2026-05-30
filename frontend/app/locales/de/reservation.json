@@ -1,4 +1,4 @@
-{
+﻿{
   "emergency_closure": {
     "section": {
       "period": "Schließungszeitraum",
@@ -103,5 +103,111 @@
       "NO_SHOW": "Nicht erschienen",
       "REJECTED": "Abgelehnt"
     }
+  },
+  "reservation": {
+    "status": {
+      "PENDING": "Ausstehend",
+      "CONFIRMED": "Bestätigt",
+      "CANCELLED": "Storniert",
+      "COMPLETED": "Abgeschlossen",
+      "NO_SHOW": "Nicht erschienen"
+    },
+    "filter": {
+      "all": "Alle"
+    },
+    "page": {
+      "my_title": "Meine Reservierungen",
+      "team_title": "Reservierungsverwaltung",
+      "settings_title": "Reservierungseinstellungen",
+      "settings_subtitle": "Reservierungslinien (Personal / Schalter) verwalten"
+    },
+    "tab": {
+      "book": "Reservieren",
+      "list": "Reservierungen",
+      "line_manage": "Linien verwalten"
+    },
+    "column": {
+      "datetime": "Datum & Uhrzeit",
+      "line": "Linie",
+      "reserver": "Reservierende Person",
+      "status": "Status",
+      "action": "Aktionen",
+      "line_name": "Linienname",
+      "description": "Beschreibung",
+      "display_order": "Reihenfolge",
+      "state": "Status"
+    },
+    "field": {
+      "date": "Datum",
+      "line": "Linie",
+      "name": "Name",
+      "description": "Beschreibung",
+      "display_order": "Anzeigereihenfolge",
+      "active": "Aktiv",
+      "line_name_required": "Linienname",
+      "note": "Notizen (optional)",
+      "time": "Uhrzeit"
+    },
+    "placeholder": {
+      "select": "Bitte auswählen",
+      "note": "Menü, Symptome usw.",
+      "line_name": "z. B. Mitarbeiter A",
+      "line_description": "z. B. Empfangsschalter"
+    },
+    "state": {
+      "active": "Aktiv",
+      "inactive": "Inaktiv"
+    },
+    "slot": {
+      "available": "Verfügbar",
+      "full": "Ausgebucht"
+    },
+    "button": {
+      "add_line": "Linie hinzufügen",
+      "add_line_long": "Linie hinzufügen",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "reserve": "Reservieren",
+      "cancel_reservation": "Stornieren",
+      "back": "Zurück"
+    },
+    "dialog": {
+      "title": "Bestätigen",
+      "line_create": "Linie erstellen",
+      "line_edit": "Linie bearbeiten",
+      "line_create_long": "Reservierungslinie hinzufügen",
+      "line_edit_long": "Reservierungslinie bearbeiten",
+      "reserve_confirm": "Reservierung bestätigen",
+      "cancel_confirm": "Diese Reservierung stornieren?",
+      "line_delete_confirm": "Diese Linie löschen?",
+      "line_delete_named_confirm": "\"{name}\" löschen?"
+    },
+    "message": {
+      "confirm_success": "Reservierung bestätigt",
+      "reject_success": "Reservierung abgelehnt",
+      "cancel_success": "Reservierung storniert",
+      "reserve_success": "Reservierung abgeschlossen",
+      "reserve_failed": "Reservierung fehlgeschlagen",
+      "line_create_success": "Linie erstellt",
+      "line_update_success": "Linie aktualisiert",
+      "line_delete_success": "Linie gelöscht",
+      "line_save_failed": "Speichern fehlgeschlagen",
+      "line_create_success_long": "Reservierungslinie erstellt",
+      "line_update_success_long": "Reservierungslinie aktualisiert",
+      "line_delete_success_long": "Reservierungslinie gelöscht",
+      "line_load_failed": "Reservierungslinien konnten nicht geladen werden",
+      "save_failed": "Speichern fehlgeschlagen",
+      "delete_failed": "Löschen fehlgeschlagen",
+      "my_load_failed": "Reservierungsinformationen konnten nicht geladen werden",
+      "reject_reason": "Vom Administrator abgelehnt"
+    },
+    "empty": {
+      "no_reservations": "Keine Reservierungen",
+      "no_my_reservations": "Keine Reservierungen",
+      "no_lines": "Keine Reservierungslinien",
+      "no_lines_yet": "Noch keine Linien",
+      "no_available_slots": "An diesem Tag keine freien Zeitfenster"
+    },
+    "line_manage_title": "Reservierungslinienverwaltung"
   }
 }
