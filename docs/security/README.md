@@ -33,7 +33,7 @@
 
 | OWASP カテゴリ | 主な対策 | 文書 |
 |---|---|---|
-| A01 アクセス制御の不備 | deny-by-default 認可 / `AbstractTenantAwareRepository` によるテナント絞り込み / IDOR 防止（`*` 1 階層厳格パターン） | [01](01_authorization_baseline.md), F01.2-04, F03.5-04 |
+| A01 アクセス制御の不備 | deny-by-default 認可 / ロール・権限モデル（SYSTEM_ADMIN を JWT・per-scope は SpEL ガード）/ `AbstractTenantAwareRepository` によるテナント絞り込み / IDOR 防止（`*` 1 階層厳格パターン） | [01](01_authorization_baseline.md), [03 ロール・権限](03_role_authority_model.md), F01.2-04, F03.5-04 |
 | A02 暗号化の失敗 | TLS/HSTS / AES-256-GCM（`birth_date` 等）/ JWT HMAC-SHA256 / 機密は環境変数 | [03](03_security_headers_and_csp.md) §TLS, [§6 本書](#6-シークレット管理ポリシー現状記録), F01.1 |
 | A03 インジェクション | JPA パラメータバインディング / DOMPurify / CSP | [05](05_injection_and_input_validation.md) |
 | A04 安全が考慮されない設計 | レートリミット（公開 API/ログイン）/ 退会時匿名化 / モジュラーモノリスのドメイン境界 | F01.2-04, F19.1, CLAUDE.md |
@@ -51,7 +51,8 @@
 | 文書 | 扱う範囲 | ステータス |
 |---|---|---|
 | [01_authorization_baseline.md](01_authorization_baseline.md) | 認可の既定値・公開エンドポイント許可リスト・webhook | 🟢 設計確定 |
-| [02_cookie_and_session.md](02_cookie_and_session.md) | Cookie 属性・セッション無効化 | 🟢 設計確定 |
+| [02_cookie_and_session.md](02_cookie_and_session.md) | Cookie 属性・セッション無効化・access_token roles claim | 🟢 設計確定 |
+| [03_role_authority_model.md](03_role_authority_model.md) | **ロール・権限モデル（認可基盤完全根治）**。JWT への SYSTEM_ADMIN 搭載・per-scope SpEL ガード・`@PreAuthorize` カタログ・段階計画 | 🟡 設計確定（実装 Phase 0〜5 未着手）|
 | [03_security_headers_and_csp.md](03_security_headers_and_csp.md) | CSP・セキュリティヘッダー・CORS・TLS | 🟢 設計確定 |
 | [04_dependency_and_supply_chain.md](04_dependency_and_supply_chain.md) | Dependabot・脆弱性管理 | 🟢 設計確定 |
 | [05_injection_and_input_validation.md](05_injection_and_input_validation.md) | SQL/XSS/入力検証 | 🟢 設計確定 |
@@ -72,7 +73,7 @@
 ## 4. セキュリティ原則（横断）
 
 1. **deny-by-default** — 認可は「明示的に許可したものだけ公開、それ以外は認証必須」を既定とする（[01](01_authorization_baseline.md)）
-2. **多層防御** — SecurityFilterChain（粗い境界）+ `@PreAuthorize`/Service 層（細かい所有権）の二重ガード
+2. **多層防御** — SecurityFilterChain（粗い境界）+ `@PreAuthorize`/Service 層（細かい所有権）の二重ガード。**宣言＝強制を単一真実源とする**ため `@EnableMethodSecurity` を有効化し `@PreAuthorize` を実効化する（[03](03_role_authority_model.md)）
 3. **秘密はコードに置かない** — 全機密は環境変数。`.gitignore` で `.env`/`*.key`/`*.pem` を除外
 4. **症状を隠さない** — 障害は根治治療（CLAUDE.md「障害対応の原則」と整合）。認可エラーを握りつぶさない
 5. **テナント分離** — `organization_id` 絞り込みを `AbstractTenantAwareRepository` で統一（将来のシャーディング前提）
@@ -134,3 +135,4 @@
 | 日付 | 変更 |
 |---|---|
 | 2026-05-26 | 新規作成（Security Hardening Phase 1）。横断セキュリティ設計を集約 |
+| 2026-05-30 | [03 ロール・権限モデル](03_role_authority_model.md) を新設（認可基盤完全根治）。文書一覧・OWASP A01・原則 2（多層防御）に参照を追加 |
