@@ -49,6 +49,10 @@ const pageSize = 20
 const showCreateDialog = ref(false)
 
 const { templateLabel } = useScopeLabels()
+const route = useRoute()
+
+/** F22.1: スコープ検索フォームからの遷移時に URL クエリ keyword を初期値として復元する。 */
+const initialKeyword = ref('')
 
 const searchParams = ref({
   keyword: '',
@@ -99,6 +103,12 @@ function formatLocation(prefecture: string | null, city: string | null): string 
 }
 
 onMounted(() => {
+  // F22.1 §2.9: URL クエリ keyword があれば検索フォーム初期値にセットして初期検索を実行。
+  const kw = route.query.keyword
+  if (typeof kw === 'string' && kw.length > 0) {
+    initialKeyword.value = kw
+    searchParams.value.keyword = kw
+  }
   fetchTeams()
 })
 </script>
@@ -119,6 +129,7 @@ onMounted(() => {
       <SearchBar
         :placeholder="$t('teamHub.searchPageTitle')"
         :show-template-filter="true"
+        :initial-keyword="initialKeyword"
         @search="onSearch"
       />
     </div>

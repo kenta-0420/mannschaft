@@ -25,15 +25,17 @@ export function useScopeTabApi() {
    *
    * @param scopeType - TEAM / ORGANIZATION
    * @param page - 0 始まりのページ番号（デフォルト 0）
-   * @param folderId - F15.3 フォルダ ID（指定時は当該フォルダに絞り込み）
+   * @param folderId - F15.3 フォルダ ID（指定時は当該フォルダに絞り込み）。
+   *   `my_scope_folders.id` は数値（BIGINT）であり BE 実装（Long）と揃えるため number。
+   *   URL クエリへは String(folderId) で付与する。
    */
   async function getScopeTabs(
     scopeType: ScopeTabType,
     page = 0,
-    folderId?: string,
+    folderId?: number,
   ): Promise<ScopeTabPage> {
     const q = new URLSearchParams({ scopeType, page: String(page) })
-    if (folderId) q.set('folderId', folderId)
+    if (folderId !== undefined && folderId !== null) q.set('folderId', String(folderId))
     const res = await api<{ data: ScopeTabPage }>(`/api/v1/dashboard/scope-tabs?${q}`)
     return res.data
   }

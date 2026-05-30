@@ -87,7 +87,8 @@
       "attendance": "出席確認",
       "unconfirmed": "{count}件未確認",
       "unanswered": "{count}件未回答",
-      "empty": "対応が必要な項目はありません"
+      "empty": "対応が必要な項目はありません",
+      "loadError": "Aktionselemente konnten nicht geladen werden"
     },
     "emptyState": "まだ投稿がありません"
   }
