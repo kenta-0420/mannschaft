@@ -69,6 +69,11 @@ DB から SYSTEM_ADMIN を補完するロジックは存在しない。結果と
 
 ### 2.3 病巣③: `@EnableMethodSecurity` が未有効 → 全 `@PreAuthorize` が no-op
 
+> **✅ 点火済み（2026-05-30）**: `SecurityConfig` に `@EnableMethodSecurity(prePostEnabled = true)` を付与し、
+> 本病巣を解消した。以下の本文は点火前の状態を記録として残す。点火後は (A) SYSTEM_ADMIN 注釈・
+> (B)(C) per-scope SpEL ガード・(F)(G) 所有者/ロールチェッカーが実効化される。
+
+
 プロジェクト全体を走査した結果、`@EnableMethodSecurity` / `@EnableGlobalMethodSecurity` は **どの `@Configuration` にも付与されていない**（コメント内の言及のみ。`faq/service/FaqAdminService.java:37` ほか 12 箇所が「未有効」と明記）。
 
 Spring Security はメソッドセキュリティが有効化されていない限り `@PreAuthorize` を **完全に無視**する。よってコード上の **97 個の `@PreAuthorize`（メソッド/クラスレベル合算）がすべて実機で強制力ゼロ**である。内訳は §5 のカタログ参照。
@@ -86,13 +91,18 @@ Spring Security はメソッドセキュリティが有効化されていない�
 
 これらは正しく書かれているが、**病巣①②により誰も `ROLE_SYSTEM_ADMIN` authority を持たない**ため、SYSTEM_ADMIN 本人を含む**全員が 403**になる。すなわち system-admin 系 API は「誰も使えない」状態で稼働している。
 
-加えて `SecurityConfig.java:137` の以下のコメントは **事実無根**である:
+加えて `SecurityConfig.java:137` の旧コメントは **当時は事実無根**であった:
 
 ```java
 // JwtAuthenticationFilter が "ROLE_SYSTEM_ADMIN" として authority を付与するため hasRole を使用
 ```
 
-§2.2 のとおりフィルタは DB 補完しないため、この付与は起きていない。**このコメントの是正を Phase 2 のタスクとする**（本 PR ではコードを触らず、是正対象として明記するに留める）。
+§2.2 のとおり当時のフィルタは DB 補完しなかったため、この付与は起きていなかった。
+**✅ 是正済み（Phase 1 / 点火 Phase）**: Phase 1 で `RoleClaimResolver` が発行時に `user_roles` から
+SYSTEM_ADMIN を判定し roles に載せ、`JwtAuthenticationFilter` がそれを `ROLE_SYSTEM_ADMIN` authority へ
+変換するため、当該コメントは**事実**となった。現行 `SecurityConfig` のコメント
+（`「発行時に RoleClaimResolver が user_roles から SYSTEM_ADMIN を判定して roles に載せ、…hasRole を使用」`）は
+この事実を正確に記述している。
 
 ### 2.5 病巣⑤: 幻ロール・負論理
 
@@ -350,7 +360,7 @@ method-security が無効な現状、以下は **認可が事実上ゼロ**で�
 | **0** | 設計書（本 PR） | 本書新規＋ 02/F01.1 更新＋ README 参照追加＋ §2.4 嘘コメント是正をタスク化 | — | — |
 | **1** | 要石: JWT に SYSTEM_ADMIN | 発行ヘルパー集約 → 5 経路で `isSystemAdmin` ロード注入 → リフレッシュ再判定 → 剥奪経路に `setUserInvalidationTimestamp` 発火 | 「SYSTEM_ADMIN ユーザーの JWT に SYSTEM_ADMIN が載る / 一般ユーザーには載らない / 剥奪後リフレッシュで外れる」を先にテスト化 | 0 |
 | **2** | per-scope SpEL ガード化＋生穴封鎖 | `AccessGuard` Bean 新設 → (B)(C) per-scope EP を `@accessGuard.isScopeAdmin(...)` 化 → 既存 Service 層呼出と統合（残置）→ §5.1 生穴のうち**未注入 EP を明示 Service 層認可で最優先封鎖**（method-security OFF でも即効く）→ §7.1（TEACHER＝A-1）/§7.2（ShiftPdf 負論理）の正規化も併せて実施 | 「他団体 ADMIN が別団体の管理 EP で 403」「自団体 ADMIN は 2xx」「非権限者が生穴 EP で COMMON_002」「SYSTEM_ADMIN 短絡」を先に | 1 |
-| **3** | method-security 有効化 | `@EnableMethodSecurity(prePostEnabled=true)` を `SecurityConfig` に付与 → (A)(F)(G)(H) が実効化 → `@WebMvcTest` 互換改修（method-security 有効下でのスライステスト方針）→ §2.4 の嘘コメント文言是正 | 「SYSTEM_ADMIN 系 EP が SYSTEM_ADMIN で 2xx・一般で 403」「所有者ガード EP が他人で 403」を先に | 2（全 per-scope EP の注釈が正しい SpEL に変換済みかつ SYSTEM_ADMIN が JWT に載っていること） |
+| **3** ✅ | method-security 有効化（点火） | ✅ **完了（2026-05-30）**: `@EnableMethodSecurity(prePostEnabled=true)` を `SecurityConfig` に付与 → (A)(F)(G)(H) が実効化 → `@WebMvcTest` 互換は §9.3 のとおり **改修不要**（既存スライスは `addFilters=false` かつ SecurityConfig 非取り込みのため点火後もスライス内で発火しない）→ §2.4 コメントは Phase 1 で既に事実化済み | 「SYSTEM_ADMIN 系 EP が SYSTEM_ADMIN で 2xx・一般で 403」「所有者ガード EP が他人で 403」を `MethodSecurityIgnitionTest` で End-to-End 検証 | 2（全 per-scope EP の注釈が正しい SpEL に変換済みかつ SYSTEM_ADMIN が JWT に載っていること） |
 | **4** | 幻ロール・負論理の最終確認＋残整理 | Phase 2 で正規化した出席開示（A-1）/ ShiftPdf 負論理の **method-security 有効下での実機検証** → 取りこぼし EP の点検 | 「教員相当のみ開示可」「SUPPORTER は PDF 403・他団体は IDOR 403」を method-security 有効下で再確認 | 3 |
 | **5** | 認可統合テスト＋確定 | 横断統合テスト（SYSTEM_ADMIN 通る/非権限 403/他団体 ADMIN 弾く）→ docs/security 確定（本書ステータス 🟢 へ）→ README 表更新 | 統合テストマトリクス（§10）を網羅 | 4 |
 
@@ -383,10 +393,21 @@ grep -rn "@EnableMethodSecurity" backend/src/main/java --include=*.java
 
 ### 9.3 `@WebMvcTest` 互換改修方針（Phase 2）
 
-`@EnableMethodSecurity` 有効化後、`@WebMvcTest` スライステストは `@PreAuthorize` を評価しようとするため、SpEL が参照する Bean（`@accessGuard` / `@quickMemoAccessGuard` / `@adminRoleChecker`）が ApplicationContext に存在しないと起動失敗する。方針:
+`@EnableMethodSecurity` 有効化後、`@WebMvcTest` スライステストは原理的には `@PreAuthorize` を評価しようとするため、SpEL が参照する Bean（`@accessGuard` / `@quickMemoAccessGuard` / `@adminRoleChecker`）が ApplicationContext に存在しないと起動失敗し得る。
 
-- スライステストでは対象ガード Bean を `@MockBean` で注入し、認可可否を明示的にスタブする。
-- 認可ロジック自体の検証は `AccessGuard` / `AccessControlService` の専用ユニットテストに集約し、Controller スライステストは「認可が通る/通らない時の HTTP 挙動」に限定する（関心の分離）。
+**✅ 点火後の実測（2026-05-30）= 既存スライスの改修は不要だった。** 本プロジェクトの 104 個の `@WebMvcTest` スライスは以下の 2 性質を持つため、点火後もスライス内ではメソッド層認可が発火せず、テストは無改修で全 PASS した:
+
+1. **`@AutoConfigureMockMvc(addFilters = false)` を採用** — ただしメソッド層認可は AOP advisor 由来でフィルタ層とは独立なため、これ単独では発火抑止にならない。
+2. **スライスが `SecurityConfig` を `@Import` していない** — `@WebMvcTest` は `@Configuration`（`SecurityConfig`）をスライスに取り込まない（コントローラ層に限定する）。`@EnableMethodSecurity` は `SecurityConfig` 上にあるため、**スライスの ApplicationContext には `AuthorizationManagerBeforeMethodInterceptor` が登録されず、`@PreAuthorize` が評価されない**。よって SpEL ガード Bean をスライスに供給する必要もない。
+
+このため既存スライスは「`@PreAuthorize` 注釈の宣言が正しい SpEL であること」を **Reflection で担保**し（例: `AdminFaqControllerTest$AuthorizationTest`）、HTTP 挙動（200/204/400/404）はハンドラ本体検証に徹する、という二段構えで認可を担保している。この方針は点火後もそのまま有効である。
+
+**点火が実機で効くことの End-to-End 検証**は、`SecurityConfig`（`@EnableMethodSecurity` 付与済み）を `@Import` する専用統合テスト `MethodSecurityIgnitionTest`（`config` パッケージ・Docker 不要の minimal context）で担保する。同テストは SpEL ガード Bean（`AccessGuard` / `QuickMemoAccessGuard`）を本物で供給し、判定元の `AccessControlService` / `QuickMemoRepository` のみモックして可否を確定させ、`hasRole('SYSTEM_ADMIN')` / `@accessGuard.isScopeAdmin` / `@quickMemoAccessGuard.canAccess` が実際に 403/2xx を返すことを MockMvc で検証する。
+
+**将来、メソッド層認可をスライス内で発火させたいテストを書く場合**の定石:
+- 対象スライスに `@Import(SecurityConfig.class)`（または method-security のみ有効化する専用 `@Configuration`）を加え、`@AutoConfigureMockMvc`（filters 有効）にする。
+- SpEL が参照するガード Bean を `@MockitoBean` で注入し、認可可否を明示スタブする。
+- 認可ロジック自体の検証は `AccessGuard` / `AccessControlService` の専用ユニットテストに集約し、Controller テストは「認可が通る/通らない時の HTTP 挙動」に限定する（関心の分離）。
 
 ---
 
@@ -415,7 +436,7 @@ grep -rn "@EnableMethodSecurity" backend/src/main/java --include=*.java
 | **Phase 3（点火）の一斉実効化** | 97 個の宣言が同時に効くため、Phase 1（JWT に SYSTEM_ADMIN）未完だと system-admin 系が全員 403 化、Phase 2（注釈の SpEL 化）未完だと per-scope `hasRole` 系が一斉 403 化 | Phase 順序厳守（§8 注記）。**Phase 3 点火前に Phase 1・2 の実機テスト合格を必須化**。Phase 2 で全注釈を正しい SpEL に変換済みにしておくことで点火の窓を構造的に消す |
 | **幻ロール EP の挙動反転** | 現状フリーパス → 有効化で全員 403。利用中なら機能停止 | **Phase 2 で §7.1 決定（A-1）と同時に正規化済み**（`@accessGuard.isScopeAdmin(..., #teamId, 'TEAM')`）。加えて Service 層で明示認可を注入し、method-security OFF の現状でも生穴を即封鎖。Phase 3 点火時には既に正しい状態 |
 | **per-scope 判定の N+1** | SpEL ガードがリクエスト毎に `user_roles` を参照 | `AccessControlService` の既存クエリは単一 SQL。ホットパスでは必要に応じキャッシュを検討（本根治のスコープ外） |
-| **`@WebMvcTest` 大量改修** | method-security 有効化で既存スライステストが軒並み起動失敗 | §9.3 の方針で `@MockBean` 注入を定型化。Phase 3 のテスト工数を見込む |
+| **`@WebMvcTest` 大量改修** | method-security 有効化で既存スライステストが軒並み起動失敗（懸念） | **✅ 実測で杞憂と判明（2026-05-30）**: 既存 104 スライスは `addFilters=false` かつ SecurityConfig 非取り込みのため点火後もスライス内で `@PreAuthorize` が評価されず、無改修で全 PASS。改修工数ゼロ（§9.3 実測）。点火の実効性は専用統合テスト `MethodSecurityIgnitionTest` で別途担保 |
 | **ロール変更の反映遅延（付与）** | SYSTEM_ADMIN 付与は最大 15 分 | 即時付与が要件なら再ログイン導線。剥奪は §6 で即時化 |
 
 ---
@@ -463,3 +484,4 @@ grep -rn "@EnableMethodSecurity" backend/src/main/java --include=*.java
 |---|---|
 | 2026-05-30 | 新規作成。認可基盤完全根治（案①）の正典モデル・病巣カタログ（file:line 根拠）・SpEL ガード設計・JWT claims 設計・`@PreAuthorize` 97 個分類カタログ・生穴リスト・段階計画 Phase 0〜5・テスト戦略・統合テストマトリクスを定義 |
 | 2026-05-30 | **§8 段階計画の順序是正**: Phase 3（per-scope SpEL 化＋生穴封鎖）を Phase 4（method-security 有効化）より前に並べ替え（番号も振り直し）。点火の瞬間に未変換 `hasRole` が一斉 403 化する窓を構造的に消す方針を明記。§5/§5.1/§7.1/§7.2/§9/§11 の Phase 参照を追従更新。**Phase 3-a 実装**（per-scope 生穴封鎖）として `AccessGuard` Bean 新設、AdminPublicSettings/SupporterNameDisclosure/Disclosure/ShiftChangeRequest.review/PdfSignatureVerify の生穴を明示 Service 層認可で封鎖、対象 EP の `@PreAuthorize` を `@accessGuard.isScopeAdmin(...)`/`hasRole('SYSTEM_ADMIN')` へ是正済み（§5.1 状態列参照）。残: 負論理 (E) シフト PDF |
+| 2026-05-30 | **点火（method-security 有効化 / §8 Phase 3）完了**: `SecurityConfig` に `@EnableMethodSecurity(prePostEnabled = true)` を付与。`@PreAuthorize` 宣言が実効化。`@WebMvcTest` 互換改修は **実測で不要**（既存 104 スライスは `addFilters=false`＋SecurityConfig 非取り込みのため点火後もスライス内で発火せず、全 PASS）— §9.3/§11 を実測結果に更新。点火の実効性は専用統合テスト `MethodSecurityIgnitionTest`（config パッケージ・Docker 不要）で End-to-End 検証（SYSTEM_ADMIN 2xx・一般 403・未認証 401／自団体 ADMIN 2xx・他団体 403・SYSTEM_ADMIN 短絡 2xx／所有者 2xx・他人 403）。§2.3/§2.4 のステータスを「点火済み／Phase 1 で事実化済み」に更新。**残課題**: 負論理 (E) `ShiftPdfController` の `!hasRole('SUPPORTER')` は点火後も「常に true（SUPPORTER 排除が機能しない no-op）」のまま — 403 storm は起こさないが §7.2 の正規化（`scheduleId → teamId` 解決＋メンバー判定＋SUPPORTER 除外）が未着手。本書ステータスは Phase 5（統合テスト確定）完了時に 🟢 とする方針ゆえ、本コミットでは点火完了の記録に留める |
