@@ -77,6 +77,15 @@ class RecruitmentListingServicePhase2Test {
     private AccessControlService accessControlService;
     @Mock
     private RecruitmentMapper mapper;
+    // F22.1 市: 追加依存
+    @Mock
+    private MarketRegionValidator marketRegionValidator;
+    @Mock
+    private MarketFriendTargetService marketFriendTargetService;
+    @Mock
+    private MarketResponseEnricher marketResponseEnricher;
+    @Mock
+    private com.mannschaft.app.recruitment.repository.RecruitmentFriendTargetRepository friendTargetRepository;
 
     @InjectMocks
     private RecruitmentListingService service;

@@ -72,7 +72,19 @@ public enum BulletinErrorCode implements ErrorCode {
     ARCHIVE_FOLDER_SCOPE_MISMATCH("BULLETIN_020", "保管庫フォルダのスコープが一致しません", Severity.WARN),
 
     /** 未アーカイブのスレッドはフォルダ振り分けできない（設計書 §4 PATCH .../folder） */
-    THREAD_NOT_ARCHIVED("BULLETIN_021", "アーカイブされていないスレッドはフォルダへ振り分けできません", Severity.WARN);
+    THREAD_NOT_ARCHIVED("BULLETIN_021", "アーカイブされていないスレッドはフォルダへ振り分けできません", Severity.WARN),
+
+    /** 添付ファイル数が上限（1ターゲット 5 件）に達した */
+    ATTACHMENT_LIMIT_EXCEEDED("BULLETIN_022", "添付ファイルは1件あたり最大5個までです", Severity.WARN),
+
+    /** 添付ファイルのサイズが上限（10MB）を超過した */
+    ATTACHMENT_SIZE_EXCEEDED("BULLETIN_023", "添付ファイルのサイズが上限を超えています", Severity.WARN),
+
+    /** 添付ファイルの MIME タイプがホワイトリスト外 */
+    ATTACHMENT_INVALID_CONTENT_TYPE("BULLETIN_024", "許可されていないファイル形式です", Severity.WARN),
+
+    /** 添付対象（スレッド/返信）が見つからない */
+    ATTACHMENT_TARGET_NOT_FOUND("BULLETIN_025", "添付対象が見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

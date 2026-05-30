@@ -62,6 +62,22 @@
         "INFO": "Info",
         "LOW": "Low"
       }
+    },
+    "attachment": {
+      "label": "Attachments (max 5 files, 10 MB each)",
+      "addFile": "Add file",
+      "uploading": "Uploading...",
+      "uploadFailed": "Failed to upload \"{name}\"",
+      "uploadAllFailed": "Failed to upload attachments",
+      "download": "Download",
+      "downloadFailed": "Failed to get download URL",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this file?",
+      "deleteSuccess": "Attachment deleted",
+      "deleteFailed": "Failed to delete attachment",
+      "loadFailed": "Failed to load attachments",
+      "limitExceeded": "You can attach up to 5 files",
+      "sizeLimitExceeded": "\"{name}\" exceeds the 10 MB limit"
     }
   }
 }

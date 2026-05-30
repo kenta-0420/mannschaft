@@ -36,7 +36,7 @@
       "type": "種別",
       "joinPolicy": "参加方式",
       "visibility": "公開範囲",
-      "bulletinVisibility": "掲示板公開範囲",
+      "bulletinVisibility": "Bulletin board visibility",
       "guideline": "村ガイドライン",
       "purpose": "活動目的",
       "memberCount": "村人数",
@@ -56,8 +56,8 @@
       "UNLISTED": "限定公開"
     },
     "bulletinVisibility": {
-      "PUBLIC": "掲示板を村メンバー以外にも公開",
-      "MEMBERS_ONLY": "村メンバーのみ"
+      "PUBLIC": "Visible to non-members too",
+      "MEMBERS_ONLY": "Members only"
     },
     "role": {
       "HEADMAN": "村長",

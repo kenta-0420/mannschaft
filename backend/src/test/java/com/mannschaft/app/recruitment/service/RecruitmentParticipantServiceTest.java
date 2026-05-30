@@ -72,6 +72,12 @@ class RecruitmentParticipantServiceTest {
     @Mock
     private RecruitmentMapper mapper;
 
+    @Mock
+    private MarketFinalizeService marketFinalizeService;
+
+    @Mock
+    private com.mannschaft.app.common.visibility.ContentVisibilityChecker visibilityChecker;
+
     @InjectMocks
     private RecruitmentParticipantService service;
 
