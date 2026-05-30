@@ -90,20 +90,25 @@ jobs:
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
-          # setup-java の組み込み Gradle キャッシュ（~/.gradle/caches, ~/.gradle/wrapper）
-          cache: gradle
+          # Gradle キャッシュは下の setup-gradle に一本化するため、ここでは有効化しない。
 
-      # setup-java の cache: gradle は ~/.gradle を対象とするが、
-      # プロジェクト内の .gradle ディレクトリ（Gradle ビルドキャッシュ本体）は別途キャッシュする。
-      # --build-cache はこのローカルキャッシュを参照してタスクの再実行をスキップする。
-      - name: Gradle ビルドキャッシュ（プロジェクト内）
+      # Gradle 公式の setup-gradle で依存・wrapper・Gradle ビルドキャッシュ本体
+      # （~/.gradle/caches/build-cache-1）・configuration-cache を一括でキャッシュする。
+      # 旧構成は actions/cache の対象が backend/.gradle/buildOutputCleanup（掃除メタデータ）
+      # のみで、--build-cache が参照するビルドキャッシュ本体を取りこぼしていた。
+      #
+      # 本 workflow は on: pull_request のみで main への push では起動しないため、
+      # setup-gradle 既定の「default ブランチのみ書き込み」だとキャッシュが永久に
+      # 育たない。そのため cache-read-only: false を明示し、PR ビルドでも
+      # read-write でキャッシュを更新する。
+      - name: Set up Gradle（依存＋ビルドキャッシュ）
         if: steps.changes.outputs.backend_changed == 'true'
-        uses: actions/cache@v4
+        uses: gradle/actions/setup-gradle@v4
         with:
-          path: backend/.gradle/buildOutputCleanup
-          key: gradle-build-cache-${{ runner.os }}-${{ hashFiles('backend/**/*.gradle*', 'backend/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-build-cache-${{ runner.os }}-
+          cache-read-only: false
+          gradle-home-cache-includes: |
+            caches
+            notifications
 
       - name: Grant Gradle wrapper execute permission
         if: steps.changes.outputs.backend_changed == 'true'
