@@ -1,0 +1,98 @@
+{
+  "market": {
+    "title": "Markt",
+    "listing": {
+      "label": "Aushang",
+      "count": "{count} Aushänge",
+      "regionNone": "Landesweit (inkl. ohne Region)"
+    },
+    "action": {
+      "post": "Aushang erstellen",
+      "apply": "Bewerben",
+      "takeDown": "Entfernen",
+      "loginToApply": "Anmelden",
+      "goToDashboard": "Zum Dashboard",
+      "postFromDashboard": "Im Team-/Organisations-Dashboard erstellen"
+    },
+    "filter": {
+      "prefecture": "Präfektur",
+      "city": "Stadt",
+      "category": "Kategorie",
+      "keyword": "Nach Stichwort suchen",
+      "allPrefectures": "Landesweit",
+      "allCities": "Stadt auswählen",
+      "allCategories": "Alle Kategorien",
+      "includeRegionNone": "Ohne Region einschließen",
+      "mobileToggle": "Filtern"
+    },
+    "breadcrumb": {
+      "national": "Landesweit",
+      "count": "({count})"
+    },
+    "card": {
+      "deadline": "Frist",
+      "capacity": "{confirmed}/{capacity} Bewerber",
+      "region": "Region",
+      "category": "Kategorie",
+      "organizer": "Veranstalter"
+    },
+    "status": {
+      "OPEN": "Offen",
+      "FULL": "Voll (Bestätigung ausstehend)",
+      "COMPLETED": "Abgeschlossen",
+      "CANCELLED": "Entfernt",
+      "AUTO_CANCELLED": "Automatisch abgebrochen"
+    },
+    "visibility": {
+      "public": "Öffentlich",
+      "friendsOnly": "Nur Freundesteams",
+      "label": "Sichtbarkeit"
+    },
+    "friendTarget": {
+      "allFriends": "Alle Freundesteams",
+      "folder": "Nach Ordner",
+      "team": "Bestimmte Teams",
+      "addTeam": "Team hinzufügen",
+      "selectFolder": "Ordner auswählen",
+      "noFolders": "Keine Ordner vorhanden"
+    },
+    "empty": {
+      "title": "Keine Aushänge gefunden",
+      "cta": {
+        "canPost": "Erstelle den ersten Aushang für dein Team!",
+        "noPermission": "Um einen Aushang zu erstellen, werde Administrator oder frage einen Admin.",
+        "guest": "Anmelden zum Erstellen oder Bewerben"
+      }
+    },
+    "detail": {
+      "organizer": "Veranstalter",
+      "region": "Region",
+      "startAt": "Veranstaltungsdatum",
+      "deadline": "Bewerbungsfrist",
+      "capacity": "Kapazität",
+      "confirmedCount": "Beworben",
+      "status": "Status",
+      "location": "Ort",
+      "category": "Kategorie",
+      "notFound": "Aushang nicht gefunden",
+      "notPublic": "Dieser Aushang ist nicht öffentlich"
+    },
+    "notify": {
+      "applicationReceived": "Jemand hat sich für deinen Aushang beworben ({owner} / {title})",
+      "friendListing": "{team} hat dir gesendet: \"{title}\"",
+      "finalizeRequest": "Dein Aushang ist voll. Bestätigen und schließen?",
+      "reminderShortfall": "Frist naht. Noch {count} Bewerber benötigt.",
+      "autoCancelled": "\"{title}\" wurde mangels Bewerbungen geschlossen.",
+      "cancelledToApplicant": "Leider wurde \"{title}\" vom Veranstalter zurückgezogen.",
+      "seeOtherListings": "Weitere Aushänge von {team}"
+    },
+    "error": {
+      "loadFailed": "Marktdaten konnten nicht geladen werden",
+      "MARKET_001": "Ungültiger Regionscode oder Präfektur/Stadt stimmen nicht überein",
+      "MARKET_002": "Mindestens ein Empfänger ist für Freunde-only-Aushänge erforderlich",
+      "MARKET_003": "Es kann kein Team angegeben werden, das kein bestätigter Freund ist",
+      "MARKET_004": "Es kann kein Ordner eines anderen Teams angegeben werden",
+      "MARKET_005": "Freunde-only-Sichtbarkeit kann nicht mit Verteilungszielen kombiniert werden"
+    }
+  }
+}

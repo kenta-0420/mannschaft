@@ -155,6 +155,16 @@ onMounted(async () => {
           :entity-id="String(org.id)"
           :entity-name="org.basicInfo?.nickname1 || org.basicInfo?.name || ''"
         />
+        <!-- F22.1 市（Market）: ADMIN または DEPUTY_ADMIN のみ「札を立てる」導線 -->
+        <Button
+          v-if="isAdminOrDeputy"
+          :label="$t('market.action.post')"
+          icon="pi pi-tag"
+          severity="secondary"
+          outlined
+          size="small"
+          @click="navigateTo(`/organizations/${orgId}/recruitment-listings`)"
+        />
         <!-- F02.8 告知ウィザード：MEMBER以上に表示 -->
         <Button
           v-if="roleName && roleName !== 'SUPPORTER'"
