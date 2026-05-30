@@ -53,8 +53,8 @@ SecurityFilterChain は「最低限のゲート」、所有権の最終判定は
 | `/api/v1/auth/password-reset/**`, `/email-verification/**`, `/oauth/**` | ログイン前のメールリンク/OAuth |
 | `/api/v1/parental-consent/approve`, `/reject` | 保護者がメールリンクから直接アクセス（F01.9） |
 
-### 3.3 公開閲覧（F19.1 / F15.4・レート制限あり）
-`/api/v1/public/**` の GET 群（teams/organizations の詳細・posts・events・timeline-posts・search・users・blog-posts comments）、`/api/v1/organizations/*/teams/search`、`/api/v1/contact-invite/*`、SEO（`/sitemap.xml`・`/robots.txt`・`/sitemap-*.xml`）、i18n（`/api/i18n/**`）。
+### 3.3 公開閲覧（F19.1 / F15.4 / F22.1・レート制限あり）
+`/api/v1/public/**` の GET 群（teams/organizations の詳細・posts・events・timeline-posts・search・users・blog-posts comments、**市（F22.1）の `market/listings`・`market/listings/*`・`market/regions`・`market/summary`**）、`/api/v1/organizations/*/teams/search`、`/api/v1/contact-invite/*`、SEO（`/sitemap.xml`・`/robots.txt`・`/sitemap-*.xml`）、i18n（`/api/i18n/**`）。
 > POST/DELETE（コメント投稿・削除など）は **認証必須**（許可リストに入れず `.authenticated()` が制御）。
 
 ### 3.4 広告（F09.7 / F09.17・IP レート制限あり）
