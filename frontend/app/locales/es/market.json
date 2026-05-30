@@ -1,0 +1,101 @@
+{
+  "market": {
+    "title": "Mercado",
+    "listing": {
+      "label": "Anuncio",
+      "count": "{count} anuncios",
+      "regionNone": "Nacional (incluye sin región)"
+    },
+    "page": {
+      "newListing": "Publicar anuncio"
+    },
+    "action": {
+      "post": "Publicar",
+      "apply": "Postularse",
+      "takeDown": "Retirar",
+      "loginToApply": "Inicia sesión",
+      "goToDashboard": "Ir al panel",
+      "postFromDashboard": "Publica desde el panel de tu equipo/organización"
+    },
+    "filter": {
+      "prefecture": "Prefectura",
+      "city": "Ciudad",
+      "category": "Categoría",
+      "keyword": "Buscar por palabra clave",
+      "allPrefectures": "Nacional",
+      "allCities": "Seleccionar ciudad",
+      "allCategories": "Todas las categorías",
+      "includeRegionNone": "Incluir sin región",
+      "mobileToggle": "Filtrar"
+    },
+    "breadcrumb": {
+      "national": "Nacional",
+      "count": "({count})"
+    },
+    "card": {
+      "deadline": "Fecha límite",
+      "capacity": "{confirmed}/{capacity} inscritos",
+      "region": "Región",
+      "category": "Categoría",
+      "organizer": "Organizador"
+    },
+    "status": {
+      "OPEN": "Abierto",
+      "FULL": "Completo (pendiente)",
+      "COMPLETED": "Completado",
+      "CANCELLED": "Retirado",
+      "AUTO_CANCELLED": "Cancelado automáticamente"
+    },
+    "visibility": {
+      "public": "Público",
+      "friendsOnly": "Solo equipos amigos",
+      "label": "Visibilidad"
+    },
+    "friendTarget": {
+      "allFriends": "Todos los equipos amigos",
+      "folder": "Por carpeta",
+      "team": "Equipos específicos",
+      "addTeam": "Agregar equipo",
+      "selectFolder": "Seleccionar carpeta",
+      "noFolders": "Sin carpetas"
+    },
+    "empty": {
+      "title": "Sin anuncios",
+      "cta": {
+        "canPost": "¡Sé el primero en publicar un anuncio para tu equipo!",
+        "noPermission": "Para publicar, conviértete en administrador o pídele a uno que lo haga.",
+        "guest": "Inicia sesión para publicar o postularte"
+      }
+    },
+    "detail": {
+      "organizer": "Organizador",
+      "region": "Región",
+      "startAt": "Fecha del evento",
+      "deadline": "Fecha límite",
+      "capacity": "Capacidad",
+      "confirmedCount": "Inscritos",
+      "status": "Estado",
+      "location": "Lugar",
+      "category": "Categoría",
+      "notFound": "Anuncio no encontrado",
+      "notPublic": "Este anuncio no es público"
+    },
+    "notify": {
+      "applicationReceived": "Recibiste una postulación ({owner} / {title})",
+      "friendListing": "{team} te envió: \"{title}\"",
+      "finalizeRequest": "Tu anuncio está lleno. ¿Confirmas y lo cierras?",
+      "reminderShortfall": "La fecha límite se acerca. Aún necesitas {count} postulantes.",
+      "autoCancelled": "\"{title}\" fue cerrado por falta de postulantes.",
+      "cancelledToApplicant": "Lo sentimos, \"{title}\" fue retirado por el organizador.",
+      "seeOtherListings": "Ver otros anuncios de {team}"
+    },
+    "error": {
+      "loadFailed": "Error al cargar el mercado",
+      "MARKET_001": "Código de región inválido o prefectura/ciudad no coinciden",
+      "MARKET_002": "Se requiere al menos un destinatario para anuncios solo para amigos",
+      "MARKET_003": "No se puede especificar un equipo que no sea amigo confirmado",
+      "MARKET_004": "No se puede especificar una carpeta de otro equipo",
+      "MARKET_005": "No se puede combinar solo amigos con destinos de distribución"
+    }
+  }
+}

@@ -143,12 +143,21 @@ onMounted(async () => {
         @show-leave-confirm="showLeaveConfirm = true"
       />
 
-      <!-- F02.9 お気に入りトグル + F02.8 告知ウィザード -->
+      <!-- F02.9 お気に入りトグル + F02.8 告知ウィザード + F22.1 市（Market）札立て導線 -->
       <div class="mb-4 flex items-center justify-end gap-2">
         <FavoriteToggleButton
           entity-type="TEAM"
           :entity-id="String(team.id)"
           :entity-name="displayName"
+        />
+        <!-- F22.1 市（Market）: ADMIN または DEPUTY_ADMIN のみ「札を立てる」導線 -->
+        <Button
+          v-if="isAdminOrDeputy"
+          :label="$t('market.action.post')"
+          icon="pi pi-tag"
+          severity="secondary"
+          outlined
+          @click="navigateTo(`/teams/${teamId}/recruitment-listings/new`)"
         />
         <!-- F02.8 告知ウィザード：MEMBER以上に表示 -->
         <Button

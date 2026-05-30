@@ -1,0 +1,101 @@
+{
+  "market": {
+    "title": "集市",
+    "listing": {
+      "label": "招募札",
+      "count": "{count}件",
+      "regionNone": "全国（含未指定地区）"
+    },
+    "page": {
+      "newListing": "发布招募"
+    },
+    "action": {
+      "post": "发布招募",
+      "apply": "应募",
+      "takeDown": "撤下",
+      "loginToApply": "登录后应募",
+      "goToDashboard": "前往管理面板",
+      "postFromDashboard": "在团队/组织管理面板发布招募"
+    },
+    "filter": {
+      "prefecture": "都道府县",
+      "city": "市区町村",
+      "category": "类别",
+      "keyword": "关键词搜索",
+      "allPrefectures": "全国",
+      "allCities": "选择市区町村",
+      "allCategories": "所有类别",
+      "includeRegionNone": "包含未指定地区",
+      "mobileToggle": "筛选"
+    },
+    "breadcrumb": {
+      "national": "全国",
+      "count": "({count}件)"
+    },
+    "card": {
+      "deadline": "截止日期",
+      "capacity": "{confirmed}/{capacity}人",
+      "region": "地区",
+      "category": "类别",
+      "organizer": "主办方"
+    },
+    "status": {
+      "OPEN": "招募中",
+      "FULL": "已满（待确认）",
+      "COMPLETED": "已成立",
+      "CANCELLED": "已撤下",
+      "AUTO_CANCELLED": "未成立（自动取消）"
+    },
+    "visibility": {
+      "public": "公开",
+      "friendsOnly": "仅好友球队",
+      "label": "公开范围"
+    },
+    "friendTarget": {
+      "allFriends": "所有好友球队",
+      "folder": "按文件夹",
+      "team": "指定球队",
+      "addTeam": "添加球队",
+      "selectFolder": "选择文件夹",
+      "noFolders": "没有文件夹"
+    },
+    "empty": {
+      "title": "未找到招募信息",
+      "cta": {
+        "canPost": "为您的团队发布第一条招募吧！",
+        "noPermission": "发布招募需要成为团队/组织管理员，或请管理员操作。",
+        "guest": "登录以发布招募或应募"
+      }
+    },
+    "detail": {
+      "organizer": "主办方",
+      "region": "地区",
+      "startAt": "活动日期",
+      "deadline": "报名截止",
+      "capacity": "名额",
+      "confirmedCount": "已报名",
+      "status": "状态",
+      "location": "地点",
+      "category": "类别",
+      "notFound": "未找到该招募",
+      "notPublic": "该招募未公开"
+    },
+    "notify": {
+      "applicationReceived": "您的招募收到了申请（{owner} / {title}）",
+      "friendListing": "{team}发来了招募：“{title}”",
+      "finalizeRequest": "招募名额已满，确认并关闭招募？",
+      "reminderShortfall": "截止日期临近，还需要{count}名申请人。",
+      "autoCancelled": "“{title}”因申请人不足已关闭。",
+      "cancelledToApplicant": "抱歉，“{title}”已被主办方撤下。",
+      "seeOtherListings": "查看{team}的其他招募"
+    },
+    "error": {
+      "loadFailed": "获取集市数据失败",
+      "MARKET_001": "地区代码无效或都道府县/市区町村不匹配",
+      "MARKET_002": "仅好友可见时至少需要指定一个收件人",
+      "MARKET_003": "无法指定未成为好友的球队",
+      "MARKET_004": "无法指定其他球队拥有的文件夹",
+      "MARKET_005": "仅好友可见不能与配送目标同时使用"
+    }
+  }
+}
