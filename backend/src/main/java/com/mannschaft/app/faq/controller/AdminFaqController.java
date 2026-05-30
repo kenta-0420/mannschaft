@@ -23,13 +23,15 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>編集画面用の取得（固定6問 + 自由質問）と一括 upsert（固定 UPSERT・自由差分適用）を提供する。
  * 公開（permitAll）の取得 API は別 Controller（足軽C 担当）で実装する。</p>
  *
- * <p><strong>認可（真の強制点は Service 層）:</strong>
- * 各メソッドの {@code @PreAuthorize("hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')")} は
- * 本アプリで {@code @EnableMethodSecurity} が未有効のため実機では効かず、かつ JWT に ADMIN が
- * 乗らない（user_roles にスコープ別保持）ため per-scope 認可にもならない。よって**宣言・防御多重**に留める。
- * **真の per-scope 認可は {@link FaqAdminService} 内で
+ * <p><strong>認可（宣言 = SpEL ガード / 真の強制点は Service 層）:</strong>
+ * 各メソッドの {@code @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")}
+ *（org 系は {@code #orgId, 'ORGANIZATION'}）は、scope がパス変数に直接現れるため SpEL からパス変数を
+ * 参照して per-scope 認可を宣言できる（{@code @AccessGuard} が SYSTEM_ADMIN を内部短絡）。
+ * 旧 {@code hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')} は {@code @EnableMethodSecurity} 点火時に
+ * JWT へ ROLE_ADMIN が乗らないため一斉 403 となるので、点火前に正しい SpEL ガードへ是正した（認可根治 Phase 3-b）。
+ * なお {@code @EnableMethodSecurity} 未有効の現状でも、**真の per-scope 認可は {@link FaqAdminService} 内で
  * {@code AccessControlService.checkAdminOrAbove(userId, scopeId, scopeType)}（SYSTEM_ADMIN は短絡許可）
- * として強制**しており、他団体の管理者による他団体 FAQ の編集・閲覧を遮断する。
+ * として強制**されており、宣言（SpEL ガード）と Service 層明示呼出の多重防御で他団体 FAQ の編集・閲覧を遮断する。
  * 操作ユーザー ID は {@link SecurityUtils#getCurrentUserId()} で取得する。</p>
  *
  * <p>設計書: docs/features/F21.1_geo_optimization.md §5.5.6</p>
@@ -45,7 +47,7 @@ public class AdminFaqController {
      * チームの FAQ 編集ペイロードを取得する（固定6問 + 自由質問）。
      */
     @GetMapping("/api/v1/admin/teams/{teamId}/faqs")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     @Operation(
             summary = "チームFAQ取得（編集画面用）",
             description = "ADMIN または SYSTEM_ADMIN が、固定6問（未回答含む）+ 自由質問を編集画面向けに取得する（F21.1 §5.5）。")
@@ -57,7 +59,7 @@ public class AdminFaqController {
      * チームの FAQ を一括 upsert する。
      */
     @PutMapping("/api/v1/admin/teams/{teamId}/faqs")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     @Operation(
             summary = "チームFAQ一括更新",
             description = "ADMIN または SYSTEM_ADMIN が、固定質問の回答 UPSERT・自由質問の差分適用を一括で行う（F21.1 §5.5）。")
@@ -73,7 +75,7 @@ public class AdminFaqController {
      * 組織の FAQ 編集ペイロードを取得する（固定6問 + 自由質問）。
      */
     @GetMapping("/api/v1/admin/organizations/{orgId}/faqs")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     @Operation(
             summary = "組織FAQ取得（編集画面用）",
             description = "ADMIN または SYSTEM_ADMIN が、固定6問（未回答含む）+ 自由質問を編集画面向けに取得する（F21.1 §5.5）。")
@@ -85,7 +87,7 @@ public class AdminFaqController {
      * 組織の FAQ を一括 upsert する。
      */
     @PutMapping("/api/v1/admin/organizations/{orgId}/faqs")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     @Operation(
             summary = "組織FAQ一括更新",
             description = "ADMIN または SYSTEM_ADMIN が、固定質問の回答 UPSERT・自由質問の差分適用を一括で行う（F21.1 §5.5）。")

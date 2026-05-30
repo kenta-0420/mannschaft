@@ -108,8 +108,8 @@ class ShiftSchedulePhase11ControllerTest {
     }
 
     @Test
-    @DisplayName("GET summary: @PreAuthorize('hasRole(ADMIN)') が付与されている")
-    void summary_isAuthorizedByAdminRoleAnnotation() throws NoSuchMethodException {
+    @DisplayName("GET summary: @PreAuthorize('isAuthenticated()') が付与されている（真の per-scope 認可は Service 層）")
+    void summary_isAuthorizedByAnnotation() throws NoSuchMethodException {
         Method method = ShiftScheduleController.class
                 .getMethod("getScheduleSummary", Long.class);
 
@@ -118,9 +118,13 @@ class ShiftSchedulePhase11ControllerTest {
         assertThat(annotation)
                 .as("getScheduleSummary に @PreAuthorize が付与されていること")
                 .isNotNull();
+        // 認可根治 Phase 3-b（2026-05-30）: scope はスケジュールエンティティ由来で SpEL からパス変数参照
+        // できないため、宣言は isAuthenticated() とし、真の per-scope 認可は
+        // ShiftScheduleService.getScheduleSummary 内の checkScheduleAdminAccess で強制する。
+        // 旧 hasRole('ADMIN') は method-security 点火時に JWT へ ROLE_ADMIN が乗らず一斉403になるため是正済。
         assertThat(annotation.value())
-                .as("@PreAuthorize は hasRole('ADMIN') を要求すること")
-                .isEqualTo("hasRole('ADMIN')");
+                .as("@PreAuthorize は isAuthenticated() を要求すること（点火時の一斉403を回避）")
+                .isEqualTo("isAuthenticated()");
     }
 
     @Test
@@ -159,8 +163,8 @@ class ShiftSchedulePhase11ControllerTest {
     }
 
     @Test
-    @DisplayName("POST remind: @PreAuthorize('hasRole(ADMIN)') が付与されている")
-    void remind_isAuthorizedByAdminRoleAnnotation() throws NoSuchMethodException {
+    @DisplayName("POST remind: @PreAuthorize('isAuthenticated()') が付与されている（真の per-scope 認可は Service 層）")
+    void remind_isAuthorizedByAnnotation() throws NoSuchMethodException {
         Method method = ShiftScheduleController.class
                 .getMethod("remindUnsubmitted", Long.class);
 
@@ -169,9 +173,12 @@ class ShiftSchedulePhase11ControllerTest {
         assertThat(annotation)
                 .as("remindUnsubmitted に @PreAuthorize が付与されていること")
                 .isNotNull();
+        // 認可根治 Phase 3-b（2026-05-30）: scope はスケジュールエンティティ由来で SpEL からパス変数参照
+        // できないため、宣言は isAuthenticated() とし、真の per-scope 認可は
+        // ShiftPreferenceReminderBatchService.triggerManualReminder 内で AccessControlService により強制する。
         assertThat(annotation.value())
-                .as("@PreAuthorize は hasRole('ADMIN') を要求すること")
-                .isEqualTo("hasRole('ADMIN')");
+                .as("@PreAuthorize は isAuthenticated() を要求すること（点火時の一斉403を回避）")
+                .isEqualTo("isAuthenticated()");
     }
 
     @Test
