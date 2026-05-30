@@ -332,6 +332,8 @@ public enum AuditEventType {
     BULLETIN_ARCHIVE_FOLDER_DELETED(AuditEventCategory.BULLETIN),
     /** スレッドの保管庫フォルダ振り分けを変更した（設計書 F05.1 §6）。 */
     BULLETIN_THREAD_ARCHIVE_FOLDER_CHANGED(AuditEventCategory.BULLETIN),
+    /** 掲示板の添付ファイルを削除した（本人 or モデレーター/ADMIN）。 */
+    BULLETIN_ATTACHMENT_DELETED(AuditEventCategory.BULLETIN),
 
     // ─── NAV_SETTINGS (F20.1 ナビゲーションバーカスタマイズ) ─────────────
     /** ユーザーが個人ナビ設定を更新した。 */
