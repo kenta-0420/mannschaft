@@ -341,7 +341,11 @@ public enum AuditEventType {
     /** SYSTEM_ADMIN がナビ項目マスタを更新した。 */
     NAV_FEATURE_UPDATED(AuditEventCategory.ADMIN_ACTION),
     /** SYSTEM_ADMIN がナビ項目マスタを削除した。 */
-    NAV_FEATURE_DELETED(AuditEventCategory.ADMIN_ACTION);
+    NAV_FEATURE_DELETED(AuditEventCategory.ADMIN_ACTION),
+
+    // ─── DASHBOARD_SCOPE_TAB (F22.1 横スワイプ・ダッシュボード) ─────────────
+    /** ユーザーがチーム/組織タグの表示順を更新した。 */
+    DASHBOARD_SCOPE_TAB_ORDER_UPDATED(AuditEventCategory.ADMIN_ACTION);
 
     private final AuditEventCategory category;
 }
