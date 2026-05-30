@@ -22,6 +22,14 @@ export type VillageJoinPolicy = 'FREE' | 'APPROVAL'
 /** Backend: PUBLIC / UNLISTED の 2 値。設計書 §3.5 の PRIVATE は採用されていない */
 export type VillageVisibility = 'PUBLIC' | 'UNLISTED'
 
+/**
+ * 村掲示板の公開範囲（F17.1 §3.12.1）。
+ * 村本体の VillageVisibility（検索可否）とは独立した概念。
+ * - PUBLIC: 非メンバー（ログイン済みユーザー）でも掲示板を閲覧可
+ * - MEMBERS_ONLY: 村メンバーのみ閲覧可（デフォルト）
+ */
+export type VillageBulletinVisibility = 'PUBLIC' | 'MEMBERS_ONLY'
+
 export type VillageSubjectType = 'USER' | 'TEAM' | 'ORGANIZATION'
 
 export type VillageRole = 'HEADMAN' | 'ELDER' | 'VILLAGER' | 'VISITOR'
@@ -55,6 +63,8 @@ export interface VillageResponse {
   type: VillageType
   joinPolicy: VillageJoinPolicy
   visibility: VillageVisibility
+  /** 掲示板公開範囲（F17.1 §3.12.1）。未指定時は MEMBERS_ONLY */
+  bulletinVisibility: VillageBulletinVisibility
   category: string | null
   iconR2Key: string | null
   coverR2Key: string | null
@@ -280,6 +290,8 @@ export interface VillageUpdateRequest {
   description?: string | null
   joinPolicy?: VillageJoinPolicy | null
   visibility?: VillageVisibility | null
+  /** 掲示板公開範囲（F17.1 §3.12.1）。PUBLIC / MEMBERS_ONLY */
+  bulletinVisibility?: VillageBulletinVisibility | null
   category?: string | null
   iconR2Key?: string | null
   coverR2Key?: string | null
