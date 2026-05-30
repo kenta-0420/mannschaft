@@ -88,6 +88,11 @@ public class RecruitmentListingService {
     private final RecruitmentTemplateService templateService;
     private final RecruitmentTemplateRepository templateRepository;
     private final ContentVisibilityChecker visibilityChecker;
+    // F22.1 市: 地域整合・フレンド宛先
+    private final MarketRegionValidator marketRegionValidator;
+    private final MarketFriendTargetService marketFriendTargetService;
+    private final MarketResponseEnricher marketResponseEnricher;
+    private final com.mannschaft.app.recruitment.repository.RecruitmentFriendTargetRepository friendTargetRepository;
 
     // ===========================================
     // 取得系
@@ -170,6 +175,17 @@ public class RecruitmentListingService {
             throw new BusinessException(RecruitmentErrorCode.LINE_TIME_CONFLICT);
         }
 
+        // F22.1 市: 地域コード検証・正規化（MARKET_001）
+        MarketRegionValidator.ResolvedRegion region =
+                marketRegionValidator.validateAndNormalize(
+                        request.getPrefectureCode(), request.getCityCode());
+
+        // F22.1 市: フレンド宛先・配信対象の整合検証（MARKET_002〜005）
+        boolean isFriendOnly = request.getVisibility() == RecruitmentVisibility.FRIEND_TEAMS_ONLY;
+        marketFriendTargetService.validate(
+                scopeType, scopeId, isFriendOnly,
+                request.getFriendTargets(), request.getDistributionTargets());
+
         RecruitmentListingEntity entity = RecruitmentListingEntity.builder()
                 .scopeType(scopeType)
                 .scopeId(scopeId)
@@ -188,6 +204,8 @@ public class RecruitmentListingService {
                 .price(request.getPrice())
                 .visibility(request.getVisibility())
                 .location(request.getLocation())
+                .prefectureCode(region.prefectureCode())
+                .cityCode(region.cityCode())
                 .reservationLineId(request.getReservationLineId())
                 .imageUrl(request.getImageUrl())
                 .cancellationPolicyId(request.getCancellationPolicyId())
@@ -195,8 +213,14 @@ public class RecruitmentListingService {
                 .build();
 
         RecruitmentListingEntity saved = listingRepository.save(entity);
-        log.info("F03.11 募集枠作成: id={}, scope={}/{}, status=DRAFT", saved.getId(), scopeType, scopeId);
-        return mapper.toListingResponse(saved);
+
+        // F22.1 市: フレンド宛先を保存（検証済み）
+        marketFriendTargetService.replaceTargets(
+                saved.getId(), isFriendOnly, request.getFriendTargets());
+
+        log.info("F03.11 募集枠作成: id={}, scope={}/{}, status=DRAFT, region={}/{}",
+                saved.getId(), scopeType, scopeId, region.prefectureCode(), region.cityCode());
+        return marketResponseEnricher.enrich(mapper.toListingResponse(saved), saved);
     }
 
     /**
@@ -254,7 +278,12 @@ public class RecruitmentListingService {
                 template.getDefaultLocation(),
                 template.getDefaultReservationLineId(),
                 template.getDefaultImageUrl(),
-                policyId
+                policyId,
+                // F22.1 市: テンプレート経由作成では地域・フレンド宛先・配信対象は未指定
+                null,   // prefectureCode
+                null,   // cityCode
+                null,   // friendTargets
+                null    // distributionTargets
         );
 
         RecruitmentListingResponse response = create(scopeType, scopeId, userId, createReq);
@@ -308,9 +337,17 @@ public class RecruitmentListingService {
             throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
         }
 
+        // F22.1 市: 地域コードの変更（§6.5）。いずれか指定されたときのみ再検証・更新する。
+        if (request.getPrefectureCode() != null || request.getCityCode() != null) {
+            MarketRegionValidator.ResolvedRegion region =
+                    marketRegionValidator.validateAndNormalize(
+                            request.getPrefectureCode(), request.getCityCode());
+            entity.updateRegion(region.prefectureCode(), region.cityCode());
+        }
+
         RecruitmentListingEntity saved = listingRepository.save(entity);
         log.info("F03.11 募集枠編集: id={}", listingId);
-        return mapper.toListingResponse(saved);
+        return marketResponseEnricher.enrich(mapper.toListingResponse(saved), saved);
     }
 
     @Transactional
@@ -318,6 +355,26 @@ public class RecruitmentListingService {
         RecruitmentListingEntity entity = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
         accessControlService.checkAdminOrAbove(userId, entity.getScopeId(), entity.getScopeType().name());
+
+        // F22.1 市: FRIEND_TEAMS_ONLY は distribution_targets を使わず、フレンド宛先で配信する（§3 / §7）。
+        boolean isFriendOnly = entity.getVisibility() == RecruitmentVisibility.FRIEND_TEAMS_ONLY;
+        if (isFriendOnly) {
+            // 宛先0件は MARKET_002（OPEN 遷移を許さない）。
+            if (friendTargetRepository.countByListingId(listingId) == 0) {
+                throw new BusinessException(
+                        com.mannschaft.app.market.MarketErrorCode.FRIEND_TARGETS_REQUIRED);
+            }
+            try {
+                entity.publish();
+            } catch (IllegalStateException e) {
+                throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+            }
+            RecruitmentListingEntity saved = listingRepository.save(entity);
+            // フレンドチーム管理者へ「届いた札」配信（§7）。
+            marketFriendTargetService.distributeFriendListing(saved);
+            log.info("F22.1 市: フレンド宛非公開札を公開: id={} → OPEN", listingId);
+            return marketResponseEnricher.enrich(mapper.toListingResponse(saved), saved);
+        }
 
         // Phase 2: §5.1 ステップ4 配信対象0件チェック (RECRUITMENT_204)
         int targetCount = distributionTargetRepository.countByListingId(listingId);
@@ -341,7 +398,7 @@ public class RecruitmentListingService {
         sendPublishedNotifications(saved, targets);
 
         log.info("F03.11 募集枠公開: id={} → OPEN, targets={}", listingId, targetCount);
-        return mapper.toListingResponse(saved);
+        return marketResponseEnricher.enrich(mapper.toListingResponse(saved), saved);
     }
 
     /**

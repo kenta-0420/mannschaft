@@ -2,6 +2,8 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.recruitment.CancellationPaymentStatus;
 import com.mannschaft.app.recruitment.CancellationSource;
 import com.mannschaft.app.recruitment.ParticipantHistoryReason;
@@ -61,6 +63,13 @@ public class RecruitmentParticipantService {
     private final RecruitmentListingService listingService;
     private final AccessControlService accessControlService;
     private final RecruitmentMapper mapper;
+    /** F22.1 市: 充足（FULL）到達時の最終認証連携。 */
+    private final MarketFinalizeService marketFinalizeService;
+    /**
+     * F22.1 市: 応募確定前の可視性ガード（02_api_design §5 / §7・04_security §1.1）。
+     * FRIEND_TEAMS_ONLY 札は宛先解決集合のみ応募可（非対象は 404 存在秘匿）。
+     */
+    private final ContentVisibilityChecker visibilityChecker;
 
     // ===========================================
     // §5.2 参加申込
@@ -92,6 +101,13 @@ public class RecruitmentParticipantService {
                 || listing.getStatus() == RecruitmentListingStatus.COMPLETED) {
             throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
         }
+
+        // F22.1 市（02_api_design §5 / §7・04_security §1.1）: 確定の「前」に可視性ガードを通す。
+        // PUBLIC/SCOPE_ONLY/SUPPORTERS_ONLY/CUSTOM_TEMPLATE は F00 標準判定、FRIEND_TEAMS_ONLY は
+        // RecruitmentListingVisibilityResolver#evaluateCustom が宛先フレンドチーム集合で判定する。
+        // 非対象ユーザーは NOT_FOUND→404（存在秘匿）/ deny→403 で弾かれ、IDOR（listingId 既知の
+        // 任意ユーザーが応募できる）を根治する。
+        visibilityChecker.assertCanView(ReferenceType.RECRUITMENT_LISTING, listingId, userId);
 
         // §5.2 step6 participation_type 整合
         boolean isIndividualListing = listing.getParticipationType() == RecruitmentParticipationType.INDIVIDUAL;
@@ -130,8 +146,14 @@ public class RecruitmentParticipantService {
 
         boolean isWaitlisted;
         Integer waitlistPosition = null;
+        boolean reachedFull = false;
         if (updated == 1) {
             isWaitlisted = false;
+            // F22.1 市: この申込で OPEN→FULL に遷移したかを再ロードで検知する（§6.1）。
+            // incrementConfirmedAtomic は status=CASE で FULL に遷移させる原子 UPDATE。
+            RecruitmentListingEntity afterIncrement = listingRepository.findById(listingId).orElse(null);
+            reachedFull = afterIncrement != null
+                    && afterIncrement.getStatus() == RecruitmentListingStatus.FULL;
         } else {
             // 満員 → キャンセル待ちフロー (§5.2 step8)
             int waitlistUpdated = listingRepository.incrementWaitlistAtomic(listingId);
@@ -168,6 +190,15 @@ public class RecruitmentParticipantService {
 
         log.info("F03.11 申込: listingId={}, userId={}, status={}, waitlistPos={}",
                 listingId, userId, saved.getStatus(), waitlistPosition);
+
+        // F22.1 市: この申込で FULL に到達したら最終認証の確認通知を送る（§6.1）。
+        if (reachedFull) {
+            RecruitmentListingEntity fullListing = listingRepository.findById(listingId).orElse(null);
+            if (fullListing != null) {
+                marketFinalizeService.sendFinalizeConfirmation(fullListing);
+            }
+        }
+
         return mapper.toParticipantResponse(saved);
     }
 
