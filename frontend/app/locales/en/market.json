@@ -6,6 +6,9 @@
       "count": "{count} listings",
       "regionNone": "Nationwide (including unspecified region)"
     },
+    "page": {
+      "newListing": "Post a listing"
+    },
     "action": {
       "post": "Post listing",
       "apply": "Apply",

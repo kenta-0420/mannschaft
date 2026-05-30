@@ -6,6 +6,9 @@
       "count": "{count}件",
       "regionNone": "全国（含未指定地区）"
     },
+    "page": {
+      "newListing": "发布招募"
+    },
     "action": {
       "post": "发布招募",
       "apply": "应募",

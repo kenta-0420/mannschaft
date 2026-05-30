@@ -12,7 +12,7 @@ const { t } = useI18n()
 const api = useRecruitmentApi()
 const { success, error } = useNotification()
 
-const teamId = computed(() => Number(route.params.id))
+const orgId = computed(() => Number(route.params.id))
 const categories = ref<RecruitmentCategoryResponse[]>([])
 const loading = ref(false)
 
@@ -43,7 +43,7 @@ async function onSubmit(body: CreateRecruitmentListingRequest) {
       cityCode: marketCityCode.value,
       friendTargets: marketVisibility.value === 'FRIEND_TEAMS_ONLY' ? marketFriendTargets.value : [],
     }
-    const result = await api.createListing(teamId.value, fullBody)
+    const result = await api.createOrgListing(orgId.value, fullBody)
     success(t('recruitment.action.create'))
     router.push(`/recruitment-listings/${result.data.id}`)
   }
@@ -61,11 +61,11 @@ onMounted(() => loadCategories())
 <template>
   <div class="container mx-auto max-w-2xl p-4">
     <PageHeader :title="t('market.page.newListing')" class="mb-4" />
-    <!-- 市拡張: 地域・公開範囲・フレンド宛先 -->
+    <!-- 市拡張: 地域・公開範囲・フレンド宛先（ORGANIZATION スコープ） -->
     <div class="mb-6 rounded-lg border border-surface-200 bg-white p-4">
       <MarketListingFormExtension
-        :scope-type="'TEAM'"
-        :scope-id="teamId"
+        :scope-type="'ORGANIZATION'"
+        :scope-id="orgId"
         @update:prefecture-code="marketPrefectureCode = $event"
         @update:city-code="marketCityCode = $event"
         @update:visibility="marketVisibility = $event"

@@ -6,6 +6,9 @@
       "count": "{count}件",
       "regionNone": "全国（地域指定なしを含む）"
     },
+    "page": {
+      "newListing": "札を立てる"
+    },
     "action": {
       "post": "札を立てる",
       "apply": "札に応じる",

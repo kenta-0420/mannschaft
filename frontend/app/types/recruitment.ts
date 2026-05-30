@@ -7,7 +7,7 @@ export type RecruitmentScopeType = 'TEAM' | 'ORGANIZATION'
 
 export type RecruitmentParticipationType = 'INDIVIDUAL' | 'TEAM'
 
-export type RecruitmentVisibility = 'PUBLIC' | 'SCOPE_ONLY' | 'SUPPORTERS_ONLY'
+export type RecruitmentVisibility = 'PUBLIC' | 'SCOPE_ONLY' | 'SUPPORTERS_ONLY' | 'FRIEND_TEAMS_ONLY'
 
 export type RecruitmentListingStatus =
   | 'DRAFT'
@@ -233,6 +233,12 @@ export interface CreateRecruitmentListingRequest {
   reservationLineId?: number | null
   imageUrl?: string | null
   cancellationPolicyId?: number | null
+  /** F22.1 市（Market）— 都道府県コード（任意） */
+  prefectureCode?: string | null
+  /** F22.1 市（Market）— 市区町村コード（任意・prefectureCodeと整合必須） */
+  cityCode?: string | null
+  /** F22.1 市（Market）— フレンド宛先（visibility=FRIEND_TEAMS_ONLY のとき1件以上必須） */
+  friendTargets?: import('~/types/market').FriendTargetInput[]
 }
 
 export interface UpdateRecruitmentListingRequest {

@@ -163,7 +163,7 @@ onMounted(async () => {
           severity="secondary"
           outlined
           size="small"
-          @click="navigateTo(`/organizations/${orgId}/recruitment-listings`)"
+          @click="navigateTo(`/organizations/${orgId}/recruitment-listings/new`)"
         />
         <!-- F02.8 告知ウィザード：MEMBER以上に表示 -->
         <Button

@@ -6,6 +6,9 @@
       "count": "{count} anuncios",
       "regionNone": "Nacional (incluye sin región)"
     },
+    "page": {
+      "newListing": "Publicar anuncio"
+    },
     "action": {
       "post": "Publicar",
       "apply": "Postularse",

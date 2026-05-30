@@ -6,6 +6,9 @@
       "count": "{count}건",
       "regionNone": "전국（지역 미지정 포함）"
     },
+    "page": {
+      "newListing": "모집 올리기"
+    },
     "action": {
       "post": "모집 올리기",
       "apply": "응모하기",

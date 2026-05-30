@@ -6,6 +6,9 @@
       "count": "{count} Aushänge",
       "regionNone": "Landesweit (inkl. ohne Region)"
     },
+    "page": {
+      "newListing": "Aushang erstellen"
+    },
     "action": {
       "post": "Aushang erstellen",
       "apply": "Bewerben",
