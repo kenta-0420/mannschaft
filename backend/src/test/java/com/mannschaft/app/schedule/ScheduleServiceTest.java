@@ -199,16 +199,16 @@ class ScheduleServiceTest {
                     .academic(new ScheduleResponse.ScheduleAcademicDto(null, null, null))
                     .audit(new ScheduleResponse.ScheduleAuditDto(null, null))
                     .build();
-            given(queryService.listTeamSchedules(TEAM_ID, START, END))
+            given(queryService.listTeamSchedules(TEAM_ID, START, END, USER_ID))
                     .willReturn(List.of(stub));
 
             // when
-            List<ScheduleResponse> result = scheduleService.listTeamSchedules(TEAM_ID, START, END);
+            List<ScheduleResponse> result = scheduleService.listTeamSchedules(TEAM_ID, START, END, USER_ID);
 
             // then
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getContent().title()).isEqualTo("練習");
-            verify(queryService).listTeamSchedules(TEAM_ID, START, END);
+            verify(queryService).listTeamSchedules(TEAM_ID, START, END, USER_ID);
         }
     }
 
@@ -466,16 +466,16 @@ class ScheduleServiceTest {
                     .academic(new ScheduleResponse.ScheduleAcademicDto(null, null, null))
                     .audit(new ScheduleResponse.ScheduleAuditDto(null, null))
                     .build();
-            given(queryService.listOrgSchedules(ORG_ID, START, END))
+            given(queryService.listOrgSchedules(ORG_ID, START, END, USER_ID))
                     .willReturn(List.of(stub));
 
             // when
-            List<ScheduleResponse> result = scheduleService.listOrgSchedules(ORG_ID, START, END);
+            List<ScheduleResponse> result = scheduleService.listOrgSchedules(ORG_ID, START, END, USER_ID);
 
             // then
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getContent().title()).isEqualTo("全体集会");
-            verify(queryService).listOrgSchedules(ORG_ID, START, END);
+            verify(queryService).listOrgSchedules(ORG_ID, START, END, USER_ID);
         }
     }
 

@@ -60,7 +60,8 @@ public class OrgScheduleController {
             @RequestParam(required = false) String eventType,
             @RequestParam(defaultValue = "50") int size,
             @RequestParam(required = false) String cursor) {
-        List<ScheduleResponse> schedules = scheduleService.listOrgSchedules(orgId, from, to);
+        List<ScheduleResponse> schedules = scheduleService.listOrgSchedules(
+                orgId, from, to, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(schedules));
     }
 

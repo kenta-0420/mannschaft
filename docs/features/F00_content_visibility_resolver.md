@@ -81,9 +81,23 @@ if (team.getVisibility() == TeamEntity.Visibility.PRIVATE && !isMember) {
 | `CirculationDocumentService.distribute()` | スコープ外メンバーへの誤配信 | 中 |
 | `Gallery.listAlbums()` | visibility パラメータを受け取るが未使用 | 中 |
 | `Survey` 結果一覧 | ResultsVisibility 設定はあるが Service が読まない | 中 |
-| `Schedule` 一覧 | visibility フィルタ自体が無い | 中 |
+| `Schedule` 一覧 | visibility フィルタ自体が無い → **2026-05-29 根治済み**（下記）| 中 |
 
 本基盤の導入により、Mention / 通知配信は **必ず ContentVisibilityChecker.filterAccessible() を経由する** よう規約化する（§11）。
+
+> **スケジュール一覧/カレンダー読み取りへの filterAccessible 適用（2026-05-29 根治）**:
+> スケジュール単体取得（`ScheduleService.getScheduleWithAccessCheck` → `assertCanView(SCHEDULE, id, userId)`）は可視性を強制していたが、
+> 一覧・カレンダー系の読み取りが `assertCanView` をバイパスしており、`minViewRole=ADMIN_ONLY` や
+> `visibility=CUSTOM_TEMPLATE` のチーム/組織予定が一覧では表示されてしまう系統的な認可漏れがあった。
+> 以下 4 経路で、取得したチーム/組織スケジュールの ID 群を
+> `ContentVisibilityChecker.filterAccessible(ReferenceType.SCHEDULE, ids, userId)` に通し、
+> 戻り Set に含まれる ID の予定だけを残すよう修正した（バッチ判定で N+1 を回避、fail-closed 準拠）:
+> - `DashboardController.getUpcomingEvents`（今週の予定）
+> - `ScheduleQueryService.getMyCalendar`（マイカレンダー横断）
+> - `ScheduleQueryService.listTeamSchedules` / `listOrgSchedules`（チーム/組織一覧。Controller から閲覧者 userId を引き回し）
+>
+> 個人（PERSONAL）スケジュールは所有者本人の `userId` で取得しており本人のみ取得される設計のため、フィルタ対象外とした。
+> SystemAdmin の全件可視は Resolver 側（§15 D-13）が担保するため呼び出し側で特別扱いしない。
 
 ---
 

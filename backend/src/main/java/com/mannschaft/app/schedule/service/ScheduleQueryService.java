@@ -1,6 +1,8 @@
 package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * スケジュールの取得系・カレンダー集約を担当するサービス。
@@ -37,33 +40,73 @@ public class ScheduleQueryService {
     private final NameResolverService nameResolverService;
     private final UserRoleRepository userRoleRepository;
     private final ScheduleEventCategoryRepository categoryRepository;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
      * チームスコープのスケジュール一覧を取得する。
      *
-     * @param teamId チームID
-     * @param from   期間開始
-     * @param to     期間終了
-     * @return スケジュール一覧
+     * <p>F00 認可基盤連携（2026-05-29）: 取得したスケジュールの ID 群を
+     * {@link ContentVisibilityChecker#filterAccessible} に通し、閲覧者
+     * {@code viewerUserId} が可視なものだけを返す。これにより
+     * {@code minViewRole=ADMIN_ONLY} や {@code visibility=CUSTOM_TEMPLATE} の
+     * チーム予定が一覧でも詳細 GET と同じ認可で絞り込まれる
+     * （従来は一覧系が {@code assertCanView} をバイパスしていた認可漏れ）。</p>
+     *
+     * @param teamId       チームID
+     * @param from         期間開始
+     * @param to           期間終了
+     * @param viewerUserId 閲覧者ユーザーID
+     * @return 閲覧可能なスケジュール一覧
      */
-    public List<ScheduleResponse> listTeamSchedules(Long teamId, LocalDateTime from, LocalDateTime to) {
+    public List<ScheduleResponse> listTeamSchedules(
+            Long teamId, LocalDateTime from, LocalDateTime to, Long viewerUserId) {
         List<ScheduleEntity> schedules = scheduleRepository
                 .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, to);
-        return schedules.stream().map(this::toScheduleResponse).toList();
+        return toVisibleScheduleResponses(schedules, viewerUserId);
     }
 
     /**
      * 組織スコープのスケジュール一覧を取得する。
      *
-     * @param orgId 組織ID
-     * @param from  期間開始
-     * @param to    期間終了
-     * @return スケジュール一覧
+     * <p>F00 認可基盤連携（2026-05-29）: {@link #listTeamSchedules} と同様に
+     * 可視性フィルタを適用する。</p>
+     *
+     * @param orgId        組織ID
+     * @param from         期間開始
+     * @param to           期間終了
+     * @param viewerUserId 閲覧者ユーザーID
+     * @return 閲覧可能なスケジュール一覧
      */
-    public List<ScheduleResponse> listOrgSchedules(Long orgId, LocalDateTime from, LocalDateTime to) {
+    public List<ScheduleResponse> listOrgSchedules(
+            Long orgId, LocalDateTime from, LocalDateTime to, Long viewerUserId) {
         List<ScheduleEntity> schedules = scheduleRepository
                 .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, to);
-        return schedules.stream().map(this::toScheduleResponse).toList();
+        return toVisibleScheduleResponses(schedules, viewerUserId);
+    }
+
+    /**
+     * チーム/組織スコープのスケジュール群を可視性フィルタにかけ、閲覧可能なものだけを
+     * レスポンス DTO に変換する。
+     *
+     * <p>取得済み ID 群を 1 回の {@link ContentVisibilityChecker#filterAccessible} 呼び出しで
+     * 判定する（N+1 を避ける）。fail-closed 原則（Resolver 未登録時は空 Set）に従う。</p>
+     *
+     * @param schedules    取得済みスケジュール（同一スコープ前提）
+     * @param viewerUserId 閲覧者ユーザーID
+     * @return 可視なスケジュールの DTO 一覧（元の並び順を維持）
+     */
+    private List<ScheduleResponse> toVisibleScheduleResponses(
+            List<ScheduleEntity> schedules, Long viewerUserId) {
+        if (schedules.isEmpty()) {
+            return List.of();
+        }
+        List<Long> ids = schedules.stream().map(ScheduleEntity::getId).toList();
+        Set<Long> visibleIds = contentVisibilityChecker
+                .filterAccessible(ReferenceType.SCHEDULE, ids, viewerUserId);
+        return schedules.stream()
+                .filter(s -> visibleIds.contains(s.getId()))
+                .map(this::toScheduleResponse)
+                .toList();
     }
 
     /**
@@ -79,28 +122,65 @@ public class ScheduleQueryService {
     public List<CalendarEntryResponse> getMyCalendar(Long userId, LocalDateTime from, LocalDateTime to) {
         List<CalendarEntryResponse> entries = new ArrayList<>();
 
-        // 個人スケジュール
+        // 個人スケジュールは所有者本人（userId）でのみ取得するため可視性フィルタ対象外。
         List<ScheduleEntity> personalSchedules = scheduleRepository
                 .findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, from, to);
         personalSchedules.forEach(s -> entries.add(toCalendarEntry(s, SCOPE_TYPE_PERSONAL, userId)));
 
-        // 所属チームのスケジュールを取得
+        // 所属チームのスケジュールを取得（スコープ別の集約に scopeId を保持する）。
+        List<ScopedSchedule> teamScoped = new ArrayList<>();
         List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
         for (UserRoleEntity role : teamRoles) {
-            List<ScheduleEntity> teamSchedules = scheduleRepository
-                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), from, to);
-            teamSchedules.forEach(s -> entries.add(toCalendarEntry(s, "TEAM", role.getTeamId())));
+            scheduleRepository
+                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), from, to)
+                    .forEach(s -> teamScoped.add(new ScopedSchedule(s, "TEAM", role.getTeamId())));
         }
 
-        // 所属組織のスケジュールを取得
+        // 所属組織のスケジュールを取得。
+        List<ScopedSchedule> orgScoped = new ArrayList<>();
         List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
         for (UserRoleEntity role : orgRoles) {
-            List<ScheduleEntity> orgSchedules = scheduleRepository
-                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(role.getOrganizationId(), from, to);
-            orgSchedules.forEach(s -> entries.add(toCalendarEntry(s, "ORGANIZATION", role.getOrganizationId())));
+            scheduleRepository
+                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(role.getOrganizationId(), from, to)
+                    .forEach(s -> orgScoped.add(new ScopedSchedule(s, "ORGANIZATION", role.getOrganizationId())));
         }
 
+        // F00 認可基盤連携（2026-05-29）: team/org のチーム横断スケジュールは
+        // visibility 無視で表示されていた認可漏れがあったため、ID 群を
+        // filterAccessible に通して可視なものだけを採用する（team で 1 回・org で 1 回、
+        // ループ内 per-item 呼び出しは避ける）。個人予定は本人取得のため対象外。
+        addVisibleEntries(teamScoped, userId, entries);
+        addVisibleEntries(orgScoped, userId, entries);
+
         return entries;
+    }
+
+    /**
+     * スコープ付きスケジュール群を {@link ContentVisibilityChecker#filterAccessible} で
+     * 一括判定し、可視なものだけを {@code entries} に追加する。
+     *
+     * @param scoped  判定対象のスコープ付きスケジュール
+     * @param userId  閲覧者ユーザーID
+     * @param entries 追加先のエントリーリスト
+     */
+    private void addVisibleEntries(
+            List<ScopedSchedule> scoped, Long userId, List<CalendarEntryResponse> entries) {
+        if (scoped.isEmpty()) {
+            return;
+        }
+        List<Long> ids = scoped.stream().map(sc -> sc.schedule().getId()).toList();
+        Set<Long> visibleIds = contentVisibilityChecker
+                .filterAccessible(ReferenceType.SCHEDULE, ids, userId);
+        scoped.stream()
+                .filter(sc -> visibleIds.contains(sc.schedule().getId()))
+                .forEach(sc -> entries.add(
+                        toCalendarEntry(sc.schedule(), sc.scopeType(), sc.scopeId())));
+    }
+
+    /**
+     * 可視性フィルタ用に、スケジュールと表示スコープ（TEAM/ORGANIZATION）を束ねる内部レコード。
+     */
+    private record ScopedSchedule(ScheduleEntity schedule, String scopeType, Long scopeId) {
     }
 
     /**
