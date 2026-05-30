@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -38,6 +37,7 @@ public class AuthTokenRotationService {
     private final AuthTokenService authTokenService;
     private final AuthSessionService authSessionService;
     private final DomainEventPublisher eventPublisher;
+    private final RoleClaimResolver roleClaimResolver;
 
     /**
      * Refresh Tokenを検証し、新しいAccess Token + Refresh Tokenペアを発行する。
@@ -85,7 +85,11 @@ public class AuthTokenRotationService {
             throw new BusinessException(AuthErrorCode.AUTH_007);
         }
 
-        String newAccessToken = authTokenService.issueAccessToken(userId, List.of("MEMBER"));
+        // 認可基盤完全根治 Phase 1（§3.2.2）: リフレッシュ時も user_roles から SYSTEM_ADMIN を
+        // 再判定する。これにより SYSTEM_ADMIN を剥奪されたユーザーは次回リフレッシュ（最長 15 分）で
+        // SYSTEM_ADMIN authority を失う。即時失効が必要な場合は剥奪処理側で
+        // AuthTokenService#setUserInvalidationTimestamp を併用する（§6）。
+        String newAccessToken = authTokenService.issueAccessToken(userId, roleClaimResolver.resolveRoles(userId));
         String newRawRefreshToken = authTokenService.generateRefreshToken();
         String newTokenHash = authTokenService.hashToken(newRawRefreshToken);
         // ローテーション時も新しい jti を生成する
