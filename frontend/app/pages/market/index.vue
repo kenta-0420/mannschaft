@@ -106,14 +106,14 @@ async function fetchListings() {
     const res = await marketApi.listMarketListings({
       prefecture: selectedPrefecture.value ?? undefined,
       city: selectedCity.value ?? undefined,
-      category_id: selectedCategoryId.value ?? undefined,
+      categoryId: selectedCategoryId.value ?? undefined,
       keyword: searchKeyword.value.trim() || undefined,
-      include_region_none: includeRegionNone.value,
+      includeRegionNone: includeRegionNone.value,
       page: currentPage.value,
       size: pageSize,
     })
-    listings.value = res.data.content
-    totalRecords.value = res.data.total_elements
+    listings.value = res.data
+    totalRecords.value = res.meta.total
   }
   catch (error) {
     handleApiError(error, t('market.error.loadFailed'))
@@ -404,19 +404,19 @@ onMounted(async () => {
           <!-- 主催（チーム公称名 + アイコン） -->
           <div class="mb-2 flex items-center gap-2">
             <Avatar
-              v-if="listing.owner.icon_url"
-              :image="listing.owner.icon_url"
+              v-if="listing.owner.iconUrl"
+              :image="listing.owner.iconUrl"
               shape="circle"
               size="normal"
             />
             <Avatar
               v-else
-              :label="listing.owner.display_name.charAt(0) || 'T'"
+              :label="listing.owner.displayName.charAt(0) || 'T'"
               shape="circle"
               size="normal"
             />
             <span class="truncate text-sm font-medium text-surface-600">
-              {{ listing.owner.display_name }}
+              {{ listing.owner.displayName }}
             </span>
           </div>
 
@@ -428,13 +428,13 @@ onMounted(async () => {
           <!-- カテゴリ / 地域 -->
           <div class="mb-2 flex flex-wrap gap-1">
             <Tag
-              :value="$t(listing.category.name_key)"
+              :value="$t(listing.category.nameKey)"
               severity="info"
               class="text-xs"
             />
             <Tag
               v-if="listing.region"
-              :value="`${listing.region.prefecture_name} ${listing.region.city_name}`"
+              :value="`${listing.region.prefectureName} ${listing.region.cityName}`"
               severity="secondary"
               class="text-xs"
             />
@@ -444,11 +444,11 @@ onMounted(async () => {
           <div class="flex items-center justify-between text-xs text-surface-500">
             <span>
               <i class="pi pi-calendar mr-1" />
-              {{ formatDeadline(listing.application_deadline) }}
+              {{ formatDeadline(listing.applicationDeadline) }}
             </span>
             <span>
               <i class="pi pi-users mr-1" />
-              {{ $t('market.card.capacity', { confirmed: listing.confirmed_count, capacity: listing.capacity }) }}
+              {{ $t('market.card.capacity', { confirmed: listing.confirmedCount, capacity: listing.capacity }) }}
             </span>
           </div>
           <div class="mt-2 flex justify-end">

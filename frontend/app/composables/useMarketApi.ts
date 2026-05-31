@@ -14,10 +14,13 @@ interface ApiResponse<T> {
  * F22.1 市（Market）— 公開API クライアント
  *
  * 担当エンドポイント（すべて permitAll・未ログイン可）:
- *   - GET /api/v1/public/market/listings    : 市の札一覧
- *   - GET /api/v1/public/market/listings/{id}: 公開札詳細
- *   - GET /api/v1/public/market/regions     : 都道府県 / 市区町村一覧
- *   - GET /api/v1/public/market/summary     : 地域別件数サマリー
+ *   - GET /api/v1/public/market/listings    : 市の札一覧（PagedResponse 形: data + meta）
+ *   - GET /api/v1/public/market/listings/{id}: 公開札詳細（ApiResponse 形: data）
+ *   - GET /api/v1/public/market/regions     : 都道府県 / 市区町村一覧（ApiResponse 形: data 配列）
+ *   - GET /api/v1/public/market/summary     : 地域別件数サマリー（ApiResponse 形: data）
+ *
+ * ⚠️ クエリパラメータ名は BE の @RequestParam に一致させること（MarketController）:
+ *   prefecture / city / category_id / keyword / include_region_none / page / size
  *
  * 設計書: docs/features/F22.1_market/02_api_design.md §3
  */
@@ -25,22 +28,23 @@ export function useMarketApi() {
   const api = useApi()
 
   // ===========================================
-  // 市の札一覧
+  // 市の札一覧（PagedResponse 形: { data: [...], meta: {...} }）
   // ===========================================
 
   async function listMarketListings(params?: MarketListingsParams) {
     const q = new URLSearchParams()
     if (params?.prefecture) q.set('prefecture', params.prefecture)
     if (params?.city) q.set('city', params.city)
-    if (params?.category_id != null) q.set('category_id', String(params.category_id))
+    if (params?.categoryId != null) q.set('category_id', String(params.categoryId))
     if (params?.keyword) q.set('keyword', params.keyword)
-    if (params?.include_region_none != null) {
-      q.set('include_region_none', String(params.include_region_none))
+    if (params?.includeRegionNone != null) {
+      q.set('include_region_none', String(params.includeRegionNone))
     }
     if (params?.page != null) q.set('page', String(params.page))
     if (params?.size != null) q.set('size', String(params.size))
     const suffix = q.toString() ? `?${q.toString()}` : ''
-    return api<ApiResponse<MarketListingPage>>(
+    // 一覧は BE PagedResponse（data 配列 + meta）をそのまま受け取る。
+    return api<MarketListingPage>(
       `/api/v1/public/market/listings${suffix}`,
     )
   }

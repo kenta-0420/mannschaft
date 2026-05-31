@@ -6,6 +6,12 @@
  * - MarketSummary: パンくず/集客用の地域別件数
  * - FriendTargetInput: 非公開札の宛先（discriminated union・3粒度）
  *
+ * ⚠️ 命名規約: バックエンド（Spring Boot 既定の Jackson = camelCase）の JSON 契約に
+ * 1:1 で一致させること。BE 側の正典は以下:
+ *   - backend/.../market/dto/*.java（MarketListingResponse / MarketOwnerDto / MarketRegionDto / MarketCategoryDto / MarketSummaryResponse / MarketRegionNodeResponse）
+ *   - backend/.../common/PagedResponse.java（一覧の実体: { data: [...], meta: { total, page, size, totalPages } }）
+ *   - backend/.../recruitment/dto/FriendTargetRequest.java（targetKind / folderId / teamId）
+ *
  * 設計書: docs/features/F22.1_market/02_api_design.md §3 / §4
  */
 
@@ -24,16 +30,18 @@ export type MarketListingStatus = 'OPEN' | 'FULL' | 'COMPLETED' | 'CANCELLED' | 
 /**
  * 地域ノード（都道府県一覧 / 市区町村一覧共通）
  * GET /api/v1/public/market/regions のレスポンス要素
+ * BE: MarketRegionNodeResponse（code / name / prefectureCode）
  */
 export interface MarketRegion {
   code: string
   name: string
-  prefecture_code: string
+  /** 親都道府県コード（市区町村ノードのみ。都道府県ノードでは null）。 */
+  prefectureCode: string | null
 }
 
 /**
- * 地域サマリー（パンくず / 件数バッジ用）
- * GET /api/v1/public/market/summary
+ * 地域サマリー（パンくず / 件数バッジ用）の地域ノード件数
+ * BE: MarketSummaryResponse.RegionCount（code / name / count）
  */
 export interface MarketRegionSummaryEntry {
   code: string
@@ -41,9 +49,14 @@ export interface MarketRegionSummaryEntry {
   count: number
 }
 
+/**
+ * 地域サマリー
+ * GET /api/v1/public/market/summary
+ * BE: MarketSummaryResponse（byPrefecture / byCity）
+ */
 export interface MarketSummary {
-  by_prefecture: MarketRegionSummaryEntry[]
-  by_city: MarketRegionSummaryEntry[]
+  byPrefecture: MarketRegionSummaryEntry[]
+  byCity: MarketRegionSummaryEntry[]
 }
 
 // ===========================================
@@ -52,35 +65,39 @@ export interface MarketSummary {
 
 /**
  * 市の札（公開リスト）の主催者情報（PII抑制: 公称名+アイコンのみ）
+ * BE: MarketOwnerDto（scopeType / scopeId / displayName / iconUrl）
  */
 export interface MarketOwner {
-  scope_type: 'TEAM' | 'ORGANIZATION'
-  scope_id: number
-  display_name: string
-  icon_url: string | null
+  scopeType: 'TEAM' | 'ORGANIZATION'
+  scopeId: number
+  displayName: string
+  iconUrl: string | null
 }
 
 /**
  * 市の札に付随する地域情報
+ * BE: MarketRegionDto（prefectureCode / prefectureName / cityCode / cityName）
  */
 export interface MarketListingRegion {
-  prefecture_code: string
-  prefecture_name: string
-  city_code: string
-  city_name: string
+  prefectureCode: string
+  prefectureName: string
+  cityCode: string
+  cityName: string
 }
 
 /**
  * 市の札カテゴリ（i18nキー付き）
+ * BE: MarketCategoryDto（id / nameKey）
  */
 export interface MarketCategory {
   id: number
-  name_key: string
+  nameKey: string
 }
 
 /**
  * 市の公開札レスポンス（PII抑制・未ログイン可）
  * GET /api/v1/public/market/listings / GET /api/v1/public/market/listings/{id}
+ * BE: MarketListingResponse
  */
 export interface MarketListingResponse {
   id: number
@@ -88,24 +105,42 @@ export interface MarketListingResponse {
   category: MarketCategory
   owner: MarketOwner
   region: MarketListingRegion | null
-  location_text: string | null
-  start_at: string
-  application_deadline: string
+  locationText: string | null
+  startAt: string
+  applicationDeadline: string
   capacity: number
-  confirmed_count: number
+  confirmedCount: number
   status: MarketListingStatus
-  payment_enabled: boolean
+  paymentEnabled: boolean
+}
+
+// ===========================================
+// ページング（BE: common/PagedResponse）
+// ===========================================
+
+/**
+ * BE PagedResponse のメタ情報（PageMeta）
+ */
+export interface PagedMeta {
+  total: number
+  page: number
+  size: number
+  totalPages: number
 }
 
 /**
- * 市の公開札一覧レスポンス（ページング）
+ * BE PagedResponse 形（{ data: [...], meta: {...} }）
+ * 一覧 API はこの形で返る（ApiResponse<List<T>> を継承し meta を持つ）。
  */
-export interface MarketListingPage {
-  content: MarketListingResponse[]
-  total_elements: number
-  page: number
-  size: number
+export interface PagedResponse<T> {
+  data: T[]
+  meta: PagedMeta
 }
+
+/**
+ * 市の公開札一覧レスポンス
+ */
+export type MarketListingPage = PagedResponse<MarketListingResponse>
 
 // ===========================================
 // 検索クエリパラメータ
@@ -114,15 +149,16 @@ export interface MarketListingPage {
 export interface MarketListingsParams {
   prefecture?: string
   city?: string
-  category_id?: number
+  categoryId?: number
   keyword?: string
-  include_region_none?: boolean
+  includeRegionNone?: boolean
   page?: number
   size?: number
 }
 
 // ===========================================
 // 非公開札の宛先セレクタ（discriminated union）
+// BE: FriendTargetRequest（targetKind / folderId / teamId）
 // 設計書: docs/features/F22.1_market/02_api_design.md §4 / §9
 // ===========================================
 
@@ -130,23 +166,23 @@ export interface MarketListingsParams {
  * 全成立フレンド宛
  */
 export interface FriendTargetAllFriends {
-  target_kind: 'ALL_FRIENDS'
+  targetKind: 'ALL_FRIENDS'
 }
 
 /**
  * フォルダ指定宛
  */
 export interface FriendTargetFolder {
-  target_kind: 'FOLDER'
-  folder_id: number
+  targetKind: 'FOLDER'
+  folderId: number
 }
 
 /**
  * 個別チーム宛（成立フレンドのみ）
  */
 export interface FriendTargetTeam {
-  target_kind: 'TEAM'
-  team_id: number
+  targetKind: 'TEAM'
+  teamId: number
 }
 
 /**
@@ -160,13 +196,14 @@ export type FriendTargetInput =
 
 // ===========================================
 // 札立てリクエスト拡張（既存 CreateRecruitmentListingRequest への追加項目）
+// BE: CreateRecruitmentListingRequest（prefectureCode / cityCode / friendTargets）
 // ===========================================
 
 /**
  * 既存 recruitment 作成 API に追加する市向けフィールド
  */
 export interface MarketListingExtension {
-  prefecture_code?: string
-  city_code?: string
-  friend_targets?: FriendTargetInput[]
+  prefectureCode?: string
+  cityCode?: string
+  friendTargets?: FriendTargetInput[]
 }

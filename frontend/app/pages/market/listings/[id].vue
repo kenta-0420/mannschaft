@@ -122,21 +122,21 @@ function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'dan
         <!-- 主催（PII抑制: 公称名+アイコンのみ） -->
         <div class="mb-4 flex items-center gap-3" data-testid="market-detail-organizer">
           <Avatar
-            v-if="listing.owner.icon_url"
-            :image="listing.owner.icon_url"
+            v-if="listing.owner.iconUrl"
+            :image="listing.owner.iconUrl"
             shape="circle"
             size="large"
           />
           <Avatar
             v-else
-            :label="listing.owner.display_name.charAt(0) || 'T'"
+            :label="listing.owner.displayName.charAt(0) || 'T'"
             shape="circle"
             size="large"
           />
           <div>
             <p class="text-xs text-surface-500">{{ $t('market.detail.organizer') }}</p>
             <p class="font-semibold text-surface-800 dark:text-surface-100" data-testid="market-detail-organizer-name">
-              {{ listing.owner.display_name }}
+              {{ listing.owner.displayName }}
             </p>
           </div>
           <Tag
@@ -155,7 +155,7 @@ function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'dan
         <div class="mb-3 flex items-center gap-2">
           <i class="pi pi-tag text-surface-400" />
           <span class="text-sm text-surface-600">{{ $t('market.detail.category') }}:</span>
-          <Tag :value="$t(listing.category.name_key)" severity="info" />
+          <Tag :value="$t(listing.category.nameKey)" severity="info" />
         </div>
 
         <!-- 地域 -->
@@ -163,29 +163,29 @@ function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'dan
           <i class="pi pi-map-marker text-surface-400" />
           <span class="text-sm text-surface-600">{{ $t('market.detail.region') }}:</span>
           <span class="text-sm">
-            {{ listing.region.prefecture_name }} {{ listing.region.city_name }}
+            {{ listing.region.prefectureName }} {{ listing.region.cityName }}
           </span>
         </div>
 
         <!-- 場所（テキスト） -->
-        <div v-if="listing.location_text" class="mb-3 flex items-center gap-2">
+        <div v-if="listing.locationText" class="mb-3 flex items-center gap-2">
           <i class="pi pi-building text-surface-400" />
           <span class="text-sm text-surface-600">{{ $t('market.detail.location') }}:</span>
-          <span class="text-sm">{{ listing.location_text }}</span>
+          <span class="text-sm">{{ listing.locationText }}</span>
         </div>
 
         <!-- 開催日時 -->
         <div class="mb-3 flex items-center gap-2">
           <i class="pi pi-calendar text-surface-400" />
           <span class="text-sm text-surface-600">{{ $t('market.detail.startAt') }}:</span>
-          <span class="text-sm">{{ formatDate(listing.start_at) }}</span>
+          <span class="text-sm">{{ formatDate(listing.startAt) }}</span>
         </div>
 
         <!-- 応募締切 -->
         <div class="mb-3 flex items-center gap-2">
           <i class="pi pi-clock text-surface-400" />
           <span class="text-sm text-surface-600">{{ $t('market.detail.deadline') }}:</span>
-          <span class="text-sm">{{ formatDate(listing.application_deadline) }}</span>
+          <span class="text-sm">{{ formatDate(listing.applicationDeadline) }}</span>
         </div>
 
         <!-- 定員 / 応募数 -->
@@ -193,7 +193,7 @@ function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'dan
           <i class="pi pi-users text-surface-400" />
           <span class="text-sm text-surface-600">{{ $t('market.detail.confirmedCount') }}:</span>
           <span class="text-sm font-semibold">
-            {{ $t('market.card.capacity', { confirmed: listing.confirmed_count, capacity: listing.capacity }) }}
+            {{ $t('market.card.capacity', { confirmed: listing.confirmedCount, capacity: listing.capacity }) }}
           </span>
         </div>
 
