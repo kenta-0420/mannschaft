@@ -44,6 +44,7 @@ export function useMarketApi() {
     }
     if (params?.page != null) q.set('page', String(params.page))
     if (params?.size != null) q.set('size', String(params.size))
+    if (params?.lang) q.set('lang', params.lang)
     const suffix = q.toString() ? `?${q.toString()}` : ''
     // 一覧は BE PagedResponse（data 配列 + meta）をそのまま受け取る。
     return api<MarketListingPage>(
@@ -55,9 +56,10 @@ export function useMarketApi() {
   // 公開札詳細
   // ===========================================
 
-  async function getMarketListing(id: number) {
+  async function getMarketListing(id: number, lang?: string) {
+    const suffix = lang ? `?lang=${encodeURIComponent(lang)}` : ''
     return api<ApiResponse<MarketListingResponse>>(
-      `/api/v1/public/market/listings/${id}`,
+      `/api/v1/public/market/listings/${id}${suffix}`,
     )
   }
 
@@ -68,9 +70,15 @@ export function useMarketApi() {
   /**
    * 都道府県一覧（prefecture 省略時）または
    * 指定都道府県の市区町村一覧（prefecture 指定時）を返す。
+   *
+   * @param prefecture 都道府県コード（市区町村一覧取得時に指定）
+   * @param lang       表示言語（地域名の多言語表示。未訳は BE 側で日本語フォールバック）
    */
-  async function listMarketRegions(prefecture?: string) {
-    const suffix = prefecture ? `?prefecture=${encodeURIComponent(prefecture)}` : ''
+  async function listMarketRegions(prefecture?: string, lang?: string) {
+    const q = new URLSearchParams()
+    if (prefecture) q.set('prefecture', prefecture)
+    if (lang) q.set('lang', lang)
+    const suffix = q.toString() ? `?${q.toString()}` : ''
     return api<ApiResponse<MarketRegion[]>>(
       `/api/v1/public/market/regions${suffix}`,
     )
@@ -80,9 +88,10 @@ export function useMarketApi() {
   // 地域別件数サマリー
   // ===========================================
 
-  async function getMarketSummary() {
+  async function getMarketSummary(lang?: string) {
+    const suffix = lang ? `?lang=${encodeURIComponent(lang)}` : ''
     return api<ApiResponse<MarketSummary>>(
-      `/api/v1/public/market/summary`,
+      `/api/v1/public/market/summary${suffix}`,
     )
   }
 
