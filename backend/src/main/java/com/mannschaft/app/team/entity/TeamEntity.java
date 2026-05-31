@@ -51,6 +51,24 @@ public class TeamEntity extends BaseEntity {
     @Column(length = 50)
     private String city;
 
+    // --- F22.1 市 Phase 2 足場C: 地域コード（構造化フィルタ・市ビュー結合用） ---
+
+    /**
+     * 都道府県コード（JIS X 0401・{@code prefectures.code} 参照）。
+     * <p>自由入力の {@link #prefecture} とは別に保持する構造化フィルタ用キー。
+     * 第一陣ではカラム追加のみで、名称→コードのバックフィルは別工程（ドライラン基盤参照）。
+     * 設計書: docs/features/F22.1_market / CLAUDE.md 原則 1（FKなし）</p>
+     */
+    @Column(name = "prefecture_code", length = 2)
+    private String prefectureCode;
+
+    /**
+     * 市区町村コード（JIS X 0402・{@code cities.code} 参照）。
+     * <p>自由入力の {@link #city} とは別に保持する構造化フィルタ用キー。FKなし。</p>
+     */
+    @Column(name = "city_code", length = 5)
+    private String cityCode;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Visibility visibility;
@@ -203,5 +221,18 @@ public class TeamEntity extends BaseEntity {
     /** F19.1 Phase 7: イベント公開設定を更新する。 */
     public void updatePublicEventsEnabled(boolean enabled) {
         this.publicEventsEnabled = enabled;
+    }
+
+    /**
+     * F22.1 市 Phase 2 足場C: 地域コード（都道府県・市区町村）を設定する。
+     * <p>クラスレベル {@code @Setter} を持たないため、ビジネスメソッド経由で更新する。
+     * バックフィル・正規化結果の反映に使用する。どちらも null 許容（未解決＝NULL）。</p>
+     *
+     * @param prefectureCode 都道府県コード（JIS X 0401、null 可）
+     * @param cityCode       市区町村コード（JIS X 0402、null 可）
+     */
+    public void updateRegionCodes(String prefectureCode, String cityCode) {
+        this.prefectureCode = prefectureCode;
+        this.cityCode = cityCode;
     }
 }

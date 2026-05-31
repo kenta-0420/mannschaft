@@ -5,6 +5,7 @@ import type {
   MarketRegion,
   MarketSummary,
 } from '~/types/market'
+import type { RecruitmentCategoryResponse } from '~/types/recruitment'
 
 interface ApiResponse<T> {
   data: T
@@ -18,6 +19,7 @@ interface ApiResponse<T> {
  *   - GET /api/v1/public/market/listings/{id}: 公開札詳細（ApiResponse 形: data）
  *   - GET /api/v1/public/market/regions     : 都道府県 / 市区町村一覧（ApiResponse 形: data 配列）
  *   - GET /api/v1/public/market/summary     : 地域別件数サマリー（ApiResponse 形: data）
+ *   - GET /api/v1/public/market/categories  : ジャンルマスタ一覧（ApiResponse 形: data 配列）
  *
  * ⚠️ クエリパラメータ名は BE の @RequestParam に一致させること（MarketController）:
  *   prefecture / city / category_id / keyword / include_region_none / page / size
@@ -84,10 +86,28 @@ export function useMarketApi() {
     )
   }
 
+  // ===========================================
+  // ジャンル（カテゴリ）マスタ一覧
+  // ===========================================
+
+  /**
+   * 市のジャンルフィルタ用カテゴリマスタを取得する。
+   *
+   * ⚠️ 旧実装は recruitment の認証必須 API（/api/v1/recruitment-categories）を直叩きしており、
+   * 未ログインでは 401 → useApi の onResponseError が市ページごと /login へリダイレクトする
+   * 重大バグの原因となっていた。本関数は permitAll の公開エンドポイントを使う。
+   */
+  async function listMarketCategories() {
+    return api<ApiResponse<RecruitmentCategoryResponse[]>>(
+      `/api/v1/public/market/categories`,
+    )
+  }
+
   return {
     listMarketListings,
     getMarketListing,
     listMarketRegions,
     getMarketSummary,
+    listMarketCategories,
   }
 }

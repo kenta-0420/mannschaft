@@ -1,0 +1,48 @@
+{
+  "inbox": {
+    "title": "收件箱",
+    "tab": {
+      "inbox": "收件箱",
+      "snoozed": "稍后处理",
+      "archived": "归档"
+    },
+    "priority": {
+      "urgent": "紧急",
+      "high": "重要",
+      "normal": "普通",
+      "low": "低"
+    },
+    "source": {
+      "notification": "通知",
+      "announcement": "公告",
+      "mention": "提及",
+      "confirmable": "待确认",
+      "todoDue": "待办到期"
+    },
+    "action": {
+      "snooze": "稍后处理",
+      "archive": "归档",
+      "unarchive": "移至收件箱",
+      "unsnooze": "取消延后",
+      "label": "标签"
+    },
+    "snoozePreset": {
+      "in3h": "3小时后",
+      "tonight": "今晚（21:00）",
+      "tomorrowMorning": "明天早上（09:00）",
+      "nextWeek": "下周一（09:00）"
+    },
+    "empty": "没有消息",
+    "loadMore": "加载更多",
+    "filter": {
+      "priority": "优先级",
+      "source": "类型"
+    },
+    "snoozeTitle": "延后设置",
+    "summary": {
+      "inbox": "收件箱",
+      "snoozed": "稍后处理",
+      "archived": "归档"
+    }
+  }
+}

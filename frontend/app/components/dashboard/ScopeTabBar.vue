@@ -106,7 +106,7 @@ async function onFolderChange(folderId: number | null) {
         option-label="name"
         option-value="id"
         :aria-label="$t('scopeDashboard.tagBar.folderFilter')"
-        class="w-40 shrink-0"
+        class="field-bordered border-2 w-40 shrink-0"
         @update:model-value="onFolderChange"
       />
 

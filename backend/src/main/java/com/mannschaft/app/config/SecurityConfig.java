@@ -212,6 +212,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/market/listings/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/market/regions").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/market/summary").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/market/categories").permitAll()
                 // F19.1 Phase 6 公開ユーザープロフィール API（認証不要・レート制限あり）
                 // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §6.6 Phase 6
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/users/*").permitAll()

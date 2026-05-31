@@ -41,7 +41,7 @@ function onSubmit() {
         v-model="keyword"
         :placeholder="$t(placeholder)"
         :aria-label="$t(placeholder)"
-        class="w-full"
+        class="field-bordered border-2 w-full"
         @keyup.enter="onSubmit"
       />
     </IconField>

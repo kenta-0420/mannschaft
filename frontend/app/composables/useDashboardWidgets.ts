@@ -256,6 +256,14 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     description: 'ピン留め村の本日の井戸端在席状況',
     scope: ['personal'],
   },
+  // F04.11: 統合通知インボックスウィジェット
+  {
+    key: 'inbox',
+    label: 'インボックス',
+    icon: 'pi pi-inbox',
+    description: '通知を一箇所で仕分け',
+    scope: ['personal'],
+  },
 ]
 
 function hiddenStorageKey(scopeType: string, scopeId?: number): string {
