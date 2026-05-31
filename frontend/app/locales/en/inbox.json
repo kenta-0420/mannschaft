@@ -1,0 +1,47 @@
+{
+  "inbox": {
+    "title": "Inbox",
+    "tab": {
+      "inbox": "Inbox",
+      "snoozed": "Snoozed",
+      "archived": "Archive"
+    },
+    "priority": {
+      "urgent": "Urgent",
+      "high": "High",
+      "normal": "Normal",
+      "low": "Low"
+    },
+    "source": {
+      "notification": "Notification",
+      "announcement": "Announcement",
+      "mention": "Mention",
+      "confirmable": "Confirmation Required",
+      "todoDue": "TODO Due"
+    },
+    "action": {
+      "snooze": "Snooze",
+      "archive": "Archive",
+      "unarchive": "Move to Inbox",
+      "label": "Label"
+    },
+    "snoozePreset": {
+      "in3h": "In 3 hours",
+      "tonight": "Tonight (21:00)",
+      "tomorrowMorning": "Tomorrow morning (09:00)",
+      "nextWeek": "Next Monday (09:00)"
+    },
+    "empty": "No messages",
+    "loadMore": "Load more",
+    "filter": {
+      "priority": "Priority",
+      "source": "Type"
+    },
+    "snoozeTitle": "Snooze Settings",
+    "summary": {
+      "inbox": "Inbox",
+      "snoozed": "Snoozed",
+      "archived": "Archive"
+    }
+  }
+}

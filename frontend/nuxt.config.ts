@@ -347,6 +347,7 @@ export default defineNuxtConfig({
           'ja/proxy.json',
           'ja/bulletin.json',
           'ja/market.json',
+          'ja/inbox.json',
         ],
       },
       {
@@ -401,6 +402,7 @@ export default defineNuxtConfig({
           'en/proxy.json',
           'en/bulletin.json',
           'en/market.json',
+          'en/inbox.json',
         ],
       },
       {
@@ -455,6 +457,7 @@ export default defineNuxtConfig({
           'zh/proxy.json',
           'zh/bulletin.json',
           'zh/market.json',
+          'zh/inbox.json',
         ],
       },
       {
@@ -509,6 +512,7 @@ export default defineNuxtConfig({
           'ko/proxy.json',
           'ko/bulletin.json',
           'ko/market.json',
+          'ko/inbox.json',
         ],
       },
       {
@@ -563,6 +567,7 @@ export default defineNuxtConfig({
           'es/proxy.json',
           'es/bulletin.json',
           'es/market.json',
+          'es/inbox.json',
         ],
       },
       {
@@ -617,6 +622,7 @@ export default defineNuxtConfig({
           'de/proxy.json',
           'de/bulletin.json',
           'de/market.json',
+          'de/inbox.json',
         ],
       },
     ],
