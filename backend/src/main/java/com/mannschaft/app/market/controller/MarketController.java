@@ -117,7 +117,7 @@ public class MarketController {
     }
 
     /**
-     * 市のジャンル（カテゴリ）マスタ一覧（§3.5）。
+     * 市のジャンル（カテゴリ）マスタ一覧（§3.6）。
      *
      * <p>未ログインで実行可能。市一覧ページのジャンルフィルタが認証必須 API
      * （{@code /api/v1/recruitment-categories}）を直叩きして 401 で市ページごと
