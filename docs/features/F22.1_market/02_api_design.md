@@ -25,6 +25,7 @@
 | GET | `/api/v1/public/market/listings/{id}` | **不要**（permitAll） | 公開札の詳細（PII抑制・非公開は404） |
 | GET | `/api/v1/public/market/regions` | **不要**（permitAll） | 都道府県一覧 ＋ 都道府県指定で市区町村一覧（フィルタ連動用） |
 | GET | `/api/v1/public/market/summary` | **不要**（permitAll） | 地域ノードごとの札件数（パンくず/集客用） |
+| GET | `/api/v1/public/market/categories` | **不要**（permitAll） | ジャンル（カテゴリ）マスタ一覧（フィルタ用・全テナント共通固定マスタ・PIIなし） |
 | POST | `/api/v1/teams/{teamId}/recruitment-listings` | 必要 | **札立て（チーム）**＝既存作成APIに地域・フレンド宛先を拡張 |
 | POST | `/api/v1/organizations/{orgId}/recruitment-listings` | 必要 | **札立て（組織）**＝同上 |
 | POST | `/api/v1/recruitment-listings/{id}/applications` | 必要 | **札に応じる**＝既存応募API（変更なし） |
@@ -115,7 +116,22 @@ visibility = 'PUBLIC' AND status IN ('OPEN','FULL') AND deleted_at IS NULL
 - 状態: `APPLIED`/`CONFIRMED`/`WAITLISTED`/`CANCELLED`（既存）。札が論理削除・フレンド解消後も、応募レコードを正典に表示・キャンセル可能（§7）。
 - ダッシュボードの「届いた札」ウィジェット（フレンド宛非公開札の受信箱）と、この応募一覧で、参加者側の市の使い勝手を担保する。
 
-### 3.6 SEO / sitemap
+### 3.6 `GET /api/v1/public/market/categories`
+
+市一覧ページのジャンルフィルタ用に、**全テナント共通の固定カテゴリマスタ**（`recruitment_categories`）を返す。**未ログインで叩ける**（permitAll・PIIなし・i18nキー込み・表示順）。
+
+`MarketController` が recruitment 層の `RecruitmentCategoryService.listCategories()` に委譲する（市は実体テーブルを持たず recruitment のカテゴリ解決で既に recruitment を参照している前例に倣う）。レスポンスは既存 `RecruitmentCategoryResponse`（camelCase）をそのまま再利用する。
+
+```json
+{ "data": [
+  { "id": 7, "code": "PRACTICE_MATCH", "nameI18nKey": "recruitment.category.practiceMatch",
+    "icon": "pi-flag", "defaultParticipationType": "TEAM", "displayOrder": 1, "isActive": true }
+] }
+```
+
+> **🔴 根治記録（2026-05-31）**: 実機 E2E で「未ログインで `/market` を開くとログイン画面へ強制リダイレクトされる」重大バグが発覚。真因は市一覧ページの `onMounted` がジャンルフィルタ用に**認証必須**の `GET /api/v1/recruitment-categories` を直叩きし、未ログインで 401 → `useApi` の `onResponseError`（user=null）が市ページごと `/login` へ飛ばしていたこと。公開ページは**公開 API のみに依存**させるべく本エンドポイントを新設し、FE を切り替えて根治した。
+
+### 3.7 SEO / sitemap
 
 - 市の公開ページ（`/market`・`/market/listings/[id]`）の SEO は **F19.1 既存方針に準拠**（`sitemap.xml` 動的生成・`canonical`・`hreflang`）。
 - フィルタ付きURL（`?prefecture=44&city=44202`）は **`canonical` を地域確定URLに正規化**し、パラメータ組合せの無限URL膨張を防ぐ。札詳細（公開札のみ）は sitemap 収録、非公開/scope限定は収録しない（404と整合）。

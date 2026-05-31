@@ -1,0 +1,48 @@
+{
+  "inbox": {
+    "title": "Bandeja de entrada",
+    "tab": {
+      "inbox": "Bandeja de entrada",
+      "snoozed": "Pospuestos",
+      "archived": "Archivados"
+    },
+    "priority": {
+      "urgent": "Urgente",
+      "high": "Alto",
+      "normal": "Normal",
+      "low": "Bajo"
+    },
+    "source": {
+      "notification": "Notificación",
+      "announcement": "Anuncio",
+      "mention": "Mención",
+      "confirmable": "Confirmación requerida",
+      "todoDue": "Tarea vencida"
+    },
+    "action": {
+      "snooze": "Posponer",
+      "archive": "Archivar",
+      "unarchive": "Mover a bandeja de entrada",
+      "unsnooze": "Cancelar posposición",
+      "label": "Etiqueta"
+    },
+    "snoozePreset": {
+      "in3h": "En 3 horas",
+      "tonight": "Esta noche (21:00)",
+      "tomorrowMorning": "Mañana por la mañana (09:00)",
+      "nextWeek": "El próximo lunes (09:00)"
+    },
+    "empty": "No hay mensajes",
+    "loadMore": "Cargar más",
+    "filter": {
+      "priority": "Prioridad",
+      "source": "Tipo"
+    },
+    "snoozeTitle": "Configurar posposición",
+    "summary": {
+      "inbox": "Bandeja de entrada",
+      "snoozed": "Pospuestos",
+      "archived": "Archivados"
+    }
+  }
+}
