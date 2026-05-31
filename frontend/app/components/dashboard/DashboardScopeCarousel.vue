@@ -97,6 +97,13 @@ const BASE_DURATION = 0.42
 let slideTimer: ReturnType<typeof setTimeout> | null = null
 /** 自分（step）が起こした activeIndex 変更を watcher に無視させるための抑止フラグ。 */
 let suppressActiveWatch = false
+/**
+ * 消化待ちのスライド方向キュー。
+ * 選択(activeIndex)はクリック毎に即時更新するが、表示(centerIndex)はこのキューを
+ * 1 スライドずつ順番に消化して追従する。連打でも「方向どおりに 1 枚ずつ」滑らかに流れ、
+ * 飛び・方向反転・タイマー多重が起きない。
+ */
+let pendingDirs: (1 | -1)[] = []
 
 /** activeIndex を内部更新する（自前 watcher を抑止）。選択＝ハイライトに即反映される。 */
 function setActiveInternal(idx: number) {
@@ -105,58 +112,60 @@ function setActiveInternal(idx: number) {
   suppressActiveWatch = false
 }
 
-/**
- * 隣のパネルへ 1 ステップだけスライドする（dir = +1: next / -1: prev）。
- * - 選択(activeIndex)は常に即時更新するので、アニメ中の連打でも入力を捨てず確実に進む。
- * - アニメ中に呼ばれた場合は、進行中スライドの着地点へ即センタリングしてから新スライドを開始する。
- * - スライド完了後、transition を無効化して centerIndex を更新＝画面外で再センタリング。
- */
-function step(dir: 1 | -1) {
-  // activeIndex はアニメ中でも「現在向かっている先」を指すので、これを起点に 1 つ進める。
-  const from = activeIndex.value
-  const to = (from + dir + PANEL_COUNT) % PANEL_COUNT
-  setActiveInternal(to)
-  announce(to)
-
-  if (reducedMotion.value) {
-    // アニメ無効: 即時切替。
-    if (slideTimer !== null) {
-      clearTimeout(slideTimer)
-      slideTimer = null
-    }
-    centerIndex.value = to
-    slideDir.value = 0
-    isAnimating.value = false
-    return
+/** 進行中スライドを着地点 landed へ瞬間移動して確定する（transition を切って再センタリング）。 */
+function settleSlide(landed: number) {
+  if (slideTimer !== null) {
+    clearTimeout(slideTimer)
+    slideTimer = null
   }
+  transitionEnabled.value = false
+  centerIndex.value = landed
+  slideDir.value = 0
+  isAnimating.value = false
+}
 
-  // 進行中アニメがあれば、その着地点(=from)へ即センタリングしてから継続する（連打・割り込み対応）。
-  if (isAnimating.value) {
-    if (slideTimer !== null) {
-      clearTimeout(slideTimer)
-      slideTimer = null
-    }
-    centerIndex.value = from
-  }
+/** キューの先頭を 1 つ取り出して 1 枚スライドを開始する。アニメ中・空なら何もしない。 */
+function drainQueue() {
+  if (isAnimating.value) return
+  const dir = pendingDirs.shift()
+  if (dir === undefined) return
 
-  // 1 枚スライド開始。
+  const dst = (centerIndex.value + dir + PANEL_COUNT) % PANEL_COUNT
   transitionEnabled.value = true
   isAnimating.value = true
   slideDir.value = dir
 
   slideTimer = setTimeout(() => {
-    // 画面外での再センタリング（transition を切って瞬間移動 → 次フレームで再有効化）。
-    transitionEnabled.value = false
-    centerIndex.value = to
-    slideDir.value = 0
+    // 画面外での再センタリング（transition を切って瞬間移動 → 次フレームで再有効化）→ 次の1枚へ。
+    settleSlide(dst)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         transitionEnabled.value = true
-        isAnimating.value = false
-        slideTimer = null
+        drainQueue()
       })
     })
   }, BASE_DURATION * 1000 + 30)
+}
+
+/**
+ * 隣のパネルへ 1 ステップだけスライドする（dir = +1: next / -1: prev）。
+ * 選択(activeIndex)を即時更新し、表示用キューに方向を積む。アニメ中の連打でも入力を捨てない。
+ */
+function step(dir: 1 | -1) {
+  // activeIndex はキュー末尾までの最終到達先を指すので、これを起点に 1 つ進める。
+  const to = (activeIndex.value + dir + PANEL_COUNT) % PANEL_COUNT
+  setActiveInternal(to)
+  announce(to)
+
+  if (reducedMotion.value) {
+    // アニメ無効: キューを捨てて即時切替。
+    pendingDirs = []
+    settleSlide(to)
+    return
+  }
+
+  pendingDirs.push(dir)
+  drainQueue()
 }
 
 /**
@@ -182,13 +191,9 @@ watch(
   activeIndex,
   (v) => {
     if (suppressActiveWatch || v === centerIndex.value) return
-    if (slideTimer !== null) {
-      clearTimeout(slideTimer)
-      slideTimer = null
-    }
-    centerIndex.value = v
-    slideDir.value = 0
-    isAnimating.value = false
+    // 外部変更: キューを破棄して即センタリング。
+    pendingDirs = []
+    settleSlide(v)
   },
   { flush: 'sync' },
 )
@@ -201,6 +206,12 @@ function onTouchStart(e: TouchEvent) {
 }
 
 function beginDrag(x: number, y: number) {
+  // 進行中アニメ・消化待ちキューがあれば、最終選択(activeIndex)へ確定してからドラッグに入る。
+  // これをしないと、アニメの transform 途中位置を基準にドラッグ追従して基準ズレが生じる。
+  if (isAnimating.value || pendingDirs.length > 0) {
+    pendingDirs = []
+    settleSlide(activeIndex.value)
+  }
   pointerActive = true
   isDragging.value = false
   directionLocked = null
