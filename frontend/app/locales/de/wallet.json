@@ -261,7 +261,7 @@
         "press": "Stempeln",
         "pressing": "Wird gestempelt…",
         "press_success": "{count} Stempel gedrückt",
-        "recent": "直近の押印（このプロバイダー）",
+        "recent": "Letzte Stempel (dieser Anbieter)",
         "view_all": "Gesamthistorie ansehen",
         "phase3_note_title": "Phase 2 MVP Hinweis",
         "phase3_note": "Derzeit wird nur die manuelle ID-Eingabe unterstützt. QR-Scan-Identifikation für Phase 3 geplant.",

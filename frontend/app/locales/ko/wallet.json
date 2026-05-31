@@ -261,7 +261,7 @@
         "press": "도장 찍기",
         "pressing": "도장 중…",
         "press_success": "{count}스탬프를 찍었습니다",
-        "recent": "直近の押印（このプロバイダー）",
+        "recent": "최근 도장 (이 제공자)",
         "view_all": "모든 내역 보기",
         "phase3_note_title": "Phase 2 MVP 주의",
         "phase3_note": "현재는 카드 ID 직접 입력만 지원합니다. Phase 3에서 QR 스캔에 의한 자동 특정을 구현할 예정입니다.",
