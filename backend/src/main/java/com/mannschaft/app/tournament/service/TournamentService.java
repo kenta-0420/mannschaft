@@ -62,6 +62,12 @@ public class TournamentService {
     private final TournamentParticipantRepository participantRepository;
     private final TournamentMapper mapper;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    /**
+     * F08.7.1 連絡機能: 大会作成・シーズン継続時に連絡スペース（掲示板＋チャット）を自動払い出しする。
+     * TODO: tournament ドメインから chat/bulletin ドメインを直接呼ぶ越境（原則5）。
+     *       将来は TournamentCreatedEvent によるイベント駆動化候補。
+     */
+    private final TournamentContactSpaceProvisioningService contactSpaceProvisioningService;
 
     /**
      * 大会一覧を取得する。
@@ -212,6 +218,9 @@ public class TournamentService {
             saveTournamentStatDefs(tournamentId, request.getStatDefs());
         }
 
+        // F08.7.1: 大会全体の連絡スペース（掲示板＋チャット）を自動付帯（要件④）
+        contactSpaceProvisioningService.provisionForTournament(tournamentId, tournament.getName());
+
         return getTournament(tournamentId);
     }
 
@@ -261,6 +270,8 @@ public class TournamentService {
     @Transactional
     public void deleteTournament(Long tournamentId) {
         TournamentEntity tournament = findTournamentOrThrow(tournamentId);
+        // F08.7.1 §6.1: 連絡スペースを archive（履歴保持・クロスドメインCASCADEなし・原則2）
+        contactSpaceProvisioningService.archiveForTournament(tournamentId);
         tournament.softDelete();
         tournamentRepository.save(tournament);
     }
@@ -345,11 +356,14 @@ public class TournamentService {
                         .sortOrder(sd.getSortOrder())
                         .build()));
 
+        // F08.7.1: 新シーズンの大会全体スペースを払い出す（要件④）
+        contactSpaceProvisioningService.provisionForTournament(newTournamentId, newTournament.getName());
+
         // ディビジョン構成をコピー
         List<TournamentDivisionEntity> prevDivisions =
                 divisionRepository.findByTournamentIdOrderByLevelAscSortOrderAsc(previousTournamentId);
         for (TournamentDivisionEntity prevDiv : prevDivisions) {
-            divisionRepository.save(TournamentDivisionEntity.builder()
+            TournamentDivisionEntity newDiv = divisionRepository.save(TournamentDivisionEntity.builder()
                     .tournamentId(newTournamentId)
                     .name(prevDiv.getName())
                     .level(prevDiv.getLevel())
@@ -361,6 +375,9 @@ public class TournamentService {
                     .maxEntryCount(prevDiv.getMaxEntryCount())
                     .sortOrder(prevDiv.getSortOrder())
                     .build());
+            // F08.7.1: 複製ディビジョンにも連絡スペースを払い出す（払い出し漏れ防止・§3.3）
+            contactSpaceProvisioningService.provisionForDivision(
+                    newDiv.getId(), newTournament.getName() + " " + newDiv.getName() + " 連絡");
         }
 
         return getTournament(newTournamentId);
