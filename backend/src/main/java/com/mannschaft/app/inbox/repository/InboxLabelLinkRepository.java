@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -28,6 +29,12 @@ public interface InboxLabelLinkRepository
      * 同一ラベルの重複付与チェック（冪等付与の判定用）。
      */
     boolean existsByLabelIdAndSourceTypeAndSourceId(
+            UUID labelId, InboxSourceType sourceType, Long sourceId);
+
+    /**
+     * 付与解除用に該当リンク 1 件を取得する（無ければ冪等に無視）。
+     */
+    Optional<InboxLabelLinkEntity> findByLabelIdAndSourceTypeAndSourceId(
             UUID labelId, InboxSourceType sourceType, Long sourceId);
 
     /**
