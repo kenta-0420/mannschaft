@@ -35,8 +35,9 @@ import java.util.UUID;
  *
  * <p>ラベル系 EP は MVP 対象外（Phase 2）のため本コントローラーには含めない。</p>
  *
- * <p><b>骨組み（一陣）</b>: サービス本体は三陣で実装する。現段階ではコンパイルが通る空骨格
- * （サービスが {@code UnsupportedOperationException} を投げるため実行時は未完）。</p>
+ * <p><b>MVP 範囲</b>: 集約対象は NOTIFICATION と TODO_DUE の 2 ソース（実装済み）。
+ * 残り 3 ソース（ANNOUNCEMENT / MENTION / CONFIRMABLE）は後続フェーズでアダプタを追加する
+ * （{@code InboxSourceAdapter} 実装を足すのみ。集約・API・本コントローラーは不変）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/inbox")
@@ -53,7 +54,8 @@ public class InboxController {
 
     @GetMapping
     @Operation(summary = "インボックス一覧取得",
-            description = "5 ソースを集約し、状態/緊急度/種類/ラベルで絞り込んだ一覧を返す。")
+            description = "通知ソースを集約し、状態/緊急度/種類/ラベルで絞り込んだ一覧を返す"
+                    + "（MVP は NOTIFICATION・TODO_DUE の 2 ソース。残ソースは後続フェーズで追加）。")
     public ResponseEntity<ApiResponse<InboxPageResponse>> getInbox(
             @RequestParam(name = "state", defaultValue = "INBOX") String state,
             @RequestParam(name = "priority", required = false) List<InboxPriority> priority,

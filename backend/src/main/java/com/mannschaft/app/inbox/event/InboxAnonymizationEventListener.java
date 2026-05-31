@@ -52,6 +52,10 @@ public class InboxAnonymizationEventListener {
             labelRepository.deleteAllByUserId(userId);
             log.info("ユーザー退会: 通知インボックスデータ削除完了: userId={}", userId);
         } catch (Exception e) {
+            // 退会本体トランザクション（AFTER_COMMIT 済み・別 TX）には伝播させず、
+            // 失敗を握り潰さずログに残す。インボックスは再設定可能な弱匿名化区分（CLAUDE.md §13.12）
+            // のため退会フロー自体は止めない方針。
+            // TODO(F04.11 Phase 3+): 失敗 userId を再処理キュー/メトリクスに積み、取りこぼしゼロを担保する。
             log.warn("ユーザー退会: 通知インボックスデータ削除失敗: userId={}, error={}",
                     userId, e.getMessage(), e);
         }
