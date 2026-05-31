@@ -54,7 +54,9 @@ SecurityFilterChain は「最低限のゲート」、所有権の最終判定は
 | `/api/v1/parental-consent/approve`, `/reject` | 保護者がメールリンクから直接アクセス（F01.9） |
 
 ### 3.3 公開閲覧（F19.1 / F15.4 / F22.1・レート制限あり）
-`/api/v1/public/**` の GET 群（teams/organizations の詳細・posts・events・timeline-posts・search・users・blog-posts comments、**市（F22.1）の `market/listings`・`market/listings/*`・`market/regions`・`market/summary`**）、`/api/v1/organizations/*/teams/search`、`/api/v1/contact-invite/*`、SEO（`/sitemap.xml`・`/robots.txt`・`/sitemap-*.xml`）、i18n（`/api/i18n/**`）。
+`/api/v1/public/**` の GET 群（teams/organizations の詳細・posts・events・timeline-posts・search・users・blog-posts comments、**市（F22.1）の `market/listings`・`market/listings/*`・`market/regions`・`market/summary`・`market/categories`**）、`/api/v1/organizations/*/teams/search`、`/api/v1/contact-invite/*`、SEO（`/sitemap.xml`・`/robots.txt`・`/sitemap-*.xml`）、i18n（`/api/i18n/**`）。
+
+> **🔴 根治記録（2026-05-31）**: 市一覧ページが認証必須の `GET /api/v1/recruitment-categories` をジャンルフィルタ用に直叩きし、未ログインで 401 → FE が `/login` へ飛ばす重大バグが実機 E2E で発覚。公開ページは公開 API のみに依存させる原則に基づき `GET /api/v1/public/market/categories` を新設・permitAll 登録して根治（F22.1 02_api_design §3.6 / 04_security §1.6）。
 > POST/DELETE（コメント投稿・削除など）は **認証必須**（許可リストに入れず `.authenticated()` が制御）。
 
 ### 3.4 広告（F09.7 / F09.17・IP レート制限あり）
