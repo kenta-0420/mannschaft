@@ -357,10 +357,9 @@ class TournamentContactAccessServiceTest {
         }
 
         @Test
-        @DisplayName("SYSTEM_ADMIN_許可")
+        @DisplayName("SYSTEM_ADMIN_許可（組織解決を経ず即許可）")
         void systemAdmin_ok() {
-            given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(tournament()));
-            given(accessControlService.isAdmin(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            // SYSTEM_ADMIN は最初に判定され、組織解決（findById）には到達しない
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
 
             assertThatCode(() -> service.checkVisibilityManage(

@@ -22,6 +22,7 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -54,7 +55,8 @@ class TournamentContactSpaceProvisioningServiceTest {
     /** id を持つ保存済みカテゴリの体裁を mock で再現する（BaseEntity に setId が無いため）。 */
     private static BulletinCategoryEntity savedCategoryMock(Long id) {
         BulletinCategoryEntity e = mock(BulletinCategoryEntity.class);
-        when(e.getId()).thenReturn(id);
+        // 代表カテゴリ（1件目）の id のみ ref に使われるため、2件目以降は未使用となりうる → lenient
+        lenient().when(e.getId()).thenReturn(id);
         return e;
     }
 
@@ -76,8 +78,10 @@ class TournamentContactSpaceProvisioningServiceTest {
             given(bulletinCategoryRepository.findByScopeTypeAndScopeIdOrderByDisplayOrderAsc(
                     ScopeType.TOURNAMENT, TOURNAMENT_ID))
                     .willReturn(List.of());
+            BulletinCategoryEntity cat1 = savedCategoryMock(11L);
+            BulletinCategoryEntity cat2 = savedCategoryMock(12L);
             given(bulletinCategoryRepository.save(any(BulletinCategoryEntity.class)))
-                    .willReturn(savedCategoryMock(11L), savedCategoryMock(12L));
+                    .willReturn(cat1, cat2);
             ChatChannelEntity channel = mock(ChatChannelEntity.class);
             when(channel.getId()).thenReturn(77L);
             given(tournamentChatChannelService.createForTournament(eq(TOURNAMENT_ID), any()))
@@ -131,8 +135,10 @@ class TournamentContactSpaceProvisioningServiceTest {
             given(bulletinCategoryRepository.findByScopeTypeAndScopeIdOrderByDisplayOrderAsc(
                     ScopeType.TOURNAMENT_DIVISION, DIVISION_ID))
                     .willReturn(List.of());
+            BulletinCategoryEntity cat1 = savedCategoryMock(21L);
+            BulletinCategoryEntity cat2 = savedCategoryMock(22L);
             given(bulletinCategoryRepository.save(any(BulletinCategoryEntity.class)))
-                    .willReturn(savedCategoryMock(21L), savedCategoryMock(22L));
+                    .willReturn(cat1, cat2);
             ChatChannelEntity channel = mock(ChatChannelEntity.class);
             when(channel.getId()).thenReturn(88L);
             given(tournamentChatChannelService.createForDivision(eq(DIVISION_ID), any()))
