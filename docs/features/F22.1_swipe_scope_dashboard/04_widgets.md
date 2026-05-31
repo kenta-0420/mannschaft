@@ -30,6 +30,8 @@ F02.2 の既存 widget_key（`TEAM_NOTICES` / `TEAM_LATEST_POSTS` 等）は**チ
 
 > **判断記録**: 横スワイプパネルと詳細ダッシュボードページは「別ビュー・別カスタマイズ単位」と位置づける。共有すると UX が予測不能になるため key を分離。データソース自体（API / Service）は F02.2 のものを流用する（key だけ新設、実装は再利用）。
 
+> **トーナメント成績ウィジェットとの棲み分け**: F08.7.1 の大会成績ウィジェット（`TEAM_TOURNAMENT_RECORD` / `TEAM_DIVISION_STANDINGS` / `ORG_TOURNAMENT_SUMMARY`）は **F02.2 系の詳細ダッシュボードに置く**（本機能の `SWIPE_` 別名前空間には含めない・名前空間混同防止）。詳細は [F08.7.1/02_dashboard_widgets.md](../F08.7.1_tournament_extensions/02_dashboard_widgets.md)。
+
 ---
 
 ## 3. チームパネル（`scope_type = 'TEAM'`）widget_key 表
