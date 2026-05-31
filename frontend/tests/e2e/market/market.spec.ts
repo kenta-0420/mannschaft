@@ -107,15 +107,6 @@ const MOCK_LISTINGS_RESPONSE = {
   },
 }
 
-const MOCK_EMPTY_RESPONSE = {
-  data: {
-    content: [],
-    total_elements: 0,
-    page: 0,
-    size: 20,
-  },
-}
-
 /** 都道府県一覧モック */
 const MOCK_PREFECTURES = [
   { code: '44', name: '大分県' },
@@ -144,14 +135,6 @@ const MOCK_CATEGORIES = [
 const MOCK_DETAIL_OPEN: typeof MOCK_LISTING_1 & { description?: string } = {
   ...MOCK_LISTING_1,
   description: 'フレンドリーな練習試合を希望しています。',
-}
-
-/** 詳細ページ用モック（FULL 状態） */
-const MOCK_DETAIL_FULL = {
-  ...MOCK_LISTING_1,
-  status: 'FULL',
-  confirmed_count: 1,
-  capacity: 1,
 }
 
 // ──────────────────────────────────────────────────────────────────────────
