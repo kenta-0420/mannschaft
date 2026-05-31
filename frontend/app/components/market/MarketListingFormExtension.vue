@@ -91,13 +91,13 @@ watch(visibility, (v) => {
 watch([targetAllFriends, selectedFolderIds, selectedTeamIds], () => {
   const targets: FriendTargetInput[] = []
   if (targetAllFriends.value) {
-    targets.push({ target_kind: 'ALL_FRIENDS' })
+    targets.push({ targetKind: 'ALL_FRIENDS' })
   }
   for (const fid of selectedFolderIds.value) {
-    targets.push({ target_kind: 'FOLDER', folder_id: fid })
+    targets.push({ targetKind: 'FOLDER', folderId: fid })
   }
   for (const tid of selectedTeamIds.value) {
-    targets.push({ target_kind: 'TEAM', team_id: tid })
+    targets.push({ targetKind: 'TEAM', teamId: tid })
   }
   emit('update:friendTargets', targets)
 }, { deep: true })
