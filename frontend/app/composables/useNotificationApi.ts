@@ -52,10 +52,15 @@ export function useNotificationApi() {
     return api(`/api/v1/notifications/${notificationId}/unread`, { method: 'POST' })
   }
 
-  async function snooze(notificationId: number, duration: string) {
+  /**
+   * 通知をスヌーズする。
+   * F04.11 設計書 02_api_design.md §3.3 に合わせ snoozedUntil（ISO-8601 文字列）を送る。
+   * （旧シグネチャは duration: string だったが、呼び出し側ゼロのため破壊なし）
+   */
+  async function snooze(notificationId: number, snoozedUntil: string) {
     return api(`/api/v1/notifications/${notificationId}/snooze`, {
       method: 'POST',
-      body: { duration },
+      body: { snoozedUntil },
     })
   }
 

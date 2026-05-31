@@ -1,0 +1,48 @@
+{
+  "inbox": {
+    "title": "Posteingang",
+    "tab": {
+      "inbox": "Posteingang",
+      "snoozed": "Zurückgestellt",
+      "archived": "Archiv"
+    },
+    "priority": {
+      "urgent": "Dringend",
+      "high": "Wichtig",
+      "normal": "Normal",
+      "low": "Niedrig"
+    },
+    "source": {
+      "notification": "Benachrichtigung",
+      "announcement": "Ankündigung",
+      "mention": "Erwähnung",
+      "confirmable": "Bestätigung erforderlich",
+      "todoDue": "Aufgabe fällig"
+    },
+    "action": {
+      "snooze": "Zurückstellen",
+      "archive": "Archivieren",
+      "unarchive": "In Posteingang verschieben",
+      "unsnooze": "Zurückstellung aufheben",
+      "label": "Etikett"
+    },
+    "snoozePreset": {
+      "in3h": "In 3 Stunden",
+      "tonight": "Heute Abend (21:00)",
+      "tomorrowMorning": "Morgen früh (09:00)",
+      "nextWeek": "Nächsten Montag (09:00)"
+    },
+    "empty": "Keine Nachrichten",
+    "loadMore": "Mehr laden",
+    "filter": {
+      "priority": "Priorität",
+      "source": "Typ"
+    },
+    "snoozeTitle": "Zurückstellen einstellen",
+    "summary": {
+      "inbox": "Posteingang",
+      "snoozed": "Zurückgestellt",
+      "archived": "Archiv"
+    }
+  }
+}
