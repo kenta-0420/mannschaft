@@ -147,6 +147,22 @@ class TeamRegionNormalizerTest {
     }
 
     @Test
+    @DisplayName("名称完全一致で複数候補 → 曖昧として不採用（PREFECTURE_ONLY・誤コード焼き付け防止）")
+    void exactMatch_multiple_rejected() {
+        // 県内同名複数（JIS上ほぼ無いが異常系=マスタ重複）。恣意的基準で誤コードを採用しない。
+        given(cityRepository.findByPrefectureCodeAndNameOrderByCodeAsc("13", "あいまい市"))
+                .willReturn(List.of(
+                        city("13201", "13", "あいまい市"),
+                        city("13202", "13", "あいまい市")));
+
+        ResolvedRegion r = normalizer.normalize("東京都", "あいまい市");
+
+        assertThat(r.prefectureCode()).isEqualTo("13");
+        assertThat(r.cityCode()).isNull();
+        assertThat(r.matchStage()).isEqualTo(MatchStage.PREFECTURE_ONLY);
+    }
+
+    @Test
     @DisplayName("前方一致で複数候補 → 曖昧として不採用（PREFECTURE_ONLY）")
     void prefixMatch_multiple_rejected() {
         given(cityRepository.findByPrefectureCodeAndNameOrderByCodeAsc("13", "府中"))

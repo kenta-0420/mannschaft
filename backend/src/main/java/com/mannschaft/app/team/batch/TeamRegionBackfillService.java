@@ -83,7 +83,8 @@ public class TeamRegionBackfillService {
             case CITY -> result.matchedCity++;
             case PREFECTURE_ONLY -> result.matchedPrefectureOnly++;
             case NONE -> result.unmatched++;
-            default -> result.unmatched++;
+            // MatchStage は3値で全列挙済み。将来値が増えたら暗黙に unmatched 集計せず気付けるよう fail-loud。
+            default -> throw new IllegalStateException("未知の MatchStage: " + resolved.matchStage());
         }
 
         if (log.isDebugEnabled()) {
