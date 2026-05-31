@@ -14,11 +14,11 @@
         "cpi": "CPI (Price Index)",
         "minutes": "Meeting minutes"
       },
-      "year_from": "開始年度",
-      "year_to": "終了年度",
-      "no_data": "修繕計画データがありません",
-      "total": "合計",
-      "cpi_note": "CPI: 2024年=100、国交省R5ガイドライン 1.5%/年"
+      "year_from": "Start fiscal year",
+      "year_to": "End fiscal year",
+      "no_data": "No repair plan data available",
+      "total": "Total",
+      "cpi_note": "CPI: 2024=100, MLIT FY2023 guideline 1.5%/year"
     },
     "category": {
       "EXTERIOR": "Exterior / Paint",
