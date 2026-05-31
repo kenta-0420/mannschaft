@@ -261,7 +261,7 @@
         "press": "Sellar",
         "pressing": "Sellando…",
         "press_success": "Se sellaron {count} sticker(s)",
-        "recent": "直近の押印（このプロバイダー）",
+        "recent": "Sellos recientes (este proveedor)",
         "view_all": "Ver todo el historial",
         "phase3_note_title": "Nota Phase 2 MVP",
         "phase3_note": "Actualmente solo se admite la entrada directa de ID. Se planea identificación automática por QR en Phase 3.",

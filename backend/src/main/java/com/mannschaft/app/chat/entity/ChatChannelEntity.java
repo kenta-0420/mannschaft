@@ -34,7 +34,7 @@ import java.util.UUID;
 public class ChatChannelEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 30)
     private ChannelType channelType;
 
     private Long teamId;

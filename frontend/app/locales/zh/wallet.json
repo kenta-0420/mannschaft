@@ -261,7 +261,7 @@
         "press": "盖章",
         "pressing": "盖章中…",
         "press_success": "已盖{count}个印章",
-        "recent": "直近の押印（このプロバイダー）",
+        "recent": "最近的盖章（此提供商）",
         "view_all": "查看所有历史",
         "phase3_note_title": "Phase 2 MVP注意",
         "phase3_note": "目前仅支持直接输入卡片ID。Phase 3计划实现QR扫描自动识别。",
