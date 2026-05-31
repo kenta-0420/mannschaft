@@ -103,7 +103,7 @@ class ConfirmableInboxAdapterTest {
                     100L, "確認してください", "本文", ConfirmableNotificationPriority.NORMAL,
                     null, "/confirmations/100", created);
             ConfirmableNotificationRecipientEntity r = recipient(500L, USER_ID, p, false, null);
-            given(recipientRepository.findByUserIdAndIsConfirmedFalseAndExcludedAtIsNull(USER_ID))
+            given(recipientRepository.findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(USER_ID))
                     .willReturn(List.of(r));
 
             List<InboxItemDto> items = adapter.fetch(USER_ID);
@@ -127,7 +127,7 @@ class ConfirmableInboxAdapterTest {
                     101L, "t", "b", ConfirmableNotificationPriority.NORMAL,
                     null, null, LocalDateTime.now().minusDays(5));
             ConfirmableNotificationRecipientEntity r = recipient(501L, USER_ID, p, false, null);
-            given(recipientRepository.findByUserIdAndIsConfirmedFalseAndExcludedAtIsNull(USER_ID))
+            given(recipientRepository.findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(USER_ID))
                     .willReturn(List.of(r));
 
             List<InboxItemDto> items = adapter.fetch(USER_ID);
@@ -144,7 +144,7 @@ class ConfirmableInboxAdapterTest {
                     102L, "t", "b", ConfirmableNotificationPriority.HIGH,
                     LocalDateTime.now().plusDays(10), "/x", LocalDateTime.now().minusDays(1));
             ConfirmableNotificationRecipientEntity r = recipient(502L, USER_ID, p, false, null);
-            given(recipientRepository.findByUserIdAndIsConfirmedFalseAndExcludedAtIsNull(USER_ID))
+            given(recipientRepository.findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(USER_ID))
                     .willReturn(List.of(r));
 
             List<InboxItemDto> items = adapter.fetch(USER_ID);
@@ -161,7 +161,7 @@ class ConfirmableInboxAdapterTest {
                     103L, "t", "b", ConfirmableNotificationPriority.NORMAL,
                     LocalDateTime.now().plusHours(6), "/x", LocalDateTime.now().minusDays(1));
             ConfirmableNotificationRecipientEntity r = recipient(503L, USER_ID, p, false, null);
-            given(recipientRepository.findByUserIdAndIsConfirmedFalseAndExcludedAtIsNull(USER_ID))
+            given(recipientRepository.findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(USER_ID))
                     .willReturn(List.of(r));
 
             List<InboxItemDto> items = adapter.fetch(USER_ID);

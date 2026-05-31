@@ -1,6 +1,7 @@
 package com.mannschaft.app.notification.confirmable.repository;
 
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -37,6 +38,23 @@ public interface ConfirmableNotificationRecipientRepository
      * @return 未確認受信者リスト（作成日時降順）
      */
     List<ConfirmableNotificationRecipientEntity> findByUserIdAndIsConfirmedFalseAndExcludedAtIsNull(Long userId);
+
+    /**
+     * ユーザーの未確認かつ除外されていない受信者一覧を、親 {@code confirmableNotification} を
+     * JOIN FETCH して一括取得する（インボックス表示用・N+1 防止）。
+     *
+     * <p>{@link #findByUserIdAndIsConfirmedFalseAndExcludedAtIsNull} と同じ絞り込み条件だが、
+     * 親エンティティを同一クエリで取得するため {@code FetchType.LAZY} による追加クエリが発生しない。
+     * 既存の保留中一覧 API 呼び出しは変更せず、インボックスアダプタからのみ本メソッドを使用する。</p>
+     *
+     * @param userId 対象ユーザーID
+     * @return 未確認受信者リスト（親 confirmableNotification 付き）
+     */
+    @Query("SELECT r FROM ConfirmableNotificationRecipientEntity r " +
+           "JOIN FETCH r.confirmableNotification " +
+           "WHERE r.user.id = :userId AND r.isConfirmed = false AND r.excludedAt IS NULL")
+    List<ConfirmableNotificationRecipientEntity> findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(
+            @Param("userId") Long userId);
 
     /**
      * 通知IDに紐づく未確認かつ除外されていない受信者を取得する（リマインドバッチ用）。

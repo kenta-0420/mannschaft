@@ -47,8 +47,10 @@ public class ConfirmableInboxAdapter implements InboxSourceAdapter {
     @Override
     public List<InboxItemDto> fetch(Long userId) {
         NormalizationContext ctx = currentContext();
+        // JOIN FETCH で親 confirmableNotification を一括取得し N+1 を防ぐ（他4ソースと同様の方式）。
+        // 既存の findByUserIdAndIsConfirmedFalseAndExcludedAtIsNull は保留中一覧 API 等で引き続き使用。
         return recipientRepository
-                .findByUserIdAndIsConfirmedFalseAndExcludedAtIsNull(userId).stream()
+                .findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(userId).stream()
                 .map(r -> toDto(r, ctx))
                 .toList();
     }
