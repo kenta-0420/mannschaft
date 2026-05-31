@@ -6,6 +6,8 @@ import com.mannschaft.app.market.dto.MarketListingResponse;
 import com.mannschaft.app.market.dto.MarketRegionNodeResponse;
 import com.mannschaft.app.market.dto.MarketSummaryResponse;
 import com.mannschaft.app.market.service.MarketQueryService;
+import com.mannschaft.app.recruitment.dto.RecruitmentCategoryResponse;
+import com.mannschaft.app.recruitment.service.RecruitmentCategoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +26,7 @@ import java.util.List;
  * F22.1 市（Market）公開閲覧 Controller（02_api_design §2 / §3）。
  *
  * <p>本コントローラは<strong>すべて認証不要</strong>（permitAll・PII 抑制 DTO）。
- * {@code SecurityConfig} で {@code /api/v1/public/market/**} の GET 4 本を permitAll 登録済み。
+ * {@code SecurityConfig} で {@code /api/v1/public/market/**} の GET 5 本（listings/listings*&#47;regions/summary/categories）を permitAll 登録済み。
  * レート制限は {@code PublicApiRateLimitFilter} が担う（market パスを追加済み）。</p>
  *
  * <p>市の札立て・応募・取下げは既存 recruitment API が担う。本コントローラは
@@ -37,6 +39,12 @@ import java.util.List;
 public class MarketController {
 
     private final MarketQueryService marketQueryService;
+
+    /**
+     * ジャンル（カテゴリ）マスタ取得用。市は実体を持たず recruitment のカテゴリマスタを共有する
+     * （{@code MarketQueryService} が既にカテゴリ解決で recruitment を参照する前例に倣う）。
+     */
+    private final RecruitmentCategoryService recruitmentCategoryService;
 
     /**
      * 市の札一覧（地域×ジャンル×状態フィルタ・PII 抑制・§3.1）。
@@ -106,5 +114,24 @@ public class MarketController {
             description = "未ログインで実行可能。地域ノードごとの立っている札の件数（PII なし）。")
     public ResponseEntity<ApiResponse<MarketSummaryResponse>> getSummary() {
         return ResponseEntity.ok(ApiResponse.of(marketQueryService.getSummary()));
+    }
+
+    /**
+     * 市のジャンル（カテゴリ）マスタ一覧（§3.5）。
+     *
+     * <p>未ログインで実行可能。市一覧ページのジャンルフィルタが認証必須 API
+     * （{@code /api/v1/recruitment-categories}）を直叩きして 401 で市ページごと
+     * ログインへ飛ばされていた不具合を根治するため新設（公開ページは公開 API のみに依存させる）。</p>
+     *
+     * <p>返すのは全テナント共通の固定カテゴリマスタ（i18n キー込み・表示順・PII なし）。
+     * recruitment 層の {@link RecruitmentCategoryService#listCategories()} に委譲する。</p>
+     *
+     * @return アクティブカテゴリを表示順で並べた配列（camelCase）
+     */
+    @GetMapping("/categories")
+    @Operation(summary = "市のジャンル一覧",
+            description = "未ログインで実行可能。全テナント共通の固定カテゴリマスタ（i18nキー込み・表示順・PIIなし）を返す。")
+    public ResponseEntity<ApiResponse<List<RecruitmentCategoryResponse>>> getCategories() {
+        return ResponseEntity.ok(ApiResponse.of(recruitmentCategoryService.listCategories()));
     }
 }

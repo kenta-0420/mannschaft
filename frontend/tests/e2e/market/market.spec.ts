@@ -223,9 +223,14 @@ async function mockMarketRegions(page: Page): Promise<void> {
   })
 }
 
-/** カテゴリ API をモック */
+/**
+ * カテゴリ API をモック。
+ * ⚠️ 市は未ログイン公開ページのため、ジャンルフィルタは認証必須の
+ *    /api/v1/recruitment-categories ではなく permitAll の公開エンドポイント
+ *    GET /api/v1/public/market/categories を使う（未ログイン redirect 根治）。
+ */
 async function mockCategories(page: Page): Promise<void> {
-  await page.route('**/api/v1/recruitment/categories**', async (route: Route) => {
+  await page.route('**/api/v1/public/market/categories**', async (route: Route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -313,6 +318,33 @@ test('MARKET-001: 未ログインで /market にアクセスすると 2xx 到達
 
   // 「札を立てる」ボタンはダッシュボードへの導線として存在する（市から直接立てない）
   await expect(page.getByTestId('market-post-link')).toBeVisible()
+})
+
+test('MARKET-001b: 未ログインで /market を開いても /login へリダイレクトされない（公開閲覧根治の回帰防止）', async ({ page }) => {
+  // 実機 E2E で発覚した🔴重大バグ:
+  // 市一覧の onMounted が認証必須 API（/api/v1/recruitment-categories）を直叩きし、
+  // 未ログインで 401 → useApi の onResponseError が市ページごと /login へ飛ばしていた。
+  // 根治後は公開カテゴリ API（/api/v1/public/market/categories）に切り替わり redirect しない。
+  // 認証注入なし（未ログイン状態）で検証する。
+  await mockMarketRegions(page)
+  await mockCategories(page)
+  await mockMarketListings(page)
+  // 旧バグ経路が誤って呼ばれていないことを担保するため、認証必須カテゴリ API には 401 を返す。
+  // 根治後はこの経路を呼ばないので redirect は発生しないはず。
+  await page.route('**/api/v1/recruitment-categories**', async (route: Route) => {
+    await route.fulfill({
+      status: 401,
+      contentType: 'application/json',
+      body: JSON.stringify({ message: 'Unauthorized' }),
+    })
+  })
+
+  await page.goto('/market')
+
+  // 市ページが描画され、/login へ飛ばされていないこと
+  await expect(page.getByTestId('market-page')).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByTestId('market-listing-grid')).toBeVisible({ timeout: 10_000 })
+  expect(new URL(page.url()).pathname).toBe('/market')
 })
 
 // ──────────────────────────────────────────────────────────────────────────

@@ -12,6 +12,8 @@ import com.mannschaft.app.market.dto.MarketRegionNodeResponse;
 import com.mannschaft.app.market.dto.MarketSummaryResponse;
 import com.mannschaft.app.market.service.MarketQueryService;
 import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.recruitment.dto.RecruitmentCategoryResponse;
+import com.mannschaft.app.recruitment.service.RecruitmentCategoryService;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -71,6 +73,9 @@ class MarketControllerTest {
 
     @MockitoBean
     private MarketQueryService marketQueryService;
+
+    @MockitoBean
+    private RecruitmentCategoryService recruitmentCategoryService;
 
     // WebMvcTest が要求する Security / Proxy 周りの最小モック注入。
     @MockitoBean
@@ -140,6 +145,26 @@ class MarketControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.byPrefecture[0].count").value(18))
                 .andExpect(jsonPath("$.data.byCity[0].count").value(7));
+    }
+
+    @Test
+    @DisplayName("GET /public/market/categories 200: 未ログインでジャンルマスタに到達し camelCase で返る")
+    void getCategories_anonymous_returns200() throws Exception {
+        // 市一覧ページのジャンルフィルタが認証必須 API を直叩きして 401 → /login へ飛ばされていた
+        // 重大バグの根治。permitAll の公開エンドポイントで固定カテゴリマスタを返すことを検証する。
+        given(recruitmentCategoryService.listCategories()).willReturn(List.of(
+                new RecruitmentCategoryResponse(
+                        7L, "PRACTICE_MATCH", "recruitment.category.practiceMatch",
+                        "pi-flag", "TEAM", 1, true)));
+
+        mockMvc.perform(get("/api/v1/public/market/categories"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").value(7))
+                .andExpect(jsonPath("$.data[0].code").value("PRACTICE_MATCH"))
+                // snake_case ではなく camelCase で返ること（FE が型をそのまま使えること）
+                .andExpect(jsonPath("$.data[0].nameI18nKey").value("recruitment.category.practiceMatch"))
+                .andExpect(jsonPath("$.data[0].displayOrder").value(1))
+                .andExpect(jsonPath("$.data[0].isActive").value(true));
     }
 
     // ════════════════════════════════════════════════════════════

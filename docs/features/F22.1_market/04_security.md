@@ -51,8 +51,11 @@
 - `GET /api/v1/public/market/listings/*`
 - `GET /api/v1/public/market/regions`
 - `GET /api/v1/public/market/summary`
+- `GET /api/v1/public/market/categories`（ジャンルフィルタ用・全テナント共通固定マスタ・PIIなし。2026-05-31 追加）
 
 > POST（応募・札立て・取下げ）は許可リストに入れず `.authenticated()` がカバー（F19.1/§3.3 の方針踏襲）。
+
+> **🔴 根治記録（2026-05-31）**: 実機 E2E で「未ログインで `/market` がログイン画面へ強制リダイレクト」が発覚。真因は市一覧ページが**認証必須**の `GET /api/v1/recruitment-categories` をジャンルフィルタ用に直叩きし、未ログインで 401 → FE の `useApi` が市ページごと `/login` へ遷移していたこと。公開ページは公開 API のみに依存させる原則に基づき `GET /api/v1/public/market/categories` を新設・permitAll 登録し、FE を切り替えて根治した（02_api_design §3.6）。
 
 ---
 
