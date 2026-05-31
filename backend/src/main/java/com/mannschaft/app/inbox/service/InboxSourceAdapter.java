@@ -12,7 +12,7 @@ import java.util.List;
  * 「アダプタ 1 実装の追加」で済む（保守性）。読み取りのみ・書き込み越境なし（CLAUDE.md 原則5）。
  * 設計書: 03_business_logic.md §2。</p>
  *
- * <p>MVP ではアダプタ実装（NOTIFICATION / TODO_DUE 先行、続けて残 3 ソース）を後続フェーズで追加する。</p>
+ * <p>MVP で実装するのは NOTIFICATION / TODO_DUE の 2 アダプタ（残 3 ソースは出陣③）。</p>
  */
 public interface InboxSourceAdapter {
 
@@ -28,4 +28,16 @@ public interface InboxSourceAdapter {
      * @return 正規化済みインボックス項目（triage 状態/ラベルは未マージ＝集約サービスで被せる）
      */
     List<InboxItemDto> fetch(Long userId);
+
+    /**
+     * 指定通知（{@code sourceId}）が当該ユーザーに可視か判定する（IDOR 防止・triage 書き込み前検証）。
+     *
+     * <p>一覧取得と同じ可視性ロジックを再利用し、本人宛てでない通知への triage/ラベル付与を弾く
+     * （設計書 04_security_operations.md §1.2）。</p>
+     *
+     * @param userId   対象ユーザーID
+     * @param sourceId 各ソース PK
+     * @return 本人に可視なら true
+     */
+    boolean isVisibleTo(Long userId, Long sourceId);
 }

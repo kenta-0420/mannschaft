@@ -6,7 +6,6 @@ import com.mannschaft.app.inbox.entity.InboxItemStateEntity;
 import com.mannschaft.app.inbox.error.InboxErrorCode;
 import com.mannschaft.app.inbox.repository.InboxItemStateRepository;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,6 +44,9 @@ class InboxTriageServiceTest {
 
     @Mock
     private InboxItemStateRepository itemStateRepository;
+
+    @Mock
+    private InboxItemVisibilityChecker visibilityChecker;
 
     @InjectMocks
     private InboxTriageService triageService;
@@ -87,6 +89,7 @@ class InboxTriageServiceTest {
             LocalDateTime future = LocalDateTime.now().plusHours(3);
             given(itemStateRepository.findByUserIdAndSourceTypeAndSourceId(USER_ID, SOURCE_TYPE, SOURCE_ID))
                     .willReturn(Optional.empty());
+            given(visibilityChecker.isVisibleTo(USER_ID, SOURCE_TYPE, SOURCE_ID)).willReturn(true);
             given(itemStateRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
             triageService.snooze(USER_ID, SOURCE_TYPE, SOURCE_ID, future);
@@ -122,6 +125,7 @@ class InboxTriageServiceTest {
         void noExisting_upsertsArchivedAt() {
             given(itemStateRepository.findByUserIdAndSourceTypeAndSourceId(USER_ID, SOURCE_TYPE, SOURCE_ID))
                     .willReturn(Optional.empty());
+            given(visibilityChecker.isVisibleTo(USER_ID, SOURCE_TYPE, SOURCE_ID)).willReturn(true);
             given(itemStateRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
             triageService.archive(USER_ID, SOURCE_TYPE, SOURCE_ID);
@@ -197,20 +201,20 @@ class InboxTriageServiceTest {
     class Idor {
 
         @Test
-        @Disabled("三陣への申し送り: 可視性検証の協力オブジェクト（各アダプタの isVisibleTo もしくは "
-                + "AggregationService 経由の可視性判定）が骨格 InboxTriageService に未注入のため保留。"
-                + "三陣で可視性コラボレータを注入後、本テストを有効化し、可視でない (sourceType, sourceId) への "
-                + "snooze/archive/label が INBOX_SOURCE_NOT_FOUND を投げ、オーバーレイ行を作らないことを検証する"
-                + "（設計書 04_security_operations.md §1.2）。")
-        @DisplayName("異常系: 本人に可視でない通知への snooze → INBOX_SOURCE_NOT_FOUND（保留）")
+        @DisplayName("異常系: 本人に可視でない通知への snooze → INBOX_SOURCE_NOT_FOUND・行を作らない")
         void notVisible_snooze_throwsSourceNotFound() {
-            // TODO(三陣): 可視性コラボレータをモックし、isVisibleTo=false を返させて
-            //   triageService.snooze(...) が INBOX_SOURCE_NOT_FOUND を投げることを検証する。
+            // 既存オーバーレイ行なし（初回 triage）＋ 可視性チェッカーが false → INBOX_SOURCE_NOT_FOUND
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceId(USER_ID, SOURCE_TYPE, 999L))
+                    .willReturn(Optional.empty());
+            given(visibilityChecker.isVisibleTo(USER_ID, SOURCE_TYPE, 999L)).willReturn(false);
+
             assertThatThrownBy(() -> triageService.snooze(
                     USER_ID, SOURCE_TYPE, 999L, LocalDateTime.now().plusHours(1)))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(InboxErrorCode.INBOX_SOURCE_NOT_FOUND);
+
+            verify(itemStateRepository, never()).save(any());
         }
     }
 }
