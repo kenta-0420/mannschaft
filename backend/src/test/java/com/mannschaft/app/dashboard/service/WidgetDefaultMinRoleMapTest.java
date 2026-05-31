@@ -86,6 +86,20 @@ class WidgetDefaultMinRoleMapTest {
             assertThat(WidgetDefaultMinRoleMap.getDefault(WidgetKey.TEAM_MEMBER_ATTENDANCE))
                     .isEqualTo(MinRole.MEMBER);
         }
+
+        @Test
+        @DisplayName("TEAM_TOURNAMENT_RECORD → SUPPORTER（F08.7.1）")
+        void teamTournamentRecord_SUPPORTER() {
+            assertThat(WidgetDefaultMinRoleMap.getDefault(WidgetKey.TEAM_TOURNAMENT_RECORD))
+                    .isEqualTo(MinRole.SUPPORTER);
+        }
+
+        @Test
+        @DisplayName("TEAM_DIVISION_STANDINGS → SUPPORTER（F08.7.1）")
+        void teamDivisionStandings_SUPPORTER() {
+            assertThat(WidgetDefaultMinRoleMap.getDefault(WidgetKey.TEAM_DIVISION_STANDINGS))
+                    .isEqualTo(MinRole.SUPPORTER);
+        }
     }
 
     // ========================================
@@ -129,6 +143,13 @@ class WidgetDefaultMinRoleMapTest {
         void orgStats_SUPPORTER() {
             assertThat(WidgetDefaultMinRoleMap.getDefault(WidgetKey.ORG_STATS))
                     .isEqualTo(MinRole.SUPPORTER);
+        }
+
+        @Test
+        @DisplayName("ORG_TOURNAMENT_SUMMARY → MEMBER（F08.7.1）")
+        void orgTournamentSummary_MEMBER() {
+            assertThat(WidgetDefaultMinRoleMap.getDefault(WidgetKey.ORG_TOURNAMENT_SUMMARY))
+                    .isEqualTo(MinRole.MEMBER);
         }
     }
 
@@ -232,7 +253,7 @@ class WidgetDefaultMinRoleMapTest {
             assertThat(result.keySet())
                     .allSatisfy(key -> assertThat(key.getScopeType()).isEqualTo(ScopeType.TEAM));
 
-            // 想定 8 キーを網羅
+            // 想定 10 キーを網羅（F08.7.1 で 2 件追加）
             assertThat(result.keySet()).containsExactlyInAnyOrder(
                     WidgetKey.TEAM_NOTICES,
                     WidgetKey.TEAM_UPCOMING_EVENTS,
@@ -241,7 +262,9 @@ class WidgetDefaultMinRoleMapTest {
                     WidgetKey.TEAM_ACTIVITY,
                     WidgetKey.TEAM_LATEST_POSTS,
                     WidgetKey.TEAM_UNREAD_THREADS,
-                    WidgetKey.TEAM_MEMBER_ATTENDANCE);
+                    WidgetKey.TEAM_MEMBER_ATTENDANCE,
+                    WidgetKey.TEAM_TOURNAMENT_RECORD,
+                    WidgetKey.TEAM_DIVISION_STANDINGS);
 
             // ADMIN 限定は含まれない
             assertThat(result).doesNotContainKey(WidgetKey.TEAM_BILLING);
@@ -263,13 +286,14 @@ class WidgetDefaultMinRoleMapTest {
                     .allSatisfy(key ->
                             assertThat(key.getScopeType()).isEqualTo(ScopeType.ORGANIZATION));
 
-            // 想定 5 キーを網羅
+            // 想定 6 キーを網羅（F08.7.1 で 1 件追加）
             assertThat(result.keySet()).containsExactlyInAnyOrder(
                     WidgetKey.ORG_TEAM_LIST,
                     WidgetKey.ORG_NOTICES,
                     WidgetKey.ORG_TODO,
                     WidgetKey.ORG_PROJECT_PROGRESS,
-                    WidgetKey.ORG_STATS);
+                    WidgetKey.ORG_STATS,
+                    WidgetKey.ORG_TOURNAMENT_SUMMARY);
 
             // ADMIN 限定は含まれない
             assertThat(result).doesNotContainKey(WidgetKey.ORG_BILLING);
@@ -302,11 +326,11 @@ class WidgetDefaultMinRoleMapTest {
     class AllKeys {
 
         @Test
-        @DisplayName("全管理対象キーを返す（13 件）")
-        void getAllConfigurableKeys_13件() {
+        @DisplayName("全管理対象キーを返す（16 件）")
+        void getAllConfigurableKeys_16件() {
             Set<WidgetKey> all = WidgetDefaultMinRoleMap.getAllConfigurableKeys();
-            // TEAM 8 件 + ORG 5 件 = 13 件
-            assertThat(all).hasSize(13);
+            // TEAM 10 件 + ORG 6 件 = 16 件（F08.7.1 で 3 件追加）
+            assertThat(all).hasSize(16);
         }
 
         @Test
