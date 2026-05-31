@@ -73,13 +73,16 @@ public class SharedFileService {
         long fileSize = req.fileSize() != null ? req.fileSize() : 0L;
         quotaService.checkFileQuota(folder, fileSize);
 
-        // 3. スコープ解決
+        // 3. スコープ解決（物理パス用 scopeId）
+        // F08.7.1 §3.1: 大会/ディビジョンは scope_ref_id（tournament_id / division_id）を物理パスに使い、
+        // 大会単位の容量内訳を可視化できるようにする（クォータ計量は §6 で主催組織に集約・別レイヤ）。
         FileScopeType fileScopeType = folder.getScopeType();
-        String scopeTypeStr = fileScopeType.name(); // TEAM / ORGANIZATION / PERSONAL
+        String scopeTypeStr = fileScopeType.name(); // TEAM / ORGANIZATION / PERSONAL / TOURNAMENT(_DIVISION)
         Long scopeId = switch (fileScopeType) {
             case TEAM -> folder.getTeamId();
             case ORGANIZATION -> folder.getOrganizationId();
             case PERSONAL -> folder.getUserId();
+            case TOURNAMENT, TOURNAMENT_DIVISION -> folder.getScopeRefId();
         };
 
         // 4. fileKey 生成: files/{scopeType}/{scopeId}/{uuid}.{ext}

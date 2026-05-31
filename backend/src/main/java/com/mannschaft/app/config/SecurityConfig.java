@@ -184,6 +184,13 @@ public class SecurityConfig {
                 // F15.4 Phase 5-α `/api/v1/public/teams/*` も本 F19.1 規約に統合・置換した。
                 // 設計書 §7.4: パターンは `*`（1 階層厳格）で限定。`/**`（再帰）は使わない。
                 // IDOR 防止と整合（F15.4 Phase 5 §4.2 / F19.1 §17.8 案 B 統合）。
+                // F08.7.1 / 04 リーグ単位ファイル置き場: 大会・ディビジョンフォルダ一覧 GET は
+                // 公開トグル ON のスペースで未ログインでも閲覧可（read-only）。非公開スコープは
+                // Service 層の checkView が 403 を返す（多層防御）。POST（作成）は
+                // .anyRequest().authenticated() ＋ Service 層 checkPost で認証＋認可必須。
+                // 設計書: docs/features/F08.7.1_tournament_extensions/04_file_storage.md §3 / §5
+                .requestMatchers(HttpMethod.GET, "/api/v1/tournaments/*/folders").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/tournaments/*/divisions/*/folders").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/posts").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/posts/*").permitAll()

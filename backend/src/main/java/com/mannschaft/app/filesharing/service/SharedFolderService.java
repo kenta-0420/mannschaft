@@ -11,6 +11,7 @@ import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
 import com.mannschaft.app.filesharing.repository.SharedFolderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -159,6 +160,97 @@ public class SharedFolderService {
         SharedFolderEntity saved = folderRepository.save(entity);
         log.info("個人フォルダ作成: userId={}, folderId={}", userId, saved.getId());
         return fileSharingMapper.toFolderResponse(saved);
+    }
+
+    /**
+     * F08.7.1: 大会／ディビジョンスコープのルートフォルダ一覧を取得する。
+     *
+     * @param scopeType  フォルダスコープ種別（TOURNAMENT / TOURNAMENT_DIVISION）
+     * @param scopeRefId 大会 ID / ディビジョン ID
+     * @return フォルダレスポンスリスト
+     */
+    public List<FolderResponse> listTournamentScopedRootFolders(FileScopeType scopeType, Long scopeRefId) {
+        List<SharedFolderEntity> folders =
+                folderRepository.findByScopeTypeAndScopeRefIdAndParentIdIsNullOrderByNameAsc(scopeType, scopeRefId);
+        return fileSharingMapper.toFolderResponseList(folders);
+    }
+
+    /**
+     * F08.7.1: 大会／ディビジョンスコープのフォルダを作成する（設計書 §2.1 / §3）。
+     *
+     * <p>クォータ帰属は主催組織に集約するため {@code organizationId}（主催組織）を保持し、
+     * 大会／ディビジョンの実 ID は {@code scopeRefId} に保持する。</p>
+     *
+     * @param scopeType      フォルダスコープ種別（TOURNAMENT / TOURNAMENT_DIVISION）
+     * @param organizationId 主催組織 ID（クォータ帰属）
+     * @param scopeRefId     大会 ID / ディビジョン ID
+     * @param userId         作成者ユーザー ID
+     * @param request        作成リクエスト
+     * @return 作成されたフォルダレスポンス
+     */
+    @Transactional
+    public FolderResponse createTournamentScopedFolder(FileScopeType scopeType, Long organizationId,
+                                                       Long scopeRefId, Long userId, CreateFolderRequest request) {
+        validateFolderNameUnique(request.getParentId(), request.getName());
+
+        SharedFolderEntity entity = SharedFolderEntity.builder()
+                .scopeType(scopeType)
+                .organizationId(organizationId)
+                .scopeRefId(scopeRefId)
+                .parentId(request.getParentId())
+                .name(request.getName())
+                .description(request.getDescription())
+                .createdBy(userId)
+                .build();
+
+        SharedFolderEntity saved = folderRepository.save(entity);
+        log.info("大会フォルダ作成: scopeType={}, orgId={}, scopeRefId={}, folderId={}",
+                scopeType, organizationId, scopeRefId, saved.getId());
+        return fileSharingMapper.toFolderResponse(saved);
+    }
+
+    /**
+     * F08.7.1: 大会／ディビジョン作成時のデフォルトフォルダ自動付帯（冪等・設計書 §4）。
+     *
+     * <p>{@code (scope_type, scope_ref_id, parent_id=NULL, name)} の組で既存チェックし、
+     * なければ作成する。同時実行で UNIQUE 相当の競合が起きても {@link DataIntegrityViolationException}
+     * を catch して再取得し、巻き添えで大会作成全体を失敗させない。</p>
+     *
+     * @param scopeType      フォルダスコープ種別
+     * @param organizationId 主催組織 ID
+     * @param scopeRefId     大会 ID / ディビジョン ID
+     * @param userId         作成者（主催者）ユーザー ID
+     * @param name           デフォルトフォルダ名（例: 「大会要項」「規約」）
+     */
+    @Transactional
+    public void provisionDefaultFolder(FileScopeType scopeType, Long organizationId,
+                                       Long scopeRefId, Long userId, String name) {
+        if (folderRepository
+                .findByScopeTypeAndScopeRefIdAndParentIdIsNullAndName(scopeType, scopeRefId, name)
+                .isPresent()) {
+            log.debug("大会デフォルトフォルダ既存: scopeType={}, scopeRefId={}, name={}", scopeType, scopeRefId, name);
+            return;
+        }
+        try {
+            SharedFolderEntity entity = SharedFolderEntity.builder()
+                    .scopeType(scopeType)
+                    .organizationId(organizationId)
+                    .scopeRefId(scopeRefId)
+                    .parentId(null)
+                    .name(name)
+                    .createdBy(userId)
+                    .build();
+            folderRepository.save(entity);
+            log.info("大会デフォルトフォルダ払い出し: scopeType={}, orgId={}, scopeRefId={}, name={}",
+                    scopeType, organizationId, scopeRefId, name);
+        } catch (DataIntegrityViolationException e) {
+            // 同時実行で重複作成された場合は再取得（冪等・連絡スペース provision と同方針）。
+            log.warn("大会デフォルトフォルダ払い出し競合（再取得）: scopeType={}, scopeRefId={}, name={}",
+                    scopeType, scopeRefId, name);
+            folderRepository
+                    .findByScopeTypeAndScopeRefIdAndParentIdIsNullAndName(scopeType, scopeRefId, name)
+                    .orElseThrow(() -> e);
+        }
     }
 
     /**
