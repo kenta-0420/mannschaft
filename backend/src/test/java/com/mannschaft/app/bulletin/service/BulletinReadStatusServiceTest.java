@@ -52,6 +52,9 @@ class BulletinReadStatusServiceTest {
     @Mock
     private BulletinAccessGuard accessGuard;
 
+    @Mock
+    private com.mannschaft.app.tournament.service.TournamentContactAccessService tournamentContactAccessService;
+
     @InjectMocks
     private BulletinReadStatusService bulletinReadStatusService;
 
@@ -188,6 +191,85 @@ class BulletinReadStatusServiceTest {
 
             // Then
             assertThat(result).isEqualTo(5L);
+        }
+    }
+
+    // ========================================================================
+    // F08.7.1 大会スコープ（global 既読系）認可配線（B1/B3 取りこぼし）
+    // ========================================================================
+    @Nested
+    @DisplayName("F08.7.1 大会連絡スコープ（global）")
+    class TournamentScope {
+
+        private static final Long T_SCOPE_ID = 500L;
+
+        private BulletinThreadEntity tournamentThread() {
+            return BulletinThreadEntity.builder()
+                    .scopeType(ScopeType.TOURNAMENT).scopeId(T_SCOPE_ID).authorId(USER_ID)
+                    .title("大会連絡").body("本文")
+                    .readTrackingMode(ReadTrackingMode.INDIVIDUAL).build();
+        }
+
+        @Test
+        @DisplayName("markAsReadGlobal: TOURNAMENT は canView を呼び checkMembership に落ちない")
+        void markAsRead大会はcanView() {
+            given(threadRepository.findById(THREAD_ID)).willReturn(java.util.Optional.of(tournamentThread()));
+            given(readStatusRepository.existsByThreadIdAndUserId(any(), any())).willReturn(false);
+
+            bulletinReadStatusService.markAsReadGlobal(THREAD_ID, USER_ID);
+
+            verify(tournamentContactAccessService).checkView(
+                    org.mockito.ArgumentMatchers.eq(com.mannschaft.app.tournament.ContactSpaceScopeType.TOURNAMENT),
+                    org.mockito.ArgumentMatchers.eq(T_SCOPE_ID),
+                    org.mockito.ArgumentMatchers.eq(com.mannschaft.app.tournament.ContactSpaceKind.BULLETIN),
+                    org.mockito.ArgumentMatchers.eq(USER_ID));
+            verify(accessGuard, never()).checkMembership(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("markAsReadGlobal: 非権限者（canView 例外）は既読化できない")
+        void markAsRead非権限者は不可() {
+            given(threadRepository.findById(THREAD_ID)).willReturn(java.util.Optional.of(tournamentThread()));
+            org.mockito.Mockito.doThrow(new BusinessException(
+                    com.mannschaft.app.tournament.TournamentErrorCode.CONTACT_SPACE_VIEW_FORBIDDEN))
+                    .when(tournamentContactAccessService).checkView(any(), any(), any(), any());
+
+            assertThatThrownBy(() -> bulletinReadStatusService.markAsReadGlobal(THREAD_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class);
+            verify(readStatusRepository, never()).save(any());
+            verify(accessGuard, never()).checkMembership(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("listReadUsersGlobal: TOURNAMENT は canView を呼び checkMembership に落ちない")
+        void listReadUsers大会はcanView() {
+            given(threadRepository.findById(THREAD_ID)).willReturn(java.util.Optional.of(tournamentThread()));
+            given(readStatusRepository.findByThreadIdOrderByReadAtDesc(THREAD_ID)).willReturn(List.of());
+            given(bulletinMapper.toReadStatusResponseList(any())).willReturn(List.of());
+
+            bulletinReadStatusService.listReadUsersGlobal(THREAD_ID, USER_ID, null);
+
+            verify(tournamentContactAccessService).checkView(
+                    org.mockito.ArgumentMatchers.eq(com.mannschaft.app.tournament.ContactSpaceScopeType.TOURNAMENT),
+                    org.mockito.ArgumentMatchers.eq(T_SCOPE_ID),
+                    org.mockito.ArgumentMatchers.eq(com.mannschaft.app.tournament.ContactSpaceKind.BULLETIN),
+                    org.mockito.ArgumentMatchers.eq(USER_ID));
+            verify(accessGuard, never()).checkMembership(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("listReadUsersGlobal: filter=unread は canPost 無し（非モデレーター）なら 403")
+        void listReadUsersUnreadは非モデレーター403() {
+            given(threadRepository.findById(THREAD_ID)).willReturn(java.util.Optional.of(tournamentThread()));
+            // canPost が例外＝非モデレーター
+            org.mockito.Mockito.doThrow(new BusinessException(
+                    com.mannschaft.app.tournament.TournamentErrorCode.CONTACT_SPACE_POST_FORBIDDEN))
+                    .when(tournamentContactAccessService).checkPost(any(), any(), any());
+
+            assertThatThrownBy(() -> bulletinReadStatusService.listReadUsersGlobal(THREAD_ID, USER_ID, "unread"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
         }
     }
 }
