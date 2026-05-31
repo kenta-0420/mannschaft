@@ -217,7 +217,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl p-6">
+  <div class="mx-auto max-w-6xl p-6" data-testid="market-page">
     <!-- ヘッダー -->
     <div class="mb-4 flex flex-wrap items-center gap-3">
       <PageHeader :title="$t('market.title')" class="flex-1" />
@@ -227,6 +227,7 @@ onMounted(async () => {
         icon="pi pi-tag"
         severity="secondary"
         outlined
+        data-testid="market-post-link"
         @click="navigateTo('/dashboard')"
       />
     </div>
@@ -281,6 +282,7 @@ onMounted(async () => {
       <div
         class="flex-wrap items-start gap-3"
         :class="filterExpanded ? 'flex' : 'hidden sm:flex'"
+        data-testid="market-filter-bar"
       >
         <!-- 都道府県 -->
         <Select
@@ -292,6 +294,7 @@ onMounted(async () => {
           show-clear
           class="w-44 field-bordered"
           :aria-label="$t('market.filter.prefecture')"
+          data-testid="market-prefecture-select"
           @change="(e: { value: string | null }) => onPrefectureChange(e.value)"
         />
 
@@ -307,6 +310,7 @@ onMounted(async () => {
           :loading="citiesLoading"
           class="w-48 field-bordered"
           :aria-label="$t('market.filter.city')"
+          data-testid="market-city-select"
           @change="(e: { value: string | null }) => onCityChange(e.value)"
         />
 
@@ -320,6 +324,7 @@ onMounted(async () => {
           show-clear
           class="w-44 field-bordered"
           :aria-label="$t('market.filter.category')"
+          data-testid="market-category-select"
           @change="onCategoryChange"
         />
 
@@ -331,6 +336,7 @@ onMounted(async () => {
             :placeholder="$t('market.filter.keyword')"
             class="w-full field-bordered"
             :aria-label="$t('market.filter.keyword')"
+            data-testid="market-keyword-input"
           />
         </IconField>
 
@@ -350,7 +356,7 @@ onMounted(async () => {
     <!-- 空状態（立場別3パターン） -->
     <template v-else-if="listings.length === 0">
       <!-- ログイン済み・権限ありを確認する方法がないためシンプルに2パターンで分岐 -->
-      <div class="flex flex-col items-center justify-center py-12 text-center">
+      <div class="flex flex-col items-center justify-center py-12 text-center" data-testid="market-empty-state">
         <i class="pi pi-tag mb-4 text-5xl text-surface-300" />
         <p class="mb-4 text-lg font-semibold text-surface-500">
           {{ $t('market.empty.title') }}
@@ -383,13 +389,14 @@ onMounted(async () => {
 
     <!-- 札カード一覧 -->
     <template v-else>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="market-listing-grid">
         <div
           v-for="listing in listings"
           :key="listing.id"
           class="cursor-pointer rounded-lg border border-surface-300 bg-surface-0 p-4 transition-shadow hover:shadow-md dark:border-surface-600 dark:bg-surface-900"
           role="article"
           :aria-label="listing.title"
+          :data-testid="`market-listing-card-${listing.id}`"
           tabindex="0"
           @click="navigateTo(`/market/listings/${listing.id}`)"
           @keydown.enter="navigateTo(`/market/listings/${listing.id}`)"

@@ -164,7 +164,7 @@ watch(visibility, async (v) => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4">
+  <div class="flex flex-col gap-4" data-testid="market-form-extension">
     <!-- 地域選択（都道府県 → 市区町村） -->
     <fieldset class="rounded border border-surface-300 p-3">
       <legend class="px-1 text-sm font-semibold text-surface-600">
@@ -219,6 +219,7 @@ watch(visibility, async (v) => {
         option-label="label"
         option-value="value"
         :aria-label="$t('market.visibility.label')"
+        data-testid="market-visibility-selector"
       />
     </div>
 
@@ -226,6 +227,7 @@ watch(visibility, async (v) => {
     <fieldset
       v-if="visibility === 'FRIEND_TEAMS_ONLY'"
       class="rounded border border-primary-300 p-3"
+      data-testid="market-friend-target-selector"
     >
       <legend class="px-1 text-sm font-semibold text-primary-600">
         {{ $t('market.friendTarget.allFriends') }}
