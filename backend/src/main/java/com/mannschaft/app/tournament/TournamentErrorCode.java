@@ -93,7 +93,19 @@ public enum TournamentErrorCode implements ErrorCode {
     DUPLICATE_ENTRY_MEMBER("TOUR_027", "このユーザーは既にエントリー済みです", Severity.WARN),
 
     /** テンプレートとチームが一致しない */
-    TEMPLATE_TEAM_MISMATCH("TOUR_028", "テンプレートのチームと参加チームが一致しません", Severity.WARN);
+    TEMPLATE_TEAM_MISMATCH("TOUR_028", "テンプレートのチームと参加チームが一致しません", Severity.WARN),
+
+    /** 連絡スペースが見つからない（F08.7.1・IDOR 対策で 404 に統一） */
+    CONTACT_SPACE_NOT_FOUND("TOUR_029", "連絡スペースが見つかりません", Severity.WARN),
+
+    /** 連絡スペースの閲覧権限がない（F08.7.1 §4.1） */
+    CONTACT_SPACE_VIEW_FORBIDDEN("TOUR_030", "この連絡スペースを閲覧する権限がありません", Severity.WARN),
+
+    /** 連絡スペースへの投稿権限がない（F08.7.1 §4.2） */
+    CONTACT_SPACE_POST_FORBIDDEN("TOUR_031", "この連絡スペースへ投稿する権限がありません", Severity.WARN),
+
+    /** 連絡スペースの公開設定を変更する権限がない（F08.7.1 §5・主催組織 ADMIN 限定） */
+    CONTACT_SPACE_VISIBILITY_FORBIDDEN("TOUR_032", "連絡スペースの公開設定を変更する権限がありません", Severity.WARN);
 
     private final String code;
     private final String message;

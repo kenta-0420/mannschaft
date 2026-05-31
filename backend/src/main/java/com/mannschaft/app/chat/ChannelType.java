@@ -35,5 +35,21 @@ public enum ChannelType {
      * {@code chat_channels.source_type="EVENT"}, {@code source_id=eventId} に紐付けて一意に払い出される。
      * イベント作成時に自動生成され、イベント完了・キャンセル時にアーカイブされる。
      */
-    EVENT_CHAT
+    EVENT_CHAT,
+
+    /**
+     * 大会全体の連絡チャット（F08.7.1 連絡機能）。
+     * {@code chat_channels.source_type="TOURNAMENT"}, {@code source_id=tournamentId} に紐付けて
+     * 一意に払い出される。大会作成時に自動生成される。{@code team_id}/{@code organization_id} は NULL。
+     * 桁: "TOURNAMENT_CHAT"=15字（隊0 で channel_type VARCHAR(30) 化済み）。
+     */
+    TOURNAMENT_CHAT,
+
+    /**
+     * 大会ディビジョンの連絡チャット（F08.7.1 連絡機能）。
+     * {@code chat_channels.source_type="TOURNAMENT_DIVISION"}, {@code source_id=divisionId} に紐付けて
+     * 一意に払い出される。ディビジョン作成時に自動生成される。{@code team_id}/{@code organization_id} は NULL。
+     * 桁: "TOURNAMENT_DIVISION_CHAT"=24字（隊0 で channel_type VARCHAR(30) 化済み）。
+     */
+    TOURNAMENT_DIVISION_CHAT
 }

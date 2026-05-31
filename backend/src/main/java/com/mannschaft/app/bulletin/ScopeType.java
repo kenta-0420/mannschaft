@@ -11,7 +11,19 @@ public enum ScopeType {
      * 村スコープ（F17.1 Phase 3）。{@code scope_village_id} で村の UUIDv7 を保持し、
      * {@code scope_id} は 0 を入れる（NOT NULL 制約のため）。
      */
-    VILLAGE;
+    VILLAGE,
+
+    /**
+     * 大会全体スコープ（F08.7.1 連絡機能）。{@code scope_id} に大会 ID（{@code tournaments.id}）を格納する。
+     * 桁: "TOURNAMENT"=10字（VARCHAR(20) に収まる）。
+     */
+    TOURNAMENT,
+
+    /**
+     * 大会ディビジョンスコープ（F08.7.1 連絡機能）。{@code scope_id} にディビジョン ID
+     * （{@code tournament_divisions.id}）を格納する。桁: "TOURNAMENT_DIVISION"=19字（VARCHAR(20) に収まる）。
+     */
+    TOURNAMENT_DIVISION;
 
     /**
      * URL パスセグメント（複数形 or 単数形）から ScopeType を取得する。
