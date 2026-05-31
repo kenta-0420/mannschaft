@@ -303,4 +303,81 @@ class InboxAggregationServiceTest {
             assertThat(summary.bySourceType()).containsKey("NOTIFICATION");
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // 出陣③: 5 ソース集約（NOTIFICATION/TODO_DUE + ANNOUNCEMENT/MENTION/CONFIRMABLE）
+    // ─────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("5 ソース集約")
+    class FiveSources {
+
+        /** 5 アダプタ（全ソース）を注入したサービスを構築する。 */
+        private InboxAggregationService fiveSourceService() {
+            InboxSourceAdapter announcementAdapter = org.mockito.Mockito.mock(InboxSourceAdapter.class);
+            InboxSourceAdapter mentionAdapter = org.mockito.Mockito.mock(InboxSourceAdapter.class);
+            InboxSourceAdapter confirmableAdapter = org.mockito.Mockito.mock(InboxSourceAdapter.class);
+
+            given(announcementAdapter.sourceType()).willReturn(InboxSourceType.ANNOUNCEMENT);
+            given(mentionAdapter.sourceType()).willReturn(InboxSourceType.MENTION);
+            given(confirmableAdapter.sourceType()).willReturn(InboxSourceType.CONFIRMABLE);
+
+            LocalDateTime now = LocalDateTime.now();
+            given(notificationAdapter.fetch(USER_ID)).willReturn(List.of(
+                    item(InboxSourceType.NOTIFICATION, 1L, InboxPriority.NORMAL, now)));
+            given(todoDueAdapter.fetch(USER_ID)).willReturn(List.of(
+                    item(InboxSourceType.TODO_DUE, 2L, InboxPriority.HIGH, now)));
+            given(announcementAdapter.fetch(USER_ID)).willReturn(List.of(
+                    item(InboxSourceType.ANNOUNCEMENT, 3L, InboxPriority.NORMAL, now)));
+            given(mentionAdapter.fetch(USER_ID)).willReturn(List.of(
+                    item(InboxSourceType.MENTION, 4L, InboxPriority.HIGH, now)));
+            given(confirmableAdapter.fetch(USER_ID)).willReturn(List.of(
+                    item(InboxSourceType.CONFIRMABLE, 5L, InboxPriority.URGENT, now)));
+            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+
+            return new InboxAggregationService(
+                    List.of(notificationAdapter, todoDueAdapter, announcementAdapter,
+                            mentionAdapter, confirmableAdapter),
+                    priorityNormalizer,
+                    itemStateRepository,
+                    labelLinkRepository);
+        }
+
+        @Test
+        @DisplayName("5 ソースすべてが一覧に含まれる")
+        void allFiveSourcesAppear() {
+            InboxAggregationService svc = fiveSourceService();
+
+            InboxPageResponse res = svc.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
+
+            assertThat(res.items()).extracting(InboxItemDto::sourceType)
+                    .containsExactlyInAnyOrder(
+                            InboxSourceType.NOTIFICATION,
+                            InboxSourceType.TODO_DUE,
+                            InboxSourceType.ANNOUNCEMENT,
+                            InboxSourceType.MENTION,
+                            InboxSourceType.CONFIRMABLE);
+        }
+
+        @Test
+        @DisplayName("5 ソースでもオーバーレイのまとめ取りは 1 回（N+1 回避を維持）")
+        void overlayFetchedOnceAcrossFiveSources() {
+            InboxAggregationService svc = fiveSourceService();
+
+            svc.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
+
+            verify(itemStateRepository, times(1)).findByUserIdAndSourceTypeIn(any(), any());
+        }
+
+        @Test
+        @DisplayName("summary の bySourceType に 5 ソースすべてが計上される")
+        void summaryCountsAllFive() {
+            InboxAggregationService svc = fiveSourceService();
+
+            var summary = svc.getSummary(USER_ID);
+
+            assertThat(summary.bySourceType())
+                    .containsKeys("NOTIFICATION", "TODO_DUE", "ANNOUNCEMENT", "MENTION", "CONFIRMABLE");
+        }
+    }
 }
