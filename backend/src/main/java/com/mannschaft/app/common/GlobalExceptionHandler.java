@@ -572,7 +572,13 @@ public class GlobalExceptionHandler {
             Map.entry("MARKET_003", HttpStatus.FORBIDDEN),           // フレンド未成立チームを宛先指定
             Map.entry("MARKET_004", HttpStatus.FORBIDDEN),           // 他チーム所有フォルダを宛先指定
             Map.entry("MARKET_005", HttpStatus.BAD_REQUEST),         // FRIEND_TEAMS_ONLY × distribution_targets 併用
-            Map.entry("MARKET_404", HttpStatus.NOT_FOUND)            // 非公開 / 不在の札（存在秘匿）
+            Map.entry("MARKET_404", HttpStatus.NOT_FOUND),           // 非公開 / 不在の札（存在秘匿）
+            // F04.11 統合通知インボックス（02_api_design.md §3.6）
+            Map.entry("INBOX_LABEL_NOT_FOUND", HttpStatus.NOT_FOUND),           // ラベル不在 / 他人ラベル（IDOR 秘匿）
+            Map.entry("INBOX_SOURCE_NOT_FOUND", HttpStatus.NOT_FOUND),          // triage 対象通知が不在 / 本人宛てでない
+            Map.entry("INBOX_LABEL_NAME_DUPLICATE", HttpStatus.CONFLICT),       // 現役同名ラベル
+            Map.entry("INBOX_LABEL_LIMIT_EXCEEDED", HttpStatus.UNPROCESSABLE_ENTITY),    // ラベル 20 件上限超過
+            Map.entry("INBOX_LABEL_PER_ITEM_EXCEEDED", HttpStatus.UNPROCESSABLE_ENTITY)  // 1 通知 10 ラベル上限超過
     );
 
     /**
