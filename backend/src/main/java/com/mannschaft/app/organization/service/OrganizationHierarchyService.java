@@ -56,6 +56,49 @@ public class OrganizationHierarchyService {
     private static final int CHILDREN_DEFAULT_PAGE_SIZE = 50;
 
     /**
+     * {@code ancestorOrgId} が {@code descendantOrgId} の（直接/間接）祖先かを判定する（org → org）。
+     *
+     * <p>F08.7.1 リーグ・ピラミッド（§2）が組織階層から上位/下位リーグを導出する際に用いる。
+     * 既存 private {@link #hasAncestor(Long, Long)} のサイクル検出・{@code maxDepth} 制限ロジックを
+     * そのまま土台にした公開 API。</p>
+     *
+     * <ul>
+     *   <li>自分自身は祖先に含めない（{@code isAncestorOf(X, X)} は常に {@code false}）。</li>
+     *   <li>いずれかの引数が {@code null} の場合は安全に {@code false}。</li>
+     *   <li>親リンクが辿れない（存在しない/論理削除済み等）場合は {@code false}。</li>
+     *   <li>サイクル・{@code maxDepth} 超過でも無限ループせず打ち切って {@code false}。</li>
+     * </ul>
+     *
+     * @param ancestorOrgId   祖先候補の組織ID
+     * @param descendantOrgId 子孫候補の組織ID
+     * @return {@code ancestorOrgId} が {@code descendantOrgId} の祖先なら {@code true}
+     */
+    public boolean isAncestorOf(Long ancestorOrgId, Long descendantOrgId) {
+        if (ancestorOrgId == null || descendantOrgId == null) {
+            return false;
+        }
+        if (ancestorOrgId.equals(descendantOrgId)) {
+            return false; // 自分自身は祖先に含めない
+        }
+        // descendantOrgId の祖先チェーンに ancestorOrgId が含まれるか
+        return hasAncestor(descendantOrgId, ancestorOrgId);
+    }
+
+    /**
+     * {@code descendantOrgId} が {@code ancestorOrgId} の（直接/間接）子孫かを判定する（org → org）。
+     *
+     * <p>{@link #isAncestorOf(Long, Long)} の引数を入れ替えた逆引き。判定規則は同じ
+     * （自己は子孫に含めない・{@code null} は {@code false}・サイクル/深度超過で停止）。</p>
+     *
+     * @param descendantOrgId 子孫候補の組織ID
+     * @param ancestorOrgId   祖先候補の組織ID
+     * @return {@code descendantOrgId} が {@code ancestorOrgId} の子孫なら {@code true}
+     */
+    public boolean isDescendantOf(Long descendantOrgId, Long ancestorOrgId) {
+        return isAncestorOf(ancestorOrgId, descendantOrgId);
+    }
+
+    /**
      * 対象組織の祖先チェーン（root → 直近の親 の順）を返す。
      *
      * <p>各祖先は呼び出し者の所属関係と祖先の {@code visibility} / {@code hierarchyVisibility} に応じて
