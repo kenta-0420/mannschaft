@@ -21,7 +21,6 @@ definePageMeta({
 const { t } = useI18n()
 const route = useRoute()
 const marketApi = useMarketApi()
-const recruitmentApi = useRecruitmentApi()
 const { handleApiError } = useErrorHandler()
 const authStore = useAuthStore()
 
@@ -125,7 +124,9 @@ async function fetchListings() {
 
 async function fetchCategories() {
   try {
-    const res = await recruitmentApi.listCategories()
+    // 市は未ログイン公開ページ。認証必須の recruitment-categories を直叩きすると
+    // 未ログインで 401 → useApi が市ページごと /login へ飛ばす。公開APIのみに依存させる。
+    const res = await marketApi.listMarketCategories()
     categories.value = res.data
   }
   catch {
