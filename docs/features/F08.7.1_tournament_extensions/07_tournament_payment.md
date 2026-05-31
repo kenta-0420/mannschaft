@@ -128,6 +128,7 @@ grace_period（`grace_period_days`）も F08.2 の既存機能で対応する。
 - 支払いの実処理（checkout・webhook・返金）は **F08.2 の既存認可・冪等処理に委譲**する。本書の新設 API は「大会スコープのファサード（fee とのひも付け）」に留める。
 - 自チーム以外の支払いを操作できない（他チーム分 checkout は 403）。存在しない fee / tournament は **404**（IDOR 統一）。
 - `payment_item_id` / `team_id` は ID 参照のみ（クロスドメイン FK なし／原則 1）。`@Transactional` が tournament ドメインと payment ドメインをまたぐファサードは越境 TODO を明記（原則 5）。
+- **退会（O-4）**: `tournament_fee.created_by`（参加費を作成した主催組織 ADMIN の user_id）は**履歴・証跡として保持**＝CLAUDE.md 退会二段モデルの**強匿名化対象外**（NULL 化しない）。表示名のみ既存の匿名化に追従させる。支払者・入金記録者（F08.2 の `member_payments`/`recorded_by`）の扱いは F08.2 母体の方針に従う（本機能では変更しない）。
 
 ---
 

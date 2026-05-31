@@ -116,18 +116,21 @@ ADHD 配慮（入力摩擦最小・必須項目最小）を最優先する。
 サッカー協会の選手登録番号は、背番号（`jersey_number`）・チーム内識別とは別の恒久的な番号である。これを保持するため、roster とテンプレ両方に列を追加する。
 
 ```sql
--- 試合メンバー表（既存 BIGINT テーブル・列追加のみ）
+-- 試合メンバー表（既存 BIGINT PK テーブル・列追加のみ）
 ALTER TABLE tournament_match_rosters
   ADD COLUMN registration_number VARCHAR(32) NULL;   -- 協会選手登録番号（背番号 jersey_number とは別。NULL 可）
 
--- エントリーテンプレのメンバー（既存 BIGINT テーブル・列追加のみ）
+-- エントリーテンプレのメンバー（既存 UUID PK テーブル・列追加のみ）
 ALTER TABLE tournament_entry_template_members
   ADD COLUMN registration_number VARCHAR(32) NULL;   -- 同上。テンプレ適用時に roster へ複製される
 ```
 
 - `registration_number VARCHAR(32) NULL`（協会未登録選手・登録番号未取得の段階を許容するため NULL 可）。
 - テンプレ適用（`apply-template`）時に `tournament_entry_template_members.registration_number` → `tournament_match_rosters.registration_number` へ複製する。
-- いずれも既存 BIGINT テーブルへの列追加のみ。新規テーブルではないため ID 方式は変更しない（原則 6 は新規テーブルのみ対象）。
+- **PK 型の実態（検分1周目で確認）**: `tournament_match_rosters` は **BIGINT PK**（`TournamentMatchRosterEntity.java:28-30` ＝ `@Id @GeneratedValue(IDENTITY) Long id`、DDL `V8.046:3` ＝ `BIGINT UNSIGNED AUTO_INCREMENT`）。一方 `tournament_entry_templates` / `tournament_entry_template_members` は **UUIDv7 テーブル**（`TournamentEntryTemplateEntity` / `TournamentEntryTemplateMemberEntity` がともに `UuidV7Entity` を継承。`TournamentEntryTemplateMemberEntity.java:33` の `templateId` も `@Column(columnDefinition = "BINARY(16)") UUID`）。
+- 列追加（`registration_number`）自体は PK 型に関係なく可能なので、上記 ALTER はそのまま成立する。**「entry_template 系も BIGINT テーブル」という記述は誤り**（B-2 訂正）。entry_template 系は新規 FK・新規子テーブルを足す際に **UUID（BINARY(16)）に整合**させる必要がある（§8.4 参照）。
+
+> **実装時注意（DDL/Entity 型の不一致）**: entry_template 系の作成移行（`V9.123` / `V9.124`）は PK を `CHAR(36)` で宣言しているが、Entity 側は `UuidV7Entity`＝`BINARY(16)` 前提・`templateId` も `columnDefinition="BINARY(16)"`。実 DB の物理型（`CHAR(36)` か `BINARY(16)` か）を実装時に必ず確認し、本章で新設する子テーブルの FK 列の型を **参照先 PK の実体型に一致**させること（不一致は FK 作成エラー／暗黙キャストの原因）。本設計は UuidV7 規約に従い **`BINARY(16)`** を正とし、既存 DDL が `CHAR(36)` のままなら併せて整合移行する想定で記述する。
 
 ### 8.2 ユニフォーム色指定（新規テーブル `team_uniform_set`）
 
@@ -201,9 +204,10 @@ CREATE TABLE match_roster_staff (
 
 ```sql
 -- エントリーテンプレのベンチ役員（テンプレ ID 配下。同一 tournament ドメイン → CASCADE 可／原則 2）
+-- 親 tournament_entry_templates は UUIDv7 テーブル（UuidV7Entity）ゆえ template_id は BINARY(16)。
 CREATE TABLE tournament_entry_template_staff (
     id BINARY(16) NOT NULL,                  -- UUIDv7（UuidV7Entity 継承）
-    template_id BIGINT NOT NULL,             -- tournament_entry_templates への参照（同一ドメイン）
+    template_id BINARY(16) NOT NULL,         -- tournament_entry_templates(id) への参照（同一ドメイン・UUID）
     role VARCHAR(32) NOT NULL,
     name VARCHAR(128) NOT NULL,
     user_id BIGINT NULL,                     -- user ドメインへの ID 参照（クロスドメイン FK なし／原則 1）
@@ -212,10 +216,13 @@ CREATE TABLE tournament_entry_template_staff (
     PRIMARY KEY (id),
     INDEX idx_template_staff_template (template_id),
     -- 同一 tournament ドメイン内（template の子）なので CASCADE 可（原則 2）
+    -- FK 列型は参照先 PK の実体型に一致させること（§8.1 実装時注意：CHAR(36) のままなら CHAR(36) で合わせる）
     CONSTRAINT fk_template_staff_template FOREIGN KEY (template_id)
       REFERENCES tournament_entry_templates (id) ON DELETE CASCADE
 );
 ```
+
+> **B-2 訂正点**: 当初 `template_id BIGINT` としていたが、`tournament_entry_templates` は **UUIDv7 テーブル**（`TournamentEntryTemplateEntity extends UuidV7Entity`）。FK の `template_id` を BIGINT にすると参照先 PK と型が合わず FK 作成に失敗する。よって `BINARY(16)` とし、`TournamentEntryTemplateMemberEntity.templateId`（既存・`BINARY(16)`）と同じ規約に揃える。CASCADE は同一 tournament ドメイン内なので許可（原則 2 の範囲内）。
 
 - ユニフォームセットはチーム単位の独立テンプレ（`team_uniform_set`）として既に再利用可能なため、エントリーテンプレ側には「既定セット ID」を任意で保持する程度に留める（必須ではない）。
 - 適用フロー（`apply-template`）の複製対象を拡張：選手（既存）＋ `registration_number`（§8.1）＋ ベンチ役員（`tournament_entry_template_staff` → `match_roster_staff`）。ユニフォームは roster の `uniform_set_id` に既定セットをセット（衝突時のみ手動上書き）。
@@ -231,11 +238,11 @@ CREATE TABLE tournament_entry_template_staff (
 
 | 種別 | 対象 | 内容 | 原則 |
 |------|------|------|------|
-| 列追加 | `tournament_match_rosters` | `roster_deadline`（§2 は `tournament_matches`）・`registration_number VARCHAR(32) NULL`・`uniform_set_id BINARY(16) NULL` | 既存 BIGINT テーブルゆえ ID 方式不変 |
-| 列追加 | `tournament_entry_template_members` | `registration_number VARCHAR(32) NULL` | 同上 |
+| 列追加 | `tournament_match_rosters` | `roster_deadline`（§2 は `tournament_matches`）・`registration_number VARCHAR(32) NULL`・`uniform_set_id BINARY(16) NULL` | 既存 **BIGINT PK** テーブル（`TournamentMatchRosterEntity` ＝ IDENTITY Long）ゆえ ID 方式不変 |
+| 列追加 | `tournament_entry_template_members` | `registration_number VARCHAR(32) NULL` | 既存 **UUIDv7 PK** テーブル（`TournamentEntryTemplateMemberEntity extends UuidV7Entity`）。列追加自体は PK 型不問で可 |
 | 新規テーブル | `team_uniform_set` | FP/GK 正・副 × シャツ/パンツ/ソックス色（team スコープ） | UUIDv7（原則 6）・クロスドメイン FK なし（原則 1） |
-| 新規テーブル | `match_roster_staff` | ベンチ入り役員（match×participant 単位・user_id NULL 可） | UUIDv7（原則 6）・クロスドメイン FK なし（原則 1） |
-| 新規テーブル | `tournament_entry_template_staff` | テンプレのベンチ役員（template 配下・CASCADE 可） | UUIDv7（原則 6）・同一ドメイン CASCADE のみ（原則 2） |
+| 新規テーブル | `match_roster_staff` | ベンチ入り役員（match×participant 単位・user_id NULL 可） | UUIDv7（原則 6）。`match_id`/`participant_id` は **BIGINT**（参照先が BIGINT PK の `tournament_matches`/`tournament_participants`）・クロスドメイン FK なし（原則 1） |
+| 新規テーブル | `tournament_entry_template_staff` | テンプレのベンチ役員（template 配下・CASCADE 可） | UUIDv7（原則 6）。`template_id` は **BINARY(16)**（参照先 `tournament_entry_templates` が UUIDv7 PK）・同一ドメイン CASCADE のみ（原則 2） |
 
 ---
 
@@ -248,6 +255,12 @@ CREATE TABLE tournament_entry_template_staff (
 - **見落とし**: 既存 roster CRUD の実装有無確認（§7）、`AuditEventType` 追加、participant 解決の対戦当事者チェック、`uniform_set_id` のクロスドメイン参照を FK にせずアプリ層検証とする点を明記。
 - **保守性**: 選手・登録番号は既存テーブルへ列追加で済ませ、ユニフォーム/ベンチ役員のみ新規テーブル（いずれも UUIDv7）。テンプレ子テーブルは同一ドメイン CASCADE（原則 2）。実装時の統合方針（未実装なら新設・実装済みなら差分追加）を明記。
 
-### 9.2 未解決事項
+### 9.2 2 回目（検分1周目の指摘反映＝B-2 根治）
+- **PK 型の実態確認（実コード）**: `tournament_match_rosters`＝BIGINT PK（`TournamentMatchRosterEntity.java:28-30`／`V8.046:3`）、`tournament_entry_templates`/`_members`＝UUIDv7 PK（両 Entity が `UuidV7Entity` 継承／`V9.123`・`V9.124`）。
+- **訂正**: ①§8.1 の「entry_template 系も BIGINT」記述を「UUIDv7 テーブル」へ是正。②§8.4 `tournament_entry_template_staff.template_id` を `BIGINT` → **`BINARY(16)`**（参照先 UUID PK と整合・同一ドメイン CASCADE）。③`registration_number` 列追加は PK 型に依存せず可能である点を明記。④`match_roster_staff` の `match_id`/`participant_id` は BIGINT PK 参照ゆえ BIGINT のまま。
+- **DDL/Entity 不一致の正直化**: entry_template 系は DDL が `CHAR(36)`、Entity が `BINARY(16)` 想定という既存の物理型不一致を §8.1 に明記し、実装時に実体型へ FK を一致させる注記を追加。
+- **退会（O-4）**: `match_roster_staff.user_id` / `tournament_entry_template_staff.user_id` / roster の `user_id` は履歴・証跡として保持＝**強匿名化対象外**（NULL 化しない）。表示名のみ既存匿名化に追従（CLAUDE.md 退会二段モデルと整合）。`name` 列はアプリ未登録者の手入力値ゆえ匿名化対象外（個人特定リスクは運用上の入力であり、当該本人の退会とは独立）。
+
+### 9.3 未解決事項
 
 **現時点でなし。**

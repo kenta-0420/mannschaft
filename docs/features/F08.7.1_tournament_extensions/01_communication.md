@@ -62,15 +62,24 @@ INDEX idx_tcs_ref (space_kind, ref_id)
 
 ### 2.2 bulletin `ScopeType` の拡張（F05.1）
 
-bulletin の `bulletin_categories.scope_type` / `bulletin_threads.scope_type` は現状 `ENUM('TEAM', 'ORGANIZATION')`。ここに **`TOURNAMENT` / `TOURNAMENT_DIVISION`** を追加する。
+bulletin の `scope_type` は **実 DDL では `VARCHAR(20)`**（`V5.001__create_bulletin_categories_table.sql:4` / `V5.002__create_bulletin_threads_table.sql:5`）、JPA は `com.mannschaft.app.bulletin.ScopeType`（`@Enumerated(EnumType.STRING)` ＋ `@Column(nullable=false, length=20)`、現値 `ORGANIZATION` / `TEAM` / `PERSONAL` / `VILLAGE`）。ここに enum 定数 **`TOURNAMENT` / `TOURNAMENT_DIVISION`** を追加する。
 
 - `scope_id` には大会 ID / ディビジョン ID を直接格納する。
-- スコープ別スレッド一覧の主クエリは既存 index `idx_bulletin_threads_scope (scope_type, scope_id, is_pinned, last_replied_at)` をそのまま使う（DDL 追加不要）。
-- 値追加方法: 実装が ENUM 型なら `ALTER TABLE ... MODIFY COLUMN scope_type ENUM('TEAM','ORGANIZATION','TOURNAMENT','TOURNAMENT_DIVISION')`、VARCHAR なら DDL 不要。**実装時に実スキーマを grep して確認**する（F05.1 §3 は ENUM 表記）。
+- **桁確認**: `TOURNAMENT`（10字）・`TOURNAMENT_DIVISION`（**19字**）はいずれも `VARCHAR(20)` に収まる。**MODIFY 不要**（F05.1 §3 の `scope_type` 記述と統一。実 DDL は VARCHAR・JPA は `EnumType.STRING`。F05.1 の ENUM 表記は誤りなので併せて是正対象）。
+- DDL: VARCHAR ゆえ enum 定数追加（Java `ScopeType` への `TOURNAMENT` / `TOURNAMENT_DIVISION` 追加）のみで足り、列定義の `ALTER` は不要。**実装時に実スキーマを grep して 20 桁制約を超えないことを再確認**する。
+- スコープ別スレッド一覧の主クエリ用 `(scope_type, scope_id)` 複合 index は **実 DDL に未存在**（`V5.002` には PRIMARY KEY / category FK / author FK / FULLTEXT のみ。後続移行にも追加なし）。**実装時に grep で確認し、無ければ Flyway 移行で追加**する（§3.4・README Y-2 と整合）。
 
 ### 2.3 chat `ChannelType` / `source_type` の拡張（F04.2）
 
-chat の `chat_channels.channel_type`（VARCHAR(20)）に **`TOURNAMENT_CHAT` / `TOURNAMENT_DIVISION_CHAT`** を追加する。紐付けは既存の **`source_type` / `source_id` 方式**（EVENT_CHAT と同じ・カラム追加ゼロ）を踏襲する。
+chat の `chat_channels.channel_type` に **`TOURNAMENT_CHAT`（15字）/ `TOURNAMENT_DIVISION_CHAT`（24字）** を追加する。紐付けは既存の **`source_type` / `source_id` 方式**（EVENT_CHAT と同じ・カラム追加ゼロ）を踏襲する。
+
+> **🔴 桁あふれ警告（検分1周目で発覚・実コード確認済み）**: `chat_channels.channel_type` は実 DDL で **`VARCHAR(20)`**（`V4.013__create_chat_channels_table.sql:3`）、Entity も `ChatChannelEntity.java:36-38` で `@Enumerated(EnumType.STRING) @Column(nullable=false, length=20)`。`TOURNAMENT_DIVISION_CHAT` は **24 字**で **20 桁に収まらない**（保存時に切り詰め／エラーになる）。**「VARCHAR ゆえ DDL 変更不要・カラム追加ゼロ」は誤り。**
+>
+> したがって実装時に **以下の 2 点が必須**:
+> 1. Flyway 移行で桁拡張: `ALTER TABLE chat_channels MODIFY channel_type VARCHAR(30) NOT NULL;`
+> 2. Entity 桁拡張: `ChatChannelEntity.channelType` の `@Column(length = 20)` を **`length = 30`** に変更。
+>
+> （`source_type` 側は本機能で `TOURNAMENT` / `TOURNAMENT_DIVISION`＝最長 19 字を入れる。`chat_channels.source_type` の桁も実装時に grep で確認し、20 桁未満なら問題ないが、20 桁ちょうど制約の場合は 19 字で収まるため MODIFY 不要。）
 
 | 項目 | 値 |
 |------|-----|
@@ -120,7 +129,7 @@ chat の `chat_channels.channel_type`（VARCHAR(20)）に **`TOURNAMENT_CHAT` / 
 - 払い出し前に `tournamentContactSpaceRepository.findByScopeTypeAndScopeIdAndSpaceKind(...)` で既存を確認し、あれば再利用する（リトライ・再実行で二重生成しない）。
 - chat 側も既存 `findBySourceTypeAndSourceId` で既存チャンネルを確認する。
 - 競合（同時実行）時は `UNIQUE(scope_type, scope_id, space_kind)` 違反 → `DataIntegrityViolationException` を catch → 再取得（`VillageLobbyService` 方式）。
-- **source 複合 index の有無**: `chat_channels(source_type, source_id)` は F04.2 で `uq_chat_channels_source` として既存。`bulletin_threads(scope_type, scope_id)` も既存 index あり。**実装時に grep で再確認し、無ければ Flyway 移行で追加**する（症状を隠さず根治）。
+- **source 複合 index の有無**: `chat_channels(source_type, source_id)` は F04.2 で `uq_chat_channels_source` として既存。`bulletin_threads(scope_type, scope_id)` 複合 index は **実 DDL に未存在**（`V5.002` 確認済・後続移行にも無し）。**実装時に grep で再確認し、無ければ Flyway 移行で追加**する（症状を隠さず根治）。
 
 ---
 
@@ -219,6 +228,7 @@ PATCH /api/v1/tournaments/{tournamentId}/divisions/{divisionId}/contact-spaces/{
 
 - 投稿（スレッド・メッセージ）は `user_id` を保持したまま残す。表示名は既存の匿名化フロー（`user.anonymize()`）に**自動追従**する（CLAUDE.md 原則 4）。
 - **本機能専用の退会リスナーは不要**。bulletin / chat 既存の匿名化追従に乗る。
+- **新規テーブルの `created_by` 等の user_id 列**（`tournament_contact_space` の払い出し者を将来記録する場合を含む）は、**履歴・証跡として保持**する＝CLAUDE.md の退会二段モデルにおける**強匿名化対象外**（user_id は NULL 化せず残す）。表示名のみ既存の匿名化に追従させ、退会後は匿名表示名で描画する。GDPR 上の個人特定リスクは表示名匿名化で除去され、証跡としての user_id 参照は保持してよい（即時消去対象の「再設定で復旧可能なデータ」には当たらない）。
 
 ---
 

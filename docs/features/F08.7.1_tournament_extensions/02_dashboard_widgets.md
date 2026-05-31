@@ -84,7 +84,8 @@
 
 - `backend/.../dashboard/WidgetKey.java` に enum **3 件追加**: `TEAM_TOURNAMENT_RECORD` / `ORG_TOURNAMENT_SUMMARY` / `TEAM_DIVISION_STANDINGS`。
   - これは admin 可視性 UI の源泉（`forScope()`）であり、**追加必須**。enum に無いと F02.2.1 の可視性設定画面に出ず、CI 双方向整合性テストも落ちる。
-- `MODULE_SLUG_MAP`（または同等のモジュール依存マップ）に `tournament`（選択式モジュール #14）依存を登録 → **大会モジュール未導入の団体にはウィジェットが出ない**ようにする。
+- `MODULE_SLUG_MAP`（`WidgetKey.java:81`・実コードで確認）に大会モジュール依存を登録 → **大会モジュール未導入の団体にはウィジェットが出ない**ようにする。
+  - **モジュールスラッグ名は推測で断定しない（Y-1 訂正）**。現行 `MODULE_SLUG_MAP` には `performance`/`project`/`chat`/`analytics` の 4 スラッグのみ登録があり、**大会用スラッグは未登録**（実装時に新規登録が必要）。スラッグの正式名（`tournament` か別名か）・モジュール番号（「#14」は仮）は、**実装時に `WidgetKey.java` の `MODULE_SLUG_MAP` および選択式モジュール定義の正本を grep して確定**すること。本書では仮に `tournament` と記すが、これは確定値ではない。
 - 新設 API `GET /api/v1/organizations/{orgId}/tournaments/summary`（②用）。Controller / Service / DTO を tournament ドメインに追加。認可は組織所属 MEMBER 以上（§6 の min_role に従う）。`@Transactional(readOnly=true)` は tournament ドメイン内に閉じる。
 
 ### 4.2 フロントエンド

@@ -70,7 +70,31 @@ CREATE TABLE tournament_submission_requirement_target (
 
 - `form_template_id` / `team_id` / `tournament_id` / `division_id` は他ドメインへの **ID 参照のみ**（クロスドメイン FK なし／原則 1）。
 - `organization_id` で主催組織に絞り込めるため、Repository は `AbstractTenantAwareRepository`（原則 7）の適用候補。
-- 提出の実体・承認フローは F05.6 の `form_submissions` / `workflow_requests` をそのまま使い、**本書では新規の提出／承認テーブルを作らない**。提出と requirement の対応は `workflow_requests.source_type='TOURNAMENT_SUBMISSION'` ＋ `source_id`（requirement_id をポリモーフィック参照）で結ぶ（F05.6 のポリモーフィック機構を踏襲）。
+- 提出の実体・承認フローは F05.6 の `form_submissions` / `workflow_requests` をそのまま使い、**本書では新規の提出／承認テーブルを作らない**。
+
+### 2.1 提出と requirement の連結（🔴 B-3 根治・実コード型確認済み）
+
+> **当初設計の誤り**: 「`workflow_requests.source_type='TOURNAMENT_SUBMISSION'` ＋ `source_id`（requirement_id をポリモーフィック参照）で結ぶ」としていたが、これは **型不整合で成立しない**。
+>
+> **実コード確認結果**:
+> - `workflow_requests.source_id` ＝ **`BIGINT UNSIGNED`**（`V5.031__create_workflow_requests_table.sql:15`）、`source_type` ＝ `VARCHAR(30)`（同 :14）。
+> - `tournament_submission_requirement.id` ＝ **`BINARY(16)`（UUIDv7）**（§2 で新設）。
+> - `form_submissions.id` ＝ `BIGINT UNSIGNED`、`workflow_request_id BIGINT UNSIGNED`、`template_id BIGINT UNSIGNED`、`scope_type VARCHAR(20)` / `scope_id BIGINT UNSIGNED`（`V5.038__create_form_submissions_table.sql:3,9,4,5,6`）。
+> - `form_templates.id` ＝ `BIGINT UNSIGNED`（`V5.036:3`）。
+>
+> **UUID（BINARY(16)）の requirement_id を BIGINT 列 `workflow_requests.source_id` に格納することはできない**（数値型に 16 バイトの UUID は入らない）。
+>
+> **採用案（理由付き）**: workflow の native な source 連結（`source_type`/`source_id`）は **BIGINT id 同士でのみ**使う（例：workflow_request ↔ form_submission の BIGINT 連結＝F05.6 既存方式そのまま）。大会 requirement との対応は、**`form_submissions` 側に `tournament_submission_requirement_id BINARY(16) NULL`（ID 参照・FK なし／原則 1）列を追加**して持たせる。理由は、(a) UUID と BIGINT の型衝突を完全に回避できる、(b) F05.6 の workflow↔form_submission 連結を一切変更しないため母体への副作用がゼロ、(c) submission から requirement への逆引きが 1 カラムで済みインデックスも素直、の 3 点。
+>
+> ```sql
+> -- 提出と大会提出枠の連結（form_submissions へ列追加。BIGINT PK の既存テーブルゆえ ID 方式不変）
+> ALTER TABLE form_submissions
+>   ADD COLUMN tournament_submission_requirement_id BINARY(16) NULL,   -- 大会提出枠への ID 参照（FK なし／原則 1）
+>   ADD INDEX idx_form_submissions_tournament_req (tournament_submission_requirement_id);
+> ```
+>
+> - `source_type='TOURNAMENT_SUBMISSION'`（21 字）は `VARCHAR(30)` に収まる。workflow_request 側に「この申請は大会提出由来」という種別ラベルを付けたい場合のみ `source_type` を使い、`source_id` には **form_submission の BIGINT id**（または 0/NULL）を入れる。requirement の UUID は `source_id` には決して入れない。
+> - requirement → 提出群の集計は `form_submissions.tournament_submission_requirement_id = ?` で引く。提出状況ダッシュボード（§5）はこの列＋`form_submissions.status` で構成する。
 
 ---
 
@@ -84,10 +108,12 @@ CREATE TABLE tournament_submission_requirement_target (
 
 ## 4. 提出（各チーム代表）
 
-1. 各チームの代表（チーム ADMIN/DEPUTY）が提出枠の form を開き、`form_submissions` に回答を記入。
+1. 各チームの代表（チーム ADMIN/DEPUTY）が提出枠の form を開き、`form_submissions` に回答を記入。このとき `form_submissions.tournament_submission_requirement_id` に対象 requirement の UUID をセットする（§2.1）。
 2. 添付（PDF 等）は F05.6 の `POST /workflow-requests/{id}/upload-url` → R2 presigned URL → `attachments` 登録の既存フロー（F05.5 ストレージ基盤）を流用。
-3. 提出すると `workflow_requests`（`source_type='TOURNAMENT_SUBMISSION'`、`source_id=requirement_id`）が起票され、主催者の承認ステップへルーティングされる。
+3. 提出すると F05.6 既存方式どおり `workflow_requests` が起票され（workflow ↔ form_submission の連結は **BIGINT id 同士**でそのまま。大会由来を示すなら `source_type='TOURNAMENT_SUBMISSION'`＝VARCHAR(30) に収まる）、主催者の承認ステップへルーティングされる。**requirement との対応は `form_submissions.tournament_submission_requirement_id`（BINARY(16)）が担い、`workflow_requests.source_id`（BIGINT）には UUID を入れない**（§2.1 の B-3 根治）。
 4. 差戻し時は F05.6 の差し戻し再提出フローをそのまま使う。
+
+> **form_submission ↔ workflow_request の対応（Y-3 補強）**: F05.6 では 1 件の `form_submissions` に対し承認が要る場合に `form_submissions.workflow_request_id`（BIGINT・既存列）で 1:1 に紐付く。本機能の提出も同方式に乗り、`form_submissions` が (a) requirement（`tournament_submission_requirement_id`／UUID）と (b) 承認申請（`workflow_request_id`／BIGINT）の双方を**それぞれ型整合した別カラム**で参照するハブとなる。これにより UUID ドメイン（大会連結）と BIGINT ドメイン（workflow/forms 母体）が混線しない。
 
 ---
 
@@ -139,6 +165,7 @@ CREATE TABLE tournament_submission_requirement_target (
 - 存在しない requirement / tournament は **404**（IDOR 統一）。`form_template_id` / `team_id` 等は ID 参照のみ（クロスドメイン FK なし／原則 1）。
 - 提出枠・提出の越境（提出枠の form_submission が大会スコープ外へ漏れない）を Service 層の帰属チェックで保証（`reqId → tournament_id → orgId`、`submission → reqId` 帰属）。
 - `@Transactional` が tournament ドメインと workflow/forms ドメインをまたぐ箇所（submit ファサード）は越境 TODO を明記し、将来のイベント駆動化候補とする（原則 5）。
+- **退会（O-4）**: `tournament_submission_requirement.created_by`（提出枠を作成した主催組織 ADMIN の user_id）は**履歴・証跡として保持**＝CLAUDE.md 退会二段モデルの**強匿名化対象外**（NULL 化しない）。表示名のみ既存の匿名化に追従させる。提出者（`form_submissions.submitted_by`）の扱いは F05.6 母体の方針に従う（本機能では変更しない）。
 
 ---
 
@@ -151,6 +178,11 @@ CREATE TABLE tournament_submission_requirement_target (
 - **見落とし**: ファイル置き場④との役割差を §6 で明記（混同防止）、F05.6 ポリモーフィック source_type／source_id 方式の踏襲、領域⑦支払いゲート連携。
 - **保守性**: 提出／承認の汎用テーブルは新設せず F05.6 を再利用、新規は薄い連結 2 テーブル（UUIDv7／原則 6、子テーブルは同一ドメイン CASCADE／原則 2）。
 
-### 8.2 未解決事項
+### 8.2 2 回目（検分1周目の指摘反映＝B-3 根治）
+- **型確認（実コード）**: `workflow_requests.source_id`＝`BIGINT UNSIGNED`／`source_type`＝`VARCHAR(30)`（`V5.031:14-15`）、`tournament_submission_requirement.id`＝`BINARY(16)`、`form_submissions.id`／`workflow_request_id`／`template_id`／`scope_id`＝`BIGINT UNSIGNED`（`V5.038`）、`form_templates.id`＝`BIGINT UNSIGNED`（`V5.036:3`）。
+- **訂正**: UUID requirement_id を BIGINT `source_id` へ格納する当初案を撤回し、**`form_submissions` に `tournament_submission_requirement_id BINARY(16) NULL`（ID 参照・FK なし）を追加**して連結（§2.1）。workflow の native 連結は BIGINT id 同士のままで母体無改変。`source_type='TOURNAMENT_SUBMISSION'`（21 字）は `VARCHAR(30)` に収まる旨を明記。
+- **O-4**: `created_by` は証跡保持＝強匿名化対象外（表示名のみ匿名化追従）。
+
+### 8.3 未解決事項
 
 **現時点でなし。**
