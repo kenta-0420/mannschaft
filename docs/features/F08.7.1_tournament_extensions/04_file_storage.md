@@ -30,11 +30,15 @@
 
 ---
 
-## 2. `StorageScopeType` への新スコープ追加（DDL 不要・VARCHAR 値追加）
+## 2. `FileScopeType` への新スコープ追加（DDL 不要・VARCHAR 値追加）
 
-F05.5 の `shared_folders.scope_type`（現状 `TEAM` / `ORGANIZATION` / `PERSONAL`）に **`TOURNAMENT` / `TOURNAMENT_DIVISION` を追加**する。`scope_type VARCHAR(20)` ゆえ DDL 変更は不要（enum 値の追加のみ）。
+`shared_folders.scope_type` を支える JPA enum は **`com.mannschaft.app.filesharing.FileScopeType`**（filesharing ドメイン、現状 `TEAM` / `ORGANIZATION` / `PERSONAL`）である。この **`FileScopeType` に `TOURNAMENT` / `TOURNAMENT_DIVISION` を追加**する。`scope_type VARCHAR(20)` ゆえ DDL 変更は不要（enum 値の追加のみ。`TOURNAMENT_DIVISION` ＝19 字で VARCHAR(20) に収まる）。
 
-### 2.1 スコープ帰属カラム
+> **⚠️ enum 2 層の区別（混同厳禁）**: 本機能には名前の似た enum が 2 つ関与する。役割が異なるため取り違えないこと。
+> - **フォルダスコープ enum ＝ `FileScopeType`**（filesharing ドメイン。`shared_folders.scope_type` を支える。**本章で `TOURNAMENT` / `TOURNAMENT_DIVISION` を追加する対象はこちら**）
+> - **クォータ計量 enum ＝ `StorageScopeType`**（`com.mannschaft.app.common.storage.quota`。`storage_subscriptions.scope_type`＝`ORGANIZATION` / `TEAM` / `PERSONAL` に対応。**新値は追加しない**。大会ファイルのクォータは主催組織に集約するため、既存の `StorageScopeType.ORGANIZATION` ＋ `organization_id` で `StorageQuotaService` を呼ぶ。§6 参照）
+
+### 2.1 スコープ帰属カラム（フォルダスコープ＝`FileScopeType`）
 
 `shared_folders` には現状 `team_id` / `organization_id` / `user_id` の参照カラムがある。新スコープは**専用カラムを増やさず**、既存の汎用機構に乗せる方針とする:
 
@@ -46,11 +50,13 @@ F05.5 の `shared_folders.scope_type`（現状 `TEAM` / `ORGANIZATION` / `PERSON
 - 大会・ディビジョンの実 ID（tournament_id / division_id）は、`shared_folders` に **`scope_ref_id BIGINT UNSIGNED NULL`** を 1 列追加して保持する（既存スコープでは NULL）。クロスドメイン FK は張らない（原則 1・ID 参照のみ）。
   - この 1 列追加が **F05.5 への唯一の DDL 変更**（`ALTER TABLE shared_folders ADD COLUMN scope_ref_id BIGINT UNSIGNED NULL`）。
   - index: `INDEX idx_shared_folders_tournament (organization_id, scope_type, scope_ref_id, parent_id, name)` を追加（大会/ディビジョン別フォルダ一覧）。
-- `organization_id` に主催組織を入れることで、`StorageQuotaService` の組織クォータ計量（`organizations.storage_used_bytes` / `storage_subscriptions(scope_type=ORGANIZATION)`）に**そのまま乗る**（領域④の要件「クォータは主催組織に集約」を満たす）。
+- `organization_id` に主催組織を入れることで、**クォータ計量 enum＝`StorageScopeType.ORGANIZATION`** ＋ `organization_id` で組織クォータ計量（`organizations.storage_used_bytes` / `storage_subscriptions(scope_type=ORGANIZATION)`）に**そのまま乗る**（領域④の要件「クォータは主催組織に集約」を満たす。`StorageScopeType` には新値を追加しない）。
 
-### 2.2 スコープ制約（Service 層バリデーション）
+### 2.2 スコープ制約（Service 層バリデーション・`FileScopeType` 値ごと）
 
-| scope_type | `organization_id` | `scope_ref_id` | `team_id` | `user_id` |
+> ここで言う `scope_type` 列の値は **フォルダスコープ enum＝`FileScopeType`** の値。クォータ計量の `StorageScopeType` とは別レイヤ（§2 冒頭の区別を参照）。
+
+| scope_type（`FileScopeType`） | `organization_id` | `scope_ref_id` | `team_id` | `user_id` |
 |------------|-------------------|----------------|-----------|-----------|
 | `TOURNAMENT` | 主催組織 ID（NOT NULL） | tournament_id（NOT NULL） | NULL | NULL |
 | `TOURNAMENT_DIVISION` | 主催組織 ID（NOT NULL） | division_id（NOT NULL） | NULL | NULL |
@@ -116,10 +122,11 @@ files/TOURNAMENT_DIVISION/{divId}/...
 
 ---
 
-## 6. クォータ（主催組織に集約）
+## 6. クォータ（主催組織に集約・`StorageScopeType` に新値は追加しない）
 
-- `StorageQuotaService.checkQuota / recordUpload / recordDeletion` を**そのまま使用**。
-- 新スコープ（`TOURNAMENT` / `TOURNAMENT_DIVISION`）のクォータは、`shared_folders.organization_id` に保持した**主催組織のサブスク**（`storage_subscriptions(scope_type=ORGANIZATION)`）に紐付ける（[storage_quota.md](../../cross-cutting/storage_quota.md) のスコープ帰属ルールに「大会/ディビジョン → 主催組織」を追記）。
+- **クォータ計量 enum＝`StorageScopeType`（`com.mannschaft.app.common.storage.quota`）には新値（TOURNAMENT 等）を追加しない。** 大会/ディビジョンのファイルクォータは主催組織に集約するため、**既存の `StorageScopeType.ORGANIZATION` ＋ `organization_id`（主催組織）で `StorageQuotaService` を呼ぶ**。フォルダスコープ enum＝`FileScopeType` を拡張するのは §2 のとおりだが、クォータ層はこの拡張に追従しない（2 層を分離）。
+- `StorageQuotaService.checkQuota / recordUpload / recordDeletion` を**そのまま使用**。`FileScopeType.TOURNAMENT` / `TOURNAMENT_DIVISION` のフォルダでも、クォータ解決時は `StorageScopeType.ORGANIZATION` に丸めて `shared_folders.organization_id`（主催組織）を渡す。
+- これにより、新スコープのアップロードは主催組織のサブスク（`storage_subscriptions(scope_type=ORGANIZATION)`）に紐付く（[storage_quota.md](../../cross-cutting/storage_quota.md) のスコープ帰属ルールに「大会/ディビジョン → 主催組織」を追記済み）。
 - 容量超過時は既存 F05.5 / storage_quota の 409 Conflict ＋プラン更新導線をそのまま返す。
 
 ---
@@ -140,6 +147,13 @@ files/TOURNAMENT_DIVISION/{divId}/...
 - **見落とし**: continueTournament の provisioning 漏れ（§4・テスト検証）、クォータ帰属の主催組織集約（§6）、storage_quota.md / F05.5 への追記同期。
 - **保守性**: 既存 F05.5 を最大限流用（新規テーブルなし・DDL は 1 列のみ）。越境 TODO 明記（原則 5）。公開フラグを連絡スペースと共有して二重管理を回避。
 
-### 8.2 未解決事項
+### 8.2 2 回目（検分 2 周目・殿の独立確認）
+
+- **根治**: フォルダスコープ enum を `StorageScopeType` と誤記していた箇所を **`FileScopeType`（`com.mannschaft.app.filesharing`）** に全面訂正。`shared_folders.scope_type` を支える実 enum は `FileScopeType`（実コードで確認済み）。
+- **2 層の区別を明記**: フォルダスコープ enum＝`FileScopeType`（本章で `TOURNAMENT` / `TOURNAMENT_DIVISION` を追加）と、クォータ計量 enum＝`StorageScopeType`（`com.mannschaft.app.common.storage.quota`・`storage_subscriptions.scope_type` 対応）を §2 冒頭・§2.1・§2.2・§6 で明確に分離。
+- **クォータは新値追加なし**: 大会/ディビジョンのファイルクォータは主催組織に集約するため、`StorageScopeType` には新値を追加せず、既存 `StorageScopeType.ORGANIZATION` ＋ `organization_id`（主催組織）で `StorageQuotaService` を呼ぶ方式に統一（§6）。`scope_ref_id` 列追加（`shared_folders`）は据え置き（正しい）。
+- README.md / F05.5_file_sharing.md の対応箇所も同時に `FileScopeType` へ訂正。storage_quota.md はクォータ＝`StorageScopeType` 文脈で名称が正しく、新値追加なしの集約方針とも齟齬がないため据え置き。
+
+### 8.3 未解決事項
 
 **現時点でなし。**
