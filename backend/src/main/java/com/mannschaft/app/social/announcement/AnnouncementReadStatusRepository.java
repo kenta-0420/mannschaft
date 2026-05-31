@@ -51,4 +51,18 @@ public interface AnnouncementReadStatusRepository extends JpaRepository<Announce
      * @return 既読件数
      */
     long countByUserIdAndAnnouncementFeedIdIn(Long userId, List<Long> feedIds);
+
+    /**
+     * ユーザーが既読にしたお知らせフィードの既読レコードをまとめ取りする（F04.11 インボックス集約）。
+     *
+     * <p>
+     * 統合インボックスの ANNOUNCEMENT アダプタが、集約後の feed.id 集合に対して
+     * 1 クエリで既読状態を解決するために使用する（N+1 回避）。読み取り専用。
+     * </p>
+     *
+     * @param userId  ユーザー ID
+     * @param feedIds お知らせフィード ID リスト
+     * @return 既読レコードのリスト（未読のフィードは含まれない）
+     */
+    List<AnnouncementReadStatusEntity> findByUserIdAndAnnouncementFeedIdIn(Long userId, List<Long> feedIds);
 }
