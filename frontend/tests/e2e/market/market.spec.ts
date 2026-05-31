@@ -37,55 +37,59 @@ const FORBIDDEN_PII_PHRASES = [
   '東京都渋谷区代々木1-2-3',
 ] as const
 
-/** 市一覧 API のサンプルレスポンス（PII なし） */
+/**
+ * 市一覧 API のサンプルレスポンス（PII なし）
+ * ⚠️ BE 契約（camelCase）に一致させること。MarketListingResponse / MarketOwnerDto /
+ *    MarketRegionDto / MarketCategoryDto を正典とする。
+ */
 const MOCK_LISTING_1 = {
   id: 1001,
   title: 'U-12 練習試合の相手を募集（別府市）',
-  category: { id: 7, name_key: 'recruitment.category.practiceMatch' },
+  category: { id: 7, nameKey: 'recruitment.category.practiceMatch' },
   owner: {
-    scope_type: 'TEAM',
-    scope_id: 88,
-    display_name: '別府FC',
-    icon_url: null,
+    scopeType: 'TEAM',
+    scopeId: 88,
+    displayName: '別府FC',
+    iconUrl: null,
   },
   region: {
-    prefecture_code: '44',
-    prefecture_name: '大分県',
-    city_code: '44202',
-    city_name: '別府市',
+    prefectureCode: '44',
+    prefectureName: '大分県',
+    cityCode: '44202',
+    cityName: '別府市',
   },
-  location_text: '別府市総合運動公園',
-  start_at: '2026-11-03T09:00:00Z',
-  application_deadline: '2026-11-01T23:59:59Z',
+  locationText: '別府市総合運動公園',
+  startAt: '2026-11-03T09:00:00Z',
+  applicationDeadline: '2026-11-01T23:59:59Z',
   capacity: 1,
-  confirmed_count: 0,
+  confirmedCount: 0,
   status: 'OPEN',
-  payment_enabled: false,
+  paymentEnabled: false,
 }
 
 const MOCK_LISTING_2 = {
   id: 1002,
   title: 'フットサル大会 参加チーム募集',
-  category: { id: 3, name_key: 'recruitment.category.tournament' },
+  category: { id: 3, nameKey: 'recruitment.category.tournament' },
   owner: {
-    scope_type: 'TEAM',
-    scope_id: 99,
-    display_name: '大分フットサルクラブ',
-    icon_url: null,
+    scopeType: 'TEAM',
+    scopeId: 99,
+    displayName: '大分フットサルクラブ',
+    iconUrl: null,
   },
   region: {
-    prefecture_code: '44',
-    prefecture_name: '大分県',
-    city_code: '44201',
-    city_name: '大分市',
+    prefectureCode: '44',
+    prefectureName: '大分県',
+    cityCode: '44201',
+    cityName: '大分市',
   },
-  location_text: null,
-  start_at: '2026-12-01T10:00:00Z',
-  application_deadline: '2026-11-25T23:59:59Z',
+  locationText: null,
+  startAt: '2026-12-01T10:00:00Z',
+  applicationDeadline: '2026-11-25T23:59:59Z',
   capacity: 8,
-  confirmed_count: 3,
+  confirmedCount: 3,
   status: 'OPEN',
-  payment_enabled: false,
+  paymentEnabled: false,
 }
 
 /** PII 混入汚染レスポンス（フロント防衛線テスト用） */
@@ -98,13 +102,12 @@ const POISONED_LISTING = {
   members: [{ name: '漏洩花子', email: 'secret@example.com' }],
 }
 
+/**
+ * 一覧レスポンス（BE PagedResponse 形: { data: [...], meta: {...} }）
+ */
 const MOCK_LISTINGS_RESPONSE = {
-  data: {
-    content: [MOCK_LISTING_1, MOCK_LISTING_2],
-    total_elements: 2,
-    page: 0,
-    size: 20,
-  },
+  data: [MOCK_LISTING_1, MOCK_LISTING_2],
+  meta: { total: 2, page: 0, size: 20, totalPages: 1 },
 }
 
 /** 都道府県一覧モック */
@@ -187,7 +190,12 @@ async function mockMarketDetail(
   })
 }
 
-/** 地域 API をモック（都道府県 → 市区町村連動） */
+/**
+ * 地域 API をモック（都道府県 → 市区町村連動）
+ * ⚠️ BE 契約: GET /regions は ApiResponse<List<MarketRegionNodeResponse>> 形、
+ *    すなわち { data: [ { code, name, prefectureCode }, ... ] } のフラット配列を返す。
+ *    prefecture 未指定 → 都道府県ノード一覧、指定 → 配下市区町村ノード一覧。
+ */
 async function mockMarketRegions(page: Page): Promise<void> {
   await page.route('**/api/v1/public/market/regions**', async (route: Route) => {
     const url = new URL(route.request().url())
@@ -196,20 +204,20 @@ async function mockMarketRegions(page: Page): Promise<void> {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: { prefectures: MOCK_PREFECTURES, cities: MOCK_CITIES_44 } }),
+        body: JSON.stringify({ data: MOCK_CITIES_44 }),
       })
     } else if (prefecture === '40') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: { prefectures: MOCK_PREFECTURES, cities: MOCK_CITIES_40 } }),
+        body: JSON.stringify({ data: MOCK_CITIES_40 }),
       })
     } else {
-      // 初回ロード時（prefecture 未指定）: 都道府県一覧のみ返す
+      // 初回ロード時（prefecture 未指定）: 都道府県一覧を返す
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: { prefectures: MOCK_PREFECTURES, cities: [] } }),
+        body: JSON.stringify({ data: MOCK_PREFECTURES }),
       })
     }
   })
@@ -300,8 +308,8 @@ test('MARKET-001: 未ログインで /market にアクセスすると 2xx 到達
   await expect(page.getByTestId(`market-listing-card-${MOCK_LISTING_2.id}`)).toBeVisible()
 
   // チーム公称名が表示される
-  await expect(page.getByText(MOCK_LISTING_1.owner.display_name)).toBeVisible()
-  await expect(page.getByText(MOCK_LISTING_2.owner.display_name)).toBeVisible()
+  await expect(page.getByText(MOCK_LISTING_1.owner.displayName)).toBeVisible()
+  await expect(page.getByText(MOCK_LISTING_2.owner.displayName)).toBeVisible()
 
   // 「札を立てる」ボタンはダッシュボードへの導線として存在する（市から直接立てない）
   await expect(page.getByTestId('market-post-link')).toBeVisible()
@@ -338,12 +346,8 @@ test('MARKET-002b: 汚染レスポンスが来てもフロント側で PII が�
   // 汚染データを返すがフロントが余分フィールドを描画しないことを確認
   await mockMarketListings(page, {
     body: {
-      data: {
-        content: [POISONED_LISTING],
-        total_elements: 1,
-        page: 0,
-        size: 20,
-      },
+      data: [POISONED_LISTING],
+      meta: { total: 1, page: 0, size: 20, totalPages: 1 },
     },
   })
 
@@ -366,7 +370,7 @@ test('MARKET-002c: 札詳細画面に PII が表示されない（主催はチ�
   await expect(page.getByTestId('market-detail-card')).toBeVisible({ timeout: 10_000 })
 
   // 主催表示はチーム公称名のみ
-  await expect(page.getByTestId('market-detail-organizer-name')).toHaveText(MOCK_LISTING_1.owner.display_name)
+  await expect(page.getByTestId('market-detail-organizer-name')).toHaveText(MOCK_LISTING_1.owner.displayName)
 
   // 詳細ページの HTML に禁則語が含まれないこと
   const bodyText = await page.locator('body').innerText()
@@ -435,12 +439,8 @@ test('MARKET-003b: 都道府県・市区町村の絞り込み後に一覧が変�
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: {
-            content: [MOCK_LISTING_1],
-            total_elements: 1,
-            page: 0,
-            size: 20,
-          },
+          data: [MOCK_LISTING_1],
+          meta: { total: 1, page: 0, size: 20, totalPages: 1 },
         }),
       })
     }
@@ -483,12 +483,8 @@ test('MARKET-003c: キーワード入力で絞り込み結果が変化する', a
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: {
-            content: [MOCK_LISTING_1],
-            total_elements: 1,
-            page: 0,
-            size: 20,
-          },
+          data: [MOCK_LISTING_1],
+          meta: { total: 1, page: 0, size: 20, totalPages: 1 },
         }),
       })
     }
@@ -522,12 +518,8 @@ test('MARKET-004a: visibility=FRIEND_TEAMS_ONLY の札は公開一覧に含ま�
   // → モックが PUBLIC 札のみ返すことで「一覧に出ない」仕様を確認
   await mockMarketListings(page, {
     body: {
-      data: {
-        content: [MOCK_LISTING_1], // FRIEND_TEAMS_ONLY の札は含まれていない
-        total_elements: 1,
-        page: 0,
-        size: 20,
-      },
+      data: [MOCK_LISTING_1], // FRIEND_TEAMS_ONLY の札は含まれていない
+      meta: { total: 1, page: 0, size: 20, totalPages: 1 },
     },
   })
 
@@ -551,7 +543,7 @@ test('MARKET-004b: 非公開札の直URL（/market/listings/{id}）は 404 に�
 
   // チーム名・PII が漏れていないこと
   const html = await page.content()
-  expect(html).not.toContain(MOCK_LISTING_1.owner.display_name)
+  expect(html).not.toContain(MOCK_LISTING_1.owner.displayName)
   for (const phrase of FORBIDDEN_PII_PHRASES) {
     expect(html).not.toContain(phrase)
   }
@@ -685,7 +677,7 @@ test('MARKET-006d: ログイン済みユーザーが「札に応じる」をク�
   await mockApplyToListing(page, MOCK_LISTING_1.id)
 
   // 応募後の再取得をモック
-  await mockMarketDetail(page, { body: { ...MOCK_DETAIL_OPEN, confirmed_count: 1 } })
+  await mockMarketDetail(page, { body: { ...MOCK_DETAIL_OPEN, confirmedCount: 1 } })
 
   await page.goto(`/market/listings/${MOCK_LISTING_1.id}`)
   await expect(page.getByTestId('market-apply-btn')).toBeVisible({ timeout: 10_000 })
