@@ -187,25 +187,25 @@
   },
   "phase4": {
     "org_scope": {
-      "label": "組織に共有",
-      "select_org": "共有先組織を選択",
-      "visibility_label": "公開範囲",
-      "team_only": "チームメンバーのみ",
-      "org_wide": "組織全体に公開",
-      "no_orgs": "所属組織がありません",
-      "already_set": "組織スコープ設定済み",
-      "clear": "組織共有を解除"
+      "label": "Mit Organisation teilen",
+      "select_org": "Zielorganisation auswählen",
+      "visibility_label": "Sichtbarkeit",
+      "team_only": "Nur Teammitglieder",
+      "org_wide": "Für die gesamte Organisation sichtbar",
+      "no_orgs": "Keine Organisation vorhanden",
+      "already_set": "Organisationsbereich bereits gesetzt",
+      "clear": "Organisationsfreigabe aufheben"
     },
     "audit": {
-      "toggle": "変更履歴",
-      "empty": "変更履歴はありません",
-      "loading": "読み込み中...",
-      "error": "履歴の取得に失敗しました",
-      "event_todo_completed": "関連TODO を完了にしました",
-      "event_created": "メモを作成しました",
-      "event_updated": "メモを更新しました",
-      "event_deleted": "メモを削除しました",
-      "event_todo_reverted": "TODOを差し戻しました"
+      "toggle": "Änderungsverlauf",
+      "empty": "Kein Änderungsverlauf",
+      "loading": "Wird geladen...",
+      "error": "Verlauf konnte nicht geladen werden",
+      "event_todo_completed": "Verknüpftes TODO als erledigt markiert",
+      "event_created": "Memo erstellt",
+      "event_updated": "Memo aktualisiert",
+      "event_deleted": "Memo gelöscht",
+      "event_todo_reverted": "TODO zurückgesetzt"
     }
   }
 }

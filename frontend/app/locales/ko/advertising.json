@@ -470,21 +470,21 @@
   },
   "teams_page": {
     "title": "팀 광고주 관리",
-    "description": "팀 단위로 메시지형 광고 캠페인을 생성하고 배포합니다.",
+    "description": "팀 단위로 메시지형 광고 캠페인을 생성·게재합니다.",
     "nav": {
-      "messaging_campaigns_description": "팀 멤버를 대상으로 메시지형 광고 캠페인을 생성합니다."
+      "messaging_campaigns_description": "팀 멤버를 대상으로 한 메시지형 광고 캠페인을 생성합니다."
     },
-    "future_features_notice": "청구서 관리, 신용 한도 신청, 정기 보고서는 향후 단계에서 지원될 예정입니다.",
+    "future_features_notice": "청구서 관리·신용 한도 신청·정기 보고서는 향후 단계에서 지원할 예정입니다.",
     "register": {
       "title": "광고주 등록",
-      "submit": "신청 제출",
-      "company_name_label": "회사 / 광고주 이름",
-      "company_name_placeholder": "샘플 주식회사",
+      "submit": "등록 신청",
+      "company_name_label": "회사명 / 광고주명",
+      "company_name_placeholder": "예시 주식회사",
       "contact_email_label": "연락처 이메일 주소",
       "billing_method_label": "결제 방법",
-      "billing_stripe": "신용카드 (Stripe)",
-      "billing_invoice": "청구서",
-      "success_message": "신청이 제출되었습니다. 심사 후 이용을 시작할 수 있습니다.",
+      "billing_stripe": "신용카드（Stripe）",
+      "billing_invoice": "청구서 납부",
+      "success_message": "광고주 등록을 신청했습니다. 심사 후 이용하실 수 있습니다.",
       "error_message": "등록에 실패했습니다"
     }
   }

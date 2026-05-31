@@ -73,23 +73,23 @@
     }
   },
   "swipeWidgets": {
-    "upcoming": "今後の予定",
-    "timeline": "タイムライン",
-    "bulletin": "掲示板",
-    "blog": "ブログ",
-    "chat": "チャット",
-    "calendar": "カレンダー",
-    "todo": "TODO",
+    "upcoming": "Próximos eventos",
+    "timeline": "Línea de tiempo",
+    "bulletin": "Tablón de anuncios",
+    "blog": "Blog",
+    "chat": "Chat",
+    "calendar": "Calendario",
+    "todo": "Tareas",
     "actionRequired": {
-      "title": "要対応",
-      "circulation": "回覧板",
-      "survey": "アンケート",
-      "attendance": "出席確認",
-      "unconfirmed": "{count}件未確認",
-      "unanswered": "{count}件未回答",
-      "empty": "対応が必要な項目はありません",
-      "loadError": "No se pudieron cargar los elementos pendientes"
+      "title": "Acción requerida",
+      "circulation": "Circulación",
+      "survey": "Encuesta",
+      "attendance": "Asistencia",
+      "unconfirmed": "{count} sin confirmar",
+      "unanswered": "{count} sin responder",
+      "empty": "No hay elementos que requieran acción",
+      "loadError": "Error al cargar los elementos de acción"
     },
-    "emptyState": "まだ投稿がありません"
+    "emptyState": "Sin publicaciones aún"
   }
 }

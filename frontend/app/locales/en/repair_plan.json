@@ -7,12 +7,12 @@
       }
     },
     "timeline": {
-      "title": "修繕履歴・計画タイムライン",
+      "title": "Repair history & planning timeline",
       "layer": {
-        "amount": "修繕費",
-        "chairperson": "理事長",
-        "cpi": "物価指数（CPI）",
-        "minutes": "議事録メモ"
+        "amount": "Repair cost",
+        "chairperson": "Chairperson",
+        "cpi": "CPI (Price Index)",
+        "minutes": "Meeting minutes"
       },
       "year_from": "開始年度",
       "year_to": "終了年度",

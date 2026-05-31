@@ -7,18 +7,18 @@
       }
     },
     "timeline": {
-      "title": "修繕履歴・計画タイムライン",
+      "title": "修缮历史・计划时间线",
       "layer": {
-        "amount": "修繕費",
-        "chairperson": "理事長",
-        "cpi": "物価指数（CPI）",
-        "minutes": "議事録メモ"
+        "amount": "修缮费",
+        "chairperson": "理事长",
+        "cpi": "物价指数（CPI）",
+        "minutes": "会议记录"
       },
-      "year_from": "開始年度",
-      "year_to": "終了年度",
-      "no_data": "修繕計画データがありません",
-      "total": "合計",
-      "cpi_note": "CPI: 2024年=100、国交省R5ガイドライン 1.5%/年"
+      "year_from": "开始年度",
+      "year_to": "结束年度",
+      "no_data": "没有修缮计划数据",
+      "total": "合计",
+      "cpi_note": "CPI: 2024年=100，国土交通省R5指南 1.5%/年"
     },
     "category": {
       "EXTERIOR": "外墙・涂装",

@@ -23,43 +23,247 @@
       "heading_kamo": " (probably)",
       "subheading": "All the features your team needs, in one platform",
       "items": {
-        "0": { "title": "Team & Org Management", "desc": "Invite members, assign roles, and manage permissions with ease", "detail": "Full coverage for member management, role assignment, and permission control. Manage multiple teams under one organization even at scale.", "features": ["Member invitation & management", "Team/org hierarchy management", "Role & permission settings", "Profile & avatar management"], "useCases": ["Sports team roster management", "Company department & project management", "Local community operations"] },
-        "1": { "title": "Events & Calendar", "desc": "Share schedules, track attendance, and set reminders in one place", "detail": "Centralize team events on a shared calendar. Share schedules at individual, team, or org level and handle attendance smoothly.", "features": ["Shared team calendar", "Attendance management & reminders", "Recurring event settings", "Integration with personal schedules"], "useCases": ["Practice & game schedule management", "Internal meetings & event management", "Class & school event calendars"] },
-        "2": { "title": "Chat & Bulletin Board", "desc": "Group chat, circulars, and timeline for seamless communication", "detail": "A multi-function communication tool combining real-time chat and bulletin boards. Create channels per team to keep information organized.", "features": ["Real-time chat", "Bulletin board & announcements", "Channel & group creation", "File attachment & image sharing"], "useCases": ["Day-to-day team communication", "Posting important announcements", "Project-specific discussions"] },
-        "3": { "title": "Shift Management", "desc": "Create shifts, collect preferences, and handle swap requests", "detail": "Digitize the entire shift management workflow — from schedule creation to preference collection, confirmation, and notifications. Supports hourly pay and labor cost calculation.", "features": ["Shift preference collection", "Auto-assisted schedule generation", "Hourly pay & labor cost calculation", "Shift change & substitute requests"], "useCases": ["Restaurant & retail shift management", "Medical & care staff scheduling", "Part-time employee attendance management"] },
-        "4": { "title": "Forms & Surveys", "desc": "Build forms, collect responses, and view analytics in one stop", "detail": "Easily collect opinions and registrations with customizable forms and surveys. Results are visualized with graphs.", "features": ["Custom form builder", "Survey aggregation & graph display", "Reminders to respondents", "CSV export"], "useCases": ["Event registration", "Team surveys", "Customer satisfaction surveys"] },
-        "5": { "title": "Gallery & Files", "desc": "Share photos, videos, and documents securely with your team", "detail": "Share memories of team activities in galleries. Manage documents and files in one place and find what you need instantly.", "features": ["Photo & video gallery", "File management & sharing", "Album creation", "Cloud storage integration"], "useCases": ["Sharing game & practice photos", "Storing documents & materials", "Archiving activity records"] },
-        "6": { "title": "Dues & Payments", "desc": "Digitize membership fee invoicing and payment tracking", "detail": "Handle team dues, expense reimbursements, and cost management entirely online. Automate payment status checks and reminders.", "features": ["Dues collection & management", "Expense reimbursement", "Payment status visualization", "Automated reminders"], "useCases": ["Monthly team dues management", "Trip & training camp cost settlement", "PTA & parent association accounting"] },
-        "7": { "title": "Matching & Tournaments", "desc": "Organize team matchups, tournaments, and record results", "detail": "Streamline team matching and tournament management. Total support from opponent recruitment to results management.", "features": ["Team matching", "Tournament & competition management", "Match result recording", "Rankings management"], "useCases": ["Sports tournament management", "Esports tournaments", "Local league & federation management"] }
+        "0": {
+          "title": "Team & Org Management",
+          "desc": "Invite members, assign roles, and manage permissions with ease",
+          "detail": "Full coverage for member management, role assignment, and permission control. Manage multiple teams under one organization even at scale.",
+          "features": [
+            "Member invitation & management",
+            "Team/org hierarchy management",
+            "Role & permission settings",
+            "Profile & avatar management"
+          ],
+          "useCases": [
+            "Sports team roster management",
+            "Company department & project management",
+            "Local community operations"
+          ]
+        },
+        "1": {
+          "title": "Events & Calendar",
+          "desc": "Share schedules, track attendance, and set reminders in one place",
+          "detail": "Centralize team events on a shared calendar. Share schedules at individual, team, or org level and handle attendance smoothly.",
+          "features": [
+            "Shared team calendar",
+            "Attendance management & reminders",
+            "Recurring event settings",
+            "Integration with personal schedules"
+          ],
+          "useCases": [
+            "Practice & game schedule management",
+            "Internal meetings & event management",
+            "Class & school event calendars"
+          ]
+        },
+        "2": {
+          "title": "Chat & Bulletin Board",
+          "desc": "Group chat, circulars, and timeline for seamless communication",
+          "detail": "A multi-function communication tool combining real-time chat and bulletin boards. Create channels per team to keep information organized.",
+          "features": [
+            "Real-time chat",
+            "Bulletin board & announcements",
+            "Channel & group creation",
+            "File attachment & image sharing"
+          ],
+          "useCases": [
+            "Day-to-day team communication",
+            "Posting important announcements",
+            "Project-specific discussions"
+          ]
+        },
+        "3": {
+          "title": "Shift Management",
+          "desc": "Create shifts, collect preferences, and handle swap requests",
+          "detail": "Digitize the entire shift management workflow — from schedule creation to preference collection, confirmation, and notifications. Supports hourly pay and labor cost calculation.",
+          "features": [
+            "Shift preference collection",
+            "Auto-assisted schedule generation",
+            "Hourly pay & labor cost calculation",
+            "Shift change & substitute requests"
+          ],
+          "useCases": [
+            "Restaurant & retail shift management",
+            "Medical & care staff scheduling",
+            "Part-time employee attendance management"
+          ]
+        },
+        "4": {
+          "title": "Forms & Surveys",
+          "desc": "Build forms, collect responses, and view analytics in one stop",
+          "detail": "Easily collect opinions and registrations with customizable forms and surveys. Results are visualized with graphs.",
+          "features": [
+            "Custom form builder",
+            "Survey aggregation & graph display",
+            "Reminders to respondents",
+            "CSV export"
+          ],
+          "useCases": [
+            "Event registration",
+            "Team surveys",
+            "Customer satisfaction surveys"
+          ]
+        },
+        "5": {
+          "title": "Gallery & Files",
+          "desc": "Share photos, videos, and documents securely with your team",
+          "detail": "Share memories of team activities in galleries. Manage documents and files in one place and find what you need instantly.",
+          "features": [
+            "Photo & video gallery",
+            "File management & sharing",
+            "Album creation",
+            "Cloud storage integration"
+          ],
+          "useCases": [
+            "Sharing game & practice photos",
+            "Storing documents & materials",
+            "Archiving activity records"
+          ]
+        },
+        "6": {
+          "title": "Dues & Payments",
+          "desc": "Digitize membership fee invoicing and payment tracking",
+          "detail": "Handle team dues, expense reimbursements, and cost management entirely online. Automate payment status checks and reminders.",
+          "features": [
+            "Dues collection & management",
+            "Expense reimbursement",
+            "Payment status visualization",
+            "Automated reminders"
+          ],
+          "useCases": [
+            "Monthly team dues management",
+            "Trip & training camp cost settlement",
+            "PTA & parent association accounting"
+          ]
+        },
+        "7": {
+          "title": "Matching & Tournaments",
+          "desc": "Organize team matchups, tournaments, and record results",
+          "detail": "Streamline team matching and tournament management. Total support from opponent recruitment to results management.",
+          "features": [
+            "Team matching",
+            "Tournament & competition management",
+            "Match result recording",
+            "Rankings management"
+          ],
+          "useCases": [
+            "Sports tournament management",
+            "Esports tournaments",
+            "Local league & federation management"
+          ]
+        }
       }
     },
     "steps": {
       "heading": "Get started in 3 steps",
       "cta": "Sign up for free now",
       "items": {
-        "0": { "title": "Sign up for free", "desc": "Get started right now with just your email address." },
-        "1": { "title": "Create a team or org", "desc": "Pick a template, create your team or organization, and invite members." },
-        "2": { "title": "Start using features", "desc": "Enable only the features you need — schedules, chat, shifts, and more." }
+        "0": {
+          "title": "Sign up for free",
+          "desc": "Get started right now with just your email address."
+        },
+        "1": {
+          "title": "Create a team or org",
+          "desc": "Pick a template, create your team or organization, and invite members."
+        },
+        "2": {
+          "title": "Start using features",
+          "desc": "Enable only the features you need — schedules, chat, shifts, and more."
+        }
       }
     },
     "useCases": {
       "heading": "Used in many settings",
       "subheading": "Adaptable to teams and organizations of any industry or size",
       "items": {
-        "0": { "title": "Sports Teams", "desc": "Practice & game schedules, shift coordination, attendance tracking, and standings.", "detail": "From practice and game scheduling to attendance confirmation and dues collection — everything a sports team needs.", "benefits": ["Easy sharing of practice & game schedules", "Reduce communication effort with attendance reminders", "Zero hassle for dues collection"], "features_used": ["Calendar", "Chat", "Dues Management", "Shift Management"] },
-        "1": { "title": "Local Communities", "desc": "Centralize event announcements, newsletters, and fee management online. Also great for reunions, neighborhood associations, and volunteer groups.", "detail": "Digital support for local connections like neighborhood associations, civic groups, and volunteer organizations. From announcements to activity records.", "benefits": ["Centralized announcements and communications", "Archive of activity records and photos", "Participant management and cost settlement"], "features_used": ["Bulletin Board", "Gallery", "Dues Management", "Surveys"] },
-        "2": { "title": "Businesses & Workplaces", "desc": "Cross-department project management, approval workflows, and internal communication. Also perfect for small businesses like salons and chiropractic clinics.", "detail": "From cross-department information sharing to shift management. A flexible organizational management tool for businesses of all sizes.", "benefits": ["Cross-department information sharing", "Digitize shift & attendance management", "Streamline internal surveys & request forms"], "features_used": ["Team Management", "Chat", "Shift Management", "Forms"] },
-        "3": { "title": "Education & Schools", "desc": "Parent communication, club management, activity records, photo sharing, and surveys.", "detail": "Support for all school-related communities including classes, clubs, PTAs, and parent groups. From bulletin boards to event management.", "benefits": ["Smooth communications to parents & students", "Share event & class schedules", "Manage and settle PTA dues"], "features_used": ["Calendar", "Bulletin Board", "Dues Management", "Surveys"] }
+        "0": {
+          "title": "Sports Teams",
+          "desc": "Practice & game schedules, shift coordination, attendance tracking, and standings.",
+          "detail": "From practice and game scheduling to attendance confirmation and dues collection — everything a sports team needs.",
+          "benefits": [
+            "Easy sharing of practice & game schedules",
+            "Reduce communication effort with attendance reminders",
+            "Zero hassle for dues collection"
+          ],
+          "features_used": [
+            "Calendar",
+            "Chat",
+            "Dues Management",
+            "Shift Management"
+          ]
+        },
+        "1": {
+          "title": "Local Communities",
+          "desc": "Centralize event announcements, newsletters, and fee management online. Also great for reunions, neighborhood associations, and volunteer groups.",
+          "detail": "Digital support for local connections like neighborhood associations, civic groups, and volunteer organizations. From announcements to activity records.",
+          "benefits": [
+            "Centralized announcements and communications",
+            "Archive of activity records and photos",
+            "Participant management and cost settlement"
+          ],
+          "features_used": [
+            "Bulletin Board",
+            "Gallery",
+            "Dues Management",
+            "Surveys"
+          ]
+        },
+        "2": {
+          "title": "Businesses & Workplaces",
+          "desc": "Cross-department project management, approval workflows, and internal communication. Also perfect for small businesses like salons and chiropractic clinics.",
+          "detail": "From cross-department information sharing to shift management. A flexible organizational management tool for businesses of all sizes.",
+          "benefits": [
+            "Cross-department information sharing",
+            "Digitize shift & attendance management",
+            "Streamline internal surveys & request forms"
+          ],
+          "features_used": [
+            "Team Management",
+            "Chat",
+            "Shift Management",
+            "Forms"
+          ]
+        },
+        "3": {
+          "title": "Education & Schools",
+          "desc": "Parent communication, club management, activity records, photo sharing, and surveys.",
+          "detail": "Support for all school-related communities including classes, clubs, PTAs, and parent groups. From bulletin boards to event management.",
+          "benefits": [
+            "Smooth communications to parents & students",
+            "Share event & class schedules",
+            "Manage and settle PTA dues"
+          ],
+          "features_used": [
+            "Calendar",
+            "Bulletin Board",
+            "Dues Management",
+            "Surveys"
+          ]
+        }
       }
     },
     "faq": {
       "heading": "Frequently asked questions",
       "items": {
-        "0": { "q": "Is it free to use?", "a": "Core features are free. We also offer paid plans for larger teams with advanced needs." },
-        "1": { "q": "How many members can I invite?", "a": "Even on the free plan, you can invite multiple members. For large-scale teams, consider our dedicated plans." },
-        "2": { "q": "Can I use it on my smartphone?", "a": "Yes. Mannschaft is fully responsive and works on smartphones and tablets via your web browser." },
-        "3": { "q": "Is my data safe?", "a": "We use SSL/TLS encryption and perform regular backups to keep your data secure." },
-        "4": { "q": "Can I manage multiple teams or organizations?", "a": "Yes. A single account can belong to multiple teams and organizations, each managed independently." }
+        "0": {
+          "q": "Is it free to use?",
+          "a": "Core features are free. We also offer paid plans for larger teams with advanced needs."
+        },
+        "1": {
+          "q": "How many members can I invite?",
+          "a": "Even on the free plan, you can invite multiple members. For large-scale teams, consider our dedicated plans."
+        },
+        "2": {
+          "q": "Can I use it on my smartphone?",
+          "a": "Yes. Mannschaft is fully responsive and works on smartphones and tablets via your web browser."
+        },
+        "3": {
+          "q": "Is my data safe?",
+          "a": "We use SSL/TLS encryption and perform regular backups to keep your data secure."
+        },
+        "4": {
+          "q": "Can I manage multiple teams or organizations?",
+          "a": "Yes. A single account can belong to multiple teams and organizations, each managed independently."
+        }
       }
     },
     "cta": {
@@ -99,19 +303,33 @@
           "name": "Free",
           "price": "$0",
           "desc": "For individuals & small teams",
-          "features": ["All basic features", "Up to 10 members", "1GB storage"]
+          "features": [
+            "All basic features",
+            "Up to 10 members",
+            "1GB storage"
+          ]
         },
         "pro": {
           "name": "Pro",
           "price": "$9.80/mo",
           "desc": "For growing teams",
-          "features": ["All Free features", "Unlimited members", "50GB storage", "Priority support"]
+          "features": [
+            "All Free features",
+            "Unlimited members",
+            "50GB storage",
+            "Priority support"
+          ]
         },
         "enterprise": {
           "name": "Enterprise",
           "price": "Contact us",
           "desc": "For large organizations",
-          "features": ["All Pro features", "Custom integrations", "Dedicated support", "SLA guarantee"]
+          "features": [
+            "All Pro features",
+            "Custom integrations",
+            "Dedicated support",
+            "SLA guarantee"
+          ]
         }
       }
     },
@@ -176,12 +394,12 @@
         "copyright": "© 2026 MANNSCHAFT"
       },
       "sfc": {
-        "menu_start": "▶ はじめる",
-        "menu_continue": "　つづきから",
-        "menu_features": "　きのう一覧",
-        "save_dialog": "このぼうけんを　セーブしますか？",
-        "yes": "はい",
-        "no": "いいえ"
+        "menu_start": "▶ START",
+        "menu_continue": "　CONTINUE",
+        "menu_features": "　FEATURES",
+        "save_dialog": "Save this adventure?",
+        "yes": "YES",
+        "no": "NO"
       },
       "y1998": {
         "under_construction": "🚧 Under Construction 🚧",

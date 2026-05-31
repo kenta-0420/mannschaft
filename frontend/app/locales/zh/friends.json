@@ -1,134 +1,134 @@
 {
   "friends": {
-    "title": "フレンドチーム",
-    "subtitle": "他チームとのフレンド関係管理",
+    "title": "友队",
+    "subtitle": "管理与其他团队的友队关系",
     "list": {
-      "empty": "フレンドチームがありません",
+      "empty": "没有友队",
       "established_at": "成立日",
-      "visibility_public": "公開",
-      "visibility_private": "非公開",
-      "supporter_notice": "公開されているフレンドチームのみ表示されています",
-      "target_team_id": "対象チーム ID",
-      "comment_label": "挨拶コメント（任意）"
+      "visibility_public": "公开",
+      "visibility_private": "非公开",
+      "supporter_notice": "仅显示已公开的友队",
+      "target_team_id": "目标团队 ID",
+      "comment_label": "问候语（任意）"
     },
     "actions": {
-      "follow": "フォロー",
-      "unfollow": "フォロー解除",
-      "toggle_visibility": "公開設定を切替"
+      "follow": "关注",
+      "unfollow": "取消关注",
+      "toggle_visibility": "切换公开设置"
     },
     "messages": {
-      "follow_success": "フォローしました",
-      "follow_mutual_success": "相互フォロー成立 — フレンドチームになりました",
-      "follow_retry": "フォロー処理中です。{seconds}秒後に再度お試しください",
-      "unfollow_success": "フォローを解除しました",
-      "unfollow_confirm": "このチームへのフォローを解除しますか？",
-      "visibility_changed": "公開設定を変更しました"
+      "follow_success": "已关注",
+      "follow_mutual_success": "相互关注成立 — 成为友队了",
+      "follow_retry": "正在处理关注。请在{seconds}秒后重试",
+      "unfollow_success": "已取消关注",
+      "unfollow_confirm": "取消对此团队的关注吗？",
+      "visibility_changed": "已更改公开设置"
     },
     "errors": {
-      "self_follow": "自チームはフォローできません",
-      "already_following": "既にフォロー済みです",
-      "target_not_found": "対象チームが見つかりません",
-      "permission_denied": "権限がありません"
+      "self_follow": "不能关注自己的团队",
+      "already_following": "已经关注了",
+      "target_not_found": "找不到目标团队",
+      "permission_denied": "没有权限"
     }
   },
   "folders": {
-    "title": "フレンドフォルダ",
-    "create": "フォルダ作成",
+    "title": "好友文件夹",
+    "create": "创建文件夹",
     "list": {
-      "empty": "フォルダがありません",
-      "member_count": "{count}チーム",
-      "remaining": "残り{remaining}個作成可能（最大20個）"
+      "empty": "没有文件夹",
+      "member_count": "{count}个团队",
+      "remaining": "还可创建{remaining}个（最多20个）"
     },
     "fields": {
-      "name": "フォルダ名",
-      "description": "説明（任意）",
-      "color": "色"
+      "name": "文件夹名称",
+      "description": "说明（任意）",
+      "color": "颜色"
     },
     "actions": {
-      "edit": "編集",
-      "delete": "削除",
-      "manage_members": "メンバー管理",
-      "add_member": "フレンドを追加",
-      "remove_member": "削除"
+      "edit": "编辑",
+      "delete": "删除",
+      "manage_members": "管理成员",
+      "add_member": "添加好友",
+      "remove_member": "删除"
     },
     "placeholders": {
-      "name": "例: 系列校",
-      "description": "このフォルダの用途・メモ（任意）"
+      "name": "例：系列学校",
+      "description": "此文件夹的用途・备注（任意）"
     },
     "members": {
-      "title": "メンバー管理",
-      "current": "登録中のフレンド",
-      "available": "追加可能なフレンド",
-      "empty": "フォルダに登録されているフレンドはいません",
-      "no_friends": "追加可能なフレンドがいません"
+      "title": "成员管理",
+      "current": "已注册的好友",
+      "available": "可添加的好友",
+      "empty": "文件夹中没有注册的好友",
+      "no_friends": "没有可添加的好友"
     },
     "messages": {
-      "created": "フォルダを作成しました",
-      "updated": "フォルダを更新しました",
-      "deleted": "フォルダを削除しました",
-      "delete_confirm": "このフォルダを削除しますか？",
-      "max_exceeded": "フォルダは最大20個まで作成できます",
-      "name_required": "フォルダ名を入力してください",
-      "name_too_long": "フォルダ名は50文字以内で入力してください",
-      "description_too_long": "説明は300文字以内で入力してください",
-      "name_conflict": "同じ名前のフォルダが既に存在します",
-      "member_added": "フォルダにフレンドを追加しました",
-      "member_removed": "フォルダからフレンドを削除しました",
-      "duplicate_member": "このフレンドは既にフォルダに登録されています"
+      "created": "文件夹已创建",
+      "updated": "文件夹已更新",
+      "deleted": "文件夹已删除",
+      "delete_confirm": "删除此文件夹吗？",
+      "max_exceeded": "文件夹最多创建20个",
+      "name_required": "请输入文件夹名称",
+      "name_too_long": "文件夹名称请在50个字符以内",
+      "description_too_long": "说明请在300个字符以内",
+      "name_conflict": "已存在同名文件夹",
+      "member_added": "已将好友添加到文件夹",
+      "member_removed": "已将好友从文件夹删除",
+      "duplicate_member": "此好友已注册到文件夹"
     }
   },
   "friend_feed": {
-    "title": "管理者フィード",
-    "subtitle": "フレンドチームの投稿を確認・転送",
-    "badge": "フレンドから",
-    "forwarded_badge": "転送済み",
-    "permission_denied": "この画面を表示する権限がありません",
+    "title": "管理员动态",
+    "subtitle": "确认・转发友队的投稿",
+    "badge": "来自好友",
+    "forwarded_badge": "已转发",
+    "permission_denied": "没有查看此画面的权限",
     "list": {
-      "empty": "フレンドからの投稿はありません"
+      "empty": "没有来自好友的投稿"
     },
     "forward": {
-      "button": "自チームに転送",
-      "modal_title": "投稿を転送する",
-      "target_label": "配信範囲",
-      "target_member": "メンバーのみ",
-      "target_supporter": "メンバー + サポーター（Phase 3以降）",
-      "target_supporter_tooltip": "Phase 3以降で利用可能になります",
-      "comment_label": "管理者コメント（任意）",
-      "comment_placeholder": "転送時に添えるコメントを入力（任意）",
-      "submit": "転送する",
-      "cancel": "キャンセル",
-      "success": "投稿を転送しました",
-      "revoke": "転送を取消",
-      "revoke_success": "転送を取消しました",
-      "revoke_confirm": "この転送を取り消しますか？",
-      "error": "転送に失敗しました"
+      "button": "转发到本团队",
+      "modal_title": "转发投稿",
+      "target_label": "发布范围",
+      "target_member": "仅成员",
+      "target_supporter": "成员+支持者（Phase 3以后）",
+      "target_supporter_tooltip": "Phase 3以后可用",
+      "comment_label": "管理员评论（任意）",
+      "comment_placeholder": "输入转发时附加的评论（任意）",
+      "submit": "转发",
+      "cancel": "取消",
+      "success": "已转发投稿",
+      "revoke": "取消转发",
+      "revoke_success": "已取消转发",
+      "revoke_confirm": "取消此转发吗？",
+      "error": "转发失败"
     }
   },
   "forward_exports": {
-    "title": "逆転送履歴",
-    "subtitle": "自チーム投稿がどのフレンドに転送されたか",
-    "permission_denied": "この画面を表示する権限がありません",
+    "title": "逆转发历史",
+    "subtitle": "本团队投稿被哪些好友转发了",
+    "permission_denied": "没有查看此画面的权限",
     "list": {
-      "empty": "転送履歴はまだありません",
-      "anonymous_team": "匿名チーム",
-      "revoked": "取消済",
-      "target_member": "メンバー",
-      "target_supporter": "メンバー+サポーター"
+      "empty": "还没有转发历史",
+      "anonymous_team": "匿名团队",
+      "revoked": "已取消",
+      "target_member": "成员",
+      "target_supporter": "成员+支持者"
     },
     "columns": {
-      "source_post": "元投稿",
-      "forwarding_team": "転送先チーム",
-      "forwarded_at": "転送日時",
-      "target": "配信範囲",
-      "status": "状態"
+      "source_post": "原投稿",
+      "forwarding_team": "转发目标团队",
+      "forwarded_at": "转发日时",
+      "target": "发布范围",
+      "status": "状态"
     },
     "pagination": {
-      "showing": "{total}件中 {from}〜{to}件を表示",
-      "prev": "前へ",
-      "next": "次へ"
+      "showing": "{total}件中第{from}～{to}件",
+      "prev": "上一页",
+      "next": "下一页"
     }
   },
   "nav": {
-    "tab": "友队管理"
+    "tab": "友队"
   }
 }
