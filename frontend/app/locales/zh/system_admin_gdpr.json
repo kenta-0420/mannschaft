@@ -1,64 +1,64 @@
 {
   "systemAdmin": {
     "gdpr": {
-      "title": "GDPR パージ状況",
+      "title": "GDPR清除状况",
       "summary": {
-        "completed": "処理完了",
-        "pending": "処理待ち",
-        "alert": "アラート"
+        "completed": "处理完成",
+        "pending": "处理待机",
+        "alert": "警报"
       },
       "domain": {
-        "role": "ロール",
-        "team": "チーム",
-        "payment": "決済",
-        "chart": "チャート",
-        "proxy": "プロキシ",
-        "errorreport": "エラーレポート"
+        "role": "角色",
+        "team": "团队",
+        "payment": "结算",
+        "chart": "图表",
+        "proxy": "代理",
+        "errorreport": "错误报告"
       },
       "status": {
-        "PENDING": "処理待ち",
-        "SUCCESS": "完了"
+        "PENDING": "处理待机",
+        "SUCCESS": "完成"
       },
       "table": {
-        "userId": "ユーザーID",
-        "emailHash": "メールハッシュ",
-        "domainName": "ドメイン",
-        "status": "ステータス",
-        "attemptedAt": "処理開始日時",
-        "completedAt": "処理完了日時",
-        "isAlert": "アラート",
-        "retryCount": "retry 回数"
+        "userId": "用户ID",
+        "emailHash": "邮件哈希",
+        "domainName": "域名",
+        "status": "状态",
+        "attemptedAt": "处理开始日时",
+        "completedAt": "处理完成日时",
+        "isAlert": "警报",
+        "retryCount": "retry次数"
       },
       "filter": {
-        "status": "ステータス",
-        "domain": "ドメイン",
-        "dateFrom": "開始日時",
-        "dateTo": "終了日時",
-        "search": "検索",
-        "allStatuses": "全ステータス",
-        "allDomains": "全ドメイン"
+        "status": "状态",
+        "domain": "域名",
+        "dateFrom": "开始日时",
+        "dateTo": "结束日时",
+        "search": "搜索",
+        "allStatuses": "全状态",
+        "allDomains": "全域名"
       },
-      "export": "CSV エクスポート",
+      "export": "CSV导出",
       "detail": {
-        "title": "ユーザー詳細",
-        "close": "閉じる"
+        "title": "用户详情",
+        "close": "关闭"
       },
-      "noData": "データがありません",
+      "noData": "没有数据",
       "retry": {
-        "button": "再試行",
-        "confirm": "ドメイン「{domain}」の GDPR パージを再試行しますか？",
-        "success": "retry 成功しました",
-        "failed": "retry 失敗（PENDING 継続）",
-        "alreadySuccess": "既に処理済みです",
-        "count": "{count} 回 retry 済み",
-        "lastRetried": "最終 retry: {datetime}"
+        "button": "重试",
+        "confirm": "重试域名「{domain}」的GDPR清除吗？",
+        "success": "retry成功",
+        "failed": "retry失败（继续PENDING）",
+        "alreadySuccess": "已处理完成",
+        "count": "已retry {count}次",
+        "lastRetried": "最后retry: {datetime}"
       },
       "toast": {
-        "loadFailed": "データの取得に失敗しました",
-        "detailLoadFailed": "ユーザー詳細の取得に失敗しました",
-        "retryFailed": "retry リクエストに失敗しました"
+        "loadFailed": "获取数据失败",
+        "detailLoadFailed": "获取用户详情失败",
+        "retryFailed": "retry请求失败"
       },
-      "quickLinkLabel": "GDPR パージ状況"
+      "quickLinkLabel": "GDPR清除状况"
     }
   }
 }

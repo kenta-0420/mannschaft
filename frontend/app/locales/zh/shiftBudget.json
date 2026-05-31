@@ -6,14 +6,48 @@
       "create": "新建分配",
       "amount": "分配金额",
       "period": "适用期间",
-      "category": "费用项目"
+      "category": "费用项目",
+      "edit": "编辑分配",
+      "delete": "删除分配",
+      "deleteConfirm": "软删除分配（ID: {id}）。确定吗？",
+      "team": "团队",
+      "project": "项目",
+      "fiscalYear": "财政年度",
+      "currency": "货币",
+      "note": "备注",
+      "consumed": "已消化金额",
+      "rate": "消化率",
+      "status": "状态",
+      "actions": "操作",
+      "version": "版本",
+      "id": "ID",
+      "form": {
+        "teamIdHint": "不指定则为组织全体范围",
+        "projectIdHint": "仅在项目专用分配时指定",
+        "amountHint": "输入0日元以上",
+        "periodStart": "开始日期",
+        "periodEnd": "结束日期",
+        "save": "保存",
+        "cancel": "取消"
+      },
+      "empty": "没有注册的分配",
+      "loadError": "获取分配列表失败",
+      "createSuccess": "分配已创建",
+      "createError": "创建分配失败",
+      "updateSuccess": "分配已更新",
+      "updateError": "更新分配失败（可能是乐观锁冲突）",
+      "deleteSuccess": "分配已删除",
+      "deleteError": "删除分配失败"
     },
     "consumption": {
       "summary": "消耗汇总",
       "consumed": "已消耗",
       "remaining": "剩余",
       "rate": "消耗率",
-      "byUserHidden": "因权限不足，无法显示按用户的明细"
+      "byUserHidden": "因权限不足，无法显示按用户的明细",
+      "planned": "预计金额",
+      "confirmed": "确定金额",
+      "byUser": "按成员消化明细"
     },
     "threshold": {
       "warn80": "预算已达到 80%",
@@ -22,7 +56,21 @@
     },
     "alert": {
       "acknowledge": "确认",
-      "unacknowledged": "未确认的警告"
+      "unacknowledged": "未确认的警告",
+      "title": "预算警告历史",
+      "thresholdPercent": "阈值（%）",
+      "triggeredAt": "发生日时",
+      "consumedAtTrigger": "发生时消化金额",
+      "acknowledgedAt": "承认日时",
+      "acknowledgedBy": "承认者",
+      "acknowledged": "已承认",
+      "comment": "评论",
+      "commentPlaceholder": "可选（500字以内）",
+      "acknowledgeConfirm": "承认此警告（ID: {id}）。确定吗？",
+      "acknowledgeSuccess": "警告已承认",
+      "acknowledgeError": "承认警告失败",
+      "loadError": "获取警告列表失败",
+      "empty": "没有警告"
     },
     "link": {
       "project": "关联到项目",
@@ -41,7 +89,19 @@
       }
     },
     "dashboard": {
-      "title": "预算消耗仪表板"
+      "title": "预算消耗仪表板",
+      "subtitle": "所有预算分配的消化状况一览",
+      "kpi": {
+        "ok": "正常",
+        "warn": "警告（80%以上）",
+        "exceeded": "超额（100%以上）",
+        "severeExceeded": "严重超额（120%以上）"
+      },
+      "viewAlerts": "查看警告历史",
+      "viewFailedEvents": "查看失败事件",
+      "viewAllocations": "查看分配列表",
+      "loadError": "获取仪表盘失败",
+      "summaryError": "获取消化摘要失败"
     },
     "feature": {
       "disabled": "此功能已被组织管理员禁用"
@@ -50,7 +110,59 @@
       "button": "执行月度结算",
       "confirm": "将结算 {month} 的班次预算，确定要继续吗？",
       "success": "月度结算完成：{month}（已确定消耗记录 {count} 条）",
-      "alreadyClosed": "该月份已结算"
+      "alreadyClosed": "该月份已结算",
+      "title": "月度结算",
+      "yearMonth": "目标月份",
+      "yearMonthHint": "YYYY-MM格式（例: 2026-04）",
+      "execute": "执行",
+      "error": "月度结算失败"
+    },
+    "nav": {
+      "menuLabel": "班次预算",
+      "allocations": "预算分配",
+      "dashboard": "预算仪表盘",
+      "alerts": "警告历史",
+      "failedEvents": "失败事件"
+    },
+    "scope": {
+      "selectOrganization": "班次预算管理仅在组织范围内可用。请从范围选择器中选择一个组织。"
+    },
+    "status": {
+      "OK": "正常",
+      "WARN": "警告",
+      "EXCEEDED": "超额",
+      "SEVERE_EXCEEDED": "严重超额"
+    },
+    "failedEvent": {
+      "title": "失败事件管理",
+      "subtitle": "确认通知失败/hook失败，逐个重试，手动标记为已补正",
+      "id": "ID",
+      "eventType": "种别",
+      "sourceId": "对象ID",
+      "errorMessage": "错误内容",
+      "retryCount": "重试次数",
+      "lastRetriedAt": "最后重试",
+      "status": "状态",
+      "createdAt": "发生日时",
+      "actions": "操作",
+      "filterStatus": "按状态筛选",
+      "filterAll": "全部",
+      "retry": "重试",
+      "resolve": "标记为已补正",
+      "retryConfirm": "重新执行此失败事件（ID: {id}）。确定吗？",
+      "resolveConfirm": "将此失败事件（ID: {id}）标记为手动补正。此操作无法撤销。",
+      "retrySuccess": "已重试失败事件",
+      "retryError": "重试失败事件失败",
+      "resolveSuccess": "已将失败事件标记为已补正",
+      "resolveError": "标记失败事件失败",
+      "loadError": "获取失败事件列表失败",
+      "empty": "没有失败事件",
+      "statusValue": {
+        "PENDING": "未处理",
+        "RETRYING": "重试中",
+        "EXHAUSTED": "已达重试上限",
+        "MANUAL_RESOLVED": "手动补正完成"
+      }
     }
   }
 }

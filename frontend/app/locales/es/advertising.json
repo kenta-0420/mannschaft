@@ -469,23 +469,23 @@
     "back_to_advertiser": "Volver al panel del anunciante"
   },
   "teams_page": {
-    "title": "Gestión de anunciante del equipo",
-    "description": "Crea y entrega campañas de mensajería a nivel de equipo.",
+    "title": "Gestión de anunciantes del equipo",
+    "description": "Crea y entrega campañas publicitarias de tipo mensaje a nivel de equipo.",
     "nav": {
-      "messaging_campaigns_description": "Crea campañas de mensajería dirigidas a los miembros del equipo."
+      "messaging_campaigns_description": "Crea campañas publicitarias de tipo mensaje dirigidas a los miembros del equipo."
     },
-    "future_features_notice": "Las facturas, solicitudes de límite de crédito e informes recurrentes serán compatibles en una fase futura.",
+    "future_features_notice": "La gestión de facturas, solicitudes de límite de crédito e informes periódicos se admitirán en una fase futura.",
     "register": {
       "title": "Registro de anunciante",
       "submit": "Enviar solicitud",
-      "company_name_label": "Nombre de la empresa / anunciante",
-      "company_name_placeholder": "Empresa de Ejemplo S.A.",
-      "contact_email_label": "Dirección de correo electrónico de contacto",
+      "company_name_label": "Nombre de empresa / anunciante",
+      "company_name_placeholder": "Ejemplo S.A.",
+      "contact_email_label": "Correo electrónico de contacto",
       "billing_method_label": "Método de pago",
       "billing_stripe": "Tarjeta de crédito (Stripe)",
-      "billing_invoice": "Factura",
-      "success_message": "Su solicitud ha sido enviada. Podrá comenzar a usar el servicio después de la revisión.",
-      "error_message": "Error en el registro"
+      "billing_invoice": "Pago por factura",
+      "success_message": "Se ha enviado la solicitud de registro. Podrás comenzar a usar el servicio tras la revisión.",
+      "error_message": "Error al registrar"
     }
   }
 }

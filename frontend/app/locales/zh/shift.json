@@ -11,7 +11,7 @@
       "strategy": "分配策略",
       "greedyV1": "贪婪算法 (MVP)",
       "preferenceWeight": "偏好优先度",
-      "fairnessWeight": "公平性",
+      "fairnessWeight": "公平性权重",
       "consecutivePenalty": "连续抑制",
       "run": "执行分配",
       "running": "分配中...",
@@ -74,9 +74,9 @@
       "error": "PDF 生成失败"
     },
     "myShifts": {
-      "title": "我的班次",
+      "title": "我的排班",
       "empty": "没有班次",
-      "fetchError": "获取班次信息失败"
+      "fetchError": "排班信息获取失败"
     },
     "page": {
       "title": "班次",
@@ -320,11 +320,6 @@
       "totalLabel": "合计",
       "confirmSubmit": "确认提交这些内容吗？"
     },
-    "myShifts": {
-      "title": "我的排班",
-      "empty": "没有班次",
-      "fetchError": "排班信息获取失败"
-    },
     "myShift": {
       "confirmedTitle": "确定排班",
       "teamFilter": {
@@ -332,7 +327,7 @@
         "label": "按团队筛选"
       },
       "slot": {
-        "time": "{start} 〜 {end}",
+        "time": "{start}〜{end}",
         "position": "岗位",
         "schedule": "排班计划",
         "noSlot": "当天没有班次"

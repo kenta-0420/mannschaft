@@ -1,62 +1,62 @@
 {
   "email_outbox": {
-    "title": "メール送信キュー",
+    "title": "이메일 발송 대기열",
     "metrics": {
-      "pending": "待機中",
-      "dead_letter": "デッドレター",
-      "success_rate": "24h 成功率",
-      "oldest_pending": "最古待機（秒）"
+      "pending": "대기 중",
+      "dead_letter": "데드레터",
+      "success_rate": "24시간 성공률",
+      "oldest_pending": "가장 오래된 대기 (초)"
     },
     "filter": {
-      "status": "ステータス",
-      "source_domain": "送信元ドメイン",
-      "from_date": "開始日",
-      "to_date": "終了日",
-      "all_statuses": "全ステータス",
-      "apply": "適用",
-      "clear": "クリア"
+      "status": "상태",
+      "source_domain": "발신 도메인",
+      "from_date": "시작일",
+      "to_date": "종료일",
+      "all_statuses": "전체 상태",
+      "apply": "적용",
+      "clear": "초기화"
     },
     "table": {
       "id": "ID",
-      "status": "ステータス",
-      "template": "テンプレート",
-      "source": "送信元",
-      "retry_count": "リトライ回数",
-      "created_at": "作成日時",
-      "actions": "操作"
+      "status": "상태",
+      "template": "템플릿",
+      "source": "발신 출처",
+      "retry_count": "재시도 횟수",
+      "created_at": "생성 일시",
+      "actions": "작업"
     },
     "detail": {
-      "title": "詳細",
-      "to_address": "宛先",
-      "payload_vars": "テンプレート変数",
-      "ses_message_id": "SES メッセージ ID",
-      "body_purged": "本文は GDPR ポリシーにより消去済みです",
-      "next_attempt_at": "次回試行予定",
-      "sent_at": "送信日時",
-      "last_error": "最後のエラー",
-      "locale": "ロケール",
-      "source_domain": "送信元ドメイン",
-      "source_event_id": "送信元イベント ID"
+      "title": "상세 정보",
+      "to_address": "수신자",
+      "payload_vars": "템플릿 변수",
+      "ses_message_id": "SES 메시지 ID",
+      "body_purged": "본문은 GDPR 정책에 따라 삭제되었습니다",
+      "next_attempt_at": "다음 재시도 예정",
+      "sent_at": "발송 일시",
+      "last_error": "마지막 오류",
+      "locale": "언어",
+      "source_domain": "발신 도메인",
+      "source_event_id": "발신 이벤트 ID"
     },
     "action": {
-      "retry": "再試行",
-      "cancel": "キャンセル",
-      "back": "一覧へ戻る"
+      "retry": "재시도",
+      "cancel": "취소",
+      "back": "목록으로 돌아가기"
     },
     "status": {
-      "PENDING": "待機中",
-      "SENDING": "送信中",
-      "SENT": "送信済み",
-      "FAILED": "失敗",
-      "DEAD_LETTER": "デッドレター",
-      "CANCELLED": "キャンセル済み"
+      "PENDING": "대기 중",
+      "SENDING": "발송 중",
+      "SENT": "발송됨",
+      "FAILED": "실패",
+      "DEAD_LETTER": "데드레터",
+      "CANCELLED": "취소됨"
     },
-    "retry_success": "再試行キューに登録しました",
-    "cancel_success": "キャンセルしました",
-    "retry_conflict": "この状態では再試行できません",
-    "cancel_conflict": "この状態ではキャンセルできません",
-    "load_failed": "データの取得に失敗しました",
-    "no_data": "データがありません",
+    "retry_success": "재시도 대기열에 등록되었습니다",
+    "cancel_success": "취소되었습니다",
+    "retry_conflict": "현재 상태에서는 재시도할 수 없습니다",
+    "cancel_conflict": "현재 상태에서는 취소할 수 없습니다",
+    "load_failed": "데이터를 불러오지 못했습니다",
+    "no_data": "데이터가 없습니다",
     "na": "N/A"
   }
 }

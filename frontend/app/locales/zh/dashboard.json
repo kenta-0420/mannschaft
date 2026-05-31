@@ -73,23 +73,23 @@
     }
   },
   "swipeWidgets": {
-    "upcoming": "今後の予定",
-    "timeline": "タイムライン",
-    "bulletin": "掲示板",
-    "blog": "ブログ",
-    "chat": "チャット",
-    "calendar": "カレンダー",
-    "todo": "TODO",
+    "upcoming": "即将到来的日程",
+    "timeline": "时间线",
+    "bulletin": "公告板",
+    "blog": "博客",
+    "chat": "聊天",
+    "calendar": "日历",
+    "todo": "待办事项",
     "actionRequired": {
-      "title": "要対応",
-      "circulation": "回覧板",
-      "survey": "アンケート",
-      "attendance": "出席確認",
-      "unconfirmed": "{count}件未確認",
+      "title": "需要处理",
+      "circulation": "传阅板",
+      "survey": "问卷",
+      "attendance": "出席确认",
+      "unconfirmed": "{count}件未确认",
       "unanswered": "{count}件未回答",
-      "empty": "対応が必要な項目はありません",
-      "loadError": "加载待办事项失败"
+      "empty": "没有需要处理的项目",
+      "loadError": "获取待处理项目失败"
     },
-    "emptyState": "まだ投稿がありません"
+    "emptyState": "还没有投稿"
   }
 }

@@ -32,10 +32,10 @@
       "equipment": "设备管理",
       "parking": "停车场",
       "files": "文件",
-      "analytics": "分析",
+      "analytics": "访问分析",
       "audit_logs": "审计日志",
       "settings": "设置",
-      "faqSettings": "FAQ設定"
+      "faqSettings": "FAQ设置"
     }
   }
 }

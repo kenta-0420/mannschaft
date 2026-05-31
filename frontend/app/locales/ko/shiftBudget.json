@@ -6,14 +6,48 @@
       "create": "신규 배정",
       "amount": "배정 금액",
       "period": "적용 기간",
-      "category": "비용 항목"
+      "category": "비용 항목",
+      "edit": "할당 편집",
+      "delete": "할당 삭제",
+      "deleteConfirm": "이 할당（ID: {id}）을 논리 삭제합니다. 계속하시겠습니까?",
+      "team": "팀",
+      "project": "프로젝트",
+      "fiscalYear": "회계 연도",
+      "currency": "통화",
+      "note": "비고",
+      "consumed": "소화액",
+      "rate": "소화율",
+      "status": "상태",
+      "actions": "조작",
+      "version": "버전",
+      "id": "ID",
+      "form": {
+        "teamIdHint": "미지정 시 조직 전체 스코프",
+        "projectIdHint": "프로젝트 전용 할당의 경우에만 지정",
+        "amountHint": "0엔 이상으로 입력",
+        "periodStart": "시작일",
+        "periodEnd": "종료일",
+        "save": "저장",
+        "cancel": "취소"
+      },
+      "empty": "등록된 할당이 없습니다",
+      "loadError": "할당 목록 불러오기 실패",
+      "createSuccess": "할당을 생성했습니다",
+      "createError": "할당 생성에 실패했습니다",
+      "updateSuccess": "할당을 업데이트했습니다",
+      "updateError": "할당 업데이트에 실패했습니다（낙관적 잠금 충돌 가능성）",
+      "deleteSuccess": "할당을 삭제했습니다",
+      "deleteError": "할당 삭제에 실패했습니다"
     },
     "consumption": {
       "summary": "소비 요약",
       "consumed": "소비액",
       "remaining": "잔액",
       "rate": "소비율",
-      "byUserHidden": "권한이 없어 사용자별 내역을 표시할 수 없습니다"
+      "byUserHidden": "권한이 없어 사용자별 내역을 표시할 수 없습니다",
+      "planned": "예정액",
+      "confirmed": "확정액",
+      "byUser": "개인별 소화 내역"
     },
     "threshold": {
       "warn80": "예산이 80%에 도달했습니다",
@@ -22,7 +56,21 @@
     },
     "alert": {
       "acknowledge": "확인",
-      "unacknowledged": "미확인 경고"
+      "unacknowledged": "미확인 경고",
+      "title": "예산 경고 내역",
+      "thresholdPercent": "임계값（%）",
+      "triggeredAt": "발생 일시",
+      "consumedAtTrigger": "발생 시 소화액",
+      "acknowledgedAt": "승인 일시",
+      "acknowledgedBy": "승인자",
+      "acknowledged": "승인됨",
+      "comment": "댓글",
+      "commentPlaceholder": "선택 사항（500자 이내）",
+      "acknowledgeConfirm": "이 경고（ID: {id}）를 승인합니다. 계속하시겠습니까?",
+      "acknowledgeSuccess": "경고를 승인했습니다",
+      "acknowledgeError": "경고 승인에 실패했습니다",
+      "loadError": "경고 목록 불러오기 실패",
+      "empty": "경고가 없습니다"
     },
     "link": {
       "project": "프로젝트에 연결",
@@ -41,7 +89,19 @@
       }
     },
     "dashboard": {
-      "title": "예산 소비 대시보드"
+      "title": "예산 소비 대시보드",
+      "subtitle": "모든 예산 할당의 소화 현황 일람",
+      "kpi": {
+        "ok": "정상",
+        "warn": "경고（80% 이상）",
+        "exceeded": "초과（100% 이상）",
+        "severeExceeded": "심각 초과（120% 이상）"
+      },
+      "viewAlerts": "경고 내역 보기",
+      "viewFailedEvents": "실패 이벤트 보기",
+      "viewAllocations": "할당 목록 보기",
+      "loadError": "대시보드 불러오기 실패",
+      "summaryError": "소화 요약 불러오기 실패"
     },
     "feature": {
       "disabled": "이 기능은 조직 관리자에 의해 비활성화되었습니다"
@@ -50,7 +110,59 @@
       "button": "월 마감 실행",
       "confirm": "{month} 시프트 예산을 확정합니다. 진행하시겠습니까?",
       "success": "월 마감 완료: {month} (소비 기록 {count} 건 확정)",
-      "alreadyClosed": "해당 월은 이미 마감되었습니다"
+      "alreadyClosed": "해당 월은 이미 마감되었습니다",
+      "title": "월차 마감",
+      "yearMonth": "대상 월",
+      "yearMonthHint": "YYYY-MM 형식（예: 2026-04）",
+      "execute": "실행",
+      "error": "월차 마감에 실패했습니다"
+    },
+    "nav": {
+      "menuLabel": "시프트 예산",
+      "allocations": "예산 할당",
+      "dashboard": "예산 대시보드",
+      "alerts": "경고 내역",
+      "failedEvents": "실패 이벤트"
+    },
+    "scope": {
+      "selectOrganization": "시프트 예산 관리는 조직 스코프에서만 이용할 수 있습니다. 스코프 선택기에서 조직을 선택해 주세요."
+    },
+    "status": {
+      "OK": "정상",
+      "WARN": "경고",
+      "EXCEEDED": "초과",
+      "SEVERE_EXCEEDED": "심각 초과"
+    },
+    "failedEvent": {
+      "title": "실패 이벤트 관리",
+      "subtitle": "알림 실패/훅 실패 확인 + 개별 재실행 + 수동 보정 완료 마크",
+      "id": "ID",
+      "eventType": "종류",
+      "sourceId": "대상 ID",
+      "errorMessage": "오류 내용",
+      "retryCount": "재시도 횟수",
+      "lastRetriedAt": "최종 재시도",
+      "status": "상태",
+      "createdAt": "발생 일시",
+      "actions": "조작",
+      "filterStatus": "상태로 필터링",
+      "filterAll": "전체",
+      "retry": "재시도",
+      "resolve": "보정 완료 마크",
+      "retryConfirm": "이 실패 이벤트（ID: {id}）를 재실행합니다. 계속하시겠습니까?",
+      "resolveConfirm": "이 실패 이벤트（ID: {id}）를 수동 보정 완료로 마크합니다. 이 작업은 취소할 수 없습니다.",
+      "retrySuccess": "실패 이벤트를 재실행했습니다",
+      "retryError": "실패 이벤트 재실행에 실패했습니다",
+      "resolveSuccess": "실패 이벤트를 보정 완료로 마크했습니다",
+      "resolveError": "실패 이벤트 마크에 실패했습니다",
+      "loadError": "실패 이벤트 목록 불러오기 실패",
+      "empty": "실패 이벤트가 없습니다",
+      "statusValue": {
+        "PENDING": "미처리",
+        "RETRYING": "재시도 중",
+        "EXHAUSTED": "재시도 상한 도달",
+        "MANUAL_RESOLVED": "수동 보정 완료"
+      }
     }
   }
 }

@@ -1,35 +1,35 @@
 {
   "disclosure": {
-    "title": "重要事項説明書（参考）",
-    "subtitle": "管理組合作成の参考情報。法定書式ではありません",
-    "newDraft": "新規ドラフトを作成",
-    "editDraft": "ドラフトを編集",
-    "exportHistory": "出力履歴",
-    "exportPdf": "PDFで出力",
-    "exportExcel": "Excelで出力",
-    "exportWord": "Wordで出力",
-    "noDrafts": "ドラフトがまだ登録されていません",
-    "noExports": "出力履歴がまだありません",
-    "loading": "読み込み中…",
-    "saving": "保存中…",
-    "saved": "保存しました",
-    "deleted": "削除しました",
-    "deleteConfirm": "本当に削除しますか？",
-    "back": "一覧に戻る",
+    "title": "중요 사항 설명서（참고）",
+    "subtitle": "관리 조합이 작성한 참고 정보입니다. 법정 서식이 아닙니다",
+    "newDraft": "새 초안 작성",
+    "editDraft": "초안 편집",
+    "exportHistory": "내보내기 내역",
+    "exportPdf": "PDF로 내보내기",
+    "exportExcel": "Excel로 내보내기",
+    "exportWord": "Word로 내보내기",
+    "noDrafts": "아직 초안이 없습니다",
+    "noExports": "내보내기 내역이 없습니다",
+    "loading": "불러오는 중…",
+    "saving": "저장 중…",
+    "saved": "저장했습니다",
+    "deleted": "삭제했습니다",
+    "deleteConfirm": "정말로 삭제하시겠습니까?",
+    "back": "목록으로 돌아가기",
     "templatePicker": {
-      "title": "様式を選択",
-      "prefecture": "都道府県",
-      "allPrefectures": "全国共通",
-      "systemTemplates": "国交省標準書式",
-      "customTemplates": "組織カスタム",
-      "select": "この様式で作成",
-      "noTemplates": "利用可能な様式がありません",
-      "version": "バージョン {version}"
+      "title": "양식 선택",
+      "prefecture": "도도부현",
+      "allPrefectures": "전국 공통",
+      "systemTemplates": "국토교통성 표준 서식",
+      "customTemplates": "조직 커스텀",
+      "select": "이 양식으로 작성",
+      "noTemplates": "사용 가능한 양식이 없습니다",
+      "version": "버전 {version}"
     },
     "draftStatus": {
-      "DRAFT": "下書き",
-      "READY": "出力準備完了",
-      "EXPORTED": "出力済"
+      "DRAFT": "초안",
+      "READY": "내보내기 준비 완료",
+      "EXPORTED": "내보내기 완료"
     },
     "outputFormat": {
       "PDF": "PDF",
@@ -37,72 +37,72 @@
       "WORD": "Word"
     },
     "fields": {
-      "title": "ドラフト名",
-      "template": "様式",
-      "prefecture": "都道府県",
-      "version": "バージョン",
-      "targetDwelling": "対象居室",
-      "targetDwellingPlaceholder": "居室番号（例: 101）",
-      "status": "ステータス",
-      "createdAt": "作成日",
-      "updatedAt": "更新日",
-      "outputFormat": "形式",
-      "templateCode": "様式コード",
+      "title": "초안 이름",
+      "template": "양식",
+      "prefecture": "도도부현",
+      "version": "버전",
+      "targetDwelling": "대상 호실",
+      "targetDwellingPlaceholder": "호실 번호（예: 101）",
+      "status": "상태",
+      "createdAt": "작성일",
+      "updatedAt": "수정일",
+      "outputFormat": "형식",
+      "templateCode": "양식 코드",
       "sha256": "SHA-256",
-      "expiresAt": "有効期限"
+      "expiresAt": "만료일"
     },
     "actions": {
-      "edit": "編集",
-      "delete": "削除",
-      "save": "保存",
-      "cancel": "キャンセル",
-      "create": "作成",
-      "download": "ダウンロード",
-      "viewExports": "出力履歴を見る"
+      "edit": "편집",
+      "delete": "삭제",
+      "save": "저장",
+      "cancel": "취소",
+      "create": "생성",
+      "download": "다운로드",
+      "viewExports": "내보내기 내역 보기"
     },
     "autoFill": {
-      "title": "個人情報の自動引用",
-      "allowPersonalInfo": "個人情報の自動引用を許可",
-      "refresh": "自動引用を更新",
-      "note": "所有者氏名など個人情報を引用する場合のみチェックしてください",
-      "refreshed": "自動引用を更新しました",
-      "refreshFailed": "自動引用の更新に失敗しました"
+      "title": "개인정보 자동 인용",
+      "allowPersonalInfo": "개인정보 자동 인용 허용",
+      "refresh": "자동 인용 새로 고침",
+      "note": "소유자 성명 등 개인정보를 인용할 경우에만 체크하세요",
+      "refreshed": "자동 인용을 새로 고쳤습니다",
+      "refreshFailed": "자동 인용 새로 고침 실패"
     },
     "exported": {
-      "lockedTitle": "出力済ドラフト",
-      "lockedMessage": "このドラフトは既に出力されたため編集できません。コピーして新規ドラフトを作成してください（Phase 3）。"
+      "lockedTitle": "내보내기 완료 초안",
+      "lockedMessage": "이 초안은 이미 내보내졌으므로 편집할 수 없습니다. 복사하여 새 초안을 작성해 주세요（Phase 3）。"
     },
     "warnings": {
-      "title": "出力時の警告",
-      "close": "閉じる"
+      "title": "내보내기 시 경고",
+      "close": "닫기"
     },
     "errors": {
-      "loadFailed": "読み込みに失敗しました",
-      "saveFailed": "保存に失敗しました",
-      "deleteFailed": "削除に失敗しました",
-      "versionConflict": "他のユーザーが先に編集しました。最新版を取得します。",
-      "exportFailed": "出力に失敗しました",
-      "downloadFailed": "ダウンロードに失敗しました",
-      "tampered": "ファイルの整合性検証に失敗しました（DISCLOSURE_010）"
+      "loadFailed": "불러오기 실패",
+      "saveFailed": "저장 실패",
+      "deleteFailed": "삭제 실패",
+      "versionConflict": "다른 사용자가 먼저 편집했습니다. 최신 버전을 가져옵니다。",
+      "exportFailed": "내보내기 실패",
+      "downloadFailed": "다운로드 실패",
+      "tampered": "파일 무결성 검증 실패（DISCLOSURE_010）"
     },
     "limit": {
-      "warning": "ドラフトは組織あたり 50 件までです（残り {remaining} 件）",
-      "exceeded": "ドラフトの上限（50 件）に達しています。不要なものを削除してください。"
+      "warning": "초안은 조직당 최대 50개까지 가능합니다（남은 {remaining}개）",
+      "exceeded": "초안 한도（50개）에 도달했습니다. 불필요한 것을 삭제해 주세요。"
     },
     "validation": {
-      "required": "必須項目です",
-      "maxLength": "{max} 文字以内で入力してください",
-      "title": "ドラフト名は必須です",
-      "templateRequired": "様式を選択してください"
+      "required": "필수 항목입니다",
+      "maxLength": "{max}자 이내로 입력해 주세요",
+      "title": "초안 이름은 필수입니다",
+      "templateRequired": "양식을 선택해 주세요"
     },
-    "extend_expiry": "保管期限を延長",
-    "extend_expiry_dialog_title": "保管期限の延長",
-    "extend_expiry_date_label": "新しい保管期限",
-    "extend_expiry_current_label": "現在の保管期限",
-    "extend_expiry_hint": "本日から最大 7 年先まで指定できます",
-    "extend_expiry_validation_future": "現在より未来の日時を指定してください",
-    "extend_expiry_validation_max_7_years": "本日から 7 年以内の日時を指定してください",
-    "extend_expiry_success": "保管期限を {date} まで延長しました",
-    "extend_expiry_error": "保管期限の延長に失敗しました"
+    "extend_expiry": "보관 기한 연장",
+    "extend_expiry_dialog_title": "보관 기한 연장",
+    "extend_expiry_date_label": "새 보관 기한",
+    "extend_expiry_current_label": "현재 보관 기한",
+    "extend_expiry_hint": "오늘로부터 최대 7년 후까지 지정할 수 있습니다",
+    "extend_expiry_validation_future": "현재보다 미래의 날짜를 지정해 주세요",
+    "extend_expiry_validation_max_7_years": "오늘로부터 7년 이내의 날짜를 지정해 주세요",
+    "extend_expiry_success": "보관 기한을 {date}까지 연장했습니다",
+    "extend_expiry_error": "보관 기한 연장에 실패했습니다"
   }
 }

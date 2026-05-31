@@ -1,62 +1,62 @@
 {
   "email_outbox": {
-    "title": "メール送信キュー",
+    "title": "E-Mail-Versandwarteschlange",
     "metrics": {
-      "pending": "待機中",
-      "dead_letter": "デッドレター",
-      "success_rate": "24h 成功率",
-      "oldest_pending": "最古待機（秒）"
+      "pending": "Ausstehend",
+      "dead_letter": "Unzustellbar",
+      "success_rate": "24h Erfolgsquote",
+      "oldest_pending": "Ältester Ausstehend (Sek.)"
     },
     "filter": {
-      "status": "ステータス",
-      "source_domain": "送信元ドメイン",
-      "from_date": "開始日",
-      "to_date": "終了日",
-      "all_statuses": "全ステータス",
-      "apply": "適用",
-      "clear": "クリア"
+      "status": "Status",
+      "source_domain": "Quell-Domain",
+      "from_date": "Von Datum",
+      "to_date": "Bis Datum",
+      "all_statuses": "Alle Status",
+      "apply": "Anwenden",
+      "clear": "Zurücksetzen"
     },
     "table": {
       "id": "ID",
-      "status": "ステータス",
-      "template": "テンプレート",
-      "source": "送信元",
-      "retry_count": "リトライ回数",
-      "created_at": "作成日時",
-      "actions": "操作"
+      "status": "Status",
+      "template": "Vorlage",
+      "source": "Quelle",
+      "retry_count": "Wiederholungen",
+      "created_at": "Erstellt am",
+      "actions": "Aktionen"
     },
     "detail": {
-      "title": "詳細",
-      "to_address": "宛先",
-      "payload_vars": "テンプレート変数",
-      "ses_message_id": "SES メッセージ ID",
-      "body_purged": "本文は GDPR ポリシーにより消去済みです",
-      "next_attempt_at": "次回試行予定",
-      "sent_at": "送信日時",
-      "last_error": "最後のエラー",
-      "locale": "ロケール",
-      "source_domain": "送信元ドメイン",
-      "source_event_id": "送信元イベント ID"
+      "title": "Details",
+      "to_address": "Empfänger",
+      "payload_vars": "Vorlagenvariablen",
+      "ses_message_id": "SES-Nachrichten-ID",
+      "body_purged": "Inhalt wurde gemäß DSGVO-Richtlinie gelöscht",
+      "next_attempt_at": "Nächster Versuchszeitpunkt",
+      "sent_at": "Gesendet am",
+      "last_error": "Letzter Fehler",
+      "locale": "Sprache",
+      "source_domain": "Quell-Domain",
+      "source_event_id": "Quell-Ereignis-ID"
     },
     "action": {
-      "retry": "再試行",
-      "cancel": "キャンセル",
-      "back": "一覧へ戻る"
+      "retry": "Erneut versuchen",
+      "cancel": "Abbrechen",
+      "back": "Zurück zur Liste"
     },
     "status": {
-      "PENDING": "待機中",
-      "SENDING": "送信中",
-      "SENT": "送信済み",
-      "FAILED": "失敗",
-      "DEAD_LETTER": "デッドレター",
-      "CANCELLED": "キャンセル済み"
+      "PENDING": "Ausstehend",
+      "SENDING": "Wird gesendet",
+      "SENT": "Gesendet",
+      "FAILED": "Fehlgeschlagen",
+      "DEAD_LETTER": "Unzustellbar",
+      "CANCELLED": "Abgebrochen"
     },
-    "retry_success": "再試行キューに登録しました",
-    "cancel_success": "キャンセルしました",
-    "retry_conflict": "この状態では再試行できません",
-    "cancel_conflict": "この状態ではキャンセルできません",
-    "load_failed": "データの取得に失敗しました",
-    "no_data": "データがありません",
+    "retry_success": "Zur Wiederholungswarteschlange hinzugefügt",
+    "cancel_success": "Erfolgreich abgebrochen",
+    "retry_conflict": "In diesem Status kann kein neuer Versuch gestartet werden",
+    "cancel_conflict": "In diesem Status kann nicht abgebrochen werden",
+    "load_failed": "Daten konnten nicht geladen werden",
+    "no_data": "Keine Daten vorhanden",
     "na": "N/A"
   }
 }

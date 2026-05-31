@@ -1,0 +1,101 @@
+{
+  "market": {
+    "title": "Market",
+    "listing": {
+      "label": "Listing",
+      "count": "{count} listings",
+      "regionNone": "Nationwide (including unspecified region)"
+    },
+    "page": {
+      "newListing": "Post a listing"
+    },
+    "action": {
+      "post": "Post listing",
+      "apply": "Apply",
+      "takeDown": "Take down",
+      "loginToApply": "Log in to apply",
+      "goToDashboard": "Go to dashboard",
+      "postFromDashboard": "Post a listing from your team/organization dashboard"
+    },
+    "filter": {
+      "prefecture": "Prefecture",
+      "city": "City",
+      "category": "Category",
+      "keyword": "Search by keyword",
+      "allPrefectures": "Nationwide",
+      "allCities": "Select city",
+      "allCategories": "All categories",
+      "includeRegionNone": "Include listings without region",
+      "mobileToggle": "Filter"
+    },
+    "breadcrumb": {
+      "national": "Nationwide",
+      "count": "({count})"
+    },
+    "card": {
+      "deadline": "Deadline",
+      "capacity": "{confirmed}/{capacity} applied",
+      "region": "Region",
+      "category": "Category",
+      "organizer": "Organizer"
+    },
+    "status": {
+      "OPEN": "Open",
+      "FULL": "Full (pending confirmation)",
+      "COMPLETED": "Completed",
+      "CANCELLED": "Cancelled",
+      "AUTO_CANCELLED": "Auto-cancelled"
+    },
+    "visibility": {
+      "public": "Public",
+      "friendsOnly": "Friend teams only",
+      "label": "Visibility"
+    },
+    "friendTarget": {
+      "allFriends": "All friend teams",
+      "folder": "By folder",
+      "team": "Specific teams",
+      "addTeam": "Add team",
+      "selectFolder": "Select folder",
+      "noFolders": "No folders available"
+    },
+    "empty": {
+      "title": "No listings found",
+      "cta": {
+        "canPost": "Be the first to post a listing for your team!",
+        "noPermission": "To post a listing, become an admin of a team/organization or ask an admin.",
+        "guest": "Log in to post listings or apply"
+      }
+    },
+    "detail": {
+      "organizer": "Organizer",
+      "region": "Region",
+      "startAt": "Event date",
+      "deadline": "Application deadline",
+      "capacity": "Capacity",
+      "confirmedCount": "Applied",
+      "status": "Status",
+      "location": "Location",
+      "category": "Category",
+      "notFound": "Listing not found",
+      "notPublic": "This listing is not public"
+    },
+    "notify": {
+      "applicationReceived": "Someone applied to your listing ({owner} / {title})",
+      "friendListing": "{team} sent you a listing: \"{title}\"",
+      "finalizeRequest": "Your listing is full. Would you like to confirm and close it?",
+      "reminderShortfall": "Deadline approaching. You still need {count} more applicants.",
+      "autoCancelled": "\"{title}\" was closed without enough applicants.",
+      "cancelledToApplicant": "Sorry, \"{title}\" has been withdrawn by the organizer.",
+      "seeOtherListings": "See other listings from {team}"
+    },
+    "error": {
+      "loadFailed": "Failed to load market data",
+      "MARKET_001": "Invalid region code or prefecture/city mismatch",
+      "MARKET_002": "At least one recipient is required for friend-only listings",
+      "MARKET_003": "Cannot specify a team that is not a confirmed friend",
+      "MARKET_004": "Cannot specify a folder owned by another team",
+      "MARKET_005": "Cannot combine friend-only visibility with distribution targets"
+    }
+  }
+}

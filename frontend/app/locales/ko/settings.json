@@ -1,35 +1,35 @@
 {
   "data_export": {
-    "section_title": "データエクスポート",
-    "export_button": "個人データをエクスポート",
-    "status_completed": "完了",
-    "status_failed": "失敗",
-    "status_processing": "処理中",
-    "download_button": "ダウンロード",
-    "fetch_error": "エクスポート状態の取得に失敗しました",
-    "step_completed": "エクスポート完了 — ダウンロード期限: {expiry}",
-    "step_failed": "エクスポートに失敗しました",
-    "step_processing": "エクスポート中...",
-    "step_preparing": "準備中..."
+    "section_title": "데이터 내보내기",
+    "export_button": "개인 데이터 내보내기",
+    "status_completed": "완료",
+    "status_failed": "실패",
+    "status_processing": "처리 중",
+    "download_button": "다운로드",
+    "fetch_error": "내보내기 상태를 가져오지 못했습니다",
+    "step_completed": "내보내기 완료 — 다운로드 만료: {expiry}",
+    "step_failed": "내보내기에 실패했습니다",
+    "step_processing": "내보내는 중...",
+    "step_preparing": "준비 중..."
   },
   "deletion_preview": {
-    "dialog_title": "アカウント削除の確認",
-    "confirm_message": "この操作は取り消せません。本当にアカウントを削除しますか？",
-    "loading": "削除プレビューを読み込み中...",
-    "warning_title": "注意事項",
-    "deleted_data_title": "削除されるデータ",
-    "anonymized_data_title": "匿名化されるデータ",
-    "table_category": "カテゴリ",
-    "table_count": "件数",
-    "table_count_unit": "{count}件",
-    "table_entity": "対象",
-    "table_field": "フィールド",
-    "cancel_button": "キャンセル",
-    "delete_button": "削除する",
-    "fetch_error": "削除プレビューの取得に失敗しました"
+    "dialog_title": "계정 삭제 확인",
+    "confirm_message": "이 작업은 취소할 수 없습니다. 정말로 계정을 삭제하시겠습니까?",
+    "loading": "삭제 미리보기를 불러오는 중...",
+    "warning_title": "주의사항",
+    "deleted_data_title": "삭제될 데이터",
+    "anonymized_data_title": "익명화될 데이터",
+    "table_category": "카테고리",
+    "table_count": "건수",
+    "table_count_unit": "{count}건",
+    "table_entity": "대상",
+    "table_field": "필드",
+    "cancel_button": "취소",
+    "delete_button": "삭제",
+    "fetch_error": "삭제 미리보기를 가져오지 못했습니다"
   },
   "signature": {
-    "clear": "クリア"
+    "clear": "지우기"
   },
   "nav": {
     "calendar": "캘린더",

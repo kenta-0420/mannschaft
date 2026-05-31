@@ -1,35 +1,35 @@
 {
   "data_export": {
-    "section_title": "データエクスポート",
-    "export_button": "個人データをエクスポート",
-    "status_completed": "完了",
-    "status_failed": "失敗",
-    "status_processing": "処理中",
-    "download_button": "ダウンロード",
-    "fetch_error": "エクスポート状態の取得に失敗しました",
-    "step_completed": "エクスポート完了 — ダウンロード期限: {expiry}",
-    "step_failed": "エクスポートに失敗しました",
-    "step_processing": "エクスポート中...",
-    "step_preparing": "準備中..."
+    "section_title": "数据导出",
+    "export_button": "导出个人数据",
+    "status_completed": "已完成",
+    "status_failed": "失败",
+    "status_processing": "处理中",
+    "download_button": "下载",
+    "fetch_error": "获取导出状态失败",
+    "step_completed": "导出完成 — 下载截止日期: {expiry}",
+    "step_failed": "导出失败",
+    "step_processing": "导出中...",
+    "step_preparing": "准备中..."
   },
   "deletion_preview": {
-    "dialog_title": "アカウント削除の確認",
-    "confirm_message": "この操作は取り消せません。本当にアカウントを削除しますか？",
-    "loading": "削除プレビューを読み込み中...",
-    "warning_title": "注意事項",
-    "deleted_data_title": "削除されるデータ",
-    "anonymized_data_title": "匿名化されるデータ",
-    "table_category": "カテゴリ",
-    "table_count": "件数",
-    "table_count_unit": "{count}件",
-    "table_entity": "対象",
-    "table_field": "フィールド",
-    "cancel_button": "キャンセル",
-    "delete_button": "削除する",
-    "fetch_error": "削除プレビューの取得に失敗しました"
+    "dialog_title": "确认账户删除",
+    "confirm_message": "此操作无法撤销。确定要删除您的账户吗？",
+    "loading": "正在加载删除预览...",
+    "warning_title": "注意事项",
+    "deleted_data_title": "将被删除的数据",
+    "anonymized_data_title": "将被匿名化的数据",
+    "table_category": "类别",
+    "table_count": "数量",
+    "table_count_unit": "{count} 条",
+    "table_entity": "对象",
+    "table_field": "字段",
+    "cancel_button": "取消",
+    "delete_button": "删除",
+    "fetch_error": "获取删除预览失败"
   },
   "signature": {
-    "clear": "クリア"
+    "clear": "清除"
   },
   "nav": {
     "calendar": "日历",
