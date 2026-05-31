@@ -216,6 +216,8 @@ test.describe('F04.11 統合通知インボックス', () => {
 
     // スヌーズ中アイテムが表示される
     await expect(page.getByText('E2Eテスト通知')).toBeVisible()
+    // スヌーズ中タブ切替で state=SNOOZED の一覧取得が発火していること
+    expect(snoozedCallCount).toBeGreaterThan(0)
   })
 
   // ──────────────────────────────────────────────────────────────────────
