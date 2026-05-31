@@ -3,11 +3,12 @@
  * F22.1 横スワイプ・スコープカルーセル。
  *
  * 設計書: docs/features/F22.1_swipe_scope_dashboard/03_security_ux.md §2.6 / §3
- * - 3 パネル（個人/チーム/組織）を同時マウントし transform: translateX(-N*100%) でスライド。
- *   再描画なし（v-show 不使用・常時 DOM 上に存在）。
+ * - 3 パネル（個人/チーム/組織）を同時マウント。常に [prev, center, next] の循環順に並べ、
+ *   transform: translateX で中央（-100%）を表示する。再描画なし（v-show 不使用・常時 DOM 上に存在）。
  * - 自前 touch ハンドラ（swiper ライブラリ不使用）。
  *   閾値 = 画面幅 20% かつ |Δx| > |Δy| * 1.5。慣性（フリック速度）対応。閾値未満はばね戻し。
- * - 循環: 個人(0)→チーム(1)→組織(2)→個人(0)（mod 3）。端ジャンプ時のみ transition を一時無効化。
+ * - 無限循環: 個人↔チーム↔組織↔個人 を常に「隣へ 1 枚だけ」スライド。1 ステップ後に transition を
+ *   切って centerIndex を更新＝画面外で再センタリングするため、個人↔組織もチームを横切らない。
  * - PC: 上部セグメントトグル + 左右矢印 + キーボード ←→（入力フォーカス時は奪わない）。
  * - モバイル: 下部ドット。
  * - prefers-reduced-motion: アニメ無効・即時切替。
@@ -18,21 +19,47 @@ import type { ActivePanel } from '~/stores/useScopeDashboardStore'
 const { t } = useI18n()
 const store = useScopeDashboardStore()
 
-/** パネル定義（順序が translateX のインデックスに対応）。 */
-const PANELS: { panel: ActivePanel; labelKey: string }[] = [
-  { panel: 'PERSONAL', labelKey: 'scopeDashboard.tabs.personal' },
-  { panel: 'TEAM', labelKey: 'scopeDashboard.tabs.team' },
-  { panel: 'ORGANIZATION', labelKey: 'scopeDashboard.tabs.organization' },
+/** パネル定義（順序が循環インデックスに対応）。 */
+const PANELS: { panel: ActivePanel; labelKey: string; icon: string }[] = [
+  { panel: 'PERSONAL', labelKey: 'scopeDashboard.tabs.personal', icon: 'pi pi-user' },
+  { panel: 'TEAM', labelKey: 'scopeDashboard.tabs.team', icon: 'pi pi-users' },
+  { panel: 'ORGANIZATION', labelKey: 'scopeDashboard.tabs.organization', icon: 'pi pi-building' },
 ]
 const PANEL_COUNT = PANELS.length
 
-/** store.activePanel ↔ activeIndex の相互変換。 */
+/**
+ * store.activePanel ↔ activeIndex の相互変換。
+ * activeIndex は「選択中（ハイライト対象）」のパネル。切替操作の瞬間に更新する。
+ */
 const activeIndex = computed<number>({
   get: () => PANELS.findIndex(p => p.panel === store.activePanel),
   set: (idx) => {
     const target = PANELS[idx]
     if (target) store.setActivePanel(target.panel)
   },
+})
+
+/**
+ * レイアウト上の「中央スロット」に置くパネル。
+ * 常に [prev, center, next] の 3 枚を循環順に並べ、translateX -100% で中央を表示する。
+ * 1 ステップ分だけスライド（-100%→-200% / -100%→0%）した後、transition を切って
+ * centerIndex を更新＝裏で再センタリングする。これにより個人↔組織もチームを横切らずに
+ * 「隣へ 1 枚だけ」滑らかにスライドする（無限循環カルーセル）。
+ */
+const centerIndex = ref(activeIndex.value)
+/** 現在アニメ中のスライド方向。-1=prev / 0=停止 / +1=next。 */
+const slideDir = ref(0)
+/** スライドアニメ進行中フラグ（多重入力・外部変更との競合防止）。 */
+const isAnimating = ref(false)
+
+/** レイアウトに並べる 3 スロット（循環順 [prev, center, next]）。各要素は PANELS の要素＋実 index。 */
+const slots = computed(() => {
+  const c = centerIndex.value
+  return [
+    (c - 1 + PANEL_COUNT) % PANEL_COUNT,
+    c,
+    (c + 1) % PANEL_COUNT,
+  ].map(i => ({ index: i, ...PANELS[i]! }))
 })
 
 // --- prefers-reduced-motion ---
@@ -65,40 +92,71 @@ function announce(idx: number) {
   liveMessage.value = t('scopeDashboard.switchedTo', { name: t(target.labelKey) })
 }
 
+/** 1 ステップ（隣へ 1 枚）のスライド時間（秒）。全切替で一定。 */
+const BASE_DURATION = 0.42
+let slideTimer: ReturnType<typeof setTimeout> | null = null
+
 /**
- * パネルを指定インデックスへ切り替える。
- * 循環の継ぎ目（端ジャンプ）は transition を 1 フレーム無効化して瞬間移動 → 再有効化する。
- *
- * @param rawIdx - 任意の整数（mod 3 で循環させる）
- * @param wrapped - 端をまたいだ循環ジャンプかどうか（transition 抑制用）
+ * 隣のパネルへ 1 ステップだけスライドする（dir = +1: next / -1: prev）。
+ * 1. 選択（activeIndex）を即時更新 → タブ/ドットのハイライトはすぐ切り替わる。
+ * 2. slideDir をセットして 1 枚分だけ transform をアニメーション。
+ * 3. アニメ完了後、transition を無効化して centerIndex を更新＝画面外で再センタリング。
  */
-function goTo(rawIdx: number, wrapped = false) {
-  const idx = ((rawIdx % PANEL_COUNT) + PANEL_COUNT) % PANEL_COUNT
-  if (wrapped && !reducedMotion.value) {
-    // 端ジャンプ: transition を一時無効化して瞬間移動 → 次フレームで再有効化。
+function step(dir: 1 | -1) {
+  if (isAnimating.value) return
+  const to = (centerIndex.value + dir + PANEL_COUNT) % PANEL_COUNT
+
+  if (reducedMotion.value) {
+    // アニメ無効: 即時切替。
+    activeIndex.value = to
+    centerIndex.value = to
+    announce(to)
+    return
+  }
+
+  // isAnimating を先に立てて、activeIndex 変更を監視している watcher の即時センタリングを抑止する。
+  isAnimating.value = true
+  activeIndex.value = to
+  announce(to)
+  slideDir.value = dir
+
+  slideTimer = setTimeout(() => {
+    // 画面外での再センタリング（transition を切って瞬間移動 → 次フレームで再有効化）。
     transitionEnabled.value = false
-    activeIndex.value = idx
+    centerIndex.value = to
+    slideDir.value = 0
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         transitionEnabled.value = true
+        isAnimating.value = false
       })
     })
-  } else {
-    activeIndex.value = idx
-  }
-  announce(idx)
+  }, BASE_DURATION * 1000 + 30)
+}
+
+/**
+ * 指定パネルへ切り替える（タブ/ドットのクリック用）。
+ * 3 枚の循環なので任意の遷移は必ず ±1 ステップに収まる（前進 or 後退）。
+ */
+function goTo(idx: number) {
+  if (isAnimating.value || idx === centerIndex.value) return
+  const dir: 1 | -1 = idx === (centerIndex.value + 1) % PANEL_COUNT ? 1 : -1
+  step(dir)
 }
 
 function next() {
-  const cur = activeIndex.value
-  // 2 → 0 は端をまたぐ循環。
-  goTo(cur + 1, cur === PANEL_COUNT - 1)
+  step(1)
 }
 function prev() {
-  const cur = activeIndex.value
-  // 0 → 2 は端をまたぐ循環。
-  goTo(cur - 1, cur === 0)
+  step(-1)
 }
+
+// 外部（他コンポーネント）から store.activePanel が変更された場合は、アニメ中でなければ即時センタリングする。
+watch(activeIndex, (v) => {
+  if (!isAnimating.value && v !== centerIndex.value) {
+    centerIndex.value = v
+  }
+})
 
 // --- touch / pointer ハンドラ ---
 function onTouchStart(e: TouchEvent) {
@@ -198,10 +256,14 @@ function onKeydown(e: KeyboardEvent) {
 
 // --- トラックの transform スタイル ---
 const trackStyle = computed(() => {
-  const base = `translateX(calc(${-activeIndex.value * 100}% + ${dragOffsetPx.value}px))`
+  // 中央スロット（slot1）を表示する基準位置が -100%。
+  // slideDir に応じて 1 枚分だけスライド（next: -200% / prev: 0%）。
+  const x = (-1 - slideDir.value) * 100
+  const base = `translateX(calc(${x}% + ${dragOffsetPx.value}px))`
+  // 加速も減速も対称な ease-in-out。1 ステップ固定なので時間は常に一定。
   const transition =
     transitionEnabled.value && !reducedMotion.value
-      ? 'transform .28s ease'
+      ? `transform ${BASE_DURATION}s ease-in-out`
       : 'none'
   return { transform: base, transition }
 })
@@ -218,13 +280,14 @@ onMounted(() => {
 onBeforeUnmount(() => {
   motionQuery?.removeEventListener('change', onMotionChange)
   if (import.meta.client) window.removeEventListener('keydown', onKeydown)
+  if (slideTimer !== null) clearTimeout(slideTimer)
 })
 </script>
 
 <template>
   <div class="flex flex-col" data-testid="scope-carousel">
     <!-- PC: 上部セグメントトグル + 左右矢印 -->
-    <div class="mb-4 flex items-center justify-between gap-2">
+    <div class="mb-4 flex items-center justify-center gap-7">
       <Button
         icon="pi pi-chevron-left"
         text
@@ -238,7 +301,7 @@ onBeforeUnmount(() => {
         role="tablist"
         data-testid="scope-segment-tablist"
         :aria-label="$t('scopeDashboard.tabs.personal')"
-        class="flex items-center gap-1 rounded-full bg-surface-100 p-1 dark:bg-surface-800"
+        class="field-bordered border-2 flex items-center gap-1 rounded-full bg-surface-100 p-1 dark:bg-surface-800"
       >
         <button
           v-for="(p, idx) in PANELS"
@@ -249,7 +312,7 @@ onBeforeUnmount(() => {
           :data-testid="`scope-segment-${p.panel}`"
           :aria-selected="idx === activeIndex"
           :aria-controls="`scope-panel-${p.panel}`"
-          class="rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
+          class="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
           :class="
             idx === activeIndex
               ? 'bg-primary text-primary-contrast'
@@ -257,6 +320,11 @@ onBeforeUnmount(() => {
           "
           @click="goTo(idx)"
         >
+          <i
+            :class="p.icon"
+            class="text-xs"
+            aria-hidden="true"
+          />
           {{ $t(p.labelKey) }}
         </button>
       </div>
@@ -284,17 +352,21 @@ onBeforeUnmount(() => {
         class="flex w-full"
         :style="trackStyle"
       >
+        <!--
+          循環順 [prev, center, next] の 3 スロットを描画。:key はパネル固定なので
+          slots の並び替え時も DOM/コンポーネントは再マウントされず移動するだけ（二重 fetch なし）。
+        -->
         <section
-          v-for="(p, idx) in PANELS"
-          :id="`scope-panel-${p.panel}`"
-          :key="p.panel"
+          v-for="slot in slots"
+          :id="`scope-panel-${slot.panel}`"
+          :key="slot.panel"
           role="tabpanel"
-          :aria-labelledby="`scope-tab-${p.panel}`"
-          :aria-hidden="idx !== activeIndex"
+          :aria-labelledby="`scope-tab-${slot.panel}`"
+          :aria-hidden="slot.index !== activeIndex"
           class="w-full shrink-0 grow-0 basis-full"
         >
-          <DashboardPersonalPanel v-if="p.panel === 'PERSONAL'" />
-          <DashboardTeamPanel v-else-if="p.panel === 'TEAM'" />
+          <DashboardPersonalPanel v-if="slot.panel === 'PERSONAL'" />
+          <DashboardTeamPanel v-else-if="slot.panel === 'TEAM'" />
           <DashboardOrgPanel v-else />
         </section>
       </div>
