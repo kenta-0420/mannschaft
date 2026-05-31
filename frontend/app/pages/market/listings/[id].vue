@@ -103,7 +103,7 @@ function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'dan
 </script>
 
 <template>
-  <div class="mx-auto max-w-3xl p-6">
+  <div class="mx-auto max-w-3xl p-6" data-testid="market-detail-page">
     <!-- ローディング -->
     <PageLoading v-if="pageLoading" />
 
@@ -118,9 +118,9 @@ function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'dan
         />
       </div>
 
-      <div class="rounded-xl border border-surface-300 bg-surface-0 p-6 shadow-sm dark:border-surface-600 dark:bg-surface-900">
+      <div class="rounded-xl border border-surface-300 bg-surface-0 p-6 shadow-sm dark:border-surface-600 dark:bg-surface-900" data-testid="market-detail-card">
         <!-- 主催（PII抑制: 公称名+アイコンのみ） -->
-        <div class="mb-4 flex items-center gap-3">
+        <div class="mb-4 flex items-center gap-3" data-testid="market-detail-organizer">
           <Avatar
             v-if="listing.owner.icon_url"
             :image="listing.owner.icon_url"
@@ -135,7 +135,7 @@ function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'dan
           />
           <div>
             <p class="text-xs text-surface-500">{{ $t('market.detail.organizer') }}</p>
-            <p class="font-semibold text-surface-800 dark:text-surface-100">
+            <p class="font-semibold text-surface-800 dark:text-surface-100" data-testid="market-detail-organizer-name">
               {{ listing.owner.display_name }}
             </p>
           </div>
@@ -147,7 +147,7 @@ function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'dan
         </div>
 
         <!-- タイトル -->
-        <h1 class="mb-4 text-2xl font-bold text-surface-900 dark:text-surface-50">
+        <h1 class="mb-4 text-2xl font-bold text-surface-900 dark:text-surface-50" data-testid="market-detail-title">
           {{ listing.title }}
         </h1>
 
@@ -198,13 +198,14 @@ function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'dan
         </div>
 
         <!-- 応募ボタン -->
-        <div class="flex justify-center">
+        <div class="flex justify-center" data-testid="market-detail-apply-area">
           <!-- 未ログイン: ログイン誘導 -->
           <Button
             v-if="!isAuthenticated"
             :label="$t('market.action.loginToApply')"
             icon="pi pi-sign-in"
             size="large"
+            data-testid="market-login-to-apply-btn"
             @click="navigateTo('/login')"
           />
           <!-- ログイン済み・OPEN: 応募ボタン -->
@@ -214,6 +215,7 @@ function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'dan
             icon="pi pi-check"
             size="large"
             :loading="applying"
+            data-testid="market-apply-btn"
             @click="applyToListing"
           />
           <!-- ログイン済み・OPEN以外 -->
