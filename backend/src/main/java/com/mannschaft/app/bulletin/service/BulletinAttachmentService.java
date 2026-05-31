@@ -440,7 +440,10 @@ public class BulletinAttachmentService {
             case ORGANIZATION -> new QuotaScope(StorageScopeType.ORGANIZATION, thread.getScopeId());
             case TEAM -> new QuotaScope(StorageScopeType.TEAM, thread.getScopeId());
             case PERSONAL -> new QuotaScope(StorageScopeType.PERSONAL, thread.getScopeId());
-            case VILLAGE -> new QuotaScope(StorageScopeType.PERSONAL, userId);
+            // VILLAGE / 大会連絡スペース（TOURNAMENT / TOURNAMENT_DIVISION）は対応する
+            // StorageScopeType が無いため、操作者の PERSONAL クォータに計上する
+            // （ChatAttachmentService の村ロビー添付と同方針）。
+            case VILLAGE, TOURNAMENT, TOURNAMENT_DIVISION -> new QuotaScope(StorageScopeType.PERSONAL, userId);
         };
     }
 
