@@ -4,6 +4,8 @@ import com.mannschaft.app.inbox.InboxPriority;
 import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.dto.InboxPageResponse;
 import com.mannschaft.app.inbox.dto.InboxSummaryResponse;
+import com.mannschaft.app.inbox.repository.InboxItemStateRepository;
+import com.mannschaft.app.inbox.repository.InboxLabelLinkRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -17,7 +19,14 @@ import java.util.UUID;
  * まとめ取りしてマージする（手本: {@code DashboardService.getPersonalDashboard}）。
  * 設計書: 03_business_logic.md §1・§4。</p>
  *
- * <p><b>骨組み（一陣）</b>: ロジック本体は三陣で実装する。現段階ではコンパイルが通る空骨格。</p>
+ * <p><b>骨組み（一陣 → 二陣でオーバーレイ Repository を注入）</b>: ロジック本体は三陣で実装する。
+ * 現段階ではコンパイルが通る空骨格。</p>
+ *
+ * <p><b>二陣メモ（test-first・三陣へ申し送り）</b>: 設計書 03_business_logic.md §4 の
+ * 「オーバーレイ/ラベルは user_id でまとめ取り（item 毎に引かない＝N+1 回避）」を
+ * 検証可能にするため、{@link InboxItemStateRepository} と {@link InboxLabelLinkRepository} を
+ * 注入フィールドに追加した。三陣は集約フローでこれらを <b>ソース件数に依らず定数回</b>
+ * （状態はソース種別集合で 1 回、ラベルは sourceType ごとに 1 回など）呼ぶこと。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -25,6 +34,8 @@ public class InboxAggregationService {
 
     private final List<InboxSourceAdapter> sourceAdapters;
     private final InboxPriorityNormalizer priorityNormalizer;
+    private final InboxItemStateRepository itemStateRepository;
+    private final InboxLabelLinkRepository labelLinkRepository;
 
     /**
      * インボックス一覧を集約取得する（フィルタ・ページング）。
