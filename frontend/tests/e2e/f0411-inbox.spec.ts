@@ -34,8 +34,8 @@ const INBOX_ITEM = {
   actionUrl: null,
   occurredAt: '2026-05-31T09:00:00Z',
   state: 'UNREAD',
-  snoozedUntil: null,
-  labels: [],
+  snoozedUntil: null as string | null,
+  labels: [] as unknown[],
 }
 
 /** スヌーズ中アイテム（SNOOZED） */
