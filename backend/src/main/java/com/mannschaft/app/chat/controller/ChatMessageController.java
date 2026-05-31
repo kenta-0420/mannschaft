@@ -110,7 +110,8 @@ public class ChatMessageController {
             @PathVariable Long messageId,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer limit) {
-        ThreadResponse response = messageService.getThread(messageId, cursor, limit);
+        ThreadResponse response = messageService.getThread(
+                messageId, cursor, limit, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -123,7 +124,8 @@ public class ChatMessageController {
     public ResponseEntity<ApiResponse<MessageResponse>> togglePin(
             @PathVariable Long messageId,
             @RequestParam boolean pinned) {
-        MessageResponse response = messageService.togglePin(messageId, pinned);
+        MessageResponse response = messageService.togglePin(
+                messageId, pinned, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -150,7 +152,8 @@ public class ChatMessageController {
             @PathVariable Long channelId,
             @RequestParam String keyword,
             @RequestParam(required = false) Integer limit) {
-        List<MessageResponse> responses = messageService.searchMessages(channelId, keyword, limit);
+        List<MessageResponse> responses = messageService.searchMessages(
+                channelId, keyword, limit, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 }

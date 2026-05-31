@@ -79,6 +79,10 @@ class ChatMessageServiceTest {
     @Mock
     private PostingIdentityService postingIdentityService;
 
+    /** F08.7.1: 大会/ディビジョン連絡チャットの閲覧・投稿認可。 */
+    @Mock
+    private com.mannschaft.app.tournament.service.TournamentContactAccessService tournamentContactAccessService;
+
     @InjectMocks
     private ChatMessageService chatMessageService;
 
@@ -356,6 +360,7 @@ class ChatMessageServiceTest {
 
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(original));
             given(channelService.findChannelOrThrow(targetChannelId)).willReturn(targetChannel);
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(original);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
@@ -386,6 +391,7 @@ class ChatMessageServiceTest {
             MessageResponse expected = createMessageResponse();
 
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(message));
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(message);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
@@ -394,7 +400,7 @@ class ChatMessageServiceTest {
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
             // when
-            MessageResponse result = chatMessageService.togglePin(MESSAGE_ID, true);
+            MessageResponse result = chatMessageService.togglePin(MESSAGE_ID, true, SENDER_ID);
 
             // then
             assertThat(result).isNotNull();
@@ -524,6 +530,7 @@ class ChatMessageServiceTest {
             MessageResponse expected = createMessageResponse();
 
             given(messageRepository.findById(parentId)).willReturn(Optional.of(parent));
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.findByParentIdOrderByCreatedAtAsc(parentId)).willReturn(List.of(reply));
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
@@ -532,7 +539,7 @@ class ChatMessageServiceTest {
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
             // when
-            List<MessageResponse> result = chatMessageService.listThreadReplies(parentId);
+            List<MessageResponse> result = chatMessageService.listThreadReplies(parentId, SENDER_ID);
 
             // then
             assertThat(result).hasSize(1);
@@ -545,7 +552,7 @@ class ChatMessageServiceTest {
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> chatMessageService.listThreadReplies(MESSAGE_ID))
+            assertThatThrownBy(() -> chatMessageService.listThreadReplies(MESSAGE_ID, SENDER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.MESSAGE_NOT_FOUND));
@@ -566,6 +573,7 @@ class ChatMessageServiceTest {
             ChatMessageEntity message = createMessage();
             MessageResponse expected = createMessageResponse();
 
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.searchByKeyword(eq(CHANNEL_ID), eq("テスト"), any(Pageable.class)))
                     .willReturn(List.of(message));
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
@@ -575,7 +583,7 @@ class ChatMessageServiceTest {
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
             // when
-            List<MessageResponse> result = chatMessageService.searchMessages(CHANNEL_ID, "テスト", 10);
+            List<MessageResponse> result = chatMessageService.searchMessages(CHANNEL_ID, "テスト", 10, SENDER_ID);
 
             // then
             assertThat(result).hasSize(1);
@@ -585,11 +593,12 @@ class ChatMessageServiceTest {
         @DisplayName("正常系: limitがnullの場合はデフォルト50件で検索する")
         void limitがnullの場合はデフォルト50件で検索する() {
             // given
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.searchByKeyword(eq(CHANNEL_ID), eq("テスト"), any(Pageable.class)))
                     .willReturn(List.of());
 
             // when
-            chatMessageService.searchMessages(CHANNEL_ID, "テスト", null);
+            chatMessageService.searchMessages(CHANNEL_ID, "テスト", null, SENDER_ID);
 
             // then
             verify(messageRepository).searchByKeyword(eq(CHANNEL_ID), eq("テスト"),
@@ -616,6 +625,7 @@ class ChatMessageServiceTest {
 
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(original));
             given(channelService.findChannelOrThrow(targetChannelId)).willReturn(targetChannel);
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(original);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
@@ -647,6 +657,7 @@ class ChatMessageServiceTest {
             MessageResponse expected = createMessageResponse();
 
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(message));
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(message);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
@@ -655,7 +666,7 @@ class ChatMessageServiceTest {
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
             // when
-            MessageResponse result = chatMessageService.togglePin(MESSAGE_ID, false);
+            MessageResponse result = chatMessageService.togglePin(MESSAGE_ID, false, SENDER_ID);
 
             // then
             assertThat(result).isNotNull();
@@ -827,6 +838,7 @@ class ChatMessageServiceTest {
             MessageResponse expected = createMessageResponse();
 
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(root));
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.findByRootIdAndDeletedAtIsNullOrderByCreatedAtAsc(
                     eq(MESSAGE_ID), any(Pageable.class))).willReturn(replyPage);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
@@ -836,7 +848,7 @@ class ChatMessageServiceTest {
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
             // when
-            ThreadResponse result = chatMessageService.getThread(MESSAGE_ID, null, 10);
+            ThreadResponse result = chatMessageService.getThread(MESSAGE_ID, null, 10, SENDER_ID);
 
             // then
             assertThat(result).isNotNull();

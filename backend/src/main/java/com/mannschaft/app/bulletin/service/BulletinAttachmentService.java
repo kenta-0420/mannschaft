@@ -23,6 +23,9 @@ import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
 import com.mannschaft.app.common.storage.quota.StorageScopeType;
+import com.mannschaft.app.tournament.ContactSpaceKind;
+import com.mannschaft.app.tournament.ContactSpaceScopeType;
+import com.mannschaft.app.tournament.service.TournamentContactAccessService;
 import com.mannschaft.app.village.service.VillageBulletinAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -102,6 +105,8 @@ public class BulletinAttachmentService {
     private final BulletinMapper bulletinMapper;
     private final BulletinAccessGuard accessGuard;
     private final VillageBulletinAccessService villageBulletinAccessService;
+    /** F08.7.1 連絡機能: 大会/ディビジョンスコープの閲覧・投稿認可を委譲する（クロスドメイン・原則1）。 */
+    private final TournamentContactAccessService tournamentContactAccessService;
     private final StorageQuotaService storageQuotaService;
     private final StorageService storageService;
     private final AuditLogService auditLogService;
@@ -346,6 +351,11 @@ public class BulletinAttachmentService {
     private void checkViewAuthorization(BulletinThreadEntity thread, Long userId) {
         if (thread.getScopeType() == ScopeType.VILLAGE) {
             villageBulletinAccessService.checkVillageBulletinViewAccess(thread.getScopeVillageId(), userId);
+        } else if (isTournamentScope(thread.getScopeType())) {
+            // F08.7.1: 大会/ディビジョン連絡の添付閲覧（一覧/DL URL 発行）は canView に委譲する。
+            // checkMembership は membership.domain.ScopeType に TOURNAMENT が無く 500 になるため通さない。
+            tournamentContactAccessService.checkView(
+                    toContactScope(thread.getScopeType()), thread.getScopeId(), ContactSpaceKind.BULLETIN, userId);
         } else if (thread.getScopeType() == ScopeType.PERSONAL) {
             checkPersonalOwner(thread, userId);
         } else {
@@ -361,6 +371,13 @@ public class BulletinAttachmentService {
      * 既に検証済みであり、添付はそれに付随するため所属レベルで足りる。</p>
      */
     private void checkUploadAuthorization(BulletinThreadEntity thread, Long userId) {
+        // F08.7.1: 大会/ディビジョン連絡への添付は投稿行為のため canPost（代表/副代表 or 主催者）を要求する。
+        // 一般メンバー（canView のみ）が添付投稿で権限昇格しないよう、閲覧より厳しくする。
+        if (isTournamentScope(thread.getScopeType())) {
+            tournamentContactAccessService.checkPost(
+                    toContactScope(thread.getScopeType()), thread.getScopeId(), userId);
+            return;
+        }
         checkViewAuthorization(thread, userId);
     }
 
@@ -377,10 +394,25 @@ public class BulletinAttachmentService {
         switch (thread.getScopeType()) {
             case VILLAGE -> villageBulletinAccessService
                     .checkVillageBulletinModerator(thread.getScopeVillageId(), userId);
+            // F08.7.1: 大会/ディビジョン連絡の他者添付削除はモデレーション相当＝canPost（代表/主催者）を要求する。
+            case TOURNAMENT, TOURNAMENT_DIVISION -> tournamentContactAccessService.checkPost(
+                    toContactScope(thread.getScopeType()), thread.getScopeId(), userId);
             case PERSONAL -> checkPersonalOwner(thread, userId); // 本人以外は 403
             default -> accessGuard.checkOwnerOrAdmin(
                     userId, attachment.getCreatedBy(), thread.getScopeType(), thread.getScopeId());
         }
+    }
+
+    /** 添付対象スレッドが大会/ディビジョン連絡スペースか。 */
+    private static boolean isTournamentScope(ScopeType scopeType) {
+        return scopeType == ScopeType.TOURNAMENT || scopeType == ScopeType.TOURNAMENT_DIVISION;
+    }
+
+    /** bulletin {@link ScopeType} を連絡スペースの {@link ContactSpaceScopeType} に変換する。 */
+    private static ContactSpaceScopeType toContactScope(ScopeType scopeType) {
+        return scopeType == ScopeType.TOURNAMENT
+                ? ContactSpaceScopeType.TOURNAMENT
+                : ContactSpaceScopeType.TOURNAMENT_DIVISION;
     }
 
     /**

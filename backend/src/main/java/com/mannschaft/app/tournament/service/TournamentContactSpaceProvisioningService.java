@@ -11,6 +11,7 @@ import com.mannschaft.app.tournament.entity.TournamentContactSpaceEntity;
 import com.mannschaft.app.tournament.repository.TournamentContactSpaceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -143,15 +144,24 @@ public class TournamentContactSpaceProvisioningService {
             representativeCategoryId = existing.get(0).getId();
         }
 
-        contactSpaceRepository.save(TournamentContactSpaceEntity.builder()
-                .scopeType(spaceScope)
-                .scopeId(scopeId)
-                .spaceKind(ContactSpaceKind.BULLETIN)
-                .refId(representativeCategoryId)
-                .isPublic(false)
-                .build());
-        log.info("大会掲示板スペース払い出し: scope={}, scopeId={}, refCategoryId={}",
-                spaceScope, scopeId, representativeCategoryId);
+        try {
+            contactSpaceRepository.save(TournamentContactSpaceEntity.builder()
+                    .scopeType(spaceScope)
+                    .scopeId(scopeId)
+                    .spaceKind(ContactSpaceKind.BULLETIN)
+                    .refId(representativeCategoryId)
+                    .isPublic(false)
+                    .build());
+            log.info("大会掲示板スペース払い出し: scope={}, scopeId={}, refCategoryId={}",
+                    spaceScope, scopeId, representativeCategoryId);
+        } catch (DataIntegrityViolationException e) {
+            // 同時実行で UNIQUE(scope_type, scope_id, space_kind) 違反 → 既存スペースを再取得（chat 側 provision と同方針・冪等）。
+            // 巻き添えで大会作成全体が失敗しないよう、競合は正常系として吸収する。
+            log.warn("大会掲示板スペース払い出し競合（再取得）: scope={}, scopeId={}", spaceScope, scopeId);
+            contactSpaceRepository.findByScopeTypeAndScopeIdAndSpaceKind(
+                            spaceScope, scopeId, ContactSpaceKind.BULLETIN)
+                    .orElseThrow(() -> e);
+        }
     }
 
     /**
