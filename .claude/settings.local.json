@@ -854,7 +854,6 @@
       "Bash(echo \"EXIT_CODE=$?\")",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d['title']\\); print\\('Branch:', d['headRefName']\\); print\\(d['body'][:400]\\)\")",
       "Bash(echo \"DONE:$?\")",
-      "Bash(echo \"=== exit: $? ===\")",
       "Bash(rtk proxy *)"
     ],
     "deny": [
@@ -872,22 +871,6 @@
       "Edit(**/.git/hooks/**)",
       "Write(**/.git/config)",
       "Edit(**/.git/config)"
-    ]
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:/Claude/mannschaft/.claude/hooks/block-honjin-git.ps1\"",
-            "if": "Bash(git *)",
-            "timeout": 15,
-            "statusMessage": "本陣git操作ガード"
-          }
-        ]
-      }
     ]
   }
 }
