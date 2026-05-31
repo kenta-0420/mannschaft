@@ -30,7 +30,11 @@ function onSubmit() {
 </script>
 
 <template>
-  <form class="flex items-center gap-2" @submit.prevent="onSubmit">
+  <form
+    class="flex items-center gap-2"
+    :data-testid="`scope-search-form-${scopeType}`"
+    @submit.prevent="onSubmit"
+  >
     <IconField class="flex-1">
       <InputIcon class="pi pi-search" />
       <InputText

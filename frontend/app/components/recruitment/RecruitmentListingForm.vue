@@ -12,11 +12,18 @@ interface Props {
   categories: RecruitmentCategoryResponse[]
   submitLabel?: string
   loading?: boolean
+  /**
+   * true のとき visibility セレクタを非表示にする。
+   * F22.1 市の札立てページで MarketListingFormExtension の visibility と二重化しないために使用。
+   * デフォルト false（従来挙動を維持）。
+   */
+  hideVisibility?: boolean
 }
 const props = withDefaults(defineProps<Props>(), {
   initial: () => ({}),
   submitLabel: undefined,
   loading: false,
+  hideVisibility: false,
 })
 
 const emit = defineEmits<{
@@ -153,7 +160,7 @@ function onSubmit() {
       <InputNumber id="price" v-model="price" :min="0" required />
     </div>
 
-    <div class="flex flex-col gap-2">
+    <div v-if="!hideVisibility" class="flex flex-col gap-2">
       <label for="visibility">{{ t('recruitment.field.visibility') }}</label>
       <Select
         id="visibility"

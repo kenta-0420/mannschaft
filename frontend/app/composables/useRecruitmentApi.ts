@@ -25,6 +25,7 @@ export function useRecruitmentApi() {
     archiveTeamSubcategory: crud.archiveTeamSubcategory,
     listTeamListings: crud.listTeamListings,
     createListing: crud.createListing,
+    createOrgListing: crud.createOrgListing,
     getListing: crud.getListing,
     updateListing: crud.updateListing,
     publishListing: crud.publishListing,

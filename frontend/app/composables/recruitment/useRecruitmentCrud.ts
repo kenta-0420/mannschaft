@@ -102,6 +102,13 @@ export function useRecruitmentCrud() {
     )
   }
 
+  async function createOrgListing(orgId: number, body: CreateRecruitmentListingRequest) {
+    return api<ApiResponse<RecruitmentListingResponse>>(
+      `/api/v1/organizations/${orgId}/recruitment-listings`,
+      { method: 'POST', body },
+    )
+  }
+
   async function getListing(listingId: number) {
     return api<ApiResponse<RecruitmentListingResponse>>(
       `/api/v1/recruitment-listings/${listingId}`,
@@ -204,6 +211,7 @@ export function useRecruitmentCrud() {
     archiveTeamSubcategory,
     listTeamListings,
     createListing,
+    createOrgListing,
     getListing,
     updateListing,
     publishListing,
