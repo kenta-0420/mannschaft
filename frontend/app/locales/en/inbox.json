@@ -23,6 +23,7 @@
       "snooze": "Snooze",
       "archive": "Archive",
       "unarchive": "Move to Inbox",
+      "unsnooze": "Unsnooze",
       "label": "Label"
     },
     "snoozePreset": {

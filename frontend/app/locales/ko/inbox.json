@@ -1,47 +1,48 @@
 {
   "inbox": {
-    "title": "インボックス",
+    "title": "받은 편지함",
     "tab": {
-      "inbox": "受信箱",
-      "snoozed": "スヌーズ中",
-      "archived": "保管庫"
+      "inbox": "받은 편지함",
+      "snoozed": "스누즈 중",
+      "archived": "보관함"
     },
     "priority": {
-      "urgent": "緊急",
-      "high": "重要",
-      "normal": "通常",
-      "low": "低"
+      "urgent": "긴급",
+      "high": "중요",
+      "normal": "보통",
+      "low": "낮음"
     },
     "source": {
-      "notification": "通知",
-      "announcement": "お知らせ",
-      "mention": "メンション",
-      "confirmable": "確認必須",
-      "todoDue": "TODO期限"
+      "notification": "알림",
+      "announcement": "공지사항",
+      "mention": "멘션",
+      "confirmable": "확인 필수",
+      "todoDue": "할 일 마감"
     },
     "action": {
-      "snooze": "スヌーズ",
-      "archive": "保管庫へ",
-      "unarchive": "受信箱へ戻す",
-      "label": "ラベル"
+      "snooze": "스누즈",
+      "archive": "보관함으로",
+      "unarchive": "받은 편지함으로 되돌리기",
+      "unsnooze": "스누즈 해제",
+      "label": "레이블"
     },
     "snoozePreset": {
-      "in3h": "3時間後",
-      "tonight": "今晩（21:00）",
-      "tomorrowMorning": "明日の朝（09:00）",
-      "nextWeek": "来週の月曜（09:00）"
+      "in3h": "3시간 후",
+      "tonight": "오늘 밤（21:00）",
+      "tomorrowMorning": "내일 아침（09:00）",
+      "nextWeek": "다음 주 월요일（09:00）"
     },
-    "empty": "メッセージはありません",
-    "loadMore": "もっと読む",
+    "empty": "메시지가 없습니다",
+    "loadMore": "더 보기",
     "filter": {
-      "priority": "緊急度",
-      "source": "種類"
+      "priority": "긴급도",
+      "source": "종류"
     },
-    "snoozeTitle": "スヌーズ設定",
+    "snoozeTitle": "스누즈 설정",
     "summary": {
-      "inbox": "受信箱",
-      "snoozed": "スヌーズ中",
-      "archived": "保管庫"
+      "inbox": "받은 편지함",
+      "snoozed": "스누즈 중",
+      "archived": "보관함"
     }
   }
 }

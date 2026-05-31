@@ -94,7 +94,7 @@ async function onUnsnooze(sourceType: InboxSourceType, sourceId: number) {
   try {
     const ok = await inboxStore.unsnooze(sourceType, sourceId)
     if (ok) {
-      notification.success(t('inbox.action.unarchive') + ' ✓')
+      notification.success(t('inbox.action.unsnooze') + ' ✓')
     }
   } catch (error) {
     captureQuiet(error, { context: 'InboxList: スヌーズ解除' })
@@ -206,6 +206,7 @@ const snoozePresets: SnoozePresetDef[] = [
         type="button"
         role="tab"
         :aria-selected="inboxStore.currentTab === tab.key ? 'true' : 'false'"
+        :data-testid="`inbox-tab-${tab.key.toLowerCase()}`"
         class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors"
         :class="
           inboxStore.currentTab === tab.key
@@ -338,6 +339,7 @@ const snoozePresets: SnoozePresetDef[] = [
                   size="small"
                   :title="t('inbox.action.snooze')"
                   :aria-label="t('inbox.action.snooze')"
+                  :data-testid="`inbox-snooze-btn-${item.id}`"
                   @click.stop="openSnoozePanel(item.id)"
                 />
                 <!-- スヌーズプリセットパネル -->
@@ -366,8 +368,9 @@ const snoozePresets: SnoozePresetDef[] = [
                 icon="pi pi-bell"
                 text
                 size="small"
-                :title="t('inbox.action.unarchive')"
-                :aria-label="t('inbox.action.unarchive')"
+                :title="t('inbox.action.unsnooze')"
+                :aria-label="t('inbox.action.unsnooze')"
+                :data-testid="`inbox-unsnooze-btn-${item.id}`"
                 @click="onUnsnooze(item.sourceType, item.sourceId)"
               />
 
@@ -379,6 +382,7 @@ const snoozePresets: SnoozePresetDef[] = [
                 size="small"
                 :title="t('inbox.action.archive')"
                 :aria-label="t('inbox.action.archive')"
+                :data-testid="`inbox-archive-btn-${item.id}`"
                 @click="onArchive(item.sourceType, item.sourceId)"
               />
               <Button
@@ -388,6 +392,7 @@ const snoozePresets: SnoozePresetDef[] = [
                 size="small"
                 :title="t('inbox.action.unarchive')"
                 :aria-label="t('inbox.action.unarchive')"
+                :data-testid="`inbox-unarchive-btn-${item.id}`"
                 @click="onUnarchive(item.sourceType, item.sourceId)"
               />
             </div>
@@ -399,6 +404,7 @@ const snoozePresets: SnoozePresetDef[] = [
     <!-- 空状態 -->
     <DashboardEmptyState
       v-else-if="!inboxStore.loading"
+      data-testid="inbox-empty-state"
       icon="pi pi-inbox"
       :message="t('inbox.empty')"
     />
