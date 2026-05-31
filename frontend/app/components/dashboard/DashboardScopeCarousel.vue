@@ -95,29 +95,53 @@ function announce(idx: number) {
 /** 1 ステップ（隣へ 1 枚）のスライド時間（秒）。全切替で一定。 */
 const BASE_DURATION = 0.42
 let slideTimer: ReturnType<typeof setTimeout> | null = null
+/** 自分（step）が起こした activeIndex 変更を watcher に無視させるための抑止フラグ。 */
+let suppressActiveWatch = false
+
+/** activeIndex を内部更新する（自前 watcher を抑止）。選択＝ハイライトに即反映される。 */
+function setActiveInternal(idx: number) {
+  suppressActiveWatch = true
+  activeIndex.value = idx
+  suppressActiveWatch = false
+}
 
 /**
  * 隣のパネルへ 1 ステップだけスライドする（dir = +1: next / -1: prev）。
- * 1. 選択（activeIndex）を即時更新 → タブ/ドットのハイライトはすぐ切り替わる。
- * 2. slideDir をセットして 1 枚分だけ transform をアニメーション。
- * 3. アニメ完了後、transition を無効化して centerIndex を更新＝画面外で再センタリング。
+ * - 選択(activeIndex)は常に即時更新するので、アニメ中の連打でも入力を捨てず確実に進む。
+ * - アニメ中に呼ばれた場合は、進行中スライドの着地点へ即センタリングしてから新スライドを開始する。
+ * - スライド完了後、transition を無効化して centerIndex を更新＝画面外で再センタリング。
  */
 function step(dir: 1 | -1) {
-  if (isAnimating.value) return
-  const to = (centerIndex.value + dir + PANEL_COUNT) % PANEL_COUNT
+  // activeIndex はアニメ中でも「現在向かっている先」を指すので、これを起点に 1 つ進める。
+  const from = activeIndex.value
+  const to = (from + dir + PANEL_COUNT) % PANEL_COUNT
+  setActiveInternal(to)
+  announce(to)
 
   if (reducedMotion.value) {
     // アニメ無効: 即時切替。
-    activeIndex.value = to
+    if (slideTimer !== null) {
+      clearTimeout(slideTimer)
+      slideTimer = null
+    }
     centerIndex.value = to
-    announce(to)
+    slideDir.value = 0
+    isAnimating.value = false
     return
   }
 
-  // isAnimating を先に立てて、activeIndex 変更を監視している watcher の即時センタリングを抑止する。
+  // 進行中アニメがあれば、その着地点(=from)へ即センタリングしてから継続する（連打・割り込み対応）。
+  if (isAnimating.value) {
+    if (slideTimer !== null) {
+      clearTimeout(slideTimer)
+      slideTimer = null
+    }
+    centerIndex.value = from
+  }
+
+  // 1 枚スライド開始。
+  transitionEnabled.value = true
   isAnimating.value = true
-  activeIndex.value = to
-  announce(to)
   slideDir.value = dir
 
   slideTimer = setTimeout(() => {
@@ -129,6 +153,7 @@ function step(dir: 1 | -1) {
       requestAnimationFrame(() => {
         transitionEnabled.value = true
         isAnimating.value = false
+        slideTimer = null
       })
     })
   }, BASE_DURATION * 1000 + 30)
@@ -139,8 +164,8 @@ function step(dir: 1 | -1) {
  * 3 枚の循環なので任意の遷移は必ず ±1 ステップに収まる（前進 or 後退）。
  */
 function goTo(idx: number) {
-  if (isAnimating.value || idx === centerIndex.value) return
-  const dir: 1 | -1 = idx === (centerIndex.value + 1) % PANEL_COUNT ? 1 : -1
+  if (idx === activeIndex.value) return
+  const dir: 1 | -1 = idx === (activeIndex.value + 1) % PANEL_COUNT ? 1 : -1
   step(dir)
 }
 
@@ -151,12 +176,22 @@ function prev() {
   step(-1)
 }
 
-// 外部（他コンポーネント）から store.activePanel が変更された場合は、アニメ中でなければ即時センタリングする。
-watch(activeIndex, (v) => {
-  if (!isAnimating.value && v !== centerIndex.value) {
+// 外部（他コンポーネント）から store.activePanel が変更された場合は即時センタリングする。
+// 自前 step による変更は suppressActiveWatch で除外。sync flush で同期的に判定する。
+watch(
+  activeIndex,
+  (v) => {
+    if (suppressActiveWatch || v === centerIndex.value) return
+    if (slideTimer !== null) {
+      clearTimeout(slideTimer)
+      slideTimer = null
+    }
     centerIndex.value = v
-  }
-})
+    slideDir.value = 0
+    isAnimating.value = false
+  },
+  { flush: 'sync' },
+)
 
 // --- touch / pointer ハンドラ ---
 function onTouchStart(e: TouchEvent) {
