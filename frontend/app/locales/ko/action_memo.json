@@ -187,25 +187,25 @@
   },
   "phase4": {
     "org_scope": {
-      "label": "組織に共有",
-      "select_org": "共有先組織を選択",
-      "visibility_label": "公開範囲",
-      "team_only": "チームメンバーのみ",
-      "org_wide": "組織全体に公開",
-      "no_orgs": "所属組織がありません",
-      "already_set": "組織スコープ設定済み",
-      "clear": "組織共有を解除"
+      "label": "조직에 공유",
+      "select_org": "공유할 조직 선택",
+      "visibility_label": "공개 범위",
+      "team_only": "팀 멤버만",
+      "org_wide": "조직 전체 공개",
+      "no_orgs": "소속 조직이 없습니다",
+      "already_set": "조직 범위 이미 설정됨",
+      "clear": "조직 공유 해제"
     },
     "audit": {
-      "toggle": "変更履歴",
-      "empty": "変更履歴はありません",
-      "loading": "読み込み中...",
-      "error": "履歴の取得に失敗しました",
-      "event_todo_completed": "関連TODO を完了にしました",
-      "event_created": "メモを作成しました",
-      "event_updated": "メモを更新しました",
-      "event_deleted": "メモを削除しました",
-      "event_todo_reverted": "TODOを差し戻しました"
+      "toggle": "변경 내역",
+      "empty": "변경 내역이 없습니다",
+      "loading": "불러오는 중...",
+      "error": "내역 불러오기 실패",
+      "event_todo_completed": "관련 TODO를 완료로 표시했습니다",
+      "event_created": "메모를 작성했습니다",
+      "event_updated": "메모를 수정했습니다",
+      "event_deleted": "메모를 삭제했습니다",
+      "event_todo_reverted": "TODO를 되돌렸습니다"
     }
   }
 }

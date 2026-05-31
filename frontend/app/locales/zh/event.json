@@ -136,7 +136,7 @@
       "listEmpty": "暂无事先通知。",
       "colType": "类型",
       "colSubject": "对象",
-      "colReason": "理由",
+      "colReason": "事由",
       "colComment": "备注",
       "colCreatedAt": "发送时间",
       "badgeLate": "迟到",

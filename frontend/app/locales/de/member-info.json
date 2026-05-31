@@ -1,51 +1,51 @@
 {
   "memberInfo": {
-    "title": "メンバー情報",
+    "title": "Mitgliederinformationen",
     "settings": {
-      "title": "メンバー情報フィールド設定",
-      "fieldList": "フィールド一覧",
-      "addField": "フィールドを追加",
-      "editField": "フィールドを編集",
-      "deleteField": "フィールドを削除",
-      "deleteConfirm": "このフィールドを削除しますか？",
-      "statusTable": "回答状況",
-      "sendRemind": "リマインド送信",
-      "remindSent": "リマインドを送信しました",
-      "remindTooSoon": "24時間以内に送信済みです"
+      "title": "Mitgliederinformationsfelder konfigurieren",
+      "fieldList": "Feldliste",
+      "addField": "Feld hinzufügen",
+      "editField": "Feld bearbeiten",
+      "deleteField": "Feld löschen",
+      "deleteConfirm": "Dieses Feld löschen?",
+      "statusTable": "Antwortstatus",
+      "sendRemind": "Erinnerung senden",
+      "remindSent": "Erinnerung gesendet",
+      "remindTooSoon": "Bereits innerhalb der letzten 24 Stunden gesendet"
     },
     "field": {
-      "name": "フィールド名",
-      "type": "入力タイプ",
-      "required": "必須",
-      "sensitive": "機密情報",
-      "sensitiveHint": "暗号化して保存されます",
-      "refreshInterval": "更新期限",
-      "intervalNone": "なし",
-      "interval12": "1年（12ヶ月）",
-      "interval36": "3年（36ヶ月）",
-      "interval60": "5年（60ヶ月）",
-      "typeText": "テキスト",
-      "typePhone": "電話番号",
-      "typeEmail": "メールアドレス",
-      "typeDate": "日付"
+      "name": "Feldname",
+      "type": "Eingabetyp",
+      "required": "Pflichtfeld",
+      "sensitive": "Vertrauliche Information",
+      "sensitiveHint": "Verschlüsselt gespeichert",
+      "refreshInterval": "Aktualisierungsintervall",
+      "intervalNone": "Kein Limit",
+      "interval12": "1 Jahr (12 Monate)",
+      "interval36": "3 Jahre (36 Monate)",
+      "interval60": "5 Jahre (60 Monate)",
+      "typeText": "Text",
+      "typePhone": "Telefonnummer",
+      "typeEmail": "E-Mail-Adresse",
+      "typeDate": "Datum"
     },
     "response": {
-      "title": "情報の入力",
-      "myInfo": "自分の情報",
-      "saveAll": "すべて保存",
-      "saved": "保存しました",
-      "overdue": "更新期限切れ",
-      "notAnswered": "未回答",
-      "nextDue": "次回更新期限",
-      "confirmedAt": "最終確認日"
+      "title": "Informationen eingeben",
+      "myInfo": "Meine Informationen",
+      "saveAll": "Alle speichern",
+      "saved": "Gespeichert",
+      "overdue": "Überfällig",
+      "notAnswered": "Nicht beantwortet",
+      "nextDue": "Nächstes Fälligkeitsdatum",
+      "confirmedAt": "Zuletzt bestätigt"
     },
     "status": {
-      "completed": "完了",
-      "incomplete": "未完了",
-      "overdue": "期限切れ",
-      "totalMembers": "総メンバー数",
-      "completedCount": "完了",
-      "overdueCount": "期限切れ"
+      "completed": "Abgeschlossen",
+      "incomplete": "Unvollständig",
+      "overdue": "Überfällig",
+      "totalMembers": "Mitglieder gesamt",
+      "completedCount": "Abgeschlossen",
+      "overdueCount": "Überfällig"
     }
   }
 }

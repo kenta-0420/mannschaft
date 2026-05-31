@@ -103,7 +103,7 @@
       },
       "admin": {
         "tab": "代理出席",
-        "empty": "没有代理出席设置",
+        "empty": "没有代理出席的设置",
         "delegator": "委托人",
         "delegate": "代理人",
         "count_suffix": "件代理设置",

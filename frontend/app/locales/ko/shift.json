@@ -74,9 +74,9 @@
       "error": "PDF 생성에 실패했습니다"
     },
     "myShifts": {
-      "title": "내 시프트",
-      "empty": "시프트가 없습니다",
-      "fetchError": "시프트 정보 조회에 실패했습니다"
+      "title": "내 근무",
+      "empty": "근무가 없습니다",
+      "fetchError": "근무 정보 조회에 실패했습니다"
     },
     "page": {
       "title": "근무",
@@ -320,11 +320,6 @@
       "totalLabel": "합계",
       "confirmSubmit": "이 내용으로 제출하시겠습니까？"
     },
-    "myShifts": {
-      "title": "내 근무",
-      "empty": "근무가 없습니다",
-      "fetchError": "근무 정보 조회에 실패했습니다"
-    },
     "myShift": {
       "confirmedTitle": "확정 근무",
       "teamFilter": {
@@ -332,7 +327,7 @@
         "label": "팀으로 필터"
       },
       "slot": {
-        "time": "{start} 〜 {end}",
+        "time": "{start}〜{end}",
         "position": "포지션",
         "schedule": "스케줄",
         "noSlot": "이 날의 근무가 없습니다"

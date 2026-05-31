@@ -469,22 +469,22 @@
     "back_to_advertiser": "Zurück zum Werbe-Dashboard"
   },
   "teams_page": {
-    "title": "Team-Werbetreibenden-Verwaltung",
-    "description": "Erstellen und liefern Sie Messaging-Kampagnen auf Teamebene.",
+    "title": "Team-Werbetreibende verwalten",
+    "description": "Erstellen und schalten Sie nachrichtenbasierte Werbekampagnen auf Teamebene.",
     "nav": {
-      "messaging_campaigns_description": "Erstellen Sie Messaging-Kampagnen, die an Teammitglieder gerichtet sind."
+      "messaging_campaigns_description": "Erstellen Sie nachrichtenbasierte Werbekampagnen für Teammitglieder."
     },
-    "future_features_notice": "Rechnungen, Kreditlimitanfragen und wiederkehrende Berichte werden in einer zukünftigen Phase unterstützt.",
+    "future_features_notice": "Rechnungsverwaltung, Kreditlimitanträge und regelmäßige Berichte werden in einer zukünftigen Phase unterstützt.",
     "register": {
-      "title": "Werbetreibenden-Registrierung",
+      "title": "Werbetreibender registrieren",
       "submit": "Antrag einreichen",
-      "company_name_label": "Firmen- / Werbetreibenden-Name",
-      "company_name_placeholder": "Musterfirma GmbH",
+      "company_name_label": "Firmenname / Werbetreibender",
+      "company_name_placeholder": "Beispiel GmbH",
       "contact_email_label": "Kontakt-E-Mail-Adresse",
       "billing_method_label": "Zahlungsmethode",
       "billing_stripe": "Kreditkarte (Stripe)",
-      "billing_invoice": "Rechnung",
-      "success_message": "Ihr Antrag wurde eingereicht. Nach der Prüfung können Sie mit der Nutzung beginnen.",
+      "billing_invoice": "Auf Rechnung",
+      "success_message": "Ihr Antrag wurde eingereicht. Nach der Prüfung können Sie den Dienst nutzen.",
       "error_message": "Registrierung fehlgeschlagen"
     }
   }

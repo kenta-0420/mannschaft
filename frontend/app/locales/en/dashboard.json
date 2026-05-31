@@ -73,23 +73,23 @@
     }
   },
   "swipeWidgets": {
-    "upcoming": "今後の予定",
-    "timeline": "タイムライン",
-    "bulletin": "掲示板",
-    "blog": "ブログ",
-    "chat": "チャット",
-    "calendar": "カレンダー",
+    "upcoming": "Upcoming events",
+    "timeline": "Timeline",
+    "bulletin": "Bulletin board",
+    "blog": "Blog",
+    "chat": "Chat",
+    "calendar": "Calendar",
     "todo": "TODO",
     "actionRequired": {
-      "title": "要対応",
-      "circulation": "回覧板",
-      "survey": "アンケート",
-      "attendance": "出席確認",
-      "unconfirmed": "{count}件未確認",
-      "unanswered": "{count}件未回答",
-      "empty": "対応が必要な項目はありません",
+      "title": "Action required",
+      "circulation": "Circulation",
+      "survey": "Survey",
+      "attendance": "Attendance",
+      "unconfirmed": "{count} unconfirmed",
+      "unanswered": "{count} unanswered",
+      "empty": "No action items",
       "loadError": "Failed to load action items"
     },
-    "emptyState": "まだ投稿がありません"
+    "emptyState": "No posts yet"
   }
 }

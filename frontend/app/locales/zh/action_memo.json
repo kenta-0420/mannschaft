@@ -187,25 +187,25 @@
   },
   "phase4": {
     "org_scope": {
-      "label": "組織に共有",
-      "select_org": "共有先組織を選択",
-      "visibility_label": "公開範囲",
-      "team_only": "チームメンバーのみ",
-      "org_wide": "組織全体に公開",
-      "no_orgs": "所属組織がありません",
-      "already_set": "組織スコープ設定済み",
-      "clear": "組織共有を解除"
+      "label": "共享至组织",
+      "select_org": "选择共享目标组织",
+      "visibility_label": "可见范围",
+      "team_only": "仅团队成员",
+      "org_wide": "公开给整个组织",
+      "no_orgs": "没有所属组织",
+      "already_set": "已设置组织范围",
+      "clear": "取消组织共享"
     },
     "audit": {
-      "toggle": "変更履歴",
-      "empty": "変更履歴はありません",
-      "loading": "読み込み中...",
-      "error": "履歴の取得に失敗しました",
-      "event_todo_completed": "関連TODO を完了にしました",
-      "event_created": "メモを作成しました",
-      "event_updated": "メモを更新しました",
-      "event_deleted": "メモを削除しました",
-      "event_todo_reverted": "TODOを差し戻しました"
+      "toggle": "变更历史",
+      "empty": "没有变更历史",
+      "loading": "加载中...",
+      "error": "历史记录获取失败",
+      "event_todo_completed": "将关联TODO标记为完成",
+      "event_created": "备忘录已创建",
+      "event_updated": "备忘录已更新",
+      "event_deleted": "备忘录已删除",
+      "event_todo_reverted": "TODO已撤回"
     }
   }
 }

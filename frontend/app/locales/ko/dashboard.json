@@ -73,23 +73,23 @@
     }
   },
   "swipeWidgets": {
-    "upcoming": "今後の予定",
-    "timeline": "タイムライン",
-    "bulletin": "掲示板",
-    "blog": "ブログ",
-    "chat": "チャット",
-    "calendar": "カレンダー",
+    "upcoming": "다가오는 일정",
+    "timeline": "타임라인",
+    "bulletin": "게시판",
+    "blog": "블로그",
+    "chat": "채팅",
+    "calendar": "캘린더",
     "todo": "TODO",
     "actionRequired": {
-      "title": "要対応",
-      "circulation": "回覧板",
-      "survey": "アンケート",
-      "attendance": "出席確認",
-      "unconfirmed": "{count}件未確認",
-      "unanswered": "{count}件未回答",
-      "empty": "対応が必要な項目はありません",
-      "loadError": "처리 항목을 불러오지 못했습니다"
+      "title": "처리 필요",
+      "circulation": "회람판",
+      "survey": "설문",
+      "attendance": "출석 확인",
+      "unconfirmed": "{count}건 미확인",
+      "unanswered": "{count}건 미응답",
+      "empty": "처리가 필요한 항목이 없습니다",
+      "loadError": "처리 필요 항목 불러오기 실패"
     },
-    "emptyState": "まだ投稿がありません"
+    "emptyState": "아직 게시물이 없습니다"
   }
 }
