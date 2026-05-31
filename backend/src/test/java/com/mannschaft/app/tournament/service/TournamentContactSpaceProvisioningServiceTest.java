@@ -117,6 +117,40 @@ class TournamentContactSpaceProvisioningServiceTest {
             verify(tournamentChatChannelService, never()).createForTournament(any(), any());
             verify(contactSpaceRepository, never()).save(any());
         }
+
+        @Test
+        @DisplayName("競合耐性(M1): 掲示板スペース save が UNIQUE 違反でも catch→再取得し巻き添え失敗しない")
+        void bulletinSaveUniqueViolationIsRecovered() {
+            // BULLETIN は未払い出しと判定 → save で UNIQUE 違反（並行払い出し）→ 再取得で吸収
+            given(contactSpaceRepository.findByScopeTypeAndScopeIdAndSpaceKind(
+                    ContactSpaceScopeType.TOURNAMENT, TOURNAMENT_ID, ContactSpaceKind.BULLETIN))
+                    .willReturn(Optional.empty())
+                    .willReturn(Optional.of(TournamentContactSpaceEntity.builder()
+                            .scopeType(ContactSpaceScopeType.TOURNAMENT).scopeId(TOURNAMENT_ID)
+                            .spaceKind(ContactSpaceKind.BULLETIN).refId(11L).build()));
+            given(contactSpaceRepository.findByScopeTypeAndScopeIdAndSpaceKind(
+                    ContactSpaceScopeType.TOURNAMENT, TOURNAMENT_ID, ContactSpaceKind.CHAT))
+                    .willReturn(Optional.of(TournamentContactSpaceEntity.builder()
+                            .scopeType(ContactSpaceScopeType.TOURNAMENT).scopeId(TOURNAMENT_ID)
+                            .spaceKind(ContactSpaceKind.CHAT).refId(77L).build()));
+            given(bulletinCategoryRepository.findByScopeTypeAndScopeIdOrderByDisplayOrderAsc(
+                    ScopeType.TOURNAMENT, TOURNAMENT_ID))
+                    .willReturn(List.of());
+            BulletinCategoryEntity cat1 = savedCategoryMock(11L);
+            BulletinCategoryEntity cat2 = savedCategoryMock(12L);
+            given(bulletinCategoryRepository.save(any(BulletinCategoryEntity.class)))
+                    .willReturn(cat1, cat2);
+            given(contactSpaceRepository.save(any(TournamentContactSpaceEntity.class)))
+                    .willThrow(new org.springframework.dao.DataIntegrityViolationException("uk_contact_space"));
+
+            // 例外を投げず正常終了する（巻き添え失敗しない）
+            service.provisionForTournament(TOURNAMENT_ID, "テスト大会");
+
+            // save 試行は 1 回 → 競合検知後は再取得（findBy が 2 回呼ばれる）で吸収
+            verify(contactSpaceRepository, times(1)).save(any(TournamentContactSpaceEntity.class));
+            verify(contactSpaceRepository, times(2)).findByScopeTypeAndScopeIdAndSpaceKind(
+                    ContactSpaceScopeType.TOURNAMENT, TOURNAMENT_ID, ContactSpaceKind.BULLETIN);
+        }
     }
 
     @org.junit.jupiter.api.Nested
