@@ -14,6 +14,9 @@ import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.tournament.ContactSpaceKind;
+import com.mannschaft.app.tournament.ContactSpaceScopeType;
+import com.mannschaft.app.tournament.service.TournamentContactAccessService;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
@@ -50,6 +53,8 @@ public class BulletinThreadService {
     private final PostingIdentityService postingIdentityService;
     /** F17.1 村掲示板グローバル方式: 村スコープの閲覧認可（可視性ゲート）を委譲する。 */
     private final VillageBulletinAccessService villageBulletinAccessService;
+    /** F08.7.1 連絡機能: 大会/ディビジョンスコープの閲覧・投稿認可を委譲する（クロスドメイン・原則1）。 */
+    private final TournamentContactAccessService tournamentContactAccessService;
 
     /**
      * スコープのスレッド一覧をページング取得する。
@@ -163,10 +168,25 @@ public class BulletinThreadService {
                 .orElseThrow(() -> new BusinessException(BulletinErrorCode.THREAD_NOT_FOUND));
         if (entity.getScopeType() == ScopeType.VILLAGE) {
             villageBulletinAccessService.checkVillageBulletinViewAccess(entity.getScopeVillageId(), userId);
+        } else if (isTournamentScope(entity.getScopeType())) {
+            tournamentContactAccessService.checkView(
+                    toContactScope(entity.getScopeType()), entity.getScopeId(), ContactSpaceKind.BULLETIN, userId);
         } else {
             accessGuard.checkMembership(userId, entity.getScopeType(), entity.getScopeId());
         }
         return bulletinMapper.toThreadResponse(entity);
+    }
+
+    /** bulletin の scope_type が大会/ディビジョン連絡スペースか。 */
+    private static boolean isTournamentScope(ScopeType scopeType) {
+        return scopeType == ScopeType.TOURNAMENT || scopeType == ScopeType.TOURNAMENT_DIVISION;
+    }
+
+    /** bulletin {@link ScopeType} を連絡スペースの {@link ContactSpaceScopeType} に変換する。 */
+    private static ContactSpaceScopeType toContactScope(ScopeType scopeType) {
+        return scopeType == ScopeType.TOURNAMENT
+                ? ContactSpaceScopeType.TOURNAMENT
+                : ContactSpaceScopeType.TOURNAMENT_DIVISION;
     }
 
     /**
@@ -197,6 +217,34 @@ public class BulletinThreadService {
      */
     @Transactional
     public ThreadResponse createThread(ScopeType scopeType, Long scopeId, Long userId, CreateThreadRequest request) {
+        // F08.7.1: 大会/ディビジョン連絡スペースは連絡認可（canPost）に委譲する。
+        // 投稿者＝各チーム代表/副代表 or 主催組織 ADMIN/SYSTEM_ADMIN（§4.2）。
+        if (isTournamentScope(scopeType)) {
+            tournamentContactAccessService.checkPost(toContactScope(scopeType), scopeId, userId);
+            if (request.getCategoryId() != null) {
+                categoryService.findCategoryOrThrow(scopeType, scopeId, request.getCategoryId());
+            }
+            BulletinThreadEntity tournamentThread = BulletinThreadEntity.builder()
+                    .categoryId(request.getCategoryId())
+                    .scopeType(scopeType)
+                    .scopeId(scopeId)
+                    .authorId(userId)
+                    .postedAsSubjectType(VillageSubjectType.USER)
+                    .title(request.getTitle())
+                    .body(request.getBody())
+                    .priority(request.getPriority() != null
+                            ? Priority.valueOf(request.getPriority()) : Priority.INFO)
+                    .readTrackingMode(request.getReadTrackingMode() != null
+                            ? ReadTrackingMode.valueOf(request.getReadTrackingMode()) : ReadTrackingMode.COUNT_ONLY)
+                    .sourceType(request.getSourceType())
+                    .sourceId(request.getSourceId())
+                    .build();
+            BulletinThreadEntity savedTournament = threadRepository.save(tournamentThread);
+            log.info("大会連絡スレッド作成: scopeType={}, scopeId={}, threadId={}",
+                    scopeType, scopeId, savedTournament.getId());
+            return bulletinMapper.toThreadResponse(savedTournament);
+        }
+
         accessGuard.checkMembership(userId, scopeType, scopeId);
 
         // カテゴリの存在確認 + post_min_role の取得（未分類=null の場合はデフォルト MEMBER 扱い）
@@ -455,6 +503,20 @@ public class BulletinThreadService {
     @Transactional
     public ThreadResponse updateThreadGlobal(Long threadId, Long userId, UpdateThreadRequest request) {
         BulletinThreadEntity entity = findThreadByIdOrThrow(threadId);
+        if (isTournamentScope(entity.getScopeType())) {
+            // 大会連絡: 投稿者本人 or 連絡投稿権限者（canPost = チーム代表/主催者）
+            boolean owner = entity.getAuthorId() != null && entity.getAuthorId().equals(userId);
+            if (!owner) {
+                tournamentContactAccessService.checkPost(
+                        toContactScope(entity.getScopeType()), entity.getScopeId(), userId);
+            }
+            Priority p = request.getPriority() != null
+                    ? Priority.valueOf(request.getPriority()) : entity.getPriority();
+            entity.update(request.getTitle(), request.getBody(), p);
+            BulletinThreadEntity saved = threadRepository.save(entity);
+            log.info("大会連絡スレッド更新: threadId={}, scopeType={}", threadId, entity.getScopeType());
+            return bulletinMapper.toThreadResponse(saved);
+        }
         if (entity.getScopeType() != ScopeType.VILLAGE) {
             return updateThread(entity.getScopeType(), entity.getScopeId(), threadId, userId, request);
         }
@@ -488,6 +550,26 @@ public class BulletinThreadService {
     @Transactional
     public void deleteThreadGlobal(Long threadId, Long userId) {
         BulletinThreadEntity entity = findThreadByIdOrThrow(threadId);
+        if (isTournamentScope(entity.getScopeType())) {
+            // 安否確認スレッドは手動削除不可（設計書 §6）
+            if (SOURCE_TYPE_SAFETY_CHECK.equals(entity.getSourceType())) {
+                throw new BusinessException(BulletinErrorCode.SAFETY_THREAD_DELETE_FORBIDDEN);
+            }
+            boolean owner = entity.getAuthorId() != null && entity.getAuthorId().equals(userId);
+            if (!owner) {
+                tournamentContactAccessService.checkPost(
+                        toContactScope(entity.getScopeType()), entity.getScopeId(), userId);
+            }
+            entity.softDelete();
+            threadRepository.save(entity);
+            log.info("大会連絡スレッド削除: threadId={}, scopeType={}, by={}",
+                    threadId, entity.getScopeType(), userId);
+            if (!owner) {
+                recordContentDeletionAudit(AuditEventType.BULLETIN_THREAD_DELETED, entity.getScopeType(),
+                        entity.getScopeId(), userId, entity.getAuthorId(), threadId);
+            }
+            return;
+        }
         if (entity.getScopeType() != ScopeType.VILLAGE) {
             deleteThread(entity.getScopeType(), entity.getScopeId(), threadId, userId);
             return;
@@ -581,6 +663,19 @@ public class BulletinThreadService {
     @Transactional
     public ThreadResponse archiveGlobal(Long threadId, Long userId, boolean isArchived) {
         BulletinThreadEntity entity = findThreadByIdOrThrow(threadId);
+        if (isTournamentScope(entity.getScopeType())) {
+            tournamentContactAccessService.checkPost(
+                    toContactScope(entity.getScopeType()), entity.getScopeId(), userId);
+            if (isArchived) {
+                entity.archive();
+                entity.clearArchiveFolder();
+            } else {
+                entity.unarchive();
+            }
+            BulletinThreadEntity saved = threadRepository.save(entity);
+            log.info("大会連絡スレッドアーカイブ状態変更: threadId={}, isArchived={}", threadId, saved.getIsArchived());
+            return bulletinMapper.toThreadResponse(saved);
+        }
         if (entity.getScopeType() != ScopeType.VILLAGE) {
             return archive(entity.getScopeType(), entity.getScopeId(), threadId, userId, isArchived, null);
         }
@@ -602,6 +697,10 @@ public class BulletinThreadService {
     private void requireModeration(BulletinThreadEntity entity, Long userId) {
         if (entity.getScopeType() == ScopeType.VILLAGE) {
             villageBulletinAccessService.checkVillageBulletinModerator(entity.getScopeVillageId(), userId);
+        } else if (isTournamentScope(entity.getScopeType())) {
+            // 大会連絡: モデレーション＝投稿権限者（チーム代表/主催者・§4.2）
+            tournamentContactAccessService.checkPost(
+                    toContactScope(entity.getScopeType()), entity.getScopeId(), userId);
         } else {
             accessGuard.checkMembership(userId, entity.getScopeType(), entity.getScopeId());
             accessGuard.requireManageContent(userId, entity.getScopeType(), entity.getScopeId());
