@@ -120,7 +120,22 @@ public enum TournamentErrorCode implements ErrorCode {
     FEE_PAYMENT_ITEM_SCOPE_MISMATCH("TOUR_036", "指定された支払い項目が主催組織に属していません", Severity.WARN),
 
     /** 支払おうとしたチームが参加費の対象（SPECIFIC_TEAMS）に含まれていない（F08.7.1/07 §2） */
-    FEE_TEAM_NOT_TARGET("TOUR_037", "このチームは参加費の対象に含まれていません", Severity.WARN);
+    FEE_TEAM_NOT_TARGET("TOUR_037", "このチームは参加費の対象に含まれていません", Severity.WARN),
+
+    /** 呼び出しユーザーの所属チームが当該試合の対戦当事者でない（F08.7.1/05 §4・rosters/me） */
+    ROSTER_TEAM_NOT_IN_MATCH("TOUR_038", "あなたのチームはこの試合の対戦当事者ではありません", Severity.WARN),
+
+    /** 自チームメンバー表の編集/提出権限がない（F08.7.1/05 §5・自チーム ADMIN/DEPUTY 限定） */
+    ROSTER_EDIT_FORBIDDEN("TOUR_039", "このメンバー表を編集する権限がありません", Severity.WARN),
+
+    /** 提出締切（roster_deadline）超過のため編集ロック中（F08.7.1/05 §5・409） */
+    ROSTER_DEADLINE_PASSED("TOUR_040", "メンバー表の提出締切を過ぎているため編集できません", Severity.WARN),
+
+    /** 主催組織 ADMIN でないため全チームのメンバー表閲覧/締切管理ができない（F08.7.1/05 §5） */
+    ROSTER_MANAGE_FORBIDDEN("TOUR_041", "メンバー表を管理する権限がありません", Severity.WARN),
+
+    /** 指定ユニフォームセットが自チームのものでない / 存在しない（F08.7.1/05 §8.2・8.5） */
+    UNIFORM_SET_NOT_FOUND("TOUR_042", "指定されたユニフォームセットが見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

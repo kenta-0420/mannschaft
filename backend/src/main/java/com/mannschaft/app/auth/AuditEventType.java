@@ -339,6 +339,12 @@ public enum AuditEventType {
     /** 大会・ディビジョン連絡スペースの公開設定を変更した（誰が・いつ・どのスペースを公開/非公開に）。 */
     TOURNAMENT_CONTACT_SPACE_VISIBILITY_UPDATED(AuditEventCategory.TOURNAMENT),
 
+    // ─── TOURNAMENT (F08.7.1/05 試合メンバー表) ──────────────────
+    /** 自チームの試合メンバー表を提出した（誰が・いつ・どの試合の自チーム分を／§5 提出監査）。 */
+    TOURNAMENT_ROSTER_SUBMITTED(AuditEventCategory.TOURNAMENT),
+    /** 主催組織 ADMIN が試合のメンバー表提出締切を設定/変更した。 */
+    TOURNAMENT_ROSTER_DEADLINE_UPDATED(AuditEventCategory.TOURNAMENT),
+
     // ─── NAV_SETTINGS (F20.1 ナビゲーションバーカスタマイズ) ─────────────
     /** ユーザーが個人ナビ設定を更新した。 */
     NAV_SETTINGS_UPDATED(AuditEventCategory.ADMIN_ACTION),

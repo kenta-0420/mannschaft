@@ -399,6 +399,12 @@ public class GlobalExceptionHandler {
             Map.entry("TOUR_035", HttpStatus.FORBIDDEN),              // FEE_PAY_FORBIDDEN
             Map.entry("TOUR_036", HttpStatus.UNPROCESSABLE_ENTITY),  // FEE_PAYMENT_ITEM_SCOPE_MISMATCH
             Map.entry("TOUR_037", HttpStatus.FORBIDDEN),              // FEE_TEAM_NOT_TARGET
+            // F08.7.1/05 試合メンバー表
+            Map.entry("TOUR_038", HttpStatus.FORBIDDEN),              // ROSTER_TEAM_NOT_IN_MATCH（対戦当事者でない）
+            Map.entry("TOUR_039", HttpStatus.FORBIDDEN),              // ROSTER_EDIT_FORBIDDEN（自チーム ADMIN/DEPUTY 限定）
+            Map.entry("TOUR_040", HttpStatus.CONFLICT),              // ROSTER_DEADLINE_PASSED（締切後ロック・409）
+            Map.entry("TOUR_041", HttpStatus.FORBIDDEN),              // ROSTER_MANAGE_FORBIDDEN（主催組織 ADMIN 限定）
+            Map.entry("TOUR_042", HttpStatus.NOT_FOUND),              // UNIFORM_SET_NOT_FOUND（IDOR 対策で 404）
             // F17.1 村機能 Phase 1（B2 村CRUD / B3 メンバーシップ / B4 ニックネーム / B5 村作成申請）統合
             Map.entry("VILLAGE_001", HttpStatus.NOT_FOUND),            // VILLAGE_NOT_FOUND（IDOR 対策で 404）
             Map.entry("VILLAGE_002", HttpStatus.FORBIDDEN),            // VILLAGE_UNLISTED

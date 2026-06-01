@@ -44,6 +44,10 @@ public class TournamentEntryTemplateMemberEntity extends UuidV7Entity {
     @Column(length = 50)
     private String position;
 
+    /** 協会選手登録番号（背番号 jerseyNumber とは別・NULL 可／F08.7.1/05 §8.1） */
+    @Column(length = 32)
+    private String registrationNumber;
+
     /** 並び順 */
     @Column(nullable = false)
     @Builder.Default
@@ -70,6 +74,17 @@ public class TournamentEntryTemplateMemberEntity extends UuidV7Entity {
     public void update(Integer jerseyNumber, String position, Short sortOrder) {
         this.jerseyNumber = jerseyNumber;
         this.position = position;
+        this.sortOrder = sortOrder;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * テンプレートメンバー情報を更新する（協会登録番号を含む／F08.7.1/05 §8.1）。
+     */
+    public void update(Integer jerseyNumber, String position, String registrationNumber, Short sortOrder) {
+        this.jerseyNumber = jerseyNumber;
+        this.position = position;
+        this.registrationNumber = registrationNumber;
         this.sortOrder = sortOrder;
         this.updatedAt = LocalDateTime.now();
     }

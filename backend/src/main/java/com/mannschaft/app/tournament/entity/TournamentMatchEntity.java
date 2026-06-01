@@ -76,6 +76,9 @@ public class TournamentMatchEntity extends BaseEntity {
 
     private Long scheduleId;
 
+    /** メンバー表提出締切（NULL=締切なし／F08.7.1/05 §2）。締切後の自チーム提出は 409 でロック */
+    private LocalDateTime rosterDeadline;
+
     @Version
     @Column(nullable = false)
     @Builder.Default
@@ -118,5 +121,13 @@ public class TournamentMatchEntity extends BaseEntity {
     public void setNextMatch(Long nextMatchId, MatchSlot slot) {
         this.nextMatchId = nextMatchId;
         this.nextMatchSlot = slot;
+    }
+
+    /**
+     * メンバー表提出締切を設定する（主催組織 ADMIN・F08.7.1/05 §2）。
+     * NULL を渡すと締切なし（ロック解除）になる。
+     */
+    public void setRosterDeadline(LocalDateTime rosterDeadline) {
+        this.rosterDeadline = rosterDeadline;
     }
 }
