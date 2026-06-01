@@ -38,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -78,6 +79,10 @@ class ChatMessageServiceTest {
     /** F17.1 Phase 3: VILLAGE_LOBBY での postedAs 検証。 */
     @Mock
     private PostingIdentityService postingIdentityService;
+
+    /** F08.7.1: 大会/ディビジョン連絡チャットの閲覧・投稿認可。 */
+    @Mock
+    private com.mannschaft.app.tournament.service.TournamentContactAccessService tournamentContactAccessService;
 
     @InjectMocks
     private ChatMessageService chatMessageService;
@@ -356,6 +361,7 @@ class ChatMessageServiceTest {
 
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(original));
             given(channelService.findChannelOrThrow(targetChannelId)).willReturn(targetChannel);
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(original);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
@@ -386,6 +392,7 @@ class ChatMessageServiceTest {
             MessageResponse expected = createMessageResponse();
 
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(message));
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(message);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
@@ -394,7 +401,7 @@ class ChatMessageServiceTest {
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
             // when
-            MessageResponse result = chatMessageService.togglePin(MESSAGE_ID, true);
+            MessageResponse result = chatMessageService.togglePin(MESSAGE_ID, true, SENDER_ID);
 
             // then
             assertThat(result).isNotNull();
@@ -524,6 +531,7 @@ class ChatMessageServiceTest {
             MessageResponse expected = createMessageResponse();
 
             given(messageRepository.findById(parentId)).willReturn(Optional.of(parent));
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.findByParentIdOrderByCreatedAtAsc(parentId)).willReturn(List.of(reply));
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
@@ -532,7 +540,7 @@ class ChatMessageServiceTest {
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
             // when
-            List<MessageResponse> result = chatMessageService.listThreadReplies(parentId);
+            List<MessageResponse> result = chatMessageService.listThreadReplies(parentId, SENDER_ID);
 
             // then
             assertThat(result).hasSize(1);
@@ -545,7 +553,7 @@ class ChatMessageServiceTest {
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> chatMessageService.listThreadReplies(MESSAGE_ID))
+            assertThatThrownBy(() -> chatMessageService.listThreadReplies(MESSAGE_ID, SENDER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.MESSAGE_NOT_FOUND));
@@ -566,6 +574,7 @@ class ChatMessageServiceTest {
             ChatMessageEntity message = createMessage();
             MessageResponse expected = createMessageResponse();
 
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.searchByKeyword(eq(CHANNEL_ID), eq("テスト"), any(Pageable.class)))
                     .willReturn(List.of(message));
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
@@ -575,7 +584,7 @@ class ChatMessageServiceTest {
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
             // when
-            List<MessageResponse> result = chatMessageService.searchMessages(CHANNEL_ID, "テスト", 10);
+            List<MessageResponse> result = chatMessageService.searchMessages(CHANNEL_ID, "テスト", 10, SENDER_ID);
 
             // then
             assertThat(result).hasSize(1);
@@ -585,11 +594,12 @@ class ChatMessageServiceTest {
         @DisplayName("正常系: limitがnullの場合はデフォルト50件で検索する")
         void limitがnullの場合はデフォルト50件で検索する() {
             // given
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.searchByKeyword(eq(CHANNEL_ID), eq("テスト"), any(Pageable.class)))
                     .willReturn(List.of());
 
             // when
-            chatMessageService.searchMessages(CHANNEL_ID, "テスト", null);
+            chatMessageService.searchMessages(CHANNEL_ID, "テスト", null, SENDER_ID);
 
             // then
             verify(messageRepository).searchByKeyword(eq(CHANNEL_ID), eq("テスト"),
@@ -616,6 +626,7 @@ class ChatMessageServiceTest {
 
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(original));
             given(channelService.findChannelOrThrow(targetChannelId)).willReturn(targetChannel);
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(original);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
@@ -647,6 +658,7 @@ class ChatMessageServiceTest {
             MessageResponse expected = createMessageResponse();
 
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(message));
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(message);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
@@ -655,7 +667,7 @@ class ChatMessageServiceTest {
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
             // when
-            MessageResponse result = chatMessageService.togglePin(MESSAGE_ID, false);
+            MessageResponse result = chatMessageService.togglePin(MESSAGE_ID, false, SENDER_ID);
 
             // then
             assertThat(result).isNotNull();
@@ -827,6 +839,7 @@ class ChatMessageServiceTest {
             MessageResponse expected = createMessageResponse();
 
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(root));
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel());
             given(messageRepository.findByRootIdAndDeletedAtIsNullOrderByCreatedAtAsc(
                     eq(MESSAGE_ID), any(Pageable.class))).willReturn(replyPage);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
@@ -836,7 +849,7 @@ class ChatMessageServiceTest {
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
             // when
-            ThreadResponse result = chatMessageService.getThread(MESSAGE_ID, null, 10);
+            ThreadResponse result = chatMessageService.getThread(MESSAGE_ID, null, 10, SENDER_ID);
 
             // then
             assertThat(result).isNotNull();
@@ -865,6 +878,114 @@ class ChatMessageServiceTest {
                     .audit(new MessageResponse.MessageAuditDto(null, null))
                     .build();
             assertThat(deepResponse.getThread().suggestBoardMigration()).isTrue();
+        }
+    }
+
+    // ========================================
+    // F08.7.1 大会/ディビジョン連絡チャットの認可配線（B3）
+    // ========================================
+    @Nested
+    @DisplayName("F08.7.1 大会連絡チャット認可配線")
+    class TournamentChannelAccess {
+
+        private static final Long TOURNAMENT_ID = 777L;
+        private static final Long TARGET_CHANNEL_ID = 20L;
+
+        private ChatChannelEntity tournamentChannel() {
+            return ChatChannelEntity.builder()
+                    .channelType(ChannelType.TOURNAMENT_CHAT)
+                    .name("大会連絡")
+                    .isPrivate(true)
+                    .sourceType("TOURNAMENT")
+                    .sourceId(TOURNAMENT_ID)
+                    .build();
+        }
+
+        private ChatMessageEntity tournamentMessage() {
+            return ChatMessageEntity.builder()
+                    .channelId(CHANNEL_ID).senderId(SENDER_ID).body("大会メッセージ").build();
+        }
+
+        @Test
+        @DisplayName("searchMessages: 非権限者（canView 例外）はメッセージを取得できない（漏洩防止）")
+        void search非権限者は漏洩しない() {
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(tournamentChannel());
+            doThrow(new com.mannschaft.app.common.BusinessException(
+                    com.mannschaft.app.tournament.TournamentErrorCode.CONTACT_SPACE_VIEW_FORBIDDEN))
+                    .when(tournamentContactAccessService)
+                    .checkView(any(), any(), any(), any());
+
+            assertThatThrownBy(() -> chatMessageService.searchMessages(CHANNEL_ID, "秘密", 10, OTHER_USER_ID))
+                    .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
+            // 認可前に検索クエリが走らない＝本文を一切読み出さない
+            verify(messageRepository, never()).searchByKeyword(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("searchMessages: 権限者は canView を通過して検索できる")
+        void search権限者は閲覧認可を通す() {
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(tournamentChannel());
+            given(messageRepository.searchByKeyword(eq(CHANNEL_ID), eq("公開"), any(Pageable.class)))
+                    .willReturn(List.of());
+
+            chatMessageService.searchMessages(CHANNEL_ID, "公開", 10, SENDER_ID);
+
+            verify(tournamentContactAccessService).checkView(
+                    eq(com.mannschaft.app.tournament.ContactSpaceScopeType.TOURNAMENT),
+                    eq(TOURNAMENT_ID),
+                    eq(com.mannschaft.app.tournament.ContactSpaceKind.CHAT),
+                    eq(SENDER_ID));
+        }
+
+        @Test
+        @DisplayName("getThread: 非権限者（canView 例外）はスレッド本文を取得できない（漏洩防止）")
+        void getThread非権限者は漏洩しない() {
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(tournamentMessage()));
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(tournamentChannel());
+            doThrow(new com.mannschaft.app.common.BusinessException(
+                    com.mannschaft.app.tournament.TournamentErrorCode.CONTACT_SPACE_VIEW_FORBIDDEN))
+                    .when(tournamentContactAccessService)
+                    .checkView(any(), any(), any(), any());
+
+            assertThatThrownBy(() -> chatMessageService.getThread(MESSAGE_ID, null, 10, OTHER_USER_ID))
+                    .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
+            verify(messageRepository, never())
+                    .findByRootIdAndDeletedAtIsNullOrderByCreatedAtAsc(any(), any());
+        }
+
+        @Test
+        @DisplayName("forwardMessage: 転送先が大会チャンネルで canPost 無し（例外）なら投稿バイパスを弾く")
+        void forward転送先canPost無しは弾く() {
+            ChatMessageEntity original = createMessage(); // 通常チャンネル由来（CHANNEL_ID）
+            ChatChannelEntity target = tournamentChannel();
+            ForwardMessageRequest req = new ForwardMessageRequest(TARGET_CHANNEL_ID, null);
+
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(original));
+            given(channelService.findChannelOrThrow(TARGET_CHANNEL_ID)).willReturn(target);
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(createChannel()); // 転送元 canView no-op
+            doThrow(new com.mannschaft.app.common.BusinessException(
+                    com.mannschaft.app.tournament.TournamentErrorCode.CONTACT_SPACE_POST_FORBIDDEN))
+                    .when(tournamentContactAccessService).checkPost(any(), any(), any());
+
+            assertThatThrownBy(() -> chatMessageService.forwardMessage(MESSAGE_ID, req, OTHER_USER_ID))
+                    .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
+            // 投稿バイパスされない＝メッセージが保存されない
+            verify(messageRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("togglePin: 大会チャンネルは canPost を要求する（モデレーション相当）")
+        void pin大会はcanPost() {
+            ChatMessageEntity message = tournamentMessage();
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(message));
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(tournamentChannel());
+            doThrow(new com.mannschaft.app.common.BusinessException(
+                    com.mannschaft.app.tournament.TournamentErrorCode.CONTACT_SPACE_POST_FORBIDDEN))
+                    .when(tournamentContactAccessService).checkPost(any(), any(), any());
+
+            assertThatThrownBy(() -> chatMessageService.togglePin(MESSAGE_ID, true, OTHER_USER_ID))
+                    .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
+            verify(messageRepository, never()).save(any());
         }
     }
 }

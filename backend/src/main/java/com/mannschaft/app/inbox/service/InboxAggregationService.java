@@ -9,8 +9,10 @@ import com.mannschaft.app.inbox.dto.InboxSummaryResponse;
 import com.mannschaft.app.inbox.dto.LabelDto;
 import com.mannschaft.app.inbox.entity.InboxItemStateEntity;
 import com.mannschaft.app.inbox.entity.InboxLabelLinkEntity;
+import com.mannschaft.app.inbox.entity.NotificationLabelEntity;
 import com.mannschaft.app.inbox.repository.InboxItemStateRepository;
 import com.mannschaft.app.inbox.repository.InboxLabelLinkRepository;
+import com.mannschaft.app.inbox.repository.NotificationLabelRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -46,6 +48,7 @@ public class InboxAggregationService {
     private final InboxPriorityNormalizer priorityNormalizer;
     private final InboxItemStateRepository itemStateRepository;
     private final InboxLabelLinkRepository labelLinkRepository;
+    private final NotificationLabelRepository labelRepository;
 
     /**
      * インボックス一覧を集約取得する（フィルタ・ページング）。
@@ -155,17 +158,23 @@ public class InboxAggregationService {
     }
 
     /**
-     * ラベルを sourceType ごとにまとめ取りする（N+1 回避）。MVP はラベル機能未提供のため、
-     * リンクが存在しなければ空 Map を返す（LabelDto の name/color/icon は将来のラベル本実装で解決）。
+     * ラベルを sourceType ごとにまとめ取りし、ラベル本体（name/color/icon/sortOrder）を解決する。
+     *
+     * <p>N+1 回避: リンクは sourceType ごとに 1 クエリ（最大ソース種別数回）、ラベル本体は
+     * 出現した {@code labelId} 集合を {@link NotificationLabelRepository#findByIdIn} で <b>1 回だけ</b>
+     * まとめ取りする（item 件数・リンク件数に依らず定数回）。{@code @SQLRestriction("deleted_at IS NULL")}
+     * により論理削除済みラベルは findByIdIn で自動脱落し、孤児リンクは表示から外れる（設計書 §2.3）。</p>
      */
     private Map<String, List<LabelDto>> fetchLabelsBounded(
             Long userId, List<InboxItemDto> raw, Set<InboxSourceType> presentTypes) {
-        Map<String, List<LabelDto>> result = new HashMap<>();
-        // sourceType ごとに sourceId 集合を作り 1 クエリ
+        // sourceType ごとに sourceId 集合を作り 1 クエリでリンクを集める
         Map<InboxSourceType, List<Long>> idsByType = new EnumMap<>(InboxSourceType.class);
         for (InboxItemDto r : raw) {
             idsByType.computeIfAbsent(r.sourceType(), t -> new ArrayList<>()).add(r.sourceId());
         }
+
+        List<InboxLabelLinkEntity> allLinks = new ArrayList<>();
+        Set<UUID> labelIds = new LinkedHashSet<>();
         for (InboxSourceType type : presentTypes) {
             List<Long> ids = idsByType.get(type);
             if (ids == null || ids.isEmpty()) {
@@ -173,12 +182,33 @@ public class InboxAggregationService {
             }
             List<InboxLabelLinkEntity> links =
                     labelLinkRepository.findByUserIdAndSourceTypeAndSourceIdIn(userId, type, ids);
+            allLinks.addAll(links);
             for (InboxLabelLinkEntity link : links) {
-                // ラベル本体（notification_labels）の解決はラベル機能本実装（Phase 2）で行う。
-                // MVP では link が無い限り空のため、ここはリンク存在時のプレースホルダ。
-                result.computeIfAbsent(key(link.getSourceType(), link.getSourceId()), x -> new ArrayList<>())
-                        .add(new LabelDto(link.getLabelId(), null, null, null, 0));
+                labelIds.add(link.getLabelId());
             }
+        }
+
+        if (labelIds.isEmpty()) {
+            return new HashMap<>();
+        }
+
+        // ラベル本体を 1 回でまとめ取り（論理削除済みは @SQLRestriction で脱落）
+        Map<UUID, NotificationLabelEntity> labelById = new HashMap<>();
+        for (NotificationLabelEntity label : labelRepository.findByIdIn(labelIds)) {
+            labelById.put(label.getId(), label);
+        }
+
+        // 各通知（source キー）へ解決済みラベルを束ねる
+        Map<String, List<LabelDto>> result = new HashMap<>();
+        for (InboxLabelLinkEntity link : allLinks) {
+            NotificationLabelEntity label = labelById.get(link.getLabelId());
+            if (label == null) {
+                // 論理削除済み（孤児リンク）→ 表示から除外（設計書 §2.3）
+                continue;
+            }
+            result.computeIfAbsent(key(link.getSourceType(), link.getSourceId()), x -> new ArrayList<>())
+                    .add(new LabelDto(label.getId(), label.getName(), label.getColor(),
+                            label.getIcon(), label.getSortOrder()));
         }
         return result;
     }

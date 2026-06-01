@@ -29,5 +29,7 @@ public enum AuditEventCategory {
     /** F03.5 シフト管理（手動リマインド送信等）。 */
     SHIFT,
     /** F05.1 掲示板（他者コンテンツ削除等のモデレーション操作）。 */
-    BULLETIN
+    BULLETIN,
+    /** F08.7 / F08.7.1 大会（連絡スペース公開設定変更等）。 */
+    TOURNAMENT
 }
