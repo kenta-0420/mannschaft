@@ -89,7 +89,7 @@ class RecruitmentListingServicePhase2DTest {
                         new MarketRegionValidator.ResolvedRegion("13", null),
                         new MarketRegionValidator.ResolvedRegion("14", "14100")));
         given(listingRepository.save(any(RecruitmentListingEntity.class)))
-                .willAnswer(inv -> inv.getArgument(0));
+                .willAnswer(inv -> withId(inv.getArgument(0), 999L));
 
         CreateRecruitmentListingRequest request = requestWithRegions(List.of(
                 new CreateRecruitmentListingRequest.RegionInput("13", null),
@@ -131,7 +131,7 @@ class RecruitmentListingServicePhase2DTest {
         given(marketRegionValidator.validateAndNormalize(eq("27"), eq("27100")))
                 .willReturn(new MarketRegionValidator.ResolvedRegion("27", "27100"));
         given(listingRepository.save(any(RecruitmentListingEntity.class)))
-                .willAnswer(inv -> inv.getArgument(0));
+                .willAnswer(inv -> withId(inv.getArgument(0), 999L));
 
         CreateRecruitmentListingRequest request = requestSingle("27", "27100", null);
         service.create(RecruitmentScopeType.TEAM, TEAM_ID, USER_ID, request);
@@ -158,7 +158,7 @@ class RecruitmentListingServicePhase2DTest {
         given(marketRegionValidator.validateAndNormalize(any(), any()))
                 .willReturn(new MarketRegionValidator.ResolvedRegion(null, null));
         given(listingRepository.save(any(RecruitmentListingEntity.class)))
-                .willAnswer(inv -> inv.getArgument(0));
+                .willAnswer(inv -> withId(inv.getArgument(0), 999L));
 
         CreateRecruitmentListingRequest request = requestSingle(null, null, null);
         service.create(RecruitmentScopeType.TEAM, TEAM_ID, USER_ID, request);
@@ -197,5 +197,18 @@ class RecruitmentListingServicePhase2DTest {
                 RecruitmentVisibility.SCOPE_ONLY,
                 null, null, null, null,
                 prefectureCode, cityCode, null, null, regions);
+    }
+
+    /** BaseEntity.id は private 採番のため、テストでは reflection で設定する（DB 採番の代替）。 */
+    private static RecruitmentListingEntity withId(RecruitmentListingEntity entity, Long id) {
+        try {
+            java.lang.reflect.Field f =
+                    com.mannschaft.app.common.BaseEntity.class.getDeclaredField("id");
+            f.setAccessible(true);
+            f.set(entity, id);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+        return entity;
     }
 }

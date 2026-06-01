@@ -68,6 +68,8 @@ class RecruitmentListingServicePhase2CTest {
     private com.mannschaft.app.recruitment.repository.RecruitmentFriendTargetRepository friendTargetRepository;
     @Mock
     private TeamService teamService;
+    @Mock
+    private com.mannschaft.app.recruitment.repository.RecruitmentListingRegionRepository listingRegionRepository;
 
     @InjectMocks
     private RecruitmentListingService service;
@@ -151,10 +153,24 @@ class RecruitmentListingServicePhase2CTest {
         given(categoryRepository.existsById(CATEGORY_ID)).willReturn(true);
         given(marketRegionValidator.validateAndNormalize(any(), any()))
                 .willReturn(new MarketRegionValidator.ResolvedRegion(null, null));
+        // save は DB 採番済み（id 設定済み）エンティティを返す（中間表 replace が id を要求するため）。
         given(listingRepository.save(any(RecruitmentListingEntity.class)))
-                .willAnswer(inv -> inv.getArgument(0));
+                .willAnswer(inv -> withId(inv.getArgument(0), 999L));
         given(mapper.toListingResponse(any())).willReturn(null);
         given(marketResponseEnricher.enrich(any(), any())).willReturn(null);
+    }
+
+    /** BaseEntity.id は private 採番のため、テストでは reflection で設定する。 */
+    private static RecruitmentListingEntity withId(RecruitmentListingEntity entity, Long id) {
+        try {
+            java.lang.reflect.Field f =
+                    com.mannschaft.app.common.BaseEntity.class.getDeclaredField("id");
+            f.setAccessible(true);
+            f.set(entity, id);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+        return entity;
     }
 
     private CreateRecruitmentListingRequest requestWithRegion(String prefectureCode, String cityCode) {

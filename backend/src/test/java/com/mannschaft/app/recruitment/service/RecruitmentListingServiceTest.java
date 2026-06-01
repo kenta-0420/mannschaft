@@ -162,7 +162,7 @@ class RecruitmentListingServiceTest {
                     null, null, null, null, null, null, null,
                     3, // capacity=3 < confirmed_count=5
                     null, null, null, null, null, null, null, null,
-                    null, null); // F22.1 prefectureCode, cityCode
+                    null, null, null); // F22.1 prefectureCode, cityCode, regions
 
             assertThatThrownBy(() -> service.update(LISTING_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
@@ -178,7 +178,7 @@ class RecruitmentListingServiceTest {
             assertThatThrownBy(() -> service.update(LISTING_ID, USER_ID,
                     new UpdateRecruitmentListingRequest(null, null, null, null, null, null, null,
                             null, null, null, null, null, null, null, null, null,
-                            null, null)))
+                            null, null, null)))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
