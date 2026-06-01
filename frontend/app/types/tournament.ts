@@ -463,3 +463,87 @@ export interface ApplyTemplateResponse {
   total: number
   entryMembers: TournamentEntryMember[]
 }
+
+// ──────────────────────────────────────────────────
+// F08.7.1 / 02: 成績ウィジェット用の追加型
+// バックエンド StandingsController / OrganizationTournamentSummaryController に対応。
+// ──────────────────────────────────────────────────
+
+/** チーム通算成績（GET /teams/{id}/tournament-stats） */
+export interface TeamTournamentStats {
+  teamId: number
+  totalTournaments: number
+  totalPlayed: number
+  totalWins: number
+  totalDraws: number
+  totalLosses: number
+  totalScoreFor: number
+  totalScoreAgainst: number
+  bestRank: number | null
+}
+
+/** チーム大会参加履歴の 1 エントリ（GET /teams/{id}/tournament-history） */
+export interface TeamTournamentHistoryEntry {
+  organizationId: number
+  meta: {
+    tournamentName: string
+    season: string | null
+    divisionName: string
+    finalRank: number | null
+  }
+  identifiers: {
+    tournamentId: number
+    divisionId: number
+    participantId: number
+  }
+  record: {
+    played: number
+    wins: number
+    draws: number
+    losses: number
+    points: number
+  }
+}
+
+export interface TeamTournamentHistory {
+  teamId: number
+  history: TeamTournamentHistoryEntry[]
+}
+
+/** 順位表の 1 行（GET .../divisions/{divId}/standings） */
+export interface TournamentStanding {
+  id: number
+  meta: { divisionId: number; participantId: number }
+  team: { teamId: number; teamName: string; rank: number | null }
+  record: { played: number; wins: number; draws: number; losses: number }
+  score: {
+    scoreFor: number
+    scoreAgainst: number
+    scoreDifference: number
+    points: number
+    bonusPoints: number
+    setsWon: number
+    setsLost: number
+  }
+  form: string | null
+  status: { promotionZone: string | null; lastCalculatedAt: string | null }
+}
+
+/** 主催大会サマリ（GET /organizations/{orgId}/tournaments/summary） */
+export interface OrganizationTournamentSummaryDivision {
+  divisionId: number
+  name: string
+  participantCount: number
+  leaderTeamName: string | null
+}
+
+export interface OrganizationTournamentSummaryEntry {
+  tournamentId: number
+  name: string
+  status: string
+  divisions: OrganizationTournamentSummaryDivision[]
+}
+
+export interface OrganizationTournamentSummary {
+  tournaments: OrganizationTournamentSummaryEntry[]
+}
