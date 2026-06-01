@@ -169,6 +169,6 @@ class RecruitmentListingServicePhase2CTest {
                 false, null,
                 RecruitmentVisibility.SCOPE_ONLY,
                 null, null, null, null,
-                prefectureCode, cityCode, null, null);
+                prefectureCode, cityCode, null, null, null);
     }
 }

@@ -113,7 +113,7 @@ class RecruitmentListingServiceTest {
                     false, null,
                     RecruitmentVisibility.SCOPE_ONLY,
                     null, null, null, null,
-                    null, null, null, null); // F22.1 地域・フレンド宛先・配信対象
+                    null, null, null, null, null); // F22.1 地域・フレンド宛先・配信対象・複数地域(regions)
             assertThatThrownBy(() -> service.create(RecruitmentScopeType.TEAM, TEAM_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -136,7 +136,7 @@ class RecruitmentListingServiceTest {
                     true, null, // paymentEnabled=true, price=null
                     RecruitmentVisibility.SCOPE_ONLY,
                     null, null, null, null,
-                    null, null, null, null); // F22.1 地域・フレンド宛先・配信対象
+                    null, null, null, null, null); // F22.1 地域・フレンド宛先・配信対象・複数地域(regions)
             assertThatThrownBy(() -> service.create(RecruitmentScopeType.TEAM, TEAM_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -201,7 +201,7 @@ class RecruitmentListingServiceTest {
                 false, null,
                 RecruitmentVisibility.SCOPE_ONLY,
                 "東京", null, null, null,
-                null, null, null, null); // F22.1 地域・フレンド宛先・配信対象
+                null, null, null, null, null); // F22.1 地域・フレンド宛先・配信対象・複数地域(regions)
     }
 
     private RecruitmentListingEntity buildListingWithConfirmed(int confirmedCount) throws Exception {
