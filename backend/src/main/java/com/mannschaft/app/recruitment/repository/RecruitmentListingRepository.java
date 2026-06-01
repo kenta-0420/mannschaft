@@ -250,17 +250,13 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
               AND (:categoryId IS NULL OR l.categoryId = :categoryId)
               AND (:keyword IS NULL OR l.title LIKE %:keyword%)
               AND (
-                    -- city 指定: 当該市区町村に紐づく地域行が存在する札
                     (:city IS NOT NULL AND EXISTS (
                         SELECT 1 FROM RecruitmentListingRegionEntity rr
                         WHERE rr.listingId = l.id AND rr.cityCode = :city))
-                    -- prefecture のみ指定: 当該都道府県に紐づく地域行が存在する札（県単位 / 配下市区町村とも）
                  OR (:city IS NULL AND :prefecture IS NOT NULL AND EXISTS (
                         SELECT 1 FROM RecruitmentListingRegionEntity rr
                         WHERE rr.listingId = l.id AND rr.prefectureCode = :prefecture))
-                    -- 両 NULL: 地域条件なし（全国）
                  OR (:city IS NULL AND :prefecture IS NULL)
-                    -- includeRegionNone: 地域行を一切持たない札も含める
                  OR (:includeRegionNone = TRUE AND NOT EXISTS (
                         SELECT 1 FROM RecruitmentListingRegionEntity rr
                         WHERE rr.listingId = l.id))
