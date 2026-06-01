@@ -1,0 +1,82 @@
+package com.mannschaft.app.inbox.service.adapter;
+
+import com.mannschaft.app.inbox.InboxNotificationTypes;
+import com.mannschaft.app.inbox.InboxSourceType;
+import com.mannschaft.app.inbox.dto.InboxItemDto;
+import com.mannschaft.app.inbox.service.InboxPriorityNormalizer;
+import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.entity.NotificationEntity;
+import com.mannschaft.app.notification.repository.NotificationRepository;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+
+/**
+ * F04.11 {@link NotificationInboxAdapter} 単体テスト（Mockito）。
+ *
+ * <p>Phase3 ②（03_business_logic.md §5）の受け入れ条件: スヌーズ復帰 push
+ * （{@code notification_type = INBOX_SNOOZE_REVIVAL}）はインボックス受信箱に
+ * 再流入させない＝アダプタは「当該種別を除外する」クエリを使う（自己増殖回避）。</p>
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("NotificationInboxAdapter 単体テスト")
+class NotificationInboxAdapterTest {
+
+    private static final Long USER_ID = 1L;
+
+    private final NotificationRepository notificationRepository = mock(NotificationRepository.class);
+    private final InboxPriorityNormalizer normalizer = new InboxPriorityNormalizer();
+
+    private final NotificationInboxAdapter adapter =
+            new NotificationInboxAdapter(notificationRepository, normalizer);
+
+    private NotificationEntity notification(Long id, String title) {
+        return NotificationEntity.builder()
+                .id(id)
+                .userId(USER_ID)
+                .notificationType("GENERIC")
+                .priority(NotificationPriority.NORMAL)
+                .title(title)
+                .body("body")
+                .actionUrl("/x/" + id)
+                .isRead(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
+
+    @Test
+    @DisplayName("fetch は INBOX_SNOOZE_REVIVAL 種別を除外するクエリを使う（自己増殖回避）")
+    void fetch_excludesSnoozeRevivalType() {
+        Page<NotificationEntity> page = new PageImpl<>(List.of(notification(100L, "t")));
+        given(notificationRepository.findByUserIdAndNotificationTypeNotOrderByCreatedAtDesc(
+                eq(USER_ID), eq(InboxNotificationTypes.INBOX_SNOOZE_REVIVAL), any(Pageable.class)))
+                .willReturn(page);
+
+        List<InboxItemDto> result = adapter.fetch(USER_ID);
+
+        // 除外種別を渡したクエリが呼ばれている
+        ArgumentCaptor<String> typeCaptor = ArgumentCaptor.forClass(String.class);
+        verify(notificationRepository).findByUserIdAndNotificationTypeNotOrderByCreatedAtDesc(
+                eq(USER_ID), typeCaptor.capture(), any(Pageable.class));
+        assertThat(typeCaptor.getValue()).isEqualTo(InboxNotificationTypes.INBOX_SNOOZE_REVIVAL);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).sourceType()).isEqualTo(InboxSourceType.NOTIFICATION);
+        assertThat(result.get(0).sourceId()).isEqualTo(100L);
+    }
+}

@@ -124,4 +124,21 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
      */
     boolean existsByUserIdAndNotificationTypeAndSourceTypeAndSourceIdAndCreatedAtGreaterThanEqual(
             Long userId, String notificationType, String sourceType, Long sourceId, LocalDateTime since);
+
+    /**
+     * F04.11 Phase3 ②：指定種別を除外したユーザーの通知一覧をページング取得する（作成日時降順）。
+     *
+     * <p>統合インボックスの NOTIFICATION アダプタが、スヌーズ復帰 push 自身
+     * （{@code notification_type = 'INBOX_SNOOZE_REVIVAL'}）を受信箱へ再度流入させない
+     * （＝自己増殖を防ぐ）ために使用する。復帰 push はベル/通知一覧には出るが、
+     * インボックス受信箱には元のスヌーズ項目が戻るのみとする
+     * （設計書 03_business_logic.md §5）。</p>
+     *
+     * @param userId            ユーザー ID
+     * @param excludedType      除外する通知種別（{@code INBOX_SNOOZE_REVIVAL}）
+     * @param pageable          ページング
+     * @return 除外後の通知ページ
+     */
+    Page<NotificationEntity> findByUserIdAndNotificationTypeNotOrderByCreatedAtDesc(
+            Long userId, String excludedType, Pageable pageable);
 }
