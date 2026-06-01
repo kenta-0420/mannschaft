@@ -40,7 +40,11 @@
       "TOUR_022": "Entry member not found",
       "TOUR_023": "Below minimum entry count",
       "TOUR_024": "This player is already entered",
-      "TOUR_025": "No members to load"
+      "TOUR_025": "No members to load",
+      "TOUR_029": "Contact space not found",
+      "TOUR_030": "You do not have permission to view this contact space",
+      "TOUR_031": "You do not have permission to post to this contact space",
+      "TOUR_032": "You do not have permission to change the visibility of this contact space"
     }
   }
 }

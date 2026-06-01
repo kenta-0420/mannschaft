@@ -40,7 +40,11 @@
       "TOUR_022": "Miembro inscrito no encontrado",
       "TOUR_023": "Por debajo del número mínimo de inscritos",
       "TOUR_024": "Este jugador ya está inscrito",
-      "TOUR_025": "No hay miembros para cargar"
+      "TOUR_025": "No hay miembros para cargar",
+      "TOUR_029": "Espacio de contacto no encontrado",
+      "TOUR_030": "No tienes permiso para ver este espacio de contacto",
+      "TOUR_031": "No tienes permiso para publicar en este espacio de contacto",
+      "TOUR_032": "No tienes permiso para cambiar la visibilidad de este espacio de contacto"
     }
   }
 }

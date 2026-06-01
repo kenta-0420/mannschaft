@@ -49,6 +49,7 @@ class TournamentServiceTest {
     @Mock private TournamentParticipantRepository participantRepository;
     @Mock private TournamentMapper mapper;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
+    @Mock private com.mannschaft.app.tournament.service.TournamentContactSpaceProvisioningService contactSpaceProvisioningService;
 
     @InjectMocks
     private TournamentService service;
