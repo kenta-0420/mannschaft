@@ -93,6 +93,8 @@ public class RecruitmentListingService {
     private final MarketFriendTargetService marketFriendTargetService;
     private final MarketResponseEnricher marketResponseEnricher;
     private final com.mannschaft.app.recruitment.repository.RecruitmentFriendTargetRepository friendTargetRepository;
+    // F22.1 市 Phase 2 足場C: 札立て地域の team 既定補完（read-only 横断クエリ）
+    private final com.mannschaft.app.team.service.TeamService teamService;
 
     // ===========================================
     // 取得系
@@ -175,10 +177,24 @@ public class RecruitmentListingService {
             throw new BusinessException(RecruitmentErrorCode.LINE_TIME_CONFLICT);
         }
 
+        // F22.1 市 Phase 2 足場C: scope=TEAM かつ request 地域コード未指定なら team の地域を既定補完。
+        //   request 指定があればそれを優先（上書き可）。team 側 NULL なら従来どおり地域なし札。
+        //   org scope は対象外。
+        String requestedPrefectureCode = request.getPrefectureCode();
+        String requestedCityCode = request.getCityCode();
+        if (scopeType == RecruitmentScopeType.TEAM
+                && isBlank(requestedPrefectureCode) && isBlank(requestedCityCode)) {
+            var teamRegion = teamService.findRegionCodes(scopeId);
+            if (teamRegion.isPresent()) {
+                requestedPrefectureCode = teamRegion.get().prefectureCode();
+                requestedCityCode = teamRegion.get().cityCode();
+            }
+        }
+
         // F22.1 市: 地域コード検証・正規化（MARKET_001）
         MarketRegionValidator.ResolvedRegion region =
                 marketRegionValidator.validateAndNormalize(
-                        request.getPrefectureCode(), request.getCityCode());
+                        requestedPrefectureCode, requestedCityCode);
 
         // F22.1 市: フレンド宛先・配信対象の整合検証（MARKET_002〜005）
         boolean isFriendOnly = request.getVisibility() == RecruitmentVisibility.FRIEND_TEAMS_ONLY;
@@ -723,6 +739,11 @@ public class RecruitmentListingService {
             return false;
         }
         return listingRepository.countOverlappingByLine(lineId, startAt, endAt, null) > 0;
+    }
+
+    /** null または空白文字列なら {@code true}（F22.1 地域コード未指定判定）。 */
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 
     // ===========================================

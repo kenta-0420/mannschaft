@@ -96,3 +96,61 @@ export interface InboxListParams {
   page?: number
   size?: number
 }
+
+// ─────────────────────────────────────────────
+// Phase 2: ラベル CRUD ペイロード型
+// ─────────────────────────────────────────────
+
+/** ラベル作成リクエスト。 */
+export interface CreateLabelPayload {
+  name: string
+  color?: string
+  icon?: string
+}
+
+/** ラベル更新リクエスト。 */
+export interface UpdateLabelPayload {
+  name?: string
+  color?: string
+  icon?: string
+  sortOrder?: number
+}
+
+/** ラベル一覧レスポンス。 */
+export interface InboxLabelListResponse {
+  data: InboxLabel[]
+}
+
+/** ラベル単体レスポンス。 */
+export interface InboxLabelResponse {
+  data: InboxLabel
+}
+
+// ─────────────────────────────────────────────
+// Phase 2: bulk 操作型
+// ─────────────────────────────────────────────
+
+/** bulk 操作の種別。 */
+export type InboxBulkAction = 'ARCHIVE' | 'UNARCHIVE' | 'SNOOZE' | 'LABEL_ADD'
+
+/** bulk 操作の対象アイテム。 */
+export interface InboxBulkItem {
+  sourceType: InboxSourceType
+  sourceId: number
+}
+
+/** POST /api/v1/inbox/bulk リクエスト。 */
+export interface InboxBulkPayload {
+  action: InboxBulkAction
+  items: InboxBulkItem[]
+  snoozedUntil?: string
+  labelId?: string
+}
+
+/** POST /api/v1/inbox/bulk レスポンス。 */
+export interface InboxBulkResponse {
+  data: {
+    processed: number
+    skipped: number
+  }
+}

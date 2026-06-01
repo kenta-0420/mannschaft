@@ -8,12 +8,13 @@
  * 機能:
  * - 状態タブ（受信箱 / スヌーズ中 / 保管庫）
  * - 緊急度 / 種類のサブフィルタ（チップ）
- * - 各行に snooze（プリセット選択）/ archive / unarchive アイコン
- * - priority バッジ + sourceType アイコン
+ * - 各行に snooze（プリセット選択）/ archive / unarchive / ラベル付与 アイコン
+ * - priority バッジ + sourceType アイコン + ラベルチップ
  * - オフセットページング（「もっと読む」）
  * - 楽観更新はストア側で実施
+ * - Phase 2: ラベル絞り込み、bulk 選択モード、ラベル管理
  */
-import type { InboxPriority, InboxSourceType, InboxStateFilter } from '~/types/inbox'
+import type { InboxLabel, InboxPriority, InboxSourceType, InboxStateFilter } from '~/types/inbox'
 import {
   priorityI18nKey,
   prioritySeverity,
@@ -29,18 +30,77 @@ const { captureQuiet } = useErrorReport()
 const { relativeTime } = useRelativeTime()
 
 // ─────────────────────────────────────────────
+// ラベル管理パネル
+// ─────────────────────────────────────────────
+
+/** ラベル管理パネルの表示フラグ。 */
+const showLabelManager = ref(false)
+
+function toggleLabelManager() {
+  showLabelManager.value = !showLabelManager.value
+}
+
+// ─────────────────────────────────────────────
+// bulk 選択モード
+// ─────────────────────────────────────────────
+
+/** bulk スヌーズ用プリセット選択パネル表示フラグ。 */
+const showBulkSnoozePanel = ref(false)
+/** bulk ラベル付与用ラベル選択パネル表示フラグ。 */
+const showBulkLabelPanel = ref(false)
+
+function toggleBulkSnoozePanel() {
+  showBulkSnoozePanel.value = !showBulkSnoozePanel.value
+  showBulkLabelPanel.value = false
+}
+
+function toggleBulkLabelPanel() {
+  showBulkLabelPanel.value = !showBulkLabelPanel.value
+  showBulkSnoozePanel.value = false
+}
+
+async function onBulkArchive() {
+  const result = await inboxStore.runBulk('ARCHIVE')
+  if (result) {
+    notification.success(
+      t('inbox.bulk.result', { processed: result.processed, skipped: result.skipped }),
+    )
+  } else {
+    notification.error(t('common.error.unknown'))
+  }
+}
+
+async function onBulkSnooze(preset: InboxSnoozePreset) {
+  const snoozedUntil = inboxStore.computeSnoozeUntil(preset)
+  showBulkSnoozePanel.value = false
+  const result = await inboxStore.runBulk('SNOOZE', { snoozedUntil })
+  if (result) {
+    notification.success(
+      t('inbox.bulk.result', { processed: result.processed, skipped: result.skipped }),
+    )
+  } else {
+    notification.error(t('common.error.unknown'))
+  }
+}
+
+async function onBulkAddLabel(label: InboxLabel) {
+  showBulkLabelPanel.value = false
+  const result = await inboxStore.runBulk('LABEL_ADD', { labelId: label.id })
+  if (result) {
+    notification.success(
+      t('inbox.bulk.result', { processed: result.processed, skipped: result.skipped }),
+    )
+  } else {
+    notification.error(t('common.error.unknown'))
+  }
+}
+
+// ─────────────────────────────────────────────
 // スヌーズオーバーレイ
 // ─────────────────────────────────────────────
 
 /** スヌーズプリセット選択パネルの表示対象アイテム ID。 */
 const snoozeTargetId = ref<string | null>(null)
-
-/**
- * スヌーズアイコンクリック → プリセット選択パネルを表示する。
- */
-function openSnoozePanel(id: string) {
-  snoozeTargetId.value = snoozeTargetId.value === id ? null : id
-}
 
 /**
  * プリセット選択後にスヌーズを実行する。
@@ -55,7 +115,7 @@ async function onSnoozePreset(
   try {
     const ok = await inboxStore.snooze(sourceType, sourceId, snoozedUntil)
     if (ok) {
-      notification.success(t('inbox.action.snooze') + ' ✓')
+      notification.success(t('inbox.action.snoozed'))
     } else {
       notification.error(t('common.error.unknown'))
     }
@@ -72,7 +132,7 @@ async function onArchive(sourceType: InboxSourceType, sourceId: number) {
   try {
     const ok = await inboxStore.archive(sourceType, sourceId)
     if (ok) {
-      notification.success(t('inbox.action.archive') + ' ✓')
+      notification.success(t('inbox.action.archived'))
     }
   } catch (error) {
     captureQuiet(error, { context: 'InboxList: アーカイブ' })
@@ -83,7 +143,7 @@ async function onUnarchive(sourceType: InboxSourceType, sourceId: number) {
   try {
     const ok = await inboxStore.unarchive(sourceType, sourceId)
     if (ok) {
-      notification.success(t('inbox.action.unarchive') + ' ✓')
+      notification.success(t('inbox.action.unarchived'))
     }
   } catch (error) {
     captureQuiet(error, { context: 'InboxList: アーカイブ解除' })
@@ -94,11 +154,16 @@ async function onUnsnooze(sourceType: InboxSourceType, sourceId: number) {
   try {
     const ok = await inboxStore.unsnooze(sourceType, sourceId)
     if (ok) {
-      notification.success(t('inbox.action.unsnooze') + ' ✓')
+      notification.success(t('inbox.action.unsnoozed'))
     }
   } catch (error) {
     captureQuiet(error, { context: 'InboxList: スヌーズ解除' })
   }
+}
+
+/** スヌーズパネル以外クリックで閉じる共通処理。 */
+function onSnoozeToggle(id: string) {
+  snoozeTargetId.value = snoozeTargetId.value === id ? null : id
 }
 
 // ─────────────────────────────────────────────
@@ -119,6 +184,7 @@ const tabs = computed<TabDef[]>(() => [
 
 async function onTabChange(tab: InboxStateFilter) {
   snoozeTargetId.value = null
+  showLabelManager.value = false
   await inboxStore.switchTab(tab)
 }
 
@@ -159,6 +225,12 @@ async function toggleSourceType(sourceType: InboxSourceType) {
   await inboxStore.setSourceTypeFilter(current)
 }
 
+/** ラベルフィルタのトグル（同じラベルを再クリックで解除）。 */
+async function toggleLabelFilter(labelId: string) {
+  const next = inboxStore.labelFilter === labelId ? null : labelId
+  await inboxStore.setLabelFilter(next)
+}
+
 // ─────────────────────────────────────────────
 // もっと読む
 // ─────────────────────────────────────────────
@@ -172,7 +244,7 @@ async function onLoadMore() {
 // ─────────────────────────────────────────────
 
 onMounted(async () => {
-  await Promise.all([inboxStore.fetchSummary(), inboxStore.fetchInbox()])
+  await Promise.all([inboxStore.fetchSummary(), inboxStore.fetchInbox(), inboxStore.fetchLabels()])
 })
 
 // ─────────────────────────────────────────────
@@ -194,35 +266,162 @@ const snoozePresets: SnoozePresetDef[] = [
 
 <template>
   <div>
-    <!-- 状態タブ -->
-    <div
-      role="tablist"
-      :aria-label="t('inbox.title')"
-      class="mb-4 flex gap-1 border-b border-surface-200 dark:border-surface-700"
-    >
-      <button
-        v-for="tab in tabs"
-        :key="tab.key"
-        type="button"
-        role="tab"
-        :aria-selected="inboxStore.currentTab === tab.key ? 'true' : 'false'"
-        :data-testid="`inbox-tab-${tab.key.toLowerCase()}`"
-        class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors"
-        :class="
-          inboxStore.currentTab === tab.key
-            ? 'border-b-2 border-primary text-primary'
-            : 'text-surface-600 hover:text-surface-900 dark:text-surface-400'
-        "
-        @click="onTabChange(tab.key)"
+    <!-- ヘッダー（状態タブ + ラベル管理ボタン + bulk 選択トグル） -->
+    <div class="mb-4 flex items-center gap-2 border-b border-surface-200 dark:border-surface-700">
+      <!-- 状態タブ -->
+      <div
+        role="tablist"
+        :aria-label="t('inbox.title')"
+        class="flex flex-1 gap-1"
       >
-        <span>{{ t(tab.i18nKey) }}</span>
-        <Badge
-          v-if="tab.count > 0"
-          :value="tab.count"
-          severity="danger"
-          class="!min-w-[1.25rem] !text-[0.625rem]"
+        <button
+          v-for="tab in tabs"
+          :key="tab.key"
+          type="button"
+          role="tab"
+          :aria-selected="inboxStore.currentTab === tab.key ? 'true' : 'false'"
+          :data-testid="`inbox-tab-${tab.key.toLowerCase()}`"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors"
+          :class="
+            inboxStore.currentTab === tab.key
+              ? 'border-b-2 border-primary text-primary'
+              : 'text-surface-600 hover:text-surface-900 dark:text-surface-400'
+          "
+          @click="onTabChange(tab.key)"
+        >
+          <span>{{ t(tab.i18nKey) }}</span>
+          <Badge
+            v-if="tab.count > 0"
+            :value="tab.count"
+            severity="danger"
+            class="!min-w-[1.25rem] !text-[0.625rem]"
+          />
+        </button>
+      </div>
+      <!-- ラベル管理ボタン -->
+      <Button
+        icon="pi pi-cog"
+        text
+        size="small"
+        :title="t('inbox.label.manage')"
+        :aria-label="t('inbox.label.manage')"
+        data-testid="inbox-label-manage-btn"
+        @click.stop="toggleLabelManager"
+      />
+      <!-- bulk 選択モードトグル -->
+      <Button
+        :icon="inboxStore.selectionMode ? 'pi pi-times' : 'pi pi-check-square'"
+        text
+        size="small"
+        :title="inboxStore.selectionMode ? t('inbox.bulk.exit') : t('inbox.bulk.selectMode')"
+        :aria-label="inboxStore.selectionMode ? t('inbox.bulk.exit') : t('inbox.bulk.selectMode')"
+        data-testid="inbox-bulk-mode-btn"
+        @click="inboxStore.toggleSelectionMode()"
+      />
+    </div>
+
+    <!-- ラベル管理パネル（展開表示） -->
+    <div
+      v-if="showLabelManager"
+      class="mb-4 rounded-xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800"
+      data-testid="inbox-label-manager-panel"
+    >
+      <InboxLabelManager />
+    </div>
+
+    <!-- bulk 操作バー（選択モード時） -->
+    <div
+      v-if="inboxStore.selectionMode"
+      class="relative mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 dark:bg-primary/10"
+      data-testid="inbox-bulk-bar"
+    >
+      <span class="text-xs font-medium text-primary">
+        {{ t('inbox.bulk.selected', { count: inboxStore.selectedKeys.size }) }}
+      </span>
+      <div class="flex items-center gap-1">
+        <!-- アーカイブ -->
+        <Button
+          :label="t('inbox.bulk.archive')"
+          icon="pi pi-inbox"
+          size="small"
+          text
+          :disabled="inboxStore.selectedKeys.size === 0"
+          data-testid="inbox-bulk-archive-btn"
+          @click="onBulkArchive"
         />
-      </button>
+        <!-- スヌーズ -->
+        <div class="relative">
+          <Button
+            :label="t('inbox.bulk.snooze')"
+            icon="pi pi-clock"
+            size="small"
+            text
+            :disabled="inboxStore.selectedKeys.size === 0"
+            data-testid="inbox-bulk-snooze-btn"
+            @click.stop="toggleBulkSnoozePanel"
+          />
+          <div
+            v-if="showBulkSnoozePanel"
+            class="absolute left-0 top-full z-20 min-w-[12rem] rounded-lg border border-surface-200 bg-white p-2 shadow-lg dark:border-surface-700 dark:bg-surface-900"
+          >
+            <button
+              v-for="preset in snoozePresets"
+              :key="preset.key"
+              type="button"
+              class="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800"
+              @click="onBulkSnooze(preset.key)"
+            >
+              {{ t(preset.i18nKey) }}
+            </button>
+          </div>
+        </div>
+        <!-- ラベル付与 -->
+        <div class="relative">
+          <Button
+            :label="t('inbox.bulk.addLabel')"
+            icon="pi pi-tag"
+            size="small"
+            text
+            :disabled="inboxStore.selectedKeys.size === 0"
+            data-testid="inbox-bulk-label-btn"
+            @click.stop="toggleBulkLabelPanel"
+          />
+          <div
+            v-if="showBulkLabelPanel"
+            class="absolute left-0 top-full z-20 min-w-[12rem] rounded-lg border border-surface-200 bg-white p-2 shadow-lg dark:border-surface-700 dark:bg-surface-900"
+          >
+            <p
+              v-if="inboxStore.labels.length === 0"
+              class="px-2 py-1 text-xs text-surface-400"
+            >
+              {{ t('inbox.label.empty') }}
+            </p>
+            <button
+              v-for="label in inboxStore.labels"
+              :key="label.id"
+              type="button"
+              class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800"
+              @click="onBulkAddLabel(label)"
+            >
+              <span
+                class="inline-block h-2.5 w-2.5 rounded-full"
+                :style="{ backgroundColor: label.color ?? '#94a3b8' }"
+              />
+              {{ label.name }}
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- キャンセル -->
+      <Button
+        :label="t('inbox.bulk.cancel')"
+        size="small"
+        text
+        severity="secondary"
+        class="ml-auto"
+        data-testid="inbox-bulk-cancel-btn"
+        @click="inboxStore.toggleSelectionMode()"
+      />
     </div>
 
     <!-- サブフィルタ：緊急度チップ -->
@@ -245,7 +444,7 @@ const snoozePresets: SnoozePresetDef[] = [
     </div>
 
     <!-- サブフィルタ：種類チップ -->
-    <div class="mb-4 flex flex-wrap items-center gap-2">
+    <div class="mb-2 flex flex-wrap items-center gap-2">
       <span class="text-xs text-surface-500">{{ t('inbox.filter.source') }}:</span>
       <button
         v-for="sourceType in allSourceTypes"
@@ -264,6 +463,38 @@ const snoozePresets: SnoozePresetDef[] = [
       </button>
     </div>
 
+    <!-- サブフィルタ：ラベル絞り込みチップ -->
+    <div
+      v-if="inboxStore.labels.length > 0"
+      class="mb-4 flex flex-wrap items-center gap-2"
+    >
+      <span class="text-xs text-surface-500">{{ t('inbox.label.filterTitle') }}:</span>
+      <button
+        v-for="label in inboxStore.labels"
+        :key="label.id"
+        type="button"
+        class="flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors"
+        :style="
+          inboxStore.labelFilter === label.id
+            ? { borderColor: label.color ?? '#94a3b8', backgroundColor: `${label.color ?? '#94a3b8'}22`, color: label.color ?? '#94a3b8' }
+            : {}
+        "
+        :class="
+          inboxStore.labelFilter !== label.id
+            ? 'border-surface-300 text-surface-600 hover:border-primary'
+            : ''
+        "
+        :data-testid="`inbox-label-filter-${label.id}`"
+        @click="toggleLabelFilter(label.id)"
+      >
+        <span
+          class="inline-block h-2 w-2 rounded-full"
+          :style="{ backgroundColor: label.color ?? '#94a3b8' }"
+        />
+        {{ label.name }}
+      </button>
+    </div>
+
     <!-- ローディング -->
     <div v-if="inboxStore.loading && inboxStore.items.length === 0" class="py-8 text-center">
       <i class="pi pi-spin pi-spinner text-2xl text-primary" />
@@ -277,8 +508,20 @@ const snoozePresets: SnoozePresetDef[] = [
         class="flex items-start gap-3 py-3"
         :class="{ 'opacity-60': item.state === 'ARCHIVED' || item.state === 'READ' }"
       >
-        <!-- ソース種類アイコン -->
-        <div class="mt-1 shrink-0">
+        <!-- bulk 選択チェックボックス（選択モード時） -->
+        <div v-if="inboxStore.selectionMode" class="mt-1 shrink-0">
+          <input
+            type="checkbox"
+            class="h-4 w-4 cursor-pointer rounded border-surface-300 accent-primary"
+            :checked="inboxStore.selectedKeys.has(item.id)"
+            :aria-label="item.title"
+            :data-testid="`inbox-select-${item.id}`"
+            @change="inboxStore.toggleSelect(item.id)"
+          >
+        </div>
+
+        <!-- ソース種類アイコン（通常モード時） -->
+        <div v-else class="mt-1 shrink-0">
           <i
             :class="sourceTypeIcon(item.sourceType)"
             class="text-base text-surface-500"
@@ -327,10 +570,24 @@ const snoozePresets: SnoozePresetDef[] = [
                   <i class="pi pi-clock" /> {{ relativeTime(item.snoozedUntil) }}
                 </span>
               </div>
+
+              <!-- ラベルチップ -->
+              <div v-if="item.labels.length > 0" class="mt-1.5 flex flex-wrap gap-1">
+                <InboxLabelChip
+                  v-for="label in item.labels"
+                  :key="label.id"
+                  :label="label"
+                  removable
+                  @remove="(lbl) => inboxStore.unassignLabel(item.sourceType, item.sourceId, lbl.id)"
+                />
+              </div>
             </div>
 
             <!-- アクションボタン群 -->
             <div class="flex shrink-0 items-center gap-1">
+              <!-- ラベル付与ボタン -->
+              <InboxLabelPicker :item="item" />
+
               <!-- スヌーズボタン（ARCHIVED でなければ表示） -->
               <div v-if="item.state !== 'ARCHIVED'" class="relative">
                 <Button
@@ -340,7 +597,7 @@ const snoozePresets: SnoozePresetDef[] = [
                   :title="t('inbox.action.snooze')"
                   :aria-label="t('inbox.action.snooze')"
                   :data-testid="`inbox-snooze-btn-${item.id}`"
-                  @click.stop="openSnoozePanel(item.id)"
+                  @click.stop="onSnoozeToggle(item.id)"
                 />
                 <!-- スヌーズプリセットパネル -->
                 <div

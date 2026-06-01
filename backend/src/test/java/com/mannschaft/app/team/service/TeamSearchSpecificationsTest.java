@@ -530,6 +530,142 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
     }
 
     // ════════════════════════════════════════════════════════════
+    // F22.1 市 Phase 2 足場C: 地域コード（prefectureCode / cityCode）+ dual-support
+    // ════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("地域コード（F22.1）: code 一致 + dual-support フォールバック")
+    class RegionCodeSpecs {
+
+        @Test
+        @DisplayName("prefectureCodeEquals: 完全一致のみ")
+        void prefectureCode_exactMatch() {
+            Long tokyo = persistTeamWithCodes("東京店", "とうきょうてん", "13", "13113");
+            Long osaka = persistTeamWithCodes("大阪店", "おおさかてん", "27", "27100");
+
+            em.flush();
+            em.clear();
+
+            Page<TeamEntity> result = teamRepository.findAll(
+                    TeamSearchSpecifications.prefectureCodeEquals("13"), pageable);
+
+            assertThat(result.getContent())
+                    .extracting(TeamEntity::getId)
+                    .contains(tokyo)
+                    .doesNotContain(osaka);
+        }
+
+        @Test
+        @DisplayName("cityCodeEquals: 完全一致のみ")
+        void cityCode_exactMatch() {
+            Long shibuya = persistTeamWithCodes("渋谷店", "しぶやてん", "13", "13113");
+            Long shinjuku = persistTeamWithCodes("新宿店", "しんじゅくてん", "13", "13104");
+
+            em.flush();
+            em.clear();
+
+            Page<TeamEntity> result = teamRepository.findAll(
+                    TeamSearchSpecifications.cityCodeEquals("13113"), pageable);
+
+            assertThat(result.getContent())
+                    .extracting(TeamEntity::getId)
+                    .contains(shibuya)
+                    .doesNotContain(shinjuku);
+        }
+
+        @Test
+        @DisplayName("prefectureFilter: code 指定あり → code 一致（名称は無視）")
+        void prefectureFilter_codePreferred() {
+            // 名称は同じ「東京都」だが code が異なる 2 店
+            Long codeMatch = persistTeamFullWithCodes("店A", "てんえー", "東京都", "渋谷区", "13", "13113");
+            Long codeMiss = persistTeamFullWithCodes("店B", "てんびー", "東京都", "新宿区", "27", "27100");
+
+            em.flush();
+            em.clear();
+
+            // code=13 を指定 → 名称が同じでも code=27 はヒットしない
+            Page<TeamEntity> result = teamRepository.findAll(
+                    TeamSearchSpecifications.prefectureFilter("13", "東京都"), pageable);
+
+            assertThat(result.getContent())
+                    .extracting(TeamEntity::getId)
+                    .contains(codeMatch)
+                    .doesNotContain(codeMiss);
+        }
+
+        @Test
+        @DisplayName("prefectureFilter: code 未指定 → 名称一致にフォールバック（dual-support）")
+        void prefectureFilter_nameFallback() {
+            Long tokyo = persistTeamFullWithCodes("店A", "てんえー", "東京都", "渋谷区", null, null);
+            Long osaka = persistTeamFullWithCodes("店B", "てんびー", "大阪府", "梅田", null, null);
+
+            em.flush();
+            em.clear();
+
+            // code=null → 名称 "東京都" にフォールバック
+            Page<TeamEntity> result = teamRepository.findAll(
+                    TeamSearchSpecifications.prefectureFilter(null, "東京都"), pageable);
+
+            assertThat(result.getContent())
+                    .extracting(TeamEntity::getId)
+                    .contains(tokyo)
+                    .doesNotContain(osaka);
+        }
+
+        @Test
+        @DisplayName("cityFilter: code 指定あり → code 一致（名称は無視）")
+        void cityFilter_codePreferred() {
+            Long codeMatch = persistTeamFullWithCodes("店A", "てんえー", "東京都", "渋谷区", "13", "13113");
+            Long codeMiss = persistTeamFullWithCodes("店B", "てんびー", "東京都", "渋谷区", "13", "13104");
+
+            em.flush();
+            em.clear();
+
+            Page<TeamEntity> result = teamRepository.findAll(
+                    TeamSearchSpecifications.cityFilter("13113", "渋谷区"), pageable);
+
+            assertThat(result.getContent())
+                    .extracting(TeamEntity::getId)
+                    .contains(codeMatch)
+                    .doesNotContain(codeMiss);
+        }
+
+        @Test
+        @DisplayName("cityFilter: code 未指定 → 名称一致にフォールバック（dual-support）")
+        void cityFilter_nameFallback() {
+            Long shibuya = persistTeamFullWithCodes("店A", "てんえー", "東京都", "渋谷区", null, null);
+            Long shinjuku = persistTeamFullWithCodes("店B", "てんびー", "東京都", "新宿区", null, null);
+
+            em.flush();
+            em.clear();
+
+            Page<TeamEntity> result = teamRepository.findAll(
+                    TeamSearchSpecifications.cityFilter(null, "渋谷区"), pageable);
+
+            assertThat(result.getContent())
+                    .extracting(TeamEntity::getId)
+                    .contains(shibuya)
+                    .doesNotContain(shinjuku);
+        }
+
+        @Test
+        @DisplayName("prefectureFilter(null, null): 全件パススルー（恒真）")
+        void prefectureFilter_bothNull_passesThrough() {
+            Long t = persistTeamFullWithCodes("店", "てん", "東京都", "渋谷区", "13", "13113");
+
+            em.flush();
+            em.clear();
+
+            Page<TeamEntity> result = teamRepository.findAll(
+                    TeamSearchSpecifications.prefectureFilter(null, null), pageable);
+
+            assertThat(result.getContent())
+                    .extracting(TeamEntity::getId)
+                    .contains(t);
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════
     // 複合 Specification: 実際のサービス層の組み合わせを再現
     // ════════════════════════════════════════════════════════════
 
@@ -603,6 +739,35 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
                 .city(city)
                 .template(template)
                 .build();
+        em.persist(team);
+        return team.getId();
+    }
+
+    /** F22.1: 地域コード（名称なし）でチームを作る。 */
+    private Long persistTeamWithCodes(String name, String kana, String prefectureCode, String cityCode) {
+        TeamEntity team = TeamEntity.builder()
+                .name(name)
+                .nameKana(kana)
+                .visibility(TeamEntity.Visibility.PUBLIC)
+                .supporterEnabled(false)
+                .build();
+        team.updateRegionCodes(prefectureCode, cityCode);
+        em.persist(team);
+        return team.getId();
+    }
+
+    /** F22.1: 名称 + 地域コードの両方を持つチームを作る。 */
+    private Long persistTeamFullWithCodes(String name, String kana, String prefecture, String city,
+                                          String prefectureCode, String cityCode) {
+        TeamEntity team = TeamEntity.builder()
+                .name(name)
+                .nameKana(kana)
+                .visibility(TeamEntity.Visibility.PUBLIC)
+                .supporterEnabled(false)
+                .prefecture(prefecture)
+                .city(city)
+                .build();
+        team.updateRegionCodes(prefectureCode, cityCode);
         em.persist(team);
         return team.getId();
     }

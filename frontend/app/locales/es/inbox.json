@@ -24,7 +24,11 @@
       "archive": "Archivar",
       "unarchive": "Mover a bandeja de entrada",
       "unsnooze": "Cancelar posposición",
-      "label": "Etiqueta"
+      "label": "Etiqueta",
+      "snoozed": "Pospuesto",
+      "archived": "Movido al archivo",
+      "unarchived": "Movido a la bandeja de entrada",
+      "unsnoozed": "Posposición cancelada"
     },
     "snoozePreset": {
       "in3h": "En 3 horas",
@@ -43,6 +47,38 @@
       "inbox": "Bandeja de entrada",
       "snoozed": "Pospuestos",
       "archived": "Archivados"
+    },
+    "label": {
+      "title": "Etiquetas",
+      "create": "Crear etiqueta",
+      "edit": "Editar etiqueta",
+      "delete": "Eliminar etiqueta",
+      "manage": "Gestionar etiquetas",
+      "nameLabel": "Nombre",
+      "namePlaceholder": "Nombre de etiqueta",
+      "colorLabel": "Color",
+      "iconLabel": "Icono (opcional)",
+      "limitReached": "Puedes crear hasta 20 etiquetas",
+      "duplicate": "Ya existe una etiqueta con el mismo nombre",
+      "perItemLimit": "Puedes asignar hasta 10 etiquetas por notificación",
+      "empty": "No hay etiquetas",
+      "filterTitle": "Filtrar por etiqueta",
+      "assigned": "Etiqueta asignada",
+      "removed": "Quitar etiqueta",
+      "created": "Etiqueta creada",
+      "updated": "Etiqueta actualizada",
+      "deleted": "Etiqueta eliminada"
+    },
+    "bulk": {
+      "selectMode": "Selección múltiple",
+      "exit": "Salir de la selección",
+      "selected": "{count} seleccionados",
+      "archive": "Archivar",
+      "snooze": "Posponer",
+      "addLabel": "Agregar etiqueta",
+      "apply": "Aplicar",
+      "result": "{processed} procesados ({skipped} omitidos)",
+      "cancel": "Cancelar"
     }
   }
 }
