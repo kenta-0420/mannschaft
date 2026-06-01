@@ -64,6 +64,10 @@ class RecruitmentListingServiceTest {
     @Mock
     private com.mannschaft.app.recruitment.repository.RecruitmentFriendTargetRepository friendTargetRepository;
 
+    // F22.1 市 Phase 2 足場C: 札立て地域の team 既定補完
+    @Mock
+    private com.mannschaft.app.team.service.TeamService teamService;
+
     @InjectMocks
     private RecruitmentListingService service;
 

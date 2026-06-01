@@ -18,7 +18,7 @@ definePageMeta({
   layout: 'default',
 })
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const marketApi = useMarketApi()
 const recruitmentApi = useRecruitmentApi()
@@ -43,7 +43,7 @@ const applying = ref(false)
 async function load() {
   pageLoading.value = true
   try {
-    const res = await marketApi.getMarketListing(listingId.value)
+    const res = await marketApi.getMarketListing(listingId.value, locale.value)
     listing.value = res.data
   }
   catch (err) {
@@ -62,6 +62,11 @@ async function load() {
 }
 
 await load()
+
+// ロケール切替時に地域名表示を現在ロケールへ追従させる。
+watch(locale, async () => {
+  await load()
+})
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const canApply = computed(() =>

@@ -68,6 +68,17 @@ public class TournamentService {
      *       将来は TournamentCreatedEvent によるイベント駆動化候補。
      */
     private final TournamentContactSpaceProvisioningService contactSpaceProvisioningService;
+    /**
+     * F08.7.1 / 04 ファイル置き場: 大会作成・シーズン継続時にデフォルトフォルダ（「大会要項」）を自動付帯する。
+     * TODO: tournament ドメインから filesharing ドメインを直接呼ぶ越境（原則5）。
+     *       将来は TournamentCreatedEvent によるイベント駆動化候補。
+     */
+    private final com.mannschaft.app.filesharing.service.SharedFolderService sharedFolderService;
+
+    /** F08.7.1 / 04: 大会スコープのデフォルトフォルダ名。 */
+    private static final String DEFAULT_TOURNAMENT_FOLDER = "大会要項";
+    /** F08.7.1 / 04: ディビジョンスコープのデフォルトフォルダ名。 */
+    private static final String DEFAULT_DIVISION_FOLDER = "規約";
 
     /**
      * 大会一覧を取得する。
@@ -220,6 +231,10 @@ public class TournamentService {
 
         // F08.7.1: 大会全体の連絡スペース（掲示板＋チャット）を自動付帯（要件④）
         contactSpaceProvisioningService.provisionForTournament(tournamentId, tournament.getName());
+        // F08.7.1 / 04: 大会スコープのデフォルトフォルダ「大会要項」を自動付帯（冪等・§4）
+        sharedFolderService.provisionDefaultFolder(
+                com.mannschaft.app.filesharing.FileScopeType.TOURNAMENT,
+                orgId, tournamentId, userId, DEFAULT_TOURNAMENT_FOLDER);
 
         return getTournament(tournamentId);
     }
@@ -358,6 +373,10 @@ public class TournamentService {
 
         // F08.7.1: 新シーズンの大会全体スペースを払い出す（要件④）
         contactSpaceProvisioningService.provisionForTournament(newTournamentId, newTournament.getName());
+        // F08.7.1 / 04: 新シーズンの大会スコープにもデフォルトフォルダを払い出す（払い出し漏れ防止・§4）
+        sharedFolderService.provisionDefaultFolder(
+                com.mannschaft.app.filesharing.FileScopeType.TOURNAMENT,
+                orgId, newTournamentId, userId, DEFAULT_TOURNAMENT_FOLDER);
 
         // ディビジョン構成をコピー
         List<TournamentDivisionEntity> prevDivisions =
@@ -378,6 +397,10 @@ public class TournamentService {
             // F08.7.1: 複製ディビジョンにも連絡スペースを払い出す（払い出し漏れ防止・§3.3）
             contactSpaceProvisioningService.provisionForDivision(
                     newDiv.getId(), newTournament.getName() + " " + newDiv.getName() + " 連絡");
+            // F08.7.1 / 04: 複製ディビジョンにもデフォルトフォルダ「規約」を払い出す（払い出し漏れ防止・§4）
+            sharedFolderService.provisionDefaultFolder(
+                    com.mannschaft.app.filesharing.FileScopeType.TOURNAMENT_DIVISION,
+                    orgId, newDiv.getId(), userId, DEFAULT_DIVISION_FOLDER);
         }
 
         return getTournament(newTournamentId);

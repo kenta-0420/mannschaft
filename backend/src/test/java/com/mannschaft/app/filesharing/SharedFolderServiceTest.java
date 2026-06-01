@@ -5,6 +5,7 @@ import com.mannschaft.app.filesharing.dto.CreateFolderRequest;
 import com.mannschaft.app.filesharing.dto.FolderResponse;
 import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
 import com.mannschaft.app.filesharing.repository.SharedFolderRepository;
+import com.mannschaft.app.filesharing.service.FolderScopeAccessGuard;
 import com.mannschaft.app.filesharing.service.SharedFolderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -35,6 +36,9 @@ class SharedFolderServiceTest {
 
     @Mock
     private FileSharingMapper fileSharingMapper;
+
+    @Mock
+    private FolderScopeAccessGuard folderScopeAccessGuard;
 
     @InjectMocks
     private SharedFolderService sharedFolderService;

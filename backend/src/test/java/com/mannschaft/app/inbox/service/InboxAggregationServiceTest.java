@@ -5,8 +5,12 @@ import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.InboxState;
 import com.mannschaft.app.inbox.dto.InboxItemDto;
 import com.mannschaft.app.inbox.dto.InboxPageResponse;
+import com.mannschaft.app.inbox.dto.LabelDto;
+import com.mannschaft.app.inbox.entity.InboxLabelLinkEntity;
+import com.mannschaft.app.inbox.entity.NotificationLabelEntity;
 import com.mannschaft.app.inbox.repository.InboxItemStateRepository;
 import com.mannschaft.app.inbox.repository.InboxLabelLinkRepository;
+import com.mannschaft.app.inbox.repository.NotificationLabelRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -19,6 +23,7 @@ import org.mockito.quality.Strictness;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -59,6 +64,9 @@ class InboxAggregationServiceTest {
     @Mock
     private InboxLabelLinkRepository labelLinkRepository;
 
+    @Mock
+    private NotificationLabelRepository labelRepository;
+
     private InboxAggregationService service;
 
     @BeforeEach
@@ -70,7 +78,8 @@ class InboxAggregationServiceTest {
                 List.of(notificationAdapter, todoDueAdapter),
                 priorityNormalizer,
                 itemStateRepository,
-                labelLinkRepository);
+                labelLinkRepository,
+                labelRepository);
     }
 
     /** 統一 DTO を組み立てるヘルパー（オーバーレイ未マージの素の項目）。 */
@@ -340,7 +349,8 @@ class InboxAggregationServiceTest {
                             mentionAdapter, confirmableAdapter),
                     priorityNormalizer,
                     itemStateRepository,
-                    labelLinkRepository);
+                    labelLinkRepository,
+                    labelRepository);
         }
 
         @Test
@@ -378,6 +388,116 @@ class InboxAggregationServiceTest {
 
             assertThat(summary.bySourceType())
                     .containsKeys("NOTIFICATION", "TODO_DUE", "ANNOUNCEMENT", "MENTION", "CONFIRMABLE");
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Phase 2: ラベル名の解決（LabelDto の name/color/icon/sortOrder が暫定 null でない）
+    // ─────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("ラベル名解決（Phase 2）")
+    class LabelResolution {
+
+        @Test
+        @DisplayName("付与済みラベルは name/color/icon/sortOrder まで解決され、暫定 null にならない")
+        void resolvesLabelName() {
+            UUID labelId = UUID.randomUUID();
+            given(notificationAdapter.fetch(USER_ID)).willReturn(List.of(
+                    item(InboxSourceType.NOTIFICATION, 10L, InboxPriority.NORMAL, LocalDateTime.now())));
+            given(todoDueAdapter.fetch(USER_ID)).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+
+            InboxLabelLinkEntity link = new InboxLabelLinkEntity();
+            link.setLabelId(labelId);
+            link.setUserId(USER_ID);
+            link.setSourceType(InboxSourceType.NOTIFICATION);
+            link.setSourceId(10L);
+            given(labelLinkRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any()))
+                    .willReturn(List.of(link));
+
+            NotificationLabelEntity label = new NotificationLabelEntity();
+            label.setId(labelId);
+            label.setUserId(USER_ID);
+            label.setName("経理");
+            label.setColor("#f59e0b");
+            label.setIcon("pi-wallet");
+            label.setSortOrder(2);
+            given(labelRepository.findByIdIn(any())).willReturn(List.of(label));
+
+            InboxPageResponse res = service.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
+
+            assertThat(res.items()).singleElement()
+                    .extracting(InboxItemDto::labels)
+                    .satisfies(labels -> {
+                        @SuppressWarnings("unchecked")
+                        List<LabelDto> l = (List<LabelDto>) labels;
+                        assertThat(l).singleElement().satisfies(dto -> {
+                            assertThat(dto.id()).isEqualTo(labelId);
+                            assertThat(dto.name()).isEqualTo("経理");
+                            assertThat(dto.color()).isEqualTo("#f59e0b");
+                            assertThat(dto.icon()).isEqualTo("pi-wallet");
+                            assertThat(dto.sortOrder()).isEqualTo(2);
+                        });
+                    });
+        }
+
+        @Test
+        @DisplayName("ラベル本体は labelId 集合で 1 回だけまとめ取りする（N+1 回避）")
+        void resolvesLabelsInOneFetch() {
+            given(notificationAdapter.fetch(USER_ID)).willReturn(List.of(
+                    item(InboxSourceType.NOTIFICATION, 1L, InboxPriority.NORMAL, LocalDateTime.now()),
+                    item(InboxSourceType.NOTIFICATION, 2L, InboxPriority.NORMAL, LocalDateTime.now())));
+            given(todoDueAdapter.fetch(USER_ID)).willReturn(List.of(
+                    item(InboxSourceType.TODO_DUE, 3L, InboxPriority.HIGH, LocalDateTime.now())));
+            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+
+            UUID l1 = UUID.randomUUID();
+            InboxLabelLinkEntity link1 = new InboxLabelLinkEntity();
+            link1.setLabelId(l1);
+            link1.setUserId(USER_ID);
+            link1.setSourceType(InboxSourceType.NOTIFICATION);
+            link1.setSourceId(1L);
+            given(labelLinkRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any()))
+                    .willReturn(List.of(link1));
+
+            NotificationLabelEntity label = new NotificationLabelEntity();
+            label.setId(l1);
+            label.setUserId(USER_ID);
+            label.setName("tag");
+            label.setSortOrder(0);
+            given(labelRepository.findByIdIn(any())).willReturn(List.of(label));
+
+            service.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
+
+            // item 件数（3）に依らず findByIdIn は 1 回のみ
+            verify(labelRepository, times(1)).findByIdIn(any());
+        }
+
+        @Test
+        @DisplayName("論理削除済みラベルのリンク（孤児）は findByIdIn で脱落し、表示に出ない")
+        void orphanLinkDropped() {
+            UUID deletedLabelId = UUID.randomUUID();
+            given(notificationAdapter.fetch(USER_ID)).willReturn(List.of(
+                    item(InboxSourceType.NOTIFICATION, 10L, InboxPriority.NORMAL, LocalDateTime.now())));
+            given(todoDueAdapter.fetch(USER_ID)).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+
+            InboxLabelLinkEntity link = new InboxLabelLinkEntity();
+            link.setLabelId(deletedLabelId);
+            link.setUserId(USER_ID);
+            link.setSourceType(InboxSourceType.NOTIFICATION);
+            link.setSourceId(10L);
+            given(labelLinkRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any()))
+                    .willReturn(List.of(link));
+            // ラベル本体は @SQLRestriction で除外され findByIdIn は空を返す
+            given(labelRepository.findByIdIn(any())).willReturn(List.of());
+
+            InboxPageResponse res = service.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
+
+            assertThat(res.items()).singleElement()
+                    .extracting(InboxItemDto::labels)
+                    .satisfies(labels -> assertThat((List<?>) labels).isEmpty());
         }
     }
 }

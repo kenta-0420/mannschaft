@@ -1,6 +1,7 @@
 package com.mannschaft.app.filesharing.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.filesharing.FileSharingErrorCode;
 import com.mannschaft.app.filesharing.FileSharingMapper;
 import com.mannschaft.app.filesharing.dto.CreateTagRequest;
@@ -25,6 +26,8 @@ public class SharedFileTagService {
 
     private final SharedFileTagRepository tagRepository;
     private final FileSharingMapper fileSharingMapper;
+    /** F08.7.1 / 04: 大会フォルダ配下のタグ操作に対する横断認可ゲート（大会以外は no-op）。 */
+    private final FolderScopeAccessGuard folderScopeAccessGuard;
 
     /**
      * ファイルのタグ一覧を取得する。
@@ -33,6 +36,8 @@ public class SharedFileTagService {
      * @return タグレスポンスリスト
      */
     public List<TagResponse> listTags(Long fileId) {
+        // F08.7.1 / 04 §3: 大会フォルダ配下のファイルタグ一覧は閲覧認可を通す。
+        folderScopeAccessGuard.checkFolderViewByFileId(fileId, SecurityUtils.getCurrentUserIdOrNull());
         List<SharedFileTagEntity> tags = tagRepository.findByFileIdOrderByTagNameAsc(fileId);
         return fileSharingMapper.toTagResponseList(tags);
     }
@@ -47,6 +52,8 @@ public class SharedFileTagService {
      */
     @Transactional
     public TagResponse addTag(Long fileId, Long userId, CreateTagRequest request) {
+        // F08.7.1 / 04 §3: 大会フォルダ配下のファイルにタグを付けられるのは閲覧可能な者のみ。
+        folderScopeAccessGuard.checkFolderViewByFileId(fileId, userId);
         if (tagRepository.existsByFileIdAndTagNameAndUserId(fileId, request.getTagName(), userId)) {
             throw new BusinessException(FileSharingErrorCode.TAG_ALREADY_EXISTS);
         }
@@ -71,6 +78,8 @@ public class SharedFileTagService {
     public void removeTag(Long tagId) {
         SharedFileTagEntity entity = tagRepository.findById(tagId)
                 .orElseThrow(() -> new BusinessException(FileSharingErrorCode.TAG_NOT_FOUND));
+        // F08.7.1 / 04 §3: 大会フォルダ配下のタグ削除は当該ファイルの閲覧認可を通す。
+        folderScopeAccessGuard.checkFolderViewByFileId(entity.getFileId(), SecurityUtils.getCurrentUserIdOrNull());
         tagRepository.delete(entity);
         log.info("タグ削除: tagId={}", tagId);
     }
