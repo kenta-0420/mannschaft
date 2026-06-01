@@ -45,6 +45,9 @@ public class InboxTriageService {
         }
         InboxItemStateEntity row = loadOrCreate(userId, sourceType, sourceId);
         row.setSnoozedUntil(snoozedUntil);
+        // F04.11 Phase3 ②：再スヌーズ（snoozed_until 更新）時は復帰 push 送信済みフラグを
+        // NULL に戻し、新しい復帰期限到来時に再度 1 度だけ push できるようにする。
+        row.setSnoozeNotifiedAt(null);
         InboxItemStateEntity saved = itemStateRepository.save(row);
         return toDto(saved);
     }

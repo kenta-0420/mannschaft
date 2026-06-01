@@ -18,6 +18,7 @@ import org.mockito.quality.Strictness;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -108,6 +109,24 @@ class InboxTriageServiceTest {
 
             triageService.snooze(USER_ID, SOURCE_TYPE, SOURCE_ID, future);
 
+            verify(itemStateRepository).save(row);
+        }
+
+        @Test
+        @DisplayName("F04.11 Phase3 ②: 再スヌーズ時に snooze_notified_at を NULL に戻す（再度復帰通知可能）")
+        void reSnooze_resetsSnoozeNotifiedAt() {
+            LocalDateTime future = LocalDateTime.now().plusHours(3);
+            // 既に一度復帰 push 済み（snooze_notified_at が刻まれている）行を再スヌーズ
+            InboxItemStateEntity row = existing(LocalDateTime.now().minusMinutes(1), null);
+            row.setSnoozeNotifiedAt(LocalDateTime.now().minusMinutes(1));
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceId(USER_ID, SOURCE_TYPE, SOURCE_ID))
+                    .willReturn(Optional.of(row));
+            given(itemStateRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            triageService.snooze(USER_ID, SOURCE_TYPE, SOURCE_ID, future);
+
+            assertThat(row.getSnoozeNotifiedAt()).isNull();
+            assertThat(row.getSnoozedUntil()).isEqualTo(future);
             verify(itemStateRepository).save(row);
         }
     }

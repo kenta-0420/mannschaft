@@ -86,6 +86,36 @@ B 案では復帰は **集約時判定** で実現する：
 - `state=SNOOZED` は `snoozed_until > now` のみ。
 - 復帰時に **push 再通知** を出したい場合のみ将来バッチを追加（Phase 3）。MVP では「開いたら戻っている」挙動で十分（ADHD 配慮＝勝手に流れてくる）。
 
+### 5.1 スヌーズ復帰 push 再通知（Phase 3 ②・実装済み）
+
+MVP の「開いたら戻っている」だけでは能動的な催促が無いため、Phase 3 ② で **復帰 push 再通知バッチ**を追加した。
+
+- **バッチ**: `inbox/batch/InboxSnoozeRevivalBatchService`（`@BatchEndpoint(name="inbox-snooze-revival")`）。
+  - スケジュール: 5 分毎（`cron="0 */5 * * * *" zone="Asia/Tokyo"`）。`@SchedulerLock(lockAtMostFor="PT4M", lockAtLeastFor="PT10S")` で多重起動を防ぐ。
+  - 横断クエリ: `InboxItemStateRepository.findDueForRevival(now, Pageable)` が **全ユーザー横断**で
+    `snoozed_until <= now AND snooze_notified_at IS NULL AND archived_at IS NULL` を `snoozed_until` 昇順に取得（1 回 500 件上限で暴走防止）。
+  - 各行へ push を送ったら `snooze_notified_at = now` を刻んで保存し、**2 回目の実行では再送しない（冪等）**。
+    push 送信が例外でも `snooze_notified_at` を刻まず次回バッチで再試行する（症状を隠さない＝根治原則）。
+- **再スヌーズ時のリセット**: `InboxTriageService.snooze` が upsert 時に `snooze_notified_at` を NULL に戻す。
+  これにより新しい `snoozed_until` 到来時に再度 1 度だけ push できる。
+
+#### 二重 push / 自己増殖の回避（最重要設計判断）
+
+push 基盤（`NotificationDispatchService.dispatch` → WebSocket `/user/{userId}/queue/notifications` ＋ Web Push）は
+`NotificationEntity` を引数に取る設計で、**「通知行を作らず push のみ送る」クリーンな経路は存在しない**
+（`sendViaWebSocket`/`sendViaPush` ともに `NotificationMapper.toNotificationResponse(entity)` で DTO 化するため、
+永続化されていない transient entity を渡すのは脆い）。そのため設計書 §5 が提示する **方針 2** を採用した:
+
+- 復帰 push は `NotificationHelper.notify` で **専用通知種別 `INBOX_SNOOZE_REVIVAL`** として発行する
+  （定数: `com.mannschaft.app.inbox.InboxNotificationTypes.INBOX_SNOOZE_REVIVAL`）。
+  - `source_type="INBOX_REVIVAL"` / `source_id=null` とし、`NotificationService` の visibility ガードは
+    fail-soft で通過する（元項目の可視性はスヌーズ時に検証済み）。`actionUrl="/inbox"`。
+- **`NotificationInboxAdapter.fetch` でこの種別を除外**する
+  （`NotificationRepository.findByUserIdAndNotificationTypeNotOrderByCreatedAtDesc`）。
+  → 復帰 push は**ベル/通知一覧には出る**（「あとで見るがそろそろ」の催促）が、
+  **インボックス受信箱には新規カードを生まない**。受信箱には元のスヌーズ項目が §4・§5 の集約時判定で
+  自然に復帰するのみ。これにより push 通知が NOTIFICATION ソースの inbox 項目を増殖させる二重化を根治する。
+
 ---
 
 ## 6. 既存スヌーズの不整合是正（根治）
@@ -127,6 +157,7 @@ B 案では復帰は **集約時判定** で実現する：
 [一覧]   GET /inbox → アダプタ並列読取 → オーバーレイ/ラベルまとめ取り
          → 状態マージ → フィルタ → ソート → ページスライス
 [退避]   POST /inbox/snooze|archive → inbox_item_states upsert（楽観更新で即UI反映）
-[復帰]   時刻到来 → 次回 GET /inbox（state=INBOX）で自動的に再表示（バッチなし）
+[復帰]   時刻到来 → 次回 GET /inbox（state=INBOX）で自動的に再表示
+         ＋ Phase3 ②: 5分毎バッチが復帰push（INBOX_SNOOZE_REVIVAL）を1度だけ送る（受信箱には増殖させない・§5.1）
 [ラベル] POST /inbox/labels/{id}/assign → inbox_label_links insert（重複は冪等）
 ```

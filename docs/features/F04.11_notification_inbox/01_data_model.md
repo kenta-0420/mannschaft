@@ -49,15 +49,23 @@ CREATE TABLE inbox_item_states (
     source_type   VARCHAR(30) NOT NULL COMMENT '通知ソース種別（NOTIFICATION/ANNOUNCEMENT/MENTION/CONFIRMABLE/TODO_DUE）',
     source_id     BIGINT      NOT NULL COMMENT '各ソーステーブルのPK（FK制約なし・論理参照）',
     snoozed_until DATETIME(6) NULL     COMMENT 'スヌーズ解除予定時刻。NULL=非スヌーズ。now超過で受信箱へ自動復帰',
+    snooze_notified_at DATETIME(6) NULL COMMENT 'スヌーズ復帰push送信済み時刻。NULL=未送信（再スヌーズ時はNULLへリセット）',
     archived_at   DATETIME(6) NULL     COMMENT 'アーカイブ退避時刻。NULL=受信箱、非NULL=保管庫',
     created_at    DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at    DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
     UNIQUE KEY uq_iis_user_source (user_id, source_type, source_id),
     INDEX idx_iis_user_snooze (user_id, snoozed_until),
-    INDEX idx_iis_user_archived (user_id, archived_at)
+    INDEX idx_iis_user_archived (user_id, archived_at),
+    INDEX idx_iis_snooze_revival (snoozed_until, snooze_notified_at)  -- Phase3 ②: 横断復帰バッチ用
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='通知インボックス：per-userのスヌーズ/アーカイブ状態（遅延生成オーバーレイ）';
 ```
+
+> **`snooze_notified_at`（Phase3 ② で追加・Flyway `V9.20260601160000`）**: スヌーズ復帰 push の送信済み時刻。
+> 横断バッチ `InboxSnoozeRevivalBatchService` が `snoozed_until <= now AND archived_at IS NULL AND snooze_notified_at IS NULL`
+> の行を拾って push を **1 度だけ**送り、この列に時刻を刻む（冪等の根拠）。再スヌーズ（`snoozed_until` 更新）時は
+> `InboxTriageService.snooze` が NULL に戻し、新しい復帰期限到来時に再度 1 度だけ push できるようにする。
+> 詳細は [03_business_logic.md §5](./03_business_logic.md)。
 
 | カラム | 型 | NULL | デフォルト | 説明 |
 |-------|----|------|-----------|------|
@@ -66,6 +74,7 @@ CREATE TABLE inbox_item_states (
 | `source_type` | VARCHAR(30) | NO | — | ソース種別 enum（サービス層バリデーション）|
 | `source_id` | BIGINT | NO | — | 各ソース PK（FK なし・論理参照）|
 | `snoozed_until` | DATETIME(6) | YES | NULL | スヌーズ解除予定。集約時 `> now` で受信箱から除外 |
+| `snooze_notified_at` | DATETIME(6) | YES | NULL | スヌーズ復帰 push 送信済み時刻（Phase3 ②）。NULL=未送信。再スヌーズで NULL へリセット |
 | `archived_at` | DATETIME(6) | YES | NULL | 非 NULL で保管庫へ。NULL で受信箱 |
 | `created_at` / `updated_at` | DATETIME(6) | NO | CURRENT_TIMESTAMP(6) | |
 
@@ -77,6 +86,7 @@ CREATE TABLE inbox_item_states (
 | `uq_iis_user_source` | `(user_id, source_type, source_id)` | per-user 1 通知 1 行の一意制約。upsert キー・状態まとめ取りの結合キー |
 | `idx_iis_user_snooze` | `(user_id, snoozed_until)` | スヌーズ中一覧・復帰判定 |
 | `idx_iis_user_archived` | `(user_id, archived_at)` | 保管庫一覧 |
+| `idx_iis_snooze_revival` | `(snoozed_until, snooze_notified_at)` | Phase3 ②：全ユーザー横断の復帰 push 対象抽出（`findDueForRevival`）|
 
 ### 2.2 notification_labels（軽量ラベル・マスタ）
 

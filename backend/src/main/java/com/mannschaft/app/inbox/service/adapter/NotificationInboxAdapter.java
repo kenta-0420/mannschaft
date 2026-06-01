@@ -1,5 +1,6 @@
 package com.mannschaft.app.inbox.service.adapter;
 
+import com.mannschaft.app.inbox.InboxNotificationTypes;
 import com.mannschaft.app.inbox.InboxPriority;
 import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.InboxState;
@@ -38,8 +39,12 @@ public class NotificationInboxAdapter implements InboxSourceAdapter {
 
     @Override
     public List<InboxItemDto> fetch(Long userId) {
+        // F04.11 Phase3 ②：スヌーズ復帰 push（INBOX_SNOOZE_REVIVAL）はインボックス受信箱に
+        // 再流入させない（自己増殖の防止）。ベル/通知一覧には出るが、ここでは除外する。
         return notificationRepository
-                .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, HARD_LIMIT))
+                .findByUserIdAndNotificationTypeNotOrderByCreatedAtDesc(
+                        userId, InboxNotificationTypes.INBOX_SNOOZE_REVIVAL,
+                        PageRequest.of(0, HARD_LIMIT))
                 .getContent()
                 .stream()
                 .map(this::toDto)
