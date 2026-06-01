@@ -113,6 +113,15 @@
 
 > Phase 2 は別途 `/軍議` で個別設計する。本書は Phase 2 の**拡張点（フック）が破綻しないこと**だけを保証する。
 
+> **Phase 2 足場C（teams 所在地正規化）進捗 — 第三陣まで実装済（2026-06-01）:**
+> - **第一陣（Expand）**: `teams.prefecture_code`/`city_code` 列追加 + 逆引きノーマライザ + `TeamRegionBackfillService`（ドライラン基盤）。
+> - **第二陣**: チーム検索のコード化（dual-support＝code 指定時 code 一致・無指定は従来名称一致）/ team 系 DTO へ `prefectureCode`/`cityCode`（camelCase）追加 / scope=TEAM 札立てのサーバ側地域既定補完。
+> - **第三陣（本実装）**: FE 検索のコード送信化（`teams/search.vue`・`organizations/[id]/teams/search.vue`）/ チーム作成（`EntityCreateDialog`）・編集（`TeamDetailInfo` 所在地コード編集セクション）の地域コード選択 / 札立てフォーム（`MarketListingFormExtension`）の team 地域コード初期プリフィル / **バックフィルの SYSTEM_ADMIN 管理 UI 起動導線**。
+>
+> **バックフィル起動手順（SYSTEM_ADMIN 限定）**: 管理画面 `/system-admin/batches`（バッチ起動）に以下 2 バッチが自動登録される（`@BatchEndpoint` ＋ `SystemAdminBatchController` 経由・`/api/v1/system-admin/**` は `hasRole("SYSTEM_ADMIN")`）。
+> - `team-region-backfill-dryrun`: **ドライラン（書込なし）**。県/市/未マッチ件数とマッチ率を集計ログ出力。まずこれを実行して結果を確認する。
+> - `team-region-backfill`: **本実行**。解決できた行のみ `prefecture_code`/`city_code` を書き込む。冪等（既コード行スキップ）。ドライランで妥当性を確認後に実行する。
+
 **実装依存（フレンド宛非公開札）**: 宛先解決は F01.5 に依存する。`team_friends`（V9.072）/ フレンドフォルダ `team_friend_folders`（V9.073）はいずれも**実装済**。
 
 > **乖離C 是正（第一陣・部隊1 / 2026-05-30）**: 当初「`FOLDER` 粒度はフレンドフォルダ未実装ゆえ gating」と記していたが、`team_friend_folders` は **V9.073 で既に実装済**であることを確認した。よって **`ALL_FRIENDS`/`FOLDER`/`TEAM` の3粒度すべてを Phase 1 で実装する（FOLDER の UI/API gating は不要）**。

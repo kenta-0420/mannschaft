@@ -1461,7 +1461,16 @@
     "mapEmbedUrlWarning": "⚠️ 이 URL은 비로그인 사용자에게도 공개됩니다",
     "mapEmbedUrlHelp": "Google Maps에서 「공유 > 지도 삽입 > HTML 복사」하여 src= URL을 붙여넣기 해 주세요",
     "mapEmbedUrlInvalidFormat": "Google Maps 삽입 URL（https://www.google.com/maps/embed?...）형식이어야 합니다",
-    "mapEmbedUrlSaved": "매장 지도 URL이 저장되었습니다"
+    "mapEmbedUrlSaved": "매장 지도 URL이 저장되었습니다",
+    "regionCode": {
+      "label": "소재지(도도부현・시구정촌)",
+      "help": "도도부현과 시구정촌을 선택하면 지역 검색과 모집 게시의 초기값으로 사용됩니다.",
+      "prefecture": "도도부현",
+      "city": "시구정촌",
+      "prefecturePlaceholder": "도도부현 선택",
+      "cityPlaceholder": "시구정촌 선택",
+      "saved": "소재지를 저장했습니다"
+    }
   },
   "event": {
     "chatOpen": "채팅 열기"

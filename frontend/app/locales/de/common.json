@@ -1461,7 +1461,16 @@
     "mapEmbedUrlWarning": "⚠️ Diese URL ist auch für nicht angemeldete Benutzer sichtbar",
     "mapEmbedUrlHelp": "In Google Maps auf \"Teilen > Karte einbetten > HTML kopieren\" klicken und die src= URL einfügen",
     "mapEmbedUrlInvalidFormat": "Muss eine Google Maps Einbettungs-URL sein (https://www.google.com/maps/embed?...)",
-    "mapEmbedUrlSaved": "Standortkarten-URL gespeichert"
+    "mapEmbedUrlSaved": "Standortkarten-URL gespeichert",
+    "regionCode": {
+      "label": "Standort (Präfektur / Stadt)",
+      "help": "Die Auswahl von Präfektur und Stadt legt die Standardwerte für regionale Suche und Inserate fest.",
+      "prefecture": "Präfektur",
+      "city": "Stadt",
+      "prefecturePlaceholder": "Präfektur auswählen",
+      "cityPlaceholder": "Stadt auswählen",
+      "saved": "Standort gespeichert"
+    }
   },
   "event": {
     "chatOpen": "Chat öffnen"

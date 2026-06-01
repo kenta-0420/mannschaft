@@ -219,7 +219,9 @@ class PublicDiscoverControllerTest {
                 name,
                 "https://cdn.example.com/icons/" + id + ".png",
                 10,
-                LocalDateTime.of(2026, 5, 1, 12, 0, 0)
+                LocalDateTime.of(2026, 5, 1, 12, 0, 0),
+                "13",
+                "13113"
         );
     }
 

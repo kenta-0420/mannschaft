@@ -21,6 +21,8 @@ const fieldErrors = ref<Record<string, string>>({})
 const prefectures = ref<PrefectureResponse[]>([])
 const cities = ref<CityResponse[]>([])
 const selectedPref = ref<PrefectureResponse | null>(null)
+// F22.1 Phase2 足場C 第三陣: 市区町村は名称だけでなくコードも保持する。
+const selectedCity = ref<CityResponse | null>(null)
 const citiesLoading = ref(false)
 
 onMounted(async () => {
@@ -34,7 +36,11 @@ onMounted(async () => {
 
 watch(selectedPref, async (pref) => {
   form.value.prefecture = pref?.name ?? ''
+  form.value.prefectureCode = pref?.code ?? ''
+  // 都道府県変更時は市区町村選択をリセット
   form.value.city = ''
+  form.value.cityCode = ''
+  selectedCity.value = null
   cities.value = []
   if (!pref) return
   citiesLoading.value = true
@@ -48,6 +54,12 @@ watch(selectedPref, async (pref) => {
   }
 })
 
+// 市区町村選択時は名称・コードの両方を form に反映する。
+watch(selectedCity, (city) => {
+  form.value.city = city?.name ?? ''
+  form.value.cityCode = city?.code ?? ''
+})
+
 const isTeam = computed(() => props.entityType === 'team')
 const title = computed(() => (isTeam.value ? 'チームを作成' : '組織を作成'))
 
@@ -58,6 +70,9 @@ const form = ref({
   description: '',
   prefecture: '',
   city: '',
+  // F22.1 Phase2 足場C 第三陣: 構造化地域コード（BE prefectureCode/cityCode camelCase と 1:1）。
+  prefectureCode: '',
+  cityCode: '',
   visibility: 'PUBLIC',
   supporterEnabled: false,
   // Team only
@@ -125,6 +140,10 @@ async function submit() {
     }
     if (isTeam.value) {
       body.template = form.value.template
+      // F22.1 Phase2 足場C 第三陣: チーム作成時のみ構造化地域コードを送る
+      // （BE CreateTeamRequest.prefectureCode/cityCode。組織作成 API は未対応のため送らない）。
+      body.prefectureCode = form.value.prefectureCode || undefined
+      body.cityCode = form.value.cityCode || undefined
     } else {
       body.orgType = form.value.orgType
     }
@@ -155,12 +174,15 @@ function resetForm() {
     description: '',
     prefecture: '',
     city: '',
+    prefectureCode: '',
+    cityCode: '',
     visibility: 'PUBLIC',
     supporterEnabled: false,
     template: 'OTHER',
     orgType: 'OTHER',
   }
   selectedPref.value = null
+  selectedCity.value = null
   cities.value = []
   fieldErrors.value = {}
 }
@@ -255,10 +277,9 @@ function close() {
         <div>
           <label class="mb-1 block text-sm font-medium">市区町村</label>
           <Select
-            v-model="form.city"
+            v-model="selectedCity"
             :options="cities"
             option-label="name"
-            option-value="name"
             placeholder="都道府県を先に選択"
             filter
             filter-placeholder="市区町村を検索"
