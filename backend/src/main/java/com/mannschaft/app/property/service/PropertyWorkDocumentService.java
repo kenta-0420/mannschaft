@@ -197,7 +197,9 @@ public class PropertyWorkDocumentService {
 
         Long folderScopeId = switch (folder.getScopeType()) {
             case TEAM -> folder.getTeamId();
-            case ORGANIZATION -> folder.getOrganizationId();
+            // F08.7.1: 大会・ディビジョンは主催組織 ID。なお物件パッケージは TEAM/ORGANIZATION のみ扱うため、
+            // これらは上の equals(pkg.getScopeType()) チェックで既に弾かれており実質到達しない。
+            case ORGANIZATION, TOURNAMENT, TOURNAMENT_DIVISION -> folder.getOrganizationId();
             case PERSONAL -> null; // 上の equals チェックで既に弾かれているはず
         };
 
