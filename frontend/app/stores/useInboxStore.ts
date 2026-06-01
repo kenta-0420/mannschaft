@@ -234,8 +234,10 @@ export const useInboxStore = defineStore('inbox', {
 
     /**
      * スヌーズ解除。
-     * groupCount > 1 のとき groupMembers 全員に bulkAction(SNOOZE 解除相当の UNARCHIVE)…
-     * ただし bulk に UNSNOOZE はないため、グループカードでは再 fetchInbox で正規化する。
+     * groupCount > 1 のとき groupMembers 全員を個別 api.unsnooze で解除する。
+     * bulk に UNSNOOZE action が未定義のため個別 API を Promise.allSettled で並列実行し、
+     * 全結果（成功・失敗問わず）が揃った後に必ず fetchInbox で実サーバ状態へ再同期する。
+     * これにより部分失敗時の誤表示（楽観ロールバック後の状態ズレ）を防ぐ。
      * 単独アイテムは従来どおり単一 triage。
      */
     async unsnooze(sourceType: InboxSourceType, sourceId: number): Promise<boolean> {
@@ -244,20 +246,28 @@ export const useInboxStore = defineStore('inbox', {
       const isGroup = (item?.groupCount ?? 1) > 1
 
       if (isGroup && item?.groupMembers && item.groupMembers.length > 0) {
-        // グループカード: 楽観的に代表カードを除去 → 全メンバーへ UNARCHIVE 相当で bulk 呼び出し
-        // bulk に UNSNOOZE action がないため fetchInbox で再取得して正規化する
+        // グループカード: 楽観的に代表カードを除去 → 全メンバーへ個別 unsnooze を並列実行
         this._removeItem(sourceType, sourceId)
         try {
-          // 全メンバーを順次 unsnooze（bulk UNSNOOZE は未定義のため個別 API）
+          // Promise.allSettled で部分失敗を許容しながら全メンバーへ unsnooze を実行
           const api = useInboxApi()
-          await Promise.all(
+          const results = await Promise.allSettled(
             item.groupMembers.map((m) => api.unsnooze(m.sourceType as InboxSourceType, m.sourceId)),
           )
+          // 全件失敗の場合はロールバックして再同期
+          const allFailed = results.every((r) => r.status === 'rejected')
+          if (allFailed) {
+            this.items = previous
+            this._handleError(results[0] && results[0].status === 'rejected' ? results[0].reason : new Error('unsnooze failed'))
+          }
+          // 成功・部分成功問わず実サーバ状態へ再同期（誤表示防止）
           await this.fetchInbox()
-          return true
+          return !allFailed
         } catch (error) {
+          // Promise.allSettled 自体は reject しないため、ここは fetchInbox の失敗等
           this.items = previous
           this._handleError(error)
+          await this.fetchInbox()
           return false
         }
       }

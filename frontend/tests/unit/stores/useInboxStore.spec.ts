@@ -733,6 +733,73 @@ describe('useInboxStore', () => {
       })
     })
 
+    // ──────────────────────────────────────────────
+    // Phase 3: グループ unsnooze の挙動（GRP-008）
+    // ──────────────────────────────────────────────
+
+    describe('INBOX-STORE-GRP-008: groupCount > 1 の unsnooze', () => {
+      it('正常系: groupMembers 件数分 api.unsnooze が呼ばれ、その後 fetchInbox で確定する', async () => {
+        const groupItem = makeGroupItem({ state: 'SNOOZED', snoozedUntil: '2026-06-01T12:00:00Z' })
+        const store = useInboxStore()
+        store.items = [groupItem]
+
+        // 全メンバーの unsnooze が成功
+        apiMock.unsnooze.mockResolvedValue({ data: makeItem({ state: 'UNREAD' }) })
+        // fetchInbox（確定用）
+        apiMock.getInbox.mockResolvedValueOnce(makeListResponse([]))
+
+        const ok = await store.unsnooze('NOTIFICATION', 10)
+
+        expect(ok).toBe(true)
+        // groupMembers の件数（2件）分 api.unsnooze が呼ばれる
+        expect(apiMock.unsnooze).toHaveBeenCalledTimes(2)
+        expect(apiMock.unsnooze).toHaveBeenCalledWith('NOTIFICATION', 10)
+        expect(apiMock.unsnooze).toHaveBeenCalledWith('ANNOUNCEMENT', 20)
+        // その後 getInbox（fetchInbox）が走る
+        expect(apiMock.getInbox).toHaveBeenCalledTimes(1)
+      })
+
+      it('失敗系（全件失敗）: previous にロールバックし fetchInbox で再同期される', async () => {
+        const groupItem = makeGroupItem({ state: 'SNOOZED', snoozedUntil: '2026-06-01T12:00:00Z' })
+        const otherItem = makeItem({ id: 'MENTION:99', sourceType: 'MENTION', sourceId: 99 })
+        const store = useInboxStore()
+        store.items = [groupItem, otherItem]
+
+        // 全メンバーの unsnooze が失敗
+        apiMock.unsnooze.mockRejectedValue(new Error('Network Error'))
+        // fetchInbox（再同期用）— 実サーバ側の状態（snoozed のまま）を返す想定
+        apiMock.getInbox.mockResolvedValueOnce(makeListResponse([groupItem, otherItem]))
+
+        const ok = await store.unsnooze('NOTIFICATION', 10)
+
+        expect(ok).toBe(false)
+        // ロールバック後に fetchInbox が走る（誤表示防止・再同期）
+        expect(apiMock.getInbox).toHaveBeenCalledTimes(1)
+        // fetchInbox 後の items がサーバ返却値で上書きされている
+        expect(store.items).toHaveLength(2)
+      })
+
+      it('部分失敗系: 一部成功・一部失敗でも fetchInbox で再同期される', async () => {
+        const groupItem = makeGroupItem({ state: 'SNOOZED', snoozedUntil: '2026-06-01T12:00:00Z' })
+        const store = useInboxStore()
+        store.items = [groupItem]
+
+        // 1件目成功、2件目失敗（部分失敗）
+        apiMock.unsnooze
+          .mockResolvedValueOnce({ data: makeItem({ state: 'UNREAD' }) })
+          .mockRejectedValueOnce(new Error('Network Error'))
+        // fetchInbox（再同期用）
+        apiMock.getInbox.mockResolvedValueOnce(makeListResponse([groupItem]))
+
+        const ok = await store.unsnooze('NOTIFICATION', 10)
+
+        // 部分成功は成功扱い（allFailed = false）
+        expect(ok).toBe(true)
+        // 必ず fetchInbox で再同期される
+        expect(apiMock.getInbox).toHaveBeenCalledTimes(1)
+      })
+    })
+
     describe('INBOX-STORE-GRP-006: groupCount <= 1 は単一 triage（回帰）', () => {
       it('snooze: groupCount=1 のとき単一 triage API を呼ぶ', async () => {
         const singleItem = makeItem({ groupCount: 1 })
