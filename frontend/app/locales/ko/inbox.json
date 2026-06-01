@@ -24,7 +24,11 @@
       "archive": "보관함으로",
       "unarchive": "받은 편지함으로 되돌리기",
       "unsnooze": "스누즈 해제",
-      "label": "레이블"
+      "label": "레이블",
+      "snoozed": "스누즈했습니다",
+      "archived": "보관함으로 이동했습니다",
+      "unarchived": "받은 편지함으로 이동했습니다",
+      "unsnoozed": "스누즈를 해제했습니다"
     },
     "snoozePreset": {
       "in3h": "3시간 후",
@@ -43,6 +47,38 @@
       "inbox": "받은 편지함",
       "snoozed": "스누즈 중",
       "archived": "보관함"
+    },
+    "label": {
+      "title": "레이블",
+      "create": "레이블 만들기",
+      "edit": "레이블 편집",
+      "delete": "레이블 삭제",
+      "manage": "레이블 관리",
+      "nameLabel": "이름",
+      "namePlaceholder": "레이블 이름",
+      "colorLabel": "색상",
+      "iconLabel": "아이콘（선택 사항）",
+      "limitReached": "레이블은 최대 20개까지 만들 수 있습니다",
+      "duplicate": "동일한 이름의 레이블이 이미 존재합니다",
+      "perItemLimit": "알림 1건에 레이블은 최대 10개까지 부여할 수 있습니다",
+      "empty": "레이블이 없습니다",
+      "filterTitle": "레이블로 필터링",
+      "assigned": "레이블이 부여되었습니다",
+      "removed": "레이블 제거",
+      "created": "레이블을 만들었습니다",
+      "updated": "레이블을 수정했습니다",
+      "deleted": "레이블을 삭제했습니다"
+    },
+    "bulk": {
+      "selectMode": "여러 항목 선택",
+      "exit": "선택 종료",
+      "selected": "{count}개 선택됨",
+      "archive": "보관",
+      "snooze": "스누즈",
+      "addLabel": "레이블 추가",
+      "apply": "실행",
+      "result": "{processed}건 처리（{skipped}건 건너뜀）",
+      "cancel": "취소"
     }
   }
 }
