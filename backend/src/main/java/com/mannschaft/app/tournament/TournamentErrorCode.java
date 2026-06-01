@@ -122,20 +122,57 @@ public enum TournamentErrorCode implements ErrorCode {
     /** 支払おうとしたチームが参加費の対象（SPECIFIC_TEAMS）に含まれていない（F08.7.1/07 §2） */
     FEE_TEAM_NOT_TARGET("TOUR_037", "このチームは参加費の対象に含まれていません", Severity.WARN),
 
+    // ========================================================================
+    // F08.7.1 / 03 リーグ・ピラミッド＋昇降格移籍（league_transfer）
+    // ========================================================================
+
+    /** リーグ移籍記録が見つからない（IDOR 対策で 404 に統一・§7） */
+    LEAGUE_TRANSFER_NOT_FOUND("TOUR_038", "リーグ移籍記録が見つかりません", Severity.WARN),
+
+    /** 昇降格送り出しの権限がない（手放す側 org ADMIN 限定・§7） */
+    LEAGUE_TRANSFER_DISPATCH_FORBIDDEN("TOUR_039", "昇降格送り出しの権限がありません", Severity.WARN),
+
+    /** 昇降格の承認・拒否・取消の権限がない（受け入れ/手放す側 org ADMIN 限定・§7） */
+    LEAGUE_TRANSFER_RESPOND_FORBIDDEN("TOUR_040", "この移籍に応答する権限がありません", Severity.WARN),
+
+    /** チーム側の移籍閲覧権限がない（当該チーム MEMBER 以上限定・§7） */
+    LEAGUE_TRANSFER_VIEW_FORBIDDEN("TOUR_041", "このチームの移籍状況を閲覧する権限がありません", Severity.WARN),
+
+    /** 移籍の送り先 org が解決できない（祖先/子孫 ASSOCIATION が 0 件・§5.2/§5.3・症状を握りつぶさず例外化） */
+    LEAGUE_TRANSFER_TARGET_NOT_RESOLVABLE("TOUR_042",
+            "移籍の送り先組織を解決できません（親子関係が確認できません）", Severity.WARN),
+
+    /** 指定チームが境界部の昇格枠/降格枠に該当しない（§3.3・独自境界判定） */
+    LEAGUE_TRANSFER_TEAM_NOT_IN_SLOT("TOUR_043",
+            "指定されたチームは昇格枠/降格枠に含まれていません", Severity.WARN),
+
+    /** 既に同一チーム・同一シーズン・同一方向の移籍が起票済み（UNIQUE 制約・二重起票防止・§7） */
+    LEAGUE_TRANSFER_ALREADY_DISPATCHED("TOUR_044",
+            "このチームの当該シーズンの移籍は既に起票済みです", Severity.WARN),
+
+    /** 移籍が応答可能な状態（DISPATCHED）でない（状態機械違反・§3.2） */
+    LEAGUE_TRANSFER_NOT_DISPATCHED("TOUR_045",
+            "この移籍は既に応答済み、または取消済みです", Severity.WARN),
+
+    // ========================================================================
+    // F08.7.1 / 05 試合メンバー表（roster）
+    // 採番衝突回避: league_transfer（隊3）が TOUR_038-045 を先取りしたため末尾 046-050 に再配置
+    // ========================================================================
+
     /** 呼び出しユーザーの所属チームが当該試合の対戦当事者でない（F08.7.1/05 §4・rosters/me） */
-    ROSTER_TEAM_NOT_IN_MATCH("TOUR_038", "あなたのチームはこの試合の対戦当事者ではありません", Severity.WARN),
+    ROSTER_TEAM_NOT_IN_MATCH("TOUR_046", "あなたのチームはこの試合の対戦当事者ではありません", Severity.WARN),
 
     /** 自チームメンバー表の編集/提出権限がない（F08.7.1/05 §5・自チーム ADMIN/DEPUTY 限定） */
-    ROSTER_EDIT_FORBIDDEN("TOUR_039", "このメンバー表を編集する権限がありません", Severity.WARN),
+    ROSTER_EDIT_FORBIDDEN("TOUR_047", "このメンバー表を編集する権限がありません", Severity.WARN),
 
     /** 提出締切（roster_deadline）超過のため編集ロック中（F08.7.1/05 §5・409） */
-    ROSTER_DEADLINE_PASSED("TOUR_040", "メンバー表の提出締切を過ぎているため編集できません", Severity.WARN),
+    ROSTER_DEADLINE_PASSED("TOUR_048", "メンバー表の提出締切を過ぎているため編集できません", Severity.WARN),
 
     /** 主催組織 ADMIN でないため全チームのメンバー表閲覧/締切管理ができない（F08.7.1/05 §5） */
-    ROSTER_MANAGE_FORBIDDEN("TOUR_041", "メンバー表を管理する権限がありません", Severity.WARN),
+    ROSTER_MANAGE_FORBIDDEN("TOUR_049", "メンバー表を管理する権限がありません", Severity.WARN),
 
     /** 指定ユニフォームセットが自チームのものでない / 存在しない（F08.7.1/05 §8.2・8.5） */
-    UNIFORM_SET_NOT_FOUND("TOUR_042", "指定されたユニフォームセットが見つかりません", Severity.WARN);
+    UNIFORM_SET_NOT_FOUND("TOUR_050", "指定されたユニフォームセットが見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -96,7 +96,9 @@ public class PublicTeamSearchQueryService {
                         team.getName(),
                         team.getIconUrl(),
                         team.getMemberCount() != null ? Math.toIntExact(team.getMemberCount()) : 0,
-                        lastPostDateMap.get(team.getId())
+                        lastPostDateMap.get(team.getId()),
+                        team.getPrefectureCode(),
+                        team.getCityCode()
                 ))
                 .toList();
 
