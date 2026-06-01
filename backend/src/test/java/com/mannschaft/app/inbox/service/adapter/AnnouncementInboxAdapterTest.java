@@ -123,7 +123,7 @@ class AnnouncementInboxAdapterTest {
         void emptyWhenNoScopes() {
             noScopes();
 
-            assertThat(adapter.fetch(USER_ID)).isEmpty();
+            assertThat(adapter.fetch(USER_ID, 50)).isEmpty();
         }
 
         @Test
@@ -143,7 +143,7 @@ class AnnouncementInboxAdapterTest {
             given(readStatusRepository.findByUserIdAndAnnouncementFeedIdIn(eq(USER_ID), any()))
                     .willReturn(List.of());
 
-            List<InboxItemDto> items = adapter.fetch(USER_ID);
+            List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
             assertThat(items).hasSize(1);
             InboxItemDto dto = items.get(0);
@@ -178,7 +178,7 @@ class AnnouncementInboxAdapterTest {
             given(readStatusRepository.findByUserIdAndAnnouncementFeedIdIn(eq(USER_ID), any()))
                     .willReturn(List.of());
 
-            List<InboxItemDto> items = adapter.fetch(USER_ID);
+            List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
             assertThat(items).extracting(InboxItemDto::sourceId, InboxItemDto::priority)
                     .containsExactlyInAnyOrder(
@@ -206,7 +206,7 @@ class AnnouncementInboxAdapterTest {
             given(readStatusRepository.findByUserIdAndAnnouncementFeedIdIn(eq(USER_ID), any()))
                     .willReturn(List.of(rs));
 
-            List<InboxItemDto> items = adapter.fetch(USER_ID);
+            List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
             assertThat(items).extracting(InboxItemDto::sourceId, InboxItemDto::state)
                     .containsExactlyInAnyOrder(
@@ -237,7 +237,7 @@ class AnnouncementInboxAdapterTest {
             given(readStatusRepository.findByUserIdAndAnnouncementFeedIdIn(eq(USER_ID), any()))
                     .willReturn(List.of());
 
-            List<InboxItemDto> items = adapter.fetch(USER_ID);
+            List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
             assertThat(items).extracting(InboxItemDto::sourceId)
                     .containsExactlyInAnyOrder(50L, 51L);

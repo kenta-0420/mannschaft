@@ -29,9 +29,12 @@
 ```
 interface InboxSourceAdapter {
   InboxSourceType sourceType();
-  List<InboxItemRaw> fetch(Long userId, FetchWindow window);  // 読み取りのみ・ハードリミット付き
+  List<InboxItemDto> fetch(Long userId, int window);  // 読み取りのみ・境界付きウィンドウ（最大 window 件）
+  boolean isVisibleTo(Long userId, Long sourceId);    // IDOR 防止（triage 書き込み前検証）
 }
 ```
+
+> **境界付きウィンドウ（Phase 3 ③）**: `fetch` は「自ソース内の正しい順序の上位 `window` 件」だけを返す。集約サービスが全ソースの上位ウィンドウを完全全順序でマージ・スライスして取りこぼさない（§4.1）。各アダプタは `Pageable`（`PageRequest.of(0, window)`）等で取得件数を境界付ける（無制限 fetch なし）。
 
 | アダプタ | ソース表 / リポジトリ | 取得条件 | title / excerpt | actionUrl | occurredAt |
 |---------|--------------------|---------|----------------|-----------|-----------|
@@ -55,10 +58,11 @@ interface InboxSourceAdapter {
 
 ---
 
-## 4. 状態マージ（LEFT JOIN 相当）と一覧フロー
+## 4. 状態マージ（LEFT JOIN 相当）と一覧フロー — 境界付きウィンドウページング（Phase 3 ③ 実装済み）
 
 ```
-1. 各アダプタを呼び InboxItemRaw を集める（ソース毎ハードリミット・例: 各100件）
+0. 取得ウィンドウを算出: window = (page+1)*size + SAFETY_MARGIN（= 20）
+1. 各アダプタを window 件で呼び InboxItemRaw を集める（境界付きウィンドウ・各アダプタは Pageable で window 件まで）
 2. オーバーレイをまとめ取り:
      inbox_item_states を user_id で1クエリ取得 → Map<(sourceType,sourceId), state>
      inbox_label_links（+ notification_labels 現役）を user_id で1クエリ取得 → Map<(sourceType,sourceId), List<label>>
@@ -68,11 +72,48 @@ interface InboxSourceAdapter {
      snoozed_until > now              → SNOOZED
      上記以外 かつ sourceRead = true  → READ
      それ以外                         → UNREAD
-4. state フィルタ（INBOX/SNOOZED/ARCHIVED/ALL）・priority・sourceType・labelId で絞り込み
-5. (priority DESC, occurredAt DESC) でメモリソート → page*size でスライス
+4. 名寄せ畳み込み（§8 foldByCanonicalRef）をウィンドウ全体に対して行う（畳み後の件数でページングが効く）
+5. state フィルタ（INBOX/SNOOZED/ARCHIVED/ALL）・priority・sourceType・labelId で絞り込み
+6. 完全な全順序（priority DESC → occurredAt DESC → sourceType名 → sourceId）でメモリソート
+   → [page*size, (page+1)*size) をスライス。hasMore = 畳み後フィルタ後件数 > (page+1)*size
 ```
 
-- **ページング方針**: 複数ソースマージのため真のカーソルは持てない。ソース毎ハードリミット内でのオフセットページング。「インボックス＝直近の仕分け場」と割り切り、深いページの網羅は非保証（[04](./04_security_operations.md) §5 に明記）。
+### 4.1 ページング方針 — なぜ「境界付きウィンドウ」か（方針更新 2026-06-01）
+
+> **旧方針（〜2026-05-30）**: 「ソース毎ハードリミット（各100件等）＋オフセットスライス・深いページは取りこぼし許容」。
+> **新方針（Phase 3 ③ 以降）**: 「**境界付きウィンドウページング**＝各ソースを `Pageable` で window 件まで取得し、完全全順序で決定的にマージ・スライス。当該ページの直近上位を取りこぼさない」。
+
+**複合キーセットカーソルを採らない理由**: 5 ソース横断で「真のカーソル」（複合キーセット）を持つと、各ソースの順序キーが異なる（priority・occurredAt・タイブレークの混在）ため境界条件のバグ温床になり、`{items, page, size, totalEstimated, hasMore}` という **既存 FE レスポンス契約も壊す**。よって複合カーソルは採らず、**境界付きウィンドウ**で「決定的（重複なし・load-more 連続）」を達成する。
+
+**ページング保証の正確な定義（不変条件と限界・是正 2026-06-01）**:
+
+> ⚠️ **以前の「取りこぼしゼロ」断定は不正確だった**。境界付きウィンドウの「欠落しない」不変条件は、**各ソースの fetch 順がグローバル全順序（priority 第一）と整合するとき**にのみ成立する。実 fetch 順が priority と独立なソース（ANNOUNCEMENT/CONFIRMABLE）は、古いが高 priority の項目が window 外へ脱落しうる。以下のとおり**ソース別に保証レベルを正直に記す**。
+
+- 境界付きウィンドウは「`window = (page+1)*size + margin >= (page+1)*size = K` 件を各ソースから取り、集約後に上位 K 件をスライスする」。
+- **不変条件**: 各ソースが「自ソース内を**グローバル全順序と整合する順序**で並べた上位 `window` 件」を返せば、グローバル上位 K 件はその和集合に必ず含まれ、当該ページ `[page*size, (page+1)*size)` の項目は欠落しない。
+- ソートは **完全な全順序**（priority DESC → occurredAt DESC → **sourceType名 → sourceId** のタイブレーク）。同着をタイブレークで一意化し、ページ境界で並びが揺れて隣接ページに項目が漏れる事故を防ぐ（決定的スライス）。
+- `SAFETY_MARGIN`（20）は名寄せ畳み込みによる件数減・境界の同着連なりを吸収する余裕。
+
+**ソース別の取りこぼし保証**:
+
+| アダプタ | 取得方法 | 自ソース fetch 順 | グローバル順との整合 | 取りこぼし保証 |
+|---|---|---|---|---|
+| NOTIFICATION | `findInboxByUserIdOrderByPriorityThenCreatedAtDesc(userId, excludedType, PageRequest.of(0, window))`（**priority 第一順クエリを新設**） | priority 降順（URGENT→HIGH→NORMAL→LOW）→ created_at 降順 | **整合** | **取りこぼしなし** |
+| MENTION | `findByMentionedUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, window))`（**Pageable 版**） | created_at 降順 | **整合**（priority 一律 HIGH ゆえ priority による並べ替えが起きない） | **取りこぼしなし** |
+| TODO_DUE | `findMyDueTodos(userId, cutoff, PageRequest.of(0, window))`（DB 側で「未完了∧due_date≤cutoff」に絞り due_date 昇順） | due_date 昇順（期限切れ→当日→近接） | **整合**（due_date 昇順 ↔ priority 降順 URGENT→HIGH→NORMAL が等価） | **取りこぼしなし** |
+| ANNOUNCEMENT | `findByScope(..., limit=window)` をスコープ毎に（**DashboardService と共有・ORDER BY 改変不可**） | ピン留め優先→created_at 降順 | **独立**（priority と無関係） | **限界あり**（下記） |
+| CONFIRMABLE | `findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(userId, PageRequest.of(0, window))`（JOIN FETCH＋Pageable） | 親 created_at 降順 | **独立**（24h 昇格は時刻依存で SQL 順序化困難） | **限界あり**（下記） |
+
+> **ANNOUNCEMENT の限界（正直な明文化）**: 取得順は `is_pinned, created_at` で priority と独立。`findByScope` は `DashboardService.getTeamDashboard`/`getOrgDashboard` と**共有**しており、ここで ORDER BY を priority 第一に改変すると他機能（ダッシュボードのお知らせ表示順）へ波及するため**改変しない**。結果として、**古い URGENT お知らせが多数の新着お知らせに埋もれて window 外へ脱落**し、後ページ送りになりうる。ただし pinned/有効なお知らせ件数は通常小さく、「直近の仕分け場」用途では実害が限定的。
+>
+> **CONFIRMABLE の限界（正直な明文化）**: 親 created_at 降順で取得するが、priority は「未確認かつ締切 24h 以内なら URGENT 昇格」（時刻依存・[01](./01_data_model.md) §3.2）。この昇格は現在時刻に依存するため SQL の ORDER BY で順序化するのが困難で、**created_at が古いが締切 24h 以内で URGENT 昇格すべき項目が window 外へ脱落**し、稀に順位逆転で後ページ送りになりうる。ただし**保留中（未確認）の確認通知は通常ごく少数**ゆえ window 内にほぼ収まり、実害は限定的。
+>
+> ANNOUNCEMENT・CONFIRMABLE の完全な priority 第一化は、共有クエリの分岐 or 専用クエリ新設・時刻依存順序のマテリアライズが必要であり、将来課題とする。
+
+> **CONFIRMABLE / TODO_DUE の従来「無制限 fetch」を根絶**: 以前は MENTION/CONFIRMABLE/TODO_DUE が全件取得していた。Phase 3 ③ で全ソースを `Pageable`（または DB 側絞り込み＋ Pageable）に統一し、メモリに載る件数を `window` で境界付けた。TODO_DUE は従来 `findMyTodos` の全件取得＋Java フィルタだったが、DB 側で「未完了∧近接/超過」に絞ってから上限を掛ける `findMyDueTodos` に置換した。
+
+> **サマリ（タブ/バッジ）**: `getSummary` は概算で十分なため `SUMMARY_WINDOW`（500）の広めウィンドウで集計する。
+
 - **孤児の除外**: アダプタが返すのは生存ソースのみ。オーバーレイにあってソースが消えた `(sourceType,sourceId)` はマージで自然に脱落（表示されない）。物理掃除は任意（Phase 3）。
 
 ---
@@ -111,7 +152,9 @@ push 基盤（`NotificationDispatchService.dispatch` → WebSocket `/user/{userI
   - `source_type="INBOX_REVIVAL"` / `source_id=null` とし、`NotificationService` の visibility ガードは
     fail-soft で通過する（元項目の可視性はスヌーズ時に検証済み）。`actionUrl="/inbox"`。
 - **`NotificationInboxAdapter.fetch` でこの種別を除外**する
-  （`NotificationRepository.findByUserIdAndNotificationTypeNotOrderByCreatedAtDesc`）。
+  （Phase3 ③ で priority 第一順の `NotificationRepository.findInboxByUserIdOrderByPriorityThenCreatedAtDesc` に切替。
+  種別除外の WHERE 条件は同一・取得順を priority 第一にしたのが差分。created_at 降順のみの
+  `findByUserIdAndNotificationTypeNotOrderByCreatedAtDesc` は他用途向けに温存）。
   → 復帰 push は**ベル/通知一覧には出る**（「あとで見るがそろそろ」の催促）が、
   **インボックス受信箱には新規カードを生まない**。受信箱には元のスヌーズ項目が §4・§5 の集約時判定で
   自然に復帰するのみ。これにより push 通知が NOTIFICATION ソースの inbox 項目を増殖させる二重化を根治する。

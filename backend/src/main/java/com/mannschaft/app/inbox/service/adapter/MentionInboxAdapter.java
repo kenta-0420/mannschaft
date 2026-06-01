@@ -11,6 +11,7 @@ import com.mannschaft.app.inbox.service.InboxSourceAdapter;
 import com.mannschaft.app.mention.entity.MentionEntity;
 import com.mannschaft.app.mention.repository.MentionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -38,8 +39,15 @@ public class MentionInboxAdapter implements InboxSourceAdapter {
     }
 
     @Override
-    public List<InboxItemDto> fetch(Long userId) {
-        return mentionRepository.findByMentionedUserIdOrderByCreatedAtDesc(userId).stream()
+    public List<InboxItemDto> fetch(Long userId, int window) {
+        if (window <= 0) {
+            return List.of();
+        }
+        // Phase3 ③：境界付きウィンドウ＝新着順の上位 window 件のみ（無制限 fetch を根絶）。
+        // MENTION の priority は一律 HIGH のため、自ソース内の順序は新着順＝集約側の全順序と整合する
+        // （同 priority 内では occurredAt → タイブレークで決定的）。
+        return mentionRepository
+                .findByMentionedUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, window)).stream()
                 .map(this::toDto)
                 .toList();
     }

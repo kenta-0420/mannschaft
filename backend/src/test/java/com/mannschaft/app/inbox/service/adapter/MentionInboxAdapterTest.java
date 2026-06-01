@@ -18,8 +18,13 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Pageable;
 
 /**
  * F04.11 {@link MentionInboxAdapter} 単体テスト（Mockito）。
@@ -72,11 +77,11 @@ class MentionInboxAdapterTest {
         @DisplayName("content_snippet を title/excerpt に、created_at を occurredAt に写像する")
         void mapsFields() {
             LocalDateTime now = LocalDateTime.now();
-            given(mentionRepository.findByMentionedUserIdOrderByCreatedAtDesc(USER_ID))
+            given(mentionRepository.findByMentionedUserIdOrderByCreatedAtDesc(eq(USER_ID), any(Pageable.class)))
                     .willReturn(List.of(mention(
                             10L, USER_ID, "TIMELINE_POST", 5L, "あなたへのメンション", false, now)));
 
-            List<InboxItemDto> items = adapter.fetch(USER_ID);
+            List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
             assertThat(items).hasSize(1);
             InboxItemDto dto = items.get(0);
@@ -92,11 +97,11 @@ class MentionInboxAdapterTest {
         @Test
         @DisplayName("MENTION の priority は一律 HIGH")
         void priorityAlwaysHigh() {
-            given(mentionRepository.findByMentionedUserIdOrderByCreatedAtDesc(USER_ID))
+            given(mentionRepository.findByMentionedUserIdOrderByCreatedAtDesc(eq(USER_ID), any(Pageable.class)))
                     .willReturn(List.of(mention(
                             11L, USER_ID, "CHAT_MESSAGE", 7L, "snippet", false, LocalDateTime.now())));
 
-            List<InboxItemDto> items = adapter.fetch(USER_ID);
+            List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
             assertThat(items).singleElement()
                     .extracting(InboxItemDto::priority)
@@ -106,17 +111,37 @@ class MentionInboxAdapterTest {
         @Test
         @DisplayName("is_read=true は READ、false は UNREAD として state 源に載せる")
         void mapsSourceReadState() {
-            given(mentionRepository.findByMentionedUserIdOrderByCreatedAtDesc(USER_ID))
+            given(mentionRepository.findByMentionedUserIdOrderByCreatedAtDesc(eq(USER_ID), any(Pageable.class)))
                     .willReturn(List.of(
                             mention(12L, USER_ID, "TIMELINE_POST", 1L, "a", true, LocalDateTime.now()),
                             mention(13L, USER_ID, "TIMELINE_POST", 2L, "b", false, LocalDateTime.now())));
 
-            List<InboxItemDto> items = adapter.fetch(USER_ID);
+            List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
             assertThat(items).extracting(InboxItemDto::sourceId, InboxItemDto::state)
                     .containsExactlyInAnyOrder(
                             org.assertj.core.groups.Tuple.tuple(12L, InboxState.READ),
                             org.assertj.core.groups.Tuple.tuple(13L, InboxState.UNREAD));
+        }
+
+        @Test
+        @DisplayName("fetch は window 件を超えて取得しない（PageRequest size <= window）")
+        void boundsByWindow() {
+            given(mentionRepository.findByMentionedUserIdOrderByCreatedAtDesc(eq(USER_ID), any(Pageable.class)))
+                    .willReturn(List.of());
+
+            adapter.fetch(USER_ID, 30);
+
+            ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+            verify(mentionRepository).findByMentionedUserIdOrderByCreatedAtDesc(eq(USER_ID), captor.capture());
+            assertThat(captor.getValue().getPageSize()).isLessThanOrEqualTo(30);
+        }
+
+        @Test
+        @DisplayName("window <= 0 は DB を引かず空を返す")
+        void zeroWindowReturnsEmpty() {
+            assertThat(adapter.fetch(USER_ID, 0)).isEmpty();
+            org.mockito.Mockito.verifyNoInteractions(mentionRepository);
         }
     }
 

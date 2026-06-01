@@ -141,4 +141,42 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
      */
     Page<NotificationEntity> findByUserIdAndNotificationTypeNotOrderByCreatedAtDesc(
             Long userId, String excludedType, Pageable pageable);
+
+    /**
+     * F04.11 Phase3 ③：指定種別を除外したユーザーの通知一覧を
+     * <b>InboxPriority 相当の優先度順（URGENT→HIGH→NORMAL→LOW）→ 作成日時降順</b>でページング取得する。
+     *
+     * <p>統合インボックスの NOTIFICATION アダプタが「境界付きウィンドウページング」（Phase3 ③）で
+     * 取りこぼしを根絶するために使用する。{@code findByUserIdAndNotificationTypeNotOrderByCreatedAtDesc}
+     * は created_at 降順のみのため、「古いが高 priority の通知」が window 外へ脱落しうる（後ページ送りでも
+     * page0 で欠落する）。本クエリは取得順を集約サービスのグローバル全順序（priority 第一）に一致させ、
+     * 自ソース内のグローバル上位 window 件を漏れなく返す。</p>
+     *
+     * <p><b>ORDER BY の写像</b>: {@code InboxPriorityNormalizer.mapNotification} と完全一致させる。
+     * URGENT=0 / HIGH=1 / LOW=3 / それ以外（NORMAL 等の未知値含む）=2（NORMAL 相当）。
+     * これは {@code InboxPriority} の ordinal（URGENT=0, HIGH=1, NORMAL=2, LOW=3）と一致する。
+     * 同一 priority 内は created_at 降順（新着優先）。</p>
+     *
+     * <p>既存の {@code findByUserIdAndNotificationTypeNotOrderByCreatedAtDesc} は他用途（保留中一覧等）が
+     * 使用しうるため温存し、本メソッドを新設する（CLAUDE.md 根治原則・既存非破壊）。</p>
+     *
+     * @param userId       ユーザー ID
+     * @param excludedType 除外する通知種別（{@code INBOX_SNOOZE_REVIVAL}）
+     * @param pageable     ページング
+     * @return 優先度第一順（priority 降順 → created_at 降順）の通知ページ
+     */
+    @Query("""
+            SELECT n FROM NotificationEntity n
+            WHERE n.userId = :userId AND n.notificationType <> :excludedType
+            ORDER BY
+              CASE n.priority
+                WHEN com.mannschaft.app.notification.NotificationPriority.URGENT THEN 0
+                WHEN com.mannschaft.app.notification.NotificationPriority.HIGH THEN 1
+                WHEN com.mannschaft.app.notification.NotificationPriority.LOW THEN 3
+                ELSE 2
+              END ASC,
+              n.createdAt DESC
+            """)
+    Page<NotificationEntity> findInboxByUserIdOrderByPriorityThenCreatedAtDesc(
+            @Param("userId") Long userId, @Param("excludedType") String excludedType, Pageable pageable);
 }

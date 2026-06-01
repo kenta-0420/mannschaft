@@ -46,9 +46,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AnnouncementInboxAdapter implements InboxSourceAdapter {
 
-    /** スコープ毎ハードリミット（深いページ網羅は非保証＝「直近の仕分け場」割り切り。設計書 §4）。 */
-    private static final int PER_SCOPE_LIMIT = 50;
-
     private final UserRoleRepository userRoleRepository;
     private final RoleResolver roleResolver;
     private final AnnouncementFeedQueryRepository announcementFeedQueryRepository;
@@ -63,7 +60,10 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
     }
 
     @Override
-    public List<InboxItemDto> fetch(Long userId) {
+    public List<InboxItemDto> fetch(Long userId, int window) {
+        if (window <= 0) {
+            return List.of();
+        }
         // 1. 本人の所属スコープを列挙し、各スコープの visibility パラメータを解決する（DashboardService 踏襲）。
         Map<ScopeKey, String> scopeVisibility = resolveAccessibleScopes(userId);
         if (scopeVisibility.isEmpty()) {
@@ -71,11 +71,13 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
         }
 
         // 2. 各スコープのお知らせフィードを findByScope で取得する（重複 feed.id は除外）。
+        // Phase3 ③：各スコープを window 件まで（無制限 fetch を根絶）。複数スコープの和集合から
+        // 集約側が全順序ソートで上位 window 件を選ぶため、スコープ毎に window 件取れば取りこぼさない。
         Map<Long, AnnouncementFeedEntity> feedById = new LinkedHashMap<>();
         for (Map.Entry<ScopeKey, String> e : scopeVisibility.entrySet()) {
             ScopeKey scope = e.getKey();
             List<AnnouncementFeedEntity> feeds = announcementFeedQueryRepository.findByScope(
-                    scope.scopeType(), scope.scopeId(), e.getValue(), null, PER_SCOPE_LIMIT);
+                    scope.scopeType(), scope.scopeId(), e.getValue(), null, window);
             for (AnnouncementFeedEntity feed : feeds) {
                 feedById.putIfAbsent(feed.getId(), feed);
             }

@@ -63,10 +63,12 @@ public class InboxAggregationService {
             int page,
             int size) {
 
-        List<InboxItemDto> merged = collectMergedItems(userId);
+        // 境界付きウィンドウ（Phase3 ③）: 当該ページまでに必要な上位件数 + 安全マージン。
+        // 各アダプタはこのウィンドウ件数までしか取得しない（無制限 fetch を根絶）。
+        int window = requiredWindow(page, size);
+        List<InboxItemDto> merged = collectMergedItems(userId, window);
 
         // フィルタ（state → sourceType → priority → label）
-        LocalDateTime now = LocalDateTime.now();
         List<InboxItemDto> filtered = merged.stream()
                 .filter(it -> matchesState(it, stateFilter))
                 .filter(it -> sourceTypes == null || sourceTypes.isEmpty()
@@ -90,7 +92,8 @@ public class InboxAggregationService {
      * 状態別・緊急度別・種類別の件数サマリを取得する（タブ/バッジ用）。
      */
     public InboxSummaryResponse getSummary(Long userId) {
-        List<InboxItemDto> merged = collectMergedItems(userId);
+        // サマリは概算（タブ/バッジ用）。件数の上ぶれを抑えるためサマリ専用の広めウィンドウで取得する。
+        List<InboxItemDto> merged = collectMergedItems(userId, SUMMARY_WINDOW);
 
         Map<String, Long> byState = new LinkedHashMap<>();
         Map<String, Long> byPriority = new LinkedHashMap<>();
@@ -108,19 +111,52 @@ public class InboxAggregationService {
     // 集約 + オーバーレイマージ（N+1 回避のまとめ取り）
     // ─────────────────────────────────────────────────────────────────
 
-    /** ソート規則: priority DESC（URGENT が先頭）→ occurredAt DESC（新しい順）。 */
+    /**
+     * 安全マージン（Phase3 ③）。名寄せ畳み込みで件数が減る・境界での同着を吸収するための余裕。
+     * 当該ページの直前直後に同 priority・同 occurredAt の項目が連なっても取りこぼさないようにする。
+     */
+    private static final int SAFETY_MARGIN = 20;
+
+    /** サマリ集計用の広めウィンドウ（件数バッジは概算で十分・暴走防止に上限を設ける）。 */
+    private static final int SUMMARY_WINDOW = 500;
+
+    /**
+     * ソート規則（<b>完全な全順序</b>・Phase3 ③）: priority DESC（URGENT が先頭）→ occurredAt DESC（新しい順）
+     * → sourceType 名 → sourceId のタイブレーク。
+     *
+     * <p>同 priority・同 occurredAt の同着を sourceType/sourceId で決定的に解消することで、ページ境界での
+     * 重複/欠落（同着順序がリクエスト毎に揺れて隣接ページに項目が漏れる事故）を防ぐ。これが境界付きウィンドウの
+     * 決定性を支える不変条件。occurredAt は nullsLast（時刻なしは末尾）。</p>
+     */
     private static final Comparator<InboxItemDto> ITEM_ORDER =
             Comparator.<InboxItemDto>comparingInt(it -> it.priority().ordinal())  // URGENT=0 が先頭
-                    .thenComparing(InboxItemDto::occurredAt, Comparator.nullsLast(Comparator.reverseOrder()));
+                    .thenComparing(InboxItemDto::occurredAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                    .thenComparing(it -> it.sourceType().name())   // タイブレーク1: ソース種別名（昇順）
+                    .thenComparing(InboxItemDto::sourceId,
+                            Comparator.nullsLast(Comparator.naturalOrder()));  // タイブレーク2: sourceId（昇順）
+
+    /**
+     * 当該ページまでに必要な取得ウィンドウ件数を算出する（Phase3 ③）。
+     *
+     * <p>{@code (page+1)*size} が「当該ページ末尾までに表示しうる上位件数」。これに {@link #SAFETY_MARGIN} を
+     * 足したものをウィンドウとし、各ソースはこのウィンドウ件数までしか取得しない。オーバーフロー回避のため
+     * {@code int} 上限でクランプする。</p>
+     */
+    private static int requiredWindow(int page, int size) {
+        long needed = (long) (page + 1) * size + SAFETY_MARGIN;
+        return (int) Math.min(needed, Integer.MAX_VALUE);
+    }
 
     /**
      * 全アダプタから生項目を集め、triage 状態・ラベルをまとめ取りしてマージした項目リストを返す。
+     *
+     * @param window 各アダプタの取得上限件数（境界付きウィンドウ・Phase3 ③）
      */
-    private List<InboxItemDto> collectMergedItems(Long userId) {
-        // 1. 各アダプタを呼び生項目を集約
+    private List<InboxItemDto> collectMergedItems(Long userId, int window) {
+        // 1. 各アダプタを境界付きウィンドウで呼び生項目を集約（無制限 fetch を根絶）
         List<InboxItemDto> raw = new ArrayList<>();
         for (InboxSourceAdapter adapter : sourceAdapters) {
-            raw.addAll(adapter.fetch(userId));
+            raw.addAll(adapter.fetch(userId, window));
         }
 
         // 2-a. オーバーレイ状態を user_id でまとめ取り（item 件数に依らず 1 回）

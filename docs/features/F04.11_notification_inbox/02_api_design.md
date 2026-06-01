@@ -79,7 +79,7 @@
 }
 ```
 
-> `totalEstimated` は複数ソース集約のため**概算**（ハードリミット内の件数）。深いページの網羅は保証しない旨を [03](./03_business_logic.md) §4・[04](./04_security_operations.md) §5 に明記。
+> `totalEstimated` は複数ソース集約のため**概算**（境界付きウィンドウ内・畳み込み後の件数）。Phase3 ③ の**境界付きウィンドウページング**（全ソース `Pageable`・完全全順序タイブレーク）により**決定的（重複なし・load-more 連続）**。MENTION・TODO_DUE・NOTIFICATION は fetch 順がグローバル順と整合し**取りこぼしなし**。ANNOUNCEMENT・CONFIRMABLE は取得順が priority と独立のため、稀な偏在で高 priority・低時刻の項目が後ページに送られうる（pinned/保留件数は小さく実害限定）。詳細は [03](./03_business_logic.md) §4.1・[04](./04_security_operations.md) §5。
 
 ### 3.2 `GET /api/v1/inbox/summary`
 
