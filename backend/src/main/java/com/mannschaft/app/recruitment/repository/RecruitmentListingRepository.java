@@ -219,19 +219,27 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
     // ===========================================
 
     /**
-     * 市の公開札一覧を地域×ジャンル×キーワードで検索する。
+     * 市の公開札一覧を地域×ジャンル×キーワードで検索する（F22.1 Phase2 D・複数地域 N:N 対応）。
      *
-     * <p>{@code city} 指定時はその市区町村。{@code prefecture} のみ指定時は配下市区町村を
-     * ロールアップ（{@code SUBSTRING(city_code,1,2)=:pref} または {@code prefecture_code=:pref}）。
-     * {@code includeRegionNone=true} のときは地域未指定（両列 NULL）の札も含める。</p>
+     * <p>地域条件は中間表 {@code recruitment_listing_regions}（N:N）に対する {@code EXISTS} で評価する。
+     * これにより 1 札が複数地域に紐づいていても <strong>重複行が出ず</strong>、{@code Page} の件数
+     * （total）と内容がページングで整合する（DISTINCT による件数ずれ回避）。</p>
+     *
+     * <ul>
+     *   <li>{@code city} 指定 → 当該市区町村に紐づく地域行が EXISTS する札</li>
+     *   <li>{@code prefecture} のみ指定 → 当該都道府県に紐づく地域行（県単位 / 配下市区町村いずれも
+     *       {@code prefecture_code=:prefecture}）が EXISTS する札</li>
+     *   <li>両 NULL → 地域条件なし（全国）</li>
+     *   <li>{@code includeRegionNone=true} → 地域行を一切持たない札（{@code NOT EXISTS}）も含める</li>
+     * </ul>
      *
      * @param prefecture        都道府県コード（null=全国）
      * @param city              市区町村コード（null=県ロールアップ or 全国）
      * @param categoryId        ジャンル（null=全ジャンル）
      * @param keyword           タイトル部分一致（null=無条件）
-     * @param includeRegionNone 地域未指定の札も含めるか
+     * @param includeRegionNone 地域未設定（中間表 0 件）の札も含めるか
      * @param pageable          ページング
-     * @return 公開札ページ
+     * @return 公開札ページ（地域重複なし）
      */
     @Query("""
             SELECT l FROM RecruitmentListingEntity l
@@ -242,11 +250,16 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
               AND (:categoryId IS NULL OR l.categoryId = :categoryId)
               AND (:keyword IS NULL OR l.title LIKE %:keyword%)
               AND (
-                    (:city IS NOT NULL AND l.cityCode = :city)
-                 OR (:city IS NULL AND :prefecture IS NOT NULL
-                       AND (l.prefectureCode = :prefecture OR SUBSTRING(l.cityCode, 1, 2) = :prefecture))
+                    (:city IS NOT NULL AND EXISTS (
+                        SELECT 1 FROM RecruitmentListingRegionEntity rr
+                        WHERE rr.listingId = l.id AND rr.cityCode = :city))
+                 OR (:city IS NULL AND :prefecture IS NOT NULL AND EXISTS (
+                        SELECT 1 FROM RecruitmentListingRegionEntity rr
+                        WHERE rr.listingId = l.id AND rr.prefectureCode = :prefecture))
                  OR (:city IS NULL AND :prefecture IS NULL)
-                 OR (:includeRegionNone = TRUE AND l.prefectureCode IS NULL AND l.cityCode IS NULL)
+                 OR (:includeRegionNone = TRUE AND NOT EXISTS (
+                        SELECT 1 FROM RecruitmentListingRegionEntity rr
+                        WHERE rr.listingId = l.id))
               )
             ORDER BY l.startAt ASC
             """)
@@ -276,37 +289,50 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
     Optional<RecruitmentListingEntity> findPublicMarketListingById(@Param("id") Long id);
 
     /**
-     * 都道府県ノードごとの公開札件数（市の summary・パンくず用）。
-     * city_code の上位 2 桁または prefecture_code で県にロールアップする。
+     * 都道府県ノードごとの公開札件数（市の summary・パンくず用・F22.1 Phase2 D 複数地域対応）。
+     *
+     * <p>中間表 {@code recruitment_listing_regions} を {@code prefecture_code} で GROUP BY し、
+     * 公開条件（PUBLIC / OPEN・FULL / 未削除）を満たす札に {@code JOIN} する。</p>
+     *
+     * <p><strong>件数仕様（県跨ぎ重複計上）</strong>: 「東京＋神奈川」の 1 札は東京・神奈川の双方で
+     * +1 として数える（複数地域札は各県に立っているため）。一方、同一県内に 2 市の地域行を持つ札は
+     * {@code COUNT(DISTINCT rr.listingId)} により県粒度で 1 件に集約する（同一県の二重計上を防ぐ）。</p>
      *
      * @return {@code [prefectureCode, count]} の配列リスト
      */
     @Query("""
-            SELECT COALESCE(l.prefectureCode, SUBSTRING(l.cityCode, 1, 2)) AS pref, COUNT(l)
-            FROM RecruitmentListingEntity l
+            SELECT rr.prefectureCode, COUNT(DISTINCT rr.listingId)
+            FROM RecruitmentListingRegionEntity rr
+            JOIN RecruitmentListingEntity l ON l.id = rr.listingId
             WHERE l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
               AND l.status IN (
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
-              AND (l.prefectureCode IS NOT NULL OR l.cityCode IS NOT NULL)
-            GROUP BY COALESCE(l.prefectureCode, SUBSTRING(l.cityCode, 1, 2))
+              AND l.deletedAt IS NULL
+            GROUP BY rr.prefectureCode
             """)
     List<Object[]> countMarketListingsByPrefecture();
 
     /**
-     * 市区町村ノードごとの公開札件数（市の summary 用）。
+     * 市区町村ノードごとの公開札件数（市の summary 用・F22.1 Phase2 D 複数地域対応）。
+     *
+     * <p>中間表 {@code recruitment_listing_regions} の {@code city_code} 非 NULL 行（市区町村単位の地域）を
+     * GROUP BY し、公開条件を満たす札に {@code JOIN} する。{@code COUNT(DISTINCT rr.listingId)} で
+     * 同一市区町村に対する二重計上を防ぐ。</p>
      *
      * @return {@code [cityCode, count]} の配列リスト
      */
     @Query("""
-            SELECT l.cityCode, COUNT(l)
-            FROM RecruitmentListingEntity l
+            SELECT rr.cityCode, COUNT(DISTINCT rr.listingId)
+            FROM RecruitmentListingRegionEntity rr
+            JOIN RecruitmentListingEntity l ON l.id = rr.listingId
             WHERE l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
               AND l.status IN (
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
-              AND l.cityCode IS NOT NULL
-            GROUP BY l.cityCode
+              AND l.deletedAt IS NULL
+              AND rr.cityCode IS NOT NULL
+            GROUP BY rr.cityCode
             """)
     List<Object[]> countMarketListingsByCity();
 }

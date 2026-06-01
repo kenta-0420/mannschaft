@@ -1,6 +1,7 @@
 package com.mannschaft.app.recruitment.dto;
 
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
@@ -8,6 +9,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * F03.11 募集枠の編集リクエスト。
@@ -67,4 +69,14 @@ public class UpdateRecruitmentListingRequest {
      */
     @Pattern(regexp = "\\d{5}", message = "city_code は 5 桁の数字で指定してください")
     private final String cityCode;
+
+    /**
+     * F22.1 Phase2 D: 複数地域募集（N:N）の再設定。
+     *
+     * <p>指定時は中間表を全置換（replace）する。{@code null} は「地域変更なし」、空配列 {@code []} は
+     * 「全地域をクリア（地域を問わない札にする）」を表す。単一フィールド（{@code prefectureCode}/
+     * {@code cityCode}）との後方互換は Service 層で解決する。</p>
+     */
+    @Valid
+    private final List<CreateRecruitmentListingRequest.RegionInput> regions;
 }
