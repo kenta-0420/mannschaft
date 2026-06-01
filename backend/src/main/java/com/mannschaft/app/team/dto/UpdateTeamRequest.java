@@ -19,6 +19,19 @@ public class UpdateTeamRequest {
     private final String template;
     private final String prefecture;
     private final String city;
+
+    /**
+     * F22.1 市 Phase 2 足場C: 都道府県コード（JIS X 0401・2 桁）。null 許容（指定時のみ更新）。
+     */
+    @Pattern(regexp = "\\d{2}", message = "prefectureCode は 2 桁の数字である必要があります")
+    private final String prefectureCode;
+
+    /**
+     * F22.1 市 Phase 2 足場C: 市区町村コード（JIS X 0402・5 桁）。null 許容（指定時のみ更新）。
+     */
+    @Pattern(regexp = "\\d{5}", message = "cityCode は 5 桁の数字である必要があります")
+    private final String cityCode;
+
     private final String visibility;
     private final Boolean supporterEnabled;
 
@@ -35,4 +48,14 @@ public class UpdateTeamRequest {
 
     @NotNull
     private final Long version;
+
+    /**
+     * 後方互換用コンストラクタ（地域コードなし・既存 11 引数シグネチャ）。
+     */
+    public UpdateTeamRequest(String name, String nameKana, String nickname1, String nickname2,
+                             String template, String prefecture, String city, String visibility,
+                             Boolean supporterEnabled, String mapEmbedUrl, Long version) {
+        this(name, nameKana, nickname1, nickname2, template, prefecture, city,
+                null, null, visibility, supporterEnabled, mapEmbedUrl, version);
+    }
 }

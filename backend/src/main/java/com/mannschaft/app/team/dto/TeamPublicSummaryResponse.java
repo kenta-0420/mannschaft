@@ -28,11 +28,16 @@ public record TeamPublicSummaryResponse(
         String prefecture,
         String city,
         String template,
-        String iconUrl
+        String iconUrl,
+        String prefectureCode,
+        String cityCode
 ) {
 
     /**
      * TeamEntity から抑制版 DTO を生成する。
+     *
+     * <p>F22.1 市 Phase 2 足場C: 構造化キー {@code prefectureCode}/{@code cityCode} を追加で返す
+     * （名称 {@code prefecture}/{@code city} も表示用に併存）。フィールド名は Jackson 既定の camelCase。</p>
      */
     public static TeamPublicSummaryResponse from(TeamEntity team) {
         return new TeamPublicSummaryResponse(
@@ -42,7 +47,9 @@ public record TeamPublicSummaryResponse(
                 team.getPrefecture(),
                 team.getCity(),
                 team.getTemplate(),
-                team.getIconUrl()
+                team.getIconUrl(),
+                team.getPrefectureCode(),
+                team.getCityCode()
         );
     }
 }
