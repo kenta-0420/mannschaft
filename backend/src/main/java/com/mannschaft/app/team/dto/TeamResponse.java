@@ -29,11 +29,19 @@ public class TeamResponse {
             String nickname2
     ) {}
 
-    /** チームの所在地情報。 */
+    /**
+     * チームの所在地情報。
+     *
+     * <p>F22.1 市 Phase 2 足場C: 名称（{@code prefecture}/{@code city}）に加え、構造化キーの
+     * {@code prefectureCode}/{@code cityCode} を併存して返す（旧名称は表示用に残置）。
+     * フィールド名は Jackson 既定の camelCase。</p>
+     */
     public record TeamLocationDto(
             String prefecture,
             String city,
-            String template
+            String template,
+            String prefectureCode,
+            String cityCode
     ) {}
 
     /** チームの公開設定。 */

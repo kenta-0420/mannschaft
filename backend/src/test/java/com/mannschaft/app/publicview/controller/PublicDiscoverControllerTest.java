@@ -94,7 +94,7 @@ class PublicDiscoverControllerTest {
                 sampleTeam(1L, "東京FCチーム"),
                 sampleTeam(2L, "大阪SC")
         );
-        given(publicTeamSearchQueryService.search(eq(null), eq(null), any()))
+        given(publicTeamSearchQueryService.search(eq(null), eq(null), eq(null), any()))
                 .willReturn(page);
 
         mockMvc.perform(get("/api/v1/public/teams/search"))
@@ -112,7 +112,7 @@ class PublicDiscoverControllerTest {
         Page<PublicTeamSearchResultResponse> page = buildTeamPage(
                 sampleTeam(1L, "東京FCチーム")
         );
-        given(publicTeamSearchQueryService.search(eq("東京"), eq(null), any()))
+        given(publicTeamSearchQueryService.search(eq("東京"), eq(null), eq(null), any()))
                 .willReturn(page);
 
         mockMvc.perform(get("/api/v1/public/teams/search").param("keyword", "東京"))
@@ -127,7 +127,7 @@ class PublicDiscoverControllerTest {
         Page<PublicTeamSearchResultResponse> page = buildTeamPage(
                 sampleTeam(2L, "大阪SC")
         );
-        given(publicTeamSearchQueryService.search(eq(null), eq("大阪府"), any()))
+        given(publicTeamSearchQueryService.search(eq(null), eq("大阪府"), eq(null), any()))
                 .willReturn(page);
 
         mockMvc.perform(get("/api/v1/public/teams/search").param("prefecture", "大阪府"))
@@ -140,7 +140,7 @@ class PublicDiscoverControllerTest {
     @DisplayName("GET /public/teams/search — PRIVATE チームが結果に含まれない（空ページ返却）")
     void searchTeams_privateTeamExcluded() throws Exception {
         Page<PublicTeamSearchResultResponse> emptyPage = Page.empty(PageRequest.of(0, 20));
-        given(publicTeamSearchQueryService.search(eq(null), eq(null), any()))
+        given(publicTeamSearchQueryService.search(eq(null), eq(null), eq(null), any()))
                 .willReturn(emptyPage);
 
         mockMvc.perform(get("/api/v1/public/teams/search"))
@@ -190,7 +190,7 @@ class PublicDiscoverControllerTest {
     @DisplayName("未ログインでも Controller に到達できる（publicDiscover は認証不要）")
     void search_anonymous_canReachController() throws Exception {
         SecurityContextHolder.clearContext();
-        given(publicTeamSearchQueryService.search(eq(null), eq(null), any()))
+        given(publicTeamSearchQueryService.search(eq(null), eq(null), eq(null), any()))
                 .willReturn(Page.empty(PageRequest.of(0, 20)));
 
         mockMvc.perform(get("/api/v1/public/teams/search"))

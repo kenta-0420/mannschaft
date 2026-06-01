@@ -198,9 +198,15 @@ public interface TeamRepository
      * <p>{@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは自動除外される。
      * {@code archivedAt IS NULL} を明示的に追加して archived も除外する。</p>
      *
-     * @param keyword    チーム名・説明の部分一致キーワード（null の場合は絞り込みなし）
-     * @param prefecture 都道府県名の完全一致（null の場合は絞り込みなし）
-     * @param pageable   ページング情報
+     * <p>F22.1 市 Phase 2 足場C: 地域フィルタを <strong>dual-support</strong> 化した。
+     * {@code prefectureCode} が指定されていれば構造化キー {@code prefecture_code} で一致判定し、
+     * 未指定なら従来の名称 {@code prefecture} で一致判定する（Expand 期の後方互換＝新旧両対応）。
+     * これにより旧クライアント（名称送信）と新クライアント（コード送信）が同時に成立する。</p>
+     *
+     * @param keyword        チーム名・フリガナの部分一致キーワード（null の場合は絞り込みなし）
+     * @param prefecture     都道府県名の完全一致（{@code prefectureCode} 未指定時のフォールバック。null で絞り込みなし）
+     * @param prefectureCode 都道府県コードの完全一致（指定時は名称より優先。null で名称にフォールバック）
+     * @param pageable       ページング情報
      * @return PUBLIC かつアクティブなチームのページ
      */
     @Query("""
@@ -208,11 +214,15 @@ public interface TeamRepository
             WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
               AND t.archivedAt IS NULL
               AND (:keyword IS NULL OR t.name LIKE %:keyword% OR t.nameKana LIKE %:keyword%)
-              AND (:prefecture IS NULL OR t.prefecture = :prefecture)
+              AND (
+                    (:prefectureCode IS NOT NULL AND t.prefectureCode = :prefectureCode)
+                 OR (:prefectureCode IS NULL AND (:prefecture IS NULL OR t.prefecture = :prefecture))
+              )
             """)
     Page<TeamEntity> searchPublicTeams(
             @Param("keyword") String keyword,
             @Param("prefecture") String prefecture,
+            @Param("prefectureCode") String prefectureCode,
             Pageable pageable);
 
     // ========================================================================

@@ -230,6 +230,8 @@ class PublicTeamControllerTest {
                 "salon",
                 "東京都",
                 "渋谷区",
+                "13",
+                "13113",
                 "https://cdn/icon.png",
                 "https://cdn/banner.png",
                 "https://example.com",
