@@ -187,7 +187,8 @@ export const useInboxStore = defineStore('inbox', {
 
     /**
      * スヌーズ。
-     * 即アイテムの state を SNOOZED / snoozedUntil に書換え → API 失敗でロールバック。
+     * groupCount > 1 のとき groupMembers 全員に bulkAction(SNOOZE) を適用。
+     * 楽観更新: 即 state を SNOOZED に書換え → API 失敗でロールバック。
      */
     async snooze(
       sourceType: InboxSourceType,
@@ -195,6 +196,28 @@ export const useInboxStore = defineStore('inbox', {
       snoozedUntil: string,
     ): Promise<boolean> {
       const previous = this.items.slice()
+      const item = this._findItem(sourceType, sourceId)
+      const isGroup = (item?.groupCount ?? 1) > 1
+
+      if (isGroup && item?.groupMembers && item.groupMembers.length > 0) {
+        // グループカード: 楽観的に代表カードを除去 → bulkAction で全メンバーへ適用
+        this._removeItem(sourceType, sourceId)
+        try {
+          const api = useInboxApi()
+          await api.bulkAction({
+            action: 'SNOOZE',
+            items: item.groupMembers as InboxBulkItem[],
+            snoozedUntil,
+          })
+          return true
+        } catch (error) {
+          this.items = previous
+          this._handleError(error)
+          return false
+        }
+      }
+
+      // 単独アイテム: 従来の単一 triage
       this._updateItemState(sourceType, sourceId, 'SNOOZED', snoozedUntil)
       try {
         const api = useInboxApi()
@@ -211,9 +234,35 @@ export const useInboxStore = defineStore('inbox', {
 
     /**
      * スヌーズ解除。
+     * groupCount > 1 のとき groupMembers 全員に bulkAction(SNOOZE 解除相当の UNARCHIVE)…
+     * ただし bulk に UNSNOOZE はないため、グループカードでは再 fetchInbox で正規化する。
+     * 単独アイテムは従来どおり単一 triage。
      */
     async unsnooze(sourceType: InboxSourceType, sourceId: number): Promise<boolean> {
       const previous = this.items.slice()
+      const item = this._findItem(sourceType, sourceId)
+      const isGroup = (item?.groupCount ?? 1) > 1
+
+      if (isGroup && item?.groupMembers && item.groupMembers.length > 0) {
+        // グループカード: 楽観的に代表カードを除去 → 全メンバーへ UNARCHIVE 相当で bulk 呼び出し
+        // bulk に UNSNOOZE action がないため fetchInbox で再取得して正規化する
+        this._removeItem(sourceType, sourceId)
+        try {
+          // 全メンバーを順次 unsnooze（bulk UNSNOOZE は未定義のため個別 API）
+          const api = useInboxApi()
+          await Promise.all(
+            item.groupMembers.map((m) => api.unsnooze(m.sourceType as InboxSourceType, m.sourceId)),
+          )
+          await this.fetchInbox()
+          return true
+        } catch (error) {
+          this.items = previous
+          this._handleError(error)
+          return false
+        }
+      }
+
+      // 単独アイテム: 従来の単一 triage
       this._updateItemState(sourceType, sourceId, 'UNREAD', null)
       try {
         const api = useInboxApi()
@@ -229,9 +278,32 @@ export const useInboxStore = defineStore('inbox', {
 
     /**
      * アーカイブ。
+     * groupCount > 1 のとき groupMembers 全員に bulkAction(ARCHIVE) を適用。
+     * 楽観更新: 即 state を ARCHIVED に書換え → API 失敗でロールバック。
      */
     async archive(sourceType: InboxSourceType, sourceId: number): Promise<boolean> {
       const previous = this.items.slice()
+      const item = this._findItem(sourceType, sourceId)
+      const isGroup = (item?.groupCount ?? 1) > 1
+
+      if (isGroup && item?.groupMembers && item.groupMembers.length > 0) {
+        // グループカード: 楽観的に代表カードを除去 → bulkAction で全メンバーへ適用
+        this._removeItem(sourceType, sourceId)
+        try {
+          const api = useInboxApi()
+          await api.bulkAction({
+            action: 'ARCHIVE',
+            items: item.groupMembers as InboxBulkItem[],
+          })
+          return true
+        } catch (error) {
+          this.items = previous
+          this._handleError(error)
+          return false
+        }
+      }
+
+      // 単独アイテム: 従来の単一 triage
       this._updateItemState(sourceType, sourceId, 'ARCHIVED', null)
       try {
         const api = useInboxApi()
@@ -247,9 +319,32 @@ export const useInboxStore = defineStore('inbox', {
 
     /**
      * アーカイブ解除。
+     * groupCount > 1 のとき groupMembers 全員に bulkAction(UNARCHIVE) を適用。
+     * 楽観更新: 即 state を UNREAD に書換え → API 失敗でロールバック。
      */
     async unarchive(sourceType: InboxSourceType, sourceId: number): Promise<boolean> {
       const previous = this.items.slice()
+      const item = this._findItem(sourceType, sourceId)
+      const isGroup = (item?.groupCount ?? 1) > 1
+
+      if (isGroup && item?.groupMembers && item.groupMembers.length > 0) {
+        // グループカード: 楽観的に代表カードを除去 → bulkAction で全メンバーへ適用
+        this._removeItem(sourceType, sourceId)
+        try {
+          const api = useInboxApi()
+          await api.bulkAction({
+            action: 'UNARCHIVE',
+            items: item.groupMembers as InboxBulkItem[],
+          })
+          return true
+        } catch (error) {
+          this.items = previous
+          this._handleError(error)
+          return false
+        }
+      }
+
+      // 単独アイテム: 従来の単一 triage
       this._updateItemState(sourceType, sourceId, 'UNREAD', null)
       try {
         const api = useInboxApi()
@@ -571,6 +666,25 @@ export const useInboxStore = defineStore('inbox', {
     // ─────────────────────────────────────────────
     // 内部ユーティリティ
     // ─────────────────────────────────────────────
+
+    /**
+     * items 配列から指定アイテムを検索して返す（見つからない場合は undefined）。
+     */
+    _findItem(sourceType: InboxSourceType, sourceId: number): InboxItem | undefined {
+      const id = `${sourceType}:${sourceId}`
+      return this.items.find((item) => item.id === id)
+    },
+
+    /**
+     * items 配列から指定アイテムを除去する（楽観的グループ除去用）。
+     */
+    _removeItem(sourceType: InboxSourceType, sourceId: number): void {
+      const id = `${sourceType}:${sourceId}`
+      const idx = this.items.findIndex((item) => item.id === id)
+      if (idx >= 0) {
+        this.items.splice(idx, 1)
+      }
+    },
 
     /** items 配列内のアイテムの state / snoozedUntil を更新する（楽観更新用）。 */
     _updateItemState(

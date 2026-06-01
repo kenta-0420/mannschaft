@@ -534,14 +534,25 @@ const snoozePresets: SnoozePresetDef[] = [
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0">
               <!-- タイトル -->
-              <NuxtLink
-                v-if="item.actionUrl"
-                :to="item.actionUrl"
-                class="line-clamp-1 text-sm font-medium hover:text-primary"
-              >
-                {{ item.title }}
-              </NuxtLink>
-              <p v-else class="line-clamp-1 text-sm font-medium">{{ item.title }}</p>
+              <div class="flex items-center gap-2">
+                <NuxtLink
+                  v-if="item.actionUrl"
+                  :to="item.actionUrl"
+                  class="line-clamp-1 text-sm font-medium hover:text-primary"
+                >
+                  {{ item.title }}
+                </NuxtLink>
+                <p v-else class="line-clamp-1 text-sm font-medium">{{ item.title }}</p>
+                <!-- Phase 3: グループ件数バッジ（groupCount > 1 のとき表示） -->
+                <span
+                  v-if="(item.groupCount ?? 1) > 1"
+                  class="inline-flex shrink-0 items-center rounded-full bg-primary/10 px-1.5 py-0.5 text-[0.6rem] font-medium text-primary"
+                  :title="t('inbox.group.badgeTitle', { n: item.groupCount })"
+                  :data-testid="`inbox-group-badge-${item.id}`"
+                >
+                  {{ t('inbox.group.badge', { n: item.groupCount }) }}
+                </span>
+              </div>
 
               <!-- 抜粋 -->
               <p v-if="item.excerpt" class="mt-0.5 line-clamp-2 text-xs text-surface-500">

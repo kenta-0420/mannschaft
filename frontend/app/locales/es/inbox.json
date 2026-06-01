@@ -79,6 +79,10 @@
       "apply": "Aplicar",
       "result": "{processed} procesados ({skipped} omitidos)",
       "cancel": "Cancelar"
+    },
+    "group": {
+      "badge": "+{n} más",
+      "badgeTitle": "{n} notificaciones están agrupadas aquí"
     }
   }
 }

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { setActivePinia, createPinia } from 'pinia'
 import InboxList from '~/components/inbox/InboxList.vue'
-import type { InboxItem } from '~/types/inbox'
+import type { InboxItem, InboxItemRef } from '~/types/inbox'
 
 /**
  * F04.11 InboxList.vue のユニットテスト。
@@ -129,6 +129,24 @@ function makeItem(overrides: Partial<InboxItem> = {}): InboxItem {
     labels: [],
     ...overrides,
   }
+}
+
+/** Phase 3: groupCount > 1 のグループカードを生成するヘルパー。 */
+function makeGroupItem(overrides: Partial<InboxItem> = {}): InboxItem {
+  const groupMembers: InboxItemRef[] = [
+    { sourceType: 'NOTIFICATION', sourceId: 10 },
+    { sourceType: 'ANNOUNCEMENT', sourceId: 20 },
+  ]
+  return makeItem({
+    id: 'NOTIFICATION:10',
+    sourceType: 'NOTIFICATION',
+    sourceId: 10,
+    title: 'グループ通知',
+    groupCount: 2,
+    groupMembers,
+    canonicalRef: 'BLOG_POST:5',
+    ...overrides,
+  })
 }
 
 // ──────────────────────────────────────────────
@@ -327,6 +345,49 @@ describe('InboxList.vue', () => {
       const wrapper = await mountSuspended(InboxList)
       const btn = wrapper.find('[data-testid="inbox-label-manage-btn"]')
       expect(btn.exists()).toBe(true)
+    })
+  })
+
+  // ──────────────────────────────────────────────
+  // Phase 3: グループカード件数バッジ
+  // ──────────────────────────────────────────────
+
+  describe('Phase 3: グループカード件数バッジ', () => {
+    it('groupCount > 1 のアイテムに件数バッジが表示される', async () => {
+      storeMock.items = [makeGroupItem({ id: 'NOTIFICATION:10', groupCount: 3 })]
+      const wrapper = await mountSuspended(InboxList)
+
+      const badge = wrapper.find('[data-testid="inbox-group-badge-NOTIFICATION:10"]')
+      expect(badge.exists()).toBe(true)
+    })
+
+    it('groupCount = 1 のアイテムには件数バッジが表示されない', async () => {
+      storeMock.items = [makeItem({ id: 'NOTIFICATION:1', groupCount: 1 })]
+      const wrapper = await mountSuspended(InboxList)
+
+      const badge = wrapper.find('[data-testid="inbox-group-badge-NOTIFICATION:1"]')
+      expect(badge.exists()).toBe(false)
+    })
+
+    it('groupCount 未定義（旧BE互換）のアイテムには件数バッジが表示されない', async () => {
+      storeMock.items = [makeItem({ id: 'NOTIFICATION:1' })]
+      const wrapper = await mountSuspended(InboxList)
+
+      const badge = wrapper.find('[data-testid="inbox-group-badge-NOTIFICATION:1"]')
+      expect(badge.exists()).toBe(false)
+    })
+
+    it('グループカードの archive ボタンクリックでストアの archive が呼ばれる', async () => {
+      storeMock.items = [makeGroupItem()]
+      storeMock.archive.mockResolvedValue(true)
+      const wrapper = await mountSuspended(InboxList)
+
+      const archiveBtn = wrapper.find('[data-testid="inbox-archive-btn-NOTIFICATION:10"]')
+      expect(archiveBtn.exists()).toBe(true)
+      await archiveBtn.trigger('click')
+
+      // ストアの archive が groupItem の sourceType/sourceId で呼ばれる
+      expect(storeMock.archive).toHaveBeenCalledWith('NOTIFICATION', 10)
     })
   })
 })

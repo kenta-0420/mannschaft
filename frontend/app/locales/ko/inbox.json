@@ -79,6 +79,10 @@
       "apply": "실행",
       "result": "{processed}건 처리（{skipped}건 건너뜀）",
       "cancel": "취소"
+    },
+    "group": {
+      "badge": "+{n}건",
+      "badgeTitle": "{n}건의 알림이 묶여 있습니다"
     }
   }
 }
