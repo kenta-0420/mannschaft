@@ -1,6 +1,7 @@
 package com.mannschaft.app.tournament.repository;
 
 import com.mannschaft.app.tournament.ParticipantStatus;
+import com.mannschaft.app.tournament.dto.DivisionParticipantCountProjection;
 import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
@@ -8,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,6 +25,25 @@ public interface TournamentParticipantRepository extends JpaRepository<Tournamen
     Optional<TournamentParticipantEntity> findByDivisionIdAndTeamId(Long divisionId, Long teamId);
 
     long countByDivisionId(Long divisionId);
+
+    /**
+     * F08.7.1 主催大会サマリ: 複数ディビジョンの参加チーム数を 1 クエリで一括集約する（N+1 回避）。
+     *
+     * <p>{@code GROUP BY division_id COUNT(*)}。参加レコードが 0 件のディビジョンは結果に含まれない
+     * （呼び出し側で 0 件補完すること）。</p>
+     *
+     * @param divisionIds ディビジョン ID 集合（空の場合は空 List）
+     * @return ディビジョン別参加数の射影リスト
+     */
+    @Query("""
+            SELECT new com.mannschaft.app.tournament.dto.DivisionParticipantCountProjection(
+                p.divisionId, COUNT(p.id))
+            FROM TournamentParticipantEntity p
+            WHERE p.divisionId IN :divisionIds
+            GROUP BY p.divisionId
+            """)
+    List<DivisionParticipantCountProjection> countParticipantsByDivisionIdIn(
+            @Param("divisionIds") Collection<Long> divisionIds);
 
     @Query("SELECT p FROM TournamentParticipantEntity p " +
            "JOIN TournamentDivisionEntity d ON p.divisionId = d.id " +

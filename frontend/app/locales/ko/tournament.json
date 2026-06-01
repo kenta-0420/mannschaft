@@ -46,5 +46,26 @@
       "TOUR_031": "이 연락 공간에 게시할 권한이 없습니다",
       "TOUR_032": "연락 공간의 공개 설정을 변경할 권한이 없습니다"
     }
+  },
+  "dashboard_widgets": {
+    "team_record_title": "대회 성적",
+    "org_summary_title": "주최 대회 요약",
+    "division_standings_title": "순위표",
+    "rank": "순위",
+    "points": "승점",
+    "win_draw_loss": "승/무/패",
+    "played": "경기수",
+    "goals": "득실점",
+    "best_rank": "최고 순위",
+    "tournaments": "대회 수",
+    "tournament": "대회",
+    "division": "부",
+    "team": "팀",
+    "leader": "선두",
+    "participant_count": "참가 팀 수",
+    "select_tournament": "대회 선택",
+    "empty_team_record": "참가한 대회가 아직 없습니다",
+    "empty_org_summary": "주최 중인 대회가 아직 없습니다",
+    "empty_division_standings": "현재 참가 중인 대회가 없습니다"
   }
 }

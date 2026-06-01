@@ -20,6 +20,20 @@ public interface TournamentRepository extends JpaRepository<TournamentEntity, Lo
 
     Page<TournamentEntity> findByOrganizationIdOrderByCreatedAtDesc(Long organizationId, Pageable pageable);
 
+    /**
+     * F08.7.1 主催大会サマリ: 組織の大会のうち、指定ステータスを除外して取得する。
+     *
+     * <p>設計書 02_dashboard_widgets.md §5.3 のセキュリティ要件に従い、未公開（DRAFT）の大会を
+     * サマリ結果から除外する用途で使う（{@code excludeStatus = DRAFT} を渡す）。
+     * 並び順は作成日降順（最新の大会を先頭に）。</p>
+     *
+     * @param organizationId 組織 ID
+     * @param excludeStatus  除外するステータス（通常 {@link TournamentStatus#DRAFT}）
+     * @return 大会一覧（DRAFT 除外・作成日降順）
+     */
+    List<TournamentEntity> findByOrganizationIdAndStatusNotOrderByCreatedAtDesc(
+            Long organizationId, TournamentStatus excludeStatus);
+
     Page<TournamentEntity> findByOrganizationIdAndStatusOrderByCreatedAtDesc(
             Long organizationId, TournamentStatus status, Pageable pageable);
 
