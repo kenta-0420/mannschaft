@@ -1,6 +1,6 @@
 import type {
-  TeamTournamentStats,
-  TeamTournamentHistory,
+  TeamTournamentStatsResponse,
+  TeamTournamentHistoryResponse,
   TournamentStanding,
   OrganizationTournamentSummary,
 } from '~/types/tournament'
@@ -17,12 +17,12 @@ export function useTournamentWidgetApi() {
 
   /** チーム通算成績 */
   async function getTeamStats(teamId: number) {
-    return api<{ data: TeamTournamentStats }>(`/api/v1/teams/${teamId}/tournament-stats`)
+    return api<{ data: TeamTournamentStatsResponse }>(`/api/v1/teams/${teamId}/tournament-stats`)
   }
 
   /** チーム大会参加履歴 */
   async function getTeamHistory(teamId: number) {
-    return api<{ data: TeamTournamentHistory }>(`/api/v1/teams/${teamId}/tournament-history`)
+    return api<{ data: TeamTournamentHistoryResponse }>(`/api/v1/teams/${teamId}/tournament-history`)
   }
 
   /** ディビジョン順位表 */

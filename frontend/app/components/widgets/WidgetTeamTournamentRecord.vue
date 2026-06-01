@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TeamTournamentStats, TeamTournamentHistoryEntry } from '~/types/tournament'
+import type { TeamTournamentStatsResponse, TournamentHistoryEntry } from '~/types/tournament'
 
 // F08.7.1 / 02 ①: 自チーム大会成績ウィジェット（通算成績 + 直近順位履歴）。
 const props = defineProps<{
@@ -10,8 +10,8 @@ const { getTeamStats, getTeamHistory } = useTournamentWidgetApi()
 const { captureQuiet } = useErrorReport()
 
 const loading = ref(false)
-const stats = ref<TeamTournamentStats | null>(null)
-const history = ref<TeamTournamentHistoryEntry[]>([])
+const stats = ref<TeamTournamentStatsResponse | null>(null)
+const history = ref<TournamentHistoryEntry[]>([])
 
 const hasData = computed(
   () => (stats.value?.totalTournaments ?? 0) > 0 || history.value.length > 0,
@@ -57,22 +57,22 @@ watch(() => props.teamId, load)
       <div v-if="stats" class="grid grid-cols-3 gap-2 text-center sm:grid-cols-6">
         <div class="rounded-lg bg-surface-50 p-2 dark:bg-surface-800">
           <div class="text-[10px] text-surface-500">{{ $t('tournament.dashboard_widgets.tournaments') }}</div>
-          <div class="text-lg font-semibold">{{ stats.totalTournaments }}</div>
+          <div class="text-lg font-semibold">{{ stats.totalTournaments ?? 0 }}</div>
         </div>
         <div class="rounded-lg bg-surface-50 p-2 dark:bg-surface-800">
           <div class="text-[10px] text-surface-500">{{ $t('tournament.dashboard_widgets.win_draw_loss') }}</div>
           <div class="text-sm font-semibold">
-            {{ stats.totalWins }}/{{ stats.totalDraws }}/{{ stats.totalLosses }}
+            {{ stats.totalWins ?? 0 }}/{{ stats.totalDraws ?? 0 }}/{{ stats.totalLosses ?? 0 }}
           </div>
         </div>
         <div class="rounded-lg bg-surface-50 p-2 dark:bg-surface-800">
           <div class="text-[10px] text-surface-500">{{ $t('tournament.dashboard_widgets.played') }}</div>
-          <div class="text-lg font-semibold">{{ stats.totalPlayed }}</div>
+          <div class="text-lg font-semibold">{{ stats.totalPlayed ?? 0 }}</div>
         </div>
         <div class="rounded-lg bg-surface-50 p-2 dark:bg-surface-800">
           <div class="text-[10px] text-surface-500">{{ $t('tournament.dashboard_widgets.goals') }}</div>
           <div class="text-sm font-semibold">
-            {{ stats.totalScoreFor }}-{{ stats.totalScoreAgainst }}
+            {{ stats.totalScoreFor ?? 0 }}-{{ stats.totalScoreAgainst ?? 0 }}
           </div>
         </div>
         <div class="rounded-lg bg-surface-50 p-2 dark:bg-surface-800">
@@ -97,13 +97,13 @@ watch(() => props.teamId, load)
           <tbody>
             <tr
               v-for="(h, i) in history"
-              :key="`${h.identifiers.tournamentId}-${h.identifiers.divisionId}-${i}`"
+              :key="`${h.identifiers?.tournamentId ?? 0}-${h.identifiers?.divisionId ?? 0}-${i}`"
               class="border-t border-surface-100 dark:border-surface-800"
             >
-              <td class="py-1">{{ h.meta.tournamentName }}</td>
-              <td class="py-1">{{ h.meta.divisionName }}</td>
-              <td class="py-1 text-center">{{ h.meta.finalRank != null ? h.meta.finalRank : '-' }}</td>
-              <td class="py-1 text-center">{{ h.record.points }}</td>
+              <td class="py-1">{{ h.meta?.tournamentName ?? '-' }}</td>
+              <td class="py-1">{{ h.meta?.divisionName ?? '-' }}</td>
+              <td class="py-1 text-center">{{ h.meta?.finalRank != null ? h.meta.finalRank : '-' }}</td>
+              <td class="py-1 text-center">{{ h.record?.points ?? 0 }}</td>
             </tr>
           </tbody>
         </table>

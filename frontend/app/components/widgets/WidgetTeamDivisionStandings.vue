@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type {
-  TeamTournamentHistoryEntry,
+  TournamentHistoryEntry,
   TournamentStanding,
 } from '~/types/tournament'
 
@@ -15,19 +15,19 @@ const { captureQuiet } = useErrorReport()
 
 const loading = ref(false)
 const standingsLoading = ref(false)
-const entries = ref<TeamTournamentHistoryEntry[]>([])
+const entries = ref<TournamentHistoryEntry[]>([])
 const selectedKey = ref<string | null>(null)
 const standings = ref<TournamentStanding[]>([])
 
-function entryKey(e: TeamTournamentHistoryEntry): string {
-  return `${e.organizationId}:${e.identifiers.tournamentId}:${e.identifiers.divisionId}`
+function entryKey(e: TournamentHistoryEntry): string {
+  return `${e.organizationId ?? 0}:${e.identifiers?.tournamentId ?? 0}:${e.identifiers?.divisionId ?? 0}`
 }
 
 // 複数大会切替用セレクタ option（history は BE 側で createdAt 降順）
 const tournamentOptions = computed(() =>
   entries.value.map((e) => ({
     key: entryKey(e),
-    label: `${e.meta.tournamentName} / ${e.meta.divisionName}`,
+    label: `${e.meta?.tournamentName ?? '-'} / ${e.meta?.divisionName ?? '-'}`,
   })),
 )
 
@@ -37,17 +37,16 @@ const selectedEntry = computed(
 
 async function loadStandings() {
   const e = selectedEntry.value
-  if (!e) {
+  const orgId = e?.organizationId
+  const tournamentId = e?.identifiers?.tournamentId
+  const divisionId = e?.identifiers?.divisionId
+  if (orgId == null || tournamentId == null || divisionId == null) {
     standings.value = []
     return
   }
   standingsLoading.value = true
   try {
-    const res = await getStandings(
-      e.organizationId,
-      e.identifiers.tournamentId,
-      e.identifiers.divisionId,
-    )
+    const res = await getStandings(orgId, tournamentId, divisionId)
     standings.value = res.data ?? []
   } catch (err) {
     captureQuiet(err, { context: 'WidgetTeamDivisionStandings: 順位表取得' })
@@ -63,7 +62,8 @@ async function load() {
     const res = await getTeamHistory(props.teamId)
     entries.value = res.data.history ?? []
     // デフォルト選択 = 最新（先頭）エントリ
-    selectedKey.value = entries.value.length > 0 ? entryKey(entries.value[0]!) : null
+    const first = entries.value[0]
+    selectedKey.value = first ? entryKey(first) : null
     if (selectedKey.value) await loadStandings()
   } catch (err) {
     captureQuiet(err, { context: 'WidgetTeamDivisionStandings: 履歴取得' })
@@ -121,16 +121,18 @@ watch(() => props.teamId, load)
           </thead>
           <tbody>
             <tr
-              v-for="s in standings"
-              :key="s.id"
+              v-for="(s, i) in standings"
+              :key="s.id ?? i"
               class="border-t border-surface-100 dark:border-surface-800"
             >
-              <td class="py-1 text-center font-semibold">{{ s.team.rank != null ? s.team.rank : '-' }}</td>
-              <td class="py-1">{{ s.team.teamName }}</td>
-              <td class="py-1 text-center">
-                {{ s.record.wins }}/{{ s.record.draws }}/{{ s.record.losses }}
+              <td class="py-1 text-center font-semibold">
+                {{ s.team?.rank != null ? s.team.rank : '-' }}
               </td>
-              <td class="py-1 text-center font-semibold">{{ s.score.points }}</td>
+              <td class="py-1">{{ s.team?.teamName ?? '-' }}</td>
+              <td class="py-1 text-center">
+                {{ s.record?.wins ?? 0 }}/{{ s.record?.draws ?? 0 }}/{{ s.record?.losses ?? 0 }}
+              </td>
+              <td class="py-1 text-center font-semibold">{{ s.score?.points ?? 0 }}</td>
             </tr>
           </tbody>
         </table>

@@ -46,5 +46,26 @@
       "TOUR_031": "Sie haben keine Berechtigung, in diesem Kontaktbereich zu posten",
       "TOUR_032": "Sie haben keine Berechtigung, die Sichtbarkeit dieses Kontaktbereichs zu ändern"
     }
+  },
+  "dashboard_widgets": {
+    "team_record_title": "Turnierbilanz",
+    "org_summary_title": "Ausgerichtete Turniere",
+    "division_standings_title": "Tabelle",
+    "rank": "Platz",
+    "points": "Pkt.",
+    "win_draw_loss": "S/U/N",
+    "played": "Spiele",
+    "goals": "Tore",
+    "best_rank": "Beste Platzierung",
+    "tournaments": "Turniere",
+    "tournament": "Turnier",
+    "division": "Liga",
+    "team": "Team",
+    "leader": "Tabellenführer",
+    "participant_count": "Teams",
+    "select_tournament": "Turnier auswählen",
+    "empty_team_record": "Noch an keinem Turnier teilgenommen",
+    "empty_org_summary": "Noch keine Turniere ausgerichtet",
+    "empty_division_standings": "Derzeit an keinem Turnier beteiligt"
   }
 }
