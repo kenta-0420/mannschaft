@@ -113,10 +113,20 @@ public class TournamentFeeService {
     }
 
     /**
-     * 大会の参加費一覧を取得する。
+     * 大会の参加費一覧（全件）を取得する（主催組織 ADMIN / SYSTEM_ADMIN）。
+     *
+     * <p>本一覧は全チーム分の参加費額・対象チーム一覧を含む「全件閲覧」（設計書 §6
+     * 「支払い状況の閲覧: 全件＝主催組織 ADMIN」）に該当するため、主催組織 ADMIN 限定とする。
+     * 認証さえあれば誰でも金額・対象チームを取得できる情報開示を防ぐ（IDOR/情報開示対策）。</p>
+     *
+     * <p>設計書 §6 の「自チーム分＝当該チーム ADMIN/DEPUTY が閲覧」は別エンドポイントの責務であり、
+     * 必要になった時点で当該チーム単位のスコープ付き EP を別途設ける（本メソッドでは過剰実装しない）。</p>
+     *
+     * @throws BusinessException FEE_MANAGE_FORBIDDEN（403）／TOURNAMENT_NOT_FOUND（404）
      */
-    public List<TournamentFeeResponse> listFees(Long organizationId, Long tournamentId) {
+    public List<TournamentFeeResponse> listFees(Long organizationId, Long tournamentId, Long userId) {
         findTournamentInOrgOrThrow(organizationId, tournamentId);
+        requireOrganizerAdmin(userId, organizationId);
         return feeRepository.findByTournamentIdOrderByCreatedAtAsc(tournamentId).stream()
                 .map(this::toResponse)
                 .toList();
@@ -176,9 +186,17 @@ public class TournamentFeeService {
      * 提出受理（{@code tournament_submission_requirement.requires_payment}）・エントリー確定の
      * ゲート条件として領域⑥ から参照される。</p>
      *
+     * <p><strong>内部呼び出し専用（IDOR 注意）:</strong> 本メソッドは {@code feeRepository.findById(feeId)} を
+     * organization_id / tournament_id で絞らずに引く。これはゲート判定の呼び出し元（領域⑥ の提出受理・
+     * エントリー確定処理）が既に大会・組織スコープを検証済みの文脈から呼ぶ前提だからである。
+     * 万一このロジックを HTTP エンドポイント化する場合は、必ず呼び出し前に
+     * {@link #findFeeInScopeOrThrow(UUID, Long, Long)} 等で fee の所属（org / tournament）を検証し、
+     * 他組織・他大会の fee を本メソッドへ素通しさせないこと（IDOR 対策）。</p>
+     *
      * @return 支払い済みなら true
      */
     public boolean isTeamPaid(UUID feeId, Long teamId) {
+        // 内部専用: org/tournament で絞らない findById。EP 化時は呼び出し元でスコープ検証必須（上記 Javadoc 参照）。
         TournamentFeeEntity fee = feeRepository.findById(feeId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.FEE_NOT_FOUND));
         // SPECIFIC_TEAMS で対象外のチームは「課金対象でない」＝支払い不要としてゲートを通す（true）

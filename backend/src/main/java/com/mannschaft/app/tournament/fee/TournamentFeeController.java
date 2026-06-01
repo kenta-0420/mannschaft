@@ -57,11 +57,13 @@ public class TournamentFeeController {
     }
 
     @GetMapping
-    @Operation(summary = "大会参加費一覧")
+    @Operation(summary = "大会参加費一覧（全件）",
+            description = "主催組織 ADMIN / SYSTEM_ADMIN のみ。全チーム分の参加費額・対象チームを含む全件閲覧（設計書 §6）")
     public ResponseEntity<ApiResponse<List<TournamentFeeResponse>>> listFees(
             @PathVariable Long orgId,
             @PathVariable Long tournamentId) {
-        return ResponseEntity.ok(ApiResponse.of(feeService.listFees(orgId, tournamentId)));
+        return ResponseEntity.ok(ApiResponse.of(
+                feeService.listFees(orgId, tournamentId, SecurityUtils.getCurrentUserId())));
     }
 
     @DeleteMapping("/{feeId}")
