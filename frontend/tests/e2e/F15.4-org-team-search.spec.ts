@@ -381,7 +381,8 @@ test('F15.4-3: 都道府県のみ指定で検索が成功し、クエリパラ�
     teamItems: MOCK_TEAMS_PUBLIC,
     onSearch: (url) => {
       searchCallCount++
-      const pref = url.searchParams.get('prefecture')
+      // F22.1 足場C第三陣: org検索はコード化され prefectureCode（JISコード）を送る（旧: prefecture 名称）
+      const pref = url.searchParams.get('prefectureCode')
       if (pref) observedPrefecture = pref
     },
   })
@@ -402,8 +403,8 @@ test('F15.4-3: 都道府県のみ指定で検索が成功し、クエリパラ�
   // 再検索（onFilterChange）で API が呼ばれる
   await expect.poll(() => searchCallCount).toBeGreaterThan(initialCount)
 
-  // バックエンドには prefecture=東京都 が渡っている（page.vue が code→name 解決）
-  expect(observedPrefecture).toBe('東京都')
+  // バックエンドには prefectureCode=13（東京都の JIS コード）が渡る（FE はコードを直接送信・dual-support）
+  expect(observedPrefecture).toBe('13')
 
   // 結果が表示されている
   await expect(page.getByText('みどり町第一支部', { exact: true })).toBeVisible()

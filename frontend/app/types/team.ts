@@ -29,6 +29,16 @@ export interface TeamLocationDto {
   template?: string
   prefecture?: string | null
   city?: string | null
+  /**
+   * 都道府県コード（JIS X 0401・2 桁、null 許容）。
+   * BE `TeamResponse.TeamLocationDto.prefectureCode`（Jackson 既定 camelCase）と 1:1。
+   */
+  prefectureCode?: string | null
+  /**
+   * 市区町村コード（JIS X 0402・5 桁、null 許容）。
+   * BE `TeamResponse.TeamLocationDto.cityCode` と 1:1。
+   */
+  cityCode?: string | null
 }
 
 export interface TeamVisibilityDto {
@@ -89,6 +99,14 @@ export interface CreateTeamRequest {
   template: TeamTemplate
   prefecture?: string
   city?: string
+  /**
+   * 都道府県コード（JIS X 0401・2 桁）。BE `CreateTeamRequest.prefectureCode`（camelCase）と 1:1。
+   */
+  prefectureCode?: string
+  /**
+   * 市区町村コード（JIS X 0402・5 桁）。BE `CreateTeamRequest.cityCode`（camelCase）と 1:1。
+   */
+  cityCode?: string
   description?: string
   visibility: TeamVisibility
   supporterEnabled: boolean
@@ -128,6 +146,16 @@ export interface UpdateTeamRequest {
   nickname2?: string
   prefecture?: string
   city?: string
+  /**
+   * 都道府県コード（JIS X 0401・2 桁）。BE `UpdateTeamRequest.prefectureCode`（camelCase）と 1:1。
+   * undefined（指定なし）は既存値を維持する。
+   */
+  prefectureCode?: string
+  /**
+   * 市区町村コード（JIS X 0402・5 桁）。BE `UpdateTeamRequest.cityCode`（camelCase）と 1:1。
+   * undefined（指定なし）は既存値を維持する。
+   */
+  cityCode?: string
   description?: string
   visibility?: TeamVisibility
   supporterEnabled?: boolean

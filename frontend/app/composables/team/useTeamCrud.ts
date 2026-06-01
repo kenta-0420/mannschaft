@@ -15,6 +15,10 @@ interface TeamSummaryResponse {
   iconUrl: string | null
   prefecture: string | null
   city: string | null
+  /** 都道府県コード（BE `prefectureCode` camelCase と 1:1、null 許容）。 */
+  prefectureCode: string | null
+  /** 市区町村コード（BE `cityCode` camelCase と 1:1、null 許容）。 */
+  cityCode: string | null
   template: string
   memberCount: number
   supporterEnabled: boolean
@@ -52,16 +56,27 @@ export function useTeamCrud() {
     return api<{ data: TeamPublicDetailResponse }>(`/api/v1/public/teams/${teamId}`)
   }
 
+  /**
+   * 公開チーム検索（`GET /api/v1/teams/search`）。
+   *
+   * F22.1 Phase2 足場C 第三陣: 地域フィルタはコード送信（`prefectureCode`）を優先する。
+   * BE `PublicDiscoverController` の `@RequestParam prefectureCode`（camelCase）と 1:1。
+   * `prefecture`（名称）は後方互換のフォールバックとして残置。
+   * ※公開チーム検索 API には `cityCode` パラメータは存在しない（BE 仕様に合わせ送らない）。
+   */
   async function searchTeams(params: {
     keyword?: string
     prefecture?: string
+    prefectureCode?: string
     template?: string
     page?: number
     size?: number
   }) {
     const query = new URLSearchParams()
     if (params.keyword) query.set('keyword', params.keyword)
-    if (params.prefecture) query.set('prefecture', params.prefecture)
+    // コード優先・名称フォールバック（BE dual-support）。
+    if (params.prefectureCode) query.set('prefectureCode', params.prefectureCode)
+    else if (params.prefecture) query.set('prefecture', params.prefecture)
     if (params.template) query.set('template', params.template)
     query.set('page', String(params.page ?? 0))
     query.set('size', String(params.size ?? 20))
@@ -89,8 +104,12 @@ export function useTeamCrud() {
   ): Promise<PagedResponse<TeamSearchItem>> {
     const params = new URLSearchParams()
     if (query.keyword !== undefined) params.set('keyword', query.keyword)
-    if (query.prefecture !== undefined) params.set('prefecture', query.prefecture)
-    if (query.city !== undefined) params.set('city', query.city)
+    // F22.1 Phase2 足場C 第三陣: コード優先・名称フォールバック（BE dual-support）。
+    // BE `OrganizationTeamSearchController` の @RequestParam prefectureCode/cityCode（camelCase）と 1:1。
+    if (query.prefectureCode !== undefined) params.set('prefectureCode', query.prefectureCode)
+    else if (query.prefecture !== undefined) params.set('prefecture', query.prefecture)
+    if (query.cityCode !== undefined) params.set('cityCode', query.cityCode)
+    else if (query.city !== undefined) params.set('city', query.city)
     if (query.template !== undefined) params.set('template', query.template)
     if (query.page !== undefined) params.set('page', String(query.page))
     if (query.size !== undefined) params.set('size', String(query.size))
