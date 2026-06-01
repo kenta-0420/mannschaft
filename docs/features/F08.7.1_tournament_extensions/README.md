@@ -54,7 +54,7 @@ F08.7 大会・リーグ管理は **バックエンドの大会 CRUD・ディビ
 | ディビジョン別ターゲティング（§5.9） | 計画のみ（掲示板/通知/DM の配信フィルタ） | §5.9 を本書 01 で「連絡スペースとして具体化」 |
 | 連絡スペース（掲示板・チャット） | 未実装 | **新規**（01_communication.md） |
 | 成績ウィジェット | 未実装 | **新規**（02_dashboard_widgets.md） |
-| 組織をまたぐリーグ間移籍 | 未実装 | **新規**（03_league_pyramid_and_transfer.md） |
+| 組織をまたぐリーグ間移籍 | 未実装 | **新規・実装済**（03_league_pyramid_and_transfer.md／`league_transfer` テーブル＋`LeagueTransferService`／Flyway V9.20260601150000） |
 | ファイル共有（組織/チーム単位） | 🟢 実装済み（F05.5） | 流用＋大会/ディビジョン単位を新規（04_file_storage.md） |
 | 試合ロスター（`tournament_match_rosters`） | 🟢 実装済み（テーブル・個人成績前提データ） | 自チーム作成/提出・テンプレ適用・締切管理＋項目拡充（登録番号/ユニフォーム色/ベンチ役員）を新規（05_match_roster.md） |
 | エントリーテンプレート（`tournament_entry_templates`） | 🟢 実装済み | roster への 1 タップ適用元として流用＋登録番号/ベンチ役員のテンプレ保持を追加（05_match_roster.md） |
