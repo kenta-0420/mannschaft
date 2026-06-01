@@ -15,6 +15,10 @@ import com.mannschaft.app.tournament.fee.dto.CreateTournamentFeeRequest;
 import com.mannschaft.app.tournament.fee.dto.TournamentFeeResponse;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -29,6 +33,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -225,6 +230,116 @@ class TournamentFeeServiceTest {
                     createReq("ALL_TEAMS", DIVISION_ID, null)))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", TournamentErrorCode.DIVISION_NOT_FOUND);
+        }
+    }
+
+    // =========================================================
+    // 参加費一覧（全件閲覧＝主催組織 ADMIN）
+    // =========================================================
+
+    @Nested
+    @DisplayName("参加費一覧（listFees）")
+    class ListFees {
+
+        @Test
+        @DisplayName("主催組織 ADMIN は全件を取得できる（200 相当）")
+        void listByOrgAdmin() {
+            TournamentFeeEntity f = fee(TournamentFeeTargetScope.ALL_TEAMS);
+            given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(tournament(ORG_ID)));
+            given(accessControlService.isSystemAdmin(ORG_ADMIN_ID)).willReturn(false);
+            given(accessControlService.isAdmin(ORG_ADMIN_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
+            given(feeRepository.findByTournamentIdOrderByCreatedAtAsc(TOURNAMENT_ID)).willReturn(List.of(f));
+            given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(paymentItem(ORG_ID));
+
+            List<TournamentFeeResponse> res = service.listFees(ORG_ID, TOURNAMENT_ID, ORG_ADMIN_ID);
+
+            assertThat(res).hasSize(1);
+            assertThat(res.get(0).paymentItemId()).isEqualTo(PAYMENT_ITEM_ID);
+            assertThat(res.get(0).amount()).isEqualByComparingTo("5000");
+        }
+
+        @Test
+        @DisplayName("SYSTEM_ADMIN は全件を取得できる")
+        void listBySystemAdmin() {
+            TournamentFeeEntity f = fee(TournamentFeeTargetScope.ALL_TEAMS);
+            given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(tournament(ORG_ID)));
+            given(accessControlService.isSystemAdmin(ORG_ADMIN_ID)).willReturn(true);
+            given(feeRepository.findByTournamentIdOrderByCreatedAtAsc(TOURNAMENT_ID)).willReturn(List.of(f));
+            given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(paymentItem(ORG_ID));
+
+            assertThat(service.listFees(ORG_ID, TOURNAMENT_ID, ORG_ADMIN_ID)).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("主催組織 ADMIN でないユーザーは 403（FEE_MANAGE_FORBIDDEN）で参加費を一覧できない")
+        void listForbiddenForNonAdmin() {
+            given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(tournament(ORG_ID)));
+            given(accessControlService.isSystemAdmin(OUTSIDER_ID)).willReturn(false);
+            given(accessControlService.isAdmin(OUTSIDER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+
+            assertThatThrownBy(() -> service.listFees(ORG_ID, TOURNAMENT_ID, OUTSIDER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", TournamentErrorCode.FEE_MANAGE_FORBIDDEN);
+            // 認可で弾かれるため参加費の読み取り（情報開示）は発生しない
+            verify(feeRepository, never()).findByTournamentIdOrderByCreatedAtAsc(any());
+        }
+
+        @Test
+        @DisplayName("未認証（userId=null）は 403（FEE_MANAGE_FORBIDDEN）")
+        void listForbiddenForAnonymous() {
+            given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(tournament(ORG_ID)));
+
+            assertThatThrownBy(() -> service.listFees(ORG_ID, TOURNAMENT_ID, null))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", TournamentErrorCode.FEE_MANAGE_FORBIDDEN);
+            verify(feeRepository, never()).findByTournamentIdOrderByCreatedAtAsc(any());
+        }
+
+        @Test
+        @DisplayName("他組織の大会は 404（TOURNAMENT_NOT_FOUND・IDOR 対策／認可より先に弾く）")
+        void listCrossOrgTournament404() {
+            given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(tournament(999L)));
+
+            assertThatThrownBy(() -> service.listFees(ORG_ID, TOURNAMENT_ID, ORG_ADMIN_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
+    }
+
+    // =========================================================
+    // targetScope バリデーション（@Pattern で不正値を 400 に倒す）
+    // =========================================================
+
+    @Nested
+    @DisplayName("targetScope バリデーション")
+    class TargetScopeValidation {
+
+        private Set<ConstraintViolation<CreateTournamentFeeRequest>> validate(String scope) {
+            try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+                Validator validator = factory.getValidator();
+                return validator.validate(new CreateTournamentFeeRequest(
+                        PAYMENT_ITEM_ID, "2026 春季 参加費", null, scope, LocalDateTime.now().plusDays(30), null));
+            }
+        }
+
+        @Test
+        @DisplayName("不正な targetScope はバリデーションエラー（→ 400 / 500 化しない）")
+        void invalidScopeRejected() {
+            Set<ConstraintViolation<CreateTournamentFeeRequest>> violations = validate("INVALID_SCOPE");
+            assertThat(violations)
+                    .anyMatch(v -> v.getPropertyPath().toString().equals("targetScope"));
+        }
+
+        @Test
+        @DisplayName("ALL_TEAMS / SPECIFIC_TEAMS / NULL は許容される")
+        void validScopesAccepted() {
+            assertThat(validate("ALL_TEAMS")).noneMatch(scopeViolation());
+            assertThat(validate("SPECIFIC_TEAMS")).noneMatch(scopeViolation());
+            assertThat(validate(null)).noneMatch(scopeViolation());
+        }
+
+        private java.util.function.Predicate<ConstraintViolation<CreateTournamentFeeRequest>> scopeViolation() {
+            return v -> v.getPropertyPath().toString().equals("targetScope");
         }
     }
 
