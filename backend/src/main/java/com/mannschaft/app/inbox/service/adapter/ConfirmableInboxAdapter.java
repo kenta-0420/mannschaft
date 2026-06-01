@@ -14,6 +14,7 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -46,12 +47,17 @@ public class ConfirmableInboxAdapter implements InboxSourceAdapter {
     }
 
     @Override
-    public List<InboxItemDto> fetch(Long userId) {
+    public List<InboxItemDto> fetch(Long userId, int window) {
+        if (window <= 0) {
+            return List.of();
+        }
         NormalizationContext ctx = currentContext();
         // JOIN FETCH で親 confirmableNotification を一括取得し N+1 を防ぐ（他4ソースと同様の方式）。
+        // Phase3 ③：境界付きウィンドウ＝親 created_at 降順の上位 window 件のみ（無制限 fetch を根絶）。
         // 既存の findByUserIdAndIsConfirmedFalseAndExcludedAtIsNull は保留中一覧 API 等で引き続き使用。
         return recipientRepository
-                .findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(userId).stream()
+                .findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(
+                        userId, PageRequest.of(0, window)).stream()
                 .map(r -> toDto(r, ctx))
                 .toList();
     }

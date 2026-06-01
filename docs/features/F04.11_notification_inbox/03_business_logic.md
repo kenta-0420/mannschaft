@@ -29,9 +29,12 @@
 ```
 interface InboxSourceAdapter {
   InboxSourceType sourceType();
-  List<InboxItemRaw> fetch(Long userId, FetchWindow window);  // 読み取りのみ・ハードリミット付き
+  List<InboxItemDto> fetch(Long userId, int window);  // 読み取りのみ・境界付きウィンドウ（最大 window 件）
+  boolean isVisibleTo(Long userId, Long sourceId);    // IDOR 防止（triage 書き込み前検証）
 }
 ```
+
+> **境界付きウィンドウ（Phase 3 ③）**: `fetch` は「自ソース内の正しい順序の上位 `window` 件」だけを返す。集約サービスが全ソースの上位ウィンドウを完全全順序でマージ・スライスして取りこぼさない（§4.1）。各アダプタは `Pageable`（`PageRequest.of(0, window)`）等で取得件数を境界付ける（無制限 fetch なし）。
 
 | アダプタ | ソース表 / リポジトリ | 取得条件 | title / excerpt | actionUrl | occurredAt |
 |---------|--------------------|---------|----------------|-----------|-----------|
@@ -55,10 +58,11 @@ interface InboxSourceAdapter {
 
 ---
 
-## 4. 状態マージ（LEFT JOIN 相当）と一覧フロー
+## 4. 状態マージ（LEFT JOIN 相当）と一覧フロー — 境界付きウィンドウページング（Phase 3 ③ 実装済み）
 
 ```
-1. 各アダプタを呼び InboxItemRaw を集める（ソース毎ハードリミット・例: 各100件）
+0. 取得ウィンドウを算出: window = (page+1)*size + SAFETY_MARGIN（= 20）
+1. 各アダプタを window 件で呼び InboxItemRaw を集める（境界付きウィンドウ・各アダプタは Pageable で window 件まで）
 2. オーバーレイをまとめ取り:
      inbox_item_states を user_id で1クエリ取得 → Map<(sourceType,sourceId), state>
      inbox_label_links（+ notification_labels 現役）を user_id で1クエリ取得 → Map<(sourceType,sourceId), List<label>>
@@ -68,11 +72,39 @@ interface InboxSourceAdapter {
      snoozed_until > now              → SNOOZED
      上記以外 かつ sourceRead = true  → READ
      それ以外                         → UNREAD
-4. state フィルタ（INBOX/SNOOZED/ARCHIVED/ALL）・priority・sourceType・labelId で絞り込み
-5. (priority DESC, occurredAt DESC) でメモリソート → page*size でスライス
+4. 名寄せ畳み込み（§8 foldByCanonicalRef）をウィンドウ全体に対して行う（畳み後の件数でページングが効く）
+5. state フィルタ（INBOX/SNOOZED/ARCHIVED/ALL）・priority・sourceType・labelId で絞り込み
+6. 完全な全順序（priority DESC → occurredAt DESC → sourceType名 → sourceId）でメモリソート
+   → [page*size, (page+1)*size) をスライス。hasMore = 畳み後フィルタ後件数 > (page+1)*size
 ```
 
-- **ページング方針**: 複数ソースマージのため真のカーソルは持てない。ソース毎ハードリミット内でのオフセットページング。「インボックス＝直近の仕分け場」と割り切り、深いページの網羅は非保証（[04](./04_security_operations.md) §5 に明記）。
+### 4.1 ページング方針 — なぜ「境界付きウィンドウ」か（方針更新 2026-06-01）
+
+> **旧方針（〜2026-05-30）**: 「ソース毎ハードリミット（各100件等）＋オフセットスライス・深いページは取りこぼし許容」。
+> **新方針（Phase 3 ③ 以降）**: 「**境界付きウィンドウページング**＝各ソースを `Pageable` で window 件まで取得し、完全全順序で決定的にマージ・スライス。当該ページの直近上位を取りこぼさない」。
+
+**複合キーセットカーソルを採らない理由**: 5 ソース横断で「真のカーソル」（複合キーセット）を持つと、各ソースの順序キーが異なる（priority・occurredAt・タイブレークの混在）ため境界条件のバグ温床になり、`{items, page, size, totalEstimated, hasMore}` という **既存 FE レスポンス契約も壊す**。よって複合カーソルは採らず、**境界付きウィンドウ**で「取りこぼしゼロ＝当該ページ内に欠落・重複が生じない」を達成する。
+
+**取りこぼしゼロの正当性（不変条件）**:
+- 各ソースは「自ソース内の正しい順序の上位 `window` 件」を返す。`window = (page+1)*size + margin >= (page+1)*size = K`。
+- 各ソースが自ソース内の上位 `window`（≥K）件を返せば、**グローバル上位 K 件は必ずその和集合に含まれる**（各ソースは自分の中で上位に入りうる項目を window 内に漏らさないため）。よって集約後に上位 K 件を取れば、当該ページ `[page*size, (page+1)*size)` の項目は欠落しない。
+- ソートは **完全な全順序**（priority DESC → occurredAt DESC → **sourceType名 → sourceId** のタイブレーク）。同 priority・同 occurredAt の同着をタイブレークで一意化することで、ページ境界で同着の並びが揺れて隣接ページに項目が漏れる事故を防ぐ（決定的スライス）。
+- `SAFETY_MARGIN`（20）は名寄せ畳み込みによる件数減・境界の同着連なりを吸収する余裕。
+
+**各アダプタの `Pageable` 対応（無制限 fetch の根絶）**:
+
+| アダプタ | 取得方法 | 自ソース順序 |
+|---|---|---|
+| NOTIFICATION | `findByUserIdAndNotificationTypeNotOrderByCreatedAtDesc(userId, type, PageRequest.of(0, window))` | created_at 降順 |
+| ANNOUNCEMENT | `findByScope(..., limit=window)` をスコープ毎に（和集合は集約側で全順序ソート） | ピン留め優先→新着 |
+| MENTION | `findByMentionedUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, window))`（**Pageable 版を新設**・priority 一律 HIGH のため順序=新着で全順序と整合） | created_at 降順 |
+| CONFIRMABLE | `findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(userId, PageRequest.of(0, window))`（**JOIN FETCH＋Pageable 版を新設**・親 created_at 降順） | 親 created_at 降順 |
+| TODO_DUE | `findMyDueTodos(userId, cutoff, PageRequest.of(0, window))`（**新設**・DB 側で「未完了∧due_date≤cutoff」に絞り due_date 昇順＝期限切れ→当日→近接で priority 降順と整合） | due_date 昇順 |
+
+> **CONFIRMABLE / TODO_DUE の従来「無制限 fetch」を根絶**: 以前は MENTION/CONFIRMABLE/TODO_DUE が全件取得していた。Phase 3 ③ で全ソースを `Pageable`（または DB 側絞り込み＋ Pageable）に統一し、メモリに載る件数を `window` で境界付けた。TODO_DUE は従来 `findMyTodos` の全件取得＋Java フィルタだったが、DB 側で「未完了∧近接/超過」に絞ってから上限を掛ける `findMyDueTodos` に置換した。
+
+> **サマリ（タブ/バッジ）**: `getSummary` は概算で十分なため `SUMMARY_WINDOW`（500）の広めウィンドウで集計する。
+
 - **孤児の除外**: アダプタが返すのは生存ソースのみ。オーバーレイにあってソースが消えた `(sourceType,sourceId)` はマージで自然に脱落（表示されない）。物理掃除は任意（Phase 3）。
 
 ---

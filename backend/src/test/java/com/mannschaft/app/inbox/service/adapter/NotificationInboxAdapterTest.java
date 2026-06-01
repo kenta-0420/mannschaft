@@ -68,7 +68,7 @@ class NotificationInboxAdapterTest {
                 eq(USER_ID), eq(InboxNotificationTypes.INBOX_SNOOZE_REVIVAL), any(Pageable.class)))
                 .willReturn(page);
 
-        List<InboxItemDto> result = adapter.fetch(USER_ID);
+        List<InboxItemDto> result = adapter.fetch(USER_ID, 50);
 
         // 除外種別を渡したクエリが呼ばれている
         ArgumentCaptor<String> typeCaptor = ArgumentCaptor.forClass(String.class);
@@ -79,5 +79,28 @@ class NotificationInboxAdapterTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).sourceType()).isEqualTo(InboxSourceType.NOTIFICATION);
         assertThat(result.get(0).sourceId()).isEqualTo(100L);
+    }
+
+    @Test
+    @DisplayName("fetch は window 件を超えて取得しない（PageRequest size <= window）")
+    void fetch_boundsByWindow() {
+        Page<NotificationEntity> page = new PageImpl<>(List.of(notification(100L, "t")));
+        given(notificationRepository.findByUserIdAndNotificationTypeNotOrderByCreatedAtDesc(
+                eq(USER_ID), eq(InboxNotificationTypes.INBOX_SNOOZE_REVIVAL), any(Pageable.class)))
+                .willReturn(page);
+
+        adapter.fetch(USER_ID, 25);
+
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(notificationRepository).findByUserIdAndNotificationTypeNotOrderByCreatedAtDesc(
+                eq(USER_ID), eq(InboxNotificationTypes.INBOX_SNOOZE_REVIVAL), pageableCaptor.capture());
+        assertThat(pageableCaptor.getValue().getPageSize()).isLessThanOrEqualTo(25);
+    }
+
+    @Test
+    @DisplayName("window <= 0 は DB を引かず空を返す（無制限 fetch 根絶の境界）")
+    void fetch_zeroWindowReturnsEmpty() {
+        assertThat(adapter.fetch(USER_ID, 0)).isEmpty();
+        org.mockito.Mockito.verifyNoInteractions(notificationRepository);
     }
 }

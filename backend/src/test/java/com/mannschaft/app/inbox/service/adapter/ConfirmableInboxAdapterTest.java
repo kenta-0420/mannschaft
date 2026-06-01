@@ -18,11 +18,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import org.springframework.data.domain.Pageable;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
@@ -103,10 +107,10 @@ class ConfirmableInboxAdapterTest {
                     100L, "確認してください", "本文", ConfirmableNotificationPriority.NORMAL,
                     null, "/confirmations/100", created);
             ConfirmableNotificationRecipientEntity r = recipient(500L, USER_ID, p, false, null);
-            given(recipientRepository.findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(USER_ID))
+            given(recipientRepository.findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(eq(USER_ID), any(Pageable.class)))
                     .willReturn(List.of(r));
 
-            List<InboxItemDto> items = adapter.fetch(USER_ID);
+            List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
             assertThat(items).hasSize(1);
             InboxItemDto dto = items.get(0);
@@ -127,10 +131,10 @@ class ConfirmableInboxAdapterTest {
                     101L, "t", "b", ConfirmableNotificationPriority.NORMAL,
                     null, null, LocalDateTime.now().minusDays(5));
             ConfirmableNotificationRecipientEntity r = recipient(501L, USER_ID, p, false, null);
-            given(recipientRepository.findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(USER_ID))
+            given(recipientRepository.findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(eq(USER_ID), any(Pageable.class)))
                     .willReturn(List.of(r));
 
-            List<InboxItemDto> items = adapter.fetch(USER_ID);
+            List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
             assertThat(items).singleElement()
                     .extracting(InboxItemDto::actionUrl)
@@ -144,10 +148,10 @@ class ConfirmableInboxAdapterTest {
                     102L, "t", "b", ConfirmableNotificationPriority.HIGH,
                     LocalDateTime.now().plusDays(10), "/x", LocalDateTime.now().minusDays(1));
             ConfirmableNotificationRecipientEntity r = recipient(502L, USER_ID, p, false, null);
-            given(recipientRepository.findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(USER_ID))
+            given(recipientRepository.findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(eq(USER_ID), any(Pageable.class)))
                     .willReturn(List.of(r));
 
-            List<InboxItemDto> items = adapter.fetch(USER_ID);
+            List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
             assertThat(items).singleElement()
                     .extracting(InboxItemDto::priority)
@@ -161,10 +165,10 @@ class ConfirmableInboxAdapterTest {
                     103L, "t", "b", ConfirmableNotificationPriority.NORMAL,
                     LocalDateTime.now().plusHours(6), "/x", LocalDateTime.now().minusDays(1));
             ConfirmableNotificationRecipientEntity r = recipient(503L, USER_ID, p, false, null);
-            given(recipientRepository.findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(USER_ID))
+            given(recipientRepository.findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(eq(USER_ID), any(Pageable.class)))
                     .willReturn(List.of(r));
 
-            List<InboxItemDto> items = adapter.fetch(USER_ID);
+            List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
             assertThat(items).singleElement()
                     .extracting(InboxItemDto::priority)
