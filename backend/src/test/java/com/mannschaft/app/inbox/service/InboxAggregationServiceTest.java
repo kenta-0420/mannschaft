@@ -744,8 +744,16 @@ class InboxAggregationServiceTest {
     class BoundedWindowPaging {
 
         /**
-         * 自ソース内の正しい順序（priority 降順 → occurredAt 降順）の上位 window 件だけを返す
-         * 「境界を守る」ソースアダプタを模す。各 fetch 呼び出しの window を記録する。
+         * 「境界を守る」ソースアダプタを模す。各 fetch 呼び出しの window を記録し、
+         * <b>渡された {@code all} の並び順そのまま</b>に上位 window 件を返す（DB の {@code ORDER BY ... LIMIT} 相当）。
+         *
+         * <p><b>テストの前提を正直に明記する</b>: このフェイクは「{@code all} が既にグローバル全順序で
+         * 並んでいる」ことを呼び出し側の責務とする。境界付きウィンドウの「欠落しない」不変条件は
+         * <b>各ソースの fetch 順がグローバル順と整合するとき</b>にのみ成立するため（[03] §4.1）、本フェイクで
+         * 検証できるのは「整合する前提が満たされたとき集約が正しく決定的スライスする」ことに限る。
+         * 実 fetch 順がグローバル順と独立な ANNOUNCEMENT/CONFIRMABLE の取りこぼし限界は本フェイクの
+         * 対象外（＝アダプタ側の責務・設計書 §4.1 に限界を明記）。NOTIFICATION が priority 第一順で
+         * 整合することは {@code NotificationInboxAdapterTest} で別途検証する。</p>
          */
         private final class WindowedFakeAdapter implements InboxSourceAdapter {
             private final InboxSourceType type;
@@ -798,8 +806,12 @@ class InboxAggregationServiceTest {
         }
 
         @Test
-        @DisplayName("page0 と page1 は重複・欠落なく連続する（同一ウィンドウからの決定的スライス）")
+        @DisplayName("page0 と page1 は重複・欠落なく連続する（グローバル順済みソース前提での決定的スライス）")
         void pagesAreContiguousNoOverlapNoGap() {
+            // 【前提を正直に】notifications() は全件同 priority(NORMAL) かつ created_at 降順済み＝既にグローバル
+            // 全順序で並んだ「都合の良い」データ。本テストが検証するのは「各ソースがグローバル順上位を返すとき
+            // 集約が重複なし・欠落なしで決定的にスライスする」ことのみ。実 fetch 順がグローバル順と独立な
+            // ソース（ANNOUNCEMENT/CONFIRMABLE）の取りこぼし限界はここでは扱わない（設計書 §4.1・アダプタ責務）。
             // 単一ソースに 100 件。size=10 で page0/page1 を取り、連続性を検証する。
             WindowedFakeAdapter notif =
                     new WindowedFakeAdapter(InboxSourceType.NOTIFICATION, notifications(100));
@@ -826,6 +838,38 @@ class InboxAggregationServiceTest {
             List<Long> actualTop20 = new ArrayList<>(ids0);
             actualTop20.addAll(ids1);
             assertThat(actualTop20).containsExactlyElementsOf(expectedTop20);
+        }
+
+        @Test
+        @DisplayName("NOTIFICATION 根治: priority 第一順クエリが供給する『古いが URGENT』は新着 NORMAL 多数があっても page0 先頭に出る")
+        void oldUrgentFromPriorityFirstNotificationSurfacesOnPage0() {
+            // NOTIFICATION の priority 第一順クエリ（findInboxByUserIdOrderByPriorityThenCreatedAtDesc）は
+            // 「URGENT を先頭、その後 created_at 降順の NORMAL」を返す。アダプタはこの DB 順をそのまま供給する。
+            // よって WindowedFakeAdapter には「URGENT(古) → NORMAL(新着多数)」の順で渡す（= 実 fetch 順を再現）。
+            LocalDateTime old = LocalDateTime.of(2025, 1, 1, 0, 0);
+            LocalDateTime base = LocalDateTime.of(2026, 6, 1, 0, 0);
+            List<InboxItemDto> notifInPriorityFirstOrder = new ArrayList<>();
+            // 先頭: 古いが URGENT
+            notifInPriorityFirstOrder.add(item(InboxSourceType.NOTIFICATION, 999L,
+                    InboxPriority.URGENT, old));
+            // 続き: 新しい NORMAL を多数（30 件）＝size を超える件数で「埋もれ」を再現
+            for (int i = 0; i < 30; i++) {
+                notifInPriorityFirstOrder.add(item(InboxSourceType.NOTIFICATION, (long) (2000 + i),
+                        InboxPriority.NORMAL, base.minusMinutes(i)));
+            }
+            WindowedFakeAdapter notif =
+                    new WindowedFakeAdapter(InboxSourceType.NOTIFICATION, notifInPriorityFirstOrder);
+            InboxAggregationService svc = serviceWith(notif);
+
+            // size=10 の page0。priority 第一で URGENT が window 内に供給されるため、集約の全順序で先頭に来る。
+            InboxPageResponse p0 = svc.getInbox(USER_ID, "ALL", null, null, null, 0, 10);
+
+            assertThat(p0.items()).first().satisfies(card -> {
+                assertThat(card.priority()).isEqualTo(InboxPriority.URGENT);
+                assertThat(card.sourceId()).isEqualTo(999L);
+            });
+            // 旧 created_at 降順クエリだったら URGENT(古) は window 外（後ろ）に落ち page0 から欠落していた。
+            assertThat(p0.items()).extracting(InboxItemDto::sourceId).contains(999L);
         }
 
         @Test

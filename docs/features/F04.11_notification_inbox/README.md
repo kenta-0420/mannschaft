@@ -169,7 +169,7 @@
 |-------|------|
 | **MVP** | オーバーレイ 3 表 ＋ `GET /api/v1/inbox`（**まず通知＋TODO 期限の 2 ソース**、続けて残 3 ソースをアダプタ追加で順次）＋ snooze/archive ＋ `/inbox` ページ ＋ `WidgetInbox` ＋ i18n 6 言語 ＋ 既存スヌーズ DTO 不整合の是正 |
 | **Phase 2** | 軽量ラベル CRUD ＋ 付与/解除 ＋ 一括操作（bulk） |
-| **Phase 3** | ✅ ① 重複名寄せ（正規化辞書）／✅ ③ 真ページング（**境界付きウィンドウページング**＝全ソース `Pageable`・取りこぼしゼロ・完全全順序タイブレーク。[03_business_logic.md](./03_business_logic.md) §4.1）／✅ ② スヌーズ復帰時の push 再通知バッチ |
+| **Phase 3** | ✅ ① 重複名寄せ（正規化辞書）／✅ ③ 真ページング（**境界付きウィンドウページング**＝全ソース `Pageable`・完全全順序タイブレークで**決定的**。NOTIFICATION/MENTION/TODO_DUE は取りこぼしなし、ANNOUNCEMENT/CONFIRMABLE は priority 独立取得ゆえ稀に後ページ送り＝限界明記。[03_business_logic.md](./03_business_logic.md) §4.1）／✅ ② スヌーズ復帰時の push 再通知バッチ |
 | **Phase 4** | 自動ラベリング提案（priority×sourceType ルール）／GDPR エクスポート連携（`@PersonalData` 付与） |
 
 > MVP の各ソースは「アダプタ 1 つ追加」で増分実装できる（[03_business_logic.md](./03_business_logic.md) §2 のアダプタ・インターフェース）。2 ソース先行リリース→残 3 ソース追加が可能。
