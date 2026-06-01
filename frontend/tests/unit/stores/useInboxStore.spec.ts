@@ -405,13 +405,14 @@ describe('useInboxStore', () => {
       expect(store.labels[0]).toEqual(label)
     })
 
-    it('異常系: API 失敗で null を返す', async () => {
-      apiMock.createLabel.mockRejectedValueOnce({ status: 422 })
+    it('異常系: API 失敗でエラーが throw される', async () => {
+      const err = { status: 422 }
+      apiMock.createLabel.mockRejectedValueOnce(err)
       const store = useInboxStore()
 
-      const result = await store.createLabel({ name: 'テスト' })
-
-      expect(result).toBeNull()
+      await expect(store.createLabel({ name: 'テスト' })).rejects.toMatchObject({ status: 422 })
+      // エラー時はラベルリストに追加されない
+      expect(store.labels).toHaveLength(0)
     })
   })
 
@@ -422,21 +423,18 @@ describe('useInboxStore', () => {
       const store = useInboxStore()
       store.labels = [label]
 
-      const ok = await store.deleteLabel(label.id)
+      await store.deleteLabel(label.id)
 
-      expect(ok).toBe(true)
       expect(store.labels).toHaveLength(0)
     })
 
-    it('異常系: API 失敗で labels がロールバックされる', async () => {
+    it('異常系: API 失敗でエラーが throw され labels がロールバックされる', async () => {
       const label = makeLabel()
       apiMock.deleteLabel.mockRejectedValueOnce({ status: 500 })
       const store = useInboxStore()
       store.labels = [label]
 
-      const ok = await store.deleteLabel(label.id)
-
-      expect(ok).toBe(false)
+      await expect(store.deleteLabel(label.id)).rejects.toMatchObject({ status: 500 })
       // ロールバックで元に戻る
       expect(store.labels).toHaveLength(1)
       expect(store.labels[0]?.id).toBe(label.id)

@@ -24,7 +24,11 @@
       "archive": "保管庫へ",
       "unarchive": "受信箱へ戻す",
       "unsnooze": "スヌーズ解除",
-      "label": "ラベル"
+      "label": "ラベル",
+      "snoozed": "スヌーズしました",
+      "archived": "保管庫へ移動しました",
+      "unarchived": "受信箱へ戻しました",
+      "unsnoozed": "スヌーズを解除しました"
     },
     "snoozePreset": {
       "in3h": "3時間後",
@@ -50,6 +54,7 @@
       "edit": "ラベルを編集",
       "delete": "ラベルを削除",
       "manage": "ラベルを管理",
+      "nameLabel": "名前",
       "namePlaceholder": "ラベル名",
       "colorLabel": "色",
       "iconLabel": "アイコン（任意）",
@@ -59,7 +64,10 @@
       "empty": "ラベルがありません",
       "filterTitle": "ラベルで絞り込み",
       "assigned": "ラベルを付与しました",
-      "removed": "ラベルを解除"
+      "removed": "ラベルを解除",
+      "created": "ラベルを作成しました",
+      "updated": "ラベルを更新しました",
+      "deleted": "ラベルを削除しました"
     },
     "bulk": {
       "selectMode": "複数選択",

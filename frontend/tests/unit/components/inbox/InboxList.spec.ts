@@ -66,9 +66,9 @@ const storeMock = {
   runBulk: vi.fn().mockResolvedValue({ processed: 1, skipped: 0 }),
   assignLabel: vi.fn().mockResolvedValue(true),
   unassignLabel: vi.fn().mockResolvedValue(true),
-  createLabel: vi.fn().mockResolvedValue(null),
-  updateLabel: vi.fn().mockResolvedValue(true),
-  deleteLabel: vi.fn().mockResolvedValue(true),
+  createLabel: vi.fn().mockResolvedValue({ id: 'label-1', name: 'test', color: '#ff0000', icon: null }),
+  updateLabel: vi.fn().mockResolvedValue(undefined),
+  deleteLabel: vi.fn().mockResolvedValue(undefined),
 }
 
 vi.mock('~/stores/useInboxStore', () => ({

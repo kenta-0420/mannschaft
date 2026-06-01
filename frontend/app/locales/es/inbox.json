@@ -24,7 +24,11 @@
       "archive": "Archivar",
       "unarchive": "Mover a bandeja de entrada",
       "unsnooze": "Cancelar posposición",
-      "label": "Etiqueta"
+      "label": "Etiqueta",
+      "snoozed": "Pospuesto",
+      "archived": "Movido al archivo",
+      "unarchived": "Movido a la bandeja de entrada",
+      "unsnoozed": "Posposición cancelada"
     },
     "snoozePreset": {
       "in3h": "En 3 horas",
@@ -50,6 +54,7 @@
       "edit": "Editar etiqueta",
       "delete": "Eliminar etiqueta",
       "manage": "Gestionar etiquetas",
+      "nameLabel": "Nombre",
       "namePlaceholder": "Nombre de etiqueta",
       "colorLabel": "Color",
       "iconLabel": "Icono (opcional)",
@@ -59,7 +64,10 @@
       "empty": "No hay etiquetas",
       "filterTitle": "Filtrar por etiqueta",
       "assigned": "Etiqueta asignada",
-      "removed": "Quitar etiqueta"
+      "removed": "Quitar etiqueta",
+      "created": "Etiqueta creada",
+      "updated": "Etiqueta actualizada",
+      "deleted": "Etiqueta eliminada"
     },
     "bulk": {
       "selectMode": "Selección múltiple",

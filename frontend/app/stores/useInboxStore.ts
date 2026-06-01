@@ -322,23 +322,21 @@ export const useInboxStore = defineStore('inbox', {
 
     /**
      * ラベルを作成する。
+     * エラーは握り潰さず呼び出し元へ再throwする（409=重複・422=上限超過を呼び出し元で処理するため）。
      */
-    async createLabel(payload: CreateLabelPayload): Promise<InboxLabel | null> {
-      try {
-        const api = useInboxApi()
-        const res = await api.createLabel(payload)
-        this.labels.push(res.data)
-        return res.data
-      } catch (error) {
-        this._handleError(error)
-        return null
-      }
+    async createLabel(payload: CreateLabelPayload): Promise<InboxLabel> {
+      const api = useInboxApi()
+      const res = await api.createLabel(payload)
+      this.labels.push(res.data)
+      return res.data
     },
 
     /**
      * ラベルを更新する（楽観更新）。
+     * エラーは握り潰さず呼び出し元へ再throwする（409=重複を呼び出し元で処理するため）。
+     * 失敗時はロールバックしてから再throw。
      */
-    async updateLabel(labelId: string, payload: UpdateLabelPayload): Promise<boolean> {
+    async updateLabel(labelId: string, payload: UpdateLabelPayload): Promise<void> {
       const idx = this.labels.findIndex((l) => l.id === labelId)
       const previous = idx >= 0 ? { ...this.labels[idx]! } : null
       if (idx >= 0 && previous) {
@@ -354,21 +352,21 @@ export const useInboxStore = defineStore('inbox', {
         if (idx >= 0) {
           this.labels.splice(idx, 1, res.data)
         }
-        return true
       } catch (error) {
-        // ロールバック
+        // ロールバック後に再throw（呼び出し元で409/422を処理する）
         if (idx >= 0 && previous) {
           this.labels.splice(idx, 1, previous)
         }
-        this._handleError(error)
-        return false
+        throw error
       }
     },
 
     /**
      * ラベルを削除する（楽観削除）。
+     * エラーは握り潰さず呼び出し元へ再throwする（404等を呼び出し元で処理するため）。
+     * 失敗時はロールバックしてから再throw。
      */
-    async deleteLabel(labelId: string): Promise<boolean> {
+    async deleteLabel(labelId: string): Promise<void> {
       const idx = this.labels.findIndex((l) => l.id === labelId)
       const removed = idx >= 0 ? this.labels[idx] : null
       if (idx >= 0) {
@@ -378,14 +376,12 @@ export const useInboxStore = defineStore('inbox', {
       try {
         const api = useInboxApi()
         await api.deleteLabel(labelId)
-        return true
       } catch (error) {
-        // ロールバック
+        // ロールバック後に再throw
         if (idx >= 0 && removed) {
           this.labels.splice(idx, 0, removed)
         }
-        this._handleError(error)
-        return false
+        throw error
       }
     },
 

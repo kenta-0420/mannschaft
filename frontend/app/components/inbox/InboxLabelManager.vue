@@ -73,22 +73,18 @@ async function handleSave() {
         color: form.color || undefined,
         icon: form.icon || undefined,
       }
-      const ok = await inboxStore.updateLabel(editTarget.value.id, payload)
-      if (ok) {
-        notification.success(t('inbox.label.edit') + ' ✓')
-        closeDialog()
-      }
+      await inboxStore.updateLabel(editTarget.value.id, payload)
+      notification.success(t('inbox.label.updated'))
+      closeDialog()
     } else {
       const payload: CreateLabelPayload = {
         name: form.name.trim(),
         color: form.color || undefined,
         icon: form.icon || undefined,
       }
-      const created = await inboxStore.createLabel(payload)
-      if (created) {
-        notification.success(t('inbox.label.create') + ' ✓')
-        closeDialog()
-      }
+      await inboxStore.createLabel(payload)
+      notification.success(t('inbox.label.created'))
+      closeDialog()
     }
   } catch (error) {
     handleSaveError(error)
@@ -128,10 +124,8 @@ async function confirmDelete() {
   if (!deleteTarget.value) return
   deleting.value = true
   try {
-    const ok = await inboxStore.deleteLabel(deleteTarget.value.id)
-    if (ok) {
-      notification.success(t('inbox.label.delete') + ' ✓')
-    }
+    await inboxStore.deleteLabel(deleteTarget.value.id)
+    notification.success(t('inbox.label.deleted'))
     closeDeleteDialog()
   } catch (error) {
     captureQuiet(error, { context: 'InboxLabelManager: ラベル削除' })
@@ -243,7 +237,7 @@ onMounted(async () => {
         <!-- 名前 -->
         <div>
           <label class="mb-1 block text-sm font-medium">
-            {{ t('inbox.label.colorLabel') }}
+            {{ t('inbox.label.nameLabel') }}
           </label>
           <InputText
             v-model="form.name"

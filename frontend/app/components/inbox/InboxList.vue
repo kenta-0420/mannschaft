@@ -115,7 +115,7 @@ async function onSnoozePreset(
   try {
     const ok = await inboxStore.snooze(sourceType, sourceId, snoozedUntil)
     if (ok) {
-      notification.success(t('inbox.action.snooze') + ' ✓')
+      notification.success(t('inbox.action.snoozed'))
     } else {
       notification.error(t('common.error.unknown'))
     }
@@ -132,7 +132,7 @@ async function onArchive(sourceType: InboxSourceType, sourceId: number) {
   try {
     const ok = await inboxStore.archive(sourceType, sourceId)
     if (ok) {
-      notification.success(t('inbox.action.archive') + ' ✓')
+      notification.success(t('inbox.action.archived'))
     }
   } catch (error) {
     captureQuiet(error, { context: 'InboxList: アーカイブ' })
@@ -143,7 +143,7 @@ async function onUnarchive(sourceType: InboxSourceType, sourceId: number) {
   try {
     const ok = await inboxStore.unarchive(sourceType, sourceId)
     if (ok) {
-      notification.success(t('inbox.action.unarchive') + ' ✓')
+      notification.success(t('inbox.action.unarchived'))
     }
   } catch (error) {
     captureQuiet(error, { context: 'InboxList: アーカイブ解除' })
@@ -154,7 +154,7 @@ async function onUnsnooze(sourceType: InboxSourceType, sourceId: number) {
   try {
     const ok = await inboxStore.unsnooze(sourceType, sourceId)
     if (ok) {
-      notification.success(t('inbox.action.unsnooze') + ' ✓')
+      notification.success(t('inbox.action.unsnoozed'))
     }
   } catch (error) {
     captureQuiet(error, { context: 'InboxList: スヌーズ解除' })

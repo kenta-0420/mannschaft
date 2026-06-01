@@ -24,7 +24,11 @@
       "archive": "Archivieren",
       "unarchive": "In Posteingang verschieben",
       "unsnooze": "Zurückstellung aufheben",
-      "label": "Etikett"
+      "label": "Etikett",
+      "snoozed": "Zurückgestellt",
+      "archived": "In Archiv verschoben",
+      "unarchived": "In Posteingang verschoben",
+      "unsnoozed": "Zurückstellung aufgehoben"
     },
     "snoozePreset": {
       "in3h": "In 3 Stunden",
@@ -50,6 +54,7 @@
       "edit": "Etikett bearbeiten",
       "delete": "Etikett löschen",
       "manage": "Etiketten verwalten",
+      "nameLabel": "Name",
       "namePlaceholder": "Etikettenname",
       "colorLabel": "Farbe",
       "iconLabel": "Symbol (optional)",
@@ -59,7 +64,10 @@
       "empty": "Keine Etiketten",
       "filterTitle": "Nach Etikett filtern",
       "assigned": "Etikett zugewiesen",
-      "removed": "Etikett entfernen"
+      "removed": "Etikett entfernen",
+      "created": "Etikett erstellt",
+      "updated": "Etikett aktualisiert",
+      "deleted": "Etikett gelöscht"
     },
     "bulk": {
       "selectMode": "Mehrfachauswahl",

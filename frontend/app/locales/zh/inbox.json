@@ -24,7 +24,11 @@
       "archive": "归档",
       "unarchive": "移至收件箱",
       "unsnooze": "取消延后",
-      "label": "标签"
+      "label": "标签",
+      "snoozed": "已延后处理",
+      "archived": "已移至归档",
+      "unarchived": "已移至收件箱",
+      "unsnoozed": "已取消延后"
     },
     "snoozePreset": {
       "in3h": "3小时后",
@@ -50,6 +54,7 @@
       "edit": "编辑标签",
       "delete": "删除标签",
       "manage": "管理标签",
+      "nameLabel": "名称",
       "namePlaceholder": "标签名称",
       "colorLabel": "颜色",
       "iconLabel": "图标（可选）",
@@ -59,7 +64,10 @@
       "empty": "没有标签",
       "filterTitle": "按标签筛选",
       "assigned": "标签已附加",
-      "removed": "移除标签"
+      "removed": "移除标签",
+      "created": "标签已创建",
+      "updated": "标签已更新",
+      "deleted": "标签已删除"
     },
     "bulk": {
       "selectMode": "多选",

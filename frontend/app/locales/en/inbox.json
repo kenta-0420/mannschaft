@@ -24,7 +24,11 @@
       "archive": "Archive",
       "unarchive": "Move to Inbox",
       "unsnooze": "Unsnooze",
-      "label": "Label"
+      "label": "Label",
+      "snoozed": "Snoozed",
+      "archived": "Moved to archive",
+      "unarchived": "Moved to inbox",
+      "unsnoozed": "Snooze cancelled"
     },
     "snoozePreset": {
       "in3h": "In 3 hours",
@@ -50,6 +54,7 @@
       "edit": "Edit Label",
       "delete": "Delete Label",
       "manage": "Manage Labels",
+      "nameLabel": "Name",
       "namePlaceholder": "Label name",
       "colorLabel": "Color",
       "iconLabel": "Icon (optional)",
@@ -59,7 +64,10 @@
       "empty": "No labels",
       "filterTitle": "Filter by label",
       "assigned": "Label assigned",
-      "removed": "Remove label"
+      "removed": "Remove label",
+      "created": "Label created",
+      "updated": "Label updated",
+      "deleted": "Label deleted"
     },
     "bulk": {
       "selectMode": "Select multiple",
