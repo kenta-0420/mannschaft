@@ -1,6 +1,7 @@
 package com.mannschaft.app.filesharing.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.filesharing.FileScopeType;
@@ -50,6 +51,11 @@ public class SharedFileService {
     private final SharedFileQuotaService quotaService;
     /** F13 Phase 5-a: R2 presigned URL 発行に使用。 */
     private final R2StorageService r2StorageService;
+    /**
+     * F08.7.1 / 04: 大会・ディビジョンスコープのフォルダ／ファイルに対する横断認可ゲート。
+     * 大会以外（TEAM/ORG/PERSONAL）のスコープでは no-op（既存挙動を変えない）。
+     */
+    private final FolderScopeAccessGuard folderScopeAccessGuard;
 
     /**
      * ファイルアップロード用の Presigned PUT URL を発行する。
@@ -66,6 +72,8 @@ public class SharedFileService {
      */
     @Transactional(readOnly = true)
     public SharedFilePresignResponse presignUpload(Long folderId, Long actorId, SharedFilePresignRequest req) {
+        // F08.7.1 / 04 §5: 大会フォルダはアップロード認可（チーム代表＋主催者）を通す。
+        folderScopeAccessGuard.checkFolderPostByFolderId(folderId, actorId);
         // 1. フォルダ取得
         SharedFolderEntity folder = folderService.findFolderOrThrow(folderId);
 
@@ -73,13 +81,16 @@ public class SharedFileService {
         long fileSize = req.fileSize() != null ? req.fileSize() : 0L;
         quotaService.checkFileQuota(folder, fileSize);
 
-        // 3. スコープ解決
+        // 3. スコープ解決（物理パス用 scopeId）
+        // F08.7.1 §3.1: 大会/ディビジョンは scope_ref_id（tournament_id / division_id）を物理パスに使い、
+        // 大会単位の容量内訳を可視化できるようにする（クォータ計量は §6 で主催組織に集約・別レイヤ）。
         FileScopeType fileScopeType = folder.getScopeType();
-        String scopeTypeStr = fileScopeType.name(); // TEAM / ORGANIZATION / PERSONAL
+        String scopeTypeStr = fileScopeType.name(); // TEAM / ORGANIZATION / PERSONAL / TOURNAMENT(_DIVISION)
         Long scopeId = switch (fileScopeType) {
             case TEAM -> folder.getTeamId();
             case ORGANIZATION -> folder.getOrganizationId();
             case PERSONAL -> folder.getUserId();
+            case TOURNAMENT, TOURNAMENT_DIVISION -> folder.getScopeRefId();
         };
 
         // 4. fileKey 生成: files/{scopeType}/{scopeId}/{uuid}.{ext}
@@ -103,6 +114,8 @@ public class SharedFileService {
      * @return ファイルレスポンスリスト
      */
     public List<FileResponse> listFiles(Long folderId) {
+        // F08.7.1 / 04 §3: 大会フォルダは閲覧認可を通す（非公開大会の非メンバー/未ログインは 403/404）。
+        folderScopeAccessGuard.checkFolderViewByFolderId(folderId, SecurityUtils.getCurrentUserIdOrNull());
         List<SharedFileEntity> files = fileRepository.findByFolderIdOrderByNameAsc(folderId);
         return fileSharingMapper.toFileResponseList(files);
     }
@@ -115,6 +128,8 @@ public class SharedFileService {
      * @return ファイルレスポンスのページ
      */
     public Page<FileResponse> listFilesPaged(Long folderId, Pageable pageable) {
+        // F08.7.1 / 04 §3: 大会フォルダは閲覧認可を通す。
+        folderScopeAccessGuard.checkFolderViewByFolderId(folderId, SecurityUtils.getCurrentUserIdOrNull());
         Page<SharedFileEntity> page = fileRepository.findByFolderIdOrderByNameAsc(folderId, pageable);
         return page.map(fileSharingMapper::toFileResponse);
     }
@@ -126,6 +141,23 @@ public class SharedFileService {
      * @return ファイルレスポンス
      */
     public FileResponse getFile(Long fileId) {
+        // F08.7.1 / 04 §3: 大会フォルダ配下のファイルは閲覧認可を通す。
+        folderScopeAccessGuard.checkFolderViewByFileId(fileId, SecurityUtils.getCurrentUserIdOrNull());
+        SharedFileEntity entity = findFileOrThrow(fileId);
+        return fileSharingMapper.toFileResponse(entity);
+    }
+
+    /**
+     * 共有リンク経由でファイル詳細を取得する（フォルダスコープ認可を <b>通さない</b>内部用）。
+     *
+     * <p>共有リンクはトークン自体が capability（所持と任意のパスワードで閲覧可）であり、
+     * 正当に発行されたリンクからの取得はフォルダスコープ認可の対象外とする。
+     * {@link SharedFileLinkService#accessLink} からのみ呼ぶこと。</p>
+     *
+     * @param fileId ファイル ID
+     * @return ファイルレスポンス
+     */
+    public FileResponse getFileForSharedLink(Long fileId) {
         SharedFileEntity entity = findFileOrThrow(fileId);
         return fileSharingMapper.toFileResponse(entity);
     }
@@ -142,6 +174,8 @@ public class SharedFileService {
      */
     @Transactional
     public FileResponse createFile(Long userId, CreateFileRequest request) {
+        // F08.7.1 / 04 §5: 大会フォルダはアップロード認可を通す。
+        folderScopeAccessGuard.checkFolderPostByFolderId(request.getFolderId(), userId);
         // F13 Phase 4-ε: クォータ事前チェック
         SharedFolderEntity folder = folderService.findFolderOrThrow(request.getFolderId());
         long fileSize = request.getFileSize() != null ? request.getFileSize() : 0L;
@@ -186,6 +220,13 @@ public class SharedFileService {
      */
     @Transactional
     public FileResponse updateFile(Long fileId, UpdateFileRequest request) {
+        // F08.7.1 / 04 §5: 大会フォルダ配下のファイル更新は編集認可を通す。
+        Long actorId = SecurityUtils.getCurrentUserIdOrNull();
+        folderScopeAccessGuard.checkFolderPostByFileId(fileId, actorId);
+        // 別フォルダへ移動する場合は移動先フォルダの投稿認可も通す（大会フォルダへの持ち込み防止）。
+        if (request.getFolderId() != null) {
+            folderScopeAccessGuard.checkFolderPostByFolderId(request.getFolderId(), actorId);
+        }
         SharedFileEntity entity = findFileOrThrow(fileId);
 
         if (request.getName() != null) {
@@ -215,6 +256,8 @@ public class SharedFileService {
      */
     @Transactional
     public void deleteFile(Long fileId, Long actorId) {
+        // F08.7.1 / 04 §5: 大会フォルダ配下のファイル削除は編集認可を通す。
+        folderScopeAccessGuard.checkFolderPostByFileId(fileId, actorId);
         SharedFileEntity entity = findFileOrThrow(fileId);
         long fileSize = entity.getFileSize() != null ? entity.getFileSize() : 0L;
 

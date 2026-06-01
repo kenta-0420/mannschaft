@@ -9,21 +9,34 @@ package com.mannschaft.app.team.dto;
  *
  * <p>各上限値の根拠は設計書 §3.2「クエリパラメータ」を参照。</p>
  *
- * @param keyword    名称・フリガナ部分一致キーワード（最大 100 文字）
- * @param prefecture 都道府県完全一致（最大 20 文字）
- * @param city       市町村完全一致（最大 50 文字、{@code prefecture} 未指定時はサービス側で無視）
- * @param template   業種テンプレート完全一致（最大 30 文字）
+ * <h2>F22.1 市 Phase 2 足場C: 地域コードによる検索（dual-support）</h2>
+ * <p>第二陣で {@code prefectureCode}/{@code cityCode}（構造化フィルタ用キー）を追加した。
+ * {@link com.mannschaft.app.team.service.TeamSearchSpecifications} は
+ * <strong>code が指定されていれば code 一致、未指定なら従来の名称（{@code prefecture}/{@code city}）一致</strong>
+ * で絞り込む（Expand 期の後方互換＝新旧両対応）。
+ * 旧クライアント（名称送信）と新クライアント（コード送信）を同時に成立させるための過渡的仕様。</p>
+ *
+ * @param keyword        名称・フリガナ部分一致キーワード（最大 100 文字）
+ * @param prefecture     都道府県名称の完全一致（最大 20 文字。{@code prefectureCode} 未指定時のフォールバック）
+ * @param city           市町村名称の完全一致（最大 50 文字、{@code prefecture} 未指定時はサービス側で無視）
+ * @param template       業種テンプレート完全一致（最大 30 文字）
+ * @param prefectureCode 都道府県コード（JIS X 0401、2 桁。指定時は名称より優先）
+ * @param cityCode       市区町村コード（JIS X 0402、5 桁。指定時は名称より優先）
  */
 public record TeamSearchCriteria(
         String keyword,
         String prefecture,
         String city,
-        String template
+        String template,
+        String prefectureCode,
+        String cityCode
 ) {
     private static final int KEYWORD_MAX = 100;
     private static final int PREFECTURE_MAX = 20;
     private static final int CITY_MAX = 50;
     private static final int TEMPLATE_MAX = 30;
+    private static final int PREFECTURE_CODE_MAX = 2;
+    private static final int CITY_CODE_MAX = 5;
 
     public TeamSearchCriteria {
         if (keyword != null && keyword.length() > KEYWORD_MAX) {
@@ -38,5 +51,21 @@ public record TeamSearchCriteria(
         if (template != null && template.length() > TEMPLATE_MAX) {
             throw new IllegalArgumentException("template too long");
         }
+        if (prefectureCode != null && prefectureCode.length() > PREFECTURE_CODE_MAX) {
+            throw new IllegalArgumentException("prefectureCode too long");
+        }
+        if (cityCode != null && cityCode.length() > CITY_CODE_MAX) {
+            throw new IllegalArgumentException("cityCode too long");
+        }
+    }
+
+    /**
+     * 後方互換用コンストラクタ（名称ベースのみ）。
+     *
+     * <p>既存呼び出し（コードを渡さない 4 引数）を維持するためのオーバーロード。
+     * code は両方 {@code null}（名称フォールバック）となる。</p>
+     */
+    public TeamSearchCriteria(String keyword, String prefecture, String city, String template) {
+        this(keyword, prefecture, city, template, null, null);
     }
 }

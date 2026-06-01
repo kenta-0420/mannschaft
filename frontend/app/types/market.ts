@@ -154,6 +154,8 @@ export interface MarketListingsParams {
   includeRegionNone?: boolean
   page?: number
   size?: number
+  /** 表示言語（札に付随する地域名の多言語表示。未訳は BE 側で日本語フォールバック）。 */
+  lang?: string
 }
 
 // ===========================================

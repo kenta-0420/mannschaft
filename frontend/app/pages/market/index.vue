@@ -18,7 +18,7 @@ definePageMeta({
   layout: 'default',
 })
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const marketApi = useMarketApi()
 const { handleApiError } = useErrorHandler()
@@ -110,6 +110,7 @@ async function fetchListings() {
       includeRegionNone: includeRegionNone.value,
       page: currentPage.value,
       size: pageSize,
+      lang: locale.value,
     })
     listings.value = res.data
     totalRecords.value = res.meta.total
@@ -170,6 +171,12 @@ watch(searchKeyword, () => {
 
 watch(includeRegionNone, async () => {
   currentPage.value = 0
+  await fetchListings()
+})
+
+// ロケール切替時に、札の地域名表示を現在ロケールへ追従させる（都道府県/市区町村フィルタは
+// useMarketRegions 側の watch が再取得する）。
+watch(locale, async () => {
   await fetchListings()
 })
 

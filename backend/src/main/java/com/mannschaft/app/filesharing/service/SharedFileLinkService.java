@@ -1,6 +1,7 @@
 package com.mannschaft.app.filesharing.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.filesharing.FileSharingErrorCode;
 import com.mannschaft.app.filesharing.FileSharingMapper;
 import com.mannschaft.app.filesharing.dto.AccessLinkRequest;
@@ -31,6 +32,8 @@ public class SharedFileLinkService {
     private final SharedFileService fileService;
     private final FileSharingMapper fileSharingMapper;
     private final PasswordEncoder passwordEncoder;
+    /** F08.7.1 / 04: 大会フォルダ配下の共有リンク管理に対する横断認可ゲート（大会以外は no-op）。 */
+    private final FolderScopeAccessGuard folderScopeAccessGuard;
 
     /**
      * ファイルの共有リンク一覧を取得する。
@@ -39,6 +42,8 @@ public class SharedFileLinkService {
      * @return リンクレスポンスリスト
      */
     public List<LinkResponse> listLinks(Long fileId) {
+        // F08.7.1 / 04 §3: 大会フォルダ配下のファイルの共有リンク一覧は閲覧認可を通す。
+        folderScopeAccessGuard.checkFolderViewByFileId(fileId, SecurityUtils.getCurrentUserIdOrNull());
         List<SharedFileLinkEntity> links = linkRepository.findByFileIdOrderByCreatedAtDesc(fileId);
         return fileSharingMapper.toLinkResponseList(links);
     }
@@ -53,6 +58,8 @@ public class SharedFileLinkService {
      */
     @Transactional
     public LinkResponse createLink(Long fileId, Long userId, CreateLinkRequest request) {
+        // F08.7.1 / 04 §5: 大会フォルダ配下のファイルに外部共有リンクを作れるのは投稿権限者のみ。
+        folderScopeAccessGuard.checkFolderPostByFileId(fileId, userId);
         String passwordHash = null;
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             passwordHash = passwordEncoder.encode(request.getPassword());
@@ -80,6 +87,8 @@ public class SharedFileLinkService {
     public void deleteLink(Long linkId) {
         SharedFileLinkEntity entity = linkRepository.findById(linkId)
                 .orElseThrow(() -> new BusinessException(FileSharingErrorCode.LINK_NOT_FOUND));
+        // F08.7.1 / 04 §5: 大会フォルダ配下の共有リンク削除は当該ファイルの投稿権限を通す。
+        folderScopeAccessGuard.checkFolderPostByFileId(entity.getFileId(), SecurityUtils.getCurrentUserIdOrNull());
         linkRepository.delete(entity);
         log.info("共有リンク削除: linkId={}", linkId);
     }
@@ -110,6 +119,8 @@ public class SharedFileLinkService {
         entity.recordAccess();
         linkRepository.save(entity);
 
-        return fileService.getFile(entity.getFileId());
+        // 共有リンクはトークン自体が capability（正当に発行されたリンク所持者は閲覧可）。
+        // フォルダスコープ認可は通さない専用メソッドを使う（大会フォルダでも共有リンクは有効）。
+        return fileService.getFileForSharedLink(entity.getFileId());
     }
 }

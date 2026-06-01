@@ -102,6 +102,8 @@ class OrganizationTeamSearchControllerTest {
                 .bannerUrl("https://cdn/banner.png")
                 .memberCount(42L)
                 .build();
+        // F22.1: 構造化地域コードを併存返却
+        team.updateRegionCodes("13", "13113");
         Page<TeamEntity> page = new PageImpl<>(List.of(team));
         given(teamSearchService.search(eq(ORG_ID), any(TeamSearchCriteria.class), any(), any(Pageable.class)))
                 .willReturn(page);
@@ -114,6 +116,9 @@ class OrganizationTeamSearchControllerTest {
                 .andExpect(jsonPath("$.data[0].name").value("公開店舗A"))
                 .andExpect(jsonPath("$.data[0].prefecture").value("東京都"))
                 .andExpect(jsonPath("$.data[0].city").value("渋谷区"))
+                // F22.1: camelCase の地域コードが併存して返る
+                .andExpect(jsonPath("$.data[0].prefectureCode").value("13"))
+                .andExpect(jsonPath("$.data[0].cityCode").value("13113"))
                 // 抑制版には visibility / bannerUrl / supporterEnabled / memberCount は含まれない
                 .andExpect(jsonPath("$.data[0].visibility").doesNotExist())
                 .andExpect(jsonPath("$.data[0].bannerUrl").doesNotExist())
@@ -139,6 +144,8 @@ class OrganizationTeamSearchControllerTest {
                 .bannerUrl("https://cdn/banner2.png")
                 .memberCount(17L)
                 .build();
+        // F22.1: 構造化地域コード
+        team.updateRegionCodes("27", "27100");
         Page<TeamEntity> page = new PageImpl<>(List.of(team));
         given(teamSearchService.search(eq(ORG_ID), any(TeamSearchCriteria.class), eq(MEMBER_USER_ID), any(Pageable.class)))
                 .willReturn(page);
@@ -152,7 +159,10 @@ class OrganizationTeamSearchControllerTest {
                 .andExpect(jsonPath("$.data[0].visibility").value("ORGANIZATION_ONLY"))
                 .andExpect(jsonPath("$.data[0].bannerUrl").value("https://cdn/banner2.png"))
                 .andExpect(jsonPath("$.data[0].supporterEnabled").value(false))
-                .andExpect(jsonPath("$.data[0].memberCount").value(17));
+                .andExpect(jsonPath("$.data[0].memberCount").value(17))
+                // F22.1: camelCase の地域コードが併存して返る
+                .andExpect(jsonPath("$.data[0].prefectureCode").value("27"))
+                .andExpect(jsonPath("$.data[0].cityCode").value("27100"));
     }
 
     @Test
@@ -269,6 +279,8 @@ class OrganizationTeamSearchControllerTest {
                         .param("prefecture", "東京都")
                         .param("city", "渋谷区")
                         .param("template", "salon")
+                        .param("prefectureCode", "13")
+                        .param("cityCode", "13113")
                         .param("page", "2")
                         .param("size", "10")
                         .param("sort", "createdAt,desc"))
@@ -279,6 +291,31 @@ class OrganizationTeamSearchControllerTest {
         org.assertj.core.api.Assertions.assertThat(criteria.prefecture()).isEqualTo("東京都");
         org.assertj.core.api.Assertions.assertThat(criteria.city()).isEqualTo("渋谷区");
         org.assertj.core.api.Assertions.assertThat(criteria.template()).isEqualTo("salon");
+        // F22.1: 地域コードのクエリパラメータが Criteria に渡る（既存の流儀＝camelCase param 名）
+        org.assertj.core.api.Assertions.assertThat(criteria.prefectureCode()).isEqualTo("13");
+        org.assertj.core.api.Assertions.assertThat(criteria.cityCode()).isEqualTo("13113");
+    }
+
+    @Test
+    @DisplayName("GET /search code クエリのみ指定でも Criteria に code が渡る（dual-support）")
+    void search_codeOnlyPassThrough() throws Exception {
+        org.mockito.ArgumentCaptor<TeamSearchCriteria> captor =
+                org.mockito.ArgumentCaptor.forClass(TeamSearchCriteria.class);
+
+        given(teamSearchService.search(eq(ORG_ID), captor.capture(), any(), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/search", ORG_ID)
+                        .param("prefectureCode", "13")
+                        .param("cityCode", "13113"))
+                .andExpect(status().isOk());
+
+        TeamSearchCriteria criteria = captor.getValue();
+        org.assertj.core.api.Assertions.assertThat(criteria.prefectureCode()).isEqualTo("13");
+        org.assertj.core.api.Assertions.assertThat(criteria.cityCode()).isEqualTo("13113");
+        // 名称は未指定
+        org.assertj.core.api.Assertions.assertThat(criteria.prefecture()).isNull();
+        org.assertj.core.api.Assertions.assertThat(criteria.city()).isNull();
     }
 
     // ────────────────────────────────────────────────────────────

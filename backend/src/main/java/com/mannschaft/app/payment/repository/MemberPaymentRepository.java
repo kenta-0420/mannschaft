@@ -45,6 +45,25 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
                                    @Param("paymentItemId") Long paymentItemId);
 
     /**
+     * 指定チームの代表（ADMIN/DEPUTY_ADMIN）のいずれかが、当該 payment_item に対して
+     * 有効な PAID レコードを持つかを判定する（F08.7.1/07 大会参加費の未払いゲート用）。
+     *
+     * <p>大会参加費は「チーム単位の費用を代表が支払う」モデルのため、チームの支払い済み判定は
+     * 「team の ADMIN/DEPUTY_ADMIN のいずれかが払っているか」で行う。クロスドメインは ID 参照の
+     * JOIN のみ（原則1）。{@code validUntil} による grace_period / 有効期限も考慮する。</p>
+     */
+    @Query(value = "SELECT COUNT(*) > 0 FROM member_payments mp " +
+            "JOIN user_roles ur ON ur.user_id = mp.user_id AND ur.team_id = :teamId " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "WHERE mp.payment_item_id = :paymentItemId " +
+            "  AND mp.status = 'PAID' " +
+            "  AND (mp.valid_until IS NULL OR mp.valid_until >= CURRENT_DATE) " +
+            "  AND r.name IN ('ADMIN', 'DEPUTY_ADMIN')",
+            nativeQuery = true)
+    boolean existsValidPaidPaymentByTeamRepresentative(@Param("teamId") Long teamId,
+                                                       @Param("paymentItemId") Long paymentItemId);
+
+    /**
      * Stripe Checkout Session ID で支払い記録を取得する（ロック付き）。
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)

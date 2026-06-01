@@ -105,7 +105,22 @@ public enum TournamentErrorCode implements ErrorCode {
     CONTACT_SPACE_POST_FORBIDDEN("TOUR_031", "この連絡スペースへ投稿する権限がありません", Severity.WARN),
 
     /** 連絡スペースの公開設定を変更する権限がない（F08.7.1 §5・主催組織 ADMIN 限定） */
-    CONTACT_SPACE_VISIBILITY_FORBIDDEN("TOUR_032", "連絡スペースの公開設定を変更する権限がありません", Severity.WARN);
+    CONTACT_SPACE_VISIBILITY_FORBIDDEN("TOUR_032", "連絡スペースの公開設定を変更する権限がありません", Severity.WARN),
+
+    /** 大会参加費（tournament_fee）が見つからない（F08.7.1/07・IDOR 対策で 404 に統一） */
+    FEE_NOT_FOUND("TOUR_033", "大会参加費が見つかりません", Severity.WARN),
+
+    /** 大会参加費の作成・更新・削除の権限がない（F08.7.1/07 §6・主催組織 ADMIN 限定） */
+    FEE_MANAGE_FORBIDDEN("TOUR_034", "大会参加費を管理する権限がありません", Severity.WARN),
+
+    /** 大会参加費の支払い権限がない（F08.7.1/07 §6・自チーム ADMIN/DEPUTY_ADMIN 限定） */
+    FEE_PAY_FORBIDDEN("TOUR_035", "この参加費を支払う権限がありません", Severity.WARN),
+
+    /** payment_item が主催組織に属していない（F08.7.1/07 §3.1・スコープ不一致） */
+    FEE_PAYMENT_ITEM_SCOPE_MISMATCH("TOUR_036", "指定された支払い項目が主催組織に属していません", Severity.WARN),
+
+    /** 支払おうとしたチームが参加費の対象（SPECIFIC_TEAMS）に含まれていない（F08.7.1/07 §2） */
+    FEE_TEAM_NOT_TARGET("TOUR_037", "このチームは参加費の対象に含まれていません", Severity.WARN);
 
     private final String code;
     private final String message;

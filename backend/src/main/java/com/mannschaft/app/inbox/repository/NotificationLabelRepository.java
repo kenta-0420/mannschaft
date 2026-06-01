@@ -5,6 +5,7 @@ import com.mannschaft.app.inbox.entity.NotificationLabelEntity;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,6 +22,20 @@ public interface NotificationLabelRepository
      * ユーザーの現役ラベルを表示順（昇順）で取得する。
      */
     List<NotificationLabelEntity> findByUserIdOrderBySortOrderAsc(Long userId);
+
+    /**
+     * 同名ラベルが現役で存在するか（{@code @SQLRestriction} により論理削除済みは除外）。
+     * 作成・改名時の現役同名重複検証に使う（設計書 02_api_design.md §3.4）。
+     */
+    boolean existsByUserIdAndName(Long userId, String name);
+
+    /**
+     * 指定 ID 集合のラベルをまとめて取得する（一覧時のラベル名一括解決＝N+1 回避）。
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みラベルは自動脱落する
+     * （設計書 02_api_design.md §2.3 — 孤児リンクは現役ラベルのみ join される）。</p>
+     */
+    List<NotificationLabelEntity> findByIdIn(Collection<UUID> ids);
 
     /**
      * ユーザーの全ラベルを物理削除する（退会時の物理削除用）。

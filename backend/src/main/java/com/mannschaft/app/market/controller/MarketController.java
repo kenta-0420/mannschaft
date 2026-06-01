@@ -6,6 +6,7 @@ import com.mannschaft.app.market.dto.MarketListingResponse;
 import com.mannschaft.app.market.dto.MarketRegionNodeResponse;
 import com.mannschaft.app.market.dto.MarketSummaryResponse;
 import com.mannschaft.app.market.service.MarketQueryService;
+import com.mannschaft.app.matching.service.RegionTranslationService;
 import com.mannschaft.app.recruitment.dto.RecruitmentCategoryResponse;
 import com.mannschaft.app.recruitment.service.RecruitmentCategoryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,9 +14,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,6 +42,9 @@ import java.util.List;
 public class MarketController {
 
     private final MarketQueryService marketQueryService;
+
+    /** 地域名の多言語解決（{@code ?lang=} / {@code Accept-Language} の正規化に使用）。 */
+    private final RegionTranslationService regionTranslationService;
 
     /**
      * ジャンル（カテゴリ）マスタ取得用。市は実体を持たず recruitment のカテゴリマスタを共有する
@@ -69,9 +75,13 @@ public class MarketController {
             @RequestParam(required = false) String keyword,
             @RequestParam(name = "include_region_none", defaultValue = "true") boolean includeRegionNone,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String lang,
+            @RequestHeader(name = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
+        String resolvedLang = resolveLang(lang, acceptLanguage);
         Page<MarketListingResponse> result = marketQueryService.searchListings(
-                prefecture, city, categoryId, keyword, includeRegionNone, PageRequest.of(page, size));
+                prefecture, city, categoryId, keyword, includeRegionNone,
+                PageRequest.of(page, size), resolvedLang);
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -86,34 +96,63 @@ public class MarketController {
     @GetMapping("/listings/{id}")
     @Operation(summary = "市の公開札詳細",
             description = "未ログインで実行可能。visibility != PUBLIC / 不在は 404 で存在秘匿。")
-    public ResponseEntity<ApiResponse<MarketListingResponse>> getListing(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(marketQueryService.getListing(id)));
+    public ResponseEntity<ApiResponse<MarketListingResponse>> getListing(
+            @PathVariable Long id,
+            @RequestParam(required = false) String lang,
+            @RequestHeader(name = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
+        String resolvedLang = resolveLang(lang, acceptLanguage);
+        return ResponseEntity.ok(ApiResponse.of(marketQueryService.getListing(id, resolvedLang)));
     }
 
     /**
      * 地域ファサード（§3.3）。prefecture 未指定なら都道府県、指定なら配下市区町村。
      *
-     * @param prefecture 都道府県コード（任意）
-     * @return 地域ノードリスト
+     * <p>地域名は表示言語に追従する（F22.1 Phase2 E）。{@code ?lang=} を最優先し、無ければ
+     * {@code Accept-Language} ヘッダを使う。訳が無い地域（市区町村の多く）は日本語名にフォールバック。
+     * lang 未指定/ja は従来どおり日本語名。</p>
+     *
+     * @param prefecture     都道府県コード（任意）
+     * @param lang           表示言語（任意・en/zh/ko/es/de。最優先）
+     * @param acceptLanguage Accept-Language ヘッダ（lang 未指定時のフォールバック）
+     * @return 地域ノードリスト（name は解決済み）
      */
     @GetMapping("/regions")
     @Operation(summary = "市の地域一覧",
-            description = "未ログインで実行可能。prefecture 未指定で都道府県47件、指定で配下市区町村一覧。")
+            description = "未ログインで実行可能。prefecture 未指定で都道府県47件、指定で配下市区町村一覧。"
+                    + "lang / Accept-Language で地域名を多言語表示（未訳は日本語フォールバック）。")
     public ResponseEntity<ApiResponse<List<MarketRegionNodeResponse>>> getRegions(
-            @RequestParam(required = false) String prefecture) {
-        return ResponseEntity.ok(ApiResponse.of(marketQueryService.getRegions(prefecture)));
+            @RequestParam(required = false) String prefecture,
+            @RequestParam(required = false) String lang,
+            @RequestHeader(name = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
+        String resolvedLang = resolveLang(lang, acceptLanguage);
+        return ResponseEntity.ok(ApiResponse.of(marketQueryService.getRegions(prefecture, resolvedLang)));
     }
 
     /**
-     * 地域別の立っている札件数（§3.4）。
+     * 地域別の立っている札件数（§3.4）。地域名は表示言語に追従する（F22.1 Phase2 E）。
      *
-     * @return 都道府県別・市区町村別の件数サマリ
+     * @param lang           表示言語（任意・最優先）
+     * @param acceptLanguage Accept-Language ヘッダ（lang 未指定時のフォールバック）
+     * @return 都道府県別・市区町村別の件数サマリ（name は解決済み）
      */
     @GetMapping("/summary")
     @Operation(summary = "市の地域別件数",
-            description = "未ログインで実行可能。地域ノードごとの立っている札の件数（PII なし）。")
-    public ResponseEntity<ApiResponse<MarketSummaryResponse>> getSummary() {
-        return ResponseEntity.ok(ApiResponse.of(marketQueryService.getSummary()));
+            description = "未ログインで実行可能。地域ノードごとの立っている札の件数（PII なし）。"
+                    + "lang / Accept-Language で地域名を多言語表示（未訳は日本語フォールバック）。")
+    public ResponseEntity<ApiResponse<MarketSummaryResponse>> getSummary(
+            @RequestParam(required = false) String lang,
+            @RequestHeader(name = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
+        String resolvedLang = resolveLang(lang, acceptLanguage);
+        return ResponseEntity.ok(ApiResponse.of(marketQueryService.getSummary(resolvedLang)));
+    }
+
+    /**
+     * 表示言語を解決する。{@code ?lang=} を最優先し、無ければ {@code Accept-Language} を使う。
+     * いずれも対応外（ja 含む）なら null（= 日本語マスタ名にフォールバック）。
+     */
+    private String resolveLang(String lang, String acceptLanguage) {
+        String byParam = regionTranslationService.normalizeLang(lang);
+        return byParam != null ? byParam : regionTranslationService.normalizeLang(acceptLanguage);
     }
 
     /**
