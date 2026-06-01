@@ -2,6 +2,7 @@ package com.mannschaft.app.tournament.fee.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +33,15 @@ public class CreateTournamentFeeRequest {
     /** 対象ディビジョン（NULL = 大会全体）。 */
     private final Long divisionId;
 
-    /** 対象範囲。{@code "ALL_TEAMS"} / {@code "SPECIFIC_TEAMS"}。NULL は ALL_TEAMS 扱い。 */
+    /**
+     * 対象範囲。{@code "ALL_TEAMS"} / {@code "SPECIFIC_TEAMS"}。NULL は ALL_TEAMS 扱い。
+     *
+     * <p>不正値は {@link com.mannschaft.app.tournament.fee.TournamentFeeTargetScope#valueOf} で
+     * {@code IllegalArgumentException}（→ 500）を誘発するため、入力段で {@code @Pattern} により 400 に倒す。
+     * NULL はサービス側で ALL_TEAMS 扱いになるため許容する（{@code @Pattern} は NULL を検証対象外とする）。</p>
+     */
+    @Pattern(regexp = "ALL_TEAMS|SPECIFIC_TEAMS",
+            message = "targetScope は ALL_TEAMS または SPECIFIC_TEAMS のいずれかである必要があります")
     private final String targetScope;
 
     /** 支払期限（NULL = 期限なし）。 */
