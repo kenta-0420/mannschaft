@@ -4,7 +4,7 @@ import type {
   CreateRecruitmentListingRequest,
   RecruitmentCategoryResponse,
 } from '~/types/recruitment'
-import type { FriendTargetInput } from '~/types/market'
+import type { FriendTargetInput, RegionInput } from '~/types/market'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,6 +19,7 @@ const loading = ref(false)
 // F22.1 市（Market）拡張フィールド
 const marketPrefectureCode = ref<string | null>(null)
 const marketCityCode = ref<string | null>(null)
+const marketRegions = ref<RegionInput[]>([])
 const marketVisibility = ref<'PUBLIC' | 'FRIEND_TEAMS_ONLY'>('PUBLIC')
 const marketFriendTargets = ref<FriendTargetInput[]>([])
 
@@ -41,6 +42,7 @@ async function onSubmit(body: CreateRecruitmentListingRequest) {
       visibility: marketVisibility.value,
       prefectureCode: marketPrefectureCode.value,
       cityCode: marketCityCode.value,
+      regions: marketRegions.value,
       friendTargets: marketVisibility.value === 'FRIEND_TEAMS_ONLY' ? marketFriendTargets.value : [],
     }
     const result = await api.createOrgListing(orgId.value, fullBody)
@@ -68,6 +70,7 @@ onMounted(() => loadCategories())
         :scope-id="orgId"
         @update:prefecture-code="marketPrefectureCode = $event"
         @update:city-code="marketCityCode = $event"
+        @update:regions="marketRegions = $event"
         @update:visibility="marketVisibility = $event"
         @update:friend-targets="marketFriendTargets = $event"
       />

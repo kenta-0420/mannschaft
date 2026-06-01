@@ -11,7 +11,7 @@
  * 設計書: docs/features/F22.1_market/03_ui_i18n.md §2
  * API:    GET /api/v1/public/market/listings
  */
-import type { MarketListingResponse } from '~/types/market'
+import type { MarketListingRegion, MarketListingResponse } from '~/types/market'
 import type { RecruitmentCategoryResponse } from '~/types/recruitment'
 
 definePageMeta({
@@ -211,6 +211,24 @@ function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'dan
 
 function formatDeadline(iso: string): string {
   return new Date(iso).toLocaleDateString()
+}
+
+/**
+ * 複数地域募集（F22.1 Phase2 D）の表示用地域配列を返す。
+ * regions[] を優先し、空なら後方互換の単一 region をフォールバックに使う。
+ */
+function regionTags(listing: MarketListingResponse): MarketListingRegion[] {
+  if (listing.regions && listing.regions.length > 0) {
+    return listing.regions
+  }
+  return listing.region ? [listing.region] : []
+}
+
+/** 地域 1 件を「都道府県 市区町村」形式に整形する（市区町村が空なら県のみ）。 */
+function regionLabel(region: MarketListingRegion): string {
+  return region.cityName
+    ? `${region.prefectureName} ${region.cityName}`
+    : region.prefectureName
 }
 
 // =====================================================================
@@ -441,8 +459,15 @@ onMounted(async () => {
               class="text-xs"
             />
             <Tag
-              v-if="listing.region"
-              :value="`${listing.region.prefectureName} ${listing.region.cityName}`"
+              v-for="region in regionTags(listing)"
+              :key="`${region.prefectureCode}-${region.cityCode ?? ''}`"
+              :value="regionLabel(region)"
+              severity="secondary"
+              class="text-xs"
+            />
+            <Tag
+              v-if="regionTags(listing).length === 0"
+              :value="$t('market.card.regionNone')"
               severity="secondary"
               class="text-xs"
             />
