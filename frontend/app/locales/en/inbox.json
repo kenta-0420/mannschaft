@@ -79,6 +79,10 @@
       "apply": "Apply",
       "result": "{processed} processed ({skipped} skipped)",
       "cancel": "Cancel"
+    },
+    "group": {
+      "badge": "+{n} more",
+      "badgeTitle": "{n} notifications are grouped here"
     }
   }
 }

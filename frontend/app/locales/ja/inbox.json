@@ -79,6 +79,10 @@
       "apply": "実行",
       "result": "{processed}件処理（{skipped}件スキップ）",
       "cancel": "キャンセル"
+    },
+    "group": {
+      "badge": "+{n}件",
+      "badgeTitle": "{n}件の通知が畳まれています"
     }
   }
 }

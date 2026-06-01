@@ -79,6 +79,10 @@
       "apply": "Anwenden",
       "result": "{processed} verarbeitet ({skipped} übersprungen)",
       "cancel": "Abbrechen"
+    },
+    "group": {
+      "badge": "+{n} weitere",
+      "badgeTitle": "{n} Benachrichtigungen sind hier zusammengefasst"
     }
   }
 }
