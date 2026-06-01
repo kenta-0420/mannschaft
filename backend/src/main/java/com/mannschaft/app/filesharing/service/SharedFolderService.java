@@ -1,6 +1,7 @@
 package com.mannschaft.app.filesharing.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.filesharing.FileScopeType;
 import com.mannschaft.app.filesharing.FileSharingErrorCode;
 import com.mannschaft.app.filesharing.FileSharingMapper;
@@ -28,6 +29,11 @@ public class SharedFolderService {
 
     private final SharedFolderRepository folderRepository;
     private final FileSharingMapper fileSharingMapper;
+    /**
+     * F08.7.1 / 04: 大会・ディビジョンスコープのフォルダに対する横断認可ゲート。
+     * 大会以外（TEAM/ORG/PERSONAL）のスコープでは no-op（既存挙動を変えない）。
+     */
+    private final FolderScopeAccessGuard folderScopeAccessGuard;
 
     /**
      * チームのルートフォルダ一覧を取得する。
@@ -70,6 +76,8 @@ public class SharedFolderService {
      * @return フォルダレスポンスリスト
      */
     public List<FolderResponse> listChildFolders(Long folderId) {
+        // F08.7.1 / 04 §3: 大会フォルダ配下は閲覧認可を通す（親フォルダが大会スコープなら子も同スコープ）。
+        folderScopeAccessGuard.checkFolderViewByFolderId(folderId, SecurityUtils.getCurrentUserIdOrNull());
         List<SharedFolderEntity> folders = folderRepository.findByParentIdOrderByNameAsc(folderId);
         return fileSharingMapper.toFolderResponseList(folders);
     }
@@ -81,6 +89,8 @@ public class SharedFolderService {
      * @return フォルダレスポンス
      */
     public FolderResponse getFolder(Long folderId) {
+        // F08.7.1 / 04 §3: 大会フォルダは閲覧認可を通す。
+        folderScopeAccessGuard.checkFolderViewByFolderId(folderId, SecurityUtils.getCurrentUserIdOrNull());
         SharedFolderEntity entity = findFolderOrThrow(folderId);
         return fileSharingMapper.toFolderResponse(entity);
     }
@@ -262,6 +272,8 @@ public class SharedFolderService {
      */
     @Transactional
     public FolderResponse updateFolder(Long folderId, UpdateFolderRequest request) {
+        // F08.7.1 / 04 §5: 大会フォルダの更新は編集認可を通す。
+        folderScopeAccessGuard.checkFolderPostByFolderId(folderId, SecurityUtils.getCurrentUserIdOrNull());
         SharedFolderEntity entity = findFolderOrThrow(folderId);
 
         if (request.getName() != null) {
@@ -286,6 +298,8 @@ public class SharedFolderService {
      */
     @Transactional
     public void deleteFolder(Long folderId) {
+        // F08.7.1 / 04 §5: 大会フォルダの削除は編集認可を通す。
+        folderScopeAccessGuard.checkFolderPostByFolderId(folderId, SecurityUtils.getCurrentUserIdOrNull());
         SharedFolderEntity entity = findFolderOrThrow(folderId);
         entity.softDelete();
         folderRepository.save(entity);

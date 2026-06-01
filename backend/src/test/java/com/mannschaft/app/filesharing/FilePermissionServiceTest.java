@@ -6,6 +6,7 @@ import com.mannschaft.app.filesharing.dto.PermissionResponse;
 import com.mannschaft.app.filesharing.entity.FilePermissionEntity;
 import com.mannschaft.app.filesharing.repository.FilePermissionRepository;
 import com.mannschaft.app.filesharing.service.FilePermissionService;
+import com.mannschaft.app.filesharing.service.FolderScopeAccessGuard;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,9 @@ class FilePermissionServiceTest {
 
     @Mock
     private FileSharingMapper fileSharingMapper;
+
+    @Mock
+    private FolderScopeAccessGuard folderScopeAccessGuard;
 
     @InjectMocks
     private FilePermissionService filePermissionService;
