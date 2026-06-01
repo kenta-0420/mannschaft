@@ -59,6 +59,8 @@ public class DashboardWidgetService {
             Map.entry("TEAM_LATEST_POSTS", "最新投稿"),
             Map.entry("TEAM_UNREAD_THREADS", "未読スレッド数"),
             Map.entry("TEAM_MEMBER_ATTENDANCE", "メンバー出欠状況"),
+            Map.entry("TEAM_TOURNAMENT_RECORD", "大会成績"),
+            Map.entry("TEAM_DIVISION_STANDINGS", "順位表"),
             Map.entry("TEAM_BILLING", "課金サマリー"),
             Map.entry("TEAM_PAGE_VIEWS", "アクセス解析"),
             Map.entry("ORG_TEAM_LIST", "傘下チーム一覧"),
@@ -66,6 +68,7 @@ public class DashboardWidgetService {
             Map.entry("ORG_TODO", "組織TODO"),
             Map.entry("ORG_PROJECT_PROGRESS", "プロジェクト進捗"),
             Map.entry("ORG_STATS", "組織統計サマリー"),
+            Map.entry("ORG_TOURNAMENT_SUMMARY", "主催大会サマリ"),
             Map.entry("ORG_BILLING", "課金サマリー")
     );
 

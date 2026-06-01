@@ -39,6 +39,15 @@ public class SharedFolderEntity extends BaseEntity {
 
     private Long userId;
 
+    /**
+     * F08.7.1 / 04 §2.1: 大会 ID / ディビジョン ID を保持する汎用スコープ参照カラム。
+     *
+     * <p>{@code scopeType=TOURNAMENT} のとき tournaments.id、{@code TOURNAMENT_DIVISION} のとき
+     * tournament_divisions.id を保持する。既存スコープ（TEAM/ORGANIZATION/PERSONAL）では NULL。
+     * クロスドメイン FK は張らず ID 参照のみ（原則1）。</p>
+     */
+    private Long scopeRefId;
+
     private Long parentId;
 
     @Column(nullable = false, length = 255)

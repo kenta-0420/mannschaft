@@ -46,5 +46,26 @@
       "TOUR_031": "You do not have permission to post to this contact space",
       "TOUR_032": "You do not have permission to change the visibility of this contact space"
     }
+  },
+  "dashboard_widgets": {
+    "team_record_title": "Tournament Record",
+    "org_summary_title": "Hosted Tournaments",
+    "division_standings_title": "Standings",
+    "rank": "Rank",
+    "points": "Pts",
+    "win_draw_loss": "W/D/L",
+    "played": "Played",
+    "goals": "GF/GA",
+    "best_rank": "Best Rank",
+    "tournaments": "Tournaments",
+    "tournament": "Tournament",
+    "division": "Division",
+    "team": "Team",
+    "leader": "Leader",
+    "participant_count": "Teams",
+    "select_tournament": "Select tournament",
+    "empty_team_record": "No tournaments joined yet",
+    "empty_org_summary": "No tournaments hosted yet",
+    "empty_division_standings": "Not currently in any tournament"
   }
 }

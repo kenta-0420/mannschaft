@@ -135,8 +135,8 @@ class DashboardWidgetVisibilityServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: TEAM スコープ → ADMIN 限定除く 8 件のウィジェットが返る")
-        void TEAM_管理対象8件() {
+        @DisplayName("正常系: TEAM スコープ → ADMIN 限定除く 10 件のウィジェットが返る（F08.7.1 で 2 件追加）")
+        void TEAM_管理対象10件() {
             willDoNothing().given(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
             given(repository.findByScopeTypeAndScopeId(ScopeType.TEAM, TEAM_ID))
                     .willReturn(List.of());
@@ -146,7 +146,7 @@ class DashboardWidgetVisibilityServiceTest {
 
             assertThat(response.getScopeType()).isEqualTo(ScopeType.TEAM);
             assertThat(response.getScopeId()).isEqualTo(TEAM_ID);
-            assertThat(response.getWidgets()).hasSize(8);
+            assertThat(response.getWidgets()).hasSize(10);
 
             // 管理対象外（ADMIN 限定）は含まれない
             assertThat(response.getWidgets())
@@ -156,8 +156,8 @@ class DashboardWidgetVisibilityServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: ORGANIZATION スコープ → ADMIN 限定除く 5 件のウィジェットが返る")
-        void ORGANIZATION_管理対象5件() {
+        @DisplayName("正常系: ORGANIZATION スコープ → ADMIN 限定除く 6 件のウィジェットが返る（F08.7.1 で 1 件追加）")
+        void ORGANIZATION_管理対象6件() {
             willDoNothing().given(accessControlService).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
             given(repository.findByScopeTypeAndScopeId(ScopeType.ORGANIZATION, ORG_ID))
                     .willReturn(List.of());
@@ -165,7 +165,7 @@ class DashboardWidgetVisibilityServiceTest {
             WidgetVisibilityResponse response =
                     service.getSettings(USER_ID, ScopeType.ORGANIZATION, ORG_ID);
 
-            assertThat(response.getWidgets()).hasSize(5);
+            assertThat(response.getWidgets()).hasSize(6);
             assertThat(response.getWidgets())
                     .extracting(WidgetVisibilityItemDto::getWidgetKey)
                     .doesNotContain("ORG_BILLING");

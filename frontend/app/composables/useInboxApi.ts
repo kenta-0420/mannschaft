@@ -1,10 +1,17 @@
 import type {
+  CreateLabelPayload,
+  InboxBulkPayload,
+  InboxBulkResponse,
+  InboxLabel,
+  InboxLabelListResponse,
+  InboxLabelResponse,
   InboxListParams,
   InboxListResponse,
   InboxPriority,
   InboxSourceType,
   InboxSummary,
   InboxTriageResponse,
+  UpdateLabelPayload,
 } from '~/types/inbox'
 
 /**
@@ -107,6 +114,88 @@ export function useInboxApi() {
     })
   }
 
+  // ─────────────────────────────────────────────
+  // Phase 2: ラベル CRUD
+  // ─────────────────────────────────────────────
+
+  /**
+   * ユーザーのラベル一覧を取得する。
+   */
+  async function getLabels(): Promise<InboxLabelListResponse> {
+    return api<InboxLabelListResponse>('/api/v1/inbox/labels')
+  }
+
+  /**
+   * ラベルを作成する（201）。
+   */
+  async function createLabel(payload: CreateLabelPayload): Promise<InboxLabelResponse> {
+    return api<InboxLabelResponse>('/api/v1/inbox/labels', {
+      method: 'POST',
+      body: payload,
+    })
+  }
+
+  /**
+   * ラベルを更新する。
+   */
+  async function updateLabel(labelId: string, payload: UpdateLabelPayload): Promise<InboxLabelResponse> {
+    return api<InboxLabelResponse>(`/api/v1/inbox/labels/${labelId}`, {
+      method: 'PUT',
+      body: payload,
+    })
+  }
+
+  /**
+   * ラベルを削除する（204）。
+   */
+  async function deleteLabel(labelId: string): Promise<void> {
+    await api<unknown>(`/api/v1/inbox/labels/${labelId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  /**
+   * アイテムにラベルを付与する。
+   */
+  async function assignLabel(
+    labelId: string,
+    sourceType: InboxSourceType,
+    sourceId: number,
+  ): Promise<InboxLabel> {
+    return api<InboxLabel>(`/api/v1/inbox/labels/${labelId}/assign`, {
+      method: 'POST',
+      body: { sourceType, sourceId },
+    })
+  }
+
+  /**
+   * アイテムからラベルを解除する。
+   */
+  async function unassignLabel(
+    labelId: string,
+    sourceType: InboxSourceType,
+    sourceId: number,
+  ): Promise<void> {
+    await api<unknown>(`/api/v1/inbox/labels/${labelId}/assign`, {
+      method: 'DELETE',
+      body: { sourceType, sourceId },
+    })
+  }
+
+  // ─────────────────────────────────────────────
+  // Phase 2: bulk 操作
+  // ─────────────────────────────────────────────
+
+  /**
+   * 複数アイテムに対して一括操作を行う。
+   */
+  async function bulkAction(payload: InboxBulkPayload): Promise<InboxBulkResponse> {
+    return api<InboxBulkResponse>('/api/v1/inbox/bulk', {
+      method: 'POST',
+      body: payload,
+    })
+  }
+
   return {
     getInbox,
     getSummary,
@@ -114,6 +203,13 @@ export function useInboxApi() {
     unsnooze,
     archive,
     unarchive,
+    getLabels,
+    createLabel,
+    updateLabel,
+    deleteLabel,
+    assignLabel,
+    unassignLabel,
+    bulkAction,
   }
 }
 

@@ -9,6 +9,7 @@ import com.mannschaft.app.filesharing.entity.SharedFileVersionEntity;
 import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileRepository;
 import com.mannschaft.app.filesharing.repository.SharedFileVersionRepository;
+import com.mannschaft.app.filesharing.service.FolderScopeAccessGuard;
 import com.mannschaft.app.filesharing.service.SharedFileQuotaService;
 import com.mannschaft.app.filesharing.service.SharedFileService;
 import com.mannschaft.app.filesharing.service.SharedFolderService;
@@ -60,6 +61,10 @@ class SharedFileServiceTest {
     /** F13 Phase 5-a: presignUpload メソッド追加に伴い @Mock 追加（他テストへの影響なし）。 */
     @Mock
     private R2StorageService r2StorageService;
+
+    /** F08.7.1 / 04: 大会フォルダ横断認可ゲート。大会以外（TEAM 等）の本テストでは no-op。 */
+    @Mock
+    private FolderScopeAccessGuard folderScopeAccessGuard;
 
     @InjectMocks
     private SharedFileService sharedFileService;

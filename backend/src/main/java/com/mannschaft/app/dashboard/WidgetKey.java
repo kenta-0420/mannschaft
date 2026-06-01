@@ -41,8 +41,12 @@ public enum WidgetKey {
     TEAM_LATEST_POSTS(ScopeType.TEAM, true, 5),
     TEAM_UNREAD_THREADS(ScopeType.TEAM, true, 6),
     TEAM_MEMBER_ATTENDANCE(ScopeType.TEAM, true, 7),
-    TEAM_BILLING(ScopeType.TEAM, true, 8),
-    TEAM_PAGE_VIEWS(ScopeType.TEAM, false, 9),
+    /** F08.7.1: 自チーム大会成績（通算成績＋順位履歴） */
+    TEAM_TOURNAMENT_RECORD(ScopeType.TEAM, true, 8),
+    /** F08.7.1: 順位表（現在参加中ディビジョンの順位表） */
+    TEAM_DIVISION_STANDINGS(ScopeType.TEAM, true, 9),
+    TEAM_BILLING(ScopeType.TEAM, true, 10),
+    TEAM_PAGE_VIEWS(ScopeType.TEAM, false, 11),
 
     // --- 組織ダッシュボード ---
     ORG_TEAM_LIST(ScopeType.ORGANIZATION, true, 0),
@@ -50,7 +54,9 @@ public enum WidgetKey {
     ORG_TODO(ScopeType.ORGANIZATION, true, 2),
     ORG_PROJECT_PROGRESS(ScopeType.ORGANIZATION, true, 3),
     ORG_STATS(ScopeType.ORGANIZATION, true, 4),
-    ORG_BILLING(ScopeType.ORGANIZATION, true, 5);
+    /** F08.7.1: 主催大会サマリ（各大会×各部の首位・参加数・status） */
+    ORG_TOURNAMENT_SUMMARY(ScopeType.ORGANIZATION, true, 5),
+    ORG_BILLING(ScopeType.ORGANIZATION, true, 6);
 
     private final ScopeType scopeType;
     private final boolean defaultVisible;
@@ -84,6 +90,15 @@ public enum WidgetKey {
             Map.entry(CHAT_HUB, "chat"),
             Map.entry(TEAM_PROJECT_PROGRESS, "project"),
             Map.entry(TEAM_PAGE_VIEWS, "analytics")
+            // F08.7.1 大会成績ウィジェット（TEAM_TOURNAMENT_RECORD / TEAM_DIVISION_STANDINGS /
+            // ORG_TOURNAMENT_SUMMARY）はモジュール依存を登録しない。
+            // 理由（設計書 02_dashboard_widgets.md §4.1 Y-1 訂正の grep 結果）:
+            //   module_definitions（V2.024__seed_module_definitions.sql）に大会・リーグ用の
+            //   スラッグは未登録であり、F08.7 大会機能自体もモジュールスラッグで gate していない。
+            //   存在しないスラッグを登録すると ModuleService.isModuleEnabledForTeam が常に false を返し、
+            //   ウィジェットが全団体で永久に非表示になる（機能不全）。
+            //   よって F08.7 本体の運用と整合させ、ここではモジュール依存を付与しない。
+            //   将来、大会・リーグを選択式モジュールとして正式にシードした際に、本マップへ追加する。
     );
 
     /**

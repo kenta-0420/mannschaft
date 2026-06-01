@@ -42,6 +42,15 @@ public class DivisionService {
      *       将来は DivisionCreatedEvent によるイベント駆動化候補。
      */
     private final TournamentContactSpaceProvisioningService contactSpaceProvisioningService;
+    /**
+     * F08.7.1 / 04 ファイル置き場: ディビジョン作成時にデフォルトフォルダ（「規約」）を自動付帯する。
+     * TODO: tournament ドメインから filesharing ドメインを直接呼ぶ越境（原則5）。
+     *       将来は DivisionCreatedEvent によるイベント駆動化候補。
+     */
+    private final com.mannschaft.app.filesharing.service.SharedFolderService sharedFolderService;
+
+    /** F08.7.1 / 04: ディビジョンスコープのデフォルトフォルダ名。 */
+    private static final String DEFAULT_DIVISION_FOLDER = "規約";
 
     // ===== Division =====
 
@@ -67,11 +76,20 @@ public class DivisionService {
         TournamentDivisionEntity saved = divisionRepository.save(division);
 
         // F08.7.1: ディビジョンの連絡スペース（掲示板＋チャット）を自動付帯（要件④）
-        String tournamentName = tournamentRepository.findById(tournamentId)
-                .map(TournamentEntity::getName)
-                .orElse("大会");
+        TournamentEntity tournament = tournamentRepository.findById(tournamentId).orElse(null);
+        String tournamentName = tournament != null ? tournament.getName() : "大会";
         contactSpaceProvisioningService.provisionForDivision(
                 saved.getId(), tournamentName + " " + saved.getName() + " 連絡");
+
+        // F08.7.1 / 04: ディビジョンのデフォルトフォルダ「規約」を自動付帯（冪等・§4）。
+        // クォータ帰属は主催組織（organization_id）に集約（§6）。
+        if (tournament != null) {
+            sharedFolderService.provisionDefaultFolder(
+                    com.mannschaft.app.filesharing.FileScopeType.TOURNAMENT_DIVISION,
+                    tournament.getOrganizationId(), saved.getId(),
+                    com.mannschaft.app.common.SecurityUtils.getCurrentUserIdOrNull(),
+                    DEFAULT_DIVISION_FOLDER);
+        }
 
         return mapper.toDivisionResponse(saved);
     }
