@@ -43,6 +43,34 @@
       "inbox": "收件箱",
       "snoozed": "稍后处理",
       "archived": "归档"
+    },
+    "label": {
+      "title": "标签",
+      "create": "创建标签",
+      "edit": "编辑标签",
+      "delete": "删除标签",
+      "manage": "管理标签",
+      "namePlaceholder": "标签名称",
+      "colorLabel": "颜色",
+      "iconLabel": "图标（可选）",
+      "limitReached": "最多可创建20个标签",
+      "duplicate": "同名标签已存在",
+      "perItemLimit": "每条通知最多可附加10个标签",
+      "empty": "没有标签",
+      "filterTitle": "按标签筛选",
+      "assigned": "标签已附加",
+      "removed": "移除标签"
+    },
+    "bulk": {
+      "selectMode": "多选",
+      "exit": "退出选择",
+      "selected": "已选 {count} 条",
+      "archive": "归档",
+      "snooze": "稍后处理",
+      "addLabel": "添加标签",
+      "apply": "执行",
+      "result": "已处理 {processed} 条（跳过 {skipped} 条）",
+      "cancel": "取消"
     }
   }
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useInboxStore } from '~/stores/useInboxStore'
-import type { InboxItem, InboxListResponse, InboxTriageResponse } from '~/types/inbox'
+import type { InboxItem, InboxLabel, InboxListResponse, InboxTriageResponse } from '~/types/inbox'
 
 /**
  * F04.11 useInboxStore のユニットテスト。
@@ -19,6 +19,14 @@ const apiMock = {
   unsnooze: vi.fn(),
   archive: vi.fn(),
   unarchive: vi.fn(),
+  // Phase 2
+  getLabels: vi.fn(),
+  createLabel: vi.fn(),
+  updateLabel: vi.fn(),
+  deleteLabel: vi.fn(),
+  assignLabel: vi.fn(),
+  unassignLabel: vi.fn(),
+  bulkAction: vi.fn(),
 }
 
 vi.mock('~/composables/useInboxApi', () => ({
@@ -49,6 +57,17 @@ function makeItem(overrides: Partial<InboxItem> = {}): InboxItem {
     state: 'UNREAD',
     snoozedUntil: null,
     labels: [],
+    ...overrides,
+  }
+}
+
+function makeLabel(overrides: Partial<InboxLabel> = {}): InboxLabel {
+  return {
+    id: 'label-1',
+    name: 'テストラベル',
+    color: '#6366f1',
+    icon: null,
+    sortOrder: 0,
     ...overrides,
   }
 }
@@ -317,6 +336,256 @@ describe('useInboxStore', () => {
       store.currentTab = 'INBOX'
       await store.switchTab('INBOX')
       expect(apiMock.getInbox).not.toHaveBeenCalled()
+    })
+  })
+
+  // ──────────────────────────────────────────────
+  // Phase 2: setLabelFilter
+  // ──────────────────────────────────────────────
+
+  describe('setLabelFilter', () => {
+    it('ラベルフィルタをセットして fetchInbox が呼ばれる', async () => {
+      apiMock.getInbox.mockResolvedValue(makeListResponse([]))
+      const store = useInboxStore()
+
+      await store.setLabelFilter('label-1')
+
+      expect(store.labelFilter).toBe('label-1')
+      expect(apiMock.getInbox).toHaveBeenCalledTimes(1)
+    })
+
+    it('null に設定するとフィルタが解除される', async () => {
+      apiMock.getInbox.mockResolvedValue(makeListResponse([]))
+      const store = useInboxStore()
+      store.labelFilter = 'label-1'
+
+      await store.setLabelFilter(null)
+
+      expect(store.labelFilter).toBeNull()
+    })
+  })
+
+  // ──────────────────────────────────────────────
+  // Phase 2: ラベル CRUD
+  // ──────────────────────────────────────────────
+
+  describe('fetchLabels', () => {
+    it('正常系: ラベル一覧がストアに格納される', async () => {
+      const labels = [makeLabel(), makeLabel({ id: 'label-2', name: 'ラベル2' })]
+      apiMock.getLabels.mockResolvedValueOnce({ data: labels })
+      const store = useInboxStore()
+
+      await store.fetchLabels()
+
+      expect(store.labels).toHaveLength(2)
+      expect(store.labelsLoading).toBe(false)
+    })
+
+    it('異常系: API 失敗で error が設定される', async () => {
+      apiMock.getLabels.mockRejectedValueOnce({ status: 500 })
+      const store = useInboxStore()
+
+      await store.fetchLabels()
+
+      expect(store.labels).toHaveLength(0)
+      expect(store.error).toBe('common.error.unknown')
+    })
+  })
+
+  describe('createLabel', () => {
+    it('正常系: ラベルが labels に追加される', async () => {
+      const label = makeLabel()
+      apiMock.createLabel.mockResolvedValueOnce({ data: label })
+      const store = useInboxStore()
+
+      const result = await store.createLabel({ name: 'テストラベル', color: '#6366f1' })
+
+      expect(result).toEqual(label)
+      expect(store.labels).toHaveLength(1)
+      expect(store.labels[0]).toEqual(label)
+    })
+
+    it('異常系: API 失敗で null を返す', async () => {
+      apiMock.createLabel.mockRejectedValueOnce({ status: 422 })
+      const store = useInboxStore()
+
+      const result = await store.createLabel({ name: 'テスト' })
+
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('deleteLabel', () => {
+    it('正常系: 楽観削除後 API 成功で labels から除去される', async () => {
+      const label = makeLabel()
+      apiMock.deleteLabel.mockResolvedValueOnce(undefined)
+      const store = useInboxStore()
+      store.labels = [label]
+
+      const ok = await store.deleteLabel(label.id)
+
+      expect(ok).toBe(true)
+      expect(store.labels).toHaveLength(0)
+    })
+
+    it('異常系: API 失敗で labels がロールバックされる', async () => {
+      const label = makeLabel()
+      apiMock.deleteLabel.mockRejectedValueOnce({ status: 500 })
+      const store = useInboxStore()
+      store.labels = [label]
+
+      const ok = await store.deleteLabel(label.id)
+
+      expect(ok).toBe(false)
+      // ロールバックで元に戻る
+      expect(store.labels).toHaveLength(1)
+      expect(store.labels[0]?.id).toBe(label.id)
+    })
+  })
+
+  // ──────────────────────────────────────────────
+  // Phase 2: ラベル付与/解除（楽観更新）
+  // ──────────────────────────────────────────────
+
+  describe('assignLabel', () => {
+    it('正常系: item.labels に楽観追加される', async () => {
+      const item = makeItem()
+      const label = makeLabel()
+      apiMock.getInbox.mockResolvedValueOnce(makeListResponse([item]))
+      apiMock.assignLabel.mockResolvedValueOnce(label)
+      const store = useInboxStore()
+      await store.fetchInbox()
+      store.labels = [label]
+
+      const ok = await store.assignLabel('NOTIFICATION', 1, label.id)
+
+      expect(ok).toBe(true)
+      expect(store.items[0]?.labels).toHaveLength(1)
+      expect(store.items[0]?.labels[0]?.id).toBe(label.id)
+    })
+
+    it('異常系: API 失敗で item.labels がロールバックされる', async () => {
+      const item = makeItem()
+      const label = makeLabel()
+      apiMock.getInbox.mockResolvedValueOnce(makeListResponse([item]))
+      apiMock.assignLabel.mockRejectedValueOnce({ status: 422 })
+      const store = useInboxStore()
+      await store.fetchInbox()
+      store.labels = [label]
+
+      const ok = await store.assignLabel('NOTIFICATION', 1, label.id)
+
+      expect(ok).toBe(false)
+      // ロールバックで空に戻る
+      expect(store.items[0]?.labels).toHaveLength(0)
+    })
+  })
+
+  describe('unassignLabel', () => {
+    it('正常系: item.labels からラベルが楽観削除される', async () => {
+      const label = makeLabel()
+      const item = makeItem({ labels: [label] })
+      apiMock.getInbox.mockResolvedValueOnce(makeListResponse([item]))
+      apiMock.unassignLabel.mockResolvedValueOnce(undefined)
+      const store = useInboxStore()
+      await store.fetchInbox()
+
+      const ok = await store.unassignLabel('NOTIFICATION', 1, label.id)
+
+      expect(ok).toBe(true)
+      expect(store.items[0]?.labels).toHaveLength(0)
+    })
+
+    it('異常系: API 失敗で item.labels がロールバックされる', async () => {
+      const label = makeLabel()
+      const item = makeItem({ labels: [label] })
+      apiMock.getInbox.mockResolvedValueOnce(makeListResponse([item]))
+      apiMock.unassignLabel.mockRejectedValueOnce({ status: 404 })
+      const store = useInboxStore()
+      await store.fetchInbox()
+
+      const ok = await store.unassignLabel('NOTIFICATION', 1, label.id)
+
+      expect(ok).toBe(false)
+      // ロールバックでラベルが元に戻る
+      expect(store.items[0]?.labels).toHaveLength(1)
+    })
+  })
+
+  // ──────────────────────────────────────────────
+  // Phase 2: bulk 選択モード
+  // ──────────────────────────────────────────────
+
+  describe('toggleSelectionMode', () => {
+    it('ON/OFF が切り替わる', () => {
+      const store = useInboxStore()
+      expect(store.selectionMode).toBe(false)
+
+      store.toggleSelectionMode()
+      expect(store.selectionMode).toBe(true)
+
+      store.toggleSelectionMode()
+      expect(store.selectionMode).toBe(false)
+    })
+
+    it('モード終了時に selectedKeys がクリアされる', () => {
+      const store = useInboxStore()
+      store.selectionMode = true
+      store.selectedKeys = new Set(['NOTIFICATION:1'])
+
+      store.toggleSelectionMode()
+
+      expect(store.selectedKeys.size).toBe(0)
+    })
+  })
+
+  describe('toggleSelect', () => {
+    it('未選択キーを追加できる', () => {
+      const store = useInboxStore()
+      store.toggleSelect('NOTIFICATION:1')
+      expect(store.selectedKeys.has('NOTIFICATION:1')).toBe(true)
+    })
+
+    it('選択済みキーを削除できる', () => {
+      const store = useInboxStore()
+      store.selectedKeys = new Set(['NOTIFICATION:1'])
+      store.toggleSelect('NOTIFICATION:1')
+      expect(store.selectedKeys.has('NOTIFICATION:1')).toBe(false)
+    })
+  })
+
+  describe('runBulk', () => {
+    it('正常系: bulk API を呼び結果を返す', async () => {
+      apiMock.getInbox.mockResolvedValue(makeListResponse([]))
+      apiMock.bulkAction.mockResolvedValueOnce({ data: { processed: 2, skipped: 0 } })
+      const store = useInboxStore()
+      store.selectedKeys = new Set(['NOTIFICATION:1', 'NOTIFICATION:2'])
+
+      const result = await store.runBulk('ARCHIVE')
+
+      expect(result).toEqual({ processed: 2, skipped: 0 })
+      expect(store.selectedKeys.size).toBe(0)
+      expect(apiMock.bulkAction).toHaveBeenCalledTimes(1)
+    })
+
+    it('選択なしのとき null を返し API を呼ばない', async () => {
+      const store = useInboxStore()
+
+      const result = await store.runBulk('ARCHIVE')
+
+      expect(result).toBeNull()
+      expect(apiMock.bulkAction).not.toHaveBeenCalled()
+    })
+
+    it('異常系: API 失敗で null を返す', async () => {
+      apiMock.bulkAction.mockRejectedValueOnce({ status: 500 })
+      const store = useInboxStore()
+      store.selectedKeys = new Set(['NOTIFICATION:1'])
+
+      const result = await store.runBulk('ARCHIVE')
+
+      expect(result).toBeNull()
+      expect(store.error).toBe('common.error.unknown')
     })
   })
 })

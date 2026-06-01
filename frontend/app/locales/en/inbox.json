@@ -43,6 +43,34 @@
       "inbox": "Inbox",
       "snoozed": "Snoozed",
       "archived": "Archive"
+    },
+    "label": {
+      "title": "Labels",
+      "create": "Create Label",
+      "edit": "Edit Label",
+      "delete": "Delete Label",
+      "manage": "Manage Labels",
+      "namePlaceholder": "Label name",
+      "colorLabel": "Color",
+      "iconLabel": "Icon (optional)",
+      "limitReached": "You can create up to 20 labels",
+      "duplicate": "A label with the same name already exists",
+      "perItemLimit": "You can assign up to 10 labels per notification",
+      "empty": "No labels",
+      "filterTitle": "Filter by label",
+      "assigned": "Label assigned",
+      "removed": "Remove label"
+    },
+    "bulk": {
+      "selectMode": "Select multiple",
+      "exit": "Exit selection",
+      "selected": "{count} selected",
+      "archive": "Archive",
+      "snooze": "Snooze",
+      "addLabel": "Add label",
+      "apply": "Apply",
+      "result": "{processed} processed ({skipped} skipped)",
+      "cancel": "Cancel"
     }
   }
 }

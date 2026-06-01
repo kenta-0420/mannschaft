@@ -43,6 +43,34 @@
       "inbox": "Bandeja de entrada",
       "snoozed": "Pospuestos",
       "archived": "Archivados"
+    },
+    "label": {
+      "title": "Etiquetas",
+      "create": "Crear etiqueta",
+      "edit": "Editar etiqueta",
+      "delete": "Eliminar etiqueta",
+      "manage": "Gestionar etiquetas",
+      "namePlaceholder": "Nombre de etiqueta",
+      "colorLabel": "Color",
+      "iconLabel": "Icono (opcional)",
+      "limitReached": "Puedes crear hasta 20 etiquetas",
+      "duplicate": "Ya existe una etiqueta con el mismo nombre",
+      "perItemLimit": "Puedes asignar hasta 10 etiquetas por notificación",
+      "empty": "No hay etiquetas",
+      "filterTitle": "Filtrar por etiqueta",
+      "assigned": "Etiqueta asignada",
+      "removed": "Quitar etiqueta"
+    },
+    "bulk": {
+      "selectMode": "Selección múltiple",
+      "exit": "Salir de la selección",
+      "selected": "{count} seleccionados",
+      "archive": "Archivar",
+      "snooze": "Posponer",
+      "addLabel": "Agregar etiqueta",
+      "apply": "Aplicar",
+      "result": "{processed} procesados ({skipped} omitidos)",
+      "cancel": "Cancelar"
     }
   }
 }

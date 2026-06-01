@@ -43,6 +43,34 @@
       "inbox": "Posteingang",
       "snoozed": "Zurückgestellt",
       "archived": "Archiv"
+    },
+    "label": {
+      "title": "Etiketten",
+      "create": "Etikett erstellen",
+      "edit": "Etikett bearbeiten",
+      "delete": "Etikett löschen",
+      "manage": "Etiketten verwalten",
+      "namePlaceholder": "Etikettenname",
+      "colorLabel": "Farbe",
+      "iconLabel": "Symbol (optional)",
+      "limitReached": "Sie können bis zu 20 Etiketten erstellen",
+      "duplicate": "Ein Etikett mit demselben Namen existiert bereits",
+      "perItemLimit": "Sie können bis zu 10 Etiketten pro Benachrichtigung zuweisen",
+      "empty": "Keine Etiketten",
+      "filterTitle": "Nach Etikett filtern",
+      "assigned": "Etikett zugewiesen",
+      "removed": "Etikett entfernen"
+    },
+    "bulk": {
+      "selectMode": "Mehrfachauswahl",
+      "exit": "Auswahl beenden",
+      "selected": "{count} ausgewählt",
+      "archive": "Archivieren",
+      "snooze": "Zurückstellen",
+      "addLabel": "Etikett hinzufügen",
+      "apply": "Anwenden",
+      "result": "{processed} verarbeitet ({skipped} übersprungen)",
+      "cancel": "Abbrechen"
     }
   }
 }
