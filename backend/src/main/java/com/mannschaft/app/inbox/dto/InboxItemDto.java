@@ -24,6 +24,12 @@ import java.util.List;
  * @param state        状態（オーバーレイ＋ソース既読のマージ結果）
  * @param snoozedUntil スヌーズ解除予定（null 可）
  * @param labels       付与ラベル一覧
+ * @param canonicalRef 名寄せ用の正規化済み終端実体キー（Phase 3 ①）。
+ *                     正規化成功時は {@code "BLOG_POST:123"} のような {@code "{ReferenceType}:{terminalId}"}、
+ *                     正規化不能時は自分自身 {@code "{sourceType}:{sourceId}"}（＝誤って畳まれない・設計書 §8）。
+ * @param groupCount   名寄せで畳まれた構成メンバー件数（単一は 1）。FE の「N 件」バッジ用。
+ * @param groupMembers 畳まれた全構成メンバーの参照（単一は自分自身 1 件）。FE が Phase 2 bulk triage で
+ *                     各メンバーへ一括適用するための公開データ（「片方だけ既読/アーカイブ」防止・設計書 §8）。
  */
 public record InboxItemDto(
         String id,
@@ -37,7 +43,10 @@ public record InboxItemDto(
         LocalDateTime occurredAt,
         InboxState state,
         LocalDateTime snoozedUntil,
-        List<LabelDto> labels
+        List<LabelDto> labels,
+        String canonicalRef,
+        int groupCount,
+        List<InboxItemRef> groupMembers
 ) {
 
     /**

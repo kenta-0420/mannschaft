@@ -5,6 +5,7 @@ import com.mannschaft.app.inbox.InboxPriority;
 import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.InboxState;
 import com.mannschaft.app.inbox.dto.InboxItemDto;
+import com.mannschaft.app.inbox.dto.InboxItemRef;
 import com.mannschaft.app.inbox.service.InboxPriorityNormalizer;
 import com.mannschaft.app.inbox.service.InboxPriorityNormalizer.NormalizationContext;
 import com.mannschaft.app.inbox.service.InboxSourceAdapter;
@@ -92,8 +93,11 @@ public class TodoDueInboxAdapter implements InboxSourceAdapter {
                 t.getScopeId(),
                 null);
 
+        // 名寄せ（Phase 3 ①）：TODO は固有実体（畳む相手がいない）＝常に自分自身キー。
+        String selfKey = InboxSourceType.TODO_DUE.name() + ":" + t.getId();
+
         return new InboxItemDto(
-                InboxSourceType.TODO_DUE.name() + ":" + t.getId(),
+                selfKey,
                 InboxSourceType.TODO_DUE,
                 t.getId(),
                 t.getTitle(),
@@ -104,7 +108,10 @@ public class TodoDueInboxAdapter implements InboxSourceAdapter {
                 occurredAt,
                 InboxState.UNREAD,
                 null,
-                List.of());
+                List.of(),
+                selfKey,
+                1,
+                List.of(new InboxItemRef(InboxSourceType.TODO_DUE, t.getId())));
     }
 
     /** 現在のユーザー TZ で正規化コンテキストを構築する（未セット時は UTC）。 */

@@ -43,7 +43,8 @@ class NotificationInboxAdapterTest {
     private final InboxPriorityNormalizer normalizer = new InboxPriorityNormalizer();
 
     private final NotificationInboxAdapter adapter =
-            new NotificationInboxAdapter(notificationRepository, normalizer);
+            new NotificationInboxAdapter(notificationRepository, normalizer,
+                    new com.mannschaft.app.inbox.service.InboxDedupeKeyResolver());
 
     private NotificationEntity notification(Long id, String title) {
         return NotificationEntity.builder()

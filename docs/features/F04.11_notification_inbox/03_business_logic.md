@@ -1,7 +1,7 @@
 # F04.11: ビジネスロジック
 
 > **ステータス**: 🟢 設計確定（完了・未解決事項ゼロ）
-> **最終更新**: 2026-05-30
+> **最終更新**: 2026-06-01
 > **関連ドキュメント**:
 > - [README.md](./README.md) — 機能概要・A/B 案比較
 > - [01_data_model.md](./01_data_model.md) — DB / DTO
@@ -142,12 +142,35 @@ push 基盤（`NotificationDispatchService.dispatch` → WebSocket `/user/{userI
 
 ---
 
-## 8. 名寄せ（重複）方針
+## 8. 名寄せ（重複）方針 — Phase 3 ① 実装済み
 
-同一事象が複数ソースに現れる場合（例: 同じブログ記事が announcement と notification 両方）：
+同一終端実体が複数ソースに現れる場合（例: 同じブログ記事が announcement と notification 両方）に、1 カードへ畳んで「N 件」とバッジ表示する。誤突合は ADHD ユーザーを最も混乱させる最高リスク領域のため、**「正規化に成功し、かつ終端実体キーが一致するときに限り畳む」**ことを厳守する。
 
-- **MVP は名寄せしない**（各行を素直に並べる）。ソース間で sourceType/targetType の語彙が不一致（VARCHAR vs enum vs targetType）で、安易な突合は「片方だけ既読/アーカイブ」になり ADHD ユーザーを混乱させるため。
-- **Phase 3** で正規化辞書 `InboxDedupeKeyResolver`（`BLOG_POST` 等の終端 EntityKey へ正規化）を導入し、同一 EntityKey を 1 カードに畳んで「2 件の通知」とバッジ表示する（[04](./04_security_operations.md) §8 に将来課題として記録）。
+### 8.1 正規化キー解決（`InboxDedupeKeyResolver`）
+
+各ソース通知が指す**終端実体**を `canonicalRef`（文字列 `"{ReferenceType}:{terminalId}"`）へ正規化する。正規化辞書は既存の `NotificationSourceTypeMapper.resolve(String) → Optional<ReferenceType>` を流用する（語彙の二重管理を避ける）。
+
+| ソース | 終端実体の取り方 | canonicalRef |
+|---|---|---|
+| NOTIFICATION | `notifications.sourceType`（VARCHAR）+ `sourceId` を正規化 | 成功時 `"BLOG_POST:123"` 等／不能時は自分自身 `"NOTIFICATION:{id}"` |
+| ANNOUNCEMENT | `announcement_feeds.sourceType`（enum `AnnouncementSourceType`）+ `sourceId` を正規化（**feed は終端 sourceType+sourceId を保持する**） | 成功時 `"BLOG_POST:123"` 等／不能時は `"ANNOUNCEMENT_FEED:{feedId}"`（畳まれない） |
+| MENTION | `mentions.targetType`（VARCHAR）+ `targetId` を正規化 | 成功時 `"TIMELINE_POST:42"` 等／不能時（`TIMELINE_COMMENT` 等 ReferenceType 未マッピング語）は自分自身 `"MENTION:{id}"` |
+| TODO_DUE | 固有実体（畳む相手なし） | 常に自分自身 `"TODO_DUE:{id}"` |
+| CONFIRMABLE | 固有実体（畳む相手なし） | 常に自分自身 `"CONFIRMABLE:{recipientId}"` |
+
+**誤突合の安全弁**: `terminalId` が null、または `sourceType` が `ReferenceType` に未マッピングの場合は正規化不能（`Optional.empty()`）とし、各アダプタが**自分自身キー**（当該項目に固有・他項目と決して衝突しない値）を `canonicalRef` に詰める。よって正規化不能な項目は決して他項目と同一グループにならない。
+
+### 8.2 畳み込み（`InboxAggregationService.foldByCanonicalRef`）
+
+`collectMergedItems` の後段で `canonicalRef` でグルーピングし、**2 件以上のグループのみ** 1 代表へ畳む（単一はアダプタ既定 `groupCount=1`・`groupMembers` 自分 1 件のまま）。
+
+- **代表**: グループ内で `ITEM_ORDER` 最上位（priority 最優先 → 新着）。
+- **`groupCount`**（`InboxItemDto.groupCount`・int）: 構成メンバー件数。FE の「N 件」バッジ用。
+- **`groupMembers`**（`List<InboxItemRef{sourceType, sourceId}>`）: 全構成メンバーの `(sourceType, sourceId)` を公開。FE は **Phase 2 の bulk triage API** で各メンバーへ一括適用し「片方だけ既読/アーカイブ」を防ぐ（BE triage API は単一のまま＝今回はデータ公開のみ）。
+- **state**: 構成メンバーの最も未処理側（UNREAD > READ > SNOOZED > ARCHIVED の優先順）。
+- **labels**: 全メンバーのラベル和集合（`labelId` で重複排除）。
+
+`InboxItemDto` に `canonicalRef`（String）・`groupCount`（int）・`groupMembers`（List<InboxItemRef>）の 3 フィールドを追加した。`InboxItemRef` は新規小 record（`{InboxSourceType sourceType, Long sourceId}`）。`sourceId` は各ソースのチャネル行 PK（triage オーバーレイ `inbox_item_states` のキー）であり終端実体 ID ではない点に注意。
 
 ---
 

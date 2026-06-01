@@ -65,7 +65,8 @@ class AnnouncementInboxAdapterTest {
 
     private final AnnouncementInboxAdapter adapter = new AnnouncementInboxAdapter(
             userRoleRepository, roleResolver, feedQueryRepository, feedRepository,
-            readStatusRepository, normalizer);
+            readStatusRepository, normalizer,
+            new com.mannschaft.app.inbox.service.InboxDedupeKeyResolver());
 
     private UserRoleEntity teamRole(Long teamId) {
         return UserRoleEntity.builder().userId(USER_ID).roleId(1L).teamId(teamId).build();

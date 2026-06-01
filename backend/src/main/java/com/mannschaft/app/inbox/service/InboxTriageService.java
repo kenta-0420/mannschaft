@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.InboxState;
 import com.mannschaft.app.inbox.dto.InboxItemDto;
+import com.mannschaft.app.inbox.dto.InboxItemRef;
 import com.mannschaft.app.inbox.entity.InboxItemStateEntity;
 import com.mannschaft.app.inbox.error.InboxErrorCode;
 import com.mannschaft.app.inbox.repository.InboxItemStateRepository;
@@ -147,13 +148,19 @@ public class InboxTriageService {
         } else {
             state = InboxState.UNREAD;
         }
+        // triage の軽量 DTO は単一項目の状態確定反映専用。名寄せ畳み込みは集約経路でのみ行うため、
+        // canonicalRef は自分自身キー・groupCount=1・groupMembers は自分 1 件とする（畳まれない）。
+        String selfKey = row.getSourceType().name() + ":" + row.getSourceId();
         return new InboxItemDto(
-                row.getSourceType().name() + ":" + row.getSourceId(),
+                selfKey,
                 row.getSourceType(),
                 row.getSourceId(),
                 null, null, null, null, null, null,
                 state,
                 row.getSnoozedUntil(),
-                List.of());
+                List.of(),
+                selfKey,
+                1,
+                List.of(new InboxItemRef(row.getSourceType(), row.getSourceId())));
     }
 }

@@ -40,7 +40,8 @@ class MentionInboxAdapterTest {
     private final InboxPriorityNormalizer normalizer = new InboxPriorityNormalizer();
 
     private final MentionInboxAdapter adapter =
-            new MentionInboxAdapter(mentionRepository, normalizer);
+            new MentionInboxAdapter(mentionRepository, normalizer,
+                    new com.mannschaft.app.inbox.service.InboxDedupeKeyResolver());
 
     /** メンションエンティティを組み立てるヘルパー。 */
     private MentionEntity mention(Long id, Long mentionedUserId, String targetType, Long targetId,

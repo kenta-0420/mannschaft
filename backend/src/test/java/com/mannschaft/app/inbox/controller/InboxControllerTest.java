@@ -120,7 +120,10 @@ class InboxControllerTest {
         return new InboxItemDto(
                 "NOTIFICATION:123", InboxSourceType.NOTIFICATION, 123L, "タイトル", "抜粋",
                 InboxPriority.HIGH, null, "/x/123",
-                LocalDateTime.of(2026, 5, 31, 9, 0), InboxState.UNREAD, null, List.of());
+                LocalDateTime.of(2026, 5, 31, 9, 0), InboxState.UNREAD, null, List.of(),
+                "NOTIFICATION:123", 1,
+                List.of(new com.mannschaft.app.inbox.dto.InboxItemRef(
+                        InboxSourceType.NOTIFICATION, 123L)));
     }
 
     // ─────────────────────────────────────────────────────────────────
