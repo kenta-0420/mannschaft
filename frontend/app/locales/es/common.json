@@ -1461,7 +1461,16 @@
     "mapEmbedUrlWarning": "⚠️ Esta URL es visible para usuarios no autenticados",
     "mapEmbedUrlHelp": "En Google Maps, haz clic en \"Compartir > Insertar mapa > Copiar HTML\" y pega la URL de src= aquí",
     "mapEmbedUrlInvalidFormat": "Debe ser una URL de inserción de Google Maps (https://www.google.com/maps/embed?...)",
-    "mapEmbedUrlSaved": "URL del mapa de la tienda guardada"
+    "mapEmbedUrlSaved": "URL del mapa de la tienda guardada",
+    "regionCode": {
+      "label": "Ubicación (prefectura / municipio)",
+      "help": "Al seleccionar una prefectura y un municipio se establecen los valores predeterminados para la búsqueda regional y las publicaciones.",
+      "prefecture": "Prefectura",
+      "city": "Municipio",
+      "prefecturePlaceholder": "Seleccionar prefectura",
+      "cityPlaceholder": "Seleccionar municipio",
+      "saved": "Ubicación guardada"
+    }
   },
   "event": {
     "chatOpen": "Abrir chat"

@@ -28,6 +28,7 @@ const emit = defineEmits<{
 }>()
 
 const friendFoldersApi = useFriendFoldersApi()
+const teamApi = useTeamApi()
 const { handleApiError } = useErrorHandler()
 
 // 地域選択
@@ -38,6 +39,7 @@ const {
   selectedPrefecture,
   selectedCity,
   loadPrefectures,
+  loadCities,
   selectPrefecture,
 } = useMarketRegions()
 
@@ -149,8 +151,35 @@ function removeTeam(teamId: number) {
   selectedTeamIds.value = selectedTeamIds.value.filter(id => id !== teamId)
 }
 
+/**
+ * F22.1 Phase2 足場C 第三陣: scope=TEAM のとき team の地域コードを初期値としてプリフィルする。
+ *
+ * BE 側（C第二陣 RecruitmentListingService）でも request 未指定なら team 地域を補完するが、
+ * 入力前に画面で見えるよう FE でも初期表示する。ユーザーは上書き可能。
+ * team の `location.prefectureCode`/`cityCode`（BE TeamResponse.TeamLocationDto camelCase）を読む。
+ */
+async function prefillTeamRegion() {
+  if (props.scopeType !== 'TEAM') return
+  try {
+    const res = await teamApi.getTeam(props.scopeId)
+    const prefCode = res.data?.location?.prefectureCode ?? null
+    const cityCode = res.data?.location?.cityCode ?? null
+    if (!prefCode) return
+    // 都道府県を初期選択（emit watch 経由で親の prefectureCode にも反映される）。
+    selectedPrefecture.value = prefCode
+    // 配下市区町村をロードしてから市区町村を初期選択（selectPrefecture は city をリセットするため使わない）。
+    await loadCities(prefCode)
+    if (cityCode) {
+      selectedCity.value = cityCode
+    }
+  } catch {
+    // team 取得失敗時はプリフィルしないだけ（ユーザーが手動選択可能）。
+  }
+}
+
 onMounted(async () => {
   await loadPrefectures()
+  await prefillTeamRegion()
   if (visibility.value === 'FRIEND_TEAMS_ONLY') {
     await loadFoldersAndFriends()
   }

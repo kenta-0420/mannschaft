@@ -1461,7 +1461,16 @@
     "mapEmbedUrlWarning": "⚠️ This URL is publicly visible to unauthenticated users",
     "mapEmbedUrlHelp": "In Google Maps, click \"Share > Embed a map > Copy HTML\" and paste the src= URL here",
     "mapEmbedUrlInvalidFormat": "Must be a Google Maps embed URL (https://www.google.com/maps/embed?...)",
-    "mapEmbedUrlSaved": "Store map URL saved"
+    "mapEmbedUrlSaved": "Store map URL saved",
+    "regionCode": {
+      "label": "Location (prefecture / city)",
+      "help": "Selecting a prefecture and city sets the defaults for regional search and listings.",
+      "prefecture": "Prefecture",
+      "city": "City",
+      "prefecturePlaceholder": "Select prefecture",
+      "cityPlaceholder": "Select city",
+      "saved": "Location saved"
+    }
   },
   "event": {
     "chatOpen": "Open Chat"
