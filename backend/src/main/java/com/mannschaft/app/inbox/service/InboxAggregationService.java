@@ -4,6 +4,7 @@ import com.mannschaft.app.inbox.InboxPriority;
 import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.InboxState;
 import com.mannschaft.app.inbox.dto.InboxItemDto;
+import com.mannschaft.app.inbox.dto.InboxItemRef;
 import com.mannschaft.app.inbox.dto.InboxPageResponse;
 import com.mannschaft.app.inbox.dto.InboxSummaryResponse;
 import com.mannschaft.app.inbox.dto.LabelDto;
@@ -149,12 +150,96 @@ public class InboxAggregationService {
             LocalDateTime snoozedUntil = overlay != null ? overlay.getSnoozedUntil() : r.snoozedUntil();
             List<LabelDto> labels = labelsByKey.getOrDefault(k, List.of());
 
+            // canonicalRef / groupCount / groupMembers はアダプタ計算値を保持する（畳み込みは次段で行う）。
             merged.add(new InboxItemDto(
                     r.id(), r.sourceType(), r.sourceId(), r.title(), r.excerpt(),
                     r.priority(), r.scope(), r.actionUrl(), r.occurredAt(),
-                    state, snoozedUntil, labels));
+                    state, snoozedUntil, labels,
+                    r.canonicalRef(), r.groupCount(), r.groupMembers()));
         }
-        return merged;
+
+        // 4. 名寄せ（Phase 3 ①）：canonicalRef でグルーピングし 2 件以上のみ 1 代表へ畳む。
+        return foldByCanonicalRef(merged);
+    }
+
+    /**
+     * {@code canonicalRef} で項目をグルーピングし、2 件以上のグループを 1 代表へ畳む（Phase 3 ① 名寄せ）。
+     *
+     * <p><b>誤突合の安全弁</b>: 畳むのは「正規化成功かつ同一 EntityRef（canonicalRef 一致）」のときのみ。
+     * 正規化不能な項目は各アダプタが自分自身キー（{@code "{sourceType}:{sourceId}"} 等の固有値）を
+     * canonicalRef に詰めているため、決して他項目と同一グループにならない（設計書 §8）。</p>
+     *
+     * <ul>
+     *   <li><b>代表</b>: グループ内で {@link #ITEM_ORDER} 最上位（priority 最優先・新着）。</li>
+     *   <li><b>groupCount</b>: 構成メンバー件数（単一は 1）。</li>
+     *   <li><b>groupMembers</b>: 全構成メンバーの {@code (sourceType, sourceId)}（FE が bulk triage で一括適用）。</li>
+     *   <li><b>state</b>: 最も未処理側（UNREAD &gt; READ &gt; SNOOZED &gt; ARCHIVED を優先）。</li>
+     *   <li><b>labels</b>: 全メンバーのラベル和集合（labelId 重複排除）。</li>
+     * </ul>
+     */
+    private List<InboxItemDto> foldByCanonicalRef(List<InboxItemDto> merged) {
+        // 出現順を保ちつつ canonicalRef でグルーピング（null は理論上起きないが安全側で自分自身 id 扱い）。
+        Map<String, List<InboxItemDto>> groups = new LinkedHashMap<>();
+        for (InboxItemDto it : merged) {
+            String ref = it.canonicalRef() != null ? it.canonicalRef() : it.id();
+            groups.computeIfAbsent(ref, k -> new ArrayList<>()).add(it);
+        }
+
+        List<InboxItemDto> result = new ArrayList<>(groups.size());
+        for (List<InboxItemDto> group : groups.values()) {
+            if (group.size() == 1) {
+                // 単一＝畳まない。アダプタ既定（groupCount=1・members 自分 1 件）をそのまま使う。
+                result.add(group.get(0));
+                continue;
+            }
+
+            // 代表＝ITEM_ORDER 最上位。
+            InboxItemDto representative = group.stream().min(ITEM_ORDER).orElse(group.get(0));
+
+            // groupMembers＝全メンバーの参照（重複排除・出現順）。
+            List<InboxItemRef> members = group.stream()
+                    .map(it -> new InboxItemRef(it.sourceType(), it.sourceId()))
+                    .distinct()
+                    .toList();
+
+            // state＝最も未処理側。labels＝和集合（labelId で重複排除）。
+            InboxState mergedState = group.stream()
+                    .map(InboxItemDto::state)
+                    .min(Comparator.comparingInt(InboxAggregationService::stateUnprocessedRank))
+                    .orElse(representative.state());
+
+            Map<UUID, LabelDto> unionLabels = new LinkedHashMap<>();
+            for (InboxItemDto it : group) {
+                if (it.labels() == null) {
+                    continue;
+                }
+                for (LabelDto label : it.labels()) {
+                    unionLabels.putIfAbsent(label.id(), label);
+                }
+            }
+
+            result.add(new InboxItemDto(
+                    representative.id(), representative.sourceType(), representative.sourceId(),
+                    representative.title(), representative.excerpt(), representative.priority(),
+                    representative.scope(), representative.actionUrl(), representative.occurredAt(),
+                    mergedState, representative.snoozedUntil(),
+                    new ArrayList<>(unionLabels.values()),
+                    representative.canonicalRef(), members.size(), members));
+        }
+        return result;
+    }
+
+    /**
+     * 状態の「未処理度」ランク（小さいほど未処理＝畳み込み時に優先する）。
+     * UNREAD(0) &gt; READ(1) &gt; SNOOZED(2) &gt; ARCHIVED(3)。
+     */
+    private static int stateUnprocessedRank(InboxState state) {
+        return switch (state) {
+            case UNREAD -> 0;
+            case READ -> 1;
+            case SNOOZED -> 2;
+            case ARCHIVED -> 3;
+        };
     }
 
     /**

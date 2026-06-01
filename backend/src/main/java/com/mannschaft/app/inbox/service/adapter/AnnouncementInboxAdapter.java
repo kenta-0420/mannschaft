@@ -6,6 +6,8 @@ import com.mannschaft.app.inbox.InboxPriority;
 import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.InboxState;
 import com.mannschaft.app.inbox.dto.InboxItemDto;
+import com.mannschaft.app.inbox.dto.InboxItemRef;
+import com.mannschaft.app.inbox.service.InboxDedupeKeyResolver;
 import com.mannschaft.app.inbox.service.InboxPriorityNormalizer;
 import com.mannschaft.app.inbox.service.InboxSourceAdapter;
 import com.mannschaft.app.role.entity.UserRoleEntity;
@@ -53,6 +55,7 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
     private final AnnouncementFeedRepository announcementFeedRepository;
     private final AnnouncementReadStatusRepository announcementReadStatusRepository;
     private final InboxPriorityNormalizer priorityNormalizer;
+    private final InboxDedupeKeyResolver dedupeKeyResolver;
 
     @Override
     public InboxSourceType sourceType() {
@@ -207,6 +210,14 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
                 feed.getScopeId(),
                 null);
 
+        // 名寄せ（Phase 3 ①）：feed は終端 sourceType + sourceId を保持するので正規化できる。
+        // 正規化不能（ReferenceType 未マッピングの ADVERTISER_CAMPAIGN 等）は ANNOUNCEMENT_FEED:{feedId}
+        // へフォールバックし畳まない（NOTIFICATION 側の "ANNOUNCEMENT:{id}" 自分自身キーとも衝突しない）。
+        String terminalType = feed.getSourceType() != null ? feed.getSourceType().name() : null;
+        String selfKey = "ANNOUNCEMENT_FEED:" + feed.getId();
+        String canonicalRef = dedupeKeyResolver.canonicalRefOrSelf(
+                terminalType, feed.getSourceId(), selfKey);
+
         return new InboxItemDto(
                 InboxSourceType.ANNOUNCEMENT.name() + ":" + feed.getId(),
                 InboxSourceType.ANNOUNCEMENT,
@@ -219,7 +230,10 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
                 feed.getCreatedAt(),
                 read ? InboxState.READ : InboxState.UNREAD,
                 null,
-                List.of());
+                List.of(),
+                canonicalRef,
+                1,
+                List.of(new InboxItemRef(InboxSourceType.ANNOUNCEMENT, feed.getId())));
     }
 
     /** スコープ識別キー（announcement_feeds の scope_type + scope_id）。 */

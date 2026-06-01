@@ -5,6 +5,8 @@ import com.mannschaft.app.inbox.InboxPriority;
 import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.InboxState;
 import com.mannschaft.app.inbox.dto.InboxItemDto;
+import com.mannschaft.app.inbox.dto.InboxItemRef;
+import com.mannschaft.app.inbox.service.InboxDedupeKeyResolver;
 import com.mannschaft.app.inbox.service.InboxSourceAdapter;
 import com.mannschaft.app.inbox.service.InboxPriorityNormalizer;
 import com.mannschaft.app.notification.entity.NotificationEntity;
@@ -31,6 +33,7 @@ public class NotificationInboxAdapter implements InboxSourceAdapter {
 
     private final NotificationRepository notificationRepository;
     private final InboxPriorityNormalizer priorityNormalizer;
+    private final InboxDedupeKeyResolver dedupeKeyResolver;
 
     @Override
     public InboxSourceType sourceType() {
@@ -68,8 +71,13 @@ public class NotificationInboxAdapter implements InboxSourceAdapter {
                 n.getScopeId(),
                 null);
 
+        // 名寄せ（Phase 3 ①）：通知の終端 sourceType + sourceId を正規化。不能なら自分自身キーで畳まない。
+        String selfKey = InboxSourceType.NOTIFICATION.name() + ":" + n.getId();
+        String canonicalRef = dedupeKeyResolver.canonicalRefOrSelf(
+                n.getSourceType(), n.getSourceId(), selfKey);
+
         return new InboxItemDto(
-                InboxSourceType.NOTIFICATION.name() + ":" + n.getId(),
+                selfKey,
                 InboxSourceType.NOTIFICATION,
                 n.getId(),
                 n.getTitle(),
@@ -80,6 +88,9 @@ public class NotificationInboxAdapter implements InboxSourceAdapter {
                 n.getCreatedAt(),
                 sourceState,
                 null,
-                List.of());
+                List.of(),
+                canonicalRef,
+                1,
+                List.of(new InboxItemRef(InboxSourceType.NOTIFICATION, n.getId())));
     }
 }

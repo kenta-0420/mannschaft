@@ -4,6 +4,8 @@ import com.mannschaft.app.inbox.InboxPriority;
 import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.InboxState;
 import com.mannschaft.app.inbox.dto.InboxItemDto;
+import com.mannschaft.app.inbox.dto.InboxItemRef;
+import com.mannschaft.app.inbox.service.InboxDedupeKeyResolver;
 import com.mannschaft.app.inbox.service.InboxPriorityNormalizer;
 import com.mannschaft.app.inbox.service.InboxSourceAdapter;
 import com.mannschaft.app.mention.entity.MentionEntity;
@@ -28,6 +30,7 @@ public class MentionInboxAdapter implements InboxSourceAdapter {
 
     private final MentionRepository mentionRepository;
     private final InboxPriorityNormalizer priorityNormalizer;
+    private final InboxDedupeKeyResolver dedupeKeyResolver;
 
     @Override
     public InboxSourceType sourceType() {
@@ -53,8 +56,14 @@ public class MentionInboxAdapter implements InboxSourceAdapter {
 
         InboxState sourceState = Boolean.TRUE.equals(m.getIsRead()) ? InboxState.READ : InboxState.UNREAD;
 
+        // 名寄せ（Phase 3 ①）：メンションの終端 targetType + targetId を正規化。
+        // TIMELINE_COMMENT 等の ReferenceType 未マッピング語は正規化不能＝自分自身キーで畳まない。
+        String selfKey = InboxSourceType.MENTION.name() + ":" + m.getId();
+        String canonicalRef = dedupeKeyResolver.canonicalRefOrSelf(
+                m.getTargetType(), m.getTargetId(), selfKey);
+
         return new InboxItemDto(
-                InboxSourceType.MENTION.name() + ":" + m.getId(),
+                selfKey,
                 InboxSourceType.MENTION,
                 m.getId(),
                 m.getContentSnippet(),
@@ -65,7 +74,10 @@ public class MentionInboxAdapter implements InboxSourceAdapter {
                 m.getCreatedAt(),
                 sourceState,
                 null,
-                List.of());
+                List.of(),
+                canonicalRef,
+                1,
+                List.of(new InboxItemRef(InboxSourceType.MENTION, m.getId())));
     }
 
     /**

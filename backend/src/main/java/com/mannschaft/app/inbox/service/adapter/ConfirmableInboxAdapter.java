@@ -5,6 +5,7 @@ import com.mannschaft.app.inbox.InboxPriority;
 import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.InboxState;
 import com.mannschaft.app.inbox.dto.InboxItemDto;
+import com.mannschaft.app.inbox.dto.InboxItemRef;
 import com.mannschaft.app.inbox.service.InboxPriorityNormalizer;
 import com.mannschaft.app.inbox.service.InboxPriorityNormalizer.NormalizationContext;
 import com.mannschaft.app.inbox.service.InboxSourceAdapter;
@@ -81,9 +82,12 @@ public class ConfirmableInboxAdapter implements InboxSourceAdapter {
                 parent.getScopeId(),
                 null);
 
+        // 名寄せ（Phase 3 ①）：確認必須通知は固有実体（畳む相手がいない）＝常に自分自身キー。
+        String selfKey = InboxSourceType.CONFIRMABLE.name() + ":" + r.getId();
+
         // 未確認の保留中通知のみ取得するため、ソース状態は UNREAD（確認＝READ 相当は対象外）。
         return new InboxItemDto(
-                InboxSourceType.CONFIRMABLE.name() + ":" + r.getId(),
+                selfKey,
                 InboxSourceType.CONFIRMABLE,
                 r.getId(),
                 parent.getTitle(),
@@ -94,7 +98,10 @@ public class ConfirmableInboxAdapter implements InboxSourceAdapter {
                 parent.getCreatedAt(),
                 InboxState.UNREAD,
                 null,
-                List.of());
+                List.of(),
+                selfKey,
+                1,
+                List.of(new InboxItemRef(InboxSourceType.CONFIRMABLE, r.getId())));
     }
 
     /** 親 priority enum を normalizer が解する文字列（NORMAL/HIGH/URGENT）へ変換する。 */

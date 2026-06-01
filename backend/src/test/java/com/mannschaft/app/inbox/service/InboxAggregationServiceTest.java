@@ -4,6 +4,7 @@ import com.mannschaft.app.inbox.InboxPriority;
 import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.InboxState;
 import com.mannschaft.app.inbox.dto.InboxItemDto;
+import com.mannschaft.app.inbox.dto.InboxItemRef;
 import com.mannschaft.app.inbox.dto.InboxPageResponse;
 import com.mannschaft.app.inbox.dto.LabelDto;
 import com.mannschaft.app.inbox.entity.InboxLabelLinkEntity;
@@ -82,12 +83,31 @@ class InboxAggregationServiceTest {
                 labelRepository);
     }
 
-    /** 統一 DTO を組み立てるヘルパー（オーバーレイ未マージの素の項目）。 */
+    /**
+     * 統一 DTO を組み立てるヘルパー（オーバーレイ未マージの素の項目）。
+     * canonicalRef は自分自身キー（畳まれない）・groupCount=1・members 自分 1 件を既定とする。
+     */
     private InboxItemDto item(InboxSourceType type, Long sourceId, InboxPriority priority,
                               LocalDateTime occurredAt) {
+        String selfKey = type.name() + ":" + sourceId;
         return new InboxItemDto(
-                type.name() + ":" + sourceId, type, sourceId, "title", "excerpt",
-                priority, null, "/x/" + sourceId, occurredAt, InboxState.UNREAD, null, List.of());
+                selfKey, type, sourceId, "title", "excerpt",
+                priority, null, "/x/" + sourceId, occurredAt, InboxState.UNREAD, null, List.of(),
+                selfKey, 1, List.of(new com.mannschaft.app.inbox.dto.InboxItemRef(type, sourceId)));
+    }
+
+    /**
+     * canonicalRef・state を明示した統一 DTO ヘルパー（名寄せテスト用）。
+     * 同一 canonicalRef を渡した複数項目は集約で 1 カードへ畳まれる。
+     */
+    private InboxItemDto itemWithRef(InboxSourceType type, Long sourceId, InboxPriority priority,
+                                     LocalDateTime occurredAt, String canonicalRef,
+                                     InboxState state, List<LabelDto> labels) {
+        String selfKey = type.name() + ":" + sourceId;
+        return new InboxItemDto(
+                selfKey, type, sourceId, "title", "excerpt",
+                priority, null, "/x/" + sourceId, occurredAt, state, null, labels,
+                canonicalRef, 1, List.of(new com.mannschaft.app.inbox.dto.InboxItemRef(type, sourceId)));
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -498,6 +518,217 @@ class InboxAggregationServiceTest {
             assertThat(res.items()).singleElement()
                     .extracting(InboxItemDto::labels)
                     .satisfies(labels -> assertThat((List<?>) labels).isEmpty());
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Phase 3 ①: 名寄せ（canonicalRef 畳み込み・groupCount/members）
+    // ─────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("名寄せ（Phase 3 ①）")
+    class Dedupe {
+
+        @Test
+        @DisplayName("同一 canonicalRef の NOTIFICATION + ANNOUNCEMENT は 1 カードに畳まれ groupCount=2・members 2 件")
+        void foldsSameCanonicalRef() {
+            LocalDateTime now = LocalDateTime.now();
+            given(notificationAdapter.fetch(USER_ID)).willReturn(List.of(
+                    itemWithRef(InboxSourceType.NOTIFICATION, 100L, InboxPriority.NORMAL, now,
+                            "BLOG_POST:7", InboxState.UNREAD, List.of())));
+            given(todoDueAdapter.fetch(USER_ID)).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+
+            // ANNOUNCEMENT アダプタを追加注入したサービスで同一 canonicalRef を返す
+            InboxSourceAdapter announcementAdapter = org.mockito.Mockito.mock(InboxSourceAdapter.class);
+            given(announcementAdapter.sourceType()).willReturn(InboxSourceType.ANNOUNCEMENT);
+            given(announcementAdapter.fetch(USER_ID)).willReturn(List.of(
+                    itemWithRef(InboxSourceType.ANNOUNCEMENT, 200L, InboxPriority.NORMAL, now,
+                            "BLOG_POST:7", InboxState.READ, List.of())));
+            InboxAggregationService svc = new InboxAggregationService(
+                    List.of(notificationAdapter, todoDueAdapter, announcementAdapter),
+                    priorityNormalizer, itemStateRepository, labelLinkRepository, labelRepository);
+
+            InboxPageResponse res = svc.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
+
+            assertThat(res.items()).singleElement().satisfies(card -> {
+                assertThat(card.groupCount()).isEqualTo(2);
+                assertThat(card.groupMembers()).extracting(InboxItemRef::sourceType)
+                        .containsExactlyInAnyOrder(
+                                InboxSourceType.NOTIFICATION, InboxSourceType.ANNOUNCEMENT);
+                assertThat(card.canonicalRef()).isEqualTo("BLOG_POST:7");
+            });
+        }
+
+        @Test
+        @DisplayName("異なる実体（canonicalRef が違う）は畳まれない（誤突合の安全弁）")
+        void doesNotFoldDifferentEntities() {
+            LocalDateTime now = LocalDateTime.now();
+            given(notificationAdapter.fetch(USER_ID)).willReturn(List.of(
+                    itemWithRef(InboxSourceType.NOTIFICATION, 100L, InboxPriority.NORMAL, now,
+                            "BLOG_POST:7", InboxState.UNREAD, List.of()),
+                    itemWithRef(InboxSourceType.NOTIFICATION, 101L, InboxPriority.NORMAL, now,
+                            "BLOG_POST:8", InboxState.UNREAD, List.of())));
+            given(todoDueAdapter.fetch(USER_ID)).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+
+            InboxPageResponse res = service.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
+
+            assertThat(res.items()).hasSize(2);
+            assertThat(res.items()).allSatisfy(card -> assertThat(card.groupCount()).isEqualTo(1));
+        }
+
+        @Test
+        @DisplayName("正規化不能（自分自身キー）の 2 件は畳まれない（誤突合の安全弁）")
+        void doesNotFoldSelfKeys() {
+            LocalDateTime now = LocalDateTime.now();
+            // MENTION の自分自身キーは "MENTION:{id}" でそれぞれ固有 → 別カード
+            given(notificationAdapter.fetch(USER_ID)).willReturn(List.of(
+                    itemWithRef(InboxSourceType.MENTION, 1L, InboxPriority.HIGH, now,
+                            "MENTION:1", InboxState.UNREAD, List.of()),
+                    itemWithRef(InboxSourceType.MENTION, 2L, InboxPriority.HIGH, now,
+                            "MENTION:2", InboxState.UNREAD, List.of())));
+            given(todoDueAdapter.fetch(USER_ID)).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+
+            InboxPageResponse res = service.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
+
+            assertThat(res.items()).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("単一項目は groupCount=1・members 自分 1 件")
+        void singleItemGroupCountOne() {
+            given(notificationAdapter.fetch(USER_ID)).willReturn(List.of(
+                    item(InboxSourceType.NOTIFICATION, 1L, InboxPriority.NORMAL, LocalDateTime.now())));
+            given(todoDueAdapter.fetch(USER_ID)).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+
+            InboxPageResponse res = service.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
+
+            assertThat(res.items()).singleElement().satisfies(card -> {
+                assertThat(card.groupCount()).isEqualTo(1);
+                assertThat(card.groupMembers()).singleElement()
+                        .extracting(InboxItemRef::sourceId).isEqualTo(1L);
+            });
+        }
+
+        @Test
+        @DisplayName("代表は priority 上位（URGENT が代表になる）")
+        void representativeIsHighestPriority() {
+            LocalDateTime now = LocalDateTime.now();
+            given(notificationAdapter.fetch(USER_ID)).willReturn(List.of(
+                    itemWithRef(InboxSourceType.NOTIFICATION, 100L, InboxPriority.NORMAL, now,
+                            "BLOG_POST:7", InboxState.READ, List.of())));
+            given(todoDueAdapter.fetch(USER_ID)).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+
+            InboxSourceAdapter announcementAdapter = org.mockito.Mockito.mock(InboxSourceAdapter.class);
+            given(announcementAdapter.sourceType()).willReturn(InboxSourceType.ANNOUNCEMENT);
+            given(announcementAdapter.fetch(USER_ID)).willReturn(List.of(
+                    itemWithRef(InboxSourceType.ANNOUNCEMENT, 200L, InboxPriority.URGENT, now,
+                            "BLOG_POST:7", InboxState.UNREAD, List.of())));
+            InboxAggregationService svc = new InboxAggregationService(
+                    List.of(notificationAdapter, todoDueAdapter, announcementAdapter),
+                    priorityNormalizer, itemStateRepository, labelLinkRepository, labelRepository);
+
+            InboxPageResponse res = svc.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
+
+            assertThat(res.items()).singleElement().satisfies(card -> {
+                assertThat(card.priority()).isEqualTo(InboxPriority.URGENT);
+                assertThat(card.sourceType()).isEqualTo(InboxSourceType.ANNOUNCEMENT);
+            });
+        }
+
+        @Test
+        @DisplayName("labels は構成メンバーの和集合になる（各メンバーの DB ラベルを統合）")
+        void labelsAreUnion() {
+            LocalDateTime now = LocalDateTime.now();
+            UUID labelA = UUID.randomUUID();
+            UUID labelB = UUID.randomUUID();
+
+            given(notificationAdapter.fetch(USER_ID)).willReturn(List.of(
+                    itemWithRef(InboxSourceType.NOTIFICATION, 100L, InboxPriority.NORMAL, now,
+                            "BLOG_POST:7", InboxState.UNREAD, List.of())));
+            given(todoDueAdapter.fetch(USER_ID)).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+
+            InboxSourceAdapter announcementAdapter = org.mockito.Mockito.mock(InboxSourceAdapter.class);
+            given(announcementAdapter.sourceType()).willReturn(InboxSourceType.ANNOUNCEMENT);
+            given(announcementAdapter.fetch(USER_ID)).willReturn(List.of(
+                    itemWithRef(InboxSourceType.ANNOUNCEMENT, 200L, InboxPriority.NORMAL, now,
+                            "BLOG_POST:7", InboxState.UNREAD, List.of())));
+
+            // ラベルは DB 経由（labelLinkRepository → labelRepository）で解決される。
+            // NOTIFICATION:100 → labelA、ANNOUNCEMENT:200 → labelB を付与する。
+            InboxLabelLinkEntity linkA = new InboxLabelLinkEntity();
+            linkA.setLabelId(labelA);
+            linkA.setUserId(USER_ID);
+            linkA.setSourceType(InboxSourceType.NOTIFICATION);
+            linkA.setSourceId(100L);
+            InboxLabelLinkEntity linkB = new InboxLabelLinkEntity();
+            linkB.setLabelId(labelB);
+            linkB.setUserId(USER_ID);
+            linkB.setSourceType(InboxSourceType.ANNOUNCEMENT);
+            linkB.setSourceId(200L);
+            given(labelLinkRepository.findByUserIdAndSourceTypeAndSourceIdIn(
+                    any(), org.mockito.ArgumentMatchers.eq(InboxSourceType.NOTIFICATION), any()))
+                    .willReturn(List.of(linkA));
+            given(labelLinkRepository.findByUserIdAndSourceTypeAndSourceIdIn(
+                    any(), org.mockito.ArgumentMatchers.eq(InboxSourceType.ANNOUNCEMENT), any()))
+                    .willReturn(List.of(linkB));
+
+            NotificationLabelEntity la = new NotificationLabelEntity();
+            la.setId(labelA);
+            la.setUserId(USER_ID);
+            la.setName("A");
+            la.setSortOrder(0);
+            NotificationLabelEntity lb = new NotificationLabelEntity();
+            lb.setId(labelB);
+            lb.setUserId(USER_ID);
+            lb.setName("B");
+            lb.setSortOrder(1);
+            given(labelRepository.findByIdIn(any())).willReturn(List.of(la, lb));
+
+            InboxAggregationService svc = new InboxAggregationService(
+                    List.of(notificationAdapter, todoDueAdapter, announcementAdapter),
+                    priorityNormalizer, itemStateRepository, labelLinkRepository, labelRepository);
+
+            InboxPageResponse res = svc.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
+
+            assertThat(res.items()).singleElement()
+                    .extracting(InboxItemDto::labels)
+                    .satisfies(labels -> {
+                        @SuppressWarnings("unchecked")
+                        List<LabelDto> l = (List<LabelDto>) labels;
+                        assertThat(l).extracting(LabelDto::id)
+                                .containsExactlyInAnyOrder(labelA, labelB);
+                    });
+        }
+
+        @Test
+        @DisplayName("state は最も未処理側（UNREAD + READ → UNREAD）になる")
+        void stateIsMostUnprocessed() {
+            LocalDateTime now = LocalDateTime.now();
+            given(notificationAdapter.fetch(USER_ID)).willReturn(List.of(
+                    itemWithRef(InboxSourceType.NOTIFICATION, 100L, InboxPriority.NORMAL, now,
+                            "BLOG_POST:7", InboxState.READ, List.of())));
+            given(todoDueAdapter.fetch(USER_ID)).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+
+            InboxSourceAdapter announcementAdapter = org.mockito.Mockito.mock(InboxSourceAdapter.class);
+            given(announcementAdapter.sourceType()).willReturn(InboxSourceType.ANNOUNCEMENT);
+            given(announcementAdapter.fetch(USER_ID)).willReturn(List.of(
+                    itemWithRef(InboxSourceType.ANNOUNCEMENT, 200L, InboxPriority.NORMAL, now,
+                            "BLOG_POST:7", InboxState.UNREAD, List.of())));
+            InboxAggregationService svc = new InboxAggregationService(
+                    List.of(notificationAdapter, todoDueAdapter, announcementAdapter),
+                    priorityNormalizer, itemStateRepository, labelLinkRepository, labelRepository);
+
+            InboxPageResponse res = svc.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
+
+            assertThat(res.items()).singleElement()
+                    .extracting(InboxItemDto::state).isEqualTo(InboxState.UNREAD);
         }
     }
 }
