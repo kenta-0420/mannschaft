@@ -44,9 +44,9 @@ public class LeagueTransferController {
     public ResponseEntity<ApiResponse<List<TransferCandidateResponse>>> getTransferCandidates(
             @PathVariable Long orgId,
             @PathVariable Long tId,
-            @RequestParam String direction) {
+            @RequestParam LeagueTransferDirection direction) {
         List<TransferCandidateResponse> res = transferService.getTransferCandidates(
-                orgId, tId, LeagueTransferDirection.valueOf(direction), SecurityUtils.getCurrentUserId());
+                orgId, tId, direction, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(res));
     }
 
@@ -76,10 +76,9 @@ public class LeagueTransferController {
     @Operation(summary = "受信箱（DISPATCHED 一覧）", description = "受け入れ側 org ADMIN のみ。direction で絞込可")
     public ResponseEntity<ApiResponse<List<LeagueTransferResponse>>> listInbound(
             @PathVariable Long orgId,
-            @RequestParam(required = false) String direction) {
-        LeagueTransferDirection dir = direction == null ? null : LeagueTransferDirection.valueOf(direction);
+            @RequestParam(required = false) LeagueTransferDirection direction) {
         return ResponseEntity.ok(ApiResponse.of(
-                transferService.listInbound(orgId, dir, SecurityUtils.getCurrentUserId())));
+                transferService.listInbound(orgId, direction, SecurityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/tournaments/{tId}/divisions/{divId}/league-transfers/{id}/approve")

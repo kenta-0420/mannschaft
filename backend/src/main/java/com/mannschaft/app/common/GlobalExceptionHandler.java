@@ -399,6 +399,15 @@ public class GlobalExceptionHandler {
             Map.entry("TOUR_035", HttpStatus.FORBIDDEN),              // FEE_PAY_FORBIDDEN
             Map.entry("TOUR_036", HttpStatus.UNPROCESSABLE_ENTITY),  // FEE_PAYMENT_ITEM_SCOPE_MISMATCH
             Map.entry("TOUR_037", HttpStatus.FORBIDDEN),              // FEE_TEAM_NOT_TARGET
+            // F08.7.1/03 リーグ・ピラミッド＋昇降格移籍（league_transfer §7）
+            Map.entry("TOUR_038", HttpStatus.NOT_FOUND),              // LEAGUE_TRANSFER_NOT_FOUND（IDOR 対策で 404）
+            Map.entry("TOUR_039", HttpStatus.FORBIDDEN),              // LEAGUE_TRANSFER_DISPATCH_FORBIDDEN
+            Map.entry("TOUR_040", HttpStatus.FORBIDDEN),              // LEAGUE_TRANSFER_RESPOND_FORBIDDEN
+            Map.entry("TOUR_041", HttpStatus.FORBIDDEN),              // LEAGUE_TRANSFER_VIEW_FORBIDDEN
+            Map.entry("TOUR_042", HttpStatus.UNPROCESSABLE_ENTITY),   // LEAGUE_TRANSFER_TARGET_NOT_RESOLVABLE
+            Map.entry("TOUR_043", HttpStatus.UNPROCESSABLE_ENTITY),   // LEAGUE_TRANSFER_TEAM_NOT_IN_SLOT
+            Map.entry("TOUR_044", HttpStatus.CONFLICT),               // LEAGUE_TRANSFER_ALREADY_DISPATCHED
+            Map.entry("TOUR_045", HttpStatus.CONFLICT),               // LEAGUE_TRANSFER_NOT_DISPATCHED
             // F17.1 村機能 Phase 1（B2 村CRUD / B3 メンバーシップ / B4 ニックネーム / B5 村作成申請）統合
             Map.entry("VILLAGE_001", HttpStatus.NOT_FOUND),            // VILLAGE_NOT_FOUND（IDOR 対策で 404）
             Map.entry("VILLAGE_002", HttpStatus.FORBIDDEN),            // VILLAGE_UNLISTED
