@@ -11,6 +11,7 @@ import com.mannschaft.app.market.dto.MarketRegionDto;
 import com.mannschaft.app.market.dto.MarketRegionNodeResponse;
 import com.mannschaft.app.market.dto.MarketSummaryResponse;
 import com.mannschaft.app.market.service.MarketQueryService;
+import com.mannschaft.app.matching.service.RegionTranslationService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.recruitment.dto.RecruitmentCategoryResponse;
 import com.mannschaft.app.recruitment.service.RecruitmentCategoryService;
@@ -75,6 +76,9 @@ class MarketControllerTest {
     private MarketQueryService marketQueryService;
 
     @MockitoBean
+    private RegionTranslationService regionTranslationService;
+
+    @MockitoBean
     private RecruitmentCategoryService recruitmentCategoryService;
 
     // WebMvcTest が要求する Security / Proxy 周りの最小モック注入。
@@ -90,6 +94,21 @@ class MarketControllerTest {
     @BeforeEach
     void clearContext() {
         SecurityContextHolder.clearContext();
+        // 言語正規化は実 Service と同じ振る舞い（対応言語→そのまま / ja・未対応→null）をモックで再現。
+        given(regionTranslationService.normalizeLang(any())).willAnswer(inv -> {
+            String raw = inv.getArgument(0);
+            if (raw == null || raw.isBlank()) {
+                return null;
+            }
+            String base = raw.trim().toLowerCase();
+            for (char sep : new char[]{',', ';', '-', '_'}) {
+                int idx = base.indexOf(sep);
+                if (idx >= 0) {
+                    base = base.substring(0, idx);
+                }
+            }
+            return java.util.Set.of("en", "zh", "ko", "es", "de").contains(base) ? base : null;
+        });
     }
 
     // ════════════════════════════════════════════════════════════
@@ -99,7 +118,8 @@ class MarketControllerTest {
     @Test
     @DisplayName("GET /public/market/listings 200: 未ログインで一覧に到達し PII 抑制 DTO が返る")
     void listListings_anonymous_returns200() throws Exception {
-        given(marketQueryService.searchListings(isNull(), isNull(), isNull(), isNull(), anyBoolean(), any()))
+        given(marketQueryService.searchListings(
+                isNull(), isNull(), isNull(), isNull(), anyBoolean(), any(), any()))
                 .willReturn(new PageImpl<>(List.of(sampleListing()), PageRequest.of(0, 20), 1));
 
         mockMvc.perform(get("/api/v1/public/market/listings"))
@@ -114,7 +134,7 @@ class MarketControllerTest {
     @Test
     @DisplayName("GET /public/market/listings/{id} 200: 公開札詳細に到達")
     void getListing_public_returns200() throws Exception {
-        given(marketQueryService.getListing(eq(LISTING_ID))).willReturn(sampleListing());
+        given(marketQueryService.getListing(eq(LISTING_ID), any())).willReturn(sampleListing());
 
         mockMvc.perform(get("/api/v1/public/market/listings/{id}", LISTING_ID))
                 .andExpect(status().isOk())
@@ -125,7 +145,7 @@ class MarketControllerTest {
     @Test
     @DisplayName("GET /public/market/regions 200: 都道府県一覧に到達")
     void getRegions_returns200() throws Exception {
-        given(marketQueryService.getRegions(isNull()))
+        given(marketQueryService.getRegions(isNull(), isNull()))
                 .willReturn(List.of(new MarketRegionNodeResponse("44", "大分県", null)));
 
         mockMvc.perform(get("/api/v1/public/market/regions"))
@@ -137,7 +157,7 @@ class MarketControllerTest {
     @Test
     @DisplayName("GET /public/market/summary 200: 地域別件数に到達")
     void getSummary_returns200() throws Exception {
-        given(marketQueryService.getSummary()).willReturn(new MarketSummaryResponse(
+        given(marketQueryService.getSummary(isNull())).willReturn(new MarketSummaryResponse(
                 List.of(new MarketSummaryResponse.RegionCount("44", "大分県", 18L)),
                 List.of(new MarketSummaryResponse.RegionCount("44202", "別府市", 7L))));
 
@@ -175,7 +195,7 @@ class MarketControllerTest {
     @DisplayName("GET /public/market/listings/{id} 404: 非公開 / 不在は MARKET_404")
     void getListing_notPublic_returns404() throws Exception {
         willThrow(new BusinessException(MarketErrorCode.LISTING_NOT_FOUND))
-                .given(marketQueryService).getListing(eq(LISTING_ID));
+                .given(marketQueryService).getListing(eq(LISTING_ID), any());
 
         mockMvc.perform(get("/api/v1/public/market/listings/{id}", LISTING_ID))
                 .andExpect(status().isNotFound());
@@ -188,7 +208,7 @@ class MarketControllerTest {
     @Test
     @DisplayName("公開 DTO に禁則ワードが漏洩していないこと（個人名 / 連絡先 / 応募者）")
     void marketListingResponse_doesNotLeakSensitiveFields() throws Exception {
-        given(marketQueryService.getListing(eq(LISTING_ID))).willReturn(sampleListing());
+        given(marketQueryService.getListing(eq(LISTING_ID), any())).willReturn(sampleListing());
 
         MvcResult result = mockMvc.perform(get("/api/v1/public/market/listings/{id}", LISTING_ID))
                 .andExpect(status().isOk())
