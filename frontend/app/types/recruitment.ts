@@ -237,6 +237,11 @@ export interface CreateRecruitmentListingRequest {
   prefectureCode?: string | null
   /** F22.1 市（Market）— 市区町村コード（任意・prefectureCodeと整合必須） */
   cityCode?: string | null
+  /**
+   * F22.1 市（Market）Phase2 D — 複数地域募集（N:N）。
+   * 指定時は BE が中間表へ全置換する。代表（先頭）は prefectureCode/cityCode に同期される。
+   */
+  regions?: import('~/types/market').RegionInput[]
   /** F22.1 市（Market）— フレンド宛先（visibility=FRIEND_TEAMS_ONLY のとき1件以上必須） */
   friendTargets?: import('~/types/market').FriendTargetInput[]
 }

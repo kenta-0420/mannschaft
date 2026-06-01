@@ -9,6 +9,8 @@ import com.mannschaft.app.recruitment.dto.FriendTargetView;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentRegionView;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
+import com.mannschaft.app.recruitment.entity.RecruitmentListingRegionEntity;
+import com.mannschaft.app.recruitment.repository.RecruitmentListingRegionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -29,6 +31,8 @@ public class MarketResponseEnricher {
     private final PrefectureRepository prefectureRepository;
     private final CityRepository cityRepository;
     private final MarketFriendTargetService marketFriendTargetService;
+    // F22.1 市 Phase2 D: 複数地域募集（N:N）の中間表（既存メソッド再利用・新規 @Query なし）
+    private final RecruitmentListingRegionRepository listingRegionRepository;
 
     /**
      * レスポンスに地域・フレンド宛先を付与する。
@@ -38,7 +42,18 @@ public class MarketResponseEnricher {
      * @return enrich 済みレスポンス
      */
     public RecruitmentListingResponse enrich(RecruitmentListingResponse base, RecruitmentListingEntity entity) {
-        RecruitmentRegionView region = buildRegion(entity.getPrefectureCode(), entity.getCityCode());
+        // F22.1 Phase2 D: 中間表（N:N）から全地域を解決（既存 findByListingIdOrderByIdAsc を再利用）。
+        List<RecruitmentRegionView> regions = listingRegionRepository
+                .findByListingIdOrderByIdAsc(entity.getId()).stream()
+                .map(r -> buildRegion(r.getPrefectureCode(), r.getCityCode()))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+
+        // 代表地域: 中間表先頭を優先。中間表が空（旧データ・地域なし）の場合は旧単一列で後方互換。
+        RecruitmentRegionView region = regions.isEmpty()
+                ? buildRegion(entity.getPrefectureCode(), entity.getCityCode())
+                : regions.get(0);
+
         List<FriendTargetView> friendTargets =
                 entity.getVisibility() == RecruitmentVisibility.FRIEND_TEAMS_ONLY
                         ? marketFriendTargetService.getTargetViews(entity.getId())
@@ -81,6 +96,7 @@ public class MarketResponseEnricher {
                 entity.getPrefectureCode(),
                 entity.getCityCode(),
                 region,
+                regions,
                 friendTargets);
     }
 

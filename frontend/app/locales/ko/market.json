@@ -17,6 +17,11 @@
       "goToDashboard": "대시보드로 이동",
       "postFromDashboard": "팀/조직 대시보드에서 모집 올리기"
     },
+    "region": {
+      "add": "지역 추가",
+      "selected": "선택한 지역",
+      "none": "지역 미선택（지역 무관）"
+    },
     "filter": {
       "prefecture": "도도부현",
       "city": "시구정촌",
@@ -36,6 +41,7 @@
       "deadline": "마감일",
       "capacity": "{confirmed}/{capacity}명",
       "region": "지역",
+      "regionNone": "지역 무관",
       "category": "장르",
       "organizer": "주최"
     },
@@ -70,6 +76,7 @@
     "detail": {
       "organizer": "주최",
       "region": "지역",
+      "regionNone": "지역 무관",
       "startAt": "행사 일시",
       "deadline": "응모 마감",
       "capacity": "정원",

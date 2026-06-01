@@ -7,9 +7,17 @@
  *
  * 設計書: docs/features/F22.1_market/03_ui_i18n.md §4 / §4.2
  */
-import type { FriendTargetInput } from '~/types/market'
+import type { FriendTargetInput, RegionInput } from '~/types/market'
 import type { TeamFriendView } from '~/types/friends'
 import type { TeamFriendFolderView } from '~/types/friendFolders'
+
+/** 選択済み地域の表示モデル（チップ表示用に名前を保持・emit はコードのみ）。 */
+interface SelectedRegion {
+  prefectureCode: string
+  prefectureName: string
+  cityCode: string | null
+  cityName: string | null
+}
 
 interface Props {
   /** スコープタイプ */
@@ -21,8 +29,11 @@ interface Props {
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
+  // 後方互換: 代表（先頭）地域の単一 emit。BE は regions 未指定時にこれを 1 件として扱う。
   'update:prefectureCode': [value: string | null]
   'update:cityCode': [value: string | null]
+  // F22.1 Phase2 D: 複数地域募集（N:N）。選択済み地域ペアを全件 emit する。
+  'update:regions': [value: RegionInput[]]
   'update:visibility': [value: 'PUBLIC' | 'FRIEND_TEAMS_ONLY']
   'update:friendTargets': [value: FriendTargetInput[]]
 }>()
@@ -42,6 +53,9 @@ const {
   loadCities,
   selectPrefecture,
 } = useMarketRegions()
+
+// 複数地域募集（N:N・F22.1 Phase2 D）: 追加済みの地域ペア。
+const selectedRegions = ref<SelectedRegion[]>([])
 
 // 公開範囲
 const visibility = ref<'PUBLIC' | 'FRIEND_TEAMS_ONLY'>('PUBLIC')
@@ -73,13 +87,53 @@ const availableFriendOptions = computed(() =>
 // emit helpers
 // =====================================================================
 
-watch(selectedPrefecture, (v) => {
-  emit('update:prefectureCode', v)
-})
+// 選択済み地域が変わるたびに regions[]（全件）と代表地域（先頭・後方互換）を emit する。
+watch(selectedRegions, (regions) => {
+  emit('update:regions', regions.map(r => ({
+    prefectureCode: r.prefectureCode,
+    cityCode: r.cityCode,
+  })))
+  const representative = regions[0] ?? null
+  emit('update:prefectureCode', representative?.prefectureCode ?? null)
+  emit('update:cityCode', representative?.cityCode ?? null)
+}, { deep: true })
 
-watch(selectedCity, (v) => {
-  emit('update:cityCode', v)
-})
+/** チップ表示用ラベル（市区町村が空なら県のみ）。 */
+function regionLabel(r: SelectedRegion): string {
+  return r.cityName ? `${r.prefectureName} ${r.cityName}` : r.prefectureName
+}
+
+/** チップの一意キー（県＋市）。 */
+function regionKey(r: SelectedRegion): string {
+  return `${r.prefectureCode}-${r.cityCode ?? ''}`
+}
+
+/**
+ * 現在の都道府県／市区町村 Select の選択を地域ペアとして追加する。
+ * 都道府県未選択時・同一ペア重複時は追加しない。
+ */
+function addCurrentRegion() {
+  const prefCode = selectedPrefecture.value
+  if (!prefCode) return
+  const cityCode = selectedCity.value ?? null
+  const exists = selectedRegions.value.some(
+    r => r.prefectureCode === prefCode && r.cityCode === cityCode,
+  )
+  if (exists) return
+  const prefectureName = prefectures.value.find(p => p.code === prefCode)?.name ?? prefCode
+  const cityName = cityCode
+    ? (cities.value.find(c => c.code === cityCode)?.name ?? cityCode)
+    : null
+  selectedRegions.value = [
+    ...selectedRegions.value,
+    { prefectureCode: prefCode, prefectureName, cityCode, cityName },
+  ]
+}
+
+/** 追加済み地域を削除する。 */
+function removeRegion(key: string) {
+  selectedRegions.value = selectedRegions.value.filter(r => regionKey(r) !== key)
+}
 
 watch(visibility, (v) => {
   emit('update:visibility', v)
@@ -165,13 +219,15 @@ async function prefillTeamRegion() {
     const prefCode = res.data?.location?.prefectureCode ?? null
     const cityCode = res.data?.location?.cityCode ?? null
     if (!prefCode) return
-    // 都道府県を初期選択（emit watch 経由で親の prefectureCode にも反映される）。
+    // 都道府県を初期選択。
     selectedPrefecture.value = prefCode
     // 配下市区町村をロードしてから市区町村を初期選択（selectPrefecture は city をリセットするため使わない）。
     await loadCities(prefCode)
     if (cityCode) {
       selectedCity.value = cityCode
     }
+    // team 地域を初期の選択済み地域として 1 件追加する（ユーザーは削除・追加可能）。
+    addCurrentRegion()
   } catch {
     // team 取得失敗時はプリフィルしないだけ（ユーザーが手動選択可能）。
   }
@@ -231,6 +287,42 @@ watch(visibility, async (v) => {
             class="w-48"
           />
         </div>
+        <div class="flex flex-col justify-end gap-1">
+          <Button
+            type="button"
+            :label="$t('market.region.add')"
+            icon="pi pi-plus"
+            severity="secondary"
+            outlined
+            size="small"
+            :disabled="!selectedPrefecture"
+            data-testid="market-region-add"
+            @click="addCurrentRegion"
+          />
+        </div>
+      </div>
+
+      <!-- 追加済み地域チップ（複数地域募集 N:N・F22.1 Phase2 D） -->
+      <div class="mt-3 flex flex-col gap-1">
+        <p class="text-xs text-surface-500">
+          {{ $t('market.region.selected') }}
+        </p>
+        <div
+          v-if="selectedRegions.length > 0"
+          class="flex flex-wrap gap-1"
+          data-testid="market-region-chips"
+        >
+          <Chip
+            v-for="r in selectedRegions"
+            :key="regionKey(r)"
+            :label="regionLabel(r)"
+            removable
+            @remove="removeRegion(regionKey(r))"
+          />
+        </div>
+        <p v-else class="text-xs text-surface-400" data-testid="market-region-none">
+          {{ $t('market.region.none') }}
+        </p>
       </div>
     </fieldset>
 
