@@ -125,7 +125,13 @@ public class SharedFileQuotaService {
      *     <li>TEAM → TEAM (folder.teamId)</li>
      *     <li>ORGANIZATION → ORGANIZATION (folder.organizationId)</li>
      *     <li>PERSONAL → PERSONAL (folder.userId)</li>
+     *     <li>TOURNAMENT / TOURNAMENT_DIVISION → ORGANIZATION (folder.organizationId=主催組織)</li>
      * </ul>
+     *
+     * <p>F08.7.1 / 04 §6: 大会・ディビジョンのファイルクォータは主催組織に集約する。
+     * フォルダスコープ enum（{@link FileScopeType}）は TOURNAMENT(_DIVISION) を持つが、
+     * クォータ計量 enum（{@link StorageScopeType}）には新値を追加せず、
+     * {@code StorageScopeType.ORGANIZATION} ＋ {@code folder.organizationId}（主催組織）に丸める。</p>
      */
     public ScopeResolution resolveScope(SharedFolderEntity folder) {
         FileScopeType scopeType = folder.getScopeType();
@@ -140,10 +146,11 @@ public class SharedFileQuotaService {
                 }
                 yield new ScopeResolution(StorageScopeType.TEAM, folder.getTeamId());
             }
-            case ORGANIZATION -> {
+            // F08.7.1: 大会/ディビジョンは主催組織（organization_id）にクォータ集約（§6）。
+            case ORGANIZATION, TOURNAMENT, TOURNAMENT_DIVISION -> {
                 if (folder.getOrganizationId() == null) {
                     throw new IllegalStateException(
-                            "ORGANIZATION folder has null organizationId: folderId=" + folder.getId());
+                            scopeType + " folder has null organizationId: folderId=" + folder.getId());
                 }
                 yield new ScopeResolution(StorageScopeType.ORGANIZATION, folder.getOrganizationId());
             }

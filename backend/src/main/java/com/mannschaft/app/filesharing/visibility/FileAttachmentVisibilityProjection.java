@@ -60,7 +60,8 @@ public record FileAttachmentVisibilityProjection(
         }
         return switch (fileScopeType) {
             case TEAM -> "TEAM";
-            case ORGANIZATION -> "ORGANIZATION";
+            // F08.7.1 / 04: 大会・ディビジョンは主催組織の可視性に集約（§6・organizationId で判定）。
+            case ORGANIZATION, TOURNAMENT, TOURNAMENT_DIVISION -> "ORGANIZATION";
             case PERSONAL -> null;
         };
     }
@@ -78,7 +79,8 @@ public record FileAttachmentVisibilityProjection(
         }
         return switch (fileScopeType) {
             case TEAM -> teamId;
-            case ORGANIZATION -> organizationId;
+            // F08.7.1 / 04: 大会・ディビジョンは主催組織 ID（organizationId）で可視性判定（§6）。
+            case ORGANIZATION, TOURNAMENT, TOURNAMENT_DIVISION -> organizationId;
             case PERSONAL -> null;
         };
     }
