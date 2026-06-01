@@ -17,6 +17,11 @@
       "goToDashboard": "ダッシュボードへ",
       "postFromDashboard": "チーム/組織のダッシュボードで札を立てる"
     },
+    "region": {
+      "add": "地域を追加",
+      "selected": "選択中の地域",
+      "none": "地域未選択（地域問わず）"
+    },
     "filter": {
       "prefecture": "都道府県",
       "city": "市区町村",
@@ -36,6 +41,7 @@
       "deadline": "締切",
       "capacity": "{confirmed}/{capacity}人",
       "region": "地域",
+      "regionNone": "地域問わず",
       "category": "ジャンル",
       "organizer": "主催"
     },
@@ -70,6 +76,7 @@
     "detail": {
       "organizer": "主催",
       "region": "開催地域",
+      "regionNone": "地域問わず",
       "startAt": "開催日時",
       "deadline": "応募締切",
       "capacity": "定員",
