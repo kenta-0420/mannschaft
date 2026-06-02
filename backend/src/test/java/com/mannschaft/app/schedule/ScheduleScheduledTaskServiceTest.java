@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.schedule.dto.ScheduledAttendanceRequest;
 import com.mannschaft.app.schedule.dto.ScheduledSurveyRequest;
 import com.mannschaft.app.schedule.entity.ScheduleScheduledTaskEntity;
@@ -21,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -195,6 +197,118 @@ class ScheduleScheduledTaskServiceTest {
 
             // then
             assertThat(result).hasSize(1).containsExactly(task);
+        }
+    }
+
+    @Nested
+    @DisplayName("findTaskResponsesForSchedule")
+    class FindTaskResponsesForSchedule {
+
+        @Test
+        @DisplayName("予約タスクがレスポンスDTOに変換される（PENDING含む全状態）")
+        void 予約タスクがレスポンスDTOに変換される() {
+            // given
+            ScheduleScheduledTaskEntity pending = ScheduleScheduledTaskEntity.builder()
+                    .scheduleId(SCHEDULE_ID).organizationId(ORG_ID)
+                    .scopeType(CalendarSyncScopeType.TEAM).scopeId(SCOPE_ID)
+                    .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE)
+                    .status(ScheduledTaskStatus.PENDING).payloadJson("{}").build();
+            ScheduleScheduledTaskEntity created = ScheduleScheduledTaskEntity.builder()
+                    .scheduleId(SCHEDULE_ID).organizationId(ORG_ID)
+                    .scopeType(CalendarSyncScopeType.TEAM).scopeId(SCOPE_ID)
+                    .taskType(ScheduledTaskType.ATTENDANCE).scheduledAt(FUTURE)
+                    .status(ScheduledTaskStatus.CREATED).materializedEntityId(777L)
+                    .payloadJson("{}").build();
+            given(scheduledTaskRepository.findByScheduleIdAndDeletedAtIsNull(SCHEDULE_ID))
+                    .willReturn(List.of(pending, created));
+
+            // when
+            var result = service.findTaskResponsesForSchedule(SCHEDULE_ID);
+
+            // then
+            assertThat(result).hasSize(2);
+            assertThat(result).anySatisfy(r -> {
+                assertThat(r.getTaskType()).isEqualTo("SURVEY");
+                assertThat(r.getStatus()).isEqualTo("PENDING");
+                assertThat(r.getMaterializedEntityId()).isNull();
+            });
+            assertThat(result).anySatisfy(r -> {
+                assertThat(r.getTaskType()).isEqualTo("ATTENDANCE");
+                assertThat(r.getStatus()).isEqualTo("CREATED");
+                assertThat(r.getMaterializedEntityId()).isEqualTo(777L);
+            });
+        }
+    }
+
+    @Nested
+    @DisplayName("cancelTask")
+    class CancelTask {
+
+        private final java.util.UUID TASK_ID = java.util.UUID.randomUUID();
+
+        @Test
+        @DisplayName("PENDINGかつスコープ一致_CANCELLEDになりsaveされる")
+        void PENDINGかつスコープ一致_取消成功() {
+            // given
+            ScheduleScheduledTaskEntity task = ScheduleScheduledTaskEntity.builder()
+                    .scheduleId(SCHEDULE_ID).organizationId(ORG_ID)
+                    .scopeType(CalendarSyncScopeType.TEAM).scopeId(SCOPE_ID)
+                    .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE)
+                    .status(ScheduledTaskStatus.PENDING).payloadJson("{}").build();
+            given(scheduledTaskRepository.findById(TASK_ID)).willReturn(java.util.Optional.of(task));
+
+            // when
+            service.cancelTask(TASK_ID, CalendarSyncScopeType.TEAM, SCOPE_ID);
+
+            // then
+            assertThat(task.getStatus()).isEqualTo(ScheduledTaskStatus.CANCELLED);
+            verify(scheduledTaskRepository).save(task);
+        }
+
+        @Test
+        @DisplayName("不存在_SCHEDULED_TASK_NOT_FOUND例外")
+        void 不存在_例外() {
+            given(scheduledTaskRepository.findById(TASK_ID)).willReturn(java.util.Optional.empty());
+
+            assertThatThrownBy(() -> service.cancelTask(TASK_ID, CalendarSyncScopeType.TEAM, SCOPE_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ScheduleErrorCode.SCHEDULED_TASK_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("スコープ不一致_IDOR対策でNOT_FOUND例外")
+        void スコープ不一致_NOT_FOUND() {
+            ScheduleScheduledTaskEntity task = ScheduleScheduledTaskEntity.builder()
+                    .scheduleId(SCHEDULE_ID).organizationId(ORG_ID)
+                    .scopeType(CalendarSyncScopeType.TEAM).scopeId(SCOPE_ID)
+                    .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE)
+                    .status(ScheduledTaskStatus.PENDING).payloadJson("{}").build();
+            given(scheduledTaskRepository.findById(TASK_ID)).willReturn(java.util.Optional.of(task));
+
+            // 別スコープID（999L）で取消要求 → 404 隠蔽
+            assertThatThrownBy(() -> service.cancelTask(TASK_ID, CalendarSyncScopeType.TEAM, 999L))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ScheduleErrorCode.SCHEDULED_TASK_NOT_FOUND);
+            verify(scheduledTaskRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("PENDING以外_NOT_CANCELLABLE例外（409）")
+        void PENDING以外_取消不能() {
+            ScheduleScheduledTaskEntity task = ScheduleScheduledTaskEntity.builder()
+                    .scheduleId(SCHEDULE_ID).organizationId(ORG_ID)
+                    .scopeType(CalendarSyncScopeType.ORGANIZATION).scopeId(SCOPE_ID)
+                    .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE)
+                    .status(ScheduledTaskStatus.CREATED).payloadJson("{}").build();
+            given(scheduledTaskRepository.findById(TASK_ID)).willReturn(java.util.Optional.of(task));
+
+            assertThatThrownBy(() -> service.cancelTask(TASK_ID, CalendarSyncScopeType.ORGANIZATION, SCOPE_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ScheduleErrorCode.SCHEDULED_TASK_NOT_CANCELLABLE);
+            verify(scheduledTaskRepository, never()).save(any());
         }
     }
 }
