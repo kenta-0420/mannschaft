@@ -420,6 +420,21 @@ class InboxControllerTest {
         }
 
         @Test
+        @DisplayName("POST /labels: 同名重複 → 409 INBOX_LABEL_NAME_DUPLICATE")
+        void createLabel_duplicate_409() throws Exception {
+            given(labelService.createLabel(any(), any(), any(), any()))
+                    .willThrow(new BusinessException(InboxErrorCode.INBOX_LABEL_NAME_DUPLICATE));
+
+            String body = objectMapper.writeValueAsString(Map.of("name", "要返信"));
+
+            mockMvc.perform(post("/api/v1/inbox/labels")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error.code").value("INBOX_LABEL_NAME_DUPLICATE"));
+        }
+
+        @Test
         @DisplayName("PUT /labels/{id}: 200・更新 LabelDto を返す")
         void updateLabel_200() throws Exception {
             UUID id = UUID.randomUUID();
