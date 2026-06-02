@@ -7,6 +7,13 @@ $stopFlag = "$root\.stop-backend"
 
 if (-not (Test-Path "$root\logs")) { New-Item -ItemType Directory -Path "$root\logs" | Out-Null }
 
+# 多重起動防止: 名前付きミューテックスで1プロセスのみ許可
+$mutex = New-Object System.Threading.Mutex($false, "MannschaftBackendLoop")
+if (-not $mutex.WaitOne(0)) {
+    Add-Content $logFile "[$(Get-Date -Format 'yyyy/MM/dd HH:mm:ss')] already running. duplicate start blocked."
+    exit 1
+}
+
 while ($true) {
     if (Test-Path $stopFlag) {
         Remove-Item $stopFlag -Force
