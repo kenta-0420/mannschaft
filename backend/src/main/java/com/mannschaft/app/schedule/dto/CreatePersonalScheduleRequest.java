@@ -1,5 +1,7 @@
 package com.mannschaft.app.schedule.dto;
 
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -12,10 +14,17 @@ import java.util.List;
 
 /**
  * 個人スケジュール作成リクエストDTO。
+ *
+ * <p>機能55 第二陣でリマインダーの絶対日時指定に対応。既存の {@link #reminders}（相対・開始N分前）は
+ * 後方互換のため残し、絶対日時指定として {@link #absoluteReminders} を追加する。
+ * 相対・絶対の合算件数は最大 5 件（{@link #isReminderCountWithinLimit()} で検証）。</p>
  */
 @Getter
 @RequiredArgsConstructor
 public class CreatePersonalScheduleRequest {
+
+    /** 相対・絶対を合算したリマインダーの上限件数。 */
+    public static final int MAX_TOTAL_REMINDERS = 5;
 
     @NotBlank
     @Size(max = 200)
@@ -40,8 +49,13 @@ public class CreatePersonalScheduleRequest {
     @Pattern(regexp = "^#[0-9A-Fa-f]{6}$")
     private final String color;
 
+    /** 相対指定リマインダー（開始N分前）。既存仕様を踏襲し単体では最大3件。 */
     @Size(max = 3)
     private final List<Integer> reminders;
+
+    /** 絶対指定リマインダー（固定日時）。任意・各要素は未来日時・単体では最大3件。 */
+    @Size(max = 3)
+    private final List<@Future LocalDateTime> absoluteReminders;
 
     private final RecurrenceRuleDto recurrenceRule;
 
@@ -50,5 +64,17 @@ public class CreatePersonalScheduleRequest {
      */
     public String getEventTypeOrDefault() {
         return eventType != null ? eventType : "OTHER";
+    }
+
+    /**
+     * 相対・絶対を合算したリマインダー件数が上限以内かを検証する。
+     *
+     * @return 合算件数が {@link #MAX_TOTAL_REMINDERS} 以下なら true
+     */
+    @AssertTrue(message = "リマインダーは相対・絶対の合計で最大5件です")
+    public boolean isReminderCountWithinLimit() {
+        int relative = reminders != null ? reminders.size() : 0;
+        int absolute = absoluteReminders != null ? absoluteReminders.size() : 0;
+        return relative + absolute <= MAX_TOTAL_REMINDERS;
     }
 }
