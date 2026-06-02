@@ -47,7 +47,7 @@ public class TodoSharedMemoService {
      * 共有メモ一覧を取得する（時系列昇順、ページネーション）。
      *
      * @param todoId        対象TODO ID
-     * @param page          ページ番号（1始まり）
+     * @param page          ページ番号（0始まり）
      * @param perPage       ページサイズ
      * @param currentUserId 現在のユーザーID
      * @return 共有メモ一覧
@@ -56,7 +56,7 @@ public class TodoSharedMemoService {
                                                                    Long currentUserId) {
         verifyTodoExists(todoId);
         Page<TodoSharedMemoEntryEntity> pageResult = sharedMemoRepository
-                .findByTodoIdOrderByCreatedAtAsc(todoId, PageRequest.of(page - 1, perPage));
+                .findByTodoIdOrderByCreatedAtAsc(todoId, PageRequest.of(page, perPage));
 
         // 全投稿者IDを一括収集して名前解決（N+1防止）
         Set<Long> userIds = pageResult.getContent().stream()
@@ -79,7 +79,7 @@ public class TodoSharedMemoService {
                 .toList();
 
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
-                pageResult.getTotalElements(), page, perPage, pageResult.getTotalPages());
+                pageResult.getTotalElements(), pageResult.getNumber(), pageResult.getSize(), pageResult.getTotalPages());
         return PagedResponse.of(responses, meta);
     }
 
