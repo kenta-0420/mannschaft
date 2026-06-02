@@ -57,22 +57,49 @@
 
 > デュアルキー方式により、ローテーション中も既存のログインセッションを維持できる。
 
-### 2.3 AES-256-GCM キーのローテーション
+### 2.3 AES-256-GCM キーのローテーション（段階計画）
 
 AES キーのローテーションは PII 暗号化データ（`users.birth_date` 等）の**全件再暗号化**を伴う。
 
-```
-手順:
-1. EncryptionService に旧キーと新キーを両方保持するよう改修
-2. バックグラウンドバッチを実行:
-   - 旧キーで復号 → 新キーで再暗号化（トランザクション内で処理）
-   - バッチは 1000 件ずつ分割処理（メモリ・ロック対策）
-3. 再暗号化完了を確認（全行の暗号化バージョンが更新済みであること）
-4. 旧キーによる復号サポートを削除
-5. 旧キーを環境変数から削除
+#### 前提: key_version カラムの追加（DDL）
+
+```sql
+ALTER TABLE users ADD COLUMN encryption_key_version TINYINT UNSIGNED NOT NULL DEFAULT 1;
+-- 他の暗号化フィールドを持つテーブルにも同様に追加
 ```
 
-> 再暗号化バッチの実行前に**必ずデータバックアップを取得**すること。
+#### Phase 1: 準備（本番反映 2 週間前）
+
+1. 新しいキーを生成し、環境変数 `MANNSCHAFT_ENCRYPTION_KEY_NEXT` に設定
+2. `EncryptionService` を「現在のキー + 次のキー」の両方で復号できるよう拡張
+3. 新規書き込みは引き続き現在のキーを使用
+
+#### Phase 2: バッチ再暗号化（低トラフィック時間帯）
+
+1. `KeyRotationBatchService.rotate()` を実行
+2. 処理方法:
+   - `SELECT ... WHERE encryption_key_version = 1 LIMIT 1000` で旧キーレコードを小分けに取得
+   - 各レコードを旧キーで復号 → 新キーで再暗号化 → `encryption_key_version = 2` で更新
+   - 同一トランザクション内で処理（失敗したバッチはロールバック、次回再試行可能）
+3. 進捗は `SELECT COUNT(*) WHERE encryption_key_version = 1` で監視
+
+#### Phase 3: 検証（1〜2日）
+
+- `encryption_key_version = 1` のレコードがゼロであることを確認
+- 無作為抽出したレコードを新キーで復号できることを確認
+
+#### Phase 4: 旧キー廃棄
+
+- `EncryptionService` から旧キーの参照を削除
+- 環境変数 `MANNSCHAFT_ENCRYPTION_KEY` を新キーの値に更新
+- `MANNSCHAFT_ENCRYPTION_KEY_NEXT` を削除
+
+#### 注意事項
+
+- 再暗号化バッチ中に障害が発生しても、`encryption_key_version` で進捗が追跡可能
+- バッチの再実行は `encryption_key_version = 1` を対象とするため冪等
+- 大規模テーブル（100万行以上）は深夜〜早朝のメンテナンス時間帯に実施
+- 実行前に**必ずデータバックアップを取得**すること
 
 ### 2.4 HMAC キー（ブラインドインデックス）のローテーション
 
@@ -240,8 +267,30 @@ git filter-branch --tree-filter 'rm -f .env' HEAD
 
 ---
 
-## 8. 変更履歴
+## 8. Valkey（Redis 互換）の冗長化要件
+
+JTI ブラックリスト・セッション無効化タイムスタンプ・レートリミットカウンターは
+全て Valkey に保存される。Valkey のダウンは認証基盤の Fail-Open につながるため（[02 §4.1](02_cookie_and_session.md)参照）、
+**本番環境ではシングルポイント構成は禁止**。
+
+### 必須構成（いずれかを選択）
+
+| 構成 | 特徴 | 推奨場面 |
+|---|---|---|
+| Valkey Sentinel（3 ノード） | 自動フェイルオーバー、運用が比較的シンプル | 中規模まで |
+| Valkey Cluster（6 ノード以上） | 水平スケール可能、大規模向け | 大規模 |
+| AWS ElastiCache（Multi-AZ） | Managed サービス、運用コスト低 | クラウド環境 |
+
+### 開発・CI 環境
+
+- シングルノードで可（認証が Fail-Open でも可用性を優先）
+- `docker-compose.yml` の現在の構成はそのままで問題なし
+
+---
+
+## 9. 変更履歴
 
 | 日付 | 変更 |
 |---|---|
 | 2026-06-02 | 新規作成。秘密鍵全リスト・ローテーション手順（JWT デュアルキー方式/AES/HMAC）・緊急ローテーション手順・キー生成方法・シークレット管理ツール連携・命名規則・誤コミット対応を定義 |
+| 2026-06-02 | §2.3 AES-256-GCM データキーローテーションを段階計画（Phase 1〜4）に詳細化（`encryption_key_version` カラム DDL・バッチ処理方針・冪等性確保・大規模テーブル運用注意）。§8 Valkey 冗長化要件を新設（本番 Sentinel/Cluster 必須・Fail-Open リスク・開発環境除外） |
