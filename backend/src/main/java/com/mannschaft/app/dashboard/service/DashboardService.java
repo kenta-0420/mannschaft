@@ -34,6 +34,7 @@ import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
 import com.mannschaft.app.social.announcement.AnnouncementScopeType;
+import com.mannschaft.app.social.announcement.AnnouncementVisibility;
 import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.entity.TodoEntity;
 import com.mannschaft.app.todo.repository.TodoRepository;
@@ -52,6 +53,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -355,15 +357,15 @@ public class DashboardService {
                 .toList();
 
         // F02.8: チームスコープの告知フィードを取得
-        String visibilityStr = resolveVisibilityParam(viewerRole);
+        Set<String> allowedVisibilities = resolveVisibilityParam(viewerRole);
         List<AnnouncementFeedEntity> teamAnnouncementFeeds = announcementFeedQueryRepository
-                .findByScope(AnnouncementScopeType.TEAM, teamId, visibilityStr, null, 10);
+                .findByScope(AnnouncementScopeType.TEAM, teamId, allowedVisibilities, null, 10);
 
         // F02.8: 親組織の告知フィードを取得（target_team_ids フィルタ付き）
         List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
         List<AnnouncementFeedEntity> orgAnnouncementFeeds = orgRoles.stream()
                 .flatMap(role -> announcementFeedQueryRepository
-                        .findByOrgScopeForTeamDashboard(role.getOrganizationId(), visibilityStr, 20).stream())
+                        .findByOrgScopeForTeamDashboard(role.getOrganizationId(), allowedVisibilities, 20).stream())
                 .filter(feed -> isTargetedToTeam(feed, teamId))
                 .toList();
 
@@ -480,9 +482,9 @@ public class DashboardService {
 
         // F02.8: 組織スコープの告知フィードを取得してお知らせウィジェットに連携
         LocalDateTime now = LocalDateTime.now();
-        String orgVisibilityStr = resolveVisibilityParam(viewerRole);
+        Set<String> orgAllowedVisibilities = resolveVisibilityParam(viewerRole);
         List<AnnouncementFeedEntity> orgAnnouncementFeeds = announcementFeedQueryRepository
-                .findByScope(AnnouncementScopeType.ORGANIZATION, orgId, orgVisibilityStr, null, 10);
+                .findByScope(AnnouncementScopeType.ORGANIZATION, orgId, orgAllowedVisibilities, null, 10);
         List<Map<String, Object>> orgNoticeItems = orgAnnouncementFeeds.stream()
                 .limit(DASHBOARD_ITEM_LIMIT)
                 .map(this::toAnnouncementFeedMap)
@@ -749,21 +751,15 @@ public class DashboardService {
     }
 
     /**
-     * F02.8: ViewerRole から AnnouncementFeedQueryRepository の visibility パラメータ文字列を解決する。
+     * F02.8: ViewerRole から、その閲覧者が閲覧できる visibility 集合を解決する（可視性漏洩根治）。
      *
-     * <p>MEMBER/ADMIN/DEPUTY_ADMIN/SYSTEM_ADMIN は "MEMBERS_ONLY"（最も内輪向けの告知を含む全件）を返す。
-     * SUPPORTER は "SUPPORTERS_AND_ABOVE"（サポーター向け告知のみ）を返す。
-     * PUBLIC は null（フィルタなし）を返す。</p>
+     * <p>{@link AnnouncementVisibility#allowedFor(String)} の正準マッピングに委譲する:
+     * MEMBER 以上は {@code {PUBLIC, SUPPORTERS_AND_ABOVE, MEMBERS_ONLY}}（取りこぼしなし）、
+     * SUPPORTER は {@code {PUBLIC, SUPPORTERS_AND_ABOVE}}（MEMBERS_ONLY を露出させない）、
+     * PUBLIC / null は {@code {PUBLIC}}。従来の単一文字列方式が抱えていた漏洩・取りこぼしを是正する。</p>
      */
-    private String resolveVisibilityParam(ViewerRole viewerRole) {
-        if (viewerRole == null) {
-            return null;
-        }
-        return switch (viewerRole) {
-            case MEMBER, ADMIN, DEPUTY_ADMIN, SYSTEM_ADMIN -> "MEMBERS_ONLY";
-            case SUPPORTER -> "SUPPORTERS_AND_ABOVE";
-            default -> null;
-        };
+    private Set<String> resolveVisibilityParam(ViewerRole viewerRole) {
+        return AnnouncementVisibility.allowedFor(viewerRole == null ? null : viewerRole.name());
     }
 
     /**
