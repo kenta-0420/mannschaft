@@ -26,6 +26,7 @@
  *   MR-006  県ロールアップ集計（summary byPrefecture=44→3 / byCity 44201→2 44202→1）
  *   MR-007  地域フィルタ（prefecture=44 で 4 件 / include_region_none=false で 3 件）
  *   MR-008  市から直接札を立てられない（post-link は /dashboard 導線のみ）
+ *   MR-009  未ログイン /market が login へリダイレクトされない（#1225 redirect 根治の実証）
  */
 
 import { test, expect, type APIResponse } from '@playwright/test'
@@ -251,10 +252,9 @@ test('MR-007: prefecture=44 ロールアップと include_region_none トグル�
 // MR-008: 市から直接札を立てられない（導線のみ）
 // ──────────────────────────────────────────────────────────────────────────
 
-// ⚠️ 既知 🔴 バグ（MR-009 参照）: 未ログインで /market はログインへ強制リダイレクトされるため、
-//    未ログインのまま市一覧ページ上の「札を立てる」導線を検証できない。
-//    バグ修正（recruitment-categories を permitAll 化 等）後にこの fixme を解除する。
-test.fixme('MR-008: 市ページの「札を立てる」はダッシュボード導線のみ（市から直接フォームを開かない）', async ({ page }) => {
+// PR #1225 で MR-009 の redirect バグが根治され、未ログインでも市一覧ページが描画される
+//    ようになったため fixme を解除（実 BE #1225 に対して検証）。
+test('MR-008: 市ページの「札を立てる」はダッシュボード導線のみ（市から直接フォームを開かない）', async ({ page }) => {
   await page.goto('/market')
   await waitForHydration(page)
   await expect(page.getByTestId('market-page')).toBeVisible({ timeout: 15_000 })
@@ -270,42 +270,50 @@ test.fixme('MR-008: 市ページの「札を立てる」はダッシュボード
 })
 
 // ──────────────────────────────────────────────────────────────────────────
-// MR-009: 🔴 未ログイン /market が login へリダイレクトされるバグの回帰検出
+// MR-009: 未ログイン /market が login へリダイレクトされない（#1225 redirect 根治の実証）
 // ──────────────────────────────────────────────────────────────────────────
 //
-// 根本原因（2026-05-31 実機 E2E で発見）:
-//   公開の市一覧ページ pages/market/index.vue は onMounted で recruitmentApi.listCategories()
-//   = GET /api/v1/recruitment-categories を呼ぶ。このエンドポイントは SecurityConfig で
-//   permitAll されておらず、未ログインだと 401 を返す。useApi.onResponseError は
-//   「user が null での 401」を navigateTo('/login') で処理するため、市一覧ページ全体が
-//   ログイン画面へ飛ばされ、未ログイン来訪者には市が一切表示されない（F22.1 の主目的が破綻）。
+// 旧バグ（2026-05-31 実機 E2E で発見・PR #1225 で根治）:
+//   公開の市一覧ページ pages/market/index.vue は onMounted でジャンルフィルタ用に認証必須の
+//   GET /api/v1/recruitment-categories を直叩きしていた。未ログインだと 401 を返し、
+//   useApi.onResponseError が user=null での 401 を navigateTo('/login') で処理するため、
+//   市一覧ページごとログインへ飛ばされ、未ログイン来訪者に市が一切表示されなかった。
 //
-//   /api/v1/public/market/{listings,regions,summary} は 200 を返している（市 API 自体は健全）。
-//   恒久対処案: (a) recruitment-categories を GET permitAll 化、または
-//             (b) 公開市用のカテゴリ取得経路を用意、または
-//             (c) FE: 公開ページでは listCategories 失敗を握りつぶし global redirect を抑止。
+// 根治（PR #1225）:
+//   - BE: GET /api/v1/public/market/categories を新設し permitAll 化
+//   - FE: market/index.vue の fetchCategories() を公開エンドポイント経由に切替
+//         （recruitment-categories 直叩きを廃止）
 //
-// 本テストは「現状の壊れている挙動」を固定する回帰トリップワイヤ。バグ修正後は
-// expect を「/login に飛ばない」へ反転させること。
-test('MR-009: 【既知🔴】未ログイン /market が recruitment-categories 401 で login へリダイレクトされる', async ({ page }) => {
-  const categoriesStatuses: number[] = []
+// 本テストは「未ログインで /market が login へ飛ばず市一覧が描画される」正挙動を固定し、
+// redirect の消滅を実証する反転後の回帰テスト。
+test('MR-009: 未ログイン /market が login へリダイレクトされず市一覧が描画される（#1225 根治の実証）', async ({ page }) => {
+  // recruitment-categories（旧 401 経路）が呼ばれていないこと / 公開 categories が呼ばれることを記録
+  const legacyCategoriesStatuses: number[] = []
+  const publicCategoriesStatuses: number[] = []
   page.on('response', (r) => {
-    if (r.url().includes('/api/v1/recruitment-categories')) {
-      categoriesStatuses.push(r.status())
+    const url = r.url()
+    if (url.includes('/api/v1/public/market/categories')) {
+      publicCategoriesStatuses.push(r.status())
+    } else if (url.includes('/api/v1/recruitment-categories')) {
+      legacyCategoriesStatuses.push(r.status())
     }
   })
 
   await page.goto('/market')
-  // クライアントのリダイレクトを待つ
-  await page.waitForURL(/\/login/, { timeout: 15_000 })
-  expect(page.url(), '未ログイン /market は現状 login へリダイレクトされる（要修正）').toContain('/login')
+  await waitForHydration(page)
 
-  // 真因: recruitment-categories が 401 を返している
-  expect(categoriesStatuses, 'recruitment-categories が 401 を返すことがリダイレクトの真因').toContain(401)
+  // 市一覧ページが描画される（login へ飛ばない）
+  await expect(page.getByTestId('market-page')).toBeVisible({ timeout: 15_000 })
+  expect(page.url(), '未ログイン /market は login へリダイレクトされない（#1225 根治）').not.toContain('/login')
 
-  // 一方で公開市 API 自体は健全であることを併記（リダイレクト原因が市 API でないことの確証）
+  // 旧 401 経路（recruitment-categories 直叩き）は使われていない
+  expect(legacyCategoriesStatuses, '旧 recruitment-categories 直叩きは廃止されている').not.toContain(401)
+
+  // 公開市 API・公開カテゴリ API が未ログインで 200 を返す（permitAll の実証）
   const listRes = await page.request.get(`${BE_API}/listings?size=5`)
-  expect(listRes.status(), '市一覧 API 自体は 200（健全）').toBe(200)
-  const catRes = await page.request.get(`${BE}/api/v1/recruitment-categories`)
-  expect(catRes.status(), 'recruitment-categories は未ログインで 401（permitAll でない）').toBe(401)
+  expect(listRes.status(), '市一覧 API は未ログインで 200').toBe(200)
+  const catRes = await page.request.get(`${BE_API}/categories`)
+  expect(catRes.status(), '公開カテゴリ API は未ログインで 200（permitAll）').toBe(200)
+  const catJson = (await catRes.json()) as { data: Array<{ id: number, nameKey?: string }> }
+  expect(Array.isArray(catJson.data), '公開カテゴリ API は data 配列を返す').toBe(true)
 })
