@@ -351,6 +351,40 @@ class GlobalExceptionHandlerTest {
             // Then
             assertThat(result).isEqualTo(HttpStatus.FORBIDDEN);
         }
+
+        @Test
+        @DisplayName("F22.1 市: RECRUITMENT_204（配信対象0件）は ERROR severity だが個別マッピングで400になる")
+        void resolveHttpStatus_RECRUITMENT_204_400() {
+            // RECRUITMENT_204 (EMPTY_DISTRIBUTION_TARGETS) は Severity.ERROR 既定では 500 だが、
+            // 入力不備（PUBLIC 札の配信対象未設定）であり 400 を返すべき。
+            // 未登録だと publish 失敗が 500 として漏れ、PUBLIC 札が市に出ない（実機 CRUD E2E で発覚）。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.recruitment.RecruitmentErrorCode.EMPTY_DISTRIBUTION_TARGETS);
+
+            assertThat(result).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
+        @DisplayName("F22.1 市: RECRUITMENT_207（visibility×配信対象不整合）は ERROR severity だが個別マッピングで400になる")
+        void resolveHttpStatus_RECRUITMENT_207_400() {
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.recruitment.RecruitmentErrorCode.VISIBILITY_TARGETS_INCONSISTENT);
+
+            assertThat(result).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
+        @DisplayName("F22.1 市: RECRUITMENT_204 の BusinessException は 400 BadRequest で返る（500 漏れ防止の回帰固定）")
+        void handleBusinessException_RECRUITMENT_204_400() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.recruitment.RecruitmentErrorCode.EMPTY_DISTRIBUTION_TARGETS);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RECRUITMENT_204");
+        }
     }
 
     // ========================================
