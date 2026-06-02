@@ -224,6 +224,9 @@ public class GlobalExceptionHandler {
             Map.entry("SCHEDULE_078", HttpStatus.UNPROCESSABLE_ENTITY),     // 親スケジュール
             Map.entry("SCHEDULE_079", HttpStatus.FORBIDDEN),                // 代理人本人でない
             Map.entry("SCHEDULE_080", HttpStatus.UNPROCESSABLE_ENTITY),     // PENDING でない
+            // 機能55 予約作成（第三陣）予約タスク取消
+            Map.entry("SCHEDULE_091", HttpStatus.NOT_FOUND),                // SCHEDULED_TASK_NOT_FOUND（IDOR対策で 404）
+            Map.entry("SCHEDULE_092", HttpStatus.CONFLICT),                 // SCHEDULED_TASK_NOT_CANCELLABLE（PENDING 以外）
             // F03.10 代理出席（イベント側 §4.2 / §5.6 / §5.7）
             Map.entry("EVENT_030", HttpStatus.NOT_FOUND),                   // DELEGATION_NOT_FOUND
             Map.entry("EVENT_031", HttpStatus.FORBIDDEN),                   // 委任者がスコープ外

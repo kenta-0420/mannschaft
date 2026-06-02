@@ -27,6 +27,7 @@ public interface PersonalScheduleMapper {
     @Mapping(target = "status.recurrenceRule", ignore = true)
     @Mapping(target = "status.googleSynced", expression = "java(scheduleEntity.getGoogleCalendarEventId() != null)")
     @Mapping(target = "reminders", ignore = true)
+    @Mapping(target = "detailedReminders", ignore = true)
     @Mapping(target = "audit.createdAt", source = "createdAt")
     @Mapping(target = "audit.updatedAt", source = "updatedAt")
     @Mapping(target = "audit.createdByDisplayName", ignore = true)
