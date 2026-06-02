@@ -18,6 +18,10 @@ import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.dto.MembershipCreateRequest;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.team.event.TeamMemberAuditEvent;
 import com.mannschaft.app.organization.event.OrganizationMemberAuditEvent;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +55,7 @@ public class RoleService {
     private final PermissionGroupPermissionRepository permissionGroupPermissionRepository;
     private final UserPermissionGroupRepository userPermissionGroupRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final MembershipService membershipService;
 
     /**
      * ユーザーにロールを割り当てる。
@@ -76,9 +81,12 @@ public class RoleService {
         log.info("ロール割当完了: scopeType={}, scopeId={}, userId={}, roleId={}, grantedBy={}",
                 scopeType, scopeId, targetUserId, roleId, grantedBy);
 
-        // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）
-        eventPublisher.publishEvent(new MembershipChangedEvent(
-                targetUserId, scopeType, scopeId, MembershipChangedEvent.ChangeType.ASSIGNED));
+        // F00.5 認可基盤根治: memberships にも MEMBER として入会させる。
+        // 認可（AccessControlService.isMember）は memberships を真実の源とするため、
+        // user_roles だけでは割当対象者が当該スコープから 403 で締め出される構造的欠陥を防ぐ。
+        // join 自身が MembershipChangedEvent(ASSIGNED) を発火するため、
+        // 従来この直後に手動発火していた同イベントは二重発火回避のため削除し join に一本化した。
+        joinMembershipForRoleGrant(targetUserId, scopeId, scopeType, grantedBy, "ROLE_ASSIGN");
     }
 
     /**
@@ -114,6 +122,12 @@ public class RoleService {
 
         log.info("ロール変更完了: scopeType={}, scopeId={}, userId={}, newRoleId={}, changedBy={}",
                 scopeType, scopeId, targetUserId, req.getRoleId(), changedBy);
+
+        // F00.5 認可基盤根治（防御補填）: ロール変更対象は本来既に memberships に在籍済みのはずだが、
+        // 移行バックフィル以前の欠落データ対策として冪等 join を補填する。
+        // join は既存アクティブ membership があれば何もしない（冪等）ため無害。
+        // 既存在籍時 join はイベントを発火しないため、ロール変更の通知は従来通り下記 CHANGED で担う。
+        joinMembershipForRoleGrant(targetUserId, scopeId, scopeType, changedBy, "ROLE_CHANGE");
 
         // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）
         eventPublisher.publishEvent(new MembershipChangedEvent(
@@ -321,6 +335,13 @@ public class RoleService {
         log.info("オーナー譲渡完了: scopeType={}, scopeId={}, from={}, to={}",
                 scopeType, scopeId, currentUserId, targetUserId);
 
+        // F00.5 認可基盤根治（防御補填）: 譲渡の当事者両名は本来既に memberships に在籍済みのはずだが、
+        // 移行バックフィル以前の欠落データ対策として双方に冪等 join を補填する。
+        // join は既存アクティブ membership があれば何もしない（冪等）ため無害。
+        // 既存在籍時 join はイベントを発火しないため、昇格/降格の通知は従来通り下記 CHANGED で担う。
+        joinMembershipForRoleGrant(targetUserId, scopeId, scopeType, currentUserId, "OWNERSHIP_TRANSFER");
+        joinMembershipForRoleGrant(currentUserId, scopeId, scopeType, currentUserId, "OWNERSHIP_TRANSFER");
+
         // F02.2.1: メンバーシップ変更イベントを発火（ダッシュボードキャッシュ無効化用）
         // 対象ユーザーは新規 ADMIN 昇格、現オーナーは MEMBER ダウングレード
         eventPublisher.publishEvent(new MembershipChangedEvent(
@@ -372,6 +393,26 @@ public class RoleService {
             return permissionGroupRepository.findByTeamId(scopeId);
         }
         return permissionGroupRepository.findByOrganizationId(scopeId);
+    }
+
+    /**
+     * F00.5 認可基盤根治: 権限ロール付与に伴い memberships へ MEMBER として入会させる。
+     *
+     * <p>権限ロール（ADMIN/DEPUTY_ADMIN/MEMBER）の付与・変更・譲渡では、認可の真実の源である
+     * memberships に在籍行が必要となる。本ヘルパーは {@link MembershipService#join} を冪等に呼び出し、
+     * 在籍行が無ければ作成、既にあれば何もしない。membership の role_kind は在籍有無のみを表すため
+     * 常に {@link RoleKind#MEMBER} とし、権限の細分は user_roles 側が担う。</p>
+     */
+    private void joinMembershipForRoleGrant(Long userId, Long scopeId, String scopeType,
+                                            Long invitedBy, String source) {
+        MembershipCreateRequest req = new MembershipCreateRequest();
+        req.setUserId(userId);
+        req.setScopeType("TEAM".equals(scopeType) ? ScopeType.TEAM : ScopeType.ORGANIZATION);
+        req.setScopeId(scopeId);
+        req.setRoleKind(RoleKind.MEMBER);
+        req.setInvitedBy(invitedBy);
+        req.setSource(source);
+        membershipService.join(req);
     }
 
     /**
