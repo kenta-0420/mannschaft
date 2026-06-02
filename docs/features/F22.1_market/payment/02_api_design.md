@@ -25,6 +25,13 @@
 
 ### 2.1 `POST /api/v1/payment/connect/onboarding-link`
 
+> ⚠️ **実装注意 — Connect onboarding パスの統一確認**
+> 既存の認可ベースライン `docs/security/01_authorization_baseline.md` には `/api/v1/users/me/stripe-connect`（`.authenticated()`）が**既出**として定義されている可能性がある。本設計が採用するパス `/api/v1/payment/connect/onboarding-link` はパス系統が異なるため、実装着手前に以下を確認・統一すること:
+> 1. `SecurityConfig`（または `HttpSecurityConfig`）で `/api/v1/users/me/stripe-connect` が `requestMatchers` に含まれているか確認する。
+> 2. 旧パスを廃止するか、本設計パスへリダイレクトするかを決定し、`01_authorization_baseline.md` を更新する。
+> 3. FE が旧パスをハードコードしていないか全文検索（`stripe-connect` / `stripeConnect`）で確認する。
+> 両パスが並立したままになると SecurityConfig のパーミッション設定が分裂し、認可抜け漏れの原因となる。
+
 受領者になる主体（個人/チーム/組織）の Stripe Express アカウントを作成し、hosted onboarding への遷移リンクを返す。
 
 **Request**
