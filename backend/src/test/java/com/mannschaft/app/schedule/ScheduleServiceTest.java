@@ -12,7 +12,9 @@ import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.service.ScheduleEventCategoryService;
 import com.mannschaft.app.schedule.service.ScheduleQueryService;
 import com.mannschaft.app.schedule.service.ScheduleRecurrenceService;
+import com.mannschaft.app.schedule.service.ScheduleScheduledTaskService;
 import com.mannschaft.app.schedule.service.ScheduleService;
+import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -57,6 +59,12 @@ class ScheduleServiceTest {
 
     @Mock
     private ScheduleRecurrenceService recurrenceService;
+
+    @Mock
+    private ScheduleScheduledTaskService scheduledTaskService;
+
+    @Mock
+    private TeamOrgMembershipRepository teamOrgMembershipRepository;
 
     @InjectMocks
     private ScheduleService scheduleService;
@@ -239,7 +247,8 @@ class ScheduleServiceTest {
                     null, null,
                     null,
                     null,
-                    null);
+                    null,
+                    null, null);
 
             given(scheduleRepository.save(any(ScheduleEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
@@ -262,7 +271,7 @@ class ScheduleServiceTest {
                     END, START, // start > end
                     false, "PRACTICE",
                     null, null, null,
-                    false, null, null, null, null, null, null, null);
+                    false, null, null, null, null, null, null, null, null, null);
 
             // when & then
             assertThatThrownBy(() -> scheduleService.createSchedule(req, TEAM_ID, "TEAM", USER_ID))
@@ -280,7 +289,7 @@ class ScheduleServiceTest {
                     START, END,
                     false, "PRACTICE",
                     null, null, null,
-                    false, null, null, null, null, null, null, null);
+                    false, null, null, null, null, null, null, null, null, null);
 
             // when & then
             assertThatThrownBy(() -> scheduleService.createSchedule(req, TEAM_ID, "INVALID", USER_ID))
@@ -554,7 +563,7 @@ class ScheduleServiceTest {
             // given
             CreateScheduleRequest req = new CreateScheduleRequest(
                     "個人予定", null, null, START, END, false, "OTHER",
-                    null, null, null, false, null, null, null, null, null, null, null);
+                    null, null, null, false, null, null, null, null, null, null, null, null, null);
 
             given(scheduleRepository.save(any(ScheduleEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
@@ -573,7 +582,7 @@ class ScheduleServiceTest {
             Long ORG_ID = 20L;
             CreateScheduleRequest req = new CreateScheduleRequest(
                     "組織イベント", null, null, START, END, false, "EVENT",
-                    null, null, null, false, null, null, null, null, null, null, null);
+                    null, null, null, false, null, null, null, null, null, null, null, null, null);
 
             given(scheduleRepository.save(any(ScheduleEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
