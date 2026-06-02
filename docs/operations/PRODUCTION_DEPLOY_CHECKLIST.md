@@ -43,6 +43,10 @@ PR/migration ごとに該当セクションを追加し、デプロイ判断の�
 - [ ] 認可の既定値が deny-by-default（`.authenticated()`）で動作し、webhook 4 系統（Stripe / SES / LINE / incoming）が無認証で到達することを確認（`docs/security/01_authorization_baseline.md` §3.6）
 - [ ] 主要画面でブラウザコンソールに CSP 違反が出ないことを確認（`docs/security/03_security_headers_and_csp.md`）
 - [ ] Swagger UI / `/v3/api-docs` が本番で遮断されている（`docs/security/01_authorization_baseline.md` §8）
+- [ ] **[本番前 Critical]** 認可基盤根治（Phase 1〜3）完了済みであること（JWT roles 修正・`@EnableMethodSecurity` 有効化）（`docs/security/03_role_authority_model.md`）
+- [ ] **[本番前 Critical]** `npm audit --audit-level=high` が 0 件で終了すること（serialize-javascript RCE 等 11 件が未解消の場合は本番不可）（`docs/security/04_dependency_and_supply_chain.md` §4.2）
+- [ ] CSP 違反レポート受信 EP（`POST /api/v1/security/csp-reports`）が実装済みであること（`docs/security/03_security_headers_and_csp.md`）
+- [ ] Valkey がパスワード認証付きで起動していること（本番環境。`requirepass` 設定を確認）
 
 > セキュリティ横断方針の全体は `docs/security/README.md` を参照。本番必須の環境変数は同 §5/§6 にまとまっている。
 
