@@ -22,6 +22,7 @@ import com.mannschaft.app.recruitment.entity.RecruitmentListingRegionEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRegionRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
+import com.mannschaft.app.recruitment.util.LikeEscapeUtil;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
@@ -97,7 +98,9 @@ public class MarketQueryService {
             String keyword, boolean includeRegionNone, Pageable pageable, String lang) {
         String normalizedPref = blankToNull(prefecture);
         String normalizedCity = blankToNull(city);
-        String normalizedKeyword = blankToNull(keyword);
+        // blankToNull → escape の順。null はエスケープせず透過する。
+        // LIKE ワイルドカード（% / _ / \）をリテラル化し、フィルタ無効化を防ぐ（JPQL の ESCAPE '\' と対）。
+        String normalizedKeyword = LikeEscapeUtil.escape(blankToNull(keyword));
 
         Page<RecruitmentListingEntity> page = listingRepository.searchMarketListings(
                 normalizedPref, normalizedCity, categoryId, normalizedKeyword,

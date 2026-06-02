@@ -41,6 +41,10 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
      * visibility フィルタは検索結果への包含判定のみで、詳細閲覧時に権限チェックを行う。
      * keyword・location は LIKE 検索。null を渡した場合は条件を無視する。
      * startFrom / startTo が null の場合も同様に無視する。
+     *
+     * <p>keyword・location は呼び出し側（サービス層）で LIKE ワイルドカード（{@code %} / {@code _} / {@code \})
+     * をエスケープ済みの前提で受け取る。本クエリは {@code ESCAPE '\'} 句でその
+     * エスケープ文字を有効化し、ユーザー入力中の記号をリテラル一致として扱う。</p>
      */
     @Query("""
             SELECT r FROM RecruitmentListingEntity r
@@ -51,8 +55,8 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             AND (:startFrom IS NULL OR r.startAt >= :startFrom)
             AND (:startTo IS NULL OR r.startAt <= :startTo)
             AND (:participationType IS NULL OR r.participationType = :participationType)
-            AND (:keyword IS NULL OR r.title LIKE %:keyword% OR r.description LIKE %:keyword%)
-            AND (:location IS NULL OR r.location LIKE %:location%)
+            AND (:keyword IS NULL OR r.title LIKE CONCAT('%', :keyword, '%') ESCAPE '\\' OR r.description LIKE CONCAT('%', :keyword, '%') ESCAPE '\\')
+            AND (:location IS NULL OR r.location LIKE CONCAT('%', :location, '%') ESCAPE '\\')
             ORDER BY r.startAt ASC
             """)
     Page<RecruitmentListingEntity> searchPublicListings(
@@ -233,10 +237,14 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
      *   <li>{@code includeRegionNone=true} → 地域行を一切持たない札（{@code NOT EXISTS}）も含める</li>
      * </ul>
      *
+     * <p>keyword は呼び出し側（{@code MarketQueryService#searchListings}）で LIKE ワイルドカード
+     * （{@code %} / {@code _} / {@code \}）をエスケープ済みの前提で受け取る。本クエリは {@code ESCAPE '\'}
+     * 句でそのエスケープ文字を有効化し、ユーザー入力中の記号をリテラル一致として扱う。</p>
+     *
      * @param prefecture        都道府県コード（null=全国）
      * @param city              市区町村コード（null=県ロールアップ or 全国）
      * @param categoryId        ジャンル（null=全ジャンル）
-     * @param keyword           タイトル部分一致（null=無条件）
+     * @param keyword           タイトル部分一致（null=無条件・ワイルドカードはエスケープ済）
      * @param includeRegionNone 地域未設定（中間表 0 件）の札も含めるか
      * @param pageable          ページング
      * @return 公開札ページ（地域重複なし）
@@ -248,7 +256,7 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
               AND (:categoryId IS NULL OR l.categoryId = :categoryId)
-              AND (:keyword IS NULL OR l.title LIKE %:keyword%)
+              AND (:keyword IS NULL OR l.title LIKE CONCAT('%', :keyword, '%') ESCAPE '\\')
               AND (
                     (:city IS NOT NULL AND EXISTS (
                         SELECT 1 FROM RecruitmentListingRegionEntity rr
