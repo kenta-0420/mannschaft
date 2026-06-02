@@ -43,6 +43,10 @@ PR/migration ごとに該当セクションを追加し、デプロイ判断の�
 - [ ] 認可の既定値が deny-by-default（`.authenticated()`）で動作し、webhook 4 系統（Stripe / SES / LINE / incoming）が無認証で到達することを確認（`docs/security/01_authorization_baseline.md` §3.6）
 - [ ] 主要画面でブラウザコンソールに CSP 違反が出ないことを確認（`docs/security/03_security_headers_and_csp.md`）
 - [ ] Swagger UI / `/v3/api-docs` が本番で遮断されている（`docs/security/01_authorization_baseline.md` §8）
+- [ ] **[本番前 Critical]** 認可基盤根治（Phase 1〜3）完了済みであること（JWT roles 修正・`@EnableMethodSecurity` 有効化）（`docs/security/03_role_authority_model.md`）
+- [ ] **[本番前 Critical]** `npm audit --audit-level=high` が 0 件で終了すること（serialize-javascript RCE 等 11 件が未解消の場合は本番不可）（`docs/security/04_dependency_and_supply_chain.md` §4.2）
+- [ ] CSP 違反レポート受信 EP（`POST /api/v1/security/csp-reports`）が実装済みであること（`docs/security/03_security_headers_and_csp.md`）
+- [ ] Valkey がパスワード認証付きで起動していること（本番環境。`requirepass` 設定を確認）
 
 > セキュリティ横断方針の全体は `docs/security/README.md` を参照。本番必須の環境変数は同 §5/§6 にまとまっている。
 
@@ -102,6 +106,20 @@ nuxt-security による CSP を強制適用済み。実装時にブラウザ実�
 **🟡 Swagger 本番遮断**
 
 - [ ] Swagger UI / `/v3/api-docs` が本番で遮断されている（`docs/security/01_authorization_baseline.md` §8）
+
+### セキュリティ精査確認項目（第2回軍議 / 2026-06-02）
+
+設計: `docs/security/06〜09`（ビジネスロジック攻撃防止・ファイルストレージ・インシデント対応・キー管理）。精査により追加された本番要件の確認項目。
+
+- [ ] Valkey が Sentinel または Cluster 構成で稼働していること（シングルノード禁止。`docs/security/09_key_management_and_rotation.md §8` 参照）
+- [ ] `MANNSCHAFT_ENCRYPTION_KEY` が設定済みであること（AES-256-GCM 対象フィールド: `users.birth_date` 等）
+- [ ] WebSocket の `setAllowedOriginPatterns` が本番ドメインに限定されていること（`"*"` 禁止。`docs/security/01_authorization_baseline.md §5` 参照）
+- [ ] 退会済みユーザーの access token で API を叩いて 401 が返ること（全デバイス無効化の動作確認）
+- [ ] MFA 回復後に他デバイスが 401 で弾かれることを確認（全デバイス無効化の動作確認）
+- [ ] GDPR バッチを dry-run で実行し、4 テーブルの削除対象件数が期待通りであることを確認
+- [ ] セキュリティインシデント管理テーブル（`security_incidents`）が作成済みであること（`docs/security/08_incident_response.md §9` — 将来実装予定）
+- [ ] Presigned URL 発行エンドポイントが `Cache-Control: no-cache` ヘッダーを付与していること（`docs/security/07_file_and_storage_security.md §2.4`）
+- [ ] ログイン・パスワードリセット・メール認証コードのレートリミット閾値が設計書と一致していること（ログイン 5回/分・リセット申請 3回/分・メール認証 3回/分。`docs/security/02_cookie_and_session.md §5`）
 
 ### V9.091.1 — 組織タイプ未知値の救済 (2026-04-21)
 

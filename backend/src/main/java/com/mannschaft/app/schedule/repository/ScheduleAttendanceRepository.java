@@ -38,6 +38,14 @@ public interface ScheduleAttendanceRepository extends JpaRepository<ScheduleAtte
     long countByScheduleIdAndStatus(Long scheduleId, AttendanceStatus status);
 
     /**
+     * スケジュールIDで出欠レコード総数を取得する（機能55: 出欠募集の冪等性ガード用）。
+     *
+     * @param scheduleId スケジュールID
+     * @return 出欠レコード総数（0 なら未生成）
+     */
+    long countByScheduleId(Long scheduleId);
+
+    /**
      * スケジュールIDごとのステータス別出欠数を取得する。
      */
     @Query("SELECT a.status, COUNT(a) FROM ScheduleAttendanceEntity a WHERE a.scheduleId = :scheduleId GROUP BY a.status")
