@@ -23,6 +23,10 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.organization.event.OrganizationCreatedEvent;
 import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.dto.MembershipCreateRequest;
+import com.mannschaft.app.membership.service.MembershipService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -56,6 +60,7 @@ public class OrganizationService {
     private final ApplicationEventPublisher eventPublisher;
     private final OrganizationMembershipService organizationMembershipService;
     private final OrganizationHierarchyService organizationHierarchyService;
+    private final MembershipService membershipService;
 
     /**
      * 組織を作成し、作成者をADMINロールで紐付ける。
@@ -91,6 +96,18 @@ public class OrganizationService {
                 .organizationId(org.getId())
                 .build();
         userRoleRepository.save(userRole);
+
+        // F00.5 認可基盤根治: memberships にも MEMBER として入会させる。
+        // 認可（AccessControlService.isMember）は memberships を真実の源とするため、
+        // user_roles だけでは作成者本人が自組織から 403 で締め出される構造的欠陥を防ぐ。
+        // 権限ロール（ADMIN）は user_roles が担い、membership は在籍有無のみ表す（role_kind=MEMBER）。
+        MembershipCreateRequest membershipReq = new MembershipCreateRequest();
+        membershipReq.setUserId(userId);
+        membershipReq.setScopeType(ScopeType.ORGANIZATION);
+        membershipReq.setScopeId(org.getId());
+        membershipReq.setRoleKind(RoleKind.MEMBER);
+        membershipReq.setSource("ORG_CREATE");
+        membershipService.join(membershipReq);
 
         // 監査ログ用イベント発行
         eventPublisher.publishEvent(new OrganizationCreatedEvent(userId, org.getId(), org.getName()));

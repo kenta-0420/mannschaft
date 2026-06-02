@@ -232,12 +232,12 @@ class TodoServiceTest {
 
             // When
             PagedResponse<TodoResponse> response = todoService.listTodos(
-                    SCOPE_TYPE, SCOPE_ID, TodoStatus.OPEN, 1, 20);
+                    SCOPE_TYPE, SCOPE_ID, TodoStatus.OPEN, 0, 20);
 
             // Then
             assertThat(response.getData()).hasSize(1);
             assertThat(response.getData().get(0).getTitle()).isEqualTo("テストTODO");
-            assertThat(response.getMeta().getPage()).isEqualTo(1);
+            assertThat(response.getMeta().getPage()).isEqualTo(0);
         }
 
         @Test
@@ -251,7 +251,7 @@ class TodoServiceTest {
 
             // When
             PagedResponse<TodoResponse> response = todoService.listTodos(
-                    SCOPE_TYPE, SCOPE_ID, null, 1, 20);
+                    SCOPE_TYPE, SCOPE_ID, null, 0, 20);
 
             // Then
             assertThat(response.getData()).isEmpty();

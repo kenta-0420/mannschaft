@@ -114,12 +114,12 @@ class TodoCommentServiceTest {
                     .willReturn(Map.of(USER_ID, "テストユーザー"));
 
             // When
-            PagedResponse<CommentResponse> response = todoCommentService.listComments(TODO_ID, 1, 20);
+            PagedResponse<CommentResponse> response = todoCommentService.listComments(TODO_ID, 0, 20);
 
             // Then
             assertThat(response.getData()).hasSize(1);
             assertThat(response.getData().get(0).getBody()).isEqualTo("テストコメント");
-            assertThat(response.getMeta().getPage()).isEqualTo(1);
+            assertThat(response.getMeta().getPage()).isEqualTo(0);
         }
 
         @Test
@@ -129,7 +129,7 @@ class TodoCommentServiceTest {
             given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> todoCommentService.listComments(TODO_ID, 1, 20))
+            assertThatThrownBy(() -> todoCommentService.listComments(TODO_ID, 0, 20))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TODO_010"));
@@ -146,7 +146,7 @@ class TodoCommentServiceTest {
                     .willReturn(page);
 
             // When
-            PagedResponse<CommentResponse> response = todoCommentService.listComments(TODO_ID, 1, 20);
+            PagedResponse<CommentResponse> response = todoCommentService.listComments(TODO_ID, 0, 20);
 
             // Then
             assertThat(response.getData()).isEmpty();

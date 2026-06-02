@@ -86,11 +86,11 @@ public class OrgTodoController {
     public ResponseEntity<PagedResponse<TodoResponse>> listTodos(
             @PathVariable Long orgId,
             @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int perPage) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         TodoStatus todoStatus = status != null ? TodoStatus.valueOf(status) : null;
         return ResponseEntity.ok(todoService.listTodos(
-                TodoScopeType.ORGANIZATION, orgId, todoStatus, page, perPage));
+                TodoScopeType.ORGANIZATION, orgId, todoStatus, page, size));
     }
 
     /**
@@ -251,9 +251,9 @@ public class OrgTodoController {
     public ResponseEntity<PagedResponse<CommentResponse>> listComments(
             @PathVariable Long orgId,
             @PathVariable Long id,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int perPage) {
-        return ResponseEntity.ok(commentService.listComments(id, page, perPage));
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(commentService.listComments(id, page, size));
     }
 
     /**
@@ -387,9 +387,9 @@ public class OrgTodoController {
     public ResponseEntity<PagedResponse<SharedMemoEntryResponse>> listSharedMemos(
             @PathVariable Long orgId,
             @PathVariable Long id,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int perPage) {
-        return ResponseEntity.ok(sharedMemoService.getSharedMemos(id, page, perPage,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(sharedMemoService.getSharedMemos(id, page, size,
                 SecurityUtils.getCurrentUserId()));
     }
 

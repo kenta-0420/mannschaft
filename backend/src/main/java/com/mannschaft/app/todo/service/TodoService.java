@@ -59,14 +59,14 @@ public class TodoService {
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
      * @param status    ステータスフィルタ（NULLで全件）
-     * @param page      ページ番号（1始まり）
+     * @param page      ページ番号（0始まり）
      * @param size      ページサイズ
      * @return TODO一覧
      */
     @Timed(value = "mannschaft.repository.query", extraTags = {"operation", "TodoService.listTodos"})
     public PagedResponse<TodoResponse> listTodos(TodoScopeType scopeType, Long scopeId,
                                                   TodoStatus status, int page, int size) {
-        PageRequest pageable = PageRequest.of(page - 1, size,
+        PageRequest pageable = PageRequest.of(page, size,
                 Sort.by("priority").descending().and(Sort.by("dueDate").ascending()));
 
         Page<TodoEntity> pageResult;
@@ -81,7 +81,7 @@ public class TodoService {
         List<TodoResponse> responses = responseConverter.toTodoResponseList(pageResult.getContent());
 
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
-                pageResult.getTotalElements(), page, size, pageResult.getTotalPages());
+                pageResult.getTotalElements(), pageResult.getNumber(), pageResult.getSize(), pageResult.getTotalPages());
         return PagedResponse.of(responses, meta);
     }
 
