@@ -42,21 +42,21 @@ public class TodoCommentService {
      * コメント一覧を取得する。
      *
      * @param todoId Todo ID
-     * @param page   ページ番号（1始まり）
+     * @param page   ページ番号（0始まり）
      * @param size   ページサイズ
      * @return コメント一覧
      */
     public PagedResponse<CommentResponse> listComments(Long todoId, int page, int size) {
         verifyTodoExists(todoId);
         Page<TodoCommentEntity> pageResult = commentRepository
-                .findByTodoIdOrderByCreatedAtAsc(todoId, PageRequest.of(page - 1, size));
+                .findByTodoIdOrderByCreatedAtAsc(todoId, PageRequest.of(page, size));
 
         List<CommentResponse> responses = pageResult.getContent().stream()
                 .map(this::toCommentResponse)
                 .toList();
 
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
-                pageResult.getTotalElements(), page, size, pageResult.getTotalPages());
+                pageResult.getTotalElements(), pageResult.getNumber(), pageResult.getSize(), pageResult.getTotalPages());
         return PagedResponse.of(responses, meta);
     }
 
