@@ -14,6 +14,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
 import org.springframework.context.support.StaticMessageSource;
+import org.springframework.http.MediaType;
+import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -47,8 +49,10 @@ class StripeConnectWebhookControllerTest {
         MessageSource ms = new StaticMessageSource();
         StripeWebhookController controller =
                 new StripeWebhookController(stripeWebhookService, connectWebhookService);
+        // 生ボディは @RequestBody String で受けるため StringHttpMessageConverter が必須
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
+                .setMessageConverters(new StringHttpMessageConverter(),
+                        new MappingJackson2HttpMessageConverter(objectMapper))
                 .setControllerAdvice(new GlobalExceptionHandler(ms))
                 .build();
     }
@@ -61,6 +65,7 @@ class StripeConnectWebhookControllerTest {
 
         mockMvc.perform(post("/api/v1/webhooks/stripe/connect")
                         .header("Stripe-Signature", "bad")
+                        .contentType(MediaType.TEXT_PLAIN)
                         .content("payload"))
                 .andExpect(status().isBadRequest());
     }
@@ -72,6 +77,7 @@ class StripeConnectWebhookControllerTest {
 
         mockMvc.perform(post("/api/v1/webhooks/stripe/connect")
                         .header("Stripe-Signature", "good")
+                        .contentType(MediaType.TEXT_PLAIN)
                         .content("payload"))
                 .andExpect(status().isOk());
 
@@ -85,6 +91,7 @@ class StripeConnectWebhookControllerTest {
 
         mockMvc.perform(post("/api/v1/webhooks/stripe")
                         .header("Stripe-Signature", "sig")
+                        .contentType(MediaType.TEXT_PLAIN)
                         .content("payload"))
                 .andExpect(status().isOk());
     }
