@@ -2,6 +2,7 @@ package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -13,6 +14,7 @@ import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.schedule.CommentOption;
+import com.mannschaft.app.schedule.MinResponseRole;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.dto.AttendanceRequest;
 import com.mannschaft.app.schedule.dto.AttendanceResponse;
@@ -90,6 +92,7 @@ public class ScheduleAttendanceService {
     public AttendanceResponse respondAttendance(Long scheduleId, Long userId, AttendanceRequest req) {
         ScheduleEntity schedule = scheduleService.getSchedule(scheduleId);
         validateAttendanceRequired(schedule);
+        validateMinResponseRole(schedule, userId);
         validateAttendanceDeadline(schedule);
         validateComment(schedule, req.getComment());
 
@@ -529,6 +532,67 @@ public class ScheduleAttendanceService {
     private void validateAttendanceRequired(ScheduleEntity schedule) {
         if (!Boolean.TRUE.equals(schedule.getAttendanceRequired())) {
             throw new BusinessException(ScheduleErrorCode.ATTENDANCE_NOT_REQUIRED);
+        }
+    }
+
+    /**
+     * 出欠回答の最小ロール（{@link MinResponseRole}）を enforcement する（F03.1 セキュリティ根治）。
+     *
+     * <p>スケジュールに {@code minResponseRole} が設定されている場合、回答者が当該スコープ
+     * （TEAM / ORGANIZATION）で必要ロール以上であることをサーバ側で必須化する。これまでは
+     * enum 定義・DB 保存・レスポンス出力はあったものの gate に読む箇所が無く、{@code ADMIN_ONLY} /
+     * {@code MEMBER_PLUS} 制限が一般メンバー全員に開放されていた過小判定を是正する。</p>
+     *
+     * <ul>
+     *   <li>{@code SUPPORTER_PLUS} → SUPPORTER 以上で回答可</li>
+     *   <li>{@code MEMBER_PLUS} → MEMBER 以上で回答可</li>
+     *   <li>{@code ADMIN_ONLY} → ADMIN / DEPUTY_ADMIN で回答可</li>
+     *   <li>SYSTEM_ADMIN は横断で常に回答可</li>
+     * </ul>
+     *
+     * <p>後方互換: {@code minResponseRole == null}（移行前データ）は従来どおり
+     * メンバー全員の回答を許可し、本チェックをスキップする。PERSONAL スコープ
+     * （team_id / organization_id がいずれも null）はロール概念が無いため対象外。
+     * {@code accessControlService} Bean 不在のテスト構成（{@code @InjectMocks} に
+     * 注入されない場合）でもスキップする（{@code getUnansweredForUserInScope} と同方針）。</p>
+     */
+    private void validateMinResponseRole(ScheduleEntity schedule, Long userId) {
+        MinResponseRole minResponseRole = schedule.getMinResponseRole();
+        if (minResponseRole == null) {
+            // 後方互換: 未設定は従来どおりメンバー回答可
+            return;
+        }
+        if (accessControlService == null) {
+            // Bean 不在のテスト構成ではスキップ
+            return;
+        }
+
+        // スコープ解決（PERSONAL はロール概念が無いため enforcement 対象外）
+        final String scopeType;
+        final Long scopeId;
+        if (schedule.getTeamId() != null) {
+            scopeType = "TEAM";
+            scopeId = schedule.getTeamId();
+        } else if (schedule.getOrganizationId() != null) {
+            scopeType = "ORGANIZATION";
+            scopeId = schedule.getOrganizationId();
+        } else {
+            return;
+        }
+
+        // SYSTEM_ADMIN は横断で常に許可
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+
+        boolean allowed = switch (minResponseRole) {
+            case SUPPORTER_PLUS -> accessControlService.hasRoleOrAbove(userId, scopeId, scopeType, "SUPPORTER");
+            case MEMBER_PLUS -> accessControlService.hasRoleOrAbove(userId, scopeId, scopeType, "MEMBER");
+            case ADMIN_ONLY -> accessControlService.isAdminOrAbove(userId, scopeId, scopeType);
+        };
+
+        if (!allowed) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
         }
     }
 
