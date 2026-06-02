@@ -85,12 +85,15 @@ class ScheduleReminderServiceTest {
     }
 
     private ScheduleEntity createSchedule(LocalDateTime startAt, boolean attendanceRequired) {
-        return ScheduleEntity.builder()
+        ScheduleEntity schedule = ScheduleEntity.builder()
                 .teamId(50L)
                 .title("テスト予定")
                 .startAt(startAt)
                 .attendanceRequired(attendanceRequired)
                 .build();
+        // id は BaseEntity 由来で @Builder では設定できないためリフレクションで付与
+        org.springframework.test.util.ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
+        return schedule;
     }
 
     private void stubMessages() {
@@ -263,7 +266,6 @@ class ScheduleReminderServiceTest {
                     .willReturn(Optional.of(createSchedule(LocalDateTime.now().plusHours(1), true)));
             given(attendanceRepository.findByScheduleIdAndStatus(SCHEDULE_ID, AttendanceStatus.UNDECIDED))
                     .willReturn(List.of());
-            stubMessages();
 
             // when
             reminderService.processScheduledReminders();
@@ -283,7 +285,6 @@ class ScheduleReminderServiceTest {
                     .willReturn(Optional.of(createSchedule(LocalDateTime.now().plusMinutes(5), true)));
             given(attendanceRepository.findByScheduleIdAndStatus(SCHEDULE_ID, AttendanceStatus.UNDECIDED))
                     .willReturn(List.of());
-            stubMessages();
 
             // when
             reminderService.processScheduledReminders();
