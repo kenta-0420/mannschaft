@@ -9,6 +9,7 @@ import com.mannschaft.app.schedule.ScheduledTaskStatus;
 import com.mannschaft.app.schedule.ScheduledTaskType;
 import com.mannschaft.app.schedule.dto.ScheduledAttendanceRequest;
 import com.mannschaft.app.schedule.dto.ScheduledSurveyRequest;
+import com.mannschaft.app.schedule.dto.ScheduledTaskResponse;
 import com.mannschaft.app.schedule.entity.ScheduleScheduledTaskEntity;
 import com.mannschaft.app.schedule.repository.ScheduleScheduledTaskRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 予約タスク（機能55 第二陣）登録・取消・取得サービス。
@@ -130,6 +132,65 @@ public class ScheduleScheduledTaskService {
      */
     public List<ScheduleScheduledTaskEntity> findTasksForSchedule(Long scheduleId) {
         return List.copyOf(scheduledTaskRepository.findByScheduleIdAndDeletedAtIsNull(scheduleId));
+    }
+
+    /**
+     * 予定に紐づく予約タスクをレスポンス DTO 一覧に変換して取得する（予定詳細表示用）。
+     *
+     * <p>PENDING を含む全状態を返す。FE で「予約アンケート ○月○日 作成予定」「作成済み」等の
+     * 表示を出し分けるために使用する。</p>
+     *
+     * @param scheduleId 親予定 schedules.id
+     * @return 予約タスクのレスポンス DTO 一覧（論理削除を除く）
+     */
+    public List<ScheduledTaskResponse> findTaskResponsesForSchedule(Long scheduleId) {
+        return scheduledTaskRepository.findByScheduleIdAndDeletedAtIsNull(scheduleId).stream()
+                .map(ScheduleScheduledTaskService::toResponse)
+                .toList();
+    }
+
+    /**
+     * 予約タスクを単体で取り消す（機能55 第三陣）。
+     *
+     * <p>PENDING のタスクのみ取消可能（→ CANCELLED）。スコープ（{@code scopeType}/{@code scopeId}）が
+     * パスのスコープと一致しないタスクは「見つからない」（404）として扱い、IDOR を防止する。
+     * 既に CREATED/CANCELLED/FAILED のタスクは取消不能（409）。</p>
+     *
+     * @param taskId    予約タスク id（UUIDv7）
+     * @param scopeType パスのスコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   パスのスコープ実体 ID（team_id または organization_id）
+     */
+    @Transactional
+    public void cancelTask(UUID taskId, CalendarSyncScopeType scopeType, Long scopeId) {
+        ScheduleScheduledTaskEntity task = scheduledTaskRepository.findById(taskId)
+                .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULED_TASK_NOT_FOUND));
+
+        // スコープ不一致は IDOR 対策で 404（存在を隠蔽）
+        if (task.getScopeType() != scopeType || !scopeId.equals(task.getScopeId())) {
+            throw new BusinessException(ScheduleErrorCode.SCHEDULED_TASK_NOT_FOUND);
+        }
+
+        // PENDING 以外は取り消せない（既に materialize 済み等）→ 409
+        if (task.getStatus() != ScheduledTaskStatus.PENDING) {
+            throw new BusinessException(ScheduleErrorCode.SCHEDULED_TASK_NOT_CANCELLABLE);
+        }
+
+        task.cancel();
+        scheduledTaskRepository.save(task);
+        log.info("予約タスク単体取消: taskId={}, scopeType={}, scopeId={}", taskId, scopeType, scopeId);
+    }
+
+    /**
+     * 予約タスクエンティティをレスポンス DTO に変換する。
+     */
+    private static ScheduledTaskResponse toResponse(ScheduleScheduledTaskEntity entity) {
+        return ScheduledTaskResponse.builder()
+                .id(entity.getId() != null ? entity.getId().toString() : null)
+                .taskType(entity.getTaskType() != null ? entity.getTaskType().name() : null)
+                .scheduledAt(entity.getScheduledAt())
+                .status(entity.getStatus() != null ? entity.getStatus().name() : null)
+                .materializedEntityId(entity.getMaterializedEntityId())
+                .build();
     }
 
     /**

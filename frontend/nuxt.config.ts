@@ -348,6 +348,7 @@ export default defineNuxtConfig({
           'ja/bulletin.json',
           'ja/market.json',
           'ja/inbox.json',
+          'ja/schedule.json',
         ],
       },
       {
@@ -403,6 +404,7 @@ export default defineNuxtConfig({
           'en/bulletin.json',
           'en/market.json',
           'en/inbox.json',
+          'en/schedule.json',
         ],
       },
       {
@@ -458,6 +460,7 @@ export default defineNuxtConfig({
           'zh/bulletin.json',
           'zh/market.json',
           'zh/inbox.json',
+          'zh/schedule.json',
         ],
       },
       {
@@ -513,6 +516,7 @@ export default defineNuxtConfig({
           'ko/bulletin.json',
           'ko/market.json',
           'ko/inbox.json',
+          'ko/schedule.json',
         ],
       },
       {
@@ -568,6 +572,7 @@ export default defineNuxtConfig({
           'es/bulletin.json',
           'es/market.json',
           'es/inbox.json',
+          'es/schedule.json',
         ],
       },
       {
@@ -623,6 +628,7 @@ export default defineNuxtConfig({
           'de/bulletin.json',
           'de/market.json',
           'de/inbox.json',
+          'de/schedule.json',
         ],
       },
     ],

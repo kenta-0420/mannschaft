@@ -247,6 +247,13 @@ INDEX idx_rl_payee_user (payee_user_id);
 > - 既存の `payment_enabled && price==null → PRICE_REQUIRED` 検証を、`payee_kind` 必須も含むよう Service 側で拡張（02 §3・エラー `PAYMENT_010`）。
 > - `escrow_transactions` 作成時、`payee_kind`/受領主体ID から `connect_accounts`（READY かつ payouts_enabled）を解決する。未 onboarding なら `HELD`（02 §5）。
 
+> ⚠️ **実装注意 — `payee_kind` 値と `RecruitmentScopeType` のマッピング**
+> 本設計の `payee_kind` は `USER` / `TEAM` / `ORG` の3値を想定しているが、実在 enum `com.mannschaft.app.recruitment.RecruitmentScopeType` は **`TEAM` / `ORGANIZATION`** の2値のみ（`USER` は持たない）。実装時は以下のマッピングで変換すること:
+> - `payee_kind = 'TEAM'` → `RecruitmentScopeType.TEAM`（1:1 対応）
+> - `payee_kind = 'ORG'` → `RecruitmentScopeType.ORGANIZATION`（文字列不一致に注意）
+> - `payee_kind = 'USER'` → `RecruitmentScopeType` には対応値なし。個人受領は `payee_user_id` カラムで表現し、scope 解決時に `RecruitmentScopeType` を介さず直接 `users.id` を参照する（独立パス）。
+> 変換ロジックは `ConnectAccountService` 等に一箇所集約し、文字列直比較が散在しないようにすること。
+
 > **既存値は不変**: 既存行は `payee_kind=NULL`（決済無効札）で後方互換。`payment_enabled=FALSE` の既存札は CHECK を満たす。
 
 ### 4.2 `stripe_customers`（既存・変更なし）

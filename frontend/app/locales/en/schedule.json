@@ -1,0 +1,67 @@
+{
+  "schedule": {
+    "common_delete": "Delete",
+    "description_label": "Description",
+    "error_title_required": "Title is required",
+    "reminder": {
+      "label": "Reminders",
+      "add": "Add reminder",
+      "before": "before",
+      "max_reached": "You can set up to 5 reminders",
+      "kind_label": "Type",
+      "kind_relative": "Relative",
+      "kind_absolute": "Absolute",
+      "unit_label": "Unit",
+      "unit_minutes": "minutes",
+      "unit_hours": "hours",
+      "unit_days": "days",
+      "relative_value_label": "Value",
+      "absolute_at_label": "Notify at",
+      "error_absolute_required": "Please enter a date and time for the absolute reminder",
+      "error_past": "A past date and time cannot be specified"
+    },
+    "scheduled_survey": {
+      "label": "Schedule a survey",
+      "scheduled_at": "Creation time",
+      "title_label": "Survey title",
+      "title_placeholder": "Enter the survey title",
+      "anonymous": "Allow anonymous responses",
+      "results_visibility": "Results visibility",
+      "visibility_public": "Visible to everyone",
+      "visibility_owner": "Owner only",
+      "visibility_respondents": "Respondents only",
+      "question_placeholder": "Enter a question",
+      "qtype_single": "Single choice",
+      "qtype_multiple": "Multiple choice",
+      "required": "Required",
+      "option_placeholder": "Enter an option",
+      "add_option": "Add option",
+      "add_question": "Add question",
+      "error_scheduled_at_required": "Please enter the survey creation time",
+      "error_past": "The survey creation time must be in the future"
+    },
+    "scheduled_attendance": {
+      "label": "Schedule an attendance request",
+      "scheduled_at": "Creation time",
+      "deadline": "Response deadline",
+      "comment_option": "Comments",
+      "comment_none": "No comments",
+      "comment_optional": "Optional comments",
+      "comment_required": "Required comments",
+      "error_scheduled_at_required": "Please enter the attendance request creation time",
+      "error_past": "The attendance request creation time must be in the future"
+    },
+    "scheduled_task": {
+      "label": "Scheduled tasks",
+      "type_survey": "Scheduled survey",
+      "type_attendance": "Scheduled attendance request",
+      "status_pending": "Pending",
+      "status_created": "Created",
+      "status_cancelled": "Cancelled",
+      "status_failed": "Failed",
+      "cancel": "Cancel",
+      "cancel_success": "The scheduled task has been cancelled",
+      "cancel_failed": "Failed to cancel the scheduled task"
+    }
+  }
+}
