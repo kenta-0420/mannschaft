@@ -29,6 +29,7 @@ export function useScheduleApi() {
     updateSchedule: crud.updateSchedule,
     deleteSchedule: crud.deleteSchedule,
     cancelSchedule: crud.cancelSchedule,
+    cancelScheduledTask: crud.cancelScheduledTask,
     // === Attendance ===
     getAttendances: attendance.getAttendances,
     respondAttendance: attendance.respondAttendance,

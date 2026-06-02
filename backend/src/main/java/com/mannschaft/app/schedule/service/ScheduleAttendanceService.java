@@ -4,6 +4,11 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.entity.NotificationEntity;
+import com.mannschaft.app.notification.service.NotificationDispatchService;
+import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
@@ -51,6 +56,10 @@ public class ScheduleAttendanceService {
 
     private static final String CSV_HEADER = "ユーザーID,ステータス,コメント,回答日時";
 
+    /** 機能55: 出欠募集通知の種別（自由文字列。NotificationService の type 引数に渡す）。 */
+    private static final String NOTIFICATION_TYPE_ATTENDANCE_REQUEST = "SCHEDULE_ATTENDANCE_REQUEST";
+    private static final String NOTIFICATION_SOURCE_TYPE = "SCHEDULE";
+
     private final ScheduleAttendanceRepository attendanceRepository;
     private final ScheduleRepository scheduleRepository;
     private final ScheduleService scheduleService;
@@ -60,6 +69,8 @@ public class ScheduleAttendanceService {
     private final ProxyInputContext proxyInputContext;
     private final ProxyInputRecordRepository proxyInputRecordRepository;
     private final ScheduleDelegationService scheduleDelegationService;
+    private final NotificationService notificationService;
+    private final NotificationDispatchService notificationDispatchService;
 
     /**
      * F22.1 第二波: 統合「要対応」集計の per-scope 認可に使用する。
@@ -290,6 +301,86 @@ public class ScheduleAttendanceService {
         }
 
         log.info("出欠レコード生成: scheduleId={}, 件数={}", scheduleId, memberUserIds.size());
+    }
+
+    /**
+     * 出欠募集を開始する（機能55 第二陣・RSVP 根治）。
+     *
+     * <p>予定のスコープ（TEAM / ORGANIZATION）から対象メンバーを解決し、出欠レコードを生成して
+     * 対象メンバーへ「出欠募集」通知（IN_APP + PUSH）を配信する。即時ケース（予約タスクなし）は
+     * {@code ScheduleAttendanceSolicitationEventListener} が、予約ケース（scheduledAt 到来）は
+     * {@code ScheduleScheduledTaskBatchService} がそれぞれ本メソッドを呼ぶ。</p>
+     *
+     * <p><b>冪等性</b>: 既に出欠レコードが生成済みの場合は二重生成・二重通知を行わずスキップする
+     * （バッチ再試行や即時/予約の二重発火に対する防御）。</p>
+     *
+     * <p>PERSONAL スコープの予定には出欠募集の概念が無いためスキップする。</p>
+     *
+     * @param scheduleId 対象予定 schedules.id
+     */
+    // TODO: scheduleドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。機能55: 2026-06-01
+    @Transactional
+    public void openAttendanceSolicitation(Long scheduleId) {
+        ScheduleEntity schedule = scheduleService.getSchedule(scheduleId);
+
+        String scopeType;
+        Long scopeId;
+        if (schedule.isTeamScope()) {
+            scopeType = "TEAM";
+            scopeId = schedule.getTeamId();
+        } else if (schedule.isOrganizationScope()) {
+            scopeType = "ORGANIZATION";
+            scopeId = schedule.getOrganizationId();
+        } else {
+            // PERSONAL スコープには出欠募集の概念が無い
+            log.debug("出欠募集スキップ（PERSONALスコープ）: scheduleId={}", scheduleId);
+            return;
+        }
+
+        // 冪等性ガード: 既に出欠レコードが生成済みなら何もしない（二重募集防止）
+        if (attendanceRepository.countByScheduleId(scheduleId) > 0) {
+            log.info("出欠募集スキップ（既に生成済み）: scheduleId={}", scheduleId);
+            return;
+        }
+
+        // 対象メンバーの解決（TEAM/ORGANIZATION 共通の scope ベース解決）
+        List<Long> memberUserIds = userRoleRepository.findUserIdsByScope(scopeType, scopeId).stream()
+                .distinct()
+                .toList();
+        if (memberUserIds.isEmpty()) {
+            log.info("出欠募集スキップ（対象メンバー0名）: scheduleId={}, scope={}:{}",
+                    scheduleId, scopeType, scopeId);
+            return;
+        }
+
+        // 出欠レコード生成
+        generateAttendanceRecords(scheduleId, memberUserIds);
+
+        // 出欠募集通知（IN_APP + PUSH）
+        NotificationScopeType notifScope = "ORGANIZATION".equals(scopeType)
+                ? NotificationScopeType.ORGANIZATION : NotificationScopeType.TEAM;
+        String title = "出欠の回答をお願いします";
+        String body = "「" + schedule.getTitle() + "」の出欠回答が募集されています。期日までに回答してください。";
+        String actionUrl = "/schedules/" + scheduleId;
+
+        int dispatched = 0;
+        for (Long userId : memberUserIds) {
+            NotificationEntity notification = notificationService.createNotification(
+                    userId,
+                    NOTIFICATION_TYPE_ATTENDANCE_REQUEST,
+                    NotificationPriority.NORMAL,
+                    title, body,
+                    NOTIFICATION_SOURCE_TYPE, scheduleId,
+                    notifScope, scopeId,
+                    actionUrl, schedule.getCreatedBy());
+            if (notification != null) {
+                notificationDispatchService.dispatch(notification);
+                dispatched++;
+            }
+        }
+
+        log.info("出欠募集開始: scheduleId={}, scope={}:{}, 対象={}名, 通知配信={}件",
+                scheduleId, scopeType, scopeId, memberUserIds.size(), dispatched);
     }
 
     /**

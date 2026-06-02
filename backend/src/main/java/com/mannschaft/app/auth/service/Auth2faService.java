@@ -320,18 +320,28 @@ public class Auth2faService {
         recoveryToken.markUsed();
         mfaRecoveryTokenRepository.save(recoveryToken);
 
+        Long userId = recoveryToken.getUserId();
+
         // 2. 2FAを無効化
-        TwoFactorAuthEntity twoFactorAuth = twoFactorAuthRepository.findByUserId(recoveryToken.getUserId())
+        TwoFactorAuthEntity twoFactorAuth = twoFactorAuthRepository.findByUserId(userId)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_016));
 
         twoFactorAuth.disable();
         twoFactorAuthRepository.save(twoFactorAuth);
 
-        // 3. Access Token + Refresh Token発行
-        TokenResponse tokenResponse = issueTokenPair(recoveryToken.getUserId());
+        // 3. 既存セッションを全て無効化（MFA無効化後の不正ログイン防止）
+        // パスワードが漏洩していた場合、MFA無効化後に攻撃者が即ログインできてしまうため、
+        // 全 Refresh Token を失効させ JWT の user_invalidated_at を更新する。
+        List<RefreshTokenEntity> activeTokens = refreshTokenRepository.findByUserIdAndRevokedAtIsNull(userId);
+        activeTokens.forEach(RefreshTokenEntity::revoke);
+        refreshTokenRepository.saveAll(activeTokens);
+        authTokenService.setUserInvalidationTimestamp(userId);
 
-        // 4. イベント発行
-        eventPublisher.publish(new MfaDisabledEvent(recoveryToken.getUserId()));
+        // 4. Access Token + Refresh Token発行
+        TokenResponse tokenResponse = issueTokenPair(userId);
+
+        // 5. イベント発行
+        eventPublisher.publish(new MfaDisabledEvent(userId));
 
         return ApiResponse.of(tokenResponse);
     }

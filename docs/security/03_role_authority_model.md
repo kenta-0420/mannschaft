@@ -6,6 +6,11 @@
 > **重大度**: 🔴 最重要セキュリティインシデント（プラットフォーム管理権限・per-scope 管理権限が実機で全面機能不全）
 > **関連ドキュメント**: [README](README.md), [01 認可基盤](01_authorization_baseline.md), [02 Cookie とセッション](02_cookie_and_session.md), F01.1 認証, F01.2-04 セキュリティ運用, F03.5-04 セキュリティ運用
 
+> ⚠️ **本番稼働前必須**: Phase 1〜5 は全て未着手（2026-06-02 時点）。
+> `@EnableMethodSecurity` が無効のため 97 個の `@PreAuthorize` が no-op 状態。
+> JWT の roles が `["MEMBER"]` 固定のため SYSTEM_ADMIN ガードが機能しない。
+> **本番移行前に必ず Phase 1→2→3 を順番に実施すること。**
+
 ---
 
 ## 1. 概要
@@ -353,6 +358,7 @@ method-security が無効な現状、以下は **認可が事実上ゼロ**で�
 | **3** | method-security 有効化 | `@EnableMethodSecurity(prePostEnabled=true)` を `SecurityConfig` に付与 → (A)(F)(G)(H) が実効化 → `@WebMvcTest` 互換改修（method-security 有効下でのスライステスト方針）→ §2.4 の嘘コメント文言是正 | 「SYSTEM_ADMIN 系 EP が SYSTEM_ADMIN で 2xx・一般で 403」「所有者ガード EP が他人で 403」を先に | 2（全 per-scope EP の注釈が正しい SpEL に変換済みかつ SYSTEM_ADMIN が JWT に載っていること） |
 | **4** | 幻ロール・負論理の最終確認＋残整理 | Phase 2 で正規化した出席開示（A-1）/ ShiftPdf 負論理の **method-security 有効下での実機検証** → 取りこぼし EP の点検 | 「教員相当のみ開示可」「SUPPORTER は PDF 403・他団体は IDOR 403」を method-security 有効下で再確認 | 3 |
 | **5** | 認可統合テスト＋確定 | 横断統合テスト（SYSTEM_ADMIN 通る/非権限 403/他団体 ADMIN 弾く）→ docs/security 確定（本書ステータス 🟢 へ）→ README 表更新 | 統合テストマトリクス（§10）を網羅 | 4 |
+| **6** | 認可層性能最適化 | per-scope 判定結果を Valkey にキャッシュ（TTL: 60秒）。N+1 クエリを解消。大規模組織（1万人以上）での認可性能を担保 | キャッシュ HIT/MISS を判定し、MISS 時は DB 参照し一致することを確認。ロール変更後 60 秒以内にキャッシュ失効することを検証 | ⏳ Phase 5 完了後に検討 |
 
 > **点火（Phase 3）の前提**: `@EnableMethodSecurity` 有効化は **破壊的変更**である（97 個の宣言が一斉に実効化する）。点火の瞬間に system-admin 系が全員 403 化しないために Phase 1（SYSTEM_ADMIN を JWT に載せる）が完了していること、**かつ点火の瞬間に未変換の `hasRole('ADMIN')` 等が一斉 403 化しないために Phase 2（全 per-scope EP の注釈を `@accessGuard` の正しい SpEL に変換済み）であること**を必須前提とする。すなわち **Phase 3 は「全注釈が正しい状態である」前提でのみ実施してよい**。Phase 1・2 の実機テスト合格を確認するまで Phase 3 を先行してはならない（**Phase 順序の逆転を禁止**）。
 
@@ -515,6 +521,7 @@ tournament ドメインに `TournamentContactAccessService` を新設し、read�
 | 日付 | 変更 |
 |---|---|
 | 2026-05-31 | §15 を F08.7.1 最新版に**改訂**: (a) §15.2 に**ファイル置き場の PUBLIC 露出方針**を追加（連絡スペースの `is_public` に追従・PUBLIC は VIEW/DOWNLOAD のみ・書込は代表＋主催者・`TournamentContactAccessService.canView/canPost` 流用）。(b) §15.3 リーグ移籍を**プッシュ＋承認の対称モデル**に改訂（昇格=下位 org 送り出し／降格=上位 org 送り出し → 受け入れ側 org が承認。送り先は親系列/子孫 ASSOCIATION に限定。チームは閲覧のみ）。(c) §15.4 **試合メンバー表**の認可を新設（提出=自チーム ADMIN/DEPUTY・閲覧/締切=主催組織 ADMIN・代理入力なし・締切後 409）。 |
+| 2026-06-02 | §8 段階計画テーブルに Phase 6「認可層性能最適化」（per-scope 判定結果を Valkey にキャッシュ TTL:60秒・N+1 解消）を追加 |
 | 2026-05-31 | §15「トーナメント連絡・成績・移籍スコープの認可方針（F08.7.1）」を追加: (1) 連絡スペースの read/write 分離（`TournamentContactAccessService`・閲覧=参加チーム＋公開時 PUBLIC read-only、投稿=各チーム代表＋主催組織 ADMIN）(2) PUBLIC 公開時の成績/chat 露出方針（chat 既定 OFF・PUBLIC は read-only・非公開大会成績の再チェック）(3) リーグ移籍 API の認可。詳細は [F08.7.1](../features/F08.7.1_tournament_extensions/) |
 | 2026-05-30 | 新規作成。認可基盤完全根治（案①）の正典モデル・病巣カタログ（file:line 根拠）・SpEL ガード設計・JWT claims 設計・`@PreAuthorize` 97 個分類カタログ・生穴リスト・段階計画 Phase 0〜5・テスト戦略・統合テストマトリクスを定義 |
 | 2026-05-30 | **§8 段階計画の順序是正**: Phase 3（per-scope SpEL 化＋生穴封鎖）を Phase 4（method-security 有効化）より前に並べ替え（番号も振り直し）。点火の瞬間に未変換 `hasRole` が一斉 403 化する窓を構造的に消す方針を明記。§5/§5.1/§7.1/§7.2/§9/§11 の Phase 参照を追従更新。**Phase 3-a 実装**（per-scope 生穴封鎖）として `AccessGuard` Bean 新設、AdminPublicSettings/SupporterNameDisclosure/Disclosure/ShiftChangeRequest.review/PdfSignatureVerify の生穴を明示 Service 層認可で封鎖、対象 EP の `@PreAuthorize` を `@accessGuard.isScopeAdmin(...)`/`hasRole('SYSTEM_ADMIN')` へ是正済み（§5.1 状態列参照）。残: 負論理 (E) シフト PDF |

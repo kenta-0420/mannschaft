@@ -40,6 +40,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * F04.2 Phase 11 第二陣 2-β: {@link ChatChannelController} の WebMvc テスト。
@@ -70,6 +71,10 @@ class ChatChannelControllerTest {
     @MockitoBean private UserLocaleCache userLocaleCache;
     @MockitoBean private ProxyInputConsentRepository proxyInputConsentRepository;
     @MockitoBean private ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     @BeforeEach
     void setUp() {
