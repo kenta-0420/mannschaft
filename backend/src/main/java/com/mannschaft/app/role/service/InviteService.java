@@ -14,6 +14,10 @@ import com.mannschaft.app.scopefolder.repository.MyScopeFolderRepository;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.dto.MembershipCreateRequest;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
@@ -74,6 +78,7 @@ public class InviteService {
     private final ApplicationEventPublisher eventPublisher;
     private final MyScopeFolderService myScopeFolderService;
     private final MyScopeFolderRepository myScopeFolderRepository;
+    private final MembershipService membershipService;
 
     /**
      * 招待トークンを作成する。
@@ -216,6 +221,20 @@ public class InviteService {
             roleBuilder.organizationId(scopeId);
         }
         userRoleRepository.save(roleBuilder.build());
+
+        // F00.5 認可基盤根治: memberships にも MEMBER として入会させる。
+        // 認可（AccessControlService.isMember）は memberships を真実の源とするため、
+        // user_roles だけでは招待参加者が当該スコープから 403 で締め出される構造的欠陥を防ぐ。
+        // 招待トークンが配布するのは常に権限ロール（user_roles）であり SUPPORTER は配布しないため、
+        // membership の role_kind は MEMBER 固定とする（在籍有無のみを表す）。
+        MembershipCreateRequest membershipReq = new MembershipCreateRequest();
+        membershipReq.setUserId(userId);
+        membershipReq.setScopeType("TEAM".equals(scopeType) ? ScopeType.TEAM : ScopeType.ORGANIZATION);
+        membershipReq.setScopeId(scopeId);
+        membershipReq.setRoleKind(RoleKind.MEMBER);
+        membershipReq.setInvitedBy(token.getCreatedBy());
+        membershipReq.setSource("INVITE_TOKEN");
+        membershipService.join(membershipReq);
 
         // 使用回数をインクリメント
         token.incrementUsedCount();

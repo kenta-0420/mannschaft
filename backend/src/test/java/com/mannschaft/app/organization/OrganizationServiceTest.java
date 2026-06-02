@@ -3,6 +3,10 @@ package com.mannschaft.app.organization;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.dto.MembershipCreateRequest;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
 import com.mannschaft.app.organization.dto.OrganizationSummaryResponse;
@@ -77,6 +81,9 @@ class OrganizationServiceTest {
     @Mock
     private OrganizationHierarchyService organizationHierarchyService;
 
+    @Mock
+    private MembershipService membershipService;
+
     @InjectMocks
     private OrganizationService organizationService;
 
@@ -111,6 +118,15 @@ class OrganizationServiceTest {
             assertThat(response.getData().getVisibility().visibility()).isEqualTo("PUBLIC");
             verify(organizationRepository).save(any(OrganizationEntity.class));
             verify(userRoleRepository).save(any(UserRoleEntity.class));
+            // F00.5 認可基盤根治: memberships にも MEMBER として入会させる（join 経由）
+            org.mockito.ArgumentCaptor<MembershipCreateRequest> captor =
+                    org.mockito.ArgumentCaptor.forClass(MembershipCreateRequest.class);
+            verify(membershipService).join(captor.capture());
+            MembershipCreateRequest joinReq = captor.getValue();
+            assertThat(joinReq.getUserId()).isEqualTo(USER_ID);
+            assertThat(joinReq.getScopeType()).isEqualTo(ScopeType.ORGANIZATION);
+            assertThat(joinReq.getRoleKind()).isEqualTo(RoleKind.MEMBER);
+            assertThat(joinReq.getSource()).isEqualTo("ORG_CREATE");
         }
 
         @Test

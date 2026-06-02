@@ -2,6 +2,8 @@ package com.mannschaft.app.role;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.dto.MembershipCreateRequest;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
 import com.mannschaft.app.role.dto.InvitePreviewResponse;
 import com.mannschaft.app.role.dto.InviteTokenResponse;
@@ -71,6 +73,9 @@ class InviteServiceTest {
 
     @Mock
     private MyScopeFolderRepository myScopeFolderRepository;
+
+    @Mock
+    private MembershipService membershipService;
 
     @InjectMocks
     private InviteService inviteService;
@@ -339,6 +344,19 @@ class InviteServiceTest {
             verify(userRoleRepository).save(any(UserRoleEntity.class));
             verify(myScopeFolderService).addItemWithAssignedVia(USER_ID, 999L, TEAM_ID, AssignedVia.DEFAULT);
             assertThat(token.getUsedCount()).isEqualTo(1);
+            // F00.5 認可基盤根治: memberships にも MEMBER として入会させる（join 経由）
+            org.mockito.ArgumentCaptor<MembershipCreateRequest> captor =
+                    org.mockito.ArgumentCaptor.forClass(MembershipCreateRequest.class);
+            verify(membershipService).join(captor.capture());
+            MembershipCreateRequest joinReq = captor.getValue();
+            assertThat(joinReq.getUserId()).isEqualTo(USER_ID);
+            assertThat(joinReq.getScopeType())
+                    .isEqualTo(com.mannschaft.app.membership.domain.ScopeType.TEAM);
+            assertThat(joinReq.getScopeId()).isEqualTo(TEAM_ID);
+            assertThat(joinReq.getRoleKind())
+                    .isEqualTo(com.mannschaft.app.membership.domain.RoleKind.MEMBER);
+            assertThat(joinReq.getInvitedBy()).isEqualTo(CREATED_BY);
+            assertThat(joinReq.getSource()).isEqualTo("INVITE_TOKEN");
         }
 
         @Test
