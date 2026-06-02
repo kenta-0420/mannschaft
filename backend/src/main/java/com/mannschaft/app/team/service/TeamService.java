@@ -106,6 +106,18 @@ public class TeamService {
                 .build();
         userRoleRepository.save(userRole);
 
+        // F00.5 認可基盤根治: memberships にも MEMBER として入会させる。
+        // 認可（AccessControlService.isMember）は memberships を真実の源とするため、
+        // user_roles だけでは作成者本人が自チームから 403 で締め出される構造的欠陥を防ぐ。
+        // 権限ロール（ADMIN）は user_roles が担い、membership は在籍有無のみ表す（role_kind=MEMBER）。
+        MembershipCreateRequest membershipReq = new MembershipCreateRequest();
+        membershipReq.setUserId(userId);
+        membershipReq.setScopeType(ScopeType.TEAM);
+        membershipReq.setScopeId(team.getId());
+        membershipReq.setRoleKind(RoleKind.MEMBER);
+        membershipReq.setSource("TEAM_CREATE");
+        membershipService.join(membershipReq);
+
         // チームシフト設定をデフォルト値で初期化
         teamShiftSettingsService.initializeDefaultSettings(team.getId());
 
