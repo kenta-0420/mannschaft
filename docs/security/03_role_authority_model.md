@@ -6,6 +6,11 @@
 > **重大度**: 🔴 最重要セキュリティインシデント（プラットフォーム管理権限・per-scope 管理権限が実機で全面機能不全）
 > **関連ドキュメント**: [README](README.md), [01 認可基盤](01_authorization_baseline.md), [02 Cookie とセッション](02_cookie_and_session.md), F01.1 認証, F01.2-04 セキュリティ運用, F03.5-04 セキュリティ運用
 
+> ⚠️ **本番稼働前必須**: Phase 1〜5 は全て未着手（2026-06-02 時点）。
+> `@EnableMethodSecurity` が無効のため 97 個の `@PreAuthorize` が no-op 状態。
+> JWT の roles が `["MEMBER"]` 固定のため SYSTEM_ADMIN ガードが機能しない。
+> **本番移行前に必ず Phase 1→2→3 を順番に実施すること。**
+
 ---
 
 ## 1. 概要
