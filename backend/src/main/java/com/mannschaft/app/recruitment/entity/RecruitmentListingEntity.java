@@ -93,6 +93,22 @@ public class RecruitmentListingEntity extends BaseEntity {
 
     private Integer price;
 
+    /**
+     * F22.1 市の謝礼決済: 札ごとの受領主体種別 {@code USER}/{@code TEAM}/{@code ORG}。
+     * {@code payment_enabled=TRUE} 時に必須（chk_rl_payee）。既存札は NULL（決済無効・後方互換）。
+     * 値は VARCHAR(8) で保持し、{@code RecruitmentScopeType}（TEAM/ORGANIZATION の2値）とは別系統。
+     * 変換は ConnectAccountService 等に集約する（設計書 §4.1 実装注意）。
+     */
+    @Column(name = "payee_kind", length = 8)
+    private String payeeKind;
+
+    /**
+     * F22.1 市の謝礼決済: {@code payee_kind=USER} の受領者（users.id 論理参照・FKなし）。
+     * {@code payee_kind=USER} のとき必須・それ以外では NULL（chk_rl_payee_user）。
+     */
+    @Column(name = "payee_user_id")
+    private Long payeeUserId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
