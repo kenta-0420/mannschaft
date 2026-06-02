@@ -591,6 +591,11 @@ public class GlobalExceptionHandler {
             Map.entry("MARKET_004", HttpStatus.FORBIDDEN),           // 他チーム所有フォルダを宛先指定
             Map.entry("MARKET_005", HttpStatus.BAD_REQUEST),         // FRIEND_TEAMS_ONLY × distribution_targets 併用
             Map.entry("MARKET_404", HttpStatus.NOT_FOUND),           // 非公開 / 不在の札（存在秘匿）
+            // F03.11 / F22.1 募集枠 公開（publish）時の配信対象検証
+            //   いずれも「入力不備」であり 400（MARKET_002 と対称）。未登録だと Severity.ERROR 既定の 500 になり、
+            //   PUBLIC 札の publish 失敗がフロントへ 500 として漏れる（実機 CRUD E2E で発覚）ため明示登録する。
+            Map.entry("RECRUITMENT_204", HttpStatus.BAD_REQUEST),    // 配信対象 0 件（EMPTY_DISTRIBUTION_TARGETS）
+            Map.entry("RECRUITMENT_207", HttpStatus.BAD_REQUEST),    // visibility と配信対象の不整合（VISIBILITY_TARGETS_INCONSISTENT）
             // F04.11 統合通知インボックス（02_api_design.md §3.6）
             Map.entry("INBOX_LABEL_NOT_FOUND", HttpStatus.NOT_FOUND),           // ラベル不在 / 他人ラベル（IDOR 秘匿）
             Map.entry("INBOX_SOURCE_NOT_FOUND", HttpStatus.NOT_FOUND),          // triage 対象通知が不在 / 本人宛てでない
