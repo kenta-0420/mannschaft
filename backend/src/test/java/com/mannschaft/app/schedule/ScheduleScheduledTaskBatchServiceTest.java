@@ -48,8 +48,9 @@ class ScheduleScheduledTaskBatchServiceTest {
     @Mock
     private ScheduleAttendanceService scheduleAttendanceService;
 
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+    // 本番（Spring Boot 管理）と同等に ParameterNamesModule + JSR310 を登録する。
+    // CreateSurveyRequest は @RequiredArgsConstructor のため -parameters + ParameterNamesModule で復元できる。
+    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
     private ScheduleScheduledTaskBatchService batchService;
 

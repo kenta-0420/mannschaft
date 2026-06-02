@@ -38,9 +38,8 @@ class ScheduleScheduledTaskServiceTest {
     @Mock
     private ScheduleScheduledTaskRepository scheduledTaskRepository;
 
-    // 実 ObjectMapper を使い JSON 直列化の中身を検証する
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+    // 実 ObjectMapper を使い JSON 直列化の中身を検証する（本番同等に全モジュール登録）
+    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
     @Captor
     private ArgumentCaptor<ScheduleScheduledTaskEntity> taskCaptor;
