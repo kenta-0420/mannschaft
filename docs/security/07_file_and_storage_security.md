@@ -26,7 +26,7 @@ Mannschaft は Cloudflare R2（S3 互換）を使用した **Presigned URL 方�
 ```
 クライアント
   → BE: アップロード要求（ファイル種別・サイズ・スコープ）
-  ← BE: Presigned PUT URL（有効期限 600 秒）+ objectKey
+  ← BE: Presigned PUT URL（有効期限 900 秒・TTL 上限強制）+ objectKey
 
 クライアント
   → Cloudflare R2: ファイルを直接 PUT（Content-Type ヘッダーを付与）
@@ -50,7 +50,40 @@ BE:
 | ホットリンクによるストレージ帯域消費 | コスト増大 | Download Presigned URL はログイン済みユーザーのみ発行（公開ファイルを除く） |
 | 大量アップロードによるストレージ枯渇 | 可用性低下 | StorageQuotaService で org/team/personal ごとに上限管理（既実装） |
 | 悪意あるファイルのアップロード（WebShell 等） | サーバー侵害・XSS | MIME 検証ホワイトリスト適用（§3 参照）|
-| Presigned URL の転送途中での漏洩 | 不正ファイル操作 | HTTPS 必須。URL に短い TTL を設定（Upload: 600 秒、Download: 3600 秒） |
+| Presigned URL の転送途中での漏洩 | 不正ファイル操作 | HTTPS 必須。URL に短い TTL を設定（Upload: 900 秒、Download: 3600 秒） |
+| クライアントが任意の長い TTL を指定 | 意図より長い URL が発行される | BE 側で TTL 上限を強制（§2.3 参照） |
+
+### 2.3 TTL 上限の強制（サーバー側必須実装）
+
+クライアントから任意の TTL が指定されることを防ぐため、
+サーバー側で以下の上限を強制すること:
+
+| URL 種別 | 上限 TTL |
+|---|---|
+| アップロード用 Presigned URL | 900秒（15分） |
+| ダウンロード用 Presigned URL | 3600秒（1時間） |
+| Multipart Upload パート URL | 900秒（15分） |
+
+```java
+// 上限を超えるリクエストは上限値に丸める
+long safeTtl = Math.min(requestedTtlSeconds, MAX_UPLOAD_TTL_SECONDS);
+```
+
+クライアントには `expiry_at`（UNIX タイムスタンプ）を返し、
+有効期限切れ前に再取得するよう促すこと。
+
+### 2.4 Presigned URL エンドポイントのキャッシング防止
+
+アップロード URL / ダウンロード URL を返す API エンドポイントには
+以下のレスポンスヘッダーを必ず付与すること:
+
+```
+Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+Pragma: no-cache
+Expires: 0
+```
+
+これにより、ブラウザや Cloudflare CDN が期限切れ URL をキャッシュするリスクを防ぐ。
 
 ---
 
@@ -166,9 +199,25 @@ public/og-images/550e8400-e29b-41d4-a716-446655440003.jpg
 
 ---
 
-## 6. ストレージクォータと TOCTOU 対策
+## 6. 大容量ファイルの暗号化方針
 
-### 6.1 TOCTOU（Time of Check to Time of Use）脆弱性
+`EncryptionService`（AES-256-GCM）は個人情報フィールド（氏名・生年月日等）の
+小粒度データ向けに設計されており、大容量ファイルの暗号化には使用しないこと。
+
+| ファイルサイズ | 暗号化方針 |
+|---|---|
+| 個人情報フィールド（< 1KB） | `EncryptionService` で AES-256-GCM |
+| 画像（< 10MB） | R2 バケット全体を暗号化（Cloudflare 管理キー）で対応 |
+| 動画（< 500MB） | Presigned PUT URL で直接 R2 へアップロード。バックエンドを経由しない。R2 バケット暗号化に委ねる |
+
+動画ファイルをバックエンド経由でストリーム暗号化することは禁止する
+（メモリ枯渇・タイムアウトのリスク）。
+
+---
+
+## 7. ストレージクォータと TOCTOU 対策
+
+### 7.1 TOCTOU（Time of Check to Time of Use）脆弱性
 
 クォータチェックと実アップロードの間に時間差があると、並行リクエストで合計クォータを超過できる。
 
@@ -179,7 +228,7 @@ public/og-images/550e8400-e29b-41d4-a716-446655440003.jpg
 3. 全てのファイルがアップロードされ、合計は 100 * ファイルサイズに
 ```
 
-### 6.2 対策
+### 7.2 対策
 
 - アップロード完了通知受信後に **サイズを再確認**し、合計が超過していれば objectKey を削除する
 - Valkey の `INCRBY` + `EXPIRE` で楽観的クォータカウントを行い、超過時はロールバックする
@@ -187,24 +236,25 @@ public/og-images/550e8400-e29b-41d4-a716-446655440003.jpg
 
 ---
 
-## 7. セキュリティインシデント対応
+## 8. セキュリティインシデント対応
 
-### 7.1 悪意あるファイルが発見された場合
+### 8.1 悪意あるファイルが発見された場合
 
 1. 対象 objectKey の Presigned URL を即時無効化（R2 のプリセットポリシーを変更）
 2. DB の `file_metadata` テーブルで `is_quarantined = true` にフラグ
 3. 悪意あるファイルにアクセスしたユーザーの ID をログに記録
 4. SYSTEM_ADMIN にアラート通知
 
-### 7.2 バケットポリシーの定期確認
+### 8.2 バケットポリシーの定期確認
 
 - R2 バケットが意図せずパブリック公開に変更されていないかを月次で確認する
 - CORS 設定が Mannschaft のフロントエンドオリジンのみを許可していることを確認する
 
 ---
 
-## 8. 変更履歴
+## 9. 変更履歴
 
 | 日付 | 変更 |
 |---|---|
 | 2026-06-02 | 新規作成。Presigned URL のライフサイクル・攻撃面・MIME 検証・スコープ別アクセス制御・objectKey 設計ルール・TOCTOU 対策を定義 |
+| 2026-06-02 | §2.3 TTL 上限の強制（サーバー側 `Math.min` 上限丸め・`expiry_at` 返却）を追加。§2.4 Presigned URL エンドポイントのキャッシング防止ヘッダーを追加。§6 大容量ファイルの暗号化方針を追加（個人情報フィールドは `EncryptionService`・画像/動画は R2 バケット暗号化・動画 BE 経由暗号化禁止） |

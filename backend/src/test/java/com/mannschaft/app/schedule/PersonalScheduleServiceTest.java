@@ -126,7 +126,7 @@ class PersonalScheduleServiceTest {
 
             CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
                     "個人予定", "テスト", "自宅", START, END, false, "OTHER", "#FF0000",
-                    null, null);
+                    null, null, null);
 
             // when
             PersonalScheduleResponse result = personalScheduleService.createPersonalSchedule(req, USER_ID);
@@ -147,7 +147,7 @@ class PersonalScheduleServiceTest {
                     .willReturn(List.of());
 
             CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
-                    "個人予定", null, null, END, START, false, null, null, null, null);
+                    "個人予定", null, null, END, START, false, null, null, null, null, null);
 
             // when & then
             assertThatThrownBy(() -> personalScheduleService.createPersonalSchedule(req, USER_ID))
@@ -169,7 +169,7 @@ class PersonalScheduleServiceTest {
                     .willReturn(thousandSchedules);
 
             CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
-                    "個人予定", null, null, START, END, false, null, null, null, null);
+                    "個人予定", null, null, START, END, false, null, null, null, null, null);
 
             // when & then
             assertThatThrownBy(() -> personalScheduleService.createPersonalSchedule(req, USER_ID))
@@ -190,7 +190,7 @@ class PersonalScheduleServiceTest {
 
             CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
                     "個人予定", null, null, START, END, false, null, null,
-                    List.of(10, 30), null);
+                    List.of(10, 30), null, null);
 
             // when
             personalScheduleService.createPersonalSchedule(req, USER_ID);

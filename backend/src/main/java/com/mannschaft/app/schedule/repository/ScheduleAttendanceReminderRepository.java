@@ -17,9 +17,17 @@ public interface ScheduleAttendanceReminderRepository extends JpaRepository<Sche
     List<ScheduleAttendanceReminderEntity> findByScheduleIdOrderByRemindAtAsc(Long scheduleId);
 
     /**
-     * 未送信かつリマインド日時を過ぎたリマインダーを取得する。
+     * 未送信かつリマインド日時を過ぎたリマインダーを取得する（ABSOLUTE 専用・後方互換）。
      */
     List<ScheduleAttendanceReminderEntity> findByIsSentFalseAndRemindAtBeforeOrderByRemindAtAsc(LocalDateTime now);
+
+    /**
+     * 未送信のリマインダーを全件取得する（機能55 第二陣）。
+     *
+     * <p>RELATIVE 指定は {@code remind_at} が NULL のため、実効時刻の due 判定は
+     * サービス層で親予定の開始時刻を解決して行う。ABSOLUTE/RELATIVE を区別せず未送信を返す。</p>
+     */
+    List<ScheduleAttendanceReminderEntity> findByIsSentFalse();
 
     /**
      * スケジュールIDでリマインダー数を取得する。

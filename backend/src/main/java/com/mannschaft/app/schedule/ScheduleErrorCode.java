@@ -163,7 +163,13 @@ public enum ScheduleErrorCode implements ErrorCode {
     SCHEDULE_DELEGATION_NOT_DELEGATE("SCHEDULE_079", "代理人本人のみ承認・拒否できます", Severity.WARN),
 
     /** ステータスが PENDING でない（422） */
-    SCHEDULE_DELEGATION_NOT_PENDING("SCHEDULE_080", "承認待ち（PENDING）状態の代理のみ承認・拒否できます", Severity.WARN);
+    SCHEDULE_DELEGATION_NOT_PENDING("SCHEDULE_080", "承認待ち（PENDING）状態の代理のみ承認・拒否できます", Severity.WARN),
+
+    // --- 機能55 予約作成（第二陣） ---
+
+    /** 予約タスクの payload 直列化に失敗（500） */
+    SCHEDULED_TASK_PAYLOAD_SERIALIZATION_FAILED(
+            "SCHEDULE_090", "予約タスクの保存に失敗しました", Severity.ERROR);
 
     private final String code;
     private final String message;

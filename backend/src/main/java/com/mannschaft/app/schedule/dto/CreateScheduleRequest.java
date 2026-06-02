@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -63,4 +64,21 @@ public class CreateScheduleRequest {
 
     @Size(max = 5)
     private final List<CreateReminderRequest> reminders;
+
+    // --- 機能55 第二陣: 予約作成（予約アンケート / 予約出欠募集） ---
+
+    /**
+     * 予約アンケート（任意・最大10件）。指定時刻に集計可能な本格アンケートを自動生成・公開する。
+     * materialize は後続バッチ（{@code ScheduleScheduledTaskBatchService}）が担う。
+     */
+    @Size(max = 10)
+    @Valid
+    private final List<ScheduledSurveyRequest> scheduledSurveys;
+
+    /**
+     * 予約出欠募集（任意・単一）。指定時刻に出欠レコードを生成し対象メンバーへ募集通知を配信する。
+     * materialize は後続バッチ（{@code ScheduleScheduledTaskBatchService}）が担う。
+     */
+    @Valid
+    private final ScheduledAttendanceRequest scheduledAttendance;
 }

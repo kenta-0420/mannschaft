@@ -86,7 +86,7 @@ if (!current.canTransitionTo(requested)) {
 
 - 不正な状態遷移リクエスト → **422 Unprocessable Entity**
 - 許可される遷移を enum または専用クラスで明示する
-- テストでは全許可/不許可遷移パターンを網羅する（§5 参照）
+- テストでは全許可/不許可遷移パターンを網羅する（§6 参照）
 
 ### 3.3 冪等性トークン（重複操作の防止）
 
@@ -139,9 +139,13 @@ if (!current.canTransitionTo(requested)) {
 | 認証済み WRITE 系 | ユーザー ID | 60 req/分 | 429 |
 | 送信系（メール・通知） | ユーザー ID | 10 req/分 | 429 |
 | 管理者 API | ユーザー ID | 120 req/分 | 429 |
-| 認証（ログイン・register） | IP + メール | 10 req/分、5 失敗でアカウントロック | 423 Locked / 429 |
+| 認証（ログイン・register） | IP + メール | **5 req/分**、5 失敗でアカウントロック（30分） | 423 Locked / 429 |
+| パスワードリセット申請 | IP + メール | **3 req/分** | 429 |
+| メール認証コード送信 | ユーザー ID | **3 req/分** | 429 |
 
 > 各機能の固有要件（F01.9 保護者同意招待は 24h 10回等）は上記標準閾値より厳しい制限を設けてよい。標準閾値は上限の目安である。
+>
+> ログイン・パスワードリセット・メール認証コード送信の数値は [02 Cookie とセッション §5](02_cookie_and_session.md) と統一している。
 
 ### 4.3 実装方針
 
@@ -262,8 +266,40 @@ void 不正な状態遷移は422を返す(CirculationStatus from, CirculationSta
 
 ---
 
-## 7. 変更履歴
+## 7. JWT Refresh Token ローテーションの競合制御
+
+### 7.1 問題
+
+複数デバイスが同時に refresh エンドポイントを呼ぶと、
+同一の旧トークンで複数の新トークンが発行され得る。
+
+### 7.2 設計方針
+
+- Valkey の `SET NX`（SET if Not Exists）で分散ロックを実装
+- ロックキー: `mannschaft:refresh_lock:{userId}:{oldTokenHash}`
+- TTL: 5秒（並行リクエストの検出に充分な時間）
+
+### 7.3 フロー
+
+1. refresh リクエスト受信
+2. Valkey で lock 獲得試行（`SET NX`）
+   - 失敗（ロック中）→ 409 Conflict を返す
+3. 旧トークンを DB で検証・失効
+4. 新トークン生成・DB 保存
+5. ロック解放
+6. 新トークンを返す
+
+### 7.4 リプレイ攻撃への対応
+
+旧トークンが再度 refresh エンドポイントに送られた場合（=旧トークンの再利用）、
+`AuthTokenRotationService.setUserInvalidationTimestamp()` で全デバイスを無効化する。
+これはトークン盗難の強いシグナルであるため。
+
+---
+
+## 8. 変更履歴
 
 | 日付 | 変更 |
 |---|---|
-| 2026-06-02 | 新規作成（Security Hardening Phase 3 ビジネスロジック攻撃防止）。Mannschaft 固有の攻撃面マップ・共通対策パターン・レートリミット統一戦略・ドメイン別実装ガイド・テスト戦略を定義 |
+| 2026-06-02 | 新規作成（Security Hardening Phase 3 ビジネスロジック攻撃防止）。Mannschaft 固有の攻撃面マップ・共通対策パターン・レートリミット統一戦略（[02 §5](02_cookie_and_session.md) と数値統一）・ドメイン別実装ガイド・テスト戦略を定義 |
+| 2026-06-02 | §7 JWT Refresh Token 競合制御を追加（Valkey SET NX 分散ロック・リプレイ攻撃対応） |

@@ -234,7 +234,45 @@ PATCH /api/v1/system-admin/users/{id}/lock
 
 ---
 
-## 9. 連絡体制
+## 9. SecurityIncidentLog エンティティ（実装設計）
+
+GDPR Article 33 の72時間通知を適切に管理するため、
+以下のエンティティを実装すること（未実装の場合）:
+
+### 9.1 DB スキーマ
+
+```sql
+CREATE TABLE security_incidents (
+    id               BINARY(16)   NOT NULL COMMENT 'UUIDv7',
+    incident_type    VARCHAR(50)  NOT NULL,  -- DATA_BREACH / AUTH_COMPROMISE / DDOS / SUPPLY_CHAIN
+    severity         VARCHAR(20)  NOT NULL,  -- CRITICAL / HIGH / MEDIUM / LOW
+    detected_at      DATETIME(6)  NOT NULL,  -- 検知時刻（72時間カウント開始）
+    records_affected INT,                    -- 影響を受けたレコード数（概算）
+    description      TEXT,
+    status           VARCHAR(20)  NOT NULL DEFAULT 'OPEN',  -- OPEN / INVESTIGATING / CONTAINED / CLOSED
+    notified_dpa_at  DATETIME(6),            -- DPA（監督機関）への通知時刻
+    resolved_at      DATETIME(6),
+    created_at       DATETIME(6)  NOT NULL,
+    updated_at       DATETIME(6)  NOT NULL,
+    PRIMARY KEY (id)
+);
+```
+
+### 9.2 72時間タイムリミット管理
+
+- `detected_at + 70 hours` のタイミングで SYSTEM_ADMIN にアラートメール送信
+- `status = 'OPEN'` かつ `notified_dpa_at IS NULL` のインシデントを
+  SYSTEM_ADMIN ダッシュボードの最上部に警告表示する
+
+### 9.3 API
+
+- `POST /api/v1/system-admin/security-incidents` — インシデント登録（SYSTEM_ADMIN のみ）
+- `GET /api/v1/system-admin/security-incidents` — 一覧（OPEN 優先ソート）
+- `PATCH /api/v1/system-admin/security-incidents/{id}` — ステータス更新・DPA通知記録
+
+---
+
+## 10. 連絡体制
 
 > 本番運用開始前に以下を設定すること。
 
@@ -247,8 +285,9 @@ PATCH /api/v1/system-admin/users/{id}/lock
 
 ---
 
-## 10. 変更履歴
+## 11. 変更履歴
 
 | 日付 | 変更 |
 |---|---|
 | 2026-06-02 | 新規作成。インシデント種別定義・初動対応フロー・封じ込め手順・GDPR Article 33 対応・脆弱性報告受付・事後検証レポートテンプレートを定義 |
+| 2026-06-02 | §9 SecurityIncidentLog エンティティ設計を追加（GDPR Art.33 72時間通知管理用 DB スキーマ・70時間アラート・SYSTEM_ADMIN ダッシュボード警告・管理 API 3本） |

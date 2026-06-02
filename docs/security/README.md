@@ -50,16 +50,16 @@
 
 | 文書 | 扱う範囲 | ステータス |
 |---|---|---|
-| [01_authorization_baseline.md](01_authorization_baseline.md) | 認可の既定値・公開エンドポイント許可リスト・webhook | 🟢 設計確定 |
-| [02_cookie_and_session.md](02_cookie_and_session.md) | Cookie 属性・セッション無効化・access_token roles claim | 🟢 設計確定 |
-| [03_role_authority_model.md](03_role_authority_model.md) | **ロール・権限モデル（認可基盤完全根治）**。JWT への SYSTEM_ADMIN 搭載・per-scope SpEL ガード・`@PreAuthorize` カタログ・段階計画 | 🟡 設計確定（実装 Phase 0〜5 未着手）⚠️ **本番前必須** |
+| [01_authorization_baseline.md](01_authorization_baseline.md) | 認可の既定値・公開エンドポイント許可リスト・webhook・WebSocket 二層認証 | 🟢 設計確定 |
+| [02_cookie_and_session.md](02_cookie_and_session.md) | Cookie 属性・セッション無効化・access_token roles claim・Valkey Fail-Open 方針 | 🟢 設計確定 |
+| [03_role_authority_model.md](03_role_authority_model.md) | **ロール・権限モデル（認可基盤完全根治）**。JWT への SYSTEM_ADMIN 搭載・per-scope SpEL ガード・`@PreAuthorize` カタログ・段階計画 Phase 0〜6 | 🟡 設計確定（実装 Phase 0〜5 未着手）⚠️ **本番前必須** |
 | [03_security_headers_and_csp.md](03_security_headers_and_csp.md) | CSP・セキュリティヘッダー・CORS・TLS | 🟢 設計確定 |
 | [04_dependency_and_supply_chain.md](04_dependency_and_supply_chain.md) | Dependabot・脆弱性管理。npm high 脆弱性 11 件未解消（2026-06-02） | 🟢 設計確定 |
 | [05_injection_and_input_validation.md](05_injection_and_input_validation.md) | SQL/XSS/入力検証・マスアサインメント・ログインジェクション | 🟢 設計確定 |
-| [06_business_logic_and_abuse_prevention.md](06_business_logic_and_abuse_prevention.md) | ビジネスロジック攻撃防止・レートリミット統一戦略（OWASP A04） | 🟡 設計確定（実装未着手）|
-| [07_file_and_storage_security.md](07_file_and_storage_security.md) | Presigned URL・MIME 検証・スコープ別アクセス制御・ストレージクォータ | 🟡 設計確定（実装未着手）|
-| [08_incident_response.md](08_incident_response.md) | インシデント種別・初動フロー・GDPR Article 33 通知・脆弱性報告受付 | 🟡 設計確定（手順整備未完了）|
-| [09_key_management_and_rotation.md](09_key_management_and_rotation.md) | 秘密鍵全リスト・ローテーション手順・緊急対応・命名規則 | 🟡 設計確定（手順整備未完了）|
+| [06_business_logic_and_abuse_prevention.md](06_business_logic_and_abuse_prevention.md) | ビジネスロジック攻撃・レートリミット統一戦略・JWT Refresh Token 競合制御 | 🟡 設計確定（実装未着手）|
+| [07_file_and_storage_security.md](07_file_and_storage_security.md) | Presigned URL ライフサイクル・MIME 検証・TTL 上限強制・大容量ファイル暗号化方針 | 🟡 設計確定（実装未着手）|
+| [08_incident_response.md](08_incident_response.md) | インシデント対応フロー・GDPR Article 33 通知・SecurityIncidentLog エンティティ設計 | 🟡 設計確定（手順整備未完了）|
+| [09_key_management_and_rotation.md](09_key_management_and_rotation.md) | 秘密鍵全リスト・ローテーション手順（JWT/AES/HMAC）・Valkey 冗長化要件 | 🟡 設計確定（手順整備未完了）|
 
 ### 機能別セキュリティ文書（参照）
 
@@ -153,3 +153,4 @@
 | 2026-06-02 | セキュリティ精査ギャップ反映。文書一覧に 06〜09 を追加。OWASP A01 に未着手警告・A04 にビジネスロジック設計書参照を追加。§8「実装待機」セクションを新設（C-1/C-2/C-3 の 3 件を明示）。 |
 | 2026-05-26 | 新規作成（Security Hardening Phase 1）。横断セキュリティ設計を集約 |
 | 2026-05-30 | [03 ロール・権限モデル](03_role_authority_model.md) を新設（認可基盤完全根治）。文書一覧・OWASP A01・原則 2（多層防御）に参照を追加 |
+| 2026-06-02 | 文書一覧に 06〜09（ビジネスロジック攻撃防止・ファイルストレージセキュリティ・インシデント対応・キー管理）を追加。既存 01〜03 の説明文を更新（WebSocket 二層認証・Valkey Fail-Open・Phase 6 性能最適化反映） |
