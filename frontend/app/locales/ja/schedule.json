@@ -1,0 +1,67 @@
+{
+  "schedule": {
+    "common_delete": "削除",
+    "description_label": "説明",
+    "error_title_required": "タイトルは必須です",
+    "reminder": {
+      "label": "リマインダー",
+      "add": "リマインダーを追加",
+      "before": "前",
+      "max_reached": "リマインダーは最大5件まで設定できます",
+      "kind_label": "種別",
+      "kind_relative": "相対",
+      "kind_absolute": "絶対",
+      "unit_label": "単位",
+      "unit_minutes": "分",
+      "unit_hours": "時間",
+      "unit_days": "日",
+      "relative_value_label": "値",
+      "absolute_at_label": "通知日時",
+      "error_absolute_required": "絶対リマインダーの日時を入力してください",
+      "error_past": "過去の日時は指定できません"
+    },
+    "scheduled_survey": {
+      "label": "アンケートを予約作成",
+      "scheduled_at": "作成日時",
+      "title_label": "アンケートタイトル",
+      "title_placeholder": "アンケートのタイトルを入力",
+      "anonymous": "匿名回答を許可",
+      "results_visibility": "結果公開範囲",
+      "visibility_public": "全員に公開",
+      "visibility_owner": "作成者のみ",
+      "visibility_respondents": "回答者のみ",
+      "question_placeholder": "設問を入力",
+      "qtype_single": "単一選択",
+      "qtype_multiple": "複数選択",
+      "required": "必須",
+      "option_placeholder": "選択肢を入力",
+      "add_option": "選択肢を追加",
+      "add_question": "設問を追加",
+      "error_scheduled_at_required": "アンケートの作成日時を入力してください",
+      "error_past": "アンケートの作成日時は未来を指定してください"
+    },
+    "scheduled_attendance": {
+      "label": "出欠募集を予約作成",
+      "scheduled_at": "作成日時",
+      "deadline": "回答締切",
+      "comment_option": "コメント可否",
+      "comment_none": "コメント不可",
+      "comment_optional": "コメント任意",
+      "comment_required": "コメント必須",
+      "error_scheduled_at_required": "出欠募集の作成日時を入力してください",
+      "error_past": "出欠募集の作成日時は未来を指定してください"
+    },
+    "scheduled_task": {
+      "label": "予約タスク",
+      "type_survey": "予約アンケート",
+      "type_attendance": "予約出欠募集",
+      "status_pending": "予約中",
+      "status_created": "作成済み",
+      "status_cancelled": "取消済み",
+      "status_failed": "失敗",
+      "cancel": "取消",
+      "cancel_success": "予約タスクを取り消しました",
+      "cancel_failed": "予約タスクの取消に失敗しました"
+    }
+  }
+}

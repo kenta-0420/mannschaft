@@ -273,12 +273,59 @@ class PersonalScheduleServiceTest {
             // given
             ScheduleEntity entity = createPersonalScheduleEntity();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(reminderRepository.findByScheduleIdOrderByRemindBeforeMinutesAsc(SCHEDULE_ID))
+                    .willReturn(List.of());
 
             // when
             PersonalScheduleResponse result = personalScheduleService.getPersonalSchedule(SCHEDULE_ID, USER_ID);
 
             // then
             assertThat(result.getContent().title()).isEqualTo("個人予定");
+        }
+
+        @Test
+        @DisplayName("詳細取得_相対と絶対の両リマインダーがdetailedRemindersに載る（機能55第三陣）")
+        void 詳細取得_相対と絶対両リマインダーが載る() {
+            // given: 相対(30分前) + 絶対(固定日時) の2件
+            ScheduleEntity entity = createPersonalScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+
+            LocalDateTime absoluteAt = LocalDateTime.of(2026, 4, 1, 9, 0);
+            com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity relative =
+                    com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity.builder()
+                            .scheduleId(SCHEDULE_ID)
+                            .reminderKind(ReminderKind.RELATIVE)
+                            .remindBeforeMinutes(30)
+                            .notified(false)
+                            .build();
+            com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity absolute =
+                    com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity.builder()
+                            .scheduleId(SCHEDULE_ID)
+                            .reminderKind(ReminderKind.ABSOLUTE)
+                            .remindAt(absoluteAt)
+                            .notified(true)
+                            .build();
+            given(reminderRepository.findByScheduleIdOrderByRemindBeforeMinutesAsc(SCHEDULE_ID))
+                    .willReturn(List.of(relative, absolute));
+
+            // when
+            PersonalScheduleResponse result = personalScheduleService.getPersonalSchedule(SCHEDULE_ID, USER_ID);
+
+            // then: detailedReminders に両方載る
+            assertThat(result.getDetailedReminders()).hasSize(2);
+            assertThat(result.getDetailedReminders())
+                    .anySatisfy(r -> {
+                        assertThat(r.getReminderKind()).isEqualTo("RELATIVE");
+                        assertThat(r.getRemindBeforeMinutes()).isEqualTo(30);
+                        assertThat(r.getNotified()).isFalse();
+                    })
+                    .anySatisfy(r -> {
+                        assertThat(r.getReminderKind()).isEqualTo("ABSOLUTE");
+                        assertThat(r.getRemindAt()).isEqualTo(absoluteAt);
+                        assertThat(r.getNotified()).isTrue();
+                    });
+            // 後方互換の reminders には相対分のみ
+            assertThat(result.getReminders()).containsExactly(30);
         }
 
         @Test

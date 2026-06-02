@@ -35,6 +35,7 @@ import com.mannschaft.app.recruitment.repository.RecruitmentParticipantHistoryRe
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentReminderRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentTemplateRepository;
+import com.mannschaft.app.recruitment.util.LikeEscapeUtil;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.FollowerType;
 import com.mannschaft.app.social.repository.FollowRepository;
@@ -724,8 +725,13 @@ public class RecruitmentListingService {
             Pageable pageable) {
         LocalDateTime fromDt = startFrom != null ? LocalDateTime.parse(startFrom) : null;
         LocalDateTime toDt = startTo != null ? LocalDateTime.parse(startTo) : null;
+        // 呼び出し側（Controller）で trim・空文字→null 済み。ここで LIKE ワイルドカード
+        // （% / _ / \）をエスケープしてフィルタ無効化を防ぐ（JPQL の ESCAPE '\' と対）。null は透過。
+        String escapedKeyword = LikeEscapeUtil.escape(keyword);
+        String escapedLocation = LikeEscapeUtil.escape(location);
         Page<RecruitmentListingEntity> page = listingRepository.searchPublicListings(
-                categoryId, subcategoryId, fromDt, toDt, participationType, keyword, location, pageable);
+                categoryId, subcategoryId, fromDt, toDt, participationType,
+                escapedKeyword, escapedLocation, pageable);
         return page.map(mapper::toListingSummaryResponse);
     }
 
