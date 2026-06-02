@@ -65,13 +65,13 @@ public class ProjectService {
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
      * @param status    ステータスフィルタ
-     * @param page      ページ番号（1始まり）
+     * @param page      ページ番号（0始まり）
      * @param size      ページサイズ
      * @return プロジェクト一覧
      */
     public PagedResponse<ProjectResponse> listProjects(TodoScopeType scopeType, Long scopeId,
                                                         ProjectStatus status, int page, int size) {
-        PageRequest pageable = PageRequest.of(page - 1, size, Sort.by("dueDate").ascending());
+        PageRequest pageable = PageRequest.of(page, size, Sort.by("dueDate").ascending());
         Page<ProjectEntity> pageResult = projectRepository
                 .findByScopeTypeAndScopeIdAndStatusAndDeletedAtIsNull(scopeType, scopeId, status, pageable);
 
@@ -80,7 +80,7 @@ public class ProjectService {
                 .toList();
 
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
-                pageResult.getTotalElements(), page, size, pageResult.getTotalPages());
+                pageResult.getTotalElements(), pageResult.getNumber(), pageResult.getSize(), pageResult.getTotalPages());
         return PagedResponse.of(responses, meta);
     }
 
