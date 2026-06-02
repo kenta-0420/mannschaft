@@ -39,8 +39,8 @@ public class ShiftPdfController {
     @GetMapping(produces = MediaType.APPLICATION_PDF_VALUE)
     @Operation(summary = "シフト PDF ダウンロード")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "PDF ダウンロード成功")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "SUPPORTER ロールはアクセス不可")
-    @PreAuthorize("!hasRole('SUPPORTER')")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "メンバー以上のみアクセス可（SUPPORTER は不可）")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> exportPdf(
             @PathVariable Long scheduleId,
             @RequestParam(defaultValue = "team") String layout) {
