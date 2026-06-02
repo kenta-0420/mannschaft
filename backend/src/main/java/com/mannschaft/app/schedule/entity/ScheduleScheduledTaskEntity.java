@@ -142,6 +142,25 @@ public class ScheduleScheduledTaskEntity extends UuidV7Entity {
     }
 
     /**
+     * materialize 試行の失敗を記録する（機能55 第二陣）。
+     *
+     * <p>試行回数を加算し失敗理由を記録する。{@code attemptCount} が {@code maxAttempts} 以上に
+     * 達したら FAILED 確定（打ち止め）、未満なら PENDING のまま据え置き（次回バッチで再試行可能）。</p>
+     *
+     * @param error       失敗理由
+     * @param maxAttempts 最大試行回数（これ以上で FAILED 確定）
+     */
+    public void recordFailedAttempt(String error, int maxAttempts) {
+        this.attemptCount = (this.attemptCount == null ? 0 : this.attemptCount) + 1;
+        this.lastError = error;
+        if (this.attemptCount >= maxAttempts) {
+            this.status = ScheduledTaskStatus.FAILED;
+        } else {
+            this.status = ScheduledTaskStatus.PENDING;
+        }
+    }
+
+    /**
      * 予約タスクを取り消す（→ CANCELLED）。
      */
     public void cancel() {
