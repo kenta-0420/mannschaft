@@ -25,6 +25,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 /**
@@ -51,10 +52,11 @@ class MembershipConsistencyCheckerTest {
         meterRegistry = new SimpleMeterRegistry();
         checker = new MembershipConsistencyChecker(membershipRepository, userRoleRepository, meterRegistry);
 
-        // デフォルト: 空ページ（各テストで必要に応じてオーバーライド）
-        when(membershipRepository.findAll(any(Pageable.class)))
+        // デフォルト: 空ページ（各テストで必要に応じてオーバーライドするため lenient。
+        // 再スタブ・未使用のテストで Mockito strict の UnnecessaryStubbingException を避ける）
+        lenient().when(membershipRepository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(Collections.emptyList()));
-        when(userRoleRepository.findAll(any(Pageable.class)))
+        lenient().when(userRoleRepository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(Collections.emptyList()));
     }
 
