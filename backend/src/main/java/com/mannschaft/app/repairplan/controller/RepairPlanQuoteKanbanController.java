@@ -1,5 +1,6 @@
 package com.mannschaft.app.repairplan.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
@@ -60,9 +61,14 @@ import java.util.UUID;
 public class RepairPlanQuoteKanbanController {
 
     private final RepairPlanQuoteKanbanService service;
+    private final AccessControlService accessControlService;
 
     /**
      * カンバン一覧を取得する（メンバーシップ必須・visibility フィルタ適用）。
+     *
+     * <p>非メンバーは {@code COMMON_002}（403 相当）で遮断する。SYSTEM_ADMIN は全件閲覧可。
+     * 業者名・金額のマスキング（HIDDEN/ANONYMIZED/締切前）は閲覧者のロールに応じて
+     * サービス層で適用する。</p>
      */
     @GetMapping("/quote-kanbans")
     @Operation(summary = "相見積もりカンバン一覧（メンバーシップ必須）")
@@ -70,8 +76,11 @@ public class RepairPlanQuoteKanbanController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @RequestHeader("X-Organization-Id") Long organizationId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        String normalizedScope = normalizeScope(scopeType);
+        checkReadAccess(userId, scopeId, normalizedScope);
         List<QuoteKanbanDto> result = service.listKanbans(
-                normalizeScope(scopeType), scopeId, organizationId);
+                normalizedScope, scopeId, organizationId, userId);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -101,7 +110,10 @@ public class RepairPlanQuoteKanbanController {
             @PathVariable Long scopeId,
             @PathVariable UUID kanbanId,
             @RequestHeader("X-Organization-Id") Long organizationId) {
-        QuoteKanbanDto dto = service.getKanban(kanbanId, organizationId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        String normalizedScope = normalizeScope(scopeType);
+        checkReadAccess(userId, scopeId, normalizedScope);
+        QuoteKanbanDto dto = service.getKanban(kanbanId, organizationId, userId);
         return ResponseEntity.ok(ApiResponse.of(dto));
     }
 
@@ -155,6 +167,20 @@ public class RepairPlanQuoteKanbanController {
         Long userId = SecurityUtils.getCurrentUserId();
         QuoteCardDto dto = service.moveCard(cardId, organizationId, request, userId);
         return ResponseEntity.ok(ApiResponse.of(dto));
+    }
+
+    /**
+     * 読み取り（一覧・詳細）の認可を検証する。
+     *
+     * <p>SYSTEM_ADMIN は全スコープを横断的に閲覧できる。それ以外は対象スコープの
+     * メンバー（MEMBER 以上）でなければ {@code COMMON_002}（403 相当）で遮断する。
+     * これにより非メンバーが HIDDEN/匿名化/締切前の業者見積を取得する漏洩経路を断つ。</p>
+     */
+    private void checkReadAccess(Long userId, Long scopeId, String normalizedScope) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        accessControlService.checkMembership(userId, scopeId, normalizedScope);
     }
 
     /**
