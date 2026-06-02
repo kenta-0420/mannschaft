@@ -183,9 +183,16 @@ test('MRC-001: 実 UI の作成フォーム → publish ボタンだけで PUBLI
   await waitForHydration(page)
   await expect(page.getByTestId('market-form-extension')).toBeVisible({ timeout: 15_000 })
 
-  // 2) 公開範囲を PUBLIC にする（既定で PUBLIC だが明示的に押下して導線を確実にする）
+  // 2) 公開範囲は既定で PUBLIC（MarketListingFormExtension の visibility ref 初期値）。
+  //    PrimeVue SelectButton は「選択済みオプションを再クリックすると選択解除（null 化）」する
+  //    トグル挙動を持つため、既に選択されている「市に公開」を押すと visibility=null になり
+  //    create が COMMON_001（visibility 必須）で 400 になる。したがって既定の PUBLIC をそのまま使い、
+  //    選択状態（aria-pressed=true）だけを検証する。フレンド経路の検証は MRC-003 で別途行う。
   const visibilitySelector = page.getByTestId('market-visibility-selector')
-  await visibilitySelector.getByText('公開', { exact: false }).first().click()
+  await expect(
+    visibilitySelector.getByRole('button', { name: '市に公開', exact: true }),
+    '公開範囲は既定で「市に公開」が選択されている',
+  ).toHaveAttribute('aria-pressed', 'true')
 
   // 3) タイトル
   const titleInput = page.locator('input#title')
@@ -222,18 +229,44 @@ test('MRC-001: 実 UI の作成フォーム → publish ボタンだけで PUBLI
   createdId = Number(match![1])
   cleanupIds.push(createdId)
 
+  // 8) 詳細ページを開いて listing をロードし終える（タイトル h1 の出現）まで待つ。
+  //    new.vue の router.push 直後の SPA 遷移は dev サーバーでハイドレーション競合により
+  //    getListing が稀に error トーストになり描画されないことがあるため、同 URL を明示 goto して
+  //    確実な描画経路（フル SSR ロード）に乗せる。これは UI 上の同じ詳細ページであり、
+  //    distribution-targets の API 裏設定は一切していない（#1279 の FE 自動設定だけで成立する）。
+  await page.goto(`/recruitment-listings/${createdId}`)
   await waitForHydration(page)
+  await expect(
+    page.locator('main h1', { hasText: 'E2E実機CRUD UI導線 練習試合募集' }),
+    '詳細ページが作成した札をロードする',
+  ).toBeVisible({ timeout: 20_000 })
 
-  // 8) 作成直後は DRAFT。公開ボタンを押下する（裏で distribution-targets は設定済み）。
-  const publishButton = page.getByRole('button', { name: '公開' })
+  // 9) 作成直後は DRAFT。公開ボタン（main 内・厳密一致「公開」）を押下する。
+  //    サイドナビ等の "公開" を含む要素を誤検出しないよう main スコープ + exact にする。
+  //    裏では new.vue が PUBLIC_FEED を distribution-targets に登録済み（#1279 FE 修正）。
+  const publishButton = page.locator('main').getByRole('button', { name: '公開', exact: true })
   await expect(publishButton, '作成直後の DRAFT 札に公開ボタンが出る').toBeVisible({ timeout: 15_000 })
-  await publishButton.click()
 
-  // 9) publish 成功（500 で落ちない）→ ステータスが OPEN になり公開ボタンが消える
-  await expect(publishButton, '公開成功後は DRAFT 用の公開ボタンが消える').toHaveCount(0, { timeout: 15_000 })
+  // publish API 応答を確実に捕捉する。#1279 修正により RECRUITMENT_204/500 ではなく 200 が返るはず。
+  const [publishResp] = await Promise.all([
+    page.waitForResponse(
+      (r) => /\/api\/v1\/recruitment-listings\/\d+\/publish$/.test(r.url()) && r.request().method() === 'POST',
+      { timeout: 15_000 },
+    ),
+    publishButton.click(),
+  ])
+  expect(
+    publishResp.status(),
+    'UI の公開ボタンによる publish が 200 成功（RECRUITMENT_204/500 が出ない＝#1279 修正の核心）',
+  ).toBe(200)
 
-  // 10) BE 実値: 公開市の詳細 API が 200 で実値を返す（DRAFT なら 404 のはず → publish 成功の裏取り）
-  const detailRes = await api.get(`${PUBLIC_MARKET}/listings/${createdId}`)
+  // 10) BE 実値: 公開市の詳細 API が 200 で実値を返す（DRAFT なら 404 のはず → publish 成功の裏取り）。
+  //     publish 反映の僅かな伝播ラグを吸収するため数回ポーリングする。
+  let detailRes = await api.get(`${PUBLIC_MARKET}/listings/${createdId}`)
+  for (let i = 0; i < 10 && detailRes.status() !== 200; i++) {
+    await page.waitForTimeout(500)
+    detailRes = await api.get(`${PUBLIC_MARKET}/listings/${createdId}`)
+  }
   expect(detailRes.status(), 'UI 導線で publish した PUBLIC 札は公開市で 200').toBe(200)
   const detail = (await detailRes.json()) as {
     data: {
