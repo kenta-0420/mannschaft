@@ -115,6 +115,78 @@ public interface StripePaymentProvider {
      */
     WebhookEventInfo constructEvent(String payload, String sigHeader);
 
+    // ========================================
+    // F22.1 謝礼決済 Connect（P2-a・設計書 02 §8。既存メソッドは破壊しない追加）
+    // ========================================
+
+    /**
+     * Stripe Connect Express アカウントを作成する（受領者の口座）。
+     *
+     * @param country   ISO 3166-1 alpha-2 国コード（例: {@code "JP"}）
+     * @param scopeKind 受領主体の種別（USER/TEAM/ORG・metadata 用）
+     * @param scopeId   受領主体の論理 ID（metadata 用）
+     * @return Stripe Connect アカウント ID（{@code acct_xxx}）
+     */
+    String createConnectAccount(String country,
+                                com.mannschaft.app.payment.connect.ScopeKind scopeKind,
+                                Long scopeId);
+
+    /**
+     * Connect アカウントの hosted onboarding（account_onboarding）リンクを作成する。
+     *
+     * @param stripeAccountId Connect アカウント ID（{@code acct_xxx}）
+     * @param returnUrl       onboarding 完了後の戻り URL
+     * @param refreshUrl      リンク失効時の再発行 URL
+     * @return AccountLink 情報（onboarding URL と失効時刻）
+     */
+    AccountLinkInfo createAccountLink(String stripeAccountId, String returnUrl, String refreshUrl);
+
+    /**
+     * Connect アカウントの最新状態を取得する（status 同期用）。
+     *
+     * @param stripeAccountId Connect アカウント ID（{@code acct_xxx}）
+     * @return Connect アカウント状態
+     */
+    ConnectAccountInfo retrieveConnectAccount(String stripeAccountId);
+
+    /**
+     * Connect Webhook の署名を検証し、イベントをパースする。
+     *
+     * <p>platform 用 {@link #constructEvent} と別の署名シークレット
+     * （{@code mannschaft.stripe.connect-webhook-secret}）で検証する（設計書 03 §2）。
+     * {@code account.updated} 等の Connect 固有イベントを扱うため専用 record を返す。</p>
+     *
+     * @param payload   生リクエストボディ
+     * @param sigHeader {@code Stripe-Signature} ヘッダー
+     * @return Connect イベント情報
+     */
+    ConnectWebhookEventInfo constructConnectEvent(String payload, String sigHeader);
+
+    /**
+     * Connect Webhook イベント情報。
+     *
+     * <p>{@code eventId} は冪等性キー（{@code evt_xxx}）。{@code stripeAccountId} は
+     * {@code account.updated}/{@code account.application.deauthorized} の対象アカウント。
+     * {@code requirementsDue} は KYC 要件不足項目。</p>
+     */
+    record ConnectWebhookEventInfo(String eventId, String type, boolean livemode,
+                                   String stripeAccountId,
+                                   boolean chargesEnabled, boolean payoutsEnabled,
+                                   java.util.List<String> requirementsDue) {}
+
+    /**
+     * AccountLink（hosted onboarding 遷移リンク）情報。
+     */
+    record AccountLinkInfo(String url, java.time.LocalDateTime expiresAt) {}
+
+    /**
+     * Connect アカウント状態（{@code account.updated} Webhook / 同期取得用）。
+     *
+     * <p>{@code requirementsDue} は KYC 要件不足項目（RESTRICTED 時のみ非空）。</p>
+     */
+    record ConnectAccountInfo(boolean chargesEnabled, boolean payoutsEnabled,
+                              java.util.List<String> requirementsDue) {}
+
     /**
      * Stripe Price 情報。
      */

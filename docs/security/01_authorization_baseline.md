@@ -75,7 +75,7 @@ SecurityFilterChain は「最低限のゲート」、所有権の最終判定は
 |---|---|---|---|---|
 | `/api/v1/webhooks/stripe` | `/api/v1/webhooks/stripe` | POST | `payment/StripeWebhookController`（`@PostMapping("/stripe")`） | `Stripe-Signature` ヘッダー |
 | `/api/v1/webhooks/stripe/ad-invoices` | `/api/v1/webhooks/stripe/*` | POST | `advertising/StripeAdInvoiceWebhookController`（`@PostMapping("/ad-invoices")`） | `Stripe-Signature` ヘッダー |
-| `/api/v1/webhooks/stripe/connect` | `/api/v1/webhooks/stripe/*`（**既存 `*` で被覆・新規許可不要**） | POST | `payment` Connect Webhook（F22.1 謝礼決済・Phase 2 後半・設計確定/実装未着手） | `Stripe-Signature` ヘッダー（Connect 用シークレット `STRIPE_CONNECT_WEBHOOK_SECRET` で別途検証） |
+| `/api/v1/webhooks/stripe/connect` | `/api/v1/webhooks/stripe/*`（**既存 `*` で被覆済・新規許可不要・SecurityConfig 変更不要**） | POST | `payment/StripeWebhookController`（`@PostMapping("/stripe/connect")`・F22.1 謝礼決済 P2-a 実装済） | `Stripe-Signature` ヘッダー（Connect 用シークレット `STRIPE_CONNECT_WEBHOOK_SECRET` で**別シークレット**として検証） |
 | `/api/v1/webhooks/ses` | `/api/v1/webhooks/ses` | POST | `directmail/SesWebhookController` | SNS メッセージ署名 |
 | `/api/v1/line/webhook/{webhookSecret}` | `/api/v1/line/webhook/*` | POST | `line/LineWebhookController`（`@PostMapping("/{webhookSecret}")`） | LINE 署名（`X-Line-Signature`）+ パスシークレット |
 | `/incoming/{token}` | `/incoming/*` | POST | `webhook/IncomingWebhookController`（`@PostMapping("/incoming/{token}")`） | パストークン（DB 照合）。**トップレベルパス（`/api/` 配下でない）に注意** |

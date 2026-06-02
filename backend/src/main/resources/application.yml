@@ -158,6 +158,10 @@ mannschaft:
     redirect-uri: ${MANNSCHAFT_APPLE_REDIRECT_URI:https://app.mannschaft.com/auth/oauth/callback/apple}
   stripe:
     secret-key: ${MANNSCHAFT_STRIPE_SECRET_KEY:}
+    # F08.2 platform Webhook 署名シークレット
+    webhook-secret: ${MANNSCHAFT_STRIPE_WEBHOOK_SECRET:}
+    # F22.1 Connect Webhook 署名シークレット（platform 用と分離・設計書 03 §2）
+    connect-webhook-secret: ${STRIPE_CONNECT_WEBHOOK_SECRET:}
     connect:
       return-url: ${MANNSCHAFT_STRIPE_CONNECT_RETURN_URL:https://app.mannschaft.com/settings/stripe/return}
       refresh-url: ${MANNSCHAFT_STRIPE_CONNECT_REFRESH_URL:https://app.mannschaft.com/settings/stripe/refresh}

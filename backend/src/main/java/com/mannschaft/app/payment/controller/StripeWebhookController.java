@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment.controller;
 
+import com.mannschaft.app.payment.connect.ConnectWebhookService;
 import com.mannschaft.app.payment.service.StripeWebhookService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,24 +16,30 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Stripe Webhook コントローラー。Stripe からのイベント通知を受信する。
  * <p>
- * エンドポイント数: 1（POST webhooks/stripe）
+ * エンドポイント数: 2
+ * <ul>
+ *   <li>POST {@code /api/v1/webhooks/stripe} — F08.2 platform Webhook（既存）</li>
+ *   <li>POST {@code /api/v1/webhooks/stripe/connect} — F22.1 Connect Webhook（別署名シークレット）</li>
+ * </ul>
+ * 両エンドポイントとも {@code /api/v1/webhooks/stripe/*} の permitAll で被覆済み（SecurityConfig・03 §2.1）。
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/webhooks")
-@Tag(name = "Stripe Webhook", description = "F08.2 Stripe Webhook 受信")
+@Tag(name = "Stripe Webhook", description = "F08.2 / F22.1 Stripe Webhook 受信")
 @RequiredArgsConstructor
 public class StripeWebhookController {
 
     private final StripeWebhookService stripeWebhookService;
+    private final ConnectWebhookService connectWebhookService;
 
     /**
-     * Stripe Webhook を受信する。
+     * Stripe platform Webhook を受信する（F08.2）。
      * <p>
      * 署名検証には生ボディ（raw body）が必要。{@code @RequestBody String} でパース前の文字列を受け取る。
      */
     @PostMapping("/stripe")
-    @Operation(summary = "Stripe Webhook 受信")
+    @Operation(summary = "Stripe Webhook 受信（platform）")
     public ResponseEntity<Void> handleWebhook(
             @RequestBody String payload,
             @RequestHeader("Stripe-Signature") String sigHeader) {
@@ -44,5 +51,22 @@ public class StripeWebhookController {
             // Webhook ハンドラ内では 5xx を返さない設計
             return ResponseEntity.ok().build();
         }
+    }
+
+    /**
+     * Stripe Connect Webhook を受信する（F22.1・設計書 02 §4）。
+     * <p>
+     * platform とは別の署名シークレット（{@code mannschaft.stripe.connect-webhook-secret}）で検証する。
+     * 署名検証失敗は {@code BusinessException}（{@code PAYMENT_C040} → 400）として伝播させ
+     * {@code GlobalExceptionHandler} に委ねる（設計書 02 §4.1: 署名失敗=400）。
+     * 署名が正当ならハンドラ内の業務エラーは握らず、冪等ゲートで重複は no-op となる。
+     */
+    @PostMapping("/stripe/connect")
+    @Operation(summary = "Stripe Connect Webhook 受信")
+    public ResponseEntity<Void> handleConnectWebhook(
+            @RequestBody String payload,
+            @RequestHeader("Stripe-Signature") String sigHeader) {
+        connectWebhookService.handleWebhook(payload, sigHeader);
+        return ResponseEntity.ok().build();
     }
 }
