@@ -17,6 +17,11 @@
       "goToDashboard": "Zum Dashboard",
       "postFromDashboard": "Im Team-/Organisations-Dashboard erstellen"
     },
+    "region": {
+      "add": "Region hinzufügen",
+      "selected": "Ausgewählte Regionen",
+      "none": "Keine Region ausgewählt (beliebige Region)"
+    },
     "filter": {
       "prefecture": "Präfektur",
       "city": "Stadt",
@@ -36,6 +41,7 @@
       "deadline": "Frist",
       "capacity": "{confirmed}/{capacity} Bewerber",
       "region": "Region",
+      "regionNone": "Beliebige Region",
       "category": "Kategorie",
       "organizer": "Veranstalter"
     },
@@ -70,6 +76,7 @@
     "detail": {
       "organizer": "Veranstalter",
       "region": "Region",
+      "regionNone": "Beliebige Region",
       "startAt": "Veranstaltungsdatum",
       "deadline": "Bewerbungsfrist",
       "capacity": "Kapazität",

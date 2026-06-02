@@ -85,6 +85,8 @@ class BulletinAttachmentServiceTest {
     private StorageService storageService;
     @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private com.mannschaft.app.tournament.service.TournamentContactAccessService tournamentContactAccessService;
 
     @InjectMocks
     private BulletinAttachmentService service;
@@ -482,6 +484,82 @@ class BulletinAttachmentServiceTest {
 
             verify(attachmentRepository).delete(any());
             verify(auditLogService).record(any(), eq(USER_ID), any(), any(), any(), any(), any(), any(), any());
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // F08.7.1 大会/ディビジョン連絡スコープ（B2）
+    // ─────────────────────────────────────────────
+    @Nested
+    @DisplayName("F08.7.1 大会連絡スコープ認可配線")
+    class TournamentScope {
+
+        private static final Long T_SCOPE_ID = 500L;
+
+        private BulletinThreadEntity tournamentThread() {
+            return BulletinThreadEntity.builder()
+                    .scopeType(ScopeType.TOURNAMENT).scopeId(T_SCOPE_ID).authorId(USER_ID).build();
+        }
+
+        @Test
+        @DisplayName("一覧取得: TOURNAMENT は canView を呼び checkMembership に落ちない")
+        void listAttachments大会はcanView() {
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(tournamentThread()));
+            given(attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.THREAD, THREAD_ID))
+                    .willReturn(List.of());
+            given(bulletinMapper.toAttachmentResponseList(any())).willReturn(List.of());
+
+            service.listThreadAttachments(THREAD_ID, USER_ID);
+
+            verify(tournamentContactAccessService).checkView(
+                    eq(com.mannschaft.app.tournament.ContactSpaceScopeType.TOURNAMENT),
+                    eq(T_SCOPE_ID),
+                    eq(com.mannschaft.app.tournament.ContactSpaceKind.BULLETIN),
+                    eq(USER_ID));
+            verify(accessGuard, never()).checkMembership(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("presign: TOURNAMENT は canPost を要求し checkMembership に落ちない")
+        void presign大会はcanPost() {
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(tournamentThread()));
+            given(attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.THREAD, THREAD_ID))
+                    .willReturn(List.of());
+            given(storageService.generateUploadUrl(any(), any(), any(Duration.class)))
+                    .willReturn(new PresignedUploadResult("https://r2/put", "k", 900L));
+
+            service.generateUploadUrl(presignReq(TargetType.THREAD, THREAD_ID), USER_ID);
+
+            verify(tournamentContactAccessService).checkPost(
+                    eq(com.mannschaft.app.tournament.ContactSpaceScopeType.TOURNAMENT), eq(T_SCOPE_ID), eq(USER_ID));
+            verify(accessGuard, never()).checkMembership(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("presign: canPost 無し（例外）は presign できない（権限昇格防止）")
+        void presign非投稿権限者は不可() {
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(tournamentThread()));
+            doThrow(new BusinessException(
+                    com.mannschaft.app.tournament.TournamentErrorCode.CONTACT_SPACE_POST_FORBIDDEN))
+                    .when(tournamentContactAccessService).checkPost(any(), any(), any());
+
+            assertThatThrownBy(() -> service.generateUploadUrl(presignReq(TargetType.THREAD, THREAD_ID), OTHER_USER_ID))
+                    .isInstanceOf(BusinessException.class);
+            verify(accessGuard, never()).checkMembership(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("他者添付削除: TOURNAMENT は canPost を要求し checkMembership/checkOwnerOrAdmin に落ちない")
+        void delete他者はcanPost() {
+            given(attachmentRepository.findById(ATTACHMENT_ID))
+                    .willReturn(Optional.of(attachment(OTHER_USER_ID)));
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(tournamentThread()));
+
+            service.deleteAttachment(ATTACHMENT_ID, USER_ID);
+
+            verify(tournamentContactAccessService).checkPost(
+                    eq(com.mannschaft.app.tournament.ContactSpaceScopeType.TOURNAMENT), eq(T_SCOPE_ID), eq(USER_ID));
+            verify(accessGuard, never()).checkOwnerOrAdmin(any(), any(), any(), any());
         }
     }
 }

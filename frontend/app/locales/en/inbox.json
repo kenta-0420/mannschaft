@@ -24,7 +24,11 @@
       "archive": "Archive",
       "unarchive": "Move to Inbox",
       "unsnooze": "Unsnooze",
-      "label": "Label"
+      "label": "Label",
+      "snoozed": "Snoozed",
+      "archived": "Moved to archive",
+      "unarchived": "Moved to inbox",
+      "unsnoozed": "Snooze cancelled"
     },
     "snoozePreset": {
       "in3h": "In 3 hours",
@@ -43,6 +47,42 @@
       "inbox": "Inbox",
       "snoozed": "Snoozed",
       "archived": "Archive"
+    },
+    "label": {
+      "title": "Labels",
+      "create": "Create Label",
+      "edit": "Edit Label",
+      "delete": "Delete Label",
+      "manage": "Manage Labels",
+      "nameLabel": "Name",
+      "namePlaceholder": "Label name",
+      "colorLabel": "Color",
+      "iconLabel": "Icon (optional)",
+      "limitReached": "You can create up to 20 labels",
+      "duplicate": "A label with the same name already exists",
+      "perItemLimit": "You can assign up to 10 labels per notification",
+      "empty": "No labels",
+      "filterTitle": "Filter by label",
+      "assigned": "Label assigned",
+      "removed": "Remove label",
+      "created": "Label created",
+      "updated": "Label updated",
+      "deleted": "Label deleted"
+    },
+    "bulk": {
+      "selectMode": "Select multiple",
+      "exit": "Exit selection",
+      "selected": "{count} selected",
+      "archive": "Archive",
+      "snooze": "Snooze",
+      "addLabel": "Add label",
+      "apply": "Apply",
+      "result": "{processed} processed ({skipped} skipped)",
+      "cancel": "Cancel"
+    },
+    "group": {
+      "badge": "+{n} more",
+      "badgeTitle": "{n} notifications are grouped here"
     }
   }
 }

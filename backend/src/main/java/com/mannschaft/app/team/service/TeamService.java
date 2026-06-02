@@ -92,6 +92,8 @@ public class TeamService {
                         : TeamEntity.Visibility.PRIVATE)
                 .supporterEnabled(false)
                 .build();
+        // F22.1 市 Phase 2 足場C: 構造化地域コードを反映（どちらも null 許容＝未指定はそのまま NULL）
+        team.updateRegionCodes(req.getPrefectureCode(), req.getCityCode());
         teamRepository.save(team);
 
         // 作成者をADMINロールで紐付ける
@@ -155,6 +157,34 @@ public class TeamService {
     }
 
     /**
+     * F22.1 市 Phase 2 足場C: チームの構造化地域コード（都道府県・市区町村）を取得する。
+     *
+     * <p>他ドメイン（recruitment）が札立て地域の既定補完に使う read-only な横断クエリ。
+     * クロスドメイン FK を張らない方針（CLAUDE.md 原則 1）のため、Entity を直接渡さず
+     * {@link TeamRegionCodes}（コードのみの軽量 DTO）として公開する。</p>
+     *
+     * <p>論理削除済み（{@code @SQLRestriction}）チームは取得対象外（空を返す）。
+     * 地域コードが未設定の場合は record のフィールドが {@code null} のまま返る。</p>
+     *
+     * @param teamId チーム ID
+     * @return 地域コード。チームが存在しない／論理削除済みの場合は空。
+     */
+    @Transactional(readOnly = true)
+    public java.util.Optional<TeamRegionCodes> findRegionCodes(Long teamId) {
+        return teamRepository.findById(teamId)
+                .map(team -> new TeamRegionCodes(team.getPrefectureCode(), team.getCityCode()));
+    }
+
+    /**
+     * チームの構造化地域コード（都道府県・市区町村）。
+     *
+     * @param prefectureCode 都道府県コード（JIS X 0401、null=未設定）
+     * @param cityCode       市区町村コード（JIS X 0402、null=未設定）
+     */
+    public record TeamRegionCodes(String prefectureCode, String cityCode) {
+    }
+
+    /**
      * チームを取得する。
      *
      * <p>Phase 4-E: Valkey にて 10 分キャッシュ。更新・削除時に自動無効化される。</p>
@@ -191,6 +221,9 @@ public class TeamService {
                 .template(req.getTemplate() != null ? req.getTemplate() : team.getTemplate())
                 .prefecture(req.getPrefecture() != null ? req.getPrefecture() : team.getPrefecture())
                 .city(req.getCity() != null ? req.getCity() : team.getCity())
+                // F22.1 市 Phase 2 足場C: 地域コードは指定時のみ更新（null は既存値を維持）
+                .prefectureCode(req.getPrefectureCode() != null ? req.getPrefectureCode() : team.getPrefectureCode())
+                .cityCode(req.getCityCode() != null ? req.getCityCode() : team.getCityCode())
                 .visibility(req.getVisibility() != null
                         ? TeamEntity.Visibility.valueOf(req.getVisibility())
                         : team.getVisibility())
@@ -449,7 +482,8 @@ public class TeamService {
                         team.getName(), team.getNameKana(),
                         team.getNickname1(), team.getNickname2()))
                 .location(new TeamResponse.TeamLocationDto(
-                        team.getPrefecture(), team.getCity(), team.getTemplate()))
+                        team.getPrefecture(), team.getCity(), team.getTemplate(),
+                        team.getPrefectureCode(), team.getCityCode()))
                 .visibility(new TeamResponse.TeamVisibilityDto(
                         team.getVisibility() != null ? team.getVisibility().name() : null,
                         team.getSupporterEnabled()))

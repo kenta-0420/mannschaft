@@ -36,6 +36,10 @@ interface TeamSummary {
   iconUrl: string | null
   prefecture: string | null
   city: string | null
+  /** 都道府県コード（BE `prefectureCode` camelCase と 1:1、null 許容）。 */
+  prefectureCode: string | null
+  /** 市区町村コード（BE `cityCode` camelCase と 1:1、null 許容）。 */
+  cityCode: string | null
   template: string
   memberCount: number
   supporterEnabled: boolean
@@ -57,6 +61,7 @@ const initialKeyword = ref('')
 const searchParams = ref({
   keyword: '',
   prefecture: '',
+  prefectureCode: '',
   template: '',
 })
 
@@ -65,6 +70,9 @@ async function fetchTeams() {
   try {
     const result = await teamApi.searchTeams({
       keyword: searchParams.value.keyword || undefined,
+      // F22.1 Phase2 足場C 第三陣: 地域はコード送信を優先（BE dual-support）。
+      // 公開チーム検索 BE（PublicDiscoverController）は prefectureCode（camelCase）を受ける。
+      prefectureCode: searchParams.value.prefectureCode || undefined,
       prefecture: searchParams.value.prefecture || undefined,
       template: searchParams.value.template || undefined,
       page: currentPage.value,
@@ -79,10 +87,16 @@ async function fetchTeams() {
   }
 }
 
-function onSearch(params: { keyword: string; prefecture: string; template: string }) {
+function onSearch(params: {
+  keyword: string
+  prefecture: string
+  prefectureCode: string
+  template: string
+}) {
   searchParams.value = {
     keyword: params.keyword,
     prefecture: params.prefecture,
+    prefectureCode: params.prefectureCode,
     template: params.template,
   }
   currentPage.value = 0

@@ -256,3 +256,25 @@ F08.7 §5.9 は本書 01 へのリンクに置き換える（参加チーム解�
 ### 8.2 未解決事項
 
 **現時点でなし。**
+
+---
+
+## 9. 実装メモ（隊1・2026-05-31）
+
+設計書に対する実装上の確定事項・軽微な差分を記録する。
+
+### 9.1 実装ファイル
+
+- DDL: `V9.20260531120000__create_tournament_contact_space.sql`（新規テーブル）/ `V9.20260531120100__add_bulletin_threads_scope_index.sql`（§2.2 の `(scope_type, scope_id)` 複合 index 根治追加）
+- enum: `bulletin.ScopeType`（+TOURNAMENT/TOURNAMENT_DIVISION）/ `chat.ChannelType`（+TOURNAMENT_CHAT/TOURNAMENT_DIVISION_CHAT）/ `tournament.ContactSpaceScopeType` / `tournament.ContactSpaceKind`
+- Entity/Repo: `TournamentContactSpaceEntity`（UuidV7Entity 継承）/ `TournamentContactSpaceRepository`
+- 認可: `TournamentContactAccessService`（checkView/checkPost/checkVisibilityManage）+ `TournamentParticipantRepository` の N+1 回避 exists クエリ 4 本
+- 払い出し: `chat.TournamentChatChannelService` / `tournament.TournamentContactSpaceProvisioningService`（フック: createTournament / continueTournament / createDivision、archive: delete*）
+- 公開トグル: `TournamentContactSpaceService` + `TournamentContactSpaceController`（PATCH visibility / GET 一覧）
+- 本体配線: `BulletinThreadService`（*Global メソッド群）/ `ChatMessageService`（sendMessage / checkChannelViewAccess）+ `ChatMessageController.listMessages`
+
+### 9.2 設計差分
+
+- **チーム所属判定の実装**: 設計書は `TeamMembershipRepository` を範としているが、本コードベースに同名クラスは無く、TEAM メンバー判定は `memberships`（`scope_type='TEAM'`）、TEAM 代表（ADMIN/DEPUTY_ADMIN）判定は `user_roles × roles` を使う。N+1 回避 exists クエリは `tournament_participants × tournament_divisions × (memberships | user_roles)` の native JOIN 1 本で完結（§4.3 の意図どおり）。
+- **添付クォータ**: 大会連絡スペースの bulletin/chat 添付は専用 StorageScopeType を持たないため、`VILLAGE` と同方針で操作者の PERSONAL クォータに計上する（`BulletinAttachmentService` / `ChatAttachmentService`）。
+- **公開 PUBLIC 露出経路**: `TournamentContactAccessService.checkView` は `is_public=true` で未ログイン（userId=null）を許可する（§4.1 準拠）。ただし現行の chat/bulletin コントローラは authenticated 経路のため、未ログイン HTTP 公開専用エンドポイントは本波では新設していない（将来の public controller で露出する余地を残す）。

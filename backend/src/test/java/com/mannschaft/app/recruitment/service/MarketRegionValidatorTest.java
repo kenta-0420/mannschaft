@@ -12,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -101,6 +102,83 @@ class MarketRegionValidatorTest {
         given(prefectureRepository.existsById("99")).willReturn(false);
 
         assertThatThrownBy(() -> validator.validateAndNormalize("99", null))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(MarketErrorCode.REGION_INVALID);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // F22.1 Phase2 D: validateAndNormalizeAll（複数地域 N:N）
+    // ════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("null / 空リスト → 空リスト（地域を問わない札を許容）")
+    void all_nullOrEmpty_returnsEmpty() {
+        assertThat(validator.validateAndNormalizeAll(null)).isEmpty();
+        assertThat(validator.validateAndNormalizeAll(List.of())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("複数県 → 各要素を検証し順序を保って返す")
+    void all_multiplePrefectures_validatedInOrder() {
+        given(prefectureRepository.existsById("13")).willReturn(true);
+        given(prefectureRepository.existsById("14")).willReturn(true);
+
+        List<MarketRegionValidator.ResolvedRegion> result = validator.validateAndNormalizeAll(List.of(
+                new MarketRegionValidator.RegionPair("13", null),
+                new MarketRegionValidator.RegionPair("14", null)));
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).prefectureCode()).isEqualTo("13");
+        assertThat(result.get(1).prefectureCode()).isEqualTo("14");
+    }
+
+    @Test
+    @DisplayName("city 指定は上位2桁で prefecture 補完される（複数地域）")
+    void all_cityAutoFillsPrefecture() {
+        given(cityRepository.findById("44202")).willReturn(Optional.of(city("44202", "44")));
+
+        List<MarketRegionValidator.ResolvedRegion> result = validator.validateAndNormalizeAll(List.of(
+                new MarketRegionValidator.RegionPair(null, "44202")));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).prefectureCode()).isEqualTo("44");
+        assertThat(result.get(0).cityCode()).isEqualTo("44202");
+    }
+
+    @Test
+    @DisplayName("重複指定（同一県を 2 回）は重複排除されて 1 件")
+    void all_dedupesDuplicates() {
+        given(prefectureRepository.existsById("13")).willReturn(true);
+
+        List<MarketRegionValidator.ResolvedRegion> result = validator.validateAndNormalizeAll(List.of(
+                new MarketRegionValidator.RegionPair("13", null),
+                new MarketRegionValidator.RegionPair("13", null)));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).prefectureCode()).isEqualTo("13");
+    }
+
+    @Test
+    @DisplayName("両 null 要素は地域なし扱いとしてリストに含めない")
+    void all_bothNullElement_excluded() {
+        given(prefectureRepository.existsById("13")).willReturn(true);
+
+        List<MarketRegionValidator.ResolvedRegion> result = validator.validateAndNormalizeAll(List.of(
+                new MarketRegionValidator.RegionPair("13", null),
+                new MarketRegionValidator.RegionPair(null, null)));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).prefectureCode()).isEqualTo("13");
+    }
+
+    @Test
+    @DisplayName("1 要素でもマスタ不在なら MARKET_001（全体が失敗）")
+    void all_anyInvalid_throws() {
+        given(prefectureRepository.existsById("99")).willReturn(false);
+
+        assertThatThrownBy(() -> validator.validateAndNormalizeAll(List.of(
+                new MarketRegionValidator.RegionPair("99", null))))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(MarketErrorCode.REGION_INVALID);

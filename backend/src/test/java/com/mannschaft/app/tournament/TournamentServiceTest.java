@@ -49,6 +49,9 @@ class TournamentServiceTest {
     @Mock private TournamentParticipantRepository participantRepository;
     @Mock private TournamentMapper mapper;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
+    @Mock private com.mannschaft.app.tournament.service.TournamentContactSpaceProvisioningService contactSpaceProvisioningService;
+    /** F08.7.1 / 04: シーズン継続時のデフォルトフォルダ払い出し検証用。 */
+    @Mock private com.mannschaft.app.filesharing.service.SharedFolderService sharedFolderService;
 
     @InjectMocks
     private TournamentService service;
@@ -139,6 +142,55 @@ class TournamentServiceTest {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TournamentErrorCode.INVALID_TOURNAMENT_STATUS);
         }
+
+        @Test
+        @DisplayName("正常系: 新大会＋複製ディビジョンにデフォルトフォルダを払い出す（F08.7.1/04 §4）")
+        void シーズン継続でフォルダ払い出し() {
+            // Given: COMPLETED の旧大会 + ディビジョン1件
+            TournamentEntity previous = TournamentEntity.builder()
+                    .organizationId(ORG_ID).name("旧シーズン").build();
+            setStatus(previous, TournamentStatus.COMPLETED);
+            given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(previous));
+
+            Long newTournamentId = 200L;
+            // save された新大会には ID を採番して返す（後続の getTournament / provision で使う）
+            given(tournamentRepository.save(any(TournamentEntity.class))).willAnswer(inv -> {
+                TournamentEntity t = inv.getArgument(0);
+                setId(t, newTournamentId);
+                return t;
+            });
+            given(tiebreakerRepository.findByTournamentIdOrderByPriorityAsc(TOURNAMENT_ID)).willReturn(List.of());
+            given(statDefRepository.findByTournamentIdOrderBySortOrderAsc(TOURNAMENT_ID)).willReturn(List.of());
+
+            Long newDivisionId = 300L;
+            TournamentDivisionEntity prevDiv = TournamentDivisionEntity.builder()
+                    .tournamentId(TOURNAMENT_ID).name("1部").build();
+            given(divisionRepository.findByTournamentIdOrderByLevelAscSortOrderAsc(TOURNAMENT_ID))
+                    .willReturn(List.of(prevDiv));
+            given(divisionRepository.save(any(TournamentDivisionEntity.class))).willAnswer(inv -> {
+                TournamentDivisionEntity d = inv.getArgument(0);
+                setId(d, newDivisionId);
+                return d;
+            });
+
+            // getTournament(newTournamentId) のための stub
+            given(tournamentRepository.findById(newTournamentId)).willReturn(Optional.of(previous));
+            given(tiebreakerRepository.findByTournamentIdOrderByPriorityAsc(newTournamentId)).willReturn(List.of());
+            given(statDefRepository.findByTournamentIdOrderBySortOrderAsc(newTournamentId)).willReturn(List.of());
+            given(mapper.toTournamentResponse(any(), any(), any())).willReturn(null);
+
+            // When
+            service.continueTournament(ORG_ID, USER_ID, TOURNAMENT_ID);
+
+            // Then: 大会スコープ「大会要項」フォルダが払い出される
+            verify(sharedFolderService).provisionDefaultFolder(
+                    eq(com.mannschaft.app.filesharing.FileScopeType.TOURNAMENT),
+                    eq(ORG_ID), eq(newTournamentId), eq(USER_ID), eq("大会要項"));
+            // 複製ディビジョンスコープ「規約」フォルダが払い出される
+            verify(sharedFolderService).provisionDefaultFolder(
+                    eq(com.mannschaft.app.filesharing.FileScopeType.TOURNAMENT_DIVISION),
+                    eq(ORG_ID), eq(newDivisionId), eq(USER_ID), eq("規約"));
+        }
     }
 
     @Nested
@@ -206,6 +258,15 @@ class TournamentServiceTest {
             var field = TournamentEntity.class.getDeclaredField("visibility");
             field.setAccessible(true);
             field.set(entity, visibility);
+        } catch (Exception e) { throw new RuntimeException(e); }
+    }
+
+    /** BaseEntity の id フィールドへ反射でセットする（save 後の採番をエミュレート）。 */
+    private void setId(Object entity, Long id) {
+        try {
+            var field = com.mannschaft.app.common.BaseEntity.class.getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(entity, id);
         } catch (Exception e) { throw new RuntimeException(e); }
     }
 }

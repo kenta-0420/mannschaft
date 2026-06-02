@@ -223,6 +223,8 @@ onMounted(async () => {
               :template-label="templateLabel[team.location?.template ?? ''] ?? team.location?.template ?? ''"
               :prefecture="team.location?.prefecture ?? null"
               :city="team.location?.city ?? null"
+              :prefecture-code="team.location?.prefectureCode ?? null"
+              :city-code="team.location?.cityCode ?? null"
               :visibility="team.visibility?.visibility ?? ''"
               :visibility-label="visibilityLabel[team.visibility?.visibility ?? ''] ?? team.visibility?.visibility ?? ''"
               :member-count="team.metadata?.memberCount ?? 0"
@@ -233,6 +235,12 @@ onMounted(async () => {
               :is-admin="isAdmin"
               :map-embed-url="team.metadata?.mapEmbedUrl ?? null"
               @updated:map-embed-url="(url) => { if (team && team.metadata) team.metadata.mapEmbedUrl = url }"
+              @updated:region-codes="(pc, cc) => {
+                if (team && team.location) {
+                  team.location.prefectureCode = pc
+                  team.location.cityCode = cc
+                }
+              }"
             />
           </TabPanel>
 

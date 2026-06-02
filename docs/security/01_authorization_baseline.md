@@ -57,6 +57,9 @@ SecurityFilterChain は「最低限のゲート」、所有権の最終判定は
 `/api/v1/public/**` の GET 群（teams/organizations の詳細・posts・events・timeline-posts・search・users・blog-posts comments、**市（F22.1）の `market/listings`・`market/listings/*`・`market/regions`・`market/summary`・`market/categories`**）、`/api/v1/organizations/*/teams/search`、`/api/v1/contact-invite/*`、SEO（`/sitemap.xml`・`/robots.txt`・`/sitemap-*.xml`）、i18n（`/api/i18n/**`）。
 
 > **🔴 根治記録（2026-05-31）**: 市一覧ページが認証必須の `GET /api/v1/recruitment-categories` をジャンルフィルタ用に直叩きし、未ログインで 401 → FE が `/login` へ飛ばす重大バグが実機 E2E で発覚。公開ページは公開 API のみに依存させる原則に基づき `GET /api/v1/public/market/categories` を新設・permitAll 登録して根治（F22.1 02_api_design §3.6 / 04_security §1.6）。
+> - 根治策: `GET /api/v1/public/market/categories` を新設し、SecurityFilterChain の permitAll リストに登録済み
+> - 旧 `GET /api/v1/recruitment-categories` は認証必須のまま維持（廃止予定なし・既存ロジックを温存）
+> - FE の市一覧ページは `/public/market/categories` を使用するよう修正済み
 > POST/DELETE（コメント投稿・削除など）は **認証必須**（許可リストに入れず `.authenticated()` が制御）。
 
 ### 3.4 広告（F09.7 / F09.17・IP レート制限あり）
@@ -72,11 +75,12 @@ SecurityFilterChain は「最低限のゲート」、所有権の最終判定は
 |---|---|---|---|---|
 | `/api/v1/webhooks/stripe` | `/api/v1/webhooks/stripe` | POST | `payment/StripeWebhookController`（`@PostMapping("/stripe")`） | `Stripe-Signature` ヘッダー |
 | `/api/v1/webhooks/stripe/ad-invoices` | `/api/v1/webhooks/stripe/*` | POST | `advertising/StripeAdInvoiceWebhookController`（`@PostMapping("/ad-invoices")`） | `Stripe-Signature` ヘッダー |
+| `/api/v1/webhooks/stripe/connect` | `/api/v1/webhooks/stripe/*`（**既存 `*` で被覆・新規許可不要**） | POST | `payment` Connect Webhook（F22.1 謝礼決済・Phase 2 後半・設計確定/実装未着手） | `Stripe-Signature` ヘッダー（Connect 用シークレット `STRIPE_CONNECT_WEBHOOK_SECRET` で別途検証） |
 | `/api/v1/webhooks/ses` | `/api/v1/webhooks/ses` | POST | `directmail/SesWebhookController` | SNS メッセージ署名 |
 | `/api/v1/line/webhook/{webhookSecret}` | `/api/v1/line/webhook/*` | POST | `line/LineWebhookController`（`@PostMapping("/{webhookSecret}")`） | LINE 署名（`X-Line-Signature`）+ パスシークレット |
 | `/incoming/{token}` | `/incoming/*` | POST | `webhook/IncomingWebhookController`（`@PostMapping("/incoming/{token}")`） | パストークン（DB 照合）。**トップレベルパス（`/api/` 配下でない）に注意** |
 
-> 実装注記: Stripe 系は 2 つの異なるパス（`/stripe` と `/stripe/ad-invoices`）があるため、`/api/v1/webhooks/stripe` と `/api/v1/webhooks/stripe/*` の両方、または `/api/v1/webhooks/stripe/**` を許可する。LINE と incoming はパス末尾にシークレット/トークンを持つため `*`（1 階層）で許可する。
+> 実装注記: Stripe 系は 2 つの異なるパス（`/stripe` と `/stripe/ad-invoices`）があるため、`POST /api/v1/webhooks/stripe` と `POST /api/v1/webhooks/stripe/*` の**両方を明示的に**許可する（`/**` 再帰は使わない）。LINE と incoming はパス末尾にシークレット/トークンを持つため `*`（1 階層）で許可する。**F22.1 謝礼決済（Phase 2 後半）の Connect Webhook `/api/v1/webhooks/stripe/connect` は、この `/api/v1/webhooks/stripe/*`（1 階層 `*`）許可で被覆されるため、許可リストへの新規追記は不要**（署名検証は Connect 用シークレットで別途実施）。
 
 > 逆に、以下は **ユーザー認証必須**（permitAll に入れない。`.authenticated()` がカバー）:
 > `/api/webhooks/incoming`（トークン管理・ADMIN）、`/api/webhooks/endpoints`、`/api/webhooks`（配信ログ）、`/api/api-keys`、`/api/v1/users/me/stripe-connect`。
@@ -104,6 +108,22 @@ SecurityFilterChain は「最低限のゲート」、所有権の最終判定は
 `/ws` のハンドシェイクは `WebSocketConfig` で `setAllowedOriginPatterns("*")` の上、`WebSocketAuthChannelInterceptor` が STOMP CONNECT 時に JWT を検証する。
 
 - ハンドシェイク自体（HTTP アップグレード）は SecurityFilterChain を通る。`.authenticated()` 反転後にハンドシェイクが 401 で弾かれないことを **実装時に必ず確認** し、必要なら `/ws` を許可リストへ追加する（認証は STOMP CONNECT の interceptor が担うため、ハンドシェイクの permitAll は設計上許容）。
+
+#### WebSocket 認証の二層構造
+
+WebSocket は以下の二層で認証を行う:
+
+1. **ハンドシェイク層（HTTP Upgrade）**: `permitAll()`
+   - SockJS ハンドシェイクは HTTP リクエストのため、Spring Security のフィルターチェーンを通る
+   - WebSocket では Cookie が利用しにくいため、ハンドシェイク自体は許可する
+
+2. **STOMP CONNECT 層（メッセージング）**: JWT 必須
+   - `WebSocketAuthChannelInterceptor` が CONNECT フレームの `Authorization` ヘッダーで JWT を検証する
+   - 検証失敗時: `StompHeaderAccessor.setNativeHeader("ERROR", "認証エラー")` でエラーフレームを返し接続を拒否する
+   - 検証成功後のみ SUBSCRIBE / SEND を許可する
+
+**注意**: `setAllowedOriginPatterns` は本番環境では `MANNSCHAFT_ALLOWED_ORIGINS` と同一ドメインに限定すること。
+開発環境の `"*"` を本番に持ち込まないこと。
 
 ---
 
@@ -154,3 +174,4 @@ deny-by-default 反転は以下を実装時に確認してから行う（いず�
 | 日付 | 変更 |
 |---|---|
 | 2026-05-26 | 新規作成。deny-by-default 移行設計、webhook 許可リスト、system-admin 包括ルールを定義 |
+| 2026-06-02 | §5 に WebSocket 二層認証モデル（ハンドシェイク層 permitAll／STOMP CONNECT JWT 必須）と `setAllowedOriginPatterns` の本番ドメイン限定要件を追記。§3.6 の Stripe webhook 許可リスト記述を `/**` 再帰禁止・両パス明示に修正。§3.3 の根治記録に `/public/market/categories` 新設・旧 API 維持・FE 修正済みの詳細を追記 |

@@ -11,9 +11,11 @@ import com.mannschaft.app.tournament.dto.ParticipantResponse;
 import com.mannschaft.app.tournament.dto.UpdateDivisionRequest;
 import com.mannschaft.app.tournament.dto.UpdateParticipantRequest;
 import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
+import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
 import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
+import com.mannschaft.app.tournament.repository.TournamentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,7 +34,23 @@ public class DivisionService {
 
     private final TournamentDivisionRepository divisionRepository;
     private final TournamentParticipantRepository participantRepository;
+    private final TournamentRepository tournamentRepository;
     private final TournamentMapper mapper;
+    /**
+     * F08.7.1 連絡機能: ディビジョン作成時に連絡スペース（掲示板＋チャット）を自動払い出しする。
+     * TODO: tournament ドメインから chat/bulletin ドメインを直接呼ぶ越境（原則5）。
+     *       将来は DivisionCreatedEvent によるイベント駆動化候補。
+     */
+    private final TournamentContactSpaceProvisioningService contactSpaceProvisioningService;
+    /**
+     * F08.7.1 / 04 ファイル置き場: ディビジョン作成時にデフォルトフォルダ（「規約」）を自動付帯する。
+     * TODO: tournament ドメインから filesharing ドメインを直接呼ぶ越境（原則5）。
+     *       将来は DivisionCreatedEvent によるイベント駆動化候補。
+     */
+    private final com.mannschaft.app.filesharing.service.SharedFolderService sharedFolderService;
+
+    /** F08.7.1 / 04: ディビジョンスコープのデフォルトフォルダ名。 */
+    private static final String DEFAULT_DIVISION_FOLDER = "規約";
 
     // ===== Division =====
 
@@ -55,7 +73,25 @@ public class DivisionService {
                 .maxEntryCount(request.getMaxEntryCount())
                 .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0)
                 .build();
-        return mapper.toDivisionResponse(divisionRepository.save(division));
+        TournamentDivisionEntity saved = divisionRepository.save(division);
+
+        // F08.7.1: ディビジョンの連絡スペース（掲示板＋チャット）を自動付帯（要件④）
+        TournamentEntity tournament = tournamentRepository.findById(tournamentId).orElse(null);
+        String tournamentName = tournament != null ? tournament.getName() : "大会";
+        contactSpaceProvisioningService.provisionForDivision(
+                saved.getId(), tournamentName + " " + saved.getName() + " 連絡");
+
+        // F08.7.1 / 04: ディビジョンのデフォルトフォルダ「規約」を自動付帯（冪等・§4）。
+        // クォータ帰属は主催組織（organization_id）に集約（§6）。
+        if (tournament != null) {
+            sharedFolderService.provisionDefaultFolder(
+                    com.mannschaft.app.filesharing.FileScopeType.TOURNAMENT_DIVISION,
+                    tournament.getOrganizationId(), saved.getId(),
+                    com.mannschaft.app.common.SecurityUtils.getCurrentUserIdOrNull(),
+                    DEFAULT_DIVISION_FOLDER);
+        }
+
+        return mapper.toDivisionResponse(saved);
     }
 
     @Transactional
@@ -77,6 +113,8 @@ public class DivisionService {
     @Transactional
     public void deleteDivision(Long tournamentId, Long divId) {
         TournamentDivisionEntity division = findDivisionOrThrow(tournamentId, divId);
+        // F08.7.1 §6.1: 物理削除前に連絡スペースを archive（孤児化防止・クロスドメインCASCADEなし・原則2）
+        contactSpaceProvisioningService.archiveForDivision(divId);
         divisionRepository.delete(division);
     }
 

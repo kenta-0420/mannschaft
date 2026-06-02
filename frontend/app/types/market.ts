@@ -104,7 +104,13 @@ export interface MarketListingResponse {
   title: string
   category: MarketCategory
   owner: MarketOwner
+  /** 代表地域（複数地域札の先頭。後方互換用・地域なしは null）。 */
   region: MarketListingRegion | null
+  /**
+   * 札に紐づく全地域（複数地域募集 N:N・F22.1 Phase2 D）。
+   * 空配列は「地域を問わない札」を表す。BE: MarketListingResponse.regions（camelCase）。
+   */
+  regions: MarketListingRegion[]
   locationText: string | null
   startAt: string
   applicationDeadline: string
@@ -154,6 +160,8 @@ export interface MarketListingsParams {
   includeRegionNone?: boolean
   page?: number
   size?: number
+  /** 表示言語（札に付随する地域名の多言語表示。未訳は BE 側で日本語フォールバック）。 */
+  lang?: string
 }
 
 // ===========================================
@@ -200,10 +208,22 @@ export type FriendTargetInput =
 // ===========================================
 
 /**
+ * 複数地域募集（N:N・F22.1 Phase2 D）の地域ペア入力。
+ * BE: CreateRecruitmentListingRequest.RegionInput（prefectureCode / cityCode）。
+ * 県単位は cityCode を null にする。
+ */
+export interface RegionInput {
+  prefectureCode: string
+  cityCode: string | null
+}
+
+/**
  * 既存 recruitment 作成 API に追加する市向けフィールド
  */
 export interface MarketListingExtension {
   prefectureCode?: string
   cityCode?: string
+  /** 複数地域募集（N:N・F22.1 Phase2 D）。指定時は BE が中間表へ全置換する。 */
+  regions?: RegionInput[]
   friendTargets?: FriendTargetInput[]
 }

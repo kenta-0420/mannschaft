@@ -68,21 +68,97 @@ SQL インジェクション・XSS・SSRF など、入力起因の攻撃（OWASP
 
 - API 入力は DTO + `jakarta.validation`（`@NotNull` / `@Size` / `@Pattern` 等）で境界検証
 - 最大長・文字種を明示し、制御文字を拒否
-- **マスアサインメント防止**: リクエスト DTO は受け付けたいフィールドのみ定義し、Entity を直接バインドしない（`id` / `organization_id` / ロール等の特権フィールドを外部入力で上書きさせない）
+- **マスアサインメント防止**: リクエスト DTO は受け付けたいフィールドのみ定義し、Entity を直接バインドしない（`id` / `organization_id` / ロール等の特権フィールドを外部入力で上書きさせない）→ 詳細は §6 参照
 - 動的 `ORDER BY` にユーザー入力のカラム名を渡す場合は、許可カラムのホワイトリストで検証してから使う（識別子のため `setParameter` で防げない）
-- ファイルアップロードは MIME/拡張子検証 + R2 署名付き URL 経由（直リンク禁止。`AbstractTenantAwareRepository` と合わせ所有権検証）
+- ファイルアップロードは MIME/拡張子検証 + R2 署名付き URL 経由（直リンク禁止。`AbstractTenantAwareRepository` と合わせ所有権検証）→ 詳細は [07_file_and_storage_security.md](07_file_and_storage_security.md) 参照
 - **エラー応答で内部情報を漏らさない**: 本番ではスタックトレース・生 SQL・内部パスを API 応答に含めない（A05 / 情報漏洩）
 
 ---
 
-## 6. 今後の拡張（スコープ外・意思決定済み）
+## 6. マスアサインメント攻撃対策
+
+### 6.1 マスアサインメントとは
+
+リクエスト Body の JSON フィールドを直接 Entity にバインドした場合、クライアントが意図しないフィールド（`role`、`organization_id`、`is_admin`、`deleted_at` 等）を書き換えられる攻撃。
+
+```json
+// 攻撃例: 本来 displayName だけを更新するリクエストに role フィールドを注入
+{
+  "displayName": "攻撃者",
+  "role": "SYSTEM_ADMIN",
+  "organizationId": 1
+}
+```
+
+### 6.2 Mannschaft での実装方針
+
+1. **専用 DTO クラス（`*Request.java`）を必ず使用する**
+   - リクエスト受け取りには専用の DTO クラス（例: `UpdateProfileRequest`）を使用する
+   - DTO が受け取るフィールドを明示的に定義し、それ以外は無視する
+
+2. **Entity クラスを `@RequestBody` に直接使用することを禁止する**
+   ```java
+   // NG: Entity を直接バインド
+   @PatchMapping("/users/me")
+   public void updateProfile(@RequestBody UserEntity user) { ... }
+
+   // OK: 専用 DTO を使用
+   @PatchMapping("/users/me")
+   public void updateProfile(@RequestBody UpdateProfileRequest request) { ... }
+   ```
+
+3. **特権フィールドの明示的除外**
+   - `id` / `organization_id` / `team_id` / `role` / `deleted_at` / `created_at` 等はリクエスト DTO に定義しない
+   - これらの値はサーバー側で設定する（ユーザー入力を信用しない）
+
+---
+
+## 7. ログインジェクション対策
+
+### 7.1 ログインジェクションとは
+
+ユーザー入力（User-Agent、メールアドレス、テキスト等）がログに含まれる場合、`\r\n`（CRLF）を挿入することでログエントリを分割・改ざんできる攻撃。ログファイルの解析ツールを混乱させ、攻撃痕跡を隠蔽する目的で使用される。
+
+```
+攻撃例（User-Agent ヘッダー）:
+Mozilla/5.0 \r\n[2026-06-02] INFO 攻撃者が挿入した偽ログエントリ
+```
+
+### 7.2 対策
+
+1. **CRLF のエスケープ**: ログに含めるユーザー入力は `\r`（CR）と `\n`（LF）を除去またはエスケープする
+
+   ```java
+   // 既存の SystemLogPiiMasker.java に CRLF エスケープを追加することを推奨
+   private String sanitizeForLog(String input) {
+       if (input == null) return null;
+       return input.replaceAll("[\r\n]", "_");  // CRLF を _ に置換
+   }
+   ```
+
+2. **構造化ログの使用**: JSON 形式のログ（Logback の `JsonLayout` 等）を使用すると、ユーザー入力がフィールド値として自動エスケープされる
+
+3. **ログに含めるユーザー入力の最小化**: 不要なユーザー入力をログに含めない
+
+### 7.3 対象となるユーザー入力
+
+- `User-Agent` ヘッダー
+- メールアドレス
+- ユーザー名・表示名
+- コメント・投稿本文（特に管理者向けログ）
+- ファイル名
+
+---
+
+## 8. 今後の拡張（スコープ外・意思決定済み）
 
 - 動的 `ORDER BY` を受け付ける個別エンドポイントのホワイトリスト網羅確認は、各機能の改修時に §5 ルールへの準拠を確認する運用とする（横断 Phase では新規違反を作らないことを担保）
 
 ---
 
-## 7. 変更履歴
+## 9. 変更履歴
 
 | 日付 | 変更 |
 |---|---|
+| 2026-06-02 | §6「マスアサインメント攻撃対策」§7「ログインジェクション対策」を追加（セキュリティ精査ギャップ反映）。§5 に §6/07 への相互参照を追加 |
 | 2026-05-26 | 新規作成。XSS/SQL/SSRF/入力検証の横断方針と nativeQuery 監査計画を定義 |

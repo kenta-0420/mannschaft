@@ -12,13 +12,13 @@
  * API:    GET /api/v1/public/market/listings/{id}
  *         POST /api/v1/recruitment-listings/{id}/applications
  */
-import type { MarketListingResponse } from '~/types/market'
+import type { MarketListingRegion, MarketListingResponse } from '~/types/market'
 
 definePageMeta({
   layout: 'default',
 })
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const marketApi = useMarketApi()
 const recruitmentApi = useRecruitmentApi()
@@ -43,7 +43,7 @@ const applying = ref(false)
 async function load() {
   pageLoading.value = true
   try {
-    const res = await marketApi.getMarketListing(listingId.value)
+    const res = await marketApi.getMarketListing(listingId.value, locale.value)
     listing.value = res.data
   }
   catch (err) {
@@ -62,6 +62,11 @@ async function load() {
 }
 
 await load()
+
+// ロケール切替時に地域名表示を現在ロケールへ追従させる。
+watch(locale, async () => {
+  await load()
+})
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const canApply = computed(() =>
@@ -99,6 +104,24 @@ function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'dan
     case 'COMPLETED': return 'secondary'
     default: return 'danger'
   }
+}
+
+/**
+ * 複数地域募集（F22.1 Phase2 D）の表示用地域配列を返す。
+ * regions[] を優先し、空なら後方互換の単一 region をフォールバックに使う。
+ */
+function regionTags(l: MarketListingResponse): MarketListingRegion[] {
+  if (l.regions && l.regions.length > 0) {
+    return l.regions
+  }
+  return l.region ? [l.region] : []
+}
+
+/** 地域 1 件を「都道府県 市区町村」形式に整形する（市区町村が空なら県のみ）。 */
+function regionLabel(region: MarketListingRegion): string {
+  return region.cityName
+    ? `${region.prefectureName} ${region.cityName}`
+    : region.prefectureName
 }
 </script>
 
@@ -158,13 +181,22 @@ function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'dan
           <Tag :value="$t(listing.category.nameKey)" severity="info" />
         </div>
 
-        <!-- 地域 -->
-        <div v-if="listing.region" class="mb-3 flex items-center gap-2">
+        <!-- 地域（複数地域募集 N:N・F22.1 Phase2 D） -->
+        <div class="mb-3 flex items-center gap-2" data-testid="market-detail-regions">
           <i class="pi pi-map-marker text-surface-400" />
           <span class="text-sm text-surface-600">{{ $t('market.detail.region') }}:</span>
-          <span class="text-sm">
-            {{ listing.region.prefectureName }} {{ listing.region.cityName }}
-          </span>
+          <div class="flex flex-wrap gap-1">
+            <Tag
+              v-for="region in regionTags(listing)"
+              :key="`${region.prefectureCode}-${region.cityCode ?? ''}`"
+              :value="regionLabel(region)"
+              severity="secondary"
+              class="text-xs"
+            />
+            <span v-if="regionTags(listing).length === 0" class="text-sm">
+              {{ $t('market.detail.regionNone') }}
+            </span>
+          </div>
         </div>
 
         <!-- 場所（テキスト） -->

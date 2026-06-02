@@ -141,30 +141,18 @@ const totalElements = ref<number>(0)
 const loading = ref<boolean>(false)
 const errorMessage = ref<string | null>(null)
 
-/** 都道府県名（API は code でなく name を渡す可能性。バックエンド仕様に合わせる） */
-function prefectureNameFromCode(code: string): string {
-  if (!code) return ''
-  const pref = prefectures.value.find((p) => p.code === code)
-  return pref?.name ?? code
-}
-
-function cityNameFromCode(code: string): string {
-  if (!code) return ''
-  const c = cities.value.find((x) => x.code === code)
-  return c?.name ?? code
-}
-
 async function executeSearch() {
   if (!Number.isFinite(organizationId.value)) return
   loading.value = true
   errorMessage.value = null
   try {
+    // F22.1 Phase2 足場C 第三陣: 旧実装の code→名称変換を廃止し、コードをそのまま送る。
+    // BE `OrganizationTeamSearchController` の @RequestParam prefectureCode/cityCode（camelCase）と 1:1。
+    // BE 側 dual-support によりコード指定時はコード一致で絞り込まれる。
     const query: TeamSearchQuery = {
       keyword: keyword.value || undefined,
-      prefecture: prefectureCode.value
-        ? prefectureNameFromCode(prefectureCode.value)
-        : undefined,
-      city: cityCode.value ? cityNameFromCode(cityCode.value) : undefined,
+      prefectureCode: prefectureCode.value || undefined,
+      cityCode: cityCode.value || undefined,
       template: template.value || undefined,
       page: page.value,
       size: size.value,

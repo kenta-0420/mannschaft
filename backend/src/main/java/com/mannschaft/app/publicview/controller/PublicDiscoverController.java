@@ -46,24 +46,27 @@ public class PublicDiscoverController {
      *
      * <p>keyword / prefecture でフィルタリングし、最近投稿があるチームを優先して返す。</p>
      *
-     * @param keyword    チーム名・読み仮名の部分一致キーワード（省略可）
-     * @param prefecture 都道府県名の完全一致絞り込み（省略可）
-     * @param pageable   ページング情報（デフォルト: size=20, sort=lastPostDate DESC）
+     * @param keyword        チーム名・読み仮名の部分一致キーワード（省略可）
+     * @param prefecture     都道府県名の完全一致絞り込み（省略可。{@code prefectureCode} 未指定時のフォールバック）
+     * @param prefectureCode 都道府県コードの完全一致絞り込み（省略可。F22.1 dual-support：指定時は名称より優先）
+     * @param pageable       ページング情報（デフォルト: size=20, sort=lastPostDate DESC）
      * @return PUBLIC チームの検索結果ページ
      */
     @GetMapping("/teams/search")
     @Operation(
             summary = "公開チーム検索",
-            description = "未ログインでも実行可能。keyword / prefecture でフィルタリングし、"
+            description = "未ログインでも実行可能。keyword / prefecture（名称）/ prefectureCode（コード）でフィルタリングし、"
                     + "最近投稿があるチームを優先する（lastPostDate DESC NULLS LAST）。"
-                    + "visibility=PUBLIC かつ未 archive / 未削除のチームのみ返す。")
+                    + "visibility=PUBLIC かつ未 archive / 未削除のチームのみ返す。"
+                    + "F22.1: prefectureCode 指定時はコード優先、未指定なら prefecture 名称にフォールバック（dual-support）。")
     public ResponseEntity<Page<PublicTeamSearchResultResponse>> searchTeams(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String prefecture,
+            @RequestParam(required = false) String prefectureCode,
             @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC)
             Pageable pageable) {
         return ResponseEntity.ok(
-                publicTeamSearchQueryService.search(keyword, prefecture, pageable));
+                publicTeamSearchQueryService.search(keyword, prefecture, prefectureCode, pageable));
     }
 
     /**

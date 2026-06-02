@@ -44,8 +44,22 @@ export interface InboxScope {
 }
 
 /**
+ * グループ構成メンバー参照（Phase 3: 名寄せ）。
+ * groupCount > 1 のときに groupMembers 配列に含まれる。
+ */
+export interface InboxItemRef {
+  sourceType: InboxSourceType
+  sourceId: number
+}
+
+/**
  * インボックスアイテム（InboxItemDto）。
  * id は "{sourceType}:{sourceId}" の複合論理キー。
+ *
+ * Phase 3 追加フィールド:
+ *   canonicalRef  — BE が付与する正規化キー（FE では基本未使用）
+ *   groupCount    — 畳んだ件数（1 なら単独）
+ *   groupMembers  — 畳んだ全構成の triage キー（groupCount > 1 のとき複数）
  */
 export interface InboxItem {
   id: string
@@ -60,6 +74,12 @@ export interface InboxItem {
   state: InboxState
   snoozedUntil: string | null
   labels: InboxLabel[]
+  /** Phase 3: BE 正規化キー（FE では表示に使わない）。省略時は undefined。 */
+  canonicalRef?: string
+  /** Phase 3: 畳んだ件数（1 = 単独、2 以上 = グループカード）。省略時は 1 とみなす。 */
+  groupCount?: number
+  /** Phase 3: グループ構成メンバー（groupCount > 1 のとき bulk triage のキーとして使用）。 */
+  groupMembers?: InboxItemRef[]
 }
 
 /** 一覧レスポンス（InboxPageResponse を ApiResponse でラップしたもの）。 */
@@ -95,4 +115,62 @@ export interface InboxListParams {
   labelId?: string
   page?: number
   size?: number
+}
+
+// ─────────────────────────────────────────────
+// Phase 2: ラベル CRUD ペイロード型
+// ─────────────────────────────────────────────
+
+/** ラベル作成リクエスト。 */
+export interface CreateLabelPayload {
+  name: string
+  color?: string
+  icon?: string
+}
+
+/** ラベル更新リクエスト。 */
+export interface UpdateLabelPayload {
+  name?: string
+  color?: string
+  icon?: string
+  sortOrder?: number
+}
+
+/** ラベル一覧レスポンス。 */
+export interface InboxLabelListResponse {
+  data: InboxLabel[]
+}
+
+/** ラベル単体レスポンス。 */
+export interface InboxLabelResponse {
+  data: InboxLabel
+}
+
+// ─────────────────────────────────────────────
+// Phase 2: bulk 操作型
+// ─────────────────────────────────────────────
+
+/** bulk 操作の種別。 */
+export type InboxBulkAction = 'ARCHIVE' | 'UNARCHIVE' | 'SNOOZE' | 'LABEL_ADD'
+
+/** bulk 操作の対象アイテム。 */
+export interface InboxBulkItem {
+  sourceType: InboxSourceType
+  sourceId: number
+}
+
+/** POST /api/v1/inbox/bulk リクエスト。 */
+export interface InboxBulkPayload {
+  action: InboxBulkAction
+  items: InboxBulkItem[]
+  snoozedUntil?: string
+  labelId?: string
+}
+
+/** POST /api/v1/inbox/bulk レスポンス。 */
+export interface InboxBulkResponse {
+  data: {
+    processed: number
+    skipped: number
+  }
 }

@@ -84,7 +84,7 @@
 ## 5. 運用・性能
 
 - **N+1 回避**: オーバーレイ/ラベルは集約後の `(sourceType,sourceId)` 集合に `IN` 1 クエリでまとめ取り（[03](./03_business_logic.md) §4）。
-- **ハードリミット**: ソース毎の取得上限（例 100 件）。深いページの網羅は非保証＝「直近の仕分け場」の割り切り。将来は件数の多いソースのみ個別ページング（Phase 3）。
+- **境界付きウィンドウページング（Phase 3 ③ 実装済み・方針更新）**: 各ソースを `Pageable` で `window = (page+1)*size + 安全マージン` 件まで取得し（無制限 fetch を根絶）、**完全全順序**（priority → occurredAt → sourceType名 → sourceId）でマージ・スライスする。これにより**決定的（重複なし・load-more 連続）**なページングを行う。取りこぼし保証は**ソースの fetch 順がグローバル順と整合するかで分かれる**: **NOTIFICATION（priority 第一クエリ）・MENTION（一律 HIGH）・TODO_DUE（due_date 昇順 ↔ priority 降順）は取りこぼしなし**。**ANNOUNCEMENT・CONFIRMABLE は取得順が priority と独立（pinned/created_at・親 created_at＋時刻依存 24h 昇格）のため、稀な偏在で高 priority・低時刻の項目が後ページに送られうる**（pinned/保留件数は小さく実害限定。ANNOUNCEMENT は共有 `findByScope` を壊さないため据え置き。[03](./03_business_logic.md) §4.1 に保証レベルと限界を正直に明記）。複合キーセットカーソルは 5 ソースの順序キー混在で境界バグ温床になり FE レスポンス契約も壊すため採らない。旧方針（ソース毎ハードリミット＋深いページ取りこぼし許容）から置換した。
 - **並列化余地**: アダプタ呼び出しは将来 `CompletableFuture`/仮想スレッドで並列化可（`DashboardService` の構想に準拠）。MVP は直列で十分。
 - **cleanup バッチとの非干渉**: `NotificationCleanupBatchService`（`notifications` を既読 90 日で物理削除）は B 案では**無関係**（オーバーレイは別表）。ただしソースが消えた際の孤児オーバーレイ行は残存しうる → 任意の掃除バッチを Phase 3 候補とする（残っても一覧時に脱落するため実害なし）。
 
@@ -121,11 +121,11 @@
 - ~~cleanup バッチがアーカイブを誤削除するリスク~~ → **解決**: B 案はオーバーレイ別表で `notifications` 行を触らないため**発生しない**（§5）。A 案固有リスクとして比較表に記録。
 - ~~confirmable の確認状態とインボックス状態の二重持ち~~ → **解決**: archive/snooze は確認状態と独立、確認は F04.9 API へ誘導と UX で明示（[03](./03_business_logic.md) §7）。
 - ~~F22.1「要対応」ウィジェットとの重複~~ → **解決**: 棲み分け定義（個人受け皿 vs スコープ別抽出。[README](./README.md) §7）。データ重複なし。
-- ~~読み取り集約の N+1・ページング~~ → **解決**: `IN` まとめ取り＋ソース毎ハードリミット＋オフセット割り切り（§5・[03](./03_business_logic.md) §4）。深いページ非保証を明記。
+- ~~読み取り集約の N+1・ページング~~ → **解決**: `IN` まとめ取り（N+1 回避）＋**境界付きウィンドウページング**（Phase 3 ③・全ソース `Pageable`・完全全順序で**決定的**。NOTIFICATION/MENTION/TODO_DUE は取りこぼしなし、ANNOUNCEMENT/CONFIRMABLE は priority 独立取得ゆえ稀に後ページ送り＝限界明記。§5・[03](./03_business_logic.md) §4.1）。旧「ソース毎ハードリミット＋深いページ非保証」から置換。
 - ~~名寄せ（重複通知）~~ → **解決（方針確定）**: MVP は名寄せしない（誤名寄せの混乱回避）。Phase 3 で正規化辞書導入と明記（[03](./03_business_logic.md) §8）。
 - ~~announcement の取得経路（getPersonalFeed 未実装）~~ → **解決**: `AnnouncementFeedQueryRepository.findByScope` を直接利用（[03](./03_business_logic.md) §2）。
 
-**将来フェーズの拡張候補（未解決ではなく計画済み）**: 名寄せ辞書 / ソース別真ページング / スヌーズ復帰 push / `notifications.snoozed_until` のオーバーレイ移送 deprecate / F22.1 要対応との可視性判定共通化 / GDPR エクスポート。すべて [README](./README.md) §6 ロードマップに位置づけ済み。
+**将来フェーズの拡張候補（未解決ではなく計画済み）**: ~~名寄せ辞書~~（Phase 3 ① 実装済み）/ ~~ソース別真ページング~~（Phase 3 ③ 境界付きウィンドウページングとして実装済み）/ ~~スヌーズ復帰 push~~（Phase 3 ② 実装済み）/ `notifications.snoozed_until` のオーバーレイ移送 deprecate / F22.1 要対応との可視性判定共通化 / GDPR エクスポート。すべて [README](./README.md) §6 ロードマップに位置づけ済み。
 
 ---
 

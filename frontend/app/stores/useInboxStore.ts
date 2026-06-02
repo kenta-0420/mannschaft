@@ -1,6 +1,9 @@
 import dayjs from 'dayjs'
 import { defineStore } from 'pinia'
 import type {
+  CreateLabelPayload,
+  InboxBulkAction,
+  InboxBulkItem,
   InboxItem,
   InboxLabel,
   InboxListParams,
@@ -8,6 +11,7 @@ import type {
   InboxSourceType,
   InboxState,
   InboxStateFilter,
+  UpdateLabelPayload,
 } from '~/types/inbox'
 
 /**
@@ -51,6 +55,16 @@ interface InboxStoreState {
   summaryLoading: boolean
   /** 直近のエラー（表示用 i18n キー or メッセージ）。 */
   error: string | null
+  // ─── Phase 2 追加 ───────────────────────────
+  /** ユーザーのラベル一覧。 */
+  labels: InboxLabel[]
+  /** ラベル取得中フラグ。 */
+  labelsLoading: boolean
+  // bulk 選択モード
+  /** bulk 選択モード ON/OFF。 */
+  selectionMode: boolean
+  /** 選択中のアイテムキー集合（"sourceType:sourceId" 形式）。 */
+  selectedKeys: Set<string>
 }
 
 export const useInboxStore = defineStore('inbox', {
@@ -69,6 +83,11 @@ export const useInboxStore = defineStore('inbox', {
     loading: false,
     summaryLoading: false,
     error: null,
+    // Phase 2
+    labels: [],
+    labelsLoading: false,
+    selectionMode: false,
+    selectedKeys: new Set<string>(),
   }),
 
   getters: {
@@ -168,7 +187,8 @@ export const useInboxStore = defineStore('inbox', {
 
     /**
      * スヌーズ。
-     * 即アイテムの state を SNOOZED / snoozedUntil に書換え → API 失敗でロールバック。
+     * groupCount > 1 のとき groupMembers 全員に bulkAction(SNOOZE) を適用。
+     * 楽観更新: 即 state を SNOOZED に書換え → API 失敗でロールバック。
      */
     async snooze(
       sourceType: InboxSourceType,
@@ -176,6 +196,28 @@ export const useInboxStore = defineStore('inbox', {
       snoozedUntil: string,
     ): Promise<boolean> {
       const previous = this.items.slice()
+      const item = this._findItem(sourceType, sourceId)
+      const isGroup = (item?.groupCount ?? 1) > 1
+
+      if (isGroup && item?.groupMembers && item.groupMembers.length > 0) {
+        // グループカード: 楽観的に代表カードを除去 → bulkAction で全メンバーへ適用
+        this._removeItem(sourceType, sourceId)
+        try {
+          const api = useInboxApi()
+          await api.bulkAction({
+            action: 'SNOOZE',
+            items: item.groupMembers as InboxBulkItem[],
+            snoozedUntil,
+          })
+          return true
+        } catch (error) {
+          this.items = previous
+          this._handleError(error)
+          return false
+        }
+      }
+
+      // 単独アイテム: 従来の単一 triage
       this._updateItemState(sourceType, sourceId, 'SNOOZED', snoozedUntil)
       try {
         const api = useInboxApi()
@@ -192,9 +234,45 @@ export const useInboxStore = defineStore('inbox', {
 
     /**
      * スヌーズ解除。
+     * groupCount > 1 のとき groupMembers 全員を個別 api.unsnooze で解除する。
+     * bulk に UNSNOOZE action が未定義のため個別 API を Promise.allSettled で並列実行し、
+     * 全結果（成功・失敗問わず）が揃った後に必ず fetchInbox で実サーバ状態へ再同期する。
+     * これにより部分失敗時の誤表示（楽観ロールバック後の状態ズレ）を防ぐ。
+     * 単独アイテムは従来どおり単一 triage。
      */
     async unsnooze(sourceType: InboxSourceType, sourceId: number): Promise<boolean> {
       const previous = this.items.slice()
+      const item = this._findItem(sourceType, sourceId)
+      const isGroup = (item?.groupCount ?? 1) > 1
+
+      if (isGroup && item?.groupMembers && item.groupMembers.length > 0) {
+        // グループカード: 楽観的に代表カードを除去 → 全メンバーへ個別 unsnooze を並列実行
+        this._removeItem(sourceType, sourceId)
+        try {
+          // Promise.allSettled で部分失敗を許容しながら全メンバーへ unsnooze を実行
+          const api = useInboxApi()
+          const results = await Promise.allSettled(
+            item.groupMembers.map((m) => api.unsnooze(m.sourceType as InboxSourceType, m.sourceId)),
+          )
+          // 全件失敗の場合はロールバックして再同期
+          const allFailed = results.every((r) => r.status === 'rejected')
+          if (allFailed) {
+            this.items = previous
+            this._handleError(results[0] && results[0].status === 'rejected' ? results[0].reason : new Error('unsnooze failed'))
+          }
+          // 成功・部分成功問わず実サーバ状態へ再同期（誤表示防止）
+          await this.fetchInbox()
+          return !allFailed
+        } catch (error) {
+          // Promise.allSettled 自体は reject しないため、ここは fetchInbox の失敗等
+          this.items = previous
+          this._handleError(error)
+          await this.fetchInbox()
+          return false
+        }
+      }
+
+      // 単独アイテム: 従来の単一 triage
       this._updateItemState(sourceType, sourceId, 'UNREAD', null)
       try {
         const api = useInboxApi()
@@ -210,9 +288,32 @@ export const useInboxStore = defineStore('inbox', {
 
     /**
      * アーカイブ。
+     * groupCount > 1 のとき groupMembers 全員に bulkAction(ARCHIVE) を適用。
+     * 楽観更新: 即 state を ARCHIVED に書換え → API 失敗でロールバック。
      */
     async archive(sourceType: InboxSourceType, sourceId: number): Promise<boolean> {
       const previous = this.items.slice()
+      const item = this._findItem(sourceType, sourceId)
+      const isGroup = (item?.groupCount ?? 1) > 1
+
+      if (isGroup && item?.groupMembers && item.groupMembers.length > 0) {
+        // グループカード: 楽観的に代表カードを除去 → bulkAction で全メンバーへ適用
+        this._removeItem(sourceType, sourceId)
+        try {
+          const api = useInboxApi()
+          await api.bulkAction({
+            action: 'ARCHIVE',
+            items: item.groupMembers as InboxBulkItem[],
+          })
+          return true
+        } catch (error) {
+          this.items = previous
+          this._handleError(error)
+          return false
+        }
+      }
+
+      // 単独アイテム: 従来の単一 triage
       this._updateItemState(sourceType, sourceId, 'ARCHIVED', null)
       try {
         const api = useInboxApi()
@@ -228,9 +329,32 @@ export const useInboxStore = defineStore('inbox', {
 
     /**
      * アーカイブ解除。
+     * groupCount > 1 のとき groupMembers 全員に bulkAction(UNARCHIVE) を適用。
+     * 楽観更新: 即 state を UNREAD に書換え → API 失敗でロールバック。
      */
     async unarchive(sourceType: InboxSourceType, sourceId: number): Promise<boolean> {
       const previous = this.items.slice()
+      const item = this._findItem(sourceType, sourceId)
+      const isGroup = (item?.groupCount ?? 1) > 1
+
+      if (isGroup && item?.groupMembers && item.groupMembers.length > 0) {
+        // グループカード: 楽観的に代表カードを除去 → bulkAction で全メンバーへ適用
+        this._removeItem(sourceType, sourceId)
+        try {
+          const api = useInboxApi()
+          await api.bulkAction({
+            action: 'UNARCHIVE',
+            items: item.groupMembers as InboxBulkItem[],
+          })
+          return true
+        } catch (error) {
+          this.items = previous
+          this._handleError(error)
+          return false
+        }
+      }
+
+      // 単独アイテム: 従来の単一 triage
       this._updateItemState(sourceType, sourceId, 'UNREAD', null)
       try {
         const api = useInboxApi()
@@ -273,6 +397,245 @@ export const useInboxStore = defineStore('inbox', {
       await this.fetchInbox()
     },
 
+    /**
+     * ラベル絞り込みを設定して一覧を再取得する。
+     */
+    async setLabelFilter(labelId: string | null): Promise<void> {
+      this.labelFilter = labelId
+      await this.fetchInbox()
+    },
+
+    // ─────────────────────────────────────────────
+    // Phase 2: ラベル CRUD
+    // ─────────────────────────────────────────────
+
+    /**
+     * ラベル一覧を取得する。
+     */
+    async fetchLabels(): Promise<void> {
+      this.labelsLoading = true
+      try {
+        const api = useInboxApi()
+        const res = await api.getLabels()
+        this.labels = res.data
+      } catch (error) {
+        this._handleError(error)
+      } finally {
+        this.labelsLoading = false
+      }
+    },
+
+    /**
+     * ラベルを作成する。
+     * エラーは握り潰さず呼び出し元へ再throwする（409=重複・422=上限超過を呼び出し元で処理するため）。
+     */
+    async createLabel(payload: CreateLabelPayload): Promise<InboxLabel> {
+      const api = useInboxApi()
+      const res = await api.createLabel(payload)
+      this.labels.push(res.data)
+      return res.data
+    },
+
+    /**
+     * ラベルを更新する（楽観更新）。
+     * エラーは握り潰さず呼び出し元へ再throwする（409=重複を呼び出し元で処理するため）。
+     * 失敗時はロールバックしてから再throw。
+     */
+    async updateLabel(labelId: string, payload: UpdateLabelPayload): Promise<void> {
+      const idx = this.labels.findIndex((l) => l.id === labelId)
+      const previous = idx >= 0 ? { ...this.labels[idx]! } : null
+      if (idx >= 0 && previous) {
+        // 楽観更新
+        this.labels.splice(idx, 1, {
+          ...this.labels[idx]!,
+          ...payload,
+        })
+      }
+      try {
+        const api = useInboxApi()
+        const res = await api.updateLabel(labelId, payload)
+        if (idx >= 0) {
+          this.labels.splice(idx, 1, res.data)
+        }
+      } catch (error) {
+        // ロールバック後に再throw（呼び出し元で409/422を処理する）
+        if (idx >= 0 && previous) {
+          this.labels.splice(idx, 1, previous)
+        }
+        throw error
+      }
+    },
+
+    /**
+     * ラベルを削除する（楽観削除）。
+     * エラーは握り潰さず呼び出し元へ再throwする（404等を呼び出し元で処理するため）。
+     * 失敗時はロールバックしてから再throw。
+     */
+    async deleteLabel(labelId: string): Promise<void> {
+      const idx = this.labels.findIndex((l) => l.id === labelId)
+      const removed = idx >= 0 ? this.labels[idx] : null
+      if (idx >= 0) {
+        // 楽観削除
+        this.labels.splice(idx, 1)
+      }
+      try {
+        const api = useInboxApi()
+        await api.deleteLabel(labelId)
+      } catch (error) {
+        // ロールバック後に再throw
+        if (idx >= 0 && removed) {
+          this.labels.splice(idx, 0, removed)
+        }
+        throw error
+      }
+    },
+
+    // ─────────────────────────────────────────────
+    // Phase 2: ラベル付与 / 解除（楽観更新）
+    // ─────────────────────────────────────────────
+
+    /**
+     * アイテムにラベルを付与する（楽観更新＋ロールバック）。
+     */
+    async assignLabel(
+      sourceType: InboxSourceType,
+      sourceId: number,
+      labelId: string,
+    ): Promise<boolean> {
+      const id = `${sourceType}:${sourceId}`
+      const idx = this.items.findIndex((item) => item.id === id)
+      const previous = this.items.slice()
+      const label = this.labels.find((l) => l.id === labelId)
+
+      if (idx >= 0 && label) {
+        const item = this.items[idx]!
+        if (!item.labels.some((l) => l.id === labelId)) {
+          // 楽観追加
+          this.items.splice(idx, 1, {
+            ...item,
+            labels: [...item.labels, label],
+          })
+        }
+      }
+
+      try {
+        const api = useInboxApi()
+        await api.assignLabel(labelId, sourceType, sourceId)
+        return true
+      } catch (error) {
+        // ロールバック
+        this.items = previous
+        this._handleError(error)
+        return false
+      }
+    },
+
+    /**
+     * アイテムからラベルを解除する（楽観更新＋ロールバック）。
+     */
+    async unassignLabel(
+      sourceType: InboxSourceType,
+      sourceId: number,
+      labelId: string,
+    ): Promise<boolean> {
+      const id = `${sourceType}:${sourceId}`
+      const idx = this.items.findIndex((item) => item.id === id)
+      const previous = this.items.slice()
+
+      if (idx >= 0) {
+        const item = this.items[idx]!
+        // 楽観削除
+        this.items.splice(idx, 1, {
+          ...item,
+          labels: item.labels.filter((l) => l.id !== labelId),
+        })
+      }
+
+      try {
+        const api = useInboxApi()
+        await api.unassignLabel(labelId, sourceType, sourceId)
+        return true
+      } catch (error) {
+        // ロールバック
+        this.items = previous
+        this._handleError(error)
+        return false
+      }
+    },
+
+    // ─────────────────────────────────────────────
+    // Phase 2: bulk 選択モード
+    // ─────────────────────────────────────────────
+
+    /**
+     * bulk 選択モードのトグル。モード終了時は選択をクリア。
+     */
+    toggleSelectionMode(): void {
+      this.selectionMode = !this.selectionMode
+      if (!this.selectionMode) {
+        this.selectedKeys = new Set<string>()
+      }
+    },
+
+    /**
+     * アイテムの選択状態をトグルする（"sourceType:sourceId" キー）。
+     */
+    toggleSelect(key: string): void {
+      const next = new Set(this.selectedKeys)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      this.selectedKeys = next
+    },
+
+    /**
+     * 全選択をクリアする。
+     */
+    clearSelection(): void {
+      this.selectedKeys = new Set<string>()
+    },
+
+    /**
+     * 選択アイテムに対して一括操作を実行する。
+     * 成功時: { processed, skipped } を返し選択をクリア・一覧再取得。
+     * 失敗時: null を返す。
+     */
+    async runBulk(
+      action: InboxBulkAction,
+      options?: { snoozedUntil?: string; labelId?: string },
+    ): Promise<{ processed: number; skipped: number } | null> {
+      if (this.selectedKeys.size === 0) return null
+
+      const items: InboxBulkItem[] = []
+      for (const key of this.selectedKeys) {
+        const colonIdx = key.indexOf(':')
+        if (colonIdx > 0) {
+          const sourceType = key.slice(0, colonIdx) as InboxSourceType
+          const sourceId = Number(key.slice(colonIdx + 1))
+          items.push({ sourceType, sourceId })
+        }
+      }
+
+      try {
+        const api = useInboxApi()
+        const res = await api.bulkAction({
+          action,
+          items,
+          snoozedUntil: options?.snoozedUntil,
+          labelId: options?.labelId,
+        })
+        this.clearSelection()
+        // 操作後に一覧を再取得して状態を正規化
+        await this.fetchInbox()
+        return res.data
+      } catch (error) {
+        this._handleError(error)
+        return null
+      }
+    },
+
     // ─────────────────────────────────────────────
     // スヌーズプリセット計算
     // ─────────────────────────────────────────────
@@ -313,6 +676,25 @@ export const useInboxStore = defineStore('inbox', {
     // ─────────────────────────────────────────────
     // 内部ユーティリティ
     // ─────────────────────────────────────────────
+
+    /**
+     * items 配列から指定アイテムを検索して返す（見つからない場合は undefined）。
+     */
+    _findItem(sourceType: InboxSourceType, sourceId: number): InboxItem | undefined {
+      const id = `${sourceType}:${sourceId}`
+      return this.items.find((item) => item.id === id)
+    },
+
+    /**
+     * items 配列から指定アイテムを除去する（楽観的グループ除去用）。
+     */
+    _removeItem(sourceType: InboxSourceType, sourceId: number): void {
+      const id = `${sourceType}:${sourceId}`
+      const idx = this.items.findIndex((item) => item.id === id)
+      if (idx >= 0) {
+        this.items.splice(idx, 1)
+      }
+    },
 
     /** items 配列内のアイテムの state / snoozedUntil を更新する（楽観更新用）。 */
     _updateItemState(
@@ -361,4 +743,4 @@ export const useInboxStore = defineStore('inbox', {
 })
 
 /** 型再エクスポート（呼び出し側の便宜のため） */
-export type { InboxItem, InboxLabel }
+export type { InboxItem, InboxLabel, InboxBulkAction, InboxBulkItem }

@@ -40,9 +40,10 @@ public class PublicTeamSearchQueryService {
     private final BlogPostRepository blogPostRepository;
 
     /**
-     * 公開チームを keyword / prefecture で検索する。
+     * 公開チームを keyword / prefecture（名称）で検索する（後方互換オーバーロード）。
      *
-     * <p>N+1 を防ぐため、チームページを取得後に lastPostDate を 1 本のクエリで一括取得する。</p>
+     * <p>地域コードによる絞り込みを使わない既存呼び出し向け。
+     * 内部で {@code prefectureCode=null} として {@link #search(String, String, String, Pageable)} に委譲する。</p>
      *
      * @param keyword    チーム名・読み仮名の部分一致キーワード（null または空文字で全件対象）
      * @param prefecture 都道府県名の完全一致（null または空文字で絞り込みなし）
@@ -51,13 +52,33 @@ public class PublicTeamSearchQueryService {
      */
     public Page<PublicTeamSearchResultResponse> search(
             String keyword, String prefecture, Pageable pageable) {
+        return search(keyword, prefecture, null, pageable);
+    }
+
+    /**
+     * 公開チームを keyword / prefecture（名称）/ prefectureCode（コード）で検索する。
+     *
+     * <p>N+1 を防ぐため、チームページを取得後に lastPostDate を 1 本のクエリで一括取得する。</p>
+     *
+     * <p>F22.1 市 Phase 2 足場C: 地域フィルタは <strong>dual-support</strong>。
+     * {@code prefectureCode} 指定時は構造化キー優先、未指定なら名称 {@code prefecture} にフォールバックする。</p>
+     *
+     * @param keyword        チーム名・読み仮名の部分一致キーワード（null または空文字で全件対象）
+     * @param prefecture     都道府県名の完全一致（{@code prefectureCode} 未指定時のフォールバック。null/空で絞り込みなし）
+     * @param prefectureCode 都道府県コードの完全一致（指定時は名称より優先。null/空で名称フォールバック）
+     * @param pageable       ページング情報
+     * @return PUBLIC チームの検索結果ページ
+     */
+    public Page<PublicTeamSearchResultResponse> search(
+            String keyword, String prefecture, String prefectureCode, Pageable pageable) {
 
         // null や空文字は null として扱い、クエリ側で「絞り込みなし」として処理する
         String effectiveKeyword = StringUtils.hasText(keyword) ? keyword : null;
         String effectivePrefecture = StringUtils.hasText(prefecture) ? prefecture : null;
+        String effectivePrefectureCode = StringUtils.hasText(prefectureCode) ? prefectureCode : null;
 
         Page<TeamEntity> teamPage = teamRepository.searchPublicTeams(
-                effectiveKeyword, effectivePrefecture, pageable);
+                effectiveKeyword, effectivePrefecture, effectivePrefectureCode, pageable);
 
         if (teamPage.isEmpty()) {
             return Page.empty(pageable);
@@ -75,7 +96,9 @@ public class PublicTeamSearchQueryService {
                         team.getName(),
                         team.getIconUrl(),
                         team.getMemberCount() != null ? Math.toIntExact(team.getMemberCount()) : 0,
-                        lastPostDateMap.get(team.getId())
+                        lastPostDateMap.get(team.getId()),
+                        team.getPrefectureCode(),
+                        team.getCityCode()
                 ))
                 .toList();
 

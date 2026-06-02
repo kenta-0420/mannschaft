@@ -10,7 +10,20 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  search: [params: { keyword: string; prefecture: string; template: string; orgType: string }]
+  /**
+   * F22.1 Phase2 足場C 第三陣: 地域はコード送信を優先する。
+   * `prefectureCode`（JIS X 0401・2 桁）を併せて emit し、親はコード優先で BE に送る。
+   * `prefecture`（名称）は表示・後方互換用に残す。
+   */
+  search: [
+    params: {
+      keyword: string
+      prefecture: string
+      prefectureCode: string
+      template: string
+      orgType: string
+    },
+  ]
 }>()
 
 const { getPrefectures } = useMatchingApi()
@@ -40,6 +53,7 @@ onMounted(async () => {
 })
 
 const prefecture = computed(() => selectedPref.value?.name ?? '')
+const prefectureCode = computed(() => selectedPref.value?.code ?? '')
 
 const templateOptions = [
   { label: '全て', value: '' },
@@ -75,6 +89,7 @@ function onSearch() {
   emit('search', {
     keyword: keyword.value,
     prefecture: prefecture.value,
+    prefectureCode: prefectureCode.value,
     template: template.value,
     orgType: orgType.value,
   })

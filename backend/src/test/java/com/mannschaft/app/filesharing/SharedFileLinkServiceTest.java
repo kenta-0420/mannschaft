@@ -5,6 +5,7 @@ import com.mannschaft.app.filesharing.dto.AccessLinkRequest;
 import com.mannschaft.app.filesharing.dto.FileResponse;
 import com.mannschaft.app.filesharing.entity.SharedFileLinkEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileLinkRepository;
+import com.mannschaft.app.filesharing.service.FolderScopeAccessGuard;
 import com.mannschaft.app.filesharing.service.SharedFileLinkService;
 import com.mannschaft.app.filesharing.service.SharedFileService;
 import org.junit.jupiter.api.DisplayName;
@@ -43,6 +44,9 @@ class SharedFileLinkServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private FolderScopeAccessGuard folderScopeAccessGuard;
+
     @InjectMocks
     private SharedFileLinkService sharedFileLinkService;
 
@@ -64,7 +68,7 @@ class SharedFileLinkServiceTest {
                     1024L, "application/pdf", null, USER_ID, 1, null, null);
 
             given(linkRepository.findByToken("valid-token")).willReturn(Optional.of(link));
-            given(fileService.getFile(FILE_ID)).willReturn(fileResponse);
+            given(fileService.getFileForSharedLink(FILE_ID)).willReturn(fileResponse);
 
             // When
             FileResponse result = sharedFileLinkService.accessLink("valid-token", null);

@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -26,9 +27,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * セキュリティ設定。JwtAuthenticationFilter を UsernamePasswordAuthenticationFilter の前に挿入し、
  * Bearer トークンによるステートレス認証を実現する。
  * ProxyInputContextFilter は JwtAuthenticationFilter の直後に実行される。
+ *
+ * <p>{@code @EnableMethodSecurity(prePostEnabled = true)} により {@code @PreAuthorize} /
+ * {@code @PostAuthorize} が有効化される（認可基盤根治 Phase 3）。</p>
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -184,6 +189,13 @@ public class SecurityConfig {
                 // F15.4 Phase 5-α `/api/v1/public/teams/*` も本 F19.1 規約に統合・置換した。
                 // 設計書 §7.4: パターンは `*`（1 階層厳格）で限定。`/**`（再帰）は使わない。
                 // IDOR 防止と整合（F15.4 Phase 5 §4.2 / F19.1 §17.8 案 B 統合）。
+                // F08.7.1 / 04 リーグ単位ファイル置き場: 大会・ディビジョンフォルダ一覧 GET は
+                // 公開トグル ON のスペースで未ログインでも閲覧可（read-only）。非公開スコープは
+                // Service 層の checkView が 403 を返す（多層防御）。POST（作成）は
+                // .anyRequest().authenticated() ＋ Service 層 checkPost で認証＋認可必須。
+                // 設計書: docs/features/F08.7.1_tournament_extensions/04_file_storage.md §3 / §5
+                .requestMatchers(HttpMethod.GET, "/api/v1/tournaments/*/folders").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/tournaments/*/divisions/*/folders").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/posts").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/posts/*").permitAll()

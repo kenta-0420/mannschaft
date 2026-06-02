@@ -50,6 +50,17 @@ public class InboxItemStateEntity extends UuidV7Entity {
     @Column(name = "snoozed_until")
     private LocalDateTime snoozedUntil;
 
+    /**
+     * スヌーズ復帰 push 送信済み時刻。NULL=未送信。
+     *
+     * <p>F04.11 Phase3 ②：{@code snoozed_until} 到来時に横断バッチ
+     * （{@code InboxSnoozeRevivalBatchService}）が push（WebSocket＋Web Push）を
+     * <b>1 度だけ</b>送り、その時刻を刻む（冪等の根拠）。再スヌーズ
+     * （{@code snoozed_until} 更新）時は NULL に戻し、再度の復帰通知を許可する。</p>
+     */
+    @Column(name = "snooze_notified_at")
+    private LocalDateTime snoozeNotifiedAt;
+
     /** アーカイブ退避時刻。NULL=受信箱、非NULL=保管庫 */
     @Column(name = "archived_at")
     private LocalDateTime archivedAt;

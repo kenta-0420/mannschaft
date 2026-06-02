@@ -335,6 +335,10 @@ public enum AuditEventType {
     /** 掲示板の添付ファイルを削除した（本人 or モデレーター/ADMIN）。 */
     BULLETIN_ATTACHMENT_DELETED(AuditEventCategory.BULLETIN),
 
+    // ─── TOURNAMENT (F08.7.1 連絡スペース) ──────────────────
+    /** 大会・ディビジョン連絡スペースの公開設定を変更した（誰が・いつ・どのスペースを公開/非公開に）。 */
+    TOURNAMENT_CONTACT_SPACE_VISIBILITY_UPDATED(AuditEventCategory.TOURNAMENT),
+
     // ─── NAV_SETTINGS (F20.1 ナビゲーションバーカスタマイズ) ─────────────
     /** ユーザーが個人ナビ設定を更新した。 */
     NAV_SETTINGS_UPDATED(AuditEventCategory.ADMIN_ACTION),

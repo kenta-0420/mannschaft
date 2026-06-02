@@ -463,3 +463,26 @@ export interface ApplyTemplateResponse {
   total: number
   entryMembers: TournamentEntryMember[]
 }
+
+// ──────────────────────────────────────────────────
+// F08.7.1 / 02 ②: 主催大会サマリ（ORG_TOURNAMENT_SUMMARY ウィジェット）
+// GET /api/v1/organizations/{orgId}/tournaments/summary
+// ──────────────────────────────────────────────────
+
+export interface OrganizationTournamentSummaryDivision {
+  divisionId: number
+  name: string
+  participantCount: number
+  leaderTeamName: string | null
+}
+
+export interface OrganizationTournamentSummaryEntry {
+  tournamentId: number
+  name: string
+  status: string
+  divisions: OrganizationTournamentSummaryDivision[]
+}
+
+export interface OrganizationTournamentSummary {
+  tournaments: OrganizationTournamentSummaryEntry[]
+}
