@@ -47,11 +47,9 @@ jobs:
 
       # 依存関係の既知脆弱性スキャン（OWASP A06）。
       # 設計書 docs/security/04_dependency_and_supply_chain.md §4/§6 に基づく。
-      # 現状 high レベルの脆弱性が解消されるまでは continue-on-error で
-      # 警告のみ（非ブロッキング）とし、解消後にブロッキングへ昇格する。
-      - name: npm audit (依存脆弱性スキャン・警告のみ)
+      # high レベルの脆弱性が 0 件のためブロッキング化（2026-06-02）。
+      - name: npm audit (依存脆弱性スキャン)
         run: npm audit --audit-level=high
-        continue-on-error: true
 
       - name: Generate OpenAPI types
         run: npm run generate:types
