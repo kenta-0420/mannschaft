@@ -119,6 +119,42 @@ class ConnectWebhookServiceTest {
     }
 
     @Test
+    @DisplayName("根治: dispatch 失敗 → FAILED 記録のうえ例外を再送出（握り潰さない・恒久 no-op 防止）")
+    void dispatchFailureMarksFailedAndRethrows() {
+        StripePaymentProvider.ConnectWebhookEventInfo event = accountUpdatedEvent();
+        given(stripePaymentProvider.constructConnectEvent(any(), any())).willReturn(event);
+        given(idempotencyService.tryBegin("evt_123", "account.updated", false)).willReturn(true);
+        // ハンドラが一過性障害で例外を投げる
+        org.mockito.BDDMockito.willThrow(new RuntimeException("downstream down"))
+                .given(connectAccountService)
+                .applyAccountUpdated(anyString(), anyBoolean(), anyBoolean(), anyList());
+
+        // 例外を握り潰さず再送出する（Controller が非200 → Stripe 再送）
+        assertThatThrownBy(() -> service.handleWebhook("payload", "sig"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("downstream down");
+
+        // FAILED が記録され、PROCESSED は確定されない（再送時に再処理可能になる）
+        verify(idempotencyService, times(1)).markFailed("evt_123");
+        verify(idempotencyService, never()).markProcessed(any(), any());
+    }
+
+    @Test
+    @DisplayName("根治: FAILED 記録後の再送 → tryBegin が再処理を許可（true）なら 2 回目で処理が回復")
+    void retryAfterFailureReprocesses() {
+        StripePaymentProvider.ConnectWebhookEventInfo event = accountUpdatedEvent();
+        given(stripePaymentProvider.constructConnectEvent(any(), any())).willReturn(event);
+        // 再送時: 冪等ゲートが「再処理可」（FAILED/RECEIVED）と判定して true を返す
+        given(idempotencyService.tryBegin("evt_123", "account.updated", false)).willReturn(true);
+
+        service.handleWebhook("payload", "sig");
+
+        verify(connectAccountService, times(1))
+                .applyAccountUpdated("acct_xxx", true, true, List.of());
+        verify(idempotencyService).markProcessed("evt_123", WebhookProcessStatus.PROCESSED);
+    }
+
+    @Test
     @DisplayName("未対応イベントは IGNORED 確定（ハンドラ呼ばず）")
     void unknownEventIgnored() {
         StripePaymentProvider.ConnectWebhookEventInfo event =

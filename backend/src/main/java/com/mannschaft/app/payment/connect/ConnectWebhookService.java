@@ -30,7 +30,13 @@ public class ConnectWebhookService {
      * Connect Webhook を処理する。
      *
      * <p>署名検証に失敗した場合は {@link ConnectPaymentErrorCode#WEBHOOK_SIGNATURE_INVALID}
-     * （400・設計書 02 §7 / 03 §2）を投げる。冪等ゲートで重複と判定した場合は no-op で正常終了する。</p>
+     * （400・設計書 02 §7 / 03 §2）を投げる。冪等ゲートで確定済み（真の重複）と判定した場合は
+     * no-op で正常終了する。</p>
+     *
+     * <p><b>失敗の握り潰し禁止（恒久 no-op の根治）:</b> {@link #dispatch} が例外を投げた場合は
+     * 受信記録を {@code FAILED} に確定（{@code REQUIRES_NEW} で独立コミット）したうえで例外を
+     * <b>再送出</b>する。これにより Controller が非 200 を返し、Stripe が at-least-once 再送する。
+     * 再送時は冪等ゲートが {@code FAILED} を「再処理可」と判定するため処理が回復する。</p>
      *
      * @param payload   生リクエストボディ
      * @param sigHeader {@code Stripe-Signature} ヘッダー
@@ -46,13 +52,23 @@ public class ConnectWebhookService {
             throw new BusinessException(ConnectPaymentErrorCode.WEBHOOK_SIGNATURE_INVALID, e);
         }
 
-        // 冪等ゲート: 新規受信のみ処理。重複は既処理として no-op（02 §4.1）
-        boolean fresh = idempotencyService.tryBegin(event.eventId(), event.type(), event.livemode());
-        if (!fresh) {
+        // 冪等ゲート: 新規受信・未確定（RECEIVED/FAILED）は処理。確定済み（PROCESSED/IGNORED）は no-op（02 §4.1）
+        boolean shouldProcess =
+                idempotencyService.tryBegin(event.eventId(), event.type(), event.livemode());
+        if (!shouldProcess) {
             return;
         }
 
-        WebhookProcessStatus result = dispatch(event);
+        WebhookProcessStatus result;
+        try {
+            result = dispatch(event);
+        } catch (RuntimeException e) {
+            // dispatch 失敗を握り潰さない: FAILED を独立コミットで残し、例外を再送出して Stripe 再送に委ねる
+            idempotencyService.markFailed(event.eventId());
+            log.warn("Connect Webhook ハンドラ失敗。FAILED 記録のうえ再送出します: eventId={}, type={}",
+                    event.eventId(), event.type(), e);
+            throw e;
+        }
         idempotencyService.markProcessed(event.eventId(), result);
     }
 

@@ -235,6 +235,8 @@ MarketFinalizeService / MarketFinalizeConfirmedListener:
 | `PAYMENT_040` | 400 | Webhook 署名検証失敗 |
 | `PAYMENT_041` | 409 | 与信失敗（Stripe 側エラー・カード拒否）。応募成立をロールバックし応募者へ通知 |
 
+> **実装注記（Connect 系コードの命名・P2-a 以降）**: 上表の `PAYMENT_011/013/040` 等の番号は<b>概念対応の設計記載</b>であり、実コードのエラーコード文字列とは一致しない。既存 `PaymentErrorCode`（`PAYMENT_001`〜`PAYMENT_027`）との<b>文字列衝突を回避</b>するため、Connect 系は別 enum `ConnectPaymentErrorCode` を新設し `PAYMENT_C0xx` 系（例: 署名検証失敗 = `PAYMENT_C040`）を採用した。後続フェーズ（P2-b 与信/P2-c 払出）も齟齬防止のため `ConnectPaymentErrorCode`（`PAYMENT_C0xx` 系）を継続使用すること。
+
 ---
 
 ## 8. `StripePaymentProvider` 追加メソッド（既存を破壊しない）
