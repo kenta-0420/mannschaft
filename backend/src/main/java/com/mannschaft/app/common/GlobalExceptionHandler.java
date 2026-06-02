@@ -614,7 +614,9 @@ public class GlobalExceptionHandler {
             Map.entry("PAYMENT_C021", HttpStatus.UNPROCESSABLE_ENTITY),      // REFUND_AMOUNT_EXCEEDS
             Map.entry("PAYMENT_C030", HttpStatus.CONFLICT),                  // ONBOARDING_NOT_READY
             Map.entry("PAYMENT_C040", HttpStatus.BAD_REQUEST),               // WEBHOOK_SIGNATURE_INVALID
-            Map.entry("PAYMENT_C041", HttpStatus.CONFLICT)                   // AUTHORIZATION_FAILED
+            Map.entry("PAYMENT_C041", HttpStatus.CONFLICT),                  // AUTHORIZATION_FAILED
+            // セキュリティインシデント（GDPR Article 33）
+            Map.entry("SEC_INCIDENT_001", HttpStatus.NOT_FOUND)              // SECURITY_INCIDENT_NOT_FOUND（IDOR 対策で 404）
     );
 
     /**
