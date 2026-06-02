@@ -1,6 +1,8 @@
 package com.mannschaft.app.schedule;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -71,6 +73,9 @@ class ScheduleAttendanceServiceTest {
     @Mock
     private ScheduleDelegationService scheduleDelegationService;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     @InjectMocks
     private ScheduleAttendanceService attendanceService;
 
@@ -125,6 +130,27 @@ class ScheduleAttendanceServiceTest {
                 .scheduleId(SCHEDULE_ID)
                 .userId(USER_ID)
                 .status(status)
+                .build();
+    }
+
+    /** 指定した minResponseRole を持つ TEAM スコープの出欠対象スケジュールを生成する。 */
+    private ScheduleEntity createScheduleWithMinResponseRole(MinResponseRole minResponseRole) {
+        return ScheduleEntity.builder()
+                .teamId(TEAM_ID)
+                .title("練習")
+                .startAt(START)
+                .endAt(END)
+                .allDay(false)
+                .eventType(EventType.PRACTICE)
+                .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                .minViewRole(MinViewRole.MEMBER_PLUS)
+                .minResponseRole(minResponseRole)
+                .status(ScheduleStatus.SCHEDULED)
+                .attendanceRequired(true)
+                .attendanceDeadline(FUTURE_DEADLINE)
+                .commentOption(CommentOption.OPTIONAL)
+                .isException(false)
+                .createdBy(USER_ID)
                 .build();
     }
 
@@ -233,6 +259,170 @@ class ScheduleAttendanceServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ScheduleErrorCode.COMMENT_REQUIRED);
+        }
+    }
+
+    // ========================================
+    // respondAttendance — min_response_role enforcement（F03.1 セキュリティ根治）
+    // ========================================
+
+    @Nested
+    @DisplayName("respondAttendance min_response_role enforcement")
+    class RespondAttendanceMinResponseRole {
+
+        private void stubSaveAndDeadline() {
+            ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.UNDECIDED);
+            given(attendanceRepository.findByScheduleIdAndUserId(SCHEDULE_ID, USER_ID))
+                    .willReturn(Optional.of(attendance));
+            given(attendanceRepository.save(any(ScheduleAttendanceEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+        }
+
+        @Test
+        @DisplayName("ADMIN_ONLY_一般MEMBERは回答拒否_COMMON_002")
+        void ADMIN_ONLY_一般MEMBERは回答拒否() {
+            // given: ADMIN_ONLY スケジュールに一般 MEMBER が回答しようとする
+            ScheduleEntity schedule = createScheduleWithMinResponseRole(MinResponseRole.ADMIN_ONLY);
+            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+            AttendanceRequest req = new AttendanceRequest("ATTENDING", null, null);
+
+            // when & then
+            assertThatThrownBy(() -> attendanceService.respondAttendance(SCHEDULE_ID, USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("ADMIN_ONLY_ADMINは回答可能")
+        void ADMIN_ONLY_ADMINは回答可能() {
+            // given
+            ScheduleEntity schedule = createScheduleWithMinResponseRole(MinResponseRole.ADMIN_ONLY);
+            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            stubSaveAndDeadline();
+
+            AttendanceRequest req = new AttendanceRequest("ATTENDING", "承認", null);
+
+            // when
+            AttendanceResponse result = attendanceService.respondAttendance(SCHEDULE_ID, USER_ID, req);
+
+            // then
+            assertThat(result.getStatus()).isEqualTo("ATTENDING");
+        }
+
+        @Test
+        @DisplayName("ADMIN_ONLY_SYSTEM_ADMINは横断で回答可能")
+        void ADMIN_ONLY_SYSTEM_ADMINは回答可能() {
+            // given
+            ScheduleEntity schedule = createScheduleWithMinResponseRole(MinResponseRole.ADMIN_ONLY);
+            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
+            stubSaveAndDeadline();
+
+            AttendanceRequest req = new AttendanceRequest("ATTENDING", null, null);
+
+            // when
+            AttendanceResponse result = attendanceService.respondAttendance(SCHEDULE_ID, USER_ID, req);
+
+            // then
+            assertThat(result.getStatus()).isEqualTo("ATTENDING");
+        }
+
+        @Test
+        @DisplayName("MEMBER_PLUS_SUPPORTERは回答拒否_COMMON_002")
+        void MEMBER_PLUS_SUPPORTERは回答拒否() {
+            // given: MEMBER_PLUS スケジュールに SUPPORTER（MEMBER未満）が回答しようとする
+            ScheduleEntity schedule = createScheduleWithMinResponseRole(MinResponseRole.MEMBER_PLUS);
+            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(false);
+
+            AttendanceRequest req = new AttendanceRequest("ATTENDING", null, null);
+
+            // when & then
+            assertThatThrownBy(() -> attendanceService.respondAttendance(SCHEDULE_ID, USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("MEMBER_PLUS_MEMBERは回答可能")
+        void MEMBER_PLUS_MEMBERは回答可能() {
+            // given
+            ScheduleEntity schedule = createScheduleWithMinResponseRole(MinResponseRole.MEMBER_PLUS);
+            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
+            stubSaveAndDeadline();
+
+            AttendanceRequest req = new AttendanceRequest("ATTENDING", null, null);
+
+            // when
+            AttendanceResponse result = attendanceService.respondAttendance(SCHEDULE_ID, USER_ID, req);
+
+            // then
+            assertThat(result.getStatus()).isEqualTo("ATTENDING");
+        }
+
+        @Test
+        @DisplayName("SUPPORTER_PLUS_SUPPORTERは回答可能")
+        void SUPPORTER_PLUS_SUPPORTERは回答可能() {
+            // given: SUPPORTER_PLUS スケジュールに SUPPORTER が回答する
+            ScheduleEntity schedule = createScheduleWithMinResponseRole(MinResponseRole.SUPPORTER_PLUS);
+            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "SUPPORTER")).willReturn(true);
+            stubSaveAndDeadline();
+
+            AttendanceRequest req = new AttendanceRequest("ATTENDING", null, null);
+
+            // when
+            AttendanceResponse result = attendanceService.respondAttendance(SCHEDULE_ID, USER_ID, req);
+
+            // then
+            assertThat(result.getStatus()).isEqualTo("ATTENDING");
+        }
+
+        @Test
+        @DisplayName("SUPPORTER_PLUS_非所属は回答拒否_COMMON_002")
+        void SUPPORTER_PLUS_非所属は回答拒否() {
+            // given
+            ScheduleEntity schedule = createScheduleWithMinResponseRole(MinResponseRole.SUPPORTER_PLUS);
+            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "SUPPORTER")).willReturn(false);
+
+            AttendanceRequest req = new AttendanceRequest("ATTENDING", null, null);
+
+            // when & then
+            assertThatThrownBy(() -> attendanceService.respondAttendance(SCHEDULE_ID, USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("minResponseRole_null_後方互換で従来どおりメンバー回答可能")
+        void minResponseRole_null_後方互換で回答可能() {
+            // given: minResponseRole 未設定（移行前データ）。enforcement はスキップされる。
+            ScheduleEntity schedule = createScheduleWithMinResponseRole(null);
+            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            stubSaveAndDeadline();
+
+            AttendanceRequest req = new AttendanceRequest("ATTENDING", null, null);
+
+            // when
+            AttendanceResponse result = attendanceService.respondAttendance(SCHEDULE_ID, USER_ID, req);
+
+            // then: AccessControlService に一切問い合わせないこと（後方互換）
+            assertThat(result.getStatus()).isEqualTo("ATTENDING");
+            org.mockito.Mockito.verifyNoInteractions(accessControlService);
         }
     }
 

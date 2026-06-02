@@ -39,6 +39,7 @@ const emit = defineEmits<{
 }>()
 
 const friendFoldersApi = useFriendFoldersApi()
+const friendTeamsApi = useFriendTeamsApi()
 const teamApi = useTeamApi()
 const { handleApiError } = useErrorHandler()
 
@@ -174,14 +175,21 @@ async function loadFoldersAndFriends() {
   if (props.scopeType !== 'TEAM') return
 
   foldersLoading.value = true
+  friendsLoading.value = true
   try {
-    folders.value = await friendFoldersApi.listFolders(props.scopeId)
+    const [foldersResult, friendsResult] = await Promise.all([
+      friendFoldersApi.listFolders(props.scopeId),
+      friendTeamsApi.listFriends(props.scopeId),
+    ])
+    folders.value = foldersResult
+    friends.value = friendsResult.data
   }
   catch (err) {
-    handleApiError(err, 'フォルダ取得')
+    handleApiError(err, 'フォルダ・フレンドチーム取得')
   }
   finally {
     foldersLoading.value = false
+    friendsLoading.value = false
   }
 }
 
