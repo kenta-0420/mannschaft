@@ -49,6 +49,10 @@ export const WidgetKeyMap: Record<string, { team?: string; organization?: string
   'survey-results': { team: 'TEAM_SURVEY_RESULTS' },
   'attendance-results': { team: 'TEAM_MEMBER_ATTENDANCE' },
   blog: { team: 'TEAM_BLOG' },
+  // F08.7.1 成績ウィジェット 3 種
+  'team-standings-record': { team: 'TEAM_TOURNAMENT_RECORD' },
+  'team-division-standings': { team: 'TEAM_DIVISION_STANDINGS' },
+  'org-tournament-summary': { organization: 'ORG_TOURNAMENT_SUMMARY' },
 }
 
 export const WidgetDefaultMinRoleMap: Record<string, MinRole> = {
@@ -65,6 +69,10 @@ export const WidgetDefaultMinRoleMap: Record<string, MinRole> = {
   ORG_TODO: 'MEMBER',
   ORG_PROJECT_PROGRESS: 'MEMBER',
   ORG_STATS: 'SUPPORTER',
+  // F08.7.1 成績ウィジェット 3 種（BE WidgetDefaultMinRoleMap と同期）
+  TEAM_TOURNAMENT_RECORD: 'SUPPORTER',
+  TEAM_DIVISION_STANDINGS: 'SUPPORTER',
+  ORG_TOURNAMENT_SUMMARY: 'MEMBER',
 }
 
 export function backendKeyForWidget(
@@ -263,6 +271,31 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     icon: 'pi pi-inbox',
     description: '通知を一箇所で仕分け',
     scope: ['personal'],
+  },
+  // F08.7.1: 成績ウィジェット 3 種（F02.2 系の詳細ダッシュボード）
+  {
+    key: 'team-standings-record',
+    label: '大会成績',
+    icon: 'pi pi-trophy',
+    description: '自チームの大会通算成績と順位履歴',
+    scope: ['team'],
+    defaultMinRole: 'SUPPORTER' as MinRole,
+  },
+  {
+    key: 'team-division-standings',
+    label: '順位表',
+    icon: 'pi pi-list',
+    description: '現在参加中のディビジョンの順位表',
+    scope: ['team'],
+    defaultMinRole: 'SUPPORTER' as MinRole,
+  },
+  {
+    key: 'org-tournament-summary',
+    label: '主催大会サマリ',
+    icon: 'pi pi-sitemap',
+    description: '主催する各大会×各部の首位・参加数・状態',
+    scope: ['organization'],
+    defaultMinRole: 'MEMBER' as MinRole,
   },
 ]
 

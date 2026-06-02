@@ -57,6 +57,8 @@ public class ChatMessageController {
             @RequestParam(required = false) Long cursor,
             @RequestParam(required = false) Integer limit,
             @RequestParam(required = false, defaultValue = "before") String direction) {
+        // F08.7.1: 大会/ディビジョン連絡チャットは閲覧認可（canView）を通す（通常チャンネルは no-op）
+        messageService.checkChannelViewAccess(channelId, SecurityUtils.getCurrentUserId());
         CursorPagedResponse<MessageResponse> response = messageService.listMessages(channelId, cursor, limit, direction);
         return ResponseEntity.ok(response);
     }
@@ -108,7 +110,8 @@ public class ChatMessageController {
             @PathVariable Long messageId,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer limit) {
-        ThreadResponse response = messageService.getThread(messageId, cursor, limit);
+        ThreadResponse response = messageService.getThread(
+                messageId, cursor, limit, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -121,7 +124,8 @@ public class ChatMessageController {
     public ResponseEntity<ApiResponse<MessageResponse>> togglePin(
             @PathVariable Long messageId,
             @RequestParam boolean pinned) {
-        MessageResponse response = messageService.togglePin(messageId, pinned);
+        MessageResponse response = messageService.togglePin(
+                messageId, pinned, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -148,7 +152,8 @@ public class ChatMessageController {
             @PathVariable Long channelId,
             @RequestParam String keyword,
             @RequestParam(required = false) Integer limit) {
-        List<MessageResponse> responses = messageService.searchMessages(channelId, keyword, limit);
+        List<MessageResponse> responses = messageService.searchMessages(
+                channelId, keyword, limit, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 }

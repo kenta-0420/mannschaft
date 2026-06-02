@@ -96,7 +96,8 @@ public class FileAttachmentVisibilityResolver
     protected StandardVisibility toStandard(FileScopeType visibility) {
         return switch (visibility) {
             case TEAM -> StandardVisibility.MEMBERS_ONLY;
-            case ORGANIZATION -> StandardVisibility.ORGANIZATION_WIDE;
+            // F08.7.1 / 04: 大会・ディビジョンは主催組織の可視性に集約（§6）。
+            case ORGANIZATION, TOURNAMENT, TOURNAMENT_DIVISION -> StandardVisibility.ORGANIZATION_WIDE;
             case PERSONAL -> StandardVisibility.PRIVATE;
         };
     }

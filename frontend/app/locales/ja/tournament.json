@@ -40,7 +40,32 @@
       "TOUR_022": "エントリーメンバーが見つかりません",
       "TOUR_023": "エントリー最少人数を下回っています",
       "TOUR_024": "この選手は既にエントリー済みです",
-      "TOUR_025": "ロード対象のメンバーが存在しません"
+      "TOUR_025": "ロード対象のメンバーが存在しません",
+      "TOUR_029": "連絡スペースが見つかりません",
+      "TOUR_030": "この連絡スペースを閲覧する権限がありません",
+      "TOUR_031": "この連絡スペースへ投稿する権限がありません",
+      "TOUR_032": "連絡スペースの公開設定を変更する権限がありません"
     }
+  },
+  "dashboard_widgets": {
+    "team_record_title": "大会成績",
+    "org_summary_title": "主催大会サマリ",
+    "division_standings_title": "順位表",
+    "rank": "順位",
+    "points": "勝点",
+    "win_draw_loss": "勝/分/敗",
+    "played": "試合数",
+    "goals": "得失点",
+    "best_rank": "最高順位",
+    "tournaments": "大会数",
+    "tournament": "大会",
+    "division": "部",
+    "team": "チーム",
+    "leader": "首位",
+    "participant_count": "参加チーム数",
+    "select_tournament": "大会を選択",
+    "empty_team_record": "参加した大会がまだありません",
+    "empty_org_summary": "主催している大会がまだありません",
+    "empty_division_standings": "現在参加中の大会がありません"
   }
 }

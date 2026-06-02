@@ -36,7 +36,9 @@ public record TeamSearchResultResponse(
         String visibility,
         String bannerUrl,
         Boolean supporterEnabled,
-        Long memberCount
+        Long memberCount,
+        String prefectureCode,
+        String cityCode
 ) {
 
     /**
@@ -44,6 +46,9 @@ public record TeamSearchResultResponse(
      *
      * <p>{@code memberCount} は {@link TeamEntity#getMemberCount()} を直接参照する
      * （集約クエリ不要）。null の場合は {@code 0L} にフォールバックする。
+     *
+     * <p>F22.1 市 Phase 2 足場C: 構造化キー {@code prefectureCode}/{@code cityCode} を追加で返す
+     * （名称 {@code prefecture}/{@code city} も併存）。フィールド名は Jackson 既定の camelCase。</p>
      */
     public static TeamSearchResultResponse from(TeamEntity team) {
         return new TeamSearchResultResponse(
@@ -57,7 +62,9 @@ public record TeamSearchResultResponse(
                 team.getVisibility() != null ? team.getVisibility().name() : null,
                 team.getBannerUrl(),
                 team.getSupporterEnabled(),
-                team.getMemberCount() != null ? team.getMemberCount() : 0L
+                team.getMemberCount() != null ? team.getMemberCount() : 0L,
+                team.getPrefectureCode(),
+                team.getCityCode()
         );
     }
 }

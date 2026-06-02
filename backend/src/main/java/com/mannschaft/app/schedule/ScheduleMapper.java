@@ -39,6 +39,8 @@ public interface ScheduleMapper {
     @Mapping(target = "audit.createdAt", source = "createdAt")
     @Mapping(target = "audit.createdByDisplayName", ignore = true)
     @Mapping(target = "myAttendanceStatus", ignore = true)
+    @Mapping(target = "reminders", ignore = true)
+    @Mapping(target = "scheduledTasks", ignore = true)
     ScheduleResponse toResponse(ScheduleEntity scheduleEntity);
 
     List<ScheduleResponse> toResponseList(List<ScheduleEntity> entities);
@@ -67,6 +69,8 @@ public interface ScheduleMapper {
     @Mapping(target = "recurrence", ignore = true)
     @Mapping(target = "attendance", ignore = true)
     @Mapping(target = "relations", ignore = true)
+    @Mapping(target = "reminders", ignore = true)
+    @Mapping(target = "scheduledTasks", ignore = true)
     @Mapping(target = "createdBy", source = "createdBy")
     ScheduleDetailResponse toDetailResponse(ScheduleEntity scheduleEntity);
 
@@ -81,6 +85,8 @@ public interface ScheduleMapper {
 
     List<EventSurveyResponse> toSurveyResponseList(List<EventSurveyEntity> entities);
 
+    @Mapping(target = "reminderKind", expression = "java(entity.getReminderKind() != null ? entity.getReminderKind().name() : null)")
+    @Mapping(target = "notified", ignore = true)
     ReminderResponse toReminderResponse(ScheduleAttendanceReminderEntity entity);
 
     List<ReminderResponse> toReminderResponseList(List<ScheduleAttendanceReminderEntity> entities);

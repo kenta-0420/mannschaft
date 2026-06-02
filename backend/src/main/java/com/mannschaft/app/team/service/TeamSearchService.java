@@ -124,23 +124,27 @@ public class TeamSearchService {
                 ? EnumSet.of(TeamEntity.Visibility.PUBLIC, TeamEntity.Visibility.ORGANIZATION_ONLY)
                 : EnumSet.of(TeamEntity.Visibility.PUBLIC);
 
-        // 4. prefecture 未指定 & city 指定のときは city を無視（警告ログのみ、400 にしない）
+        // 4. 地域フィルタ（F22.1 dual-support）: code 指定があれば code を優先、無ければ名称にフォールバック。
+        //    code/名称いずれの軸でも「都道府県が未指定なのに市区町村だけ指定」は city を無視する
+        //    （prefecture コードまたは名称が無い限り、city 軸の絞り込みは無効化する）。
+        boolean hasPrefecture = isPresent(criteria.prefectureCode()) || isPresent(criteria.prefecture());
         String effectiveCity = criteria.city();
-        if ((criteria.prefecture() == null || criteria.prefecture().isBlank())
-                && effectiveCity != null && !effectiveCity.isBlank()) {
+        String effectiveCityCode = criteria.cityCode();
+        if (!hasPrefecture && (isPresent(effectiveCity) || isPresent(effectiveCityCode))) {
             log.warn("F15.4 team search: prefecture が未指定のため city パラメータを無視します（orgId={}）", orgId);
             effectiveCity = null;
+            effectiveCityCode = null;
         }
 
-        // 5. Specification 合成
+        // 5. Specification 合成（地域は dual-support フィルタで code 優先・名称フォールバック）
         Specification<TeamEntity> spec = Specification
                 .where(TeamSearchSpecifications.notDeleted())
                 .and(TeamSearchSpecifications.notArchived())
                 .and(TeamSearchSpecifications.belongsToOrganization(orgId))
                 .and(TeamSearchSpecifications.visibilityIn(allowedVisibilities))
                 .and(TeamSearchSpecifications.nameOrKanaContains(criteria.keyword()))
-                .and(TeamSearchSpecifications.prefectureEquals(criteria.prefecture()))
-                .and(TeamSearchSpecifications.cityEquals(effectiveCity))
+                .and(TeamSearchSpecifications.prefectureFilter(criteria.prefectureCode(), criteria.prefecture()))
+                .and(TeamSearchSpecifications.cityFilter(effectiveCityCode, effectiveCity))
                 .and(TeamSearchSpecifications.templateEquals(criteria.template()));
 
         Page<TeamEntity> page = teamRepository.findAll(spec, pageable);
@@ -166,6 +170,11 @@ public class TeamSearchService {
             return false;
         }
         return accessControlService.isMember(currentUserId, orgId, SCOPE_ORGANIZATION);
+    }
+
+    /** 非 null かつ非空白文字列なら {@code true}。 */
+    private static boolean isPresent(String s) {
+        return s != null && !s.isBlank();
     }
 
     /**

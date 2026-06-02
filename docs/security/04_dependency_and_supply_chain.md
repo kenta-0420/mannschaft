@@ -84,6 +84,22 @@ updates:
 
 > moderate（14 件）・low（1 件）は `--audit-level=high` では CI 出力に含めない（門番の閾値外）。脆弱性解消は本 PR のスコープ外とし、Dependabot PR / 個別の更新 PR で順次対応する。
 
+### 4.2. 脆弱性解消の優先順位（2026-06-02 精査）
+
+以下の優先度で解消すること（2026-05-26 時点で 11 件全て未解消）:
+
+| 優先度 | パッケージ | 脆弱性種別 | 対応方針 |
+|---|---|---|---|
+| 🔴 最高 | `serialize-javascript` | RCE / CPU 枯渇 DoS | `npm update` または代替ライブラリへ移行 |
+| 🔴 最高 | `simple-git` | Remote Code Execution | `npm update` |
+| 🔴 高 | `node-forge` | 証明書偽造 / DoS | `npm update` |
+| 🔴 高 | `vite` | パストラバーサル / WebSocket 任意ファイル読み取り | Vite メジャーアップデート（破壊的変更確認要） |
+| 🟠 中 | `lodash` | Prototype Pollution / Code Injection | `lodash-es` に移行 or アップデート |
+| 🟠 中 | `h3` | SSE バイパス / パストラバーサル | 間接依存 → Nuxt アップデートで解消期待 |
+| 🟡 低 | `fast-uri`, `picomatch`, `js-cookie`, `devalue` | 各種 | Dependabot PR で対応 |
+
+**解消後のアクション**: `continue-on-error: true` を削除して CI ブロッキング化する（§6 参照）。
+
 ---
 
 ## 5. 脆弱性対応フロー
@@ -107,5 +123,6 @@ updates:
 
 | 日付 | 変更 |
 |---|---|
+| 2026-06-02 | §4.2「脆弱性解消の優先順位」を追加。セキュリティ精査結果（2026-06-02）に基づき 11 件を優先度別に分類。serialize-javascript/simple-git を最優先として対応方針を明示 |
 | 2026-05-26 | 新規作成。Dependabot 導入・npm audit 方針・脆弱性対応フローを定義 |
 | 2026-05-26 | frontend-ci.yml に `npm audit --audit-level=high` を警告のみ（`continue-on-error`）で追加。初回スキャン結果（high 11 件）を §4.1 に記録 |

@@ -3,6 +3,7 @@ package com.mannschaft.app.schedule.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.schedule.CalendarSyncScopeType;
 import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.AttendanceGenerationStatus;
 import com.mannschaft.app.schedule.EventType;
@@ -22,6 +23,7 @@ import com.mannschaft.app.schedule.event.ScheduleCancelledEvent;
 import com.mannschaft.app.schedule.event.ScheduleCreatedEvent;
 import com.mannschaft.app.schedule.event.ScheduleUpdatedEvent;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -64,6 +66,8 @@ public class ScheduleService {
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final ScheduleQueryService queryService;
     private final ScheduleRecurrenceService recurrenceService;
+    private final ScheduleScheduledTaskService scheduledTaskService;
+    private final TeamOrgMembershipRepository teamOrgMembershipRepository;
 
     /**
      * スケジュールを単体取得する。存在しない場合は例外をスローする。
@@ -172,6 +176,10 @@ public class ScheduleService {
             reminderService.createReminders(schedule.getId(), req.getReminders());
         }
 
+        // 機能55: 予約タスク（予約アンケート / 予約出欠募集）の登録。
+        // schedule ドメイン内で PENDING タスクを保存するのみ（survey 越境の materialize はバッチ側に分離）。
+        registerScheduledTasks(req, schedule);
+
         // イベント発行（トランザクションコミット後に発行）
         String resolvedScopeType = resolveScopeType(schedule);
         eventPublisher.publishEvent(new ScheduleCreatedEvent(
@@ -260,6 +268,9 @@ public class ScheduleService {
 
         schedule.cancel();
         scheduleRepository.save(schedule);
+
+        // 機能55: 当該予定の PENDING 予約タスクを取り消す（未 materialize の予約をキャンセル連動）
+        scheduledTaskService.cancelTasksForSchedule(schedule.getId());
 
         // イベント発行（トランザクションコミット後に発行）
         eventPublisher.publishEvent(new ScheduleCancelledEvent(schedule.getId(), userId));
@@ -442,6 +453,66 @@ public class ScheduleService {
         if (startDate.isBefore(yearStart) || startDate.isAfter(yearEnd)) {
             throw new BusinessException(ScheduleEventCategoryErrorCode.ACADEMIC_YEAR_DATE_MISMATCH);
         }
+    }
+
+    /**
+     * 機能55: 予約タスク（予約アンケート / 予約出欠募集）を登録する。
+     *
+     * <p>TEAM / ORGANIZATION スコープのみ対象。PERSONAL には予約作成の概念が無いためスキップする。
+     * テナントキー {@code organizationId} を解決して {@link ScheduleScheduledTaskService#registerTasks}
+     * へ委譲する。survey ドメインへの越境（materialize）はバッチ側に分離済みのため、本メソッドは
+     * schedule ドメイン内に閉じる（CLAUDE.md 原則5）。</p>
+     *
+     * @param req      作成リクエスト
+     * @param schedule 保存済みの予定エンティティ
+     */
+    private void registerScheduledTasks(CreateScheduleRequest req, ScheduleEntity schedule) {
+        boolean hasSurveys = req.getScheduledSurveys() != null && !req.getScheduledSurveys().isEmpty();
+        boolean hasAttendance = req.getScheduledAttendance() != null;
+        if (!hasSurveys && !hasAttendance) {
+            return;
+        }
+
+        CalendarSyncScopeType scopeType;
+        Long scopeId;
+        Long organizationId;
+        if (schedule.isTeamScope()) {
+            scopeType = CalendarSyncScopeType.TEAM;
+            scopeId = schedule.getTeamId();
+            organizationId = resolveOrganizationIdForTeam(schedule.getTeamId());
+        } else if (schedule.isOrganizationScope()) {
+            scopeType = CalendarSyncScopeType.ORGANIZATION;
+            scopeId = schedule.getOrganizationId();
+            organizationId = schedule.getOrganizationId();
+        } else {
+            // PERSONAL には予約作成の概念が無い
+            log.info("予約タスク登録スキップ（PERSONALスコープ）: scheduleId={}", schedule.getId());
+            return;
+        }
+
+        if (organizationId == null) {
+            // テナントキーが解決できない場合は予約タスクを成立させない（壊れた状態を保存しない）
+            throw new BusinessException(ScheduleErrorCode.INVALID_SCOPE);
+        }
+
+        scheduledTaskService.registerTasks(
+                schedule.getId(), scopeType, scopeId, organizationId, schedule.getCreatedBy(),
+                req.getScheduledSurveys(), req.getScheduledAttendance());
+    }
+
+    /**
+     * チームの所属組織 ID（テナントキー）を解決する。
+     *
+     * <p>team→org は {@code team_org_memberships}（status=ACTIVE）で管理されるため
+     * {@link TeamOrgMembershipRepository#findOrganizationIdByTeamIdIn} で解決する。</p>
+     *
+     * @param teamId チーム ID
+     * @return 所属組織 ID（見つからない場合 null）
+     */
+    private Long resolveOrganizationIdForTeam(Long teamId) {
+        return teamOrgMembershipRepository
+                .findOrganizationIdByTeamIdIn(java.util.Set.of(teamId))
+                .get(teamId);
     }
 
     /**

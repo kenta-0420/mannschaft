@@ -24,7 +24,11 @@
       "archive": "保管庫へ",
       "unarchive": "受信箱へ戻す",
       "unsnooze": "スヌーズ解除",
-      "label": "ラベル"
+      "label": "ラベル",
+      "snoozed": "スヌーズしました",
+      "archived": "保管庫へ移動しました",
+      "unarchived": "受信箱へ戻しました",
+      "unsnoozed": "スヌーズを解除しました"
     },
     "snoozePreset": {
       "in3h": "3時間後",
@@ -43,6 +47,42 @@
       "inbox": "受信箱",
       "snoozed": "スヌーズ中",
       "archived": "保管庫"
+    },
+    "label": {
+      "title": "ラベル",
+      "create": "ラベルを作成",
+      "edit": "ラベルを編集",
+      "delete": "ラベルを削除",
+      "manage": "ラベルを管理",
+      "nameLabel": "名前",
+      "namePlaceholder": "ラベル名",
+      "colorLabel": "色",
+      "iconLabel": "アイコン（任意）",
+      "limitReached": "ラベルは最大20件まで作成できます",
+      "duplicate": "同じ名前のラベルが既に存在します",
+      "perItemLimit": "1件の通知に付与できるラベルは最大10件です",
+      "empty": "ラベルがありません",
+      "filterTitle": "ラベルで絞り込み",
+      "assigned": "ラベルを付与しました",
+      "removed": "ラベルを解除",
+      "created": "ラベルを作成しました",
+      "updated": "ラベルを更新しました",
+      "deleted": "ラベルを削除しました"
+    },
+    "bulk": {
+      "selectMode": "複数選択",
+      "exit": "選択を終了",
+      "selected": "{count}件を選択中",
+      "archive": "アーカイブ",
+      "snooze": "スヌーズ",
+      "addLabel": "ラベルを付与",
+      "apply": "実行",
+      "result": "{processed}件処理（{skipped}件スキップ）",
+      "cancel": "キャンセル"
+    },
+    "group": {
+      "badge": "+{n}件",
+      "badgeTitle": "{n}件の通知が畳まれています"
     }
   }
 }

@@ -75,25 +75,30 @@ public class OrganizationTeamSearchController {
      * <p>組織が PRIVATE/ORGANIZATION_ONLY で非メンバー／未ログインの場合は
      * エニュメレーション対策で 404 を返す（{@code TeamSearchService} 内部判定）。
      *
-     * @param orgId       組織 ID
-     * @param keyword     部分一致キーワード（{@code name} または {@code name_kana}）
-     * @param prefecture  都道府県（完全一致）
-     * @param city        市町村（完全一致。{@code prefecture} 未指定時は無視）
-     * @param template    業種テンプレート（完全一致）
-     * @param page        ページ番号（0 起点、既定 0）
-     * @param size        ページサイズ（1〜50、既定 20）
-     * @param sort        ソート指定（{@code field,direction} 形式。既定 {@code nameKana,asc}）
+     * @param orgId          組織 ID
+     * @param keyword        部分一致キーワード（{@code name} または {@code name_kana}）
+     * @param prefecture     都道府県名称（完全一致。{@code prefectureCode} 未指定時のフォールバック）
+     * @param city           市町村名称（完全一致。{@code prefecture} 未指定時は無視）
+     * @param template       業種テンプレート（完全一致）
+     * @param prefectureCode 都道府県コード（F22.1 dual-support：指定時は名称より優先）
+     * @param cityCode       市区町村コード（F22.1 dual-support：指定時は名称より優先）
+     * @param page           ページ番号（0 起点、既定 0）
+     * @param size           ページサイズ（1〜50、既定 20）
+     * @param sort           ソート指定（{@code field,direction} 形式。既定 {@code nameKana,asc}）
      * @return ページング済み検索結果
      */
     @GetMapping("/search")
     @Operation(summary = "組織内チーム（店舗）検索",
-            description = "未ログインでも実行可能。組織メンバーには詳細版、非メンバー／未ログインには抑制版 DTO を返す。")
+            description = "未ログインでも実行可能。組織メンバーには詳細版、非メンバー／未ログインには抑制版 DTO を返す。"
+                    + "F22.1: prefectureCode/cityCode 指定時はコード優先、未指定なら名称（prefecture/city）にフォールバック（dual-support）。")
     public ResponseEntity<PagedResponse<?>> search(
             @PathVariable Long orgId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String prefecture,
             @RequestParam(required = false) String city,
             @RequestParam(required = false) String template,
+            @RequestParam(required = false) String prefectureCode,
+            @RequestParam(required = false) String cityCode,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "nameKana,asc") String sort
@@ -106,8 +111,9 @@ public class OrganizationTeamSearchController {
         // 2. Pageable 生成
         Pageable pageable = PageRequest.of(page, size, sortSpec);
 
-        // 3. 検索条件構築
-        TeamSearchCriteria criteria = new TeamSearchCriteria(keyword, prefecture, city, template);
+        // 3. 検索条件構築（F22.1 dual-support: code 優先・名称フォールバック）
+        TeamSearchCriteria criteria = new TeamSearchCriteria(
+                keyword, prefecture, city, template, prefectureCode, cityCode);
 
         // 4. 現在ユーザー（未ログイン許容）
         Long currentUserId = SecurityUtils.getCurrentUserIdOrNull();

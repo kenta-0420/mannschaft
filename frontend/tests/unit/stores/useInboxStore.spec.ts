@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useInboxStore } from '~/stores/useInboxStore'
-import type { InboxItem, InboxListResponse, InboxTriageResponse } from '~/types/inbox'
+import type { InboxItem, InboxItemRef, InboxLabel, InboxListResponse, InboxTriageResponse } from '~/types/inbox'
 
 /**
  * F04.11 useInboxStore のユニットテスト。
@@ -19,6 +19,14 @@ const apiMock = {
   unsnooze: vi.fn(),
   archive: vi.fn(),
   unarchive: vi.fn(),
+  // Phase 2
+  getLabels: vi.fn(),
+  createLabel: vi.fn(),
+  updateLabel: vi.fn(),
+  deleteLabel: vi.fn(),
+  assignLabel: vi.fn(),
+  unassignLabel: vi.fn(),
+  bulkAction: vi.fn(),
 }
 
 vi.mock('~/composables/useInboxApi', () => ({
@@ -49,6 +57,34 @@ function makeItem(overrides: Partial<InboxItem> = {}): InboxItem {
     state: 'UNREAD',
     snoozedUntil: null,
     labels: [],
+    ...overrides,
+  }
+}
+
+/** Phase 3: groupCount > 1 のグループカードを生成するヘルパー。 */
+function makeGroupItem(overrides: Partial<InboxItem> = {}): InboxItem {
+  const groupMembers: InboxItemRef[] = [
+    { sourceType: 'NOTIFICATION', sourceId: 10 },
+    { sourceType: 'ANNOUNCEMENT', sourceId: 20 },
+  ]
+  return makeItem({
+    id: 'NOTIFICATION:10',
+    sourceType: 'NOTIFICATION',
+    sourceId: 10,
+    groupCount: 2,
+    groupMembers,
+    canonicalRef: 'BLOG_POST:5',
+    ...overrides,
+  })
+}
+
+function makeLabel(overrides: Partial<InboxLabel> = {}): InboxLabel {
+  return {
+    id: 'label-1',
+    name: 'テストラベル',
+    color: '#6366f1',
+    icon: null,
+    sortOrder: 0,
     ...overrides,
   }
 }
@@ -317,6 +353,516 @@ describe('useInboxStore', () => {
       store.currentTab = 'INBOX'
       await store.switchTab('INBOX')
       expect(apiMock.getInbox).not.toHaveBeenCalled()
+    })
+  })
+
+  // ──────────────────────────────────────────────
+  // Phase 2: setLabelFilter
+  // ──────────────────────────────────────────────
+
+  describe('setLabelFilter', () => {
+    it('ラベルフィルタをセットして fetchInbox が呼ばれる', async () => {
+      apiMock.getInbox.mockResolvedValue(makeListResponse([]))
+      const store = useInboxStore()
+
+      await store.setLabelFilter('label-1')
+
+      expect(store.labelFilter).toBe('label-1')
+      expect(apiMock.getInbox).toHaveBeenCalledTimes(1)
+    })
+
+    it('null に設定するとフィルタが解除される', async () => {
+      apiMock.getInbox.mockResolvedValue(makeListResponse([]))
+      const store = useInboxStore()
+      store.labelFilter = 'label-1'
+
+      await store.setLabelFilter(null)
+
+      expect(store.labelFilter).toBeNull()
+    })
+  })
+
+  // ──────────────────────────────────────────────
+  // Phase 2: ラベル CRUD
+  // ──────────────────────────────────────────────
+
+  describe('fetchLabels', () => {
+    it('正常系: ラベル一覧がストアに格納される', async () => {
+      const labels = [makeLabel(), makeLabel({ id: 'label-2', name: 'ラベル2' })]
+      apiMock.getLabels.mockResolvedValueOnce({ data: labels })
+      const store = useInboxStore()
+
+      await store.fetchLabels()
+
+      expect(store.labels).toHaveLength(2)
+      expect(store.labelsLoading).toBe(false)
+    })
+
+    it('異常系: API 失敗で error が設定される', async () => {
+      apiMock.getLabels.mockRejectedValueOnce({ status: 500 })
+      const store = useInboxStore()
+
+      await store.fetchLabels()
+
+      expect(store.labels).toHaveLength(0)
+      expect(store.error).toBe('common.error.unknown')
+    })
+  })
+
+  describe('createLabel', () => {
+    it('正常系: ラベルが labels に追加される', async () => {
+      const label = makeLabel()
+      apiMock.createLabel.mockResolvedValueOnce({ data: label })
+      const store = useInboxStore()
+
+      const result = await store.createLabel({ name: 'テストラベル', color: '#6366f1' })
+
+      expect(result).toEqual(label)
+      expect(store.labels).toHaveLength(1)
+      expect(store.labels[0]).toEqual(label)
+    })
+
+    it('異常系: API 失敗でエラーが throw される', async () => {
+      const err = { status: 422 }
+      apiMock.createLabel.mockRejectedValueOnce(err)
+      const store = useInboxStore()
+
+      await expect(store.createLabel({ name: 'テスト' })).rejects.toMatchObject({ status: 422 })
+      // エラー時はラベルリストに追加されない
+      expect(store.labels).toHaveLength(0)
+    })
+  })
+
+  describe('deleteLabel', () => {
+    it('正常系: 楽観削除後 API 成功で labels から除去される', async () => {
+      const label = makeLabel()
+      apiMock.deleteLabel.mockResolvedValueOnce(undefined)
+      const store = useInboxStore()
+      store.labels = [label]
+
+      await store.deleteLabel(label.id)
+
+      expect(store.labels).toHaveLength(0)
+    })
+
+    it('異常系: API 失敗でエラーが throw され labels がロールバックされる', async () => {
+      const label = makeLabel()
+      apiMock.deleteLabel.mockRejectedValueOnce({ status: 500 })
+      const store = useInboxStore()
+      store.labels = [label]
+
+      await expect(store.deleteLabel(label.id)).rejects.toMatchObject({ status: 500 })
+      // ロールバックで元に戻る
+      expect(store.labels).toHaveLength(1)
+      expect(store.labels[0]?.id).toBe(label.id)
+    })
+  })
+
+  // ──────────────────────────────────────────────
+  // Phase 2: ラベル付与/解除（楽観更新）
+  // ──────────────────────────────────────────────
+
+  describe('assignLabel', () => {
+    it('正常系: item.labels に楽観追加される', async () => {
+      const item = makeItem()
+      const label = makeLabel()
+      apiMock.getInbox.mockResolvedValueOnce(makeListResponse([item]))
+      apiMock.assignLabel.mockResolvedValueOnce(label)
+      const store = useInboxStore()
+      await store.fetchInbox()
+      store.labels = [label]
+
+      const ok = await store.assignLabel('NOTIFICATION', 1, label.id)
+
+      expect(ok).toBe(true)
+      expect(store.items[0]?.labels).toHaveLength(1)
+      expect(store.items[0]?.labels[0]?.id).toBe(label.id)
+    })
+
+    it('異常系: API 失敗で item.labels がロールバックされる', async () => {
+      const item = makeItem()
+      const label = makeLabel()
+      apiMock.getInbox.mockResolvedValueOnce(makeListResponse([item]))
+      apiMock.assignLabel.mockRejectedValueOnce({ status: 422 })
+      const store = useInboxStore()
+      await store.fetchInbox()
+      store.labels = [label]
+
+      const ok = await store.assignLabel('NOTIFICATION', 1, label.id)
+
+      expect(ok).toBe(false)
+      // ロールバックで空に戻る
+      expect(store.items[0]?.labels).toHaveLength(0)
+    })
+  })
+
+  describe('unassignLabel', () => {
+    it('正常系: item.labels からラベルが楽観削除される', async () => {
+      const label = makeLabel()
+      const item = makeItem({ labels: [label] })
+      apiMock.getInbox.mockResolvedValueOnce(makeListResponse([item]))
+      apiMock.unassignLabel.mockResolvedValueOnce(undefined)
+      const store = useInboxStore()
+      await store.fetchInbox()
+
+      const ok = await store.unassignLabel('NOTIFICATION', 1, label.id)
+
+      expect(ok).toBe(true)
+      expect(store.items[0]?.labels).toHaveLength(0)
+    })
+
+    it('異常系: API 失敗で item.labels がロールバックされる', async () => {
+      const label = makeLabel()
+      const item = makeItem({ labels: [label] })
+      apiMock.getInbox.mockResolvedValueOnce(makeListResponse([item]))
+      apiMock.unassignLabel.mockRejectedValueOnce({ status: 404 })
+      const store = useInboxStore()
+      await store.fetchInbox()
+
+      const ok = await store.unassignLabel('NOTIFICATION', 1, label.id)
+
+      expect(ok).toBe(false)
+      // ロールバックでラベルが元に戻る
+      expect(store.items[0]?.labels).toHaveLength(1)
+    })
+  })
+
+  // ──────────────────────────────────────────────
+  // Phase 2: bulk 選択モード
+  // ──────────────────────────────────────────────
+
+  describe('toggleSelectionMode', () => {
+    it('ON/OFF が切り替わる', () => {
+      const store = useInboxStore()
+      expect(store.selectionMode).toBe(false)
+
+      store.toggleSelectionMode()
+      expect(store.selectionMode).toBe(true)
+
+      store.toggleSelectionMode()
+      expect(store.selectionMode).toBe(false)
+    })
+
+    it('モード終了時に selectedKeys がクリアされる', () => {
+      const store = useInboxStore()
+      store.selectionMode = true
+      store.selectedKeys = new Set(['NOTIFICATION:1'])
+
+      store.toggleSelectionMode()
+
+      expect(store.selectedKeys.size).toBe(0)
+    })
+  })
+
+  describe('toggleSelect', () => {
+    it('未選択キーを追加できる', () => {
+      const store = useInboxStore()
+      store.toggleSelect('NOTIFICATION:1')
+      expect(store.selectedKeys.has('NOTIFICATION:1')).toBe(true)
+    })
+
+    it('選択済みキーを削除できる', () => {
+      const store = useInboxStore()
+      store.selectedKeys = new Set(['NOTIFICATION:1'])
+      store.toggleSelect('NOTIFICATION:1')
+      expect(store.selectedKeys.has('NOTIFICATION:1')).toBe(false)
+    })
+  })
+
+  describe('runBulk', () => {
+    it('正常系: bulk API を呼び結果を返す', async () => {
+      apiMock.getInbox.mockResolvedValue(makeListResponse([]))
+      apiMock.bulkAction.mockResolvedValueOnce({ data: { processed: 2, skipped: 0 } })
+      const store = useInboxStore()
+      store.selectedKeys = new Set(['NOTIFICATION:1', 'NOTIFICATION:2'])
+
+      const result = await store.runBulk('ARCHIVE')
+
+      expect(result).toEqual({ processed: 2, skipped: 0 })
+      expect(store.selectedKeys.size).toBe(0)
+      expect(apiMock.bulkAction).toHaveBeenCalledTimes(1)
+    })
+
+    it('選択なしのとき null を返し API を呼ばない', async () => {
+      const store = useInboxStore()
+
+      const result = await store.runBulk('ARCHIVE')
+
+      expect(result).toBeNull()
+      expect(apiMock.bulkAction).not.toHaveBeenCalled()
+    })
+
+    it('異常系: API 失敗で null を返す', async () => {
+      apiMock.bulkAction.mockRejectedValueOnce({ status: 500 })
+      const store = useInboxStore()
+      store.selectedKeys = new Set(['NOTIFICATION:1'])
+
+      const result = await store.runBulk('ARCHIVE')
+
+      expect(result).toBeNull()
+      expect(store.error).toBe('common.error.unknown')
+    })
+  })
+
+  // ──────────────────────────────────────────────
+  // Phase 3: グループカード triage（名寄せ bulk 伝播）
+  // ──────────────────────────────────────────────
+
+  describe('Phase 3: groupCount > 1 の triage — bulk 伝播', () => {
+    describe('INBOX-STORE-GRP-001: groupCount > 1 の snooze が bulkAction(SNOOZE) を呼ぶ', () => {
+      it('bulkAction に action=SNOOZE と groupMembers が渡る', async () => {
+        const groupItem = makeGroupItem()
+        const store = useInboxStore()
+        store.items = [groupItem]
+
+        apiMock.bulkAction.mockResolvedValueOnce({ data: { processed: 2, skipped: 0 } })
+
+        const ok = await store.snooze('NOTIFICATION', 10, '2026-06-01T12:00:00Z')
+
+        expect(ok).toBe(true)
+        expect(apiMock.bulkAction).toHaveBeenCalledWith({
+          action: 'SNOOZE',
+          items: [
+            { sourceType: 'NOTIFICATION', sourceId: 10 },
+            { sourceType: 'ANNOUNCEMENT', sourceId: 20 },
+          ],
+          snoozedUntil: '2026-06-01T12:00:00Z',
+        })
+        // 単一 triage API は呼ばれない
+        expect(apiMock.snooze).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('INBOX-STORE-GRP-002: groupCount > 1 の archive が bulkAction(ARCHIVE) を呼ぶ', () => {
+      it('bulkAction に action=ARCHIVE と groupMembers が渡る', async () => {
+        const groupItem = makeGroupItem()
+        const store = useInboxStore()
+        store.items = [groupItem]
+
+        apiMock.bulkAction.mockResolvedValueOnce({ data: { processed: 2, skipped: 0 } })
+
+        const ok = await store.archive('NOTIFICATION', 10)
+
+        expect(ok).toBe(true)
+        expect(apiMock.bulkAction).toHaveBeenCalledWith({
+          action: 'ARCHIVE',
+          items: [
+            { sourceType: 'NOTIFICATION', sourceId: 10 },
+            { sourceType: 'ANNOUNCEMENT', sourceId: 20 },
+          ],
+        })
+        expect(apiMock.archive).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('INBOX-STORE-GRP-003: groupCount > 1 の unarchive が bulkAction(UNARCHIVE) を呼ぶ', () => {
+      it('bulkAction に action=UNARCHIVE と groupMembers が渡る', async () => {
+        const groupItem = makeGroupItem({ state: 'ARCHIVED' })
+        const store = useInboxStore()
+        store.items = [groupItem]
+
+        apiMock.bulkAction.mockResolvedValueOnce({ data: { processed: 2, skipped: 0 } })
+
+        const ok = await store.unarchive('NOTIFICATION', 10)
+
+        expect(ok).toBe(true)
+        expect(apiMock.bulkAction).toHaveBeenCalledWith({
+          action: 'UNARCHIVE',
+          items: [
+            { sourceType: 'NOTIFICATION', sourceId: 10 },
+            { sourceType: 'ANNOUNCEMENT', sourceId: 20 },
+          ],
+        })
+        expect(apiMock.unarchive).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('INBOX-STORE-GRP-004: グループカード楽観除去', () => {
+      it('archive 成功後に代表カードが items から消える', async () => {
+        const groupItem = makeGroupItem()
+        const otherItem = makeItem({ id: 'MENTION:99', sourceType: 'MENTION', sourceId: 99 })
+        const store = useInboxStore()
+        store.items = [groupItem, otherItem]
+
+        apiMock.bulkAction.mockResolvedValueOnce({ data: { processed: 2, skipped: 0 } })
+
+        await store.archive('NOTIFICATION', 10)
+
+        expect(store.items.find((i) => i.id === 'NOTIFICATION:10')).toBeUndefined()
+        expect(store.items.find((i) => i.id === 'MENTION:99')).toBeDefined()
+      })
+
+      it('snooze 成功後に代表カードが items から消える', async () => {
+        const groupItem = makeGroupItem()
+        const store = useInboxStore()
+        store.items = [groupItem]
+
+        apiMock.bulkAction.mockResolvedValueOnce({ data: { processed: 2, skipped: 0 } })
+
+        await store.snooze('NOTIFICATION', 10, '2026-06-01T12:00:00Z')
+
+        expect(store.items.find((i) => i.id === 'NOTIFICATION:10')).toBeUndefined()
+      })
+    })
+
+    describe('INBOX-STORE-GRP-005: API 失敗時ロールバック', () => {
+      it('archive bulkAction 失敗時に items が元に戻る', async () => {
+        const groupItem = makeGroupItem()
+        const store = useInboxStore()
+        store.items = [groupItem]
+
+        apiMock.bulkAction.mockRejectedValueOnce(new Error('Network Error'))
+
+        const ok = await store.archive('NOTIFICATION', 10)
+
+        expect(ok).toBe(false)
+        expect(store.items.find((i) => i.id === 'NOTIFICATION:10')).toBeDefined()
+      })
+
+      it('snooze bulkAction 失敗時に items が元に戻る', async () => {
+        const groupItem = makeGroupItem()
+        const store = useInboxStore()
+        store.items = [groupItem]
+
+        apiMock.bulkAction.mockRejectedValueOnce(new Error('Network Error'))
+
+        const ok = await store.snooze('NOTIFICATION', 10, '2026-06-01T12:00:00Z')
+
+        expect(ok).toBe(false)
+        expect(store.items.find((i) => i.id === 'NOTIFICATION:10')).toBeDefined()
+      })
+    })
+
+    // ──────────────────────────────────────────────
+    // Phase 3: グループ unsnooze の挙動（GRP-008）
+    // ──────────────────────────────────────────────
+
+    describe('INBOX-STORE-GRP-008: groupCount > 1 の unsnooze', () => {
+      it('正常系: groupMembers 件数分 api.unsnooze が呼ばれ、その後 fetchInbox で確定する', async () => {
+        const groupItem = makeGroupItem({ state: 'SNOOZED', snoozedUntil: '2026-06-01T12:00:00Z' })
+        const store = useInboxStore()
+        store.items = [groupItem]
+
+        // 全メンバーの unsnooze が成功
+        apiMock.unsnooze.mockResolvedValue({ data: makeItem({ state: 'UNREAD' }) })
+        // fetchInbox（確定用）
+        apiMock.getInbox.mockResolvedValueOnce(makeListResponse([]))
+
+        const ok = await store.unsnooze('NOTIFICATION', 10)
+
+        expect(ok).toBe(true)
+        // groupMembers の件数（2件）分 api.unsnooze が呼ばれる
+        expect(apiMock.unsnooze).toHaveBeenCalledTimes(2)
+        expect(apiMock.unsnooze).toHaveBeenCalledWith('NOTIFICATION', 10)
+        expect(apiMock.unsnooze).toHaveBeenCalledWith('ANNOUNCEMENT', 20)
+        // その後 getInbox（fetchInbox）が走る
+        expect(apiMock.getInbox).toHaveBeenCalledTimes(1)
+      })
+
+      it('失敗系（全件失敗）: previous にロールバックし fetchInbox で再同期される', async () => {
+        const groupItem = makeGroupItem({ state: 'SNOOZED', snoozedUntil: '2026-06-01T12:00:00Z' })
+        const otherItem = makeItem({ id: 'MENTION:99', sourceType: 'MENTION', sourceId: 99 })
+        const store = useInboxStore()
+        store.items = [groupItem, otherItem]
+
+        // 全メンバーの unsnooze が失敗
+        apiMock.unsnooze.mockRejectedValue(new Error('Network Error'))
+        // fetchInbox（再同期用）— 実サーバ側の状態（snoozed のまま）を返す想定
+        apiMock.getInbox.mockResolvedValueOnce(makeListResponse([groupItem, otherItem]))
+
+        const ok = await store.unsnooze('NOTIFICATION', 10)
+
+        expect(ok).toBe(false)
+        // ロールバック後に fetchInbox が走る（誤表示防止・再同期）
+        expect(apiMock.getInbox).toHaveBeenCalledTimes(1)
+        // fetchInbox 後の items がサーバ返却値で上書きされている
+        expect(store.items).toHaveLength(2)
+      })
+
+      it('部分失敗系: 一部成功・一部失敗でも fetchInbox で再同期される', async () => {
+        const groupItem = makeGroupItem({ state: 'SNOOZED', snoozedUntil: '2026-06-01T12:00:00Z' })
+        const store = useInboxStore()
+        store.items = [groupItem]
+
+        // 1件目成功、2件目失敗（部分失敗）
+        apiMock.unsnooze
+          .mockResolvedValueOnce({ data: makeItem({ state: 'UNREAD' }) })
+          .mockRejectedValueOnce(new Error('Network Error'))
+        // fetchInbox（再同期用）
+        apiMock.getInbox.mockResolvedValueOnce(makeListResponse([groupItem]))
+
+        const ok = await store.unsnooze('NOTIFICATION', 10)
+
+        // 部分成功は成功扱い（allFailed = false）
+        expect(ok).toBe(true)
+        // 必ず fetchInbox で再同期される
+        expect(apiMock.getInbox).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    describe('INBOX-STORE-GRP-006: groupCount <= 1 は単一 triage（回帰）', () => {
+      it('snooze: groupCount=1 のとき単一 triage API を呼ぶ', async () => {
+        const singleItem = makeItem({ groupCount: 1 })
+        apiMock.getInbox.mockResolvedValueOnce(makeListResponse([singleItem]))
+        const store = useInboxStore()
+        await store.fetchInbox()
+
+        apiMock.snooze.mockResolvedValueOnce(
+          makeTriageResponse({ ...singleItem, state: 'SNOOZED', snoozedUntil: '2026-06-01T12:00:00Z' }),
+        )
+
+        await store.snooze('NOTIFICATION', 1, '2026-06-01T12:00:00Z')
+
+        expect(apiMock.snooze).toHaveBeenCalledWith('NOTIFICATION', 1, '2026-06-01T12:00:00Z')
+        expect(apiMock.bulkAction).not.toHaveBeenCalled()
+      })
+
+      it('archive: groupCount=1 のとき単一 triage API を呼ぶ', async () => {
+        const singleItem = makeItem({ groupCount: 1 })
+        apiMock.getInbox.mockResolvedValueOnce(makeListResponse([singleItem]))
+        const store = useInboxStore()
+        await store.fetchInbox()
+
+        apiMock.archive.mockResolvedValueOnce(makeTriageResponse({ ...singleItem, state: 'ARCHIVED' }))
+
+        await store.archive('NOTIFICATION', 1)
+
+        expect(apiMock.archive).toHaveBeenCalledWith('NOTIFICATION', 1)
+        expect(apiMock.bulkAction).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('INBOX-STORE-GRP-007: groupCount 未定義（旧BE互換）は単一 triage（回帰）', () => {
+      it('snooze: groupCount フィールドなし → 単一 triage API を呼ぶ', async () => {
+        // groupCount フィールドなし（旧 BE）
+        const legacyItem = makeItem()
+        apiMock.getInbox.mockResolvedValueOnce(makeListResponse([legacyItem]))
+        const store = useInboxStore()
+        await store.fetchInbox()
+
+        apiMock.snooze.mockResolvedValueOnce(
+          makeTriageResponse({ ...legacyItem, state: 'SNOOZED', snoozedUntil: '2026-06-01T12:00:00Z' }),
+        )
+
+        await store.snooze('NOTIFICATION', 1, '2026-06-01T12:00:00Z')
+
+        expect(apiMock.snooze).toHaveBeenCalledTimes(1)
+        expect(apiMock.bulkAction).not.toHaveBeenCalled()
+      })
+
+      it('archive: groupCount フィールドなし → 単一 triage API を呼ぶ', async () => {
+        const legacyItem = makeItem()
+        apiMock.getInbox.mockResolvedValueOnce(makeListResponse([legacyItem]))
+        const store = useInboxStore()
+        await store.fetchInbox()
+
+        apiMock.archive.mockResolvedValueOnce(makeTriageResponse({ ...legacyItem, state: 'ARCHIVED' }))
+
+        await store.archive('NOTIFICATION', 1)
+
+        expect(apiMock.archive).toHaveBeenCalledTimes(1)
+        expect(apiMock.bulkAction).not.toHaveBeenCalled()
+      })
     })
   })
 })

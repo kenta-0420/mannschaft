@@ -6,6 +6,7 @@ import com.mannschaft.app.filesharing.dto.FolderResponse;
 import com.mannschaft.app.filesharing.dto.UpdateFolderRequest;
 import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
 import com.mannschaft.app.filesharing.repository.SharedFolderRepository;
+import com.mannschaft.app.filesharing.service.FolderScopeAccessGuard;
 import com.mannschaft.app.filesharing.service.SharedFolderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -19,9 +20,12 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /**
  * {@link SharedFolderService} の追加単体テスト。未テストメソッドをカバーする。
@@ -35,6 +39,9 @@ class SharedFolderServiceAdditionalTest {
 
     @Mock
     private FileSharingMapper fileSharingMapper;
+
+    @Mock
+    private FolderScopeAccessGuard folderScopeAccessGuard;
 
     @InjectMocks
     private SharedFolderService service;
@@ -273,6 +280,61 @@ class SharedFolderServiceAdditionalTest {
             service.updateFolder(FOLDER_ID, request);
 
             assertThat(entity.getName()).isEqualTo("テストフォルダ");
+        }
+    }
+
+    // ========================================
+    // provisionDefaultFolder（F08.7.1 / 04 §4 冪等）
+    // ========================================
+
+    @Nested
+    @DisplayName("provisionDefaultFolder")
+    class ProvisionDefaultFolder {
+
+        @Test
+        @DisplayName("冪等: 既存フォルダがある場合は save せず再作成しない")
+        void 既存ありは再作成しない() {
+            SharedFolderEntity existing = SharedFolderEntity.builder()
+                    .scopeType(FileScopeType.TOURNAMENT).scopeRefId(100L).name("大会要項").build();
+            given(folderRepository.findByScopeTypeAndScopeRefIdAndParentIdIsNullAndName(
+                    FileScopeType.TOURNAMENT, 100L, "大会要項"))
+                    .willReturn(Optional.of(existing));
+
+            service.provisionDefaultFolder(FileScopeType.TOURNAMENT, ORG_ID, 100L, USER_ID, "大会要項");
+
+            verify(folderRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("正常系: 既存なしなら新規にデフォルトフォルダを作成する")
+        void 既存なしは新規作成() {
+            given(folderRepository.findByScopeTypeAndScopeRefIdAndParentIdIsNullAndName(
+                    FileScopeType.TOURNAMENT_DIVISION, 200L, "規約"))
+                    .willReturn(Optional.empty());
+            given(folderRepository.save(any())).willReturn(
+                    SharedFolderEntity.builder().scopeType(FileScopeType.TOURNAMENT_DIVISION)
+                            .scopeRefId(200L).name("規約").build());
+
+            service.provisionDefaultFolder(FileScopeType.TOURNAMENT_DIVISION, ORG_ID, 200L, USER_ID, "規約");
+
+            verify(folderRepository).save(any(SharedFolderEntity.class));
+        }
+
+        @Test
+        @DisplayName("冪等: 同時実行で UNIQUE 競合（DataIntegrityViolation）が起きても再取得で成功する")
+        void 競合時は再取得で吸収() {
+            given(folderRepository.findByScopeTypeAndScopeRefIdAndParentIdIsNullAndName(
+                    FileScopeType.TOURNAMENT, 100L, "大会要項"))
+                    .willReturn(Optional.empty())
+                    .willReturn(Optional.of(SharedFolderEntity.builder()
+                            .scopeType(FileScopeType.TOURNAMENT).scopeRefId(100L).name("大会要項").build()));
+            given(folderRepository.save(any()))
+                    .willThrow(new org.springframework.dao.DataIntegrityViolationException("dup"));
+
+            // 例外を投げず、再取得で吸収すること（巻き添えで大会作成全体を失敗させない）
+            assertThatCode(() -> service.provisionDefaultFolder(
+                    FileScopeType.TOURNAMENT, ORG_ID, 100L, USER_ID, "大会要項"))
+                    .doesNotThrowAnyException();
         }
     }
 }

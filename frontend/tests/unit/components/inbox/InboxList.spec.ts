@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { setActivePinia, createPinia } from 'pinia'
 import InboxList from '~/components/inbox/InboxList.vue'
-import type { InboxItem } from '~/types/inbox'
+import type { InboxItem, InboxItemRef } from '~/types/inbox'
 
 /**
  * F04.11 InboxList.vue のユニットテスト。
@@ -22,6 +22,7 @@ const storeMock = {
   currentTab: 'INBOX' as string,
   loading: false,
   summaryLoading: false,
+  labelsLoading: false,
   hasMore: false,
   totalEstimated: 0,
   page: 0,
@@ -32,6 +33,9 @@ const storeMock = {
   summaryByPriority: {} as Record<string, number>,
   summaryBySourceType: {} as Record<string, number>,
   labelFilter: null as string | null,
+  labels: [] as InboxItem[],
+  selectionMode: false,
+  selectedKeys: new Set<string>(),
   // getters
   get inboxCount() {
     return this.summaryByState['INBOX'] ?? 0
@@ -46,6 +50,7 @@ const storeMock = {
   fetchInbox: vi.fn().mockResolvedValue(undefined),
   fetchMore: vi.fn().mockResolvedValue(undefined),
   fetchSummary: vi.fn().mockResolvedValue(undefined),
+  fetchLabels: vi.fn().mockResolvedValue(undefined),
   snooze: vi.fn().mockResolvedValue(true),
   unsnooze: vi.fn().mockResolvedValue(true),
   archive: vi.fn().mockResolvedValue(true),
@@ -53,7 +58,17 @@ const storeMock = {
   switchTab: vi.fn().mockResolvedValue(undefined),
   setPriorityFilter: vi.fn().mockResolvedValue(undefined),
   setSourceTypeFilter: vi.fn().mockResolvedValue(undefined),
+  setLabelFilter: vi.fn().mockResolvedValue(undefined),
   computeSnoozeUntil: vi.fn().mockReturnValue('2026-06-01T12:00:00Z'),
+  toggleSelectionMode: vi.fn(),
+  toggleSelect: vi.fn(),
+  clearSelection: vi.fn(),
+  runBulk: vi.fn().mockResolvedValue({ processed: 1, skipped: 0 }),
+  assignLabel: vi.fn().mockResolvedValue(true),
+  unassignLabel: vi.fn().mockResolvedValue(true),
+  createLabel: vi.fn().mockResolvedValue({ id: 'label-1', name: 'test', color: '#ff0000', icon: null }),
+  updateLabel: vi.fn().mockResolvedValue(undefined),
+  deleteLabel: vi.fn().mockResolvedValue(undefined),
 }
 
 vi.mock('~/stores/useInboxStore', () => ({
@@ -116,6 +131,24 @@ function makeItem(overrides: Partial<InboxItem> = {}): InboxItem {
   }
 }
 
+/** Phase 3: groupCount > 1 のグループカードを生成するヘルパー。 */
+function makeGroupItem(overrides: Partial<InboxItem> = {}): InboxItem {
+  const groupMembers: InboxItemRef[] = [
+    { sourceType: 'NOTIFICATION', sourceId: 10 },
+    { sourceType: 'ANNOUNCEMENT', sourceId: 20 },
+  ]
+  return makeItem({
+    id: 'NOTIFICATION:10',
+    sourceType: 'NOTIFICATION',
+    sourceId: 10,
+    title: 'グループ通知',
+    groupCount: 2,
+    groupMembers,
+    canonicalRef: 'BLOG_POST:5',
+    ...overrides,
+  })
+}
+
 // ──────────────────────────────────────────────
 // テスト
 // ──────────────────────────────────────────────
@@ -140,12 +173,14 @@ describe('InboxList.vue', () => {
     }
     storeMock.fetchInbox.mockResolvedValue(undefined)
     storeMock.fetchSummary.mockResolvedValue(undefined)
+    storeMock.fetchLabels.mockResolvedValue(undefined)
     storeMock.snooze.mockResolvedValue(true)
     storeMock.archive.mockResolvedValue(true)
     storeMock.unsnooze.mockResolvedValue(true)
     storeMock.unarchive.mockResolvedValue(true)
     storeMock.switchTab.mockResolvedValue(undefined)
     storeMock.computeSnoozeUntil.mockReturnValue('2026-06-01T12:00:00Z')
+    storeMock.runBulk.mockResolvedValue({ processed: 1, skipped: 0 })
   })
 
   // ──────────────────────────────────────────────
@@ -287,10 +322,72 @@ describe('InboxList.vue', () => {
   // ──────────────────────────────────────────────
 
   describe('onMounted', () => {
-    it('マウント時に fetchSummary と fetchInbox が呼ばれる', async () => {
+    it('マウント時に fetchSummary / fetchInbox / fetchLabels が呼ばれる', async () => {
       await mountSuspended(InboxList)
       expect(storeMock.fetchSummary).toHaveBeenCalledTimes(1)
       expect(storeMock.fetchInbox).toHaveBeenCalledTimes(1)
+      expect(storeMock.fetchLabels).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  // ──────────────────────────────────────────────
+  // Phase 2: bulk 選択モード
+  // ──────────────────────────────────────────────
+
+  describe('bulk 選択モード', () => {
+    it('bulk モードトグルボタンが表示される', async () => {
+      const wrapper = await mountSuspended(InboxList)
+      const btn = wrapper.find('[data-testid="inbox-bulk-mode-btn"]')
+      expect(btn.exists()).toBe(true)
+    })
+
+    it('ラベル管理ボタンが表示される', async () => {
+      const wrapper = await mountSuspended(InboxList)
+      const btn = wrapper.find('[data-testid="inbox-label-manage-btn"]')
+      expect(btn.exists()).toBe(true)
+    })
+  })
+
+  // ──────────────────────────────────────────────
+  // Phase 3: グループカード件数バッジ
+  // ──────────────────────────────────────────────
+
+  describe('Phase 3: グループカード件数バッジ', () => {
+    it('groupCount > 1 のアイテムに件数バッジが表示される', async () => {
+      storeMock.items = [makeGroupItem({ id: 'NOTIFICATION:10', groupCount: 3 })]
+      const wrapper = await mountSuspended(InboxList)
+
+      const badge = wrapper.find('[data-testid="inbox-group-badge-NOTIFICATION:10"]')
+      expect(badge.exists()).toBe(true)
+    })
+
+    it('groupCount = 1 のアイテムには件数バッジが表示されない', async () => {
+      storeMock.items = [makeItem({ id: 'NOTIFICATION:1', groupCount: 1 })]
+      const wrapper = await mountSuspended(InboxList)
+
+      const badge = wrapper.find('[data-testid="inbox-group-badge-NOTIFICATION:1"]')
+      expect(badge.exists()).toBe(false)
+    })
+
+    it('groupCount 未定義（旧BE互換）のアイテムには件数バッジが表示されない', async () => {
+      storeMock.items = [makeItem({ id: 'NOTIFICATION:1' })]
+      const wrapper = await mountSuspended(InboxList)
+
+      const badge = wrapper.find('[data-testid="inbox-group-badge-NOTIFICATION:1"]')
+      expect(badge.exists()).toBe(false)
+    })
+
+    it('グループカードの archive ボタンクリックでストアの archive が呼ばれる', async () => {
+      storeMock.items = [makeGroupItem()]
+      storeMock.archive.mockResolvedValue(true)
+      const wrapper = await mountSuspended(InboxList)
+
+      const archiveBtn = wrapper.find('[data-testid="inbox-archive-btn-NOTIFICATION:10"]')
+      expect(archiveBtn.exists()).toBe(true)
+      await archiveBtn.trigger('click')
+
+      // ストアの archive が groupItem の sourceType/sourceId で呼ばれる
+      expect(storeMock.archive).toHaveBeenCalledWith('NOTIFICATION', 10)
     })
   })
 })

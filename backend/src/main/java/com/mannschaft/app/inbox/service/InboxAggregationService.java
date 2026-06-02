@@ -4,13 +4,16 @@ import com.mannschaft.app.inbox.InboxPriority;
 import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.InboxState;
 import com.mannschaft.app.inbox.dto.InboxItemDto;
+import com.mannschaft.app.inbox.dto.InboxItemRef;
 import com.mannschaft.app.inbox.dto.InboxPageResponse;
 import com.mannschaft.app.inbox.dto.InboxSummaryResponse;
 import com.mannschaft.app.inbox.dto.LabelDto;
 import com.mannschaft.app.inbox.entity.InboxItemStateEntity;
 import com.mannschaft.app.inbox.entity.InboxLabelLinkEntity;
+import com.mannschaft.app.inbox.entity.NotificationLabelEntity;
 import com.mannschaft.app.inbox.repository.InboxItemStateRepository;
 import com.mannschaft.app.inbox.repository.InboxLabelLinkRepository;
+import com.mannschaft.app.inbox.repository.NotificationLabelRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -46,6 +49,7 @@ public class InboxAggregationService {
     private final InboxPriorityNormalizer priorityNormalizer;
     private final InboxItemStateRepository itemStateRepository;
     private final InboxLabelLinkRepository labelLinkRepository;
+    private final NotificationLabelRepository labelRepository;
 
     /**
      * インボックス一覧を集約取得する（フィルタ・ページング）。
@@ -59,10 +63,12 @@ public class InboxAggregationService {
             int page,
             int size) {
 
-        List<InboxItemDto> merged = collectMergedItems(userId);
+        // 境界付きウィンドウ（Phase3 ③）: 当該ページまでに必要な上位件数 + 安全マージン。
+        // 各アダプタはこのウィンドウ件数までしか取得しない（無制限 fetch を根絶）。
+        int window = requiredWindow(page, size);
+        List<InboxItemDto> merged = collectMergedItems(userId, window);
 
         // フィルタ（state → sourceType → priority → label）
-        LocalDateTime now = LocalDateTime.now();
         List<InboxItemDto> filtered = merged.stream()
                 .filter(it -> matchesState(it, stateFilter))
                 .filter(it -> sourceTypes == null || sourceTypes.isEmpty()
@@ -86,7 +92,8 @@ public class InboxAggregationService {
      * 状態別・緊急度別・種類別の件数サマリを取得する（タブ/バッジ用）。
      */
     public InboxSummaryResponse getSummary(Long userId) {
-        List<InboxItemDto> merged = collectMergedItems(userId);
+        // サマリは概算（タブ/バッジ用）。件数の上ぶれを抑えるためサマリ専用の広めウィンドウで取得する。
+        List<InboxItemDto> merged = collectMergedItems(userId, SUMMARY_WINDOW);
 
         Map<String, Long> byState = new LinkedHashMap<>();
         Map<String, Long> byPriority = new LinkedHashMap<>();
@@ -104,19 +111,52 @@ public class InboxAggregationService {
     // 集約 + オーバーレイマージ（N+1 回避のまとめ取り）
     // ─────────────────────────────────────────────────────────────────
 
-    /** ソート規則: priority DESC（URGENT が先頭）→ occurredAt DESC（新しい順）。 */
+    /**
+     * 安全マージン（Phase3 ③）。名寄せ畳み込みで件数が減る・境界での同着を吸収するための余裕。
+     * 当該ページの直前直後に同 priority・同 occurredAt の項目が連なっても取りこぼさないようにする。
+     */
+    private static final int SAFETY_MARGIN = 20;
+
+    /** サマリ集計用の広めウィンドウ（件数バッジは概算で十分・暴走防止に上限を設ける）。 */
+    private static final int SUMMARY_WINDOW = 500;
+
+    /**
+     * ソート規則（<b>完全な全順序</b>・Phase3 ③）: priority DESC（URGENT が先頭）→ occurredAt DESC（新しい順）
+     * → sourceType 名 → sourceId のタイブレーク。
+     *
+     * <p>同 priority・同 occurredAt の同着を sourceType/sourceId で決定的に解消することで、ページ境界での
+     * 重複/欠落（同着順序がリクエスト毎に揺れて隣接ページに項目が漏れる事故）を防ぐ。これが境界付きウィンドウの
+     * 決定性を支える不変条件。occurredAt は nullsLast（時刻なしは末尾）。</p>
+     */
     private static final Comparator<InboxItemDto> ITEM_ORDER =
             Comparator.<InboxItemDto>comparingInt(it -> it.priority().ordinal())  // URGENT=0 が先頭
-                    .thenComparing(InboxItemDto::occurredAt, Comparator.nullsLast(Comparator.reverseOrder()));
+                    .thenComparing(InboxItemDto::occurredAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                    .thenComparing(it -> it.sourceType().name())   // タイブレーク1: ソース種別名（昇順）
+                    .thenComparing(InboxItemDto::sourceId,
+                            Comparator.nullsLast(Comparator.naturalOrder()));  // タイブレーク2: sourceId（昇順）
+
+    /**
+     * 当該ページまでに必要な取得ウィンドウ件数を算出する（Phase3 ③）。
+     *
+     * <p>{@code (page+1)*size} が「当該ページ末尾までに表示しうる上位件数」。これに {@link #SAFETY_MARGIN} を
+     * 足したものをウィンドウとし、各ソースはこのウィンドウ件数までしか取得しない。オーバーフロー回避のため
+     * {@code int} 上限でクランプする。</p>
+     */
+    private static int requiredWindow(int page, int size) {
+        long needed = (long) (page + 1) * size + SAFETY_MARGIN;
+        return (int) Math.min(needed, Integer.MAX_VALUE);
+    }
 
     /**
      * 全アダプタから生項目を集め、triage 状態・ラベルをまとめ取りしてマージした項目リストを返す。
+     *
+     * @param window 各アダプタの取得上限件数（境界付きウィンドウ・Phase3 ③）
      */
-    private List<InboxItemDto> collectMergedItems(Long userId) {
-        // 1. 各アダプタを呼び生項目を集約
+    private List<InboxItemDto> collectMergedItems(Long userId, int window) {
+        // 1. 各アダプタを境界付きウィンドウで呼び生項目を集約（無制限 fetch を根絶）
         List<InboxItemDto> raw = new ArrayList<>();
         for (InboxSourceAdapter adapter : sourceAdapters) {
-            raw.addAll(adapter.fetch(userId));
+            raw.addAll(adapter.fetch(userId, window));
         }
 
         // 2-a. オーバーレイ状態を user_id でまとめ取り（item 件数に依らず 1 回）
@@ -146,26 +186,116 @@ public class InboxAggregationService {
             LocalDateTime snoozedUntil = overlay != null ? overlay.getSnoozedUntil() : r.snoozedUntil();
             List<LabelDto> labels = labelsByKey.getOrDefault(k, List.of());
 
+            // canonicalRef / groupCount / groupMembers はアダプタ計算値を保持する（畳み込みは次段で行う）。
             merged.add(new InboxItemDto(
                     r.id(), r.sourceType(), r.sourceId(), r.title(), r.excerpt(),
                     r.priority(), r.scope(), r.actionUrl(), r.occurredAt(),
-                    state, snoozedUntil, labels));
+                    state, snoozedUntil, labels,
+                    r.canonicalRef(), r.groupCount(), r.groupMembers()));
         }
-        return merged;
+
+        // 4. 名寄せ（Phase 3 ①）：canonicalRef でグルーピングし 2 件以上のみ 1 代表へ畳む。
+        return foldByCanonicalRef(merged);
     }
 
     /**
-     * ラベルを sourceType ごとにまとめ取りする（N+1 回避）。MVP はラベル機能未提供のため、
-     * リンクが存在しなければ空 Map を返す（LabelDto の name/color/icon は将来のラベル本実装で解決）。
+     * {@code canonicalRef} で項目をグルーピングし、2 件以上のグループを 1 代表へ畳む（Phase 3 ① 名寄せ）。
+     *
+     * <p><b>誤突合の安全弁</b>: 畳むのは「正規化成功かつ同一 EntityRef（canonicalRef 一致）」のときのみ。
+     * 正規化不能な項目は各アダプタが自分自身キー（{@code "{sourceType}:{sourceId}"} 等の固有値）を
+     * canonicalRef に詰めているため、決して他項目と同一グループにならない（設計書 §8）。</p>
+     *
+     * <ul>
+     *   <li><b>代表</b>: グループ内で {@link #ITEM_ORDER} 最上位（priority 最優先・新着）。</li>
+     *   <li><b>groupCount</b>: 構成メンバー件数（単一は 1）。</li>
+     *   <li><b>groupMembers</b>: 全構成メンバーの {@code (sourceType, sourceId)}（FE が bulk triage で一括適用）。</li>
+     *   <li><b>state</b>: 最も未処理側（UNREAD &gt; READ &gt; SNOOZED &gt; ARCHIVED を優先）。</li>
+     *   <li><b>labels</b>: 全メンバーのラベル和集合（labelId 重複排除）。</li>
+     * </ul>
+     */
+    private List<InboxItemDto> foldByCanonicalRef(List<InboxItemDto> merged) {
+        // 出現順を保ちつつ canonicalRef でグルーピング（null は理論上起きないが安全側で自分自身 id 扱い）。
+        Map<String, List<InboxItemDto>> groups = new LinkedHashMap<>();
+        for (InboxItemDto it : merged) {
+            String ref = it.canonicalRef() != null ? it.canonicalRef() : it.id();
+            groups.computeIfAbsent(ref, k -> new ArrayList<>()).add(it);
+        }
+
+        List<InboxItemDto> result = new ArrayList<>(groups.size());
+        for (List<InboxItemDto> group : groups.values()) {
+            if (group.size() == 1) {
+                // 単一＝畳まない。アダプタ既定（groupCount=1・members 自分 1 件）をそのまま使う。
+                result.add(group.get(0));
+                continue;
+            }
+
+            // 代表＝ITEM_ORDER 最上位。
+            InboxItemDto representative = group.stream().min(ITEM_ORDER).orElse(group.get(0));
+
+            // groupMembers＝全メンバーの参照（重複排除・出現順）。
+            List<InboxItemRef> members = group.stream()
+                    .map(it -> new InboxItemRef(it.sourceType(), it.sourceId()))
+                    .distinct()
+                    .toList();
+
+            // state＝最も未処理側。labels＝和集合（labelId で重複排除）。
+            InboxState mergedState = group.stream()
+                    .map(InboxItemDto::state)
+                    .min(Comparator.comparingInt(InboxAggregationService::stateUnprocessedRank))
+                    .orElse(representative.state());
+
+            Map<UUID, LabelDto> unionLabels = new LinkedHashMap<>();
+            for (InboxItemDto it : group) {
+                if (it.labels() == null) {
+                    continue;
+                }
+                for (LabelDto label : it.labels()) {
+                    unionLabels.putIfAbsent(label.id(), label);
+                }
+            }
+
+            result.add(new InboxItemDto(
+                    representative.id(), representative.sourceType(), representative.sourceId(),
+                    representative.title(), representative.excerpt(), representative.priority(),
+                    representative.scope(), representative.actionUrl(), representative.occurredAt(),
+                    mergedState, representative.snoozedUntil(),
+                    new ArrayList<>(unionLabels.values()),
+                    representative.canonicalRef(), members.size(), members));
+        }
+        return result;
+    }
+
+    /**
+     * 状態の「未処理度」ランク（小さいほど未処理＝畳み込み時に優先する）。
+     * UNREAD(0) &gt; READ(1) &gt; SNOOZED(2) &gt; ARCHIVED(3)。
+     */
+    private static int stateUnprocessedRank(InboxState state) {
+        return switch (state) {
+            case UNREAD -> 0;
+            case READ -> 1;
+            case SNOOZED -> 2;
+            case ARCHIVED -> 3;
+        };
+    }
+
+    /**
+     * ラベルを sourceType ごとにまとめ取りし、ラベル本体（name/color/icon/sortOrder）を解決する。
+     *
+     * <p>N+1 回避: リンクは sourceType ごとに 1 クエリ（最大ソース種別数回）、ラベル本体は
+     * 出現した {@code labelId} 集合を {@link NotificationLabelRepository#findByIdIn} で <b>1 回だけ</b>
+     * まとめ取りする（item 件数・リンク件数に依らず定数回）。{@code @SQLRestriction("deleted_at IS NULL")}
+     * により論理削除済みラベルは findByIdIn で自動脱落し、孤児リンクは表示から外れる（設計書 §2.3）。</p>
      */
     private Map<String, List<LabelDto>> fetchLabelsBounded(
             Long userId, List<InboxItemDto> raw, Set<InboxSourceType> presentTypes) {
-        Map<String, List<LabelDto>> result = new HashMap<>();
-        // sourceType ごとに sourceId 集合を作り 1 クエリ
+        // sourceType ごとに sourceId 集合を作り 1 クエリでリンクを集める
         Map<InboxSourceType, List<Long>> idsByType = new EnumMap<>(InboxSourceType.class);
         for (InboxItemDto r : raw) {
             idsByType.computeIfAbsent(r.sourceType(), t -> new ArrayList<>()).add(r.sourceId());
         }
+
+        List<InboxLabelLinkEntity> allLinks = new ArrayList<>();
+        Set<UUID> labelIds = new LinkedHashSet<>();
         for (InboxSourceType type : presentTypes) {
             List<Long> ids = idsByType.get(type);
             if (ids == null || ids.isEmpty()) {
@@ -173,12 +303,33 @@ public class InboxAggregationService {
             }
             List<InboxLabelLinkEntity> links =
                     labelLinkRepository.findByUserIdAndSourceTypeAndSourceIdIn(userId, type, ids);
+            allLinks.addAll(links);
             for (InboxLabelLinkEntity link : links) {
-                // ラベル本体（notification_labels）の解決はラベル機能本実装（Phase 2）で行う。
-                // MVP では link が無い限り空のため、ここはリンク存在時のプレースホルダ。
-                result.computeIfAbsent(key(link.getSourceType(), link.getSourceId()), x -> new ArrayList<>())
-                        .add(new LabelDto(link.getLabelId(), null, null, null, 0));
+                labelIds.add(link.getLabelId());
             }
+        }
+
+        if (labelIds.isEmpty()) {
+            return new HashMap<>();
+        }
+
+        // ラベル本体を 1 回でまとめ取り（論理削除済みは @SQLRestriction で脱落）
+        Map<UUID, NotificationLabelEntity> labelById = new HashMap<>();
+        for (NotificationLabelEntity label : labelRepository.findByIdIn(labelIds)) {
+            labelById.put(label.getId(), label);
+        }
+
+        // 各通知（source キー）へ解決済みラベルを束ねる
+        Map<String, List<LabelDto>> result = new HashMap<>();
+        for (InboxLabelLinkEntity link : allLinks) {
+            NotificationLabelEntity label = labelById.get(link.getLabelId());
+            if (label == null) {
+                // 論理削除済み（孤児リンク）→ 表示から除外（設計書 §2.3）
+                continue;
+            }
+            result.computeIfAbsent(key(link.getSourceType(), link.getSourceId()), x -> new ArrayList<>())
+                    .add(new LabelDto(label.getId(), label.getName(), label.getColor(),
+                            label.getIcon(), label.getSortOrder()));
         }
         return result;
     }

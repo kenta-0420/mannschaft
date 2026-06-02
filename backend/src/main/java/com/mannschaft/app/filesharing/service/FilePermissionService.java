@@ -1,6 +1,7 @@
 package com.mannschaft.app.filesharing.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.filesharing.FileSharingErrorCode;
 import com.mannschaft.app.filesharing.FileSharingMapper;
 import com.mannschaft.app.filesharing.PermissionTargetType;
@@ -27,6 +28,8 @@ public class FilePermissionService {
 
     private final FilePermissionRepository permissionRepository;
     private final FileSharingMapper fileSharingMapper;
+    /** F08.7.1 / 04: 大会フォルダ／ファイルの権限操作に対する横断認可ゲート（大会以外は no-op）。 */
+    private final FolderScopeAccessGuard folderScopeAccessGuard;
 
     /**
      * 対象の権限一覧を取得する。
@@ -36,6 +39,8 @@ public class FilePermissionService {
      * @return 権限レスポンスリスト
      */
     public List<PermissionResponse> listPermissions(String targetType, Long targetId) {
+        // F08.7.1 / 04 §3: 大会フォルダ／ファイルの権限一覧は閲覧認可を通す。
+        checkScopeView(targetType, targetId);
         List<FilePermissionEntity> permissions = permissionRepository.findByTargetTypeAndTargetId(targetType, targetId);
         return fileSharingMapper.toPermissionResponseList(permissions);
     }
@@ -48,6 +53,8 @@ public class FilePermissionService {
      */
     @Transactional
     public PermissionResponse createPermission(CreatePermissionRequest request) {
+        // F08.7.1 / 04 §5: 大会フォルダ／ファイルへの権限付与は投稿権限を通す。
+        checkScopePost(request.getTargetType(), request.getTargetId());
         FilePermissionEntity entity = FilePermissionEntity.builder()
                 .targetType(request.getTargetType())
                 .targetId(request.getTargetId())
@@ -70,7 +77,33 @@ public class FilePermissionService {
     public void deletePermission(Long permissionId) {
         FilePermissionEntity entity = permissionRepository.findById(permissionId)
                 .orElseThrow(() -> new BusinessException(FileSharingErrorCode.PERMISSION_NOT_FOUND));
+        // F08.7.1 / 04 §5: 大会フォルダ／ファイルの権限削除は投稿権限を通す。
+        checkScopePost(entity.getTargetType(), entity.getTargetId());
         permissionRepository.delete(entity);
         log.info("権限削除: permissionId={}", permissionId);
+    }
+
+    /**
+     * 権限対象（FILE / FOLDER）の大会フォルダスコープ閲覧認可を通す。大会以外は no-op。
+     */
+    private void checkScopeView(String targetType, Long targetId) {
+        Long userId = SecurityUtils.getCurrentUserIdOrNull();
+        if ("FILE".equalsIgnoreCase(targetType)) {
+            folderScopeAccessGuard.checkFolderViewByFileId(targetId, userId);
+        } else if ("FOLDER".equalsIgnoreCase(targetType)) {
+            folderScopeAccessGuard.checkFolderViewByFolderId(targetId, userId);
+        }
+    }
+
+    /**
+     * 権限対象（FILE / FOLDER）の大会フォルダスコープ投稿認可を通す。大会以外は no-op。
+     */
+    private void checkScopePost(String targetType, Long targetId) {
+        Long userId = SecurityUtils.getCurrentUserIdOrNull();
+        if ("FILE".equalsIgnoreCase(targetType)) {
+            folderScopeAccessGuard.checkFolderPostByFileId(targetId, userId);
+        } else if ("FOLDER".equalsIgnoreCase(targetType)) {
+            folderScopeAccessGuard.checkFolderPostByFolderId(targetId, userId);
+        }
     }
 }

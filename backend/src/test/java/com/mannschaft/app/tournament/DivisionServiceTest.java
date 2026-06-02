@@ -31,7 +31,10 @@ class DivisionServiceTest {
 
     @Mock private TournamentDivisionRepository divisionRepository;
     @Mock private TournamentParticipantRepository participantRepository;
+    @Mock private com.mannschaft.app.tournament.repository.TournamentRepository tournamentRepository;
     @Mock private TournamentMapper mapper;
+    @Mock private com.mannschaft.app.tournament.service.TournamentContactSpaceProvisioningService contactSpaceProvisioningService;
+    @Mock private com.mannschaft.app.filesharing.service.SharedFolderService sharedFolderService;
 
     @InjectMocks
     private DivisionService service;

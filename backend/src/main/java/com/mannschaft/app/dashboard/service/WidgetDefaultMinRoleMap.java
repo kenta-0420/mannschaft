@@ -46,6 +46,9 @@ public final class WidgetDefaultMinRoleMap {
         map.put(WidgetKey.TEAM_LATEST_POSTS, MinRole.SUPPORTER);
         map.put(WidgetKey.TEAM_UNREAD_THREADS, MinRole.MEMBER);
         map.put(WidgetKey.TEAM_MEMBER_ATTENDANCE, MinRole.MEMBER);
+        // F08.7.1: 自チーム大会成績／順位表は広報・サポーター関心層に見せてよい（公開性が高い）
+        map.put(WidgetKey.TEAM_TOURNAMENT_RECORD, MinRole.SUPPORTER);
+        map.put(WidgetKey.TEAM_DIVISION_STANDINGS, MinRole.SUPPORTER);
         // TEAM_BILLING / TEAM_PAGE_VIEWS は ADMIN 限定のため対象外
 
         // --- 組織ダッシュボード ---
@@ -54,6 +57,8 @@ public final class WidgetDefaultMinRoleMap {
         map.put(WidgetKey.ORG_TODO, MinRole.MEMBER);
         map.put(WidgetKey.ORG_PROJECT_PROGRESS, MinRole.MEMBER);
         map.put(WidgetKey.ORG_STATS, MinRole.SUPPORTER);
+        // F08.7.1: 主催大会サマリは参加数・首位など内部運用寄り → MEMBER
+        map.put(WidgetKey.ORG_TOURNAMENT_SUMMARY, MinRole.MEMBER);
         // ORG_BILLING は ADMIN 限定のため対象外
 
         DEFAULTS = Collections.unmodifiableMap(map);

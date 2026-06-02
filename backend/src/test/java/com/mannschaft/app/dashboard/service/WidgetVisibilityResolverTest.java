@@ -68,32 +68,37 @@ class WidgetVisibilityResolverTest {
     class DefaultsOnly {
 
         @Test
-        @DisplayName("TEAM スコープ：デフォルト 8 件全てが返る")
-        void team_デフォルト8件() {
+        @DisplayName("TEAM スコープ：デフォルト 10 件全てが返る（F08.7.1 で 2 件追加）")
+        void team_デフォルト10件() {
             given(repository.findByScopeTypeAndScopeId(ScopeType.TEAM, TEAM_ID))
                     .willReturn(List.of());
 
             Map<WidgetKey, MinRole> result = resolver.resolve("TEAM", TEAM_ID);
 
-            assertThat(result).hasSize(8);
+            assertThat(result).hasSize(10);
             assertThat(result.get(WidgetKey.TEAM_NOTICES)).isEqualTo(MinRole.PUBLIC);
             assertThat(result.get(WidgetKey.TEAM_TODO)).isEqualTo(MinRole.MEMBER);
             assertThat(result.get(WidgetKey.TEAM_MEMBER_ATTENDANCE)).isEqualTo(MinRole.MEMBER);
             assertThat(result.get(WidgetKey.TEAM_LATEST_POSTS)).isEqualTo(MinRole.SUPPORTER);
+            // F08.7.1: 大会成績／順位表ウィジェット
+            assertThat(result.get(WidgetKey.TEAM_TOURNAMENT_RECORD)).isEqualTo(MinRole.SUPPORTER);
+            assertThat(result.get(WidgetKey.TEAM_DIVISION_STANDINGS)).isEqualTo(MinRole.SUPPORTER);
         }
 
         @Test
-        @DisplayName("ORGANIZATION スコープ：デフォルト 5 件全てが返る")
-        void organization_デフォルト5件() {
+        @DisplayName("ORGANIZATION スコープ：デフォルト 6 件全てが返る（F08.7.1 で 1 件追加）")
+        void organization_デフォルト6件() {
             given(repository.findByScopeTypeAndScopeId(ScopeType.ORGANIZATION, ORG_ID))
                     .willReturn(List.of());
 
             Map<WidgetKey, MinRole> result = resolver.resolve("ORGANIZATION", ORG_ID);
 
-            assertThat(result).hasSize(5);
+            assertThat(result).hasSize(6);
             assertThat(result.get(WidgetKey.ORG_NOTICES)).isEqualTo(MinRole.PUBLIC);
             assertThat(result.get(WidgetKey.ORG_TODO)).isEqualTo(MinRole.MEMBER);
             assertThat(result.get(WidgetKey.ORG_STATS)).isEqualTo(MinRole.SUPPORTER);
+            // F08.7.1: 主催大会サマリウィジェット
+            assertThat(result.get(WidgetKey.ORG_TOURNAMENT_SUMMARY)).isEqualTo(MinRole.MEMBER);
         }
     }
 
@@ -126,7 +131,7 @@ class WidgetVisibilityResolverTest {
             // 他のキーはデフォルトのまま
             assertThat(result.get(WidgetKey.TEAM_NOTICES)).isEqualTo(MinRole.PUBLIC);
             assertThat(result.get(WidgetKey.TEAM_TODO)).isEqualTo(MinRole.MEMBER);
-            assertThat(result).hasSize(8);
+            assertThat(result).hasSize(10);
         }
 
         @Test
@@ -155,7 +160,7 @@ class WidgetVisibilityResolverTest {
 
             assertThat(result.get(WidgetKey.TEAM_NOTICES)).isEqualTo(MinRole.MEMBER);
             assertThat(result.get(WidgetKey.TEAM_TODO)).isEqualTo(MinRole.PUBLIC);
-            assertThat(result).hasSize(8);
+            assertThat(result).hasSize(10);
         }
     }
 
@@ -184,8 +189,8 @@ class WidgetVisibilityResolverTest {
 
             Map<WidgetKey, MinRole> result = resolver.resolve("TEAM", TEAM_ID);
 
-            // デフォルト 8 件はそのまま、未知キーは含まれない
-            assertThat(result).hasSize(8);
+            // デフォルト 10 件はそのまま、未知キーは含まれない
+            assertThat(result).hasSize(10);
         }
 
         @Test
@@ -205,7 +210,7 @@ class WidgetVisibilityResolverTest {
 
             Map<WidgetKey, MinRole> result = resolver.resolve("TEAM", TEAM_ID);
 
-            assertThat(result).hasSize(8);
+            assertThat(result).hasSize(10);
             assertThat(result).doesNotContainKey(WidgetKey.TEAM_BILLING);
         }
     }

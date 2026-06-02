@@ -120,6 +120,55 @@ public final class TeamSearchSpecifications {
         return (root, query, cb) -> cb.equal(root.get("city"), city);
     }
 
+    /** 都道府県コード完全一致（F22.1 市 Phase 2 足場C）。 */
+    public static Specification<TeamEntity> prefectureCodeEquals(String prefectureCode) {
+        if (prefectureCode == null || prefectureCode.isBlank()) {
+            return (root, query, cb) -> cb.conjunction();
+        }
+        return (root, query, cb) -> cb.equal(root.get("prefectureCode"), prefectureCode);
+    }
+
+    /** 市区町村コード完全一致（F22.1 市 Phase 2 足場C）。 */
+    public static Specification<TeamEntity> cityCodeEquals(String cityCode) {
+        if (cityCode == null || cityCode.isBlank()) {
+            return (root, query, cb) -> cb.conjunction();
+        }
+        return (root, query, cb) -> cb.equal(root.get("cityCode"), cityCode);
+    }
+
+    /**
+     * 都道府県の地域フィルタ（dual-support）。
+     *
+     * <p>F22.1 市 Phase 2 足場C: code が指定されていれば {@code prefecture_code} 一致、
+     * 未指定なら従来の {@code prefecture}（名称）一致に委譲する。Expand 期の後方互換のため、
+     * 旧クライアント（名称送信）と新クライアント（コード送信）の双方を成立させる。</p>
+     *
+     * @param prefectureCode 都道府県コード（優先）
+     * @param prefecture     都道府県名称（code 未指定時のフォールバック）
+     */
+    public static Specification<TeamEntity> prefectureFilter(String prefectureCode, String prefecture) {
+        if (prefectureCode != null && !prefectureCode.isBlank()) {
+            return prefectureCodeEquals(prefectureCode);
+        }
+        return prefectureEquals(prefecture);
+    }
+
+    /**
+     * 市区町村の地域フィルタ（dual-support）。
+     *
+     * <p>F22.1 市 Phase 2 足場C: code が指定されていれば {@code city_code} 一致、
+     * 未指定なら従来の {@code city}（名称）一致に委譲する。</p>
+     *
+     * @param cityCode 市区町村コード（優先）
+     * @param city     市区町村名称（code 未指定時のフォールバック）
+     */
+    public static Specification<TeamEntity> cityFilter(String cityCode, String city) {
+        if (cityCode != null && !cityCode.isBlank()) {
+            return cityCodeEquals(cityCode);
+        }
+        return cityEquals(city);
+    }
+
     /** 業種テンプレート完全一致。 */
     public static Specification<TeamEntity> templateEquals(String template) {
         if (template == null || template.isBlank()) {

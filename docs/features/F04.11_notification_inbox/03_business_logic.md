@@ -1,7 +1,7 @@
 # F04.11: ビジネスロジック
 
 > **ステータス**: 🟢 設計確定（完了・未解決事項ゼロ）
-> **最終更新**: 2026-05-30
+> **最終更新**: 2026-06-01
 > **関連ドキュメント**:
 > - [README.md](./README.md) — 機能概要・A/B 案比較
 > - [01_data_model.md](./01_data_model.md) — DB / DTO
@@ -29,9 +29,12 @@
 ```
 interface InboxSourceAdapter {
   InboxSourceType sourceType();
-  List<InboxItemRaw> fetch(Long userId, FetchWindow window);  // 読み取りのみ・ハードリミット付き
+  List<InboxItemDto> fetch(Long userId, int window);  // 読み取りのみ・境界付きウィンドウ（最大 window 件）
+  boolean isVisibleTo(Long userId, Long sourceId);    // IDOR 防止（triage 書き込み前検証）
 }
 ```
+
+> **境界付きウィンドウ（Phase 3 ③）**: `fetch` は「自ソース内の正しい順序の上位 `window` 件」だけを返す。集約サービスが全ソースの上位ウィンドウを完全全順序でマージ・スライスして取りこぼさない（§4.1）。各アダプタは `Pageable`（`PageRequest.of(0, window)`）等で取得件数を境界付ける（無制限 fetch なし）。
 
 | アダプタ | ソース表 / リポジトリ | 取得条件 | title / excerpt | actionUrl | occurredAt |
 |---------|--------------------|---------|----------------|-----------|-----------|
@@ -55,10 +58,11 @@ interface InboxSourceAdapter {
 
 ---
 
-## 4. 状態マージ（LEFT JOIN 相当）と一覧フロー
+## 4. 状態マージ（LEFT JOIN 相当）と一覧フロー — 境界付きウィンドウページング（Phase 3 ③ 実装済み）
 
 ```
-1. 各アダプタを呼び InboxItemRaw を集める（ソース毎ハードリミット・例: 各100件）
+0. 取得ウィンドウを算出: window = (page+1)*size + SAFETY_MARGIN（= 20）
+1. 各アダプタを window 件で呼び InboxItemRaw を集める（境界付きウィンドウ・各アダプタは Pageable で window 件まで）
 2. オーバーレイをまとめ取り:
      inbox_item_states を user_id で1クエリ取得 → Map<(sourceType,sourceId), state>
      inbox_label_links（+ notification_labels 現役）を user_id で1クエリ取得 → Map<(sourceType,sourceId), List<label>>
@@ -68,11 +72,48 @@ interface InboxSourceAdapter {
      snoozed_until > now              → SNOOZED
      上記以外 かつ sourceRead = true  → READ
      それ以外                         → UNREAD
-4. state フィルタ（INBOX/SNOOZED/ARCHIVED/ALL）・priority・sourceType・labelId で絞り込み
-5. (priority DESC, occurredAt DESC) でメモリソート → page*size でスライス
+4. 名寄せ畳み込み（§8 foldByCanonicalRef）をウィンドウ全体に対して行う（畳み後の件数でページングが効く）
+5. state フィルタ（INBOX/SNOOZED/ARCHIVED/ALL）・priority・sourceType・labelId で絞り込み
+6. 完全な全順序（priority DESC → occurredAt DESC → sourceType名 → sourceId）でメモリソート
+   → [page*size, (page+1)*size) をスライス。hasMore = 畳み後フィルタ後件数 > (page+1)*size
 ```
 
-- **ページング方針**: 複数ソースマージのため真のカーソルは持てない。ソース毎ハードリミット内でのオフセットページング。「インボックス＝直近の仕分け場」と割り切り、深いページの網羅は非保証（[04](./04_security_operations.md) §5 に明記）。
+### 4.1 ページング方針 — なぜ「境界付きウィンドウ」か（方針更新 2026-06-01）
+
+> **旧方針（〜2026-05-30）**: 「ソース毎ハードリミット（各100件等）＋オフセットスライス・深いページは取りこぼし許容」。
+> **新方針（Phase 3 ③ 以降）**: 「**境界付きウィンドウページング**＝各ソースを `Pageable` で window 件まで取得し、完全全順序で決定的にマージ・スライス。当該ページの直近上位を取りこぼさない」。
+
+**複合キーセットカーソルを採らない理由**: 5 ソース横断で「真のカーソル」（複合キーセット）を持つと、各ソースの順序キーが異なる（priority・occurredAt・タイブレークの混在）ため境界条件のバグ温床になり、`{items, page, size, totalEstimated, hasMore}` という **既存 FE レスポンス契約も壊す**。よって複合カーソルは採らず、**境界付きウィンドウ**で「決定的（重複なし・load-more 連続）」を達成する。
+
+**ページング保証の正確な定義（不変条件と限界・是正 2026-06-01）**:
+
+> ⚠️ **以前の「取りこぼしゼロ」断定は不正確だった**。境界付きウィンドウの「欠落しない」不変条件は、**各ソースの fetch 順がグローバル全順序（priority 第一）と整合するとき**にのみ成立する。実 fetch 順が priority と独立なソース（ANNOUNCEMENT/CONFIRMABLE）は、古いが高 priority の項目が window 外へ脱落しうる。以下のとおり**ソース別に保証レベルを正直に記す**。
+
+- 境界付きウィンドウは「`window = (page+1)*size + margin >= (page+1)*size = K` 件を各ソースから取り、集約後に上位 K 件をスライスする」。
+- **不変条件**: 各ソースが「自ソース内を**グローバル全順序と整合する順序**で並べた上位 `window` 件」を返せば、グローバル上位 K 件はその和集合に必ず含まれ、当該ページ `[page*size, (page+1)*size)` の項目は欠落しない。
+- ソートは **完全な全順序**（priority DESC → occurredAt DESC → **sourceType名 → sourceId** のタイブレーク）。同着をタイブレークで一意化し、ページ境界で並びが揺れて隣接ページに項目が漏れる事故を防ぐ（決定的スライス）。
+- `SAFETY_MARGIN`（20）は名寄せ畳み込みによる件数減・境界の同着連なりを吸収する余裕。
+
+**ソース別の取りこぼし保証**:
+
+| アダプタ | 取得方法 | 自ソース fetch 順 | グローバル順との整合 | 取りこぼし保証 |
+|---|---|---|---|---|
+| NOTIFICATION | `findInboxByUserIdOrderByPriorityThenCreatedAtDesc(userId, excludedType, PageRequest.of(0, window))`（**priority 第一順クエリを新設**） | priority 降順（URGENT→HIGH→NORMAL→LOW）→ created_at 降順 | **整合** | **取りこぼしなし** |
+| MENTION | `findByMentionedUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, window))`（**Pageable 版**） | created_at 降順 | **整合**（priority 一律 HIGH ゆえ priority による並べ替えが起きない） | **取りこぼしなし** |
+| TODO_DUE | `findMyDueTodos(userId, cutoff, PageRequest.of(0, window))`（DB 側で「未完了∧due_date≤cutoff」に絞り due_date 昇順） | due_date 昇順（期限切れ→当日→近接） | **整合**（due_date 昇順 ↔ priority 降順 URGENT→HIGH→NORMAL が等価） | **取りこぼしなし** |
+| ANNOUNCEMENT | `findByScope(..., limit=window)` をスコープ毎に（**DashboardService と共有・ORDER BY 改変不可**） | ピン留め優先→created_at 降順 | **独立**（priority と無関係） | **限界あり**（下記） |
+| CONFIRMABLE | `findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(userId, PageRequest.of(0, window))`（JOIN FETCH＋Pageable） | 親 created_at 降順 | **独立**（24h 昇格は時刻依存で SQL 順序化困難） | **限界あり**（下記） |
+
+> **ANNOUNCEMENT の限界（正直な明文化）**: 取得順は `is_pinned, created_at` で priority と独立。`findByScope` は `DashboardService.getTeamDashboard`/`getOrgDashboard` と**共有**しており、ここで ORDER BY を priority 第一に改変すると他機能（ダッシュボードのお知らせ表示順）へ波及するため**改変しない**。結果として、**古い URGENT お知らせが多数の新着お知らせに埋もれて window 外へ脱落**し、後ページ送りになりうる。ただし pinned/有効なお知らせ件数は通常小さく、「直近の仕分け場」用途では実害が限定的。
+>
+> **CONFIRMABLE の限界（正直な明文化）**: 親 created_at 降順で取得するが、priority は「未確認かつ締切 24h 以内なら URGENT 昇格」（時刻依存・[01](./01_data_model.md) §3.2）。この昇格は現在時刻に依存するため SQL の ORDER BY で順序化するのが困難で、**created_at が古いが締切 24h 以内で URGENT 昇格すべき項目が window 外へ脱落**し、稀に順位逆転で後ページ送りになりうる。ただし**保留中（未確認）の確認通知は通常ごく少数**ゆえ window 内にほぼ収まり、実害は限定的。
+>
+> ANNOUNCEMENT・CONFIRMABLE の完全な priority 第一化は、共有クエリの分岐 or 専用クエリ新設・時刻依存順序のマテリアライズが必要であり、将来課題とする。
+
+> **CONFIRMABLE / TODO_DUE の従来「無制限 fetch」を根絶**: 以前は MENTION/CONFIRMABLE/TODO_DUE が全件取得していた。Phase 3 ③ で全ソースを `Pageable`（または DB 側絞り込み＋ Pageable）に統一し、メモリに載る件数を `window` で境界付けた。TODO_DUE は従来 `findMyTodos` の全件取得＋Java フィルタだったが、DB 側で「未完了∧近接/超過」に絞ってから上限を掛ける `findMyDueTodos` に置換した。
+
+> **サマリ（タブ/バッジ）**: `getSummary` は概算で十分なため `SUMMARY_WINDOW`（500）の広めウィンドウで集計する。
+
 - **孤児の除外**: アダプタが返すのは生存ソースのみ。オーバーレイにあってソースが消えた `(sourceType,sourceId)` はマージで自然に脱落（表示されない）。物理掃除は任意（Phase 3）。
 
 ---
@@ -85,6 +126,38 @@ B 案では復帰は **集約時判定** で実現する：
 - 一覧 `state=INBOX` のクエリ条件に `(snoozed_until IS NULL OR snoozed_until <= now)` を含めるため、**時刻到来で自動的に受信箱へ復帰**（行の書き換え・バッチ不要）。
 - `state=SNOOZED` は `snoozed_until > now` のみ。
 - 復帰時に **push 再通知** を出したい場合のみ将来バッチを追加（Phase 3）。MVP では「開いたら戻っている」挙動で十分（ADHD 配慮＝勝手に流れてくる）。
+
+### 5.1 スヌーズ復帰 push 再通知（Phase 3 ②・実装済み）
+
+MVP の「開いたら戻っている」だけでは能動的な催促が無いため、Phase 3 ② で **復帰 push 再通知バッチ**を追加した。
+
+- **バッチ**: `inbox/batch/InboxSnoozeRevivalBatchService`（`@BatchEndpoint(name="inbox-snooze-revival")`）。
+  - スケジュール: 5 分毎（`cron="0 */5 * * * *" zone="Asia/Tokyo"`）。`@SchedulerLock(lockAtMostFor="PT4M", lockAtLeastFor="PT10S")` で多重起動を防ぐ。
+  - 横断クエリ: `InboxItemStateRepository.findDueForRevival(now, Pageable)` が **全ユーザー横断**で
+    `snoozed_until <= now AND snooze_notified_at IS NULL AND archived_at IS NULL` を `snoozed_until` 昇順に取得（1 回 500 件上限で暴走防止）。
+  - 各行へ push を送ったら `snooze_notified_at = now` を刻んで保存し、**2 回目の実行では再送しない（冪等）**。
+    push 送信が例外でも `snooze_notified_at` を刻まず次回バッチで再試行する（症状を隠さない＝根治原則）。
+- **再スヌーズ時のリセット**: `InboxTriageService.snooze` が upsert 時に `snooze_notified_at` を NULL に戻す。
+  これにより新しい `snoozed_until` 到来時に再度 1 度だけ push できる。
+
+#### 二重 push / 自己増殖の回避（最重要設計判断）
+
+push 基盤（`NotificationDispatchService.dispatch` → WebSocket `/user/{userId}/queue/notifications` ＋ Web Push）は
+`NotificationEntity` を引数に取る設計で、**「通知行を作らず push のみ送る」クリーンな経路は存在しない**
+（`sendViaWebSocket`/`sendViaPush` ともに `NotificationMapper.toNotificationResponse(entity)` で DTO 化するため、
+永続化されていない transient entity を渡すのは脆い）。そのため設計書 §5 が提示する **方針 2** を採用した:
+
+- 復帰 push は `NotificationHelper.notify` で **専用通知種別 `INBOX_SNOOZE_REVIVAL`** として発行する
+  （定数: `com.mannschaft.app.inbox.InboxNotificationTypes.INBOX_SNOOZE_REVIVAL`）。
+  - `source_type="INBOX_REVIVAL"` / `source_id=null` とし、`NotificationService` の visibility ガードは
+    fail-soft で通過する（元項目の可視性はスヌーズ時に検証済み）。`actionUrl="/inbox"`。
+- **`NotificationInboxAdapter.fetch` でこの種別を除外**する
+  （Phase3 ③ で priority 第一順の `NotificationRepository.findInboxByUserIdOrderByPriorityThenCreatedAtDesc` に切替。
+  種別除外の WHERE 条件は同一・取得順を priority 第一にしたのが差分。created_at 降順のみの
+  `findByUserIdAndNotificationTypeNotOrderByCreatedAtDesc` は他用途向けに温存）。
+  → 復帰 push は**ベル/通知一覧には出る**（「あとで見るがそろそろ」の催促）が、
+  **インボックス受信箱には新規カードを生まない**。受信箱には元のスヌーズ項目が §4・§5 の集約時判定で
+  自然に復帰するのみ。これにより push 通知が NOTIFICATION ソースの inbox 項目を増殖させる二重化を根治する。
 
 ---
 
@@ -112,12 +185,35 @@ B 案では復帰は **集約時判定** で実現する：
 
 ---
 
-## 8. 名寄せ（重複）方針
+## 8. 名寄せ（重複）方針 — Phase 3 ① 実装済み
 
-同一事象が複数ソースに現れる場合（例: 同じブログ記事が announcement と notification 両方）：
+同一終端実体が複数ソースに現れる場合（例: 同じブログ記事が announcement と notification 両方）に、1 カードへ畳んで「N 件」とバッジ表示する。誤突合は ADHD ユーザーを最も混乱させる最高リスク領域のため、**「正規化に成功し、かつ終端実体キーが一致するときに限り畳む」**ことを厳守する。
 
-- **MVP は名寄せしない**（各行を素直に並べる）。ソース間で sourceType/targetType の語彙が不一致（VARCHAR vs enum vs targetType）で、安易な突合は「片方だけ既読/アーカイブ」になり ADHD ユーザーを混乱させるため。
-- **Phase 3** で正規化辞書 `InboxDedupeKeyResolver`（`BLOG_POST` 等の終端 EntityKey へ正規化）を導入し、同一 EntityKey を 1 カードに畳んで「2 件の通知」とバッジ表示する（[04](./04_security_operations.md) §8 に将来課題として記録）。
+### 8.1 正規化キー解決（`InboxDedupeKeyResolver`）
+
+各ソース通知が指す**終端実体**を `canonicalRef`（文字列 `"{ReferenceType}:{terminalId}"`）へ正規化する。正規化辞書は既存の `NotificationSourceTypeMapper.resolve(String) → Optional<ReferenceType>` を流用する（語彙の二重管理を避ける）。
+
+| ソース | 終端実体の取り方 | canonicalRef |
+|---|---|---|
+| NOTIFICATION | `notifications.sourceType`（VARCHAR）+ `sourceId` を正規化 | 成功時 `"BLOG_POST:123"` 等／不能時は自分自身 `"NOTIFICATION:{id}"` |
+| ANNOUNCEMENT | `announcement_feeds.sourceType`（enum `AnnouncementSourceType`）+ `sourceId` を正規化（**feed は終端 sourceType+sourceId を保持する**） | 成功時 `"BLOG_POST:123"` 等／不能時は `"ANNOUNCEMENT_FEED:{feedId}"`（畳まれない） |
+| MENTION | `mentions.targetType`（VARCHAR）+ `targetId` を正規化 | 成功時 `"TIMELINE_POST:42"` 等／不能時（`TIMELINE_COMMENT` 等 ReferenceType 未マッピング語）は自分自身 `"MENTION:{id}"` |
+| TODO_DUE | 固有実体（畳む相手なし） | 常に自分自身 `"TODO_DUE:{id}"` |
+| CONFIRMABLE | 固有実体（畳む相手なし） | 常に自分自身 `"CONFIRMABLE:{recipientId}"` |
+
+**誤突合の安全弁**: `terminalId` が null、または `sourceType` が `ReferenceType` に未マッピングの場合は正規化不能（`Optional.empty()`）とし、各アダプタが**自分自身キー**（当該項目に固有・他項目と決して衝突しない値）を `canonicalRef` に詰める。よって正規化不能な項目は決して他項目と同一グループにならない。
+
+### 8.2 畳み込み（`InboxAggregationService.foldByCanonicalRef`）
+
+`collectMergedItems` の後段で `canonicalRef` でグルーピングし、**2 件以上のグループのみ** 1 代表へ畳む（単一はアダプタ既定 `groupCount=1`・`groupMembers` 自分 1 件のまま）。
+
+- **代表**: グループ内で `ITEM_ORDER` 最上位（priority 最優先 → 新着）。
+- **`groupCount`**（`InboxItemDto.groupCount`・int）: 構成メンバー件数。FE の「N 件」バッジ用。
+- **`groupMembers`**（`List<InboxItemRef{sourceType, sourceId}>`）: 全構成メンバーの `(sourceType, sourceId)` を公開。FE は **Phase 2 の bulk triage API** で各メンバーへ一括適用し「片方だけ既読/アーカイブ」を防ぐ（BE triage API は単一のまま＝今回はデータ公開のみ）。
+- **state**: 構成メンバーの最も未処理側（UNREAD > READ > SNOOZED > ARCHIVED の優先順）。
+- **labels**: 全メンバーのラベル和集合（`labelId` で重複排除）。
+
+`InboxItemDto` に `canonicalRef`（String）・`groupCount`（int）・`groupMembers`（List<InboxItemRef>）の 3 フィールドを追加した。`InboxItemRef` は新規小 record（`{InboxSourceType sourceType, Long sourceId}`）。`sourceId` は各ソースのチャネル行 PK（triage オーバーレイ `inbox_item_states` のキー）であり終端実体 ID ではない点に注意。
 
 ---
 
@@ -127,6 +223,7 @@ B 案では復帰は **集約時判定** で実現する：
 [一覧]   GET /inbox → アダプタ並列読取 → オーバーレイ/ラベルまとめ取り
          → 状態マージ → フィルタ → ソート → ページスライス
 [退避]   POST /inbox/snooze|archive → inbox_item_states upsert（楽観更新で即UI反映）
-[復帰]   時刻到来 → 次回 GET /inbox（state=INBOX）で自動的に再表示（バッチなし）
+[復帰]   時刻到来 → 次回 GET /inbox（state=INBOX）で自動的に再表示
+         ＋ Phase3 ②: 5分毎バッチが復帰push（INBOX_SNOOZE_REVIVAL）を1度だけ送る（受信箱には増殖させない・§5.1）
 [ラベル] POST /inbox/labels/{id}/assign → inbox_label_links insert（重複は冪等）
 ```

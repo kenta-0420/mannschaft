@@ -92,6 +92,10 @@ const DATA_WIDGET_KEYS = new Set([
   'member-info',
   // F17.1 §3.12.5: 井戸端ダイジェストはデータ表示型ウィジェット
   'village-lobby-digest',
+  // F08.7.1: 成績ウィジェット 3 種はデータ表示型（横長 col-span=2）
+  'team-standings-record',
+  'team-division-standings',
+  'org-tournament-summary',
 ])
 
 function isDataWidget(key: string): boolean {
@@ -137,6 +141,10 @@ function linkTo(widgetKey: string): string | undefined {
     'attendance-results': `${base}/schedule`,
     // F14.2: チームメンバー定期更新フォーム
     'member-info': `${base}/member-info`,
+    // F08.7.1: 成績ウィジェットの遷移先
+    'team-standings-record': `${base}/tournaments`,
+    'team-division-standings': `${base}/tournaments`,
+    'org-tournament-summary': `${base}/tournaments`,
   }
   return scopeLinks[widgetKey]
 }
@@ -343,6 +351,21 @@ function onDragEnd() {
             <!-- F17.1 §3.12.5: 井戸端ダイジェスト（個人ダッシュボードのみ） -->
             <WidgetVillageLobbyDigest
               v-else-if="w.key === 'village-lobby-digest' && scopeType === 'personal'"
+            />
+            <!-- F08.7.1: 自チーム成績（team スコープのみ） -->
+            <WidgetTeamTournamentRecord
+              v-else-if="w.key === 'team-standings-record' && scopeId && scopeType === 'team'"
+              :team-id="scopeId"
+            />
+            <!-- F08.7.1: 順位表（team スコープのみ） -->
+            <WidgetTeamDivisionStandings
+              v-else-if="w.key === 'team-division-standings' && scopeId && scopeType === 'team'"
+              :team-id="scopeId"
+            />
+            <!-- F08.7.1: 主催大会サマリ（organization スコープのみ） -->
+            <WidgetOrgTournamentSummary
+              v-else-if="w.key === 'org-tournament-summary' && scopeId && scopeType === 'organization'"
+              :org-id="scopeId"
             />
           </div>
         </template>

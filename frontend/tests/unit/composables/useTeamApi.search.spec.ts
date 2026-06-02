@@ -49,6 +49,8 @@ function makePublicSummary(over: Partial<TeamPublicSummary> = {}): TeamPublicSum
     nameKana: 'ホンテン',
     prefecture: '東京都',
     city: '千代田区',
+    prefectureCode: '13',
+    cityCode: '13101',
     template: 'STORE',
     iconUrl: null,
     ...over,
@@ -150,6 +152,45 @@ describe('useTeamApi.searchOrganizationTeams', () => {
     expect(qs.get('page')).toBe('2')
     expect(qs.get('size')).toBe('50')
     expect(qs.get('sort')).toBe('nameKana,asc')
+  })
+
+  it('F22.1: prefectureCode/cityCode を camelCase で送ること（コード優先）', async () => {
+    mockApiFetch.mockResolvedValueOnce(makePagedResponse([]))
+
+    const { searchOrganizationTeams } = useTeamApi()
+    await searchOrganizationTeams(42, {
+      keyword: 'カフェ',
+      prefectureCode: '13',
+      cityCode: '13101',
+      template: 'STORE',
+    })
+
+    const [calledUrl] = mockApiFetch.mock.calls[0] as [string]
+    const qs = new URLSearchParams(calledUrl.split('?')[1])
+    // BE @RequestParam prefectureCode/cityCode（camelCase）と 1:1
+    expect(qs.get('prefectureCode')).toBe('13')
+    expect(qs.get('cityCode')).toBe('13101')
+    expect(qs.get('template')).toBe('STORE')
+  })
+
+  it('F22.1: コード指定時は名称(prefecture/city)を送らない（コード優先・dual-support）', async () => {
+    mockApiFetch.mockResolvedValueOnce(makePagedResponse([]))
+
+    const { searchOrganizationTeams } = useTeamApi()
+    await searchOrganizationTeams(42, {
+      prefecture: '東京都',
+      prefectureCode: '13',
+      city: '千代田区',
+      cityCode: '13101',
+    })
+
+    const [calledUrl] = mockApiFetch.mock.calls[0] as [string]
+    const qs = new URLSearchParams(calledUrl.split('?')[1])
+    expect(qs.get('prefectureCode')).toBe('13')
+    expect(qs.get('cityCode')).toBe('13101')
+    // コードがあるので名称は送られない
+    expect(qs.get('prefecture')).toBeNull()
+    expect(qs.get('city')).toBeNull()
   })
 
   it('200 レスポンスを PagedResponse<TeamSearchItem> として返すこと', async () => {
