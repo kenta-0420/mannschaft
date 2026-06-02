@@ -28,6 +28,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * {@link PublicSitemapController} MockMvc 結合テスト（F19.1 Phase 3）。
@@ -64,6 +65,10 @@ class PublicSitemapControllerTest {
     private ProxyInputConsentRepository proxyInputConsentRepository;
     @MockitoBean
     private ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     @BeforeEach
     void setUp() {
