@@ -31,10 +31,60 @@ const emit = defineEmits<{
 }>()
 
 const { formatDate, formatDateTime: isoFormatDateTime } = useDatetime()
+const { t } = useI18n()
+const scheduleApi = useScheduleApi()
+const notification = useNotification()
 
 function formatDateTime(dateStr: string, allDay: boolean): string {
   if (allDay) return formatDate(dateStr)
   return isoFormatDateTime(dateStr)
+}
+
+// 機能55: 予約タスク（PENDING の取消対応）
+interface ScheduledTaskView {
+  id: string
+  taskType: string
+  scheduledAt: string
+  status: string
+}
+const scheduledTasks = ref<ScheduledTaskView[]>([])
+const cancellingTaskId = ref<string | null>(null)
+
+const taskTypeLabel: Record<string, string> = {
+  SURVEY: t('schedule.scheduled_task.type_survey'),
+  ATTENDANCE: t('schedule.scheduled_task.type_attendance'),
+}
+
+const taskStatusConfig: Record<string, { label: string; severity: string }> = {
+  PENDING: { label: t('schedule.scheduled_task.status_pending'), severity: 'info' },
+  CREATED: { label: t('schedule.scheduled_task.status_created'), severity: 'success' },
+  CANCELLED: { label: t('schedule.scheduled_task.status_cancelled'), severity: 'secondary' },
+  FAILED: { label: t('schedule.scheduled_task.status_failed'), severity: 'danger' },
+}
+
+async function loadScheduledTasks() {
+  try {
+    const res = await scheduleApi.getSchedule(props.scopeType, props.scopeId, props.event.id)
+    const data = (res as { data: Record<string, unknown> }).data ?? {}
+    const raw = (data.scheduledTasks as ScheduledTaskView[] | undefined) ?? []
+    scheduledTasks.value = raw
+  } catch {
+    // 補助表示なので失敗時は空扱いで継続
+    scheduledTasks.value = []
+  }
+}
+
+async function cancelTask(taskId: string) {
+  cancellingTaskId.value = taskId
+  try {
+    await scheduleApi.cancelScheduledTask(props.scopeType, props.scopeId, props.event.id, taskId)
+    notification.success(t('schedule.scheduled_task.cancel_success'))
+    await loadScheduledTasks()
+  } catch {
+    notification.error(t('schedule.scheduled_task.cancel_failed'))
+  } finally {
+    cancellingTaskId.value = null
+  }
 }
 
 const statusConfig: Record<string, { label: string; severity: string }> = {
@@ -56,6 +106,10 @@ onMounted(async () => {
       // サイドパネルの補助情報なので失敗しても 0 件扱いで継続
       delegationCount.value = 0
     }
+  }
+  // 機能55: 予約タスクは編集権限者にのみ表示・取消可能
+  if (props.canEdit) {
+    await loadScheduledTasks()
   }
 })
 </script>
@@ -125,6 +179,41 @@ onMounted(async () => {
       :stats="event.attendanceStats"
       @responded="emit('responded')"
     />
+
+    <!-- 機能55: 予約タスク一覧（管理者 + 1件以上の場合のみ表示） -->
+    <div
+      v-if="canEdit && scheduledTasks.length > 0"
+      class="space-y-2"
+    >
+      <h3 class="text-sm font-medium">{{ $t('schedule.scheduled_task.label') }}</h3>
+      <div
+        v-for="task in scheduledTasks"
+        :key="task.id"
+        class="flex items-center justify-between gap-2 rounded border border-surface-200 p-2 text-sm dark:border-surface-600"
+      >
+        <div class="flex flex-col gap-0.5">
+          <div class="flex items-center gap-2">
+            <span class="font-medium">{{ taskTypeLabel[task.taskType] ?? task.taskType }}</span>
+            <Tag
+              :value="taskStatusConfig[task.status]?.label ?? task.status"
+              :severity="taskStatusConfig[task.status]?.severity ?? 'secondary'"
+              rounded
+            />
+          </div>
+          <span class="text-xs text-surface-500">{{ isoFormatDateTime(task.scheduledAt) }}</span>
+        </div>
+        <Button
+          v-if="task.status === 'PENDING'"
+          :label="$t('schedule.scheduled_task.cancel')"
+          icon="pi pi-times"
+          text
+          size="small"
+          severity="danger"
+          :loading="cancellingTaskId === task.id"
+          @click="cancelTask(task.id)"
+        />
+      </div>
+    </div>
 
     <!-- F03.10 第四陣 Wave2-B 代理出席件数バッジ（管理者 + 1件以上の場合のみ表示） -->
     <div
