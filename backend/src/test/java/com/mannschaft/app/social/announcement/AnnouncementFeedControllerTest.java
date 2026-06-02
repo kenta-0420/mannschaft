@@ -3,6 +3,8 @@ package com.mannschaft.app.social.announcement;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.dashboard.ViewerRole;
+import com.mannschaft.app.dashboard.service.RoleResolver;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.social.announcement.AnnouncementFeedService.AnnouncementFeedItem;
@@ -64,6 +66,10 @@ class AnnouncementFeedControllerTest {
 
     @MockitoBean
     private AnnouncementFeedService announcementFeedService;
+
+    // GET 一覧取得で閲覧者ロールを解決するために必要（固定 "MEMBER" 撤廃）
+    @MockitoBean
+    private RoleResolver roleResolver;
 
     // JwtAuthenticationFilter の依存解決用
     @MockitoBean
@@ -137,6 +143,8 @@ class AnnouncementFeedControllerTest {
                     false,  // hasNext = false
                     1L      // unreadCount
             );
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID))
+                    .willReturn(ViewerRole.MEMBER);
             given(announcementFeedService.getAnnouncementFeed(
                     eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq(USER_ID),
                     anyString(), isNull(), anyInt()))
@@ -159,6 +167,8 @@ class AnnouncementFeedControllerTest {
             // Given
             AnnouncementFeedResult result = new AnnouncementFeedResult(
                     List.of(), null, false, 0L);
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID))
+                    .willReturn(ViewerRole.MEMBER);
             given(announcementFeedService.getAnnouncementFeed(
                     eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq(USER_ID),
                     anyString(), isNull(), anyInt()))

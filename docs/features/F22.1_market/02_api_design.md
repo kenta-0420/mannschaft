@@ -41,6 +41,9 @@
 
 ### 3.1 `GET /api/v1/public/market/listings`
 
+> ⚠️ **実装注意 — レスポンス JSON の camelCase/snake_case 対応**
+> 本節以降の JSON 例（`scope_type`、`display_name`、`prefecture_code`、`total_elements` 等）は**説明用に snake_case 表記の箇所がある**が、実 API のレスポンスフィールドは **Jackson 既定の camelCase**（例: `scopeType`、`displayName`、`prefectureCode`、`totalElements`）で返る。クエリパラメータ（`prefecture`、`city`、`category_id` 等）は snake_case のまま。FE の型定義・API 呼び出し実装では BE の DTO/Controller テストの `jsonPath` と 1:1 で突き合わせること。snake_case の JSON 例をそのまま FE 型にコピーしないこと（既知の実機バグ原因・PR #1210/#1221 で根治済の同種問題を再発させないため）。
+
 地域×ジャンルで絞った「立っている札」の一覧。未ログインでも叩ける（PII抑制DTO）。
 
 **クエリパラメータ**

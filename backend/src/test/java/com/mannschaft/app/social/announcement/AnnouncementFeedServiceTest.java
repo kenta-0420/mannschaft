@@ -27,11 +27,16 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -507,6 +512,63 @@ class AnnouncementFeedServiceTest {
 
             // Then: save は呼ばれない（冪等）
             verify(readStatusRepository, never()).save(any(AnnouncementReadStatusEntity.class));
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // getAnnouncementFeed（可視性漏洩根治）
+    // ═══════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("getAnnouncementFeed（閲覧者ロール → 可視 visibility 集合）")
+    class GetAnnouncementFeed {
+
+        /**
+         * 閲覧者ロール名から findByScope に渡される allowedVisibilities を捕捉する。
+         */
+        private Set<String> captureAllowedVisibilities(String viewerRoleName) {
+            given(feedQueryRepository.findByScope(
+                    eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), isNull(), anyInt()))
+                    .willReturn(List.of());
+
+            announcementFeedService.getAnnouncementFeed(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ADMIN_USER_ID, viewerRoleName, null, 10);
+
+            @SuppressWarnings("unchecked")
+            org.mockito.ArgumentCaptor<Set<String>> captor =
+                    org.mockito.ArgumentCaptor.forClass(Set.class);
+            verify(feedQueryRepository).findByScope(
+                    eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), captor.capture(), isNull(), anyInt());
+            return captor.getValue();
+        }
+
+        @Test
+        @DisplayName("SUPPORTER → {PUBLIC, SUPPORTERS_AND_ABOVE}（MEMBERS_ONLY を露出させない＝漏洩根治）")
+        void supporter_doesNotLeakMembersOnly() {
+            assertThat(captureAllowedVisibilities("SUPPORTER"))
+                    .containsExactlyInAnyOrder("PUBLIC", "SUPPORTERS_AND_ABOVE")
+                    .doesNotContain("MEMBERS_ONLY");
+        }
+
+        @Test
+        @DisplayName("MEMBER → 3 種全部（PUBLIC/SUPPORTERS_AND_ABOVE 取りこぼし解消）")
+        void member_seesAllThree() {
+            assertThat(captureAllowedVisibilities("MEMBER"))
+                    .containsExactlyInAnyOrder("PUBLIC", "SUPPORTERS_AND_ABOVE", "MEMBERS_ONLY");
+        }
+
+        @Test
+        @DisplayName("ADMIN → 3 種全部")
+        void admin_seesAllThree() {
+            assertThat(captureAllowedVisibilities("ADMIN"))
+                    .containsExactlyInAnyOrder("PUBLIC", "SUPPORTERS_AND_ABOVE", "MEMBERS_ONLY");
+        }
+
+        @Test
+        @DisplayName("PUBLIC（ロールなし）→ {PUBLIC} のみ")
+        void public_seesOnlyPublic() {
+            assertThat(captureAllowedVisibilities("PUBLIC"))
+                    .containsExactlyInAnyOrder("PUBLIC");
         }
     }
 }

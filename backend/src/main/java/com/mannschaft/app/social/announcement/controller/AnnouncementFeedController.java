@@ -2,6 +2,8 @@ package com.mannschaft.app.social.announcement.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.dashboard.ViewerRole;
+import com.mannschaft.app.dashboard.service.RoleResolver;
 import com.mannschaft.app.social.announcement.AnnouncementFeedService;
 import com.mannschaft.app.social.announcement.AnnouncementScopeType;
 import com.mannschaft.app.social.announcement.AnnouncementSourceType;
@@ -60,6 +62,7 @@ import java.util.Map;
 public class AnnouncementFeedController {
 
     private final AnnouncementFeedService announcementFeedService;
+    private final RoleResolver roleResolver;
 
     // ═════════════════════════════════════════════════════════════
     // GET /api/v1/teams/{teamId}/announcements — 一覧取得
@@ -84,8 +87,10 @@ public class AnnouncementFeedController {
             @RequestParam(defaultValue = "10") int limit) {
 
         Long userId = SecurityUtils.getCurrentUserId();
+        // 固定 "MEMBER" ではなく、当該チームに対する閲覧者の実ロールを解決して渡す（可視性漏洩根治）。
+        ViewerRole viewerRole = roleResolver.resolveViewerRole(userId, "TEAM", teamId);
         AnnouncementFeedService.AnnouncementFeedResult result = announcementFeedService.getAnnouncementFeed(
-                AnnouncementScopeType.TEAM, teamId, userId, "MEMBER", cursor, limit);
+                AnnouncementScopeType.TEAM, teamId, userId, viewerRole.name(), cursor, limit);
 
         List<AnnouncementFeedItemDto> items = result.data().stream()
                 .map(AnnouncementFeedItemDto::from)

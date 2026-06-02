@@ -1,0 +1,67 @@
+{
+  "schedule": {
+    "common_delete": "删除",
+    "description_label": "说明",
+    "error_title_required": "标题为必填项",
+    "reminder": {
+      "label": "提醒",
+      "add": "添加提醒",
+      "before": "前",
+      "max_reached": "最多可设置5个提醒",
+      "kind_label": "类型",
+      "kind_relative": "相对",
+      "kind_absolute": "绝对",
+      "unit_label": "单位",
+      "unit_minutes": "分钟",
+      "unit_hours": "小时",
+      "unit_days": "天",
+      "relative_value_label": "数值",
+      "absolute_at_label": "通知时间",
+      "error_absolute_required": "请输入绝对提醒的日期和时间",
+      "error_past": "不能指定过去的日期和时间"
+    },
+    "scheduled_survey": {
+      "label": "预约创建问卷",
+      "scheduled_at": "创建时间",
+      "title_label": "问卷标题",
+      "title_placeholder": "请输入问卷标题",
+      "anonymous": "允许匿名回答",
+      "results_visibility": "结果公开范围",
+      "visibility_public": "对所有人公开",
+      "visibility_owner": "仅创建者",
+      "visibility_respondents": "仅回答者",
+      "question_placeholder": "请输入问题",
+      "qtype_single": "单选",
+      "qtype_multiple": "多选",
+      "required": "必填",
+      "option_placeholder": "请输入选项",
+      "add_option": "添加选项",
+      "add_question": "添加问题",
+      "error_scheduled_at_required": "请输入问卷的创建时间",
+      "error_past": "问卷的创建时间必须为将来"
+    },
+    "scheduled_attendance": {
+      "label": "预约创建出勤征集",
+      "scheduled_at": "创建时间",
+      "deadline": "回答截止时间",
+      "comment_option": "评论",
+      "comment_none": "不可评论",
+      "comment_optional": "评论可选",
+      "comment_required": "评论必填",
+      "error_scheduled_at_required": "请输入出勤征集的创建时间",
+      "error_past": "出勤征集的创建时间必须为将来"
+    },
+    "scheduled_task": {
+      "label": "预约任务",
+      "type_survey": "预约问卷",
+      "type_attendance": "预约出勤征集",
+      "status_pending": "预约中",
+      "status_created": "已创建",
+      "status_cancelled": "已取消",
+      "status_failed": "失败",
+      "cancel": "取消",
+      "cancel_success": "已取消预约任务",
+      "cancel_failed": "取消预约任务失败"
+    }
+  }
+}

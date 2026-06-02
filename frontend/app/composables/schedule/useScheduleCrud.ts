@@ -96,6 +96,19 @@ export function useScheduleCrud() {
     })
   }
 
+  // === 機能55: 予約タスク取消（PENDING のみ・204/404/409） ===
+  async function cancelScheduledTask(
+    scopeType: 'team' | 'organization',
+    scopeId: number,
+    scheduleId: number,
+    taskId: string,
+  ) {
+    return api(
+      `${buildBase(scopeType, scopeId)}/schedules/${scheduleId}/scheduled-tasks/${taskId}`,
+      { method: 'DELETE' },
+    )
+  }
+
   // === Duplicate ===
   async function duplicateSchedule(
     scopeType: 'team' | 'organization',
@@ -196,6 +209,7 @@ export function useScheduleCrud() {
     updateSchedule,
     deleteSchedule,
     cancelSchedule,
+    cancelScheduledTask,
     duplicateSchedule,
     getCalendarMonth,
     getCategories,
