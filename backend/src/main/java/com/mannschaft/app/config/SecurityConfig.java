@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -26,9 +27,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * セキュリティ設定。JwtAuthenticationFilter を UsernamePasswordAuthenticationFilter の前に挿入し、
  * Bearer トークンによるステートレス認証を実現する。
  * ProxyInputContextFilter は JwtAuthenticationFilter の直後に実行される。
+ *
+ * <p>{@code @EnableMethodSecurity(prePostEnabled = true)} により {@code @PreAuthorize} /
+ * {@code @PostAuthorize} が有効化される（認可基盤根治 Phase 3）。</p>
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 @RequiredArgsConstructor
 public class SecurityConfig {
 

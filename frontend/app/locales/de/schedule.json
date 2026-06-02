@@ -1,0 +1,67 @@
+{
+  "schedule": {
+    "common_delete": "Löschen",
+    "description_label": "Beschreibung",
+    "error_title_required": "Der Titel ist erforderlich",
+    "reminder": {
+      "label": "Erinnerungen",
+      "add": "Erinnerung hinzufügen",
+      "before": "vorher",
+      "max_reached": "Sie können bis zu 5 Erinnerungen festlegen",
+      "kind_label": "Typ",
+      "kind_relative": "Relativ",
+      "kind_absolute": "Absolut",
+      "unit_label": "Einheit",
+      "unit_minutes": "Minuten",
+      "unit_hours": "Stunden",
+      "unit_days": "Tage",
+      "relative_value_label": "Wert",
+      "absolute_at_label": "Benachrichtigen am",
+      "error_absolute_required": "Bitte geben Sie Datum und Uhrzeit für die absolute Erinnerung ein",
+      "error_past": "Ein Datum in der Vergangenheit kann nicht angegeben werden"
+    },
+    "scheduled_survey": {
+      "label": "Umfrage planen",
+      "scheduled_at": "Erstellungszeitpunkt",
+      "title_label": "Umfragetitel",
+      "title_placeholder": "Geben Sie den Umfragetitel ein",
+      "anonymous": "Anonyme Antworten zulassen",
+      "results_visibility": "Sichtbarkeit der Ergebnisse",
+      "visibility_public": "Für alle sichtbar",
+      "visibility_owner": "Nur Ersteller",
+      "visibility_respondents": "Nur Teilnehmende",
+      "question_placeholder": "Geben Sie eine Frage ein",
+      "qtype_single": "Einfachauswahl",
+      "qtype_multiple": "Mehrfachauswahl",
+      "required": "Erforderlich",
+      "option_placeholder": "Geben Sie eine Option ein",
+      "add_option": "Option hinzufügen",
+      "add_question": "Frage hinzufügen",
+      "error_scheduled_at_required": "Bitte geben Sie den Erstellungszeitpunkt der Umfrage ein",
+      "error_past": "Der Erstellungszeitpunkt der Umfrage muss in der Zukunft liegen"
+    },
+    "scheduled_attendance": {
+      "label": "Anwesenheitsabfrage planen",
+      "scheduled_at": "Erstellungszeitpunkt",
+      "deadline": "Antwortfrist",
+      "comment_option": "Kommentare",
+      "comment_none": "Keine Kommentare",
+      "comment_optional": "Optionale Kommentare",
+      "comment_required": "Erforderliche Kommentare",
+      "error_scheduled_at_required": "Bitte geben Sie den Erstellungszeitpunkt der Anwesenheitsabfrage ein",
+      "error_past": "Der Erstellungszeitpunkt der Anwesenheitsabfrage muss in der Zukunft liegen"
+    },
+    "scheduled_task": {
+      "label": "Geplante Aufgaben",
+      "type_survey": "Geplante Umfrage",
+      "type_attendance": "Geplante Anwesenheitsabfrage",
+      "status_pending": "Ausstehend",
+      "status_created": "Erstellt",
+      "status_cancelled": "Abgebrochen",
+      "status_failed": "Fehlgeschlagen",
+      "cancel": "Abbrechen",
+      "cancel_success": "Die geplante Aufgabe wurde abgebrochen",
+      "cancel_failed": "Die geplante Aufgabe konnte nicht abgebrochen werden"
+    }
+  }
+}

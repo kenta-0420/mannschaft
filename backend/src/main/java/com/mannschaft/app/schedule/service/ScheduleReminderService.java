@@ -230,10 +230,13 @@ public class ScheduleReminderService {
      * エンティティをリマインダーレスポンスDTOに変換する。
      */
     private ReminderResponse toReminderResponse(ScheduleAttendanceReminderEntity entity) {
-        return new ReminderResponse(
-                entity.getId(),
-                entity.getRemindAt(),
-                entity.getIsSent(),
-                entity.getSentAt());
+        return ReminderResponse.builder()
+                .id(entity.getId())
+                .reminderKind(entity.getReminderKind() != null ? entity.getReminderKind().name() : null)
+                .remindAt(entity.getRemindAt())
+                .remindBeforeMinutes(entity.getRemindBeforeMinutes())
+                .isSent(entity.getIsSent())
+                .sentAt(entity.getSentAt())
+                .build();
     }
 }

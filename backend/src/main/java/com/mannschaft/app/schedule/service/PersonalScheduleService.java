@@ -15,6 +15,7 @@ import com.mannschaft.app.schedule.dto.BatchDeleteResponse;
 import com.mannschaft.app.schedule.dto.CreatePersonalScheduleRequest;
 import com.mannschaft.app.schedule.dto.PersonalScheduleResponse;
 import com.mannschaft.app.schedule.dto.RecurrenceRuleDto;
+import com.mannschaft.app.schedule.dto.ReminderResponse;
 import com.mannschaft.app.schedule.dto.UpdatePersonalScheduleRequest;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.event.ScheduleCancelledEvent;
@@ -182,7 +183,9 @@ public class PersonalScheduleService {
     public PersonalScheduleResponse getPersonalSchedule(Long scheduleId, Long userId) {
         ScheduleEntity schedule = findScheduleOrThrow(scheduleId);
         validateOwner(schedule, userId);
-        return toPersonalScheduleResponse(schedule, Collections.emptyList());
+        // 詳細 GET では相対・絶対 両方のリマインダーを露出する（足軽3 時点で詳細にリマインダーが
+        // 一切載っていなかった不足の根治）。relative 分（分数）は後方互換の reminders にも反映する。
+        return toPersonalScheduleResponse(schedule, loadReminders(scheduleId), loadDetailedReminders(scheduleId));
     }
 
     /**
@@ -403,7 +406,28 @@ public class PersonalScheduleService {
     private List<Integer> loadReminders(Long scheduleId) {
         return reminderRepository.findByScheduleIdOrderByRemindBeforeMinutesAsc(scheduleId)
                 .stream()
+                .filter(r -> r.getReminderKind() == ReminderKind.RELATIVE)
                 .map(PersonalScheduleReminderEntity::getRemindBeforeMinutes)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+    }
+
+    /**
+     * 個人スケジュールのリマインダー詳細（相対・絶対 両方）を {@link ReminderResponse} 一覧で取得する。
+     *
+     * <p>機能55 第三陣: 詳細 GET で相対（remindBeforeMinutes）と絶対（remindAt）の両方を露出する。
+     * 個人リマインダーは送信フラグとして {@code notified} を持つ（{@code isSent}/{@code sentAt} は持たない）。</p>
+     */
+    private List<ReminderResponse> loadDetailedReminders(Long scheduleId) {
+        return reminderRepository.findByScheduleIdOrderByRemindBeforeMinutesAsc(scheduleId)
+                .stream()
+                .map(r -> ReminderResponse.builder()
+                        .id(r.getId())
+                        .reminderKind(r.getReminderKind() != null ? r.getReminderKind().name() : null)
+                        .remindAt(r.getRemindAt())
+                        .remindBeforeMinutes(r.getRemindBeforeMinutes())
+                        .notified(r.getNotified())
+                        .build())
                 .toList();
     }
 
@@ -552,6 +576,19 @@ public class PersonalScheduleService {
      */
     private PersonalScheduleResponse toPersonalScheduleResponse(ScheduleEntity entity,
                                                                  List<Integer> reminders) {
+        return toPersonalScheduleResponse(entity, reminders, null);
+    }
+
+    /**
+     * エンティティを個人スケジュールレスポンスDTOに変換する（リマインダー詳細つき・機能55 第三陣）。
+     *
+     * @param entity            スケジュールエンティティ
+     * @param reminders         相対指定リマインダー（分）— 後方互換フィールド
+     * @param detailedReminders リマインダー詳細（相対・絶対 両方）。一覧では null
+     */
+    private PersonalScheduleResponse toPersonalScheduleResponse(ScheduleEntity entity,
+                                                                 List<Integer> reminders,
+                                                                 List<ReminderResponse> detailedReminders) {
         String createdByDisplayName = nameResolverService.resolveUserDisplayName(entity.getCreatedBy());
         return PersonalScheduleResponse.builder()
                 .id(entity.getId())
@@ -565,6 +602,7 @@ public class PersonalScheduleService {
                         deserializeRecurrenceRule(entity.getRecurrenceRule()),
                         entity.getGoogleCalendarEventId() != null))
                 .reminders(reminders)
+                .detailedReminders(detailedReminders)
                 .audit(new PersonalScheduleResponse.PersonalAuditDto(
                         entity.getCreatedAt(), entity.getUpdatedAt(), createdByDisplayName))
                 .build();
