@@ -7,6 +7,7 @@ import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.EventType;
 import com.mannschaft.app.schedule.MinResponseRole;
 import com.mannschaft.app.schedule.MinViewRole;
+import com.mannschaft.app.schedule.ReminderKind;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.ScheduleStatus;
 import com.mannschaft.app.schedule.ScheduleVisibility;
@@ -47,7 +48,8 @@ public class PersonalScheduleService {
 
     private static final int PERSONAL_SCHEDULE_SOFT_LIMIT = 1000;
     private static final int BATCH_DELETE_LIMIT = 50;
-    private static final int MAX_PERSONAL_REMINDERS = 3;
+    /** 個人スケジュールの相対・絶対を合算したリマインダー上限件数（機能55 第二陣で 3→5 拡張）。 */
+    private static final int MAX_TOTAL_PERSONAL_REMINDERS = CreatePersonalScheduleRequest.MAX_TOTAL_REMINDERS;
     private static final String SCOPE_TYPE_PERSONAL = "PERSONAL";
     private static final String UPDATE_SCOPE_THIS_ONLY = "THIS_ONLY";
     private static final String UPDATE_SCOPE_THIS_AND_FOLLOWING = "THIS_AND_FOLLOWING";
@@ -107,7 +109,8 @@ public class PersonalScheduleService {
         //   createSchedule を呼ぶか、展開ロジックをここで再実装する）
         // 現時点では親スケジュールの recurrenceRule を保持し、子展開は ScheduleService に委譲
 
-        List<Integer> savedReminders = saveReminders(schedule.getId(), req.getReminders());
+        List<Integer> savedReminders = saveReminders(
+                schedule.getId(), req.getReminders(), req.getAbsoluteReminders());
 
         // イベント発行
         eventPublisher.publishEvent(new ScheduleCreatedEvent(
@@ -215,8 +218,9 @@ public class PersonalScheduleService {
 
         schedule = scheduleRepository.save(schedule);
 
+        // 更新リクエスト（UpdatePersonalScheduleRequest）は相対指定のみ対応のため絶対分は null。
         List<Integer> updatedReminders = req.getReminders() != null
-                ? saveReminders(schedule.getId(), req.getReminders())
+                ? saveReminders(schedule.getId(), req.getReminders(), null)
                 : loadReminders(schedule.getId());
 
         // イベント発行
@@ -353,22 +357,47 @@ public class PersonalScheduleService {
         return titleMatch || locationMatch;
     }
 
-    private List<Integer> saveReminders(Long scheduleId, List<Integer> reminders) {
+    /**
+     * 個人スケジュールのリマインダーを保存する（相対・絶対両対応）。
+     *
+     * <p>相対指定（開始N分前）は {@link ReminderKind#RELATIVE}、絶対指定（固定日時）は
+     * {@link ReminderKind#ABSOLUTE} として保存する。相対・絶対の合算件数は最大
+     * {@link #MAX_TOTAL_PERSONAL_REMINDERS} 件。返り値は後方互換のため相対分（分）のみを返す
+     * （絶対分のレスポンス露出は FE 拡張に委ねる）。</p>
+     *
+     * @param scheduleId       スケジュールID
+     * @param reminders        相対指定リマインダー（開始N分前）
+     * @param absoluteReminders 絶対指定リマインダー（固定日時）
+     * @return 保存した相対指定リマインダー（分）の一覧
+     */
+    private List<Integer> saveReminders(Long scheduleId, List<Integer> reminders,
+                                        List<LocalDateTime> absoluteReminders) {
         reminderRepository.deleteByScheduleId(scheduleId);
-        if (reminders == null || reminders.isEmpty()) {
+
+        List<Integer> relative = reminders != null ? reminders : Collections.emptyList();
+        List<LocalDateTime> absolute = absoluteReminders != null ? absoluteReminders : Collections.emptyList();
+
+        if (relative.isEmpty() && absolute.isEmpty()) {
             return Collections.emptyList();
         }
-        if (reminders.size() > MAX_PERSONAL_REMINDERS) {
+        if (relative.size() + absolute.size() > MAX_TOTAL_PERSONAL_REMINDERS) {
             throw new BusinessException(ScheduleErrorCode.PERSONAL_REMINDER_LIMIT_EXCEEDED);
         }
-        List<PersonalScheduleReminderEntity> entities = reminders.stream()
-                .map(minutes -> PersonalScheduleReminderEntity.builder()
-                        .scheduleId(scheduleId)
-                        .remindBeforeMinutes(minutes)
-                        .build())
-                .toList();
+
+        List<PersonalScheduleReminderEntity> entities = new ArrayList<>();
+        relative.forEach(minutes -> entities.add(PersonalScheduleReminderEntity.builder()
+                .scheduleId(scheduleId)
+                .remindBeforeMinutes(minutes)
+                .reminderKind(ReminderKind.RELATIVE)
+                .build()));
+        absolute.forEach(remindAt -> entities.add(PersonalScheduleReminderEntity.builder()
+                .scheduleId(scheduleId)
+                .remindAt(remindAt)
+                .reminderKind(ReminderKind.ABSOLUTE)
+                .build()));
+
         reminderRepository.saveAll(entities);
-        return new ArrayList<>(reminders);
+        return new ArrayList<>(relative);
     }
 
     private List<Integer> loadReminders(Long scheduleId) {
