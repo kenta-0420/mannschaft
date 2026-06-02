@@ -13,7 +13,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.slf4j.Logger;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -77,18 +76,13 @@ class SecurityIncident70hAlertBatchServiceTest {
         given(securityIncidentRepository.findAlertTargets(any(LocalDateTime.class)))
                 .willReturn(List.of(incident));
 
-        UserEntity admin = new UserEntity();
-        // リフレクションで id と email をセット
-        try {
-            java.lang.reflect.Field id = UserEntity.class.getDeclaredField("id");
-            id.setAccessible(true);
-            id.set(admin, 1L);
-            java.lang.reflect.Field email = UserEntity.class.getDeclaredField("email");
-            email.setAccessible(true);
-            email.set(admin, "admin@example.com");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        UserEntity admin = UserEntity.builder()
+                .email("admin@example.com")
+                .lastName("管理")
+                .firstName("者")
+                .displayName("管理者")
+                .isSearchable(false)
+                .build();
         given(userRoleRepository.findSystemAdminUserIds()).willReturn(List.of(1L));
         given(userRepository.findByIdIn(List.of(1L))).willReturn(List.of(admin));
 
