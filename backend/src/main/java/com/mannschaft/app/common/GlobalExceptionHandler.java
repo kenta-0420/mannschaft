@@ -601,7 +601,20 @@ public class GlobalExceptionHandler {
             Map.entry("INBOX_SOURCE_NOT_FOUND", HttpStatus.NOT_FOUND),          // triage 対象通知が不在 / 本人宛てでない
             Map.entry("INBOX_LABEL_NAME_DUPLICATE", HttpStatus.CONFLICT),       // 現役同名ラベル
             Map.entry("INBOX_LABEL_LIMIT_EXCEEDED", HttpStatus.UNPROCESSABLE_ENTITY),    // ラベル 20 件上限超過
-            Map.entry("INBOX_LABEL_PER_ITEM_EXCEEDED", HttpStatus.UNPROCESSABLE_ENTITY)  // 1 通知 10 ラベル上限超過
+            Map.entry("INBOX_LABEL_PER_ITEM_EXCEEDED", HttpStatus.UNPROCESSABLE_ENTITY),  // 1 通知 10 ラベル上限超過
+            // F22.1 謝礼決済 Connect / エスクロー（02_api_design.md §7）
+            //   Severity 既定（WARN=400 / ERROR=500）では設計の 403/404/409/422 を満たせないため明示登録する（#1279 前科）。
+            Map.entry("PAYMENT_C001", HttpStatus.FORBIDDEN),                  // 認可エラー / IDOR
+            Map.entry("PAYMENT_C002", HttpStatus.NOT_FOUND),                 // escrow / connect 不在・scope 不一致で秘匿
+            Map.entry("PAYMENT_C010", HttpStatus.UNPROCESSABLE_ENTITY),      // PRICE_REQUIRED
+            Map.entry("PAYMENT_C011", HttpStatus.UNPROCESSABLE_ENTITY),      // PAYEE_REQUIRED
+            Map.entry("PAYMENT_C012", HttpStatus.UNPROCESSABLE_ENTITY),      // PAYEE_USER_REQUIRED
+            Map.entry("PAYMENT_C013", HttpStatus.UNPROCESSABLE_ENTITY),      // PAYEE_NOT_IN_SCOPE
+            Map.entry("PAYMENT_C020", HttpStatus.CONFLICT),                  // ALREADY_REFUNDED
+            Map.entry("PAYMENT_C021", HttpStatus.UNPROCESSABLE_ENTITY),      // REFUND_AMOUNT_EXCEEDS
+            Map.entry("PAYMENT_C030", HttpStatus.CONFLICT),                  // ONBOARDING_NOT_READY
+            Map.entry("PAYMENT_C040", HttpStatus.BAD_REQUEST),               // WEBHOOK_SIGNATURE_INVALID
+            Map.entry("PAYMENT_C041", HttpStatus.CONFLICT)                   // AUTHORIZATION_FAILED
     );
 
     /**
