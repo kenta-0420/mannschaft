@@ -175,6 +175,8 @@ public class SecurityConfig {
                 // F12.5 フロントエンドエラー追跡（認証不要）
                 .requestMatchers(HttpMethod.POST, "/api/v1/error-reports").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/active-incidents").permitAll()
+                // CSP 違反レポート受信（ブラウザ自動送信のため認証不要）
+                .requestMatchers(HttpMethod.POST, "/api/v1/security/csp-reports").permitAll()
                 // F10.6 Phase 10-γ-③-a: SSR エラー受信（認証不要。コントローラーが内部トークンで検証）
                 .requestMatchers(HttpMethod.POST, "/api/internal/ssr-logs").permitAll()
                 // F04.8 連絡先招待プレビュー（認証不要）
