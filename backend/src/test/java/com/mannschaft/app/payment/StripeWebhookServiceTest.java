@@ -33,6 +33,8 @@ class StripeWebhookServiceTest {
     @Mock private MemberPaymentRepository memberPaymentRepository;
     @Mock private PaymentItemService paymentItemService;
     @Mock private StripePaymentProvider stripePaymentProvider;
+    @Mock private com.mannschaft.app.notification.credit.service.NotificationCreditCheckoutService notificationCreditCheckoutService;
+    @Mock private com.mannschaft.app.payment.escrow.EscrowWebhookService escrowWebhookService;
 
     @InjectMocks
     private StripeWebhookService service;
