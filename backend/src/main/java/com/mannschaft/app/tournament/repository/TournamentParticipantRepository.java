@@ -106,57 +106,109 @@ public interface TournamentParticipantRepository extends JpaRepository<Tournamen
      *
      * <p>{@code tournament_participants × tournament_divisions × memberships}（scope_type=TEAM・left_at IS NULL）
      * を 1 クエリで JOIN する。</p>
+     *
+     * <p>注1: {@code tournament_divisions} テーブルには {@code deleted_at} カラムが存在しないため
+     * （設計書 §3 テーブル一覧・論理削除なし）、{@code d.deleted_at IS NULL} 条件は使用しない。</p>
+     * <p>注2: MySQL 8 の nativeQuery で {@code boolean} 型を返すと JDBC が BIGINT/TINYINT をキャストできず
+     * {@link ClassCastException} が発生するため {@code int} で受け取り呼び出し元でゼロ比較する。</p>
      */
-    @Query(value = "SELECT COUNT(*) > 0 FROM tournament_participants p " +
+    @Query(value = "SELECT COUNT(*) FROM tournament_participants p " +
             "JOIN tournament_divisions d ON p.division_id = d.id " +
             "JOIN memberships m ON m.scope_type = 'TEAM' AND m.scope_id = p.team_id " +
             "WHERE d.tournament_id = :tournamentId " +
-            "  AND d.deleted_at IS NULL " +
             "  AND p.status IN ('REGISTERED', 'ACTIVE') " +
-            "  AND m.user_id = :userId AND m.left_at IS NULL",
+            "  AND m.user_id = :userId AND m.left_at IS NULL " +
+            "LIMIT 1",
             nativeQuery = true)
-    boolean existsActiveMemberOfAnyParticipantTeam(@Param("tournamentId") Long tournamentId,
-                                                   @Param("userId") Long userId);
+    int countActiveMemberOfAnyParticipantTeam(@Param("tournamentId") Long tournamentId,
+                                              @Param("userId") Long userId);
+
+    /**
+     * @deprecated existsActiveMemberOfAnyParticipantTeam は MySQL 8 の nativeQuery で boolean 変換時に
+     *             ClassCastException が発生する。{@link #countActiveMemberOfAnyParticipantTeam} を使うこと。
+     */
+    @Deprecated
+    default boolean existsActiveMemberOfAnyParticipantTeam(Long tournamentId, Long userId) {
+        return countActiveMemberOfAnyParticipantTeam(tournamentId, userId) > 0;
+    }
 
     /**
      * 大会のいずれかの参加チーム（REGISTERED/ACTIVE）で当該ユーザーが ADMIN/DEPUTY_ADMIN か。
      *
      * <p>{@code tournament_participants × tournament_divisions × user_roles × roles} を 1 クエリで JOIN する。</p>
+     *
+     * <p>注1: {@code tournament_divisions} テーブルには {@code deleted_at} カラムが存在しないため
+     * （設計書 §3 テーブル一覧・論理削除なし）、{@code d.deleted_at IS NULL} 条件は使用しない。</p>
+     * <p>注2: MySQL 8 nativeQuery で boolean を返すと ClassCastException が発生する（TOUR-006 根治）。
+     * {@code int} で受け取り呼び出し元でゼロ比較する。</p>
      */
-    @Query(value = "SELECT COUNT(*) > 0 FROM tournament_participants p " +
+    @Query(value = "SELECT COUNT(*) FROM tournament_participants p " +
             "JOIN tournament_divisions d ON p.division_id = d.id " +
             "JOIN user_roles ur ON ur.team_id = p.team_id AND ur.user_id = :userId " +
             "JOIN roles r ON r.id = ur.role_id " +
             "WHERE d.tournament_id = :tournamentId " +
-            "  AND d.deleted_at IS NULL " +
             "  AND p.status IN ('REGISTERED', 'ACTIVE') " +
-            "  AND r.name IN ('ADMIN', 'DEPUTY_ADMIN')",
+            "  AND r.name IN ('ADMIN', 'DEPUTY_ADMIN') " +
+            "LIMIT 1",
             nativeQuery = true)
-    boolean existsTeamAdminOfAnyParticipantTeam(@Param("tournamentId") Long tournamentId,
-                                                @Param("userId") Long userId);
+    int countTeamAdminOfAnyParticipantTeam(@Param("tournamentId") Long tournamentId,
+                                           @Param("userId") Long userId);
+
+    /**
+     * @deprecated existsTeamAdminOfAnyParticipantTeam は MySQL 8 の nativeQuery で boolean 変換時に
+     *             ClassCastException が発生する。{@link #countTeamAdminOfAnyParticipantTeam} を使うこと。
+     */
+    @Deprecated
+    default boolean existsTeamAdminOfAnyParticipantTeam(Long tournamentId, Long userId) {
+        return countTeamAdminOfAnyParticipantTeam(tournamentId, userId) > 0;
+    }
 
     /**
      * ディビジョンの参加チーム（REGISTERED/ACTIVE）に当該ユーザーがアクティブメンバーとして所属するか。
+     *
+     * <p>注: MySQL 8 nativeQuery で boolean を返すと ClassCastException が発生するため int で受け取る。</p>
      */
-    @Query(value = "SELECT COUNT(*) > 0 FROM tournament_participants p " +
+    @Query(value = "SELECT COUNT(*) FROM tournament_participants p " +
             "JOIN memberships m ON m.scope_type = 'TEAM' AND m.scope_id = p.team_id " +
             "WHERE p.division_id = :divisionId " +
             "  AND p.status IN ('REGISTERED', 'ACTIVE') " +
-            "  AND m.user_id = :userId AND m.left_at IS NULL",
+            "  AND m.user_id = :userId AND m.left_at IS NULL " +
+            "LIMIT 1",
             nativeQuery = true)
-    boolean existsActiveMemberOfDivisionParticipantTeam(@Param("divisionId") Long divisionId,
-                                                        @Param("userId") Long userId);
+    int countActiveMemberOfDivisionParticipantTeam(@Param("divisionId") Long divisionId,
+                                                   @Param("userId") Long userId);
+
+    /**
+     * @deprecated existsActiveMemberOfDivisionParticipantTeam は ClassCastException が発生する。
+     *             {@link #countActiveMemberOfDivisionParticipantTeam} を使うこと。
+     */
+    @Deprecated
+    default boolean existsActiveMemberOfDivisionParticipantTeam(Long divisionId, Long userId) {
+        return countActiveMemberOfDivisionParticipantTeam(divisionId, userId) > 0;
+    }
 
     /**
      * ディビジョンの参加チーム（REGISTERED/ACTIVE）で当該ユーザーが ADMIN/DEPUTY_ADMIN か。
+     *
+     * <p>注: MySQL 8 nativeQuery で boolean を返すと ClassCastException が発生するため int で受け取る。</p>
      */
-    @Query(value = "SELECT COUNT(*) > 0 FROM tournament_participants p " +
+    @Query(value = "SELECT COUNT(*) FROM tournament_participants p " +
             "JOIN user_roles ur ON ur.team_id = p.team_id AND ur.user_id = :userId " +
             "JOIN roles r ON r.id = ur.role_id " +
             "WHERE p.division_id = :divisionId " +
             "  AND p.status IN ('REGISTERED', 'ACTIVE') " +
-            "  AND r.name IN ('ADMIN', 'DEPUTY_ADMIN')",
+            "  AND r.name IN ('ADMIN', 'DEPUTY_ADMIN') " +
+            "LIMIT 1",
             nativeQuery = true)
-    boolean existsTeamAdminOfDivisionParticipantTeam(@Param("divisionId") Long divisionId,
-                                                     @Param("userId") Long userId);
+    int countTeamAdminOfDivisionParticipantTeam(@Param("divisionId") Long divisionId,
+                                                @Param("userId") Long userId);
+
+    /**
+     * @deprecated existsTeamAdminOfDivisionParticipantTeam は ClassCastException が発生する。
+     *             {@link #countTeamAdminOfDivisionParticipantTeam} を使うこと。
+     */
+    @Deprecated
+    default boolean existsTeamAdminOfDivisionParticipantTeam(Long divisionId, Long userId) {
+        return countTeamAdminOfDivisionParticipantTeam(divisionId, userId) > 0;
+    }
 }

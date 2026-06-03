@@ -3,6 +3,11 @@
     "common_delete": "삭제",
     "description_label": "설명",
     "error_title_required": "제목은 필수입니다",
+    "success_create": "이벤트를 생성했습니다",
+    "success_update": "이벤트를 업데이트했습니다",
+    "success_create_personal": "일정을 추가했습니다",
+    "success_update_personal": "일정을 업데이트했습니다",
+    "error_load_event": "이벤트 정보를 불러오지 못했습니다",
     "reminder": {
       "label": "리마인더",
       "add": "리마인더 추가",

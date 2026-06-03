@@ -3,6 +3,11 @@
     "common_delete": "Eliminar",
     "description_label": "Descripción",
     "error_title_required": "El título es obligatorio",
+    "success_create": "Evento creado",
+    "success_update": "Evento actualizado",
+    "success_create_personal": "Horario agregado",
+    "success_update_personal": "Horario actualizado",
+    "error_load_event": "No se pudo cargar la información del evento",
     "reminder": {
       "label": "Recordatorios",
       "add": "Agregar recordatorio",

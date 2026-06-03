@@ -221,10 +221,19 @@ public class PersonalScheduleService {
 
         schedule = scheduleRepository.save(schedule);
 
-        // 更新リクエスト（UpdatePersonalScheduleRequest）は相対指定のみ対応のため絶対分は null。
-        List<Integer> updatedReminders = req.getReminders() != null
-                ? saveReminders(schedule.getId(), req.getReminders(), null)
-                : loadReminders(schedule.getId());
+        // 機能55 BE対応: 相対リマインダー（reminders）と絶対リマインダー（absoluteReminders）の更新
+        // どちらかが非nullなら saveReminders で差し替え。両方 null なら既存を保持。
+        List<Integer> updatedReminders;
+        if (req.getReminders() != null || req.getAbsoluteReminders() != null) {
+            // saveReminders は「既存削除→再登録」の差し替えセマンティクス。
+            // null を渡すと「変更なし（空扱い）」となるが、本メソッドは非nullが確定しているため
+            // どちらか一方が null の場合は空リストとして扱う（既存の値を維持したい場合は null を指定）。
+            List<Integer> relativeReminders = req.getReminders();
+            List<java.time.LocalDateTime> absoluteReminders = req.getAbsoluteReminders();
+            updatedReminders = saveReminders(schedule.getId(), relativeReminders, absoluteReminders);
+        } else {
+            updatedReminders = loadReminders(schedule.getId());
+        }
 
         // イベント発行
         eventPublisher.publishEvent(new ScheduleUpdatedEvent(schedule.getId(), userId));
