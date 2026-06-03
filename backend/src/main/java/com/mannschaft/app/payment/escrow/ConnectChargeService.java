@@ -74,6 +74,11 @@ public class ConnectChargeService {
         authorizeActorIfPresent(cmd);
 
         // 冪等: 同一応募（source_kind × source_id × source_participant_id）の二重与信を 1 件に収束（02 §9）。
+        // 申し送り（P2-c で決定）: ここはアプリ層の冪等チェックのみで、DB レベルの
+        // uq(source_kind, source_id, source_participant_id) UNIQUE backstop は本波（P2-b）では入れない。
+        // 理由: 再与信（cancel 後の再 authorize）で同三つ組の別行が要るケースがあり、UNIQUE の可否は
+        // P2-c の capture 状態機械（AUTHORIZED→CAPTURED/CANCELED と再与信 semantics）と合わせて決めるべき。
+        // 対処療法的に今 UNIQUE を張ると再与信が不能になる恐れがあるため、意図的に保留する。
         var existing = escrowTransactionRepository.findBySourceKindAndSourceIdAndSourceParticipantId(
                 cmd.sourceKind(), cmd.sourceId(), cmd.sourceParticipantId());
         if (existing.isPresent()) {

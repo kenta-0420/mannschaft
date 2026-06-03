@@ -2,6 +2,7 @@ package com.mannschaft.app.payment.escrow;
 
 import com.mannschaft.app.payment.connect.ScopeKind;
 import com.mannschaft.app.payment.entity.StripeCustomerEntity;
+import com.mannschaft.app.payment.escrow.event.ChargeAuthorizationFailedEvent;
 import com.mannschaft.app.payment.repository.StripeCustomerRepository;
 import com.mannschaft.app.recruitment.event.RecruitmentParticipantConfirmedEvent;
 import org.junit.jupiter.api.DisplayName;
@@ -11,11 +12,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -33,6 +36,7 @@ class RecruitmentChargeAuthorizationListenerTest {
 
     @Mock private ConnectChargeService connectChargeService;
     @Mock private StripeCustomerRepository stripeCustomerRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks private RecruitmentChargeAuthorizationListener listener;
 
@@ -64,6 +68,8 @@ class RecruitmentChargeAuthorizationListenerTest {
         assertThat(cmd.organizationId()).isNull();
         // system 経路: actor 認可なし。
         assertThat(cmd.actorUserId()).isNull();
+        // 成功時は与信失敗イベントを発火しない。
+        verify(eventPublisher, never()).publishEvent(any(ChargeAuthorizationFailedEvent.class));
     }
 
     @Test
@@ -116,5 +122,32 @@ class RecruitmentChargeAuthorizationListenerTest {
         listener.onParticipantConfirmed(event);
 
         verify(connectChargeService, never()).authorize(any());
+    }
+
+    @Test
+    @DisplayName("与信失敗: 例外を握り潰さず ERROR ログ＋ChargeAuthorizationFailedEvent を発火（根治・02 §5.1）")
+    void authorizeFails_publishesFailureEventAndSwallows() {
+        RecruitmentParticipantConfirmedEvent event = new RecruitmentParticipantConfirmedEvent(
+                104L, 204L, 999L, "TEAM", 10L, "TEAM", null, 8_000L);
+        given(stripeCustomerRepository.findByUserId(999L))
+                .willReturn(Optional.of(StripeCustomerEntity.builder()
+                        .userId(999L).stripeCustomerId("cus_payer").build()));
+        given(connectChargeService.authorize(any()))
+                .willThrow(new RuntimeException("stripe authorize failed"));
+
+        // AFTER_COMMIT 後ゆえ例外を呼び出し元に伝播させず飲み込む（握り潰しではなくイベントで救済）。
+        assertThatCode(() -> listener.onParticipantConfirmed(event)).doesNotThrowAnyException();
+
+        // 失敗が観測可能・後続でアクション可能になるよう救済イベントを発火する。
+        ArgumentCaptor<ChargeAuthorizationFailedEvent> captor =
+                ArgumentCaptor.forClass(ChargeAuthorizationFailedEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        ChargeAuthorizationFailedEvent failed = captor.getValue();
+        assertThat(failed.sourceKind()).isEqualTo(EscrowSourceKind.RECRUITMENT);
+        assertThat(failed.sourceId()).isEqualTo(104L);
+        assertThat(failed.sourceParticipantId()).isEqualTo(204L);
+        assertThat(failed.payerScope()).isEqualTo(ScopeKind.USER);
+        assertThat(failed.payerScopeId()).isEqualTo(999L);
+        assertThat(failed.reason()).contains("stripe authorize failed");
     }
 }
