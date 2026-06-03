@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -28,6 +29,13 @@ public interface NotificationLabelRepository
      * 作成・改名時の現役同名重複検証に使う（設計書 02_api_design.md §3.4）。
      */
     boolean existsByUserIdAndName(Long userId, String name);
+
+    /**
+     * ユーザーの現役同名ラベルを 1 件取得する（{@code @SQLRestriction} により論理削除済みは除外）。
+     * 自動ラベリング提案の 1 タップ付与（suggest-apply）で「同名があれば再利用、無ければ作成」の
+     * find-or-create に使う（設計書 02_api_design.md §3.5a）。現役同名は最大 1 件（重複は作成時に禁止済み）。
+     */
+    Optional<NotificationLabelEntity> findByUserIdAndName(Long userId, String name);
 
     /**
      * 指定 ID 集合のラベルをまとめて取得する（一覧時のラベル名一括解決＝N+1 回避）。

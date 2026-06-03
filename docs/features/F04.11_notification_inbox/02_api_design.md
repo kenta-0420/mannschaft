@@ -71,13 +71,16 @@
         "occurredAt": "2026-05-31T00:00:00+09:00",
         "state": "UNREAD",
         "snoozedUntil": null,
-        "labels": [{ "id": "0193...", "name": "経理", "color": "#f59e0b", "icon": "pi-wallet" }]
+        "labels": [{ "id": "0193...", "name": "経理", "color": "#f59e0b", "icon": "pi-wallet" }],
+        "suggestedLabels": [{ "suggestionKey": "URGENT", "color": "#EA580C", "existingLabelId": null }]
       }
     ],
     "page": 0, "size": 20, "totalEstimated": 12, "hasMore": false
   }
 }
 ```
+
+> `suggestedLabels`（案C・Phase 4・**非永続/読み取り時導出**）: `(sourceType, priority)` の静的ルールで導出した自動ラベリング提案（最大 1 件）。`suggestionKey` は enum（FE が i18n で表示名解決）、`color` は既定色、`existingLabelId` は同義の手作成ラベルがあればその id（無ければ null）。チップ 1 タップで §3.5a `suggest-apply` を呼ぶ。ルール表は [03](./03_business_logic.md) §10。
 
 > `totalEstimated` は複数ソース集約のため**概算**（境界付きウィンドウ内・畳み込み後の件数）。Phase3 ③ の**境界付きウィンドウページング**（全ソース `Pageable`・完全全順序タイブレーク）により**決定的（重複なし・load-more 連続）**。MENTION・TODO_DUE・NOTIFICATION は fetch 順がグローバル順と整合し**取りこぼしなし**。ANNOUNCEMENT・CONFIRMABLE は取得順が priority と独立のため、稀な偏在で高 priority・低時刻の項目が後ページに送られうる（pinned/保留件数は小さく実害限定）。詳細は [03](./03_business_logic.md) §4.1・[04](./04_security_operations.md) §5。
 
@@ -139,6 +142,18 @@
 ```
 - `action`: `ARCHIVE` / `UNARCHIVE` / `SNOOZE`（`snoozedUntil` 同梱）/ `LABEL_ADD`（`labelId` 同梱）。
 - レスポンスは成功/失敗件数（`BulkAssignResultResponse` 手本）。部分失敗を許容し全体は 200。
+
+### 3.5a `POST /api/v1/inbox/labels/suggest-apply`（自動ラベリング提案の 1 タップ付与・案C・Phase 4）
+
+提案チップ（`GET /inbox` の各カードに付く `suggestedLabels[]`）のタップで送信する。**find-or-create + assign を 1 リクエストで**行う冪等 API。
+
+```json
+{ "name": "要返信", "color": "#2563EB", "sourceType": "MENTION", "sourceId": 9 }
+```
+- `name`（必須・最大 50）は FE が提案キー（`suggestionKey`）から i18n 解決した表示名。`color` は提案の既定色（任意・#RRGGBB）。
+- 処理: ①現役同名ラベルを探し、無ければ `createLabel`（上限 20 超は `INBOX_LABEL_LIMIT_EXCEEDED`・色形式不正は `COMMON_001`）。②そのラベルを当該通知へ `assignLabel`（可視性検証・1 通知 10 ラベル上限 `INBOX_LABEL_PER_ITEM_EXCEEDED`）。
+- **冪等**: 既に同名ラベルがあり既に付与済みなら、作成も再付与もせず付与後の `LabelDto` を **200** で返す。
+- **新規エラーコードは設けず既存を再利用**。提案そのものは**非永続**（DB に保存しない・導出のみ）。ルールは [03](./03_business_logic.md) §10。
 
 ### 3.6 エラーコード（`InboxErrorCode`・Java enum・文字列コード）
 
