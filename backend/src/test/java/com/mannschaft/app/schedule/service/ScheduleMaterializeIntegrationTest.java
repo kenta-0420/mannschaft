@@ -423,8 +423,8 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
                             "統合テスト説明",                // description
                             false,                          // isAnonymous
                             false,                          // allowMultipleSubmissions
-                            "ALL_MEMBERS",                  // resultsVisibility
-                            "PUSH_AND_EMAIL",               // distributionMode
+                            "AFTER_RESPONSE",               // resultsVisibility (ResultsVisibility enum)
+                            "ALL",                          // distributionMode (DistributionMode enum)
                             "CREATOR_AND_ADMIN",            // unrespondedVisibility
                             false,                          // autoPostToTimeline
                             null,                           // seriesId
