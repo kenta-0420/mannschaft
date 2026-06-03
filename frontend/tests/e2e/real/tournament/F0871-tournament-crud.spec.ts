@@ -24,7 +24,6 @@
  */
 
 import { test, expect, request as pwRequest, type APIRequestContext } from '@playwright/test'
-import { waitForHydration } from '../../helpers/wait'
 
 // storageState に依存せず、テスト内で自前ログインする
 test.use({ storageState: { cookies: [], origins: [] } })
