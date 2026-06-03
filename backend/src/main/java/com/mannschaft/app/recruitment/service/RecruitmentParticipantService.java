@@ -24,8 +24,10 @@ import com.mannschaft.app.recruitment.repository.RecruitmentCancellationRecordRe
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantHistoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
+import com.mannschaft.app.recruitment.event.RecruitmentParticipantConfirmedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -70,6 +72,11 @@ public class RecruitmentParticipantService {
      * FRIEND_TEAMS_ONLY 札は宛先解決集合のみ応募可（非対象は 404 存在秘匿）。
      */
     private final ContentVisibilityChecker visibilityChecker;
+    /**
+     * F22.1 市の謝礼決済: 応募確定（CONFIRMED）→ 謝礼の与信（authorize）連携イベントの発火元（02_api_design §5.1）。
+     * payment.escrow リスナが購読する（クロスドメイン FK を作らず ID のみ受け渡す疎結合・README §7）。
+     */
+    private final ApplicationEventPublisher eventPublisher;
 
     // ===========================================
     // §5.2 参加申込
@@ -190,6 +197,21 @@ public class RecruitmentParticipantService {
 
         log.info("F03.11 申込: listingId={}, userId={}, status={}, waitlistPos={}",
                 listingId, userId, saved.getStatus(), waitlistPosition);
+
+        // F22.1 市: 謝礼有効な札に確定（非キャンセル待ち）したら謝礼の与信（authorize）を開始する（§5.1）。
+        // payment.escrow が購読し ConnectChargeService.authorize を呼ぶ（疎結合・クロスドメイン FK 無し）。
+        if (!isWaitlisted && Boolean.TRUE.equals(listing.getPaymentEnabled())
+                && listing.getPrice() != null && isUserApplication) {
+            eventPublisher.publishEvent(new RecruitmentParticipantConfirmedEvent(
+                    listingId,
+                    saved.getId(),
+                    userId,
+                    listing.getScopeType().name(),
+                    listing.getScopeId(),
+                    listing.getPayeeKind(),
+                    listing.getPayeeUserId(),
+                    listing.getPrice().longValue()));
+        }
 
         // F22.1 市: この申込で FULL に到達したら最終認証の確認通知を送る（§6.1）。
         if (reachedFull) {
