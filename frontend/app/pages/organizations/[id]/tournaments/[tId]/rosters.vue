@@ -213,7 +213,7 @@ function toggleExpand(teamId: number) {
                   <Column :header="$t('tournament.roster.registration_number')" style="width: 7rem">
                     <template #body="{ data }">{{ data.registrationNumber ?? '-' }}</template>
                   </Column>
-                  <Column header="選手名">
+                  <Column :header="$t('tournament.roster.player_name')">
                     <template #body="{ data }">{{ data.displayName }}</template>
                   </Column>
                   <Column :header="$t('tournament.roster.position')" style="width: 6rem">
