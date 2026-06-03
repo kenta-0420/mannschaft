@@ -164,6 +164,13 @@ onMounted(async () => {
         <i class="pi pi-folder text-amber-500" />
         {{ $t('tournament.files.title') }}
       </NuxtLink>
+      <NuxtLink
+        :to="`/organizations/${orgId}/tournaments/${tId}/fees`"
+        class="flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition hover:border-primary-400 hover:text-primary-600"
+      >
+        <i class="pi pi-money-bill text-sm" />
+        <span>{{ $t('tournament.fees.title') }}</span>
+      </NuxtLink>
     </div>
 
     <PageLoading v-if="loading" size="40px" />
