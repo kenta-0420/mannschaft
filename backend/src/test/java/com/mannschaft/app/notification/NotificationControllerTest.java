@@ -25,6 +25,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -203,7 +205,7 @@ class NotificationControllerTest {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 // Given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
-                SnoozeRequest request = new SnoozeRequest(LocalDateTime.now().plusHours(1));
+                SnoozeRequest request = new SnoozeRequest(OffsetDateTime.now(ZoneOffset.ofHours(9)).plusHours(1));
                 NotificationResponse resp = createNotificationResponse();
                 given(notificationService.snoozeNotification(USER_ID, NOTIFICATION_ID, request))
                         .willReturn(resp);
