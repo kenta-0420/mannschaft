@@ -35,7 +35,8 @@
       "analytics": "分析",
       "audit_logs": "監査ログ",
       "settings": "設定",
-      "faqSettings": "FAQ設定"
+      "faqSettings": "FAQ設定",
+      "leagueTransfers": "リーグ移籍"
     }
   }
 }
