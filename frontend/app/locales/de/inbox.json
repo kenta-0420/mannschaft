@@ -84,6 +84,14 @@
     "group": {
       "badge": "+{n} weitere",
       "badgeTitle": "{n} Benachrichtigungen sind hier zusammengefasst"
+    },
+    "suggestion": {
+      "replyNeeded": "Antwort erforderlich",
+      "actionNeeded": "Aktion erforderlich",
+      "urgent": "Dringend",
+      "readLater": "Später lesen",
+      "apply": "Hinzufügen",
+      "applyAria": "Etikett {name} hinzufügen"
     }
   }
 }

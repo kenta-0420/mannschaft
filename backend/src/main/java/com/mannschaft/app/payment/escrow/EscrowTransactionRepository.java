@@ -1,6 +1,10 @@
 package com.mannschaft.app.payment.escrow;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,6 +25,32 @@ public interface EscrowTransactionRepository
 
     /** PaymentIntent ID（pi_xxx）から逆引きする（Webhook ハンドラ用）。 */
     Optional<EscrowTransactionEntity> findByStripePaymentIntentId(String stripePaymentIntentId);
+
+    /**
+     * 主キーで escrow 行を {@code PESSIMISTIC_WRITE} ロックして取得する（capture/webhook の read-then-write 直列化）。
+     *
+     * <p>capture（同期フック・AFTER_COMMIT 後）と {@code payment_intent.succeeded} webhook はどちらも
+     * 「escrow を read → CAPTURED 書き＋ledger 追記」を行う。無ロックだと両経路が AUTHORIZED を同時に読み、
+     * 双方が CAPTURED 書き＋ledger 追記を行う二重記帳の競合が理論上ありうる。本メソッドで行ロックを取得し、
+     * ロック取得後に status を再判定（CAPTURED なら no-op）することで read-then-write をアトミック化し、
+     * ledger 二重記帳を物理的に防ぐ（設計書 02 §5.3）。</p>
+     *
+     * <p>JPQL 本体には注記を書かない（HQL パース事故回避・コメントは本 Javadoc に集約する）。</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT e FROM EscrowTransactionEntity e WHERE e.id = :id")
+    Optional<EscrowTransactionEntity> findByIdForUpdate(@Param("id") UUID id);
+
+    /**
+     * PaymentIntent ID から escrow 行を {@code PESSIMISTIC_WRITE} ロックして取得する（webhook の
+     * read-then-write 直列化）。{@link #findByIdForUpdate(UUID)} と同じく capture × webhook の競合を防ぐ。
+     *
+     * <p>JPQL 本体には注記を書かない（HQL パース事故回避・コメントは本 Javadoc に集約する）。</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT e FROM EscrowTransactionEntity e WHERE e.stripePaymentIntentId = :paymentIntentId")
+    Optional<EscrowTransactionEntity> findByStripePaymentIntentIdForUpdate(
+            @Param("paymentIntentId") String paymentIntentId);
 
     /** 出所（source_kind × source_id）に紐づく取引を取得する。 */
     List<EscrowTransactionEntity> findBySourceKindAndSourceId(

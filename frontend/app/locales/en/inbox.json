@@ -84,6 +84,14 @@
     "group": {
       "badge": "+{n} more",
       "badgeTitle": "{n} notifications are grouped here"
+    },
+    "suggestion": {
+      "replyNeeded": "Reply needed",
+      "actionNeeded": "Action needed",
+      "urgent": "Urgent",
+      "readLater": "Read later",
+      "apply": "Add",
+      "applyAria": "Add {name} label"
     }
   }
 }
