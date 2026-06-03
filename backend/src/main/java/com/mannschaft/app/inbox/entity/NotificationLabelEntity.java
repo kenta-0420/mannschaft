@@ -1,6 +1,7 @@
 package com.mannschaft.app.inbox.entity;
 
 import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.gdpr.PersonalData;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.PrePersist;
@@ -22,7 +23,12 @@ import java.time.LocalDateTime;
  *
  * <p>論理削除あり（{@code deleted_at} + {@code @SQLRestriction}）。誤削除リカバリ・履歴のため。
  * 設計書: 01_data_model.md §2.2。</p>
+ *
+ * <p><b>GDPR 連携</b>: {@code @PersonalData(category = "inbox")} により
+ * インボックス3表として {@code inbox.json} に束ねてエクスポートされる
+ * （論理削除済みは {@code @SQLRestriction} により自動除外）。設計書: 04_security_operations.md。</p>
  */
+@PersonalData(category = "inbox")
 @Entity
 @Table(name = "notification_labels")
 @SQLRestriction("deleted_at IS NULL")

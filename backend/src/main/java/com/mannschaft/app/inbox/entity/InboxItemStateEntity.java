@@ -1,6 +1,7 @@
 package com.mannschaft.app.inbox.entity;
 
 import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.gdpr.PersonalData;
 import com.mannschaft.app.inbox.InboxSourceType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -25,7 +26,12 @@ import java.time.LocalDateTime;
  * <p>手本は {@code UserFavoriteEntity}（ポリモーフィック per-user 表）。
  * {@code user_id} / {@code source_id} への FK 制約は意図的に設けない（CLAUDE.md 原則1）。
  * 論理削除なし（物理削除）。設計書: 01_data_model.md §2.1。</p>
+ *
+ * <p><b>GDPR 連携</b>: {@code @PersonalData(category = "inbox")} により
+ * {@code PersonalDataCollector} の網羅性チェックに組み込まれ、インボックス3表として
+ * {@code inbox.json} に束ねてエクスポートされる（案A 3表フルダンプ）。設計書: 04_security_operations.md。</p>
  */
+@PersonalData(category = "inbox")
 @Entity
 @Table(name = "inbox_item_states")
 @Getter
