@@ -4,14 +4,21 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.payment.MembershipBillingErrorCode;
+import com.mannschaft.app.payment.PayerRelationship;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.PaymentItemType;
 import com.mannschaft.app.payment.PaymentMethod;
 import com.mannschaft.app.payment.PaymentMapper;
 import com.mannschaft.app.payment.PaymentStatus;
+import com.mannschaft.app.payment.connect.ConnectAccountEntity;
+import com.mannschaft.app.payment.connect.ConnectAccountRepository;
+import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
+import com.mannschaft.app.payment.connect.ScopeKind;
 import com.mannschaft.app.payment.dto.BulkPaymentRequest;
 import com.mannschaft.app.payment.dto.BulkPaymentResponse;
 import com.mannschaft.app.payment.dto.CheckoutResponse;
+import com.mannschaft.app.payment.dto.ConnectCheckoutResponse;
 import com.mannschaft.app.payment.dto.CreateManualPaymentRequest;
 import com.mannschaft.app.payment.dto.MemberPaymentResponse;
 import com.mannschaft.app.payment.dto.ReconcileResponse;
@@ -20,6 +27,9 @@ import com.mannschaft.app.payment.dto.UpdatePaymentRequest;
 import com.mannschaft.app.payment.entity.MemberPaymentEntity;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.entity.StripeCustomerEntity;
+import com.mannschaft.app.payment.escrow.ConnectChargeService;
+import com.mannschaft.app.payment.escrow.MembershipChargeCommand;
+import com.mannschaft.app.payment.escrow.MembershipChargeResult;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.repository.StripeCustomerRepository;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
@@ -36,6 +46,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -54,6 +65,11 @@ public class MemberPaymentService {
     private final PaymentMapper paymentMapper;
     private final NameResolverService nameResolverService;
     private final NotificationHelper notificationHelper;
+
+    // === F08.9 P1 Wave4: 払い手分離・Connect 即時 charge 連携 ===
+    private final PaymentAuthorizationService paymentAuthorizationService;
+    private final ConnectChargeService connectChargeService;
+    private final ConnectAccountRepository connectAccountRepository;
 
     @Value("${app.frontend-url:http://localhost:3000}")
     private String frontendUrl;
@@ -76,6 +92,12 @@ public class MemberPaymentService {
 
     /**
      * 手動支払い記録を作成する。
+     *
+     * <p><b>F08.9 P1 Wave4: 払い手分離・ADMIN_MANUAL 認可。</b> {@code recordedBy}（記録した管理者）が
+     * 当該 payment_item スコープ（team/org）の ADMIN であることを {@link PaymentAuthorizationService} で検証し
+     * （{@code manualRecordByAdmin=true}）、成立した関係（通常 {@link PayerRelationship#ADMIN_MANUAL}、
+     * 受益者本人が記録した場合は {@link PayerRelationship#SELF}）を払い手列に埋める。Connect は通さず
+     * 手動記録（即 PAID）のままとする（02 §1.1）。権原なき記録は {@code MEMBERSHIP_PAYER_NOT_AUTHORIZED}（403）。</p>
      */
     @Transactional
     public MemberPaymentResponse createManualPayment(Long paymentItemId, Long recordedBy,
@@ -88,6 +110,11 @@ public class MemberPaymentService {
                 throw new BusinessException(PaymentErrorCode.ALREADY_PAID);
             }
         }
+
+        // 払い手分離の認可（02 §1.1 / 03 §2）: 記録者が受益者本人（SELF）か、scope ADMIN（ADMIN_MANUAL）かを検証。
+        // 権原が成立しなければ MEMBERSHIP_PAYER_NOT_AUTHORIZED（403）。recorded_by は従来通り記録者を保持する。
+        PayerRelationship relationship = paymentAuthorizationService.authorizePayment(
+                recordedBy, request.getUserId(), paymentItemId, true);
 
         LocalDate validFrom = request.getValidFrom() != null
                 ? request.getValidFrom()
@@ -107,11 +134,14 @@ public class MemberPaymentService {
                 .validUntil(validUntil)
                 .paidAt(request.getPaidAt())
                 .recordedBy(recordedBy)
+                .payerUserId(recordedBy)
+                .payerRelationship(relationship)
                 .note(request.getNote())
                 .build();
 
         MemberPaymentEntity saved = memberPaymentRepository.save(entity);
-        log.info("手動支払い記録: id={}, userId={}, paymentItemId={}", saved.getId(), request.getUserId(), paymentItemId);
+        log.info("手動支払い記録: id={}, userId={}, paymentItemId={}, payer={}, relationship={}",
+                saved.getId(), request.getUserId(), paymentItemId, recordedBy, relationship);
         return enrichUserName(paymentMapper.toMemberPaymentResponse(saved));
     }
 
@@ -246,14 +276,7 @@ public class MemberPaymentService {
         }
 
         // Stripe Customer の取得または作成
-        StripeCustomerEntity stripeCustomer = stripeCustomerRepository.findByUserId(userId)
-                .orElseGet(() -> {
-                    String customerId = stripePaymentProvider.createCustomer("user@example.com", userId);
-                    return stripeCustomerRepository.save(StripeCustomerEntity.builder()
-                            .userId(userId)
-                            .stripeCustomerId(customerId)
-                            .build());
-                });
+        StripeCustomerEntity stripeCustomer = getOrCreateStripeCustomer(userId);
 
         // PENDING レコードを作成
         MemberPaymentEntity payment = MemberPaymentEntity.builder()
@@ -284,6 +307,189 @@ public class MemberPaymentService {
 
         log.info("Checkout セッション作成: paymentId={}, sessionId={}", payment.getId(), sessionInfo.sessionId());
         return new CheckoutResponse(sessionInfo.checkoutUrl(), sessionInfo.sessionId(), sessionInfo.expiresAt());
+    }
+
+    /**
+     * F08.9 P1 Wave4 (T7): 会費を払い手分離＋Connect 即時 charge でチェックアウトする（設計書 02 §1.1）。
+     *
+     * <p><b>既存の素 Checkout（自社集金・{@link #createCheckout}）は壊さず、会費の新規決済を Connect 即時へ
+     * 切り替える専用経路。</b> 受領者（チーム/組織）の Connect 口座へ destination charge し、手数料を
+     * application_fee で控除する。払い手は受益者と別人でもよい（IDOR は権原検証で防ぐ）。</p>
+     *
+     * <p>フロー（02 §1.1）:</p>
+     * <ol>
+     *   <li><b>払い手の確定</b>: {@code payerUserId}（呼出側が {@code SecurityUtils.getCurrentUserId()} で解決）。
+     *       後見切替（X-Proxy-For-User-Id）でも払い手はログインユーザーのまま（P1 では考慮不要）。</li>
+     *   <li><b>権原検証</b>: {@link PaymentAuthorizationService#authorizePayment}（{@code manualRecordByAdmin=false}）。
+     *       P1 では SELF のみ通過し、他は {@code MEMBERSHIP_PAYER_NOT_AUTHORIZED}（403）。</li>
+     *   <li><b>重複チェック</b>: {@code existsValidPaidPayment(beneficiary, item)} 真なら
+     *       {@code MEMBERSHIP_ALREADY_PAID}（409）。</li>
+     *   <li><b>受領者 Connect 口座解決</b>: payment_item のスコープ（team/org）→ {@link ScopeKind} で口座を引き、
+     *       READY（{@code payouts_enabled}）でなければ {@code ONBOARDING_NOT_READY}（409）。即時モードゆえ HELD にしない。</li>
+     *   <li><b>払い手 Stripe Customer の get-or-create</b>。</li>
+     *   <li><b>charge</b>: {@link ConnectChargeService#charge} で Destination PaymentIntent を作成し
+     *       {@code clientSecret} を払い手本人へ返す。</li>
+     *   <li><b>PENDING 起票</b>: {@code member_payments} を PENDING で起票し、払い手列・{@code escrow_transaction_id}
+     *       を埋める（受益者＝{@code userId}）。CAPTURED→PAID 反映は escrow の {@code payment_intent.succeeded}
+     *       webhook → {@code EscrowCapturedEvent} → {@link com.mannschaft.app.payment.escrow.MembershipPaymentCaptureListener}
+     *       が行う。</li>
+     * </ol>
+     *
+     * @param paymentItemId     支払い対象の会費項目
+     * @param beneficiaryUserId 受益者（会費の対象者）
+     * @param payerUserId       払い手（実際に支払うログインユーザー・呼出側で SecurityUtils 解決）
+     * @param idempotencyKey    冪等性キー（Idempotency-Key ヘッダ起源・Stripe へ橋渡し）
+     * @return clientSecret / memberPaymentId / escrowTransactionId
+     */
+    @Transactional
+    public ConnectCheckoutResponse createConnectCheckout(Long paymentItemId, Long beneficiaryUserId,
+                                                         Long payerUserId, String idempotencyKey) {
+        PaymentItemEntity paymentItem = paymentItemService.findByIdOrThrow(paymentItemId);
+
+        // 1-2. 払い手分離の権原検証（P1 では SELF のみ通過・他は 403）。manualRecordByAdmin=false（Connect 即時決済）。
+        PayerRelationship relationship = paymentAuthorizationService.authorizePayment(
+                payerUserId, beneficiaryUserId, paymentItemId, false);
+
+        // 3. 重複チェック（受益者×項目に有効な PAID があれば 409）。DONATION は重複を許す。
+        if (paymentItem.getType() != PaymentItemType.DONATION
+                && memberPaymentRepository.existsValidPaidPayment(beneficiaryUserId, paymentItemId)) {
+            throw new BusinessException(MembershipBillingErrorCode.MEMBERSHIP_ALREADY_PAID);
+        }
+
+        // 4. 受領者 Connect 口座をスコープから解決し READY を判定（即時モードゆえ非 READY は HELD にせず 409）。
+        ConnectAccountEntity payee = resolvePayeeConnectAccount(paymentItem);
+        if (!Boolean.TRUE.equals(payee.getPayoutsEnabled())) {
+            log.warn("会費 Connect checkout 拒否（受領口座が未 READY）: itemId={}, payeeAccount={}, payoutsEnabled={}",
+                    paymentItemId, payee.getStripeAccountId(), payee.getPayoutsEnabled());
+            throw new BusinessException(ConnectPaymentErrorCode.ONBOARDING_NOT_READY);
+        }
+
+        // 5. 払い手の Stripe Customer を get-or-create（払い手＝決済者の Customer）。
+        StripeCustomerEntity payerCustomer = getOrCreateStripeCustomer(payerUserId);
+
+        // 6. ConnectChargeService.charge（Destination PI 作成・即時 AUTOMATIC・冪等キーを Stripe へ橋渡し）。
+        long faceAmount = paymentItem.getAmount().longValueExact();
+        MembershipChargeResult chargeResult = connectChargeService.charge(new MembershipChargeCommand(
+                faceAmount,
+                payee.getId(),
+                payerCustomer.getStripeCustomerId(),
+                payerUserId,
+                paymentItemId,
+                paymentItem.getOrganizationId(),
+                idempotencyKey));
+
+        // 7. member_payments を PENDING で起票（払い手列・escrow_transaction_id を埋める。受益者＝userId）。
+        MemberPaymentEntity payment = MemberPaymentEntity.builder()
+                .userId(beneficiaryUserId)
+                .paymentItemId(paymentItemId)
+                .amountPaid(paymentItem.getAmount())
+                .currency(paymentItem.getCurrency())
+                .paymentMethod(PaymentMethod.STRIPE)
+                .status(PaymentStatus.PENDING)
+                .payerUserId(payerUserId)
+                .payerRelationship(relationship)
+                .escrowTransactionId(chargeResult.escrowTransactionId())
+                .build();
+        payment = memberPaymentRepository.save(payment);
+
+        log.info("会費 Connect checkout 起票（PENDING・PAID は webhook で反映）: paymentId={}, beneficiary={}, payer={}, "
+                        + "relationship={}, escrowId={}",
+                payment.getId(), beneficiaryUserId, payerUserId, relationship, chargeResult.escrowTransactionId());
+        return new ConnectCheckoutResponse(
+                chargeResult.clientSecret(), payment.getId(), chargeResult.escrowTransactionId());
+    }
+
+    /**
+     * F08.9 P1 Wave4 (T8): escrow が MEMBERSHIP を CAPTURED にしたとき、{@code member_payments} を
+     * PENDING→PAID に反映する（設計書 02 §1.1 / §4.2）。
+     *
+     * <p>{@link com.mannschaft.app.payment.escrow.MembershipPaymentCaptureListener} が
+     * {@code EscrowCapturedEvent}（AFTER_COMMIT）を受けて呼ぶ。{@code escrow_transaction_id} で member_payment を
+     * 突合し、PENDING のときのみ PAID 化して有効期間（type 別: ANNUAL_FEE+365 / MONTHLY_FEE+31 / ITEM・DONATION=null）
+     * を設定する。</p>
+     *
+     * <p><b>冪等（二重反映防止）:</b> 対象が見つからない／既に PENDING でない（PAID 等）場合は no-op で正常終了する
+     * （webhook 再送・同期確定の二経路で二度呼ばれても二重 PAID にしない）。escrow 側の CAPTURED 冪等
+     * （行ロック＋status 再判定）と相まって二重課金・二重反映を防ぐ。</p>
+     *
+     * @param escrowTransactionId CAPTURED になった escrow の ID（member_payments との突合キー）
+     */
+    @Transactional
+    public void applyMembershipPaidByEscrow(UUID escrowTransactionId) {
+        MemberPaymentEntity payment = memberPaymentRepository
+                .findByEscrowTransactionId(escrowTransactionId)
+                .orElse(null);
+        if (payment == null) {
+            // 会費以外の escrow（RECRUITMENT 等）や、Connect checkout を経由しない記録には member_payment が無い。no-op。
+            log.info("会費 PAID 反映: escrow に対応する member_payment なし（会費外/未連結）。no-op: escrowId={}",
+                    escrowTransactionId);
+            return;
+        }
+        if (payment.getStatus() != PaymentStatus.PAID
+                && payment.getStatus() != PaymentStatus.PENDING) {
+            // CANCELLED/REFUNDED 等の後段状態は触らない（症状を隠さず情報ログ）。
+            log.info("会費 PAID 反映: member_payment が後段状態のため反映しない: paymentId={}, status={}",
+                    payment.getId(), payment.getStatus());
+            return;
+        }
+        if (payment.getStatus() == PaymentStatus.PAID) {
+            // 既に PAID（webhook 再送・同期確定の二経路）。冪等 no-op。
+            log.info("会費 PAID 反映: 既に PAID（冪等 no-op）: paymentId={}, escrowId={}",
+                    payment.getId(), escrowTransactionId);
+            return;
+        }
+
+        PaymentItemEntity paymentItem = paymentItemService.findByIdOrThrow(payment.getPaymentItemId());
+        LocalDate validFrom = LocalDate.now();
+        LocalDate validUntil = calculateValidUntil(paymentItem.getType(), validFrom);
+        payment.markAsPaidByEscrowCapture(validFrom, validUntil);
+        memberPaymentRepository.save(payment);
+        log.info("会費 PAID 反映完了（escrow CAPTURED 連動）: paymentId={}, escrowId={}, validUntil={}",
+                payment.getId(), escrowTransactionId, validUntil);
+    }
+
+    /**
+     * payment_item のスコープ（team/org）から受領者の Connect 口座を解決する。
+     *
+     * <p>team_id 設定時は {@link ScopeKind#TEAM}、organization_id 設定時は {@link ScopeKind#ORG} で
+     * {@link ConnectAccountRepository#findByScopeKindAndScopeIdAndDeletedAtIsNull} を引く。口座が無ければ
+     * {@code ONBOARDING_NOT_READY}（受領者が口座未登録＝READY でない・409）。スコープ未設定の不整合データは
+     * 解決不能のため同コードで拒否する（症状を隠さない）。</p>
+     */
+    private ConnectAccountEntity resolvePayeeConnectAccount(PaymentItemEntity paymentItem) {
+        ScopeKind scopeKind;
+        Long scopeId;
+        if (paymentItem.getTeamId() != null) {
+            scopeKind = ScopeKind.TEAM;
+            scopeId = paymentItem.getTeamId();
+        } else if (paymentItem.getOrganizationId() != null) {
+            scopeKind = ScopeKind.ORG;
+            scopeId = paymentItem.getOrganizationId();
+        } else {
+            log.warn("payment_item にスコープ（team/org）が無く Connect 口座を解決できません: itemId={}", paymentItem.getId());
+            throw new BusinessException(ConnectPaymentErrorCode.ONBOARDING_NOT_READY);
+        }
+        return connectAccountRepository
+                .findByScopeKindAndScopeIdAndDeletedAtIsNull(scopeKind, scopeId)
+                .orElseThrow(() -> {
+                    log.warn("受領者の Connect 口座が未登録（READY でない）: itemId={}, scope={}/{}",
+                            paymentItem.getId(), scopeKind, scopeId);
+                    return new BusinessException(ConnectPaymentErrorCode.ONBOARDING_NOT_READY);
+                });
+    }
+
+    /**
+     * ユーザーの Stripe Customer を取得、無ければ作成する（F08.9 P1 Wave4・払い手の Customer）。
+     */
+    private StripeCustomerEntity getOrCreateStripeCustomer(Long userId) {
+        return stripeCustomerRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    String customerId = stripePaymentProvider.createCustomer("user@example.com", userId);
+                    return stripeCustomerRepository.save(StripeCustomerEntity.builder()
+                            .userId(userId)
+                            .stripeCustomerId(customerId)
+                            .build());
+                });
     }
 
     /**

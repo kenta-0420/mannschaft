@@ -120,6 +120,24 @@ public class MemberPaymentEntity extends BaseEntity {
     private UUID membershipSubscriptionId;
 
     /**
+     * F08.9 P1 Wave4: Connect 即時 charge による会費 PENDING 起票時の PAID 反映（escrow CAPTURED 連動）。
+     *
+     * <p>{@link com.mannschaft.app.payment.escrow.MembershipPaymentCaptureListener} が
+     * {@code escrow_transactions} の CAPTURED を受けて呼ぶ。冪等性は呼び出し側が PENDING の場合のみ呼ぶことで担保する
+     * （既に PAID なら no-op）。Stripe Checkout 経路の {@link #markAsPaid} と異なり、金額・支払い方法は
+     * PENDING 起票時の値を保持し（払い手が支払った額＝起票額）、有効期間（validFrom/validUntil）のみ確定設定する。</p>
+     *
+     * @param validFrom 有効期間開始（通常 CAPTURED 確定日）
+     * @param validUntil 有効期間終了（payment_item.type 別に算出・ITEM/DONATION は null）
+     */
+    public void markAsPaidByEscrowCapture(LocalDate validFrom, LocalDate validUntil) {
+        this.status = PaymentStatus.PAID;
+        this.validFrom = validFrom;
+        this.validUntil = validUntil;
+        this.paidAt = LocalDateTime.now();
+    }
+
+    /**
      * Stripe Checkout セッション完了時に支払い状態を更新する。
      */
     public void markAsPaid(String stripePaymentIntentId, BigDecimal amountPaid,
