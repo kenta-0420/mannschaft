@@ -45,8 +45,11 @@ import java.util.Set;
  *
  * <p>認可は Service 入口で多層防御として実施する:</p>
  * <ol>
- *   <li>{@link AccessControlService#checkMembership} でスコープ所属検証（GET/PUT 共通）</li>
- *   <li>更新系は ADMIN または {@code DASHBOARD_WIDGET_VISIBILITY_MANAGE} パーミッション保有を要求</li>
+ *   <li>参照系（{@code getSettings}）は非メンバーでも 403 とせず、{@link AccessControlService#isMember}
+ *       が false の場合はアプリ定義のデフォルト可視性（DB 非参照）を返す。可視性設定は機密データではなく、
+ *       非メンバー閲覧時のコンソールエラー抑制を優先するため</li>
+ *   <li>更新系（{@code updateSettings}）は {@link AccessControlService#checkMembership} でスコープ所属を必須化し、
+ *       さらに ADMIN または {@code DASHBOARD_WIDGET_VISIBILITY_MANAGE} パーミッション保有を要求</li>
  * </ol>
  *
  * <p>設計書: docs/features/F02.2.1_dashboard_widget_role_visibility.md §4, §5, §7</p>
@@ -87,8 +90,11 @@ public class DashboardWidgetVisibilityService {
     public WidgetVisibilityResponse getSettings(Long currentUserId, ScopeType scopeType, Long scopeId) {
         validateArgs(currentUserId, scopeType, scopeId);
 
-        // スコープ所属検証（最低限 MEMBER 以上である必要あり）
-        accessControlService.checkMembership(currentUserId, scopeId, scopeType.name());
+        // 非メンバー・サポーターは 403 ではなくデフォルト設定で 200 を返す
+        // （ウィジェット可視性設定は機密データではなく、コンソールエラーを抑制するため）
+        if (!accessControlService.isMember(currentUserId, scopeId, scopeType.name())) {
+            return buildDefaultResponse(scopeType, scopeId);
+        }
 
         if (scopeType == ScopeType.PERSONAL) {
             // 個人ダッシュボードは本機能の対象外
@@ -148,6 +154,34 @@ public class DashboardWidgetVisibilityService {
     // ─────────────────────────────────────────────
     // レスポンス組み立て
     // ─────────────────────────────────────────────
+
+    /**
+     * 非メンバー向けデフォルト可視性レスポンス。
+     * DB は参照せずアプリ定義のデフォルト min_role のみを返す。
+     */
+    private WidgetVisibilityResponse buildDefaultResponse(ScopeType scopeType, Long scopeId) {
+        if (scopeType == ScopeType.PERSONAL) {
+            return WidgetVisibilityResponse.builder()
+                    .scopeType(scopeType)
+                    .scopeId(scopeId)
+                    .widgets(List.of())
+                    .build();
+        }
+        Map<WidgetKey, MinRole> defaults = WidgetDefaultMinRoleMap.getDefaultsForScope(scopeType);
+        List<WidgetVisibilityItemDto> widgets = new ArrayList<>(defaults.size());
+        for (Map.Entry<WidgetKey, MinRole> entry : defaults.entrySet()) {
+            widgets.add(WidgetVisibilityItemDto.builder()
+                    .widgetKey(entry.getKey().name())
+                    .minRole(entry.getValue())
+                    .isDefault(true)
+                    .build());
+        }
+        return WidgetVisibilityResponse.builder()
+                .scopeType(scopeType)
+                .scopeId(scopeId)
+                .widgets(widgets)
+                .build();
+    }
 
     private WidgetVisibilityResponse buildResponse(ScopeType scopeType, Long scopeId) {
         // 1. DB レコードを scopeType + scopeId でまとめて取得しキー別 Map に整理
