@@ -89,15 +89,30 @@ Expires: 0
 
 ## 3. ファイル種別ホワイトリストと MIME 検証
 
+### 3.0 実装上の制約（Presigned URL 方式）
+
+Mannschaft は Cloudflare R2 への Presigned URL 直接アップロードを採用しているため、
+バックエンドはファイルバイト列を受け取らず、**magic byte 検査は実施不可能**。
+
+現在の防御策:
+- ホワイトリスト（`FileTypeValidator`）による Content-Type 制限
+- ブロックリストによる危険 MIME タイプの明示排除（SVG/HTML/スクリプト/XML 等）
+- 全アップロードエンドポイントで `FileTypeValidator` を一元使用（`com.mannschaft.app.common.storage.FileTypeValidator`）
+
+将来対応（本番前検討）:
+- Cloudflare Workers によるアップロード後の MIME 検査
+- R2 の Object lifecycle rule でウイルススキャン連携
+
 ### 3.1 全エンドポイント共通ルール
 
 1. **Content-Type ヘッダーのみで判断しない**（クライアントによる偽装が可能）
 2. サーバー側で **magic byte（ファイルシグネチャ）検証** を実施する（Apache Tika 等を使用）
+   - ただし Presigned URL 方式では §3.0 の制約により実施不可。Cloudflare Worker による代替を検討する
 3. 拡張子と MIME が一致しない場合は **415 Unsupported Media Type** を返す
 4. ファイル名のサニタイズ: `../`（パストラバーサル）、制御文字、NULL バイトを除去する
 
 ```java
-// Magic byte 検証の概念
+// Magic byte 検証の概念（Presigned URL 方式では適用不可）
 public MediaType detectMediaType(InputStream fileStream) {
     // Apache Tika を使用してバイト列から MIME タイプを判定
     Tika tika = new Tika();
@@ -258,3 +273,4 @@ public/og-images/550e8400-e29b-41d4-a716-446655440003.jpg
 |---|---|
 | 2026-06-02 | 新規作成。Presigned URL のライフサイクル・攻撃面・MIME 検証・スコープ別アクセス制御・objectKey 設計ルール・TOCTOU 対策を定義 |
 | 2026-06-02 | §2.3 TTL 上限の強制（サーバー側 `Math.min` 上限丸め・`expiry_at` 返却）を追加。§2.4 Presigned URL エンドポイントのキャッシング防止ヘッダーを追加。§6 大容量ファイルの暗号化方針を追加（個人情報フィールドは `EncryptionService`・画像/動画は R2 バケット暗号化・動画 BE 経由暗号化禁止） |
+| 2026-06-03 | §3.0 追加: Presigned URL 方式の制約（magic byte 検査不可）と `FileTypeValidator` による一元管理を明記。§3.1 更新: magic byte 検証の Presigned URL 適用不可注釈を追加 |

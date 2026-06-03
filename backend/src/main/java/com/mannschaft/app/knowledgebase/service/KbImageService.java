@@ -3,6 +3,7 @@ package com.mannschaft.app.knowledgebase.service;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.knowledgebase.entity.KbImageUploadEntity;
@@ -28,10 +29,8 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class KbImageService {
 
-    /** 許可するContent-Type */
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "image/png", "image/jpeg", "image/webp", "image/gif"
-    );
+    /** 許可する Content-Type。{@link FileTypeValidator#ALLOWED_IMAGE_TYPES} を参照する。 */
+    private static final Set<String> ALLOWED_CONTENT_TYPES = FileTypeValidator.ALLOWED_IMAGE_TYPES;
 
     /** 最大ファイルサイズ: 10MB */
     private static final long MAX_FILE_SIZE = 10L * 1024 * 1024;
@@ -68,8 +67,11 @@ public class KbImageService {
     public ApiResponse<ImageUploadUrlResult> generateUploadUrl(String scopeType, Long scopeId,
                                                                 Long uploaderId,
                                                                 String contentType, long fileSize) {
-        // Content-Typeバリデーション
-        if (!ALLOWED_CONTENT_TYPES.contains(contentType)) {
+        // Content-Type バリデーション（ブロックリスト優先 → ホワイトリスト）
+        if (FileTypeValidator.isBlocked(contentType)) {
+            throw new BusinessException(CommonErrorCode.COMMON_001);
+        }
+        if (!FileTypeValidator.isAllowed(contentType, ALLOWED_CONTENT_TYPES)) {
             throw new BusinessException(CommonErrorCode.COMMON_001);
         }
 
