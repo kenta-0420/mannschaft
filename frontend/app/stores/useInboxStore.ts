@@ -11,6 +11,7 @@ import type {
   InboxSourceType,
   InboxState,
   InboxStateFilter,
+  SuggestedLabel,
   UpdateLabelPayload,
 } from '~/types/inbox'
 
@@ -564,6 +565,80 @@ export const useInboxStore = defineStore('inbox', {
     },
 
     // ─────────────────────────────────────────────
+    // Phase 3 (wave3b): 自動ラベリング提案付与
+    // ─────────────────────────────────────────────
+
+    /**
+     * 提案チップをタップしてラベルを付与する（楽観更新＋ロールバック）。
+     *
+     * 楽観更新:
+     *   1. `suggestedLabels` から該当提案を除去
+     *   2. `labels` に仮ラベル（id='') を追加
+     *   API 成功: BE 返却 LabelDto で id を確定上書き
+     *   API 失敗: ロールバック → _handleError でトースト（呼び出し元が showError を呼ぶ）
+     *
+     * @param sourceType アイテムのソース種別
+     * @param sourceId   アイテムのソース ID
+     * @param suggestion 提案オブジェクト（color / suggestionKey）
+     * @param labelName  i18n 解決済みの表示名（FE が送る）
+     * @returns 成功時 true・失敗時 false
+     */
+    async suggestApply(
+      sourceType: InboxSourceType,
+      sourceId: number,
+      suggestion: SuggestedLabel,
+      labelName: string,
+    ): Promise<boolean> {
+      const id = `${sourceType}:${sourceId}`
+      const idx = this.items.findIndex((item) => item.id === id)
+      const previous = this.items.slice()
+
+      if (idx >= 0) {
+        const item = this.items[idx]!
+        const optimisticLabel: InboxLabel = {
+          id: '', // API 成功後に確定
+          name: labelName,
+          color: suggestion.color,
+          icon: null,
+          sortOrder: 999,
+        }
+        // 楽観更新: 提案を除去・仮ラベルを追加
+        this.items.splice(idx, 1, {
+          ...item,
+          labels: [...item.labels, optimisticLabel],
+          suggestedLabels: (item.suggestedLabels ?? []).filter(
+            (s) => s.suggestionKey !== suggestion.suggestionKey,
+          ),
+        })
+      }
+
+      try {
+        const api = useInboxApi()
+        const returnedLabel = await api.suggestApply(sourceType, sourceId, labelName, suggestion.color)
+        // API 成功: 仮ラベルの id を確定値で上書き
+        if (idx >= 0) {
+          const item = this.items[idx]!
+          this.items.splice(idx, 1, {
+            ...item,
+            labels: item.labels.map((l) =>
+              l.id === '' && l.name === labelName ? returnedLabel : l,
+            ),
+          })
+          // ストアのラベルマスターにも追加（重複なしで）
+          if (!this.labels.some((l) => l.id === returnedLabel.id)) {
+            this.labels.push(returnedLabel)
+          }
+        }
+        return true
+      } catch (error) {
+        // ロールバック
+        this.items = previous
+        this._handleError(error)
+        return false
+      }
+    },
+
+    // ─────────────────────────────────────────────
     // Phase 2: bulk 選択モード
     // ─────────────────────────────────────────────
 
@@ -743,4 +818,4 @@ export const useInboxStore = defineStore('inbox', {
 })
 
 /** 型再エクスポート（呼び出し側の便宜のため） */
-export type { InboxItem, InboxLabel, InboxBulkAction, InboxBulkItem }
+export type { InboxItem, InboxLabel, InboxBulkAction, InboxBulkItem, SuggestedLabel }
