@@ -133,7 +133,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div class="mb-4 flex items-center gap-3">
+    <div class="mb-4 flex items-center justify-between gap-3">
       <BackButton :to="`/organizations/${orgId}/tournaments`" label="大会一覧に戻る" />
       <NuxtLink
         :to="`/organizations/${orgId}/tournaments/${tId}/rosters`"
@@ -141,6 +141,13 @@ onMounted(async () => {
       >
         <i class="pi pi-list-check" />
         {{ $t('tournament.roster.title') }}
+      </NuxtLink>
+      <NuxtLink
+        :to="`/organizations/${orgId}/tournaments/${tId}/files`"
+        class="flex items-center gap-1.5 rounded-lg border border-surface-200 bg-surface-0 px-3 py-1.5 text-sm text-surface-600 transition-colors hover:bg-surface-100"
+      >
+        <i class="pi pi-folder text-amber-500" />
+        {{ $t('tournament.files.title') }}
       </NuxtLink>
     </div>
 
