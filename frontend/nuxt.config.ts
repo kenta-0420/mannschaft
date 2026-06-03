@@ -10,9 +10,13 @@ import Aura from '@primeuix/themes/aura'
 const apiBase = process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8080'
 
 // CSP 違反レポートの送信先（report-uri）。
-// 将来の違反レポート収集基盤（F12.5 エラー追跡）へ向ける。バックエンドの受信エンドポイントは
-// 別途実装が必要（未実装でも 404 が記録されるだけで CSP 強制自体は機能する）。
-// 環境変数で差し替え可能とし、既定は同一オリジンの収集エンドポイント想定パスとする。
+// バックエンド受信エンドポイント `POST /api/v1/security/csp-reports`（permitAll・PR #1274）へ向ける。
+// 値は **常に相対パス** とする（本番は FE/BE 同一オリジンのため相対で届く）。
+//   - 本番: 同一オリジンで素通り。
+//   - dev: FE(:3000) と BE(:8080) がオリジン分離しているため、相対のままだと :3000 起点で
+//     解決され 404 になる。これを下記 nitro.devProxy（dev 限定）で :8080 へフォワードして根治する。
+//     → report-uri は単一の相対値のまま、dev/本番で同一挙動を保てる（絶対URL化は採らない=冗長回避）。
+// 環境変数 NUXT_PUBLIC_CSP_REPORT_URI で差し替え可能（既定は同一オリジンの収集エンドポイントパス）。
 // 設計書: docs/security/03_security_headers_and_csp.md §4.1 / §8
 const cspReportUri = process.env.NUXT_PUBLIC_CSP_REPORT_URI ?? '/api/v1/security/csp-reports'
 
@@ -292,6 +296,27 @@ export default defineNuxtConfig({
   routeRules: process.env.NUXT_API_PROXY === 'true' ? {
     '/api/v1/**': { proxy: 'http://localhost:8080/api/v1/**' },
   } : {},
+
+  // ──────────────────────────────────────────────────────────────────────
+  // dev 限定: CSP 違反レポート (report-uri) を BE(:8080) へフォワードする。
+  // ──────────────────────────────────────────────────────────────────────
+  // report-uri は相対パス `/api/v1/security/csp-reports`（本番の同一オリジン挙動に合わせる）。
+  // dev では FE(:3000)/BE(:8080) がオリジン分離しているため相対のままだと :3000 で 404 になる。
+  // nitro.devProxy は `nuxi dev` 時のみ適用されるため本番には一切影響しない（=絶対URL化のような
+  // 冗長な二重対応を避けつつ、dev でもブラウザの違反レポートが BE に 204 で届く）。
+  // CSP 受信 EP のみに限定し、FE の通常 API 呼び出し（useApi の :8080 絶対URL）には干渉しない。
+  // NUXT_API_PROXY=true（E2E 全 API プロキシ）時は routeRules 側が全 /api/v1/** を担うため二重化を避けて無効化。
+  nitro: {
+    devProxy:
+      process.env.NUXT_API_PROXY === 'true'
+        ? {}
+        : {
+            '/api/v1/security/csp-reports': {
+              target: `${apiBase}/api/v1/security/csp-reports`,
+              changeOrigin: true,
+            },
+          },
+  },
 
   i18n: {
     locales: [

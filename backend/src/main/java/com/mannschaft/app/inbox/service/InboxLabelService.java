@@ -193,6 +193,38 @@ public class InboxLabelService {
         });
     }
 
+    /**
+     * 自動ラベリング提案の 1 タップ付与（案C・冪等・find-or-create）。
+     *
+     * <p>処理（設計書 02_api_design.md §3.5a / 03_business_logic.md §10）:</p>
+     * <ol>
+     *   <li>同名の現役ラベルを探す（find）。無ければ {@link #createLabel} で作成する
+     *       （上限 20 超は {@code INBOX_LABEL_LIMIT_EXCEEDED}・色形式不正は {@code COMMON_001}）。</li>
+     *   <li>そのラベルを {@link #assignLabel} で当該通知に付与する
+     *       （可視性検証・1 通知 10 ラベル上限・<b>重複は冪等</b>に正常終了）。</li>
+     * </ol>
+     *
+     * <p><b>冪等</b>: 同名ラベルが既にあり既に付与済みなら、作成も再付与もせず付与後の {@link LabelDto} を返す。
+     * 新規エラーコードは設けず既存（LIMIT/PER_ITEM/NAME 形式系）を再利用する。</p>
+     *
+     * @return 付与済みラベルの {@link LabelDto}
+     */
+    @Transactional
+    public LabelDto suggestApply(Long userId, String name, String color,
+                                 InboxSourceType sourceType, Long sourceId) {
+        String trimmedName = normalizeName(name);
+
+        // 1. find-or-create（現役同名があれば再利用＝重複作成しない）
+        LabelDto label = labelRepository.findByUserIdAndName(userId, trimmedName)
+                .map(this::toDto)
+                .orElseGet(() -> createLabel(userId, trimmedName, color, null));
+
+        // 2. 付与（重複は冪等・可視性/上限は assignLabel が検証）
+        assignLabel(userId, label.id(), sourceType, sourceId);
+
+        return label;
+    }
+
     // ─────────────────────────────────────────────────────────────────
     // 内部ヘルパー
     // ─────────────────────────────────────────────────────────────────
