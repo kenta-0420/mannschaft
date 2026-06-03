@@ -188,6 +188,88 @@ public class FormSubmissionService {
     }
 
     /**
+     * F08.7.1/06: 大会提出枠（tournament_submission_requirement）に紐付けてフォーム提出を作成する。
+     *
+     * <p>tournament ドメインの {@code TournamentSubmissionRequirementService} から内部委譲で呼ばれる
+     * ファサード用メソッド。{@link #createSubmission} と同じ提出ロジック（テンプレート公開状態・締切・
+     * 提出回数上限のチェック、値の保存、即時提出時の SUBMITTED 遷移）を再利用しつつ、
+     * {@code form_submissions.tournament_submission_requirement_id}（BINARY(16)／UUID）に
+     * 提出枠 ID を設定して連結する（設計書 §2.1）。</p>
+     *
+     * <p>大会の書類提出はチーム単位（{@code scopeType='TEAM'} / {@code scopeId=teamId}）で 1 件に
+     * 正規化される。同一提出枠・同一チームの既存提出があり、それが編集可能（DRAFT / RETURNED）であれば
+     * 新規作成せずに上書き再提出する（差し戻し再提出フロー）。SUBMITTED 以降の提出が既にある場合は
+     * 認可・状態判定の責務を呼出元（tournament ファサード）に委ねるため、本メソッドは新規作成を行わず
+     * 既存をそのまま返す前に上書きはしない（編集不可ステータスはここでは弾かず既存を返却）。</p>
+     *
+     * @param scopeType        スコープ種別（"TEAM" 固定想定）
+     * @param scopeId          スコープ ID（提出チーム ID）
+     * @param userId           提出者ユーザー ID
+     * @param requirementId    大会提出枠 ID（UUIDv7）
+     * @param request          作成リクエスト（template_id・値・即時提出フラグ）
+     * @return 作成／更新された提出レスポンス
+     */
+    @Transactional
+    public FormSubmissionResponse createSubmissionForRequirement(
+            String scopeType, Long scopeId, Long userId, UUID requirementId,
+            CreateFormSubmissionRequest request) {
+        FormTemplateEntity template = templateService.getTemplateEntity(request.getTemplateId());
+
+        if (template.getStatus() != FormStatus.PUBLISHED) {
+            throw new BusinessException(FormErrorCode.TEMPLATE_NOT_PUBLISHED);
+        }
+        if (template.isDeadlinePassed()) {
+            throw new BusinessException(FormErrorCode.TEMPLATE_DEADLINE_PASSED);
+        }
+
+        // 同一提出枠・同一チームの既存提出を探し、編集可能なら上書き再提出する
+        FormSubmissionEntity existing = submissionRepository
+                .findByTournamentSubmissionRequirementIdAndScopeTypeAndScopeId(requirementId, scopeType, scopeId)
+                .filter(FormSubmissionEntity::isEditable)
+                .orElse(null);
+
+        boolean submitNow = Boolean.TRUE.equals(request.getSubmitImmediately());
+
+        FormSubmissionEntity entity;
+        if (existing != null) {
+            entity = existing;
+            valueRepository.deleteBySubmissionId(entity.getId());
+            if (submitNow) {
+                entity.submit();
+            }
+        } else {
+            long userSubmissionCount = submissionRepository.countByTemplateIdAndSubmittedBy(
+                    request.getTemplateId(), userId);
+            entity = FormSubmissionEntity.builder()
+                    .templateId(request.getTemplateId())
+                    .scopeType(scopeType)
+                    .scopeId(scopeId)
+                    .tournamentSubmissionRequirementId(requirementId)
+                    .submittedBy(userId)
+                    .submissionCountForUser((int) userSubmissionCount + 1)
+                    .build();
+            if (submitNow) {
+                entity.submit();
+            }
+        }
+
+        FormSubmissionEntity saved = submissionRepository.save(entity);
+
+        List<FormSubmissionValueEntity> values = List.of();
+        if (request.getValues() != null && !request.getValues().isEmpty()) {
+            values = saveValues(saved.getId(), request.getValues());
+        }
+
+        if (submitNow) {
+            template.incrementSubmissionCount();
+        }
+
+        log.info("大会提出作成: requirementId={}, submissionId={}, scopeId={}, userId={}",
+                requirementId, saved.getId(), scopeId, userId);
+        return formMapper.toSubmissionResponseWithValues(saved, values);
+    }
+
+    /**
      * 提出を更新する。
      *
      * @param submissionId 提出ID

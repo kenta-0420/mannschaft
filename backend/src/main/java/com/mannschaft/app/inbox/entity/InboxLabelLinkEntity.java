@@ -1,6 +1,7 @@
 package com.mannschaft.app.inbox.entity;
 
 import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.gdpr.PersonalData;
 import com.mannschaft.app.inbox.InboxSourceType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -24,7 +25,11 @@ import java.util.UUID;
  *
  * <p>{@code label_id} / {@code user_id} / {@code source_id} への FK 制約は張らない（CLAUDE.md 原則1・
  * {@code label_id} は同一 inbox ドメイン内だが一貫性のため不採用）。設計書: 01_data_model.md §2.3。</p>
+ *
+ * <p><b>GDPR 連携</b>: {@code @PersonalData(category = "inbox")} により
+ * インボックス3表として {@code inbox.json} に束ねてエクスポートされる。設計書: 04_security_operations.md。</p>
  */
+@PersonalData(category = "inbox")
 @Entity
 @Table(name = "inbox_label_links")
 @Getter

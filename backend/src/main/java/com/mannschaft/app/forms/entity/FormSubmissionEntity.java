@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * フォーム提出エンティティ。ユーザーによるフォーム提出情報を管理する。
@@ -46,6 +47,15 @@ public class FormSubmissionEntity extends BaseEntity {
     private Long submittedBy;
 
     private Long workflowRequestId;
+
+    /**
+     * 大会提出枠（tournament_submission_requirement.id）への ID 参照（F08.7.1/06 §2.1・FK なし／原則1）。
+     *
+     * <p>UUID ドメイン（大会連結）と BIGINT ドメイン（workflow/forms 母体）が混線しないよう、
+     * requirement への対応はこの BINARY(16) 列で持つ（{@code workflowRequestId} の BIGINT 連結とは別カラム）。
+     * 大会の書類提出（F08.7.1/06）以外の提出では NULL。</p>
+     */
+    private UUID tournamentSubmissionRequirementId;
 
     @Column(length = 500)
     private String pdfFileKey;

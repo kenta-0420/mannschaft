@@ -1,5 +1,6 @@
 package com.mannschaft.app.inbox.service;
 
+import com.mannschaft.app.inbox.InboxLabelSuggestion;
 import com.mannschaft.app.inbox.InboxPriority;
 import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.InboxState;
@@ -7,6 +8,8 @@ import com.mannschaft.app.inbox.dto.InboxItemDto;
 import com.mannschaft.app.inbox.dto.InboxItemRef;
 import com.mannschaft.app.inbox.dto.InboxPageResponse;
 import com.mannschaft.app.inbox.dto.LabelDto;
+import com.mannschaft.app.inbox.dto.SuggestedLabelDto;
+import com.mannschaft.app.inbox.entity.NotificationLabelEntity;
 import com.mannschaft.app.inbox.entity.InboxLabelLinkEntity;
 import com.mannschaft.app.inbox.entity.NotificationLabelEntity;
 import com.mannschaft.app.inbox.repository.InboxItemStateRepository;
@@ -71,19 +74,29 @@ class InboxAggregationServiceTest {
     @Mock
     private NotificationLabelRepository labelRepository;
 
+    /**
+     * 自動ラベリング提案の静的ルール（Phase 4・案C）。多くのテストは提案を検証しないため
+     * 既定で「提案なし（空リスト）」をスタブする。提案検証テスト（{@link Suggestions}）では個別に上書きする。
+     */
+    @Mock
+    private InboxLabelSuggestionRules suggestionRules;
+
     private InboxAggregationService service;
 
     @BeforeEach
     void setUp() {
         given(notificationAdapter.sourceType()).willReturn(InboxSourceType.NOTIFICATION);
         given(todoDueAdapter.sourceType()).willReturn(InboxSourceType.TODO_DUE);
+        // 既定: 提案なし（提案を検証しない大多数のテストで余計な提案が混ざらないようにする）
+        given(suggestionRules.suggest(any(), any())).willReturn(List.of());
         // List<InboxSourceAdapter> は @InjectMocks で注入できないため手動構築する。
         service = new InboxAggregationService(
                 List.of(notificationAdapter, todoDueAdapter),
                 priorityNormalizer,
                 itemStateRepository,
                 labelLinkRepository,
-                labelRepository);
+                labelRepository,
+                suggestionRules);
     }
 
     /**
@@ -373,7 +386,8 @@ class InboxAggregationServiceTest {
                     priorityNormalizer,
                     itemStateRepository,
                     labelLinkRepository,
-                    labelRepository);
+                    labelRepository,
+                    suggestionRules);
         }
 
         @Test
@@ -550,7 +564,8 @@ class InboxAggregationServiceTest {
                             "BLOG_POST:7", InboxState.READ, List.of())));
             InboxAggregationService svc = new InboxAggregationService(
                     List.of(notificationAdapter, todoDueAdapter, announcementAdapter),
-                    priorityNormalizer, itemStateRepository, labelLinkRepository, labelRepository);
+                    priorityNormalizer, itemStateRepository, labelLinkRepository, labelRepository,
+                suggestionRules);
 
             InboxPageResponse res = svc.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
 
@@ -633,7 +648,8 @@ class InboxAggregationServiceTest {
                             "BLOG_POST:7", InboxState.UNREAD, List.of())));
             InboxAggregationService svc = new InboxAggregationService(
                     List.of(notificationAdapter, todoDueAdapter, announcementAdapter),
-                    priorityNormalizer, itemStateRepository, labelLinkRepository, labelRepository);
+                    priorityNormalizer, itemStateRepository, labelLinkRepository, labelRepository,
+                suggestionRules);
 
             InboxPageResponse res = svc.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
 
@@ -695,7 +711,8 @@ class InboxAggregationServiceTest {
 
             InboxAggregationService svc = new InboxAggregationService(
                     List.of(notificationAdapter, todoDueAdapter, announcementAdapter),
-                    priorityNormalizer, itemStateRepository, labelLinkRepository, labelRepository);
+                    priorityNormalizer, itemStateRepository, labelLinkRepository, labelRepository,
+                suggestionRules);
 
             InboxPageResponse res = svc.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
 
@@ -726,7 +743,8 @@ class InboxAggregationServiceTest {
                             "BLOG_POST:7", InboxState.UNREAD, List.of())));
             InboxAggregationService svc = new InboxAggregationService(
                     List.of(notificationAdapter, todoDueAdapter, announcementAdapter),
-                    priorityNormalizer, itemStateRepository, labelLinkRepository, labelRepository);
+                    priorityNormalizer, itemStateRepository, labelLinkRepository, labelRepository,
+                suggestionRules);
 
             InboxPageResponse res = svc.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
 
@@ -802,7 +820,8 @@ class InboxAggregationServiceTest {
             given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
             return new InboxAggregationService(
                     List.of(adapters), priorityNormalizer,
-                    itemStateRepository, labelLinkRepository, labelRepository);
+                    itemStateRepository, labelLinkRepository, labelRepository,
+                    suggestionRules);
         }
 
         @Test
@@ -962,6 +981,129 @@ class InboxAggregationServiceTest {
             assertThat(res.totalEstimated()).isEqualTo(1L);
             assertThat(res.hasMore()).isFalse();
             assertThat(res.items().get(0).groupCount()).isEqualTo(2);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Phase 4 / 案C: 自動ラベリング提案の導出（静的ルール・非永続・重複抑制）
+    // ─────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("自動ラベリング提案（案C・Phase 4）")
+    class Suggestions {
+
+        @Test
+        @DisplayName("MENTION アイテムには REPLY_NEEDED 提案が出る（色・existingLabelId=null）")
+        void mentionSuggestsReplyNeeded() {
+            given(notificationAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of(
+                    item(InboxSourceType.MENTION, 10L, InboxPriority.HIGH, LocalDateTime.now())));
+            given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            // ルールは MENTION → REPLY_NEEDED を返すようスタブ（本体ロジックは別途 Rules テストで検証）
+            given(suggestionRules.suggest(eq(InboxSourceType.MENTION), any()))
+                    .willReturn(List.of(InboxLabelSuggestion.REPLY_NEEDED));
+            // ユーザーは同義ラベルを持たない → existingLabelId=null
+            given(labelRepository.findByUserIdOrderBySortOrderAsc(USER_ID)).willReturn(List.of());
+
+            InboxPageResponse res = service.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
+
+            assertThat(res.items()).singleElement()
+                    .extracting(InboxItemDto::suggestedLabels)
+                    .satisfies(s -> {
+                        @SuppressWarnings("unchecked")
+                        List<SuggestedLabelDto> list = (List<SuggestedLabelDto>) s;
+                        assertThat(list).singleElement().satisfies(dto -> {
+                            assertThat(dto.suggestionKey()).isEqualTo(InboxLabelSuggestion.REPLY_NEEDED);
+                            assertThat(dto.color()).isEqualTo(InboxLabelSuggestion.REPLY_NEEDED.defaultColor());
+                            assertThat(dto.existingLabelId()).isNull();
+                        });
+                    });
+        }
+
+        @Test
+        @DisplayName("提案対象外の sourceType/priority は suggestedLabels が空")
+        void noSuggestionWhenRuleEmpty() {
+            given(notificationAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of(
+                    item(InboxSourceType.NOTIFICATION, 10L, InboxPriority.NORMAL, LocalDateTime.now())));
+            given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            // 既定スタブ（setUp）が空リストを返す → 提案なし
+
+            InboxPageResponse res = service.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
+
+            assertThat(res.items()).singleElement()
+                    .extracting(InboxItemDto::suggestedLabels)
+                    .satisfies(s -> assertThat((List<?>) s).isEmpty());
+        }
+
+        @Test
+        @DisplayName("重複抑制: 同義ラベルが既に当該アイテムに付与済みなら提案しない（existingLabelId 突合）")
+        void suppressedWhenAlreadyAssigned() {
+            UUID existingLabelId = UUID.randomUUID();
+            given(notificationAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of(
+                    item(InboxSourceType.MENTION, 10L, InboxPriority.HIGH, LocalDateTime.now())));
+            given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(suggestionRules.suggest(eq(InboxSourceType.MENTION), any()))
+                    .willReturn(List.of(InboxLabelSuggestion.REPLY_NEEDED));
+
+            // ユーザーは「要返信」(REPLY_NEEDED 既定名) ラベルを手作成済み
+            NotificationLabelEntity owned = new NotificationLabelEntity();
+            owned.setId(existingLabelId);
+            owned.setUserId(USER_ID);
+            owned.setName(InboxLabelSuggestion.REPLY_NEEDED.defaultName());
+            owned.setSortOrder(0);
+            given(labelRepository.findByUserIdOrderBySortOrderAsc(USER_ID)).willReturn(List.of(owned));
+
+            // そのラベルが既に MENTION:10 に付与済み（labelLink → label 解決で labels に乗る）
+            var link = new com.mannschaft.app.inbox.entity.InboxLabelLinkEntity();
+            link.setLabelId(existingLabelId);
+            link.setUserId(USER_ID);
+            link.setSourceType(InboxSourceType.MENTION);
+            link.setSourceId(10L);
+            given(labelLinkRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any()))
+                    .willReturn(List.of(link));
+            given(labelRepository.findByIdIn(any())).willReturn(List.of(owned));
+
+            InboxPageResponse res = service.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
+
+            // 既付与のため提案は外れる（空）
+            assertThat(res.items()).singleElement()
+                    .extracting(InboxItemDto::suggestedLabels)
+                    .satisfies(s -> assertThat((List<?>) s).isEmpty());
+        }
+
+        @Test
+        @DisplayName("名寄せ: 同義ラベルを持つが未付与なら existingLabelId を埋めて提案する")
+        void populatesExistingLabelIdWhenOwnedButNotAssigned() {
+            UUID existingLabelId = UUID.randomUUID();
+            given(notificationAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of(
+                    item(InboxSourceType.MENTION, 10L, InboxPriority.HIGH, LocalDateTime.now())));
+            given(todoDueAdapter.fetch(eq(USER_ID), anyInt())).willReturn(List.of());
+            given(itemStateRepository.findByUserIdAndSourceTypeIn(any(), any())).willReturn(List.of());
+            given(suggestionRules.suggest(eq(InboxSourceType.MENTION), any()))
+                    .willReturn(List.of(InboxLabelSuggestion.REPLY_NEEDED));
+
+            NotificationLabelEntity owned = new NotificationLabelEntity();
+            owned.setId(existingLabelId);
+            owned.setUserId(USER_ID);
+            owned.setName(InboxLabelSuggestion.REPLY_NEEDED.defaultName());
+            owned.setSortOrder(0);
+            given(labelRepository.findByUserIdOrderBySortOrderAsc(USER_ID)).willReturn(List.of(owned));
+            // 付与はされていない（labelLink なし）
+            given(labelLinkRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), any()))
+                    .willReturn(List.of());
+
+            InboxPageResponse res = service.getInbox(USER_ID, "ALL", null, null, null, 0, 20);
+
+            assertThat(res.items()).singleElement()
+                    .extracting(InboxItemDto::suggestedLabels)
+                    .satisfies(s -> {
+                        @SuppressWarnings("unchecked")
+                        List<SuggestedLabelDto> list = (List<SuggestedLabelDto>) s;
+                        assertThat(list).singleElement()
+                                .satisfies(dto -> assertThat(dto.existingLabelId()).isEqualTo(existingLabelId));
+                    });
         }
     }
 }

@@ -30,6 +30,9 @@ import java.util.List;
  * @param groupCount   名寄せで畳まれた構成メンバー件数（単一は 1）。FE の「N 件」バッジ用。
  * @param groupMembers 畳まれた全構成メンバーの参照（単一は自分自身 1 件）。FE が Phase 2 bulk triage で
  *                     各メンバーへ一括適用するための公開データ（「片方だけ既読/アーカイブ」防止・設計書 §8）。
+ * @param suggestedLabels 自動ラベリング提案（案C・Phase 4・<b>非永続/読み取り時導出</b>）。
+ *                        {@code InboxAggregationService} が静的ルールで算出する。FE は提案チップを描画し
+ *                        1 タップで {@code suggest-apply} を呼ぶ。提案がなければ空リスト（設計書 03 §10）。
  */
 public record InboxItemDto(
         String id,
@@ -46,8 +49,44 @@ public record InboxItemDto(
         List<LabelDto> labels,
         String canonicalRef,
         int groupCount,
-        List<InboxItemRef> groupMembers
+        List<InboxItemRef> groupMembers,
+        List<SuggestedLabelDto> suggestedLabels
 ) {
+
+    /**
+     * 提案ラベルを省いた従来 15 引数の互換コンストラクタ（{@code suggestedLabels} は空リスト）。
+     *
+     * <p>各ソースアダプタ・triage サービスは提案を計算しないためこの形を使う。提案は集約サービスが
+     * 読み取り時に {@link #withSuggestedLabels(List)} で被せる。</p>
+     */
+    public InboxItemDto(
+            String id,
+            InboxSourceType sourceType,
+            Long sourceId,
+            String title,
+            String excerpt,
+            InboxPriority priority,
+            ScopeDto scope,
+            String actionUrl,
+            LocalDateTime occurredAt,
+            InboxState state,
+            LocalDateTime snoozedUntil,
+            List<LabelDto> labels,
+            String canonicalRef,
+            int groupCount,
+            List<InboxItemRef> groupMembers) {
+        this(id, sourceType, sourceId, title, excerpt, priority, scope, actionUrl, occurredAt,
+                state, snoozedUntil, labels, canonicalRef, groupCount, groupMembers, List.of());
+    }
+
+    /**
+     * 提案ラベルだけを差し替えた新インスタンスを返す（イミュータブル・他フィールドは保持）。
+     */
+    public InboxItemDto withSuggestedLabels(List<SuggestedLabelDto> suggested) {
+        return new InboxItemDto(id, sourceType, sourceId, title, excerpt, priority, scope, actionUrl,
+                occurredAt, state, snoozedUntil, labels, canonicalRef, groupCount, groupMembers,
+                suggested == null ? List.of() : suggested);
+    }
 
     /**
      * 通知が属するスコープ（チーム/組織/個人など）。

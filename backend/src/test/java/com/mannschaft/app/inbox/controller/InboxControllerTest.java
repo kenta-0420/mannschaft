@@ -543,6 +543,67 @@ class InboxControllerTest {
     }
 
     // ─────────────────────────────────────────────────────────────────
+    // suggest-apply（自動ラベリング・案C・Phase 4）
+    // ─────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("POST /api/v1/inbox/labels/suggest-apply")
+    class SuggestApply {
+
+        @Test
+        @DisplayName("正常系: 200・付与済み LabelDto を返す・サービスへ委譲")
+        void suggestApply_200() throws Exception {
+            UUID labelId = UUID.randomUUID();
+            given(labelService.suggestApply(
+                    eq(USER_ID), eq("要返信"), eq("#2563EB"), eq(InboxSourceType.MENTION), eq(9L)))
+                    .willReturn(new LabelDto(labelId, "要返信", "#2563EB", null, 0));
+
+            String body = objectMapper.writeValueAsString(Map.of(
+                    "name", "要返信", "color", "#2563EB",
+                    "sourceType", "MENTION", "sourceId", 9));
+
+            mockMvc.perform(post("/api/v1/inbox/labels/suggest-apply")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.name").value("要返信"));
+
+            verify(labelService).suggestApply(
+                    USER_ID, "要返信", "#2563EB", InboxSourceType.MENTION, 9L);
+        }
+
+        @Test
+        @DisplayName("異常系: name 空 → 400（@NotBlank）")
+        void suggestApply_blankName_400() throws Exception {
+            String body = objectMapper.writeValueAsString(Map.of(
+                    "name", "", "color", "#2563EB",
+                    "sourceType", "MENTION", "sourceId", 9));
+
+            mockMvc.perform(post("/api/v1/inbox/labels/suggest-apply")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("異常系: 上限超過 → 422 INBOX_LABEL_LIMIT_EXCEEDED")
+        void suggestApply_limit_422() throws Exception {
+            given(labelService.suggestApply(any(), any(), any(), any(), any()))
+                    .willThrow(new BusinessException(InboxErrorCode.INBOX_LABEL_LIMIT_EXCEEDED));
+
+            String body = objectMapper.writeValueAsString(Map.of(
+                    "name", "要返信", "color", "#2563EB",
+                    "sourceType", "MENTION", "sourceId", 9));
+
+            mockMvc.perform(post("/api/v1/inbox/labels/suggest-apply")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.error.code").value("INBOX_LABEL_LIMIT_EXCEEDED"));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────
     // bulk（Phase 2）
     // ─────────────────────────────────────────────────────────────────
 

@@ -226,4 +226,45 @@ push 基盤（`NotificationDispatchService.dispatch` → WebSocket `/user/{userI
 [復帰]   時刻到来 → 次回 GET /inbox（state=INBOX）で自動的に再表示
          ＋ Phase3 ②: 5分毎バッチが復帰push（INBOX_SNOOZE_REVIVAL）を1度だけ送る（受信箱には増殖させない・§5.1）
 [ラベル] POST /inbox/labels/{id}/assign → inbox_label_links insert（重複は冪等）
+[提案]   GET /inbox の各カードに suggestedLabels[] を導出（非永続）
+         → 提案チップ 1 タップ → POST /inbox/labels/suggest-apply（find-or-create + assign・冪等）
 ```
+
+---
+
+## 10. 自動ラベリング提案（案C「提案＋1タップ付与」・Phase 4）
+
+マスター御裁可＝**案C**。AI/ヒューリスティックで**自動付与はしない**。代わりに静的ルールで「提案」を**読み取り時に導出（非永続・DDL なし）**し、ユーザーが提案チップを **1 タップ**したときだけ実ラベルを find-or-create して付与する。入力摩擦ゼロ・誤分類リスクなし（ADHD 要件）。
+
+### 10.1 提案ルール表（最終形）
+
+`InboxLabelSuggestionRules.suggest(sourceType, priority)` が `(InboxSourceType, InboxPriority)` から提案キー（`InboxLabelSuggestion` enum）を導出する**純関数**。**1 アイテムあたり提案は最大 1 件**に絞る（提案過多を避ける）。
+
+| sourceType | priority 条件 | 提案キー（enum） | 既定色 |
+|---|---|---|---|
+| `MENTION` | 不問 | `REPLY_NEEDED` | `#2563EB` |
+| `CONFIRMABLE` | `URGENT` または `HIGH` | `ACTION_NEEDED` | `#DC2626` |
+| `TODO_DUE` | `URGENT`（期限切れ） | `URGENT` | `#EA580C` |
+| `ANNOUNCEMENT` | 不問 | `READ_LATER` | `#6B7280` |
+| `NOTIFICATION` | `URGENT` | `ACTION_NEEDED` | `#DC2626` |
+| 上記以外 | — | （提案なし＝空リスト） | — |
+
+- **suggestionKey は enum**。UI 表示名は **BE に持たせない**（FE が i18n で解決する）。BE は提案キー・既定色・名寄せ用の既定名（ja）だけを持つ。
+- **既定色**は `InboxLabelSuggestion.defaultColor()`（CHAR(7) hex）。ユーザーは付与後に変更可。
+
+### 10.2 提案の導出（読み取り時・`InboxAggregationService`）
+
+`InboxItemDto` に **`suggestedLabels: List<SuggestedLabelDto>`** を追加（`SuggestedLabelDto{ suggestionKey(enum), color, existingLabelId(UUID|null) }`）。名寄せ畳み込み後の各カードへルールを適用して算出する。**DB には保存しない**。
+
+- **抑制条件（重複提案回避）**: ユーザーが既に同義ラベル（提案キーの既定名と一致する手作成ラベル）を持ち、かつ**そのラベルが当該カードに付与済み**なら提案を外す。付与済みでなければ `existingLabelId` にその id を埋めて提案する（FE は再 create せず既存 id を使える）。同義ラベルが無ければ `existingLabelId=null`（FE は suggest-apply の find-or-create に倒す）。
+- **N+1 を増やさない**: ユーザーの現役ラベルは提案が出るカードがあるときに **1 回だけ**まとめ取りして名前→id 写像を作る（カード件数に依らず定数回）。
+
+### 10.3 1 タップ付与 API（冪等・find-or-create）
+
+`POST /api/v1/inbox/labels/suggest-apply`（body `SuggestApplyRequest{ name, color, sourceType, sourceId }`・API 仕様は 02 §3.5a）。`InboxLabelService.suggestApply(userId, name, color, sourceType, sourceId)`:
+
+1. ユーザーの**現役同名ラベルを探す（find）。無ければ `createLabel` で作成**（上限 20 超は既存 `INBOX_LABEL_LIMIT_EXCEEDED`／色形式不正は `COMMON_001`）。
+2. そのラベルを `assignLabel` で当該カードに付与（可視性検証・1 通知 10 ラベル上限 `INBOX_LABEL_PER_ITEM_EXCEEDED`）。
+3. **冪等**: 既に同ラベルが付いていれば二重付与せず正常（200）で付与後の `LabelDto` を返す。
+
+**新規エラーコードは設けず既存を再利用**する。レスポンスは付与済みの `LabelDto`。
