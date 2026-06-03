@@ -3,6 +3,11 @@
     "common_delete": "删除",
     "description_label": "说明",
     "error_title_required": "标题为必填项",
+    "success_create": "已创建活动",
+    "success_update": "已更新活动",
+    "success_create_personal": "已添加日程",
+    "success_update_personal": "已更新日程",
+    "error_load_event": "获取活动信息失败",
     "reminder": {
       "label": "提醒",
       "add": "添加提醒",
