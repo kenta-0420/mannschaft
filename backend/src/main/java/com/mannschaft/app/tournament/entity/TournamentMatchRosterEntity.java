@@ -13,6 +13,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * 試合出場メンバー登録エンティティ。
@@ -46,6 +47,14 @@ public class TournamentMatchRosterEntity {
 
     @Column(length = 30)
     private String position;
+
+    /** 協会選手登録番号（背番号 jerseyNumber とは別・NULL 可／F08.7.1/05 §8.1） */
+    @Column(length = 32)
+    private String registrationNumber;
+
+    /** 着用 team_uniform_set への ID 参照（team ドメイン・クロスドメイン FK なし／原則1・NULL 可／§8.2） */
+    @Column(columnDefinition = "BINARY(16)")
+    private UUID uniformSetId;
 
     @Column(nullable = false)
     @Builder.Default
