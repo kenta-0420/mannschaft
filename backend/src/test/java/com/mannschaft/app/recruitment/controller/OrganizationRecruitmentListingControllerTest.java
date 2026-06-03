@@ -73,7 +73,7 @@ class OrganizationRecruitmentListingControllerTest {
                     20, 5, 0, 0, 100, false, null,
                     "PUBLIC", "DRAFT", null, null, null, null, 1L,
                     null, null, null, null, null,
-                    null, null, null, null); // F22.1 prefectureCode, cityCode, region, friendTargets
+                    null, null, null, null, null); // F22.1 prefectureCode, cityCode, region, regions, friendTargets
 
             CreateRecruitmentListingRequest request = mock(CreateRecruitmentListingRequest.class);
             given(listingService.create(
@@ -101,7 +101,7 @@ class OrganizationRecruitmentListingControllerTest {
                     20, 5, 0, 0, 100, false, null,
                     "PUBLIC", "DRAFT", null, null, null, null, 1L,
                     null, null, null, null, null,
-                    null, null, null, null); // F22.1 prefectureCode, cityCode, region, friendTargets
+                    null, null, null, null, null); // F22.1 prefectureCode, cityCode, region, regions, friendTargets
 
             CreateRecruitmentListingRequest request = mock(CreateRecruitmentListingRequest.class);
             given(listingService.create(

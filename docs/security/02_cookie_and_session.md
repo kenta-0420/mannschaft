@@ -23,7 +23,17 @@ JWT + HttpOnly Cookie によるステートレス認証における **Cookie 属
 | `Secure` | **`${MANNSCHAFT_COOKIE_SECURE}`**（本番 `true` / ローカル `false`） | HTTPS 通信時のみ送信。本番で平文送信を防ぐ |
 | `SameSite` | `Strict` | クロスサイトからの Cookie 送信を禁止（CSRF 対策） |
 | `Path` | `/` | アプリ全体 |
-| `Max-Age` | access_token は 900 秒（JWT 有効期限と一致） | トークン TTL と Cookie 寿命を揃える |
+| `Max-Age` | access_token は **890 秒**（JWT 有効期限 900 秒より 10 秒短く設定） | Clock Skew 対策（§2.3）参照 |
+
+### 2.3 Cookie Max-Age の Clock Skew 対策
+
+**Clock Skew 対策**: Cookie の `Max-Age` は JWT 有効期限（`exp` claim）より **10 秒短く設定**する。
+クライアントとサーバーの時刻差により、Cookie が先に消えることを保証し、
+「Cookie なし → 認証フローへ」が確実に起動するようにする。
+
+設定値: `access_token Cookie Max-Age = 890秒`（JWT 有効期限 900秒 - 10秒）
+
+> 現状の実装（`buildAccessTokenCookie` に `maxAge(900)` が渡されている箇所）は 890 秒に修正すること。refresh_token Cookie の Max-Age は DB トークンの有効期限（`getRefreshTokenExpirationSeconds()`）から 10 秒差し引いた値を設定する。
 
 ### 2.1 `MANNSCHAFT_COOKIE_SECURE` の導入（本 Phase）
 現状 `AuthLoginController` は `secure(false)` をハードコードしている（開発用）。これを環境変数化する。
@@ -79,6 +89,22 @@ access_token（JWT）の `roles` claim は **認可（authority）の起点**で
 - **全デバイス無効化**: ユーザー単位の無効化タイムスタンプを Valkey に保持
 - **セッション一覧・個別無効化・新規デバイス検知**: F12.4 を参照
 
+### 4.1 Valkey 障害時の動作方針（Fail-Open vs Fail-Closed）
+
+現在の実装は **Fail-Open** ポリシーを採用している:
+- JTI ブラックリスト確認時に Valkey が応答しない場合 → トークンを有効として扱う（アクセス許可）
+- 全デバイス無効化タイムスタンプの確認失敗時 → 同様に無効化をスキップ
+
+**理由**: 可用性を優先（ログアウト機能の Valkey 依存を UX トレードオフとして許容）
+
+**本番要件**: Fail-Open を安全に運用するには Valkey の高可用性が前提条件。
+本番環境では以下のいずれかを必須とする:
+- Valkey Sentinel（自動フェイルオーバー、推奨）
+- Valkey Cluster（水平シャーディング、大規模向け）
+- AWS ElastiCache 等の Managed Redis（SLA 99.9% 以上）
+
+シングルポイント Valkey での本番稼働は禁止する。詳細は [09 キー管理・ローテーション](09_key_management_and_rotation.md) の Valkey 冗長化要件も参照すること。
+
 ---
 
 ## 5. ブルートフォース・リスト型攻撃対策
@@ -86,7 +112,9 @@ access_token（JWT）の `roles` claim は **認可（authority）の起点**で
 | 対策 | 値 | 実装 |
 |---|---|---|
 | パスワードハッシュ | **Argon2id**（OWASP 準拠 `Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8()`）。既存ハッシュは生 BCrypt を段階移行 | `AuthConfig`（`DelegatingPasswordEncoder`） |
-| ログインレートリミット | 1 分窓・最大試行数 | `AuthService`（Valkey） |
+| ログインレートリミット | 1 分窓・最大 **5 回**（5 回失敗で 30 分ロック、HTTP 423） | `AuthService`（Valkey） |
+| パスワードリセット申請レート | 1 分窓・最大 **3 回** | `AuthService`（Valkey） |
+| メール認証コード送信レート | 1 分窓・最大 **3 回** | `AuthService`（Valkey） |
 | アカウントロック | 5 回失敗で 30 分ロック（HTTP 423） | `AuthService` / F01.1 |
 
 > **Argon2id 段階移行（2026-05-26 実装済み）**: `passwordEncoder` を `DelegatingPasswordEncoder`（既定 ID = `argon2`）に変更。新規エンコード（登録・パスワードリセット・変更）は `{argon2}` プレフィックス付きハッシュを生成する。既存の `{id}` プレフィックスなしの生 BCrypt ハッシュは `setDefaultPasswordEncoderForMatches(BCryptPasswordEncoder)` により BCrypt として検証されるため、**DB の既存ハッシュは無変更**。さらにログイン成功時に `PasswordEncoder#upgradeEncoding` が true なら検証済み平文を Argon2id で再エンコードして保存し、**既存ユーザーはログインのたびに透過的に Argon2id へ移行**する（強制リセット不要・ユーザー影響なし）。`password_hash` 列は当初から `VARCHAR(255)`（V1.001）で Argon2id ハッシュ（~96 文字）を十分格納できるため Flyway migration は不要。
@@ -109,3 +137,4 @@ access_token（JWT）の `roles` claim は **認可（authority）の起点**で
 | 2026-05-26 | 新規作成。`MANNSCHAFT_COOKIE_SECURE` 環境変数化と Cookie 属性統一を定義 |
 | 2026-05-26 | 認証コア強化: Argon2id 段階移行（`DelegatingPasswordEncoder`・ログイン時透過 upgrade）と refresh_token Cookie 発行一元化（デュアルモード）を実装。§3/§5/§6 を実装済みに更新 |
 | 2026-05-30 | §3.1 を新設。access_token の roles claim の現状（`["MEMBER"]` 固定）と SYSTEM_ADMIN を roles 配列に載せる改善を追記。詳細は [03](03_role_authority_model.md) を正典として参照 |
+| 2026-06-02 | §2 Cookie 属性テーブルの `Max-Age` を 900→890 秒（Clock Skew 対策）に修正。§2.3 Clock Skew 対策セクションを新設（JWT `exp` より 10 秒短く設定する根拠・設定値を明記）。§4.1 Valkey 障害時 Fail-Open 方針を新設（本番 Sentinel/Cluster 必須・シングルポイント禁止）。§5 レートリミットテーブルにパスワードリセット申請（3回/分）・メール認証コード送信（3回/分）の数値を追記 |

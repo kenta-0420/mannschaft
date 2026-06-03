@@ -147,8 +147,8 @@ class OrgTodoControllerTest {
         void GET_todos_正常系_200で一覧が返る() throws Exception {
             PagedResponse<TodoResponse> paged = PagedResponse.of(
                     List.of(sampleTodo()),
-                    new PagedResponse.PageMeta(1L, 1, 20, 1));
-            given(todoService.listTodos(eq(TodoScopeType.ORGANIZATION), eq(ORG_ID), eq((TodoStatus) null), eq(1), eq(20)))
+                    new PagedResponse.PageMeta(1L, 0, 20, 1));
+            given(todoService.listTodos(eq(TodoScopeType.ORGANIZATION), eq(ORG_ID), eq((TodoStatus) null), eq(0), eq(20)))
                     .willReturn(paged);
 
             mockMvc.perform(get("/api/v1/organizations/{orgId}/todos", ORG_ID))

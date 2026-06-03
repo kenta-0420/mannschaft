@@ -34,6 +34,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -49,6 +51,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * F04.11 {@link InboxController} MockMvc 契約テスト（@WebMvcTest）。
@@ -100,6 +103,10 @@ class InboxControllerTest {
     @MockitoBean
     private ProxyInputContext proxyInputContext;
 
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
+
     @BeforeEach
     void setUp() {
         UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
@@ -120,7 +127,10 @@ class InboxControllerTest {
         return new InboxItemDto(
                 "NOTIFICATION:123", InboxSourceType.NOTIFICATION, 123L, "タイトル", "抜粋",
                 InboxPriority.HIGH, null, "/x/123",
-                LocalDateTime.of(2026, 5, 31, 9, 0), InboxState.UNREAD, null, List.of());
+                LocalDateTime.of(2026, 5, 31, 9, 0), InboxState.UNREAD, null, List.of(),
+                "NOTIFICATION:123", 1,
+                List.of(new com.mannschaft.app.inbox.dto.InboxItemRef(
+                        InboxSourceType.NOTIFICATION, 123L)));
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -227,7 +237,7 @@ class InboxControllerTest {
             String body = objectMapper.writeValueAsString(Map.of(
                     "sourceType", "NOTIFICATION",
                     "sourceId", 123,
-                    "snoozedUntil", LocalDateTime.now().plusHours(3).toString()));
+                    "snoozedUntil", OffsetDateTime.now(ZoneOffset.ofHours(9)).plusHours(3).toString()));
 
             mockMvc.perform(post("/api/v1/inbox/snooze")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -256,7 +266,7 @@ class InboxControllerTest {
             String body = objectMapper.writeValueAsString(Map.of(
                     "sourceType", "NOTIFICATION",
                     "sourceId", 123,
-                    "snoozedUntil", LocalDateTime.now().minusHours(1).toString()));
+                    "snoozedUntil", OffsetDateTime.now(ZoneOffset.ofHours(9)).minusHours(1).toString()));
 
             mockMvc.perform(post("/api/v1/inbox/snooze")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -274,7 +284,7 @@ class InboxControllerTest {
             String body = objectMapper.writeValueAsString(Map.of(
                     "sourceType", "NOTIFICATION",
                     "sourceId", 999,
-                    "snoozedUntil", LocalDateTime.now().plusHours(3).toString()));
+                    "snoozedUntil", OffsetDateTime.now(ZoneOffset.ofHours(9)).plusHours(3).toString()));
 
             mockMvc.perform(post("/api/v1/inbox/snooze")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -414,6 +424,21 @@ class InboxControllerTest {
                             .content(body))
                     .andExpect(status().isUnprocessableEntity())
                     .andExpect(jsonPath("$.error.code").value("INBOX_LABEL_LIMIT_EXCEEDED"));
+        }
+
+        @Test
+        @DisplayName("POST /labels: 同名重複 → 409 INBOX_LABEL_NAME_DUPLICATE")
+        void createLabel_duplicate_409() throws Exception {
+            given(labelService.createLabel(any(), any(), any(), any()))
+                    .willThrow(new BusinessException(InboxErrorCode.INBOX_LABEL_NAME_DUPLICATE));
+
+            String body = objectMapper.writeValueAsString(Map.of("name", "要返信"));
+
+            mockMvc.perform(post("/api/v1/inbox/labels")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error.code").value("INBOX_LABEL_NAME_DUPLICATE"));
         }
 
         @Test

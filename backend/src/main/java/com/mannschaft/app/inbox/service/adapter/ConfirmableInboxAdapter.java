@@ -5,6 +5,7 @@ import com.mannschaft.app.inbox.InboxPriority;
 import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.InboxState;
 import com.mannschaft.app.inbox.dto.InboxItemDto;
+import com.mannschaft.app.inbox.dto.InboxItemRef;
 import com.mannschaft.app.inbox.service.InboxPriorityNormalizer;
 import com.mannschaft.app.inbox.service.InboxPriorityNormalizer.NormalizationContext;
 import com.mannschaft.app.inbox.service.InboxSourceAdapter;
@@ -13,6 +14,7 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -45,12 +47,17 @@ public class ConfirmableInboxAdapter implements InboxSourceAdapter {
     }
 
     @Override
-    public List<InboxItemDto> fetch(Long userId) {
+    public List<InboxItemDto> fetch(Long userId, int window) {
+        if (window <= 0) {
+            return List.of();
+        }
         NormalizationContext ctx = currentContext();
         // JOIN FETCH で親 confirmableNotification を一括取得し N+1 を防ぐ（他4ソースと同様の方式）。
+        // Phase3 ③：境界付きウィンドウ＝親 created_at 降順の上位 window 件のみ（無制限 fetch を根絶）。
         // 既存の findByUserIdAndIsConfirmedFalseAndExcludedAtIsNull は保留中一覧 API 等で引き続き使用。
         return recipientRepository
-                .findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(userId).stream()
+                .findByUserIdAndIsConfirmedFalseAndExcludedAtIsNullWithNotification(
+                        userId, PageRequest.of(0, window)).stream()
                 .map(r -> toDto(r, ctx))
                 .toList();
     }
@@ -81,9 +88,12 @@ public class ConfirmableInboxAdapter implements InboxSourceAdapter {
                 parent.getScopeId(),
                 null);
 
+        // 名寄せ（Phase 3 ①）：確認必須通知は固有実体（畳む相手がいない）＝常に自分自身キー。
+        String selfKey = InboxSourceType.CONFIRMABLE.name() + ":" + r.getId();
+
         // 未確認の保留中通知のみ取得するため、ソース状態は UNREAD（確認＝READ 相当は対象外）。
         return new InboxItemDto(
-                InboxSourceType.CONFIRMABLE.name() + ":" + r.getId(),
+                selfKey,
                 InboxSourceType.CONFIRMABLE,
                 r.getId(),
                 parent.getTitle(),
@@ -94,7 +104,10 @@ public class ConfirmableInboxAdapter implements InboxSourceAdapter {
                 parent.getCreatedAt(),
                 InboxState.UNREAD,
                 null,
-                List.of());
+                List.of(),
+                selfKey,
+                1,
+                List.of(new InboxItemRef(InboxSourceType.CONFIRMABLE, r.getId())));
     }
 
     /** 親 priority enum を normalizer が解する文字列（NORMAL/HIGH/URGENT）へ変換する。 */

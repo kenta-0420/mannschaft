@@ -28,7 +28,8 @@
       "snoozed": "Zurückgestellt",
       "archived": "In Archiv verschoben",
       "unarchived": "In Posteingang verschoben",
-      "unsnoozed": "Zurückstellung aufgehoben"
+      "unsnoozed": "Zurückstellung aufgehoben",
+      "snoozeFailed": "Zurückstellen fehlgeschlagen"
     },
     "snoozePreset": {
       "in3h": "In 3 Stunden",
@@ -79,6 +80,10 @@
       "apply": "Anwenden",
       "result": "{processed} verarbeitet ({skipped} übersprungen)",
       "cancel": "Abbrechen"
+    },
+    "group": {
+      "badge": "+{n} weitere",
+      "badgeTitle": "{n} Benachrichtigungen sind hier zusammengefasst"
     }
   }
 }

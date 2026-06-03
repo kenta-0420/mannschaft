@@ -3,10 +3,13 @@ package com.mannschaft.app.schedule.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.schedule.dto.AttendanceResponse;
+import com.mannschaft.app.schedule.CalendarSyncScopeType;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
 import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
 import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
+import com.mannschaft.app.schedule.service.ScheduleReminderService;
+import com.mannschaft.app.schedule.service.ScheduleScheduledTaskService;
 import com.mannschaft.app.schedule.service.ScheduleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
@@ -44,6 +48,8 @@ public class OrgScheduleController {
 
     private final ScheduleService scheduleService;
     private final ScheduleAttendanceService attendanceService;
+    private final ScheduleReminderService reminderService;
+    private final ScheduleScheduledTaskService scheduledTaskService;
     private final NameResolverService nameResolverService;
 
 
@@ -112,8 +118,28 @@ public class OrgScheduleController {
                         entity.getSourceScheduleId()))
                 .audit(new ScheduleResponse.ScheduleAuditDto(entity.getCreatedAt(), createdByDisplayName))
                 .myAttendanceStatus(myAttendanceStatus)
+                .reminders(reminderService.getReminders(scheduleId))
+                .scheduledTasks(scheduledTaskService.findTaskResponsesForSchedule(scheduleId))
                 .build();
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 組織スケジュールの予約タスク（予約アンケート / 予約出欠募集）を取り消す（機能55 第三陣）。
+     *
+     * <p>PENDING（作成待ち）のタスクのみ取消可能。既に materialize 済み等は 409。</p>
+     */
+    @DeleteMapping("/{scheduleId}/scheduled-tasks/{taskId}")
+    @Operation(summary = "予約タスク取消")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取消成功")
+    public ResponseEntity<Void> cancelScheduledTask(
+            @PathVariable Long orgId,
+            @PathVariable Long scheduleId,
+            @PathVariable UUID taskId) {
+        // 認可: 当該予定が閲覧可能か（CanView）を確認してから取消する（既存の予定操作と同等基準）
+        scheduleService.getScheduleWithAccessCheck(scheduleId, SecurityUtils.getCurrentUserId());
+        scheduledTaskService.cancelTask(taskId, CalendarSyncScopeType.ORGANIZATION, orgId);
+        return ResponseEntity.noContent().build();
     }
 
     /**

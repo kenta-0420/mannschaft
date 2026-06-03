@@ -55,7 +55,9 @@ public class ScheduleAnnouncementAdapter implements AnnouncementChannelAdapter {
                 null,                // academicYear
                 null,                // recurrenceRule
                 null,                // surveys
-                null                 // reminders
+                null,                // reminders
+                null,                // scheduledSurveys（機能55: 告知ウィザードでは未使用）
+                null                 // scheduledAttendance（機能55: 告知ウィザードでは未使用）
         );
 
         ScheduleResponse response = scheduleService.createSchedule(

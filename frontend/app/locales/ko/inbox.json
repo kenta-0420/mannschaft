@@ -28,7 +28,8 @@
       "snoozed": "스누즈했습니다",
       "archived": "보관함으로 이동했습니다",
       "unarchived": "받은 편지함으로 이동했습니다",
-      "unsnoozed": "스누즈를 해제했습니다"
+      "unsnoozed": "스누즈를 해제했습니다",
+      "snoozeFailed": "스누즈에 실패했습니다"
     },
     "snoozePreset": {
       "in3h": "3시간 후",
@@ -79,6 +80,10 @@
       "apply": "실행",
       "result": "{processed}건 처리（{skipped}건 건너뜀）",
       "cancel": "취소"
+    },
+    "group": {
+      "badge": "+{n}건",
+      "badgeTitle": "{n}건의 알림이 묶여 있습니다"
     }
   }
 }

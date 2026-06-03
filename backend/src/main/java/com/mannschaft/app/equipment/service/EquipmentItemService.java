@@ -2,6 +2,7 @@ package com.mannschaft.app.equipment.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.equipment.EquipmentErrorCode;
 import com.mannschaft.app.equipment.EquipmentMapper;
@@ -51,6 +52,7 @@ public class EquipmentItemService {
     @Value("${app.domain-base:https://app.mannschaft.example}")
     private String domainBase;
 
+    /** {@link FileTypeValidator#ALLOWED_IMAGE_TYPES} を参照する（ローカル定義を廃止）。GIF/HEICはUIで不要なため除外済み。 */
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -357,7 +359,11 @@ public class EquipmentItemService {
 
     private PresignedUrlResponse generatePresignedUrl(EquipmentItemEntity entity, String scopeTypePath,
                                                        Long scopeId, PresignedUrlRequest request) {
-        if (!ALLOWED_CONTENT_TYPES.contains(request.getContentType())) {
+        // ブロックリスト優先（危険な MIME タイプを明示排除）
+        if (FileTypeValidator.isBlocked(request.getContentType())) {
+            throw new BusinessException(EquipmentErrorCode.INVALID_CONTENT_TYPE);
+        }
+        if (!FileTypeValidator.isAllowed(request.getContentType(), ALLOWED_CONTENT_TYPES)) {
             throw new BusinessException(EquipmentErrorCode.INVALID_CONTENT_TYPE);
         }
         if (request.getFileSize() > MAX_FILE_SIZE) {

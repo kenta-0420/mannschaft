@@ -5,30 +5,38 @@ import com.mannschaft.app.schedule.dto.CreateReminderRequest;
 import com.mannschaft.app.schedule.dto.ReminderResponse;
 import com.mannschaft.app.schedule.entity.ScheduleAttendanceEntity;
 import com.mannschaft.app.schedule.entity.ScheduleAttendanceReminderEntity;
+import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.event.ReminderNotificationEvent;
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceReminderRepository;
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
+import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.service.ScheduleReminderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.MessageSource;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
  * {@link ScheduleReminderService} の単体テスト。
- * リマインダーの作成・一覧取得・即時リマインド・バッチ処理を検証する。
+ * リマインダーの作成（相対/絶対）・一覧取得・即時リマインド（通知発火）・実効時刻ベースのバッチ処理を検証する。
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ScheduleReminderService 単体テスト")
@@ -40,6 +48,15 @@ class ScheduleReminderServiceTest {
     @Mock
     private ScheduleAttendanceRepository attendanceRepository;
 
+    @Mock
+    private ScheduleRepository scheduleRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private MessageSource messageSource;
+
     @InjectMocks
     private ScheduleReminderService reminderService;
 
@@ -49,12 +66,39 @@ class ScheduleReminderServiceTest {
 
     private static final Long SCHEDULE_ID = 1L;
 
-    private ScheduleAttendanceReminderEntity createReminderEntity() {
+    private ScheduleAttendanceReminderEntity createAbsoluteReminderEntity(LocalDateTime remindAt) {
         return ScheduleAttendanceReminderEntity.builder()
                 .scheduleId(SCHEDULE_ID)
-                .remindAt(LocalDateTime.of(2026, 4, 1, 10, 0))
+                .reminderKind(ReminderKind.ABSOLUTE)
+                .remindAt(remindAt)
                 .isSent(false)
                 .build();
+    }
+
+    private ScheduleAttendanceReminderEntity createRelativeReminderEntity(int minutesBefore) {
+        return ScheduleAttendanceReminderEntity.builder()
+                .scheduleId(SCHEDULE_ID)
+                .reminderKind(ReminderKind.RELATIVE)
+                .remindBeforeMinutes(minutesBefore)
+                .isSent(false)
+                .build();
+    }
+
+    private ScheduleEntity createSchedule(LocalDateTime startAt, boolean attendanceRequired) {
+        ScheduleEntity schedule = ScheduleEntity.builder()
+                .teamId(50L)
+                .title("テスト予定")
+                .startAt(startAt)
+                .attendanceRequired(attendanceRequired)
+                .build();
+        // id は BaseEntity 由来で @Builder では設定できないためリフレクションで付与
+        org.springframework.test.util.ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
+        return schedule;
+    }
+
+    private void stubMessages() {
+        given(messageSource.getMessage(anyString(), any(), anyString(), any()))
+                .willAnswer(invocation -> invocation.getArgument(2));
     }
 
     // ========================================
@@ -66,29 +110,51 @@ class ScheduleReminderServiceTest {
     class CreateReminders {
 
         @Test
-        @DisplayName("リマインダー作成_正常_一覧を返す")
-        void リマインダー作成_正常_一覧を返す() {
+        @DisplayName("絶対指定_remindAtが保存される")
+        void 絶対指定_remindAtが保存される() {
             // given
             given(reminderRepository.countByScheduleId(SCHEDULE_ID)).willReturn(0L);
             given(reminderRepository.save(any(ScheduleAttendanceReminderEntity.class)))
-                    .willAnswer(invocation -> {
-                        ScheduleAttendanceReminderEntity e = invocation.getArgument(0);
-                        java.lang.reflect.Method m =
-                                ScheduleAttendanceReminderEntity.class.getDeclaredMethod("onCreate");
-                        m.setAccessible(true);
-                        m.invoke(e);
-                        return e;
-                    });
+                    .willAnswer(invocation -> invocation.getArgument(0));
 
+            LocalDateTime remindAt = LocalDateTime.now().plusDays(1);
             List<CreateReminderRequest> requests = List.of(
-                    new CreateReminderRequest(LocalDateTime.of(2026, 4, 1, 10, 0)));
+                    new CreateReminderRequest(remindAt, null, ReminderKind.ABSOLUTE));
 
             // when
             List<ReminderResponse> result = reminderService.createReminders(SCHEDULE_ID, requests);
 
             // then
             assertThat(result).hasSize(1);
-            verify(reminderRepository).save(any(ScheduleAttendanceReminderEntity.class));
+            ArgumentCaptor<ScheduleAttendanceReminderEntity> captor =
+                    ArgumentCaptor.forClass(ScheduleAttendanceReminderEntity.class);
+            verify(reminderRepository).save(captor.capture());
+            assertThat(captor.getValue().getReminderKind()).isEqualTo(ReminderKind.ABSOLUTE);
+            assertThat(captor.getValue().getRemindAt()).isEqualTo(remindAt);
+            assertThat(captor.getValue().getRemindBeforeMinutes()).isNull();
+        }
+
+        @Test
+        @DisplayName("相対指定_remindBeforeMinutesが保存されremindAtはnull")
+        void 相対指定_remindBeforeMinutesが保存されremindAtはnull() {
+            // given
+            given(reminderRepository.countByScheduleId(SCHEDULE_ID)).willReturn(0L);
+            given(reminderRepository.save(any(ScheduleAttendanceReminderEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            List<CreateReminderRequest> requests = List.of(
+                    new CreateReminderRequest(null, 30, ReminderKind.RELATIVE));
+
+            // when
+            reminderService.createReminders(SCHEDULE_ID, requests);
+
+            // then
+            ArgumentCaptor<ScheduleAttendanceReminderEntity> captor =
+                    ArgumentCaptor.forClass(ScheduleAttendanceReminderEntity.class);
+            verify(reminderRepository).save(captor.capture());
+            assertThat(captor.getValue().getReminderKind()).isEqualTo(ReminderKind.RELATIVE);
+            assertThat(captor.getValue().getRemindBeforeMinutes()).isEqualTo(30);
+            assertThat(captor.getValue().getRemindAt()).isNull();
         }
 
         @Test
@@ -97,39 +163,14 @@ class ScheduleReminderServiceTest {
             // given
             given(reminderRepository.countByScheduleId(SCHEDULE_ID)).willReturn(4L);
             List<CreateReminderRequest> requests = List.of(
-                    new CreateReminderRequest(LocalDateTime.of(2026, 4, 1, 10, 0)),
-                    new CreateReminderRequest(LocalDateTime.of(2026, 4, 2, 10, 0)));
+                    new CreateReminderRequest(LocalDateTime.now().plusDays(1), null, ReminderKind.ABSOLUTE),
+                    new CreateReminderRequest(LocalDateTime.now().plusDays(2), null, ReminderKind.ABSOLUTE));
 
             // when & then
             assertThatThrownBy(() -> reminderService.createReminders(SCHEDULE_ID, requests))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ScheduleErrorCode.MAX_REMINDERS_EXCEEDED);
-        }
-    }
-
-    // ========================================
-    // getReminders
-    // ========================================
-
-    @Nested
-    @DisplayName("getReminders")
-    class GetReminders {
-
-        @Test
-        @DisplayName("リマインダー取得_正常_一覧を返す")
-        void リマインダー取得_正常_一覧を返す() {
-            // given
-            ScheduleAttendanceReminderEntity entity = createReminderEntity();
-            given(reminderRepository.findByScheduleIdOrderByRemindAtAsc(SCHEDULE_ID))
-                    .willReturn(List.of(entity));
-
-            // when
-            List<ReminderResponse> result = reminderService.getReminders(SCHEDULE_ID);
-
-            // then
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getIsSent()).isFalse();
         }
     }
 
@@ -142,9 +183,11 @@ class ScheduleReminderServiceTest {
     class SendReminder {
 
         @Test
-        @DisplayName("即時リマインド_未回答者あり_処理される")
-        void 即時リマインド_未回答者あり_処理される() {
+        @DisplayName("出欠必須_未回答者あり_通知イベント発火")
+        void 出欠必須_未回答者あり_通知イベント発火() {
             // given
+            given(scheduleRepository.findById(SCHEDULE_ID))
+                    .willReturn(Optional.of(createSchedule(LocalDateTime.now().plusHours(1), true)));
             ScheduleAttendanceEntity undecided = ScheduleAttendanceEntity.builder()
                     .scheduleId(SCHEDULE_ID)
                     .userId(100L)
@@ -152,29 +195,60 @@ class ScheduleReminderServiceTest {
                     .build();
             given(attendanceRepository.findByScheduleIdAndStatus(SCHEDULE_ID, AttendanceStatus.UNDECIDED))
                     .willReturn(List.of(undecided));
+            stubMessages();
 
             // when
             reminderService.sendReminder(SCHEDULE_ID);
 
-            // then（ログ出力で確認。通知機能未実装のため副作用なし）
+            // then
+            ArgumentCaptor<ReminderNotificationEvent> captor =
+                    ArgumentCaptor.forClass(ReminderNotificationEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().getRecipientUserIds()).containsExactly(100L);
+            assertThat(captor.getValue().getScheduleId()).isEqualTo(SCHEDULE_ID);
         }
 
         @Test
-        @DisplayName("即時リマインド_未回答者なし_何もしない")
-        void 即時リマインド_未回答者なし_何もしない() {
+        @DisplayName("出欠不要_全出欠対象者へ通知イベント発火")
+        void 出欠不要_全出欠対象者へ通知イベント発火() {
             // given
+            given(scheduleRepository.findById(SCHEDULE_ID))
+                    .willReturn(Optional.of(createSchedule(LocalDateTime.now().plusHours(1), false)));
+            given(attendanceRepository.findByScheduleIdOrderByUserIdAsc(SCHEDULE_ID))
+                    .willReturn(List.of(
+                            ScheduleAttendanceEntity.builder().scheduleId(SCHEDULE_ID).userId(1L).build(),
+                            ScheduleAttendanceEntity.builder().scheduleId(SCHEDULE_ID).userId(2L).build()));
+            stubMessages();
+
+            // when
+            reminderService.sendReminder(SCHEDULE_ID);
+
+            // then
+            ArgumentCaptor<ReminderNotificationEvent> captor =
+                    ArgumentCaptor.forClass(ReminderNotificationEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().getRecipientUserIds()).containsExactly(1L, 2L);
+        }
+
+        @Test
+        @DisplayName("対象者なし_イベント発火しない")
+        void 対象者なし_イベント発火しない() {
+            // given
+            given(scheduleRepository.findById(SCHEDULE_ID))
+                    .willReturn(Optional.of(createSchedule(LocalDateTime.now().plusHours(1), true)));
             given(attendanceRepository.findByScheduleIdAndStatus(SCHEDULE_ID, AttendanceStatus.UNDECIDED))
                     .willReturn(List.of());
 
             // when
             reminderService.sendReminder(SCHEDULE_ID);
 
-            // then（例外なく正常終了）
+            // then
+            verify(eventPublisher, never()).publishEvent(any(ReminderNotificationEvent.class));
         }
     }
 
     // ========================================
-    // processScheduledReminders
+    // processScheduledReminders（実効時刻ベース）
     // ========================================
 
     @Nested
@@ -182,12 +256,14 @@ class ScheduleReminderServiceTest {
     class ProcessScheduledReminders {
 
         @Test
-        @DisplayName("バッチ処理_未送信あり_送信済みにマークされる")
-        void バッチ処理_未送信あり_送信済みにマークされる() {
-            // given
-            ScheduleAttendanceReminderEntity reminder = createReminderEntity();
-            given(reminderRepository.findByIsSentFalseAndRemindAtBeforeOrderByRemindAtAsc(any(LocalDateTime.class)))
-                    .willReturn(List.of(reminder));
+        @DisplayName("ABSOLUTE_due到来_送信済みにマークされる")
+        void ABSOLUTE_due到来_送信済みにマークされる() {
+            // given: remindAt は過去 → due
+            ScheduleAttendanceReminderEntity reminder =
+                    createAbsoluteReminderEntity(LocalDateTime.now().minusMinutes(5));
+            given(reminderRepository.findByIsSentFalse()).willReturn(List.of(reminder));
+            given(scheduleRepository.findById(SCHEDULE_ID))
+                    .willReturn(Optional.of(createSchedule(LocalDateTime.now().plusHours(1), true)));
             given(attendanceRepository.findByScheduleIdAndStatus(SCHEDULE_ID, AttendanceStatus.UNDECIDED))
                     .willReturn(List.of());
 
@@ -200,17 +276,53 @@ class ScheduleReminderServiceTest {
         }
 
         @Test
-        @DisplayName("バッチ処理_未送信なし_何もしない")
-        void バッチ処理_未送信なし_何もしない() {
-            // given
-            given(reminderRepository.findByIsSentFalseAndRemindAtBeforeOrderByRemindAtAsc(any(LocalDateTime.class)))
+        @DisplayName("RELATIVE_開始N分前到来_送信済みにマークされる")
+        void RELATIVE_開始N分前到来_送信済みにマークされる() {
+            // given: 開始は5分後・30分前リマインド → 実効時刻は過去 → due
+            ScheduleAttendanceReminderEntity reminder = createRelativeReminderEntity(30);
+            given(reminderRepository.findByIsSentFalse()).willReturn(List.of(reminder));
+            given(scheduleRepository.findById(SCHEDULE_ID))
+                    .willReturn(Optional.of(createSchedule(LocalDateTime.now().plusMinutes(5), true)));
+            given(attendanceRepository.findByScheduleIdAndStatus(SCHEDULE_ID, AttendanceStatus.UNDECIDED))
                     .willReturn(List.of());
 
             // when
             reminderService.processScheduledReminders();
 
             // then
+            verify(reminderRepository).save(any(ScheduleAttendanceReminderEntity.class));
+            assertThat(reminder.getIsSent()).isTrue();
+        }
+
+        @Test
+        @DisplayName("RELATIVE_開始まで余裕あり_送信されない")
+        void RELATIVE_開始まで余裕あり_送信されない() {
+            // given: 開始は10時間後・30分前リマインド → 実効時刻は未来 → スキップ
+            ScheduleAttendanceReminderEntity reminder = createRelativeReminderEntity(30);
+            given(reminderRepository.findByIsSentFalse()).willReturn(List.of(reminder));
+            given(scheduleRepository.findById(SCHEDULE_ID))
+                    .willReturn(Optional.of(createSchedule(LocalDateTime.now().plusHours(10), true)));
+
+            // when
+            reminderService.processScheduledReminders();
+
+            // then
             verify(reminderRepository, never()).save(any(ScheduleAttendanceReminderEntity.class));
+            assertThat(reminder.getIsSent()).isFalse();
+        }
+
+        @Test
+        @DisplayName("未送信なし_何もしない")
+        void 未送信なし_何もしない() {
+            // given
+            given(reminderRepository.findByIsSentFalse()).willReturn(List.of());
+
+            // when
+            reminderService.processScheduledReminders();
+
+            // then
+            verify(reminderRepository, never()).save(any(ScheduleAttendanceReminderEntity.class));
+            verify(eventPublisher, never()).publishEvent(any(ReminderNotificationEvent.class));
         }
     }
 }

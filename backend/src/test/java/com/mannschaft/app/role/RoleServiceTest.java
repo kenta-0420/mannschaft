@@ -1,6 +1,10 @@
 package com.mannschaft.app.role;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.dto.MembershipCreateRequest;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
 import com.mannschaft.app.role.entity.PermissionEntity;
 import com.mannschaft.app.role.entity.RoleEntity;
@@ -56,6 +60,7 @@ class RoleServiceTest {
     @Mock private PermissionGroupPermissionRepository permissionGroupPermissionRepository;
     @Mock private UserPermissionGroupRepository userPermissionGroupRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private MembershipService membershipService;
 
     @InjectMocks
     private RoleService roleService;
@@ -78,6 +83,17 @@ class RoleServiceTest {
             roleService.assignRole(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID, ADMIN_ROLE_ID, USER_ID);
 
             verify(userRoleRepository).save(any(UserRoleEntity.class));
+            // F00.5 認可基盤根治: memberships にも MEMBER として入会させる（join 経由）。
+            // 二重発火回避のため assignRole 側の手動 MembershipChangedEvent 発火は削除し join に一本化済み。
+            ArgumentCaptor<MembershipCreateRequest> captor =
+                    ArgumentCaptor.forClass(MembershipCreateRequest.class);
+            verify(membershipService).join(captor.capture());
+            MembershipCreateRequest joinReq = captor.getValue();
+            assertThat(joinReq.getUserId()).isEqualTo(TARGET_USER_ID);
+            assertThat(joinReq.getScopeType()).isEqualTo(ScopeType.ORGANIZATION);
+            assertThat(joinReq.getScopeId()).isEqualTo(SCOPE_ID);
+            assertThat(joinReq.getRoleKind()).isEqualTo(RoleKind.MEMBER);
+            assertThat(joinReq.getSource()).isEqualTo("ROLE_ASSIGN");
         }
 
         @Test
@@ -389,6 +405,20 @@ class RoleServiceTest {
 
             verify(userRoleRepository).delete(targetUserRole);
             verify(userRoleRepository).delete(currentUserRole);
+            // F00.5 認可基盤根治（防御補填）: 譲渡当事者両名に冪等 join を補填する
+            ArgumentCaptor<MembershipCreateRequest> captor =
+                    ArgumentCaptor.forClass(MembershipCreateRequest.class);
+            verify(membershipService, org.mockito.Mockito.times(2)).join(captor.capture());
+            assertThat(captor.getAllValues())
+                    .extracting(MembershipCreateRequest::getUserId)
+                    .containsExactlyInAnyOrder(USER_ID, TARGET_USER_ID);
+            assertThat(captor.getAllValues())
+                    .allSatisfy(r -> {
+                        assertThat(r.getScopeType()).isEqualTo(ScopeType.ORGANIZATION);
+                        assertThat(r.getScopeId()).isEqualTo(SCOPE_ID);
+                        assertThat(r.getRoleKind()).isEqualTo(RoleKind.MEMBER);
+                        assertThat(r.getSource()).isEqualTo("OWNERSHIP_TRANSFER");
+                    });
         }
 
         @Test

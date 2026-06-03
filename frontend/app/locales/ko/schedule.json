@@ -1,0 +1,67 @@
+{
+  "schedule": {
+    "common_delete": "삭제",
+    "description_label": "설명",
+    "error_title_required": "제목은 필수입니다",
+    "reminder": {
+      "label": "리마인더",
+      "add": "리마인더 추가",
+      "before": "전",
+      "max_reached": "리마인더는 최대 5개까지 설정할 수 있습니다",
+      "kind_label": "유형",
+      "kind_relative": "상대",
+      "kind_absolute": "절대",
+      "unit_label": "단위",
+      "unit_minutes": "분",
+      "unit_hours": "시간",
+      "unit_days": "일",
+      "relative_value_label": "값",
+      "absolute_at_label": "알림 일시",
+      "error_absolute_required": "절대 리마인더의 일시를 입력해 주세요",
+      "error_past": "과거 일시는 지정할 수 없습니다"
+    },
+    "scheduled_survey": {
+      "label": "설문 예약 생성",
+      "scheduled_at": "생성 일시",
+      "title_label": "설문 제목",
+      "title_placeholder": "설문 제목을 입력하세요",
+      "anonymous": "익명 응답 허용",
+      "results_visibility": "결과 공개 범위",
+      "visibility_public": "전체 공개",
+      "visibility_owner": "작성자만",
+      "visibility_respondents": "응답자만",
+      "question_placeholder": "질문을 입력하세요",
+      "qtype_single": "단일 선택",
+      "qtype_multiple": "복수 선택",
+      "required": "필수",
+      "option_placeholder": "선택지를 입력하세요",
+      "add_option": "선택지 추가",
+      "add_question": "질문 추가",
+      "error_scheduled_at_required": "설문의 생성 일시를 입력해 주세요",
+      "error_past": "설문의 생성 일시는 미래로 지정해 주세요"
+    },
+    "scheduled_attendance": {
+      "label": "출결 모집 예약 생성",
+      "scheduled_at": "생성 일시",
+      "deadline": "응답 마감",
+      "comment_option": "댓글 허용",
+      "comment_none": "댓글 불가",
+      "comment_optional": "댓글 선택",
+      "comment_required": "댓글 필수",
+      "error_scheduled_at_required": "출결 모집의 생성 일시를 입력해 주세요",
+      "error_past": "출결 모집의 생성 일시는 미래로 지정해 주세요"
+    },
+    "scheduled_task": {
+      "label": "예약 작업",
+      "type_survey": "예약 설문",
+      "type_attendance": "예약 출결 모집",
+      "status_pending": "예약 중",
+      "status_created": "생성됨",
+      "status_cancelled": "취소됨",
+      "status_failed": "실패",
+      "cancel": "취소",
+      "cancel_success": "예약 작업을 취소했습니다",
+      "cancel_failed": "예약 작업 취소에 실패했습니다"
+    }
+  }
+}

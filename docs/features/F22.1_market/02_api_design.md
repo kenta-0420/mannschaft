@@ -41,6 +41,9 @@
 
 ### 3.1 `GET /api/v1/public/market/listings`
 
+> ⚠️ **実装注意 — レスポンス JSON の camelCase/snake_case 対応**
+> 本節以降の JSON 例（`scope_type`、`display_name`、`prefecture_code`、`total_elements` 等）は**説明用に snake_case 表記の箇所がある**が、実 API のレスポンスフィールドは **Jackson 既定の camelCase**（例: `scopeType`、`displayName`、`prefectureCode`、`totalElements`）で返る。クエリパラメータ（`prefecture`、`city`、`category_id` 等）は snake_case のまま。FE の型定義・API 呼び出し実装では BE の DTO/Controller テストの `jsonPath` と 1:1 で突き合わせること。snake_case の JSON 例をそのまま FE 型にコピーしないこと（既知の実機バグ原因・PR #1210/#1221 で根治済の同種問題を再発させないため）。
+
 地域×ジャンルで絞った「立っている札」の一覧。未ログインでも叩ける（PII抑制DTO）。
 
 **クエリパラメータ**
@@ -253,7 +256,13 @@ visibility = 'PUBLIC' AND status IN ('OPEN','FULL') AND deleted_at IS NULL
 | `MARKET_003` | 403 | フレンド未成立のチームを宛先指定 |
 | `MARKET_004` | 403 | 他チーム所有のフレンドフォルダを宛先指定 |
 | `MARKET_005` | 400 | `visibility='FRIEND_TEAMS_ONLY'` なのに `distribution_targets` を併用指定 |
-| （委譲） | — | 札立て/応募/取下げ本体の検証は `RECRUITMENT_*`（206/207/106/300 等）を踏襲 |
+| `RECRUITMENT_204` | 400 | `PUBLIC` 札を配信対象0件で公開（publish）しようとした（`EMPTY_DISTRIBUTION_TARGETS`）。`GlobalExceptionHandler` で 400 にマッピング（ERROR severity 既定の 500 を上書き。`MARKET_002` と対称） |
+| `RECRUITMENT_207` | 400 | `visibility` と配信対象の不整合（`PUBLIC` なのに `PUBLIC_FEED` 不在 等）。同上 400 マッピング |
+| （委譲） | — | 札立て/応募/取下げ本体の検証は `RECRUITMENT_*`（206/106/300 等）を踏襲 |
+
+> **配信対象（`distribution_targets`）の設定タイミング（実装メモ・2026-06-02 根治）**
+> 札立て（`create`）リクエストの `distribution_targets` は **検証専用**で、BE は作成時に配信対象を永続化しない（`FRIEND_TEAMS_ONLY` との併用不可チェックのみ）。配信対象は別途 `PUT /api/v1/recruitment-listings/{id}/distribution-targets` で登録する。
+> そのため FE の札立て導線（`pages/teams|organizations/[id]/recruitment-listings/new.vue`）は **`visibility='PUBLIC'` のとき作成直後に `PUT distribution-targets` で `PUBLIC_FEED` を自動登録**する。これを怠ると publish が `RECRUITMENT_204`（配信対象0件）で失敗し、PUBLIC 札が市に出ない（実機 CRUD E2E `market.crud.real.spec.ts` で炙り出した🔴）。`FRIEND_TEAMS_ONLY` は `friend_targets` で配信するため `distribution_targets` は設定しない。
 
 ---
 

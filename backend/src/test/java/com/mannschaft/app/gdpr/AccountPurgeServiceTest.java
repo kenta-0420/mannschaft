@@ -318,6 +318,75 @@ class AccountPurgeServiceTest {
         }
 
         @Test
+        @DisplayName("GDPR §17: purgeUser実行時にpassword_reset_tokensが削除される")
+        void GDPR_password_reset_tokens削除() {
+            UserEntity user = buildUser(USER_ID);
+            given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
+                    .willReturn(List.of(user));
+            stubAuthAndGdprMocks(USER_ID);
+
+            service.purgeExpiredAccounts();
+
+            verify(passwordResetTokenRepository).deleteByUserId(USER_ID);
+        }
+
+        @Test
+        @DisplayName("GDPR §17: purgeUser実行時にemail_change_tokensが削除される")
+        void GDPR_email_change_tokens削除() {
+            UserEntity user = buildUser(USER_ID);
+            given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
+                    .willReturn(List.of(user));
+            stubAuthAndGdprMocks(USER_ID);
+
+            service.purgeExpiredAccounts();
+
+            verify(emailChangeTokenRepository).deleteByUserId(USER_ID);
+        }
+
+        @Test
+        @DisplayName("GDPR §17: purgeUser実行時にmfa_recovery_tokensが削除される")
+        void GDPR_mfa_recovery_tokens削除() {
+            UserEntity user = buildUser(USER_ID);
+            given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
+                    .willReturn(List.of(user));
+            stubAuthAndGdprMocks(USER_ID);
+
+            service.purgeExpiredAccounts();
+
+            verify(mfaRecoveryTokenRepository).deleteByUserId(USER_ID);
+        }
+
+        @Test
+        @DisplayName("GDPR §17: purgeUser実行時にoauth_link_tokensが削除される")
+        void GDPR_oauth_link_tokens削除() {
+            UserEntity user = buildUser(USER_ID);
+            given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
+                    .willReturn(List.of(user));
+            stubAuthAndGdprMocks(USER_ID);
+
+            service.purgeExpiredAccounts();
+
+            verify(oAuthLinkTokenRepository).deleteByUserId(USER_ID);
+        }
+
+        @Test
+        @DisplayName("GDPR §17: purgeUser実行時に4種のトークンが全件削除される（一括確認）")
+        void GDPR_4種トークン全件削除() {
+            UserEntity user = buildUser(USER_ID);
+            given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
+                    .willReturn(List.of(user));
+            stubAuthAndGdprMocks(USER_ID);
+
+            service.purgeExpiredAccounts();
+
+            // 4種類のトークン削除が全て実行されることを確認
+            verify(passwordResetTokenRepository).deleteByUserId(USER_ID);
+            verify(emailChangeTokenRepository).deleteByUserId(USER_ID);
+            verify(mfaRecoveryTokenRepository).deleteByUserId(USER_ID);
+            verify(oAuthLinkTokenRepository).deleteByUserId(USER_ID);
+        }
+
+        @Test
         @DisplayName("異常系: S3削除失敗エラーメッセージが500文字を超える場合、切り詰めて記録する")
         void 異常_S3削除失敗_エラーメッセージ切り詰め() {
             UserEntity user = buildUser(USER_ID);

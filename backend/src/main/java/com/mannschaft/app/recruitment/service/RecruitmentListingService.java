@@ -35,6 +35,7 @@ import com.mannschaft.app.recruitment.repository.RecruitmentParticipantHistoryRe
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentReminderRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentTemplateRepository;
+import com.mannschaft.app.recruitment.util.LikeEscapeUtil;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.FollowerType;
 import com.mannschaft.app.social.repository.FollowRepository;
@@ -95,6 +96,8 @@ public class RecruitmentListingService {
     private final com.mannschaft.app.recruitment.repository.RecruitmentFriendTargetRepository friendTargetRepository;
     // F22.1 市 Phase 2 足場C: 札立て地域の team 既定補完（read-only 横断クエリ）
     private final com.mannschaft.app.team.service.TeamService teamService;
+    // F22.1 市 Phase 2 D: 複数地域募集（N:N）の中間表
+    private final com.mannschaft.app.recruitment.repository.RecruitmentListingRegionRepository listingRegionRepository;
 
     // ===========================================
     // 取得系
@@ -177,24 +180,17 @@ public class RecruitmentListingService {
             throw new BusinessException(RecruitmentErrorCode.LINE_TIME_CONFLICT);
         }
 
-        // F22.1 市 Phase 2 足場C: scope=TEAM かつ request 地域コード未指定なら team の地域を既定補完。
-        //   request 指定があればそれを優先（上書き可）。team 側 NULL なら従来どおり地域なし札。
-        //   org scope は対象外。
-        String requestedPrefectureCode = request.getPrefectureCode();
-        String requestedCityCode = request.getCityCode();
-        if (scopeType == RecruitmentScopeType.TEAM
-                && isBlank(requestedPrefectureCode) && isBlank(requestedCityCode)) {
-            var teamRegion = teamService.findRegionCodes(scopeId);
-            if (teamRegion.isPresent()) {
-                requestedPrefectureCode = teamRegion.get().prefectureCode();
-                requestedCityCode = teamRegion.get().cityCode();
-            }
-        }
+        // F22.1 市 Phase 2 D: 複数地域募集（N:N）。
+        //   request.regions 指定があればそれを正規化・検証し、代表（先頭）を旧単一列に同期する。
+        //   未指定なら従来どおり単一 prefectureCode/cityCode を 1 件として扱う（後方互換）。
+        //   scope=TEAM かつ地域指定が一切なければ team の地域を既定補完（足場C）。
+        List<MarketRegionValidator.ResolvedRegion> resolvedRegions =
+                resolveCreateRegions(scopeType, scopeId, request);
 
-        // F22.1 市: 地域コード検証・正規化（MARKET_001）
-        MarketRegionValidator.ResolvedRegion region =
-                marketRegionValidator.validateAndNormalize(
-                        requestedPrefectureCode, requestedCityCode);
+        // 代表（先頭）を旧単一列へ同期（後方互換読み）。地域なしは両 null。
+        MarketRegionValidator.ResolvedRegion representative = resolvedRegions.isEmpty()
+                ? new MarketRegionValidator.ResolvedRegion(null, null)
+                : resolvedRegions.get(0);
 
         // F22.1 市: フレンド宛先・配信対象の整合検証（MARKET_002〜005）
         boolean isFriendOnly = request.getVisibility() == RecruitmentVisibility.FRIEND_TEAMS_ONLY;
@@ -220,8 +216,8 @@ public class RecruitmentListingService {
                 .price(request.getPrice())
                 .visibility(request.getVisibility())
                 .location(request.getLocation())
-                .prefectureCode(region.prefectureCode())
-                .cityCode(region.cityCode())
+                .prefectureCode(representative.prefectureCode())
+                .cityCode(representative.cityCode())
                 .reservationLineId(request.getReservationLineId())
                 .imageUrl(request.getImageUrl())
                 .cancellationPolicyId(request.getCancellationPolicyId())
@@ -234,8 +230,11 @@ public class RecruitmentListingService {
         marketFriendTargetService.replaceTargets(
                 saved.getId(), isFriendOnly, request.getFriendTargets());
 
-        log.info("F03.11 募集枠作成: id={}, scope={}/{}, status=DRAFT, region={}/{}",
-                saved.getId(), scopeType, scopeId, region.prefectureCode(), region.cityCode());
+        // F22.1 市 Phase 2 D: 複数地域（N:N）を中間表へ replace（検証済み・代表は旧単一列に同期済み）。
+        replaceListingRegions(saved.getId(), resolvedRegions);
+
+        log.info("F03.11 募集枠作成: id={}, scope={}/{}, status=DRAFT, regions={}",
+                saved.getId(), scopeType, scopeId, resolvedRegions.size());
         return marketResponseEnricher.enrich(mapper.toListingResponse(saved), saved);
     }
 
@@ -299,7 +298,8 @@ public class RecruitmentListingService {
                 null,   // prefectureCode
                 null,   // cityCode
                 null,   // friendTargets
-                null    // distributionTargets
+                null,   // distributionTargets
+                null    // regions（複数地域・Phase2 D）
         );
 
         RecruitmentListingResponse response = create(scopeType, scopeId, userId, createReq);
@@ -353,12 +353,17 @@ public class RecruitmentListingService {
             throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
         }
 
-        // F22.1 市: 地域コードの変更（§6.5）。いずれか指定されたときのみ再検証・更新する。
-        if (request.getPrefectureCode() != null || request.getCityCode() != null) {
-            MarketRegionValidator.ResolvedRegion region =
-                    marketRegionValidator.validateAndNormalize(
-                            request.getPrefectureCode(), request.getCityCode());
-            entity.updateRegion(region.prefectureCode(), region.cityCode());
+        // F22.1 市 Phase 2 D: 地域コードの変更（§6.5・複数地域 N:N 対応）。
+        //   regions 指定（非 null）→ 中間表を全置換し代表を旧単一列に同期。空配列はクリア。
+        //   regions 未指定（null）で単一フィールドのいずれか指定 → 後方互換で 1 件として置換。
+        //   いずれも未指定 → 地域変更なし。
+        List<MarketRegionValidator.ResolvedRegion> updatedRegions = resolveUpdateRegions(request);
+        if (updatedRegions != null) {
+            MarketRegionValidator.ResolvedRegion representative = updatedRegions.isEmpty()
+                    ? new MarketRegionValidator.ResolvedRegion(null, null)
+                    : updatedRegions.get(0);
+            entity.updateRegion(representative.prefectureCode(), representative.cityCode());
+            replaceListingRegions(listingId, updatedRegions);
         }
 
         RecruitmentListingEntity saved = listingRepository.save(entity);
@@ -720,8 +725,13 @@ public class RecruitmentListingService {
             Pageable pageable) {
         LocalDateTime fromDt = startFrom != null ? LocalDateTime.parse(startFrom) : null;
         LocalDateTime toDt = startTo != null ? LocalDateTime.parse(startTo) : null;
+        // 呼び出し側（Controller）で trim・空文字→null 済み。ここで LIKE ワイルドカード
+        // （% / _ / \）をエスケープしてフィルタ無効化を防ぐ（JPQL の ESCAPE '\' と対）。null は透過。
+        String escapedKeyword = LikeEscapeUtil.escape(keyword);
+        String escapedLocation = LikeEscapeUtil.escape(location);
         Page<RecruitmentListingEntity> page = listingRepository.searchPublicListings(
-                categoryId, subcategoryId, fromDt, toDt, participationType, keyword, location, pageable);
+                categoryId, subcategoryId, fromDt, toDt, participationType,
+                escapedKeyword, escapedLocation, pageable);
         return page.map(mapper::toListingSummaryResponse);
     }
 
@@ -744,6 +754,102 @@ public class RecruitmentListingService {
     /** null または空白文字列なら {@code true}（F22.1 地域コード未指定判定）。 */
     private static boolean isBlank(String s) {
         return s == null || s.isBlank();
+    }
+
+    // ===========================================
+    // F22.1 市 Phase 2 D: 複数地域募集（N:N）ヘルパー
+    // ===========================================
+
+    /**
+     * 作成リクエストから複数地域を解決・検証する（後方互換 + team 既定補完）。
+     *
+     * <ol>
+     *   <li>{@code request.regions} 指定（非 null かつ非空）→ それを正規化・重複排除して返す</li>
+     *   <li>未指定 → 単一 {@code prefectureCode}/{@code cityCode} を 1 ペアとして扱う（後方互換）。
+     *       scope=TEAM かつ単一指定も無ければ team の地域で既定補完（足場C）。</li>
+     * </ol>
+     *
+     * @return 正規化・重複排除済みの地域リスト（空＝地域を問わない札）
+     */
+    private List<MarketRegionValidator.ResolvedRegion> resolveCreateRegions(
+            RecruitmentScopeType scopeType, Long scopeId, CreateRecruitmentListingRequest request) {
+        // (1) regions 明示指定が優先。
+        if (request.getRegions() != null && !request.getRegions().isEmpty()) {
+            List<MarketRegionValidator.RegionPair> pairs = request.getRegions().stream()
+                    .map(r -> new MarketRegionValidator.RegionPair(r.prefectureCode(), r.cityCode()))
+                    .toList();
+            return marketRegionValidator.validateAndNormalizeAll(pairs);
+        }
+
+        // (2) 後方互換: 単一フィールド + team 既定補完。
+        String requestedPrefectureCode = request.getPrefectureCode();
+        String requestedCityCode = request.getCityCode();
+        if (scopeType == RecruitmentScopeType.TEAM
+                && isBlank(requestedPrefectureCode) && isBlank(requestedCityCode)) {
+            var teamRegion = teamService.findRegionCodes(scopeId);
+            if (teamRegion.isPresent()) {
+                requestedPrefectureCode = teamRegion.get().prefectureCode();
+                requestedCityCode = teamRegion.get().cityCode();
+            }
+        }
+        MarketRegionValidator.ResolvedRegion single =
+                marketRegionValidator.validateAndNormalize(requestedPrefectureCode, requestedCityCode);
+        if (single.prefectureCode() == null && single.cityCode() == null) {
+            return List.of();
+        }
+        return List.of(single);
+    }
+
+    /**
+     * 編集リクエストから複数地域を解決・検証する（後方互換）。
+     *
+     * <ul>
+     *   <li>{@code regions} 非 null（空配列含む）→ それを正規化（空配列はクリア = 空リスト）</li>
+     *   <li>{@code regions} null かつ単一フィールドいずれか指定 → 1 ペアとして正規化（後方互換）</li>
+     *   <li>いずれも未指定 → {@code null} を返す（地域変更なしの意）</li>
+     * </ul>
+     *
+     * @return 正規化済みの地域リスト（地域変更なしは {@code null}・クリアは空リスト）
+     */
+    private List<MarketRegionValidator.ResolvedRegion> resolveUpdateRegions(
+            UpdateRecruitmentListingRequest request) {
+        if (request.getRegions() != null) {
+            List<MarketRegionValidator.RegionPair> pairs = request.getRegions().stream()
+                    .map(r -> new MarketRegionValidator.RegionPair(r.prefectureCode(), r.cityCode()))
+                    .toList();
+            return marketRegionValidator.validateAndNormalizeAll(pairs);
+        }
+        if (request.getPrefectureCode() != null || request.getCityCode() != null) {
+            MarketRegionValidator.ResolvedRegion single =
+                    marketRegionValidator.validateAndNormalize(
+                            request.getPrefectureCode(), request.getCityCode());
+            if (single.prefectureCode() == null && single.cityCode() == null) {
+                return List.of();
+            }
+            return List.of(single);
+        }
+        return null;
+    }
+
+    /**
+     * 札の地域中間表を全置換する（friendTargets の replace パターン踏襲）。
+     * 検証済みの地域リストを前提とする。空リストは全削除のみ（地域を問わない札）。
+     *
+     * @param listingId 札ID
+     * @param regions   正規化済みの地域リスト
+     */
+    private void replaceListingRegions(
+            Long listingId, List<MarketRegionValidator.ResolvedRegion> regions) {
+        listingRegionRepository.deleteByListingId(listingId);
+        if (regions == null || regions.isEmpty()) {
+            return;
+        }
+        for (MarketRegionValidator.ResolvedRegion r : regions) {
+            // 県必須: 中間表は prefecture_code NOT NULL。validateAndNormalize が補完済み。
+            listingRegionRepository.save(
+                    com.mannschaft.app.recruitment.entity.RecruitmentListingRegionEntity.of(
+                            listingId, r.prefectureCode(), r.cityCode()));
+        }
     }
 
     // ===========================================

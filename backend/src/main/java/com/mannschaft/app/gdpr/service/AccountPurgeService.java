@@ -114,18 +114,21 @@ public class AccountPurgeService {
         List<Long> userIdList = List.of(userId);
         emailVerificationTokenRepository.deleteByUserIdIn(userIdList);
 
-        // PasswordResetTokenRepository: deleteByUserId系メソッドなし → 個別取得削除を省略
-        // (password_reset_tokensはuser_idカラムがない設計のため)
-        log.warn("未実装: password_reset_tokens削除 userId={}", userId);
+        // PasswordResetToken: deleteByUserId で全件物理削除（GDPR §17 対応）
+        passwordResetTokenRepository.deleteByUserId(userId);
+        log.debug("password_reset_tokens削除完了: userId={}", userId);
 
-        // EmailChangeToken: deleteByUserId系メソッドなし
-        log.warn("未実装: email_change_tokens削除 userId={}", userId);
+        // EmailChangeToken: deleteByUserId で全件物理削除（GDPR §17 対応）
+        emailChangeTokenRepository.deleteByUserId(userId);
+        log.debug("email_change_tokens削除完了: userId={}", userId);
 
-        // MfaRecoveryToken: deleteByUserId系メソッドなし
-        log.warn("未実装: mfa_recovery_tokens削除 userId={}", userId);
+        // MfaRecoveryToken: deleteByUserId で全件物理削除（GDPR §17 対応）
+        mfaRecoveryTokenRepository.deleteByUserId(userId);
+        log.debug("mfa_recovery_tokens削除完了: userId={}", userId);
 
-        // OAuthLinkToken: deleteByUserId系メソッドなし
-        log.warn("未実装: oauth_link_tokens削除 userId={}", userId);
+        // OAuthLinkToken: deleteByUserId で全件物理削除（GDPR §17 対応）
+        oAuthLinkTokenRepository.deleteByUserId(userId);
+        log.debug("oauth_link_tokens削除完了: userId={}", userId);
 
         // OAuthAccount: findByUserIdあり → 全削除
         oAuthAccountRepository.deleteAll(oAuthAccountRepository.findByUserId(userId));

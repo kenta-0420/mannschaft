@@ -224,6 +224,9 @@ public class GlobalExceptionHandler {
             Map.entry("SCHEDULE_078", HttpStatus.UNPROCESSABLE_ENTITY),     // 親スケジュール
             Map.entry("SCHEDULE_079", HttpStatus.FORBIDDEN),                // 代理人本人でない
             Map.entry("SCHEDULE_080", HttpStatus.UNPROCESSABLE_ENTITY),     // PENDING でない
+            // 機能55 予約作成（第三陣）予約タスク取消
+            Map.entry("SCHEDULE_091", HttpStatus.NOT_FOUND),                // SCHEDULED_TASK_NOT_FOUND（IDOR対策で 404）
+            Map.entry("SCHEDULE_092", HttpStatus.CONFLICT),                 // SCHEDULED_TASK_NOT_CANCELLABLE（PENDING 以外）
             // F03.10 代理出席（イベント側 §4.2 / §5.6 / §5.7）
             Map.entry("EVENT_030", HttpStatus.NOT_FOUND),                   // DELEGATION_NOT_FOUND
             Map.entry("EVENT_031", HttpStatus.FORBIDDEN),                   // 委任者がスコープ外
@@ -399,6 +402,29 @@ public class GlobalExceptionHandler {
             Map.entry("TOUR_035", HttpStatus.FORBIDDEN),              // FEE_PAY_FORBIDDEN
             Map.entry("TOUR_036", HttpStatus.UNPROCESSABLE_ENTITY),  // FEE_PAYMENT_ITEM_SCOPE_MISMATCH
             Map.entry("TOUR_037", HttpStatus.FORBIDDEN),              // FEE_TEAM_NOT_TARGET
+            // F08.7.1/03 リーグ・ピラミッド＋昇降格移籍（league_transfer §7）
+            Map.entry("TOUR_038", HttpStatus.NOT_FOUND),              // LEAGUE_TRANSFER_NOT_FOUND（IDOR 対策で 404）
+            Map.entry("TOUR_039", HttpStatus.FORBIDDEN),              // LEAGUE_TRANSFER_DISPATCH_FORBIDDEN
+            Map.entry("TOUR_040", HttpStatus.FORBIDDEN),              // LEAGUE_TRANSFER_RESPOND_FORBIDDEN
+            Map.entry("TOUR_041", HttpStatus.FORBIDDEN),              // LEAGUE_TRANSFER_VIEW_FORBIDDEN
+            Map.entry("TOUR_042", HttpStatus.UNPROCESSABLE_ENTITY),   // LEAGUE_TRANSFER_TARGET_NOT_RESOLVABLE
+            Map.entry("TOUR_043", HttpStatus.UNPROCESSABLE_ENTITY),   // LEAGUE_TRANSFER_TEAM_NOT_IN_SLOT
+            Map.entry("TOUR_044", HttpStatus.CONFLICT),               // LEAGUE_TRANSFER_ALREADY_DISPATCHED
+            Map.entry("TOUR_045", HttpStatus.CONFLICT),               // LEAGUE_TRANSFER_NOT_DISPATCHED
+            // F08.7.1/05 試合メンバー表（roster）— 採番衝突回避で 046-050 に再配置（旧 038-042）
+            Map.entry("TOUR_046", HttpStatus.FORBIDDEN),              // ROSTER_TEAM_NOT_IN_MATCH（対戦当事者でない）
+            Map.entry("TOUR_047", HttpStatus.FORBIDDEN),              // ROSTER_EDIT_FORBIDDEN（自チーム ADMIN/DEPUTY 限定）
+            Map.entry("TOUR_048", HttpStatus.CONFLICT),               // ROSTER_DEADLINE_PASSED（締切後ロック・409）
+            Map.entry("TOUR_049", HttpStatus.FORBIDDEN),              // ROSTER_MANAGE_FORBIDDEN（主催組織 ADMIN 限定）
+            Map.entry("TOUR_050", HttpStatus.NOT_FOUND),              // UNIFORM_SET_NOT_FOUND（IDOR 対策で 404）
+            Map.entry("TOUR_051", HttpStatus.NOT_FOUND),              // SUBMISSION_REQ_NOT_FOUND（IDOR 対策で 404）
+            Map.entry("TOUR_052", HttpStatus.FORBIDDEN),              // SUBMISSION_REQ_MANAGE_FORBIDDEN
+            Map.entry("TOUR_053", HttpStatus.FORBIDDEN),              // SUBMISSION_REQ_VIEW_FORBIDDEN
+            Map.entry("TOUR_054", HttpStatus.FORBIDDEN),              // SUBMISSION_SUBMIT_FORBIDDEN
+            Map.entry("TOUR_055", HttpStatus.UNPROCESSABLE_ENTITY),   // SUBMISSION_TEAM_NOT_TARGET
+            Map.entry("TOUR_056", HttpStatus.UNPROCESSABLE_ENTITY),   // SUBMISSION_DEADLINE_PASSED
+            Map.entry("TOUR_057", HttpStatus.UNPROCESSABLE_ENTITY),   // SUBMISSION_PAYMENT_REQUIRED
+            Map.entry("TOUR_058", HttpStatus.UNPROCESSABLE_ENTITY),   // SUBMISSION_TEMPLATE_SCOPE_MISMATCH
             // F17.1 村機能 Phase 1（B2 村CRUD / B3 メンバーシップ / B4 ニックネーム / B5 村作成申請）統合
             Map.entry("VILLAGE_001", HttpStatus.NOT_FOUND),            // VILLAGE_NOT_FOUND（IDOR 対策で 404）
             Map.entry("VILLAGE_002", HttpStatus.FORBIDDEN),            // VILLAGE_UNLISTED
@@ -579,12 +605,32 @@ public class GlobalExceptionHandler {
             Map.entry("MARKET_004", HttpStatus.FORBIDDEN),           // 他チーム所有フォルダを宛先指定
             Map.entry("MARKET_005", HttpStatus.BAD_REQUEST),         // FRIEND_TEAMS_ONLY × distribution_targets 併用
             Map.entry("MARKET_404", HttpStatus.NOT_FOUND),           // 非公開 / 不在の札（存在秘匿）
+            // F03.11 / F22.1 募集枠 公開（publish）時の配信対象検証
+            //   いずれも「入力不備」であり 400（MARKET_002 と対称）。未登録だと Severity.ERROR 既定の 500 になり、
+            //   PUBLIC 札の publish 失敗がフロントへ 500 として漏れる（実機 CRUD E2E で発覚）ため明示登録する。
+            Map.entry("RECRUITMENT_204", HttpStatus.BAD_REQUEST),    // 配信対象 0 件（EMPTY_DISTRIBUTION_TARGETS）
+            Map.entry("RECRUITMENT_207", HttpStatus.BAD_REQUEST),    // visibility と配信対象の不整合（VISIBILITY_TARGETS_INCONSISTENT）
             // F04.11 統合通知インボックス（02_api_design.md §3.6）
             Map.entry("INBOX_LABEL_NOT_FOUND", HttpStatus.NOT_FOUND),           // ラベル不在 / 他人ラベル（IDOR 秘匿）
             Map.entry("INBOX_SOURCE_NOT_FOUND", HttpStatus.NOT_FOUND),          // triage 対象通知が不在 / 本人宛てでない
             Map.entry("INBOX_LABEL_NAME_DUPLICATE", HttpStatus.CONFLICT),       // 現役同名ラベル
             Map.entry("INBOX_LABEL_LIMIT_EXCEEDED", HttpStatus.UNPROCESSABLE_ENTITY),    // ラベル 20 件上限超過
-            Map.entry("INBOX_LABEL_PER_ITEM_EXCEEDED", HttpStatus.UNPROCESSABLE_ENTITY)  // 1 通知 10 ラベル上限超過
+            Map.entry("INBOX_LABEL_PER_ITEM_EXCEEDED", HttpStatus.UNPROCESSABLE_ENTITY),  // 1 通知 10 ラベル上限超過
+            // F22.1 謝礼決済 Connect / エスクロー（02_api_design.md §7）
+            //   Severity 既定（WARN=400 / ERROR=500）では設計の 403/404/409/422 を満たせないため明示登録する（#1279 前科）。
+            Map.entry("PAYMENT_C001", HttpStatus.FORBIDDEN),                  // 認可エラー / IDOR
+            Map.entry("PAYMENT_C002", HttpStatus.NOT_FOUND),                 // escrow / connect 不在・scope 不一致で秘匿
+            Map.entry("PAYMENT_C010", HttpStatus.UNPROCESSABLE_ENTITY),      // PRICE_REQUIRED
+            Map.entry("PAYMENT_C011", HttpStatus.UNPROCESSABLE_ENTITY),      // PAYEE_REQUIRED
+            Map.entry("PAYMENT_C012", HttpStatus.UNPROCESSABLE_ENTITY),      // PAYEE_USER_REQUIRED
+            Map.entry("PAYMENT_C013", HttpStatus.UNPROCESSABLE_ENTITY),      // PAYEE_NOT_IN_SCOPE
+            Map.entry("PAYMENT_C020", HttpStatus.CONFLICT),                  // ALREADY_REFUNDED
+            Map.entry("PAYMENT_C021", HttpStatus.UNPROCESSABLE_ENTITY),      // REFUND_AMOUNT_EXCEEDS
+            Map.entry("PAYMENT_C030", HttpStatus.CONFLICT),                  // ONBOARDING_NOT_READY
+            Map.entry("PAYMENT_C040", HttpStatus.BAD_REQUEST),               // WEBHOOK_SIGNATURE_INVALID
+            Map.entry("PAYMENT_C041", HttpStatus.CONFLICT),                  // AUTHORIZATION_FAILED
+            // セキュリティインシデント（GDPR Article 33）
+            Map.entry("SEC_INCIDENT_001", HttpStatus.NOT_FOUND)              // SECURITY_INCIDENT_NOT_FOUND（IDOR 対策で 404）
     );
 
     /**

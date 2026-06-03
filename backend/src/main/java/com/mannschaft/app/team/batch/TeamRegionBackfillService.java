@@ -1,5 +1,6 @@
 package com.mannschaft.app.team.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.service.TeamRegionNormalizer;
@@ -21,15 +22,22 @@ import org.springframework.transaction.annotation.Transactional;
  * 実書き込み（{@code dryRun=false}）パスも実装するが、第一陣では起動しない
  * （殿の別裁可で後日実行）。冪等であり、既にコードを持つ行はスキップする。</p>
  *
- * <h2>起動方法（殿が後で叩く用）</h2>
+ * <h2>起動方法（F22.1 Phase 2 足場C 第三陣で管理 UI 起動に対応）</h2>
+ *
+ * <p>第三陣で SYSTEM_ADMIN 専用のバッチ管理基盤（{@code @BatchEndpoint} +
+ * {@link com.mannschaft.app.admin.controller.SystemAdminBatchController}）に登録し、
+ * 管理画面（{@code /system-admin/batches}）から名前で起動できるようにした。</p>
  * <ul>
- *   <li>ドライラン: {@code teamRegionBackfillService.run(true)} を任意の管理経路から呼ぶ。
- *       何も書き込まず、集計のみログ出力する。</li>
- *   <li>本実行: {@code teamRegionBackfillService.run(false)}（別裁可後にのみ実行）。</li>
+ *   <li><b>ドライラン</b>: バッチ名 {@code team-region-backfill-dryrun}（{@link #runDryRunBatch()}）。
+ *       UPDATE を一切行わず、県/市/未マッチ件数とマッチ率を集計ログ出力する（書込なし）。</li>
+ *   <li><b>本実行</b>: バッチ名 {@code team-region-backfill}（{@link #runBatch()}）。
+ *       解決できた行のみ {@code prefecture_code}/{@code city_code} を書き込む。冪等
+ *       （既にコードを持つ行はスキップ）。</li>
  * </ul>
  *
- * <p>本クラスは {@code @Scheduled} を持たず、{@code @BatchEndpoint} も付与しない
- * （第一陣では自動起動させないため）。手動呼び出し用の Bean としてのみ存在する。</p>
+ * <p>認可: {@code /api/v1/system-admin/**} は {@code SecurityConfig} で
+ * {@code SYSTEM_ADMIN} ロールに制限されているため、本バッチの起動も SYSTEM_ADMIN 限定。
+ * {@code @Scheduled} は付与しない（自動定期実行はせず、管理画面からの明示起動のみ）。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -66,6 +74,38 @@ public class TeamRegionBackfillService {
 
         log.info("[TeamRegionBackfill] 完了 dryRun={} {}", dryRun, result.summary());
         return result;
+    }
+
+    /**
+     * バッチ管理 UI 起動用エントリポイント（ドライラン）。
+     *
+     * <p>{@code @BatchEndpoint} メソッドは引数を持てない（{@code BatchEndpointRegistry#invoke}
+     * が引数なしを要求する）ため、{@code run(true)} へ委譲する zero-arg ラッパとして公開する。
+     * 集計のみ行い書込はしない。集計結果はログ出力する（{@link BackfillResult#summary()}）。</p>
+     */
+    @BatchEndpoint(
+            name = "team-region-backfill-dryrun",
+            description = "F22.1: teams の自由入力住所→地域コード逆引きのドライラン（書込なし・県/市/未マッチ件数とマッチ率を集計ログ出力）"
+    )
+    @Transactional(readOnly = true)
+    public void runDryRunBatch() {
+        run(true);
+    }
+
+    /**
+     * バッチ管理 UI 起動用エントリポイント（本実行）。
+     *
+     * <p>{@code run(false)} へ委譲する zero-arg ラッパ。解決できた行のみ
+     * {@code prefecture_code}/{@code city_code} を書き込む。冪等（既コード行はスキップ）。
+     * 誤実行防止のため、起動経路は SYSTEM_ADMIN 限定の管理 API のみ。</p>
+     */
+    @BatchEndpoint(
+            name = "team-region-backfill",
+            description = "F22.1: teams の自由入力住所→地域コードを本書き込み（解決できた行のみ・冪等＝既コード行スキップ）"
+    )
+    @Transactional
+    public void runBatch() {
+        run(false);
     }
 
     private void processOne(TeamEntity team, boolean dryRun, BackfillResult result) {

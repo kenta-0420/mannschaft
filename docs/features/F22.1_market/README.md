@@ -17,6 +17,7 @@
 | [`02_api_design.md`](02_api_design.md) | API設計（公開市API・地域ファサード・札立て/応じる/下げる/最終認証・エラーコード） |
 | [`03_ui_i18n.md`](03_ui_i18n.md) | 画面設計（市一覧・フィルタ連動・パンくず・空状態・ダッシュボード導線・通知文言）・i18n 6言語 |
 | [`04_security.md`](04_security.md) | セキュリティ考慮事項（§6相当）・§8 未解決事項・ステータス確定条件 |
+| [`payment/`](payment/README.md)（サブ設計） | **Phase 2 後半 謝礼決済（Stripe Connect エスクロー）**。受領者を札ごとに個人/チーム/組織選択・案A（Destination Charge + 手動キャプチャ）・既存 payment 資産の Connect 増築。README/01_data_model/02_api_design/03_security/04_ui_i18n の5本構成 |
 
 ---
 
@@ -44,7 +45,7 @@
 | 最終認証（札主の確認応答） | **F04.9 確認通知**（`confirmable_notifications`） | ✅ 通知基盤は実装済。ただし `source_type`/`source_id` の JPAマッピングが欠落していたため第一陣で追加（乖離A）。`MARKET_FINALIZE` 連携の発火・確認後リスナは第二陣で新規実装 |
 | 懇意のチーム（フレンドチーム）宛の非公開札 | **F01.5 フレンドチーム関係**（`team_friends` / フレンドフォルダ） | 🟢 設計済 |
 | 都道府県・市区町村マスタ | **既存 `prefectures` / `cities`**（全国約1,900件 seed 済、`PrefectureEntity`/`CityEntity`） | ✅ 実装済 |
-| 将来の謝礼決済 | **F13.1 短期業務マッチング**（Stripe Connect / エスクロー） | ✅ 実装済（委譲フックのみ） |
+| 謝礼決済（Phase 2 後半） | **F13.1 の資金フロー設計図を流用し、市が独自に Stripe Connect 決済基盤を構築**（[`payment/`](payment/README.md) サブ設計） | 🟢 設計確定（実装未着手）。※F13.1 の決済自体は **enum/コメントのみで実装ゼロ**＝設計図のみ流用。受領者は札ごとに個人/チーム/組織を選択 |
 
 新規に作るのは「**地域×ジャンルで束ねて見せる薄い集約層（`com.mannschaft.app.market`）**」と、既存テーブルへの**最小限の拡張（地域列・visibility値・フレンド宛先テーブル）**のみ。
 
@@ -109,9 +110,18 @@
 | フェーズ | 範囲 | 主な作業 | 本書での扱い |
 |---|---|---|---|
 | **Phase 1**（本設計の実装対象） | 市の閲覧（未ログイン公開・PII抑制）/ 地域×ジャンルフィルタ・パンくず / ダッシュボードからの札立て導線 / 札に応じる・札を下げる（自動・手動・最終認証）/ 既応募者通知・リマインド / **フレンド宛非公開札（全体・フォルダ・個別の3粒度）** | 地域列追加・visibility拡張・フレンド宛先テーブル・market 集約層・market i18n | ◎ 詳細設計 |
-| **Phase 2**（将来） | **Stripe 謝礼決済**（F13.1 委譲）/ **フリマ**（物品カテゴリ追加）/ teams 所在地文字列→`cities`コード正規化 / 複数地域募集（N:N） | `payment_enabled`/`price` 流用 + F13.1 委譲フック実装、カテゴリ追加、正規化マッパ | ○ 拡張点のみ明記（実装せず） |
+| **Phase 2**（将来） | **Stripe 謝礼決済**（[`payment/` サブ設計](payment/README.md)・🟢設計確定）/ **フリマ**（物品カテゴリ追加）/ teams 所在地文字列→`cities`コード正規化 / 複数地域募集（N:N） | `payment_enabled`/`price` を Connect エスクローに接続（F13.1設計図流用・市が独自構築）、カテゴリ追加、正規化マッパ | ○ 謝礼決済は別サブ設計で詳細化済（実装は別途出陣） |
 
 > Phase 2 は別途 `/軍議` で個別設計する。本書は Phase 2 の**拡張点（フック）が破綻しないこと**だけを保証する。
+
+> **Phase 2 足場C（teams 所在地正規化）進捗 — 第三陣まで実装済（2026-06-01）:**
+> - **第一陣（Expand）**: `teams.prefecture_code`/`city_code` 列追加 + 逆引きノーマライザ + `TeamRegionBackfillService`（ドライラン基盤）。
+> - **第二陣**: チーム検索のコード化（dual-support＝code 指定時 code 一致・無指定は従来名称一致）/ team 系 DTO へ `prefectureCode`/`cityCode`（camelCase）追加 / scope=TEAM 札立てのサーバ側地域既定補完。
+> - **第三陣（本実装）**: FE 検索のコード送信化（`teams/search.vue`・`organizations/[id]/teams/search.vue`）/ チーム作成（`EntityCreateDialog`）・編集（`TeamDetailInfo` 所在地コード編集セクション）の地域コード選択 / 札立てフォーム（`MarketListingFormExtension`）の team 地域コード初期プリフィル / **バックフィルの SYSTEM_ADMIN 管理 UI 起動導線**。
+>
+> **バックフィル起動手順（SYSTEM_ADMIN 限定）**: 管理画面 `/system-admin/batches`（バッチ起動）に以下 2 バッチが自動登録される（`@BatchEndpoint` ＋ `SystemAdminBatchController` 経由・`/api/v1/system-admin/**` は `hasRole("SYSTEM_ADMIN")`）。
+> - `team-region-backfill-dryrun`: **ドライラン（書込なし）**。県/市/未マッチ件数とマッチ率を集計ログ出力。まずこれを実行して結果を確認する。
+> - `team-region-backfill`: **本実行**。解決できた行のみ `prefecture_code`/`city_code` を書き込む。冪等（既コード行スキップ）。ドライランで妥当性を確認後に実行する。
 
 **実装依存（フレンド宛非公開札）**: 宛先解決は F01.5 に依存する。`team_friends`（V9.072）/ フレンドフォルダ `team_friend_folders`（V9.073）はいずれも**実装済**。
 
@@ -128,7 +138,8 @@
 | `F03.11_recruitment_listing.md` | §3.4 に地域列（`prefecture_code`/`city_code`）、§3.10 にフレンド宛先テーブル、visibility に `FRIEND_TEAMS_ONLY`、関連ドキュメントに F22.1 |
 | `F01.5_team_friend_relationships.md` | 「市の非公開札が `team_friends`/フレンドフォルダを宛先解決に参照する」旨を波及修正節に追記 |
 | `docs/security/01_authorization_baseline.md` §3.3 | 公開許可リストに `/api/v1/public/market/**`・`/api/v1/public/regions` を追加 |
-| `F13.1_short_term_job_matching/README.md` | 謝礼決済フックの被参照元として F22.1 を相互参照 |
+| `F13.1_short_term_job_matching/README.md` | 「F22.1 が F13.1 の資金フロー設計図を流用し、市向けに独自の決済基盤を構築する」相互参照を追記。**F13.1 の決済は未実装（設計図のみ）である旨も明記** |
+| `F22.1_market/payment/`（本サブ設計） | Phase 2 後半 謝礼決済の詳細設計（5本）。本 README §1/§4/ロードマップから参照 |
 
 ---
 
@@ -149,3 +160,4 @@
 | 日付 | 変更内容 |
 |------|---------|
 | 2026-05-30 | 初版作成（軍議完了・2周精査完了・🟢設計確定）。市＝既存F03.11/F01.5を束ねるハブ層として設計。地域×ジャンル論理ビュー、フレンド宛非公開札（3粒度）、最終認証、将来Stripe謝礼決済フックを定義 |
+| 2026-06-02 | Phase 2 後半 **謝礼決済サブ設計** [`payment/`](payment/README.md) を新設（5本）。**§1 対応表の「将来の謝礼決済 ← F13.1 ✅実装済（委譲フックのみ）」を是正**: 実態は F13.1 決済が enum/コメントのみで実装ゼロ＝設計図のみ流用し、市が独自に Stripe Connect 決済基盤を構築する（受領者は札ごとに個人/チーム/組織選択・案A Destination Charge + 手動キャプチャ）。ロードマップ Phase 2 / §0 構成 / §5 波及を更新 |

@@ -59,6 +59,7 @@ const scheduleApi = useScheduleApi()
 const notification = useNotification()
 const { handleApiError, getFieldErrors } = useErrorHandler()
 const { userTimezone } = useDatetime()
+const { t } = useI18n()
 
 const submitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
@@ -116,6 +117,22 @@ const form = ref<ScheduleEventFormState>({
   recurrenceCount: 10,
   allowProxyAttendance: false,
   isProxyAutoAccept: false,
+  reminders: [],
+  scheduledSurvey: {
+    enabled: false,
+    scheduledAt: null,
+    title: '',
+    isAnonymous: false,
+    resultsVisibility: 'PUBLIC',
+    questions: [],
+  },
+  scheduledAttendance: {
+    enabled: false,
+    scheduledAt: null,
+    attendanceDeadline: null,
+    commentOption: 'OPTIONAL',
+    minResponseRole: '',
+  },
 })
 
 // 開始時刻が変わったら終了時刻を1時間後に自動設定
@@ -227,9 +244,74 @@ function buildDateTimeStr(date: Date | null, time: string): string | null {
   return time ? `${dateStr}T${time}:00` : `${dateStr}T00:00:00`
 }
 
+// DatePicker（show-time）で得た Date を、ユーザーTZの「壁時計時刻」を保つ
+// LocalDateTime 文字列（YYYY-MM-DDTHH:mm:ss）に変換する。
+function buildFullDateTimeStr(date: Date | null): string | null {
+  if (!date) return null
+  return dayjs(date).tz(userTimezone.value).format('YYYY-MM-DDTHH:mm:ss')
+}
+
+// 相対リマインダーの値・単位を分に正規化する。
+function relativeReminderToMinutes(value: number, unit: 'MINUTES' | 'HOURS' | 'DAYS'): number {
+  if (unit === 'HOURS') return value * 60
+  if (unit === 'DAYS') return value * 60 * 24
+  return value
+}
+
+// 共有予定（team/org）向けのリマインダーペイロード（CreateReminderRequest[]）を組み立てる。
+function buildSharedReminders(): Array<Record<string, unknown>> {
+  return form.value.reminders.map((r) => {
+    if (r.kind === 'ABSOLUTE') {
+      return { reminderKind: 'ABSOLUTE', remindAt: buildFullDateTimeStr(r.absoluteAt) }
+    }
+    return {
+      reminderKind: 'RELATIVE',
+      remindBeforeMinutes: relativeReminderToMinutes(r.relativeValue, r.relativeUnit),
+    }
+  })
+}
+
+// 予約系入力のバリデーション（過去日時拒否・未入力検出）。
+// 問題があればエラーメッセージを返し、なければ null を返す。
+function validateScheduledInputs(): string | null {
+  const now = Date.now()
+  // 絶対リマインダーは未来日時必須
+  for (const r of form.value.reminders) {
+    if (r.kind === 'ABSOLUTE') {
+      if (!r.absoluteAt) return t('schedule.reminder.error_absolute_required')
+      if (r.absoluteAt.getTime() <= now) return t('schedule.reminder.error_past')
+    }
+  }
+  // 共有スコープのみ予約アンケート・予約出欠を検証
+  if (!effectiveScope.value.isPersonal) {
+    if (form.value.scheduledSurvey.enabled) {
+      if (!form.value.scheduledSurvey.scheduledAt) {
+        return t('schedule.scheduled_survey.error_scheduled_at_required')
+      }
+      if (form.value.scheduledSurvey.scheduledAt.getTime() <= now) {
+        return t('schedule.scheduled_survey.error_past')
+      }
+    }
+    if (form.value.scheduledAttendance.enabled) {
+      if (!form.value.scheduledAttendance.scheduledAt) {
+        return t('schedule.scheduled_attendance.error_scheduled_at_required')
+      }
+      if (form.value.scheduledAttendance.scheduledAt.getTime() <= now) {
+        return t('schedule.scheduled_attendance.error_past')
+      }
+    }
+  }
+  return null
+}
+
 async function submit() {
   if (!form.value.title.trim()) {
-    fieldErrors.value = { title: 'タイトルは必須です' }
+    fieldErrors.value = { title: t('schedule.error_title_required') }
+    return
+  }
+  const scheduledError = validateScheduledInputs()
+  if (scheduledError) {
+    notification.error(scheduledError)
     return
   }
   submitting.value = true
@@ -273,6 +355,63 @@ async function submit() {
       count: form.value.recurrenceEndType === 'COUNT'
         ? form.value.recurrenceCount
         : undefined,
+    }
+  }
+
+  // === 機能55: リマインダー ===
+  if (form.value.reminders.length > 0) {
+    if (effectiveScope.value.isPersonal) {
+      // 個人予定: 相対は reminders(number[])、絶対は absoluteReminders(string[]) に振り分け
+      const relativeMinutes = form.value.reminders
+        .filter(r => r.kind === 'RELATIVE')
+        .map(r => relativeReminderToMinutes(r.relativeValue, r.relativeUnit))
+      const absolute = form.value.reminders
+        .filter(r => r.kind === 'ABSOLUTE')
+        .map(r => buildFullDateTimeStr(r.absoluteAt))
+        .filter((s): s is string => s !== null)
+      if (relativeMinutes.length > 0) body.reminders = relativeMinutes
+      // 絶対リマインダーは作成時のみ（UpdatePersonalScheduleRequest が非対応のため）
+      if (absolute.length > 0 && !isEdit.value) body.absoluteReminders = absolute
+    } else {
+      // 共有予定: CreateReminderRequest[]（作成時のみ。Update は非対応）
+      if (!isEdit.value) body.reminders = buildSharedReminders()
+    }
+  }
+
+  // === 機能55: 予約アンケート・予約出欠（team/org の作成時のみ） ===
+  if (!effectiveScope.value.isPersonal && !isEdit.value) {
+    if (form.value.scheduledSurvey.enabled) {
+      const s = form.value.scheduledSurvey
+      body.scheduledSurveys = [
+        {
+          scheduledAt: buildFullDateTimeStr(s.scheduledAt),
+          survey: {
+            title: s.title.trim() || undefined,
+            isAnonymous: s.isAnonymous,
+            allowMultipleSubmissions: false,
+            resultsVisibility: s.resultsVisibility,
+            distributionMode: 'ALL',
+            questions: s.questions.map((q, qi) => ({
+              questionType: q.questionType,
+              questionText: q.questionText.trim(),
+              isRequired: q.isRequired,
+              displayOrder: qi,
+              options: q.options
+                .filter(o => o.optionText.trim() !== '')
+                .map((o, oi) => ({ optionText: o.optionText.trim(), displayOrder: oi })),
+            })),
+          },
+        },
+      ]
+    }
+    if (form.value.scheduledAttendance.enabled) {
+      const a = form.value.scheduledAttendance
+      body.scheduledAttendance = {
+        scheduledAt: buildFullDateTimeStr(a.scheduledAt),
+        attendanceDeadline: buildFullDateTimeStr(a.attendanceDeadline) ?? undefined,
+        commentOption: a.commentOption,
+        minResponseRole: a.minResponseRole.trim() || undefined,
+      }
     }
   }
 
@@ -333,6 +472,22 @@ function resetForm() {
     recurrenceCount: 10,
     allowProxyAttendance: false,
     isProxyAutoAccept: false,
+    reminders: [],
+    scheduledSurvey: {
+      enabled: false,
+      scheduledAt: null,
+      title: '',
+      isAnonymous: false,
+      resultsVisibility: 'PUBLIC',
+      questions: [],
+    },
+    scheduledAttendance: {
+      enabled: false,
+      scheduledAt: null,
+      attendanceDeadline: null,
+      commentOption: 'OPTIONAL',
+      minResponseRole: '',
+    },
   }
   fieldErrors.value = {}
 }
@@ -403,8 +558,18 @@ function close() {
       </div>
 
       <ScheduleEventRecurrenceInput v-model:form="form" />
+
+      <!-- 機能55: リマインダー入力（全スコープ） -->
+      <ScheduleEventReminderInput v-model:form="form" />
+
+      <!-- 機能55: 予約アンケート・予約出欠（team/org のみ） -->
+      <ScheduleEventScheduledAttachmentInput
+        v-if="!effectiveScope.isPersonal && !isEdit"
+        v-model:form="form"
+      />
+
       <div>
-        <label class="mb-1 block text-sm font-medium">説明</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('schedule.description_label') }}</label>
         <Textarea v-model="form.description" rows="3" class="w-full" />
       </div>
       <ScheduleEventColorPicker

@@ -27,6 +27,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import com.mannschaft.app.common.security.AccessGuard;
 
 @WebMvcTest(NavSettingsController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -41,6 +42,10 @@ class NavSettingsControllerTest {
     @MockitoBean UserLocaleCache userLocaleCache;
     @MockitoBean ProxyInputConsentRepository proxyInputConsentRepository;
     @MockitoBean ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     @Test
     @DisplayName("GET /settings/nav: 認証済みで200+ナビ設定返却")

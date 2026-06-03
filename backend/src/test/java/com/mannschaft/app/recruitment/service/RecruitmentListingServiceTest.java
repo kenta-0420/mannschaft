@@ -113,7 +113,7 @@ class RecruitmentListingServiceTest {
                     false, null,
                     RecruitmentVisibility.SCOPE_ONLY,
                     null, null, null, null,
-                    null, null, null, null); // F22.1 地域・フレンド宛先・配信対象
+                    null, null, null, null, null); // F22.1 地域・フレンド宛先・配信対象・複数地域(regions)
             assertThatThrownBy(() -> service.create(RecruitmentScopeType.TEAM, TEAM_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -136,7 +136,7 @@ class RecruitmentListingServiceTest {
                     true, null, // paymentEnabled=true, price=null
                     RecruitmentVisibility.SCOPE_ONLY,
                     null, null, null, null,
-                    null, null, null, null); // F22.1 地域・フレンド宛先・配信対象
+                    null, null, null, null, null); // F22.1 地域・フレンド宛先・配信対象・複数地域(regions)
             assertThatThrownBy(() -> service.create(RecruitmentScopeType.TEAM, TEAM_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -162,7 +162,7 @@ class RecruitmentListingServiceTest {
                     null, null, null, null, null, null, null,
                     3, // capacity=3 < confirmed_count=5
                     null, null, null, null, null, null, null, null,
-                    null, null); // F22.1 prefectureCode, cityCode
+                    null, null, null); // F22.1 prefectureCode, cityCode, regions
 
             assertThatThrownBy(() -> service.update(LISTING_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
@@ -178,7 +178,7 @@ class RecruitmentListingServiceTest {
             assertThatThrownBy(() -> service.update(LISTING_ID, USER_ID,
                     new UpdateRecruitmentListingRequest(null, null, null, null, null, null, null,
                             null, null, null, null, null, null, null, null, null,
-                            null, null)))
+                            null, null, null)))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
@@ -201,7 +201,7 @@ class RecruitmentListingServiceTest {
                 false, null,
                 RecruitmentVisibility.SCOPE_ONLY,
                 "東京", null, null, null,
-                null, null, null, null); // F22.1 地域・フレンド宛先・配信対象
+                null, null, null, null, null); // F22.1 地域・フレンド宛先・配信対象・複数地域(regions)
     }
 
     private RecruitmentListingEntity buildListingWithConfirmed(int confirmedCount) throws Exception {

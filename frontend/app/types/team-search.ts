@@ -13,10 +13,27 @@
 export interface TeamSearchQuery {
   /** 名前 / かな / nickname1 への部分一致キーワード */
   keyword?: string
-  /** 都道府県（完全一致） */
+  /**
+   * 都道府県名称（完全一致・後方互換フォールバック）。
+   * F22.1 Phase2 足場C 第三陣以降はコード（{@link prefectureCode}）送信を優先する。
+   */
   prefecture?: string
-  /** 市区町村（完全一致） */
+  /**
+   * 市区町村名称（完全一致・後方互換フォールバック）。
+   * F22.1 Phase2 足場C 第三陣以降はコード（{@link cityCode}）送信を優先する。
+   */
   city?: string
+  /**
+   * 都道府県コード（JIS X 0401・2 桁）。
+   * BE `OrganizationTeamSearchController` の `@RequestParam prefectureCode`（camelCase）と 1:1。
+   * 指定時は BE 側で名称より優先される（dual-support）。
+   */
+  prefectureCode?: string
+  /**
+   * 市区町村コード（JIS X 0402・5 桁）。
+   * BE `@RequestParam cityCode`（camelCase）と 1:1。指定時は名称より優先（dual-support）。
+   */
+  cityCode?: string
   /** チームテンプレート（完全一致） */
   template?: string
   /** ページ番号（0 オリジン） */
@@ -40,6 +57,16 @@ export interface TeamPublicSummary {
   nameKana: string
   prefecture: string | null
   city: string | null
+  /**
+   * 都道府県コード（JIS X 0401・2 桁、null 許容）。
+   * BE `TeamPublicSummaryResponse.prefectureCode`（Jackson 既定 camelCase）と 1:1。
+   */
+  prefectureCode: string | null
+  /**
+   * 市区町村コード（JIS X 0402・5 桁、null 許容）。
+   * BE `TeamPublicSummaryResponse.cityCode` と 1:1。
+   */
+  cityCode: string | null
   template: string | null
   iconUrl: string | null
 }

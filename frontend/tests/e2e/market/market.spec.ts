@@ -721,3 +721,62 @@ test('MARKET-006d: ログイン済みユーザーが「札に応じる」をク�
   const applyRes = await applyPromise
   expect(applyRes.status()).toBe(201)
 })
+
+// ──────────────────────────────────────────────────────────────────────────
+// MARKET-007: 複数地域募集（N:N・F22.1 Phase2 D）の表示
+// ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * 複数地域の札（regions[] に 2 件・代表は先頭）。
+ * ⚠️ BE 契約（camelCase）: MarketListingResponse.regions = MarketRegionDto[]
+ *    （prefectureCode / prefectureName / cityCode / cityName）。
+ */
+const MOCK_MULTI_REGION_LISTING = {
+  id: 1003,
+  title: '東京＋神奈川 合同練習会 参加者募集',
+  category: { id: 7, nameKey: 'recruitment.category.practiceMatch' },
+  owner: {
+    scopeType: 'TEAM',
+    scopeId: 77,
+    displayName: '関東FC',
+    iconUrl: null,
+  },
+  region: {
+    prefectureCode: '13',
+    prefectureName: '東京都',
+    cityCode: null,
+    cityName: null,
+  },
+  regions: [
+    { prefectureCode: '13', prefectureName: '東京都', cityCode: null, cityName: null },
+    { prefectureCode: '14', prefectureName: '神奈川県', cityCode: '14100', cityName: '横浜市' },
+  ],
+  locationText: null,
+  startAt: '2026-12-10T10:00:00Z',
+  applicationDeadline: '2026-12-05T23:59:59Z',
+  capacity: 10,
+  confirmedCount: 0,
+  status: 'OPEN',
+  paymentEnabled: false,
+}
+
+test('MARKET-007: 複数地域の札カードに地域タグが複数表示される（regions[] 表示）', async ({ page }) => {
+  await mockMarketRegions(page)
+  await mockCategories(page)
+  await mockMarketListings(page, {
+    body: {
+      data: [MOCK_MULTI_REGION_LISTING],
+      meta: { total: 1, page: 0, size: 20, totalPages: 1 },
+    },
+  })
+
+  await page.goto('/market')
+  await expect(page.getByTestId('market-listing-grid')).toBeVisible({ timeout: 10_000 })
+
+  const card = page.getByTestId(`market-listing-card-${MOCK_MULTI_REGION_LISTING.id}`)
+  await expect(card).toBeVisible()
+
+  // regions[] の 2 地域が両方タグ表示される（県単位は県名のみ・市単位は県＋市）。
+  await expect(card.getByText('東京都', { exact: false })).toBeVisible()
+  await expect(card.getByText('神奈川県 横浜市', { exact: false })).toBeVisible()
+})

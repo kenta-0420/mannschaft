@@ -44,8 +44,22 @@ export interface InboxScope {
 }
 
 /**
+ * グループ構成メンバー参照（Phase 3: 名寄せ）。
+ * groupCount > 1 のときに groupMembers 配列に含まれる。
+ */
+export interface InboxItemRef {
+  sourceType: InboxSourceType
+  sourceId: number
+}
+
+/**
  * インボックスアイテム（InboxItemDto）。
  * id は "{sourceType}:{sourceId}" の複合論理キー。
+ *
+ * Phase 3 追加フィールド:
+ *   canonicalRef  — BE が付与する正規化キー（FE では基本未使用）
+ *   groupCount    — 畳んだ件数（1 なら単独）
+ *   groupMembers  — 畳んだ全構成の triage キー（groupCount > 1 のとき複数）
  */
 export interface InboxItem {
   id: string
@@ -60,6 +74,12 @@ export interface InboxItem {
   state: InboxState
   snoozedUntil: string | null
   labels: InboxLabel[]
+  /** Phase 3: BE 正規化キー（FE では表示に使わない）。省略時は undefined。 */
+  canonicalRef?: string
+  /** Phase 3: 畳んだ件数（1 = 単独、2 以上 = グループカード）。省略時は 1 とみなす。 */
+  groupCount?: number
+  /** Phase 3: グループ構成メンバー（groupCount > 1 のとき bulk triage のキーとして使用）。 */
+  groupMembers?: InboxItemRef[]
 }
 
 /** 一覧レスポンス（InboxPageResponse を ApiResponse でラップしたもの）。 */

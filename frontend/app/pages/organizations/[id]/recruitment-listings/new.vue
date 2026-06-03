@@ -4,7 +4,7 @@ import type {
   CreateRecruitmentListingRequest,
   RecruitmentCategoryResponse,
 } from '~/types/recruitment'
-import type { FriendTargetInput } from '~/types/market'
+import type { FriendTargetInput, RegionInput } from '~/types/market'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,6 +19,7 @@ const loading = ref(false)
 // F22.1 市（Market）拡張フィールド
 const marketPrefectureCode = ref<string | null>(null)
 const marketCityCode = ref<string | null>(null)
+const marketRegions = ref<RegionInput[]>([])
 const marketVisibility = ref<'PUBLIC' | 'FRIEND_TEAMS_ONLY'>('PUBLIC')
 const marketFriendTargets = ref<FriendTargetInput[]>([])
 
@@ -41,9 +42,17 @@ async function onSubmit(body: CreateRecruitmentListingRequest) {
       visibility: marketVisibility.value,
       prefectureCode: marketPrefectureCode.value,
       cityCode: marketCityCode.value,
+      regions: marketRegions.value,
       friendTargets: marketVisibility.value === 'FRIEND_TEAMS_ONLY' ? marketFriendTargets.value : [],
     }
     const result = await api.createOrgListing(orgId.value, fullBody)
+    // F22.1 市: visibility=PUBLIC の札は publish 時に配信対象へ PUBLIC_FEED を含むことが必須（BE §5.1 RECRUITMENT_207）。
+    //   BE の create は配信対象を保存しない設計のため、作成直後に PUBLIC_FEED を配信対象として登録しておく。
+    //   これを怠ると publish が RECRUITMENT_204（配信対象 0 件）で失敗し、PUBLIC 札が市に出ない。
+    //   組織スコープは FRIEND_TEAMS_ONLY を取れないため、市拡張の visibility は実質 PUBLIC 固定。
+    if (marketVisibility.value === 'PUBLIC') {
+      await api.setDistributionTargets(result.data.id, { targetTypes: ['PUBLIC_FEED'] })
+    }
     success(t('recruitment.action.create'))
     router.push(`/recruitment-listings/${result.data.id}`)
   }
@@ -68,6 +77,7 @@ onMounted(() => loadCategories())
         :scope-id="orgId"
         @update:prefecture-code="marketPrefectureCode = $event"
         @update:city-code="marketCityCode = $event"
+        @update:regions="marketRegions = $event"
         @update:visibility="marketVisibility = $event"
         @update:friend-targets="marketFriendTargets = $event"
       />

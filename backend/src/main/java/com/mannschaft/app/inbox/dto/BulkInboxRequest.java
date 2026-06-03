@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -44,8 +44,8 @@ public class BulkInboxRequest {
     @Valid
     private final List<TriageTargetRequest> items;
 
-    /** SNOOZE 時のスヌーズ解除時刻（action=SNOOZE のとき必須・サービス層検証） */
-    private final LocalDateTime snoozedUntil;
+    /** SNOOZE 時のスヌーズ解除時刻（絶対時刻・ISO8601・オフセット必須／action=SNOOZE のとき必須・サービス層検証） */
+    private final OffsetDateTime snoozedUntil;
 
     /** LABEL_ADD 時の付与ラベル ID（action=LABEL_ADD のとき必須・サービス層検証） */
     private final UUID labelId;

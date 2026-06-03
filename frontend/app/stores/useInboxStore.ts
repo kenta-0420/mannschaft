@@ -187,7 +187,8 @@ export const useInboxStore = defineStore('inbox', {
 
     /**
      * スヌーズ。
-     * 即アイテムの state を SNOOZED / snoozedUntil に書換え → API 失敗でロールバック。
+     * groupCount > 1 のとき groupMembers 全員に bulkAction(SNOOZE) を適用。
+     * 楽観更新: 即 state を SNOOZED に書換え → API 失敗でロールバック。
      */
     async snooze(
       sourceType: InboxSourceType,
@@ -195,6 +196,28 @@ export const useInboxStore = defineStore('inbox', {
       snoozedUntil: string,
     ): Promise<boolean> {
       const previous = this.items.slice()
+      const item = this._findItem(sourceType, sourceId)
+      const isGroup = (item?.groupCount ?? 1) > 1
+
+      if (isGroup && item?.groupMembers && item.groupMembers.length > 0) {
+        // グループカード: 楽観的に代表カードを除去 → bulkAction で全メンバーへ適用
+        this._removeItem(sourceType, sourceId)
+        try {
+          const api = useInboxApi()
+          await api.bulkAction({
+            action: 'SNOOZE',
+            items: item.groupMembers as InboxBulkItem[],
+            snoozedUntil,
+          })
+          return true
+        } catch (error) {
+          this.items = previous
+          this._handleError(error)
+          return false
+        }
+      }
+
+      // 単独アイテム: 従来の単一 triage
       this._updateItemState(sourceType, sourceId, 'SNOOZED', snoozedUntil)
       try {
         const api = useInboxApi()
@@ -211,9 +234,45 @@ export const useInboxStore = defineStore('inbox', {
 
     /**
      * スヌーズ解除。
+     * groupCount > 1 のとき groupMembers 全員を個別 api.unsnooze で解除する。
+     * bulk に UNSNOOZE action が未定義のため個別 API を Promise.allSettled で並列実行し、
+     * 全結果（成功・失敗問わず）が揃った後に必ず fetchInbox で実サーバ状態へ再同期する。
+     * これにより部分失敗時の誤表示（楽観ロールバック後の状態ズレ）を防ぐ。
+     * 単独アイテムは従来どおり単一 triage。
      */
     async unsnooze(sourceType: InboxSourceType, sourceId: number): Promise<boolean> {
       const previous = this.items.slice()
+      const item = this._findItem(sourceType, sourceId)
+      const isGroup = (item?.groupCount ?? 1) > 1
+
+      if (isGroup && item?.groupMembers && item.groupMembers.length > 0) {
+        // グループカード: 楽観的に代表カードを除去 → 全メンバーへ個別 unsnooze を並列実行
+        this._removeItem(sourceType, sourceId)
+        try {
+          // Promise.allSettled で部分失敗を許容しながら全メンバーへ unsnooze を実行
+          const api = useInboxApi()
+          const results = await Promise.allSettled(
+            item.groupMembers.map((m) => api.unsnooze(m.sourceType as InboxSourceType, m.sourceId)),
+          )
+          // 全件失敗の場合はロールバックして再同期
+          const allFailed = results.every((r) => r.status === 'rejected')
+          if (allFailed) {
+            this.items = previous
+            this._handleError(results[0] && results[0].status === 'rejected' ? results[0].reason : new Error('unsnooze failed'))
+          }
+          // 成功・部分成功問わず実サーバ状態へ再同期（誤表示防止）
+          await this.fetchInbox()
+          return !allFailed
+        } catch (error) {
+          // Promise.allSettled 自体は reject しないため、ここは fetchInbox の失敗等
+          this.items = previous
+          this._handleError(error)
+          await this.fetchInbox()
+          return false
+        }
+      }
+
+      // 単独アイテム: 従来の単一 triage
       this._updateItemState(sourceType, sourceId, 'UNREAD', null)
       try {
         const api = useInboxApi()
@@ -229,9 +288,32 @@ export const useInboxStore = defineStore('inbox', {
 
     /**
      * アーカイブ。
+     * groupCount > 1 のとき groupMembers 全員に bulkAction(ARCHIVE) を適用。
+     * 楽観更新: 即 state を ARCHIVED に書換え → API 失敗でロールバック。
      */
     async archive(sourceType: InboxSourceType, sourceId: number): Promise<boolean> {
       const previous = this.items.slice()
+      const item = this._findItem(sourceType, sourceId)
+      const isGroup = (item?.groupCount ?? 1) > 1
+
+      if (isGroup && item?.groupMembers && item.groupMembers.length > 0) {
+        // グループカード: 楽観的に代表カードを除去 → bulkAction で全メンバーへ適用
+        this._removeItem(sourceType, sourceId)
+        try {
+          const api = useInboxApi()
+          await api.bulkAction({
+            action: 'ARCHIVE',
+            items: item.groupMembers as InboxBulkItem[],
+          })
+          return true
+        } catch (error) {
+          this.items = previous
+          this._handleError(error)
+          return false
+        }
+      }
+
+      // 単独アイテム: 従来の単一 triage
       this._updateItemState(sourceType, sourceId, 'ARCHIVED', null)
       try {
         const api = useInboxApi()
@@ -247,9 +329,32 @@ export const useInboxStore = defineStore('inbox', {
 
     /**
      * アーカイブ解除。
+     * groupCount > 1 のとき groupMembers 全員に bulkAction(UNARCHIVE) を適用。
+     * 楽観更新: 即 state を UNREAD に書換え → API 失敗でロールバック。
      */
     async unarchive(sourceType: InboxSourceType, sourceId: number): Promise<boolean> {
       const previous = this.items.slice()
+      const item = this._findItem(sourceType, sourceId)
+      const isGroup = (item?.groupCount ?? 1) > 1
+
+      if (isGroup && item?.groupMembers && item.groupMembers.length > 0) {
+        // グループカード: 楽観的に代表カードを除去 → bulkAction で全メンバーへ適用
+        this._removeItem(sourceType, sourceId)
+        try {
+          const api = useInboxApi()
+          await api.bulkAction({
+            action: 'UNARCHIVE',
+            items: item.groupMembers as InboxBulkItem[],
+          })
+          return true
+        } catch (error) {
+          this.items = previous
+          this._handleError(error)
+          return false
+        }
+      }
+
+      // 単独アイテム: 従来の単一 triage
       this._updateItemState(sourceType, sourceId, 'UNREAD', null)
       try {
         const api = useInboxApi()
@@ -571,6 +676,25 @@ export const useInboxStore = defineStore('inbox', {
     // ─────────────────────────────────────────────
     // 内部ユーティリティ
     // ─────────────────────────────────────────────
+
+    /**
+     * items 配列から指定アイテムを検索して返す（見つからない場合は undefined）。
+     */
+    _findItem(sourceType: InboxSourceType, sourceId: number): InboxItem | undefined {
+      const id = `${sourceType}:${sourceId}`
+      return this.items.find((item) => item.id === id)
+    },
+
+    /**
+     * items 配列から指定アイテムを除去する（楽観的グループ除去用）。
+     */
+    _removeItem(sourceType: InboxSourceType, sourceId: number): void {
+      const id = `${sourceType}:${sourceId}`
+      const idx = this.items.findIndex((item) => item.id === id)
+      if (idx >= 0) {
+        this.items.splice(idx, 1)
+      }
+    },
 
     /** items 配列内のアイテムの state / snoozedUntil を更新する（楽観更新用）。 */
     _updateItemState(

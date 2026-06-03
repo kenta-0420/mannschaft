@@ -63,7 +63,7 @@ public class SafetyCheckEntity extends BaseEntity {
     @Builder.Default
     private Integer totalTargetCount = 0;
 
-    @Column(nullable = false)
+    @Column(name = "admin_24h_notified", nullable = false)
     @Builder.Default
     private Boolean admin24hNotified = false;
 

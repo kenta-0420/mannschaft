@@ -1,6 +1,7 @@
 package com.mannschaft.app.workflow.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.workflow.WorkflowErrorCode;
@@ -42,17 +43,18 @@ public class WorkflowRequestAttachmentService {
 
     private static final Duration PRESIGN_TTL = Duration.ofMinutes(15);
 
-    /** 許可 MIME タイプ（F05.6 §3 workflow_request_attachments 制約に基づく）。 */
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "application/pdf",
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-            "image/gif",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "text/csv"
-    );
+    /**
+     * 許可 MIME タイプ（F05.6 §3 workflow_request_attachments 制約に基づく）。
+     * {@link FileTypeValidator} の定数を合成して使用する。
+     */
+    private static final Set<String> ALLOWED_CONTENT_TYPES;
+
+    static {
+        var merged = new java.util.HashSet<String>();
+        merged.addAll(FileTypeValidator.ALLOWED_IMAGE_TYPES);
+        merged.addAll(FileTypeValidator.ALLOWED_DOCUMENT_TYPES);
+        ALLOWED_CONTENT_TYPES = java.util.Collections.unmodifiableSet(merged);
+    }
 
     private final WorkflowRequestAttachmentRepository attachmentRepository;
     private final WorkflowRequestRepository requestRepository;
@@ -73,8 +75,13 @@ public class WorkflowRequestAttachmentService {
         WorkflowRequestEntity requestEntity = requestRepository.findById(requestId)
                 .orElseThrow(() -> new BusinessException(WorkflowErrorCode.REQUEST_NOT_FOUND));
 
-        // 2. MIME タイプ許可リスト検証
-        if (!ALLOWED_CONTENT_TYPES.contains(request.contentType())) {
+        // 2. MIME タイプ検証（ブロックリスト優先 → ホワイトリスト）
+        if (FileTypeValidator.isBlocked(request.contentType())) {
+            log.warn("ワークフロー添付 presign-upload: ブロック対象 contentType={}, requestId={}",
+                    request.contentType(), requestId);
+            throw new BusinessException(WorkflowErrorCode.INVALID_FIELD_VALUE);
+        }
+        if (!FileTypeValidator.isAllowed(request.contentType(), ALLOWED_CONTENT_TYPES)) {
             log.warn("ワークフロー添付 presign-upload: 許可外 contentType={}, requestId={}",
                     request.contentType(), requestId);
             throw new BusinessException(WorkflowErrorCode.INVALID_FIELD_VALUE);
