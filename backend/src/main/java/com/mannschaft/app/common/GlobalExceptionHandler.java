@@ -417,6 +417,14 @@ public class GlobalExceptionHandler {
             Map.entry("TOUR_048", HttpStatus.CONFLICT),               // ROSTER_DEADLINE_PASSED（締切後ロック・409）
             Map.entry("TOUR_049", HttpStatus.FORBIDDEN),              // ROSTER_MANAGE_FORBIDDEN（主催組織 ADMIN 限定）
             Map.entry("TOUR_050", HttpStatus.NOT_FOUND),              // UNIFORM_SET_NOT_FOUND（IDOR 対策で 404）
+            Map.entry("TOUR_051", HttpStatus.NOT_FOUND),              // SUBMISSION_REQ_NOT_FOUND（IDOR 対策で 404）
+            Map.entry("TOUR_052", HttpStatus.FORBIDDEN),              // SUBMISSION_REQ_MANAGE_FORBIDDEN
+            Map.entry("TOUR_053", HttpStatus.FORBIDDEN),              // SUBMISSION_REQ_VIEW_FORBIDDEN
+            Map.entry("TOUR_054", HttpStatus.FORBIDDEN),              // SUBMISSION_SUBMIT_FORBIDDEN
+            Map.entry("TOUR_055", HttpStatus.UNPROCESSABLE_ENTITY),   // SUBMISSION_TEAM_NOT_TARGET
+            Map.entry("TOUR_056", HttpStatus.UNPROCESSABLE_ENTITY),   // SUBMISSION_DEADLINE_PASSED
+            Map.entry("TOUR_057", HttpStatus.UNPROCESSABLE_ENTITY),   // SUBMISSION_PAYMENT_REQUIRED
+            Map.entry("TOUR_058", HttpStatus.UNPROCESSABLE_ENTITY),   // SUBMISSION_TEMPLATE_SCOPE_MISMATCH
             // F17.1 村機能 Phase 1（B2 村CRUD / B3 メンバーシップ / B4 ニックネーム / B5 村作成申請）統合
             Map.entry("VILLAGE_001", HttpStatus.NOT_FOUND),            // VILLAGE_NOT_FOUND（IDOR 対策で 404）
             Map.entry("VILLAGE_002", HttpStatus.FORBIDDEN),            // VILLAGE_UNLISTED

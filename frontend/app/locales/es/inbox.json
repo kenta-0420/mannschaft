@@ -84,6 +84,14 @@
     "group": {
       "badge": "+{n} más",
       "badgeTitle": "{n} notificaciones están agrupadas aquí"
+    },
+    "suggestion": {
+      "replyNeeded": "Requiere respuesta",
+      "actionNeeded": "Requiere acción",
+      "urgent": "Urgente",
+      "readLater": "Leer después",
+      "apply": "Agregar",
+      "applyAria": "Agregar etiqueta {name}"
     }
   }
 }

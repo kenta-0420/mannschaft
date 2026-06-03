@@ -14,12 +14,13 @@
  * - 楽観更新はストア側で実施
  * - Phase 2: ラベル絞り込み、bulk 選択モード、ラベル管理
  */
-import type { InboxLabel, InboxPriority, InboxSourceType, InboxStateFilter } from '~/types/inbox'
+import type { InboxLabel, InboxPriority, InboxSourceType, InboxStateFilter, SuggestedLabel } from '~/types/inbox'
 import {
   priorityI18nKey,
   prioritySeverity,
   sourceTypeI18nKey,
   sourceTypeIcon,
+  suggestionKeyI18nKey,
 } from '~/composables/useInboxApi'
 import type { InboxSnoozePreset } from '~/stores/useInboxStore'
 
@@ -229,6 +230,29 @@ async function toggleSourceType(sourceType: InboxSourceType) {
 async function toggleLabelFilter(labelId: string) {
   const next = inboxStore.labelFilter === labelId ? null : labelId
   await inboxStore.setLabelFilter(next)
+}
+
+// ─────────────────────────────────────────────
+// 自動ラベリング提案（wave3b）
+// ─────────────────────────────────────────────
+
+/**
+ * 提案チップのタップで suggestApply を呼ぶ。
+ * labelName は i18n 解決済み文字列を渡す（BE は表示名を持たない）。
+ */
+async function onSuggestionApply(
+  sourceType: InboxSourceType,
+  sourceId: number,
+  suggestion: SuggestedLabel,
+) {
+  const labelName = t(suggestionKeyI18nKey(suggestion.suggestionKey))
+  const ok = await inboxStore.suggestApply(sourceType, sourceId, suggestion, labelName)
+  if (ok) {
+    notification.success(t('inbox.label.assigned'))
+  } else {
+    // _handleError が error をセットし、ここではトーストを出す
+    notification.error(t('common.error.unknown'))
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -582,7 +606,7 @@ const snoozePresets: SnoozePresetDef[] = [
                 </span>
               </div>
 
-              <!-- ラベルチップ -->
+              <!-- ラベルチップ（付与済み） -->
               <div v-if="item.labels.length > 0" class="mt-1.5 flex flex-wrap gap-1">
                 <InboxLabelChip
                   v-for="label in item.labels"
@@ -590,6 +614,20 @@ const snoozePresets: SnoozePresetDef[] = [
                   :label="label"
                   removable
                   @remove="(lbl) => inboxStore.unassignLabel(item.sourceType, item.sourceId, lbl.id)"
+                />
+              </div>
+
+              <!-- 提案チップ（wave3b: 点線枠・半透明で付与済みラベルと区別） -->
+              <div
+                v-if="item.suggestedLabels && item.suggestedLabels.length > 0"
+                class="mt-1 flex flex-wrap gap-1"
+                :data-testid="`inbox-suggestion-area-${item.id}`"
+              >
+                <InboxSuggestionChip
+                  v-for="suggestion in item.suggestedLabels"
+                  :key="suggestion.suggestionKey"
+                  :suggestion="suggestion"
+                  @apply="(s) => onSuggestionApply(item.sourceType, item.sourceId, s)"
                 />
               </div>
             </div>

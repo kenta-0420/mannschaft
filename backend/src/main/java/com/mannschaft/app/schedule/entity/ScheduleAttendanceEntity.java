@@ -42,6 +42,7 @@ public class ScheduleAttendanceEntity extends BaseEntity {
     private LocalDateTime respondedAt;
 
     @Column(name = "is_proxy_input", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
     private Boolean isProxyInput = false;
 
     @Column(name = "proxy_input_record_id")

@@ -9,6 +9,7 @@ import type {
   InboxListResponse,
   InboxPriority,
   InboxSourceType,
+  InboxSuggestionKey,
   InboxSummary,
   InboxTriageResponse,
   UpdateLabelPayload,
@@ -196,6 +197,27 @@ export function useInboxApi() {
     })
   }
 
+  // ─────────────────────────────────────────────
+  // Phase 3 (wave3b): 自動ラベリング提案付与
+  // ─────────────────────────────────────────────
+
+  /**
+   * 提案ラベルを find-or-create しアイテムに付与する（冪等・200 で LabelDto を返す）。
+   * name は FE が i18n 解決した表示名を送る（BE は表示名を持たない）。
+   * 上限超過時は 4xx（INBOX_LABEL_LIMIT_EXCEEDED / INBOX_LABEL_PER_ITEM_EXCEEDED）が返る。
+   */
+  async function suggestApply(
+    sourceType: InboxSourceType,
+    sourceId: number,
+    name: string,
+    color: string,
+  ): Promise<InboxLabel> {
+    return api<InboxLabel>('/api/v1/inbox/labels/suggest-apply', {
+      method: 'POST',
+      body: { name, color, sourceType, sourceId },
+    })
+  }
+
   return {
     getInbox,
     getSummary,
@@ -210,6 +232,7 @@ export function useInboxApi() {
     assignLabel,
     unassignLabel,
     bulkAction,
+    suggestApply,
   }
 }
 
@@ -257,4 +280,20 @@ export function prioritySeverity(priority: InboxPriority): string {
     LOW: 'secondary',
   }
   return map[priority]
+}
+
+/**
+ * suggestionKey (UPPER_SNAKE) を i18n キー (camel) に変換するヘルパー。
+ * 例: 'REPLY_NEEDED' → 'inbox.suggestion.replyNeeded'
+ *
+ * BE の SuggestionKey 列挙値と i18n キーの対応は**ここ1箇所**で管理する（直書き禁止）。
+ */
+export function suggestionKeyI18nKey(key: InboxSuggestionKey): string {
+  const map: Record<InboxSuggestionKey, string> = {
+    REPLY_NEEDED: 'inbox.suggestion.replyNeeded',
+    ACTION_NEEDED: 'inbox.suggestion.actionNeeded',
+    URGENT: 'inbox.suggestion.urgent',
+    READ_LATER: 'inbox.suggestion.readLater',
+  }
+  return map[key]
 }

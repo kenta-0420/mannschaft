@@ -84,6 +84,14 @@
     "group": {
       "badge": "+{n}条",
       "badgeTitle": "此处聚合了 {n} 条通知"
+    },
+    "suggestion": {
+      "replyNeeded": "需要回复",
+      "actionNeeded": "需要处理",
+      "urgent": "紧急",
+      "readLater": "稍后阅读",
+      "apply": "添加",
+      "applyAria": "添加 {name} 标签"
     }
   }
 }

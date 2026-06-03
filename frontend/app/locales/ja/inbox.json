@@ -84,6 +84,14 @@
     "group": {
       "badge": "+{n}件",
       "badgeTitle": "{n}件の通知が畳まれています"
+    },
+    "suggestion": {
+      "replyNeeded": "要返信",
+      "actionNeeded": "要対応",
+      "urgent": "急ぎ",
+      "readLater": "あとで読む",
+      "apply": "追加",
+      "applyAria": "{name} ラベルを追加"
     }
   }
 }
