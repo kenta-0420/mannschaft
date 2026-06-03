@@ -20,6 +20,7 @@ CREATE TABLE payment_proxy_grants (
     revoked_by              BIGINT UNSIGNED  NULL     COMMENT '取消操作者ユーザーID（論理参照・FKなし）',
     created_at              DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at              DATETIME         NULL     COMMENT '論理削除（GDPR/退会）。テナント基底 AbstractTenantAwareRepository の deleted_at 規約に対応。業務状態(status=REVOKED/EXPIRED)とは独立',
     PRIMARY KEY (id),
     KEY idx_ppg_beneficiary (beneficiary_user_id, status),
     KEY idx_ppg_payer       (payer_user_id, status),

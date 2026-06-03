@@ -134,6 +134,13 @@ public class PaymentProxyGrantEntity extends UuidV7Entity {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    /**
+     * 論理削除（GDPR/退会）。テナント基底 {@code AbstractTenantAwareRepository} の deleted_at 規約に対応。
+     * 業務状態（status=REVOKED/EXPIRED）とは独立。NULL=有効。
+     */
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
