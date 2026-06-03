@@ -1,19 +1,25 @@
 package com.mannschaft.app.payment.escrow;
 
 import com.mannschaft.app.payment.connect.ScopeKind;
+import com.mannschaft.app.payment.escrow.event.ChargeCaptureFailedEvent;
 import com.mannschaft.app.recruitment.event.MarketListingFinalizedEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -29,6 +35,7 @@ class MarketChargeCaptureListenerTest {
 
     @Mock private EscrowTransactionRepository escrowTransactionRepository;
     @Mock private ConnectChargeService connectChargeService;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks private MarketChargeCaptureListener listener;
 
@@ -106,5 +113,42 @@ class MarketChargeCaptureListenerTest {
         verify(connectChargeService).capture(a1);
         verify(connectChargeService).capture(a2);
         verify(connectChargeService, never()).capture(held);
+    }
+
+    @Test
+    @DisplayName("capture 失敗→握り潰さず ERROR ＋ ChargeCaptureFailedEvent 発火（AFTER_COMMIT ゆえ確定は巻き戻せない）")
+    void captureFails_publishesFailureEventAndDoesNotThrow() {
+        UUID escrowId = UUID.fromString("019607a0-0000-7000-8000-000000000021");
+        given(escrowTransactionRepository.findBySourceKindAndSourceId(EscrowSourceKind.RECRUITMENT, 100L))
+                .willReturn(List.of(escrow(EscrowStatus.AUTHORIZED, escrowId)));
+        willThrow(new RuntimeException("stripe capture failed")).given(connectChargeService).capture(escrowId);
+
+        // AFTER_COMMIT 後ゆえ例外を伝播させて確定（COMPLETED）を巻き戻すことはできない。握り潰さずイベントで救済する。
+        assertThatCode(() -> listener.onListingFinalized(new MarketListingFinalizedEvent(100L, true)))
+                .doesNotThrowAnyException();
+
+        ArgumentCaptor<ChargeCaptureFailedEvent> captor = ArgumentCaptor.forClass(ChargeCaptureFailedEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        ChargeCaptureFailedEvent failed = captor.getValue();
+        assertThat(failed.escrowId()).isEqualTo(escrowId);
+        assertThat(failed.sourceKind()).isEqualTo(EscrowSourceKind.RECRUITMENT);
+        assertThat(failed.sourceId()).isEqualTo(100L);
+        assertThat(failed.reason()).contains("stripe capture failed");
+    }
+
+    @Test
+    @DisplayName("複数応募で 1 件の capture が失敗しても他 escrow の払出は継続する（独立 try/catch）")
+    void oneCaptureFails_othersStillCaptured() {
+        UUID failing = UUID.fromString("019607a0-0000-7000-8000-000000000031");
+        UUID ok = UUID.fromString("019607a0-0000-7000-8000-000000000032");
+        given(escrowTransactionRepository.findBySourceKindAndSourceId(EscrowSourceKind.RECRUITMENT, 100L))
+                .willReturn(List.of(escrow(EscrowStatus.AUTHORIZED, failing), escrow(EscrowStatus.AUTHORIZED, ok)));
+        willThrow(new RuntimeException("stripe capture failed")).given(connectChargeService).capture(failing);
+
+        listener.onListingFinalized(new MarketListingFinalizedEvent(100L, true));
+
+        verify(connectChargeService).capture(failing);
+        verify(connectChargeService).capture(ok);
+        verify(eventPublisher).publishEvent(any(ChargeCaptureFailedEvent.class));
     }
 }

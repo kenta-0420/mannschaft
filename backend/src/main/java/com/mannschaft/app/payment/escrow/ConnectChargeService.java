@@ -14,6 +14,7 @@ import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -165,8 +166,17 @@ public class ConnectChargeService {
      * Stripe へ {@code idempotency_key="capture-{escrowId}"} を渡し、ネットワーク再送も Stripe 側で拒否する
      * （二重防御・02 §5.3）。</p>
      *
-     * <p><b>二重払出防止:</b> 本メソッドは札行 {@code PESSIMISTIC_WRITE} ロック直下（MarketFinalize フック）から
-     * 呼ばれる前提で、並行 confirm を直列化する（02 §5.3）。</p>
+     * <p><b>二重払出・二重記帳防止（根治）:</b> escrow 行を {@code PESSIMISTIC_WRITE} でロックして読む
+     * （{@link EscrowTransactionRepository#findByIdForUpdate}）。同期フック（AFTER_COMMIT 後）の capture と
+     * {@code payment_intent.succeeded} webhook（{@link EscrowWebhookService#handleWebhook}）が並行しても、
+     * 行ロックで read-then-write を直列化し、ロック取得後に status を再判定（CAPTURED なら no-op）することで
+     * ledger 二重記帳を物理的に防ぐ（02 §5.3）。</p>
+     *
+     * <p><b>トランザクション境界:</b> {@link Propagation#REQUIRES_NEW} の独立トランザクションで実行する。
+     * MarketFinalize フック（{@link MarketChargeCaptureListener}）は finalize の確定トランザクションが
+     * <b>コミットされた後</b>（{@code AFTER_COMMIT}）に本メソッドを呼ぶため、確定（COMPLETED）は既に durable で
+     * ある。本メソッドの新規トランザクションが失敗（ロールバック）しても確定は巻き戻らず、webhook の安全網で
+     * 後追い確定できる結果整合とする。</p>
      *
      * <p><b>不正状態:</b> {@link EscrowStatus#HELD}（onboarding 未完で payout 不能）/{@link EscrowStatus#CANCELLED}/
      * {@link EscrowStatus#REFUNDED} 等の後段状態、または PI 未設定からの capture は
@@ -174,8 +184,9 @@ public class ConnectChargeService {
      *
      * @param escrowId 払出対象のエスクロー取引 ID
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void capture(UUID escrowId) {
-        EscrowTransactionEntity escrow = escrowTransactionRepository.findById(escrowId)
+        EscrowTransactionEntity escrow = escrowTransactionRepository.findByIdForUpdate(escrowId)
                 .orElseThrow(() -> new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
 
         // 冪等: CAPTURED 済みは再 capture しない（Stripe capture を 2 回呼ばない・02 §5.3）。

@@ -139,7 +139,9 @@ public class EscrowWebhookService {
      * {@code captured_at} と CAPTURE/TRANSFER_OUT/FEE を記帳する（借方合計＝貸方合計・01 §3.3）。</p>
      */
     private WebhookProcessStatus applySucceeded(String paymentIntentId) {
-        EscrowTransactionEntity escrow = findEscrowOrNull(paymentIntentId);
+        // 二重記帳防止（根治・02 §5.3）: capture（同期フック）と本 webhook の read-then-write を行ロックで
+        // 直列化する。ロック取得後に status を再判定（CAPTURED なら no-op）するため、ロック付きで取得する。
+        EscrowTransactionEntity escrow = findEscrowForUpdateOrNull(paymentIntentId);
         if (escrow == null) {
             return WebhookProcessStatus.IGNORED;
         }
@@ -178,6 +180,21 @@ public class EscrowWebhookService {
             return null;
         }
         return escrowTransactionRepository.findByStripePaymentIntentId(paymentIntentId).orElseGet(() -> {
+            log.info("paymentIntentId に対応する escrow が未登録。無視します: piId={}", paymentIntentId);
+            return null;
+        });
+    }
+
+    /**
+     * capture × webhook の二重記帳防止のため、escrow 行を {@code PESSIMISTIC_WRITE} ロックして取得する
+     * （read-then-write 直列化・02 §5.3）。{@code payment_intent.succeeded}（capture 確定）でのみ用いる。
+     */
+    private EscrowTransactionEntity findEscrowForUpdateOrNull(String paymentIntentId) {
+        if (paymentIntentId == null) {
+            log.warn("Escrow Webhook に paymentIntentId が含まれていません");
+            return null;
+        }
+        return escrowTransactionRepository.findByStripePaymentIntentIdForUpdate(paymentIntentId).orElseGet(() -> {
             log.info("paymentIntentId に対応する escrow が未登録。無視します: piId={}", paymentIntentId);
             return null;
         });

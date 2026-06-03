@@ -74,7 +74,7 @@ class ConnectChargeServiceCaptureTest {
     void authorized_capturesAndLedgerBalances() {
         ConnectChargeService svc = service();
         EscrowTransactionEntity authorized = escrow(EscrowStatus.AUTHORIZED);
-        given(escrowTransactionRepository.findById(ESCROW_ID)).willReturn(Optional.of(authorized));
+        given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.of(authorized));
         given(stripePaymentProvider.captureManualPaymentIntent("pi_abc", "capture-" + ESCROW_ID))
                 .willReturn(new StripePaymentProvider.PaymentIntentInfo("pi_abc", null, "succeeded"));
         given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -117,7 +117,7 @@ class ConnectChargeServiceCaptureTest {
     @DisplayName("冪等: CAPTURED 済み再 capture→no-op（Stripe capture も ledger も呼ばない）")
     void alreadyCaptured_noOp() {
         ConnectChargeService svc = service();
-        given(escrowTransactionRepository.findById(ESCROW_ID)).willReturn(Optional.of(escrow(EscrowStatus.CAPTURED)));
+        given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.of(escrow(EscrowStatus.CAPTURED)));
 
         svc.capture(ESCROW_ID);
 
@@ -130,7 +130,7 @@ class ConnectChargeServiceCaptureTest {
     @DisplayName("不正状態: HELD から capture→INVALID_ESCROW_STATE（払出不能・Stripe never）")
     void held_rejected() {
         ConnectChargeService svc = service();
-        given(escrowTransactionRepository.findById(ESCROW_ID)).willReturn(Optional.of(escrow(EscrowStatus.HELD)));
+        given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.of(escrow(EscrowStatus.HELD)));
 
         assertThatThrownBy(() -> svc.capture(ESCROW_ID))
                 .isInstanceOf(BusinessException.class)
@@ -145,7 +145,7 @@ class ConnectChargeServiceCaptureTest {
     @DisplayName("不正状態: CANCELLED から capture→INVALID_ESCROW_STATE（払出不能・Stripe never）")
     void cancelled_rejected() {
         ConnectChargeService svc = service();
-        given(escrowTransactionRepository.findById(ESCROW_ID)).willReturn(Optional.of(escrow(EscrowStatus.CANCELLED)));
+        given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.of(escrow(EscrowStatus.CANCELLED)));
 
         assertThatThrownBy(() -> svc.capture(ESCROW_ID))
                 .isInstanceOf(BusinessException.class)
@@ -159,7 +159,7 @@ class ConnectChargeServiceCaptureTest {
     @DisplayName("escrow 不在→404秘匿（PAYMENT_C002）・Stripe never")
     void missingEscrow_notFound() {
         ConnectChargeService svc = service();
-        given(escrowTransactionRepository.findById(ESCROW_ID)).willReturn(Optional.empty());
+        given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> svc.capture(ESCROW_ID))
                 .isInstanceOf(BusinessException.class)
@@ -175,7 +175,7 @@ class ConnectChargeServiceCaptureTest {
         ConnectChargeService svc = service();
         EscrowTransactionEntity authorized = escrow(EscrowStatus.AUTHORIZED);
         authorized.setStripePaymentIntentId(null);
-        given(escrowTransactionRepository.findById(ESCROW_ID)).willReturn(Optional.of(authorized));
+        given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.of(authorized));
 
         assertThatThrownBy(() -> svc.capture(ESCROW_ID))
                 .isInstanceOf(BusinessException.class)

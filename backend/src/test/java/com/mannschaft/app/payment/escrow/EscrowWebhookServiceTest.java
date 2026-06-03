@@ -120,7 +120,8 @@ class EscrowWebhookServiceTest {
                 .willReturn(event("evt_3", "payment_intent.succeeded"));
         given(idempotencyService.tryBegin("evt_3", "payment_intent.succeeded", false)).willReturn(true);
         EscrowTransactionEntity authorized = escrow(EscrowStatus.AUTHORIZED);
-        given(escrowTransactionRepository.findByStripePaymentIntentId("pi_abc")).willReturn(Optional.of(authorized));
+        // 二重記帳防止のため succeeded（capture 確定）は行ロック付きで取得する。
+        given(escrowTransactionRepository.findByStripePaymentIntentIdForUpdate("pi_abc")).willReturn(Optional.of(authorized));
         given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(ledgerEntryRepository.saveAll(any())).willAnswer(inv -> inv.getArgument(0));
 
@@ -149,7 +150,7 @@ class EscrowWebhookServiceTest {
         given(stripePaymentProvider.constructEscrowEvent(any(), any()))
                 .willReturn(event("evt_6", "payment_intent.succeeded"));
         given(idempotencyService.tryBegin("evt_6", "payment_intent.succeeded", false)).willReturn(true);
-        given(escrowTransactionRepository.findByStripePaymentIntentId("pi_abc"))
+        given(escrowTransactionRepository.findByStripePaymentIntentIdForUpdate("pi_abc"))
                 .willReturn(Optional.of(escrow(EscrowStatus.CAPTURED)));
 
         service.handleWebhook("payload", "sig");

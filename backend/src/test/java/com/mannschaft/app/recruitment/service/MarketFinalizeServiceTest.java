@@ -9,6 +9,7 @@ import com.mannschaft.app.recruitment.RecruitmentParticipationType;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
+import com.mannschaft.app.recruitment.event.MarketListingFinalizedEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -21,9 +22,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
@@ -132,6 +135,81 @@ class MarketFinalizeServiceTest {
 
         verify(confirmableNotificationService, never()).sendFromSource(
                 any(), anyLong(), any(), anyLong(), any(), any(), any(), any(), any(), anyLong(), any());
+    }
+
+    private RecruitmentListingEntity fullListing(boolean paymentEnabled) throws Exception {
+        RecruitmentListingEntity listing = RecruitmentListingEntity.builder()
+                .scopeType(RecruitmentScopeType.TEAM)
+                .scopeId(TEAM_ID)
+                .categoryId(1L)
+                .title("11/3 練習試合")
+                .participationType(RecruitmentParticipationType.INDIVIDUAL)
+                .startAt(LocalDateTime.now().plusDays(7))
+                .endAt(LocalDateTime.now().plusDays(7).plusHours(2))
+                .applicationDeadline(LocalDateTime.now().plusDays(5))
+                .autoCancelAt(LocalDateTime.now().plusDays(5))
+                .capacity(1)
+                .minCapacity(1)
+                .paymentEnabled(paymentEnabled)
+                .price(paymentEnabled ? 10_000 : null)
+                .visibility(RecruitmentVisibility.PUBLIC)
+                .status(RecruitmentListingStatus.FULL)
+                .createdBy(7L)
+                .build();
+        setField(listing, "id", LISTING_ID);
+        setField(listing, "status", RecruitmentListingStatus.FULL);
+        return listing;
+    }
+
+    @Test
+    @DisplayName("finalizeBySourceId: 謝礼札（payment_enabled=true）→ COMPLETED 化＋MarketListingFinalizedEvent(paymentEnabled=true) を発火（払出シーム）")
+    void finalizeBySourceId_paymentEnabled_publishesEventWithPaymentTrue() throws Exception {
+        RecruitmentListingEntity listing = fullListing(true);
+        given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+        service.finalizeBySourceId(LISTING_ID);
+
+        // FULL→COMPLETED 確定後に発火されること（最終認証→払出の最重要シーム）。
+        verify(eventPublisher).publishEvent(argThat((Object e) ->
+                e instanceof MarketListingFinalizedEvent ev
+                        && LISTING_ID.equals(ev.listingId())
+                        && ev.paymentEnabled()));
+    }
+
+    @Test
+    @DisplayName("finalizeBySourceId: 謝礼なし札（payment_enabled=false）→ COMPLETED 化＋MarketListingFinalizedEvent(paymentEnabled=false) を発火（払出側で no-op）")
+    void finalizeBySourceId_paymentDisabled_publishesEventWithPaymentFalse() throws Exception {
+        RecruitmentListingEntity listing = fullListing(false);
+        given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+        service.finalizeBySourceId(LISTING_ID);
+
+        verify(eventPublisher).publishEvent(argThat((Object e) ->
+                e instanceof MarketListingFinalizedEvent ev
+                        && LISTING_ID.equals(ev.listingId())
+                        && !ev.paymentEnabled()));
+    }
+
+    @Test
+    @DisplayName("finalizeBySourceId: FULL 以外（先勝ち COMPLETED 等）→ 冪等 no-op（イベント発火しない）")
+    void finalizeBySourceId_notFull_noEvent() throws Exception {
+        RecruitmentListingEntity listing = fullListing(true);
+        setField(listing, "status", RecruitmentListingStatus.COMPLETED);
+        given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+        service.finalizeBySourceId(LISTING_ID);
+
+        verify(eventPublisher, never()).publishEvent(any(MarketListingFinalizedEvent.class));
+    }
+
+    @Test
+    @DisplayName("finalizeBySourceId: 札不在（削除済み等）→ no-op（イベント発火しない）")
+    void finalizeBySourceId_missing_noEvent() {
+        given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.empty());
+
+        service.finalizeBySourceId(LISTING_ID);
+
+        verify(eventPublisher, never()).publishEvent(any(MarketListingFinalizedEvent.class));
     }
 
     private void setField(Object entity, String name, Object value) throws Exception {
