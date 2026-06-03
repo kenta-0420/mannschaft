@@ -12,6 +12,12 @@ import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import com.mannschaft.app.gdpr.service.PersonalDataCollector;
+import com.mannschaft.app.inbox.entity.InboxItemStateEntity;
+import com.mannschaft.app.inbox.entity.InboxLabelLinkEntity;
+import com.mannschaft.app.inbox.entity.NotificationLabelEntity;
+import com.mannschaft.app.inbox.repository.InboxItemStateRepository;
+import com.mannschaft.app.inbox.repository.InboxLabelLinkRepository;
+import com.mannschaft.app.inbox.repository.NotificationLabelRepository;
 import com.mannschaft.app.member.repository.MemberProfileRepository;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
@@ -112,6 +118,13 @@ class PersonalDataCollectorTest {
     private PointCardGroupRepository pointCardGroupRepository;
     @Mock
     private PointCardGroupItemRepository pointCardGroupItemRepository;
+    // F04.11 統合通知インボックス（per-user オーバーレイ3表）
+    @Mock
+    private InboxItemStateRepository inboxItemStateRepository;
+    @Mock
+    private NotificationLabelRepository notificationLabelRepository;
+    @Mock
+    private InboxLabelLinkRepository inboxLabelLinkRepository;
 
     @InjectMocks
     private PersonalDataCollector collector;
@@ -121,7 +134,7 @@ class PersonalDataCollectorTest {
     class Collect {
 
         @Test
-        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（17カテゴリ）")
+        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（18カテゴリ）")
         void 正常_nullカテゴリ_全カテゴリ収集() {
             given(userRepository.findById(anyLong())).willReturn(Optional.empty());
             given(oAuthAccountRepository.findByUserId(anyLong())).willReturn(List.of());
@@ -161,16 +174,20 @@ class PersonalDataCollectorTest {
                     .willReturn(List.of());
             given(pointCardGroupRepository.findAllByUserIdOrderByDisplayOrderAscCreatedAtAsc(anyLong()))
                     .willReturn(List.of());
+            // F04.11 統合通知インボックス
+            given(inboxItemStateRepository.findByUserId(anyLong())).willReturn(List.of());
+            given(notificationLabelRepository.findByUserId(anyLong())).willReturn(List.of());
+            given(inboxLabelLinkRepository.findByUserId(anyLong())).willReturn(List.of());
 
             Map<String, String> result = collector.collect(1L, null);
 
-            assertThat(result).hasSize(17);
+            assertThat(result).hasSize(18);
             assertThat(result.keySet()).containsExactlyInAnyOrder(
                     "account.json", "oauth_accounts.json", "memberships.json", "profiles.json",
                     "payments.json", "charts.json", "chat_messages.json", "timeline_posts.json",
                     "audit_logs.json", "notifications.json", "action_memos.json",
                     "error_reports.json", "proxy_input_consents.json", "proxy_input_records.json",
-                    "weather_locations.json", "point_cards.json", "resumes.json"
+                    "weather_locations.json", "point_cards.json", "resumes.json", "inbox.json"
             );
         }
 
@@ -203,16 +220,16 @@ class PersonalDataCollectorTest {
     class GetCategoryKeys {
 
         @Test
-        @DisplayName("正常系: 17カテゴリキーが返る")
-        void 正常_17カテゴリキー返却() {
+        @DisplayName("正常系: 18カテゴリキーが返る")
+        void 正常_18カテゴリキー返却() {
             Set<String> keys = collector.getCategoryKeys();
 
-            assertThat(keys).hasSize(17);
+            assertThat(keys).hasSize(18);
             assertThat(keys).containsExactlyInAnyOrder(
                     "account", "oauth", "memberships", "profiles", "payments",
                     "charts", "chat_messages", "timeline", "audit_logs", "notifications",
                     "action_memos", "error_reports", "proxy_consents", "proxy_records",
-                    "location_preference", "point_cards", "resumes"
+                    "location_preference", "point_cards", "resumes", "inbox"
             );
         }
     }
@@ -384,6 +401,84 @@ class PersonalDataCollectorTest {
 
             assertThat(result).hasSize(1);
             assertThat(result.get("error_reports.json")).isEqualTo("[]");
+        }
+    }
+
+    @Nested
+    @DisplayName("inbox カテゴリ（F04.11 統合通知インボックス 3表フルダンプ）")
+    class InboxCategory {
+
+        @Test
+        @DisplayName("空データ: 3表のキーを持つ空配列の 1 ファイルが返る")
+        void 空_3表のキーが含まれる() {
+            given(inboxItemStateRepository.findByUserId(anyLong())).willReturn(List.of());
+            given(notificationLabelRepository.findByUserId(anyLong())).willReturn(List.of());
+            given(inboxLabelLinkRepository.findByUserId(anyLong())).willReturn(List.of());
+
+            Map<String, String> result = collector.collect(1L, Set.of("inbox"));
+
+            assertThat(result).hasSize(1);
+            assertThat(result).containsKey("inbox.json");
+            String json = result.get("inbox.json");
+            assertThat(json)
+                    .contains("\"inbox_item_states\":[]")
+                    .contains("\"notification_labels\":[]")
+                    .contains("\"inbox_label_links\":[]");
+        }
+
+        @Test
+        @DisplayName("正常系: 3表それぞれの内容が 1 ファイルにまとめて返る")
+        void 正常_3表の中身が1ファイルに集約される() {
+            InboxItemStateEntity state = new InboxItemStateEntity();
+            state.setId(UUID.randomUUID());
+            state.setUserId(1L);
+            state.setSourceType(com.mannschaft.app.inbox.InboxSourceType.NOTIFICATION);
+            state.setSourceId(101L);
+            state.setSnoozedUntil(java.time.LocalDateTime.of(2026, 6, 10, 9, 0));
+            state.setArchivedAt(java.time.LocalDateTime.of(2026, 6, 5, 12, 0));
+            given(inboxItemStateRepository.findByUserId(anyLong())).willReturn(List.of(state));
+
+            NotificationLabelEntity label = new NotificationLabelEntity();
+            label.setId(UUID.randomUUID());
+            label.setUserId(1L);
+            label.setName("重要");
+            label.setColor("#FF0000");
+            label.setIcon("pi-star");
+            label.setSortOrder(1);
+            given(notificationLabelRepository.findByUserId(anyLong())).willReturn(List.of(label));
+
+            InboxLabelLinkEntity link = new InboxLabelLinkEntity();
+            link.setId(UUID.randomUUID());
+            link.setLabelId(label.getId());
+            link.setUserId(1L);
+            link.setSourceType(com.mannschaft.app.inbox.InboxSourceType.NOTIFICATION);
+            link.setSourceId(101L);
+            given(inboxLabelLinkRepository.findByUserId(anyLong())).willReturn(List.of(link));
+
+            Map<String, String> result = collector.collect(1L, Set.of("inbox"));
+
+            assertThat(result).hasSize(1);
+            String json = result.get("inbox.json");
+            // inbox_item_states の生データが含まれる
+            assertThat(json).contains("\"sourceType\":\"NOTIFICATION\"");
+            assertThat(json).contains("\"sourceId\":101");
+            // notification_labels の生データが含まれる
+            assertThat(json).contains("\"name\":\"重要\"");
+            assertThat(json).contains("\"color\":\"#FF0000\"");
+            // inbox_label_links の生データが含まれる
+            assertThat(json).contains(label.getId().toString());
+        }
+
+        @Test
+        @DisplayName("異常系: リポジトリ例外は[]でスキップされる")
+        void 異常_inbox_例外_スキップ() {
+            given(inboxItemStateRepository.findByUserId(anyLong()))
+                    .willThrow(new RuntimeException("DB error"));
+
+            Map<String, String> result = collector.collect(1L, Set.of("inbox"));
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get("inbox.json")).isEqualTo("[]");
         }
     }
 }
