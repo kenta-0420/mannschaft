@@ -486,3 +486,67 @@ export interface OrganizationTournamentSummaryEntry {
 export interface OrganizationTournamentSummary {
   tournaments: OrganizationTournamentSummaryEntry[]
 }
+
+// ──────────────────────────────────────────────────
+// F08.7.1 / FE-E: 書類提出受付
+// /api/v1/organizations/{orgId}/tournaments/{tournamentId}/submission-requirements
+// ──────────────────────────────────────────────────
+
+export type SubmissionRequirementTarget = 'ALL' | 'SPECIFIC'
+export type SubmissionStatusValue = 'NOT_SUBMITTED' | 'SUBMITTED' | 'APPROVED' | 'REJECTED'
+
+export interface SubmissionRequirementResponse {
+  id: number
+  tournamentId: number
+  formTemplateId: number
+  formTemplateName: string | null
+  deadline: string | null
+  target: SubmissionRequirementTarget
+  targetTeamIds: number[] | null
+  requiresPayment: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateSubmissionRequirementRequest {
+  formTemplateId: number
+  deadline?: string | null
+  target: SubmissionRequirementTarget
+  targetTeamIds?: number[] | null
+  requiresPayment?: boolean
+}
+
+export interface UpdateSubmissionRequirementRequest {
+  formTemplateId?: number
+  deadline?: string | null
+  target?: SubmissionRequirementTarget
+  targetTeamIds?: number[] | null
+  requiresPayment?: boolean
+}
+
+export interface TeamSubmissionStatusItem {
+  teamId: number
+  teamName: string
+  status: SubmissionStatusValue
+  submittedAt: string | null
+  formSubmissionId: number | null
+}
+
+export interface SubmissionStatusDashboardResponse {
+  requirementId: number
+  formTemplateName: string | null
+  deadline: string | null
+  teamStatuses: TeamSubmissionStatusItem[]
+}
+
+export interface SubmitForTeamRequest {
+  formSubmissionId?: number
+  values?: Array<{
+    fieldKey: string
+    fieldType?: string
+    textValue?: string | null
+    numberValue?: number | null
+    dateValue?: string | null
+    fileKey?: string | null
+  }>
+}
