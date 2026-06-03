@@ -1,6 +1,5 @@
 package com.mannschaft.app.schedule.dto;
 
-import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -54,9 +53,9 @@ public class UpdatePersonalScheduleRequest {
      * <p>null = 変更なし（既存の絶対リマインダーを保持）。
      * 空リスト = 既存の絶対リマインダーを全削除。
      * 非空リスト = 既存の絶対リマインダーを全削除して新規登録（差し替え）。
-     * 各要素は未来日時であること。</p>
+     * 編集コンテキストのため過去日時も許容する（{@code @Future} 制約なし）。</p>
      */
-    private final List<@Future LocalDateTime> absoluteReminders;
+    private final List<LocalDateTime> absoluteReminders;
 
     /**
      * updateScope のデフォルト値を返す。null の場合は THIS_ONLY を返す。

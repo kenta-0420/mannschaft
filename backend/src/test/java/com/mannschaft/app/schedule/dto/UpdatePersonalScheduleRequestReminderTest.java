@@ -71,14 +71,12 @@ class UpdatePersonalScheduleRequestReminderTest {
     }
 
     @Test
-    @DisplayName("absoluteReminders=過去日時含む_@Future違反あり")
-    void absoluteReminders_過去日時_違反あり() {
+    @DisplayName("absoluteReminders=過去日時含む_編集コンテキストでは違反なし")
+    void absoluteReminders_過去日時_編集では違反なし() {
+        // 編集時は既存リマインダーが過去日時になっている場合があるため @Future 制約なし
         UpdatePersonalScheduleRequest req = buildWithAbsoluteReminders(
                 List.of(LocalDateTime.now().minusDays(1)));
         Set<ConstraintViolation<UpdatePersonalScheduleRequest>> violations = validator.validate(req);
-        assertThat(violations).isNotEmpty();
-        // @Future 違反は absoluteReminders[0] のパスで検出される
-        assertThat(violations).anyMatch(v ->
-                v.getPropertyPath().toString().contains("absoluteReminders"));
+        assertThat(violations).isEmpty();
     }
 }

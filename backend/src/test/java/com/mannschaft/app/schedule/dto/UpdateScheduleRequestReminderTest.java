@@ -64,12 +64,26 @@ class UpdateScheduleRequestReminderTest {
     @Test
     @DisplayName("reminders=5件_上限内_違反なし")
     void reminders_5件_違反なし() {
-        List<CreateReminderRequest> reminders = List.of(
-                new CreateReminderRequest(null, 10, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
-                new CreateReminderRequest(null, 20, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
-                new CreateReminderRequest(null, 30, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
-                new CreateReminderRequest(null, 60, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
-                new CreateReminderRequest(null, 120, com.mannschaft.app.schedule.ReminderKind.RELATIVE));
+        List<UpdateReminderRequest> reminders = List.of(
+                new UpdateReminderRequest(null, 10, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
+                new UpdateReminderRequest(null, 20, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
+                new UpdateReminderRequest(null, 30, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
+                new UpdateReminderRequest(null, 60, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
+                new UpdateReminderRequest(null, 120, com.mannschaft.app.schedule.ReminderKind.RELATIVE));
+        UpdateScheduleRequest req = new UpdateScheduleRequest(
+                null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, reminders, null, null);
+        Set<ConstraintViolation<UpdateScheduleRequest>> violations = validator.validate(req);
+        assertThat(violations).isEmpty();
+    }
+
+    @Test
+    @DisplayName("reminders=ABSOLUTE過去日時_編集コンテキストでは違反なし")
+    void reminders_ABSOLUTE過去日時_違反なし() {
+        // 編集時は既存リマインダーが過去日時になっている場合があるため許容する
+        List<UpdateReminderRequest> reminders = List.of(
+                new UpdateReminderRequest(LocalDateTime.now().minusDays(1), null,
+                        com.mannschaft.app.schedule.ReminderKind.ABSOLUTE));
         UpdateScheduleRequest req = new UpdateScheduleRequest(
                 null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, reminders, null, null);
@@ -80,13 +94,13 @@ class UpdateScheduleRequestReminderTest {
     @Test
     @DisplayName("reminders=6件_上限超過_違反あり")
     void reminders_6件_違反あり() {
-        List<CreateReminderRequest> reminders = List.of(
-                new CreateReminderRequest(null, 10, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
-                new CreateReminderRequest(null, 20, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
-                new CreateReminderRequest(null, 30, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
-                new CreateReminderRequest(null, 60, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
-                new CreateReminderRequest(null, 120, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
-                new CreateReminderRequest(null, 180, com.mannschaft.app.schedule.ReminderKind.RELATIVE));
+        List<UpdateReminderRequest> reminders = List.of(
+                new UpdateReminderRequest(null, 10, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
+                new UpdateReminderRequest(null, 20, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
+                new UpdateReminderRequest(null, 30, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
+                new UpdateReminderRequest(null, 60, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
+                new UpdateReminderRequest(null, 120, com.mannschaft.app.schedule.ReminderKind.RELATIVE),
+                new UpdateReminderRequest(null, 180, com.mannschaft.app.schedule.ReminderKind.RELATIVE));
         UpdateScheduleRequest req = new UpdateScheduleRequest(
                 null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, reminders, null, null);

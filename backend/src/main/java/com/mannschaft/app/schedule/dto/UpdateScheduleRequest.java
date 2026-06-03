@@ -61,11 +61,12 @@ public class UpdateScheduleRequest {
      * <p>null = 変更なし（既存リマインダーを保持）。
      * 空リスト = 既存リマインダーを全削除。
      * 非空リスト = 既存を全削除して新規登録（差し替え）。
-     * 最大5件。</p>
+     * 最大5件。編集コンテキストのため {@link UpdateReminderRequest} を使用し、
+     * 既存の絶対リマインダーが過去日時でも保存できる。</p>
      */
     @Size(max = 5)
     @Valid
-    private final List<CreateReminderRequest> reminders;
+    private final List<UpdateReminderRequest> reminders;
 
     /**
      * 予約アンケート一覧（機能55 BE対応）。

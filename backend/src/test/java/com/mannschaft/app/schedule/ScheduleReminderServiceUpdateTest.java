@@ -1,6 +1,6 @@
 package com.mannschaft.app.schedule;
 
-import com.mannschaft.app.schedule.dto.CreateReminderRequest;
+import com.mannschaft.app.schedule.dto.UpdateReminderRequest;
 import com.mannschaft.app.schedule.entity.ScheduleAttendanceReminderEntity;
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceReminderRepository;
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
@@ -64,12 +64,11 @@ class ScheduleReminderServiceUpdateTest {
         @DisplayName("非空リスト_既存削除後に新規登録される")
         void 非空リスト_削除後に新規登録() {
             // given
-            given(reminderRepository.countByScheduleId(SCHEDULE_ID)).willReturn(0L);
             given(reminderRepository.save(any(ScheduleAttendanceReminderEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
-            List<CreateReminderRequest> newReminders = List.of(
-                    new CreateReminderRequest(null, 30, ReminderKind.RELATIVE));
+            List<UpdateReminderRequest> newReminders = List.of(
+                    new UpdateReminderRequest(null, 30, ReminderKind.RELATIVE));
 
             // when
             reminderService.updateReminders(SCHEDULE_ID, newReminders);
@@ -99,16 +98,15 @@ class ScheduleReminderServiceUpdateTest {
         @DisplayName("5件_上限いっぱい_違反なし_全件保存される")
         void 上限5件_全件保存() {
             // given
-            given(reminderRepository.countByScheduleId(SCHEDULE_ID)).willReturn(0L);
             given(reminderRepository.save(any(ScheduleAttendanceReminderEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
-            List<CreateReminderRequest> reminders = List.of(
-                    new CreateReminderRequest(null, 10, ReminderKind.RELATIVE),
-                    new CreateReminderRequest(null, 20, ReminderKind.RELATIVE),
-                    new CreateReminderRequest(null, 30, ReminderKind.RELATIVE),
-                    new CreateReminderRequest(null, 60, ReminderKind.RELATIVE),
-                    new CreateReminderRequest(null, 120, ReminderKind.RELATIVE));
+            List<UpdateReminderRequest> reminders = List.of(
+                    new UpdateReminderRequest(null, 10, ReminderKind.RELATIVE),
+                    new UpdateReminderRequest(null, 20, ReminderKind.RELATIVE),
+                    new UpdateReminderRequest(null, 30, ReminderKind.RELATIVE),
+                    new UpdateReminderRequest(null, 60, ReminderKind.RELATIVE),
+                    new UpdateReminderRequest(null, 120, ReminderKind.RELATIVE));
 
             // when
             reminderService.updateReminders(SCHEDULE_ID, reminders);
@@ -124,12 +122,11 @@ class ScheduleReminderServiceUpdateTest {
         @DisplayName("削除後に登録される順序_deleteが先_saveが後")
         void 削除が先_登録が後() {
             // given
-            given(reminderRepository.countByScheduleId(SCHEDULE_ID)).willReturn(0L);
             given(reminderRepository.save(any(ScheduleAttendanceReminderEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
-            List<CreateReminderRequest> reminders = List.of(
-                    new CreateReminderRequest(null, 15, ReminderKind.RELATIVE));
+            List<UpdateReminderRequest> reminders = List.of(
+                    new UpdateReminderRequest(null, 15, ReminderKind.RELATIVE));
 
             // then: 呼び出し順序を InOrder で検証
             var inOrder = org.mockito.Mockito.inOrder(reminderRepository);
@@ -139,7 +136,6 @@ class ScheduleReminderServiceUpdateTest {
 
             // then
             inOrder.verify(reminderRepository).deleteByScheduleId(SCHEDULE_ID);
-            inOrder.verify(reminderRepository).countByScheduleId(SCHEDULE_ID);
             inOrder.verify(reminderRepository).save(any(ScheduleAttendanceReminderEntity.class));
         }
     }
