@@ -44,6 +44,7 @@ class ConnectChargeServiceTest {
     @Mock private ConnectAccountRepository connectAccountRepository;
     @Mock private StripePaymentProvider stripePaymentProvider;
     @Mock private AccessControlService accessControlService;
+    @Mock private LedgerEntryRepository ledgerEntryRepository;
 
     // PaymentFeeCalculator は純粋関数。実体を使い手数料式の一元利用を検証する。
     private final PaymentFeeCalculator feeCalculator = new PaymentFeeCalculator();
@@ -51,7 +52,7 @@ class ConnectChargeServiceTest {
     private ConnectChargeService service() {
         return new ConnectChargeService(
                 escrowTransactionRepository, connectAccountRepository,
-                feeCalculator, stripePaymentProvider, accessControlService);
+                feeCalculator, stripePaymentProvider, accessControlService, ledgerEntryRepository);
     }
 
     private ConnectAccountEntity payeeAccount(boolean payoutsEnabled) {

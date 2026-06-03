@@ -12,6 +12,7 @@ import com.mannschaft.app.inbox.dto.InboxPageResponse;
 import com.mannschaft.app.inbox.dto.InboxSummaryResponse;
 import com.mannschaft.app.inbox.dto.LabelDto;
 import com.mannschaft.app.inbox.dto.SnoozeInboxRequest;
+import com.mannschaft.app.inbox.dto.SuggestApplyRequest;
 import com.mannschaft.app.inbox.dto.TriageTargetRequest;
 import com.mannschaft.app.inbox.dto.UpdateLabelRequest;
 import com.mannschaft.app.inbox.service.InboxAggregationService;
@@ -209,6 +210,19 @@ public class InboxController {
         Long userId = SecurityUtils.getCurrentUserId();
         labelService.unassignLabel(userId, labelId, request.getSourceType(), request.getSourceId());
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/labels/suggest-apply")
+    @Operation(summary = "提案ラベルの1タップ付与（自動ラベリング・案C）",
+            description = "提案チップのタップで、同名ラベルを find-or-create して当該通知へ付与する。"
+                    + "重複作成・重複付与はせず冪等（200）。可視性・上限は付与経路で検証する。")
+    public ResponseEntity<ApiResponse<LabelDto>> suggestApply(
+            @Valid @RequestBody SuggestApplyRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        LabelDto label = labelService.suggestApply(
+                userId, request.getName(), request.getColor(),
+                request.getSourceType(), request.getSourceId());
+        return ResponseEntity.ok(ApiResponse.of(label));
     }
 
     // ─────────────────────────────────────────────
