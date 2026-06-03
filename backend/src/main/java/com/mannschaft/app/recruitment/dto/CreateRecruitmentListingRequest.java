@@ -103,4 +103,27 @@ public class CreateRecruitmentListingRequest {
      * 互換のため任意。市の札立て導線では PUBLIC のとき PUBLIC_FEED を指定する。
      */
     private final List<RecruitmentDistributionTargetType> distributionTargets;
+
+    /**
+     * F22.1 Phase2 D: 複数地域募集（N:N）。複数の都道府県 / 市区町村を指定できる。
+     *
+     * <p><strong>後方互換</strong>: 本フィールド未指定（null / 空）で単一の {@code prefectureCode}/
+     * {@code cityCode} が指定されている場合は、それを 1 件の地域として扱う。
+     * 本フィールド指定時はそれを優先する。空配列は「地域を問わない札」を表す。</p>
+     */
+    @Valid
+    private final List<RegionInput> regions;
+
+    /**
+     * F22.1 Phase2 D: 複数地域募集の地域 1 件分の入力（02_api_design §4）。
+     *
+     * @param prefectureCode 都道府県コード（JIS X 0401・2桁）。{@code cityCode} 指定時は整合必須
+     * @param cityCode       市区町村コード（JIS X 0402・5桁）。県単位は null
+     */
+    public record RegionInput(
+            @Pattern(regexp = "\\d{2}", message = "prefecture_code は 2 桁の数字で指定してください")
+            String prefectureCode,
+            @Pattern(regexp = "\\d{5}", message = "city_code は 5 桁の数字で指定してください")
+            String cityCode) {
+    }
 }

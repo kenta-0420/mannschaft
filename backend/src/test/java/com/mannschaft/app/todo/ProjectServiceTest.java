@@ -159,12 +159,12 @@ class ProjectServiceTest {
 
             // When
             PagedResponse<ProjectResponse> response = projectService.listProjects(
-                    SCOPE_TYPE, SCOPE_ID, ProjectStatus.ACTIVE, 1, 20);
+                    SCOPE_TYPE, SCOPE_ID, ProjectStatus.ACTIVE, 0, 20);
 
             // Then
             assertThat(response.getData()).hasSize(1);
             assertThat(response.getData().get(0).getTitle()).isEqualTo("テストプロジェクト");
-            assertThat(response.getMeta().getPage()).isEqualTo(1);
+            assertThat(response.getMeta().getPage()).isEqualTo(0);
         }
     }
 

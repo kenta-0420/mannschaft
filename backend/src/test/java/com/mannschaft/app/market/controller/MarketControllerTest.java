@@ -42,6 +42,7 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * {@link MarketController} の MockMvc 結合テスト（F22.1 市 / 02_api_design §3・§04_security §1.3）。
@@ -90,6 +91,10 @@ class MarketControllerTest {
     private ProxyInputConsentRepository proxyInputConsentRepository;
     @MockitoBean
     private ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     @BeforeEach
     void clearContext() {
@@ -140,6 +145,24 @@ class MarketControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(LISTING_ID))
                 .andExpect(jsonPath("$.data.region.prefectureName").value("大分県"));
+    }
+
+    @Test
+    @DisplayName("GET /public/market/listings/{id} 200: 複数地域 regions[] が camelCase で返る（F22.1 Phase2 D）")
+    void getListing_multiRegion_returnsRegionsCamelCase() throws Exception {
+        given(marketQueryService.getListing(eq(LISTING_ID), any()))
+                .willReturn(multiRegionListing());
+
+        mockMvc.perform(get("/api/v1/public/market/listings/{id}", LISTING_ID))
+                .andExpect(status().isOk())
+                // 後方互換: 単一 region は先頭（代表）
+                .andExpect(jsonPath("$.data.region.prefectureCode").value("13"))
+                // regions[] 全件（camelCase）
+                .andExpect(jsonPath("$.data.regions[0].prefectureCode").value("13"))
+                .andExpect(jsonPath("$.data.regions[0].prefectureName").value("東京都"))
+                .andExpect(jsonPath("$.data.regions[1].prefectureCode").value("14"))
+                .andExpect(jsonPath("$.data.regions[1].cityCode").value("14100"))
+                .andExpect(jsonPath("$.data.regions[1].cityName").value("横浜市"));
     }
 
     @Test
@@ -233,10 +256,32 @@ class MarketControllerTest {
                 new MarketCategoryDto(7L, "recruitment.category.practiceMatch"),
                 new MarketOwnerDto("TEAM", 88L, "別府FC", "https://cdn/icon.png"),
                 new MarketRegionDto("44", "大分県", "44202", "別府市"),
+                List.of(new MarketRegionDto("44", "大分県", "44202", "別府市")),
                 "別府市総合運動公園",
                 LocalDateTime.of(2026, 11, 3, 9, 0),
                 LocalDateTime.of(2026, 11, 1, 23, 59),
                 1,
+                0,
+                "OPEN",
+                false);
+    }
+
+    private MarketListingResponse multiRegionListing() {
+        return new MarketListingResponse(
+                LISTING_ID,
+                "首都圏で練習試合の相手募集",
+                new MarketCategoryDto(7L, "recruitment.category.practiceMatch"),
+                new MarketOwnerDto("TEAM", 88L, "別府FC", "https://cdn/icon.png"),
+                // 代表（先頭）= 東京都
+                new MarketRegionDto("13", "東京都", null, null),
+                // 全地域: 東京都（県単位）＋ 神奈川県横浜市
+                List.of(
+                        new MarketRegionDto("13", "東京都", null, null),
+                        new MarketRegionDto("14", "神奈川県", "14100", "横浜市")),
+                "首都圏各地",
+                LocalDateTime.of(2026, 11, 3, 9, 0),
+                LocalDateTime.of(2026, 11, 1, 23, 59),
+                4,
                 0,
                 "OPEN",
                 false);

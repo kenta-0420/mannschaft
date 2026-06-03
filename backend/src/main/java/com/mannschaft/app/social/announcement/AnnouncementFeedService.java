@@ -29,7 +29,7 @@ import java.util.Set;
  * <p>
  * <b>権限モデル</b>:
  * <ul>
- *   <li>一覧取得: メンバー以上（SUPPORTER は MEMBERS_ONLY を除外）</li>
+ *   <li>一覧取得: 閲覧者ロールに応じた可視性集合で絞り込み（SUPPORTER は MEMBERS_ONLY を除外、MEMBER 以上は全種）</li>
  *   <li>お知らせ化: 著者本人または ADMIN/DEPUTY_ADMIN</li>
  *   <li>お知らせ解除: 著者本人または ADMIN/DEPUTY_ADMIN</li>
  *   <li>ピン留め: ADMIN/DEPUTY_ADMIN のみ</li>
@@ -223,14 +223,17 @@ public class AnnouncementFeedService {
      * お知らせフィード一覧をカーソルページングで取得する。
      *
      * <p>
-     * visibility に応じて SUPPORTER への MEMBERS_ONLY コンテンツ除外フィルタを
+     * 閲覧者ロールに応じた「閲覧できる visibility 集合」での絞り込みを
      * {@link AnnouncementFeedQueryRepository#findByScope} の WHERE 句で実施する（Service 層の if 文に依存しない）。
+     * 集合は {@link AnnouncementVisibility#allowedFor(String)} が正準算出する:
+     * SUPPORTER は {@code {PUBLIC, SUPPORTERS_AND_ABOVE}}（MEMBERS_ONLY を露出させない）、
+     * MEMBER 以上は 3 種全部（PUBLIC/SUPPORTERS_AND_ABOVE を取りこぼさない）。
      * </p>
      *
      * @param scopeType      スコープ種別（TEAM / ORGANIZATION）
      * @param scopeId        スコープ ID
      * @param requestUserId  リクエストユーザー ID
-     * @param userVisibility ロールに応じた visibility 指定値（"MEMBER" or "SUPPORTER"）
+     * @param viewerRoleName 閲覧者の実ロール名（SYSTEM_ADMIN/ADMIN/DEPUTY_ADMIN/MEMBER/SUPPORTER/PUBLIC）
      * @param cursor         カーソル（null の場合は先頭から）
      * @param limit          取得件数（0以下は DEFAULT_LIMIT、MAX_LIMIT 超は補正）
      * @return フィード取得結果（data / nextCursor / hasNext / unreadCount）
@@ -239,20 +242,18 @@ public class AnnouncementFeedService {
             AnnouncementScopeType scopeType,
             Long scopeId,
             Long requestUserId,
-            String userVisibility,
+            String viewerRoleName,
             Long cursor,
             int limit) {
 
         int effectiveLimit = Math.max(1, Math.min(limit <= 0 ? DEFAULT_LIMIT : limit, MAX_LIMIT));
 
-        // visibility 変換: "MEMBER" → "MEMBERS_ONLY", "SUPPORTER" → "SUPPORTERS_AND_ABOVE"
-        String visibilityParam = "SUPPORTER".equalsIgnoreCase(userVisibility)
-                ? "SUPPORTERS_AND_ABOVE"
-                : "MEMBERS_ONLY";
+        // 閲覧者ロール → 閲覧できる visibility 集合（正準）。
+        Set<String> allowedVisibilities = AnnouncementVisibility.allowedFor(viewerRoleName);
 
         // limit + 1 件取得して hasNext を判定
         List<AnnouncementFeedEntity> rows = feedQueryRepository.findByScope(
-                scopeType, scopeId, visibilityParam, cursor, effectiveLimit + 1);
+                scopeType, scopeId, allowedVisibilities, cursor, effectiveLimit + 1);
 
         boolean hasNext = rows.size() > effectiveLimit;
         List<AnnouncementFeedEntity> dataRows = hasNext ? rows.subList(0, effectiveLimit) : rows;

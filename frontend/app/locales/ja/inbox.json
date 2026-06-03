@@ -28,7 +28,8 @@
       "snoozed": "スヌーズしました",
       "archived": "保管庫へ移動しました",
       "unarchived": "受信箱へ戻しました",
-      "unsnoozed": "スヌーズを解除しました"
+      "unsnoozed": "スヌーズを解除しました",
+      "snoozeFailed": "スヌーズに失敗しました"
     },
     "snoozePreset": {
       "in3h": "3時間後",
@@ -79,6 +80,10 @@
       "apply": "実行",
       "result": "{processed}件処理（{skipped}件スキップ）",
       "cancel": "キャンセル"
+    },
+    "group": {
+      "badge": "+{n}件",
+      "badgeTitle": "{n}件の通知が畳まれています"
     }
   }
 }

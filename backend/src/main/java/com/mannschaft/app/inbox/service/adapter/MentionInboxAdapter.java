@@ -4,11 +4,14 @@ import com.mannschaft.app.inbox.InboxPriority;
 import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.InboxState;
 import com.mannschaft.app.inbox.dto.InboxItemDto;
+import com.mannschaft.app.inbox.dto.InboxItemRef;
+import com.mannschaft.app.inbox.service.InboxDedupeKeyResolver;
 import com.mannschaft.app.inbox.service.InboxPriorityNormalizer;
 import com.mannschaft.app.inbox.service.InboxSourceAdapter;
 import com.mannschaft.app.mention.entity.MentionEntity;
 import com.mannschaft.app.mention.repository.MentionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -28,6 +31,7 @@ public class MentionInboxAdapter implements InboxSourceAdapter {
 
     private final MentionRepository mentionRepository;
     private final InboxPriorityNormalizer priorityNormalizer;
+    private final InboxDedupeKeyResolver dedupeKeyResolver;
 
     @Override
     public InboxSourceType sourceType() {
@@ -35,8 +39,15 @@ public class MentionInboxAdapter implements InboxSourceAdapter {
     }
 
     @Override
-    public List<InboxItemDto> fetch(Long userId) {
-        return mentionRepository.findByMentionedUserIdOrderByCreatedAtDesc(userId).stream()
+    public List<InboxItemDto> fetch(Long userId, int window) {
+        if (window <= 0) {
+            return List.of();
+        }
+        // Phase3 ③：境界付きウィンドウ＝新着順の上位 window 件のみ（無制限 fetch を根絶）。
+        // MENTION の priority は一律 HIGH のため、自ソース内の順序は新着順＝集約側の全順序と整合する
+        // （同 priority 内では occurredAt → タイブレークで決定的）。
+        return mentionRepository
+                .findByMentionedUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, window)).stream()
                 .map(this::toDto)
                 .toList();
     }
@@ -53,8 +64,14 @@ public class MentionInboxAdapter implements InboxSourceAdapter {
 
         InboxState sourceState = Boolean.TRUE.equals(m.getIsRead()) ? InboxState.READ : InboxState.UNREAD;
 
+        // 名寄せ（Phase 3 ①）：メンションの終端 targetType + targetId を正規化。
+        // TIMELINE_COMMENT 等の ReferenceType 未マッピング語は正規化不能＝自分自身キーで畳まない。
+        String selfKey = InboxSourceType.MENTION.name() + ":" + m.getId();
+        String canonicalRef = dedupeKeyResolver.canonicalRefOrSelf(
+                m.getTargetType(), m.getTargetId(), selfKey);
+
         return new InboxItemDto(
-                InboxSourceType.MENTION.name() + ":" + m.getId(),
+                selfKey,
                 InboxSourceType.MENTION,
                 m.getId(),
                 m.getContentSnippet(),
@@ -65,7 +82,10 @@ public class MentionInboxAdapter implements InboxSourceAdapter {
                 m.getCreatedAt(),
                 sourceState,
                 null,
-                List.of());
+                List.of(),
+                canonicalRef,
+                1,
+                List.of(new InboxItemRef(InboxSourceType.MENTION, m.getId())));
     }
 
     /**

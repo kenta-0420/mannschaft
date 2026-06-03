@@ -17,6 +17,11 @@
       "goToDashboard": "Ir al panel",
       "postFromDashboard": "Publica desde el panel de tu equipo/organización"
     },
+    "region": {
+      "add": "Agregar región",
+      "selected": "Regiones seleccionadas",
+      "none": "Ninguna región seleccionada (cualquier región)"
+    },
     "filter": {
       "prefecture": "Prefectura",
       "city": "Ciudad",
@@ -36,6 +41,7 @@
       "deadline": "Fecha límite",
       "capacity": "{confirmed}/{capacity} inscritos",
       "region": "Región",
+      "regionNone": "Cualquier región",
       "category": "Categoría",
       "organizer": "Organizador"
     },
@@ -70,6 +76,7 @@
     "detail": {
       "organizer": "Organizador",
       "region": "Región",
+      "regionNone": "Cualquier región",
       "startAt": "Fecha del evento",
       "deadline": "Fecha límite",
       "capacity": "Capacidad",

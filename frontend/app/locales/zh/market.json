@@ -17,6 +17,11 @@
       "goToDashboard": "前往管理面板",
       "postFromDashboard": "在团队/组织管理面板发布招募"
     },
+    "region": {
+      "add": "添加地区",
+      "selected": "已选地区",
+      "none": "未选择地区（不限地区）"
+    },
     "filter": {
       "prefecture": "都道府县",
       "city": "市区町村",
@@ -36,6 +41,7 @@
       "deadline": "截止日期",
       "capacity": "{confirmed}/{capacity}人",
       "region": "地区",
+      "regionNone": "不限地区",
       "category": "类别",
       "organizer": "主办方"
     },
@@ -70,6 +76,7 @@
     "detail": {
       "organizer": "主办方",
       "region": "地区",
+      "regionNone": "不限地区",
       "startAt": "活动日期",
       "deadline": "报名截止",
       "capacity": "名额",

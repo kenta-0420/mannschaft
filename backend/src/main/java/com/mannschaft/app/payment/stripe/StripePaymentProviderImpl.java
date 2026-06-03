@@ -2,18 +2,28 @@ package com.mannschaft.app.payment.stripe;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.PaymentErrorCode;
+import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
+import com.mannschaft.app.payment.connect.ScopeKind;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
+import com.stripe.model.Account;
+import com.stripe.model.AccountLink;
 import com.stripe.model.Customer;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
+import com.stripe.model.PaymentIntent;
 import com.stripe.model.Price;
 import com.stripe.model.Product;
 import com.stripe.model.Refund;
 import com.stripe.model.StripeObject;
 import com.stripe.model.checkout.Session;
+import com.stripe.net.RequestOptions;
 import com.stripe.net.Webhook;
+import com.stripe.param.AccountCreateParams;
+import com.stripe.param.AccountLinkCreateParams;
 import com.stripe.param.CustomerCreateParams;
+import com.stripe.param.PaymentIntentCancelParams;
+import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.PriceCreateParams;
 import com.stripe.param.PriceUpdateParams;
 import com.stripe.param.ProductCreateParams;
@@ -28,6 +38,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -39,6 +51,10 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
 
     @Value("${mannschaft.stripe.webhook-secret:}")
     private String webhookSecret;
+
+    /** F22.1 Connect Webhook 用の別署名シークレット（platform 用と分離・設計書 03 §2）。 */
+    @Value("${mannschaft.stripe.connect-webhook-secret:}")
+    private String connectWebhookSecret;
 
     @Override
     public String createProduct(String name, Long paymentItemId) {
@@ -322,6 +338,199 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         return new WebhookEventInfo(eventType, sessionId, paymentIntentId,
                 memberPaymentId, subscriptionId, amountReceived, receiptUrl,
                 refundId, refundAmount, paymentIntentAmount, notificationCreditPurchaseId);
+    }
+
+    // ========================================
+    // F22.1 謝礼決済 Connect（P2-a 実装）
+    // ========================================
+
+    @Override
+    public String createConnectAccount(String country, ScopeKind scopeKind, Long scopeId) {
+        try {
+            AccountCreateParams params = AccountCreateParams.builder()
+                    .setType(AccountCreateParams.Type.EXPRESS)
+                    .setCountry(country)
+                    .setCapabilities(AccountCreateParams.Capabilities.builder()
+                            .setTransfers(AccountCreateParams.Capabilities.Transfers.builder()
+                                    .setRequested(true)
+                                    .build())
+                            .build())
+                    .putMetadata("scopeKind", scopeKind.name())
+                    .putMetadata("scopeId", String.valueOf(scopeId))
+                    .build();
+            Account account = Account.create(params);
+            log.info("Stripe Connect アカウント作成: id={}, scopeKind={}, scopeId={}",
+                    account.getId(), scopeKind, scopeId);
+            return account.getId();
+        } catch (StripeException e) {
+            log.error("Stripe Connect アカウント作成失敗: scopeKind={}, scopeId={}", scopeKind, scopeId, e);
+            throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public AccountLinkInfo createAccountLink(String stripeAccountId, String returnUrl, String refreshUrl) {
+        try {
+            AccountLinkCreateParams params = AccountLinkCreateParams.builder()
+                    .setAccount(stripeAccountId)
+                    .setType(AccountLinkCreateParams.Type.ACCOUNT_ONBOARDING)
+                    .setReturnUrl(returnUrl)
+                    .setRefreshUrl(refreshUrl)
+                    .build();
+            AccountLink link = AccountLink.create(params);
+            LocalDateTime expiresAt = LocalDateTime.ofInstant(
+                    Instant.ofEpochSecond(link.getExpiresAt()), ZoneId.systemDefault());
+            log.info("Stripe AccountLink 作成: account={}", stripeAccountId);
+            return new AccountLinkInfo(link.getUrl(), expiresAt);
+        } catch (StripeException e) {
+            log.error("Stripe AccountLink 作成失敗: account={}", stripeAccountId, e);
+            throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public ConnectAccountInfo retrieveConnectAccount(String stripeAccountId) {
+        try {
+            Account account = Account.retrieve(stripeAccountId);
+            return toConnectAccountInfo(account);
+        } catch (StripeException e) {
+            log.error("Stripe Connect アカウント取得失敗: account={}", stripeAccountId, e);
+            throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public ConnectWebhookEventInfo constructConnectEvent(String payload, String sigHeader) {
+        Event event;
+        try {
+            event = Webhook.constructEvent(payload, sigHeader, connectWebhookSecret);
+        } catch (SignatureVerificationException e) {
+            log.error("Stripe Connect Webhook 署名検証失敗", e);
+            throw new BusinessException(ConnectPaymentErrorCode.WEBHOOK_SIGNATURE_INVALID);
+        }
+
+        String eventType = event.getType();
+        boolean livemode = Boolean.TRUE.equals(event.getLivemode());
+        log.info("Stripe Connect Webhook イベント受信: id={}, type={}", event.getId(), eventType);
+
+        EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
+        StripeObject stripeObject = deserializer.getObject().orElse(null);
+
+        String stripeAccountId = null;
+        boolean chargesEnabled = false;
+        boolean payoutsEnabled = false;
+        List<String> requirementsDue = Collections.emptyList();
+
+        if (stripeObject instanceof Account account) {
+            stripeAccountId = account.getId();
+            ConnectAccountInfo info = toConnectAccountInfo(account);
+            chargesEnabled = info.chargesEnabled();
+            payoutsEnabled = info.payoutsEnabled();
+            requirementsDue = info.requirementsDue();
+        } else {
+            // deauthorized 等は account フィールド（event.account）が対象アカウントを示す
+            stripeAccountId = event.getAccount();
+        }
+
+        return new ConnectWebhookEventInfo(event.getId(), eventType, livemode,
+                stripeAccountId, chargesEnabled, payoutsEnabled, requirementsDue);
+    }
+
+    // ========================================
+    // F22.1 謝礼決済 与信（P2-b 実装・Destination Charge）
+    // ========================================
+
+    @Override
+    public PaymentIntentInfo createDestinationPaymentIntent(long chargeAmountMinor, String currency,
+                                                            String payerCustomerId, long applicationFeeMinor,
+                                                            String destinationAccountId, CaptureMethod captureMethod,
+                                                            String idempotencyKey) {
+        try {
+            PaymentIntentCreateParams.CaptureMethod stripeCaptureMethod =
+                    captureMethod == CaptureMethod.AUTOMATIC
+                            ? PaymentIntentCreateParams.CaptureMethod.AUTOMATIC
+                            : PaymentIntentCreateParams.CaptureMethod.MANUAL;
+
+            PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
+                    .setAmount(chargeAmountMinor)
+                    .setCurrency(currency.toLowerCase())
+                    .setCustomer(payerCustomerId)
+                    .setCaptureMethod(stripeCaptureMethod)
+                    .setApplicationFeeAmount(applicationFeeMinor)
+                    .setOnBehalfOf(destinationAccountId)
+                    .setTransferData(PaymentIntentCreateParams.TransferData.builder()
+                            .setDestination(destinationAccountId)
+                            .build())
+                    .build();
+
+            // idempotency_key で再送時の二重作成を Stripe 側でも防ぐ（設計書 02 §9）。
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            PaymentIntent intent = PaymentIntent.create(params, options);
+            log.info("Stripe Destination PaymentIntent 作成: id={}, captureMethod={}, destination={}, amount={}, appFee={}",
+                    intent.getId(), captureMethod, destinationAccountId, chargeAmountMinor, applicationFeeMinor);
+            return new PaymentIntentInfo(intent.getId(), intent.getClientSecret(), intent.getStatus());
+        } catch (StripeException e) {
+            log.error("Stripe Destination PaymentIntent 作成失敗: destination={}, amount={}",
+                    destinationAccountId, chargeAmountMinor, e);
+            throw new BusinessException(ConnectPaymentErrorCode.AUTHORIZATION_FAILED, e);
+        }
+    }
+
+    @Override
+    public void cancelAuthorization(String paymentIntentId, String idempotencyKey) {
+        try {
+            PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            intent.cancel(PaymentIntentCancelParams.builder().build(), options);
+            log.info("Stripe PaymentIntent 与信取消: id={}", paymentIntentId);
+        } catch (StripeException e) {
+            log.error("Stripe PaymentIntent 与信取消失敗: id={}", paymentIntentId, e);
+            throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
+    @Override
+    public EscrowWebhookEventInfo constructEscrowEvent(String payload, String sigHeader) {
+        Event event;
+        try {
+            event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
+        } catch (SignatureVerificationException e) {
+            log.error("Stripe Escrow Webhook 署名検証失敗", e);
+            throw new BusinessException(ConnectPaymentErrorCode.WEBHOOK_SIGNATURE_INVALID);
+        }
+
+        String eventType = event.getType();
+        boolean livemode = Boolean.TRUE.equals(event.getLivemode());
+
+        EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
+        StripeObject stripeObject = deserializer.getObject().orElse(null);
+
+        String paymentIntentId = null;
+        String paymentIntentStatus = null;
+        if (stripeObject instanceof PaymentIntent pi) {
+            paymentIntentId = pi.getId();
+            paymentIntentStatus = pi.getStatus();
+        }
+
+        log.info("Stripe Escrow Webhook 受信: id={}, type={}, piStatus={}", event.getId(), eventType, paymentIntentStatus);
+        return new EscrowWebhookEventInfo(event.getId(), eventType, livemode, paymentIntentId, paymentIntentStatus);
+    }
+
+    /**
+     * Stripe {@link Account} を {@link ConnectAccountInfo} へ写す。
+     */
+    private ConnectAccountInfo toConnectAccountInfo(Account account) {
+        boolean charges = Boolean.TRUE.equals(account.getChargesEnabled());
+        boolean payouts = Boolean.TRUE.equals(account.getPayoutsEnabled());
+        List<String> requirementsDue = Collections.emptyList();
+        if (account.getRequirements() != null && account.getRequirements().getCurrentlyDue() != null) {
+            requirementsDue = List.copyOf(account.getRequirements().getCurrentlyDue());
+        }
+        return new ConnectAccountInfo(charges, payouts, requirementsDue);
     }
 
     /**

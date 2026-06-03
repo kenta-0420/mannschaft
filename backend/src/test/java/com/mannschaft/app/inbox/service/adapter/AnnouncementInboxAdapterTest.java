@@ -65,7 +65,8 @@ class AnnouncementInboxAdapterTest {
 
     private final AnnouncementInboxAdapter adapter = new AnnouncementInboxAdapter(
             userRoleRepository, roleResolver, feedQueryRepository, feedRepository,
-            readStatusRepository, normalizer);
+            readStatusRepository, normalizer,
+            new com.mannschaft.app.inbox.service.InboxDedupeKeyResolver());
 
     private UserRoleEntity teamRole(Long teamId) {
         return UserRoleEntity.builder().userId(USER_ID).roleId(1L).teamId(teamId).build();
@@ -122,7 +123,7 @@ class AnnouncementInboxAdapterTest {
         void emptyWhenNoScopes() {
             noScopes();
 
-            assertThat(adapter.fetch(USER_ID)).isEmpty();
+            assertThat(adapter.fetch(USER_ID, 50)).isEmpty();
         }
 
         @Test
@@ -137,12 +138,12 @@ class AnnouncementInboxAdapterTest {
             given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(feedQueryRepository.findByScope(
-                    eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq("MEMBERS_ONLY"), any(), anyInt()))
+                    eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), anyInt()))
                     .willReturn(List.of(f));
             given(readStatusRepository.findByUserIdAndAnnouncementFeedIdIn(eq(USER_ID), any()))
                     .willReturn(List.of());
 
-            List<InboxItemDto> items = adapter.fetch(USER_ID);
+            List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
             assertThat(items).hasSize(1);
             InboxItemDto dto = items.get(0);
@@ -172,12 +173,12 @@ class AnnouncementInboxAdapterTest {
             given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(feedQueryRepository.findByScope(
-                    eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq("MEMBERS_ONLY"), any(), anyInt()))
+                    eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), anyInt()))
                     .willReturn(List.of(u, i, n));
             given(readStatusRepository.findByUserIdAndAnnouncementFeedIdIn(eq(USER_ID), any()))
                     .willReturn(List.of());
 
-            List<InboxItemDto> items = adapter.fetch(USER_ID);
+            List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
             assertThat(items).extracting(InboxItemDto::sourceId, InboxItemDto::priority)
                     .containsExactlyInAnyOrder(
@@ -200,12 +201,12 @@ class AnnouncementInboxAdapterTest {
             given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(feedQueryRepository.findByScope(
-                    eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq("MEMBERS_ONLY"), any(), anyInt()))
+                    eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), anyInt()))
                     .willReturn(List.of(read, unread));
             given(readStatusRepository.findByUserIdAndAnnouncementFeedIdIn(eq(USER_ID), any()))
                     .willReturn(List.of(rs));
 
-            List<InboxItemDto> items = adapter.fetch(USER_ID);
+            List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
             assertThat(items).extracting(InboxItemDto::sourceId, InboxItemDto::state)
                     .containsExactlyInAnyOrder(
@@ -236,7 +237,7 @@ class AnnouncementInboxAdapterTest {
             given(readStatusRepository.findByUserIdAndAnnouncementFeedIdIn(eq(USER_ID), any()))
                     .willReturn(List.of());
 
-            List<InboxItemDto> items = adapter.fetch(USER_ID);
+            List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
             assertThat(items).extracting(InboxItemDto::sourceId)
                     .containsExactlyInAnyOrder(50L, 51L);
@@ -276,13 +277,12 @@ class AnnouncementInboxAdapterTest {
         }
 
         @Test
-        @DisplayName("role visibility 範囲外の feed は false（SUPPORTER に MEMBERS_ONLY 限定の上位 feed は見えない）")
-        void supporterCannotSeeStricterThanAllowed() {
-            // findByScope の WHERE と同一: SUPPORTER は visibility IN (MEMBERS_ONLY, SUPPORTERS_AND_ABOVE) を見る。
-            // それより内輪向け（= MEMBERS_ONLY より厳しい区分は存在しないが、ここでは role に許されない
-            // 区分を表す擬似値 'ADMIN_ONLY' を使い、範囲外 feed が弾かれることを検証する）。
+        @DisplayName("SUPPORTER に MEMBERS_ONLY の feed は false（漏洩根治・正準: SUPPORTER は内輪お知らせ不可）")
+        void supporterCannotSeeMembersOnly() {
+            // 正準: SUPPORTER が見られる集合は {PUBLIC, SUPPORTERS_AND_ABOVE}。MEMBERS_ONLY は含めない。
+            // 従来はここを true としていた（漏洩を仕様固定していた）が、設計書 F02.6 §6.2 に反するため反転。
             AnnouncementFeedEntity f = feed(62L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
-                    "ADMIN_ONLY", "t", "e", LocalDateTime.now(), null, null);
+                    "MEMBERS_ONLY", "t", "e", LocalDateTime.now(), null, null);
             given(feedRepository.findById(62L)).willReturn(Optional.of(f));
             given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
                     .willReturn(List.of(teamRole(TEAM_ID)));
@@ -293,19 +293,43 @@ class AnnouncementInboxAdapterTest {
         }
 
         @Test
-        @DisplayName("SUPPORTER は MEMBERS_ONLY の feed を閲覧できる（findByScope の WHERE と同一の写像を踏襲）")
-        void supporterCanSeeMembersOnlyPerRepoSemantics() {
-            // AnnouncementFeedQueryRepository.findByScope は visibility='SUPPORTERS_AND_ABOVE' 指定で
-            // IN ('MEMBERS_ONLY','SUPPORTERS_AND_ABOVE') を返す。isVisibleTo はこの述語を忠実に再現する。
-            AnnouncementFeedEntity f = feed(66L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
-                    "MEMBERS_ONLY", "t", "e", LocalDateTime.now(), null, null);
-            given(feedRepository.findById(66L)).willReturn(Optional.of(f));
+        @DisplayName("SUPPORTER は SUPPORTERS_AND_ABOVE / PUBLIC の feed を閲覧できる")
+        void supporterCanSeeSupportersAndPublic() {
+            AnnouncementFeedEntity sup = feed(66L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
+                    "SUPPORTERS_AND_ABOVE", "t", "e", LocalDateTime.now(), null, null);
+            AnnouncementFeedEntity pub = feed(67L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
+                    "PUBLIC", "t", "e", LocalDateTime.now(), null, null);
+            given(feedRepository.findById(66L)).willReturn(Optional.of(sup));
+            given(feedRepository.findById(67L)).willReturn(Optional.of(pub));
             given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
                     .willReturn(List.of(teamRole(TEAM_ID)));
             given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.SUPPORTER);
 
             assertThat(adapter.isVisibleTo(USER_ID, 66L)).isTrue();
+            assertThat(adapter.isVisibleTo(USER_ID, 67L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("MEMBER は MEMBERS_ONLY / SUPPORTERS_AND_ABOVE / PUBLIC の feed を全て閲覧できる（取りこぼし解消）")
+        void memberCanSeeAllVisibilities() {
+            AnnouncementFeedEntity members = feed(70L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
+                    "MEMBERS_ONLY", "t", "e", LocalDateTime.now(), null, null);
+            AnnouncementFeedEntity sup = feed(71L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
+                    "SUPPORTERS_AND_ABOVE", "t", "e", LocalDateTime.now(), null, null);
+            AnnouncementFeedEntity pub = feed(72L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
+                    "PUBLIC", "t", "e", LocalDateTime.now(), null, null);
+            given(feedRepository.findById(70L)).willReturn(Optional.of(members));
+            given(feedRepository.findById(71L)).willReturn(Optional.of(sup));
+            given(feedRepository.findById(72L)).willReturn(Optional.of(pub));
+            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
+                    .willReturn(List.of(teamRole(TEAM_ID)));
+            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+
+            assertThat(adapter.isVisibleTo(USER_ID, 70L)).isTrue();
+            assertThat(adapter.isVisibleTo(USER_ID, 71L)).isTrue();
+            assertThat(adapter.isVisibleTo(USER_ID, 72L)).isTrue();
         }
 
         @Test

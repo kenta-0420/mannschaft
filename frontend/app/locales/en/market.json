@@ -17,6 +17,11 @@
       "goToDashboard": "Go to dashboard",
       "postFromDashboard": "Post a listing from your team/organization dashboard"
     },
+    "region": {
+      "add": "Add region",
+      "selected": "Selected regions",
+      "none": "No region selected (any region)"
+    },
     "filter": {
       "prefecture": "Prefecture",
       "city": "City",
@@ -36,6 +41,7 @@
       "deadline": "Deadline",
       "capacity": "{confirmed}/{capacity} applied",
       "region": "Region",
+      "regionNone": "Any region",
       "category": "Category",
       "organizer": "Organizer"
     },
@@ -70,6 +76,7 @@
     "detail": {
       "organizer": "Organizer",
       "region": "Region",
+      "regionNone": "Any region",
       "startAt": "Event date",
       "deadline": "Application deadline",
       "capacity": "Capacity",

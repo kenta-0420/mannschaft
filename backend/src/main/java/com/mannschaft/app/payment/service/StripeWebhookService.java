@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.notification.credit.service.NotificationCreditCheckoutService;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.PaymentStatus;
+import com.mannschaft.app.payment.escrow.EscrowWebhookService;
 import com.mannschaft.app.payment.entity.MemberPaymentEntity;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
@@ -29,6 +30,11 @@ public class StripeWebhookService {
     private final StripePaymentProvider stripePaymentProvider;
     // TODO: notificationドメイン → paymentドメインの依存。将来はWebhookEventで分離予定
     private final NotificationCreditCheckoutService notificationCreditCheckoutService;
+    /** F22.1 統一決済 P2-b: 与信系（escrow）PaymentIntent イベントの委譲先（設計書 02 §4.2）。 */
+    private final EscrowWebhookService escrowWebhookService;
+
+    /** F22.1 与信系 platform Webhook の対象イベント種別（payment_intent.* の接頭辞）。 */
+    private static final String ESCROW_EVENT_PREFIX = "payment_intent.";
 
     /**
      * Stripe Webhook を処理する。
@@ -42,6 +48,13 @@ public class StripeWebhookService {
             event = stripePaymentProvider.constructEvent(payload, sigHeader);
         } catch (Exception e) {
             throw new BusinessException(PaymentErrorCode.WEBHOOK_SIGNATURE_INVALID, e);
+        }
+
+        // F22.1: 与信系（Destination Charge の PaymentIntent）は platform 上に作られ platform Webhook で届く。
+        // event_id 冪等＋escrow 特定は EscrowWebhookService に委譲する（設計書 02 §4.2・専用 record で再パース）。
+        if (event.type() != null && event.type().startsWith(ESCROW_EVENT_PREFIX)) {
+            escrowWebhookService.handleWebhook(payload, sigHeader);
+            return;
         }
 
         switch (event.type()) {

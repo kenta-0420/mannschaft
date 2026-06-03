@@ -56,10 +56,10 @@ public class TeamProjectController {
     public ResponseEntity<PagedResponse<ProjectResponse>> listProjects(
             @PathVariable Long teamId,
             @RequestParam(defaultValue = "ACTIVE") String status,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int perPage) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(projectService.listProjects(
-                TodoScopeType.TEAM, teamId, ProjectStatus.valueOf(status), page, perPage));
+                TodoScopeType.TEAM, teamId, ProjectStatus.valueOf(status), page, size));
     }
 
     /**

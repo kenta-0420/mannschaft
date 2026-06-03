@@ -1,0 +1,67 @@
+{
+  "schedule": {
+    "common_delete": "Eliminar",
+    "description_label": "Descripción",
+    "error_title_required": "El título es obligatorio",
+    "reminder": {
+      "label": "Recordatorios",
+      "add": "Agregar recordatorio",
+      "before": "antes",
+      "max_reached": "Puedes configurar hasta 5 recordatorios",
+      "kind_label": "Tipo",
+      "kind_relative": "Relativo",
+      "kind_absolute": "Absoluto",
+      "unit_label": "Unidad",
+      "unit_minutes": "minutos",
+      "unit_hours": "horas",
+      "unit_days": "días",
+      "relative_value_label": "Valor",
+      "absolute_at_label": "Notificar el",
+      "error_absolute_required": "Introduce la fecha y hora del recordatorio absoluto",
+      "error_past": "No se puede indicar una fecha y hora pasada"
+    },
+    "scheduled_survey": {
+      "label": "Programar una encuesta",
+      "scheduled_at": "Hora de creación",
+      "title_label": "Título de la encuesta",
+      "title_placeholder": "Introduce el título de la encuesta",
+      "anonymous": "Permitir respuestas anónimas",
+      "results_visibility": "Visibilidad de resultados",
+      "visibility_public": "Visible para todos",
+      "visibility_owner": "Solo el creador",
+      "visibility_respondents": "Solo los encuestados",
+      "question_placeholder": "Introduce una pregunta",
+      "qtype_single": "Selección única",
+      "qtype_multiple": "Selección múltiple",
+      "required": "Obligatorio",
+      "option_placeholder": "Introduce una opción",
+      "add_option": "Agregar opción",
+      "add_question": "Agregar pregunta",
+      "error_scheduled_at_required": "Introduce la hora de creación de la encuesta",
+      "error_past": "La hora de creación de la encuesta debe ser futura"
+    },
+    "scheduled_attendance": {
+      "label": "Programar una solicitud de asistencia",
+      "scheduled_at": "Hora de creación",
+      "deadline": "Fecha límite de respuesta",
+      "comment_option": "Comentarios",
+      "comment_none": "Sin comentarios",
+      "comment_optional": "Comentarios opcionales",
+      "comment_required": "Comentarios obligatorios",
+      "error_scheduled_at_required": "Introduce la hora de creación de la solicitud de asistencia",
+      "error_past": "La hora de creación de la solicitud de asistencia debe ser futura"
+    },
+    "scheduled_task": {
+      "label": "Tareas programadas",
+      "type_survey": "Encuesta programada",
+      "type_attendance": "Solicitud de asistencia programada",
+      "status_pending": "Pendiente",
+      "status_created": "Creada",
+      "status_cancelled": "Cancelada",
+      "status_failed": "Fallida",
+      "cancel": "Cancelar",
+      "cancel_success": "La tarea programada se ha cancelado",
+      "cancel_failed": "No se pudo cancelar la tarea programada"
+    }
+  }
+}

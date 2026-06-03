@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -26,9 +27,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * セキュリティ設定。JwtAuthenticationFilter を UsernamePasswordAuthenticationFilter の前に挿入し、
  * Bearer トークンによるステートレス認証を実現する。
  * ProxyInputContextFilter は JwtAuthenticationFilter の直後に実行される。
+ *
+ * <p>{@code @EnableMethodSecurity(prePostEnabled = true)} により {@code @PreAuthorize} /
+ * {@code @PostAuthorize} が有効化される（認可基盤根治 Phase 3）。</p>
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -170,6 +175,8 @@ public class SecurityConfig {
                 // F12.5 フロントエンドエラー追跡（認証不要）
                 .requestMatchers(HttpMethod.POST, "/api/v1/error-reports").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/active-incidents").permitAll()
+                // CSP 違反レポート受信（ブラウザ自動送信のため認証不要）
+                .requestMatchers(HttpMethod.POST, "/api/v1/security/csp-reports").permitAll()
                 // F10.6 Phase 10-γ-③-a: SSR エラー受信（認証不要。コントローラーが内部トークンで検証）
                 .requestMatchers(HttpMethod.POST, "/api/internal/ssr-logs").permitAll()
                 // F04.8 連絡先招待プレビュー（認証不要）

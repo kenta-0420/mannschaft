@@ -26,7 +26,7 @@ const selectedCheckId = ref<number | null>(null)
 async function loadChecks() {
   loading.value = true
   try {
-    const res = await safetyApi.listSafetyChecks({ size: 20 })
+    const res = await safetyApi.listSafetyChecks({ scopeType: 'TEAM', scopeId: teamId, size: 20 })
     checks.value = res.data as SafetyCheck[]
   } catch {
     notification.error('安否確認の取得に失敗しました')
@@ -105,6 +105,11 @@ onMounted(async () => {
       </div>
     </div>
 
-    <SafetyCheckTrigger v-model:visible="showTriggerDialog" @triggered="loadChecks" />
+    <SafetyCheckTrigger
+      v-model:visible="showTriggerDialog"
+      :scope-type="'TEAM'"
+      :scope-id="teamId"
+      @triggered="loadChecks"
+    />
   </div>
 </template>

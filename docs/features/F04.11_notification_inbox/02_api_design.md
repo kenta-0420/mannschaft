@@ -79,7 +79,7 @@
 }
 ```
 
-> `totalEstimated` は複数ソース集約のため**概算**（ハードリミット内の件数）。深いページの網羅は保証しない旨を [03](./03_business_logic.md) §4・[04](./04_security_operations.md) §5 に明記。
+> `totalEstimated` は複数ソース集約のため**概算**（境界付きウィンドウ内・畳み込み後の件数）。Phase3 ③ の**境界付きウィンドウページング**（全ソース `Pageable`・完全全順序タイブレーク）により**決定的（重複なし・load-more 連続）**。MENTION・TODO_DUE・NOTIFICATION は fetch 順がグローバル順と整合し**取りこぼしなし**。ANNOUNCEMENT・CONFIRMABLE は取得順が priority と独立のため、稀な偏在で高 priority・低時刻の項目が後ページに送られうる（pinned/保留件数は小さく実害限定）。詳細は [03](./03_business_logic.md) §4.1・[04](./04_security_operations.md) §5。
 
 ### 3.2 `GET /api/v1/inbox/summary`
 
@@ -100,7 +100,8 @@
 ```json
 { "sourceType": "NOTIFICATION", "sourceId": 123, "snoozedUntil": "2026-05-31T08:00:00+09:00" }
 ```
-- `snoozedUntil` は ISO8601。フロントがプリセット（3 時間後 / 今晩 / 明日朝 / 来週）から**日時を計算して送る**（[03](./03_business_logic.md) §6 — 既存 snooze の `duration` 送信バグの是正方針）。
+- `snoozedUntil` は**絶対時刻・ISO8601（オフセット必須）**。フロントがプリセット（3 時間後 / 今晩 / 明日朝 / 来週）から**日時を計算して送る**（[03](./03_business_logic.md) §6 — 既存 snooze の `duration` 送信バグの是正方針）。
+  - BE は `OffsetDateTime` で受け、Service 層で JST 壁時計へ変換してから保存する。フロントは `.toISOString()`（UTC・`Z` 付き）で送るため、`LocalDateTime` で受けると Jackson がオフセットを捨て JST 固定 JVM の壁時計と約 9 時間ずれる（根治済み・notification 側も同様）。
 - サーバは過去時刻を拒否（`INBOX_INVALID_SNOOZE_TIME`）。`NotificationService.snoozeNotification` の `@Future` 検証を流用。
 - upsert：`(user_id, source_type, source_id)` で `inbox_item_states` を作成/更新。
 

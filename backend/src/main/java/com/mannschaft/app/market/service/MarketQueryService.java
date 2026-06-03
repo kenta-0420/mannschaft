@@ -18,8 +18,11 @@ import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentCategoryEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
+import com.mannschaft.app.recruitment.entity.RecruitmentListingRegionEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
+import com.mannschaft.app.recruitment.repository.RecruitmentListingRegionRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
+import com.mannschaft.app.recruitment.util.LikeEscapeUtil;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +37,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * F22.1 市（Market）集約: 公開閲覧・地域ファサード・件数集計の読み取り Service
@@ -52,6 +56,7 @@ import java.util.Set;
 public class MarketQueryService {
 
     private final RecruitmentListingRepository listingRepository;
+    private final RecruitmentListingRegionRepository listingRegionRepository;
     private final RecruitmentCategoryRepository categoryRepository;
     private final PrefectureRepository prefectureRepository;
     private final CityRepository cityRepository;
@@ -93,7 +98,9 @@ public class MarketQueryService {
             String keyword, boolean includeRegionNone, Pageable pageable, String lang) {
         String normalizedPref = blankToNull(prefecture);
         String normalizedCity = blankToNull(city);
-        String normalizedKeyword = blankToNull(keyword);
+        // blankToNull → escape の順。null はエスケープせず透過する。
+        // LIKE ワイルドカード（% / _ / \）をリテラル化し、フィルタ無効化を防ぐ（JPQL の ESCAPE '\' と対）。
+        String normalizedKeyword = LikeEscapeUtil.escape(blankToNull(keyword));
 
         Page<RecruitmentListingEntity> page = listingRepository.searchMarketListings(
                 normalizedPref, normalizedCity, categoryId, normalizedKeyword,
@@ -110,6 +117,7 @@ public class MarketQueryService {
      * ページ内の全札に必要なマスタを一括取得した参照 Map 群（N+1 回避）。
      *
      * @param regionTranslations 地域コード→訳名（lang 未指定時は空。未訳コードは含まれない）
+     * @param regionsByListing   札ID→地域中間行リスト（id 昇順・複数地域 N:N。F22.1 Phase2 D）
      */
     private record MarketResolverMaps(
             Map<Long, RecruitmentCategoryEntity> categories,
@@ -117,7 +125,8 @@ public class MarketQueryService {
             Map<Long, OrganizationEntity> organizations,
             Map<String, PrefectureEntity> prefectures,
             Map<String, CityEntity> cities,
-            Map<String, String> regionTranslations) {
+            Map<String, String> regionTranslations,
+            Map<Long, List<RecruitmentListingRegionEntity>> regionsByListing) {
     }
 
     private MarketResolverMaps buildResolverMaps(List<RecruitmentListingEntity> listings, String lang) {
@@ -126,6 +135,19 @@ public class MarketQueryService {
         Set<Long> orgIds = new LinkedHashSet<>();
         Set<String> prefCodes = new LinkedHashSet<>();
         Set<String> cityCodes = new LinkedHashSet<>();
+
+        // F22.1 Phase2 D: ページ内 listingId 群で中間表をバルク取得（N+1 回避）。
+        List<Long> listingIds = listings.stream()
+                .map(RecruitmentListingEntity::getId)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        Map<Long, List<RecruitmentListingRegionEntity>> regionsByListing = listingIds.isEmpty()
+                ? Map.of()
+                : listingRegionRepository.findByListingIdInOrderByListingIdAscIdAsc(listingIds).stream()
+                        .collect(Collectors.groupingBy(
+                                RecruitmentListingRegionEntity::getListingId,
+                                LinkedHashMap::new,
+                                Collectors.toList()));
 
         for (RecruitmentListingEntity e : listings) {
             if (e.getCategoryId() != null) {
@@ -138,11 +160,23 @@ public class MarketQueryService {
             } else if (e.getScopeId() != null) {
                 orgIds.add(e.getScopeId());
             }
+            // 旧単一列（代表・後方互換）由来のコード。
             if (e.getPrefectureCode() != null) {
                 prefCodes.add(e.getPrefectureCode());
             }
             if (e.getCityCode() != null) {
                 cityCodes.add(e.getCityCode());
+            }
+        }
+        // 中間表由来の全地域コードも名前解決・訳の対象に含める。
+        for (List<RecruitmentListingRegionEntity> rows : regionsByListing.values()) {
+            for (RecruitmentListingRegionEntity r : rows) {
+                if (r.getPrefectureCode() != null) {
+                    prefCodes.add(r.getPrefectureCode());
+                }
+                if (r.getCityCode() != null) {
+                    cityCodes.add(r.getCityCode());
+                }
             }
         }
 
@@ -172,17 +206,32 @@ public class MarketQueryService {
         Map<String, String> regionTranslations =
                 regionTranslationService.resolveNames(allRegionCodes, lang);
         return new MarketResolverMaps(
-                categories, teams, organizations, prefectures, cities, regionTranslations);
+                categories, teams, organizations, prefectures, cities,
+                regionTranslations, regionsByListing);
     }
 
     private MarketListingResponse toMarketListingResponse(
             RecruitmentListingEntity e, MarketResolverMaps maps) {
+        // F22.1 Phase2 D: 中間表（N:N）から全地域を解決。後方互換のため代表（先頭）を region に残す。
+        List<RecruitmentListingRegionEntity> rows =
+                maps.regionsByListing().getOrDefault(e.getId(), List.of());
+        List<MarketRegionDto> regions = rows.stream()
+                .map(r -> resolveRegionFromMap(r.getPrefectureCode(), r.getCityCode(), maps))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+
+        // 代表地域: 中間表先頭を優先。中間表が空（旧データ・地域なし）の場合は旧単一列で後方互換。
+        MarketRegionDto representative = regions.isEmpty()
+                ? resolveRegionFromMap(e.getPrefectureCode(), e.getCityCode(), maps)
+                : regions.get(0);
+
         return new MarketListingResponse(
                 e.getId(),
                 e.getTitle(),
                 resolveCategoryFromMap(e.getCategoryId(), maps),
                 resolveOwnerFromMap(e.getScopeType(), e.getScopeId(), maps),
-                resolveRegionFromMap(e.getPrefectureCode(), e.getCityCode(), maps),
+                representative,
+                regions,
                 e.getLocation(),
                 e.getStartAt(),
                 e.getApplicationDeadline(),

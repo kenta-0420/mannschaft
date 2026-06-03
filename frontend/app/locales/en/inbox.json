@@ -28,7 +28,8 @@
       "snoozed": "Snoozed",
       "archived": "Moved to archive",
       "unarchived": "Moved to inbox",
-      "unsnoozed": "Snooze cancelled"
+      "unsnoozed": "Snooze cancelled",
+      "snoozeFailed": "Failed to snooze"
     },
     "snoozePreset": {
       "in3h": "In 3 hours",
@@ -79,6 +80,10 @@
       "apply": "Apply",
       "result": "{processed} processed ({skipped} skipped)",
       "cancel": "Cancel"
+    },
+    "group": {
+      "badge": "+{n} more",
+      "badgeTitle": "{n} notifications are grouped here"
     }
   }
 }

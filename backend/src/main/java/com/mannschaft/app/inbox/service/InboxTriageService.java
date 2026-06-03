@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.InboxState;
 import com.mannschaft.app.inbox.dto.InboxItemDto;
+import com.mannschaft.app.inbox.dto.InboxItemRef;
 import com.mannschaft.app.inbox.entity.InboxItemStateEntity;
 import com.mannschaft.app.inbox.error.InboxErrorCode;
 import com.mannschaft.app.inbox.repository.InboxItemStateRepository;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,18 +36,33 @@ public class InboxTriageService {
     private final InboxItemStateRepository itemStateRepository;
     private final InboxItemVisibilityChecker visibilityChecker;
 
+    /** アプリ全体の JVM 既定 TZ（{@code TimeZoneConfig} で Asia/Tokyo 固定）に合わせた壁時計変換先。 */
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Tokyo");
+
     /**
      * 通知をスヌーズする（upsert）。過去時刻は拒否。
+     *
+     * <p>{@code snoozedUntil} は絶対時刻（オフセット付き）で受け取り、JST 壁時計（{@link LocalDateTime}）へ
+     * 変換してから保存する。これにより、フロントが {@code .toISOString()}（UTC）で送っても比較基準である
+     * {@code LocalDateTime.now()}（JST 固定 JVM）と同じ土俵に揃い、約 9 時間のずれが解消する。</p>
      *
      * @return 更新後の {@code InboxItem}（楽観更新の確定反映用）
      */
     @Transactional
-    public InboxItemDto snooze(Long userId, InboxSourceType sourceType, Long sourceId, LocalDateTime snoozedUntil) {
-        if (snoozedUntil == null || snoozedUntil.isBefore(LocalDateTime.now())) {
+    public InboxItemDto snooze(Long userId, InboxSourceType sourceType, Long sourceId, OffsetDateTime snoozedUntil) {
+        if (snoozedUntil == null) {
+            throw new BusinessException(InboxErrorCode.INBOX_INVALID_SNOOZE_TIME);
+        }
+        // 絶対時刻 → JST 壁時計に変換（保存・比較は LocalDateTime の現状ストレージに合わせる）。
+        LocalDateTime snoozedUntilJst = snoozedUntil.atZoneSameInstant(APP_ZONE).toLocalDateTime();
+        if (snoozedUntilJst.isBefore(LocalDateTime.now())) {
             throw new BusinessException(InboxErrorCode.INBOX_INVALID_SNOOZE_TIME);
         }
         InboxItemStateEntity row = loadOrCreate(userId, sourceType, sourceId);
-        row.setSnoozedUntil(snoozedUntil);
+        row.setSnoozedUntil(snoozedUntilJst);
+        // F04.11 Phase3 ②：再スヌーズ（snoozed_until 更新）時は復帰 push 送信済みフラグを
+        // NULL に戻し、新しい復帰期限到来時に再度 1 度だけ push できるようにする。
+        row.setSnoozeNotifiedAt(null);
         InboxItemStateEntity saved = itemStateRepository.save(row);
         return toDto(saved);
     }
@@ -144,13 +162,19 @@ public class InboxTriageService {
         } else {
             state = InboxState.UNREAD;
         }
+        // triage の軽量 DTO は単一項目の状態確定反映専用。名寄せ畳み込みは集約経路でのみ行うため、
+        // canonicalRef は自分自身キー・groupCount=1・groupMembers は自分 1 件とする（畳まれない）。
+        String selfKey = row.getSourceType().name() + ":" + row.getSourceId();
         return new InboxItemDto(
-                row.getSourceType().name() + ":" + row.getSourceId(),
+                selfKey,
                 row.getSourceType(),
                 row.getSourceId(),
                 null, null, null, null, null, null,
                 state,
                 row.getSnoozedUntil(),
-                List.of());
+                List.of(),
+                selfKey,
+                1,
+                List.of(new InboxItemRef(row.getSourceType(), row.getSourceId())));
     }
 }

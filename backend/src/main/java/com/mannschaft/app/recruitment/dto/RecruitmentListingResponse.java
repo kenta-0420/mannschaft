@@ -55,8 +55,14 @@ public class RecruitmentListingResponse {
     private final String prefectureCode;
     private final String cityCode;
 
-    /** 地域情報（マスタ名込み）。地域未指定の札では null。 */
+    /** 代表地域情報（マスタ名込み・複数地域の先頭）。地域未指定の札では null。 */
     private final RecruitmentRegionView region;
+
+    /**
+     * 複数地域募集（N:N・F22.1 Phase2 D）の全地域（マスタ名込み）。
+     * 中間表（recruitment_listing_regions）由来。地域を問わない札は空配列。札主の作成/編集応答で返す。
+     */
+    private final List<RecruitmentRegionView> regions;
 
     /** フレンド宛先（{@code FRIEND_TEAMS_ONLY} のときのみ非空。札主 ADMIN 向け）。 */
     private final List<FriendTargetView> friendTargets;
