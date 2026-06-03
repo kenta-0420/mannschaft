@@ -6,6 +6,7 @@ import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.schedule.ReminderKind;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.dto.CreateReminderRequest;
+import com.mannschaft.app.schedule.dto.UpdateReminderRequest;
 import com.mannschaft.app.schedule.dto.ReminderResponse;
 import com.mannschaft.app.schedule.entity.ScheduleAttendanceEntity;
 import com.mannschaft.app.schedule.entity.ScheduleAttendanceReminderEntity;
@@ -83,6 +84,47 @@ public class ScheduleReminderService {
 
         log.info("リマインダー作成: scheduleId={}, 件数={}", scheduleId, requests.size());
         return responses;
+    }
+
+    /**
+     * リマインダーを更新する（差し替え）。既存を全削除して新規リストを登録する（機能55 BE対応）。
+     *
+     * <p>空リストを渡すと全削除のみ（再登録なし）となる。
+     * null は呼び出し元で「変更なし」として処理するため、このメソッドには渡さない。
+     * 編集コンテキストのため {@link UpdateReminderRequest} を受け取り、過去日時の絶対指定も許容する。</p>
+     *
+     * @param scheduleId スケジュールID
+     * @param requests   新規リマインダーリスト（空リスト可。null 禁止）
+     */
+    @Transactional
+    public void updateReminders(Long scheduleId, List<UpdateReminderRequest> requests) {
+        // 先に既存をすべて削除
+        reminderRepository.deleteByScheduleId(scheduleId);
+
+        // 空リストなら削除のみで終了
+        if (requests.isEmpty()) {
+            log.info("リマインダー全削除: scheduleId={}", scheduleId);
+            return;
+        }
+
+        // 上限チェック
+        if (requests.size() > MAX_REMINDERS_PER_SCHEDULE) {
+            throw new BusinessException(ScheduleErrorCode.MAX_REMINDERS_EXCEEDED);
+        }
+
+        // 新規登録（編集コンテキストのため過去日時も許容して直接エンティティ保存）
+        requests.forEach(req -> {
+            ReminderKind kind = req.effectiveKind();
+            ScheduleAttendanceReminderEntity reminder = ScheduleAttendanceReminderEntity.builder()
+                    .scheduleId(scheduleId)
+                    .reminderKind(kind)
+                    .remindAt(kind == ReminderKind.ABSOLUTE ? req.getRemindAt() : null)
+                    .remindBeforeMinutes(kind == ReminderKind.RELATIVE ? req.getRemindBeforeMinutes() : null)
+                    .build();
+            reminderRepository.save(reminder);
+        });
+
+        log.info("リマインダー更新完了: scheduleId={}, 件数={}", scheduleId, requests.size());
     }
 
     /**

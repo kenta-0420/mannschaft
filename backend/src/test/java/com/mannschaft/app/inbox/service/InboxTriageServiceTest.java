@@ -120,10 +120,15 @@ class InboxTriageServiceTest {
         @Test
         @DisplayName("TZ根治: UTC で JST 23:00 を表す入力 → JST 壁時計 23:00 で保存（オフセットを尊重）")
         void utcInput_storedAsJstWallClock() {
-            // UTC 2026-06-03T14:00Z == JST 2026-06-03T23:00（+09:00）。
-            // 旧実装（LocalDateTime 受け）なら Z が捨てられ 14:00 が保存されて赤くなる。
-            OffsetDateTime utcInput = OffsetDateTime.of(2026, 6, 3, 14, 0, 0, 0, ZoneOffset.UTC);
-            LocalDateTime expectedJst = LocalDateTime.of(2026, 6, 3, 23, 0, 0);
+            // UTC 未来時刻で JST に変換したときオフセットが正しく反映されることを検証。
+            // 旧実装（LocalDateTime 受け）なら Z が捨てられ UTC の時刻そのままが保存されて赤くなる。
+            // 固定日時は日付経過で過去になりフレーキーになるため、動的に「来週の月曜 14:00 UTC」を使用。
+            java.time.LocalDate nextMonday = java.time.LocalDate.now().plusWeeks(1)
+                    .with(java.time.DayOfWeek.MONDAY);
+            OffsetDateTime utcInput = OffsetDateTime.of(nextMonday.getYear(), nextMonday.getMonthValue(),
+                    nextMonday.getDayOfMonth(), 14, 0, 0, 0, ZoneOffset.UTC);
+            LocalDateTime expectedJst = utcInput.atZoneSameInstant(java.time.ZoneId.of("Asia/Tokyo"))
+                    .toLocalDateTime();
             InboxItemStateEntity row = existing(null, null);
             given(itemStateRepository.findByUserIdAndSourceTypeAndSourceId(USER_ID, SOURCE_TYPE, SOURCE_ID))
                     .willReturn(Optional.of(row));

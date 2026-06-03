@@ -33,4 +33,13 @@ public interface ScheduleAttendanceReminderRepository extends JpaRepository<Sche
      * スケジュールIDでリマインダー数を取得する。
      */
     long countByScheduleId(Long scheduleId);
+
+    /**
+     * スケジュールIDに紐づくリマインダーをすべて削除する（機能55 BE対応）。
+     *
+     * <p>リマインダー更新（差し替え）時に既存を全削除してから新規登録するために使用する。</p>
+     *
+     * @param scheduleId 親予定 schedules.id
+     */
+    void deleteByScheduleId(Long scheduleId);
 }

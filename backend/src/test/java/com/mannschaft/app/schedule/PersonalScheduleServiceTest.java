@@ -376,7 +376,7 @@ class PersonalScheduleServiceTest {
                     .willReturn(List.of());
 
             UpdatePersonalScheduleRequest req = new UpdatePersonalScheduleRequest(
-                    "更新タイトル", null, null, null, null, null, null, null, null, null, null);
+                    "更新タイトル", null, null, null, null, null, null, null, null, null, null, null);
 
             // when
             personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, USER_ID);
@@ -398,7 +398,7 @@ class PersonalScheduleServiceTest {
                     .willReturn(List.of());
 
             UpdatePersonalScheduleRequest req = new UpdatePersonalScheduleRequest(
-                    "更新タイトル", "更新説明", "更新場所", null, null, null, null, "#00FF00", null, null, null);
+                    "更新タイトル", "更新説明", "更新場所", null, null, null, null, "#00FF00", null, null, null, null);
 
             // when
             PersonalScheduleResponse result = personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, USER_ID);
@@ -426,7 +426,7 @@ class PersonalScheduleServiceTest {
 
             // titleのみ更新（他はnull→変更なし）
             UpdatePersonalScheduleRequest req = new UpdatePersonalScheduleRequest(
-                    "タイトルのみ更新", null, null, null, null, null, null, null, null, null, null);
+                    "タイトルのみ更新", null, null, null, null, null, null, null, null, null, null, null);
 
             // when
             PersonalScheduleResponse result = personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, USER_ID);
@@ -447,7 +447,7 @@ class PersonalScheduleServiceTest {
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
 
             UpdatePersonalScheduleRequest req = new UpdatePersonalScheduleRequest(
-                    "更新", null, null, null, null, null, null, null, null, null, null);
+                    "更新", null, null, null, null, null, null, null, null, null, null, null);
 
             // when & then
             assertThatThrownBy(() -> personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, OTHER_USER_ID))
@@ -464,7 +464,7 @@ class PersonalScheduleServiceTest {
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(cancelled));
 
             UpdatePersonalScheduleRequest req = new UpdatePersonalScheduleRequest(
-                    "更新", null, null, null, null, null, null, null, null, null, null);
+                    "更新", null, null, null, null, null, null, null, null, null, null, null);
 
             // when & then
             assertThatThrownBy(() -> personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, USER_ID))

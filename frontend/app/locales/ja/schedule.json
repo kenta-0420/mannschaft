@@ -3,6 +3,11 @@
     "common_delete": "削除",
     "description_label": "説明",
     "error_title_required": "タイトルは必須です",
+    "success_create": "イベントを作成しました",
+    "success_update": "イベントを更新しました",
+    "success_create_personal": "予定を追加しました",
+    "success_update_personal": "予定を更新しました",
+    "error_load_event": "イベント情報の取得に失敗しました",
     "reminder": {
       "label": "リマインダー",
       "add": "リマインダーを追加",
