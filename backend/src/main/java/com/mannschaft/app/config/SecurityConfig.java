@@ -6,6 +6,7 @@ import com.mannschaft.app.event.EventDelegationRateLimitFilter;
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
 import com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter;
 import com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.actuate.health.HealthEndpoint;
@@ -284,8 +285,21 @@ public class SecurityConfig {
             // REST API ではアクセストークン期限切れ = 401 が正しいセマンティクスであり、
             // フロントエンドの refreshAccessToken() フローが 401 をトリガーとして
             // リフレッシュトークンによる再認証を行う設計のため明示的に 401 を設定する。
+            //
+            // accessDeniedHandler: 認証済みユーザーが権限不足のエンドポイントにアクセスした場合
+            // 403 を返す。設定しないと Spring Security デフォルトの動作になり、
+            // 一部ケースで 401 が返る（ExceptionTranslationFilter が 401 として処理する）ため
+            // 明示的に COMMON_002（権限なし → 403 Forbidden）をレスポンスする。
             .exceptionHandling(ex -> ex
-                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write(
+                            "{\"error\":{\"code\":\"COMMON_002\","
+                            + "\"message\":\"この操作を行う権限がありません\","
+                            + "\"fieldErrors\":[]}}");
+                }))
             // API JSON 応答向けのセキュリティヘッダー（docs/security/03 §3）。
             // - frameOptions(deny): クリックジャッキング防止（X-Frame-Options: DENY）
             // - contentTypeOptions: MIME スニッフィング防止（X-Content-Type-Options: nosniff）

@@ -95,4 +95,26 @@ class StripeConnectWebhookControllerTest {
                         .content("payload"))
                 .andExpect(status().isOk());
     }
+
+    // ---- Signature ヘッダなし → 400 ----
+
+    @Test
+    @DisplayName("T3: platform /stripe — Stripe-Signature ヘッダなし → 400（PAYMENT_C040）")
+    void platformWebhook_missingSignatureHeader_returns400() throws Exception {
+        // Stripe-Signature ヘッダを送らない（required=false で受け取り、メソッド冒頭でチェック）
+        mockMvc.perform(post("/api/v1/webhooks/stripe")
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("payload"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("T4: Connect /stripe/connect — Stripe-Signature ヘッダなし → 400（PAYMENT_C040）")
+    void connectWebhook_missingSignatureHeader_returns400() throws Exception {
+        // Stripe-Signature ヘッダを送らない（required=false で受け取り、メソッド冒頭でチェック）
+        mockMvc.perform(post("/api/v1/webhooks/stripe/connect")
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("payload"))
+                .andExpect(status().isBadRequest());
+    }
 }
