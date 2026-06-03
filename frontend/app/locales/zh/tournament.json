@@ -47,6 +47,22 @@
       "TOUR_032": "您没有更改此联络空间公开设置的权限"
     }
   },
+  "communication": {
+    "title": "联络空间",
+    "bulletin": "公告板",
+    "chat": "聊天",
+    "tournament_space": "整体赛事",
+    "division_space": "组别",
+    "visibility_toggle": "公开设置",
+    "public": "公开",
+    "private": "非公开",
+    "empty": "联络空间尚未准备好",
+    "no_bulletin": "没有公告板空间",
+    "no_chat": "没有聊天空间",
+    "visibility_saved": "已更改公开设置",
+    "visibility_failed": "更改公开设置失败",
+    "load_failed": "获取联络空间失败"
+  },
   "submission": {
     "title": "文件提交受理",
     "requirement": "提交栏",
