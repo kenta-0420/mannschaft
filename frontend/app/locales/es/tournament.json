@@ -85,6 +85,21 @@
     "error_load": "Error al cargar datos",
     "error_template_required": "Ingrese un ID de plantilla de formulario"
   },
+  "files": {
+    "title": "Almacén de archivos",
+    "tournament_folder": "Carpetas del torneo",
+    "division_folder": "Carpetas de división",
+    "create_folder": "Crear carpeta",
+    "empty": "Sin archivos",
+    "upload": "Subir",
+    "load_error": "Error al cargar las carpetas",
+    "create_success": "Carpeta creada",
+    "create_error": "Error al crear la carpeta",
+    "folder_name_placeholder": "Nombre de la carpeta",
+    "create_dialog_header": "Crear carpeta",
+    "back_to_root": "Raíz",
+    "no_division": "No hay divisiones registradas"
+  },
   "dashboard_widgets": {
     "team_record_title": "Historial de torneos",
     "org_summary_title": "Torneos organizados",

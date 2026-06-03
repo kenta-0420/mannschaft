@@ -85,6 +85,21 @@
     "error_load": "数据获取失败",
     "error_template_required": "请输入表单模板ID"
   },
+  "files": {
+    "title": "文件存储",
+    "tournament_folder": "赛事文件夹",
+    "division_folder": "组别文件夹",
+    "create_folder": "创建文件夹",
+    "empty": "暂无文件",
+    "upload": "上传",
+    "load_error": "文件夹加载失败",
+    "create_success": "文件夹已创建",
+    "create_error": "文件夹创建失败",
+    "folder_name_placeholder": "文件夹名称",
+    "create_dialog_header": "创建文件夹",
+    "back_to_root": "根目录",
+    "no_division": "尚未登录组别"
+  },
   "dashboard_widgets": {
     "team_record_title": "赛事成绩",
     "org_summary_title": "主办赛事概览",

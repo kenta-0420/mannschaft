@@ -278,6 +278,8 @@ F13.1（短期業務マッチング）の決済は **enum/コメントのみで�
 
 [F08.2 支払い・アクセス制御](../../F08.2_payments_access_control.md) は現状、会費・月謝等を **Mannschaft 自社の Stripe アカウントへプラットフォーム集金**する方式（`member_payments` + 自社 Checkout）。本統一基盤の確定により、会費徴収（会員→チーム/組織）は **P2-e で本 `ConnectChargeService`（`source_kind=MEMBERSHIP`・即時モード・Connect ダイレクトチャージ）へ移行**し、**チーム/組織が直接受領**（自社口座非経由＝資金移動業リスク回避）する。移行時の `payment_items`/`member_payments` と `escrow_transactions` のマッピングは P2-e 軍議で確定する。
 
+> 📘 **会費側の上位設計**: `source_kind=MEMBERSHIP` を消費する会員決済の上位機能（払い手≠受益者・後見切替・ペイウォール・継続課金 Subscription＋invoice 上書き・協会→チーム請求・領収書/税からくり）は [F08.9 会員決済・後見つきマルチ受益者・ペイウォール・継続課金](../../F08.9_membership_billing_paywall/README.md) で設計する。本基盤（P2-b：`ConnectChargeService`/`PaymentFeeCalculator`/`face_amount`/`capture_mode`、P2-e：`EscrowSourceKind.MEMBERSHIP`）は F08.9 P1 の前提依存。継続課金で各 invoice の `application_fee_amount` を固定上書きする要件（率→固定額）と `connect_accounts` への税登録番号列追加も F08.9 由来。
+
 ### 8.2 parking の Connect 資産統合（別軍議）
 
 既存の `parking`（駐車場予約決済）にも Connect 系の資産が存在する可能性があり、本統一基盤との**重複・統合は別軍議**とする。本設計では parking には踏み込まず、統一基盤側の `source_kind` 拡張余地を残すに留める。
