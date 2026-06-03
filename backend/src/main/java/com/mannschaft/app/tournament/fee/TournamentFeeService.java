@@ -207,6 +207,42 @@ public class TournamentFeeService {
         return memberPaymentRepository.existsValidPaidPaymentByTeamRepresentative(teamId, fee.getPaymentItemId());
     }
 
+    /**
+     * 指定チームが当該大会／ディビジョンの全参加費を支払い済みかを判定する（未払いゲート用・設計書 §5）。
+     *
+     * <p>領域⑥ の提出受理（{@code tournament_submission_requirement.requires_payment=TRUE}）で
+     * 「大会参加費の支払い済み」をゲート条件にするための内部呼び出し。大会／ディビジョンに紐づく
+     * 参加費（{@code tournament_fee}）を列挙し、当該チームに適用される全ての参加費について
+     * {@link #isTeamPaid(UUID, Long)} が true（SPECIFIC_TEAMS の対象外は支払い不要として true）の場合のみ
+     * true を返す。参加費が 1 件も存在しない大会は「課金なし」＝true（ゲートを通す）。</p>
+     *
+     * <p>divisionId が指定された場合、大会全体（division_id IS NULL）の参加費に加え、
+     * 当該ディビジョンに限定された参加費（division_id = divisionId）も対象とする。
+     * 他ディビジョン限定の参加費は当該チームの提出には無関係なので除外する。</p>
+     *
+     * <p><strong>内部呼び出し専用（IDOR 注意）:</strong> 本メソッドは tournament_id で参加費を引く。
+     * 呼び出し元（領域⑥ の提出受理）が既に大会・組織スコープを検証済みの文脈から呼ぶ前提である。</p>
+     *
+     * @param tournamentId 大会 ID
+     * @param divisionId   提出枠のディビジョン ID（NULL = 大会全体の枠）
+     * @param teamId       提出チーム ID
+     * @return 適用される全参加費を支払い済みなら true
+     */
+    public boolean isTeamPaidForTournament(Long tournamentId, Long divisionId, Long teamId) {
+        List<TournamentFeeEntity> fees = feeRepository.findByTournamentIdOrderByCreatedAtAsc(tournamentId);
+        for (TournamentFeeEntity fee : fees) {
+            // 他ディビジョン限定の参加費は当該チームの提出には無関係なので除外する。
+            // 大会全体（fee.divisionId == null）は常に対象。
+            if (fee.getDivisionId() != null && !fee.getDivisionId().equals(divisionId)) {
+                continue;
+            }
+            if (!isTeamPaid(fee.getId(), teamId)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     // ========================================================================
     // 内部ヘルパー
     // ========================================================================

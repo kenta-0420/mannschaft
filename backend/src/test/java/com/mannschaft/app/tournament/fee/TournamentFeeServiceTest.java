@@ -463,6 +463,65 @@ class TournamentFeeServiceTest {
     }
 
     // =========================================================
+    // 大会単位の未払いゲート判定（F08.7.1/06 提出受理ゲート用）
+    // =========================================================
+
+    @Nested
+    @DisplayName("大会単位の未払いゲート判定（isTeamPaidForTournament）")
+    class TournamentGateCheck {
+
+        @Test
+        @DisplayName("参加費が 1 件も無い大会は課金なし＝ゲートを通す（true）")
+        void noFeesPasses() {
+            given(feeRepository.findByTournamentIdOrderByCreatedAtAsc(TOURNAMENT_ID)).willReturn(List.of());
+
+            assertThat(service.isTeamPaidForTournament(TOURNAMENT_ID, null, TEAM_ID)).isTrue();
+            verifyNoInteractions(memberPaymentRepository);
+        }
+
+        @Test
+        @DisplayName("適用される全参加費を支払い済みなら true")
+        void allPaid() {
+            TournamentFeeEntity f = fee(TournamentFeeTargetScope.ALL_TEAMS);
+            given(feeRepository.findByTournamentIdOrderByCreatedAtAsc(TOURNAMENT_ID)).willReturn(List.of(f));
+            given(feeRepository.findById(f.getId())).willReturn(Optional.of(f));
+            given(memberPaymentRepository.existsValidPaidPaymentByTeamRepresentative(TEAM_ID, PAYMENT_ITEM_ID))
+                    .willReturn(true);
+
+            assertThat(service.isTeamPaidForTournament(TOURNAMENT_ID, null, TEAM_ID)).isTrue();
+        }
+
+        @Test
+        @DisplayName("いずれかの適用参加費が未払いなら false（提出受理をブロックできる）")
+        void anyUnpaidBlocks() {
+            TournamentFeeEntity f = fee(TournamentFeeTargetScope.ALL_TEAMS);
+            given(feeRepository.findByTournamentIdOrderByCreatedAtAsc(TOURNAMENT_ID)).willReturn(List.of(f));
+            given(feeRepository.findById(f.getId())).willReturn(Optional.of(f));
+            given(memberPaymentRepository.existsValidPaidPaymentByTeamRepresentative(TEAM_ID, PAYMENT_ITEM_ID))
+                    .willReturn(false);
+
+            assertThat(service.isTeamPaidForTournament(TOURNAMENT_ID, null, TEAM_ID)).isFalse();
+        }
+
+        @Test
+        @DisplayName("他ディビジョン限定の参加費は対象外として除外する（当該チームの提出に無関係）")
+        void otherDivisionFeeIgnored() {
+            // division 限定（divisionId=DIVISION_ID）の参加費は、divisionId=null（大会全体）の提出には無関係
+            TournamentFeeEntity divisionFee = TournamentFeeEntity.builder()
+                    .tournamentId(TOURNAMENT_ID).divisionId(DIVISION_ID).paymentItemId(PAYMENT_ITEM_ID)
+                    .title("ディビジョン限定費").targetScope(TournamentFeeTargetScope.ALL_TEAMS)
+                    .organizationId(ORG_ID).createdBy(ORG_ADMIN_ID).build();
+            divisionFee.setId(UUID.randomUUID());
+            given(feeRepository.findByTournamentIdOrderByCreatedAtAsc(TOURNAMENT_ID))
+                    .willReturn(List.of(divisionFee));
+
+            // divisionId=null の提出枠なので、divisionId=DIVISION_ID の参加費はスキップ → 支払い確認に進まず true
+            assertThat(service.isTeamPaidForTournament(TOURNAMENT_ID, null, TEAM_ID)).isTrue();
+            verifyNoInteractions(memberPaymentRepository);
+        }
+    }
+
+    // =========================================================
     // 削除
     // =========================================================
 

@@ -84,6 +84,14 @@
     "group": {
       "badge": "+{n}건",
       "badgeTitle": "{n}건의 알림이 묶여 있습니다"
+    },
+    "suggestion": {
+      "replyNeeded": "답장 필요",
+      "actionNeeded": "처리 필요",
+      "urgent": "긴급",
+      "readLater": "나중에 읽기",
+      "apply": "추가",
+      "applyAria": "{name} 레이블 추가"
     }
   }
 }

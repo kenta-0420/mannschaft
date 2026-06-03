@@ -411,6 +411,20 @@ public class GlobalExceptionHandler {
             Map.entry("TOUR_043", HttpStatus.UNPROCESSABLE_ENTITY),   // LEAGUE_TRANSFER_TEAM_NOT_IN_SLOT
             Map.entry("TOUR_044", HttpStatus.CONFLICT),               // LEAGUE_TRANSFER_ALREADY_DISPATCHED
             Map.entry("TOUR_045", HttpStatus.CONFLICT),               // LEAGUE_TRANSFER_NOT_DISPATCHED
+            // F08.7.1/05 試合メンバー表（roster）— 採番衝突回避で 046-050 に再配置（旧 038-042）
+            Map.entry("TOUR_046", HttpStatus.FORBIDDEN),              // ROSTER_TEAM_NOT_IN_MATCH（対戦当事者でない）
+            Map.entry("TOUR_047", HttpStatus.FORBIDDEN),              // ROSTER_EDIT_FORBIDDEN（自チーム ADMIN/DEPUTY 限定）
+            Map.entry("TOUR_048", HttpStatus.CONFLICT),               // ROSTER_DEADLINE_PASSED（締切後ロック・409）
+            Map.entry("TOUR_049", HttpStatus.FORBIDDEN),              // ROSTER_MANAGE_FORBIDDEN（主催組織 ADMIN 限定）
+            Map.entry("TOUR_050", HttpStatus.NOT_FOUND),              // UNIFORM_SET_NOT_FOUND（IDOR 対策で 404）
+            Map.entry("TOUR_051", HttpStatus.NOT_FOUND),              // SUBMISSION_REQ_NOT_FOUND（IDOR 対策で 404）
+            Map.entry("TOUR_052", HttpStatus.FORBIDDEN),              // SUBMISSION_REQ_MANAGE_FORBIDDEN
+            Map.entry("TOUR_053", HttpStatus.FORBIDDEN),              // SUBMISSION_REQ_VIEW_FORBIDDEN
+            Map.entry("TOUR_054", HttpStatus.FORBIDDEN),              // SUBMISSION_SUBMIT_FORBIDDEN
+            Map.entry("TOUR_055", HttpStatus.UNPROCESSABLE_ENTITY),   // SUBMISSION_TEAM_NOT_TARGET
+            Map.entry("TOUR_056", HttpStatus.UNPROCESSABLE_ENTITY),   // SUBMISSION_DEADLINE_PASSED
+            Map.entry("TOUR_057", HttpStatus.UNPROCESSABLE_ENTITY),   // SUBMISSION_PAYMENT_REQUIRED
+            Map.entry("TOUR_058", HttpStatus.UNPROCESSABLE_ENTITY),   // SUBMISSION_TEMPLATE_SCOPE_MISMATCH
             // F17.1 村機能 Phase 1（B2 村CRUD / B3 メンバーシップ / B4 ニックネーム / B5 村作成申請）統合
             Map.entry("VILLAGE_001", HttpStatus.NOT_FOUND),            // VILLAGE_NOT_FOUND（IDOR 対策で 404）
             Map.entry("VILLAGE_002", HttpStatus.FORBIDDEN),            // VILLAGE_UNLISTED
@@ -615,6 +629,8 @@ public class GlobalExceptionHandler {
             Map.entry("PAYMENT_C030", HttpStatus.CONFLICT),                  // ONBOARDING_NOT_READY
             Map.entry("PAYMENT_C040", HttpStatus.BAD_REQUEST),               // WEBHOOK_SIGNATURE_INVALID
             Map.entry("PAYMENT_C041", HttpStatus.CONFLICT),                  // AUTHORIZATION_FAILED
+            Map.entry("PAYMENT_C042", HttpStatus.CONFLICT),                  // INVALID_ESCROW_STATE（払出不能状態）
+            Map.entry("PAYMENT_C043", HttpStatus.CONFLICT),                  // CAPTURE_FAILED（払出失敗）
             // セキュリティインシデント（GDPR Article 33）
             Map.entry("SEC_INCIDENT_001", HttpStatus.NOT_FOUND)              // SECURITY_INCIDENT_NOT_FOUND（IDOR 対策で 404）
     );

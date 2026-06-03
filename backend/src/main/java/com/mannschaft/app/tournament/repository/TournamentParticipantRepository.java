@@ -58,6 +58,40 @@ public interface TournamentParticipantRepository extends JpaRepository<Tournamen
            "ORDER BY t.createdAt DESC")
     List<TournamentParticipantEntity> findAllByTeamId(@Param("teamId") Long teamId);
 
+    /**
+     * F08.7.1/06 提出状況ダッシュボード: 大会の参加チーム（REGISTERED/ACTIVE）の team_id を重複排除で列挙する。
+     *
+     * <p>提出枠 {@code target_scope=ALL_TEAMS} の「対象チーム母集団」を解決するために使う。
+     * クロスドメインは ID 参照の JOIN のみ（原則1）。</p>
+     *
+     * @param tournamentId 大会 ID
+     * @return 参加チーム ID（昇順・重複排除）
+     */
+    @Query("""
+            SELECT DISTINCT p.teamId FROM TournamentParticipantEntity p
+            JOIN TournamentDivisionEntity d ON p.divisionId = d.id
+            WHERE d.tournamentId = :tournamentId
+              AND p.status IN (com.mannschaft.app.tournament.ParticipantStatus.REGISTERED,
+                               com.mannschaft.app.tournament.ParticipantStatus.ACTIVE)
+            ORDER BY p.teamId ASC
+            """)
+    List<Long> findDistinctParticipantTeamIdsByTournamentId(@Param("tournamentId") Long tournamentId);
+
+    /**
+     * F08.7.1/06 提出状況ダッシュボード: ディビジョンの参加チーム（REGISTERED/ACTIVE）の team_id を列挙する。
+     *
+     * @param divisionId ディビジョン ID
+     * @return 参加チーム ID（昇順・重複排除）
+     */
+    @Query("""
+            SELECT DISTINCT p.teamId FROM TournamentParticipantEntity p
+            WHERE p.divisionId = :divisionId
+              AND p.status IN (com.mannschaft.app.tournament.ParticipantStatus.REGISTERED,
+                               com.mannschaft.app.tournament.ParticipantStatus.ACTIVE)
+            ORDER BY p.teamId ASC
+            """)
+    List<Long> findDistinctParticipantTeamIdsByDivisionId(@Param("divisionId") Long divisionId);
+
     // ========================================================================
     // F08.7.1 連絡機能: 認可 N+1 回避用 exists クエリ（設計書 §4.3）
     //

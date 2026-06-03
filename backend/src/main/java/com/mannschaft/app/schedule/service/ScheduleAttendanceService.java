@@ -296,6 +296,7 @@ public class ScheduleAttendanceService {
                     .scheduleId(scheduleId)
                     .userId(userId)
                     .status(AttendanceStatus.UNDECIDED)
+                    .isProxyInput(false)
                     .build();
             attendanceRepository.save(attendance);
         }

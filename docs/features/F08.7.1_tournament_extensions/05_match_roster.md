@@ -1,7 +1,20 @@
 # F08.7.1 / 05: 試合メンバー表（自チーム作成＋エントリーテンプレ流用＋主催者締切管理）
 
-> **ステータス**: 🟢 設計完了
-> **最終更新**: 2026-05-31
+> **ステータス**: 🟢 設計完了 ／ 🟢 バックエンド実装完了（隊5・test-first）
+> **最終更新**: 2026-06-01
+
+> **実装メモ（2026-06-01・隊5）**: バックエンドを設計書どおり実装。
+> - Flyway `V9.20260601160000`〜`160500`（roster_deadline / registration_number / uniform_set_id 追加 ＋
+>   新規 `team_uniform_set` / `match_roster_staff` / `tournament_entry_template_staff`）。
+> - **型方針＝案A 確定**: 着手時 DDL 確認で `tournament_entry_templates.id` の実体物理型は **`CHAR(36)`**
+>   （`V9.123`/`V9.124`）。よって `tournament_entry_template_staff.template_id` を **`CHAR(36)`** とし FK CASCADE を成立させた
+>   （既存 `tournament_entry_template_members.template_id` も `CHAR(36)` で FK 成立済を踏襲）。
+> - API: `GET/PUT /api/v1/tournaments/{tId}/matches/{matchId}/rosters/me`、
+>   `POST .../rosters/me/apply-template`、`GET .../rosters`（主催者）、`PATCH .../matches/{matchId}`（締切）。
+> - 認可: 提出/適用=自チーム ADMIN/DEPUTY のみ・主催者=閲覧/締切・締切後 409・全 read 認可・提出監査
+>   （`TOURNAMENT_ROSTER_SUBMITTED` / `TOURNAMENT_ROSTER_DEADLINE_UPDATED`）。
+> - test-first: `MatchRosterServiceTest`（21 ケース）。FK 実体型成立は `FlywayFromScratchMigrationTest`（Docker 必須・CI で検証）。
+> - 残: FE 未着手。エントリーテンプレ書込 API への登録番号/staff 入力欄追加は別スコープ（テーブル列は本実装で用意済）。
 > **関連ドキュメント**:
 > - [README.md](./README.md) — 機能概要・トレーサビリティ
 > - [F08.7_tournament_league.md](../F08.7_tournament_league.md) — 既存 `tournament_match_rosters` / `tournament_entry_templates` / `tournament_matches` / `tournament_participants`
