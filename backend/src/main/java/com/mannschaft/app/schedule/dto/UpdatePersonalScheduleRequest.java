@@ -10,6 +10,11 @@ import java.util.List;
 
 /**
  * 個人スケジュール更新リクエストDTO。全フィールドnullable（部分更新）。
+ *
+ * <p>機能55 BE対応: absoluteReminders を追加。
+ * null = 変更なし、空リスト = 絶対リマインダー全削除のセマンティクス。
+ * 相対（reminders）と絶対（absoluteReminders）を合算して最大5件の制約は
+ * サービス層（PersonalScheduleService）で検証する。</p>
  */
 @Getter
 @RequiredArgsConstructor
@@ -41,6 +46,16 @@ public class UpdatePersonalScheduleRequest {
     private final RecurrenceRuleDto recurrenceRule;
 
     private final String updateScope;
+
+    /**
+     * 絶対指定リマインダー（固定日時）の更新リスト（機能55 BE対応）。
+     *
+     * <p>null = 変更なし（既存の絶対リマインダーを保持）。
+     * 空リスト = 既存の絶対リマインダーを全削除。
+     * 非空リスト = 既存の絶対リマインダーを全削除して新規登録（差し替え）。
+     * 編集コンテキストのため過去日時も許容する（{@code @Future} 制約なし）。</p>
+     */
+    private final List<LocalDateTime> absoluteReminders;
 
     /**
      * updateScope のデフォルト値を返す。null の場合は THIS_ONLY を返す。
