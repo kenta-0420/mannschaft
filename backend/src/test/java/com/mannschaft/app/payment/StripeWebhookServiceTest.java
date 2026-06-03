@@ -94,12 +94,14 @@ class StripeWebhookServiceTest {
         }
 
         @Test
-        @DisplayName("F22.1 非委譲: charge.refunded（非PI event）は escrow へ流れず既存の返金処理に行く")
-        void 非PIイベントはescrowへ流れない() {
+        @DisplayName("F22.1 charge.refunded: escrow 対象外（会費）なら escrow が false を返し既存の会員費返金処理にフォールバック")
+        void charge_refunded_会費はescrowフォールバック() {
             StripePaymentProvider.WebhookEventInfo event = new StripePaymentProvider.WebhookEventInfo(
                     "charge.refunded", null, "pi_refund", null, null,
                     null, null, "re_x", new BigDecimal("5000"), new BigDecimal("5000"), null);
             given(stripePaymentProvider.constructEvent(any(), any())).willReturn(event);
+            // escrow 側は対象 escrow なしで false を返す（会費側へフォールバック）。
+            given(escrowWebhookService.handleChargeRefunded("payload", "sig")).willReturn(false);
 
             MemberPaymentEntity payment = MemberPaymentEntity.builder()
                     .userId(1L).paymentItemId(1L).status(PaymentStatus.PAID).build();
@@ -108,9 +110,27 @@ class StripeWebhookServiceTest {
 
             service.handleWebhook("payload", "sig");
 
-            // 非 PI event は escrow へ委譲されない（既存の charge.refunded 処理に到達）。
+            // escrow を先に試したが対象外 → 既存の会員費返金処理に到達。
+            verify(escrowWebhookService).handleChargeRefunded("payload", "sig");
             verify(escrowWebhookService, never()).handleWebhook(any(), any());
             verify(memberPaymentRepository).findByStripePaymentIntentId("pi_refund");
+        }
+
+        @Test
+        @DisplayName("F22.1 charge.refunded: escrow 対象（謝礼）なら escrow が処理し会員費返金処理には行かない")
+        void charge_refunded_謝礼はescrowが処理() {
+            StripePaymentProvider.WebhookEventInfo event = new StripePaymentProvider.WebhookEventInfo(
+                    "charge.refunded", null, "pi_escrow_refund", null, null,
+                    null, null, "re_e", new BigDecimal("10000"), new BigDecimal("10250"), null);
+            given(stripePaymentProvider.constructEvent(any(), any())).willReturn(event);
+            given(escrowWebhookService.handleChargeRefunded("payload", "sig")).willReturn(true);
+
+            service.handleWebhook("payload", "sig");
+
+            verify(escrowWebhookService).handleChargeRefunded("payload", "sig");
+            // escrow が処理したため会員費の返金処理には一切流れない。
+            verify(memberPaymentRepository, never()).findByStripePaymentIntentId(any());
+            verify(memberPaymentRepository, never()).save(any());
         }
     }
 }

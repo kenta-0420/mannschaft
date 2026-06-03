@@ -103,6 +103,27 @@
       "MARKET_003": "Cannot specify a team that is not a confirmed friend",
       "MARKET_004": "Cannot specify a folder owned by another team",
       "MARKET_005": "Cannot combine friend-only visibility with distribution targets"
+    },
+    "payment": {
+      "breakdown": {
+        "includesFeeNote": "* The total payment includes the payment processing fee.",
+        "refundFeeConditionalNote": "* In the event of a refund, the processing fee may not be refunded (refund terms depend on the listing owner's settings)."
+      },
+      "refund": {
+        "title": "Refund",
+        "feeBearerLabel": "Who bears the processing fee",
+        "feeBearer": {
+          "PAYER": "Payer bears it (cancellation at payer's request)",
+          "PAYEE": "Recipient bears it (our side / cancellation)"
+        },
+        "feeBearerHint": {
+          "PAYER": "Refunds the payer the net amount (after deducting fees). The processing fee is borne by the payer.",
+          "PAYEE": "Refunds the payer in full. The processing fee is borne by us (the recipient) and is ultimately settled against future payouts, etc."
+        },
+        "submit": "Issue refund",
+        "confirmTitle": "Confirm refund",
+        "confirmPayee": "This is a recipient-borne refund. The payer will be refunded in full, and the processing fee will be borne by you. Proceed?"
+      }
     }
   }
 }

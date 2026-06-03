@@ -103,6 +103,27 @@
       "MARKET_003": "Es kann kein Team angegeben werden, das kein bestätigter Freund ist",
       "MARKET_004": "Es kann kein Ordner eines anderen Teams angegeben werden",
       "MARKET_005": "Freunde-only-Sichtbarkeit kann nicht mit Verteilungszielen kombiniert werden"
+    },
+    "payment": {
+      "breakdown": {
+        "includesFeeNote": "* Der Gesamtbetrag enthält die Zahlungsbearbeitungsgebühr.",
+        "refundFeeConditionalNote": "* Im Falle einer Rückerstattung wird die Bearbeitungsgebühr möglicherweise nicht erstattet (die Rückerstattungsbedingungen hängen von den Einstellungen des Ausschreibenden ab)."
+      },
+      "refund": {
+        "title": "Rückerstattung",
+        "feeBearerLabel": "Wer trägt die Bearbeitungsgebühr",
+        "feeBearer": {
+          "PAYER": "Der Zahler trägt sie (Stornierung auf Wunsch des Zahlers)",
+          "PAYEE": "Der Empfänger trägt sie (auf unserer Seite / Abbruch)"
+        },
+        "feeBearerHint": {
+          "PAYER": "Erstattet dem Zahler den Nettobetrag (nach Abzug der Gebühren). Die Bearbeitungsgebühr trägt der Zahler.",
+          "PAYEE": "Erstattet dem Zahler den vollen Betrag. Die Bearbeitungsgebühr tragen wir (der Empfänger) und sie wird letztlich mit künftigen Auszahlungen usw. verrechnet."
+        },
+        "submit": "Rückerstattung veranlassen",
+        "confirmTitle": "Rückerstattung bestätigen",
+        "confirmPayee": "Dies ist eine vom Empfänger getragene Rückerstattung. Dem Zahler wird der volle Betrag erstattet und Sie tragen die Bearbeitungsgebühr. Fortfahren?"
+      }
     }
   }
 }

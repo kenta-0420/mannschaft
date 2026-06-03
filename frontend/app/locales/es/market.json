@@ -103,6 +103,27 @@
       "MARKET_003": "No se puede especificar un equipo que no sea amigo confirmado",
       "MARKET_004": "No se puede especificar una carpeta de otro equipo",
       "MARKET_005": "No se puede combinar solo amigos con destinos de distribución"
+    },
+    "payment": {
+      "breakdown": {
+        "includesFeeNote": "* El total del pago incluye la comisión de procesamiento del pago.",
+        "refundFeeConditionalNote": "* En caso de reembolso, es posible que la comisión de procesamiento no se reembolse (las condiciones de reembolso dependen de la configuración del organizador)."
+      },
+      "refund": {
+        "title": "Reembolso",
+        "feeBearerLabel": "Quién asume la comisión de procesamiento",
+        "feeBearer": {
+          "PAYER": "La asume el pagador (cancelación a petición del pagador)",
+          "PAYEE": "La asume el receptor (por nuestra parte / cancelación)"
+        },
+        "feeBearerHint": {
+          "PAYER": "Reembolsa al pagador el importe neto (tras deducir las comisiones). La comisión de procesamiento la asume el pagador.",
+          "PAYEE": "Reembolsa al pagador el importe íntegro. La comisión de procesamiento la asumimos nosotros (el receptor) y se liquida finalmente con los pagos futuros, etc."
+        },
+        "submit": "Emitir reembolso",
+        "confirmTitle": "Confirmar reembolso",
+        "confirmPayee": "Este es un reembolso asumido por el receptor. Se reembolsará al pagador el importe íntegro y usted asumirá la comisión de procesamiento. ¿Continuar?"
+      }
     }
   }
 }

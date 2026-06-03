@@ -16,8 +16,9 @@ EscrowChargeResult createCharge(ConnectChargeCommand cmd);
 //        faceAmount(額面), payerCustomerId, payeeConnectAccountId, idempotencyKey, ...
 // エスクローモード（謝礼）: 最終認証時の確定
 void captureCharge(UUID escrowId, String idempotencyKey);          // capture+transfer
-// 共通: 返金（受取側 ADMIN 操作・reverse_transfer:true / refund_application_fee:false）
-String refundCharge(UUID escrowId, long faceRefundAmount, String reason, String idempotencyKey);
+// 共通: 返金（受取側 ADMIN 操作・支払者負担モデル＝decouple・refund_application_fee:false）
+// transferRefundAmount=支払者へ戻す額（transferAmount ベース）。明示 TransferReversal＋reverse_transfer:false の Refund（§6.1）
+String refundCharge(UUID escrowId, long transferRefundAmount, String reason, String idempotencyKey);
 // 共通: 与信取消（capture 前のみ・即時モードは対象外）
 void cancelAuthorization(UUID escrowId, String idempotencyKey);
 ```
@@ -38,7 +39,7 @@ void cancelAuthorization(UUID escrowId, String idempotencyKey);
 | 4 | （内部）応募成立時の与信 | `incrementConfirmed()` フック | 謝礼（エスクロー） | イベント駆動・外部API無し |
 | 5 | （内部）最終認証時 capture+transfer | `MarketFinalize` confirm フック | 謝礼（エスクロー） | イベント駆動・外部API無し |
 | 5b | （会費・P2-e）会員の会費支払い（即時） | F08.2 既存会費 API が `ConnectChargeService.createCharge(MEMBERSHIP, AUTOMATIC)` を呼ぶ | 会費（即時） | 会員本人（F08.2 認可に委譲） |
-| 6 | `POST /api/v1/payment/escrow/{id}/refund` | 返金（部分/全額・`reverse_transfer:true`/`refund_application_fee:false`） | 共通 | **受取側 scope の ADMIN**（運営非関与・設定A） |
+| 6 | `POST /api/v1/payment/escrow/{id}/refund` | 返金（部分/全額・支払者負担モデル＝明示 TransferReversal＋`reverse_transfer:false` の Refund・`refund_application_fee:false`・§6.1） | 共通 | **受取側 scope の ADMIN**（運営非関与・設定A） |
 | 7 | `POST /api/v1/webhooks/stripe/connect` | Connect Webhook 受け口 | 共通 | permitAll（署名検証） |
 | 8 | `GET /api/v1/payment/escrow/{id}` | エスクロー取引の状態照会 | 共通 | 受取側 scope ADMIN・受領者本人 |
 
@@ -270,38 +271,86 @@ MarketFinalizeService / MarketFinalizeConfirmedListener:
 > **操作主体＝チーム/組織の管理者（受取側 scope の ADMIN）。Mannschaft 運営は関与しない。** 無関係 scope は 404 秘匿（03 §3/§4）。
 
 ```json
-// Request（amount は額面ベースの返金額。0 < amount ≤ face_amount）
-{ "amount": 5000, "reason": "cancellation", "reasonDetail": "天候中止のため" }
+// Request（amount は両モード共通で「精算額 R＝transferAmount ベース」。0 < amount ≤ transferAmount − 既返金累計。null=全額。
+//          feeBearer は手数料負担者 PAYER（既定）/ PAYEE。null=PAYER）
+{ "amount": 5000, "feeBearer": "PAYEE", "reason": "cancellation", "reasonDetail": "天候中止のため" }
 ```
-**処理**
+
+> **返金経済モデル＝feeBearer 2モード（マスター確定・2026-06-03）**: 受取側 scope の ADMIN が返金時に**手数料の負担者**を選択する。`amount`（精算額 R）は両モード共通で **transferAmount ベース**（残額管理・status 遷移・`refunds.amount`・`charge.refunded` webhook 確定はすべて R で行い整合させる）。額面 10,000 例（chargeAmount=10,250 / transferAmount=9,750 / application_fee=500 / Stripe 実手数料 ≈369）で**全額返金**後の各当事者の到達点:
+>
+> | 当事者 | モードA＝`PAYER`（既定・支払者都合） | モードB＝`PAYEE`（受取側の落ち度/中止） |
+> |---|---|---|
+> | 支払者 | 戻りは **transferAmount=9,750**。差額 500 を負担。−10,250+9,750=**−500** | **満額 chargeAmount=10,250** が戻る（落ち度がないので満額）。**±0** |
+> | 受取側 | **±0**（受け取った 9,750 を全額巻き戻し） | 送金 9,750 巻き戻し（受取側 −9,750・落ち度の代償） |
+> | Mannschaft | **±0**（charge 時純益を維持・application_fee keep） | **1.4% を放棄して中立**（`refund_application_fee:true`）＋**Stripe 手数料 ≈369 を一時負担**（後述の制約） |
+
+> **⚠️ モードB の Stripe 実挙動の制約（数値検証・正直報告・症状を隠さない）**: マスター意図は「モードB では受取側が Stripe 決済手数料（≈369）を負担し Mannschaft±0」だが、**標準 Stripe API のみでこれを返金 1 件ごとに自動成立させることは不可能**であることを実挙動検証で確認した。
+> - **Stripe 決済手数料は返金で返らない**（全 payment method 共通・Stripe 公式: refund 自体に手数料はかからないが*元取引の処理手数料は返金されない*）。Destination Charge では platform（Mannschaft）が手数料の支払者であるため、返金時にこの手数料は **platform が被る**。
+> - **受取側から手数料分を追加で巻き戻せない**: `TransferReversal` の上限は**元送金額（9,750）**であり、それを超えて受取側残高から ≈369 を引くことはできない（[Transfer Reversals: "reversing a transfer made for a destination charge is allowed only up to the amount of the charge"]）。
+> - **受取側残高からの追加徴収（Account Debits）は要件が重い**: 連結口座の*法的同意*＋*追加コスト*＋*platform と連結口座が同一リージョン*が必須で、**返金 1 件ごとの自動操作には適さない**（運用 / 例外処理向き）。
+> - **したがって本実装のモードB は標準呼び出し `Refund.create(amount=grossRefund, reverse_transfer=true, refund_application_fee=true)` を採用**し、結果として **Mannschaft が Stripe 手数料 ≈369 を一時負担**する。受取側への最終転嫁は**リコンシリエーション（§6.3）／次回入金からの相殺／運用での Account Debits** に委ねる。一時負担額は `ledger_entries`(C PLATFORM_FEE) に記録して**可視化**する（握り潰さない）。
+
+**処理（feeBearer でモード分岐・capture 後 CAPTURED/PARTIALLY_REFUNDED）**
 ```
-1. 認可: 受取側 scope の ADMIN のみ（IDOR: escrow.payee の scope 所有権検証・03 §4）
+R = 精算額（transferAmount ベース・null=残額全部）
+
+■ モードA＝PAYER（既定・decouple 方式・比例 reverse の落とし穴を回避）
+  ① transferId = resolve(PaymentIntent → latest_charge → charge.transfer)   // capture 時の tr_xxx
+     （解決不能なら INVALID_ESCROW_STATE で拒否・症状を隠さない）
+  ② Transfer.createReversal(transferId, amount=R, key="reversal-{escrowId}-{seq}")  // 受取側から R 巻き戻し（先に実行）
+  ③ Refund.create(amount=R, reverse_transfer=false, refund_application_fee=false, key="refund-{escrowId}-{seq}")
+     → 支払者へ R 返金（Mannschaft±0・受取側±0・1.4% keep）
+  ④ ledger(REFUND): D PAYEE=R / C PAYER=R（借貸一致）
+
+■ モードB＝PAYEE（支払者満額返金＋application_fee 返金＝Mannschaft 中立化）
+  ① grossRefund = 支払者へ戻す満額（全額時=chargeAmount、部分時=round(chargeAmount × R / transferAmount)）
+  ② Refund.create(amount=grossRefund, reverse_transfer=true, refund_application_fee=true, key="refund-{escrowId}-{seq}")
+     → 支払者へ grossRefund 返金 / 送金（比例）巻き戻し / application_fee 返金（Stripe 手数料は platform 一時負担）
+     ※ 明示 TransferReversal は呼ばない（reverse_transfer=true が巻き戻しを担う＝二重巻き戻し防止）
+  ③ ledger(REFUND): D PAYER=grossRefund / C PAYEE=R ＋ C PLATFORM_FEE=(grossRefund − R)（借貸一致・Mannschaft 放棄/一時負担を可視化）
+
+共通: refunds INSERT (amount=R, status=PENDING) → charge.refunded Webhook で SUCCEEDED 確定
+      → 累計(R 基準)==transferAmount なら REFUNDED / 部分なら PARTIALLY_REFUNDED
+```
+
+> **部分返金の不変条件**: モードA 部分は「支払者へ R / 受取側 R 巻き戻し」。モードB 部分は「支払者へ R をグロスアップした gross / 受取側 R 比例の手数料負担」。残額管理は両モードとも R（transferAmount 基準）で一致するため、混在返金（同一 escrow で A と B を跨ぐ）でも累計が transferAmount に達した時点で REFUNDED となる。grossRefund の比例丸めは ≤1 円の誤差が出うるが、`ledger_entries`(PLATFORM_FEE) と §6.3 リコンシリで台帳化し可視化する（隠さない）。
+
+**処理（decouple 方式・比例 reverse の落とし穴を回避）**
+```
+1. 認可: 受取側 scope の ADMIN のみ（IDOR: escrow.payee の scope 所有権検証・03 §4。USER 受領は本波未提供で 404 秘匿）
 2. status 分岐:
    ├─ AUTHORIZED/HELD（capture 前）: PaymentIntent.cancel() → CANCELLED
    │     （返金でなく与信取消・支払者に課金なし・即時モード MEMBERSHIP は capture 前が無いため対象外）
-   └─ CAPTURED（capture 後）: Refund.create(
-   │       amount,
-   │       reverse_transfer = true,          // 返金額を受取側 Connect 残高から戻す（Mannschaft 負担ゼロ）
-   │       refund_application_fee = false,    // 徴収済み Mannschaft 手数料は返金しない（設定A）
-   │       idempotency_key="refund-{escrowId}-{seq}")
-   │     → refunds INSERT (status=PENDING) → charge.refunded Webhook で SUCCEEDED 確定
-   │     → amount==face_amount なら REFUNDED / 部分なら PARTIALLY_REFUNDED
+   └─ CAPTURED/PARTIALLY_REFUNDED（capture 後）: R = 支払者へ戻す額（transferAmount ベース・null=残額全部）
+   │   ① transferId = resolve(PaymentIntent → latest_charge → charge.transfer)   // capture 時の tr_xxx
+   │      （解決不能なら INVALID_ESCROW_STATE で拒否・症状を隠さない）
+   │   ② Transfer.createReversal(transferId, amount=R, idempotency_key="reversal-{escrowId}-{seq}")  // 受取側から R 巻き戻し（先に実行）
+   │   ③ Refund.create(
+   │        amount = R,                       // 支払者へ R（=transferAmount ベース）を返金
+   │        reverse_transfer = false,         // 比例 reverse は使わない（②で明示巻き戻し済み＝Mannschaft±0）
+   │        refund_application_fee = false,   // 徴収済み Mannschaft 手数料は返金しない（設定A・1.4% keep）
+   │        idempotency_key="refund-{escrowId}-{seq}")
+   │     → refunds INSERT (amount=R, status=PENDING) → charge.refunded Webhook で SUCCEEDED 確定
+   │     → 累計==transferAmount なら REFUNDED / 部分なら PARTIALLY_REFUNDED
 3. ledger_entries(REFUND or CANCEL) を **監査追記のみ**（自前の逆仕訳ロジックは作らない＝金を動かすのは Stripe）
+   REFUND は D PAYEE=R / C PAYER=R（受取側が被る額=支払者へ戻す額・借貸一致）
 ```
 
-> - **金を動かすのは Stripe**: `reverse_transfer:true` で受取側 Connect 残高から返金原資を戻すため、Mannschaft の自前逆仕訳・自社負担は発生しない。`refunds` テーブルは記録専用。
-> - **Stripe 決済手数料（≈3.6%）は返金されない**（Stripe 仕様・`refund_application_fee:false` とは別に Stripe 手数料そのものが戻らない）。利用規約・決済画面で事前周知（README §3.5.1 / 03 §10 / 04 §3.1）。
-> - **受取側残高不足**: 受取側 Connect 残高が返金額に満たない場合、Stripe がマイナス残高を後続入金/口座引落で**自動回収**する。**Mannschaft には請求が来ない**（03 §6 運用注意）。
+> - **なぜ比例 reverse（`reverse_transfer:true`）を使わないか**: 「返金額=transferAmount(9,750) + `reverse_transfer:true`」だと Stripe は送金を `9,750/10,250=95.12%` でしか比例巻き戻しせず受取側に約 476 残り、Mannschaft が持ち出しになる。逆に「返金額=face(10,000) + 比例 reverse」でも 97.56% 巻き戻しで 238 残る。**boolean 比例 reverse 単独では Mannschaft±0/受取側±0 を同時達成できない**。そこで **②明示 TransferReversal（R）＋③`reverse_transfer:false` の Refund（R）を decouple** し、巻き戻し額＝返金額＝R を**完全一致**させる（Mannschaft±0・受取側±0）。
+> - **不変条件**: 任意の返金額 R に対し **(Mannschaft の balance 変化)=0 かつ (受取側が被る額)=(支払者へ戻す額=R)**。支払者は手数料分（支払上乗せ 2.5% + Stripe 決済手数料）を取り戻せない。
+> - **巻き戻しを先に**: ②（受取側 → platform）を③（platform → 支払者）より先に実行し、巻き戻し失敗時に支払者返金へ進まない（Mannschaft の一時的持ち出しも防ぐ）。
+> - **Stripe 決済手数料（≈3.6%）は返金されない**（Stripe 仕様・`refund_application_fee:false` とは別に Stripe 手数料そのものが戻らない）。返金額が transferAmount ベース（支払上乗せ 2.5% を含まない）であることと併せ、利用規約・決済画面で事前周知（README §3.5.1 / 03 §10 / 04 §3.1）。
+> - **受取側残高不足**: 受取側 Connect 残高が巻き戻し額に満たない場合、Stripe がマイナス残高を後続入金/口座引落で**自動回収**する。**Mannschaft には請求が来ない**（03 §6 運用注意）。
 
 **エラー**
 | 条件 | エラー |
 |---|---|
 | 既に REFUNDED | `PAYMENT_020 ALREADY_REFUNDED` |
-| `amount > 残額（face_amount − 既返金額）` | `PAYMENT_021 REFUND_AMOUNT_EXCEEDS` |
+| `amount > 残額（transferAmount − 既返金額）`（支払者負担モデル・02 §6.1） | `PAYMENT_021 REFUND_AMOUNT_EXCEEDS` |
 | 受取側 scope ADMIN でない | `PAYMENT_001 FORBIDDEN`（403・無関係 scope は 404） |
 
 ### 6.2 札下げ・期限切れ連携（自動）
-`cancelByAdmin()` / `autoCancel()` が `RecruitmentCancelledEvent` を発火 → `payment.escrow` が与信中（AUTHORIZED/HELD）の escrow を `PaymentIntent.cancel()` で取消（支払者課金なし）。capture 済なら全額 Refund（`reverse_transfer:true`/`refund_application_fee:false`・札下げ＝役務不履行のため）。
+`cancelByAdmin()` / `autoCancel()` が `RecruitmentCancelledEvent` を発火 → `payment.escrow` が与信中（AUTHORIZED/HELD）の escrow を `PaymentIntent.cancel()` で取消（支払者課金なし）。capture 済なら全額返金（§6.1 の decouple 方式＝明示 TransferReversal＋`reverse_transfer:false` の Refund・`refund_application_fee:false`・札下げ＝役務不履行でも支払者負担モデルは同じ＝支払者へ transferAmount を戻す）。
 
 ### 6.3 リコンシリエーション（整合バッチ・純益可視化）
 - 15 分間隔で `PaymentIntent.retrieve`／日次で `balance_transaction` を取得し、`ledger_entries` と Stripe balance を突合（F13.1 §8.8 踏襲）。
@@ -348,9 +397,12 @@ PaymentIntentInfo createDestinationPaymentIntent(
 
 void captureManualPaymentIntent(String paymentIntentId, String idempotencyKey);   // capture+transfer（エスクローモードのみ）
 void cancelAuthorization(String paymentIntentId, String idempotencyKey);          // 与信取消
-// 返金（reverse_transfer/refund_application_fee を明示・設定A）
-String createPartialRefund(String paymentIntentId, long amountMinor, String reason,
+// 返金（支払者負担モデル・decouple 方式）: reverse_transfer=false で支払者へ R を返金（refund_application_fee=false=1.4% keep）
+ConnectRefundInfo createConnectRefund(String paymentIntentId, long amountMinor, String reason,
     boolean reverseTransfer, boolean refundApplicationFee, String idempotencyKey);
+// 受取側送金を明示的に巻き戻す（Mannschaft±0/受取側±0・比例 reverse の取りこぼし回避）
+String resolveTransferIdFromPaymentIntent(String paymentIntentId);                // PI → latest_charge → charge.transfer（tr_xxx）
+void reverseTransfer(String transferId, long amountMinor, String idempotencyKey); // Transfer.createReversal(amount=R)
 
 ConnectAccountInfo retrieveConnectAccount(String stripeAccountId);                 // status 同期用
 
@@ -383,7 +435,7 @@ record ConnectAccountInfo(boolean chargesEnabled, boolean payoutsEnabled, java.u
 - **手数料折半（§3.5）**: 額面10,000 → amount=10,250 / application_fee=500 / 受取側送金=9,750。端数 99 円/1 円等で四捨五入が `round(face×0.025)`/`round(face×0.05)` に一致。`application_fee_amount ≤ amount` 不変。
 - **2モード**: エスクロー（RECRUITMENT・MANUAL）は AUTHORIZED 経由、即時（MEMBERSHIP・AUTOMATIC）は INSERT 時 CAPTURED・hold_expires_at NULL。`ConnectChargeService.createCharge` がモードで `capture_method` を分岐。
 - **状態遷移**: AUTHORIZED→CAPTURED、AUTHORIZED→CANCELLED、HELD→（onboarding完了）→CAPTURED、CAPTURED→PARTIALLY_REFUNDED/REFUNDED、DISPUTED→先capture、（即時）→CAPTURED。
-- **返金（設定A）**: capture 済 Refund に `reverse_transfer=true`/`refund_application_fee=false` が渡る。部分返金で残額管理（face_amount 基準）。capture 前は cancel（課金なし）。
+- **返金（設定A・支払者負担モデル・§6.1）**: capture 済は decouple 方式＝明示 TransferReversal(R)＋`reverse_transfer=false`/`refund_application_fee=false` の Refund(R) で、支払者へ transferAmount(9,750) を戻し受取側±0・Mannschaft±0・1.4% keep。残額管理は **transferAmount 基準**。capture 前は cancel（課金なし）。
 - **保留**: payouts_enabled=false で与信 → HELD。72h 超過 → CANCELLED ＋ 通知。
 - **JPY**: amount/application_fee=円整数で Stripe へ渡る（ゼロデシマル）。
 - **二重払出防止**: 並行 confirm（札行ロック直列化）で capture が 1 回のみ。

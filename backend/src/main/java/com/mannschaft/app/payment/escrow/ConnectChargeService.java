@@ -66,6 +66,8 @@ public class ConnectChargeService {
     private final StripePaymentProvider stripePaymentProvider;
     private final AccessControlService accessControlService;
     private final LedgerEntryRepository ledgerEntryRepository;
+    private final RefundRepository refundRepository;
+    private final PayeeScopeResolver payeeScopeResolver;
 
     /**
      * 謝礼の与信を開始する（設計書 02 §5.1）。
@@ -227,6 +229,298 @@ public class ConnectChargeService {
 
         log.info("謝礼の払出を確定 CAPTURED: escrowId={}, piId={}, capture={}, transfer={}, fee={}",
                 escrowId, pi.paymentIntentId(), captureAmount, transferOut, feeAmount);
+    }
+
+    /**
+     * 謝礼/会費の返金または与信取消を行う（設計書 02 §6.1・設定A・マスター確定）。
+     *
+     * <p><b>操作主体＝受取側 scope（payee の TEAM/ORG）の ADMIN</b>（Mannschaft 運営は関与しない）。
+     * 認可は {@link AccessControlService} で行い、無関係 scope は {@link ConnectPaymentErrorCode#PAYMENT_RESOURCE_NOT_FOUND}
+     * で 404 秘匿する（IDOR・03 §3/§4）。</p>
+     *
+     * <p><b>二重返金・競合防止（根治）:</b> escrow 行を {@code PESSIMISTIC_WRITE} でロックして読む
+     * （{@link EscrowTransactionRepository#findByIdForUpdate}・capture / charge.refunded webhook と直列化）。</p>
+     *
+     * <p><b>状態分岐（設計書 02 §6.1）:</b></p>
+     * <ul>
+     *   <li>{@link EscrowStatus#CAPTURED}/{@link EscrowStatus#PARTIALLY_REFUNDED}（capture 後）→
+     *       <b>支払者負担モデル（decouple 方式・後述）</b>で Stripe 返金。{@code refunds} を {@code PENDING} で
+     *       記録し（{@code charge.refunded} webhook で {@code SUCCEEDED} 確定）、累計が transferAmount に達したら
+     *       {@link EscrowStatus#REFUNDED}、一部なら {@link EscrowStatus#PARTIALLY_REFUNDED}。
+     *       {@code ledger_entries}(REFUND) を監査追記する（借貸一致・金を動かすのは Stripe・自前逆仕訳は作らない）。</li>
+     *   <li>{@link EscrowStatus#AUTHORIZED}/{@link EscrowStatus#HELD}（capture 前）→ 返金でなく<b>与信取消</b>
+     *       （{@code cancelAuthorization}・支払者課金なし）。{@link EscrowStatus#CANCELLED} にし、課金が起きていない
+     *       ため {@code refunds} には記録しない。</li>
+     *   <li>既に {@link EscrowStatus#REFUNDED}/{@link EscrowStatus#CANCELLED} → 冪等 no-op。</li>
+     * </ul>
+     *
+     * <p><b>金額モデル＝feeBearer 2モード（マスター確定・2026-06-03）:</b> {@code amountMinor} は両モード共通で
+     * <b>受取側が実際に受け取った正味（transferAmount＝{@code amount − application_fee_amount}・額面 10,000 円なら
+     * 9,750 円）ベースの精算額 R</b>（{@code 0 < R ≤ transferAmount − 既返金累計}・{@code null} は残額全部）。
+     * 残額管理・status 遷移・refunds.amount は両モードとも R（transferAmount ベース）で行い、{@code charge.refunded}
+     * webhook 確定ロジックと整合させる（残額超過は {@link ConnectPaymentErrorCode#REFUND_AMOUNT_EXCEEDS}）。</p>
+     *
+     * <p><b>モードA＝{@link FeeBearer#PAYER}（既定・支払者都合・decouple 方式）:</b> 比例 reverse
+     * （{@code Refund.create(reverse_transfer=true)}）は送金を {@code refundAmount/chargeAmount} の比率でしか
+     * 巻き戻さず取りこぼしが残り Mannschaft が持ち出しになる。これを避けるため
+     * (1) {@link StripePaymentProvider#reverseTransfer} で送金から R を<b>明示的に巻き戻し</b>、
+     * (2) {@link StripePaymentProvider#createConnectRefund}（{@code reverse_transfer=false}/
+     * {@code refund_application_fee=false}）で支払者へ R を返金する。これで「支払者へ R 返金」「受取側 ±0」
+     * 「Mannschaft±0（1.4% keep）」が成立する。巻き戻しを先に行い、失敗時は支払者返金へ進まない。</p>
+     *
+     * <p><b>モードB＝{@link FeeBearer#PAYEE}（受取側の落ち度/中止）:</b> 支払者へ<b>満額（chargeAmount 相当・
+     * grossRefund）</b>を戻し、Mannschaft は application_fee も返金して中立化する
+     * （{@code Refund.create(amount=grossRefund, reverse_transfer=true, refund_application_fee=true)}）。
+     * grossRefund は精算額 R を支払者上乗せ込みにグロスアップした額（全額時は chargeAmount、部分時は
+     * {@code round(chargeAmount × R / transferAmount)}）。
+     * <b>⚠️ Stripe 実挙動の制約（正直報告・症状を隠さない）:</b> Stripe の Destination Charge 返金では
+     * <b>元取引の決済手数料（≈369）は返金されず、標準フローでは platform（Mannschaft）が負担する</b>
+     * （TransferReversal は送金額が上限で受取側から手数料分を追加で巻き戻せない／Account Debits は連結口座の同意・
+     * 追加コスト・同一リージョンが要件で返金 1 件ごとの自動操作に適さない）。よって「受取側が Stripe 手数料を負担」を
+     * 標準 API のみで自動成立させることは不可能であり、本モードでは<b>Mannschaft が Stripe 手数料を一時負担</b>する。
+     * 受取側への最終転嫁はリコンシリエーション（§6.3）／次回入金相殺／運用での Account Debits に委ねる。
+     * grossRefund と R の差額（Mannschaft が支払者へ追加で戻す＝放棄する margin）は {@code ledger_entries}
+     * （C PLATFORM_FEE）に明示記録して可視化する。</p>
+     *
+     * @param escrowId     返金対象のエスクロー取引 ID
+     * @param amountMinor  精算額 R（transferAmount ベース・最小通貨単位）。{@code null} は全額（残額全部）。
+     * @param feeBearer    手数料負担者モード（{@code null}=既定 {@link FeeBearer#PAYER}）
+     * @param reason       返金理由（{@code requested_by_customer}/{@code duplicate}/{@code cancellation} 等）
+     * @param reasonDetail 補足（PII 非含意・任意・自社台帳のみ保持）
+     * @param actorUserId  操作者ユーザー ID（受取側 scope の ADMIN 認可・監査）
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public RefundResult refund(UUID escrowId, Long amountMinor, FeeBearer feeBearer,
+                               String reason, String reasonDetail, Long actorUserId) {
+        EscrowTransactionEntity escrow = escrowTransactionRepository.findByIdForUpdate(escrowId)
+                .orElseThrow(() -> new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
+
+        // 認可/IDOR: 受取側 scope（payee の TEAM/ORG）の ADMIN のみ。無関係 scope は 404 秘匿（03 §3/§4）。
+        authorizePayeeAdmin(escrow, actorUserId);
+
+        // 冪等: 既に終端状態（全額返金/取消済み）なら no-op（Stripe を呼ばない・二重返金しない）。
+        if (escrow.getStatus() == EscrowStatus.REFUNDED || escrow.getStatus() == EscrowStatus.CANCELLED) {
+            log.info("返金/取消は既に終端状態（冪等・no-op）: escrowId={}, status={}", escrowId, escrow.getStatus());
+            return new RefundResult(escrowId, escrow.getStatus(), 0L, 0L);
+        }
+
+        // capture 前（AUTHORIZED/HELD）は返金でなく与信取消（支払者に課金なし・02 §6.1）。
+        if (escrow.getStatus() == EscrowStatus.AUTHORIZED || escrow.getStatus() == EscrowStatus.HELD) {
+            cancelAuthorizationForRefund(escrow);
+            return new RefundResult(escrowId, EscrowStatus.CANCELLED, 0L, 0L);
+        }
+
+        // reason は refunds.reason が NOT NULL のため既定値で補完（Stripe へも正規化して渡す）。
+        String effectiveReason = (reason != null && !reason.isBlank()) ? reason : "requested_by_customer";
+
+        // ここから capture 後（CAPTURED / PARTIALLY_REFUNDED）の返金。
+        if (escrow.getStripePaymentIntentId() == null) {
+            // capture 後で PI が無いのは整合性異常。症状を隠さず 409 で拒否する。
+            log.warn("CAPTURED だが PaymentIntent 未設定（異常）。返金不能: escrowId={}", escrowId);
+            throw new BusinessException(ConnectPaymentErrorCode.INVALID_ESCROW_STATE);
+        }
+
+        // 支払者負担モデル: 返金の上限は「受取側が実際に受け取った正味＝transferAmount（amount − application_fee）」。
+        // 支払者上乗せ 2.5% と Stripe 決済手数料は戻らない。残額管理も transferAmount ベースで行う（02 §6.1）。
+        long transferAmount = escrow.getAmount() - escrow.getApplicationFeeAmount();
+        long alreadyRefunded = sumRefundedTransferAmount(escrowId);
+        long residualBefore = transferAmount - alreadyRefunded;
+        if (residualBefore <= 0L) {
+            // 受取側送金全額が既に巻き戻し済み（理論上 status REFUNDED で弾かれるが二重防御）。
+            throw new BusinessException(ConnectPaymentErrorCode.ALREADY_REFUNDED);
+        }
+
+        // refundAmount R = 支払者へ戻す額 = 受取側から巻き戻す額（Mannschaft±0・受取側が被る額=支払者戻り）。
+        long refundAmount = (amountMinor != null) ? amountMinor : residualBefore;
+        if (refundAmount <= 0L || refundAmount > residualBefore) {
+            log.warn("返金額が不正/残額超過: escrowId={}, request={}, residual={}（transferベース）",
+                    escrowId, refundAmount, residualBefore);
+            throw new BusinessException(ConnectPaymentErrorCode.REFUND_AMOUNT_EXCEEDS);
+        }
+
+        FeeBearer effectiveBearer = (feeBearer != null) ? feeBearer : FeeBearer.PAYER;
+        // 冪等キーは部分返金の連番（両モード共通）。
+        int seq = refundRepository.findByEscrowTransactionId(escrowId).size() + 1;
+
+        StripePaymentProvider.ConnectRefundInfo refundInfo;
+        List<LedgerEntryEntity> entries;
+        if (effectiveBearer == FeeBearer.PAYER) {
+            // ── モードA＝支払者負担（decouple 方式・比例 reverse の取りこぼし回避・02 §6.1）──
+            // (1) 受取側送金から R を明示的に巻き戻す（先に実行。失敗時は支払者返金へ進まず Mannschaft の持ち出しも防ぐ）。
+            //     送金 ID は PaymentIntent → latest_charge → charge.transfer で解決する（capture 時に作られた tr_xxx）。
+            String transferId = stripePaymentProvider.resolveTransferIdFromPaymentIntent(escrow.getStripePaymentIntentId());
+            if (transferId == null) {
+                // capture 済みなのに送金が解決できないのは整合性異常。症状を隠さず 409 で拒否する。
+                log.warn("CAPTURED だが Transfer 未解決（異常）。返金不能: escrowId={}, piId={}",
+                        escrowId, escrow.getStripePaymentIntentId());
+                throw new BusinessException(ConnectPaymentErrorCode.INVALID_ESCROW_STATE);
+            }
+            stripePaymentProvider.reverseTransfer(transferId, refundAmount, "reversal-" + escrowId + "-" + seq);
+
+            // (2) 支払者へ R を返金（reverse_transfer=false: 比例 reverse を使わず明示巻き戻しで Mannschaft±0 を担保。
+            //     refund_application_fee=false: 1.4% keep）。
+            refundInfo = stripePaymentProvider.createConnectRefund(
+                    escrow.getStripePaymentIntentId(), refundAmount, effectiveReason, false, false,
+                    "refund-" + escrowId + "-" + seq);
+
+            // ledger(REFUND) 監査追記: 受取側 Connect 残高から戻る（D PAYEE）＝支払者へ返金（C PAYER）。借貸一致（01 §3.3）。
+            entries = LedgerEntryBuilder.forTransaction(escrowId, escrow.getCurrency())
+                    .debit(LedgerEntryType.REFUND, LedgerAccount.PAYEE, refundAmount, refundInfo.refundId())
+                    .credit(LedgerEntryType.REFUND, LedgerAccount.PAYER, refundAmount, refundInfo.refundId())
+                    .build();
+            log.info("返金受付（モードA=支払者負担）: escrowId={}, refundId={}, transferId={}, R={}（transferベース）",
+                    escrowId, refundInfo.refundId(), transferId, refundAmount);
+        } else {
+            // ── モードB＝受取側負担（支払者満額返金＋application_fee 返金・02 §6.1）──
+            // 支払者へ戻すグロス額: 全額（R==残額全部）なら chargeAmount、部分なら R を支払者上乗せ込みにグロスアップ。
+            long grossRefund = grossRefundForPayee(escrow, refundAmount, residualBefore);
+            // Refund.create(amount=grossRefund, reverse_transfer=true, refund_application_fee=true)。
+            // reverse_transfer=true: 送金を（比例）巻き戻し受取側から回収。refund_application_fee=true: 1.4% を放棄し中立化。
+            // ⚠️ Stripe 仕様: 元取引の決済手数料は返金されず標準フローでは Mannschaft 負担。明示 TransferReversal は呼ばない
+            //     （reverse_transfer=true が送金巻き戻しを担う・二重巻き戻し防止）。手数料の受取側転嫁はリコンシリ/運用に委ねる。
+            refundInfo = stripePaymentProvider.createConnectRefund(
+                    escrow.getStripePaymentIntentId(), grossRefund, effectiveReason, true, true,
+                    "refund-" + escrowId + "-" + seq);
+
+            // ledger(REFUND) 監査追記: 支払者へ grossRefund（D PAYER）。原資は受取側送金巻き戻し R（C PAYEE）＋
+            // Mannschaft が放棄/一時負担する margin（C PLATFORM_FEE = grossRefund − R）。借貸一致（01 §3.3）。
+            long platformBorne = grossRefund - refundAmount;
+            LedgerEntryBuilder builder = LedgerEntryBuilder.forTransaction(escrowId, escrow.getCurrency())
+                    .debit(LedgerEntryType.REFUND, LedgerAccount.PAYER, grossRefund, refundInfo.refundId())
+                    .credit(LedgerEntryType.REFUND, LedgerAccount.PAYEE, refundAmount, refundInfo.refundId());
+            if (platformBorne > 0L) {
+                builder.credit(LedgerEntryType.FEE, LedgerAccount.PLATFORM_FEE, platformBorne, refundInfo.refundId());
+            }
+            entries = builder.build();
+            log.info("返金受付（モードB=受取側負担・支払者満額）: escrowId={}, refundId={}, gross={}, R={}（transferベース）, "
+                            + "Mannschaft 放棄/一時負担={}（うち Stripe 手数料は §6.3 でリコンシリ）",
+                    escrowId, refundInfo.refundId(), grossRefund, refundAmount, platformBorne);
+        }
+
+        // refunds に PENDING で記録（charge.refunded webhook で SUCCEEDED 確定）。amount=精算額 R（transferベース・両モード共通）。
+        RefundEntity refundEntity = RefundEntity.builder()
+                .escrowTransactionId(escrowId)
+                .stripeRefundId(refundInfo.refundId())
+                .amount(refundAmount)
+                .currency(escrow.getCurrency())
+                .reason(effectiveReason)
+                .reasonDetail(reasonDetail)
+                .refundedByUserId(actorUserId)
+                .status(RefundStatus.PENDING)
+                .build();
+        refundRepository.save(refundEntity);
+
+        // 累計（R ベース）が transferAmount に達したら REFUNDED、それ未満なら PARTIALLY_REFUNDED（両モード共通）。
+        long newTotal = alreadyRefunded + refundAmount;
+        escrow.setStatus(newTotal >= transferAmount ? EscrowStatus.REFUNDED : EscrowStatus.PARTIALLY_REFUNDED);
+        escrowTransactionRepository.save(escrow);
+
+        ledgerEntryRepository.saveAll(entries);
+
+        log.info("返金を受付 status={}: escrowId={}, refundId={}, feeBearer={}, R={}（transferベース）, 累計={}/{}",
+                escrow.getStatus(), escrowId, refundInfo.refundId(), effectiveBearer, refundAmount, newTotal, transferAmount);
+        return new RefundResult(escrowId, escrow.getStatus(), refundAmount, transferAmount - newTotal);
+    }
+
+    /**
+     * モードB（受取側負担）で支払者へ戻すグロス返金額（chargeAmount 相当）を求める。
+     *
+     * <p>精算額 R（transferAmount ベース）を支払者上乗せ込みにグロスアップする。全額返金
+     * （{@code R == residualTransfer}・残額全部）の場合は丸め誤差を排除して残りの chargeAmount を正確に返す
+     * （クリーンな CAPTURED からの全額返金なら chargeAmount に一致）。部分の場合は
+     * {@code round(chargeAmount × R / transferAmount)} の比例グロスアップとする。</p>
+     *
+     * @param escrow          対象 escrow（amount=chargeAmount / applicationFee 保持）
+     * @param refundAmount    今回の精算額 R（transferAmount ベース）
+     * @param residualTransfer 今回返金前の残額（transferAmount − 既返金累計）
+     * @return 支払者へ戻すグロス額（最小通貨単位・{@code refundAmount ≤ grossRefund ≤ chargeAmount}）
+     */
+    private long grossRefundForPayee(EscrowTransactionEntity escrow, long refundAmount, long residualTransfer) {
+        long chargeAmount = escrow.getAmount();
+        long transferAmount = chargeAmount - escrow.getApplicationFeeAmount();
+        if (refundAmount >= residualTransfer) {
+            // 残額全部の精算 → 残りの chargeAmount を正確に返す（既返金分のグロスを差し引く）。
+            long alreadyRefundedTransfer = transferAmount - residualTransfer;
+            long alreadyGross = (transferAmount <= 0L) ? 0L
+                    : Math.round((double) chargeAmount * alreadyRefundedTransfer / transferAmount);
+            return chargeAmount - alreadyGross;
+        }
+        // 部分精算 → 比例グロスアップ（最小通貨単位の四捨五入）。
+        if (transferAmount <= 0L) {
+            return refundAmount;
+        }
+        return Math.round((double) chargeAmount * refundAmount / transferAmount);
+    }
+
+    /**
+     * 返金/与信取消の結果（設計書 02 §6.1）。
+     *
+     * <p>PCI 禁則（{@code client_secret}/{@code pi_xxx}/{@code acct_xxx}）は含めない（03 §10）。
+     * 金額は額面ベース（最小通貨単位）。</p>
+     *
+     * @param escrowId       エスクロー取引 ID
+     * @param status         返金後の escrow 状態
+     * @param refundedAmount 今回の返金額（支払者へ戻した額・transferAmount ベース・与信取消時は 0）
+     * @param residualAmount 残額（transferAmount − 既返金累計）
+     */
+    public record RefundResult(UUID escrowId, EscrowStatus status, long refundedAmount, long residualAmount) {}
+
+    /**
+     * capture 前（AUTHORIZED/HELD）の与信取消を行う（返金でなく PaymentIntent.cancel・支払者課金なし）。
+     *
+     * <p>PI 未作成（HELD で onboarding 未完了）の場合は Stripe を呼ばず状態のみ CANCELLED にする。</p>
+     */
+    private void cancelAuthorizationForRefund(EscrowTransactionEntity escrow) {
+        if (escrow.getStripePaymentIntentId() != null) {
+            stripePaymentProvider.cancelAuthorization(escrow.getStripePaymentIntentId(), "cancel-" + escrow.getId());
+        }
+        escrow.setStatus(EscrowStatus.CANCELLED);
+        escrow.setCancelledAt(LocalDateTime.now());
+        escrowTransactionRepository.save(escrow);
+        log.info("capture 前のため返金でなく与信取消 CANCELLED: escrowId={}, hasPi={}",
+                escrow.getId(), escrow.getStripePaymentIntentId() != null);
+    }
+
+    /** 既返金累計（支払者へ戻した額＝transferAmount ベース）を集計する。FAILED は除外する（不成立は残額を消費しない）。 */
+    private long sumRefundedTransferAmount(UUID escrowId) {
+        return refundRepository.findByEscrowTransactionId(escrowId).stream()
+                .filter(r -> r.getStatus() != RefundStatus.FAILED)
+                .mapToLong(RefundEntity::getAmount)
+                .sum();
+    }
+
+    /**
+     * 返金操作者が受取側 scope（payee の TEAM/ORG）の ADMIN であることを検証する（設計書 03 §3/§4・設定A）。
+     *
+     * <p>escrow の {@code payeeConnectAccountId} から受取側 Connect 口座を解決し、その {@code scopeKind}/{@code scopeId}
+     * に対して {@link AccessControlService} を適用する。口座が解決できない（無関係 escrow）場合は 404 秘匿。
+     * USER 受領（個人）は scope 認可の対象外（本人固定）であり、本波の返金 API では USER 受領の明示返金は
+     * 提供しないため拒否する（IDOR 秘匿のため 404）。認可エラーは {@link ConnectPaymentErrorCode#PAYMENT_FORBIDDEN}。</p>
+     */
+    private void authorizePayeeAdmin(EscrowTransactionEntity escrow, Long actorUserId) {
+        ConnectAccountEntity payee = connectAccountRepository.findById(escrow.getPayeeConnectAccountId())
+                .orElseThrow(() -> new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
+
+        ScopeKind payeeKind = payee.getScopeKind();
+        if (payeeKind == ScopeKind.USER) {
+            // 個人受領の明示返金は本波未提供。存在を漏らさず 404 秘匿で拒否する（IDOR）。
+            throw new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND);
+        }
+        try {
+            switch (payeeKind) {
+                case TEAM -> accessControlService.checkPermission(actorUserId, payee.getScopeId(),
+                        payeeScopeResolver.toAccessControlScopeType(payeeKind), PERMISSION_MANAGE_PAYMENT);
+                case ORG -> accessControlService.checkAdminOrHasPermission(actorUserId, payee.getScopeId(),
+                        payeeScopeResolver.toAccessControlScopeType(payeeKind), PERMISSION_MANAGE_PAYMENT);
+                default -> throw new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND);
+            }
+        } catch (BusinessException e) {
+            // 既に Connect 系コードならそのまま、それ以外（AccessControlService の認可エラー）は 403 へ正規化。
+            if (e.getErrorCode() instanceof ConnectPaymentErrorCode) {
+                throw e;
+            }
+            throw new BusinessException(ConnectPaymentErrorCode.PAYMENT_FORBIDDEN, e);
+        }
     }
 
     /**

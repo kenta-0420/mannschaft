@@ -2,7 +2,7 @@
 
 > 親: [README.md](README.md) ／ 関連: [01_data_model.md](01_data_model.md) / [02_api_design.md](02_api_design.md)
 >
-> **統一基盤・正典更新（2026-06-03）**: 謝礼＋会費を共通 `ConnectChargeService` に集約／手数料 5% を支払者2.5%・受取側2.5%で折半／**返金は受取側 scope ADMIN が操作**（運営非関与・`reverse_transfer:true`/`refund_application_fee:false`）／決済手数料は返金されない（利用規約・決済画面で明示・§10）。
+> **統一基盤・正典更新（2026-06-03）**: 謝礼＋会費を共通 `ConnectChargeService` に集約／手数料 5% を支払者2.5%・受取側2.5%で折半／**返金は受取側 scope ADMIN が操作**（運営非関与・支払者負担モデル＝decouple＝明示 TransferReversal＋`reverse_transfer:false` の Refund・`refund_application_fee:false`・Mannschaft±0/受取側±0）／決済手数料は支払者負担で返金されない（利用規約・決済画面で明示・§10 / 02 §6.1）。
 
 ---
 
@@ -39,7 +39,7 @@
 | Connect 状態照会 | 同上（自 scope のみ） | scope 所有権検証。他 scope は 404 秘匿 |
 | 札の謝礼設定 | **札主 scope の ADMIN / `MANAGE_RECRUITMENTS` 保有 DEPUTY** | 既存札 API の認可に委譲（F03.11 §2）。市から直接立てない |
 | 個人受領者の指定 | 札主 scope に紐づく者のみ | `payee_kind=USER` の `payee_user_id` が札主チーム所属か検証（`PAYMENT_013`） |
-| **返金（謝礼・会費共通）** | **受取側 scope の ADMIN のみ**（運営非関与・設定A） | `escrow.payee`（受取側 scope）の所有権検証（IDOR・§4）。Mannschaft 運営は返金操作に関与しない。無関係 scope は 404 秘匿 |
+| **返金（謝礼・会費共通）** | **受取側 scope の ADMIN のみ**（運営非関与・設定A） | `escrow.payee`（受取側 scope）の所有権検証（IDOR・§4）。Mannschaft 運営は返金操作に関与しない。無関係 scope は 404 秘匿。**`feeBearer`（PAYER/PAYEE）の選択も受取側 ADMIN の権限内**（02 §6.1） |
 | 会費徴収（即時モード） | **会員本人**（自己支払い） | F08.2 既存の会費支払い認可に委譲。内部で `ConnectChargeService` を呼ぶ（02 §5.1b） |
 | エスクロー状態照会 | 受取側 scope ADMIN ＋ **受領者本人** | 受領者は自分宛の払出のみ閲覧可。無関係 scope は 404 |
 | Webhook | permitAll ＋ **署名検証** | §2 |
@@ -77,8 +77,11 @@ CLAUDE.md の退会 PII 二段モデル（即時消去/30日猶予）に整合�
 - 自社残高に資金をプールしないため、日本の**資金決済法上の「為替取引」（資金移動業）・「前払式支払手段」に該当しない**（Stripe を収納代行/決済代行として用いる整理）。
 - これを担保するため、**Separate Charge（自社残高に一旦入金して後日 Transfer する方式）は採用しない**。`transfer_data.destination` を必ず与信時に指定し、capture が transfer を伴う構造を維持する。
 - **`application_fee_amount`（総手数料5%＝支払者2.5%+受取側2.5%）のみが Mannschaft の収益**。これは収納代行手数料であり資金移動業の対象外。Stripe 実手数料を引いた純益 ≈ 額面の1.31%（README §3.4）。
-- **返金時も自社口座を経由しない**: Refund は `reverse_transfer:true` で**受取側 Connect 残高から返金原資が戻る**ため、Mannschaft が立替・自社負担することはない（02 §6.1）。`refund_application_fee:false` で徴収済み手数料も返さない（設定A）。
-- **受取側残高不足時のマイナス残高（運用注意）**: 受取側 Connect 残高が返金額に満たない場合、**Stripe がマイナス残高を後続入金・登録口座からの引落で自動回収**する。**Mannschaft に請求は来ない**（Stripe と受取側の間で完結）。運営は受取側へ残高補填を促す通知のみ行い、立替はしない（症状を隠さない・残高をマイナスのまま放置しない運用）。
+- **返金時も自社口座を経由しない（feeBearer 2モード・02 §6.1）**: 返金は受取側 ADMIN が `feeBearer` で負担者を選ぶ。
+  - **モードA＝PAYER（既定・decouple）**: 明示 TransferReversal（受取側 Connect 残高から R を巻き戻し）＋ `reverse_transfer:false` の Refund（支払者へ R を返金）。巻き戻し額＝返金額＝R を完全一致させ **Mannschaft±0・受取側±0** を担保。R は transferAmount ベース。`refund_application_fee:false`（1.4% keep）。比例 reverse（`reverse_transfer:true`）は不採用（巻き戻し額と返金額が不一致で持ち出し）。
+  - **モードB＝PAYEE（受取側の落ち度/中止）**: `Refund.create(amount=grossRefund, reverse_transfer:true, refund_application_fee:true)`。支払者へ満額 chargeAmount を戻し、Mannschaft は application_fee も返金して中立化（1.4% 放棄）。**いずれのモードも自社口座は経由しない**。
+- **⚠️ モードB の Stripe 手数料負担（正直報告・症状を隠さない・02 §6.1）**: マスター意図は「モードB では受取側が Stripe 決済手数料（≈369）を負担し Mannschaft±0」だが、**標準 Stripe API のみでは自動成立不可**（実挙動検証済）。Stripe 決済手数料は返金されず Destination Charge では platform が被る／`TransferReversal` は元送金額が上限で受取側から手数料分を追加で巻き戻せない／受取側残高からの追加徴収（Account Debits）は連結口座の同意・追加コスト・同一リージョンが要件で返金 1 件ごとの自動操作に不適。**よってモードB では Mannschaft が Stripe 手数料を一時負担し、受取側への最終転嫁はリコンシリ（02 §6.3）／次回入金相殺／運用の Account Debits に委ねる**。一時負担額は `ledger_entries`(PLATFORM_FEE) に記録して可視化する。
+- **受取側残高不足時のマイナス残高（運用注意）**: 受取側 Connect 残高が巻き戻し額に満たない場合、**Stripe がマイナス残高を後続入金・登録口座からの引落で自動回収**する。**Mannschaft に請求は来ない**（Stripe と受取側の間で完結）。運営は受取側へ残高補填を促す通知のみ行い、立替はしない（症状を隠さない・残高をマイナスのまま放置しない運用）。
 - > 法的整理は最終的に**弁護士・税理士確認**を要する（§3-別建て論点に含む）。設計上は「自社口座非経由」を技術的に強制することで規制リスクを最小化する。
 
 ---
@@ -100,14 +103,14 @@ CLAUDE.md の退会 PII 二段モデル（即時消去/30日猶予）に整合�
 
 ### 10.1 利用規約への明記事項
 - **手数料の折半**: 「決済には額面の 5% の手数料がかかり、支払者が 2.5%（額面に上乗せ）、受取側が 2.5%（受取額から差引）を負担します」。
-- **手数料の非返還**: 「ご返金が発生した場合でも、**決済に要した決済手数料（額面の約3.6%相当）は返金されません**」。
-- **返金の操作主体**: 「返金はチーム/組織の管理者が行います。Mannschaft 運営は返金操作に関与しません」。
+- **手数料の非返還（feeBearer 2モード・02 §6.1）**: 「**ご返金の場合、決済手数料が返金されないことがあります（返金条件は募集主の設定によります）**」。支払者は事前にどちらのモードで返金されるか分からないため、断定（「必ず差し引かれる」）でなく**条件付き**の周知とする。実際の返金額はモードに依存する: モードA（支払者負担）では受取側が受け取った正味（額面 10,000 円 → 9,750 円）が戻り手数料は支払者負担、モードB（受取側負担）では満額（10,250 円）が戻る。
+- **返金の操作主体・モード選択**: 「返金はチーム/組織の管理者が行います。**手数料の負担者（返金条件）も管理者が選択します**。Mannschaft 運営は返金操作に関与しません」。
 - **受取主体**: 「謝礼・会費は Stripe Connect を通じて受取側（個人/チーム/組織）の口座へ直接入金され、Mannschaft は資金を保持しません」。
 
 ### 10.2 決済画面（カード入力直前）の注意書き
 - 手数料内訳（額面／支払手数料2.5%／お支払い合計）を明示（04 §3.1）。
-- 「※お支払い合計には決済手数料が含まれます」「※ご返金が発生した場合でも、決済手数料は返金されません」を併記。
-- これらの文言は i18n 6言語で管理（直書き禁止・04 §6）。
+- 「※お支払い合計には決済手数料が含まれます」「※ご返金の場合、決済手数料が返金されないことがあります（返金条件は募集主の設定によります）」を**内訳ボックス直下に併記**する。支払者は返金モードを事前に知り得ないため、支払時の文言は**条件付き**（`refundFeeConditionalNote`）に調整する。
+- これらの文言は i18n 6言語で管理（直書き禁止・04 §6 `market.payment.breakdown.{includesFeeNote,refundFeeConditionalNote}`）。返金 UI 側（受取側 ADMIN）の負担者選択・各モード説明は `market.payment.refund.*`（04 §6）。
 
 ---
 
@@ -126,7 +129,7 @@ CLAUDE.md の退会 PII 二段モデル（即時消去/30日猶予）に整合�
 - [x] **9. IDOR（escrow/connect の他人参照）** → scope 所有権検証・404 秘匿（§4）。
 - [x] **10. Webhook 許可リスト** → 既存 `/webhooks/stripe/*` で被覆。baseline §3.6 に明記（§2.1）。
 - [x] **11. 手数料率（確定: 案あ）** → **総 5%（額面）を支払者2.5%・受取側2.5%で折半**。`application_fee_amount=round(額面×0.05)`、`amount=額面+round(額面×0.025)`。`stripe_fee_rate` 既定 0.036（設定値）。純益 ≈ 額面の1.31%（マスター承認・README §3.4 / 02 §3.5）。
-- [x] **11b. 返金の操作主体・方式（確定: 設定A）** → 受取側 scope ADMIN が操作（運営非関与）・`reverse_transfer:true`/`refund_application_fee:false`・決済手数料非返還（利用規約/決済画面で明示・§10 / 02 §6.1）。
+- [x] **11b. 返金の操作主体・方式（確定: 設定A・支払者負担モデル 2026-06-03）** → 受取側 scope ADMIN が操作（運営非関与）・**decouple 方式＝明示 TransferReversal(R)＋`reverse_transfer:false` の Refund(R)**・`refund_application_fee:false`・支払者へ戻すのは transferAmount（決済手数料・支払上乗せは非返還で支払者負担・Mannschaft±0/受取側±0）・利用規約/決済画面で明示（§10 / 02 §6.1）。
 - [x] **11c. 受取側残高不足のマイナス残高** → Stripe 自動回収・Mannschaft 請求なし（§6・立替しない）。
 - [x] **11d. 統一基盤化（謝礼＋会費）** → 共通 `ConnectChargeService`・2モード（即時/エスクロー）・`source_kind=MEMBERSHIP` 追加。会費は P2-e で F08.2 から本基盤へ移行（README §1.0 / §8.1）。
 - [x] **12. F13.1 との関係** → テーブル共有せず独立構築。`source_kind=JOBMATCHING` を確保し将来の流用余地を残す（README §5）。

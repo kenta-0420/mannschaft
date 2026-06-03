@@ -45,6 +45,7 @@ class ConnectChargeServiceCaptureTest {
     @Mock private StripePaymentProvider stripePaymentProvider;
     @Mock private AccessControlService accessControlService;
     @Mock private LedgerEntryRepository ledgerEntryRepository;
+    @Mock private RefundRepository refundRepository;
 
     private final PaymentFeeCalculator feeCalculator = new PaymentFeeCalculator();
 
@@ -53,7 +54,8 @@ class ConnectChargeServiceCaptureTest {
     private ConnectChargeService service() {
         return new ConnectChargeService(
                 escrowTransactionRepository, connectAccountRepository,
-                feeCalculator, stripePaymentProvider, accessControlService, ledgerEntryRepository);
+                feeCalculator, stripePaymentProvider, accessControlService, ledgerEntryRepository,
+                refundRepository, new com.mannschaft.app.payment.connect.PayeeScopeResolver());
     }
 
     private EscrowTransactionEntity escrow(EscrowStatus status) {
