@@ -1,6 +1,7 @@
 package com.mannschaft.app.gallery.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
@@ -33,10 +34,9 @@ public class GalleryMediaUploadService {
     private static final Duration PHOTO_TTL = Duration.ofMinutes(10);
     private static final Duration VIDEO_TTL = Duration.ofMinutes(15);
 
-    private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of(
-            "image/jpeg", "image/png", "image/webp", "image/gif", "image/heic");
-    private static final Set<String> ALLOWED_VIDEO_TYPES = Set.of(
-            "video/mp4", "video/webm", "video/quicktime");
+    /** {@link FileTypeValidator} の定数を参照する（ローカル定義を廃止）。 */
+    private static final Set<String> ALLOWED_IMAGE_TYPES = FileTypeValidator.ALLOWED_IMAGE_TYPES;
+    private static final Set<String> ALLOWED_VIDEO_TYPES = FileTypeValidator.ALLOWED_VIDEO_TYPES;
 
     private final R2StorageService r2StorageService;
     private final PhotoAlbumService albumService;
@@ -91,10 +91,14 @@ public class GalleryMediaUploadService {
     }
 
     private void validateContentType(String mediaType, String contentType) {
-        if ("PHOTO".equals(mediaType) && !ALLOWED_IMAGE_TYPES.contains(contentType)) {
+        // ブロックリスト優先（危険な MIME タイプを明示排除）
+        if (FileTypeValidator.isBlocked(contentType)) {
             throw new BusinessException(GalleryErrorCode.UNSUPPORTED_CONTENT_TYPE);
         }
-        if ("VIDEO".equals(mediaType) && !ALLOWED_VIDEO_TYPES.contains(contentType)) {
+        if ("PHOTO".equals(mediaType) && !FileTypeValidator.isAllowed(contentType, ALLOWED_IMAGE_TYPES)) {
+            throw new BusinessException(GalleryErrorCode.UNSUPPORTED_CONTENT_TYPE);
+        }
+        if ("VIDEO".equals(mediaType) && !FileTypeValidator.isAllowed(contentType, ALLOWED_VIDEO_TYPES)) {
             throw new BusinessException(GalleryErrorCode.UNSUPPORTED_CONTENT_TYPE);
         }
     }

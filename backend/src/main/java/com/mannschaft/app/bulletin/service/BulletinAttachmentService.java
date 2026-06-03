@@ -18,6 +18,7 @@ import com.mannschaft.app.bulletin.repository.BulletinAttachmentRepository;
 import com.mannschaft.app.bulletin.repository.BulletinReplyRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
@@ -34,7 +35,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
@@ -84,20 +84,19 @@ public class BulletinAttachmentService {
     private static final String REFERENCE_TYPE = "bulletin_attachments";
 
     /**
-     * 許可する MIME タイプ（掲示板は文書・画像中心）。SVG は XSS リスクのため除外。
+     * 許可する MIME タイプ（掲示板は文書・画像中心）。
+     * SVG は {@link FileTypeValidator#BLOCKED_CONTENT_TYPES} により禁止。
+     * {@link FileTypeValidator} の定数を合成して使用する。
      */
-    public static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "image/jpeg", "image/png", "image/webp", "image/gif",
-            "application/pdf",
-            "text/plain",
-            "application/msword",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/vnd.ms-excel",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "application/vnd.ms-powerpoint",
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            "application/zip"
-    );
+    public static final Set<String> ALLOWED_CONTENT_TYPES;
+
+    static {
+        var merged = new java.util.HashSet<String>();
+        merged.addAll(FileTypeValidator.ALLOWED_IMAGE_TYPES);
+        merged.addAll(FileTypeValidator.ALLOWED_DOCUMENT_TYPES);
+        merged.add("application/zip");
+        ALLOWED_CONTENT_TYPES = java.util.Collections.unmodifiableSet(merged);
+    }
 
     private final BulletinAttachmentRepository attachmentRepository;
     private final BulletinThreadRepository threadRepository;
@@ -429,8 +428,12 @@ public class BulletinAttachmentService {
     // ─────────────────────────────────────────────
 
     private void validateContentType(String contentType) {
-        String normalized = contentType == null ? "" : contentType.toLowerCase(Locale.ROOT);
-        if (!ALLOWED_CONTENT_TYPES.contains(normalized)) {
+        // ブロックリスト優先（危険な MIME タイプを明示排除）
+        if (FileTypeValidator.isBlocked(contentType)) {
+            throw new BusinessException(BulletinErrorCode.ATTACHMENT_INVALID_CONTENT_TYPE);
+        }
+        // ホワイトリスト検証
+        if (!FileTypeValidator.isAllowed(contentType, ALLOWED_CONTENT_TYPES)) {
             throw new BusinessException(BulletinErrorCode.ATTACHMENT_INVALID_CONTENT_TYPE);
         }
     }
