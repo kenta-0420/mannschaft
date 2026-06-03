@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,18 +36,30 @@ public class InboxTriageService {
     private final InboxItemStateRepository itemStateRepository;
     private final InboxItemVisibilityChecker visibilityChecker;
 
+    /** アプリ全体の JVM 既定 TZ（{@code TimeZoneConfig} で Asia/Tokyo 固定）に合わせた壁時計変換先。 */
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Tokyo");
+
     /**
      * 通知をスヌーズする（upsert）。過去時刻は拒否。
+     *
+     * <p>{@code snoozedUntil} は絶対時刻（オフセット付き）で受け取り、JST 壁時計（{@link LocalDateTime}）へ
+     * 変換してから保存する。これにより、フロントが {@code .toISOString()}（UTC）で送っても比較基準である
+     * {@code LocalDateTime.now()}（JST 固定 JVM）と同じ土俵に揃い、約 9 時間のずれが解消する。</p>
      *
      * @return 更新後の {@code InboxItem}（楽観更新の確定反映用）
      */
     @Transactional
-    public InboxItemDto snooze(Long userId, InboxSourceType sourceType, Long sourceId, LocalDateTime snoozedUntil) {
-        if (snoozedUntil == null || snoozedUntil.isBefore(LocalDateTime.now())) {
+    public InboxItemDto snooze(Long userId, InboxSourceType sourceType, Long sourceId, OffsetDateTime snoozedUntil) {
+        if (snoozedUntil == null) {
+            throw new BusinessException(InboxErrorCode.INBOX_INVALID_SNOOZE_TIME);
+        }
+        // 絶対時刻 → JST 壁時計に変換（保存・比較は LocalDateTime の現状ストレージに合わせる）。
+        LocalDateTime snoozedUntilJst = snoozedUntil.atZoneSameInstant(APP_ZONE).toLocalDateTime();
+        if (snoozedUntilJst.isBefore(LocalDateTime.now())) {
             throw new BusinessException(InboxErrorCode.INBOX_INVALID_SNOOZE_TIME);
         }
         InboxItemStateEntity row = loadOrCreate(userId, sourceType, sourceId);
-        row.setSnoozedUntil(snoozedUntil);
+        row.setSnoozedUntil(snoozedUntilJst);
         // F04.11 Phase3 ②：再スヌーズ（snoozed_until 更新）時は復帰 push 送信済みフラグを
         // NULL に戻し、新しい復帰期限到来時に再度 1 度だけ push できるようにする。
         row.setSnoozeNotifiedAt(null);

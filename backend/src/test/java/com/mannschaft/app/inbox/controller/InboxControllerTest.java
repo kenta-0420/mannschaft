@@ -34,6 +34,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -235,7 +237,7 @@ class InboxControllerTest {
             String body = objectMapper.writeValueAsString(Map.of(
                     "sourceType", "NOTIFICATION",
                     "sourceId", 123,
-                    "snoozedUntil", LocalDateTime.now().plusHours(3).toString()));
+                    "snoozedUntil", OffsetDateTime.now(ZoneOffset.ofHours(9)).plusHours(3).toString()));
 
             mockMvc.perform(post("/api/v1/inbox/snooze")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -264,7 +266,7 @@ class InboxControllerTest {
             String body = objectMapper.writeValueAsString(Map.of(
                     "sourceType", "NOTIFICATION",
                     "sourceId", 123,
-                    "snoozedUntil", LocalDateTime.now().minusHours(1).toString()));
+                    "snoozedUntil", OffsetDateTime.now(ZoneOffset.ofHours(9)).minusHours(1).toString()));
 
             mockMvc.perform(post("/api/v1/inbox/snooze")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -282,7 +284,7 @@ class InboxControllerTest {
             String body = objectMapper.writeValueAsString(Map.of(
                     "sourceType", "NOTIFICATION",
                     "sourceId", 999,
-                    "snoozedUntil", LocalDateTime.now().plusHours(3).toString()));
+                    "snoozedUntil", OffsetDateTime.now(ZoneOffset.ofHours(9)).plusHours(3).toString()));
 
             mockMvc.perform(post("/api/v1/inbox/snooze")
                             .contentType(MediaType.APPLICATION_JSON)

@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -171,13 +172,18 @@ public class NotificationService {
     public NotificationResponse snoozeNotification(Long userId, Long notificationId, SnoozeRequest request) {
         NotificationEntity entity = findNotificationOrThrow(userId, notificationId);
 
-        if (request.getSnoozedUntil().isBefore(LocalDateTime.now())) {
+        // 絶対時刻（オフセット付き）→ JST 壁時計に変換してから保存・比較する。
+        // フロントは .toISOString()（UTC）で送るため、LocalDateTime で受けると Jackson が
+        // オフセットを捨て、JST 固定 JVM の LocalDateTime.now() と約 9 時間ずれる。これを根治する。
+        LocalDateTime snoozedUntilJst =
+                request.getSnoozedUntil().atZoneSameInstant(ZoneId.of("Asia/Tokyo")).toLocalDateTime();
+        if (snoozedUntilJst.isBefore(LocalDateTime.now())) {
             throw new BusinessException(NotificationErrorCode.INVALID_SNOOZE_TIME);
         }
 
-        entity.snooze(request.getSnoozedUntil());
+        entity.snooze(snoozedUntilJst);
         NotificationEntity saved = notificationRepository.save(entity);
-        log.info("通知スヌーズ: userId={}, notificationId={}, until={}", userId, notificationId, request.getSnoozedUntil());
+        log.info("通知スヌーズ: userId={}, notificationId={}, until={}", userId, notificationId, snoozedUntilJst);
         return notificationMapper.toNotificationResponse(saved);
     }
 

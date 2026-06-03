@@ -17,7 +17,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -111,7 +112,7 @@ class InboxBulkServiceTest {
         @Test
         @DisplayName("正常系: snoozedUntil 同梱で各 item を snooze に委譲")
         void delegatesSnooze() {
-            LocalDateTime until = LocalDateTime.now().plusHours(3);
+            OffsetDateTime until = OffsetDateTime.now(ZoneOffset.ofHours(9)).plusHours(3);
             BulkInboxRequest req = new BulkInboxRequest(
                     BulkInboxRequest.BulkAction.SNOOZE,
                     List.of(target(InboxSourceType.NOTIFICATION, 1L)),

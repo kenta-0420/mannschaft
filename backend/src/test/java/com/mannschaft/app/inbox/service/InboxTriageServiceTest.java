@@ -16,6 +16,8 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,6 +54,9 @@ class InboxTriageServiceTest {
     @InjectMocks
     private InboxTriageService triageService;
 
+    /** JST(+09:00) オフセット。アプリは JVM 既定 TZ を Asia/Tokyo に固定しているため、これが壁時計の基準。 */
+    private static final ZoneOffset JST = ZoneOffset.ofHours(9);
+
     /** 既存オーバーレイ行を生成するヘルパー。 */
     private InboxItemStateEntity existing(LocalDateTime snoozedUntil, LocalDateTime archivedAt) {
         InboxItemStateEntity e = new InboxItemStateEntity();
@@ -74,7 +79,7 @@ class InboxTriageServiceTest {
         @Test
         @DisplayName("異常系: 過去時刻 → INBOX_INVALID_SNOOZE_TIME を投げ、保存しない")
         void pastTime_throwsInvalidSnoozeTime() {
-            LocalDateTime past = LocalDateTime.now().minusHours(1);
+            OffsetDateTime past = OffsetDateTime.now(JST).minusHours(1);
 
             assertThatThrownBy(() -> triageService.snooze(USER_ID, SOURCE_TYPE, SOURCE_ID, past))
                     .isInstanceOf(BusinessException.class)
@@ -87,7 +92,7 @@ class InboxTriageServiceTest {
         @Test
         @DisplayName("正常系: 未来時刻・既存行なし → 新規 save（upsert insert）")
         void futureTime_noExisting_inserts() {
-            LocalDateTime future = LocalDateTime.now().plusHours(3);
+            OffsetDateTime future = OffsetDateTime.now(JST).plusHours(3);
             given(itemStateRepository.findByUserIdAndSourceTypeAndSourceId(USER_ID, SOURCE_TYPE, SOURCE_ID))
                     .willReturn(Optional.empty());
             given(visibilityChecker.isVisibleTo(USER_ID, SOURCE_TYPE, SOURCE_ID)).willReturn(true);
@@ -101,7 +106,7 @@ class InboxTriageServiceTest {
         @Test
         @DisplayName("正常系: 未来時刻・既存行あり → 既存行を更新（upsert update）")
         void futureTime_existing_updates() {
-            LocalDateTime future = LocalDateTime.now().plusHours(3);
+            OffsetDateTime future = OffsetDateTime.now(JST).plusHours(3);
             InboxItemStateEntity row = existing(null, null);
             given(itemStateRepository.findByUserIdAndSourceTypeAndSourceId(USER_ID, SOURCE_TYPE, SOURCE_ID))
                     .willReturn(Optional.of(row));
@@ -113,9 +118,27 @@ class InboxTriageServiceTest {
         }
 
         @Test
+        @DisplayName("TZ根治: UTC で JST 23:00 を表す入力 → JST 壁時計 23:00 で保存（オフセットを尊重）")
+        void utcInput_storedAsJstWallClock() {
+            // UTC 2026-06-03T14:00Z == JST 2026-06-03T23:00（+09:00）。
+            // 旧実装（LocalDateTime 受け）なら Z が捨てられ 14:00 が保存されて赤くなる。
+            OffsetDateTime utcInput = OffsetDateTime.of(2026, 6, 3, 14, 0, 0, 0, ZoneOffset.UTC);
+            LocalDateTime expectedJst = LocalDateTime.of(2026, 6, 3, 23, 0, 0);
+            InboxItemStateEntity row = existing(null, null);
+            given(itemStateRepository.findByUserIdAndSourceTypeAndSourceId(USER_ID, SOURCE_TYPE, SOURCE_ID))
+                    .willReturn(Optional.of(row));
+            given(itemStateRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            triageService.snooze(USER_ID, SOURCE_TYPE, SOURCE_ID, utcInput);
+
+            assertThat(row.getSnoozedUntil()).isEqualTo(expectedJst);
+        }
+
+        @Test
         @DisplayName("F04.11 Phase3 ②: 再スヌーズ時に snooze_notified_at を NULL に戻す（再度復帰通知可能）")
         void reSnooze_resetsSnoozeNotifiedAt() {
-            LocalDateTime future = LocalDateTime.now().plusHours(3);
+            OffsetDateTime future = OffsetDateTime.now(JST).plusHours(3);
+            LocalDateTime expectedJst = future.atZoneSameInstant(java.time.ZoneId.of("Asia/Tokyo")).toLocalDateTime();
             // 既に一度復帰 push 済み（snooze_notified_at が刻まれている）行を再スヌーズ
             InboxItemStateEntity row = existing(LocalDateTime.now().minusMinutes(1), null);
             row.setSnoozeNotifiedAt(LocalDateTime.now().minusMinutes(1));
@@ -126,7 +149,7 @@ class InboxTriageServiceTest {
             triageService.snooze(USER_ID, SOURCE_TYPE, SOURCE_ID, future);
 
             assertThat(row.getSnoozeNotifiedAt()).isNull();
-            assertThat(row.getSnoozedUntil()).isEqualTo(future);
+            assertThat(row.getSnoozedUntil()).isEqualTo(expectedJst);
             verify(itemStateRepository).save(row);
         }
     }
@@ -228,7 +251,7 @@ class InboxTriageServiceTest {
             given(visibilityChecker.isVisibleTo(USER_ID, SOURCE_TYPE, 999L)).willReturn(false);
 
             assertThatThrownBy(() -> triageService.snooze(
-                    USER_ID, SOURCE_TYPE, 999L, LocalDateTime.now().plusHours(1)))
+                    USER_ID, SOURCE_TYPE, 999L, OffsetDateTime.now(JST).plusHours(1)))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(InboxErrorCode.INBOX_SOURCE_NOT_FOUND);

@@ -27,6 +27,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -359,7 +361,10 @@ class NotificationServiceTest {
             // Given
             NotificationEntity entity = createUnreadNotification();
             NotificationResponse response = createNotificationResponse();
-            LocalDateTime futureTime = LocalDateTime.now().plusHours(1);
+            // JST(+09:00) で未来時刻を表す絶対時刻。JST 壁時計へ変換されて保存される。
+            OffsetDateTime futureTime = OffsetDateTime.now(ZoneOffset.ofHours(9)).plusHours(1);
+            LocalDateTime expectedJst =
+                    futureTime.atZoneSameInstant(java.time.ZoneId.of("Asia/Tokyo")).toLocalDateTime();
             SnoozeRequest request = new SnoozeRequest(futureTime);
 
             given(notificationRepository.findByIdAndUserId(NOTIFICATION_ID, USER_ID))
@@ -372,8 +377,31 @@ class NotificationServiceTest {
 
             // Then
             assertThat(result).isNotNull();
-            assertThat(entity.getSnoozedUntil()).isEqualTo(futureTime);
+            assertThat(entity.getSnoozedUntil()).isEqualTo(expectedJst);
             verify(notificationRepository).save(entity);
+        }
+
+        @Test
+        @DisplayName("TZ根治_UTC入力_JST壁時計で保存")
+        void スヌーズ_UTC入力_JST壁時計で保存() {
+            // Given: UTC 2026-06-03T14:00Z == JST 2026-06-03T23:00。
+            // 旧実装（LocalDateTime 受け）なら Z が捨てられ 14:00 が保存されて赤くなる。
+            NotificationEntity entity = createUnreadNotification();
+            NotificationResponse response = createNotificationResponse();
+            OffsetDateTime utcInput = OffsetDateTime.of(2026, 6, 3, 14, 0, 0, 0, ZoneOffset.UTC);
+            LocalDateTime expectedJst = LocalDateTime.of(2026, 6, 3, 23, 0, 0);
+            SnoozeRequest request = new SnoozeRequest(utcInput);
+
+            given(notificationRepository.findByIdAndUserId(NOTIFICATION_ID, USER_ID))
+                    .willReturn(Optional.of(entity));
+            given(notificationRepository.save(entity)).willReturn(entity);
+            given(notificationMapper.toNotificationResponse(entity)).willReturn(response);
+
+            // When
+            notificationService.snoozeNotification(USER_ID, NOTIFICATION_ID, request);
+
+            // Then
+            assertThat(entity.getSnoozedUntil()).isEqualTo(expectedJst);
         }
 
         @Test
@@ -381,7 +409,7 @@ class NotificationServiceTest {
         void スヌーズ_過去日時_NOTIFICATION008例外() {
             // Given
             NotificationEntity entity = createUnreadNotification();
-            LocalDateTime pastTime = LocalDateTime.now().minusHours(1);
+            OffsetDateTime pastTime = OffsetDateTime.now(ZoneOffset.ofHours(9)).minusHours(1);
             SnoozeRequest request = new SnoozeRequest(pastTime);
 
             given(notificationRepository.findByIdAndUserId(NOTIFICATION_ID, USER_ID))
@@ -398,7 +426,7 @@ class NotificationServiceTest {
         @DisplayName("スヌーズ_通知不在_NOTIFICATION_001例外")
         void スヌーズ_通知不在_NOTIFICATION001例外() {
             // Given
-            SnoozeRequest request = new SnoozeRequest(LocalDateTime.now().plusHours(1));
+            SnoozeRequest request = new SnoozeRequest(OffsetDateTime.now(ZoneOffset.ofHours(9)).plusHours(1));
 
             given(notificationRepository.findByIdAndUserId(NOTIFICATION_ID, USER_ID))
                     .willReturn(Optional.empty());
