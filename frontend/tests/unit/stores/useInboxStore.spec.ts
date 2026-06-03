@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useInboxStore } from '~/stores/useInboxStore'
-import type { InboxItem, InboxItemRef, InboxLabel, InboxListResponse, InboxTriageResponse } from '~/types/inbox'
+import type { InboxItem, InboxItemRef, InboxLabel, InboxListResponse, InboxTriageResponse, SuggestedLabel } from '~/types/inbox'
 
 /**
  * F04.11 useInboxStore のユニットテスト。
@@ -27,6 +27,8 @@ const apiMock = {
   assignLabel: vi.fn(),
   unassignLabel: vi.fn(),
   bulkAction: vi.fn(),
+  // Phase 3 (wave3b)
+  suggestApply: vi.fn(),
 }
 
 vi.mock('~/composables/useInboxApi', () => ({
@@ -35,6 +37,7 @@ vi.mock('~/composables/useInboxApi', () => ({
   prioritySeverity: (p: string) => p === 'URGENT' ? 'danger' : 'warn',
   sourceTypeI18nKey: (s: string) => `inbox.source.${s.toLowerCase()}`,
   sourceTypeIcon: (s: string) => `pi pi-${s.toLowerCase()}`,
+  suggestionKeyI18nKey: (k: string) => `inbox.suggestion.${k.replace(/_([a-z])/gi, (_, c: string) => c.toUpperCase()).toLowerCase()}`,
 }))
 
 // useAuthStore 最小モック（computeSnoozeUntil が呼ぶ）
@@ -863,6 +866,145 @@ describe('useInboxStore', () => {
         expect(apiMock.archive).toHaveBeenCalledTimes(1)
         expect(apiMock.bulkAction).not.toHaveBeenCalled()
       })
+    })
+  })
+
+  // ──────────────────────────────────────────────
+  // suggestApply (wave3b): 自動ラベリング提案付与 楽観更新 + ロールバック
+  // ──────────────────────────────────────────────
+
+  describe('suggestApply', () => {
+    /** 提案付きアイテムを生成するヘルパー。 */
+    function makeItemWithSuggestion(suggestion: SuggestedLabel): InboxItem {
+      return makeItem({ suggestedLabels: [suggestion] })
+    }
+
+    const suggestion: SuggestedLabel = {
+      suggestionKey: 'REPLY_NEEDED',
+      color: '#ef4444',
+      existingLabelId: null,
+    }
+
+    it('正常系: 楽観的に仮ラベルが追加され、API 成功で id が確定する', async () => {
+      const item = makeItemWithSuggestion(suggestion)
+      apiMock.getInbox.mockResolvedValueOnce(makeListResponse([item]))
+      const store = useInboxStore()
+      await store.fetchInbox()
+
+      const returnedLabel: InboxLabel = {
+        id: 'label-returned',
+        name: '要返信',
+        color: '#ef4444',
+        icon: null,
+        sortOrder: 0,
+      }
+      apiMock.suggestApply.mockResolvedValueOnce(returnedLabel)
+
+      const ok = await store.suggestApply('NOTIFICATION', 1, suggestion, '要返信')
+
+      expect(ok).toBe(true)
+      // ラベルが付与されている
+      expect(store.items[0]?.labels).toHaveLength(1)
+      expect(store.items[0]?.labels[0]?.id).toBe('label-returned')
+      expect(store.items[0]?.labels[0]?.name).toBe('要返信')
+      // 提案は除去されている
+      expect(store.items[0]?.suggestedLabels).toHaveLength(0)
+    })
+
+    it('正常系: API に正しい引数が渡される', async () => {
+      const item = makeItemWithSuggestion(suggestion)
+      apiMock.getInbox.mockResolvedValueOnce(makeListResponse([item]))
+      const store = useInboxStore()
+      await store.fetchInbox()
+
+      const returnedLabel: InboxLabel = {
+        id: 'label-ok',
+        name: '要返信',
+        color: '#ef4444',
+        icon: null,
+        sortOrder: 0,
+      }
+      apiMock.suggestApply.mockResolvedValueOnce(returnedLabel)
+
+      await store.suggestApply('NOTIFICATION', 1, suggestion, '要返信')
+
+      expect(apiMock.suggestApply).toHaveBeenCalledWith('NOTIFICATION', 1, '要返信', '#ef4444')
+    })
+
+    it('正常系: ストアの labels マスターに返却ラベルが追加される（重複なし）', async () => {
+      const item = makeItemWithSuggestion(suggestion)
+      apiMock.getInbox.mockResolvedValueOnce(makeListResponse([item]))
+      const store = useInboxStore()
+      await store.fetchInbox()
+
+      const returnedLabel: InboxLabel = {
+        id: 'new-label',
+        name: '要返信',
+        color: '#ef4444',
+        icon: null,
+        sortOrder: 0,
+      }
+      apiMock.suggestApply.mockResolvedValueOnce(returnedLabel)
+
+      await store.suggestApply('NOTIFICATION', 1, suggestion, '要返信')
+
+      expect(store.labels.some((l) => l.id === 'new-label')).toBe(true)
+    })
+
+    it('正常系: ラベルが既にストアにある場合は重複追加しない', async () => {
+      const item = makeItemWithSuggestion(suggestion)
+      apiMock.getInbox.mockResolvedValueOnce(makeListResponse([item]))
+      const store = useInboxStore()
+      await store.fetchInbox()
+
+      const existingLabel: InboxLabel = {
+        id: 'existing-label',
+        name: '要返信',
+        color: '#ef4444',
+        icon: null,
+        sortOrder: 0,
+      }
+      // 事前にストアに追加しておく
+      store.labels.push(existingLabel)
+      apiMock.suggestApply.mockResolvedValueOnce(existingLabel)
+
+      await store.suggestApply('NOTIFICATION', 1, suggestion, '要返信')
+
+      // 重複は追加されない
+      expect(store.labels.filter((l) => l.id === 'existing-label')).toHaveLength(1)
+    })
+
+    it('異常系: API 失敗でロールバック・error がセットされる', async () => {
+      const item = makeItemWithSuggestion(suggestion)
+      apiMock.getInbox.mockResolvedValueOnce(makeListResponse([item]))
+      const store = useInboxStore()
+      await store.fetchInbox()
+
+      apiMock.suggestApply.mockRejectedValueOnce({ status: 500 })
+
+      const ok = await store.suggestApply('NOTIFICATION', 1, suggestion, '要返信')
+
+      expect(ok).toBe(false)
+      // ロールバック: 元の状態（ラベルなし・提案あり）に戻る
+      expect(store.items[0]?.labels).toHaveLength(0)
+      expect(store.items[0]?.suggestedLabels).toHaveLength(1)
+      expect(store.items[0]?.suggestedLabels?.[0]?.suggestionKey).toBe('REPLY_NEEDED')
+      expect(store.error).toBe('common.error.unknown')
+    })
+
+    it('異常系: 上限超過（4xx）でもロールバックされる', async () => {
+      const item = makeItemWithSuggestion(suggestion)
+      apiMock.getInbox.mockResolvedValueOnce(makeListResponse([item]))
+      const store = useInboxStore()
+      await store.fetchInbox()
+
+      apiMock.suggestApply.mockRejectedValueOnce({ status: 422 })
+
+      const ok = await store.suggestApply('NOTIFICATION', 1, suggestion, '要返信')
+
+      expect(ok).toBe(false)
+      // ロールバックで提案は元に戻る
+      expect(store.items[0]?.suggestedLabels).toHaveLength(1)
     })
   })
 })

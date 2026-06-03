@@ -80,6 +80,8 @@ export interface InboxItem {
   groupCount?: number
   /** Phase 3: グループ構成メンバー（groupCount > 1 のとき bulk triage のキーとして使用）。 */
   groupMembers?: InboxItemRef[]
+  /** Phase 3 (wave3b): 自動ラベリング提案（最大1件。既付与・条件外の場合は BE が抑制済み）。 */
+  suggestedLabels?: SuggestedLabel[]
 }
 
 /** 一覧レスポンス（InboxPageResponse を ApiResponse でラップしたもの）。 */
@@ -115,6 +117,26 @@ export interface InboxListParams {
   labelId?: string
   page?: number
   size?: number
+}
+
+// ─────────────────────────────────────────────
+// Phase 3 (wave3b): 自動ラベリング提案型
+// ─────────────────────────────────────────────
+
+/**
+ * 自動ラベリングの suggestionKey 列挙値。
+ * BE: com.mannschaft.app.inbox.autolabel.SuggestionKey
+ */
+export type InboxSuggestionKey = 'REPLY_NEEDED' | 'ACTION_NEEDED' | 'URGENT' | 'READ_LATER'
+
+/**
+ * 自動ラベリング提案 DTO（InboxItemDto.SuggestedLabelDto に対応）。
+ * existingLabelId が非 null の場合、既にラベルが付与済みのため FE は表示しない（BE が抑制済み）。
+ */
+export interface SuggestedLabel {
+  suggestionKey: InboxSuggestionKey
+  color: string
+  existingLabelId: string | null
 }
 
 // ─────────────────────────────────────────────
