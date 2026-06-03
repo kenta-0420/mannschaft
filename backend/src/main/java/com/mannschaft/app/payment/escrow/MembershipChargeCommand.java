@@ -1,0 +1,39 @@
+package com.mannschaft.app.payment.escrow;
+
+import java.util.UUID;
+
+/**
+ * F08.9 P1 Wave0: 会費（{@link EscrowSourceKind#MEMBERSHIP}）の即時 charge コマンド（設計書 F08.9 02 §1.1 / README §3.4）。
+ *
+ * <p>{@link ConnectChargeService#charge(MembershipChargeCommand)} の入力。会費は<b>即時モード</b>
+ * （{@link EscrowCaptureMode#AUTOMATIC}・与信フェーズを経ない）であり、謝礼（RECRUITMENT・エスクローモード）の
+ * {@link AuthorizeChargeCommand} とは別物。応募の概念（{@code sourceParticipantId} 等）は持たせない。</p>
+ *
+ * <p>手数料（charge / application_fee）は受け取らず、サービス内で {@code faceAmount} から
+ * {@link com.mannschaft.app.payment.PaymentFeeCalculator} が一元算出する（数式の散在禁止・F22.1 02 §3.5）。</p>
+ *
+ * <ul>
+ *   <li>{@code faceAmount} — 額面（会費額・円整数・最小通貨単位・正値）。</li>
+ *   <li>{@code payeeConnectAccountId} — 受領者（チーム/組織）の {@code connect_accounts.id}（UUID）。
+ *       呼び出し側（受益者→scope→Connect 口座）で既に解決済みの口座を直接指定する
+ *       （謝礼の authorize が scope から解決するのと異なり、会費は払い手 API が口座 ID を渡す）。</li>
+ *   <li>{@code payerStripeCustomerId} — 払い手の Stripe Customer（{@code cus_xxx}）。Destination PI の Customer。</li>
+ *   <li>{@code payerUserId} — 払い手のユーザー ID。{@code escrow_transactions.payer_scope_id}（NOT NULL）へ格納し、
+ *       払い手主体は常に {@link com.mannschaft.app.payment.connect.ScopeKind#USER}。F08.9 02 §1.1 の
+ *       「払い手は常に {@code SecurityUtils.getCurrentUserId()}」に対応する（IDOR 監査の基点）。</li>
+ *   <li>{@code sourceId} — 出所 ID（会費項目＝{@code payment_items.id}）。{@code escrow_transactions.source_id}
+ *       （NOT NULL）へ格納し、{@code idempotencyKey} と併せ会費×項目の二重起票を 1 件に収束させる。</li>
+ *   <li>{@code organizationId} — テナント列（受領が ORG/TEAM 配下のとき非 null・将来シャーディングのルーティングキー）。</li>
+ *   <li>{@code idempotencyKey} — 冪等性キー（Idempotency-Key ヘッダー起源・F08.9 02 §1.1）。
+ *       Stripe へ橋渡しし、再送時の二重 PaymentIntent 作成を Stripe 側でも拒否する。</li>
+ * </ul>
+ */
+public record MembershipChargeCommand(
+        long faceAmount,
+        UUID payeeConnectAccountId,
+        String payerStripeCustomerId,
+        Long payerUserId,
+        Long sourceId,
+        Long organizationId,
+        String idempotencyKey) {
+}
