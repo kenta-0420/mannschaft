@@ -35,7 +35,8 @@
       "analytics": "Analytics",
       "audit_logs": "Audit Logs",
       "settings": "Settings",
-      "faqSettings": "FAQ Settings"
+      "faqSettings": "FAQ Settings",
+      "leagueTransfers": "League Transfers"
     }
   }
 }

@@ -35,7 +35,8 @@
       "analytics": "访问分析",
       "audit_logs": "审计日志",
       "settings": "设置",
-      "faqSettings": "FAQ设置"
+      "faqSettings": "FAQ设置",
+      "leagueTransfers": "联赛升降级"
     }
   }
 }

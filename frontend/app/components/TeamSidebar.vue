@@ -70,6 +70,7 @@ const categories: SidebarCategory[] = [
       { labelKey: 'teamSidebar.item.files', icon: 'pi pi-folder-open', path: 'files', moduleSlug: 'file_sharing', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.analytics', icon: 'pi pi-chart-bar', path: 'analytics', moduleSlug: 'analytics', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.audit_logs', icon: 'pi pi-history', path: 'audit-logs', moduleSlug: 'audit_log', requiredRole: 'ADMIN' },
+      { labelKey: 'teamSidebar.item.leagueTransfers', icon: 'pi pi-arrow-right-arrow-left', path: 'league-transfers', moduleSlug: null, requiredRole: 'MEMBER' },
     ],
   },
   {
