@@ -7,6 +7,7 @@ import { useTournamentParticipants } from './tournament/useTournamentParticipant
 export { useTournamentBase }
 export { useTournamentBracket }
 export { useTournamentParticipants }
+export { useTournamentFee } from './tournament/useTournamentFee'
 
 export function useTournamentApi() {
   return {
