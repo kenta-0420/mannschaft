@@ -7,7 +7,9 @@ import com.mannschaft.app.inbox.dto.InboxItemDto;
 import com.mannschaft.app.inbox.dto.InboxItemRef;
 import com.mannschaft.app.inbox.dto.InboxPageResponse;
 import com.mannschaft.app.inbox.dto.InboxSummaryResponse;
+import com.mannschaft.app.inbox.InboxLabelSuggestion;
 import com.mannschaft.app.inbox.dto.LabelDto;
+import com.mannschaft.app.inbox.dto.SuggestedLabelDto;
 import com.mannschaft.app.inbox.entity.InboxItemStateEntity;
 import com.mannschaft.app.inbox.entity.InboxLabelLinkEntity;
 import com.mannschaft.app.inbox.entity.NotificationLabelEntity;
@@ -50,6 +52,7 @@ public class InboxAggregationService {
     private final InboxItemStateRepository itemStateRepository;
     private final InboxLabelLinkRepository labelLinkRepository;
     private final NotificationLabelRepository labelRepository;
+    private final InboxLabelSuggestionRules suggestionRules;
 
     /**
      * インボックス一覧を集約取得する（フィルタ・ページング）。
@@ -195,7 +198,71 @@ public class InboxAggregationService {
         }
 
         // 4. 名寄せ（Phase 3 ①）：canonicalRef でグルーピングし 2 件以上のみ 1 代表へ畳む。
-        return foldByCanonicalRef(merged);
+        List<InboxItemDto> folded = foldByCanonicalRef(merged);
+
+        // 5. 自動ラベリング提案（案C・Phase 4・非永続）：静的ルールで各カードへ提案を被せる。
+        return applySuggestions(userId, folded);
+    }
+
+    /**
+     * 各カードへ自動ラベリング提案（{@link SuggestedLabelDto}）を被せる（案C・非永続・読み取り時導出）。
+     *
+     * <p>提案は {@link InboxLabelSuggestionRules} の静的ルールで {@code (sourceType, priority)} から導出する。
+     * <b>重複提案の抑制</b>: ユーザーが既に同義ラベル（既定名一致）を手作成済みなら、その {@code labelId} を
+     * {@code existingLabelId} に詰める。さらにそのラベルが <b>当該カードに既に付与済み</b>なら提案自体を外す
+     * （設計書 03 §10）。名寄せできない提案は {@code existingLabelId=null}（FE が find-or-create に倒す）。</p>
+     *
+     * <p>N+1 回避: ユーザーの現役ラベルは <b>1 回だけ</b>まとめ取りして名前→ID の写像を作る
+     * （カード件数に依らず定数回）。提案が 1 件も出ないケースに備え、ラベルが無ければクエリも省く。</p>
+     */
+    private List<InboxItemDto> applySuggestions(Long userId, List<InboxItemDto> cards) {
+        // 既定名 → labelId 写像（重複提案抑制・existingLabelId 解決用）。提案が出るカードがあるときだけ引く。
+        Map<String, UUID> labelIdByDefaultName = null;
+
+        List<InboxItemDto> result = new ArrayList<>(cards.size());
+        for (InboxItemDto card : cards) {
+            List<InboxLabelSuggestion> keys = suggestionRules.suggest(card.sourceType(), card.priority());
+            if (keys.isEmpty()) {
+                result.add(card);  // 提案なし＝そのまま（suggestedLabels は空リスト既定）
+                continue;
+            }
+            if (labelIdByDefaultName == null) {
+                labelIdByDefaultName = loadDefaultNameToLabelId(userId);
+            }
+
+            List<SuggestedLabelDto> suggestions = new ArrayList<>(keys.size());
+            for (InboxLabelSuggestion key : keys) {
+                UUID existingLabelId = labelIdByDefaultName.get(key.defaultName());
+                // 既に同義ラベルが当該カードに付与済みなら重複提案を抑制する
+                if (existingLabelId != null && cardHasLabel(card, existingLabelId)) {
+                    continue;
+                }
+                suggestions.add(new SuggestedLabelDto(key, key.defaultColor(), existingLabelId));
+            }
+            result.add(card.withSuggestedLabels(suggestions));
+        }
+        return result;
+    }
+
+    /**
+     * ユーザーの現役ラベル名（既定名と突合する小文字キー）→ labelId 写像を 1 クエリで作る。
+     * 既定名と一致する手作成ラベルがあれば existingLabelId を埋め、重複提案抑制に使う。
+     */
+    private Map<String, UUID> loadDefaultNameToLabelId(Long userId) {
+        Map<String, UUID> map = new HashMap<>();
+        for (NotificationLabelEntity label : labelRepository.findByUserIdOrderBySortOrderAsc(userId)) {
+            if (label.getName() != null) {
+                // 後勝ちを避けるため最初の一致のみ採用（表示順が安定）
+                map.putIfAbsent(label.getName(), label.getId());
+            }
+        }
+        return map;
+    }
+
+    /** カードに指定 labelId のラベルが既に付与されているか。 */
+    private boolean cardHasLabel(InboxItemDto card, UUID labelId) {
+        return card.labels() != null
+                && card.labels().stream().anyMatch(l -> labelId.equals(l.id()));
     }
 
     /**
