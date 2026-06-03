@@ -2,6 +2,7 @@ package com.mannschaft.app.service.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.service.BulkCreateMode;
 import com.mannschaft.app.service.ReactionType;
@@ -87,8 +88,17 @@ public class ServiceRecordService {
     private final StorageService storageService;
 
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-    private static final List<String> ALLOWED_CONTENT_TYPES = List.of(
-            "image/jpeg", "image/png", "image/webp", "application/pdf");
+    /**
+     * 許可 MIME タイプ（サービス記録添付: 画像 + PDF）。
+     * {@link FileTypeValidator} の定数を合成して使用する。
+     */
+    private static final java.util.Set<String> ALLOWED_CONTENT_TYPES;
+
+    static {
+        var merged = new java.util.HashSet<String>(FileTypeValidator.ALLOWED_IMAGE_TYPES);
+        merged.add("application/pdf");
+        ALLOWED_CONTENT_TYPES = java.util.Collections.unmodifiableSet(merged);
+    }
     private static final int MAX_ATTACHMENTS = 5;
     private static final int MAX_BULK_RECORDS = 20;
 
@@ -531,7 +541,11 @@ public class ServiceRecordService {
     public UploadUrlResponse generateUploadUrl(Long teamId, Long recordId, UploadUrlRequest request) {
         findRecordOrThrow(teamId, recordId);
 
-        if (!ALLOWED_CONTENT_TYPES.contains(request.getContentType())) {
+        // ブロックリスト優先（危険な MIME タイプを明示排除）
+        if (FileTypeValidator.isBlocked(request.getContentType())) {
+            throw new BusinessException(ServiceRecordErrorCode.INVALID_CONTENT_TYPE);
+        }
+        if (!FileTypeValidator.isAllowed(request.getContentType(), ALLOWED_CONTENT_TYPES)) {
             throw new BusinessException(ServiceRecordErrorCode.INVALID_CONTENT_TYPE);
         }
         if (request.getFileSize() > MAX_FILE_SIZE) {
