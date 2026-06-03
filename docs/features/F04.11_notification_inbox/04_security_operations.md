@@ -89,6 +89,7 @@
 - **境界付きウィンドウページング（Phase 3 ③ 実装済み・方針更新）**: 各ソースを `Pageable` で `window = (page+1)*size + 安全マージン` 件まで取得し（無制限 fetch を根絶）、**完全全順序**（priority → occurredAt → sourceType名 → sourceId）でマージ・スライスする。これにより**決定的（重複なし・load-more 連続）**なページングを行う。取りこぼし保証は**ソースの fetch 順がグローバル順と整合するかで分かれる**: **NOTIFICATION（priority 第一クエリ）・MENTION（一律 HIGH）・TODO_DUE（due_date 昇順 ↔ priority 降順）は取りこぼしなし**。**ANNOUNCEMENT・CONFIRMABLE は取得順が priority と独立（pinned/created_at・親 created_at＋時刻依存 24h 昇格）のため、稀な偏在で高 priority・低時刻の項目が後ページに送られうる**（pinned/保留件数は小さく実害限定。ANNOUNCEMENT は共有 `findByScope` を壊さないため据え置き。[03](./03_business_logic.md) §4.1 に保証レベルと限界を正直に明記）。複合キーセットカーソルは 5 ソースの順序キー混在で境界バグ温床になり FE レスポンス契約も壊すため採らない。旧方針（ソース毎ハードリミット＋深いページ取りこぼし許容）から置換した。
 - **並列化余地**: アダプタ呼び出しは将来 `CompletableFuture`/仮想スレッドで並列化可（`DashboardService` の構想に準拠）。MVP は直列で十分。
 - **cleanup バッチとの非干渉**: `NotificationCleanupBatchService`（`notifications` を既読 90 日で物理削除）は B 案では**無関係**（オーバーレイは別表）。ただしソースが消えた際の孤児オーバーレイ行は残存しうる → 任意の掃除バッチを Phase 3 候補とする（残っても一覧時に脱落するため実害なし）。
+- **スヌーズ復帰 push はベストエフォート 1 回**: `InboxSnoozeRevivalBatchService`（5 分毎）は復帰期限到来行へ push を **1 度だけ**試行し、**成否に関わらず** `snooze_notified_at` を刻んで再送しない（上限 1 回・冪等）。push 失敗は `log.error` に残すのみ（症状を隠さない）。**DLQ・リトライ上限列は設けない**: 送信先が無効（HTTP 410/404）な Web Push サブスクの失効掃除は `WebPushService.deleteByEndpoint` に委譲し、429/5xx は同サービスが `MAX_RETRY_COUNT` まで内部リトライしてから諦める。これにより旧仕様の「失敗行を 5 分毎に無限再試行する」挙動を根絶した（[03](./03_business_logic.md) §5.1）。
 
 ---
 
