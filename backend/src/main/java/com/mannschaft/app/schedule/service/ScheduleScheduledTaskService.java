@@ -101,6 +101,66 @@ public class ScheduleScheduledTaskService {
     }
 
     /**
+     * 予定編集時に予約タスクを差分更新する（機能55 BE対応）。
+     *
+     * <p>surveys または attendance が非 null の場合、対応する PENDING タスクをすべて CANCELLED にしてから
+     * 新規タスクを登録する（差し替え）。null は「変更なし」として処理しない。
+     * 空リストは「全削除」として CANCEL のみ行い新規登録をしない。</p>
+     *
+     * @param scheduleId     親予定 schedules.id
+     * @param scopeType      スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId        スコープ実体 ID
+     * @param organizationId テナントキー
+     * @param updatedBy      更新者 users.id
+     * @param surveys        予約アンケート（null = 変更なし、空リスト = PENDING 全 CANCEL）
+     * @param attendance     予約出欠募集（null = 変更なし）
+     */
+    @Transactional
+    public void updateTasksForSchedule(Long scheduleId, CalendarSyncScopeType scopeType, Long scopeId,
+                                       Long organizationId, Long updatedBy,
+                                       List<ScheduledSurveyRequest> surveys,
+                                       ScheduledAttendanceRequest attendance) {
+        // どちらも null なら何もしない（部分更新セマンティクス）
+        if (surveys == null && attendance == null) {
+            return;
+        }
+
+        List<ScheduleScheduledTaskEntity> existingTasks =
+                scheduledTaskRepository.findByScheduleIdAndDeletedAtIsNull(scheduleId);
+
+        // surveys が非null → PENDING の SURVEY タスクを全 CANCEL
+        if (surveys != null) {
+            existingTasks.stream()
+                    .filter(t -> t.getTaskType() == ScheduledTaskType.SURVEY
+                            && t.getStatus() == ScheduledTaskStatus.PENDING)
+                    .forEach(t -> {
+                        t.cancel();
+                        scheduledTaskRepository.save(t);
+                    });
+            // 非空リストのみ再登録
+            if (!surveys.isEmpty()) {
+                registerTasks(scheduleId, scopeType, scopeId, organizationId, updatedBy, surveys, null);
+            }
+        }
+
+        // attendance が非null → PENDING の ATTENDANCE タスクを全 CANCEL
+        if (attendance != null) {
+            existingTasks.stream()
+                    .filter(t -> t.getTaskType() == ScheduledTaskType.ATTENDANCE
+                            && t.getStatus() == ScheduledTaskStatus.PENDING)
+                    .forEach(t -> {
+                        t.cancel();
+                        scheduledTaskRepository.save(t);
+                    });
+            // 新規登録
+            registerTasks(scheduleId, scopeType, scopeId, organizationId, updatedBy, null, attendance);
+        }
+
+        log.info("予約タスク差分更新: scheduleId={}, surveys={}, attendance={}",
+                scheduleId, surveys != null ? surveys.size() : "null", attendance != null);
+    }
+
+    /**
      * 予定キャンセル時に、当該予定の PENDING 予約タスクをすべて取り消す（→ CANCELLED）。
      *
      * <p>既に materialize 済み（CREATED）・失敗（FAILED）・取消済み（CANCELLED）のタスクは対象外。</p>
