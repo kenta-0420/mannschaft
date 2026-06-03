@@ -13,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 支払い記録リポジトリ。
@@ -129,6 +130,24 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<MemberPaymentEntity> findByIdAndPaymentItemId(Long id, Long paymentItemId);
+
+    // === F08.9 P1 Wave2: 払い手分離・money rail 連結クエリ（V74.001 追加列対応）===
+
+    /**
+     * escrow_transaction_id で支払い記録を取得する（F22.1 money rail 連結用）。
+     *
+     * <p>Connect 決済完了時に escrow から member_payment へ遡ってステータスを更新する際に使用する。
+     * NULL の場合は手動記録のため本メソッドで引くことはない。
+     * ペイウォール判定は引き続き {@link #existsValidPaidPayment(Long, Long)} を使うこと。</p>
+     */
+    Optional<MemberPaymentEntity> findByEscrowTransactionId(UUID escrowTransactionId);
+
+    /**
+     * payer_user_id で支払い記録一覧を取得する（払い手視点の履歴表示用）。
+     *
+     * <p>受益者視点の履歴は {@link #findByUserId(Long)} を使うこと。</p>
+     */
+    List<MemberPaymentEntity> findByPayerUserId(Long payerUserId);
 
     // === Analytics 集計用クエリ ===
 

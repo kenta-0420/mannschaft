@@ -138,7 +138,7 @@ member_payments
 会費徴収を F22.1 `ConnectChargeService` の**即時モード**（`capture_mode=AUTOMATIC`）に載せる。
 
 - 受領者（チーム/組織）が **Connect 口座へ直接着金**（Mannschaft は資金を保持しない＝資金移動業回避）。
-- `escrow_transactions(source_kind=MEMBERSHIP)`：INSERT 時点で `status=CAPTURED`・`hold_expires_at=NULL`（与信フェーズを経ない即時）。
+- `escrow_transactions(source_kind=MEMBERSHIP)`：`capture_mode=AUTOMATIC`・`hold_expires_at=NULL`（与信→手動captureの2段を経ない即時）。**charge() 起票時は `status=AUTHORIZED`**（PaymentIntent 作成済・確認待ち）とし、**CAPTURED 確定と複式記帳（ledger）起票は `payment_intent.succeeded` Webhook に一元委譲**する（既存 `EscrowWebhookService` の冪等ゲート＝event_id UNIQUE＋行ロックに相乗り）。起票時点で CAPTURED にすると succeeded webhook が no-op となり ledger が欠落するため、AUTHORIZED 起票が正（実装 P1 Wave0 で確認・2026-06-03）。
 - 手数料は **`PaymentFeeCalculator` に一元化**：`application_fee_amount = round(face_amount × 0.05)`、`amount(払い手請求額) = face_amount + round(face_amount × 0.025)`、受取側着金 = `amount − application_fee_amount = face_amount − round(face_amount × 0.025)`。
 - 現行 F08.2 の素のCheckout（自社集金）は本機能完成をもって**廃止**し、新規会費はすべて Connect 経由とする（F08.2 §冒頭の移行宣言を実装で回収）。
 

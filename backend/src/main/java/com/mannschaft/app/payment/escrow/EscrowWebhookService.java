@@ -2,9 +2,11 @@ package com.mannschaft.app.payment.escrow;
 
 import com.mannschaft.app.payment.WebhookIdempotencyService;
 import com.mannschaft.app.payment.WebhookProcessStatus;
+import com.mannschaft.app.payment.escrow.event.EscrowCapturedEvent;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +45,7 @@ public class EscrowWebhookService {
     private final EscrowTransactionRepository escrowTransactionRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
     private final RefundRepository refundRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 与信系 platform Webhook を処理する。署名検証 → {@code event_id} 冪等ゲート → ハンドラの順。
@@ -227,6 +230,15 @@ public class EscrowWebhookService {
      * <p>既に {@link EscrowStatus#CAPTURED}（MarketFinalize フックの同期 capture が先着済み等）なら ledger
      * 二重記帳を避け no-op（冪等）。AUTHORIZED/HELD（webhook 先着・即時モード等）なら CAPTURED 化し、
      * {@code captured_at} と CAPTURE/TRANSFER_OUT/FEE を記帳する（借方合計＝貸方合計・01 §3.3）。</p>
+     *
+     * <p><b>会費の PAID 反映（F08.9 P1 Wave4・02 §1.1 / §4.2）:</b> CAPTURED へ遷移したとき
+     * {@link EscrowCapturedEvent} を発火する。本イベントは {@code member_payments} を知らない escrow ドメインと
+     * 会費ドメイン（{@link MembershipPaymentCaptureListener}）の境界を保つための結節点であり、リスナが
+     * {@code sourceKind=MEMBERSHIP} のみ拾って {@code member_payments} を PENDING→PAID にする。発火は CAPTURED へ
+     * <b>新規に遷移した場合のみ</b>（既に CAPTURED の冪等 no-op パスでは発火しない＝二重 PAID 反映を避ける。
+     * リスナ側も冪等だが、発火自体を遷移時に限定して無駄な配送を抑える）。{@code AFTER_COMMIT} 配送は
+     * リスナ側の {@code TransactionalEventListener(AFTER_COMMIT)} が担保する（CAPTURED 確定が durable に
+     * なってから PAID 反映が走る）。</p>
      */
     private WebhookProcessStatus applySucceeded(String paymentIntentId) {
         // 二重記帳防止（根治・02 §5.3）: capture（同期フック）と本 webhook の read-then-write を行ロックで
@@ -257,6 +269,12 @@ public class EscrowWebhookService {
             ledgerEntryRepository.saveAll(entries);
             log.info("payment_intent.succeeded → capture 確定 CAPTURED: escrowId={}, piId={}, capture={}, transfer={}, fee={}",
                     escrow.getId(), paymentIntentId, captureAmount, transferOut, feeAmount);
+
+            // 会費の PAID 反映トリガ（F08.9 P1 Wave4・02 §1.1）: CAPTURED へ新規遷移した場合のみイベント発火。
+            // escrow は member_payments を知らないため、payment(F08.9)側の MembershipPaymentCaptureListener が
+            // sourceKind=MEMBERSHIP のみ拾って PENDING→PAID にする（ドメイン境界を維持・逆依存を作らない）。
+            // 配送は AFTER_COMMIT（リスナ側）— CAPTURED 確定が durable になってから PAID 反映が走る。
+            eventPublisher.publishEvent(new EscrowCapturedEvent(escrow.getId(), escrow.getSourceKind()));
         } else {
             log.info("payment_intent.succeeded だが対象 escrow は capture 不能状態のため無視: escrowId={}, status={}",
                     escrow.getId(), escrow.getStatus());

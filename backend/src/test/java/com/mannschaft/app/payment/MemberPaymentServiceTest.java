@@ -42,6 +42,10 @@ class MemberPaymentServiceTest {
     @Mock private StripePaymentProvider stripePaymentProvider;
     @Mock private PaymentMapper paymentMapper;
     @Mock private NameResolverService nameResolverService;
+    @Mock private com.mannschaft.app.notification.service.NotificationHelper notificationHelper;
+    @Mock private com.mannschaft.app.payment.service.PaymentAuthorizationService paymentAuthorizationService;
+    @Mock private com.mannschaft.app.payment.escrow.ConnectChargeService connectChargeService;
+    @Mock private com.mannschaft.app.payment.connect.ConnectAccountRepository connectAccountRepository;
 
     @InjectMocks
     private MemberPaymentService service;
@@ -79,6 +83,8 @@ class MemberPaymentServiceTest {
                     .type(PaymentItemType.ANNUAL_FEE).currency("JPY").build();
             given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(item);
             given(memberPaymentRepository.existsValidPaidPayment(USER_ID, PAYMENT_ITEM_ID)).willReturn(false);
+            given(paymentAuthorizationService.authorizePayment(USER_ID, USER_ID, PAYMENT_ITEM_ID, true))
+                    .willReturn(PayerRelationship.SELF);
 
             MemberPaymentEntity saved = MemberPaymentEntity.builder()
                     .userId(USER_ID).paymentItemId(PAYMENT_ITEM_ID).build();
@@ -101,6 +107,8 @@ class MemberPaymentServiceTest {
                     .type(PaymentItemType.ANNUAL_FEE).currency("JPY").build();
             given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(item);
             given(memberPaymentRepository.existsValidPaidPayment(USER_ID, PAYMENT_ITEM_ID)).willReturn(false);
+            given(paymentAuthorizationService.authorizePayment(USER_ID, USER_ID, PAYMENT_ITEM_ID, true))
+                    .willReturn(PayerRelationship.SELF);
 
             MemberPaymentEntity saved = MemberPaymentEntity.builder()
                     .userId(USER_ID).paymentItemId(PAYMENT_ITEM_ID).build();

@@ -1,0 +1,54 @@
+package com.mannschaft.app.payment;
+
+import com.mannschaft.app.common.ErrorCode;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
+/**
+ * F08.9 会費課金・ペイウォール（membership billing / paywall）専用エラーコード。
+ *
+ * <p><b>コード採番（衝突回避の根拠）:</b><br>
+ * 決済ドメインには既に2系統のコードが存在する。
+ * <ul>
+ *   <li>{@link PaymentErrorCode}（F08.2 会員費決済）: {@code PAYMENT_001}〜{@code PAYMENT_027}</li>
+ *   <li>{@link com.mannschaft.app.payment.connect.ConnectPaymentErrorCode}（F22.1 謝礼決済 Connect）:
+ *       {@code PAYMENT_C001}〜{@code PAYMENT_C050}</li>
+ * </ul>
+ * 本 F08.9 では上記いずれとも文字列が重複しない独立プレフィックス {@code MEMBERSHIP_BILLING_xxx} を採用する。
+ * コード文字列の重複は {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} の解決を曖昧にするため避ける。
+ * （{@code PAYMENT_Cxxx} を継続採番すると将来 F22.1 の追番と衝突しうるため、ドメイン由来の独立系列を切る。）</p>
+ *
+ * <p><b>HTTP ステータス:</b> {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} に明示登録する。
+ * {@code Severity.WARN} の既定は 400 のため、403/409 は登録漏れすると 400 にフォールバックする（#1279 前科）。</p>
+ *
+ * <p>設計書: docs/features/F08.9_membership_billing_paywall/03_security.md §2「代理払いの認可」</p>
+ */
+@Getter
+@RequiredArgsConstructor
+public enum MembershipBillingErrorCode implements ErrorCode {
+
+    /**
+     * 払い手が受益者の会費を払う権原を持たない（払い手 ≠ 受益者の核心 IDOR 対策）。403。
+     *
+     * <p>SELF（本人）/ GUARDIAN（保護者リンク）/ PROXY_GRANT（payment_proxy_grants）/
+     * ADMIN_MANUAL（scope ADMIN の手動記録）のいずれの権原も成立しない場合に投げる。</p>
+     */
+    MEMBERSHIP_PAYER_NOT_AUTHORIZED(
+            "MEMBERSHIP_BILLING_001",
+            "この受益者の会費を支払う権限がありません",
+            Severity.WARN),
+
+    /**
+     * 既に有効な支払い記録が存在する（二重課金防止）。409。
+     *
+     * <p>同一受益者・同一 payment_item に対して既に PAID な記録がある場合に投げる。</p>
+     */
+    MEMBERSHIP_ALREADY_PAID(
+            "MEMBERSHIP_BILLING_002",
+            "この支払い項目には既に有効な支払い記録が存在します",
+            Severity.WARN);
+
+    private final String code;
+    private final String message;
+    private final Severity severity;
+}

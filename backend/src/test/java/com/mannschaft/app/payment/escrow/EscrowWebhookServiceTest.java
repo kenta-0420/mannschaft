@@ -3,6 +3,7 @@ package com.mannschaft.app.payment.escrow;
 import com.mannschaft.app.payment.WebhookIdempotencyService;
 import com.mannschaft.app.payment.WebhookProcessStatus;
 import com.mannschaft.app.payment.connect.ScopeKind;
+import com.mannschaft.app.payment.escrow.event.EscrowCapturedEvent;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -37,6 +39,7 @@ class EscrowWebhookServiceTest {
     @Mock private WebhookIdempotencyService idempotencyService;
     @Mock private EscrowTransactionRepository escrowTransactionRepository;
     @Mock private LedgerEntryRepository ledgerEntryRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks private EscrowWebhookService service;
 
@@ -142,6 +145,12 @@ class EscrowWebhookServiceTest {
                 .mapToLong(LedgerEntryEntity::getAmount).sum();
         assertThat(debit).isEqualTo(credit).isEqualTo(10_250L);
         verify(idempotencyService).markProcessed("evt_3", WebhookProcessStatus.PROCESSED);
+
+        // F08.9 P1 Wave4: CAPTURED へ新規遷移したら EscrowCapturedEvent を発火する（会費 PAID 反映トリガ）。
+        ArgumentCaptor<EscrowCapturedEvent> eventCaptor = ArgumentCaptor.forClass(EscrowCapturedEvent.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().escrowTransactionId()).isEqualTo(ESCROW_ID);
+        assertThat(eventCaptor.getValue().sourceKind()).isEqualTo(EscrowSourceKind.RECRUITMENT);
     }
 
     @Test
@@ -158,6 +167,8 @@ class EscrowWebhookServiceTest {
         verify(escrowTransactionRepository, never()).save(any());
         verify(ledgerEntryRepository, never()).saveAll(any());
         verify(idempotencyService).markProcessed("evt_6", WebhookProcessStatus.PROCESSED);
+        // 既に CAPTURED の冪等 no-op パスでは EscrowCapturedEvent を発火しない（二重 PAID 反映を避ける）。
+        verify(eventPublisher, never()).publishEvent(any(EscrowCapturedEvent.class));
     }
 
     @Test

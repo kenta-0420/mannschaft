@@ -31,6 +31,12 @@ import java.util.UUID;
  * <p><b>P2-c 第一波で {@link #capture(UUID)}（払出＝capture+transfer）を追加した。</b>
  * 返金（reverse_transfer）は次波（P2-c-2）であり本サービスには実装しない（設計書 02 §6）。</p>
  *
+ * <p><b>F08.9 P1 Wave0 で {@link #charge(MembershipChargeCommand)}（会費の即時 charge）を追加した。</b>
+ * 会費（{@link EscrowSourceKind#MEMBERSHIP}）は<b>即時モード</b>（{@link EscrowCaptureMode#AUTOMATIC}）で、
+ * 与信フェーズを経ず {@link CaptureMethod#AUTOMATIC} の Destination PaymentIntent を作成する。CAPTURED 確定と
+ * 複式記帳は既存 {@code payment_intent.succeeded} Webhook（{@link EscrowWebhookService}）に委ね、charge() では
+ * ledger を起票しない（二重記帳防止・既存の event_id UNIQUE＋行ロック冪等に相乗り）。</p>
+ *
  * <p>分岐（設計書 02 §5.1 / §5.2）:</p>
  * <ul>
  *   <li>受取側 {@code payouts_enabled=false}（onboarding 未完了）→ {@link EscrowStatus#HELD}。
@@ -154,6 +160,103 @@ public class ConnectChargeService {
         log.info("与信を AUTHORIZED で記録: escrowId={}, paymentIntentId={}, charge={}, appFee={}",
                 authorized.getId(), pi.paymentIntentId(), fee.chargeAmount(), fee.applicationFeeAmount());
         return toResult(authorized, clientSecret);
+    }
+
+    /**
+     * 会費の即時 charge を行う（設計書 F08.9 02 §1.1 / README §3.4）。
+     *
+     * <p>会費（{@link EscrowSourceKind#MEMBERSHIP}）は<b>即時モード</b>（{@link EscrowCaptureMode#AUTOMATIC}）で、
+     * 謝礼の与信→後 capture とは異なり<b>与信フェーズを経ず</b> {@link CaptureMethod#AUTOMATIC} の Destination
+     * PaymentIntent を作成する。{@code transfer_data.destination}＝受領者 Connect 口座・{@code application_fee_amount}＝
+     * 折半分・Customer＝払い手。手数料は {@link PaymentFeeCalculator} に一元化する（数式を再実装しない・02 §3.5）。</p>
+     *
+     * <p><b>口座 READY 必須（即時モードゆえ HELD にしない・02 §1.1 注記）:</b> 受領者 Connect 口座が
+     * {@code payouts_enabled=false}（onboarding 未完了）なら、保留（HELD）せず
+     * {@link ConnectPaymentErrorCode#ONBOARDING_NOT_READY}（409・「受領口座の登録が完了していません」）で拒否する。
+     * 払い手 API（呼び出し側）が払い手向け文言へ変換し、受領者へ onboarding 督促を出す。</p>
+     *
+     * <p><b>ledger 二重記帳の回避（根治・README §3.4 / 02 §5.3 と整合）:</b> escrow 行は
+     * {@link EscrowStatus#AUTHORIZED}（PaymentIntent 作成済み・succeeded webhook 待ち）で INSERT し、
+     * <b>本メソッドでは複式記帳（CAPTURE/TRANSFER_OUT/FEE）を起票しない</b>。CAPTURED 確定と ledger 起票は
+     * Stripe の {@code payment_intent.succeeded} platform Webhook（{@link EscrowWebhookService#handleWebhook}・
+     * {@code applySucceeded} は AUTHORIZED/HELD を受理して CAPTURED 化＋記帳する）に一元化する。これにより
+     * 「即時 charge と webhook の二経路が同じ ledger を二重に書く」事故を、既存の {@code event_id} UNIQUE 冪等ゲートと
+     * escrow 行 {@code PESSIMISTIC_WRITE} ロックに相乗りして物理的に防ぐ。
+     * （設計書 README §141 は「INSERT 時点で status=CAPTURED」と記すが、その場合 succeeded webhook の冪等 no-op で
+     * ledger が一度も書かれず複式記帳が欠落する。README §128/§162 が webhook で ledger を起票すると定める意図に従い、
+     * 本実装は AUTHORIZED で INSERT し記帳を webhook へ委ねる方を正とする。差異は設計書追従時に解消する。）</p>
+     *
+     * <p><b>冪等:</b> 同一 {@code sourceId}（会費項目）の既存 escrow があれば再作成しない（Stripe にも
+     * {@code idempotencyKey} を橋渡しし二重 PaymentIntent 作成を Stripe 側でも拒否・02 §9）。</p>
+     *
+     * <p>{@code clientSecret} は払い手本人のみへ返す前提（PCI SAQ-A・03 §1）。</p>
+     *
+     * @param cmd 会費 charge コマンド
+     * @return charge 結果（escrow ID / clientSecret / paymentIntentId / status＝通常 AUTHORIZED）
+     */
+    public MembershipChargeResult charge(MembershipChargeCommand cmd) {
+        if (cmd.faceAmount() <= 0L) {
+            throw new IllegalArgumentException("faceAmount must be positive (会費・円整数): " + cmd.faceAmount());
+        }
+
+        // 冪等: 同一会費項目（source_kind=MEMBERSHIP × source_id）の二重起票を 1 件に収束させる（02 §9）。
+        // 即時モードは応募概念（source_participant_id）を持たないため source_id 単位で判定する。
+        var existing = escrowTransactionRepository.findBySourceKindAndSourceId(
+                EscrowSourceKind.MEMBERSHIP, cmd.sourceId());
+        if (!existing.isEmpty()) {
+            EscrowTransactionEntity e = existing.get(0);
+            log.info("会費 charge は既に存在します（冪等・再作成しない）: escrowId={}, status={}", e.getId(), e.getStatus());
+            return new MembershipChargeResult(e.getId(), null, e.getStripePaymentIntentId(), e.getStatus());
+        }
+
+        // 手数料折半は PaymentFeeCalculator に一元化（数式を再実装しない・02 §3.5）。
+        FeeBreakdown fee = paymentFeeCalculator.calculate(cmd.faceAmount());
+        String currency = "JPY";
+
+        // 受領者 Connect 口座を ID で解決（会費 API は受益者→scope→口座を解決済みで口座 ID を渡す）。
+        ConnectAccountEntity payee = connectAccountRepository.findById(cmd.payeeConnectAccountId())
+                .orElseThrow(() -> new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
+
+        // 即時モードゆえ口座未 READY は HELD にせずエラー（02 §1.1 注記）。
+        if (!Boolean.TRUE.equals(payee.getPayoutsEnabled())) {
+            log.warn("会費 charge 拒否（受領口座が未 READY・即時モードゆえ HELD にしない）: payeeAccount={}, payoutsEnabled={}",
+                    payee.getStripeAccountId(), payee.getPayoutsEnabled());
+            throw new BusinessException(ConnectPaymentErrorCode.ONBOARDING_NOT_READY);
+        }
+
+        // AUTOMATIC（即時 capture）の Destination PaymentIntent を作成（idempotencyKey を Stripe へ橋渡し）。
+        StripePaymentProvider.PaymentIntentInfo pi = stripePaymentProvider.createDestinationPaymentIntent(
+                fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), fee.applicationFeeAmount(),
+                payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, cmd.idempotencyKey());
+
+        // escrow を MEMBERSHIP/AUTOMATIC で INSERT。hold_expires_at=NULL（即時・与信フェーズなし）。
+        // status=AUTHORIZED（succeeded webhook 待ち）。CAPTURED 確定＋ledger 起票は webhook に委ねる（二重記帳しない）。
+        EscrowTransactionEntity charged = EscrowTransactionEntity.builder()
+                .sourceKind(EscrowSourceKind.MEMBERSHIP)
+                .captureMode(EscrowCaptureMode.AUTOMATIC)
+                .sourceId(cmd.sourceId())
+                .sourceParticipantId(null)
+                .payerScopeKind(ScopeKind.USER)
+                .payerScopeId(cmd.payerUserId())
+                .payerStripeCustomerId(cmd.payerStripeCustomerId())
+                .payeeKind(payee.getScopeKind())
+                .payeeConnectAccountId(payee.getId())
+                .organizationId(cmd.organizationId())
+                .faceAmount(fee.faceAmount())
+                .amount(fee.chargeAmount())
+                .currency(currency)
+                .applicationFeeAmount(fee.applicationFeeAmount())
+                .status(EscrowStatus.AUTHORIZED)
+                .stripePaymentIntentId(pi.paymentIntentId())
+                .authorizedAt(LocalDateTime.now())
+                .holdExpiresAt(null)
+                .build();
+        charged = escrowTransactionRepository.save(charged);
+
+        log.info("会費 charge を作成（即時 AUTOMATIC・succeeded webhook で CAPTURED+記帳）: escrowId={}, piId={}, "
+                        + "charge={}, appFee={}",
+                charged.getId(), pi.paymentIntentId(), fee.chargeAmount(), fee.applicationFeeAmount());
+        return new MembershipChargeResult(charged.getId(), pi.clientSecret(), pi.paymentIntentId(), charged.getStatus());
     }
 
     /**
