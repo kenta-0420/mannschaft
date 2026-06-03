@@ -86,6 +86,31 @@ public class ScheduleReminderService {
     }
 
     /**
+     * リマインダーを更新する（差し替え）。既存を全削除して新規リストを登録する（機能55 BE対応）。
+     *
+     * <p>空リストを渡すと全削除のみ（再登録なし）となる。
+     * null は呼び出し元で「変更なし」として処理するため、このメソッドには渡さない。</p>
+     *
+     * @param scheduleId スケジュールID
+     * @param requests   新規リマインダーリスト（空リスト可。null 禁止）
+     */
+    @Transactional
+    public void updateReminders(Long scheduleId, List<CreateReminderRequest> requests) {
+        // 先に既存をすべて削除
+        reminderRepository.deleteByScheduleId(scheduleId);
+
+        // 空リストなら削除のみで終了
+        if (requests.isEmpty()) {
+            log.info("リマインダー全削除: scheduleId={}", scheduleId);
+            return;
+        }
+
+        // 新規登録（createReminders で上限チェックも兼ねる）
+        createReminders(scheduleId, requests);
+        log.info("リマインダー更新完了: scheduleId={}, 件数={}", scheduleId, requests.size());
+    }
+
+    /**
      * スケジュールに紐付くリマインダー一覧を取得する。
      *
      * @param scheduleId スケジュールID

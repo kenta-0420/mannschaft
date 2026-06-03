@@ -64,6 +64,9 @@ class ScheduleServiceTest {
     private ScheduleScheduledTaskService scheduledTaskService;
 
     @Mock
+    private com.mannschaft.app.schedule.service.ScheduleReminderService reminderService;
+
+    @Mock
     private TeamOrgMembershipRepository teamOrgMembershipRepository;
 
     @InjectMocks
@@ -319,7 +322,7 @@ class ScheduleServiceTest {
             UpdateScheduleRequest req = new UpdateScheduleRequest(
                     "更新後タイトル", null, null,
                     null, null, null, null, null, null, null,
-                    null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null);
 
             // when
             scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_ONLY", USER_ID);
@@ -338,7 +341,7 @@ class ScheduleServiceTest {
             UpdateScheduleRequest req = new UpdateScheduleRequest(
                     "更新", null, null,
                     null, null, null, null, null, null, null,
-                    null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null);
 
             // when & then
             assertThatThrownBy(() -> scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_ONLY", USER_ID))
