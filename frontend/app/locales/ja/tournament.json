@@ -47,6 +47,22 @@
       "TOUR_032": "連絡スペースの公開設定を変更する権限がありません"
     }
   },
+  "communication": {
+    "title": "連絡スペース",
+    "bulletin": "掲示板",
+    "chat": "チャット",
+    "tournament_space": "大会全体",
+    "division_space": "ディビジョン",
+    "visibility_toggle": "公開設定",
+    "public": "公開",
+    "private": "非公開",
+    "empty": "連絡スペースが準備されていません",
+    "no_bulletin": "掲示板スペースがありません",
+    "no_chat": "チャットスペースがありません",
+    "visibility_saved": "公開設定を変更しました",
+    "visibility_failed": "公開設定の変更に失敗しました",
+    "load_failed": "連絡スペースの取得に失敗しました"
+  },
   "dashboard_widgets": {
     "team_record_title": "大会成績",
     "org_summary_title": "主催大会サマリ",

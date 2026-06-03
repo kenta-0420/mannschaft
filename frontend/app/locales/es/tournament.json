@@ -47,6 +47,22 @@
       "TOUR_032": "No tienes permiso para cambiar la visibilidad de este espacio de contacto"
     }
   },
+  "communication": {
+    "title": "Espacio de contacto",
+    "bulletin": "Tablón de anuncios",
+    "chat": "Chat",
+    "tournament_space": "Todo el torneo",
+    "division_space": "División",
+    "visibility_toggle": "Visibilidad",
+    "public": "Público",
+    "private": "Privado",
+    "empty": "No hay espacios de contacto disponibles",
+    "no_bulletin": "No hay tablón de anuncios",
+    "no_chat": "No hay espacio de chat",
+    "visibility_saved": "Visibilidad actualizada",
+    "visibility_failed": "Error al actualizar la visibilidad",
+    "load_failed": "Error al cargar los espacios de contacto"
+  },
   "dashboard_widgets": {
     "team_record_title": "Historial de torneos",
     "org_summary_title": "Torneos organizados",

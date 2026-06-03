@@ -7,6 +7,7 @@ import type {
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
+const { t } = useI18n()
 const route = useRoute()
 const orgId = Number(route.params.id)
 const tId = Number(route.params.tId)
@@ -135,6 +136,13 @@ onMounted(async () => {
   <div>
     <div class="mb-4 flex items-center gap-3">
       <BackButton :to="`/organizations/${orgId}/tournaments`" label="大会一覧に戻る" />
+      <NuxtLink
+        :to="`/organizations/${orgId}/tournaments/${tId}/communication`"
+        class="ml-auto flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition-colors hover:bg-surface-100"
+      >
+        <i class="pi pi-comments text-sm" />
+        {{ t('tournament.communication.title') }}
+      </NuxtLink>
     </div>
 
     <PageLoading v-if="loading" size="40px" />
