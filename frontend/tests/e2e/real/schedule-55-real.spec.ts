@@ -400,10 +400,10 @@ test.describe('SCHED55-REAL UI: スケジュールフォームのリマインダ
     expect(detailRes.ok()).toBe(true)
     const detailBody = await detailRes.json()
     // BE レスポンスに reminders フィールドが含まれること（機能55 第三陣で追加）
-    const reminders = detailBody?.data?.reminders ?? []
+    const reminders = detailBody?.data?.reminders as Array<Record<string, unknown>> ?? []
     expect(reminders.length, 'APIレスポンスにリマインダーが1件含まれること').toBe(1)
-    expect(reminders[0].reminderKind, 'RELATIVE リマインダーであること').toBe('RELATIVE')
-    expect(reminders[0].remindBeforeMinutes, '30分前リマインダーであること').toBe(30)
+    expect(reminders[0]?.['reminderKind'], 'RELATIVE リマインダーであること').toBe('RELATIVE')
+    expect(reminders[0]?.['remindBeforeMinutes'], '30分前リマインダーであること').toBe(30)
 
     // ページにエラーが表示されていないこと
     expect(page.url()).not.toContain('/error')
@@ -557,9 +557,9 @@ test.describe('SCHED55-REAL API補助: リマインダーBE保存確認', () => 
       expect(Array.isArray(reminders)).toBe(true)
       expect(reminders!.length).toBeGreaterThan(0)
       const r = reminders![0]
-      expect(r.reminderKind).toBe('RELATIVE')
-      expect(r.remindBeforeMinutes).toBe(30)
-      expect(r.isSent).toBe(false)
+      expect((r as Record<string, unknown>)?.reminderKind).toBe('RELATIVE')
+      expect((r as Record<string, unknown>)?.remindBeforeMinutes).toBe(30)
+      expect((r as Record<string, unknown>)?.isSent).toBe(false)
     }
   })
 
@@ -604,9 +604,9 @@ test.describe('SCHED55-REAL API補助: リマインダーBE保存確認', () => 
       expect(Array.isArray(reminders)).toBe(true)
       expect(reminders!.length).toBeGreaterThan(0)
       const r = reminders![0]
-      expect(r.reminderKind).toBe('ABSOLUTE')
-      expect(r.remindAt).not.toBeNull()
-      expect(r.remindBeforeMinutes).toBeNull()
+      expect((r as Record<string, unknown>)?.reminderKind).toBe('ABSOLUTE')
+      expect((r as Record<string, unknown>)?.remindAt).not.toBeNull()
+      expect((r as Record<string, unknown>)?.remindBeforeMinutes).toBeNull()
     }
   })
 
