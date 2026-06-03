@@ -173,6 +173,23 @@ public interface StripePaymentProvider {
                                                      String idempotencyKey);
 
     /**
+     * manual-capture の PaymentIntent を確定（capture）する（設計書 02 §5.3 / §8）。
+     *
+     * <p>{@code capture_method='manual'} で与信済み（{@code requires_capture}）の PaymentIntent を確定する。
+     * capture と同時に {@code transfer_data.destination} への送金（{@code application_fee_amount} 控除後）が
+     * 起こり、Mannschaft は資金を保持しない（Destination Charge・README §1.0）。</p>
+     *
+     * <p>{@code idempotencyKey="capture-{escrowId}"} を渡し、ネットワーク再送でも二重 capture を Stripe 側で
+     * 拒否する（札行 PESSIMISTIC_WRITE ロックとの二重防御・設計書 02 §5.3）。返り値は確定後の
+     * {@link PaymentIntentInfo}（{@code status} は通常 {@code succeeded}）。</p>
+     *
+     * @param paymentIntentId 対象 PaymentIntent ID（{@code pi_xxx}・{@code requires_capture}）
+     * @param idempotencyKey  冪等性キー（{@code capture-{escrowId}}・設計書 02 §9）
+     * @return capture 後の PaymentIntent 情報（id / clientSecret / status）
+     */
+    PaymentIntentInfo captureManualPaymentIntent(String paymentIntentId, String idempotencyKey);
+
+    /**
      * 与信を取消す（capture 前の PaymentIntent.cancel・設計書 02 §6 / §8）。
      *
      * <p>札下げ / hold 失効 / 72h 猶予超過などで与信を取り消す。capture 後は対象外（返金で対応）。</p>
