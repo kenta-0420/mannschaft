@@ -151,6 +151,13 @@ onMounted(async () => {
         {{ t('tournament.communication.title') }}
       </NuxtLink>
       <NuxtLink
+        :to="`/organizations/${orgId}/tournaments/${tId}/submissions`"
+        class="flex items-center gap-1 rounded-lg border border-surface-200 px-3 py-1.5 text-xs font-medium text-surface-600 transition hover:border-primary-400 hover:text-primary-600"
+      >
+        <i class="pi pi-file-edit text-xs" />
+        {{ $t('tournament.submission.nav_link') }}
+      </NuxtLink>
+      <NuxtLink
         :to="`/organizations/${orgId}/tournaments/${tId}/files`"
         class="flex items-center gap-1.5 rounded-lg border border-surface-200 bg-surface-0 px-3 py-1.5 text-sm text-surface-600 transition-colors hover:bg-surface-100"
       >
