@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.controller;
 
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.payment.connect.ConnectWebhookService;
 import com.mannschaft.app.payment.service.StripeWebhookService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,12 +39,20 @@ public class StripeWebhookController {
      * Stripe platform Webhook を受信する（F08.2）。
      * <p>
      * 署名検証には生ボディ（raw body）が必要。{@code @RequestBody String} でパース前の文字列を受け取る。
+     * <p>
+     * {@code Stripe-Signature} ヘッダが存在しない場合は 400（{@code PAYMENT_C040}）を返す。
+     * Spring の {@code required = true}（デフォルト）のままにすると
+     * {@code MissingRequestHeaderException → 500(COMMON_999)} となるため {@code required = false} に設定し、
+     * メソッド冒頭で明示的に検証する。
      */
     @PostMapping("/stripe")
     @Operation(summary = "Stripe Webhook 受信（platform）")
     public ResponseEntity<Void> handleWebhook(
             @RequestBody String payload,
-            @RequestHeader("Stripe-Signature") String sigHeader) {
+            @RequestHeader(value = "Stripe-Signature", required = false) String sigHeader) {
+        if (sigHeader == null || sigHeader.isBlank()) {
+            throw new BusinessException(ConnectPaymentErrorCode.WEBHOOK_SIGNATURE_INVALID);
+        }
         try {
             stripeWebhookService.handleWebhook(payload, sigHeader);
             return ResponseEntity.ok().build();
@@ -60,12 +70,18 @@ public class StripeWebhookController {
      * 署名検証失敗は {@code BusinessException}（{@code PAYMENT_C040} → 400）として伝播させ
      * {@code GlobalExceptionHandler} に委ねる（設計書 02 §4.1: 署名失敗=400）。
      * 署名が正当ならハンドラ内の業務エラーは握らず、冪等ゲートで重複は no-op となる。
+     * <p>
+     * {@code Stripe-Signature} ヘッダが存在しない場合は 400（{@code PAYMENT_C040}）を返す。
+     * platform Webhook と同様、{@code required = false} で受け取りメソッド冒頭で明示検証する。
      */
     @PostMapping("/stripe/connect")
     @Operation(summary = "Stripe Connect Webhook 受信")
     public ResponseEntity<Void> handleConnectWebhook(
             @RequestBody String payload,
-            @RequestHeader("Stripe-Signature") String sigHeader) {
+            @RequestHeader(value = "Stripe-Signature", required = false) String sigHeader) {
+        if (sigHeader == null || sigHeader.isBlank()) {
+            throw new BusinessException(ConnectPaymentErrorCode.WEBHOOK_SIGNATURE_INVALID);
+        }
         connectWebhookService.handleWebhook(payload, sigHeader);
         return ResponseEntity.ok().build();
     }
