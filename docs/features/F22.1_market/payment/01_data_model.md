@@ -174,7 +174,7 @@ INDEX idx_le_stripe_obj (stripe_object_id)
 | `id` | BINARY(16) | NO | (UUIDv7) | PK |
 | `escrow_transaction_id` | BINARY(16) | NO | — | `escrow_transactions.id`（payment 内 FK・CASCADE 可） |
 | `stripe_refund_id` | VARCHAR(32) | NO | — | `re_xxx`（一意） |
-| `amount` | INT UNSIGNED | NO | — | 返金額（円整数・最小単位。部分返金で `< escrow.amount`） |
+| `amount` | INT UNSIGNED | NO | — | **支払者へ戻す返金額（円整数・最小単位・transferAmount ベース）**。支払者負担モデル（02 §6.1・マスター確定 2026-06-03）では返金上限が受取側の受取正味＝`transferAmount`（`escrow.amount − application_fee_amount`）であり、`amount < face_amount`（さらに `< escrow.amount`）。全額返金でも 9,750（額面 10,000 例）であって 10,000 や 10,250 ではない。部分返金で `< transferAmount` |
 | `currency` | CHAR(3) | NO | `'JPY'` | |
 | `reason` | VARCHAR(32) | NO | — | `requested_by_customer` / `duplicate` / `dispute_resolution` / `cancellation` 等 |
 | `reason_detail` | VARCHAR(500) | YES | NULL | 運営・札主の補足（PII 非含意） |

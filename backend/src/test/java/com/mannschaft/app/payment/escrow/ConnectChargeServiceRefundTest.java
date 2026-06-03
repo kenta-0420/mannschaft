@@ -94,43 +94,52 @@ class ConnectChargeServiceRefundTest {
     }
 
     @Test
-    @DisplayName("CAPTURED 全額返金: reverse_transfer=true / refund_application_fee=false で Stripe 返金・REFUNDED・refunds PENDING 記録・ledger 借貸一致")
-    void capturedFullRefund_setsConfigAAndRefunded() {
+    @DisplayName("CAPTURED 全額返金（支払者負担モデル・decouple）: 支払者へ transferAmount=9,750 返金（reverse_transfer=false/refund_application_fee=false）＋同額の TransferReversal で受取側±0/Mannschaft±0・REFUNDED・refunds PENDING・ledger 借貸一致(9,750)")
+    void capturedFullRefund_payerBearsFee_decoupleReversalAndRefund() {
         ConnectChargeService svc = service();
         givenPayeeResolves();
         EscrowTransactionEntity captured = escrow(EscrowStatus.CAPTURED);
         given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.of(captured));
         given(refundRepository.findByEscrowTransactionId(ESCROW_ID)).willReturn(List.of());
-        given(stripePaymentProvider.createConnectRefund(eq("pi_abc"), eq(10_000L), eq("cancellation"),
-                eq(true), eq(false), anyString()))
+        // 送金 ID は PaymentIntent → latest_charge → charge.transfer で解決される。
+        given(stripePaymentProvider.resolveTransferIdFromPaymentIntent("pi_abc")).willReturn("tr_xyz");
+        // 全額返金で支払者へ戻す額 = transferAmount = amount(10,250) − application_fee(500) = 9,750。
+        given(stripePaymentProvider.createConnectRefund(eq("pi_abc"), eq(9_750L), eq("cancellation"),
+                eq(false), eq(false), anyString()))
                 .willReturn(new StripePaymentProvider.ConnectRefundInfo("re_1", "pending"));
         given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(refundRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(ledgerEntryRepository.saveAll(any())).willAnswer(inv -> inv.getArgument(0));
 
-        svc.refund(ESCROW_ID, 10_000L, "cancellation", null, ACTOR_USER_ID);
+        // null=全額。支払者へ戻す額は残額（transferAmount 全部）。
+        svc.refund(ESCROW_ID, null, "cancellation", null, ACTOR_USER_ID);
 
-        // 設定A: reverse_transfer=true / refund_application_fee=false が Stripe へ渡る。
+        // (1) 受取側送金から 9,750 を「明示的に」巻き戻す（比例 reverse の取りこぼし回避＝Mannschaft±0/受取側±0）。
+        ArgumentCaptor<String> revKeyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(stripePaymentProvider).reverseTransfer(eq("tr_xyz"), eq(9_750L), revKeyCaptor.capture());
+        assertThat(revKeyCaptor.getValue()).startsWith("reversal-" + ESCROW_ID + "-");
+
+        // (2) 支払者へ 9,750 返金。reverse_transfer=false（比例 reverse 不使用）/ refund_application_fee=false（1.4% keep）。
         ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
-        verify(stripePaymentProvider).createConnectRefund(eq("pi_abc"), eq(10_000L), eq("cancellation"),
-                eq(true), eq(false), keyCaptor.capture());
+        verify(stripePaymentProvider).createConnectRefund(eq("pi_abc"), eq(9_750L), eq("cancellation"),
+                eq(false), eq(false), keyCaptor.capture());
         assertThat(keyCaptor.getValue()).startsWith("refund-" + ESCROW_ID + "-");
 
-        // 全額返金 → REFUNDED。
+        // 全額返金（累計=transferAmount）→ REFUNDED。
         ArgumentCaptor<EscrowTransactionEntity> escrowCaptor = ArgumentCaptor.forClass(EscrowTransactionEntity.class);
         verify(escrowTransactionRepository).save(escrowCaptor.capture());
         assertThat(escrowCaptor.getValue().getStatus()).isEqualTo(EscrowStatus.REFUNDED);
 
-        // refunds に PENDING で記録（webhook で SUCCEEDED 確定）。
+        // refunds に PENDING で記録（webhook で SUCCEEDED 確定）。amount=支払者へ戻した額（transferベース）=9,750。
         ArgumentCaptor<RefundEntity> refundCaptor = ArgumentCaptor.forClass(RefundEntity.class);
         verify(refundRepository).save(refundCaptor.capture());
         assertThat(refundCaptor.getValue().getStatus()).isEqualTo(RefundStatus.PENDING);
         assertThat(refundCaptor.getValue().getStripeRefundId()).isEqualTo("re_1");
-        assertThat(refundCaptor.getValue().getAmount()).isEqualTo(10_000L);
+        assertThat(refundCaptor.getValue().getAmount()).isEqualTo(9_750L);
         assertThat(refundCaptor.getValue().getEscrowTransactionId()).isEqualTo(ESCROW_ID);
         assertThat(refundCaptor.getValue().getRefundedByUserId()).isEqualTo(ACTOR_USER_ID);
 
-        // ledger(REFUND) 監査追記・借貸一致。
+        // ledger(REFUND) 監査追記・借貸一致（D PAYEE=巻き戻し / C PAYER=支払者返金 = いずれも 9,750）。
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<LedgerEntryEntity>> ledgerCaptor = ArgumentCaptor.forClass(List.class);
         verify(ledgerEntryRepository).saveAll(ledgerCaptor.capture());
@@ -139,26 +148,31 @@ class ConnectChargeServiceRefundTest {
                 .mapToLong(LedgerEntryEntity::getAmount).sum();
         long credit = entries.stream().filter(e -> e.getDirection() == LedgerDirection.C)
                 .mapToLong(LedgerEntryEntity::getAmount).sum();
-        assertThat(debit).isEqualTo(credit).isEqualTo(10_000L);
+        // 不変条件: 受取側が被る額（D PAYEE）= 支払者へ戻す額（C PAYER）= 9,750 → Mannschaft±0。
+        assertThat(debit).isEqualTo(credit).isEqualTo(9_750L);
         assertThat(entries).allMatch(e -> e.getEntryType() == LedgerEntryType.REFUND);
         assertThat(entries).allMatch(e -> ESCROW_ID.equals(e.getEscrowTransactionId()));
     }
 
     @Test
-    @DisplayName("CAPTURED 部分返金: PARTIALLY_REFUNDED・額面ベースで refunds 記録")
+    @DisplayName("CAPTURED 部分返金: 支払者へ R=3,000 返金＋同額 TransferReversal・PARTIALLY_REFUNDED・refunds=3,000（不変条件: 受取側負担=支払者戻り）")
     void capturedPartialRefund_partiallyRefunded() {
         ConnectChargeService svc = service();
         givenPayeeResolves();
         given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.of(escrow(EscrowStatus.CAPTURED)));
         given(refundRepository.findByEscrowTransactionId(ESCROW_ID)).willReturn(List.of());
+        given(stripePaymentProvider.resolveTransferIdFromPaymentIntent("pi_abc")).willReturn("tr_xyz");
         given(stripePaymentProvider.createConnectRefund(eq("pi_abc"), eq(3_000L), anyString(),
-                eq(true), eq(false), anyString()))
+                eq(false), eq(false), anyString()))
                 .willReturn(new StripePaymentProvider.ConnectRefundInfo("re_2", "pending"));
         given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(refundRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(ledgerEntryRepository.saveAll(any())).willAnswer(inv -> inv.getArgument(0));
 
         svc.refund(ESCROW_ID, 3_000L, "requested_by_customer", null, ACTOR_USER_ID);
+
+        // 巻き戻し額（受取側負担）= 支払者へ戻す額 = 3,000（Mannschaft±0）。
+        verify(stripePaymentProvider).reverseTransfer(eq("tr_xyz"), eq(3_000L), anyString());
 
         ArgumentCaptor<EscrowTransactionEntity> escrowCaptor = ArgumentCaptor.forClass(EscrowTransactionEntity.class);
         verify(escrowTransactionRepository).save(escrowCaptor.capture());
@@ -170,45 +184,49 @@ class ConnectChargeServiceRefundTest {
     }
 
     @Test
-    @DisplayName("PARTIALLY_REFUNDED から残額ちょうど返金: 累計=face_amount で REFUNDED")
+    @DisplayName("PARTIALLY_REFUNDED から残額ちょうど返金: 累計=transferAmount(9,750) で REFUNDED")
     void partialThenRemainder_becomesRefunded() {
         ConnectChargeService svc = service();
         givenPayeeResolves();
         given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.of(escrow(EscrowStatus.PARTIALLY_REFUNDED)));
-        // 既に 3000 返金済み。残額 7000。
+        // 既に 3,000 返金済み（transferベース）。残額 = 9,750 − 3,000 = 6,750。
         RefundEntity prior = RefundEntity.builder().escrowTransactionId(ESCROW_ID).stripeRefundId("re_prior")
                 .amount(3_000L).currency("JPY").reason("requested_by_customer").status(RefundStatus.SUCCEEDED).build();
         given(refundRepository.findByEscrowTransactionId(ESCROW_ID)).willReturn(List.of(prior));
-        given(stripePaymentProvider.createConnectRefund(eq("pi_abc"), eq(7_000L), anyString(),
-                eq(true), eq(false), anyString()))
+        given(stripePaymentProvider.resolveTransferIdFromPaymentIntent("pi_abc")).willReturn("tr_xyz");
+        given(stripePaymentProvider.createConnectRefund(eq("pi_abc"), eq(6_750L), anyString(),
+                eq(false), eq(false), anyString()))
                 .willReturn(new StripePaymentProvider.ConnectRefundInfo("re_3", "pending"));
         given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(refundRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(ledgerEntryRepository.saveAll(any())).willAnswer(inv -> inv.getArgument(0));
 
-        svc.refund(ESCROW_ID, 7_000L, "requested_by_customer", null, ACTOR_USER_ID);
+        svc.refund(ESCROW_ID, 6_750L, "requested_by_customer", null, ACTOR_USER_ID);
 
+        verify(stripePaymentProvider).reverseTransfer(eq("tr_xyz"), eq(6_750L), anyString());
         ArgumentCaptor<EscrowTransactionEntity> escrowCaptor = ArgumentCaptor.forClass(EscrowTransactionEntity.class);
         verify(escrowTransactionRepository).save(escrowCaptor.capture());
         assertThat(escrowCaptor.getValue().getStatus()).isEqualTo(EscrowStatus.REFUNDED);
     }
 
     @Test
-    @DisplayName("超過拒否: 残額（face−既返金）を超える返金→REFUND_AMOUNT_EXCEEDS・Stripe never")
+    @DisplayName("超過拒否: 残額（transferAmount−既返金）を超える返金→REFUND_AMOUNT_EXCEEDS・Stripe never")
     void exceedsResidual_rejected() {
         ConnectChargeService svc = service();
         givenPayeeResolves();
         given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.of(escrow(EscrowStatus.PARTIALLY_REFUNDED)));
+        // 既に 8,000 返金済み（transferベース）。残額 = 9,750 − 8,000 = 1,750。
         RefundEntity prior = RefundEntity.builder().escrowTransactionId(ESCROW_ID).stripeRefundId("re_prior")
                 .amount(8_000L).currency("JPY").reason("requested_by_customer").status(RefundStatus.SUCCEEDED).build();
         given(refundRepository.findByEscrowTransactionId(ESCROW_ID)).willReturn(List.of(prior));
 
-        // 残額 2000 に対し 3000 を要求 → 超過。
+        // 残額 1,750 に対し 3,000 を要求 → 超過。
         assertThatThrownBy(() -> svc.refund(ESCROW_ID, 3_000L, "requested_by_customer", null, ACTOR_USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ConnectPaymentErrorCode.REFUND_AMOUNT_EXCEEDS);
 
+        verify(stripePaymentProvider, never()).reverseTransfer(anyString(), anyLong(), anyString());
         verify(stripePaymentProvider, never()).createConnectRefund(anyString(), anyLong(), anyString(),
                 anyBoolean(), anyBoolean(), anyString());
     }
@@ -226,8 +244,31 @@ class ConnectChargeServiceRefundTest {
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ConnectPaymentErrorCode.REFUND_AMOUNT_EXCEEDS);
 
+        verify(stripePaymentProvider, never()).reverseTransfer(anyString(), anyLong(), anyString());
         verify(stripePaymentProvider, never()).createConnectRefund(anyString(), anyLong(), anyString(),
                 anyBoolean(), anyBoolean(), anyString());
+    }
+
+    @Test
+    @DisplayName("整合性異常: CAPTURED だが Transfer 未解決→INVALID_ESCROW_STATE・支払者返金には進まない（reverseTransfer/createConnectRefund never）")
+    void transferUnresolved_invalidState() {
+        ConnectChargeService svc = service();
+        givenPayeeResolves();
+        given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.of(escrow(EscrowStatus.CAPTURED)));
+        given(refundRepository.findByEscrowTransactionId(ESCROW_ID)).willReturn(List.of());
+        // 送金 ID が解決できない（capture 済みなのに transfer なし＝整合性異常）。
+        given(stripePaymentProvider.resolveTransferIdFromPaymentIntent("pi_abc")).willReturn(null);
+
+        assertThatThrownBy(() -> svc.refund(ESCROW_ID, null, "cancellation", null, ACTOR_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ConnectPaymentErrorCode.INVALID_ESCROW_STATE);
+
+        // 巻き戻しできないため支払者返金にも進まない（Mannschaft の一時的持ち出しを防ぐ）。
+        verify(stripePaymentProvider, never()).reverseTransfer(anyString(), anyLong(), anyString());
+        verify(stripePaymentProvider, never()).createConnectRefund(anyString(), anyLong(), anyString(),
+                anyBoolean(), anyBoolean(), anyString());
+        verify(refundRepository, never()).save(any());
     }
 
     @Test
@@ -338,6 +379,7 @@ class ConnectChargeServiceRefundTest {
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ConnectPaymentErrorCode.PAYMENT_FORBIDDEN);
 
+        verify(stripePaymentProvider, never()).reverseTransfer(anyString(), anyLong(), anyString());
         verify(stripePaymentProvider, never()).createConnectRefund(anyString(), anyLong(), anyString(),
                 anyBoolean(), anyBoolean(), anyString());
         verify(refundRepository, never()).save(any());
@@ -355,7 +397,34 @@ class ConnectChargeServiceRefundTest {
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND);
 
+        verify(stripePaymentProvider, never()).reverseTransfer(anyString(), anyLong(), anyString());
         verify(stripePaymentProvider, never()).createConnectRefund(anyString(), anyLong(), anyString(),
                 anyBoolean(), anyBoolean(), anyString());
+    }
+
+    @Test
+    @DisplayName("IDOR: USER 受領（個人）の明示返金は本波未提供→404秘匿（PAYMENT_C002）・Stripe never・テスト網羅の穴埋め")
+    void payeeUser_notFound() {
+        ConnectChargeService svc = service();
+        // 受取側 Connect 口座が USER scope（個人受領）。明示返金 API では存在を漏らさず 404 秘匿で拒否する。
+        ConnectAccountEntity userPayee = ConnectAccountEntity.builder()
+                .scopeKind(ScopeKind.USER).scopeId(12345L).organizationId(5L)
+                .stripeAccountId("acct_user").payoutsEnabled(true).chargesEnabled(true)
+                .build();
+        userPayee.setId(PAYEE_ACCOUNT_ID);
+        given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.of(escrow(EscrowStatus.CAPTURED)));
+        given(connectAccountRepository.findById(PAYEE_ACCOUNT_ID)).willReturn(Optional.of(userPayee));
+
+        assertThatThrownBy(() -> svc.refund(ESCROW_ID, 5_000L, "cancellation", null, ACTOR_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND);
+
+        // 認可（scope ADMIN）も Stripe も呼ばない。
+        verify(accessControlService, never()).checkPermission(anyLong(), anyLong(), anyString(), anyString());
+        verify(stripePaymentProvider, never()).reverseTransfer(anyString(), anyLong(), anyString());
+        verify(stripePaymentProvider, never()).createConnectRefund(anyString(), anyLong(), anyString(),
+                anyBoolean(), anyBoolean(), anyString());
+        verify(refundRepository, never()).save(any());
     }
 }

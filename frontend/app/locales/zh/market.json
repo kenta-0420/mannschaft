@@ -103,6 +103,13 @@
       "MARKET_003": "无法指定未成为好友的球队",
       "MARKET_004": "无法指定其他球队拥有的文件夹",
       "MARKET_005": "仅好友可见不能与配送目标同时使用"
+    },
+    "payment": {
+      "breakdown": {
+        "includesFeeNote": "※支付总额已包含支付手续费。",
+        "nonRefundableNote": "※即使发生退款，支付代理公司（Stripe）的支付手续费也不予退还。",
+        "refundExclFeeNote": "※退款金额为扣除支付手续费后的金额（收款方实际收到的金额）。"
+      }
     }
   }
 }

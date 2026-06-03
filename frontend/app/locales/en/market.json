@@ -103,6 +103,13 @@
       "MARKET_003": "Cannot specify a team that is not a confirmed friend",
       "MARKET_004": "Cannot specify a folder owned by another team",
       "MARKET_005": "Cannot combine friend-only visibility with distribution targets"
+    },
+    "payment": {
+      "breakdown": {
+        "includesFeeNote": "* The total payment includes the payment processing fee.",
+        "nonRefundableNote": "* Even in the event of a refund, the payment processor's (Stripe) processing fee is non-refundable.",
+        "refundExclFeeNote": "* The refund amount is the amount after deducting the processing fee (the amount the recipient actually received)."
+      }
     }
   }
 }

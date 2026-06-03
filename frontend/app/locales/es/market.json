@@ -103,6 +103,13 @@
       "MARKET_003": "No se puede especificar un equipo que no sea amigo confirmado",
       "MARKET_004": "No se puede especificar una carpeta de otro equipo",
       "MARKET_005": "No se puede combinar solo amigos con destinos de distribución"
+    },
+    "payment": {
+      "breakdown": {
+        "includesFeeNote": "* El total del pago incluye la comisión de procesamiento del pago.",
+        "nonRefundableNote": "* Incluso en caso de reembolso, la comisión de procesamiento del proveedor de pagos (Stripe) no es reembolsable.",
+        "refundExclFeeNote": "* El importe del reembolso es el importe tras deducir la comisión de procesamiento (el importe que el receptor recibió realmente)."
+      }
     }
   }
 }

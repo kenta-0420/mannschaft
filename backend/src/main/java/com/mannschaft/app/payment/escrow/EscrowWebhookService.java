@@ -144,19 +144,21 @@ public class EscrowWebhookService {
         refund.setStatus(RefundStatus.SUCCEEDED);
         refundRepository.save(refund);
 
-        // 累計（SUCCEEDED 済み・額面ベース）が額面に達したか否かで escrow 状態を確定する。
-        long faceAmount = escrow.getFaceAmount();
+        // 支払者負担モデル（02 §6.1）: refunds.amount は「支払者へ戻した額＝transferAmount ベース」。
+        // 返金の上限は受取側が受け取った正味＝transferAmount（amount − application_fee）であり、額面ではない。
+        // 累計（SUCCEEDED 済み）が transferAmount に達したか否かで escrow 状態を確定する（refund API と整合）。
+        long transferAmount = escrow.getAmount() - escrow.getApplicationFeeAmount();
         long totalRefunded = refundRepository.findByEscrowTransactionId(escrow.getId()).stream()
                 .filter(r -> r.getStatus() == RefundStatus.SUCCEEDED)
                 .mapToLong(RefundEntity::getAmount)
                 .sum();
-        EscrowStatus newStatus = totalRefunded >= faceAmount ? EscrowStatus.REFUNDED : EscrowStatus.PARTIALLY_REFUNDED;
+        EscrowStatus newStatus = totalRefunded >= transferAmount ? EscrowStatus.REFUNDED : EscrowStatus.PARTIALLY_REFUNDED;
         if (escrow.getStatus() != newStatus) {
             escrow.setStatus(newStatus);
             escrowTransactionRepository.save(escrow);
         }
-        log.info("charge.refunded 確定: escrowId={}, refundId={}, status={}, 累計={}/{}",
-                escrow.getId(), event.refundId(), newStatus, totalRefunded, faceAmount);
+        log.info("charge.refunded 確定: escrowId={}, refundId={}, status={}, 累計={}/{}（transferベース）",
+                escrow.getId(), event.refundId(), newStatus, totalRefunded, transferAmount);
         return WebhookProcessStatus.PROCESSED;
     }
 

@@ -17,6 +17,7 @@ import com.stripe.model.Price;
 import com.stripe.model.Product;
 import com.stripe.model.Refund;
 import com.stripe.model.StripeObject;
+import com.stripe.model.Transfer;
 import com.stripe.model.checkout.Session;
 import com.stripe.net.RequestOptions;
 import com.stripe.net.Webhook;
@@ -31,6 +32,7 @@ import com.stripe.param.PriceUpdateParams;
 import com.stripe.param.ProductCreateParams;
 import com.stripe.param.ProductUpdateParams;
 import com.stripe.param.RefundCreateParams;
+import com.stripe.param.TransferReversalCollectionCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -520,6 +522,44 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
             return new ConnectRefundInfo(refund.getId(), refund.getStatus());
         } catch (StripeException e) {
             log.error("Stripe Connect Refund 作成失敗: piId={}, amount={}", paymentIntentId, amountMinor, e);
+            throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
+    @Override
+    public String resolveTransferIdFromPaymentIntent(String paymentIntentId) {
+        try {
+            PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
+            String chargeId = intent.getLatestCharge();
+            if (chargeId == null) {
+                log.warn("Transfer 解決不能（latest_charge なし）: piId={}", paymentIntentId);
+                return null;
+            }
+            Charge charge = Charge.retrieve(chargeId);
+            String transferId = charge.getTransfer();
+            log.info("Transfer 解決: piId={}, chargeId={}, transferId={}", paymentIntentId, chargeId, transferId);
+            return transferId;
+        } catch (StripeException e) {
+            log.error("Transfer 解決失敗: piId={}", paymentIntentId, e);
+            throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
+    @Override
+    public void reverseTransfer(String transferId, long amountMinor, String idempotencyKey) {
+        try {
+            Transfer transfer = Transfer.retrieve(transferId);
+            TransferReversalCollectionCreateParams params = TransferReversalCollectionCreateParams.builder()
+                    .setAmount(amountMinor)
+                    // 設定A: application_fee は巻き戻さない（1.4% keep）。Stripe 既定 false だが明示しない（API 既定に従う）。
+                    .build();
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            transfer.getReversals().create(params, options);
+            log.info("Stripe Transfer 巻き戻し（reversal）: transferId={}, amount={}", transferId, amountMinor);
+        } catch (StripeException e) {
+            log.error("Stripe Transfer 巻き戻し失敗: transferId={}, amount={}", transferId, amountMinor, e);
             throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
         }
     }

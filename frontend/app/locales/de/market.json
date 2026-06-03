@@ -103,6 +103,13 @@
       "MARKET_003": "Es kann kein Team angegeben werden, das kein bestätigter Freund ist",
       "MARKET_004": "Es kann kein Ordner eines anderen Teams angegeben werden",
       "MARKET_005": "Freunde-only-Sichtbarkeit kann nicht mit Verteilungszielen kombiniert werden"
+    },
+    "payment": {
+      "breakdown": {
+        "includesFeeNote": "* Der Gesamtbetrag enthält die Zahlungsbearbeitungsgebühr.",
+        "nonRefundableNote": "* Auch im Falle einer Rückerstattung wird die Bearbeitungsgebühr des Zahlungsdienstleisters (Stripe) nicht erstattet.",
+        "refundExclFeeNote": "* Der Rückerstattungsbetrag ist der Betrag nach Abzug der Bearbeitungsgebühr (der Betrag, den der Empfänger tatsächlich erhalten hat)."
+      }
     }
   }
 }

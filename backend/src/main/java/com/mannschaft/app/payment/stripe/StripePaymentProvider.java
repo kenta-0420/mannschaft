@@ -212,10 +212,18 @@ public interface StripePaymentProvider {
      * 二重返金を Stripe 側でも拒否する（設計書 02 §9・既存全額 {@link #createRefund(String, Long, Long)} とは
      * 別メソッドで非破壊に追加）。</p>
      *
+     * <p><b>支払者負担モデル（マスター確定・2026-06-03 改訂）:</b> 全額返金で支払者へ戻す額は
+     * <b>受取側が実際に受け取った正味＝transferAmount（{@code amount − application_fee}）</b>であり、
+     * 支払者上乗せ手数料（2.5%）は戻らない。Mannschaft±0・受取側±0 を同時に満たすため
+     * <b>{@code reverse_transfer=false}</b>（比例 reverse の取りこぼしを避ける）で支払者へ {@code amountMinor}
+     * を返金し、送金の巻き戻しは {@link #reverseTransfer} で<b>明示的に同額</b>行う（decouple 方式）。
+     * {@code refund_application_fee=false}（1.4% keep）は維持する。比例 reverse（{@code reverse_transfer=true}）
+     * では送金の巻き戻し額が返金額と一致せず Mannschaft が持ち出しになるため採用しない（設計書 02 §6.1）。</p>
+     *
      * @param paymentIntentId      返金対象 PaymentIntent ID（{@code pi_xxx}・capture 済み）
-     * @param amountMinor          返金額（最小通貨単位の整数・額面ベースの部分/全額）
+     * @param amountMinor          支払者へ戻す返金額（最小通貨単位・transferAmount ベースの部分/全額）
      * @param reason               返金理由（{@code requested_by_customer}/{@code duplicate}/{@code fraudulent} 等）
-     * @param reverseTransfer      受取側 Connect 残高から返金原資を戻すか（設定A では {@code true}）
+     * @param reverseTransfer      受取側 Connect 残高から比例 reverse するか（支払者負担モデルでは {@code false}）
      * @param refundApplicationFee 徴収済み application_fee を返金するか（設定A では {@code false}）
      * @param idempotencyKey       冪等性キー（{@code refund-{escrowId}-{seq}}・設計書 02 §9）
      * @return Connect 返金情報（refundId / status）
@@ -223,6 +231,32 @@ public interface StripePaymentProvider {
     ConnectRefundInfo createConnectRefund(String paymentIntentId, long amountMinor, String reason,
                                           boolean reverseTransfer, boolean refundApplicationFee,
                                           String idempotencyKey);
+
+    /**
+     * Destination Charge の PaymentIntent に紐づく Stripe Transfer ID（{@code tr_xxx}）を解決する
+     * （支払者負担モデルの decouple 返金・設計書 02 §6.1）。
+     *
+     * <p>capture（Destination Charge）時に受取側 Connect 口座へ送られた送金（Transfer）の ID を
+     * {@code PaymentIntent → latest_charge → charge.transfer} の経路で取得する。送金が存在しない
+     * （未 capture / transfer_data 未設定など）場合は {@code null} を返す。</p>
+     *
+     * @param paymentIntentId 対象 PaymentIntent ID（{@code pi_xxx}・capture 済み）
+     * @return Stripe Transfer ID（{@code tr_xxx}）。解決不能なら {@code null}
+     */
+    String resolveTransferIdFromPaymentIntent(String paymentIntentId);
+
+    /**
+     * 受取側 Connect 口座への送金を<b>明示的に</b>巻き戻す（{@code TransferReversal}・支払者負担モデル・設計書 02 §6.1）。
+     *
+     * <p>{@link #createConnectRefund}（{@code reverse_transfer=false}）で支払者へ返金した額と<b>同額</b>を
+     * 受取側送金から巻き戻すことで「Mannschaft±0」「受取側±0（受け取った分だけ戻す）」を同時達成する
+     * （比例 reverse の取りこぼし回避）。{@code idempotency_key} で再送時の二重巻き戻しを Stripe 側でも拒否する。</p>
+     *
+     * @param transferId     対象 Stripe Transfer ID（{@code tr_xxx}・{@link #resolveTransferIdFromPaymentIntent} で解決）
+     * @param amountMinor    巻き戻し額（最小通貨単位・支払者へ戻す額と同額）
+     * @param idempotencyKey 冪等性キー（{@code reversal-{escrowId}-{seq}}・設計書 02 §9）
+     */
+    void reverseTransfer(String transferId, long amountMinor, String idempotencyKey);
 
     /**
      * 与信系（escrow）の platform Webhook イベントを検証・パースする（設計書 02 §4.2）。

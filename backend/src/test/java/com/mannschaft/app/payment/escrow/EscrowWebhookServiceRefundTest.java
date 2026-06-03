@@ -69,10 +69,11 @@ class EscrowWebhookServiceRefundTest {
     }
 
     @Test
-    @DisplayName("charge.refunded（全額）→ refunds SUCCEEDED 確定・escrow REFUNDED 確定（true 返却・PROCESSED）")
+    @DisplayName("charge.refunded（全額・支払者負担モデル）→ refunds SUCCEEDED 確定・累計=transferAmount(9,750) で escrow REFUNDED 確定（true 返却・PROCESSED）")
     void fullRefund_confirmsSucceededAndRefunded() {
+        // 支払者負担モデル: 全額返金の refunds.amount は transferAmount = amount(10,250) − fee(500) = 9,750。
         given(stripePaymentProvider.constructEscrowEvent(any(), any()))
-                .willReturn(refundEvent("evt_r1", "re_1", 10_000L, 10_250L));
+                .willReturn(refundEvent("evt_r1", "re_1", 9_750L, 10_250L));
         // 存在判定（非ロック）→ escrow あり → 冪等ゲート消費。
         given(escrowTransactionRepository.findByStripePaymentIntentId("pi_abc"))
                 .willReturn(Optional.of(escrow(EscrowStatus.CAPTURED)));
@@ -81,7 +82,7 @@ class EscrowWebhookServiceRefundTest {
         given(escrowTransactionRepository.findByStripePaymentIntentIdForUpdate("pi_abc"))
                 .willReturn(Optional.of(escrow(EscrowStatus.CAPTURED)));
         // 同一インスタンスを両 finder が返すことで、SUCCEEDED 確定後の累計集計に反映される（実 DB 同等）。
-        RefundEntity target = pendingRefund("re_1", 10_000L);
+        RefundEntity target = pendingRefund("re_1", 9_750L);
         given(refundRepository.findByStripeRefundId("re_1")).willReturn(Optional.of(target));
         given(refundRepository.findByEscrowTransactionId(ESCROW_ID)).willReturn(List.of(target));
         given(refundRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
