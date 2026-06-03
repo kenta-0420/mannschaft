@@ -47,6 +47,21 @@
       "TOUR_032": "연락 공간의 공개 설정을 변경할 권한이 없습니다"
     }
   },
+  "files": {
+    "title": "파일 보관함",
+    "tournament_folder": "대회 폴더",
+    "division_folder": "부문 폴더",
+    "create_folder": "폴더 만들기",
+    "empty": "파일 없음",
+    "upload": "업로드",
+    "load_error": "폴더를 불러오지 못했습니다",
+    "create_success": "폴더를 만들었습니다",
+    "create_error": "폴더 만들기에 실패했습니다",
+    "folder_name_placeholder": "폴더 이름",
+    "create_dialog_header": "폴더 만들기",
+    "back_to_root": "루트",
+    "no_division": "부문이 등록되어 있지 않습니다"
+  },
   "dashboard_widgets": {
     "team_record_title": "대회 성적",
     "org_summary_title": "주최 대회 요약",

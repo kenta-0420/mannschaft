@@ -47,6 +47,21 @@
       "TOUR_032": "Sie haben keine Berechtigung, die Sichtbarkeit dieses Kontaktbereichs zu ändern"
     }
   },
+  "files": {
+    "title": "Dateiablage",
+    "tournament_folder": "Turnierordner",
+    "division_folder": "Ligaordner",
+    "create_folder": "Ordner erstellen",
+    "empty": "Keine Dateien",
+    "upload": "Hochladen",
+    "load_error": "Ordner konnten nicht geladen werden",
+    "create_success": "Ordner erstellt",
+    "create_error": "Ordner konnte nicht erstellt werden",
+    "folder_name_placeholder": "Ordnername",
+    "create_dialog_header": "Ordner erstellen",
+    "back_to_root": "Stammverzeichnis",
+    "no_division": "Keine Ligen registriert"
+  },
   "dashboard_widgets": {
     "team_record_title": "Turnierbilanz",
     "org_summary_title": "Ausgerichtete Turniere",

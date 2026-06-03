@@ -47,6 +47,21 @@
       "TOUR_032": "You do not have permission to change the visibility of this contact space"
     }
   },
+  "files": {
+    "title": "File Storage",
+    "tournament_folder": "Tournament Folders",
+    "division_folder": "Division Folders",
+    "create_folder": "Create Folder",
+    "empty": "No files",
+    "upload": "Upload",
+    "load_error": "Failed to load folders",
+    "create_success": "Folder created",
+    "create_error": "Failed to create folder",
+    "folder_name_placeholder": "Folder name",
+    "create_dialog_header": "Create Folder",
+    "back_to_root": "Root",
+    "no_division": "No divisions registered"
+  },
   "dashboard_widgets": {
     "team_record_title": "Tournament Record",
     "org_summary_title": "Hosted Tournaments",

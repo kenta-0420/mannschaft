@@ -47,6 +47,21 @@
       "TOUR_032": "連絡スペースの公開設定を変更する権限がありません"
     }
   },
+  "files": {
+    "title": "ファイル置き場",
+    "tournament_folder": "大会フォルダ",
+    "division_folder": "ディビジョンフォルダ",
+    "create_folder": "フォルダを作成",
+    "empty": "ファイルなし",
+    "upload": "アップロード",
+    "load_error": "フォルダの読み込みに失敗しました",
+    "create_success": "フォルダを作成しました",
+    "create_error": "フォルダの作成に失敗しました",
+    "folder_name_placeholder": "フォルダ名",
+    "create_dialog_header": "フォルダを作成",
+    "back_to_root": "ルート",
+    "no_division": "ディビジョンが登録されていません"
+  },
   "dashboard_widgets": {
     "team_record_title": "大会成績",
     "org_summary_title": "主催大会サマリ",
