@@ -23,15 +23,17 @@ import com.mannschaft.app.survey.SurveyStatus;
 import com.mannschaft.app.survey.repository.SurveyRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -68,10 +70,19 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       （OOM 防止パターン。Docker 未起動環境では @EnabledIf により全テスト skip）</li>
  * </ul>
  *
+ * <h2>トランザクション設計（重要）</h2>
+ * <p>{@code ScheduleScheduledTaskBatchService.materializeOne}/{@code recordFailure} は
+ * {@code @Transactional(propagation=REQUIRES_NEW)} で独立トランザクションとして動く。
+ * テスト全体を {@code @Transactional} でラップすると、セットアップデータが未コミットのまま
+ * 別トランザクションから不可視になり、runBatch() が何も拾えず PENDING のまま残る。</p>
+ * <p>このため本テストは <b>クラスレベルの {@code @Transactional} を使用しない</b>。
+ * セットアップデータは {@link TransactionTemplate} で確実にコミットし、
+ * テスト後は {@code @AfterEach} で対象テーブルを明示クリーンアップする。
+ * 手本: {@code PropertyWorkPackageEventListenerIntegrationTest}。</p>
+ *
  * <p><b>回帰防止コメント (リマインダー)</b>: 機能55 第一陣までリマインダーバッチが存在しなかったため、
  * 共有/個人どちらのリマインダーも永遠に発火しなかった。本テストがその根治（第二陣）を確認する。</p>
  */
-@Transactional
 @DisplayName("機能55 予約 materialize・リマインダー統合テスト")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
@@ -114,6 +125,9 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
     @PersistenceContext
     private EntityManager em;
 
+    @Autowired
+    private PlatformTransactionManager txManager;
+
     // --- テスト用定数（FK 無しのためスキーマに存在しない ID で可） ---
     private static final Long ORG_ID       = 8_801L;
     private static final Long TEAM_ID      = 8_802L;
@@ -125,133 +139,233 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
     private Long notifyMember2;
     private Long memberRoleId;
 
+    /**
+     * テスト間汚染防止のため作成したエンティティの ID を追跡し @AfterEach で削除する。
+     * REQUIRES_NEW バッチが生成したレコード（schedule_attendances, surveys 等）も含め、
+     * 固有の schedule_id / org_id で絞り込んで削除する。
+     *
+     * schedule_scheduled_tasks: organization_id=ORG_ID で一括削除（UUID binary 変換不要）
+     * schedule_attendance_reminders / personal_schedule_reminders: Long 主キー（BIGINT AUTO_INCREMENT）
+     * schedules: Long 主キー（BIGINT AUTO_INCREMENT）
+     */
+    private final List<Long> createdScheduleIds = new ArrayList<>();
+    private final List<Long> createdReminderIds = new ArrayList<>();
+    private final List<Long> createdPersonalReminderIds = new ArrayList<>();
+
     // ========================================================================
-    // ヘルパー
+    // クリーンアップ
     // ========================================================================
 
-    /** ScheduleScheduledTaskEntity をPENDING で保存する */
+    @AfterEach
+    void cleanUp() {
+        TransactionTemplate tx = new TransactionTemplate(txManager);
+        tx.execute(status -> {
+            // schedule_scheduled_tasks:
+            // organization_id と scope_id（TEAM_ID）でテスト固有行を一括削除。
+            // @SQLRestriction を回避するため JPA ではなくネイティブクエリで物理削除する。
+            em.createNativeQuery(
+                    "DELETE FROM schedule_scheduled_tasks WHERE organization_id = :oid AND deleted_at IS NULL")
+                    .setParameter("oid", ORG_ID).executeUpdate();
+            // また SCHEDULE_ID+100 / +200 / +300 / +400 で作った行も organization_id=ORG_ID なので同一の条件で削除済み
+            // schedule_attendances（schedule_id で絞り込み）
+            for (Long sid : createdScheduleIds) {
+                em.createNativeQuery("DELETE FROM schedule_attendances WHERE schedule_id = :sid")
+                        .setParameter("sid", sid).executeUpdate();
+            }
+            // schedule_attendance_reminders（Long 主キー）
+            for (Long id : createdReminderIds) {
+                em.createNativeQuery("DELETE FROM schedule_attendance_reminders WHERE id = :id")
+                        .setParameter("id", id).executeUpdate();
+            }
+            // personal_schedule_reminders（Long 主キー）
+            for (Long id : createdPersonalReminderIds) {
+                em.createNativeQuery("DELETE FROM personal_schedule_reminders WHERE id = :id")
+                        .setParameter("id", id).executeUpdate();
+            }
+            // schedules
+            for (Long sid : createdScheduleIds) {
+                em.createNativeQuery("DELETE FROM schedules WHERE id = :sid")
+                        .setParameter("sid", sid).executeUpdate();
+            }
+            // surveys（scope_type=TEAM, scope_id=TEAM_ID で絞り込み）
+            em.createNativeQuery(
+                    "DELETE FROM surveys WHERE scope_type = 'TEAM' AND scope_id = :tid")
+                    .setParameter("tid", TEAM_ID).executeUpdate();
+            // user_roles（team_id=TEAM_ID で絞り込み）
+            em.createNativeQuery(
+                    "DELETE FROM user_roles WHERE team_id = :tid")
+                    .setParameter("tid", TEAM_ID).executeUpdate();
+            // users（テスト固有メール）
+            em.createNativeQuery(
+                    "DELETE FROM users WHERE email LIKE 'matit55.%@example.com'")
+                    .executeUpdate();
+            return null;
+        });
+        createdScheduleIds.clear();
+        createdReminderIds.clear();
+        createdPersonalReminderIds.clear();
+        notifyMember1 = null;
+        notifyMember2 = null;
+        memberRoleId = null;
+    }
+
+    // ========================================================================
+    // ヘルパー（全て TransactionTemplate で確実にコミット）
+    // ========================================================================
+
+    /**
+     * ScheduleScheduledTaskEntity をPENDING で保存し、確実にコミットして返す。
+     * REQUIRES_NEW バッチが同レコードを別 Tx から読めるよう、ここで commit する。
+     * クリーンアップは @AfterEach で organization_id=ORG_ID の一括削除で行う。
+     */
     private ScheduleScheduledTaskEntity persistTask(
             Long scheduleId, ScheduledTaskType taskType,
             LocalDateTime scheduledAt, String payloadJson) {
-        ScheduleScheduledTaskEntity task = ScheduleScheduledTaskEntity.builder()
-                .scheduleId(scheduleId)
-                .organizationId(ORG_ID)
-                .scopeType(CalendarSyncScopeType.TEAM)
-                .scopeId(TEAM_ID)
-                .taskType(taskType)
-                .scheduledAt(scheduledAt)
-                .status(ScheduledTaskStatus.PENDING)
-                .payloadJson(payloadJson)
-                .createdBy(CREATED_BY)
-                .build();
-        em.persist(task);
-        em.flush();
-        em.clear();
-        return scheduledTaskRepository.findById(task.getId()).orElseThrow();
+        TransactionTemplate tx = new TransactionTemplate(txManager);
+        UUID taskId = tx.execute(status -> {
+            ScheduleScheduledTaskEntity task = ScheduleScheduledTaskEntity.builder()
+                    .scheduleId(scheduleId)
+                    .organizationId(ORG_ID)
+                    .scopeType(CalendarSyncScopeType.TEAM)
+                    .scopeId(TEAM_ID)
+                    .taskType(taskType)
+                    .scheduledAt(scheduledAt)
+                    .status(ScheduledTaskStatus.PENDING)
+                    .payloadJson(payloadJson)
+                    .createdBy(CREATED_BY)
+                    .build();
+            em.persist(task);
+            em.flush();
+            return task.getId();
+        });
+        return scheduledTaskRepository.findById(taskId).orElseThrow();
     }
 
-    /** schedule_attendance_reminders に is_sent=false で保存する（ABSOLUTE 指定） */
+    /** schedule_attendance_reminders に is_sent=false で保存し確実にコミットする（ABSOLUTE 指定） */
     private ScheduleAttendanceReminderEntity persistReminder(
             Long scheduleId, LocalDateTime remindAt) {
-        ScheduleAttendanceReminderEntity reminder = ScheduleAttendanceReminderEntity.builder()
-                .scheduleId(scheduleId)
-                .reminderKind(ReminderKind.ABSOLUTE)
-                .remindAt(remindAt)
-                .build();
-        em.persist(reminder);
-        em.flush();
-        em.clear();
-        return reminderRepository.findById(reminder.getId()).orElseThrow();
+        TransactionTemplate tx = new TransactionTemplate(txManager);
+        Long remId = tx.execute(status -> {
+            ScheduleAttendanceReminderEntity reminder = ScheduleAttendanceReminderEntity.builder()
+                    .scheduleId(scheduleId)
+                    .reminderKind(ReminderKind.ABSOLUTE)
+                    .remindAt(remindAt)
+                    .build();
+            em.persist(reminder);
+            em.flush();
+            return reminder.getId();
+        });
+        createdReminderIds.add(remId);
+        return reminderRepository.findById(remId).orElseThrow();
     }
 
-    /** schedule_attendance_reminders に is_sent=false で保存する（RELATIVE 指定） */
+    /** schedule_attendance_reminders に is_sent=false で保存し確実にコミットする（RELATIVE 指定） */
     private ScheduleAttendanceReminderEntity persistRelativeReminder(
             Long scheduleId, int remindBeforeMinutes) {
-        ScheduleAttendanceReminderEntity reminder = ScheduleAttendanceReminderEntity.builder()
-                .scheduleId(scheduleId)
-                .reminderKind(ReminderKind.RELATIVE)
-                .remindBeforeMinutes(remindBeforeMinutes)
-                .build();
-        em.persist(reminder);
-        em.flush();
-        em.clear();
-        return reminderRepository.findById(reminder.getId()).orElseThrow();
+        TransactionTemplate tx = new TransactionTemplate(txManager);
+        Long remId = tx.execute(status -> {
+            ScheduleAttendanceReminderEntity reminder = ScheduleAttendanceReminderEntity.builder()
+                    .scheduleId(scheduleId)
+                    .reminderKind(ReminderKind.RELATIVE)
+                    .remindBeforeMinutes(remindBeforeMinutes)
+                    .build();
+            em.persist(reminder);
+            em.flush();
+            return reminder.getId();
+        });
+        createdReminderIds.add(remId);
+        return reminderRepository.findById(remId).orElseThrow();
     }
 
-    /** personal_schedule_reminders に notified=false で保存する（ABSOLUTE） */
+    /** personal_schedule_reminders に notified=false で保存し確実にコミットする（ABSOLUTE） */
     private PersonalScheduleReminderEntity persistPersonalReminderAbsolute(
             Long scheduleId, LocalDateTime remindAt) {
-        PersonalScheduleReminderEntity reminder = PersonalScheduleReminderEntity.builder()
-                .scheduleId(scheduleId)
-                .reminderKind(ReminderKind.ABSOLUTE)
-                .remindAt(remindAt)
-                .build();
-        em.persist(reminder);
-        em.flush();
-        em.clear();
-        return personalReminderRepository.findById(reminder.getId()).orElseThrow();
+        TransactionTemplate tx = new TransactionTemplate(txManager);
+        Long remId = tx.execute(status -> {
+            PersonalScheduleReminderEntity reminder = PersonalScheduleReminderEntity.builder()
+                    .scheduleId(scheduleId)
+                    .reminderKind(ReminderKind.ABSOLUTE)
+                    .remindAt(remindAt)
+                    .build();
+            em.persist(reminder);
+            em.flush();
+            return reminder.getId();
+        });
+        createdPersonalReminderIds.add(remId);
+        return personalReminderRepository.findById(remId).orElseThrow();
     }
 
-    /** personal_schedule_reminders に notified=false で保存する（RELATIVE） */
+    /** personal_schedule_reminders に notified=false で保存し確実にコミットする（RELATIVE） */
     private PersonalScheduleReminderEntity persistPersonalReminderRelative(
             Long scheduleId, int remindBeforeMinutes) {
-        PersonalScheduleReminderEntity reminder = PersonalScheduleReminderEntity.builder()
-                .scheduleId(scheduleId)
-                .reminderKind(ReminderKind.RELATIVE)
-                .remindBeforeMinutes(remindBeforeMinutes)
-                .build();
-        em.persist(reminder);
-        em.flush();
-        em.clear();
-        return personalReminderRepository.findById(reminder.getId()).orElseThrow();
+        TransactionTemplate tx = new TransactionTemplate(txManager);
+        Long remId = tx.execute(status -> {
+            PersonalScheduleReminderEntity reminder = PersonalScheduleReminderEntity.builder()
+                    .scheduleId(scheduleId)
+                    .reminderKind(ReminderKind.RELATIVE)
+                    .remindBeforeMinutes(remindBeforeMinutes)
+                    .build();
+            em.persist(reminder);
+            em.flush();
+            return reminder.getId();
+        });
+        createdPersonalReminderIds.add(remId);
+        return personalReminderRepository.findById(remId).orElseThrow();
     }
 
     /**
-     * schedules テーブルに最小限の行を挿入する。
+     * schedules テーブルに最小限の行を確実にコミットして返す。
      * attendanceRequired / attendanceDeadline は引数で制御。
      */
     private ScheduleEntity persistSchedule(Long teamId, Long userId,
                                             boolean attendanceRequired,
                                             LocalDateTime startAt) {
-        ScheduleEntity schedule = ScheduleEntity.builder()
-                .teamId(teamId)
-                .userId(userId)
-                .title("統合テスト用予定")
-                .startAt(startAt)
-                .allDay(false)
-                .eventType(EventType.PRACTICE)
-                .visibility(ScheduleVisibility.MEMBERS_ONLY)
-                .minViewRole(MinViewRole.ANYONE)
-                .status(ScheduleStatus.SCHEDULED)
-                .attendanceRequired(attendanceRequired)
-                .createdBy(CREATED_BY)
-                .build();
-        em.persist(schedule);
-        em.flush();
-        em.clear();
-        return scheduleRepository.findById(schedule.getId()).orElseThrow();
+        TransactionTemplate tx = new TransactionTemplate(txManager);
+        Long scheduleId = tx.execute(status -> {
+            ScheduleEntity schedule = ScheduleEntity.builder()
+                    .teamId(teamId)
+                    .userId(userId)
+                    .title("統合テスト用予定")
+                    .startAt(startAt)
+                    .allDay(false)
+                    .eventType(EventType.PRACTICE)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.ANYONE)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .attendanceRequired(attendanceRequired)
+                    .createdBy(CREATED_BY)
+                    .build();
+            em.persist(schedule);
+            em.flush();
+            return schedule.getId();
+        });
+        createdScheduleIds.add(scheduleId);
+        return scheduleRepository.findById(scheduleId).orElseThrow();
     }
 
-    /** 通知発火テスト用のユーザー・ロール・user_roles seed */
+    /** 通知発火テスト用のユーザー・ロール・user_roles seed（確実にコミット） */
     private void seedUsersAndRoles() {
-        // roles テーブルに MEMBER ロールを挿入（既存の場合は重複 INSERT を無視）
-        em.createNativeQuery(
-                "INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                        + "VALUES ('MEMBER', 'メンバー', 4, 0, NOW(), NOW())")
-                .executeUpdate();
-        em.flush();
+        TransactionTemplate tx = new TransactionTemplate(txManager);
+        tx.execute(status -> {
+            // roles テーブルに MEMBER ロールを挿入（既存の場合は重複 INSERT を無視）
+            em.createNativeQuery(
+                    "INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                            + "VALUES ('MEMBER', 'メンバー', 4, 0, NOW(), NOW())")
+                    .executeUpdate();
+            em.flush();
 
-        memberRoleId = ((Number) em.createNativeQuery(
-                "SELECT id FROM roles WHERE name = 'MEMBER'").getSingleResult()).longValue();
+            memberRoleId = ((Number) em.createNativeQuery(
+                    "SELECT id FROM roles WHERE name = 'MEMBER'").getSingleResult()).longValue();
 
-        notifyMember1 = insertUser("matit55.member1@example.com", "予約", "太郎");
-        notifyMember2 = insertUser("matit55.member2@example.com", "予約", "花子");
+            notifyMember1 = insertUser("matit55.member1@example.com", "予約", "太郎");
+            notifyMember2 = insertUser("matit55.member2@example.com", "予約", "花子");
 
-        // user_roles: 両ユーザーを TEAM_ID メンバーとして登録
-        insertUserRole(notifyMember1, memberRoleId, TEAM_ID, null);
-        insertUserRole(notifyMember2, memberRoleId, TEAM_ID, null);
-        em.flush();
-        em.clear();
+            // user_roles: 両ユーザーを TEAM_ID メンバーとして登録
+            insertUserRole(notifyMember1, memberRoleId, TEAM_ID, null);
+            insertUserRole(notifyMember2, memberRoleId, TEAM_ID, null);
+            em.flush();
+            return null;
+        });
     }
 
     private Long insertUser(String email, String lastName, String firstName) {
@@ -330,14 +444,13 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
                     ));
 
             LocalDateTime pastTime = LocalDateTime.now().minusMinutes(5);
+            // persistTask は TransactionTemplate で確実にコミットする
             ScheduleScheduledTaskEntity task = persistTask(
                     SCHEDULE_ID, ScheduledTaskType.SURVEY, pastTime, surveyPayload);
             UUID taskId = task.getId();
 
-            // Act
+            // Act: コミット済みデータを REQUIRES_NEW バッチが読める
             scheduledTaskBatchService.runBatch();
-            em.flush();
-            em.clear();
 
             // Assert: タスクが CREATED になりmaterialized_entity_id がセットされている
             ScheduleScheduledTaskEntity afterTask = scheduledTaskRepository.findById(taskId).orElseThrow();
@@ -368,7 +481,7 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
         @Test
         @DisplayName("scheduledAt=過去の ATTENDANCE タスク → runBatch() → タスク CREATED・出欠レコード生成")
         void attendance_runBatch_opensAttendanceSolicitation() throws Exception {
-            // Arrange: users/user_roles を seed してメンバーを確定
+            // Arrange: users/user_roles を seed してメンバーを確定（コミット済み）
             seedUsersAndRoles();
 
             // schedule を作成（attendanceRequired=true, チームスコープ）
@@ -383,10 +496,8 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
                     schedule.getId(), ScheduledTaskType.ATTENDANCE, pastTime, attendancePayload);
             UUID taskId = task.getId();
 
-            // Act
+            // Act: コミット済みデータを REQUIRES_NEW バッチが読める
             scheduledTaskBatchService.runBatch();
-            em.flush();
-            em.clear();
 
             // Assert: タスクが CREATED になること
             ScheduleScheduledTaskEntity afterTask = scheduledTaskRepository.findById(taskId).orElseThrow();
@@ -418,7 +529,10 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
          * このテストがその根治（第二陣）を恒久的に保証する。</p>
          *
          * <p>AFTER_COMMIT + @Async のリスナーを同期テストで検証するため、
-         * {@link ScheduleAttendanceSolicitationEventListener#onScheduleCreated} を直接呼び出す。</p>
+         * {@link ScheduleAttendanceSolicitationEventListener#onScheduleCreated} を直接呼び出す。
+         * リスナー内部は独立トランザクションを持たないため（呼び出し元 Tx に参加する）、
+         * 呼び出し後にコミットが行われれば出欠レコードが永続化される。
+         * TransactionTemplate でリスナー直呼びをラップしてコミットする。</p>
          */
         @Test
         @DisplayName("attendanceRequired=true・予約タスク無し → solicitationEventListener直呼び → 出欠レコード生成")
@@ -431,12 +545,15 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
             // 予約タスク（PENDING ATTENDANCE）は作らない → 即時募集ルートに入る
 
             // Act: AFTER_COMMIT @Async の代わりに直呼び
+            // リスナーは呼び出し元 Tx に参加するため、TransactionTemplate でラップしてコミットする
             com.mannschaft.app.schedule.event.ScheduleCreatedEvent event =
                     new com.mannschaft.app.schedule.event.ScheduleCreatedEvent(
                             schedule.getId(), "TEAM", TEAM_ID, CREATED_BY, true);
-            solicitationEventListener.onScheduleCreated(event);
-            em.flush();
-            em.clear();
+            TransactionTemplate tx = new TransactionTemplate(txManager);
+            tx.execute(status -> {
+                solicitationEventListener.onScheduleCreated(event);
+                return null;
+            });
 
             // Assert: 出欠レコードが生成されていること
             long count = attendanceRepository.countByScheduleId(schedule.getId());
@@ -459,13 +576,15 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
             persistTask(schedule.getId(), ScheduledTaskType.ATTENDANCE,
                     LocalDateTime.now().plusHours(1), payload);
 
-            // Act
+            // Act: TransactionTemplate でラップしてコミット
             com.mannschaft.app.schedule.event.ScheduleCreatedEvent event =
                     new com.mannschaft.app.schedule.event.ScheduleCreatedEvent(
                             schedule.getId(), "TEAM", TEAM_ID, CREATED_BY, true);
-            solicitationEventListener.onScheduleCreated(event);
-            em.flush();
-            em.clear();
+            TransactionTemplate tx = new TransactionTemplate(txManager);
+            tx.execute(status -> {
+                solicitationEventListener.onScheduleCreated(event);
+                return null;
+            });
 
             // Assert: 出欠レコードは生成されない（バッチ到来まで待機）
             long count = attendanceRepository.countByScheduleId(schedule.getId());
@@ -498,8 +617,6 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
 
             // Act
             scheduleReminderBatchService.runBatch();
-            em.flush();
-            em.clear();
 
             // Assert: is_sent が true になっていること（回帰防止）
             ScheduleAttendanceReminderEntity after =
@@ -520,8 +637,6 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
 
             // Act
             scheduleReminderBatchService.runBatch();
-            em.flush();
-            em.clear();
 
             // Assert
             ScheduleAttendanceReminderEntity after =
@@ -542,8 +657,6 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
 
             // Act
             scheduleReminderBatchService.runBatch();
-            em.flush();
-            em.clear();
 
             // Assert: 未来なので送信されない
             ScheduleAttendanceReminderEntity after =
@@ -578,8 +691,6 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
 
             // Act
             personalScheduleReminderBatchService.runBatch();
-            em.flush();
-            em.clear();
 
             // Assert: notified=true になること（回帰防止）
             PersonalScheduleReminderEntity after =
@@ -601,8 +712,6 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
 
             // Act
             personalScheduleReminderBatchService.runBatch();
-            em.flush();
-            em.clear();
 
             // Assert
             PersonalScheduleReminderEntity after =
@@ -631,16 +740,18 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
                     SCHEDULE_ID + 100, ScheduledTaskType.ATTENDANCE,
                     LocalDateTime.now().minusMinutes(1), payload);
 
-            // キャンセル
-            task.cancel();
-            scheduledTaskRepository.save(task);
-            em.flush();
-            em.clear();
+            // キャンセル（TransactionTemplate でコミット）
+            TransactionTemplate tx = new TransactionTemplate(txManager);
+            tx.execute(status -> {
+                ScheduleScheduledTaskEntity current =
+                        scheduledTaskRepository.findById(task.getId()).orElseThrow();
+                current.cancel();
+                scheduledTaskRepository.save(current);
+                return null;
+            });
 
             // Act: バッチ実行（CANCELLED は findByStatus PENDING では取得されない）
             scheduledTaskBatchService.runBatch();
-            em.flush();
-            em.clear();
 
             // Assert: CANCELLED のまま変わらない
             ScheduleScheduledTaskEntity after = scheduledTaskRepository.findById(task.getId()).orElseThrow();
@@ -665,8 +776,6 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
 
             // Act
             scheduledTaskBatchService.runBatch();
-            em.flush();
-            em.clear();
 
             // Assert: PENDING のまま
             ScheduleScheduledTaskEntity after = scheduledTaskRepository.findById(taskId).orElseThrow();
@@ -709,8 +818,6 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
             int maxAttempts = ScheduleScheduledTaskBatchService.MAX_ATTEMPTS;
             for (int i = 0; i < maxAttempts; i++) {
                 scheduledTaskBatchService.runBatch();
-                em.flush();
-                em.clear();
 
                 ScheduleScheduledTaskEntity current = scheduledTaskRepository.findById(taskId).orElseThrow();
                 if (current.getStatus() == ScheduledTaskStatus.FAILED) {
@@ -743,8 +850,6 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
 
             // 1回だけ runBatch() を実行（MAX_ATTEMPTS=5 に対して 1回 < 5回）
             scheduledTaskBatchService.runBatch();
-            em.flush();
-            em.clear();
 
             // Assert: 失敗後は PENDING のまま（MAX_ATTEMPTS 未達なので再試行可能）
             ScheduleScheduledTaskEntity after = scheduledTaskRepository.findById(taskId).orElseThrow();
