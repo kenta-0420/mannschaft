@@ -94,6 +94,7 @@ const categories: SidebarCategory[] = [
     items: [
       { labelKey: 'orgSidebar.gamification', icon: 'pi pi-star', path: 'gamification', moduleSlug: null, requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.tournaments', icon: 'pi pi-trophy', path: 'tournaments', moduleSlug: null, requiredRole: 'MEMBER' },
+      { labelKey: 'orgSidebar.leagueTransfers', icon: 'pi pi-arrow-right-arrow-left', path: 'league-transfers', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.queue', icon: 'pi pi-sort-numeric-up', path: 'queue', moduleSlug: null, requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.timelineDigest', icon: 'pi pi-align-left', path: 'timeline-digest', moduleSlug: null, requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.translations', icon: 'pi pi-language', path: 'translations', moduleSlug: null, requiredRole: 'ADMIN' },
