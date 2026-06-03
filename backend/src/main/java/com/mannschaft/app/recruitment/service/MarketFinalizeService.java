@@ -8,10 +8,12 @@ import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificati
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
+import com.mannschaft.app.recruitment.event.MarketListingFinalizedEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +43,7 @@ public class MarketFinalizeService {
     private final ConfirmableNotificationService confirmableNotificationService;
     private final ConfirmableNotificationRepository confirmableNotificationRepository;
     private final UserRoleRepository userRoleRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 札が {@code FULL} に到達したとき、札主へ最終認証の確認通知を送る。
@@ -123,5 +126,11 @@ public class MarketFinalizeService {
         listing.finalizeComplete();
         listingRepository.save(listing);
         log.info("F22.1 市: 最終認証完了 FULL→COMPLETED: listingId={}", listingId);
+
+        // 謝礼の払出（capture+transfer）を起こす（02 §5.3）。札行 PESSIMISTIC_WRITE ロック直下・同一
+        // トランザクション内で同期発火し、payment.escrow が購読して capture する（疎結合・クロスドメイン FK なし）。
+        // 謝礼なし（payment_enabled=false）札は payment 側で no-op になる。
+        eventPublisher.publishEvent(new MarketListingFinalizedEvent(
+                listing.getId(), Boolean.TRUE.equals(listing.getPaymentEnabled())));
     }
 }
