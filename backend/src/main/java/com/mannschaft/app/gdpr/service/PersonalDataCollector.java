@@ -20,6 +20,12 @@ import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.errorreport.entity.ErrorReportOccurrenceEntity;
 import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
+import com.mannschaft.app.inbox.entity.InboxItemStateEntity;
+import com.mannschaft.app.inbox.entity.InboxLabelLinkEntity;
+import com.mannschaft.app.inbox.entity.NotificationLabelEntity;
+import com.mannschaft.app.inbox.repository.InboxItemStateRepository;
+import com.mannschaft.app.inbox.repository.InboxLabelLinkRepository;
+import com.mannschaft.app.inbox.repository.NotificationLabelRepository;
 import com.mannschaft.app.member.repository.MemberProfileRepository;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
@@ -98,6 +104,10 @@ public class PersonalDataCollector {
     private final ResumeCareerRepository resumeCareerRepository;
     private final ResumeQualificationRepository resumeQualificationRepository;
     private final ResumeSkillRepository resumeSkillRepository;
+    // F04.11 統合通知インボックス（per-user オーバーレイ3表）
+    private final InboxItemStateRepository inboxItemStateRepository;
+    private final NotificationLabelRepository notificationLabelRepository;
+    private final InboxLabelLinkRepository inboxLabelLinkRepository;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .registerModule(new JavaTimeModule());
@@ -126,7 +136,9 @@ public class PersonalDataCollector {
             // F18 個人ポイントカードウォレット（第二陣 2C スケルトン、第三陣で完成）
             Map.entry("point_cards", "point_cards.json"),
             // F01.10 履歴書・職務経歴書（Phase 5 で追加）
-            Map.entry("resumes", "resumes.json")
+            Map.entry("resumes", "resumes.json"),
+            // F04.11 統合通知インボックス（per-user オーバーレイ3表を 1 カテゴリにまとめる）
+            Map.entry("inbox", "inbox.json")
     );
 
     /**
@@ -182,6 +194,7 @@ public class PersonalDataCollector {
             case "location_preference" -> collectLocationPreference(userId);
             case "point_cards" -> collectPointCards(userId);
             case "resumes" -> collectResumes(userId);
+            case "inbox" -> collectInbox(userId);
             default -> "[]";
         };
     }
@@ -583,6 +596,40 @@ public class PersonalDataCollector {
         payload.put("action_memo_tags", tags);
         payload.put("action_memo_tag_links", links);
         payload.put("user_action_memo_settings", settings.orElse(null));
+        return OBJECT_MAPPER.writeValueAsString(payload);
+    }
+
+    /**
+     * F04.11 統合通知インボックスの per-user オーバーレイ3表を 1 つの JSON 文字列に
+     * まとめて返す（案A：3表フルダンプ）。
+     *
+     * <p>3表とも {@code user_id} 軸の個人データ（per-user の triage 状態オーバーレイ）であり、
+     * {@code AbstractUserOwnedRepository.findByUserId(userId)} で N+1 を回避してまとめ取りする。
+     * 通知本体（source）の解決は行わず、{@code (source_type, source_id)} の論理参照を含めた
+     * 生データをそのまま出力する（手本: {@code collectActionMemos}）。</p>
+     *
+     * <p>{@code notification_labels} は {@code @SQLRestriction("deleted_at IS NULL")} により
+     * 論理削除済みは自動除外される（手本 action_memos と同じく「ユーザーが削除したと認識する
+     * データ」はエクスポートに含めない）。</p>
+     *
+     * <p>返される JSON の構造:</p>
+     * <pre>
+     * {
+     *   "inbox_item_states": [ ... ],
+     *   "notification_labels": [ ... ],
+     *   "inbox_label_links": [ ... ]
+     * }
+     * </pre>
+     */
+    private String collectInbox(Long userId) throws Exception {
+        List<InboxItemStateEntity> states = inboxItemStateRepository.findByUserId(userId);
+        List<NotificationLabelEntity> labels = notificationLabelRepository.findByUserId(userId);
+        List<InboxLabelLinkEntity> links = inboxLabelLinkRepository.findByUserId(userId);
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("inbox_item_states", states);
+        payload.put("notification_labels", labels);
+        payload.put("inbox_label_links", links);
         return OBJECT_MAPPER.writeValueAsString(payload);
     }
 
