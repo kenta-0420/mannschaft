@@ -8,6 +8,7 @@ import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Account;
 import com.stripe.model.AccountLink;
+import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
@@ -497,6 +498,52 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
     }
 
     @Override
+    public ConnectRefundInfo createConnectRefund(String paymentIntentId, long amountMinor, String reason,
+                                                 boolean reverseTransfer, boolean refundApplicationFee,
+                                                 String idempotencyKey) {
+        try {
+            RefundCreateParams.Builder builder = RefundCreateParams.builder()
+                    .setPaymentIntent(paymentIntentId)
+                    .setAmount(amountMinor)
+                    .setReverseTransfer(reverseTransfer)
+                    .setRefundApplicationFee(refundApplicationFee);
+            RefundCreateParams.Reason mappedReason = toRefundReason(reason);
+            if (mappedReason != null) {
+                builder.setReason(mappedReason);
+            }
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            Refund refund = Refund.create(builder.build(), options);
+            log.info("Stripe Connect Refund 作成: refundId={}, piId={}, amount={}, reverseTransfer={}, refundAppFee={}",
+                    refund.getId(), paymentIntentId, amountMinor, reverseTransfer, refundApplicationFee);
+            return new ConnectRefundInfo(refund.getId(), refund.getStatus());
+        } catch (StripeException e) {
+            log.error("Stripe Connect Refund 作成失敗: piId={}, amount={}", paymentIntentId, amountMinor, e);
+            throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
+    /**
+     * 設計書 02 §6.1 の reason 文字列を Stripe の {@link RefundCreateParams.Reason} へ写す。
+     *
+     * <p>Stripe が受理する固定値は {@code duplicate}/{@code fraudulent}/{@code requested_by_customer} のみ。
+     * {@code cancellation} 等の業務都合理由はこれらに含まれないため、業務理由の詳細は
+     * {@code refunds.reason}/{@code reason_detail}（自社台帳）に保持し、Stripe へは
+     * {@code requested_by_customer} に正規化する（マッピング不能でも握り潰さず台帳側に保持）。</p>
+     */
+    private RefundCreateParams.Reason toRefundReason(String reason) {
+        if (reason == null) {
+            return null;
+        }
+        return switch (reason) {
+            case "duplicate" -> RefundCreateParams.Reason.DUPLICATE;
+            case "fraudulent" -> RefundCreateParams.Reason.FRAUDULENT;
+            default -> RefundCreateParams.Reason.REQUESTED_BY_CUSTOMER;
+        };
+    }
+
+    @Override
     public void cancelAuthorization(String paymentIntentId, String idempotencyKey) {
         try {
             PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
@@ -529,13 +576,28 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
 
         String paymentIntentId = null;
         String paymentIntentStatus = null;
+        String refundId = null;
+        Long refundedAmountMinor = null;
+        Long chargeAmountMinor = null;
         if (stripeObject instanceof PaymentIntent pi) {
             paymentIntentId = pi.getId();
             paymentIntentStatus = pi.getStatus();
+        } else if (stripeObject instanceof Charge charge) {
+            // charge.refunded（設計書 02 §6.1）: PI で対象 escrow を特定し、最新 Refund・返金累計・Charge 総額を渡す。
+            paymentIntentId = charge.getPaymentIntent();
+            chargeAmountMinor = charge.getAmount();
+            refundedAmountMinor = charge.getAmountRefunded();
+            if (charge.getRefunds() != null && charge.getRefunds().getData() != null
+                    && !charge.getRefunds().getData().isEmpty()) {
+                List<Refund> refunds = charge.getRefunds().getData();
+                refundId = refunds.get(refunds.size() - 1).getId();
+            }
         }
 
-        log.info("Stripe Escrow Webhook 受信: id={}, type={}, piStatus={}", event.getId(), eventType, paymentIntentStatus);
-        return new EscrowWebhookEventInfo(event.getId(), eventType, livemode, paymentIntentId, paymentIntentStatus);
+        log.info("Stripe Escrow Webhook 受信: id={}, type={}, piStatus={}, refundId={}",
+                event.getId(), eventType, paymentIntentStatus, refundId);
+        return new EscrowWebhookEventInfo(event.getId(), eventType, livemode, paymentIntentId, paymentIntentStatus,
+                refundId, refundedAmountMinor, chargeAmountMinor);
     }
 
     /**

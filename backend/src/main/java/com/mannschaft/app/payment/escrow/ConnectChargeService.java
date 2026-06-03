@@ -66,6 +66,8 @@ public class ConnectChargeService {
     private final StripePaymentProvider stripePaymentProvider;
     private final AccessControlService accessControlService;
     private final LedgerEntryRepository ledgerEntryRepository;
+    private final RefundRepository refundRepository;
+    private final PayeeScopeResolver payeeScopeResolver;
 
     /**
      * 謝礼の与信を開始する（設計書 02 §5.1）。
@@ -227,6 +229,192 @@ public class ConnectChargeService {
 
         log.info("謝礼の払出を確定 CAPTURED: escrowId={}, piId={}, capture={}, transfer={}, fee={}",
                 escrowId, pi.paymentIntentId(), captureAmount, transferOut, feeAmount);
+    }
+
+    /**
+     * 謝礼/会費の返金または与信取消を行う（設計書 02 §6.1・設定A・マスター確定）。
+     *
+     * <p><b>操作主体＝受取側 scope（payee の TEAM/ORG）の ADMIN</b>（Mannschaft 運営は関与しない）。
+     * 認可は {@link AccessControlService} で行い、無関係 scope は {@link ConnectPaymentErrorCode#PAYMENT_RESOURCE_NOT_FOUND}
+     * で 404 秘匿する（IDOR・03 §3/§4）。</p>
+     *
+     * <p><b>二重返金・競合防止（根治）:</b> escrow 行を {@code PESSIMISTIC_WRITE} でロックして読む
+     * （{@link EscrowTransactionRepository#findByIdForUpdate}・capture / charge.refunded webhook と直列化）。</p>
+     *
+     * <p><b>状態分岐（設計書 02 §6.1）:</b></p>
+     * <ul>
+     *   <li>{@link EscrowStatus#CAPTURED}/{@link EscrowStatus#PARTIALLY_REFUNDED}（capture 後）→ Stripe
+     *       {@code createConnectRefund}（{@code reverse_transfer=true}・{@code refund_application_fee=false}＝設定A）。
+     *       {@code refunds} を {@code PENDING} で記録し（{@code charge.refunded} webhook で {@code SUCCEEDED} 確定）、
+     *       全額（累計＝{@code face_amount}）なら {@link EscrowStatus#REFUNDED}、一部なら
+     *       {@link EscrowStatus#PARTIALLY_REFUNDED}。{@code ledger_entries}(REFUND) を監査追記する（借貸一致・
+     *       金を動かすのは Stripe・自前逆仕訳は作らない）。</li>
+     *   <li>{@link EscrowStatus#AUTHORIZED}/{@link EscrowStatus#HELD}（capture 前）→ 返金でなく<b>与信取消</b>
+     *       （{@code cancelAuthorization}・支払者課金なし）。{@link EscrowStatus#CANCELLED} にし、課金が起きていない
+     *       ため {@code refunds} には記録しない。</li>
+     *   <li>既に {@link EscrowStatus#REFUNDED}/{@link EscrowStatus#CANCELLED} → 冪等 no-op。</li>
+     * </ul>
+     *
+     * <p><b>金額モデル（設計書 02 §6.1 / 01 §3.4）:</b> {@code amount} は<b>額面ベース</b>（{@code 0 < amount ≤
+     * face_amount − 既返金累計}）。Stripe へもこの額面ベース額を渡す（支払者上乗せ 2.5%・Stripe 決済手数料は
+     * 返金されない＝設定A／規約・画面で周知済）。残額超過は {@link ConnectPaymentErrorCode#REFUND_AMOUNT_EXCEEDS}。</p>
+     *
+     * @param escrowId     返金対象のエスクロー取引 ID
+     * @param amountMinor  返金額（額面ベース・最小通貨単位）。{@code null} は全額（残額全部）を意味する。
+     * @param reason       返金理由（{@code requested_by_customer}/{@code duplicate}/{@code cancellation} 等）
+     * @param reasonDetail 補足（PII 非含意・任意・自社台帳のみ保持）
+     * @param actorUserId  操作者ユーザー ID（受取側 scope の ADMIN 認可・監査）
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public RefundResult refund(UUID escrowId, Long amountMinor, String reason, String reasonDetail, Long actorUserId) {
+        EscrowTransactionEntity escrow = escrowTransactionRepository.findByIdForUpdate(escrowId)
+                .orElseThrow(() -> new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
+
+        // 認可/IDOR: 受取側 scope（payee の TEAM/ORG）の ADMIN のみ。無関係 scope は 404 秘匿（03 §3/§4）。
+        authorizePayeeAdmin(escrow, actorUserId);
+
+        // 冪等: 既に終端状態（全額返金/取消済み）なら no-op（Stripe を呼ばない・二重返金しない）。
+        if (escrow.getStatus() == EscrowStatus.REFUNDED || escrow.getStatus() == EscrowStatus.CANCELLED) {
+            log.info("返金/取消は既に終端状態（冪等・no-op）: escrowId={}, status={}", escrowId, escrow.getStatus());
+            return new RefundResult(escrowId, escrow.getStatus(), 0L, 0L);
+        }
+
+        // capture 前（AUTHORIZED/HELD）は返金でなく与信取消（支払者に課金なし・02 §6.1）。
+        if (escrow.getStatus() == EscrowStatus.AUTHORIZED || escrow.getStatus() == EscrowStatus.HELD) {
+            cancelAuthorizationForRefund(escrow);
+            return new RefundResult(escrowId, EscrowStatus.CANCELLED, 0L, 0L);
+        }
+
+        // reason は refunds.reason が NOT NULL のため既定値で補完（Stripe へも正規化して渡す）。
+        String effectiveReason = (reason != null && !reason.isBlank()) ? reason : "requested_by_customer";
+
+        // ここから capture 後（CAPTURED / PARTIALLY_REFUNDED）の返金。
+        if (escrow.getStripePaymentIntentId() == null) {
+            // capture 後で PI が無いのは整合性異常。症状を隠さず 409 で拒否する。
+            log.warn("CAPTURED だが PaymentIntent 未設定（異常）。返金不能: escrowId={}", escrowId);
+            throw new BusinessException(ConnectPaymentErrorCode.INVALID_ESCROW_STATE);
+        }
+
+        long faceAmount = escrow.getFaceAmount();
+        long alreadyRefunded = sumRefundedFaceAmount(escrowId);
+        long residualBefore = faceAmount - alreadyRefunded;
+        if (residualBefore <= 0L) {
+            // 額面全額が既に返金済み（理論上 status REFUNDED で弾かれるが二重防御）。
+            throw new BusinessException(ConnectPaymentErrorCode.ALREADY_REFUNDED);
+        }
+
+        long refundAmount = (amountMinor != null) ? amountMinor : residualBefore;
+        if (refundAmount <= 0L || refundAmount > residualBefore) {
+            log.warn("返金額が不正/残額超過: escrowId={}, request={}, residual={}", escrowId, refundAmount, residualBefore);
+            throw new BusinessException(ConnectPaymentErrorCode.REFUND_AMOUNT_EXCEEDS);
+        }
+
+        // Stripe 返金（設定A: reverse_transfer=true / refund_application_fee=false）。冪等キーは部分返金の連番。
+        int seq = refundRepository.findByEscrowTransactionId(escrowId).size() + 1;
+        String idempotencyKey = "refund-" + escrowId + "-" + seq;
+        StripePaymentProvider.ConnectRefundInfo refundInfo = stripePaymentProvider.createConnectRefund(
+                escrow.getStripePaymentIntentId(), refundAmount, effectiveReason, true, false, idempotencyKey);
+
+        // refunds に PENDING で記録（charge.refunded webhook で SUCCEEDED 確定）。
+        RefundEntity refundEntity = RefundEntity.builder()
+                .escrowTransactionId(escrowId)
+                .stripeRefundId(refundInfo.refundId())
+                .amount(refundAmount)
+                .currency(escrow.getCurrency())
+                .reason(effectiveReason)
+                .reasonDetail(reasonDetail)
+                .refundedByUserId(actorUserId)
+                .status(RefundStatus.PENDING)
+                .build();
+        refundRepository.save(refundEntity);
+
+        // 累計で全額に達したら REFUNDED、それ未満なら PARTIALLY_REFUNDED。
+        long newTotal = alreadyRefunded + refundAmount;
+        escrow.setStatus(newTotal >= faceAmount ? EscrowStatus.REFUNDED : EscrowStatus.PARTIALLY_REFUNDED);
+        escrowTransactionRepository.save(escrow);
+
+        // ledger_entries(REFUND) は監査追記のみ（金を動かすのは Stripe・自前逆仕訳は作らない・02 §6.1）。
+        // 受取側 Connect 残高から戻る（D PAYEE）＝支払者へ返金される（C PAYER）。借方合計＝貸方合計（01 §3.3）。
+        List<LedgerEntryEntity> entries = LedgerEntryBuilder.forTransaction(escrowId, escrow.getCurrency())
+                .debit(LedgerEntryType.REFUND, LedgerAccount.PAYEE, refundAmount, refundInfo.refundId())
+                .credit(LedgerEntryType.REFUND, LedgerAccount.PAYER, refundAmount, refundInfo.refundId())
+                .build();
+        ledgerEntryRepository.saveAll(entries);
+
+        log.info("返金を受付 status={}: escrowId={}, refundId={}, amount={}, 累計={}/{}",
+                escrow.getStatus(), escrowId, refundInfo.refundId(), refundAmount, newTotal, faceAmount);
+        return new RefundResult(escrowId, escrow.getStatus(), refundAmount, faceAmount - newTotal);
+    }
+
+    /**
+     * 返金/与信取消の結果（設計書 02 §6.1）。
+     *
+     * <p>PCI 禁則（{@code client_secret}/{@code pi_xxx}/{@code acct_xxx}）は含めない（03 §10）。
+     * 金額は額面ベース（最小通貨単位）。</p>
+     *
+     * @param escrowId       エスクロー取引 ID
+     * @param status         返金後の escrow 状態
+     * @param refundedAmount 今回の返金額（与信取消時は 0）
+     * @param residualAmount 残額（face_amount − 既返金累計）
+     */
+    public record RefundResult(UUID escrowId, EscrowStatus status, long refundedAmount, long residualAmount) {}
+
+    /**
+     * capture 前（AUTHORIZED/HELD）の与信取消を行う（返金でなく PaymentIntent.cancel・支払者課金なし）。
+     *
+     * <p>PI 未作成（HELD で onboarding 未完了）の場合は Stripe を呼ばず状態のみ CANCELLED にする。</p>
+     */
+    private void cancelAuthorizationForRefund(EscrowTransactionEntity escrow) {
+        if (escrow.getStripePaymentIntentId() != null) {
+            stripePaymentProvider.cancelAuthorization(escrow.getStripePaymentIntentId(), "cancel-" + escrow.getId());
+        }
+        escrow.setStatus(EscrowStatus.CANCELLED);
+        escrow.setCancelledAt(LocalDateTime.now());
+        escrowTransactionRepository.save(escrow);
+        log.info("capture 前のため返金でなく与信取消 CANCELLED: escrowId={}, hasPi={}",
+                escrow.getId(), escrow.getStripePaymentIntentId() != null);
+    }
+
+    /** 既返金累計（額面ベース）を集計する。FAILED は除外する（成立しなかった返金は残額を消費しない）。 */
+    private long sumRefundedFaceAmount(UUID escrowId) {
+        return refundRepository.findByEscrowTransactionId(escrowId).stream()
+                .filter(r -> r.getStatus() != RefundStatus.FAILED)
+                .mapToLong(RefundEntity::getAmount)
+                .sum();
+    }
+
+    /**
+     * 返金操作者が受取側 scope（payee の TEAM/ORG）の ADMIN であることを検証する（設計書 03 §3/§4・設定A）。
+     *
+     * <p>escrow の {@code payeeConnectAccountId} から受取側 Connect 口座を解決し、その {@code scopeKind}/{@code scopeId}
+     * に対して {@link AccessControlService} を適用する。口座が解決できない（無関係 escrow）場合は 404 秘匿。
+     * USER 受領（個人）は scope 認可の対象外（本人固定）であり、本波の返金 API では USER 受領の明示返金は
+     * 提供しないため拒否する（IDOR 秘匿のため 404）。認可エラーは {@link ConnectPaymentErrorCode#PAYMENT_FORBIDDEN}。</p>
+     */
+    private void authorizePayeeAdmin(EscrowTransactionEntity escrow, Long actorUserId) {
+        ConnectAccountEntity payee = connectAccountRepository.findById(escrow.getPayeeConnectAccountId())
+                .orElseThrow(() -> new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
+
+        ScopeKind payeeKind = payee.getScopeKind();
+        if (payeeKind == ScopeKind.USER) {
+            // 個人受領の明示返金は本波未提供。存在を漏らさず 404 秘匿で拒否する（IDOR）。
+            throw new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND);
+        }
+        try {
+            switch (payeeKind) {
+                case TEAM -> accessControlService.checkPermission(actorUserId, payee.getScopeId(),
+                        payeeScopeResolver.toAccessControlScopeType(payeeKind), PERMISSION_MANAGE_PAYMENT);
+                case ORG -> accessControlService.checkAdminOrHasPermission(actorUserId, payee.getScopeId(),
+                        payeeScopeResolver.toAccessControlScopeType(payeeKind), PERMISSION_MANAGE_PAYMENT);
+                default -> throw new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND);
+            }
+        } catch (BusinessException e) {
+            // 既に Connect 系コードならそのまま、それ以外（AccessControlService の認可エラー）は 403 へ正規化。
+            if (e.getErrorCode() instanceof ConnectPaymentErrorCode) {
+                throw e;
+            }
+            throw new BusinessException(ConnectPaymentErrorCode.PAYMENT_FORBIDDEN, e);
+        }
     }
 
     /**

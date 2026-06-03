@@ -200,6 +200,31 @@ public interface StripePaymentProvider {
     void cancelAuthorization(String paymentIntentId, String idempotencyKey);
 
     /**
+     * Connect（Destination Charge）の返金を実行する（設計書 02 §6.1・設定A）。
+     *
+     * <p>capture 済みの謝礼/会費を返金する。{@code reverse_transfer=true} で<b>返金原資を受取側 Connect
+     * 残高から戻す</b>ため Mannschaft は立替・自社負担しない。{@code refund_application_fee=false} で
+     * <b>徴収済み Mannschaft 手数料は返金しない</b>（設定A・マスター確定）。Stripe 決済手数料（≈3.6%）は
+     * Stripe 仕様上そもそも返らない（規約・決済画面で事前周知済・03 §10）。</p>
+     *
+     * <p>金を動かすのは Stripe であり、Mannschaft 側は自前の逆仕訳を作らない（{@code refunds}/{@code ledger_entries}
+     * は記録・監査のみ・設計書 02 §6.1）。{@code idempotencyKey="refund-{escrowId}-{seq}"} で部分返金の連番ごとに
+     * 二重返金を Stripe 側でも拒否する（設計書 02 §9・既存全額 {@link #createRefund(String, Long, Long)} とは
+     * 別メソッドで非破壊に追加）。</p>
+     *
+     * @param paymentIntentId      返金対象 PaymentIntent ID（{@code pi_xxx}・capture 済み）
+     * @param amountMinor          返金額（最小通貨単位の整数・額面ベースの部分/全額）
+     * @param reason               返金理由（{@code requested_by_customer}/{@code duplicate}/{@code fraudulent} 等）
+     * @param reverseTransfer      受取側 Connect 残高から返金原資を戻すか（設定A では {@code true}）
+     * @param refundApplicationFee 徴収済み application_fee を返金するか（設定A では {@code false}）
+     * @param idempotencyKey       冪等性キー（{@code refund-{escrowId}-{seq}}・設計書 02 §9）
+     * @return Connect 返金情報（refundId / status）
+     */
+    ConnectRefundInfo createConnectRefund(String paymentIntentId, long amountMinor, String reason,
+                                          boolean reverseTransfer, boolean refundApplicationFee,
+                                          String idempotencyKey);
+
+    /**
      * 与信系（escrow）の platform Webhook イベントを検証・パースする（設計書 02 §4.2）。
      *
      * <p>platform 署名シークレット（{@link #constructEvent} と同一）で検証する。
@@ -221,13 +246,28 @@ public interface StripePaymentProvider {
     record PaymentIntentInfo(String paymentIntentId, String clientSecret, String status) {}
 
     /**
-     * 与信系 platform Webhook イベント情報（設計書 02 §4.2）。
+     * 与信系 platform Webhook イベント情報（設計書 02 §4.2 / §6.1）。
      *
      * <p>{@code eventId} は冪等キー（{@code evt_xxx}）。{@code paymentIntentId}/{@code paymentIntentStatus}
      * で対象 escrow を特定し状態確定する。</p>
+     *
+     * <p>{@code charge.refunded}（設計書 02 §6.1）では Charge の {@code payment_intent} を
+     * {@code paymentIntentId} に、最新の Refund を {@code refundId} に、当該 Refund 額と Charge 総額を
+     * {@code refundedAmountMinor}/{@code chargeAmountMinor} に格納する（{@code payment_intent.*} 系では
+     * これら refund フィールドは null）。全額/部分の判定と {@code refunds} 行の確定に用いる。</p>
      */
     record EscrowWebhookEventInfo(String eventId, String type, boolean livemode,
-                                  String paymentIntentId, String paymentIntentStatus) {}
+                                  String paymentIntentId, String paymentIntentStatus,
+                                  String refundId, Long refundedAmountMinor, Long chargeAmountMinor) {}
+
+    /**
+     * Connect 返金情報（設計書 02 §6.1・設定A）。
+     *
+     * <p>{@code refundId} は {@code re_xxx}（{@code refunds.stripe_refund_id} UNIQUE）。{@code status} は
+     * Stripe の Refund ステータス（{@code pending}/{@code succeeded} 等）。確定は {@code charge.refunded}
+     * Webhook で行うため、本 record は INSERT 時の {@code stripe_refund_id} 記録に用いる。</p>
+     */
+    record ConnectRefundInfo(String refundId, String status) {}
 
     /**
      * Connect Webhook の署名を検証し、イベントをパースする。

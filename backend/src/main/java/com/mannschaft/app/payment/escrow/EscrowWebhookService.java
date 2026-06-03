@@ -42,6 +42,7 @@ public class EscrowWebhookService {
     private final WebhookIdempotencyService idempotencyService;
     private final EscrowTransactionRepository escrowTransactionRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
+    private final RefundRepository refundRepository;
 
     /**
      * 与信系 platform Webhook を処理する。署名検証 → {@code event_id} 冪等ゲート → ハンドラの順。
@@ -70,6 +71,93 @@ public class EscrowWebhookService {
             throw e;
         }
         idempotencyService.markProcessed(event.eventId(), result);
+    }
+
+    /**
+     * {@code charge.refunded}（返金確定）を処理する（設計書 02 §6.1）。
+     *
+     * <p>{@code charge.refunded} は謝礼/会費（escrow）と既存会員費（{@code MemberPaymentEntity}）の両方で発生しうる。
+     * 本メソッドは<b>対象 escrow が存在する場合のみ</b>処理し、存在しなければ {@code false} を返して呼び出し元
+     * （{@code StripeWebhookService}）が会費側へフォールバックできるようにする。escrow が存在する場合のみ
+     * {@code event_id} 冪等ゲートを消費する（会費側 charge.refunded のゲートと競合させない）。</p>
+     *
+     * <p><b>二重処理防止（根治・02 §6.1）:</b> escrow 行を {@code PESSIMISTIC_WRITE} でロックして
+     * read-then-write を直列化する（refund API の同期処理／再送 webhook との競合防止・P2-c-1 と同様）。</p>
+     *
+     * @param payload   生リクエストボディ
+     * @param sigHeader {@code Stripe-Signature} ヘッダー
+     * @return escrow として処理した場合 {@code true}、対象 escrow が無く会費側へ委譲すべき場合 {@code false}
+     */
+    public boolean handleChargeRefunded(String payload, String sigHeader) {
+        StripePaymentProvider.EscrowWebhookEventInfo event =
+                stripePaymentProvider.constructEscrowEvent(payload, sigHeader);
+
+        // 対象 escrow が無ければ会費側へフォールバック（冪等ゲートは消費しない）。
+        if (event.paymentIntentId() == null
+                || escrowTransactionRepository.findByStripePaymentIntentId(event.paymentIntentId()).isEmpty()) {
+            log.info("charge.refunded だが対象 escrow なし。会費側へフォールバック: piId={}", event.paymentIntentId());
+            return false;
+        }
+
+        boolean shouldProcess = idempotencyService.tryBegin(event.eventId(), event.type(), event.livemode());
+        if (!shouldProcess) {
+            return true;
+        }
+
+        WebhookProcessStatus result;
+        try {
+            result = applyChargeRefunded(event);
+        } catch (RuntimeException e) {
+            idempotencyService.markFailed(event.eventId());
+            log.warn("charge.refunded ハンドラ失敗。FAILED 記録のうえ再送出します: eventId={}", event.eventId(), e);
+            throw e;
+        }
+        idempotencyService.markProcessed(event.eventId(), result);
+        return true;
+    }
+
+    /**
+     * {@code charge.refunded} 本処理: 対象 {@code refunds} を {@code SUCCEEDED} 確定し、累計が額面に達したか否かで
+     * escrow を {@link EscrowStatus#REFUNDED}/{@link EscrowStatus#PARTIALLY_REFUNDED} へ確定する。
+     *
+     * <p>既に {@code SUCCEEDED} 済みの refund は二重確定しない（冪等 no-op）。escrow 行ロックで二重処理を防ぐ。</p>
+     */
+    private WebhookProcessStatus applyChargeRefunded(StripePaymentProvider.EscrowWebhookEventInfo event) {
+        EscrowTransactionEntity escrow = findEscrowForUpdateOrNull(event.paymentIntentId());
+        if (escrow == null) {
+            return WebhookProcessStatus.IGNORED;
+        }
+
+        RefundEntity refund = event.refundId() == null ? null
+                : refundRepository.findByStripeRefundId(event.refundId()).orElse(null);
+        if (refund == null) {
+            // refund 行が未登録（refund API 経由でない外部返金等）。症状を隠さず情報ログを残し IGNORED。
+            log.info("charge.refunded だが対応する refunds 行が未登録: refundId={}, piId={}",
+                    event.refundId(), event.paymentIntentId());
+            return WebhookProcessStatus.IGNORED;
+        }
+        if (refund.getStatus() == RefundStatus.SUCCEEDED) {
+            log.info("charge.refunded だが既に SUCCEEDED 済み（冪等 no-op）: refundId={}", event.refundId());
+            return WebhookProcessStatus.PROCESSED;
+        }
+
+        refund.setStatus(RefundStatus.SUCCEEDED);
+        refundRepository.save(refund);
+
+        // 累計（SUCCEEDED 済み・額面ベース）が額面に達したか否かで escrow 状態を確定する。
+        long faceAmount = escrow.getFaceAmount();
+        long totalRefunded = refundRepository.findByEscrowTransactionId(escrow.getId()).stream()
+                .filter(r -> r.getStatus() == RefundStatus.SUCCEEDED)
+                .mapToLong(RefundEntity::getAmount)
+                .sum();
+        EscrowStatus newStatus = totalRefunded >= faceAmount ? EscrowStatus.REFUNDED : EscrowStatus.PARTIALLY_REFUNDED;
+        if (escrow.getStatus() != newStatus) {
+            escrow.setStatus(newStatus);
+            escrowTransactionRepository.save(escrow);
+        }
+        log.info("charge.refunded 確定: escrowId={}, refundId={}, status={}, 累計={}/{}",
+                escrow.getId(), event.refundId(), newStatus, totalRefunded, faceAmount);
+        return WebhookProcessStatus.PROCESSED;
     }
 
     private WebhookProcessStatus dispatch(StripePaymentProvider.EscrowWebhookEventInfo event) {

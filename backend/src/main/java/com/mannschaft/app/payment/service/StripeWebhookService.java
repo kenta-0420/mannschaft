@@ -60,7 +60,7 @@ public class StripeWebhookService {
         switch (event.type()) {
             case "checkout.session.completed" -> handleCheckoutCompleted(event);
             case "checkout.session.expired" -> handleCheckoutExpired(event);
-            case "charge.refunded" -> handleChargeRefunded(event);
+            case "charge.refunded" -> handleChargeRefunded(event, payload, sigHeader);
             default -> log.info("未対応の Webhook イベント: type={}", event.type());
         }
 
@@ -151,8 +151,18 @@ public class StripeWebhookService {
 
     /**
      * charge.refunded を処理する。
+     *
+     * <p>F22.1 P2-c 第二波: 謝礼/会費（escrow・Connect）の返金もこの event で届く。まず escrow 側
+     * （{@link EscrowWebhookService#handleChargeRefunded}・event_id 冪等＋行ロック）へ委譲を試み、対象 escrow が
+     * 無ければ {@code false} が返るので既存会員費（{@link MemberPaymentEntity}）の返金処理へフォールバックする
+     * （設計書 02 §6.1）。</p>
      */
-    private void handleChargeRefunded(StripePaymentProvider.WebhookEventInfo event) {
+    private void handleChargeRefunded(StripePaymentProvider.WebhookEventInfo event, String payload, String sigHeader) {
+        // F22.1: escrow（Connect）返金を優先委譲。対象 escrow があれば escrow 側が処理し true を返す。
+        if (escrowWebhookService.handleChargeRefunded(payload, sigHeader)) {
+            return;
+        }
+
         if (event.paymentIntentId() == null) {
             log.warn("paymentIntentId が含まれていません");
             return;

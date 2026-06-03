@@ -41,7 +41,7 @@ class EscrowWebhookServiceTest {
     @InjectMocks private EscrowWebhookService service;
 
     private StripePaymentProvider.EscrowWebhookEventInfo event(String id, String type) {
-        return new StripePaymentProvider.EscrowWebhookEventInfo(id, type, false, "pi_abc", null);
+        return new StripePaymentProvider.EscrowWebhookEventInfo(id, type, false, "pi_abc", null, null, null, null);
     }
 
     private static final UUID ESCROW_ID = UUID.fromString("019607a0-0000-7000-8000-0000000000aa");

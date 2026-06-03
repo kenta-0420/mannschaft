@@ -45,6 +45,7 @@ class ConnectChargeServiceTest {
     @Mock private StripePaymentProvider stripePaymentProvider;
     @Mock private AccessControlService accessControlService;
     @Mock private LedgerEntryRepository ledgerEntryRepository;
+    @Mock private RefundRepository refundRepository;
 
     // PaymentFeeCalculator は純粋関数。実体を使い手数料式の一元利用を検証する。
     private final PaymentFeeCalculator feeCalculator = new PaymentFeeCalculator();
@@ -52,7 +53,8 @@ class ConnectChargeServiceTest {
     private ConnectChargeService service() {
         return new ConnectChargeService(
                 escrowTransactionRepository, connectAccountRepository,
-                feeCalculator, stripePaymentProvider, accessControlService, ledgerEntryRepository);
+                feeCalculator, stripePaymentProvider, accessControlService, ledgerEntryRepository,
+                refundRepository, new com.mannschaft.app.payment.connect.PayeeScopeResolver());
     }
 
     private ConnectAccountEntity payeeAccount(boolean payoutsEnabled) {
