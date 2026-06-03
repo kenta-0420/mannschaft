@@ -2,6 +2,7 @@ package com.mannschaft.app.payment.entity;
 
 import com.mannschaft.app.common.BaseEntity;
 import com.mannschaft.app.gdpr.PersonalData;
+import com.mannschaft.app.payment.PayerRelationship;
 import com.mannschaft.app.payment.PaymentMethod;
 import com.mannschaft.app.payment.PaymentStatus;
 import jakarta.persistence.Column;
@@ -18,6 +19,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * 支払い記録エンティティ。Stripe 自動決済または ADMIN 手動記録による支払い情報を管理する。
@@ -77,6 +79,45 @@ public class MemberPaymentEntity extends BaseEntity {
     private String stripeReceiptUrl;
 
     private LocalDateTime refundedAt;
+
+    // === F08.9 P1 Wave2: 払い手分離・money rail 連結列（V74.001 追加列）===
+
+    /**
+     * 払い手ユーザーID（実際に決済した人）。
+     * 受益者（userId）と同一の場合は SELF を示す。論理参照・FK なし。
+     * NULL は手動記録の移行期のみ許容、新規作成時は必須とする。
+     */
+    private Long payerUserId;
+
+    /**
+     * 第三者代理払いの権原 payment_proxy_grants.id（BINARY(16) = UUID）。
+     * 保護者経由の代理払いは NULL（権原は parental_consent_links 参照）。
+     * PayerRelationship=PROXY_GRANT の場合のみ設定される。
+     */
+    @Column(columnDefinition = "BINARY(16)")
+    private UUID paymentProxyGrantId;
+
+    /**
+     * 払い手と受益者の関係スナップショット。
+     * 監査・表示用。支払い後に関係が変わっても記録は変更しない。
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 16)
+    private PayerRelationship payerRelationship;
+
+    /**
+     * F22.1 money rail 連結: escrow_transactions.id（BINARY(16) = UUID）。
+     * Connect 決済時に設定。手動記録は NULL。
+     */
+    @Column(columnDefinition = "BINARY(16)")
+    private UUID escrowTransactionId;
+
+    /**
+     * 継続課金の親サブスクリプション membership_subscriptions.id（BINARY(16) = UUID）。
+     * 継続課金由来の支払いのみ設定。手動/単発は NULL。
+     */
+    @Column(columnDefinition = "BINARY(16)")
+    private UUID membershipSubscriptionId;
 
     /**
      * Stripe Checkout セッション完了時に支払い状態を更新する。
