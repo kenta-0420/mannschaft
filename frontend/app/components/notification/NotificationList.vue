@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import type { NotificationResponse } from '~/types/notification'
+import type { SnoozePreset } from '~/utils/snoozePreset'
+import { computeSnoozeUntil } from '~/utils/snoozePreset'
 
-const { getNotifications, markAsRead, markAsUnread, markAllAsRead } = useNotificationApi()
+const { getNotifications, markAsRead, markAsUnread, markAllAsRead, snooze } = useNotificationApi()
 const { confirmNotification, getNotificationDetail } = useConfirmableNotificationApi()
 const { showError } = useNotification()
+const { t } = useI18n()
 const router = useRouter()
 const { relativeTime } = useRelativeTime()
+const authStore = useAuthStore()
+const toast = useToast()
 
 const notifications = ref<NotificationResponse[]>([])
 const loading = ref(false)
@@ -22,6 +27,58 @@ interface UnconfirmedSummary {
 }
 const confirmableSummaries = ref<Record<number, UnconfirmedSummary>>({})
 
+// ─── スヌーズ ─────────────────────────────────
+/** スヌーズメニューの PrimeVue Menu ref（notif.id をキーとして管理）*/
+const snoozeMenuRefs = ref<Record<number, InstanceType<typeof import('primevue/menu').default> | null>>({})
+
+/** スヌーズプリセット定義（表示ラベルは i18n）*/
+const SNOOZE_PRESETS: SnoozePreset[] = ['in3h', 'tonight', 'tomorrowMorning', 'nextWeek']
+
+function getSnoozeMenuItems(notif: NotificationResponse) {
+  return SNOOZE_PRESETS.map((preset) => ({
+    label: t(`inbox.snoozePreset.${preset}`),
+    icon: 'pi pi-clock',
+    command: () => onSnooze(notif, preset),
+  }))
+}
+
+function toggleSnoozeMenu(event: MouseEvent, notif: NotificationResponse) {
+  const menuRef = snoozeMenuRefs.value[notif.id]
+  if (menuRef) {
+    menuRef.toggle(event)
+  }
+}
+
+/** スヌーズ実行（楽観更新）*/
+async function onSnooze(notif: NotificationResponse, preset: SnoozePreset) {
+  const tz = authStore.user?.timezone ?? 'Asia/Tokyo'
+  const snoozedUntil = computeSnoozeUntil(preset, tz)
+
+  // 楽観更新: 一覧から除去
+  const idx = notifications.value.findIndex((n) => n.id === notif.id)
+  if (idx >= 0) {
+    notifications.value.splice(idx, 1)
+  }
+
+  try {
+    await snooze(notif.id, snoozedUntil)
+    toast.add({
+      severity: 'success',
+      summary: t('inbox.action.snoozed'),
+      life: 3000,
+    })
+  }
+  catch {
+    // ロールバック: 除去した通知を元の位置に戻す
+    if (idx >= 0) {
+      notifications.value.splice(idx, 0, notif)
+    }
+    showError(t('inbox.action.snoozeFailed'))
+  }
+}
+
+// ─── 通知読み込み ──────────────────────────────
+
 async function loadNotifications(cursor?: number) {
   loading.value = true
   try {
@@ -31,16 +88,19 @@ async function loadNotifications(cursor?: number) {
     })
     if (!cursor) {
       notifications.value = res.data
-    } else {
+    }
+    else {
       notifications.value.push(...res.data)
     }
     nextCursor.value = res.meta.nextCursor
     hasNext.value = res.meta.hasNext
     // 確認通知のサマリ（未確認件数等）を並列取得（権限が無いものは静かにスキップ）
     await loadConfirmableSummariesForList()
-  } catch {
+  }
+  catch {
     showError('通知の取得に失敗しました')
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -50,11 +110,13 @@ async function onToggleRead(notif: NotificationResponse) {
     if (notif.isRead) {
       await markAsUnread(notif.id)
       notif.isRead = false
-    } else {
+    }
+    else {
       await markAsRead(notif.id)
       notif.isRead = true
     }
-  } catch {
+  }
+  catch {
     showError('操作に失敗しました')
   }
 }
@@ -62,8 +124,9 @@ async function onToggleRead(notif: NotificationResponse) {
 async function onMarkAllRead() {
   try {
     await markAllAsRead()
-    notifications.value.forEach(n => n.isRead = true)
-  } catch {
+    notifications.value.forEach((n) => (n.isRead = true))
+  }
+  catch {
     showError('一括既読に失敗しました')
   }
 }
@@ -128,15 +191,16 @@ async function loadConfirmableSummary(notif: NotificationResponse) {
       totalRecipientCount: detail.totalRecipientCount,
       visibility: detail.unconfirmedVisibility,
     }
-  } catch {
+  }
+  catch {
     // 認可エラー等は無視（メンバーが閲覧権限を持たないケース）
   }
 }
 
 /** 通知一覧読み込み後に確認通知のサマリを並列取得する */
 async function loadConfirmableSummariesForList() {
-  const targets = notifications.value.filter(n => isConfirmableNotification(n) && n.sourceId)
-  await Promise.all(targets.map(n => loadConfirmableSummary(n)))
+  const targets = notifications.value.filter((n) => isConfirmableNotification(n) && n.sourceId)
+  await Promise.all(targets.map((n) => loadConfirmableSummary(n)))
 }
 
 /** 通知に紐づく未確認サマリを取得する（テンプレートから参照） */
@@ -161,11 +225,11 @@ async function onConfirmNotification(notif: NotificationResponse) {
     await confirmNotification(scopeType, notif.scopeId, notif.sourceId)
     await markAsRead(notif.id)
     notif.isRead = true
-    const toast = useToast()
     toast.add({ severity: 'success', summary: '確認しました', life: 3000 })
     // 一覧を再取得
     await loadNotifications()
-  } catch {
+  }
+  catch {
     showError('確認処理に失敗しました')
   }
 }
@@ -195,16 +259,26 @@ defineExpose({ refresh: () => loadNotifications() })
     </div>
 
     <!-- 通知一覧 -->
+    <!--
+      行全体を <button> にすると、内側のスヌーズボタン・既読トグルボタン・確認ボタンが
+      HTML 仕様上の "nested interactive" になり不正。
+      <div role="button"> に変えることで、行クリックの挙動を保ちながらネストを回避する。
+      AnnouncementItem.vue と同パターン。
+    -->
     <div class="flex flex-col">
-      <button
+      <div
         v-for="notif in notifications"
         :key="notif.id"
+        role="button"
+        tabindex="0"
         class="flex items-start gap-3 border-b border-surface-100 px-4 py-3 text-left transition-colors hover:bg-surface-50"
         :class="[
           notif.isRead ? 'opacity-60' : '',
           isConfirmableNotification(notif) ? 'bg-amber-50 hover:bg-amber-100' : '',
         ]"
         @click="onClickNotification(notif)"
+        @keydown.enter="onClickNotification(notif)"
+        @keydown.space.prevent="onClickNotification(notif)"
       >
         <!-- 未読ドット -->
         <div class="mt-2 flex shrink-0 items-center">
@@ -294,15 +368,34 @@ defineExpose({ refresh: () => loadNotifications() })
           </div>
         </div>
 
-        <!-- 既読/未読トグル -->
-        <button
-          class="mt-1 shrink-0 p-1 text-surface-300 hover:text-surface-600"
-          :title="notif.isRead ? '未読にする' : '既読にする'"
-          @click.stop="onToggleRead(notif)"
-        >
-          <i :class="notif.isRead ? 'pi pi-envelope' : 'pi pi-check'" class="text-xs" />
-        </button>
-      </button>
+        <!-- アクションボタン群（スヌーズ + 既読トグル）-->
+        <div class="mt-1 flex shrink-0 items-center gap-1">
+          <!-- スヌーズボタン -->
+          <button
+            class="p-1 text-surface-300 hover:text-primary"
+            :aria-label="$t('inbox.action.snooze')"
+            :title="$t('inbox.action.snooze')"
+            @click.stop="toggleSnoozeMenu($event, notif)"
+          >
+            <i class="pi pi-clock text-xs" />
+          </button>
+          <!-- スヌーズプリセットメニュー（PrimeVue Menu popup） -->
+          <Menu
+            :ref="(el) => { snoozeMenuRefs[notif.id] = el as InstanceType<typeof import('primevue/menu').default> | null }"
+            :model="getSnoozeMenuItems(notif)"
+            :popup="true"
+          />
+
+          <!-- 既読/未読トグル -->
+          <button
+            class="p-1 text-surface-300 hover:text-surface-600"
+            :title="notif.isRead ? '未読にする' : '既読にする'"
+            @click.stop="onToggleRead(notif)"
+          >
+            <i :class="notif.isRead ? 'pi pi-envelope' : 'pi pi-check'" class="text-xs" />
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- 空状態 -->
