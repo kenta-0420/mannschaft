@@ -198,13 +198,14 @@ CREATE TABLE payment_proxy_grants (
 
 | 項目 | F22.1 側の状態 | 本機能の依存 |
 |---|---|---|
-| `escrow_transactions.face_amount`（INT UNSIGNED） | 未実装（P2-b 追加予定） | 手数料折半計算の基準 |
-| `escrow_transactions.capture_mode`（MANUAL/AUTOMATIC） | 未実装（P2-b 追加予定） | 会費は `AUTOMATIC`（即時） |
-| `EscrowSourceKind.MEMBERSHIP` | 値確保のみ・未実装（P2-e） | 会費の source_kind |
-| `ConnectChargeService`（2モード共通送金） | 未実装（P2-b） | 会費の即時 charge |
-| `PaymentFeeCalculator`（手数料一元化） | 未実装（P2-b） | 折半計算（散在禁止） |
+| `escrow_transactions.face_amount`（INT UNSIGNED） | ✅ 実装済（V73.003・main） | 手数料折半計算の基準 |
+| `escrow_transactions.capture_mode`（MANUAL/AUTOMATIC） | ✅ 実装済（V73.003・main） | 会費は `AUTOMATIC`（即時） |
+| `EscrowSourceKind.MEMBERSHIP` | ✅ 実装済（V73.003・main） | 会費の source_kind |
+| `ConnectChargeService`（authorize/capture/refund） | ✅ 実装済（P2-a/b/c・main） | 共通送金基盤 |
+| `ConnectChargeService.charge(MembershipChargeCommand)`（即時 AUTOMATIC） | ✅ 本機能 P1 Wave0 で追加（2026-06-03） | 会費の即時 charge |
+| `PaymentFeeCalculator`（手数料一元化） | ✅ 実装済（main） | 折半計算（散在禁止・流用必須） |
 
-> P1 着手は F22.1 P2-b 完了に**依存**する。順序：F22.1 P2-b（基盤）→ F08.9 P1（会費載せ替え）。**F22.1 P2-b はハードライン依存**ゆえ、P2-b の完了をマイルストーンとして固定し、本機能 P1 はその後着手（ロードマップ README §10）。
+> F22.1 P2-b/c は **main 済**（V73.003 でスキーマ・enum、`ConnectChargeService.authorize/capture/refund`・`PaymentFeeCalculator` 実装済）。会費が要する即時 `charge()` メソッドのみが欠けていたため、**F08.9 P1 Wave0 で escrow ドメインに追加**した（既存 authorize/capture は無改変・差分最小化で F22.1 並行作業との衝突を回避）。
 
 ### 3.1 source_kind × scope の許可マッピング（整合性保証）
 
