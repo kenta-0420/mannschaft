@@ -26,6 +26,14 @@ public interface EscrowTransactionRepository
     List<EscrowTransactionEntity> findBySourceKindAndSourceId(
             EscrowSourceKind sourceKind, Long sourceId);
 
+    /**
+     * 出所＋参加者（source_kind × source_id × source_participant_id）の取引を取得する。
+     *
+     * <p>与信の冪等判定に用いる（同一応募の二重与信を 1 件に収束させる・設計書 02 §9）。</p>
+     */
+    Optional<EscrowTransactionEntity> findBySourceKindAndSourceIdAndSourceParticipantId(
+            EscrowSourceKind sourceKind, Long sourceId, Long sourceParticipantId);
+
     /** テナント（organization_id）スコープの取引を取得する。 */
     List<EscrowTransactionEntity> findByOrganizationId(Long organizationId);
 
