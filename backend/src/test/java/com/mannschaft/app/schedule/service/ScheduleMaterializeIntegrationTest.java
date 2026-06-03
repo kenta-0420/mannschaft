@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.util.AopTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -479,7 +480,7 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
     class AttendanceMaterialize {
 
         @Test
-        @DisplayName("scheduledAt=過去の ATTENDANCE タスク → runBatch() → タスク CREATED・出欠レコード生成")
+        @DisplayName("scheduledAt=過去の ATTENDANCE タスク → materializeOne() → タスク CREATED・出欠レコード生成")
         void attendance_runBatch_opensAttendanceSolicitation() throws Exception {
             // Arrange: users/user_roles を seed してメンバーを確定（コミット済み）
             seedUsersAndRoles();
@@ -496,13 +497,18 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
                     schedule.getId(), ScheduledTaskType.ATTENDANCE, pastTime, attendancePayload);
             UUID taskId = task.getId();
 
-            // Act: コミット済みデータを REQUIRES_NEW バッチが読める
-            scheduledTaskBatchService.runBatch();
+            // Act: プロキシ経由で materializeOne を直接呼ぶ（REQUIRES_NEW Tx が正しく機能する）。
+            // runBatch() は @Scheduled バッチが自動起動しているとタスクが CREATED 済みで
+            // due.isEmpty() early-return する競合リスクがあるため、materializeOne を直接呼ぶ方式を採用。
+            // materializeOne が @Transactional(REQUIRES_NEW) を持つため、Spring プロキシ経由での
+            // 呼び出しで独立トランザクションが保証される（self-invocation を使わず、@Autowired 経由）。
+            scheduledTaskBatchService.materializeOne(task);
 
             // Assert: タスクが CREATED になること
             ScheduleScheduledTaskEntity afterTask = scheduledTaskRepository.findById(taskId).orElseThrow();
             assertThat(afterTask.getStatus())
-                    .as("予約出欠materialize後はCREATEDになること")
+                    .as("予約出欠materialize後はCREATEDになること（attempt_count=%d, lastError=%s）"
+                            .formatted(afterTask.getAttemptCount(), afterTask.getLastError()))
                     .isEqualTo(ScheduledTaskStatus.CREATED);
 
             // Assert: 出欠レコードがメンバー分生成されていること（seedで2名）
@@ -544,14 +550,26 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
 
             // 予約タスク（PENDING ATTENDANCE）は作らない → 即時募集ルートに入る
 
-            // Act: AFTER_COMMIT @Async の代わりに直呼び
-            // リスナーは呼び出し元 Tx に参加するため、TransactionTemplate でラップしてコミットする
+            // Act: AFTER_COMMIT @Async の代わりに直呼び。
+            //
+            // 【重要】solicitationEventListener は Spring プロキシを通して @Autowired されているため、
+            // プロキシ経由でメソッドを呼ぶと @Async が効いて別スレッドで非同期実行される。
+            // 非同期スレッドでは TransactionTemplate の Tx とは独立した Tx が開かれるが、
+            // テストのアサーションは TransactionTemplate.execute 完了直後に実行されるため、
+            // 非同期スレッドのコミットが完了していない場合がある（0L になる race condition）。
+            //
+            // 解決策: AopTestUtils.getUltimateTargetObject でプロキシを剥がして実インスタンスを取得し、
+            // @Async をバイパスして同期実行する。リスナーは @TransactionalEventListener(AFTER_COMMIT)
+            // なので直接呼び出しでも正しく動作する（直接呼び出し時はアノテーションの phase 制約は無関係）。
+            // 実インスタンスのメソッドは @Transactional を持たないため、TransactionTemplate の Tx に参加する。
+            ScheduleAttendanceSolicitationEventListener rawListener =
+                    AopTestUtils.getUltimateTargetObject(solicitationEventListener);
             com.mannschaft.app.schedule.event.ScheduleCreatedEvent event =
                     new com.mannschaft.app.schedule.event.ScheduleCreatedEvent(
                             schedule.getId(), "TEAM", TEAM_ID, CREATED_BY, true);
             TransactionTemplate tx = new TransactionTemplate(txManager);
             tx.execute(status -> {
-                solicitationEventListener.onScheduleCreated(event);
+                rawListener.onScheduleCreated(event);
                 return null;
             });
 
@@ -576,13 +594,15 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
             persistTask(schedule.getId(), ScheduledTaskType.ATTENDANCE,
                     LocalDateTime.now().plusHours(1), payload);
 
-            // Act: TransactionTemplate でラップしてコミット
+            // Act: @Async をバイパスして実インスタンスを直接呼ぶ（上のテストと同様の理由）
+            ScheduleAttendanceSolicitationEventListener rawListener =
+                    AopTestUtils.getUltimateTargetObject(solicitationEventListener);
             com.mannschaft.app.schedule.event.ScheduleCreatedEvent event =
                     new com.mannschaft.app.schedule.event.ScheduleCreatedEvent(
                             schedule.getId(), "TEAM", TEAM_ID, CREATED_BY, true);
             TransactionTemplate tx = new TransactionTemplate(txManager);
             tx.execute(status -> {
-                solicitationEventListener.onScheduleCreated(event);
+                rawListener.onScheduleCreated(event);
                 return null;
             });
 
