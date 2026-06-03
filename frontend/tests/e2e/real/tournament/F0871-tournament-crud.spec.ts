@@ -23,7 +23,7 @@
  *   TOUR-012  クリーンアップ（DELETE — テスト用大会論理削除）
  */
 
-import { test, expect, request as pwRequest, type APIRequestContext, type Page } from '@playwright/test'
+import { test, expect, request as pwRequest, type APIRequestContext } from '@playwright/test'
 import { waitForHydration } from '../../helpers/wait'
 
 // storageState に依存せず、テスト内で自前ログインする
@@ -95,23 +95,6 @@ async function login(api: APIRequestContext, email: string, password: string): P
 
 function authHeaders(token: string): Record<string, string> {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-}
-
-/** /login フォームから実ログインしてブラウザセッションを確立する */
-async function loginUI(page: Page, email: string, password: string): Promise<void> {
-  await page.goto('/login')
-  await waitForHydration(page)
-  const emailInput = page.locator('input#email')
-  await emailInput.click()
-  await emailInput.pressSequentially(email, { delay: 10 })
-  const passwordInput = page.locator('input[type="password"]')
-  await passwordInput.click()
-  await passwordInput.pressSequentially(password, { delay: 10 })
-  await page.getByRole('button', { name: 'ログイン' }).click()
-  await page.waitForURL((url) => !url.pathname.includes('/login'), {
-    timeout: 30_000,
-    waitUntil: 'commit',
-  })
 }
 
 /** 所属組織一覧から ADMIN 権限を持つ組織の ID を解決する（/me/organizations 経由） */
