@@ -3,6 +3,11 @@
     "common_delete": "Löschen",
     "description_label": "Beschreibung",
     "error_title_required": "Der Titel ist erforderlich",
+    "success_create": "Veranstaltung erstellt",
+    "success_update": "Veranstaltung aktualisiert",
+    "success_create_personal": "Termin hinzugefügt",
+    "success_update_personal": "Termin aktualisiert",
+    "error_load_event": "Veranstaltungsinformationen konnten nicht geladen werden",
     "reminder": {
       "label": "Erinnerungen",
       "add": "Erinnerung hinzufügen",

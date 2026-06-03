@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import type { ScheduleEventFormState, TimeHistoryEntry } from './event-form/types'
+import type { ReminderFormEntry, ScheduleEventFormState, TimeHistoryEntry } from './event-form/types'
 
 interface ScopeOption {
   label: string
@@ -200,6 +200,21 @@ watch(
             form.value.endDate = end
             form.value.endTime = end.toTimeString().slice(0, 5)
           }
+          // 個人予定: detailedReminders からリマインダーフォーム状態を復元する
+          const detailedReminders = (data.detailedReminders as Array<Record<string, unknown>> | null) ?? []
+          if (detailedReminders.length > 0) {
+            form.value.reminders = detailedReminders.map(reminderResponseToFormEntry)
+          } else {
+            // detailedReminders が未 populate の場合は後方互換の reminders(number[]) から相対リマインダーを復元
+            const legacyReminders = (data.reminders as number[] | null) ?? []
+            form.value.reminders = legacyReminders.map((minutes) => ({
+              key: `rem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              kind: 'RELATIVE' as const,
+              relativeValue: minutes,
+              relativeUnit: 'MINUTES' as const,
+              absoluteAt: null,
+            }))
+          }
         }
         else {
           form.value.title = (data.title as string) ?? ''
@@ -219,9 +234,30 @@ watch(
             form.value.endDate = end
             form.value.endTime = end.toTimeString().slice(0, 5)
           }
+          // 共有予定: reminders からリマインダーフォーム状態を復元する
+          const reminders = (data.reminders as Array<Record<string, unknown>> | null) ?? []
+          form.value.reminders = reminders.map(reminderResponseToFormEntry)
+          // 共有予定: scheduledTasks の PENDING タスクを scheduledSurvey / scheduledAttendance に変換する
+          const scheduledTasks = (data.scheduledTasks as Array<Record<string, unknown>> | null) ?? []
+          for (const task of scheduledTasks) {
+            if (task.status !== 'PENDING') continue
+            if (task.taskType === 'SURVEY') {
+              form.value.scheduledSurvey = {
+                ...form.value.scheduledSurvey,
+                enabled: true,
+                scheduledAt: task.scheduledAt ? new Date(task.scheduledAt as string) : null,
+              }
+            } else if (task.taskType === 'ATTENDANCE') {
+              form.value.scheduledAttendance = {
+                ...form.value.scheduledAttendance,
+                enabled: true,
+                scheduledAt: task.scheduledAt ? new Date(task.scheduledAt as string) : null,
+              }
+            }
+          }
         }
       } catch {
-        notification.error('イベント情報の取得に失敗しました')
+        notification.error(t('schedule.error_load_event'))
       }
     } else if (visible && !scheduleId) {
       resetForm()
@@ -249,6 +285,39 @@ function buildDateTimeStr(date: Date | null, time: string): string | null {
 function buildFullDateTimeStr(date: Date | null): string | null {
   if (!date) return null
   return dayjs(date).tz(userTimezone.value).format('YYYY-MM-DDTHH:mm:ss')
+}
+
+// ReminderResponse（BE）を ReminderFormEntry（フォーム状態）に変換する。
+// reminderKind が RELATIVE の場合は remindBeforeMinutes から relativeValue/relativeUnit を逆算する。
+function reminderResponseToFormEntry(r: Record<string, unknown>): ReminderFormEntry {
+  const key = `rem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  if (r.reminderKind === 'ABSOLUTE') {
+    return {
+      key,
+      kind: 'ABSOLUTE',
+      relativeValue: 30,
+      relativeUnit: 'MINUTES',
+      absoluteAt: r.remindAt ? new Date(r.remindAt as string) : null,
+    }
+  }
+  // RELATIVE: remindBeforeMinutes → 値と単位に逆算
+  const minutes = (r.remindBeforeMinutes as number) ?? 30
+  let relativeValue = minutes
+  let relativeUnit: 'MINUTES' | 'HOURS' | 'DAYS' = 'MINUTES'
+  if (minutes > 0 && minutes % (60 * 24) === 0) {
+    relativeValue = minutes / (60 * 24)
+    relativeUnit = 'DAYS'
+  } else if (minutes > 0 && minutes % 60 === 0) {
+    relativeValue = minutes / 60
+    relativeUnit = 'HOURS'
+  }
+  return {
+    key,
+    kind: 'RELATIVE',
+    relativeValue,
+    relativeUnit,
+    absoluteAt: null,
+  }
 }
 
 // 相対リマインダーの値・単位を分に正規化する。
@@ -359,27 +428,25 @@ async function submit() {
   }
 
   // === 機能55: リマインダー ===
-  if (form.value.reminders.length > 0) {
-    if (effectiveScope.value.isPersonal) {
-      // 個人予定: 相対は reminders(number[])、絶対は absoluteReminders(string[]) に振り分け
-      const relativeMinutes = form.value.reminders
-        .filter(r => r.kind === 'RELATIVE')
-        .map(r => relativeReminderToMinutes(r.relativeValue, r.relativeUnit))
-      const absolute = form.value.reminders
-        .filter(r => r.kind === 'ABSOLUTE')
-        .map(r => buildFullDateTimeStr(r.absoluteAt))
-        .filter((s): s is string => s !== null)
-      if (relativeMinutes.length > 0) body.reminders = relativeMinutes
-      // 絶対リマインダーは作成時のみ（UpdatePersonalScheduleRequest が非対応のため）
-      if (absolute.length > 0 && !isEdit.value) body.absoluteReminders = absolute
-    } else {
-      // 共有予定: CreateReminderRequest[]（作成時のみ。Update は非対応）
-      if (!isEdit.value) body.reminders = buildSharedReminders()
-    }
+  if (effectiveScope.value.isPersonal) {
+    // 個人予定: 相対は reminders(number[])、絶対は absoluteReminders(string[]) に振り分け
+    // 編集時も作成時も同じペイロード形式で送信する（空配列＝全削除）
+    const relativeMinutes = form.value.reminders
+      .filter(r => r.kind === 'RELATIVE')
+      .map(r => relativeReminderToMinutes(r.relativeValue, r.relativeUnit))
+    const absolute = form.value.reminders
+      .filter(r => r.kind === 'ABSOLUTE')
+      .map(r => buildFullDateTimeStr(r.absoluteAt))
+      .filter((s): s is string => s !== null)
+    body.reminders = relativeMinutes
+    if (absolute.length > 0) body.absoluteReminders = absolute
+  } else {
+    // 共有予定: リマインダーは編集時も送信する（空配列＝全削除）
+    body.reminders = buildSharedReminders()
   }
 
-  // === 機能55: 予約アンケート・予約出欠（team/org の作成時のみ） ===
-  if (!effectiveScope.value.isPersonal && !isEdit.value) {
+  // === 機能55: 予約アンケート・予約出欠（team/org のみ。作成時・編集時ともに送信） ===
+  if (!effectiveScope.value.isPersonal) {
     if (form.value.scheduledSurvey.enabled) {
       const s = form.value.scheduledSurvey
       body.scheduledSurveys = [
@@ -431,11 +498,11 @@ async function submit() {
     }
     const successMsg = effectiveScope.value.isPersonal
       ? isEdit.value
-        ? '予定を更新しました'
-        : '予定を追加しました'
+        ? t('schedule.success_update_personal')
+        : t('schedule.success_create_personal')
       : isEdit.value
-        ? 'イベントを更新しました'
-        : 'イベントを作成しました'
+        ? t('schedule.success_update')
+        : t('schedule.success_create')
     if (!form.value.allDay && form.value.startTime && form.value.endTime) {
       saveTimeHistory(form.value.startTime, form.value.endTime)
     }
@@ -562,9 +629,9 @@ function close() {
       <!-- 機能55: リマインダー入力（全スコープ） -->
       <ScheduleEventReminderInput v-model:form="form" />
 
-      <!-- 機能55: 予約アンケート・予約出欠（team/org のみ） -->
+      <!-- 機能55: 予約アンケート・予約出欠（team/org のみ。編集時も表示） -->
       <ScheduleEventScheduledAttachmentInput
-        v-if="!effectiveScope.isPersonal && !isEdit"
+        v-if="!effectiveScope.isPersonal"
         v-model:form="form"
       />
 
