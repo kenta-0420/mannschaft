@@ -73,7 +73,7 @@ async function onSnooze(notif: NotificationResponse, preset: SnoozePreset) {
     if (idx >= 0) {
       notifications.value.splice(idx, 0, notif)
     }
-    showError(t('inbox.action.snooze') + ' に失敗しました')
+    showError(t('inbox.action.snoozeFailed'))
   }
 }
 

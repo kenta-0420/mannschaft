@@ -28,7 +28,8 @@
       "snoozed": "スヌーズしました",
       "archived": "保管庫へ移動しました",
       "unarchived": "受信箱へ戻しました",
-      "unsnoozed": "スヌーズを解除しました"
+      "unsnoozed": "スヌーズを解除しました",
+      "snoozeFailed": "スヌーズに失敗しました"
     },
     "snoozePreset": {
       "in3h": "3時間後",
