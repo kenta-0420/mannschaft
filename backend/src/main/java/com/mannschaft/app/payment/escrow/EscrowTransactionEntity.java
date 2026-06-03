@@ -48,6 +48,10 @@ public class EscrowTransactionEntity extends UuidV7Entity {
     @Column(name = "source_kind", nullable = false, length = 12)
     private EscrowSourceKind sourceKind;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "capture_mode", nullable = false, length = 10)
+    private EscrowCaptureMode captureMode;
+
     @Column(name = "source_id", nullable = false)
     private Long sourceId;
 
@@ -77,6 +81,11 @@ public class EscrowTransactionEntity extends UuidV7Entity {
     @Column(name = "stripe_payment_intent_id", length = 32)
     private String stripePaymentIntentId;
 
+    /** 額面（受取側が設定した謝礼/会費の元値・円整数）。amount = faceAmount + round(faceAmount × 0.025)。 */
+    @Column(name = "face_amount", nullable = false)
+    private Long faceAmount;
+
+    /** 課金額（支払者への実請求額＝額面+2.5%上乗せ・円整数）。Stripe へ渡す金額。 */
     @Column(name = "amount", nullable = false)
     private Long amount;
 
@@ -125,6 +134,9 @@ public class EscrowTransactionEntity extends UuidV7Entity {
         }
         if (this.status == null) {
             this.status = EscrowStatus.AUTHORIZED;
+        }
+        if (this.captureMode == null) {
+            this.captureMode = EscrowCaptureMode.MANUAL;
         }
     }
 }
