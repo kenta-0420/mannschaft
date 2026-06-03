@@ -100,16 +100,19 @@ public class InboxSnoozeRevivalBatchService {
                         null,                              // scopeId: 個人スコープ
                         ACTION_URL,
                         null);                             // actorId: システムトリガー
-
-                // 送信済みフラグを刻む（冪等＝次回バッチで再送しない）。
-                row.setSnoozeNotifiedAt(now);
-                itemStateRepository.save(row);
                 sent++;
             } catch (RuntimeException ex) {
-                // 症状を隠さない: 失敗行は stamp せず、次回バッチで再試行する。
-                log.error("[InboxSnoozeRevivalBatch] 復帰 push 失敗: userId={}, sourceType={}, sourceId={}",
+                // 症状を隠さない: 失敗した事実は必ずログに残す。ただし stamp は下で無条件に刻むため
+                // 失敗しても再試行しない（best-effort 1 回）。恒久失敗のサブスク失効掃除は
+                // WebPushService の 410/404 deleteByEndpoint に委譲する（DLQ/リトライ上限は設けない）。
+                log.error("[InboxSnoozeRevivalBatch] 復帰 push 失敗(best-effort・再試行しない): "
+                                + "userId={}, sourceType={}, sourceId={}",
                         row.getUserId(), row.getSourceType(), row.getSourceId(), ex);
             }
+            // 成否に関わらず一度きり: stamp して次回バッチで再送しない（無限再試行の根絶＝上限1回・冪等）。
+            // 恒久失敗のサブスク掃除は WebPushService の 410/404 失効掃除に委譲済み。
+            row.setSnoozeNotifiedAt(now);
+            itemStateRepository.save(row);
         }
         log.info("[InboxSnoozeRevivalBatch] 完了: 送信={}/{}件", sent, due.size());
     }

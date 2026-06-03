@@ -7,6 +7,7 @@ import type {
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
+const { t } = useI18n()
 const route = useRoute()
 const orgId = Number(route.params.id)
 const tId = Number(route.params.tId)
@@ -135,6 +136,34 @@ onMounted(async () => {
   <div>
     <div class="mb-4 flex items-center justify-between gap-3">
       <BackButton :to="`/organizations/${orgId}/tournaments`" label="大会一覧に戻る" />
+      <NuxtLink
+        :to="`/organizations/${orgId}/tournaments/${tId}/rosters`"
+        class="ml-auto flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition hover:border-primary-400 hover:text-primary"
+      >
+        <i class="pi pi-list-check" />
+        {{ $t('tournament.roster.title') }}
+      </NuxtLink>
+      <NuxtLink
+        :to="`/organizations/${orgId}/tournaments/${tId}/communication`"
+        class="flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition-colors hover:bg-surface-100"
+      >
+        <i class="pi pi-comments text-sm" />
+        {{ t('tournament.communication.title') }}
+      </NuxtLink>
+      <NuxtLink
+        :to="`/organizations/${orgId}/tournaments/${tId}/submissions`"
+        class="flex items-center gap-1 rounded-lg border border-surface-200 px-3 py-1.5 text-xs font-medium text-surface-600 transition hover:border-primary-400 hover:text-primary-600"
+      >
+        <i class="pi pi-file-edit text-xs" />
+        {{ $t('tournament.submission.nav_link') }}
+      </NuxtLink>
+      <NuxtLink
+        :to="`/organizations/${orgId}/tournaments/${tId}/files`"
+        class="flex items-center gap-1.5 rounded-lg border border-surface-200 bg-surface-0 px-3 py-1.5 text-sm text-surface-600 transition-colors hover:bg-surface-100"
+      >
+        <i class="pi pi-folder text-amber-500" />
+        {{ $t('tournament.files.title') }}
+      </NuxtLink>
       <NuxtLink
         :to="`/organizations/${orgId}/tournaments/${tId}/fees`"
         class="flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition hover:border-primary-400 hover:text-primary-600"

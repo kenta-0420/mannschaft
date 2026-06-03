@@ -135,8 +135,11 @@ MVP の「開いたら戻っている」だけでは能動的な催促が無い�
   - スケジュール: 5 分毎（`cron="0 */5 * * * *" zone="Asia/Tokyo"`）。`@SchedulerLock(lockAtMostFor="PT4M", lockAtLeastFor="PT10S")` で多重起動を防ぐ。
   - 横断クエリ: `InboxItemStateRepository.findDueForRevival(now, Pageable)` が **全ユーザー横断**で
     `snoozed_until <= now AND snooze_notified_at IS NULL AND archived_at IS NULL` を `snoozed_until` 昇順に取得（1 回 500 件上限で暴走防止）。
-  - 各行へ push を送ったら `snooze_notified_at = now` を刻んで保存し、**2 回目の実行では再送しない（冪等）**。
-    push 送信が例外でも `snooze_notified_at` を刻まず次回バッチで再試行する（症状を隠さない＝根治原則）。
+  - **復帰 push はベストエフォート 1 回**: 各行へ push を **1 度だけ**試行し、**成否に関わらず** `snooze_notified_at = now` を刻んで保存する。これにより **2 回目以降の実行では再送しない（冪等・上限 1 回）**。
+    push 送信が例外でも `snooze_notified_at` を刻んで再送しない（旧仕様の「失敗行は stamp せず次回バッチで再試行」は **5 分毎の無限再試行**を招くため反転した）。
+    失敗した事実は `log.error` に必ず残す（症状を隠さない＝根治原則）。`sent` カウンタは成功時のみ加算する。
+    **恒久失敗のサブスク掃除は委譲**: 送信先が無効（HTTP 410/404）な Web Push サブスクは `WebPushService` が `deleteByEndpoint` で失効掃除し、429/5xx は内部で `MAX_RETRY_COUNT` までリトライしてから諦める。
+    したがって本バッチ側に **DLQ・リトライ上限列は設けない**（恒久失敗の後始末は push 基盤に集約）。
 - **再スヌーズ時のリセット**: `InboxTriageService.snooze` が upsert 時に `snooze_notified_at` を NULL に戻す。
   これにより新しい `snoozed_until` 到来時に再度 1 度だけ push できる。
 

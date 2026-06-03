@@ -465,6 +465,83 @@ export interface ApplyTemplateResponse {
 }
 
 // ──────────────────────────────────────────────────
+// F08.7.1 / 05: 試合メンバー表（自チーム作成＋テンプレ流用＋主催者締切管理）
+// ──────────────────────────────────────────────────
+
+/** 試合メンバー表の選手 1 行 */
+export interface RosterPlayerResponse {
+  id: number
+  userId: number
+  displayName: string
+  isStarter: boolean | null
+  jerseyNumber: number | null
+  position: string | null
+  registrationNumber: string | null
+  uniformSetId: string | null
+}
+
+/** 試合メンバー表のベンチ入り役員 1 行 */
+export interface RosterStaffResponse {
+  id: string
+  role: string
+  name: string
+  userId: number | null
+}
+
+/** 自チーム分の試合メンバー表（GET / PUT rosters/me のレスポンス） */
+export interface MatchRosterResponse {
+  matchId: number
+  participantId: number
+  teamId: number
+  rosterDeadline: string | null
+  locked: boolean
+  players: RosterPlayerResponse[]
+  staff: RosterStaffResponse[]
+}
+
+/** 主催者ビュー: 参加チーム単位の提出状況・内容 */
+export interface OrganizerRosterView {
+  participantId: number
+  teamId: number
+  teamDisplayName: string
+  submitted: boolean
+  playerCount: number
+  staffCount: number
+  players: RosterPlayerResponse[]
+  staff: RosterStaffResponse[]
+}
+
+/** PUT rosters/me リクエスト: 選手エントリー */
+export interface RosterPlayerEntry {
+  userId: number
+  isStarter?: boolean | null
+  jerseyNumber?: number | null
+  position?: string | null
+  registrationNumber?: string | null
+  uniformSetId?: string | null
+}
+
+/** PUT rosters/me リクエスト: ベンチ役員エントリー */
+export interface RosterStaffEntry {
+  role: string
+  name: string
+  userId?: number | null
+}
+
+/** PUT rosters/me リクエスト */
+export interface SubmitRosterRequest {
+  players?: RosterPlayerEntry[] | null
+  staff?: RosterStaffEntry[] | null
+}
+
+/** POST rosters/me/apply-template リクエスト */
+export interface ApplyRosterTemplateRequest {
+  templateId: string
+  overwriteExisting?: boolean
+  defaultUniformSetId?: string | null
+}
+
+// ──────────────────────────────────────────────────
 // F08.7.1 / 02 ②: 主催大会サマリ（ORG_TOURNAMENT_SUMMARY ウィジェット）
 // GET /api/v1/organizations/{orgId}/tournaments/summary
 // ──────────────────────────────────────────────────
@@ -485,4 +562,96 @@ export interface OrganizationTournamentSummaryEntry {
 
 export interface OrganizationTournamentSummary {
   tournaments: OrganizationTournamentSummaryEntry[]
+}
+
+// =====================================================================
+// F08.7.1: 大会連絡スペース
+// =====================================================================
+
+/** 連絡スペース（大会・ディビジョン共通）。 */
+export interface TournamentContactSpace {
+  /** 連絡スペースID（UUID）。 */
+  id: string
+  /** 掲示板参照ID。null の場合は掲示板スペースなし。 */
+  bulletinRefId: number | null
+  /** チャットチャンネルID。null の場合はチャットスペースなし。 */
+  chatChannelId: number | null
+  /** 公開フラグ。false の場合は参加者のみ閲覧可能。 */
+  isPublic: boolean
+  /** スペース名称（任意）。 */
+  name?: string | null
+}
+
+/** 連絡スペース一覧レスポンス。 */
+export interface TournamentContactSpaceListResponse {
+  data: TournamentContactSpace[]
+}
+
+/** 連絡スペース公開設定更新リクエスト。 */
+export interface UpdateContactSpaceVisibilityRequest {
+  isPublic: boolean
+}
+
+// ──────────────────────────────────────────────────
+// F08.7.1 / FE-E: 書類提出受付
+// /api/v1/organizations/{orgId}/tournaments/{tournamentId}/submission-requirements
+// ──────────────────────────────────────────────────
+
+export type SubmissionRequirementTarget = 'ALL' | 'SPECIFIC'
+export type SubmissionStatusValue = 'NOT_SUBMITTED' | 'SUBMITTED' | 'APPROVED' | 'REJECTED'
+
+export interface SubmissionRequirementResponse {
+  id: number
+  tournamentId: number
+  formTemplateId: number
+  formTemplateName: string | null
+  deadline: string | null
+  target: SubmissionRequirementTarget
+  targetTeamIds: number[] | null
+  requiresPayment: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateSubmissionRequirementRequest {
+  formTemplateId: number
+  deadline?: string | null
+  target: SubmissionRequirementTarget
+  targetTeamIds?: number[] | null
+  requiresPayment?: boolean
+}
+
+export interface UpdateSubmissionRequirementRequest {
+  formTemplateId?: number
+  deadline?: string | null
+  target?: SubmissionRequirementTarget
+  targetTeamIds?: number[] | null
+  requiresPayment?: boolean
+}
+
+export interface TeamSubmissionStatusItem {
+  teamId: number
+  teamName: string
+  status: SubmissionStatusValue
+  submittedAt: string | null
+  formSubmissionId: number | null
+}
+
+export interface SubmissionStatusDashboardResponse {
+  requirementId: number
+  formTemplateName: string | null
+  deadline: string | null
+  teamStatuses: TeamSubmissionStatusItem[]
+}
+
+export interface SubmitForTeamRequest {
+  formSubmissionId?: number
+  values?: Array<{
+    fieldKey: string
+    fieldType?: string
+    textValue?: string | null
+    numberValue?: number | null
+    dateValue?: string | null
+    fileKey?: string | null
+  }>
 }
