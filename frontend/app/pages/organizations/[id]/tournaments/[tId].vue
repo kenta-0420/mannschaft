@@ -135,6 +135,13 @@ onMounted(async () => {
   <div>
     <div class="mb-4 flex items-center gap-3">
       <BackButton :to="`/organizations/${orgId}/tournaments`" label="大会一覧に戻る" />
+      <NuxtLink
+        :to="`/organizations/${orgId}/tournaments/${tId}/rosters`"
+        class="ml-auto flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition hover:border-primary-400 hover:text-primary"
+      >
+        <i class="pi pi-list-check" />
+        {{ $t('tournament.roster.title') }}
+      </NuxtLink>
     </div>
 
     <PageLoading v-if="loading" size="40px" />
