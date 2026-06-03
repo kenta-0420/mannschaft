@@ -107,8 +107,22 @@
     "payment": {
       "breakdown": {
         "includesFeeNote": "* The total payment includes the payment processing fee.",
-        "nonRefundableNote": "* Even in the event of a refund, the payment processor's (Stripe) processing fee is non-refundable.",
-        "refundExclFeeNote": "* The refund amount is the amount after deducting the processing fee (the amount the recipient actually received)."
+        "refundFeeConditionalNote": "* In the event of a refund, the processing fee may not be refunded (refund terms depend on the listing owner's settings)."
+      },
+      "refund": {
+        "title": "Refund",
+        "feeBearerLabel": "Who bears the processing fee",
+        "feeBearer": {
+          "PAYER": "Payer bears it (cancellation at payer's request)",
+          "PAYEE": "Recipient bears it (our side / cancellation)"
+        },
+        "feeBearerHint": {
+          "PAYER": "Refunds the payer the net amount (after deducting fees). The processing fee is borne by the payer.",
+          "PAYEE": "Refunds the payer in full. The processing fee is borne by us (the recipient) and is ultimately settled against future payouts, etc."
+        },
+        "submit": "Issue refund",
+        "confirmTitle": "Confirm refund",
+        "confirmPayee": "This is a recipient-borne refund. The payer will be refunded in full, and the processing fee will be borne by you. Proceed?"
       }
     }
   }

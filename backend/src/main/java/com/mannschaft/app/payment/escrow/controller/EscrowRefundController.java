@@ -25,8 +25,8 @@ import java.util.UUID;
  * （payee scope 所有権照合・無関係 scope は 404 秘匿）はサービス層 {@link ConnectChargeService#refund} で
  * 担保する。<b>Mannschaft 運営は返金操作に関与しない</b>（受取側 ADMIN が操作・設定A）。</p>
  *
- * <p>capture 後は Stripe Refund（{@code reverse_transfer:true}/{@code refund_application_fee:false}）、
- * capture 前は与信取消（支払者課金なし）。レスポンスに PCI 機密（client_secret/pi_/acct_）は載せない（03 §10）。</p>
+ * <p>capture 後は Stripe Refund（{@code feeBearer} で 2モード分岐・03 §6.1）、capture 前は与信取消
+ * （支払者課金なし）。レスポンスに PCI 機密（client_secret/pi_/acct_）は載せない（03 §10）。</p>
  *
  * <p>エンドポイント数: 1（POST refund）。</p>
  */
@@ -46,13 +46,13 @@ public class EscrowRefundController {
      * @return 返金結果（返金後の状態・額面ベースの返金額/残額）
      */
     @PostMapping("/{id}/refund")
-    @Operation(summary = "返金 / 与信取消（受取側 ADMIN・reverse_transfer:true/refund_application_fee:false）")
+    @Operation(summary = "返金 / 与信取消（受取側 ADMIN・feeBearer=PAYER|PAYEE の 2モード）")
     public ResponseEntity<ApiResponse<RefundResponse>> refund(
             @PathVariable UUID id,
             @Valid @RequestBody RefundRequest request) {
         Long actorUserId = SecurityUtils.getCurrentUserId();
         ConnectChargeService.RefundResult result = connectChargeService.refund(
-                id, request.amount(), request.reason(), request.reasonDetail(), actorUserId);
+                id, request.amount(), request.feeBearer(), request.reason(), request.reasonDetail(), actorUserId);
         RefundResponse response = new RefundResponse(
                 result.escrowId(), result.status(), result.refundedAmount(), result.residualAmount());
         return ResponseEntity.ok(ApiResponse.of(response));

@@ -107,8 +107,22 @@
     "payment": {
       "breakdown": {
         "includesFeeNote": "※支付总额已包含支付手续费。",
-        "nonRefundableNote": "※即使发生退款，支付代理公司（Stripe）的支付手续费也不予退还。",
-        "refundExclFeeNote": "※退款金额为扣除支付手续费后的金额（收款方实际收到的金额）。"
+        "refundFeeConditionalNote": "※退款时，支付手续费可能不予退还（退款条件取决于招募方的设置）。"
+      },
+      "refund": {
+        "title": "退款",
+        "feeBearerLabel": "支付手续费的承担方",
+        "feeBearer": {
+          "PAYER": "由支付者承担（支付者原因的取消）",
+          "PAYEE": "由收款方承担（本方原因·中止）"
+        },
+        "feeBearerHint": {
+          "PAYER": "向支付者退还实收金额（扣除手续费后的金额）。支付手续费由支付者承担。",
+          "PAYEE": "向支付者全额退款。支付手续费由本方（收款方）承担，最终通过下次入账等方式结算。"
+        },
+        "submit": "退款",
+        "confirmTitle": "退款确认",
+        "confirmPayee": "这是由收款方承担手续费的退款。支付者将获得全额退款，支付手续费由您承担。确定吗？"
       }
     }
   }

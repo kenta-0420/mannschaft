@@ -271,17 +271,49 @@ MarketFinalizeService / MarketFinalizeConfirmedListener:
 > **操作主体＝チーム/組織の管理者（受取側 scope の ADMIN）。Mannschaft 運営は関与しない。** 無関係 scope は 404 秘匿（03 §3/§4）。
 
 ```json
-// Request（amount は「支払者へ戻す額＝transferAmount ベース」。0 < amount ≤ transferAmount − 既返金累計。null=全額）
-{ "amount": 5000, "reason": "cancellation", "reasonDetail": "天候中止のため" }
+// Request（amount は両モード共通で「精算額 R＝transferAmount ベース」。0 < amount ≤ transferAmount − 既返金累計。null=全額。
+//          feeBearer は手数料負担者 PAYER（既定）/ PAYEE。null=PAYER）
+{ "amount": 5000, "feeBearer": "PAYEE", "reason": "cancellation", "reasonDetail": "天候中止のため" }
 ```
 
-> **返金経済モデル＝支払者負担（マスター確定・2026-06-03 改訂）**: 返金時の決済手数料は**支払者**が負担する。**Mannschaft も受取側も損をしない（Mannschaft 負担ゼロ・1.4% keep）。** 額面 10,000 例（chargeAmount=10,250 / transferAmount=9,750 / application_fee=500）で全額返金後の目標:
+> **返金経済モデル＝feeBearer 2モード（マスター確定・2026-06-03）**: 受取側 scope の ADMIN が返金時に**手数料の負担者**を選択する。`amount`（精算額 R）は両モード共通で **transferAmount ベース**（残額管理・status 遷移・`refunds.amount`・`charge.refunded` webhook 確定はすべて R で行い整合させる）。額面 10,000 例（chargeAmount=10,250 / transferAmount=9,750 / application_fee=500 / Stripe 実手数料 ≈369）で**全額返金**後の各当事者の到達点:
 >
-> | 当事者 | 全額返金後 |
-> |---|---|
-> | 支払者 | 戻りは **transferAmount=9,750**（=受取側が実際に受け取った正味）。差額 500（手数料）を負担。−10,250+9,750=**−500** |
-> | 受取側 | **±0**（受け取った 9,750 を全額巻き戻し） |
-> | Mannschaft | **±0**（charge 時純益を維持・追加負担なし・application_fee keep） |
+> | 当事者 | モードA＝`PAYER`（既定・支払者都合） | モードB＝`PAYEE`（受取側の落ち度/中止） |
+> |---|---|---|
+> | 支払者 | 戻りは **transferAmount=9,750**。差額 500 を負担。−10,250+9,750=**−500** | **満額 chargeAmount=10,250** が戻る（落ち度がないので満額）。**±0** |
+> | 受取側 | **±0**（受け取った 9,750 を全額巻き戻し） | 送金 9,750 巻き戻し（受取側 −9,750・落ち度の代償） |
+> | Mannschaft | **±0**（charge 時純益を維持・application_fee keep） | **1.4% を放棄して中立**（`refund_application_fee:true`）＋**Stripe 手数料 ≈369 を一時負担**（後述の制約） |
+
+> **⚠️ モードB の Stripe 実挙動の制約（数値検証・正直報告・症状を隠さない）**: マスター意図は「モードB では受取側が Stripe 決済手数料（≈369）を負担し Mannschaft±0」だが、**標準 Stripe API のみでこれを返金 1 件ごとに自動成立させることは不可能**であることを実挙動検証で確認した。
+> - **Stripe 決済手数料は返金で返らない**（全 payment method 共通・Stripe 公式: refund 自体に手数料はかからないが*元取引の処理手数料は返金されない*）。Destination Charge では platform（Mannschaft）が手数料の支払者であるため、返金時にこの手数料は **platform が被る**。
+> - **受取側から手数料分を追加で巻き戻せない**: `TransferReversal` の上限は**元送金額（9,750）**であり、それを超えて受取側残高から ≈369 を引くことはできない（[Transfer Reversals: "reversing a transfer made for a destination charge is allowed only up to the amount of the charge"]）。
+> - **受取側残高からの追加徴収（Account Debits）は要件が重い**: 連結口座の*法的同意*＋*追加コスト*＋*platform と連結口座が同一リージョン*が必須で、**返金 1 件ごとの自動操作には適さない**（運用 / 例外処理向き）。
+> - **したがって本実装のモードB は標準呼び出し `Refund.create(amount=grossRefund, reverse_transfer=true, refund_application_fee=true)` を採用**し、結果として **Mannschaft が Stripe 手数料 ≈369 を一時負担**する。受取側への最終転嫁は**リコンシリエーション（§6.3）／次回入金からの相殺／運用での Account Debits** に委ねる。一時負担額は `ledger_entries`(C PLATFORM_FEE) に記録して**可視化**する（握り潰さない）。
+
+**処理（feeBearer でモード分岐・capture 後 CAPTURED/PARTIALLY_REFUNDED）**
+```
+R = 精算額（transferAmount ベース・null=残額全部）
+
+■ モードA＝PAYER（既定・decouple 方式・比例 reverse の落とし穴を回避）
+  ① transferId = resolve(PaymentIntent → latest_charge → charge.transfer)   // capture 時の tr_xxx
+     （解決不能なら INVALID_ESCROW_STATE で拒否・症状を隠さない）
+  ② Transfer.createReversal(transferId, amount=R, key="reversal-{escrowId}-{seq}")  // 受取側から R 巻き戻し（先に実行）
+  ③ Refund.create(amount=R, reverse_transfer=false, refund_application_fee=false, key="refund-{escrowId}-{seq}")
+     → 支払者へ R 返金（Mannschaft±0・受取側±0・1.4% keep）
+  ④ ledger(REFUND): D PAYEE=R / C PAYER=R（借貸一致）
+
+■ モードB＝PAYEE（支払者満額返金＋application_fee 返金＝Mannschaft 中立化）
+  ① grossRefund = 支払者へ戻す満額（全額時=chargeAmount、部分時=round(chargeAmount × R / transferAmount)）
+  ② Refund.create(amount=grossRefund, reverse_transfer=true, refund_application_fee=true, key="refund-{escrowId}-{seq}")
+     → 支払者へ grossRefund 返金 / 送金（比例）巻き戻し / application_fee 返金（Stripe 手数料は platform 一時負担）
+     ※ 明示 TransferReversal は呼ばない（reverse_transfer=true が巻き戻しを担う＝二重巻き戻し防止）
+  ③ ledger(REFUND): D PAYER=grossRefund / C PAYEE=R ＋ C PLATFORM_FEE=(grossRefund − R)（借貸一致・Mannschaft 放棄/一時負担を可視化）
+
+共通: refunds INSERT (amount=R, status=PENDING) → charge.refunded Webhook で SUCCEEDED 確定
+      → 累計(R 基準)==transferAmount なら REFUNDED / 部分なら PARTIALLY_REFUNDED
+```
+
+> **部分返金の不変条件**: モードA 部分は「支払者へ R / 受取側 R 巻き戻し」。モードB 部分は「支払者へ R をグロスアップした gross / 受取側 R 比例の手数料負担」。残額管理は両モードとも R（transferAmount 基準）で一致するため、混在返金（同一 escrow で A と B を跨ぐ）でも累計が transferAmount に達した時点で REFUNDED となる。grossRefund の比例丸めは ≤1 円の誤差が出うるが、`ledger_entries`(PLATFORM_FEE) と §6.3 リコンシリで台帳化し可視化する（隠さない）。
 
 **処理（decouple 方式・比例 reverse の落とし穴を回避）**
 ```
