@@ -23,6 +23,7 @@ import com.stripe.param.AccountCreateParams;
 import com.stripe.param.AccountLinkCreateParams;
 import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.PaymentIntentCancelParams;
+import com.stripe.param.PaymentIntentCaptureParams;
 import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.PriceCreateParams;
 import com.stripe.param.PriceUpdateParams;
@@ -475,6 +476,23 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
             log.error("Stripe Destination PaymentIntent 作成失敗: destination={}, amount={}",
                     destinationAccountId, chargeAmountMinor, e);
             throw new BusinessException(ConnectPaymentErrorCode.AUTHORIZATION_FAILED, e);
+        }
+    }
+
+    @Override
+    public PaymentIntentInfo captureManualPaymentIntent(String paymentIntentId, String idempotencyKey) {
+        try {
+            PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
+            // idempotency_key で再送時の二重 capture を Stripe 側でも拒否する（設計書 02 §5.3・二重防御）。
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            PaymentIntent captured = intent.capture(PaymentIntentCaptureParams.builder().build(), options);
+            log.info("Stripe PaymentIntent capture 確定: id={}, status={}", captured.getId(), captured.getStatus());
+            return new PaymentIntentInfo(captured.getId(), captured.getClientSecret(), captured.getStatus());
+        } catch (StripeException e) {
+            log.error("Stripe PaymentIntent capture 失敗: id={}", paymentIntentId, e);
+            throw new BusinessException(ConnectPaymentErrorCode.CAPTURE_FAILED, e);
         }
     }
 

@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * F22.1 統一決済 P2-b: 共通送金サービス（与信＝authorize の中核・設計書 02 §0 / §5.1）。
@@ -25,8 +27,8 @@ import java.time.LocalDateTime;
  * 手数料折半（5%＝支払者2.5%+受取側2.5%）は {@link PaymentFeeCalculator} に集約し、本サービスでは
  * 数式を再実装しない（設計書 02 §3.5・散在禁止）。</p>
  *
- * <p><b>本波（P2-b 第二波）の範囲は与信（authorize）まで。</b> capture（払出）・返金（refund）は
- * 次Phase（P2-c）であり本サービスには実装しない。</p>
+ * <p><b>P2-c 第一波で {@link #capture(UUID)}（払出＝capture+transfer）を追加した。</b>
+ * 返金（reverse_transfer）は次波（P2-c-2）であり本サービスには実装しない（設計書 02 §6）。</p>
  *
  * <p>分岐（設計書 02 §5.1 / §5.2）:</p>
  * <ul>
@@ -62,6 +64,7 @@ public class ConnectChargeService {
     private final PaymentFeeCalculator paymentFeeCalculator;
     private final StripePaymentProvider stripePaymentProvider;
     private final AccessControlService accessControlService;
+    private final LedgerEntryRepository ledgerEntryRepository;
 
     /**
      * 謝礼の与信を開始する（設計書 02 §5.1）。
@@ -74,11 +77,14 @@ public class ConnectChargeService {
         authorizeActorIfPresent(cmd);
 
         // 冪等: 同一応募（source_kind × source_id × source_participant_id）の二重与信を 1 件に収束（02 §9）。
-        // 申し送り（P2-c で決定）: ここはアプリ層の冪等チェックのみで、DB レベルの
-        // uq(source_kind, source_id, source_participant_id) UNIQUE backstop は本波（P2-b）では入れない。
-        // 理由: 再与信（cancel 後の再 authorize）で同三つ組の別行が要るケースがあり、UNIQUE の可否は
-        // P2-c の capture 状態機械（AUTHORIZED→CAPTURED/CANCELED と再与信 semantics）と合わせて決めるべき。
-        // 対処療法的に今 UNIQUE を張ると再与信が不能になる恐れがあるため、意図的に保留する。
+        // 🟠3 決定（P2-c 第一波）: DB レベルの全行 UNIQUE backstop は張らない。アプリ層の冪等チェックを正とする。
+        //   理由1: cancel(CANCELLED)/refund(REFUNDED) 後の再与信は同三つ組で別行を要するため、全行 UNIQUE は不可。
+        //   理由2: MySQL は部分 UNIQUE（filtered index）非対応。アクティブ状態のみの一意化には生成列 active_key
+        //          （CANCELLED/REFUNDED 時 NULL・それ以外は三つ組ハッシュ）＋ UNIQUE が必要だが、二重 capture は
+        //          (a) status no-op + (b) Stripe idempotency key "capture-{escrowId}" + (c) 札行 PESSIMISTIC_WRITE
+        //          の三重で、二重 authorize は本 findBy 事前チェック＋上流 recruitment_participants の一意制約で
+        //          既に防げており、生成列 UNIQUE は冗長（過剰実装）。最小で二重を防げる現状維持＋本注記とする。
+        //   将来再考の引き金: 並行 authorize の競合が実機で観測された場合は active_key 生成列 UNIQUE を Flyway 追加する。
         var existing = escrowTransactionRepository.findBySourceKindAndSourceIdAndSourceParticipantId(
                 cmd.sourceKind(), cmd.sourceId(), cmd.sourceParticipantId());
         if (existing.isPresent()) {
@@ -145,6 +151,71 @@ public class ConnectChargeService {
         log.info("与信を AUTHORIZED で記録: escrowId={}, paymentIntentId={}, charge={}, appFee={}",
                 authorized.getId(), pi.paymentIntentId(), fee.chargeAmount(), fee.applicationFeeAmount());
         return toResult(authorized, clientSecret);
+    }
+
+    /**
+     * 謝礼の払出（capture+transfer）を確定する（設計書 02 §5.3）。
+     *
+     * <p>manual-capture の与信（{@link EscrowStatus#AUTHORIZED}）を Stripe で capture し、同時に
+     * {@code transfer_data.destination} へ送金（{@code application_fee_amount} 控除後）する。escrow を
+     * {@link EscrowStatus#CAPTURED} にし {@code captured_at} を記録、複式記帳（CAPTURE/TRANSFER_OUT/FEE）を
+     * {@code ledger_entries} に追記する（借方合計＝貸方合計・01 §3.3）。</p>
+     *
+     * <p><b>冪等:</b> 既に {@link EscrowStatus#CAPTURED} なら no-op（Stripe capture を 2 回呼ばない）。さらに
+     * Stripe へ {@code idempotency_key="capture-{escrowId}"} を渡し、ネットワーク再送も Stripe 側で拒否する
+     * （二重防御・02 §5.3）。</p>
+     *
+     * <p><b>二重払出防止:</b> 本メソッドは札行 {@code PESSIMISTIC_WRITE} ロック直下（MarketFinalize フック）から
+     * 呼ばれる前提で、並行 confirm を直列化する（02 §5.3）。</p>
+     *
+     * <p><b>不正状態:</b> {@link EscrowStatus#HELD}（onboarding 未完で payout 不能）/{@link EscrowStatus#CANCELLED}/
+     * {@link EscrowStatus#REFUNDED} 等の後段状態、または PI 未設定からの capture は
+     * {@link ConnectPaymentErrorCode#INVALID_ESCROW_STATE}（409）で拒否する（症状を隠さない）。</p>
+     *
+     * @param escrowId 払出対象のエスクロー取引 ID
+     */
+    public void capture(UUID escrowId) {
+        EscrowTransactionEntity escrow = escrowTransactionRepository.findById(escrowId)
+                .orElseThrow(() -> new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
+
+        // 冪等: CAPTURED 済みは再 capture しない（Stripe capture を 2 回呼ばない・02 §5.3）。
+        if (escrow.getStatus() == EscrowStatus.CAPTURED) {
+            log.info("払出は既に確定済み（冪等・no-op）: escrowId={}", escrowId);
+            return;
+        }
+
+        // AUTHORIZED 以外（HELD/CANCELLED/REFUNDED/DISPUTED 等）は払出不能。HELD は payout 不能のため
+        // capture せず、onboarding 完了→AUTHORIZED 化（§5.2 webhook）を待つ。症状を隠さず 409 で拒否する。
+        if (escrow.getStatus() != EscrowStatus.AUTHORIZED || escrow.getStripePaymentIntentId() == null) {
+            log.warn("払出不能な状態からの capture 要求を拒否: escrowId={}, status={}, hasPi={}",
+                    escrowId, escrow.getStatus(), escrow.getStripePaymentIntentId() != null);
+            throw new BusinessException(ConnectPaymentErrorCode.INVALID_ESCROW_STATE);
+        }
+
+        // capture と同時に transfer_data.destination へ送金（application_fee_amount 控除）。
+        String idempotencyKey = "capture-" + escrowId;
+        StripePaymentProvider.PaymentIntentInfo pi =
+                stripePaymentProvider.captureManualPaymentIntent(escrow.getStripePaymentIntentId(), idempotencyKey);
+
+        escrow.setStatus(EscrowStatus.CAPTURED);
+        escrow.setCapturedAt(LocalDateTime.now());
+        escrowTransactionRepository.save(escrow);
+
+        // 複式記帳（02 §5.3・01 §3.3）: capture 総額（charge=amount）を ESCROW に借方計上し、
+        // 受取側送金（transfer=amount−application_fee）を PAYEE に、Mannschaft 手数料を PLATFORM_FEE に貸方計上する。
+        // FEE は本波では設定値（application_fee_amount）。Stripe 実手数料での純益確定は P2-c-2 のリコンシリエーション。
+        long captureAmount = escrow.getAmount();
+        long feeAmount = escrow.getApplicationFeeAmount();
+        long transferOut = captureAmount - feeAmount;
+        List<LedgerEntryEntity> entries = LedgerEntryBuilder.forTransaction(escrowId, escrow.getCurrency())
+                .debit(LedgerEntryType.CAPTURE, LedgerAccount.ESCROW, captureAmount, pi.paymentIntentId())
+                .credit(LedgerEntryType.TRANSFER_OUT, LedgerAccount.PAYEE, transferOut, pi.paymentIntentId())
+                .credit(LedgerEntryType.FEE, LedgerAccount.PLATFORM_FEE, feeAmount, pi.paymentIntentId())
+                .build();
+        ledgerEntryRepository.saveAll(entries);
+
+        log.info("謝礼の払出を確定 CAPTURED: escrowId={}, piId={}, capture={}, transfer={}, fee={}",
+                escrowId, pi.paymentIntentId(), captureAmount, transferOut, feeAmount);
     }
 
     /**

@@ -47,6 +47,8 @@ class MarketFinalizeServiceTest {
     private ConfirmableNotificationRepository confirmableNotificationRepository;
     @Mock
     private UserRoleRepository userRoleRepository;
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private MarketFinalizeService service;

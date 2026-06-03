@@ -55,6 +55,12 @@ public enum ConnectPaymentErrorCode implements ErrorCode {
     /** 与信失敗（Stripe 側エラー・カード拒否）。409。 */
     AUTHORIZATION_FAILED("PAYMENT_C041", "与信に失敗しました", Severity.WARN),
 
+    /** capture（払出）不可な状態からの payout 要求（CANCELLED/REFUNDED 等の後段状態）。409。 */
+    INVALID_ESCROW_STATE("PAYMENT_C042", "この取引は払出できない状態です", Severity.WARN),
+
+    /** capture 失敗（Stripe 側エラー）。409。 */
+    CAPTURE_FAILED("PAYMENT_C043", "払出に失敗しました", Severity.WARN),
+
     /** Stripe API 通信失敗。500（Severity.ERROR 既定）。 */
     STRIPE_API_ERROR("PAYMENT_C050", "決済サービスとの通信に失敗しました", Severity.ERROR);
 

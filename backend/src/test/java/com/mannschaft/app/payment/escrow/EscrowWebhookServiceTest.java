@@ -36,6 +36,7 @@ class EscrowWebhookServiceTest {
     @Mock private StripePaymentProvider stripePaymentProvider;
     @Mock private WebhookIdempotencyService idempotencyService;
     @Mock private EscrowTransactionRepository escrowTransactionRepository;
+    @Mock private LedgerEntryRepository ledgerEntryRepository;
 
     @InjectMocks private EscrowWebhookService service;
 
@@ -43,8 +44,10 @@ class EscrowWebhookServiceTest {
         return new StripePaymentProvider.EscrowWebhookEventInfo(id, type, false, "pi_abc", null);
     }
 
+    private static final UUID ESCROW_ID = UUID.fromString("019607a0-0000-7000-8000-0000000000aa");
+
     private EscrowTransactionEntity escrow(EscrowStatus status) {
-        return EscrowTransactionEntity.builder()
+        EscrowTransactionEntity e = EscrowTransactionEntity.builder()
                 .sourceKind(EscrowSourceKind.RECRUITMENT).sourceId(100L).sourceParticipantId(200L)
                 .captureMode(EscrowCaptureMode.MANUAL)
                 .payerScopeKind(ScopeKind.USER).payerScopeId(999L)
@@ -52,6 +55,8 @@ class EscrowWebhookServiceTest {
                 .faceAmount(10_000L).amount(10_250L).applicationFeeAmount(500L)
                 .currency("JPY").status(status).stripePaymentIntentId("pi_abc")
                 .build();
+        e.setId(ESCROW_ID);
+        return e;
     }
 
     @Test
@@ -109,16 +114,49 @@ class EscrowWebhookServiceTest {
     }
 
     @Test
-    @DisplayName("payment_intent.succeeded（capture）は次Phase: IGNORED（escrow 触らない）")
-    void succeeded_ignoredThisPhase() {
+    @DisplayName("payment_intent.succeeded → CAPTURED 確定・ledger 借貸一致(10250=9750+500)・captured_at（PROCESSED）")
+    void succeeded_confirmsCapturedAndLedger() {
         given(stripePaymentProvider.constructEscrowEvent(any(), any()))
                 .willReturn(event("evt_3", "payment_intent.succeeded"));
         given(idempotencyService.tryBegin("evt_3", "payment_intent.succeeded", false)).willReturn(true);
+        EscrowTransactionEntity authorized = escrow(EscrowStatus.AUTHORIZED);
+        given(escrowTransactionRepository.findByStripePaymentIntentId("pi_abc")).willReturn(Optional.of(authorized));
+        given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(ledgerEntryRepository.saveAll(any())).willAnswer(inv -> inv.getArgument(0));
+
+        service.handleWebhook("payload", "sig");
+
+        ArgumentCaptor<EscrowTransactionEntity> escrowCaptor = ArgumentCaptor.forClass(EscrowTransactionEntity.class);
+        verify(escrowTransactionRepository).save(escrowCaptor.capture());
+        assertThat(escrowCaptor.getValue().getStatus()).isEqualTo(EscrowStatus.CAPTURED);
+        assertThat(escrowCaptor.getValue().getCapturedAt()).isNotNull();
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<java.util.List<LedgerEntryEntity>> ledgerCaptor = ArgumentCaptor.forClass(java.util.List.class);
+        verify(ledgerEntryRepository).saveAll(ledgerCaptor.capture());
+        java.util.List<LedgerEntryEntity> entries = ledgerCaptor.getValue();
+        long debit = entries.stream().filter(e -> e.getDirection() == LedgerDirection.D)
+                .mapToLong(LedgerEntryEntity::getAmount).sum();
+        long credit = entries.stream().filter(e -> e.getDirection() == LedgerDirection.C)
+                .mapToLong(LedgerEntryEntity::getAmount).sum();
+        assertThat(debit).isEqualTo(credit).isEqualTo(10_250L);
+        verify(idempotencyService).markProcessed("evt_3", WebhookProcessStatus.PROCESSED);
+    }
+
+    @Test
+    @DisplayName("payment_intent.succeeded だが既に CAPTURED → no-op（ledger 二重記帳しない・PROCESSED）")
+    void succeeded_alreadyCaptured_noLedgerDouble() {
+        given(stripePaymentProvider.constructEscrowEvent(any(), any()))
+                .willReturn(event("evt_6", "payment_intent.succeeded"));
+        given(idempotencyService.tryBegin("evt_6", "payment_intent.succeeded", false)).willReturn(true);
+        given(escrowTransactionRepository.findByStripePaymentIntentId("pi_abc"))
+                .willReturn(Optional.of(escrow(EscrowStatus.CAPTURED)));
 
         service.handleWebhook("payload", "sig");
 
         verify(escrowTransactionRepository, never()).save(any());
-        verify(idempotencyService).markProcessed("evt_3", WebhookProcessStatus.IGNORED);
+        verify(ledgerEntryRepository, never()).saveAll(any());
+        verify(idempotencyService).markProcessed("evt_6", WebhookProcessStatus.PROCESSED);
     }
 
     @Test
