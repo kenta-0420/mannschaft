@@ -172,7 +172,36 @@ public enum TournamentErrorCode implements ErrorCode {
     ROSTER_MANAGE_FORBIDDEN("TOUR_049", "メンバー表を管理する権限がありません", Severity.WARN),
 
     /** 指定ユニフォームセットが自チームのものでない / 存在しない（F08.7.1/05 §8.2・8.5） */
-    UNIFORM_SET_NOT_FOUND("TOUR_050", "指定されたユニフォームセットが見つかりません", Severity.WARN);
+    UNIFORM_SET_NOT_FOUND("TOUR_050", "指定されたユニフォームセットが見つかりません", Severity.WARN),
+
+    // ========================================================================
+    // F08.7.1 / 06 書類提出受付（submission）
+    // 採番衝突回避: league_transfer（隊3）が 038-045、roster（隊5）が 046-050 を先取りしたため末尾 051-058 に配置
+    // ========================================================================
+
+    /** 大会提出枠（tournament_submission_requirement）が見つからない（F08.7.1/06・IDOR 対策で 404 に統一） */
+    SUBMISSION_REQ_NOT_FOUND("TOUR_051", "提出枠が見つかりません", Severity.WARN),
+
+    /** 提出枠の作成・更新・削除・状況閲覧の権限がない（F08.7.1/06 §7・主催組織 ADMIN 限定） */
+    SUBMISSION_REQ_MANAGE_FORBIDDEN("TOUR_052", "提出枠を管理する権限がありません", Severity.WARN),
+
+    /** 提出枠の閲覧権限がない（F08.7.1/06 §7・自チーム ADMIN/DEPUTY または主催組織 ADMIN） */
+    SUBMISSION_REQ_VIEW_FORBIDDEN("TOUR_053", "この提出枠を閲覧する権限がありません", Severity.WARN),
+
+    /** 自チーム分の提出権限がない（F08.7.1/06 §7・自チーム ADMIN/DEPUTY_ADMIN 限定） */
+    SUBMISSION_SUBMIT_FORBIDDEN("TOUR_054", "この提出枠へ提出する権限がありません", Severity.WARN),
+
+    /** 提出しようとしたチームが提出枠の対象（SPECIFIC_TEAMS）に含まれていない（F08.7.1/06 §2） */
+    SUBMISSION_TEAM_NOT_TARGET("TOUR_055", "このチームは提出枠の対象に含まれていません", Severity.WARN),
+
+    /** 提出締切を過ぎている（F08.7.1/06 §4・5） */
+    SUBMISSION_DEADLINE_PASSED("TOUR_056", "提出締切を過ぎています", Severity.WARN),
+
+    /** 大会参加費が未払いのため提出できない／受理できない（F08.7.1/06 §5・requires_payment ゲート） */
+    SUBMISSION_PAYMENT_REQUIRED("TOUR_057", "大会参加費の支払いが完了していません", Severity.WARN),
+
+    /** 提出枠に指定された form_template が主催組織に属していない（F08.7.1/06 §3・スコープ不一致） */
+    SUBMISSION_TEMPLATE_SCOPE_MISMATCH("TOUR_058", "指定された書類テンプレートが主催組織に属していません", Severity.WARN);
 
     private final String code;
     private final String message;
