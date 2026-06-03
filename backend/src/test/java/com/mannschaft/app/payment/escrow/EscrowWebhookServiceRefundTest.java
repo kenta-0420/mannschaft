@@ -73,13 +73,17 @@ class EscrowWebhookServiceRefundTest {
     void fullRefund_confirmsSucceededAndRefunded() {
         given(stripePaymentProvider.constructEscrowEvent(any(), any()))
                 .willReturn(refundEvent("evt_r1", "re_1", 10_000L, 10_250L));
+        // 存在判定（非ロック）→ escrow あり → 冪等ゲート消費。
+        given(escrowTransactionRepository.findByStripePaymentIntentId("pi_abc"))
+                .willReturn(Optional.of(escrow(EscrowStatus.CAPTURED)));
         given(idempotencyService.tryBegin("evt_r1", "charge.refunded", false)).willReturn(true);
         // 行ロックで escrow を取得（二重処理防止）。
         given(escrowTransactionRepository.findByStripePaymentIntentIdForUpdate("pi_abc"))
                 .willReturn(Optional.of(escrow(EscrowStatus.CAPTURED)));
-        given(refundRepository.findByStripeRefundId("re_1")).willReturn(Optional.of(pendingRefund("re_1", 10_000L)));
-        given(refundRepository.findByEscrowTransactionId(ESCROW_ID))
-                .willReturn(List.of(pendingRefund("re_1", 10_000L)));
+        // 同一インスタンスを両 finder が返すことで、SUCCEEDED 確定後の累計集計に反映される（実 DB 同等）。
+        RefundEntity target = pendingRefund("re_1", 10_000L);
+        given(refundRepository.findByStripeRefundId("re_1")).willReturn(Optional.of(target));
+        given(refundRepository.findByEscrowTransactionId(ESCROW_ID)).willReturn(List.of(target));
         given(refundRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
@@ -101,6 +105,8 @@ class EscrowWebhookServiceRefundTest {
     void partialRefund_partiallyRefunded() {
         given(stripePaymentProvider.constructEscrowEvent(any(), any()))
                 .willReturn(refundEvent("evt_r2", "re_2", 3_000L, 10_250L));
+        given(escrowTransactionRepository.findByStripePaymentIntentId("pi_abc"))
+                .willReturn(Optional.of(escrow(EscrowStatus.CAPTURED)));
         given(idempotencyService.tryBegin("evt_r2", "charge.refunded", false)).willReturn(true);
         given(escrowTransactionRepository.findByStripePaymentIntentIdForUpdate("pi_abc"))
                 .willReturn(Optional.of(escrow(EscrowStatus.CAPTURED)));
@@ -123,6 +129,8 @@ class EscrowWebhookServiceRefundTest {
     void duplicateEvent_noOp() {
         given(stripePaymentProvider.constructEscrowEvent(any(), any()))
                 .willReturn(refundEvent("evt_r1", "re_1", 10_000L, 10_250L));
+        given(escrowTransactionRepository.findByStripePaymentIntentId("pi_abc"))
+                .willReturn(Optional.of(escrow(EscrowStatus.CAPTURED)));
         given(idempotencyService.tryBegin("evt_r1", "charge.refunded", false)).willReturn(false);
 
         boolean handled = service.handleChargeRefunded("payload", "sig");
@@ -138,6 +146,8 @@ class EscrowWebhookServiceRefundTest {
     void alreadySucceeded_noOp() {
         given(stripePaymentProvider.constructEscrowEvent(any(), any()))
                 .willReturn(refundEvent("evt_r3", "re_3", 10_000L, 10_250L));
+        given(escrowTransactionRepository.findByStripePaymentIntentId("pi_abc"))
+                .willReturn(Optional.of(escrow(EscrowStatus.REFUNDED)));
         given(idempotencyService.tryBegin("evt_r3", "charge.refunded", false)).willReturn(true);
         given(escrowTransactionRepository.findByStripePaymentIntentIdForUpdate("pi_abc"))
                 .willReturn(Optional.of(escrow(EscrowStatus.REFUNDED)));
