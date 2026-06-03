@@ -143,8 +143,35 @@ class InboxSnoozeRevivalBatchServiceTest {
     }
 
     @Test
-    @DisplayName("継続性: 1 件の push が例外でも残りの行を処理し、失敗行は stamp しない")
-    void oneFailure_continuesOthers() {
+    @DisplayName("ベストエフォート1回(最重要): push が例外でも snooze_notified_at を刻んで保存する（無限再試行を根絶＝失敗行も再送しない）")
+    void failure_stillStampsNotifiedAt_bestEffortOnce() {
+        // 新仕様（案C）: push の成否に関わらず一度きり stamp する。
+        // 旧仕様は「失敗行は stamp せず次回バッチで再試行」だったが、これは 5 分毎の無限再試行を招くため反転。
+        // 恒久失敗のサブスク失効掃除は WebPushService の 410/404 deleteByEndpoint に委譲する。
+        InboxItemStateEntity row = dueRow(10L, InboxSourceType.NOTIFICATION, 123L);
+        given(itemStateRepository.findDueForRevival(any(LocalDateTime.class), any()))
+                .willReturn(List.of(row));
+        given(itemStateRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        // push が常に失敗する
+        org.mockito.BDDMockito.willThrow(new RuntimeException("push failed"))
+                .given(notificationHelper).notify(
+                        eq(10L), anyString(), anyString(), anyString(),
+                        anyString(), isNull(), any(), isNull(), anyString(), isNull());
+
+        batchService.run();
+
+        // 失敗しても stamp して保存する（＝次回バッチで再試行しない）
+        ArgumentCaptor<InboxItemStateEntity> captor = ArgumentCaptor.forClass(InboxItemStateEntity.class);
+        verify(itemStateRepository, times(1)).save(captor.capture());
+        assertThat(captor.getValue().getSnoozeNotifiedAt())
+                .as("push 失敗でも best-effort 1 回として stamp する（無限再試行の根絶）")
+                .isNotNull();
+        assertThat(row.getSnoozeNotifiedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("継続性: 1 件の push が例外でも残りの行を処理し、両行とも stamp される（best-effort 1回）")
+    void oneFailure_continuesOthers_bothStamped() {
         InboxItemStateEntity r1 = dueRow(1L, InboxSourceType.NOTIFICATION, 100L);
         InboxItemStateEntity r2 = dueRow(2L, InboxSourceType.NOTIFICATION, 200L);
         given(itemStateRepository.findDueForRevival(any(LocalDateTime.class), any()))
@@ -162,8 +189,10 @@ class InboxSnoozeRevivalBatchServiceTest {
         verify(notificationHelper).notify(
                 eq(2L), anyString(), anyString(), anyString(),
                 anyString(), isNull(), any(), isNull(), anyString(), isNull());
+        // 新仕様: 失敗した r1 も stamp される（best-effort 1回・再試行しない）
+        assertThat(r1.getSnoozeNotifiedAt()).isNotNull();
         assertThat(r2.getSnoozeNotifiedAt()).isNotNull();
-        // 失敗した r1 は stamp しない（次回バッチで再試行できる＝症状を隠さない）
-        assertThat(r1.getSnoozeNotifiedAt()).isNull();
+        // 両行とも save される
+        verify(itemStateRepository, times(2)).save(any());
     }
 }
