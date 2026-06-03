@@ -47,6 +47,22 @@
       "TOUR_032": "Sie haben keine Berechtigung, die Sichtbarkeit dieses Kontaktbereichs zu ändern"
     }
   },
+  "communication": {
+    "title": "Kontaktbereich",
+    "bulletin": "Schwarzes Brett",
+    "chat": "Chat",
+    "tournament_space": "Gesamtes Turnier",
+    "division_space": "Liga",
+    "visibility_toggle": "Sichtbarkeit",
+    "public": "Öffentlich",
+    "private": "Privat",
+    "empty": "Keine Kontaktbereiche vorhanden",
+    "no_bulletin": "Kein Schwarzes Brett vorhanden",
+    "no_chat": "Kein Chatbereich vorhanden",
+    "visibility_saved": "Sichtbarkeit aktualisiert",
+    "visibility_failed": "Fehler beim Aktualisieren der Sichtbarkeit",
+    "load_failed": "Kontaktbereiche konnten nicht geladen werden"
+  },
   "files": {
     "title": "Dateiablage",
     "tournament_folder": "Turnierordner",

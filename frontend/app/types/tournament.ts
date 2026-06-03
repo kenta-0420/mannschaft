@@ -486,3 +486,31 @@ export interface OrganizationTournamentSummaryEntry {
 export interface OrganizationTournamentSummary {
   tournaments: OrganizationTournamentSummaryEntry[]
 }
+
+// =====================================================================
+// F08.7.1: 大会連絡スペース
+// =====================================================================
+
+/** 連絡スペース（大会・ディビジョン共通）。 */
+export interface TournamentContactSpace {
+  /** 連絡スペースID（UUID）。 */
+  id: string
+  /** 掲示板参照ID。null の場合は掲示板スペースなし。 */
+  bulletinRefId: number | null
+  /** チャットチャンネルID。null の場合はチャットスペースなし。 */
+  chatChannelId: number | null
+  /** 公開フラグ。false の場合は参加者のみ閲覧可能。 */
+  isPublic: boolean
+  /** スペース名称（任意）。 */
+  name?: string | null
+}
+
+/** 連絡スペース一覧レスポンス。 */
+export interface TournamentContactSpaceListResponse {
+  data: TournamentContactSpace[]
+}
+
+/** 連絡スペース公開設定更新リクエスト。 */
+export interface UpdateContactSpaceVisibilityRequest {
+  isPublic: boolean
+}

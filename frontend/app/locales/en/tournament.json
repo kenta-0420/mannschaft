@@ -47,6 +47,22 @@
       "TOUR_032": "You do not have permission to change the visibility of this contact space"
     }
   },
+  "communication": {
+    "title": "Communication Space",
+    "bulletin": "Bulletin Board",
+    "chat": "Chat",
+    "tournament_space": "Tournament-wide",
+    "division_space": "Division",
+    "visibility_toggle": "Visibility",
+    "public": "Public",
+    "private": "Private",
+    "empty": "No communication spaces have been set up",
+    "no_bulletin": "No bulletin board space",
+    "no_chat": "No chat space",
+    "visibility_saved": "Visibility updated",
+    "visibility_failed": "Failed to update visibility",
+    "load_failed": "Failed to load communication spaces"
+  },
   "files": {
     "title": "File Storage",
     "tournament_folder": "Tournament Folders",
