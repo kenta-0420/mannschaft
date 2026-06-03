@@ -27,7 +27,9 @@
 - `excerpt` はソース本文をサニタイズ（HTML エスケープ・既存通知の body 表示と同方針）。
 
 ### 1.4 GDPR / 退会時の扱い
-3 表は PII を含まない個人状態/設定（再設定可能）。CLAUDE.md §13.12 の **弱匿名化区分（即時消去）** に該当 → `UserAnonymizedEvent` 受信時に `inbox_item_states` / `notification_labels` / `inbox_label_links` を **即時物理削除**（退会撤回時は再設定で復旧可能）。`AccountPurgeService` 連携は不要（即時で完結）。エクスポートは Phase 4（`@PersonalData` 付与）。
+3 表は PII を含まない個人状態/設定（再設定可能）。CLAUDE.md §13.12 の **弱匿名化区分（即時消去）** に該当 → `UserAnonymizedEvent` 受信時に `inbox_item_states` / `notification_labels` / `inbox_label_links` を **即時物理削除**（退会撤回時は再設定で復旧可能）。`AccountPurgeService` 連携は不要（即時で完結）。
+
+**データエクスポート（GDPR 第 15 条アクセス権）**: per-user オーバーレイ3表（`inbox_item_states` / `notification_labels` / `inbox_label_links`）を **`category=inbox`** として GDPR データエクスポート対象に追加した（**案A 3表フルダンプ**）。3 Entity それぞれに `@PersonalData(category = "inbox")` を付与し（手本 `action_memos` と同形・`PersonalDataCoverageValidator` の網羅性チェックは category 単位）、`PersonalDataCollector.collectInbox(userId)` が `AbstractUserOwnedRepository.findByUserId` で3表を N+1 なくまとめ取りして **1 ファイル `inbox.json`**（`{ "inbox_item_states": [...], "notification_labels": [...], "inbox_label_links": [...] }`）に束ねて出力する。source（通知本体）の人間可読リッチ化は行わず、`(source_type, source_id)` の論理参照を含む生データをそのままダンプする。`notification_labels` は `@SQLRestriction("deleted_at IS NULL")` により論理削除済みラベルは除外（ユーザーが削除と認識したデータは含めない）。DDL 変更なし（既存3表を流用）。
 
 ### 1.5 レートリミット
 [02](./02_api_design.md) §4 のとおり（一覧 120/min、triage 240/min、ラベル作成 30/hour 等）。`Bucket4j`。
@@ -125,7 +127,7 @@
 - ~~名寄せ（重複通知）~~ → **解決（方針確定）**: MVP は名寄せしない（誤名寄せの混乱回避）。Phase 3 で正規化辞書導入と明記（[03](./03_business_logic.md) §8）。
 - ~~announcement の取得経路（getPersonalFeed 未実装）~~ → **解決**: `AnnouncementFeedQueryRepository.findByScope` を直接利用（[03](./03_business_logic.md) §2）。
 
-**将来フェーズの拡張候補（未解決ではなく計画済み）**: ~~名寄せ辞書~~（Phase 3 ① 実装済み）/ ~~ソース別真ページング~~（Phase 3 ③ 境界付きウィンドウページングとして実装済み）/ ~~スヌーズ復帰 push~~（Phase 3 ② 実装済み）/ `notifications.snoozed_until` のオーバーレイ移送 deprecate / F22.1 要対応との可視性判定共通化 / GDPR エクスポート。すべて [README](./README.md) §6 ロードマップに位置づけ済み。
+**将来フェーズの拡張候補（未解決ではなく計画済み）**: ~~名寄せ辞書~~（Phase 3 ① 実装済み）/ ~~ソース別真ページング~~（Phase 3 ③ 境界付きウィンドウページングとして実装済み）/ ~~スヌーズ復帰 push~~（Phase 3 ② 実装済み）/ `notifications.snoozed_until` のオーバーレイ移送 deprecate / F22.1 要対応との可視性判定共通化 / ~~GDPR エクスポート~~（Phase 4 実装済み・§1.4 案A 3表フルダンプ `category=inbox`）。すべて [README](./README.md) §6 ロードマップに位置づけ済み。
 
 ---
 
