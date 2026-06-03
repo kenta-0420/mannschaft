@@ -465,6 +465,83 @@ export interface ApplyTemplateResponse {
 }
 
 // ──────────────────────────────────────────────────
+// F08.7.1 / 05: 試合メンバー表（自チーム作成＋テンプレ流用＋主催者締切管理）
+// ──────────────────────────────────────────────────
+
+/** 試合メンバー表の選手 1 行 */
+export interface RosterPlayerResponse {
+  id: number
+  userId: number
+  displayName: string
+  isStarter: boolean | null
+  jerseyNumber: number | null
+  position: string | null
+  registrationNumber: string | null
+  uniformSetId: string | null
+}
+
+/** 試合メンバー表のベンチ入り役員 1 行 */
+export interface RosterStaffResponse {
+  id: string
+  role: string
+  name: string
+  userId: number | null
+}
+
+/** 自チーム分の試合メンバー表（GET / PUT rosters/me のレスポンス） */
+export interface MatchRosterResponse {
+  matchId: number
+  participantId: number
+  teamId: number
+  rosterDeadline: string | null
+  locked: boolean
+  players: RosterPlayerResponse[]
+  staff: RosterStaffResponse[]
+}
+
+/** 主催者ビュー: 参加チーム単位の提出状況・内容 */
+export interface OrganizerRosterView {
+  participantId: number
+  teamId: number
+  teamDisplayName: string
+  submitted: boolean
+  playerCount: number
+  staffCount: number
+  players: RosterPlayerResponse[]
+  staff: RosterStaffResponse[]
+}
+
+/** PUT rosters/me リクエスト: 選手エントリー */
+export interface RosterPlayerEntry {
+  userId: number
+  isStarter?: boolean | null
+  jerseyNumber?: number | null
+  position?: string | null
+  registrationNumber?: string | null
+  uniformSetId?: string | null
+}
+
+/** PUT rosters/me リクエスト: ベンチ役員エントリー */
+export interface RosterStaffEntry {
+  role: string
+  name: string
+  userId?: number | null
+}
+
+/** PUT rosters/me リクエスト */
+export interface SubmitRosterRequest {
+  players?: RosterPlayerEntry[] | null
+  staff?: RosterStaffEntry[] | null
+}
+
+/** POST rosters/me/apply-template リクエスト */
+export interface ApplyRosterTemplateRequest {
+  templateId: string
+  overwriteExisting?: boolean
+  defaultUniformSetId?: string | null
+}
+
+// ──────────────────────────────────────────────────
 // F08.7.1 / 02 ②: 主催大会サマリ（ORG_TOURNAMENT_SUMMARY ウィジェット）
 // GET /api/v1/organizations/{orgId}/tournaments/summary
 // ──────────────────────────────────────────────────
