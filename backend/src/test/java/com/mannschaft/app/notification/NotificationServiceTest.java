@@ -384,12 +384,18 @@ class NotificationServiceTest {
         @Test
         @DisplayName("TZ根治_UTC入力_JST壁時計で保存")
         void スヌーズ_UTC入力_JST壁時計で保存() {
-            // Given: UTC 2026-06-03T14:00Z == JST 2026-06-03T23:00。
-            // 旧実装（LocalDateTime 受け）なら Z が捨てられ 14:00 が保存されて赤くなる。
+            // Given: UTC 未来時刻で JST に変換したときオフセットが正しく反映されることを検証。
+            // 旧実装（LocalDateTime 受け）なら Z が捨てられ UTC の時刻そのままが保存されて赤くなる。
+            // 固定日時は日付経過で過去になりフレーキーになるため、動的に「来週の月曜 14:00 UTC」を使用。
             NotificationEntity entity = createUnreadNotification();
             NotificationResponse response = createNotificationResponse();
-            OffsetDateTime utcInput = OffsetDateTime.of(2026, 6, 3, 14, 0, 0, 0, ZoneOffset.UTC);
-            LocalDateTime expectedJst = LocalDateTime.of(2026, 6, 3, 23, 0, 0);
+            // 来週月曜 14:00 UTC == 来週月曜 23:00 JST（TZ変換の正しさを検証）
+            java.time.LocalDate nextMonday = java.time.LocalDate.now().plusWeeks(1)
+                    .with(java.time.DayOfWeek.MONDAY);
+            OffsetDateTime utcInput = OffsetDateTime.of(nextMonday.getYear(), nextMonday.getMonthValue(),
+                    nextMonday.getDayOfMonth(), 14, 0, 0, 0, ZoneOffset.UTC);
+            LocalDateTime expectedJst = utcInput.atZoneSameInstant(java.time.ZoneId.of("Asia/Tokyo"))
+                    .toLocalDateTime();
             SnoozeRequest request = new SnoozeRequest(utcInput);
 
             given(notificationRepository.findByIdAndUserId(NOTIFICATION_ID, USER_ID))
