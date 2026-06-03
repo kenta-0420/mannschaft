@@ -91,6 +91,22 @@
       "update_deadline_failed": "마감일 업데이트에 실패했습니다"
     }
   },
+  "communication": {
+    "title": "연락 공간",
+    "bulletin": "게시판",
+    "chat": "채팅",
+    "tournament_space": "대회 전체",
+    "division_space": "디비전",
+    "visibility_toggle": "공개 설정",
+    "public": "공개",
+    "private": "비공개",
+    "empty": "연락 공간이 준비되지 않았습니다",
+    "no_bulletin": "게시판 공간이 없습니다",
+    "no_chat": "채팅 공간이 없습니다",
+    "visibility_saved": "공개 설정을 변경했습니다",
+    "visibility_failed": "공개 설정 변경에 실패했습니다",
+    "load_failed": "연락 공간 불러오기에 실패했습니다"
+  },
   "files": {
     "title": "파일 보관함",
     "tournament_folder": "대회 폴더",

@@ -7,6 +7,7 @@ import type {
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
+const { t } = useI18n()
 const route = useRoute()
 const orgId = Number(route.params.id)
 const tId = Number(route.params.tId)
@@ -141,6 +142,13 @@ onMounted(async () => {
       >
         <i class="pi pi-list-check" />
         {{ $t('tournament.roster.title') }}
+      </NuxtLink>
+      <NuxtLink
+        :to="`/organizations/${orgId}/tournaments/${tId}/communication`"
+        class="flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition-colors hover:bg-surface-100"
+      >
+        <i class="pi pi-comments text-sm" />
+        {{ t('tournament.communication.title') }}
       </NuxtLink>
       <NuxtLink
         :to="`/organizations/${orgId}/tournaments/${tId}/files`"
