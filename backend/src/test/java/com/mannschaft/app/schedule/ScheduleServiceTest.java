@@ -12,6 +12,7 @@ import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.service.ScheduleEventCategoryService;
 import com.mannschaft.app.schedule.service.ScheduleQueryService;
 import com.mannschaft.app.schedule.service.ScheduleRecurrenceService;
+import com.mannschaft.app.schedule.service.ScheduleReminderService;
 import com.mannschaft.app.schedule.service.ScheduleScheduledTaskService;
 import com.mannschaft.app.schedule.service.ScheduleService;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
@@ -64,7 +65,7 @@ class ScheduleServiceTest {
     private ScheduleScheduledTaskService scheduledTaskService;
 
     @Mock
-    private com.mannschaft.app.schedule.service.ScheduleReminderService reminderService;
+    private ScheduleReminderService reminderService;
 
     @Mock
     private TeamOrgMembershipRepository teamOrgMembershipRepository;
