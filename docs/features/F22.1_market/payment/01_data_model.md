@@ -12,6 +12,7 @@
 - **テナントスコープ**: `organization_id` を持つテーブルは `AbstractTenantAwareRepository` を実装（CLAUDE.md 原則7）。`connect_accounts`/`escrow_transactions` は `organization_id` を保持。
 - **通貨**: JPY はゼロデシマル通貨。`amount` 系は**円そのもの（最小単位）の整数**で保持し、`currency CHAR(3)` で明示。Stripe へは円整数で渡す。
 - **暗号化**: `connect_accounts.stripe_account_id`・`escrow_transactions.stripe_payment_intent_id` は識別子であり PII ではないが、Connect の `requirements_due`（KYC 要件）は個人特定に繋がりうるため JSON で最小化保持し、内容は Stripe を正典とする（自社は鏡像最小化）。
+- **実装原則（統一基盤・正典）**: (1) **クロスドメインFK禁止**（recruitment/team/user/membership への参照は論理参照のみ）、(2) **ドメイン間は疎結合（ApplicationEvent）**で接続し `payment.escrow` の `@Transactional` はドメイン内に閉じる（README §7・CLAUDE.md 原則5）、(3) **`@Query` 内コメント厳禁**（JPQL/native query 内に SQL コメントを書かない・パース不整合回避）、(4) 謝礼・会費の手数料計算は `PaymentFeeCalculator` に一元化し文字列・数式を散在させない（02 §3.5）。
 
 ---
 
@@ -25,7 +26,7 @@
 | `refunds` | 返金記録（部分/全額） | `payment.escrow` | なし | UUIDv7 |
 | `stripe_webhook_events` | Webhook 冪等性キー（event_id 一意） | `payment`（共通） | なし（TTL 物理削除） | UUIDv7 |
 
-> `source_kind` で RECRUITMENT（市）/ JOBMATCHING（F13.1 将来）/ FLEAMARKET（フリマ将来）を**1テーブルで束ねる**。Phase 2 後半が接続するのは RECRUITMENT のみ。他は値だけ確保（転用点）。
+> `source_kind` で RECRUITMENT（謝礼・市）/ **MEMBERSHIP（会費・F08.2）** / JOBMATCHING（F13.1 将来）/ FLEAMARKET（フリマ将来）を**1テーブルで束ねる**（統一決済プラットフォーム・README §1.0）。P2-b/P2-c が接続するのは RECRUITMENT（エスクローモード）、P2-e が MEMBERSHIP（即時モード）。JOBMATCHING/FLEAMARKET は値だけ確保（転用点）。会費専用台帳は作らない。
 
 ---
 
@@ -71,7 +72,8 @@ INDEX idx_ca_payouts (payouts_enabled)
 | カラム名 | 型 | NULL | デフォルト | 説明 |
 |---|---|---|---|---|
 | `id` | BINARY(16) | NO | (UUIDv7) | PK |
-| `source_kind` | VARCHAR(12) | NO | — | `RECRUITMENT` / `JOBMATCHING` / `FLEAMARKET`（出所種別・転用点） |
+| `source_kind` | VARCHAR(12) | NO | — | `RECRUITMENT`（謝礼・エスクローモード）/ `MEMBERSHIP`（会費・即時モード）/ `JOBMATCHING` / `FLEAMARKET`（出所種別・転用点・README §1.0） |
+| `capture_mode` | VARCHAR(10) | NO | `'MANUAL'` | `MANUAL`（エスクローモード＝謝礼・与信後 capture）/ `AUTOMATIC`（即時モード＝会費・即 capture）。`ConnectChargeService` が Stripe `capture_method` へマッピング |
 | `source_id` | BIGINT UNSIGNED | NO | — | 出所ID（RECRUITMENT=recruitment_listings.id）。**論理参照（FKなし）** |
 | `source_participant_id` | BIGINT UNSIGNED | YES | NULL | 個別応募の特定用（recruitment_participants.id 論理参照・1札に複数払出があり得る場合） |
 | `payer_scope_kind` | VARCHAR(8) | NO | — | 支払者種別 `USER` / `TEAM` / `ORG` |
@@ -81,21 +83,25 @@ INDEX idx_ca_payouts (payouts_enabled)
 | `payee_connect_account_id` | BINARY(16) | NO | — | **`connect_accounts.id`（payment ドメイン内・論理参照）**。受領先 |
 | `organization_id` | BIGINT UNSIGNED | YES | NULL | テナント絞り込み（札主の組織・シャードキー候補） |
 | `stripe_payment_intent_id` | VARCHAR(32) | YES | NULL | `pi_xxx`（与信作成後にセット）。一意 |
-| `amount` | INT UNSIGNED | NO | — | 支払総額（**JPY＝円整数**・最小単位） |
+| `face_amount` | INT UNSIGNED | NO | — | **額面**（受取側が設定した謝礼額/会費額・円整数・最小単位）。手数料計算の基準。`amount = face_amount + round(face_amount × 0.025)` |
+| `amount` | INT UNSIGNED | NO | — | **課金額（支払者請求額＝額面+2.5%上乗せ）**（**JPY＝円整数**・最小単位）。額面 10,000 円なら `amount=10,250`（README §3.4.1）。Stripe へ渡す金額 |
 | `currency` | CHAR(3) | NO | `'JPY'` | ISO 4217 |
-| `application_fee_amount` | INT UNSIGNED | NO | 0 | プラットフォーム手数料（確定額・円整数）。受領者送金額 = `amount - application_fee_amount` |
-| `status` | VARCHAR(20) | NO | `'AUTHORIZED'` | 状態（下表）。**ENUM ではなく VARCHAR**（拡張容易性・既存 payment と整合） |
+| `application_fee_amount` | INT UNSIGNED | NO | 0 | **総プラットフォーム手数料 = `round(face_amount × 0.05)`**（円整数・README §3.4）。受領者送金額 = `amount - application_fee_amount`（額面10,000円なら 10,250 − 500 = 9,750）。`chk_et_fee: application_fee_amount ≤ amount` を充足 |
+| `status` | VARCHAR(20) | NO | `'AUTHORIZED'` | 状態（下表）。**ENUM ではなく VARCHAR**（拡張容易性・既存 payment と整合）。即時モード（MEMBERSHIP）は INSERT 時 `CAPTURED` |
 | `authorized_at` | DATETIME | YES | NULL | 与信成立日時（UTC） |
 | `captured_at` | DATETIME | YES | NULL | capture（払出確定）日時（UTC） |
 | `cancelled_at` | DATETIME | YES | NULL | 与信取消日時（UTC） |
-| `hold_expires_at` | DATETIME | YES | NULL | authorization hold 失効予定（最大7日・自動 capture バッチの基準） |
+| `hold_expires_at` | DATETIME | YES | NULL | authorization hold 失効予定（最大7日・自動 capture バッチの基準）。**即時モード（MEMBERSHIP）は NULL**（与信フェーズを経ないため） |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
 
 **status 値（状態遷移）**
+
+> **モード別の初期 status**: エスクローモード（RECRUITMENT・`capture_mode=MANUAL`）は `AUTHORIZED`（onboarding 未完なら `HELD`）から開始。即時モード（MEMBERSHIP・`capture_mode=AUTOMATIC`）は INSERT 時点で **`CAPTURED`**（与信フェーズなし・即 transfer）。
+
 | 値 | 意味 |
 |---|---|
-| `AUTHORIZED` | 与信済（資金未移動・エスクロー保持中） |
+| `AUTHORIZED` | 与信済（資金未移動・エスクロー保持中）。エスクローモードのみ |
 | `HELD` | 払出保留（受領者 onboarding 未完了で capture 待ち。§02 §5） |
 | `CAPTURED` | capture 済（払出確定・受領者へ transfer 完了） |
 | `PARTIALLY_REFUNDED` | 部分返金済 |
@@ -113,7 +119,8 @@ AUTHORIZED ──(最終認証未了でhold接近)──▶ DISPUTED ──(先c
 
 **制約・インデックス**
 ```sql
-CONSTRAINT chk_et_source_kind CHECK (source_kind IN ('RECRUITMENT','JOBMATCHING','FLEAMARKET'))
+CONSTRAINT chk_et_source_kind CHECK (source_kind IN ('RECRUITMENT','MEMBERSHIP','JOBMATCHING','FLEAMARKET'))
+CONSTRAINT chk_et_capture_mode CHECK (capture_mode IN ('MANUAL','AUTOMATIC'))
 CONSTRAINT chk_et_payee_kind  CHECK (payee_kind IN ('USER','TEAM','ORG'))
 CONSTRAINT chk_et_payer_kind  CHECK (payer_scope_kind IN ('USER','TEAM','ORG'))
 CONSTRAINT chk_et_status CHECK (status IN
@@ -265,20 +272,17 @@ INDEX idx_rl_payee_user (payee_user_id);
 
 > **版番号の鉄則**（memory `feedback_flyway_version_sort_after_global_max`）: 全体最大の**次の major** を採る。`V9.<timestamp>` 形式は V10〜V72 より前にソートされ from-scratch を壊す**罠＝採用禁止**。
 
-- **現状の最大版番号は `V72.003`**（2026-06-02 時点・`db/migration` 実測）。
-- 本設計の新規 DDL は **`V72.004` 以降**を前提に記述する（同一 major V72 系列の末尾に積む。次 major V73 でも可）。
+- **現状の最大版番号は `V73.002`**（2026-06-03 時点・`db/migration` 実測）。P2-a 基盤（`connect_accounts`/`stripe_webhook_events`/`ledger_entries` 骨格）は main マージ済のため、以下は **P2-b 以降の追加 DDL** を示す。
+- 新規 DDL は **`V73.003` 以降**を前提に記述する（同一 major V73 系列の末尾に積む。次 major V74 でも可）。
 - **着手時に必ず `origin/main` の最大版番号を再確認し、衝突しない番号へリネームする**（並行PRでズレるため。from-scratch 番人テストが検知）。
 
 | 版番号（着手時再確認） | 内容 |
 |---|---|
-| `V72.004`（仮） | `CREATE TABLE connect_accounts` |
-| `V72.005`（仮） | `CREATE TABLE escrow_transactions` |
-| `V72.006`（仮） | `CREATE TABLE ledger_entries`（escrow への FK） |
-| `V72.007`（仮） | `CREATE TABLE refunds`（escrow への FK） |
-| `V72.008`（仮） | `CREATE TABLE stripe_webhook_events` |
-| `V72.009`（仮） | `ALTER TABLE recruitment_listings ADD payee_kind / payee_user_id + CHECK + INDEX` |
+| `V73.003`（仮・P2-b） | `escrow_transactions` に `source_kind` へ `MEMBERSHIP` 追加（CHECK 差替）・`capture_mode`・`face_amount` 列追加（既存 P2-a テーブルへの ALTER） |
+| `V73.004`（仮・P2-c） | 返金記録列の補強（必要時）・`refunds` の reason 拡張 |
+| `V73.005`（仮・P2-e） | 会費集約のための索引・`source_id` の会費参照対応（必要時） |
 
-> テーブル作成順は FK 依存順（`escrow_transactions` → `ledger_entries`/`refunds`）。`connect_accounts`・`stripe_webhook_events` は独立。
+> P2-a（`connect_accounts`/`escrow_transactions`/`ledger_entries`/`refunds`/`stripe_webhook_events` の CREATE、`recruitment_listings` 拡張）は完了・main 済。本表は統一基盤化（MEMBERSHIP/capture_mode/face_amount）に伴う **追加 ALTER** を示す。テーブル作成順の FK 依存（`escrow_transactions` → `ledger_entries`/`refunds`）は P2-a で確定済。
 
 ---
 
@@ -296,13 +300,15 @@ erDiagram
     }
     escrow_transactions {
         BINARY16 id PK
-        VARCHAR12 source_kind "RECRUITMENT/JOBMATCHING/FLEAMARKET"
-        BIGINT source_id "論理参照→recruitment_listings"
+        VARCHAR12 source_kind "RECRUITMENT/MEMBERSHIP/JOBMATCHING/FLEAMARKET"
+        VARCHAR10 capture_mode "MANUAL(謝礼)/AUTOMATIC(会費)"
+        BIGINT source_id "論理参照→recruitment_listings 等"
         VARCHAR8 payee_kind "USER/TEAM/ORG"
         BINARY16 payee_connect_account_id "論理参照→connect_accounts"
         VARCHAR32 stripe_payment_intent_id UK "pi_xxx"
-        INT amount "JPY整数"
-        INT application_fee_amount
+        INT face_amount "額面 JPY整数"
+        INT amount "課金額=額面+2.5% JPY整数"
+        INT application_fee_amount "総手数料=額面x5%"
         VARCHAR20 status
     }
     ledger_entries {
