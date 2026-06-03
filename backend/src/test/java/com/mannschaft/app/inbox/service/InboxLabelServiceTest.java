@@ -405,4 +405,123 @@ class InboxLabelServiceTest {
                     .isEqualTo(InboxErrorCode.INBOX_LABEL_NOT_FOUND);
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // suggestApply（案C 1 タップ付与・find-or-create・冪等・上限）
+    // ─────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("suggestApply")
+    class SuggestApply {
+
+        @Test
+        @DisplayName("既存ラベル無し → createLabel で作成して付与する")
+        void createsWhenAbsent() {
+            UUID newId = UUID.randomUUID();
+            given(labelRepository.findByUserIdAndName(USER_ID, "要返信")).willReturn(Optional.empty());
+            given(labelRepository.countByUserId(USER_ID)).willReturn(0L);
+            given(labelRepository.existsByUserIdAndName(USER_ID, "要返信")).willReturn(false);
+            given(labelRepository.save(any())).willAnswer(inv -> {
+                NotificationLabelEntity e = inv.getArgument(0);
+                e.setId(newId);
+                return e;
+            });
+            // 付与経路
+            given(labelRepository.findByIdAndUserId(newId, USER_ID))
+                    .willReturn(Optional.of(label(newId, USER_ID, "要返信")));
+            given(visibilityChecker.isVisibleTo(USER_ID, SOURCE_TYPE, SOURCE_ID)).willReturn(true);
+            given(labelLinkRepository.existsByLabelIdAndSourceTypeAndSourceId(newId, SOURCE_TYPE, SOURCE_ID))
+                    .willReturn(false);
+            given(labelLinkRepository.countByUserIdAndSourceTypeAndSourceId(USER_ID, SOURCE_TYPE, SOURCE_ID))
+                    .willReturn(0L);
+
+            LabelDto dto = service.suggestApply(USER_ID, "要返信", "#2563EB", SOURCE_TYPE, SOURCE_ID);
+
+            assertThat(dto.name()).isEqualTo("要返信");
+            // ラベル本体保存（作成）＋リンク保存（付与）の両方が起きる
+            verify(labelRepository).save(any(NotificationLabelEntity.class));
+            verify(labelLinkRepository).save(any(InboxLabelLinkEntity.class));
+        }
+
+        @Test
+        @DisplayName("既存同名あり → 再利用して付与する（重複作成しない）")
+        void reusesExisting() {
+            UUID existingId = UUID.randomUUID();
+            given(labelRepository.findByUserIdAndName(USER_ID, "要返信"))
+                    .willReturn(Optional.of(label(existingId, USER_ID, "要返信")));
+            // 付与経路
+            given(labelRepository.findByIdAndUserId(existingId, USER_ID))
+                    .willReturn(Optional.of(label(existingId, USER_ID, "要返信")));
+            given(visibilityChecker.isVisibleTo(USER_ID, SOURCE_TYPE, SOURCE_ID)).willReturn(true);
+            given(labelLinkRepository.existsByLabelIdAndSourceTypeAndSourceId(existingId, SOURCE_TYPE, SOURCE_ID))
+                    .willReturn(false);
+            given(labelLinkRepository.countByUserIdAndSourceTypeAndSourceId(USER_ID, SOURCE_TYPE, SOURCE_ID))
+                    .willReturn(0L);
+
+            LabelDto dto = service.suggestApply(USER_ID, "要返信", "#2563EB", SOURCE_TYPE, SOURCE_ID);
+
+            assertThat(dto.id()).isEqualTo(existingId);
+            // ラベル本体は作成しない（再利用）。リンクのみ作成。
+            verify(labelRepository, never()).save(any());
+            verify(labelLinkRepository).save(any(InboxLabelLinkEntity.class));
+        }
+
+        @Test
+        @DisplayName("冪等: 既存ラベルが既に付与済み → 作成も再付与もせず正常返却")
+        void idempotentWhenAlreadyAssigned() {
+            UUID existingId = UUID.randomUUID();
+            given(labelRepository.findByUserIdAndName(USER_ID, "要返信"))
+                    .willReturn(Optional.of(label(existingId, USER_ID, "要返信")));
+            given(labelRepository.findByIdAndUserId(existingId, USER_ID))
+                    .willReturn(Optional.of(label(existingId, USER_ID, "要返信")));
+            given(visibilityChecker.isVisibleTo(USER_ID, SOURCE_TYPE, SOURCE_ID)).willReturn(true);
+            // 既に付与済み
+            given(labelLinkRepository.existsByLabelIdAndSourceTypeAndSourceId(existingId, SOURCE_TYPE, SOURCE_ID))
+                    .willReturn(true);
+
+            LabelDto dto = service.suggestApply(USER_ID, "要返信", "#2563EB", SOURCE_TYPE, SOURCE_ID);
+
+            assertThat(dto.id()).isEqualTo(existingId);
+            verify(labelRepository, never()).save(any());
+            verify(labelLinkRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("上限: 新規作成時に 20 件到達 → 既存 INBOX_LABEL_LIMIT_EXCEEDED（付与しない）")
+        void limitExceededOnCreate() {
+            given(labelRepository.findByUserIdAndName(USER_ID, "要返信")).willReturn(Optional.empty());
+            given(labelRepository.countByUserId(USER_ID)).willReturn(20L);
+
+            assertThatThrownBy(() ->
+                    service.suggestApply(USER_ID, "要返信", "#2563EB", SOURCE_TYPE, SOURCE_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(InboxErrorCode.INBOX_LABEL_LIMIT_EXCEEDED);
+
+            verify(labelLinkRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("上限: 1 通知 10 ラベル到達 → 既存 INBOX_LABEL_PER_ITEM_EXCEEDED")
+        void perItemLimitExceeded() {
+            UUID existingId = UUID.randomUUID();
+            given(labelRepository.findByUserIdAndName(USER_ID, "要返信"))
+                    .willReturn(Optional.of(label(existingId, USER_ID, "要返信")));
+            given(labelRepository.findByIdAndUserId(existingId, USER_ID))
+                    .willReturn(Optional.of(label(existingId, USER_ID, "要返信")));
+            given(visibilityChecker.isVisibleTo(USER_ID, SOURCE_TYPE, SOURCE_ID)).willReturn(true);
+            given(labelLinkRepository.existsByLabelIdAndSourceTypeAndSourceId(existingId, SOURCE_TYPE, SOURCE_ID))
+                    .willReturn(false);
+            given(labelLinkRepository.countByUserIdAndSourceTypeAndSourceId(USER_ID, SOURCE_TYPE, SOURCE_ID))
+                    .willReturn(10L);
+
+            assertThatThrownBy(() ->
+                    service.suggestApply(USER_ID, "要返信", "#2563EB", SOURCE_TYPE, SOURCE_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(InboxErrorCode.INBOX_LABEL_PER_ITEM_EXCEEDED);
+
+            verify(labelLinkRepository, never()).save(any());
+        }
+    }
 }
