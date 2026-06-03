@@ -219,6 +219,35 @@ public class ScheduleService {
 
         schedule = scheduleRepository.save(schedule);
 
+        // 機能55 BE対応: リマインダー更新（null = 変更なし、空リスト = 全削除、非空 = 差し替え）
+        if (req.getReminders() != null) {
+            reminderService.updateReminders(schedule.getId(), req.getReminders());
+        }
+
+        // 機能55 BE対応: 予約タスク差分更新（surveys/attendance のどちらかが非null の場合のみ）
+        if (req.getScheduledSurveys() != null || req.getScheduledAttendance() != null) {
+            CalendarSyncScopeType scopeType = null;
+            Long scopeId = null;
+            Long organizationId = null;
+            if (schedule.isTeamScope()) {
+                scopeType = CalendarSyncScopeType.TEAM;
+                scopeId = schedule.getTeamId();
+                organizationId = resolveOrganizationIdForTeam(schedule.getTeamId());
+            } else if (schedule.isOrganizationScope()) {
+                scopeType = CalendarSyncScopeType.ORGANIZATION;
+                scopeId = schedule.getOrganizationId();
+                organizationId = schedule.getOrganizationId();
+            } else {
+                // PERSONAL には予約作成の概念が無いためスキップ
+                log.info("予約タスク更新スキップ（PERSONALスコープ）: scheduleId={}", schedule.getId());
+            }
+            if (organizationId != null) {
+                scheduledTaskService.updateTasksForSchedule(
+                        schedule.getId(), scopeType, scopeId, organizationId, userId,
+                        req.getScheduledSurveys(), req.getScheduledAttendance());
+            }
+        }
+
         // イベント発行（トランザクションコミット後に発行）
         eventPublisher.publishEvent(new ScheduleUpdatedEvent(schedule.getId(), userId));
 

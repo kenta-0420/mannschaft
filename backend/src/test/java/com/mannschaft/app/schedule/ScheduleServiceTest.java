@@ -12,6 +12,7 @@ import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.service.ScheduleEventCategoryService;
 import com.mannschaft.app.schedule.service.ScheduleQueryService;
 import com.mannschaft.app.schedule.service.ScheduleRecurrenceService;
+import com.mannschaft.app.schedule.service.ScheduleReminderService;
 import com.mannschaft.app.schedule.service.ScheduleScheduledTaskService;
 import com.mannschaft.app.schedule.service.ScheduleService;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
@@ -62,6 +63,9 @@ class ScheduleServiceTest {
 
     @Mock
     private ScheduleScheduledTaskService scheduledTaskService;
+
+    @Mock
+    private ScheduleReminderService reminderService;
 
     @Mock
     private TeamOrgMembershipRepository teamOrgMembershipRepository;
@@ -319,7 +323,7 @@ class ScheduleServiceTest {
             UpdateScheduleRequest req = new UpdateScheduleRequest(
                     "更新後タイトル", null, null,
                     null, null, null, null, null, null, null,
-                    null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null);
 
             // when
             scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_ONLY", USER_ID);
@@ -338,7 +342,7 @@ class ScheduleServiceTest {
             UpdateScheduleRequest req = new UpdateScheduleRequest(
                     "更新", null, null,
                     null, null, null, null, null, null, null,
-                    null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null);
 
             // when & then
             assertThatThrownBy(() -> scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_ONLY", USER_ID))
