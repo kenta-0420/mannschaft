@@ -1,12 +1,13 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' })
 
+const { t: $t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const postId = Number(route.params.id)
 
-const { getMyPost, updateMyPost, publishMyPost, selfReviewPost } = useBlogApi()
-const { success, error: showError } = useNotification()
+const { getMyPost, updateMyPost, publishMyPost, selfReviewPost, autoSave } = useBlogApi()
+const { success, info, error: showError } = useNotification()
 const authStore = useAuthStore()
 const api = useApi()
 
@@ -28,6 +29,40 @@ const scheduledAt = ref<Date | null>(null)
 // 管理者承認却下
 const showRejectionInput = ref(false)
 const rejectionReasonInput = ref('')
+
+// 自動保存
+const AUTO_SAVE_STORAGE_KEY = 'blog-autosave-enabled'
+const AUTO_SAVE_INTERVAL_MS = 30_000
+const autoSaveEnabled = ref(true)
+const lastAutoSavedAt = ref<Date | null>(null)
+let autoSaveTimer: ReturnType<typeof setInterval> | null = null
+
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
+function onAutoSaveToggle() {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(AUTO_SAVE_STORAGE_KEY, String(autoSaveEnabled.value))
+  }
+  if (autoSaveEnabled.value) {
+    info($t('blog.autoSave.enabled'))
+  } else {
+    info($t('blog.autoSave.disabled'))
+  }
+}
+
+async function runAutoSave() {
+  if (!autoSaveEnabled.value || saving.value || !postId) return
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+  try {
+    await autoSave(postId, { title: title.value, body: body.value || '.', excerpt: null, version: null })
+    lastAutoSavedAt.value = new Date()
+    info($t('blog.autoSave.label'))
+  } catch {
+    console.warn('[blog] 自動保存に失敗しました')
+  }
+}
 
 // お知らせウィジェット表示フラグ（チーム/組織スコープのみ有効）
 const displayInAnnouncement = ref(false)
@@ -237,7 +272,18 @@ const statusSeverity = computed(() => {
 
 const isAdmin = computed(() => authStore.isSystemAdmin)
 
-onMounted(load)
+onMounted(() => {
+  load()
+  if (typeof localStorage !== 'undefined') {
+    const stored = localStorage.getItem(AUTO_SAVE_STORAGE_KEY)
+    if (stored !== null) autoSaveEnabled.value = stored !== 'false'
+  }
+  autoSaveTimer = setInterval(runAutoSave, AUTO_SAVE_INTERVAL_MS)
+})
+
+onUnmounted(() => {
+  if (autoSaveTimer !== null) clearInterval(autoSaveTimer)
+})
 </script>
 
 <template>
@@ -400,6 +446,23 @@ onMounted(load)
         :unstyled="true"
         style="box-shadow: none"
       />
+
+      <!-- 自動保存トグル -->
+      <div class="flex items-center gap-2 text-sm text-gray-500">
+        <input
+          id="autosave-toggle"
+          v-model="autoSaveEnabled"
+          type="checkbox"
+          class="h-4 w-4 cursor-pointer rounded"
+          @change="onAutoSaveToggle"
+        />
+        <label for="autosave-toggle" class="cursor-pointer select-none">
+          {{ $t('blog.autoSave.label') }}
+        </label>
+        <span v-if="lastAutoSavedAt" class="text-xs text-gray-400">
+          {{ $t('blog.autoSave.lastSaved', { time: formatTime(lastAutoSavedAt) }) }}
+        </span>
+      </div>
 
       <!-- メディアアップロード（画像・動画挿入） -->
       <BlogMediaUploader

@@ -38,9 +38,10 @@ interface ToolbarBtn {
   action: () => void
   color: string
   dividerAfter?: boolean
+  disabled?: boolean | Ref<boolean>
 }
 
-const toolbarButtons: ToolbarBtn[] = [
+const toolbarButtons = computed<ToolbarBtn[]>(() => [
   {
     label: 'B',
     title: '太字 (Ctrl+B)',
@@ -136,8 +137,9 @@ const toolbarButtons: ToolbarBtn[] = [
     title: '目次ブロックを挿入（現在の見出しから自動生成）',
     color: 'text-green-700',
     action: () => insertTocBlock(),
+    disabled: hasTocBlock,
   },
-]
+])
 
 const previewComponentRef = ref<{ rootRef: HTMLElement | null } | null>(null)
 
