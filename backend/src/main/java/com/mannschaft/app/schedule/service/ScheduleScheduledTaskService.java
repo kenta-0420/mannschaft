@@ -17,6 +17,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,6 +38,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ScheduleScheduledTaskService {
+
+    /** ScheduledAt 保存時に OffsetDateTime を変換する先のタイムゾーン（バッチ側は LocalDateTime.now()=JST と比較）。 */
+    private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Tokyo");
 
     private final ScheduleScheduledTaskRepository scheduledTaskRepository;
     private final ObjectMapper objectMapper;
@@ -61,6 +66,9 @@ public class ScheduleScheduledTaskService {
                               ScheduledAttendanceRequest attendance) {
         if (surveys != null) {
             for (ScheduledSurveyRequest survey : surveys) {
+                // OffsetDateTime → Asia/Tokyo の LocalDateTime に変換（バッチはJSTの LocalDateTime.now() と比較）
+                LocalDateTime scheduledAtJst = survey.getScheduledAt()
+                        .atZoneSameInstant(STORAGE_ZONE).toLocalDateTime();
                 String payload = serialize(survey.getSurvey());
                 ScheduleScheduledTaskEntity task = ScheduleScheduledTaskEntity.builder()
                         .scheduleId(scheduleId)
@@ -68,7 +76,7 @@ public class ScheduleScheduledTaskService {
                         .scopeType(scopeType)
                         .scopeId(scopeId)
                         .taskType(ScheduledTaskType.SURVEY)
-                        .scheduledAt(survey.getScheduledAt())
+                        .scheduledAt(scheduledAtJst)
                         .status(ScheduledTaskStatus.PENDING)
                         .payloadJson(payload)
                         .createdBy(createdBy)
@@ -78,6 +86,9 @@ public class ScheduleScheduledTaskService {
         }
 
         if (attendance != null) {
+            // OffsetDateTime → Asia/Tokyo の LocalDateTime に変換
+            LocalDateTime scheduledAtJst = attendance.getScheduledAt()
+                    .atZoneSameInstant(STORAGE_ZONE).toLocalDateTime();
             String payload = serialize(new AttendancePayload(
                     attendance.getAttendanceDeadline(),
                     attendance.getCommentOption(),
@@ -88,7 +99,7 @@ public class ScheduleScheduledTaskService {
                     .scopeType(scopeType)
                     .scopeId(scopeId)
                     .taskType(ScheduledTaskType.ATTENDANCE)
-                    .scheduledAt(attendance.getScheduledAt())
+                    .scheduledAt(scheduledAtJst)
                     .status(ScheduledTaskStatus.PENDING)
                     .payloadJson(payload)
                     .createdBy(createdBy)

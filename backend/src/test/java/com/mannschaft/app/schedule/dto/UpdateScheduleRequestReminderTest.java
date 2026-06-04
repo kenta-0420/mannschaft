@@ -161,7 +161,7 @@ class UpdateScheduleRequestReminderTest {
     @DisplayName("scheduledAttendance=非null_違反なし")
     void scheduledAttendance_非null_違反なし() {
         ScheduledAttendanceRequest attendance = new ScheduledAttendanceRequest(
-                LocalDateTime.now().plusDays(1), null, null, null);
+                OffsetDateTime.now(ZoneOffset.ofHours(9)).plusDays(1), null, null, null);
         UpdateScheduleRequest req = new UpdateScheduleRequest(
                 null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, attendance);

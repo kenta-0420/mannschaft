@@ -17,6 +17,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,7 +49,10 @@ class ScheduleScheduledTaskServiceUpdateTest {
     private static final Long SCOPE_ID = 10L;
     private static final Long ORG_ID = 100L;
     private static final Long UPDATED_BY = 999L;
-    private static final LocalDateTime FUTURE = LocalDateTime.now().plusDays(1);
+    /** JST+09:00 の翌日（DTO 渡し用）。 */
+    private static final OffsetDateTime FUTURE = OffsetDateTime.now(ZoneOffset.ofHours(9)).plusDays(1);
+    /** FUTURE を Asia/Tokyo に変換した LocalDateTime（Entity builder 渡し用）。 */
+    private static final LocalDateTime FUTURE_JST = FUTURE.atZoneSameInstant(ZoneId.of("Asia/Tokyo")).toLocalDateTime();
 
     @BeforeEach
     void setUp() {
@@ -57,7 +63,7 @@ class ScheduleScheduledTaskServiceUpdateTest {
         return ScheduleScheduledTaskEntity.builder()
                 .scheduleId(SCHEDULE_ID).organizationId(ORG_ID)
                 .scopeType(CalendarSyncScopeType.TEAM).scopeId(SCOPE_ID)
-                .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE)
+                .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE_JST)
                 .status(ScheduledTaskStatus.PENDING).payloadJson("{}").build();
     }
 
@@ -65,7 +71,7 @@ class ScheduleScheduledTaskServiceUpdateTest {
         return ScheduleScheduledTaskEntity.builder()
                 .scheduleId(SCHEDULE_ID).organizationId(ORG_ID)
                 .scopeType(CalendarSyncScopeType.TEAM).scopeId(SCOPE_ID)
-                .taskType(ScheduledTaskType.ATTENDANCE).scheduledAt(FUTURE)
+                .taskType(ScheduledTaskType.ATTENDANCE).scheduledAt(FUTURE_JST)
                 .status(ScheduledTaskStatus.PENDING).payloadJson("{}").build();
     }
 
@@ -73,7 +79,7 @@ class ScheduleScheduledTaskServiceUpdateTest {
         return ScheduleScheduledTaskEntity.builder()
                 .scheduleId(SCHEDULE_ID).organizationId(ORG_ID)
                 .scopeType(CalendarSyncScopeType.TEAM).scopeId(SCOPE_ID)
-                .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE)
+                .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE_JST)
                 .status(ScheduledTaskStatus.CREATED).payloadJson("{}").build();
     }
 
@@ -128,7 +134,7 @@ class ScheduleScheduledTaskServiceUpdateTest {
                     .willReturn(List.of(existing));
 
             ScheduledAttendanceRequest newAttendance = new ScheduledAttendanceRequest(
-                    FUTURE, FUTURE.plusDays(2), "REQUIRED", "MEMBER_PLUS");
+                    FUTURE, FUTURE_JST.plusDays(2), "REQUIRED", "MEMBER_PLUS");
 
             // when
             service.updateTasksForSchedule(SCHEDULE_ID, CalendarSyncScopeType.TEAM, SCOPE_ID, ORG_ID,
