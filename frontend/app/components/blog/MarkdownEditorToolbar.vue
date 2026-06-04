@@ -7,6 +7,7 @@ interface ToolbarBtn {
   action: () => void
   color: string
   dividerAfter?: boolean
+  disabled?: boolean | Ref<boolean>
 }
 
 defineProps<{
@@ -25,6 +26,11 @@ defineEmits<{
   'update:showHelp': [value: boolean]
   generateHeadings: []
 }>()
+
+function isDisabled(btn: ToolbarBtn): boolean {
+  if (btn.disabled == null) return false
+  return typeof btn.disabled === 'boolean' ? btn.disabled : btn.disabled.value
+}
 </script>
 
 <template>
@@ -46,8 +52,9 @@ defineEmits<{
         type="button"
         :title="btn.title"
         class="toolbar-btn flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-sm font-bold transition-all"
-        :class="btn.color"
-        @click="btn.action"
+        :class="[btn.color, { 'toolbar-btn--disabled': isDisabled(btn) }]"
+        :disabled="isDisabled(btn)"
+        @click="!isDisabled(btn) && btn.action()"
       >
         <i v-if="btn.icon" :class="btn.icon" />
         <span v-else-if="btn.emoji">{{ btn.emoji }}</span>
@@ -117,6 +124,15 @@ defineEmits<{
 }
 .toolbar-btn:active {
   transform: translateY(0);
+}
+.toolbar-btn--disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.toolbar-btn--disabled:hover {
+  background: transparent;
+  transform: none;
+  box-shadow: none;
 }
 
 .divider {
