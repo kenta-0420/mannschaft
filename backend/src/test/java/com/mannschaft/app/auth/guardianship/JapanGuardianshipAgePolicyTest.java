@@ -133,4 +133,56 @@ class JapanGuardianshipAgePolicyTest {
     void supportedCountryCode() {
         assertThat(policy.supportedCountryCode()).isEqualTo("JP");
     }
+
+    @Nested
+    @DisplayName("3月内の複数日でオフバイワンなし（同一学年として年度末まで切替可）")
+    class MarchMultipleDaysWithinSameGrade {
+
+        /**
+         * 対象: 2013-04-02 生まれ（2026年度 = 中学1年相当）。
+         * 2026年3月は「まだ満12歳到達年度末の前」= 切替可能な最終学年の3月中。
+         * 3/1・3/15・3/30・3/31 すべて switchAllowed=true・stageKey=elementary であること。
+         */
+        private final LocalDate birthDate = LocalDate.parse("2013-04-02");
+
+        @Test
+        @DisplayName("3/1 基準 → switchAllowed=true / stageKey=elementary")
+        void march1_switchAllowed() {
+            AgeStageResolution r = policy.resolve(birthDate, jstClockAt(LocalDate.parse("2026-03-01")));
+            assertThat(r.switchAllowed()).isTrue();
+            assertThat(r.stageKey()).isEqualTo("elementary");
+        }
+
+        @Test
+        @DisplayName("3/15 基準 → switchAllowed=true / stageKey=elementary")
+        void march15_switchAllowed() {
+            AgeStageResolution r = policy.resolve(birthDate, jstClockAt(LocalDate.parse("2026-03-15")));
+            assertThat(r.switchAllowed()).isTrue();
+            assertThat(r.stageKey()).isEqualTo("elementary");
+        }
+
+        @Test
+        @DisplayName("3/30 基準 → switchAllowed=true / stageKey=elementary")
+        void march30_switchAllowed() {
+            AgeStageResolution r = policy.resolve(birthDate, jstClockAt(LocalDate.parse("2026-03-30")));
+            assertThat(r.switchAllowed()).isTrue();
+            assertThat(r.stageKey()).isEqualTo("elementary");
+        }
+
+        @Test
+        @DisplayName("3/31 基準（年度末当日）→ switchAllowed=true / stageKey=elementary")
+        void march31_switchAllowed() {
+            AgeStageResolution r = policy.resolve(birthDate, jstClockAt(LocalDate.parse("2026-03-31")));
+            assertThat(r.switchAllowed()).isTrue();
+            assertThat(r.stageKey()).isEqualTo("elementary");
+        }
+
+        @Test
+        @DisplayName("4/1 基準（年度明け初日）→ switchAllowed=false / stageKey=junior_high（オフバイワンなし確認）")
+        void april1_firstDayOfNewYear_blocked() {
+            AgeStageResolution r = policy.resolve(birthDate, jstClockAt(LocalDate.parse("2026-04-01")));
+            assertThat(r.switchAllowed()).isFalse();
+            assertThat(r.stageKey()).isEqualTo("junior_high");
+        }
+    }
 }

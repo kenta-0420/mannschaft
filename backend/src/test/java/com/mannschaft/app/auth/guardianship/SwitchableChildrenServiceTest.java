@@ -193,4 +193,60 @@ class SwitchableChildrenServiceTest {
         assertThat(response.blockedChildren().get(0).switchAllowed()).isFalse();
         assertThat(response.blockedChildren().get(0).reason()).isEqualTo("AGE_LOCKED");
     }
+
+    @Test
+    @DisplayName("自分自身が子/ケア対象として登録されていても結果に保護者本人を含まない")
+    void guardianIsExcludedFromChildren() {
+        // 自己リンク（guardianUserId = 100L が子として登録されている異常系）。
+        UserEntity selfAsChild = child(GUARDIAN_ID, "自分自身", "2015-01-01", "JP");
+        UserEntity legitimateChild = child(51L, "正当な子", "2016-02-02", "JP");
+
+        given(parentalConsentService.listApprovedChildUserIds(GUARDIAN_ID))
+                .willReturn(List.of(GUARDIAN_ID, 51L));
+        given(careLinkService.listActiveParentWatchedRecipientIds(GUARDIAN_ID))
+                .willReturn(List.of(GUARDIAN_ID));
+        given(userRepository.findByIdIn(anyCollection()))
+                .willReturn(List.of(legitimateChild));
+
+        SwitchableChildrenResponse response = service.listSwitchableChildren(GUARDIAN_ID);
+
+        // 保護者本人（100L）は children にも blockedChildren にも現れない。
+        assertThat(response.children())
+                .extracting(c -> c.childUserId())
+                .doesNotContain(GUARDIAN_ID);
+        assertThat(response.blockedChildren())
+                .extracting(b -> b.childUserId())
+                .doesNotContain(GUARDIAN_ID);
+        // 正当な子は切替可（2026-04-01 時点で十分幼い）。
+        assertThat(response.children())
+                .extracting(c -> c.childUserId())
+                .contains(51L);
+    }
+
+    @Test
+    @DisplayName("birthDate が不正フォーマット/復号失敗で解決不能な子は blocked 側（switchAllowed=false・stageKey=independent）に倒れる")
+    void invalidBirthDateFormatIsBlockedWithIndependentKey() {
+        // 正常に復号できても ISO-8601 でないフォーマット（例: "20200101" や "2020/01/01"）は解決不能扱い。
+        UserEntity badFormat = child(61L, "日付フォーマット不正の子", "2020/01/01", "JP");
+        UserEntity nullBirth = child(62L, "birthDateがnullの子", null, "JP");
+
+        given(parentalConsentService.listApprovedChildUserIds(GUARDIAN_ID))
+                .willReturn(List.of(61L, 62L));
+        given(careLinkService.listActiveParentWatchedRecipientIds(GUARDIAN_ID))
+                .willReturn(List.of());
+        given(userRepository.findByIdIn(anyCollection()))
+                .willReturn(List.of(badFormat, nullBirth));
+
+        SwitchableChildrenResponse response = service.listSwitchableChildren(GUARDIAN_ID);
+
+        assertThat(response.children()).isEmpty();
+        assertThat(response.blockedChildren()).hasSize(2);
+        // 両者とも switchAllowed=false・stageKey="independent"（i18n キーとして有効な値）。
+        assertThat(response.blockedChildren())
+                .allSatisfy(b -> {
+                    assertThat(b.switchAllowed()).isFalse();
+                    assertThat(b.stageKey()).isEqualTo("independent");
+                    assertThat(b.reason()).isEqualTo("AGE_LOCKED");
+                });
+    }
 }

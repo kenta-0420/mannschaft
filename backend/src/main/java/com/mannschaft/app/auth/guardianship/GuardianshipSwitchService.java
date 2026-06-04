@@ -85,7 +85,7 @@ public class GuardianshipSwitchService {
                 // 生年月日が無い／復号不能な子は安全側で封印に倒す（症状を隠さず記録）。
                 log.warn("後見切替: 子 userId={} の birthDate が解決できないため切替を封印（安全側）", child.getId());
                 blocked.add(new BlockedChildDto(
-                        child.getId(), child.getDisplayName(), "unknown", false, REASON_AGE_LOCKED));
+                        child.getId(), child.getDisplayName(), "independent", false, REASON_AGE_LOCKED));
                 continue;
             }
 
