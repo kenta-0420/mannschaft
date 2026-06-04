@@ -357,7 +357,19 @@ public enum AuditEventType {
 
     // ─── DASHBOARD_SCOPE_TAB (F22.1 横スワイプ・ダッシュボード) ─────────────
     /** ユーザーがチーム/組織タグの表示順を更新した。 */
-    DASHBOARD_SCOPE_TAB_ORDER_UPDATED(AuditEventCategory.ADMIN_ACTION);
+    DASHBOARD_SCOPE_TAB_ORDER_UPDATED(AuditEventCategory.ADMIN_ACTION),
+
+    // ─── FEE_POLICY (F22.1 市・統一決済 R2 手数料パターン管理) ─────────────
+    /** SYSTEM_ADMIN が手数料パターンを作成した。 */
+    FEE_POLICY_CREATED(AuditEventCategory.ADMIN_ACTION),
+    /** SYSTEM_ADMIN が手数料パターンを更新した。 */
+    FEE_POLICY_UPDATED(AuditEventCategory.ADMIN_ACTION),
+    /** SYSTEM_ADMIN が手数料パターンを無効化した。 */
+    FEE_POLICY_DISABLED(AuditEventCategory.ADMIN_ACTION),
+    /** SYSTEM_ADMIN が手数料パターン割当を作成した。 */
+    FEE_POLICY_ASSIGNMENT_CREATED(AuditEventCategory.ADMIN_ACTION),
+    /** SYSTEM_ADMIN が手数料パターン割当を解除した。 */
+    FEE_POLICY_ASSIGNMENT_DELETED(AuditEventCategory.ADMIN_ACTION);
 
     private final AuditEventCategory category;
 }

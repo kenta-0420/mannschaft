@@ -175,12 +175,12 @@ FeePolicy resolve(EscrowSourceKind sourceKind, String subKey /* nullable・助�
 
 ```
 // 必須ガード（起票前）
-if (total_fee > face_amount) → reject(PAYMENT_C050 FEE_EXCEEDS_FACE_AMOUNT)
+if (total_fee > face_amount) → reject(PAYMENT_C060 FEE_EXCEEDS_FACE_AMOUNT)
 // 同値: application_fee_amount(total_fee) ≤ amount(face + half_fee) は total_fee ≤ face で常に成立
 //       （half_fee ≥ 0 ゆえ face + half_fee ≥ face ≥ total_fee）→ chk_et_fee も自動充足
 ```
 > - 「総手数料が額面を超えない」を必須不変条件とする（最低決済額の検証として表現してもよいが、固定額の存在ゆえ額面比較が確実）。
-> - 違反は握りつぶさず `ConnectPaymentErrorCode.PAYMENT_C050`（`ERROR_CODE_STATUS_MAP` 登録・422）で拒否し、管理者に「このパターンはこの額面に適用できない（固定額が大きすぎる）」と原因を返す（症状を隠さない・CLAUDE.md 根治原則）。
+> - 違反は握りつぶさず `ConnectPaymentErrorCode.PAYMENT_C060`（`ERROR_CODE_STATUS_MAP` 登録・422）で拒否し、管理者に「このパターンはこの額面に適用できない（固定額が大きすぎる）」と原因を返す（症状を隠さない・CLAUDE.md 根治原則）。
 > - シスアドが `fee_policies` 追加・割当時にも、当該 source_kind の想定最小額面に対し破綻しないかを警告できると望ましい（§11 の CRUD 応答に検証ヒントを含める余地）。
 
 ### 3.5.3 テナント別上書きは作らない（将来拡張点）
@@ -217,7 +217,7 @@ DEFAULT policy（`percent_rate=0.05`/`flat_fee_minor=0`）。total_fee＝`round(
 | 適用パターン | **`RECRUITMENT_HELPER`** | FeePolicyResolver | `fee_policy_key`（焼き付け） |
 | 受取側送金額 | **9,800 円** | 10,200 − 400 | `ledger_entries`(TRANSFER_OUT) |
 
-> - **安全ガード**: `total_fee(400) ≤ face(10,000)` で OK。仮に固定 1,000・率5%・額面 500 なら total_fee＝1,025 > 500 で `PAYMENT_C050` 拒否（§3.5.2）。
+> - **安全ガード**: `total_fee(400) ≤ face(10,000)` で OK。仮に固定 1,000・率5%・額面 500 なら total_fee＝1,025 > 500 で `PAYMENT_C060` 拒否（§3.5.2）。
 > - **遡及防止**: `fee_policy_key='RECRUITMENT_HELPER'` を焼き付け、以後シスアドが当該パターンの率を改定しても本取引は 400 円のまま（README §3.4.2 / 01 §3.2）。
 > - `ledger_entries`(FEE) には設定値の概算でなく Stripe Webhook（`balance_transaction`）の実手数料を記録し純益の微変動を可視化（症状を隠さない・§6.3）。
 > - `chk_et_fee: application_fee_amount ≤ amount` は安全ガードにより常に充足。
