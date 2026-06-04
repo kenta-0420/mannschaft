@@ -3,6 +3,8 @@ package com.mannschaft.app.payment.escrow;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.FeeBreakdown;
+import com.mannschaft.app.payment.FeePolicy;
+import com.mannschaft.app.payment.FeePolicyResolver;
 import com.mannschaft.app.payment.PaymentFeeCalculator;
 import com.mannschaft.app.payment.connect.ConnectAccountEntity;
 import com.mannschaft.app.payment.connect.ConnectAccountRepository;
@@ -74,6 +76,7 @@ public class ConnectChargeService {
     private final LedgerEntryRepository ledgerEntryRepository;
     private final RefundRepository refundRepository;
     private final PayeeScopeResolver payeeScopeResolver;
+    private final FeePolicyResolver feePolicyResolver;
 
     /**
      * 謝礼の与信を開始する（設計書 02 §5.1）。
@@ -102,8 +105,10 @@ public class ConnectChargeService {
             return toResult(e, null);
         }
 
-        // 手数料折半は PaymentFeeCalculator に一元化（数式を再実装しない・02 §3.5）。
-        FeeBreakdown fee = paymentFeeCalculator.calculate(cmd.faceAmount());
+        // 手数料パターン（率%＋固定額¥）を解決し（R1・02 §3.5.1）、PaymentFeeCalculator で折半計算する
+        // （数式を再実装しない・一元化・02 §3.5）。安全ガード違反は PAYMENT_C051(422) で拒否する（§3.5.2）。
+        FeePolicy policy = feePolicyResolver.resolve(cmd.sourceKind(), cmd.subKey());
+        FeeBreakdown fee = calculateWithPolicyGuard(cmd.faceAmount(), policy);
         String currency = cmd.currency() != null ? cmd.currency() : "JPY";
 
         // 受取側 Connect 口座を解決し payouts_enabled を判定（02 §5.1 step2 / §5.2）。
@@ -128,7 +133,8 @@ public class ConnectChargeService {
                 .faceAmount(fee.faceAmount())
                 .amount(fee.chargeAmount())
                 .currency(currency)
-                .applicationFeeAmount(fee.applicationFeeAmount());
+                .applicationFeeAmount(fee.applicationFeeAmount())
+                .feePolicyKey(policy.policyKey()); // 適用パターンを焼き付け（遡及防止・R1・01 §3.2）。
 
         String clientSecret;
         if (!payoutsEnabled) {
@@ -209,8 +215,10 @@ public class ConnectChargeService {
             return new MembershipChargeResult(e.getId(), null, e.getStripePaymentIntentId(), e.getStatus());
         }
 
-        // 手数料折半は PaymentFeeCalculator に一元化（数式を再実装しない・02 §3.5）。
-        FeeBreakdown fee = paymentFeeCalculator.calculate(cmd.faceAmount());
+        // 手数料パターン（率%＋固定額¥）を解決し（R1・02 §3.5.1）、PaymentFeeCalculator で折半計算する
+        // （数式を再実装しない・一元化・02 §3.5）。安全ガード違反は PAYMENT_C051(422) で拒否する（§3.5.2）。
+        FeePolicy policy = feePolicyResolver.resolve(EscrowSourceKind.MEMBERSHIP, cmd.subKey());
+        FeeBreakdown fee = calculateWithPolicyGuard(cmd.faceAmount(), policy);
         String currency = "JPY";
 
         // 受領者 Connect 口座を ID で解決（会費 API は受益者→scope→口座を解決済みで口座 ID を渡す）。
@@ -246,6 +254,7 @@ public class ConnectChargeService {
                 .amount(fee.chargeAmount())
                 .currency(currency)
                 .applicationFeeAmount(fee.applicationFeeAmount())
+                .feePolicyKey(policy.policyKey()) // 適用パターンを焼き付け（遡及防止・R1・01 §3.2）。
                 .status(EscrowStatus.AUTHORIZED)
                 .stripePaymentIntentId(pi.paymentIntentId())
                 .authorizedAt(LocalDateTime.now())
@@ -655,6 +664,34 @@ public class ConnectChargeService {
         } catch (BusinessException e) {
             // AccessControlService の認可エラーを Connect 系の 403 へ正規化（IDOR は存在秘匿しつつ拒否）。
             throw new BusinessException(ConnectPaymentErrorCode.PAYMENT_FORBIDDEN, e);
+        }
+    }
+
+    /**
+     * 解決済み手数料パターンで折半計算を行い、安全ガード違反（総手数料 > 額面）を 422 へ変換する（R1・02 §3.5.2）。
+     *
+     * <p>{@link PaymentFeeCalculator#calculate(long, FeePolicy)} は純粋関数として違反を
+     * {@link IllegalArgumentException} で拒否する。それをサービス境界で
+     * {@link ConnectPaymentErrorCode#FEE_EXCEEDS_FACE_AMOUNT}（422・{@code ERROR_CODE_STATUS_MAP} 登録済み）へ
+     * 変換し、握りつぶさず「このパターンはこの額面に適用できない」と返す（症状を隠さない・根治原則）。
+     * {@code faceAmount} 自体が非正（決済不能）の場合は呼出側の既存挙動（{@code IllegalArgumentException}）を保つ。</p>
+     *
+     * @param faceAmount 額面（円整数・最小単位・正値）
+     * @param policy     解決済み手数料パターン
+     * @return 手数料内訳
+     */
+    private FeeBreakdown calculateWithPolicyGuard(long faceAmount, FeePolicy policy) {
+        try {
+            return paymentFeeCalculator.calculate(faceAmount, policy);
+        } catch (IllegalArgumentException e) {
+            if (faceAmount <= 0L) {
+                // 額面非正は決済不能（手数料パターン以前の入力エラー）。既存の charge() 検証と同じ扱いを保つ。
+                throw e;
+            }
+            // 安全ガード違反（総手数料 > 額面）は 422 で拒否する（02 §3.5.2・#1279 の 500 フォールバック回避）。
+            log.warn("手数料パターンが額面に適用できません（総手数料 > 額面・拒否）: face={}, policyKey={}, reason={}",
+                    faceAmount, policy.policyKey(), e.getMessage());
+            throw new BusinessException(ConnectPaymentErrorCode.FEE_EXCEEDS_FACE_AMOUNT, e);
         }
     }
 

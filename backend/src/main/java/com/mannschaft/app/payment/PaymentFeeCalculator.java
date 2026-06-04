@@ -98,6 +98,96 @@ public class PaymentFeeCalculator {
     }
 
     /**
+     * 額面と手数料パターン（{@link FeePolicy}・率%＋固定額¥）から手数料内訳を計算する（R1・手数料ランク化）。
+     *
+     * <p>既定の Stripe 手数料率 {@value #DEFAULT_STRIPE_FEE_RATE} を用いる。計算規約（設計書 02 §3.5・折半50/50固定）:</p>
+     * <pre>
+     * total_fee             = round(policy.percentRate × faceAmount) + policy.flatFeeMinor   // 総手数料
+     * half_fee              = round(total_fee ÷ 2)                                            // 折半
+     * payerFee              = half_fee                                                        // 支払者上乗せ
+     * chargeAmount          = faceAmount + half_fee                                           // 実請求額（amount）
+     * applicationFeeAmount  = total_fee                                                       // Mannschaft 徴収
+     * transferAmount        = chargeAmount − total_fee                                        // 受取側送金額
+     * </pre>
+     *
+     * <p><b>安全ガード（必須・設計書 02 §3.5.2）:</b> {@code total_fee > faceAmount} のとき
+     * 「払った額より手数料が高い」破綻（および Stripe {@code application_fee_amount ≤ amount} 違反）を招くため、
+     * {@link IllegalArgumentException} で拒否する（純粋関数の防御。Service 層では
+     * {@code ConnectPaymentErrorCode.FEE_EXCEEDS_FACE_AMOUNT}＝422 へ変換し症状を隠さない）。</p>
+     *
+     * <p><b>DEFAULT policy（率5%＋固定0）では総手数料 = round(0.05 × face)・折半 = round(total/2) となり、
+     * 額面 10,000 で total=500 / payerFee=250 / charge=10,250 / appFee=500 / transfer=9,750</b>（後方互換・§3.5.4）。</p>
+     *
+     * @param faceAmount 額面（円整数・最小単位・正値）
+     * @param policy     解決済み手数料パターン（{@link FeePolicyResolver} で解決・非 null）
+     * @return 手数料内訳
+     * @throws IllegalArgumentException faceAmount が 0 以下、policy が null、または安全ガード違反（total_fee > face）のとき
+     */
+    public FeeBreakdown calculate(long faceAmount, FeePolicy policy) {
+        return calculate(faceAmount, policy, DEFAULT_STRIPE_FEE_RATE);
+    }
+
+    /**
+     * 額面・手数料パターン・Stripe 手数料率から手数料内訳を計算する（R1・手数料ランク化）。
+     *
+     * @param faceAmount    額面（円整数・最小単位・正値）
+     * @param policy        解決済み手数料パターン（非 null）
+     * @param stripeFeeRate Stripe 実手数料率（0 以上 1 未満・参考純益試算用）
+     * @return 手数料内訳
+     * @throws IllegalArgumentException faceAmount が 0 以下、policy が null、stripeFeeRate が範囲外、
+     *                                  または安全ガード違反（total_fee > face）のとき
+     */
+    public FeeBreakdown calculate(long faceAmount, FeePolicy policy, double stripeFeeRate) {
+        if (faceAmount <= 0L) {
+            throw new IllegalArgumentException("faceAmount must be positive (円整数): " + faceAmount);
+        }
+        if (policy == null) {
+            throw new IllegalArgumentException("policy must not be null");
+        }
+        if (stripeFeeRate < 0d || stripeFeeRate >= 1d) {
+            throw new IllegalArgumentException("stripeFeeRate must be in [0, 1): " + stripeFeeRate);
+        }
+
+        BigDecimal face = BigDecimal.valueOf(faceAmount);
+
+        // 総手数料 = round(率 × 額面) + 固定額（円整数・HALF_UP・double 誤差なし）。
+        long totalFee = roundToUnit(face.multiply(policy.percentRate())) + policy.flatFeeMinor();
+
+        // 安全ガード（必須・§3.5.2）: 総手数料が額面を超えると破綻するため拒否する（症状を隠さない・純粋関数の防御）。
+        if (totalFee > faceAmount) {
+            throw new IllegalArgumentException(
+                    "total fee(" + totalFee + ") must not exceed faceAmount(" + faceAmount
+                            + ") [policyKey=" + policy.policyKey() + "]");
+        }
+
+        // 折半（50/50 固定）: half_fee = round(total_fee / 2)。支払者上乗せ = half_fee。
+        long halfFee = roundToUnit(BigDecimal.valueOf(totalFee).divide(BigDecimal.valueOf(2L)));
+        long payerFee = halfFee;
+        long chargeAmount = faceAmount + halfFee;
+        long applicationFeeAmount = totalFee;
+        long transferAmount = chargeAmount - applicationFeeAmount;
+
+        long estimatedStripeFee = roundToUnit(
+                BigDecimal.valueOf(chargeAmount).multiply(BigDecimal.valueOf(stripeFeeRate)));
+        long estimatedNetProfit = applicationFeeAmount - estimatedStripeFee;
+
+        // 不変条件（chk_et_fee と整合）: 安全ガード（total_fee ≤ face）かつ half_fee ≥ 0 ゆえ常に成立する防御網。
+        if (applicationFeeAmount > chargeAmount) {
+            throw new IllegalStateException(
+                    "applicationFeeAmount(" + applicationFeeAmount + ") must not exceed chargeAmount(" + chargeAmount + ")");
+        }
+
+        return new FeeBreakdown(
+                faceAmount,
+                payerFee,
+                chargeAmount,
+                applicationFeeAmount,
+                transferAmount,
+                estimatedStripeFee,
+                estimatedNetProfit);
+    }
+
+    /**
      * 円（ゼロデシマル最小単位）へ四捨五入（HALF_UP）して切り詰める。Math.round 相当だが double 誤差を持たない。
      */
     private static long roundToUnit(BigDecimal value) {
