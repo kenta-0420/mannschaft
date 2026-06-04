@@ -80,6 +80,20 @@ public interface ParentalConsentLinkRepository extends JpaRepository<ParentalCon
             Long childUserId, String parentEmail, ParentalConsentLinkStatus status);
 
     /**
+     * 子ユーザー・保護者ユーザー・ステータスを指定して同意リンクの存在を確認する。
+     * F08.9 代理払い認可（GUARDIAN 経路）で「払い手が受益者の承認済み保護者か」を
+     * boolean で判定するために利用する（payment ドメインは {@code ParentalConsentService}
+     * 経由でのみ呼び出す・Entity を直接参照しない）。
+     *
+     * @param childUserId  子（受益者）ユーザーの ID
+     * @param parentUserId 保護者（払い手）ユーザーの ID
+     * @param status       絞り込むステータス（通常 APPROVED）
+     * @return 一致するリンクが存在する場合 true
+     */
+    boolean existsByChildUserIdAndParentUserIdAndStatus(
+            Long childUserId, Long parentUserId, ParentalConsentLinkStatus status);
+
+    /**
      * バッチ用: 指定ステータスかつ指定日時より前に期限切れになった同意リンクを取得する。
      * 主に PENDING リンクの期限切れ処理（自動 REVOKE など）で使用する。
      *
