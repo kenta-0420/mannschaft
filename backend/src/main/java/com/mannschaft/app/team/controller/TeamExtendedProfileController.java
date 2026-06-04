@@ -2,6 +2,7 @@ package com.mannschaft.app.team.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.team.dto.CreateTeamCustomFieldRequest;
 import com.mannschaft.app.team.dto.CreateTeamOfficerRequest;
 import com.mannschaft.app.team.dto.TeamCustomFieldResponse;
@@ -30,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * チーム拡張プロフィールコントローラー。
@@ -42,6 +44,7 @@ import java.util.List;
 public class TeamExtendedProfileController {
 
     private final TeamExtendedProfileService extendedProfileService;
+    private final TeamService teamService;
 
     // ========================================
     // 拡張プロフィール
@@ -50,11 +53,12 @@ public class TeamExtendedProfileController {
     /**
      * チームの拡張プロフィールを取得する。
      */
-    @GetMapping("/{id}/profile")
+    @GetMapping("/{publicId}/profile")
     @Operation(summary = "チーム拡張プロフィール取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<TeamProfileResponse>> getProfile(
-            @PathVariable Long id) {
+            @PathVariable UUID publicId) {
+        Long id = teamService.resolveTeamId(publicId);
         return ResponseEntity.ok(
                 extendedProfileService.getProfile(SecurityUtils.getCurrentUserId(), id));
     }
@@ -62,12 +66,13 @@ public class TeamExtendedProfileController {
     /**
      * チームの拡張プロフィールを更新する。
      */
-    @PatchMapping("/{id}/profile")
+    @PatchMapping("/{publicId}/profile")
     @Operation(summary = "チーム拡張プロフィール更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<TeamProfileResponse>> updateProfile(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @Valid @RequestBody UpdateTeamProfileRequest req) {
+        Long id = teamService.resolveTeamId(publicId);
         return ResponseEntity.ok(
                 extendedProfileService.updateProfile(SecurityUtils.getCurrentUserId(), id, req));
     }
@@ -79,12 +84,13 @@ public class TeamExtendedProfileController {
     /**
      * チームの役員一覧を取得する。
      */
-    @GetMapping("/{id}/officers")
+    @GetMapping("/{publicId}/officers")
     @Operation(summary = "チーム役員一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TeamOfficerResponse>>> getOfficers(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @RequestParam(required = false, defaultValue = "false") boolean visibilityPreview) {
+        Long id = teamService.resolveTeamId(publicId);
         return ResponseEntity.ok(
                 extendedProfileService.getOfficers(SecurityUtils.getCurrentUserId(), id, visibilityPreview));
     }
@@ -92,12 +98,13 @@ public class TeamExtendedProfileController {
     /**
      * チームに役員を追加する。
      */
-    @PostMapping("/{id}/officers")
+    @PostMapping("/{publicId}/officers")
     @Operation(summary = "チーム役員追加")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<TeamOfficerResponse>> createOfficer(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @Valid @RequestBody CreateTeamOfficerRequest req) {
+        Long id = teamService.resolveTeamId(publicId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(extendedProfileService.createOfficer(SecurityUtils.getCurrentUserId(), id, req));
     }
@@ -105,13 +112,14 @@ public class TeamExtendedProfileController {
     /**
      * チームの役員を更新する。
      */
-    @PatchMapping("/{id}/officers/{officerId}")
+    @PatchMapping("/{publicId}/officers/{officerId}")
     @Operation(summary = "チーム役員更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<TeamOfficerResponse>> updateOfficer(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @PathVariable Long officerId,
             @Valid @RequestBody UpdateTeamOfficerRequest req) {
+        Long id = teamService.resolveTeamId(publicId);
         return ResponseEntity.ok(
                 extendedProfileService.updateOfficer(SecurityUtils.getCurrentUserId(), id, officerId, req));
     }
@@ -119,12 +127,13 @@ public class TeamExtendedProfileController {
     /**
      * チームの役員を削除する。
      */
-    @DeleteMapping("/{id}/officers/{officerId}")
+    @DeleteMapping("/{publicId}/officers/{officerId}")
     @Operation(summary = "チーム役員削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteOfficer(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @PathVariable Long officerId) {
+        Long id = teamService.resolveTeamId(publicId);
         extendedProfileService.deleteOfficer(SecurityUtils.getCurrentUserId(), id, officerId);
         return ResponseEntity.noContent().build();
     }
@@ -132,12 +141,13 @@ public class TeamExtendedProfileController {
     /**
      * チームの役員表示順を並び替える。
      */
-    @PutMapping("/{id}/officers/reorder")
+    @PutMapping("/{publicId}/officers/reorder")
     @Operation(summary = "チーム役員並び替え")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "並び替え成功")
     public ResponseEntity<Void> reorderOfficers(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @Valid @RequestBody TeamReorderRequest req) {
+        Long id = teamService.resolveTeamId(publicId);
         extendedProfileService.reorderOfficers(SecurityUtils.getCurrentUserId(), id, req);
         return ResponseEntity.noContent().build();
     }
@@ -149,12 +159,13 @@ public class TeamExtendedProfileController {
     /**
      * チームのカスタムフィールド一覧を取得する。
      */
-    @GetMapping("/{id}/custom-fields")
+    @GetMapping("/{publicId}/custom-fields")
     @Operation(summary = "チームカスタムフィールド一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TeamCustomFieldResponse>>> getCustomFields(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @RequestParam(required = false, defaultValue = "false") boolean visibilityPreview) {
+        Long id = teamService.resolveTeamId(publicId);
         return ResponseEntity.ok(
                 extendedProfileService.getCustomFields(SecurityUtils.getCurrentUserId(), id, visibilityPreview));
     }
@@ -162,12 +173,13 @@ public class TeamExtendedProfileController {
     /**
      * チームにカスタムフィールドを追加する。
      */
-    @PostMapping("/{id}/custom-fields")
+    @PostMapping("/{publicId}/custom-fields")
     @Operation(summary = "チームカスタムフィールド追加")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<TeamCustomFieldResponse>> createCustomField(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @Valid @RequestBody CreateTeamCustomFieldRequest req) {
+        Long id = teamService.resolveTeamId(publicId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(extendedProfileService.createCustomField(SecurityUtils.getCurrentUserId(), id, req));
     }
@@ -175,13 +187,14 @@ public class TeamExtendedProfileController {
     /**
      * チームのカスタムフィールドを更新する。
      */
-    @PatchMapping("/{id}/custom-fields/{fieldId}")
+    @PatchMapping("/{publicId}/custom-fields/{fieldId}")
     @Operation(summary = "チームカスタムフィールド更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<TeamCustomFieldResponse>> updateCustomField(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @PathVariable Long fieldId,
             @Valid @RequestBody UpdateTeamCustomFieldRequest req) {
+        Long id = teamService.resolveTeamId(publicId);
         return ResponseEntity.ok(
                 extendedProfileService.updateCustomField(SecurityUtils.getCurrentUserId(), id, fieldId, req));
     }
@@ -189,12 +202,13 @@ public class TeamExtendedProfileController {
     /**
      * チームのカスタムフィールドを削除する。
      */
-    @DeleteMapping("/{id}/custom-fields/{fieldId}")
+    @DeleteMapping("/{publicId}/custom-fields/{fieldId}")
     @Operation(summary = "チームカスタムフィールド削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteCustomField(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @PathVariable Long fieldId) {
+        Long id = teamService.resolveTeamId(publicId);
         extendedProfileService.deleteCustomField(SecurityUtils.getCurrentUserId(), id, fieldId);
         return ResponseEntity.noContent().build();
     }
@@ -202,12 +216,13 @@ public class TeamExtendedProfileController {
     /**
      * チームのカスタムフィールド表示順を並び替える。
      */
-    @PutMapping("/{id}/custom-fields/reorder")
+    @PutMapping("/{publicId}/custom-fields/reorder")
     @Operation(summary = "チームカスタムフィールド並び替え")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "並び替え成功")
     public ResponseEntity<Void> reorderCustomFields(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @Valid @RequestBody TeamReorderRequest req) {
+        Long id = teamService.resolveTeamId(publicId);
         extendedProfileService.reorderCustomFields(SecurityUtils.getCurrentUserId(), id, req);
         return ResponseEntity.noContent().build();
     }

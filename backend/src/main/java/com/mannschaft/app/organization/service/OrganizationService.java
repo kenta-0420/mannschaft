@@ -38,6 +38,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 組織管理サービス（ファサード）。
@@ -117,15 +118,26 @@ public class OrganizationService {
     }
 
     /**
-     * 組織を取得する。
+     * 組織を publicId（URL公開ID）で取得する。
      *
      * <p>Phase 4-E: Valkey にて 10 分キャッシュ。更新・削除時に自動無効化される。</p>
      */
-    @Cacheable(value = "org-detail", key = "#orgId")
-    public ApiResponse<OrganizationResponse> getOrganization(Long orgId) {
-        OrganizationEntity org = findOrganizationOrThrow(orgId);
+    @Cacheable(value = "org-detail", key = "#publicId")
+    public ApiResponse<OrganizationResponse> getOrganization(UUID publicId) {
+        OrganizationEntity org = findOrganizationByPublicIdOrThrow(publicId);
+        Long orgId = org.getId();
         int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
         return ApiResponse.of(toResponse(org, memberCount));
+    }
+
+    /**
+     * publicId から内部 BIGINT ID を解決する（Controller から他の Service メソッドに渡す用）。
+     *
+     * @param publicId URL 公開用 UUID
+     * @return 内部 BIGINT ID
+     */
+    public Long resolveOrgId(UUID publicId) {
+        return findOrganizationByPublicIdOrThrow(publicId).getId();
     }
 
     /**
@@ -215,7 +227,7 @@ public class OrganizationService {
                 .map(org -> {
                     int memberCount = (int) userRoleRepository.countByOrganizationId(org.getId());
                     return new OrganizationSummaryResponse(
-                            org.getId(), org.getName(), org.getOrgType().name(),
+                            org.getPublicId(), org.getName(), org.getOrgType().name(),
                             org.getVisibility().name(), memberCount);
                 })
                 .toList();
@@ -321,6 +333,17 @@ public class OrganizationService {
                 .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
     }
 
+    /**
+     * publicId で組織を取得する。存在しない場合は 404 例外を投げる（IDOR 対策）。
+     *
+     * @param publicId URL 公開用 UUID
+     * @return 組織エンティティ
+     */
+    private OrganizationEntity findOrganizationByPublicIdOrThrow(UUID publicId) {
+        return organizationRepository.findByPublicId(publicId)
+                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
+    }
+
     private void checkNotArchived(OrganizationEntity org) {
         if (org.getArchivedAt() != null) {
             throw new BusinessException(OrgErrorCode.ORG_003);
@@ -329,7 +352,7 @@ public class OrganizationService {
 
     private OrganizationResponse toResponse(OrganizationEntity org, int memberCount) {
         return OrganizationResponse.builder()
-                .id(org.getId())
+                .id(org.getPublicId())
                 .basicInfo(new OrganizationResponse.OrgBasicInfoDto(
                         org.getName(), org.getNameKana(),
                         org.getNickname1(), org.getNickname2()))

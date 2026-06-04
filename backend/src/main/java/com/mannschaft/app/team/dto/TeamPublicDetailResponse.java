@@ -3,6 +3,7 @@ package com.mannschaft.app.team.dto;
 import com.mannschaft.app.team.entity.TeamEntity;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * F15.4 Phase 5: 店舗詳細ページ未ログイン公開用の <strong>抑制版</strong>レスポンス。
@@ -36,7 +37,7 @@ import java.time.LocalDate;
  * で JSON 文字列に禁則ワードが現れないことを継続的にチェックする。
  */
 public record TeamPublicDetailResponse(
-        Long id,
+        UUID id,
         String name,
         String nameKana,
         String nickname1,
@@ -65,7 +66,7 @@ public record TeamPublicDetailResponse(
      */
     public static TeamPublicDetailResponse from(TeamEntity entity) {
         return new TeamPublicDetailResponse(
-                entity.getId(),
+                entity.getPublicId(),
                 entity.getName(),
                 entity.getNameKana(),
                 entity.getNickname1(),
