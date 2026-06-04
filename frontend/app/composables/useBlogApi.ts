@@ -26,7 +26,15 @@ export function useBlogApi() {
 
   // === Public / Admin Blog Posts ===
   async function getPosts(params: Record<string, unknown>) {
-    const qs = buildQuery(params)
+    const mapped: Record<string, unknown> = { ...params }
+    if (mapped.scope_type === 'TEAM' && mapped.scope_id != null) {
+      mapped.teamId = mapped.scope_id
+    } else if (mapped.scope_type === 'ORGANIZATION' && mapped.scope_id != null) {
+      mapped.organizationId = mapped.scope_id
+    }
+    delete mapped.scope_type
+    delete mapped.scope_id
+    const qs = buildQuery(mapped)
     return api<{
       data: BlogPostResponse[]
       meta: { page: number; size: number; totalElements: number; totalPages: number }
