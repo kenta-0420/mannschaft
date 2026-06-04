@@ -139,36 +139,88 @@ void cancelAuthorization(UUID escrowId, String idempotencyKey);
 
 ---
 
-## 3.5 手数料折半の計算規約（5% ＝ 支払者2.5% + 受取側2.5%・マスター確定: 案あ）
+## 3.5 手数料の計算規約（ランク制・`fee_policies` 率%＋固定額¥・折半50/50固定・マスター確定 2026-06-04）
 
-謝礼・会費の双方に**共通**で適用する（`PaymentFeeCalculator` に一元化・散在禁止）。額面（`face_amount`）を入力とし、円ゼロデシマル・**四捨五入**で計算する。
+謝礼・会費・参加費の全てに**共通**で適用する（`PaymentFeeCalculator` に一元化・散在禁止）。**手数料は定数でなく `fee_policies`（率 `percent_rate`＋固定額 `flat_fee_minor`）で解決**し（README §3.4・01 §3.6/§3.7）、額面（`face_amount`）と解決した policy を入力に、円ゼロデシマル・**四捨五入**で計算する。
 
 ```
-face_amount            … 受取側が設定した額面（謝礼額/会費額）
-payer_surcharge        = round(face_amount × 0.025)        // 支払者上乗せ（2.5%）
-amount（課金額）        = face_amount + payer_surcharge       // Stripe へ渡す請求額
-application_fee_amount  = round(face_amount × 0.05)          // 総手数料（5%）= Mannschaft が徴収
-payee_transfer_amount  = amount − application_fee_amount     // 受取側送金額（≈ 額面−2.5%）
-stripe_fee（参考）      = round(amount × stripe_fee_rate)     // stripe_fee_rate 既定 0.036（設定値）
-mannschaft_net（参考）  = application_fee_amount − stripe_fee  // Mannschaft 純益 ≈ 額面の 1.31%
+// 入力: face_amount（額面）, policy = FeePolicyResolver で解決した fee_policies 行
+total_fee              = round(policy.percent_rate × face_amount) + policy.flat_fee_minor   // 総手数料（率分＋固定額分）
+half_fee               = round(total_fee ÷ 2)                                                // 折半（50/50固定）
+payer_surcharge        = half_fee                                                            // 支払者上乗せ（総手数料の半分）
+amount（課金額）        = face_amount + payer_surcharge                                        // Stripe へ渡す請求額
+application_fee_amount  = total_fee                                                           // 総手数料 = Mannschaft が徴収
+payee_transfer_amount  = amount − application_fee_amount                                      // 受取側送金額（= face − (total_fee − half_fee)）
+stripe_fee（参考）      = round(amount × stripe_fee_rate)                                       // stripe_fee_rate 既定 0.036（設定値）
+mannschaft_net（参考）  = application_fee_amount − stripe_fee                                    // Mannschaft 純益（参考）
 ```
 
-### 3.5.1 具体例（額面 10,000 円・JPY）
+> **PaymentFeeCalculator の改修方針（README §3.4・正典）**: 既存の定数 `PAYER_FEE_RATE=0.025`/`TOTAL_FEE_RATE=0.05` を**撤廃**し、**policy（`percent_rate`/`flat_fee_minor`）を引数注入して計算する純粋関数**へ変える。DB 参照（policy の解決）は呼出側（`FeePolicyResolver`・§3.5.1）の責務とし、`PaymentFeeCalculator` は純粋関数性（状態・外部依存なし）を維持する。**既存テスト（額面10,000→application_fee=500）は DEFAULT policy（率5%＋固定0）で完全不変**（後方互換）。
+
+### 3.5.1 手数料パターンの解決（`FeePolicyResolver`）
+
+`escrow_transactions` 起票（charge/与信/サブスク加入）時、source_kind＋任意 sub_key から適用パターンを解決し、`PaymentFeeCalculator` に渡す。解決した `policy_key` を `escrow_transactions.fee_policy_key`（遡及防止の焼き付け）に記録する。
+
+```java
+// payment.FeePolicyResolver（新規・P2-f）— DB 参照はここに閉じる（PaymentFeeCalculator は純粋関数のまま）
+FeePolicy resolve(EscrowSourceKind sourceKind, String subKey /* nullable・助っ人=recruitment_category 等 */);
+//   解決順序: ① (source_kind, sub_key) 完全一致 → ② (source_kind, sub_key=NULL) 既定 → ③ DEFAULT
+//   いずれも fee_policy_assignments.enabled かつ fee_policies.enabled を満たすもの。DEFAULT は終端（削除不可）
+```
+> `sub_key` の値域は source_kind ごとに異なる（例: `RECRUITMENT` の sub_key＝`recruitment_category` の値）。解決ロジックは本 Resolver に一箇所集約し、文字列直比較を散在させない。
+
+### 3.5.2 安全ガード（必須・少額決済の破綻防止）
+
+固定額（`flat_fee_minor`）混在時、少額の額面では「総手数料 > 額面」となり **Stripe `application_fee_amount ≤ amount` 制約違反**かつ「払った額より手数料が高い」破綻を招く。これを起票前に検証して拒否する（業務上の上限/下限キャップ自体は設けない）。
+
+```
+// 必須ガード（起票前）
+if (total_fee > face_amount) → reject(PAYMENT_C050 FEE_EXCEEDS_FACE_AMOUNT)
+// 同値: application_fee_amount(total_fee) ≤ amount(face + half_fee) は total_fee ≤ face で常に成立
+//       （half_fee ≥ 0 ゆえ face + half_fee ≥ face ≥ total_fee）→ chk_et_fee も自動充足
+```
+> - 「総手数料が額面を超えない」を必須不変条件とする（最低決済額の検証として表現してもよいが、固定額の存在ゆえ額面比較が確実）。
+> - 違反は握りつぶさず `ConnectPaymentErrorCode.PAYMENT_C050`（`ERROR_CODE_STATUS_MAP` 登録・422）で拒否し、管理者に「このパターンはこの額面に適用できない（固定額が大きすぎる）」と原因を返す（症状を隠さない・CLAUDE.md 根治原則）。
+> - シスアドが `fee_policies` 追加・割当時にも、当該 source_kind の想定最小額面に対し破綻しないかを警告できると望ましい（§11 の CRUD 応答に検証ヒントを含める余地）。
+
+### 3.5.3 テナント別上書きは作らない（将来拡張点）
+
+複雑なテナント別（organization_id 別）の手数料上書きは**今回は作らない**（器も設けない）。`fee_policy_assignments` は全テナント共通の source_kind＋sub_key 解決に留める。将来テナント別が必要になった場合の拡張点としてのみ言及（割当表に `organization_id` を足し解決順序に挟む等）。
+
+### 3.5.4 具体例 — DEFAULT（率5%＋固定0・額面 10,000 円・JPY）
+
+DEFAULT policy（`percent_rate=0.05`/`flat_fee_minor=0`）。total_fee＝`round(0.05×10,000)+0=500`、half_fee＝250。**旧 5% 折半と完全一致**（後方互換）。
 
 | 項目 | 金額 | 計算 | 記録先 |
 |---|---|---|---|
 | 額面（`face_amount`） | **10,000 円** | 受取側設定 | `escrow_transactions.face_amount` |
-| 支払手数料（2.5%上乗せ） | **+250 円** | `round(10,000 × 0.025)` | （`amount` に内包） |
+| 総手数料（DEFAULT 率5%＋固定0） | **500 円** | `round(0.05 × 10,000) + 0` | （`application_fee_amount`） |
+| 支払手数料（折半＝総手数料の半分） | **+250 円** | `round(500 ÷ 2)` | （`amount` に内包） |
 | **課金額（`amount`）** | **10,250 円** | 額面 + 支払手数料 | `escrow_transactions.amount`（Stripe 課金額） |
-| **総手数料（`application_fee_amount`）** | **500 円** | `round(10,000 × 0.05)` | `escrow_transactions.application_fee_amount` |
+| **総手数料（`application_fee_amount`）** | **500 円** | total_fee そのもの | `escrow_transactions.application_fee_amount` |
+| 適用パターン | **`DEFAULT`** | FeePolicyResolver | `escrow_transactions.fee_policy_key`（焼き付け） |
 | 受取側送金額 | **9,750 円** | 10,250 − 500 | `ledger_entries`(TRANSFER_OUT) |
 | Stripe 実手数料（≈3.6%・課金額基準） | **≈369 円** | `round(10,250 × 0.036)` | `ledger_entries`(FEE)・**Stripe Webhook の実額で記録** |
 | **Mannschaft 純益** | **≈131 円**（額面の ≈1.31%） | 500 − 369 | 日次照合で可視化（§6.3） |
 
-> - 受取側視点: 「額面 10,000 円 → 受取 9,750 円（−2.5%）」。支払者視点: 「額面 10,000 円 → 請求 10,250 円（+2.5%）」。
-> - **Stripe 実手数料はグロスアップ後の課金額（10,250 円）にかかる**ため、当初想定 1.4% より純益がわずかに低い（≈1.31%）。**マスター承認＝この純益で OK（案あ）**。
-> - `ledger_entries`(FEE) には**設定値の概算ではなく Stripe Webhook（`balance_transaction`）の実手数料**を記録し、日次照合で純益の微変動を可視化する（症状を隠さない・README §3.4 / §6.3）。
-> - `chk_et_fee: application_fee_amount(500) ≤ amount(10,250)` を充足。
+### 3.5.5 具体例 — 固定額入りパターン（率3%＋固定100円・額面 10,000 円）
+
+シスアド追加例 `policy_key='RECRUITMENT_HELPER'`（助っ人＝`recruitment_category` 割当・`percent_rate=0.03`/`flat_fee_minor=100`）。total_fee＝`round(0.03×10,000)+100=400`、half_fee＝200。
+
+| 項目 | 金額 | 計算 | 記録先 |
+|---|---|---|---|
+| 額面 | **10,000 円** | 受取側設定 | `face_amount` |
+| 総手数料（率3%＋固定100） | **400 円** | `round(0.03 × 10,000) + 100` | （`application_fee_amount`） |
+| 支払手数料（折半） | **+200 円** | `round(400 ÷ 2)` | （`amount` 内包） |
+| **課金額（`amount`）** | **10,200 円** | 額面 + 200 | `amount` |
+| **総手数料（`application_fee_amount`）** | **400 円** | total_fee | `application_fee_amount` |
+| 適用パターン | **`RECRUITMENT_HELPER`** | FeePolicyResolver | `fee_policy_key`（焼き付け） |
+| 受取側送金額 | **9,800 円** | 10,200 − 400 | `ledger_entries`(TRANSFER_OUT) |
+
+> - **安全ガード**: `total_fee(400) ≤ face(10,000)` で OK。仮に固定 1,000・率5%・額面 500 なら total_fee＝1,025 > 500 で `PAYMENT_C050` 拒否（§3.5.2）。
+> - **遡及防止**: `fee_policy_key='RECRUITMENT_HELPER'` を焼き付け、以後シスアドが当該パターンの率を改定しても本取引は 400 円のまま（README §3.4.2 / 01 §3.2）。
+> - `ledger_entries`(FEE) には設定値の概算でなく Stripe Webhook（`balance_transaction`）の実手数料を記録し純益の微変動を可視化（症状を隠さない・§6.3）。
+> - `chk_et_fee: application_fee_amount ≤ amount` は安全ガードにより常に充足。
 
 ---
 
@@ -211,13 +263,15 @@ RecruitmentListingEntity.incrementConfirmed() → RecruitmentConfirmedEvent 発�
 1. 札が payment_enabled か判定（FALSE なら何もしない）
 2. 受領主体の connect_accounts を解決（payee_kind/受領主体ID）
 3. payer の Stripe Customer 解決（既存 stripe_customers 再利用 or 新規 createCustomer）
-4. PaymentFeeCalculator で折半計算（face_amount=price → amount=額面+2.5%, application_fee=額面×5%・§3.5）
+4. FeePolicyResolver で policy 解決（source_kind=RECRUITMENT, sub_key=recruitment_category）→ PaymentFeeCalculator で計算
+   （face_amount=price → total_fee=round(percent×face)+flat, amount=額面+折半, application_fee=total_fee・§3.5）
+   ＋安全ガード（total_fee ≤ face・違反は PAYMENT_C050 で応募成立をロールバック・§3.5.2）
 5. StripePaymentProvider.createDestinationPaymentIntent(
-     amount=（額面+2.5%）, currency='jpy', capture_method='manual',   // エスクローモード
-     application_fee_amount=（額面×5%）, transfer_data.destination=acct_xxx, on_behalf_of=acct_xxx,
+     amount=（額面+折半上乗せ）, currency='jpy', capture_method='manual',   // エスクローモード
+     application_fee_amount=（total_fee）, transfer_data.destination=acct_xxx, on_behalf_of=acct_xxx,
      idempotency_key="escrow-{listingId}-{participantId}")
 6. escrow_transactions INSERT
-     (source_kind=RECRUITMENT, capture_mode=MANUAL, face_amount, amount, application_fee_amount,
+     (source_kind=RECRUITMENT, capture_mode=MANUAL, face_amount, amount, application_fee_amount, fee_policy_key,
       status=AUTHORIZED, authorized_at, hold_expires_at=now+最大7日)
    ├─ connect_accounts.payouts_enabled=false → status=HELD（capture 待ち）
    └─ ledger_entries(AUTHORIZE) 追記
@@ -228,12 +282,12 @@ RecruitmentListingEntity.incrementConfirmed() → RecruitmentConfirmedEvent 発�
 ```
 F08.2 会費支払い API → ConnectChargeService.createCharge(sourceKind=MEMBERSHIP, captureMode=AUTOMATIC, faceAmount=会費額)
 1. 受取側 connect_accounts を解決（チーム/組織の Connect・payee_kind=TEAM/ORG）
-2. PaymentFeeCalculator で折半計算（§3.5・謝礼と共通）
+2. FeePolicyResolver で policy 解決（source_kind=MEMBERSHIP）→ PaymentFeeCalculator で計算（§3.5・謝礼と共通）＋安全ガード
 3. StripePaymentProvider.createDestinationPaymentIntent(
-     amount=（額面+2.5%）, currency='jpy', capture_method='automatic',  // 即時モード＝即 capture
-     application_fee_amount=（額面×5%）, transfer_data.destination=acct_xxx, on_behalf_of=acct_xxx,
+     amount=（額面+折半上乗せ）, currency='jpy', capture_method='automatic',  // 即時モード＝即 capture
+     application_fee_amount=（total_fee）, transfer_data.destination=acct_xxx, on_behalf_of=acct_xxx,
      idempotency_key="membership-{memberPaymentId}")
-4. escrow_transactions INSERT (source_kind=MEMBERSHIP, capture_mode=AUTOMATIC,
+4. escrow_transactions INSERT (source_kind=MEMBERSHIP, capture_mode=AUTOMATIC, fee_policy_key,
      status=CAPTURED, captured_at=now, hold_expires_at=NULL)   // 与信フェーズなし・即 transfer
 5. ledger_entries(CAPTURE/TRANSFER_OUT/FEE) 追記
 ```
@@ -276,7 +330,11 @@ MarketFinalizeService / MarketFinalizeConfirmedListener:
 { "amount": 5000, "feeBearer": "PAYEE", "reason": "cancellation", "reasonDetail": "天候中止のため" }
 ```
 
-> **返金経済モデル＝feeBearer 2モード（マスター確定・2026-06-03）**: 受取側 scope の ADMIN が返金時に**手数料の負担者**を選択する。`amount`（精算額 R）は両モード共通で **transferAmount ベース**（残額管理・status 遷移・`refunds.amount`・`charge.refunded` webhook 確定はすべて R で行い整合させる）。額面 10,000 例（chargeAmount=10,250 / transferAmount=9,750 / application_fee=500 / Stripe 実手数料 ≈369）で**全額返金**後の各当事者の到達点:
+> **返金経済モデル＝feeBearer 2モード（マスター確定・2026-06-03）**: 受取側 scope の ADMIN が返金時に**手数料の負担者**を選択する。`amount`（精算額 R）は両モード共通で **transferAmount ベース**（残額管理・status 遷移・`refunds.amount`・`charge.refunded` webhook 確定はすべて R で行い整合させる）。
+>
+> **手数料ランク化との整合（2026-06-04）**: 返金計算は**保存済みの `amount`・`application_fee_amount` の差分**（transferAmount = amount − application_fee_amount）で行うため、**手数料が定数か `fee_policies`（率%＋固定額）かに依存しない（rate 非依存）＝ランクが可変でも整合する**。`chk_et_fee`（application_fee ≤ amount）は安全ガード（§3.5.2・total_fee ≤ face）により構造的に維持される。以下は **DEFAULT パターン**（率5%＋固定0）の例:
+>
+> 額面 10,000 例（chargeAmount=10,250 / transferAmount=9,750 / application_fee=500 / Stripe 実手数料 ≈369）で**全額返金**後の各当事者の到達点:
 >
 > | 当事者 | モードA＝`PAYER`（既定・支払者都合） | モードB＝`PAYEE`（受取側の落ち度/中止） |
 > |---|---|---|
@@ -374,6 +432,10 @@ R = 精算額（transferAmount ベース・null=残額全部）
 | `PAYMENT_030` | 409 | `ONBOARDING_NOT_READY`（払出時に payouts 不可・HELD 化で通常はエラーにしないが手動操作時の保険） |
 | `PAYMENT_040` | 400 | Webhook 署名検証失敗 |
 | `PAYMENT_041` | 409 | 与信失敗（Stripe 側エラー・カード拒否）。応募成立をロールバックし応募者へ通知 |
+| `PAYMENT_C050` | 422 | `FEE_EXCEEDS_FACE_AMOUNT`（安全ガード・総手数料 > 額面・固定額が大きすぎ・§3.5.2） |
+| `PAYMENT_C051` | 404 | `FEE_POLICY_NOT_FOUND`（シスアド CRUD で存在しない policy_key を参照・§11） |
+| `PAYMENT_C052` | 409 | `FEE_POLICY_DEFAULT_IMMUTABLE`（`DEFAULT` パターンの削除/無効化を拒否・解決の終端・§11） |
+| `PAYMENT_C053` | 422 | `FEE_POLICY_INVALID_RATE`（`percent_rate` が `[0,1)` 外・または率・固定額がともに 0 で手数料ゼロ） |
 
 > **実装注記（Connect 系コードの命名・P2-a 以降）**: 上表の `PAYMENT_011/013/040` 等の番号は<b>概念対応の設計記載</b>であり、実コードのエラーコード文字列とは一致しない。既存 `PaymentErrorCode`（`PAYMENT_001`〜`PAYMENT_027`）との<b>文字列衝突を回避</b>するため、Connect 系は別 enum `ConnectPaymentErrorCode` を新設し `PAYMENT_C0xx` 系（例: 署名検証失敗 = `PAYMENT_C040`）を採用した。後続フェーズ（P2-b 与信/P2-c 払出）も齟齬防止のため `ConnectPaymentErrorCode`（`PAYMENT_C0xx` 系）を継続使用すること。
 
@@ -440,3 +502,37 @@ record ConnectAccountInfo(boolean chargesEnabled, boolean payoutsEnabled, java.u
 - **JPY**: amount/application_fee=円整数で Stripe へ渡る（ゼロデシマル）。
 - **二重払出防止**: 並行 confirm（札行ロック直列化）で capture が 1 回のみ。
 - **台帳**: 各 escrow の借方=貸方検算。FEE は Stripe 実手数料で記録（純益可視化・§6.3）。
+- **手数料ランク（§3.5・P2-f）**: DEFAULT policy で額面10,000→application_fee=500/amount=10,250（既存テスト不変）。固定額入り（率3%＋固定100）で額面10,000→total_fee=400/amount=10,200/受取9,800。安全ガード境界（固定1,000・率5%・額面500→total_fee=1,025 > 500 で `PAYMENT_C050`）。解決順序（完全一致→source_kind既定→DEFAULT）。**遡及防止**（charge 後に policy 率を改定しても焼き付けた `fee_policy_key` の率で固定）。`PaymentFeeCalculator` は純粋関数（policy 注入）・DB 参照は `FeePolicyResolver`。
+
+---
+
+## 11. シスアド手数料パターン管理（`/system-admin/fee-policies`・P2-f）
+
+手数料パターン（`fee_policies`）と割当（`fee_policy_assignments`）を**システム管理者が随時 CRUD** する。既存 `SystemAdminNavFeaturesController` と同型（`@PreAuthorize` SYSTEM_ADMIN・`{policyKey}` 自然キー）。
+
+| # | メソッド/パス | 用途 | 認可 |
+|---|---|---|---|
+| 1 | `GET /api/v1/system-admin/fee-policies` | パターン一覧（率・固定額・enabled・割当数） | SYSTEM_ADMIN |
+| 2 | `GET /api/v1/system-admin/fee-policies/{policyKey}` | パターン詳細 | SYSTEM_ADMIN |
+| 3 | `POST /api/v1/system-admin/fee-policies` | パターン新規（policyKey/displayName/percentRate/flatFeeMinor/description） | SYSTEM_ADMIN |
+| 4 | `PUT /api/v1/system-admin/fee-policies/{policyKey}` | パターン更新（率・固定額・enabled・説明）。**改定は新規徴収のみ反映**（遡及しない・§3.5.5） | SYSTEM_ADMIN |
+| 5 | `DELETE /api/v1/system-admin/fee-policies/{policyKey}` | パターン無効化（`enabled=false`・**`DEFAULT` は不可** `PAYMENT_C052`） | SYSTEM_ADMIN |
+| 6 | `GET /api/v1/system-admin/fee-policy-assignments` | 割当一覧（source_kind＋sub_key → policy_key） | SYSTEM_ADMIN |
+| 7 | `POST /api/v1/system-admin/fee-policy-assignments` | 割当作成（sourceKind/subKey?/policyKey） | SYSTEM_ADMIN |
+| 8 | `DELETE /api/v1/system-admin/fee-policy-assignments/{id}` | 割当解除（論理削除） | SYSTEM_ADMIN |
+
+**Request（パターン作成 #3）**
+```json
+{ "policyKey": "RECRUITMENT_HELPER", "displayName": "助っ人募集（率3%＋固定100円）",
+  "percentRate": 0.03, "flatFeeMinor": 100, "description": "助っ人 recruitment_category 向け" }
+```
+**Request（割当作成 #7・助っ人＝recruitment_category）**
+```json
+{ "sourceKind": "RECRUITMENT", "subKey": "helper", "policyKey": "RECRUITMENT_HELPER" }
+```
+
+**検証・エラー**
+- `percentRate` ∈ [0,1)・かつ `percentRate>0 || flatFeeMinor>0`（手数料ゼロ禁止）でなければ `PAYMENT_C053`（422）。
+- 存在しない policyKey 参照は `PAYMENT_C051`（404）。`DEFAULT` の削除/無効化は `PAYMENT_C052`（409）。
+- 作成/更新応答に**安全ガードの想定検証ヒント**（当該 source_kind の想定最小額面に対し total_fee ≤ face が成立するか・§3.5.2）を含めると、シスアドが固定額の付けすぎを事前に把握できる（推奨）。
+- 操作は監査ログ（既存 `AuditLogService`・料率改定は監査対象）。i18n（管理画面文言・04 §6 に `systemAdmin.feePolicy.*` 骨子）。

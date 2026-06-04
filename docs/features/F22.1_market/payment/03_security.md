@@ -3,6 +3,8 @@
 > 親: [README.md](README.md) ／ 関連: [01_data_model.md](01_data_model.md) / [02_api_design.md](02_api_design.md)
 >
 > **統一基盤・正典更新（2026-06-03）**: 謝礼＋会費を共通 `ConnectChargeService` に集約／手数料 5% を支払者2.5%・受取側2.5%で折半／**返金は受取側 scope ADMIN が操作**（運営非関与・支払者負担モデル＝decouple＝明示 TransferReversal＋`reverse_transfer:false` の Refund・`refund_application_fee:false`・Mannschaft±0/受取側±0）／決済手数料は支払者負担で返金されない（利用規約・決済画面で明示・§10 / 02 §6.1）。
+>
+> **手数料ランク化・正典更新（2026-06-04）**: 手数料を定数5%から **マスタ表 `fee_policies`（率%＋固定額¥）のランク制**へ（折半50/50固定・DEFAULT=率5%＋固定0で後方互換）。**シスアド CRUD は SYSTEM_ADMIN 限定**（§3）。少額決済の「総手数料>額面」破綻を防ぐ**安全ガード必須**（§3'-11e・`PAYMENT_C050`）。レートは `escrow_transactions.fee_policy_key` に焼き付け**遡及防止**（§3'-11f）。
 
 ---
 
@@ -43,6 +45,7 @@
 | 会費徴収（即時モード） | **会員本人**（自己支払い） | F08.2 既存の会費支払い認可に委譲。内部で `ConnectChargeService` を呼ぶ（02 §5.1b） |
 | エスクロー状態照会 | 受取側 scope ADMIN ＋ **受領者本人** | 受領者は自分宛の払出のみ閲覧可。無関係 scope は 404 |
 | Webhook | permitAll ＋ **署名検証** | §2 |
+| **手数料パターン CRUD（`fee_policies`/割当）** | **SYSTEM_ADMIN のみ** | `/api/v1/system-admin/fee-policies*`（@PreAuthorize SYSTEM_ADMIN・02 §11）。テナント管理者・一般ユーザーは不可。`DEFAULT` の削除/無効化は拒否（`PAYMENT_C052`）。料率改定は監査ログ |
 | KYC 審査落ち（RESTRICTED） | — | payouts 不可なら札の謝礼を実質無効化（HELD・72h 後取消）＋札主へ通知（02 §5.2） |
 
 ---
@@ -128,7 +131,9 @@ CLAUDE.md の退会 PII 二段モデル（即時消去/30日猶予）に整合�
 - [x] **8. 二重払出** → 札行 `PESSIMISTIC_WRITE` ＋ Stripe idempotency_key ＋ webhook event_id UNIQUE の三重防御（§2・02 §5.3）。
 - [x] **9. IDOR（escrow/connect の他人参照）** → scope 所有権検証・404 秘匿（§4）。
 - [x] **10. Webhook 許可リスト** → 既存 `/webhooks/stripe/*` で被覆。baseline §3.6 に明記（§2.1）。
-- [x] **11. 手数料率（確定: 案あ）** → **総 5%（額面）を支払者2.5%・受取側2.5%で折半**。`application_fee_amount=round(額面×0.05)`、`amount=額面+round(額面×0.025)`。`stripe_fee_rate` 既定 0.036（設定値）。純益 ≈ 額面の1.31%（マスター承認・README §3.4 / 02 §3.5）。
+- [x] **11. 手数料率（確定: 案あ＝DEFAULT・2026-06-04 ランク化）** → **手数料はマスタ表 `fee_policies`（率%＋固定額¥）で持ち折半50/50固定**。DEFAULT＝率5%＋固定0＝旧「総5%折半」と完全一致（後方互換）。source_kind＋sub_key で `FeePolicyResolver` が解決（完全一致→既定→DEFAULT）。`escrow_transactions.fee_policy_key` に焼き付け遡及防止。`PaymentFeeCalculator` は定数撤廃→policy 注入の純粋関数。`stripe_fee_rate` 既定 0.036（純益試算・参考）。シスアド CRUD は SYSTEM_ADMIN 限定（README §3.4 / 01 §3.6/§3.7 / 02 §3.5/§11）。
+- [x] **11e. 手数料の安全ガード（少額破綻防止）** → 固定額混在で「総手数料 > 額面」になると `application_fee ≤ amount` 違反＋破綻。起票前に **total_fee ≤ face を必須検証**し違反は `PAYMENT_C050`（422・ERROR_CODE_STATUS_MAP 登録）で拒否（業務上限/下限キャップは無し・症状を隠さない・02 §3.5.2）。
+- [x] **11f. 料率改定の遡及防止** → charge/与信/サブスク加入時に解決した `policy_key`・算出金額を escrow（`fee_policy_key`）/membership_subscriptions に焼き付け。`fee_policies` 改定は新規徴収のみ反映・既存取引は固定（README §3.4.2 / 01 §3.2）。**F22.1 突合（返金 feeBearer 2モード）は保存済み amount−application_fee の差分計算ゆえ rate 非依存＝ランク可変でも整合**（02 §6.1）。`chk_et_fee` は安全ガードにより構造維持。
 - [x] **11b. 返金の操作主体・方式（確定: 設定A・支払者負担モデル 2026-06-03）** → 受取側 scope ADMIN が操作（運営非関与）・**decouple 方式＝明示 TransferReversal(R)＋`reverse_transfer:false` の Refund(R)**・`refund_application_fee:false`・支払者へ戻すのは transferAmount（決済手数料・支払上乗せは非返還で支払者負担・Mannschaft±0/受取側±0）・利用規約/決済画面で明示（§10 / 02 §6.1）。
 - [x] **11c. 受取側残高不足のマイナス残高** → Stripe 自動回収・Mannschaft 請求なし（§6・立替しない）。
 - [x] **11d. 統一基盤化（謝礼＋会費）** → 共通 `ConnectChargeService`・2モード（即時/エスクロー）・`source_kind=MEMBERSHIP` 追加。会費は P2-e で F08.2 から本基盤へ移行（README §1.0 / §8.1）。
@@ -142,7 +147,7 @@ CLAUDE.md の退会 PII 二段モデル（即時消去/30日猶予）に整合�
 
 すべて充足済み。
 
-- [x] マスター御裁可（受領者札ごと選択・案A・**手数料5%折半=案あ・返金=設定A・統一基盤化**）が DDL/API に反映されている（README §1.0/§3.3〜§3.5・01 §3.2/§4.1・02 §0/§3.5/§5/§6）。
+- [x] マスター御裁可（受領者札ごと選択・案A・**手数料折半=案あ＝DEFAULT・返金=設定A・統一基盤化・手数料ランク化（`fee_policies`）・受取人で二分する統一アーキ原則**）が DDL/API に反映されている（README §1.0/§3.0/§3.3〜§3.5・01 §3.2/§3.6/§3.7/§4.1・02 §0/§3.5/§5/§6/§11）。
 - [x] §3' 未解決事項が全件解決方針確定（[x]）。税務のみ別建て論点として明示（[ ] のまま意図的に保留）。
 - [x] DB 原則適合（01 §7）：クロスドメインFK禁止・CASCADE 同一ドメイン内・新規UUIDv7・テナント Repository。疎結合（ApplicationEvent）・@Query 内コメント厳禁（実装原則）。
 - [x] PCI（SAQ-A）・Webhook 署名＋冪等・IDOR・GDPR/退会・資金移動業回避・**手数料非返還の規約/画面明示**が網羅されている（§10）。

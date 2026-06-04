@@ -1,8 +1,8 @@
 # F22.1 市（Market）— 統一決済プラットフォーム（Stripe Connect・謝礼＋会費共通基盤）
 
-> **ステータス**: 🟢 設計確定（実装: P2-a 完了/main済・P2-b 以降未着手）
+> **ステータス**: 🟢 設計確定（実装: P2-a/P2-b/P2-c 完了・main済／手数料ランク化＝本設計で正典化・実装未着手）
 > **実装フェーズ**: Phase 2 後半（謝礼＝札主→応じ手・会費＝会員→チーム/組織 を **1つの共通 Connect 送金基盤** で扱う統一決済プラットフォーム）
-> **最終更新**: 2026-06-03
+> **最終更新**: 2026-06-04
 > **親機能**: [F22.1 市](../README.md)（Phase 2「将来の謝礼決済」の本設計）／統一基盤として [F08.2 支払い・アクセス制御](../../F08.2_payments_access_control.md) の会費徴収も本基盤へ移行
 
 ---
@@ -18,6 +18,11 @@
 > - **C. 返金はチーム/組織 ADMIN が操作**（運営非関与）・Stripe `reverse_transfer:true` ＋ `refund_application_fee:false`（設定A）。決済手数料は返金されない。
 > - **D. 決済確認画面に手数料内訳を明示**・受取側設定画面に受取額（額面−2.5%）を表示・i18n 6言語・利用規約明記。
 > - **E. ロードマップ更新**（§6）。
+>
+> **【正典更新・2026-06-04】統一決済アーキ原則の正典化＋手数料ランク化（マスター承認済・合同軍議／精緻化軍議確定）**
+> 合同軍議・精緻化軍議の確定事項を正典として反映した。詳細は §3.0（統一アーキ原則）／§3.4（手数料ランク `fee_policies`）。
+> - **A0. 受取人で二分する統一アーキ原則**: **第三者（チーム/組織/個人）受取の集金は全て本 Connect レール**（destination charge・受取側直接着金・資金移動業回避・手数料 application_fee）。**Mannschaft 自社受取（例: F09.13 通知クレジット）のみ素 Checkout 可**。F08.2 の素 Checkout 全廃は「第三者受取からの撤去」であって自社受取は残置（Expand→Migrate→Contract）。F08.7.1 大会/リーグ参加費は第三者受取なのに素 Checkout＝**暫定**、後続で Connect 移行（§3.0.1）。
+> - **B0. 手数料は「率(%)＋固定額(¥)」をマスタ表 `fee_policies` で持つ（旧: 5% 定数を撤廃）**。負担は **折半50/50固定**（総手数料＝`percent_rate×face ＋ flat_fee` を支払者・受取側で半分ずつ）。**DEFAULT パターン＝率5%＋固定0円**＝既存挙動と完全一致（後方互換）。他パターンはシスアドが随時 CRUD 追加し source_kind＋任意 sub_key（助っ人＝recruitment_category 等）で割当・解決。少額決済で「総手数料 > 額面」になる破綻を防ぐ**安全ガード**を必須化。`PaymentFeeCalculator` を定数撤廃→policy 注入計算へ。レートは charge/加入時に解決した `fee_policy_key` と金額を escrow に焼き付け（遡及防止）。`/api/v1/system-admin/fee-policies` でシスアド CRUD。
 
 | ファイル | 内容 |
 |---|---|
@@ -41,8 +46,11 @@ Mannschaft の「個人・チーム・組織への送金が伴う決済」を、
 |---|---|---|---|---|
 | **謝礼**（F22.1） | `RECRUITMENT` | 札主 → 応じ手（個人/チーム/組織） | **エスクローモード**（手動キャプチャ） | P2-b/P2-c |
 | **会費徴収**（F08.2） | `MEMBERSHIP` | 会員 → チーム/組織 | **即時モード**（即 capture） | P2-e |
+| **大会/リーグ参加費**（F08.7.1・暫定は素 Checkout） | `TOURNAMENT` | 参加チーム → 主催組織 | 即時モード（移行後）| 後続（§3.0.1） |
 | スキマバイト謝礼（F13.1・将来） | `JOBMATCHING` | 発注者 → ワーカー | エスクロー（相乗り） | 別軍議 |
 | フリマ（将来） | `FLEAMARKET` | 買い手 → 売り手 | 別軍議 | 別軍議 |
+
+> `source_kind` は手数料ランク（§3.4）の解決キーも兼ねる（RECRUITMENT / MEMBERSHIP / TOURNAMENT / JOBMATCHING / FLEAMARKET ＋任意 sub_key）。`TOURNAMENT` は F08.7.1 参加費の Connect 移行（§3.0.1）に備えた確保。
 
 > **会費専用の決済基盤は作らない**。F08.2 の会費徴収は本統一基盤（`source_kind=MEMBERSHIP`）へ集約・移行する（§8 / [F08.2](../../F08.2_payments_access_control.md) 相互参照）。
 
@@ -83,7 +91,7 @@ Mannschaft の「個人・チーム・組織への送金が伴う決済」を、
 - [x] **会費徴収（会員→チーム/組織）の本基盤集約** — 出所 `source_kind=MEMBERSHIP`・即時モード（P2-e）
 - [x] **受領者（Stripe Connect アカウント主体）を札ごとに「個人 / 所属チーム / 所属組織」から選択**（マスター御裁可）
 - [x] Connect アカウントの onboarding（個人＝本人 / チーム・組織＝scope ADMIN）
-- [x] **手数料 5% を支払者2.5%・受取側2.5%で折半**（§3.4・案あ確定）
+- [x] **手数料ランク制（`fee_policies`・率%＋固定額¥・折半50/50固定）**（§3.4・DEFAULT＝率5%＋固定0＝旧「総5%折半」と完全一致・後方互換）。安全ガード・遡及防止焼き付け・シスアド CRUD 含む
 - [x] 部分返金・全額返金・与信取消（authorization cancel）— **チーム/組織 ADMIN が操作**・Stripe `reverse_transfer:true`/`refund_application_fee:false`（§3.5・設定A）
 - [x] Webhook 冪等性（`stripe_webhook_events` による event_id 一意制約）
 - [x] 複式記帳の台帳（`ledger_entries`）骨格・Stripe 実手数料を `FEE` に記録し日次照合
@@ -107,6 +115,30 @@ Mannschaft の「個人・チーム・組織への送金が伴う決済」を、
 ---
 
 ## 3. 設計の前提（マスター御裁可・絶対）
+
+### 3.0 統一決済アーキ原則 ＝ 受取人で二分する（合同軍議確定・正典）
+
+Mannschaft の全決済（集金）は **受取人が誰か** で二分し、レールを使い分ける。これが統一決済アーキの第一原理である。
+
+| 受取人 | 例 | レール | 根拠 |
+|---|---|---|---|
+| **第三者**（チーム / 組織 / 個人） | 謝礼（F22.1）・会費（F08.2/F08.9）・大会参加費（F08.7.1）・協会→チーム請求（F08.9 §6）・スキマバイト謝礼（F13.1 将来）・フリマ（将来） | **本 F22.1 Connect レール（destination charge）** | 受取側へ**直接着金**し Mannschaft の口座を経由しない＝**資金移動業回避**。手数料は `application_fee` で徴収（§3.1 / 03 §6） |
+| **Mannschaft 自社**（自社が役務提供者＝受取人） | F09.13 通知クレジット購入 等 | **素 Checkout 可**（Connect 不要） | 自社売上＝第三者送金が発生しない。資金移動業に該当しないため Connect を経由する必要がない |
+
+**判定基準**: 「集金した金が**最終的に Mannschaft 以外の主体へ渡る**」なら第三者受取＝Connect 必須。「集金した金が**Mannschaft の売上として留まる**」なら自社受取＝素 Checkout 可。
+
+> **F08.2 素 Checkout の「全廃」は、正しくは「第三者受取からの撤去」**である。会費・参加費等の第三者受取は本 Connect 基盤へ移行するが、**自社受取（通知クレジット等）は素 Checkout のまま残置**する。移行は **Expand→Migrate→Contract**（新レール並走→移行→旧レール撤去）の順で行い、一斉切替はしない（README §8.1 / F08.2 相互参照）。
+
+#### 3.0.1 F08.7.1 大会/リーグ参加費 ＝ 第三者受取なのに素 Checkout（暫定・後続 Connect 移行）
+
+[F08.7.1 大会費用支払い](../../F08.7.1_tournament_extensions/07_tournament_payment.md) は大会参加費を **主催組織（＝第三者）受取** で集金するが、現状は F08.2 の**素 Checkout（自社集金・主催組織の Stripe アカウント直課金）** で実装されている。これは §3.0 の統一アーキ原則に照らすと**第三者受取なのに Connect を使っていない＝原則違反**である。
+
+ただし F08.7.1 は **FE 実装済・E2E 進行中**のため、即時の Connect 載せ替えはリスクが高い。よって**二段移行**とする:
+
+1. **暫定（現行）**: 素 Checkout のまま出荷を完遂する（既存の FE/E2E を壊さない）。F08.7.1 §4 の「Stripe Connect 実装は対象外」は**この暫定段階の記述**として読み替える（恒久方針ではない）。
+2. **後続（Connect 移行）**: 統一基盤（本 P2-e 相当）の安定後、`source_kind=TOURNAMENT`（新規・§3.4 の手数料ランク `TOURNAMENT` と対応）で本 Connect レールへ載せ替える。`tournament_fee` 連結はそのまま、money rail のみ `escrow_transactions(source_kind=TOURNAMENT)` へ差し替える。
+
+> F08.7.1 設計書側にも本「暫定→後続 Connect 移行」の格下げ注記を追記済み（F08.7.1 07 §0 / §4）。手数料ランク表（§3.4）に `TOURNAMENT` を含めることで、移行時に参加費専用の手数料パターンを割当できる余地を残す。
 
 ### 3.1 推奨方式 ＝ 案A: Destination Charge + 手動キャプチャ
 
@@ -143,28 +175,61 @@ Mannschaft の「個人・チーム・組織への送金が伴う決済」を、
 - 会費専用の決済台帳は作らない。将来 F13.1 スキマバイト謝礼（`JOBMATCHING`）も同基盤に相乗りできるよう `source_kind` で拡張する。
 - 資金は **Stripe Connect ダイレクトチャージで受取側口座へ直接**入金され、**Mannschaft は資金を保持しない**（資金移動業リスク回避・§3.1 / 03 §6）。
 
-### 3.4 手数料 ＝ 5% を支払者2.5%・受取側2.5%で折半（マスター確定: 案あ）
+### 3.4 手数料 ＝ ランク制（`fee_policies` マスタ・率%＋固定額¥・折半50/50固定）（マスター確定・精緻化軍議）
 
-- **総手数料 = 額面 × 5%**（内訳: Stripe 約3.6% ＋ Mannschaft 1.4%相当）。
-- **支払者**: 額面に **+2.5% を上乗せして課金**（額面10,000円 → 請求10,250円）。
-- **受取側**: 額面から **−2.5% 差引いて受取**（額面10,000円 → 受取9,750円）。
-- `application_fee_amount = round(額面 × 0.05)`（10,000円なら500円）。受取送金額 = 課金額 − `application_fee_amount`。
-- **四捨五入・円ゼロデシマル**。`escrow_transactions.application_fee_amount` に確定額を記録（`chk_et_fee: application_fee_amount ≤ amount` を充足）。`stripe_fee_rate` は設定値（既定 0.036・`mannschaft.payment.stripe-fee-rate`）。
-- **Mannschaft 純益 ≈ 額面の 1.31%**: Stripe 実手数料はグロスアップ後の課金額（10,250円）にかかるため、当初の 1.4% よりわずかに低い。**マスター承認＝この純益で OK（案あ）**。純益の微変動は `ledger_entries`(FEE) に Stripe 実手数料を記録し日次照合で可視化する（症状を隠さない・CLAUDE.md 根治原則）。
+> **【正典更新・2026-06-04】定数 5% を撤廃しランク制へ**。手数料を「率(`percent_rate` %)＋固定額(`flat_fee_minor` ¥)」の**マスタ表 `fee_policies`** で持ち、機能/種別ごとにパターンを割当できるようにした。**DEFAULT パターン＝率5%＋固定0円**で既存挙動と完全一致（後方互換）。詳細スキーマは [01_data_model §3.6](01_data_model.md)、計算規約は [02_api_design §3.5](02_api_design.md)。
 
-#### 3.4.1 手数料の具体例（額面 10,000 円・JPY ゼロデシマル）
+#### 3.4.1 手数料の構成（率＋固定額・折半固定）
+
+- **総手数料 = `percent_rate × face_amount ＋ flat_fee_minor`**（率分＋固定額分）。`percent_rate` は `DECIMAL`、`flat_fee_minor` は固定額（円・最小単位）。
+- **負担は折半 50/50 固定**（マスター確定）:
+  - **支払者**は `face_amount ＋ round(総手数料 ÷ 2)` を請求される（額面＋総手数料の半分を上乗せ）。
+  - **受取側**は `face_amount − round(総手数料 ÷ 2)` を受領する（額面から総手数料の半分を差引）。
+  - `application_fee_amount = 総手数料`（Mannschaft が徴収する全額）。受取送金額 = 課金額 − `application_fee_amount`。
+- **四捨五入・円ゼロデシマル**。`escrow_transactions.application_fee_amount` に確定額を記録（`chk_et_fee: application_fee_amount ≤ amount` を充足）。`stripe_fee_rate` は設定値（既定 0.036・`mannschaft.payment.stripe-fee-rate`）で純益試算に用いる（参考値）。
+- **純益の可視化**: `ledger_entries`(FEE) に Stripe 実手数料を記録し日次照合で純益の微変動を可視化する（症状を隠さない・CLAUDE.md 根治原則）。
+
+#### 3.4.2 `fee_policies` マスタ表とパターン解決（概要）
+
+- **マスタ表 `fee_policies`**（自然キー `policy_key`・CLAUDE.md マスタ例外＝税率表と同型）: `policy_key` / `display_name` / `percent_rate DECIMAL` / `flat_fee_minor INT`(固定額・円) / `enabled` / `description`。スキーマ詳細は [01 §3.6](01_data_model.md)。
+- **DEFAULT パターン**＝`percent_rate=0.05`・`flat_fee_minor=0`（＝現状の折半5%＋固定0円・既存挙動不変）。
+- **割当・解決**: `source_kind`（RECRUITMENT / MEMBERSHIP / TOURNAMENT / JOBMATCHING / FLEAMARKET）＋任意 `sub_key`（**助っ人＝recruitment_category** 等）でパターンを解決する。解決順序は **完全一致（source_kind＋sub_key）→ source_kind 既定 → DEFAULT**。複雑なテナント別上書きは作らない（将来拡張点としてのみ言及・[02 §3.5.3](02_api_design.md)）。
+- **シスアド CRUD**: `/api/v1/system-admin/fee-policies`（@PreAuthorize SYSTEM_ADMIN・`{policyKey}` 自然キー）＋割当 CRUD で随時パターン追加。[02 §11](02_api_design.md) / [03 §3](03_security.md)。
+- **遡及防止（レート固定）**: charge/与信/サブスク加入時に解決した `policy_key` と算出金額を `escrow_transactions.fee_policy_key`（**新規列**・[01 §3.2](01_data_model.md)）/ `membership_subscriptions` に**焼き付ける**。料率改定（`fee_policies` の更新）は**新規徴収のみに反映**し、既存取引・既存サブスクは焼き付けた料率で固定する。
+
+#### 3.4.3 手数料の具体例 — DEFAULT（率5%＋固定0円・額面 10,000 円・JPY ゼロデシマル）
+
+DEFAULT パターン（`percent_rate=0.05`/`flat_fee_minor=0`）では総手数料＝`0.05×10,000 + 0 = 500`。折半 250/250。**旧 5% 折半モデルと完全一致**（後方互換）。
 
 | 項目 | 金額 | 計算 |
 |---|---|---|
-| 額面（謝礼/会費） | **10,000 円** | 受取側が設定した謝礼額/会費額 |
-| 支払手数料（2.5%） | **+250 円** | `round(10,000 × 0.025)` |
-| **お支払い合計（課金額）** | **10,250 円** | 額面 + 支払手数料 |
-| `application_fee_amount`（総手数料 5%） | **500 円** | `round(10,000 × 0.05)` |
+| 額面（謝礼/会費） | **10,000 円** | 受取側が設定した額面 |
+| 総手数料（DEFAULT 率5%＋固定0） | **500 円** | `round(0.05 × 10,000) + 0` |
+| 支払手数料（総手数料の半分） | **+250 円** | `round(500 ÷ 2)` |
+| **お支払い合計（課金額 `amount`）** | **10,250 円** | 額面 + 支払手数料 |
+| `application_fee_amount`（総手数料） | **500 円** | 総手数料そのもの |
 | 受取側送金額 | **9,750 円** | 課金額 10,250 − application_fee 500 |
 | Stripe 実手数料（≈3.6%・課金額基準） | **≈369 円** | `round(10,250 × 0.036)` |
 | **Mannschaft 純益** | **≈131 円**（額面の ≈1.31%） | application_fee 500 − Stripe 369 |
 
-> 受取側から見ると「額面 10,000 円 → 受取 9,750 円（−2.5%）」、支払者から見ると「額面 10,000 円 → 請求 10,250 円（+2.5%）」。合計手数料 500 円（額面の 5%）を双方が折半する。
+> 受取側「額面 10,000 → 受取 9,750（−250）」、支払者「額面 10,000 → 請求 10,250（+250）」。総手数料 500 を双方が折半。
+
+#### 3.4.4 手数料の具体例 — 固定額入りパターン（率3%＋固定100円・額面 10,000 円）
+
+シスアドが追加する例: `policy_key='RECRUITMENT_HELPER'`（助っ人募集 sub_key=recruitment_category）に `percent_rate=0.03`・`flat_fee_minor=100` を割当てた場合。総手数料＝`round(0.03×10,000) + 100 = 300 + 100 = 400`。折半 200/200。
+
+| 項目 | 金額 | 計算 |
+|---|---|---|
+| 額面 | **10,000 円** | 受取側が設定した額面 |
+| 総手数料（率3%＋固定100） | **400 円** | `round(0.03 × 10,000) + 100` |
+| 支払手数料（総手数料の半分） | **+200 円** | `round(400 ÷ 2)` |
+| **お支払い合計（課金額 `amount`）** | **10,200 円** | 額面 + 支払手数料 |
+| `application_fee_amount`（総手数料） | **400 円** | 総手数料そのもの |
+| 受取側送金額 | **9,800 円** | 課金額 10,200 − application_fee 400 |
+
+> **既存 `JobFeeCalculator`（F13.1・10%＋100円）の統合は将来**（本設計では非統合）: jobmatching ドメインの `JobFeeCalculator` は「率＋固定額」を既に持つため、本 `fee_policies`（率%＋固定額¥）の器でそのまま表現可能（`percent_rate=0.10`・`flat_fee_minor=100`・`source_kind=JOBMATCHING` 割当）。ただし F13.1 の決済自体が未実装ゆえ、**本設計では `JobFeeCalculator` の統合は行わない**（将来 F13.1 が本基盤に相乗りする際に `fee_policies` へ移行する余地としてのみ記す）。
+
+> **安全ガード（必須・少額決済の破綻防止）**: 固定額（`flat_fee_minor`）が混在すると、少額の額面では「総手数料 > 額面」になり得る（例: 固定100円・率5%・額面 1,000 円なら総手数料＝150 円は OK だが、固定 1,000 円・額面 500 円では総手数料 1,025 円 > 額面 500 円で破綻）。これは Stripe の `application_fee_amount ≤ amount` 制約違反かつ「払った額より手数料が高い」破綻を招く。**「総手数料が額面を超えない」検証（または最低決済額の検証）を必須ガードとする**（業務上の上限/下限キャップ自体は設けない）。違反時はエラーコード（`ConnectPaymentErrorCode` 系・`PAYMENT_C0xx`・`ERROR_CODE_STATUS_MAP` 登録）で拒否し、症状を隠さない。詳細は [02 §3.5.2](02_api_design.md) / [03 §3](03_security.md)。
 
 ### 3.5 返金（マスター確定: 設定A）
 
@@ -241,10 +306,11 @@ F13.1（短期業務マッチング）の決済は **enum/コメントのみで�
 | フェーズ | 範囲 | 規模 | 状態 | モデル | test-first |
 |---|---|---|---|---|---|
 | **P2-a 基盤** | `connect_accounts` / Connect onboarding（個人/チーム/組織）/ `stripe_webhook_events` 冪等性 / `ledger_entries` 骨格 / `StripePaymentProvider` Connect メソッド追加 | **L** | ✅ **完了（main 済）** | opus4.8 | ○ |
-| **P2-b 共通送金サービス＋謝礼与信** | **共通 `ConnectChargeService`（2モード基盤）** / 応募成立時の与信（`incrementConfirmed()` フック）/ `escrow_transactions` AUTHORIZED / **手数料折半（5%＝支払者2.5%+受取側2.5%）の計算** / 受領者 onboarding 未完了時の払出保留（HELD） | **M** | 未着手 | opus4.8 | ○（与信→AUTHORIZED 状態遷移UT・手数料計算UT・保留フロー契約テスト先行） |
-| **P2-c 謝礼払出＋返金** | 最終認証時 capture+transfer（`MarketFinalize` フック・札行ロック直下）/ **返金（受取側 ADMIN 操作・`reverse_transfer:true`/`refund_application_fee:false`）** / 与信取消 / エスクロー自動 capture バッチ | **L** | 未着手 | opus4.8 | ○（capture 原子性・二重払出防止・返金 reverse_transfer のUT先行） |
-| **P2-e 会費 Connect 化** | 会費徴収（会員→チーム/組織）を本基盤に集約（`source_kind=MEMBERSHIP`・即時モード `capture_method=automatic`）。F08.2 のプラットフォーム集金から Connect ダイレクトチャージへ移行 | **M** | 未着手 | opus4.8 | ○（即時モード CAPTURED 状態UT・手数料折半UT先行） |
-| **P2-d フリマ／FE・E2E／parking 統合** | `source_kind=FLEAMARKET` 接続・FE（onboarding/受領主体/手数料内訳/受取額表示）・E2E・**parking の Connect 資産統合**（**別軍議**） | ― | 別軍議 | FE=sonnet/opus・E2E=opus4.8 | △（BE 契約確定後・FE/E2E は後） |
+| **P2-b 共通送金サービス＋謝礼与信** | **共通 `ConnectChargeService`（2モード基盤）** / 応募成立時の与信（`incrementConfirmed()` フック）/ `escrow_transactions` AUTHORIZED / **手数料折半計算（`PaymentFeeCalculator`）** / 受領者 onboarding 未完了時の払出保留（HELD） | **M** | ✅ **完了（main 済・V73.003）** | opus4.8 | ○（与信→AUTHORIZED 状態遷移UT・手数料計算UT・保留フロー契約テスト先行） |
+| **P2-c 謝礼払出＋返金** | 最終認証時 capture+transfer（`MarketFinalize` フック・札行ロック直下）/ **返金（受取側 ADMIN 操作・`reverse_transfer:true`/`refund_application_fee:false`）** / 与信取消 / エスクロー自動 capture バッチ | **L** | ✅ **完了（main 済）** | opus4.8 | ○（capture 原子性・二重払出防止・返金 reverse_transfer のUT先行） |
+| **P2-e 会費 Connect 化** | 会費徴収（会員→チーム/組織）を本基盤に集約（`source_kind=MEMBERSHIP`・即時モード `capture_method=automatic`）。F08.2 のプラットフォーム集金から Connect ダイレクトチャージへ移行（即時 `charge()` は F08.9 P1 Wave0 で追加・main 済） | **M** | ✅ **P1 着手済（main 済・F08.9 §3）** | opus4.8 | ○（即時モード CAPTURED 状態UT・手数料折半UT先行） |
+| **P2-f 手数料ランク化（`fee_policies`）** | `fee_policies` マスタ表（率%＋固定額¥）/ source_kind＋sub_key 割当・解決 / `PaymentFeeCalculator` 定数撤廃→policy 注入 / 安全ガード（総手数料≤額面）/ `escrow_transactions.fee_policy_key` 焼き付け（遡及防止）/ シスアド CRUD `/system-admin/fee-policies` | **M** | 未着手（**本設計で正典化**） | opus4.8 | ○（DEFAULT で既存テスト不変・固定額パターン UT・安全ガード境界 UT・遡及防止 UT 先行） |
+| **P2-d フリマ／FE・E2E／parking・大会参加費 Connect 移行** | `source_kind=FLEAMARKET` 接続・FE（onboarding/受領主体/手数料内訳/受取額表示）・E2E・**parking の Connect 資産統合**・**F08.7.1 参加費の `source_kind=TOURNAMENT` Connect 移行**（§3.0.1）（**別軍議**） | ― | 別軍議 | FE=sonnet/opus・E2E=opus4.8 | △（BE 契約確定後・FE/E2E は後） |
 
 > test-first 適用方針（memory `feedback_test_first_be_api`）: **BE 全フェーズ opus・BE ドメイン UT ＋ API 契約テストは実装より前に本設計から書く**。FE/E2E は後。各 Phase の規模は S/M/L で示す。
 
@@ -271,12 +337,15 @@ F13.1（短期業務マッチング）の決済は **enum/コメントのみで�
 | `F22.1_market/README.md` §1 対応表 | 「将来の謝礼決済 ← F13.1 ✅実装済（委譲フックのみ）」を**是正**（実態=F13.1決済は未実装・設計図のみ流用）。正しい表記＝「設計図を流用し市が独自に決済基盤を構築（本サブ設計）」へ |
 | `F13.1_short_term_job_matching/README.md` | 「F22.1 が F13.1 の資金フロー設計図を流用し、市向けに独自の決済基盤を構築する」相互参照を追記（最小） |
 | `F03.11_recruitment_listing.md` | 関連ドキュメントに本設計（謝礼決済の接続先）を相互参照（最小） |
-| [`F08.2_payments_access_control.md`](../../F08.2_payments_access_control.md) | **会費徴収は F22.1 統一 Connect 基盤（`ConnectChargeService`・`source_kind=MEMBERSHIP`・即時モード）へ移行予定**であることを相互参照で追記（現状はプラットフォーム集金）。**本 PR で追記済**（§8.1） |
+| [`F08.2_payments_access_control.md`](../../F08.2_payments_access_control.md) | **会費徴収は F22.1 統一 Connect 基盤（`ConnectChargeService`・`source_kind=MEMBERSHIP`・即時モード）へ移行予定**であることを相互参照で追記（現状はプラットフォーム集金・第三者受取からの撤去）。**本 PR で追記済**（§8.1） |
+| [`F08.7.1_tournament_extensions/07_tournament_payment.md`](../../F08.7.1_tournament_extensions/07_tournament_payment.md) | 大会/リーグ参加費＝**第三者受取なのに素 Checkout＝暫定・後続で `source_kind=TOURNAMENT` で Connect 移行**の格下げ注記（§3.0.1）。F08.7.1 07 §0.1/§4 に反映済 |
 | `docs/security/01_authorization_baseline.md` §3.6 | Connect Webhook は**既存 `POST /api/v1/webhooks/stripe/*`（1階層 `*`）許可で被覆済**であることを明記（`/webhooks/stripe/connect` は新規許可不要・§03_security §2） |
 
 ### 8.1 会費徴収（F08.2）の統一基盤移行
 
-[F08.2 支払い・アクセス制御](../../F08.2_payments_access_control.md) は現状、会費・月謝等を **Mannschaft 自社の Stripe アカウントへプラットフォーム集金**する方式（`member_payments` + 自社 Checkout）。本統一基盤の確定により、会費徴収（会員→チーム/組織）は **P2-e で本 `ConnectChargeService`（`source_kind=MEMBERSHIP`・即時モード・Connect ダイレクトチャージ）へ移行**し、**チーム/組織が直接受領**（自社口座非経由＝資金移動業リスク回避）する。移行時の `payment_items`/`member_payments` と `escrow_transactions` のマッピングは P2-e 軍議で確定する。
+[F08.2 支払い・アクセス制御](../../F08.2_payments_access_control.md) は現状、会費・月謝等を **Mannschaft 自社の Stripe アカウントへプラットフォーム集金**する方式（`member_payments` + 自社 Checkout）。本統一基盤の確定により、**第三者受取**（会費＝会員→チーム/組織・参加費＝チーム→主催組織 等）は **P2-e で本 `ConnectChargeService`（`source_kind=MEMBERSHIP`/`TOURNAMENT`・即時モード・Connect ダイレクトチャージ）へ移行**し、**チーム/組織が直接受領**（自社口座非経由＝資金移動業リスク回避）する。移行時の `payment_items`/`member_payments` と `escrow_transactions` のマッピングは P2-e 軍議で確定する。
+
+> **「全廃」の正確な意味＝第三者受取からの撤去**（§3.0）: F08.2 の素 Checkout を一律全廃するのではなく、**第三者受取のみ Connect へ移行**する。**Mannschaft 自社受取（F09.13 通知クレジット購入 等）は素 Checkout のまま残置**する。移行は Expand→Migrate→Contract（新レール並走→移行完了→旧レール撤去）の順とし一斉切替はしない。F08.7.1 大会参加費は第三者受取だが FE 実装済のため**暫定で素 Checkout 出荷を完遂し後続で Connect 移行**する（§3.0.1）。
 
 > 📘 **会費側の上位設計**: `source_kind=MEMBERSHIP` を消費する会員決済の上位機能（払い手≠受益者・後見切替・ペイウォール・継続課金 Subscription＋invoice 上書き・協会→チーム請求・領収書/税からくり）は [F08.9 会員決済・後見つきマルチ受益者・ペイウォール・継続課金](../../F08.9_membership_billing_paywall/README.md) で設計する。本基盤（P2-b：`ConnectChargeService`/`PaymentFeeCalculator`/`face_amount`/`capture_mode`、P2-e：`EscrowSourceKind.MEMBERSHIP`）は F08.9 P1 の前提依存。継続課金で各 invoice の `application_fee_amount` を固定上書きする要件（率→固定額）と `connect_accounts` への税登録番号列追加も F08.9 由来。
 
@@ -297,7 +366,8 @@ F13.1（短期業務マッチング）の決済は **enum/コメントのみで�
 - [x] 通貨 JPY ゼロデシマル → `amount` は**最小単位=円そのもの**（JPY は decimal 桁数 0）。`currency` 列で明示し、Stripe へは円整数で渡す（01 §3 備考）
 - [x] 退会時の資金 → 係争中/与信中の資金は**強匿名化の30日猶予側**（CLAUDE.md PII二段モデル）。Connect 切離しは払出/返金完了後（03 §5）
 - [ ] **税務（所得区分・源泉徴収・支払調書・インボイス）** → **税理士確認の別建て論点**として明示（03 §3 / 本書 §2.2）。設計内で確定しない
-- [x] **手数料率（確定: 案あ）** → **総 5%（額面）を支払者2.5%・受取側2.5%で折半**。`application_fee_amount = round(額面 × 0.05)`。`stripe_fee_rate` は設定値（既定 0.036）。Mannschaft 純益 ≈ 額面の 1.31%（マスター承認済）。具体例表＝§3.4.1 / 02 §3.5
+- [x] **手数料率（確定: 案あ＝DEFAULT・2026-06-04 ランク化）** → **手数料はマスタ表 `fee_policies`（率%＋固定額¥）で持ち折半50/50固定**。DEFAULT＝率5%＋固定0円＝旧「総5%折半」と完全一致（後方互換）。他パターンはシスアドが source_kind＋sub_key で割当。少額決済の「総手数料>額面」破綻を防ぐ**安全ガード必須**。レートは escrow `fee_policy_key` に焼き付け遡及防止。具体例＝§3.4.3（DEFAULT）/§3.4.4（固定額入り）/ 01 §3.6 / 02 §3.5 / §11
+- [x] **統一決済アーキ原則（確定: 受取人で二分）** → 第三者受取（チーム/組織/個人）は全て本 Connect レール／Mannschaft 自社受取（通知クレジット等）のみ素 Checkout 可（§3.0）。F08.2 素 Checkout 全廃＝第三者受取からの撤去（自社受取残置・Expand→Migrate→Contract）。F08.7.1 大会参加費は第三者受取なのに素 Checkout＝暫定・後続 Connect 移行（§3.0.1）
 - [x] **返金の操作主体・方式（確定: 設定A）** → 受取側 scope ADMIN が操作（運営非関与）・Stripe `reverse_transfer:true`/`refund_application_fee:false`・決済手数料は返金されない（§3.5 / 03 §3）
 - [x] **会費徴収の本基盤集約（確定）** → `source_kind=MEMBERSHIP`・即時モード・P2-e で F08.2 から移行（§1.0 / §8.1）
 
@@ -308,6 +378,8 @@ F13.1（短期業務マッチング）の決済は **enum/コメントのみで�
 - [F22.1 市 本体](../README.md)（札の実体・最終認証・札行ロックの正典）
 - [F13.1 短期業務マッチング](../../F13.1_short_term_job_matching/README.md)（資金フロー設計図の流用元・実装は未着手）
   - 特に [`03_ui_payment.md`](../../F13.1_short_term_job_matching/03_ui_payment.md) §8 Stripe Connect 統合
+- [F08.7.1 大会費用支払い](../../F08.7.1_tournament_extensions/07_tournament_payment.md)（大会/リーグ参加費＝第三者受取・暫定は素 Checkout・後続で `source_kind=TOURNAMENT` で本基盤へ Connect 移行・§3.0.1）
+- [F08.9 会員決済・ペイウォール・継続課金](../../F08.9_membership_billing_paywall/README.md)（`source_kind=MEMBERSHIP` の上位機能・払い手分離/サブスク/協会請求/立替記録）
 - F03.11 募集機能（札の状態遷移・`payment_enabled`/`price` の出自）
 - `docs/security/01_authorization_baseline.md`（permitAll 許可リスト・Webhook 署名検証）
 - `docs/architecture/withdrawal_flow_immediate_anonymization_fix.md`（退会 PII 二段モデル）
@@ -319,4 +391,5 @@ F13.1（短期業務マッチング）の決済は **enum/コメントのみで�
 | 日付 | 変更内容 |
 |------|---------|
 | 2026-06-02 | 初版作成（軍議・家老偵察反映・2周精査完了・🟢設計確定/実装未着手）。案A（Destination Charge + 手動キャプチャ）採用。受領者を札ごとに個人/チーム/組織選択（`payee_kind`/`connect_accounts.scope_kind`）。既存 payment 資産を Connect 層で増築。F13.1 設計図を市向けに流用（受領主体が個人前提→札ごと選択へ差分化）。税務は税理士確認の別建て論点として明示 |
+| 2026-06-04 | **統一決済アーキ原則の正典化＋手数料ランク化（マスター承認済・合同軍議/精緻化軍議）**。(A0) **受取人で二分する統一アーキ原則**（第三者受取＝全て Connect レール／Mannschaft 自社受取のみ素 Checkout 可・F08.2 全廃＝第三者受取からの撤去・Expand→Migrate→Contract）を §3.0 に正典化。F08.7.1 大会参加費＝第三者受取なのに素 Checkout＝暫定・後続 `source_kind=TOURNAMENT` で Connect 移行を §3.0.1 に明記（F08.7.1 07 §0/§4 へ格下げ注記）。(B0) **手数料を定数5%から `fee_policies` マスタ（率%＋固定額¥）のランク制へ**（§3.4）。折半50/50固定・DEFAULT=率5%＋固定0円（後方互換）・source_kind+sub_key 割当解決・少額破綻の安全ガード必須・`escrow_transactions.fee_policy_key` 焼き付けで遡及防止・シスアド CRUD。具体例＝§3.4.3（DEFAULT）/§3.4.4（固定額入り）。`source_kind` に `TOURNAMENT` 追加。ロードマップに P2-f（手数料ランク化）追加、P2-b/c 完了・P2-e P1 着手済を反映。ステータス＝🟢 設計確定（P2-a/b/c 完了・手数料ランク化は本設計で正典化・実装未着手） |
 | 2026-06-03 | **統一決済プラットフォームモデルへ正典更新（マスター承認済）**。(A) 謝礼＋会費を共通 `ConnectChargeService`（2モード・即時/エスクロー）に集約、`EscrowSourceKind` に `MEMBERSHIP` 追加。(B) 手数料 5% を支払者2.5%・受取側2.5%で折半（案あ確定）・具体例表追加（§3.4.1）・Mannschaft 純益 ≈1.31%。(C) 返金は受取側 ADMIN 操作・`reverse_transfer:true`/`refund_application_fee:false`（設定A）・決済手数料非返還。(D) 決済確認画面の手数料内訳表示・受取側設定画面の受取額表示・i18n 6言語・利用規約明記。(E) ロードマップ更新（P2-a完了/P2-b共通送金+謝礼与信/P2-c謝礼払出+返金/P2-e会費Connect化/P2-d フリマ・FE・parking 別軍議）。(F) 旧「受取側が手数料全額負担」記述を 2.5%折半に訂正・F08.2/parking 相互参照追記。ステータス＝🟢設計確定（実装: P2-a完了/P2-b以降未着手） |

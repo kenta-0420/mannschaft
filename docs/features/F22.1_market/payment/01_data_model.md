@@ -25,8 +25,11 @@
 | `ledger_entries` | 複式記帳台帳（取引ごとの借方/貸方・残高） | `payment.escrow` | なし（追記専用） | UUIDv7 |
 | `refunds` | 返金記録（部分/全額） | `payment.escrow` | なし | UUIDv7 |
 | `stripe_webhook_events` | Webhook 冪等性キー（event_id 一意） | `payment`（共通） | なし（TTL 物理削除） | UUIDv7 |
+| `fee_policies` | **手数料パターンのマスタ表**（率%＋固定額¥・自然キー `policy_key`） | `payment`（共通） | なし（`enabled` で無効化） | **自然キー `policy_key`**（マスタ例外） |
+| `fee_policy_assignments` | 手数料パターンの割当（source_kind＋任意 sub_key → policy_key） | `payment`（共通） | あり（`deleted_at`） | UUIDv7 |
 
-> `source_kind` で RECRUITMENT（謝礼・市）/ **MEMBERSHIP（会費・F08.2）** / JOBMATCHING（F13.1 将来）/ FLEAMARKET（フリマ将来）を**1テーブルで束ねる**（統一決済プラットフォーム・README §1.0）。P2-b/P2-c が接続するのは RECRUITMENT（エスクローモード）、P2-e が MEMBERSHIP（即時モード）。JOBMATCHING/FLEAMARKET は値だけ確保（転用点）。会費専用台帳は作らない。
+> `source_kind` で RECRUITMENT（謝礼・市）/ **MEMBERSHIP（会費・F08.2）** / **TOURNAMENT（大会参加費・F08.7.1 移行後）** / JOBMATCHING（F13.1 将来）/ FLEAMARKET（フリマ将来）を**1テーブルで束ねる**（統一決済プラットフォーム・README §1.0）。P2-b/P2-c が接続するのは RECRUITMENT（エスクローモード）、P2-e が MEMBERSHIP（即時モード）。TOURNAMENT/JOBMATCHING/FLEAMARKET は値だけ確保（転用点）。会費専用台帳は作らない。
+> **手数料ランク化（README §3.4・正典 2026-06-04）**: 手数料は定数でなく `fee_policies`（マスタ・率%＋固定額¥）で持ち、`fee_policy_assignments` で source_kind＋任意 sub_key に割当てる。`escrow_transactions.fee_policy_key` に適用パターンを焼き付け遡及防止（§3.2 / §3.6）。`fee_policies` は **CLAUDE.md「マスタテーブル例外」**（全テナント共通の参照データ・書込はシスアド運用のみ）として**自然キー `policy_key`**（UUIDv7 不要）で設計する。割当表 `fee_policy_assignments` はテナント横断の運用データだが行が増えるため UUIDv7 とする。
 
 ---
 
@@ -86,7 +89,8 @@ INDEX idx_ca_payouts (payouts_enabled)
 | `face_amount` | INT UNSIGNED | NO | — | **額面**（受取側が設定した謝礼額/会費額・円整数・最小単位）。手数料計算の基準。`amount = face_amount + round(face_amount × 0.025)` |
 | `amount` | INT UNSIGNED | NO | — | **課金額（支払者請求額＝額面+2.5%上乗せ）**（**JPY＝円整数**・最小単位）。額面 10,000 円なら `amount=10,250`（README §3.4.1）。Stripe へ渡す金額 |
 | `currency` | CHAR(3) | NO | `'JPY'` | ISO 4217 |
-| `application_fee_amount` | INT UNSIGNED | NO | 0 | **総プラットフォーム手数料 = `round(face_amount × 0.05)`**（円整数・README §3.4）。受領者送金額 = `amount - application_fee_amount`（額面10,000円なら 10,250 − 500 = 9,750）。`chk_et_fee: application_fee_amount ≤ amount` を充足 |
+| `application_fee_amount` | INT UNSIGNED | NO | 0 | **総プラットフォーム手数料**（円整数・README §3.4）。`fee_policies` で解決した `percent_rate × face_amount + flat_fee_minor` の確定額（DEFAULT＝率5%＋固定0なら額面10,000で500）。受領者送金額 = `amount - application_fee_amount`。`chk_et_fee: application_fee_amount ≤ amount` を充足（安全ガード・README §3.4.4） |
+| `fee_policy_key` | VARCHAR(40) | NO | `'DEFAULT'` | **適用した手数料パターンの自然キー**（`fee_policies.policy_key` 論理参照・遡及防止の焼き付け）。charge/与信時に解決した値を記録し、以後 `fee_policies` を改定しても本取引の料率は固定（README §3.4.2）。既定 `DEFAULT`（率5%＋固定0・後方互換） |
 | `status` | VARCHAR(20) | NO | `'AUTHORIZED'` | 状態（下表）。**ENUM ではなく VARCHAR**（拡張容易性・既存 payment と整合）。即時モード（MEMBERSHIP）は INSERT 時 `CAPTURED` |
 | `authorized_at` | DATETIME | YES | NULL | 与信成立日時（UTC） |
 | `captured_at` | DATETIME | YES | NULL | capture（払出確定）日時（UTC） |
@@ -219,6 +223,61 @@ INDEX idx_swe_received (received_at)  -- TTL 物理削除バッチ用（保持�
 
 ---
 
+### 3.6 `fee_policies`（手数料パターンのマスタ表・率%＋固定額¥）
+
+手数料を「率(`percent_rate`)＋固定額(`flat_fee_minor`)」のパターンとして持つ**マスタ表**（README §3.4）。**CLAUDE.md「マスタテーブル例外」**に該当する（全テナント共通の参照データ・書込はシスアド運用のみ・税率表と同型）ため、**主キーは自然キー `policy_key`**（UUIDv7 不要）とする。
+
+| カラム名 | 型 | NULL | デフォルト | 説明 |
+|---|---|---|---|---|
+| `policy_key` | VARCHAR(40) | NO | — | **PK・自然キー**（例 `DEFAULT` / `RECRUITMENT_HELPER` / `MEMBERSHIP_STANDARD`）。`escrow_transactions.fee_policy_key` の焼き付け参照先 |
+| `display_name` | VARCHAR(80) | NO | — | 管理画面表示名（i18n キーでなく管理者向け表示名・直接表示は管理 UI のみ） |
+| `percent_rate` | DECIMAL(6,4) | NO | — | 総手数料の率（例 `0.0500`＝5%・`0.0300`＝3%）。`0 ≤ percent_rate < 1` |
+| `flat_fee_minor` | INT UNSIGNED | NO | 0 | 総手数料の固定額（円・最小単位）。`0` で率のみ |
+| `enabled` | BOOLEAN | NO | TRUE | 無効化フラグ（無効パターンは新規割当・解決から除外。既存焼き付け取引には影響しない） |
+| `description` | VARCHAR(500) | YES | NULL | 補足説明（運用メモ） |
+| `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
+| `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | 料率改定時刻（改定は新規徴収のみに反映・遡及しない＝§3.2 焼き付け） |
+
+**制約・インデックス・シード**
+```sql
+PRIMARY KEY (policy_key)
+CONSTRAINT chk_fp_percent CHECK (percent_rate >= 0 AND percent_rate < 1)
+-- 固定 ID/自然キーのマスタ表ゆえ organization_id を持たない（全テナント共通）
+
+-- 初期シード（DEFAULT＝率5%＋固定0＝既存挙動と完全一致・後方互換）
+INSERT INTO fee_policies (policy_key, display_name, percent_rate, flat_fee_minor, enabled, description)
+VALUES ('DEFAULT', '標準（率5%・折半）', 0.0500, 0, TRUE, '既定の手数料パターン。総手数料=額面×5%、支払者・受取側で折半');
+```
+> - **総手数料 = `round(percent_rate × face_amount) + flat_fee_minor`**。負担は折半 50/50 固定（README §3.4.1・支払者は `face + round(総手数料/2)`、受取側は `face − round(総手数料/2)`、`application_fee_amount = 総手数料`）。
+> - **DEFAULT は削除不可**（解決のフォールバック終端）。シスアドは新パターンの追加・既存パターンの率/固定額/enabled 更新を行う（§3.7 で source_kind＋sub_key に割当）。
+> - **料率改定は新規徴収のみ反映**（既存取引・既存サブスクは `escrow_transactions.fee_policy_key`/`membership_subscriptions` に焼き付けた値で固定・§3.2・README §3.4.2）。
+
+### 3.7 `fee_policy_assignments`（手数料パターンの割当）
+
+source_kind（＋任意 sub_key）に対しどの `fee_policies` を適用するかの割当（README §3.4.2）。テナント横断の運用データで行が増えるため **UUIDv7**。
+
+| カラム名 | 型 | NULL | デフォルト | 説明 |
+|---|---|---|---|---|
+| `id` | BINARY(16) | NO | (UUIDv7) | PK |
+| `source_kind` | VARCHAR(12) | NO | — | `RECRUITMENT`/`MEMBERSHIP`/`TOURNAMENT`/`JOBMATCHING`/`FLEAMARKET`（解決キー） |
+| `sub_key` | VARCHAR(40) | YES | NULL | 任意の細分キー（**助っ人＝`recruitment_category` 値**等）。NULL＝source_kind の既定割当 |
+| `policy_key` | VARCHAR(40) | NO | — | 適用する `fee_policies.policy_key`（論理参照） |
+| `enabled` | BOOLEAN | NO | TRUE | 割当の有効/無効 |
+| `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
+| `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
+| `deleted_at` | DATETIME | YES | NULL | 論理削除 |
+
+**制約・インデックス**
+```sql
+CONSTRAINT chk_fpa_source_kind CHECK (source_kind IN ('RECRUITMENT','MEMBERSHIP','TOURNAMENT','JOBMATCHING','FLEAMARKET'))
+-- (source_kind, sub_key) ごとに 1 アクティブ割当（NULL sub_key は source_kind 既定）。論理削除を加味しアプリ層で重複防止
+UNIQUE KEY uk_fpa_target (source_kind, sub_key, deleted_at)
+INDEX idx_fpa_policy (policy_key)
+```
+> **解決順序（README §3.4.2）**: ① `(source_kind, sub_key)` 完全一致 → ② `(source_kind, sub_key IS NULL)` source_kind 既定 → ③ `DEFAULT`。いずれも `enabled=TRUE`・`deleted_at IS NULL` かつ参照先 `fee_policies.enabled=TRUE` を満たすものに限る（解決ロジックは `FeePolicyResolver`・02 §3.5.1）。複雑なテナント別上書きは作らない（将来拡張点・02 §3.5.3）。
+
+---
+
 ## 4. 既存テーブルへの最小拡張
 
 ### 4.1 `recruitment_listings`（札ごとの受領主体）
@@ -272,17 +331,17 @@ INDEX idx_rl_payee_user (payee_user_id);
 
 > **版番号の鉄則**（memory `feedback_flyway_version_sort_after_global_max`）: 全体最大の**次の major** を採る。`V9.<timestamp>` 形式は V10〜V72 より前にソートされ from-scratch を壊す**罠＝採用禁止**。
 
-- **現状の最大版番号は `V73.002`**（2026-06-03 時点・`db/migration` 実測）。P2-a 基盤（`connect_accounts`/`stripe_webhook_events`/`ledger_entries` 骨格）は main マージ済のため、以下は **P2-b 以降の追加 DDL** を示す。
-- 新規 DDL は **`V73.003` 以降**を前提に記述する（同一 major V73 系列の末尾に積む。次 major V74 でも可）。
-- **着手時に必ず `origin/main` の最大版番号を再確認し、衝突しない番号へリネームする**（並行PRでズレるため。from-scratch 番人テストが検知）。
+- **実装済（main）**: P2-a 基盤（`V72.004`〜`V72.009`）＋統一基盤化 ALTER（`V73.003`＝`escrow_transactions` への `source_kind=MEMBERSHIP`/`capture_mode`/`face_amount` 追加）＋F08.9 P1（`V74.001` 等）はすべて main マージ済（2026-06-04 実測 `db/migration`）。以下は **手数料ランク化（P2-f）に伴う追加 DDL** を示す。
+- 新規 DDL は **着手時に `origin/main` の最大版番号を再確認し、衝突しない次番号へ確定**する（並行PRでズレるため・from-scratch 番人テストが検知）。下表は **仮番号**（`V75.xxx` 系を想定するが着手時に再確認）。
 
 | 版番号（着手時再確認） | 内容 |
 |---|---|
-| `V73.003`（仮・P2-b） | `escrow_transactions` に `source_kind` へ `MEMBERSHIP` 追加（CHECK 差替）・`capture_mode`・`face_amount` 列追加（既存 P2-a テーブルへの ALTER） |
-| `V73.004`（仮・P2-c） | 返金記録列の補強（必要時）・`refunds` の reason 拡張 |
-| `V73.005`（仮・P2-e） | 会費集約のための索引・`source_id` の会費参照対応（必要時） |
+| `V75.001`（仮・P2-f） | `fee_policies` マスタ表 CREATE（自然キー `policy_key`）＋ `DEFAULT`（率5%＋固定0）シード |
+| `V75.002`（仮・P2-f） | `fee_policy_assignments` CREATE（UUIDv7・source_kind＋sub_key → policy_key） |
+| `V75.003`（仮・P2-f） | `escrow_transactions` に `fee_policy_key VARCHAR(40) NOT NULL DEFAULT 'DEFAULT'` 追加（既存行は DEFAULT で後方互換・遡及防止の焼き付け列） |
+| `V75.004`（仮・将来） | `escrow_transactions.source_kind` CHECK に `TOURNAMENT` 追加（F08.7.1 Connect 移行時・§2 / README §3.0.1） |
 
-> P2-a（`connect_accounts`/`escrow_transactions`/`ledger_entries`/`refunds`/`stripe_webhook_events` の CREATE、`recruitment_listings` 拡張）は完了・main 済。本表は統一基盤化（MEMBERSHIP/capture_mode/face_amount）に伴う **追加 ALTER** を示す。テーブル作成順の FK 依存（`escrow_transactions` → `ledger_entries`/`refunds`）は P2-a で確定済。
+> P2-a（CREATE 群）＋ V73.003（統一基盤化 ALTER）は完了・main 済。本表は手数料ランク化（`fee_policies`/`fee_policy_assignments`/`fee_policy_key`）に伴う **追加 DDL** を示す。`fee_policies` はマスタ例外ゆえ自然キー、割当・焼き付けは非破壊（既存行は `fee_policy_key='DEFAULT'`＝既存挙動不変）。テーブル作成順の FK 依存（`escrow_transactions` → `ledger_entries`/`refunds`）は P2-a で確定済。`fee_policies`/`fee_policy_assignments` は payment ドメイン内だが他テーブルと FK を張らない（焼き付けは論理参照＝改定で過去取引が壊れない不変性優先）。
 
 ---
 
@@ -307,9 +366,23 @@ erDiagram
         BINARY16 payee_connect_account_id "論理参照→connect_accounts"
         VARCHAR32 stripe_payment_intent_id UK "pi_xxx"
         INT face_amount "額面 JPY整数"
-        INT amount "課金額=額面+2.5% JPY整数"
-        INT application_fee_amount "総手数料=額面x5%"
+        INT amount "課金額=額面+折半上乗せ JPY整数"
+        INT application_fee_amount "総手数料(fee_policies解決)"
+        VARCHAR40 fee_policy_key "適用パターン焼付(遡及防止)"
         VARCHAR20 status
+    }
+    fee_policies {
+        VARCHAR40 policy_key PK "自然キー(マスタ例外)"
+        VARCHAR80 display_name
+        DECIMAL percent_rate "率"
+        INT flat_fee_minor "固定額(円)"
+        BOOLEAN enabled
+    }
+    fee_policy_assignments {
+        BINARY16 id PK
+        VARCHAR12 source_kind
+        VARCHAR40 sub_key "助っ人=recruitment_category 等"
+        VARCHAR40 policy_key "→fee_policies"
     }
     ledger_entries {
         BINARY16 id PK
@@ -343,10 +416,12 @@ erDiagram
     escrow_transactions ||--o{ refunds : "FK CASCADE (同一ドメイン)"
     escrow_transactions }o..|| connect_accounts : "論理参照 (payee)"
     escrow_transactions }o..|| recruitment_listings : "論理参照 (source・クロスドメイン)"
+    escrow_transactions }o..|| fee_policies : "fee_policy_key 焼付 (論理参照・遡及防止)"
+    fee_policy_assignments }o..|| fee_policies : "policy_key 解決 (論理参照)"
     recruitment_listings }o..|| connect_accounts : "payee_kind で解決 (実線FKなし)"
 ```
 
-> 実線 FK は payment ドメイン内（`escrow_transactions`→`ledger_entries`/`refunds`）のみ。点線は論理参照（クロスドメイン・Service 検証）。
+> 実線 FK は payment ドメイン内（`escrow_transactions`→`ledger_entries`/`refunds`）のみ。点線は論理参照（クロスドメイン・Service 検証）。`fee_policies`/`fee_policy_assignments` は payment ドメイン内だが、料率改定で過去取引が壊れない不変性のため **FK は張らず論理参照**（`fee_policy_key` の焼き付けは値のコピー・README §3.4.2）。
 
 ---
 
@@ -359,5 +434,5 @@ erDiagram
 | 3. コアエンティティ論理削除 | ✅ `connect_accounts.deleted_at`。escrow/ledger/refund は監査証跡で物理保持 |
 | 4. 退会時匿名化 | ✅ Connect 切離しは払出/返金完了後・強匿名化30日猶予側（03 §5） |
 | 5. @Transactional ドメイン内 | ✅ `payment.escrow` 内に閉じる。recruitment 連携は ApplicationEvent（README §7） |
-| 6. 新規テーブル UUIDv7 | ✅ 全新規テーブル `UuidV7Entity`（BINARY(16)） |
-| 7. テナント Repository | ✅ `connect_accounts`/`escrow_transactions` は `organization_id` 保持・`AbstractTenantAwareRepository` 実装 |
+| 6. 新規テーブル UUIDv7 | ✅ `fee_policy_assignments` 等は `UuidV7Entity`（BINARY(16)）。**例外**: `fee_policies` は CLAUDE.md「マスタテーブル例外」（全テナント共通参照・書込はシスアド運用のみ・税率表と同型）ゆえ**自然キー `policy_key`**（§3.6 に明記） |
+| 7. テナント Repository | ✅ `connect_accounts`/`escrow_transactions` は `organization_id` 保持・`AbstractTenantAwareRepository` 実装。`fee_policies`/`fee_policy_assignments` は全テナント共通（マスタ/運用）ゆえ非テナント Repository |

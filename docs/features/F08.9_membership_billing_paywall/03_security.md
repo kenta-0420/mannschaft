@@ -13,7 +13,8 @@
 | 後見まとめ支払い | 本人（払い手） | `payable-dues` は自分が払える対象のみ返す |
 | 後見切替開始 | 子の有効保護者 **かつ** 国別ポリシーが切替可（`switchAllowed`） | §3 年齢ゲート |
 | 代理払い grant 発行 | 受益者本人（または切替可能な段階の子に代わり保護者） | 受益者所有権 |
-| 継続課金 加入/解約 | 払い手本人 / 後見保護者 | サブスク所有権（payer_user_id） |
+| 継続課金 加入/解約/今月スキップ/再開 | 払い手本人 / 後見保護者 | サブスク所有権（payer_user_id）。skip/resume も同所有権（02 §4.3） |
+| 協会請求の立替/精算確認 | 当該チーム ADMIN | `team_payment_advances.team_id` の team ADMIN（案3・02 §7） |
 | ペイウォール設定 | チーム/組織 ADMIN | scope 所有権（既存 ContentPaymentGateController） |
 | 集計・CSV・手数料明細 | チーム/組織 ADMIN | scope ADMIN（既存 PaymentSummary） |
 | 領収書取得 | 受益者本人 / 払い手 / scope ADMIN | 当該支払いの関係者のみ |
@@ -41,7 +42,8 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
 ```
 
 - 結果（`SELF`/`GUARDIAN`/`GUARDIAN_PROXY`/`PROXY_GRANT`/`ADMIN_MANUAL`）と権原ID（grant_id 等）を `member_payments.payer_relationship`/`payment_proxy_grant_id` に**記録**（監査・非否認）。**後見切替セッション中（`X-Proxy-For-User-Id` 付き）の決済は `GUARDIAN`（保護者リンクで権原成立）だが `payer_relationship=GUARDIAN_PROXY` として区別記録**し、「子の自己払い」と誤読させない。
-- **F14.1 `proxy_input_consents` は本 authorizePayment の経路に含めない**（日常の代理払いは SELF/保護者リンク/grant/ADMIN の4経路のみ）。`proxy_input_consents(scope=PAYMENT)` は紙同意書ベースの**組織代理の重い経路**として温存し、必要時に別途評価する（README §3.3 と一致）。
+- **F14.1 の代理権は本 authorizePayment の経路に含めない**（日常の代理払いは SELF/保護者リンク/grant/ADMIN の4経路のみ）。代理権スコープ `PAYMENT` は紙同意書ベースの**組織代理の重い経路**として温存し、必要時に別途評価する（README §3.3 と一致）。
+  - **是正（2026-06-04）**: scope `PAYMENT` は実在の `proxy_input_consent_scopes.feature_scope`（VARCHAR(64)・V18.011・CHECK なし・実機確認済）に **enum 値 `PAYMENT` を1つ足すだけ**で表現する（`proxy_input_consents` 本体への列追加・DDL は不要）。代理払い認可・退会失効はこの scope 行（同意書ごとの許可スコープ）で判定する。
 - **IDOR 防止**：`beneficiaryUserId` を payload で受けるが、上記権原検証なしには一切起票しない。`payable-dues` も「自分が払える受益者」だけを返し、他人の未払いを列挙させない。**まとめ決済(bulk-checkout)は一覧取得後の権原失効・支払い済み化に備え、起票直前に明細ごと再認可**（02_api §1.2）。
 - **権原の失効**：保護者リンク取消・grant 失効・受益者退会で即時に権原消失（毎回実行時評価・キャッシュしない or 短TTL）。
 
@@ -54,6 +56,7 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
   - 既定 `JapanGuardianshipAgePolicy`：満12歳に達する年度の3月末まで `switchAllowed=true`（小学生）、翌年度4月から `false`（中学生以降・封印）。
   - 未対応 `country_code` は**安全側フォールバック**（満13歳の誕生日で封印）＋ログ記録（症状を隠さない）。
 - `birthDate`・`country_code` から算出。`birthDate` は暗号化保存（既存）、判定は復号値で実行し結果（`switchAllowed`/`stageKey`）のみ扱い生年月日は持ち回らない。
+- **birth_date 復号はバッチ化（是正 2026-06-04）**: 決済/切替の都度に暗号化 `birthDate` を復号するのではなく、**年齢段階判定を @Scheduled バッチで事前算出**（`switchAllowed`/`stageKey` をスナップショット）し、ホットパスでは復号を持ち回らない。境界日（年度末・誕生日）に再計算する（Clock 注入・date-pin テストで CI を塞がない）。バッチ未到達の境界跨ぎは実行時ゲートが二重防御（封印漏れを防ぐ）。
 - **Clock 注入必須**（date-pin テストで CI を塞がぬよう・[[project_f0411_inbox_complete]] の JobQrTokenServiceTest 教訓）。**ポリシーごとに**境界の必須ケースを置く（Clock 固定）：
   - JP：2013-04-02 生まれ × 2026-03-31 → `switchAllowed=true`／× 2026-04-01 → `false`。学年早生まれ（4/1 生まれ＝前学年）を明記しテスト化。
   - フォールバック：未対応国コード × 満13歳前後で境界が満13歳誕生日になること。
