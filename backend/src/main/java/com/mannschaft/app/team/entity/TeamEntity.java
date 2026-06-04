@@ -6,7 +6,6 @@ import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
@@ -15,6 +14,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,9 +35,10 @@ public class TeamEntity extends BaseEntity {
     /**
      * URL 公開用 UUID（列挙攻撃対策）。
      * <p>内部 BIGINT PK は FK 関係のために保持し、URL には本フィールドを使用する。
-     * {@code @PrePersist} で自動生成される。</p>
+     * {@code @UuidGenerator(style = TIME)} により UUIDv7（時刻順ソート可能）が自動生成される。</p>
      */
     @Column(name = "public_id", columnDefinition = "BINARY(16)", nullable = false, updatable = false, unique = true)
+    @UuidGenerator(style = UuidGenerator.Style.TIME)
     private UUID publicId;
 
     @Column(nullable = false, length = 100)
@@ -179,16 +180,6 @@ public class TeamEntity extends BaseEntity {
         PUBLIC,
         ORGANIZATION_ONLY,
         PRIVATE
-    }
-
-    /**
-     * 新規永続化時に publicId を自動生成する。
-     */
-    @PrePersist
-    protected void onPrePersist() {
-        if (this.publicId == null) {
-            this.publicId = UUID.randomUUID();
-        }
     }
 
     /**
