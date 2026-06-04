@@ -23,6 +23,9 @@ export function useApi() {
     // HttpOnly Cookie を自動送信するために credentials: 'include' を設定する。
     // これにより access_token Cookie がすべての API リクエストに付与される。
     credentials: 'include',
+    // 401 受信後に onResponseError でトークンをリフレッシュし、onRequest で新トークンを付与して 1 回自動リトライする。
+    retry: 1,
+    retryStatusCodes: [401],
 
     onRequest({ options }) {
       if (authStore.accessToken) {
@@ -43,22 +46,30 @@ export function useApi() {
       }
     },
 
-    async onResponseError({ request, response }) {
+    async onResponseError({ options, request, response }) {
       // 401: Refresh Token ローテーション
       // バックエンドは未認証リクエストに必ず 401 を返す（SecurityConfig.exceptionHandling 参照）。
-      // user が存在する場合はリフレッシュを試みて、失敗したらログアウトする。
-      // user が null（localStorage に残っていない）場合は直接ログイン画面へ遷移する。
       if (response.status === 401) {
+        // リトライ済み（2 回目の 401）はリフレッシュ不要。エラーをそのまま伝播させる
+        const opts = options as unknown as Record<string, unknown>
+        if (opts._tokenRefreshed) return
+        opts._tokenRefreshed = true
+
         if (authStore.user) {
           const success = await refreshAccessToken()
           if (!success) {
             await authStore.logout()
+            // throw してリトライを中断する（リフレッシュ失敗 = ログアウト済み）
+            throw new Error('token_refresh_failed')
           }
-          // リトライは呼び出し元で行う（ofetch.create の onResponseError では戻り値不可）
-        } else {
-          await navigateTo('/login')
+          // throw しない → ofetch が onRequest で新トークンを付与して 1 回リトライ
+          return
         }
-        return
+        else {
+          await navigateTo('/login')
+          // throw してリトライを中断する
+          throw new Error('not_authenticated')
+        }
       }
 
       // 403: 認証済みだが権限不足の場合（Forbidden）。

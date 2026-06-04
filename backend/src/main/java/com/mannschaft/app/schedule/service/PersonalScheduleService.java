@@ -33,6 +33,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -52,6 +54,8 @@ public class PersonalScheduleService {
     /** 個人スケジュールの相対・絶対を合算したリマインダー上限件数（機能55 第二陣で 3→5 拡張）。 */
     private static final int MAX_TOTAL_PERSONAL_REMINDERS = CreatePersonalScheduleRequest.MAX_TOTAL_REMINDERS;
     private static final String SCOPE_TYPE_PERSONAL = "PERSONAL";
+    /** リマインダー保存時に OffsetDateTime を変換する先のタイムゾーン（JVM TZ と一致）。 */
+    private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Tokyo");
     private static final String UPDATE_SCOPE_THIS_ONLY = "THIS_ONLY";
     private static final String UPDATE_SCOPE_THIS_AND_FOLLOWING = "THIS_AND_FOLLOWING";
     private static final String UPDATE_SCOPE_ALL = "ALL";
@@ -229,7 +233,7 @@ public class PersonalScheduleService {
             // null を渡すと「変更なし（空扱い）」となるが、本メソッドは非nullが確定しているため
             // どちらか一方が null の場合は空リストとして扱う（既存の値を維持したい場合は null を指定）。
             List<Integer> relativeReminders = req.getReminders();
-            List<java.time.LocalDateTime> absoluteReminders = req.getAbsoluteReminders();
+            List<OffsetDateTime> absoluteReminders = req.getAbsoluteReminders();
             updatedReminders = saveReminders(schedule.getId(), relativeReminders, absoluteReminders);
         } else {
             updatedReminders = loadReminders(schedule.getId());
@@ -377,17 +381,21 @@ public class PersonalScheduleService {
      * {@link #MAX_TOTAL_PERSONAL_REMINDERS} 件。返り値は後方互換のため相対分（分）のみを返す
      * （絶対分のレスポンス露出は FE 拡張に委ねる）。</p>
      *
-     * @param scheduleId       スケジュールID
-     * @param reminders        相対指定リマインダー（開始N分前）
-     * @param absoluteReminders 絶対指定リマインダー（固定日時）
+     * <p>absoluteReminders は OffsetDateTime で受け取り、JVM TZ（Asia/Tokyo）へ変換して
+     * LocalDateTime として保存する。バッチ側は {@code LocalDateTime.now()}（JVM=JST）と比較するため
+     * 保存側も JST に統一する（タイムゾーン不一致による通知漏れ・二重通知を防止）。</p>
+     *
+     * @param scheduleId        スケジュールID
+     * @param reminders         相対指定リマインダー（開始N分前）
+     * @param absoluteReminders 絶対指定リマインダー（OffsetDateTime: クライアントTZ付き）
      * @return 保存した相対指定リマインダー（分）の一覧
      */
     private List<Integer> saveReminders(Long scheduleId, List<Integer> reminders,
-                                        List<LocalDateTime> absoluteReminders) {
+                                        List<OffsetDateTime> absoluteReminders) {
         reminderRepository.deleteByScheduleId(scheduleId);
 
         List<Integer> relative = reminders != null ? reminders : Collections.emptyList();
-        List<LocalDateTime> absolute = absoluteReminders != null ? absoluteReminders : Collections.emptyList();
+        List<OffsetDateTime> absolute = absoluteReminders != null ? absoluteReminders : Collections.emptyList();
 
         if (relative.isEmpty() && absolute.isEmpty()) {
             return Collections.emptyList();
@@ -402,9 +410,10 @@ public class PersonalScheduleService {
                 .remindBeforeMinutes(minutes)
                 .reminderKind(ReminderKind.RELATIVE)
                 .build()));
+        // OffsetDateTime → JSTのLocalDateTimeに変換して保存
         absolute.forEach(remindAt -> entities.add(PersonalScheduleReminderEntity.builder()
                 .scheduleId(scheduleId)
-                .remindAt(remindAt)
+                .remindAt(remindAt.atZoneSameInstant(STORAGE_ZONE).toLocalDateTime())
                 .reminderKind(ReminderKind.ABSOLUTE)
                 .build()));
 

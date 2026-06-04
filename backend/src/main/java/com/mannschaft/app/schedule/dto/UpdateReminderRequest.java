@@ -6,18 +6,21 @@ import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * リマインダー更新リクエストDTO（機能55 編集対応）。
  *
- * <p>{@link CreateReminderRequest} と構造は同じだが、絶対指定時の {@code @Future} 制約を持たない。
+ * <p>{@link CreateReminderRequest} と構造は同じだが、絶対指定時の未来日時制約を持たない。
  * スケジュール編集時は既存リマインダーが過去日時になっている場合があるため、
  * 更新コンテキストでは過去日時も許容する。</p>
  *
  * <p>{@link #reminderKind} が {@link ReminderKind#ABSOLUTE}（既定）の場合は
  * {@link #remindAt}（絶対日時）を必須とし、
  * {@link ReminderKind#RELATIVE} の場合は {@link #remindBeforeMinutes}（開始N分前）を使用する。</p>
+ *
+ * <p>{@link #remindAt} は {@link OffsetDateTime} で受け取り、タイムゾーン情報を保持する。
+ * BE はサービス層で JVM TZ（Asia/Tokyo）へ変換してから LocalDateTime として保存する。</p>
  */
 @Getter
 @RequiredArgsConstructor
@@ -25,9 +28,10 @@ public class UpdateReminderRequest {
 
     /**
      * 絶対日時（{@link ReminderKind#ABSOLUTE} 時に必須）。
-     * 編集コンテキストでは過去日時も許容する（{@code @Future} 制約なし）。
+     * OffsetDateTime で受け取ることでクライアントのタイムゾーンを正確に把握する。
+     * 編集コンテキストでは過去日時も許容する（未来日時制約なし）。
      */
-    private final LocalDateTime remindAt;
+    private final OffsetDateTime remindAt;
 
     /** 相対指定：開始N分前（{@link ReminderKind#RELATIVE} 時に必須・正の整数）。 */
     @Positive

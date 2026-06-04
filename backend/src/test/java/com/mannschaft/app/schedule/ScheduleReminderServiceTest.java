@@ -23,6 +23,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -110,14 +113,15 @@ class ScheduleReminderServiceTest {
     class CreateReminders {
 
         @Test
-        @DisplayName("絶対指定_remindAtが保存される")
-        void 絶対指定_remindAtが保存される() {
+        @DisplayName("絶対指定（JST: +09:00）_JSTのLocalDateTimeに変換されて保存される")
+        void 絶対指定_JSTオフセット_JSTLocalDateTimeで保存される() {
             // given
             given(reminderRepository.countByScheduleId(SCHEDULE_ID)).willReturn(0L);
             given(reminderRepository.save(any(ScheduleAttendanceReminderEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
-            LocalDateTime remindAt = LocalDateTime.now().plusDays(1);
+            // JST（+09:00）で2026-06-05 08:00 を指定
+            OffsetDateTime remindAt = OffsetDateTime.of(2026, 6, 5, 8, 0, 0, 0, ZoneOffset.ofHours(9));
             List<CreateReminderRequest> requests = List.of(
                     new CreateReminderRequest(remindAt, null, ReminderKind.ABSOLUTE));
 
@@ -130,8 +134,59 @@ class ScheduleReminderServiceTest {
                     ArgumentCaptor.forClass(ScheduleAttendanceReminderEntity.class);
             verify(reminderRepository).save(captor.capture());
             assertThat(captor.getValue().getReminderKind()).isEqualTo(ReminderKind.ABSOLUTE);
-            assertThat(captor.getValue().getRemindAt()).isEqualTo(remindAt);
+            // JSTオフセットなのでJST変換後も同じ日時（08:00 JST = 08:00 JST）
+            LocalDateTime expected = remindAt.atZoneSameInstant(ZoneId.of("Asia/Tokyo")).toLocalDateTime();
+            assertThat(captor.getValue().getRemindAt()).isEqualTo(expected);
             assertThat(captor.getValue().getRemindBeforeMinutes()).isNull();
+        }
+
+        @Test
+        @DisplayName("絶対指定（UTC: +00:00）_JSTのLocalDateTimeに変換されて保存される")
+        void 絶対指定_UTCオフセット_JSTLocalDateTimeで保存される() {
+            // given
+            given(reminderRepository.countByScheduleId(SCHEDULE_ID)).willReturn(0L);
+            given(reminderRepository.save(any(ScheduleAttendanceReminderEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // UTC（+00:00）で2026-06-05 00:00 → JST変換後は 09:00
+            OffsetDateTime remindAtUtc = OffsetDateTime.of(2026, 6, 5, 0, 0, 0, 0, ZoneOffset.UTC);
+            List<CreateReminderRequest> requests = List.of(
+                    new CreateReminderRequest(remindAtUtc, null, ReminderKind.ABSOLUTE));
+
+            // when
+            reminderService.createReminders(SCHEDULE_ID, requests);
+
+            // then: UTC 00:00 → JST 09:00 に変換されて保存される
+            ArgumentCaptor<ScheduleAttendanceReminderEntity> captor =
+                    ArgumentCaptor.forClass(ScheduleAttendanceReminderEntity.class);
+            verify(reminderRepository).save(captor.capture());
+            assertThat(captor.getValue().getReminderKind()).isEqualTo(ReminderKind.ABSOLUTE);
+            LocalDateTime expectedJst = LocalDateTime.of(2026, 6, 5, 9, 0, 0);
+            assertThat(captor.getValue().getRemindAt()).isEqualTo(expectedJst);
+        }
+
+        @Test
+        @DisplayName("絶対指定（EST: -05:00）_JSTのLocalDateTimeに変換されて保存される")
+        void 絶対指定_ESTオフセット_JSTLocalDateTimeで保存される() {
+            // given
+            given(reminderRepository.countByScheduleId(SCHEDULE_ID)).willReturn(0L);
+            given(reminderRepository.save(any(ScheduleAttendanceReminderEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // EST（-05:00）で2026-06-05 08:00 → UTC 13:00 → JST 22:00
+            OffsetDateTime remindAtEst = OffsetDateTime.of(2026, 6, 5, 8, 0, 0, 0, ZoneOffset.ofHours(-5));
+            List<CreateReminderRequest> requests = List.of(
+                    new CreateReminderRequest(remindAtEst, null, ReminderKind.ABSOLUTE));
+
+            // when
+            reminderService.createReminders(SCHEDULE_ID, requests);
+
+            // then: EST 08:00 → JST 22:00 に変換されて保存される
+            ArgumentCaptor<ScheduleAttendanceReminderEntity> captor =
+                    ArgumentCaptor.forClass(ScheduleAttendanceReminderEntity.class);
+            verify(reminderRepository).save(captor.capture());
+            LocalDateTime expectedJst = LocalDateTime.of(2026, 6, 5, 22, 0, 0);
+            assertThat(captor.getValue().getRemindAt()).isEqualTo(expectedJst);
         }
 
         @Test
@@ -163,8 +218,8 @@ class ScheduleReminderServiceTest {
             // given
             given(reminderRepository.countByScheduleId(SCHEDULE_ID)).willReturn(4L);
             List<CreateReminderRequest> requests = List.of(
-                    new CreateReminderRequest(LocalDateTime.now().plusDays(1), null, ReminderKind.ABSOLUTE),
-                    new CreateReminderRequest(LocalDateTime.now().plusDays(2), null, ReminderKind.ABSOLUTE));
+                    new CreateReminderRequest(OffsetDateTime.now(ZoneOffset.ofHours(9)).plusDays(1), null, ReminderKind.ABSOLUTE),
+                    new CreateReminderRequest(OffsetDateTime.now(ZoneOffset.ofHours(9)).plusDays(2), null, ReminderKind.ABSOLUTE));
 
             // when & then
             assertThatThrownBy(() -> reminderService.createReminders(SCHEDULE_ID, requests))

@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -53,9 +54,10 @@ public class UpdatePersonalScheduleRequest {
      * <p>null = 変更なし（既存の絶対リマインダーを保持）。
      * 空リスト = 既存の絶対リマインダーを全削除。
      * 非空リスト = 既存の絶対リマインダーを全削除して新規登録（差し替え）。
-     * 編集コンテキストのため過去日時も許容する（{@code @Future} 制約なし）。</p>
+     * OffsetDateTime で受け取りタイムゾーン情報を保持する。
+     * 編集コンテキストのため過去日時も許容する。</p>
      */
-    private final List<LocalDateTime> absoluteReminders;
+    private final List<OffsetDateTime> absoluteReminders;
 
     /**
      * updateScope のデフォルト値を返す。null の場合は THIS_ONLY を返す。

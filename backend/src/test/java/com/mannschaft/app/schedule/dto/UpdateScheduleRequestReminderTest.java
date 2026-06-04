@@ -9,6 +9,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -81,8 +83,9 @@ class UpdateScheduleRequestReminderTest {
     @DisplayName("reminders=ABSOLUTE過去日時_編集コンテキストでは違反なし")
     void reminders_ABSOLUTE過去日時_違反なし() {
         // 編集時は既存リマインダーが過去日時になっている場合があるため許容する
+        // OffsetDateTime化に伴い LocalDateTime → OffsetDateTime に変更
         List<UpdateReminderRequest> reminders = List.of(
-                new UpdateReminderRequest(LocalDateTime.now().minusDays(1), null,
+                new UpdateReminderRequest(OffsetDateTime.now(ZoneOffset.ofHours(9)).minusDays(1), null,
                         com.mannschaft.app.schedule.ReminderKind.ABSOLUTE));
         UpdateScheduleRequest req = new UpdateScheduleRequest(
                 null, null, null, null, null, null, null, null, null, null,

@@ -10,14 +10,18 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * {@link CreateReminderRequest} のバリデーション単体テスト（機能55 第二陣）。
- * 相対/絶対の相互排他バリデーションを検証する。
+ * 相対/絶対の相互排他バリデーションと OffsetDateTime 対応を検証する。
+ *
+ * <p>FE は OffsetDateTime をユーザーのローカルTZ付きで送信する（例: 2026-06-04T08:00:00+09:00）。
+ * BE は atZoneSameInstant(Asia/Tokyo) で JST LocalDateTime に変換して保存する。</p>
  */
 @DisplayName("CreateReminderRequest バリデーションテスト")
 class CreateReminderRequestTest {
@@ -35,10 +39,31 @@ class CreateReminderRequestTest {
     class Absolute {
 
         @Test
-        @DisplayName("未来のremindAtあり_違反なし")
-        void 未来のremindAtあり_違反なし() {
+        @DisplayName("未来のremindAt（UTC+09:00）あり_違反なし")
+        void 未来のremindAtあり_JSTオフセット_違反なし() {
+            // JST（+09:00）で未来の日時を送信するケース
             CreateReminderRequest req = new CreateReminderRequest(
-                    LocalDateTime.now().plusDays(1), null, ReminderKind.ABSOLUTE);
+                    OffsetDateTime.now(ZoneOffset.ofHours(9)).plusDays(1), null, ReminderKind.ABSOLUTE);
+            Set<ConstraintViolation<CreateReminderRequest>> violations = validator.validate(req);
+            assertThat(violations).isEmpty();
+        }
+
+        @Test
+        @DisplayName("未来のremindAt（UTC）あり_違反なし")
+        void 未来のremindAtあり_UTCオフセット_違反なし() {
+            // UTC（+00:00）で未来の日時を送信するケース（非JSTユーザー）
+            CreateReminderRequest req = new CreateReminderRequest(
+                    OffsetDateTime.now(ZoneOffset.UTC).plusDays(1), null, ReminderKind.ABSOLUTE);
+            Set<ConstraintViolation<CreateReminderRequest>> violations = validator.validate(req);
+            assertThat(violations).isEmpty();
+        }
+
+        @Test
+        @DisplayName("未来のremindAt（UTC-05:00: EST）あり_違反なし")
+        void 未来のremindAtあり_マイナスオフセット_違反なし() {
+            // EST（-05:00）で未来の日時を送信するケース（アメリカ東部ユーザー）
+            CreateReminderRequest req = new CreateReminderRequest(
+                    OffsetDateTime.now(ZoneOffset.ofHours(-5)).plusDays(1), null, ReminderKind.ABSOLUTE);
             Set<ConstraintViolation<CreateReminderRequest>> violations = validator.validate(req);
             assertThat(violations).isEmpty();
         }
@@ -47,7 +72,7 @@ class CreateReminderRequestTest {
         @DisplayName("kind未指定でもABSOLUTE扱い_未来remindAtあり_違反なし")
         void kind未指定_ABSOLUTE扱い_違反なし() {
             CreateReminderRequest req = new CreateReminderRequest(
-                    LocalDateTime.now().plusDays(1), null, null);
+                    OffsetDateTime.now(ZoneOffset.ofHours(9)).plusDays(1), null, null);
             Set<ConstraintViolation<CreateReminderRequest>> violations = validator.validate(req);
             assertThat(violations).isEmpty();
         }
@@ -61,10 +86,20 @@ class CreateReminderRequestTest {
         }
 
         @Test
-        @DisplayName("remindAtが過去_違反あり")
+        @DisplayName("remindAtが過去（JST）_違反あり")
         void remindAtが過去_違反あり() {
             CreateReminderRequest req = new CreateReminderRequest(
-                    LocalDateTime.now().minusDays(1), null, ReminderKind.ABSOLUTE);
+                    OffsetDateTime.now(ZoneOffset.ofHours(9)).minusDays(1), null, ReminderKind.ABSOLUTE);
+            Set<ConstraintViolation<CreateReminderRequest>> violations = validator.validate(req);
+            assertThat(violations).isNotEmpty();
+        }
+
+        @Test
+        @DisplayName("remindAtが過去（UTC+00）_違反あり")
+        void remindAtが過去_UTC_違反あり() {
+            // UTC基準でも過去ならNG（タイムゾーンに依らず絶対過去を拒否）
+            CreateReminderRequest req = new CreateReminderRequest(
+                    OffsetDateTime.now(ZoneOffset.UTC).minusDays(1), null, ReminderKind.ABSOLUTE);
             Set<ConstraintViolation<CreateReminderRequest>> violations = validator.validate(req);
             assertThat(violations).isNotEmpty();
         }
