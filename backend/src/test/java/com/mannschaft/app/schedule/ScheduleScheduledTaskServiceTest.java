@@ -19,6 +19,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,7 +55,10 @@ class ScheduleScheduledTaskServiceTest {
     private static final Long SCOPE_ID = 10L;
     private static final Long ORG_ID = 100L;
     private static final Long CREATED_BY = 999L;
-    private static final LocalDateTime FUTURE = LocalDateTime.now().plusDays(1);
+    /** JST+09:00 の翌日（UTC+9）。DTO（OffsetDateTime）として使用する。 */
+    private static final OffsetDateTime FUTURE = OffsetDateTime.now(ZoneOffset.ofHours(9)).plusDays(1);
+    /** FUTURE を Asia/Tokyo に変換した LocalDateTime。Entity builder に渡す際に使用する。 */
+    private static final LocalDateTime FUTURE_JST = FUTURE.atZoneSameInstant(ZoneId.of("Asia/Tokyo")).toLocalDateTime();
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
@@ -77,6 +83,7 @@ class ScheduleScheduledTaskServiceTest {
         void 予約アンケート_PENDINGで保存されpayloadがJSON直列化される() {
             // given
             ScheduledSurveyRequest surveyReq = new ScheduledSurveyRequest(FUTURE, createSurveyRequest());
+            LocalDateTime expectedJst = FUTURE.atZoneSameInstant(ZoneId.of("Asia/Tokyo")).toLocalDateTime();
 
             // when
             service.registerTasks(SCHEDULE_ID, CalendarSyncScopeType.TEAM, SCOPE_ID, ORG_ID, CREATED_BY,
@@ -91,7 +98,8 @@ class ScheduleScheduledTaskServiceTest {
             assertThat(saved.getOrganizationId()).isEqualTo(ORG_ID);
             assertThat(saved.getScopeType()).isEqualTo(CalendarSyncScopeType.TEAM);
             assertThat(saved.getScopeId()).isEqualTo(SCOPE_ID);
-            assertThat(saved.getScheduledAt()).isEqualTo(FUTURE);
+            // OffsetDateTime → JST LocalDateTime に変換されて保存される
+            assertThat(saved.getScheduledAt()).isEqualTo(expectedJst);
             assertThat(saved.getCreatedBy()).isEqualTo(CREATED_BY);
             // payload にアンケートタイトルが JSON として含まれる
             assertThat(saved.getPayloadJson()).contains("出欠アンケート");
@@ -102,7 +110,8 @@ class ScheduleScheduledTaskServiceTest {
         void 予約出欠募集_PENDINGで保存され出欠設定がpayloadに入る() {
             // given
             ScheduledAttendanceRequest attendanceReq = new ScheduledAttendanceRequest(
-                    FUTURE, FUTURE.plusDays(2), "REQUIRED", "MEMBER_PLUS");
+                    FUTURE, LocalDateTime.now().plusDays(3), "REQUIRED", "MEMBER_PLUS");
+            LocalDateTime expectedJst = FUTURE.atZoneSameInstant(ZoneId.of("Asia/Tokyo")).toLocalDateTime();
 
             // when
             service.registerTasks(SCHEDULE_ID, CalendarSyncScopeType.ORGANIZATION, SCOPE_ID, ORG_ID, CREATED_BY,
@@ -113,7 +122,8 @@ class ScheduleScheduledTaskServiceTest {
             ScheduleScheduledTaskEntity saved = taskCaptor.getValue();
             assertThat(saved.getTaskType()).isEqualTo(ScheduledTaskType.ATTENDANCE);
             assertThat(saved.getStatus()).isEqualTo(ScheduledTaskStatus.PENDING);
-            assertThat(saved.getScheduledAt()).isEqualTo(FUTURE);
+            // OffsetDateTime → JST LocalDateTime に変換されて保存される
+            assertThat(saved.getScheduledAt()).isEqualTo(expectedJst);
             assertThat(saved.getPayloadJson()).contains("REQUIRED");
         }
 
@@ -155,12 +165,12 @@ class ScheduleScheduledTaskServiceTest {
             ScheduleScheduledTaskEntity pending = ScheduleScheduledTaskEntity.builder()
                     .scheduleId(SCHEDULE_ID).organizationId(ORG_ID)
                     .scopeType(CalendarSyncScopeType.TEAM).scopeId(SCOPE_ID)
-                    .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE)
+                    .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE_JST)
                     .status(ScheduledTaskStatus.PENDING).payloadJson("{}").build();
             ScheduleScheduledTaskEntity alreadyCreated = ScheduleScheduledTaskEntity.builder()
                     .scheduleId(SCHEDULE_ID).organizationId(ORG_ID)
                     .scopeType(CalendarSyncScopeType.TEAM).scopeId(SCOPE_ID)
-                    .taskType(ScheduledTaskType.ATTENDANCE).scheduledAt(FUTURE)
+                    .taskType(ScheduledTaskType.ATTENDANCE).scheduledAt(FUTURE_JST)
                     .status(ScheduledTaskStatus.CREATED).payloadJson("{}").build();
             given(scheduledTaskRepository.findByScheduleIdAndDeletedAtIsNull(SCHEDULE_ID))
                     .willReturn(List.of(pending, alreadyCreated));
@@ -187,7 +197,7 @@ class ScheduleScheduledTaskServiceTest {
             ScheduleScheduledTaskEntity task = ScheduleScheduledTaskEntity.builder()
                     .scheduleId(SCHEDULE_ID).organizationId(ORG_ID)
                     .scopeType(CalendarSyncScopeType.TEAM).scopeId(SCOPE_ID)
-                    .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE)
+                    .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE_JST)
                     .status(ScheduledTaskStatus.PENDING).payloadJson("{}").build();
             given(scheduledTaskRepository.findByScheduleIdAndDeletedAtIsNull(SCHEDULE_ID))
                     .willReturn(List.of(task));
@@ -211,12 +221,12 @@ class ScheduleScheduledTaskServiceTest {
             ScheduleScheduledTaskEntity pending = ScheduleScheduledTaskEntity.builder()
                     .scheduleId(SCHEDULE_ID).organizationId(ORG_ID)
                     .scopeType(CalendarSyncScopeType.TEAM).scopeId(SCOPE_ID)
-                    .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE)
+                    .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE_JST)
                     .status(ScheduledTaskStatus.PENDING).payloadJson("{}").build();
             ScheduleScheduledTaskEntity created = ScheduleScheduledTaskEntity.builder()
                     .scheduleId(SCHEDULE_ID).organizationId(ORG_ID)
                     .scopeType(CalendarSyncScopeType.TEAM).scopeId(SCOPE_ID)
-                    .taskType(ScheduledTaskType.ATTENDANCE).scheduledAt(FUTURE)
+                    .taskType(ScheduledTaskType.ATTENDANCE).scheduledAt(FUTURE_JST)
                     .status(ScheduledTaskStatus.CREATED).materializedEntityId(777L)
                     .payloadJson("{}").build();
             given(scheduledTaskRepository.findByScheduleIdAndDeletedAtIsNull(SCHEDULE_ID))
@@ -253,7 +263,7 @@ class ScheduleScheduledTaskServiceTest {
             ScheduleScheduledTaskEntity task = ScheduleScheduledTaskEntity.builder()
                     .scheduleId(SCHEDULE_ID).organizationId(ORG_ID)
                     .scopeType(CalendarSyncScopeType.TEAM).scopeId(SCOPE_ID)
-                    .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE)
+                    .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE_JST)
                     .status(ScheduledTaskStatus.PENDING).payloadJson("{}").build();
             given(scheduledTaskRepository.findById(TASK_ID)).willReturn(java.util.Optional.of(task));
 
@@ -282,7 +292,7 @@ class ScheduleScheduledTaskServiceTest {
             ScheduleScheduledTaskEntity task = ScheduleScheduledTaskEntity.builder()
                     .scheduleId(SCHEDULE_ID).organizationId(ORG_ID)
                     .scopeType(CalendarSyncScopeType.TEAM).scopeId(SCOPE_ID)
-                    .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE)
+                    .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE_JST)
                     .status(ScheduledTaskStatus.PENDING).payloadJson("{}").build();
             given(scheduledTaskRepository.findById(TASK_ID)).willReturn(java.util.Optional.of(task));
 
@@ -300,7 +310,7 @@ class ScheduleScheduledTaskServiceTest {
             ScheduleScheduledTaskEntity task = ScheduleScheduledTaskEntity.builder()
                     .scheduleId(SCHEDULE_ID).organizationId(ORG_ID)
                     .scopeType(CalendarSyncScopeType.ORGANIZATION).scopeId(SCOPE_ID)
-                    .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE)
+                    .taskType(ScheduledTaskType.SURVEY).scheduledAt(FUTURE_JST)
                     .status(ScheduledTaskStatus.CREATED).payloadJson("{}").build();
             given(scheduledTaskRepository.findById(TASK_ID)).willReturn(java.util.Optional.of(task));
 
@@ -309,6 +319,91 @@ class ScheduleScheduledTaskServiceTest {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ScheduleErrorCode.SCHEDULED_TASK_NOT_CANCELLABLE);
             verify(scheduledTaskRepository, never()).save(any());
+        }
+    }
+
+    /**
+     * TZ 変換の正確性テスト。
+     *
+     * <p>非 JST ユーザーが異なるタイムゾーンで scheduledAt を指定しても、
+     * Entity には常に Asia/Tokyo の LocalDateTime として保存されることを検証する。</p>
+     */
+    @Nested
+    @DisplayName("scheduledAt タイムゾーン変換")
+    class ScheduledAtTimezoneConversion {
+
+        private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
+
+        @Test
+        @DisplayName("JST(+09:00)指定_そのままJSTLocalDateTimeで保存される")
+        void JST指定_JSTLocalDateTimeで保存() {
+            // given: 2026-07-01T10:00:00+09:00（JST ユーザーが 10:00 を指定）
+            OffsetDateTime jstInput = OffsetDateTime.of(2026, 7, 1, 10, 0, 0, 0, ZoneOffset.ofHours(9));
+            ScheduledSurveyRequest req = new ScheduledSurveyRequest(jstInput, createSurveyRequest());
+
+            // when
+            service.registerTasks(SCHEDULE_ID, CalendarSyncScopeType.TEAM, SCOPE_ID, ORG_ID, CREATED_BY,
+                    List.of(req), null);
+
+            // then: 変換後も 2026-07-01T10:00:00（JST = UTC+9 なのでそのまま）
+            verify(scheduledTaskRepository).save(taskCaptor.capture());
+            assertThat(taskCaptor.getValue().getScheduledAt())
+                    .isEqualTo(LocalDateTime.of(2026, 7, 1, 10, 0, 0));
+        }
+
+        @Test
+        @DisplayName("UTC(+00:00)指定_JST+9時間に変換されて保存される")
+        void UTC指定_JST変換されて保存() {
+            // given: 2026-07-01T01:00:00Z（UTC ユーザーが 01:00 UTC = JST 10:00 を指定）
+            OffsetDateTime utcInput = OffsetDateTime.of(2026, 7, 1, 1, 0, 0, 0, ZoneOffset.UTC);
+            ScheduledSurveyRequest req = new ScheduledSurveyRequest(utcInput, createSurveyRequest());
+
+            // when
+            service.registerTasks(SCHEDULE_ID, CalendarSyncScopeType.TEAM, SCOPE_ID, ORG_ID, CREATED_BY,
+                    List.of(req), null);
+
+            // then: 2026-07-01T01:00Z → Asia/Tokyo → 2026-07-01T10:00:00
+            verify(scheduledTaskRepository).save(taskCaptor.capture());
+            assertThat(taskCaptor.getValue().getScheduledAt())
+                    .isEqualTo(LocalDateTime.of(2026, 7, 1, 10, 0, 0));
+        }
+
+        @Test
+        @DisplayName("EST(-05:00)指定_JST+14時間に変換されて保存される")
+        void EST指定_JST変換されて保存() {
+            // given: 2026-06-30T21:00:00-05:00（EST ユーザーが 21:00 EST = 翌日JST 11:00 を指定）
+            OffsetDateTime estInput = OffsetDateTime.of(2026, 6, 30, 21, 0, 0, 0, ZoneOffset.ofHours(-5));
+            ScheduledAttendanceRequest req = new ScheduledAttendanceRequest(
+                    estInput, null, null, null);
+
+            // when
+            service.registerTasks(SCHEDULE_ID, CalendarSyncScopeType.TEAM, SCOPE_ID, ORG_ID, CREATED_BY,
+                    null, req);
+
+            // then: 2026-06-30T21:00-05:00 → UTC 2026-07-01T02:00Z → Asia/Tokyo 2026-07-01T11:00:00
+            verify(scheduledTaskRepository).save(taskCaptor.capture());
+            assertThat(taskCaptor.getValue().getScheduledAt())
+                    .isEqualTo(LocalDateTime.of(2026, 7, 1, 11, 0, 0));
+        }
+
+        @Test
+        @DisplayName("予約出欠募集_UTC指定_JSTに変換されて保存される")
+        void 予約出欠募集_UTC指定_JST変換されて保存() {
+            // given: UTC 00:00 = JST 09:00
+            OffsetDateTime utcInput = OffsetDateTime.of(2026, 8, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+            ScheduledAttendanceRequest req = new ScheduledAttendanceRequest(
+                    utcInput, LocalDateTime.of(2026, 8, 2, 0, 0), "OPTIONAL", "MEMBER");
+
+            // when
+            service.registerTasks(SCHEDULE_ID, CalendarSyncScopeType.ORGANIZATION, SCOPE_ID, ORG_ID, CREATED_BY,
+                    null, req);
+
+            // then: 2026-08-01T00:00Z → Asia/Tokyo → 2026-08-01T09:00:00
+            verify(scheduledTaskRepository).save(taskCaptor.capture());
+            ScheduleScheduledTaskEntity saved = taskCaptor.getValue();
+            assertThat(saved.getScheduledAt()).isEqualTo(LocalDateTime.of(2026, 8, 1, 9, 0, 0));
+            assertThat(saved.getTaskType()).isEqualTo(ScheduledTaskType.ATTENDANCE);
+            assertThat(saved.getPayloadJson()).contains("OPTIONAL");
         }
     }
 }
