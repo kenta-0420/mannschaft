@@ -230,7 +230,7 @@ public class TeamService {
     @Transactional
     // TODO: teamドメインがroleドメイン(UserRoleRepository)・socialドメイン(TeamFriendRepository)・membershipドメイン(MembershipRepository)をまたいでいる。将来はTeamUpdatedEventで分離予定
     @Caching(evict = {
-            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-detail", allEntries = true),
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public ApiResponse<TeamResponse> updateTeam(Long teamId, UpdateTeamRequest req) {
@@ -271,7 +271,7 @@ public class TeamService {
      */
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-detail", allEntries = true),
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void deleteTeam(Long teamId, Long userId) {
@@ -289,7 +289,7 @@ public class TeamService {
      */
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-detail", allEntries = true),
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void archiveTeam(Long teamId) {
@@ -306,7 +306,7 @@ public class TeamService {
      */
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-detail", allEntries = true),
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void unarchiveTeam(Long teamId) {
@@ -388,7 +388,7 @@ public class TeamService {
     @Transactional
     // TODO: teamドメインとmembershipドメイン(MembershipRepository/MembershipService)をまたいでいる。将来はTeamFollowRequestedEventで分離予定
     @Caching(evict = {
-            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-detail", allEntries = true),
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void followTeam(Long userId, Long teamId) {
@@ -426,7 +426,7 @@ public class TeamService {
     @Transactional
     // TODO: teamドメインとmembershipドメイン(MembershipRepository/MembershipService)をまたいでいる。将来はTeamUnfollowedEventで分離予定
     @Caching(evict = {
-            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-detail", allEntries = true),
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void unfollowTeam(Long userId, Long teamId) {
@@ -469,7 +469,7 @@ public class TeamService {
      */
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-detail", allEntries = true),
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void restoreTeam(Long teamId) {

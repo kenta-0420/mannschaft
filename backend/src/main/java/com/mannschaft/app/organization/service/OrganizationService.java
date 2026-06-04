@@ -144,7 +144,7 @@ public class OrganizationService {
      * 組織を更新する。
      */
     @Transactional
-    @CacheEvict(value = "org-detail", key = "#orgId")
+    @CacheEvict(value = "org-detail", allEntries = true)
     public ApiResponse<OrganizationResponse> updateOrganization(Long orgId, UpdateOrganizationRequest req) {
         OrganizationEntity org = findOrganizationOrThrow(orgId);
         checkNotArchived(org);
@@ -177,7 +177,7 @@ public class OrganizationService {
      */
     @Transactional
     // TODO: OrganizationドメインとRoleドメインをまたいでいる。将来はOrganizationDeletedEventで分離予定
-    @CacheEvict(value = "org-detail", key = "#orgId")
+    @CacheEvict(value = "org-detail", allEntries = true)
     public void deleteOrganization(Long orgId, Long userId) {
         OrganizationEntity org = findOrganizationOrThrow(orgId);
         org.softDelete();
@@ -196,7 +196,7 @@ public class OrganizationService {
      * 組織をアーカイブする。
      */
     @Transactional
-    @CacheEvict(value = "org-detail", key = "#orgId")
+    @CacheEvict(value = "org-detail", allEntries = true)
     public void archiveOrganization(Long orgId) {
         OrganizationEntity org = findOrganizationOrThrow(orgId);
         if (org.getArchivedAt() != null) {
