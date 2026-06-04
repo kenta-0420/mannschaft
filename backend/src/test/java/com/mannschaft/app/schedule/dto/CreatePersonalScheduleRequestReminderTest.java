@@ -9,6 +9,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Set;
 
@@ -16,7 +18,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * {@link CreatePersonalScheduleRequest} のリマインダーバリデーション単体テスト（機能55 第二陣）。
- * 相対・絶対の合算上限（最大5件）と絶対指定の未来日時制約を検証する。
+ * 相対・絶対の合算上限（最大5件）を検証する。
+ * absoluteReminders は OffsetDateTime で受け取る（タイムゾーン情報を保持）。
  */
 @DisplayName("CreatePersonalScheduleRequest リマインダーバリデーションテスト")
 class CreatePersonalScheduleRequestReminderTest {
@@ -30,7 +33,7 @@ class CreatePersonalScheduleRequestReminderTest {
     }
 
     private CreatePersonalScheduleRequest build(List<Integer> reminders,
-                                                List<LocalDateTime> absoluteReminders) {
+                                                List<OffsetDateTime> absoluteReminders) {
         return new CreatePersonalScheduleRequest(
                 "個人予定", null, null,
                 LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).plusHours(1),
@@ -43,7 +46,8 @@ class CreatePersonalScheduleRequestReminderTest {
     void 合計4件_違反なし() {
         CreatePersonalScheduleRequest req = build(
                 List.of(10, 30),
-                List.of(LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(2)));
+                List.of(OffsetDateTime.now(ZoneOffset.ofHours(9)).plusDays(1),
+                        OffsetDateTime.now(ZoneOffset.ofHours(9)).plusDays(2)));
         Set<ConstraintViolation<CreatePersonalScheduleRequest>> violations = validator.validate(req);
         assertThat(violations).isEmpty();
     }
@@ -53,21 +57,23 @@ class CreatePersonalScheduleRequestReminderTest {
     void 合計6件_違反あり() {
         CreatePersonalScheduleRequest req = build(
                 List.of(10, 20, 30),
-                List.of(LocalDateTime.now().plusDays(1),
-                        LocalDateTime.now().plusDays(2),
-                        LocalDateTime.now().plusDays(3)));
+                List.of(OffsetDateTime.now(ZoneOffset.ofHours(9)).plusDays(1),
+                        OffsetDateTime.now(ZoneOffset.ofHours(9)).plusDays(2),
+                        OffsetDateTime.now(ZoneOffset.ofHours(9)).plusDays(3)));
         Set<ConstraintViolation<CreatePersonalScheduleRequest>> violations = validator.validate(req);
         assertThat(violations)
                 .anyMatch(v -> v.getPropertyPath().toString().equals("reminderCountWithinLimit"));
     }
 
     @Test
-    @DisplayName("絶対指定が過去日時_違反あり")
-    void 絶対指定が過去_違反あり() {
+    @DisplayName("絶対指定の過去日時_@Future制約削除済みのため違反なし")
+    void 絶対指定が過去_違反なし() {
+        // OffsetDateTime化に伴い @Future 制約を削除済み。
+        // バッチ側（PersonalScheduleReminderService）が未送信判定するため、保存時は過去日時も許容する。
         CreatePersonalScheduleRequest req = build(
-                null, List.of(LocalDateTime.now().minusDays(1)));
+                null, List.of(OffsetDateTime.now(ZoneOffset.ofHours(9)).minusDays(1)));
         Set<ConstraintViolation<CreatePersonalScheduleRequest>> violations = validator.validate(req);
-        assertThat(violations).isNotEmpty();
+        assertThat(violations).isEmpty();
     }
 
     @Test
