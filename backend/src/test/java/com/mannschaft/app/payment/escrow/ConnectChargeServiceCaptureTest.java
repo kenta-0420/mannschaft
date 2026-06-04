@@ -46,16 +46,18 @@ class ConnectChargeServiceCaptureTest {
     @Mock private AccessControlService accessControlService;
     @Mock private LedgerEntryRepository ledgerEntryRepository;
     @Mock private RefundRepository refundRepository;
+    @Mock private com.mannschaft.app.payment.FeePolicyResolver feePolicyResolver;
 
     private final PaymentFeeCalculator feeCalculator = new PaymentFeeCalculator();
 
     private static final UUID ESCROW_ID = UUID.fromString("019607a0-0000-7000-8000-000000000099");
 
     private ConnectChargeService service() {
+        // capture は escrow 保存値ベース（policy 解決を伴わない）ため resolver は未使用（モックのみ渡す）。
         return new ConnectChargeService(
                 escrowTransactionRepository, connectAccountRepository,
                 feeCalculator, stripePaymentProvider, accessControlService, ledgerEntryRepository,
-                refundRepository, new com.mannschaft.app.payment.connect.PayeeScopeResolver());
+                refundRepository, new com.mannschaft.app.payment.connect.PayeeScopeResolver(), feePolicyResolver);
     }
 
     private EscrowTransactionEntity escrow(EscrowStatus status) {

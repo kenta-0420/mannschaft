@@ -20,6 +20,9 @@ import com.mannschaft.app.payment.connect.ScopeKind;
  *   <li>{@code actorUserId} — 与信開始の操作者。<b>非 null（明示 API 経路）の場合のみ</b>札主 scope ADMIN を
  *       検証する（IDOR 防止・設計書 03 §3/§4）。{@code null}（応募成立イベント駆動の system 経路・
  *       設計書 02 §1 行#4「外部API無し」）の場合は認可済みフロー前提でスキップする。</li>
+ *   <li>{@code subKey} — 手数料パターン解決の細分キー（R1・助っ人＝{@code recruitment_category} 値 等）。
+ *       {@link com.mannschaft.app.payment.FeePolicyResolver} に渡す。{@code null}＝source_kind の既定割当を引く
+ *       （設計書 02 §3.5.1）。</li>
  * </ul>
  */
 public record AuthorizeChargeCommand(
@@ -34,5 +37,28 @@ public record AuthorizeChargeCommand(
         long faceAmount,
         String currency,
         Long organizationId,
-        Long actorUserId) {
+        Long actorUserId,
+        String subKey) {
+
+    /**
+     * 後方互換コンストラクタ（{@code subKey=null}＝source_kind の既定手数料パターンを引く）。
+     * 既存のイベント駆動経路・テストはこちらを用い、R1 で手数料パターンの細分（sub_key）を渡す場合のみ
+     * 全引数コンストラクタを使う。
+     */
+    public AuthorizeChargeCommand(
+            EscrowSourceKind sourceKind,
+            Long sourceId,
+            Long sourceParticipantId,
+            ScopeKind payerScopeKind,
+            Long payerScopeId,
+            String payerStripeCustomerId,
+            ScopeKind payeeKind,
+            Long payeeScopeId,
+            long faceAmount,
+            String currency,
+            Long organizationId,
+            Long actorUserId) {
+        this(sourceKind, sourceId, sourceParticipantId, payerScopeKind, payerScopeId, payerStripeCustomerId,
+                payeeKind, payeeScopeId, faceAmount, currency, organizationId, actorUserId, null);
+    }
 }

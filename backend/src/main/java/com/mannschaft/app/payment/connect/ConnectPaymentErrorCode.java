@@ -62,7 +62,19 @@ public enum ConnectPaymentErrorCode implements ErrorCode {
     CAPTURE_FAILED("PAYMENT_C043", "払出に失敗しました", Severity.WARN),
 
     /** Stripe API 通信失敗。500（Severity.ERROR 既定）。 */
-    STRIPE_API_ERROR("PAYMENT_C050", "決済サービスとの通信に失敗しました", Severity.ERROR);
+    STRIPE_API_ERROR("PAYMENT_C050", "決済サービスとの通信に失敗しました", Severity.ERROR),
+
+    /**
+     * 安全ガード（R1・手数料ランク化・02 §3.5.2）: 総手数料が額面を超える（固定額が大きすぎ・少額決済の破綻）。422。
+     *
+     * <p>設計書 02 §7 はこの概念に番号 {@code PAYMENT_C050} を割り当てるが、当該文字列は既に
+     * {@link #STRIPE_API_ERROR}（500）が使用済みである。さらに設計書 §7 は {@code PAYMENT_C051}〜{@code PAYMENT_C053}
+     * を R2（シスアド CRUD・FEE_POLICY_NOT_FOUND 等）に予約済みのため、これらと衝突しない {@code PAYMENT_C060} を採用する
+     * （番号は概念対応であり実コード文字列とは一致しない・設計書 02 §7 実装注記と同方針）。
+     * {@code total_fee > face_amount} を {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} に 422 で登録し
+     * （#1279 の 500 フォールバック前科回避）、握りつぶさず「このパターンはこの額面に適用できない」と返す。</p>
+     */
+    FEE_EXCEEDS_FACE_AMOUNT("PAYMENT_C060", "手数料が額面を上回るため、この手数料パターンは適用できません", Severity.WARN);
 
     private final String code;
     private final String message;
