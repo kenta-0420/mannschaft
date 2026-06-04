@@ -287,6 +287,14 @@ function buildFullDateTimeStr(date: Date | null): string | null {
   return dayjs(date).tz(userTimezone.value).format('YYYY-MM-DDTHH:mm:ss')
 }
 
+// DatePicker（show-time）で得た Date を、ユーザーTZオフセット付き OffsetDateTime 文字列に変換する。
+// 絶対リマインダーの送信にのみ使用する（例: "2026-06-05T09:00:00+09:00"）。
+// BE は OffsetDateTime として受け付けるため、TZオフセットを必ず付与する必要がある。
+function buildOffsetDateTimeStr(date: Date | null): string | null {
+  if (!date) return null
+  return dayjs(date).tz(userTimezone.value).format()
+}
+
 // ReminderResponse（BE）を ReminderFormEntry（フォーム状態）に変換する。
 // reminderKind が RELATIVE の場合は remindBeforeMinutes から relativeValue/relativeUnit を逆算する。
 function reminderResponseToFormEntry(r: Record<string, unknown>): ReminderFormEntry {
@@ -328,10 +336,11 @@ function relativeReminderToMinutes(value: number, unit: 'MINUTES' | 'HOURS' | 'D
 }
 
 // 共有予定（team/org）向けのリマインダーペイロード（CreateReminderRequest[]）を組み立てる。
+// 絶対リマインダーの remindAt は OffsetDateTime 形式（TZオフセット付き）で送信する。
 function buildSharedReminders(): Array<Record<string, unknown>> {
   return form.value.reminders.map((r) => {
     if (r.kind === 'ABSOLUTE') {
-      return { reminderKind: 'ABSOLUTE', remindAt: buildFullDateTimeStr(r.absoluteAt) }
+      return { reminderKind: 'ABSOLUTE', remindAt: buildOffsetDateTimeStr(r.absoluteAt) }
     }
     return {
       reminderKind: 'RELATIVE',
@@ -434,9 +443,10 @@ async function submit() {
     const relativeMinutes = form.value.reminders
       .filter(r => r.kind === 'RELATIVE')
       .map(r => relativeReminderToMinutes(r.relativeValue, r.relativeUnit))
+    // 絶対リマインダーは OffsetDateTime 形式（TZオフセット付き）で送信する
     const absolute = form.value.reminders
       .filter(r => r.kind === 'ABSOLUTE')
-      .map(r => buildFullDateTimeStr(r.absoluteAt))
+      .map(r => buildOffsetDateTimeStr(r.absoluteAt))
       .filter((s): s is string => s !== null)
     body.reminders = relativeMinutes
     if (absolute.length > 0) body.absoluteReminders = absolute
