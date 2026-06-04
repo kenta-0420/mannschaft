@@ -631,6 +631,7 @@ public class GlobalExceptionHandler {
             Map.entry("PAYMENT_C041", HttpStatus.CONFLICT),                  // AUTHORIZATION_FAILED
             Map.entry("PAYMENT_C042", HttpStatus.CONFLICT),                  // INVALID_ESCROW_STATE（払出不能状態）
             Map.entry("PAYMENT_C043", HttpStatus.CONFLICT),                  // CAPTURE_FAILED（払出失敗）
+            Map.entry("PAYMENT_C060", HttpStatus.UNPROCESSABLE_ENTITY),      // FEE_EXCEEDS_FACE_AMOUNT（安全ガード・R1・C050/C051-3 と衝突回避）
             // F08.9 会費課金・代理払い認可（03_security.md §2）
             //   PAYMENT_Cxxx（F22.1）と衝突しない独立プレフィックス MEMBERSHIP_BILLING_xxx を採用。
             //   Severity.WARN 既定（400）では設計の 403/409 を満たせないため明示登録する。

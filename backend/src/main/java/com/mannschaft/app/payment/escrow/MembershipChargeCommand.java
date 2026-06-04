@@ -26,6 +26,8 @@ import java.util.UUID;
  *   <li>{@code organizationId} — テナント列（受領が ORG/TEAM 配下のとき非 null・将来シャーディングのルーティングキー）。</li>
  *   <li>{@code idempotencyKey} — 冪等性キー（Idempotency-Key ヘッダー起源・F08.9 02 §1.1）。
  *       Stripe へ橋渡しし、再送時の二重 PaymentIntent 作成を Stripe 側でも拒否する。</li>
+ *   <li>{@code subKey} — 手数料パターン解決の細分キー（R1）。{@code null}＝source_kind（MEMBERSHIP）の既定割当を引く
+ *       （{@link com.mannschaft.app.payment.FeePolicyResolver}・設計書 02 §3.5.1）。</li>
  * </ul>
  */
 public record MembershipChargeCommand(
@@ -35,5 +37,22 @@ public record MembershipChargeCommand(
         Long payerUserId,
         Long sourceId,
         Long organizationId,
-        String idempotencyKey) {
+        String idempotencyKey,
+        String subKey) {
+
+    /**
+     * 後方互換コンストラクタ（{@code subKey=null}＝MEMBERSHIP の既定手数料パターンを引く）。
+     * 既存の会費 charge 経路・テストはこちらを用いる。
+     */
+    public MembershipChargeCommand(
+            long faceAmount,
+            UUID payeeConnectAccountId,
+            String payerStripeCustomerId,
+            Long payerUserId,
+            Long sourceId,
+            Long organizationId,
+            String idempotencyKey) {
+        this(faceAmount, payeeConnectAccountId, payerStripeCustomerId, payerUserId, sourceId, organizationId,
+                idempotencyKey, null);
+    }
 }

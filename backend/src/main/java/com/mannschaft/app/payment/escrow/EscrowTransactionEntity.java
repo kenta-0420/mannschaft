@@ -95,6 +95,14 @@ public class EscrowTransactionEntity extends UuidV7Entity {
     @Column(name = "application_fee_amount", nullable = false)
     private Long applicationFeeAmount;
 
+    /**
+     * 適用した手数料パターンの自然キー（{@code fee_policies.policy_key} 論理参照・遡及防止の焼き付け）。
+     * charge/与信時に {@code FeePolicyResolver} で解決した値を記録し、以後 {@code fee_policies} を改定しても
+     * 本取引の料率は固定する（R1・設計書 01 §3.2 / §3.6・README §3.4.2）。既定 {@code DEFAULT}（率5%＋固定0・後方互換）。
+     */
+    @Column(name = "fee_policy_key", nullable = false, length = 40)
+    private String feePolicyKey;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private EscrowStatus status;
@@ -131,6 +139,9 @@ public class EscrowTransactionEntity extends UuidV7Entity {
         }
         if (this.applicationFeeAmount == null) {
             this.applicationFeeAmount = 0L;
+        }
+        if (this.feePolicyKey == null) {
+            this.feePolicyKey = "DEFAULT";
         }
         if (this.status == null) {
             this.status = EscrowStatus.AUTHORIZED;

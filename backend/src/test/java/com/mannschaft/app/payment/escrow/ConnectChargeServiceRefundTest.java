@@ -51,6 +51,7 @@ class ConnectChargeServiceRefundTest {
     @Mock private AccessControlService accessControlService;
     @Mock private LedgerEntryRepository ledgerEntryRepository;
     @Mock private RefundRepository refundRepository;
+    @Mock private com.mannschaft.app.payment.FeePolicyResolver feePolicyResolver;
 
     private final PaymentFeeCalculator feeCalculator = new PaymentFeeCalculator();
 
@@ -60,10 +61,11 @@ class ConnectChargeServiceRefundTest {
     private static final long PAYEE_TEAM_ID = 77L;
 
     private ConnectChargeService service() {
+        // 返金は escrow 保存値（amount − application_fee）ベースで rate 非依存ゆえ resolver は未使用（モックのみ渡す）。
         return new ConnectChargeService(
                 escrowTransactionRepository, connectAccountRepository,
                 feeCalculator, stripePaymentProvider, accessControlService, ledgerEntryRepository,
-                refundRepository, new PayeeScopeResolver());
+                refundRepository, new PayeeScopeResolver(), feePolicyResolver);
     }
 
     private EscrowTransactionEntity escrow(EscrowStatus status) {

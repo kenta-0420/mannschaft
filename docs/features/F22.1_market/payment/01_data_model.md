@@ -336,9 +336,9 @@ INDEX idx_rl_payee_user (payee_user_id);
 
 | 版番号（着手時再確認） | 内容 |
 |---|---|
-| `V75.001`（仮・P2-f） | `fee_policies` マスタ表 CREATE（自然キー `policy_key`）＋ `DEFAULT`（率5%＋固定0）シード |
-| `V75.002`（仮・P2-f） | `fee_policy_assignments` CREATE（UUIDv7・source_kind＋sub_key → policy_key） |
-| `V75.003`（仮・P2-f） | `escrow_transactions` に `fee_policy_key VARCHAR(40) NOT NULL DEFAULT 'DEFAULT'` 追加（既存行は DEFAULT で後方互換・遡及防止の焼き付け列） |
+| `V74.007`（R1・実装済） | `fee_policies` マスタ表 CREATE（自然キー `policy_key`）＋ `DEFAULT`（率5%＋固定0）シード |
+| `V74.008`（R1・実装済） | `fee_policy_assignments` CREATE（UUIDv7・source_kind＋sub_key → policy_key・`organization_id` 拡張点列）。UNIQUE は `(source_kind, sub_key, organization_id)`（マスター裁可・本表 R1 確定） |
+| `V74.009`（R1・実装済） | `escrow_transactions` に `fee_policy_key VARCHAR(40) NOT NULL DEFAULT 'DEFAULT'` 追加（既存行は DEFAULT で後方互換・遡及防止の焼き付け列） |
 | `V75.004`（仮・将来） | `escrow_transactions.source_kind` CHECK に `TOURNAMENT` 追加（F08.7.1 Connect 移行時・§2 / README §3.0.1） |
 
 > P2-a（CREATE 群）＋ V73.003（統一基盤化 ALTER）は完了・main 済。本表は手数料ランク化（`fee_policies`/`fee_policy_assignments`/`fee_policy_key`）に伴う **追加 DDL** を示す。`fee_policies` はマスタ例外ゆえ自然キー、割当・焼き付けは非破壊（既存行は `fee_policy_key='DEFAULT'`＝既存挙動不変）。テーブル作成順の FK 依存（`escrow_transactions` → `ledger_entries`/`refunds`）は P2-a で確定済。`fee_policies`/`fee_policy_assignments` は payment ドメイン内だが他テーブルと FK を張らない（焼き付けは論理参照＝改定で過去取引が壊れない不変性優先）。
