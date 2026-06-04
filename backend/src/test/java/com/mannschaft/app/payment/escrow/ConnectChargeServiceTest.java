@@ -2,6 +2,8 @@ package com.mannschaft.app.payment.escrow;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.payment.FeePolicy;
+import com.mannschaft.app.payment.FeePolicyResolver;
 import com.mannschaft.app.payment.PaymentFeeCalculator;
 import com.mannschaft.app.payment.connect.ConnectAccountEntity;
 import com.mannschaft.app.payment.connect.ConnectAccountRepository;
@@ -46,15 +48,19 @@ class ConnectChargeServiceTest {
     @Mock private AccessControlService accessControlService;
     @Mock private LedgerEntryRepository ledgerEntryRepository;
     @Mock private RefundRepository refundRepository;
+    @Mock private FeePolicyResolver feePolicyResolver;
 
     // PaymentFeeCalculator は純粋関数。実体を使い手数料式の一元利用を検証する。
     private final PaymentFeeCalculator feeCalculator = new PaymentFeeCalculator();
 
     private ConnectChargeService service() {
+        // R1: 解決器は DEFAULT（率5%＋固定0）を返す。これにより額面10,000→appFee500 の後方互換が成立する。
+        // 一部の早期 return/throw 経路（冪等・IDOR）では resolve に到達しないため lenient で許容する。
+        org.mockito.Mockito.lenient().when(feePolicyResolver.resolve(any(), any())).thenReturn(FeePolicy.defaultPolicy());
         return new ConnectChargeService(
                 escrowTransactionRepository, connectAccountRepository,
                 feeCalculator, stripePaymentProvider, accessControlService, ledgerEntryRepository,
-                refundRepository, new com.mannschaft.app.payment.connect.PayeeScopeResolver());
+                refundRepository, new com.mannschaft.app.payment.connect.PayeeScopeResolver(), feePolicyResolver);
     }
 
     private ConnectAccountEntity payeeAccount(boolean payoutsEnabled) {
@@ -186,6 +192,60 @@ class ConnectChargeServiceTest {
 
         assertThat(result.status()).isEqualTo(EscrowStatus.AUTHORIZED);
         assertThat(result.paymentIntentId()).isEqualTo("pi_existing");
+        verify(stripePaymentProvider, never()).createDestinationPaymentIntent(
+                anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
+        verify(escrowTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("R1: 解決した policy_key を escrow に焼き付け（feePolicyKey 記録）・固定額入りパターンで charge/appFee 連動")
+    void feePolicyKeyRecorded_flatFeePolicy() {
+        ConnectChargeService svc = service();
+        // 率3%＋固定100 のパターンを解決させる（§3.5.5・額面10,000→total400/charge10,200/appFee400）。
+        org.mockito.Mockito.lenient().when(feePolicyResolver.resolve(any(), any())).thenReturn(
+                new FeePolicy("RECRUITMENT_HELPER", new java.math.BigDecimal("0.0300"), 100L));
+        given(escrowTransactionRepository.findBySourceKindAndSourceIdAndSourceParticipantId(
+                EscrowSourceKind.RECRUITMENT, 100L, 200L)).willReturn(Optional.empty());
+        given(connectAccountRepository.findByScopeKindAndScopeIdAndDeletedAtIsNull(ScopeKind.TEAM, 10L))
+                .willReturn(Optional.of(payeeAccount(true)));
+        given(stripePaymentProvider.createDestinationPaymentIntent(
+                anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString()))
+                .willReturn(new StripePaymentProvider.PaymentIntentInfo("pi_abc", "pi_abc_secret", "requires_confirmation"));
+        given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        svc.authorize(teamCommand(null));
+
+        verify(stripePaymentProvider).createDestinationPaymentIntent(
+                eq(10_200L), eq("JPY"), eq("cus_payer"), eq(400L), eq("acct_payee"),
+                eq(CaptureMethod.MANUAL), eq("escrow-100-200"));
+        ArgumentCaptor<EscrowTransactionEntity> captor = ArgumentCaptor.forClass(EscrowTransactionEntity.class);
+        verify(escrowTransactionRepository).save(captor.capture());
+        EscrowTransactionEntity saved = captor.getValue();
+        assertThat(saved.getFeePolicyKey()).isEqualTo("RECRUITMENT_HELPER");
+        assertThat(saved.getApplicationFeeAmount()).isEqualTo(400L);
+        assertThat(saved.getAmount()).isEqualTo(10_200L);
+    }
+
+    @Test
+    @DisplayName("R1 安全ガード: total_fee > face のパターン→ FEE_EXCEEDS_FACE_AMOUNT(422)・PI never・escrow 未保存")
+    void safetyGuard_feeExceedsFace_rejected422() {
+        ConnectChargeService svc = service();
+        // 固定1,000＋率5%・額面500（teamCommand は10,000なので小額コマンドを別途）。
+        AuthorizeChargeCommand smallCmd = new AuthorizeChargeCommand(
+                EscrowSourceKind.RECRUITMENT, 100L, 200L,
+                ScopeKind.USER, 999L, "cus_payer",
+                ScopeKind.TEAM, 10L,
+                500L, "JPY", null, null);
+        org.mockito.Mockito.lenient().when(feePolicyResolver.resolve(any(), any())).thenReturn(
+                new FeePolicy("BAD", new java.math.BigDecimal("0.0500"), 1_000L));
+        given(escrowTransactionRepository.findBySourceKindAndSourceIdAndSourceParticipantId(
+                EscrowSourceKind.RECRUITMENT, 100L, 200L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> svc.authorize(smallCmd))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ConnectPaymentErrorCode.FEE_EXCEEDS_FACE_AMOUNT);
+
         verify(stripePaymentProvider, never()).createDestinationPaymentIntent(
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
         verify(escrowTransactionRepository, never()).save(any());

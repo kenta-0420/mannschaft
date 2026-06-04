@@ -13,6 +13,7 @@ const authStore = useAuthStore()
 const toast = useToast()
 
 const notifications = ref<NotificationResponse[]>([])
+const notifBadgeCount = useState<number>('badge:notifCount', () => 0)
 const loading = ref(false)
 const nextCursor = ref<number | null>(null)
 const hasNext = ref(false)
@@ -125,6 +126,7 @@ async function onMarkAllRead() {
   try {
     await markAllAsRead()
     notifications.value.forEach((n) => (n.isRead = true))
+    notifBadgeCount.value = 0 // ベルバッジを即時リセット
   }
   catch {
     showError('一括既読に失敗しました')

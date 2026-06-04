@@ -432,7 +432,7 @@ R = 精算額（transferAmount ベース・null=残額全部）
 | `PAYMENT_030` | 409 | `ONBOARDING_NOT_READY`（払出時に payouts 不可・HELD 化で通常はエラーにしないが手動操作時の保険） |
 | `PAYMENT_040` | 400 | Webhook 署名検証失敗 |
 | `PAYMENT_041` | 409 | 与信失敗（Stripe 側エラー・カード拒否）。応募成立をロールバックし応募者へ通知 |
-| `PAYMENT_C050` | 422 | `FEE_EXCEEDS_FACE_AMOUNT`（安全ガード・総手数料 > 額面・固定額が大きすぎ・§3.5.2） |
+| `PAYMENT_C050` | 422 | `FEE_EXCEEDS_FACE_AMOUNT`（安全ガード・総手数料 > 額面・固定額が大きすぎ・§3.5.2）。**実装は `PAYMENT_C060`**（既存 `PAYMENT_C050`=STRIPE_API_ERROR/500 および本表予約の C051〜C053 と衝突回避・R1） |
 | `PAYMENT_C051` | 404 | `FEE_POLICY_NOT_FOUND`（シスアド CRUD で存在しない policy_key を参照・§11） |
 | `PAYMENT_C052` | 409 | `FEE_POLICY_DEFAULT_IMMUTABLE`（`DEFAULT` パターンの削除/無効化を拒否・解決の終端・§11） |
 | `PAYMENT_C053` | 422 | `FEE_POLICY_INVALID_RATE`（`percent_rate` が `[0,1)` 外・または率・固定額がともに 0 で手数料ゼロ） |

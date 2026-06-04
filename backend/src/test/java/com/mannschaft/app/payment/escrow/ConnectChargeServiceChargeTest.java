@@ -2,6 +2,8 @@ package com.mannschaft.app.payment.escrow;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.payment.FeePolicy;
+import com.mannschaft.app.payment.FeePolicyResolver;
 import com.mannschaft.app.payment.PaymentFeeCalculator;
 import com.mannschaft.app.payment.connect.ConnectAccountEntity;
 import com.mannschaft.app.payment.connect.ConnectAccountRepository;
@@ -55,6 +57,7 @@ class ConnectChargeServiceChargeTest {
     @Mock private AccessControlService accessControlService;
     @Mock private LedgerEntryRepository ledgerEntryRepository;
     @Mock private RefundRepository refundRepository;
+    @Mock private FeePolicyResolver feePolicyResolver;
 
     // PaymentFeeCalculator は純粋関数。実体を使い手数料式の一元利用を検証する。
     private final PaymentFeeCalculator feeCalculator = new PaymentFeeCalculator();
@@ -62,10 +65,13 @@ class ConnectChargeServiceChargeTest {
     private static final UUID PAYEE_ACCOUNT_ID = UUID.fromString("019607a0-0000-7000-8000-0000000000aa");
 
     private ConnectChargeService service() {
+        // R1: 会費は MEMBERSHIP の DEFAULT（率5%＋固定0）を解決し、額面10,000→appFee500 の後方互換を保つ。
+        // 早期 throw 経路（口座未READY/不在・非正額面・冪等）では resolve 未到達のため lenient で許容する。
+        org.mockito.Mockito.lenient().when(feePolicyResolver.resolve(any(), any())).thenReturn(FeePolicy.defaultPolicy());
         return new ConnectChargeService(
                 escrowTransactionRepository, connectAccountRepository,
                 feeCalculator, stripePaymentProvider, accessControlService, ledgerEntryRepository,
-                refundRepository, new com.mannschaft.app.payment.connect.PayeeScopeResolver());
+                refundRepository, new com.mannschaft.app.payment.connect.PayeeScopeResolver(), feePolicyResolver);
     }
 
     private ConnectAccountEntity payeeAccount(boolean payoutsEnabled) {
