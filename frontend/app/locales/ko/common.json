@@ -495,6 +495,13 @@
       "selfReviewEnd": "셀프 리뷰 종료 시간",
       "selfReviewHelp": "설정한 시간대는 게시 전 검토 기간으로 처리됩니다",
       "saveSettings": "설정 저장"
+    },
+    "autoSave": {
+      "label": "자동 저장",
+      "saved": "자동 저장되었습니다",
+      "lastSaved": "{time}에 자동 저장됨",
+      "enabled": "자동 저장이 활성화되었습니다",
+      "disabled": "자동 저장이 비활성화되었습니다"
     }
   },
   "todo": {

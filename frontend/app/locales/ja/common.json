@@ -495,6 +495,13 @@
       "selfReviewEnd": "セルフレビュー終了時刻",
       "selfReviewHelp": "設定した時間帯は投稿前の見直し期間として扱われます",
       "saveSettings": "設定を保存"
+    },
+    "autoSave": {
+      "label": "自動保存",
+      "saved": "自動保存しました",
+      "lastSaved": "{time}に自動保存",
+      "enabled": "自動保存を有効にしました",
+      "disabled": "自動保存を無効にしました"
     }
   },
   "todo": {
