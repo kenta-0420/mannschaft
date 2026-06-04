@@ -1,10 +1,26 @@
 # F08.7.1 / 07: 大会費用支払い（F08.2 決済基盤 再利用）
 
-> **ステータス**: 🟢 設計完了
-> **最終更新**: 2026-05-31
+> **ステータス**: 🟢 設計完了（決済レール＝**暫定で素 Checkout・後続で F22.1 Connect 移行**＝統一アーキ原則の確定により格下げ・§0.1）
+> **最終更新**: 2026-06-04
 > **関連ドキュメント**:
 > - [README.md](./README.md) — 機能概要・トレーサビリティ
 > - [F08.2_payments_access_control.md](../F08.2_payments_access_control.md) — **母体**。汎用決済基盤（`payment_items` / `member_payments` / `stripe_customers` / Stripe Checkout＋MANUAL / `team_access_requirements` / `content_payment_gates` / grace_period / webhook）。本書はこれを大会参加費として再利用する
+> - [F22.1 統一決済プラットフォーム](../F22.1_market/payment/README.md) — **後続の Connect 移行先**（§0.1）。統一アーキ原則（受取人で二分・README §3.0）により大会参加費は第三者受取＝Connect レールが正
+
+---
+
+## 0.1 【正典注記・2026-06-04】決済レールの格下げ＝暫定（素 Checkout）→ 後続 Connect 移行
+
+> **マスター承認済（合同軍議・統一決済アーキ原則確定）**。本書 §1・§4 の「F08.2 素 Checkout（主催組織の Stripe アカウント直課金）で集金し、Stripe Connect は対象外」という記述は、[F22.1 統一決済アーキ原則](../F22.1_market/payment/README.md#30-統一決済アーキ原則-受取人で二分する合同軍議確定正典)（受取人で二分する）に照らすと**原則違反**である:
+>
+> - 大会/リーグ参加費は **主催組織（＝第三者）受取**であり、統一アーキ原則では**第三者受取の集金は全て F22.1 Connect レール**（destination charge・受取側直接着金・資金移動業回避・手数料 application_fee）が正。素 Checkout（自社集金）は **Mannschaft 自社受取**（通知クレジット等）に限る。
+> - したがって本書の「Stripe Connect は対象外」は**恒久方針ではなく、暫定（現行段階）の記述**として読み替える（**格下げ**）。
+>
+> **二段移行（マスター確定）**:
+> 1. **暫定（現行・本書 §1〜§6）**: FE 実装済・E2E 進行中ゆえ、**素 Checkout のまま出荷を完遂**する（既存を壊さない）。本書 §4 の「新たな Stripe Connect 実装は対象外」はこの暫定段階に限る。
+> 2. **後続（Connect 移行）**: 統一基盤の安定後、`source_kind=TOURNAMENT`（F22.1 README §3.0.1 / 01 §2 で確保）で本 Connect レールへ載せ替える。`tournament_fee` 連結はそのまま、money rail のみ `escrow_transactions(source_kind=TOURNAMENT)` へ差し替え、手数料はランク（`fee_policies`・F22.1 README §3.4）で `TOURNAMENT` パターンを割当可能とする。
+>
+> 移行自体は **F22.1 P2-d（別軍議）** で扱う。本書では「暫定の素 Checkout 出荷を完遂し、後続で Connect に載せ替える」方針のみを正典として記す。
 > - [06_document_submission.md](./06_document_submission.md) — 書類提出受付（提出受理を「支払い済み」条件にゲートする連携元）
 > - [01_communication.md](./01_communication.md) — 連絡スペース（参加チーム解決・代表ロール規則を共有）
 
@@ -102,9 +118,11 @@ grace_period（`grace_period_days`）も F08.2 の既存機能で対応する。
 
 ## 4. 入金先・精算・Stripe Connect の扱い
 
-- 入金先＝**主催組織の Stripe アカウント**（F08.2 の org 決済と同様）。
-- クロス組織の精算は F08.2 既存の枠内（MANUAL 記録 or 主催 org の Stripe）で対応する。
-- **新たな Stripe Connect 実装は本設計の対象外**と明記する。協会間で参加費を自動分配するようなマルチアカウント精算が必要になった場合は、別軍議で Stripe Connect を検討する。
+> ⚠️ **暫定（§0.1 参照）**: 以下は**現行の暫定方式**である。統一アーキ原則（受取人で二分・F22.1 README §3.0）では大会参加費＝第三者受取ゆえ**後続で F22.1 Connect レール（`source_kind=TOURNAMENT`）へ移行**する。本書は暫定の素 Checkout 出荷を完遂し、移行は F22.1 P2-d（別軍議）で扱う。
+
+- 入金先＝**主催組織の Stripe アカウント**（F08.2 の org 決済と同様・**暫定**）。後続では主催組織の Connect 口座へ destination charge で直接着金（自社口座非経由＝資金移動業回避）に移行する。
+- クロス組織の精算は F08.2 既存の枠内（MANUAL 記録 or 主催 org の Stripe）で対応する（暫定）。
+- **新たな Stripe Connect 実装は本設計の対象外**（**暫定段階に限る**・§0.1）。統一アーキ原則の確定により、参加費の Connect 移行は「対象外」ではなく「**後続で必ず移行**」が正典方針。協会間の自動分配等が必要になった場合も同 F22.1 基盤上で扱う。
 
 ---
 

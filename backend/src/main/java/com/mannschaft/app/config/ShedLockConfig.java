@@ -29,6 +29,7 @@ import javax.sql.DataSource;
  *   <li>{@code shift_auto_archive} / {@code shift_preference_reminder} — F08.7 シフト</li>
  *   <li>{@code emailOutboxWorker} — F09.18 メール配信ワーカー (lockAtMostFor=PT2M)</li>
  *   <li>{@code emailOutboxStuckRecovery} — F09.18 SENDING 残骸リカバリ (lockAtMostFor=PT5M)</li>
+ *   <li>{@code todoDueReminderHourly} — F04.3 TODO期限リマインダー（毎時・TZ別送信）(lockAtLeastFor=PT50M)</li>
  * </ul>
  *
  * <p>新しいバッチを追加する場合は本 Javadoc にロック名と一行説明を追記すること。

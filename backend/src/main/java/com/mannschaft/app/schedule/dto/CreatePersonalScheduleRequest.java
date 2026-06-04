@@ -1,7 +1,6 @@
 package com.mannschaft.app.schedule.dto;
 
 import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -10,6 +9,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -53,9 +53,15 @@ public class CreatePersonalScheduleRequest {
     @Size(max = 3)
     private final List<Integer> reminders;
 
-    /** 絶対指定リマインダー（固定日時）。任意・各要素は未来日時・単体では最大3件。 */
+    /**
+     * 絶対指定リマインダー（固定日時）。任意・単体では最大3件。
+     * OffsetDateTime で受け取ることでクライアントのタイムゾーンを正確に把握する。
+     * FE はユーザーのローカルタイムゾーンのオフセットを付与して送信すること（例: 2026-06-04T08:00:00+09:00）。
+     * BE は PersonalScheduleService.saveReminders() で JVM TZ（Asia/Tokyo）へ変換して保存する。
+     * @Future 制約は OffsetDateTime に不要（過去日時も保存可能とし、バッチ側で未送信判定する）。
+     */
     @Size(max = 3)
-    private final List<@Future LocalDateTime> absoluteReminders;
+    private final List<OffsetDateTime> absoluteReminders;
 
     private final RecurrenceRuleDto recurrenceRule;
 

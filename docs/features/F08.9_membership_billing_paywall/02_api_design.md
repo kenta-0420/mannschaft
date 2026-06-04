@@ -112,9 +112,21 @@ DELETE /api/v1/membership-subscriptions/{id}        # 期末解約（cancel_at_p
 GET    /api/v1/me/membership-subscriptions           # 自分が払い手の継続課金一覧
 GET    /api/v1/teams/{id}/membership-subscriptions    # 管理者：チームの継続課金一覧
 ```
-- `subscribe`：`is_recurring=true` 項目のみ。`MembershipSubscriptionService.create(...)` が SetupIntent で保存した PM・受領者 Connect 口座・`billing_anchor_day` で Stripe Subscription を作成し、`membership_subscriptions(status=PENDING)` を起票。
-- **会費額の固定（price-lock）**：加入時の額面で固定する。受領者が会費を値上げしても**既存サブスクは加入時 price のまま**継続し、値上げは新規加入者のみに適用。既存者へは「会費改定のお知らせ」を確認必須通知（F04.9）で送り、「新価格で継続する／解約する」を選ばせる移行フロー（管理者が改定 price で新項目を発行→既存者に乗り換え導線）。サイレントな自動値上げはしない。
-- 解約：`cancel_at_period_end=true`（期末まで有効）。即時解約は別途（返金は受取側 ADMIN）。
+- `subscribe`：`is_recurring=true` 項目のみ。`MembershipSubscriptionService.create(...)` が SetupIntent で保存した PM・受領者 Connect 口座・`billing_anchor_day` で Stripe Subscription を作成し、`membership_subscriptions(status=PENDING)` を起票。加入時に `FeePolicyResolver(MEMBERSHIP)` で解決した `fee_policy_key` を焼き付け（遡及防止・README §4.2）。
+- **会費額の固定（price-lock）**：加入時の額面で固定する。受領者が会費を値上げしても**既存サブスクは加入時 price のまま**継続し、値上げは新規加入者のみに適用。既存者へは「会費改定のお知らせ」を確認必須通知（F04.9）で送り、「新価格で継続する／解約する」を選ばせる移行フロー（管理者が改定 price で新項目を発行→既存者に乗り換え導線）。サイレントな自動値上げはしない。**手数料パターン（`fee_policy_key`）も加入時に固定**（料率改定は新規加入のみ反映・遡及しない）。
+- 解約：`cancel_at_period_end=true`（**期末まで利用可・日割り返金なし・期末前は再有効化可**）。即時解約は別途（返金は受取側 ADMIN の F22.1 フロー）。UI には**○月○日まで利用可**と日付を明記（04 §2）。
+
+### 4.3 今月スキップ／再開（pause_collection・マスター確定 2026-06-04）
+
+```
+POST /api/v1/membership-subscriptions/{id}/skip     # 今月スキップ
+POST /api/v1/membership-subscriptions/{id}/resume   # スキップ解除（再開）
+```
+- **skip**：`MembershipSubscriptionService.skip(id)` が Stripe `Subscription.update(pause_collection={behavior:'void', resumes_at: 次回サイクル+1})` を呼び、`membership_subscriptions.skip_until` に再開予定日をセット。**スキップ月は invoice が void → `invoice.paid` が発火せず `valid_until` を延ばさない**（閲覧も延びない＝ペイウォール無改修で整合・README §4.5）。`status` は `ACTIVE` のまま（解約とは独立）。
+- **resume**：`pause_collection` 解除＋`skip_until` クリア。次サイクルから通常課金・延長再開。
+- 認可：払い手本人 / 後見保護者（サブスク所有権 `payer_user_id`・03 §1）。
+- エラー：`SUBSCRIPTION_NOT_ACTIVE`（409・PENDING/CANCELLED/EXPIRED ではスキップ不可）／`SUBSCRIPTION_ALREADY_SKIPPED`（409・既に skip_until セット済）。
+- **UX（04 §2）**：「今月スキップ／解約（○月○日まで利用可）／再開」を継続課金管理に出し、**次回課金日・利用期限を明示**＋確認ダイアログ。i18n 6言語。
 
 ### 4.2 Stripe Webhook フロー（継続）
 
@@ -124,7 +136,7 @@ POST /api/v1/webhooks/stripe   （既存 StripeWebhookController を拡張）
 
 | イベント | 処理 |
 |---|---|
-| `invoice.created` | **★固定手数料上書き**：該当 subscription の `face_amount` から `applicationFee=round(face×0.05)` を算出し、その invoice の `application_fee_amount` を `POST /v1/invoices/{id}` で固定上書き |
+| `invoice.created` | **★固定手数料上書き**：該当 subscription の `face_amount` と焼き付けた `fee_policy_key`（F22.1 `fee_policies` で `total_fee=round(percent×face)+flat`・DEFAULT なら `round(face×0.05)`）を算出し、その invoice の `application_fee_amount` を `POST /v1/invoices/{id}` で固定上書き。**スキップ月（pause_collection void）は invoice 自体が void ゆえ上書き対象外** |
 | `invoice.paid` | `escrow_transaction(MEMBERSHIP, CAPTURED)`＋`ledger_entries` 起票・`member_payments(PAID)` 生成・受益者の `valid_until` を1サイクル延長・`membership_subscriptions.current_period_*` 更新 |
 | `invoice.payment_failed` | `membership_subscriptions.status=PAST_DUE`・払い手へ「お支払いが一時失敗しました。Stripe からのカード更新メールをご確認ください」通知（§6）・grace カウント開始・Stripe smart retries に委譲 |
 | `invoice.paid`（再試行成功） | `PAST_DUE → ACTIVE` 復帰・`valid_until` を現在から1サイクル延長・ペイウォール復活 |
@@ -186,12 +198,15 @@ POST   /api/v1/organizations/{orgId}/payment-requests           # 発行（DRAFT
 PATCH  /api/v1/organizations/{orgId}/payment-requests/{id}/send # 配信（SENT・通知一斉送信）
 GET    /api/v1/organizations/{orgId}/payment-requests           # 協会：自分の発行一覧・集計
 GET    /api/v1/teams/{teamId}/payment-requests                  # チーム：受信した請求一覧
-POST   /api/v1/teams/{teamId}/payment-requests/{id}/pay         # チーム管理者が支払い（Connect）
+POST   /api/v1/teams/{teamId}/payment-requests/{id}/pay         # チーム管理者が支払い（Connect・payer=TEAM 案3）
 PATCH  /api/v1/organizations/{orgId}/payment-requests/{id}/cancel
+GET    /api/v1/teams/{teamId}/payment-advances                  # 立替/精算記録一覧（案3・§2.5）
+POST   /api/v1/teams/{teamId}/payment-advances/{id}/confirm-settlement  # 精算確認（F04.9 確認必須通知から）
 ```
 - 発行：`payment_requests(DRAFT)`。`send` で `ConfirmableNotificationService.send(teamAdminUserIds)`（`actionUrl`＝支払い画面・`deadlineAt`＝due_date・自動リマインド）。`PaymentRequestInboxAdapter` で inbox 集約。
-- 支払い：`ConnectChargeService.charge(...)` で `payer_scope_kind=TEAM`/`payee_kind=ORG`。`status=PAID`・`escrow_transaction_id` 連結。
-- 認可：発行＝協会 ADMIN／支払い＝当該チーム ADMIN（03_security §1）。
+- **支払い（payer=TEAM 案3・README §6.3）**：`ConnectChargeService.charge(...)` で `payer_scope_kind=TEAM`/`payee_kind=ORG`。**Stripe の課金 Customer は操作した当該チーム ADMIN 個人の `stripe_customers`**（チームの法人 Customer は持たない）。`status=PAID`・`escrow_transaction_id` 連結。同時に `team_payment_advances` を **`PENDING` で起票**（`payer_user_id`＝操作 ADMIN・`team_id`・`advanced_amount`＝課金額・`payment_request_id`/`escrow_transaction_id` 連結）。**領収書はチーム名義**（`on_behalf_of`＝協会）。手数料は `fee_policies`（協会請求パターン or DEFAULT・README §6.1）で解決。
+- **精算確認**：チームから ADMIN へ精算（立替金の返金）が行われたら、`confirm-settlement` で `team_payment_advances.settlement_status=SETTLED`・`settled_at`・`settled_confirmed_by` を記録。精算依頼は **F04.9 確認必須通知**でチーム ADMIN（または会計担当）へ配信。
+- 認可：発行＝協会 ADMIN／支払い＝当該チーム ADMIN／精算確認＝当該チーム ADMIN（03_security §1）。
 - エラー：`PAYMENT_REQUEST_NOT_FOR_THIS_TEAM`(403)／`PAYMENT_REQUEST_ALREADY_PAID`(409)／`PAYMENT_REQUEST_CANCELLED`(409)。
 
 ---
@@ -222,8 +237,9 @@ GET /api/v1/teams/{id}/fee-statements?period=YYYY-MM   # 受領者向け：Manns
 
 - `CheckoutResponse`／`BulkCheckoutResponse`／`PayableDuesResponse`
 - `SwitchableChildrenResponse`／`PaymentProxyGrantResponse`
-- `MembershipSubscriptionResponse { id, beneficiaryUserId, payerUserId, paymentItemId, billingInterval, status, currentPeriodEnd, cancelAtPeriodEnd }`
+- `MembershipSubscriptionResponse { id, beneficiaryUserId, payerUserId, paymentItemId, billingInterval, status, currentPeriodEnd, cancelAtPeriodEnd, skipUntil, feePolicyKey }`
 - `PaymentRequestResponse { id, issuerScope, payerScope, title, faceAmount, dueDate, status, paidAt }`
+- `TeamPaymentAdvanceResponse { id, teamId, payerUserId, paymentRequestId, advancedAmount, advancedAt, settlementStatus, settledAt }`
 - `GateCheckResponse`／`PaymentSummaryResponse(拡張)`／`ReceiptResponse`
 
 ---
@@ -241,6 +257,9 @@ GET /api/v1/teams/{id}/fee-statements?period=YYYY-MM   # 受領者向け：Manns
 | `SUBSCRIPTION_INVOICE_FEE_OVERRIDE_FAILED` | 500 | invoice 手数料上書き失敗（要再試行・監視） |
 | `PAYMENT_REQUEST_NOT_FOR_THIS_TEAM` | 403 | 請求先チーム不一致 |
 | `PAYMENT_REQUEST_ALREADY_PAID` | 409 | 請求が支払い済 |
+| `SUBSCRIPTION_NOT_ACTIVE` | 409 | スキップ/再開対象が ACTIVE でない |
+| `SUBSCRIPTION_ALREADY_SKIPPED` | 409 | 既に今月スキップ済（skip_until セット済） |
+| `ADVANCE_ALREADY_SETTLED` | 409 | 立替が既に精算済（重複確認防止） |
 
 ---
 
