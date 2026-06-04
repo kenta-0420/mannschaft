@@ -1,5 +1,7 @@
 package com.mannschaft.app.auth;
 
+import java.time.Clock;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -64,5 +66,20 @@ public class AuthConfig {
         delegatingEncoder.setDefaultPasswordEncoderForMatches(bcryptEncoder);
 
         return delegatingEncoder;
+    }
+
+    /**
+     * F08.9 P3a 後見切替の年齢段階判定で使用する基準時計。
+     *
+     * <p>年度末（日本）・誕生日（フォールバック）の境界を JST で評価するため、
+     * {@code Asia/Tokyo} ゾーンのシステム時計を提供する。テスト時は
+     * {@link Clock#fixed(java.time.Instant, java.time.ZoneId)} へ差し替えて date-pin する
+     * （CI を固定日付で塞がないため・[[project_f0411_inbox_complete]] JobQrTokenServiceTest 教訓）。</p>
+     *
+     * <p>Bean 名を明示し、UTC の {@code utcClock}（jobmatching）と衝突させない。</p>
+     */
+    @Bean
+    public Clock guardianshipClock() {
+        return Clock.system(ZoneId.of("Asia/Tokyo"));
     }
 }
