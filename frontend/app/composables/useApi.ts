@@ -51,9 +51,9 @@ export function useApi() {
       // バックエンドは未認証リクエストに必ず 401 を返す（SecurityConfig.exceptionHandling 参照）。
       if (response.status === 401) {
         // リトライ済み（2 回目の 401）はリフレッシュ不要。エラーをそのまま伝播させる
-        if ((options as Record<string, unknown>)._tokenRefreshed) return
-
-        ;(options as Record<string, unknown>)._tokenRefreshed = true
+        const opts = options as unknown as Record<string, unknown>
+        if (opts._tokenRefreshed) return
+        opts._tokenRefreshed = true
 
         if (authStore.user) {
           const success = await refreshAccessToken()
