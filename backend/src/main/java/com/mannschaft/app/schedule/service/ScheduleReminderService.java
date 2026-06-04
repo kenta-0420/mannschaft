@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.mannschaft.app.schedule.event.ReminderNotificationEvent;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
 
@@ -42,6 +43,8 @@ public class ScheduleReminderService {
 
     private static final int MAX_REMINDERS_PER_SCHEDULE = 5;
     private static final String SOURCE_TYPE_SCHEDULE = "SCHEDULE";
+    /** リマインダー保存時に OffsetDateTime を変換する先のタイムゾーン（JVM TZ と一致）。 */
+    private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Tokyo");
 
     private final ScheduleAttendanceReminderRepository reminderRepository;
     private final ScheduleAttendanceRepository attendanceRepository;
@@ -70,10 +73,14 @@ public class ScheduleReminderService {
         List<ReminderResponse> responses = requests.stream()
                 .map(req -> {
                     ReminderKind kind = req.effectiveKind();
+                    // OffsetDateTime → JSTのLocalDateTimeに変換して保存（バッチ側はLocalDateTime.now()=JSTと比較）
+                    LocalDateTime remindAtJst = (kind == ReminderKind.ABSOLUTE && req.getRemindAt() != null)
+                            ? req.getRemindAt().atZoneSameInstant(STORAGE_ZONE).toLocalDateTime()
+                            : null;
                     ScheduleAttendanceReminderEntity reminder = ScheduleAttendanceReminderEntity.builder()
                             .scheduleId(scheduleId)
                             .reminderKind(kind)
-                            .remindAt(kind == ReminderKind.ABSOLUTE ? req.getRemindAt() : null)
+                            .remindAt(remindAtJst)
                             .remindBeforeMinutes(kind == ReminderKind.RELATIVE ? req.getRemindBeforeMinutes() : null)
                             .build();
 
@@ -115,10 +122,14 @@ public class ScheduleReminderService {
         // 新規登録（編集コンテキストのため過去日時も許容して直接エンティティ保存）
         requests.forEach(req -> {
             ReminderKind kind = req.effectiveKind();
+            // OffsetDateTime → JSTのLocalDateTimeに変換して保存
+            LocalDateTime remindAtJst = (kind == ReminderKind.ABSOLUTE && req.getRemindAt() != null)
+                    ? req.getRemindAt().atZoneSameInstant(STORAGE_ZONE).toLocalDateTime()
+                    : null;
             ScheduleAttendanceReminderEntity reminder = ScheduleAttendanceReminderEntity.builder()
                     .scheduleId(scheduleId)
                     .reminderKind(kind)
-                    .remindAt(kind == ReminderKind.ABSOLUTE ? req.getRemindAt() : null)
+                    .remindAt(remindAtJst)
                     .remindBeforeMinutes(kind == ReminderKind.RELATIVE ? req.getRemindBeforeMinutes() : null)
                     .build();
             reminderRepository.save(reminder);
