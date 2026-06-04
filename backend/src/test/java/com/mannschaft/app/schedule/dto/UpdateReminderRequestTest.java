@@ -10,7 +10,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,9 +19,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * {@link UpdateReminderRequest} のバリデーション単体テスト（機能55 編集対応）。
  *
- * <p>編集コンテキストでは絶対指定の過去日時を許容する（{@code @Future} 制約なし）。
+ * <p>編集コンテキストでは絶対指定の過去日時を許容する（未来日時制約なし）。
  * ABSOLUTE の場合は remindAt の非null のみを検証し、
- * RELATIVE の場合は remindBeforeMinutes の正値を検証する。</p>
+ * RELATIVE の場合は remindBeforeMinutes の正値を検証する。
+ * remindAt は OffsetDateTime で受け取る（タイムゾーン情報を保持）。</p>
  */
 @DisplayName("UpdateReminderRequest バリデーションテスト")
 class UpdateReminderRequestTest {
@@ -38,20 +40,29 @@ class UpdateReminderRequestTest {
     class Absolute {
 
         @Test
-        @DisplayName("未来のremindAtあり_違反なし")
+        @DisplayName("未来のremindAt（JST）あり_違反なし")
         void 未来のremindAtあり_違反なし() {
             UpdateReminderRequest req = new UpdateReminderRequest(
-                    LocalDateTime.now().plusDays(1), null, ReminderKind.ABSOLUTE);
+                    OffsetDateTime.now(ZoneOffset.ofHours(9)).plusDays(1), null, ReminderKind.ABSOLUTE);
             Set<ConstraintViolation<UpdateReminderRequest>> violations = validator.validate(req);
             assertThat(violations).isEmpty();
         }
 
         @Test
-        @DisplayName("過去のremindAtあり_編集コンテキストでは違反なし")
+        @DisplayName("過去のremindAt（JST）あり_編集コンテキストでは違反なし")
         void 過去のremindAtあり_違反なし() {
             // 編集時は既存リマインダーが過去日時になっている場合があるため許容する
             UpdateReminderRequest req = new UpdateReminderRequest(
-                    LocalDateTime.now().minusDays(1), null, ReminderKind.ABSOLUTE);
+                    OffsetDateTime.now(ZoneOffset.ofHours(9)).minusDays(1), null, ReminderKind.ABSOLUTE);
+            Set<ConstraintViolation<UpdateReminderRequest>> violations = validator.validate(req);
+            assertThat(violations).isEmpty();
+        }
+
+        @Test
+        @DisplayName("過去のremindAt（UTC）あり_編集コンテキストでは違反なし")
+        void 過去のremindAt_UTC_違反なし() {
+            UpdateReminderRequest req = new UpdateReminderRequest(
+                    OffsetDateTime.now(ZoneOffset.UTC).minusDays(1), null, ReminderKind.ABSOLUTE);
             Set<ConstraintViolation<UpdateReminderRequest>> violations = validator.validate(req);
             assertThat(violations).isEmpty();
         }
@@ -60,7 +71,7 @@ class UpdateReminderRequestTest {
         @DisplayName("kind未指定でもABSOLUTE扱い_remindAtあり_違反なし")
         void kind未指定_ABSOLUTE扱い_違反なし() {
             UpdateReminderRequest req = new UpdateReminderRequest(
-                    LocalDateTime.now().plusDays(1), null, null);
+                    OffsetDateTime.now(ZoneOffset.ofHours(9)).plusDays(1), null, null);
             Set<ConstraintViolation<UpdateReminderRequest>> violations = validator.validate(req);
             assertThat(violations).isEmpty();
         }
