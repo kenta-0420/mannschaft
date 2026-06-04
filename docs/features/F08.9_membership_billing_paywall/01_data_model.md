@@ -89,10 +89,12 @@ CREATE TABLE membership_subscriptions (
     billing_interval VARCHAR(8) NOT NULL,            -- MONTHLY/YEARLY
     billing_anchor_day TINYINT UNSIGNED NULL,        -- ユーザ指定決済日（1-28 等）
     status VARCHAR(16) NOT NULL DEFAULT 'PENDING',   -- PENDING/ACTIVE/PAST_DUE/CANCELLED/EXPIRED
+    fee_policy_key VARCHAR(40) NOT NULL DEFAULT 'DEFAULT', -- 加入時に解決した手数料パターン（遡及防止の焼き付け・F22.1 fee_policies）
     current_period_start DATE NULL,
     current_period_end DATE NULL,                    -- = 受益者の valid_until 同期
     cancel_at_period_end BOOLEAN NOT NULL DEFAULT FALSE,
     cancelled_at DATETIME NULL,
+    skip_until DATE NULL,                            -- 今月スキップ（pause_collection resumes_at）。NULL=スキップなし。READMEのスキップ機構（§4.5）
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at DATETIME NULL,
@@ -108,6 +110,9 @@ CREATE TABLE membership_subscriptions (
 - **クロスドメイン FK なし**（user/team/org/connect_account はすべて論理参照）。
 - 退避策（自前バッチ）採用時も同テーブルで運用可：`stripe_subscription_id=NULL`・自前スケジューラが `current_period_end` を見て都度決済。
 - `Repository` は `AbstractTenantAwareRepository<MembershipSubscriptionEntity, UUID>`。
+- **`fee_policy_key`**: 加入時に `FeePolicyResolver(source_kind=MEMBERSHIP)` で解決した手数料パターンを焼き付け。各サイクルの invoice 固定手数料上書き（README §4.2）はこの値で算出し、料率改定は**新規加入のみに反映**（既存サブスクは固定＝遡及防止・F22.1 README §3.4.2）。
+- **`skip_until`（今月スキップ・README §4.5）**: Stripe `pause_collection[behavior=void, resumes_at]` を設定した際の再開予定日を保持。NULL=スキップなし。スキップ月は invoice が **void** されるため `invoice.paid` が発火せず `valid_until` を延ばさない（閲覧も延びない＝ペイウォール無改修で整合）。`status` に専用値は設けず（`ACTIVE` のまま `skip_until` の有無で表現）、解約 `cancel_at_period_end` と独立。再開時は `pause_collection` 解除＋`skip_until` クリア。
+- **状態と skip/cancel の独立**: `status`（PENDING/ACTIVE/PAST_DUE/CANCELLED/EXPIRED）はライフサイクル、`cancel_at_period_end`/`skip_until` は ACTIVE 内の利用者操作。期末解約は期末で `CANCELLED` 遷移、スキップは ACTIVE のまま次サイクル再開（02 §4.3）。
 
 ### 2.2 `payment_requests`（協会→加盟チーム請求）
 
@@ -186,6 +191,42 @@ CREATE TABLE payment_proxy_grants (
 - 失効は**実行時ゲート**（決済時に `status=ACTIVE AND now ∈ [effective_from, effective_until]` を都度評価）を一次防御とし、**@Scheduled バッチ（ShedLock・日次）**が `status=ACTIVE AND effective_until < now` を `EXPIRED` へ掃く（一覧表示の正確化）。
 - **包括 grant（item NULL）の濫用抑止**：`effective_until` 必須（CHECK）＋ `max_amount` 推奨。受益者に新会費項目が追加されても、上限・期限の範囲でのみ有効。
 
+### 2.5 `team_payment_advances`（協会請求の立替/精算記録・payer=TEAM 案3）
+
+協会→チーム請求（§6）を**チーム ADMIN 個人の Stripe Customer で立替課金**（案3・README §6.3）した事実と、後にチームから精算された事実を記録する。新規・UUIDv7・テナント表。
+
+```sql
+CREATE TABLE team_payment_advances (
+    id BINARY(16) NOT NULL,                          -- UUIDv7
+    organization_id BIGINT UNSIGNED NULL,            -- テナント（シャードキー候補）
+    team_id BIGINT UNSIGNED NOT NULL,                -- 立替の主体チーム（論理参照）
+    payer_user_id BIGINT UNSIGNED NOT NULL,          -- 立替えた ADMIN 個人（論理参照）
+    escrow_transaction_id BINARY(16) NULL,           -- F22.1 money rail への連結（論理参照）
+    payment_request_id BINARY(16) NULL,              -- 対象の協会請求（論理参照）
+    advanced_amount INT UNSIGNED NOT NULL,           -- 立替額（円整数・払い手が課金された請求額）
+    currency CHAR(3) NOT NULL DEFAULT 'JPY',
+    advanced_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- 立替（協会請求支払い）日時
+    settlement_status VARCHAR(12) NOT NULL DEFAULT 'PENDING', -- PENDING/SETTLED（チームからの精算状態）
+    settled_at DATETIME NULL,                         -- 精算完了日時
+    settled_confirmed_by BIGINT UNSIGNED NULL,        -- 精算を確認した者（チーム ADMIN・論理参照・F04.9 確認）
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at DATETIME NULL,
+    PRIMARY KEY (id),
+    KEY idx_tpa_team (team_id, settlement_status),
+    KEY idx_tpa_payer (payer_user_id),
+    KEY idx_tpa_org (organization_id),
+    KEY idx_tpa_request (payment_request_id),
+    CONSTRAINT chk_tpa_settlement CHECK (settlement_status IN ('PENDING','SETTLED'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+- **クロスドメイン FK なし**（team/user/escrow/payment_request はすべて論理参照）。`escrow_transaction_id`/`payment_request_id` も payment ドメイン内だが、立替記録は監査証跡として保持し連鎖削除を避けるため論理参照とする。
+- **フロー**: 協会請求支払い時（02 §7・payer=TEAM）に `PENDING` で起票（`payer_user_id`＝操作 ADMIN・`team_id`＝請求先チーム・`advanced_amount`＝課金額）。後にチームから精算されたら、**F04.9 確認必須通知**で精算確認を取り `settlement_status=SETTLED`・`settled_at`・`settled_confirmed_by` を記録。
+- **領収書はチーム名義**（destination charge＋`on_behalf_of`＝役務提供者は協会・支払元名義はチーム名）。
+- `Repository` は `AbstractTenantAwareRepository<TeamPaymentAdvanceEntity, UUID>`。
+- チーム ADMIN 閲覧/確認画面は 04 §1。チーム残高直接払い（案2）は将来候補ゆえ本テーブルは案3（立替）前提（README §6.4）。
+
 ### 2.4 後見切替の年齢ポリシーは新規テーブル不要（からくりは code 解決）
 
 後見切替のしきい値（国別）は **`GuardianshipAgePolicy`（code・戦略）** で `users.country_code`＋`birthDate` から解決し、**新規テーブルを要しない**（税 `TaxPolicy` と同型）。既定 `JapanGuardianshipAgePolicy` を bundle、未対応国は満13歳フォールバック。
@@ -204,9 +245,11 @@ CREATE TABLE payment_proxy_grants (
 | `EscrowSourceKind.MEMBERSHIP` | ✅ 実装済（V73.003・main） | 会費の source_kind |
 | `ConnectChargeService`（authorize/capture/refund） | ✅ 実装済（P2-a/b/c・main） | 共通送金基盤 |
 | `ConnectChargeService.charge(MembershipChargeCommand)`（即時 AUTOMATIC） | ✅ 本機能 P1 Wave0 で追加（2026-06-03） | 会費の即時 charge |
-| `PaymentFeeCalculator`（手数料一元化） | ✅ 実装済（main） | 折半計算（散在禁止・流用必須） |
+| `PaymentFeeCalculator`（手数料一元化） | ✅ 実装済（main・定数 0.025/0.05） | 折半計算（散在禁止・流用必須） |
+| `fee_policies`/`fee_policy_assignments`/`escrow_transactions.fee_policy_key`／`FeePolicyResolver`（手数料ランク化） | ⏳ **F22.1 P2-f（本軍議で正典化・実装未着手）** | 会費・参加費の手数料パターン解決（DEFAULT で従来一致・遡及防止）。本機能 `membership_subscriptions.fee_policy_key` はこれに連結 |
 
 > F22.1 P2-b/c は **main 済**（V73.003 でスキーマ・enum、`ConnectChargeService.authorize/capture/refund`・`PaymentFeeCalculator` 実装済）。会費が要する即時 `charge()` メソッドのみが欠けていたため、**F08.9 P1 Wave0 で escrow ドメインに追加**した（既存 authorize/capture は無改変・差分最小化で F22.1 並行作業との衝突を回避）。
+> **手数料ランク化（F22.1 P2-f）は本軍議で正典化・実装未着手**: `PaymentFeeCalculator` は定数（0.025/0.05）撤廃→policy 注入へ改修予定（DEFAULT で既存挙動不変）。本機能の `membership_subscriptions.fee_policy_key`・各 invoice の固定手数料上書きはこの policy 値で算出する（README §4.2・F22.1 README §3.4）。
 
 ### 3.1 source_kind × scope の許可マッピング（整合性保証）
 
@@ -247,7 +290,15 @@ payment_items(拡張: TERM/recurring/tax)
 
 payment_requests(新: 協会→チーム)
   ├─(論理)─ escrow_transactions(F22.1: payer=TEAM/payee=ORG)
+  ├─(論理)─ team_payment_advances(新: 立替/精算・案3)─(論理)─ confirmable_notifications(F04.9: 精算確認)
   └─(論理)─ confirmable_notifications(F04.9: 配信・督促)
+
+team_payment_advances(新: 案3 立替/精算)
+  ├─(論理)─ escrow_transactions(F22.1: payer=TEAM/payee=ORG)
+  └─(論理)─ payment_requests(対象請求)
+
+fee_policies(F22.1: 手数料パターン・率%＋固定額) ─(論理・焼付)─ escrow_transactions.fee_policy_key
+  └─(論理)─ membership_subscriptions.fee_policy_key
 
 connect_accounts(F22.1・拡張: tax_registration_number/tax_status)
 ```
@@ -265,9 +316,12 @@ connect_accounts(F22.1・拡張: tax_registration_number/tax_status)
 | `V74.001__alter_member_payments_add_payer.sql` | `payer_user_id`/`payment_proxy_grant_id`/`payer_relationship`/`escrow_transaction_id`/`membership_subscription_id` 追加・INDEX |
 | `V74.002__alter_payment_items_add_term_tax.sql` | `type` ENUM に `TERM` 追加／`is_recurring`/`billing_interval`/`term_starts_on`/`term_ends_on`/`tax_category`/`tax_rate`/`price_includes_tax` 追加 |
 | `V74.003__alter_connect_accounts_add_tax.sql` | `tax_registration_number`/`tax_status` 追加（F22.1 テーブルへの追記・要 F22.1 側調整） |
-| `V74.004__create_membership_subscriptions.sql` | 継続課金テーブル（UUIDv7） |
+| `V74.004__create_membership_subscriptions.sql` | 継続課金テーブル（UUIDv7・`fee_policy_key`・`skip_until` 含む） |
 | `V74.005__create_payment_requests.sql` | 協会請求テーブル（UUIDv7） |
 | `V74.006__create_payment_proxy_grants.sql` | 第三者代理払い許可テーブル（UUIDv7） |
+| `V7x.xxx__create_team_payment_advances.sql`（仮・着手時採番） | 立替/精算記録テーブル（UUIDv7・案3・§2.5） |
+
+> **proxy scope `PAYMENT` は DDL 不要**（§6）: 代理払いの組織代理経路は `proxy_input_consent_scopes.feature_scope`（VARCHAR(64)・V18.011・CHECK なし）に enum 値 `PAYMENT` を1つ足すだけで成立する。新規 migration・列追加は不要（enum 定数追加のみ）。
 
 - ENUM 拡張（`payment_items.type` への `TERM`）は MySQL の `MODIFY COLUMN` で実施。H2 テスト互換に留意（[[project_mysql_reserved_word_column_fix]] と同様、ddl-auto:create テストで enum 文字列長/予約語に注意）。
 
@@ -275,12 +329,12 @@ connect_accounts(F22.1・拡張: tax_registration_number/tax_status)
 
 ## 6. GDPR・退会・暗号化
 
-- **payer_user_id／beneficiary_user_id** は退会時、`user_id` の匿名化方針に従う（投稿・履歴・統計は残し PII のみ消去）。`member_payments`・`membership_subscriptions` は**金銭記録**ゆえ物理削除せず、ユーザー参照を NULL 化せずに匿名化（会計・税務保持義務）。保持期間は F12.3／F09.18 の方針に整合（決済 payload 30日・to_address 13ヶ月・メタ7年相当を踏襲・§税務確定で再調整）。
+- **payer_user_id／beneficiary_user_id** は退会時、`user_id` の匿名化方針に従う（投稿・履歴・統計は残し PII のみ消去）。`member_payments`・`membership_subscriptions`・`team_payment_advances` は**金銭記録**ゆえ物理削除せず、ユーザー参照を NULL 化せずに匿名化（会計・税務保持義務）。`team_payment_advances`（立替/精算）は退会後も保持し、PENDING のまま残る立替は退会者の表示名のみ匿名化（精算確認の対象＝チームに帰属する金銭事実は消さない）。保持期間は F12.3／F09.18 の方針に整合（決済 payload 30日・to_address 13ヶ月・メタ7年相当を踏襲・§税務確定で再調整）。
 - **後見切替セッション**の代理操作は `proxy_input_records`（F14.1）に記録。退会・年齢到達（中学進学）で切替権原は自動失効（`users.status` 連動・F14.1 の DECEASED/RELOCATED 失効と同型）。
 - **退会時のアトミック失効**（受益者 or 払い手の退会処理＝`UserWithdrawalService` のトランザクション内で実行・宙ぶらりんを残さない）：
   1. 当該ユーザーが受益者の `membership_subscriptions` を `CANCELLED`（＋ Stripe Subscription を cancel）
   2. 当該ユーザーが受益者/払い手の `payment_proxy_grants` を `REVOKED`
-  3. 当該ユーザー関連の `proxy_input_consents(scope=PAYMENT)` を `REVOKED`
+  3. 当該ユーザー関連の代理権スコープ `PAYMENT`（`proxy_input_consent_scopes.feature_scope='PAYMENT'` の同意行）を失効（F14.1 の scope 行失効と同型。**scope は VARCHAR に値1つ追加で実現＝専用テーブル/列なし**・§3.3 是正）
   4. 払い手が抜けた継続課金は受益者へ「支払者不在」を通知（別の払い手に切替を促す）
   - バッチ（日次）は**取りこぼしの掃き取り**（二重防御）であって主経路ではない。順序は user 失効より先に下流（grant/subscription）を倒し、不整合を残さない。
 - `payment_proxy_grants` は受益者退会で `REVOKED`（上記1トランザクションに含む）。
