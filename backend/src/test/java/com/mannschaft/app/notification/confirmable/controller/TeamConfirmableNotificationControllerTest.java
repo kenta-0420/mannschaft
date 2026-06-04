@@ -92,11 +92,13 @@ class TeamConfirmableNotificationControllerTest {
         given(request.getTitle()).willReturn("テスト確認通知");
         given(request.getBody()).willReturn(null);
         given(request.getPriority()).willReturn(ConfirmableNotificationPriority.NORMAL);
-        given(request.getDeadlineAt()).willReturn(null);
+        // deadlineAt は OffsetDateTime へ変更済み。Controller は getDeadlineAtAsJst() を呼ぶ
+        given(request.getDeadlineAtAsJst()).willReturn(null);
         given(request.getFirstReminderMinutes()).willReturn(null);
         given(request.getSecondReminderMinutes()).willReturn(null);
         given(request.getActionUrl()).willReturn(null);
         given(request.getTemplateId()).willReturn(null);
+        given(request.getUnconfirmedVisibility()).willReturn(null);
         given(request.getRecipientUserIds()).willReturn(List.of(2L, 3L, 4L));
         return request;
     }

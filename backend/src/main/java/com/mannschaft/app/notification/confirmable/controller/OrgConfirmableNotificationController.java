@@ -66,7 +66,7 @@ public class OrgConfirmableNotificationController {
                 request.getTitle(),
                 request.getBody(),
                 request.getPriority(),
-                request.getDeadlineAt(),
+                request.getDeadlineAtAsJst(),
                 request.getFirstReminderMinutes(),
                 request.getSecondReminderMinutes(),
                 request.getActionUrl(),
