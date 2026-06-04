@@ -10,7 +10,7 @@ interface Mention {
   isRead: boolean
 }
 
-const notifCount = ref(0)
+const notifCount = useState('badge:notifCount', () => 0)
 const chatCount = ref(0)
 const mentionCount = ref(0)
 
