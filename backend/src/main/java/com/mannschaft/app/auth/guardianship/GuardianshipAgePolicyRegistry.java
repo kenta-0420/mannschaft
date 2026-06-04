@@ -64,7 +64,8 @@ public class GuardianshipAgePolicyRegistry {
         GuardianshipAgePolicy policy = policiesByCountry.get(normalize(countryCode));
         if (policy == null) {
             // 未対応国は安全側フォールバック＋記録（症状を隠さない）。
-            log.warn("後見切替: 未対応の country_code={} のためフォールバックポリシー（満13歳封印）を適用", countryCode);
+            // 正規化後の値（大文字化済み）でログすることで、元の入力ゆれを吸収して一貫したトレースを残す。
+            log.warn("後見切替: 未対応の country_code={} のためフォールバックポリシー（満13歳封印）を適用", normalize(countryCode));
             return fallbackPolicy;
         }
         return policy;
