@@ -1,14 +1,20 @@
 package com.mannschaft.app.payment.service;
 
+import com.mannschaft.app.auth.service.ParentalConsentService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.family.service.CareLinkService;
 import com.mannschaft.app.payment.MembershipBillingErrorCode;
 import com.mannschaft.app.payment.PayerRelationship;
+import com.mannschaft.app.payment.PaymentProxyGrantStatus;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
+import com.mannschaft.app.payment.repository.PaymentProxyGrantRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 /**
  * F08.9 代理払い認可サービス（払い手 ≠ 受益者の核心 IDOR 対策）。
@@ -19,19 +25,23 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>権原はキャッシュせず毎回実行時評価する</b>（03_security §2「権原の失効」）。
  * 保護者リンク取消・grant 失効・受益者退会で権原は即時消失するため、判定結果を保持してはならない。</p>
  *
- * <p><b>本サービスのスコープ（P1 で実効な経路）:</b>
+ * <p><b>本サービスで実効な経路（P2 注入完了）:</b>
  * <ul>
  *   <li>{@code SELF} — 受益者本人が支払う（常に許可）</li>
+ *   <li>{@code GUARDIAN} — 払い手が受益者の承認済み保護者（parental_consent_links / user_care_links）</li>
+ *   <li>{@code PROXY_GRANT} — payment_proxy_grants の ACTIVE かつ有効期間内 grant</li>
  *   <li>{@code ADMIN_MANUAL} — 当該 payment_item のスコープ（team/org）の ADMIN が手動記録する</li>
  * </ul>
  * 上記いずれにも該当しなければ 403。
- * GUARDIAN（保護者リンク）/ GUARDIAN_PROXY（後見切替セッション）/ PROXY_GRANT（payment_proxy_grants）は
- * <b>P2 で評価を注入する分岐口</b>として本クラス内に TODO 明示する。P1 では評価せず 403 に倒す
- * （未実装の経路を黙って通さない・症状を隠さない）。</p>
+ * {@code GUARDIAN_PROXY}（後見切替セッション中の保護者代理払い）は後見切替（P3）が未実装のため
+ * 本タスクでは評価しない（黙って通さない・P3 注入口の TODO のまま）。</p>
  *
  * <p><b>ドメイン境界:</b> {@code @Transactional(readOnly)} は payment ドメインに閉じる。
  * user/team は ID のみ受け取り Entity を直接参照しない。ADMIN 判定は共通ヘルパー
- * {@link AccessControlService} を経由する（role ドメインへの直接越境を避ける）。</p>
+ * {@link AccessControlService} を経由する（role ドメインへの直接越境を避ける）。
+ * GUARDIAN 経路の保護者リンク照会は auth の {@link ParentalConsentService} / family の
+ * {@link CareLinkService} の公開 boolean メソッド経由で行い、両ドメインの Entity / Repository を
+ * 直接参照しない。PROXY_GRANT は payment ドメイン自身の {@link PaymentProxyGrantRepository} を参照する。</p>
  *
  * <p>設計書: docs/features/F08.9_membership_billing_paywall/03_security.md §2</p>
  */
@@ -43,20 +53,27 @@ public class PaymentAuthorizationService {
 
     private final PaymentItemService paymentItemService;
     private final AccessControlService accessControlService;
+    private final ParentalConsentService parentalConsentService;
+    private final CareLinkService careLinkService;
+    private final PaymentProxyGrantRepository paymentProxyGrantRepository;
 
     /**
      * 払い手が受益者の会費項目を支払う権原を検証し、成立した関係を返す。
      *
-     * <p>評価順序（03_security §2 の擬似コードに準拠）:</p>
+     * <p>評価順序（03_security §2 の擬似コードに準拠・毎回実行時評価・キャッシュしない）:</p>
      * <ol>
      *   <li>{@code payerUserId == beneficiaryUserId} → {@link PayerRelationship#SELF}（常に許可）</li>
-     *   <li><b>[P2 注入口]</b> GUARDIAN（parental_consent_links / user_care_links）</li>
-     *   <li><b>[P2 注入口]</b> GUARDIAN_PROXY（後見切替セッション {@code X-Proxy-For-User-Id} 下の保護者代理）</li>
-     *   <li><b>[P2 注入口]</b> PROXY_GRANT（payment_proxy_grants の ACTIVE かつ有効期間内 grant）</li>
+     *   <li>GUARDIAN（payer が beneficiary の承認済み保護者 parental_consent_links=APPROVED
+     *       または 見守り PARENT user_care_links=ACTIVE）→ {@link PayerRelationship#GUARDIAN}</li>
+     *   <li>PROXY_GRANT（payment_proxy_grants に ACTIVE かつ {@code now ∈ [effective_from, effective_until]}
+     *       の有効 grant が存在）→ {@link PayerRelationship#PROXY_GRANT}</li>
      *   <li>{@code manualRecordByAdmin} かつ呼び出し元が当該 paymentItem スコープの ADMIN
      *       → {@link PayerRelationship#ADMIN_MANUAL}</li>
      *   <li>いずれも不成立 → {@code MEMBERSHIP_PAYER_NOT_AUTHORIZED}（403）</li>
      * </ol>
+     *
+     * <p>{@link PayerRelationship#GUARDIAN_PROXY} は後見切替（P3）が未実装のため本タスクでは評価しない
+     * （後見切替セッション判定 {@code isProxy()} は P3 で注入する）。</p>
      *
      * <p>IDOR 防止: {@code beneficiaryUserId} は呼出側 payload から渡るが、上記権原検証なしには
      * 一切「許可」を返さない。権原なき他人の受益者については常に 403。</p>
@@ -77,35 +94,81 @@ public class PaymentAuthorizationService {
             return PayerRelationship.SELF;
         }
 
-        // 2. [P2 注入口] GUARDIAN — 保護者リンクによる権原。
-        //    parentalConsentLink(child=beneficiary, parent=payer).status == APPROVED → GUARDIAN
-        //    userCareLink(recipient=beneficiary, watcher=payer, relationship=PARENT).status == ACTIVE → GUARDIAN
-        //    P1 では評価しない（リポジトリ未配線）。実装時は accessControlService.checkCareLink 等を流用しつつ
-        //    parental_consent_links（APPROVED）も併せて評価する。
-        // TODO(F08.9 P2): GUARDIAN 経路の評価をここに注入する。
+        // 2. GUARDIAN — 保護者リンクによる権原（毎回実行時評価・キャッシュしない）。
+        //    parental_consent_links(child=beneficiary, parent=payer).status == APPROVED → GUARDIAN
+        //    user_care_links(recipient=beneficiary, watcher=payer, relationship=PARENT).status == ACTIVE → GUARDIAN
+        //    ドメイン境界遵守: auth/family の Entity/Repository を直接参照せず、各 Service の公開 boolean メソッド経由で判定する。
+        if (isGuardian(payerUserId, beneficiaryUserId)) {
+            return PayerRelationship.GUARDIAN;
+        }
 
-        // 3. [P2 注入口] GUARDIAN_PROXY — 後見切替セッション中の保護者代理払い。
+        // 3. [P3 注入口] GUARDIAN_PROXY — 後見切替セッション中の保護者代理払い。
         //    権原成立は GUARDIAN と同じ（保護者リンク）だが、X-Proxy-For-User-Id 付き
         //    （ProxyInputContextFilter / isProxy()）の場合に GUARDIAN_PROXY として区別記録する。
         //    「子の自己払い」と誤読させないための分類であり、権原評価自体は GUARDIAN に依存する。
-        // TODO(F08.9 P2): 後見切替セッション判定（isProxy）を注入し、GUARDIAN 成立時に GUARDIAN_PROXY を返す。
+        //    後見切替（P3）が未実装のため本タスクでは評価しない（黙って通さない）。
+        // TODO(F08.9 P3): 後見切替セッション判定（isProxy）を注入し、GUARDIAN 成立時に GUARDIAN_PROXY を返す。
 
-        // 4. [P2 注入口] PROXY_GRANT — 第三者代理払い grant（非後見・祖父母・スポンサー等）。
-        //    paymentProxyGrantRepository.findActiveGrant(beneficiary, payer, item, ACTIVE, now) が存在し、
-        //    now が [effective_from, effective_until] 範囲内なら PROXY_GRANT。grant_id を記録する。
-        //    P1 では評価しない（Repository は Wave2 で配線済みだが本サービスでは未評価）。
-        // TODO(F08.9 P2): PaymentProxyGrantRepository.findActiveGrant を注入して PROXY_GRANT を評価する。
+        // 4. PROXY_GRANT — 第三者代理払い grant（非後見・祖父母・スポンサー等）。
+        //    payment_proxy_grants に (beneficiary, payer, item|包括NULL)・status=ACTIVE・
+        //    now ∈ [effective_from, effective_until] の有効 grant があれば PROXY_GRANT。
+        //    grant の引き当て・有効期間判定は Repository クエリに委譲する（findActiveGrant）。
+        if (hasActiveProxyGrant(payerUserId, beneficiaryUserId, paymentItemId)) {
+            return PayerRelationship.PROXY_GRANT;
+        }
 
         // 5. ADMIN_MANUAL — 当該 payment_item のスコープ（team/org）の ADMIN による手動記録。
         if (manualRecordByAdmin && isScopeAdmin(payerUserId, paymentItemId)) {
             return PayerRelationship.ADMIN_MANUAL;
         }
 
-        // 6. いずれの権原も不成立。未実装経路（GUARDIAN/GUARDIAN_PROXY/PROXY_GRANT）も
-        //    黙って通さず、無権原として明示的に 403 に倒す。
+        // 6. いずれの権原も不成立。未実装経路（GUARDIAN_PROXY）も黙って通さず、
+        //    無権原として明示的に 403 に倒す。
         log.info("代理払い権原なし: payer={}, beneficiary={}, itemId={}, manualByAdmin={}",
                 payerUserId, beneficiaryUserId, paymentItemId, manualRecordByAdmin);
         throw new BusinessException(MembershipBillingErrorCode.MEMBERSHIP_PAYER_NOT_AUTHORIZED);
+    }
+
+    /**
+     * 払い手が受益者の承認済み保護者（GUARDIAN）かを判定する。
+     *
+     * <p>権原は 2 系統のいずれかで成立する（OR）:</p>
+     * <ul>
+     *   <li>auth: parental_consent_links（child=beneficiary, parent=payer, status=APPROVED）</li>
+     *   <li>family: user_care_links（recipient=beneficiary, watcher=payer, relationship=PARENT, status=ACTIVE）</li>
+     * </ul>
+     *
+     * <p>ドメイン境界遵守のため auth/family の Entity/Repository を直接参照せず、各 Service の
+     * 公開 boolean メソッドのみを呼ぶ。判定はキャッシュせず毎回実行時評価する
+     * （保護者リンク取消で即時に権原消失するため・03_security §2「権原の失効」）。</p>
+     */
+    private boolean isGuardian(Long payerUserId, Long beneficiaryUserId) {
+        if (payerUserId == null || beneficiaryUserId == null) {
+            return false;
+        }
+        return parentalConsentService.isApprovedGuardian(payerUserId, beneficiaryUserId)
+                || careLinkService.isActiveParentWatcher(payerUserId, beneficiaryUserId);
+    }
+
+    /**
+     * 払い手が受益者に対する有効な第三者代理払い grant（PROXY_GRANT）を保有するかを判定する。
+     *
+     * <p>payment ドメイン自身の {@link PaymentProxyGrantRepository#findActiveGrant} に委譲し、
+     * status=ACTIVE かつ {@code now ∈ [effective_from, effective_until]} の grant を引き当てる。
+     * payment_item_id 指定 grant と包括 grant（item=NULL）の双方を対象とする（Repository クエリ側で吸収）。
+     * 判定はキャッシュせず毎回実行時評価する（grant 失効で即時に権原消失するため）。</p>
+     */
+    private boolean hasActiveProxyGrant(Long payerUserId, Long beneficiaryUserId, Long paymentItemId) {
+        if (payerUserId == null || beneficiaryUserId == null) {
+            return false;
+        }
+        return paymentProxyGrantRepository.findActiveGrant(
+                beneficiaryUserId,
+                payerUserId,
+                paymentItemId,
+                PaymentProxyGrantStatus.ACTIVE,
+                LocalDateTime.now()
+        ).isPresent();
     }
 
     /**
