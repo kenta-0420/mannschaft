@@ -106,7 +106,7 @@ public class ConnectChargeService {
         }
 
         // 手数料パターン（率%＋固定額¥）を解決し（R1・02 §3.5.1）、PaymentFeeCalculator で折半計算する
-        // （数式を再実装しない・一元化・02 §3.5）。安全ガード違反は PAYMENT_C051(422) で拒否する（§3.5.2）。
+        // （数式を再実装しない・一元化・02 §3.5）。安全ガード違反は PAYMENT_C060(422) で拒否する（§3.5.2）。
         FeePolicy policy = feePolicyResolver.resolve(cmd.sourceKind(), cmd.subKey());
         FeeBreakdown fee = calculateWithPolicyGuard(cmd.faceAmount(), policy);
         String currency = cmd.currency() != null ? cmd.currency() : "JPY";
@@ -216,7 +216,7 @@ public class ConnectChargeService {
         }
 
         // 手数料パターン（率%＋固定額¥）を解決し（R1・02 §3.5.1）、PaymentFeeCalculator で折半計算する
-        // （数式を再実装しない・一元化・02 §3.5）。安全ガード違反は PAYMENT_C051(422) で拒否する（§3.5.2）。
+        // （数式を再実装しない・一元化・02 §3.5）。安全ガード違反は PAYMENT_C060(422) で拒否する（§3.5.2）。
         FeePolicy policy = feePolicyResolver.resolve(EscrowSourceKind.MEMBERSHIP, cmd.subKey());
         FeeBreakdown fee = calculateWithPolicyGuard(cmd.faceAmount(), policy);
         String currency = "JPY";

@@ -37,4 +37,11 @@ public interface FeePolicyRepository extends JpaRepository<FeePolicyEntity, Stri
      * @return 有効パターン一覧
      */
     List<FeePolicyEntity> findByEnabledTrue();
+
+    /**
+     * 全パターン（{@code enabled=false} 含む）を policy_key 昇順で取得する（シスアド管理一覧用）。
+     *
+     * @return 全パターン一覧（policy_key 昇順）
+     */
+    List<FeePolicyEntity> findAllByOrderByPolicyKeyAsc();
 }
