@@ -1,0 +1,40 @@
+{
+  "systemAdmin": {
+    "feePolicy": {
+      "title": "手数料パターン管理",
+      "description": "統一決済の手数料パターン（率＋固定額）と適用先を管理します",
+      "policyKey": "パターンキー",
+      "displayName": "表示名",
+      "percentRate": "率（%）",
+      "flatFee": "固定額（円）",
+      "enabled": "有効",
+      "assignmentCount": "割当数",
+      "totalFeeHint": "総手数料 = 率 × 額面 ＋ 固定額（支払者・受取側で折半）",
+      "create": "パターンを追加",
+      "update": "更新する",
+      "disable": "無効にする",
+      "defaultImmutable": "標準（DEFAULT）パターンは無効化できません",
+      "feeExceedsHint": "この固定額は少額決済で手数料が額面を超える可能性があります",
+      "validation": {
+        "policyKeyFormat": "パターンキーは英大文字・数字・アンダースコアのみ使用できます",
+        "displayNameRequired": "表示名を入力してください",
+        "percentRateRange": "率は 0 以上 1 未満で入力してください",
+        "flatFeeNonNegative": "固定額は 0 以上で入力してください",
+        "feeZeroNotAllowed": "率と固定額を両方 0 にはできません",
+        "alreadyExists": "同じキーのパターンが既に存在します（更新してください）",
+        "notFound": "対象の手数料パターンが見つかりません"
+      },
+      "assignment": {
+        "title": "手数料の割当",
+        "sourceKind": "対象種別",
+        "subKey": "細分キー（任意・例: 助っ人カテゴリ）",
+        "policy": "適用パターン",
+        "add": "割当を追加",
+        "remove": "割当を解除",
+        "applyNote": "割当の変更は新規の課金にのみ反映されます（既存の取引は変更されません）",
+        "duplicate": "同じ条件の割当が既に存在します",
+        "policyDisabled": "割当先の手数料パターンが無効です"
+      }
+    }
+  }
+}
