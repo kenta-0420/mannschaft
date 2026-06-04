@@ -1,6 +1,7 @@
 package com.mannschaft.app.family.repository;
 
 import com.mannschaft.app.family.CareLinkStatus;
+import com.mannschaft.app.family.CareRelationship;
 import com.mannschaft.app.family.entity.UserCareLinkEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -32,6 +33,22 @@ public interface UserCareLinkRepository extends JpaRepository<UserCareLinkEntity
     long countByCareRecipientUserIdAndStatusIn(Long careRecipientUserId, List<CareLinkStatus> statuses);
 
     boolean existsByCareRecipientUserIdAndStatus(Long careRecipientUserId, CareLinkStatus status);
+
+    /**
+     * ケア対象者・見守り者・続柄・ステータスを指定してケアリンクの存在を確認する。
+     *
+     * <p>F08.9 代理払い認可（GUARDIAN 経路）で「払い手が受益者の見守り PARENT か」を
+     * boolean 判定するために利用する（payment ドメインは {@code CareLinkService}
+     * 経由でのみ呼び出す・Entity を直接参照しない）。</p>
+     *
+     * @param careRecipientUserId ケア対象者（受益者）のユーザーID
+     * @param watcherUserId       見守り者（払い手）のユーザーID
+     * @param relationship        続柄（通常 PARENT）
+     * @param status              ステータス（通常 ACTIVE）
+     * @return 一致するケアリンクが存在する場合 true
+     */
+    boolean existsByCareRecipientUserIdAndWatcherUserIdAndRelationshipAndStatus(
+            Long careRecipientUserId, Long watcherUserId, CareRelationship relationship, CareLinkStatus status);
 
     /**
      * 複数のケア対象者ユーザーIDを IN 句で一括取得する（N+1 防止）。
