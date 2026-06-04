@@ -280,13 +280,6 @@ function buildDateTimeStr(date: Date | null, time: string): string | null {
   return time ? `${dateStr}T${time}:00` : `${dateStr}T00:00:00`
 }
 
-// DatePicker（show-time）で得た Date を、ユーザーTZの「壁時計時刻」を保つ
-// LocalDateTime 文字列（YYYY-MM-DDTHH:mm:ss）に変換する。
-function buildFullDateTimeStr(date: Date | null): string | null {
-  if (!date) return null
-  return dayjs(date).tz(userTimezone.value).format('YYYY-MM-DDTHH:mm:ss')
-}
-
 // DatePicker（show-time）で得た Date を、ユーザーTZオフセット付き OffsetDateTime 文字列に変換する。
 // 絶対リマインダーの送信にのみ使用する（例: "2026-06-05T09:00:00+09:00"）。
 // BE は OffsetDateTime として受け付けるため、TZオフセットを必ず付与する必要がある。
@@ -461,7 +454,7 @@ async function submit() {
       const s = form.value.scheduledSurvey
       body.scheduledSurveys = [
         {
-          scheduledAt: buildFullDateTimeStr(s.scheduledAt),
+          scheduledAt: buildOffsetDateTimeStr(s.scheduledAt),
           survey: {
             title: s.title.trim() || undefined,
             isAnonymous: s.isAnonymous,
@@ -484,8 +477,8 @@ async function submit() {
     if (form.value.scheduledAttendance.enabled) {
       const a = form.value.scheduledAttendance
       body.scheduledAttendance = {
-        scheduledAt: buildFullDateTimeStr(a.scheduledAt),
-        attendanceDeadline: buildFullDateTimeStr(a.attendanceDeadline) ?? undefined,
+        scheduledAt: buildOffsetDateTimeStr(a.scheduledAt),
+        attendanceDeadline: buildOffsetDateTimeStr(a.attendanceDeadline) ?? undefined,
         commentOption: a.commentOption,
         minResponseRole: a.minResponseRole.trim() || undefined,
       }
