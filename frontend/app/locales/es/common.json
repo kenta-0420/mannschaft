@@ -498,6 +498,7 @@
     },
     "autoSave": {
       "label": "Guardado automático",
+      "saved": "Guardado automáticamente",
       "lastSaved": "Guardado automáticamente a las {time}",
       "enabled": "Guardado automático activado",
       "disabled": "Guardado automático desactivado"

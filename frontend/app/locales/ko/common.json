@@ -498,6 +498,7 @@
     },
     "autoSave": {
       "label": "자동 저장",
+      "saved": "자동 저장되었습니다",
       "lastSaved": "{time}에 자동 저장됨",
       "enabled": "자동 저장이 활성화되었습니다",
       "disabled": "자동 저장이 비활성화되었습니다"

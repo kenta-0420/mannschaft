@@ -498,6 +498,7 @@
     },
     "autoSave": {
       "label": "自動保存",
+      "saved": "自動保存しました",
       "lastSaved": "{time}に自動保存",
       "enabled": "自動保存を有効にしました",
       "disabled": "自動保存を無効にしました"

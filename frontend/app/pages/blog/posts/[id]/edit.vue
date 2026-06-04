@@ -58,7 +58,7 @@ async function runAutoSave() {
   try {
     await autoSave(postId, { title: title.value, body: body.value || '.', excerpt: null, version: null })
     lastAutoSavedAt.value = new Date()
-    info($t('blog.autoSave.label'))
+    info($t('blog.autoSave.saved'))
   } catch {
     console.warn('[blog] 自動保存に失敗しました')
   }

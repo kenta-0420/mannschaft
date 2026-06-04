@@ -498,6 +498,7 @@
     },
     "autoSave": {
       "label": "自动保存",
+      "saved": "已自动保存",
       "lastSaved": "自动保存于{time}",
       "enabled": "已启用自动保存",
       "disabled": "已禁用自动保存"

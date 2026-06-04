@@ -498,6 +498,7 @@
     },
     "autoSave": {
       "label": "Auto-save",
+      "saved": "Auto-saved",
       "lastSaved": "Auto-saved at {time}",
       "enabled": "Auto-save enabled",
       "disabled": "Auto-save disabled"
