@@ -52,6 +52,8 @@ import com.mannschaft.app.common.security.AccessGuard;
  * {@code @WebMvcTest} でコントローラー層のみをロードし、Service は MockitoBean で差し替える。
  */
 @WebMvcTest(UserController.class)
+@org.springframework.context.annotation.Import(
+        com.mannschaft.app.auth.guardianship.AuthenticationCriticalOperationGuard.class)
 @AutoConfigureMockMvc(addFilters = false)
 class UserControllerTest {
 
@@ -341,5 +343,84 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.data.id").value(1));
+    }
+
+    // ──────────────────────────────────────────────
+    // F08.9 P3b: 後見切替セッション中（acting-as）の認証クリティカル操作ガード（03_security §3.2）
+    //   ProxyInputContext.isProxy()==true で対象 EP は 403。
+    // ──────────────────────────────────────────────
+
+    @org.junit.jupiter.api.Nested
+    @DisplayName("F08.9 P3b — 後見切替中の認証クリティカル操作ガード")
+    class GuardianshipActingAsGuard {
+
+        @org.junit.jupiter.api.BeforeEach
+        void actingAs() {
+            // 後見切替セッション中（X-Proxy-For-User-Id 検証済み）を模擬
+            given(proxyInputContext.isProxy()).willReturn(true);
+        }
+
+        @Test
+        @DisplayName("PATCH /me/password — 切替中は 403（パスワード変更を代理不可）")
+        void changePassword_actingAs_returns403() throws Exception {
+            String body = """
+                    {
+                      "currentPassword": "OldPassw0rd!",
+                      "newPassword": "NewPassw0rd!"
+                    }
+                    """;
+
+            mockMvc.perform(patch("/api/v1/users/me/password")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isForbidden());
+
+            org.mockito.Mockito.verifyNoInteractions(userService);
+        }
+
+        @Test
+        @DisplayName("PATCH /me/email — 切替中は 403（メール変更を代理不可）")
+        void requestEmailChange_actingAs_returns403() throws Exception {
+            String body = """
+                    {
+                      "newEmail": "new@example.com",
+                      "currentPassword": "Passw0rd!"
+                    }
+                    """;
+
+            mockMvc.perform(patch("/api/v1/users/me/email")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isForbidden());
+
+            org.mockito.Mockito.verifyNoInteractions(userService);
+        }
+
+        @Test
+        @DisplayName("DELETE /me — 切替中は 403（退会を代理不可）")
+        void requestWithdrawal_actingAs_returns403() throws Exception {
+            String body = """
+                    {
+                      "currentPassword": "Passw0rd!"
+                    }
+                    """;
+
+            mockMvc.perform(delete("/api/v1/users/me")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isForbidden());
+
+            org.mockito.Mockito.verifyNoInteractions(userService);
+        }
+
+        @Test
+        @DisplayName("POST /me/withdrawal/cancel — 切替中は 403（退会取消を代理不可）")
+        void cancelWithdrawal_actingAs_returns403() throws Exception {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .post("/api/v1/users/me/withdrawal/cancel"))
+                    .andExpect(status().isForbidden());
+
+            org.mockito.Mockito.verifyNoInteractions(userService);
+        }
     }
 }

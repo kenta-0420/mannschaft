@@ -643,6 +643,7 @@ public class GlobalExceptionHandler {
             //   Severity.WARN 既定（400）では設計の 403/409 を満たせないため明示登録する。
             Map.entry("MEMBERSHIP_BILLING_001", HttpStatus.FORBIDDEN),       // 代理払い権原なし / IDOR
             Map.entry("MEMBERSHIP_BILLING_002", HttpStatus.CONFLICT),        // 既に有効な支払いが存在（二重課金防止）
+            Map.entry("MEMBERSHIP_BILLING_003", HttpStatus.FORBIDDEN),       // 後見切替中の認証クリティカル操作（なりすまし防止・03_security §3.2）
             // セキュリティインシデント（GDPR Article 33）
             Map.entry("SEC_INCIDENT_001", HttpStatus.NOT_FOUND)              // SECURITY_INCIDENT_NOT_FOUND（IDOR 対策で 404）
     );
