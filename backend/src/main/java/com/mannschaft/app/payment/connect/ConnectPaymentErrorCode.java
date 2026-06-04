@@ -74,7 +74,53 @@ public enum ConnectPaymentErrorCode implements ErrorCode {
      * {@code total_fee > face_amount} を {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} に 422 で登録し
      * （#1279 の 500 フォールバック前科回避）、握りつぶさず「このパターンはこの額面に適用できない」と返す。</p>
      */
-    FEE_EXCEEDS_FACE_AMOUNT("PAYMENT_C060", "手数料が額面を上回るため、この手数料パターンは適用できません", Severity.WARN);
+    FEE_EXCEEDS_FACE_AMOUNT("PAYMENT_C060", "手数料が額面を上回るため、この手数料パターンは適用できません", Severity.WARN),
+
+    /**
+     * シスアド CRUD: 存在しない（または不在で秘匿しない）手数料パターン（policy_key）を参照した。404。
+     *
+     * <p>設計書 02 §7 / §11 の {@code FEE_POLICY_NOT_FOUND}。{@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP}
+     * に 404 で登録する（登録漏れは 400 既定にフォールバックするため・#1279 前科）。</p>
+     */
+    FEE_POLICY_NOT_FOUND("PAYMENT_C051", "対象の手数料パターンが見つかりません", Severity.WARN),
+
+    /**
+     * シスアド CRUD: {@code DEFAULT} パターンの削除/無効化を拒否する（解決フォールバックの終端・最後の砦）。409。
+     *
+     * <p>設計書 02 §7 / §11 の {@code FEE_POLICY_DEFAULT_IMMUTABLE}。{@code DEFAULT} が消えると全課金の解決終端が
+     * 失われ破綻するため、削除/無効化のみ禁止する（率・固定額の改定は許容）。{@code ERROR_CODE_STATUS_MAP} に 409 で登録。</p>
+     */
+    FEE_POLICY_DEFAULT_IMMUTABLE("PAYMENT_C052", "DEFAULT パターンは削除・無効化できません", Severity.WARN),
+
+    /**
+     * シスアド CRUD: {@code percent_rate} が {@code [0,1)} 外、率・固定額がともに 0（手数料ゼロ）、または policy_key 形式違反。422。
+     *
+     * <p>設計書 02 §7 / §11 の {@code FEE_POLICY_INVALID_RATE}。{@code ERROR_CODE_STATUS_MAP} に 422 で登録。</p>
+     */
+    FEE_POLICY_INVALID_RATE("PAYMENT_C053", "手数料パターンの率・固定額が不正です（率は 0 以上 1 未満、率と固定額がともに 0 は不可）", Severity.WARN),
+
+    /**
+     * シスアド CRUD: 既存 policy_key で新規作成（POST）した（重複）。409。
+     *
+     * <p>更新は {@code PUT /{policyKey}} に誘導する。{@code ERROR_CODE_STATUS_MAP} に 409 で登録。</p>
+     */
+    FEE_POLICY_ALREADY_EXISTS("PAYMENT_C054", "同じキーの手数料パターンが既に存在します（更新は PUT を使用してください）", Severity.WARN),
+
+    /**
+     * シスアド CRUD（割当）: {@code (source_kind, sub_key, organization_id)} の組が既存（UNIQUE 違反）。409。
+     *
+     * <p>{@code ERROR_CODE_STATUS_MAP} に 409 で登録。</p>
+     */
+    FEE_POLICY_ASSIGNMENT_DUPLICATE("PAYMENT_C055", "同じ条件の割当が既に存在します", Severity.WARN),
+
+    /**
+     * シスアド CRUD（割当）: 割当が参照する policy_key が無効（{@code enabled=FALSE}）である。422。
+     *
+     * <p>存在しない policy_key は {@link #FEE_POLICY_NOT_FOUND}（404）で区別する。無効パターンへの割当は解決時に
+     * フォールバックされ意図せぬ DEFAULT 適用を招くため、設定時点で握りつぶさず拒否する（症状を隠さない）。
+     * {@code ERROR_CODE_STATUS_MAP} に 422 で登録。</p>
+     */
+    FEE_POLICY_ASSIGNMENT_POLICY_DISABLED("PAYMENT_C056", "割当先の手数料パターンが無効です", Severity.WARN);
 
     private final String code;
     private final String message;

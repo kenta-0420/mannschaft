@@ -277,6 +277,58 @@ class SecurityConfigAuthorizationTest {
                 });
     }
 
+    // ---- F22.1 R2 手数料パターン管理 (/api/v1/system-admin/fee-policies) ----
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: GET /api/v1/system-admin/fee-policies は 401/403（認証必須）")
+    void anonymous_fee_policies_is_auth_rejected() throws Exception {
+        expectAuthRejected(mockMvc.perform(get("/api/v1/system-admin/fee-policies")),
+                "GET /api/v1/system-admin/fee-policies");
+    }
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("一般ユーザー: /api/v1/system-admin/fee-policies は 403")
+    void member_fee_policies_is_forbidden() throws Exception {
+        mockMvc.perform(get("/api/v1/system-admin/fee-policies"))
+                .andExpect(result -> {
+                    int status = result.getResponse().getStatus();
+                    if (status != 403) {
+                        throw new AssertionError(
+                                "/api/v1/system-admin/fee-policies は一般ユーザーで 403 のはずだが status=" + status);
+                    }
+                });
+    }
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DisplayName("SYSTEM_ADMIN: /api/v1/system-admin/fee-policies は 403 にならない")
+    void systemAdmin_fee_policies_not_forbidden() throws Exception {
+        mockMvc.perform(get("/api/v1/system-admin/fee-policies"))
+                .andExpect(result -> {
+                    int status = result.getResponse().getStatus();
+                    if (status == 403) {
+                        throw new AssertionError(
+                                "/api/v1/system-admin/fee-policies は SYSTEM_ADMIN 権限で 403 になってはならない status=" + status);
+                    }
+                });
+    }
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("一般ユーザー: /api/v1/system-admin/fee-policy-assignments は 403")
+    void member_fee_policy_assignments_is_forbidden() throws Exception {
+        mockMvc.perform(get("/api/v1/system-admin/fee-policy-assignments"))
+                .andExpect(result -> {
+                    int status = result.getResponse().getStatus();
+                    if (status != 403) {
+                        throw new AssertionError(
+                                "/api/v1/system-admin/fee-policy-assignments は一般ユーザーで 403 のはずだが status=" + status);
+                    }
+                });
+    }
+
     // ---- 公開エンドポイント（既存許可リスト）が反転後も維持されること ----
 
     @Test
