@@ -332,6 +332,29 @@ public class CareLinkService {
                 .toList();
     }
 
+    /**
+     * 指定ユーザーが対象のケア対象者の「ACTIVE な見守り PARENT」であるかを判定する。
+     *
+     * <p>F08.9 代理払い認可（GUARDIAN 経路）から呼び出される境界メソッド。
+     * payment ドメインは family ドメインの Entity / Repository を直接参照せず、
+     * 本メソッドの boolean 結果のみを受け取る（モジュラーモノリスのドメイン境界遵守）。</p>
+     *
+     * <p>user_care_links に (recipient=careRecipientUserId, watcher=watcherUserId,
+     * relationship=PARENT, status=ACTIVE) のリンクが存在すれば {@code true}。
+     * 権原はキャッシュせず毎回実行時評価する（リンク解除で即時に権原消失するため・@Cacheable を付けない）。</p>
+     *
+     * @param watcherUserId       見守り者候補（払い手）のユーザーID
+     * @param careRecipientUserId ケア対象者（受益者）のユーザーID
+     * @return ACTIVE な見守り PARENT リンクが存在する場合 true
+     */
+    public boolean isActiveParentWatcher(Long watcherUserId, Long careRecipientUserId) {
+        if (watcherUserId == null || careRecipientUserId == null) {
+            return false;
+        }
+        return careLinkRepository.existsByCareRecipientUserIdAndWatcherUserIdAndRelationshipAndStatus(
+                careRecipientUserId, watcherUserId, CareRelationship.PARENT, CareLinkStatus.ACTIVE);
+    }
+
     // =========================================================
     // プライベートヘルパー
     // =========================================================

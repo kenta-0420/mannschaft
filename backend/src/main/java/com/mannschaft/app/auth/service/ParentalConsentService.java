@@ -381,6 +381,33 @@ public class ParentalConsentService {
     }
 
     // ========================================
+    // クロスドメイン照会（payment ドメインから利用）
+    // ========================================
+
+    /**
+     * 指定ユーザーが対象の子ユーザーの「承認済み保護者」であるかを判定する。
+     *
+     * <p>F08.9 代理払い認可（GUARDIAN 経路）から呼び出される境界メソッド。
+     * payment ドメインは auth ドメインの Entity / Repository を直接参照せず、
+     * 本メソッドの boolean 結果のみを受け取る（モジュラーモノリスのドメイン境界遵守）。</p>
+     *
+     * <p>parental_consent_links に (child=childUserId, parent=parentUserId, status=APPROVED)
+     * のリンクが 1 件でも存在すれば {@code true}。権原はキャッシュせず毎回実行時評価する
+     * （リンク取消で即時に権原消失するため）。</p>
+     *
+     * @param parentUserId 保護者候補（払い手）のユーザー ID
+     * @param childUserId  子（受益者）のユーザー ID
+     * @return 承認済み保護者リンクが存在する場合 true
+     */
+    public boolean isApprovedGuardian(Long parentUserId, Long childUserId) {
+        if (parentUserId == null || childUserId == null) {
+            return false;
+        }
+        return parentalConsentLinkRepository.existsByChildUserIdAndParentUserIdAndStatus(
+                childUserId, parentUserId, ParentalConsentLinkStatus.APPROVED);
+    }
+
+    // ========================================
     // 退会ブロックチェック
     // ========================================
 
