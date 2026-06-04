@@ -19,7 +19,8 @@ import java.time.LocalDate;
  * 学年制度のない国でも誤って切替を許し続けないよう、満13歳到達で確実に封じる。</p>
  *
  * <p>誕生日の評価タイムゾーンは注入された {@link Clock} のゾーンに従う（呼び出し側が
- * 適切なゾーンの Clock を渡す）。</p>
+ * 適切なゾーンの Clock を渡す）。本番では UTC のシステム時計（共通 {@code ClockConfig} の
+ * {@code utcClock} Bean）が注入される。</p>
  */
 @Component
 public class DefaultGuardianshipAgePolicy implements GuardianshipAgePolicy {

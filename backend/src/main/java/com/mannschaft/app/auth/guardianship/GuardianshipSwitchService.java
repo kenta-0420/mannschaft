@@ -52,7 +52,7 @@ public class GuardianshipSwitchService {
     private final CareLinkService careLinkService;
     private final UserRepository userRepository;
     private final GuardianshipAgePolicyRegistry agePolicyRegistry;
-    private final Clock guardianshipClock;
+    private final Clock clock;
 
     /**
      * 認証ユーザー（保護者）の切替可能な子・封印された子を集約して返す。
@@ -90,7 +90,7 @@ public class GuardianshipSwitchService {
             }
 
             GuardianshipAgePolicy policy = agePolicyRegistry.forCountry(child.getCountryCode());
-            AgeStageResolution resolution = policy.resolve(birthDate, guardianshipClock);
+            AgeStageResolution resolution = policy.resolve(birthDate, clock);
 
             if (resolution.switchAllowed()) {
                 switchable.add(new SwitchableChildDto(
