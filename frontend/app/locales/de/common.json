@@ -495,6 +495,13 @@
       "selfReviewEnd": "Endzeit der Selbstüberprüfung",
       "selfReviewHelp": "Der konfigurierte Zeitraum wird als Überprüfungsfenster vor der Veröffentlichung behandelt",
       "saveSettings": "Einstellungen speichern"
+    },
+    "autoSave": {
+      "label": "Automatisch speichern",
+      "saved": "Automatisch gespeichert",
+      "lastSaved": "Automatisch gespeichert um {time}",
+      "enabled": "Automatisches Speichern aktiviert",
+      "disabled": "Automatisches Speichern deaktiviert"
     }
   },
   "todo": {
