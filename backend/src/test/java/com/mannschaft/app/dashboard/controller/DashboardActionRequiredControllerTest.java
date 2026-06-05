@@ -5,6 +5,8 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.dashboard.dto.ActionRequiredSummaryResponse;
 import com.mannschaft.app.dashboard.service.ScopeActionRequiredFacade;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +21,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -40,11 +43,19 @@ class DashboardActionRequiredControllerTest {
     @Mock
     private ScopeActionRequiredFacade scopeActionRequiredFacade;
 
+    @Mock
+    private TeamService teamService;
+
+    @Mock
+    private OrganizationService organizationService;
+
     @InjectMocks
     private DashboardController controller;
 
     private static final Long USER_ID = 1L;
+    private static final UUID TEAM_UUID = UUID.fromString("00000000-0000-7000-8000-00000000000a");
     private static final Long TEAM_ID = 10L;
+    private static final UUID ORG_UUID = UUID.fromString("00000000-0000-7000-8000-000000000014");
     private static final Long ORG_ID = 20L;
 
     @BeforeEach
@@ -73,10 +84,11 @@ class DashboardActionRequiredControllerTest {
     @Test
     @DisplayName("GET team/{id}/action-required: 200 で集計形状を返す")
     void teamActionRequired_returns200() {
+        given(teamService.resolveTeamId(TEAM_UUID)).willReturn(TEAM_ID);
         given(scopeActionRequiredFacade.getActionRequired(USER_ID, "TEAM", TEAM_ID)).willReturn(summary());
 
         ResponseEntity<ApiResponse<ActionRequiredSummaryResponse>> res =
-                controller.getTeamActionRequired(TEAM_ID);
+                controller.getTeamActionRequired(TEAM_UUID);
 
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(res.getBody()).isNotNull();
@@ -87,10 +99,11 @@ class DashboardActionRequiredControllerTest {
     @Test
     @DisplayName("GET organization/{id}/action-required: 200 で集計形状を返す")
     void orgActionRequired_returns200() {
+        given(organizationService.resolveOrgId(ORG_UUID)).willReturn(ORG_ID);
         given(scopeActionRequiredFacade.getActionRequired(USER_ID, "ORGANIZATION", ORG_ID)).willReturn(summary());
 
         ResponseEntity<ApiResponse<ActionRequiredSummaryResponse>> res =
-                controller.getOrgActionRequired(ORG_ID);
+                controller.getOrgActionRequired(ORG_UUID);
 
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(res.getBody().getData().survey().unansweredCount()).isEqualTo(1);
@@ -100,10 +113,11 @@ class DashboardActionRequiredControllerTest {
     @Test
     @DisplayName("非所属（checkMembership 403）はそのまま伝播する")
     void nonMemberPropagates403() {
+        given(teamService.resolveTeamId(TEAM_UUID)).willReturn(TEAM_ID);
         doThrow(new BusinessException(CommonErrorCode.COMMON_002))
                 .when(scopeActionRequiredFacade).getActionRequired(USER_ID, "TEAM", TEAM_ID);
 
-        assertThatThrownBy(() -> controller.getTeamActionRequired(TEAM_ID))
+        assertThatThrownBy(() -> controller.getTeamActionRequired(TEAM_UUID))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", CommonErrorCode.COMMON_002);
     }
