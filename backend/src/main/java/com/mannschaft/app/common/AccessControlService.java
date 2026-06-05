@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -65,12 +66,90 @@ public class AccessControlService {
 
     /**
      * ユーザーのスコープ内ロール名を取得する。メンバーでない場合はnull。
+     *
+     * <p>F00.5 §8.3 根治: 所属ロール（MEMBER / SUPPORTER）は user_roles から削除済み
+     * （{@code V60.010__delete_member_supporter_from_user_roles.sql}）のため、memberships を
+     * 統合した {@link #resolveEffectiveRoleName} に委譲する。これにより memberships 専属の
+     * MEMBER / SUPPORTER も正しいロール名で返るようになり、過小権限バグが解消される。</p>
      */
     public String getRoleName(Long userId, Long scopeId, String scopeType) {
-        return findUserRole(userId, scopeId, scopeType)
-                .flatMap(ur -> roleRepository.findById(ur.getRoleId()))
-                .map(RoleEntity::getName)
+        return resolveEffectiveRoleName(userId, scopeId, scopeType);
+    }
+
+    /**
+     * ユーザーのスコープ内「有効ロール名」を解決する（F00.5 §8.3 統合ロール解決）。
+     *
+     * <p>F00.5 で所属（memberships）と権限ロール（user_roles）が分離されたことに伴い、
+     * 1 スコープに対するユーザーのロールは次の 2 系統に分散している:</p>
+     * <ul>
+     *   <li><b>権限ロール</b>: {@code user_roles} 由来（ADMIN / DEPUTY_ADMIN / GUEST など）</li>
+     *   <li><b>所属ロール</b>: {@code memberships.role_kind} 由来（MEMBER / SUPPORTER）</li>
+     * </ul>
+     *
+     * <p>本メソッドは両系統のロール名を集め、{@code roles} テーブルの priority が最小
+     * （= 最強）のロール名を返す。どちらにも該当が無ければ {@code null} を返す。</p>
+     *
+     * <p>例:</p>
+     * <ul>
+     *   <li>memberships のみ MEMBER → {@code "MEMBER"}</li>
+     *   <li>memberships のみ SUPPORTER → {@code "SUPPORTER"}</li>
+     *   <li>user_roles ADMIN ＋ memberships MEMBER → {@code "ADMIN"}（priority 最強を採用）</li>
+     *   <li>user_roles GUEST のみ → {@code "GUEST"}</li>
+     * </ul>
+     *
+     * <p>本メソッドは両 Repository を<b>読むのみ・書かない</b>（F00.5 §13 境界原則）。</p>
+     *
+     * @param userId    操作ユーザー
+     * @param scopeId   スコープ ID（チーム ID または組織 ID）
+     * @param scopeType スコープ種別（"TEAM" または "ORGANIZATION"）
+     * @return 有効ロール名。該当が無ければ {@code null}
+     */
+    public String resolveEffectiveRoleName(Long userId, Long scopeId, String scopeType) {
+        return resolveEffectiveRole(userId, scopeId, scopeType)
+                .map(EffectiveRole::name)
                 .orElse(null);
+    }
+
+    /**
+     * 有効ロール（名前＋priority）を解決する内部ヘルパー。
+     *
+     * <p>user_roles 由来の権限ロールと memberships.role_kind 由来の所属ロールを集め、
+     * priority が最小（最強）のものを返す。{@link #resolveEffectiveRoleName} および
+     * {@link #hasRoleOrAbove} が共有する。priority を直接保持して返すため、
+     * 呼び出し側で追加の {@code roleRepository.findByName} を発行する必要がない
+     * （= 既存テストのスタブ前提を壊さない）。</p>
+     */
+    private Optional<EffectiveRole> resolveEffectiveRole(Long userId, Long scopeId, String scopeType) {
+        EffectiveRole best = null;
+
+        // 1) 権限ロール（user_roles 由来: ADMIN / DEPUTY_ADMIN / GUEST 等）
+        Optional<RoleEntity> userRole = findUserRole(userId, scopeId, scopeType)
+                .flatMap(ur -> roleRepository.findById(ur.getRoleId()));
+        if (userRole.isPresent()) {
+            best = new EffectiveRole(userRole.get().getName(), userRole.get().getPriority());
+        }
+
+        // 2) 所属ロール（memberships.role_kind 由来: MEMBER / SUPPORTER）
+        ScopeType scope = ScopeType.valueOf(scopeType);
+        List<RoleKind> activeRoleKinds = membershipRepository.findActiveRoleKinds(userId, scope, scopeId);
+        for (RoleKind roleKind : activeRoleKinds) {
+            if (roleKind == null) {
+                continue;
+            }
+            String candidateName = roleKind.name(); // "MEMBER" / "SUPPORTER"（roles.name と一致）
+            int candidatePriority = roleRepository.findByName(candidateName)
+                    .map(RoleEntity::getPriority)
+                    .orElse(Integer.MAX_VALUE);
+            if (best == null || candidatePriority < best.priority()) {
+                best = new EffectiveRole(candidateName, candidatePriority);
+            }
+        }
+
+        return Optional.ofNullable(best);
+    }
+
+    /** 有効ロールの名前と priority を束ねる内部値オブジェクト。 */
+    private record EffectiveRole(String name, int priority) {
     }
 
     /**
@@ -107,14 +186,19 @@ public class AccessControlService {
 
     /**
      * ユーザーが指定ロール以上（priority値がロール以下）かどうかを返す。
-     * ロール優先度: ADMIN(1) > DEPUTY_ADMIN(2) > MEMBER(3) > SUPPORTER(4) > GUEST(5)
+     * ロール優先度（{@code roles} テーブル）: SYSTEM_ADMIN(1) &gt; ADMIN(2) &gt; DEPUTY_ADMIN(3)
+     * &gt; MEMBER(4) &gt; SUPPORTER(5) &gt; GUEST(6)。
+     *
+     * <p>F00.5 §8.3 根治: 有効ロールを {@link #resolveEffectiveRoleName} で解決するよう書き換えた。
+     * これにより、user_roles から削除済みの MEMBER / SUPPORTER（memberships 専属）でも
+     * {@code hasRoleOrAbove("MEMBER")} / {@code hasRoleOrAbove("SUPPORTER")} が正しく判定される。
+     * ADMIN / DEPUTY_ADMIN の挙動は不変（priority 最強の user_roles ロールが採用されるため）。</p>
      */
     public boolean hasRoleOrAbove(Long userId, Long scopeId, String scopeType, String requiredRoleName) {
-        return findUserRole(userId, scopeId, scopeType)
-                .flatMap(ur -> roleRepository.findById(ur.getRoleId()))
-                .map(userRole -> {
+        return resolveEffectiveRole(userId, scopeId, scopeType)
+                .map(effective -> {
                     RoleEntity requiredRole = roleRepository.findByName(requiredRoleName).orElse(null);
-                    return requiredRole != null && userRole.getPriority() <= requiredRole.getPriority();
+                    return requiredRole != null && effective.priority() <= requiredRole.getPriority();
                 })
                 .orElse(false);
     }
