@@ -61,6 +61,7 @@ function setCurrentFolderId(value: CurrentFolder) {
 
 onMounted(async () => {
   try {
+    await orgStore.fetchMyOrganizations()
     await foldersStore.fetchAll('ORGANIZATION')
   }
   catch {
