@@ -123,6 +123,20 @@ public interface ParentalConsentLinkRepository extends JpaRepository<ParentalCon
     List<ParentalConsentLinkEntity> findByStatus(ParentalConsentLinkStatus status, Pageable pageable);
 
     /**
+     * バッチ用: 指定ステータスのリンクを id 昇順で安定ページング取得する。
+     *
+     * <p>F08.9 P3c-3 自立移行通知バッチ（進学予告）で、全 APPROVED 保護者リンク
+     * （保護者→子）を横断的に列挙するために使用する。ページ間で順序が安定するよう
+     * id 昇順で取得し、{@code pageNumber} を進めて全件走査する。</p>
+     *
+     * @param status   絞り込むステータス（通常 APPROVED）
+     * @param pageable ページング設定
+     * @return 対象の同意リンクのリスト（id 昇順）
+     */
+    List<ParentalConsentLinkEntity> findByStatusOrderByIdAsc(
+            ParentalConsentLinkStatus status, Pageable pageable);
+
+    /**
      * Cleanup バッチ用: 指定ステータス群のいずれかに該当するリンクが子ユーザーに存在するか確認する。
      * 期限切れ PENDING 失効後に子アカウントを削除するかどうかの判定に使用する。
      *

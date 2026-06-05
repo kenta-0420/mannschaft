@@ -286,6 +286,7 @@ public class EmailOutboxServiceImpl implements EmailOutboxService {
                  "GDPR_WITHDRAWAL_REMINDER",
                  "RESERVATION_EMERGENCY_REMINDER",
                  "RESERVATION_EMERGENCY_UNCONFIRMED",
+                 "GUARDIANSHIP_PROGRESSION_NOTICE",
                  "DIRECT_MAIL_AD" -> {
                 String subject = vars.get("subject");
                 String htmlBody = vars.get("body");
