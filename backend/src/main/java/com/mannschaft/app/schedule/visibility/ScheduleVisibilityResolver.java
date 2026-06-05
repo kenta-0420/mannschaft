@@ -27,7 +27,8 @@ import java.util.List;
  *
  * <p><strong>機能側 visibility との対応</strong>（§5.2 + Resolver 内派生 PERSONAL_PRIVATE）:</p>
  * <ul>
- *   <li>{@link ScheduleVisibility#MEMBERS_ONLY} → {@link StandardVisibility#MEMBERS_ONLY}</li>
+ *   <li>{@link ScheduleVisibility#MEMBERS_ONLY} → {@link StandardVisibility#SCOPE_AFFILIATED}
+ *       （W5 正準化・挙動保存。応援者包含/除外は別軸の {@code min_view_role} が司る）</li>
  *   <li>{@link ScheduleVisibility#ORGANIZATION} → {@link StandardVisibility#ORGANIZATION_WIDE}</li>
  *   <li>{@link ScheduleVisibility#CUSTOM_TEMPLATE} → {@link StandardVisibility#CUSTOM_TEMPLATE}</li>
  *   <li>PERSONAL スコープ（{@code team_id / organization_id} が null） →
