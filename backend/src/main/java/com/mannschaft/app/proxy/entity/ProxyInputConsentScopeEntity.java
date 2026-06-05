@@ -74,6 +74,15 @@ public class ProxyInputConsentScopeEntity {
         /** 回覧（F05.2） */
         CIRCULAR,
         /** 家族・見守り者の閲覧権限（SUPPORTER用） */
-        SUPPORTER_VIEW
+        SUPPORTER_VIEW,
+        /**
+         * 代理払い（F08.9 P3b）。
+         * 後見切替セッション（acting-as）における代理払いスコープ。
+         * 紙同意書ベースの組織代理の重い経路（03_security §2 是正 2026-06-04）として、
+         * この enum 値を proxy_input_consent_scopes.feature_scope（VARCHAR(64)・CHECK なし）に
+         * 追加するだけで表現する（本体への列追加・DDL は不要）。決済系 Service が
+         * {@link com.mannschaft.app.proxy.ProxyInputContext#hasScope} で要求スコープを検証する素地。
+         */
+        PAYMENT
     }
 }
