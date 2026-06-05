@@ -192,6 +192,61 @@ public enum MembershipBillingErrorCode implements ErrorCode {
     PAYMENT_REQUEST_NO_RECIPIENTS(
             "MEMBERSHIP_BILLING_014",
             "この請求を配信できる管理者が請求先チームにいません",
+            Severity.WARN),
+
+    /**
+     * 継続課金（membership_subscriptions）が見つからない。404。
+     *
+     * <p>存在しない／論理削除済み／IDOR（他人のサブスク）を秘匿して 404 で返す。</p>
+     *
+     * <p>設計書: docs/features/F08.9_membership_billing_paywall/02_api_design.md §4。</p>
+     */
+    SUBSCRIPTION_NOT_FOUND(
+            "MEMBERSHIP_BILLING_015",
+            "継続課金が見つかりません",
+            Severity.WARN),
+
+    /**
+     * 継続課金が ACTIVE でないためその操作を実行できない（スキップ等）。409。
+     *
+     * <p>{@code PENDING}/{@code CANCELLED}/{@code EXPIRED} ではスキップ／再開などの ACTIVE 限定操作を実行できない
+     * （02_api §4.3 {@code SUBSCRIPTION_NOT_ACTIVE}）。</p>
+     */
+    SUBSCRIPTION_NOT_ACTIVE(
+            "MEMBERSHIP_BILLING_016",
+            "この継続課金は有効な状態ではないためその操作を実行できません",
+            Severity.WARN),
+
+    /**
+     * 継続課金が既に今月スキップ済み（二重スキップ防止）。409。
+     *
+     * <p>{@code skip_until} がセット済みのサブスクに対して再度スキップを試みた場合に投げる
+     * （02_api §4.3 {@code SUBSCRIPTION_ALREADY_SKIPPED}）。</p>
+     */
+    SUBSCRIPTION_ALREADY_SKIPPED(
+            "MEMBERSHIP_BILLING_017",
+            "この継続課金は既に今月スキップが適用されています",
+            Severity.WARN),
+
+    /**
+     * 継続課金の操作者がサブスクの所有者（払い手 / 後見保護者）でない。403。
+     *
+     * <p>解約/スキップ/再開は {@code payer_user_id} 本人または後見保護者のみ（03_security §1）。
+     * IDOR を秘匿して 403 で返す。</p>
+     */
+    SUBSCRIPTION_NOT_AUTHORIZED(
+            "MEMBERSHIP_BILLING_018",
+            "この継続課金を操作する権限がありません",
+            Severity.WARN),
+
+    /**
+     * 継続課金の加入対象が継続課金項目（{@code is_recurring=true}）でない。409。
+     *
+     * <p>単発項目に対して subscribe を試みた場合に投げる（02_api §4.1「is_recurring=true 項目のみ」）。</p>
+     */
+    SUBSCRIPTION_ITEM_NOT_RECURRING(
+            "MEMBERSHIP_BILLING_019",
+            "この支払い項目は継続課金に対応していません",
             Severity.WARN);
 
     private final String code;

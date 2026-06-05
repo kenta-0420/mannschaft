@@ -655,6 +655,12 @@ public class GlobalExceptionHandler {
             Map.entry("MEMBERSHIP_BILLING_012", HttpStatus.NOT_FOUND),       // 立替記録が見つからない / IDOR 秘匿
             Map.entry("MEMBERSHIP_BILLING_013", HttpStatus.CONFLICT),        // 立替が既に精算済み（重複確認防止・02_api §10 ADVANCE_ALREADY_SETTLED）
             Map.entry("MEMBERSHIP_BILLING_014", HttpStatus.CONFLICT),        // 協会請求の配信で受信者ゼロ（チーム ADMIN 不在・02_api §7 PAYMENT_REQUEST_NO_RECIPIENTS / INVALID_STATUS と分離）
+            // F08.9 P5 継続課金（02_api §4）
+            Map.entry("MEMBERSHIP_BILLING_015", HttpStatus.NOT_FOUND),       // 継続課金が見つからない / IDOR 秘匿（02_api §4 SUBSCRIPTION_NOT_FOUND）
+            Map.entry("MEMBERSHIP_BILLING_016", HttpStatus.CONFLICT),        // 継続課金が ACTIVE でない（スキップ/再開不可・02_api §4.3 SUBSCRIPTION_NOT_ACTIVE）
+            Map.entry("MEMBERSHIP_BILLING_017", HttpStatus.CONFLICT),        // 継続課金が既に今月スキップ済み（二重スキップ防止・02_api §4.3 SUBSCRIPTION_ALREADY_SKIPPED）
+            Map.entry("MEMBERSHIP_BILLING_018", HttpStatus.FORBIDDEN),       // 継続課金の操作者がサブスク所有者でない（IDOR・03_security §1 SUBSCRIPTION_NOT_AUTHORIZED）
+            Map.entry("MEMBERSHIP_BILLING_019", HttpStatus.CONFLICT),        // 加入対象が継続課金項目でない（02_api §4.1 SUBSCRIPTION_ITEM_NOT_RECURRING）
             // セキュリティインシデント（GDPR Article 33）
             Map.entry("SEC_INCIDENT_001", HttpStatus.NOT_FOUND)              // SECURITY_INCIDENT_NOT_FOUND（IDOR 対策で 404）
     );
