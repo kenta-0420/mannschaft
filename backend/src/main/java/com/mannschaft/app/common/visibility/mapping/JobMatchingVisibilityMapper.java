@@ -25,7 +25,8 @@ public final class JobMatchingVisibilityMapper {
      */
     public static StandardVisibility toStandard(VisibilityScope v) {
         return switch (v) {
-            case TEAM_MEMBERS -> StandardVisibility.MEMBERS_ONLY;
+            // 挙動不変・名称正準化（W3）: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
+            case TEAM_MEMBERS -> StandardVisibility.SCOPE_AFFILIATED;
             case TEAM_MEMBERS_SUPPORTERS -> StandardVisibility.SUPPORTERS_AND_ABOVE;
             // §5.1.4 CUSTOM 運用規約参照、Resolver 内で個別実装
             // (JOBBER ロール限定の閲覧制御 — §5.2 備考)

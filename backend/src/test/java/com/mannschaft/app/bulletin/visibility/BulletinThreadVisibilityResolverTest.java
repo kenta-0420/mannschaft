@@ -280,10 +280,11 @@ class BulletinThreadVisibilityResolverTest {
     class ProjectionSpec {
 
         @Test
-        @DisplayName("Projection.visibility() は常に StandardVisibility.MEMBERS_ONLY を返す")
+        @DisplayName("Projection.visibility() は常に StandardVisibility.SCOPE_AFFILIATED を返す（挙動不変・名称正準化 W3）")
         void projection_visibility_is_fixed_members_only() {
             BulletinThreadVisibilityProjection p = projection(1L, "TEAM", 100L, 99L);
-            assertThat(p.visibility()).isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            // 挙動不変: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
+            assertThat(p.visibility()).isEqualTo(StandardVisibility.SCOPE_AFFILIATED);
             assertThat(p.visibilityTemplateId()).isNull();
         }
     }

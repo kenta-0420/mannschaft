@@ -31,9 +31,10 @@ class TeamVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("PRIVATE は StandardVisibility.MEMBERS_ONLY に変換される（招待制・非公開チームはメンバー閲覧可）")
+    @DisplayName("PRIVATE は StandardVisibility.SCOPE_AFFILIATED に変換される（招待制・非公開チームはメンバー閲覧可 / 挙動不変・名称正準化 W3）")
     void private_maps_to_members_only() {
+        // 挙動不変: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
         assertThat(TeamVisibilityMapper.toStandard(TeamEntity.Visibility.PRIVATE))
-                .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+                .isEqualTo(StandardVisibility.SCOPE_AFFILIATED);
     }
 }

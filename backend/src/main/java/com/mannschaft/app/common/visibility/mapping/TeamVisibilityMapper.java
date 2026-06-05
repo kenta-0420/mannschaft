@@ -37,7 +37,8 @@ public final class TeamVisibilityMapper {
         return switch (v) {
             case PUBLIC -> StandardVisibility.PUBLIC;
             case ORGANIZATION_ONLY -> StandardVisibility.ORGANIZATION_WIDE;
-            case PRIVATE -> StandardVisibility.MEMBERS_ONLY;
+            // 挙動不変・名称正準化（W3）: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
+            case PRIVATE -> StandardVisibility.SCOPE_AFFILIATED;
         };
     }
 }

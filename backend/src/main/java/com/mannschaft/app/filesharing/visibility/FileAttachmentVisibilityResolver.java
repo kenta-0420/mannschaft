@@ -95,7 +95,8 @@ public class FileAttachmentVisibilityResolver
     @Override
     protected StandardVisibility toStandard(FileScopeType visibility) {
         return switch (visibility) {
-            case TEAM -> StandardVisibility.MEMBERS_ONLY;
+            // 挙動不変・名称正準化（W3）: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
+            case TEAM -> StandardVisibility.SCOPE_AFFILIATED;
             // F08.7.1 / 04: 大会・ディビジョンは主催組織の可視性に集約（§6）。
             case ORGANIZATION, TOURNAMENT, TOURNAMENT_DIVISION -> StandardVisibility.ORGANIZATION_WIDE;
             case PERSONAL -> StandardVisibility.PRIVATE;

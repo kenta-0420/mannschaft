@@ -32,10 +32,11 @@ class ProjectVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_ONLY")
+    @DisplayName("MEMBERS_ONLY → StandardVisibility.SCOPE_AFFILIATED（挙動不変・名称正準化 W3）")
     void members_only_maps_to_MEMBERS_ONLY() {
+        // 挙動不変: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
         assertThat(ProjectVisibilityMapper.toStandard(ProjectVisibility.MEMBERS_ONLY))
-            .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            .isEqualTo(StandardVisibility.SCOPE_AFFILIATED);
     }
 
     @Test

@@ -45,8 +45,9 @@ public record BulletinThreadVisibilityProjection(
 
     @Override
     public Object visibility() {
-        // §12.3.1: 機能側 visibility 概念を持たないため固定で MEMBERS_ONLY を返す。
+        // §12.3.1: 機能側 visibility 概念を持たないため固定で所属者可視を返す。
+        // 挙動不変・名称正準化（W3）: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
         // Resolver#toStandard も同値を固定返却する設計。
-        return StandardVisibility.MEMBERS_ONLY;
+        return StandardVisibility.SCOPE_AFFILIATED;
     }
 }
