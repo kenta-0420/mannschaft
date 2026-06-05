@@ -39,8 +39,10 @@ CREATE TABLE membership_subscriptions (
     KEY idx_ms_payer       (payer_user_id, status),
     KEY idx_ms_item        (payment_item_id),
     KEY idx_ms_org         (organization_id),
-    CONSTRAINT chk_ms_scope_kind       CHECK (scope_kind IN ('USER','TEAM','ORG')),
-    CONSTRAINT chk_ms_billing_interval CHECK (billing_interval IN ('MONTHLY','YEARLY')),
-    CONSTRAINT chk_ms_status           CHECK (status IN ('PENDING','ACTIVE','PAST_DUE','CANCELLED','EXPIRED'))
+    -- CHECK 制約名は MySQL 8 でスキーマ全域一意。chk_ms_* は V11.081 member_skills が先取りしているため
+    -- chk_msub_* 名前空間を使う（CI from-scratch で Duplicate check constraint name 3822 を実証・2026-06-06）。
+    CONSTRAINT chk_msub_scope_kind       CHECK (scope_kind IN ('USER','TEAM','ORG')),
+    CONSTRAINT chk_msub_billing_interval CHECK (billing_interval IN ('MONTHLY','YEARLY')),
+    CONSTRAINT chk_msub_status           CHECK (status IN ('PENDING','ACTIVE','PAST_DUE','CANCELLED','EXPIRED'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='F08.9 会員（受益者）単位の継続課金（membership_subscriptions）';
