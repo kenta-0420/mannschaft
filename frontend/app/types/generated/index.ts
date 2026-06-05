@@ -41140,7 +41140,7 @@ export interface components {
         DigestConfigRequest: {
             scopeType?: string;
             /** Format: int64 */
-            scopeId: string;
+            scopeId: number;
             scheduleType?: string;
             /** @example 14:30:00 */
             scheduleTime?: string;
@@ -47784,7 +47784,7 @@ export interface components {
         DigestGenerateRequest: {
             scopeType?: string;
             /** Format: int64 */
-            scopeId: string;
+            scopeId: number;
             /** Format: date-time */
             periodStart: string;
             /** Format: date-time */
@@ -50588,7 +50588,7 @@ export interface components {
             /** Format: date */
             endDate: string;
             /** Format: int64 */
-            scopeId: string;
+            scopeId: number;
             scopeType?: string;
         };
         ApiResponseFiscalYearResponse: {
@@ -52666,7 +52666,7 @@ export interface components {
             message?: string;
             scopeType: string;
             /** Format: int64 */
-            scopeId: string;
+            scopeId: number;
             isDrill?: boolean;
             /** Format: int32 */
             reminderIntervalMinutes?: number;
@@ -54337,7 +54337,7 @@ export interface components {
         };
         AddFolderItemRequest: {
             /** Format: int64 */
-            scopeId: string;
+            scopeId: number;
         };
         CreatePersonalScheduleRequest: {
             title?: string;
@@ -56412,7 +56412,7 @@ export interface components {
         DownloadZipRequest: {
             scopeType?: string;
             /** Format: int64 */
-            scopeId: string;
+            scopeId: number;
             /** Format: date */
             issuedFrom?: string;
             /** Format: date */
@@ -56525,7 +56525,7 @@ export interface components {
             presetId: number;
             scopeType?: string;
             /** Format: int64 */
-            scopeId: string;
+            scopeId: number;
         };
         CreateActivityRequest: {
             /** Format: int64 */
@@ -67344,7 +67344,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
                 vendorId: number;
             };
             cookie?: never;
@@ -67368,7 +67368,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
                 vendorId: number;
             };
             cookie?: never;
@@ -67396,7 +67396,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
                 vendorId: number;
             };
             cookie?: never;
@@ -67418,7 +67418,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
                 packageId: number;
             };
             cookie?: never;
@@ -67442,7 +67442,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
                 packageId: number;
             };
             cookie?: never;
@@ -67470,7 +67470,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
                 packageId: number;
             };
             cookie?: never;
@@ -67492,7 +67492,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
             };
             cookie?: never;
@@ -67516,7 +67516,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
             };
             cookie?: never;
@@ -67544,7 +67544,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
             };
             cookie?: never;
@@ -67566,7 +67566,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 requestId: number;
             };
             cookie?: never;
@@ -67590,7 +67590,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 requestId: number;
             };
             cookie?: never;
@@ -67618,7 +67618,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 requestId: number;
             };
             cookie?: never;
@@ -67640,7 +67640,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
             };
             cookie?: never;
@@ -67664,7 +67664,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
             };
             cookie?: never;
@@ -67692,7 +67692,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
             };
             cookie?: never;
@@ -67714,7 +67714,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 submissionId: number;
             };
             cookie?: never;
@@ -67738,7 +67738,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 submissionId: number;
             };
             cookie?: never;
@@ -67766,7 +67766,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 submissionId: number;
             };
             cookie?: never;
@@ -67788,7 +67788,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 threadId: number;
             };
             cookie?: never;
@@ -67812,7 +67812,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 threadId: number;
             };
             cookie?: never;
@@ -67840,7 +67840,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 threadId: number;
             };
             cookie?: never;
@@ -67862,7 +67862,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 threadId: number;
                 replyId: number;
             };
@@ -67891,7 +67891,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 threadId: number;
                 replyId: number;
             };
@@ -67914,7 +67914,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 categoryId: number;
             };
             cookie?: never;
@@ -67938,7 +67938,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 categoryId: number;
             };
             cookie?: never;
@@ -67966,7 +67966,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 categoryId: number;
             };
             cookie?: never;
@@ -67990,7 +67990,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 folderId: string;
             };
             cookie?: never;
@@ -68018,7 +68018,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 folderId: string;
             };
             cookie?: never;
@@ -69057,7 +69057,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -69104,7 +69104,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -74588,7 +74588,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -74611,7 +74611,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -79733,7 +79733,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -79756,7 +79756,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -79783,7 +79783,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path: {
@@ -79812,7 +79812,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path: {
@@ -80350,7 +80350,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -80397,7 +80397,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -80474,7 +80474,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -80497,7 +80497,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -80532,7 +80532,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -80555,7 +80555,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -80584,7 +80584,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
                 packageId: number;
             };
             cookie?: never;
@@ -80608,7 +80608,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
                 packageId: number;
             };
             cookie?: never;
@@ -80643,7 +80643,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -80669,7 +80669,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -80692,7 +80692,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -80719,7 +80719,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
             };
             cookie?: never;
@@ -80743,7 +80743,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
             };
             cookie?: never;
@@ -80771,7 +80771,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -80794,7 +80794,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -80821,7 +80821,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 requestId: number;
             };
             cookie?: never;
@@ -80845,7 +80845,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 requestId: number;
             };
             cookie?: never;
@@ -80873,7 +80873,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -80896,7 +80896,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -80923,7 +80923,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 surveyId: number;
             };
             cookie?: never;
@@ -80951,7 +80951,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 surveyId: number;
             };
             cookie?: never;
@@ -80975,7 +80975,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 surveyId: number;
             };
             cookie?: never;
@@ -81003,7 +81003,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 surveyId: number;
             };
             cookie?: never;
@@ -81031,7 +81031,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 surveyId: number;
             };
             cookie?: never;
@@ -81057,7 +81057,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -81082,7 +81082,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -81111,7 +81111,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 scenarioId: string;
             };
             cookie?: never;
@@ -81141,7 +81141,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 scenarioId: string;
             };
             cookie?: never;
@@ -81171,7 +81171,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -81200,7 +81200,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -81225,7 +81225,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -81254,7 +81254,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 kanbanId: string;
             };
             cookie?: never;
@@ -81284,7 +81284,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 cardId: string;
             };
             cookie?: never;
@@ -81320,7 +81320,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -81345,7 +81345,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -81374,7 +81374,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -81406,7 +81406,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -81435,7 +81435,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -81460,7 +81460,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -81491,7 +81491,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -81514,7 +81514,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -81541,7 +81541,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
                 submissionId: number;
             };
@@ -81566,7 +81566,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
                 submissionId: number;
             };
@@ -81591,7 +81591,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
                 submissionId: number;
             };
@@ -81616,7 +81616,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
             };
             cookie?: never;
@@ -81644,7 +81644,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
             };
             cookie?: never;
@@ -81672,7 +81672,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
             };
             cookie?: never;
@@ -81696,7 +81696,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
             };
             cookie?: never;
@@ -81720,7 +81720,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
             };
             cookie?: never;
@@ -81744,7 +81744,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -81771,7 +81771,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 submissionId: number;
             };
             cookie?: never;
@@ -81799,7 +81799,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 submissionId: number;
             };
             cookie?: never;
@@ -81823,7 +81823,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 submissionId: number;
             };
             cookie?: never;
@@ -81851,7 +81851,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -81874,7 +81874,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -81904,7 +81904,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 threadId: number;
             };
             cookie?: never;
@@ -81928,7 +81928,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 threadId: number;
             };
             cookie?: never;
@@ -81958,7 +81958,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 threadId: number;
             };
             cookie?: never;
@@ -81982,7 +81982,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 threadId: number;
             };
             cookie?: never;
@@ -82004,7 +82004,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 threadId: number;
             };
             cookie?: never;
@@ -82028,7 +82028,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 threadId: number;
             };
             cookie?: never;
@@ -82052,7 +82052,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 threadId: number;
             };
             cookie?: never;
@@ -82080,7 +82080,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -82103,7 +82103,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -82130,7 +82130,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -82153,7 +82153,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -94576,7 +94576,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -95637,7 +95637,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 listingId: number;
                 participantId: number;
             };
@@ -95662,7 +95662,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 penaltyId: number;
             };
             cookie?: never;
@@ -95785,7 +95785,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 status?: string;
                 page?: number;
                 size?: number;
@@ -95929,7 +95929,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -104581,7 +104581,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -104907,7 +104907,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 status?: string;
                 page?: number;
                 size?: number;
@@ -104983,7 +104983,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -108642,7 +108642,7 @@ export interface operations {
     create_58: {
         parameters: {
             query: {
-                scopeId: string;
+                scopeId: number;
                 scopeType: string;
             };
             header?: never;
@@ -110124,7 +110124,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 page?: number;
                 size?: number;
             };
@@ -110149,7 +110149,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -110176,7 +110176,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path: {
@@ -110205,7 +110205,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path: {
@@ -110234,7 +110234,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path: {
@@ -110263,7 +110263,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -110314,7 +110314,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -110341,7 +110341,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -110368,7 +110368,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -110391,7 +110391,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -110412,7 +110412,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path: {
@@ -110441,7 +110441,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -110468,7 +110468,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -110491,7 +110491,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -110564,7 +110564,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -110587,7 +110587,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -111379,7 +111379,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -111428,7 +111428,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
                 packageId: number;
             };
             cookie?: never;
@@ -111456,7 +111456,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 surveyId: number;
             };
             cookie?: never;
@@ -111480,7 +111480,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 surveyId: number;
             };
             cookie?: never;
@@ -111502,7 +111502,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 surveyId: number;
             };
             cookie?: never;
@@ -111532,7 +111532,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 kanbanId: string;
             };
             cookie?: never;
@@ -111558,7 +111558,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 kanbanId: string;
             };
             cookie?: never;
@@ -111588,7 +111588,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 id: string;
             };
             cookie?: never;
@@ -111615,7 +111615,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 id: string;
             };
             cookie?: never;
@@ -111640,7 +111640,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 id: string;
             };
             cookie?: never;
@@ -111668,7 +111668,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 threadId: number;
             };
             cookie?: never;
@@ -116715,7 +116715,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 noShowId: number;
             };
             cookie?: never;
@@ -121032,7 +121032,7 @@ export interface operations {
     delete_43: {
         parameters: {
             query: {
-                scopeId: string;
+                scopeId: number;
                 scopeType: string;
             };
             header?: never;
@@ -121055,7 +121055,7 @@ export interface operations {
     update_51: {
         parameters: {
             query: {
-                scopeId: string;
+                scopeId: number;
                 scopeType: string;
             };
             header?: never;
@@ -121665,7 +121665,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path: {
@@ -121690,7 +121690,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path: {
@@ -121759,7 +121759,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path: {
@@ -121785,7 +121785,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path: {
@@ -121935,7 +121935,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 roleId: number;
             };
             header?: never;
@@ -122256,7 +122256,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -122282,7 +122282,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -122308,7 +122308,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -122334,7 +122334,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -122359,7 +122359,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -122382,7 +122382,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 surveyId: number;
             };
             cookie?: never;
@@ -122407,7 +122407,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 surveyId: number;
             };
             cookie?: never;
@@ -122431,7 +122431,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -122456,7 +122456,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 scenarioId: string;
             };
             cookie?: never;
@@ -122482,7 +122482,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 packId: string;
             };
             cookie?: never;
@@ -122506,7 +122506,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -122533,7 +122533,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
             };
             cookie?: never;
@@ -122557,7 +122557,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 templateId: number;
             };
             cookie?: never;
@@ -122581,7 +122581,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 submissionId: number;
             };
             cookie?: never;
@@ -122608,7 +122608,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -122633,7 +122633,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -122660,7 +122660,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -122687,7 +122687,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -123926,7 +123926,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 status?: string;
                 cursor?: number;
                 limit?: number;
@@ -129854,7 +129854,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -129880,7 +129880,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
@@ -130078,7 +130078,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 page?: number;
                 size?: number;
             };
@@ -137069,7 +137069,7 @@ export interface operations {
     getById_7: {
         parameters: {
             query: {
-                scopeId: string;
+                scopeId: number;
                 scopeType: string;
             };
             header?: never;
@@ -137094,7 +137094,7 @@ export interface operations {
     delete_45: {
         parameters: {
             query: {
-                scopeId: string;
+                scopeId: number;
                 scopeType: string;
             };
             header?: never;
@@ -137937,7 +137937,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path: {
@@ -137962,7 +137962,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path: {
@@ -137987,7 +137987,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 year?: number;
                 issuedFrom?: string;
                 issuedTo?: string;
@@ -138036,7 +138036,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 memberPaymentId?: number;
             };
             header?: never;
@@ -138060,7 +138060,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 status?: string;
                 page?: number;
                 size?: number;
@@ -138192,7 +138192,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 status?: string;
                 pageable: components["schemas"]["Pageable"];
             };
@@ -138217,7 +138217,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
             };
             header?: never;
             path?: never;
@@ -138240,7 +138240,7 @@ export interface operations {
         parameters: {
             query: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 pageable: components["schemas"]["Pageable"];
             };
             header?: never;
@@ -138638,7 +138638,7 @@ export interface operations {
             header?: never;
             path: {
                 scope: string;
-                scopeId: string;
+                scopeId: number;
                 packageId: number;
                 documentId: number;
             };
@@ -138661,7 +138661,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 surveyId: number;
                 questionId: number;
             };
@@ -138686,7 +138686,7 @@ export interface operations {
             };
             path: {
                 scopeType: string;
-                scopeId: string;
+                scopeId: number;
                 packId: string;
             };
             cookie?: never;
@@ -140023,7 +140023,7 @@ export interface operations {
             header?: never;
             path: {
                 folderId: number;
-                scopeId: string;
+                scopeId: number;
             };
             cookie?: never;
         };
