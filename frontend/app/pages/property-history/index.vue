@@ -97,7 +97,7 @@ const totalElements = ref(0)
 const loading = ref(false)
 
 async function load() {
-  if (scopeId.value === 0) return
+  if (!scopeId.value) return
   loading.value = true
   try {
     if (view.value === 'list') {
@@ -237,7 +237,7 @@ function onSelect(packageId: number) {
     </header>
 
     <p
-      v-if="scopeId === 0"
+      v-if="!scopeId"
       class="rounded-md border border-dashed border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200"
     >
       ?scope=teams&scopeId=N

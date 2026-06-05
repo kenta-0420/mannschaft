@@ -59,7 +59,7 @@ const categoryOptions = computed(() =>
 )
 
 async function load() {
-  if (scopeId.value === 0) return
+  if (!scopeId.value) return
   loading.value = true
   try {
     const params: Parameters<typeof api.value.list>[0] = {
