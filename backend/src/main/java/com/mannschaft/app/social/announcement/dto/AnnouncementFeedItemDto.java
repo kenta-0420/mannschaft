@@ -56,7 +56,7 @@ public class AnnouncementFeedItemDto {
     @JsonProperty("isPinned")
     private final boolean isPinned;
 
-    /** 閲覧可能範囲（MEMBERS_ONLY / SUPPORTERS_AND_ABOVE / PUBLIC） */
+    /** 閲覧可能範囲（MEMBERS_AND_ABOVE / SUPPORTERS_AND_ABOVE / PUBLIC） */
     private final String visibility;
 
     /** 表示開始日時（ISO 8601）。null = 即時 */

@@ -88,7 +88,7 @@ class SurveyAnnouncementAdapterTest {
                     .willReturn(buildSurveyDetailResponse(SURVEY_ID));
 
             // when
-            Long result = adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_ONLY", USER_ID);
+            Long result = adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_AND_ABOVE", USER_ID);
 
             // then
             verify(surveyService).createSurvey(anyString(), anyLong(), anyLong(), any(CreateSurveyRequest.class));
@@ -112,7 +112,7 @@ class SurveyAnnouncementAdapterTest {
                     ArgumentCaptor.forClass(CreateSurveyRequest.class);
 
             // when
-            adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_ONLY", USER_ID);
+            adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_AND_ABOVE", USER_ID);
 
             // then
             verify(surveyService).createSurvey(anyString(), anyLong(), anyLong(), captor.capture());
@@ -135,7 +135,7 @@ class SurveyAnnouncementAdapterTest {
                     ArgumentCaptor.forClass(CreateSurveyRequest.class);
 
             // when
-            adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_ONLY", USER_ID);
+            adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_AND_ABOVE", USER_ID);
 
             // then
             verify(surveyService).createSurvey(anyString(), anyLong(), anyLong(), captor.capture());

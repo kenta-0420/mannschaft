@@ -29,7 +29,7 @@ import java.util.Set;
  * <p>
  * <b>権限モデル</b>:
  * <ul>
- *   <li>一覧取得: 閲覧者ロールに応じた可視性集合で絞り込み（SUPPORTER は MEMBERS_ONLY を除外、MEMBER 以上は全種）</li>
+ *   <li>一覧取得: 閲覧者ロールに応じた可視性集合で絞り込み（SUPPORTER は MEMBERS_AND_ABOVE を除外、MEMBER 以上は全種）</li>
  *   <li>お知らせ化: 著者本人または ADMIN/DEPUTY_ADMIN</li>
  *   <li>お知らせ解除: 著者本人または ADMIN/DEPUTY_ADMIN</li>
  *   <li>ピン留め: ADMIN/DEPUTY_ADMIN のみ</li>
@@ -149,7 +149,7 @@ public class AnnouncementFeedService {
                 .titleCache(safeTitle)
                 .excerptCache(safeExcerpt)
                 .priority("NORMAL")
-                .visibility("MEMBERS_ONLY")
+                .visibility("MEMBERS_AND_ABOVE")
                 .isAdvertisement(true)
                 .build();
 
@@ -226,7 +226,7 @@ public class AnnouncementFeedService {
      * 閲覧者ロールに応じた「閲覧できる visibility 集合」での絞り込みを
      * {@link AnnouncementFeedQueryRepository#findByScope} の WHERE 句で実施する（Service 層の if 文に依存しない）。
      * 集合は {@link AnnouncementVisibility#allowedFor(String)} が正準算出する:
-     * SUPPORTER は {@code {PUBLIC, SUPPORTERS_AND_ABOVE}}（MEMBERS_ONLY を露出させない）、
+     * SUPPORTER は {@code {PUBLIC, SUPPORTERS_AND_ABOVE}}（MEMBERS_AND_ABOVE を露出させない）、
      * MEMBER 以上は 3 種全部（PUBLIC/SUPPORTERS_AND_ABOVE を取りこぼさない）。
      * </p>
      *
