@@ -29,8 +29,10 @@ import java.util.List;
  * <p><strong>visibility 正規化ポリシー</strong>:</p>
  * <ul>
  *   <li>{@link WorkPackageVisibility#ADMINS_ONLY} → {@link StandardVisibility#ADMINS_ONLY}</li>
- *   <li>{@link WorkPackageVisibility#MEMBERS_ONLY} → {@link StandardVisibility#MEMBERS_ONLY}</li>
- *   <li>{@link WorkPackageVisibility#MEMBERS_MASKED} → {@link StandardVisibility#MEMBERS_ONLY}
+ *   <li>{@link WorkPackageVisibility#MEMBERS_ONLY} → {@link StandardVisibility#MEMBERS_AND_ABOVE}
+ *       （W2: 内輪＝応援者除外。{@link com.mannschaft.app.property.service.PropertyWorkPackageMaskingService}
+ *       が SUPPORTER を不可視と明記＝内輪確証あり。機能 enum 名・DB 値は据え置き＝④A）</li>
+ *   <li>{@link WorkPackageVisibility#MEMBERS_MASKED} → {@link StandardVisibility#MEMBERS_AND_ABOVE}
  *       （MASKED は「閲覧自体は MEMBER まで可。金額のみマスク」の意味であり可視性は MEMBER 範囲）</li>
  *   <li>{@link WorkPackageVisibility#PUBLIC_MASKED} → {@link StandardVisibility#SUPPORTERS_AND_ABOVE}
  *       （PUBLIC ではあるが匿名ユーザーは想定外で SUPPORTER 以上が閲覧可。金額のみマスク）</li>
@@ -99,8 +101,11 @@ public class PropertyWorkPackageVisibilityResolver
         }
         return switch (visibility) {
             case ADMINS_ONLY -> StandardVisibility.ADMINS_ONLY;
-            // MASKED 系は閲覧範囲としては MEMBERS_ONLY と同じ扱い（金額マスクは MaskingService 側で処理）
-            case MEMBERS_ONLY, MEMBERS_MASKED -> StandardVisibility.MEMBERS_ONLY;
+            // W2: MEMBERS_ONLY/MEMBERS_MASKED は「応援者に見せない内輪」（MaskingService.isVisible が
+            // SUPPORTER を不可視と明記＝内輪(i)確証あり）。出力先を正準ラダー MEMBERS_AND_ABOVE
+            // （hasRoleOrAbove(MEMBER) / SUPPORTER・GUEST 除外）へ変更。機能 enum 名・DB 値は据え置き（④A）。
+            // MASKED 系は閲覧範囲としては MEMBERS_AND_ABOVE と同じ（金額マスクは MaskingService 側で処理）。
+            case MEMBERS_ONLY, MEMBERS_MASKED -> StandardVisibility.MEMBERS_AND_ABOVE;
             // PUBLIC_MASKED は SUPPORTER 以上が閲覧可（匿名閲覧は想定外）
             case PUBLIC_MASKED -> StandardVisibility.SUPPORTERS_AND_ABOVE;
         };
