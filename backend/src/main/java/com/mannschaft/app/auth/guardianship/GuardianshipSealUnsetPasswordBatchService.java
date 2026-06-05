@@ -9,7 +9,7 @@ import com.mannschaft.app.family.service.CareLinkService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -37,8 +37,11 @@ import java.util.Set;
  * </ul>
  *
  * <h3>送付</h3>
- * <p>{@link AuthPasswordResetService#requestPasswordReset}（F01.9 パスワードリセット基盤）を流用し
- * F09.18 outbox 経由で送る（{@code EmailService.sendEmail} 直呼びしない）。トークン期限・レート制限は同基盤に委譲。</p>
+ * <p>{@link AuthPasswordResetService#requestPasswordResetForSystemBatch}（F01.9 パスワードリセット基盤の
+ * バッチ専用経路）を流用し F09.18 outbox 経由で送る（{@code EmailService.sendEmail} 直呼びしない）。
+ * トークン生成・期限は同基盤に委譲。公開 EP 用の IP 単位レートリミットはバッチでは通さない
+ * （単一実行保証ゆえ・1 分 4 件以上の取りこぼし防止）。送付が例外で失敗したら先行保存した送信記録を
+ * 補償削除し、翌日のバッチで再送できるようにする。</p>
  *
  * <h3>スケジュール</h3>
  * <p>毎日 03:30 JST。{@code @SchedulerLock} で多重起動を防ぎ、{@link Clock} 注入で date-pin テスト可能。</p>
@@ -56,9 +59,6 @@ public class GuardianshipSealUnsetPasswordBatchService {
 
     /** 内部用（非ルーティング）メールのドメインサフィックス。 */
     private static final String INTERNAL_EMAIL_SUFFIX = ".mannschaft.internal";
-
-    /** バッチ送信のレート制限キーに使う擬似 IP（パスワードリセット基盤のレート制限を共有）。 */
-    private static final String BATCH_IP = "batch:guardianship-seal-unset";
 
     private final ParentalConsentService parentalConsentService;
     private final CareLinkService careLinkService;
@@ -126,20 +126,33 @@ public class GuardianshipSealUnsetPasswordBatchService {
                 }
 
                 // 送信記録を先に保存し UNIQUE 競合を検知（保存できた実行のみ送付＝二重送信を物理排除）。
+                GuardianshipTransitionNotificationEntity record;
                 try {
-                    transitionNotificationRepository.save(GuardianshipTransitionNotificationEntity.builder()
-                            .notificationKind(GuardianshipTransitionNotificationKind.SEAL_UNSET_PASSWORD)
-                            .recipientUserId(child.getId())
-                            .childUserId(child.getId())
-                            .sealDate(sealDate)
-                            .build());
-                } catch (DataIntegrityViolationException dup) {
+                    record = transitionNotificationRepository.save(
+                            GuardianshipTransitionNotificationEntity.builder()
+                                    .notificationKind(GuardianshipTransitionNotificationKind.SEAL_UNSET_PASSWORD)
+                                    .recipientUserId(child.getId())
+                                    .childUserId(child.getId())
+                                    .sealDate(sealDate)
+                                    .build());
+                } catch (DuplicateKeyException dup) {
+                    // 既に同一（子×境界日）で送信記録あり（並行/時刻境界の競合）→ 二重送信せずスキップ。
                     skippedAlreadySent++;
                     continue;
                 }
 
-                // パスワード設定リンク送付（F01.9 基盤・outbox 経由）。
-                authPasswordResetService.requestPasswordReset(child.getEmail(), BATCH_IP);
+                // パスワード設定リンク送付（F01.9 基盤・outbox 経由・バッチ専用経路でレート制限を通さない）。
+                // 送付が失敗したら先行保存した記録を補償削除し、翌日リトライ可能にする
+                // （@SchedulerLock で並行実行はなく補償削除は安全）。
+                try {
+                    authPasswordResetService.requestPasswordResetForSystemBatch(child.getEmail());
+                } catch (RuntimeException sendEx) {
+                    transitionNotificationRepository.delete(record);
+                    failedCount++;
+                    log.error("封印時未設定メール 送付失敗（記録を補償削除・翌日再送）: childUserId={}",
+                            child.getId(), sendEx);
+                    continue;
+                }
                 sentCount++;
                 log.info("封印時未設定メール送付: childUserId={}, sealDate={}", child.getId(), sealDate);
 

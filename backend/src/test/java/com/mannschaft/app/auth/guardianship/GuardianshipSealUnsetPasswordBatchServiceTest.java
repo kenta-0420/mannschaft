@@ -11,7 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -77,17 +78,25 @@ class GuardianshipSealUnsetPasswordBatchServiceTest {
         when(userRepository.findByIdIn(any())).thenReturn(List.of(c));
     }
 
+    /** save が永続化済みエンティティを返すスタブ（補償削除の引数検証用に同一参照を返す）。 */
+    private void stubSaveReturnsArgument() {
+        when(transitionNotificationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    }
+
     @Test
-    @DisplayName("封印日当日・パスワード未設定・実メールなら送付する")
+    @DisplayName("封印日当日・パスワード未設定・実メールなら送付する（バッチ専用経路を使う）")
     void sendsOnSealDateWhenPasswordUnset() {
         stubSingleChild(child(CHILD_BIRTH, "child@example.com", null));
         when(transitionNotificationRepository
                 .existsByNotificationKindAndRecipientUserIdAndChildUserIdAndSealDate(
                         any(), any(), any(), any())).thenReturn(false);
+        stubSaveReturnsArgument();
 
         newService(SEAL_DATE).execute();
 
-        verify(authPasswordResetService).requestPasswordReset(eq("child@example.com"), anyString());
+        // バッチ専用経路（IP レート制限を通さない）を使う。公開メソッドは呼ばない。
+        verify(authPasswordResetService).requestPasswordResetForSystemBatch(eq("child@example.com"));
+        verify(authPasswordResetService, never()).requestPasswordReset(anyString(), anyString());
         ArgumentCaptor<GuardianshipTransitionNotificationEntity> rec =
                 ArgumentCaptor.forClass(GuardianshipTransitionNotificationEntity.class);
         verify(transitionNotificationRepository).save(rec.capture());
@@ -95,6 +104,8 @@ class GuardianshipSealUnsetPasswordBatchServiceTest {
                 .isEqualTo(GuardianshipTransitionNotificationKind.SEAL_UNSET_PASSWORD);
         assertThat(rec.getValue().getRecipientUserId()).isEqualTo(CHILD_ID);
         assertThat(rec.getValue().getSealDate()).isEqualTo(SEAL_DATE);
+        // 送付成功時は補償削除しない。
+        verify(transitionNotificationRepository, never()).delete(any());
     }
 
     @Test
@@ -104,7 +115,7 @@ class GuardianshipSealUnsetPasswordBatchServiceTest {
 
         newService(SEAL_DATE.minusDays(1)).execute();
 
-        verify(authPasswordResetService, never()).requestPasswordReset(anyString(), anyString());
+        verify(authPasswordResetService, never()).requestPasswordResetForSystemBatch(anyString());
         verify(transitionNotificationRepository, never()).save(any());
     }
 
@@ -115,10 +126,11 @@ class GuardianshipSealUnsetPasswordBatchServiceTest {
         when(transitionNotificationRepository
                 .existsByNotificationKindAndRecipientUserIdAndChildUserIdAndSealDate(
                         any(), any(), any(), any())).thenReturn(false);
+        stubSaveReturnsArgument();
 
         newService(SEAL_DATE.plusMonths(2)).execute();
 
-        verify(authPasswordResetService).requestPasswordReset(eq("child@example.com"), anyString());
+        verify(authPasswordResetService).requestPasswordResetForSystemBatch(eq("child@example.com"));
     }
 
     @Test
@@ -128,7 +140,7 @@ class GuardianshipSealUnsetPasswordBatchServiceTest {
 
         newService(SEAL_DATE).execute();
 
-        verify(authPasswordResetService, never()).requestPasswordReset(anyString(), anyString());
+        verify(authPasswordResetService, never()).requestPasswordResetForSystemBatch(anyString());
         verify(transitionNotificationRepository, never()).save(any());
     }
 
@@ -139,7 +151,7 @@ class GuardianshipSealUnsetPasswordBatchServiceTest {
 
         newService(SEAL_DATE).execute();
 
-        verify(authPasswordResetService, never()).requestPasswordReset(anyString(), anyString());
+        verify(authPasswordResetService, never()).requestPasswordResetForSystemBatch(anyString());
         verify(transitionNotificationRepository, never()).save(any());
     }
 
@@ -155,22 +167,44 @@ class GuardianshipSealUnsetPasswordBatchServiceTest {
         newService(SEAL_DATE).execute();
 
         verify(transitionNotificationRepository, never()).save(any());
-        verify(authPasswordResetService, never()).requestPasswordReset(anyString(), anyString());
+        verify(authPasswordResetService, never()).requestPasswordResetForSystemBatch(anyString());
     }
 
     @Test
-    @DisplayName("並行実行で送信記録 INSERT が UNIQUE 競合したら送付しない")
+    @DisplayName("並行実行で送信記録 INSERT が UNIQUE 競合（DuplicateKeyException）したら送付しない")
     void noDoubleSendOnUniqueConflict() {
         stubSingleChild(child(CHILD_BIRTH, "child@example.com", null));
         when(transitionNotificationRepository
                 .existsByNotificationKindAndRecipientUserIdAndChildUserIdAndSealDate(
                         any(), any(), any(), any())).thenReturn(false);
         when(transitionNotificationRepository.save(any()))
-                .thenThrow(new DataIntegrityViolationException("dup"));
+                .thenThrow(new DuplicateKeyException("dup"));
 
         newService(SEAL_DATE).execute();
 
-        verify(authPasswordResetService, never()).requestPasswordReset(anyString(), anyString());
+        verify(authPasswordResetService, never()).requestPasswordResetForSystemBatch(anyString());
+        verify(transitionNotificationRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("送付が失敗したら先行保存した送信記録を補償削除し、翌日再送可能にする")
+    void compensatesRecordWhenSendFails() {
+        stubSingleChild(child(CHILD_BIRTH, "child@example.com", null));
+        when(transitionNotificationRepository
+                .existsByNotificationKindAndRecipientUserIdAndChildUserIdAndSealDate(
+                        any(), any(), any(), any())).thenReturn(false);
+        stubSaveReturnsArgument();
+        // 送付（バッチ専用経路）が例外で失敗する。
+        doThrow(new RuntimeException("outbox enqueue failed"))
+                .when(authPasswordResetService).requestPasswordResetForSystemBatch(anyString());
+
+        newService(SEAL_DATE).execute();
+
+        // 先行保存した記録（save の戻り）を補償削除する → 翌日のバッチで再送できる。
+        ArgumentCaptor<GuardianshipTransitionNotificationEntity> saved =
+                ArgumentCaptor.forClass(GuardianshipTransitionNotificationEntity.class);
+        verify(transitionNotificationRepository).save(saved.capture());
+        verify(transitionNotificationRepository).delete(saved.getValue());
     }
 
     @Test
@@ -180,7 +214,7 @@ class GuardianshipSealUnsetPasswordBatchServiceTest {
 
         newService(SEAL_DATE).execute();
 
-        verify(authPasswordResetService, never()).requestPasswordReset(anyString(), anyString());
+        verify(authPasswordResetService, never()).requestPasswordResetForSystemBatch(anyString());
         verify(transitionNotificationRepository, never()).save(any());
     }
 

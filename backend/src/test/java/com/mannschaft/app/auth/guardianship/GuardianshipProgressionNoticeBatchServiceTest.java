@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -188,7 +189,7 @@ class GuardianshipProgressionNoticeBatchServiceTest {
     }
 
     @Test
-    @DisplayName("並行実行で送信記録 INSERT が UNIQUE 競合したら二重送信しない")
+    @DisplayName("並行実行で送信記録 INSERT が UNIQUE 競合（DuplicateKeyException）したら二重送信しない")
     void noDoubleSendOnUniqueConflict() {
         UserEntity child = user(CHILD_ID, CHILD_BIRTH, "child@example.com", null);
         when(parentalConsentService.listApprovedParentChildPairs(0, 500))
@@ -201,11 +202,37 @@ class GuardianshipProgressionNoticeBatchServiceTest {
                 .existsByNotificationKindAndRecipientUserIdAndChildUserIdAndSealDate(
                         any(), any(), any(), any())).thenReturn(false);
         when(transitionNotificationRepository.save(any()))
-                .thenThrow(new DataIntegrityViolationException("dup"));
+                .thenThrow(new DuplicateKeyException("dup"));
 
         newService(LocalDate.of(2026, 2, 1)).execute();
 
-        // 記録挿入が弾かれたら通知もメールも送らない。
+        // 記録挿入が UNIQUE 競合で弾かれたら通知もメールも送らない（DuplicateKeyException はスキップ扱い）。
+        verify(notificationHelper, never()).notify(anyLong(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any());
+        verify(emailOutboxService, never()).enqueue(any());
+    }
+
+    @Test
+    @DisplayName("DuplicateKeyException 以外の整合性違反（例: FK）は重複扱いせず失敗カウントに流れ、通知は送らない")
+    void otherIntegrityViolationIsFailureNotSkip() {
+        UserEntity child = user(CHILD_ID, CHILD_BIRTH, "child@example.com", null);
+        when(parentalConsentService.listApprovedParentChildPairs(0, 500))
+                .thenReturn(List.of(new ParentalConsentService.ParentChildPair(GUARDIAN_ID, CHILD_ID)));
+        when(careLinkService.listActiveParentWatcherPairs(0, 500)).thenReturn(List.of());
+        when(userRepository.findByIdIn(any())).thenReturn(List.of(child));
+        when(userRepository.findById(GUARDIAN_ID))
+                .thenReturn(java.util.Optional.of(user(GUARDIAN_ID, "1980-01-01", "parent@example.com", "h")));
+        when(transitionNotificationRepository
+                .existsByNotificationKindAndRecipientUserIdAndChildUserIdAndSealDate(
+                        any(), any(), any(), any())).thenReturn(false);
+        // DuplicateKeyException ではない一般の整合性違反（例: FK 違反）。
+        when(transitionNotificationRepository.save(any()))
+                .thenThrow(new DataIntegrityViolationException("fk violation"));
+
+        // 例外が外側の汎用 catch で失敗カウントに流れ、バッチ全体は落ちずに完了する。
+        newService(LocalDate.of(2026, 2, 1)).execute();
+
+        // 記録保存に失敗しているので通知もメールも送られない。
         verify(notificationHelper, never()).notify(anyLong(), any(), any(), any(),
                 any(), any(), any(), any(), any(), any());
         verify(emailOutboxService, never()).enqueue(any());
@@ -236,5 +263,70 @@ class GuardianshipProgressionNoticeBatchServiceTest {
         verify(userRepository, never()).findByIdIn(any());
         verify(notificationHelper, never()).notify(anyLong(), any(), any(), any(),
                 any(), any(), any(), any(), any(), any());
+    }
+
+    // --- 予告ウィンドウ境界（月末・うるう年） -------------------------------------------------
+
+    /** private {@code isInNoticeWindow(today, sealDate)} を反射で呼ぶ（構築不能な sealDate を直接検証するため）。 */
+    private boolean inWindow(LocalDate today, LocalDate sealDate) {
+        Boolean r = org.springframework.test.util.ReflectionTestUtils.invokeMethod(
+                newService(today), "isInNoticeWindow", today, sealDate);
+        return Boolean.TRUE.equals(r);
+    }
+
+    @Test
+    @DisplayName("うるう日 sealDate=2028-02-29 の3ヶ月前窓 [2027-11-29, 2028-02-29) の両端を検証する")
+    void noticeWindowLeapDay() {
+        LocalDate seal = LocalDate.of(2028, 2, 29); // うるう日
+        LocalDate windowStart = LocalDate.of(2027, 11, 29); // 2028-02-29 の3ヶ月前
+        // 窓開始日の前日は対象外。
+        assertThat(inWindow(windowStart.minusDays(1), seal)).isFalse();
+        // 窓開始日（含む）。
+        assertThat(inWindow(windowStart, seal)).isTrue();
+        // 封印境界日の前日（含む・窓内）。
+        assertThat(inWindow(seal.minusDays(1), seal)).isTrue();
+        // 封印境界日当日は対象外（半開区間 [start, seal)）。
+        assertThat(inWindow(seal, seal)).isFalse();
+    }
+
+    @Test
+    @DisplayName("月末 sealDate=2026-05-31 は minusMonths(3) が月末調整され窓開始 2026-02-28 になる")
+    void noticeWindowMonthEnd() {
+        LocalDate seal = LocalDate.of(2026, 5, 31);
+        LocalDate windowStart = LocalDate.of(2026, 2, 28); // 5-31 の3ヶ月前は 2-28 に丸められる
+        assertThat(seal.minusMonths(3)).isEqualTo(windowStart);
+        // 窓開始日の前日（2026-02-27）は対象外。
+        assertThat(inWindow(LocalDate.of(2026, 2, 27), seal)).isFalse();
+        // 窓開始日 2026-02-28（含む）。
+        assertThat(inWindow(windowStart, seal)).isTrue();
+        // 封印境界日の前日（含む）。
+        assertThat(inWindow(seal.minusDays(1), seal)).isTrue();
+        // 封印境界日当日は対象外。
+        assertThat(inWindow(seal, seal)).isFalse();
+    }
+
+    @Test
+    @DisplayName("フォールバック圏（誕生日基準）の子で月末 sealDate を execute 経由で検証する")
+    void monthEndSealViaExecuteSends() {
+        // フォールバックポリシー（未対応国＝CC 指定無し）で 2013-05-31 生まれ → sealDate=2026-05-31。
+        UserEntity child = user(CHILD_ID, "2013-05-31", "child@example.com", null);
+        org.springframework.test.util.ReflectionTestUtils.setField(child, "countryCode", "ZZ"); // 未対応国→フォールバック
+        when(parentalConsentService.listApprovedParentChildPairs(0, 500))
+                .thenReturn(List.of(new ParentalConsentService.ParentChildPair(GUARDIAN_ID, CHILD_ID)));
+        when(careLinkService.listActiveParentWatcherPairs(0, 500)).thenReturn(List.of());
+        when(userRepository.findByIdIn(any())).thenReturn(List.of(child));
+        when(userRepository.findById(GUARDIAN_ID))
+                .thenReturn(java.util.Optional.of(user(GUARDIAN_ID, "1980-01-01", "parent@example.com", "h")));
+        when(transitionNotificationRepository
+                .existsByNotificationKindAndRecipientUserIdAndChildUserIdAndSealDate(
+                        any(), any(), any(), any())).thenReturn(false);
+
+        // 窓開始日 2026-02-28 ちょうど → 送信される。
+        newService(LocalDate.of(2026, 2, 28)).execute();
+
+        ArgumentCaptor<GuardianshipTransitionNotificationEntity> rec =
+                ArgumentCaptor.forClass(GuardianshipTransitionNotificationEntity.class);
+        verify(transitionNotificationRepository).save(rec.capture());
+        assertThat(rec.getValue().getSealDate()).isEqualTo(LocalDate.of(2026, 5, 31));
     }
 }

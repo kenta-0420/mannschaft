@@ -13,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.context.MessageSource;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -99,7 +99,7 @@ public class GuardianshipProgressionNoticeBatchService {
         log.info("進学予告バッチ開始: today={}", today);
 
         // (保護者, 子) ペアを 2 経路から重複排除しつつ走査。ペアは「保護者IDと子IDの組」で一意化する。
-        Set<Long> pairKeys = new LinkedHashSet<>();
+        Set<String> pairKeys = new LinkedHashSet<>();
         // 子の属性をまとめてロードするため、子IDごとに保護者IDの集合を持つ（N+1 防止）。
         Map<Long, Set<Long>> guardiansByChild = new LinkedHashMap<>();
 
@@ -168,7 +168,7 @@ public class GuardianshipProgressionNoticeBatchService {
      * 2 経路（parental_consent / care_links）から (保護者, 子) ペアをページングで収集する。
      * {@code pairKeys} で (保護者,子) の重複を排除しつつ、{@code guardiansByChild} に子→保護者集合を蓄積する。
      */
-    private void collectPairs(Set<Long> pairKeys, Map<Long, Set<Long>> guardiansByChild, LocalDate today) {
+    private void collectPairs(Set<String> pairKeys, Map<Long, Set<Long>> guardiansByChild, LocalDate today) {
         // parental_consent_links（APPROVED）
         for (int page = 0; page < MAX_PAGES; page++) {
             List<ParentalConsentService.ParentChildPair> pairs =
@@ -200,13 +200,13 @@ public class GuardianshipProgressionNoticeBatchService {
     }
 
     /** (保護者, 子) を重複排除して蓄積する。自分自身が子のペアは防御的に除外。 */
-    private void addPair(Set<Long> pairKeys, Map<Long, Set<Long>> guardiansByChild,
+    private void addPair(Set<String> pairKeys, Map<Long, Set<Long>> guardiansByChild,
                          Long guardianUserId, Long childUserId) {
         if (guardianUserId == null || childUserId == null || guardianUserId.equals(childUserId)) {
             return;
         }
-        // (保護者,子) の重複排除キー（順序保証のため文字列化ではなくビット合成は使わず、最小限の重複排除）。
-        long key = guardianUserId * 1_000_000_007L + childUserId;
+        // (保護者,子) の重複排除キー。文字列キーにすることで数学的なハッシュ衝突を構造的に排除する。
+        String key = guardianUserId + ":" + childUserId;
         if (!pairKeys.add(key)) {
             return;
         }
@@ -255,8 +255,9 @@ public class GuardianshipProgressionNoticeBatchService {
                     .childUserId(child.getId())
                     .sealDate(sealDate)
                     .build());
-        } catch (DataIntegrityViolationException dup) {
-            // 別実行が直前に送信済み。二重送信せずスキップ。
+        } catch (DuplicateKeyException dup) {
+            // 別実行が直前に送信済み（UNIQUE 1062）。二重送信せずスキップ。
+            // FK 違反等の他の整合性違反はここでは握らず、呼び出し元の汎用 catch で失敗カウントに流す。
             log.debug("進学予告: 送信記録の重複検知（並行実行）guardianUserId={}, childUserId={}",
                     guardianUserId, child.getId());
             return false;
