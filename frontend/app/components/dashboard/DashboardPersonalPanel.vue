@@ -97,8 +97,6 @@ onMounted(async () => {
         <WidgetAdminBusinessAlert v-if="hasAdminOrDeputyRole" />
         <!-- F02.9 Phase 2: お気に入りウィジェット -->
         <WidgetFavorites />
-        <!-- F04.11: 統合通知インボックスウィジェット -->
-        <WidgetInbox />
         <WidgetAmazonAd scope-type="personal" />
         <WidgetRakutenAd scope-type="personal" />
         <WidgetRecentActivity />
