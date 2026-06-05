@@ -65,4 +65,5 @@ public class AuthConfig {
 
         return delegatingEncoder;
     }
+
 }
