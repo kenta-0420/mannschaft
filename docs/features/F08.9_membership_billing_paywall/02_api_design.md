@@ -155,9 +155,10 @@ POST /api/v1/membership-subscriptions/{id}/skip     # 今月スキップ
 POST /api/v1/membership-subscriptions/{id}/resume   # スキップ解除（再開）
 ```
 - **skip**：`MembershipSubscriptionService.skip(id)` が Stripe `Subscription.update(pause_collection={behavior:'void', resumes_at: 次回サイクル+1})` を呼び、`membership_subscriptions.skip_until` に再開予定日をセット。**スキップ月は invoice が void → `invoice.paid` が発火せず `valid_until` を延ばさない**（閲覧も延びない＝ペイウォール無改修で整合・README §4.5）。`status` は `ACTIVE` のまま（解約とは独立）。
-- **resume**：`pause_collection` 解除＋`skip_until` クリア。次サイクルから通常課金・延長再開。
+- **resume**：`pause_collection` 解除（Stripe 28.x `putExtraParam("pause_collection","")` 方式）＋`skip_until` クリア。次サイクルから通常課金・延長再開。
 - 認可：払い手本人 / 後見保護者（サブスク所有権 `payer_user_id`・03 §1）。
-- エラー：`SUBSCRIPTION_NOT_ACTIVE`（409・PENDING/CANCELLED/EXPIRED ではスキップ不可）／`SUBSCRIPTION_ALREADY_SKIPPED`（409・既に skip_until セット済）。
+- エラー：`SUBSCRIPTION_NOT_ACTIVE`（409・PENDING/CANCELLED/EXPIRED ではスキップ不可）／`SUBSCRIPTION_ALREADY_SKIPPED`（409・既に skip_until セット済）／`SUBSCRIPTION_NOT_SKIPPED`（409・`MEMBERSHIP_BILLING_022`・スキップ未適用時の resume）。
+- **resumes_at 計算（第四波実装確定 2026-06-06）**：`current_period_end + 1 billing_interval`（MONTHLY=+1ヶ月 / YEARLY=+1年・period_end 起点・Clock 不要）。`StripePaymentProvider.pauseSubscriptionCollection(subscriptionId, resumesAtEpochSec, idempotencyKey)` に unix 秒で渡す。
 - **UX（04 §2）**：「今月スキップ／解約（○月○日まで利用可）／再開」を継続課金管理に出し、**次回課金日・利用期限を明示**＋確認ダイアログ。i18n 6言語。
 
 ### 4.2 Stripe Webhook フロー（継続）
