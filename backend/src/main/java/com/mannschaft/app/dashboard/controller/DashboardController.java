@@ -27,10 +27,12 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -60,6 +62,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * ダッシュボードコントローラー。
@@ -90,6 +93,8 @@ public class DashboardController {
 
     /** F22.1 第二波: 統合「要対応」集計の遅延取得（第 2 段階）に使用する。 */
     private final com.mannschaft.app.dashboard.service.ScopeActionRequiredFacade scopeActionRequiredFacade;
+    private final OrganizationService organizationService;
+    private final TeamService teamService;
 
     // ============================================
     // 個人ダッシュボード
@@ -374,11 +379,12 @@ public class DashboardController {
     /**
      * チームダッシュボード一括取得。
      */
-    @GetMapping("/team/{teamId}")
+    @GetMapping("/team/{teamPublicId}")
     @Operation(summary = "チームダッシュボード一括取得", description = "チーム全体の活動状況・お知らせ・イベント等を一括取得")
     public ResponseEntity<ApiResponse<TeamDashboardResponse>> getTeamDashboard(
-            @PathVariable Long teamId,
+            @PathVariable UUID teamPublicId,
             @Parameter(description = "統計期間（TODAY / WEEK / MONTH）") @RequestParam(defaultValue = "WEEK") String statsPeriod) {
+        Long teamId = teamService.resolveTeamId(teamPublicId);
         Long userId = SecurityUtils.getCurrentUserId();
         TeamDashboardResponse response = dashboardService.getTeamDashboard(userId, teamId, statsPeriod);
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -387,11 +393,12 @@ public class DashboardController {
     /**
      * 組織ダッシュボード一括取得。
      */
-    @GetMapping("/organization/{orgId}")
+    @GetMapping("/organization/{orgPublicId}")
     @Operation(summary = "組織ダッシュボード一括取得", description = "傘下チーム一覧・組織全体の統計等を一括取得")
     public ResponseEntity<ApiResponse<OrgDashboardResponse>> getOrgDashboard(
-            @PathVariable Long orgId,
+            @PathVariable UUID orgPublicId,
             @Parameter(description = "統計期間（TODAY / WEEK / MONTH）") @RequestParam(defaultValue = "WEEK") String statsPeriod) {
+        Long orgId = organizationService.resolveOrgId(orgPublicId);
         Long userId = SecurityUtils.getCurrentUserId();
         OrgDashboardResponse response = dashboardService.getOrgDashboard(userId, orgId, statsPeriod);
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -405,11 +412,12 @@ public class DashboardController {
      * 内で通したうえで、各ドメイン Service が per-scope 認可を再適用する（集計バイパス禁止）。
      * GET 読み取りのため監査ログ対象外（02 §6）。</p>
      */
-    @GetMapping("/team/{teamId}/action-required")
+    @GetMapping("/team/{teamPublicId}/action-required")
     @Operation(summary = "チーム統合「要対応」集計",
             description = "回覧板/アンケート/出欠の未対応を集約。横スワイプ・ダッシュボードのビューポート進入時に遅延取得")
     public ResponseEntity<ApiResponse<com.mannschaft.app.dashboard.dto.ActionRequiredSummaryResponse>>
-            getTeamActionRequired(@PathVariable Long teamId) {
+            getTeamActionRequired(@PathVariable UUID teamPublicId) {
+        Long teamId = teamService.resolveTeamId(teamPublicId);
         Long userId = SecurityUtils.getCurrentUserId();
         com.mannschaft.app.dashboard.dto.ActionRequiredSummaryResponse response =
                 scopeActionRequiredFacade.getActionRequired(userId, "TEAM", teamId);
@@ -420,11 +428,12 @@ public class DashboardController {
      * F22.1 第二波: 組織の統合「要対応」集計を取得する（第 2 段階・遅延取得）。
      * 仕様は {@link #getTeamActionRequired} の組織版。
      */
-    @GetMapping("/organization/{orgId}/action-required")
+    @GetMapping("/organization/{orgPublicId}/action-required")
     @Operation(summary = "組織統合「要対応」集計",
             description = "回覧板/アンケート/出欠の未対応を集約（組織スコープ）")
     public ResponseEntity<ApiResponse<com.mannschaft.app.dashboard.dto.ActionRequiredSummaryResponse>>
-            getOrgActionRequired(@PathVariable Long orgId) {
+            getOrgActionRequired(@PathVariable UUID orgPublicId) {
+        Long orgId = organizationService.resolveOrgId(orgPublicId);
         Long userId = SecurityUtils.getCurrentUserId();
         com.mannschaft.app.dashboard.dto.ActionRequiredSummaryResponse response =
                 scopeActionRequiredFacade.getActionRequired(userId, "ORGANIZATION", orgId);
