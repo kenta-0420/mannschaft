@@ -1,5 +1,6 @@
 package com.mannschaft.app.timeline.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.R2StorageService;
@@ -74,6 +75,8 @@ public class TimelinePostService {
     private final StorageQuotaService storageQuotaService;
     /** F17.1 Phase 3: scope=VILLAGE 投稿の主体検証。 */
     private final PostingIdentityService postingIdentityService;
+    /** TEAM/ORGANIZATION スコープへの投稿時のメンバーシップ検証。 */
+    private final AccessControlService accessControlService;
 
     /**
      * 投稿を作成する。添付ファイル・投票も同時に作成する。
@@ -111,6 +114,14 @@ public class TimelinePostService {
         PostScopeType scopeTypeEnum = PostScopeType.valueOf(req.getScopeTypeOrDefault());
         PostedAsType postedAsTypeEnum = PostedAsType.valueOf(req.getPostedAsTypeOrDefault());
         Long postedAsId = req.getPostedAsId();
+
+        // TEAM/ORGANIZATION スコープのメンバーシップチェック（非メンバーによる投稿を禁止する）
+        if (scopeTypeEnum == PostScopeType.TEAM && req.getScopeId() != null) {
+            accessControlService.checkMembership(userId, req.getScopeId(), "TEAM");
+        } else if (scopeTypeEnum == PostScopeType.ORGANIZATION && req.getScopeId() != null) {
+            accessControlService.checkMembership(userId, req.getScopeId(), "ORGANIZATION");
+        }
+
         UUID scopeVillageId = null;
         if (scopeTypeEnum == PostScopeType.VILLAGE) {
             scopeVillageId = req.getScopeVillageId();
