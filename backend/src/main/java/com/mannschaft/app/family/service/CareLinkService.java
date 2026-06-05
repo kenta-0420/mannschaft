@@ -380,6 +380,42 @@ public class CareLinkService {
                 .toList();
     }
 
+    /**
+     * バッチ用: 全 ACTIVE 見守り PARENT リンクの (保護者, 子) ペアをページングで返す。
+     *
+     * <p>F08.9 P3c-3 自立移行通知バッチ（進学予告）から呼び出される境界メソッド。
+     * auth ドメインのバッチは family ドメインの Entity / Repository を直接参照せず、
+     * 本メソッドが返す {@link ParentChildPair} のリストのみを受け取る（ドメイン境界遵守）。</p>
+     *
+     * <p>続柄 PARENT・ステータス ACTIVE のケアリンクのみを対象とする
+     * （見守り＝PARENT は実質的な保護者であり、自立移行予告の対象となる）。
+     * id 昇順で安定ページングする（全件走査を {@code pageNumber} を進めて繰り返す）。</p>
+     *
+     * @param pageNumber ページ番号（0 始まり）
+     * @param pageSize   1 ページあたりの件数
+     * @return (保護者ユーザーID, 子ユーザーID) ペアのリスト（空可）
+     */
+    public List<ParentChildPair> listActiveParentWatcherPairs(int pageNumber, int pageSize) {
+        return careLinkRepository.findByRelationshipAndStatusOrderByIdAsc(
+                        CareRelationship.PARENT, CareLinkStatus.ACTIVE,
+                        org.springframework.data.domain.PageRequest.of(pageNumber, pageSize))
+                .stream()
+                .map(link -> new ParentChildPair(link.getWatcherUserId(), link.getCareRecipientUserId()))
+                .toList();
+    }
+
+    /**
+     * 保護者（見守り者）と子（ケア対象者）の ID ペア。
+     *
+     * <p>F08.9 P3c-3 自立移行通知バッチの境界 DTO。family ドメインの Entity を
+     * 外部へ漏らさずに (保護者, 子) の関係だけを渡すための最小レコード。</p>
+     *
+     * @param parentUserId 保護者（見守り PARENT）のユーザーID
+     * @param childUserId  子（ケア対象者）のユーザーID
+     */
+    public record ParentChildPair(Long parentUserId, Long childUserId) {
+    }
+
     // =========================================================
     // プライベートヘルパー
     // =========================================================
