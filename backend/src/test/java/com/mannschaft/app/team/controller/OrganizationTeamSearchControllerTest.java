@@ -63,6 +63,9 @@ class OrganizationTeamSearchControllerTest {
     private TeamSearchService teamSearchService;
 
     @MockitoBean
+    private com.mannschaft.app.organization.service.OrganizationService organizationService;
+
+    @MockitoBean
     private AccessControlService accessControlService;
 
     @MockitoBean
