@@ -303,7 +303,13 @@ class MembershipSubscriptionWebhookServiceTest {
             given(membershipSubscriptionRepository.findByStripeSubscriptionIdForUpdate("sub_x"))
                     .willReturn(Optional.of(subscription(MembershipSubscriptionStatus.ACTIVE)));
             given(membershipSubscriptionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            EscrowTransactionEntity existing = new EscrowTransactionEntity();
+            EscrowTransactionEntity existing = EscrowTransactionEntity.builder()
+                    .sourceKind(com.mannschaft.app.payment.escrow.EscrowSourceKind.MEMBERSHIP)
+                    .captureMode(com.mannschaft.app.payment.escrow.EscrowCaptureMode.AUTOMATIC)
+                    .sourceId(55L).payerScopeKind(ScopeKind.USER).payerScopeId(100L)
+                    .payeeKind(ScopeKind.TEAM).payeeConnectAccountId(java.util.UUID.randomUUID())
+                    .faceAmount(10_000L).amount(10_000L).applicationFeeAmount(500L).currency("JPY")
+                    .status(EscrowStatus.CAPTURED).stripePaymentIntentId("pi_cycle").build();
             given(escrowTransactionRepository.findByStripePaymentIntentId("pi_cycle"))
                     .willReturn(Optional.of(existing));
 

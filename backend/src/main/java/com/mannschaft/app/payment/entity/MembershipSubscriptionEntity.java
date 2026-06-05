@@ -303,6 +303,25 @@ public class MembershipSubscriptionEntity extends UuidV7Entity {
     }
 
     /**
+     * 現サイクル期間（{@code current_period_start}/{@code current_period_end}）を更新する（status は変えない）。
+     *
+     * <p>F08.9 P5 第三波: ACTIVE の通常サイクル更新（{@code invoice.paid}）や解約応答の期末日反映で用いる。
+     * {@code toBuilder()} での再構築は Lombok の {@code @Builder} が<b>親クラス {@link UuidV7Entity} の id を引き継がない</b>ため
+     * id を失う（member_payments の subscription 連結が null になる事故）。これを避け、本ミューテータで原子的に更新する。</p>
+     *
+     * @param periodStart 現サイクル開始日（null 可・null は更新しない）
+     * @param periodEnd   現サイクル終了日（受益者 valid_until 同期・null 可・null は更新しない）
+     */
+    public void applyCurrentPeriod(LocalDate periodStart, LocalDate periodEnd) {
+        if (periodStart != null) {
+            this.currentPeriodStart = periodStart;
+        }
+        if (periodEnd != null) {
+            this.currentPeriodEnd = periodEnd;
+        }
+    }
+
+    /**
      * Stripe Subscription / Customer の ID を焼き付ける（subscribe 確定時・後続波で利用）。
      *
      * @param stripeSubscriptionId Stripe Subscription ID（sub_xxx）

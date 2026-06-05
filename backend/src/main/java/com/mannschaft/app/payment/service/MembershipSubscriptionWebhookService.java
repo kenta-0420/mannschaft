@@ -308,10 +308,8 @@ public class MembershipSubscriptionWebhookService {
             }
             case ACTIVE -> {
                 // 通常サイクル更新（current_period をサイクル分前進＝valid_until 1サイクル延長）。
-                subscription = subscription.toBuilder()
-                        .currentPeriodStart(periodStart)
-                        .currentPeriodEnd(periodEnd)
-                        .build();
+                // toBuilder は親クラスの id を失うためミューテータで更新する（subscription 連結の null 化を防ぐ）。
+                subscription.applyCurrentPeriod(periodStart, periodEnd);
                 membershipSubscriptionRepository.save(subscription);
                 log.info("invoice.paid 通常サイクル更新（valid_until 1サイクル延長）: subscriptionId={}, periodEnd={}",
                         subscription.getId(), periodEnd);

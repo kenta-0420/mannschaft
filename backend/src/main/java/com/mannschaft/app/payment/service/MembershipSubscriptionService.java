@@ -397,13 +397,19 @@ public class MembershipSubscriptionService {
 
     /**
      * Stripe の {@code current_period_end}（unix 秒）を Entity の {@code current_period_end}（DATE）へ反映する。
-     * status 遷移はせず DATE のみ更新する（{@code toBuilder} で再構築・PENDING/ACTIVE 不変）。
+     * status 遷移はせず DATE のみ更新する。
+     *
+     * <p><b>根治（第三波で修正）:</b> 旧実装は {@code toBuilder().build()} で再構築していたが、Lombok の {@code @Builder} は
+     * 親クラス {@link MembershipSubscriptionEntity} の {@code id}（{@code UuidV7Entity}）を引き継がないため id を失い、
+     * 解約 save が UPDATE でなく新規 INSERT（重複行）になる潜在バグがあった。{@link MembershipSubscriptionEntity#applyCurrentPeriod}
+     * ミューテータで原子的に更新し id を保つ。</p>
      */
     private MembershipSubscriptionEntity applyCurrentPeriodEnd(MembershipSubscriptionEntity subscription,
                                                                long currentPeriodEndEpochSec) {
         LocalDate periodEnd = java.time.Instant.ofEpochSecond(currentPeriodEndEpochSec)
                 .atZone(ZoneId.systemDefault()).toLocalDate();
-        return subscription.toBuilder().currentPeriodEnd(periodEnd).build();
+        subscription.applyCurrentPeriod(null, periodEnd);
+        return subscription;
     }
 
     /**
