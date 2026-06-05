@@ -9,6 +9,7 @@ import com.mannschaft.app.payment.entity.PaymentProxyGrantEntity;
 import com.mannschaft.app.payment.repository.PaymentProxyGrantRepository;
 import com.mannschaft.app.payment.service.PaymentAuthorizationService;
 import com.mannschaft.app.payment.service.PaymentItemService;
+import com.mannschaft.app.proxy.ProxyInputContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -25,7 +26,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -47,6 +47,7 @@ class PaymentAuthorizationServiceTest {
     @Mock private ParentalConsentService parentalConsentService;
     @Mock private CareLinkService careLinkService;
     @Mock private PaymentProxyGrantRepository paymentProxyGrantRepository;
+    @Mock private ProxyInputContext proxyInputContext;
 
     @InjectMocks
     private PaymentAuthorizationService service;
@@ -310,22 +311,63 @@ class PaymentAuthorizationServiceTest {
     }
 
     @Nested
-    @DisplayName("GUARDIAN_PROXY（P3 注入口・本タスクでは未評価）")
-    class GuardianProxyDeferred {
+    @DisplayName("GUARDIAN_PROXY（後見切替セッション中の保護者代理払い・F08.9 P3c-2 実評価）")
+    class GuardianProxy {
 
         @Test
-        @DisplayName("将来固定: 後見切替セッションは P3 未実装ゆえ GUARDIAN_PROXY を返さない（保護者経路も無ければ 403）")
-        void 後見切替経路はP2では未評価で403() {
-            // 後見切替（P3）の isProxy 判定は本サービスに注入されていないため、
-            // GUARDIAN_PROXY は決して返らない。保護者リンク・grant が無ければ 403 に倒れることを固定する。
+        @DisplayName("正常系: isProxy かつ subject==beneficiary の保護者払いは GUARDIAN_PROXY（GUARDIAN より優先）")
+        void isProxyかつsubject一致はGUARDIAN_PROXY() {
+            // 保護者リンク成立（権原は GUARDIAN と同じ）。
+            when(parentalConsentService.isApprovedGuardian(PAYER_ID, BENEFICIARY_ID)).thenReturn(true);
+            // 後見切替セッション中（X-Proxy-For-User-Id=子）かつ切替対象の子＝受益者。
+            when(proxyInputContext.isProxy()).thenReturn(true);
+            when(proxyInputContext.getSubjectUserId()).thenReturn(BENEFICIARY_ID);
+
+            PayerRelationship result =
+                    service.authorizePayment(PAYER_ID, BENEFICIARY_ID, ITEM_ID, false);
+
+            assertThat(result).isEqualTo(PayerRelationship.GUARDIAN_PROXY);
+            // 区別記録のみ。grant/ADMIN 判定には進まない。
+            verifyNoInteractions(paymentProxyGrantRepository);
+            verifyNoInteractions(paymentItemService);
+        }
+
+        @Test
+        @DisplayName("正常系: isProxy だが subject!=beneficiary（別の子へ acting-as 中）の払いは GUARDIAN（誤分類しない）")
+        void isProxyだがsubject不一致はGUARDIAN() {
+            when(parentalConsentService.isApprovedGuardian(PAYER_ID, BENEFICIARY_ID)).thenReturn(true);
+            when(proxyInputContext.isProxy()).thenReturn(true);
+            // 切替対象は別の子（999）であり、受益者（BENEFICIARY_ID=200）とは一致しない。
+            when(proxyInputContext.getSubjectUserId()).thenReturn(999L);
+
+            PayerRelationship result =
+                    service.authorizePayment(PAYER_ID, BENEFICIARY_ID, ITEM_ID, false);
+
+            assertThat(result).isEqualTo(PayerRelationship.GUARDIAN);
+        }
+
+        @Test
+        @DisplayName("正常系: 非 proxy（通常払い）の保護者払いは GUARDIAN")
+        void 非proxyはGUARDIAN() {
+            when(parentalConsentService.isApprovedGuardian(PAYER_ID, BENEFICIARY_ID)).thenReturn(true);
+            // isProxy() は既定 false（後見切替セッション外）。
+
+            PayerRelationship result =
+                    service.authorizePayment(PAYER_ID, BENEFICIARY_ID, ITEM_ID, false);
+
+            assertThat(result).isEqualTo(PayerRelationship.GUARDIAN);
+        }
+
+        @Test
+        @DisplayName("固定: 保護者リンクが無ければ isProxy でも GUARDIAN_PROXY にならず 403（権原は GUARDIAN に依存）")
+        void 保護者リンクなしはisProxyでも403() {
+            // isProxy だが保護者リンク・grant いずれも不成立 → 権原なしで 403。
             when(parentalConsentService.isApprovedGuardian(PAYER_ID, BENEFICIARY_ID)).thenReturn(false);
             when(careLinkService.isActiveParentWatcher(PAYER_ID, BENEFICIARY_ID)).thenReturn(false);
             when(paymentProxyGrantRepository.findActiveGrant(
                     eq(BENEFICIARY_ID), eq(PAYER_ID), eq(ITEM_ID),
                     eq(PaymentProxyGrantStatus.ACTIVE), any(LocalDateTime.class)))
                     .thenReturn(Optional.empty());
-            lenient().when(accessControlService.isAdminOrAbove(anyLong(), anyLong(), eq("TEAM")))
-                    .thenReturn(false);
 
             assertThatThrownBy(() ->
                     service.authorizePayment(PAYER_ID, BENEFICIARY_ID, ITEM_ID, false))

@@ -70,8 +70,31 @@ public class JapanGuardianshipAgePolicy implements GuardianshipAgePolicy {
     }
 
     @Override
+    public LocalDate sealDate(LocalDate birthDate, Clock clock) {
+        if (birthDate == null) {
+            throw new IllegalArgumentException("birthDate must not be null for guardianship seal date resolution");
+        }
+        // 封印は「年度4/1時点の学齢が 12 に達する年度」の 4/1 で発火する。
+        // 学齢は満年齢（誕生日基準）の年度始め評価なので、満12歳に達する日（birthDate+12年）以降で
+        // 最初に来る 4/1 が境界日。clock には依存しない（生年月日から一意に定まる）。
+        LocalDate twelfthBirthday = birthDate.plusYears(JUNIOR_HIGH_SCHOOL_AGE);
+        return firstApril1OnOrAfter(twelfthBirthday);
+    }
+
+    @Override
     public String supportedCountryCode() {
         return COUNTRY_CODE;
+    }
+
+    /**
+     * 指定日以降（当日含む）で最初に来る 4/1 を返す。
+     * 4/1 ちょうどならその日、それ以外は次の年（または当年）の 4/1。
+     */
+    private LocalDate firstApril1OnOrAfter(LocalDate date) {
+        LocalDate april1ThisYear = LocalDate.of(date.getYear(), 4, 1);
+        return date.isAfter(april1ThisYear)
+                ? LocalDate.of(date.getYear() + 1, 4, 1)
+                : april1ThisYear;
     }
 
     /**
