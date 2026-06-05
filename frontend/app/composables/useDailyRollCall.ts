@@ -5,7 +5,7 @@ import type {
   DailyRollCallSummary,
 } from '~/types/school'
 
-export function useDailyRollCall(teamId: Ref<number>) {
+export function useDailyRollCall(teamId: Ref<string>) {
   const api = useDailyRollCallApi()
   const { error: notifyError, success: notifySuccess } = useNotification()
   const { t } = useI18n()

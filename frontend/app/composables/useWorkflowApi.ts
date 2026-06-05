@@ -21,14 +21,14 @@ interface WorkflowListParams {
 export function useWorkflowApi() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   // === Workflow Templates ===
   async function listTemplates(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: WorkflowListParams,
   ) {
     const query = new URLSearchParams()
@@ -41,7 +41,7 @@ export function useWorkflowApi() {
 
   async function getTemplate(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     templateId: number,
   ) {
     return api<{ data: WorkflowTemplateResponse }>(
@@ -51,7 +51,7 @@ export function useWorkflowApi() {
 
   async function createTemplate(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: CreateWorkflowTemplateRequest,
   ) {
     return api<{ data: WorkflowTemplateResponse }>(
@@ -62,7 +62,7 @@ export function useWorkflowApi() {
 
   async function updateTemplate(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     templateId: number,
     body: UpdateWorkflowTemplateRequest,
   ) {
@@ -74,7 +74,7 @@ export function useWorkflowApi() {
 
   async function deleteTemplate(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     templateId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/workflow-templates/${templateId}`, {
@@ -84,7 +84,7 @@ export function useWorkflowApi() {
 
   async function activateTemplate(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     templateId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/workflow-templates/${templateId}/activate`, {
@@ -94,7 +94,7 @@ export function useWorkflowApi() {
 
   async function deactivateTemplate(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     templateId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/workflow-templates/${templateId}/deactivate`, {
@@ -105,7 +105,7 @@ export function useWorkflowApi() {
   // === Workflow Requests ===
   async function listRequests(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: WorkflowListParams,
   ) {
     const query = new URLSearchParams()
@@ -119,7 +119,7 @@ export function useWorkflowApi() {
 
   async function getRequest(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     requestId: number,
   ) {
     return api<{ data: WorkflowRequestResponse }>(
@@ -129,7 +129,7 @@ export function useWorkflowApi() {
 
   async function createRequest(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: CreateWorkflowRequestRequest,
   ) {
     return api<{ data: WorkflowRequestResponse }>(
@@ -140,7 +140,7 @@ export function useWorkflowApi() {
 
   async function updateRequest(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     requestId: number,
     body: UpdateWorkflowRequestRequest,
   ) {
@@ -152,7 +152,7 @@ export function useWorkflowApi() {
 
   async function deleteRequest(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     requestId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/workflow-requests/${requestId}`, {
@@ -162,7 +162,7 @@ export function useWorkflowApi() {
 
   async function submitRequest(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     requestId: number,
   ) {
     return api<{ data: WorkflowRequestResponse }>(
@@ -173,7 +173,7 @@ export function useWorkflowApi() {
 
   async function withdrawRequest(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     requestId: number,
   ) {
     return api<{ data: WorkflowRequestResponse }>(

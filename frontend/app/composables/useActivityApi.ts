@@ -44,7 +44,7 @@ export function useActivityApi() {
   }
 
   // === Activity Templates ===
-  async function getTemplates(scopeType: string, scopeId: number) {
+  async function getTemplates(scopeType: string, scopeId: string) {
     return api<{ data: ActivityTemplate[] }>(
       `/api/v1/activity-templates?scope_type=${scopeType}&scope_id=${scopeId}`,
     )
@@ -127,7 +127,7 @@ export function useActivityApi() {
     return api<{ data: ActivityRecordResponse }>(`/api/v1/public/teams/${teamId}/activities/${id}`)
   }
 
-  async function getStats(scopeType: string, scopeId: number) {
+  async function getStats(scopeType: string, scopeId: string) {
     return api<{ data: ActivityStats }>(
       `/api/v1/activities/stats?scope_type=${scopeType}&scope_id=${scopeId}`,
     )

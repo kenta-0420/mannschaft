@@ -50,7 +50,7 @@ const todaysMemos = computed<ActionMemo[]>(() => store.currentDayMemos(today.val
 interface TodoItem {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   title: string
   status: string
   dueDate: string | null

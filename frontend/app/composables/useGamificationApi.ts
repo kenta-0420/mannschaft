@@ -3,17 +3,17 @@ import type { GamificationConfig, PointRule, Badge, UserBadge, PointSummary, Poi
 export function useGamificationApi() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
-  async function getConfig(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getConfig(scopeType: 'team' | 'organization', scopeId: string) {
     const base = buildBase(scopeType, scopeId)
     const res = await api<{ data: GamificationConfig }>(`${base}/gamification/config`)
     return res.data
   }
 
-  async function updateConfig(scopeType: 'team' | 'organization', scopeId: number, config: GamificationConfig) {
+  async function updateConfig(scopeType: 'team' | 'organization', scopeId: string, config: GamificationConfig) {
     const base = buildBase(scopeType, scopeId)
     await api(`${base}/gamification/config`, { method: 'PUT', body: config })
   }

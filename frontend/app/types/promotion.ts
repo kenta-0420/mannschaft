@@ -4,7 +4,7 @@ export type CouponStatus = 'ACTIVE' | 'REDEEMED' | 'EXPIRED' | 'CANCELLED'
 export interface PromotionResponse {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   title: string
   body: string | null
   imageUrl: string | null

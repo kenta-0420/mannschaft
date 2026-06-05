@@ -5,7 +5,7 @@ import type {
   PeriodAttendanceSummary,
 } from '~/types/school'
 
-export function usePeriodAttendance(teamId: Ref<number>) {
+export function usePeriodAttendance(teamId: Ref<string>) {
   const api = usePeriodAttendanceApi()
   const { error: notifyError, success: notifySuccess } = useNotification()
   const { t } = useI18n()

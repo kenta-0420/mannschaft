@@ -6,7 +6,7 @@ export function useParkingVisitorReservationsApi() {
 
   async function getVisitorReservations(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: Record<string, unknown>,
   ) {
     const q = new URLSearchParams()
@@ -22,7 +22,7 @@ export function useParkingVisitorReservationsApi() {
 
   async function createVisitorReservation(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: VisitorReservationResponse }>(
@@ -33,7 +33,7 @@ export function useParkingVisitorReservationsApi() {
 
   async function getVisitorReservationAvailability(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: Record<string, unknown>,
   ) {
     const q = new URLSearchParams()
@@ -49,7 +49,7 @@ export function useParkingVisitorReservationsApi() {
 
   async function getVisitorReservation(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     reservationId: number,
   ) {
     return api<{ data: VisitorReservationResponse }>(
@@ -59,7 +59,7 @@ export function useParkingVisitorReservationsApi() {
 
   async function deleteVisitorReservation(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     reservationId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/parking/visitor-reservations/${reservationId}`, {
@@ -69,7 +69,7 @@ export function useParkingVisitorReservationsApi() {
 
   async function approveVisitorReservation(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     reservationId: number,
     body?: Record<string, unknown>,
   ) {
@@ -81,7 +81,7 @@ export function useParkingVisitorReservationsApi() {
 
   async function rejectVisitorReservation(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     reservationId: number,
     body?: Record<string, unknown>,
   ) {
@@ -93,7 +93,7 @@ export function useParkingVisitorReservationsApi() {
 
   async function checkInVisitorReservation(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     reservationId: number,
   ) {
     return api(
@@ -104,7 +104,7 @@ export function useParkingVisitorReservationsApi() {
 
   async function completeVisitorReservation(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     reservationId: number,
   ) {
     return api(

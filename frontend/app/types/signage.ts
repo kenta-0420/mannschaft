@@ -5,7 +5,7 @@ export type SignageSlotType = 'IMAGE' | 'VIDEO' | 'URL' | 'ANNOUNCEMENT' | 'SCHE
 export interface SignageScreen {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   name: string
   description: string | null
   layout: SignageLayout
@@ -36,7 +36,7 @@ export interface SignageToken {
 
 export interface CreateSignageScreenRequest {
   scopeType: string
-  scopeId: number
+  scopeId: string
   name: string
   description?: string
   layout: SignageLayout

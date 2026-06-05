@@ -10,7 +10,7 @@ export interface GanttScopeOption {
   label: string
   value: string
   scopeType: 'personal' | 'team' | 'organization'
-  scopeId: number
+  scopeId: string
 }
 
 export function useTodoGanttView() {

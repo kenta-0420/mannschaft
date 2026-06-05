@@ -18,7 +18,7 @@ import type { CorkboardDetail, CorkboardCardDetail } from '~/types/corkboard'
  */
 export function useCorkboardDragDrop(
   board: Ref<CorkboardDetail | null>,
-  boardId: Ref<number>,
+  boardId: Ref<string>,
   tFn?: (key: string) => string,
 ) {
   const { batchUpdateCardPositions: apiBatchUpdateCardPositions } = useCorkboardApi()

@@ -14,7 +14,7 @@ import type { RespondentItem } from '~/types/survey'
 const props = withDefaults(
   defineProps<{
     scopeType: 'TEAM' | 'ORGANIZATION'
-    scopeId: number
+    scopeId: string
     surveyId: number
     canRemind?: boolean
   }>(),

@@ -4,7 +4,7 @@ import type { ScheduleResponse } from '~/types/schedule'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
 }>()
 
 const { listSchedules, getAttendances } = useScheduleApi()

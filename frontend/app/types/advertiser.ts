@@ -30,7 +30,7 @@ export interface AdvertiserAccountResponse {
   /** F09.17 Phase 11-d-2: スコープ種別（必須）。 */
   scopeType: ScopeType
   /** F09.17 Phase 11-d-2: スコープ ID（必須）。 */
-  scopeId: number
+  scopeId: string
   /**
    * 旧スコープ参照（Phase 11-e 削除予定）。
    * {@code scope_type=ORGANIZATION} の場合のみ非 null。{@code TEAM} の場合は null。
@@ -56,7 +56,7 @@ export interface AdvertiserAccountDetailResponse {
   /** F09.17 Phase 11-d-2: スコープ種別（必須）。 */
   scopeType: ScopeType
   /** F09.17 Phase 11-d-2: スコープ ID（必須）。 */
-  scopeId: number
+  scopeId: string
   /** 旧スコープ参照（Phase 11-e 削除予定）。 */
   organizationId?: number | null
   organizationName: string

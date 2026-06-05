@@ -69,7 +69,7 @@ export interface MarketSummary {
  */
 export interface MarketOwner {
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   displayName: string
   iconUrl: string | null
 }

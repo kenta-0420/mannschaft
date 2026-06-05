@@ -288,7 +288,7 @@ export interface SafetyPresetResponse {
 export interface SystemAdminSafetyTemplateResponse {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   templateName: string
   title: string
   message: string

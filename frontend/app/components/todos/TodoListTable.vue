@@ -4,7 +4,7 @@ import dayjs from 'dayjs'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   canEdit: boolean
   canDelete: boolean
 }>()

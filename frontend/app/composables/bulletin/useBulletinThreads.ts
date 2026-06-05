@@ -184,7 +184,7 @@ export function useBulletinThreads() {
   // === Scoped Threads ===
   async function getScopedThreads(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     params?: { categoryId?: number; page?: number; size?: number },
   ) {
     const query = new URLSearchParams()
@@ -199,7 +199,7 @@ export function useBulletinThreads() {
 
   async function searchScopedThreads(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     params: BulletinThreadSearchParams,
   ) {
     const query = new URLSearchParams()
@@ -214,7 +214,7 @@ export function useBulletinThreads() {
 
   async function createScopedThread(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: BulletinThreadResponse }>(
@@ -223,7 +223,7 @@ export function useBulletinThreads() {
     )
   }
 
-  async function getScopedThread(scopeType: string, scopeId: number, threadId: number) {
+  async function getScopedThread(scopeType: string, scopeId: string, threadId: number) {
     return api<{ data: BulletinThreadResponse }>(
       `/api/v1/${scopeType}/${scopeId}/bulletin/threads/${threadId}`,
     )
@@ -231,7 +231,7 @@ export function useBulletinThreads() {
 
   async function updateScopedThread(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     threadId: number,
     body: Record<string, unknown>,
   ) {
@@ -241,7 +241,7 @@ export function useBulletinThreads() {
     )
   }
 
-  async function deleteScopedThread(scopeType: string, scopeId: number, threadId: number) {
+  async function deleteScopedThread(scopeType: string, scopeId: string, threadId: number) {
     return api(`/api/v1/${scopeType}/${scopeId}/bulletin/threads/${threadId}`, { method: 'DELETE' })
   }
 
@@ -266,26 +266,26 @@ export function useBulletinThreads() {
     })
   }
 
-  async function lockScopedThread(scopeType: string, scopeId: number, threadId: number) {
+  async function lockScopedThread(scopeType: string, scopeId: string, threadId: number) {
     return api(`/api/v1/${scopeType}/${scopeId}/bulletin/threads/${threadId}/lock`, {
       method: 'POST',
     })
   }
 
-  async function pinScopedThread(scopeType: string, scopeId: number, threadId: number) {
+  async function pinScopedThread(scopeType: string, scopeId: string, threadId: number) {
     return api(`/api/v1/${scopeType}/${scopeId}/bulletin/threads/${threadId}/pin`, {
       method: 'POST',
     })
   }
 
   // === Scoped Read Status ===
-  async function getReadStatus(scopeType: string, scopeId: number, threadId: number) {
+  async function getReadStatus(scopeType: string, scopeId: string, threadId: number) {
     return api<{ data: BulletinReadStatus }>(
       `/api/v1/${scopeType}/${scopeId}/bulletin/threads/${threadId}/read-status`,
     )
   }
 
-  async function markReadStatus(scopeType: string, scopeId: number, threadId: number) {
+  async function markReadStatus(scopeType: string, scopeId: string, threadId: number) {
     return api(`/api/v1/${scopeType}/${scopeId}/bulletin/threads/${threadId}/read-status`, {
       method: 'POST',
     })

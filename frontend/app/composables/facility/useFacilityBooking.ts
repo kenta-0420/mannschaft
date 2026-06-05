@@ -14,14 +14,14 @@ import type {
 export function useFacilityBooking() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   // === Bookings ===
   async function getBookings(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: Record<string, unknown>,
   ) {
     const q = new URLSearchParams()
@@ -37,7 +37,7 @@ export function useFacilityBooking() {
 
   async function createBooking(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: FacilityBookingResponse }>(
@@ -48,7 +48,7 @@ export function useFacilityBooking() {
 
   async function getBookingCalendar(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: Record<string, unknown>,
   ) {
     const q = new URLSearchParams()
@@ -64,7 +64,7 @@ export function useFacilityBooking() {
 
   async function getBooking(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     bookingId: number,
   ) {
     return api<{ data: BookingDetailResponse }>(
@@ -74,7 +74,7 @@ export function useFacilityBooking() {
 
   async function updateBooking(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     bookingId: number,
     body: Record<string, unknown>,
   ) {
@@ -86,7 +86,7 @@ export function useFacilityBooking() {
 
   async function deleteBooking(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     bookingId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/facilities/bookings/${bookingId}`, {
@@ -96,7 +96,7 @@ export function useFacilityBooking() {
 
   async function approveBooking(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     bookingId: number,
     body?: Record<string, unknown>,
   ) {
@@ -108,7 +108,7 @@ export function useFacilityBooking() {
 
   async function rejectBooking(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     bookingId: number,
     body?: Record<string, unknown>,
   ) {
@@ -120,7 +120,7 @@ export function useFacilityBooking() {
 
   async function checkInBooking(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     bookingId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/facilities/bookings/${bookingId}/check-in`, {
@@ -130,7 +130,7 @@ export function useFacilityBooking() {
 
   async function completeBooking(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     bookingId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/facilities/bookings/${bookingId}/complete`, {
@@ -140,7 +140,7 @@ export function useFacilityBooking() {
 
   async function getBookingConfirmationPdf(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     bookingId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/facilities/bookings/${bookingId}/confirmation-pdf`)
@@ -148,7 +148,7 @@ export function useFacilityBooking() {
 
   async function getBookingPayment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     bookingId: number,
   ) {
     return api<{ data: BookingPaymentResponse }>(
@@ -158,7 +158,7 @@ export function useFacilityBooking() {
 
   async function confirmBookingPayment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     bookingId: number,
     body?: Record<string, unknown>,
   ) {

@@ -7,7 +7,7 @@ export type EditScope = 'THIS_ONLY' | 'THIS_AND_FOLLOWING' | 'ALL'
 export interface ScheduleResponse {
   id: number
   scopeType: ScheduleScopeType
-  scopeId: number
+  scopeId: string
   title: string
   description: string | null
   location: string | null

@@ -16,7 +16,7 @@ export interface NotificationResponse {
   sourceType: string
   sourceId: number | null
   scopeType: NotificationScopeType
-  scopeId: number | null
+  scopeId: string | null
   scopeName: string | null
   actionUrl: string | null
   actor: NotificationActor | null
@@ -43,7 +43,7 @@ export interface NotificationListResponse {
 
 export interface NotificationPreference {
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   scopeName: string
   isMuted: boolean
   inAppEnabled: boolean

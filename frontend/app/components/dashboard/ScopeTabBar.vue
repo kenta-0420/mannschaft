@@ -63,7 +63,7 @@ onMounted(async () => {
   }
 })
 
-function selectScope(scopeId: number) {
+function selectScope(scopeId: string) {
   if (props.scopeType === 'TEAM') {
     store.selectedTeamId = scopeId
   } else {

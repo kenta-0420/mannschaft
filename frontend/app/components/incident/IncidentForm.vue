@@ -5,7 +5,7 @@ const visible = defineModel<boolean>('visible', { default: false })
 
 const props = defineProps<{
   scopeType: string
-  scopeId: number
+  scopeId: string
   editId?: number
 }>()
 

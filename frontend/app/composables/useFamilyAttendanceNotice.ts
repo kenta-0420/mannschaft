@@ -6,7 +6,7 @@ import type {
 } from '~/types/school'
 
 /** 担任側: チームの保護者連絡管理 */
-export function useFamilyAttendanceNotice(teamId: Ref<number>) {
+export function useFamilyAttendanceNotice(teamId: Ref<string>) {
   const api = useFamilyAttendanceNoticeApi()
   const { error: notifyError, success: notifySuccess } = useNotification()
   const { t } = useI18n()

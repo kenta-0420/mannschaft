@@ -12,7 +12,7 @@ import type {
  * - GET /api/v1/organizations/{id}/ancestors  — root → 親順
  * - GET /api/v1/organizations/{id}/children    — 直近の子組織（カーソルページネーション）
  */
-export function useOrgHierarchy(orgId: Ref<number>) {
+export function useOrgHierarchy(orgId: Ref<string>) {
   const api = useApi()
   const { handleApiError } = useErrorHandler()
 

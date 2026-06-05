@@ -37,7 +37,7 @@ export function useTagApi() {
 
   // ─── 作成 ────────────────────────────────────────────────────────────────────
 
-  async function createTag(scope: TagScope, scopeId: number | undefined, body: CreateTagRequest) {
+  async function createTag(scope: TagScope, scopeId: string | undefined, body: CreateTagRequest) {
     return api<{ data: TagResponse }>(basePath(scope, scopeId), { method: 'POST', body })
   }
 
@@ -45,7 +45,7 @@ export function useTagApi() {
 
   async function updateTag(
     scope: TagScope,
-    scopeId: number | undefined,
+    scopeId: string | undefined,
     tagId: number,
     body: UpdateTagRequest,
   ) {
@@ -57,7 +57,7 @@ export function useTagApi() {
 
   // ─── 削除 ────────────────────────────────────────────────────────────────────
 
-  async function deleteTag(scope: TagScope, scopeId: number | undefined, tagId: number) {
+  async function deleteTag(scope: TagScope, scopeId: string | undefined, tagId: number) {
     return api(`${basePath(scope, scopeId)}/${tagId}`, { method: 'DELETE' })
   }
 

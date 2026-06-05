@@ -16,7 +16,7 @@ import type {
 
 const props = defineProps<{
   scope: ScopeName
-  scopeId: number
+  scopeId: string
   packageId?: number | null
   filter?: WorkPackageListFilter
   size?: 'small' | 'large' | undefined

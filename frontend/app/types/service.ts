@@ -23,7 +23,7 @@ export interface ServiceRecordResponse {
 export interface ServiceRecordTemplate {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   name: string
   description: string | null
   fields: Array<{ id: number; fieldName: string; fieldType: string; isRequired: boolean; sortOrder: number }>

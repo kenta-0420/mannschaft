@@ -5,7 +5,7 @@ interface CalendarEntryRaw {
   id: number
   content: { title: string; eventType: string; status: string }
   time: { startAt: string; endAt: string; allDay: boolean }
-  scope: { scopeType: string; scopeId: number; scopeName: string | null; scopeIconUrl: string | null }
+  scope: { scopeType: string; scopeId: string; scopeName: string | null; scopeIconUrl: string | null }
   myAttendanceStatus: string
 }
 
@@ -25,7 +25,7 @@ export interface ScopeOption {
   label: string
   value: string
   scopeType: string
-  scopeId: number
+  scopeId: string
 }
 
 export const PERSONAL_KEY = 'PERSONAL'

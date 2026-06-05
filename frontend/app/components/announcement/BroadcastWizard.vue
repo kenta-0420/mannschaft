@@ -14,7 +14,7 @@ import type {
 const props = defineProps<{
   visible: boolean
   scopeType: AnnouncementScopeType
-  scopeId: number
+  scopeId: string
   isAdmin?: boolean
 }>()
 

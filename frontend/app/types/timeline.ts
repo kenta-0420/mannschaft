@@ -75,7 +75,7 @@ export interface RepostOf {
 
 export interface PostScopeDto {
   scopeType: TimelineScopeType
-  scopeId: number
+  scopeId: string
 }
 
 export interface PostAuthorDto {

@@ -3,7 +3,7 @@ import type { SidebarCategory, SidebarItem } from '~/types/sidebar'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   categories: SidebarCategory[]
 }>()
 

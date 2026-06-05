@@ -28,7 +28,7 @@ export function useRepairPlanKanbanApi() {
    */
   async function listKanbans(
     scope: string,
-    scopeId: number,
+    scopeId: string,
     organizationId: number,
   ): Promise<QuoteKanban[]> {
     const res = await api<{ data: QuoteKanban[] }>(
@@ -43,7 +43,7 @@ export function useRepairPlanKanbanApi() {
    */
   async function createKanban(
     scope: string,
-    scopeId: number,
+    scopeId: string,
     organizationId: number,
     body: CreateKanbanRequest,
   ): Promise<QuoteKanban> {
@@ -59,7 +59,7 @@ export function useRepairPlanKanbanApi() {
    */
   async function getKanban(
     scope: string,
-    scopeId: number,
+    scopeId: string,
     kanbanId: string,
     organizationId: number,
   ): Promise<QuoteKanban> {
@@ -75,7 +75,7 @@ export function useRepairPlanKanbanApi() {
    */
   async function updateKanban(
     scope: string,
-    scopeId: number,
+    scopeId: string,
     kanbanId: string,
     organizationId: number,
     body: UpdateKanbanRequest,
@@ -92,7 +92,7 @@ export function useRepairPlanKanbanApi() {
    */
   async function addCard(
     scope: string,
-    scopeId: number,
+    scopeId: string,
     kanbanId: string,
     organizationId: number,
     body: AddCardRequest,
@@ -109,7 +109,7 @@ export function useRepairPlanKanbanApi() {
    */
   async function moveCard(
     scope: string,
-    scopeId: number,
+    scopeId: string,
     cardId: string,
     organizationId: number,
     body: MoveCardRequest,

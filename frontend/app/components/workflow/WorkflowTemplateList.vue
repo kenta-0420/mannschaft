@@ -3,7 +3,7 @@ import type { WorkflowTemplateResponse } from '~/types/workflow'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   canEdit: boolean
 }>()
 

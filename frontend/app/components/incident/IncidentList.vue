@@ -3,7 +3,7 @@ import type { IncidentSummaryResponse, IncidentStatus } from '~/types/incident'
 
 const props = defineProps<{
   scopeType: string
-  scopeId: number
+  scopeId: string
   canManage?: boolean
 }>()
 

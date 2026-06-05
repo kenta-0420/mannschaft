@@ -9,12 +9,12 @@ import type { FacilitySettingsResponse, FacilityStatsResponse } from '~/types/fa
 export function useFacilitySettings() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   // === Settings ===
-  async function getFacilitySettings(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getFacilitySettings(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: FacilitySettingsResponse }>(
       `${buildBase(scopeType, scopeId)}/facilities/settings`,
     )
@@ -22,7 +22,7 @@ export function useFacilitySettings() {
 
   async function updateFacilitySettings(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: FacilitySettingsResponse }>(
@@ -32,7 +32,7 @@ export function useFacilitySettings() {
   }
 
   // === Stats ===
-  async function getFacilityStats(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getFacilityStats(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: FacilityStatsResponse }>(`${buildBase(scopeType, scopeId)}/facilities/stats`)
   }
 

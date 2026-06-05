@@ -74,7 +74,7 @@ export function useSealApi() {
 
   async function updateScopeDefaults(
     userId: number,
-    defaults: { scopeType: SealScopeType; scopeId: number | null; variant: SealVariant }[],
+    defaults: { scopeType: SealScopeType; scopeId: string | null; variant: SealVariant }[],
   ) {
     const res = await api<{ data: ScopeDefault[] }>(
       `/api/v1/users/${userId}/seals/scope-defaults`,

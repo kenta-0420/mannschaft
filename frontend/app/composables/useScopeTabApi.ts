@@ -166,7 +166,7 @@ export function useScopeTabApi() {
    */
   async function getActionRequired(
     scopeType: ScopeTabType,
-    scopeId: number,
+    scopeId: string,
   ): Promise<ActionRequiredSummary> {
     const base = scopeType === 'TEAM' ? `team/${scopeId}` : `organization/${scopeId}`
     const res = await api<{ data: RawActionRequiredSummary }>(

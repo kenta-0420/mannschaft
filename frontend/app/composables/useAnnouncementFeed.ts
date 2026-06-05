@@ -22,7 +22,7 @@ import type { ApiResponse } from '~/types/api'
  * @param scopeType スコープ種別（TEAM / ORGANIZATION）
  * @param scopeId   スコープ ID（チームまたは組織の ID）
  */
-export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: number) {
+export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: string) {
   const api = useApi()
 
   const feed = ref<AnnouncementFeedItem[]>([])

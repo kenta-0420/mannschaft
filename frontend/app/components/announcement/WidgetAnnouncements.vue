@@ -3,7 +3,7 @@ import type { AnnouncementScopeType } from '~/types/announcement'
 
 const props = defineProps<{
   scopeType: AnnouncementScopeType
-  scopeId: number
+  scopeId: string
   /** 表示件数（デフォルト 5） */
   limit?: number
 }>()

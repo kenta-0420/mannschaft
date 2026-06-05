@@ -11,7 +11,7 @@ const { formatDateTime: formatIsoDateTime } = useDatetime()
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   eventId: number
   canEdit: boolean
 }>()

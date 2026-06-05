@@ -10,7 +10,7 @@ import type { EventDelegationResponse } from '~/types/event'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   eventId: number
 }>()
 

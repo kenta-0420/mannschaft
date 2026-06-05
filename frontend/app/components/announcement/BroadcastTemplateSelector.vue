@@ -4,7 +4,7 @@ import type { AnnouncementTemplate } from '~/types/announcement_broadcast'
 
 const props = defineProps<{
   scopeType: AnnouncementScopeType
-  scopeId: number
+  scopeId: string
   modelValue: number | null
 }>()
 

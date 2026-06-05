@@ -11,7 +11,8 @@ import type {
 
 // Wave 3-B: OrganizationResponse ネスト構造に対応
 export interface OrgDetail {
-  id: number
+  /** UUID（public_id）。URLに使用する string 型。BE PR #1331 対応 */
+  id: string
   basicInfo?: OrgBasicInfoDto
   hierarchy?: OrgHierarchyDto
   location?: OrgLocationDto
@@ -23,7 +24,7 @@ export interface OrgDetail {
   description?: string | null
 }
 
-export function useOrgDetail(orgId: Ref<number>) {
+export function useOrgDetail(orgId: Ref<string>) {
   const orgApi = useOrganizationApi()
   const notification = useNotification()
   const { handleApiError } = useErrorHandler()

@@ -13,7 +13,7 @@ const DEFAULT_UNCONFIRMED_VISIBILITY: UnconfirmedVisibility = 'CREATOR_AND_ADMIN
 
 const props = defineProps<{
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
 }>()
 
 const emit = defineEmits<{

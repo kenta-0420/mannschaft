@@ -3,7 +3,7 @@ import type { WorkflowCommentResponse, WorkflowRequestResponse } from '~/types/w
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   requestId: number
 }>()
 

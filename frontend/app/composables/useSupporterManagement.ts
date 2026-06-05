@@ -15,7 +15,7 @@ export interface ApplicationItem {
   createdAt: string
 }
 
-export function useSupporterManagement(scopeType: Ref<'team' | 'organization'>, scopeId: Ref<number>) {
+export function useSupporterManagement(scopeType: Ref<'team' | 'organization'>, scopeId: Ref<string>) {
   const teamApi = useTeamApi()
   const orgApi = useOrganizationApi()
   const notification = useNotification()

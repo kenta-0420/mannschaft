@@ -15,7 +15,7 @@ interface TodoItem {
   dueDate: string | null
   priority: string
   scopeType: string
-  scopeId: number | null
+  scopeId: string | null
 }
 
 const todos = ref<TodoItem[]>([])

@@ -5,7 +5,7 @@ import type { FormFieldResponse, FormTemplateResponse, SubmissionValueRequest } 
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   templateId: number
   submissionId?: number
   visible: boolean

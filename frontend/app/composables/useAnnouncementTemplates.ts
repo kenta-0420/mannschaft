@@ -15,7 +15,7 @@ import type {
  * @param scopeType スコープ種別（TEAM / ORGANIZATION）
  * @param scopeId   スコープ ID
  */
-export function useAnnouncementTemplates(scopeType: AnnouncementScopeType, scopeId: number) {
+export function useAnnouncementTemplates(scopeType: AnnouncementScopeType, scopeId: string) {
   const api = useApi()
   const templates = ref<AnnouncementTemplate[]>([])
   const loading = ref(false)

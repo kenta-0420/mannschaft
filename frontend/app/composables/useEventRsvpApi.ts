@@ -7,13 +7,13 @@ import type {
 export function useEventRsvpApi() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   async function submitRsvp(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     eventId: number,
     body: SubmitRsvpRequest,
   ) {
@@ -25,7 +25,7 @@ export function useEventRsvpApi() {
 
   async function updateRsvp(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     eventId: number,
     body: SubmitRsvpRequest,
   ) {
@@ -37,7 +37,7 @@ export function useEventRsvpApi() {
 
   async function fetchRsvpList(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     eventId: number,
   ) {
     return api<{ data: EventRsvpResponseItem[] }>(
@@ -47,7 +47,7 @@ export function useEventRsvpApi() {
 
   async function fetchRsvpSummary(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     eventId: number,
   ) {
     return api<{ data: EventRsvpSummary }>(

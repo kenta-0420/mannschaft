@@ -7,7 +7,7 @@ import type {
 
 const props = defineProps<{
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
 }>()
 
 const { getSettings, updateSettings } = useConfirmableNotificationApi()

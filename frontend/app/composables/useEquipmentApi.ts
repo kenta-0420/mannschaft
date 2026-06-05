@@ -3,13 +3,13 @@ import type { EquipmentResponse, EquipmentHistory } from '~/types/equipment'
 export function useEquipmentApi() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   async function getEquipmentList(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: Record<string, unknown>,
   ) {
     const query = new URLSearchParams()
@@ -25,7 +25,7 @@ export function useEquipmentApi() {
 
   async function getEquipment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     equipId: number,
   ) {
     return api<{ data: EquipmentResponse }>(`${buildBase(scopeType, scopeId)}/equipment/${equipId}`)
@@ -33,7 +33,7 @@ export function useEquipmentApi() {
 
   async function createEquipment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: EquipmentResponse }>(`${buildBase(scopeType, scopeId)}/equipment`, {
@@ -44,7 +44,7 @@ export function useEquipmentApi() {
 
   async function updateEquipment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     equipId: number,
     body: Record<string, unknown>,
   ) {
@@ -56,7 +56,7 @@ export function useEquipmentApi() {
 
   async function deleteEquipment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     equipId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/equipment/${equipId}`, { method: 'DELETE' })
@@ -64,7 +64,7 @@ export function useEquipmentApi() {
 
   async function assignEquipment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     equipId: number,
     userId: number,
     returnDueDate?: string,
@@ -77,7 +77,7 @@ export function useEquipmentApi() {
 
   async function bulkAssignEquipment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     equipId: number,
     body: Record<string, unknown>,
   ) {
@@ -89,7 +89,7 @@ export function useEquipmentApi() {
 
   async function returnEquipment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     equipId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/equipment/${equipId}/return`, { method: 'PATCH' })
@@ -97,7 +97,7 @@ export function useEquipmentApi() {
 
   async function bulkReturnEquipment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     equipId: number,
     body: Record<string, unknown>,
   ) {
@@ -109,7 +109,7 @@ export function useEquipmentApi() {
 
   async function consumeEquipment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     equipId: number,
     body: Record<string, unknown>,
   ) {
@@ -119,27 +119,27 @@ export function useEquipmentApi() {
     })
   }
 
-  async function getHistory(scopeType: 'team' | 'organization', scopeId: number, equipId: number) {
+  async function getHistory(scopeType: 'team' | 'organization', scopeId: string, equipId: number) {
     return api<{ data: EquipmentHistory[] }>(
       `${buildBase(scopeType, scopeId)}/equipment/${equipId}/history`,
     )
   }
 
-  async function getOverdue(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getOverdue(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: EquipmentResponse[] }>(`${buildBase(scopeType, scopeId)}/equipment/overdue`)
   }
 
-  async function getCategories(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getCategories(scopeType: 'team' | 'organization', scopeId: string) {
     return api(`${buildBase(scopeType, scopeId)}/equipment/categories`)
   }
 
-  async function getQrCodes(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getQrCodes(scopeType: 'team' | 'organization', scopeId: string) {
     return api(`${buildBase(scopeType, scopeId)}/equipment/qr-codes`)
   }
 
   async function getImagePresignedUrl(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     equipId: number,
     body: Record<string, unknown>,
   ) {
@@ -149,7 +149,7 @@ export function useEquipmentApi() {
     })
   }
 
-  async function deleteImage(scopeType: 'team' | 'organization', scopeId: number, equipId: number) {
+  async function deleteImage(scopeType: 'team' | 'organization', scopeId: string, equipId: number) {
     return api(`${buildBase(scopeType, scopeId)}/equipment/${equipId}/image`, { method: 'DELETE' })
   }
 

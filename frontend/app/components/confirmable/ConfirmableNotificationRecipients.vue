@@ -4,7 +4,7 @@ import type { ConfirmableNotificationRecipientItem } from '~/types/confirmable'
 const props = defineProps<{
   notificationId: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
 }>()
 
 const { getRecipients, resendReminder } = useConfirmableNotificationApi()

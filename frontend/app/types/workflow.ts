@@ -2,7 +2,7 @@
 export interface WorkflowTemplateResponse {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   name: string
   description: string | null
   icon: string | null
@@ -88,7 +88,7 @@ export interface WorkflowRequestResponse {
   id: number
   templateId: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   title: string | null
   status: string
   requestedBy: number

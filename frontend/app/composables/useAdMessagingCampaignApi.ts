@@ -58,7 +58,7 @@ function scopeSegment(scopeType: ScopeType): 'organizations' | 'teams' {
  *   buildBasePath('TEAM', 42)
  *     → '/api/v1/teams/42/advertiser/campaigns/messaging'
  */
-function buildBasePath(scopeType: ScopeType, scopeId: number): string {
+function buildBasePath(scopeType: ScopeType, scopeId: string): string {
   return `/api/v1/${scopeSegment(scopeType)}/${scopeId}/advertiser/campaigns/messaging`
 }
 
@@ -71,7 +71,7 @@ export function useAdMessagingCampaignApi() {
 
   async function listCampaigns(
     scopeType: ScopeType,
-    scopeId: number,
+    scopeId: string,
     params?: { status?: AdMessagingCampaignStatus; page?: number; size?: number },
   ) {
     return api<PagedEnvelope<AdMessagingCampaignListItem>>(buildBasePath(scopeType, scopeId), {
@@ -79,7 +79,7 @@ export function useAdMessagingCampaignApi() {
     })
   }
 
-  async function getCampaign(scopeType: ScopeType, scopeId: number, campaignId: string) {
+  async function getCampaign(scopeType: ScopeType, scopeId: string, campaignId: string) {
     return api<ApiEnvelope<AdMessagingCampaign>>(
       `${buildBasePath(scopeType, scopeId)}/${campaignId}`,
     )
@@ -87,7 +87,7 @@ export function useAdMessagingCampaignApi() {
 
   async function createCampaign(
     scopeType: ScopeType,
-    scopeId: number,
+    scopeId: string,
     body: CreateAdMessagingCampaignRequest,
   ) {
     return api<ApiEnvelope<AdMessagingCampaign>>(buildBasePath(scopeType, scopeId), {
@@ -98,7 +98,7 @@ export function useAdMessagingCampaignApi() {
 
   async function updateCampaign(
     scopeType: ScopeType,
-    scopeId: number,
+    scopeId: string,
     campaignId: string,
     body: UpdateAdMessagingCampaignRequest,
   ) {
@@ -111,7 +111,7 @@ export function useAdMessagingCampaignApi() {
     )
   }
 
-  async function deleteCampaign(scopeType: ScopeType, scopeId: number, campaignId: string) {
+  async function deleteCampaign(scopeType: ScopeType, scopeId: string, campaignId: string) {
     return api(`${buildBasePath(scopeType, scopeId)}/${campaignId}`, {
       method: 'DELETE',
     })
@@ -123,7 +123,7 @@ export function useAdMessagingCampaignApi() {
 
   async function createChannel(
     scopeType: ScopeType,
-    scopeId: number,
+    scopeId: string,
     campaignId: string,
     body: AdMessagingCampaignChannelRequest,
   ) {
@@ -138,7 +138,7 @@ export function useAdMessagingCampaignApi() {
 
   async function updateChannel(
     scopeType: ScopeType,
-    scopeId: number,
+    scopeId: string,
     campaignId: string,
     channelId: string,
     body: AdMessagingCampaignChannelRequest,
@@ -154,7 +154,7 @@ export function useAdMessagingCampaignApi() {
 
   async function deleteChannel(
     scopeType: ScopeType,
-    scopeId: number,
+    scopeId: string,
     campaignId: string,
     channelId: string,
   ) {
@@ -169,7 +169,7 @@ export function useAdMessagingCampaignApi() {
 
   async function setAudience(
     scopeType: ScopeType,
-    scopeId: number,
+    scopeId: string,
     campaignId: string,
     body: AdMessagingCampaignAudienceConfigRequest,
   ) {
@@ -189,7 +189,7 @@ export function useAdMessagingCampaignApi() {
   // 11-d-3 では新 URL のスケルトンを用意するに留め、実呼び出しは backend 実装後に通る想定。
   // ─────────────────────────────────────────────
 
-  async function previewCampaign(scopeType: ScopeType, scopeId: number, campaignId: string) {
+  async function previewCampaign(scopeType: ScopeType, scopeId: string, campaignId: string) {
     return api<ApiEnvelope<AdCampaignPreviewResponse>>(
       `${buildBasePath(scopeType, scopeId)}/${campaignId}/preview`,
       {
@@ -200,7 +200,7 @@ export function useAdMessagingCampaignApi() {
 
   async function getReport(
     scopeType: ScopeType,
-    scopeId: number,
+    scopeId: string,
     campaignId: string,
     params?: { from?: string; to?: string },
   ) {
@@ -216,7 +216,7 @@ export function useAdMessagingCampaignApi() {
   // 状態遷移（submit / cancel / launch / pause / resume）
   // ─────────────────────────────────────────────
 
-  async function submitCampaign(scopeType: ScopeType, scopeId: number, campaignId: string) {
+  async function submitCampaign(scopeType: ScopeType, scopeId: string, campaignId: string) {
     return api<ApiEnvelope<AdMessagingCampaign>>(
       `${buildBasePath(scopeType, scopeId)}/${campaignId}/submit`,
       {
@@ -225,7 +225,7 @@ export function useAdMessagingCampaignApi() {
     )
   }
 
-  async function cancelCampaign(scopeType: ScopeType, scopeId: number, campaignId: string) {
+  async function cancelCampaign(scopeType: ScopeType, scopeId: string, campaignId: string) {
     return api<ApiEnvelope<AdMessagingCampaign>>(
       `${buildBasePath(scopeType, scopeId)}/${campaignId}/cancel`,
       {
@@ -234,7 +234,7 @@ export function useAdMessagingCampaignApi() {
     )
   }
 
-  async function launchCampaign(scopeType: ScopeType, scopeId: number, campaignId: string) {
+  async function launchCampaign(scopeType: ScopeType, scopeId: string, campaignId: string) {
     return api<ApiEnvelope<AdMessagingCampaign>>(
       `${buildBasePath(scopeType, scopeId)}/${campaignId}/launch`,
       {
@@ -243,7 +243,7 @@ export function useAdMessagingCampaignApi() {
     )
   }
 
-  async function pauseCampaign(scopeType: ScopeType, scopeId: number, campaignId: string) {
+  async function pauseCampaign(scopeType: ScopeType, scopeId: string, campaignId: string) {
     return api<ApiEnvelope<AdMessagingCampaign>>(
       `${buildBasePath(scopeType, scopeId)}/${campaignId}/pause`,
       {
@@ -252,7 +252,7 @@ export function useAdMessagingCampaignApi() {
     )
   }
 
-  async function resumeCampaign(scopeType: ScopeType, scopeId: number, campaignId: string) {
+  async function resumeCampaign(scopeType: ScopeType, scopeId: string, campaignId: string) {
     return api<ApiEnvelope<AdMessagingCampaign>>(
       `${buildBasePath(scopeType, scopeId)}/${campaignId}/resume`,
       {

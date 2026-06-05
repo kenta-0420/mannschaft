@@ -3,7 +3,7 @@ import type { WorkflowRequestResponse } from '~/types/workflow'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
 }>()
 
 const emit = defineEmits<{

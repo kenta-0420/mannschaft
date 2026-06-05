@@ -49,7 +49,7 @@ export function useTodoStatusLabelApi() {
    */
   async function createLabel(
     scope: TodoStatusLabelScope,
-    scopeId: number | undefined,
+    scopeId: string | undefined,
     body: CreateTodoStatusLabelRequest,
   ) {
     return api<TodoStatusLabelResponse>(buildBase(scope, scopeId), {
@@ -63,7 +63,7 @@ export function useTodoStatusLabelApi() {
    */
   async function updateLabel(
     scope: TodoStatusLabelScope,
-    scopeId: number | undefined,
+    scopeId: string | undefined,
     labelId: number,
     body: UpdateTodoStatusLabelRequest,
   ) {
@@ -78,7 +78,7 @@ export function useTodoStatusLabelApi() {
    */
   async function deleteLabel(
     scope: TodoStatusLabelScope,
-    scopeId: number | undefined,
+    scopeId: string | undefined,
     labelId: number,
   ) {
     return api(`${buildBase(scope, scopeId)}/${labelId}`, { method: 'DELETE' })

@@ -18,7 +18,7 @@ const createForm = ref({
 const creating = ref(false)
 
 const scopeOptions = computed(() => {
-  const opts: Array<{ label: string; scopeType: string; scopeId: number | null }> = [
+  const opts: Array<{ label: string; scopeType: string; scopeId: string | null }> = [
     { label: '個人', scopeType: 'PERSONAL', scopeId: null },
   ]
   teamStore.myTeams.forEach((t) =>

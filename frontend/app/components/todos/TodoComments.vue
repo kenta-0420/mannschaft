@@ -5,7 +5,7 @@ const { userTimezone } = useDatetime()
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   todoId: number
 }>()
 

@@ -50,7 +50,7 @@ export interface FacilityRate {
 export interface FacilityDetailResponse {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   name: string
   facilityType: string
   facilityTypeLabel: string
@@ -75,7 +75,7 @@ export interface FacilityDetailResponse {
 export interface FacilitySettingsResponse {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   requiresApproval: boolean
   maxBookingsPerDayPerUser: number
   allowStripePayment: boolean

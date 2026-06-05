@@ -5,7 +5,7 @@ export type FollowupStatus = 'PENDING' | 'RESOLVED' | 'ESCALATED'
 export interface SafetyCheckResponse {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   title: string
   description: string | null
   status: SafetyCheckStatus

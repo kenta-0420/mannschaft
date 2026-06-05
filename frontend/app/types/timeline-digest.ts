@@ -22,7 +22,7 @@ export interface DigestConfigResponse {
 
 export interface DigestConfigRequest {
   scopeType?: string
-  scopeId: number
+  scopeId: string
   scheduleType?: string
   scheduleTime?: string
   scheduleDayOfWeek?: number
@@ -43,7 +43,7 @@ export interface DigestConfigRequest {
 
 export interface DigestGenerateRequest {
   scopeType?: string
-  scopeId: number
+  scopeId: string
   periodStart: string
   periodEnd: string
   digestStyle?: string
@@ -61,7 +61,7 @@ export interface DigestGenerateResponse {
 export interface DigestDetailResponse {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   periodStart: string
   periodEnd: string
   postCount: number

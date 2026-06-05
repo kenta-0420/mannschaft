@@ -17,14 +17,14 @@ interface FormListParams {
 export function useFormApi() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   // === Form Templates ===
   async function listTemplates(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: FormListParams,
   ) {
     const query = new URLSearchParams()
@@ -38,7 +38,7 @@ export function useFormApi() {
 
   async function getTemplate(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     templateId: number,
   ) {
     return api<{ data: FormTemplateResponse }>(
@@ -48,7 +48,7 @@ export function useFormApi() {
 
   async function createTemplate(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: CreateFormTemplateRequest,
   ) {
     return api<{ data: FormTemplateResponse }>(`${buildBase(scopeType, scopeId)}/form-templates`, {
@@ -59,7 +59,7 @@ export function useFormApi() {
 
   async function updateTemplate(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     templateId: number,
     body: UpdateFormTemplateRequest,
   ) {
@@ -71,7 +71,7 @@ export function useFormApi() {
 
   async function deleteTemplate(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     templateId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/form-templates/${templateId}`, {
@@ -81,7 +81,7 @@ export function useFormApi() {
 
   async function publishTemplate(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     templateId: number,
   ) {
     return api<{ data: FormTemplateResponse }>(
@@ -92,7 +92,7 @@ export function useFormApi() {
 
   async function closeTemplate(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     templateId: number,
   ) {
     return api<{ data: FormTemplateResponse }>(
@@ -104,7 +104,7 @@ export function useFormApi() {
   // === Template Submissions (管理者向け) ===
   async function listTemplateSubmissions(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     templateId: number,
     params?: { page?: number; size?: number },
   ) {
@@ -118,7 +118,7 @@ export function useFormApi() {
 
   async function approveSubmission(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     templateId: number,
     submissionId: number,
   ) {
@@ -130,7 +130,7 @@ export function useFormApi() {
 
   async function rejectSubmission(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     templateId: number,
     submissionId: number,
   ) {
@@ -142,7 +142,7 @@ export function useFormApi() {
 
   async function returnSubmission(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     templateId: number,
     submissionId: number,
   ) {
@@ -155,7 +155,7 @@ export function useFormApi() {
   // === Form Submissions ===
   async function createSubmission(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: CreateFormSubmissionRequest,
   ) {
     return api<{ data: FormSubmissionResponse }>(
@@ -166,7 +166,7 @@ export function useFormApi() {
 
   async function getSubmission(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     submissionId: number,
   ) {
     return api<{ data: FormSubmissionResponse }>(
@@ -176,7 +176,7 @@ export function useFormApi() {
 
   async function updateSubmission(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     submissionId: number,
     body: UpdateFormSubmissionRequest,
   ) {
@@ -188,7 +188,7 @@ export function useFormApi() {
 
   async function deleteSubmission(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     submissionId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/form-submissions/${submissionId}`, {
@@ -198,7 +198,7 @@ export function useFormApi() {
 
   async function listMySubmissions(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: { page?: number; size?: number },
   ) {
     const query = new URLSearchParams()

@@ -25,7 +25,7 @@ export function useCorkboardApi() {
    */
   async function getBoardDetail(
     scope: CorkboardScope,
-    scopeId: number | null,
+    scopeId: string | null,
     boardId: number,
   ) {
     if (scope === 'PERSONAL') {

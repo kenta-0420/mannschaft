@@ -5,7 +5,7 @@ import FavoriteToggleButton from '~/components/favorites/FavoriteToggleButton.vu
 
 const props = defineProps<{
   scopeType: KbScopeType
-  scopeId: number
+  scopeId: string
   pageId: number
   canManage?: boolean
 }>()

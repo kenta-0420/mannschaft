@@ -13,7 +13,7 @@ import type {
 
 interface CirculationListParams {
   scopeType: string
-  scopeId: number
+  scopeId: string
   status?: string
   keyword?: string
   overdueOnly?: boolean
@@ -56,7 +56,7 @@ export function useCirculationApi() {
 
   async function createCirculation(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: CirculationResponse }>('/api/v1/circulation', {
@@ -120,7 +120,7 @@ export function useCirculationApi() {
   // === Scoped Circulation CRUD ===
   async function listScopedCirculations(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: { page?: number; size?: number },
   ) {
     const base =
@@ -136,7 +136,7 @@ export function useCirculationApi() {
 
   async function createScopedCirculation(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     const base =
@@ -146,7 +146,7 @@ export function useCirculationApi() {
 
   async function getScopedCirculation(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     documentId: number,
   ) {
     const base =
@@ -171,7 +171,7 @@ export function useCirculationApi() {
 
   async function activateCirculation(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     documentId: number,
   ) {
     const base =

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   scheduleId: number
   myAttendance: string | null
   stats: { yes: number; no: number; maybe: number; pending: number; total: number } | null

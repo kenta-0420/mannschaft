@@ -15,7 +15,7 @@ import type {
  * @param scopeType スコープ種別（TEAM / ORGANIZATION）
  * @param scopeId   スコープ ID
  */
-export function useAnnouncementBroadcast(scopeType: AnnouncementScopeType, scopeId: number) {
+export function useAnnouncementBroadcast(scopeType: AnnouncementScopeType, scopeId: string) {
   const api = useApi()
   const broadcasting = ref(false)
   const broadcastError = ref<string | null>(null)

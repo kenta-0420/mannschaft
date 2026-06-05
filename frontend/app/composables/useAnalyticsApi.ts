@@ -3,7 +3,7 @@ import type { AnalyticsResponse } from '~/types/analytics'
 export function useAnalyticsApi() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team'
       ? `/api/v1/teams/${scopeId}`
       : `/api/v1/organizations/${scopeId}`
@@ -11,7 +11,7 @@ export function useAnalyticsApi() {
 
   async function getAnalytics(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: { dateFrom?: string; dateTo?: string },
   ) {
     const query = new URLSearchParams()

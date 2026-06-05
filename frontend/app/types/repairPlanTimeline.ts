@@ -1,6 +1,6 @@
 export interface RepairPlanTimelineResponse {
   scopeType: string
-  scopeId: number
+  scopeId: string
   yearFrom: number
   yearTo: number
   labels: number[]

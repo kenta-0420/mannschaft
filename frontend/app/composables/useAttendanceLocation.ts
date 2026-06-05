@@ -6,7 +6,7 @@ import type {
   LocationTimelineResponse,
 } from '~/types/school'
 
-export function useAttendanceLocation(teamIdRef: Ref<number>) {
+export function useAttendanceLocation(teamIdRef: Ref<string>) {
   const api = useAttendanceLocationApi()
   const { error: notifyError, success: notifySuccess } = useNotification()
   const { t } = useI18n()

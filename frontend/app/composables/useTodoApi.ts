@@ -131,7 +131,7 @@ export function useTodoApi() {
    */
   async function changeTodoStatusById(
     scopeType: string,
-    scopeId: number | null,
+    scopeId: string | null,
     todoId: number,
     payload: { status?: string; statusLabelId?: number } | string,
   ) {
@@ -148,13 +148,13 @@ export function useTodoApi() {
   }
 
   // === Team TODO CRUD ===
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   async function listTodos(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: TodoListParams,
   ) {
     const query = new URLSearchParams()
@@ -168,13 +168,13 @@ export function useTodoApi() {
     return api<PagedTodos>(`${buildBase(scopeType, scopeId)}/todos?${query}`)
   }
 
-  async function getTodo(scopeType: 'team' | 'organization', scopeId: number, todoId: number) {
+  async function getTodo(scopeType: 'team' | 'organization', scopeId: string, todoId: number) {
     return api<TodoDetail>(`${buildBase(scopeType, scopeId)}/todos/${todoId}`)
   }
 
   async function createTodo(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<TodoDetail>(`${buildBase(scopeType, scopeId)}/todos`, { method: 'POST', body })
@@ -182,7 +182,7 @@ export function useTodoApi() {
 
   async function updateTodo(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     body: Record<string, unknown>,
   ) {
@@ -192,7 +192,7 @@ export function useTodoApi() {
     })
   }
 
-  async function deleteTodo(scopeType: 'team' | 'organization', scopeId: number, todoId: number) {
+  async function deleteTodo(scopeType: 'team' | 'organization', scopeId: string, todoId: number) {
     return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}`, { method: 'DELETE' })
   }
 
@@ -205,7 +205,7 @@ export function useTodoApi() {
    */
   async function changeTodoStatus(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     payload: { status?: string; statusLabelId?: number } | string,
   ) {
@@ -219,7 +219,7 @@ export function useTodoApi() {
 
   async function bulkChangeTodoStatus(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoIds: number[],
     status: string,
   ) {
@@ -232,7 +232,7 @@ export function useTodoApi() {
   // === Assignees ===
   async function addAssignee(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     userId: number,
   ) {
@@ -244,7 +244,7 @@ export function useTodoApi() {
 
   async function removeAssignee(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     userId: number,
   ) {
@@ -256,7 +256,7 @@ export function useTodoApi() {
   // === Comments ===
   async function getComments(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     page: number = 0,
   ) {
@@ -267,7 +267,7 @@ export function useTodoApi() {
 
   async function addComment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     body: string,
   ) {
@@ -279,7 +279,7 @@ export function useTodoApi() {
 
   async function updateComment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     commentId: number,
     body: string,
@@ -292,7 +292,7 @@ export function useTodoApi() {
 
   async function deleteComment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     commentId: number,
   ) {
@@ -308,7 +308,7 @@ export function useTodoApi() {
    */
   async function handoff(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     body: HandoffRequest,
   ) {
@@ -323,7 +323,7 @@ export function useTodoApi() {
    */
   async function getHandoffHistory(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
   ) {
     return api<HandoffHistoryResponse>(

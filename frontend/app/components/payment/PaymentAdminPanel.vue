@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PaymentItemResponse, MemberPaymentResponse } from '~/types/payment'
 
-const props = defineProps<{ scopeType: 'team' | 'organization'; scopeId: number }>()
+const props = defineProps<{ scopeType: 'team' | 'organization'; scopeId: string }>()
 
 const { getPaymentItems, getMemberPayments, sendReminder } = usePaymentApi()
 const { showSuccess, showError } = useNotification()

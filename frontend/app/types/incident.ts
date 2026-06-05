@@ -15,7 +15,7 @@ export interface IncidentSummaryResponse {
 export interface IncidentResponse {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   categoryId: number | null
   title: string
   description: string | null
@@ -32,7 +32,7 @@ export interface IncidentResponse {
 export interface IncidentCategoryResponse {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   name: string
   description: string | null
   icon: string | null
@@ -44,7 +44,7 @@ export interface IncidentCategoryResponse {
 
 export interface ReportIncidentRequest {
   scopeType: string
-  scopeId: number
+  scopeId: string
   categoryId?: number
   title: string
   description?: string
@@ -64,7 +64,7 @@ export interface AssignIncidentRequest {
 
 export interface CreateIncidentCategoryRequest {
   scopeType: string
-  scopeId: number
+  scopeId: string
   name: string
   description?: string
   icon?: string

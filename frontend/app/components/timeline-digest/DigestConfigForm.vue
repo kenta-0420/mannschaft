@@ -3,7 +3,7 @@ import type { DigestConfigResponse, DigestConfigRequest } from '~/types/timeline
 
 defineProps<{
   scopeType: 'ORGANIZATION' | 'TEAM'
-  scopeId: number
+  scopeId: string
 }>()
 
 const { getConfig, updateConfig } = useTimelineDigestApi()

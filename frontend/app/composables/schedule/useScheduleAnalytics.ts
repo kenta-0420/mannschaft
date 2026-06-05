@@ -16,14 +16,14 @@ import type {
 export function useScheduleAnalytics() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   // === Annual Schedule ===
   async function getAnnualSchedules(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: AnnualScheduleParams,
   ) {
     const query = new URLSearchParams()
@@ -37,7 +37,7 @@ export function useScheduleAnalytics() {
 
   async function previewAnnualCopy(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params: AnnualCopyPreviewParams,
   ) {
     const query = new URLSearchParams()
@@ -52,7 +52,7 @@ export function useScheduleAnalytics() {
 
   async function executeAnnualCopy(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: ExecuteCopyRequest,
   ) {
     return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/schedules/annual/copy`, {
@@ -61,7 +61,7 @@ export function useScheduleAnalytics() {
     })
   }
 
-  async function getAnnualCopyLogs(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getAnnualCopyLogs(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: unknown[] }>(`${buildBase(scopeType, scopeId)}/schedules/annual/copy-logs`)
   }
 

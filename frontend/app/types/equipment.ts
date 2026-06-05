@@ -4,7 +4,7 @@ export type EquipmentType = 'REUSABLE' | 'CONSUMABLE'
 export interface EquipmentResponse {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   name: string
   description: string | null
   category: string | null

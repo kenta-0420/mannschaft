@@ -6,7 +6,7 @@ import type { IncomingWebhook } from '~/types/webhook'
 
 const props = defineProps<{
   scopeType: 'ORGANIZATION' | 'TEAM'
-  scopeId: number
+  scopeId: string
 }>()
 
 const webhookApi = useWebhookApi()

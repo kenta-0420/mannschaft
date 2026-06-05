@@ -19,7 +19,7 @@ export function useIncidentApi() {
 
   async function listIncidents(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     params?: { status?: string; page?: number; size?: number },
   ) {
     const query = new URLSearchParams()
@@ -66,7 +66,7 @@ export function useIncidentApi() {
 
   // === Categories ===
 
-  async function listCategories(scopeType: string, scopeId: number) {
+  async function listCategories(scopeType: string, scopeId: string) {
     const query = new URLSearchParams()
     query.set('scopeType', scopeType)
     query.set('scopeId', String(scopeId))

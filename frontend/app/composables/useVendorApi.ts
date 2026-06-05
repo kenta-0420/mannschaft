@@ -31,7 +31,7 @@ export interface VendorListMeta {
   totalPages: number
 }
 
-export function useVendorApi(scope: ScopeName, scopeId: number) {
+export function useVendorApi(scope: ScopeName, scopeId: string) {
   const api = useApi()
   const base = `/api/v1/${scope}/${scopeId}/vendors`
 

@@ -5,7 +5,7 @@ import type { AnnouncementTemplate, BroadcastTargetRole, WizardFormState } from 
 const props = defineProps<{
   modelValue: WizardFormState
   scopeType: AnnouncementScopeType
-  scopeId: number
+  scopeId: string
 }>()
 
 const emit = defineEmits<{

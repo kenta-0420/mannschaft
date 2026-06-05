@@ -23,7 +23,7 @@ interface Props {
   /** スコープタイプ */
   scopeType: 'TEAM' | 'ORGANIZATION'
   /** スコープID（チームID or 組織ID） */
-  scopeId: number
+  scopeId: string
 }
 
 const props = defineProps<Props>()

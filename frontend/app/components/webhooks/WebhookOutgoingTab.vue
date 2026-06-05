@@ -7,7 +7,7 @@ import type { WebhookEndpointResponse } from '~/composables/useWebhookApi'
 
 const props = defineProps<{
   scopeType: 'ORGANIZATION' | 'TEAM'
-  scopeId: number
+  scopeId: string
 }>()
 
 const webhookApi = useWebhookApi()

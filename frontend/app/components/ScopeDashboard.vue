@@ -4,7 +4,7 @@ import type { ViewerRole, WidgetVisibilitySetting } from '~/types/dashboard'
 const props = withDefaults(
   defineProps<{
     scopeType: 'personal' | 'team' | 'organization'
-    scopeId?: number
+    scopeId?: string
     scopeName?: string
     scopeTemplate?: string
     viewerRole?: ViewerRole

@@ -3,7 +3,7 @@ import type { EquipmentResponse } from '~/types/equipment'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   canManage?: boolean
 }>()
 

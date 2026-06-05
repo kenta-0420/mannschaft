@@ -33,7 +33,7 @@ export interface OfflineDraft {
   id?: number
   draftType: 'ACTIVITY_RECORD' | 'CHAT_MESSAGE' | 'ATTENDANCE_RESPONSE' | 'ACTION_MEMO'
   scopeType: 'TEAM' | 'ORGANIZATION' | 'PERSONAL'
-  scopeId: number
+  scopeId: string
   data: Record<string, unknown>
   createdAt: string
   updatedAt: string

@@ -135,7 +135,7 @@ function goDefault() {
 }
 
 /** 個別スコープへ直接ジャンプ。 */
-function goScope(scopeId: number) {
+function goScope(scopeId: string) {
   router.push(`${basePath.value}/${scopeId}`)
   close()
 }

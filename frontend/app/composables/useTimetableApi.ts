@@ -11,7 +11,7 @@ import type {
 export function useTimetableApi() {
   const api = useApi()
 
-  async function listTerms(scopeType: 'team' | 'organization', scopeId: number) {
+  async function listTerms(scopeType: 'team' | 'organization', scopeId: string) {
     const base =
       scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
     const res = await api<{ data: TimetableTerm[] }>(`${base}/timetable-terms`)

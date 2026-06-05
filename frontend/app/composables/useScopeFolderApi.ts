@@ -36,14 +36,14 @@ export function useScopeFolderApi() {
     await api(`${base}/${folderId}`, { method: 'DELETE' })
   }
 
-  async function addItem(folderId: number, scopeId: number): Promise<void> {
+  async function addItem(folderId: number, scopeId: string): Promise<void> {
     await api(`${base}/${folderId}/items`, {
       method: 'POST',
       body: { scopeId },
     })
   }
 
-  async function removeItem(folderId: number, scopeId: number): Promise<void> {
+  async function removeItem(folderId: number, scopeId: string): Promise<void> {
     await api(`${base}/${folderId}/items/${scopeId}`, { method: 'DELETE' })
   }
 

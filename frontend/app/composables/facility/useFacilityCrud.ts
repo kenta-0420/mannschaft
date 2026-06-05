@@ -15,14 +15,14 @@ import type {
 export function useFacilityCrud() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   // === Facilities CRUD ===
   async function getFacilities(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: Record<string, unknown>,
   ) {
     const q = new URLSearchParams()
@@ -38,7 +38,7 @@ export function useFacilityCrud() {
 
   async function createFacility(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: FacilityResponse }>(`${buildBase(scopeType, scopeId)}/facilities`, {
@@ -49,7 +49,7 @@ export function useFacilityCrud() {
 
   async function bulkCreateFacilities(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/facilities/bulk-create`, { method: 'POST', body })
@@ -57,7 +57,7 @@ export function useFacilityCrud() {
 
   async function getFacility(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     facilityId: number,
   ) {
     return api<{ data: FacilityDetailResponse }>(
@@ -67,7 +67,7 @@ export function useFacilityCrud() {
 
   async function updateFacility(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     facilityId: number,
     body: Record<string, unknown>,
   ) {
@@ -79,7 +79,7 @@ export function useFacilityCrud() {
 
   async function deleteFacility(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     facilityId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/facilities/${facilityId}`, { method: 'DELETE' })
@@ -88,7 +88,7 @@ export function useFacilityCrud() {
   // === Facility Availability ===
   async function getFacilityAvailability(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     facilityId: number,
     params?: Record<string, unknown>,
   ) {
@@ -106,7 +106,7 @@ export function useFacilityCrud() {
   // === Facility Rates ===
   async function getFacilityRates(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     facilityId: number,
   ) {
     return api<{ data: TimeRateResponse[] }>(
@@ -116,7 +116,7 @@ export function useFacilityCrud() {
 
   async function updateFacilityRates(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     facilityId: number,
     body: Record<string, unknown>,
   ) {
@@ -129,7 +129,7 @@ export function useFacilityCrud() {
   // === Facility Rules ===
   async function getFacilityRules(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     facilityId: number,
   ) {
     return api<{ data: UsageRuleResponse }>(
@@ -139,7 +139,7 @@ export function useFacilityCrud() {
 
   async function updateFacilityRules(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     facilityId: number,
     body: Record<string, unknown>,
   ) {
@@ -152,7 +152,7 @@ export function useFacilityCrud() {
   // === Facility Equipment ===
   async function getEquipment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     facilityId: number,
   ) {
     return api<{ data: FacilityEquipmentResponse[] }>(
@@ -162,7 +162,7 @@ export function useFacilityCrud() {
 
   async function createEquipment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     facilityId: number,
     body: Record<string, unknown>,
   ) {
@@ -174,7 +174,7 @@ export function useFacilityCrud() {
 
   async function updateEquipment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     facilityId: number,
     equipmentId: number,
     body: Record<string, unknown>,
@@ -187,7 +187,7 @@ export function useFacilityCrud() {
 
   async function deleteEquipment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     facilityId: number,
     equipmentId: number,
   ) {

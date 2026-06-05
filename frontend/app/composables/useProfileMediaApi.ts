@@ -23,7 +23,7 @@ export function useProfileMediaApi() {
    */
   function buildBasePath(
     scope: ProfileMediaScope,
-    scopeId: number | null,
+    scopeId: string | null,
     role: ProfileMediaRole,
   ): string {
     switch (scope) {
@@ -48,7 +48,7 @@ export function useProfileMediaApi() {
    */
   async function generateUploadUrl(
     scope: ProfileMediaScope,
-    scopeId: number | null,
+    scopeId: string | null,
     role: ProfileMediaRole,
     request: ProfileMediaUploadUrlRequest,
   ): Promise<ProfileMediaUploadUrlResponse> {
@@ -71,7 +71,7 @@ export function useProfileMediaApi() {
    */
   async function commitMedia(
     scope: ProfileMediaScope,
-    scopeId: number | null,
+    scopeId: string | null,
     role: ProfileMediaRole,
     r2Key: string,
   ): Promise<ProfileMediaCommitResponse> {
@@ -92,7 +92,7 @@ export function useProfileMediaApi() {
    */
   async function deleteMedia(
     scope: ProfileMediaScope,
-    scopeId: number | null,
+    scopeId: string | null,
     role: ProfileMediaRole,
   ): Promise<void> {
     await api(buildBasePath(scope, scopeId, role), { method: 'DELETE' })
@@ -113,7 +113,7 @@ export function useProfileMediaApi() {
    */
   async function uploadAndCommit(
     scope: ProfileMediaScope,
-    scopeId: number | null,
+    scopeId: string | null,
     role: ProfileMediaRole,
     file: File,
     onProgress?: (progress: number) => void,

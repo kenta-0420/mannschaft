@@ -28,7 +28,7 @@ export function useSurveyApi() {
   // === Surveys CRUD ===
   async function getSurveys(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     params?: Record<string, unknown> | string,
   ) {
     const resolvedParams = typeof params === 'string' ? { status: params } : params || {}
@@ -39,11 +39,11 @@ export function useSurveyApi() {
     }>(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys?${qs}`)
   }
 
-  async function getSurveyStats(scopeType: string, scopeId: number) {
+  async function getSurveyStats(scopeType: string, scopeId: string) {
     return api(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/stats`)
   }
 
-  async function getSurvey(scopeType: string, scopeId: number, surveyId: number) {
+  async function getSurvey(scopeType: string, scopeId: string, surveyId: number) {
     return api<SurveyDetailResponse>(
       `/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}`,
     )
@@ -53,7 +53,7 @@ export function useSurveyApi() {
    * アンケート新規作成。
    * body には CreateSurveyRequest（unrespondedVisibility 含む）相当のフィールドを渡す。
    */
-  async function createSurvey(scopeType: string, scopeId: number, body: Record<string, unknown>) {
+  async function createSurvey(scopeType: string, scopeId: string, body: Record<string, unknown>) {
     return api<{ data: SurveyResponse }>(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys`, {
       method: 'POST',
       body,
@@ -66,7 +66,7 @@ export function useSurveyApi() {
    */
   async function updateSurvey(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     surveyId: number,
     body: Record<string, unknown>,
   ) {
@@ -76,19 +76,19 @@ export function useSurveyApi() {
     )
   }
 
-  async function deleteSurvey(scopeType: string, scopeId: number, surveyId: number) {
+  async function deleteSurvey(scopeType: string, scopeId: string, surveyId: number) {
     return api(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}`, {
       method: 'DELETE',
     })
   }
 
-  async function publishSurvey(scopeType: string, scopeId: number, surveyId: number) {
+  async function publishSurvey(scopeType: string, scopeId: string, surveyId: number) {
     return api(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}/publish`, {
       method: 'POST',
     })
   }
 
-  async function closeSurvey(scopeType: string, scopeId: number, surveyId: number) {
+  async function closeSurvey(scopeType: string, scopeId: string, surveyId: number) {
     return api(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}/close`, {
       method: 'POST',
     })
@@ -97,7 +97,7 @@ export function useSurveyApi() {
   // === Questions ===
   async function addQuestion(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     surveyId: number,
     body: Record<string, unknown>,
   ) {
@@ -109,7 +109,7 @@ export function useSurveyApi() {
 
   async function deleteQuestion(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     surveyId: number,
     questionId: number,
   ) {
@@ -148,7 +148,7 @@ export function useSurveyApi() {
    * 回答者・未回答者一覧を取得する。
    * 認可分岐は Backend 側で unrespondedVisibility に応じて行う。
    */
-  async function getRespondents(scopeType: string, scopeId: number, surveyId: number) {
+  async function getRespondents(scopeType: string, scopeId: string, surveyId: number) {
     return api<RespondentsResponse>(
       `/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}/respondents`,
     )

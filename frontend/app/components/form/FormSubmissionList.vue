@@ -3,7 +3,7 @@ import type { FormSubmissionResponse } from '~/types/form'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   templateId?: number
   myOnly?: boolean
   canManage?: boolean

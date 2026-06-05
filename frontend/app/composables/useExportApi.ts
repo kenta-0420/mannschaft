@@ -1,7 +1,7 @@
 export function useExportApi() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team'
       ? `/api/v1/teams/${scopeId}`
       : `/api/v1/organizations/${scopeId}`
@@ -9,7 +9,7 @@ export function useExportApi() {
 
   async function startExport(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: { targets: string[]; format: 'CSV' | 'JSON' },
   ) {
     const base = buildBase(scopeType, scopeId)

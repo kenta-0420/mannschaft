@@ -6,7 +6,7 @@ import type { FormFieldRequest } from '~/types/form'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   templateId?: number
   visible: boolean
 }>()

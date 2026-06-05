@@ -19,7 +19,7 @@ export interface KbPageSummaryResponse {
 export interface KbPageResponse {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   parentId: number | null
   path: string
   depth: number

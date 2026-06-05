@@ -50,7 +50,7 @@ export interface PagedQuickMemos {
 export interface TagResponse {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   name: string
   color: string | null
   usageCount: number

@@ -15,14 +15,14 @@ import type {
 export function useScheduleAttendance() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   // === Attendance ===
   async function getAttendances(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     scheduleId: number,
   ) {
     return api<{ data: unknown[] }>(
@@ -32,7 +32,7 @@ export function useScheduleAttendance() {
 
   async function respondAttendance(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     scheduleId: number,
     body: { status: string; comment?: string },
   ) {
@@ -44,7 +44,7 @@ export function useScheduleAttendance() {
 
   async function exportAttendances(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     scheduleId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/schedules/${scheduleId}/attendances/export`, {

@@ -48,7 +48,7 @@ export interface RecruitmentSubcategoryResponse {
   id: number
   categoryId: number
   scopeType: RecruitmentScopeType
-  scopeId: number
+  scopeId: string
   name: string
   displayOrder: number
 }
@@ -56,7 +56,7 @@ export interface RecruitmentSubcategoryResponse {
 export interface RecruitmentListingResponse {
   id: number
   scopeType: RecruitmentScopeType
-  scopeId: number
+  scopeId: string
   categoryId: number
   categoryNameI18nKey: string | null
   subcategoryId: number | null
@@ -136,7 +136,7 @@ export interface CancellationPolicyTierResponse {
 export interface CancellationPolicyResponse {
   id: number
   scopeType: RecruitmentScopeType
-  scopeId: number
+  scopeId: string
   policyName: string | null
   freeUntilHoursBefore: number
   isTemplatePolicy: boolean
@@ -187,7 +187,7 @@ export interface RecruitmentFeedItem {
   id: number
   categoryId: number
   categoryNameI18nKey: string | null
-  scopeId: number
+  scopeId: string
   scopeType: RecruitmentScopeType
   title: string
   description: string | null
@@ -343,7 +343,7 @@ export interface RecruitmentNoShowRecordResponse {
 export interface RecruitmentPenaltySettingResponse {
   id: number
   scopeType: RecruitmentScopeType
-  scopeId: number
+  scopeId: string
   isEnabled: boolean
   thresholdCount: number
   thresholdPeriodDays: number
@@ -359,7 +359,7 @@ export interface RecruitmentUserPenaltyResponse {
   id: number
   userId: number
   scopeType: RecruitmentScopeType
-  scopeId: number
+  scopeId: string
   penaltyType: string
   startedAt: string
   expiresAt: string | null

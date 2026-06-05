@@ -6,7 +6,7 @@ export interface MyTodo {
   /** @deprecated 旧フラットフィールド互換 — scope?.scopeType を優先使用 */
   scopeType: string
   /** @deprecated 旧フラットフィールド互換 — scope?.scopeId を優先使用 */
-  scopeId: number | null
+  scopeId: string | null
   scope?: {
     scopeType?: string
     scopeId?: number | null

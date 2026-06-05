@@ -14,7 +14,7 @@ import type { QuestionDraft } from '~/components/survey/SurveyQuestionEditor.vue
 
 const props = defineProps<{
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
 }>()
 
 // visible は defineModel が内部で 'update:visible' を発行する（仕様書の Emits 契約を満たす）

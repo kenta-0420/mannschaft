@@ -15,7 +15,7 @@ const { captureQuiet } = useErrorReport()
 
 interface ThreadWithScope extends BulletinThreadResponse {
   scopeName: string
-  scopeId: number
+  scopeId: string
 }
 
 const threads = ref<ThreadWithScope[]>([])

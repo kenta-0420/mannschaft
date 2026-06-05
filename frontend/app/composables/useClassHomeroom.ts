@@ -5,7 +5,7 @@ import type {
   ClassHomeroomUpdateRequest,
 } from '~/types/school'
 
-export function useClassHomeroom(teamId: Ref<number>) {
+export function useClassHomeroom(teamId: Ref<string>) {
   const api = useClassHomeroomApi()
   const { error: notifyError, success: notifySuccess } = useNotification()
   const { t } = useI18n()

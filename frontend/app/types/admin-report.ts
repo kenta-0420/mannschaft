@@ -5,7 +5,7 @@ export interface ReportResponse {
   targetId: number
   reportedBy: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   targetUserId: number
   reason: string
   description: string

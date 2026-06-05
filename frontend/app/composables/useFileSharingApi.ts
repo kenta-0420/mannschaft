@@ -19,7 +19,7 @@ export function useFileSharingApi() {
   }
 
   // === Folders ===
-  async function getFolders(scopeType: string, scopeId: number, parentId?: number) {
+  async function getFolders(scopeType: string, scopeId: string, parentId?: number) {
     const qs = buildQuery({ scope_type: scopeType, scope_id: scopeId, parent_id: parentId })
     return api<{ data: SharedFolder[] }>(`/api/v1/files/folders?${qs}`)
   }

@@ -15,7 +15,7 @@ import type { VendorSuggestionResponse } from '~/types/vendor'
 const props = defineProps<{
   modelValue: number | null | undefined
   scope: ScopeName
-  scopeId: number
+  scopeId: string
   /** 初期表示用の業者名（編集時にあらかじめ入力欄を埋めたい場合に渡す） */
   initialName?: string | null
   disabled?: boolean

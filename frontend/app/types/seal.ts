@@ -12,7 +12,7 @@ export interface ElectronicSeal {
 
 export interface ScopeDefault {
   scopeType: SealScopeType
-  scopeId: number | null
+  scopeId: string | null
   scopeName: string | null
   variant: SealVariant
 }

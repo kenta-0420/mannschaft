@@ -6,7 +6,7 @@ export function useParkingListingsApi() {
 
   async function getListings(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: Record<string, unknown>,
   ) {
     const q = new URLSearchParams()
@@ -22,7 +22,7 @@ export function useParkingListingsApi() {
 
   async function createListing(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: ListingResponse }>(`${buildBase(scopeType, scopeId)}/parking/listings`, {
@@ -33,7 +33,7 @@ export function useParkingListingsApi() {
 
   async function getListing(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     listingId: number,
   ) {
     return api<{ data: ListingDetailResponse }>(
@@ -43,7 +43,7 @@ export function useParkingListingsApi() {
 
   async function updateListing(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     listingId: number,
     body: Record<string, unknown>,
   ) {
@@ -55,7 +55,7 @@ export function useParkingListingsApi() {
 
   async function deleteListing(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     listingId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/parking/listings/${listingId}`, {
@@ -65,7 +65,7 @@ export function useParkingListingsApi() {
 
   async function applyToListing(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     listingId: number,
     body: Record<string, unknown>,
   ) {
@@ -77,7 +77,7 @@ export function useParkingListingsApi() {
 
   async function transferListing(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     listingId: number,
     body: Record<string, unknown>,
   ) {

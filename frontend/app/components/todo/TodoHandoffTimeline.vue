@@ -9,7 +9,7 @@ import type { HandoffResponse, HandoffLabelInfo } from '~/types/todoHandoff'
  */
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   todoId: number
 }>()
 

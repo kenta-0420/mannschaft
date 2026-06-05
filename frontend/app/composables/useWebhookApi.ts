@@ -12,7 +12,7 @@ import type {
 export interface WebhookEndpointResponse {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   name: string
   url: string
   isActive: boolean
@@ -31,7 +31,7 @@ export function useWebhookApi() {
 
   // === Outgoing Webhook Endpoints ===
 
-  async function getEndpoints(scopeType: string, scopeId: number) {
+  async function getEndpoints(scopeType: string, scopeId: string) {
     return api<{ data: WebhookEndpointResponse[] }>(
       `/api/webhooks/endpoints?scopeType=${scopeType}&scopeId=${scopeId}`,
     )
@@ -73,7 +73,7 @@ export function useWebhookApi() {
 
   // === Incoming Webhooks ===
 
-  async function getIncomingWebhooks(scopeType: string, scopeId: number) {
+  async function getIncomingWebhooks(scopeType: string, scopeId: string) {
     return api<{ data: IncomingWebhook[] }>(
       `/api/webhooks/incoming?scopeType=${scopeType}&scopeId=${scopeId}`,
     )
@@ -92,7 +92,7 @@ export function useWebhookApi() {
 
   // === API Keys ===
 
-  async function getApiKeys(scopeType: string, scopeId: number) {
+  async function getApiKeys(scopeType: string, scopeId: string) {
     return api<{ data: ApiKeyResponse[] }>(
       `/api/api-keys?scopeType=${scopeType}&scopeId=${scopeId}`,
     )

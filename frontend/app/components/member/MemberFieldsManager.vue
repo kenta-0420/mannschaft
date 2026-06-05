@@ -3,7 +3,7 @@ import type { MemberProfileField } from '~/types/member-profile'
 
 const props = defineProps<{
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
 }>()
 
 const memberProfileApi = useMemberProfileApi()

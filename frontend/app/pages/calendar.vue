@@ -186,7 +186,7 @@ interface CreateScope {
   value: string
   isPersonal: boolean
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
 }
 
 const createScopeOptions = computed<CreateScope[]>(() => [
