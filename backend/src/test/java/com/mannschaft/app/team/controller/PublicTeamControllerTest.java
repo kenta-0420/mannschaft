@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -76,7 +77,7 @@ class PublicTeamControllerTest {
             "memberRoster", "userRoster"
     };
 
-    private static final Long TEAM_ID = 100L;
+    private static final UUID TEAM_PUBLIC_ID = UUID.fromString("00000000-0000-0000-0000-000000000100");
 
     @Autowired
     private MockMvc mockMvc;
@@ -227,7 +228,7 @@ class PublicTeamControllerTest {
 
     private TeamPublicDetailResponse sampleResponse() {
         return new TeamPublicDetailResponse(
-                TEAM_ID,
+                TEAM_PUBLIC_ID,
                 "公開店舗 A",
                 "こうかいてんぽえー",
                 "ニックネーム1",
