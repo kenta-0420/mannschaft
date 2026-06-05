@@ -104,7 +104,7 @@ POST /api/v1/me/guardianship/children/{childUserId}/handover/initiate   # 引き
   `sealDate <= today` かつ `users.password_hash` 未設定（`GuardianshipHandoverService` と同一のパスワード設定有無判定）の子へ
   パスワード設定メールを自動送付（取り残し防止）。送付は `AuthPasswordResetService.requestPasswordReset` を流用し outbox 経由。
   子のメールが内部プレースホルダ（`*.mannschaft.internal`）の場合は**送付不能としてスキップ＋件数をログに可視化**（症状を隠さない）。
-- **重複送信防止**：専用テーブル `guardianship_transition_notifications`（UUIDv7・BINARY(16)・クロスドメインFKなし・Flyway V74.011）で
+- **重複送信防止**：専用テーブル `guardianship_transition_notifications`（UUIDv7・BINARY(16)・クロスドメインFKなし・Flyway V74.20260605000020）で
   `(notification_kind, recipient_user_id, child_user_id, seal_date)` を UNIQUE 化し、同一（受信者×子×境界日×種別）で 1 回限りに統制する。
   既存 notification 系には (受信者,子,境界日,種別) で 1 回限りを保証する送信記録が無く（notifications は送信ログで UNIQUE なし／
   email_outbox の idempotency_key はメールにしか効かずアプリ内通知の冪等化に使えない）ため新設。

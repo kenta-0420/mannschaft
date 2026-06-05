@@ -67,7 +67,7 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
 - **自立移行の通知バッチ（第三波・P3c-3・2026-06-05）**: 封印の前後で「子が自分のアカウントにログインできない事故」を防ぐ保険として日次バッチ 2 本を稼働する。いずれも **birth_date 復号はバッチ内（ホットパス外）で都度行ってよい**（本節の「復号はバッチ化」方針に合致）。**Clock 注入で date-pin テスト可能**（固定日付で CI を塞がない）・**`@SchedulerLock` で多重起動防止**・**全件走査はページング**（N+1 防止）。
   - **進学予告バッチ**（`guardianship-progression-notice-batch`・03:00 JST）: 保護者リンク（parental_consent APPROVED ＋ care_links ACTIVE PARENT）の全子について `sealDate` を算出し、`today ∈ [sealDate-3ヶ月, sealDate)` の保護者へアプリ内通知＋メールで「◯月からお子さまが自立します」を事前通知。
   - **封印時未設定メールバッチ**（`guardianship-seal-unset-password-batch`・03:30 JST）: `sealDate <= today` かつパスワード未設定の子へ `AuthPasswordResetService.requestPasswordReset`（outbox 経由）でパスワード設定メールを自動送付。内部プレースホルダメール（`*.mannschaft.internal`）は送付不能ゆえスキップ＋件数をログに可視化（症状を隠さない）。
-  - **重複送信防止**: 専用テーブル `guardianship_transition_notifications`（Flyway V74.011・UUIDv7・クロスドメインFKなし）で `(種別, 宛先, 子, 境界日)` を UNIQUE 化し 1 回限りに統制。「記録を先に保存 → UNIQUE 競合検知 → 競合時は送らずスキップ」で並行・時刻境界での二重送信を物理排除する。
+  - **重複送信防止**: 専用テーブル `guardianship_transition_notifications`（Flyway V74.20260605000020・UUIDv7・クロスドメインFKなし）で `(種別, 宛先, 子, 境界日)` を UNIQUE 化し 1 回限りに統制。「記録を先に保存 → UNIQUE 競合検知 → 競合時は送らずスキップ」で並行・時刻境界での二重送信を物理排除する。
 
 ### 3.2 切替セッションの安全境界（なりすまし防止）
 - 切替は **JWT 再発行せず**、actor=保護者のまま `X-Proxy-For-User-Id=child` を `ProxyInputContextFilter`（F14.1）で検証。`isProxy()` 下の操作はすべて代理として `proxy_input_records` に記録。
