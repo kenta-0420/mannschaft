@@ -1424,6 +1424,7 @@
     "saveError": "저장에 실패했습니다",
     "removeConfirm": "정말로 삭제하시겠습니까?",
     "dragHandle": "순서 변경",
+    "labelFavorited": "즐겨찾기됨",
     "entityType": {
       "TEAM": "팀",
       "ORGANIZATION": "조직",

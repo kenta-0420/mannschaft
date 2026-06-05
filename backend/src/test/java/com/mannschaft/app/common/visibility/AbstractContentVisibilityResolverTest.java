@@ -233,22 +233,6 @@ class AbstractContentVisibilityResolverTest {
         }
 
         @Test
-        @DisplayName("MEMBERS_ONLY はスコープ所属者のみ可視")
-        void membersOnly_member_only() {
-            FakeProjection p = projection(1L, "TEAM", 100L, 999L, FakeVisibility.MEMBERS_ONLY);
-            resolver.projections = List.of(p);
-            ScopeKey scope = new ScopeKey("TEAM", 100L);
-            when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
-                    .thenReturn(new UserScopeRoleSnapshot(false,
-                            Map.of(scope, "MEMBER"), Map.of(), Set.of(), Set.of()));
-            when(membershipBatchQueryService.snapshotForUser(eq(6L), anySet(), anySet()))
-                    .thenReturn(UserScopeRoleSnapshot.empty());
-
-            assertThat(resolver.filterAccessible(List.of(1L), 5L)).containsExactly(1L);
-            assertThat(resolver.filterAccessible(List.of(1L), 6L)).isEmpty();
-        }
-
-        @Test
         @DisplayName("SUPPORTERS_AND_ABOVE は SUPPORTER 以上のみ可視")
         void supportersAndAbove() {
             FakeProjection p = projection(1L, "TEAM", 100L, 999L,
@@ -266,26 +250,11 @@ class AbstractContentVisibilityResolverTest {
             assertThat(resolver.filterAccessible(List.of(1L), 6L)).isEmpty();
         }
 
-        @Test
-        @DisplayName("ADMINS_ONLY は ADMIN 以上のみ可視")
-        void adminsOnly() {
-            FakeProjection p = projection(1L, "TEAM", 100L, 999L, FakeVisibility.ADMINS_ONLY);
-            resolver.projections = List.of(p);
-            ScopeKey scope = new ScopeKey("TEAM", 100L);
-            when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
-                    .thenReturn(new UserScopeRoleSnapshot(false,
-                            Map.of(scope, "ADMIN"), Map.of(), Set.of(), Set.of()));
-            when(membershipBatchQueryService.snapshotForUser(eq(6L), anySet(), anySet()))
-                    .thenReturn(new UserScopeRoleSnapshot(false,
-                            Map.of(scope, "SUPPORTER"), Map.of(), Set.of(), Set.of()));
-
-            assertThat(resolver.filterAccessible(List.of(1L), 5L)).containsExactly(1L);
-            assertThat(resolver.filterAccessible(List.of(1L), 6L)).isEmpty();
-        }
-
         // ====================================================================
-        // W1 Expand: 新ラダー 3 値（MEMBERS_AND_ABOVE / ADMINS_AND_ABOVE /
-        //            SCOPE_AFFILIATED）。旧値と併存し、判定は §5.1 新ラダー準拠。
+        // 新ラダー 3 値（MEMBERS_AND_ABOVE / ADMINS_AND_ABOVE /
+        //            SCOPE_AFFILIATED）。判定は §5.1 新ラダー準拠。
+        // 旧 MEMBERS_ONLY = SCOPE_AFFILIATED、旧 ADMINS_ONLY = ADMINS_AND_ABOVE
+        // と同一挙動（W6 Contract で旧値撤去）。
         // ====================================================================
 
         @Test
@@ -562,35 +531,7 @@ class AbstractContentVisibilityResolverTest {
         }
 
         @Test
-        @DisplayName("MEMBERS_ONLY で非所属は NOT_A_MEMBER")
-        void decide_membersOnly_notMember() {
-            FakeProjection p = projection(1L, "TEAM", 100L, 999L, FakeVisibility.MEMBERS_ONLY);
-            resolver.projections = List.of(p);
-            when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
-                    .thenReturn(UserScopeRoleSnapshot.empty());
-
-            VisibilityDecision d = resolver.decide(1L, 5L);
-            assertThat(d.allowed()).isFalse();
-            assertThat(d.denyReason()).isEqualTo(DenyReason.NOT_A_MEMBER);
-        }
-
-        @Test
-        @DisplayName("ADMINS_ONLY で SUPPORTER は INSUFFICIENT_ROLE")
-        void decide_adminsOnly_insufficientRole() {
-            FakeProjection p = projection(1L, "TEAM", 100L, 999L, FakeVisibility.ADMINS_ONLY);
-            resolver.projections = List.of(p);
-            ScopeKey scope = new ScopeKey("TEAM", 100L);
-            when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
-                    .thenReturn(new UserScopeRoleSnapshot(false,
-                            Map.of(scope, "SUPPORTER"), Map.of(), Set.of(), Set.of()));
-
-            VisibilityDecision d = resolver.decide(1L, 5L);
-            assertThat(d.allowed()).isFalse();
-            assertThat(d.denyReason()).isEqualTo(DenyReason.INSUFFICIENT_ROLE);
-        }
-
-        @Test
-        @DisplayName("W1: ADMINS_AND_ABOVE で SUPPORTER は INSUFFICIENT_ROLE（旧 ADMINS_ONLY 相当）")
+        @DisplayName("ADMINS_AND_ABOVE で SUPPORTER は INSUFFICIENT_ROLE（旧 ADMINS_ONLY 相当）")
         void decide_adminsAndAbove_insufficientRole() {
             FakeProjection p = projection(1L, "TEAM", 100L, 999L,
                     FakeVisibility.ADMINS_AND_ABOVE);
@@ -737,20 +678,7 @@ class AbstractContentVisibilityResolverTest {
         }
 
         @Test
-        @DisplayName("MEMBERS_ONLY の deny は記録されない（センシティブでない）")
-        void membersOnlyDeny_notRecorded() {
-            FakeProjection p = projection(1L, "TEAM", 100L, 999L,
-                    FakeVisibility.MEMBERS_ONLY);
-            resolver.projections = List.of(p);
-            when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
-                    .thenReturn(UserScopeRoleSnapshot.empty());
-
-            resolver.decide(1L, 5L);
-            verifyNoInteractions(auditLogService);
-        }
-
-        @Test
-        @DisplayName("W1: ADMINS_AND_ABOVE の deny は記録される（旧 ADMINS_ONLY と同じ最高機微）")
+        @DisplayName("ADMINS_AND_ABOVE の deny は記録される（旧 ADMINS_ONLY と同じ最高機微）")
         void adminsAndAboveDeny_recorded() {
             FakeProjection p = projection(1L, "TEAM", 100L, 999L,
                     FakeVisibility.ADMINS_AND_ABOVE);
@@ -821,7 +749,7 @@ class AbstractContentVisibilityResolverTest {
         @DisplayName("複数 ID でも snapshot 構築は 1 回のみ呼ばれる（N+1 防止）")
         void singleSnapshot_for_batch() {
             FakeProjection p1 = projection(1L, "TEAM", 100L, 999L,
-                    FakeVisibility.MEMBERS_ONLY);
+                    FakeVisibility.SCOPE_AFFILIATED);
             FakeProjection p2 = projection(2L, "TEAM", 100L, 999L, FakeVisibility.PUBLIC);
             FakeProjection p3 = projection(3L, "TEAM", 200L, 999L,
                     FakeVisibility.ORGANIZATION_WIDE);
@@ -848,7 +776,7 @@ class AbstractContentVisibilityResolverTest {
             FakeProjection orgWide = projection(1L, "TEAM", 100L, 999L,
                     FakeVisibility.ORGANIZATION_WIDE);
             FakeProjection notOrgWide = projection(2L, "TEAM", 200L, 999L,
-                    FakeVisibility.MEMBERS_ONLY);
+                    FakeVisibility.SCOPE_AFFILIATED);
             resolver.projections = List.of(orgWide, notOrgWide);
             when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
@@ -883,9 +811,9 @@ class AbstractContentVisibilityResolverTest {
 
     /** テスト用の最小 enum（StandardVisibility の各値に直接マップする）。 */
     enum FakeVisibility {
-        PUBLIC, MEMBERS_ONLY, SUPPORTERS_AND_ABOVE, ADMINS_ONLY, PRIVATE,
+        PUBLIC, SUPPORTERS_AND_ABOVE, PRIVATE,
         FOLLOWERS_ONLY, CUSTOM_TEMPLATE, ORGANIZATION_WIDE, CUSTOM,
-        // W1 Expand: 新ラダー 3 値（旧値と併存）
+        // 新ラダー 3 値（旧 MEMBERS_ONLY/ADMINS_ONLY は W6 Contract で撤去済）
         MEMBERS_AND_ABOVE, ADMINS_AND_ABOVE, SCOPE_AFFILIATED
     }
 
@@ -937,15 +865,13 @@ class AbstractContentVisibilityResolverTest {
         protected StandardVisibility toStandard(FakeVisibility visibility) {
             return switch (visibility) {
                 case PUBLIC -> StandardVisibility.PUBLIC;
-                case MEMBERS_ONLY -> StandardVisibility.MEMBERS_ONLY;
                 case SUPPORTERS_AND_ABOVE -> StandardVisibility.SUPPORTERS_AND_ABOVE;
-                case ADMINS_ONLY -> StandardVisibility.ADMINS_ONLY;
                 case PRIVATE -> StandardVisibility.PRIVATE;
                 case FOLLOWERS_ONLY -> StandardVisibility.FOLLOWERS_ONLY;
                 case CUSTOM_TEMPLATE -> StandardVisibility.CUSTOM_TEMPLATE;
                 case ORGANIZATION_WIDE -> StandardVisibility.ORGANIZATION_WIDE;
                 case CUSTOM -> StandardVisibility.CUSTOM;
-                // W1 Expand: 新ラダー 3 値
+                // 新ラダー 3 値
                 case MEMBERS_AND_ABOVE -> StandardVisibility.MEMBERS_AND_ABOVE;
                 case ADMINS_AND_ABOVE -> StandardVisibility.ADMINS_AND_ABOVE;
                 case SCOPE_AFFILIATED -> StandardVisibility.SCOPE_AFFILIATED;

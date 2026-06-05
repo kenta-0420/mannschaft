@@ -32,9 +32,12 @@ class TournamentVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_ONLY")
-    void members_only_maps_to_MEMBERS_ONLY() {
+    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_AND_ABOVE（W5 内輪・応援者除外）")
+    void members_only_maps_to_MEMBERS_AND_ABOVE() {
+        // 判定根拠: 設計書 F08.7 §権限と役割で SUPPORTER は「公開設定の大会の...閲覧のみ」。
+        // MEMBERS_ONLY 大会は応援者に見せない内輪 → 応援者除外の MEMBERS_AND_ABOVE。
+        // 挙動変更: SUPPORTER は MEMBERS_ONLY の大会を閲覧できなくなる。
         assertThat(TournamentVisibilityMapper.toStandard(TournamentVisibility.MEMBERS_ONLY))
-            .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            .isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
     }
 }

@@ -45,7 +45,7 @@ import static org.mockito.Mockito.when;
  * <ul>
  *   <li>PUBLIC → StandardVisibility.PUBLIC</li>
  *   <li>ORGANIZATION_ONLY → StandardVisibility.ORGANIZATION_WIDE（親 ORG メンバーまで公開）</li>
- *   <li>PRIVATE → StandardVisibility.MEMBERS_ONLY（招待制・非公開チームはメンバー閲覧可）</li>
+ *   <li>PRIVATE → StandardVisibility.SCOPE_AFFILIATED（招待制・非公開チームはメンバー閲覧可）</li>
  * </ul>
  */
 @ExtendWith(MockitoExtension.class)

@@ -13,7 +13,7 @@ import com.mannschaft.app.organization.entity.OrganizationEntity;
  *   <li>{@link OrganizationEntity.Visibility#PUBLIC} →
  *       {@link StandardVisibility#PUBLIC}（誰でも閲覧可）</li>
  *   <li>{@link OrganizationEntity.Visibility#PRIVATE} →
- *       {@link StandardVisibility#MEMBERS_ONLY}
+ *       {@link StandardVisibility#SCOPE_AFFILIATED}
  *       （外部非公開・組織メンバーは閲覧可。非メンバーには非公開となる）</li>
  * </ul>
  */

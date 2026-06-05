@@ -32,11 +32,14 @@ class ProjectVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("MEMBERS_ONLY → StandardVisibility.SCOPE_AFFILIATED（挙動不変・名称正準化 W3）")
-    void members_only_maps_to_MEMBERS_ONLY() {
-        // 挙動不変: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
+    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_AND_ABOVE（W5 内輪・応援者除外）")
+    void members_only_maps_to_MEMBERS_AND_ABOVE() {
+        // 判定根拠: ProjectVisibility.PUBLIC は「SUPPORTER も閲覧可」、設計書 F02.3 §権限表で
+        // SUPPORTER は「公開プロジェクトの閲覧（TODO は対象外）」のみ。MEMBERS_ONLY は応援者を
+        // 含まない内輪の意図が確定。W3 の SCOPE_AFFILIATED から MEMBERS_AND_ABOVE へ締め直し。
+        // 挙動変更: 直接所属の SUPPORTER は MEMBERS_ONLY プロジェクトを閲覧できなくなる。
         assertThat(ProjectVisibilityMapper.toStandard(ProjectVisibility.MEMBERS_ONLY))
-            .isEqualTo(StandardVisibility.SCOPE_AFFILIATED);
+            .isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
     }
 
     @Test

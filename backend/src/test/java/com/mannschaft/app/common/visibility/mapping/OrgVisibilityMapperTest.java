@@ -25,10 +25,14 @@ class OrgVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("TEAM_ONLY -> MEMBERS_ONLY")
+    @DisplayName("TEAM_ONLY -> MEMBERS_AND_ABOVE（W5 内輪・マスター御裁可 2026-06-05・応援者除外）")
     void mapsTeamOnly() {
+        // 判定根拠: アクションメモ（業務行動メモ＝仕事の進捗の見える化・チームタイムライン投稿）は
+        // 「メンバー限定の内輪」でありマスター御裁可により応援者(SUPPORTER)には見せない。
+        // 出力先を MEMBERS_AND_ABOVE（hasRoleOrAbove("MEMBER") / SUPPORTER・GUEST 除外）へ。
+        // 機能 enum 名・DB 値は据え置き（④A）。挙動変更: 直接所属の SUPPORTER は不可視に。
         assertThat(OrgVisibilityMapper.toStandard(OrgVisibility.TEAM_ONLY))
-            .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            .isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
     }
 
     @Test
