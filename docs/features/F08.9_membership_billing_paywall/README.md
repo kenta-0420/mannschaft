@@ -196,10 +196,14 @@ Stripe Subscription（スケジュールの主）と escrow 台帳（金の記�
 - **わかりやすい UX**: 継続課金管理画面に「今月スキップ／解約（**○月○日まで利用可と日付明記**）／再開」を出し、**次回課金日・利用期限を明示**＋確認ダイアログ（[04 §2](04_ui_i18n.md)）。API は `POST /membership-subscriptions/{id}/skip`・`/resume`・解約 `DELETE`（[02 §4.3](02_api_design.md)）。i18n 6言語。
 - サブスクの invoice 固定手数料上書きは **`fee_policy`（F22.1 §3.4）の値で算出**（率→固定額の上書き要件＝§4.4 PoC 論点）。スキップ月は invoice 自体が void ゆえ上書き対象外。
 
-### 4.4 関門（実装前 PoC）と退避策
+### 4.4 関門（実装前 PoC）と退避策 — **PoC 成立済（2026-06-05・条件付き）**
 
-- **要 PoC**：「invoice の固定 `application_fee_amount` 上書き × `transfer_data[destination]` × `on_behalf_of`」が期待どおり噛み合うかを **Stripe テスト環境で実証**してから本実装に確定する。
-- **退避策**：PoC 不成立時は、継続課金も **自前バッチ（@Scheduled＋ShedLock＋off_session PaymentIntent＋固定 application_fee_amount）** に切り替える。dunning・カード更新は自前実装。設計（01/02）は両対応を見据え、Subscription 連携を `MembershipSubscriptionService` の差し替え可能な実装として閉じ込める。
+- **PoC 成立**：「invoice の固定 `application_fee_amount` 上書き × `transfer_data[destination]` × `on_behalf_of`」が期待どおり噛み合うことを **Stripe テスト環境で実証済**（`run_20260605_213236`）。更新サイクル invoice の draft 窓で `application_fee_amount=53` 固定上書き → finalize→pay 後の charge へ `53` が伝播（subscription の `application_fee_percent=5` 自動計算 50 を完全上書き）。検証スクリプト・結果詳細＝`scripts/poc/README_f089_p5_poc.md` §0。
+- **成立条件（実装時に必ず順守）**：
+  1. **API バージョン `2025-02-24.acacia` 固定**（stripe-java 28.2.0 の固定版）。最新版（basil = 2025-03-31 以降）では invoice の `application_fee_amount` / `transfer_data` / `charge` が存在せず HTTP 200 で黙殺される。**stripe-java を 29.x（basil）以降へ上げる際は invoice 上書き機構の作り直し（新 Invoice Payments 構造への移行）が必要** — 依存更新時の必須チェック項目。
+  2. **初回 invoice は上書き不可（即 finalize で窓なし）→ 案 b 採用**：初回会費は P1 同型の単発 destination charge で徴収し、Subscription は `billing_cycle_anchor`/trial で次サイクルから起動する（全 invoice が更新型 = 全サイクルで `fee_policy` 固定値が正確に通る）。案 a（percent 併設）は初回のみ flat/丸め誤差が出るため不採用。
+  3. **transfer 額の帳簿表現**：destination charge では transfer=額面**全額**・app fee は受取側残高から別途回収（純着金=額面−fee）。escrow/ledger の複式記帳はこの 2 段（transfer 全額＋fee 回収）を意識して起票する。
+- **退避策（自前バッチ）は不要に**：PoC 成立のため Subscription 連携を本線とする。ただし設計（01/02）は引き続き `MembershipSubscriptionService` の差し替え可能な実装として閉じ込め、将来 SDK メジャー更新で機構再設計が必要になった場合の退避余地（@Scheduled＋ShedLock＋off_session PaymentIntent＋固定 application_fee_amount）は温存する。
 
 ---
 
@@ -332,7 +336,7 @@ payment_requests（新規・UUIDv7）
 | **P2** | 後見まとめ支払い＋代理払い認可 | **M** | P1・F01.9・F03.12・F14.1 | 保護者リンク経由の代理払い／`payment_proxy_grants`／後見まとめ支払い画面（複数子の会費一括） |
 | **P3** | 年齢段階つき後見切替 | **M** | P2・`users.birthDate` | `X-Proxy-For-User-Id` 後見切替セッション／年齢ゲート（小学生まで強権・中学生以降封印）／監査連結 |
 | **P4** | ペイウォール（受益者キー） | **S** | P1・F00 | `content_payment_gates` の受益者キー判定／`evaluateCustom` 連結／blog・お知らせ施錠UI |
-| **P5** | 継続課金（Subscription＋invoice上書き） | **L** | P1・**要 PoC** | `MembershipSubscriptionService`／Subscription 作成・`invoice.created` 上書き・`invoice.paid` 起票／dunning 状態反映／退避＝自前バッチ |
+| **P5** | 継続課金（Subscription＋invoice上書き） | **L** | P1・**PoC 成立済（2026-06-05・§11-3）** | `MembershipSubscriptionService`／Subscription 作成・`invoice.created` 上書き・`invoice.paid` 起票／dunning 状態反映。**初回=単発 destination charge＋次サイクル開始（案 b）／API バージョン acacia 固定**。自前バッチ退避は不要 |
 | **P6** | 期別課金（単発） | **S** | P1 | `payment_items.type=TERM`／term 期間／単発 destination charge |
 | **P7** | 協会→チーム請求 | **M** | P1・F04.9・F04.11 | `payment_requests`／payer=TEAM/payee=ORG 決済／確認必須通知配信・督促／inbox アダプタ |
 | **P8** | 可視化拡張＋領収書＋税からくり | **M** | P1〜P7 | 払い手/受益者・3区分・期別集計・CSV/PDF／受領者名義領収書＋月次手数料明細／nullable 税列＋`NoOpTaxPolicy`＋領収書拡張枠 |
@@ -349,7 +353,7 @@ payment_requests（新規・UUIDv7）
 |---|---|---|---|
 | **11-1** | 後見切替の年齢しきい値 | **確定（御裁可済 2026-06-03）** | 提案採用。ただし**初等教育終了年齢は国で異なる**ため、しきい値を焼き付けず**国別 `GuardianshipAgePolicy` のからくり**で解決（税の `TaxPolicy` と同型）。既定＝`JapanGuardianshipAgePolicy`（満12歳年度末）。未対応国は満13歳誕生日にフォールバック（§3.2／03_security §3.1） |
 | **11-2** | 税務（会費の課税判定／手数料・2.5%上乗せ分の課税関係／適格請求書の発行主体／前受金の繰延） | **要税理士確認** | 実装スコープ外。からくり（nullable 列＋`TaxPolicy`＋領収書拡張枠）のみ。確定まで `NoOpTaxPolicy`（不課税） |
-| **11-3** | 継続課金の invoice 固定手数料上書きが destination charge と噛み合うか | **要 PoC** | Stripe テスト環境で実証してから P5 確定。不成立時は自前バッチへ退避（§4.4）。固定上書き値は `fee_policy`（F22.1 §3.4・率→固定額）で算出 |
+| **11-3** | 継続課金の invoice 固定手数料上書きが destination charge と噛み合うか | **確定（PoC 成立 2026-06-05・条件付き）** | Stripe テスト環境で実証済。更新サイクル invoice の draft 窓で `application_fee_amount=53` 固定上書き→charge へ伝播（subscription の percent 自動計算 50 を完全上書き）を確認。**条件**：①API バージョン `2025-02-24.acacia` 固定（stripe-java 28.2.0／SDK メジャー更新時は機構再設計）、②初回 invoice は上書き不可ゆえ**案 b**（初回=単発 destination charge＋Subscription は次サイクル開始）、③transfer は額面全額・fee は受取側から別途回収（純額=額面−fee）を帳簿に明記。**自前バッチ退避は不要**に。固定上書き値は `fee_policy`（F22.1 §3.4・率→固定額）で算出。PoC 詳細＝`scripts/poc/README_f089_p5_poc.md` §0 |
 | **11-8** | サブスク解約/今月スキップ/再開 | **確定（マスター御裁可済 2026-06-04）** | 解約＝`cancel_at_period_end`（期末まで利用可・日割り返金なし）／今月スキップ＝`pause_collection(void)`＋`skip_until` 列（invoice void で valid_until 不延長＝ペイウォール無改修で整合）／再開＝pause 解除（§4.5 / 01 §2.1 / 02 §4.3 / 04 §2） |
 | **11-9** | payer=TEAM の決済表現（立替モデル） | **確定（マスター御裁可済 2026-06-04・案3）** | 操作 ADMIN 個人 Customer で課金・escrow payer_scope=TEAM・領収書チーム名義・`team_payment_advances` で立替/精算（F04.9 確認）。チーム残高直接払い（案2）は将来候補・家老偵察（§6.3 / §6.4 / 01 §2.5 / 02 §7） |
 | **11-4** | 協会→チーム請求の手数料負担（2.5%折半を会費と同じくするか・協会間B2Bで上乗せ表示が妥当か） | **確定（御裁可済 2026-06-03）** | 提案採用＝**会費と同折半**（チーム2.5%上乗せ・協会97.5%着金） |
@@ -357,7 +361,7 @@ payment_requests（新規・UUIDv7）
 | **11-6** | 既存会員データ移行 | 解決済 | **不要**（開発中・本番データ無し・マスター確認済 2026-06-03） |
 | **11-7** | 無ログイン管理子アカウント | 解決済 | **不採用**（子は自前アカウントでITリテラシー育成・マスター確認済 2026-06-03） |
 
-> 11-1/11-4 は**御裁可済（提案採用・2026-06-03）**。11-1 は国別 `GuardianshipAgePolicy` のからくりとして確定。残る外部関門は 11-2（税理士）・11-3（実装前 PoC）のみで、いずれも設計はからくり先行で待てる。**設計内の論点はすべてクローズ**。
+> 11-1/11-4 は**御裁可済（提案採用・2026-06-03）**。11-1 は国別 `GuardianshipAgePolicy` のからくりとして確定。11-3 は **PoC 成立（2026-06-05・条件付き）で確定**（自前バッチ退避は不要に）。残る外部関門は 11-2（税理士）のみで、設計はからくり先行で待てる。**設計内の論点はすべてクローズ**。
 
 ### 11.1 二度精査で補強・設計内確定した論点（2026-06-03・敵対的検分2手）
 

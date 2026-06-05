@@ -40,3 +40,6 @@ logs/mysql-slow/
 k6/results/
 k6/*.json
 k6/*.csv
+
+# --- F08.9 P5 Stripe PoC 出力 (API レスポンス JSON。秘密を含み得るため除外) ---
+scripts/poc/out/

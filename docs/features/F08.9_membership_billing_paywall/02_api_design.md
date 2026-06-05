@@ -140,6 +140,7 @@ GET    /api/v1/me/membership-subscriptions           # 自分が払い手の継�
 GET    /api/v1/teams/{id}/membership-subscriptions    # 管理者：チームの継続課金一覧
 ```
 - `subscribe`：`is_recurring=true` 項目のみ。`MembershipSubscriptionService.create(...)` が SetupIntent で保存した PM・受領者 Connect 口座・`billing_anchor_day` で Stripe Subscription を作成し、`membership_subscriptions(status=PENDING)` を起票。加入時に `FeePolicyResolver(MEMBERSHIP)` で解決した `fee_policy_key` を焼き付け（遡及防止・README §4.2）。
+- **初回課金は単発 destination charge、Subscription は次サイクル開始（案 b・PoC 実証 2026-06-05）**：初回 invoice（`billing_reason=subscription_create`）は即 finalize されて `application_fee_amount` の固定上書き窓が無いことを PoC で実証（HTTP 400 拒否）。よって**初回会費は P1 同型の単発 destination charge（固定 `application_fee_amount`）で徴収**し、Stripe Subscription は `billing_cycle_anchor`（または `trial_end`）で**次サイクルから起動**する。これで以降の全 invoice が更新型（`subscription_cycle`）となり、全サイクルで draft 窓の固定手数料上書きが正確に通る（初回含め誤差ゼロ・escrow AUTHORIZED→CAPTURED の複式記帳を P1 流儀で全サイクル延長）。詳細＝`scripts/poc/README_f089_p5_poc.md` §0。
 - **会費額の固定（price-lock）**：加入時の額面で固定する。受領者が会費を値上げしても**既存サブスクは加入時 price のまま**継続し、値上げは新規加入者のみに適用。既存者へは「会費改定のお知らせ」を確認必須通知（F04.9）で送り、「新価格で継続する／解約する」を選ばせる移行フロー（管理者が改定 price で新項目を発行→既存者に乗り換え導線）。サイレントな自動値上げはしない。**手数料パターン（`fee_policy_key`）も加入時に固定**（料率改定は新規加入のみ反映・遡及しない）。
 - 解約：`cancel_at_period_end=true`（**期末まで利用可・日割り返金なし・期末前は再有効化可**）。即時解約は別途（返金は受取側 ADMIN の F22.1 フロー）。UI には**○月○日まで利用可**と日付を明記（04 §2）。
 
@@ -163,8 +164,8 @@ POST /api/v1/webhooks/stripe   （既存 StripeWebhookController を拡張）
 
 | イベント | 処理 |
 |---|---|
-| `invoice.created` | **★固定手数料上書き**：該当 subscription の `face_amount` と焼き付けた `fee_policy_key`（F22.1 `fee_policies` で `total_fee=round(percent×face)+flat`・DEFAULT なら `round(face×0.05)`）を算出し、その invoice の `application_fee_amount` を `POST /v1/invoices/{id}` で固定上書き。**スキップ月（pause_collection void）は invoice 自体が void ゆえ上書き対象外** |
-| `invoice.paid` | `escrow_transaction(MEMBERSHIP, CAPTURED)`＋`ledger_entries` 起票・`member_payments(PAID)` 生成・受益者の `valid_until` を1サイクル延長・`membership_subscriptions.current_period_*` 更新 |
+| `invoice.created` | **★固定手数料上書き（PoC で実証済 2026-06-05）**：該当 subscription の `face_amount` と焼き付けた `fee_policy_key`（F22.1 `fee_policies` で `total_fee=round(percent×face)+flat`・DEFAULT なら `round(face×0.05)`）を算出し、その invoice の `application_fee_amount` を `POST /v1/invoices/{id}` で固定上書き。**draft 窓で上書き→finalize→pay 後の charge へ確実に伝播することを実機確認済**（subscription の percent 自動計算を完全上書き）。**SDK バージョン固定条件あり**（Stripe API `2025-02-24.acacia`／stripe-java 28.2.0・basil 系では invoice にこのフィールドが無く黙殺されるため stripe-java 29.x 以降へ上げる際は機構再設計が必要）。**スキップ月（pause_collection void）は invoice 自体が void ゆえ上書き対象外** |
+| `invoice.paid` | `escrow_transaction(MEMBERSHIP, CAPTURED)`＋`ledger_entries` 起票・`member_payments(PAID)` 生成・受益者の `valid_until` を1サイクル延長・`membership_subscriptions.current_period_*` 更新。**帳簿注意（PoC 実証）**：destination charge では `transfer.amount` は**額面全額**で起票され、application fee は受取側残高から別途回収される（純着金=額面−fee・「transfer=額面−fee」ではない）。`ledger_entries` の複式記帳はこの 2 段（transfer 全額＋fee 回収）を意識した起票にする |
 | `invoice.payment_failed` | `membership_subscriptions.status=PAST_DUE`・払い手へ「お支払いが一時失敗しました。Stripe からのカード更新メールをご確認ください」通知（§6）・grace カウント開始・Stripe smart retries に委譲 |
 | `invoice.paid`（再試行成功） | `PAST_DUE → ACTIVE` 復帰・`valid_until` を現在から1サイクル延長・ペイウォール復活 |
 | `customer.subscription.deleted` | `status=CANCELLED`・以降ペイウォール失効 |
@@ -191,7 +192,7 @@ public void onWebhook(Event ev) {
     // ev 種別で分岐（invoice.created=手数料上書き / invoice.paid=起票・延長 / ...）。失敗は記録＋再試行、握りつぶさない
 }
 ```
-- **退避策（PoC 不成立時）**：`MembershipSubscriptionService` を自前バッチ実装に差し替え。`@Scheduled`＋ShedLock が `status=ACTIVE AND current_period_end<=今日` を拾い off_session PaymentIntent（固定 application_fee_amount）で都度決済。Webhook 4本のうち `invoice.created` 上書きが不要になる。
+- **退避策（PoC 成立済につき不要・ただし温存）**：PoC 成立（2026-06-05・§4.4 / README §11-3）のため本線は Stripe Subscription。将来 stripe-java を 29.x（basil）以降へ上げ invoice 上書き機構が使えなくなった場合の退避余地として、`MembershipSubscriptionService` を自前バッチ実装に差し替え可能に閉じ込めておく：`@Scheduled`＋ShedLock が `status=ACTIVE AND current_period_end<=今日` を拾い off_session PaymentIntent（固定 application_fee_amount）で都度決済し、Webhook 4本のうち `invoice.created` 上書きが不要になる構成。
 
 ---
 
