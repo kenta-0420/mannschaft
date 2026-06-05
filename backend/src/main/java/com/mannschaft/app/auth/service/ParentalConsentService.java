@@ -402,6 +402,34 @@ public class ParentalConsentService {
                 .toList();
     }
 
+    /**
+     * バッチ用: 全 APPROVED 保護者リンクの (保護者, 子) ペアをページングで返す。
+     *
+     * <p>F08.9 P3c-3 自立移行通知バッチ（進学予告）から呼び出される境界メソッド。
+     * id 昇順で安定ページングし、{@code pageNumber} を進めて全 APPROVED リンクを走査する。</p>
+     *
+     * @param pageNumber ページ番号（0 始まり）
+     * @param pageSize   1 ページあたりの件数
+     * @return (保護者ユーザーID, 子ユーザーID) ペアのリスト（空可）
+     */
+    public List<ParentChildPair> listApprovedParentChildPairs(int pageNumber, int pageSize) {
+        return parentalConsentLinkRepository.findByStatusOrderByIdAsc(
+                        ParentalConsentLinkStatus.APPROVED,
+                        org.springframework.data.domain.PageRequest.of(pageNumber, pageSize))
+                .stream()
+                .map(link -> new ParentChildPair(link.getParentUserId(), link.getChildUserId()))
+                .toList();
+    }
+
+    /**
+     * 保護者と子の ID ペア（自立移行通知バッチの境界 DTO）。
+     *
+     * @param parentUserId 保護者（払い手）のユーザーID
+     * @param childUserId  子のユーザーID
+     */
+    public record ParentChildPair(Long parentUserId, Long childUserId) {
+    }
+
     // ========================================
     // クロスドメイン照会（payment ドメインから利用）
     // ========================================

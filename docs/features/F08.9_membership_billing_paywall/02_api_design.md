@@ -90,7 +90,27 @@ POST /api/v1/me/guardianship/children/{childUserId}/handover/initiate   # 引き
 - **境界日メソッド**：`GuardianshipAgePolicy.sealDate(birthDate, clock)` を追加（JP/Default 両実装）。`switchAllowed` が `false` に変わる最初の日を返す（JP＝満12歳に達する年度の翌4/1・Default＝満13歳の誕生日）。`clock` 非依存で生年月日から一意に定まる（既に封印済みの子は過去日を返す）。`resolve` の境界と整合（境界日当日に `switchAllowed=false`）。
 - **`GET .../independence-status`**：`IndependenceStatusResponse { childUserId, stageKey, switchAllowed, sealDate, passwordSet }`。`passwordSet` は `users.password_hash` の有無（引き継ぎ完了の目安）。**呼び出し元が当該子の有効な保護者でない場合は 403**（`GUARDIANSHIP_LINK_NOT_FOUND`＝`MEMBERSHIP_BILLING_005`・IDOR 防止）。封印済み（`switchAllowed=false`）でも例外にせず段階・境界日・パスワード設定有無を返す（状況把握用）。生年月日解決不能の子は安全側（`switchAllowed=false`・`stageKey=independent`・`sealDate=null`）。
 - **`POST .../handover/initiate`**：Body `{ childEmail? }`。子メールへパスワード設定リンクを送付（`AuthPasswordResetService.requestPasswordReset` を流用＝`PasswordResetRequestedEvent`→`EmailOutboxService.enqueue` 経由・F09.18）。**childEmail 規則**：子に既存（ルーティング可能な）メールあり×childEmail 指定 → 400（上書き拒否・`MEMBERSHIP_BILLING_006`／メール変更フローの迂回防止）。子にメールあり×指定なし → 既存メールへ送付。子にメールなし（内部プレースホルダ `*.mannschaft.internal`）×指定あり → 重複チェック（`existsByEmail`・重複は `AUTH_013`）後 `users.email` へ登録して送付。子にメールなし×指定なし → 400（`MEMBERSHIP_BILLING_006`）。**acting-as（後見切替セッション）中は 403**（保護者本人の権原で行う引き継ぎゆえ `AuthenticationCriticalOperationGuard.assertNotActingAs()` を適用・03_security §3.2 の精神）。監査は `audit_logs`（`GUARDIANSHIP_HANDOVER_INITIATED`・metadata に `registeredNewEmail`）。
-- **第三波（未実装）**：3ヶ月前事前通知バッチ・封印時の未設定メール自動送付バッチは本波（P3c-2）の対象外（別波で実装）。`users.email` は NOT NULL UNIQUE ゆえ「メールなし」は内部プレースホルダ運用を前提とする（管理子アカウント本実装は将来課題）。
+#### 実装（第三波・P3c-3・2026-06-05）
+
+自立移行の保険として日次バッチ 2 本を追加した（いずれも `Clock` 注入で date-pin テスト可能・`@SchedulerLock` で多重起動防止）。
+
+- **進学予告バッチ**（`GuardianshipProgressionNoticeBatchService`・`guardianship-progression-notice-batch`・毎日 03:00 JST）：
+  parental_consent（APPROVED）＋care_links（ACTIVE PARENT）の全 (保護者, 子) ペアをページング走査し、子の `sealDate`（境界日）を算出。
+  `today ∈ [sealDate.minusMonths(3), sealDate)`（半開区間）かつ未送信の保護者へ
+  「◯月からお子さまが自立します。ログイン情報の引き継ぎをお願いします」を通知する。
+  チャネルは**アプリ内通知**（`NotificationHelper.notify` 正準経路・F04.11 統合インボックスに載る）＋
+  **メール**（F09.18 outbox・templateKind `GUARDIANSHIP_PROGRESSION_NOTICE`・保護者メールがルーティング可能な場合のみ）。
+- **封印時未設定メールバッチ**（`GuardianshipSealUnsetPasswordBatchService`・`guardianship-seal-unset-password-batch`・毎日 03:30 JST）：
+  `sealDate <= today` かつ `users.password_hash` 未設定（`GuardianshipHandoverService` と同一のパスワード設定有無判定）の子へ
+  パスワード設定メールを自動送付（取り残し防止）。送付は `AuthPasswordResetService.requestPasswordReset` を流用し outbox 経由。
+  子のメールが内部プレースホルダ（`*.mannschaft.internal`）の場合は**送付不能としてスキップ＋件数をログに可視化**（症状を隠さない）。
+- **重複送信防止**：専用テーブル `guardianship_transition_notifications`（UUIDv7・BINARY(16)・クロスドメインFKなし・Flyway V74.20260605000020）で
+  `(notification_kind, recipient_user_id, child_user_id, seal_date)` を UNIQUE 化し、同一（受信者×子×境界日×種別）で 1 回限りに統制する。
+  既存 notification 系には (受信者,子,境界日,種別) で 1 回限りを保証する送信記録が無く（notifications は送信ログで UNIQUE なし／
+  email_outbox の idempotency_key はメールにしか効かずアプリ内通知の冪等化に使えない）ため新設。
+  各バッチは「送信記録を先に保存 → UNIQUE 競合（並行/時刻境界）を `DataIntegrityViolationException` で検知 → 競合時は送信せずスキップ」で
+  二重送信を物理的に排除する。
+- `users.email` は NOT NULL UNIQUE ゆえ「メールなし」は内部プレースホルダ運用を前提とする（管理子アカウント本実装は将来課題）。
 
 ---
 

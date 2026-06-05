@@ -113,81 +113,19 @@ onMounted(checkInitialState)
 </script>
 
 <template>
-  <button
+  <Button
     v-if="isAuthenticated"
-    type="button"
-    class="favorite-toggle-button"
-    :class="{
-      'is-favorited': isFavorited,
-      'is-loading': isLoading || isToggling,
-      'is-disabled': isLimitReached && !isFavorited,
-    }"
+    :icon="isLoading || isToggling ? 'pi pi-spinner pi-spin' : isFavorited ? 'pi pi-star-fill' : 'pi pi-star'"
+    :label="isFavorited ? t('favorites.labelFavorited') : t('favorites.title')"
+    :class="isFavorited ? 'border-yellow-400 bg-yellow-50 text-yellow-600' : ''"
     :disabled="isLoading || isToggling || (isLimitReached && !isFavorited)"
     :aria-pressed="isFavorited"
     :aria-label="ariaLabel"
     :title="tooltipText"
+    severity="secondary"
+    outlined
+    size="small"
     :data-testid="`favorite-toggle-${entityType}-${entityId}`"
     @click="handleToggle"
-  >
-    <span v-if="isLoading || isToggling" class="spinner" aria-hidden="true">⏳</span>
-    <span v-else-if="isFavorited" class="star-filled" aria-hidden="true">★</span>
-    <span v-else class="star-empty" aria-hidden="true">☆</span>
-  </button>
+  />
 </template>
-
-<style scoped>
-.favorite-toggle-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: 9999px;
-  background: transparent;
-  font-size: 1.25rem;
-  line-height: 1;
-  cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    transform 0.1s ease;
-}
-
-.favorite-toggle-button:hover:not(:disabled) {
-  background-color: rgba(0, 0, 0, 0.06);
-}
-
-.favorite-toggle-button:active:not(:disabled) {
-  transform: scale(0.92);
-}
-
-.favorite-toggle-button:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
-
-.favorite-toggle-button.is-favorited {
-  color: #f5b800;
-}
-
-.favorite-toggle-button.is-disabled,
-.favorite-toggle-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.spinner {
-  display: inline-block;
-  animation: favorite-toggle-spin 1s linear infinite;
-}
-
-@keyframes favorite-toggle-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-</style>
