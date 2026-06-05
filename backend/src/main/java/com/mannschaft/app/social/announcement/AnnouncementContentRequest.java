@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -36,13 +37,13 @@ public class AnnouncementContentRequest {
     @JsonProperty("assignee_ids")
     private List<Long> assigneeIds;
 
-    /** 開始日時（スケジュールで使用）。 */
+    /** 開始日時（スケジュールで使用）。TZオフセットを含む。 */
     @JsonProperty("start_at")
-    private LocalDateTime startAt;
+    private OffsetDateTime startAt;
 
-    /** 終了日時（スケジュールで使用）。 */
+    /** 終了日時（スケジュールで使用）。TZオフセットを含む。 */
     @JsonProperty("end_at")
-    private LocalDateTime endAt;
+    private OffsetDateTime endAt;
 
     /** 終日フラグ（スケジュールで使用）。 */
     @JsonProperty("all_day")

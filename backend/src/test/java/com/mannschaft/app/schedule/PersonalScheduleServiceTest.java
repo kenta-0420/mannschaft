@@ -21,6 +21,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -66,6 +68,9 @@ class PersonalScheduleServiceTest {
     private static final Long OTHER_USER_ID = 999L;
     private static final LocalDateTime START = LocalDateTime.of(2026, 4, 1, 10, 0);
     private static final LocalDateTime END = LocalDateTime.of(2026, 4, 1, 12, 0);
+    /** JST(+09:00) のオフセットを付与した OffsetDateTime（テスト用）。 */
+    private static final OffsetDateTime START_ODT = OffsetDateTime.of(2026, 4, 1, 10, 0, 0, 0, ZoneOffset.ofHours(9));
+    private static final OffsetDateTime END_ODT = OffsetDateTime.of(2026, 4, 1, 12, 0, 0, 0, ZoneOffset.ofHours(9));
 
     private ScheduleEntity createPersonalScheduleEntity() {
         return ScheduleEntity.builder()
@@ -125,7 +130,7 @@ class PersonalScheduleServiceTest {
                     .willAnswer(invocation -> invocation.getArgument(0));
 
             CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
-                    "個人予定", "テスト", "自宅", START, END, false, "OTHER", "#FF0000",
+                    "個人予定", "テスト", "自宅", START_ODT, END_ODT, false, "OTHER", "#FF0000",
                     null, null, null);
 
             // when
@@ -147,7 +152,7 @@ class PersonalScheduleServiceTest {
                     .willReturn(List.of());
 
             CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
-                    "個人予定", null, null, END, START, false, null, null, null, null, null);
+                    "個人予定", null, null, END_ODT, START_ODT, false, null, null, null, null, null);
 
             // when & then
             assertThatThrownBy(() -> personalScheduleService.createPersonalSchedule(req, USER_ID))
@@ -169,7 +174,7 @@ class PersonalScheduleServiceTest {
                     .willReturn(thousandSchedules);
 
             CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
-                    "個人予定", null, null, START, END, false, null, null, null, null, null);
+                    "個人予定", null, null, START_ODT, END_ODT, false, null, null, null, null, null);
 
             // when & then
             assertThatThrownBy(() -> personalScheduleService.createPersonalSchedule(req, USER_ID))
@@ -189,7 +194,7 @@ class PersonalScheduleServiceTest {
                     .willAnswer(invocation -> invocation.getArgument(0));
 
             CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
-                    "個人予定", null, null, START, END, false, null, null,
+                    "個人予定", null, null, START_ODT, END_ODT, false, null, null,
                     List.of(10, 30), null, null);
 
             // when
@@ -198,6 +203,69 @@ class PersonalScheduleServiceTest {
             // then
             verify(reminderRepository).deleteByScheduleId(any());
             verify(reminderRepository).saveAll(any());
+        }
+    }
+
+    // ========================================
+    // createPersonalSchedule - タイムゾーン変換
+    // ========================================
+
+    @Nested
+    @DisplayName("createPersonalSchedule_タイムゾーン変換")
+    class CreatePersonalScheduleTimezoneConversion {
+
+        @Test
+        @DisplayName("UTC入力_JST(+9h)に変換してEntityに保存される")
+        void UTC入力_JSTに変換してEntityに保存される() {
+            // given: UTC 01:00 = JST 10:00
+            OffsetDateTime startUtc = OffsetDateTime.of(2026, 4, 1, 1, 0, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime endUtc = OffsetDateTime.of(2026, 4, 1, 3, 0, 0, 0, ZoneOffset.UTC);
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of());
+            ScheduleEntity[] saved = new ScheduleEntity[1];
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> {
+                        saved[0] = invocation.getArgument(0);
+                        return saved[0];
+                    });
+
+            CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
+                    "UTC入力テスト", null, null, startUtc, endUtc, false, null, null, null, null, null);
+
+            // when
+            personalScheduleService.createPersonalSchedule(req, USER_ID);
+
+            // then: UTC 01:00 は JST 10:00 に変換される
+            assertThat(saved[0].getStartAt())
+                    .isEqualTo(LocalDateTime.of(2026, 4, 1, 10, 0, 0));
+            assertThat(saved[0].getEndAt())
+                    .isEqualTo(LocalDateTime.of(2026, 4, 1, 12, 0, 0));
+        }
+
+        @Test
+        @DisplayName("JST入力_そのままEntityに保存される")
+        void JST入力_そのままEntityに保存される() {
+            // given: JST 10:00 はそのまま 10:00 として保存される
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of());
+            ScheduleEntity[] saved = new ScheduleEntity[1];
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> {
+                        saved[0] = invocation.getArgument(0);
+                        return saved[0];
+                    });
+
+            CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
+                    "JST入力テスト", null, null, START_ODT, END_ODT, false, null, null, null, null, null);
+
+            // when
+            personalScheduleService.createPersonalSchedule(req, USER_ID);
+
+            // then: JST 10:00 → 変換後も 10:00
+            assertThat(saved[0].getStartAt()).isEqualTo(START);
+            assertThat(saved[0].getEndAt()).isEqualTo(END);
         }
     }
 

@@ -51,6 +51,21 @@ public interface UserCareLinkRepository extends JpaRepository<UserCareLinkEntity
             Long careRecipientUserId, Long watcherUserId, CareRelationship relationship, CareLinkStatus status);
 
     /**
+     * 見守り者・続柄・ステータスを指定してケアリンクを取得する。
+     *
+     * <p>F08.9 P3a 切替可能な子の列挙で「払い手が ACTIVE な見守り PARENT であるケア対象者（子）」を
+     * 一覧化するために利用する（payment/auth ドメインは {@code CareLinkService} 経由でのみ呼び出す・
+     * Entity を直接参照しない）。</p>
+     *
+     * @param watcherUserId 見守り者（保護者候補）のユーザーID
+     * @param relationship  続柄（通常 PARENT）
+     * @param status        ステータス（通常 ACTIVE）
+     * @return 一致するケアリンク一覧
+     */
+    List<UserCareLinkEntity> findByWatcherUserIdAndRelationshipAndStatus(
+            Long watcherUserId, CareRelationship relationship, CareLinkStatus status);
+
+    /**
      * 複数のケア対象者ユーザーIDを IN 句で一括取得する（N+1 防止）。
      *
      * <p>F03.12 §14 主催者点呼機能。候補者一覧取得時にケアリンク情報をまとめてロードする。</p>
