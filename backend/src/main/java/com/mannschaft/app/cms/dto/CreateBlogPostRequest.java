@@ -15,8 +15,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CreateBlogPostRequest {
 
-    private final Long teamId;
-    private final Long organizationId;
+    /** チーム公開ID（UUIDv7文字列）または内部Long ID文字列。どちらも受け入れる後方互換方式。 */
+    private final String teamId;
+    /** 組織公開ID（UUIDv7文字列）または内部Long ID文字列。どちらも受け入れる後方互換方式。 */
+    private final String organizationId;
     private final Long socialProfileId;
 
     @NotBlank

@@ -30,8 +30,9 @@ public class BlogPostAnnouncementAdapter implements AnnouncementChannelAdapter {
     @Override
     public Long createContent(AnnouncementContentRequest content, String scopeType,
                               Long scopeId, String visibility, Long userId) {
-        Long teamId = "TEAM".equalsIgnoreCase(scopeType) ? scopeId : null;
-        Long organizationId = "ORGANIZATION".equalsIgnoreCase(scopeType) ? scopeId : null;
+        // CreateBlogPostRequest は String 型（Long文字列 or UUID文字列）を受け入れる後方互換形式
+        String teamId = "TEAM".equalsIgnoreCase(scopeType) ? scopeId.toString() : null;
+        String organizationId = "ORGANIZATION".equalsIgnoreCase(scopeType) ? scopeId.toString() : null;
 
         CreateBlogPostRequest request = new CreateBlogPostRequest(
                 teamId,
