@@ -415,18 +415,14 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
 
         return switch (level) {
             case PUBLIC -> true;
-            case MEMBERS_ONLY -> scope != null && snapshot.isMemberOf(scope);
-            // W1 Expand: 新ラダー（§5.1.5）。旧値と併存。
-            // SCOPE_AFFILIATED = 直接所属（旧 MEMBERS_ONLY 同挙動）。
+            // 新ラダー（§5.1.5）。SCOPE_AFFILIATED = 直接所属（旧 MEMBERS_ONLY 相当の正準値）。
             case SCOPE_AFFILIATED -> scope != null && snapshot.isMemberOf(scope);
             case SUPPORTERS_AND_ABOVE -> scope != null
                     && snapshot.hasRoleOrAbove(scope, "SUPPORTER");
             // MEMBERS_AND_ABOVE = MEMBER 以上の閾値（SUPPORTER/GUEST 不可視）。
             case MEMBERS_AND_ABOVE -> scope != null
                     && snapshot.hasRoleOrAbove(scope, "MEMBER");
-            case ADMINS_ONLY -> scope != null
-                    && snapshot.hasRoleOrAbove(scope, "ADMIN");
-            // ADMINS_AND_ABOVE = ADMIN 以上の閾値（旧 ADMINS_ONLY 同挙動）。
+            // ADMINS_AND_ABOVE = ADMIN 以上の閾値（旧 ADMINS_ONLY 相当の正準値）。
             case ADMINS_AND_ABOVE -> scope != null
                     && snapshot.hasRoleOrAbove(scope, "ADMIN");
             case ORGANIZATION_WIDE -> scope != null && snapshot.isMemberOfParentOrg(scope);
@@ -460,13 +456,12 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
         return switch (level) {
             case PRIVATE -> DenyReason.NOT_OWNER;
             case CUSTOM_TEMPLATE -> DenyReason.TEMPLATE_RULE_NO_MATCH;
-            // W1 Expand: SCOPE_AFFILIATED は所属軸（旧 MEMBERS_ONLY 相当）として同列に分類。
-            case MEMBERS_ONLY, ORGANIZATION_WIDE, SCOPE_AFFILIATED ->
+            // SCOPE_AFFILIATED は所属軸（旧 MEMBERS_ONLY 相当）として同列に分類。
+            case ORGANIZATION_WIDE, SCOPE_AFFILIATED ->
                     scope != null && snapshot.roleByScope().containsKey(scope)
                             ? DenyReason.INSUFFICIENT_ROLE : DenyReason.NOT_A_MEMBER;
-            // W1 Expand: MEMBERS_AND_ABOVE / ADMINS_AND_ABOVE は閾値軸（旧 SUPPORTERS_AND_ABOVE /
-            // ADMINS_ONLY 相当）として同列に分類。
-            case SUPPORTERS_AND_ABOVE, ADMINS_ONLY, MEMBERS_AND_ABOVE, ADMINS_AND_ABOVE ->
+            // MEMBERS_AND_ABOVE / ADMINS_AND_ABOVE は閾値軸として同列に分類。
+            case SUPPORTERS_AND_ABOVE, MEMBERS_AND_ABOVE, ADMINS_AND_ABOVE ->
                     scope != null && snapshot.roleByScope().containsKey(scope)
                             ? DenyReason.INSUFFICIENT_ROLE : DenyReason.NOT_A_MEMBER;
             case FOLLOWERS_ONLY, CUSTOM, PUBLIC -> DenyReason.UNSPECIFIED;

@@ -461,12 +461,12 @@ class ContentVisibilityCheckerTest {
         }
 
         @Test
-        @DisplayName("ADMINS_ONLY deny 時も VISIBILITY_DENIED を記録する")
+        @DisplayName("ADMINS_AND_ABOVE deny 時も VISIBILITY_DENIED を記録する（旧 ADMINS_ONLY 相当）")
         void deniesAdminsOnly_recordsAuditLog() {
             VisibilityDecision deny = new VisibilityDecision(
                     ReferenceType.BLOG_POST, 9L, false,
                     DenyReason.INSUFFICIENT_ROLE,
-                    StandardVisibility.ADMINS_ONLY, null);
+                    StandardVisibility.ADMINS_AND_ABOVE, null);
             AuditLogService auditLogService = mock(AuditLogService.class);
             ContentVisibilityChecker checker = new ContentVisibilityChecker(
                     List.of(fixedDecisionResolver(ReferenceType.BLOG_POST, deny)),
@@ -483,12 +483,12 @@ class ContentVisibilityCheckerTest {
         }
 
         @Test
-        @DisplayName("MEMBERS_ONLY deny 時は AuditLogService に記録しない (cardinality 抑制)")
+        @DisplayName("SCOPE_AFFILIATED deny 時は AuditLogService に記録しない (cardinality 抑制・旧 MEMBERS_ONLY 相当)")
         void deniesMembersOnly_doesNotRecord() {
             VisibilityDecision deny = new VisibilityDecision(
                     ReferenceType.BLOG_POST, 10L, false,
                     DenyReason.NOT_A_MEMBER,
-                    StandardVisibility.MEMBERS_ONLY, null);
+                    StandardVisibility.SCOPE_AFFILIATED, null);
             AuditLogService auditLogService = mock(AuditLogService.class);
             ContentVisibilityChecker checker = new ContentVisibilityChecker(
                     List.of(fixedDecisionResolver(ReferenceType.BLOG_POST, deny)),

@@ -25,8 +25,8 @@ import java.util.List;
  * <p><strong>visibility 概念新設機能の最小実装</strong>（§12.3.1）:
  * 掲示板スレッドは現状 {@code visibility} カラムを持たない所属固定機能のため、
  * {@link #toStandard(StandardVisibility)} は引数値に関わらず常に
- * {@link StandardVisibility#MEMBERS_ONLY} を返す。
- * scope メンバー判定は基底クラスの MEMBERS_ONLY 経路がそのまま適用され、
+ * {@link StandardVisibility#SCOPE_AFFILIATED} を返す。
+ * scope メンバー判定は基底クラスの SCOPE_AFFILIATED 経路がそのまま適用され、
  * 「所属メンバーのみ可視」が実現される。</p>
  *
  * <p>後日 {@code visibility} カラムを追加する場合は別軍議で機能仕様策定の上、

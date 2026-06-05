@@ -34,7 +34,7 @@ import static org.mockito.Mockito.when;
  * <p>F00 Phase D-β — FILE_ATTACHMENT 用 Resolver の判定パイプラインをサブクラス特化観点で検証する：</p>
  * <ul>
  *   <li>{@link ReferenceType#FILE_ATTACHMENT} 固定登録</li>
- *   <li>TEAM スコープ → {@link com.mannschaft.app.common.visibility.StandardVisibility#MEMBERS_ONLY}</li>
+ *   <li>TEAM スコープ → {@link com.mannschaft.app.common.visibility.StandardVisibility#SCOPE_AFFILIATED}</li>
  *   <li>ORGANIZATION スコープ → {@link com.mannschaft.app.common.visibility.StandardVisibility#ORGANIZATION_WIDE}</li>
  *   <li>PERSONAL スコープ → {@link com.mannschaft.app.common.visibility.StandardVisibility#PRIVATE}（所有者のみ）</li>
  *   <li>不存在 ID → fail-closed（false）</li>
