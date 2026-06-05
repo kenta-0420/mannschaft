@@ -150,8 +150,15 @@ class PaymentRequestServiceTest {
                     .build();
             old.setId(oldId);
             given(paymentRequestRepository.findByIdAndDeletedAtIsNull(oldId)).willReturn(Optional.of(old));
+            // save は JPA の @GeneratedValue を代替して、未採番の新規行に id を採番する（本番では save が UUID を採番）。
             given(paymentRequestRepository.save(any(PaymentRequestEntity.class)))
-                    .willAnswer(inv -> inv.getArgument(0));
+                    .willAnswer(inv -> {
+                        PaymentRequestEntity e = inv.getArgument(0);
+                        if (e.getId() == null) {
+                            e.setId(UUID.randomUUID());
+                        }
+                        return e;
+                    });
 
             CreatePaymentRequestCommand cmd = new CreatePaymentRequestCommand(
                     TEAM_ID, "リーグ参加費（再）", null, 30000L, "JPY", null,
