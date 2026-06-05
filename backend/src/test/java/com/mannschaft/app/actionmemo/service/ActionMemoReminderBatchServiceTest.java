@@ -2,11 +2,13 @@ package com.mannschaft.app.actionmemo.service;
 
 import com.mannschaft.app.actionmemo.entity.UserActionMemoSettingsEntity;
 import com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -15,7 +17,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
@@ -28,8 +33,8 @@ import static org.mockito.Mockito.verify;
 /**
  * {@link ActionMemoReminderBatchService} 単体テスト（F02.5 Phase 6-2）。
  *
- * <p>{@code executeAt(LocalTime)} を直接呼び出すことで、
- * {@code LocalTime.now()} のモックを不要にしてテスト可能にしている。</p>
+ * <p>後方互換の {@code executeAt(LocalTime)} / {@code executeAt(LocalTime, LocalDate)} および
+ * ユーザーTZ対応の {@code executeAt(ZonedDateTime)} を検証する。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ActionMemoReminderBatchService 単体テスト")
@@ -37,6 +42,9 @@ class ActionMemoReminderBatchServiceTest {
 
     @Mock
     private UserActionMemoSettingsRepository settingsRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @Mock
     private NotificationService notificationService;
@@ -47,83 +55,244 @@ class ActionMemoReminderBatchServiceTest {
     @InjectMocks
     private ActionMemoReminderBatchService service;
 
-    @Test
-    @DisplayName("execute_対象なし_何もしない")
-    void execute_対象なし_何もしない() {
-        // given
-        given(settingsRepository.findByReminderEnabledTrueAndReminderTimeIsNotNull())
-                .willReturn(List.of());
+    // ================================================================
+    // 後方互換テスト: executeAt(LocalTime) / executeAt(LocalTime, LocalDate)
+    // ================================================================
 
-        // when
-        service.executeAt(LocalTime.of(9, 0));
+    @Nested
+    @DisplayName("後方互換: executeAt(LocalTime)")
+    class LegacyExecuteAt {
 
-        // then
-        verify(notificationService, never()).createNotification(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
-        verify(auditLogService, never()).record(
-                any(), any(), any(), any(), any(), any(), any(), any(), any());
+        @Test
+        @DisplayName("execute_対象なし_何もしない")
+        void execute_対象なし_何もしない() {
+            // given
+            given(settingsRepository.findByReminderEnabledTrueAndReminderTimeIsNotNull())
+                    .willReturn(List.of());
+
+            // when
+            service.executeAt(LocalTime.of(9, 0));
+
+            // then
+            verify(notificationService, never()).createNotification(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(auditLogService, never()).record(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("execute_時刻一致_通知が送られる")
+        void execute_時刻一致_通知が送られる() {
+            // given
+            LocalTime targetTime = LocalTime.of(9, 0);
+            LocalDate today = LocalDate.of(2026, 5, 4);
+            UserActionMemoSettingsEntity settings = UserActionMemoSettingsEntity.builder()
+                    .userId(1L)
+                    .reminderEnabled(true)
+                    .reminderTime(targetTime)
+                    .build();
+
+            given(settingsRepository.findByReminderEnabledTrueAndReminderTimeIsNotNull())
+                    .willReturn(List.of(settings));
+
+            // when
+            service.executeAt(targetTime, today);
+
+            // then: actionUrl が /action-memo?date=YYYY-MM-DD 形式になっていることを検証
+            verify(notificationService, times(1)).createNotification(
+                    eq(1L),
+                    eq("ACTION_MEMO_REMINDER"),
+                    eq(NotificationPriority.NORMAL),
+                    eq("行動メモのリマインド"),
+                    eq("今日の行動メモを記録しましょう"),
+                    eq("ACTION_MEMO"),
+                    eq(null),
+                    eq(NotificationScopeType.PERSONAL),
+                    eq(1L),
+                    contains("/action-memo?date="),
+                    eq(null)
+            );
+            verify(auditLogService, times(1)).record(
+                    "ACTION_MEMO_REMINDER_BATCH", null, null, null, null, null, null, null,
+                    "{\"targets\":1,\"notified\":1}");
+        }
+
+        @Test
+        @DisplayName("execute_時刻不一致_通知が送られない")
+        void execute_時刻不一致_通知が送られない() {
+            // given
+            LocalTime reminderTime = LocalTime.of(9, 0);
+            LocalTime nowTime = LocalTime.of(10, 0);
+
+            UserActionMemoSettingsEntity settings = UserActionMemoSettingsEntity.builder()
+                    .userId(2L)
+                    .reminderEnabled(true)
+                    .reminderTime(reminderTime)
+                    .build();
+
+            given(settingsRepository.findByReminderEnabledTrueAndReminderTimeIsNotNull())
+                    .willReturn(List.of(settings));
+
+            // when
+            service.executeAt(nowTime);
+
+            // then
+            verify(notificationService, never()).createNotification(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(auditLogService, never()).record(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
     }
 
-    @Test
-    @DisplayName("execute_時刻一致_通知が送られる")
-    void execute_時刻一致_通知が送られる() {
-        // given
-        LocalTime targetTime = LocalTime.of(9, 0);
-        LocalDate today = LocalDate.of(2026, 5, 4);
-        UserActionMemoSettingsEntity settings = UserActionMemoSettingsEntity.builder()
-                .userId(1L)
-                .reminderEnabled(true)
-                .reminderTime(targetTime)
-                .build();
+    // ================================================================
+    // ユーザーTZ対応テスト: executeAt(ZonedDateTime)
+    // ================================================================
 
-        given(settingsRepository.findByReminderEnabledTrueAndReminderTimeIsNotNull())
-                .willReturn(List.of(settings));
+    @Nested
+    @DisplayName("ユーザーTZ対応: executeAt(ZonedDateTime)")
+    class TimezoneAwareExecuteAt {
 
-        // when
-        service.executeAt(targetTime, today);
+        /** UTC 00:00 = JST 09:00 */
+        private static final ZonedDateTime NOW_UTC_MIDNIGHT =
+                ZonedDateTime.of(2026, 6, 4, 0, 0, 0, 0, ZoneId.of("UTC"));
 
-        // then: actionUrl が /action-memo?date=YYYY-MM-DD 形式になっていることを ArgumentCaptor で検証
-        verify(notificationService, times(1)).createNotification(
-                eq(1L),
-                eq("ACTION_MEMO_REMINDER"),
-                eq(NotificationPriority.NORMAL),
-                eq("行動メモのリマインド"),
-                eq("今日の行動メモを記録しましょう"),
-                eq("ACTION_MEMO"),
-                eq(null),
-                eq(NotificationScopeType.PERSONAL),
-                eq(1L),
-                contains("/action-memo?date="),
-                eq(null)
-        );
-        verify(auditLogService, times(1)).record(
-                "ACTION_MEMO_REMINDER_BATCH", null, null, null, null, null, null, null,
-                "{\"targets\":1,\"notified\":1}");
-    }
+        @Test
+        @DisplayName("JSTユーザー_UTC00:00はJST09:00_reminder_time=09:00_通知が送られる")
+        void jstUser_UTC0000_isJST0900_reminderAt0900_送信される() {
+            // given: JST ユーザー、reminder_time = 09:00
+            UserActionMemoSettingsEntity settings = UserActionMemoSettingsEntity.builder()
+                    .userId(10L)
+                    .reminderEnabled(true)
+                    .reminderTime(LocalTime.of(9, 0))
+                    .build();
 
-    @Test
-    @DisplayName("execute_時刻不一致_通知が送られない")
-    void execute_時刻不一致_通知が送られない() {
-        // given
-        LocalTime reminderTime = LocalTime.of(9, 0);
-        LocalTime nowTime = LocalTime.of(10, 0);
+            given(settingsRepository.findByReminderEnabledTrueAndReminderTimeIsNotNull())
+                    .willReturn(List.of(settings));
+            given(userRepository.findTimezoneById(10L))
+                    .willReturn(Optional.of("Asia/Tokyo"));
 
-        UserActionMemoSettingsEntity settings = UserActionMemoSettingsEntity.builder()
-                .userId(2L)
-                .reminderEnabled(true)
-                .reminderTime(reminderTime)
-                .build();
+            // when
+            service.executeAt(NOW_UTC_MIDNIGHT);
 
-        given(settingsRepository.findByReminderEnabledTrueAndReminderTimeIsNotNull())
-                .willReturn(List.of(settings));
+            // then
+            verify(notificationService, times(1)).createNotification(
+                    eq(10L), eq("ACTION_MEMO_REMINDER"), any(), any(), any(), any(), any(), any(),
+                    eq(10L), contains("/action-memo?date=2026-06-04"), eq(null));
+            verify(auditLogService, times(1)).record(
+                    eq("ACTION_MEMO_REMINDER_BATCH"), any(), any(), any(), any(), any(), any(), any(), any());
+        }
 
-        // when
-        service.executeAt(nowTime);
+        @Test
+        @DisplayName("UTCユーザー_UTC00:00はUTC00:00_reminder_time=09:00_時刻不一致_送信されない")
+        void utcUser_UTC0000_reminderAt0900_不一致_送信されない() {
+            // given: UTC ユーザー、reminder_time = 09:00（UTC では 00:00 と一致しない）
+            UserActionMemoSettingsEntity settings = UserActionMemoSettingsEntity.builder()
+                    .userId(20L)
+                    .reminderEnabled(true)
+                    .reminderTime(LocalTime.of(9, 0))
+                    .build();
 
-        // then
-        verify(notificationService, never()).createNotification(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
-        verify(auditLogService, never()).record(
-                any(), any(), any(), any(), any(), any(), any(), any(), any());
+            given(settingsRepository.findByReminderEnabledTrueAndReminderTimeIsNotNull())
+                    .willReturn(List.of(settings));
+            given(userRepository.findTimezoneById(20L))
+                    .willReturn(Optional.of("UTC"));
+
+            // when
+            service.executeAt(NOW_UTC_MIDNIGHT);
+
+            // then: UTC ユーザーの 09:00 != UTC 00:00 なので送信されない
+            verify(notificationService, never()).createNotification(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("UTCユーザー_UTC09:00_reminder_time=09:00_送信される")
+        void utcUser_UTC0900_reminderAt0900_送信される() {
+            // given: UTC ユーザー、reminder_time = 09:00、UTC 09:00
+            ZonedDateTime nowUtc9 = ZonedDateTime.of(2026, 6, 4, 9, 0, 0, 0, ZoneId.of("UTC"));
+            UserActionMemoSettingsEntity settings = UserActionMemoSettingsEntity.builder()
+                    .userId(20L)
+                    .reminderEnabled(true)
+                    .reminderTime(LocalTime.of(9, 0))
+                    .build();
+
+            given(settingsRepository.findByReminderEnabledTrueAndReminderTimeIsNotNull())
+                    .willReturn(List.of(settings));
+            given(userRepository.findTimezoneById(20L))
+                    .willReturn(Optional.of("UTC"));
+
+            // when
+            service.executeAt(nowUtc9);
+
+            // then
+            verify(notificationService, times(1)).createNotification(
+                    eq(20L), eq("ACTION_MEMO_REMINDER"), any(), any(), any(), any(), any(), any(),
+                    eq(20L), contains("/action-memo?date=2026-06-04"), eq(null));
+        }
+
+        @Test
+        @DisplayName("ユーザーTZ未設定_フォールバックJST_UTC00:00はJST09:00_reminder_time=09:00_送信される")
+        void userTzNotFound_fallbackJst_UTC0000_reminderAt0900_送信される() {
+            // given: TZ 未設定ユーザー（empty）→ フォールバック Asia/Tokyo
+            UserActionMemoSettingsEntity settings = UserActionMemoSettingsEntity.builder()
+                    .userId(30L)
+                    .reminderEnabled(true)
+                    .reminderTime(LocalTime.of(9, 0))
+                    .build();
+
+            given(settingsRepository.findByReminderEnabledTrueAndReminderTimeIsNotNull())
+                    .willReturn(List.of(settings));
+            given(userRepository.findTimezoneById(30L))
+                    .willReturn(Optional.empty());
+
+            // when
+            service.executeAt(NOW_UTC_MIDNIGHT);
+
+            // then: フォールバック JST で 09:00 → 送信される
+            verify(notificationService, times(1)).createNotification(
+                    eq(30L), eq("ACTION_MEMO_REMINDER"), any(), any(), any(), any(), any(), any(),
+                    eq(30L), contains("/action-memo?date="), eq(null));
+        }
+
+        @Test
+        @DisplayName("ユーザーTZ不正値_フォールバックJST_UTC00:00はJST09:00_reminder_time=09:00_送信される")
+        void invalidUserTz_fallbackJst_UTC0000_reminderAt0900_送信される() {
+            // given: 不正 TZ 文字列 → フォールバック Asia/Tokyo
+            UserActionMemoSettingsEntity settings = UserActionMemoSettingsEntity.builder()
+                    .userId(40L)
+                    .reminderEnabled(true)
+                    .reminderTime(LocalTime.of(9, 0))
+                    .build();
+
+            given(settingsRepository.findByReminderEnabledTrueAndReminderTimeIsNotNull())
+                    .willReturn(List.of(settings));
+            given(userRepository.findTimezoneById(40L))
+                    .willReturn(Optional.of("INVALID_TZ_XXXXX"));
+
+            // when
+            service.executeAt(NOW_UTC_MIDNIGHT);
+
+            // then: フォールバック JST で 09:00 → 送信される
+            verify(notificationService, times(1)).createNotification(
+                    eq(40L), eq("ACTION_MEMO_REMINDER"), any(), any(), any(), any(), any(), any(),
+                    eq(40L), contains("/action-memo?date="), eq(null));
+        }
+
+        @Test
+        @DisplayName("対象なし_何もしない_auditLog不呼出し")
+        void 対象なし_何もしない() {
+            // given
+            given(settingsRepository.findByReminderEnabledTrueAndReminderTimeIsNotNull())
+                    .willReturn(List.of());
+
+            // when
+            service.executeAt(NOW_UTC_MIDNIGHT);
+
+            // then
+            verify(notificationService, never()).createNotification(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(auditLogService, never()).record(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
     }
 }

@@ -1,0 +1,126 @@
+package com.mannschaft.app.auth.controller;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.auth.dto.BlockedChildDto;
+import com.mannschaft.app.auth.dto.SwitchableChildDto;
+import com.mannschaft.app.auth.dto.SwitchableChildrenResponse;
+import com.mannschaft.app.auth.guardianship.GuardianshipSwitchService;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.GlobalExceptionHandler;
+import com.mannschaft.app.common.SecurityUtils;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
+import org.springframework.context.support.StaticMessageSource;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * {@link GuardianshipSwitchController} 契約テスト（F08.9 P3a 切替可能な子の一覧 API）。
+ *
+ * <h3>テスト観点</h3>
+ * <ul>
+ *   <li>正常系: 200 OK / children・blockedChildren が camelCase 1:1 で返る</li>
+ *   <li>viewer=自分: Service へ {@code SecurityUtils.getCurrentUserId()} の値が渡る（IDOR 防止）</li>
+ *   <li>未認証: 401（COMMON_000）</li>
+ * </ul>
+ *
+ * <h3>@WebMvcTest 非互換の回避</h3>
+ * {@code @WebMvcTest + @EnableMethodSecurity} は SecurityConfig 全ロードを要求し失敗する（#1266 前科）。
+ * 本テストは {@code MockMvcBuilders.standaloneSetup} + {@code MockedStatic<SecurityUtils>} で
+ * Controller のみを構成し Security コンテキストを回避する流儀を踏襲する。
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("GuardianshipSwitchController 契約テスト（F08.9 P3a）")
+class GuardianshipSwitchControllerTest {
+
+    private static final Long GUARDIAN_USER_ID = 100L;
+
+    @Mock
+    private GuardianshipSwitchService guardianshipSwitchService;
+
+    private MockMvc mockMvc;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private MockedStatic<SecurityUtils> securityUtilsMock;
+
+    @BeforeEach
+    void setUp() {
+        objectMapper.findAndRegisterModules();
+        MessageSource ms = new StaticMessageSource();
+        GuardianshipSwitchController controller =
+                new GuardianshipSwitchController(guardianshipSwitchService);
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
+                .setControllerAdvice(new GlobalExceptionHandler(ms))
+                .build();
+
+        securityUtilsMock = Mockito.mockStatic(SecurityUtils.class);
+        securityUtilsMock.when(SecurityUtils::getCurrentUserId).thenReturn(GUARDIAN_USER_ID);
+    }
+
+    @AfterEach
+    void tearDown() {
+        securityUtilsMock.close();
+    }
+
+    @Test
+    @DisplayName("正常系: 200 OK / camelCase / viewer=自分が Service に渡る")
+    void list_ok_200_camelCase() throws Exception {
+        SwitchableChildrenResponse serviceResponse = new SwitchableChildrenResponse(
+                List.of(new SwitchableChildDto(11L, "小学生の子", "elementary", true)),
+                List.of(new BlockedChildDto(12L, "中学生の子", "junior_high", false, "AGE_LOCKED")));
+        given(guardianshipSwitchService.listSwitchableChildren(eq(GUARDIAN_USER_ID)))
+                .willReturn(serviceResponse);
+
+        mockMvc.perform(get("/api/v1/me/guardianship/switchable-children"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.children[0].childUserId").value(11))
+                .andExpect(jsonPath("$.data.children[0].displayName").value("小学生の子"))
+                .andExpect(jsonPath("$.data.children[0].stageKey").value("elementary"))
+                .andExpect(jsonPath("$.data.children[0].switchAllowed").value(true))
+                .andExpect(jsonPath("$.data.blockedChildren[0].childUserId").value(12))
+                .andExpect(jsonPath("$.data.blockedChildren[0].stageKey").value("junior_high"))
+                .andExpect(jsonPath("$.data.blockedChildren[0].switchAllowed").value(false))
+                .andExpect(jsonPath("$.data.blockedChildren[0].reason").value("AGE_LOCKED"));
+    }
+
+    @Test
+    @DisplayName("子なし: children / blockedChildren とも空配列で 200")
+    void list_empty_200() throws Exception {
+        given(guardianshipSwitchService.listSwitchableChildren(eq(GUARDIAN_USER_ID)))
+                .willReturn(new SwitchableChildrenResponse(List.of(), List.of()));
+
+        mockMvc.perform(get("/api/v1/me/guardianship/switchable-children"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.children").isEmpty())
+                .andExpect(jsonPath("$.data.blockedChildren").isEmpty());
+    }
+
+    @Test
+    @DisplayName("未認証: 401（COMMON_000）")
+    void list_unauthenticated_401() throws Exception {
+        securityUtilsMock.when(SecurityUtils::getCurrentUserId)
+                .thenThrow(new com.mannschaft.app.common.BusinessException(CommonErrorCode.COMMON_000));
+
+        mockMvc.perform(get("/api/v1/me/guardianship/switchable-children"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("COMMON_000"));
+    }
+}

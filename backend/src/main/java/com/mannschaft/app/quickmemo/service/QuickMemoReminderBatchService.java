@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -23,6 +24,11 @@ import java.util.stream.Collectors;
  * ポイっとメモ リマインド送信バッチ。
  * 30分ごとに未送信のリマインドを確認し、ユーザー単位で集約して通知する。
  * プライバシー保護: 通知文言にメモタイトル・内容を含めない。
+ *
+ * <p><b>タイムゾーン:</b> {@code reminder1ScheduledAt} / {@code reminder2ScheduledAt} /
+ * {@code reminder3ScheduledAt} は {@link QuickMemoService} で
+ * JST（{@code Asia/Tokyo}）基準の {@link LocalDateTime} として保存される。
+ * バッチ比較の {@code now} も同じ JST で取得することで基準を統一する。</p>
  */
 @Slf4j
 @Service
@@ -30,6 +36,8 @@ import java.util.stream.Collectors;
 public class QuickMemoReminderBatchService {
 
     private static final int BATCH_LIMIT = 10000;
+    /** reminder_xScheduledAt の保存基準と同じ TZ */
+    private static final ZoneId ZONE_JST = ZoneId.of("Asia/Tokyo");
 
     private final QuickMemoRepository memoRepository;
     private final NotificationService notificationService;
@@ -39,7 +47,9 @@ public class QuickMemoReminderBatchService {
     @Scheduled(cron = "0 */30 * * * *")
     @Transactional
     public void execute() {
-        LocalDateTime now = LocalDateTime.now();
+        // reminder_xScheduledAt は QuickMemoService で JST LocalDateTime として保存されるため
+        // 比較用の now も同じ JST で取得する
+        LocalDateTime now = LocalDateTime.now(ZONE_JST);
         log.info("リマインドバッチ開始: {}", now);
 
         List<QuickMemoEntity> targets = memoRepository.findReminderTargets(now, PageRequest.of(0, BATCH_LIMIT));

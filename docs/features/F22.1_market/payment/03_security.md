@@ -4,7 +4,7 @@
 >
 > **統一基盤・正典更新（2026-06-03）**: 謝礼＋会費を共通 `ConnectChargeService` に集約／手数料 5% を支払者2.5%・受取側2.5%で折半／**返金は受取側 scope ADMIN が操作**（運営非関与・支払者負担モデル＝decouple＝明示 TransferReversal＋`reverse_transfer:false` の Refund・`refund_application_fee:false`・Mannschaft±0/受取側±0）／決済手数料は支払者負担で返金されない（利用規約・決済画面で明示・§10 / 02 §6.1）。
 >
-> **手数料ランク化・正典更新（2026-06-04）**: 手数料を定数5%から **マスタ表 `fee_policies`（率%＋固定額¥）のランク制**へ（折半50/50固定・DEFAULT=率5%＋固定0で後方互換）。**シスアド CRUD は SYSTEM_ADMIN 限定**（§3）。少額決済の「総手数料>額面」破綻を防ぐ**安全ガード必須**（§3'-11e・`PAYMENT_C050`）。レートは `escrow_transactions.fee_policy_key` に焼き付け**遡及防止**（§3'-11f）。
+> **手数料ランク化・正典更新（2026-06-04）**: 手数料を定数5%から **マスタ表 `fee_policies`（率%＋固定額¥）のランク制**へ（折半50/50固定・DEFAULT=率5%＋固定0で後方互換）。**シスアド CRUD は SYSTEM_ADMIN 限定**（§3）。少額決済の「総手数料>額面」破綻を防ぐ**安全ガード必須**（§3'-11e・実コード `PAYMENT_C060` FEE_EXCEEDS_FACE_AMOUNT/422）。レートは `escrow_transactions.fee_policy_key` に焼き付け**遡及防止**（§3'-11f）。
 
 ---
 
@@ -19,7 +19,7 @@
 
 ## 2. Webhook 署名検証 ＋ 冪等性
 
-- **署名検証必須**: `POST /api/v1/webhooks/stripe/connect` は permitAll だが `Stripe-Signature` を `StripePaymentProvider.constructEvent()` で検証。検証失敗は 400（`PAYMENT_040`）。
+- **署名検証必須**: `POST /api/v1/webhooks/stripe/connect` は permitAll だが `Stripe-Signature` を `StripePaymentProvider.constructEvent()` で検証。検証失敗は 400（実コード `PAYMENT_C040` WEBHOOK_SIGNATURE_INVALID）。
 - **Connect 用署名シークレットを分離**: `STRIPE_CONNECT_WEBHOOK_SECRET`（platform 用 `STRIPE_WEBHOOK_SECRET` と別）。Stripe 推奨のエンドポイント分離。
 - **冪等性キー**: `stripe_webhook_events.event_id`（UNIQUE）。受信直後の INSERT を冪等ゲートにし、重複・並行受信を一意制約で直列化（01 §3.5・02 §4.1）。
 - **二重決済防止の三重防御**: ① Stripe idempotency_key（与信/capture/返金）、② `stripe_webhook_events.event_id` UNIQUE、③ 最終認証の札行 `PESSIMISTIC_WRITE` ロック直列化（02 §5.3）。
@@ -40,7 +40,7 @@
 | Connect onboarding（組織） | **組織 scope ADMIN** | `checkAdminOrHasPermission(orgId, ...)`（ORG 専用） |
 | Connect 状態照会 | 同上（自 scope のみ） | scope 所有権検証。他 scope は 404 秘匿 |
 | 札の謝礼設定 | **札主 scope の ADMIN / `MANAGE_RECRUITMENTS` 保有 DEPUTY** | 既存札 API の認可に委譲（F03.11 §2）。市から直接立てない |
-| 個人受領者の指定 | 札主 scope に紐づく者のみ | `payee_kind=USER` の `payee_user_id` が札主チーム所属か検証（`PAYMENT_013`） |
+| 個人受領者の指定 | 札主 scope に紐づく者のみ | `payee_kind=USER` の `payee_user_id` が札主チーム所属か検証（実コード `PAYMENT_C013` PAYEE_NOT_IN_SCOPE） |
 | **返金（謝礼・会費共通）** | **受取側 scope の ADMIN のみ**（運営非関与・設定A） | `escrow.payee`（受取側 scope）の所有権検証（IDOR・§4）。Mannschaft 運営は返金操作に関与しない。無関係 scope は 404 秘匿。**`feeBearer`（PAYER/PAYEE）の選択も受取側 ADMIN の権限内**（02 §6.1） |
 | 会費徴収（即時モード） | **会員本人**（自己支払い） | F08.2 既存の会費支払い認可に委譲。内部で `ConnectChargeService` を呼ぶ（02 §5.1b） |
 | エスクロー状態照会 | 受取側 scope ADMIN ＋ **受領者本人** | 受領者は自分宛の払出のみ閲覧可。無関係 scope は 404 |
@@ -54,7 +54,7 @@
 
 - **escrow_transaction の所有権検証**: `GET /escrow/{id}` は `escrow.source_kind/source_id` から札（または会費項目）を引き、その scope の所有権を `AccessControlService` で照合。**返金は `escrow.payee`（受取側 scope）の ADMIN 所有権を照合**（返金の操作主体＝受取側のため・設定A）。不一致は **404 秘匿**（存在を漏らさない）。
 - **connect_account の所有権検証**: `GET /connect/status` は `scope_kind/scope_id` の所有権を照合。他人の `acct_xxx`・`requirements_due` を露出しない。
-- **受領者指定の越権防止**: `payee_kind=USER` で札主チームに無関係の `payee_user_id` を指定 → `PAYMENT_013`。第三者を勝手に受領者にできない。
+- **受領者指定の越権防止**: `payee_kind=USER` で札主チームに無関係の `payee_user_id` を指定 → `PAYMENT_C013`。第三者を勝手に受領者にできない。
 - **payment_intent / client_secret の漏洩防止**: `client_secret` は与信作成時に**支払者本人のみ**へ返す。公開 DTO・一覧 API には決済トークンを一切含めない（F22.1 本体 04 §1.3 の禁則ワードテストに `client_secret`/`pi_`/`acct_`/`stripe` を追加）。
 
 ---
@@ -132,7 +132,7 @@ CLAUDE.md の退会 PII 二段モデル（即時消去/30日猶予）に整合�
 - [x] **9. IDOR（escrow/connect の他人参照）** → scope 所有権検証・404 秘匿（§4）。
 - [x] **10. Webhook 許可リスト** → 既存 `/webhooks/stripe/*` で被覆。baseline §3.6 に明記（§2.1）。
 - [x] **11. 手数料率（確定: 案あ＝DEFAULT・2026-06-04 ランク化）** → **手数料はマスタ表 `fee_policies`（率%＋固定額¥）で持ち折半50/50固定**。DEFAULT＝率5%＋固定0＝旧「総5%折半」と完全一致（後方互換）。source_kind＋sub_key で `FeePolicyResolver` が解決（完全一致→既定→DEFAULT）。`escrow_transactions.fee_policy_key` に焼き付け遡及防止。`PaymentFeeCalculator` は定数撤廃→policy 注入の純粋関数。`stripe_fee_rate` 既定 0.036（純益試算・参考）。シスアド CRUD は SYSTEM_ADMIN 限定（README §3.4 / 01 §3.6/§3.7 / 02 §3.5/§11）。
-- [x] **11e. 手数料の安全ガード（少額破綻防止）** → 固定額混在で「総手数料 > 額面」になると `application_fee ≤ amount` 違反＋破綻。起票前に **total_fee ≤ face を必須検証**し違反は `PAYMENT_C050`（422・ERROR_CODE_STATUS_MAP 登録）で拒否（業務上限/下限キャップは無し・症状を隠さない・02 §3.5.2）。
+- [x] **11e. 手数料の安全ガード（少額破綻防止）** → 固定額混在で「総手数料 > 額面」になると `application_fee ≤ amount` 違反＋破綻。起票前に **total_fee ≤ face を必須検証**し違反は実コード `PAYMENT_C060`（`FEE_EXCEEDS_FACE_AMOUNT`・422・ERROR_CODE_STATUS_MAP 登録）で拒否（業務上限/下限キャップは無し・症状を隠さない・02 §3.5.2）。`PAYMENT_C050` は実コードでは `STRIPE_API_ERROR`（500）であり安全ガードではない（02 §7）。
 - [x] **11f. 料率改定の遡及防止** → charge/与信/サブスク加入時に解決した `policy_key`・算出金額を escrow（`fee_policy_key`）/membership_subscriptions に焼き付け。`fee_policies` 改定は新規徴収のみ反映・既存取引は固定（README §3.4.2 / 01 §3.2）。**F22.1 突合（返金 feeBearer 2モード）は保存済み amount−application_fee の差分計算ゆえ rate 非依存＝ランク可変でも整合**（02 §6.1）。`chk_et_fee` は安全ガードにより構造維持。
 - [x] **11b. 返金の操作主体・方式（確定: 設定A・支払者負担モデル 2026-06-03）** → 受取側 scope ADMIN が操作（運営非関与）・**decouple 方式＝明示 TransferReversal(R)＋`reverse_transfer:false` の Refund(R)**・`refund_application_fee:false`・支払者へ戻すのは transferAmount（決済手数料・支払上乗せは非返還で支払者負担・Mannschaft±0/受取側±0）・利用規約/決済画面で明示（§10 / 02 §6.1）。
 - [x] **11c. 受取側残高不足のマイナス残高** → Stripe 自動回収・Mannschaft 請求なし（§6・立替しない）。
