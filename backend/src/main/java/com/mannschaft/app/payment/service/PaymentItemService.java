@@ -220,6 +220,17 @@ public class PaymentItemService {
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_ITEM_NOT_FOUND));
     }
 
+    /**
+     * F08.9 P5: 項目の Stripe Product/Price ID 焼付を永続化する（継続課金 Price の get-or-create 後の保存用）。
+     *
+     * <p>{@link MembershipSubscriptionService#subscribe} が recurring Price を get-or-create したあと、
+     * 項目に焼き付けた {@code stripeProductId}/{@code stripePriceId} を永続化するために呼ぶ。</p>
+     */
+    @Transactional
+    public void saveStripeIds(PaymentItemEntity item) {
+        paymentItemRepository.save(item);
+    }
+
     // --- Stripe Price 管理フロー ---
 
     private void handleAutoStripeCreation(PaymentItemEntity entity) {

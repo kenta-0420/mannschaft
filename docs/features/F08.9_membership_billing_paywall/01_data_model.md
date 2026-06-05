@@ -328,9 +328,10 @@ connect_accounts(F22.1・拡張: tax_registration_number/tax_status)
 | 版（予定） | 内容 |
 |---|---|
 | `V74.001__alter_member_payments_add_payer.sql` | `payer_user_id`/`payment_proxy_grant_id`/`payer_relationship`/`escrow_transaction_id`/`membership_subscription_id` 追加・INDEX |
-| `V74.002__alter_payment_items_add_term_tax.sql` | `type` ENUM に `TERM` 追加／`is_recurring`/`billing_interval`/`term_starts_on`/`term_ends_on`/`tax_category`/`tax_rate`/`price_includes_tax` 追加 |
+| `V74.20260605130020__alter_payment_items_add_recurring.sql`（**P5 第一波・実装済 2026-06-05**） | **継続課金列のみ**：`is_recurring`/`billing_interval` 追加（タイムスタンプ式採番）。`type` ENUM の `TERM`／`term_*`／`tax_*` は別スコープゆえ後続波で追加（本波には含めない） |
+| `V74.002__alter_payment_items_add_term_tax.sql`（TERM/税は後続波・未着手） | `type` ENUM に `TERM` 追加／`term_starts_on`/`term_ends_on`/`tax_category`/`tax_rate`/`price_includes_tax` 追加（採番はマージ直前にタイムスタンプ式で確定） |
 | `V74.003__alter_connect_accounts_add_tax.sql` | `tax_registration_number`/`tax_status` 追加（F22.1 テーブルへの追記・要 F22.1 側調整） |
-| `V74.004__create_membership_subscriptions.sql`（継続課金は P5・未着手） | 継続課金テーブル（UUIDv7・`fee_policy_key`・`skip_until` 含む） |
+| `V74.20260605130010__create_membership_subscriptions.sql`（**P5 第一波・実装済 2026-06-05**） | 継続課金テーブル（UUIDv7・`fee_policy_key`・`skip_until`・`face_amount`/`currency` price-lock 含む）。タイムスタンプ式採番（origin/main 最大 `V74.20260605120020` の後にソート） |
 | `V74.20260605120010__create_payment_requests.sql`（**P7 第一波・実装済 2026-06-05**） | 協会請求テーブル（UUIDv7）。タイムスタンプ式採番（origin/main 最大 `V74.20260605000020` の後にソート） |
 | `V74.006__create_payment_proxy_grants.sql`（P1・実装済） | 第三者代理払い許可テーブル（UUIDv7） |
 | `V74.20260605120020__create_team_payment_advances.sql`（**P7 第一波・実装済 2026-06-05**） | 立替/精算記録テーブル（UUIDv7・案3・§2.5）。`payment_request_id` に UNIQUE（1請求＝1立替の冪等） |
