@@ -9,6 +9,7 @@ import com.mannschaft.app.payment.MembershipBillingErrorCode;
 import com.mannschaft.app.payment.MembershipSubscriptionStatus;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.payment.connect.ScopeKind;
+import com.mannschaft.app.payment.dto.MembershipSubscriptionListItemResponse;
 import com.mannschaft.app.payment.entity.MembershipSubscriptionEntity;
 import com.mannschaft.app.payment.service.MembershipSubscriptionService;
 import org.junit.jupiter.api.AfterEach;
@@ -27,6 +28,8 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.time.LocalDate;
+import java.util.Collections;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -34,6 +37,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -212,5 +216,112 @@ class MembershipSubscriptionControllerTest {
         mockMvc.perform(delete("/api/v1/membership-subscriptions/{id}", SUB_ID))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("MEMBERSHIP_BILLING_015"));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 第四波: skip / resume / 一覧 契約テスト
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("skip 正常系 → 200・skipUntil 反映")
+    void skip_200() throws Exception {
+        MembershipSubscriptionEntity skipped = pendingSubscription().toBuilder()
+                .status(MembershipSubscriptionStatus.ACTIVE)
+                .skipUntil(java.time.LocalDate.of(2026, 10, 30))
+                .build();
+        skipped.setId(SUB_ID);
+        given(service.skip(eq(SUB_ID), eq(PAYER))).willReturn(skipped);
+
+        mockMvc.perform(post("/api/v1/membership-subscriptions/{id}/skip", SUB_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.skipUntil").value("2026-10-30"))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+    }
+
+    @Test
+    @DisplayName("skip 既スキップ → 409（MEMBERSHIP_BILLING_017）")
+    void skip_alreadySkipped_409() throws Exception {
+        given(service.skip(eq(SUB_ID), eq(PAYER)))
+                .willThrow(new BusinessException(MembershipBillingErrorCode.SUBSCRIPTION_ALREADY_SKIPPED));
+
+        mockMvc.perform(post("/api/v1/membership-subscriptions/{id}/skip", SUB_ID))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("MEMBERSHIP_BILLING_017"));
+    }
+
+    @Test
+    @DisplayName("skip 無権原 → 403（MEMBERSHIP_BILLING_018）")
+    void skip_notAuthorized_403() throws Exception {
+        given(service.skip(eq(SUB_ID), eq(PAYER)))
+                .willThrow(new BusinessException(MembershipBillingErrorCode.SUBSCRIPTION_NOT_AUTHORIZED));
+
+        mockMvc.perform(post("/api/v1/membership-subscriptions/{id}/skip", SUB_ID))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("MEMBERSHIP_BILLING_018"));
+    }
+
+    @Test
+    @DisplayName("resume 正常系 → 200・skipUntil=null")
+    void resume_200() throws Exception {
+        MembershipSubscriptionEntity resumed = pendingSubscription().toBuilder()
+                .status(MembershipSubscriptionStatus.ACTIVE)
+                .build();
+        resumed.setId(SUB_ID);
+        given(service.resume(eq(SUB_ID), eq(PAYER))).willReturn(resumed);
+
+        mockMvc.perform(post("/api/v1/membership-subscriptions/{id}/resume", SUB_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.skipUntil").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("resume スキップ未適用 → 409（MEMBERSHIP_BILLING_022）")
+    void resume_notSkipped_409() throws Exception {
+        given(service.resume(eq(SUB_ID), eq(PAYER)))
+                .willThrow(new BusinessException(MembershipBillingErrorCode.SUBSCRIPTION_NOT_SKIPPED));
+
+        mockMvc.perform(post("/api/v1/membership-subscriptions/{id}/resume", SUB_ID))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("MEMBERSHIP_BILLING_022"));
+    }
+
+    @Test
+    @DisplayName("listMySubscriptions 正常系 → 200・空リスト")
+    void listMySubscriptions_200_empty() throws Exception {
+        given(service.findForPayerWithNames(eq(PAYER))).willReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/api/v1/me/membership-subscriptions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data").isEmpty());
+    }
+
+    @Test
+    @DisplayName("listMySubscriptions 正常系 → 200・1件（nextBillingDate・validUntil 確認）")
+    void listMySubscriptions_200_withItem() throws Exception {
+        MembershipSubscriptionListItemResponse item = MembershipSubscriptionListItemResponse.builder()
+                .id(SUB_ID)
+                .paymentItemId(ITEM_ID)
+                .itemName("月会費")
+                .beneficiaryUserId(BENEFICIARY)
+                .beneficiaryDisplayName("テストユーザー")
+                .payerUserId(PAYER)
+                .status("ACTIVE")
+                .billingInterval("MONTHLY")
+                .faceAmount(3000)
+                .currency("JPY")
+                .nextBillingDate(LocalDate.of(2026, 9, 30))
+                .validUntil(LocalDate.of(2026, 9, 30))
+                .cancelAtPeriodEnd(false)
+                .build();
+        given(service.findForPayerWithNames(eq(PAYER))).willReturn(java.util.List.of(item));
+
+        mockMvc.perform(get("/api/v1/me/membership-subscriptions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").value(SUB_ID.toString()))
+                .andExpect(jsonPath("$.data[0].itemName").value("月会費"))
+                .andExpect(jsonPath("$.data[0].beneficiaryDisplayName").value("テストユーザー"))
+                .andExpect(jsonPath("$.data[0].nextBillingDate").value("2026-09-30"))
+                .andExpect(jsonPath("$.data[0].validUntil").value("2026-09-30"));
     }
 }
