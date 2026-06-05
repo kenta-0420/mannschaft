@@ -234,6 +234,8 @@ POST   /api/v1/teams/{teamId}/payment-advances/{id}/confirm-settlement  # 精算
 - **支払い（payer=TEAM 案3・README §6.3）**：`ConnectChargeService.charge(...)` で `payer_scope_kind=TEAM`/`payee_kind=ORG`。**Stripe の課金 Customer は操作した当該チーム ADMIN 個人の `stripe_customers`**（チームの法人 Customer は持たない）。`status=PAID`・`escrow_transaction_id` 連結。同時に `team_payment_advances` を **`PENDING` で起票**（`payer_user_id`＝操作 ADMIN・`team_id`・`advanced_amount`＝課金額・`payment_request_id`/`escrow_transaction_id` 連結）。**領収書はチーム名義**（`on_behalf_of`＝協会）。手数料は `fee_policies`（協会請求パターン or DEFAULT・README §6.1）で解決。
 - **精算確認**：チームから ADMIN へ精算（立替金の返金）が行われたら、`confirm-settlement` で `team_payment_advances.settlement_status=SETTLED`・`settled_at`・`settled_confirmed_by` を記録。精算依頼は **F04.9 確認必須通知**でチーム ADMIN（または会計担当）へ配信。
 - 認可：発行＝協会 ADMIN／支払い＝当該チーム ADMIN／精算確認＝当該チーム ADMIN（03_security §1）。
+- **状態遷移と支払い可否（P7 第一波で確定・2026-06-05）:** 支払い可能な状態は **`SENT`/`VIEWED`/`OVERDUE`**。期限超過（`OVERDUE`）でも実運用上は支払えるべきため**支払い可**とする。`DRAFT`（未配信）/`PAID`/`CANCELLED` からの支払いは不可（409）。取消は `DRAFT`/`SENT` のみ（`PAID` 後不可）。READY（着金口座 `payouts_enabled`）検証は**支払い時**に行う（発行時ではない・即時モードゆえ HELD にしない）。再請求は CANCELLED 後に新行を起票し旧行 `superseded_by_id` に新行を指す（**CANCELLED の行のみ supersede 可**＝循環防止）。
+- **実装スコープ（P7 第一波）:** `PaymentRequestService.create/cancel/pay/findForTeam/findForOrg` と `TeamPaymentAdvanceService.createAdvance/confirmSettlement/findForTeam` をサービス層まで実装（Service UT 13＋6 件）。**Controller・配信(`send`/通知)・`OVERDUE` バッチ・一覧 API・inbox アダプタは第二波**。`pay` は設計書どおり charge 成功で `status=PAID`（webhook 厳密化は第二波の検討事項）。
 - エラー：`PAYMENT_REQUEST_NOT_FOR_THIS_TEAM`(403)／`PAYMENT_REQUEST_ALREADY_PAID`(409)／`PAYMENT_REQUEST_CANCELLED`(409)。
 
 ---
@@ -282,11 +284,15 @@ GET /api/v1/teams/{id}/fee-statements?period=YYYY-MM   # 受領者向け：Manns
 | `MEMBERSHIP_ALREADY_PAID` | 409 | 受益者×項目に有効な支払い済 |
 | `CONNECT_ACCOUNT_NOT_READY` | 409 | 受領者の Connect 口座が READY でない |
 | `SUBSCRIPTION_INVOICE_FEE_OVERRIDE_FAILED` | 500 | invoice 手数料上書き失敗（要再試行・監視） |
-| `PAYMENT_REQUEST_NOT_FOR_THIS_TEAM` | 403 | 請求先チーム不一致 |
-| `PAYMENT_REQUEST_ALREADY_PAID` | 409 | 請求が支払い済 |
+| `PAYMENT_REQUEST_NOT_FOUND` | 404 | 協会請求が見つからない（IDOR 秘匿・`MEMBERSHIP_BILLING_007`） |
+| `PAYMENT_REQUEST_INVALID_STATUS` | 409 | 現在の状態では取消/支払い不可（`MEMBERSHIP_BILLING_008`） |
+| `PAYMENT_REQUEST_NOT_FOR_THIS_TEAM` | 403 | 請求先チーム不一致／支払い権限なし（`MEMBERSHIP_BILLING_011`） |
+| `PAYMENT_REQUEST_ALREADY_PAID` | 409 | 請求が支払い済（`MEMBERSHIP_BILLING_009`） |
+| `PAYMENT_REQUEST_CONNECT_NOT_READY` | 409 | 着金先（協会 Connect 口座）が未 READY（支払い時に検証・`MEMBERSHIP_BILLING_010`） |
+| `PAYMENT_ADVANCE_NOT_FOUND` | 404 | 立替記録が見つからない（IDOR 秘匿・`MEMBERSHIP_BILLING_012`） |
 | `SUBSCRIPTION_NOT_ACTIVE` | 409 | スキップ/再開対象が ACTIVE でない |
 | `SUBSCRIPTION_ALREADY_SKIPPED` | 409 | 既に今月スキップ済（skip_until セット済） |
-| `ADVANCE_ALREADY_SETTLED` | 409 | 立替が既に精算済（重複確認防止） |
+| `ADVANCE_ALREADY_SETTLED`（実装名 `PAYMENT_ADVANCE_ALREADY_SETTLED`） | 409 | 立替が既に精算済（重複確認防止・`MEMBERSHIP_BILLING_013`） |
 
 ---
 

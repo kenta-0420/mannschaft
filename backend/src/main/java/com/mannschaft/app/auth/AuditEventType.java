@@ -387,7 +387,29 @@ public enum AuditEventType {
      * 保護者が子の自立移行の引き継ぎ（パスワード設定リンク送付）を開始した（F08.9 P3c-2・02_api §2.3）。
      * userId=保護者 / targetUserId=子。childEmail を新規登録した場合は metadata に記録する。
      */
-    GUARDIANSHIP_HANDOVER_INITIATED(AuditEventCategory.PAYMENT);
+    GUARDIANSHIP_HANDOVER_INITIATED(AuditEventCategory.PAYMENT),
+
+    // ─── PAYMENT_REQUEST (F08.9 P7 協会→加盟チーム請求) ─────────────
+    /**
+     * 協会(ORG)が加盟チーム(TEAM)への請求を発行した（DRAFT 起票・F08.9 P7・02_api §7）。
+     * userId=発行者(協会 ADMIN) / metadata に paymentRequestId・payerTeamId・faceAmount。
+     */
+    PAYMENT_REQUEST_CREATED(AuditEventCategory.PAYMENT),
+    /**
+     * 協会が請求を取消した（DRAFT/SENT → CANCELLED・F08.9 P7・02_api §7）。
+     * userId=操作者(協会 ADMIN) / metadata に paymentRequestId。
+     */
+    PAYMENT_REQUEST_CANCELLED(AuditEventCategory.PAYMENT),
+    /**
+     * チーム ADMIN が協会請求を支払った（PAID・案3 立替課金・F08.9 P7・02_api §7）。
+     * userId=操作者(チーム ADMIN) / teamId=請求先チーム / metadata に paymentRequestId・escrowId・advanceId。
+     */
+    PAYMENT_REQUEST_PAID(AuditEventCategory.PAYMENT),
+    /**
+     * チーム ADMIN が立替金の精算を確認した（PENDING → SETTLED・F08.9 P7・02_api §7）。
+     * userId=確認者(チーム ADMIN) / teamId=チーム / metadata に advanceId・paymentRequestId。
+     */
+    PAYMENT_ADVANCE_SETTLED(AuditEventCategory.PAYMENT);
 
     private final AuditEventCategory category;
 }
