@@ -1424,6 +1424,7 @@
     "saveError": "Failed to save",
     "removeConfirm": "Are you sure you want to remove this?",
     "dragHandle": "Reorder",
+    "labelFavorited": "Favorited",
     "entityType": {
       "TEAM": "Team",
       "ORGANIZATION": "Organization",
