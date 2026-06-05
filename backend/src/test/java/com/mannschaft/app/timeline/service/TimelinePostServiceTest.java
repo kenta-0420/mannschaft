@@ -446,6 +446,60 @@ class TimelinePostServiceTest {
     }
 
     // ========================================
+    // createSystemPost
+    // ========================================
+    @Nested
+    @DisplayName("createSystemPost")
+    class CreateSystemPost {
+
+        @Test
+        @DisplayName("正常系: TEAMスコープで非メンバーユーザーでもメンバーシップチェックなしで投稿できる")
+        void TEAMスコープで非メンバーでもシステム投稿できる() {
+            // given: accessControlService は一切呼ばれない想定
+            Long teamId = 50L;
+            CreatePostRequest req = new CreatePostRequest("【物件履歴】自動投稿テスト", "TEAM", teamId,
+                    "USER", null, null, null, null, null, null);
+            TimelinePostEntity savedPost = createPost();
+            PostResponse expected = createPostResponse();
+
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+
+            // when
+            PostResponse result = timelinePostService.createSystemPost(req, USER_ID);
+
+            // then: 正常に投稿が作成される
+            assertThat(result).isNotNull();
+            verify(postRepository).save(any(TimelinePostEntity.class));
+            // メンバーシップチェックは呼ばれないこと
+            then(accessControlService).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("正常系: ORGANIZATIONスコープでもメンバーシップチェックなしで投稿できる")
+        void ORGANIZATIONスコープでもシステム投稿できる() {
+            // given: accessControlService は一切呼ばれない想定
+            Long orgId = 70L;
+            CreatePostRequest req = new CreatePostRequest("【物件履歴】組織自動投稿", "ORGANIZATION", orgId,
+                    "USER", null, null, null, null, null, null);
+            TimelinePostEntity savedPost = createPost();
+            PostResponse expected = createPostResponse();
+
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+
+            // when
+            PostResponse result = timelinePostService.createSystemPost(req, USER_ID);
+
+            // then: 正常に投稿が作成される
+            assertThat(result).isNotNull();
+            verify(postRepository).save(any(TimelinePostEntity.class));
+            // メンバーシップチェックは呼ばれないこと
+            then(accessControlService).shouldHaveNoInteractions();
+        }
+    }
+
+    // ========================================
     // updatePost
     // ========================================
     @Nested
