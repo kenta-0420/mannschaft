@@ -331,6 +331,7 @@ connect_accounts(F22.1・拡張: tax_registration_number/tax_status)
 
 - **payer_user_id／beneficiary_user_id** は退会時、`user_id` の匿名化方針に従う（投稿・履歴・統計は残し PII のみ消去）。`member_payments`・`membership_subscriptions`・`team_payment_advances` は**金銭記録**ゆえ物理削除せず、ユーザー参照を NULL 化せずに匿名化（会計・税務保持義務）。`team_payment_advances`（立替/精算）は退会後も保持し、PENDING のまま残る立替は退会者の表示名のみ匿名化（精算確認の対象＝チームに帰属する金銭事実は消さない）。保持期間は F12.3／F09.18 の方針に整合（決済 payload 30日・to_address 13ヶ月・メタ7年相当を踏襲・§税務確定で再調整）。
 - **後見切替セッション**の代理操作は `proxy_input_records`（F14.1）に記録。退会・年齢到達（中学進学）で切替権原は自動失効（`users.status` 連動・F14.1 の DECEASED/RELOCATED 失効と同型）。
+  - **是正（P3c・2026-06-05）**：後見切替は紙の同意書（`proxy_input_consents`）を伴わないステートレス代理のため、`proxy_input_records.proxy_input_consent_id` を **NULLABLE 化**（V74.010）した。後見切替由来の記録は `proxy_input_consent_id=NULL`・`input_source='GUARDIANSHIP_SWITCH'`（新 enum 値・`input_source` は VARCHAR(32)・CHECK なしゆえ DDL 追加不要）・`feature_scope='PAYMENT'`・`target_entity_type='GUARDIANSHIP_SWITCH'`・`target_entity_id=childUserId` で追記する。FK は NULL を参照整合性チェックから除外するため支障なし。既存の紙運用（F14.1）の記録は従来どおり consent_id を持つ。
 - **退会時のアトミック失効**（受益者 or 払い手の退会処理＝`UserWithdrawalService` のトランザクション内で実行・宙ぶらりんを残さない）：
   1. 当該ユーザーが受益者の `membership_subscriptions` を `CANCELLED`（＋ Stripe Subscription を cancel）
   2. 当該ユーザーが受益者/払い手の `payment_proxy_grants` を `REVOKED`

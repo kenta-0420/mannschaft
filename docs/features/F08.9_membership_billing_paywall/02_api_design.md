@@ -85,6 +85,13 @@ POST /api/v1/me/guardianship/children/{childUserId}/handover/initiate   # 引き
 - **封印の発火**：国別ポリシーの境界日（日本＝年度替わり4/1）で `switchAllowed=false` となり切替が 403。封印後も**保護者は会費の代理払いだけは継続可**（§3 の保護者リンク経由・切替なしで）。
 - **未引き継ぎ時の保険**：封印時点で子がパスワード未設定なら、子のメールへ「あなたのアカウントへようこそ。パスワードを設定してください」を自動送付（取り残し防止）。保護者の会費代理払いは引き続き機能するため**会費滞納は起きない**。
 
+#### 実装（P3c-2・2026-06-05）
+
+- **境界日メソッド**：`GuardianshipAgePolicy.sealDate(birthDate, clock)` を追加（JP/Default 両実装）。`switchAllowed` が `false` に変わる最初の日を返す（JP＝満12歳に達する年度の翌4/1・Default＝満13歳の誕生日）。`clock` 非依存で生年月日から一意に定まる（既に封印済みの子は過去日を返す）。`resolve` の境界と整合（境界日当日に `switchAllowed=false`）。
+- **`GET .../independence-status`**：`IndependenceStatusResponse { childUserId, stageKey, switchAllowed, sealDate, passwordSet }`。`passwordSet` は `users.password_hash` の有無（引き継ぎ完了の目安）。**呼び出し元が当該子の有効な保護者でない場合は 403**（`GUARDIANSHIP_LINK_NOT_FOUND`＝`MEMBERSHIP_BILLING_005`・IDOR 防止）。封印済み（`switchAllowed=false`）でも例外にせず段階・境界日・パスワード設定有無を返す（状況把握用）。生年月日解決不能の子は安全側（`switchAllowed=false`・`stageKey=independent`・`sealDate=null`）。
+- **`POST .../handover/initiate`**：Body `{ childEmail? }`。子メールへパスワード設定リンクを送付（`AuthPasswordResetService.requestPasswordReset` を流用＝`PasswordResetRequestedEvent`→`EmailOutboxService.enqueue` 経由・F09.18）。**childEmail 規則**：子に既存（ルーティング可能な）メールあり×childEmail 指定 → 400（上書き拒否・`MEMBERSHIP_BILLING_006`／メール変更フローの迂回防止）。子にメールあり×指定なし → 既存メールへ送付。子にメールなし（内部プレースホルダ `*.mannschaft.internal`）×指定あり → 重複チェック（`existsByEmail`・重複は `AUTH_013`）後 `users.email` へ登録して送付。子にメールなし×指定なし → 400（`MEMBERSHIP_BILLING_006`）。**acting-as（後見切替セッション）中は 403**（保護者本人の権原で行う引き継ぎゆえ `AuthenticationCriticalOperationGuard.assertNotActingAs()` を適用・03_security §3.2 の精神）。監査は `audit_logs`（`GUARDIANSHIP_HANDOVER_INITIATED`・metadata に `registeredNewEmail`）。
+- **第三波（未実装）**：3ヶ月前事前通知バッチ・封印時の未設定メール自動送付バッチは本波（P3c-2）の対象外（別波で実装）。`users.email` は NOT NULL UNIQUE ゆえ「メールなし」は内部プレースホルダ運用を前提とする（管理子アカウント本実装は将来課題）。
+
 ---
 
 ## 3. 代理払い許可（第三者・非後見）

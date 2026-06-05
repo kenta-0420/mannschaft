@@ -49,6 +49,14 @@ class ProxyInputContextFilterTest {
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 
+    @Mock
+    private com.mannschaft.app.auth.guardianship.GuardianshipSwitchService guardianshipSwitchService;
+
+    /** F08.9 P3c: フィルタは ObjectProvider 遅延解決（多数の @WebMvcTest スライスに Bean 追加を強いないため）。 */
+    @Mock
+    private org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.auth.guardianship.GuardianshipSwitchService>
+            guardianshipSwitchServiceProvider;
+
     @InjectMocks
     private ProxyInputContextFilter filter;
 
@@ -103,19 +111,12 @@ class ProxyInputContextFilterTest {
     @DisplayName("必須ヘッダー不足 — 400 Bad Request")
     class MissingRequiredHeaders {
 
-        @Test
-        @DisplayName("X-Proxy-Consent-Id が null → 400")
-        void shouldReturn400WhenConsentIdMissing() throws Exception {
-            MockHttpServletRequest request = buildRequest("100", null, "PAPER_FORM", "金庫No.1");
-            MockHttpServletResponse response = new MockHttpServletResponse();
-
-            filter.doFilterInternal(request, response, new MockFilterChain());
-
-            assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
-        }
+        // 注（F08.9 P3c）: X-Proxy-Consent-Id が null のケースは「後見切替経路」へ分岐するため、
+        // ここでは 400 にならない（旧 shouldReturn400WhenConsentIdMissing は GuardianshipSwitch へ移管）。
+        // 紙同意書経路（consent-id あり）の必須ヘッダー不足のみを以下で検証する。
 
         @Test
-        @DisplayName("X-Proxy-Input-Source が null → 400")
+        @DisplayName("X-Proxy-Input-Source が null（consent-id あり）→ 400")
         void shouldReturn400WhenInputSourceMissing() throws Exception {
             MockHttpServletRequest request = buildRequest("100", "1", null, "金庫No.1");
             MockHttpServletResponse response = new MockHttpServletResponse();
@@ -250,6 +251,100 @@ class ProxyInputContextFilterTest {
             assertThat(response.getStatus()).isEqualTo(HttpStatus.OK.value());
             // F08.9 P3b: 同意書スコープ集合を伴う 5 引数 activate に変更（スコープ未設定の consent は空集合）
             verify(proxyInputContext).activate(100L, 1L, "PAPER_FORM", "理事会金庫No.3", java.util.Set.of());
+        }
+    }
+
+    @Nested
+    @DisplayName("後見切替経路（F08.9 P3c） — consent-id ヘッダなし")
+    class GuardianshipSwitch {
+
+        /** consent-id を伴わず X-Proxy-For-User-Id のみのリクエスト（後見切替経路）。 */
+        private MockHttpServletRequest switchRequest(String proxyFor) {
+            MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/payment-items/1/checkout");
+            if (proxyFor != null) {
+                request.addHeader(ProxyInputContextFilter.HEADER_PROXY_FOR, proxyFor);
+            }
+            return request;
+        }
+
+        @Test
+        @DisplayName("リンク有効＋年齢OK → PAYMENT スコープのみで activate し chain 続行")
+        void allowed_activatesWithPaymentScope() throws Exception {
+            authenticateAs(200L);
+            given(guardianshipSwitchServiceProvider.getObject()).willReturn(guardianshipSwitchService);
+            given(guardianshipSwitchService.evaluateSwitch(200L, 100L))
+                    .willReturn(com.mannschaft.app.auth.guardianship.GuardianshipSwitchService.SwitchVerdict.ALLOWED);
+
+            MockHttpServletRequest request = switchRequest("100");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            MockFilterChain chain = new MockFilterChain();
+
+            filter.doFilterInternal(request, response, chain);
+
+            assertThat(response.getStatus()).isEqualTo(HttpStatus.OK.value());
+            // originalStorageLocation は NOT NULL 列のため null ではなく固定値を渡す
+            // （null だと切替中の F14.1 代理入力で proxy_input_records 保存が 500 になる）。
+            verify(proxyInputContext).activate(
+                    100L, null, "GUARDIANSHIP_SWITCH",
+                    ProxyInputContextFilter.SWITCH_STORAGE_LOCATION_NA,
+                    java.util.Set.of(com.mannschaft.app.proxy.entity.ProxyInputConsentScopeEntity.FeatureScope.PAYMENT));
+        }
+
+        @Test
+        @DisplayName("年齢封印 → 403 / activate されない")
+        void ageLocked_403() throws Exception {
+            authenticateAs(200L);
+            given(guardianshipSwitchServiceProvider.getObject()).willReturn(guardianshipSwitchService);
+            given(guardianshipSwitchService.evaluateSwitch(200L, 100L))
+                    .willReturn(com.mannschaft.app.auth.guardianship.GuardianshipSwitchService.SwitchVerdict.AGE_LOCKED);
+
+            MockHttpServletRequest request = switchRequest("100");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request, response, new MockFilterChain());
+
+            assertThat(response.getStatus()).isEqualTo(HttpStatus.FORBIDDEN.value());
+            verify(proxyInputContext, never()).activate(anyLong(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("リンクなし → 403 / activate されない")
+        void linkNotFound_403() throws Exception {
+            authenticateAs(200L);
+            given(guardianshipSwitchServiceProvider.getObject()).willReturn(guardianshipSwitchService);
+            given(guardianshipSwitchService.evaluateSwitch(200L, 100L))
+                    .willReturn(com.mannschaft.app.auth.guardianship.GuardianshipSwitchService.SwitchVerdict.LINK_NOT_FOUND);
+
+            MockHttpServletRequest request = switchRequest("100");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request, response, new MockFilterChain());
+
+            assertThat(response.getStatus()).isEqualTo(HttpStatus.FORBIDDEN.value());
+            verify(proxyInputContext, never()).activate(anyLong(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("未認証（保護者の SecurityContext なし）→ 401")
+        void unauthenticated_401() throws Exception {
+            MockHttpServletRequest request = switchRequest("100");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request, response, new MockFilterChain());
+
+            assertThat(response.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+        }
+
+        @Test
+        @DisplayName("X-Proxy-For-User-Id が非数値 → 400")
+        void nonNumericProxyFor_400() throws Exception {
+            authenticateAs(200L);
+            MockHttpServletRequest request = switchRequest("abc");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request, response, new MockFilterChain());
+
+            assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
         }
     }
 

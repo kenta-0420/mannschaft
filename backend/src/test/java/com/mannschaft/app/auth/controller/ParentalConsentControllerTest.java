@@ -57,6 +57,10 @@ class ParentalConsentControllerTest {
     @Mock
     private ParentalConsentService parentalConsentService;
 
+    @Mock
+    private com.mannschaft.app.auth.guardianship.AuthenticationCriticalOperationGuard
+            authenticationCriticalOperationGuard;
+
     @InjectMocks
     private ParentalConsentController controller;
 
