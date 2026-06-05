@@ -29,7 +29,7 @@ import java.util.List;
  *
  * <p><strong>スコープ → StandardVisibility マッピング</strong>（設計書 §5.2）:</p>
  * <ul>
- *   <li>{@link FileScopeType#TEAM} → {@link StandardVisibility#MEMBERS_ONLY}
+ *   <li>{@link FileScopeType#TEAM} → {@link StandardVisibility#SCOPE_AFFILIATED}
  *       — チームメンバーのみ可視</li>
  *   <li>{@link FileScopeType#ORGANIZATION} → {@link StandardVisibility#ORGANIZATION_WIDE}
  *       — 組織メンバー全員可視</li>

@@ -39,23 +39,9 @@ class ResolverAuditPolicyTest {
         }
 
         @Test
-        @DisplayName("ADMINS_ONLY は true")
-        void adminsOnly_returnsTrue() {
-            assertThat(ResolverAuditPolicy.shouldAuditDeny(StandardVisibility.ADMINS_ONLY))
-                .isTrue();
-        }
-
-        @Test
         @DisplayName("PUBLIC は false")
         void publicLevel_returnsFalse() {
             assertThat(ResolverAuditPolicy.shouldAuditDeny(StandardVisibility.PUBLIC))
-                .isFalse();
-        }
-
-        @Test
-        @DisplayName("MEMBERS_ONLY は false")
-        void membersOnly_returnsFalse() {
-            assertThat(ResolverAuditPolicy.shouldAuditDeny(StandardVisibility.MEMBERS_ONLY))
                 .isFalse();
         }
 
@@ -135,17 +121,9 @@ class ResolverAuditPolicyTest {
         }
 
         @Test
-        @DisplayName("ADMINS_ONLY は false (deny のみ対象)")
-        void adminsOnly_returnsFalse() {
-            assertThat(ResolverAuditPolicy.shouldAuditAllow(StandardVisibility.ADMINS_ONLY))
-                .isFalse();
-        }
-
-        @Test
-        @DisplayName("PUBLIC / MEMBERS_ONLY / SUPPORTERS_AND_ABOVE / FOLLOWERS_ONLY / ORGANIZATION_WIDE / CUSTOM は false")
+        @DisplayName("PUBLIC / SUPPORTERS_AND_ABOVE / FOLLOWERS_ONLY / ORGANIZATION_WIDE / CUSTOM は false")
         void otherLevels_returnFalse() {
             assertThat(ResolverAuditPolicy.shouldAuditAllow(StandardVisibility.PUBLIC)).isFalse();
-            assertThat(ResolverAuditPolicy.shouldAuditAllow(StandardVisibility.MEMBERS_ONLY)).isFalse();
             assertThat(ResolverAuditPolicy.shouldAuditAllow(StandardVisibility.SUPPORTERS_AND_ABOVE)).isFalse();
             assertThat(ResolverAuditPolicy.shouldAuditAllow(StandardVisibility.FOLLOWERS_ONLY)).isFalse();
             assertThat(ResolverAuditPolicy.shouldAuditAllow(StandardVisibility.ORGANIZATION_WIDE)).isFalse();
