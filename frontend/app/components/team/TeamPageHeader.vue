@@ -2,7 +2,7 @@
 import type { TeamResponse } from '~/types/team'
 import FavoriteToggleButton from '~/components/favorites/FavoriteToggleButton.vue'
 
-const props = defineProps<{
+defineProps<{
   team: TeamResponse
   displayName: string
   roleName: string | null
