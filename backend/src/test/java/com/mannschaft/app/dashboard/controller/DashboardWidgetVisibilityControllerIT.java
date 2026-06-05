@@ -14,6 +14,8 @@ import com.mannschaft.app.dashboard.dto.UpdateWidgetVisibilityRequest;
 import com.mannschaft.app.dashboard.dto.WidgetVisibilityItemDto;
 import com.mannschaft.app.dashboard.dto.WidgetVisibilityResponse;
 import com.mannschaft.app.dashboard.service.DashboardWidgetVisibilityService;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -28,6 +30,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -56,7 +59,9 @@ import com.mannschaft.app.common.security.AccessGuard;
 class DashboardWidgetVisibilityControllerIT {
 
     private static final Long USER_ID = 1L;
+    private static final UUID TEAM_UUID = UUID.fromString("00000000-0000-7000-8000-00000000000a");
     private static final Long TEAM_ID = 100L;
+    private static final UUID ORG_UUID = UUID.fromString("00000000-0000-7000-8000-000000000014");
     private static final Long ORG_ID = 200L;
 
     @Autowired
@@ -86,11 +91,19 @@ class DashboardWidgetVisibilityControllerIT {
     @MockitoBean
     private AccessGuard accessGuard;
 
+    /** PR #1358 対応: UUID → BIGINT 解決用 */
+    @MockitoBean
+    private TeamService teamService;
+    @MockitoBean
+    private OrganizationService organizationService;
+
     @BeforeEach
     void setUpSecurityContext() {
         UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of());
         SecurityContextHolder.getContext().setAuthentication(auth);
+        given(teamService.resolveTeamId(TEAM_UUID)).willReturn(TEAM_ID);
+        given(organizationService.resolveOrgId(ORG_UUID)).willReturn(ORG_ID);
     }
 
     // ════════════════════════════════════════════════
@@ -122,7 +135,7 @@ class DashboardWidgetVisibilityControllerIT {
             given(visibilityService.getSettings(USER_ID, ScopeType.TEAM, TEAM_ID))
                     .willReturn(response);
 
-            mockMvc.perform(get("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_ID))
+            mockMvc.perform(get("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_UUID))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.scope_type").value("TEAM"))
                     .andExpect(jsonPath("$.data.scope_id").value(TEAM_ID))
@@ -139,7 +152,7 @@ class DashboardWidgetVisibilityControllerIT {
             willThrow(new BusinessException(CommonErrorCode.COMMON_002))
                     .given(visibilityService).getSettings(USER_ID, ScopeType.TEAM, TEAM_ID);
 
-            mockMvc.perform(get("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_ID))
+            mockMvc.perform(get("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_UUID))
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.error.code").value("COMMON_002"));
         }
@@ -164,7 +177,7 @@ class DashboardWidgetVisibilityControllerIT {
             given(visibilityService.getSettings(USER_ID, ScopeType.ORGANIZATION, ORG_ID))
                     .willReturn(response);
 
-            mockMvc.perform(get("/api/v1/dashboard/organization/{orgId}/widget-visibility", ORG_ID))
+            mockMvc.perform(get("/api/v1/dashboard/organization/{orgId}/widget-visibility", ORG_UUID))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.scope_type").value("ORGANIZATION"))
                     .andExpect(jsonPath("$.data.scope_id").value(ORG_ID));
@@ -203,7 +216,7 @@ class DashboardWidgetVisibilityControllerIT {
                     }
                     """;
 
-            mockMvc.perform(put("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_ID)
+            mockMvc.perform(put("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_UUID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isOk())
@@ -231,7 +244,7 @@ class DashboardWidgetVisibilityControllerIT {
                     }
                     """;
 
-            mockMvc.perform(put("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_ID)
+            mockMvc.perform(put("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_UUID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isForbidden())
@@ -250,7 +263,7 @@ class DashboardWidgetVisibilityControllerIT {
                     }
                     """;
 
-            mockMvc.perform(put("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_ID)
+            mockMvc.perform(put("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_UUID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest());
@@ -267,7 +280,7 @@ class DashboardWidgetVisibilityControllerIT {
                     }
                     """;
 
-            mockMvc.perform(put("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_ID)
+            mockMvc.perform(put("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_UUID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest());
@@ -284,7 +297,7 @@ class DashboardWidgetVisibilityControllerIT {
                     }
                     """;
 
-            mockMvc.perform(put("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_ID)
+            mockMvc.perform(put("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_UUID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest());
@@ -295,7 +308,7 @@ class DashboardWidgetVisibilityControllerIT {
         void widgets未指定_400() throws Exception {
             String body = "{}";
 
-            mockMvc.perform(put("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_ID)
+            mockMvc.perform(put("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_UUID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest());
@@ -318,7 +331,7 @@ class DashboardWidgetVisibilityControllerIT {
                     }
                     """;
 
-            mockMvc.perform(put("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_ID)
+            mockMvc.perform(put("/api/v1/dashboard/team/{teamId}/widget-visibility", TEAM_UUID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest())
@@ -354,7 +367,7 @@ class DashboardWidgetVisibilityControllerIT {
                     }
                     """;
 
-            mockMvc.perform(put("/api/v1/dashboard/organization/{orgId}/widget-visibility", ORG_ID)
+            mockMvc.perform(put("/api/v1/dashboard/organization/{orgId}/widget-visibility", ORG_UUID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isOk())
