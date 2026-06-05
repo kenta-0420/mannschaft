@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ViewerRole } from '~/types/dashboard'
 import type { TeamResponse } from '~/types/team'
-import FavoriteToggleButton from '~/components/favorites/FavoriteToggleButton.vue'
 
 definePageMeta({
   middleware: 'auth',
@@ -33,9 +32,6 @@ const {
 const followStatus = ref<'NONE' | 'PENDING' | 'APPROVED'>('NONE')
 const followLoading = ref(false)
 const showCancelSupporterConfirm = ref(false)
-
-// F02.8 告知ウィザード
-const showBroadcastWizard = ref(false)
 
 async function fetchFollowStatus() {
   if (roleName.value) return
@@ -125,118 +121,22 @@ onMounted(async () => {
     </div>
 
     <template v-else-if="team">
-      <ProfileHeader
-        :icon-url="team.metadata?.iconUrl"
-        :banner-url="team.metadata?.bannerUrl"
-        :name="displayName"
-        scope="team"
-        :scope-id="teamId"
-        :editable="isAdminOrDeputy"
+      <TeamPageHeader
+        :team="team"
+        :display-name="displayName"
+        :role-name="roleName"
+        :is-admin="isAdmin"
+        :is-admin-or-deputy="isAdminOrDeputy"
+        :follow-status="followStatus"
+        :follow-loading="followLoading"
+        :template-label="templateLabel"
+        @back="navigateTo('/dashboard')"
+        @apply-supporter="applySupporter"
+        @cancel-supporter="cancelSupporter"
+        @show-cancel-confirm="showCancelSupporterConfirm = true"
+        @show-leave-confirm="showLeaveConfirm = true"
         @icon-updated="(url) => { if (team && team.metadata) team.metadata.iconUrl = url }"
         @banner-updated="(url) => { if (team && team.metadata) team.metadata.bannerUrl = url }"
-      >
-        <!-- 名前行 + アクション群 -->
-        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 pt-1">
-          <!-- 左: 戻る + 名前 + メタ情報 -->
-          <div class="flex flex-col gap-1 min-w-0">
-            <div class="flex items-center gap-2 flex-wrap">
-              <Button icon="pi pi-arrow-left" text rounded size="small" @click="navigateTo('/dashboard')" />
-              <h1 class="text-xl sm:text-2xl font-bold truncate">
-                {{ displayName }}
-              </h1>
-              <Tag :value="templateLabel[team.location?.template ?? ''] ?? team.location?.template ?? ''" severity="info" />
-              <RoleBadge v-if="roleName" :role="roleName" />
-            </div>
-            <div class="flex items-center gap-3 text-xs sm:text-sm text-surface-500 flex-wrap pl-8">
-              <span class="flex items-center gap-1">
-                <i class="pi pi-users text-xs" />
-                メンバー <strong class="text-surface-700">{{ team.metadata?.memberCount ?? 0 }}</strong>人
-              </span>
-              <span v-if="team.visibility?.supporterEnabled" class="flex items-center gap-1">
-                <i class="pi pi-heart text-xs" />
-                サポーター <strong class="text-surface-700">{{ team.social?.supporterCount ?? '—' }}</strong>人
-              </span>
-            </div>
-          </div>
-
-          <!-- 右: アクションボタン群 -->
-          <div class="flex items-center gap-2 flex-wrap shrink-0">
-            <FavoriteToggleButton
-              entity-type="TEAM"
-              :entity-id="String(team.id)"
-              :entity-name="displayName"
-            />
-            <template v-if="team.visibility?.supporterEnabled && !roleName">
-              <Button
-                v-if="followStatus === 'APPROVED'"
-                icon="pi pi-heart-fill"
-                label="サポーターです"
-                size="small"
-                :loading="followLoading"
-                class="border-red-400 bg-red-50 text-red-500 hover:bg-red-100"
-                outlined
-                @click="showCancelSupporterConfirm = true"
-              />
-              <span
-                v-else-if="followStatus === 'PENDING'"
-                class="flex items-center gap-2 text-sm text-orange-500"
-              >
-                <i class="pi pi-clock" />申請中（承認待ち）
-                <Button
-                  label="取消"
-                  size="small"
-                  severity="secondary"
-                  text
-                  :loading="followLoading"
-                  @click="cancelSupporter"
-                />
-              </span>
-              <Button
-                v-else
-                label="サポーターになる"
-                icon="pi pi-heart"
-                severity="secondary"
-                outlined
-                size="small"
-                :loading="followLoading"
-                @click="applySupporter"
-              />
-            </template>
-            <Button
-              v-if="isAdminOrDeputy"
-              :label="$t('market.action.post')"
-              icon="pi pi-tag"
-              severity="secondary"
-              outlined
-              size="small"
-              @click="navigateTo(`/teams/${teamId}/recruitment-listings/new`)"
-            />
-            <Button
-              v-if="roleName && roleName !== 'SUPPORTER'"
-              :label="$t('announcement.broadcast_button_team')"
-              icon="pi pi-bullhorn"
-              severity="secondary"
-              size="small"
-              @click="showBroadcastWizard = true"
-            />
-            <Button
-              v-if="!isAdmin && roleName"
-              label="チームから退出"
-              icon="pi pi-sign-out"
-              severity="danger"
-              outlined
-              size="small"
-              @click="showLeaveConfirm = true"
-            />
-          </div>
-        </div>
-      </ProfileHeader>
-
-      <BroadcastWizard
-        v-model:visible="showBroadcastWizard"
-        scope-type="TEAM"
-        :scope-id="teamId"
-        :is-admin="isAdmin"
       />
 
       <div class="px-6 pb-6">
