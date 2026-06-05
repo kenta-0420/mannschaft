@@ -56,7 +56,8 @@ class SurveyPhase11ControllerTest {
     private static final String SCOPE_ID = "00000000-0000-7000-8000-000000000001";
     /** resolveTeamId() が返す内部 BIGINT。 */
     private static final Long SCOPE_ID_LONG = 1L;
-    private static final String SCOPE_TYPE = "TEAM";
+    /** URL パスに使う scopeType — resolveScopeId は "teams" を期待する（複数形）。 */
+    private static final String SCOPE_TYPE = "teams";
     private static final Long USER_ID = 10L;
 
     @Nested
