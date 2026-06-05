@@ -116,8 +116,16 @@ class ActuatorEndpointSecurityTest {
                     mock(ProxyInputConsentRepository.class),
                     mock(ProxyInputContext.class),
                     mock(ObjectMapper.class),
-                    mock(com.mannschaft.app.auth.guardianship.GuardianshipSwitchService.class));
+                    mockGuardianshipSwitchServiceProvider());
         }
+
+        /** F08.9 P3c: フィルタの ObjectProvider 遅延解決依存（後見切替経路を踏まないためモックで足りる）。 */
+        @SuppressWarnings("unchecked")
+        private static org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.auth.guardianship.GuardianshipSwitchService>
+                mockGuardianshipSwitchServiceProvider() {
+            return mock(org.springframework.beans.factory.ObjectProvider.class);
+        }
+
 
         /**
          * F15.4: SecurityConfig が依存する PublicTeamApiRateLimitFilter の

@@ -52,6 +52,11 @@ class ProxyInputContextFilterTest {
     @Mock
     private com.mannschaft.app.auth.guardianship.GuardianshipSwitchService guardianshipSwitchService;
 
+    /** F08.9 P3c: フィルタは ObjectProvider 遅延解決（多数の @WebMvcTest スライスに Bean 追加を強いないため）。 */
+    @Mock
+    private org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.auth.guardianship.GuardianshipSwitchService>
+            guardianshipSwitchServiceProvider;
+
     @InjectMocks
     private ProxyInputContextFilter filter;
 
@@ -266,6 +271,7 @@ class ProxyInputContextFilterTest {
         @DisplayName("リンク有効＋年齢OK → PAYMENT スコープのみで activate し chain 続行")
         void allowed_activatesWithPaymentScope() throws Exception {
             authenticateAs(200L);
+            given(guardianshipSwitchServiceProvider.getObject()).willReturn(guardianshipSwitchService);
             given(guardianshipSwitchService.evaluateSwitch(200L, 100L))
                     .willReturn(com.mannschaft.app.auth.guardianship.GuardianshipSwitchService.SwitchVerdict.ALLOWED);
 
@@ -288,6 +294,7 @@ class ProxyInputContextFilterTest {
         @DisplayName("年齢封印 → 403 / activate されない")
         void ageLocked_403() throws Exception {
             authenticateAs(200L);
+            given(guardianshipSwitchServiceProvider.getObject()).willReturn(guardianshipSwitchService);
             given(guardianshipSwitchService.evaluateSwitch(200L, 100L))
                     .willReturn(com.mannschaft.app.auth.guardianship.GuardianshipSwitchService.SwitchVerdict.AGE_LOCKED);
 
@@ -304,6 +311,7 @@ class ProxyInputContextFilterTest {
         @DisplayName("リンクなし → 403 / activate されない")
         void linkNotFound_403() throws Exception {
             authenticateAs(200L);
+            given(guardianshipSwitchServiceProvider.getObject()).willReturn(guardianshipSwitchService);
             given(guardianshipSwitchService.evaluateSwitch(200L, 100L))
                     .willReturn(com.mannschaft.app.auth.guardianship.GuardianshipSwitchService.SwitchVerdict.LINK_NOT_FOUND);
 

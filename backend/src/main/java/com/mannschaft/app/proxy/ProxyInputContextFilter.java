@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -55,7 +56,17 @@ public class ProxyInputContextFilter extends OncePerRequestFilter {
     private final ProxyInputConsentRepository proxyInputConsentRepository;
     private final ProxyInputContext proxyInputContext;
     private final ObjectMapper objectMapper;
-    private final GuardianshipSwitchService guardianshipSwitchService;
+
+    /**
+     * 後見切替の再検証サービス（F08.9 P3c）。
+     *
+     * <p>{@link ObjectProvider} による遅延解決とする。後見切替経路（{@code X-Proxy-For-User-Id} のみの
+     * リクエスト）を踏んだときに初めて解決するため、本フィルタを組み立てる多数の
+     * {@code @WebMvcTest} スライス（auth ドメインの Service を含まない構成・100件超）に
+     * {@code @MockitoBean} 追加を強いない。また proxy→auth の構築時依存を解消する
+     * （切替経路を使わない限り auth ドメイン Bean は不要）。</p>
+     */
+    private final ObjectProvider<GuardianshipSwitchService> guardianshipSwitchServiceProvider;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -185,8 +196,10 @@ public class ProxyInputContextFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 保護者リンク＋年齢ゲートの毎リクエスト再検証（副作用なし）
-        SwitchVerdict verdict = guardianshipSwitchService.evaluateSwitch(guardianUserId, childUserId);
+        // 保護者リンク＋年齢ゲートの毎リクエスト再検証（副作用なし）。
+        // ObjectProvider 遅延解決: 後見切替経路を踏んだここで初めて auth ドメイン Bean を解決する。
+        SwitchVerdict verdict = guardianshipSwitchServiceProvider.getObject()
+                .evaluateSwitch(guardianUserId, childUserId);
         switch (verdict) {
             case LINK_NOT_FOUND -> {
                 log.warn("後見切替の再検証失敗（リンクなし）: guardianUserId={}, childUserId={}",
