@@ -38,6 +38,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -506,7 +507,7 @@ class OrganizationServiceTest {
     // ========================================
 
     private OrganizationEntity createOrganization() {
-        return OrganizationEntity.builder()
+        OrganizationEntity org = OrganizationEntity.builder()
                 .name("テスト組織")
                 .orgType(OrganizationEntity.OrgType.SCHOOL)
                 .prefecture("東京都")
@@ -516,6 +517,9 @@ class OrganizationServiceTest {
                 .supporterEnabled(false)
                 .version(0L)
                 .build();
+        // テスト用にBIGINT IDを設定（JPA未永続エンティティはgetId()がnullになるため）
+        ReflectionTestUtils.setField(org, "id", ORG_ID);
+        return org;
     }
 
     private OrganizationEntity createArchivedOrganization() {
