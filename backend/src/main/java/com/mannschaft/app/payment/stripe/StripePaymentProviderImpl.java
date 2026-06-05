@@ -727,6 +727,53 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
     }
 
     @Override
+    public void pauseSubscriptionCollection(String subscriptionId, long resumesAtEpochSec, String idempotencyKey) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            // pause_collection={behavior:'void', resumes_at:<unix_sec>}
+            // void: スキップ月の invoice を void 化（paid が発火せず valid_until が延びない・設計書 02 §4.3）。
+            Subscription updated = subscription.update(
+                    SubscriptionUpdateParams.builder()
+                            .setPauseCollection(SubscriptionUpdateParams.PauseCollection.builder()
+                                    .setBehavior(SubscriptionUpdateParams.PauseCollection.Behavior.VOID)
+                                    .setResumesAt(resumesAtEpochSec)
+                                    .build())
+                            .build(),
+                    options);
+            log.info("Stripe Subscription pause_collection 設定（スキップ）: id={}, status={}, resumesAt={}",
+                    updated.getId(), updated.getStatus(), resumesAtEpochSec);
+        } catch (StripeException e) {
+            log.error("Stripe Subscription pause_collection 設定失敗: id={}, resumesAt={}", subscriptionId, resumesAtEpochSec, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public void resumeSubscriptionCollection(String subscriptionId, String idempotencyKey) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            // pause_collection を解除するには Stripe API 上 "pause_collection" を空文字列で送信する。
+            // stripe-java 28.2.0 の SubscriptionUpdateParams.Builder には setPauseCollection(null) が存在しないため、
+            // putExtraParam で直接 "" を渡す方式を採用する（Stripe API docs: "Pass empty string to remove" パターン）。
+            Subscription updated = subscription.update(
+                    SubscriptionUpdateParams.builder()
+                            .putExtraParam("pause_collection", "")
+                            .build(),
+                    options);
+            log.info("Stripe Subscription pause_collection 解除（再開）: id={}, status={}", updated.getId(), updated.getStatus());
+        } catch (StripeException e) {
+            log.error("Stripe Subscription pause_collection 解除失敗: id={}", subscriptionId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
     public SubscriptionInfo cancelSubscriptionAtPeriodEnd(String subscriptionId, String idempotencyKey) {
         try {
             Subscription subscription = Subscription.retrieve(subscriptionId);

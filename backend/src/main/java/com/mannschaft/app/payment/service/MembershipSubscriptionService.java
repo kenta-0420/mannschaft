@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.service;
 
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.BillingInterval;
 import com.mannschaft.app.payment.FeePolicy;
@@ -11,6 +13,7 @@ import com.mannschaft.app.payment.connect.ConnectAccountEntity;
 import com.mannschaft.app.payment.connect.ConnectAccountRepository;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.payment.connect.ScopeKind;
+import com.mannschaft.app.payment.dto.MembershipSubscriptionListItemResponse;
 import com.mannschaft.app.payment.entity.MembershipSubscriptionEntity;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.entity.StripeCustomerEntity;
@@ -19,6 +22,7 @@ import com.mannschaft.app.payment.escrow.EscrowSourceKind;
 import com.mannschaft.app.payment.escrow.MembershipChargeCommand;
 import com.mannschaft.app.payment.escrow.MembershipChargeResult;
 import com.mannschaft.app.payment.repository.MembershipSubscriptionRepository;
+import com.mannschaft.app.payment.repository.PaymentItemRepository;
 import com.mannschaft.app.payment.repository.StripeCustomerRepository;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
@@ -29,8 +33,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * F08.9 P5 会員継続課金サービス（membership_subscriptions）。
@@ -75,6 +83,7 @@ public class MembershipSubscriptionService {
 
     private final MembershipSubscriptionRepository membershipSubscriptionRepository;
     private final PaymentItemService paymentItemService;
+    private final PaymentItemRepository paymentItemRepository;
     private final PaymentAuthorizationService paymentAuthorizationService;
     private final ConnectAccountRepository connectAccountRepository;
     private final ConnectChargeService connectChargeService;
@@ -82,6 +91,7 @@ public class MembershipSubscriptionService {
     private final StripeCustomerRepository stripeCustomerRepository;
     private final StripePaymentProvider stripePaymentProvider;
     private final MemberPaymentService memberPaymentService;
+    private final UserRepository userRepository;
 
     /**
      * 払い手視点の継続課金一覧を取得する（「自分が払い手の継続課金一覧」API の本体・02_api §4.1）。
@@ -393,6 +403,214 @@ public class MembershipSubscriptionService {
         log.info("継続課金 期末解約予約: subscriptionId={}, stripeSub={}, periodEnd={}",
                 subscriptionId, subscription.getStripeSubscriptionId(), subscription.getCurrentPeriodEnd());
         return subscription;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 第四波: skip（今月スキップ）/ resume（再開）/ 一覧 API
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * 継続課金を今月スキップする（{@code pause_collection・behavior=void}・設計書 02 §4.3）。
+     *
+     * <p>フロー:</p>
+     * <ol>
+     *   <li>404 確認: 見つからなければ {@code SUBSCRIPTION_NOT_FOUND}（404）。</li>
+     *   <li>認可: 払い手本人 or 後見保護者（{@link #isOwnerOrGuardian}）。無権原は 403。</li>
+     *   <li>状態検証: ACTIVE のみ（他→{@code SUBSCRIPTION_NOT_ACTIVE} 409）。</li>
+     *   <li>二重スキップ防止: skip_until 設定済→{@code SUBSCRIPTION_ALREADY_SKIPPED} 409。</li>
+     *   <li>resumes_at 算出: {@code current_period_end + 1 billing_interval}（period_end 起点・Clock 不要）。</li>
+     *   <li>Stripe 先（{@code pause_collection={behavior:void, resumes_at}}）・DB 後。</li>
+     *   <li>{@link MembershipSubscriptionEntity#applySkipUntil} で skip_until を反映し save。</li>
+     * </ol>
+     *
+     * <p><b>toBuilder() 禁止:</b> toBuilder() で再構築すると UuidV7Entity の id を失い UPDATE が INSERT 化する（第三波根治済み）。
+     * 必ず既存ミューテータで原子的に更新する。</p>
+     *
+     * @param subscriptionId 継続課金 ID
+     * @param actorUserId    操作者（払い手本人 or 後見保護者）
+     * @return skip 後の継続課金（skipUntil に再開予定日）
+     */
+    @Transactional
+    public MembershipSubscriptionEntity skip(UUID subscriptionId, Long actorUserId) {
+        MembershipSubscriptionEntity subscription = membershipSubscriptionRepository
+                .findByIdAndDeletedAtIsNull(subscriptionId)
+                .orElseThrow(() -> new BusinessException(MembershipBillingErrorCode.SUBSCRIPTION_NOT_FOUND));
+
+        // 認可: 払い手本人 or 受益者の後見保護者（サブスク所有権・03 §1）。
+        if (!isOwnerOrGuardian(subscription, actorUserId)) {
+            log.info("継続課金 スキップ 拒否（所有者/後見でない）: subscriptionId={}, actor={}, payer={}",
+                    subscriptionId, actorUserId, subscription.getPayerUserId());
+            throw new BusinessException(MembershipBillingErrorCode.SUBSCRIPTION_NOT_AUTHORIZED);
+        }
+
+        // 状態検証: ACTIVE のみスキップ可（02_api §4.3）。
+        if (subscription.getStatus() != MembershipSubscriptionStatus.ACTIVE) {
+            throw new BusinessException(MembershipBillingErrorCode.SUBSCRIPTION_NOT_ACTIVE);
+        }
+
+        // 二重スキップ防止（Entity 側でも検証済みだが Service 層で先に 409 を返す）。
+        if (subscription.getSkipUntil() != null) {
+            throw new BusinessException(MembershipBillingErrorCode.SUBSCRIPTION_ALREADY_SKIPPED);
+        }
+
+        // Stripe Subscription ID 未連結は整合性異常として 409。
+        if (subscription.getStripeSubscriptionId() == null) {
+            log.warn("継続課金 スキップ 不能（stripe_subscription_id 未連結・異常）: subscriptionId={}", subscriptionId);
+            throw new BusinessException(MembershipBillingErrorCode.SUBSCRIPTION_NOT_ACTIVE);
+        }
+
+        // resumes_at = current_period_end + 1 billing_interval（period_end 起点・Clock 不要・02 §4.3）。
+        // スキップ月の invoice は void 化され valid_until は延びない（ペイウォール無改修で整合・README §4.5）。
+        // period_end が未確定（PENDING）の場合はここまで到達しない（ACTIVE 判定で弾かれる）。
+        LocalDate currentPeriodEnd = subscription.getCurrentPeriodEnd();
+        if (currentPeriodEnd == null) {
+            log.warn("継続課金 スキップ 不能（current_period_end 未設定・整合性異常）: subscriptionId={}", subscriptionId);
+            throw new BusinessException(MembershipBillingErrorCode.SUBSCRIPTION_NOT_ACTIVE);
+        }
+        LocalDate resumesAt = addOneCycle(currentPeriodEnd, subscription.getBillingInterval());
+        long resumesAtEpochSec = resumesAt.atStartOfDay(ZoneId.systemDefault()).toEpochSecond();
+
+        // Stripe 先（pause_collection）・DB 後（症状を隠さない・Stripe 失敗は例外を再 throw）。
+        stripePaymentProvider.pauseSubscriptionCollection(
+                subscription.getStripeSubscriptionId(),
+                resumesAtEpochSec,
+                "sub-skip-" + subscriptionId);
+
+        subscription.applySkipUntil(resumesAt);
+        subscription = membershipSubscriptionRepository.save(subscription);
+
+        log.info("継続課金 今月スキップ: subscriptionId={}, stripeSub={}, resumesAt={}",
+                subscriptionId, subscription.getStripeSubscriptionId(), resumesAt);
+        return subscription;
+    }
+
+    /**
+     * 継続課金のスキップ（{@code pause_collection}）を解除して再開する（設計書 02 §4.3）。
+     *
+     * <p>フロー:</p>
+     * <ol>
+     *   <li>404 確認・認可（{@link #isOwnerOrGuardian}）。</li>
+     *   <li>スキップ未適用の場合→{@code SUBSCRIPTION_NOT_SKIPPED}（409・MEMBERSHIP_BILLING_022）。</li>
+     *   <li>Stripe 先（pause_collection 解除）・DB 後（{@link MembershipSubscriptionEntity#clearSkip}）。</li>
+     * </ol>
+     *
+     * @param subscriptionId 継続課金 ID
+     * @param actorUserId    操作者（払い手本人 or 後見保護者）
+     * @return resume 後の継続課金（skipUntil=null）
+     */
+    @Transactional
+    public MembershipSubscriptionEntity resume(UUID subscriptionId, Long actorUserId) {
+        MembershipSubscriptionEntity subscription = membershipSubscriptionRepository
+                .findByIdAndDeletedAtIsNull(subscriptionId)
+                .orElseThrow(() -> new BusinessException(MembershipBillingErrorCode.SUBSCRIPTION_NOT_FOUND));
+
+        // 認可: 払い手本人 or 受益者の後見保護者（サブスク所有権・03 §1）。
+        if (!isOwnerOrGuardian(subscription, actorUserId)) {
+            log.info("継続課金 再開 拒否（所有者/後見でない）: subscriptionId={}, actor={}, payer={}",
+                    subscriptionId, actorUserId, subscription.getPayerUserId());
+            throw new BusinessException(MembershipBillingErrorCode.SUBSCRIPTION_NOT_AUTHORIZED);
+        }
+
+        // スキップ未適用の場合は 409（MEMBERSHIP_BILLING_022）。
+        if (subscription.getSkipUntil() == null) {
+            throw new BusinessException(MembershipBillingErrorCode.SUBSCRIPTION_NOT_SKIPPED);
+        }
+
+        // Stripe Subscription ID 未連結は整合性異常として 409。
+        if (subscription.getStripeSubscriptionId() == null) {
+            log.warn("継続課金 再開 不能（stripe_subscription_id 未連結・異常）: subscriptionId={}", subscriptionId);
+            throw new BusinessException(MembershipBillingErrorCode.SUBSCRIPTION_NOT_ACTIVE);
+        }
+
+        // Stripe 先（pause_collection 解除）・DB 後。
+        stripePaymentProvider.resumeSubscriptionCollection(
+                subscription.getStripeSubscriptionId(),
+                "sub-resume-" + subscriptionId);
+
+        subscription.clearSkip();
+        subscription = membershipSubscriptionRepository.save(subscription);
+
+        log.info("継続課金 再開（スキップ解除）: subscriptionId={}, stripeSub={}",
+                subscriptionId, subscription.getStripeSubscriptionId());
+        return subscription;
+    }
+
+    /**
+     * 払い手向け継続課金一覧を名前解決込みで取得する（{@code GET /api/v1/me/membership-subscriptions}）。
+     *
+     * <p>払い手本人 ({@code payerUserId}) のサブスクを全件取得し、
+     * 会費項目名・受益者表示名を N+1 を防いでバッチ解決する。</p>
+     *
+     * @param payerUserId 払い手ユーザーID（呼出側で SecurityUtils 解決）
+     * @return 作成日時降順の継続課金一覧（名前解決済み）
+     */
+    @Transactional(readOnly = true)
+    public List<MembershipSubscriptionListItemResponse> findForPayerWithNames(Long payerUserId) {
+        List<MembershipSubscriptionEntity> subs =
+                membershipSubscriptionRepository.findByPayerUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(payerUserId);
+        return buildListResponse(subs);
+    }
+
+    /**
+     * チーム向け継続課金一覧を名前解決込みで取得する（{@code GET /api/v1/teams/{id}/membership-subscriptions}）。
+     *
+     * <p>チーム ID（{@code scopeKind=TEAM, scopeId=teamId}）の全サブスクを取得し、名前解決する。
+     * status フィルタが指定された場合はその状態のみ返す。</p>
+     *
+     * @param teamId 受領主体チーム ID
+     * @param status 状態フィルタ（null=全件・02_api §4.1「status フィルタ任意」）
+     * @return 作成日時降順の継続課金一覧（名前解決済み）
+     */
+    @Transactional(readOnly = true)
+    public List<MembershipSubscriptionListItemResponse> findForTeamWithNames(Long teamId,
+                                                                              MembershipSubscriptionStatus status) {
+        List<MembershipSubscriptionEntity> subs;
+        if (status != null) {
+            subs = membershipSubscriptionRepository
+                    .findByScopeKindAndScopeIdAndStatusInAndDeletedAtIsNullOrderByCreatedAtDesc(
+                            ScopeKind.TEAM, teamId, Collections.singletonList(status));
+        } else {
+            subs = membershipSubscriptionRepository
+                    .findByScopeKindAndScopeIdAndDeletedAtIsNullOrderByCreatedAtDesc(ScopeKind.TEAM, teamId);
+        }
+        return buildListResponse(subs);
+    }
+
+    /**
+     * サブスクリストを一覧 DTO へ変換する（N+1 を防ぐためバッチ名前解決）。
+     *
+     * <p>会費項目名: {@code payment_items} をまとめて取得。
+     * 受益者表示名: {@code users} をまとめて取得（論理削除済みも含む・UserEntity.anonymize 済みの表示名を使う）。
+     * ドメイン越境は Service 層メソッド経由（CLAUDE.md 原則5）。</p>
+     *
+     * <p>TODO: 将来的には UserUpdatedEvent で分離予定。現在は読取専用クロスドメイン参照。</p>
+     */
+    private List<MembershipSubscriptionListItemResponse> buildListResponse(
+            List<MembershipSubscriptionEntity> subs) {
+        if (subs.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 会費項目名: payment_item ID を一括取得（N+1 防止）。
+        Set<Long> itemIds = subs.stream().map(MembershipSubscriptionEntity::getPaymentItemId)
+                .collect(Collectors.toSet());
+        Map<Long, String> itemNameMap = paymentItemRepository.findAllById(itemIds).stream()
+                .collect(Collectors.toMap(item -> item.getId(), item -> item.getName() != null ? item.getName() : ""));
+
+        // 受益者表示名: users を一括取得（N+1 防止）。
+        Set<Long> beneficiaryIds = subs.stream().map(MembershipSubscriptionEntity::getBeneficiaryUserId)
+                .collect(Collectors.toSet());
+        Map<Long, String> displayNameMap = userRepository.findByIdIn(new java.util.ArrayList<>(beneficiaryIds))
+                .stream().collect(Collectors.toMap(
+                        UserEntity::getId,
+                        u -> u.getDisplayName() != null ? u.getDisplayName() : ""));
+
+        return subs.stream()
+                .map(s -> MembershipSubscriptionListItemResponse.from(
+                        s,
+                        itemNameMap.getOrDefault(s.getPaymentItemId(), ""),
+                        displayNameMap.getOrDefault(s.getBeneficiaryUserId(), "")))
+                .collect(Collectors.toList());
     }
 
     /**

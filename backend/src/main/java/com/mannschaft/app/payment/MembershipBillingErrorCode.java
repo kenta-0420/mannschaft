@@ -272,6 +272,17 @@ public enum MembershipBillingErrorCode implements ErrorCode {
     SUBSCRIPTION_ALREADY_EXISTS(
             "MEMBERSHIP_BILLING_021",
             "この受益者・項目には既に有効な継続課金が存在します",
+            Severity.WARN),
+
+    /**
+     * 継続課金がスキップ中でないため再開できない（スキップ未適用時の resume）。409。
+     *
+     * <p>{@code skip_until} が未設定の継続課金に対して resume を試みた場合に投げる
+     * （02_api §4.3 resume 操作の逆条件）。</p>
+     */
+    SUBSCRIPTION_NOT_SKIPPED(
+            "MEMBERSHIP_BILLING_022",
+            "この継続課金は今月スキップが適用されていないため再開できません",
             Severity.WARN);
 
     private final String code;

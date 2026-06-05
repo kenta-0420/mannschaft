@@ -389,6 +389,30 @@ public interface StripePaymentProvider {
                                    Long periodStartEpochSec, Long periodEndEpochSec) {}
 
     /**
+     * 継続課金の Stripe Subscription を今月スキップする（{@code pause_collection・behavior=void}・設計書 02 §4.3）。
+     *
+     * <p>{@code pause_collection={behavior:'void', resumes_at:<unix_sec>}} を設定し、スキップ月の invoice を void 化する。
+     * void 化により {@code invoice.paid} は発火せず {@code valid_until} は延びない（ペイウォール無改修で整合・README §4.5）。
+     * {@code resumes_at} は再開予定日（{@code current_period_end + 1 billing_interval} で計算・呼出側が算出して渡す）。</p>
+     *
+     * @param subscriptionId   対象 Stripe Subscription ID（{@code sub_xxx}）
+     * @param resumesAtEpochSec 再開予定日の unix 秒（pause_collection.resumes_at）
+     * @param idempotencyKey   冪等性キー（設計書 02 §9）
+     */
+    void pauseSubscriptionCollection(String subscriptionId, long resumesAtEpochSec, String idempotencyKey);
+
+    /**
+     * 継続課金の Stripe Subscription のスキップ（{@code pause_collection}）を解除して再開する（設計書 02 §4.3）。
+     *
+     * <p>{@code SubscriptionUpdateParams.pauseCollection(EmptyParam.EMPTY)} で pause_collection を明示的に解除する
+     * （{@code null} セット）。次サイクルから通常課金が再開される。</p>
+     *
+     * @param subscriptionId 対象 Stripe Subscription ID（{@code sub_xxx}）
+     * @param idempotencyKey 冪等性キー（設計書 02 §9）
+     */
+    void resumeSubscriptionCollection(String subscriptionId, String idempotencyKey);
+
+    /**
      * Stripe Subscription を期末解約予約する（{@code cancel_at_period_end=true}・設計書 02 §4.1）。
      *
      * <p>期末まで利用可・日割り返金なし・期末前は再有効化可。即時解約はしない（README §4.1）。

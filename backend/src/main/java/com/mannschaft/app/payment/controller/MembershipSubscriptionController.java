@@ -2,6 +2,7 @@ package com.mannschaft.app.payment.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.payment.dto.MembershipSubscriptionListItemResponse;
 import com.mannschaft.app.payment.dto.MembershipSubscriptionResponse;
 import com.mannschaft.app.payment.dto.SubscribeRequest;
 import com.mannschaft.app.payment.entity.MembershipSubscriptionEntity;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -89,5 +92,55 @@ public class MembershipSubscriptionController {
         Long actorUserId = SecurityUtils.getCurrentUserId();
         MembershipSubscriptionEntity subscription = membershipSubscriptionService.cancel(id, actorUserId);
         return ResponseEntity.ok(ApiResponse.of(MembershipSubscriptionResponse.from(subscription)));
+    }
+
+    /**
+     * 継続課金を今月スキップする（{@code pause_collection・behavior=void}・設計書 02 §4.3）。
+     *
+     * <p>認可は払い手本人 or 後見保護者（サービス層・03 §1）。
+     * スキップ月は invoice が void になり {@code valid_until} は延びない（ペイウォール無改修で整合）。</p>
+     *
+     * @param id 継続課金 ID
+     * @return 200 OK + {@link MembershipSubscriptionResponse}（skipUntil に再開予定日）
+     */
+    @PostMapping("/api/v1/membership-subscriptions/{id}/skip")
+    @Operation(summary = "継続課金 今月スキップ（F08.9 P5 第四波）")
+    public ResponseEntity<ApiResponse<MembershipSubscriptionResponse>> skip(@PathVariable UUID id) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        MembershipSubscriptionEntity subscription = membershipSubscriptionService.skip(id, actorUserId);
+        return ResponseEntity.ok(ApiResponse.of(MembershipSubscriptionResponse.from(subscription)));
+    }
+
+    /**
+     * 継続課金のスキップを解除して再開する（設計書 02 §4.3）。
+     *
+     * <p>認可は払い手本人 or 後見保護者（サービス層・03 §1）。
+     * スキップ未適用の場合は 409（MEMBERSHIP_BILLING_022）。</p>
+     *
+     * @param id 継続課金 ID
+     * @return 200 OK + {@link MembershipSubscriptionResponse}（skipUntil=null）
+     */
+    @PostMapping("/api/v1/membership-subscriptions/{id}/resume")
+    @Operation(summary = "継続課金 スキップ解除・再開（F08.9 P5 第四波）")
+    public ResponseEntity<ApiResponse<MembershipSubscriptionResponse>> resume(@PathVariable UUID id) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        MembershipSubscriptionEntity subscription = membershipSubscriptionService.resume(id, actorUserId);
+        return ResponseEntity.ok(ApiResponse.of(MembershipSubscriptionResponse.from(subscription)));
+    }
+
+    /**
+     * 自分（払い手）の継続課金一覧を取得する（設計書 02 §4.1）。
+     *
+     * <p>認証ユーザーが払い手の全サブスクを返す。会費項目名・受益者表示名を名前解決済みで返す。</p>
+     *
+     * @return 200 OK + 継続課金一覧（作成日時降順）
+     */
+    @GetMapping("/api/v1/me/membership-subscriptions")
+    @Operation(summary = "自分の継続課金一覧（F08.9 P5 第四波）")
+    public ResponseEntity<ApiResponse<List<MembershipSubscriptionListItemResponse>>> listMySubscriptions() {
+        Long payerUserId = SecurityUtils.getCurrentUserId();
+        List<MembershipSubscriptionListItemResponse> list =
+                membershipSubscriptionService.findForPayerWithNames(payerUserId);
+        return ResponseEntity.ok(ApiResponse.of(list));
     }
 }
