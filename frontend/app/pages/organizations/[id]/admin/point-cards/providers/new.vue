@@ -15,7 +15,7 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 const { t } = useI18n()
 const route = useRoute()
 const orgStore = useOrganizationStore()
-const orgId = computed(() => Number(route.params.id))
+const orgId = computed(() => String(route.params.id))
 
 const api = useOrgWalletApi(() => orgId.value)
 

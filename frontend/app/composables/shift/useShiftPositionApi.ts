@@ -19,7 +19,7 @@ export function useShiftPositionApi() {
   }
 
   async function createPosition(
-    teamId: number,
+    teamId: string,
     payload: CreatePositionRequest,
   ): Promise<ShiftPositionResponse> {
     const query = new URLSearchParams()

@@ -16,7 +16,7 @@ import { useToast } from 'primevue/usetoast'
 
 interface Props {
   cardId: string
-  orgId: number
+  orgId: string
   /** 現在残高（resolve 直後の値。送信完了で done emit して親が再取得する） */
   currentBalance: number
 }

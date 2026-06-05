@@ -12,7 +12,7 @@ export function useAttendanceEvaluation() {
   const resolving = ref(false)
   const statusFilter = ref<EvaluationStatus[]>([])
 
-  async function loadAtRiskStudents(teamId: number): Promise<void> {
+  async function loadAtRiskStudents(teamId: string): Promise<void> {
     loading.value = true
     try {
       atRiskStudents.value = await evaluationApi.getAtRiskStudents(
@@ -26,7 +26,7 @@ export function useAttendanceEvaluation() {
     }
   }
 
-  async function runEvaluation(studentId: number, ruleId: number, teamId: number): Promise<void> {
+  async function runEvaluation(studentId: number, ruleId: number, teamId: string): Promise<void> {
     evaluating.value = true
     try {
       await evaluationApi.evaluateStudent(studentId, ruleId)
@@ -39,7 +39,7 @@ export function useAttendanceEvaluation() {
     }
   }
 
-  async function resolveViolation(evaluationId: number, note: string, teamId: number): Promise<void> {
+  async function resolveViolation(evaluationId: number, note: string, teamId: string): Promise<void> {
     resolving.value = true
     try {
       await evaluationApi.resolveViolation(evaluationId, { resolutionNote: note })

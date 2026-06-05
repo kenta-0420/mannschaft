@@ -3,7 +3,7 @@ import type { EquipmentType } from '~/types/equipment'
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
 const { createEquipment } = useEquipmentApi()
 const notification = useNotification()

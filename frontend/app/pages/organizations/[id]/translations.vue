@@ -2,7 +2,7 @@
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = computed(() => Number(route.params.id))
+const orgId = computed(() => String(route.params.id))
 </script>
 
 <template>

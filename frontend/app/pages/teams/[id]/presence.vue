@@ -8,7 +8,7 @@ import type {
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const { loadPermissions } = useRoleAccess('team', teamId)
 const presenceApi = usePresenceApi()
 const { showError } = useNotification()

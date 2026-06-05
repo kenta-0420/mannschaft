@@ -24,13 +24,13 @@ interface ApiResponse<T> {
 export function useAdvanceNoticeApi() {
   const api = useApi()
 
-  function buildEventBase(teamId: number, eventId: number): string {
+  function buildEventBase(teamId: string, eventId: number): string {
     return `/api/v1/teams/${teamId}/events/${eventId}`
   }
 
   /** 事前遅刻連絡を送信する。 */
   async function submitLateNotice(
-    teamId: number,
+    teamId: string,
     eventId: number,
     body: LateNoticeRequest,
   ): Promise<AdvanceNoticeResponse> {
@@ -43,7 +43,7 @@ export function useAdvanceNoticeApi() {
 
   /** 事前欠席連絡を送信する。 */
   async function submitAbsenceNotice(
-    teamId: number,
+    teamId: string,
     eventId: number,
     body: AbsenceNoticeRequest,
   ): Promise<AdvanceNoticeResponse> {
@@ -56,7 +56,7 @@ export function useAdvanceNoticeApi() {
 
   /** 事前通知（遅刻・欠席）一覧を取得する（主催者向け）。 */
   async function getAdvanceNotices(
-    teamId: number,
+    teamId: string,
     eventId: number,
   ): Promise<AdvanceNoticeResponse[]> {
     const res = await api<ApiResponse<AdvanceNoticeResponse[]>>(

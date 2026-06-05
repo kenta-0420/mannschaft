@@ -2,7 +2,7 @@
 import type { SkillMatrixResponse } from '~/types/skill'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
 }>()
 
 const { getSkillMatrix } = useSkillApi()

@@ -18,7 +18,7 @@ export function useTeamCareOverrideApi() {
   // チーム別通知上書き取得
   // ===========================================
 
-  async function getCareOverride(teamId: number, careLinkId: number) {
+  async function getCareOverride(teamId: string, careLinkId: number) {
     return api<ApiResponse<TeamCareOverrideResponse>>(
       `/api/v1/teams/${teamId}/care-overrides/${careLinkId}`,
     )
@@ -29,7 +29,7 @@ export function useTeamCareOverrideApi() {
   // ===========================================
 
   async function upsertCareOverride(
-    teamId: number,
+    teamId: string,
     careLinkId: number,
     body: TeamCareOverrideRequest,
   ) {
@@ -43,7 +43,7 @@ export function useTeamCareOverrideApi() {
   // チーム別通知上書き削除
   // ===========================================
 
-  async function deleteCareOverride(teamId: number, careLinkId: number) {
+  async function deleteCareOverride(teamId: string, careLinkId: number) {
     return api(`/api/v1/teams/${teamId}/care-overrides/${careLinkId}`, { method: 'DELETE' })
   }
 

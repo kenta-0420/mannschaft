@@ -7,7 +7,7 @@ definePageMeta({
 })
 
 const route = useRoute()
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 
 const { alerts, loading, unresolvedCount, totalCount, loadAlerts } =
   useTransitionAlert(teamId)

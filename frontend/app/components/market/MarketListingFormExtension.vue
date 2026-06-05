@@ -203,13 +203,13 @@ function removeFolder(folderId: number) {
   selectedFolderIds.value = selectedFolderIds.value.filter(id => id !== folderId)
 }
 
-function addTeam(teamId: number) {
+function addTeam(teamId: string) {
   if (!selectedTeamIds.value.includes(teamId)) {
     selectedTeamIds.value = [...selectedTeamIds.value, teamId]
   }
 }
 
-function removeTeam(teamId: number) {
+function removeTeam(teamId: string) {
   selectedTeamIds.value = selectedTeamIds.value.filter(id => id !== teamId)
 }
 

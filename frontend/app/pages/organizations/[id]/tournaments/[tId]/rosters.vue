@@ -4,7 +4,7 @@ import type { OrganizerRosterView } from '~/types/tournament'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const tournamentId = Number(route.params.tId)
 
 // 試合ID（クエリパラメータから取得）

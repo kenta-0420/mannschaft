@@ -7,7 +7,7 @@ const { t } = useI18n()
 const { formatDate: formatDateBase } = useDatetime()
 const route = useRoute()
 const toast = useToast()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 
 const creditApi = useNotificationCreditApi()
 

@@ -66,12 +66,12 @@ export function useScheduleAnalytics() {
   }
 
   // === Performance (teams only) ===
-  async function getSchedulePerformance(teamId: number, scheduleId: number) {
+  async function getSchedulePerformance(teamId: string, scheduleId: number) {
     return api<{ data: unknown }>(`/api/v1/teams/${teamId}/schedules/${scheduleId}/performance`)
   }
 
   async function bulkCreatePerformanceRecords(
-    teamId: number,
+    teamId: string,
     scheduleId: number,
     body: ScheduleBulkRecordRequest,
   ) {
@@ -82,7 +82,7 @@ export function useScheduleAnalytics() {
   }
 
   // === Attendance Stats ===
-  async function getTeamAttendanceStats(teamId: number, params?: { from?: string; to?: string }) {
+  async function getTeamAttendanceStats(teamId: string, params?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
     if (params?.from) query.set('from', params.from)
     if (params?.to) query.set('to', params.to)
@@ -90,7 +90,7 @@ export function useScheduleAnalytics() {
   }
 
   async function exportTeamAttendanceStats(
-    teamId: number,
+    teamId: string,
     params?: { from?: string; to?: string },
   ) {
     const query = new URLSearchParams()
@@ -99,14 +99,14 @@ export function useScheduleAnalytics() {
     return api(`/api/v1/teams/${teamId}/attendance-stats/export?${query}`, { responseType: 'blob' })
   }
 
-  async function getOrgAttendanceStats(orgId: number, params?: { from?: string; to?: string }) {
+  async function getOrgAttendanceStats(orgId: string, params?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
     if (params?.from) query.set('from', params.from)
     if (params?.to) query.set('to', params.to)
     return api<{ data: unknown }>(`/api/v1/organizations/${orgId}/attendance-stats?${query}`)
   }
 
-  async function exportOrgAttendanceStats(orgId: number, params?: { from?: string; to?: string }) {
+  async function exportOrgAttendanceStats(orgId: string, params?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
     if (params?.from) query.set('from', params.from)
     if (params?.to) query.set('to', params.to)

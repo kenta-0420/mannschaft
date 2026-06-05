@@ -15,7 +15,7 @@ export function useShiftApi() {
    * @param to    期間終了日（YYYY-MM-DD）省略可
    */
   async function listSchedules(
-    teamId: number,
+    teamId: string,
     from?: string,
     to?: string,
   ): Promise<ShiftScheduleResponse[]> {
@@ -50,7 +50,7 @@ export function useShiftApi() {
    * @param payload 作成リクエスト
    */
   async function createSchedule(
-    teamId: number,
+    teamId: string,
     payload: CreateShiftScheduleRequest,
   ): Promise<ShiftScheduleResponse> {
     const query = new URLSearchParams()

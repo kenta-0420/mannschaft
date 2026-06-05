@@ -26,7 +26,7 @@ export function useServiceRecordApi() {
   }
 
   // === Records ===
-  async function getRecords(teamId: number, params?: Record<string, unknown>) {
+  async function getRecords(teamId: string, params?: Record<string, unknown>) {
     const qs = buildQuery(params)
     return api<{
       data: ServiceRecordResponse[]
@@ -34,53 +34,53 @@ export function useServiceRecordApi() {
     }>(`/api/v1/teams/${teamId}/service-records?${qs}`)
   }
 
-  async function getRecord(teamId: number, recordId: number) {
+  async function getRecord(teamId: string, recordId: number) {
     return api<{ data: ServiceRecordResponse }>(
       `/api/v1/teams/${teamId}/service-records/${recordId}`,
     )
   }
 
-  async function createRecord(teamId: number, body: Record<string, unknown>) {
+  async function createRecord(teamId: string, body: Record<string, unknown>) {
     return api<{ data: ServiceRecordResponse }>(`/api/v1/teams/${teamId}/service-records`, {
       method: 'POST',
       body,
     })
   }
 
-  async function bulkCreateRecords(teamId: number, body: Record<string, unknown>) {
+  async function bulkCreateRecords(teamId: string, body: Record<string, unknown>) {
     return api(`/api/v1/teams/${teamId}/service-records/bulk`, { method: 'POST', body })
   }
 
-  async function updateRecord(teamId: number, recordId: number, body: Record<string, unknown>) {
+  async function updateRecord(teamId: string, recordId: number, body: Record<string, unknown>) {
     return api<{ data: ServiceRecordResponse }>(
       `/api/v1/teams/${teamId}/service-records/${recordId}`,
       { method: 'PUT', body },
     )
   }
 
-  async function deleteRecord(teamId: number, recordId: number) {
+  async function deleteRecord(teamId: string, recordId: number) {
     return api(`/api/v1/teams/${teamId}/service-records/${recordId}`, { method: 'DELETE' })
   }
 
-  async function confirmRecord(teamId: number, recordId: number) {
+  async function confirmRecord(teamId: string, recordId: number) {
     return api(`/api/v1/teams/${teamId}/service-records/${recordId}/confirm`, { method: 'PATCH' })
   }
 
-  async function duplicateRecord(teamId: number, recordId: number) {
+  async function duplicateRecord(teamId: string, recordId: number) {
     return api<{ data: ServiceRecordResponse }>(
       `/api/v1/teams/${teamId}/service-records/${recordId}/duplicate`,
       { method: 'POST' },
     )
   }
 
-  async function exportRecords(teamId: number, params?: Record<string, unknown>) {
+  async function exportRecords(teamId: string, params?: Record<string, unknown>) {
     const qs = buildQuery(params)
     return api(`/api/v1/teams/${teamId}/service-records/export?${qs}`)
   }
 
   // === Attachments ===
   async function addAttachment(
-    teamId: number,
+    teamId: string,
     recordId: number,
     body: FormData | Record<string, unknown>,
   ) {
@@ -91,7 +91,7 @@ export function useServiceRecordApi() {
   }
 
   async function getAttachmentUploadUrl(
-    teamId: number,
+    teamId: string,
     recordId: number,
     body: Record<string, unknown>,
   ) {
@@ -101,56 +101,56 @@ export function useServiceRecordApi() {
     })
   }
 
-  async function deleteAttachment(teamId: number, recordId: number, attachmentId: number) {
+  async function deleteAttachment(teamId: string, recordId: number, attachmentId: number) {
     return api(`/api/v1/teams/${teamId}/service-records/${recordId}/attachments/${attachmentId}`, {
       method: 'DELETE',
     })
   }
 
   // === Reactions ===
-  async function addReaction(teamId: number, recordId: number, body: Record<string, unknown>) {
+  async function addReaction(teamId: string, recordId: number, body: Record<string, unknown>) {
     return api(`/api/v1/teams/${teamId}/service-records/${recordId}/reactions`, {
       method: 'POST',
       body,
     })
   }
 
-  async function removeReaction(teamId: number, recordId: number) {
+  async function removeReaction(teamId: string, recordId: number) {
     return api(`/api/v1/teams/${teamId}/service-records/${recordId}/reactions`, {
       method: 'DELETE',
     })
   }
 
   // === Settings ===
-  async function getSettings(teamId: number) {
+  async function getSettings(teamId: string) {
     return api<{ data: ServiceRecordSettings }>(`/api/v1/teams/${teamId}/service-records/settings`)
   }
 
-  async function updateSettings(teamId: number, body: Record<string, unknown>) {
+  async function updateSettings(teamId: string, body: Record<string, unknown>) {
     return api(`/api/v1/teams/${teamId}/service-records/settings`, { method: 'PUT', body })
   }
 
   // === Fields ===
-  async function getFields(teamId: number) {
+  async function getFields(teamId: string) {
     return api<{ data: ServiceRecordField[] }>(`/api/v1/teams/${teamId}/service-record-fields`)
   }
 
-  async function createField(teamId: number, body: Record<string, unknown>) {
+  async function createField(teamId: string, body: Record<string, unknown>) {
     return api<{ data: ServiceRecordField }>(`/api/v1/teams/${teamId}/service-record-fields`, {
       method: 'POST',
       body,
     })
   }
 
-  async function updateField(teamId: number, fieldId: number, body: Record<string, unknown>) {
+  async function updateField(teamId: string, fieldId: number, body: Record<string, unknown>) {
     return api(`/api/v1/teams/${teamId}/service-record-fields/${fieldId}`, { method: 'PUT', body })
   }
 
-  async function deleteField(teamId: number, fieldId: number) {
+  async function deleteField(teamId: string, fieldId: number) {
     return api(`/api/v1/teams/${teamId}/service-record-fields/${fieldId}`, { method: 'DELETE' })
   }
 
-  async function updateFieldSortOrder(teamId: number, body: Record<string, unknown>) {
+  async function updateFieldSortOrder(teamId: string, body: Record<string, unknown>) {
     return api(`/api/v1/teams/${teamId}/service-record-fields/sort-order`, {
       method: 'PATCH',
       body,
@@ -158,46 +158,46 @@ export function useServiceRecordApi() {
   }
 
   // === Templates (team) ===
-  async function getTemplates(teamId: number) {
+  async function getTemplates(teamId: string) {
     return api<{ data: ServiceRecordTemplate[] }>(
       `/api/v1/teams/${teamId}/service-records/templates`,
     )
   }
 
-  async function getTemplate(teamId: number, templateId: number) {
+  async function getTemplate(teamId: string, templateId: number) {
     return api<{ data: ServiceRecordTemplate }>(
       `/api/v1/teams/${teamId}/service-records/templates/${templateId}`,
     )
   }
 
-  async function createTemplate(teamId: number, body: Record<string, unknown>) {
+  async function createTemplate(teamId: string, body: Record<string, unknown>) {
     return api<{ data: ServiceRecordTemplate }>(
       `/api/v1/teams/${teamId}/service-records/templates`,
       { method: 'POST', body },
     )
   }
 
-  async function updateTemplate(teamId: number, templateId: number, body: Record<string, unknown>) {
+  async function updateTemplate(teamId: string, templateId: number, body: Record<string, unknown>) {
     return api(`/api/v1/teams/${teamId}/service-records/templates/${templateId}`, {
       method: 'PUT',
       body,
     })
   }
 
-  async function deleteTemplate(teamId: number, templateId: number) {
+  async function deleteTemplate(teamId: string, templateId: number) {
     return api(`/api/v1/teams/${teamId}/service-records/templates/${templateId}`, {
       method: 'DELETE',
     })
   }
 
   // === Templates (organization) ===
-  async function getOrgTemplates(orgId: number) {
+  async function getOrgTemplates(orgId: string) {
     return api<{ data: ServiceRecordTemplate[] }>(
       `/api/v1/organizations/${orgId}/service-records/templates`,
     )
   }
 
-  async function createOrgTemplate(orgId: number, body: Record<string, unknown>) {
+  async function createOrgTemplate(orgId: string, body: Record<string, unknown>) {
     return api<{ data: ServiceRecordTemplate }>(
       `/api/v1/organizations/${orgId}/service-records/templates`,
       { method: 'POST', body },
@@ -205,7 +205,7 @@ export function useServiceRecordApi() {
   }
 
   async function updateOrgTemplate(
-    orgId: number,
+    orgId: string,
     templateId: number,
     body: Record<string, unknown>,
   ) {
@@ -215,7 +215,7 @@ export function useServiceRecordApi() {
     })
   }
 
-  async function deleteOrgTemplate(orgId: number, templateId: number) {
+  async function deleteOrgTemplate(orgId: string, templateId: number) {
     return api(`/api/v1/organizations/${orgId}/service-records/templates/${templateId}`, {
       method: 'DELETE',
     })
@@ -223,7 +223,7 @@ export function useServiceRecordApi() {
 
   // === Member History ===
   async function getMemberHistory(
-    teamId: number,
+    teamId: string,
     userId: number,
     params?: Record<string, unknown>,
   ) {
@@ -233,7 +233,7 @@ export function useServiceRecordApi() {
     )
   }
 
-  async function getMemberSummary(teamId: number, userId: number) {
+  async function getMemberSummary(teamId: string, userId: number) {
     return api<{ data: Record<string, unknown> }>(
       `/api/v1/teams/${teamId}/members/${userId}/service-history/summary`,
     )

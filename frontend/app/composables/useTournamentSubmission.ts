@@ -7,7 +7,7 @@ import type {
   SubmitForTeamRequest,
 } from '~/types/tournament'
 
-export function useTournamentSubmission(orgId: number, tournamentId: number) {
+export function useTournamentSubmission(orgId: string, tournamentId: number) {
   const api = useApi()
 
   const base = `/api/v1/organizations/${orgId}/tournaments/${tournamentId}/submission-requirements`
@@ -18,7 +18,7 @@ export function useTournamentSubmission(orgId: number, tournamentId: number) {
   }
 
   // === チーム向け: 自チーム対象の提出枠一覧 ===
-  async function listRequirementsForTeam(teamId: number) {
+  async function listRequirementsForTeam(teamId: string) {
     return api<{ data: SubmissionRequirementResponse[] }>(`${base}?teamId=${teamId}`)
   }
 
@@ -49,7 +49,7 @@ export function useTournamentSubmission(orgId: number, tournamentId: number) {
   }
 
   // === チームが提出（F05.6 form_submission起票） ===
-  async function submitForTeam(reqId: number, teamId: number, body: SubmitForTeamRequest) {
+  async function submitForTeam(reqId: number, teamId: string, body: SubmitForTeamRequest) {
     return api<{ data: { formSubmissionId: number } }>(
       `${base}/${reqId}/teams/${teamId}/submit`,
       { method: 'POST', body },

@@ -6,7 +6,7 @@ import type {
 } from '~/types/organization'
 
 const props = defineProps<{
-  orgId: number
+  orgId: string
   isAdminOrDeputy: boolean
 }>()
 

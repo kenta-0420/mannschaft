@@ -4,7 +4,7 @@ import type { IncidentSummaryResponse } from '~/types/incident'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
 
 const selectedIncident = ref<IncidentSummaryResponse | null>(null)

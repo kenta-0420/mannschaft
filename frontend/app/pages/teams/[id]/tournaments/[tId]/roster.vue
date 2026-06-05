@@ -12,7 +12,7 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const tournamentId = Number(route.params.tId)
 
 // 試合選択

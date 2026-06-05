@@ -4,7 +4,7 @@ import type { CoinTossResponse } from '~/types/coin-toss'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const { toss, getHistory, shareToChat } = useCoinTossApi()
 const { showError } = useNotification()
 const { formatDateTime } = useDatetime()

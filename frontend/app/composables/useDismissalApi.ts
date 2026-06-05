@@ -20,7 +20,7 @@ interface ApiResponse<T> {
 export function useDismissalApi() {
   const api = useApi()
 
-  function buildBase(teamId: number, eventId: number): string {
+  function buildBase(teamId: string, eventId: number): string {
     return `/api/v1/teams/${teamId}/events/${eventId}/dismissal`
   }
 
@@ -32,7 +32,7 @@ export function useDismissalApi() {
    * 本関数はその利便性を内部に取り込むため、送信成功後に自動で status を取得して返す。</p>
    */
   async function submitDismissal(
-    teamId: number,
+    teamId: string,
     eventId: number,
     body: DismissalRequest,
   ): Promise<DismissalStatusResponse> {
@@ -42,7 +42,7 @@ export function useDismissalApi() {
 
   /** 解散通知の送信状態を取得する。 */
   async function getDismissalStatus(
-    teamId: number,
+    teamId: string,
     eventId: number,
   ): Promise<DismissalStatusResponse> {
     const res = await api<ApiResponse<DismissalStatusResponse>>(

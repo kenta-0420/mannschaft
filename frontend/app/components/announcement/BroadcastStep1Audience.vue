@@ -57,12 +57,12 @@ watchEffect(async () => {
 })
 
 /** 個別チームのチェック状態 */
-function isTeamChecked(teamId: number): boolean {
+function isTeamChecked(teamId: string): boolean {
   return props.modelValue.targetTeamIds?.includes(teamId) ?? false
 }
 
 /** 個別チームのチェックを切り替える */
-function toggleTeam(teamId: number, checked: boolean) {
+function toggleTeam(teamId: string, checked: boolean) {
   const current = props.modelValue.targetTeamIds ?? []
   const next = checked
     ? [...current, teamId]

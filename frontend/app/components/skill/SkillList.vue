@@ -2,7 +2,7 @@
 import type { MemberSkillResponse, SkillCategoryResponse, SkillStatus } from '~/types/skill'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   canManage?: boolean
 }>()
 

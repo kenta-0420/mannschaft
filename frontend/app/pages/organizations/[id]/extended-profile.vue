@@ -11,7 +11,7 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = computed(() => Number(route.params.id))
+const orgId = computed(() => String(route.params.id))
 const api = useOrgExtendedProfileApi()
 const notification = useNotification()
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)

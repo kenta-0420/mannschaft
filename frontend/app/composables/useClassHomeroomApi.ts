@@ -11,7 +11,7 @@ interface ApiResponse<T> {
 export function useClassHomeroomApi() {
   const api = useApi()
 
-  async function getHomerooms(teamId: number, academicYear: number): Promise<ClassHomeroomResponse[]> {
+  async function getHomerooms(teamId: string, academicYear: number): Promise<ClassHomeroomResponse[]> {
     const res = await api<ApiResponse<ClassHomeroomResponse[]>>(
       `/api/v1/teams/${teamId}/homerooms?academicYear=${academicYear}`,
     )
@@ -19,7 +19,7 @@ export function useClassHomeroomApi() {
   }
 
   async function createHomeroom(
-    teamId: number,
+    teamId: string,
     body: ClassHomeroomCreateRequest,
   ): Promise<ClassHomeroomResponse> {
     const res = await api<ApiResponse<ClassHomeroomResponse>>(
@@ -30,7 +30,7 @@ export function useClassHomeroomApi() {
   }
 
   async function updateHomeroom(
-    teamId: number,
+    teamId: string,
     id: number,
     body: ClassHomeroomUpdateRequest,
   ): Promise<ClassHomeroomResponse> {

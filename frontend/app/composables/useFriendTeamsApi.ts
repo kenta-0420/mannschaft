@@ -38,7 +38,7 @@ export function useFriendTeamsApi() {
    * @param req    フォローリクエスト
    * @returns フォロー結果
    */
-  async function follow(teamId: number, req: FollowTeamRequest): Promise<FollowTeamResponse> {
+  async function follow(teamId: string, req: FollowTeamRequest): Promise<FollowTeamResponse> {
     const result = await api<{ data: FollowTeamResponse }>(
       `/api/v1/teams/${teamId}/friends/follow`,
       { method: 'POST', body: req },
@@ -55,7 +55,7 @@ export function useFriendTeamsApi() {
    * @param req          省略時は KEEP が適用される
    */
   async function unfollow(
-    teamId: number,
+    teamId: string,
     targetTeamId: number,
     req?: UnfollowRequest,
   ): Promise<void> {
@@ -73,7 +73,7 @@ export function useFriendTeamsApi() {
    * @returns フレンドチーム一覧レスポンス
    */
   async function listFriends(
-    teamId: number,
+    teamId: string,
     params?: { page?: number; size?: number },
   ): Promise<TeamFriendListResponse> {
     return api<TeamFriendListResponse>(
@@ -89,7 +89,7 @@ export function useFriendTeamsApi() {
    * @param req          公開設定リクエスト
    */
   async function setVisibility(
-    teamId: number,
+    teamId: string,
     teamFriendId: number,
     req: SetVisibilityRequest,
   ): Promise<void> {

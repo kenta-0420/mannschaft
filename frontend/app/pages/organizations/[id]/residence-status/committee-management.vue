@@ -5,7 +5,7 @@ import ActivityScoreCard from '~/components/residenceStatus/ActivityScoreCard.vu
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const orgId = computed(() => Number(route.params.id))
+const orgId = computed(() => String(route.params.id))
 
 const { getDashboard } = useActivitySnapshotApi()
 

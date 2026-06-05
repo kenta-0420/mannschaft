@@ -2,7 +2,7 @@
 import { onMounted, watch } from 'vue'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   evaluationId?: number
 }>()
 

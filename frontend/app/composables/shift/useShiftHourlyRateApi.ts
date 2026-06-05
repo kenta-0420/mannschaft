@@ -7,7 +7,7 @@ export function useShiftHourlyRateApi() {
   const api = useApi()
 
   async function getHourlyRate(
-    teamId: number,
+    teamId: string,
     userId: number,
     date?: string,
   ): Promise<ShiftHourlyRateResponse[]> {
@@ -22,7 +22,7 @@ export function useShiftHourlyRateApi() {
   }
 
   async function setHourlyRate(
-    teamId: number,
+    teamId: string,
     payload: CreateHourlyRateRequest,
   ): Promise<ShiftHourlyRateResponse> {
     const query = new URLSearchParams()

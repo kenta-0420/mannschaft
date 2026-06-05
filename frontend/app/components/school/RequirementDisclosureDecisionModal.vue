@@ -5,7 +5,7 @@ import type { DisclosureRequest, WithholdRequest, DisclosureMode, DisclosureReci
 const props = defineProps<{
   visible: boolean
   evaluationId?: number
-  teamId: number
+  teamId: string
 }>()
 
 const emit = defineEmits<{

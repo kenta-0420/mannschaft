@@ -2,7 +2,7 @@
 import type { BudgetSummary } from '~/types/budget'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const { getSummary, getFiscalYears } = useBudgetApi()
 const { showError } = useNotification()
 const summary = ref<BudgetSummary | null>(null)

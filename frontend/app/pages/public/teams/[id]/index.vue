@@ -30,11 +30,10 @@ const { t } = useI18n()
 const teamId = computed(() => {
   const raw = route.params.id
   const idStr = Array.isArray(raw) ? raw[0] : raw
-  const n = Number(idStr)
-  if (!Number.isFinite(n) || n <= 0) {
+  if (!idStr) {
     throw createError({ statusCode: 404, statusMessage: 'Team not found' })
   }
-  return n
+  return String(idStr)
 })
 
 const team = ref<TeamPublicDetailResponse | null>(null)

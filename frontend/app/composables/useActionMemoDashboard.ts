@@ -15,7 +15,7 @@ export function useActionMemoDashboard() {
   const loadingMore = ref(false)
   const error = ref<string | null>(null)
 
-  async function loadMemos(teamId: number, memberId: number): Promise<void> {
+  async function loadMemos(teamId: string, memberId: number): Promise<void> {
     loading.value = true
     error.value = null
     memos.value = []
@@ -31,7 +31,7 @@ export function useActionMemoDashboard() {
     }
   }
 
-  async function loadMore(teamId: number, memberId: number): Promise<void> {
+  async function loadMore(teamId: string, memberId: number): Promise<void> {
     if (!nextCursor.value || loadingMore.value) return
     loadingMore.value = true
     try {

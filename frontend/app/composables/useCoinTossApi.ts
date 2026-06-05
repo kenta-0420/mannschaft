@@ -4,15 +4,15 @@ import type { CursorMeta } from '~/types/api'
 export function useCoinTossApi() {
   const api = useApi()
 
-  function buildBase(teamId: number) {
+  function buildBase(teamId: string) {
     return `/api/v1/teams/${teamId}/coin-toss`
   }
 
-  async function toss(teamId: number, body: CoinTossRequest) {
+  async function toss(teamId: string, body: CoinTossRequest) {
     return api<{ data: CoinTossResponse }>(buildBase(teamId), { method: 'POST', body })
   }
 
-  async function getHistory(teamId: number, cursor?: string, limit: number = 20) {
+  async function getHistory(teamId: string, cursor?: string, limit: number = 20) {
     const query = new URLSearchParams()
     if (cursor) query.set('cursor', cursor)
     query.set('limit', String(limit))
@@ -21,7 +21,7 @@ export function useCoinTossApi() {
     )
   }
 
-  async function shareToChat(teamId: number, tossId: number) {
+  async function shareToChat(teamId: string, tossId: number) {
     return api(`${buildBase(teamId)}/${tossId}/share`, { method: 'POST' })
   }
 

@@ -4,7 +4,7 @@ import type { UnsealRequestResponse } from '~/types/succession'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const { t } = useI18n()
 const { getRequest } = useUnsealRequestApi()
 

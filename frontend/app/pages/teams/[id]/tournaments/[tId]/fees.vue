@@ -8,7 +8,7 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const tId = Number(route.params.tId)
 // orgId はクエリパラメータ経由で受け取る（大会は組織に属するため）
 const orgId = Number(route.query.orgId)

@@ -2,7 +2,7 @@
 import type { SwapRequestResponse } from '~/types/shift'
 
 defineProps<{
-  teamId: number
+  teamId: string
 }>()
 
 const shiftApi = useShiftApi()

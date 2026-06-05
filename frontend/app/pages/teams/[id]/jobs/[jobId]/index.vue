@@ -24,7 +24,7 @@ const applicationApi = useJobApplicationApi()
 const contractApi = useJobContractApi()
 const { success, error, warn } = useNotification()
 
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 const jobId = computed(() => Number(route.params.jobId))
 
 const job = ref<JobPostingResponse | null>(null)

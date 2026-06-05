@@ -11,7 +11,7 @@ import type {
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 // F09.17 Phase 11-d-4: チーム配下ページは scope='TEAM' 固定で composable を呼ぶ。
 const scopeType: ScopeType = 'TEAM'
 const scopeId = teamId

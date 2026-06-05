@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const props = defineProps<{
-  teamId: number
+  teamId: string
 }>()
 
 const queueApi = useQueueApi()

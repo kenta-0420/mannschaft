@@ -16,7 +16,7 @@ export function usePeriodAttendanceApi() {
   const api = useApi()
 
   async function getPeriodAttendance(
-    teamId: number,
+    teamId: string,
     date: string,
     periodNumber: number,
   ): Promise<PeriodAttendanceListResponse> {
@@ -27,7 +27,7 @@ export function usePeriodAttendanceApi() {
   }
 
   async function getPeriodCandidates(
-    teamId: number,
+    teamId: string,
     periodNumber: number,
     date: string,
   ): Promise<PeriodCandidatesResponse> {
@@ -38,7 +38,7 @@ export function usePeriodAttendanceApi() {
   }
 
   async function submitPeriodAttendance(
-    teamId: number,
+    teamId: string,
     periodNumber: number,
     body: PeriodAttendanceRequest,
   ): Promise<PeriodAttendanceSummary> {
@@ -50,7 +50,7 @@ export function usePeriodAttendanceApi() {
   }
 
   async function updatePeriodRecord(
-    teamId: number,
+    teamId: string,
     recordId: number,
     body: PeriodAttendanceUpdateRequest,
   ): Promise<PeriodAttendanceResponse> {

@@ -130,7 +130,7 @@ export function useContactApi() {
 
   // === チーム/組織メンバー ===
   async function getTeamContactableMembers(
-    teamId: number,
+    teamId: string,
     params?: { q?: string; cursor?: string; limit?: number },
   ) {
     const query = new URLSearchParams()
@@ -143,7 +143,7 @@ export function useContactApi() {
   }
 
   async function getOrgContactableMembers(
-    orgId: number,
+    orgId: string,
     params?: { q?: string; cursor?: string; limit?: number },
   ) {
     const query = new URLSearchParams()

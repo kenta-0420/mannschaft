@@ -7,7 +7,7 @@ definePageMeta({ middleware: 'auth', layout: 'team' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 const { getTimeline } = useRepairPlanTimelineApi()
 const { listKanbans, createKanban, moveCard } = useRepairPlanKanbanApi()
 const notification = useNotification()

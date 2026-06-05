@@ -4,7 +4,7 @@ import type { AuditLog } from '~/types/audit-log'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 const auditLogApi = useAuditLogApi()
 const notification = useNotification()
 const { formatDateTime } = useDatetime()

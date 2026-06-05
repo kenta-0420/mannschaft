@@ -16,7 +16,7 @@ import type {
 export function useMemberWorkConstraintApi() {
   const api = useApi()
 
-  function basePath(teamId: number) {
+  function basePath(teamId: string) {
     return `/api/v1/shifts/teams/${teamId}/work-constraints`
   }
 
@@ -28,7 +28,7 @@ export function useMemberWorkConstraintApi() {
    * チーム内の全勤務制約（デフォルト + 個別）を取得する（ADMIN/DEPUTY_ADMIN のみ）。
    * @param teamId チーム ID
    */
-  async function listConstraints(teamId: number): Promise<MemberWorkConstraintResponse[]> {
+  async function listConstraints(teamId: string): Promise<MemberWorkConstraintResponse[]> {
     const res = await api<{ data: MemberWorkConstraintResponse[] }>(basePath(teamId))
     return res.data
   }
@@ -43,7 +43,7 @@ export function useMemberWorkConstraintApi() {
    * @param userId 対象ユーザー ID
    */
   async function getConstraint(
-    teamId: number,
+    teamId: string,
     userId: number,
   ): Promise<MemberWorkConstraintResponse> {
     const res = await api<{ data: MemberWorkConstraintResponse }>(
@@ -59,7 +59,7 @@ export function useMemberWorkConstraintApi() {
    * @param payload 制約リクエスト（全項目 null は 400）
    */
   async function upsertConstraint(
-    teamId: number,
+    teamId: string,
     userId: number,
     payload: MemberWorkConstraintRequest,
   ): Promise<MemberWorkConstraintResponse> {
@@ -75,7 +75,7 @@ export function useMemberWorkConstraintApi() {
    * @param teamId チーム ID
    * @param userId 対象ユーザー ID
    */
-  async function deleteConstraint(teamId: number, userId: number): Promise<void> {
+  async function deleteConstraint(teamId: string, userId: number): Promise<void> {
     await api(`${basePath(teamId)}/members/${userId}`, { method: 'DELETE' })
   }
 
@@ -87,7 +87,7 @@ export function useMemberWorkConstraintApi() {
    * チームデフォルト勤務制約を取得する（チームメンバー全員が閲覧可）。
    * @param teamId チーム ID
    */
-  async function getTeamDefault(teamId: number): Promise<MemberWorkConstraintResponse> {
+  async function getTeamDefault(teamId: string): Promise<MemberWorkConstraintResponse> {
     const res = await api<{ data: MemberWorkConstraintResponse }>(
       `${basePath(teamId)}/default`,
     )
@@ -100,7 +100,7 @@ export function useMemberWorkConstraintApi() {
    * @param payload 制約リクエスト（全項目 null は 400）
    */
   async function upsertTeamDefault(
-    teamId: number,
+    teamId: string,
     payload: MemberWorkConstraintRequest,
   ): Promise<MemberWorkConstraintResponse> {
     const res = await api<{ data: MemberWorkConstraintResponse }>(
@@ -114,7 +114,7 @@ export function useMemberWorkConstraintApi() {
    * チームデフォルト勤務制約を削除する（ADMIN/DEPUTY_ADMIN のみ）。
    * @param teamId チーム ID
    */
-  async function deleteTeamDefault(teamId: number): Promise<void> {
+  async function deleteTeamDefault(teamId: string): Promise<void> {
     await api(`${basePath(teamId)}/default`, { method: 'DELETE' })
   }
 

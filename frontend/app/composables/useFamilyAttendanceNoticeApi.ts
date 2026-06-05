@@ -34,7 +34,7 @@ export function useFamilyAttendanceNoticeApi() {
   }
 
   /** 担任: 当日の保護者連絡一覧を取得する */
-  async function getTeamNotices(teamId: number, date: string): Promise<FamilyNoticeListResponse> {
+  async function getTeamNotices(teamId: string, date: string): Promise<FamilyNoticeListResponse> {
     const res = await api<ApiResponse<FamilyNoticeListResponse>>(
       `/api/v1/teams/${teamId}/attendance/notices?date=${date}`,
     )
@@ -43,7 +43,7 @@ export function useFamilyAttendanceNoticeApi() {
 
   /** 担任: 連絡を確認済みにする */
   async function acknowledgeNotice(
-    teamId: number,
+    teamId: string,
     noticeId: number,
   ): Promise<FamilyAttendanceNoticeResponse> {
     const res = await api<ApiResponse<FamilyAttendanceNoticeResponse>>(
@@ -55,7 +55,7 @@ export function useFamilyAttendanceNoticeApi() {
 
   /** 担任: 連絡を出欠レコードへ反映する */
   async function applyNotice(
-    teamId: number,
+    teamId: string,
     noticeId: number,
   ): Promise<FamilyAttendanceNoticeResponse> {
     const res = await api<ApiResponse<FamilyAttendanceNoticeResponse>>(

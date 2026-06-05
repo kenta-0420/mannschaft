@@ -3,7 +3,7 @@ import type { TeamTournamentStatsResponse, TournamentHistoryEntry } from '~/type
 
 // F08.7.1 / 02 ①: 自チーム大会成績ウィジェット（通算成績 + 直近順位履歴）。
 const props = defineProps<{
-  teamId: number
+  teamId: string
 }>()
 
 const { getTeamStats, getTeamHistory } = useTournamentWidgetApi()

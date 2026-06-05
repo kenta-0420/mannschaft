@@ -1,6 +1,6 @@
 import type { ShoppingListResponse, ShoppingItemResponse } from '~/types/shopping-list'
 
-export function useShoppingItems(teamId: number, selectedList: Ref<ShoppingListResponse | null>) {
+export function useShoppingItems(teamId: string, selectedList: Ref<ShoppingListResponse | null>) {
   const shoppingApi = useShoppingListApi()
   const { showError } = useNotification()
 

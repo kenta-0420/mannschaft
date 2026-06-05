@@ -68,7 +68,8 @@ export interface TeamTimestampsDto {
 }
 
 export interface TeamResponse {
-  id: number
+  /** UUID（public_id）。URLに使用する string 型。BE PR #1331 対応 */
+  id: string
   basicInfo?: TeamBasicInfoDto
   location?: TeamLocationDto
   visibility?: TeamVisibilityDto
@@ -120,7 +121,8 @@ export interface CreateTeamRequest {
  * 内部状態は含めない（バックエンド `TeamPublicDetailResponse` と一致）。
  */
 export interface TeamPublicDetailResponse {
-  id: number
+  /** UUID（public_id）。URLに使用する string 型。BE PR #1331 対応 */
+  id: string
   name: string
   nameKana: string | null
   nickname1: string | null

@@ -23,7 +23,7 @@ const { t } = useI18n()
 const api = useJobPostingApi()
 const { success, error } = useNotification()
 
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 const jobId = computed(() => Number(route.params.jobId))
 
 const job = ref<JobPostingResponse | null>(null)

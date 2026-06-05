@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const props = defineProps<{
-  teamId: number
+  teamId: string
   slotId: number | null
   lineName: string
   date: string

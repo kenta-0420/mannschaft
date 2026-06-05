@@ -16,7 +16,7 @@ import type {
  */
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   eventId: number
   /** 申告対象の userId（本人 or ケア対象者）。 */
   userId: number

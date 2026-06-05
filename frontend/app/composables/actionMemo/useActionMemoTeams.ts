@@ -61,7 +61,7 @@ export function useActionMemoTeams() {
    * <p>size=500 でページングしながら totalPages に達するまで繰り返し取得することで
    * 大規模チームでも全メンバーを取りこぼしなく返す。</p>
    */
-  async function fetchTeamMembers(teamId: number): Promise<{ userId: number; displayName: string; avatarUrl: string | null }[]> {
+  async function fetchTeamMembers(teamId: string): Promise<{ userId: number; displayName: string; avatarUrl: string | null }[]> {
     type Member = { userId: number; displayName: string; avatarUrl: string | null }
     type PagedRes = { data: Member[]; meta: { totalPages: number } }
 
@@ -85,7 +85,7 @@ export function useActionMemoTeams() {
   // === Phase 4-β: 管理職ダッシュボード ===
 
   async function fetchMemberMemos(
-    teamId: number,
+    teamId: string,
     memberId: number,
     params: { cursor?: string; limit?: number } = {},
   ): Promise<ActionMemoListResponse> {

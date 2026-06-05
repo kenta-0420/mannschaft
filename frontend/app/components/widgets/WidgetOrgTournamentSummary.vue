@@ -3,7 +3,7 @@ import type { OrganizationTournamentSummaryEntry } from '~/types/tournament'
 
 // F08.7.1 / 02 ②: 主催大会サマリウィジェット（各大会×各部の首位・参加数・status）。
 const props = defineProps<{
-  orgId: number
+  orgId: string
 }>()
 
 const { getOrganizationSummary } = useTournamentWidgetApi()

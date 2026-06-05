@@ -45,7 +45,7 @@ export function useAdvertiserApi() {
     })
   }
 
-  async function registerTeam(teamId: number, body: RegisterAdvertiserRequest) {
+  async function registerTeam(teamId: string, body: RegisterAdvertiserRequest) {
     return api<{ data: AdvertiserAccountResponse }>(`/api/v1/teams/${teamId}/advertiser/register`, {
       method: 'POST',
       body,

@@ -2,7 +2,7 @@
 import type { ShiftScheduleResponse } from '~/types/shift'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   canManage: boolean
 }>()
 

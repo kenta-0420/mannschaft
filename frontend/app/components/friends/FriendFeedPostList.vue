@@ -11,7 +11,7 @@ import type { FriendFeedPost } from '~/types/friendFeed'
 const { t } = useI18n()
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
 }>()
 
 const emit = defineEmits<{

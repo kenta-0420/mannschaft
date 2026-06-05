@@ -15,7 +15,7 @@ interface FamilyTodo {
 }
 
 interface FamilyData {
-  teamId: number
+  teamId: string
   familyName: string
   announcements: BulletinThreadResponse[]
   todos: FamilyTodo[]

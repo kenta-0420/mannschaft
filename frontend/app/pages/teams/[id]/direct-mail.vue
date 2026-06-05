@@ -2,7 +2,7 @@
 import type { DirectMailResponse } from '~/types/line'
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const { getMails } = useDirectMailApi()
 const { error: showError } = useNotification()
 const mails = ref<DirectMailResponse[]>([])

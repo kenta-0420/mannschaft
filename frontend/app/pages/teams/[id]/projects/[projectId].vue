@@ -12,7 +12,7 @@ import type { TodoResponse } from '~/types/todo'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const projectId = Number(route.params.projectId)
 const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
 const projectApi = useProjectApi()

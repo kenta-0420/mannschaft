@@ -130,7 +130,7 @@ import type {
 } from '~/types/shift'
 
 const route = useRoute()
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 const scheduleId = computed(() => Number(route.params.scheduleId))
 
 // F00.5 Phase 5: チームレベルの SUPPORTER 判定を useRoleAccess 経由に切替

@@ -2,7 +2,7 @@
 import type { ReservationLineResponse } from '~/types/reservation'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
 }>()
 
 const { t } = useI18n()

@@ -32,10 +32,10 @@ const {
 } = usePublicApi()
 
 const rawId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
-const teamId = Number(rawId)
+const teamId = String(rawId)
 
-// パスパラメータが数値でない場合は 404
-if (!Number.isFinite(teamId) || teamId <= 0) {
+// パスパラメータが空の場合は 404
+if (!teamId) {
   throw createError({
     statusCode: 404,
     statusMessage: t('public.error.notFound'),

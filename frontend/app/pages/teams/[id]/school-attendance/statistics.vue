@@ -7,7 +7,7 @@ definePageMeta({
 })
 
 const route = useRoute()
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 const { monthlyStats, termStats, loadingMonthly, loadingTerm, exporting, loadMonthlyStatistics, loadTermStatistics, downloadCsv } =
   useAttendanceStatistics(teamId)
 const { userTimezone } = useDatetime()

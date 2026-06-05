@@ -3,7 +3,7 @@ import type { UnsealRequestResponse } from '~/types/succession'
 
 const props = defineProps<{
   visible: boolean
-  orgId: number
+  orgId: string
   request: UnsealRequestResponse | null
   mode: 'FIRST_APPROVE' | 'SECOND_APPROVE' | 'CANCEL'
 }>()

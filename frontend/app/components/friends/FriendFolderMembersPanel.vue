@@ -21,7 +21,7 @@ import type { TeamFriendView } from '~/types/friends'
 
 const props = defineProps<{
   modelValue: boolean
-  teamId: number
+  teamId: string
   folder: TeamFriendFolderView | null
 }>()
 

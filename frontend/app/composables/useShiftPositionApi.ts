@@ -17,7 +17,7 @@ export function useShiftPositionApi() {
    * チームのポジション一覧を取得する。
    * @param teamId チーム ID
    */
-  async function listPositions(teamId: number): Promise<ShiftPositionResponse[]> {
+  async function listPositions(teamId: string): Promise<ShiftPositionResponse[]> {
     const query = new URLSearchParams()
     query.set('teamId', String(teamId))
     const res = await api<{ data: ShiftPositionResponse[] }>(`${BASE}?${query.toString()}`)
@@ -30,7 +30,7 @@ export function useShiftPositionApi() {
    * @param payload 作成リクエスト
    */
   async function createPosition(
-    teamId: number,
+    teamId: string,
     payload: CreatePositionRequest,
   ): Promise<ShiftPositionResponse> {
     const query = new URLSearchParams()

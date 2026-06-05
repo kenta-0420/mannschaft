@@ -2,7 +2,7 @@
 import type { FacilityResponse } from '~/types/facility'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const { getFacilities } = useFacilityApi()
 const { showError } = useNotification()
 const facilities = ref<FacilityResponse[]>([])

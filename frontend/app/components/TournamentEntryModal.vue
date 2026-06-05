@@ -18,11 +18,11 @@ import type {
  */
 interface Props {
   isOpen: boolean
-  orgId: number
+  orgId: string
   tournamentId: number
   divisionId: number
   participantId: number
-  teamId: number
+  teamId: string
   isAdmin: boolean
 }
 

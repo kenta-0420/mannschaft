@@ -54,7 +54,7 @@ export function useScheduleAttendance() {
 
   // === Bulk Attendance (teams only) ===
   async function bulkUpdateAttendances(
-    teamId: number,
+    teamId: string,
     scheduleId: number,
     body: BulkAttendanceRequest,
   ) {
@@ -65,14 +65,14 @@ export function useScheduleAttendance() {
   }
 
   // === Cross Invite (teams only) ===
-  async function createCrossInvite(teamId: number, scheduleId: number, body: CrossInviteRequest) {
+  async function createCrossInvite(teamId: string, scheduleId: number, body: CrossInviteRequest) {
     return api(`/api/v1/teams/${teamId}/schedules/${scheduleId}/cross-invite`, {
       method: 'POST',
       body,
     })
   }
 
-  async function deleteCrossInvite(teamId: number, scheduleId: number, invitationId: number) {
+  async function deleteCrossInvite(teamId: string, scheduleId: number, invitationId: number) {
     return api(`/api/v1/teams/${teamId}/schedules/${scheduleId}/cross-invite/${invitationId}`, {
       method: 'DELETE',
     })

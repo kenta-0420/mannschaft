@@ -56,7 +56,7 @@ export function useHandoverPackApi(scopeType: string, scopeId: number) {
 /**
  * 理事任期 API クライアント。
  */
-export function useTermApi(teamId: number) {
+export function useTermApi(teamId: string) {
   const api = useApi()
   const BASE = `/api/v1/teams/${teamId}/member-terms`
 

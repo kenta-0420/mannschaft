@@ -5,7 +5,7 @@ definePageMeta({
 })
 
 const route = useRoute()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const requestId = Number(route.params.requestId)
 </script>
 

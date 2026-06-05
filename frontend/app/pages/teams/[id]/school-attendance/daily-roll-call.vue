@@ -12,7 +12,7 @@ interface StudentEntry extends DailyRollCallEntry {
 }
 
 const route = useRoute()
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 
 const { records, loading, submitting, lastSummary, loadRecords, submitRollCall } =
   useDailyRollCall(teamId)

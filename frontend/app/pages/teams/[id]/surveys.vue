@@ -4,7 +4,7 @@ import type { SurveyResponse } from '~/types/survey'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 
 const { t } = useI18n()
 

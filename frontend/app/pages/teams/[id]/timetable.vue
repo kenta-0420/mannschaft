@@ -14,7 +14,7 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 const timetableApi = useTimetableApi()
 const notification = useNotification()
 const { isAdmin, can, loadPermissions } = useRoleAccess('team', teamId)

@@ -16,7 +16,7 @@
  */
 const props = defineProps<{
   teamFriendId: number
-  teamId: number
+  teamId: string
   isPublic: boolean
   disabled?: boolean
 }>()

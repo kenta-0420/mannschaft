@@ -5,7 +5,7 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const committeeApi = useCommitteeApi()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()

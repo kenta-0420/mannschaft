@@ -25,7 +25,7 @@
 import type { TeamFriendFolderView } from '~/types/friendFolders'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   canEdit: boolean
 }>()
 

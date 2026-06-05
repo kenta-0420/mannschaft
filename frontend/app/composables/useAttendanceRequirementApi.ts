@@ -14,7 +14,7 @@ export function useAttendanceRequirementApi() {
 
   // GET /api/v1/organizations/{orgId}/attendance-requirements?academicYear=YYYY
   async function listOrganizationRules(
-    orgId: number,
+    orgId: string,
     academicYear: number,
   ): Promise<AttendanceRequirementRuleListResponse> {
     const res = await api<ApiResponse<AttendanceRequirementRuleListResponse>>(
@@ -26,7 +26,7 @@ export function useAttendanceRequirementApi() {
 
   // POST /api/v1/organizations/{orgId}/attendance-requirements
   async function createOrganizationRule(
-    orgId: number,
+    orgId: string,
     req: CreateRequirementRuleRequest,
   ): Promise<AttendanceRequirementRule> {
     const res = await api<ApiResponse<AttendanceRequirementRule>>(
@@ -38,7 +38,7 @@ export function useAttendanceRequirementApi() {
 
   // GET /api/v1/teams/{teamId}/attendance-requirements?academicYear=YYYY
   async function listTeamRules(
-    teamId: number,
+    teamId: string,
     academicYear: number,
   ): Promise<AttendanceRequirementRuleListResponse> {
     const res = await api<ApiResponse<AttendanceRequirementRuleListResponse>>(
@@ -50,7 +50,7 @@ export function useAttendanceRequirementApi() {
 
   // POST /api/v1/teams/{teamId}/attendance-requirements
   async function createTeamRule(
-    teamId: number,
+    teamId: string,
     req: CreateRequirementRuleRequest,
   ): Promise<AttendanceRequirementRule> {
     const res = await api<ApiResponse<AttendanceRequirementRule>>(

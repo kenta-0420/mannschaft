@@ -8,7 +8,7 @@ const { t } = useI18n()
 const api = useRecruitmentApi()
 const { error } = useNotification()
 
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 const listings = ref<RecruitmentListingSummaryResponse[]>([])
 const loading = ref(false)
 const status = ref<string | undefined>(undefined)

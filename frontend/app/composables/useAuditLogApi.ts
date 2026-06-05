@@ -24,7 +24,7 @@ export function useAuditLogApi() {
     return res
   }
 
-  async function listByTeam(teamId: number, params?: AuditLogParams) {
+  async function listByTeam(teamId: string, params?: AuditLogParams) {
     const qs = buildQuery(params)
     const res = await api<{ data: AuditLog[]; meta: { totalElements: number } }>(
       `/api/v1/teams/${teamId}/audit-logs${qs ? `?${qs}` : ''}`,
@@ -32,7 +32,7 @@ export function useAuditLogApi() {
     return res
   }
 
-  async function listByOrg(orgId: number, params?: AuditLogParams) {
+  async function listByOrg(orgId: string, params?: AuditLogParams) {
     const qs = buildQuery(params)
     const res = await api<{ data: AuditLog[]; meta: { totalElements: number } }>(
       `/api/v1/organizations/${orgId}/audit-logs${qs ? `?${qs}` : ''}`,

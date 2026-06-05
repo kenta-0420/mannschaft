@@ -20,15 +20,15 @@ export function useModuleApi() {
   }
 
   // === チームモジュール管理 ===
-  async function getTeamModules(teamId: number) {
+  async function getTeamModules(teamId: string) {
     return api<{ data: TeamModuleItem[] }>(`/api/v1/teams/${teamId}/modules`)
   }
 
-  async function applyTemplate(teamId: number, body: Record<string, unknown>) {
+  async function applyTemplate(teamId: string, body: Record<string, unknown>) {
     return api(`/api/v1/teams/${teamId}/modules/template`, { method: 'PUT', body })
   }
 
-  async function toggleTeamModule(teamId: number, moduleId: number) {
+  async function toggleTeamModule(teamId: string, moduleId: number) {
     return api(`/api/v1/teams/${teamId}/modules/${moduleId}/toggle`, { method: 'PATCH' })
   }
 

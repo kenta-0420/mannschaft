@@ -2,7 +2,7 @@
 import type { SidebarCategory, SidebarItem } from '~/types/sidebar'
 
 const props = defineProps<{
-  orgId: number
+  orgId: string
 }>()
 
 const categories: SidebarCategory[] = [

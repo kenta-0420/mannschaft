@@ -12,7 +12,7 @@
  */
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
 }>()
 
 const redirectPath = computed(() => `/public/teams/${props.teamId}`)

@@ -4,7 +4,7 @@ import type { Chart, CreateChartRequest } from '~/types/chart'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 const chartApi = useChartApi()
 const notification = useNotification()
 const { loadPermissions } = useRoleAccess('team', teamId)

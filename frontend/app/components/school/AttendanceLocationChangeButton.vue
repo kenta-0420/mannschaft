@@ -7,7 +7,7 @@ import type {
 } from '~/types/school'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   studentUserId: number
   attendanceDate: string
   currentLocation: AttendanceLocation

@@ -7,7 +7,7 @@ definePageMeta({
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const todoId = Number(route.params.todoId)
 const todoApi = useTodoApi()
 const labelApi = useTodoStatusLabelApi()

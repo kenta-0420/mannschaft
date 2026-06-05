@@ -25,7 +25,7 @@ export function useAttendanceEvaluationApi() {
 
   // GET /api/v1/teams/{teamId}/attendance/requirements/at-risk?status=RISK,VIOLATION
   async function getAtRiskStudents(
-    teamId: number,
+    teamId: string,
     statuses?: EvaluationStatus[],
   ): Promise<AtRiskStudentResponse[]> {
     const url = `/api/v1/teams/${teamId}/attendance/requirements/at-risk`

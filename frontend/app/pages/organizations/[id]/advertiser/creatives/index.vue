@@ -10,7 +10,7 @@ const confirm = useConfirm()
 const advertiserApi = useAdvertiserApi()
 const { formatDate } = useDatetime()
 
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 // クエリパラメータからキャンペーンIDを取得
 const campaignId = Number(route.query.campaignId)
 

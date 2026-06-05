@@ -26,13 +26,13 @@ export function useProxyInputApi() {
   }
 
   /** 組織単位の同意書一覧（管理者用） */
-  async function getConsentsByOrg(orgId: number): Promise<ProxyInputConsent[]> {
+  async function getConsentsByOrg(orgId: string): Promise<ProxyInputConsent[]> {
     return api<ProxyInputConsent[]>(`/api/v1/organizations/${orgId}/proxy-input-consents`)
   }
 
   /** 同意書登録 */
   async function createConsent(
-    orgId: number,
+    orgId: string,
     request: CreateProxyInputConsentRequest,
   ): Promise<ProxyInputConsent> {
     return api<ProxyInputConsent>(`/api/v1/organizations/${orgId}/proxy-input-consents`, {
@@ -80,7 +80,7 @@ export function useProxyInputApi() {
   }
 
   /** スキャン画像アップロード用 presigned URL 発行 */
-  async function getScanUploadUrl(orgId: number): Promise<ScanUploadUrlResponse> {
+  async function getScanUploadUrl(orgId: string): Promise<ScanUploadUrlResponse> {
     return api<ScanUploadUrlResponse>(
       `/api/v1/organizations/${orgId}/proxy-input-consents/scan-upload-url`,
       {

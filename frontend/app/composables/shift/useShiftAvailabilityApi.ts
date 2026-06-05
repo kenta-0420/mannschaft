@@ -6,7 +6,7 @@ import type {
 export function useShiftAvailabilityApi() {
   const api = useApi()
 
-  async function getAvailability(teamId: number): Promise<AvailabilityDefaultResponse[]> {
+  async function getAvailability(teamId: string): Promise<AvailabilityDefaultResponse[]> {
     const query = new URLSearchParams()
     query.set('teamId', String(teamId))
     const res = await api<{ data: AvailabilityDefaultResponse[] }>(
@@ -16,7 +16,7 @@ export function useShiftAvailabilityApi() {
   }
 
   async function setAvailability(
-    teamId: number,
+    teamId: string,
     payload: BulkAvailabilityDefaultRequest,
   ): Promise<AvailabilityDefaultResponse[]> {
     const query = new URLSearchParams()
@@ -28,7 +28,7 @@ export function useShiftAvailabilityApi() {
     return res.data
   }
 
-  async function deleteAvailability(teamId: number): Promise<void> {
+  async function deleteAvailability(teamId: string): Promise<void> {
     const query = new URLSearchParams()
     query.set('teamId', String(teamId))
     await api(`/api/v1/shifts/availability?${query.toString()}`, { method: 'DELETE' })

@@ -17,7 +17,7 @@ export function useAttendanceSummary() {
 
   async function loadStudentSummary(
     studentId: number,
-    teamId: number,
+    teamId: string,
     academicYear: number,
     termId?: number,
   ): Promise<void> {
@@ -31,7 +31,7 @@ export function useAttendanceSummary() {
     }
   }
 
-  async function loadClassSummaries(teamId: number, academicYear: number, termId?: number): Promise<void> {
+  async function loadClassSummaries(teamId: string, academicYear: number, termId?: number): Promise<void> {
     loading.value = true
     try {
       classSummaries.value = await summaryApi.getClassSummaries(teamId, academicYear, termId)

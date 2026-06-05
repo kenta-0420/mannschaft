@@ -29,12 +29,12 @@ export function usePublicApi() {
   const api = useApi()
 
   /** 公開チーム詳細を取得する。404 時は ofetch FetchError がスローされる。 */
-  async function fetchPublicTeam(teamId: number): Promise<PublicTeamResponse> {
+  async function fetchPublicTeam(teamId: string): Promise<PublicTeamResponse> {
     return api<PublicTeamResponse>(`/api/v1/public/teams/${teamId}`)
   }
 
   /** 公開組織詳細を取得する。 */
-  async function fetchPublicOrganization(orgId: number): Promise<PublicOrganizationResponse> {
+  async function fetchPublicOrganization(orgId: string): Promise<PublicOrganizationResponse> {
     return api<PublicOrganizationResponse>(`/api/v1/public/organizations/${orgId}`)
   }
 
@@ -43,7 +43,7 @@ export function usePublicApi() {
    * Phase 1 は blog_posts のみ。
    */
   async function fetchPublicTeamPosts(
-    teamId: number,
+    teamId: string,
     page = 0,
     size = 20,
   ): Promise<SpringPage<PublicPostSummary>> {
@@ -57,7 +57,7 @@ export function usePublicApi() {
 
   /** 公開チーム投稿詳細を取得する（OGP 向け）。 */
   async function fetchPublicTeamPostDetail(
-    teamId: number,
+    teamId: string,
     postId: number,
   ): Promise<PublicPostDetail> {
     return api<PublicPostDetail>(`/api/v1/public/teams/${teamId}/posts/${postId}`)
@@ -65,7 +65,7 @@ export function usePublicApi() {
 
   /** 公開組織投稿一覧を取得する（ページング）。 */
   async function fetchPublicOrganizationPosts(
-    orgId: number,
+    orgId: string,
     page = 0,
     size = 20,
   ): Promise<SpringPage<PublicPostSummary>> {
@@ -79,7 +79,7 @@ export function usePublicApi() {
 
   /** 公開組織投稿詳細を取得する。 */
   async function fetchPublicOrganizationPostDetail(
-    orgId: number,
+    orgId: string,
     postId: number,
   ): Promise<PublicPostDetail> {
     return api<PublicPostDetail>(`/api/v1/public/organizations/${orgId}/posts/${postId}`)
@@ -142,7 +142,7 @@ export function usePublicApi() {
    * エンドポイント: GET /api/v1/public/teams/{teamId}/timeline-posts
    */
   async function fetchPublicTeamTimelinePosts(
-    teamId: number,
+    teamId: string,
     page = 0,
     size = 20,
   ): Promise<SpringPage<PublicTimelinePostResponse>> {
@@ -160,7 +160,7 @@ export function usePublicApi() {
    * エンドポイント: GET /api/v1/public/organizations/{orgId}/timeline-posts
    */
   async function fetchPublicOrgTimelinePosts(
-    orgId: number,
+    orgId: string,
     page = 0,
     size = 20,
   ): Promise<SpringPage<PublicTimelinePostResponse>> {
@@ -178,7 +178,7 @@ export function usePublicApi() {
    * エンドポイント: GET /api/v1/public/teams/{teamId}/events
    */
   async function fetchPublicTeamEvents(
-    teamId: number,
+    teamId: string,
     page = 0,
     size = 20,
   ): Promise<SpringPage<PublicEventResponse>> {
@@ -196,7 +196,7 @@ export function usePublicApi() {
    * エンドポイント: GET /api/v1/public/organizations/{orgId}/events
    */
   async function fetchPublicOrgEvents(
-    orgId: number,
+    orgId: string,
     page = 0,
     size = 20,
   ): Promise<SpringPage<PublicEventResponse>> {
@@ -216,7 +216,7 @@ export function usePublicApi() {
    * エンドポイント: PATCH /api/v1/admin/teams/{teamId}/public-settings
    */
   async function updateTeamPublicSettings(
-    teamId: number,
+    teamId: string,
     req: UpdatePublicSettingsRequest,
   ): Promise<void> {
     await api(`/api/v1/admin/teams/${teamId}/public-settings`, {
@@ -231,7 +231,7 @@ export function usePublicApi() {
    * エンドポイント: PATCH /api/v1/admin/organizations/{orgId}/public-settings
    */
   async function updateOrgPublicSettings(
-    orgId: number,
+    orgId: string,
     req: UpdatePublicSettingsRequest,
   ): Promise<void> {
     await api(`/api/v1/admin/organizations/${orgId}/public-settings`, {
@@ -330,7 +330,7 @@ export function usePublicApi() {
    * SupporterNameDisclosureWarningDialog で確認を取ってから呼び出すこと。
    */
   async function patchTeamNameDisclosure(
-    teamId: number,
+    teamId: string,
     mode: NameDisclosureMode,
     confirmed: boolean,
   ): Promise<SupporterNameDisclosureResponse> {
@@ -347,7 +347,7 @@ export function usePublicApi() {
    * 組織の投稿者識別モードを切り替える（ADMIN / SYSTEM_ADMIN 限定）。
    */
   async function patchOrganizationNameDisclosure(
-    organizationId: number,
+    organizationId: string,
     mode: NameDisclosureMode,
     confirmed: boolean,
   ): Promise<SupporterNameDisclosureResponse> {
@@ -364,7 +364,7 @@ export function usePublicApi() {
    * チームの投稿者識別モード変更履歴を取得する（ADMIN / SYSTEM_ADMIN 限定）。
    */
   async function fetchTeamNameDisclosureHistory(
-    teamId: number,
+    teamId: string,
   ): Promise<NameDisclosureChangeLogResponse[]> {
     return api<NameDisclosureChangeLogResponse[]>(
       `/api/v1/admin/teams/${teamId}/supporter-name-disclosure/history`,
@@ -375,7 +375,7 @@ export function usePublicApi() {
    * 組織の投稿者識別モード変更履歴を取得する（ADMIN / SYSTEM_ADMIN 限定）。
    */
   async function fetchOrganizationNameDisclosureHistory(
-    organizationId: number,
+    organizationId: string,
   ): Promise<NameDisclosureChangeLogResponse[]> {
     return api<NameDisclosureChangeLogResponse[]>(
       `/api/v1/admin/organizations/${organizationId}/supporter-name-disclosure/history`,

@@ -8,7 +8,7 @@ type LeagueTransferResponse = components['schemas']['LeagueTransferResponse']
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const notification = useNotification()
 
 const { getTeamTransfers } = useTeamLeagueTransfer(teamId)

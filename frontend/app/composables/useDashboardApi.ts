@@ -142,12 +142,12 @@ export function useDashboardApi() {
   }
 
   // === Scoped Dashboard ===
-  async function getOrganizationDashboard(orgId: number, statsPeriod?: string) {
+  async function getOrganizationDashboard(orgId: string, statsPeriod?: string) {
     const query = statsPeriod ? `?statsPeriod=${statsPeriod}` : ''
     return api<{ data: OrgDashboardResponse }>(`/api/v1/dashboard/organization/${orgId}${query}`)
   }
 
-  async function getTeamDashboard(teamId: number, statsPeriod?: string) {
+  async function getTeamDashboard(teamId: string, statsPeriod?: string) {
     const query = statsPeriod ? `?statsPeriod=${statsPeriod}` : ''
     return api<{ data: TeamDashboardResponse }>(`/api/v1/dashboard/team/${teamId}${query}`)
   }

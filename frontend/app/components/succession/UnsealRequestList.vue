@@ -6,7 +6,7 @@ const emit = defineEmits<{
 }>()
 
 const props = defineProps<{
-  orgId: number
+  orgId: string
 }>()
 
 const { t } = useI18n()

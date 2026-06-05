@@ -22,7 +22,7 @@ definePageMeta({ middleware: 'auth' })
 const FOLDER_MAX = 20
 
 const route = useRoute()
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 const { t } = useI18n()
 const { isAdmin, isAdminOrDeputy, can, loadPermissions } = useRoleAccess('team', teamId)
 

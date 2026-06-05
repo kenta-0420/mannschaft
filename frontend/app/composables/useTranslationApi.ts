@@ -18,7 +18,7 @@ export function useTranslationApi() {
   }
 
   async function listTranslations(
-    orgId: number,
+    orgId: string,
     params?: { status?: string; language?: string; sourceType?: string; page?: number; size?: number }
   ): Promise<TranslationListResponse> {
     const qs = buildQuery(params ?? {})
@@ -27,31 +27,31 @@ export function useTranslationApi() {
     )
   }
 
-  async function getTranslation(orgId: number, id: number) {
+  async function getTranslation(orgId: string, id: number) {
     return api<TranslationResponse>(`/api/v1/organizations/${orgId}/translations/${id}`)
   }
 
-  async function createTranslation(orgId: number, body: CreateTranslationRequest) {
+  async function createTranslation(orgId: string, body: CreateTranslationRequest) {
     return api<TranslationResponse>(`/api/v1/organizations/${orgId}/translations`, {
       method: 'POST',
       body,
     })
   }
 
-  async function updateStatus(orgId: number, id: number, status: TranslationStatus) {
+  async function updateStatus(orgId: string, id: number, status: TranslationStatus) {
     return api<TranslationResponse>(`/api/v1/organizations/${orgId}/translations/${id}/status`, {
       method: 'PUT',
       body: { status },
     })
   }
 
-  async function publishTranslation(orgId: number, id: number) {
+  async function publishTranslation(orgId: string, id: number) {
     return api<TranslationResponse>(`/api/v1/organizations/${orgId}/translations/${id}/publish`, {
       method: 'POST',
     })
   }
 
-  async function getDashboard(orgId: number) {
+  async function getDashboard(orgId: string) {
     return api<TranslationDashboard>(`/api/v1/organizations/${orgId}/translations/dashboard`)
   }
 

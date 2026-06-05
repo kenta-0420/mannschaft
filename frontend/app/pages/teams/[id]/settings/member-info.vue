@@ -10,7 +10,7 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const notification = useNotification()
 const memberInfoApi = useMemberInfoApi()
 const { isAdmin, loadPermissions } = useRoleAccess('team', teamId)

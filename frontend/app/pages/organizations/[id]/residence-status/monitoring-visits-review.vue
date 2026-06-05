@@ -5,7 +5,7 @@ import type { ContactResult, MonitoringVisitResponse } from '~/types/residenceSt
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const orgId = computed(() => Number(route.params.id))
+const orgId = computed(() => String(route.params.id))
 
 const { listVisitsByCommittee, listVisitsByResident } = useMonitoringVisitApi()
 const { formatDate } = useDatetime()

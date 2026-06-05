@@ -8,11 +8,11 @@ import type {
 export function useCommitteeApi() {
   const api = useApi()
 
-  async function listCommittees(orgId: number) {
+  async function listCommittees(orgId: string) {
     return api<{ data: CommitteeSummary[] }>(`/api/v1/organizations/${orgId}/committees`)
   }
 
-  async function createCommittee(orgId: number, body: Record<string, unknown>) {
+  async function createCommittee(orgId: string, body: Record<string, unknown>) {
     return api<{ data: CommitteeSummary }>(`/api/v1/organizations/${orgId}/committees`, {
       method: 'POST',
       body,

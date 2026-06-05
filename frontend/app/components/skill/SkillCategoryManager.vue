@@ -2,7 +2,7 @@
 import type { SkillCategoryResponse } from '~/types/skill'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
 }>()
 
 const {

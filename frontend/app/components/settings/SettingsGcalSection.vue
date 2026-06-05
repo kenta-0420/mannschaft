@@ -17,8 +17,8 @@ defineEmits<{
   disconnect: []
   saveSettings: []
   manualSync: []
-  toggleTeamSync: [teamId: number]
-  toggleOrgSync: [orgId: number]
+  toggleTeamSync: [teamId: string]
+  toggleOrgSync: [orgId: string]
 }>()
 
 const { formatDateTime } = useDatetime()

@@ -3,7 +3,7 @@ import type { TicketProductResponse, TicketBookResponse } from '~/types/ticket'
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 
 const notification = useNotification()
 const { getProducts, getBooks, createProduct } = useTicketApi()

@@ -12,17 +12,17 @@ import type {
 export function useFamilyPersonalTimetableApi() {
   const api = useApi()
 
-  function base(teamId: number, userId: number) {
+  function base(teamId: string, userId: number) {
     return `/api/v1/families/${teamId}/members/${userId}/personal-timetables`
   }
 
-  async function list(teamId: number, userId: number) {
+  async function list(teamId: string, userId: number) {
     const res = await api<{ data: FamilyPersonalTimetable[] }>(base(teamId, userId))
     return res.data
   }
 
   async function getWeekly(
-    teamId: number,
+    teamId: string,
     userId: number,
     personalTimetableId: number,
     weekOf?: string,

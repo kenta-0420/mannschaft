@@ -4,7 +4,7 @@ definePageMeta({
 })
 
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const { isAdmin, loadPermissions } = useRoleAccess('team', teamId)
 
 onMounted(loadPermissions)

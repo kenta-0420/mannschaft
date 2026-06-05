@@ -107,23 +107,23 @@ export function useActivityApi() {
   }
 
   // === Public Activities ===
-  async function listOrgPublicActivities(orgId: number) {
+  async function listOrgPublicActivities(orgId: string) {
     return api<{ data: ActivityRecordResponse[] }>(
       `/api/v1/public/organizations/${orgId}/activities`,
     )
   }
 
-  async function getOrgPublicActivity(orgId: number, id: number) {
+  async function getOrgPublicActivity(orgId: string, id: number) {
     return api<{ data: ActivityRecordResponse }>(
       `/api/v1/public/organizations/${orgId}/activities/${id}`,
     )
   }
 
-  async function listTeamPublicActivities(teamId: number) {
+  async function listTeamPublicActivities(teamId: string) {
     return api<{ data: ActivityRecordResponse[] }>(`/api/v1/public/teams/${teamId}/activities`)
   }
 
-  async function getTeamPublicActivity(teamId: number, id: number) {
+  async function getTeamPublicActivity(teamId: string, id: number) {
     return api<{ data: ActivityRecordResponse }>(`/api/v1/public/teams/${teamId}/activities/${id}`)
   }
 

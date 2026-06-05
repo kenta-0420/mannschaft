@@ -25,7 +25,7 @@ import RollCallSubmitDialog from '~/components/event/rollCall/RollCallSubmitDial
  */
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   eventId: number
   candidates: RollCallCandidate[]
   /** 事前連絡サマリーバナー用（任意。空配列なら非表示）。 */

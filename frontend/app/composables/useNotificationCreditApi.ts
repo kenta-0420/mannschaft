@@ -14,7 +14,7 @@ export function useNotificationCreditApi() {
   /**
    * 組織の通知クレジット残高を取得する（ADMIN以上）。
    */
-  async function getBalance(orgId: number) {
+  async function getBalance(orgId: string) {
     return api<{ data: NotificationCreditBalance }>(
       `/api/v1/organizations/${orgId}/notification-credits/balance`,
     )
@@ -23,7 +23,7 @@ export function useNotificationCreditApi() {
   /**
    * 組織の購入履歴一覧を取得する（ADMIN以上）。
    */
-  async function listPurchases(orgId: number) {
+  async function listPurchases(orgId: string) {
     return api<{ data: NotificationCreditPurchase[] }>(
       `/api/v1/organizations/${orgId}/notification-credits/purchases`,
     )
@@ -40,7 +40,7 @@ export function useNotificationCreditApi() {
    * 通知クレジット購入用 Checkout Session を作成する（ADMINのみ）。
    * レスポンスの checkoutUrl へリダイレクトして Stripe の決済ページを表示する。
    */
-  async function createCheckout(orgId: number, packageId: number) {
+  async function createCheckout(orgId: string, packageId: number) {
     return api<{ data: NotificationCreditCheckoutResponse }>(
       `/api/v1/organizations/${orgId}/notification-credits/checkout`,
       {

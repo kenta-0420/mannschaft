@@ -144,7 +144,7 @@ export function useMyPersonalTimetableApi() {
     return res.data
   }
 
-  async function removeShareTarget(id: number, teamId: number) {
+  async function removeShareTarget(id: number, teamId: string) {
     await api(`${base}/${id}/share-targets/${teamId}`, { method: 'DELETE' })
   }
 

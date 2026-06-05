@@ -5,7 +5,7 @@ import type { TransitionAlertResponse } from '~/types/school'
 const props = defineProps<{
   visible: boolean
   alert: TransitionAlertResponse
-  teamId: number
+  teamId: string
 }>()
 
 const emit = defineEmits<{

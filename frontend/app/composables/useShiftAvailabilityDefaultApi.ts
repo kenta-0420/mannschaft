@@ -19,7 +19,7 @@ export function useShiftAvailabilityDefaultApi() {
    * デフォルト勤務可能時間を取得する。
    * @param teamId チーム ID
    */
-  async function getAvailabilityDefaults(teamId: number): Promise<AvailabilityDefaultResponse[]> {
+  async function getAvailabilityDefaults(teamId: string): Promise<AvailabilityDefaultResponse[]> {
     const query = new URLSearchParams()
     query.set('teamId', String(teamId))
     const res = await api<{ data: AvailabilityDefaultResponse[] }>(`${BASE}?${query.toString()}`)
@@ -32,7 +32,7 @@ export function useShiftAvailabilityDefaultApi() {
    * @param payload 一括設定リクエスト
    */
   async function setAvailabilityDefaults(
-    teamId: number,
+    teamId: string,
     payload: BulkAvailabilityDefaultRequest,
   ): Promise<AvailabilityDefaultResponse[]> {
     const query = new URLSearchParams()
@@ -48,7 +48,7 @@ export function useShiftAvailabilityDefaultApi() {
    * デフォルト勤務可能時間を全件削除する。
    * @param teamId チーム ID
    */
-  async function deleteAvailabilityDefaults(teamId: number): Promise<void> {
+  async function deleteAvailabilityDefaults(teamId: string): Promise<void> {
     const query = new URLSearchParams()
     query.set('teamId', String(teamId))
     await api(`${BASE}?${query.toString()}`, { method: 'DELETE' })

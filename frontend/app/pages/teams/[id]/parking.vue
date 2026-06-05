@@ -2,7 +2,7 @@
 import type { ParkingSpaceResponse } from '~/types/parking'
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const { getSpaces } = useParkingApi()
 const { showError } = useNotification()
 const spaces = ref<ParkingSpaceResponse[]>([])

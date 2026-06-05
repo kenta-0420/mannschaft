@@ -25,7 +25,7 @@ export function useFriendFoldersApi() {
    * @param teamId 自チーム ID
    * @returns フォルダ一覧
    */
-  async function listFolders(teamId: number): Promise<TeamFriendFolderView[]> {
+  async function listFolders(teamId: string): Promise<TeamFriendFolderView[]> {
     const result = await api<{ data: TeamFriendFolderView[] }>(
       `/api/v1/teams/${teamId}/friend-folders`,
     )
@@ -40,7 +40,7 @@ export function useFriendFoldersApi() {
    * @returns 作成されたフォルダ
    */
   async function createFolder(
-    teamId: number,
+    teamId: string,
     req: CreateFolderRequest,
   ): Promise<TeamFriendFolderView> {
     const result = await api<{ data: TeamFriendFolderView }>(
@@ -59,7 +59,7 @@ export function useFriendFoldersApi() {
    * @returns 更新後のフォルダ
    */
   async function updateFolder(
-    teamId: number,
+    teamId: string,
     folderId: number,
     req: UpdateFolderRequest,
   ): Promise<TeamFriendFolderView> {
@@ -77,7 +77,7 @@ export function useFriendFoldersApi() {
    * @param teamId   自チーム ID
    * @param folderId フォルダ ID
    */
-  async function deleteFolder(teamId: number, folderId: number): Promise<void> {
+  async function deleteFolder(teamId: string, folderId: number): Promise<void> {
     await api(`/api/v1/teams/${teamId}/friend-folders/${folderId}`, {
       method: 'DELETE',
     })
@@ -91,7 +91,7 @@ export function useFriendFoldersApi() {
    * @param req      追加リクエスト
    */
   async function addFolderMember(
-    teamId: number,
+    teamId: string,
     folderId: number,
     req: AddFolderMemberRequest,
   ): Promise<void> {
@@ -109,7 +109,7 @@ export function useFriendFoldersApi() {
    * @param teamFriendId フレンド関係 ID
    */
   async function removeFolderMember(
-    teamId: number,
+    teamId: string,
     folderId: number,
     teamFriendId: number,
   ): Promise<void> {

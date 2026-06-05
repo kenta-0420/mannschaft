@@ -6,7 +6,7 @@ definePageMeta({
 
 const route = useRoute()
 const router = useRouter()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
 
 const feedRef = ref<{ refresh: () => void } | null>(null)

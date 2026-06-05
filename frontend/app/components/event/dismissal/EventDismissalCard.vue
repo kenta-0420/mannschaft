@@ -13,7 +13,7 @@ import DismissalDialog from './DismissalDialog.vue'
 defineProps<{
   eventId: number
   eventName: string
-  teamId: number
+  teamId: string
 }>()
 
 const emit = defineEmits<{

@@ -3,20 +3,20 @@ import type { AnniversaryResponse, AnniversaryRequest } from '~/types/anniversar
 export function useAnniversaryApi() {
   const api = useApi()
 
-  function buildBase(teamId: number) {
+  function buildBase(teamId: string) {
     return `/api/v1/teams/${teamId}/anniversaries`
   }
 
-  async function listAnniversaries(teamId: number) {
+  async function listAnniversaries(teamId: string) {
     return api<{ data: AnniversaryResponse[] }>(buildBase(teamId))
   }
 
-  async function createAnniversary(teamId: number, body: AnniversaryRequest) {
+  async function createAnniversary(teamId: string, body: AnniversaryRequest) {
     return api<{ data: AnniversaryResponse }>(buildBase(teamId), { method: 'POST', body })
   }
 
   async function updateAnniversary(
-    teamId: number,
+    teamId: string,
     anniversaryId: number,
     body: AnniversaryRequest,
   ) {
@@ -26,11 +26,11 @@ export function useAnniversaryApi() {
     })
   }
 
-  async function deleteAnniversary(teamId: number, anniversaryId: number) {
+  async function deleteAnniversary(teamId: string, anniversaryId: number) {
     return api(`${buildBase(teamId)}/${anniversaryId}`, { method: 'DELETE' })
   }
 
-  async function getUpcoming(teamId: number) {
+  async function getUpcoming(teamId: string) {
     return api<{ data: AnniversaryResponse[] }>(`${buildBase(teamId)}/upcoming`)
   }
 

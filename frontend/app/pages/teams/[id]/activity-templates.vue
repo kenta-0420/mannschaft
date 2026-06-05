@@ -4,7 +4,7 @@ import type { ActivityTemplate } from '~/types/activity'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 
 const { getTemplates, deleteTemplate, duplicateTemplate } = useActivityApi()
 const { showError, showSuccess } = useNotification()

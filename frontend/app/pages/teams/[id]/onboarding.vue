@@ -6,7 +6,7 @@ definePageMeta({
 })
 
 const route = useRoute()
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 const onboardingApi = useOnboardingApi()
 const notification = useNotification()
 const { isAdmin, loadPermissions } = useRoleAccess('team', teamId)

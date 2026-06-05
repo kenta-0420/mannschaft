@@ -40,10 +40,10 @@ export type CareJobType = 'ROLL_CALL' | 'LATE_NOTICE' | 'ABSENCE_NOTICE' | 'DISM
  * </ul>
  */
 export type CareJob =
-  | { type: 'ROLL_CALL'; teamId: number; eventId: number; payload: RollCallSessionRequest }
-  | { type: 'LATE_NOTICE'; teamId: number; eventId: number; payload: LateNoticeRequest }
-  | { type: 'ABSENCE_NOTICE'; teamId: number; eventId: number; payload: AbsenceNoticeRequest }
-  | { type: 'DISMISSAL'; teamId: number; eventId: number; payload: DismissalRequest }
+  | { type: 'ROLL_CALL'; teamId: string; eventId: number; payload: RollCallSessionRequest }
+  | { type: 'LATE_NOTICE'; teamId: string; eventId: number; payload: LateNoticeRequest }
+  | { type: 'ABSENCE_NOTICE'; teamId: string; eventId: number; payload: AbsenceNoticeRequest }
+  | { type: 'DISMISSAL'; teamId: string; eventId: number; payload: DismissalRequest }
 
 /** flushPendingCareJobs の集計結果。 */
 export interface FlushSummary {

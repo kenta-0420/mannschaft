@@ -11,7 +11,7 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
 const router = useRouter()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const campaignId = String(route.params.campaignId)
 // F09.17 Phase 11-d-3: 組織配下ページは scope='ORGANIZATION' 固定で composable を呼ぶ。
 const scopeType: ScopeType = 'ORGANIZATION'

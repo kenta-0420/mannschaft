@@ -3,7 +3,7 @@ import dayjs from 'dayjs'
 import type { ClosurePreviewItem, ClosureHistoryItem, ClosureConfirmationItem } from '~/composables/useEmergencyClosureApi'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
 }>()
 
 const { t } = useI18n()

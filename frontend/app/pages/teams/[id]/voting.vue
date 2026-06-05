@@ -3,7 +3,7 @@ import type { VoteSessionResponse } from '~/types/voting'
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 
 const { getSessions, createSession } = useVotingApi()
 const notification = useNotification()

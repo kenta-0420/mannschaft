@@ -196,7 +196,7 @@ export function useScheduleCrud() {
     })
   }
 
-  async function confirmScheduleInvitation(teamId: number, invitationId: number) {
+  async function confirmScheduleInvitation(teamId: string, invitationId: number) {
     return api(`/api/v1/teams/${teamId}/schedule-invitations/${invitationId}/confirm`, {
       method: 'POST',
     })

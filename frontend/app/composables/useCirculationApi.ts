@@ -155,7 +155,7 @@ export function useCirculationApi() {
   }
 
   async function updateScopedCirculation(
-    teamId: number,
+    teamId: string,
     documentId: number,
     body: Record<string, unknown>,
   ) {
@@ -165,7 +165,7 @@ export function useCirculationApi() {
     )
   }
 
-  async function deleteScopedCirculation(teamId: number, documentId: number) {
+  async function deleteScopedCirculation(teamId: string, documentId: number) {
     return api(`/api/v1/teams/${teamId}/circulations/${documentId}`, { method: 'DELETE' })
   }
 
@@ -179,11 +179,11 @@ export function useCirculationApi() {
     return api(`${base}/circulations/${documentId}/activate`, { method: 'POST' })
   }
 
-  async function cancelScopedCirculation(teamId: number, documentId: number) {
+  async function cancelScopedCirculation(teamId: string, documentId: number) {
     return api(`/api/v1/teams/${teamId}/circulations/${documentId}/cancel`, { method: 'POST' })
   }
 
-  async function getCirculationStats(teamId: number) {
+  async function getCirculationStats(teamId: string) {
     return api<{ data: CirculationStatsResponse }>(`/api/v1/teams/${teamId}/circulations/stats`)
   }
 

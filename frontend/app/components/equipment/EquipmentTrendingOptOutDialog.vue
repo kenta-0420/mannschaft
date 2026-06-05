@@ -2,7 +2,7 @@
 const props = defineProps<{
   visible: boolean
   isOptOut: boolean
-  teamId: number
+  teamId: string
 }>()
 
 const emit = defineEmits<{
