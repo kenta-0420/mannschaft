@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ViewerRole } from '~/types/dashboard'
 import type { TeamResponse } from '~/types/team'
+import FavoriteToggleButton from '~/components/favorites/FavoriteToggleButton.vue'
 
 definePageMeta({
   middleware: 'auth',
@@ -124,54 +125,6 @@ onMounted(async () => {
     </div>
 
     <template v-else-if="team">
-      <div class="px-6 pt-6">
-        <TeamHeaderBar
-          :team-name="displayName"
-          :template="team.location?.template ?? ''"
-          :template-label="templateLabel[team.location?.template ?? ''] ?? team.location?.template ?? ''"
-          :role-name="roleName"
-          :is-admin="isAdmin"
-          :member-count="team.metadata?.memberCount ?? 0"
-          :supporter-enabled="team.visibility?.supporterEnabled ?? false"
-          :supporter-count="team.social?.supporterCount ?? 0"
-          :follow-status="followStatus"
-          :follow-loading="followLoading"
-          :entity-id="String(team.id)"
-          @back="navigateTo('/dashboard')"
-          @apply-supporter="applySupporter"
-          @cancel-supporter="cancelSupporter"
-          @show-cancel-confirm="showCancelSupporterConfirm = true"
-          @show-leave-confirm="showLeaveConfirm = true"
-        />
-
-        <!-- F02.8 告知ウィザード + F22.1 市（Market）札立て導線 -->
-        <div class="mb-4 flex items-center justify-end gap-2">
-          <!-- F22.1 市（Market）: ADMIN または DEPUTY_ADMIN のみ「札を立てる」導線 -->
-          <Button
-            v-if="isAdminOrDeputy"
-            :label="$t('market.action.post')"
-            icon="pi pi-tag"
-            severity="secondary"
-            outlined
-            @click="navigateTo(`/teams/${teamId}/recruitment-listings/new`)"
-          />
-          <!-- F02.8 告知ウィザード：MEMBER以上に表示 -->
-          <Button
-            v-if="roleName && roleName !== 'SUPPORTER'"
-            :label="$t('announcement.broadcast_button_team')"
-            icon="pi pi-bullhorn"
-            severity="secondary"
-            @click="showBroadcastWizard = true"
-          />
-        </div>
-        <BroadcastWizard
-          v-model:visible="showBroadcastWizard"
-          scope-type="TEAM"
-          :scope-id="teamId"
-          :is-admin="isAdmin"
-        />
-      </div>
-
       <ProfileHeader
         :icon-url="team.metadata?.iconUrl"
         :banner-url="team.metadata?.bannerUrl"
@@ -181,145 +134,248 @@ onMounted(async () => {
         :editable="isAdminOrDeputy"
         @icon-updated="(url) => { if (team && team.metadata) team.metadata.iconUrl = url }"
         @banner-updated="(url) => { if (team && team.metadata) team.metadata.bannerUrl = url }"
+      >
+        <!-- 名前行 + アクション群 -->
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 pt-1">
+          <!-- 左: 戻る + 名前 + メタ情報 -->
+          <div class="flex flex-col gap-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <Button icon="pi pi-arrow-left" text rounded size="small" @click="navigateTo('/dashboard')" />
+              <h1 class="text-xl sm:text-2xl font-bold truncate">
+                {{ displayName }}
+              </h1>
+              <Tag :value="templateLabel[team.location?.template ?? ''] ?? team.location?.template ?? ''" severity="info" />
+              <RoleBadge v-if="roleName" :role="roleName" />
+            </div>
+            <div class="flex items-center gap-3 text-xs sm:text-sm text-surface-500 flex-wrap pl-8">
+              <span class="flex items-center gap-1">
+                <i class="pi pi-users text-xs" />
+                メンバー <strong class="text-surface-700">{{ team.metadata?.memberCount ?? 0 }}</strong>人
+              </span>
+              <span v-if="team.visibility?.supporterEnabled" class="flex items-center gap-1">
+                <i class="pi pi-heart text-xs" />
+                サポーター <strong class="text-surface-700">{{ team.social?.supporterCount ?? '—' }}</strong>人
+              </span>
+            </div>
+          </div>
+
+          <!-- 右: アクションボタン群 -->
+          <div class="flex items-center gap-2 flex-wrap shrink-0">
+            <FavoriteToggleButton
+              entity-type="TEAM"
+              :entity-id="String(team.id)"
+              :entity-name="displayName"
+            />
+            <template v-if="team.visibility?.supporterEnabled && !roleName">
+              <Button
+                v-if="followStatus === 'APPROVED'"
+                icon="pi pi-heart-fill"
+                label="サポーターです"
+                size="small"
+                :loading="followLoading"
+                class="border-red-400 bg-red-50 text-red-500 hover:bg-red-100"
+                outlined
+                @click="showCancelSupporterConfirm = true"
+              />
+              <span
+                v-else-if="followStatus === 'PENDING'"
+                class="flex items-center gap-2 text-sm text-orange-500"
+              >
+                <i class="pi pi-clock" />申請中（承認待ち）
+                <Button
+                  label="取消"
+                  size="small"
+                  severity="secondary"
+                  text
+                  :loading="followLoading"
+                  @click="cancelSupporter"
+                />
+              </span>
+              <Button
+                v-else
+                label="サポーターになる"
+                icon="pi pi-heart"
+                severity="secondary"
+                outlined
+                size="small"
+                :loading="followLoading"
+                @click="applySupporter"
+              />
+            </template>
+            <Button
+              v-if="isAdminOrDeputy"
+              :label="$t('market.action.post')"
+              icon="pi pi-tag"
+              severity="secondary"
+              outlined
+              size="small"
+              @click="navigateTo(`/teams/${teamId}/recruitment-listings/new`)"
+            />
+            <Button
+              v-if="roleName && roleName !== 'SUPPORTER'"
+              :label="$t('announcement.broadcast_button_team')"
+              icon="pi pi-bullhorn"
+              severity="secondary"
+              size="small"
+              @click="showBroadcastWizard = true"
+            />
+            <Button
+              v-if="!isAdmin && roleName"
+              label="チームから退出"
+              icon="pi pi-sign-out"
+              severity="danger"
+              outlined
+              size="small"
+              @click="showLeaveConfirm = true"
+            />
+          </div>
+        </div>
+      </ProfileHeader>
+
+      <BroadcastWizard
+        v-model:visible="showBroadcastWizard"
+        scope-type="TEAM"
+        :scope-id="teamId"
+        :is-admin="isAdmin"
       />
 
       <div class="px-6 pb-6">
         <Tabs v-model:value="activeTab">
-        <TabList>
-          <Tab :value="0"> ダッシュボード </Tab>
-          <Tab :value="1"> 基本情報 </Tab>
-          <Tab :value="2"> メンバー </Tab>
-          <Tab v-if="isAdminOrDeputy" :value="3"> 招待 </Tab>
-          <Tab v-if="isAdmin && team.visibility?.supporterEnabled" :value="4"> サポーター管理 </Tab>
-          <Tab v-if="isAdmin" :value="5"> 機能設定 </Tab>
-          <Tab v-if="isAdmin" :value="6"> {{ $t('nav.tab') }} </Tab>
-        </TabList>
+          <TabList>
+            <Tab :value="0"> ダッシュボード </Tab>
+            <Tab :value="1"> 基本情報 </Tab>
+            <Tab :value="2"> メンバー </Tab>
+            <Tab v-if="isAdminOrDeputy" :value="3"> 招待 </Tab>
+            <Tab v-if="isAdmin && team.visibility?.supporterEnabled" :value="4"> サポーター管理 </Tab>
+            <Tab v-if="isAdmin" :value="5"> 機能設定 </Tab>
+            <Tab v-if="isAdmin" :value="6"> {{ $t('nav.tab') }} </Tab>
+          </TabList>
 
-        <TabPanels>
-          <TabPanel :value="0">
-            <div class="mt-4">
-              <ScopeDashboard
-                scope-type="team"
-                :scope-id="teamId"
-                :scope-name="displayName"
-                :scope-template="team.location?.template"
-                :viewer-role="viewerRole"
-                :is-admin-or-deputy="isAdminOrDeputy"
-                :visibility-map="widgetVisibilitySettings"
+          <TabPanels>
+            <TabPanel :value="0">
+              <div class="mt-4">
+                <ScopeDashboard
+                  scope-type="team"
+                  :scope-id="teamId"
+                  :scope-name="displayName"
+                  :scope-template="team.location?.template"
+                  :viewer-role="viewerRole"
+                  :is-admin-or-deputy="isAdminOrDeputy"
+                  :visibility-map="widgetVisibilitySettings"
+                />
+              </div>
+            </TabPanel>
+
+            <TabPanel :value="1">
+              <TeamDetailInfo
+                :team-id="teamId"
+                :name="team.basicInfo?.name ?? ''"
+                :name-kana="team.basicInfo?.nameKana ?? null"
+                :nickname1="team.basicInfo?.nickname1 ?? null"
+                :nickname2="team.basicInfo?.nickname2 ?? null"
+                :template="team.location?.template ?? ''"
+                :template-label="templateLabel[team.location?.template ?? ''] ?? team.location?.template ?? ''"
+                :prefecture="team.location?.prefecture ?? null"
+                :city="team.location?.city ?? null"
+                :prefecture-code="team.location?.prefectureCode ?? null"
+                :city-code="team.location?.cityCode ?? null"
+                :visibility="team.visibility?.visibility ?? ''"
+                :visibility-label="visibilityLabel[team.visibility?.visibility ?? ''] ?? team.visibility?.visibility ?? ''"
+                :member-count="team.metadata?.memberCount ?? 0"
+                :team-friend-count="team.social?.teamFriendCount ?? 0"
+                :supporter-count="team.social?.supporterCount ?? 0"
+                :supporter-enabled="team.visibility?.supporterEnabled ?? false"
+                :description="null"
+                :is-admin="isAdmin"
+                :map-embed-url="team.metadata?.mapEmbedUrl ?? null"
+                @updated:map-embed-url="(url) => { if (team && team.metadata) team.metadata.mapEmbedUrl = url }"
+                @updated:region-codes="(pc, cc) => {
+                  if (team && team.location) {
+                    team.location.prefectureCode = pc
+                    team.location.cityCode = cc
+                  }
+                }"
               />
-            </div>
-          </TabPanel>
+            </TabPanel>
 
-          <TabPanel :value="1">
-            <TeamDetailInfo
-              :team-id="teamId"
-              :name="team.basicInfo?.name ?? ''"
-              :name-kana="team.basicInfo?.nameKana ?? null"
-              :nickname1="team.basicInfo?.nickname1 ?? null"
-              :nickname2="team.basicInfo?.nickname2 ?? null"
-              :template="team.location?.template ?? ''"
-              :template-label="templateLabel[team.location?.template ?? ''] ?? team.location?.template ?? ''"
-              :prefecture="team.location?.prefecture ?? null"
-              :city="team.location?.city ?? null"
-              :prefecture-code="team.location?.prefectureCode ?? null"
-              :city-code="team.location?.cityCode ?? null"
-              :visibility="team.visibility?.visibility ?? ''"
-              :visibility-label="visibilityLabel[team.visibility?.visibility ?? ''] ?? team.visibility?.visibility ?? ''"
-              :member-count="team.metadata?.memberCount ?? 0"
-              :team-friend-count="team.social?.teamFriendCount ?? 0"
-              :supporter-count="team.social?.supporterCount ?? 0"
-              :supporter-enabled="team.visibility?.supporterEnabled ?? false"
-              :description="null"
-              :is-admin="isAdmin"
-              :map-embed-url="team.metadata?.mapEmbedUrl ?? null"
-              @updated:map-embed-url="(url) => { if (team && team.metadata) team.metadata.mapEmbedUrl = url }"
-              @updated:region-codes="(pc, cc) => {
-                if (team && team.location) {
-                  team.location.prefectureCode = pc
-                  team.location.cityCode = cc
-                }
-              }"
+            <TabPanel :value="2">
+              <div class="mt-4">
+                <MemberTable
+                  scope-type="team"
+                  :scope-id="teamId"
+                  :can-change-role="isAdminOrDeputy"
+                  :can-remove="isAdminOrDeputy"
+                />
+              </div>
+            </TabPanel>
+
+            <TabPanel v-if="isAdminOrDeputy" :value="3">
+              <div class="mt-4">
+                <InviteTokenList scope-type="team" :scope-id="teamId" />
+              </div>
+            </TabPanel>
+
+            <TabPanel v-if="isAdmin && team.visibility?.supporterEnabled" :value="4">
+              <div class="mt-4">
+                <SupporterManagementPanel scope-type="team" :scope-id="teamId" />
+              </div>
+            </TabPanel>
+
+            <TabPanel v-if="isAdmin" :value="5">
+              <div class="mt-4">
+                <ModuleSettingsPanel scope-type="team" :scope-id="teamId" />
+              </div>
+            </TabPanel>
+
+            <TabPanel v-if="isAdmin" :value="6">
+              <div class="mt-4 grid grid-cols-2 gap-3">
+                <NuxtLink :to="`/teams/${teamId}/friends`">
+                  <Button :label="$t('friends.title')" icon="pi pi-users" class="w-full" outlined />
+                </NuxtLink>
+                <NuxtLink :to="`/teams/${teamId}/friend-folders`">
+                  <Button :label="$t('folders.title')" icon="pi pi-folder-open" class="w-full" outlined />
+                </NuxtLink>
+                <NuxtLink :to="`/teams/${teamId}/friend-feed`">
+                  <Button :label="$t('friend_feed.title')" icon="pi pi-inbox" class="w-full" outlined />
+                </NuxtLink>
+                <NuxtLink :to="`/teams/${teamId}/friend-forward-exports`">
+                  <Button :label="$t('forward_exports.title')" icon="pi pi-history" class="w-full" outlined />
+                </NuxtLink>
+              </div>
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
+
+        <Dialog
+          v-model:visible="showCancelSupporterConfirm"
+          header="サポーターをやめますか？"
+          :style="{ width: '400px' }"
+          modal
+        >
+          <p>{{ displayName }}のサポーターをやめます。よろしいですか？</p>
+          <template #footer>
+            <Button label="キャンセル" text @click="showCancelSupporterConfirm = false" />
+            <Button
+              label="やめる"
+              severity="danger"
+              :loading="followLoading"
+              @click="cancelSupporter"
             />
-          </TabPanel>
+          </template>
+        </Dialog>
 
-          <TabPanel :value="2">
-            <div class="mt-4">
-              <MemberTable
-                scope-type="team"
-                :scope-id="teamId"
-                :can-change-role="isAdminOrDeputy"
-                :can-remove="isAdminOrDeputy"
-              />
-            </div>
-          </TabPanel>
-
-          <TabPanel v-if="isAdminOrDeputy" :value="3">
-            <div class="mt-4">
-              <InviteTokenList scope-type="team" :scope-id="teamId" />
-            </div>
-          </TabPanel>
-
-          <TabPanel v-if="isAdmin && team.visibility?.supporterEnabled" :value="4">
-            <div class="mt-4">
-              <SupporterManagementPanel scope-type="team" :scope-id="teamId" />
-            </div>
-          </TabPanel>
-
-          <TabPanel v-if="isAdmin" :value="5">
-            <div class="mt-4">
-              <ModuleSettingsPanel scope-type="team" :scope-id="teamId" />
-            </div>
-          </TabPanel>
-
-          <TabPanel v-if="isAdmin" :value="6">
-            <div class="mt-4 grid grid-cols-2 gap-3">
-              <NuxtLink :to="`/teams/${teamId}/friends`">
-                <Button :label="$t('friends.title')" icon="pi pi-users" class="w-full" outlined />
-              </NuxtLink>
-              <NuxtLink :to="`/teams/${teamId}/friend-folders`">
-                <Button :label="$t('folders.title')" icon="pi pi-folder-open" class="w-full" outlined />
-              </NuxtLink>
-              <NuxtLink :to="`/teams/${teamId}/friend-feed`">
-                <Button :label="$t('friend_feed.title')" icon="pi pi-inbox" class="w-full" outlined />
-              </NuxtLink>
-              <NuxtLink :to="`/teams/${teamId}/friend-forward-exports`">
-                <Button :label="$t('forward_exports.title')" icon="pi pi-history" class="w-full" outlined />
-              </NuxtLink>
-            </div>
-          </TabPanel>
-        </TabPanels>
-      </Tabs>
-
-      <Dialog
-        v-model:visible="showCancelSupporterConfirm"
-        header="サポーターをやめますか？"
-        :style="{ width: '400px' }"
-        modal
-      >
-        <p>{{ displayName }}のサポーターをやめます。よろしいですか？</p>
-        <template #footer>
-          <Button label="キャンセル" text @click="showCancelSupporterConfirm = false" />
-          <Button
-            label="やめる"
-            severity="danger"
-            :loading="followLoading"
-            @click="cancelSupporter"
-          />
-        </template>
-      </Dialog>
-
-      <Dialog
-        v-model:visible="showLeaveConfirm"
-        header="チームから退出"
-        :style="{ width: '400px' }"
-        modal
-      >
-        <p>本当にこのチームから退出しますか？この操作は取り消せません。</p>
-        <template #footer>
-          <Button label="キャンセル" text @click="showLeaveConfirm = false" />
-          <Button label="退出する" severity="danger" @click="leaveTeam" />
-        </template>
-      </Dialog>
+        <Dialog
+          v-model:visible="showLeaveConfirm"
+          header="チームから退出"
+          :style="{ width: '400px' }"
+          modal
+        >
+          <p>本当にこのチームから退出しますか？この操作は取り消せません。</p>
+          <template #footer>
+            <Button label="キャンセル" text @click="showLeaveConfirm = false" />
+            <Button label="退出する" severity="danger" @click="leaveTeam" />
+          </template>
+        </Dialog>
       </div>
     </template>
   </div>
