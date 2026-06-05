@@ -247,6 +247,31 @@ public enum MembershipBillingErrorCode implements ErrorCode {
     SUBSCRIPTION_ITEM_NOT_RECURRING(
             "MEMBERSHIP_BILLING_019",
             "この支払い項目は継続課金に対応していません",
+            Severity.WARN),
+
+    /**
+     * 継続課金の加入（subscribe）で、払い手の既定支払い方法（PaymentMethod）が未保存。409。
+     *
+     * <p>案b の継続課金は次サイクル以降を off_session で課金するため、加入前に SetupIntent で PM を保存し
+     * Customer の default に設定しておく必要がある。未保存（{@code stripe_customers.default_payment_method IS NULL}）の
+     * まま subscribe を試みた場合に投げる。FE は先に
+     * {@code POST /api/v1/me/payment-methods/setup-intent} → confirm → {@code /confirm} の導線へ誘導する
+     * （02_api §4.1 {@code SUBSCRIPTION_PAYMENT_METHOD_NOT_SAVED}）。</p>
+     */
+    SUBSCRIPTION_PAYMENT_METHOD_NOT_SAVED(
+            "MEMBERSHIP_BILLING_020",
+            "継続課金の加入には支払い方法の登録が必要です",
+            Severity.WARN),
+
+    /**
+     * 既に同一受益者・同一項目で有効な継続課金（PENDING/ACTIVE/PAST_DUE）が存在する（二重加入防止）。409。
+     *
+     * <p>subscribe の冪等性: 同じ受益者×項目に終端でない（CANCELLED/EXPIRED でない）サブスクが既にある場合に投げる
+     * （02_api §4.1 {@code SUBSCRIPTION_ALREADY_EXISTS}）。</p>
+     */
+    SUBSCRIPTION_ALREADY_EXISTS(
+            "MEMBERSHIP_BILLING_021",
+            "この受益者・項目には既に有効な継続課金が存在します",
             Severity.WARN);
 
     private final String code;

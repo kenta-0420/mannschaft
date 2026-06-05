@@ -15,8 +15,11 @@ import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Price;
 import com.stripe.model.Product;
+import com.stripe.model.PaymentMethod;
 import com.stripe.model.Refund;
+import com.stripe.model.SetupIntent;
 import com.stripe.model.StripeObject;
+import com.stripe.model.Subscription;
 import com.stripe.model.Transfer;
 import com.stripe.model.checkout.Session;
 import com.stripe.net.RequestOptions;
@@ -24,14 +27,19 @@ import com.stripe.net.Webhook;
 import com.stripe.param.AccountCreateParams;
 import com.stripe.param.AccountLinkCreateParams;
 import com.stripe.param.CustomerCreateParams;
+import com.stripe.param.CustomerUpdateParams;
 import com.stripe.param.PaymentIntentCancelParams;
 import com.stripe.param.PaymentIntentCaptureParams;
 import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.param.PaymentMethodAttachParams;
 import com.stripe.param.PriceCreateParams;
 import com.stripe.param.PriceUpdateParams;
 import com.stripe.param.ProductCreateParams;
 import com.stripe.param.ProductUpdateParams;
 import com.stripe.param.RefundCreateParams;
+import com.stripe.param.SetupIntentCreateParams;
+import com.stripe.param.SubscriptionCreateParams;
+import com.stripe.param.SubscriptionUpdateParams;
 import com.stripe.param.TransferReversalCollectionCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import lombok.extern.slf4j.Slf4j;
@@ -96,6 +104,38 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         } catch (StripeException e) {
             log.error("Stripe Price 作成失敗: productId={}, amount={}, currency={}",
                     stripeProductId, amount, currency, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public String createRecurringPrice(String stripeProductId, BigDecimal amount, String currency,
+                                       com.mannschaft.app.payment.BillingInterval billingInterval) {
+        try {
+            long unitAmount = isZeroDecimalCurrency(currency)
+                    ? amount.longValue()
+                    : amount.multiply(BigDecimal.valueOf(100)).longValue();
+
+            PriceCreateParams.Recurring.Interval interval =
+                    billingInterval == com.mannschaft.app.payment.BillingInterval.YEARLY
+                            ? PriceCreateParams.Recurring.Interval.YEAR
+                            : PriceCreateParams.Recurring.Interval.MONTH;
+
+            PriceCreateParams params = PriceCreateParams.builder()
+                    .setProduct(stripeProductId)
+                    .setUnitAmount(unitAmount)
+                    .setCurrency(currency.toLowerCase())
+                    .setRecurring(PriceCreateParams.Recurring.builder()
+                            .setInterval(interval)
+                            .build())
+                    .build();
+            Price price = Price.create(params);
+            log.info("Stripe 継続課金 Price 作成: id={}, productId={}, amount={}, currency={}, interval={}",
+                    price.getId(), stripeProductId, amount, currency, billingInterval);
+            return price.getId();
+        } catch (StripeException e) {
+            log.error("Stripe 継続課金 Price 作成失敗: productId={}, amount={}, currency={}, interval={}",
+                    stripeProductId, amount, currency, billingInterval, e);
             throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
         }
     }
@@ -595,6 +635,110 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         } catch (StripeException e) {
             log.error("Stripe PaymentIntent 与信取消失敗: id={}", paymentIntentId, e);
             throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
+    // ========================================
+    // F08.9 P5 継続課金（SetupIntent 基盤＋Subscription 実装）
+    // ========================================
+
+    @Override
+    public SetupIntentInfo createSetupIntent(String customerId) {
+        try {
+            // usage=off_session: 将来の自動課金（次サイクル以降）に再利用する PM として登録する（02 §4.1）。
+            SetupIntentCreateParams params = SetupIntentCreateParams.builder()
+                    .setCustomer(customerId)
+                    .setUsage(SetupIntentCreateParams.Usage.OFF_SESSION)
+                    .build();
+            SetupIntent intent = SetupIntent.create(params);
+            log.info("Stripe SetupIntent 作成: id={}, customer={}, status={}",
+                    intent.getId(), customerId, intent.getStatus());
+            return new SetupIntentInfo(intent.getId(), intent.getClientSecret(), intent.getStatus());
+        } catch (StripeException e) {
+            log.error("Stripe SetupIntent 作成失敗: customer={}", customerId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public void attachPaymentMethodAndSetDefault(String customerId, String paymentMethodId) {
+        try {
+            // (1) confirm 済み PM を Customer に attach（既に attach 済みでも冪等・Stripe が no-op 化）。
+            PaymentMethod paymentMethod = PaymentMethod.retrieve(paymentMethodId);
+            paymentMethod.attach(PaymentMethodAttachParams.builder().setCustomer(customerId).build());
+
+            // (2) Customer の invoice_settings.default_payment_method に設定（次サイクル invoice の off_session 既定）。
+            Customer customer = Customer.retrieve(customerId);
+            customer.update(CustomerUpdateParams.builder()
+                    .setInvoiceSettings(CustomerUpdateParams.InvoiceSettings.builder()
+                            .setDefaultPaymentMethod(paymentMethodId)
+                            .build())
+                    .build());
+            log.info("Stripe PaymentMethod attach＋default 設定: customer={}, pm={}", customerId, paymentMethodId);
+        } catch (StripeException e) {
+            log.error("Stripe PaymentMethod attach/default 設定失敗: customer={}, pm={}", customerId, paymentMethodId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public SubscriptionInfo createSubscription(String customerId, String priceId, String defaultPaymentMethodId,
+                                               String destinationAccountId, BigDecimal applicationFeePercent,
+                                               long billingCycleAnchorEpochSec, String idempotencyKey) {
+        try {
+            // 案b: 初回会費は外側で単発 destination charge 済み。Subscription は billing_cycle_anchor=次サイクル開始で
+            // 起動し proration_behavior=NONE で「初回 invoice を発生させない」（PoC 実証 2026-06-05・02 §4.1）。
+            // billing_cycle_anchor は「将来時刻」かつ proration_behavior=NONE のとき初回課金を当該時刻まで遅延でき、
+            // trial_end 方式よりも「次サイクルから通常課金（subscription_cycle invoice）」を確実に表現できる。
+            SubscriptionCreateParams params = SubscriptionCreateParams.builder()
+                    .setCustomer(customerId)
+                    .addItem(SubscriptionCreateParams.Item.builder()
+                            .setPrice(priceId)
+                            .setQuantity(1L)
+                            .build())
+                    .setDefaultPaymentMethod(defaultPaymentMethodId)
+                    .setOffSession(true)
+                    .setOnBehalfOf(destinationAccountId)
+                    .setTransferData(SubscriptionCreateParams.TransferData.builder()
+                            .setDestination(destinationAccountId)
+                            .build())
+                    .setApplicationFeePercent(applicationFeePercent)
+                    .setBillingCycleAnchor(billingCycleAnchorEpochSec)
+                    .setProrationBehavior(SubscriptionCreateParams.ProrationBehavior.NONE)
+                    .setPaymentBehavior(SubscriptionCreateParams.PaymentBehavior.ALLOW_INCOMPLETE)
+                    .build();
+
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            Subscription subscription = Subscription.create(params, options);
+            log.info("Stripe Subscription 作成（案b・次サイクル開始）: id={}, status={}, anchor={}, destination={}, feePct={}",
+                    subscription.getId(), subscription.getStatus(), billingCycleAnchorEpochSec,
+                    destinationAccountId, applicationFeePercent);
+            return new SubscriptionInfo(subscription.getId(), subscription.getStatus(),
+                    subscription.getCurrentPeriodEnd());
+        } catch (StripeException e) {
+            log.error("Stripe Subscription 作成失敗: customer={}, price={}, destination={}",
+                    customerId, priceId, destinationAccountId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public SubscriptionInfo cancelSubscriptionAtPeriodEnd(String subscriptionId, String idempotencyKey) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            Subscription updated = subscription.update(
+                    SubscriptionUpdateParams.builder().setCancelAtPeriodEnd(true).build(), options);
+            log.info("Stripe Subscription 期末解約予約: id={}, status={}, periodEnd={}",
+                    updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd());
+            return new SubscriptionInfo(updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd());
+        } catch (StripeException e) {
+            log.error("Stripe Subscription 期末解約予約失敗: id={}", subscriptionId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
         }
     }
 

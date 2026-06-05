@@ -133,13 +133,17 @@ DELETE /api/v1/me/payment-proxy-grants/{id}        # 取消（受益者 or 払�
 ### 4.1 加入 / 解約
 
 ```
+POST   /api/v1/me/payment-methods/setup-intent      # SetupIntent 作成（off_session PM 保存・client_secret 返却）
+POST   /api/v1/me/payment-methods/confirm           # confirm 済み PM を attach＋既定設定
 POST   /api/v1/payment-items/{itemId}/subscribe
-Body: { beneficiaryUserId, billingAnchorDay?, paymentMethodSetup: <SetupIntent結果> }
+Body: { beneficiaryUserId, billingAnchorDay?, idempotencyKey? }   # PM は事前に上記 2EP で Customer 既定へ保存済み
 DELETE /api/v1/membership-subscriptions/{id}        # 期末解約（cancel_at_period_end=true）
 GET    /api/v1/me/membership-subscriptions           # 自分が払い手の継続課金一覧
 GET    /api/v1/teams/{id}/membership-subscriptions    # 管理者：チームの継続課金一覧
 ```
-- `subscribe`：`is_recurring=true` 項目のみ。`MembershipSubscriptionService.create(...)` が SetupIntent で保存した PM・受領者 Connect 口座・`billing_anchor_day` で Stripe Subscription を作成し、`membership_subscriptions(status=PENDING)` を起票。加入時に `FeePolicyResolver(MEMBERSHIP)` で解決した `fee_policy_key` を焼き付け（遡及防止・README §4.2）。
+- **支払い方法保存（SetupIntent 基盤・P5 第二波で新設）**：継続課金（案b）は次サイクル以降を off_session で課金するため、加入の前に PM を保存しておく必要がある。`POST /me/payment-methods/setup-intent`（`PaymentMethodService.createSetupIntent`）が認証ユーザーの Stripe Customer を get-or-create し `usage=off_session` の SetupIntent の `client_secret` を返す。FE が Stripe.js で confirm（カード直送・PCI SAQ-A・03 §1）した `payment_method_id` を `POST /me/payment-methods/confirm`（`PaymentMethodService.confirmPaymentMethod`）へ送り、PM を Customer に attach＋`invoice_settings.default_payment_method` へ設定し、`stripe_customers.default_payment_method`（V74.20260605130030 で追加）へ焼き付ける。設計書の `subscribe` ボディにあった `paymentMethodSetup: <SetupIntent結果>` は「事前に PM を Customer 既定へ保存しておく」意であり、本実装では subscribe ボディには含めず（保存済み default PM を Service 層が参照）、未保存なら `SUBSCRIPTION_PAYMENT_METHOD_NOT_SAVED`（409）で SetupIntent 導線へ誘導する。
+- `subscribe`：`is_recurring=true` 項目のみ。`MembershipSubscriptionService.subscribe(...)` が払い手→受益者の代理払い権原を `PaymentAuthorizationService.authorizePayment`（SELF/GUARDIAN/GUARDIAN_PROXY/PROXY_GRANT）で実評価し、SetupIntent で保存した default PM・受領者 Connect 口座・`billing_anchor_day` で Stripe Subscription を作成し、`membership_subscriptions(status=PENDING)` を起票。加入時に `FeePolicyResolver(MEMBERSHIP)` で解決した `fee_policy_key` を焼き付け（遡及防止・README §4.2）。二重加入（受益者×項目に終端でないサブスク既存）は `SUBSCRIPTION_ALREADY_EXISTS`（409）。
+- **charge 後 DB 失敗の補償（§11.1 同型・P5 第二波）**：初回単発 charge（`ConnectChargeService.charge`）成功後の DB 処理（`membership_subscriptions` INSERT・`member_payments` PENDING 起票・Stripe Subscription 作成）が失敗した場合、PaymentIntent / escrow は既に作成済みのため、ERROR ログ（PaymentIntent ID・idempotencyKey）を残して**例外を握りつぶさず再 throw** する。トランザクションロールバックで `member_payments` は未起票となり、escrow succeeded webhook による PAID 反映（`applyMembershipPaidByEscrow`）は突合先なしで no-op に倒れる（escrow_transaction_id で後追い調査可能）。冪等キーにより再実行時の二重 charge は Stripe 側で拒否される。
 - **初回課金は単発 destination charge、Subscription は次サイクル開始（案 b・PoC 実証 2026-06-05）**：初回 invoice（`billing_reason=subscription_create`）は即 finalize されて `application_fee_amount` の固定上書き窓が無いことを PoC で実証（HTTP 400 拒否）。よって**初回会費は P1 同型の単発 destination charge（固定 `application_fee_amount`）で徴収**し、Stripe Subscription は `billing_cycle_anchor`（または `trial_end`）で**次サイクルから起動**する。これで以降の全 invoice が更新型（`subscription_cycle`）となり、全サイクルで draft 窓の固定手数料上書きが正確に通る（初回含め誤差ゼロ・escrow AUTHORIZED→CAPTURED の複式記帳を P1 流儀で全サイクル延長）。詳細＝`scripts/poc/README_f089_p5_poc.md` §0。
 - **会費額の固定（price-lock）**：加入時の額面で固定する。受領者が会費を値上げしても**既存サブスクは加入時 price のまま**継続し、値上げは新規加入者のみに適用。既存者へは「会費改定のお知らせ」を確認必須通知（F04.9）で送り、「新価格で継続する／解約する」を選ばせる移行フロー（管理者が改定 price で新項目を発行→既存者に乗り換え導線）。サイレントな自動値上げはしない。**手数料パターン（`fee_policy_key`）も加入時に固定**（料率改定は新規加入のみ反映・遡及しない）。
 - 解約：`cancel_at_period_end=true`（**期末まで利用可・日割り返金なし・期末前は再有効化可**）。即時解約は別途（返金は受取側 ADMIN の F22.1 フロー）。UI には**○月○日まで利用可**と日付を明記（04 §2）。

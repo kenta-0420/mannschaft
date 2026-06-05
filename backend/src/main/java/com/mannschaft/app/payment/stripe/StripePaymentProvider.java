@@ -29,6 +29,21 @@ public interface StripePaymentProvider {
     String createPrice(String stripeProductId, BigDecimal amount, String currency);
 
     /**
+     * 継続課金用の Stripe Price（{@code recurring}）を作成する（F08.9 P5・設計書 02 §4.1）。
+     *
+     * <p>{@link #createPrice} は一回払いの Price を作る。継続課金の Subscription には
+     * {@code recurring.interval} を持つ Price が必要なため、課金周期（MONTHLY/YEARLY）を渡して別メソッドで作成する。</p>
+     *
+     * @param stripeProductId  Stripe Product ID
+     * @param amount           金額
+     * @param currency         通貨コード（ISO 4217）
+     * @param billingInterval  課金周期（MONTHLY/YEARLY）
+     * @return Stripe Price ID（{@code price_xxx}・{@code recurring}）
+     */
+    String createRecurringPrice(String stripeProductId, BigDecimal amount, String currency,
+                                com.mannschaft.app.payment.BillingInterval billingInterval);
+
+    /**
      * Stripe Price をアーカイブ（非アクティブ化）する。
      *
      * @param stripePriceId Stripe Price ID
@@ -257,6 +272,87 @@ public interface StripePaymentProvider {
      * @param idempotencyKey 冪等性キー（{@code reversal-{escrowId}-{seq}}・設計書 02 §9）
      */
     void reverseTransfer(String transferId, long amountMinor, String idempotencyKey);
+
+    // ========================================
+    // F08.9 P5 継続課金（SetupIntent 基盤＋Subscription・設計書 02 §4.1。既存メソッドは破壊しない追加）
+    // ========================================
+
+    /**
+     * off_session 再利用用の SetupIntent を作成する（設計書 F08.9 02 §4.1）。
+     *
+     * <p>継続課金（案b）は次サイクル以降を off_session（カード保持者不在）で課金するため、加入前に
+     * SetupIntent でカードを保存する。{@code usage=off_session} で「将来の自動課金に使う PM」として登録する。
+     * 返り値 {@code clientSecret} を払い手本人へ返し、FE が Stripe.js で confirm（カード直送・PCI SAQ-A・03 §1）する。</p>
+     *
+     * @param customerId 払い手の Stripe Customer ID（{@code cus_xxx}）
+     * @return SetupIntent 情報（id / clientSecret / status）
+     */
+    SetupIntentInfo createSetupIntent(String customerId);
+
+    /**
+     * confirm 済みの PaymentMethod を Customer に attach し、既定（invoice の default_payment_method）に設定する
+     * （設計書 F08.9 02 §4.1）。
+     *
+     * <p>FE で SetupIntent を confirm して得た {@code payment_method_id} を、(1) {@link com.stripe.model.PaymentMethod#attach}
+     * で Customer に紐付け、(2) {@code Customer.update(invoice_settings.default_payment_method=pm)} で既定に設定する。
+     * これにより次サイクルの Subscription invoice が off_session で本 PM を使う。</p>
+     *
+     * @param customerId      払い手の Stripe Customer ID（{@code cus_xxx}）
+     * @param paymentMethodId confirm 済みの PaymentMethod ID（{@code pm_xxx}）
+     */
+    void attachPaymentMethodAndSetDefault(String customerId, String paymentMethodId);
+
+    /**
+     * 継続課金の Stripe Subscription を作成する（案b・次サイクル開始・設計書 02 §4.1）。
+     *
+     * <p><b>初回会費は本メソッドの外で単発 destination charge（P1 同型）で徴収済み</b>であり、Subscription は
+     * {@code billing_cycle_anchor=次サイクル開始（unix 秒）}＋{@code proration_behavior=NONE} で起動するため
+     * <b>初回 invoice を発生させない</b>（PoC 実証 2026-06-05・§4.1）。これにより以降の全 invoice が更新型
+     * （{@code subscription_cycle}）となり draft 窓の固定手数料上書きが全サイクルで正確に通る。</p>
+     *
+     * <p>{@code transfer_data.destination}＝受領者 Connect 口座・{@code on_behalf_of}＝同口座・
+     * {@code default_payment_method}＝保存済み PM・{@code application_fee_percent}＝安全側既定（invoice 上書きが正・
+     * 第四波 webhook が {@code fee_policy_key} で固定額へ上書き）。{@code payment_behavior=ALLOW_INCOMPLETE} で
+     * 初回 invoice なしの作成を許容する。</p>
+     *
+     * @param customerId               払い手の Stripe Customer ID（{@code cus_xxx}）
+     * @param priceId                  継続課金の Stripe Price ID（{@code price_xxx}）
+     * @param defaultPaymentMethodId   off_session 課金に使う PaymentMethod ID（{@code pm_xxx}）
+     * @param destinationAccountId     受領者 Connect アカウント ID（{@code acct_xxx}）
+     * @param applicationFeePercent    application_fee の率（安全側既定・invoice 上書きが正）
+     * @param billingCycleAnchorEpochSec 次サイクル開始の unix 秒（この時刻に最初の課金 invoice が発生）
+     * @param idempotencyKey           冪等性キー（設計書 02 §9）
+     * @return Subscription 情報（id / status / currentPeriodEnd）
+     */
+    SubscriptionInfo createSubscription(String customerId, String priceId, String defaultPaymentMethodId,
+                                        String destinationAccountId, java.math.BigDecimal applicationFeePercent,
+                                        long billingCycleAnchorEpochSec, String idempotencyKey);
+
+    /**
+     * Stripe Subscription を期末解約予約する（{@code cancel_at_period_end=true}・設計書 02 §4.1）。
+     *
+     * <p>期末まで利用可・日割り返金なし・期末前は再有効化可。即時解約はしない（README §4.1）。
+     * 返り値で現サイクル終了（{@code current_period_end}）を返し、応答に「○月○日まで利用可」を明示するため使う。</p>
+     *
+     * @param subscriptionId 対象 Stripe Subscription ID（{@code sub_xxx}）
+     * @param idempotencyKey 冪等性キー（設計書 02 §9）
+     * @return Subscription 情報（id / status / currentPeriodEnd）
+     */
+    SubscriptionInfo cancelSubscriptionAtPeriodEnd(String subscriptionId, String idempotencyKey);
+
+    /**
+     * SetupIntent 情報（設計書 F08.9 02 §4.1）。
+     *
+     * <p>{@code clientSecret} は払い手本人のみへ返す（他人へ漏らさない・03 §1）。</p>
+     */
+    record SetupIntentInfo(String setupIntentId, String clientSecret, String status) {}
+
+    /**
+     * Stripe Subscription 情報（設計書 F08.9 02 §4.1）。
+     *
+     * <p>{@code currentPeriodEnd} は現サイクル終了の unix 秒（解約応答の「○月○日まで利用可」算出に用いる・null 可）。</p>
+     */
+    record SubscriptionInfo(String subscriptionId, String status, Long currentPeriodEnd) {}
 
     /**
      * 与信系（escrow）の platform Webhook イベントを検証・パースする（設計書 02 §4.2）。

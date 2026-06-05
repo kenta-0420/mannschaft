@@ -400,6 +400,49 @@ public class MemberPaymentService {
     }
 
     /**
+     * F08.9 P5 第二波: 継続課金（subscribe）の初回単発 charge 由来の支払いを {@code member_payments} に
+     * PENDING で起票する（設計書 02 §4.1・初回は P1 同型の単発 destination charge）。
+     *
+     * <p>{@link MembershipSubscriptionService#subscribe} が初回 charge（{@link ConnectChargeService#charge}）の後に呼ぶ。
+     * P1 の {@link #createConnectCheckout} と同じ列（払い手分離・{@code escrow_transaction_id}）を埋めつつ、
+     * 継続課金由来であることを示す {@code membership_subscription_id} を連結する。PENDING→PAID 反映は
+     * 既存の escrow CAPTURED 連動（{@link #applyMembershipPaidByEscrow}）に相乗りする。</p>
+     *
+     * @param beneficiaryUserId      受益者（会費の対象者・{@code member_payments.user_id}）
+     * @param paymentItemId          会費項目 ID
+     * @param amount                 額面（起票額・P1 同型で payment_item の amount）
+     * @param currency               通貨
+     * @param payerUserId            払い手ユーザー ID
+     * @param relationship           払い手・受益者の関係（権原評価結果）
+     * @param escrowTransactionId    初回 charge で作成した escrow の ID
+     * @param membershipSubscriptionId 親サブスクリプション ID（継続課金連結キー）
+     * @return 起票した PENDING の {@code member_payments.id}
+     */
+    @Transactional
+    public Long recordSubscriptionInitialChargePending(Long beneficiaryUserId, Long paymentItemId,
+                                                        java.math.BigDecimal amount, String currency,
+                                                        Long payerUserId, PayerRelationship relationship,
+                                                        UUID escrowTransactionId, UUID membershipSubscriptionId) {
+        MemberPaymentEntity payment = MemberPaymentEntity.builder()
+                .userId(beneficiaryUserId)
+                .paymentItemId(paymentItemId)
+                .amountPaid(amount)
+                .currency(currency)
+                .paymentMethod(PaymentMethod.STRIPE)
+                .status(PaymentStatus.PENDING)
+                .payerUserId(payerUserId)
+                .payerRelationship(relationship)
+                .escrowTransactionId(escrowTransactionId)
+                .membershipSubscriptionId(membershipSubscriptionId)
+                .build();
+        payment = memberPaymentRepository.save(payment);
+        log.info("継続課金 初回 charge 起票（PENDING・PAID は escrow webhook 連動）: paymentId={}, beneficiary={}, "
+                        + "payer={}, escrowId={}, subscriptionId={}",
+                payment.getId(), beneficiaryUserId, payerUserId, escrowTransactionId, membershipSubscriptionId);
+        return payment.getId();
+    }
+
+    /**
      * F08.9 P1 Wave4 (T8): escrow が MEMBERSHIP を CAPTURED にしたとき、{@code member_payments} を
      * PENDING→PAID に反映する（設計書 02 §1.1 / §4.2）。
      *

@@ -49,6 +49,15 @@ public interface MembershipSubscriptionRepository
             Long beneficiaryUserId);
 
     /**
+     * 受益者×項目に、終端でない（指定状態の）継続課金が存在するか（subscribe の二重加入防止・冪等）。
+     *
+     * <p>{@code statuses=[PENDING, ACTIVE, PAST_DUE]} で呼び、既に有効/移行中のサブスクがあれば
+     * {@code SUBSCRIPTION_ALREADY_EXISTS}（409）で拒否する。CANCELLED/EXPIRED の終端行は対象外（再加入可）。</p>
+     */
+    boolean existsByBeneficiaryUserIdAndPaymentItemIdAndStatusInAndDeletedAtIsNull(
+            Long beneficiaryUserId, Long paymentItemId, Collection<MembershipSubscriptionStatus> statuses);
+
+    /**
      * 受領主体（チーム/組織）の継続課金一覧（指定状態・idx_ms_org / scope で引く）。
      * 管理者向けのチーム/組織継続課金一覧 API の本体。
      */
