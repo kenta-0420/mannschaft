@@ -24,7 +24,12 @@ public final class MemberPageVisibilityMapper {
     public static StandardVisibility toStandard(PageVisibility v) {
         return switch (v) {
             case PUBLIC -> StandardVisibility.PUBLIC;
-            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_ONLY;
+            // 内輪判定（W5）: 設計書 F06.2 §権限と役割で SUPPORTER は
+            // 「公開されたメンバー紹介ページの閲覧」のみ（= PUBLIC のみ）と明記され、
+            // MEMBERS_ONLY ページは応援者に見せない内輪。よって応援者除外の
+            // MEMBERS_AND_ABOVE へ締める（挙動変更: SUPPORTER は MEMBERS_ONLY の
+            // メンバー紹介ページを閲覧できなくなる）。
+            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_AND_ABOVE;
         };
     }
 }

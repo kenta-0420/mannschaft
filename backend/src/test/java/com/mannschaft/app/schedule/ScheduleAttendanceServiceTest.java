@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.dto.AttendanceRequest;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -259,6 +261,76 @@ class ScheduleAttendanceServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ScheduleErrorCode.COMMENT_REQUIRED);
+        }
+    }
+
+    // ========================================
+    // respondAttendance — 後見切替（GUARDIANSHIP_SWITCH）代理入力スモーク（F08.9 P3c）
+    // ========================================
+
+    @Nested
+    @DisplayName("respondAttendance 後見切替（GUARDIANSHIP_SWITCH）代理入力")
+    class RespondAttendanceGuardianshipSwitch {
+
+        @org.junit.jupiter.api.AfterEach
+        void clearSecurityContext() {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
+
+        @Test
+        @DisplayName("切替中_consentId=null_inputSource=GUARDIANSHIP_SWITCH_でNPEなくconsent_id=NULLの記録を保存する")
+        void 後見切替_consentIdがnullでも代理入力記録を保存する() {
+            // given: 保護者（proxyUserId=300）が子（USER_ID）として acting-as 中。
+            //        後見切替では ProxyInputContextFilter が consentId=null・
+            //        inputSource=GUARDIANSHIP_SWITCH・storage=固定値で activate する。
+            org.springframework.security.core.context.SecurityContextHolder.getContext()
+                    .setAuthentication(new org.springframework.security.authentication
+                            .UsernamePasswordAuthenticationToken("300", null, java.util.List.of()));
+
+            ScheduleEntity schedule = createScheduleWithAttendance();
+            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+
+            ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.UNDECIDED);
+            given(attendanceRepository.findByScheduleIdAndUserId(SCHEDULE_ID, USER_ID))
+                    .willReturn(Optional.of(attendance));
+            given(attendanceRepository.save(any(ScheduleAttendanceEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // 後見切替モード: consentId=null / inputSource=GUARDIANSHIP_SWITCH /
+            //                storage=固定値（ProxyInputContextFilter.SWITCH_STORAGE_LOCATION_NA 相当）。
+            given(proxyInputContext.isProxy()).willReturn(true);
+            given(proxyInputContext.getConsentId()).willReturn(null);
+            given(proxyInputContext.getSubjectUserId()).willReturn(USER_ID);
+            given(proxyInputContext.getInputSource())
+                    .willReturn(ProxyInputRecordEntity.InputSource.GUARDIANSHIP_SWITCH.name());
+            given(proxyInputContext.getOriginalStorageLocation())
+                    .willReturn("N/A (online guardianship switch)");
+
+            // 冪等性チェック: consentId=null では既存記録に当たらない（常に新規保存）。
+            given(proxyInputRecordRepository.findByProxyInputConsentIdAndTargetEntityTypeAndTargetEntityId(
+                    any(), any(), any())).willReturn(Optional.empty());
+            given(proxyInputRecordRepository.save(any(ProxyInputRecordEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            AttendanceRequest req = new AttendanceRequest("ATTENDING", "参加します", null);
+
+            // when: NPE / 制約違反なく完了すること（切替中の F14.1 代理入力スモーク）。
+            AttendanceResponse result = attendanceService.respondAttendance(SCHEDULE_ID, USER_ID, req);
+
+            // then: 出欠は登録され、proxy_input_records が consent_id=NULL・
+            //       inputSource=GUARDIANSHIP_SWITCH で保存される。
+            assertThat(result.getStatus()).isEqualTo("ATTENDING");
+
+            ArgumentCaptor<ProxyInputRecordEntity> captor =
+                    ArgumentCaptor.forClass(ProxyInputRecordEntity.class);
+            verify(proxyInputRecordRepository).save(captor.capture());
+            ProxyInputRecordEntity saved = captor.getValue();
+            assertThat(saved.getProxyInputConsentId()).isNull();
+            assertThat(saved.getSubjectUserId()).isEqualTo(USER_ID);
+            assertThat(saved.getProxyUserId()).isEqualTo(300L);
+            assertThat(saved.getInputSource())
+                    .isEqualTo(ProxyInputRecordEntity.InputSource.GUARDIANSHIP_SWITCH);
+            assertThat(saved.getOriginalStorageLocation()).isNotNull();
         }
     }
 

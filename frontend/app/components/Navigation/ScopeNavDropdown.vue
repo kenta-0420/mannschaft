@@ -50,6 +50,7 @@ const defaultFolder = computed(() => foldersStore.defaultFolderFor(props.scopeTy
 /** scopeType に応じた個別スコープ（直接ジャンプ用）。 */
 interface NavScopeItem {
   id: number
+  publicId: string
   name: string
   nickname1: string | null
   role: string
@@ -59,6 +60,7 @@ const myScopes = computed<NavScopeItem[]>(() => {
   if (props.scopeType === 'TEAM') {
     return teamStore.myTeams.map(team => ({
       id: team.id,
+      publicId: team.publicId,
       name: team.name,
       nickname1: team.nickname1,
       role: team.role,
@@ -66,6 +68,7 @@ const myScopes = computed<NavScopeItem[]>(() => {
   }
   return orgStore.myOrganizations.map(org => ({
     id: org.id,
+    publicId: org.publicId,
     name: org.name,
     nickname1: org.nickname1,
     role: org.role,
@@ -135,8 +138,8 @@ function goDefault() {
 }
 
 /** 個別スコープへ直接ジャンプ。 */
-function goScope(scopeId: string | number) {
-  router.push(`${basePath.value}/${String(scopeId)}`)
+function goScope(publicId: string) {
+  router.push(`${basePath.value}/${publicId}`)
   close()
 }
 
@@ -174,7 +177,14 @@ async function ensureFoldersLoaded() {
 
 function onPopoverShow() {
   isPopoverOpen.value = true
-  ensureFoldersLoaded()
+  // フォルダ一覧と個別スコープ一覧を並列フェッチ
+  // ストアが空のままだと myScopes computed が空になりジャンプリンクが表示されないため
+  const scopeFetch = props.scopeType === 'TEAM'
+    ? teamStore.fetchMyTeams()
+    : orgStore.fetchMyOrganizations()
+  Promise.all([ensureFoldersLoaded(), scopeFetch]).catch(() => {
+    // フェッチ失敗してもメニュー操作は阻害しない
+  })
 }
 
 function onPopoverHide() {
@@ -256,7 +266,7 @@ function onPopoverHide() {
                   role="menuitem"
                   type="button"
                   class="flex w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
-                  @click="goScope(scope.id)"
+                  @click="goScope(scope.publicId)"
                 >
                   <i class="pi pi-arrow-right text-xs text-surface-400 shrink-0" aria-hidden="true" />
                   <span class="flex-1 truncate">{{ scope.nickname1 || scope.name }}</span>
@@ -274,7 +284,7 @@ function onPopoverHide() {
                   role="menuitem"
                   type="button"
                   class="flex w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
-                  @click="goScope(scope.id)"
+                  @click="goScope(scope.publicId)"
                 >
                   <i class="pi pi-arrow-right text-xs text-surface-400 shrink-0" aria-hidden="true" />
                   <span class="flex-1 truncate">{{ scope.nickname1 || scope.name }}</span>
@@ -339,7 +349,7 @@ function onPopoverHide() {
                   role="menuitem"
                   type="button"
                   class="flex w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
-                  @click="goScope(scope.id)"
+                  @click="goScope(scope.publicId)"
                 >
                   <i class="pi pi-arrow-right text-xs text-surface-400 shrink-0" aria-hidden="true" />
                   <span class="flex-1 truncate">{{ scope.nickname1 || scope.name }}</span>
@@ -386,7 +396,7 @@ function onPopoverHide() {
               type="button"
               class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
               :data-testid="`scope-nav-dropdown-scope-${scope.id}`"
-              @click="goScope(scope.id)"
+              @click="goScope(scope.publicId)"
             >
               <i class="pi pi-arrow-right text-xs text-surface-400" aria-hidden="true" />
               <span class="flex-1 truncate">{{ scope.nickname1 || scope.name }}</span>

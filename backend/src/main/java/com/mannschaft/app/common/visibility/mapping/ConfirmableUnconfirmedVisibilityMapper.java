@@ -28,7 +28,8 @@ public final class ConfirmableUnconfirmedVisibilityMapper {
             // §5.1.4 CUSTOM 運用規約参照、Resolver 内で個別実装
             // (送信者本人 + ADMIN/DEPUTY_ADMIN の OR 条件)
             case CREATOR_AND_ADMIN -> StandardVisibility.CUSTOM;
-            case ALL_MEMBERS -> StandardVisibility.MEMBERS_ONLY;
+            // 挙動不変・名称正準化（W3）: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
+            case ALL_MEMBERS -> StandardVisibility.SCOPE_AFFILIATED;
         };
     }
 }

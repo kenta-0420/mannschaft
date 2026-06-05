@@ -402,7 +402,8 @@ class BlogPostVisibilityResolverTest {
             VisibilityDecision decision = resolver.decide(POST_ID, VIEWER_ID);
             assertThat(decision.allowed()).isFalse();
             assertThat(decision.denyReason()).isEqualTo(DenyReason.NOT_A_MEMBER);
-            assertThat(decision.resolvedLevel()).isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            // W2: cms.MEMBERS_ONLY は正準ラダー MEMBERS_AND_ABOVE（内輪=応援者除外）へ写像
+            assertThat(decision.resolvedLevel()).isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
         }
 
         @Test
@@ -420,7 +421,8 @@ class BlogPostVisibilityResolverTest {
 
             VisibilityDecision decision = resolver.decide(POST_ID, VIEWER_ID);
             assertThat(decision.allowed()).isTrue();
-            assertThat(decision.resolvedLevel()).isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            // W2: cms.MEMBERS_ONLY は正準ラダー MEMBERS_AND_ABOVE（内輪=応援者除外）へ写像
+            assertThat(decision.resolvedLevel()).isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
         }
     }
 }

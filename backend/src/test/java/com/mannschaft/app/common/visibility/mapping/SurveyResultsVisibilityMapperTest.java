@@ -39,10 +39,11 @@ class SurveyResultsVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("ADMINS_ONLY -> ADMINS_ONLY")
+    @DisplayName("ADMINS_ONLY -> ADMINS_AND_ABOVE（挙動不変・名称正準化 W4）")
     void mapsAdminsOnly() {
+        // 挙動不変: ADMINS_AND_ABOVE = hasRoleOrAbove("ADMIN") = 旧 ADMINS_ONLY と同一判定。
         assertThat(SurveyResultsVisibilityMapper.toStandard(ResultsVisibility.ADMINS_ONLY))
-            .isEqualTo(StandardVisibility.ADMINS_ONLY);
+            .isEqualTo(StandardVisibility.ADMINS_AND_ABOVE);
     }
 
     @Test

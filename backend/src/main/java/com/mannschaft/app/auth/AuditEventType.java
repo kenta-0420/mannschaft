@@ -369,7 +369,52 @@ public enum AuditEventType {
     /** SYSTEM_ADMIN が手数料パターン割当を作成した。 */
     FEE_POLICY_ASSIGNMENT_CREATED(AuditEventCategory.ADMIN_ACTION),
     /** SYSTEM_ADMIN が手数料パターン割当を解除した。 */
-    FEE_POLICY_ASSIGNMENT_DELETED(AuditEventCategory.ADMIN_ACTION);
+    FEE_POLICY_ASSIGNMENT_DELETED(AuditEventCategory.ADMIN_ACTION),
+
+    // ─── GUARDIANSHIP_SWITCH (F08.9 P3c 後見切替セッション) ─────────────
+    /**
+     * 保護者が子として後見切替セッションを開始した（acting-as 開始・03_security §3.2 二重記録）。
+     * userId=保護者 / targetUserId=子。proxy_input_records にも併せて追記する。
+     */
+    GUARDIANSHIP_SWITCH_STARTED(AuditEventCategory.PAYMENT),
+    /**
+     * 後見切替セッションを終了した（acting-as 終了・本人へ復帰）。
+     * userId=保護者 / targetUserId=子。
+     */
+    GUARDIANSHIP_SWITCH_ENDED(AuditEventCategory.PAYMENT),
+
+    /**
+     * 保護者が子の自立移行の引き継ぎ（パスワード設定リンク送付）を開始した（F08.9 P3c-2・02_api §2.3）。
+     * userId=保護者 / targetUserId=子。childEmail を新規登録した場合は metadata に記録する。
+     */
+    GUARDIANSHIP_HANDOVER_INITIATED(AuditEventCategory.PAYMENT),
+
+    // ─── PAYMENT_REQUEST (F08.9 P7 協会→加盟チーム請求) ─────────────
+    /**
+     * 協会(ORG)が加盟チーム(TEAM)への請求を発行した（DRAFT 起票・F08.9 P7・02_api §7）。
+     * userId=発行者(協会 ADMIN) / metadata に paymentRequestId・payerTeamId・faceAmount。
+     */
+    PAYMENT_REQUEST_CREATED(AuditEventCategory.PAYMENT),
+    /**
+     * 協会が請求を配信した（DRAFT → SENT・確認必須通知一斉配信・F08.9 P7 第二波・02_api §7）。
+     * userId=操作者(協会 ADMIN) / metadata に paymentRequestId・confirmableNotificationId・recipientCount。
+     */
+    PAYMENT_REQUEST_SENT(AuditEventCategory.PAYMENT),
+    /**
+     * 協会が請求を取消した（DRAFT/SENT → CANCELLED・F08.9 P7・02_api §7）。
+     * userId=操作者(協会 ADMIN) / metadata に paymentRequestId。
+     */
+    PAYMENT_REQUEST_CANCELLED(AuditEventCategory.PAYMENT),
+    /**
+     * チーム ADMIN が協会請求を支払った（PAID・案3 立替課金・F08.9 P7・02_api §7）。
+     * userId=操作者(チーム ADMIN) / teamId=請求先チーム / metadata に paymentRequestId・escrowId・advanceId。
+     */
+    PAYMENT_REQUEST_PAID(AuditEventCategory.PAYMENT),
+    /**
+     * チーム ADMIN が立替金の精算を確認した（PENDING → SETTLED・F08.9 P7・02_api §7）。
+     * userId=確認者(チーム ADMIN) / teamId=チーム / metadata に advanceId・paymentRequestId。
+     */
+    PAYMENT_ADVANCE_SETTLED(AuditEventCategory.PAYMENT);
 
     private final AuditEventCategory category;
 }

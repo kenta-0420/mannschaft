@@ -27,7 +27,13 @@ public final class EventVisibilityMapper {
     public static StandardVisibility toStandard(EventVisibility v) {
         return switch (v) {
             case PUBLIC -> StandardVisibility.PUBLIC;
-            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_ONLY;
+            // 内輪判定（W5・W3 SCOPE_AFFILIATED から締め直し）: EventVisibility は
+            // SUPPORTERS_AND_ABOVE（「サポーター以上に公開」）を別値として併存させており、
+            // MEMBERS_ONLY（「メンバーのみ」）は応援者を含まない内輪の意図であることが確定。
+            // よって応援者除外の MEMBERS_AND_ABOVE へ締める
+            // （挙動変更: 直接所属の SUPPORTER は MEMBERS_ONLY イベントを閲覧できなくなる。
+            //  応援者に見せたいイベントは SUPPORTERS_AND_ABOVE を選ぶ運用）。
+            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_AND_ABOVE;
             case SUPPORTERS_AND_ABOVE -> StandardVisibility.SUPPORTERS_AND_ABOVE;
         };
     }

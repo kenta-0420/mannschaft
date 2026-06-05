@@ -111,7 +111,7 @@ class AnnouncementFeedControllerTest {
                 .titleCache("テストお知らせタイトル")
                 .excerptCache("テスト抜粋テキスト")
                 .priority("NORMAL")
-                .visibility("MEMBERS_ONLY")
+                .visibility("MEMBERS_AND_ABOVE")
                 .build();
         try {
             java.lang.reflect.Field f = com.mannschaft.app.common.BaseEntity.class.getDeclaredField("id");

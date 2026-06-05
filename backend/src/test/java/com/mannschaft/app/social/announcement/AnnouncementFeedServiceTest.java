@@ -210,7 +210,8 @@ class AnnouncementFeedServiceTest {
                 .titleCache("タイトル")
                 .excerptCache("抜粋")
                 .priority("NORMAL")
-                .visibility("MEMBERS_ONLY")
+                // W2: announcement の「内輪」可視性は正準名 MEMBERS_AND_ABOVE（旧 MEMBERS_ONLY 改称・挙動不変）
+                .visibility("MEMBERS_AND_ABOVE")
                 .build();
         // isPinned を設定
         if (isPinned) {
@@ -543,25 +544,26 @@ class AnnouncementFeedServiceTest {
         }
 
         @Test
-        @DisplayName("SUPPORTER → {PUBLIC, SUPPORTERS_AND_ABOVE}（MEMBERS_ONLY を露出させない＝漏洩根治）")
+        @DisplayName("SUPPORTER → {PUBLIC, SUPPORTERS_AND_ABOVE}（MEMBERS_AND_ABOVE を露出させない＝漏洩根治）")
         void supporter_doesNotLeakMembersOnly() {
+            // W2: 内輪可視性は正準名 MEMBERS_AND_ABOVE（旧 MEMBERS_ONLY 改称・挙動不変）
             assertThat(captureAllowedVisibilities("SUPPORTER"))
                     .containsExactlyInAnyOrder("PUBLIC", "SUPPORTERS_AND_ABOVE")
-                    .doesNotContain("MEMBERS_ONLY");
+                    .doesNotContain("MEMBERS_AND_ABOVE");
         }
 
         @Test
         @DisplayName("MEMBER → 3 種全部（PUBLIC/SUPPORTERS_AND_ABOVE 取りこぼし解消）")
         void member_seesAllThree() {
             assertThat(captureAllowedVisibilities("MEMBER"))
-                    .containsExactlyInAnyOrder("PUBLIC", "SUPPORTERS_AND_ABOVE", "MEMBERS_ONLY");
+                    .containsExactlyInAnyOrder("PUBLIC", "SUPPORTERS_AND_ABOVE", "MEMBERS_AND_ABOVE");
         }
 
         @Test
         @DisplayName("ADMIN → 3 種全部")
         void admin_seesAllThree() {
             assertThat(captureAllowedVisibilities("ADMIN"))
-                    .containsExactlyInAnyOrder("PUBLIC", "SUPPORTERS_AND_ABOVE", "MEMBERS_ONLY");
+                    .containsExactlyInAnyOrder("PUBLIC", "SUPPORTERS_AND_ABOVE", "MEMBERS_AND_ABOVE");
         }
 
         @Test

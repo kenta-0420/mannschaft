@@ -24,7 +24,14 @@ public final class ProjectVisibilityMapper {
     public static StandardVisibility toStandard(ProjectVisibility v) {
         return switch (v) {
             case PRIVATE -> StandardVisibility.PRIVATE;
-            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_ONLY;
+            // 内輪判定（W5・W3 SCOPE_AFFILIATED から締め直し）: ProjectVisibility は
+            // PUBLIC に「SUPPORTOR も閲覧可」のセマンティクスを持たせており（enum コメント
+            // 「PUBLIC=SUPPORTER も閲覧可」/ 設計書 F02.3 §DB 設計 visibility カラム
+            // 「PUBLIC（SUPPORTER も閲覧可）」）、SUPPORTER は「公開プロジェクトの閲覧（TODO は対象外）」
+            // のみと §権限表で明記。MEMBERS_ONLY は応援者を含まない内輪の意図であることが確定。
+            // よって応援者除外の MEMBERS_AND_ABOVE へ締める
+            // （挙動変更: 直接所属の SUPPORTER は MEMBERS_ONLY プロジェクトを閲覧できなくなる）。
+            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_AND_ABOVE;
             case PUBLIC -> StandardVisibility.PUBLIC;
         };
     }

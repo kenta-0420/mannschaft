@@ -38,7 +38,7 @@ public class TemplateResponseDto {
     /** テンプレート名。 */
     private String name;
 
-    /** 告知対象ロール（MEMBERS_ONLY / SUPPORTERS_AND_ABOVE / PUBLIC）。 */
+    /** 告知対象ロール（MEMBERS_AND_ABOVE / SUPPORTERS_AND_ABOVE / PUBLIC）。 */
     @JsonProperty("target_role")
     private String targetRole;
 

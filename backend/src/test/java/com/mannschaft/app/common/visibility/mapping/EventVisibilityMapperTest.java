@@ -32,10 +32,14 @@ class EventVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_ONLY")
-    void members_only_maps_to_MEMBERS_ONLY() {
+    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_AND_ABOVE（W5 内輪・応援者除外）")
+    void members_only_maps_to_MEMBERS_AND_ABOVE() {
+        // 判定根拠: EventVisibility は SUPPORTERS_AND_ABOVE（「サポーター以上に公開」）を別値として
+        // 併存させており、MEMBERS_ONLY（「メンバーのみ」）は応援者を含まない内輪の意図が確定。
+        // W3 の SCOPE_AFFILIATED（応援者含む）から MEMBERS_AND_ABOVE（応援者除外）へ締め直し。
+        // 挙動変更: 直接所属の SUPPORTER は MEMBERS_ONLY イベントを閲覧できなくなる。
         assertThat(EventVisibilityMapper.toStandard(EventVisibility.MEMBERS_ONLY))
-            .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            .isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
     }
 
     @Test

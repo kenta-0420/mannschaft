@@ -32,10 +32,11 @@ class RecruitmentVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("SCOPE_ONLY -> MEMBERS_ONLY")
+    @DisplayName("SCOPE_ONLY -> SCOPE_AFFILIATED（挙動不変・名称正準化 W3）")
     void mapsScopeOnly() {
+        // 挙動不変: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
         assertThat(RecruitmentVisibilityMapper.toStandard(RecruitmentVisibility.SCOPE_ONLY))
-            .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            .isEqualTo(StandardVisibility.SCOPE_AFFILIATED);
     }
 
     @Test

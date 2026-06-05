@@ -9,6 +9,7 @@ import com.mannschaft.app.payment.PayerRelationship;
 import com.mannschaft.app.payment.PaymentProxyGrantStatus;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.repository.PaymentProxyGrantRepository;
+import com.mannschaft.app.proxy.ProxyInputContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,8 +34,9 @@ import java.time.LocalDateTime;
  *   <li>{@code ADMIN_MANUAL} — 当該 payment_item のスコープ（team/org）の ADMIN が手動記録する</li>
  * </ul>
  * 上記いずれにも該当しなければ 403。
- * {@code GUARDIAN_PROXY}（後見切替セッション中の保護者代理払い）は後見切替（P3）が未実装のため
- * 本タスクでは評価しない（黙って通さない・P3 注入口の TODO のまま）。</p>
+ * {@code GUARDIAN_PROXY}（後見切替セッション中の保護者代理払い）は P3c-2 で実評価する:
+ * GUARDIAN 成立 かつ {@code isProxy()} かつ「切替対象の子＝受益者」のとき GUARDIAN_PROXY を
+ * GUARDIAN より優先して返す（別の子へ acting-as 中は GUARDIAN）。</p>
  *
  * <p><b>ドメイン境界:</b> {@code @Transactional(readOnly)} は payment ドメインに閉じる。
  * user/team は ID のみ受け取り Entity を直接参照しない。ADMIN 判定は共通ヘルパー
@@ -56,6 +58,12 @@ public class PaymentAuthorizationService {
     private final ParentalConsentService parentalConsentService;
     private final CareLinkService careLinkService;
     private final PaymentProxyGrantRepository paymentProxyGrantRepository;
+    /**
+     * 後見切替セッション（acting-as）判定用の RequestScope Bean（F14.1）。
+     * 単一スコープの本 Service へは Spring の scoped proxy（{@code @RequestScope} 既定の
+     * {@code TARGET_CLASS} プロキシ）経由で注入される（{@link AuthenticationCriticalOperationGuard} 同型）。
+     */
+    private final ProxyInputContext proxyInputContext;
 
     /**
      * 払い手が受益者の会費項目を支払う権原を検証し、成立した関係を返す。
@@ -72,8 +80,9 @@ public class PaymentAuthorizationService {
      *   <li>いずれも不成立 → {@code MEMBERSHIP_PAYER_NOT_AUTHORIZED}（403）</li>
      * </ol>
      *
-     * <p>{@link PayerRelationship#GUARDIAN_PROXY} は後見切替（P3）が未実装のため本タスクでは評価しない
-     * （後見切替セッション判定 {@code isProxy()} は P3 で注入する）。</p>
+     * <p>{@link PayerRelationship#GUARDIAN_PROXY} は P3c-2 で実評価する: 上記 2 の GUARDIAN 成立時、
+     * 後見切替セッション中（{@code isProxy()}）かつ「切替対象の子（subjectUserId）＝受益者」なら
+     * GUARDIAN_PROXY を GUARDIAN より優先して返す（subject≠beneficiary の acting-as 中は GUARDIAN）。</p>
      *
      * <p>IDOR 防止: {@code beneficiaryUserId} は呼出側 payload から渡るが、上記権原検証なしには
      * 一切「許可」を返さない。権原なき他人の受益者については常に 403。</p>
@@ -94,20 +103,21 @@ public class PaymentAuthorizationService {
             return PayerRelationship.SELF;
         }
 
-        // 2. GUARDIAN — 保護者リンクによる権原（毎回実行時評価・キャッシュしない）。
-        //    parental_consent_links(child=beneficiary, parent=payer).status == APPROVED → GUARDIAN
-        //    user_care_links(recipient=beneficiary, watcher=payer, relationship=PARENT).status == ACTIVE → GUARDIAN
+        // 2. GUARDIAN / GUARDIAN_PROXY — 保護者リンクによる権原（毎回実行時評価・キャッシュしない）。
+        //    parental_consent_links(child=beneficiary, parent=payer).status == APPROVED → 権原成立
+        //    user_care_links(recipient=beneficiary, watcher=payer, relationship=PARENT).status == ACTIVE → 権原成立
         //    ドメイン境界遵守: auth/family の Entity/Repository を直接参照せず、各 Service の公開 boolean メソッド経由で判定する。
         if (isGuardian(payerUserId, beneficiaryUserId)) {
+            // [P3c-2] 後見切替セッション中（X-Proxy-For-User-Id 付き・isProxy）の保護者代理払いは
+            //   GUARDIAN_PROXY として区別記録する（「子の自己払い」と誤読させない・03_security §2）。
+            //   ただし区別するのは「切替対象の子（subjectUserId）＝受益者（beneficiaryUserId）」のときのみ。
+            //   別の子へ acting-as 中（subject≠beneficiary）の支払いは従来どおり GUARDIAN（誤分類しない）。
+            //   権原評価自体は GUARDIAN と同じ（保護者リンク）。本人払い（SELF）は §1 で先に確定済み。
+            if (isGuardianProxyContext(beneficiaryUserId)) {
+                return PayerRelationship.GUARDIAN_PROXY;
+            }
             return PayerRelationship.GUARDIAN;
         }
-
-        // 3. [P3 注入口] GUARDIAN_PROXY — 後見切替セッション中の保護者代理払い。
-        //    権原成立は GUARDIAN と同じ（保護者リンク）だが、X-Proxy-For-User-Id 付き
-        //    （ProxyInputContextFilter / isProxy()）の場合に GUARDIAN_PROXY として区別記録する。
-        //    「子の自己払い」と誤読させないための分類であり、権原評価自体は GUARDIAN に依存する。
-        //    後見切替（P3）が未実装のため本タスクでは評価しない（黙って通さない）。
-        // TODO(F08.9 P3): 後見切替セッション判定（isProxy）を注入し、GUARDIAN 成立時に GUARDIAN_PROXY を返す。
 
         // 4. PROXY_GRANT — 第三者代理払い grant（非後見・祖父母・スポンサー等）。
         //    payment_proxy_grants に (beneficiary, payer, item|包括NULL)・status=ACTIVE・
@@ -122,8 +132,7 @@ public class PaymentAuthorizationService {
             return PayerRelationship.ADMIN_MANUAL;
         }
 
-        // 6. いずれの権原も不成立。未実装経路（GUARDIAN_PROXY）も黙って通さず、
-        //    無権原として明示的に 403 に倒す。
+        // 6. いずれの権原も不成立。無権原として明示的に 403 に倒す。
         log.info("代理払い権原なし: payer={}, beneficiary={}, itemId={}, manualByAdmin={}",
                 payerUserId, beneficiaryUserId, paymentItemId, manualRecordByAdmin);
         throw new BusinessException(MembershipBillingErrorCode.MEMBERSHIP_PAYER_NOT_AUTHORIZED);
@@ -148,6 +157,23 @@ public class PaymentAuthorizationService {
         }
         return parentalConsentService.isApprovedGuardian(payerUserId, beneficiaryUserId)
                 || careLinkService.isActiveParentWatcher(payerUserId, beneficiaryUserId);
+    }
+
+    /**
+     * 後見切替セッション中の保護者代理払い（GUARDIAN_PROXY）として記録すべき文脈かを判定する（F08.9 P3c-2）。
+     *
+     * <p>条件は「{@link ProxyInputContext#isProxy()}（X-Proxy-For-User-Id 付き）かつ
+     * 切替対象の子（{@code subjectUserId}）＝受益者（{@code beneficiaryUserId}）」。
+     * 切替中でない通常払いや、別の子へ acting-as 中（subject≠beneficiary）の支払いは {@code false}
+     * （その場合は GUARDIAN として分類する・「子の自己払い」と誤読させない区別記録の趣旨に沿う）。</p>
+     *
+     * <p>権原評価そのものは {@link #isGuardian} が担い、本メソッドは分類（GUARDIAN か GUARDIAN_PROXY か）
+     * のみを決める。</p>
+     */
+    private boolean isGuardianProxyContext(Long beneficiaryUserId) {
+        return proxyInputContext.isProxy()
+                && beneficiaryUserId != null
+                && beneficiaryUserId.equals(proxyInputContext.getSubjectUserId());
     }
 
     /**

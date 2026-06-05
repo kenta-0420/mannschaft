@@ -5,7 +5,7 @@ CREATE TABLE announcement_range_templates
     scope_type        ENUM ('TEAM', 'ORGANIZATION') NOT NULL COMMENT '適用スコープ種別',
     scope_id          BIGINT UNSIGNED  NOT NULL COMMENT '適用スコープID (teams.id / organizations.id)',
     name              VARCHAR(100)     NOT NULL COMMENT 'テンプレート名（1〜100文字）',
-    target_role       ENUM ('MEMBERS_ONLY', 'SUPPORTERS_AND_ABOVE', 'PUBLIC') NOT NULL DEFAULT 'MEMBERS_ONLY' COMMENT '告知対象ロール',
+    target_role       ENUM ('MEMBERS_AND_ABOVE', 'SUPPORTERS_AND_ABOVE', 'PUBLIC') NOT NULL DEFAULT 'MEMBERS_AND_ABOVE' COMMENT '告知対象ロール（MEMBERS_AND_ABOVE=内輪・応援者除外）',
     target_team_ids   JSON             NULL COMMENT '組織告知でのチーム絞り込み。NULL=全チーム対象。[1,3,5] のように team.id の配列',
     preferred_channel VARCHAR(30)      NULL COMMENT '優先チャネル: BULLETIN_THREAD / TIMELINE_POST / BLOG_POST / TODO / SCHEDULE / SURVEY',
     is_default        BOOLEAN          NOT NULL DEFAULT FALSE COMMENT 'スコープごとのデフォルトテンプレートフラグ（1スコープあたり最大1件）',

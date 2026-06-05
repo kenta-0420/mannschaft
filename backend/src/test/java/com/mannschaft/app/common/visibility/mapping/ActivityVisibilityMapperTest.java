@@ -32,9 +32,12 @@ class ActivityVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_ONLY")
-    void members_only_maps_to_MEMBERS_ONLY() {
+    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_AND_ABOVE（W5 内輪・応援者除外）")
+    void members_only_maps_to_MEMBERS_AND_ABOVE() {
+        // 判定根拠: 設計書 F06.4 §権限と役割で SUPPORTER は「公開記録の閲覧のみ」。
+        // MEMBERS_ONLY 記録は応援者に見せない内輪 → 応援者除外の MEMBERS_AND_ABOVE。
+        // 挙動変更: SUPPORTER は MEMBERS_ONLY の活動記録を閲覧できなくなる。
         assertThat(ActivityVisibilityMapper.toStandard(ActivityVisibility.MEMBERS_ONLY))
-            .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            .isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
     }
 }

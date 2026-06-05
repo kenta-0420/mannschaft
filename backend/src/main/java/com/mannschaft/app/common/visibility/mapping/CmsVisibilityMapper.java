@@ -26,7 +26,10 @@ public final class CmsVisibilityMapper {
     public static StandardVisibility toStandard(Visibility v) {
         return switch (v) {
             case PUBLIC -> StandardVisibility.PUBLIC;
-            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_ONLY;
+            // W2: cms.MEMBERS_ONLY は「MEMBER 以上」＝応援者除外の内輪（設計書 F06.1 §一覧 L799-801）。
+            // cms enum は SUPPORTERS_AND_ABOVE を別値で持つため内輪(i)の意図が確定。
+            // 出力先を正準ラダー MEMBERS_AND_ABOVE（hasRoleOrAbove(MEMBER)）へ変更。機能 enum 名・DB 値は据え置き（④A）。
+            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_AND_ABOVE;
             case SUPPORTERS_AND_ABOVE -> StandardVisibility.SUPPORTERS_AND_ABOVE;
             case FOLLOWERS_ONLY -> StandardVisibility.FOLLOWERS_ONLY;
             case PRIVATE -> StandardVisibility.PRIVATE;

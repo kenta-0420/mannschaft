@@ -51,6 +51,15 @@ public class DefaultGuardianshipAgePolicy implements GuardianshipAgePolicy {
     }
 
     @Override
+    public LocalDate sealDate(LocalDate birthDate, Clock clock) {
+        if (birthDate == null) {
+            throw new IllegalArgumentException("birthDate must not be null for guardianship seal date resolution");
+        }
+        // フォールバックは満13歳の誕生日で封印（resolve と同じ境界・clock 非依存）。
+        return birthDate.plusYears(SEAL_AGE);
+    }
+
+    @Override
     public String supportedCountryCode() {
         // フォールバック実装は特定の国コードを持たない。
         return null;

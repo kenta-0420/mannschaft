@@ -131,7 +131,7 @@ class AnnouncementInboxAdapterTest {
         void mapsFields() {
             LocalDateTime now = LocalDateTime.now();
             AnnouncementFeedEntity f = feed(
-                    30L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL", "MEMBERS_ONLY",
+                    30L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL", "MEMBERS_AND_ABOVE",
                     "お知らせタイトル", "抜粋", now, null, null);
             given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
                     .willReturn(List.of(teamRole(TEAM_ID)));
@@ -163,11 +163,11 @@ class AnnouncementInboxAdapterTest {
         void mapsPriority() {
             LocalDateTime now = LocalDateTime.now();
             AnnouncementFeedEntity u = feed(31L, AnnouncementScopeType.TEAM, TEAM_ID, "URGENT",
-                    "MEMBERS_ONLY", "u", "e", now, null, null);
+                    "MEMBERS_AND_ABOVE", "u", "e", now, null, null);
             AnnouncementFeedEntity i = feed(32L, AnnouncementScopeType.TEAM, TEAM_ID, "IMPORTANT",
-                    "MEMBERS_ONLY", "i", "e", now, null, null);
+                    "MEMBERS_AND_ABOVE", "i", "e", now, null, null);
             AnnouncementFeedEntity n = feed(33L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
-                    "MEMBERS_ONLY", "n", "e", now, null, null);
+                    "MEMBERS_AND_ABOVE", "n", "e", now, null, null);
             given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
                     .willReturn(List.of(teamRole(TEAM_ID)));
             given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
@@ -192,9 +192,9 @@ class AnnouncementInboxAdapterTest {
         void mapsReadState() {
             LocalDateTime now = LocalDateTime.now();
             AnnouncementFeedEntity read = feed(40L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
-                    "MEMBERS_ONLY", "read", "e", now, null, null);
+                    "MEMBERS_AND_ABOVE", "read", "e", now, null, null);
             AnnouncementFeedEntity unread = feed(41L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
-                    "MEMBERS_ONLY", "unread", "e", now, null, null);
+                    "MEMBERS_AND_ABOVE", "unread", "e", now, null, null);
             AnnouncementReadStatusEntity rs = readStatus(40L);
             given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
                     .willReturn(List.of(teamRole(TEAM_ID)));
@@ -219,9 +219,9 @@ class AnnouncementInboxAdapterTest {
         void aggregatesTeamAndOrgDeduped() {
             LocalDateTime now = LocalDateTime.now();
             AnnouncementFeedEntity teamFeed = feed(50L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
-                    "MEMBERS_ONLY", "t", "e", now, null, null);
+                    "MEMBERS_AND_ABOVE", "t", "e", now, null, null);
             AnnouncementFeedEntity orgFeed = feed(51L, AnnouncementScopeType.ORGANIZATION, ORG_ID, "NORMAL",
-                    "MEMBERS_ONLY", "o", "e", now, null, null);
+                    "MEMBERS_AND_ABOVE", "o", "e", now, null, null);
             given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
                     .willReturn(List.of(teamRole(TEAM_ID)));
             given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID))
@@ -252,7 +252,7 @@ class AnnouncementInboxAdapterTest {
         @DisplayName("本人の所属スコープかつ role visibility に収まる feed は true")
         void ownScopeVisible() {
             AnnouncementFeedEntity f = feed(60L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
-                    "MEMBERS_ONLY", "t", "e", LocalDateTime.now(), null, null);
+                    "MEMBERS_AND_ABOVE", "t", "e", LocalDateTime.now(), null, null);
             given(feedRepository.findById(60L)).willReturn(Optional.of(f));
             given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
                     .willReturn(List.of(teamRole(TEAM_ID)));
@@ -266,7 +266,7 @@ class AnnouncementInboxAdapterTest {
         @DisplayName("未所属スコープの feed は false")
         void otherScopeInvisible() {
             AnnouncementFeedEntity f = feed(61L, AnnouncementScopeType.TEAM, 999L, "NORMAL",
-                    "MEMBERS_ONLY", "t", "e", LocalDateTime.now(), null, null);
+                    "MEMBERS_AND_ABOVE", "t", "e", LocalDateTime.now(), null, null);
             given(feedRepository.findById(61L)).willReturn(Optional.of(f));
             given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
                     .willReturn(List.of(teamRole(TEAM_ID)));
@@ -277,12 +277,12 @@ class AnnouncementInboxAdapterTest {
         }
 
         @Test
-        @DisplayName("SUPPORTER に MEMBERS_ONLY の feed は false（漏洩根治・正準: SUPPORTER は内輪お知らせ不可）")
+        @DisplayName("SUPPORTER に MEMBERS_AND_ABOVE の feed は false（漏洩根治・正準: SUPPORTER は内輪お知らせ不可）")
         void supporterCannotSeeMembersOnly() {
-            // 正準: SUPPORTER が見られる集合は {PUBLIC, SUPPORTERS_AND_ABOVE}。MEMBERS_ONLY は含めない。
+            // 正準: SUPPORTER が見られる集合は {PUBLIC, SUPPORTERS_AND_ABOVE}。MEMBERS_AND_ABOVE は含めない。
             // 従来はここを true としていた（漏洩を仕様固定していた）が、設計書 F02.6 §6.2 に反するため反転。
             AnnouncementFeedEntity f = feed(62L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
-                    "MEMBERS_ONLY", "t", "e", LocalDateTime.now(), null, null);
+                    "MEMBERS_AND_ABOVE", "t", "e", LocalDateTime.now(), null, null);
             given(feedRepository.findById(62L)).willReturn(Optional.of(f));
             given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
                     .willReturn(List.of(teamRole(TEAM_ID)));
@@ -311,10 +311,10 @@ class AnnouncementInboxAdapterTest {
         }
 
         @Test
-        @DisplayName("MEMBER は MEMBERS_ONLY / SUPPORTERS_AND_ABOVE / PUBLIC の feed を全て閲覧できる（取りこぼし解消）")
+        @DisplayName("MEMBER は MEMBERS_AND_ABOVE / SUPPORTERS_AND_ABOVE / PUBLIC の feed を全て閲覧できる（取りこぼし解消）")
         void memberCanSeeAllVisibilities() {
             AnnouncementFeedEntity members = feed(70L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
-                    "MEMBERS_ONLY", "t", "e", LocalDateTime.now(), null, null);
+                    "MEMBERS_AND_ABOVE", "t", "e", LocalDateTime.now(), null, null);
             AnnouncementFeedEntity sup = feed(71L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
                     "SUPPORTERS_AND_ABOVE", "t", "e", LocalDateTime.now(), null, null);
             AnnouncementFeedEntity pub = feed(72L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
@@ -336,7 +336,7 @@ class AnnouncementInboxAdapterTest {
         @DisplayName("元コンテンツ削除済み（source_deleted_at != null）は false")
         void sourceDeletedInvisible() {
             AnnouncementFeedEntity f = feed(63L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
-                    "MEMBERS_ONLY", "t", "e", LocalDateTime.now(), null, LocalDateTime.now());
+                    "MEMBERS_AND_ABOVE", "t", "e", LocalDateTime.now(), null, LocalDateTime.now());
             given(feedRepository.findById(63L)).willReturn(Optional.of(f));
 
             assertThat(adapter.isVisibleTo(USER_ID, 63L)).isFalse();
@@ -346,7 +346,7 @@ class AnnouncementInboxAdapterTest {
         @DisplayName("失効済み（expires_at <= now）は false")
         void expiredInvisible() {
             AnnouncementFeedEntity f = feed(64L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
-                    "MEMBERS_ONLY", "t", "e", LocalDateTime.now(), LocalDateTime.now().minusHours(1), null);
+                    "MEMBERS_AND_ABOVE", "t", "e", LocalDateTime.now(), LocalDateTime.now().minusHours(1), null);
             given(feedRepository.findById(64L)).willReturn(Optional.of(f));
 
             assertThat(adapter.isVisibleTo(USER_ID, 64L)).isFalse();

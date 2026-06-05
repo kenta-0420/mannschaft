@@ -94,7 +94,7 @@ class ScheduleAnnouncementAdapterTest {
                     .willReturn(mockResponse);
 
             // when
-            Long result = adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_ONLY", USER_ID);
+            Long result = adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_AND_ABOVE", USER_ID);
 
             // then
             assertThat(result).isEqualTo(SCHEDULE_ID);
@@ -119,7 +119,7 @@ class ScheduleAnnouncementAdapterTest {
                     ArgumentCaptor.forClass(CreateScheduleRequest.class);
 
             // when
-            adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_ONLY", USER_ID);
+            adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_AND_ABOVE", USER_ID);
 
             // then
             verify(scheduleService).createSchedule(captor.capture(), anyLong(), anyString(), anyLong());
@@ -144,7 +144,7 @@ class ScheduleAnnouncementAdapterTest {
                     ArgumentCaptor.forClass(CreateScheduleRequest.class);
 
             // when
-            Long result = adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_ONLY", USER_ID);
+            Long result = adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_AND_ABOVE", USER_ID);
 
             // then
             verify(scheduleService).createSchedule(captor.capture(), anyLong(), anyString(), anyLong());
@@ -163,7 +163,7 @@ class ScheduleAnnouncementAdapterTest {
 
             // when / then
             assertThatThrownBy(() ->
-                    adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_ONLY", USER_ID))
+                    adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_AND_ABOVE", USER_ID))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("start_at");
         }

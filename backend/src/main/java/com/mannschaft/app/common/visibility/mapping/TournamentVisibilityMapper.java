@@ -24,7 +24,11 @@ public final class TournamentVisibilityMapper {
     public static StandardVisibility toStandard(TournamentVisibility v) {
         return switch (v) {
             case PUBLIC -> StandardVisibility.PUBLIC;
-            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_ONLY;
+            // 内輪判定（W5）: 設計書 F08.7 §権限と役割で SUPPORTER は
+            // 「公開設定の大会の順位表・結果閲覧のみ」と明記され、MEMBERS_ONLY 大会は
+            // 応援者に見せない内輪。よって応援者除外の MEMBERS_AND_ABOVE へ締める
+            // （挙動変更: SUPPORTER は MEMBERS_ONLY の大会を閲覧できなくなる）。
+            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_AND_ABOVE;
         };
     }
 }

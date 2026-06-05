@@ -1424,6 +1424,7 @@
     "saveError": "Speichern fehlgeschlagen",
     "removeConfirm": "Möchtest du das wirklich entfernen?",
     "dragHandle": "Neu anordnen",
+    "labelFavorited": "Gespeichert",
     "entityType": {
       "TEAM": "Team",
       "ORGANIZATION": "Organisation",

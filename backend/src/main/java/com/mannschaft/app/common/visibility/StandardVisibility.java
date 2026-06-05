@@ -24,21 +24,10 @@ public enum StandardVisibility {
     PUBLIC,
 
     /**
-     * スコープ (TEAM/ORGANIZATION) の所属メンバーのみ閲覧可能。
-     *
-     * <p>包含: ADMIN / DEPUTY_ADMIN / MEMBER / SUPPORTER / GUEST のうちロール保有者すべて。
-     *
-     * <p><strong>撤去予定（W6 Contract）</strong>: 可視性ラダー統一改修（設計書 §5.1.5）により、
-     * 本値は新ラダーの {@link #SCOPE_AFFILIATED}（直接所属 = isMemberOf）へ移行する。
-     * W1（Expand）では旧値を残したまま新値と併存させる。
-     */
-    MEMBERS_ONLY,
-
-    /**
      * スコープにおいて MEMBER ロール以上の保有者のみ閲覧可能（新ラダー・閾値方式）。
      *
      * <p>包含: ADMIN / DEPUTY_ADMIN / MEMBER（= 優先度 MEMBER 以上）。
-     * <strong>SUPPORTER / GUEST は不可視</strong>（旧 {@link #MEMBERS_ONLY} との差分）。
+     * <strong>SUPPORTER / GUEST は不可視</strong>（{@link #SCOPE_AFFILIATED}「直接所属軸」との差分）。
      * 未認証 (GUEST 扱い) も不可視。
      *
      * <p>判定は {@code UserScopeRoleSnapshot.hasRoleOrAbove(scope, "MEMBER")} と同等。
@@ -55,8 +44,8 @@ public enum StandardVisibility {
      * 未認証・非所属は不可視。
      *
      * <p>判定は {@code UserScopeRoleSnapshot.isMemberOf(scope)} と同等で、
-     * 旧 {@link #MEMBERS_ONLY} と同一挙動。閾値ラダーとは独立した「直接所属」軸として扱う
-     * （MEMBERS_ONLY 改名・温存）。設計書 §5.1 / §5.1.5 を参照。
+     * 旧「所属者全員可視」軸と同一挙動。閾値ラダーとは独立した「直接所属」軸として扱う
+     * （旧 MEMBERS_ONLY 相当の正準値）。設計書 §5.1 / §5.1.5 を参照。
      */
     SCOPE_AFFILIATED,
 
@@ -70,24 +59,12 @@ public enum StandardVisibility {
     SUPPORTERS_AND_ABOVE,
 
     /**
-     * ADMIN ロールのみ閲覧可能。
-     *
-     * <p>包含: ADMIN / DEPUTY_ADMIN。
-     *
-     * <p>{@code AccessControlService.isAdminOrAbove(...)} と同等のセマンティクス。
-     *
-     * <p><strong>撤去予定（W6 Contract）</strong>: 可視性ラダー統一改修（設計書 §5.1.5）により、
-     * 本値は {@link #ADMINS_AND_ABOVE} へ改名移行する。W1（Expand）では旧値を残したまま併存させる。
-     */
-    ADMINS_ONLY,
-
-    /**
-     * ADMIN ロール以上の保有者のみ閲覧可能（新ラダー・閾値方式 / 旧 {@link #ADMINS_ONLY} 改名）。
+     * ADMIN ロール以上の保有者のみ閲覧可能（新ラダー・閾値方式 / 旧 ADMINS_ONLY 改名）。
      *
      * <p>包含: ADMIN / DEPUTY_ADMIN（= 優先度 ADMIN 以上）。MEMBER 以下は不可視。
      *
-     * <p>判定は {@code UserScopeRoleSnapshot.hasRoleOrAbove(scope, "ADMIN")} と同等で、
-     * 旧 {@link #ADMINS_ONLY} と同一挙動。新ラダーの最上位閾値であり、機微度も最高位として扱う。
+     * <p>判定は {@code UserScopeRoleSnapshot.hasRoleOrAbove(scope, "ADMIN")} と同等。
+     * 新ラダーの最上位閾値であり、機微度も最高位として扱う。
      * 設計書 §5.1 / §5.1.5 を参照。
      */
     ADMINS_AND_ABOVE,

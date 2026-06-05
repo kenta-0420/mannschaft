@@ -121,11 +121,11 @@ public class AnnouncementFeedEntity extends BaseEntity {
 
     /**
      * 閲覧可能範囲（元コンテンツから継承・同期更新）。
-     * 値: MEMBERS_ONLY / SUPPORTERS_AND_ABOVE / PUBLIC
+     * 値: MEMBERS_AND_ABOVE / SUPPORTERS_AND_ABOVE / PUBLIC
      */
     @Column(nullable = false, length = 30)
     @Builder.Default
-    private String visibility = "MEMBERS_ONLY";
+    private String visibility = "MEMBERS_AND_ABOVE";
 
     /**
      * 組織告知でのチーム絞り込み対象（JSON 配列で team.id を保持）。

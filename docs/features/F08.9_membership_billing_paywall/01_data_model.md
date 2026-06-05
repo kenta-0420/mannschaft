@@ -222,6 +222,7 @@ CREATE TABLE team_payment_advances (
 ```
 
 - **クロスドメイン FK なし**（team/user/escrow/payment_request はすべて論理参照）。`escrow_transaction_id`/`payment_request_id` も payment ドメイン内だが、立替記録は監査証跡として保持し連鎖削除を避けるため論理参照とする。
+- **実装同期（P7 第一波・2026-06-05）:** `payment_request_id` に `UNIQUE KEY uk_tpa_request` を付与した（**1請求＝1立替の冪等＝二重起票の物理防止**）。MySQL は UNIQUE の NULL 重複を許すため、`payment_request_id IS NULL` の記録（手動立替等）は UNIQUE の対象外で支障なし。冪等はアプリ層（`findByPaymentRequestId` 先行チェック）＋本 UNIQUE の二重防御。
 - **フロー**: 協会請求支払い時（02 §7・payer=TEAM）に `PENDING` で起票（`payer_user_id`＝操作 ADMIN・`team_id`＝請求先チーム・`advanced_amount`＝課金額）。後にチームから精算されたら、**F04.9 確認必須通知**で精算確認を取り `settlement_status=SETTLED`・`settled_at`・`settled_confirmed_by` を記録。
 - **領収書はチーム名義**（destination charge＋`on_behalf_of`＝役務提供者は協会・支払元名義はチーム名）。
 - `Repository` は `AbstractTenantAwareRepository<TeamPaymentAdvanceEntity, UUID>`。
@@ -258,7 +259,7 @@ escrow の payer/payee 組み合わせは source_kind ごとに意味が決ま�
 | source_kind | payer_scope_kind | payee_kind | 用途 |
 |---|---|---|---|
 | `MEMBERSHIP` | `USER` | `TEAM` / `ORG` | 会費（会員→チーム/組織） |
-| `MEMBERSHIP`（協会請求） | `TEAM` | `ORG` | 協会→加盟チーム請求 |
+| `MEMBERSHIP`（協会請求） | `TEAM`（設計目標）／実装は `USER` | `ORG` | 協会→加盟チーム請求 |
 | `RECRUITMENT`（F22.1） | `USER` | `USER`/`TEAM`/`ORG` | 謝礼 |
 
 ```sql
@@ -267,6 +268,19 @@ CONSTRAINT chk_et_membership_payee
   CHECK (source_kind <> 'MEMBERSHIP' OR payee_kind IN ('TEAM','ORG'))
 ```
 > 既存 V72.005 は組み合わせを**禁じていない**ので「協会→チーム請求（payer=TEAM/payee=ORG）」は現状スキーマで表現可能。複合 CHECK は誤起票の防御であり、追加は F22.1 側テーブルへの ALTER ゆえ F22.1 P2 と調整する。
+>
+> **実装同期（P7 第一波・2026-06-05）— escrow payer は `USER` で記録する:** 協会請求の money rail は consume 専用の
+> `ConnectChargeService.charge(MembershipChargeCommand)`（無改変）へ橋渡しする。`charge()` は escrow を
+> **`source_kind=MEMBERSHIP`・`payer_scope_kind=USER`（＝操作したチーム ADMIN 個人＝案3 の実際の Stripe Customer）**で
+> 焼く（ハードコード）。よって本表の「協会請求 payer=TEAM」は**設計上の意味**であり、実 escrow 行の `payer_scope_kind` は
+> `USER`（ADMIN）となる。これは案3（README §6.3「課金主体＝個人 Customer／請求主体＝チーム」）と整合し、業務上の
+> 「請求主体＝チーム」は `payment_requests.payer_scope`（=TEAM）＋ `team_payment_advances.team_id` が担保する。
+> `EscrowSourceKind` への新値追加（例 `ASSOCIATION_BILLING`）は (a) `source_kind` が VARCHAR(12) で長い値が載らない・
+> (b) `charge()` が `MEMBERSHIP` をハードコードするため新値は死蔵・(c) F22.1 escrow テーブルの CHECK ALTER が必要——の
+> 3 点から**採らず**、`MEMBERSHIP` を再利用する（`MembershipPaymentCaptureListener` は member_payments 不在で安全に no-op）。
+> escrow `source_id` には**請求先 `team_id`** を渡す（payment_request の UUID は BIGINT の `source_id` に載らないため。
+> 二重支払いの一次防御は `payment_requests.status` ゲート＋ `team_payment_advances.payment_request_id` UNIQUE＋ Stripe
+> Idempotency-Key で担保し、`charge()` の `(source_kind, source_id)` 冪等は backstop）。
 
 ---
 
@@ -316,10 +330,14 @@ connect_accounts(F22.1・拡張: tax_registration_number/tax_status)
 | `V74.001__alter_member_payments_add_payer.sql` | `payer_user_id`/`payment_proxy_grant_id`/`payer_relationship`/`escrow_transaction_id`/`membership_subscription_id` 追加・INDEX |
 | `V74.002__alter_payment_items_add_term_tax.sql` | `type` ENUM に `TERM` 追加／`is_recurring`/`billing_interval`/`term_starts_on`/`term_ends_on`/`tax_category`/`tax_rate`/`price_includes_tax` 追加 |
 | `V74.003__alter_connect_accounts_add_tax.sql` | `tax_registration_number`/`tax_status` 追加（F22.1 テーブルへの追記・要 F22.1 側調整） |
-| `V74.004__create_membership_subscriptions.sql` | 継続課金テーブル（UUIDv7・`fee_policy_key`・`skip_until` 含む） |
-| `V74.005__create_payment_requests.sql` | 協会請求テーブル（UUIDv7） |
-| `V74.006__create_payment_proxy_grants.sql` | 第三者代理払い許可テーブル（UUIDv7） |
-| `V7x.xxx__create_team_payment_advances.sql`（仮・着手時採番） | 立替/精算記録テーブル（UUIDv7・案3・§2.5） |
+| `V74.004__create_membership_subscriptions.sql`（継続課金は P5・未着手） | 継続課金テーブル（UUIDv7・`fee_policy_key`・`skip_until` 含む） |
+| `V74.20260605120010__create_payment_requests.sql`（**P7 第一波・実装済 2026-06-05**） | 協会請求テーブル（UUIDv7）。タイムスタンプ式採番（origin/main 最大 `V74.20260605000020` の後にソート） |
+| `V74.006__create_payment_proxy_grants.sql`（P1・実装済） | 第三者代理払い許可テーブル（UUIDv7） |
+| `V74.20260605120020__create_team_payment_advances.sql`（**P7 第一波・実装済 2026-06-05**） | 立替/精算記録テーブル（UUIDv7・案3・§2.5）。`payment_request_id` に UNIQUE（1請求＝1立替の冪等） |
+
+> **採番方式の改定（2026-06-05）:** 当初 `V74.004/005` 等の連番を予定したが、並行 PR との衝突を避けるため
+> origin/main で既に採用済みのタイムスタンプ式（`V74.YYYYMMDDhhmmss`）に統一した。P7 第一波の 2 本は
+> origin/main 最大 `V74.20260605000020` の直後にソートされる `V74.20260605120010/120020` で確定（[[feedback_migration_version_collision]]）。
 
 > **proxy scope `PAYMENT` は DDL 不要**（§6）: 代理払いの組織代理経路は `proxy_input_consent_scopes.feature_scope`（VARCHAR(64)・V18.011・CHECK なし）に enum 値 `PAYMENT` を1つ足すだけで成立する。新規 migration・列追加は不要（enum 定数追加のみ）。
 
@@ -331,6 +349,7 @@ connect_accounts(F22.1・拡張: tax_registration_number/tax_status)
 
 - **payer_user_id／beneficiary_user_id** は退会時、`user_id` の匿名化方針に従う（投稿・履歴・統計は残し PII のみ消去）。`member_payments`・`membership_subscriptions`・`team_payment_advances` は**金銭記録**ゆえ物理削除せず、ユーザー参照を NULL 化せずに匿名化（会計・税務保持義務）。`team_payment_advances`（立替/精算）は退会後も保持し、PENDING のまま残る立替は退会者の表示名のみ匿名化（精算確認の対象＝チームに帰属する金銭事実は消さない）。保持期間は F12.3／F09.18 の方針に整合（決済 payload 30日・to_address 13ヶ月・メタ7年相当を踏襲・§税務確定で再調整）。
 - **後見切替セッション**の代理操作は `proxy_input_records`（F14.1）に記録。退会・年齢到達（中学進学）で切替権原は自動失効（`users.status` 連動・F14.1 の DECEASED/RELOCATED 失効と同型）。
+  - **是正（P3c・2026-06-05）**：後見切替は紙の同意書（`proxy_input_consents`）を伴わないステートレス代理のため、`proxy_input_records.proxy_input_consent_id` を **NULLABLE 化**（V74.010）した。後見切替由来の記録は `proxy_input_consent_id=NULL`・`input_source='GUARDIANSHIP_SWITCH'`（新 enum 値・`input_source` は VARCHAR(32)・CHECK なしゆえ DDL 追加不要）・`feature_scope='PAYMENT'`・`target_entity_type='GUARDIANSHIP_SWITCH'`・`target_entity_id=childUserId` で追記する。FK は NULL を参照整合性チェックから除外するため支障なし。既存の紙運用（F14.1）の記録は従来どおり consent_id を持つ。
 - **退会時のアトミック失効**（受益者 or 払い手の退会処理＝`UserWithdrawalService` のトランザクション内で実行・宙ぶらりんを残さない）：
   1. 当該ユーザーが受益者の `membership_subscriptions` を `CANCELLED`（＋ Stripe Subscription を cancel）
   2. 当該ユーザーが受益者/払い手の `payment_proxy_grants` を `REVOKED`

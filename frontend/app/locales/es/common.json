@@ -1424,6 +1424,7 @@
     "saveError": "Error al guardar",
     "removeConfirm": "¿Seguro que quieres eliminarlo?",
     "dragHandle": "Reordenar",
+    "labelFavorited": "Guardado",
     "entityType": {
       "TEAM": "Equipo",
       "ORGANIZATION": "Organización",

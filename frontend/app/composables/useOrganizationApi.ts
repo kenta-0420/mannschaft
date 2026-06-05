@@ -2,7 +2,7 @@ import type { MemberResponse } from '~/types/member'
 import type { OrganizationResponse } from '~/types/organization'
 
 interface OrganizationSummaryResponse {
-  id: number
+  id: string
   name: string
   nickname1: string | null
   iconUrl: string | null

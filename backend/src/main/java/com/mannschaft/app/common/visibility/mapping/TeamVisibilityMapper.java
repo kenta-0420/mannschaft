@@ -14,11 +14,11 @@ import com.mannschaft.app.team.entity.TeamEntity;
  *       （未認証ユーザーも閲覧可）</li>
  *   <li>{@link TeamEntity.Visibility#ORGANIZATION_ONLY} → {@link StandardVisibility#ORGANIZATION_WIDE}
  *       （スコープの親 ORG 所属メンバーまで公開。親 ORG 連鎖ガードは §11.6 参照）</li>
- *   <li>{@link TeamEntity.Visibility#PRIVATE} → {@link StandardVisibility#MEMBERS_ONLY}
+ *   <li>{@link TeamEntity.Visibility#PRIVATE} → {@link StandardVisibility#SCOPE_AFFILIATED}
  *       （招待制・非公開チーム。{@code TeamEntity} に {@code created_by} が存在しないため
  *       {@link StandardVisibility#PRIVATE}（作者本人のみ）へのマッピングは実質 fail-closed
  *       となり誰も閲覧できなくなる。チームの PRIVATE の意図は「メンバーだけ見える」であるため
- *       {@link StandardVisibility#MEMBERS_ONLY} を使用する）</li>
+ *       {@link StandardVisibility#SCOPE_AFFILIATED}（直接所属）を使用する）</li>
  * </ul>
  */
 public final class TeamVisibilityMapper {
@@ -37,7 +37,8 @@ public final class TeamVisibilityMapper {
         return switch (v) {
             case PUBLIC -> StandardVisibility.PUBLIC;
             case ORGANIZATION_ONLY -> StandardVisibility.ORGANIZATION_WIDE;
-            case PRIVATE -> StandardVisibility.MEMBERS_ONLY;
+            // 挙動不変・名称正準化（W3）: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
+            case PRIVATE -> StandardVisibility.SCOPE_AFFILIATED;
         };
     }
 }

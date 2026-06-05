@@ -7,6 +7,7 @@ import com.mannschaft.app.auth.dto.InviteParentRequest;
 import com.mannschaft.app.auth.dto.MessageResponse;
 import com.mannschaft.app.auth.dto.ParentLinkResponse;
 import com.mannschaft.app.auth.dto.RejectConsentRequest;
+import com.mannschaft.app.auth.guardianship.AuthenticationCriticalOperationGuard;
 import com.mannschaft.app.auth.service.ParentalConsentService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
@@ -40,6 +41,7 @@ import java.util.UUID;
 public class ParentalConsentController {
 
     private final ParentalConsentService parentalConsentService;
+    private final AuthenticationCriticalOperationGuard authenticationCriticalOperationGuard;
 
     // ========================================
     // 子ユーザー側 — 招待操作
@@ -113,6 +115,10 @@ public class ParentalConsentController {
     public ResponseEntity<ApiResponse<MessageResponse>> removeParent(
             @Parameter(description = "解除対象のリンク ID（UUID）")
             @PathVariable String linkId) {
+        // 後見切替セッション中（acting-as）の親リンク削除を禁止（03_security §3.2 なりすまし防止の安全境界）。
+        // 本 EP は「子」が操作する建付けのため、保護者が子として acting-as して共同親権者のリンクを
+        // 削除する経路を塞ぐ（認証クリティカル相当）。
+        authenticationCriticalOperationGuard.assertNotActingAs();
         Long childUserId = SecurityUtils.getCurrentUserId();
         parentalConsentService.removeParentalLink(linkId, childUserId);
         return ResponseEntity.ok(ApiResponse.of(MessageResponse.of("保護者リンクを解除しました")));

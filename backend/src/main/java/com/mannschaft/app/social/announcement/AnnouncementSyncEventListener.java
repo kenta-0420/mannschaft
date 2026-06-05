@@ -214,7 +214,7 @@ public class AnnouncementSyncEventListener {
      *
      * @param sourceType    元コンテンツ種別
      * @param sourceId      元コンテンツ ID
-     * @param newVisibility 新しい visibility 値（"PUBLIC" / "MEMBERS_ONLY" / "SUPPORTERS_AND_ABOVE" / "PRIVATE"）
+     * @param newVisibility 新しい visibility 値（"PUBLIC" / "MEMBERS_AND_ABOVE" / "SUPPORTERS_AND_ABOVE" / "PRIVATE"）
      */
     public record ContentVisibilityChangedEvent(
             AnnouncementSourceType sourceType,
