@@ -2,11 +2,14 @@ package com.mannschaft.app.payment.escrow;
 
 import com.mannschaft.app.payment.escrow.event.EscrowCapturedEvent;
 import com.mannschaft.app.payment.service.MemberPaymentService;
+import com.mannschaft.app.payment.service.MembershipSubscriptionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+
+import java.util.UUID;
 
 /**
  * F08.9 P1 Wave4 (T8): escrow の CAPTURED（capture 確定）→ 会費 {@code member_payments} の PENDING→PAID 反映を
@@ -38,9 +41,17 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class MembershipPaymentCaptureListener {
 
     private final MemberPaymentService memberPaymentService;
+    /** F08.9 P5 第三波: 初回単発 charge CAPTURED 由来の継続課金 PENDING→ACTIVE 化（案b の唯一の活性化点）。 */
+    private final MembershipSubscriptionService membershipSubscriptionService;
 
     /**
      * escrow の CAPTURED イベントを受けて、会費（MEMBERSHIP）の member_payment を PENDING→PAID に反映する。
+     *
+     * <p><b>F08.9 P5 第三波（継続課金の活性化）:</b> PAID 反映の戻り値が継続課金 ID（連結 member_payment が
+     * {@code membership_subscription_id} を持つ＝初回単発 charge 由来）の場合、続けて
+     * {@link MembershipSubscriptionService#activateOnInitialChargeIfPending} を呼び PENDING→ACTIVE 化する。
+     * これが案b における PENDING→ACTIVE の<b>唯一の発火点</b>（Webhook 側は活性化しない）。単発会費（subscription
+     * 連結なし）は戻り値 null で活性化は走らない。</p>
      *
      * @param event CAPTURED イベント（escrowTransactionId / sourceKind）
      */
@@ -51,6 +62,10 @@ public class MembershipPaymentCaptureListener {
             return;
         }
         log.info("会費 CAPTURED → PAID 反映を起動: escrowId={}", event.escrowTransactionId());
-        memberPaymentService.applyMembershipPaidByEscrow(event.escrowTransactionId());
+        UUID membershipSubscriptionId = memberPaymentService.applyMembershipPaidByEscrow(event.escrowTransactionId());
+        if (membershipSubscriptionId != null) {
+            log.info("継続課金 初回 charge CAPTURED → PENDING→ACTIVE 化を起動: subscriptionId={}", membershipSubscriptionId);
+            membershipSubscriptionService.activateOnInitialChargeIfPending(membershipSubscriptionId);
+        }
     }
 }

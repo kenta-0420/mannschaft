@@ -3,6 +3,10 @@ package com.mannschaft.app.payment.repository;
 import com.mannschaft.app.common.repository.AbstractTenantAwareRepository;
 import com.mannschaft.app.payment.MembershipSubscriptionStatus;
 import com.mannschaft.app.payment.entity.MembershipSubscriptionEntity;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -29,6 +33,35 @@ public interface MembershipSubscriptionRepository
      * Stripe Subscription ID で引く（論理削除を除外）。Webhook（invoice.* / subscription.deleted）の引き当て。
      */
     Optional<MembershipSubscriptionEntity> findByStripeSubscriptionIdAndDeletedAtIsNull(String stripeSubscriptionId);
+
+    /**
+     * Stripe Subscription ID で引き、行を {@code PESSIMISTIC_WRITE} ロックして取得する（Webhook の read-then-write 直列化）。
+     *
+     * <p>継続課金 Webhook（{@code invoice.paid} の状態遷移＋current_period 更新／{@code invoice.payment_failed}／
+     * {@code subscription.deleted}）は「subscription を read → status 書き換え」を行う。同一 subscription への
+     * 並行/再送イベントが AUTHORIZED 状態を同時に読むと二重遷移しうるため、行ロックで直列化する（設計書 02 §4.2・
+     * EscrowWebhookService の流儀）。論理削除を除外する。
+     *
+     * <p>JPQL 本体には注記を書かない（HQL パース事故回避・コメントは本 Javadoc に集約する）。</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM MembershipSubscriptionEntity s "
+            + "WHERE s.stripeSubscriptionId = :stripeSubscriptionId AND s.deletedAt IS NULL")
+    Optional<MembershipSubscriptionEntity> findByStripeSubscriptionIdForUpdate(
+            @Param("stripeSubscriptionId") String stripeSubscriptionId);
+
+    /**
+     * ID で引き、行を {@code PESSIMISTIC_WRITE} ロックして取得する（初回 charge CAPTURED 経由の PENDING→ACTIVE 直列化）。
+     *
+     * <p>初回単発 charge の CAPTURED（{@code EscrowCapturedEvent} 経由）と、稀に先着しうる次サイクル
+     * {@code invoice.paid} が同一 subscription を同時に PENDING で読むと二重 ACTIVE 化しうるため行ロックで直列化する。
+     * 論理削除を除外する。</p>
+     *
+     * <p>JPQL 本体には注記を書かない（HQL パース事故回避・コメントは本 Javadoc に集約する）。</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM MembershipSubscriptionEntity s WHERE s.id = :id AND s.deletedAt IS NULL")
+    Optional<MembershipSubscriptionEntity> findByIdForUpdate(@Param("id") UUID id);
 
     /**
      * 払い手視点の継続課金一覧（指定状態・idx_ms_payer で引く）。

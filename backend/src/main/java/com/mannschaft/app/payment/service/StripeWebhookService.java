@@ -32,6 +32,8 @@ public class StripeWebhookService {
     private final NotificationCreditCheckoutService notificationCreditCheckoutService;
     /** F22.1 統一決済 P2-b: 与信系（escrow）PaymentIntent イベントの委譲先（設計書 02 §4.2）。 */
     private final EscrowWebhookService escrowWebhookService;
+    /** F08.9 P5 第三波: 継続課金（invoice.* / subscription.deleted）イベントの委譲先（設計書 02 §4.2）。 */
+    private final MembershipSubscriptionWebhookService membershipSubscriptionWebhookService;
 
     /** F22.1 与信系 platform Webhook の対象イベント種別（payment_intent.* の接頭辞）。 */
     private static final String ESCROW_EVENT_PREFIX = "payment_intent.";
@@ -54,6 +56,14 @@ public class StripeWebhookService {
         // event_id 冪等＋escrow 特定は EscrowWebhookService に委譲する（設計書 02 §4.2・専用 record で再パース）。
         if (event.type() != null && event.type().startsWith(ESCROW_EVENT_PREFIX)) {
             escrowWebhookService.handleWebhook(payload, sigHeader);
+            return;
+        }
+
+        // F08.9 P5: 継続課金（Subscription）は platform 上に作られ invoice.* / customer.subscription.deleted が
+        // platform Webhook で届く。event_id 冪等＋subscription 逆引き＋invoice.created 固定手数料上書きは
+        // MembershipSubscriptionWebhookService に委譲する（設計書 02 §4.2・専用 record で再パース）。
+        if (MembershipSubscriptionWebhookService.isSubscriptionEvent(event.type())) {
+            membershipSubscriptionWebhookService.handleWebhook(payload, sigHeader);
             return;
         }
 

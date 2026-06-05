@@ -35,6 +35,7 @@ class StripeWebhookServiceTest {
     @Mock private StripePaymentProvider stripePaymentProvider;
     @Mock private com.mannschaft.app.notification.credit.service.NotificationCreditCheckoutService notificationCreditCheckoutService;
     @Mock private com.mannschaft.app.payment.escrow.EscrowWebhookService escrowWebhookService;
+    @Mock private com.mannschaft.app.payment.service.MembershipSubscriptionWebhookService membershipSubscriptionWebhookService;
 
     @InjectMocks
     private StripeWebhookService service;
@@ -91,6 +92,36 @@ class StripeWebhookServiceTest {
             verify(memberPaymentRepository, never()).findById(any());
             verify(memberPaymentRepository, never()).findByStripePaymentIntentId(any());
             verify(memberPaymentRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("F08.9 P5 委譲: invoice.* event は MembershipSubscriptionWebhookService へ委譲し既存 checkout/refund 処理に行かない")
+        void 継続課金invoiceイベントはサブスクwebhookへ委譲() {
+            StripePaymentProvider.WebhookEventInfo event = new StripePaymentProvider.WebhookEventInfo(
+                    "invoice.created", null, null, null, "sub_x",
+                    null, null, null, null, null, null);
+            given(stripePaymentProvider.constructEvent(any(), any())).willReturn(event);
+
+            service.handleWebhook("payload", "sig");
+
+            verify(membershipSubscriptionWebhookService).handleWebhook("payload", "sig");
+            verify(escrowWebhookService, never()).handleWebhook(any(), any());
+            verify(memberPaymentRepository, never()).findById(any());
+            verify(memberPaymentRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("F08.9 P5 委譲: customer.subscription.deleted も MembershipSubscriptionWebhookService へ委譲")
+        void 解約イベントはサブスクwebhookへ委譲() {
+            StripePaymentProvider.WebhookEventInfo event = new StripePaymentProvider.WebhookEventInfo(
+                    "customer.subscription.deleted", null, null, null, "sub_x",
+                    null, null, null, null, null, null);
+            given(stripePaymentProvider.constructEvent(any(), any())).willReturn(event);
+
+            service.handleWebhook("payload", "sig");
+
+            verify(membershipSubscriptionWebhookService).handleWebhook("payload", "sig");
+            verify(escrowWebhookService, never()).handleWebhook(any(), any());
         }
 
         @Test

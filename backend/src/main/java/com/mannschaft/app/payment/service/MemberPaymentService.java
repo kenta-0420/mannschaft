@@ -456,9 +456,12 @@ public class MemberPaymentService {
      * （行ロック＋status 再判定）と相まって二重課金・二重反映を防ぐ。</p>
      *
      * @param escrowTransactionId CAPTURED になった escrow の ID（member_payments との突合キー）
+     * @return 本呼び出しで新規に PENDING→PAID にした member_payment が継続課金由来（{@code membership_subscription_id}
+     *         連結）の場合はその継続課金 ID（呼び出し側＝リスナが PENDING→ACTIVE 化の起点に用いる・F08.9 P5 第三波）。
+     *         会費外/未連結/既に PAID/後段状態/単発（subscription 連結なし）の場合は {@code null}。
      */
     @Transactional
-    public void applyMembershipPaidByEscrow(UUID escrowTransactionId) {
+    public UUID applyMembershipPaidByEscrow(UUID escrowTransactionId) {
         MemberPaymentEntity payment = memberPaymentRepository
                 .findByEscrowTransactionId(escrowTransactionId)
                 .orElse(null);
@@ -466,20 +469,21 @@ public class MemberPaymentService {
             // 会費以外の escrow（RECRUITMENT 等）や、Connect checkout を経由しない記録には member_payment が無い。no-op。
             log.info("会費 PAID 反映: escrow に対応する member_payment なし（会費外/未連結）。no-op: escrowId={}",
                     escrowTransactionId);
-            return;
+            return null;
         }
         if (payment.getStatus() != PaymentStatus.PAID
                 && payment.getStatus() != PaymentStatus.PENDING) {
             // CANCELLED/REFUNDED 等の後段状態は触らない（症状を隠さず情報ログ）。
             log.info("会費 PAID 反映: member_payment が後段状態のため反映しない: paymentId={}, status={}",
                     payment.getId(), payment.getStatus());
-            return;
+            return null;
         }
         if (payment.getStatus() == PaymentStatus.PAID) {
-            // 既に PAID（webhook 再送・同期確定の二経路）。冪等 no-op。
+            // 既に PAID（webhook 再送・同期確定の二経路）。冪等 no-op。PENDING→ACTIVE 化は subscription 側の冪等で防ぐため
+            // ここで subscription ID を返さない（二重 ACTIVE トリガを避ける・既に活性化済みのはず）。
             log.info("会費 PAID 反映: 既に PAID（冪等 no-op）: paymentId={}, escrowId={}",
                     payment.getId(), escrowTransactionId);
-            return;
+            return null;
         }
 
         PaymentItemEntity paymentItem = paymentItemService.findByIdOrThrow(payment.getPaymentItemId());
@@ -487,8 +491,11 @@ public class MemberPaymentService {
         LocalDate validUntil = calculateValidUntil(paymentItem.getType(), validFrom);
         payment.markAsPaidByEscrowCapture(validFrom, validUntil);
         memberPaymentRepository.save(payment);
-        log.info("会費 PAID 反映完了（escrow CAPTURED 連動）: paymentId={}, escrowId={}, validUntil={}",
-                payment.getId(), escrowTransactionId, validUntil);
+        log.info("会費 PAID 反映完了（escrow CAPTURED 連動）: paymentId={}, escrowId={}, validUntil={}, subscriptionId={}",
+                payment.getId(), escrowTransactionId, validUntil, payment.getMembershipSubscriptionId());
+        // 継続課金の初回単発 charge 由来（membership_subscription_id 連結）なら、その ID を返して
+        // 呼び出し側（MembershipPaymentCaptureListener）が PENDING→ACTIVE 化を起こす（案b の活性化点・F08.9 P5 第三波）。
+        return payment.getMembershipSubscriptionId();
     }
 
     /**

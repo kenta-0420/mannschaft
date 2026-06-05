@@ -12,6 +12,7 @@ import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
+import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Price;
 import com.stripe.model.Product;
@@ -38,6 +39,7 @@ import com.stripe.param.ProductCreateParams;
 import com.stripe.param.ProductUpdateParams;
 import com.stripe.param.RefundCreateParams;
 import com.stripe.param.SetupIntentCreateParams;
+import com.stripe.param.InvoiceUpdateParams;
 import com.stripe.param.SubscriptionCreateParams;
 import com.stripe.param.SubscriptionUpdateParams;
 import com.stripe.param.TransferReversalCollectionCreateParams;
@@ -739,6 +741,76 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         } catch (StripeException e) {
             log.error("Stripe Subscription 期末解約予約失敗: id={}", subscriptionId, e);
             throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public InvoiceWebhookEventInfo constructInvoiceEvent(String payload, String sigHeader) {
+        Event event;
+        try {
+            event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
+        } catch (SignatureVerificationException e) {
+            log.error("Stripe 継続課金 Webhook 署名検証失敗", e);
+            throw new BusinessException(PaymentErrorCode.WEBHOOK_SIGNATURE_INVALID);
+        }
+
+        String eventType = event.getType();
+        boolean livemode = Boolean.TRUE.equals(event.getLivemode());
+
+        EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
+        StripeObject stripeObject = deserializer.getObject().orElse(null);
+
+        String subscriptionId = null;
+        String invoiceId = null;
+        String invoiceStatus = null;
+        String billingReason = null;
+        Long amountPaidMinor = null;
+        String paymentIntentId = null;
+        String chargeId = null;
+        Long periodStartEpochSec = null;
+        Long periodEndEpochSec = null;
+
+        if (stripeObject instanceof Invoice invoice) {
+            // invoice.*（created/paid/payment_failed）: subscription 逆引き・draft 窓判定・記帳突合に必要な値を抽出。
+            subscriptionId = invoice.getSubscription();
+            invoiceId = invoice.getId();
+            invoiceStatus = invoice.getStatus();
+            billingReason = invoice.getBillingReason();
+            amountPaidMinor = invoice.getAmountPaid();
+            paymentIntentId = invoice.getPaymentIntent();
+            chargeId = invoice.getCharge();
+            periodStartEpochSec = invoice.getPeriodStart();
+            periodEndEpochSec = invoice.getPeriodEnd();
+        } else if (stripeObject instanceof Subscription subscription) {
+            // customer.subscription.deleted: 対象 subscription のみ（他フィールドは null）。
+            subscriptionId = subscription.getId();
+        }
+
+        log.info("Stripe 継続課金 Webhook 受信: id={}, type={}, subscriptionId={}, invoiceId={}, status={}, billingReason={}",
+                event.getId(), eventType, subscriptionId, invoiceId, invoiceStatus, billingReason);
+        return new InvoiceWebhookEventInfo(event.getId(), eventType, livemode, subscriptionId, invoiceId,
+                invoiceStatus, billingReason, amountPaidMinor, paymentIntentId, chargeId,
+                periodStartEpochSec, periodEndEpochSec);
+    }
+
+    @Override
+    public void updateInvoiceApplicationFee(String invoiceId, long applicationFeeMinor, String idempotencyKey) {
+        try {
+            Invoice invoice = Invoice.retrieve(invoiceId);
+            // draft 窓で application_fee_amount を固定円へ上書き（subscription の application_fee_percent 自動計算を
+            // 完全上書き・PoC 実証 2026-06-05・README §4.2 / §4.4）。stripe-java 28.2.0（API 2025-02-24.acacia）固定条件。
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            invoice.update(InvoiceUpdateParams.builder()
+                    .setApplicationFeeAmount(applicationFeeMinor)
+                    .build(), options);
+            log.info("Stripe invoice application_fee_amount 上書き: invoiceId={}, appFee={}", invoiceId, applicationFeeMinor);
+        } catch (StripeException e) {
+            // 上書き失敗は症状を隠さず例外で上申する（呼び出し側が Stripe 再送に委ねる・02 §4.2）。
+            log.error("Stripe invoice application_fee_amount 上書き失敗: invoiceId={}, appFee={}",
+                    invoiceId, applicationFeeMinor, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR, e);
         }
     }
 

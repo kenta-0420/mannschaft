@@ -329,6 +329,66 @@ public interface StripePaymentProvider {
                                         long billingCycleAnchorEpochSec, String idempotencyKey);
 
     /**
+     * 継続課金の platform Webhook イベント（{@code invoice.*} / {@code customer.subscription.deleted}）を検証・パースする
+     * （F08.9 P5 第三波・設計書 02 §4.2）。
+     *
+     * <p>platform 署名シークレット（{@link #constructEvent} と同一）で検証する。継続課金の Subscription は
+     * platform 上に作成されるため、各サイクルの invoice 系イベント・解約イベントは platform Webhook で届く。
+     * {@code eventId}（冪等キー）・{@code subscriptionId}（{@code membership_subscriptions} 逆引きキー）・
+     * {@code billingReason}（{@code subscription_cycle}/{@code subscription_create} 判定）・{@code invoiceStatus}
+     * （{@code draft} 窓判定）・{@code invoiceId}（上書き対象）・{@code paymentIntentId}/{@code chargeId}（記帳の突合）・
+     * 現サイクル期間（{@code periodStartEpochSec}/{@code periodEndEpochSec}）を含む専用 record を返す。</p>
+     *
+     * @param payload   生リクエストボディ
+     * @param sigHeader {@code Stripe-Signature} ヘッダー
+     * @return 継続課金 Webhook イベント情報
+     */
+    InvoiceWebhookEventInfo constructInvoiceEvent(String payload, String sigHeader);
+
+    /**
+     * draft 状態の invoice の {@code application_fee_amount} を固定円で上書きする（F08.9 P5 第三波・★核心・設計書 02 §4.2）。
+     *
+     * <p>継続課金の各サイクル invoice は subscription の {@code application_fee_percent} で率手数料が自動計算される。
+     * {@code invoice.created}（draft 窓）でこの率を固定円に<b>上書き</b>することで、{@code fee_policy_key} で焼き付けた
+     * 固定手数料を全サイクルで正確に徴収する（PoC 実証 2026-06-05）。{@code POST /v1/invoices/{id}} を
+     * {@code application_fee_amount} 付きで呼ぶ。<b>SDK バージョン固定条件あり</b>（Stripe API {@code 2025-02-24.acacia}／
+     * stripe-java 28.2.0。basil 系ではこのフィールドが invoice に存在せず黙殺されるため、29.x 以降へ上げる際は機構再設計が必要・
+     * README §4.4）。上書きが失敗した場合は症状を隠さず例外を投げ、呼び出し側が Stripe 再送に委ねる。</p>
+     *
+     * @param invoiceId            上書き対象 invoice ID（{@code in_xxx}・draft）
+     * @param applicationFeeMinor  固定 application_fee（最小通貨単位・{@code fee_policy} 算出値）
+     * @param idempotencyKey       冪等性キー（設計書 02 §9）
+     */
+    void updateInvoiceApplicationFee(String invoiceId, long applicationFeeMinor, String idempotencyKey);
+
+    /**
+     * 継続課金 platform Webhook イベント情報（F08.9 P5 第三波・設計書 02 §4.2）。
+     *
+     * <p>{@code eventId} は冪等キー（{@code evt_xxx}）。{@code subscriptionId} で {@code membership_subscriptions} を
+     * 逆引きする。{@code invoice.*} 系では invoice の各フィールドを格納し、{@code customer.subscription.deleted} では
+     * {@code subscriptionId} のみ（他は null）。</p>
+     *
+     * @param eventId              Stripe イベント ID（{@code evt_xxx}・冪等キー）
+     * @param type                 イベント種別（{@code invoice.created}/{@code invoice.paid}/{@code invoice.payment_failed}/
+     *                             {@code customer.subscription.deleted}）
+     * @param livemode             本番/テスト区分
+     * @param subscriptionId       Stripe Subscription ID（{@code sub_xxx}・逆引きキー）
+     * @param invoiceId            invoice ID（{@code in_xxx}・{@code invoice.*} のみ）
+     * @param invoiceStatus        invoice 状態（{@code draft}/{@code open}/{@code paid} 等・上書き窓判定）
+     * @param billingReason        課金理由（{@code subscription_cycle}/{@code subscription_create} 等・対象判定）
+     * @param amountPaidMinor      支払済額（最小通貨単位・{@code invoice.paid} の記帳元）
+     * @param paymentIntentId      invoice に紐づく PaymentIntent ID（{@code pi_xxx}・記帳突合）
+     * @param chargeId             invoice に紐づく Charge ID（{@code ch_xxx}・記帳突合）
+     * @param periodStartEpochSec  現サイクル開始 unix 秒（null 可）
+     * @param periodEndEpochSec    現サイクル終了 unix 秒（valid_until 延長元・null 可）
+     */
+    record InvoiceWebhookEventInfo(String eventId, String type, boolean livemode,
+                                   String subscriptionId, String invoiceId, String invoiceStatus,
+                                   String billingReason, Long amountPaidMinor,
+                                   String paymentIntentId, String chargeId,
+                                   Long periodStartEpochSec, Long periodEndEpochSec) {}
+
+    /**
      * Stripe Subscription を期末解約予約する（{@code cancel_at_period_end=true}・設計書 02 §4.1）。
      *
      * <p>期末まで利用可・日割り返金なし・期末前は再有効化可。即時解約はしない（README §4.1）。

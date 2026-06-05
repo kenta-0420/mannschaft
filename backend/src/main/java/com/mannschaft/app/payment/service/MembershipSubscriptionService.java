@@ -288,6 +288,60 @@ public class MembershipSubscriptionService {
     }
 
     /**
+     * 継続課金の初回単発 charge の CAPTURED を受けて PENDING→ACTIVE に活性化する（案b の<b>唯一の活性化点</b>・
+     * F08.9 P5 第三波・設計書 02 §4.1 / §4.2）。
+     *
+     * <p><b>PENDING→ACTIVE の発火点を1箇所に確定する（二重発火しない）。</b> 案b では初回会費を Subscription の
+     * invoice ではなく P1 同型の単発 destination charge で徴収するため、初回 {@code invoice.paid} は発生しない
+     * （Stripe Subscription は {@code billing_cycle_anchor}=次サイクルで起動）。よって PENDING→ACTIVE の起点は
+     * 「初回単発 charge の CAPTURED」であり、escrow の {@code payment_intent.succeeded} → {@link EscrowCapturedEvent}
+     * → {@link com.mannschaft.app.payment.escrow.MembershipPaymentCaptureListener} が
+     * {@link MemberPaymentService#applyMembershipPaidByEscrow}（PAID 反映）で連結 subscription ID を取得し、本メソッドを呼ぶ。
+     * Webhook 側（{@link MembershipSubscriptionWebhookService}）は PENDING→ACTIVE を<b>行わず</b>、ACTIVE/PAST_DUE への
+     * サイクル反映のみ担う（活性化の二重発火を防ぐ）。</p>
+     *
+     * <p>現サイクルは「活性化日（{@code validFrom}）〜課金周期で算出した期末」とする（受益者 valid_until と同期・
+     * MONTHLY=+1ヶ月 / YEARLY=+1年）。</p>
+     *
+     * <p><b>冪等:</b> 行ロック取得後に PENDING でなければ no-op（既に ACTIVE 化済み／再送／二経路重複）。
+     * これにより初回 charge CAPTURED の再送・並行と、稀に先着しうる次サイクル invoice.paid とで二重 ACTIVE 化しない。</p>
+     *
+     * @param subscriptionId 活性化対象の継続課金 ID（連結 member_payment 由来）
+     */
+    @Transactional
+    public void activateOnInitialChargeIfPending(UUID subscriptionId) {
+        if (subscriptionId == null) {
+            return;
+        }
+        MembershipSubscriptionEntity subscription = membershipSubscriptionRepository
+                .findByIdForUpdate(subscriptionId)
+                .orElse(null);
+        if (subscription == null) {
+            log.info("継続課金 活性化: 対象 subscription なし（論理削除済/不在）。no-op: subscriptionId={}", subscriptionId);
+            return;
+        }
+        if (subscription.getStatus() != MembershipSubscriptionStatus.PENDING) {
+            // 既に ACTIVE 等（再送・二経路重複）。冪等 no-op。
+            log.info("継続課金 活性化: PENDING でないため no-op（冪等）: subscriptionId={}, status={}",
+                    subscriptionId, subscription.getStatus());
+            return;
+        }
+        LocalDate periodStart = LocalDate.now();
+        LocalDate periodEnd = addOneCycle(periodStart, subscription.getBillingInterval());
+        subscription.markActive(periodStart, periodEnd);
+        membershipSubscriptionRepository.save(subscription);
+        log.info("継続課金 活性化 PENDING→ACTIVE（初回 charge CAPTURED 連動）: subscriptionId={}, periodStart={}, periodEnd={}",
+                subscriptionId, periodStart, periodEnd);
+    }
+
+    /**
+     * 課金周期 1 期分を加算する（受益者 valid_until 同期の current_period_end 算出・MONTHLY=+1ヶ月 / YEARLY=+1年）。
+     */
+    private LocalDate addOneCycle(LocalDate from, BillingInterval interval) {
+        return (interval == BillingInterval.YEARLY) ? from.plusYears(1) : from.plusMonths(1);
+    }
+
+    /**
      * 継続課金を期末解約予約する（{@code cancel_at_period_end=true}・設計書 02 §4.1）。
      *
      * <p>期末まで利用可・日割り返金なし・期末前は再有効化可。Stripe {@code cancel_at_period_end=true} を更新し、
