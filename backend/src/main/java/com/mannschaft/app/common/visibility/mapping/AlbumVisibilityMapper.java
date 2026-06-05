@@ -22,9 +22,11 @@ public final class AlbumVisibilityMapper {
      */
     public static StandardVisibility toStandard(AlbumVisibility v) {
         return switch (v) {
-            case ALL_MEMBERS -> StandardVisibility.MEMBERS_ONLY;
+            // 挙動不変・名称正準化（W3）: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
+            case ALL_MEMBERS -> StandardVisibility.SCOPE_AFFILIATED;
             case SUPPORTERS_AND_ABOVE -> StandardVisibility.SUPPORTERS_AND_ABOVE;
-            case ADMIN_ONLY -> StandardVisibility.ADMINS_ONLY;
+            // 挙動不変・名称正準化（W4）: ADMINS_AND_ABOVE = hasRoleOrAbove("ADMIN") = 旧 ADMINS_ONLY と同一判定。
+            case ADMIN_ONLY -> StandardVisibility.ADMINS_AND_ABOVE;
         };
     }
 }

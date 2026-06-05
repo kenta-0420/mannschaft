@@ -25,10 +25,11 @@ class AlbumVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("ALL_MEMBERS -> MEMBERS_ONLY")
+    @DisplayName("ALL_MEMBERS -> SCOPE_AFFILIATED（挙動不変・名称正準化 W3）")
     void mapsAllMembers() {
+        // 挙動不変: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
         assertThat(AlbumVisibilityMapper.toStandard(AlbumVisibility.ALL_MEMBERS))
-            .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            .isEqualTo(StandardVisibility.SCOPE_AFFILIATED);
     }
 
     @Test
@@ -39,9 +40,10 @@ class AlbumVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("ADMIN_ONLY -> ADMINS_ONLY")
+    @DisplayName("ADMIN_ONLY -> ADMINS_AND_ABOVE（挙動不変・名称正準化 W4）")
     void mapsAdminOnly() {
+        // 挙動不変: ADMINS_AND_ABOVE = hasRoleOrAbove("ADMIN") = 旧 ADMINS_ONLY と同一判定。
         assertThat(AlbumVisibilityMapper.toStandard(AlbumVisibility.ADMIN_ONLY))
-            .isEqualTo(StandardVisibility.ADMINS_ONLY);
+            .isEqualTo(StandardVisibility.ADMINS_AND_ABOVE);
     }
 }

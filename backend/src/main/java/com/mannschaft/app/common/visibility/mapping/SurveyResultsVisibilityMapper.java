@@ -31,7 +31,8 @@ public final class SurveyResultsVisibilityMapper {
             // §5.1.4 CUSTOM 運用規約参照、Resolver 内で個別実装
             // (時間軸条件 — 締切後のみ閲覧可)
             case AFTER_CLOSE -> StandardVisibility.CUSTOM;
-            case ADMINS_ONLY -> StandardVisibility.ADMINS_ONLY;
+            // 挙動不変・名称正準化（W4）: ADMINS_AND_ABOVE = hasRoleOrAbove("ADMIN") = 旧 ADMINS_ONLY と同一判定。
+            case ADMINS_ONLY -> StandardVisibility.ADMINS_AND_ABOVE;
             // §5.1.4 CUSTOM 運用規約参照、Resolver 内で個別実装
             // (限定リスト — survey_result_viewers のみ閲覧可)
             case VIEWERS_ONLY -> StandardVisibility.CUSTOM;

@@ -39,9 +39,10 @@ class SurveyUnrespondedVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("ALL_MEMBERS -> MEMBERS_ONLY")
+    @DisplayName("ALL_MEMBERS -> SCOPE_AFFILIATED（挙動不変・名称正準化 W3）")
     void mapsAllMembers() {
+        // 挙動不変: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
         assertThat(SurveyUnrespondedVisibilityMapper.toStandard(UnrespondedVisibility.ALL_MEMBERS))
-            .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            .isEqualTo(StandardVisibility.SCOPE_AFFILIATED);
     }
 }

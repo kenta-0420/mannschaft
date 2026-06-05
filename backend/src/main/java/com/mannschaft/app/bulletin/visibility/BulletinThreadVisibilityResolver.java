@@ -66,7 +66,8 @@ public class BulletinThreadVisibilityResolver
 
     @Override
     protected StandardVisibility toStandard(StandardVisibility visibility) {
-        // §12.3.1 最小実装: visibility 概念無し → 常に MEMBERS_ONLY 固定。
-        return StandardVisibility.MEMBERS_ONLY;
+        // §12.3.1 最小実装: visibility 概念無し → 常に所属者可視固定。
+        // 挙動不変・名称正準化（W3）: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
+        return StandardVisibility.SCOPE_AFFILIATED;
     }
 }
