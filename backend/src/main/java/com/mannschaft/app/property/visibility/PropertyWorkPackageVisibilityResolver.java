@@ -94,11 +94,14 @@ public class PropertyWorkPackageVisibilityResolver
     @Override
     protected StandardVisibility toStandard(WorkPackageVisibility visibility) {
         if (visibility == null) {
-            // fail-closed: visibility 値が null なら最も制限的な ADMINS_ONLY 扱い
-            return StandardVisibility.ADMINS_ONLY;
+            // fail-closed: visibility 値が null なら最も制限的な ADMIN 限定扱い
+            // 挙動不変・名称正準化（W4）: ADMINS_AND_ABOVE = hasRoleOrAbove("ADMIN") = 旧 ADMINS_ONLY と同一判定。
+            return StandardVisibility.ADMINS_AND_ABOVE;
         }
         return switch (visibility) {
-            case ADMINS_ONLY -> StandardVisibility.ADMINS_ONLY;
+            // 挙動不変・名称正準化（W4）: 左辺 WorkPackageVisibility.ADMINS_ONLY（機能enum/DB据置）→
+            // 出力 Std 値のみ ADMINS_AND_ABOVE（= hasRoleOrAbove("ADMIN") = 旧 ADMINS_ONLY と同一判定）。
+            case ADMINS_ONLY -> StandardVisibility.ADMINS_AND_ABOVE;
             // MASKED 系は閲覧範囲としては MEMBERS_ONLY と同じ扱い（金額マスクは MaskingService 側で処理）
             case MEMBERS_ONLY, MEMBERS_MASKED -> StandardVisibility.MEMBERS_ONLY;
             // PUBLIC_MASKED は SUPPORTER 以上が閲覧可（匿名閲覧は想定外）

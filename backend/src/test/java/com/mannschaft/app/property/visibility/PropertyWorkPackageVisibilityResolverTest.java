@@ -136,10 +136,12 @@ class PropertyWorkPackageVisibilityResolverTest {
     // =========================================================================
 
     @Test
-    @DisplayName("toStandard: ADMINS_ONLY → ADMINS_ONLY")
+    @DisplayName("toStandard: ADMINS_ONLY → ADMINS_AND_ABOVE（挙動不変・名称正準化 W4）")
     void toStandard_adminsOnly() throws Exception {
+        // 左辺は機能 enum WorkPackageVisibility.ADMINS_ONLY（DB/CHECK 据置）。出力 Std 値のみ改名。
+        // 挙動不変: ADMINS_AND_ABOVE = hasRoleOrAbove("ADMIN") = 旧 ADMINS_ONLY と同一判定。
         assertThat(invokeToStandard(WorkPackageVisibility.ADMINS_ONLY))
-                .isEqualTo(StandardVisibility.ADMINS_ONLY);
+                .isEqualTo(StandardVisibility.ADMINS_AND_ABOVE);
     }
 
     @Test
@@ -164,9 +166,10 @@ class PropertyWorkPackageVisibilityResolverTest {
     }
 
     @Test
-    @DisplayName("toStandard: null は ADMINS_ONLY（fail-closed）")
+    @DisplayName("toStandard: null は ADMINS_AND_ABOVE（fail-closed / 挙動不変・名称正準化 W4）")
     void toStandard_null_failsClosed() throws Exception {
-        assertThat(invokeToStandard(null)).isEqualTo(StandardVisibility.ADMINS_ONLY);
+        // 挙動不変: ADMINS_AND_ABOVE = hasRoleOrAbove("ADMIN") = 旧 ADMINS_ONLY と同一判定。
+        assertThat(invokeToStandard(null)).isEqualTo(StandardVisibility.ADMINS_AND_ABOVE);
     }
 
     private StandardVisibility invokeToStandard(WorkPackageVisibility v) throws Exception {
