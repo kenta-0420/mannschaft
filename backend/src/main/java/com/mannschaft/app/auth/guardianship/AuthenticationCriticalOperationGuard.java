@@ -19,6 +19,11 @@ import org.springframework.stereotype.Component;
  *
  * <p>散逸を避けるため、各 Controller / Service 入口から 1 行
  * {@link #assertNotActingAs()} を呼ぶ形に統一する。</p>
+ *
+ * <p><b>クロスドメイン参照について（TODO）</b>：エラーコードは F08.9 の体系
+ * （payment ドメインの {@link com.mannschaft.app.payment.MembershipBillingErrorCode}）を
+ * 暫定参照する。auth→payment のクロスドメイン参照であり、将来のドメイン分割時には
+ * auth 側の独立エラーコードへの移行を検討する。</p>
  */
 @Component
 @RequiredArgsConstructor

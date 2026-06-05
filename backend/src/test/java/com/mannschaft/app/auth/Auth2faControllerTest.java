@@ -101,6 +101,24 @@ class Auth2faControllerTest {
             mockMvc.perform(post("/api/v1/auth/2fa/backup-codes/regenerate"))
                     .andExpect(status().isOk());
         }
+
+        @Test
+        @DisplayName("POST /verify — 本人操作なら 200（2FA設定検証・有効化）")
+        void verifyTotpSetup_self_returns200() throws Exception {
+            given(auth2faService.verifyTotpSetup(anyLong(), org.mockito.ArgumentMatchers.anyString()))
+                    .willReturn(ApiResponse.of(new BackupCodesResponse(List.of("code1", "code2"))));
+
+            String body = """
+                    {
+                      "totpCode": "123456"
+                    }
+                    """;
+
+            mockMvc.perform(post("/api/v1/auth/2fa/verify")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isOk());
+        }
     }
 
     @Nested

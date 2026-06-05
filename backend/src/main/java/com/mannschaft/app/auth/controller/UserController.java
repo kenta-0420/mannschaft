@@ -118,6 +118,8 @@ public class UserController {
     @Operation(summary = "メールアドレス変更確認", description = "確認トークンを検証してメールアドレスを変更する")
     public ResponseEntity<ApiResponse<MessageResponse>> confirmEmailChange(
             @RequestParam String token) {
+        // F08.9 P3b: 後見切替セッション中はメール変更確認を代理不可（03_security §3.2）。トークンベースの迂回経路を塞ぐ
+        authenticationCriticalOperationGuard.assertNotActingAs();
         ApiResponse<MessageResponse> response = userService.confirmEmailChange(token);
         return ResponseEntity.ok(response);
     }

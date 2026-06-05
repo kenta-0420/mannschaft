@@ -67,7 +67,8 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
 - 切替は **JWT 再発行せず**、actor=保護者のまま `X-Proxy-For-User-Id=child` を `ProxyInputContextFilter`（F14.1）で検証。`isProxy()` 下の操作はすべて代理として `proxy_input_records` に記録。
 - **切替中に保護者が子に対して行えないこと**（境界）：子の**パスワード変更・2FA設定・メール変更・退会・親リンク削除**。これらは認証クリティカルゆえ代理不可（403）。
 - **実装（P3b・2026-06-04）**：認証クリティカル操作のガードは共通コンポーネント `AuthenticationCriticalOperationGuard.assertNotActingAs()`（`auth/guardianship` パッケージ・`ProxyInputContext` 注入）に集約し、各 Controller 入口から 1 行で呼ぶ。`isProxy()==true` なら `MEMBERSHIP_AUTHENTICATION_CRITICAL_OPERATION`（コード `MEMBERSHIP_BILLING_003`・`GlobalExceptionHandler` で 403 マップ）を投げる。
-  - 現状ガード適用済み EP：`PATCH /me/password`・`PATCH /me/email`・`DELETE /me`（退会）・`POST /me/withdrawal/cancel`（退会取消）・`POST /auth/2fa/setup`・`POST /auth/2fa/verify`・`POST /auth/2fa/backup-codes/regenerate`。
+  - 現状ガード適用済み EP：`PATCH /me/password`・`PATCH /me/email`・`POST /me/email/confirm`・`DELETE /me`（退会）・`POST /me/withdrawal/cancel`（退会取消）・`POST /auth/2fa/setup`・`POST /auth/2fa/verify`・`POST /auth/2fa/backup-codes/regenerate`。
+  - **2FA 無効化 EP**（`DELETE /auth/2fa` 相当）は現在未実装。将来実装時は本ガードの適用対象とすること（認証クリティカル）。
   - **親リンク削除**は後見切替 API（P3c）で `guardianship` ドメインの該当 EP 実装時に同ガードを適用する（本 P3b 範囲外・実装と設計の乖離を明示）。
 - 切替中に行えること：会費支払い・所属管理（参加/退会の申請補助）・プロフィール編集・閲覧。
 - 監査：切替の開始/終了・代理操作を `audit_logs`（センシティブ）＋`proxy_input_records` に二重記録。`unconfirmedVisibility` 等は対象外。

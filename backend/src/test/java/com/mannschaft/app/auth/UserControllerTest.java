@@ -422,5 +422,36 @@ class UserControllerTest {
 
             org.mockito.Mockito.verifyNoInteractions(userService);
         }
+
+        @Test
+        @DisplayName("POST /me/email/confirm — 切替中は 403（メール変更確認を代理不可・トークン迂回経路を塞ぐ）")
+        void confirmEmailChange_actingAs_returns403() throws Exception {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .post("/api/v1/users/me/email/confirm")
+                            .param("token", "test-token-value"))
+                    .andExpect(status().isForbidden());
+
+            org.mockito.Mockito.verifyNoInteractions(userService);
+        }
+    }
+
+    // ──────────────────────────────────────────────
+    // POST /api/v1/users/me/withdrawal/cancel
+    // ──────────────────────────────────────────────
+
+    @Test
+    @DisplayName("POST /me/withdrawal/cancel — 正常系: 200 で退会取消メッセージを返却する")
+    void cancelWithdrawal_success_returns200() throws Exception {
+        var msgResp = MessageResponse.of("退会リクエストを取り消しました");
+        given(userService.cancelWithdrawal(anyLong()))
+                .willReturn(ApiResponse.of(msgResp));
+        // 通常入力（本人操作）: isProxy()==false
+        given(proxyInputContext.isProxy()).willReturn(false);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/v1/users/me/withdrawal/cancel"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.data.message").value("退会リクエストを取り消しました"));
     }
 }
