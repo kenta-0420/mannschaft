@@ -1,7 +1,7 @@
 # F00: ContentVisibilityResolver 共通基盤
 
-> **ステータス**: 🟢 **設計完了**（v1.0 — 第 1 回・第 2 回精査全件反映、マスター裁可済）
-> **最終更新**: 2026-05-04
+> **ステータス**: 🟢 **設計完了**（v1.1 — 第 1 回・第 2 回精査全件反映、マスター裁可済 / 2026-06-05 `_AND_ABOVE` 統一の**目標仕様**確定。コードは後続 wave で追従）
+> **最終更新**: 2026-06-05
 > **マスター裁可済**: §17 Q1 確定（未認証ユーザーは PUBLIC のみ閲覧可、それ以外は fail-closed）
 > **モジュール種別**: 横断基盤（権限管理・共通部品）
 > **対象パッケージ**: `com.mannschaft.app.common.visibility`
@@ -158,7 +158,7 @@ F09.8.1 §4.3 の 11 種を起点に、本基盤としては以下 17 種を Pha
 | 4 | `SCHEDULE` | `schedule.ScheduleVisibility` | 既存enum | B |
 | 5 | `TIMELINE_POST` | (visibility 概念なし、所属で判定) | 所属固定 | B |
 | 6 | `CHAT_MESSAGE` | (visibility 概念なし、チャネル所属で判定) | 所属固定 | B |
-| 7 | `BULLETIN_THREAD` | (visibility 概念なし、所属で判定) | 所属固定 (MEMBERS_ONLY 固定) | C |
+| 7 | `BULLETIN_THREAD` | (visibility 概念なし、所属で判定) | 所属固定 (SCOPE_AFFILIATED 固定) | C |
 | 8 | `TOURNAMENT` | `tournament.TournamentVisibility` | 既存enum | C |
 | 9 | `RECRUITMENT_LISTING` | `recruitment.RecruitmentVisibility` | 既存enum | C |
 | 10 | `JOB_POSTING` | `jobmatching.enums.VisibilityScope` | 既存enum | C |
@@ -174,13 +174,13 @@ F09.8.1 §4.3 の 11 種を起点に、本基盤としては以下 17 種を Pha
 
 **visibility 戦略の凡例**:
 - **既存enum**: 機能側に visibility カラムあり、Mapper 経由で StandardVisibility に正規化
-- **所属固定**: 機能側に visibility 概念がない（Phase 1 では実質 MEMBERS_ONLY 固定）。将来機能拡張で visibility を追加するときは別軍議で機能仕様策定が必要
+- **所属固定**: 機能側に visibility 概念がない（Phase 1 では実質 SCOPE_AFFILIATED 固定＝直接所属者全員）。将来機能拡張で visibility を追加するときは別軍議で機能仕様策定が必要
 - **ACL固定**: 配信先テーブル（`circulation_recipients` 等）に直接 user_id を持つタイプ。Resolver 内でその ACL テーブルを参照
 - **親従属**: 親コンテンツの可視性に従う（COMMENT は対象 BlogPost / Event 等の visibility を継承）。Resolver 内で親 type の `ContentVisibilityChecker.canView()` を呼ぶ（§D-16 循環参照対策）
 
 **Phase C 対象機能の補足**:
 
-- **`BULLETIN_THREAD`**: visibility 概念なし。`toStandard` は常に `MEMBERS_ONLY` を返す最小実装。`scopeType/scopeId` 取得 + AbstractContentVisibilityResolver 標準フローで判定。Phase C では UI/DDL 追加なし、Phase 2 以降で visibility 概念追加時に別軍議。
+- **`BULLETIN_THREAD`**: visibility 概念なし。`toStandard` は常に `SCOPE_AFFILIATED`（直接所属者全員）を返す最小実装。`scopeType/scopeId` 取得 + AbstractContentVisibilityResolver 標準フローで判定。Phase C では UI/DDL 追加なし、Phase 2 以降で visibility 概念追加時に別軍議。
 - **`CIRCULATION_DOCUMENT`**: visibility 概念なし。`toStandard` は `CUSTOM` を返し、`evaluateCustom` で `circulation_recipients` テーブルに `(document_id, user_id)` レコードがあるかを判定する **ACL 固定戦略**。
   - 採用案: **案 A（recipients のみ）**。`circulation_recipients` に viewerUserId が登録されていれば可視。親 ORG/TEAM 所属チェックは **行わない**（recipients に登録された時点で配信対象として確定済の前提）。
   - 例外: SystemAdmin 高速パス（D-13）は変わらず適用。
@@ -192,7 +192,7 @@ F09.8.1 §4.3 の 11 種を起点に、本基盤としては以下 17 種を Pha
 - `FOLLOW_LIST` — フォロー一覧自体を corkboard カードとして引用するユースケース対応
 - `SUCCESSION_PRE_REGISTRATION` — **F09.15 区分所有者承継支援の事前登録**（2026-05-12 追加）。状態遷移ベース可視性 Resolver の初例。
   - `seal_status` enum（`SEALED` / `UNSEAL_REQUESTED` / `UNSEALED` / `RE_SEALED`）に基づき可視性を変化させる
-  - `SEALED` / `RE_SEALED`: 本人のみ（`MEMBERS_ONLY` 相当だが本人限定）
+  - `SEALED` / `RE_SEALED`: 本人のみ（`SCOPE_AFFILIATED` 相当だが本人限定）
   - `UNSEAL_REQUESTED`: 本人 + 申請者 + 一次承認者
   - `UNSEALED`: 本人 + 申請者 + 一次承認者 + 二次承認者 + ADMIN（72h TTL 適用）
   - `toStandard` は `CUSTOM` を返し、`evaluateCustom` で上記分岐を実装する
@@ -464,7 +464,7 @@ public class BlogPostVisibilityResolver
         //    DRAFT/SCHEDULED は author のみ可視
         boolean isSysAdmin = accessControlService.isSystemAdmin(viewerUserId);
 
-        // 3) MEMBERS_ONLY/SUPPORTERS_AND_ABOVE/ORGANIZATION_WIDE 用に
+        // 3) SCOPE_AFFILIATED/SUPPORTERS_AND_ABOVE/MEMBERS_AND_ABOVE/ORGANIZATION_WIDE 用に
         //    必要なスコープ集合を算出 → ロール情報を 1 SQL でバルク取得
         Set<ScopeKey> requiredScopes = collectMemberScopeKeys(rows);
         Set<ScopeKey> orgScopes = collectOrgScopeKeys(rows);
@@ -509,10 +509,11 @@ public class BlogPostVisibilityResolver
         ScopeKey scope = new ScopeKey(row.scopeType(), row.scopeId());
         return switch (std) {
             case PUBLIC -> true;
-            case MEMBERS_ONLY -> snapshot.isMemberOf(scope);
+            case SCOPE_AFFILIATED -> snapshot.isMemberOf(scope);
             case SUPPORTERS_AND_ABOVE ->
                 snapshot.hasRoleOrAbove(scope, "SUPPORTER");
-            case ADMINS_ONLY -> snapshot.hasRoleOrAbove(scope, "ADMIN");
+            case MEMBERS_AND_ABOVE -> snapshot.hasRoleOrAbove(scope, "MEMBER");
+            case ADMINS_AND_ABOVE -> snapshot.hasRoleOrAbove(scope, "ADMIN");
             case ORGANIZATION_WIDE -> snapshot.isMemberOfParentOrg(scope);
             case PRIVATE -> Objects.equals(viewerUserId, row.authorUserId());
             case CUSTOM_TEMPLATE -> templateEvaluator.canView(
@@ -631,9 +632,10 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
         StandardVisibility std = toStandard((V) row.visibility());
         return switch (std) {
             case PUBLIC -> true;
-            case MEMBERS_ONLY -> snapshot.isMemberOf(scope);
+            case SCOPE_AFFILIATED -> snapshot.isMemberOf(scope);
             case SUPPORTERS_AND_ABOVE -> snapshot.hasRoleOrAbove(scope, "SUPPORTER");
-            case ADMINS_ONLY -> snapshot.hasRoleOrAbove(scope, "ADMIN");
+            case MEMBERS_AND_ABOVE -> snapshot.hasRoleOrAbove(scope, "MEMBER");
+            case ADMINS_AND_ABOVE -> snapshot.hasRoleOrAbove(scope, "ADMIN");
             case ORGANIZATION_WIDE -> snapshot.isMemberOfParentOrg(scope);
             case PRIVATE -> Objects.equals(viewerUserId, row.authorUserId());
             case CUSTOM_TEMPLATE -> templateEvaluator.canView(
@@ -726,19 +728,32 @@ public enum StandardVisibility {
     /** 誰でも閲覧可能。**未認証ユーザー (userId=null) も閲覧可** (§17.Q1 マスター裁可済) */
     PUBLIC,
 
-    /** スコープ (TEAM/ORGANIZATION) の所属メンバーのみ
-     *  包含: ADMIN/DEPUTY_ADMIN/MEMBER/SUPPORTER/GUEST のうちロール保有者すべて */
-    MEMBERS_ONLY,
+    /** スコープ (TEAM/ORGANIZATION) に**直接所属**していれば誰でも閲覧可（別軸＝閾値ではない）。
+     *  包含: ADMIN/DEPUTY_ADMIN/MEMBER/**SUPPORTER/GUEST** のうちロール保有者すべて
+     *  （JOBBER 等の並行ロールは「直接所属」に含めないため除外）。
+     *  AccessControlService.isMemberOf(scope) と同等。
+     *  ※旧名 MEMBERS_ONLY。名前と裏腹に SUPPORTER/GUEST まで含むため
+     *    SUPPORTERS_AND_ABOVE より広く、ラダー序列に乗らない「直接所属」軸であることを
+     *    明示するため SCOPE_AFFILIATED に改名した（§5.1.5 命名規約）。 */
+    SCOPE_AFFILIATED,
 
-    /** SUPPORTER 以上のロール保有者
+    /** SUPPORTER 以上のロール保有者（閾値レベル）
      *  包含: ADMIN/DEPUTY_ADMIN/MEMBER/SUPPORTER (= GUEST 以外の全認証メンバー)
-     *  AccessControlService.hasRoleOrAbove(..., "SUPPORTER") と同等 */
+     *  AccessControlService.hasRoleOrAbove(..., "SUPPORTER") と同等。GUEST 除外。※不変 */
     SUPPORTERS_AND_ABOVE,
 
-    /** ADMIN ロールのみ
+    /** MEMBER 以上のロール保有者（閾値レベル・**新設**）
+     *  包含: ADMIN/DEPUTY_ADMIN/MEMBER (= **SUPPORTER/GUEST を除外** した内輪)
+     *  AccessControlService.hasRoleOrAbove(..., "MEMBER") と同等。
+     *  「メンバー」= memberships.role_kind=MEMBER 相当（RolePriority ≦ 4）。
+     *  応援者(SUPPORTER)は含まない（F00.5 課題#5 の可視性軸での回答・§5.1.5）。 */
+    MEMBERS_AND_ABOVE,
+
+    /** ADMIN ロールのみ（閾値レベル）
      *  包含: ADMIN/DEPUTY_ADMIN
-     *  AccessControlService.isAdminOrAbove(...) と同等 */
-    ADMINS_ONLY,
+     *  AccessControlService.isAdminOrAbove(...) と同等。
+     *  ※旧名 ADMINS_ONLY。挙動不変、_AND_ABOVE 命名規約に揃えるため改名（§5.1.5）。 */
+    ADMINS_AND_ABOVE,
 
     /** 作成者本人のみ */
     PRIVATE,
@@ -764,6 +779,58 @@ public enum StandardVisibility {
     CUSTOM
 }
 ```
+
+> **⚠️ 移行ステータス注記（2026-06-05・W0 設計統一）**:
+> 本節は **目標仕様（_AND_ABOVE 統一後の正準ラダー）** を示す。`MEMBERS_AND_ABOVE` は新設値、
+> `ADMINS_AND_ABOVE` は旧 `ADMINS_ONLY` の改名、`SCOPE_AFFILIATED` は旧 `MEMBERS_ONLY` の改名であり、
+> **コード（enum 定数・Mapper の出力先・DB 値）は後続 wave で追従する**。本設計書時点ではまだコード上に
+> `MEMBERS_AND_ABOVE` / `ADMINS_AND_ABOVE` / `SCOPE_AFFILIATED` は存在しない可能性がある。
+> 移行は Expand→Migrate→Contract（後方互換）で進める。方針の要点は §5.1.6（移行方式）を参照。
+
+### 5.1.5 役割閾値 `_AND_ABOVE` 命名規約と「直接所属」別軸（2026-06-05 確定）
+
+**閾値レベル（ロール序列＋以上）** は語尾を `_AND_ABOVE` で統一する。`hasRoleOrAbove("<ROLE>")` で判定し、
+**広→狭** の序列は以下のとおり:
+
+```
+PUBLIC  >  SUPPORTERS_AND_ABOVE  >  MEMBERS_AND_ABOVE  >  ADMINS_AND_ABOVE
+```
+
+- `PUBLIC` … 全員（未認証含む）
+- `SUPPORTERS_AND_ABOVE` … `hasRoleOrAbove("SUPPORTER")`。ADMIN/DEPUTY_ADMIN/MEMBER/SUPPORTER（GUEST 除外）。**不変**
+- `MEMBERS_AND_ABOVE` … `hasRoleOrAbove("MEMBER")`。ADMIN/DEPUTY_ADMIN/MEMBER（**SUPPORTER/GUEST 除外**）。**新設**
+- `ADMINS_AND_ABOVE` … `hasRoleOrAbove("ADMIN")`。ADMIN/DEPUTY_ADMIN。旧 `ADMINS_ONLY` を改名（挙動不変）
+
+**`SCOPE_AFFILIATED` は閾値ではなく「直接所属」という別軸** であり、上記序列に乗らない。
+そのスコープに直接所属していれば誰でも可視（`isMemberOf(scope)`）＝ ADMIN/DEPUTY_ADMIN/MEMBER/**SUPPORTER/GUEST**
+のロール保有者すべて（JOBBER 等の並行ロールは「直接所属」に含めず除外）。旧 `MEMBERS_ONLY` を改名・温存したもの。
+
+**GUEST の扱い**:
+- すべての**閾値レベル**（`SUPPORTERS_AND_ABOVE` / `MEMBERS_AND_ABOVE` / `ADMINS_AND_ABOVE`）で GUEST は不可視
+- `SCOPE_AFFILIATED` のみ、GUEST ロールの直接所属者を可視とする（「直接所属」の定義に GUEST を含むため）
+- 未認証 (userId=null) は `PUBLIC` のみ可視（§17.Q1）。`SCOPE_AFFILIATED` も含め全レベルで fail-closed
+
+> **重要な意味づけ（旧 MEMBERS_ONLY の逆転の解消）**:
+> 旧 `MEMBERS_ONLY` は名前と裏腹に「直接所属者全員（SUPPORTER・GUEST 含む）」を意味し、
+> `SUPPORTERS_AND_ABOVE`（GUEST 除外）**より広い** という名前と挙動の逆転があった。
+> これを `SCOPE_AFFILIATED` に改名して「直接所属の別軸」であることを明確化し、
+> 「メンバー以上の内輪（応援者除外）」が必要な用途には新設の `MEMBERS_AND_ABOVE` を使う。
+
+### 5.1.6 移行方式（Expand→Migrate→Contract・後方互換）
+
+本統一はコードを破壊せず段階移行する。要点:
+
+1. **機能ローカル enum 名・DB 値は据え置き**、各 `*VisibilityMapper` の**出力先 Std 値だけを変更**する（論点④A）。
+   例: 機能側 `ALL_MEMBERS` / `TEAM_ONLY` 等の名前は変えず、Mapper の `→ StandardVisibility.XXX` を新名に向ける。
+2. **判定が曖昧な機能は現状維持＝ `SUPPORTERS_AND_ABOVE` に倒す**（安全側・挙動不変を優先）。
+3. **確実に「メンバー以上の内輪（応援者除外）」である機能のみ `MEMBERS_AND_ABOVE` を使う**。
+   現時点での確実な対象は **announcement（F02.6）/ property / cms の内輪お知らせ系**。
+4. **破壊的な DB 値移行が要るのは 2 系統のみ**:
+   - **announcement**（`announcement_feeds.visibility` 等が独自 String で `'MEMBERS_ONLY'` を保持。`'MEMBERS_AND_ABOVE'` へ）
+   - **property**（CHECK 制約で `MEMBERS_ONLY` 等を列挙している系）
+   それ以外は機能ローカル enum 据え置きのため DB 値移行は不要（Mapper 変更のみ）。
+
+各 wave 着手時に本節を参照し、対象機能ごとに「Mapper のみ変更」か「DB 値移行を伴う」かを判別すること。
 
 ### 5.1.1 親スコープ解決規約
 
@@ -874,59 +941,68 @@ Survey の `ResultsVisibility.AFTER_RESPONSE` / `AFTER_CLOSE` を Resolver の `
 
 ### 5.2 既存 enum → StandardVisibility 対応表
 
+> **⚠️ 移行ステータス注記（2026-06-05・W0 設計統一）**: 右列は **目標仕様（_AND_ABOVE 統一後）の Std 出力先**。
+> - 旧 Std 値 `MEMBERS_ONLY` は **`SCOPE_AFFILIATED` に改名**（= `isMemberOf`・直接所属者全員。挙動不変）。
+>   各機能の「全メンバー／TEAM 所属」系の値はこの行に従って `SCOPE_AFFILIATED` を指す。
+> - 旧 Std 値 `ADMINS_ONLY` は **`ADMINS_AND_ABOVE` に改名**（挙動不変）。
+> - **応援者を除外した「メンバー以上の内輪」** を意図する機能は新設 `MEMBERS_AND_ABOVE` を指す。
+>   ただし既存 enum で「メンバー以上＝応援者除外」を確実に意図しているのは announcement（F02.6）/ property / cms の内輪お知らせ系のみ。
+>   判定が曖昧な既存マッピングは **現状維持（= `SCOPE_AFFILIATED` または `SUPPORTERS_AND_ABOVE`）に倒し挙動を変えない**（§5.1.6）。
+> - **機能ローカル enum 名・DB 値は据え置き**、`*VisibilityMapper` の出力先 Std 値だけを後続 wave で変更する。
+
 | 既存 enum | 値 | → StandardVisibility | 備考 |
 |---|---|---|---|
 | `cms.Visibility` | PUBLIC | PUBLIC | |
-| | MEMBERS_ONLY | MEMBERS_ONLY | |
+| | MEMBERS_ONLY | SCOPE_AFFILIATED | 機能側 enum 名据え置き・挙動不変（直接所属者全員）。※cms の「内輪お知らせ」用途を MEMBERS_AND_ABOVE に倒すかは F02.6 系の DB 値移行と併せ wave 時判断 |
 | | SUPPORTERS_AND_ABOVE | SUPPORTERS_AND_ABOVE | |
 | | FOLLOWERS_ONLY | FOLLOWERS_ONLY | |
 | | PRIVATE | PRIVATE | |
 | | CUSTOM_TEMPLATE | CUSTOM_TEMPLATE | |
 | `event.entity.EventVisibility` | PUBLIC | PUBLIC | |
-| | MEMBERS_ONLY | MEMBERS_ONLY | |
+| | MEMBERS_ONLY | SCOPE_AFFILIATED | 挙動不変（直接所属者全員） |
 | | SUPPORTERS_AND_ABOVE | SUPPORTERS_AND_ABOVE | |
 | `activity.ActivityVisibility` | PUBLIC | PUBLIC | |
-| | MEMBERS_ONLY | MEMBERS_ONLY | |
+| | MEMBERS_ONLY | SCOPE_AFFILIATED | 挙動不変（直接所属者全員） |
 | `tournament.TournamentVisibility` | PUBLIC | PUBLIC | |
-| | MEMBERS_ONLY | MEMBERS_ONLY | |
+| | MEMBERS_ONLY | SCOPE_AFFILIATED | 挙動不変（直接所属者全員） |
 | `timetable.TimetableVisibility` | PUBLIC | PUBLIC | |
-| | MEMBERS_ONLY | MEMBERS_ONLY | |
+| | MEMBERS_ONLY | SCOPE_AFFILIATED | 挙動不変（直接所属者全員） |
 | `member.PageVisibility` | PUBLIC | PUBLIC | |
-| | MEMBERS_ONLY | MEMBERS_ONLY | |
+| | MEMBERS_ONLY | SCOPE_AFFILIATED | 挙動不変（直接所属者全員） |
 | `todo.ProjectVisibility` | PRIVATE | PRIVATE | |
-| | MEMBERS_ONLY | MEMBERS_ONLY | |
+| | MEMBERS_ONLY | SCOPE_AFFILIATED | 挙動不変（直接所属者全員） |
 | | PUBLIC | PUBLIC | |
-| `schedule.ScheduleVisibility` | MEMBERS_ONLY | MEMBERS_ONLY | |
+| `schedule.ScheduleVisibility` | MEMBERS_ONLY | SCOPE_AFFILIATED | 挙動不変（直接所属者全員） |
 | | ORGANIZATION | ORGANIZATION_WIDE | |
 | | CUSTOM_TEMPLATE | CUSTOM_TEMPLATE | |
 | `recruitment.RecruitmentVisibility` | PUBLIC | PUBLIC | |
-| | SCOPE_ONLY | MEMBERS_ONLY | semantically equivalent |
+| | SCOPE_ONLY | SCOPE_AFFILIATED | 直接所属者全員。挙動不変 |
 | | SUPPORTERS_ONLY | SUPPORTERS_AND_ABOVE | |
 | | CUSTOM_TEMPLATE | CUSTOM_TEMPLATE | |
-| `jobmatching.enums.VisibilityScope` | TEAM_MEMBERS | MEMBERS_ONLY | |
+| `jobmatching.enums.VisibilityScope` | TEAM_MEMBERS | SCOPE_AFFILIATED | 直接所属者全員。挙動不変 |
 | | TEAM_MEMBERS_SUPPORTERS | SUPPORTERS_AND_ABOVE | |
 | | JOBBER_INTERNAL | CUSTOM | JOBBER ロール限定（Resolver 内で個別処理） |
 | | JOBBER_PUBLIC_BOARD | PUBLIC | |
 | | ORGANIZATION_SCOPE | ORGANIZATION_WIDE | |
 | | CUSTOM_TEMPLATE | CUSTOM_TEMPLATE | |
-| `gallery.AlbumVisibility` | ALL_MEMBERS | MEMBERS_ONLY | |
+| `gallery.AlbumVisibility` | ALL_MEMBERS | SCOPE_AFFILIATED | 「全メンバー」= 直接所属者全員（旧 MEMBERS_ONLY） |
 | | SUPPORTERS_AND_ABOVE | SUPPORTERS_AND_ABOVE | |
-| | ADMIN_ONLY | ADMINS_ONLY | |
-| `actionmemo.enums.OrgVisibility` | TEAM_ONLY | MEMBERS_ONLY | |
+| | ADMIN_ONLY | ADMINS_AND_ABOVE | 旧 ADMINS_ONLY |
+| `actionmemo.enums.OrgVisibility` | TEAM_ONLY | SCOPE_AFFILIATED | 直接所属者全員。挙動不変 |
 | | ORG_WIDE | ORGANIZATION_WIDE | |
 | `committee.entity.CommitteeVisibility` | HIDDEN | PRIVATE | "見えない" 扱いを PRIVATE 相当に |
 | | NAME_ONLY | CUSTOM | 部分公開（名前のみ）= Resolver 個別 |
 | | NAME_AND_PURPOSE | CUSTOM | 部分公開 = Resolver 個別 |
 | `survey.ResultsVisibility` | AFTER_RESPONSE | CUSTOM | 時間軸条件、Resolver 個別 |
 | | AFTER_CLOSE | CUSTOM | 時間軸条件、Resolver 個別 |
-| | ADMINS_ONLY | ADMINS_ONLY | |
+| | ADMINS_ONLY | ADMINS_AND_ABOVE | 機能側 enum 名は据え置き、Std 出力先のみ改名 |
 | | VIEWERS_ONLY | CUSTOM | 限定リスト、Resolver 個別 |
 | `survey.UnrespondedVisibility` | HIDDEN | PRIVATE | |
 | | CREATOR_AND_ADMIN | CUSTOM | 作成者または ADMIN |
-| | ALL_MEMBERS | MEMBERS_ONLY | |
+| | ALL_MEMBERS | SCOPE_AFFILIATED | 直接所属者全員。挙動不変 |
 | `notification.confirmable.entity.UnconfirmedVisibility` | HIDDEN | PRIVATE | |
 | | CREATOR_AND_ADMIN | CUSTOM | 同上 |
-| | ALL_MEMBERS | MEMBERS_ONLY | |
+| | ALL_MEMBERS | SCOPE_AFFILIATED | 直接所属者全員。挙動不変 |
 | `matching.MatchVisibility` | PLATFORM | PUBLIC | プラットフォーム全体 |
 | | ORGANIZATION | ORGANIZATION_WIDE | |
 | `social.FollowListVisibility` | (本基盤対象外) | - | §16.2 |
@@ -955,7 +1031,8 @@ public final class CmsVisibilityMapper {
     public static StandardVisibility toStandard(com.mannschaft.app.cms.Visibility v) {
         return switch (v) {
             case PUBLIC -> StandardVisibility.PUBLIC;
-            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_ONLY;
+            // 機能側 enum 名 MEMBERS_ONLY は据え置き、出力先 Std 値のみ SCOPE_AFFILIATED へ（挙動不変）
+            case MEMBERS_ONLY -> StandardVisibility.SCOPE_AFFILIATED;
             case SUPPORTERS_AND_ABOVE -> StandardVisibility.SUPPORTERS_AND_ABOVE;
             case FOLLOWERS_ONLY -> StandardVisibility.FOLLOWERS_ONLY;
             case PRIVATE -> StandardVisibility.PRIVATE;
@@ -1355,7 +1432,7 @@ public class MembershipBatchQueryService {
 
     /**
      * ユーザー × 複数スコープのメンバーシップ・ロール情報を 1 SQL でバルク取得。
-     * MEMBERS_ONLY/SUPPORTERS_AND_ABOVE/ADMINS_ONLY/ORGANIZATION_WIDE を含む
+     * SCOPE_AFFILIATED/SUPPORTERS_AND_ABOVE/MEMBERS_AND_ABOVE/ADMINS_AND_ABOVE/ORGANIZATION_WIDE を含む
      * 一括判定の前に一度だけ呼ぶ。
      */
     public UserScopeRoleSnapshot snapshotForUser(
@@ -1738,9 +1815,9 @@ v0.3 改訂で第 2 回精査の指摘 5（Phase A 過小見積もり）を反�
 
 §3.3 表で `所属固定` と分類した機能 (TIMELINE_POST / CHAT_MESSAGE / BULLETIN_THREAD / CIRCULATION_DOCUMENT 等) は、機能側に visibility 概念がそもそも存在しない。本基盤導入時の扱い:
 
-1. Phase B〜D で **最小実装の Resolver** を作成（実質 MEMBERS_ONLY 固定相当）
+1. Phase B〜D で **最小実装の Resolver** を作成（実質 SCOPE_AFFILIATED 固定相当＝直接所属者全員）
    - `loadProjections` で機能 Entity を引き、`scopeType/scopeId` を取得
-   - `toStandard` は固定値 `MEMBERS_ONLY` を返す
+   - `toStandard` は固定値 `SCOPE_AFFILIATED` を返す
    - これにより corkboard 等から `canView` 経由でアクセス判定が可能になる
 2. 後日 `visibility` カラムを機能に追加する場合は **別軍議** で機能仕様策定（DDL 追加・UI 追加・既存データ初期値設定）
 3. 別軍議で visibility 追加後、本基盤の Resolver の `toStandard` を Mapper 経由に切り替える PR を分離
@@ -2194,13 +2271,14 @@ Grafana に以下のアラートを追加:
 
 **判断**: Strategy + Registry。理由は §4.2 の比較表のとおり。`@Component` 自動収集と `Map<Key, Bean>` パターンが Spring 標準で type-safe。
 
-### D-2: StandardVisibility は 9 値で打ち止め (✅)
+### D-2: StandardVisibility は 10 値（2026-06-05 W0 で `MEMBERS_AND_ABOVE` 新設）(✅)
 
 候補値の検討:
 - `PUBLIC` ✅
-- `MEMBERS_ONLY` ✅
-- `SUPPORTERS_AND_ABOVE` ✅
-- `ADMINS_ONLY` ✅
+- `SCOPE_AFFILIATED` ✅ (旧 `MEMBERS_ONLY` を改名。「直接所属」別軸＝`isMemberOf`)
+- `SUPPORTERS_AND_ABOVE` ✅ (閾値・不変)
+- `MEMBERS_AND_ABOVE` ✅ (**2026-06-05 新設**。`hasRoleOrAbove("MEMBER")`＝応援者除外)
+- `ADMINS_AND_ABOVE` ✅ (旧 `ADMINS_ONLY` を改名。挙動不変)
 - `PRIVATE` ✅
 - `FOLLOWERS_ONLY` ✅
 - `CUSTOM_TEMPLATE` ✅
@@ -2210,7 +2288,16 @@ Grafana に以下のアラートを追加:
 - ❌ `NAME_ONLY` (Committee 固有、CUSTOM 扱い)
 - ❌ `AFTER_CLOSE` (Survey 固有時間軸、CUSTOM 扱い)
 
-**判断**: 9 値で確定。`CUSTOM` は escape hatch として残し、Resolver 内で個別判定。値の追加・削除は本設計書の改訂を伴うこと。
+**判断（v1.0）**: 当初 9 値で確定。`CUSTOM` は escape hatch として残し、Resolver 内で個別判定。
+
+**判断（2026-06-05 W0 設計統一）**: `_AND_ABOVE` 命名統一に伴い 10 値へ拡張。
+- 旧 `MEMBERS_ONLY`（名前と裏腹に SUPPORTER/GUEST 含む直接所属者全員で `SUPPORTERS_AND_ABOVE` より広いという**逆転**があった）を `SCOPE_AFFILIATED` に**改名**して「直接所属」という別軸であることを明確化（挙動不変）。
+- 旧 `ADMINS_ONLY` を `ADMINS_AND_ABOVE` に**改名**（挙動不変）。
+- 「メンバー以上＝応援者除外」の内輪用途のため `MEMBERS_AND_ABOVE` を**新設**（announcement の同名逆意味の解消＝下記参照）。
+
+これにより閾値ラダーは `PUBLIC > SUPPORTERS_AND_ABOVE > MEMBERS_AND_ABOVE > ADMINS_AND_ABOVE` の一直線になり、`SCOPE_AFFILIATED` のみ別軸。値の追加・削除・改名は本設計書の改訂を伴うこと。詳細は §5.1.5 / §5.1.6。
+
+> **announcement 同名逆意味の解消（背景）**: F02.6 お知らせウィジェットは独自 String カラム `announcement_feeds.visibility` で `'MEMBERS_ONLY'` を「**応援者を除外した内輪お知らせ**」の意味で使っていた（SUPPORTER には返さない＝§6.2）。これは旧 F00 `MEMBERS_ONLY`（直接所属者全員＝SUPPORTER 含む）と**同名なのに逆の意味**であり、両者が「F00 と同一意味論」と称していたのは誤りだった。W0 で F02.6 は正準ラダーの `MEMBERS_AND_ABOVE` を使う、と是正した（DB 値移行は後続 wave）。
 
 ### D-3: 既存 enum は当面そのまま残す (✅)
 
@@ -2422,7 +2509,7 @@ if (viewerUserId == null) {
 
 #### セキュリティ補足
 
-- `PRIVATE` / `MEMBERS_ONLY` / `SUPPORTERS_AND_ABOVE` / `ADMINS_ONLY` / `CUSTOM_TEMPLATE` / `FOLLOWERS_ONLY` / `ORGANIZATION_WIDE` はすべて未認証では false（fail-closed）
+- `PRIVATE` / `SCOPE_AFFILIATED` / `SUPPORTERS_AND_ABOVE` / `MEMBERS_AND_ABOVE` / `ADMINS_AND_ABOVE` / `CUSTOM_TEMPLATE` / `FOLLOWERS_ONLY` / `ORGANIZATION_WIDE` はすべて未認証では false（fail-closed）
 - `status != PUBLISHED` のコンテンツは未認証では一律不可視（DRAFT/SCHEDULED は author 必須、author=null=未認証 では一致不能）
 - 監査ログ §11.4 の `userId` フィールドは未認証時 `"anonymous"` 文字列で記録（NPE 回避）
 
@@ -2555,7 +2642,14 @@ if (viewerUserId == null) {
 
 意図が「SUPPORTER 単独」の機能があれば、`StandardVisibility.SUPPORTERS_EXCLUSIVE` の追加または `CUSTOM` 個別処理を検討（§5.1.3 値追加コスト評価込み）。
 
-**決着**: ▶ Phase A 着手前のヒアリング後に確定。
+**2026-06-05 W0 部分決着**: 本論点のうち「**応援者を含めるか／除くか**」の軸は `_AND_ABOVE` 統一で正準化した。
+- 「SUPPORTER 以上（MEMBER も含む）」を意図する機能 → `SUPPORTERS_AND_ABOVE`（不変）
+- 「**メンバー以上＝応援者を除外** した内輪」を意図する機能 → 新設 `MEMBERS_AND_ABOVE`
+- 「直接所属していれば誰でも（応援者・GUEST 含む）」→ `SCOPE_AFFILIATED`
+
+判定が曖昧な既存機能は**現状維持＝挙動不変に倒す**（§5.1.6）。残る「SUPPORTER **単独**（MEMBER も除外）」の需要は現状確認されておらず、必要が出た時点で `CUSTOM` または別値追加軍議とする。
+
+**決着**: 応援者の包含軸は ✅ 確定（W0 / §5.1.5）。「SUPPORTER 単独」需要の有無のみ ▶ 各機能オーナーヒアリング継続。
 
 ### Q14: 多テナント isolation への対応道筋（道筋のみ示す）
 
@@ -2907,5 +3001,6 @@ TimelinePostService    MentionDetectionService     ContentVisibilityChecker
 - v0.1 (2026-05-04): 初稿ドラフト 1,548 行 / 19 章 / 付録 2
 - v0.2 (2026-05-04): 第 1 回精査（セキュリティ・見落とし観点）14 件全件反映
 - v1.0 (2026-05-04): 第 2 回精査（保守性・拡張性・運用観点）17 件全件反映、🟢 設計完了
+- v1.1 (2026-06-05): **コンテンツ可視性 `_AND_ABOVE` 統一（W0 設計統一・目標仕様確定）**。`StandardVisibility` を 9→10 値に拡張。(1) 旧 `MEMBERS_ONLY` を `SCOPE_AFFILIATED` に**改名**（名前と裏腹に SUPPORTER/GUEST 含む直接所属者全員で `SUPPORTERS_AND_ABOVE` より広いという**逆転**を解消、別軸＝直接所属であることを明確化、挙動不変）。(2) 旧 `ADMINS_ONLY` を `ADMINS_AND_ABOVE` に**改名**（挙動不変）。(3) 「メンバー以上＝応援者除外」の内輪用途のため `MEMBERS_AND_ABOVE` を**新設**。F02.6 announcement が旧 F00 `MEMBERS_ONLY` と同名なのに逆意味（応援者除外）を「F00 と同一意味論」と誤称していた問題も是正の起点とした。§5.1（enum 定義）/ §5.1.5（命名規約・別軸）/ §5.1.6（移行方式）/ §5.2（対応表）/ §15 D-2 / Q13 / 各コード例を新ラダーに整合。**コードは後続 wave で Expand→Migrate→Contract で追従**（移行ステータス注記を各所に添付）。F00.5 課題#5・F02.6 を同時是正。
 
 次フェーズ: マスター上奏 → 御裁可後に Phase A 着手（2〜3 週見込み）→ Phase B〜F へ展開（全体 6〜8 週見込み）。
