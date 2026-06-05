@@ -58,7 +58,7 @@ const effectiveScope = computed(() => {
 const scheduleApi = useScheduleApi()
 const notification = useNotification()
 const { handleApiError, getFieldErrors } = useErrorHandler()
-const { userTimezone } = useDatetime()
+const { userTimezone, buildOffsetDateTimeStr } = useDatetime()
 const { t } = useI18n()
 
 const submitting = ref(false)
@@ -270,22 +270,9 @@ watch(
 )
 
 // ユーザーのタイムゾーン設定に基づいてDateをYYYY-MM-DD文字列に変換する。
+// recurrenceRule.endDate など「日付のみ」フィールドに使用する。
 function toLocalDateStr(date: Date): string {
   return dayjs(date).tz(userTimezone.value).format('YYYY-MM-DD')
-}
-
-function buildDateTimeStr(date: Date | null, time: string): string | null {
-  if (!date) return null
-  const dateStr = toLocalDateStr(date)
-  return time ? `${dateStr}T${time}:00` : `${dateStr}T00:00:00`
-}
-
-// DatePicker（show-time）で得た Date を、ユーザーTZオフセット付き OffsetDateTime 文字列に変換する。
-// 絶対リマインダーの送信にのみ使用する（例: "2026-06-05T09:00:00+09:00"）。
-// BE は OffsetDateTime として受け付けるため、TZオフセットを必ず付与する必要がある。
-function buildOffsetDateTimeStr(date: Date | null): string | null {
-  if (!date) return null
-  return dayjs(date).tz(userTimezone.value).format()
 }
 
 // ReminderResponse（BE）を ReminderFormEntry（フォーム状態）に変換する。
@@ -393,14 +380,14 @@ async function submit() {
     description: form.value.description.trim() || undefined,
     location: form.value.location.trim() || undefined,
     allDay: form.value.allDay,
-    startAt: buildDateTimeStr(form.value.startDate, form.value.allDay ? '' : form.value.startTime) ?? undefined,
+    startAt: buildOffsetDateTimeStr(form.value.startDate, form.value.allDay ? '' : form.value.startTime) ?? undefined,
     endAt: (() => {
       if (form.value.allDay && form.value.endDate) {
         const d = new Date(form.value.endDate)
         d.setDate(d.getDate() + 1)
-        return buildDateTimeStr(d, '') ?? undefined
+        return buildOffsetDateTimeStr(d, '') ?? undefined
       }
-      return buildDateTimeStr(form.value.endDate, form.value.allDay ? '' : form.value.endTime) ?? undefined
+      return buildOffsetDateTimeStr(form.value.endDate, form.value.allDay ? '' : form.value.endTime) ?? undefined
     })(),
   }
   if (effectiveScope.value.isPersonal) {

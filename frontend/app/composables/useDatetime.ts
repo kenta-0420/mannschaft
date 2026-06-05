@@ -63,11 +63,36 @@ export function useDatetime() {
     return d.fromNow()
   }
 
+  /**
+   * Date と時刻文字列（"HH:mm"）を組み合わせ、ユーザーTZオフセット付き OffsetDateTime 文字列を返す。
+   * BE は OffsetDateTime として受け付けるため、TZオフセットを必ず付与する必要がある。
+   *
+   * - time が "HH:mm" 形式文字列の場合: その時刻をユーザーTZとして解釈し送信する（予定の startAt/endAt）
+   * - time が '' の場合: 00:00:00 として解釈する（終日イベントの開始/終了）
+   * - time が undefined（省略）の場合: date の時刻部分をそのままユーザーTZで変換する（絶対リマインダー・予約系）
+   * - date が null の場合は null を返す
+   *
+   * @example buildOffsetDateTimeStr(new Date('2026-06-05'), '09:00') → "2026-06-05T09:00:00+09:00"
+   * @example buildOffsetDateTimeStr(new Date('2026-06-05T09:30:00'), undefined) → "2026-06-05T09:30:00+09:00"
+   */
+  function buildOffsetDateTimeStr(date: Date | null, time?: string): string | null {
+    if (!date) return null
+    if (time === undefined) {
+      // time 省略: date オブジェクト自身の時刻をユーザーTZで変換（絶対リマインダー等）
+      return dayjs(date).tz(userTimezone.value).format()
+    }
+    // time 指定: 日付 + 指定時刻をユーザーTZとして解釈（startAt/endAt 等）
+    const dateStr = dayjs(date).tz(userTimezone.value).format('YYYY-MM-DD')
+    const timeStr = time ? `${time}:00` : '00:00:00'
+    return dayjs.tz(`${dateStr}T${timeStr}`, userTimezone.value).format()
+  }
+
   return {
     userTimezone,
     formatDate,
     formatDateTime,
     formatTime,
     fromNow,
+    buildOffsetDateTimeStr,
   }
 }
