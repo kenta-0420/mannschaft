@@ -27,7 +27,7 @@ public interface AnnouncementChannelAdapter {
      * @param content    汎用コンテンツリクエスト
      * @param scopeType  スコープ種別文字列（TEAM / ORGANIZATION）
      * @param scopeId    スコープ ID
-     * @param visibility コンテンツ visibility（MEMBERS_ONLY / SUPPORTERS_AND_ABOVE / PUBLIC）
+     * @param visibility コンテンツ visibility（MEMBERS_AND_ABOVE / SUPPORTERS_AND_ABOVE / PUBLIC）
      * @param userId     作成者ユーザー ID
      * @return 作成されたコンテンツの ID
      */

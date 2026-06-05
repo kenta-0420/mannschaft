@@ -52,11 +52,11 @@ public class AnnouncementFeedQueryRepository {
      * {@code visibility IN (許可集合)} で正しく絞り込む。集合は
      * {@link AnnouncementVisibility#allowedFor(String)} が算出する:
      * <ul>
-     *   <li>SUPPORTER — {@code {PUBLIC, SUPPORTERS_AND_ABOVE}}（MEMBERS_ONLY は<b>含めない</b>）</li>
-     *   <li>MEMBER 以上 — {@code {PUBLIC, SUPPORTERS_AND_ABOVE, MEMBERS_ONLY}}（3 種全部）</li>
+     *   <li>SUPPORTER — {@code {PUBLIC, SUPPORTERS_AND_ABOVE}}（MEMBERS_AND_ABOVE は<b>含めない</b>）</li>
+     *   <li>MEMBER 以上 — {@code {PUBLIC, SUPPORTERS_AND_ABOVE, MEMBERS_AND_ABOVE}}（3 種全部）</li>
      *   <li>未ログイン / ロールなし — {@code {PUBLIC}}</li>
      * </ul>
-     * 従来の「単一 visibility 文字列」方式は SUPPORTER に MEMBERS_ONLY を露出させ、かつ
+     * 従来の「単一 visibility 文字列」方式は SUPPORTER に MEMBERS_AND_ABOVE を露出させ、かつ
      * MEMBER 以上が PUBLIC/SUPPORTERS_AND_ABOVE を取りこぼす二重の欠陥があったため、
      * 「許可集合を渡す」方式へ再設計した。Service 層の if 文に依存せず WHERE 句で完結させる。
      * </p>

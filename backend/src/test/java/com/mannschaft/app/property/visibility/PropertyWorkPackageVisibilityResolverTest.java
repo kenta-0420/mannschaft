@@ -145,17 +145,19 @@ class PropertyWorkPackageVisibilityResolverTest {
     }
 
     @Test
-    @DisplayName("toStandard: MEMBERS_ONLY → MEMBERS_ONLY")
+    @DisplayName("toStandard: MEMBERS_ONLY → MEMBERS_AND_ABOVE（W2: 内輪=応援者除外。機能 enum 名は据え置き）")
     void toStandard_membersOnly() throws Exception {
+        // W2: MaskingService が「SUPPORTER は MEMBERS_ONLY 不可視」と明記＝内輪(i)確証あり。
+        // Mapper の出力先のみ正準ラダー MEMBERS_AND_ABOVE へ変更（機能 enum 値・DB 値は据え置き＝④A）。
         assertThat(invokeToStandard(WorkPackageVisibility.MEMBERS_ONLY))
-                .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+                .isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
     }
 
     @Test
-    @DisplayName("toStandard: MEMBERS_MASKED → MEMBERS_ONLY（マスクは Resolver で扱わない）")
+    @DisplayName("toStandard: MEMBERS_MASKED → MEMBERS_AND_ABOVE（マスクは Resolver で扱わない。閲覧範囲は内輪）")
     void toStandard_membersMasked() throws Exception {
         assertThat(invokeToStandard(WorkPackageVisibility.MEMBERS_MASKED))
-                .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+                .isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
     }
 
     @Test

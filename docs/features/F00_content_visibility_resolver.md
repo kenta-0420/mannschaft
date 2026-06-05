@@ -825,10 +825,13 @@ PUBLIC  >  SUPPORTERS_AND_ABOVE  >  MEMBERS_AND_ABOVE  >  ADMINS_AND_ABOVE
 2. **判定が曖昧な機能は現状維持＝ `SUPPORTERS_AND_ABOVE` に倒す**（安全側・挙動不変を優先）。
 3. **確実に「メンバー以上の内輪（応援者除外）」である機能のみ `MEMBERS_AND_ABOVE` を使う**。
    現時点での確実な対象は **announcement（F02.6）/ property / cms の内輪お知らせ系**。
-4. **破壊的な DB 値移行が要るのは 2 系統のみ**:
-   - **announcement**（`announcement_feeds.visibility` 等が独自 String で `'MEMBERS_ONLY'` を保持。`'MEMBERS_AND_ABOVE'` へ）
-   - **property**（CHECK 制約で `MEMBERS_ONLY` 等を列挙している系）
-   それ以外は機能ローカル enum 据え置きのため DB 値移行は不要（Mapper 変更のみ）。
+4. **破壊的な DB 値移行が要るのは announcement のみ**（W2 実装で確定）:
+   - **announcement**（`announcement_feeds.visibility`(VARCHAR) と `announcement_range_templates.target_role`(ENUM)
+     が独自 String/ENUM で `'MEMBERS_ONLY'` を保持。Flyway data migration で `'MEMBERS_AND_ABOVE'` へ移行・DDL DEFAULT も変更）。
+   - **property**（`WorkPackageVisibility.MEMBERS_ONLY` は機能ローカル enum＝CHECK 制約値も据え置き。
+     ④A に従い Mapper 出力先のみ `MEMBERS_AND_ABOVE` へ変更し、DB 値移行は行わない）。
+   - **cms**（`cms.Visibility.MEMBERS_ONLY` / `blog_posts.visibility` も据え置き。Mapper 出力先のみ変更）。
+   announcement 以外は機能ローカル enum 据え置きのため DB 値移行は不要（Mapper 変更のみ）。
 
 各 wave 着手時に本節を参照し、対象機能ごとに「Mapper のみ変更」か「DB 値移行を伴う」かを判別すること。
 
