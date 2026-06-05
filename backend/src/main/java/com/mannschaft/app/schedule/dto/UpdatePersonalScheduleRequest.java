@@ -5,7 +5,6 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -30,9 +29,15 @@ public class UpdatePersonalScheduleRequest {
     @Size(max = 300)
     private final String location;
 
-    private final LocalDateTime startAt;
+    /**
+     * 開始日時。クライアントTZ付きで受け取り、JST に変換して保存する（null = 変更なし）。
+     */
+    private final OffsetDateTime startAt;
 
-    private final LocalDateTime endAt;
+    /**
+     * 終了日時。クライアントTZ付きで受け取り、JST に変換して保存する（null = 変更なし）。
+     */
+    private final OffsetDateTime endAt;
 
     private final Boolean allDay;
 

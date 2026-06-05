@@ -8,7 +8,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -36,7 +35,8 @@ class CreatePersonalScheduleRequestReminderTest {
                                                 List<OffsetDateTime> absoluteReminders) {
         return new CreatePersonalScheduleRequest(
                 "個人予定", null, null,
-                LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).plusHours(1),
+                OffsetDateTime.now(ZoneOffset.ofHours(9)).plusDays(1),
+                OffsetDateTime.now(ZoneOffset.ofHours(9)).plusDays(1).plusHours(1),
                 false, null, null,
                 reminders, absoluteReminders, null);
     }

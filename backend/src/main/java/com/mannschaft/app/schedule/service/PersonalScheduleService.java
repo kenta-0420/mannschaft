@@ -77,7 +77,10 @@ public class PersonalScheduleService {
     @Transactional
     public PersonalScheduleResponse createPersonalSchedule(CreatePersonalScheduleRequest req, Long userId) {
         validatePersonalScheduleLimit(userId);
-        validateDateRange(req.getStartAt(), req.getEndAt());
+        // OffsetDateTime → JST LocalDateTime に変換
+        LocalDateTime startAtJst = toJst(req.getStartAt());
+        LocalDateTime endAtJst = toJst(req.getEndAt());
+        validateDateRange(startAtJst, endAtJst);
 
         String recurrenceRuleJson = null;
         if (req.getRecurrenceRule() != null) {
@@ -91,8 +94,8 @@ public class PersonalScheduleService {
                 .title(req.getTitle())
                 .description(req.getDescription())
                 .location(req.getLocation())
-                .startAt(req.getStartAt())
-                .endAt(req.getEndAt())
+                .startAt(startAtJst)
+                .endAt(endAtJst)
                 .allDay(req.getAllDay())
                 .eventType(EventType.valueOf(req.getEventTypeOrDefault()))
                 .color(req.getColor())
@@ -210,8 +213,8 @@ public class PersonalScheduleService {
         validateScheduleNotCancelled(schedule);
 
         if (req.getStartAt() != null || req.getEndAt() != null) {
-            LocalDateTime startAt = req.getStartAt() != null ? req.getStartAt() : schedule.getStartAt();
-            LocalDateTime endAt = req.getEndAt() != null ? req.getEndAt() : schedule.getEndAt();
+            LocalDateTime startAt = req.getStartAt() != null ? toJst(req.getStartAt()) : schedule.getStartAt();
+            LocalDateTime endAt = req.getEndAt() != null ? toJst(req.getEndAt()) : schedule.getEndAt();
             validateDateRange(startAt, endAt);
         }
 
@@ -485,6 +488,8 @@ public class PersonalScheduleService {
      * toBuilder().build() は BaseEntity の id を引き継がないため、
      * 直接フィールド変更方式（applyPersonalScheduleUpdate）を使用する。
      * save() は呼び出し元に委ねる。
+     *
+     * <p>startAt / endAt は OffsetDateTime → JST LocalDateTime に変換してから適用する。</p>
      */
     private void applyUpdateToSchedule(ScheduleEntity schedule, UpdatePersonalScheduleRequest req) {
         EventType eventType = req.getEventType() != null ? EventType.valueOf(req.getEventType()) : null;
@@ -492,8 +497,8 @@ public class PersonalScheduleService {
                 req.getTitle(),
                 req.getDescription(),
                 req.getLocation(),
-                req.getStartAt(),
-                req.getEndAt(),
+                toJst(req.getStartAt()),
+                toJst(req.getEndAt()),
                 req.getAllDay(),
                 eventType,
                 req.getColor()
@@ -562,6 +567,20 @@ public class PersonalScheduleService {
                     child.softDelete();
                     scheduleRepository.save(child);
                 });
+    }
+
+    /**
+     * OffsetDateTime を JST の LocalDateTime に変換する。
+     *
+     * <p>クライアントから受け取った TZ 付き日時を {@link #STORAGE_ZONE}（Asia/Tokyo）に変換する。
+     * null の場合は null を返す（部分更新セマンティクスを壊さないため）。</p>
+     *
+     * @param odt クライアント TZ 付き日時
+     * @return JST LocalDateTime、または null
+     */
+    private static LocalDateTime toJst(OffsetDateTime odt) {
+        if (odt == null) return null;
+        return odt.atZoneSameInstant(STORAGE_ZONE).toLocalDateTime();
     }
 
     /**
