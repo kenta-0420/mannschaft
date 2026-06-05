@@ -55,31 +55,32 @@ if [ -z "$ACCESS_TOKEN" ]; then
 fi
 echo "✅ ログイン成功（トークン取得済み）"
 
-# --- ステップ 2: チームIDを取得（MySQL クライアント経由）---
-TEAM_ID=""
+# --- ステップ 2: チーム public_id を取得（MySQL クライアント経由）---
+# PR #1358 以降、TeamScheduleController は {teamPublicId}（UUID）を受け取るため
+# BIGINT id ではなく BIN_TO_UUID(public_id) を使用する（MySQL 8.0+）
+TEAM_PUBLIC_ID=""
 if command -v mysql &> /dev/null; then
-  TEAM_ID=$(mysql -h 127.0.0.1 -u mannschaft -pmannschaft mannschaft \
-    -N -e "SELECT id FROM teams WHERE name LIKE 'FC東京U-18%' LIMIT 1" 2>/dev/null || echo "")
-  TEAM_ID=$(echo "$TEAM_ID" | tr -d '[:space:]')
+  TEAM_PUBLIC_ID=$(mysql -h 127.0.0.1 -u mannschaft -pmannschaft mannschaft \
+    -N -e "SELECT BIN_TO_UUID(public_id) FROM teams WHERE name LIKE 'FC東京U-18%' AND public_id IS NOT NULL LIMIT 1" 2>/dev/null || echo "")
+  TEAM_PUBLIC_ID=$(echo "$TEAM_PUBLIC_ID" | tr -d '[:space:]')
 fi
 
-if [ -z "$TEAM_ID" ]; then
-  echo "⚠️  MySQL クライアントが使えないか、チームが見つかりませんでした。schedules チェックをスキップします"
+if [ -z "$TEAM_PUBLIC_ID" ]; then
+  echo "⚠️  MySQL クライアントが使えないか、チームの public_id が見つかりませんでした。schedules チェックをスキップします"
 else
-  echo "→ GET /api/v1/teams/$TEAM_ID/schedules"
+  echo "→ GET /api/v1/teams/$TEAM_PUBLIC_ID/schedules"
   STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
-    "$BASE_URL/api/v1/teams/$TEAM_ID/schedules?from=2026-01-01T00:00:00&to=2026-12-31T23:59:59" \
+    "$BASE_URL/api/v1/teams/$TEAM_PUBLIC_ID/schedules?from=2026-01-01T00:00:00&to=2026-12-31T23:59:59" \
     -H "Authorization: Bearer $ACCESS_TOKEN" \
     2>/dev/null || echo "000")
   if [ "$STATUS" != "200" ]; then
-    echo "❌ FAIL: GET /api/v1/teams/$TEAM_ID/schedules → HTTP $STATUS"
-    # レスポンスボディも表示して原因を把握しやすくする
-    curl -s "$BASE_URL/api/v1/teams/$TEAM_ID/schedules?from=2026-01-01T00:00:00&to=2026-12-31T23:59:59" \
+    echo "❌ FAIL: GET /api/v1/teams/$TEAM_PUBLIC_ID/schedules → HTTP $STATUS"
+    curl -s "$BASE_URL/api/v1/teams/$TEAM_PUBLIC_ID/schedules?from=2026-01-01T00:00:00&to=2026-12-31T23:59:59" \
       -H "Authorization: Bearer $ACCESS_TOKEN" | head -c 2000 || true
     echo ""
     exit 1
   fi
-  echo "✅ GET /api/v1/teams/$TEAM_ID/schedules → 200"
+  echo "✅ GET /api/v1/teams/$TEAM_PUBLIC_ID/schedules → 200"
 fi
 
 # --- ステップ 3: 通知 API（Hibernate enum 変換の検証）---
