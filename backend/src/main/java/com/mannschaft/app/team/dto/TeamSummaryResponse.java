@@ -3,6 +3,8 @@ package com.mannschaft.app.team.dto;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+import java.util.UUID;
+
 /**
  * チームサマリーレスポンス（一覧用）。
  */
@@ -10,7 +12,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class TeamSummaryResponse {
 
-    private final Long id;
+    private final UUID id;
     private final String name;
     private final String template;
     private final String visibility;

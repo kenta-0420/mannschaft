@@ -24,6 +24,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -53,7 +54,12 @@ import com.mannschaft.app.common.security.AccessGuard;
 @DisplayName("OrganizationTeamSearchController 結合テスト")
 class OrganizationTeamSearchControllerTest {
 
+    /** URL に使う public UUID（列挙攻撃対策で URL 用 UUID を採用）*/
+    private static final UUID ORG_PUBLIC_ID = UUID.fromString("00000000-0000-0000-0000-000000000100");
+    /** 内部 BIGINT ID（Service 呼び出しに使用）*/
     private static final Long ORG_ID = 100L;
+    /** 存在しない組織の public UUID（404 テスト用）*/
+    private static final UUID UNKNOWN_ORG_PUBLIC_ID = UUID.fromString("00000000-0000-0000-0000-000000000999");
     private static final Long MEMBER_USER_ID = 500L;
 
     @Autowired
@@ -61,6 +67,9 @@ class OrganizationTeamSearchControllerTest {
 
     @MockitoBean
     private TeamSearchService teamSearchService;
+
+    @MockitoBean
+    private com.mannschaft.app.organization.service.OrganizationService organizationService;
 
     @MockitoBean
     private AccessControlService accessControlService;
@@ -82,8 +91,10 @@ class OrganizationTeamSearchControllerTest {
     private AccessGuard accessGuard;
 
     @BeforeEach
-    void clearContext() {
+    void setUp() {
         SecurityContextHolder.clearContext();
+        // Controller が resolveOrgId を先に呼ぶため、全テストで共通 mock を設定
+        given(organizationService.resolveOrgId(eq(ORG_PUBLIC_ID))).willReturn(ORG_ID);
     }
 
     // ════════════════════════════════════════════════════════════
@@ -116,7 +127,7 @@ class OrganizationTeamSearchControllerTest {
         given(accessControlService.isMember(any(), eq(ORG_ID), eq("ORGANIZATION")))
                 .willReturn(false);
 
-        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/search", ORG_ID))
+        mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", ORG_PUBLIC_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].name").value("公開店舗A"))
                 .andExpect(jsonPath("$.data[0].prefecture").value("東京都"))
@@ -157,7 +168,7 @@ class OrganizationTeamSearchControllerTest {
         given(accessControlService.isMember(eq(MEMBER_USER_ID), eq(ORG_ID), eq("ORGANIZATION")))
                 .willReturn(true);
 
-        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/search", ORG_ID))
+        mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", ORG_PUBLIC_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].name").value("詳細店舗B"))
                 // 詳細版には visibility / bannerUrl / supporterEnabled / memberCount が含まれる
@@ -176,7 +187,7 @@ class OrganizationTeamSearchControllerTest {
         given(teamSearchService.search(eq(ORG_ID), any(TeamSearchCriteria.class), any(), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of()));
 
-        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/search", ORG_ID))
+        mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", ORG_PUBLIC_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").isArray())
                 .andExpect(jsonPath("$.data.length()").value(0))
@@ -192,7 +203,7 @@ class OrganizationTeamSearchControllerTest {
     void search_keywordTooLong_400() throws Exception {
         String tooLong = "あ".repeat(101);
 
-        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/search", ORG_ID)
+        mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", ORG_PUBLIC_ID)
                         .param("keyword", tooLong))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("keyword too long")));
@@ -201,7 +212,7 @@ class OrganizationTeamSearchControllerTest {
     @Test
     @DisplayName("GET /search 400: size=51（上限超過）")
     void search_sizeOverMax_400() throws Exception {
-        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/search", ORG_ID)
+        mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", ORG_PUBLIC_ID)
                         .param("size", "51"))
                 .andExpect(status().isBadRequest());
     }
@@ -209,7 +220,7 @@ class OrganizationTeamSearchControllerTest {
     @Test
     @DisplayName("GET /search 400: size=0（下限未満）")
     void search_sizeUnderMin_400() throws Exception {
-        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/search", ORG_ID)
+        mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", ORG_PUBLIC_ID)
                         .param("size", "0"))
                 .andExpect(status().isBadRequest());
     }
@@ -217,7 +228,7 @@ class OrganizationTeamSearchControllerTest {
     @Test
     @DisplayName("GET /search 400: page=-1（負数）")
     void search_negativePage_400() throws Exception {
-        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/search", ORG_ID)
+        mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", ORG_PUBLIC_ID)
                         .param("page", "-1"))
                 .andExpect(status().isBadRequest());
     }
@@ -225,7 +236,7 @@ class OrganizationTeamSearchControllerTest {
     @Test
     @DisplayName("GET /search 400: sort=不正値（ホワイトリスト外）")
     void search_invalidSort_400() throws Exception {
-        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/search", ORG_ID)
+        mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", ORG_PUBLIC_ID)
                         .param("sort", "deletedAt,asc"))
                 .andExpect(status().isBadRequest());
     }
@@ -233,7 +244,7 @@ class OrganizationTeamSearchControllerTest {
     @Test
     @DisplayName("GET /search 400: sort 方向が不正")
     void search_invalidSortDirection_400() throws Exception {
-        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/search", ORG_ID)
+        mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", ORG_PUBLIC_ID)
                         .param("sort", "name,sideways"))
                 .andExpect(status().isBadRequest());
     }
@@ -246,9 +257,9 @@ class OrganizationTeamSearchControllerTest {
     @DisplayName("GET /search 404: 存在しない組織 ID")
     void search_unknownOrg_404() throws Exception {
         willThrow(new OrganizationNotFoundException())
-                .given(teamSearchService).search(eq(999L), any(TeamSearchCriteria.class), any(), any(Pageable.class));
+                .given(organizationService).resolveOrgId(eq(UNKNOWN_ORG_PUBLIC_ID));
 
-        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/search", 999L))
+        mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", UNKNOWN_ORG_PUBLIC_ID))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.data.error").value("Organization not found"));
     }
@@ -258,9 +269,9 @@ class OrganizationTeamSearchControllerTest {
     void search_privateOrgAnonymous_404() throws Exception {
         SecurityContextHolder.clearContext();
         willThrow(new OrganizationNotFoundException())
-                .given(teamSearchService).search(eq(ORG_ID), any(TeamSearchCriteria.class), any(), any(Pageable.class));
+                .given(organizationService).resolveOrgId(eq(ORG_PUBLIC_ID));
 
-        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/search", ORG_ID))
+        mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", ORG_PUBLIC_ID))
                 .andExpect(status().isNotFound())
                 // 内部状態（PRIVATE / 削除済み）を漏らさない固定メッセージ
                 .andExpect(jsonPath("$.data.error").value("Organization not found"));
@@ -279,7 +290,7 @@ class OrganizationTeamSearchControllerTest {
         given(teamSearchService.search(eq(ORG_ID), captor.capture(), any(), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of()));
 
-        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/search", ORG_ID)
+        mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", ORG_PUBLIC_ID)
                         .param("keyword", "整体")
                         .param("prefecture", "東京都")
                         .param("city", "渋谷区")
@@ -310,7 +321,7 @@ class OrganizationTeamSearchControllerTest {
         given(teamSearchService.search(eq(ORG_ID), captor.capture(), any(), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of()));
 
-        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/search", ORG_ID)
+        mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", ORG_PUBLIC_ID)
                         .param("prefectureCode", "13")
                         .param("cityCode", "13113"))
                 .andExpect(status().isOk());

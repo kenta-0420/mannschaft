@@ -5,6 +5,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.organization.exception.OrganizationNotFoundException;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.team.dto.TeamPublicSummaryResponse;
 import com.mannschaft.app.team.dto.TeamSearchCriteria;
 import com.mannschaft.app.team.dto.TeamSearchResultResponse;
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * F15.4: 組織内チーム（店舗）検索コントローラ。
@@ -45,7 +47,7 @@ import java.util.Set;
  *   → F19.1 Phase 1 {@link com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter}。
  */
 @RestController
-@RequestMapping("/api/v1/organizations/{orgId}/teams")
+@RequestMapping("/api/v1/organizations/{orgPublicId}/teams")
 @Tag(name = "組織内チーム検索 (F15.4)")
 @RequiredArgsConstructor
 public class OrganizationTeamSearchController {
@@ -62,6 +64,7 @@ public class OrganizationTeamSearchController {
 
     private final TeamSearchService teamSearchService;
     private final AccessControlService accessControlService;
+    private final OrganizationService organizationService;
 
     /**
      * 組織配下のチーム（店舗）を検索する。
@@ -75,7 +78,7 @@ public class OrganizationTeamSearchController {
      * <p>組織が PRIVATE/ORGANIZATION_ONLY で非メンバー／未ログインの場合は
      * エニュメレーション対策で 404 を返す（{@code TeamSearchService} 内部判定）。
      *
-     * @param orgId          組織 ID
+     * @param orgPublicId    組織の公開 UUID
      * @param keyword        部分一致キーワード（{@code name} または {@code name_kana}）
      * @param prefecture     都道府県名称（完全一致。{@code prefectureCode} 未指定時のフォールバック）
      * @param city           市町村名称（完全一致。{@code prefecture} 未指定時は無視）
@@ -92,7 +95,7 @@ public class OrganizationTeamSearchController {
             description = "未ログインでも実行可能。組織メンバーには詳細版、非メンバー／未ログインには抑制版 DTO を返す。"
                     + "F22.1: prefectureCode/cityCode 指定時はコード優先、未指定なら名称（prefecture/city）にフォールバック（dual-support）。")
     public ResponseEntity<PagedResponse<?>> search(
-            @PathVariable Long orgId,
+            @PathVariable UUID orgPublicId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String prefecture,
             @RequestParam(required = false) String city,
@@ -118,10 +121,13 @@ public class OrganizationTeamSearchController {
         // 4. 現在ユーザー（未ログイン許容）
         Long currentUserId = SecurityUtils.getCurrentUserIdOrNull();
 
-        // 5. 検索実行（TeamSearchService 内で 404 判定を含む）
+        // 5. publicId → 内部 orgId 解決
+        Long orgId = organizationService.resolveOrgId(orgPublicId);
+
+        // 6. 検索実行（TeamSearchService 内で 404 判定を含む）
         Page<TeamEntity> resultPage = teamSearchService.search(orgId, criteria, currentUserId, pageable);
 
-        // 6. メンバー判定で DTO 切り替え
+        // 7. メンバー判定で DTO 切り替え
         boolean isMember = currentUserId != null
                 && accessControlService.isMember(currentUserId, orgId, SCOPE_ORGANIZATION);
 

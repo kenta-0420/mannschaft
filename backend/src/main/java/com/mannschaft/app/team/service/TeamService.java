@@ -39,6 +39,7 @@ import com.mannschaft.app.social.repository.TeamFriendRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.mannschaft.app.team.service.TeamShiftSettingsService;
@@ -197,13 +198,14 @@ public class TeamService {
     }
 
     /**
-     * チームを取得する。
+     * チームを publicId（URL公開ID）で取得する。
      *
      * <p>Phase 4-E: Valkey にて 10 分キャッシュ。更新・削除時に自動無効化される。</p>
      */
-    @Cacheable(value = "team-detail", key = "#teamId")
-    public ApiResponse<TeamResponse> getTeam(Long teamId) {
-        TeamEntity team = findTeamOrThrow(teamId);
+    @Cacheable(value = "team-detail", key = "#publicId")
+    public ApiResponse<TeamResponse> getTeam(UUID publicId) {
+        TeamEntity team = findTeamByPublicIdOrThrow(publicId);
+        Long teamId = team.getId();
         int memberCount = (int) userRoleRepository.countByTeamId(teamId);
         long teamFriendCount = teamFriendRepository.countFriendsByTeamId(teamId);
         // F00.5 Phase 5: SUPPORTER カウントを memberships 経由に切替
@@ -213,12 +215,22 @@ public class TeamService {
     }
 
     /**
+     * publicId から内部 BIGINT ID を解決する（Controller から他の Service メソッドに渡す用）。
+     *
+     * @param publicId URL 公開用 UUID
+     * @return 内部 BIGINT ID
+     */
+    public Long resolveTeamId(UUID publicId) {
+        return findTeamByPublicIdOrThrow(publicId).getId();
+    }
+
+    /**
      * チームを更新する。
      */
     @Transactional
     // TODO: teamドメインがroleドメイン(UserRoleRepository)・socialドメイン(TeamFriendRepository)・membershipドメイン(MembershipRepository)をまたいでいる。将来はTeamUpdatedEventで分離予定
     @Caching(evict = {
-            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-detail", allEntries = true),
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public ApiResponse<TeamResponse> updateTeam(Long teamId, UpdateTeamRequest req) {
@@ -259,7 +271,7 @@ public class TeamService {
      */
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-detail", allEntries = true),
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void deleteTeam(Long teamId, Long userId) {
@@ -277,7 +289,7 @@ public class TeamService {
      */
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-detail", allEntries = true),
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void archiveTeam(Long teamId) {
@@ -294,7 +306,7 @@ public class TeamService {
      */
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-detail", allEntries = true),
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void unarchiveTeam(Long teamId) {
@@ -318,7 +330,7 @@ public class TeamService {
                     long supporterCount = membershipRepository.countActiveByScopeAndRoleKind(
                             ScopeType.TEAM, team.getId(), RoleKind.SUPPORTER);
                     return new TeamSummaryResponse(
-                            team.getId(), team.getName(), team.getTemplate(),
+                            team.getPublicId(), team.getName(), team.getTemplate(),
                             team.getVisibility().name(), memberCount,
                             teamFriendCount, supporterCount);
                 })
@@ -376,7 +388,7 @@ public class TeamService {
     @Transactional
     // TODO: teamドメインとmembershipドメイン(MembershipRepository/MembershipService)をまたいでいる。将来はTeamFollowRequestedEventで分離予定
     @Caching(evict = {
-            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-detail", allEntries = true),
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void followTeam(Long userId, Long teamId) {
@@ -414,7 +426,7 @@ public class TeamService {
     @Transactional
     // TODO: teamドメインとmembershipドメイン(MembershipRepository/MembershipService)をまたいでいる。将来はTeamUnfollowedEventで分離予定
     @Caching(evict = {
-            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-detail", allEntries = true),
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void unfollowTeam(Long userId, Long teamId) {
@@ -444,7 +456,7 @@ public class TeamService {
                 .map(m -> organizationRepository.findById(m.getOrganizationId()).orElse(null))
                 .filter(org -> org != null)
                 .map(org -> new TeamOrgSummaryResponse(
-                        org.getId(),
+                        org.getPublicId(),
                         org.getName(),
                         null,
                         org.getVisibility().name(),
@@ -457,7 +469,7 @@ public class TeamService {
      */
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "team-detail", key = "#teamId"),
+            @CacheEvict(value = "team-detail", allEntries = true),
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void restoreTeam(Long teamId) {
@@ -480,6 +492,17 @@ public class TeamService {
                 .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
     }
 
+    /**
+     * publicId でチームを取得する。存在しない場合は 404 例外を投げる（IDOR 対策）。
+     *
+     * @param publicId URL 公開用 UUID
+     * @return チームエンティティ
+     */
+    private TeamEntity findTeamByPublicIdOrThrow(UUID publicId) {
+        return teamRepository.findByPublicId(publicId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
+    }
+
     private void checkNotArchived(TeamEntity team) {
         if (team.getArchivedAt() != null) {
             throw new BusinessException(TeamErrorCode.TEAM_002);
@@ -489,7 +512,7 @@ public class TeamService {
     private TeamResponse toResponse(TeamEntity team, int memberCount,
                                      long teamFriendCount, long supporterCount) {
         return TeamResponse.builder()
-                .id(team.getId())
+                .id(team.getPublicId())
                 .basicInfo(new TeamResponse.TeamBasicInfoDto(
                         team.getName(), team.getNameKana(),
                         team.getNickname1(), team.getNickname2()))
