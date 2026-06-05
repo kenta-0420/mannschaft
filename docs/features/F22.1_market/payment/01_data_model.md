@@ -262,16 +262,18 @@ source_kind（＋任意 sub_key）に対しどの `fee_policies` を適用する
 | `source_kind` | VARCHAR(12) | NO | — | `RECRUITMENT`/`MEMBERSHIP`/`TOURNAMENT`/`JOBMATCHING`/`FLEAMARKET`（解決キー） |
 | `sub_key` | VARCHAR(40) | YES | NULL | 任意の細分キー（**助っ人＝`recruitment_category` 値**等）。NULL＝source_kind の既定割当 |
 | `policy_key` | VARCHAR(40) | NO | — | 適用する `fee_policies.policy_key`（論理参照） |
+| `organization_id` | BIGINT UNSIGNED | YES | NULL | 将来テナント別上書きの拡張点（R1 は常に NULL・解決順序にも挟まない・02 §3.5.3） |
 | `enabled` | BOOLEAN | NO | TRUE | 割当の有効/無効 |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
 | `deleted_at` | DATETIME | YES | NULL | 論理削除 |
 
-**制約・インデックス**
+**制約・インデックス**（実装 `V74.008` に一致）
 ```sql
 CONSTRAINT chk_fpa_source_kind CHECK (source_kind IN ('RECRUITMENT','MEMBERSHIP','TOURNAMENT','JOBMATCHING','FLEAMARKET'))
--- (source_kind, sub_key) ごとに 1 アクティブ割当（NULL sub_key は source_kind 既定）。論理削除を加味しアプリ層で重複防止
-UNIQUE KEY uk_fpa_target (source_kind, sub_key, deleted_at)
+-- (source_kind, sub_key, organization_id) ごとに 1 割当（NULL sub_key は source_kind 既定・R1 は organization_id 常に NULL）。
+-- 論理削除を加味した重複防止はアプリ層で行う（MySQL は filtered unique 非対応）。
+UNIQUE KEY uk_fpa_target (source_kind, sub_key, organization_id)
 INDEX idx_fpa_policy (policy_key)
 ```
 > **解決順序（README §3.4.2）**: ① `(source_kind, sub_key)` 完全一致 → ② `(source_kind, sub_key IS NULL)` source_kind 既定 → ③ `DEFAULT`。いずれも `enabled=TRUE`・`deleted_at IS NULL` かつ参照先 `fee_policies.enabled=TRUE` を満たすものに限る（解決ロジックは `FeePolicyResolver`・02 §3.5.1）。複雑なテナント別上書きは作らない（将来拡張点・02 §3.5.3）。
@@ -310,7 +312,7 @@ INDEX idx_rl_payee_user (payee_user_id);
 ```
 > - `payee_kind=TEAM/ORG` の場合、受領主体ID は**札主の `scope_type`/`scope_id`（`recruitment_listings` 既存列・TEAM なら teams.id、ORG なら organizations.id）をそのまま使う**ため専用列は不要（札主＝受領者）。
 > - `payee_kind=USER` の場合のみ `payee_user_id` で個人受領者を保持（札主はチーム/組織だが、謝礼の受け手は個人）。
-> - 既存の `payment_enabled && price==null → PRICE_REQUIRED` 検証を、`payee_kind` 必須も含むよう Service 側で拡張（02 §3・エラー `PAYMENT_010`）。
+> - 既存の `payment_enabled && price==null → PRICE_REQUIRED` 検証を、`payee_kind` 必須も含むよう Service 側で拡張（02 §3・実コード `PAYMENT_C010`）。
 > - `escrow_transactions` 作成時、`payee_kind`/受領主体ID から `connect_accounts`（READY かつ payouts_enabled）を解決する。未 onboarding なら `HELD`（02 §5）。
 
 > ⚠️ **実装注意 — `payee_kind` 値と `RecruitmentScopeType` のマッピング**
@@ -383,6 +385,7 @@ erDiagram
         VARCHAR12 source_kind
         VARCHAR40 sub_key "助っ人=recruitment_category 等"
         VARCHAR40 policy_key "→fee_policies"
+        BIGINT organization_id "将来拡張点(R1はNULL)"
     }
     ledger_entries {
         BINARY16 id PK

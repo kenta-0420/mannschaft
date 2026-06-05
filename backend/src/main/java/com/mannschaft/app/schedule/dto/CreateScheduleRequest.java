@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -27,10 +27,17 @@ public class CreateScheduleRequest {
     @Size(max = 300)
     private final String location;
 
+    /**
+     * 開始日時。クライアントのタイムゾーン情報付きで受け取る（例: 2026-06-04T10:00:00+09:00）。
+     * BE は {@code OffsetDateTime.atZoneSameInstant(Asia/Tokyo).toLocalDateTime()} で JST に変換して保存する。
+     */
     @NotNull
-    private final LocalDateTime startAt;
+    private final OffsetDateTime startAt;
 
-    private final LocalDateTime endAt;
+    /**
+     * 終了日時。startAt と同様にクライアントTZ付きで受け取り、JST に変換して保存する。
+     */
+    private final OffsetDateTime endAt;
 
     @NotNull
     private final Boolean allDay;
@@ -47,7 +54,10 @@ public class CreateScheduleRequest {
     @NotNull
     private final Boolean attendanceRequired;
 
-    private final LocalDateTime attendanceDeadline;
+    /**
+     * 出欠締切日時。クライアントTZ付きで受け取り、JST に変換して保存する。
+     */
+    private final OffsetDateTime attendanceDeadline;
 
     private final String commentOption;
 

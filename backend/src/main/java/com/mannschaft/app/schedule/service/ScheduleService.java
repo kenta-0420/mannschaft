@@ -32,6 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -57,6 +59,8 @@ public class ScheduleService {
     private static final String SCOPE_TYPE_PERSONAL = "PERSONAL";
     private static final String UPDATE_SCOPE_THIS_AND_FOLLOWING = "THIS_AND_FOLLOWING";
     private static final String UPDATE_SCOPE_ALL = "ALL";
+    /** スケジュール日時の保存タイムゾーン（JVM TZ と一致）。 */
+    private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Tokyo");
 
     private final ScheduleRepository scheduleRepository;
     private final EventSurveyService eventSurveyService;
@@ -156,9 +160,13 @@ public class ScheduleService {
     @Transactional
     public ScheduleResponse createSchedule(CreateScheduleRequest req, Long scopeId,
                                            String scopeType, Long userId) {
-        validateDateRange(req.getStartAt(), req.getEndAt());
+        LocalDateTime startAtJst = toJst(req.getStartAt());
+        LocalDateTime endAtJst = toJst(req.getEndAt());
+        LocalDateTime deadlineJst = toJst(req.getAttendanceDeadline());
+        validateDateRange(startAtJst, endAtJst);
 
-        ScheduleEntity schedule = buildScheduleEntity(req, scopeId, scopeType, userId);
+        ScheduleEntity schedule = buildScheduleEntity(req, scopeId, scopeType, userId,
+                startAtJst, endAtJst, deadlineJst);
         schedule = scheduleRepository.save(schedule);
 
         // 繰り返しルールがある場合は子スケジュールを展開
@@ -206,8 +214,8 @@ public class ScheduleService {
         validateScheduleNotCancelled(schedule);
 
         if (req.getStartAt() != null || req.getEndAt() != null) {
-            LocalDateTime startAt = req.getStartAt() != null ? req.getStartAt() : schedule.getStartAt();
-            LocalDateTime endAt = req.getEndAt() != null ? req.getEndAt() : schedule.getEndAt();
+            LocalDateTime startAt = req.getStartAt() != null ? toJst(req.getStartAt()) : schedule.getStartAt();
+            LocalDateTime endAt = req.getEndAt() != null ? toJst(req.getEndAt()) : schedule.getEndAt();
             validateDateRange(startAt, endAt);
         }
 
@@ -375,9 +383,14 @@ public class ScheduleService {
 
     /**
      * 作成リクエストからスケジュールエンティティを構築する。
+     *
+     * <p>startAtJst / endAtJst / deadlineJst は呼び出し元で
+     * {@link #toJst(OffsetDateTime)} により JST LocalDateTime に変換済みのもの。</p>
      */
     private ScheduleEntity buildScheduleEntity(CreateScheduleRequest req, Long scopeId,
-                                               String scopeType, Long userId) {
+                                               String scopeType, Long userId,
+                                               LocalDateTime startAtJst, LocalDateTime endAtJst,
+                                               LocalDateTime deadlineJst) {
         String recurrenceRuleJson = null;
         if (req.getRecurrenceRule() != null) {
             recurrenceRuleJson = recurrenceService.serializeRecurrenceRule(req.getRecurrenceRule());
@@ -390,15 +403,15 @@ public class ScheduleService {
 
         // academic_year が指定されている場合の日付整合性チェック（F03.10）
         if (req.getAcademicYear() != null) {
-            validateAcademicYearRange(req.getStartAt(), req.getAcademicYear());
+            validateAcademicYearRange(startAtJst, req.getAcademicYear());
         }
 
         ScheduleEntity.ScheduleEntityBuilder builder = ScheduleEntity.builder()
                 .title(req.getTitle())
                 .description(req.getDescription())
                 .location(req.getLocation())
-                .startAt(req.getStartAt())
-                .endAt(req.getEndAt())
+                .startAt(startAtJst)
+                .endAt(endAtJst)
                 .allDay(req.getAllDay())
                 .eventType(EventType.valueOf(req.getEventType()))
                 .visibility(req.getVisibility() != null
@@ -410,7 +423,7 @@ public class ScheduleService {
                 .status(ScheduleStatus.SCHEDULED)
                 .attendanceStatus(AttendanceGenerationStatus.READY)
                 .attendanceRequired(req.getAttendanceRequired())
-                .attendanceDeadline(req.getAttendanceDeadline())
+                .attendanceDeadline(deadlineJst)
                 .commentOption(req.getCommentOption() != null
                         ? CommentOption.valueOf(req.getCommentOption()) : CommentOption.OPTIONAL)
                 .eventCategoryId(req.getEventCategoryId())
@@ -431,6 +444,9 @@ public class ScheduleService {
 
     /**
      * スケジュールに更新リクエストの内容を適用する。
+     *
+     * <p>startAt / endAt / attendanceDeadline は OffsetDateTime で受け取り、
+     * JST LocalDateTime に変換して Entity に設定する。</p>
      */
     private void applyUpdateToSchedule(ScheduleEntity schedule, UpdateScheduleRequest req) {
         ScheduleEntity.ScheduleEntityBuilder builder = schedule.toBuilder();
@@ -438,15 +454,15 @@ public class ScheduleService {
         if (req.getTitle() != null) builder.title(req.getTitle());
         if (req.getDescription() != null) builder.description(req.getDescription());
         if (req.getLocation() != null) builder.location(req.getLocation());
-        if (req.getStartAt() != null) builder.startAt(req.getStartAt());
-        if (req.getEndAt() != null) builder.endAt(req.getEndAt());
+        if (req.getStartAt() != null) builder.startAt(toJst(req.getStartAt()));
+        if (req.getEndAt() != null) builder.endAt(toJst(req.getEndAt()));
         if (req.getAllDay() != null) builder.allDay(req.getAllDay());
         if (req.getEventType() != null) builder.eventType(EventType.valueOf(req.getEventType()));
         if (req.getVisibility() != null) builder.visibility(ScheduleVisibility.valueOf(req.getVisibility()));
         if (req.getMinViewRole() != null) builder.minViewRole(MinViewRole.valueOf(req.getMinViewRole()));
         if (req.getMinResponseRole() != null) builder.minResponseRole(MinResponseRole.valueOf(req.getMinResponseRole()));
         if (req.getAttendanceRequired() != null) builder.attendanceRequired(req.getAttendanceRequired());
-        if (req.getAttendanceDeadline() != null) builder.attendanceDeadline(req.getAttendanceDeadline());
+        if (req.getAttendanceDeadline() != null) builder.attendanceDeadline(toJst(req.getAttendanceDeadline()));
         if (req.getCommentOption() != null) builder.commentOption(CommentOption.valueOf(req.getCommentOption()));
 
         // F03.10 行事カテゴリ・年度の更新
@@ -459,7 +475,7 @@ public class ScheduleService {
             builder.eventCategoryId(req.getEventCategoryId());
         }
         if (req.getAcademicYear() != null) {
-            LocalDateTime effectiveStartAt = req.getStartAt() != null ? req.getStartAt() : schedule.getStartAt();
+            LocalDateTime effectiveStartAt = req.getStartAt() != null ? toJst(req.getStartAt()) : schedule.getStartAt();
             validateAcademicYearRange(effectiveStartAt, req.getAcademicYear());
             builder.academicYear(req.getAcademicYear().shortValue());
         }
@@ -542,6 +558,20 @@ public class ScheduleService {
         return teamOrgMembershipRepository
                 .findOrganizationIdByTeamIdIn(java.util.Set.of(teamId))
                 .get(teamId);
+    }
+
+    /**
+     * OffsetDateTime を JST の LocalDateTime に変換する。
+     *
+     * <p>クライアントから受け取った TZ 付き日時を JVM TZ（Asia/Tokyo）に変換する。
+     * null の場合は null を返す（部分更新セマンティクスを壊さないため）。</p>
+     *
+     * @param odt クライアント TZ 付き日時
+     * @return JST LocalDateTime、または null
+     */
+    private static LocalDateTime toJst(OffsetDateTime odt) {
+        if (odt == null) return null;
+        return odt.atZoneSameInstant(STORAGE_ZONE).toLocalDateTime();
     }
 
     /**
