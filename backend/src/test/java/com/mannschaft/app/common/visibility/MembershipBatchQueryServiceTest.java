@@ -1,5 +1,9 @@
 package com.mannschaft.app.common.visibility;
 
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.membership.repository.MembershipScopeRoleProjection;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -49,6 +53,9 @@ class MembershipBatchQueryServiceTest {
 
     @Mock
     private OrganizationRepository organizationRepository;
+
+    @Mock
+    private MembershipRepository membershipRepository;
 
     @InjectMocks
     private MembershipBatchQueryService service;
@@ -247,9 +254,113 @@ class MembershipBatchQueryServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("F00.5 §8.3 根治: memberships 由来 MEMBER/SUPPORTER の roleByScope マージ")
+    class MembershipMerge {
+
+        @Test
+        @DisplayName("user_roles 行なし・memberships のみ MEMBER → roleByScope に MEMBER が入り MEMBERS_AND_ABOVE 可視")
+        void memberships専属MEMBER_roleByScope登録() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            // user_roles の direct ロールは空（V60.010 で MEMBER 行削除済み）
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of());
+            // memberships に MEMBER の active 行
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(membershipProjection(ScopeType.TEAM, 1L, RoleKind.MEMBER)));
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(TEAM_1), Set.of());
+
+            assertThat(result.roleByScope()).containsEntry(TEAM_1, "MEMBER");
+            // SCOPE_AFFILIATED
+            assertThat(result.isMemberOf(TEAM_1)).isTrue();
+            // MEMBERS_AND_ABOVE
+            assertThat(result.hasRoleOrAbove(TEAM_1, "MEMBER")).isTrue();
+            // SUPPORTERS_AND_ABOVE（MEMBER は SUPPORTER 以上）
+            assertThat(result.hasRoleOrAbove(TEAM_1, "SUPPORTER")).isTrue();
+        }
+
+        @Test
+        @DisplayName("memberships のみ SUPPORTER → SUPPORTERS_AND_ABOVE 可視・MEMBERS_AND_ABOVE 不可視・SCOPE_AFFILIATED 可視")
+        void memberships専属SUPPORTER() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of());
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(membershipProjection(ScopeType.TEAM, 1L, RoleKind.SUPPORTER)));
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(TEAM_1), Set.of());
+
+            assertThat(result.roleByScope()).containsEntry(TEAM_1, "SUPPORTER");
+            assertThat(result.isMemberOf(TEAM_1)).isTrue();               // SCOPE_AFFILIATED
+            assertThat(result.hasRoleOrAbove(TEAM_1, "SUPPORTER")).isTrue();  // SUPPORTERS_AND_ABOVE
+            assertThat(result.hasRoleOrAbove(TEAM_1, "MEMBER")).isFalse();    // MEMBERS_AND_ABOVE 不可視
+            assertThat(result.hasRoleOrAbove(TEAM_1, "ADMIN")).isFalse();     // ADMINS_AND_ABOVE 不可視
+        }
+
+        @Test
+        @DisplayName("user_roles ADMIN + memberships MEMBER 併存 → priority 最強の ADMIN が残る")
+        void adminUserRoleとmembershipMember_ADMIN優先() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(projection(1L, 1L, null, 50L)));
+            when(roleRepository.findAllById(Set.of(50L)))
+                    .thenReturn(List.of(role(50L, "ADMIN")));
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(membershipProjection(ScopeType.TEAM, 1L, RoleKind.MEMBER)));
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(TEAM_1), Set.of());
+
+            // ADMIN(2) < MEMBER(4) → ADMIN を採用
+            assertThat(result.roleByScope()).containsEntry(TEAM_1, "ADMIN");
+            assertThat(result.hasRoleOrAbove(TEAM_1, "ADMIN")).isTrue();
+        }
+
+        @Test
+        @DisplayName("親 ORG が memberships 専属所属でも ORGANIZATION_WIDE 可視（isMemberOfParentOrg=true）")
+        void 親ORGがmemberships専属_ORGANIZATION_WIDE可視() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(scopeAncestorResolver.resolveParentOrgIds(Set.of(TEAM_1)))
+                    .thenReturn(Map.of(TEAM_1, 10L));
+            // user_roles の親 ORG メンバーシップは無し
+            when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            // memberships に親 ORG への MEMBER 行
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(eq(USER_ID), eq(Set.of()), eq(Set.of(10L))))
+                    .thenReturn(List.of(membershipProjection(ScopeType.ORGANIZATION, 10L, RoleKind.MEMBER)));
+            when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L)))
+                    .thenReturn(List.of());
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(), Set.of(TEAM_1));
+
+            assertThat(result.orgMemberOf()).contains(ORG_10);
+            assertThat(result.isMemberOfParentOrg(TEAM_1)).isTrue();
+        }
+    }
+
     // -----------------------------------------------------------------------
     // ヘルパー
     // -----------------------------------------------------------------------
+
+    private static MembershipScopeRoleProjection membershipProjection(
+            ScopeType scopeType, Long scopeId, RoleKind roleKind) {
+        return new MembershipScopeRoleProjection() {
+            @Override
+            public ScopeType getScopeType() {
+                return scopeType;
+            }
+
+            @Override
+            public Long getScopeId() {
+                return scopeId;
+            }
+
+            @Override
+            public RoleKind getRoleKind() {
+                return roleKind;
+            }
+        };
+    }
 
     private static UserRoleProjection projection(Long id, Long teamId, Long orgId, Long roleId) {
         return new UserRoleProjection() {

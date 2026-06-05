@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -140,4 +141,44 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
     List<MembershipEntity> findActiveByUserAndScopeType(
             @Param("userId") Long userId,
             @Param("scopeType") ScopeType scopeType);
+
+    /**
+     * 指定ユーザーが指定スコープに対して持つアクティブメンバーシップの {@link RoleKind} を 1 件返す。
+     *
+     * <p>F00.5 §8.3 根治: {@code AccessControlService.resolveEffectiveRoleName} が
+     * 所属ロール（MEMBER / SUPPORTER）を UNION する際の単一スコープ照会用。
+     * 同一スコープに複数のアクティブ行が並存することは設計上ありえない（部分一意制約）が、
+     * 念のため複数返ってもよいよう {@link List} で受ける。</p>
+     */
+    @Query("SELECT m.roleKind FROM MembershipEntity m " +
+            "WHERE m.userId = :userId AND m.scopeType = :scopeType AND m.scopeId = :scopeId " +
+            "AND m.leftAt IS NULL")
+    List<RoleKind> findActiveRoleKinds(
+            @Param("userId") Long userId,
+            @Param("scopeType") ScopeType scopeType,
+            @Param("scopeId") Long scopeId);
+
+    /**
+     * 指定ユーザーが、指定された複数スコープ（TEAM 群 / ORGANIZATION 群）に対して持つ
+     * アクティブメンバーシップの「スコープ × role_kind」を一括取得する。
+     *
+     * <p>F00.5 §8.3 根治: F00 共通可視性基盤（{@code MembershipBatchQueryService}）が
+     * direct メンバーシップ判定で memberships 由来の MEMBER / SUPPORTER を
+     * {@code roleByScope} にマージする際、N+1 を避けて 1 SQL でまとめ取りするために用いる。</p>
+     *
+     * <p>多態 1 表のため、{@code scope_type = TEAM AND scope_id IN (:teamIds)} または
+     * {@code scope_type = ORGANIZATION AND scope_id IN (:orgIds)} のいずれかにマッチする
+     * アクティブ行（{@code left_at IS NULL}）のみを返す。空集合に対する {@code IN ()} を
+     * 避けるため、呼び出し側は teamIds / orgIds が両方空の場合は本メソッドを呼ばないこと。</p>
+     */
+    @Query("SELECT m.scopeType AS scopeType, m.scopeId AS scopeId, m.roleKind AS roleKind " +
+            "FROM MembershipEntity m " +
+            "WHERE m.userId = :userId AND m.leftAt IS NULL AND ( " +
+            "  (m.scopeType = com.mannschaft.app.membership.domain.ScopeType.TEAM AND m.scopeId IN (:teamIds)) " +
+            "  OR (m.scopeType = com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION AND m.scopeId IN (:orgIds)) " +
+            ")")
+    List<MembershipScopeRoleProjection> findActiveRoleKindsByUserAndScopes(
+            @Param("userId") Long userId,
+            @Param("teamIds") Collection<Long> teamIds,
+            @Param("orgIds") Collection<Long> orgIds);
 }
