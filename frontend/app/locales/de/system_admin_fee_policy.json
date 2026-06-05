@@ -1,0 +1,40 @@
+{
+  "systemAdmin": {
+    "feePolicy": {
+      "title": "Gebührenrichtlinien-Verwaltung",
+      "description": "Verwalte die Gebührenrichtlinien der einheitlichen Zahlung (Satz + Pauschale) und deren Zuweisungen",
+      "policyKey": "Richtlinienschlüssel",
+      "displayName": "Anzeigename",
+      "percentRate": "Satz (%)",
+      "flatFee": "Pauschale (JPY)",
+      "enabled": "Aktiviert",
+      "assignmentCount": "Zuweisungen",
+      "totalFeeHint": "Gesamtgebühr = Satz × Nennbetrag + Pauschale (zwischen Zahler und Empfänger aufgeteilt)",
+      "create": "Richtlinie hinzufügen",
+      "update": "Aktualisieren",
+      "disable": "Deaktivieren",
+      "defaultImmutable": "Die Standardrichtlinie (DEFAULT) kann nicht deaktiviert werden",
+      "feeExceedsHint": "Diese Pauschale kann bei Kleinbeträgen den Nennbetrag übersteigen",
+      "validation": {
+        "policyKeyFormat": "Der Richtlinienschlüssel darf nur Großbuchstaben, Ziffern und Unterstriche enthalten",
+        "displayNameRequired": "Bitte einen Anzeigenamen eingeben",
+        "percentRateRange": "Der Satz muss zwischen 0 und 1 (ausschließlich) liegen",
+        "flatFeeNonNegative": "Die Pauschale muss 0 oder größer sein",
+        "feeZeroNotAllowed": "Satz und Pauschale dürfen nicht beide 0 sein",
+        "alreadyExists": "Eine Richtlinie mit demselben Schlüssel existiert bereits (bitte aktualisieren)",
+        "notFound": "Die Gebührenrichtlinie wurde nicht gefunden"
+      },
+      "assignment": {
+        "title": "Gebührenzuweisungen",
+        "sourceKind": "Quellenart",
+        "subKey": "Unterschlüssel (optional, z. B. Helferkategorie)",
+        "policy": "Angewendete Richtlinie",
+        "add": "Zuweisung hinzufügen",
+        "remove": "Zuweisung entfernen",
+        "applyNote": "Zuweisungsänderungen gelten nur für neue Abbuchungen (bestehende Transaktionen bleiben unberührt)",
+        "duplicate": "Eine Zuweisung mit denselben Bedingungen existiert bereits",
+        "policyDisabled": "Die zugewiesene Gebührenrichtlinie ist deaktiviert"
+      }
+    }
+  }
+}

@@ -495,6 +495,13 @@
       "selfReviewEnd": "Hora de fin de autorevisión",
       "selfReviewHelp": "El período configurado se trata como tiempo de revisión antes de publicar",
       "saveSettings": "Guardar configuración"
+    },
+    "autoSave": {
+      "label": "Guardado automático",
+      "saved": "Guardado automáticamente",
+      "lastSaved": "Guardado automáticamente a las {time}",
+      "enabled": "Guardado automático activado",
+      "disabled": "Guardado automático desactivado"
     }
   },
   "todo": {

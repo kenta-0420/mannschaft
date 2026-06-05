@@ -44,6 +44,7 @@ public class UserController {
     private final com.mannschaft.app.auth.service.UserService userService;
     private final com.mannschaft.app.auth.service.AuthOAuthService authOAuthService;
     private final com.mannschaft.app.auth.service.AuthService authService;
+    private final com.mannschaft.app.auth.guardianship.AuthenticationCriticalOperationGuard authenticationCriticalOperationGuard;
 
     /**
      * 自分のプロフィールを取得する。
@@ -88,6 +89,8 @@ public class UserController {
     public ResponseEntity<ApiResponse<MessageResponse>> changePassword(
             @Valid @RequestBody ChangePasswordRequest req,
             HttpServletRequest httpRequest) {
+        // F08.9 P3b: 後見切替セッション中はパスワード変更を代理不可（03_security §3.2）
+        authenticationCriticalOperationGuard.assertNotActingAs();
         Long userId = SecurityUtils.getCurrentUserId();
         String ipAddress = httpRequest.getRemoteAddr();
         userService.changePassword(userId, req, ipAddress);
@@ -101,6 +104,8 @@ public class UserController {
     @Operation(summary = "メールアドレス変更リクエスト", description = "新しいメールアドレスへの確認メールを送信する")
     public ResponseEntity<ApiResponse<MessageResponse>> requestEmailChange(
             @Valid @RequestBody RequestEmailChangeRequest req) {
+        // F08.9 P3b: 後見切替セッション中はメール変更を代理不可（03_security §3.2）
+        authenticationCriticalOperationGuard.assertNotActingAs();
         Long userId = SecurityUtils.getCurrentUserId();
         ApiResponse<MessageResponse> response = userService.requestEmailChange(userId, req);
         return ResponseEntity.ok(response);
@@ -113,6 +118,8 @@ public class UserController {
     @Operation(summary = "メールアドレス変更確認", description = "確認トークンを検証してメールアドレスを変更する")
     public ResponseEntity<ApiResponse<MessageResponse>> confirmEmailChange(
             @RequestParam String token) {
+        // F08.9 P3b: 後見切替セッション中はメール変更確認を代理不可（03_security §3.2）。トークンベースの迂回経路を塞ぐ
+        authenticationCriticalOperationGuard.assertNotActingAs();
         ApiResponse<MessageResponse> response = userService.confirmEmailChange(token);
         return ResponseEntity.ok(response);
     }
@@ -124,6 +131,8 @@ public class UserController {
     @Operation(summary = "退会リクエスト", description = "退会をリクエストする（論理削除。30日間は取り消し可能）")
     public ResponseEntity<ApiResponse<MessageResponse>> requestWithdrawal(
             @Valid @RequestBody RequestWithdrawalRequest req) {
+        // F08.9 P3b: 後見切替セッション中は退会を代理不可（03_security §3.2）
+        authenticationCriticalOperationGuard.assertNotActingAs();
         Long userId = SecurityUtils.getCurrentUserId();
         userService.requestWithdrawal(userId, req);
         return ResponseEntity.ok(ApiResponse.of(MessageResponse.of("退会リクエストを受け付けました")));
@@ -135,6 +144,8 @@ public class UserController {
     @PostMapping("/me/withdrawal/cancel")
     @Operation(summary = "退会取り消し", description = "退会リクエストを取り消し、アカウントを復帰させる")
     public ResponseEntity<ApiResponse<MessageResponse>> cancelWithdrawal() {
+        // F08.9 P3b: 後見切替セッション中は退会取消を代理不可（03_security §3.2）
+        authenticationCriticalOperationGuard.assertNotActingAs();
         Long userId = SecurityUtils.getCurrentUserId();
         ApiResponse<MessageResponse> response = userService.cancelWithdrawal(userId);
         return ResponseEntity.ok(response);

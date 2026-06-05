@@ -15,6 +15,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -44,8 +46,8 @@ class ScheduleAnnouncementAdapterTest {
     private static final Long SCOPE_ID = 10L;
     private static final Long USER_ID = 1L;
     private static final Long SCHEDULE_ID = 100L;
-    private static final LocalDateTime START_AT = LocalDateTime.of(2026, 6, 1, 10, 0);
-    private static final LocalDateTime END_AT = LocalDateTime.of(2026, 6, 1, 12, 0);
+    private static final OffsetDateTime START_AT = OffsetDateTime.of(2026, 6, 1, 10, 0, 0, 0, ZoneOffset.ofHours(9));
+    private static final OffsetDateTime END_AT = OffsetDateTime.of(2026, 6, 1, 12, 0, 0, 0, ZoneOffset.ofHours(9));
 
     // ──────────────────────────────────────────────────────────────────────────
     // getSourceType
@@ -213,7 +215,7 @@ class ScheduleAnnouncementAdapterTest {
                 .id(id)
                 .content(new ScheduleResponse.ScheduleContentDto(
                         "テストスケジュール", "SCHEDULED", "NORMAL", null, false))
-                .time(new ScheduleResponse.ScheduleTimeDto(START_AT, END_AT, false))
+                .time(new ScheduleResponse.ScheduleTimeDto(START_AT.toLocalDateTime(), END_AT.toLocalDateTime(), false))
                 .scope(new ScheduleResponse.ScheduleScopeDto(null, null))
                 .academic(new ScheduleResponse.ScheduleAcademicDto(null, null, null))
                 .audit(new ScheduleResponse.ScheduleAuditDto(LocalDateTime.now(), null))

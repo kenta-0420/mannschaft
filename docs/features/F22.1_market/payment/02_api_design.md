@@ -127,12 +127,12 @@ void cancelAuthorization(UUID escrowId, String idempotencyKey);
 **検証（Service・エラーコード）**
 | 条件 | エラー |
 |---|---|
-| `paymentEnabled=true && price==null` | `PAYMENT_010 PRICE_REQUIRED`（既存検証を拡張） |
-| `paymentEnabled=true && payeeKind==null` | `PAYMENT_011 PAYEE_REQUIRED` |
-| `payeeKind=USER && payeeUserId==null` | `PAYMENT_012 PAYEE_USER_REQUIRED` |
+| `paymentEnabled=true && price==null` | `PAYMENT_C010 PRICE_REQUIRED`（既存検証を拡張） |
+| `paymentEnabled=true && payeeKind==null` | `PAYMENT_C011 PAYEE_REQUIRED` |
+| `payeeKind=USER && payeeUserId==null` | `PAYMENT_C012 PAYEE_USER_REQUIRED` |
 | 受領主体の `connect_accounts` が READY/payouts_enabled でない | **エラーにせず受理可**（応募成立時に `HELD`・§5）。ただし札立てフォームで警告表示（04 §2） |
-| `payeeKind=USER` の対象が札主チームの所属でない | `PAYMENT_013 PAYEE_NOT_IN_SCOPE`（個人受領者は札主に紐づく者に限定・IDOR 防止） |
-| `payeeKind=TEAM/ORG` で受領主体が札主 scope と不一致 | `PAYMENT_013` |
+| `payeeKind=USER` の対象が札主チームの所属でない | `PAYMENT_C013 PAYEE_NOT_IN_SCOPE`（個人受領者は札主に紐づく者に限定・IDOR 防止） |
+| `payeeKind=TEAM/ORG` で受領主体が札主 scope と不一致 | `PAYMENT_C013` |
 
 > 受領者の onboarding が未完了でも**札は立てられる**（応募者を集めながら口座登録を進められる）。実際の払出時点で payouts_enabled を再判定する（§5）。
 > 札立てフォームの謝礼額入力は**額面（`face_amount`）**である。支払者の請求額（額面+2.5%）と受取側送金額（額面−2.5%）は §3.5 の計算で導出され、UI に明示する（04 §2/§3）。
@@ -175,12 +175,12 @@ FeePolicy resolve(EscrowSourceKind sourceKind, String subKey /* nullable・助�
 
 ```
 // 必須ガード（起票前）
-if (total_fee > face_amount) → reject(PAYMENT_C050 FEE_EXCEEDS_FACE_AMOUNT)
+if (total_fee > face_amount) → reject(PAYMENT_C060 FEE_EXCEEDS_FACE_AMOUNT)
 // 同値: application_fee_amount(total_fee) ≤ amount(face + half_fee) は total_fee ≤ face で常に成立
 //       （half_fee ≥ 0 ゆえ face + half_fee ≥ face ≥ total_fee）→ chk_et_fee も自動充足
 ```
 > - 「総手数料が額面を超えない」を必須不変条件とする（最低決済額の検証として表現してもよいが、固定額の存在ゆえ額面比較が確実）。
-> - 違反は握りつぶさず `ConnectPaymentErrorCode.PAYMENT_C050`（`ERROR_CODE_STATUS_MAP` 登録・422）で拒否し、管理者に「このパターンはこの額面に適用できない（固定額が大きすぎる）」と原因を返す（症状を隠さない・CLAUDE.md 根治原則）。
+> - 違反は握りつぶさず `ConnectPaymentErrorCode.PAYMENT_C060`（`ERROR_CODE_STATUS_MAP` 登録・422）で拒否し、管理者に「このパターンはこの額面に適用できない（固定額が大きすぎる）」と原因を返す（症状を隠さない・CLAUDE.md 根治原則）。
 > - シスアドが `fee_policies` 追加・割当時にも、当該 source_kind の想定最小額面に対し破綻しないかを警告できると望ましい（§11 の CRUD 応答に検証ヒントを含める余地）。
 
 ### 3.5.3 テナント別上書きは作らない（将来拡張点）
@@ -217,7 +217,7 @@ DEFAULT policy（`percent_rate=0.05`/`flat_fee_minor=0`）。total_fee＝`round(
 | 適用パターン | **`RECRUITMENT_HELPER`** | FeePolicyResolver | `fee_policy_key`（焼き付け） |
 | 受取側送金額 | **9,800 円** | 10,200 − 400 | `ledger_entries`(TRANSFER_OUT) |
 
-> - **安全ガード**: `total_fee(400) ≤ face(10,000)` で OK。仮に固定 1,000・率5%・額面 500 なら total_fee＝1,025 > 500 で `PAYMENT_C050` 拒否（§3.5.2）。
+> - **安全ガード**: `total_fee(400) ≤ face(10,000)` で OK。仮に固定 1,000・率5%・額面 500 なら total_fee＝1,025 > 500 で `PAYMENT_C060` 拒否（§3.5.2）。
 > - **遡及防止**: `fee_policy_key='RECRUITMENT_HELPER'` を焼き付け、以後シスアドが当該パターンの率を改定しても本取引は 400 円のまま（README §3.4.2 / 01 §3.2）。
 > - `ledger_entries`(FEE) には設定値の概算でなく Stripe Webhook（`balance_transaction`）の実手数料を記録し純益の微変動を可視化（症状を隠さない・§6.3）。
 > - `chk_et_fee: application_fee_amount ≤ amount` は安全ガードにより常に充足。
@@ -265,7 +265,7 @@ RecruitmentListingEntity.incrementConfirmed() → RecruitmentConfirmedEvent 発�
 3. payer の Stripe Customer 解決（既存 stripe_customers 再利用 or 新規 createCustomer）
 4. FeePolicyResolver で policy 解決（source_kind=RECRUITMENT, sub_key=recruitment_category）→ PaymentFeeCalculator で計算
    （face_amount=price → total_fee=round(percent×face)+flat, amount=額面+折半, application_fee=total_fee・§3.5）
-   ＋安全ガード（total_fee ≤ face・違反は PAYMENT_C050 で応募成立をロールバック・§3.5.2）
+   ＋安全ガード（total_fee ≤ face・違反は PAYMENT_C060 FEE_EXCEEDS_FACE_AMOUNT で応募成立をロールバック・§3.5.2）
 5. StripePaymentProvider.createDestinationPaymentIntent(
      amount=（額面+折半上乗せ）, currency='jpy', capture_method='manual',   // エスクローモード
      application_fee_amount=（total_fee）, transfer_data.destination=acct_xxx, on_behalf_of=acct_xxx,
@@ -403,9 +403,10 @@ R = 精算額（transferAmount ベース・null=残額全部）
 **エラー**
 | 条件 | エラー |
 |---|---|
-| 既に REFUNDED | `PAYMENT_020 ALREADY_REFUNDED` |
-| `amount > 残額（transferAmount − 既返金額）`（支払者負担モデル・02 §6.1） | `PAYMENT_021 REFUND_AMOUNT_EXCEEDS` |
-| 受取側 scope ADMIN でない | `PAYMENT_001 FORBIDDEN`（403・無関係 scope は 404） |
+| 既に REFUNDED | `PAYMENT_C020 ALREADY_REFUNDED`（409） |
+| `amount > 残額（transferAmount − 既返金額）`（支払者負担モデル・02 §6.1） | `PAYMENT_C021 REFUND_AMOUNT_EXCEEDS`（422） |
+| 受取側 scope ADMIN でない | `PAYMENT_C001 PAYMENT_FORBIDDEN`（403・無関係 scope は 404） |
+| `transferId` 解決不能（capture の tr_xxx 不在等） | `PAYMENT_C042 INVALID_ESCROW_STATE`（409・§6.1 ①） |
 
 ### 6.2 札下げ・期限切れ連携（自動）
 `cancelByAdmin()` / `autoCancel()` が `RecruitmentCancelledEvent` を発火 → `payment.escrow` が与信中（AUTHORIZED/HELD）の escrow を `PaymentIntent.cancel()` で取消（支払者課金なし）。capture 済なら全額返金（§6.1 の decouple 方式＝明示 TransferReversal＋`reverse_transfer:false` の Refund・`refund_application_fee:false`・札下げ＝役務不履行でも支払者負担モデルは同じ＝支払者へ transferAmount を戻す）。
@@ -417,27 +418,35 @@ R = 精算額（transferAmount ベース・null=残額全部）
 
 ---
 
-## 7. エラーコード一覧（`PAYMENT_xxx`）
+## 7. エラーコード一覧（`ConnectPaymentErrorCode`＝`PAYMENT_C0xx` 系・実装正典）
 
-| コード | HTTP | 意味 |
-|---|---|---|
-| `PAYMENT_001` | 403 | 認可エラー（札主/受領者本人でない・IDOR） |
-| `PAYMENT_002` | 404 | escrow/connect_account が存在しない（または scope 不一致で秘匿） |
-| `PAYMENT_010` | 422 | `PRICE_REQUIRED`（payment_enabled なのに price なし） |
-| `PAYMENT_011` | 422 | `PAYEE_REQUIRED`（payeeKind なし） |
-| `PAYMENT_012` | 422 | `PAYEE_USER_REQUIRED`（payeeKind=USER で payeeUserId なし） |
-| `PAYMENT_013` | 422 | `PAYEE_NOT_IN_SCOPE`（受領者が札主 scope に紐づかない） |
-| `PAYMENT_020` | 409 | `ALREADY_REFUNDED` |
-| `PAYMENT_021` | 422 | `REFUND_AMOUNT_EXCEEDS` |
-| `PAYMENT_030` | 409 | `ONBOARDING_NOT_READY`（払出時に payouts 不可・HELD 化で通常はエラーにしないが手動操作時の保険） |
-| `PAYMENT_040` | 400 | Webhook 署名検証失敗 |
-| `PAYMENT_041` | 409 | 与信失敗（Stripe 側エラー・カード拒否）。応募成立をロールバックし応募者へ通知 |
-| `PAYMENT_C050` | 422 | `FEE_EXCEEDS_FACE_AMOUNT`（安全ガード・総手数料 > 額面・固定額が大きすぎ・§3.5.2）。**実装は `PAYMENT_C060`**（既存 `PAYMENT_C050`=STRIPE_API_ERROR/500 および本表予約の C051〜C053 と衝突回避・R1） |
-| `PAYMENT_C051` | 404 | `FEE_POLICY_NOT_FOUND`（シスアド CRUD で存在しない policy_key を参照・§11） |
-| `PAYMENT_C052` | 409 | `FEE_POLICY_DEFAULT_IMMUTABLE`（`DEFAULT` パターンの削除/無効化を拒否・解決の終端・§11） |
-| `PAYMENT_C053` | 422 | `FEE_POLICY_INVALID_RATE`（`percent_rate` が `[0,1)` 外・または率・固定額がともに 0 で手数料ゼロ） |
+> 本表は実 enum `com.mannschaft.app.payment.connect.ConnectPaymentErrorCode`（R1 #1326 / R2 #1328 main マージ済）の**実コード文字列**と `GlobalExceptionHandler.ERROR_CODE_STATUS_MAP` の**実登録 HTTP ステータス**に一致させる（実装が正典）。F22.1 謝礼/会費決済は本 enum を用いる。既存 `PaymentErrorCode`（`PAYMENT_001`〜`PAYMENT_027`・F08.2 会費）とは文字列が別系統（`C0xx`）で衝突しない。
 
-> **実装注記（Connect 系コードの命名・P2-a 以降）**: 上表の `PAYMENT_011/013/040` 等の番号は<b>概念対応の設計記載</b>であり、実コードのエラーコード文字列とは一致しない。既存 `PaymentErrorCode`（`PAYMENT_001`〜`PAYMENT_027`）との<b>文字列衝突を回避</b>するため、Connect 系は別 enum `ConnectPaymentErrorCode` を新設し `PAYMENT_C0xx` 系（例: 署名検証失敗 = `PAYMENT_C040`）を採用した。後続フェーズ（P2-b 与信/P2-c 払出）も齟齬防止のため `ConnectPaymentErrorCode`（`PAYMENT_C0xx` 系）を継続使用すること。
+| 実コード | 定数名 | HTTP | 意味 |
+|---|---|---|---|
+| `PAYMENT_C001` | `PAYMENT_FORBIDDEN` | 403 | 認可エラー（札主/受領者本人でない・IDOR） |
+| `PAYMENT_C002` | `PAYMENT_RESOURCE_NOT_FOUND` | 404 | escrow/connect_account が存在しない（または scope 不一致で秘匿） |
+| `PAYMENT_C010` | `PRICE_REQUIRED` | 422 | `payment_enabled` なのに price なし |
+| `PAYMENT_C011` | `PAYEE_REQUIRED` | 422 | `payeeKind` なし |
+| `PAYMENT_C012` | `PAYEE_USER_REQUIRED` | 422 | `payeeKind=USER` で `payeeUserId` なし |
+| `PAYMENT_C013` | `PAYEE_NOT_IN_SCOPE` | 422 | 受領者が札主 scope に紐づかない |
+| `PAYMENT_C020` | `ALREADY_REFUNDED` | 409 | 既に返金済み |
+| `PAYMENT_C021` | `REFUND_AMOUNT_EXCEEDS` | 422 | 返金額が残額を超過 |
+| `PAYMENT_C030` | `ONBOARDING_NOT_READY` | 409 | 払出時に payouts 不可（HELD 化で通常はエラーにしないが手動操作時の保険） |
+| `PAYMENT_C040` | `WEBHOOK_SIGNATURE_INVALID` | 400 | Webhook 署名検証失敗 |
+| `PAYMENT_C041` | `AUTHORIZATION_FAILED` | 409 | 与信失敗（Stripe 側エラー・カード拒否）。応募成立をロールバックし応募者へ通知 |
+| `PAYMENT_C042` | `INVALID_ESCROW_STATE` | 409 | 払出不能な状態（CANCELLED/REFUNDED 後等）からの payout/返金要求 |
+| `PAYMENT_C043` | `CAPTURE_FAILED` | 409 | capture（払出）失敗（Stripe 側エラー） |
+| `PAYMENT_C050` | `STRIPE_API_ERROR` | 500 | Stripe API 通信失敗（`Severity.ERROR` 既定 500） |
+| `PAYMENT_C060` | `FEE_EXCEEDS_FACE_AMOUNT` | 422 | **安全ガード（R1）**: 総手数料 > 額面（固定額が大きすぎ・少額決済の破綻）・§3.5.2 |
+| `PAYMENT_C051` | `FEE_POLICY_NOT_FOUND` | 404 | シスアド CRUD で存在しない policy_key を参照・§11 |
+| `PAYMENT_C052` | `FEE_POLICY_DEFAULT_IMMUTABLE` | 409 | `DEFAULT` パターンの削除/無効化を拒否（解決の終端・最後の砦）・§11 |
+| `PAYMENT_C053` | `FEE_POLICY_INVALID_RATE` | 422 | `percent_rate` が `[0,1)` 外・率と固定額がともに 0（手数料ゼロ）・policy_key 形式違反・§11 |
+| `PAYMENT_C054` | `FEE_POLICY_ALREADY_EXISTS` | 409 | 既存 policy_key で POST（重複）。更新は `PUT /{policyKey}` へ誘導・§11 |
+| `PAYMENT_C055` | `FEE_POLICY_ASSIGNMENT_DUPLICATE` | 409 | 割当 `(source_kind, sub_key, organization_id)` UNIQUE 違反・§11 |
+| `PAYMENT_C056` | `FEE_POLICY_ASSIGNMENT_POLICY_DISABLED` | 422 | 割当先 policy が無効（`enabled=FALSE`）。存在しないものは `PAYMENT_C051`（404）で区別・§11 |
+
+> **実装注記（Connect 系コードの命名・番号の連続性）**: 実コードは概念順でなく**衝突回避の都合で番号が前後する**（安全ガード `FEE_EXCEEDS_FACE_AMOUNT` は実コード `PAYMENT_C060`。`PAYMENT_C050` は `STRIPE_API_ERROR`/500 が先に確保済みのため、安全ガードは R2 シスアド CRUD 用に予約した `C051`〜`C056` とも衝突しない `C060` を採った）。`PAYMENT_011/013` 等の旧番号（`C` なし）を本表で用いていたのは概念対応の設計記載であり、**実コードは全て `PAYMENT_C0xx` 系**（R1/R2 で確定・本表が正典）。後続フェーズも `ConnectPaymentErrorCode`（`PAYMENT_C0xx` 系）を継続使用すること。各コードの HTTP は `GlobalExceptionHandler.ERROR_CODE_STATUS_MAP` に明示登録済（登録漏れは 400/500 既定へフォールバックするため要注意・#1279 前科）。
 
 ---
 
@@ -502,7 +511,7 @@ record ConnectAccountInfo(boolean chargesEnabled, boolean payoutsEnabled, java.u
 - **JPY**: amount/application_fee=円整数で Stripe へ渡る（ゼロデシマル）。
 - **二重払出防止**: 並行 confirm（札行ロック直列化）で capture が 1 回のみ。
 - **台帳**: 各 escrow の借方=貸方検算。FEE は Stripe 実手数料で記録（純益可視化・§6.3）。
-- **手数料ランク（§3.5・P2-f）**: DEFAULT policy で額面10,000→application_fee=500/amount=10,250（既存テスト不変）。固定額入り（率3%＋固定100）で額面10,000→total_fee=400/amount=10,200/受取9,800。安全ガード境界（固定1,000・率5%・額面500→total_fee=1,025 > 500 で `PAYMENT_C050`）。解決順序（完全一致→source_kind既定→DEFAULT）。**遡及防止**（charge 後に policy 率を改定しても焼き付けた `fee_policy_key` の率で固定）。`PaymentFeeCalculator` は純粋関数（policy 注入）・DB 参照は `FeePolicyResolver`。
+- **手数料ランク（§3.5・P2-f）**: DEFAULT policy で額面10,000→application_fee=500/amount=10,250（既存テスト不変）。固定額入り（率3%＋固定100）で額面10,000→total_fee=400/amount=10,200/受取9,800。安全ガード境界（固定1,000・率5%・額面500→total_fee=1,025 > 500 で `PAYMENT_C060` FEE_EXCEEDS_FACE_AMOUNT）。解決順序（完全一致→source_kind既定→DEFAULT）。**遡及防止**（charge 後に policy 率を改定しても焼き付けた `fee_policy_key` の率で固定）。`PaymentFeeCalculator` は純粋関数（policy 注入）・DB 参照は `FeePolicyResolver`。
 
 ---
 

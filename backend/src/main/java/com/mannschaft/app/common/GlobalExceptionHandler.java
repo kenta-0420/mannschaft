@@ -632,11 +632,18 @@ public class GlobalExceptionHandler {
             Map.entry("PAYMENT_C042", HttpStatus.CONFLICT),                  // INVALID_ESCROW_STATE（払出不能状態）
             Map.entry("PAYMENT_C043", HttpStatus.CONFLICT),                  // CAPTURE_FAILED（払出失敗）
             Map.entry("PAYMENT_C060", HttpStatus.UNPROCESSABLE_ENTITY),      // FEE_EXCEEDS_FACE_AMOUNT（安全ガード・R1・C050/C051-3 と衝突回避）
+            Map.entry("PAYMENT_C051", HttpStatus.NOT_FOUND),                 // FEE_POLICY_NOT_FOUND（シスアド CRUD・R2・§11）
+            Map.entry("PAYMENT_C052", HttpStatus.CONFLICT),                  // FEE_POLICY_DEFAULT_IMMUTABLE（DEFAULT 削除/無効化禁止・R2）
+            Map.entry("PAYMENT_C053", HttpStatus.UNPROCESSABLE_ENTITY),      // FEE_POLICY_INVALID_RATE（率/固定額/キー形式不正・R2）
+            Map.entry("PAYMENT_C054", HttpStatus.CONFLICT),                  // FEE_POLICY_ALREADY_EXISTS（POST 重複・PUT へ誘導・R2）
+            Map.entry("PAYMENT_C055", HttpStatus.CONFLICT),                  // FEE_POLICY_ASSIGNMENT_DUPLICATE（割当 UNIQUE 違反・R2）
+            Map.entry("PAYMENT_C056", HttpStatus.UNPROCESSABLE_ENTITY),      // FEE_POLICY_ASSIGNMENT_POLICY_DISABLED（割当先 policy 無効・R2）
             // F08.9 会費課金・代理払い認可（03_security.md §2）
             //   PAYMENT_Cxxx（F22.1）と衝突しない独立プレフィックス MEMBERSHIP_BILLING_xxx を採用。
             //   Severity.WARN 既定（400）では設計の 403/409 を満たせないため明示登録する。
             Map.entry("MEMBERSHIP_BILLING_001", HttpStatus.FORBIDDEN),       // 代理払い権原なし / IDOR
             Map.entry("MEMBERSHIP_BILLING_002", HttpStatus.CONFLICT),        // 既に有効な支払いが存在（二重課金防止）
+            Map.entry("MEMBERSHIP_BILLING_003", HttpStatus.FORBIDDEN),       // 後見切替中の認証クリティカル操作（03_security §3.2 なりすまし防止: パスワード/メール/2FA/退会の代理禁止）
             // セキュリティインシデント（GDPR Article 33）
             Map.entry("SEC_INCIDENT_001", HttpStatus.NOT_FOUND)              // SECURITY_INCIDENT_NOT_FOUND（IDOR 対策で 404）
     );

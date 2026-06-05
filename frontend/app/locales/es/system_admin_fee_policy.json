@@ -1,0 +1,40 @@
+{
+  "systemAdmin": {
+    "feePolicy": {
+      "title": "Gestión de políticas de comisión",
+      "description": "Gestiona las políticas de comisión del pago unificado (tasa + tarifa fija) y sus asignaciones",
+      "policyKey": "Clave de política",
+      "displayName": "Nombre visible",
+      "percentRate": "Tasa (%)",
+      "flatFee": "Tarifa fija (JPY)",
+      "enabled": "Habilitada",
+      "assignmentCount": "Asignaciones",
+      "totalFeeHint": "Comisión total = tasa × importe nominal + tarifa fija (repartida entre pagador y receptor)",
+      "create": "Añadir política",
+      "update": "Actualizar",
+      "disable": "Deshabilitar",
+      "defaultImmutable": "La política estándar (DEFAULT) no se puede deshabilitar",
+      "feeExceedsHint": "Esta tarifa fija puede superar el importe nominal en pagos pequeños",
+      "validation": {
+        "policyKeyFormat": "La clave de política solo puede contener mayúsculas, dígitos y guiones bajos",
+        "displayNameRequired": "Introduce un nombre visible",
+        "percentRateRange": "La tasa debe estar entre 0 y 1 (sin incluir el 1)",
+        "flatFeeNonNegative": "La tarifa fija debe ser 0 o mayor",
+        "feeZeroNotAllowed": "La tasa y la tarifa fija no pueden ser ambas 0",
+        "alreadyExists": "Ya existe una política con la misma clave (actualízala)",
+        "notFound": "No se encontró la política de comisión"
+      },
+      "assignment": {
+        "title": "Asignaciones de comisión",
+        "sourceKind": "Tipo de origen",
+        "subKey": "Subclave (opcional, p. ej. categoría de ayudante)",
+        "policy": "Política aplicada",
+        "add": "Añadir asignación",
+        "remove": "Quitar asignación",
+        "applyNote": "Los cambios de asignación solo se aplican a los nuevos cobros (las transacciones existentes no se ven afectadas)",
+        "duplicate": "Ya existe una asignación con las mismas condiciones",
+        "policyDisabled": "La política de comisión asignada está deshabilitada"
+      }
+    }
+  }
+}

@@ -3,6 +3,8 @@ package com.mannschaft.app.proxy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
+import com.mannschaft.app.proxy.entity.ProxyInputConsentScopeEntity;
+import com.mannschaft.app.proxy.entity.ProxyInputConsentScopeEntity.FeatureScope;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import jakarta.servlet.FilterChain;
@@ -114,8 +116,14 @@ public class ProxyInputContextFilter extends OncePerRequestFilter {
             return;
         }
 
+        // 同意書で許可されたスコープ集合を抽出（F08.9 P3b: 決済系の要求スコープ検証の素地）
+        java.util.Set<FeatureScope> grantedScopes = consent.getScopes().stream()
+                .map(ProxyInputConsentScopeEntity::getFeatureScope)
+                .collect(java.util.stream.Collectors.toSet());
+
         // 検証OK: ProxyInputContext をアクティブ化
-        proxyInputContext.activate(subjectUserId, consentId, inputSourceHeader.trim(), storageHeader.trim());
+        proxyInputContext.activate(subjectUserId, consentId, inputSourceHeader.trim(), storageHeader.trim(),
+                grantedScopes);
         log.debug("代理入力モード有効化: proxyUserId={}, subjectUserId={}, consentId={}",
                 proxyUserId, subjectUserId, consentId);
 

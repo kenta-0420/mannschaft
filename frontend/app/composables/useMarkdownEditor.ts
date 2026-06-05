@@ -131,6 +131,7 @@ export function useMarkdownEditor(
 
   // ──────────────── 目次ブロック挿入 ────────────────
   function insertTocBlock() {
+    if (hasTocBlock.value) return
     const items = headings.value
     let block: string
 

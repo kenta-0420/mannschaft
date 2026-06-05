@@ -32,6 +32,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class Auth2faController {
 
     private final Auth2faService auth2faService;
+    private final com.mannschaft.app.auth.guardianship.AuthenticationCriticalOperationGuard authenticationCriticalOperationGuard;
 
     /**
      * TOTP設定開始。秘密鍵とQRコードURLを返す。
@@ -40,7 +41,8 @@ public class Auth2faController {
     @Operation(summary = "TOTP設定開始")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "TOTP設定開始成功")
     public ResponseEntity<ApiResponse<TotpSetupResponse>> setupTotp() {
-
+        // F08.9 P3b: 後見切替セッション中は2FA設定を代理不可（03_security §3.2）
+        authenticationCriticalOperationGuard.assertNotActingAs();
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.status(HttpStatus.CREATED).body(auth2faService.setupTotp(userId));
     }
@@ -53,7 +55,8 @@ public class Auth2faController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "TOTP有効化成功")
     public ResponseEntity<ApiResponse<BackupCodesResponse>> verifyTotpSetup(
             @Valid @RequestBody VerifyTotpRequest req) {
-
+        // F08.9 P3b: 後見切替セッション中は2FA設定検証を代理不可（03_security §3.2）
+        authenticationCriticalOperationGuard.assertNotActingAs();
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(auth2faService.verifyTotpSetup(userId, req.getTotpCode()));
     }
@@ -78,7 +81,8 @@ public class Auth2faController {
     @Operation(summary = "バックアップコード再生成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再生成成功")
     public ResponseEntity<ApiResponse<BackupCodesResponse>> regenerateBackupCodes() {
-
+        // F08.9 P3b: 後見切替セッション中はバックアップコード再生成を代理不可（03_security §3.2）
+        authenticationCriticalOperationGuard.assertNotActingAs();
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(auth2faService.regenerateBackupCodes(userId));
     }

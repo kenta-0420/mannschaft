@@ -380,6 +380,28 @@ public class ParentalConsentService {
                 parentUserId, ParentalConsentLinkStatus.APPROVED);
     }
 
+    /**
+     * 指定ユーザーが「承認済み保護者」として登録されている子ユーザーのユーザーID一覧を返す。
+     *
+     * <p>F08.9 P3a 切替可能な子の列挙から呼び出される境界メソッド。
+     * 集約サービスは Entity ではなく ID リストのみを受け取り、子の属性（生年月日・国コード）は
+     * 別途 UserService 経由で解決する（ドメイン境界遵守）。</p>
+     *
+     * @param parentUserId 保護者（払い手）のユーザーID
+     * @return APPROVED な保護者リンクを持つ子ユーザーのIDリスト（重複なし・空可）
+     */
+    public List<Long> listApprovedChildUserIds(Long parentUserId) {
+        if (parentUserId == null) {
+            return List.of();
+        }
+        return parentalConsentLinkRepository.findByParentUserIdAndStatus(
+                        parentUserId, ParentalConsentLinkStatus.APPROVED)
+                .stream()
+                .map(ParentalConsentLinkEntity::getChildUserId)
+                .distinct()
+                .toList();
+    }
+
     // ========================================
     // クロスドメイン照会（payment ドメインから利用）
     // ========================================

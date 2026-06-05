@@ -355,6 +355,31 @@ public class CareLinkService {
                 careRecipientUserId, watcherUserId, CareRelationship.PARENT, CareLinkStatus.ACTIVE);
     }
 
+    /**
+     * 指定ユーザーが「ACTIVE な見守り PARENT」として登録されているケア対象者（子）のユーザーID一覧を返す。
+     *
+     * <p>F08.9 P3a 切替可能な子の列挙から呼び出される境界メソッド。
+     * auth ドメインの集約サービスは family ドメインの Entity / Repository を直接参照せず、
+     * 本メソッドが返す ID リストのみを受け取る（モジュラーモノリスのドメイン境界遵守）。</p>
+     *
+     * <p>続柄 PARENT・ステータス ACTIVE のケアリンクのみを対象とする
+     * （見守り＝PARENT は実質的な保護者であり後見切替の権原となる）。</p>
+     *
+     * @param watcherUserId 見守り者（保護者候補・払い手）のユーザーID
+     * @return ACTIVE な見守り PARENT 関係にあるケア対象者のユーザーIDリスト（重複なし・空可）
+     */
+    public List<Long> listActiveParentWatchedRecipientIds(Long watcherUserId) {
+        if (watcherUserId == null) {
+            return List.of();
+        }
+        return careLinkRepository.findByWatcherUserIdAndRelationshipAndStatus(
+                        watcherUserId, CareRelationship.PARENT, CareLinkStatus.ACTIVE)
+                .stream()
+                .map(UserCareLinkEntity::getCareRecipientUserId)
+                .distinct()
+                .toList();
+    }
+
     // =========================================================
     // プライベートヘルパー
     // =========================================================
