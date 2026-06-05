@@ -26,6 +26,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -82,6 +84,9 @@ class ScheduleServiceTest {
     private static final Long USER_ID = 100L;
     private static final LocalDateTime START = LocalDateTime.of(2026, 4, 1, 10, 0);
     private static final LocalDateTime END = LocalDateTime.of(2026, 4, 1, 12, 0);
+    /** JST(+09:00) のオフセットを付与した OffsetDateTime（テスト用）。 */
+    private static final OffsetDateTime START_ODT = OffsetDateTime.of(2026, 4, 1, 10, 0, 0, 0, ZoneOffset.ofHours(9));
+    private static final OffsetDateTime END_ODT = OffsetDateTime.of(2026, 4, 1, 12, 0, 0, 0, ZoneOffset.ofHours(9));
 
     private ScheduleEntity createTeamScheduleEntity() {
         return ScheduleEntity.builder()
@@ -240,8 +245,8 @@ class ScheduleServiceTest {
                     "練習",
                     "通常練習",
                     "体育館",
-                    START,
-                    END,
+                    START_ODT,
+                    END_ODT,
                     Boolean.FALSE,
                     "PRACTICE",
                     null, null, null,
@@ -272,7 +277,7 @@ class ScheduleServiceTest {
             // given
             CreateScheduleRequest req = new CreateScheduleRequest(
                     "練習", null, null,
-                    END, START, // start > end
+                    END_ODT, START_ODT, // start > end
                     false, "PRACTICE",
                     null, null, null,
                     false, null, null, null, null, null, null, null, null, null);
@@ -290,7 +295,7 @@ class ScheduleServiceTest {
             // given
             CreateScheduleRequest req = new CreateScheduleRequest(
                     "練習", null, null,
-                    START, END,
+                    START_ODT, END_ODT,
                     false, "PRACTICE",
                     null, null, null,
                     false, null, null, null, null, null, null, null, null, null);
@@ -566,7 +571,7 @@ class ScheduleServiceTest {
         void スケジュール作成_個人スコープ_正常作成() {
             // given
             CreateScheduleRequest req = new CreateScheduleRequest(
-                    "個人予定", null, null, START, END, false, "OTHER",
+                    "個人予定", null, null, START_ODT, END_ODT, false, "OTHER",
                     null, null, null, false, null, null, null, null, null, null, null, null, null);
 
             given(scheduleRepository.save(any(ScheduleEntity.class)))
@@ -585,7 +590,7 @@ class ScheduleServiceTest {
             // given
             Long ORG_ID = 20L;
             CreateScheduleRequest req = new CreateScheduleRequest(
-                    "組織イベント", null, null, START, END, false, "EVENT",
+                    "組織イベント", null, null, START_ODT, END_ODT, false, "EVENT",
                     null, null, null, false, null, null, null, null, null, null, null, null, null);
 
             given(scheduleRepository.save(any(ScheduleEntity.class)))
@@ -596,6 +601,92 @@ class ScheduleServiceTest {
 
             // then
             assertThat(result.getContent().title()).isEqualTo("組織イベント");
+        }
+    }
+
+    // ========================================
+    // createSchedule - タイムゾーン変換
+    // ========================================
+
+    @Nested
+    @DisplayName("createSchedule_タイムゾーン変換")
+    class CreateScheduleTimezoneConversion {
+
+        @Test
+        @DisplayName("UTC入力_JST(+9h)に変換してEntityに保存される")
+        void UTC入力_JSTに変換してEntityに保存される() {
+            // given: UTC 01:00 = JST 10:00
+            OffsetDateTime startUtc = OffsetDateTime.of(2026, 4, 1, 1, 0, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime endUtc = OffsetDateTime.of(2026, 4, 1, 3, 0, 0, 0, ZoneOffset.UTC);
+            CreateScheduleRequest req = new CreateScheduleRequest(
+                    "UTC入力テスト", null, null, startUtc, endUtc, false, "PRACTICE",
+                    null, null, null, false, null, null, null, null, null, null, null, null, null);
+
+            ScheduleEntity[] saved = new ScheduleEntity[1];
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> {
+                        saved[0] = invocation.getArgument(0);
+                        return saved[0];
+                    });
+
+            // when
+            scheduleService.createSchedule(req, TEAM_ID, "TEAM", USER_ID);
+
+            // then: UTC+0h の 01:00 は JST+9h の 10:00 に変換される
+            assertThat(saved[0].getStartAt())
+                    .isEqualTo(LocalDateTime.of(2026, 4, 1, 10, 0, 0));
+            assertThat(saved[0].getEndAt())
+                    .isEqualTo(LocalDateTime.of(2026, 4, 1, 12, 0, 0));
+        }
+
+        @Test
+        @DisplayName("EST入力_JST(+14h)に変換してEntityに保存される")
+        void EST入力_JSTに変換してEntityに保存される() {
+            // given: EST(UTC-5) 20:00 = JST(UTC+9) 10:00(翌日)
+            OffsetDateTime startEst = OffsetDateTime.of(2026, 3, 31, 20, 0, 0, 0, ZoneOffset.ofHours(-5));
+            OffsetDateTime endEst = OffsetDateTime.of(2026, 3, 31, 22, 0, 0, 0, ZoneOffset.ofHours(-5));
+            CreateScheduleRequest req = new CreateScheduleRequest(
+                    "EST入力テスト", null, null, startEst, endEst, false, "EVENT",
+                    null, null, null, false, null, null, null, null, null, null, null, null, null);
+
+            ScheduleEntity[] saved = new ScheduleEntity[1];
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> {
+                        saved[0] = invocation.getArgument(0);
+                        return saved[0];
+                    });
+
+            // when
+            scheduleService.createSchedule(req, TEAM_ID, "TEAM", USER_ID);
+
+            // then: EST 2026-03-31 20:00(UTC-5) = UTC 2026-04-01 01:00 = JST 2026-04-01 10:00
+            assertThat(saved[0].getStartAt())
+                    .isEqualTo(LocalDateTime.of(2026, 4, 1, 10, 0, 0));
+            assertThat(saved[0].getEndAt())
+                    .isEqualTo(LocalDateTime.of(2026, 4, 1, 12, 0, 0));
+        }
+
+        @Test
+        @DisplayName("JST入力_そのままEntityに保存される")
+        void JST入力_そのままEntityに保存される() {
+            // given: JST 10:00 はそのまま 10:00 として保存される
+            CreateScheduleRequest req = new CreateScheduleRequest(
+                    "JST入力テスト", null, null, START_ODT, END_ODT, false, "PRACTICE",
+                    null, null, null, false, null, null, null, null, null, null, null, null, null);
+
+            ScheduleEntity[] saved = new ScheduleEntity[1];
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> {
+                        saved[0] = invocation.getArgument(0);
+                        return saved[0];
+                    });
+
+            // when
+            scheduleService.createSchedule(req, TEAM_ID, "TEAM", USER_ID);
+
+            // then: JST 10:00 → 変換後も 10:00
+            assertThat(saved[0].getStartAt()).isEqualTo(START);
+            assertThat(saved[0].getEndAt()).isEqualTo(END);
         }
     }
 
