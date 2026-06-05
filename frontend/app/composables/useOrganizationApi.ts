@@ -2,7 +2,7 @@ import type { MemberResponse } from '~/types/member'
 import type { OrganizationResponse } from '~/types/organization'
 
 interface OrganizationSummaryResponse {
-  id: number
+  id: string
   name: string
   nickname1: string | null
   iconUrl: string | null
@@ -177,15 +177,15 @@ export function useOrganizationApi() {
   }
 
   // === フォロー（SUPPORTER） ===
-  async function followOrganization(orgId: number) {
+  async function followOrganization(orgId: string | number) {
     return api(`/api/v1/organizations/${orgId}/follow`, { method: 'POST' })
   }
 
-  async function unfollowOrganization(orgId: number) {
+  async function unfollowOrganization(orgId: string | number) {
     return api(`/api/v1/organizations/${orgId}/follow`, { method: 'DELETE' })
   }
 
-  async function getFollowStatus(orgId: number) {
+  async function getFollowStatus(orgId: string | number) {
     return api<{ data: FollowStatusResponse }>(`/api/v1/organizations/${orgId}/follow/status`)
   }
 

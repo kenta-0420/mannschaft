@@ -8,7 +8,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
-  created: [entity: { id: number; name: string }]
+  created: [entity: { id: number; publicId: string; name: string }]
 }>()
 
 const api = useApi()
@@ -148,7 +148,7 @@ async function submit() {
       body.orgType = form.value.orgType
     }
 
-    const response = await api<{ data: { id: number; name: string } }>(endpoint, {
+    const response = await api<{ data: { id: number; publicId: string; name: string } }>(endpoint, {
       method: 'POST',
       body,
     })

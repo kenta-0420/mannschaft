@@ -9,7 +9,7 @@ import {
 } from '~/types/team-search'
 
 interface TeamSummaryResponse {
-  id: number
+  id: string
   name: string
   nickname1: string | null
   iconUrl: string | null
