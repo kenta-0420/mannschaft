@@ -58,7 +58,7 @@ export function useDashboardApi() {
         priority: string
         dueDate: string | null
         scopeType: string
-        scopeId: number | null
+        scopeId: string | null
       }>
     }>('/api/v1/todos/my')
   }
@@ -73,7 +73,7 @@ export function useDashboardApi() {
         type: string
         actor: { id: number; displayName: string; avatarUrl: string | null }
         scopeType: string
-        scopeId: number
+        scopeId: string
         scopeName: string
         targetType: string
         targetId: number
@@ -142,18 +142,18 @@ export function useDashboardApi() {
   }
 
   // === Scoped Dashboard ===
-  async function getOrganizationDashboard(orgId: number, statsPeriod?: string) {
+  async function getOrganizationDashboard(orgId: string, statsPeriod?: string) {
     const query = statsPeriod ? `?statsPeriod=${statsPeriod}` : ''
     return api<{ data: OrgDashboardResponse }>(`/api/v1/dashboard/organization/${orgId}${query}`)
   }
 
-  async function getTeamDashboard(teamId: number, statsPeriod?: string) {
+  async function getTeamDashboard(teamId: string, statsPeriod?: string) {
     const query = statsPeriod ? `?statsPeriod=${statsPeriod}` : ''
     return api<{ data: TeamDashboardResponse }>(`/api/v1/dashboard/team/${teamId}${query}`)
   }
 
   // Widget settings
-  async function getWidgetSettings(scopeType: string, scopeId: number | null) {
+  async function getWidgetSettings(scopeType: string, scopeId: string | null) {
     const query = new URLSearchParams()
     query.set('scopeType', scopeType)
     if (scopeId) query.set('scopeId', String(scopeId))
@@ -165,7 +165,7 @@ export function useDashboardApi() {
   async function updateWidgetSettings(
     settings: Array<{ key: string; visible: boolean; order: number }>,
     scopeType: string,
-    scopeId: number | null,
+    scopeId: string | null,
   ) {
     return api('/api/v1/dashboard/widgets', {
       method: 'PUT',
@@ -173,7 +173,7 @@ export function useDashboardApi() {
     })
   }
 
-  async function resetWidgetSettings(scopeType: string, scopeId: number | null) {
+  async function resetWidgetSettings(scopeType: string, scopeId: string | null) {
     const query = new URLSearchParams()
     query.set('scopeType', scopeType)
     if (scopeId) query.set('scopeId', String(scopeId))

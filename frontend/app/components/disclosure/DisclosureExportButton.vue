@@ -26,7 +26,7 @@ const { t } = useI18n()
 const { error: showError, success: showSuccess, warn: showWarn } = useNotification()
 
 const isLoading = ref(false)
-const api = computed(() => useDisclosureApi(props.organizationId))
+const api = computed(() => useDisclosureApi(String(props.organizationId)))
 
 async function exportAs(format: DisclosureOutputFormat) {
   if (isLoading.value || props.disabled) return

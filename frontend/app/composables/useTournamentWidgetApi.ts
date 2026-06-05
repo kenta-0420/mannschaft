@@ -16,24 +16,24 @@ export function useTournamentWidgetApi() {
   const api = useApi()
 
   /** チーム通算成績 */
-  async function getTeamStats(teamId: number) {
+  async function getTeamStats(teamId: string) {
     return api<{ data: TeamTournamentStatsResponse }>(`/api/v1/teams/${teamId}/tournament-stats`)
   }
 
   /** チーム大会参加履歴 */
-  async function getTeamHistory(teamId: number) {
+  async function getTeamHistory(teamId: string) {
     return api<{ data: TeamTournamentHistoryResponse }>(`/api/v1/teams/${teamId}/tournament-history`)
   }
 
   /** ディビジョン順位表 */
-  async function getStandings(orgId: number, tournamentId: number, divisionId: number) {
+  async function getStandings(orgId: string, tournamentId: number, divisionId: number) {
     return api<{ data: TournamentStanding[] }>(
       `/api/v1/organizations/${orgId}/tournaments/${tournamentId}/divisions/${divisionId}/standings`,
     )
   }
 
   /** 主催大会サマリ（集約） */
-  async function getOrganizationSummary(orgId: number) {
+  async function getOrganizationSummary(orgId: string) {
     return api<{ data: OrganizationTournamentSummary }>(
       `/api/v1/organizations/${orgId}/tournaments/summary`,
     )

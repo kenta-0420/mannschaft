@@ -5,7 +5,7 @@ const visible = defineModel<boolean>('visible', { required: true })
 
 const props = defineProps<{
   scope: ProfileMediaScope
-  scopeId?: number
+  scopeId?: string
 }>()
 
 const emit = defineEmits<{

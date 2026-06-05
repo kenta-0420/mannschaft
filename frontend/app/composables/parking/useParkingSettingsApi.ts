@@ -5,7 +5,7 @@ export function useParkingSettingsApi() {
   const api = useApi()
 
   // === Settings ===
-  async function getParkingSettings(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getParkingSettings(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: ParkingSettingsResponse }>(
       `${buildBase(scopeType, scopeId)}/parking/settings`,
     )
@@ -13,7 +13,7 @@ export function useParkingSettingsApi() {
 
   async function updateParkingSettings(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: ParkingSettingsResponse }>(
@@ -23,7 +23,7 @@ export function useParkingSettingsApi() {
   }
 
   // === Stats ===
-  async function getParkingStats(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getParkingStats(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: ParkingStatsResponse }>(`${buildBase(scopeType, scopeId)}/parking/stats`)
   }
 

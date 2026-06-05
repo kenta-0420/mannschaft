@@ -3,8 +3,8 @@ import type { ContactableMember } from '~/types/contact'
 
 const props = defineProps<{
   visible: boolean
-  teamId?: number
-  orgId?: number
+  teamId?: string
+  orgId?: string
   title?: string
 }>()
 

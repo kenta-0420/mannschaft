@@ -12,7 +12,7 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const tournamentId = Number(route.params.tId)
 
 // 試合選択
@@ -84,7 +84,7 @@ async function loadRoster(matchId: number) {
 async function loadTemplates() {
   loadingTemplates.value = true
   try {
-    const orgId = 0 // NOTE: チームスコープでは organization_id は不要（BE API は orgId ベースだが team スコープ用 API に変更）
+    const orgId = '0' // NOTE: チームスコープでは organization_id は不要（BE API は orgId ベースだが team スコープ用 API に変更）
     // チームのエントリーテンプレ一覧を取得
     // useTournamentParticipants.getEntryTemplates は orgId/teamId が必要
     // ここでは teamId を使用してロード

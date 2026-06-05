@@ -4,7 +4,7 @@ import type { FiscalYearResponse, BudgetSummary } from '~/types/budget'
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 
 const notification = useNotification()
 const { getFiscalYears, getSummary, createFiscalYear } = useBudgetApi()

@@ -26,7 +26,7 @@ export interface ScopeFolder {
   /** 「未分類」フォルダなら true。改名・削除不可。F15.3 追加。 */
   isDefault?: boolean
   sortOrder: number
-  itemScopeIds: number[]
+  itemScopeIds: string[]
   /** フォルダ別未読件数。F15.3 で追加。1 クエリ集計のためレスポンスに同梱可能。 */
   notificationUnreadCount?: number
 }
@@ -58,7 +58,7 @@ export interface ReorderFoldersRequest {
 /** 一括振り分け（POST /api/v1/me/scope-folders/items/bulk-assign） */
 export interface BulkAssignRequest {
   folderId: number
-  scopeIds: number[]
+  scopeIds: string[]
   scopeType: ScopeType
 }
 

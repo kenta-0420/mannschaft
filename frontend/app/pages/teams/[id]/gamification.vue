@@ -4,7 +4,7 @@ import type { PointSummary, UserBadge, RankingEntry } from '~/types/gamification
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 const gamificationApi = useGamificationApi()
 const notification = useNotification()
 const { formatDate } = useDatetime()

@@ -13,16 +13,16 @@ import type {
 
 export function useTournamentParticipants() {
   const api = useApi()
-  const b = (orgId: number) => `/api/v1/organizations/${orgId}`
+  const b = (orgId: string) => `/api/v1/organizations/${orgId}`
 
   // === Participants ===
-  async function getParticipants(orgId: number, tId: number, divId: number) {
+  async function getParticipants(orgId: string, tId: number, divId: number) {
     return api<{ data: TournamentParticipant[] }>(
       `${b(orgId)}/tournaments/${tId}/divisions/${divId}/participants`,
     )
   }
   async function addParticipant(
-    orgId: number,
+    orgId: string,
     tId: number,
     divId: number,
     body: Record<string, unknown>,
@@ -33,7 +33,7 @@ export function useTournamentParticipants() {
     })
   }
   async function updateParticipant(
-    orgId: number,
+    orgId: string,
     tId: number,
     divId: number,
     pId: number,
@@ -44,17 +44,17 @@ export function useTournamentParticipants() {
       body,
     })
   }
-  async function removeParticipant(orgId: number, tId: number, divId: number, pId: number) {
+  async function removeParticipant(orgId: string, tId: number, divId: number, pId: number) {
     return api(`${b(orgId)}/tournaments/${tId}/divisions/${divId}/participants/${pId}`, {
       method: 'DELETE',
     })
   }
 
   // === Team-scoped ===
-  async function getTeamTournamentHistory(teamId: number) {
+  async function getTeamTournamentHistory(teamId: string) {
     return api<{ data: TeamTournamentHistoryResponse }>(`/api/v1/teams/${teamId}/tournament-history`)
   }
-  async function getTeamTournamentStats(teamId: number) {
+  async function getTeamTournamentStats(teamId: string) {
     return api<{ data: TeamTournamentStatsResponse }>(`/api/v1/teams/${teamId}/tournament-stats`)
   }
 
@@ -62,7 +62,7 @@ export function useTournamentParticipants() {
 
   // エントリー一覧取得
   async function getEntryMembers(
-    orgId: number,
+    orgId: string,
     tId: number,
     divId: number,
     pId: number,
@@ -76,7 +76,7 @@ export function useTournamentParticipants() {
 
   // チームメンバーから一括ロード
   async function loadEntryMembersFromTeam(
-    orgId: number,
+    orgId: string,
     tId: number,
     divId: number,
     pId: number,
@@ -90,7 +90,7 @@ export function useTournamentParticipants() {
 
   // エントリー全置換
   async function upsertEntryMembers(
-    orgId: number,
+    orgId: string,
     tId: number,
     divId: number,
     pId: number,
@@ -112,7 +112,7 @@ export function useTournamentParticipants() {
 
   // 個別削除
   async function deleteEntryMember(
-    orgId: number,
+    orgId: string,
     tId: number,
     divId: number,
     pId: number,
@@ -127,14 +127,14 @@ export function useTournamentParticipants() {
   }
 
   // エントリーサマリー（主催者用）
-  async function getEntrySummary(orgId: number, tId: number, divId: number) {
+  async function getEntrySummary(orgId: string, tId: number, divId: number) {
     return api<EntryMemberSummary>(
       `${b(orgId)}/tournaments/${tId}/divisions/${divId}/entry-summary`,
     )
   }
 
   // PDF ダウンロード
-  async function downloadEntryPdf(orgId: number, tId: number, divId: number, pId: number) {
+  async function downloadEntryPdf(orgId: string, tId: number, divId: number, pId: number) {
     return api(
       `${b(orgId)}/tournaments/${tId}/divisions/${divId}/participants/${pId}/entry-members/pdf`,
       { responseType: 'blob' as const },
@@ -144,19 +144,19 @@ export function useTournamentParticipants() {
   // ===== Phase 9-B: エントリーテンプレート =====
 
   // テンプレート一覧
-  async function getEntryTemplates(orgId: number, teamId: number) {
+  async function getEntryTemplates(orgId: string, teamId: string) {
     return api<EntryTemplate[]>(`${b(orgId)}/teams/${teamId}/entry-templates`)
   }
 
   // テンプレート詳細
-  async function getEntryTemplate(orgId: number, teamId: number, templateId: string) {
+  async function getEntryTemplate(orgId: string, teamId: string, templateId: string) {
     return api<EntryTemplateDetail>(`${b(orgId)}/teams/${teamId}/entry-templates/${templateId}`)
   }
 
   // テンプレート作成
   async function createEntryTemplate(
-    orgId: number,
-    teamId: number,
+    orgId: string,
+    teamId: string,
     body: {
       name: string
       description?: string | null
@@ -177,8 +177,8 @@ export function useTournamentParticipants() {
 
   // テンプレート更新
   async function updateEntryTemplate(
-    orgId: number,
-    teamId: number,
+    orgId: string,
+    teamId: string,
     templateId: string,
     body: Parameters<typeof createEntryTemplate>[2],
   ) {
@@ -189,7 +189,7 @@ export function useTournamentParticipants() {
   }
 
   // テンプレート削除
-  async function deleteEntryTemplate(orgId: number, teamId: number, templateId: string) {
+  async function deleteEntryTemplate(orgId: string, teamId: string, templateId: string) {
     return api(`${b(orgId)}/teams/${teamId}/entry-templates/${templateId}`, {
       method: 'DELETE',
     })
@@ -197,7 +197,7 @@ export function useTournamentParticipants() {
 
   // テンプレート適用
   async function applyEntryTemplate(
-    orgId: number,
+    orgId: string,
     tId: number,
     divId: number,
     pId: number,

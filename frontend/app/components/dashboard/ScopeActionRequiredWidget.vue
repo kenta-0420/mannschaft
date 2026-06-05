@@ -11,7 +11,7 @@ import type { ScopeTabType, ActionRequiredSummary } from '~/types/dashboard-scop
 
 const props = defineProps<{
   scopeType: ScopeTabType
-  scopeId: number
+  scopeId: string
 }>()
 
 const { getActionRequired } = useScopeTabApi()

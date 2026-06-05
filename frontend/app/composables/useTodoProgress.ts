@@ -3,7 +3,7 @@ import type { UpdateProgressRequest, UpdateProgressModeRequest } from '~/types/t
 export function useTodoProgress() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team'
       ? `/api/v1/teams/${scopeId}`
       : `/api/v1/organizations/${scopeId}`
@@ -15,7 +15,7 @@ export function useTodoProgress() {
    */
   async function updateProgress(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     body: UpdateProgressRequest,
   ) {
@@ -31,7 +31,7 @@ export function useTodoProgress() {
    */
   async function updateProgressMode(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     body: UpdateProgressModeRequest,
   ) {

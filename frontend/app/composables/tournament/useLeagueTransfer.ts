@@ -8,7 +8,7 @@ export type TransferCandidateResponse = components['schemas']['TransferCandidate
 export type PromoteRequest = components['schemas']['PromoteRequest']
 export type RelegateRequest = components['schemas']['RelegateRequest']
 
-export function useLeagueTransfer(orgId: number) {
+export function useLeagueTransfer(orgId: string) {
   const api = useApi()
   const b = `/api/v1/organizations/${orgId}`
 

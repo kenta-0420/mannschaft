@@ -3,17 +3,17 @@ import type { ReservationResponse } from '~/types/reservation'
 export function useReservationApi() {
   const api = useApi()
 
-  function base(teamId: number) {
+  function base(teamId: string) {
     return `/api/v1/teams/${teamId}`
   }
 
   // === Lines ===
-  async function getLines(teamId: number) {
+  async function getLines(teamId: string) {
     return api<{ data: unknown[] }>(`${base(teamId)}/reservation-lines`)
   }
 
   async function createLine(
-    teamId: number,
+    teamId: string,
     body: {
       name: string
       description?: string
@@ -25,53 +25,53 @@ export function useReservationApi() {
     return api<{ data: unknown }>(`${base(teamId)}/reservation-lines`, { method: 'POST', body })
   }
 
-  async function updateLine(teamId: number, lineId: number, body: Record<string, unknown>) {
+  async function updateLine(teamId: string, lineId: number, body: Record<string, unknown>) {
     return api<{ data: unknown }>(`${base(teamId)}/reservation-lines/${lineId}`, {
       method: 'PATCH',
       body,
     })
   }
 
-  async function deleteLine(teamId: number, lineId: number) {
+  async function deleteLine(teamId: string, lineId: number) {
     return api(`${base(teamId)}/reservation-lines/${lineId}`, { method: 'DELETE' })
   }
 
   // === Slots ===
-  async function getSlots(teamId: number, params?: { date?: string; lineId?: number }) {
+  async function getSlots(teamId: string, params?: { date?: string; lineId?: number }) {
     const query = new URLSearchParams()
     if (params?.date) query.set('date', params.date)
     if (params?.lineId) query.set('lineId', String(params.lineId))
     return api<{ data: unknown[] }>(`${base(teamId)}/reservation-slots?${query}`)
   }
 
-  async function createSlot(teamId: number, body: Record<string, unknown>) {
+  async function createSlot(teamId: string, body: Record<string, unknown>) {
     return api<{ data: unknown }>(`${base(teamId)}/reservation-slots`, { method: 'POST', body })
   }
 
-  async function getSlot(teamId: number, slotId: number) {
+  async function getSlot(teamId: string, slotId: number) {
     return api<{ data: unknown }>(`${base(teamId)}/reservation-slots/${slotId}`)
   }
 
-  async function updateSlot(teamId: number, slotId: number, body: Record<string, unknown>) {
+  async function updateSlot(teamId: string, slotId: number, body: Record<string, unknown>) {
     return api<{ data: unknown }>(`${base(teamId)}/reservation-slots/${slotId}`, {
       method: 'PATCH',
       body,
     })
   }
 
-  async function deleteSlot(teamId: number, slotId: number) {
+  async function deleteSlot(teamId: string, slotId: number) {
     return api(`${base(teamId)}/reservation-slots/${slotId}`, { method: 'DELETE' })
   }
 
-  async function closeSlot(teamId: number, slotId: number) {
+  async function closeSlot(teamId: string, slotId: number) {
     return api(`${base(teamId)}/reservation-slots/${slotId}/close`, { method: 'POST' })
   }
 
-  async function reopenSlot(teamId: number, slotId: number) {
+  async function reopenSlot(teamId: string, slotId: number) {
     return api(`${base(teamId)}/reservation-slots/${slotId}/reopen`, { method: 'POST' })
   }
 
-  async function listAvailableSlots(teamId: number, params?: { date?: string; lineId?: number }) {
+  async function listAvailableSlots(teamId: string, params?: { date?: string; lineId?: number }) {
     const query = new URLSearchParams()
     if (params?.date) query.set('date', params.date)
     if (params?.lineId) query.set('lineId', String(params.lineId))
@@ -80,7 +80,7 @@ export function useReservationApi() {
 
   // === Reservations ===
   async function listReservations(
-    teamId: number,
+    teamId: string,
     params?: { status?: string; date?: string; page?: number; size?: number },
   ) {
     const query = new URLSearchParams()
@@ -95,56 +95,56 @@ export function useReservationApi() {
   }
 
   async function createReservation(
-    teamId: number,
+    teamId: string,
     body: { slotId: number; serviceNotes?: string },
   ) {
     return api<{ data: unknown }>(`${base(teamId)}/reservations`, { method: 'POST', body })
   }
 
-  async function getReservation(teamId: number, reservationId: number) {
+  async function getReservation(teamId: string, reservationId: number) {
     return api<{ data: unknown }>(`${base(teamId)}/reservations/${reservationId}`)
   }
 
-  async function cancelReservation(teamId: number, reservationId: number, reason?: string) {
+  async function cancelReservation(teamId: string, reservationId: number, reason?: string) {
     return api(`${base(teamId)}/reservations/${reservationId}/cancel`, {
       method: 'POST',
       body: { reason: reason ?? null },
     })
   }
 
-  async function confirmReservation(teamId: number, reservationId: number) {
+  async function confirmReservation(teamId: string, reservationId: number) {
     return api(`${base(teamId)}/reservations/${reservationId}/confirm`, { method: 'POST' })
   }
 
-  async function completeReservation(teamId: number, reservationId: number) {
+  async function completeReservation(teamId: string, reservationId: number) {
     return api(`${base(teamId)}/reservations/${reservationId}/complete`, { method: 'POST' })
   }
 
   async function rescheduleReservation(
-    teamId: number,
+    teamId: string,
     reservationId: number,
     body: Record<string, unknown>,
   ) {
     return api(`${base(teamId)}/reservations/${reservationId}/reschedule`, { method: 'POST', body })
   }
 
-  async function markNoShow(teamId: number, reservationId: number) {
+  async function markNoShow(teamId: string, reservationId: number) {
     return api(`${base(teamId)}/reservations/${reservationId}/no-show`, { method: 'POST' })
   }
 
-  async function updateAdminNote(teamId: number, reservationId: number, body: { note: string }) {
+  async function updateAdminNote(teamId: string, reservationId: number, body: { note: string }) {
     return api(`${base(teamId)}/reservations/${reservationId}/admin-note`, {
       method: 'PATCH',
       body,
     })
   }
 
-  async function listReminders(teamId: number, reservationId: number) {
+  async function listReminders(teamId: string, reservationId: number) {
     return api<{ data: unknown[] }>(`${base(teamId)}/reservations/${reservationId}/reminders`)
   }
 
   async function createReminder(
-    teamId: number,
+    teamId: string,
     reservationId: number,
     body: Record<string, unknown>,
   ) {
@@ -154,21 +154,21 @@ export function useReservationApi() {
     })
   }
 
-  async function getReservationStats(teamId: number) {
+  async function getReservationStats(teamId: string) {
     return api<{ data: unknown }>(`${base(teamId)}/reservations/stats`)
   }
 
   // === Settings ===
-  async function getReservationSettings(teamId: number) {
+  async function getReservationSettings(teamId: string) {
     return api<{ data: unknown }>(`${base(teamId)}/reservation-settings`)
   }
 
-  async function getBusinessHours(teamId: number) {
+  async function getBusinessHours(teamId: string) {
     return api<{ data: unknown[] }>(`${base(teamId)}/reservation-settings/business-hours`)
   }
 
   async function updateBusinessHours(
-    teamId: number,
+    teamId: string,
     body: Array<{
       dayOfWeek: number
       openTime: string | null
@@ -179,11 +179,11 @@ export function useReservationApi() {
     return api(`${base(teamId)}/reservation-settings/business-hours`, { method: 'PUT', body })
   }
 
-  async function listBlockedTimes(teamId: number) {
+  async function listBlockedTimes(teamId: string) {
     return api<{ data: unknown[] }>(`${base(teamId)}/reservation-settings/blocked-times`)
   }
 
-  async function createBlockedTime(teamId: number, body: Record<string, unknown>) {
+  async function createBlockedTime(teamId: string, body: Record<string, unknown>) {
     return api<{ data: unknown }>(`${base(teamId)}/reservation-settings/blocked-times`, {
       method: 'POST',
       body,
@@ -191,7 +191,7 @@ export function useReservationApi() {
   }
 
   async function updateBlockedTime(
-    teamId: number,
+    teamId: string,
     blockedId: number,
     body: Record<string, unknown>,
   ) {
@@ -201,7 +201,7 @@ export function useReservationApi() {
     )
   }
 
-  async function deleteBlockedTime(teamId: number, blockedId: number) {
+  async function deleteBlockedTime(teamId: string, blockedId: number) {
     return api(`${base(teamId)}/reservation-settings/blocked-times/${blockedId}`, {
       method: 'DELETE',
     })

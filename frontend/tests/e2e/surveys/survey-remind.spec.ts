@@ -68,7 +68,7 @@ function buildPublishedSurveyForAdmin() {
   return buildSurvey({
     id: SURVEY_ID,
     scopeType: 'TEAM',
-    scopeId: TEAM_ID,
+    scopeId: String(TEAM_ID),
     status: 'PUBLISHED',
     resultsVisibility: 'CREATOR_ONLY',
     allowMultipleSubmissions: false,
@@ -366,7 +366,7 @@ test.describe('SURVEY-003-4: 詳細ページで回答者セクション開閉', 
     const survey = buildSurvey({
       id: SURVEY_ID,
       scopeType: 'TEAM',
-      scopeId: TEAM_ID,
+      scopeId: String(TEAM_ID),
       status: 'PUBLISHED',
       resultsVisibility: 'ALL_MEMBERS',
       allowMultipleSubmissions: false,

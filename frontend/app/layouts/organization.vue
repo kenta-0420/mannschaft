@@ -5,7 +5,7 @@ const showSidebar = ref(false)
 // orgId を route params から取得
 const orgId = computed(() => {
   const id = route.params.id
-  return id ? Number(id) : null
+  return id ? String(Array.isArray(id) ? id[0] : id) : null
 })
 
 // ルート変更時にDrawerを閉じる

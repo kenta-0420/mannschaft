@@ -17,10 +17,10 @@ const { fetchPublicOrganizationPostDetail } = usePublicApi()
 
 const rawOrgId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
 const rawPostId = Array.isArray(route.params.postId) ? route.params.postId[0] : route.params.postId
-const orgId = Number(rawOrgId)
+const orgId = String(rawOrgId)
 const postId = Number(rawPostId)
 
-if (!Number.isFinite(orgId) || !Number.isFinite(postId) || orgId <= 0 || postId <= 0) {
+if (!orgId || !Number.isFinite(postId) || postId <= 0) {
   throw createError({
     statusCode: 404,
     statusMessage: t('public.error.notFound'),

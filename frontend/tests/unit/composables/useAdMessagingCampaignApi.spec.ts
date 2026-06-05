@@ -32,8 +32,8 @@ describe('useAdMessagingCampaignApi (scope-based URL)', () => {
     })
   })
 
-  const orgId = 100
-  const teamId = 42
+  const orgId = '100'
+  const teamId = '42'
   const campaignId = '0190abcdefab0000000000000000abcd'
   const channelId = '0190abcdefab0000000000000000bbbb'
 
@@ -217,7 +217,7 @@ describe('useAdMessagingCampaignApi (scope-based URL)', () => {
   ])('AMC-API-T-%s: %s POST (organization scope)', async (path, method) => {
     const api = useAdMessagingCampaignApi() as unknown as Record<
       string,
-      (s: 'ORGANIZATION' | 'TEAM', id: number, c: string) => Promise<unknown>
+      (s: 'ORGANIZATION' | 'TEAM', id: string, c: string) => Promise<unknown>
     >
     const fn = api[method]
     if (!fn) throw new Error(`Method ${method} not found`)
@@ -237,7 +237,7 @@ describe('useAdMessagingCampaignApi (scope-based URL)', () => {
   ])('AMC-API-T-team-%s: %s POST (team scope)', async (path, method) => {
     const api = useAdMessagingCampaignApi() as unknown as Record<
       string,
-      (s: 'ORGANIZATION' | 'TEAM', id: number, c: string) => Promise<unknown>
+      (s: 'ORGANIZATION' | 'TEAM', id: string, c: string) => Promise<unknown>
     >
     const fn = api[method]
     if (!fn) throw new Error(`Method ${method} not found`)

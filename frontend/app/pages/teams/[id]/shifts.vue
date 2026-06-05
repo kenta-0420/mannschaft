@@ -3,7 +3,7 @@ import dayjs from 'dayjs'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const shiftApi = useShiftApi()
 const notification = useNotification()
 const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)

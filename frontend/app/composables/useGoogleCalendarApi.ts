@@ -31,11 +31,11 @@ export function useGoogleCalendarApi() {
   }
 
   // === Team / Org Sync ===
-  async function toggleTeamSync(teamId: number, body: Record<string, unknown>) {
+  async function toggleTeamSync(teamId: string, body: Record<string, unknown>) {
     return api(`/api/v1/me/teams/${teamId}/calendar-sync`, { method: 'PUT', body })
   }
 
-  async function toggleOrgSync(orgId: number, body: Record<string, unknown>) {
+  async function toggleOrgSync(orgId: string, body: Record<string, unknown>) {
     return api(`/api/v1/me/organizations/${orgId}/calendar-sync`, { method: 'PUT', body })
   }
 

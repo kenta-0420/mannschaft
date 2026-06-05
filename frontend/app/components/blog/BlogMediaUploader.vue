@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const props = defineProps<{
   scopeType: string
-  scopeId: number
+  scopeId: string
   blogPostId: number
 }>()
 

@@ -28,7 +28,7 @@ export interface SpringPage<T> {
 /** 公開 DTO 用のスコープ参照（チーム / 組織）。 */
 export interface PublicScopeRef {
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   scopeName: string
 }
 

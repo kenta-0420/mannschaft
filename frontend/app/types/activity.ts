@@ -1,7 +1,7 @@
 export interface ActivityRecordResponse {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   templateId: number | null
   templateName: string | null
   title: string
@@ -20,7 +20,7 @@ export interface ActivityRecordResponse {
 export interface ActivityTemplate {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   name: string
   description: string | null
   fields: Array<{ id: number; fieldName: string; fieldType: string; isRequired: boolean; sortOrder: number }>
@@ -60,7 +60,7 @@ export interface ActivityStats {
 export interface PublicActivityResponse {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   templateId: number | null
   title: string
   activityDate: string

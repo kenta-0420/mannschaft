@@ -11,7 +11,7 @@ const rawScope = String(route.query.scope ?? '').toUpperCase()
 const scopeType = (rawScope === 'TEAM' || rawScope === 'ORGANIZATION'
   ? rawScope
   : '') as 'TEAM' | 'ORGANIZATION' | ''
-const scopeId = Number(route.query.scopeId)
+const scopeId = String(route.query.scopeId ?? '')
 
 const { t } = useI18n()
 const { getSurvey, publishSurvey, closeSurvey, deleteSurvey } = useSurveyApi()
@@ -24,7 +24,7 @@ const authStore = useAuthStore()
 const bulletinThread = ref<BulletinThreadResponse | null>(null)
 
 // scope / scopeId 欠落・不正な場合は即トップへ
-if (!scopeType || !Number.isFinite(scopeId) || scopeId <= 0 || !Number.isFinite(surveyId)) {
+if (!scopeType || !scopeId || !Number.isFinite(surveyId)) {
   showError(t('surveys.detail.scopeMissing'))
   await navigateTo('/')
 }

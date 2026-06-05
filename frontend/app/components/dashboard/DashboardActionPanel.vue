@@ -96,9 +96,9 @@ async function load() {
 
       // 2. アンケート (チーム)
       ...teamStore.myTeams.slice(0, 5).map((team) =>
-        getSurveys('TEAM', team.id, { status: 'PUBLISHED', size: 10 }).then((res) => ({
+        getSurveys('TEAM', String(team.id), { status: 'PUBLISHED', size: 10 }).then((res) => ({
           type: 'survey' as const,
-          scopeId: team.id,
+          scopeId: String(team.id),
           scopeName: team.nickname1 || team.name,
           scopeKind: 'team' as const,
           data: res.data,
@@ -107,9 +107,9 @@ async function load() {
 
       // 3. アンケート (組織)
       ...orgStore.myOrganizations.slice(0, 5).map((org) =>
-        getSurveys('ORGANIZATION', org.id, { status: 'PUBLISHED', size: 10 }).then((res) => ({
+        getSurveys('ORGANIZATION', String(org.id), { status: 'PUBLISHED', size: 10 }).then((res) => ({
           type: 'survey' as const,
-          scopeId: org.id,
+          scopeId: String(org.id),
           scopeName: org.nickname1 || org.name,
           scopeKind: 'org' as const,
           data: res.data,
@@ -118,9 +118,9 @@ async function load() {
 
       // 4. スケジュール出席確認 (チーム)
       ...teamStore.myTeams.slice(0, 5).map((team) =>
-        listSchedules('team', team.id, { from: fromStr, to: toStr, size: 10 }).then((res) => ({
+        listSchedules('team', String(team.id), { from: fromStr, to: toStr, size: 10 }).then((res) => ({
           type: 'attendance' as const,
-          scopeId: team.id,
+          scopeId: String(team.id),
           scopeName: team.nickname1 || team.name,
           scopeKind: 'team' as const,
           data: res.data as ScheduleSummary[],
@@ -132,9 +132,9 @@ async function load() {
         .filter((t) => t.role === 'ADMIN' || t.role === 'SYSTEM_ADMIN')
         .slice(0, 5)
         .map((team) =>
-          getTeamRequests(team.id).then((res) => ({
+          getTeamRequests(String(team.id)).then((res) => ({
             type: 'matching' as const,
-            scopeId: team.id,
+            scopeId: String(team.id),
             scopeName: team.nickname1 || team.name,
             scopeKind: 'team' as const,
             data: res.data,

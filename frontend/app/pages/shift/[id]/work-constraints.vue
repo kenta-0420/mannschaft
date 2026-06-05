@@ -53,10 +53,10 @@ async function load() {
   loading.value = true
   try {
     const [constraints, def] = await Promise.all([
-      listConstraints(schedule.value.teamId),
+      listConstraints(String(schedule.value.teamId)),
       (async () => {
         try {
-          return await getTeamDefault(schedule.value!.teamId)
+          return await getTeamDefault(String(schedule.value!.teamId))
         } catch (e) {
           // 未設定（404 / WORK_CONSTRAINT_NOT_FOUND）のみ null として許容。
           // 403/500/ネットワーク断などは上位へ伝搬させ、handleApiError で通知する。
@@ -191,7 +191,7 @@ function confirmAddMember() {
         <ShiftWorkConstraintForm
           v-if="canManage && schedule"
           :constraint="teamDefault"
-          :team-id="schedule.teamId"
+          :team-id="String(schedule.teamId)"
           :user-id="null"
           @saved="teamDefault = $event"
           @deleted="teamDefault = null"
@@ -276,7 +276,7 @@ function confirmAddMember() {
               <ShiftWorkConstraintForm
                 v-if="canManage && schedule"
                 :constraint="constraint"
-                :team-id="schedule.teamId"
+                :team-id="String(schedule.teamId)"
                 :user-id="constraint.userId"
                 @saved="handleMemberConstraintSaved"
                 @deleted="handleMemberConstraintDeleted(constraint.userId!)"

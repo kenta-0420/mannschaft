@@ -3,7 +3,7 @@ import type { MemberInfoResponseMeItem } from '~/types/memberInfo'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
 }>()
 
 const { t } = useI18n()

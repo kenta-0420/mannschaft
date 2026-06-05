@@ -77,12 +77,12 @@ const filteredOrgs = computed(() => {
     const def = foldersStore.defaultFolderFor('ORGANIZATION')
     if (!def) return all
     const idSet = new Set(def.itemScopeIds)
-    return all.filter(o => idSet.has(o.id))
+    return all.filter(o => idSet.has(String(o.id)))
   }
   const folder = foldersStore.foldersFor('ORGANIZATION').find(f => f.id === v)
   if (!folder) return []
   const idSet = new Set(folder.itemScopeIds)
-  return all.filter(o => idSet.has(o.id))
+  return all.filter(o => idSet.has(String(o.id)))
 })
 
 const isManageView = computed(() => currentFolderId.value === 'manage')

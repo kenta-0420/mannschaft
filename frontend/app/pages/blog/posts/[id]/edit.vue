@@ -15,7 +15,7 @@ const title = ref(route.query.title ? String(route.query.title) : '')
 const body = ref('')
 const status = ref('DRAFT')
 const scopeType = ref<string | null>(route.query.scopeType ? String(route.query.scopeType) : null)
-const scopeId = ref<number | null>(route.query.scopeId ? Number(route.query.scopeId) : null)
+const scopeId = ref<string | null>(route.query.scopeId ? String(route.query.scopeId) : null)
 const rejectionReason = ref<string | null>(null)
 const loading = ref(true)
 const saving = ref(false)
@@ -90,7 +90,8 @@ async function load() {
     body.value = rawBody === '.' ? '' : rawBody
     status.value = post.meta?.status ?? 'DRAFT'
     scopeType.value = post.scope?.organizationId ? 'ORGANIZATION' : post.scope?.teamId ? 'TEAM' : null
-    scopeId.value = post.scope?.organizationId ?? post.scope?.teamId ?? null
+    const rawScopeId = post.scope?.organizationId ?? post.scope?.teamId ?? null
+    scopeId.value = rawScopeId != null ? String(rawScopeId) : null
     rejectionReason.value = (post as unknown as Record<string, unknown>).rejectionReason as string | null ?? null
   } catch {
     // タイトルはクエリパラメータから引き継いでいるので画面表示は継続

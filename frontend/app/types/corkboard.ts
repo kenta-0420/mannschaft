@@ -31,7 +31,7 @@ export type CardType = 'NOTE' | 'IMAGE' | 'LINK' | 'CHECKLIST' | 'FILE'
 export interface CorkboardResponse {
   id: number
   scopeType: 'PERSONAL' | 'TEAM' | 'ORGANIZATION'
-  scopeId: number | null
+  scopeId: string | null
   ownerId: number | null
   name: string
   backgroundStyle: string | null
@@ -110,7 +110,7 @@ export type CorkboardCardSize = 'SMALL' | 'MEDIUM' | 'LARGE'
 export interface CorkboardSummary {
   id: number
   scopeType: CorkboardScope
-  scopeId: number | null
+  scopeId: string | null
   ownerId: number | null
   name: string
   backgroundStyle: CorkboardBackgroundStyle | string
@@ -364,7 +364,7 @@ export interface CorkboardEventPayload {
 export interface CorkboardDetail {
   id: number
   scopeType: CorkboardScope
-  scopeId: number | null
+  scopeId: string | null
   ownerId: number | null
   name: string
   backgroundStyle: CorkboardBackgroundStyle | string

@@ -58,7 +58,7 @@ export function useBulletinReplies() {
   // === Scoped Replies ===
   async function getScopedReplies(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     threadId: number,
     params?: { page?: number; size?: number },
   ) {
@@ -72,7 +72,7 @@ export function useBulletinReplies() {
 
   async function createScopedReply(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     threadId: number,
     body: string,
   ) {
@@ -87,7 +87,7 @@ export function useBulletinReplies() {
 
   async function updateScopedReply(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     threadId: number,
     replyId: number,
     body: string,
@@ -103,7 +103,7 @@ export function useBulletinReplies() {
 
   async function deleteScopedReply(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     threadId: number,
     replyId: number,
   ) {

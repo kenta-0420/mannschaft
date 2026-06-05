@@ -5,7 +5,7 @@ export type ReadTrackingMode = 'NONE' | 'COUNT_ONLY' | 'SHOW_READERS'
 export interface BulletinCategory {
   id: number
   scopeType: BulletinScopeType
-  scopeId: number
+  scopeId: string
   name: string
   description: string | null
   displayOrder: number
@@ -19,7 +19,7 @@ export interface BulletinThreadResponse {
   categoryName: string | null
   categoryColor: string | null
   scopeType: BulletinScopeType
-  scopeId: number
+  scopeId: string
   author: { id: number; displayName: string; avatarUrl: string | null }
   title: string
   body: string

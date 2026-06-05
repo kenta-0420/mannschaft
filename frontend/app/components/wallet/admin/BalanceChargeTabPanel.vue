@@ -26,7 +26,7 @@ import { useToast } from 'primevue/usetoast'
 
 interface Props {
   cardId: string
-  orgId: number
+  orgId: string
 }
 
 const props = defineProps<Props>()

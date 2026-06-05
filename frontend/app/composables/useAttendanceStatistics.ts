@@ -1,7 +1,7 @@
 import { ref, type Ref } from 'vue'
 import type { MonthlyStatisticsResponse, StudentTermStatisticsResponse } from '~/types/school'
 
-export function useAttendanceStatistics(teamId: Ref<number>) {
+export function useAttendanceStatistics(teamId: Ref<string>) {
   const api = useAttendanceStatisticsApi()
   const { error: notifyError } = useNotification()
   const { t } = useI18n()

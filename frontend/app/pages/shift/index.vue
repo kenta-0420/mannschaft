@@ -64,7 +64,7 @@ async function load() {
   loading.value = true
   try {
     schedules.value = await listSchedules(
-      selectedTeamId.value,
+      String(selectedTeamId.value),
       fromDate.value || undefined,
       toDate.value || undefined,
     )
@@ -131,7 +131,7 @@ async function handleCreate() {
       requestDeadline: createForm.value.requestDeadline || undefined,
       note: createForm.value.note.trim() || undefined,
     }
-    await createSchedule(selectedTeamId.value, payload)
+    await createSchedule(String(selectedTeamId.value), payload)
     success(t('shift.index.createSuccess'))
     showCreateDialog.value = false
     createForm.value = { title: '', startDate: '', endDate: '', requestDeadline: '', note: '' }

@@ -2,7 +2,7 @@
 import type { CityResponse, PrefectureResponse } from '~/types/matching'
 
 interface Props {
-  teamId: number
+  teamId: string
   name: string
   nameKana: string | null
   nickname1: string | null

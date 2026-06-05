@@ -71,7 +71,7 @@ export const MVP_VISIBILITY_SCOPES: VisibilityScope[] = [
 
 /** BE: {@code CreateJobPostingRequest} */
 export interface CreateJobPostingRequest {
-  teamId: number
+  teamId: string
   title: string
   description: string
   category?: string | null

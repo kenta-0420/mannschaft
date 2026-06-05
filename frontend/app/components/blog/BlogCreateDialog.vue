@@ -8,16 +8,16 @@ const orgStore = useOrganizationStore()
 const notification = useNotification()
 
 const creating = ref(false)
-const form = ref({ title: '', scopeType: 'PERSONAL', scopeId: null as number | null })
+const form = ref({ title: '', scopeType: 'PERSONAL', scopeId: null as string | null })
 
 const scopeOptions = computed(() => {
-  const opts: Array<{ label: string; scopeType: string; scopeId: number | null }> = [
+  const opts: Array<{ label: string; scopeType: string; scopeId: string | null }> = [
     { label: '個人', scopeType: 'PERSONAL', scopeId: null },
   ]
   for (const t of teamStore.myTeams)
-    opts.push({ label: `チーム: ${t.nickname1 || t.name}`, scopeType: 'TEAM', scopeId: t.id })
+    opts.push({ label: `チーム: ${t.nickname1 || t.name}`, scopeType: 'TEAM', scopeId: String(t.id) })
   for (const o of orgStore.myOrganizations)
-    opts.push({ label: `組織: ${o.nickname1 || o.name}`, scopeType: 'ORGANIZATION', scopeId: o.id })
+    opts.push({ label: `組織: ${o.nickname1 || o.name}`, scopeType: 'ORGANIZATION', scopeId: String(o.id) })
   return opts
 })
 

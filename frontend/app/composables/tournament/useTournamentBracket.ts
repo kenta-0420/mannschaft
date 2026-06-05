@@ -11,16 +11,16 @@ import type {
 
 export function useTournamentBracket() {
   const api = useApi()
-  const b = (orgId: number) => `/api/v1/organizations/${orgId}`
+  const b = (orgId: string) => `/api/v1/organizations/${orgId}`
 
   // === Matchdays ===
-  async function getMatchdays(orgId: number, tId: number, divId: number) {
+  async function getMatchdays(orgId: string, tId: number, divId: number) {
     return api<{ data: TournamentMatchday[] }>(
       `${b(orgId)}/tournaments/${tId}/divisions/${divId}/matchdays`,
     )
   }
   async function createMatchday(
-    orgId: number,
+    orgId: string,
     tId: number,
     divId: number,
     body: Record<string, unknown>,
@@ -30,13 +30,13 @@ export function useTournamentBracket() {
       body,
     })
   }
-  async function generateMatchdays(orgId: number, tId: number, divId: number) {
+  async function generateMatchdays(orgId: string, tId: number, divId: number) {
     return api(`${b(orgId)}/tournaments/${tId}/divisions/${divId}/matchdays/generate`, {
       method: 'POST',
     })
   }
   async function batchUpdateScores(
-    orgId: number,
+    orgId: string,
     tId: number,
     divId: number,
     mdId: number,
@@ -48,7 +48,7 @@ export function useTournamentBracket() {
     })
   }
   async function importScores(
-    orgId: number,
+    orgId: string,
     tId: number,
     divId: number,
     mdId: number,
@@ -61,21 +61,21 @@ export function useTournamentBracket() {
   }
 
   // === Matrix ===
-  async function getMatrix(orgId: number, tId: number, divId: number) {
+  async function getMatrix(orgId: string, tId: number, divId: number) {
     return api<{ data: TournamentMatrix }>(
       `${b(orgId)}/tournaments/${tId}/divisions/${divId}/matrix`,
     )
   }
-  async function getMatrixPdf(orgId: number, tId: number, divId: number) {
+  async function getMatrixPdf(orgId: string, tId: number, divId: number) {
     return api<Blob>(`${b(orgId)}/tournaments/${tId}/divisions/${divId}/matrix/pdf`)
   }
 
   // === Matches ===
-  async function getMatch(orgId: number, tId: number, matchId: number) {
+  async function getMatch(orgId: string, tId: number, matchId: number) {
     return api<{ data: TournamentMatch }>(`${b(orgId)}/tournaments/${tId}/matches/${matchId}`)
   }
   async function updateMatchScore(
-    orgId: number,
+    orgId: string,
     tId: number,
     matchId: number,
     body: Record<string, unknown>,
@@ -83,7 +83,7 @@ export function useTournamentBracket() {
     return api(`${b(orgId)}/tournaments/${tId}/matches/${matchId}/score`, { method: 'PATCH', body })
   }
   async function updateMatchStatus(
-    orgId: number,
+    orgId: string,
     tId: number,
     matchId: number,
     body: Record<string, unknown>,
@@ -94,7 +94,7 @@ export function useTournamentBracket() {
     })
   }
   async function updatePlayerStats(
-    orgId: number,
+    orgId: string,
     tId: number,
     matchId: number,
     body: Record<string, unknown>,
@@ -106,13 +106,13 @@ export function useTournamentBracket() {
   }
 
   // === Rosters ===
-  async function getRosters(orgId: number, tId: number, matchId: number) {
+  async function getRosters(orgId: string, tId: number, matchId: number) {
     return api<{ data: TournamentRoster[] }>(
       `${b(orgId)}/tournaments/${tId}/matches/${matchId}/rosters`,
     )
   }
   async function addRoster(
-    orgId: number,
+    orgId: string,
     tId: number,
     matchId: number,
     body: Record<string, unknown>,
@@ -122,35 +122,35 @@ export function useTournamentBracket() {
       body,
     })
   }
-  async function removeRoster(orgId: number, tId: number, matchId: number, rosterId: number) {
+  async function removeRoster(orgId: string, tId: number, matchId: number, rosterId: number) {
     return api(`${b(orgId)}/tournaments/${tId}/matches/${matchId}/rosters/${rosterId}`, {
       method: 'DELETE',
     })
   }
 
   // === Standings ===
-  async function getStandings(orgId: number, tId: number, divId: number) {
+  async function getStandings(orgId: string, tId: number, divId: number) {
     return api<{ data: TournamentStanding[] }>(
       `${b(orgId)}/tournaments/${tId}/divisions/${divId}/standings`,
     )
   }
-  async function getStandingsPdf(orgId: number, tId: number, divId: number) {
+  async function getStandingsPdf(orgId: string, tId: number, divId: number) {
     return api<Blob>(`${b(orgId)}/tournaments/${tId}/divisions/${divId}/standings/pdf`)
   }
-  async function recalculateStandings(orgId: number, tId: number, divId: number) {
+  async function recalculateStandings(orgId: string, tId: number, divId: number) {
     return api(`${b(orgId)}/tournaments/${tId}/divisions/${divId}/standings/recalculate`, {
       method: 'POST',
     })
   }
 
   // === Promotions ===
-  async function getPromotions(orgId: number, tId: number) {
+  async function getPromotions(orgId: string, tId: number) {
     return api<{ data: PromotionRecord[] }>(`${b(orgId)}/tournaments/${tId}/promotions`)
   }
-  async function createPromotion(orgId: number, tId: number, body: Record<string, unknown>) {
+  async function createPromotion(orgId: string, tId: number, body: Record<string, unknown>) {
     return api(`${b(orgId)}/tournaments/${tId}/promotions`, { method: 'POST', body })
   }
-  async function previewPromotions(orgId: number, tId: number) {
+  async function previewPromotions(orgId: string, tId: number) {
     return api<{ data: PromotionRecord[] }>(
       `${b(orgId)}/tournaments/${tId}/promotions/preview`,
       { method: 'POST' },
@@ -158,18 +158,18 @@ export function useTournamentBracket() {
   }
 
   // === Rankings ===
-  async function getRankings(orgId: number, tId: number) {
+  async function getRankings(orgId: string, tId: number) {
     return api<{ data: IndividualRanking[] }>(`${b(orgId)}/tournaments/${tId}/rankings`)
   }
-  async function getIndividualRankings(orgId: number, tId: number, statKey: string) {
+  async function getIndividualRankings(orgId: string, tId: number, statKey: string) {
     return api<{ data: IndividualRanking[] }>(`${b(orgId)}/tournaments/${tId}/rankings/${statKey}`)
   }
-  async function getRankingsPdf(orgId: number, tId: number, statKey: string) {
+  async function getRankingsPdf(orgId: string, tId: number, statKey: string) {
     return api<Blob>(`${b(orgId)}/tournaments/${tId}/rankings/${statKey}/pdf`)
   }
 
   // === Bracket PDF ===
-  async function getBracketPdf(orgId: number, tId: number) {
+  async function getBracketPdf(orgId: string, tId: number) {
     return api<Blob>(`${b(orgId)}/tournaments/${tId}/bracket/pdf`)
   }
 

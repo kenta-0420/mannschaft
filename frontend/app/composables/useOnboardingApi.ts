@@ -8,7 +8,7 @@ import type {
 export function useOnboardingApi() {
   const api = useApi()
 
-  function buildScopeBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildScopeBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team'
       ? `/api/v1/teams/${scopeId}`
       : `/api/v1/organizations/${scopeId}`
@@ -23,7 +23,7 @@ export function useOnboardingApi() {
 
   // --- テンプレート管理 ---
 
-  async function listTemplates(scopeType: 'team' | 'organization', scopeId: number) {
+  async function listTemplates(scopeType: 'team' | 'organization', scopeId: string) {
     const base = buildScopeBase(scopeType, scopeId)
     const res = await api<{ data: OnboardingTemplate[] }>(`${base}/onboarding/templates`)
     return res.data
@@ -31,7 +31,7 @@ export function useOnboardingApi() {
 
   async function createTemplate(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: CreateTemplateRequest,
   ) {
     const base = buildScopeBase(scopeType, scopeId)
@@ -79,7 +79,7 @@ export function useOnboardingApi() {
 
   // --- 進捗管理（ADMIN） ---
 
-  async function listProgresses(scopeType: 'team' | 'organization', scopeId: number) {
+  async function listProgresses(scopeType: 'team' | 'organization', scopeId: string) {
     const base = buildScopeBase(scopeType, scopeId)
     const res = await api<{ data: OnboardingProgress[] }>(`${base}/onboarding/progresses`)
     return res.data
@@ -106,7 +106,7 @@ export function useOnboardingApi() {
     })
   }
 
-  async function sendReminder(scopeType: 'team' | 'organization', scopeId: number) {
+  async function sendReminder(scopeType: 'team' | 'organization', scopeId: string) {
     const base = buildScopeBase(scopeType, scopeId)
     await api(`${base}/onboarding/remind`, { method: 'POST' })
   }

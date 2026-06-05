@@ -4,7 +4,7 @@ export type GalleryProcessingStatus = 'PENDING' | 'PROCESSING' | 'READY' | 'FAIL
 export interface GalleryAlbum {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   title: string
   description: string | null
   coverPhotoUrl: string | null

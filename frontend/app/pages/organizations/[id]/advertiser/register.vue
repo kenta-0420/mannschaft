@@ -4,7 +4,7 @@ import type { BillingMethod } from '~/types/advertiser'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
 const router = useRouter()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const advertiserApi = useAdvertiserApi()
 const { success, error: showError } = useNotification()
 

@@ -158,7 +158,7 @@ export type FamilyNoticeReason =
 export type FamilyNoticeStatus = 'PENDING' | 'ACKNOWLEDGED' | 'APPLIED'
 
 export interface FamilyAttendanceNoticeRequest {
-  teamId: number
+  teamId: string
   studentUserId: number
   attendanceDate: string
   noticeType: FamilyNoticeType

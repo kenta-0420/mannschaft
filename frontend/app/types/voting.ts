@@ -8,7 +8,7 @@ export type DelegationStatus = 'SUBMITTED' | 'ACCEPTED' | 'REJECTED' | 'CANCELLE
 export interface VoteSessionResponse {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   title: string
   description: string | null
   votingMode: VotingMode

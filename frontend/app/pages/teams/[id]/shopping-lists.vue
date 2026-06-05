@@ -4,7 +4,7 @@ import type { ShoppingListResponse } from '~/types/shopping-list'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
 const shoppingApi = useShoppingListApi()
 const { showError } = useNotification()

@@ -12,7 +12,7 @@ export interface DismissalReminderTarget {
   /** イベント表示名（subtitle 優先、なければ slug）。 */
   eventName: string
   /** チームID（scopeType=TEAM 時の scopeId）。 */
-  teamId: number
+  teamId: string
   /** チーム名。 */
   teamName: string
   /** スケジュールの終了予定時刻（ISO-8601）。 */

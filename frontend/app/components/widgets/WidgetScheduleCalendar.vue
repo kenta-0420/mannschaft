@@ -3,7 +3,7 @@ import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
 }>()
 
 interface ScheduleApiItem {

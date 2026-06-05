@@ -36,7 +36,8 @@ export interface OrgTimestampsDto {
 }
 
 export interface OrganizationResponse {
-  id: number
+  /** UUID（public_id）。URLに使用する string 型。BE PR #1331 対応 */
+  id: string
   basicInfo?: OrgBasicInfoDto
   hierarchy?: OrgHierarchyDto
   location?: OrgLocationDto

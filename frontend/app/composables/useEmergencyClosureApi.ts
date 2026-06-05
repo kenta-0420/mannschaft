@@ -88,12 +88,12 @@ export interface ClosureConfirmationsResponse {
 export function useEmergencyClosureApi() {
   const api = useApi()
 
-  function base(teamId: number) {
+  function base(teamId: string) {
     return `/api/v1/teams/${teamId}`
   }
 
   async function previewClosure(
-    teamId: number,
+    teamId: string,
     startDate: string,
     endDate: string,
     startTime: string | null = null,
@@ -109,24 +109,24 @@ export function useEmergencyClosureApi() {
     return api<ClosurePreviewResponse>(`${base(teamId)}/emergency-closures/preview?${query}`)
   }
 
-  async function sendClosure(teamId: number, body: ClosureSendBody) {
+  async function sendClosure(teamId: string, body: ClosureSendBody) {
     return api<ClosureSendResponse>(`${base(teamId)}/emergency-closures`, {
       method: 'POST',
       body,
     })
   }
 
-  async function listClosures(teamId: number) {
+  async function listClosures(teamId: string) {
     return api<ClosureHistoryResponse>(`${base(teamId)}/emergency-closures`)
   }
 
-  async function confirmClosure(teamId: number, closureId: number) {
+  async function confirmClosure(teamId: string, closureId: number) {
     return api<undefined>(`${base(teamId)}/emergency-closures/${closureId}/confirm`, {
       method: 'POST',
     })
   }
 
-  async function getConfirmations(teamId: number, closureId: number) {
+  async function getConfirmations(teamId: string, closureId: number) {
     return api<ClosureConfirmationsResponse>(
       `${base(teamId)}/emergency-closures/${closureId}/confirmations`,
     )

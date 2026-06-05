@@ -2,7 +2,7 @@ import type { TicketProductResponse, TicketBookResponse, TicketStats } from '~/t
 
 export function useTicketApi() {
   const api = useApi()
-  const b = (teamId: number) => `/api/v1/teams/${teamId}`
+  const b = (teamId: string) => `/api/v1/teams/${teamId}`
 
   function buildQuery(params?: Record<string, unknown>): string {
     const q = new URLSearchParams()
@@ -14,22 +14,22 @@ export function useTicketApi() {
   }
 
   // === Products ===
-  async function getProducts(teamId: number) {
+  async function getProducts(teamId: string) {
     return api<{ data: TicketProductResponse[] }>(`${b(teamId)}/ticket-products`)
   }
-  async function createProduct(teamId: number, body: Record<string, unknown>) {
+  async function createProduct(teamId: string, body: Record<string, unknown>) {
     return api<{ data: TicketProductResponse }>(`${b(teamId)}/ticket-products`, {
       method: 'POST',
       body,
     })
   }
-  async function updateProduct(teamId: number, productId: number, body: Record<string, unknown>) {
+  async function updateProduct(teamId: string, productId: number, body: Record<string, unknown>) {
     return api(`${b(teamId)}/ticket-products/${productId}`, { method: 'PUT', body })
   }
-  async function deleteProduct(teamId: number, productId: number) {
+  async function deleteProduct(teamId: string, productId: number) {
     return api(`${b(teamId)}/ticket-products/${productId}`, { method: 'DELETE' })
   }
-  async function checkoutProduct(teamId: number, productId: number) {
+  async function checkoutProduct(teamId: string, productId: number) {
     return api<{ data: { checkoutUrl: string } }>(
       `${b(teamId)}/ticket-products/${productId}/checkout`,
       { method: 'POST' },
@@ -37,66 +37,66 @@ export function useTicketApi() {
   }
 
   // === Books ===
-  async function getBooks(teamId: number, params?: Record<string, unknown>) {
+  async function getBooks(teamId: string, params?: Record<string, unknown>) {
     const qs = buildQuery(params)
     return api<{ data: TicketBookResponse[] }>(`${b(teamId)}/ticket-books?${qs}`)
   }
-  async function getBook(teamId: number, bookId: number) {
+  async function getBook(teamId: string, bookId: number) {
     return api<{ data: TicketBookResponse }>(`${b(teamId)}/ticket-books/${bookId}`)
   }
-  async function issueBook(teamId: number, body: Record<string, unknown>) {
+  async function issueBook(teamId: string, body: Record<string, unknown>) {
     return api<{ data: TicketBookResponse }>(`${b(teamId)}/ticket-books/issue`, {
       method: 'POST',
       body,
     })
   }
-  async function extendBook(teamId: number, bookId: number, body: Record<string, unknown>) {
+  async function extendBook(teamId: string, bookId: number, body: Record<string, unknown>) {
     return api(`${b(teamId)}/ticket-books/${bookId}/extend`, { method: 'PATCH', body })
   }
-  async function refundBook(teamId: number, bookId: number, body?: Record<string, unknown>) {
+  async function refundBook(teamId: string, bookId: number, body?: Record<string, unknown>) {
     return api(`${b(teamId)}/ticket-books/${bookId}/refund`, { method: 'POST', body })
   }
 
   // === Consumption ===
-  async function consumeTicket(teamId: number, bookId: number, body?: Record<string, unknown>) {
+  async function consumeTicket(teamId: string, bookId: number, body?: Record<string, unknown>) {
     return api(`${b(teamId)}/ticket-books/${bookId}/consume`, { method: 'POST', body })
   }
-  async function bulkConsume(teamId: number, body: Record<string, unknown>) {
+  async function bulkConsume(teamId: string, body: Record<string, unknown>) {
     return api(`${b(teamId)}/ticket-books/bulk-consume`, { method: 'POST', body })
   }
-  async function consumeByQr(teamId: number, body: Record<string, unknown>) {
+  async function consumeByQr(teamId: string, body: Record<string, unknown>) {
     return api(`${b(teamId)}/ticket-books/consume-by-qr`, { method: 'POST', body })
   }
-  async function voidConsumption(teamId: number, bookId: number, consumptionId: number) {
+  async function voidConsumption(teamId: string, bookId: number, consumptionId: number) {
     return api(`${b(teamId)}/ticket-books/${bookId}/void/${consumptionId}`, { method: 'POST' })
   }
 
   // === Stats ===
-  async function getStats(teamId: number) {
+  async function getStats(teamId: string) {
     return api<{ data: TicketStats }>(`${b(teamId)}/ticket-books/stats`)
   }
-  async function exportStats(teamId: number, params?: Record<string, unknown>) {
+  async function exportStats(teamId: string, params?: Record<string, unknown>) {
     const qs = buildQuery(params)
     return api(`${b(teamId)}/ticket-books/stats/export?${qs}`)
   }
-  async function getUserTicketSummary(teamId: number, userId: number) {
+  async function getUserTicketSummary(teamId: string, userId: number) {
     return api(`${b(teamId)}/users/${userId}/ticket-summary`)
   }
 
   // === My Tickets ===
-  async function getMyTickets(teamId: number) {
+  async function getMyTickets(teamId: string) {
     return api<{ data: TicketBookResponse[] }>(`${b(teamId)}/my-tickets`)
   }
-  async function getMyTicketsWidget(teamId: number) {
+  async function getMyTicketsWidget(teamId: string) {
     return api(`${b(teamId)}/my-tickets/widget`)
   }
-  async function getMyTicket(teamId: number, bookId: number) {
+  async function getMyTicket(teamId: string, bookId: number) {
     return api<{ data: TicketBookResponse }>(`${b(teamId)}/my-tickets/${bookId}`)
   }
-  async function getMyTicketQr(teamId: number, bookId: number) {
+  async function getMyTicketQr(teamId: string, bookId: number) {
     return api(`${b(teamId)}/my-tickets/${bookId}/qr`)
   }
-  async function getMyTicketReceipt(teamId: number, bookId: number) {
+  async function getMyTicketReceipt(teamId: string, bookId: number) {
     return api(`${b(teamId)}/my-tickets/${bookId}/receipt`)
   }
 

@@ -11,11 +11,11 @@ export interface AliasEntry {
 export function useRoleAliasApi() {
   const api = useApi()
 
-  async function getRoleAliases(teamId: number) {
+  async function getRoleAliases(teamId: string) {
     return api<{ data: RoleAliasResponse[] }>(`/api/v1/teams/${teamId}/role-aliases`)
   }
 
-  async function updateRoleAliases(teamId: number, aliases: AliasEntry[]) {
+  async function updateRoleAliases(teamId: string, aliases: AliasEntry[]) {
     return api(`/api/v1/teams/${teamId}/role-aliases`, { method: 'PUT', body: { aliases } })
   }
 

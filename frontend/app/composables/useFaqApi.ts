@@ -20,12 +20,12 @@ export function useFaqApi() {
   const api = useApi()
 
   /** チームの FAQ 編集ペイロードを取得する（ADMIN / SYSTEM_ADMIN 限定）。 */
-  async function fetchTeamFaqEditor(teamId: number): Promise<FaqEditorResponse> {
+  async function fetchTeamFaqEditor(teamId: string): Promise<FaqEditorResponse> {
     return api<FaqEditorResponse>(`/api/v1/admin/teams/${teamId}/faqs`)
   }
 
   /** チームの FAQ を一括 upsert する（ADMIN / SYSTEM_ADMIN 限定。成功 204）。 */
-  async function saveTeamFaqs(teamId: number, req: SaveFaqRequest): Promise<void> {
+  async function saveTeamFaqs(teamId: string, req: SaveFaqRequest): Promise<void> {
     await api(`/api/v1/admin/teams/${teamId}/faqs`, {
       method: 'PUT',
       body: req,
@@ -33,12 +33,12 @@ export function useFaqApi() {
   }
 
   /** 組織の FAQ 編集ペイロードを取得する（ADMIN / SYSTEM_ADMIN 限定）。 */
-  async function fetchOrgFaqEditor(orgId: number): Promise<FaqEditorResponse> {
+  async function fetchOrgFaqEditor(orgId: string): Promise<FaqEditorResponse> {
     return api<FaqEditorResponse>(`/api/v1/admin/organizations/${orgId}/faqs`)
   }
 
   /** 組織の FAQ を一括 upsert する（ADMIN / SYSTEM_ADMIN 限定。成功 204）。 */
-  async function saveOrgFaqs(orgId: number, req: SaveFaqRequest): Promise<void> {
+  async function saveOrgFaqs(orgId: string, req: SaveFaqRequest): Promise<void> {
     await api(`/api/v1/admin/organizations/${orgId}/faqs`, {
       method: 'PUT',
       body: req,
@@ -49,12 +49,12 @@ export function useFaqApi() {
    * チームの公開 FAQ 一覧を取得する（認証不要）。
    * PRIVATE / 不在 / 削除済みは 404（IDOR 対策）。
    */
-  async function fetchPublicTeamFaqs(teamId: number): Promise<PublicFaqItem[]> {
+  async function fetchPublicTeamFaqs(teamId: string): Promise<PublicFaqItem[]> {
     return api<PublicFaqItem[]>(`/api/v1/public/teams/${teamId}/faqs`)
   }
 
   /** 組織の公開 FAQ 一覧を取得する（認証不要）。 */
-  async function fetchPublicOrgFaqs(orgId: number): Promise<PublicFaqItem[]> {
+  async function fetchPublicOrgFaqs(orgId: string): Promise<PublicFaqItem[]> {
     return api<PublicFaqItem[]>(`/api/v1/public/organizations/${orgId}/faqs`)
   }
 

@@ -127,8 +127,8 @@ function goFolder(folderId: number) {
 }
 
 /** フォルダ内のスコープ一覧を返す。 */
-function scopesInFolder(folder: { itemScopeIds: number[] }): NavScopeItem[] {
-  return myScopes.value.filter(s => folder.itemScopeIds.includes(s.id))
+function scopesInFolder(folder: { itemScopeIds: string[] }): NavScopeItem[] {
+  return myScopes.value.filter(s => folder.itemScopeIds.includes(String(s.id)))
 }
 
 /** 未分類フォルダへ遷移（`?folder=default`）。 */

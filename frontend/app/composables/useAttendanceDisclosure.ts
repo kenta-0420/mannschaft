@@ -18,7 +18,7 @@ export function useAttendanceDisclosure() {
   const loadingInbox = ref(false)
 
   async function executeDisclose(
-    teamId: number,
+    teamId: string,
     evaluationId: number,
     req: DisclosureRequest,
     onSuccess?: () => void,
@@ -36,7 +36,7 @@ export function useAttendanceDisclosure() {
   }
 
   async function executeWithhold(
-    teamId: number,
+    teamId: string,
     evaluationId: number,
     req: WithholdRequest,
     onSuccess?: () => void,
@@ -53,7 +53,7 @@ export function useAttendanceDisclosure() {
     }
   }
 
-  async function loadDisclosureHistory(teamId: number, evaluationId: number): Promise<void> {
+  async function loadDisclosureHistory(teamId: string, evaluationId: number): Promise<void> {
     loadingHistory.value = true
     try {
       disclosureHistory.value = await disclosureApi.getDisclosureHistory(teamId, evaluationId)

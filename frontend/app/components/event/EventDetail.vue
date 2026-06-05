@@ -11,7 +11,7 @@ const { formatDateTime: formatIsoDateTime } = useDatetime()
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   eventId: number
   canEdit: boolean
 }>()
@@ -50,7 +50,7 @@ const {
 
 // F03.12 Phase 10 §16 解散通知ステータス
 // scopeType=team の場合のみ取得する（イベント解散通知はチーム配下のイベントのみ対応）。
-const teamIdRef = computed(() => (props.scopeType === 'team' ? props.scopeId : 0))
+const teamIdRef = computed(() => (props.scopeType === 'team' ? props.scopeId : ''))
 const eventIdRef = computed(() => props.eventId)
 const { status: dismissalStatus, loadStatus: loadDismissalStatus } = useDismissal(
   teamIdRef,

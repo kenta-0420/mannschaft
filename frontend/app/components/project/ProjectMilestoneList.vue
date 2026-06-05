@@ -8,7 +8,7 @@ const props = withDefaults(
     canEdit: boolean
     canForceUnlock?: boolean
     todos?: TodoResponse[]
-    teamId?: number | null
+    teamId?: string | null
     projectId?: number
   }>(),
   {

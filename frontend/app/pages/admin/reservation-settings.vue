@@ -4,7 +4,7 @@ import type { ReservationLineResponse } from '~/types/reservation'
 definePageMeta({ middleware: 'auth' })
 
 const scopeStore = useScopeStore()
-const scopeId = computed(() => scopeStore.current.id ?? 0)
+const scopeId = computed(() => scopeStore.current.id ?? '')
 const scopeType = computed((): 'TEAM' | 'ORGANIZATION' =>
   scopeStore.current.type === 'organization' ? 'ORGANIZATION' : 'TEAM',
 )

@@ -4,7 +4,7 @@ import type { components } from '~/types/generated/index'
 
 export type LeagueTransferResponse = components['schemas']['LeagueTransferResponse']
 
-export function useTeamLeagueTransfer(teamId: number) {
+export function useTeamLeagueTransfer(teamId: string) {
   const api = useApi()
 
   /**

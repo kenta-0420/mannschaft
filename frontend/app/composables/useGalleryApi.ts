@@ -3,7 +3,7 @@ import type { GalleryAlbum, GalleryPhoto } from '~/types/gallery'
 export function useGalleryApi() {
   const api = useApi()
 
-  async function getAlbums(scopeType: string, scopeId: number) {
+  async function getAlbums(scopeType: string, scopeId: string) {
     return api<{ data: GalleryAlbum[] }>(
       `/api/v1/gallery/albums?scope_type=${scopeType}&scope_id=${scopeId}`,
     )

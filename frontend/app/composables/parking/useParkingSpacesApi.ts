@@ -4,11 +4,11 @@ import { buildBase } from './useParkingApiBase'
 export function useParkingSpacesApi() {
   const api = useApi()
 
-  async function getSpaces(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getSpaces(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: ParkingSpaceResponse[] }>(`${buildBase(scopeType, scopeId)}/parking/spaces`)
   }
 
-  async function getSpace(scopeType: 'team' | 'organization', scopeId: number, spaceId: number) {
+  async function getSpace(scopeType: 'team' | 'organization', scopeId: string, spaceId: number) {
     return api<{ data: ParkingSpaceResponse }>(
       `${buildBase(scopeType, scopeId)}/parking/spaces/${spaceId}`,
     )
@@ -16,7 +16,7 @@ export function useParkingSpacesApi() {
 
   async function createSpace(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: ParkingSpaceResponse }>(`${buildBase(scopeType, scopeId)}/parking/spaces`, {
@@ -27,7 +27,7 @@ export function useParkingSpacesApi() {
 
   async function updateSpace(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     spaceId: number,
     body: Record<string, unknown>,
   ) {
@@ -37,13 +37,13 @@ export function useParkingSpacesApi() {
     )
   }
 
-  async function deleteSpace(scopeType: 'team' | 'organization', scopeId: number, spaceId: number) {
+  async function deleteSpace(scopeType: 'team' | 'organization', scopeId: string, spaceId: number) {
     return api(`${buildBase(scopeType, scopeId)}/parking/spaces/${spaceId}`, { method: 'DELETE' })
   }
 
   async function bulkCreateSpaces(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/parking/spaces/bulk-create`, {
@@ -54,7 +54,7 @@ export function useParkingSpacesApi() {
 
   async function bulkAssignSpaces(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/parking/spaces/bulk-assign`, {
@@ -65,13 +65,13 @@ export function useParkingSpacesApi() {
 
   async function swapSpaces(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/parking/spaces/swap`, { method: 'POST', body })
   }
 
-  async function getVacantSpaces(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getVacantSpaces(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: ParkingSpaceResponse[] }>(
       `${buildBase(scopeType, scopeId)}/parking/spaces/vacant`,
     )
@@ -79,7 +79,7 @@ export function useParkingSpacesApi() {
 
   async function assignSpace(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     spaceId: number,
     body: Record<string, unknown>,
   ) {
@@ -91,7 +91,7 @@ export function useParkingSpacesApi() {
 
   async function releaseSpace(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     spaceId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/parking/spaces/${spaceId}/release`, {
@@ -101,7 +101,7 @@ export function useParkingSpacesApi() {
 
   async function setSpaceMaintenance(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     spaceId: number,
     body?: Record<string, unknown>,
   ) {
@@ -113,7 +113,7 @@ export function useParkingSpacesApi() {
 
   async function getSpaceHistory(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     spaceId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/parking/spaces/${spaceId}/history`)
@@ -121,7 +121,7 @@ export function useParkingSpacesApi() {
 
   async function getSpacePriceHistory(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     spaceId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/parking/spaces/${spaceId}/price-history`)
@@ -129,7 +129,7 @@ export function useParkingSpacesApi() {
 
   async function acceptApplicationsForSpace(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     spaceId: number,
     body: Record<string, unknown>,
   ) {

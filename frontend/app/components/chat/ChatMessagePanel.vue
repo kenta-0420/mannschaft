@@ -7,8 +7,8 @@ const props = defineProps<{
   channel: ChatChannelResponse
   canPin?: boolean
   canDelete?: boolean
-  teamId?: number
-  organizationId?: number
+  teamId?: string
+  organizationId?: string
 }>()
 
 const emit = defineEmits<{

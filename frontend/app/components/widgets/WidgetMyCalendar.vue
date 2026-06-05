@@ -11,7 +11,7 @@ interface EventDetail {
   allDay: boolean
   color?: string | null
   scopeType?: string
-  scopeId?: number
+  scopeId?: string
   scopeName?: string | null
   scopeIconUrl?: string | null
   attendanceRequired?: boolean
@@ -81,7 +81,7 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
       const ext = extendedEvents.value.find(e => e.id === eventId && !e.isPersonal)
       if (!ext) return
       const st = (ext.scopeType ?? '').toLowerCase() as 'team' | 'organization'
-      const sid = ext.scopeId ?? 0
+      const sid = ext.scopeId ?? ''
       const res = await scheduleApi.getSchedule(st, sid, eventId)
       const d = res.data as EventDetail & { createdByDisplayName?: string; myAttendanceStatus?: string }
       selectedEvent.value = {
@@ -225,7 +225,7 @@ onMounted(() => {
           attendanceStats: selectedEvent.attendanceStats ?? null,
         }"
         :scope-type="selectedEventIsPersonal ? 'team' : ((selectedEvent.scopeType ?? '').toLowerCase() as 'team' | 'organization')"
-        :scope-id="selectedEvent.scopeId ?? 0"
+        :scope-id="selectedEvent.scopeId ?? ''"
         :can-edit="true"
         :skip-delegations="selectedEventIsPersonal"
         :scope-name="selectedEvent.scopeName ?? null"
@@ -241,7 +241,7 @@ onMounted(() => {
       v-model:visible="showEditDialog"
       :schedule-id="selectedEventId"
       :scope-type="selectedEventIsPersonal ? 'team' : ((selectedEvent?.scopeType ?? '').toLowerCase() as 'team' | 'organization')"
-      :scope-id="selectedEvent?.scopeId ?? 0"
+      :scope-id="selectedEvent?.scopeId ?? ''"
       :is-personal="selectedEventIsPersonal"
       @saved="onSaved"
     />

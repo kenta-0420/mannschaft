@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
 }>()
 
 interface InviteToken {

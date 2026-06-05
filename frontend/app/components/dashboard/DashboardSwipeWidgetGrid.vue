@@ -19,7 +19,7 @@ import type {
 
 const props = defineProps<{
   scopeType: ScopeTabType
-  scopeId: number
+  scopeId: string
   /** GET /dashboard/{team|organization}/{id} のレスポンス。 */
   data: TeamDashboardResponse | OrgDashboardResponse
 }>()

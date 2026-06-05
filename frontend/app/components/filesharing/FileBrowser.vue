@@ -3,7 +3,7 @@ import type { SharedFolder, SharedFile } from '~/types/filesharing'
 
 const props = defineProps<{
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
 }>()
 
 const { getFolder, getFolders, getDownloadUrl, deleteFile, createFolder } = useFileSharingApi()

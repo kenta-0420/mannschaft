@@ -8,7 +8,7 @@ definePageMeta({
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const todoId = Number(route.params.todoId)
 const todoApi = useTodoApi()
 const labelApi = useTodoStatusLabelApi()

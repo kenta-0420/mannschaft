@@ -13,7 +13,7 @@ import type {
  *
  * @param teamId 自チーム ID
  */
-export function useFriendFeed(teamId: number) {
+export function useFriendFeed(teamId: string) {
   const api = useApi()
 
   const posts = ref<FriendFeedPost[]>([])

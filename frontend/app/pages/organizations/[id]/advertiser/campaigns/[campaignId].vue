@@ -8,7 +8,7 @@ import type {
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const campaignId = Number(route.params.campaignId)
 const advertiserApi = useAdvertiserApi()
 

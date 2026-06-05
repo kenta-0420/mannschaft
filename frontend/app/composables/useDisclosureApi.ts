@@ -27,7 +27,7 @@ import type {
  * 重要事項説明書 API。
  * @param organizationId 対象組織 ID（必須）。
  */
-export function useDisclosureApi(organizationId: number) {
+export function useDisclosureApi(organizationId: string) {
   const api = useApi()
   const draftBase = `/api/v1/organizations/${organizationId}/disclosure-drafts`
   const exportBase = `/api/v1/organizations/${organizationId}/disclosure-exports`

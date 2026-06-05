@@ -1,7 +1,7 @@
 // === Form Template ===
 export interface FormTemplateScopeDto {
   scopeType: string
-  scopeId: number
+  scopeId: string
 }
 export interface FormTemplateContentDto {
   name: string
@@ -112,7 +112,7 @@ export interface UpdateFormTemplateRequest {
 // === Form Submission ===
 export interface FormSubmissionScopeDto {
   scopeType: string
-  scopeId: number
+  scopeId: string
 }
 export interface FormSubmissionMetaDto {
   templateId: number
