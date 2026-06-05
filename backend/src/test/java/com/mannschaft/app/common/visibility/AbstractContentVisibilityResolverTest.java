@@ -326,26 +326,27 @@ class AbstractContentVisibilityResolverTest {
         }
 
         @Test
-        @DisplayName("ADMINS_AND_ABOVE は ADMIN/DEPUTY のみ可視・MEMBER は不可視（旧 ADMINS_ONLY と同挙動）")
+        @DisplayName("ADMINS_AND_ABOVE は hasRoleOrAbove(ADMIN) と同等（ADMIN 可視・MEMBER 不可視。旧 ADMINS_ONLY と同挙動）")
         void adminsAndAbove() {
             FakeProjection p = projection(1L, "TEAM", 100L, 999L,
                     FakeVisibility.ADMINS_AND_ABOVE);
             resolver.projections = List.of(p);
             ScopeKey scope = new ScopeKey("TEAM", 100L);
+            // ADMIN は可視
             when(membershipBatchQueryService.snapshotForUser(eq(2L), anySet(), anySet()))
                     .thenReturn(new UserScopeRoleSnapshot(false,
                             Map.of(scope, "ADMIN"), Map.of(), Set.of(), Set.of()));
-            when(membershipBatchQueryService.snapshotForUser(eq(3L), anySet(), anySet()))
-                    .thenReturn(new UserScopeRoleSnapshot(false,
-                            Map.of(scope, "DEPUTY_ADMIN"), Map.of(), Set.of(), Set.of()));
             // MEMBER は不可視
             when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
                     .thenReturn(new UserScopeRoleSnapshot(false,
                             Map.of(scope, "MEMBER"), Map.of(), Set.of(), Set.of()));
+            // SystemAdmin は高速パスで可視（参考）
+            when(membershipBatchQueryService.snapshotForUser(eq(1L), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.forSystemAdmin());
 
             assertThat(resolver.filterAccessible(List.of(1L), 2L)).containsExactly(1L);
-            assertThat(resolver.filterAccessible(List.of(1L), 3L)).containsExactly(1L);
             assertThat(resolver.filterAccessible(List.of(1L), 5L)).isEmpty();
+            assertThat(resolver.filterAccessible(List.of(1L), 1L)).containsExactly(1L);
         }
 
         @Test
