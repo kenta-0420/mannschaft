@@ -7,6 +7,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.GlobalExceptionHandler;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.schedule.CalendarSyncScopeType;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
@@ -59,6 +60,8 @@ class TeamScheduleControllerScheduledTaskTest {
     private ScheduleScheduledTaskService scheduledTaskService;
     @Mock
     private NameResolverService nameResolverService;
+    @Mock
+    private TeamService teamService;
 
     private MockMvc mockMvc;
 
@@ -73,7 +76,7 @@ class TeamScheduleControllerScheduledTaskTest {
         objectMapper.findAndRegisterModules();
         TeamScheduleController controller = new TeamScheduleController(
                 scheduleService, attendanceService, crossRefService,
-                reminderService, scheduledTaskService, nameResolverService);
+                reminderService, scheduledTaskService, nameResolverService, teamService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .setControllerAdvice(new GlobalExceptionHandler(new StaticMessageSource()))

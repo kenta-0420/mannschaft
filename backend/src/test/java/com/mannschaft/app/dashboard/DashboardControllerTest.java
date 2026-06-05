@@ -5,6 +5,9 @@ import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
+import com.mannschaft.app.dashboard.service.ScopeActionRequiredFacade;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.dashboard.controller.DashboardController;
@@ -54,6 +57,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -86,12 +90,17 @@ class DashboardControllerTest {
     @Mock private TeamRepository teamRepository;
     @Mock private OrganizationRepository organizationRepository;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
+    @Mock private TeamService teamService;
+    @Mock private OrganizationService organizationService;
+    @Mock private ScopeActionRequiredFacade scopeActionRequiredFacade;
 
     @InjectMocks
     private DashboardController dashboardController;
 
     private static final Long USER_ID = 1L;
+    private static final UUID TEAM_UUID = UUID.fromString("00000000-0000-7000-8000-00000000000a");
     private static final Long TEAM_ID = 10L;
+    private static final UUID ORG_UUID = UUID.fromString("00000000-0000-7000-8000-000000000014");
     private static final Long ORG_ID = 20L;
 
     @BeforeEach
@@ -148,6 +157,7 @@ class DashboardControllerTest {
         @DisplayName("正常系: チームダッシュボードが200で返る")
         void getTeamDashboard_正常_200() {
             // Given
+            given(teamService.resolveTeamId(TEAM_UUID)).willReturn(TEAM_ID);
             TeamDashboardResponse mockResponse = TeamDashboardResponse.builder()
                     .widgetSettings(List.of())
                     .teamNotices(List.of())
@@ -156,7 +166,7 @@ class DashboardControllerTest {
 
             // When
             ResponseEntity<ApiResponse<TeamDashboardResponse>> response =
-                    dashboardController.getTeamDashboard(TEAM_ID, "WEEK");
+                    dashboardController.getTeamDashboard(TEAM_UUID, "WEEK");
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -177,6 +187,7 @@ class DashboardControllerTest {
         @DisplayName("正常系: 組織ダッシュボードが200で返る")
         void getOrgDashboard_正常_200() {
             // Given
+            given(organizationService.resolveOrgId(ORG_UUID)).willReturn(ORG_ID);
             OrgDashboardResponse mockResponse = OrgDashboardResponse.builder()
                     .widgetSettings(List.of())
                     .orgTeamList(List.of())
@@ -185,7 +196,7 @@ class DashboardControllerTest {
 
             // When
             ResponseEntity<ApiResponse<OrgDashboardResponse>> response =
-                    dashboardController.getOrgDashboard(ORG_ID, "WEEK");
+                    dashboardController.getOrgDashboard(ORG_UUID, "WEEK");
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
