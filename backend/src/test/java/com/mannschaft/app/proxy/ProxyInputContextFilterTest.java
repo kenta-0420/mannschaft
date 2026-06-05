@@ -248,7 +248,8 @@ class ProxyInputContextFilterTest {
             filter.doFilterInternal(request, response, chain);
 
             assertThat(response.getStatus()).isEqualTo(HttpStatus.OK.value());
-            verify(proxyInputContext).activate(100L, 1L, "PAPER_FORM", "理事会金庫No.3");
+            // F08.9 P3b: 同意書スコープ集合を伴う 5 引数 activate に変更（スコープ未設定の consent は空集合）
+            verify(proxyInputContext).activate(100L, 1L, "PAPER_FORM", "理事会金庫No.3", java.util.Set.of());
         }
     }
 
