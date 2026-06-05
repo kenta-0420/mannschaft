@@ -39,6 +39,19 @@ public class ProxyInputContextFilter extends OncePerRequestFilter {
     static final String HEADER_PROXY_SOURCE = "X-Proxy-Input-Source";
     static final String HEADER_PROXY_STORAGE = "X-Proxy-Original-Storage";
 
+    /**
+     * 後見切替（GUARDIANSHIP_SWITCH）で activate する際の {@code originalStorageLocation} 固定値。
+     *
+     * <p>後見切替は紙原本を伴わないオンライン代理だが、{@code proxy_input_records.original_storage_location}
+     * は {@code NOT NULL}（V18.012）である。切替中に F14.1 代理入力 7 機能
+     * （survey/出欠/shift/announcement 既読/parking/circulation 押印）が発火すると、
+     * 各 Service の {@code buildAndSaveProxyInputRecord} が {@code context.getOriginalStorageLocation()} を
+     * そのまま列に書くため、ここで {@code null} を渡すと NOT NULL 制約違反で 500 になる。
+     * {@link com.mannschaft.app.auth.guardianship.GuardianshipSwitchService} の切替開始記録と
+     * 同一文言の固定値を入れて整合させる（03_security §3.2 二重記録）。</p>
+     */
+    static final String SWITCH_STORAGE_LOCATION_NA = "N/A (online guardianship switch)";
+
     private final ProxyInputConsentRepository proxyInputConsentRepository;
     private final ProxyInputContext proxyInputContext;
     private final ObjectMapper objectMapper;
@@ -191,9 +204,12 @@ public class ProxyInputContextFilter extends OncePerRequestFilter {
             }
             case ALLOWED -> {
                 // 後見切替は会費支払い・所属管理・プロフィール編集・閲覧のため PAYMENT スコープのみ付与
-                // （03_security §3.2「切替中に行えること」・最小権限）。consentId/storage は紙同意書がないため null。
+                // （03_security §3.2「切替中に行えること」・最小権限）。consentId は紙同意書がないため null。
+                // originalStorageLocation は NOT NULL 列のため固定値を渡す（null だと F14.1 代理入力で
+                // proxy_input_records 保存時に NOT NULL 制約違反 500 になる）。
                 proxyInputContext.activate(childUserId, null,
-                        ProxyInputRecordEntity.InputSource.GUARDIANSHIP_SWITCH.name(), null,
+                        ProxyInputRecordEntity.InputSource.GUARDIANSHIP_SWITCH.name(),
+                        SWITCH_STORAGE_LOCATION_NA,
                         java.util.Set.of(FeatureScope.PAYMENT));
                 log.debug("後見切替モード有効化: guardianUserId={}, childUserId={}", guardianUserId, childUserId);
                 chain.doFilter(request, response);

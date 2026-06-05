@@ -45,6 +45,16 @@ public class ProxyInputContext {
     public void activate(Long subjectUserId, Long consentId,
                          String inputSource, String originalStorageLocation,
                          Set<FeatureScope> scopes) {
+        // 防御的バリデーション（検分 P3c 🔵）。subjectUserId / inputSource は
+        // proxy_input_records の NOT NULL 列・enum 解決の前提となるため必須。
+        // consentId / originalStorageLocation は後見切替（GUARDIANSHIP_SWITCH）で
+        // null / 固定値を許容するため要求しない。
+        if (subjectUserId == null) {
+            throw new IllegalArgumentException("subjectUserId は必須です");
+        }
+        if (inputSource == null || inputSource.isBlank()) {
+            throw new IllegalArgumentException("inputSource は必須です");
+        }
         this.proxyMode = true;
         this.subjectUserId = subjectUserId;
         this.consentId = consentId;

@@ -77,7 +77,30 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
 - 監査：切替の開始/終了・代理操作を `audit_logs`（センシティブ）＋`proxy_input_records` に二重記録。`unconfirmedVisibility` 等は対象外。
   - **実装（P3c・2026-06-05）**：開始は `audit_logs`（`GUARDIANSHIP_SWITCH_STARTED`・userId=保護者/targetUserId=子）＋ `proxy_input_records`（consent_id=NULL・`input_source=GUARDIANSHIP_SWITCH`・`feature_scope=PAYMENT`）の二重記録。終了は `audit_logs`（`GUARDIANSHIP_SWITCH_ENDED`）のみ（ステートレスゆえ解除すべきサーバ状態なし）。`proxy_input_records.proxy_input_consent_id` の NULLABLE 化は V74.010（01_data_model §6 参照）。
 - 中学進学（年齢到達）で進行中の切替権原は**自動失効**（バッチ＋実行時ゲートの二重防御）。
-- **自立移行の引き継ぎ（P3c-2・2026-06-05）**：`POST /api/v1/me/guardianship/children/{childUserId}/handover/initiate` は保護者本人の権原で子のメールへパスワード設定リンクを送る操作であり、後見切替セッション（acting-as）とは無関係（`X-Proxy-For-User-Id` 無しで呼ぶ）。混乱・なりすまし経路を避けるため `AuthenticationCriticalOperationGuard.assertNotActingAs()` を適用し、acting-as 中の呼び出しは 403（`MEMBERSHIP_BILLING_003`）。認可は有効な保護者リンク（`isApprovedGuardian`/`isActiveParentWatcher`）のみで、他人の子は 403（`GUARDIANSHIP_LINK_NOT_FOUND`・IDOR 防止）。メール送付は F01.9 の `AuthPasswordResetService` を流用し F09.18 outbox 経由（`EmailService.sendEmail` 直呼びしない）。`independence-status`（`GET`）も同じ保護者リンク検証で IDOR を塞ぐ。
+- **自立移行の引き継ぎ（P3c-2・2026-06-05）**：`POST /api/v1/me/guardianship/children/{childUserId}/handover/initiate` は保護者本人の権原で子のメールへパスワード設定リンクを送る操作であり、後見切替セッション（acting-as）とは無関係（`X-Proxy-For-User-Id` 無しで呼ぶ）。混乱・なりすまし経路を避けるため `AuthenticationCriticalOperationGuard.assertNotActingAs()` を適用し、acting-as 中の呼び出しは 403（`MEMBERSHIP_BILLING_003`）。認可は有効な保護者リンク（`isApprovedGuardian`/`isActiveParentWatcher`）のみで、他人の子は 403（`GUARDIANSHIP_LINK_NOT_FOUND`・IDOR 防止）。メール送付は F01.9 の `AuthPasswordResetService` を流用し F09.18 outbox 経由（`EmailService.sendEmail` 直呼びしない）。
+  - **レート制限・トークン期限（検証・P3c）**：濫用防止は `AuthPasswordResetService.requestPasswordReset` 内部に集約。リクエスト元 IP 単位で Valkey（`mannschaft:auth:password_reset_attempt:<ip>`）にスライディングウィンドウ（**1 分間 3 回まで**）を持ち、超過時は 429 相当。発行リンクのトークンは **30 分**で失効。`GuardianshipHandoverService` は独自のレート制限・トークン管理を持たず、この基盤に一本化する（javadoc に明記）。
+  - `independence-status`（`GET`）も同じ保護者リンク検証で IDOR を塞ぐ。
+
+#### 3.2.1 切替中の F14.1 代理入力 7 機能の挙動（subject=子・GUARDIANSHIP_SWITCH 監査・consent_id=NULL）
+
+切替中（`isProxy()==true`・`consent_id=null`・`input_source=GUARDIANSHIP_SWITCH`）に、F14.1 由来の `isProxy()` 分岐を持つ 7 機能が発火すると、各 Service は **subject=子**として操作を実行し、`proxy_input_records` に GUARDIANSHIP_SWITCH 由来のレコードを追記する。これは §3.2「切替中に行えること（会費支払い・所属管理・参加補助・閲覧）」と整合し、**挙動は変えない**（F14.1 当初仕様の踏襲）。
+
+| 機能（Service） | featureScope | 切替中の subject | consent_id | input_source | 監査 |
+|---|---|---|---|---|---|
+| アンケート回答（`SurveyResponseService`） | `SURVEY`/`SCHEDULE_ATTENDANCE` | 子（`subjectUserId`） | NULL | GUARDIANSHIP_SWITCH | `proxy_input_records` 追記 |
+| 出欠回答（`ScheduleAttendanceService`） | `SCHEDULE_ATTENDANCE` | 子 | NULL | GUARDIANSHIP_SWITCH | 同上 |
+| シフト希望（`ShiftRequestService`） | `SHIFT_REQUEST` | 子 | NULL | GUARDIANSHIP_SWITCH | 同上 |
+| お知らせ既読（`AnnouncementReadService`／`AnnouncementCreationService`） | `ANNOUNCEMENT_READ` | 子 | NULL | GUARDIANSHIP_SWITCH | 同上 |
+| 駐車場申請（`ParkingApplicationService`） | `PARKING_APPLICATION` | 子 | NULL | GUARDIANSHIP_SWITCH | 同上 |
+| 回覧押印（`CirculationStampService`） | `CIRCULAR` | 子 | NULL | GUARDIANSHIP_SWITCH | 同上 |
+
+- **consent_id=NULL 耐性（検証・P3c）**：各 Service の `buildAndSaveProxyInputRecord` は `proxyInputContext.getConsentId()` を `Long` のまま扱い（プリミティブ unboxing なし・`@NotNull` なし）、Entity `proxyInputConsentId` は NULLABLE（V74.010）。冪等性チェック `findByProxyInputConsentIdAnd...(null, ...)` は `= NULL` で常に空ヒット＝切替由来は毎回新規追記（開始/終了が繰り返す意図どおり・UNIQUE KEY は NULL を distinct 扱い）。よって **NPE / 制約違反 / 500 は発生しない**。
+- **`original_storage_location` NOT NULL の根治（P3c・2026-06-05）**：当該列は `NOT NULL`（V18.012）。後見切替経路は紙原本がないが、`ProxyInputContextFilter.handleGuardianshipSwitch` が `activate(...)` の `originalStorageLocation` に **`null` ではなく固定値**（`"N/A (online guardianship switch)"`・`GuardianshipSwitchService` の切替開始記録と同一文言）を渡すことで、切替中に上記 7 機能が発火しても NOT NULL 制約違反 500 を起こさない。
+- **スコープ実検証（hasScope）は別フェーズ**：上記 7 機能の `isProxy()` 分岐は **要求スコープ（`hasScope(...)`）を検証していない**（F14.1 当初からの既存仕様）。切替時に付与されるのは `PAYMENT` スコープのみだが、これらの機能は `PAYMENT` を要求せず subject=子として実行される。`hasScope` の実検証導入は **F14.1 横断の別フェーズ**に送る（本 P3c では挙動を変えずドキュメント化のみ）。
+
+#### 3.2.2 ProxyInputContext を参照しない機能（チャット等）は保護者として実行されなりすましは発生しない
+
+切替は **JWT を再発行しない**（actor=保護者のまま）。`ProxyInputContext` を見ない機能（例：チャット送信は `ChatMessageService` 等が `SecurityUtils.getCurrentUserId()`＝JWT の保護者 ID を author に用いる）は、切替中でも**保護者本人として**実行・記録される。つまり「切替中に子名義でチャット送信する」ような**なりすましは構造的に発生しない**。`X-Proxy-For-User-Id` を消費するのは §3.2.1 の F14.1 経路と決済の代理払い判定（`PaymentAuthorizationService`）だけであり、それ以外は保護者の権原で動く。
 
 ---
 

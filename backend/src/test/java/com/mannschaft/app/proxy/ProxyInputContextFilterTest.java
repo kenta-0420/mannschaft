@@ -276,8 +276,11 @@ class ProxyInputContextFilterTest {
             filter.doFilterInternal(request, response, chain);
 
             assertThat(response.getStatus()).isEqualTo(HttpStatus.OK.value());
+            // originalStorageLocation は NOT NULL 列のため null ではなく固定値を渡す
+            // （null だと切替中の F14.1 代理入力で proxy_input_records 保存が 500 になる）。
             verify(proxyInputContext).activate(
-                    100L, null, "GUARDIANSHIP_SWITCH", null,
+                    100L, null, "GUARDIANSHIP_SWITCH",
+                    ProxyInputContextFilter.SWITCH_STORAGE_LOCATION_NA,
                     java.util.Set.of(com.mannschaft.app.proxy.entity.ProxyInputConsentScopeEntity.FeatureScope.PAYMENT));
         }
 

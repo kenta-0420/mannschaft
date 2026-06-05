@@ -31,6 +31,11 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li><b>acting-as 中は拒否</b>: 本操作は保護者本人の権原で行う引き継ぎ操作であり、後見切替セッション
  *       （{@code X-Proxy-For-User-Id} 付き）中に呼ぶものではない。子の認証情報に関わるため
  *       {@link AuthenticationCriticalOperationGuard#assertNotActingAs()} を適用する（03_security §3.2 の精神）。</li>
+ *   <li><b>レート制限・トークン期限</b>: メール送付の濫用防止は {@link AuthPasswordResetService#requestPasswordReset}
+ *       内部のレート制限に委ねる。リクエスト元 IP 単位で Valkey（{@code mannschaft:auth:password_reset_attempt:<ip>}）に
+ *       スライディングウィンドウ（1 分間 3 回まで）を持ち、超過時は例外で 429 相当を返す。
+ *       発行されるパスワード設定リンクのトークンは 30 分で失効する。
+ *       本サービスは独自のレート制限・トークン管理を持たず、この基盤に一本化する。</li>
  * </ul>
  *
  * <h3>子メールの解決ルール（02_api_design §2.3）</h3>
