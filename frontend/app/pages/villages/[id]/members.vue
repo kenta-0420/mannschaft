@@ -44,6 +44,7 @@ import type {
 definePageMeta({
   layout: 'default',
   middleware: 'auth',
+  key: route => route.fullPath,
 })
 
 const route = useRoute()
