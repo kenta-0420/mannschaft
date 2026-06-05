@@ -283,6 +283,100 @@ class AbstractContentVisibilityResolverTest {
             assertThat(resolver.filterAccessible(List.of(1L), 6L)).isEmpty();
         }
 
+        // ====================================================================
+        // W1 Expand: 新ラダー 3 値（MEMBERS_AND_ABOVE / ADMINS_AND_ABOVE /
+        //            SCOPE_AFFILIATED）。旧値と併存し、判定は §5.1 新ラダー準拠。
+        // ====================================================================
+
+        @Test
+        @DisplayName("MEMBERS_AND_ABOVE は MEMBER 以上のみ可視・SUPPORTER/GUEST は不可視")
+        void membersAndAbove() {
+            FakeProjection p = projection(1L, "TEAM", 100L, 999L,
+                    FakeVisibility.MEMBERS_AND_ABOVE);
+            resolver.projections = List.of(p);
+            ScopeKey scope = new ScopeKey("TEAM", 100L);
+            // MEMBER / DEPUTY_ADMIN / ADMIN は可視
+            when(membershipBatchQueryService.snapshotForUser(eq(4L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "ADMIN"), Map.of(), Set.of(), Set.of()));
+            when(membershipBatchQueryService.snapshotForUser(eq(3L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "DEPUTY_ADMIN"), Map.of(), Set.of(), Set.of()));
+            when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "MEMBER"), Map.of(), Set.of(), Set.of()));
+            // SUPPORTER は不可視（旧 MEMBERS_ONLY との差分）
+            when(membershipBatchQueryService.snapshotForUser(eq(6L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "SUPPORTER"), Map.of(), Set.of(), Set.of()));
+            // GUEST は不可視
+            when(membershipBatchQueryService.snapshotForUser(eq(7L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "GUEST"), Map.of(), Set.of(), Set.of()));
+            // 非所属は不可視
+            when(membershipBatchQueryService.snapshotForUser(eq(8L), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+
+            assertThat(resolver.filterAccessible(List.of(1L), 4L)).containsExactly(1L);
+            assertThat(resolver.filterAccessible(List.of(1L), 3L)).containsExactly(1L);
+            assertThat(resolver.filterAccessible(List.of(1L), 5L)).containsExactly(1L);
+            assertThat(resolver.filterAccessible(List.of(1L), 6L)).isEmpty();
+            assertThat(resolver.filterAccessible(List.of(1L), 7L)).isEmpty();
+            assertThat(resolver.filterAccessible(List.of(1L), 8L)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("ADMINS_AND_ABOVE は ADMIN/DEPUTY のみ可視・MEMBER は不可視（旧 ADMINS_ONLY と同挙動）")
+        void adminsAndAbove() {
+            FakeProjection p = projection(1L, "TEAM", 100L, 999L,
+                    FakeVisibility.ADMINS_AND_ABOVE);
+            resolver.projections = List.of(p);
+            ScopeKey scope = new ScopeKey("TEAM", 100L);
+            when(membershipBatchQueryService.snapshotForUser(eq(2L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "ADMIN"), Map.of(), Set.of(), Set.of()));
+            when(membershipBatchQueryService.snapshotForUser(eq(3L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "DEPUTY_ADMIN"), Map.of(), Set.of(), Set.of()));
+            // MEMBER は不可視
+            when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "MEMBER"), Map.of(), Set.of(), Set.of()));
+
+            assertThat(resolver.filterAccessible(List.of(1L), 2L)).containsExactly(1L);
+            assertThat(resolver.filterAccessible(List.of(1L), 3L)).containsExactly(1L);
+            assertThat(resolver.filterAccessible(List.of(1L), 5L)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("SCOPE_AFFILIATED は所属者なら SUPPORTER/GUEST も可視・JOBBER 並行ロールは不可視（旧 MEMBERS_ONLY と同挙動）")
+        void scopeAffiliated() {
+            FakeProjection p = projection(1L, "TEAM", 100L, 999L,
+                    FakeVisibility.SCOPE_AFFILIATED);
+            resolver.projections = List.of(p);
+            ScopeKey scope = new ScopeKey("TEAM", 100L);
+            // SUPPORTER は可視
+            when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "SUPPORTER"), Map.of(), Set.of(), Set.of()));
+            // GUEST（登録ロール）は可視
+            when(membershipBatchQueryService.snapshotForUser(eq(6L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "GUEST"), Map.of(), Set.of(), Set.of()));
+            // JOBBER 等の並行ロール（RolePriority 未登録）は不可視
+            when(membershipBatchQueryService.snapshotForUser(eq(7L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "JOBBER"), Map.of(), Set.of(), Set.of()));
+            // 非所属は不可視
+            when(membershipBatchQueryService.snapshotForUser(eq(8L), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+
+            assertThat(resolver.filterAccessible(List.of(1L), 5L)).containsExactly(1L);
+            assertThat(resolver.filterAccessible(List.of(1L), 6L)).containsExactly(1L);
+            assertThat(resolver.filterAccessible(List.of(1L), 7L)).isEmpty();
+            assertThat(resolver.filterAccessible(List.of(1L), 8L)).isEmpty();
+        }
+
         @Test
         @DisplayName("PRIVATE は作成者本人のみ可視")
         void privateVisibility() {
@@ -495,6 +589,53 @@ class AbstractContentVisibilityResolverTest {
         }
 
         @Test
+        @DisplayName("W1: ADMINS_AND_ABOVE で SUPPORTER は INSUFFICIENT_ROLE（旧 ADMINS_ONLY 相当）")
+        void decide_adminsAndAbove_insufficientRole() {
+            FakeProjection p = projection(1L, "TEAM", 100L, 999L,
+                    FakeVisibility.ADMINS_AND_ABOVE);
+            resolver.projections = List.of(p);
+            ScopeKey scope = new ScopeKey("TEAM", 100L);
+            when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "SUPPORTER"), Map.of(), Set.of(), Set.of()));
+
+            VisibilityDecision d = resolver.decide(1L, 5L);
+            assertThat(d.allowed()).isFalse();
+            assertThat(d.denyReason()).isEqualTo(DenyReason.INSUFFICIENT_ROLE);
+            assertThat(d.resolvedLevel()).isEqualTo(StandardVisibility.ADMINS_AND_ABOVE);
+        }
+
+        @Test
+        @DisplayName("W1: MEMBERS_AND_ABOVE で非所属は NOT_A_MEMBER")
+        void decide_membersAndAbove_notMember() {
+            FakeProjection p = projection(1L, "TEAM", 100L, 999L,
+                    FakeVisibility.MEMBERS_AND_ABOVE);
+            resolver.projections = List.of(p);
+            when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+
+            VisibilityDecision d = resolver.decide(1L, 5L);
+            assertThat(d.allowed()).isFalse();
+            assertThat(d.denyReason()).isEqualTo(DenyReason.NOT_A_MEMBER);
+            assertThat(d.resolvedLevel()).isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
+        }
+
+        @Test
+        @DisplayName("W1: SCOPE_AFFILIATED で非所属は NOT_A_MEMBER（旧 MEMBERS_ONLY 相当）")
+        void decide_scopeAffiliated_notMember() {
+            FakeProjection p = projection(1L, "TEAM", 100L, 999L,
+                    FakeVisibility.SCOPE_AFFILIATED);
+            resolver.projections = List.of(p);
+            when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+
+            VisibilityDecision d = resolver.decide(1L, 5L);
+            assertThat(d.allowed()).isFalse();
+            assertThat(d.denyReason()).isEqualTo(DenyReason.NOT_A_MEMBER);
+            assertThat(d.resolvedLevel()).isEqualTo(StandardVisibility.SCOPE_AFFILIATED);
+        }
+
+        @Test
         @DisplayName("CUSTOM_TEMPLATE rule 不一致は TEMPLATE_RULE_NO_MATCH")
         void decide_customTemplate_noMatch() {
             FakeProjection p = projection(1L, "TEAM", 100L, 999L,
@@ -608,6 +749,50 @@ class AbstractContentVisibilityResolverTest {
         }
 
         @Test
+        @DisplayName("W1: ADMINS_AND_ABOVE の deny は記録される（旧 ADMINS_ONLY と同じ最高機微）")
+        void adminsAndAboveDeny_recorded() {
+            FakeProjection p = projection(1L, "TEAM", 100L, 999L,
+                    FakeVisibility.ADMINS_AND_ABOVE);
+            resolver.projections = List.of(p);
+            when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+
+            resolver.decide(1L, 5L);
+
+            ArgumentCaptor<String> eventType = ArgumentCaptor.forClass(String.class);
+            verify(auditLogService).record(eventType.capture(),
+                    eq(5L), isNull(), isNull(), isNull(),
+                    isNull(), isNull(), isNull(), anyString());
+            assertThat(eventType.getValue()).isEqualTo("VISIBILITY_DENIED");
+        }
+
+        @Test
+        @DisplayName("W1: MEMBERS_AND_ABOVE の deny は記録されない（旧 MEMBERS_ONLY 相当で非センシティブ）")
+        void membersAndAboveDeny_notRecorded() {
+            FakeProjection p = projection(1L, "TEAM", 100L, 999L,
+                    FakeVisibility.MEMBERS_AND_ABOVE);
+            resolver.projections = List.of(p);
+            when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+
+            resolver.decide(1L, 5L);
+            verifyNoInteractions(auditLogService);
+        }
+
+        @Test
+        @DisplayName("W1: SCOPE_AFFILIATED の deny は記録されない（旧 MEMBERS_ONLY 相当で非センシティブ）")
+        void scopeAffiliatedDeny_notRecorded() {
+            FakeProjection p = projection(1L, "TEAM", 100L, 999L,
+                    FakeVisibility.SCOPE_AFFILIATED);
+            resolver.projections = List.of(p);
+            when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+
+            resolver.decide(1L, 5L);
+            verifyNoInteractions(auditLogService);
+        }
+
+        @Test
         @DisplayName("auditLogService が null でも例外は出ない")
         void nullAuditLog_safe() {
             FakeProjection p = projection(1L, "TEAM", 100L, 999L, FakeVisibility.PRIVATE);
@@ -698,7 +883,9 @@ class AbstractContentVisibilityResolverTest {
     /** テスト用の最小 enum（StandardVisibility の各値に直接マップする）。 */
     enum FakeVisibility {
         PUBLIC, MEMBERS_ONLY, SUPPORTERS_AND_ABOVE, ADMINS_ONLY, PRIVATE,
-        FOLLOWERS_ONLY, CUSTOM_TEMPLATE, ORGANIZATION_WIDE, CUSTOM
+        FOLLOWERS_ONLY, CUSTOM_TEMPLATE, ORGANIZATION_WIDE, CUSTOM,
+        // W1 Expand: 新ラダー 3 値（旧値と併存）
+        MEMBERS_AND_ABOVE, ADMINS_AND_ABOVE, SCOPE_AFFILIATED
     }
 
     /** テスト用の Projection 実装（フィールドアクセスで簡潔に組み立てる）。 */
@@ -757,6 +944,10 @@ class AbstractContentVisibilityResolverTest {
                 case CUSTOM_TEMPLATE -> StandardVisibility.CUSTOM_TEMPLATE;
                 case ORGANIZATION_WIDE -> StandardVisibility.ORGANIZATION_WIDE;
                 case CUSTOM -> StandardVisibility.CUSTOM;
+                // W1 Expand: 新ラダー 3 値
+                case MEMBERS_AND_ABOVE -> StandardVisibility.MEMBERS_AND_ABOVE;
+                case ADMINS_AND_ABOVE -> StandardVisibility.ADMINS_AND_ABOVE;
+                case SCOPE_AFFILIATED -> StandardVisibility.SCOPE_AFFILIATED;
             };
         }
 
