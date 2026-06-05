@@ -447,9 +447,9 @@ class PaymentRequestServiceTest {
         }
 
         private com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity notification(long id) {
-            var n = com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity.builder().build();
-            n.setId(id);
-            return n;
+            return com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity.builder()
+                    .id(id)
+                    .build();
         }
 
         @Test

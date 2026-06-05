@@ -147,7 +147,7 @@ class PaymentRequestOrgControllerTest {
                         .param("status", "SENT"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].status").value("SENT"))
-                .andExpect(jsonPath("$.meta.totalElements").value(1));
+                .andExpect(jsonPath("$.meta.total").value(1));
     }
 
     @Test
