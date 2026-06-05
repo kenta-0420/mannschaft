@@ -203,14 +203,16 @@ function removeFolder(folderId: number) {
   selectedFolderIds.value = selectedFolderIds.value.filter(id => id !== folderId)
 }
 
-function addTeam(teamId: string) {
-  if (!selectedTeamIds.value.includes(teamId)) {
-    selectedTeamIds.value = [...selectedTeamIds.value, teamId]
+function addTeam(teamId: number | string) {
+  const id = typeof teamId === 'string' ? Number(teamId) : teamId
+  if (!selectedTeamIds.value.includes(id)) {
+    selectedTeamIds.value = [...selectedTeamIds.value, id]
   }
 }
 
-function removeTeam(teamId: string) {
-  selectedTeamIds.value = selectedTeamIds.value.filter(id => id !== teamId)
+function removeTeam(teamId: number | string) {
+  const id = typeof teamId === 'string' ? Number(teamId) : teamId
+  selectedTeamIds.value = selectedTeamIds.value.filter(i => i !== id)
 }
 
 /**
@@ -437,7 +439,7 @@ watch(visibility, async (v) => {
             :placeholder="$t('market.friendTarget.addTeam')"
             class="w-full"
             :disabled="availableFriendOptions.length === 0"
-            @change="(e: { value: number }) => { if (e.value) addTeam(e.value) }"
+            @change="(e: { value: number | string }) => { if (e.value) addTeam(String(e.value)) }"
           />
         </div>
       </div>

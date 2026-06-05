@@ -36,7 +36,7 @@ const swapDialogVisible = ref(false)
 const swapSlotId = ref<number>(0)
 const swapSlotDate = ref<string>('')
 const swapScheduleId = ref<number>(0)
-const swapTeamId = ref<number>(0)
+const swapTeamId = ref<string>('')
 
 // ---- データ取得 ----
 async function load() {
@@ -185,7 +185,7 @@ function openSwapDialog(slot: MyConfirmedSlotResponse) {
   swapSlotId.value = slot.slotId
   swapSlotDate.value = slot.slotDate
   swapScheduleId.value = slot.scheduleId
-  swapTeamId.value = slot.teamId
+  swapTeamId.value = String(slot.teamId)
   swapDialogVisible.value = true
 }
 

@@ -5,7 +5,7 @@ interface EffectivePermissions {
   permissions: string[]
 }
 
-export function useRoleAccess(scopeType: 'team' | 'organization', scopeId: Ref<string> | number) {
+export function useRoleAccess(scopeType: 'team' | 'organization', scopeId: Ref<string> | string) {
   const api = useApi()
   const permissions = ref<string[]>([])
   const roleName = ref<RoleName | null>(null)

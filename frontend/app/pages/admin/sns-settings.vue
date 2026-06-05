@@ -3,7 +3,7 @@ definePageMeta({ middleware: 'auth' })
 
 const scopeStore = useScopeStore()
 const scopeType = computed(() => scopeStore.current.type as 'team' | 'organization')
-const scopeId = computed(() => scopeStore.current.id ?? 0)
+const scopeId = computed(() => scopeStore.current.id ?? '')
 const { success, error: showError } = useNotification()
 const { listFeeds, createFeed, updateFeed, deleteFeed, previewFeed } = useSnsFeedApi()
 

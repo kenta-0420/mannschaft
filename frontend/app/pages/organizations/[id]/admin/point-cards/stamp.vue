@@ -40,7 +40,7 @@ const api = useOrgWalletApi(() => orgId.value)
 const balanceEnabled = computed<boolean>(() => Boolean(runtimeConfig.public.f18BalanceEnabled))
 
 const myOrg = computed(() =>
-  orgStore.myOrganizations.find(o => o.id === orgId.value),
+  orgStore.myOrganizations.find(o => String(o.id) === orgId.value),
 )
 const canAccess = computed(() =>
   myOrg.value?.role === 'ADMIN'

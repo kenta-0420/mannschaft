@@ -86,13 +86,13 @@ const filteredTeams = computed(() => {
     const def = foldersStore.defaultFolderFor('TEAM')
     if (!def) return all // 未分類フォルダ未作成なら全件
     const idSet = new Set(def.itemScopeIds)
-    return all.filter(t => idSet.has(t.id))
+    return all.filter(t => idSet.has(String(t.id)))
   }
   // numeric folder id
   const folder = foldersStore.foldersFor('TEAM').find(f => f.id === v)
   if (!folder) return []
   const idSet = new Set(folder.itemScopeIds)
-  return all.filter(t => idSet.has(t.id))
+  return all.filter(t => idSet.has(String(t.id)))
 })
 
 const isManageView = computed(() => currentFolderId.value === 'manage')

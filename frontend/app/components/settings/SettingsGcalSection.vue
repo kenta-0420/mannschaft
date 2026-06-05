@@ -1,8 +1,8 @@
 <script setup lang="ts">
 const gcalSyncSettings = defineModel<{
   personalSync: boolean
-  teamSyncIds: number[]
-  orgSyncIds: number[]
+  teamSyncIds: string[]
+  orgSyncIds: string[]
 } | null>('gcalSyncSettings', { required: true })
 
 defineProps<{
@@ -84,8 +84,8 @@ function formatDate(dateStr: string | null): string {
             >
               <span class="text-sm">{{ team.nickname1 || team.name }}</span>
               <ToggleSwitch
-                :model-value="gcalSyncSettings.teamSyncIds.includes(team.id)"
-                @update:model-value="$emit('toggleTeamSync', team.id)"
+                :model-value="gcalSyncSettings.teamSyncIds.includes(String(team.id))"
+                @update:model-value="$emit('toggleTeamSync', String(team.id))"
               />
             </div>
           </div>
@@ -100,8 +100,8 @@ function formatDate(dateStr: string | null): string {
             >
               <span class="text-sm">{{ org.nickname1 || org.name }}</span>
               <ToggleSwitch
-                :model-value="gcalSyncSettings.orgSyncIds.includes(org.id)"
-                @update:model-value="$emit('toggleOrgSync', org.id)"
+                :model-value="gcalSyncSettings.orgSyncIds.includes(String(org.id))"
+                @update:model-value="$emit('toggleOrgSync', String(org.id))"
               />
             </div>
           </div>

@@ -28,7 +28,7 @@ async function loadData(page = 0) {
 
 async function handleSelect(chart: Chart) {
   try {
-    selectedChart.value = (await chartApi.get(chart.teamId, chart.id)).data
+    selectedChart.value = (await chartApi.get(String(chart.teamId), chart.id)).data
     showDetail.value = true
   } catch {
     notification.error('カルテの詳細取得に失敗しました')

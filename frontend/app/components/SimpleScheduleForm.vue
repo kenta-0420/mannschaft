@@ -3,7 +3,7 @@ const props = defineProps<{
   visible: boolean
   initialDate?: string
   scopeType?: 'team' | 'organization'
-  scopeId?: number
+  scopeId?: string
   isPersonal?: boolean
 }>()
 

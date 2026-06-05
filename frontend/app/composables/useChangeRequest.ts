@@ -5,7 +5,7 @@ import type { ChangeRequest, CreateChangeRequestPayload } from '~/types/shift'
  * シフト変更依頼の取得・作成・審査・取下を管理する composable。
  * F03.5 §A-1確定前変更 / A-2個別交代 / A-3オープンコール に対応。
  */
-export function useChangeRequest(scheduleId: Ref<string>) {
+export function useChangeRequest(scheduleId: Ref<number>) {
   const shiftApi = useShiftApi()
   const { error: showError, success: showSuccess } = useNotification()
   const { t } = useI18n()

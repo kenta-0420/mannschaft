@@ -204,7 +204,7 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
      */
     async bulkAssign(
       folderId: number,
-      scopeIds: number[],
+      scopeIds: string[],
       scopeType: ScopeType,
     ): Promise<BulkAssignResponse> {
       const api = useApi()

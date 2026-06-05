@@ -43,7 +43,7 @@ const canSubmit = computed(
   () => typeof targetTeamId.value === 'number'
     && Number.isFinite(targetTeamId.value)
     && targetTeamId.value > 0
-    && targetTeamId.value !== props.teamId
+    && String(targetTeamId.value) !== props.teamId
     && (comment.value?.length ?? 0) <= COMMENT_MAX,
 )
 
@@ -85,7 +85,7 @@ function onFollowed(response: FollowTeamResponse) {
           class="w-full"
         />
         <p
-          v-if="targetTeamId !== null && targetTeamId === teamId"
+          v-if="targetTeamId !== null && String(targetTeamId) === teamId"
           class="mt-1 text-sm text-red-500"
         >
           {{ t('friends.errors.self_follow') }}

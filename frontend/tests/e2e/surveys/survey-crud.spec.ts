@@ -47,7 +47,7 @@ function buildCreatedSurvey(): SurveyResponse {
     title: 'テストアンケート',
     status: 'DRAFT',
     scopeType: 'TEAM',
-    scopeId: TEAM_ID,
+    scopeId: String(TEAM_ID),
     isAnonymous: false,
     allowMultipleSubmissions: false,
     resultsVisibility: 'RESPONDENTS',

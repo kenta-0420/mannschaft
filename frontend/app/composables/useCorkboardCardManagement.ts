@@ -16,7 +16,7 @@ import type { CorkboardDetail, CorkboardCardDetail } from '~/types/corkboard'
  */
 export function useCorkboardCardManagement(
   board: Ref<CorkboardDetail | null>,
-  boardId: Ref<string>,
+  boardId: Ref<number>,
   tFn?: (key: string) => string,
 ) {
   const {

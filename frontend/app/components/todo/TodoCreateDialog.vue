@@ -13,7 +13,7 @@ const createForm = ref({
   startDate: null as Date | null,
   dueDate: null as Date | null,
   scopeType: 'PERSONAL' as string,
-  scopeId: null as number | null,
+  scopeId: null as string | null,
 })
 const creating = ref(false)
 
@@ -22,10 +22,10 @@ const scopeOptions = computed(() => {
     { label: '個人', scopeType: 'PERSONAL', scopeId: null },
   ]
   teamStore.myTeams.forEach((t) =>
-    opts.push({ label: t.nickname1 || t.name, scopeType: 'TEAM', scopeId: t.id }),
+    opts.push({ label: t.nickname1 || t.name, scopeType: 'TEAM', scopeId: String(t.id) }),
   )
   orgStore.myOrganizations.forEach((o) =>
-    opts.push({ label: o.nickname1 || o.name, scopeType: 'ORGANIZATION', scopeId: o.id }),
+    opts.push({ label: o.nickname1 || o.name, scopeType: 'ORGANIZATION', scopeId: String(o.id) }),
   )
   return opts
 })

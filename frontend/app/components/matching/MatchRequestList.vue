@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MatchRequestResponse, MatchRequestSearchParams } from '~/types/matching'
 
-const props = defineProps<{ teamId?: number }>()
+const props = defineProps<{ teamId?: string }>()
 const emit = defineEmits<{ select: [req: MatchRequestResponse]; create: [] }>()
 
 const { searchRequests, getTeamRequests } = useMatchingApi()

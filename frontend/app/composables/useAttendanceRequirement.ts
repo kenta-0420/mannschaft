@@ -38,7 +38,7 @@ export function useAttendanceRequirement() {
   }
 
   async function createRule(
-    scope: { orgId?: number; teamId?: number },
+    scope: { orgId?: string; teamId?: string },
     req: CreateRequirementRuleRequest,
     onSuccess?: () => void,
   ): Promise<void> {

@@ -46,7 +46,7 @@ onMounted(async () => {
     schedule.value = await getSchedule(scheduleId.value)
     const [sl, pos] = await Promise.all([
       listSlots(scheduleId.value),
-      listPositions(schedule.value.teamId),
+      listPositions(String(schedule.value.teamId)),
     ])
     slots.value = sl
     positions.value = pos

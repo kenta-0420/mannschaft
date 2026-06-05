@@ -31,7 +31,7 @@ function isPinLimitError(e: unknown): boolean {
 
 export function useCorkboardPinManagement(
   board: Ref<CorkboardDetail | null>,
-  boardId: Ref<string>,
+  boardId: Ref<number>,
   /** useI18n().t を呼び出し元から注入（Vitest 環境での setup 制約を回避するため） */
   t: (key: string) => string,
 ) {

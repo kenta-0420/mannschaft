@@ -4,7 +4,7 @@ import type {
   AssignmentStrategyType,
 } from '~/types/shift'
 
-export function useAutoAssign(scheduleId: Ref<string>) {
+export function useAutoAssign(scheduleId: Ref<number>) {
   const shiftApi = useShiftApi()
   const runs = ref<AssignmentRun[]>([])
   const currentRun = ref<AssignmentRun | null>(null)

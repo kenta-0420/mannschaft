@@ -124,8 +124,8 @@ function goFolder(folderId: number) {
 }
 
 /** フォルダ内のスコープ一覧を返す。 */
-function scopesInFolder(folder: { itemScopeIds: number[] }): NavScopeItem[] {
-  return myScopes.value.filter(s => folder.itemScopeIds.includes(s.id))
+function scopesInFolder(folder: { itemScopeIds: string[] }): NavScopeItem[] {
+  return myScopes.value.filter(s => folder.itemScopeIds.includes(String(s.id)))
 }
 
 /** 未分類フォルダへ遷移（`?folder=default`）。 */
@@ -135,8 +135,8 @@ function goDefault() {
 }
 
 /** 個別スコープへ直接ジャンプ。 */
-function goScope(scopeId: string) {
-  router.push(`${basePath.value}/${scopeId}`)
+function goScope(scopeId: string | number) {
+  router.push(`${basePath.value}/${String(scopeId)}`)
   close()
 }
 

@@ -49,7 +49,7 @@ export function useQaSearch(items: Ref<QaItem[]>, query: Ref<string>) {
   })
 
   const hasResults: ComputedRef<boolean> = computed(() => filteredItems.value.length > 0)
-  const resultCount: ComputedRef<string> = computed(() => filteredItems.value.length)
+  const resultCount: ComputedRef<number> = computed(() => filteredItems.value.length)
 
   function highlightedText(text: string): string {
     const raw = text ?? ''

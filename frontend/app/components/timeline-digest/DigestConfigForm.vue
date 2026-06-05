@@ -14,7 +14,7 @@ const loading = ref(false)
 const saving = ref(false)
 
 const config = ref<DigestConfigRequest>({
-  scopeId: 0,
+  scopeId: '',
   digestStyle: 'SUMMARY',
   autoPublish: false,
   includeReactions: true,

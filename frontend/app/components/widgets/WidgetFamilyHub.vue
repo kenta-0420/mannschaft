@@ -25,7 +25,7 @@ const familyTeams = computed(() => teamStore.myTeams.filter((t) => t.template ==
 
 const familyData = ref<FamilyData[]>([])
 const loading = ref(false)
-const selectedId = ref<number | null>(null)
+const selectedId = ref<string | null>(null)
 
 const selectedFamily = computed(
   () => familyData.value.find((f) => f.teamId === selectedId.value) ?? familyData.value[0],
@@ -46,11 +46,11 @@ async function load() {
       familyTeams.value.map(async (team) => {
         const name = team.nickname1 || team.name
         const [announcementsRes, todosRes] = await Promise.allSettled([
-          getScopedThreads('teams', team.id, { page: 0, size: 4 }),
-          listTodos('team', team.id, { size: 5 }),
+          getScopedThreads('teams', String(team.id), { page: 0, size: 4 }),
+          listTodos('team', String(team.id), { size: 5 }),
         ])
         return {
-          teamId: team.id,
+          teamId: String(team.id),
           familyName: name,
           announcements: announcementsRes.status === 'fulfilled' ? announcementsRes.value.data : [],
           todos:

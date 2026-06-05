@@ -2,8 +2,8 @@
 import type { ChatChannelResponse } from '~/types/chat'
 
 const props = defineProps<{
-  teamId?: number
-  organizationId?: number
+  teamId?: string
+  organizationId?: string
 }>()
 
 const emit = defineEmits<{
@@ -25,8 +25,8 @@ async function loadChannels() {
   loading.value = true
   try {
     const res = await getChannels({
-      teamId: props.teamId,
-      organizationId: props.organizationId,
+      teamId: props.teamId !== undefined ? Number(props.teamId) : undefined,
+      organizationId: props.organizationId !== undefined ? Number(props.organizationId) : undefined,
     })
     channels.value = res.data
   } catch {

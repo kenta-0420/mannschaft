@@ -9,7 +9,7 @@ export interface MyTodo {
   scopeId: string | null
   scope?: {
     scopeType?: string
-    scopeId?: number | null
+    scopeId?: string | null
     projectId?: number | null
     milestoneId?: number | null
   }

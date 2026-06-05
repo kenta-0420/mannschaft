@@ -16,7 +16,7 @@ interface PersonalScheduleRaw {
 }
 
 export interface CalEvent extends CalendarEventItem {
-  scopeId?: number
+  scopeId?: string
   scopeIconUrl?: string | null
   isTodo?: boolean
 }
@@ -113,14 +113,14 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
       const key = `${e.scopeType}:${e.scopeId}`
       if (!seen.has(key)) {
         seen.add(key)
-        result.push({ label: e.scopeName ?? `${e.scopeType} ${e.scopeId}`, value: key, scopeType: e.scopeType, scopeId: e.scopeId })
+        result.push({ label: e.scopeName ?? `${e.scopeType} ${e.scopeId}`, value: key, scopeType: e.scopeType, scopeId: e.scopeId as string })
       }
     }
     return result
   })
 
   const allScopeOptions = computed<ScopeOption[]>(() => [
-    { label: '個人', value: PERSONAL_KEY, scopeType: 'PERSONAL', scopeId: 0 },
+    { label: '個人', value: PERSONAL_KEY, scopeType: 'PERSONAL', scopeId: '' },
     ...availableScopes.value,
   ])
 

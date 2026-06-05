@@ -39,7 +39,7 @@ describe('useTeamExtendedProfileApi', () => {
       mockApiFetch.mockResolvedValueOnce({ data: { homepage_url: 'https://example.com' } })
 
       const api = useTeamExtendedProfileApi()
-      await api.getProfile(1)
+      await api.getProfile('1')
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
       expect(mockApiFetch.mock.calls[0]![0]).toBe('/api/v1/teams/1/profile')
@@ -50,7 +50,7 @@ describe('useTeamExtendedProfileApi', () => {
       mockApiFetch.mockResolvedValueOnce({ data: {} })
 
       const api = useTeamExtendedProfileApi()
-      await api.getProfile(42)
+      await api.getProfile('42')
 
       expect(mockApiFetch.mock.calls[0]![0]).toBe('/api/v1/teams/42/profile')
     })
@@ -64,7 +64,7 @@ describe('useTeamExtendedProfileApi', () => {
 
       const api = useTeamExtendedProfileApi()
       const body = { homepage_url: 'https://updated.example.com', description: 'テストチーム' }
-      await api.updateProfile(1, body)
+      await api.updateProfile('1', body)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
       const [url, options] = mockApiFetch.mock.calls[0] as [string, Record<string, unknown>]
@@ -81,7 +81,7 @@ describe('useTeamExtendedProfileApi', () => {
       mockApiFetch.mockResolvedValueOnce({ data: [] })
 
       const api = useTeamExtendedProfileApi()
-      await api.getOfficers(1)
+      await api.getOfficers('1')
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
       expect(mockApiFetch.mock.calls[0]![0]).toBe('/api/v1/teams/1/officers')
@@ -92,7 +92,7 @@ describe('useTeamExtendedProfileApi', () => {
       mockApiFetch.mockResolvedValueOnce({ data: [] })
 
       const api = useTeamExtendedProfileApi()
-      await api.getOfficers(1, true)
+      await api.getOfficers('1', true)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
       expect(mockApiFetch.mock.calls[0]![0]).toBe('/api/v1/teams/1/officers?visibilityPreview=true')
@@ -102,7 +102,7 @@ describe('useTeamExtendedProfileApi', () => {
       mockApiFetch.mockResolvedValueOnce({ data: [] })
 
       const api = useTeamExtendedProfileApi()
-      await api.getOfficers(1, false)
+      await api.getOfficers('1', false)
 
       expect(mockApiFetch.mock.calls[0]![0]).toBe('/api/v1/teams/1/officers')
     })
@@ -116,7 +116,7 @@ describe('useTeamExtendedProfileApi', () => {
 
       const api = useTeamExtendedProfileApi()
       const body = { name: '監督', title: 'ヘッドコーチ', display_order: 1 }
-      await api.createOfficer(1, body)
+      await api.createOfficer('1', body)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
       const [url, options] = mockApiFetch.mock.calls[0] as [string, Record<string, unknown>]
@@ -134,7 +134,7 @@ describe('useTeamExtendedProfileApi', () => {
 
       const api = useTeamExtendedProfileApi()
       const body = { name: '更新されたコーチ名', title: 'アシスタントコーチ' }
-      await api.updateOfficer(1, 10, body)
+      await api.updateOfficer('1', 10, body)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
       const [url, options] = mockApiFetch.mock.calls[0] as [string, Record<string, unknown>]
@@ -151,7 +151,7 @@ describe('useTeamExtendedProfileApi', () => {
       mockApiFetch.mockResolvedValueOnce(undefined)
 
       const api = useTeamExtendedProfileApi()
-      await api.deleteOfficer(1, 10)
+      await api.deleteOfficer('1', 10)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
       const [url, options] = mockApiFetch.mock.calls[0] as [string, Record<string, unknown>]
@@ -168,7 +168,7 @@ describe('useTeamExtendedProfileApi', () => {
 
       const api = useTeamExtendedProfileApi()
       const body = { orders: [{ id: 3, displayOrder: 1 }, { id: 1, displayOrder: 2 }, { id: 2, displayOrder: 3 }] }
-      await api.reorderOfficers(1, body)
+      await api.reorderOfficers('1', body)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
       const [url, options] = mockApiFetch.mock.calls[0] as [string, Record<string, unknown>]
@@ -185,7 +185,7 @@ describe('useTeamExtendedProfileApi', () => {
       mockApiFetch.mockResolvedValueOnce({ data: [] })
 
       const api = useTeamExtendedProfileApi()
-      await api.getCustomFields(1)
+      await api.getCustomFields('1')
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
       expect(mockApiFetch.mock.calls[0]![0]).toBe('/api/v1/teams/1/custom-fields')
@@ -196,7 +196,7 @@ describe('useTeamExtendedProfileApi', () => {
       mockApiFetch.mockResolvedValueOnce({ data: [] })
 
       const api = useTeamExtendedProfileApi()
-      await api.getCustomFields(1, true)
+      await api.getCustomFields('1', true)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
       expect(mockApiFetch.mock.calls[0]![0]).toBe('/api/v1/teams/1/custom-fields?visibilityPreview=true')
@@ -206,7 +206,7 @@ describe('useTeamExtendedProfileApi', () => {
       mockApiFetch.mockResolvedValueOnce({ data: [] })
 
       const api = useTeamExtendedProfileApi()
-      await api.getCustomFields(1, false)
+      await api.getCustomFields('1', false)
 
       expect(mockApiFetch.mock.calls[0]![0]).toBe('/api/v1/teams/1/custom-fields')
     })
@@ -220,7 +220,7 @@ describe('useTeamExtendedProfileApi', () => {
 
       const api = useTeamExtendedProfileApi()
       const body = { label: '創設年', value: '2015年' }
-      await api.createCustomField(1, body)
+      await api.createCustomField('1', body)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
       const [url, options] = mockApiFetch.mock.calls[0] as [string, Record<string, unknown>]
@@ -238,7 +238,7 @@ describe('useTeamExtendedProfileApi', () => {
 
       const api = useTeamExtendedProfileApi()
       const body = { label: '更新されたラベル', value: '2015年' }
-      await api.updateCustomField(1, 5, body)
+      await api.updateCustomField('1', 5, body)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
       const [url, options] = mockApiFetch.mock.calls[0] as [string, Record<string, unknown>]
@@ -255,7 +255,7 @@ describe('useTeamExtendedProfileApi', () => {
       mockApiFetch.mockResolvedValueOnce(undefined)
 
       const api = useTeamExtendedProfileApi()
-      await api.deleteCustomField(1, 5)
+      await api.deleteCustomField('1', 5)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
       const [url, options] = mockApiFetch.mock.calls[0] as [string, Record<string, unknown>]
@@ -272,7 +272,7 @@ describe('useTeamExtendedProfileApi', () => {
 
       const api = useTeamExtendedProfileApi()
       const body = { orders: [{ id: 2, displayOrder: 1 }, { id: 5, displayOrder: 2 }, { id: 1, displayOrder: 3 }] }
-      await api.reorderCustomFields(1, body)
+      await api.reorderCustomFields('1', body)
 
       expect(mockApiFetch).toHaveBeenCalledTimes(1)
       const [url, options] = mockApiFetch.mock.calls[0] as [string, Record<string, unknown>]

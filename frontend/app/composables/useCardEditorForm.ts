@@ -52,7 +52,7 @@ export interface DefaultPosition {
 export function useCardEditorForm(
   mode: Ref<'create' | 'edit'>,
   card: Ref<CorkboardCardDetail | null>,
-  _boardId: Ref<string>,
+  _boardId: Ref<number>,
   defaultPosition: Ref<DefaultPosition> = ref({ x: 0, y: 0 }),
   /**
    * i18n 翻訳関数。デフォルトは `useI18n().t` を使用する。

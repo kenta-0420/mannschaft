@@ -61,7 +61,7 @@ describe('useShiftBudgetApi', () => {
         data: { items: [], page: 0, size: 20, total: 0 },
       })
       const api = useShiftBudgetApi()
-      await api.listAllocations(42, 1, 50)
+      await api.listAllocations('42', 1, 50)
 
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/v1/shift-budget/allocations?page=1&size=50',
@@ -95,7 +95,7 @@ describe('useShiftBudgetApi', () => {
       }
       mockFetch.mockResolvedValueOnce({ data: allocation })
       const api = useShiftBudgetApi()
-      const res = await api.createAllocation(42, {
+      const res = await api.createAllocation('42', {
         fiscal_year_id: 1,
         budget_category_id: 2,
         period_start: '2026-04-01',
@@ -119,7 +119,7 @@ describe('useShiftBudgetApi', () => {
     it('PUT /allocations/{id} に楽観ロック version を含む body を渡す', async () => {
       mockFetch.mockResolvedValueOnce({ data: { id: 1, version: 2 } })
       const api = useShiftBudgetApi()
-      await api.updateAllocation(42, 1, {
+      await api.updateAllocation('42', 1, {
         allocated_amount: 350000,
         note: '更新',
         version: 1,
@@ -140,7 +140,7 @@ describe('useShiftBudgetApi', () => {
     it('DELETE /allocations/{id} を呼ぶ', async () => {
       mockFetch.mockResolvedValueOnce(undefined)
       const api = useShiftBudgetApi()
-      await api.deleteAllocation(42, 99)
+      await api.deleteAllocation('42', 99)
 
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/v1/shift-budget/allocations/99',
@@ -164,7 +164,7 @@ describe('useShiftBudgetApi', () => {
         },
       })
       const api = useShiftBudgetApi()
-      const res = await api.getConsumptionSummary(42, 1)
+      const res = await api.getConsumptionSummary('42', 1)
 
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/v1/shift-budget/allocations/1/consumption-summary',
@@ -180,7 +180,7 @@ describe('useShiftBudgetApi', () => {
     it('GET /alerts にページング QS を含めて呼ぶ', async () => {
       mockFetch.mockResolvedValueOnce({ data: [] })
       const api = useShiftBudgetApi()
-      await api.listAlerts(42, 0, 20)
+      await api.listAlerts('42', 0, 20)
 
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/v1/shift-budget/alerts?page=0&size=20',
@@ -195,7 +195,7 @@ describe('useShiftBudgetApi', () => {
     it('POST /alerts/{id}/acknowledge にコメント付きで呼ぶ', async () => {
       mockFetch.mockResolvedValueOnce({ data: { id: 1, acknowledged_at: '2026-05-03T00:00:00' } })
       const api = useShiftBudgetApi()
-      await api.acknowledgeAlert(42, 1, { comment: '確認しました' })
+      await api.acknowledgeAlert('42', 1, { comment: '確認しました' })
 
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/v1/shift-budget/alerts/1/acknowledge',
@@ -210,7 +210,7 @@ describe('useShiftBudgetApi', () => {
     it('comment 省略時は空オブジェクトを送る', async () => {
       mockFetch.mockResolvedValueOnce({ data: { id: 1 } })
       const api = useShiftBudgetApi()
-      await api.acknowledgeAlert(42, 1)
+      await api.acknowledgeAlert('42', 1)
 
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/v1/shift-budget/alerts/1/acknowledge',
@@ -254,7 +254,7 @@ describe('useShiftBudgetApi', () => {
     it('status 指定時は QS に含める', async () => {
       mockFetch.mockResolvedValueOnce({ data: [] })
       const api = useShiftBudgetApi()
-      await api.listFailedEvents(42, 'PENDING', 0, 20)
+      await api.listFailedEvents('42', 'PENDING', 0, 20)
 
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/v1/shift-budget/failed-events?status=PENDING&page=0&size=20',
@@ -267,7 +267,7 @@ describe('useShiftBudgetApi', () => {
     it('status 未指定時は QS に含めない', async () => {
       mockFetch.mockResolvedValueOnce({ data: [] })
       const api = useShiftBudgetApi()
-      await api.listFailedEvents(42, null, 0, 20)
+      await api.listFailedEvents('42', null, 0, 20)
 
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/v1/shift-budget/failed-events?page=0&size=20',
@@ -280,7 +280,7 @@ describe('useShiftBudgetApi', () => {
     it('POST /failed-events/{id}/retry を呼ぶ', async () => {
       mockFetch.mockResolvedValueOnce({ data: { id: 1, status: 'RETRYING' } })
       const api = useShiftBudgetApi()
-      await api.retryFailedEvent(42, 1)
+      await api.retryFailedEvent('42', 1)
 
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/v1/shift-budget/failed-events/1/retry',
@@ -296,7 +296,7 @@ describe('useShiftBudgetApi', () => {
     it('POST /failed-events/{id}/resolve を呼ぶ', async () => {
       mockFetch.mockResolvedValueOnce({ data: { id: 1, status: 'MANUAL_RESOLVED' } })
       const api = useShiftBudgetApi()
-      await api.resolveFailedEvent(42, 1)
+      await api.resolveFailedEvent('42', 1)
 
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/v1/shift-budget/failed-events/1/resolve',
@@ -314,7 +314,7 @@ describe('useShiftBudgetApi', () => {
         data: { id: 1, project_id: 10, allocation_id: 1, currency: 'JPY' },
       })
       const api = useShiftBudgetApi()
-      await api.createTodoBudgetLink(42, {
+      await api.createTodoBudgetLink('42', {
         project_id: 10,
         allocation_id: 1,
         link_amount: 50000,

@@ -11,7 +11,7 @@ import type {
 interface UseEventDetailOptions {
   scopeType: Ref<'team' | 'organization'>
   scopeId: Ref<string>
-  eventId: Ref<string>
+  eventId: Ref<number>
 }
 
 export function useEventDetail({ scopeType, scopeId, eventId }: UseEventDetailOptions) {

@@ -109,7 +109,7 @@ async function handleSave() {
 async function saveByType(item: UserFavoriteItem) {
   switch (item.entityType) {
     case 'TEAM': {
-      const teamId = Number(item.entityId)
+      const teamId = String(item.entityId)
       await updateTeam(teamId, {
         name: formName.value.trim(),
         description: formDescription.value || null,
@@ -118,7 +118,7 @@ async function saveByType(item: UserFavoriteItem) {
       return
     }
     case 'ORGANIZATION': {
-      const orgId = Number(item.entityId)
+      const orgId = String(item.entityId)
       await updateOrganization(orgId, {
         name: formName.value.trim(),
         description: formDescription.value || null,

@@ -270,7 +270,7 @@ onMounted(async () => {
       :tournament-id="tId"
       :division-id="selectedDivisionId"
       :participant-id="selectedParticipant.id"
-      :team-id="selectedParticipant.teamId"
+      :team-id="String(selectedParticipant.teamId)"
       :is-admin="isAdminOrDeputy"
       @close="selectedParticipant = null"
       @saved="onEntrySaved"

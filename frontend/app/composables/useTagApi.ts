@@ -18,7 +18,7 @@ export function useTagApi() {
     return query.toString()
   }
 
-  function basePath(scope: TagScope, scopeId?: number): string {
+  function basePath(scope: TagScope, scopeId?: string): string {
     if (scope === 'personal') return '/api/v1/me/tags'
     if (scope === 'team') return `/api/v1/teams/${scopeId}/tags`
     return `/api/v1/organizations/${scopeId}/tags`
@@ -28,7 +28,7 @@ export function useTagApi() {
 
   async function listTags(
     scope: TagScope,
-    scopeId?: number,
+    scopeId?: string,
     params: { page?: number; size?: number } = {},
   ) {
     const qs = buildQuery({ page: 1, size: 50, ...params })

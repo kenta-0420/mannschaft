@@ -6,8 +6,8 @@ interface GcalStatus {
 
 interface GcalSync {
   personalSync: boolean
-  teamSyncIds: number[]
-  orgSyncIds: number[]
+  teamSyncIds: string[]
+  orgSyncIds: string[]
 }
 
 export function useAccountGcal() {

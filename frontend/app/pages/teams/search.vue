@@ -19,7 +19,7 @@ async function followTeam(teamId: number, event: Event) {
   event.stopPropagation()
   followingTeamIds.value.push(teamId)
   try {
-    await teamApi.followTeam(teamId)
+    await teamApi.followTeam(String(teamId))
     followedTeamIds.value.push(teamId)
     notification.success(t('teamHub.supporterSuccess'))
   } catch {

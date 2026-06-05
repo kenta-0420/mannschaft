@@ -19,7 +19,7 @@ import { useOfflineCareQueue } from '~/composables/jobs/useOfflineCareQueue'
  * エラーを {@link error} に設定し、API 呼び出しは行わない（BE は 409 を返す仕様だが、
  * 余計なネットワーク呼び出しを避ける目的）。</p>
  */
-export function useDismissal(teamId: Ref<string>, eventId: Ref<string>) {
+export function useDismissal(teamId: Ref<string>, eventId: Ref<number>) {
   const status = ref<DismissalStatusResponse | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)

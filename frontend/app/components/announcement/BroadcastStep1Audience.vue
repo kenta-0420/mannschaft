@@ -46,13 +46,13 @@ const allTeams = computed({
 })
 
 /** 組織配下のチーム一覧（ORGANIZATION スコープのみ使用。id と name のみ利用） */
-const orgTeams = ref<Array<{ id: number; name: string }>>([])
+const orgTeams = ref<Array<{ id: string; name: string }>>([])
 
 // scopeType === 'ORGANIZATION' のときにチーム一覧を取得
 watchEffect(async () => {
   if (props.scopeType === 'ORGANIZATION') {
     const res = await getTeamsInOrg(props.scopeId)
-    orgTeams.value = res.data
+    orgTeams.value = res.data.map(t => ({ id: String(t.id), name: t.name }))
   }
 })
 

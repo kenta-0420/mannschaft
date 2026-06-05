@@ -83,7 +83,7 @@ beforeEach(() => {
 
 describe('useAdvanceNotice.submitLate', () => {
   it('オンライン時は API.submitLateNotice を呼びレスポンスを返す', async () => {
-    const teamId = ref(7)
+    const teamId = ref('7')
     const eventId = ref(42)
     const expected = makeResponse({ noticeType: 'LATE' })
     mockSubmitLateNotice.mockResolvedValueOnce(expected)
@@ -97,7 +97,7 @@ describe('useAdvanceNotice.submitLate', () => {
     const result = await submitLate(body)
 
     expect(mockSubmitLateNotice).toHaveBeenCalledTimes(1)
-    expect(mockSubmitLateNotice).toHaveBeenCalledWith(7, 42, body)
+    expect(mockSubmitLateNotice).toHaveBeenCalledWith('7', 42, body)
     expect(mockEnqueueCareJob).not.toHaveBeenCalled()
     expect(result).toEqual(expected)
   })
@@ -106,7 +106,7 @@ describe('useAdvanceNotice.submitLate', () => {
     onlineRef.value = false
     mockEnqueueCareJob.mockResolvedValueOnce(123)
 
-    const teamId = ref(7)
+    const teamId = ref('7')
     const eventId = ref(42)
     const { submitLate } = useAdvanceNotice(teamId, eventId)
     const body: LateNoticeRequest = {
@@ -120,7 +120,7 @@ describe('useAdvanceNotice.submitLate', () => {
     expect(mockEnqueueCareJob).toHaveBeenCalledTimes(1)
     expect(mockEnqueueCareJob).toHaveBeenCalledWith({
       type: 'LATE_NOTICE',
-      teamId: 7,
+      teamId: '7',
       eventId: 42,
       payload: body,
     })
@@ -130,7 +130,7 @@ describe('useAdvanceNotice.submitLate', () => {
 
 describe('useAdvanceNotice.submitAbsence', () => {
   it('オンライン時は API.submitAbsenceNotice を呼びレスポンスを返す', async () => {
-    const teamId = ref(7)
+    const teamId = ref('7')
     const eventId = ref(42)
     const expected = makeResponse({
       noticeType: 'ABSENCE',
@@ -148,7 +148,7 @@ describe('useAdvanceNotice.submitAbsence', () => {
     const result = await submitAbsence(body)
 
     expect(mockSubmitAbsenceNotice).toHaveBeenCalledTimes(1)
-    expect(mockSubmitAbsenceNotice).toHaveBeenCalledWith(7, 42, body)
+    expect(mockSubmitAbsenceNotice).toHaveBeenCalledWith('7', 42, body)
     expect(mockEnqueueCareJob).not.toHaveBeenCalled()
     expect(result).toEqual(expected)
   })
@@ -157,7 +157,7 @@ describe('useAdvanceNotice.submitAbsence', () => {
     onlineRef.value = false
     mockEnqueueCareJob.mockResolvedValueOnce(124)
 
-    const teamId = ref(8)
+    const teamId = ref('8')
     const eventId = ref(50)
     const { submitAbsence } = useAdvanceNotice(teamId, eventId)
     const body: AbsenceNoticeRequest = {
@@ -170,7 +170,7 @@ describe('useAdvanceNotice.submitAbsence', () => {
     expect(mockEnqueueCareJob).toHaveBeenCalledTimes(1)
     expect(mockEnqueueCareJob).toHaveBeenCalledWith({
       type: 'ABSENCE_NOTICE',
-      teamId: 8,
+      teamId: '8',
       eventId: 50,
       payload: body,
     })
@@ -180,7 +180,7 @@ describe('useAdvanceNotice.submitAbsence', () => {
 
 describe('useAdvanceNotice.loadAdvanceNotices', () => {
   it('getAdvanceNotices の結果で notices を更新する', async () => {
-    const teamId = ref(7)
+    const teamId = ref('7')
     const eventId = ref(42)
     const list = [
       makeResponse({ userId: 101, noticeType: 'LATE' }),
@@ -202,14 +202,14 @@ describe('useAdvanceNotice.loadAdvanceNotices', () => {
 
     await loadAdvanceNotices()
 
-    expect(mockGetAdvanceNotices).toHaveBeenCalledWith(7, 42)
+    expect(mockGetAdvanceNotices).toHaveBeenCalledWith('7', 42)
     expect(notices.value).toEqual(list)
     expect(loading.value).toBe(false)
     expect(error.value).toBeNull()
   })
 
   it('getAdvanceNotices が失敗したら error に格納し notices は空配列', async () => {
-    const teamId = ref(7)
+    const teamId = ref('7')
     const eventId = ref(42)
     mockGetAdvanceNotices.mockRejectedValueOnce(new Error('forbidden'))
 

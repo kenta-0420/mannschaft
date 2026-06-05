@@ -18,7 +18,7 @@ import { useOfflineCareQueue } from '~/composables/jobs/useOfflineCareQueue'
  * {@code LateAbsenceNoticeBar} / {@code AdvanceNoticeList}）から本 composable を経由して
  * 通信を行う。トースト通知は本 composable では行わず、呼び出し側に戻り値で結果を伝える。</p>
  */
-export function useAdvanceNotice(teamId: Ref<string>, eventId: Ref<string>) {
+export function useAdvanceNotice(teamId: Ref<string>, eventId: Ref<number>) {
   const api = useAdvanceNoticeApi()
   const careQueue = useOfflineCareQueue()
   const online = useOnline()

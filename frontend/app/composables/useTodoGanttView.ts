@@ -36,18 +36,18 @@ export function useTodoGanttView() {
 
   // スコープ選択肢（個人 + 所属チーム + 所属組織）
   const scopeOptions = computed<GanttScopeOption[]>(() => [
-    { label: '個人', value: 'personal', scopeType: 'personal', scopeId: 0 },
+    { label: '個人', value: 'personal', scopeType: 'personal', scopeId: '' },
     ...teamStore.myTeams.map(t => ({
       label: t.nickname1 || t.name,
       value: `team:${t.id}`,
       scopeType: 'team' as const,
-      scopeId: t.id,
+      scopeId: String(t.id),
     })),
     ...orgStore.myOrganizations.map(o => ({
       label: o.nickname1 || o.name,
       value: `org:${o.id}`,
       scopeType: 'organization' as const,
-      scopeId: o.id,
+      scopeId: String(o.id),
     })),
   ])
 

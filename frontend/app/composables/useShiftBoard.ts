@@ -1,4 +1,4 @@
-export function useShiftBoard(scheduleId: Ref<string>) {
+export function useShiftBoard(scheduleId: Ref<number>) {
   const shiftApi = useShiftApi()
   // slotId -> userIds のローカル状態（楽観的更新用）
   const localAssignments = ref<Record<number, number[]>>({})

@@ -13,7 +13,7 @@ const api = useRecruitmentApi()
 const { success, error } = useNotification()
 
 const scopeType = computed(() => String(route.params.scopeType))
-const scopeId = computed(() => Number(route.params.scopeId))
+const scopeId = computed(() => String(route.params.scopeId))
 
 // ペナルティ設定
 const setting = ref<RecruitmentPenaltySettingResponse | null>(null)

@@ -63,7 +63,7 @@ interface RawActionRequiredSummary {
 
 function toScopeTabItem(r: RawScopeTabItem): ScopeTabItem {
   return {
-    scopeId: r.scope_id,
+    scopeId: String(r.scope_id),
     scopeType: r.scope_type,
     name: r.name,
     avatarUrl: r.avatar_url,

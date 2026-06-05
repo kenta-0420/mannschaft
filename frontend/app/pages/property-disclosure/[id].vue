@@ -22,10 +22,9 @@ const route = useRoute()
 const { t } = useI18n()
 const { success: showSuccess, error: showError } = useNotification()
 
-const organizationId = computed<number>(() => {
+const organizationId = computed<string>(() => {
   const raw = route.query.organizationId
-  const n = Number(Array.isArray(raw) ? raw[0] : raw)
-  return Number.isFinite(n) && n > 0 ? n : 0
+  return raw ? String(Array.isArray(raw) ? raw[0] : raw) : ''
 })
 const draftId = computed<number>(() => Number(route.params.id))
 
@@ -38,7 +37,7 @@ const saving = ref(false)
 
 /** ドラフト + テンプレートを並行取得。 */
 async function load() {
-  if (organizationId.value === 0 || !Number.isFinite(draftId.value)) return
+  if (!organizationId.value || !Number.isFinite(draftId.value)) return
   loading.value = true
   try {
     const fetched = await api.value.getDraft(draftId.value)
@@ -121,7 +120,7 @@ function onAutoFillRefreshed(refreshed: DisclosureFormDraft) {
       />
       <div v-if="draft" class="flex flex-wrap items-center gap-2">
         <DisclosureExportButton
-          :organization-id="organizationId"
+          :organization-id="Number(organizationId)"
           :draft-id="draft.id"
           :disabled="saving"
           @exported="load"
@@ -184,7 +183,7 @@ function onAutoFillRefreshed(refreshed: DisclosureFormDraft) {
       <!-- 自動引用バナー -->
       <DisclosureAutoFillBanner
         v-if="!isLocked"
-        :organization-id="organizationId"
+        :organization-id="Number(organizationId)"
         :draft-id="draft.id"
         :disabled="saving"
         @refreshed="onAutoFillRefreshed"

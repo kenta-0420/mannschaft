@@ -37,7 +37,7 @@ export function useAdvertiserApi() {
 
   // ─── 広告主向け API ───
 
-  async function register(organizationId: number, body: RegisterAdvertiserRequest) {
+  async function register(organizationId: string, body: RegisterAdvertiserRequest) {
     return api<{ data: AdvertiserAccountResponse }>('/api/v1/advertiser/register', {
       method: 'POST',
       params: { organizationId },
@@ -52,13 +52,13 @@ export function useAdvertiserApi() {
     })
   }
 
-  async function getAccount(organizationId: number) {
+  async function getAccount(organizationId: string) {
     return api<{ data: AdvertiserAccountResponse }>('/api/v1/advertiser/account', {
       params: { organizationId },
     })
   }
 
-  async function updateAccount(organizationId: number, body: UpdateAdvertiserAccountRequest) {
+  async function updateAccount(organizationId: string, body: UpdateAdvertiserAccountRequest) {
     return api<{ data: AdvertiserAccountResponse }>('/api/v1/advertiser/account', {
       method: 'PATCH',
       params: { organizationId },
@@ -66,7 +66,7 @@ export function useAdvertiserApi() {
     })
   }
 
-  async function getOverview(organizationId: number) {
+  async function getOverview(organizationId: string) {
     return api<{ data: AdvertiserOverviewResponse }>('/api/v1/advertiser/overview', {
       params: { organizationId },
     })
@@ -92,25 +92,25 @@ export function useAdvertiserApi() {
   }
 
   // Performance
-  async function getCampaignPerformance(campaignId: number, organizationId: number, from: string, to: string) {
+  async function getCampaignPerformance(campaignId: number, organizationId: string, from: string, to: string) {
     return api<{ data: CampaignPerformanceResponse }>(`/api/v1/advertiser/campaigns/${campaignId}/performance`, {
       params: { organizationId, from, to },
     })
   }
 
-  async function getCreativeComparison(campaignId: number, organizationId: number, from: string, to: string) {
+  async function getCreativeComparison(campaignId: number, organizationId: string, from: string, to: string) {
     return api<{ data: CreativeComparisonResponse }>(`/api/v1/advertiser/campaigns/${campaignId}/creatives`, {
       params: { organizationId, from, to },
     })
   }
 
-  async function getBreakdown(campaignId: number, organizationId: number, from: string, to: string, breakdownBy?: string) {
+  async function getBreakdown(campaignId: number, organizationId: string, from: string, to: string, breakdownBy?: string) {
     return api<{ data: BreakdownResponse }>(`/api/v1/advertiser/campaigns/${campaignId}/breakdown`, {
       params: { organizationId, from, to, breakdownBy },
     })
   }
 
-  async function exportCampaignCsv(campaignId: number, organizationId: number, from: string, to: string) {
+  async function exportCampaignCsv(campaignId: number, organizationId: string, from: string, to: string) {
     return api(`/api/v1/advertiser/campaigns/${campaignId}/export`, {
       params: { organizationId, from, to },
       responseType: 'blob' as const,
@@ -118,19 +118,19 @@ export function useAdvertiserApi() {
   }
 
   // Invoices
-  async function getInvoices(organizationId: number, params?: { status?: InvoiceStatus; page?: number; size?: number }) {
+  async function getInvoices(organizationId: string, params?: { status?: InvoiceStatus; page?: number; size?: number }) {
     return api<{ data: InvoiceSummaryResponse[]; meta: { totalElements: number; page: number; size: number; totalPages: number } }>('/api/v1/advertiser/invoices', {
       params: { organizationId, ...params },
     })
   }
 
-  async function getInvoiceDetail(invoiceId: number, organizationId: number) {
+  async function getInvoiceDetail(invoiceId: number, organizationId: string) {
     return api<{ data: InvoiceDetailResponse }>(`/api/v1/advertiser/invoices/${invoiceId}`, {
       params: { organizationId },
     })
   }
 
-  async function downloadInvoicePdf(invoiceId: number, organizationId: number) {
+  async function downloadInvoicePdf(invoiceId: number, organizationId: string) {
     return api(`/api/v1/advertiser/invoices/${invoiceId}/pdf`, {
       params: { organizationId },
       responseType: 'blob' as const,
@@ -138,13 +138,13 @@ export function useAdvertiserApi() {
   }
 
   // Report Schedules
-  async function getReportSchedules(organizationId: number) {
+  async function getReportSchedules(organizationId: string) {
     return api<{ data: ReportScheduleResponse[] }>('/api/v1/advertiser/report-schedules', {
       params: { organizationId },
     })
   }
 
-  async function createReportSchedule(organizationId: number, body: CreateReportScheduleRequest) {
+  async function createReportSchedule(organizationId: string, body: CreateReportScheduleRequest) {
     return api<{ data: ReportScheduleResponse }>('/api/v1/advertiser/report-schedules', {
       method: 'POST',
       params: { organizationId },
@@ -152,7 +152,7 @@ export function useAdvertiserApi() {
     })
   }
 
-  async function deleteReportSchedule(id: number, organizationId: number) {
+  async function deleteReportSchedule(id: number, organizationId: string) {
     return api(`/api/v1/advertiser/report-schedules/${id}`, {
       method: 'DELETE',
       params: { organizationId },
@@ -160,7 +160,7 @@ export function useAdvertiserApi() {
   }
 
   // Credit Limit Requests
-  async function createCreditLimitRequest(organizationId: number, body: CreateCreditLimitRequest) {
+  async function createCreditLimitRequest(organizationId: string, body: CreateCreditLimitRequest) {
     return api<{ data: CreditLimitRequestResponse }>('/api/v1/advertiser/credit-limit-requests', {
       method: 'POST',
       params: { organizationId },
@@ -168,7 +168,7 @@ export function useAdvertiserApi() {
     })
   }
 
-  async function getCreditLimitRequests(organizationId: number) {
+  async function getCreditLimitRequests(organizationId: string) {
     return api<{ data: CreditLimitRequestResponse[] }>('/api/v1/advertiser/credit-limit-requests', {
       params: { organizationId },
     })
@@ -176,27 +176,27 @@ export function useAdvertiserApi() {
 
   // ─── 広告主向け クリエイティブ API ───
 
-  async function createCreative(organizationId: number, campaignId: number, body: CreateAdCreativeRequest) {
+  async function createCreative(organizationId: string, campaignId: number, body: CreateAdCreativeRequest) {
     return api<{ data: AdCreativeResponse }>(
       `/api/v1/organizations/${organizationId}/advertiser/ad-campaigns/${campaignId}/creatives`,
       { method: 'POST', body },
     )
   }
 
-  async function listCreatives(organizationId: number, campaignId: number) {
+  async function listCreatives(organizationId: string, campaignId: number) {
     return api<{ data: AdCreativeResponse[] }>(
       `/api/v1/organizations/${organizationId}/advertiser/ad-campaigns/${campaignId}/creatives`,
     )
   }
 
-  async function updateCreative(organizationId: number, campaignId: number, adId: number, body: UpdateAdCreativeRequest) {
+  async function updateCreative(organizationId: string, campaignId: number, adId: number, body: UpdateAdCreativeRequest) {
     return api<{ data: AdCreativeResponse }>(
       `/api/v1/organizations/${organizationId}/advertiser/ad-campaigns/${campaignId}/creatives/${adId}`,
       { method: 'PUT', body },
     )
   }
 
-  async function deleteCreative(organizationId: number, campaignId: number, adId: number) {
+  async function deleteCreative(organizationId: string, campaignId: number, adId: number) {
     return api(
       `/api/v1/organizations/${organizationId}/advertiser/ad-campaigns/${campaignId}/creatives/${adId}`,
       { method: 'DELETE' },

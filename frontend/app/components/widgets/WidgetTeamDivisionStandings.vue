@@ -46,7 +46,7 @@ async function loadStandings() {
   }
   standingsLoading.value = true
   try {
-    const res = await getStandings(orgId, tournamentId, divisionId)
+    const res = await getStandings(String(orgId), tournamentId, divisionId)
     standings.value = res.data ?? []
   } catch (err) {
     captureQuiet(err, { context: 'WidgetTeamDivisionStandings: 順位表取得' })

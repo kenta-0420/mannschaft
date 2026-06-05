@@ -35,12 +35,12 @@ async function load() {
   try {
     const results = await Promise.all(
       teamStore.myTeams.slice(0, 5).map((team) =>
-        getScopedThreads('teams', team.id, { page: 0, size: 3 })
+        getScopedThreads('teams', String(team.id), { page: 0, size: 3 })
           .then((res) =>
             res.data.map((t) => ({
               ...t,
               scopeName: team.nickname1 || team.name,
-              scopeId: team.id,
+              scopeId: String(team.id),
             })),
           )
           .catch((error) => {

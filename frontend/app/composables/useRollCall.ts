@@ -26,7 +26,7 @@ import { useOfflineCareQueue } from '~/composables/jobs/useOfflineCareQueue'
  * <p>{@code submit} は成功時には BE のレスポンスをそのまま返すが、
  * オフライン時は {@code null} を返し {@link offlineQueued} を {@code true} にする。</p>
  */
-export function useRollCall(teamId: Ref<string>, eventId: Ref<string>) {
+export function useRollCall(teamId: Ref<string>, eventId: Ref<number>) {
   const api = useRollCallApi()
   const careQueue = useOfflineCareQueue()
 

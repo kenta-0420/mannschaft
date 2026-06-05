@@ -41,8 +41,8 @@ export function useShiftBudgetApi() {
   /**
    * 共通: 組織スコープヘッダを生成。
    */
-  function orgHeaders(organizationId: number): Record<string, string> {
-    return { 'X-Organization-Id': String(organizationId) }
+  function orgHeaders(organizationId: string): Record<string, string> {
+    return { 'X-Organization-Id': organizationId }
   }
 
   // ===== 逆算 API（Phase 9-α、ヘッダ不要） =====
@@ -67,7 +67,7 @@ export function useShiftBudgetApi() {
    * シフト予算割当一覧を取得する（ページング）。
    */
   async function listAllocations(
-    organizationId: number,
+    organizationId: string,
     page = 0,
     size = 20,
   ): Promise<AllocationListResponse> {
@@ -85,7 +85,7 @@ export function useShiftBudgetApi() {
    * シフト予算割当を作成する（BUDGET_ADMIN 必須）。
    */
   async function createAllocation(
-    organizationId: number,
+    organizationId: string,
     request: AllocationCreateRequest,
   ): Promise<AllocationResponse> {
     const res = await api<{ data: AllocationResponse }>(`${BASE}/allocations`, {
@@ -100,7 +100,7 @@ export function useShiftBudgetApi() {
    * シフト予算割当の詳細を取得する。
    */
   async function getAllocation(
-    organizationId: number,
+    organizationId: string,
     id: number,
   ): Promise<AllocationResponse> {
     const res = await api<{ data: AllocationResponse }>(`${BASE}/allocations/${id}`, {
@@ -113,7 +113,7 @@ export function useShiftBudgetApi() {
    * シフト予算割当を更新する（楽観ロック / BUDGET_ADMIN 必須）。
    */
   async function updateAllocation(
-    organizationId: number,
+    organizationId: string,
     id: number,
     request: AllocationUpdateRequest,
   ): Promise<AllocationResponse> {
@@ -128,7 +128,7 @@ export function useShiftBudgetApi() {
   /**
    * シフト予算割当を論理削除する（BUDGET_ADMIN 必須）。
    */
-  async function deleteAllocation(organizationId: number, id: number): Promise<void> {
+  async function deleteAllocation(organizationId: string, id: number): Promise<void> {
     await api(`${BASE}/allocations/${id}`, {
       method: 'DELETE',
       headers: orgHeaders(organizationId),
@@ -140,7 +140,7 @@ export function useShiftBudgetApi() {
    * BUDGET_ADMIN 保有時のみ {@code by_user} に実データが入る。
    */
   async function getConsumptionSummary(
-    organizationId: number,
+    organizationId: string,
     allocationId: number,
   ): Promise<ConsumptionSummaryResponse> {
     const res = await api<{ data: ConsumptionSummaryResponse }>(
@@ -156,7 +156,7 @@ export function useShiftBudgetApi() {
    * TODO/プロジェクトと予算割当を紐付ける。
    */
   async function createTodoBudgetLink(
-    organizationId: number,
+    organizationId: string,
     request: TodoBudgetLinkCreateRequest,
   ): Promise<TodoBudgetLinkResponse> {
     const res = await api<{ data: TodoBudgetLinkResponse }>(TODO_LINK_BASE, {
@@ -170,7 +170,7 @@ export function useShiftBudgetApi() {
   /**
    * TODO/プロジェクトの予算紐付を削除する。
    */
-  async function deleteTodoBudgetLink(organizationId: number, id: number): Promise<void> {
+  async function deleteTodoBudgetLink(organizationId: string, id: number): Promise<void> {
     await api(`${TODO_LINK_BASE}/${id}`, {
       method: 'DELETE',
       headers: orgHeaders(organizationId),
@@ -183,7 +183,7 @@ export function useShiftBudgetApi() {
    * 閾値超過警告の一覧を取得する（新しい順）。
    */
   async function listAlerts(
-    organizationId: number,
+    organizationId: string,
     page = 0,
     size = 20,
   ): Promise<AlertResponse[]> {
@@ -200,7 +200,7 @@ export function useShiftBudgetApi() {
    * 警告に対して承認応答する（BUDGET_ADMIN 必須）。
    */
   async function acknowledgeAlert(
-    organizationId: number,
+    organizationId: string,
     id: number,
     request?: AlertAcknowledgeRequest,
   ): Promise<AlertResponse> {
@@ -234,7 +234,7 @@ export function useShiftBudgetApi() {
    * 失敗イベント一覧を取得する（status で絞り込み可、新しい順）。
    */
   async function listFailedEvents(
-    organizationId: number,
+    organizationId: string,
     status?: FailedEventStatus | null,
     page = 0,
     size = 20,
@@ -254,7 +254,7 @@ export function useShiftBudgetApi() {
    * 失敗イベントを手動で再実行する（BUDGET_ADMIN 必須、EXHAUSTED にも適用可）。
    */
   async function retryFailedEvent(
-    organizationId: number,
+    organizationId: string,
     id: number,
   ): Promise<FailedEventResponse> {
     const res = await api<{ data: FailedEventResponse }>(
@@ -268,7 +268,7 @@ export function useShiftBudgetApi() {
    * 失敗イベントを手動補正済としてマークする（BUDGET_ADMIN 必須）。
    */
   async function resolveFailedEvent(
-    organizationId: number,
+    organizationId: string,
     id: number,
   ): Promise<FailedEventResponse> {
     const res = await api<{ data: FailedEventResponse }>(

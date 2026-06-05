@@ -86,7 +86,7 @@ export type BroadcastChannelContent =
 export interface BroadcastRequest {
   channel: BroadcastChannel
   targetRole: BroadcastTargetRole
-  targetTeamIds?: number[] | null
+  targetTeamIds?: string[] | null
   templateId?: number | null
   priority?: BroadcastPriority
   expiresAt?: string | null
@@ -100,7 +100,7 @@ export interface BroadcastResponse {
   contentId: number
   contentUrl: string
   targetRole: BroadcastTargetRole
-  targetTeamIds: number[] | null
+  targetTeamIds: string[] | null
   priority: BroadcastPriority
   createdAt: string
 }
@@ -116,7 +116,7 @@ export interface AnnouncementTemplate {
   id: number
   name: string
   targetRole: BroadcastTargetRole
-  targetTeamIds: number[] | null
+  targetTeamIds: string[] | null
   preferredChannel: BroadcastChannel | null
   isDefault: boolean
   createdBy: TemplateCreatedBy | null
@@ -127,7 +127,7 @@ export interface AnnouncementTemplate {
 export interface AnnouncementTemplateRequest {
   name: string
   targetRole: BroadcastTargetRole
-  targetTeamIds?: number[] | null
+  targetTeamIds?: string[] | null
   preferredChannel?: BroadcastChannel | null
   isDefault?: boolean
 }
@@ -139,7 +139,7 @@ export type WizardStep = 1 | 2 | 3
 export interface WizardFormState {
   step: WizardStep
   targetRole: BroadcastTargetRole
-  targetTeamIds: number[] | null
+  targetTeamIds: string[] | null
   selectedChannel: BroadcastChannel | null
   templateId: number | null
   priority: BroadcastPriority

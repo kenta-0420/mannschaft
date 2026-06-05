@@ -53,7 +53,7 @@ afterEach(() => {
 describe('DismissalDialog.vue', () => {
   it('open=true で開いたとき notifyGuardians がデフォルト true', async () => {
     const wrapper = await mountSuspended(DismissalDialog, {
-      props: { teamId: 1, eventId: 2, open: true },
+      props: { teamId: '1', eventId: 2, open: true },
     })
 
     // PrimeVue ToggleSwitch は内部に input[role="switch"] or checkbox を持つ
@@ -74,7 +74,7 @@ describe('DismissalDialog.vue', () => {
 
   it('送信ボタンクリックで submit に notifyGuardians=true 含むペイロードが渡る', async () => {
     const wrapper = await mountSuspended(DismissalDialog, {
-      props: { teamId: 10, eventId: 20, open: true, defaultMessage: 'お疲れさまでした' },
+      props: { teamId: '10', eventId: 20, open: true, defaultMessage: 'お疲れさまでした' },
     })
 
     const btn = findByTestId<HTMLButtonElement>('dismissal-submit')
@@ -97,7 +97,7 @@ describe('DismissalDialog.vue', () => {
 
   it('defaultMessage 未指定時は message 省略（undefined）で送信', async () => {
     const wrapper = await mountSuspended(DismissalDialog, {
-      props: { teamId: 10, eventId: 20, open: true },
+      props: { teamId: '10', eventId: 20, open: true },
     })
 
     const btn = findByTestId<HTMLButtonElement>('dismissal-submit')

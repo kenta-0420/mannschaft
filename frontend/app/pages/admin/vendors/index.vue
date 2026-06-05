@@ -30,10 +30,9 @@ const scope = computed<ScopeName>(() => {
   const raw = (route.query.scope as string | undefined) ?? 'teams'
   return raw === 'organizations' ? 'organizations' : 'teams'
 })
-const scopeId = computed<number>(() => {
+const scopeId = computed<string>(() => {
   const raw = route.query.scopeId
-  const n = Number(Array.isArray(raw) ? raw[0] : raw)
-  return Number.isFinite(n) && n > 0 ? n : 0
+  return raw ? String(Array.isArray(raw) ? raw[0] : raw) : ''
 })
 
 const api = computed(() => useVendorApi(scope.value, scopeId.value))
@@ -60,7 +59,7 @@ const categoryOptions = computed(() =>
 )
 
 async function load() {
-  if (scopeId.value === 0) return
+  if (scopeId.value === '') return
   loading.value = true
   try {
     const params: Parameters<typeof api.value.list>[0] = {
@@ -207,14 +206,14 @@ function categoryLabel(c: VendorCategory | null): string {
         icon="pi pi-plus"
         :label="t('property.vendor.newVendor')"
         severity="primary"
-        :disabled="scopeId === 0"
+        :disabled="scopeId === '0'"
         data-testid="vendor-new-btn"
         @click="openCreate"
       />
     </header>
 
     <p
-      v-if="scopeId === 0"
+      v-if="scopeId === '0'"
       class="rounded-md border border-dashed border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200"
     >
       ?scope=teams&scopeId=N

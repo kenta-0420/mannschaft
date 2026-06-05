@@ -13,7 +13,7 @@ import { setupRepairPlanAuth, setupLayoutMocks, setupRepairPlanPageMocks } from 
 
 const BASE_TIMELINE: RepairPlanTimelineResponse = {
   scopeType: 'teams',
-  scopeId: 1,
+  scopeId: '1',
   yearFrom: 2005,
   yearTo: 2030,
   labels: [2025, 2026, 2027],
