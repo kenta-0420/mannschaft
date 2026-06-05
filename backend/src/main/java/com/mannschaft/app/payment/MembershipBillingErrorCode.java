@@ -180,6 +180,18 @@ public enum MembershipBillingErrorCode implements ErrorCode {
     PAYMENT_ADVANCE_ALREADY_SETTLED(
             "MEMBERSHIP_BILLING_013",
             "この立替は既に精算済みです",
+            Severity.WARN),
+
+    /**
+     * 協会請求の配信（send）で、請求先チームに受信できる ADMIN/DEPUTY_ADMIN が一人も居ない。409。
+     *
+     * <p>確認必須通知の受信者ゼロは配信不能（チーム体制の不備）。状態制約の
+     * {@link #PAYMENT_REQUEST_INVALID_STATUS}（取消/支払いの状態違反）と混同しないよう専用コードに分離する
+     * （02_api §7「受信者ゼロ・DRAFT 以外は 409」のうち受信者ゼロ側）。</p>
+     */
+    PAYMENT_REQUEST_NO_RECIPIENTS(
+            "MEMBERSHIP_BILLING_014",
+            "この請求を配信できる管理者が請求先チームにいません",
             Severity.WARN);
 
     private final String code;

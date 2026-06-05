@@ -654,6 +654,7 @@ public class GlobalExceptionHandler {
             Map.entry("MEMBERSHIP_BILLING_011", HttpStatus.FORBIDDEN),       // 協会請求の支払い権限なし / 請求先チーム不一致（IDOR・02_api §7 PAYMENT_REQUEST_NOT_FOR_THIS_TEAM）
             Map.entry("MEMBERSHIP_BILLING_012", HttpStatus.NOT_FOUND),       // 立替記録が見つからない / IDOR 秘匿
             Map.entry("MEMBERSHIP_BILLING_013", HttpStatus.CONFLICT),        // 立替が既に精算済み（重複確認防止・02_api §10 ADVANCE_ALREADY_SETTLED）
+            Map.entry("MEMBERSHIP_BILLING_014", HttpStatus.CONFLICT),        // 協会請求の配信で受信者ゼロ（チーム ADMIN 不在・02_api §7 PAYMENT_REQUEST_NO_RECIPIENTS / INVALID_STATUS と分離）
             // セキュリティインシデント（GDPR Article 33）
             Map.entry("SEC_INCIDENT_001", HttpStatus.NOT_FOUND)              // SECURITY_INCIDENT_NOT_FOUND（IDOR 対策で 404）
     );

@@ -177,10 +177,12 @@ public class TeamPaymentAdvanceService {
                     orgId,
                     actionUrl,
                     advance.getSettledConfirmedBy());
-        } catch (RuntimeException e) {
-            // 通知は補助チャネル。失敗しても精算確定は確定済みのため握って継続（症状は warn で記録）。
-            log.warn("精算確認通知の送信失敗（継続）: advanceId={}, orgId={}, error={}",
-                    advance.getId(), orgId, e.getMessage());
+        } catch (BusinessException e) {
+            // 通知は補助チャネル。通知系の業務例外（受信者解決・配信ガード等）のみ握って継続する
+            // （精算確定そのものは確定済み）。NPE/IllegalState 等のプログラミングエラーは握らず再 throw して
+            // 症状を隠さない（catch を RuntimeException から BusinessException に狭めて根治・検分 🟡5）。
+            log.warn("精算確認通知の送信失敗（補助チャネルのため継続）: advanceId={}, orgId={}, errorCode={}, error={}",
+                    advance.getId(), orgId, e.getErrorCode().getCode(), e.getMessage());
         }
     }
 

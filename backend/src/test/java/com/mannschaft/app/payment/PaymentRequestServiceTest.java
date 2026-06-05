@@ -423,6 +423,80 @@ class PaymentRequestServiceTest {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MembershipBillingErrorCode.PAYMENT_REQUEST_NOT_FOUND);
         }
+
+        @Test
+        @DisplayName("補償方針(🔴1): charge 成功後の立替起票で例外が起きると、その例外を伝播する（Tx ロールバック）")
+        void charge成功後のDB失敗は例外伝播() {
+            PaymentRequestEntity r = payableRequest(PaymentRequestStatus.SENT);
+            given(paymentRequestRepository.findByIdAndDeletedAtIsNull(r.getId())).willReturn(Optional.of(r));
+            given(paymentRequestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            ConnectAccountEntity payee = readyOrgConnectAccount();
+            payee.setId(PAYEE_CONNECT_ID);
+            given(connectAccountRepository.findById(PAYEE_CONNECT_ID)).willReturn(Optional.of(payee));
+            given(stripeCustomerRepository.findByUserId(ADMIN_USER_ID)).willReturn(Optional.of(
+                    StripeCustomerEntity.builder().userId(ADMIN_USER_ID).stripeCustomerId("cus_admin").build()));
+            given(connectChargeService.charge(any(MembershipChargeCommand.class)))
+                    .willReturn(new MembershipChargeResult(ESCROW_ID, "secret_x", "pi_x", EscrowStatus.AUTHORIZED));
+            // charge 成功後の立替起票で DB 例外を注入する。
+            given(teamPaymentAdvanceService.createAdvance(
+                    anyLong(), anyLong(), anyLong(), any(), any(), anyInt(), any()))
+                    .willThrow(new RuntimeException("DB 書き込み失敗（注入）"));
+
+            // 症状を隠さず（握り潰さず）例外を伝播する＝呼び出し元 Tx がロールバックされる。
+            assertThatThrownBy(() -> service.pay(TEAM_ID, r.getId(), ADMIN_USER_ID, "idem-fail"))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("DB 書き込み失敗");
+            // charge は確かに呼ばれている（孤児 PI のリスクが現実に存在する経路を通っている）。
+            verify(connectChargeService).charge(any(MembershipChargeCommand.class));
+        }
+
+        @Test
+        @DisplayName("Customer 解決(🔴2): 既存 Stripe Customer があれば createCustomer を呼ばず増殖させない（find 経路）")
+        void 既存Customerは再作成しない() {
+            PaymentRequestEntity r = payableRequest(PaymentRequestStatus.SENT);
+            given(paymentRequestRepository.findByIdAndDeletedAtIsNull(r.getId())).willReturn(Optional.of(r));
+            given(paymentRequestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            stubReadyPayeeAndCustomerAndCharge(); // findByUserId が既存 Customer を返す
+
+            service.pay(TEAM_ID, r.getId(), ADMIN_USER_ID, "idem-cust");
+
+            // 既存 Customer がある場合は Stripe Customer を新規作成しない（get-or-create の find 経路）。
+            verify(stripePaymentProvider, never()).createCustomer(any(), anyLong());
+        }
+
+        @Test
+        @DisplayName("Customer 解決(🔴2): 未登録なら createCustomer を一度だけ呼んで保存する（保存値が charge に橋渡しされる）")
+        void 未登録Customerは一度だけ作成() {
+            PaymentRequestEntity r = payableRequest(PaymentRequestStatus.SENT);
+            given(paymentRequestRepository.findByIdAndDeletedAtIsNull(r.getId())).willReturn(Optional.of(r));
+            given(paymentRequestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            ConnectAccountEntity payee = readyOrgConnectAccount();
+            payee.setId(PAYEE_CONNECT_ID);
+            given(connectAccountRepository.findById(PAYEE_CONNECT_ID)).willReturn(Optional.of(payee));
+            given(stripeCustomerRepository.findByUserId(ADMIN_USER_ID)).willReturn(Optional.empty());
+            given(stripePaymentProvider.createCustomer(any(), anyLong())).willReturn("cus_new");
+            given(stripeCustomerRepository.save(any(StripeCustomerEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(connectChargeService.charge(any(MembershipChargeCommand.class)))
+                    .willReturn(new MembershipChargeResult(ESCROW_ID, "secret_x", "pi_x", EscrowStatus.AUTHORIZED));
+            given(teamPaymentAdvanceService.createAdvance(
+                    anyLong(), anyLong(), anyLong(), any(), any(), anyInt(), any()))
+                    .willAnswer(inv -> {
+                        TeamPaymentAdvanceEntity a = TeamPaymentAdvanceEntity.builder()
+                                .teamId(inv.getArgument(1)).build();
+                        a.setId(UUID.randomUUID());
+                        return a;
+                    });
+
+            service.pay(TEAM_ID, r.getId(), ADMIN_USER_ID, "idem-cust2");
+
+            verify(stripePaymentProvider).createCustomer(any(), eq(ADMIN_USER_ID));
+            verify(stripeCustomerRepository).save(any(StripeCustomerEntity.class));
+            // 新規作成した Customer が charge へ橋渡しされる。
+            ArgumentCaptor<MembershipChargeCommand> captor = ArgumentCaptor.forClass(MembershipChargeCommand.class);
+            verify(connectChargeService).charge(captor.capture());
+            assertThat(captor.getValue().payerStripeCustomerId()).isEqualTo("cus_new");
+        }
     }
 
     @Nested
@@ -520,7 +594,7 @@ class PaymentRequestServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 請求先チームに ADMIN が居なければ配信不可（INVALID_STATUS・409）")
+        @DisplayName("異常系: 請求先チームに ADMIN が居なければ配信不可（NO_RECIPIENTS・409・状態制約と分離）")
         void 受信者ゼロで409() {
             PaymentRequestEntity r = draft();
             given(paymentRequestRepository.findByIdAndDeletedAtIsNull(r.getId())).willReturn(Optional.of(r));
@@ -529,7 +603,21 @@ class PaymentRequestServiceTest {
             assertThatThrownBy(() -> service.send(ORG_ID, r.getId(), ADMIN_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MembershipBillingErrorCode.PAYMENT_REQUEST_INVALID_STATUS);
+                    .isEqualTo(MembershipBillingErrorCode.PAYMENT_REQUEST_NO_RECIPIENTS);
+            verify(confirmableNotificationService, never()).send(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("IDOR: 他テナント（orgId 不一致）の請求 send は 404 秘匿（PAYMENT_REQUEST_NOT_FOUND）")
+        void 他テナントsendは404() {
+            PaymentRequestEntity r = draft();
+            given(paymentRequestRepository.findByIdAndDeletedAtIsNull(r.getId())).willReturn(Optional.of(r));
+
+            assertThatThrownBy(() -> service.send(999L, r.getId(), ADMIN_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MembershipBillingErrorCode.PAYMENT_REQUEST_NOT_FOUND);
             verify(confirmableNotificationService, never()).send(
                     any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         }

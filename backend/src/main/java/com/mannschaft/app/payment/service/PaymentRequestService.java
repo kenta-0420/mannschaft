@@ -190,8 +190,10 @@ public class PaymentRequestService {
      * {@value #NOTIF_SEND_BODY_KEY}）。</p>
      *
      * <p>認可: 協会(ORG) ADMIN/DEPUTY_ADMIN（発行者と同一権原）。状態ゲート: DRAFT のみ（SENT 以降の
-     * 再配信は本メソッドでは行わない・409）。受信者ゼロ（チーム ADMIN 不在）は配信できないため 409 にせず
-     * {@link IllegalStateException} ではなく業務エラー扱い（症状を隠さない）。</p>
+     * 再配信は本メソッドでは行わない・{@link MembershipBillingErrorCode#PAYMENT_REQUEST_INVALID_STATUS}・409）。
+     * 受信者ゼロ（チーム ADMIN 不在）は配信できないため専用コード
+     * {@link MembershipBillingErrorCode#PAYMENT_REQUEST_NO_RECIPIENTS}（409・状態制約と混同しない）で返す
+     * （症状を隠さない）。</p>
      *
      * @param orgId           テナント（協会）
      * @param requestId       配信対象の請求 ID
@@ -213,9 +215,10 @@ public class PaymentRequestService {
         List<Long> recipientUserIds = userRoleRepository.findAdminUserIdsByTeamIds(List.of(teamId));
         if (recipientUserIds == null || recipientUserIds.isEmpty()) {
             // 配信先 ADMIN が居なければ確認必須通知を送れない（症状を隠さず 409・チーム体制の不備として返す）。
+            // 状態制約（INVALID_STATUS）ではなく受信者ゼロ専用コードで返す（混同解消・02_api §7）。
             log.warn("協会請求配信: 請求先チームに ADMIN が居ないため配信不可: requestId={}, teamId={}",
                     requestId, teamId);
-            throw new BusinessException(MembershipBillingErrorCode.PAYMENT_REQUEST_INVALID_STATUS);
+            throw new BusinessException(MembershipBillingErrorCode.PAYMENT_REQUEST_NO_RECIPIENTS);
         }
 
         Locale locale = resolveOperatorLocale();
@@ -361,21 +364,38 @@ public class PaymentRequestService {
                 idempotencyKey));
 
         // 7. 請求を PAID 化＋escrow 連結。team_payment_advances を PENDING で起票（同一 Tx・冪等）。
-        request.markAsPaid(chargeResult.escrowTransactionId());
-        paymentRequestRepository.save(request);
+        //
+        // ⚠️ 決済補償方針（既知リスク・02_api §11.1）: charge() は @Transactional で本メソッドの Tx に participate する
+        //    （REQUIRES_NEW ではない）。よって以下の DB 処理が例外を投げると Tx ロールバックで escrow 行の INSERT も
+        //    巻き戻り、Stripe で作成済みの PaymentIntent が孤児化する（escrow 行が消えるため payment_intent.succeeded
+        //    webhook の findByStripePaymentIntentId が対象を見つけられず自動リカバリ不可）。症状を隠さず、孤児 PI を
+        //    運用で手動補正できるよう専用 ERROR ログ（piId/requestId/idempotencyKey）を残してから再 throw する。
+        try {
+            request.markAsPaid(chargeResult.escrowTransactionId());
+            paymentRequestRepository.save(request);
 
-        TeamPaymentAdvanceEntity advance = teamPaymentAdvanceService.createAdvance(
-                request.getOrganizationId(), teamId, actorUserId,
-                chargeResult.escrowTransactionId(), request.getId(),
-                request.getFaceAmount(), request.getCurrency());
+            TeamPaymentAdvanceEntity advance = teamPaymentAdvanceService.createAdvance(
+                    request.getOrganizationId(), teamId, actorUserId,
+                    chargeResult.escrowTransactionId(), request.getId(),
+                    request.getFaceAmount(), request.getCurrency());
 
-        recordAudit(AuditEventType.PAYMENT_REQUEST_PAID, actorUserId, teamId, request.getOrganizationId(),
-                String.format("{\"paymentRequestId\":\"%s\",\"escrowId\":\"%s\",\"advanceId\":\"%s\"}",
-                        request.getId(), chargeResult.escrowTransactionId(), advance.getId()));
-        log.info("協会請求を支払い PAID（案3 立替課金）: requestId={}, teamId={}, payer={}, escrowId={}, advanceId={}",
-                request.getId(), teamId, actorUserId, chargeResult.escrowTransactionId(), advance.getId());
-        return new PaymentRequestPayResult(
-                request.getId(), chargeResult.escrowTransactionId(), advance.getId(), chargeResult.clientSecret());
+            recordAudit(AuditEventType.PAYMENT_REQUEST_PAID, actorUserId, teamId, request.getOrganizationId(),
+                    String.format("{\"paymentRequestId\":\"%s\",\"escrowId\":\"%s\",\"advanceId\":\"%s\"}",
+                            request.getId(), chargeResult.escrowTransactionId(), advance.getId()));
+            log.info("協会請求を支払い PAID（案3 立替課金）: requestId={}, teamId={}, payer={}, escrowId={}, advanceId={}",
+                    request.getId(), teamId, actorUserId, chargeResult.escrowTransactionId(), advance.getId());
+            return new PaymentRequestPayResult(
+                    request.getId(), chargeResult.escrowTransactionId(), advance.getId(), chargeResult.clientSecret());
+        } catch (RuntimeException e) {
+            // charge は成立済み（Stripe で課金された）が PAID 反映/立替起票で失敗 → Tx ロールバックで escrow も巻き戻る。
+            // 孤児 PI を Stripe ダッシュボードで突合・手動補正するための調査キーを ERROR で残す（02_api §11.1）。
+            log.error("協会請求支払いの charge 成功後に DB 処理が失敗。Tx ロールバックで escrow 行も巻き戻り Stripe PI が"
+                            + "孤児化します。Stripe ダッシュボードで piId/idempotencyKey を突合し手動補正してください: "
+                            + "requestId={}, teamId={}, payer={}, escrowId={}, paymentIntentId={}, idempotencyKey={}",
+                    request.getId(), teamId, actorUserId, chargeResult.escrowTransactionId(),
+                    chargeResult.paymentIntentId(), idempotencyKey, e);
+            throw e;
+        }
     }
 
     /**
