@@ -369,7 +369,19 @@ public enum AuditEventType {
     /** SYSTEM_ADMIN が手数料パターン割当を作成した。 */
     FEE_POLICY_ASSIGNMENT_CREATED(AuditEventCategory.ADMIN_ACTION),
     /** SYSTEM_ADMIN が手数料パターン割当を解除した。 */
-    FEE_POLICY_ASSIGNMENT_DELETED(AuditEventCategory.ADMIN_ACTION);
+    FEE_POLICY_ASSIGNMENT_DELETED(AuditEventCategory.ADMIN_ACTION),
+
+    // ─── GUARDIANSHIP_SWITCH (F08.9 P3c 後見切替セッション) ─────────────
+    /**
+     * 保護者が子として後見切替セッションを開始した（acting-as 開始・03_security §3.2 二重記録）。
+     * userId=保護者 / targetUserId=子。proxy_input_records にも併せて追記する。
+     */
+    GUARDIANSHIP_SWITCH_STARTED(AuditEventCategory.PAYMENT),
+    /**
+     * 後見切替セッションを終了した（acting-as 終了・本人へ復帰）。
+     * userId=保護者 / targetUserId=子。
+     */
+    GUARDIANSHIP_SWITCH_ENDED(AuditEventCategory.PAYMENT);
 
     private final AuditEventCategory category;
 }

@@ -644,6 +644,8 @@ public class GlobalExceptionHandler {
             Map.entry("MEMBERSHIP_BILLING_001", HttpStatus.FORBIDDEN),       // 代理払い権原なし / IDOR
             Map.entry("MEMBERSHIP_BILLING_002", HttpStatus.CONFLICT),        // 既に有効な支払いが存在（二重課金防止）
             Map.entry("MEMBERSHIP_BILLING_003", HttpStatus.FORBIDDEN),       // 後見切替中の認証クリティカル操作（03_security §3.2 なりすまし防止: パスワード/メール/2FA/退会の代理禁止）
+            Map.entry("MEMBERSHIP_BILLING_004", HttpStatus.FORBIDDEN),       // 後見切替の年齢ゲート封印（02_api §2.2 GUARDIANSHIP_SWITCH_AGE_LOCKED）
+            Map.entry("MEMBERSHIP_BILLING_005", HttpStatus.FORBIDDEN),       // 後見切替の保護者リンクなし（02_api §2.2 GUARDIANSHIP_LINK_NOT_FOUND / IDOR）
             // セキュリティインシデント（GDPR Article 33）
             Map.entry("SEC_INCIDENT_001", HttpStatus.NOT_FOUND)              // SECURITY_INCIDENT_NOT_FOUND（IDOR 対策で 404）
     );

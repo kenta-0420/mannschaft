@@ -59,6 +59,34 @@ public enum MembershipBillingErrorCode implements ErrorCode {
     MEMBERSHIP_AUTHENTICATION_CRITICAL_OPERATION(
             "MEMBERSHIP_BILLING_003",
             "後見切替セッション中はこの認証に関わる操作を代理で行えません",
+            Severity.WARN),
+
+    /**
+     * 後見切替を開始しようとした子が年齢ポリシーで封印段階（中学生以降等）に達しているため切替できない。403。
+     *
+     * <p>{@code GuardianshipAgePolicyRegistry.forCountry(child.country_code).resolve(...).switchAllowed == false}
+     * の場合に投げる。生年月日が解決できず安全側に封印された場合も本コード。</p>
+     *
+     * <p>設計書: docs/features/F08.9_membership_billing_paywall/02_api_design.md §2.2
+     * （{@code GUARDIANSHIP_SWITCH_AGE_LOCKED}）／03_security.md §3「後見切替の年齢ゲート」。</p>
+     */
+    GUARDIANSHIP_SWITCH_AGE_LOCKED(
+            "MEMBERSHIP_BILLING_004",
+            "このお子さまは年齢到達のため後見切替できません",
+            Severity.WARN),
+
+    /**
+     * 後見切替を開始しようとした相手に有効な保護者リンクが存在しない。403。
+     *
+     * <p>parental_consent_links（APPROVED）も care_links（ACTIVE PARENT）も成立しない場合に投げる。
+     * 他人の子になりすます試行（IDOR）もここで弾く。</p>
+     *
+     * <p>設計書: docs/features/F08.9_membership_billing_paywall/02_api_design.md §2.2
+     * （{@code GUARDIANSHIP_LINK_NOT_FOUND}）。</p>
+     */
+    GUARDIANSHIP_LINK_NOT_FOUND(
+            "MEMBERSHIP_BILLING_005",
+            "有効な保護者リンクが見つからないため後見切替できません",
             Severity.WARN);
 
     private final String code;

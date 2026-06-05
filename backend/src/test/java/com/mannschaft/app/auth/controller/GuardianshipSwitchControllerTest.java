@@ -27,7 +27,11 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -122,5 +126,69 @@ class GuardianshipSwitchControllerTest {
         mockMvc.perform(get("/api/v1/me/guardianship/switchable-children"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("COMMON_000"));
+    }
+
+    // ========================================
+    // POST /switch — 切替開始（F08.9 P3c）
+    // ========================================
+
+    @Test
+    @DisplayName("POST 正常系: 204 / Service へ (guardian, child) が渡る")
+    void startSwitch_204() throws Exception {
+        mockMvc.perform(post("/api/v1/me/guardianship/switch")
+                        .contentType("application/json")
+                        .content("{\"childUserId\":11}"))
+                .andExpect(status().isNoContent());
+        verify(guardianshipSwitchService).startSwitch(GUARDIAN_USER_ID, 11L);
+    }
+
+    @Test
+    @DisplayName("POST 年齢封印: 403 GUARDIANSHIP_SWITCH_AGE_LOCKED（MEMBERSHIP_BILLING_004）")
+    void startSwitch_ageLocked_403() throws Exception {
+        willThrow(new com.mannschaft.app.common.BusinessException(
+                com.mannschaft.app.payment.MembershipBillingErrorCode.GUARDIANSHIP_SWITCH_AGE_LOCKED))
+                .given(guardianshipSwitchService).startSwitch(GUARDIAN_USER_ID, 11L);
+
+        mockMvc.perform(post("/api/v1/me/guardianship/switch")
+                        .contentType("application/json")
+                        .content("{\"childUserId\":11}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("MEMBERSHIP_BILLING_004"));
+    }
+
+    @Test
+    @DisplayName("POST リンクなし: 403 GUARDIANSHIP_LINK_NOT_FOUND（MEMBERSHIP_BILLING_005）")
+    void startSwitch_linkNotFound_403() throws Exception {
+        willThrow(new com.mannschaft.app.common.BusinessException(
+                com.mannschaft.app.payment.MembershipBillingErrorCode.GUARDIANSHIP_LINK_NOT_FOUND))
+                .given(guardianshipSwitchService).startSwitch(GUARDIAN_USER_ID, 11L);
+
+        mockMvc.perform(post("/api/v1/me/guardianship/switch")
+                        .contentType("application/json")
+                        .content("{\"childUserId\":11}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("MEMBERSHIP_BILLING_005"));
+    }
+
+    @Test
+    @DisplayName("POST childUserId 欠落: 400（バリデーション）")
+    void startSwitch_missingChildId_400() throws Exception {
+        mockMvc.perform(post("/api/v1/me/guardianship/switch")
+                        .contentType("application/json")
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ========================================
+    // DELETE /switch — 切替終了（F08.9 P3c）
+    // ========================================
+
+    @Test
+    @DisplayName("DELETE 正常系: 204 / Service へ (guardian, child) が渡る")
+    void endSwitch_204() throws Exception {
+        mockMvc.perform(delete("/api/v1/me/guardianship/switch")
+                        .param("childUserId", "11"))
+                .andExpect(status().isNoContent());
+        verify(guardianshipSwitchService).endSwitch(GUARDIAN_USER_ID, 11L);
     }
 }

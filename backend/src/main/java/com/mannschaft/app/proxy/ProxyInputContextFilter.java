@@ -1,6 +1,8 @@
 package com.mannschaft.app.proxy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.auth.guardianship.GuardianshipSwitchService;
+import com.mannschaft.app.auth.guardianship.GuardianshipSwitchService.SwitchVerdict;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentScopeEntity;
@@ -40,6 +42,7 @@ public class ProxyInputContextFilter extends OncePerRequestFilter {
     private final ProxyInputConsentRepository proxyInputConsentRepository;
     private final ProxyInputContext proxyInputContext;
     private final ObjectMapper objectMapper;
+    private final GuardianshipSwitchService guardianshipSwitchService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -54,15 +57,24 @@ public class ProxyInputContextFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 必須ヘッダーの存在チェック
         String consentIdHeader = request.getHeader(HEADER_PROXY_CONSENT);
+
+        // 後見切替経路（F08.9 P3c）: consent-id ヘッダなし＝紙同意書ベースでない acting-as。
+        // 保護者リンク＋年齢ゲートを毎リクエスト再検証し、PAYMENT スコープのみで activate する。
+        // consent-id があれば従来の F14.1 紙同意書経路へフォールスルー（既存経路を壊さない）。
+        if (consentIdHeader == null) {
+            handleGuardianshipSwitch(request, response, chain, proxyForHeader);
+            return;
+        }
+
+        // 必須ヘッダーの存在チェック（従来の F14.1 紙同意書経路）
         String inputSourceHeader = request.getHeader(HEADER_PROXY_SOURCE);
         String storageHeader = request.getHeader(HEADER_PROXY_STORAGE);
 
-        if (consentIdHeader == null || inputSourceHeader == null || storageHeader == null
+        if (inputSourceHeader == null || storageHeader == null
                 || storageHeader.isBlank()) {
             sendError(response, HttpServletResponse.SC_BAD_REQUEST,
-                    "代理入力ヘッダーが不完全です。X-Proxy-Consent-Id, X-Proxy-Input-Source, X-Proxy-Original-Storage は必須です。");
+                    "代理入力ヘッダーが不完全です。X-Proxy-Input-Source, X-Proxy-Original-Storage は必須です。");
             return;
         }
 
@@ -128,6 +140,65 @@ public class ProxyInputContextFilter extends OncePerRequestFilter {
                 proxyUserId, subjectUserId, consentId);
 
         chain.doFilter(request, response);
+    }
+
+    /**
+     * 後見切替経路（F08.9 P3c）。{@code X-Proxy-For-User-Id} はあるが {@code X-Proxy-Consent-Id} が
+     * ない場合に呼ばれる。保護者リンク＋年齢ゲートを毎リクエスト再検証し、合格時のみ
+     * {@code PAYMENT} スコープのみで {@link ProxyInputContext#activate} する。
+     *
+     * <p>境界日跨ぎ（年度末・誕生日）の自動失効は本実行時ゲートで担保する（封印後の子へは AGE_LOCKED）。
+     * inputSource は {@code GUARDIANSHIP_SWITCH}、consentId は {@code null}（紙同意書を伴わない）。</p>
+     */
+    private void handleGuardianshipSwitch(HttpServletRequest request,
+                                          HttpServletResponse response,
+                                          FilterChain chain,
+                                          String proxyForHeader) throws ServletException, IOException {
+        // 子ユーザーIDのパース
+        Long childUserId;
+        try {
+            childUserId = Long.parseLong(proxyForHeader.trim());
+        } catch (NumberFormatException e) {
+            sendError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "X-Proxy-For-User-Id の形式が不正です。");
+            return;
+        }
+
+        // リクエスト者（保護者）の認証確認
+        Long guardianUserId = extractCurrentUserId();
+        if (guardianUserId == null) {
+            sendError(response, HttpServletResponse.SC_UNAUTHORIZED,
+                    "後見切替を行うには認証が必要です。");
+            return;
+        }
+
+        // 保護者リンク＋年齢ゲートの毎リクエスト再検証（副作用なし）
+        SwitchVerdict verdict = guardianshipSwitchService.evaluateSwitch(guardianUserId, childUserId);
+        switch (verdict) {
+            case LINK_NOT_FOUND -> {
+                log.warn("後見切替の再検証失敗（リンクなし）: guardianUserId={}, childUserId={}",
+                        guardianUserId, childUserId);
+                sendError(response, HttpServletResponse.SC_FORBIDDEN,
+                        "有効な保護者リンクが見つからないため後見切替できません。");
+                return;
+            }
+            case AGE_LOCKED -> {
+                log.warn("後見切替の再検証失敗（年齢封印）: guardianUserId={}, childUserId={}",
+                        guardianUserId, childUserId);
+                sendError(response, HttpServletResponse.SC_FORBIDDEN,
+                        "このお子さまは年齢到達のため後見切替できません。");
+                return;
+            }
+            case ALLOWED -> {
+                // 後見切替は会費支払い・所属管理・プロフィール編集・閲覧のため PAYMENT スコープのみ付与
+                // （03_security §3.2「切替中に行えること」・最小権限）。consentId/storage は紙同意書がないため null。
+                proxyInputContext.activate(childUserId, null,
+                        ProxyInputRecordEntity.InputSource.GUARDIANSHIP_SWITCH.name(), null,
+                        java.util.Set.of(FeatureScope.PAYMENT));
+                log.debug("後見切替モード有効化: guardianUserId={}, childUserId={}", guardianUserId, childUserId);
+                chain.doFilter(request, response);
+            }
+        }
     }
 
     private Long extractCurrentUserId() {

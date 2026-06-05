@@ -53,6 +53,10 @@ class SwitchableChildrenServiceTest {
     private CareLinkService careLinkService;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private com.mannschaft.app.auth.service.AuditLogService auditLogService;
+    @Mock
+    private com.mannschaft.app.proxy.repository.ProxyInputRecordRepository proxyInputRecordRepository;
 
     private GuardianshipSwitchService service;
 
@@ -67,7 +71,8 @@ class SwitchableChildrenServiceTest {
                 new GuardianshipAgePolicyRegistry(List.of(japanPolicy, defaultPolicy), defaultPolicy);
 
         service = new GuardianshipSwitchService(
-                parentalConsentService, careLinkService, userRepository, registry, fixedJstClock);
+                parentalConsentService, careLinkService, userRepository, registry,
+                auditLogService, proxyInputRecordRepository, fixedJstClock);
     }
 
     private UserEntity child(Long id, String displayName, String birthDate, String countryCode) {

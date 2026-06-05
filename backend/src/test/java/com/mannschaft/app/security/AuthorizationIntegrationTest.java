@@ -105,7 +105,8 @@ class AuthorizationIntegrationTest {
             return new ProxyInputContextFilter(
                     mock(ProxyInputConsentRepository.class),
                     mock(ProxyInputContext.class),
-                    mock(ObjectMapper.class));
+                    mock(ObjectMapper.class),
+                    mock(com.mannschaft.app.auth.guardianship.GuardianshipSwitchService.class));
         }
 
         @Bean
