@@ -20,6 +20,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -37,6 +38,9 @@ class TeamPaymentAdvanceServiceTest {
     @Mock private TeamPaymentAdvanceRepository teamPaymentAdvanceRepository;
     @Mock private AccessControlService accessControlService;
     @Mock private com.mannschaft.app.auth.service.AuditLogService auditLogService;
+    @Mock private com.mannschaft.app.notification.service.NotificationHelper notificationHelper;
+    @Mock private com.mannschaft.app.role.repository.UserRoleRepository userRoleRepository;
+    @Mock private org.springframework.context.MessageSource messageSource;
 
     @InjectMocks
     private TeamPaymentAdvanceService service;
@@ -112,6 +116,22 @@ class TeamPaymentAdvanceServiceTest {
             assertThat(result.getSettledConfirmedBy()).isEqualTo(ADMIN_USER_ID);
             assertThat(result.getSettledAt()).isNotNull();
             verify(accessControlService).checkAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM");
+        }
+
+        @Test
+        @DisplayName("正常系: 精算確認の成立を協会 ADMIN へ軽量通知する（第二波）")
+        void 精算確認で協会ADMINへ通知() {
+            TeamPaymentAdvanceEntity a = advance(AdvanceSettlementStatus.PENDING, TEAM_ID);
+            given(teamPaymentAdvanceRepository.findByIdAndDeletedAtIsNull(a.getId())).willReturn(Optional.of(a));
+            given(teamPaymentAdvanceRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(userRoleRepository.findAdminUserIdsByOrganizationId(ORG_ID)).willReturn(java.util.List.of(21L, 22L));
+            given(messageSource.getMessage(any(String.class), any(), any(), any())).willReturn("通知文言");
+
+            service.confirmSettlement(TEAM_ID, a.getId(), ADMIN_USER_ID);
+
+            verify(notificationHelper).notifyAll(
+                    eq(java.util.List.of(21L, 22L)), any(), any(), any(),
+                    any(), any(), any(), eq(ORG_ID), any(), any());
         }
 
         @Test

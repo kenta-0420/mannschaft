@@ -4,7 +4,11 @@ import com.mannschaft.app.common.repository.AbstractTenantAwareRepository;
 import com.mannschaft.app.payment.PaymentRequestStatus;
 import com.mannschaft.app.payment.connect.ScopeKind;
 import com.mannschaft.app.payment.entity.PaymentRequestEntity;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 
+import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,4 +46,29 @@ public interface PaymentRequestRepository
      */
     long countByIssuerScopeKindAndIssuerScopeIdAndStatusAndDeletedAtIsNull(
             ScopeKind issuerScopeKind, Long issuerScopeId, PaymentRequestStatus status);
+
+    /**
+     * 協会（請求元）が発行した請求一覧（status フィルタ・ページング）。協会視点一覧 API の本体。
+     * {@code statuses} は SENT/VIEWED/OVERDUE 等の絞り込み（空・null 時は全件は {@link #findByIssuerScopeKindAndIssuerScopeIdAndDeletedAtIsNullOrderByCreatedAtDesc} を使う）。
+     */
+    org.springframework.data.domain.Page<PaymentRequestEntity>
+            findByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+                    ScopeKind issuerScopeKind, Long issuerScopeId,
+                    Collection<PaymentRequestStatus> statuses, Pageable pageable);
+
+    /**
+     * 協会（請求元）が発行した請求一覧（status フィルタなし・ページング）。
+     */
+    org.springframework.data.domain.Page<PaymentRequestEntity>
+            findByIssuerScopeKindAndIssuerScopeIdAndDeletedAtIsNull(
+                    ScopeKind issuerScopeKind, Long issuerScopeId, Pageable pageable);
+
+    /**
+     * OVERDUE バッチの対象抽出: 指定状態（SENT/VIEWED）かつ支払期限が基準日より前の請求を境界付きで引く。
+     *
+     * <p>{@code due_date < cutoff}（基準日当日は対象外＝当日まで支払い猶予）。{@code idx_pr_due (status, due_date)}
+     * を使う。{@link Slice} で全件メモリ展開を避けつつ次ページ有無を判定する。</p>
+     */
+    Slice<PaymentRequestEntity> findByStatusInAndDueDateLessThanAndDeletedAtIsNull(
+            Collection<PaymentRequestStatus> statuses, LocalDate cutoff, Pageable pageable);
 }

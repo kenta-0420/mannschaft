@@ -31,6 +31,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -62,6 +63,9 @@ class PaymentRequestServiceTest {
     @Mock private TeamPaymentAdvanceService teamPaymentAdvanceService;
     @Mock private AccessControlService accessControlService;
     @Mock private com.mannschaft.app.auth.service.AuditLogService auditLogService;
+    @Mock private com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService confirmableNotificationService;
+    @Mock private com.mannschaft.app.role.repository.UserRoleRepository userRoleRepository;
+    @Mock private org.springframework.context.MessageSource messageSource;
 
     @InjectMocks
     private PaymentRequestService service;
@@ -418,6 +422,170 @@ class PaymentRequestServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MembershipBillingErrorCode.PAYMENT_REQUEST_NOT_FOUND);
+        }
+    }
+
+    @Nested
+    @DisplayName("send（配信・第二波）")
+    class Send {
+
+        private PaymentRequestEntity draft() {
+            PaymentRequestEntity r = PaymentRequestEntity.builder()
+                    .organizationId(ORG_ID)
+                    .issuerScopeKind(ScopeKind.ORG)
+                    .issuerScopeId(ORG_ID)
+                    .payerScopeKind(ScopeKind.TEAM)
+                    .payerScopeId(TEAM_ID)
+                    .title("リーグ参加費")
+                    .faceAmount(30000)
+                    .currency("JPY")
+                    .dueDate(LocalDate.of(2026, 7, 31))
+                    .status(PaymentRequestStatus.DRAFT)
+                    .build();
+            r.setId(UUID.randomUUID());
+            return r;
+        }
+
+        private com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity notification(long id) {
+            var n = com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity.builder().build();
+            n.setId(id);
+            return n;
+        }
+
+        @Test
+        @DisplayName("正常系: DRAFT を SENT 化し、確認必須通知を請求先チーム ADMIN へ一斉配信して連結する")
+        void 配信成功() {
+            PaymentRequestEntity r = draft();
+            given(paymentRequestRepository.findByIdAndDeletedAtIsNull(r.getId())).willReturn(Optional.of(r));
+            given(userRoleRepository.findAdminUserIdsByTeamIds(List.of(TEAM_ID)))
+                    .willReturn(List.of(11L, 12L));
+            given(messageSource.getMessage(any(String.class), any(), any(), any()))
+                    .willReturn("通知文言");
+            given(confirmableNotificationService.send(
+                    eq(com.mannschaft.app.membership.ScopeType.TEAM), eq(TEAM_ID),
+                    any(), any(),
+                    eq(com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority.HIGH),
+                    any(), any(), any(), any(), any(), eq(ADMIN_USER_ID), any()))
+                    .willReturn(notification(9001L));
+            given(paymentRequestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            PaymentRequestEntity result = service.send(ORG_ID, r.getId(), ADMIN_USER_ID);
+
+            assertThat(result.getStatus()).isEqualTo(PaymentRequestStatus.SENT);
+            assertThat(result.getConfirmableNotificationId()).isEqualTo(9001L);
+            assertThat(result.getSentAt()).isNotNull();
+
+            // 配信引数（受信者・deadline・actionUrl）を検証する。
+            ArgumentCaptor<List<Long>> recipients = ArgumentCaptor.forClass(List.class);
+            ArgumentCaptor<String> actionUrl = ArgumentCaptor.forClass(String.class);
+            ArgumentCaptor<java.time.LocalDateTime> deadline = ArgumentCaptor.forClass(java.time.LocalDateTime.class);
+            verify(confirmableNotificationService).send(
+                    eq(com.mannschaft.app.membership.ScopeType.TEAM), eq(TEAM_ID),
+                    any(), any(),
+                    eq(com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority.HIGH),
+                    deadline.capture(), any(), any(), actionUrl.capture(), any(),
+                    eq(ADMIN_USER_ID), recipients.capture());
+            assertThat(recipients.getValue()).containsExactly(11L, 12L);
+            assertThat(deadline.getValue().toLocalDate()).isEqualTo(LocalDate.of(2026, 7, 31));
+            assertThat(actionUrl.getValue()).contains("/teams/" + TEAM_ID + "/payment-requests/" + r.getId());
+        }
+
+        @Test
+        @DisplayName("異常系: 協会 ADMIN でない場合 403（権原なし）")
+        void 権原なしで403() {
+            PaymentRequestEntity r = draft();
+            given(paymentRequestRepository.findByIdAndDeletedAtIsNull(r.getId())).willReturn(Optional.of(r));
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(ADMIN_USER_ID, ORG_ID, "ORGANIZATION");
+
+            assertThatThrownBy(() -> service.send(ORG_ID, r.getId(), ADMIN_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MembershipBillingErrorCode.PAYMENT_REQUEST_NOT_FOR_THIS_TEAM);
+            verify(confirmableNotificationService, never()).send(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("異常系: DRAFT 以外の配信は INVALID_STATUS（409）")
+        void DRAFT以外は409() {
+            PaymentRequestEntity r = draft();
+            r.markAsSent(7L); // SENT 済み
+            given(paymentRequestRepository.findByIdAndDeletedAtIsNull(r.getId())).willReturn(Optional.of(r));
+
+            assertThatThrownBy(() -> service.send(ORG_ID, r.getId(), ADMIN_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MembershipBillingErrorCode.PAYMENT_REQUEST_INVALID_STATUS);
+        }
+
+        @Test
+        @DisplayName("異常系: 請求先チームに ADMIN が居なければ配信不可（INVALID_STATUS・409）")
+        void 受信者ゼロで409() {
+            PaymentRequestEntity r = draft();
+            given(paymentRequestRepository.findByIdAndDeletedAtIsNull(r.getId())).willReturn(Optional.of(r));
+            given(userRoleRepository.findAdminUserIdsByTeamIds(List.of(TEAM_ID))).willReturn(List.of());
+
+            assertThatThrownBy(() -> service.send(ORG_ID, r.getId(), ADMIN_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MembershipBillingErrorCode.PAYMENT_REQUEST_INVALID_STATUS);
+            verify(confirmableNotificationService, never()).send(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("viewByTeam（詳細・VIEWED 遷移・第二波）")
+    class ViewByTeam {
+
+        private PaymentRequestEntity withStatus(PaymentRequestStatus status) {
+            PaymentRequestEntity r = PaymentRequestEntity.builder()
+                    .organizationId(ORG_ID)
+                    .payerScopeKind(ScopeKind.TEAM)
+                    .payerScopeId(TEAM_ID)
+                    .status(status)
+                    .build();
+            r.setId(UUID.randomUUID());
+            return r;
+        }
+
+        @Test
+        @DisplayName("正常系: SENT を初閲覧で VIEWED に遷移し保存する")
+        void 初閲覧でVIEWED() {
+            PaymentRequestEntity r = withStatus(PaymentRequestStatus.SENT);
+            given(paymentRequestRepository.findByIdAndDeletedAtIsNull(r.getId())).willReturn(Optional.of(r));
+            given(paymentRequestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            PaymentRequestEntity result = service.viewByTeam(TEAM_ID, r.getId(), ADMIN_USER_ID);
+
+            assertThat(result.getStatus()).isEqualTo(PaymentRequestStatus.VIEWED);
+            assertThat(result.getViewedAt()).isNotNull();
+            verify(paymentRequestRepository).save(r);
+        }
+
+        @Test
+        @DisplayName("冪等: VIEWED は再閲覧しても遷移せず保存もしない")
+        void VIEWEDは冪等() {
+            PaymentRequestEntity r = withStatus(PaymentRequestStatus.VIEWED);
+            given(paymentRequestRepository.findByIdAndDeletedAtIsNull(r.getId())).willReturn(Optional.of(r));
+
+            PaymentRequestEntity result = service.viewByTeam(TEAM_ID, r.getId(), ADMIN_USER_ID);
+
+            assertThat(result.getStatus()).isEqualTo(PaymentRequestStatus.VIEWED);
+            verify(paymentRequestRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("IDOR: 他チーム宛ての請求閲覧は 403（請求先不一致）")
+        void 他チームは403() {
+            PaymentRequestEntity r = withStatus(PaymentRequestStatus.SENT);
+            given(paymentRequestRepository.findByIdAndDeletedAtIsNull(r.getId())).willReturn(Optional.of(r));
+
+            assertThatThrownBy(() -> service.viewByTeam(999L, r.getId(), ADMIN_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MembershipBillingErrorCode.PAYMENT_REQUEST_NOT_FOR_THIS_TEAM);
         }
     }
 }

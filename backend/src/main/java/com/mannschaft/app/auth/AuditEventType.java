@@ -396,6 +396,11 @@ public enum AuditEventType {
      */
     PAYMENT_REQUEST_CREATED(AuditEventCategory.PAYMENT),
     /**
+     * 協会が請求を配信した（DRAFT → SENT・確認必須通知一斉配信・F08.9 P7 第二波・02_api §7）。
+     * userId=操作者(協会 ADMIN) / metadata に paymentRequestId・confirmableNotificationId・recipientCount。
+     */
+    PAYMENT_REQUEST_SENT(AuditEventCategory.PAYMENT),
+    /**
      * 協会が請求を取消した（DRAFT/SENT → CANCELLED・F08.9 P7・02_api §7）。
      * userId=操作者(協会 ADMIN) / metadata に paymentRequestId。
      */

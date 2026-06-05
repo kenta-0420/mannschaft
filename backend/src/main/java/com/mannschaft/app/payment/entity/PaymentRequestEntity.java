@@ -178,6 +178,50 @@ public class PaymentRequestEntity extends UuidV7Entity {
     }
 
     /**
+     * 配信で SENT 状態に遷移し、配信した確認必須通知（F04.9）を連結する（DRAFT からのみ）。
+     *
+     * @param confirmableNotificationId 配信した確認必須通知の ID（F04.9）
+     */
+    public void markAsSent(Long confirmableNotificationId) {
+        this.status = PaymentRequestStatus.SENT;
+        this.confirmableNotificationId = confirmableNotificationId;
+        this.sentAt = LocalDateTime.now();
+    }
+
+    /**
+     * チームが初閲覧したとき SENT → VIEWED に遷移する（冪等・SENT のときのみ遷移）。
+     *
+     * <p>VIEWED/OVERDUE/PAID/CANCELLED では何もしない（一度きりの初閲覧マーキング）。
+     * 呼び出し側（詳細取得）は遷移有無に関わらず請求を返す。</p>
+     *
+     * @return SENT → VIEWED に遷移したら true（初閲覧）、それ以外は false
+     */
+    public boolean markAsViewedIfSent() {
+        if (this.status == PaymentRequestStatus.SENT) {
+            this.status = PaymentRequestStatus.VIEWED;
+            this.viewedAt = LocalDateTime.now();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 期限超過で OVERDUE 状態に遷移する（SENT/VIEWED からのみ・@Scheduled バッチが呼ぶ）。
+     *
+     * <p>PAID/CANCELLED/DRAFT/OVERDUE では遷移しない（バッチ側の抽出クエリで SENT/VIEWED に
+     * 絞るが、競合に対する二重防御として状態を再確認する）。</p>
+     *
+     * @return SENT/VIEWED → OVERDUE に遷移したら true、それ以外は false
+     */
+    public boolean markAsOverdueIfDue() {
+        if (this.status == PaymentRequestStatus.SENT || this.status == PaymentRequestStatus.VIEWED) {
+            this.status = PaymentRequestStatus.OVERDUE;
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * 支払い成立で PAID 状態に遷移し、money rail（escrow）へ連結する。
      *
      * @param escrowTransactionId 連結する escrow 取引 ID

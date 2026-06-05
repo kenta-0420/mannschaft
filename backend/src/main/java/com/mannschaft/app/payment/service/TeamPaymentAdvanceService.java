@@ -4,16 +4,22 @@ import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.payment.AdvanceSettlementStatus;
 import com.mannschaft.app.payment.MembershipBillingErrorCode;
 import com.mannschaft.app.payment.entity.TeamPaymentAdvanceEntity;
 import com.mannschaft.app.payment.repository.TeamPaymentAdvanceRepository;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -37,9 +43,21 @@ public class TeamPaymentAdvanceService {
     /** team ADMIN 判定の scopeType（{@link AccessControlService} 用）。 */
     private static final String SCOPE_TYPE_TEAM = "TEAM";
 
+    /** 精算確認通知の通知種別。 */
+    private static final String SETTLEMENT_NOTIFICATION_TYPE = "PAYMENT_ADVANCE_SETTLED";
+
+    /** 精算確認通知の sourceType（F00 visibility マッパー非対応＝fail-soft で素通り）。 */
+    private static final String SETTLEMENT_NOTIFICATION_SOURCE_TYPE = "PAYMENT_ADVANCE";
+
     private final TeamPaymentAdvanceRepository teamPaymentAdvanceRepository;
     private final AccessControlService accessControlService;
     private final AuditLogService auditLogService;
+    /** 第二波: 精算確認時に協会 ADMIN へ軽量通知（確認必須までは不要）。 */
+    private final NotificationHelper notificationHelper;
+    /** 第二波: 協会 ADMIN/DEPUTY_ADMIN の userId 群を解決（role ドメイン経由）。 */
+    private final UserRoleRepository userRoleRepository;
+    /** 第二波: 通知文言の 6 言語解決。 */
+    private final MessageSource messageSource;
 
     /**
      * 協会請求支払い時に立替記録を {@code PENDING} で起票する（{@link PaymentRequestService#pay} 内部用）。
@@ -117,8 +135,53 @@ public class TeamPaymentAdvanceService {
         teamPaymentAdvanceRepository.save(advance);
 
         recordSettledAudit(actorUserId, teamId, advance);
+        notifyOrgAdminsOfSettlement(advance);
         log.info("立替精算を確認 SETTLED: advanceId={}, teamId={}, confirmedBy={}", advanceId, teamId, actorUserId);
         return advance;
+    }
+
+    /**
+     * 精算確認の成立を協会(ORG) ADMIN へ軽量通知する（確認必須までは不要・既存 NotificationHelper 経路）。
+     *
+     * <p>協会 ADMIN 不在・通知失敗は補助チャネルとして握って継続する（精算確定そのものは確定済み）。
+     * organization_id が無い立替（過去データ）はスキップする。</p>
+     */
+    private void notifyOrgAdminsOfSettlement(TeamPaymentAdvanceEntity advance) {
+        Long orgId = advance.getOrganizationId();
+        if (orgId == null) {
+            return;
+        }
+        try {
+            List<Long> orgAdmins = userRoleRepository.findAdminUserIdsByOrganizationId(orgId);
+            if (orgAdmins == null || orgAdmins.isEmpty()) {
+                log.debug("精算確認通知: 協会 ADMIN 不在のためスキップ orgId={}", orgId);
+                return;
+            }
+            Locale locale = LocaleContextHolder.getLocale();
+            String title = messageSource.getMessage(
+                    "notification.payment_advance.settled.title", null, "立替金の精算が確認されました", locale);
+            String body = messageSource.getMessage(
+                    "notification.payment_advance.settled.body",
+                    new Object[]{advance.getAdvancedAmount(), advance.getCurrency()},
+                    advance.getAdvancedAmount() + " " + advance.getCurrency() + " の立替金が精算済みになりました。",
+                    locale);
+            String actionUrl = "/organizations/" + orgId + "/payment-requests";
+            notificationHelper.notifyAll(
+                    orgAdmins,
+                    SETTLEMENT_NOTIFICATION_TYPE,
+                    title,
+                    body,
+                    SETTLEMENT_NOTIFICATION_SOURCE_TYPE,
+                    null,
+                    NotificationScopeType.ORGANIZATION,
+                    orgId,
+                    actionUrl,
+                    advance.getSettledConfirmedBy());
+        } catch (RuntimeException e) {
+            // 通知は補助チャネル。失敗しても精算確定は確定済みのため握って継続（症状は warn で記録）。
+            log.warn("精算確認通知の送信失敗（継続）: advanceId={}, orgId={}, error={}",
+                    advance.getId(), orgId, e.getMessage());
+        }
     }
 
     /**

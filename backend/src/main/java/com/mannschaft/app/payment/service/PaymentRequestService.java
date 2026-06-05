@@ -4,6 +4,10 @@ import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.ScopeType;
+import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
+import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
+import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
 import com.mannschaft.app.payment.MembershipBillingErrorCode;
 import com.mannschaft.app.payment.PaymentRequestStatus;
 import com.mannschaft.app.payment.connect.ConnectAccountEntity;
@@ -18,12 +22,19 @@ import com.mannschaft.app.payment.escrow.MembershipChargeResult;
 import com.mannschaft.app.payment.repository.PaymentRequestRepository;
 import com.mannschaft.app.payment.repository.StripeCustomerRepository;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
@@ -57,6 +68,15 @@ public class PaymentRequestService {
     private static final String SCOPE_TYPE_TEAM = "TEAM";
     private static final String SCOPE_TYPE_ORGANIZATION = "ORGANIZATION";
 
+    /** 配信時の確認必須通知の actionUrl 接頭辞（チーム側の請求詳細パス・FE ルーティング）。 */
+    private static final String TEAM_REQUEST_DETAIL_PATH = "/teams/%d/payment-requests/%s";
+
+    /** 配信時の確認必須通知タイトル i18n キー（差出名・タイトルを引数に）。 */
+    private static final String NOTIF_SEND_TITLE_KEY = "notification.payment_request.send.title";
+
+    /** 配信時の確認必須通知本文 i18n キー（額面・期限を引数に）。 */
+    private static final String NOTIF_SEND_BODY_KEY = "notification.payment_request.send.body";
+
     /** 支払い可能な状態（SENT/VIEWED/OVERDUE）。OVERDUE でも支払える（実運用・02_api §7 / 本第一波で確定）。 */
     private static final Set<PaymentRequestStatus> PAYABLE_STATUSES =
             Set.of(PaymentRequestStatus.SENT, PaymentRequestStatus.VIEWED, PaymentRequestStatus.OVERDUE);
@@ -73,6 +93,12 @@ public class PaymentRequestService {
     private final TeamPaymentAdvanceService teamPaymentAdvanceService;
     private final AccessControlService accessControlService;
     private final AuditLogService auditLogService;
+    /** 第二波: 配信時の確認必須通知（F04.9）の一斉送信。 */
+    private final ConfirmableNotificationService confirmableNotificationService;
+    /** 第二波: 請求先チーム ADMIN/DEPUTY_ADMIN の userId 群を解決（role ドメイン Service 層）。 */
+    private final UserRoleRepository userRoleRepository;
+    /** 第二波: 通知文言の 6 言語解決。 */
+    private final MessageSource messageSource;
 
     /**
      * 協会(ORG)が加盟チームへの請求を発行する（DRAFT 起票・02_api §7）。
@@ -152,6 +178,83 @@ public class PaymentRequestService {
                         request.getId(), cmd.payerTeamId(), cmd.faceAmount()));
         log.info("協会請求を DRAFT 起票: id={}, org={}, payerTeam={}, faceAmount={}",
                 request.getId(), orgId, cmd.payerTeamId(), cmd.faceAmount());
+        return request;
+    }
+
+    /**
+     * 協会が請求を配信する（DRAFT → SENT・確認必須通知一斉送信・02_api §7・第二波）。
+     *
+     * <p>請求先チームの ADMIN/DEPUTY_ADMIN 全員へ F04.9 確認必須通知を一斉配信し、戻り値の通知 ID を
+     * {@code confirmable_notification_id} に連結する。{@code deadlineAt} は due_date、{@code actionUrl} は
+     * チーム側の請求詳細パス。通知文言は 6 言語の {@link MessageSource}（{@value #NOTIF_SEND_TITLE_KEY} /
+     * {@value #NOTIF_SEND_BODY_KEY}）。</p>
+     *
+     * <p>認可: 協会(ORG) ADMIN/DEPUTY_ADMIN（発行者と同一権原）。状態ゲート: DRAFT のみ（SENT 以降の
+     * 再配信は本メソッドでは行わない・409）。受信者ゼロ（チーム ADMIN 不在）は配信できないため 409 にせず
+     * {@link IllegalStateException} ではなく業務エラー扱い（症状を隠さない）。</p>
+     *
+     * @param orgId           テナント（協会）
+     * @param requestId       配信対象の請求 ID
+     * @param operatorUserId  操作者（協会 ADMIN）
+     * @return SENT 化した請求（confirmable_notification_id 連結済み）
+     */
+    public PaymentRequestEntity send(Long orgId, UUID requestId, Long operatorUserId) {
+        PaymentRequestEntity request = loadForOrg(orgId, requestId);
+        requireOrgAdmin(operatorUserId, orgId);
+
+        // 状態ゲート: 配信は DRAFT のみ（SENT/VIEWED/OVERDUE/PAID/CANCELLED からの再配信は不可・409）。
+        if (request.getStatus() != PaymentRequestStatus.DRAFT) {
+            throw new BusinessException(MembershipBillingErrorCode.PAYMENT_REQUEST_INVALID_STATUS);
+        }
+
+        Long teamId = request.getPayerScopeId();
+
+        // 受信者: 請求先チームの ADMIN/DEPUTY_ADMIN 全員（role ドメイン経由・Entity 直接参照しない）。
+        List<Long> recipientUserIds = userRoleRepository.findAdminUserIdsByTeamIds(List.of(teamId));
+        if (recipientUserIds == null || recipientUserIds.isEmpty()) {
+            // 配信先 ADMIN が居なければ確認必須通知を送れない（症状を隠さず 409・チーム体制の不備として返す）。
+            log.warn("協会請求配信: 請求先チームに ADMIN が居ないため配信不可: requestId={}, teamId={}",
+                    requestId, teamId);
+            throw new BusinessException(MembershipBillingErrorCode.PAYMENT_REQUEST_INVALID_STATUS);
+        }
+
+        Locale locale = resolveOperatorLocale();
+        String issuerLabel = messageSource.getMessage(
+                "notification.payment_request.issuer.organization", null, "協会", locale);
+        String title = messageSource.getMessage(
+                NOTIF_SEND_TITLE_KEY, new Object[]{issuerLabel, request.getTitle()},
+                issuerLabel + "からの請求: " + request.getTitle(), locale);
+        String body = messageSource.getMessage(
+                NOTIF_SEND_BODY_KEY,
+                new Object[]{request.getFaceAmount(), request.getCurrency(), request.getDueDate()},
+                request.getFaceAmount() + " " + request.getCurrency()
+                        + " の請求です。支払期限: " + request.getDueDate(), locale);
+        String actionUrl = String.format(TEAM_REQUEST_DETAIL_PATH, teamId, request.getId());
+        LocalDateTime deadlineAt = request.getDueDate().atTime(23, 59, 59);
+
+        // F04.9 確認必須通知を一斉配信（チームスコープ）。戻り値の ID を請求へ連結する。
+        ConfirmableNotificationEntity notification = confirmableNotificationService.send(
+                ScopeType.TEAM,
+                teamId,
+                title,
+                body,
+                ConfirmableNotificationPriority.HIGH,
+                deadlineAt,
+                null,
+                null,
+                actionUrl,
+                null,
+                operatorUserId,
+                recipientUserIds);
+
+        request.markAsSent(notification.getId());
+        paymentRequestRepository.save(request);
+
+        recordAudit(AuditEventType.PAYMENT_REQUEST_SENT, operatorUserId, teamId, orgId,
+                String.format("{\"paymentRequestId\":\"%s\",\"confirmableNotificationId\":%d,\"recipientCount\":%d}",
+                        request.getId(), notification.getId(), recipientUserIds.size()));
+        log.info("協会請求を配信 SENT: requestId={}, org={}, team={}, notificationId={}, recipients={}",
+                request.getId(), orgId, teamId, notification.getId(), recipientUserIds.size());
         return request;
     }
 
@@ -303,6 +406,58 @@ public class PaymentRequestService {
                 .findByIssuerScopeKindAndIssuerScopeIdAndDeletedAtIsNullOrderByCreatedAtDesc(ScopeKind.ORG, orgId);
     }
 
+    /**
+     * 協会（請求元）が発行した請求一覧を status フィルタ・ページングで取得する（協会視点一覧 API・第二波）。
+     *
+     * @param orgId        協会組織 ID
+     * @param actorUserId  操作者（協会 ADMIN）
+     * @param statuses     絞り込む状態（null/空時は全件）
+     * @param pageable     ページング（created_at 降順は呼び出し側 Sort で指定）
+     * @return 発行請求のページ
+     */
+    @Transactional(readOnly = true)
+    public Page<PaymentRequestEntity> findForOrg(
+            Long orgId, Long actorUserId, Collection<PaymentRequestStatus> statuses, Pageable pageable) {
+        requireOrgAdmin(actorUserId, orgId);
+        if (statuses == null || statuses.isEmpty()) {
+            return paymentRequestRepository
+                    .findByIssuerScopeKindAndIssuerScopeIdAndDeletedAtIsNull(ScopeKind.ORG, orgId, pageable);
+        }
+        return paymentRequestRepository
+                .findByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+                        ScopeKind.ORG, orgId, statuses, pageable);
+    }
+
+    /**
+     * チーム（請求先）が請求詳細を取得し、初閲覧なら SENT → VIEWED に遷移する（冪等・02_api §7・第二波）。
+     *
+     * <p>認可: 当該チーム ADMIN/DEPUTY_ADMIN。IDOR: {@code payer_scope_id == teamId} 検証（403）。
+     * VIEWED 遷移は {@link PaymentRequestEntity#markAsViewedIfSent}（SENT のときのみ・他状態は無変化）。</p>
+     *
+     * @param teamId      請求先チーム ID（URL スコープ）
+     * @param requestId   請求 ID
+     * @param actorUserId 操作者（チーム ADMIN）
+     * @return 請求（初閲覧時は VIEWED に遷移済み）
+     */
+    public PaymentRequestEntity viewByTeam(Long teamId, UUID requestId, Long actorUserId) {
+        PaymentRequestEntity request = paymentRequestRepository.findByIdAndDeletedAtIsNull(requestId)
+                .orElseThrow(() -> new BusinessException(MembershipBillingErrorCode.PAYMENT_REQUEST_NOT_FOUND));
+
+        // IDOR: 請求先チーム一致を検証（payer_scope_kind=TEAM かつ payer_scope_id==teamId）。
+        if (request.getPayerScopeKind() != ScopeKind.TEAM || !request.getPayerScopeId().equals(teamId)) {
+            log.warn("協会請求詳細: 請求先チーム不一致（403）: requestId={}, urlTeam={}", requestId, teamId);
+            throw new BusinessException(MembershipBillingErrorCode.PAYMENT_REQUEST_NOT_FOR_THIS_TEAM);
+        }
+        requireTeamAdmin(actorUserId, teamId);
+
+        // 初閲覧（SENT → VIEWED）。冪等: VIEWED/OVERDUE/PAID/CANCELLED では何もしない。
+        if (request.markAsViewedIfSent()) {
+            paymentRequestRepository.save(request);
+            log.info("協会請求を初閲覧 VIEWED: requestId={}, teamId={}", request.getId(), teamId);
+        }
+        return request;
+    }
+
     // ─── 内部ヘルパー ─────────────
 
     /** 請求を ID で引き、テナント（org）一致を検証する（不一致・不在は 404 秘匿・IDOR）。 */
@@ -347,5 +502,14 @@ public class PaymentRequestService {
 
     private void recordAudit(AuditEventType eventType, Long actorUserId, Long teamId, Long orgId, String metadata) {
         auditLogService.record(eventType.name(), actorUserId, null, teamId, orgId, null, null, null, metadata);
+    }
+
+    /**
+     * 配信通知の文言ロケールを解決する。受信者ごとの言語は通知基盤側で個別解決されないため、
+     * 配信時点の操作者コンテキスト（リクエストロケール）を用いる。未解決時は ja。
+     */
+    private Locale resolveOperatorLocale() {
+        Locale locale = org.springframework.context.i18n.LocaleContextHolder.getLocale();
+        return locale != null ? locale : Locale.JAPANESE;
     }
 }
