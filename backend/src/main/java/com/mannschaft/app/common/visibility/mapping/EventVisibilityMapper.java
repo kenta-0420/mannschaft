@@ -27,7 +27,8 @@ public final class EventVisibilityMapper {
     public static StandardVisibility toStandard(EventVisibility v) {
         return switch (v) {
             case PUBLIC -> StandardVisibility.PUBLIC;
-            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_ONLY;
+            // 挙動不変・名称正準化（W3）: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
+            case MEMBERS_ONLY -> StandardVisibility.SCOPE_AFFILIATED;
             case SUPPORTERS_AND_ABOVE -> StandardVisibility.SUPPORTERS_AND_ABOVE;
         };
     }
