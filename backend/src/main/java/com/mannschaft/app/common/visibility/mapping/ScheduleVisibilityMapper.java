@@ -11,7 +11,7 @@ import com.mannschaft.app.schedule.ScheduleVisibility;
  *
  * <p>対応関係:
  * <ul>
- *   <li>{@code MEMBERS_ONLY} → {@link StandardVisibility#MEMBERS_ONLY}</li>
+ *   <li>{@code MEMBERS_ONLY} → {@link StandardVisibility#SCOPE_AFFILIATED}（挙動保存。応援者可否は別軸 min_view_role が司る）</li>
  *   <li>{@code ORGANIZATION} → {@link StandardVisibility#ORGANIZATION_WIDE}</li>
  *   <li>{@code CUSTOM_TEMPLATE} → {@link StandardVisibility#CUSTOM_TEMPLATE}</li>
  * </ul>
