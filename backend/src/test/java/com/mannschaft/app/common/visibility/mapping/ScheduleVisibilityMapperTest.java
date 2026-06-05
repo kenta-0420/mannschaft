@@ -28,10 +28,14 @@ class ScheduleVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_ONLY")
-    void members_only_maps_to_MEMBERS_ONLY() {
+    @DisplayName("MEMBERS_ONLY → StandardVisibility.SCOPE_AFFILIATED（W5 所属者全員・挙動保存）")
+    void members_only_maps_to_SCOPE_AFFILIATED() {
+        // 判定根拠: schedule の応援者包含/除外は別軸の min_view_role（F03.1 §DB 設計）が司り、
+        // ScheduleVisibility.MEMBERS_ONLY は「直接所属で評価する」所属軸を意味するに過ぎない。
+        // 機械的な応援者除外は min_view_role='SUPPORTER+' を過剰制限するため、直接所属者全員 =
+        // SCOPE_AFFILIATED へ正準化し挙動を保存する（= isMemberOf = 旧 MEMBERS_ONLY と同一判定）。
         assertThat(ScheduleVisibilityMapper.toStandard(ScheduleVisibility.MEMBERS_ONLY))
-            .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            .isEqualTo(StandardVisibility.SCOPE_AFFILIATED);
     }
 
     @Test

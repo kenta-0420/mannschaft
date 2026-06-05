@@ -32,9 +32,12 @@ class MemberPageVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_ONLY")
-    void members_only_maps_to_MEMBERS_ONLY() {
+    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_AND_ABOVE（W5 内輪・応援者除外）")
+    void members_only_maps_to_MEMBERS_AND_ABOVE() {
+        // 判定根拠: 設計書 F06.2 §権限と役割で SUPPORTER は「公開されたメンバー紹介ページの閲覧」のみ。
+        // MEMBERS_ONLY ページは応援者に見せない内輪 → 応援者除外の MEMBERS_AND_ABOVE。
+        // 挙動変更: SUPPORTER は MEMBERS_ONLY のメンバー紹介ページを閲覧できなくなる。
         assertThat(MemberPageVisibilityMapper.toStandard(PageVisibility.MEMBERS_ONLY))
-            .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            .isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
     }
 }

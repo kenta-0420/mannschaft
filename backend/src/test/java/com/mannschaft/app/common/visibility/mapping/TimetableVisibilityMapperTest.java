@@ -25,10 +25,12 @@ class TimetableVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_ONLY")
-    void members_only_maps_to_MEMBERS_ONLY() {
+    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_AND_ABOVE（W5 内輪・応援者除外）")
+    void members_only_maps_to_MEMBERS_AND_ABOVE() {
+        // 判定根拠: 設計書 F03.9 §DB 設計に「MEMBERS_ONLY: MEMBER 以上のみ」「PUBLIC: SUPPORTER も閲覧可」
+        // と明記。応援者除外の MEMBERS_AND_ABOVE。挙動変更: SUPPORTER は MEMBERS_ONLY 時間割を閲覧不可に。
         assertThat(TimetableVisibilityMapper.toStandard(TimetableVisibility.MEMBERS_ONLY))
-            .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            .isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
     }
 
     @Test

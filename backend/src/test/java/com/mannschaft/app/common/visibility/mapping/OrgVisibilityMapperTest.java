@@ -25,10 +25,14 @@ class OrgVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("TEAM_ONLY -> MEMBERS_ONLY")
+    @DisplayName("TEAM_ONLY -> SCOPE_AFFILIATED（W5 所属者全員・挙動保存）")
     void mapsTeamOnly() {
+        // 判定根拠: F02.5 アクションメモのチームタイムラインは「チームメンバーのみ」だが、
+        // 応援者(SUPPORTER)を区別する記述が設計書・enum に無く内輪確証が取れない。
+        // 過剰制限を避けるため直接所属者全員 = SCOPE_AFFILIATED へ正準化し挙動を保存（= isMemberOf）。
+        // ※応援者除外の内輪とすべきかは要マスター裁可（W5 報告）。
         assertThat(OrgVisibilityMapper.toStandard(OrgVisibility.TEAM_ONLY))
-            .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            .isEqualTo(StandardVisibility.SCOPE_AFFILIATED);
     }
 
     @Test

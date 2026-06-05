@@ -30,7 +30,14 @@ public final class ScheduleVisibilityMapper {
      */
     public static StandardVisibility toStandard(ScheduleVisibility v) {
         return switch (v) {
-            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_ONLY;
+            // 所属者全員判定（W5・挙動保存）: schedule の応援者包含/除外は本 visibility 軸ではなく
+            // 別軸の min_view_role（ANYONE/SUPPORTER+/MEMBER+/ADMIN_ONLY・F03.1 §DB 設計）が司る。
+            // ScheduleVisibility.MEMBERS_ONLY は「スコープへの直接所属で評価する」という所属軸を
+            // 意味するに過ぎず（設計書 §min_view_role の評価スコープ）、ここで応援者を機械的に
+            // 除外すると min_view_role='SUPPORTER+' のスケジュールを過剰制限してしまう。
+            // よって直接所属者全員 = SCOPE_AFFILIATED へ正準化し挙動を保存する
+            // （旧 MEMBERS_ONLY と同一判定 = isMemberOf）。
+            case MEMBERS_ONLY -> StandardVisibility.SCOPE_AFFILIATED;
             case ORGANIZATION -> StandardVisibility.ORGANIZATION_WIDE;
             case CUSTOM_TEMPLATE -> StandardVisibility.CUSTOM_TEMPLATE;
         };

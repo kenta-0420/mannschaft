@@ -23,7 +23,12 @@ public final class TimetableVisibilityMapper {
      */
     public static StandardVisibility toStandard(TimetableVisibility v) {
         return switch (v) {
-            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_ONLY;
+            // 内輪判定（W5）: 設計書 F03.9 §DB 設計で visibility カラムに
+            // 「PUBLIC: SUPPORTER も閲覧可。MEMBERS_ONLY: MEMBER 以上のみ」と明記。
+            // SUPPORTER は visibility='PUBLIC' の時間割のみ閲覧可（権限表・API 認可とも一致）。
+            // よって応援者除外の MEMBERS_AND_ABOVE へ締める
+            // （挙動変更: SUPPORTER は MEMBERS_ONLY の時間割を閲覧できなくなる）。
+            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_AND_ABOVE;
             case PUBLIC -> StandardVisibility.PUBLIC;
         };
     }

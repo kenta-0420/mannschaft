@@ -25,7 +25,13 @@ public final class OrgVisibilityMapper {
      */
     public static StandardVisibility toStandard(OrgVisibility v) {
         return switch (v) {
-            case TEAM_ONLY -> StandardVisibility.MEMBERS_ONLY;
+            // 所属者全員判定（W5・挙動保存）: F02.5 アクションメモのチームタイムライン投稿は
+            // 「組織内のチームメンバーのみ」(TEAM_ONLY) を対象とするが、設計書・enum とも
+            // 応援者(SUPPORTER)を区別する記述が無く、応援者除外の確証が取れない。
+            // 過剰制限を避けるため直接所属者全員 = SCOPE_AFFILIATED へ正準化し挙動を保存する
+            // （旧 MEMBERS_ONLY と同一判定 = isMemberOf）。
+            // ※「応援者にも見せたくない内輪」とすべきか否かは要マスター裁可（W5 報告）。
+            case TEAM_ONLY -> StandardVisibility.SCOPE_AFFILIATED;
             case ORG_WIDE -> StandardVisibility.ORGANIZATION_WIDE;
         };
     }
