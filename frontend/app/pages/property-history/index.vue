@@ -29,10 +29,9 @@ const scope = computed<ScopeName>(() => {
   const raw = (route.query.scope as string | undefined) ?? 'teams'
   return raw === 'organizations' ? 'organizations' : 'teams'
 })
-const scopeId = computed<number>(() => {
+const scopeId = computed<string>(() => {
   const raw = route.query.scopeId
-  const n = Number(Array.isArray(raw) ? raw[0] : raw)
-  return Number.isFinite(n) && n > 0 ? n : 0
+  return String(Array.isArray(raw) ? raw[0] : raw ?? '')
 })
 
 const api = computed(() => usePropertyWorkPackageApi(scope.value, scopeId.value))
@@ -225,11 +224,11 @@ function onSelect(packageId: number) {
           :label="t('property.newPackage')"
           severity="primary"
           data-testid="property-new-package-btn"
-          :disabled="scopeId === 0"
+          :disabled="!scopeId"
           @click="openCreate"
         />
         <PropertyWorkExportButton
-          v-if="scopeId !== 0"
+          v-if="scopeId"
           :scope="scope"
           :scope-id="scopeId"
           :filter="currentFilter"
