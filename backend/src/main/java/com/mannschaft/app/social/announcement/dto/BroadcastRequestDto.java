@@ -33,7 +33,7 @@ public class BroadcastRequestDto {
 
     /**
      * 告知対象ロール（必須、最大30文字）。
-     * 値: MEMBERS_ONLY / SUPPORTERS_AND_ABOVE / PUBLIC
+     * 値: MEMBERS_AND_ABOVE / SUPPORTERS_AND_ABOVE / PUBLIC
      */
     @NotNull
     @Size(max = 30)

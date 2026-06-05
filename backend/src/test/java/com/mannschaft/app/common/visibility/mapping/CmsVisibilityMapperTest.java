@@ -33,10 +33,14 @@ class CmsVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_ONLY")
-    void members_only_maps_to_MEMBERS_ONLY() {
+    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_AND_ABOVE（W2: 内輪=応援者除外）")
+    void members_only_maps_to_MEMBERS_AND_ABOVE() {
+        // W2: 設計書 F06.1 §「ブログ/活動記録 一覧」で MEMBERS_ONLY="MEMBER 以上"、
+        // SUPPORTERS_AND_ABOVE="SUPPORTER 以上" と別値で定義（docs/features/F06.1_cms_blog.md L799-801/L1667-1668）。
+        // cms enum は SUPPORTERS_AND_ABOVE を別途持つため MEMBERS_ONLY は内輪(i)の意図が確定。
+        // Mapper 出力先のみ正準ラダー MEMBERS_AND_ABOVE へ変更（機能 enum 名・DB 値は据え置き＝④A）。
         assertThat(CmsVisibilityMapper.toStandard(Visibility.MEMBERS_ONLY))
-            .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            .isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
     }
 
     @Test

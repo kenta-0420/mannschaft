@@ -174,8 +174,8 @@ public class AnnouncementSourceResolver {
         String titleCache = truncate(thread.getTitle(), MAX_TITLE_CACHE_LENGTH);
         String excerptCache = resolveExcerpt(null, thread.getBody());
 
-        // 掲示板は MEMBERS_ONLY 固定（掲示板自体がメンバー限定のため）
-        return new SourceInfo(thread.getAuthorId(), titleCache, excerptCache, priority, "MEMBERS_ONLY", null);
+        // 掲示板は MEMBERS_AND_ABOVE 固定（掲示板自体がメンバー限定のため）
+        return new SourceInfo(thread.getAuthorId(), titleCache, excerptCache, priority, "MEMBERS_AND_ABOVE", null);
     }
 
     /**
@@ -209,7 +209,7 @@ public class AnnouncementSourceResolver {
         String excerptCache = resolveExcerpt(null, post.getContent());
 
         // タイムライン: 常に NORMAL（設計書 §3）
-        return new SourceInfo(post.getUserId(), titleCache, excerptCache, "NORMAL", "MEMBERS_ONLY", null);
+        return new SourceInfo(post.getUserId(), titleCache, excerptCache, "NORMAL", "MEMBERS_AND_ABOVE", null);
     }
 
     /**
@@ -252,7 +252,7 @@ public class AnnouncementSourceResolver {
                 ? doc.getDueDate().plusDays(1).atStartOfDay()
                 : null;
 
-        return new SourceInfo(doc.getCreatedBy(), titleCache, excerptCache, priority, "MEMBERS_ONLY", expiresAt);
+        return new SourceInfo(doc.getCreatedBy(), titleCache, excerptCache, priority, "MEMBERS_AND_ABOVE", expiresAt);
     }
 
     /**
@@ -277,7 +277,7 @@ public class AnnouncementSourceResolver {
         String excerptCache = resolveExcerpt(null, survey.getDescription());
 
         // アンケート: 常に NORMAL（設計書 §3）
-        return new SourceInfo(survey.getCreatedBy(), titleCache, excerptCache, "NORMAL", "MEMBERS_ONLY",
+        return new SourceInfo(survey.getCreatedBy(), titleCache, excerptCache, "NORMAL", "MEMBERS_AND_ABOVE",
                 survey.getExpiresAt());
     }
 
@@ -318,7 +318,7 @@ public class AnnouncementSourceResolver {
         String excerptCache = resolveExcerpt(null, log.getCustomBody());
 
         // 委員会からの伝達は常に URGENT（重要連絡）
-        return new SourceInfo(log.getCreatedBy(), titleCache, excerptCache, "URGENT", "MEMBERS_ONLY", null);
+        return new SourceInfo(log.getCreatedBy(), titleCache, excerptCache, "URGENT", "MEMBERS_AND_ABOVE", null);
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -354,12 +354,12 @@ public class AnnouncementSourceResolver {
      */
     public String mapBlogVisibility(Visibility visibility) {
         if (visibility == null) {
-            return "MEMBERS_ONLY";
+            return "MEMBERS_AND_ABOVE";
         }
         return switch (visibility) {
             case PUBLIC -> "PUBLIC";
             case SUPPORTERS_AND_ABOVE -> "SUPPORTERS_AND_ABOVE";
-            default -> "MEMBERS_ONLY";
+            default -> "MEMBERS_AND_ABOVE";
         };
     }
 

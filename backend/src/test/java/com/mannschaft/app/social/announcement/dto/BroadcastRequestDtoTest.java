@@ -44,7 +44,7 @@ class BroadcastRequestDtoTest {
             // given
             BroadcastRequestDto dto = BroadcastRequestDto.builder()
                     .channel(AnnouncementChannel.BULLETIN_THREAD)
-                    .targetRole("MEMBERS_ONLY")
+                    .targetRole("MEMBERS_AND_ABOVE")
                     .content(AnnouncementContentRequest.builder()
                             .title("告知タイトル")
                             .build())
@@ -92,7 +92,7 @@ class BroadcastRequestDtoTest {
             // given
             BroadcastRequestDto dto = BroadcastRequestDto.builder()
                     .channel(null)
-                    .targetRole("MEMBERS_ONLY")
+                    .targetRole("MEMBERS_AND_ABOVE")
                     .content(AnnouncementContentRequest.builder()
                             .title("タイトルあり")
                             .build())
@@ -132,7 +132,7 @@ class BroadcastRequestDtoTest {
             // given
             BroadcastRequestDto dto = BroadcastRequestDto.builder()
                     .channel(AnnouncementChannel.SCHEDULE)
-                    .targetRole("MEMBERS_ONLY")
+                    .targetRole("MEMBERS_AND_ABOVE")
                     .content(null)
                     .build();
 

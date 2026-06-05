@@ -241,7 +241,7 @@ public class AnnouncementCreationService {
                 .authorId(authorId)
                 .titleCache(effectiveTitleCache)
                 .priority(priority != null ? priority : "NORMAL")
-                .visibility(visibility != null ? visibility : "MEMBERS_ONLY")
+                .visibility(visibility != null ? visibility : "MEMBERS_AND_ABOVE")
                 .expiresAt(expiresAt)
                 .targetTeamIds(targetTeamIds)
                 .build();
