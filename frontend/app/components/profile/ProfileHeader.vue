@@ -177,7 +177,7 @@ const initialsColorClass = computed(() => {
 
     <!-- アイコン領域（バナー下端に重なって表示） -->
     <div
-      class="absolute left-6"
+      class="absolute left-6 z-10"
       style="bottom: -40px"
     >
       <div

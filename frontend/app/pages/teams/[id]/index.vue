@@ -118,57 +118,59 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl p-6">
-    <div v-if="loading || roleLoading" class="flex justify-center py-12">
+  <div class="mx-auto max-w-6xl">
+    <div v-if="loading || roleLoading" class="flex justify-center px-6 py-12">
       <LoadingBounce />
     </div>
 
     <template v-else-if="team">
-      <TeamHeaderBar
-        :team-name="displayName"
-        :template="team.location?.template ?? ''"
-        :template-label="templateLabel[team.location?.template ?? ''] ?? team.location?.template ?? ''"
-        :role-name="roleName"
-        :is-admin="isAdmin"
-        :member-count="team.metadata?.memberCount ?? 0"
-        :supporter-enabled="team.visibility?.supporterEnabled ?? false"
-        :supporter-count="team.social?.supporterCount ?? 0"
-        :follow-status="followStatus"
-        :follow-loading="followLoading"
-        :entity-id="String(team.id)"
-        @back="navigateTo('/dashboard')"
-        @apply-supporter="applySupporter"
-        @cancel-supporter="cancelSupporter"
-        @show-cancel-confirm="showCancelSupporterConfirm = true"
-        @show-leave-confirm="showLeaveConfirm = true"
-      />
-
-      <!-- F02.8 告知ウィザード + F22.1 市（Market）札立て導線 -->
-      <div class="mb-4 flex items-center justify-end gap-2">
-        <!-- F22.1 市（Market）: ADMIN または DEPUTY_ADMIN のみ「札を立てる」導線 -->
-        <Button
-          v-if="isAdminOrDeputy"
-          :label="$t('market.action.post')"
-          icon="pi pi-tag"
-          severity="secondary"
-          outlined
-          @click="navigateTo(`/teams/${teamId}/recruitment-listings/new`)"
+      <div class="px-6 pt-6">
+        <TeamHeaderBar
+          :team-name="displayName"
+          :template="team.location?.template ?? ''"
+          :template-label="templateLabel[team.location?.template ?? ''] ?? team.location?.template ?? ''"
+          :role-name="roleName"
+          :is-admin="isAdmin"
+          :member-count="team.metadata?.memberCount ?? 0"
+          :supporter-enabled="team.visibility?.supporterEnabled ?? false"
+          :supporter-count="team.social?.supporterCount ?? 0"
+          :follow-status="followStatus"
+          :follow-loading="followLoading"
+          :entity-id="String(team.id)"
+          @back="navigateTo('/dashboard')"
+          @apply-supporter="applySupporter"
+          @cancel-supporter="cancelSupporter"
+          @show-cancel-confirm="showCancelSupporterConfirm = true"
+          @show-leave-confirm="showLeaveConfirm = true"
         />
-        <!-- F02.8 告知ウィザード：MEMBER以上に表示 -->
-        <Button
-          v-if="roleName && roleName !== 'SUPPORTER'"
-          :label="$t('announcement.broadcast_button_team')"
-          icon="pi pi-bullhorn"
-          severity="secondary"
-          @click="showBroadcastWizard = true"
+
+        <!-- F02.8 告知ウィザード + F22.1 市（Market）札立て導線 -->
+        <div class="mb-4 flex items-center justify-end gap-2">
+          <!-- F22.1 市（Market）: ADMIN または DEPUTY_ADMIN のみ「札を立てる」導線 -->
+          <Button
+            v-if="isAdminOrDeputy"
+            :label="$t('market.action.post')"
+            icon="pi pi-tag"
+            severity="secondary"
+            outlined
+            @click="navigateTo(`/teams/${teamId}/recruitment-listings/new`)"
+          />
+          <!-- F02.8 告知ウィザード：MEMBER以上に表示 -->
+          <Button
+            v-if="roleName && roleName !== 'SUPPORTER'"
+            :label="$t('announcement.broadcast_button_team')"
+            icon="pi pi-bullhorn"
+            severity="secondary"
+            @click="showBroadcastWizard = true"
+          />
+        </div>
+        <BroadcastWizard
+          v-model:visible="showBroadcastWizard"
+          scope-type="TEAM"
+          :scope-id="teamId"
+          :is-admin="isAdmin"
         />
       </div>
-      <BroadcastWizard
-        v-model:visible="showBroadcastWizard"
-        scope-type="TEAM"
-        :scope-id="teamId"
-        :is-admin="isAdmin"
-      />
 
       <ProfileHeader
         :icon-url="team.metadata?.iconUrl"
@@ -181,7 +183,8 @@ onMounted(async () => {
         @banner-updated="(url) => { if (team && team.metadata) team.metadata.bannerUrl = url }"
       />
 
-      <Tabs v-model:value="activeTab">
+      <div class="px-6 pb-6">
+        <Tabs v-model:value="activeTab">
         <TabList>
           <Tab :value="0"> ダッシュボード </Tab>
           <Tab :value="1"> 基本情報 </Tab>
@@ -317,6 +320,7 @@ onMounted(async () => {
           <Button label="退出する" severity="danger" @click="leaveTeam" />
         </template>
       </Dialog>
+      </div>
     </template>
   </div>
 </template>
