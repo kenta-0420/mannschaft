@@ -38,15 +38,15 @@ export function useTeamSupporters() {
   const api = useApi()
 
   // === フォロー（SUPPORTER） ===
-  async function followTeam(teamId: number) {
+  async function followTeam(teamId: string | number) {
     return api(`/api/v1/teams/${teamId}/follow`, { method: 'POST' })
   }
 
-  async function unfollowTeam(teamId: number) {
+  async function unfollowTeam(teamId: string | number) {
     return api(`/api/v1/teams/${teamId}/follow`, { method: 'DELETE' })
   }
 
-  async function getFollowStatus(teamId: number) {
+  async function getFollowStatus(teamId: string | number) {
     return api<{ data: FollowStatusResponse }>(`/api/v1/teams/${teamId}/follow/status`)
   }
 

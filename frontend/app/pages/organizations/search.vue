@@ -10,12 +10,12 @@ const orgStore = useOrganizationStore()
 const { handleApiError } = useErrorHandler()
 const notification = useNotification()
 
-const followedOrgIds = ref<number[]>([])
-const followingOrgIds = ref<number[]>([])
+const followedOrgIds = ref<string[]>([])
+const followingOrgIds = ref<string[]>([])
 
-const myOrgIds = computed(() => new Set(orgStore.myOrganizations.map((org) => org.id)))
+const myOrgPublicIds = computed(() => new Set(orgStore.myOrganizations.map((org) => org.publicId)))
 
-async function followOrg(orgId: number, event: Event) {
+async function followOrg(orgId: string, event: Event) {
   event.stopPropagation()
   followingOrgIds.value.push(orgId)
   try {
@@ -30,7 +30,7 @@ async function followOrg(orgId: number, event: Event) {
 }
 
 interface OrgSummary {
-  id: number
+  id: string
   name: string
   nickname1: string | null
   iconUrl: string | null
@@ -86,8 +86,8 @@ function onPageChange(event: { page: number }) {
   fetchOrganizations()
 }
 
-function onOrgCreated(entity: { id: number; name: string }) {
-  navigateTo(`/organizations/${entity.id}`)
+function onOrgCreated(entity: { id: number; publicId: string; name: string }) {
+  navigateTo(`/organizations/${entity.publicId}`)
 }
 
 function formatLocation(prefecture: string | null, city: string | null): string {
@@ -160,7 +160,7 @@ onMounted(() => {
             <span><i class="pi pi-users mr-1" />{{ $t('orgHub.memberCount', { count: org.memberCount }) }}</span>
           </div>
           <div
-            v-if="org.supporterEnabled && !myOrgIds.has(org.id)"
+            v-if="org.supporterEnabled && !myOrgPublicIds.has(org.id)"
             class="mt-3 border-t border-surface-100 pt-3"
           >
             <span
