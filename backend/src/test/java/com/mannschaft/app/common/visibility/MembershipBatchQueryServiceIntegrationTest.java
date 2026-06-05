@@ -30,8 +30,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 直接 INSERT する。</p>
  *
  * <p>SQL 数の上限値は設計書 D-14 / 任務書「SQL 数 ≦ 3」を踏まえつつ、本実装では
- * §11.6 の連鎖判定（非アクティブ親 ORG 抽出）と role_name 解決を加えた最大 5 SQL
- * になる場合がある。各シナリオで具体的な発行回数を assertThat で検証する。</p>
+ * §11.6 の連鎖判定（非アクティブ親 ORG 抽出）・role_name 解決・F00.5 §8.3 の
+ * memberships role_kind バッチを加えた最大 7 SQL になる場合がある。
+ * memberships role_kind は direct スコープ ＋ 親 ORG を 1 バッチに統合しており、
+ * direct のみのシナリオでは従来 3 SQL に +1 して ≦4 となる（N+1 ではない）。
+ * 各シナリオで具体的な発行回数を assertThat で検証する。</p>
  */
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
@@ -186,7 +189,7 @@ class MembershipBatchQueryServiceIntegrationTest extends AbstractMySqlIntegratio
     // =========================================================================
 
     @Test
-    @DisplayName("一般ユーザー × directScopes 単一 TEAM → 該当所属を返し SQL 数 ≦ 3")
+    @DisplayName("一般ユーザー × directScopes 単一 TEAM → 該当所属を返し SQL 数 ≦ 4")
     void 一般ユーザー_directScopes単一TEAM() {
         // 配置: ユーザーは TEAM1 に MEMBER として所属
         insertUserRole(userId, memberRoleId, teamId1, null);
@@ -200,10 +203,14 @@ class MembershipBatchQueryServiceIntegrationTest extends AbstractMySqlIntegratio
                 Set.of(new ScopeKey("TEAM", teamId1)),
                 Collections.emptySet());
 
-        // SQL 数: existsSystemAdmin (1) + findByUserIdAndScopes (1) + role_name 解決 (1) = 3
+        // SQL 数: existsSystemAdmin (1) + findByUserIdAndScopes (1) + role_name 解決 (1)
+        //        + memberships role_kind バッチ (1) = 4
+        // F00.5 §8.3 で memberships 由来 MEMBER/SUPPORTER を roleByScope へマージするため、
+        // memberships 専属ロール解決用の単一バッチクエリが 1 本増えた（N+1 ではなく O(1)）。
+        // SQL 数の番人として、緩めすぎない正しい新下限 ≦4 で締め直す。
         assertThat(stats.getPrepareStatementCount())
-                .as("directScopes 単一 TEAM の SQL 数は 3 以下であるべし")
-                .isLessThanOrEqualTo(3L);
+                .as("directScopes 単一 TEAM の SQL 数は 4 以下であるべし（memberships role_kind バッチ +1）")
+                .isLessThanOrEqualTo(4L);
 
         assertThat(snapshot.isSystemAdmin()).isFalse();
         assertThat(snapshot.roleByScope())
@@ -213,7 +220,7 @@ class MembershipBatchQueryServiceIntegrationTest extends AbstractMySqlIntegratio
     }
 
     @Test
-    @DisplayName("一般ユーザー × directScopes 複数 TEAM/ORG 混在 → 該当多件、SQL 数 ≦ 3")
+    @DisplayName("一般ユーザー × directScopes 複数 TEAM/ORG 混在 → 該当多件、SQL 数 ≦ 4")
     void 一般ユーザー_directScopes複数混在() {
         insertUserRole(userId, memberRoleId, teamId1, null);
         insertUserRole(userId, memberRoleId, null, orgId1);
@@ -229,9 +236,12 @@ class MembershipBatchQueryServiceIntegrationTest extends AbstractMySqlIntegratio
                         new ScopeKey("ORGANIZATION", orgId1)),
                 Collections.emptySet());
 
+        // SQL 数: existsSystemAdmin (1) + findByUserIdAndScopes (1) + role_name 解決 (1)
+        //        + memberships role_kind バッチ (1) = 4
+        // direct teams / orgs を 1 つの membership バッチに統合しているため、混在でも +1 のみ。
         assertThat(stats.getPrepareStatementCount())
-                .as("directScopes 複数混在の SQL 数は 3 以下であるべし")
-                .isLessThanOrEqualTo(3L);
+                .as("directScopes 複数混在の SQL 数は 4 以下であるべし（memberships role_kind バッチ +1）")
+                .isLessThanOrEqualTo(4L);
 
         assertThat(snapshot.roleByScope())
                 .hasSize(2)
