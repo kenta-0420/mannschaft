@@ -71,6 +71,8 @@ class GuardianshipSwitchControllerTest {
     @BeforeEach
     void setUp() {
         objectMapper.findAndRegisterModules();
+        // 本番（Spring Boot）と同様に LocalDate を ISO 文字列でシリアライズする（タイムスタンプ配列にしない）。
+        objectMapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         MessageSource ms = new StaticMessageSource();
         GuardianshipSwitchController controller =
                 new GuardianshipSwitchController(guardianshipSwitchService, guardianshipHandoverService);
