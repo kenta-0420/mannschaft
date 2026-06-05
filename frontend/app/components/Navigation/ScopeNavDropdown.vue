@@ -174,7 +174,14 @@ async function ensureFoldersLoaded() {
 
 function onPopoverShow() {
   isPopoverOpen.value = true
-  ensureFoldersLoaded()
+  // フォルダ一覧と個別スコープ一覧を並列フェッチ
+  // ストアが空のままだと myScopes computed が空になりジャンプリンクが表示されないため
+  const scopeFetch = props.scopeType === 'TEAM'
+    ? teamStore.fetchMyTeams()
+    : orgStore.fetchMyOrganizations()
+  Promise.all([ensureFoldersLoaded(), scopeFetch]).catch(() => {
+    // フェッチ失敗してもメニュー操作は阻害しない
+  })
 }
 
 function onPopoverHide() {

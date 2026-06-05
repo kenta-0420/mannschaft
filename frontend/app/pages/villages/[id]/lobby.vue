@@ -33,6 +33,7 @@ import { useVillageLobbyPresence } from '~/composables/village/useVillageLobbyPr
 
 definePageMeta({
   middleware: 'auth',
+  key: route => route.fullPath,
 })
 
 // =============================================================================
