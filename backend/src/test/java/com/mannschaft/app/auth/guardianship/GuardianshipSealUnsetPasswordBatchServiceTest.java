@@ -66,7 +66,7 @@ class GuardianshipSealUnsetPasswordBatchServiceTest {
                 .birthDate(birthDate)
                 .passwordHash(passwordHash)
                 .build();
-        u.setId(CHILD_ID);
+        org.springframework.test.util.ReflectionTestUtils.setField(u, "id", CHILD_ID);
         return u;
     }
 

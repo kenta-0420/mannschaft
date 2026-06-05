@@ -88,7 +88,7 @@ class GuardianshipProgressionNoticeBatchServiceTest {
                 .birthDate(birthDate)
                 .passwordHash(passwordHash)
                 .build();
-        u.setId(id);
+        org.springframework.test.util.ReflectionTestUtils.setField(u, "id", id);
         return u;
     }
 
@@ -195,6 +195,8 @@ class GuardianshipProgressionNoticeBatchServiceTest {
                 .thenReturn(List.of(new ParentalConsentService.ParentChildPair(GUARDIAN_ID, CHILD_ID)));
         when(careLinkService.listActiveParentWatcherPairs(0, 500)).thenReturn(List.of());
         when(userRepository.findByIdIn(any())).thenReturn(List.of(child));
+        when(userRepository.findById(GUARDIAN_ID))
+                .thenReturn(java.util.Optional.of(user(GUARDIAN_ID, "1980-01-01", "parent@example.com", "h")));
         when(transitionNotificationRepository
                 .existsByNotificationKindAndRecipientUserIdAndChildUserIdAndSealDate(
                         any(), any(), any(), any())).thenReturn(false);
