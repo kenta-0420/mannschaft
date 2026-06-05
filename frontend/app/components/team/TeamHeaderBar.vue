@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import FavoriteToggleButton from '~/components/favorites/FavoriteToggleButton.vue'
+
 interface Props {
   teamName: string
   template: string
@@ -10,6 +12,7 @@ interface Props {
   supporterCount?: number
   followStatus: 'NONE' | 'PENDING' | 'APPROVED'
   followLoading: boolean
+  entityId: string
 }
 
 defineProps<Props>()
@@ -49,50 +52,57 @@ defineEmits<{
         </div>
       </div>
     </div>
-    <template v-if="supporterEnabled && !roleName">
-      <Button
-        v-if="followStatus === 'APPROVED'"
-        icon="pi pi-heart-fill"
-        label="サポーターです"
-        size="small"
-        :loading="followLoading"
-        class="border-red-400 bg-red-50 text-red-500 hover:bg-red-100"
-        outlined
-        @click="$emit('showCancelConfirm')"
+    <div class="flex items-center gap-2">
+      <FavoriteToggleButton
+        entity-type="TEAM"
+        :entity-id="entityId"
+        :entity-name="teamName"
       />
-      <span
-        v-else-if="followStatus === 'PENDING'"
-        class="flex items-center gap-2 text-sm text-orange-500"
-      >
-        <i class="pi pi-clock" />申請中（承認待ち）
+      <template v-if="supporterEnabled && !roleName">
         <Button
-          label="取消"
+          v-if="followStatus === 'APPROVED'"
+          icon="pi pi-heart-fill"
+          label="サポーターです"
           size="small"
-          severity="secondary"
-          text
           :loading="followLoading"
-          @click="$emit('cancelSupporter')"
+          class="border-red-400 bg-red-50 text-red-500 hover:bg-red-100"
+          outlined
+          @click="$emit('showCancelConfirm')"
         />
-      </span>
+        <span
+          v-else-if="followStatus === 'PENDING'"
+          class="flex items-center gap-2 text-sm text-orange-500"
+        >
+          <i class="pi pi-clock" />申請中（承認待ち）
+          <Button
+            label="取消"
+            size="small"
+            severity="secondary"
+            text
+            :loading="followLoading"
+            @click="$emit('cancelSupporter')"
+          />
+        </span>
+        <Button
+          v-else
+          label="サポーターになる"
+          icon="pi pi-heart"
+          severity="secondary"
+          outlined
+          size="small"
+          :loading="followLoading"
+          @click="$emit('applySupporter')"
+        />
+      </template>
       <Button
-        v-else
-        label="サポーターになる"
-        icon="pi pi-heart"
-        severity="secondary"
+        v-if="!isAdmin && roleName"
+        label="チームから退出"
+        icon="pi pi-sign-out"
+        severity="danger"
         outlined
         size="small"
-        :loading="followLoading"
-        @click="$emit('applySupporter')"
+        @click="$emit('showLeaveConfirm')"
       />
-    </template>
-    <Button
-      v-if="!isAdmin && roleName"
-      label="チームから退出"
-      icon="pi pi-sign-out"
-      severity="danger"
-      outlined
-      size="small"
-      @click="$emit('showLeaveConfirm')"
-    />
+    </div>
   </div>
 </template>

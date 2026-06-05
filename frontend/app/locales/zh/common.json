@@ -1424,6 +1424,7 @@
     "saveError": "保存失败",
     "removeConfirm": "确定要删除吗？",
     "dragHandle": "排序",
+    "labelFavorited": "已收藏",
     "entityType": {
       "TEAM": "团队",
       "ORGANIZATION": "组织",

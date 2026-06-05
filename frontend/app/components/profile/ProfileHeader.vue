@@ -127,7 +127,7 @@ const initialsColorClass = computed(() => {
 </script>
 
 <template>
-  <div class="profile-header relative">
+  <div class="profile-header relative mb-10">
     <!-- バナー領域 -->
     <div
       class="relative w-full overflow-hidden"

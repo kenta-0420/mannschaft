@@ -1424,6 +1424,7 @@
     "saveError": "保存に失敗しました",
     "removeConfirm": "本当に削除しますか？",
     "dragHandle": "並び替え",
+    "labelFavorited": "お気に入り済み",
     "entityType": {
       "TEAM": "チーム",
       "ORGANIZATION": "組織",

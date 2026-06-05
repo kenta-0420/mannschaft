@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ViewerRole } from '~/types/dashboard'
 import type { TeamResponse } from '~/types/team'
-import FavoriteToggleButton from '~/components/favorites/FavoriteToggleButton.vue'
 
 definePageMeta({
   middleware: 'auth',
@@ -136,6 +135,7 @@ onMounted(async () => {
         :supporter-count="team.social?.supporterCount ?? 0"
         :follow-status="followStatus"
         :follow-loading="followLoading"
+        :entity-id="String(team.id)"
         @back="navigateTo('/dashboard')"
         @apply-supporter="applySupporter"
         @cancel-supporter="cancelSupporter"
@@ -143,13 +143,8 @@ onMounted(async () => {
         @show-leave-confirm="showLeaveConfirm = true"
       />
 
-      <!-- F02.9 お気に入りトグル + F02.8 告知ウィザード + F22.1 市（Market）札立て導線 -->
+      <!-- F02.8 告知ウィザード + F22.1 市（Market）札立て導線 -->
       <div class="mb-4 flex items-center justify-end gap-2">
-        <FavoriteToggleButton
-          entity-type="TEAM"
-          :entity-id="String(team.id)"
-          :entity-name="displayName"
-        />
         <!-- F22.1 市（Market）: ADMIN または DEPUTY_ADMIN のみ「札を立てる」導線 -->
         <Button
           v-if="isAdminOrDeputy"
