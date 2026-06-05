@@ -12,6 +12,7 @@ import com.mannschaft.app.organization.dto.UpdateCustomFieldRequest;
 import com.mannschaft.app.organization.dto.UpdateOfficerRequest;
 import com.mannschaft.app.organization.dto.UpdateOrgProfileRequest;
 import com.mannschaft.app.organization.service.OrganizationExtendedProfileService;
+import com.mannschaft.app.organization.service.OrganizationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -30,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 組織拡張プロフィールコントローラー。
@@ -42,6 +44,7 @@ import java.util.List;
 public class OrganizationExtendedProfileController {
 
     private final OrganizationExtendedProfileService extendedProfileService;
+    private final OrganizationService organizationService;
 
     // ========================================
     // 拡張プロフィール
@@ -50,11 +53,12 @@ public class OrganizationExtendedProfileController {
     /**
      * 組織の拡張プロフィールを取得する。
      */
-    @GetMapping("/{id}/profile")
+    @GetMapping("/{publicId}/profile")
     @Operation(summary = "組織拡張プロフィール取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<OrganizationProfileResponse>> getProfile(
-            @PathVariable Long id) {
+            @PathVariable UUID publicId) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.ok(
                 extendedProfileService.getProfile(SecurityUtils.getCurrentUserId(), id));
     }
@@ -62,12 +66,13 @@ public class OrganizationExtendedProfileController {
     /**
      * 組織の拡張プロフィールを更新する。
      */
-    @PatchMapping("/{id}/profile")
+    @PatchMapping("/{publicId}/profile")
     @Operation(summary = "組織拡張プロフィール更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<OrganizationProfileResponse>> updateProfile(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @Valid @RequestBody UpdateOrgProfileRequest req) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.ok(
                 extendedProfileService.updateProfile(SecurityUtils.getCurrentUserId(), id, req));
     }
@@ -79,12 +84,13 @@ public class OrganizationExtendedProfileController {
     /**
      * 組織の役員一覧を取得する。
      */
-    @GetMapping("/{id}/officers")
+    @GetMapping("/{publicId}/officers")
     @Operation(summary = "組織役員一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<OfficerResponse>>> getOfficers(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @RequestParam(required = false, defaultValue = "false") boolean visibilityPreview) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.ok(
                 extendedProfileService.getOfficers(SecurityUtils.getCurrentUserId(), id, visibilityPreview));
     }
@@ -92,12 +98,13 @@ public class OrganizationExtendedProfileController {
     /**
      * 組織に役員を追加する。
      */
-    @PostMapping("/{id}/officers")
+    @PostMapping("/{publicId}/officers")
     @Operation(summary = "組織役員追加")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<OfficerResponse>> createOfficer(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @Valid @RequestBody CreateOfficerRequest req) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(extendedProfileService.createOfficer(SecurityUtils.getCurrentUserId(), id, req));
     }
@@ -105,13 +112,14 @@ public class OrganizationExtendedProfileController {
     /**
      * 組織の役員を更新する。
      */
-    @PatchMapping("/{id}/officers/{officerId}")
+    @PatchMapping("/{publicId}/officers/{officerId}")
     @Operation(summary = "組織役員更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<OfficerResponse>> updateOfficer(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @PathVariable Long officerId,
             @Valid @RequestBody UpdateOfficerRequest req) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.ok(
                 extendedProfileService.updateOfficer(SecurityUtils.getCurrentUserId(), id, officerId, req));
     }
@@ -119,12 +127,13 @@ public class OrganizationExtendedProfileController {
     /**
      * 組織の役員を削除する。
      */
-    @DeleteMapping("/{id}/officers/{officerId}")
+    @DeleteMapping("/{publicId}/officers/{officerId}")
     @Operation(summary = "組織役員削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteOfficer(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @PathVariable Long officerId) {
+        Long id = organizationService.resolveOrgId(publicId);
         extendedProfileService.deleteOfficer(SecurityUtils.getCurrentUserId(), id, officerId);
         return ResponseEntity.noContent().build();
     }
@@ -132,12 +141,13 @@ public class OrganizationExtendedProfileController {
     /**
      * 組織の役員表示順を並び替える。
      */
-    @PutMapping("/{id}/officers/reorder")
+    @PutMapping("/{publicId}/officers/reorder")
     @Operation(summary = "組織役員並び替え")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "並び替え成功")
     public ResponseEntity<Void> reorderOfficers(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @Valid @RequestBody ReorderRequest req) {
+        Long id = organizationService.resolveOrgId(publicId);
         extendedProfileService.reorderOfficers(SecurityUtils.getCurrentUserId(), id, req);
         return ResponseEntity.noContent().build();
     }
@@ -149,12 +159,13 @@ public class OrganizationExtendedProfileController {
     /**
      * 組織のカスタムフィールド一覧を取得する。
      */
-    @GetMapping("/{id}/custom-fields")
+    @GetMapping("/{publicId}/custom-fields")
     @Operation(summary = "組織カスタムフィールド一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<CustomFieldResponse>>> getCustomFields(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @RequestParam(required = false, defaultValue = "false") boolean visibilityPreview) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.ok(
                 extendedProfileService.getCustomFields(SecurityUtils.getCurrentUserId(), id, visibilityPreview));
     }
@@ -162,12 +173,13 @@ public class OrganizationExtendedProfileController {
     /**
      * 組織にカスタムフィールドを追加する。
      */
-    @PostMapping("/{id}/custom-fields")
+    @PostMapping("/{publicId}/custom-fields")
     @Operation(summary = "組織カスタムフィールド追加")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<CustomFieldResponse>> createCustomField(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @Valid @RequestBody CreateCustomFieldRequest req) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(extendedProfileService.createCustomField(SecurityUtils.getCurrentUserId(), id, req));
     }
@@ -175,13 +187,14 @@ public class OrganizationExtendedProfileController {
     /**
      * 組織のカスタムフィールドを更新する。
      */
-    @PatchMapping("/{id}/custom-fields/{fieldId}")
+    @PatchMapping("/{publicId}/custom-fields/{fieldId}")
     @Operation(summary = "組織カスタムフィールド更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<CustomFieldResponse>> updateCustomField(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @PathVariable Long fieldId,
             @Valid @RequestBody UpdateCustomFieldRequest req) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.ok(
                 extendedProfileService.updateCustomField(SecurityUtils.getCurrentUserId(), id, fieldId, req));
     }
@@ -189,12 +202,13 @@ public class OrganizationExtendedProfileController {
     /**
      * 組織のカスタムフィールドを削除する。
      */
-    @DeleteMapping("/{id}/custom-fields/{fieldId}")
+    @DeleteMapping("/{publicId}/custom-fields/{fieldId}")
     @Operation(summary = "組織カスタムフィールド削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteCustomField(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @PathVariable Long fieldId) {
+        Long id = organizationService.resolveOrgId(publicId);
         extendedProfileService.deleteCustomField(SecurityUtils.getCurrentUserId(), id, fieldId);
         return ResponseEntity.noContent().build();
     }
@@ -202,12 +216,13 @@ public class OrganizationExtendedProfileController {
     /**
      * 組織のカスタムフィールド表示順を並び替える。
      */
-    @PutMapping("/{id}/custom-fields/reorder")
+    @PutMapping("/{publicId}/custom-fields/reorder")
     @Operation(summary = "組織カスタムフィールド並び替え")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "並び替え成功")
     public ResponseEntity<Void> reorderCustomFields(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @Valid @RequestBody ReorderRequest req) {
+        Long id = organizationService.resolveOrgId(publicId);
         extendedProfileService.reorderCustomFields(SecurityUtils.getCurrentUserId(), id, req);
         return ResponseEntity.noContent().build();
     }

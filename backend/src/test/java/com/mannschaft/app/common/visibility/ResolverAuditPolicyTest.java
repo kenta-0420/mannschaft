@@ -88,6 +88,27 @@ class ResolverAuditPolicyTest {
         }
 
         @Test
+        @DisplayName("W1: ADMINS_AND_ABOVE は true（旧 ADMINS_ONLY と同じ最高機微）")
+        void adminsAndAbove_returnsTrue() {
+            assertThat(ResolverAuditPolicy.shouldAuditDeny(StandardVisibility.ADMINS_AND_ABOVE))
+                .isTrue();
+        }
+
+        @Test
+        @DisplayName("W1: MEMBERS_AND_ABOVE は false（旧 MEMBERS_ONLY 相当で非センシティブ）")
+        void membersAndAbove_returnsFalse() {
+            assertThat(ResolverAuditPolicy.shouldAuditDeny(StandardVisibility.MEMBERS_AND_ABOVE))
+                .isFalse();
+        }
+
+        @Test
+        @DisplayName("W1: SCOPE_AFFILIATED は false（旧 MEMBERS_ONLY 相当で非センシティブ）")
+        void scopeAffiliated_returnsFalse() {
+            assertThat(ResolverAuditPolicy.shouldAuditDeny(StandardVisibility.SCOPE_AFFILIATED))
+                .isFalse();
+        }
+
+        @Test
         @DisplayName("null は false (NPE 防御)")
         void nullLevel_returnsFalse() {
             assertThat(ResolverAuditPolicy.shouldAuditDeny(null))
@@ -129,6 +150,14 @@ class ResolverAuditPolicyTest {
             assertThat(ResolverAuditPolicy.shouldAuditAllow(StandardVisibility.FOLLOWERS_ONLY)).isFalse();
             assertThat(ResolverAuditPolicy.shouldAuditAllow(StandardVisibility.ORGANIZATION_WIDE)).isFalse();
             assertThat(ResolverAuditPolicy.shouldAuditAllow(StandardVisibility.CUSTOM)).isFalse();
+        }
+
+        @Test
+        @DisplayName("W1: 新 3 値（MEMBERS_AND_ABOVE / ADMINS_AND_ABOVE / SCOPE_AFFILIATED）は allow 対象外で false")
+        void w1NewLevels_returnFalse() {
+            assertThat(ResolverAuditPolicy.shouldAuditAllow(StandardVisibility.MEMBERS_AND_ABOVE)).isFalse();
+            assertThat(ResolverAuditPolicy.shouldAuditAllow(StandardVisibility.ADMINS_AND_ABOVE)).isFalse();
+            assertThat(ResolverAuditPolicy.shouldAuditAllow(StandardVisibility.SCOPE_AFFILIATED)).isFalse();
         }
 
         @Test

@@ -2,6 +2,8 @@ package com.mannschaft.app.team.dto;
 
 import com.mannschaft.app.team.entity.TeamEntity;
 
+import java.util.UUID;
+
 /**
  * F15.4: 組織内チーム検索の組織メンバー向け詳細版レスポンス。
  *
@@ -26,7 +28,7 @@ import com.mannschaft.app.team.entity.TeamEntity;
  * 意図的に含めない（連絡先・番地・メンバー規模は組織内情報のため）。
  */
 public record TeamSearchResultResponse(
-        Long id,
+        UUID id,
         String name,
         String nameKana,
         String prefecture,
@@ -52,7 +54,7 @@ public record TeamSearchResultResponse(
      */
     public static TeamSearchResultResponse from(TeamEntity team) {
         return new TeamSearchResultResponse(
-                team.getId(),
+                team.getPublicId(),
                 team.getName(),
                 team.getNameKana(),
                 team.getPrefecture(),
