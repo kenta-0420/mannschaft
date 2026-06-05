@@ -21,7 +21,7 @@ import java.util.Set;
  * F00 共通可視性基盤のメンバーシップバッチ照会サービス。
  *
  * <p>1 リクエスト内で複数の {@code ContentVisibilityResolver} が共有する
- * {@link UserScopeRoleSnapshot} を、最小限の SQL 回数（最大 5 SQL）で構築する。
+ * {@link UserScopeRoleSnapshot} を、最小限の SQL 回数（最大 7 SQL）で構築する。
  * 設計書 {@code docs/features/F00_content_visibility_resolver.md} §10.2 / §11.6 / §15 D-14。</p>
  *
  * <p>設計書 D-14 の通り、{@code AccessControlService}（既存 12 メソッド）には手を入れず、
@@ -30,11 +30,14 @@ import java.util.Set;
  * <p>SQL 数の上限（{@code orgWideScopes} 非空の最悪ケース）:</p>
  * <ol>
  *   <li>SystemAdmin 判定 1 回（{@code existsSystemAdminByUserId}）</li>
- *   <li>direct メンバーシップ 1 回（{@code findByUserIdAndScopes}）</li>
+ *   <li>direct メンバーシップ（user_roles 権限ロール）1 回（{@code findByUserIdAndScopes}）</li>
  *   <li>direct メンバーシップで見つかった role_id → role_name の解決 1 回
  *       （{@code RoleRepository.findAllById}、空集合なら省略）</li>
  *   <li>{@code TEAM} → 親 ORG 解決 1 回（{@code TeamOrgMembershipRepository}）</li>
- *   <li>親 ORG メンバーシップ 1 回（{@code findByUserIdAndOrganizationIdIn}）</li>
+ *   <li>memberships の role_kind（MEMBER / SUPPORTER）を「direct スコープ ＋ 親 ORG」
+ *       まとめて 1 回（{@code findActiveRoleKindsByUserAndScopes}、F00.5 §8.3）。
+ *       direct / org で個別に引かず 1 バッチに統合している（SQL 数回帰の防止）。</li>
+ *   <li>親 ORG の user_roles 権限ロール所属 1 回（{@code findByUserIdAndOrganizationIdIn}）</li>
  *   <li>非アクティブ親 ORG 抽出 1 回（{@code OrganizationRepository.findInactiveIdsByIdIn}、§11.6）</li>
  * </ol>
  *
@@ -83,7 +86,7 @@ public class MembershipBatchQueryService {
         Set<ScopeKey> safeDirect = directScopes != null ? directScopes : Set.of();
         Set<ScopeKey> safeOrgWide = orgWideScopes != null ? orgWideScopes : Set.of();
 
-        // SQL 2: direct メンバーシップ取得（teamIds と organizationIds に分離して呼ぶ）
+        // SQL 2: direct メンバーシップの user_roles 権限ロールを取得（roles 解決込み）
         Map<ScopeKey, String> roleByScope = resolveDirectMembership(userId, safeDirect);
 
         // SQL 3 (orgWideScopes が非空のみ): TEAM → 親 ORG 解決
@@ -91,23 +94,40 @@ public class MembershipBatchQueryService {
                 ? Map.of()
                 : scopeAncestorResolver.resolveParentOrgIds(safeOrgWide);
 
-        // SQL 4 (parentOrgs が非空のみ): 親 ORG メンバーシップ取得
-        Set<ScopeKey> orgMemberOf = resolveOrgMembership(userId, parentOrgs);
+        // SQL 4 (direct or 親 ORG が非空のみ): memberships の role_kind（MEMBER / SUPPORTER）を
+        //        「direct スコープ ＋ 親 ORG」まとめて 1 バッチで取得する（F00.5 SQL 回帰根治）。
+        //        direct 解決と org 解決で個別に membership を引くと snapshot あたり 2 SQL になり
+        //        結合テストの SQL 数番人が回帰検知するため、ここで 1 SQL に統合し結果を使い回す。
+        Set<Long> parentOrgIds = parentOrgs.isEmpty()
+                ? Set.of()
+                : new HashSet<>(parentOrgs.values());
+        List<MembershipScopeRoleProjection> membershipRoleKinds =
+                fetchMembershipRoleKinds(userId, safeDirect, parentOrgIds);
 
-        // SQL 5 (parentOrgs が非空のみ): 非アクティブ親 ORG 抽出 §11.6
+        // direct スコープに該当する MEMBER / SUPPORTER のみを roleByScope へマージする。
+        // （親 ORG 専属の所属は roleByScope を汚さず orgMemberOf 側に振り分ける）
+        applyDirectMembershipRoleKinds(safeDirect, membershipRoleKinds, roleByScope);
+
+        // SQL 5 (parentOrgs が非空のみ): 親 ORG の user_roles 権限ロール所属を取得し、
+        //        SQL 4 で取得済みの membership 由来 ORG 所属と UNION する。
+        Set<ScopeKey> orgMemberOf = resolveOrgMembership(
+                userId, parentOrgIds, membershipRoleKinds);
+
+        // SQL 6 (parentOrgs が非空のみ): 非アクティブ親 ORG 抽出 §11.6
         Set<Long> suspendedOrgIds = resolveInactiveParentOrgs(parentOrgs);
 
         return new UserScopeRoleSnapshot(false, roleByScope, parentOrgs, orgMemberOf, suspendedOrgIds);
     }
 
     /**
-     * directScopes に対する直接メンバーシップを取得し、{@code ScopeKey → roleName} マップを構築する。
+     * directScopes に対する直接メンバーシップ（{@code user_roles} 由来の権限ロール）を取得し、
+     * {@code ScopeKey → roleName} マップを構築する。
      *
-     * <p>F00.5 §8.3 根治: ロールは次の 2 系統に分散しているため、両方を UNION して
-     * priority 最小（最強）を採用する。</p>
+     * <p>F00.5 §8.3 根治: ロールは次の 2 系統に分散している。</p>
      * <ul>
-     *   <li><b>権限ロール</b>: {@code user_roles} 由来（ADMIN / DEPUTY_ADMIN / GUEST 等）</li>
-     *   <li><b>所属ロール</b>: {@code memberships.role_kind} 由来（MEMBER / SUPPORTER）</li>
+     *   <li><b>権限ロール</b>: {@code user_roles} 由来（ADMIN / DEPUTY_ADMIN / GUEST 等）… 本メソッド</li>
+     *   <li><b>所属ロール</b>: {@code memberships.role_kind} 由来（MEMBER / SUPPORTER）…
+     *       {@link #applyMembershipRoleKinds} が direct ＋ 親 ORG を 1 バッチで取得してマージ</li>
      * </ul>
      *
      * <p>memberships を統合しないと、user_roles から MEMBER / SUPPORTER が削除済み
@@ -117,7 +137,7 @@ public class MembershipBatchQueryService {
      */
     private Map<ScopeKey, String> resolveDirectMembership(Long userId, Set<ScopeKey> directScopes) {
         if (directScopes.isEmpty()) {
-            return Map.of();
+            return new HashMap<>();
         }
 
         Set<Long> teamIds = new HashSet<>();
@@ -159,21 +179,78 @@ public class MembershipBatchQueryService {
             }
         }
 
-        // SQL B (F00.5 §8.3): memberships の direct 所属ロール（MEMBER / SUPPORTER）をマージ
-        if (!teamIds.isEmpty() || !orgIds.isEmpty()) {
-            List<MembershipScopeRoleProjection> memberships =
-                    membershipRepository.findActiveRoleKindsByUserAndScopes(userId, teamIds, orgIds);
-            for (MembershipScopeRoleProjection m : memberships) {
-                if (m.getScopeType() == null || m.getScopeId() == null || m.getRoleKind() == null) {
-                    continue;
-                }
-                String scopeType = m.getScopeType().name(); // "TEAM" / "ORGANIZATION"
-                String roleName = m.getRoleKind().name();    // "MEMBER" / "SUPPORTER"
-                mergeStrongerRole(result, new ScopeKey(scopeType, m.getScopeId()), roleName);
+        return result;
+    }
+
+    /**
+     * memberships の所属ロール（MEMBER / SUPPORTER）を「direct スコープ ＋ 親 ORG」まとめて
+     * <b>1 バッチ（1 SQL）</b>で取得する（F00.5 §8.3 / SQL 数回帰根治）。
+     *
+     * <p>direct 解決（{@link #resolveDirectMembership}）と org 解決
+     * （{@link #resolveOrgMembership}）で個別に {@code findActiveRoleKindsByUserAndScopes} を
+     * 引くと snapshot あたり 2 SQL に増え、結合テストの SQL 数番人が回帰検知する。
+     * そのため direct teamIds / direct orgIds / 親 orgIds を 1 つの IN 句に集約して
+     * 1 回だけクエリし、結果（projection リスト）を呼び出し側で direct / org へ振り分ける。
+     * scope ごとのループ内クエリ（N+1）は一切発生しない。</p>
+     *
+     * @param userId       対象ユーザー
+     * @param direct       direct スコープ（TEAM / ORGANIZATION）
+     * @param parentOrgIds 親 ORG ID 集合
+     * @return projection リスト（direct / 親 ORG 双方の MEMBER / SUPPORTER 行）。空集合 IN () を
+     *         避けるため、対象スコープが皆無のときは空リストを返し SQL を発行しない。
+     */
+    private List<MembershipScopeRoleProjection> fetchMembershipRoleKinds(
+            Long userId,
+            Set<ScopeKey> direct,
+            Set<Long> parentOrgIds) {
+
+        Set<Long> teamIds = new HashSet<>();
+        Set<Long> orgIds = new HashSet<>();
+        for (ScopeKey s : direct) {
+            if ("TEAM".equals(s.scopeType())) {
+                teamIds.add(s.scopeId());
+            } else if ("ORGANIZATION".equals(s.scopeType())) {
+                orgIds.add(s.scopeId());
             }
         }
+        // 親 ORG も同じ ORGANIZATION IN 句に合流させ、membership クエリを 1 回に統合する。
+        orgIds.addAll(parentOrgIds);
 
-        return result;
+        if (teamIds.isEmpty() && orgIds.isEmpty()) {
+            return List.of();
+        }
+
+        // snapshot あたり唯一の membership クエリ。空集合 IN () 回避のため上で早期 return 済み。
+        return membershipRepository.findActiveRoleKindsByUserAndScopes(userId, teamIds, orgIds);
+    }
+
+    /**
+     * {@link #fetchMembershipRoleKinds} の結果から、<b>direct スコープに該当する</b>
+     * MEMBER / SUPPORTER のみを {@code roleByScope} へマージする（F00.5 §8.3）。
+     *
+     * <p>親 ORG 専属の所属行は {@code roleByScope} を汚さないようここでは除外し、
+     * {@link #resolveOrgMembership} 側で {@code orgMemberOf} に振り分ける。
+     * これにより 1 バッチ統合後も従来と完全に同一のスナップショットを生成する。</p>
+     */
+    private void applyDirectMembershipRoleKinds(
+            Set<ScopeKey> direct,
+            List<MembershipScopeRoleProjection> membershipRoleKinds,
+            Map<ScopeKey, String> roleByScope) {
+        if (direct.isEmpty() || membershipRoleKinds.isEmpty()) {
+            return;
+        }
+        for (MembershipScopeRoleProjection m : membershipRoleKinds) {
+            if (m.getScopeType() == null || m.getScopeId() == null || m.getRoleKind() == null) {
+                continue;
+            }
+            String scopeType = m.getScopeType().name(); // "TEAM" / "ORGANIZATION"
+            ScopeKey scope = new ScopeKey(scopeType, m.getScopeId());
+            if (!direct.contains(scope)) {
+                continue; // 親 ORG 専属（direct でない）行はここでは扱わない
+            }
+            String roleName = m.getRoleKind().name(); // "MEMBER" / "SUPPORTER"
+            mergeStrongerRole(roleByScope, scope, roleName);
+        }
     }
 
     /**
@@ -207,12 +284,16 @@ public class MembershipBatchQueryService {
      * <p>F00.5 §8.3 根治: ORGANIZATION_WIDE 判定の親 ORG 所属も、user_roles（権限ロール）に加えて
      * memberships（MEMBER / SUPPORTER）由来の所属を UNION する。これにより memberships 専属で
      * 親 ORG に所属するユーザーが ORGANIZATION_WIDE コンテンツを閲覧できなくなる過小権限バグを防ぐ。</p>
+     *
+     * <p>memberships 由来の所属は {@link #fetchMembershipRoleKinds} が direct ＋ 親 ORG を
+     * 1 バッチで取得済みなので、本メソッドでは membership を再クエリせず、その projection リストから
+     * 親 ORG に該当する ORGANIZATION 行を UNION する（SQL を増やさない）。
+     * user_roles 由来の ORG 所属のみ別途 1 SQL で取得する。</p>
      */
-    private Set<ScopeKey> resolveOrgMembership(Long userId, Map<ScopeKey, Long> parentOrgs) {
-        if (parentOrgs.isEmpty()) {
-            return Set.of();
-        }
-        Set<Long> parentOrgIds = new HashSet<>(parentOrgs.values());
+    private Set<ScopeKey> resolveOrgMembership(
+            Long userId,
+            Set<Long> parentOrgIds,
+            List<MembershipScopeRoleProjection> membershipRoleKinds) {
         if (parentOrgIds.isEmpty()) {
             return Set.of();
         }
@@ -228,12 +309,12 @@ public class MembershipBatchQueryService {
             }
         }
 
-        // memberships 由来（MEMBER / SUPPORTER）。teamIds は空集合で照会。
-        List<MembershipScopeRoleProjection> orgMemberships =
-                membershipRepository.findActiveRoleKindsByUserAndScopes(userId, Set.of(), parentOrgIds);
-        for (MembershipScopeRoleProjection m : orgMemberships) {
+        // memberships 由来（MEMBER / SUPPORTER）。fetchMembershipRoleKinds が取得済みの
+        // projection から、親 ORG に該当する ORGANIZATION 行を再クエリせず UNION する。
+        for (MembershipScopeRoleProjection m : membershipRoleKinds) {
             if (m.getScopeId() != null
-                    && m.getScopeType() == com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION) {
+                    && m.getScopeType() == com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION
+                    && parentOrgIds.contains(m.getScopeId())) {
                 result.add(new ScopeKey("ORGANIZATION", m.getScopeId()));
             }
         }
