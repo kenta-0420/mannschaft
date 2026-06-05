@@ -64,9 +64,13 @@ api() {
 
   # --write-out で HTTP コードを別ファイルへ。本文は outfile へ。
   # キーは -u 経由のみ。set -x は使わない(キー漏洩防止)。
+  # Stripe-Version は本番 SDK (stripe-java 28.2.0) の固定版 2025-02-24.acacia に合わせる。
+  # アカウント既定の最新版(basil 以降)では invoice.application_fee_amount /
+  # transfer_data / charge が存在せず 200 黙殺になる(2026-06-05 実走で発覚)。
   curl -sS -o "${outfile}" -w '%{http_code}' \
     -X "${method}" \
     -u "${STRIPE_SECRET_KEY}:" \
+    -H "Stripe-Version: ${STRIPE_API_VERSION:-2025-02-24.acacia}" \
     "${API}${path}" "$@" > "${httpfile}" || true
 
   local code; code="$(cat "${httpfile}")"
@@ -132,34 +136,68 @@ echo
 # ===========================================================================
 # 2. Connect カスタムテスト口座作成 (charges_enabled / transfers になるテストデータ)
 # ===========================================================================
-# JP は individual の id_number 不要。US の magic 値とは別に、JP では
-# 住所/氏名/dob/外部口座を埋めれば test mode で charges_enabled になる。
-f="$(api connect_create POST "/accounts" \
-      -d "type=custom" \
-      -d "country=${ACCOUNT_COUNTRY}" \
-      --data-urlencode "email=p5-connect+${STAMP}@example.com" \
-      -d "business_type=individual" \
-      -d "capabilities[card_payments][requested]=true" \
-      -d "capabilities[transfers][requested]=true" \
-      -d "tos_acceptance[date]=${NOW}" \
-      -d "tos_acceptance[ip]=127.0.0.1" \
-      -d "individual[first_name]=Taro" \
-      -d "individual[last_name]=Yamada" \
-      -d "individual[dob][day]=1" \
-      -d "individual[dob][month]=1" \
-      -d "individual[dob][year]=1901" \
-      --data-urlencode "individual[address][line1]=address_full_match" \
-      --data-urlencode "individual[address][city]=Tokyo" \
-      -d "individual[address][postal_code]=1000001" \
-      -d "business_profile[url]=https://accessible.stripe.com" \
-      -d "external_account[object]=bank_account" \
-      -d "external_account[country]=${ACCOUNT_COUNTRY}" \
-      -d "external_account[currency]=${CURRENCY}" \
-      -d "external_account[routing_number]=1100000" \
-      -d "external_account[account_number]=0001234")"
-CONNECT_ID="$(jqr "$f" '.id')"
-[ -n "${CONNECT_ID}" ] && [ "${CONNECT_ID}" != "null" ] || die "connected account 作成に失敗。"
-echo "connected account: ${CONNECT_ID}"
+# JP の test mode は「最小 create → currently_due どおり update」の二段が確実。
+# 注意: Windows Git Bash の curl は --data-urlencode でも UTF-8/`+` が化けて
+#       Stripe が一般 400 を返す（実証済み 2026-06-05）。日本語/記号を含むボディは
+#       必ず python の urllib.parse.urlencode で生成して --data @file で送る。
+# EXISTING_CONNECT_ACCOUNT 環境変数があれば作成をスキップして再利用する。
+if [ -n "${EXISTING_CONNECT_ACCOUNT:-}" ]; then
+  CONNECT_ID="${EXISTING_CONNECT_ACCOUNT}"
+  echo "connected account: ${CONNECT_ID} (EXISTING_CONNECT_ACCOUNT で再利用)"
+else
+  f="$(api connect_create POST "/accounts" \
+        -d "type=custom" \
+        -d "country=${ACCOUNT_COUNTRY}" \
+        --data-urlencode "email=p5-connect+${STAMP}@example.com" \
+        -d "business_type=individual" \
+        -d "capabilities[card_payments][requested]=true" \
+        -d "capabilities[transfers][requested]=true" \
+        -d "tos_acceptance[date]=${NOW}" \
+        -d "tos_acceptance[ip]=127.0.0.1")"
+  CONNECT_ID="$(jqr "$f" '.id')"
+  [ -n "${CONNECT_ID}" ] && [ "${CONNECT_ID}" != "null" ] || die "connected account 作成に失敗。"
+  echo "connected account: ${CONNECT_ID} (最小 create 完了 → KYC update)"
+
+  # currently_due の JP 項目を python で正しく urlencode して一括 update
+  KYC_BODY="${RUN_DIR}/connect_kyc_body.txt"
+  python - "$STAMP" > "${KYC_BODY}" <<'PYEOF'
+import sys, urllib.parse
+stamp = sys.argv[1]
+fields = {
+    'business_profile[mcc]': '7941',  # 会費徴収のスポーツクラブ相当
+    'business_profile[product_description]': 'PoC sports club membership',
+    'business_profile[url]': 'https://accessible.stripe.com',
+    'individual[email]': f'p5-connect+{stamp}@example.com',
+    'individual[first_name_kana]': 'タロウ',
+    'individual[last_name_kana]': 'ヤマダ',
+    'individual[first_name_kanji]': '太郎',
+    'individual[last_name_kanji]': '山田',
+    'individual[dob][day]': '1',
+    'individual[dob][month]': '1',
+    'individual[dob][year]': '1901',
+    'individual[phone]': '+819012345678',
+    'individual[address_kana][postal_code]': '1500001',
+    'individual[address_kana][state]': 'トウキヨウト',
+    'individual[address_kana][city]': 'シブヤク',
+    'individual[address_kana][town]': 'ジングウマエ 3-',
+    'individual[address_kana][line1]': '23-4',
+    'individual[address_kanji][postal_code]': '1500001',
+    'individual[address_kanji][state]': '東京都',
+    'individual[address_kanji][city]': '渋谷区',
+    'individual[address_kanji][town]': '神宮前　３丁目',
+    'individual[address_kanji][line1]': '２３－４',
+    'external_account[object]': 'bank_account',
+    'external_account[country]': 'JP',
+    'external_account[currency]': 'jpy',
+    'external_account[routing_number]': '1100000',
+    'external_account[account_number]': '0001234',
+    'external_account[account_holder_name]': 'ヤマダ タロウ',
+}
+print(urllib.parse.urlencode(fields))
+PYEOF
+  f="$(api connect_kyc POST "/accounts/${CONNECT_ID}" --data "@${KYC_BODY}")"
+  [ "$(jqr "$f" '.id')" = "${CONNECT_ID}" ] || die "connected account KYC update に失敗。"
+fi
 
 # capability の確認 (transfers が active になっているか)
 f="$(api connect_get GET "/accounts/${CONNECT_ID}")"
@@ -245,10 +283,20 @@ fi
 echo
 
 # ===========================================================================
-# 6. test clock を +1ヶ月 advance → 更新サイクル invoice (draft) をポーリング取得
+# 6. test clock を「period_end + 5分」へ advance → 更新サイクル invoice (draft) を捕まえる
 # ===========================================================================
-# JPY 月額なので current_period_end の直後へ進める。安全に +32 日。
-ADVANCE_TO=$(( NOW + 60*60*24*32 ))
+# 重要（2026-06-05 実走の教訓）: +32日など draft 窓(約1時間)を一気に飛び越える advance を
+# すると、更新 invoice は clock 時間内で finalize/paid まで進んでしまい draft を観測できない。
+# current_period_end の直後（+5分）へ狙い撃ちで進め、finalize 前の draft を捕まえる。
+f="$(api sub_get_period GET "/subscriptions/${SUB_ID}")"
+PERIOD_END="$(jqr "$f" '.current_period_end')"
+if [ -z "${PERIOD_END}" ] || [ "${PERIOD_END}" = "null" ]; then
+  # API バージョンにより current_period_end が subscription item 側にある場合のフォールバック
+  PERIOD_END="$(jqr "$f" '.items.data[0].current_period_end')"
+fi
+[ -n "${PERIOD_END}" ] && [ "${PERIOD_END}" != "null" ] || die "current_period_end が取得できない。"
+ADVANCE_TO=$(( PERIOD_END + 300 ))
+echo "advance 目標: period_end(${PERIOD_END}) + 300s = ${ADVANCE_TO}"
 api clock_advance POST "/test_helpers/test_clocks/${CLOCK_ID}/advance" \
   -d "frozen_time=${ADVANCE_TO}" >/dev/null
 
@@ -309,13 +357,15 @@ if [ -n "${CYCLE_INVOICE_ID}" ] && [ "${CYCLE_INVOICE_ID}" != "null" ]; then
   f="$(api cycle_invoice_pay POST "/invoices/${CYCLE_INVOICE_ID}/pay" \
         -d "expand[]=charge" -d "expand[]=charge.balance_transaction")"
   PAY_HTTP="$(cat "${RUN_DIR}/cycle_invoice_pay.http")"
-  CHARGE_ID="$(jqr "$f" '.charge')"
+  # expand[]=charge 指定時 .charge はオブジェクトで返る。ID は .charge.id を先に見る
+  # （オブジェクトを URL に連結すると charge_get が壊れる・2026-06-05 実走の教訓）。
+  CHARGE_ID="$(jqr "$f" '.charge.id')"
   if [ -z "${CHARGE_ID}" ] || [ "${CHARGE_ID}" = "null" ]; then
-    CHARGE_ID="$(jqr "$f" '.charge.id')"
+    CHARGE_ID="$(jqr "$f" '.charge')"
   fi
   echo "  pay HTTP=${PAY_HTTP} / charge=${CHARGE_ID}"
 
-  if [ -n "${CHARGE_ID}" ] && [ "${CHARGE_ID}" != "null" ]; then
+  if [ -n "${CHARGE_ID}" ] && [ "${CHARGE_ID}" != "null" ] && [[ "${CHARGE_ID}" == ch_* ]]; then
     f="$(api charge_get GET "/charges/${CHARGE_ID}?expand[]=transfer&expand[]=application_fee")"
     CH_FEE="$(jqr "$f" '.application_fee_amount')"
     CH_AMOUNT="$(jqr "$f" '.amount')"

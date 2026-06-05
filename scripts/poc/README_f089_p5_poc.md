@@ -7,6 +7,49 @@
 
 机上精査（公式 docs.stripe.com）の結論は **条件付き成立**。詳細は本書末尾の「机上精査の結論」を参照。本スクリプトはキー投入後にその成立を実 API で実証するためのもの。
 
+**2026-06-05 に実 API で実走完了 → 命題は条件付きで PASS（成立）。** 結果は直下「実行結果（2026-06-05）」を参照。
+
+---
+
+## 0. 実行結果（2026-06-05）
+
+`run_20260605_213236` で全項目を完走。**命題総合判定: PASS（条件付き）** — 「Subscription（destination charge）の更新 invoice draft 窓で `application_fee_amount` を固定上書きできるか」は**実機で成立**。
+
+| 項目 | 結果 |
+|---|---|
+| Connect カスタムテスト口座（JP・`charges_enabled`／`transfers` active） | **PASS** |
+| 初回 invoice（`billing_reason=subscription_create`）への上書き | **期待どおり HTTP 400 拒否**（"Finalized invoices can't be updated"・即 finalize で窓なし） |
+| 更新 invoice（`subscription_cycle`・`status=draft`）へ `application_fee_amount=53` 上書き | **PASS（HTTP 200・値反映）** |
+| finalize→pay 後の charge | **`application_fee_amount=53`**（subscription の `application_fee_percent=5` の自動計算 50 を完全上書き）・application_fee オブジェクト生成・`status=succeeded` |
+| transfer | **`transfer.amount=1000`（全額）**。destination charge は全額を受取側へ transfer 後、application fee 53 を受取側残高から回収（純着金 947）。**「transfer=額面−fee」ではない**点を帳簿/escrow 設計に明記要 |
+| `pause_collection(behavior=void)` | 当該月 invoice は voided・課金スキップ（§4.5 整合） |
+
+### 成立条件・教訓（4点・実装時に必ず順守）
+
+1. **API バージョン固定が必須。** テストアカウント既定の最新版（basil = 2025-03-31 以降）では invoice の `application_fee_amount` / `transfer_data` / `charge` フィールドが**存在せず HTTP 200 で黙殺**される。本番 SDK **stripe-java 28.2.0** の固定版 **`2025-02-24.acacia`** では成立。本スクリプトは `Stripe-Version: 2025-02-24.acacia` を全リクエストに付与して再現する。**stripe-java を 29.x（basil）以降へ上げる際は P5 の invoice 上書き機構の作り直し（新 Invoice Payments 構造への移行）が必要** — 依存更新時の必須チェック項目。
+2. **初回 invoice は上書き不可（実証済み）→ 案 b 採用。** 初回は P1 同型の単発 destination charge で徴収し、Subscription は `billing_cycle_anchor`/trial で次サイクル開始する（全 invoice が更新型 → 全サイクルで `fee_policy` 固定値が正確に通る・escrow AUTHORIZED→CAPTURED の複式記帳を P1 流儀で延長）。案 a（percent 併設）は初回のみ flat/丸め分の誤差が出るため不採用。
+3. **transfer 額の帳簿表現。** destination charge では transfer=額面全額・app fee は受取側から別途回収（純額=額面−fee）。escrow/ledger の複式記帳はこの 2 段（transfer 全額＋fee 回収）を意識した起票にする（実装時の設計判断事項）。
+4. **Windows Git Bash の curl は UTF-8/`+` が化けて** Stripe が一般 400 を返す → 日本語/記号を含むボディは python `urllib.parse.urlencode` で生成して `--data @file` 送信する（スクリプトに根治済み・KYC は「最小 create → `currently_due` どおり update」の二段が確実）。
+
+### 再現手順（2026-06-05 実走と同条件）
+
+```bash
+cd "C:/Claude/mannschaft/.claude/worktrees/agent-p5-poc"   # または clone 先の該当ディレクトリ
+export STRIPE_SECRET_KEY='sk_test_'<あなたのテストキー>
+
+# 任意: 既存 Connect 口座を再利用（毎回作らない）
+export EXISTING_CONNECT_ACCOUNT='acct_...'   # 省略時は最小 create→KYC update を自動実行
+
+# 任意: Stripe-Version は既定で 2025-02-24.acacia（成立条件①）。上書き検証目的では変えない
+# export STRIPE_API_VERSION='2025-02-24.acacia'
+
+bash scripts/poc/f089_p5_invoice_fee_override_poc.sh
+```
+
+- **必須コマンド**: `bash` `curl` `jq` `python`（KYC ボディ生成に python の `urllib.parse` を使う）。
+- 更新サイクルの draft 窓（約 1 時間）を一気に飛び越えないよう、スクリプトは **`current_period_end + 5 分**へ狙い撃ちで test clock を advance** し、finalize 前の draft を捕まえる。
+- 標準出力末尾の PASS/FAIL サマリ表で命題成否を確認。`#7 更新invoice上書き` と `#8 charge application_fee_amount一致` がともに PASS なら命題成立。
+
 ---
 
 ## 1. 前提・依存
