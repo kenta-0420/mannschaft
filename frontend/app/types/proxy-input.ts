@@ -8,6 +8,7 @@ export type ProxyInputFeatureScope =
   | 'ANNOUNCEMENT_READ'
   | 'PARKING_APPLICATION'
   | 'CIRCULAR'
+  | 'PAYMENT'
 
 /** 同意書の取得方法 */
 export type ProxyInputConsentMethod =

@@ -46,6 +46,19 @@ public enum MembershipBillingErrorCode implements ErrorCode {
     MEMBERSHIP_ALREADY_PAID(
             "MEMBERSHIP_BILLING_002",
             "この支払い項目には既に有効な支払い記録が存在します",
+            Severity.WARN),
+
+    /**
+     * 後見切替セッション中（acting-as / {@code X-Proxy-For-User-Id} 付き）に、
+     * 子の認証クリティカル操作（パスワード変更・2FA設定・メール変更・退会・退会取消）を
+     * 代理しようとした（なりすまし防止の安全境界）。403。
+     *
+     * <p>設計書: docs/features/F08.9_membership_billing_paywall/03_security.md §3.2
+     * 「切替セッションの安全境界（なりすまし防止）」。これらは認証クリティカルゆえ代理不可。</p>
+     */
+    MEMBERSHIP_AUTHENTICATION_CRITICAL_OPERATION(
+            "MEMBERSHIP_BILLING_003",
+            "後見切替セッション中はこの認証に関わる操作を代理で行えません",
             Severity.WARN);
 
     private final String code;

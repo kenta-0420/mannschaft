@@ -12,6 +12,7 @@ import com.mannschaft.app.auth.dto.WebAuthnLoginBeginResponse;
 import com.mannschaft.app.auth.dto.WebAuthnLoginCompleteRequest;
 import com.mannschaft.app.auth.dto.WebAuthnRegisterBeginResponse;
 import com.mannschaft.app.auth.dto.WebAuthnRegisterCompleteRequest;
+import com.mannschaft.app.auth.guardianship.AuthenticationCriticalOperationGuard;
 import com.mannschaft.app.auth.service.Auth2faService;
 import com.mannschaft.app.auth.service.AuthOAuthService;
 import com.mannschaft.app.auth.service.AuthWebAuthnService;
@@ -74,6 +75,10 @@ class AuthControllerTest {
 
         @Mock
         private Auth2faService auth2faService;
+
+        /** F08.9 P3b: Auth2faController の新依存（mock は assertNotActingAs() を素通しする）。 */
+        @Mock
+        private AuthenticationCriticalOperationGuard authenticationCriticalOperationGuard;
 
         @InjectMocks
         private Auth2faController auth2faController;
