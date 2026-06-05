@@ -4,7 +4,7 @@ import type { DigestSummaryResponse } from '~/types/timeline-digest'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 const { listDigests, deleteDigest, publishDigest, regenerateDigest } = useTimelineDigestApi()
 const notification = useNotification()
 const { t } = useI18n()

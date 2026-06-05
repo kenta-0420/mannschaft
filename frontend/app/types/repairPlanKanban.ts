@@ -27,7 +27,7 @@ export interface QuoteKanban {
   id: string
   title: string
   scopeType: string
-  scopeId: number
+  scopeId: string
   organizationId: number
   workPackageId: number | null
   repairPlanItemId: string | null

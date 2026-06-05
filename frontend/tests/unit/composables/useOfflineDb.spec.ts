@@ -162,7 +162,7 @@ describe('useOfflineDb', () => {
       const item: Omit<OfflineDraft, 'id'> = {
         draftType: 'ACTION_MEMO',
         scopeType: 'PERSONAL',
-        scopeId: 1,
+        scopeId: '1',
         data: { content: '下書きメモ' },
         createdAt: nowIso(),
         updatedAt: nowIso(),
@@ -179,7 +179,7 @@ describe('useOfflineDb', () => {
         {
           draftType: 'ACTION_MEMO',
           scopeType: 'TEAM',
-          scopeId: 1,
+          scopeId: '1',
           data: { content: 'チーム1' },
           createdAt: nowIso(),
           updatedAt: nowIso(),
@@ -187,7 +187,7 @@ describe('useOfflineDb', () => {
         {
           draftType: 'CHAT_MESSAGE',
           scopeType: 'TEAM',
-          scopeId: 1,
+          scopeId: '1',
           data: { content: 'チャット' },
           createdAt: nowIso(),
           updatedAt: nowIso(),
@@ -195,7 +195,7 @@ describe('useOfflineDb', () => {
         {
           draftType: 'ACTION_MEMO',
           scopeType: 'TEAM',
-          scopeId: 2,
+          scopeId: '2',
           data: { content: 'チーム2' },
           createdAt: nowIso(),
           updatedAt: nowIso(),
@@ -204,7 +204,7 @@ describe('useOfflineDb', () => {
 
       const team1Drafts = await offlineDb.offlineDrafts
         .where('[scopeType+scopeId]')
-        .equals(['TEAM', 1])
+        .equals(['TEAM', '1'])
         .toArray()
       expect(team1Drafts.length).toBe(2)
     })

@@ -12,7 +12,7 @@ const { t } = useI18n()
 const api = useRecruitmentApi()
 const { success, error } = useNotification()
 
-const orgId = computed(() => Number(route.params.id))
+const orgId = computed(() => String(route.params.id))
 const categories = ref<RecruitmentCategoryResponse[]>([])
 const loading = ref(false)
 

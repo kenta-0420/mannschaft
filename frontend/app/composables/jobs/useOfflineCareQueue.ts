@@ -40,10 +40,10 @@ export type CareJobType = 'ROLL_CALL' | 'LATE_NOTICE' | 'ABSENCE_NOTICE' | 'DISM
  * </ul>
  */
 export type CareJob =
-  | { type: 'ROLL_CALL'; teamId: number; eventId: number; payload: RollCallSessionRequest }
-  | { type: 'LATE_NOTICE'; teamId: number; eventId: number; payload: LateNoticeRequest }
-  | { type: 'ABSENCE_NOTICE'; teamId: number; eventId: number; payload: AbsenceNoticeRequest }
-  | { type: 'DISMISSAL'; teamId: number; eventId: number; payload: DismissalRequest }
+  | { type: 'ROLL_CALL'; teamId: string; eventId: number; payload: RollCallSessionRequest }
+  | { type: 'LATE_NOTICE'; teamId: string; eventId: number; payload: LateNoticeRequest }
+  | { type: 'ABSENCE_NOTICE'; teamId: string; eventId: number; payload: AbsenceNoticeRequest }
+  | { type: 'DISMISSAL'; teamId: string; eventId: number; payload: DismissalRequest }
 
 /** flushPendingCareJobs の集計結果。 */
 export interface FlushSummary {
@@ -254,7 +254,7 @@ function toBody(job: CareJob): Record<string, unknown> {
 // fromBody はファイル内ローカルヘルパ（auto-import 重複回避のため非 export）
 function fromBody(body: Record<string, unknown>): CareJob {
   const type = body.type as CareJobType
-  const teamId = Number(body.teamId)
+  const teamId = String(body.teamId)
   const eventId = Number(body.eventId)
   const payload = body.payload as Record<string, unknown>
 

@@ -11,7 +11,7 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const advertiserApi = useAdvertiserApi()
 const toast = useNotification()
 

@@ -105,8 +105,8 @@ export interface ChatActiveThreadItem {
 
 export interface CreateChannelRequest {
   channelType: ChatChannelType
-  teamId?: number
-  organizationId?: number
+  teamId?: string
+  organizationId?: string
   name?: string
   description?: string
   isPrivate?: boolean

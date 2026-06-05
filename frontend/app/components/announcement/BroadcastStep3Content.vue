@@ -14,7 +14,7 @@ import type {
 const props = defineProps<{
   modelValue: WizardFormState
   scopeType: AnnouncementScopeType
-  scopeId: number
+  scopeId: string
   broadcasting: boolean
   /** ADMIN以上かどうか（優先度選択の表示制御） */
   isAdmin?: boolean

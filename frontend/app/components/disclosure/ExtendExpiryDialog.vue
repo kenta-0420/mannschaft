@@ -19,7 +19,7 @@ import type { DisclosureExport } from '~/types/disclosure'
  */
 
 const props = defineProps<{
-  organizationId: number
+  organizationId: string
   export: DisclosureExport
   open: boolean
 }>()

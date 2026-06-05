@@ -12,7 +12,7 @@ type TournamentDivision = import('~/types/tournament').TournamentDivision
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const notification = useNotification()
 
 const leagueTransfer = useLeagueTransfer(orgId)

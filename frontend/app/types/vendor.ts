@@ -17,7 +17,7 @@ export type VendorCategory =
 export interface VendorResponse {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   name: string
   nameKana: string | null
   category: VendorCategory | null

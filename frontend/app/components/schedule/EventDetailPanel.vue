@@ -17,7 +17,7 @@ const props = defineProps<{
     attendanceStats: { yes: number; no: number; maybe: number; pending: number; total: number } | null
   }
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   canEdit: boolean
   skipDelegations?: boolean
   scopeName?: string | null

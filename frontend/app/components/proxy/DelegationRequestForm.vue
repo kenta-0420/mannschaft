@@ -9,7 +9,7 @@ import type { VoteSessionResponse } from '~/types/voting'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   targetId: number      // scheduleId または eventId
   targetType: 'schedule' | 'event'
   disabled?: boolean

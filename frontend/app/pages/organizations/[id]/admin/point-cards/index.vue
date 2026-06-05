@@ -14,13 +14,13 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 const { t } = useI18n()
 const route = useRoute()
 const orgStore = useOrganizationStore()
-const orgId = computed(() => Number(route.params.id))
+const orgId = computed(() => String(route.params.id))
 
 const api = useOrgWalletApi(() => orgId.value)
 
 // ─── アクセス制御 ────────────────────────────────────────────
 const myOrg = computed(() =>
-  orgStore.myOrganizations.find(o => o.id === orgId.value),
+  orgStore.myOrganizations.find(o => String(o.id) === orgId.value),
 )
 const canAccess = computed(() =>
   myOrg.value?.role === 'ADMIN'

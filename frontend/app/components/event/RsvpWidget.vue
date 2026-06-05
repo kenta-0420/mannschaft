@@ -4,7 +4,7 @@ import type { EventRsvpSummary, RsvpResponse } from '~/types/event'
 const props = defineProps<{
   eventId: number
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   summary: EventRsvpSummary | null
   myResponse: RsvpResponse | null
 }>()

@@ -17,7 +17,7 @@ import type {
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
 }>()
 
 const MAX_CUSTOM_FAQS = 7

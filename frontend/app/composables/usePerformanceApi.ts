@@ -25,40 +25,40 @@ export function usePerformanceApi() {
   }
 
   // === Metrics ===
-  async function getMetrics(teamId: number) {
+  async function getMetrics(teamId: string) {
     return api<{ data: PerformanceMetric[] }>(`/api/v1/teams/${teamId}/performance/metrics`)
   }
 
-  async function createMetric(teamId: number, body: Record<string, unknown>) {
+  async function createMetric(teamId: string, body: Record<string, unknown>) {
     return api<{ data: PerformanceMetric }>(`/api/v1/teams/${teamId}/performance/metrics`, {
       method: 'POST',
       body,
     })
   }
 
-  async function createMetricFromTemplate(teamId: number, body: Record<string, unknown>) {
+  async function createMetricFromTemplate(teamId: string, body: Record<string, unknown>) {
     return api<{ data: PerformanceMetric }>(
       `/api/v1/teams/${teamId}/performance/metrics/from-template`,
       { method: 'POST', body },
     )
   }
 
-  async function updateMetric(teamId: number, metricId: number, body: Record<string, unknown>) {
+  async function updateMetric(teamId: string, metricId: number, body: Record<string, unknown>) {
     return api<{ data: PerformanceMetric }>(
       `/api/v1/teams/${teamId}/performance/metrics/${metricId}`,
       { method: 'PUT', body },
     )
   }
 
-  async function deleteMetric(teamId: number, metricId: number) {
+  async function deleteMetric(teamId: string, metricId: number) {
     return api(`/api/v1/teams/${teamId}/performance/metrics/${metricId}`, { method: 'DELETE' })
   }
 
-  async function getLinkableFields(teamId: number) {
+  async function getLinkableFields(teamId: string) {
     return api(`/api/v1/teams/${teamId}/performance/metrics/linkable-fields`)
   }
 
-  async function updateMetricSortOrder(teamId: number, body: Record<string, unknown>) {
+  async function updateMetricSortOrder(teamId: string, body: Record<string, unknown>) {
     return api(`/api/v1/teams/${teamId}/performance/metrics/sort-order`, { method: 'PATCH', body })
   }
 
@@ -67,51 +67,51 @@ export function usePerformanceApi() {
   }
 
   // === Records ===
-  async function createRecord(teamId: number, body: Record<string, unknown>) {
+  async function createRecord(teamId: string, body: Record<string, unknown>) {
     return api<{ data: PerformanceRecord }>(`/api/v1/teams/${teamId}/performance/records`, {
       method: 'POST',
       body,
     })
   }
 
-  async function createSelfRecord(teamId: number, body: Record<string, unknown>) {
+  async function createSelfRecord(teamId: string, body: Record<string, unknown>) {
     return api<{ data: PerformanceRecord }>(`/api/v1/teams/${teamId}/performance/records/self`, {
       method: 'POST',
       body,
     })
   }
 
-  async function updateRecord(teamId: number, recordId: number, body: Record<string, unknown>) {
+  async function updateRecord(teamId: string, recordId: number, body: Record<string, unknown>) {
     return api<{ data: PerformanceRecord }>(
       `/api/v1/teams/${teamId}/performance/records/${recordId}`,
       { method: 'PUT', body },
     )
   }
 
-  async function deleteRecord(teamId: number, recordId: number) {
+  async function deleteRecord(teamId: string, recordId: number) {
     return api(`/api/v1/teams/${teamId}/performance/records/${recordId}`, { method: 'DELETE' })
   }
 
-  async function bulkCreateRecords(teamId: number, records: Array<Record<string, unknown>>) {
+  async function bulkCreateRecords(teamId: string, records: Array<Record<string, unknown>>) {
     return api(`/api/v1/teams/${teamId}/performance/records/bulk`, {
       method: 'POST',
       body: { records },
     })
   }
 
-  async function exportRecords(teamId: number, params?: Record<string, unknown>) {
+  async function exportRecords(teamId: string, params?: Record<string, unknown>) {
     const qs = buildQuery(params)
     return api(`/api/v1/teams/${teamId}/performance/records/export?${qs}`)
   }
 
   // === Stats ===
-  async function getTeamStats(teamId: number, params?: Record<string, unknown>) {
+  async function getTeamStats(teamId: string, params?: Record<string, unknown>) {
     const qs = buildQuery(params)
     return api<{ data: PerformanceStats[] }>(`/api/v1/teams/${teamId}/performance/stats?${qs}`)
   }
 
   async function getMemberPerformance(
-    teamId: number,
+    teamId: string,
     userId: number,
     params?: Record<string, unknown>,
   ) {
@@ -130,16 +130,16 @@ export function usePerformanceApi() {
   }
 
   // === Activity / Schedule Performance ===
-  async function getActivityPerformance(teamId: number, activityId: number) {
+  async function getActivityPerformance(teamId: string, activityId: number) {
     return api(`/api/v1/teams/${teamId}/activities/${activityId}/performance`)
   }
 
-  async function getSchedulePerformance(teamId: number, scheduleId: number) {
+  async function getSchedulePerformance(teamId: string, scheduleId: number) {
     return api(`/api/v1/teams/${teamId}/schedules/${scheduleId}/performance`)
   }
 
   async function bulkCreateScheduleRecords(
-    teamId: number,
+    teamId: string,
     scheduleId: number,
     records: Array<Record<string, unknown>>,
   ) {

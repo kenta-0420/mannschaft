@@ -130,11 +130,11 @@ async function addShareTarget() {
   }
 }
 
-async function removeShareTarget(teamId: number) {
+async function removeShareTarget(teamId: number | string) {
   shareSubmitting.value = true
   const beforeCount = shareTargets.value.length
   try {
-    await api.removeShareTarget(id.value, teamId)
+    await api.removeShareTarget(id.value, String(teamId))
     success(t('personalTimetable.share.remove_success'))
     // 全削除時の通知（FAMILY_SHARED → PRIVATE）
     if (beforeCount === 1 && detail.value?.visibility === 'FAMILY_SHARED') {

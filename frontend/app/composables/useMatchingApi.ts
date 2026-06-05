@@ -29,10 +29,10 @@ export function useMatchingApi() {
   async function getRequest(id: number) {
     return api<{ data: MatchRequestResponse }>(`/api/v1/matching/requests/${id}`)
   }
-  async function getTeamRequests(teamId: number) {
+  async function getTeamRequests(teamId: string) {
     return api<{ data: MatchRequestResponse[] }>(`/api/v1/teams/${teamId}/matching/requests`)
   }
-  async function createRequest(teamId: number, body: Record<string, unknown>) {
+  async function createRequest(teamId: string, body: Record<string, unknown>) {
     return api<{ data: MatchRequestResponse }>(`/api/v1/teams/${teamId}/matching/requests`, {
       method: 'POST',
       body,
@@ -49,7 +49,7 @@ export function useMatchingApi() {
   }
 
   // === Proposals ===
-  async function propose(teamId: number, requestId: number, body: Record<string, unknown>) {
+  async function propose(teamId: string, requestId: number, body: Record<string, unknown>) {
     return api<{ data: MatchProposalResponse }>(
       `/api/v1/teams/${teamId}/matching/requests/${requestId}/propose`,
       { method: 'POST', body },
@@ -60,7 +60,7 @@ export function useMatchingApi() {
       `/api/v1/matching/requests/${requestId}/proposals`,
     )
   }
-  async function getTeamProposals(teamId: number) {
+  async function getTeamProposals(teamId: string) {
     return api<{ data: MatchProposalResponse[] }>(`/api/v1/teams/${teamId}/matching/proposals`)
   }
   async function acceptProposal(id: number, body?: Record<string, unknown>) {
@@ -83,42 +83,42 @@ export function useMatchingApi() {
   async function createReview(body: Record<string, unknown>) {
     return api('/api/v1/matching/reviews', { method: 'POST', body })
   }
-  async function getTeamReviews(teamId: number) {
+  async function getTeamReviews(teamId: string) {
     return api<{ data: MatchReviewSummary }>(`/api/v1/teams/${teamId}/matching/reviews`)
   }
 
   // === NG Teams ===
-  async function getNgTeams(teamId: number) {
+  async function getNgTeams(teamId: string) {
     return api<{ data: NgTeamResponse[] }>(`/api/v1/teams/${teamId}/matching/ng-teams`)
   }
-  async function addNgTeam(teamId: number, blockedTeamId: number, reason?: string) {
+  async function addNgTeam(teamId: string, blockedTeamId: number, reason?: string) {
     return api(`/api/v1/teams/${teamId}/matching/ng-teams`, {
       method: 'POST',
       body: { blocked_team_id: blockedTeamId, reason },
     })
   }
-  async function removeNgTeam(teamId: number, blockedTeamId: number) {
+  async function removeNgTeam(teamId: string, blockedTeamId: number) {
     return api(`/api/v1/teams/${teamId}/matching/ng-teams/${blockedTeamId}`, { method: 'DELETE' })
   }
 
   // === Templates ===
-  async function getTemplates(teamId: number) {
+  async function getTemplates(teamId: string) {
     return api<{ data: MatchRequestTemplateResponse[] }>(
       `/api/v1/teams/${teamId}/matching/templates`,
     )
   }
-  async function createTemplate(teamId: number, body: Record<string, unknown>) {
+  async function createTemplate(teamId: string, body: Record<string, unknown>) {
     return api(`/api/v1/teams/${teamId}/matching/templates`, { method: 'POST', body })
   }
-  async function updateTemplate(teamId: number, id: number, body: Record<string, unknown>) {
+  async function updateTemplate(teamId: string, id: number, body: Record<string, unknown>) {
     return api(`/api/v1/teams/${teamId}/matching/templates/${id}`, { method: 'PUT', body })
   }
-  async function deleteTemplate(teamId: number, id: number) {
+  async function deleteTemplate(teamId: string, id: number) {
     return api(`/api/v1/teams/${teamId}/matching/templates/${id}`, { method: 'DELETE' })
   }
 
   // === Cancellations ===
-  async function getTeamCancellations(teamId: number) {
+  async function getTeamCancellations(teamId: string) {
     return api(`/api/v1/teams/${teamId}/matching/cancellations`)
   }
 

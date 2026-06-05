@@ -17,32 +17,32 @@ export function useProjectApi() {
 
   // teamId === null で個人スコープ (`/api/v1/users/me/projects`)、
   // 数値の場合はチーム/組織スコープ (`/api/v1/teams/{teamId}/projects`)
-  function buildBase(teamId: number | null) {
+  function buildBase(teamId: string | null) {
     if (teamId === null) {
       return '/api/v1/users/me/projects'
     }
     return `/api/v1/teams/${teamId}/projects`
   }
 
-  function buildScopedBase(teamId: number | null, projectId: number) {
+  function buildScopedBase(teamId: string | null, projectId: number) {
     return `${buildBase(teamId)}/${projectId}`
   }
 
   // === Projects ===
-  async function listProjects(teamId: number | null) {
+  async function listProjects(teamId: string | null) {
     return api<{ data: ProjectResponse[] }>(buildBase(teamId))
   }
 
-  async function getProject(teamId: number | null, projectId: number) {
+  async function getProject(teamId: string | null, projectId: number) {
     return api<{ data: ProjectResponse }>(buildScopedBase(teamId, projectId))
   }
 
-  async function createProject(teamId: number | null, body: CreateProjectRequest) {
+  async function createProject(teamId: string | null, body: CreateProjectRequest) {
     return api<{ data: ProjectResponse }>(buildBase(teamId), { method: 'POST', body })
   }
 
   async function updateProject(
-    teamId: number | null,
+    teamId: string | null,
     projectId: number,
     body: UpdateProjectRequest,
   ) {
@@ -52,25 +52,25 @@ export function useProjectApi() {
     })
   }
 
-  async function deleteProject(teamId: number | null, projectId: number) {
+  async function deleteProject(teamId: string | null, projectId: number) {
     return api(buildScopedBase(teamId, projectId), { method: 'DELETE' })
   }
 
-  async function completeProject(teamId: number | null, projectId: number) {
+  async function completeProject(teamId: string | null, projectId: number) {
     return api(`${buildScopedBase(teamId, projectId)}/complete`, { method: 'PATCH' })
   }
 
-  async function reopenProject(teamId: number | null, projectId: number) {
+  async function reopenProject(teamId: string | null, projectId: number) {
     return api(`${buildScopedBase(teamId, projectId)}/reopen`, { method: 'PATCH' })
   }
 
   // === Milestones ===
-  async function listMilestones(teamId: number | null, projectId: number) {
+  async function listMilestones(teamId: string | null, projectId: number) {
     return api<{ data: MilestoneResponse[] }>(`${buildScopedBase(teamId, projectId)}/milestones`)
   }
 
   async function createMilestone(
-    teamId: number | null,
+    teamId: string | null,
     projectId: number,
     body: CreateMilestoneRequest,
   ) {
@@ -81,7 +81,7 @@ export function useProjectApi() {
   }
 
   async function updateMilestone(
-    teamId: number | null,
+    teamId: string | null,
     projectId: number,
     milestoneId: number,
     body: UpdateMilestoneRequest,
@@ -92,33 +92,33 @@ export function useProjectApi() {
     )
   }
 
-  async function deleteMilestone(teamId: number | null, projectId: number, milestoneId: number) {
+  async function deleteMilestone(teamId: string | null, projectId: number, milestoneId: number) {
     return api(`${buildScopedBase(teamId, projectId)}/milestones/${milestoneId}`, {
       method: 'DELETE',
     })
   }
 
-  async function completeMilestone(teamId: number | null, projectId: number, milestoneId: number) {
+  async function completeMilestone(teamId: string | null, projectId: number, milestoneId: number) {
     return api(`${buildScopedBase(teamId, projectId)}/milestones/${milestoneId}/complete`, {
       method: 'PATCH',
     })
   }
 
   // === Project Todos ===
-  async function getProjectTodos(teamId: number | null, projectId: number) {
+  async function getProjectTodos(teamId: string | null, projectId: number) {
     return api<{ data: unknown[] }>(`${buildScopedBase(teamId, projectId)}/todos`)
   }
 
   // === F02.7 マイルストーンゲート ===
 
   // ゲート状態サマリー取得（チーム/組織/個人 対応）
-  async function getGatesSummary(teamId: number | null, projectId: number) {
+  async function getGatesSummary(teamId: string | null, projectId: number) {
     return api<{ data: GatesSummaryResponse }>(`${buildScopedBase(teamId, projectId)}/gates`)
   }
 
   // 完了モード変更
   async function changeCompletionMode(
-    teamId: number | null,
+    teamId: string | null,
     projectId: number,
     milestoneId: number,
     mode: MilestoneCompletionMode,
@@ -134,7 +134,7 @@ export function useProjectApi() {
 
   // 強制アンロック
   async function forceUnlockMilestone(
-    teamId: number | null,
+    teamId: string | null,
     projectId: number,
     milestoneId: number,
     reason: string,
@@ -149,7 +149,7 @@ export function useProjectApi() {
   }
 
   // ゲート初期化（既存プロジェクト向け）
-  async function initializeGate(teamId: number | null, projectId: number, milestoneId: number) {
+  async function initializeGate(teamId: string | null, projectId: number, milestoneId: number) {
     return api<{ data: InitializeGateResponse }>(
       `${buildScopedBase(teamId, projectId)}/milestones/${milestoneId}/initialize-gate`,
       { method: 'PATCH' },
@@ -158,7 +158,7 @@ export function useProjectApi() {
 
   // マイルストーン内 TODO 並び替え
   async function reorderMilestoneTodos(
-    teamId: number | null,
+    teamId: string | null,
     projectId: number,
     milestoneId: number,
     todoIds: number[],

@@ -13,7 +13,7 @@ const notification = useNotification()
 const { handleApiError } = useErrorHandler()
 const { templateLabel, visibilityLabel } = useScopeLabels()
 
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 const {
   roleName,
   loading: roleLoading,

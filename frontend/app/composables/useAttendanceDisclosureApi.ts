@@ -14,7 +14,7 @@ export function useAttendanceDisclosureApi() {
 
   // POST /api/v1/teams/{teamId}/attendance/requirements/evaluations/{evaluationId}/disclose
   async function disclose(
-    teamId: number,
+    teamId: string,
     evaluationId: number,
     req: DisclosureRequest,
   ): Promise<DisclosureResponse> {
@@ -27,7 +27,7 @@ export function useAttendanceDisclosureApi() {
 
   // POST /api/v1/teams/{teamId}/attendance/requirements/evaluations/{evaluationId}/withhold
   async function withhold(
-    teamId: number,
+    teamId: string,
     evaluationId: number,
     req: WithholdRequest,
   ): Promise<DisclosureResponse> {
@@ -40,7 +40,7 @@ export function useAttendanceDisclosureApi() {
 
   // GET /api/v1/teams/{teamId}/attendance/requirements/evaluations/{evaluationId}/disclosure-history
   async function getDisclosureHistory(
-    teamId: number,
+    teamId: string,
     evaluationId: number,
   ): Promise<DisclosureResponse[]> {
     const res = await api<ApiResponse<DisclosureResponse[]>>(

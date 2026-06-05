@@ -3,7 +3,7 @@ import type { CirculationResponse } from '~/types/circulation'
 
 const props = defineProps<{
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   canManage?: boolean
 }>()
 

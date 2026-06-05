@@ -33,7 +33,7 @@ export interface SubmitRsvpRequest {
 export interface EventResponse {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   slug: string | null
   subtitle: string | null
   coverImageKey: string | null

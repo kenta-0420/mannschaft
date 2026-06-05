@@ -13,14 +13,14 @@ import type { ScheduleInvitationResponse } from '~/types/schedule'
 export function useScheduleCrud() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   // === Shared Schedule CRUD ===
   async function listSchedules(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: {
       from?: string
       to?: string
@@ -45,7 +45,7 @@ export function useScheduleCrud() {
 
   async function getSchedule(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     scheduleId: number,
   ) {
     return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/schedules/${scheduleId}`)
@@ -53,7 +53,7 @@ export function useScheduleCrud() {
 
   async function createSchedule(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/schedules`, {
@@ -64,7 +64,7 @@ export function useScheduleCrud() {
 
   async function updateSchedule(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     scheduleId: number,
     body: Record<string, unknown>,
   ) {
@@ -76,7 +76,7 @@ export function useScheduleCrud() {
 
   async function deleteSchedule(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     scheduleId: number,
     editScope?: string,
   ) {
@@ -88,7 +88,7 @@ export function useScheduleCrud() {
 
   async function cancelSchedule(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     scheduleId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/schedules/${scheduleId}/cancel`, {
@@ -99,7 +99,7 @@ export function useScheduleCrud() {
   // === 機能55: 予約タスク取消（PENDING のみ・204/404/409） ===
   async function cancelScheduledTask(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     scheduleId: number,
     taskId: string,
   ) {
@@ -112,7 +112,7 @@ export function useScheduleCrud() {
   // === Duplicate ===
   async function duplicateSchedule(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     scheduleId: number,
   ) {
     return api<{ data: unknown }>(
@@ -145,13 +145,13 @@ export function useScheduleCrud() {
   }
 
   // === Event Categories ===
-  async function getCategories(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getCategories(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: unknown[] }>(`${buildBase(scopeType, scopeId)}/event-categories`)
   }
 
   async function createCategory(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: { name: string; color: string },
   ) {
     return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/event-categories`, {
@@ -170,7 +170,7 @@ export function useScheduleCrud() {
   }
 
   // === Schedule Invitations ===
-  async function getScheduleInvitations(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getScheduleInvitations(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: ScheduleInvitationResponse[] }>(
       `${buildBase(scopeType, scopeId)}/schedule-invitations`,
     )
@@ -178,7 +178,7 @@ export function useScheduleCrud() {
 
   async function acceptScheduleInvitation(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     invitationId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/schedule-invitations/${invitationId}/accept`, {
@@ -188,7 +188,7 @@ export function useScheduleCrud() {
 
   async function rejectScheduleInvitation(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     invitationId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/schedule-invitations/${invitationId}/reject`, {
@@ -196,7 +196,7 @@ export function useScheduleCrud() {
     })
   }
 
-  async function confirmScheduleInvitation(teamId: number, invitationId: number) {
+  async function confirmScheduleInvitation(teamId: string, invitationId: number) {
     return api(`/api/v1/teams/${teamId}/schedule-invitations/${invitationId}/confirm`, {
       method: 'POST',
     })

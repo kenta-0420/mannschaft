@@ -3,7 +3,7 @@ import dayjs from 'dayjs'
 import type { ReservationLineResponse, ReservationSlotResponse } from '~/types/reservation'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
 }>()
 
 const emit = defineEmits<{

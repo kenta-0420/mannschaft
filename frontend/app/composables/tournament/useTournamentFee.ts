@@ -5,7 +5,7 @@ type TournamentFeeResponse = components['schemas']['TournamentFeeResponse']
 type CreateTournamentFeeRequest = components['schemas']['CreateTournamentFeeRequest']
 type CheckoutResponse = components['schemas']['CheckoutResponse']
 
-export function useTournamentFee(orgId: number, tournamentId: number) {
+export function useTournamentFee(orgId: string, tournamentId: number) {
   const api = useApi()
   const base = `/api/v1/organizations/${orgId}/tournaments/${tournamentId}/fees`
 
@@ -33,7 +33,7 @@ export function useTournamentFee(orgId: number, tournamentId: number) {
    * チームが参加費を支払う（Stripe Checkout または MANUAL）
    * checkoutUrl が空でない場合は Stripe Checkout、空の場合は MANUAL として扱う
    */
-  async function checkout(feeId: string, teamId: number): Promise<CheckoutResponse> {
+  async function checkout(feeId: string, teamId: string): Promise<CheckoutResponse> {
     const res = await api<{ data: CheckoutResponse }>(
       `${base}/${feeId}/teams/${teamId}/checkout`,
       { method: 'POST' },

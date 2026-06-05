@@ -21,7 +21,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const { error: showError } = useNotification()
 
-const api = computed(() => useDisclosureApi(props.organizationId))
+const api = computed(() => useDisclosureApi(String(props.organizationId)))
 
 const templates = ref<DisclosureFormTemplate[]>([])
 const loading = ref(false)

@@ -6,7 +6,7 @@ export interface MemberCard {
   id: number
   userId: number
   scopeType: MemberCardScopeType
-  scopeId: number | null
+  scopeId: string | null
   scopeName: string | null
   cardCode: string
   cardNumber: string

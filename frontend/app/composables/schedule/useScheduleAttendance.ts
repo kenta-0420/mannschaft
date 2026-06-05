@@ -15,14 +15,14 @@ import type {
 export function useScheduleAttendance() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   // === Attendance ===
   async function getAttendances(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     scheduleId: number,
   ) {
     return api<{ data: unknown[] }>(
@@ -32,7 +32,7 @@ export function useScheduleAttendance() {
 
   async function respondAttendance(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     scheduleId: number,
     body: { status: string; comment?: string },
   ) {
@@ -44,7 +44,7 @@ export function useScheduleAttendance() {
 
   async function exportAttendances(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     scheduleId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/schedules/${scheduleId}/attendances/export`, {
@@ -54,7 +54,7 @@ export function useScheduleAttendance() {
 
   // === Bulk Attendance (teams only) ===
   async function bulkUpdateAttendances(
-    teamId: number,
+    teamId: string,
     scheduleId: number,
     body: BulkAttendanceRequest,
   ) {
@@ -65,14 +65,14 @@ export function useScheduleAttendance() {
   }
 
   // === Cross Invite (teams only) ===
-  async function createCrossInvite(teamId: number, scheduleId: number, body: CrossInviteRequest) {
+  async function createCrossInvite(teamId: string, scheduleId: number, body: CrossInviteRequest) {
     return api(`/api/v1/teams/${teamId}/schedules/${scheduleId}/cross-invite`, {
       method: 'POST',
       body,
     })
   }
 
-  async function deleteCrossInvite(teamId: number, scheduleId: number, invitationId: number) {
+  async function deleteCrossInvite(teamId: string, scheduleId: number, invitationId: number) {
     return api(`/api/v1/teams/${teamId}/schedules/${scheduleId}/cross-invite/${invitationId}`, {
       method: 'DELETE',
     })

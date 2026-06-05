@@ -15,7 +15,7 @@ const { captureQuiet } = useErrorReport()
 
 interface ThreadWithScope extends BulletinThreadResponse {
   scopeName: string
-  scopeId: number
+  scopeId: string
 }
 
 const threads = ref<ThreadWithScope[]>([])
@@ -35,12 +35,12 @@ async function load() {
   try {
     const results = await Promise.all(
       orgStore.myOrganizations.slice(0, 5).map((org) =>
-        getScopedThreads('organizations', org.id, { page: 0, size: 3 })
+        getScopedThreads('organizations', String(org.id), { page: 0, size: 3 })
           .then((res) =>
             res.data.map((t) => ({
               ...t,
               scopeName: org.nickname1 || org.name,
-              scopeId: org.id,
+              scopeId: String(org.id),
             })),
           )
           .catch((error) => {

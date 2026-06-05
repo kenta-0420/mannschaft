@@ -19,7 +19,7 @@ async function followOrg(orgId: string, event: Event) {
   event.stopPropagation()
   followingOrgIds.value.push(orgId)
   try {
-    await orgApi.followOrganization(orgId)
+    await orgApi.followOrganization(String(orgId))
     followedOrgIds.value.push(orgId)
     notification.success(t('orgHub.supporterSuccess'))
   } catch {

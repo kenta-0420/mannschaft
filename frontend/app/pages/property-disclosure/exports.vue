@@ -18,10 +18,9 @@ const { t } = useI18n()
 const { error: showError } = useNotification()
 const { userTimezone } = useDatetime()
 
-const organizationId = computed<number>(() => {
+const organizationId = computed<string>(() => {
   const raw = route.query.organizationId
-  const n = Number(Array.isArray(raw) ? raw[0] : raw)
-  return Number.isFinite(n) && n > 0 ? n : 0
+  return raw ? String(Array.isArray(raw) ? raw[0] : raw) : ''
 })
 
 const api = computed(() => useDisclosureApi(organizationId.value))
@@ -31,7 +30,7 @@ const { isAdmin, loadPermissions } = useRoleAccess('organization', organizationI
 watch(
   () => organizationId.value,
   (id) => {
-    if (id > 0) loadPermissions()
+    if (id) loadPermissions()
   },
   { immediate: true },
 )
@@ -61,7 +60,7 @@ const page = ref(0)
 const size = ref(20)
 
 async function load() {
-  if (organizationId.value === 0) return
+  if (organizationId.value === '') return
   loading.value = true
   try {
     const res = await api.value.listExports({ page: page.value, size: size.value })
@@ -143,7 +142,7 @@ function formatSeverity(format: string): 'info' | 'success' | 'secondary' {
     </header>
 
     <p
-      v-if="organizationId === 0"
+      v-if="organizationId === ''"
       class="rounded-md border border-dashed border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200"
     >
       ?organizationId=N

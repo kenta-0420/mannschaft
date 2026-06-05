@@ -178,7 +178,7 @@ export interface BuildSurveyOptions {
   status?: SurveyStatus
   // scope
   scopeType?: string
-  scopeId?: number
+  scopeId?: string
   // content
   title?: string
   description?: string | null
@@ -219,7 +219,7 @@ export function buildSurvey(opts: BuildSurveyOptions = {}): SurveyResponse {
     status: opts.status ?? 'PUBLISHED',
     scope: {
       scopeType: opts.scopeType ?? 'TEAM',
-      scopeId: opts.scopeId ?? 1,
+      scopeId: opts.scopeId ?? '1',
     },
     content: {
       title: opts.title ?? 'E2Eテスト用アンケート',

@@ -4,7 +4,7 @@ import type { MemberProfile, CreateMemberProfileRequest } from '~/types/member-p
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = computed(() => Number(route.params.id))
+const orgId = computed(() => String(route.params.id))
 const memberProfileApi = useMemberProfileApi()
 const notification = useNotification()
 const { isAdmin, loadPermissions } = useRoleAccess('organization', orgId)

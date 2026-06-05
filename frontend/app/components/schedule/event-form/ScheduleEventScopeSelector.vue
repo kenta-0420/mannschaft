@@ -4,7 +4,7 @@ interface ScopeOption {
   value: string
   isPersonal: boolean
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
 }
 
 defineProps<{

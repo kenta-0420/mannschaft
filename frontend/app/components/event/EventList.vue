@@ -3,7 +3,7 @@ import type { EventResponse } from '~/types/event'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   canEdit: boolean
   canDelete: boolean
 }>()

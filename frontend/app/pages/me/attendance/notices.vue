@@ -14,7 +14,7 @@ const { t } = useI18n()
 // 対象生徒・チームは実際にはユーザーのコンテキストから取得する
 // ここではルートパラメータまたはクエリから受け取る設計とする
 const route = useRoute()
-const teamId = ref(Number(route.query.teamId ?? 0))
+const teamId = ref(String(route.query.teamId ?? ''))
 const studentUserId = ref(Number(route.query.studentUserId ?? 0))
 
 const showForm = ref(true)

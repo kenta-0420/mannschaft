@@ -81,12 +81,12 @@ export function useNotificationApi() {
   }
 
   // === Matching notification preferences ===
-  async function getMatchingNotificationPreferences(teamId: number) {
+  async function getMatchingNotificationPreferences(teamId: string) {
     return api(`/api/v1/teams/${teamId}/matching/notification-preferences`)
   }
 
   async function updateMatchingNotificationPreferences(
-    teamId: number,
+    teamId: string,
     body: Record<string, unknown>,
   ) {
     return api(`/api/v1/teams/${teamId}/matching/notification-preferences`, {

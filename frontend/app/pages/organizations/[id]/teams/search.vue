@@ -36,10 +36,9 @@ const matchingApi = useMatchingApi()
 const authStore = useAuthStore()
 const notification = useNotification()
 
-const organizationId = computed<number>(() => {
+const organizationId = computed<string>(() => {
   const raw = route.params.id
-  const idStr = Array.isArray(raw) ? raw[0] : raw
-  return Number(idStr)
+  return String(Array.isArray(raw) ? raw[0] : raw)
 })
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
@@ -47,7 +46,7 @@ const isAuthenticated = computed(() => authStore.isAuthenticated)
 // === 組織情報 ===
 const organizationName = ref<string>('')
 async function loadOrganizationName() {
-  if (!Number.isFinite(organizationId.value)) return
+  if (!organizationId.value) return
   try {
     const res = await orgApi.getOrganization(organizationId.value)
     organizationName.value = res.data.basicInfo?.name ?? ''
@@ -142,7 +141,7 @@ const loading = ref<boolean>(false)
 const errorMessage = ref<string | null>(null)
 
 async function executeSearch() {
-  if (!Number.isFinite(organizationId.value)) return
+  if (!organizationId.value) return
   loading.value = true
   errorMessage.value = null
   try {

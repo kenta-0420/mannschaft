@@ -1,7 +1,7 @@
 export interface SharedFolder {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   parentId: number | null
   name: string
   description: string | null

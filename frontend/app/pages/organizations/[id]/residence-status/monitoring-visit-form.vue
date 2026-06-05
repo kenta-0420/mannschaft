@@ -5,7 +5,7 @@ import type { ContactResult, MonitoringVisitCreateRequest } from '~/types/reside
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const orgId = computed(() => Number(route.params.id))
+const orgId = computed(() => String(route.params.id))
 
 const { createVisit } = useMonitoringVisitApi()
 

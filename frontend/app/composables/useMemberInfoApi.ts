@@ -23,13 +23,13 @@ export function useMemberInfoApi() {
   // フィールド定義管理
   // ===========================================
 
-  async function getFields(teamId: number) {
+  async function getFields(teamId: string) {
     return api<ApiResponse<MemberInfoFieldResponse[]>>(
       `/api/v1/teams/${teamId}/member-info/fields`,
     )
   }
 
-  async function createField(teamId: number, request: CreateMemberInfoFieldRequest) {
+  async function createField(teamId: string, request: CreateMemberInfoFieldRequest) {
     return api<ApiResponse<MemberInfoFieldResponse>>(
       `/api/v1/teams/${teamId}/member-info/fields`,
       { method: 'POST', body: request },
@@ -37,7 +37,7 @@ export function useMemberInfoApi() {
   }
 
   async function updateField(
-    teamId: number,
+    teamId: string,
     fieldId: number,
     request: UpdateMemberInfoFieldRequest,
   ) {
@@ -47,11 +47,11 @@ export function useMemberInfoApi() {
     )
   }
 
-  async function deleteField(teamId: number, fieldId: number) {
+  async function deleteField(teamId: string, fieldId: number) {
     return api(`/api/v1/teams/${teamId}/member-info/fields/${fieldId}`, { method: 'DELETE' })
   }
 
-  async function reorderFields(teamId: number, request: ReorderMemberInfoFieldsRequest) {
+  async function reorderFields(teamId: string, request: ReorderMemberInfoFieldsRequest) {
     return api(`/api/v1/teams/${teamId}/member-info/fields/reorder`, {
       method: 'PUT',
       body: request,
@@ -62,13 +62,13 @@ export function useMemberInfoApi() {
   // ステータス確認・リマインド（ADMIN）
   // ===========================================
 
-  async function getResponseStatus(teamId: number) {
+  async function getResponseStatus(teamId: string) {
     return api<ApiResponse<MemberInfoStatusResponse>>(
       `/api/v1/teams/${teamId}/member-info/responses/status`,
     )
   }
 
-  async function sendRemind(teamId: number, targetUserId: number) {
+  async function sendRemind(teamId: string, targetUserId: number) {
     return api(
       `/api/v1/teams/${teamId}/member-info/responses/${targetUserId}/remind`,
       { method: 'POST' },
@@ -79,13 +79,13 @@ export function useMemberInfoApi() {
   // 自分の回答管理（MEMBER）
   // ===========================================
 
-  async function getMyResponses(teamId: number) {
+  async function getMyResponses(teamId: string) {
     return api<ApiResponse<MemberInfoResponseMeItem[]>>(
       `/api/v1/teams/${teamId}/member-info/responses/me`,
     )
   }
 
-  async function upsertMyResponses(teamId: number, request: UpsertMemberInfoResponseRequest) {
+  async function upsertMyResponses(teamId: string, request: UpsertMemberInfoResponseRequest) {
     return api(`/api/v1/teams/${teamId}/member-info/responses/me`, {
       method: 'PUT',
       body: request,

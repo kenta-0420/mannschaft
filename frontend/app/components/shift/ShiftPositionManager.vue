@@ -2,7 +2,7 @@
 import type { ShiftPositionResponse } from '~/types/shift'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
 }>()
 
 const shiftApi = useShiftApi()

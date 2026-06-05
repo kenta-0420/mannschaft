@@ -6,7 +6,7 @@ const reservationEnabledTeamIds = ref<number[]>([])
 onMounted(async () => {
   const teams = teamStore.myTeams.slice(0, 8)
   const results = await Promise.allSettled(
-    teams.map(team => moduleApi.getTeamModules(team.id))
+    teams.map(team => moduleApi.getTeamModules(String(team.id)))
   )
   const enabled: number[] = []
   results.forEach((result, idx) => {

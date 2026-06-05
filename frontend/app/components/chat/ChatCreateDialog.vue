@@ -5,8 +5,8 @@ import type { MemberResponse } from '~/types/member'
 const visible = defineModel<boolean>('visible', { default: false })
 
 const props = defineProps<{
-  teamId?: number
-  organizationId?: number
+  teamId?: string
+  organizationId?: string
 }>()
 
 const emit = defineEmits<{

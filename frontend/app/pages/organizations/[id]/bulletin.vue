@@ -5,7 +5,7 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
 
 const selectedThread = ref<BulletinThreadResponse | null>(null)

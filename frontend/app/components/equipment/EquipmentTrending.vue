@@ -2,7 +2,7 @@
 import type { EquipmentTrendingResponse } from '~/types/equipment-ranking'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
 }>()
 
 const { getTrending } = useEquipmentTrending(props.teamId)

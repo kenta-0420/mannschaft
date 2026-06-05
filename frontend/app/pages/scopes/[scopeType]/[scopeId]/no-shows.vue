@@ -8,7 +8,7 @@ const api = useRecruitmentApi()
 const { success, error } = useNotification()
 
 const scopeType = computed(() => String(route.params.scopeType))
-const scopeId = computed(() => Number(route.params.scopeId))
+const scopeId = computed(() => String(route.params.scopeId))
 
 const noShows = ref<RecruitmentNoShowRecordResponse[]>([])
 const loading = ref(false)

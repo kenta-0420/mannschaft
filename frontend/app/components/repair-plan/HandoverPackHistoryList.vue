@@ -3,7 +3,7 @@ import type { HandoverPack } from '~/types/repairPlanHandover'
 
 const props = defineProps<{
   scopeType: string
-  scopeId: number
+  scopeId: string
   isAdmin: boolean
 }>()
 

@@ -13,7 +13,7 @@ Chart.register(BarController, CategoryScale, LinearScale, BarElement, Tooltip, L
 
 const props = defineProps<{
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
 }>()
 
 const { getStats } = useActivityApi()

@@ -26,7 +26,7 @@ const { error: showError, success: showSuccess } = useNotification()
 const allowPersonalInfo = ref(false)
 const isRefreshing = ref(false)
 
-const api = computed(() => useDisclosureApi(props.organizationId))
+const api = computed(() => useDisclosureApi(String(props.organizationId)))
 
 async function refresh() {
   if (isRefreshing.value || props.disabled) return

@@ -11,7 +11,7 @@ export function useParkingSubleaseApi() {
 
   async function getSubleases(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: Record<string, unknown>,
   ) {
     const q = new URLSearchParams()
@@ -27,7 +27,7 @@ export function useParkingSubleaseApi() {
 
   async function createSublease(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: SubleaseResponse }>(`${buildBase(scopeType, scopeId)}/parking/subleases`, {
@@ -38,7 +38,7 @@ export function useParkingSubleaseApi() {
 
   async function getSublease(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     subleaseId: number,
   ) {
     return api<{ data: SubleaseDetailResponse }>(
@@ -48,7 +48,7 @@ export function useParkingSubleaseApi() {
 
   async function updateSublease(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     subleaseId: number,
     body: Record<string, unknown>,
   ) {
@@ -60,7 +60,7 @@ export function useParkingSubleaseApi() {
 
   async function deleteSublease(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     subleaseId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/parking/subleases/${subleaseId}`, {
@@ -70,7 +70,7 @@ export function useParkingSubleaseApi() {
 
   async function applyToSublease(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     subleaseId: number,
     body: Record<string, unknown>,
   ) {
@@ -82,7 +82,7 @@ export function useParkingSubleaseApi() {
 
   async function approveSublease(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     subleaseId: number,
     body?: Record<string, unknown>,
   ) {
@@ -94,7 +94,7 @@ export function useParkingSubleaseApi() {
 
   async function getSubleasePayments(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     subleaseId: number,
     params?: Record<string, unknown>,
   ) {
@@ -111,7 +111,7 @@ export function useParkingSubleaseApi() {
 
   async function terminateSublease(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     subleaseId: number,
     body?: Record<string, unknown>,
   ) {

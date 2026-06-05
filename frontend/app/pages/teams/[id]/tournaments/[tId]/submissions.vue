@@ -7,15 +7,15 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const tId = Number(route.params.tId)
 // orgId はナビゲーション時にクエリパラメータとして渡す
-const orgId = Number(route.query.orgId)
+const orgId = String(route.query.orgId ?? '')
 
 const notification = useNotification()
 
 // orgId が取得できない場合は不正なアクセス
-if (!orgId || isNaN(orgId)) {
+if (!orgId || isNaN(Number(orgId))) {
   throw createError({ statusCode: 400, statusMessage: 'orgId is required' })
 }
 

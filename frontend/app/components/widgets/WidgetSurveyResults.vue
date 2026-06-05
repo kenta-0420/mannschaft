@@ -3,7 +3,7 @@ import type { SurveyResponse, SurveyResultSummary } from '~/types/survey'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
 }>()
 
 const { getSurveys, getResults } = useSurveyApi()

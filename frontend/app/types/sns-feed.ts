@@ -1,7 +1,7 @@
 export interface SnsFeedConfigResponse {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   provider: string
   accountUsername: string
   displayCount: number

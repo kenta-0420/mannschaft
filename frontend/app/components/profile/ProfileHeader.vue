@@ -12,7 +12,7 @@ const props = withDefaults(
     /** スコープ種別 */
     scope: ProfileMediaScope
     /** スコープID（user の場合は null） */
-    scopeId?: number | null
+    scopeId?: string | null
     /** 編集可能かどうか（trueならカメラアイコンオーバーレイを表示） */
     editable?: boolean
   }>(),

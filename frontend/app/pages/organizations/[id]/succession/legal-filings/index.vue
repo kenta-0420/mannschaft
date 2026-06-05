@@ -4,7 +4,7 @@ import type { CreateLegalFilingRequest, LegalFiling, LegalFilingType } from '~/t
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const orgId = computed(() => Number(route.params.id))
+const orgId = computed(() => String(route.params.id))
 const { t } = useI18n()
 const toast = useToast()
 const { listByOrganization, createLegalFiling, buildEvidencePackage, getEvidenceDownloadUrl } = useLegalFilingApi()

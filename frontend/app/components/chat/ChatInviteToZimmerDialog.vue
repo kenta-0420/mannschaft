@@ -7,8 +7,8 @@ const visible = defineModel<boolean>('visible', { default: false })
 const props = defineProps<{
   channelId: number
   dmPartnerUserId?: number
-  teamId?: number
-  organizationId?: number
+  teamId?: string
+  organizationId?: string
 }>()
 
 const emit = defineEmits<{

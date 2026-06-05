@@ -11,7 +11,7 @@ const activeTab = ref('0')
 
 const scopeStore = useScopeStore()
 const scopeType = computed(() => scopeStore.current?.type ?? 'team')
-const scopeId = computed(() => scopeStore.current?.id ?? 0)
+const scopeId = computed(() => scopeStore.current?.id ?? '')
 
 async function loadData() {
   if (!scopeId.value) return

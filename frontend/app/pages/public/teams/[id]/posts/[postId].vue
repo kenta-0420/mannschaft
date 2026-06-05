@@ -21,10 +21,10 @@ const { fetchPublicTeamPostDetail } = usePublicApi()
 
 const rawTeamId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
 const rawPostId = Array.isArray(route.params.postId) ? route.params.postId[0] : route.params.postId
-const teamId = Number(rawTeamId)
+const teamId = String(rawTeamId)
 const postId = Number(rawPostId)
 
-if (!Number.isFinite(teamId) || !Number.isFinite(postId) || teamId <= 0 || postId <= 0) {
+if (!teamId || !Number.isFinite(postId) || postId <= 0) {
   throw createError({
     statusCode: 404,
     statusMessage: t('public.error.notFound'),

@@ -10,11 +10,11 @@ import type {
 export function useAnnualPlanApi() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
-  async function listCategories(scopeType: 'team' | 'organization', scopeId: number) {
+  async function listCategories(scopeType: 'team' | 'organization', scopeId: string) {
     const base = buildBase(scopeType, scopeId)
     const res = await api<{ data: EventCategory[] }>(`${base}/event-categories`)
     return res.data
@@ -22,7 +22,7 @@ export function useAnnualPlanApi() {
 
   async function createCategory(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: { name: string; color: string; icon?: string; isDayOffCategory?: boolean; sortOrder?: number },
   ) {
     const base = buildBase(scopeType, scopeId)
@@ -35,7 +35,7 @@ export function useAnnualPlanApi() {
 
   async function getAnnualView(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: {
       academicYear?: number
       categoryIds?: number[]
@@ -63,7 +63,7 @@ export function useAnnualPlanApi() {
 
   async function getCopyPreview(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     sourceYear: number,
     targetYear: number,
     dateShiftMode: string = 'SAME_WEEKDAY',
@@ -86,7 +86,7 @@ export function useAnnualPlanApi() {
 
   async function executeCopy(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: CopyExecuteRequest,
   ) {
     const base = buildBase(scopeType, scopeId)
@@ -97,7 +97,7 @@ export function useAnnualPlanApi() {
     return res.data
   }
 
-  async function getCopyLogs(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getCopyLogs(scopeType: 'team' | 'organization', scopeId: string) {
     const base = buildBase(scopeType, scopeId)
     const res = await api<{ data: CopyLog[] }>(`${base}/schedules/annual/copy-logs`)
     return res.data

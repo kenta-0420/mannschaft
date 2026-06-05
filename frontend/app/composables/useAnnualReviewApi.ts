@@ -8,40 +8,40 @@ import type {
 export function useAnnualReviewApi() {
   const api = useApi()
 
-  async function listReviews(orgId: number) {
+  async function listReviews(orgId: string) {
     return api<{ data: AnnualReviewResponse[] }>(
       `/api/v1/organizations/${orgId}/residence-status/annual-reviews`,
     )
   }
 
-  async function createReview(orgId: number, body: AnnualReviewCreateRequest) {
+  async function createReview(orgId: string, body: AnnualReviewCreateRequest) {
     return api<{ data: AnnualReviewResponse }>(
       `/api/v1/organizations/${orgId}/residence-status/annual-reviews`,
       { method: 'POST', body },
     )
   }
 
-  async function closeReview(orgId: number, reviewId: string) {
+  async function closeReview(orgId: string, reviewId: string) {
     return api<{ data: AnnualReviewResponse }>(
       `/api/v1/organizations/${orgId}/residence-status/annual-reviews/${reviewId}/close`,
       { method: 'POST' },
     )
   }
 
-  async function listMyReviews(orgId: number) {
+  async function listMyReviews(orgId: string) {
     return api<{ data: AnnualReviewResponse[] }>(
       `/api/v1/organizations/${orgId}/residence-status/annual-reviews/my`,
     )
   }
 
-  async function listResponses(orgId: number, reviewId: string) {
+  async function listResponses(orgId: string, reviewId: string) {
     return api<{ data: AnnualReviewResponseItem[] }>(
       `/api/v1/organizations/${orgId}/residence-status/annual-reviews/${reviewId}/responses`,
     )
   }
 
   async function submitMyResponse(
-    orgId: number,
+    orgId: string,
     reviewId: string,
     body: AnnualReviewResponseSubmitRequest,
   ) {

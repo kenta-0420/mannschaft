@@ -124,7 +124,7 @@ describe('useBlogMediaApi', () => {
         content_type: 'image/jpeg',
         file_size: 1024 * 1024,
         scope_type: 'TEAM',
-        scope_id: 1,
+        scope_id: '1',
         blog_post_id: 42,
       })
 
@@ -135,7 +135,7 @@ describe('useBlogMediaApi', () => {
       const body = options.body as Record<string, unknown>
       expect(body.media_type).toBe('IMAGE')
       expect(body.scope_type).toBe('TEAM')
-      expect(body.scope_id).toBe(1)
+      expect(body.scope_id).toBe('1')
       expect(body.blog_post_id).toBe(42)
 
       // レスポンスが正しく返ること
@@ -165,7 +165,7 @@ describe('useBlogMediaApi', () => {
       const result = await api.uploadImage({
         file,
         scopeType: 'TEAM',
-        scopeId: 1,
+        scopeId: '1',
         blogPostId: 42,
       })
 
@@ -213,7 +213,7 @@ describe('useBlogMediaApi', () => {
       const result = await api.uploadVideo({
         file,
         scopeType: 'TEAM',
-        scopeId: 1,
+        scopeId: '1',
         blogPostId: 42,
         onProgress,
       })
@@ -283,7 +283,7 @@ describe('useBlogMediaApi', () => {
         api.uploadVideo({
           file,
           scopeType: 'TEAM',
-          scopeId: 1,
+          scopeId: '1',
           blogPostId: 42,
         }),
       ).rejects.toThrow()

@@ -3,30 +3,30 @@ import type { DutyRotationResponse, DutyRotationRequest, DutyTodayResponse } fro
 export function useDutyApi() {
   const api = useApi()
 
-  function buildBase(teamId: number) {
+  function buildBase(teamId: string) {
     return `/api/v1/teams/${teamId}/duties`
   }
 
-  async function listDuties(teamId: number) {
+  async function listDuties(teamId: string) {
     return api<{ data: DutyRotationResponse[] }>(buildBase(teamId))
   }
 
-  async function createDuty(teamId: number, body: DutyRotationRequest) {
+  async function createDuty(teamId: string, body: DutyRotationRequest) {
     return api<{ data: DutyRotationResponse }>(buildBase(teamId), { method: 'POST', body })
   }
 
-  async function updateDuty(teamId: number, dutyId: number, body: DutyRotationRequest) {
+  async function updateDuty(teamId: string, dutyId: number, body: DutyRotationRequest) {
     return api<{ data: DutyRotationResponse }>(`${buildBase(teamId)}/${dutyId}`, {
       method: 'PUT',
       body,
     })
   }
 
-  async function deleteDuty(teamId: number, dutyId: number) {
+  async function deleteDuty(teamId: string, dutyId: number) {
     return api(`${buildBase(teamId)}/${dutyId}`, { method: 'DELETE' })
   }
 
-  async function getTodayDuties(teamId: number) {
+  async function getTodayDuties(teamId: string) {
     return api<{ data: DutyTodayResponse[] }>(`${buildBase(teamId)}/today`)
   }
 

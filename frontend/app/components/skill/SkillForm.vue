@@ -4,7 +4,7 @@ import type { MemberSkillResponse, SkillCategoryResponse } from '~/types/skill'
 const visible = defineModel<boolean>('visible', { default: false })
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   skill?: MemberSkillResponse | null
   categories: SkillCategoryResponse[]
 }>()

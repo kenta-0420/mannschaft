@@ -9,7 +9,7 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const tId = Number(route.params.tId)
 
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
@@ -270,7 +270,7 @@ onMounted(async () => {
       :tournament-id="tId"
       :division-id="selectedDivisionId"
       :participant-id="selectedParticipant.id"
-      :team-id="selectedParticipant.teamId"
+      :team-id="String(selectedParticipant.teamId)"
       :is-admin="isAdminOrDeputy"
       @close="selectedParticipant = null"
       @saved="onEntrySaved"

@@ -3,7 +3,7 @@ import type { AdvertiserAccountResponse, AdvertiserOverviewResponse } from '~/ty
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const advertiserApi = useAdvertiserApi()
 const account = ref<AdvertiserAccountResponse | null>(null)
 const overview = ref<AdvertiserOverviewResponse | null>(null)

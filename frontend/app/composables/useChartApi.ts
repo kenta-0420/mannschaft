@@ -16,7 +16,7 @@ export function useChartApi() {
   const api = useApi()
 
   // === Team-scoped chart list / CRUD ===
-  async function list(teamId: number, params?: ChartListParams) {
+  async function list(teamId: string, params?: ChartListParams) {
     const query = new URLSearchParams()
     if (params?.page != null) query.set('page', String(params.page))
     if (params?.size != null) query.set('size', String(params.size))
@@ -30,16 +30,16 @@ export function useChartApi() {
     )
   }
 
-  async function get(teamId: number, chartId: number) {
+  async function get(teamId: string, chartId: number) {
     return api<{ data: Chart }>(`/api/v1/teams/${teamId}/charts/${chartId}`)
   }
 
-  async function create(teamId: number, body: CreateChartRequest) {
+  async function create(teamId: string, body: CreateChartRequest) {
     return api<{ data: Chart }>(`/api/v1/teams/${teamId}/charts`, { method: 'POST', body })
   }
 
   async function update(
-    teamId: number,
+    teamId: string,
     chartId: number,
     body: Partial<CreateChartRequest> & { version: number },
   ) {
@@ -49,7 +49,7 @@ export function useChartApi() {
     })
   }
 
-  async function remove(teamId: number, chartId: number) {
+  async function remove(teamId: string, chartId: number) {
     return api(`/api/v1/teams/${teamId}/charts/${chartId}`, { method: 'DELETE' })
   }
 
@@ -66,7 +66,7 @@ export function useChartApi() {
 
   // === Customer Charts ===
   async function getCustomerCharts(
-    teamId: number,
+    teamId: string,
     userId: number,
     params?: { page?: number; size?: number },
   ) {
@@ -80,7 +80,7 @@ export function useChartApi() {
   }
 
   async function getCustomerProgress(
-    teamId: number,
+    teamId: string,
     userId: number,
     params?: { fieldIds?: string; visitDateFrom?: string; visitDateTo?: string },
   ) {
@@ -96,7 +96,7 @@ export function useChartApi() {
 
   // === Body Marks ===
   async function updateBodyMarks(
-    teamId: number,
+    teamId: string,
     chartId: number,
     body: { marks: ChartBodyMark[] },
   ) {
@@ -104,7 +104,7 @@ export function useChartApi() {
   }
 
   // === Copy ===
-  async function copyChart(teamId: number, chartId: number, body?: Record<string, unknown>) {
+  async function copyChart(teamId: string, chartId: number, body?: Record<string, unknown>) {
     return api<{ data: Chart }>(`/api/v1/teams/${teamId}/charts/${chartId}/copy`, {
       method: 'POST',
       body,
@@ -112,41 +112,41 @@ export function useChartApi() {
   }
 
   // === Formulas ===
-  async function getFormulas(teamId: number, chartId: number) {
+  async function getFormulas(teamId: string, chartId: number) {
     return api<{ data: ChartFormula[] }>(`/api/v1/teams/${teamId}/charts/${chartId}/formulas`)
   }
 
-  async function createFormula(teamId: number, chartId: number, body: Record<string, unknown>) {
+  async function createFormula(teamId: string, chartId: number, body: Record<string, unknown>) {
     return api<{ data: ChartFormula }>(`/api/v1/teams/${teamId}/charts/${chartId}/formulas`, {
       method: 'POST',
       body,
     })
   }
 
-  async function updateFormula(teamId: number, formulaId: number, body: Record<string, unknown>) {
+  async function updateFormula(teamId: string, formulaId: number, body: Record<string, unknown>) {
     return api(`/api/v1/teams/${teamId}/charts/formulas/${formulaId}`, { method: 'PUT', body })
   }
 
-  async function deleteFormula(teamId: number, formulaId: number) {
+  async function deleteFormula(teamId: string, formulaId: number) {
     return api(`/api/v1/teams/${teamId}/charts/formulas/${formulaId}`, { method: 'DELETE' })
   }
 
   // === Intake Form ===
-  async function getIntakeForm(teamId: number, chartId: number) {
+  async function getIntakeForm(teamId: string, chartId: number) {
     return api<{ data: ChartIntakeForm }>(`/api/v1/teams/${teamId}/charts/${chartId}/intake-form`)
   }
 
-  async function updateIntakeForm(teamId: number, chartId: number, body: Record<string, unknown>) {
+  async function updateIntakeForm(teamId: string, chartId: number, body: Record<string, unknown>) {
     return api(`/api/v1/teams/${teamId}/charts/${chartId}/intake-form`, { method: 'PUT', body })
   }
 
   // === PDF ===
-  async function getChartPdf(teamId: number, chartId: number) {
+  async function getChartPdf(teamId: string, chartId: number) {
     return api<Blob>(`/api/v1/teams/${teamId}/charts/${chartId}/pdf`)
   }
 
   // === Photos ===
-  async function uploadPhoto(teamId: number, chartId: number, file: File, photoType: string) {
+  async function uploadPhoto(teamId: string, chartId: number, file: File, photoType: string) {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('photoType', photoType)
@@ -156,59 +156,59 @@ export function useChartApi() {
     })
   }
 
-  async function deletePhoto(teamId: number, photoId: number) {
+  async function deletePhoto(teamId: string, photoId: number) {
     return api(`/api/v1/teams/${teamId}/charts/photos/${photoId}`, { method: 'DELETE' })
   }
 
   // === Pin & Share ===
-  async function togglePin(teamId: number, chartId: number, body?: Record<string, unknown>) {
+  async function togglePin(teamId: string, chartId: number, body?: Record<string, unknown>) {
     return api(`/api/v1/teams/${teamId}/charts/${chartId}/pin`, { method: 'PATCH', body })
   }
 
-  async function share(teamId: number, chartId: number, body: Record<string, unknown>) {
+  async function share(teamId: string, chartId: number, body: Record<string, unknown>) {
     return api(`/api/v1/teams/${teamId}/charts/${chartId}/share`, { method: 'PATCH', body })
   }
 
   // === Templates (legacy) ===
-  async function listTemplates(teamId: number) {
+  async function listTemplates(teamId: string) {
     return api<{ data: ChartTemplate[] }>(`/api/v1/teams/${teamId}/chart-templates`)
   }
 
   // === Settings: Custom Fields ===
-  async function getCustomFields(teamId: number) {
+  async function getCustomFields(teamId: string) {
     return api<{ data: ChartCustomField[] }>(
       `/api/v1/teams/${teamId}/charts/settings/custom-fields`,
     )
   }
 
-  async function createCustomField(teamId: number, body: Record<string, unknown>) {
+  async function createCustomField(teamId: string, body: Record<string, unknown>) {
     return api<{ data: ChartCustomField }>(
       `/api/v1/teams/${teamId}/charts/settings/custom-fields`,
       { method: 'POST', body },
     )
   }
 
-  async function updateCustomField(teamId: number, fieldId: number, body: Record<string, unknown>) {
+  async function updateCustomField(teamId: string, fieldId: number, body: Record<string, unknown>) {
     return api(`/api/v1/teams/${teamId}/charts/settings/custom-fields/${fieldId}`, {
       method: 'PUT',
       body,
     })
   }
 
-  async function deleteCustomField(teamId: number, fieldId: number) {
+  async function deleteCustomField(teamId: string, fieldId: number) {
     return api(`/api/v1/teams/${teamId}/charts/settings/custom-fields/${fieldId}`, {
       method: 'DELETE',
     })
   }
 
   // === Settings: Record Templates ===
-  async function getRecordTemplates(teamId: number) {
+  async function getRecordTemplates(teamId: string) {
     return api<{ data: ChartRecordTemplate[] }>(
       `/api/v1/teams/${teamId}/charts/settings/record-templates`,
     )
   }
 
-  async function createRecordTemplate(teamId: number, body: Record<string, unknown>) {
+  async function createRecordTemplate(teamId: string, body: Record<string, unknown>) {
     return api<{ data: ChartRecordTemplate }>(
       `/api/v1/teams/${teamId}/charts/settings/record-templates`,
       { method: 'POST', body },
@@ -216,7 +216,7 @@ export function useChartApi() {
   }
 
   async function updateRecordTemplate(
-    teamId: number,
+    teamId: string,
     templateId: number,
     body: Record<string, unknown>,
   ) {
@@ -226,18 +226,18 @@ export function useChartApi() {
     })
   }
 
-  async function deleteRecordTemplate(teamId: number, templateId: number) {
+  async function deleteRecordTemplate(teamId: string, templateId: number) {
     return api(`/api/v1/teams/${teamId}/charts/settings/record-templates/${templateId}`, {
       method: 'DELETE',
     })
   }
 
   // === Settings: Sections ===
-  async function getSectionSettings(teamId: number) {
+  async function getSectionSettings(teamId: string) {
     return api<{ data: ChartSectionSettings }>(`/api/v1/teams/${teamId}/charts/settings/sections`)
   }
 
-  async function updateSectionSettings(teamId: number, body: ChartSectionSettings) {
+  async function updateSectionSettings(teamId: string, body: ChartSectionSettings) {
     return api(`/api/v1/teams/${teamId}/charts/settings/sections`, { method: 'PUT', body })
   }
 

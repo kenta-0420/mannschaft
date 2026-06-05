@@ -4,7 +4,7 @@ import type { AiQuotaResponse } from '~/types/timeline-digest'
 const props = defineProps<{
   visible: boolean
   scopeType: 'ORGANIZATION' | 'TEAM'
-  scopeId: number
+  scopeId: string
 }>()
 
 const emit = defineEmits<{

@@ -45,7 +45,7 @@ export interface AnnouncementSourceMeta {
 export interface AnnouncementFeedItem {
   id: number
   scopeType: AnnouncementScopeType
-  scopeId: number
+  scopeId: string
   sourceType: AnnouncementSourceType
   sourceId: number
   sourceUrl: string

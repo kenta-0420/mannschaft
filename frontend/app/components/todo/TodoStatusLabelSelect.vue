@@ -16,7 +16,7 @@ import {
  */
 const props = defineProps<{
   scopeType: 'PERSONAL' | 'TEAM' | 'ORGANIZATION'
-  scopeId: number | null
+  scopeId: string | null
   modelValue: number | null
   /** バケットフィルタ（指定時はそのバケットのラベルのみ表示） */
   bucket?: TodoStatusLabelBucket

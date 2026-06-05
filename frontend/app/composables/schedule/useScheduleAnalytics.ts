@@ -16,14 +16,14 @@ import type {
 export function useScheduleAnalytics() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   // === Annual Schedule ===
   async function getAnnualSchedules(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: AnnualScheduleParams,
   ) {
     const query = new URLSearchParams()
@@ -37,7 +37,7 @@ export function useScheduleAnalytics() {
 
   async function previewAnnualCopy(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params: AnnualCopyPreviewParams,
   ) {
     const query = new URLSearchParams()
@@ -52,7 +52,7 @@ export function useScheduleAnalytics() {
 
   async function executeAnnualCopy(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: ExecuteCopyRequest,
   ) {
     return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/schedules/annual/copy`, {
@@ -61,17 +61,17 @@ export function useScheduleAnalytics() {
     })
   }
 
-  async function getAnnualCopyLogs(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getAnnualCopyLogs(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: unknown[] }>(`${buildBase(scopeType, scopeId)}/schedules/annual/copy-logs`)
   }
 
   // === Performance (teams only) ===
-  async function getSchedulePerformance(teamId: number, scheduleId: number) {
+  async function getSchedulePerformance(teamId: string, scheduleId: number) {
     return api<{ data: unknown }>(`/api/v1/teams/${teamId}/schedules/${scheduleId}/performance`)
   }
 
   async function bulkCreatePerformanceRecords(
-    teamId: number,
+    teamId: string,
     scheduleId: number,
     body: ScheduleBulkRecordRequest,
   ) {
@@ -82,7 +82,7 @@ export function useScheduleAnalytics() {
   }
 
   // === Attendance Stats ===
-  async function getTeamAttendanceStats(teamId: number, params?: { from?: string; to?: string }) {
+  async function getTeamAttendanceStats(teamId: string, params?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
     if (params?.from) query.set('from', params.from)
     if (params?.to) query.set('to', params.to)
@@ -90,7 +90,7 @@ export function useScheduleAnalytics() {
   }
 
   async function exportTeamAttendanceStats(
-    teamId: number,
+    teamId: string,
     params?: { from?: string; to?: string },
   ) {
     const query = new URLSearchParams()
@@ -99,14 +99,14 @@ export function useScheduleAnalytics() {
     return api(`/api/v1/teams/${teamId}/attendance-stats/export?${query}`, { responseType: 'blob' })
   }
 
-  async function getOrgAttendanceStats(orgId: number, params?: { from?: string; to?: string }) {
+  async function getOrgAttendanceStats(orgId: string, params?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
     if (params?.from) query.set('from', params.from)
     if (params?.to) query.set('to', params.to)
     return api<{ data: unknown }>(`/api/v1/organizations/${orgId}/attendance-stats?${query}`)
   }
 
-  async function exportOrgAttendanceStats(orgId: number, params?: { from?: string; to?: string }) {
+  async function exportOrgAttendanceStats(orgId: string, params?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
     if (params?.from) query.set('from', params.from)
     if (params?.to) query.set('to', params.to)

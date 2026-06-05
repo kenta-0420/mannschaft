@@ -33,7 +33,7 @@ import type { EventResponse } from '../../../app/types/event'
 // 既定 ID 定数（spec から参照されるが、上書きしたい場合は引数で渡す）
 // ---------------------------------------------------------------------------
 
-export const DEFAULT_TEAM_ID = 1
+export const DEFAULT_TEAM_ID = '1'
 export const DEFAULT_EVENT_ID = 100
 export const ORGANIZER_USER_ID = 1
 export const MEMBER_USER_ID = 2
@@ -77,7 +77,7 @@ async function injectAuth(
 /** 主催者（ADMIN ロール）としてログイン済み状態をセットアップする。 */
 export async function loginAsOrganizer(
   page: Page,
-  opts?: { teamId?: number; userId?: number },
+  opts?: { teamId?: string | number; userId?: number },
 ): Promise<void> {
   const userId = opts?.userId ?? ORGANIZER_USER_ID
   await injectAuth(page, {

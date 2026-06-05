@@ -50,7 +50,7 @@ const todaysMemos = computed<ActionMemo[]>(() => store.currentDayMemos(today.val
 interface TodoItem {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   title: string
   status: string
   dueDate: string | null
@@ -73,13 +73,13 @@ async function loadTodos() {
     // Wave 1 DTO刷新: ネスト構造から必要フィールドを正規化
     const list = (res?.data ?? []) as Array<{
       id: number
-      scope?: { scopeType?: string; scopeId?: number }
+      scope?: { scopeType?: string; scopeId?: string | null }
       content?: { title?: string }
       schedule?: { dueDate?: string | null }
       status?: string
       // @deprecated 旧フラットフィールド互換
       scopeType?: string
-      scopeId?: number
+      scopeId?: string
       title?: string
       dueDate?: string | null
     }>
@@ -87,7 +87,7 @@ async function loadTodos() {
       .map((item) => ({
         id: item.id,
         scopeType: item.scope?.scopeType ?? item.scopeType ?? '',
-        scopeId: item.scope?.scopeId ?? item.scopeId ?? 0,
+        scopeId: item.scope?.scopeId ?? item.scopeId ?? '',
         title: item.content?.title ?? item.title ?? '',
         status: item.status ?? '',
         dueDate: item.schedule?.dueDate ?? item.dueDate ?? null,

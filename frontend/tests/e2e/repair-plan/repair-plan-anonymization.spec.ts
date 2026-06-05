@@ -60,7 +60,7 @@ const ANONYMIZED_KANBAN: QuoteKanban = {
   id: 'kanban-anon-001',
   title: '外壁塗装業者選定（匿名）',
   scopeType: 'teams',
-  scopeId: 1,
+  scopeId: '1',
   organizationId: 100,
   workPackageId: null,
   repairPlanItemId: null,

@@ -13,7 +13,7 @@ const { listForwardExports } = useFriendForwardApi()
 const { formatRelative } = useRelativeTime()
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
 }>()
 
 const exports = ref<FriendForwardExportView[]>([])

@@ -4,7 +4,7 @@ import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const scheduleApi = useScheduleApi()
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
 

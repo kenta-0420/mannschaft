@@ -63,7 +63,7 @@ interface RawActionRequiredSummary {
 
 function toScopeTabItem(r: RawScopeTabItem): ScopeTabItem {
   return {
-    scopeId: r.scope_id,
+    scopeId: String(r.scope_id),
     scopeType: r.scope_type,
     name: r.name,
     avatarUrl: r.avatar_url,
@@ -166,7 +166,7 @@ export function useScopeTabApi() {
    */
   async function getActionRequired(
     scopeType: ScopeTabType,
-    scopeId: number,
+    scopeId: string,
   ): Promise<ActionRequiredSummary> {
     const base = scopeType === 'TEAM' ? `team/${scopeId}` : `organization/${scopeId}`
     const res = await api<{ data: RawActionRequiredSummary }>(

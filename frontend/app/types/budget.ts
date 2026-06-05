@@ -5,7 +5,7 @@ export type TransactionApprovalStatus = 'PENDING_APPROVAL' | 'APPROVED' | 'REJEC
 export interface FiscalYearResponse {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   name: string
   startDate: string
   endDate: string

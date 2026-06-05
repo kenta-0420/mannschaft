@@ -23,7 +23,7 @@ export interface BlogMediaUploadUrlRequest {
   /** スコープ種別（"TEAM", "ORGANIZATION", "PERSONAL"） */
   scope_type: string
   /** スコープ ID */
-  scope_id: number
+  scope_id: string
   /** 記事 ID（記事編集中に渡す。新規作成中は null） */
   blog_post_id: number | null
 }

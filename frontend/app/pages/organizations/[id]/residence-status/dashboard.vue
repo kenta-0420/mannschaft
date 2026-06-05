@@ -11,7 +11,7 @@ import type {
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const orgId = computed(() => Number(route.params.id))
+const orgId = computed(() => String(route.params.id))
 
 const { getDashboard } = useActivitySnapshotApi()
 const { listReviews, createReview, closeReview } = useAnnualReviewApi()

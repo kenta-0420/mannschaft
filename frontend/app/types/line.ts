@@ -1,7 +1,7 @@
 export interface LineConfigResponse {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   channelId: string
   channelName: string
   isActive: boolean
@@ -12,7 +12,7 @@ export interface LineConfigResponse {
 export interface SnsConfigResponse {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   platform: 'INSTAGRAM' | 'TWITTER' | 'FACEBOOK'
   accountName: string
   isActive: boolean
@@ -56,7 +56,7 @@ export interface AffiliateConfig {
 export interface SignageScreen {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   name: string
   description: string | null
   orientation: 'LANDSCAPE' | 'PORTRAIT'

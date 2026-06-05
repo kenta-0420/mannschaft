@@ -4,7 +4,7 @@ import type { GamificationConfig } from '~/types/gamification'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = computed(() => Number(route.params.id))
+const orgId = computed(() => String(route.params.id))
 const gamificationApi = useGamificationApi()
 const notification = useNotification()
 const { isAdmin, loadPermissions } = useRoleAccess('organization', orgId)

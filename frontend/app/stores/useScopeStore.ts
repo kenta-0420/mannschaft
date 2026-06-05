@@ -4,7 +4,7 @@ type ScopeType = 'personal' | 'team' | 'organization'
 
 interface CurrentScope {
   type: ScopeType
-  id: number | null
+  id: string | null
   name: string
 }
 
@@ -21,20 +21,20 @@ export const useScopeStore = defineStore('scope', {
     isPersonal: (state): boolean => state.current.type === 'personal',
     isTeam: (state): boolean => state.current.type === 'team',
     isOrganization: (state): boolean => state.current.type === 'organization',
-    currentScopeId: (state): number | null => state.current.id,
+    currentScopeId: (state): string | null => state.current.id,
     currentScopeLabel: (state): string => state.current.name,
   },
 
   actions: {
-    setTeamScope(teamId: number, teamName: string) {
-      this.current = { type: 'team', id: teamId, name: teamName }
+    setTeamScope(teamId: string | number, teamName: string) {
+      this.current = { type: 'team', id: String(teamId), name: teamName }
       if (import.meta.client) {
         localStorage.setItem('currentScope', JSON.stringify(this.current))
       }
     },
 
-    setOrganizationScope(orgId: number, orgName: string) {
-      this.current = { type: 'organization', id: orgId, name: orgName }
+    setOrganizationScope(orgId: string | number, orgName: string) {
+      this.current = { type: 'organization', id: String(orgId), name: orgName }
       if (import.meta.client) {
         localStorage.setItem('currentScope', JSON.stringify(this.current))
       }
