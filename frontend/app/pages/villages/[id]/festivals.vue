@@ -26,6 +26,7 @@ import type { PostingIdentitySelection } from '~/components/VillagePostingIdenti
 definePageMeta({
   middleware: 'auth',
   layout: 'default',
+  key: route => route.fullPath,
 })
 
 const route = useRoute()

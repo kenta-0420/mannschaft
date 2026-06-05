@@ -19,6 +19,7 @@ import type { MembershipResponse, VillageResponse } from '~/types/village'
 definePageMeta({
   middleware: 'auth',
   layout: 'default',
+  key: route => route.fullPath,
 })
 
 const route = useRoute()
