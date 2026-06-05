@@ -3,6 +3,7 @@ package com.mannschaft.app.team.repository;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.visibility.TeamVisibilityProjection;
 import org.springframework.data.domain.Page;
+import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -19,6 +20,14 @@ import java.util.Optional;
  */
 public interface TeamRepository
         extends JpaRepository<TeamEntity, Long>, JpaSpecificationExecutor<TeamEntity> {
+
+    /**
+     * URL 公開用 publicId でチームを取得する（列挙攻撃対策）。
+     *
+     * @param publicId URL に公開する UUID
+     * @return 対応するチームエンティティ
+     */
+    Optional<TeamEntity> findByPublicId(UUID publicId);
 
     List<TeamEntity> findByVisibility(TeamEntity.Visibility visibility);
 

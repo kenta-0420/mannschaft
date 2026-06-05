@@ -12,11 +12,20 @@ import org.springframework.data.repository.query.Param;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 組織リポジトリ。
  */
 public interface OrganizationRepository extends JpaRepository<OrganizationEntity, Long> {
+
+    /**
+     * URL 公開用 publicId で組織を取得する（列挙攻撃対策）。
+     *
+     * @param publicId URL に公開する UUID
+     * @return 対応する組織エンティティ
+     */
+    Optional<OrganizationEntity> findByPublicId(UUID publicId);
 
     List<OrganizationEntity> findByVisibility(OrganizationEntity.Visibility visibility);
 

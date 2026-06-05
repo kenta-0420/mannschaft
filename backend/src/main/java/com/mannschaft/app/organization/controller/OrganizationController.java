@@ -53,6 +53,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
@@ -97,25 +98,27 @@ public class OrganizationController {
         return ResponseEntity.ok(organizationService.searchOrganizations(keyword, pageable));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{publicId}")
     @Operation(summary = "組織取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<OrganizationResponse>> getOrganization(@PathVariable Long id) {
-        return ResponseEntity.ok(organizationService.getOrganization(id));
+    public ResponseEntity<ApiResponse<OrganizationResponse>> getOrganization(@PathVariable UUID publicId) {
+        return ResponseEntity.ok(organizationService.getOrganization(publicId));
     }
 
-    @PatchMapping("/{id}")
+    @PatchMapping("/{publicId}")
     @Operation(summary = "組織更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<OrganizationResponse>> updateOrganization(
-            @PathVariable Long id, @Valid @RequestBody UpdateOrganizationRequest req) {
+            @PathVariable UUID publicId, @Valid @RequestBody UpdateOrganizationRequest req) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.ok(organizationService.updateOrganization(id, req));
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{publicId}")
     @Operation(summary = "組織削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
-    public ResponseEntity<Void> deleteOrganization(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteOrganization(@PathVariable UUID publicId) {
+        Long id = organizationService.resolveOrgId(publicId);
         Long userId = SecurityUtils.getCurrentUserIdOrNull();
         organizationService.deleteOrganization(id, userId);
         return ResponseEntity.noContent().build();
@@ -125,29 +128,32 @@ public class OrganizationController {
     // メンバー管理
     // ========================================
 
-    @GetMapping("/{id}/members")
+    @GetMapping("/{publicId}/members")
     @Operation(summary = "組織メンバー一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<MemberResponse>> getMembers(
-            @PathVariable Long id, Pageable pageable) {
+            @PathVariable UUID publicId, Pageable pageable) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.ok(organizationService.getMembers(id, pageable));
     }
 
-    @PatchMapping("/{id}/members/{userId}/role")
+    @PatchMapping("/{publicId}/members/{userId}/role")
     @Operation(summary = "メンバーロール変更")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "変更成功")
     public ResponseEntity<Void> changeRole(
-            @PathVariable Long id, @PathVariable Long userId,
+            @PathVariable UUID publicId, @PathVariable Long userId,
             @Valid @RequestBody RoleChangeRequest req) {
+        Long id = organizationService.resolveOrgId(publicId);
         roleService.changeRole(id, SCOPE_TYPE, userId, req, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/{id}/members/{userId}")
+    @DeleteMapping("/{publicId}/members/{userId}")
     @Operation(summary = "メンバー除名")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "除名成功")
     public ResponseEntity<Void> removeMember(
-            @PathVariable Long id, @PathVariable Long userId) {
+            @PathVariable UUID publicId, @PathVariable Long userId) {
+        Long id = organizationService.resolveOrgId(publicId);
         roleService.removeMember(id, SCOPE_TYPE, userId);
         return ResponseEntity.noContent().build();
     }
@@ -156,18 +162,20 @@ public class OrganizationController {
     // アーカイブ
     // ========================================
 
-    @PatchMapping("/{id}/archive")
+    @PatchMapping("/{publicId}/archive")
     @Operation(summary = "組織アーカイブ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ成功")
-    public ResponseEntity<Void> archiveOrganization(@PathVariable Long id) {
+    public ResponseEntity<Void> archiveOrganization(@PathVariable UUID publicId) {
+        Long id = organizationService.resolveOrgId(publicId);
         organizationService.archiveOrganization(id);
         return ResponseEntity.ok().build();
     }
 
-    @PatchMapping("/{id}/unarchive")
+    @PatchMapping("/{publicId}/unarchive")
     @Operation(summary = "組織アーカイブ解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ解除成功")
-    public ResponseEntity<Void> unarchiveOrganization(@PathVariable Long id) {
+    public ResponseEntity<Void> unarchiveOrganization(@PathVariable UUID publicId) {
+        Long id = organizationService.resolveOrgId(publicId);
         organizationService.unarchiveOrganization(id);
         return ResponseEntity.ok().build();
     }
@@ -176,26 +184,29 @@ public class OrganizationController {
     // フォロー（SUPPORTER）
     // ========================================
 
-    @PostMapping("/{id}/follow")
+    @PostMapping("/{publicId}/follow")
     @Operation(summary = "組織サポーター申請（自動承認ON→即時承認、OFF→PENDING申請作成）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "申請/承認成功")
-    public ResponseEntity<ApiResponse<FollowStatusResponse>> followOrganization(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<FollowStatusResponse>> followOrganization(@PathVariable UUID publicId) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(supporterService.follow(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, id));
     }
 
-    @DeleteMapping("/{id}/follow")
+    @DeleteMapping("/{publicId}/follow")
     @Operation(summary = "組織サポーター解除・申請取消（APPROVED/PENDING どちらも取消可）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "解除成功")
-    public ResponseEntity<Void> unfollowOrganization(@PathVariable Long id) {
+    public ResponseEntity<Void> unfollowOrganization(@PathVariable UUID publicId) {
+        Long id = organizationService.resolveOrgId(publicId);
         supporterService.unfollow(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, id);
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{id}/follow/status")
+    @GetMapping("/{publicId}/follow/status")
     @Operation(summary = "組織サポーター申請状態取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<FollowStatusResponse>> getFollowStatus(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<FollowStatusResponse>> getFollowStatus(@PathVariable UUID publicId) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.ok(
                 supporterService.getFollowStatus(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, id));
     }
@@ -204,61 +215,68 @@ public class OrganizationController {
     // サポーター管理（管理者向け）
     // ========================================
 
-    @GetMapping("/{id}/supporters")
+    @GetMapping("/{publicId}/supporters")
     @Operation(summary = "承認済みサポーター一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<SupporterResponse>> getSupporters(
-            @PathVariable Long id, Pageable pageable) {
+            @PathVariable UUID publicId, Pageable pageable) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.ok(supporterService.getSupporters(SCOPE_TYPE, id, pageable));
     }
 
-    @GetMapping("/{id}/supporter-applications")
+    @GetMapping("/{publicId}/supporter-applications")
     @Operation(summary = "サポーター申請一覧（全ステータス）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<SupporterApplicationResponse>> getSupporterApplications(
-            @PathVariable Long id, Pageable pageable) {
+            @PathVariable UUID publicId, Pageable pageable) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.ok(supporterService.getApplications(SCOPE_TYPE, id, pageable));
     }
 
-    @PostMapping("/{id}/supporter-applications/{applicationId}/approve")
+    @PostMapping("/{publicId}/supporter-applications/{applicationId}/approve")
     @Operation(summary = "サポーター申請を個別承認")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "承認成功")
     public ResponseEntity<Void> approveSupporterApplication(
-            @PathVariable Long id, @PathVariable Long applicationId) {
+            @PathVariable UUID publicId, @PathVariable Long applicationId) {
+        Long id = organizationService.resolveOrgId(publicId);
         supporterService.approve(applicationId, SCOPE_TYPE, id);
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/supporter-applications/{applicationId}/reject")
+    @PostMapping("/{publicId}/supporter-applications/{applicationId}/reject")
     @Operation(summary = "サポーター申請を個別却下")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "却下成功")
     public ResponseEntity<Void> rejectSupporterApplication(
-            @PathVariable Long id, @PathVariable Long applicationId) {
+            @PathVariable UUID publicId, @PathVariable Long applicationId) {
+        Long id = organizationService.resolveOrgId(publicId);
         supporterService.reject(applicationId, SCOPE_TYPE, id);
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/supporter-applications/bulk-approve")
+    @PostMapping("/{publicId}/supporter-applications/bulk-approve")
     @Operation(summary = "サポーター申請を一括承認")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "一括承認成功")
     public ResponseEntity<Void> bulkApproveSupporterApplications(
-            @PathVariable Long id, @Valid @RequestBody BulkApproveRequest request) {
+            @PathVariable UUID publicId, @Valid @RequestBody BulkApproveRequest request) {
+        Long id = organizationService.resolveOrgId(publicId);
         supporterService.bulkApprove(request, SCOPE_TYPE, id);
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{id}/supporter-settings")
+    @GetMapping("/{publicId}/supporter-settings")
     @Operation(summary = "サポーター設定取得（自動承認ON/OFF）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<SupporterSettingsResponse>> getSupporterSettings(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<SupporterSettingsResponse>> getSupporterSettings(@PathVariable UUID publicId) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.ok(ApiResponse.of(supporterService.getSettings(SCOPE_TYPE, id)));
     }
 
-    @PutMapping("/{id}/supporter-settings")
+    @PutMapping("/{publicId}/supporter-settings")
     @Operation(summary = "サポーター設定更新（自動承認ON/OFF）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<SupporterSettingsResponse>> updateSupporterSettings(
-            @PathVariable Long id, @RequestBody UpdateSupporterSettingsRequest request) {
+            @PathVariable UUID publicId, @RequestBody UpdateSupporterSettingsRequest request) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.ok(ApiResponse.of(supporterService.updateSettings(SCOPE_TYPE, id, request)));
     }
 
@@ -266,27 +284,29 @@ public class OrganizationController {
     // 招待トークン
     // ========================================
 
-    @PostMapping("/{id}/invite-tokens")
+    @PostMapping("/{publicId}/invite-tokens")
     @Operation(summary = "招待トークン作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<InviteTokenResponse>> createInviteToken(
-            @PathVariable Long id, @Valid @RequestBody CreateInviteTokenRequest req) {
+            @PathVariable UUID publicId, @Valid @RequestBody CreateInviteTokenRequest req) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(inviteService.createInviteToken(id, SCOPE_TYPE, req, SecurityUtils.getCurrentUserId()));
     }
 
-    @GetMapping("/{id}/invite-tokens")
+    @GetMapping("/{publicId}/invite-tokens")
     @Operation(summary = "招待トークン一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<InviteTokenResponse>>> getInviteTokens(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<List<InviteTokenResponse>>> getInviteTokens(@PathVariable UUID publicId) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.ok(ApiResponse.of(inviteService.getInviteTokens(id, SCOPE_TYPE)));
     }
 
-    @DeleteMapping("/{id}/invite-tokens/{tokenId}")
+    @DeleteMapping("/{publicId}/invite-tokens/{tokenId}")
     @Operation(summary = "招待トークン失効")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "失効成功")
     public ResponseEntity<Void> revokeInviteToken(
-            @PathVariable Long id, @PathVariable Long tokenId) {
+            @PathVariable UUID publicId, @PathVariable Long tokenId) {
         inviteService.revokeInviteToken(tokenId);
         return ResponseEntity.noContent().build();
     }
@@ -295,48 +315,51 @@ public class OrganizationController {
     // 権限グループ
     // ========================================
 
-    @GetMapping("/{id}/permission-groups")
+    @GetMapping("/{publicId}/permission-groups")
     @Operation(summary = "権限グループ一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<PermissionGroupResponse>>> getPermissionGroups(
-            @PathVariable Long id) {
+            @PathVariable UUID publicId) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.ok(ApiResponse.of(
                 permissionGroupService.getPermissionGroups(id, SCOPE_TYPE)));
     }
 
-    @PostMapping("/{id}/permission-groups")
+    @PostMapping("/{publicId}/permission-groups")
     @Operation(summary = "権限グループ作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<PermissionGroupResponse>> createPermissionGroup(
-            @PathVariable Long id, @Valid @RequestBody PermissionGroupRequest req) {
+            @PathVariable UUID publicId, @Valid @RequestBody PermissionGroupRequest req) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(permissionGroupService.createPermissionGroup(id, SCOPE_TYPE, req, SecurityUtils.getCurrentUserId()));
     }
 
-    @PatchMapping("/{id}/permission-groups/{groupId}")
+    @PatchMapping("/{publicId}/permission-groups/{groupId}")
     @Operation(summary = "権限グループ更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<PermissionGroupResponse>> updatePermissionGroup(
-            @PathVariable Long id, @PathVariable Long groupId,
+            @PathVariable UUID publicId, @PathVariable Long groupId,
             @Valid @RequestBody PermissionGroupRequest req) {
         return ResponseEntity.ok(permissionGroupService.updatePermissionGroup(groupId, req));
     }
 
-    @DeleteMapping("/{id}/permission-groups/{groupId}")
+    @DeleteMapping("/{publicId}/permission-groups/{groupId}")
     @Operation(summary = "権限グループ削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePermissionGroup(
-            @PathVariable Long id, @PathVariable Long groupId) {
+            @PathVariable UUID publicId, @PathVariable Long groupId) {
         permissionGroupService.deletePermissionGroup(groupId);
         return ResponseEntity.noContent().build();
     }
 
-    @PutMapping("/{id}/members/{userId}/permission-groups")
+    @PutMapping("/{publicId}/members/{userId}/permission-groups")
     @Operation(summary = "ユーザー権限グループ割当")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "割当成功")
     public ResponseEntity<Void> assignUserPermissionGroups(
-            @PathVariable Long id, @PathVariable Long userId,
+            @PathVariable UUID publicId, @PathVariable Long userId,
             @Valid @RequestBody UserPermissionGroupAssignRequest req) {
+        Long id = organizationService.resolveOrgId(publicId);
         permissionGroupService.assignUserPermissionGroups(
                 userId, id, SCOPE_TYPE, req, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
@@ -346,27 +369,30 @@ public class OrganizationController {
     // ブロック
     // ========================================
 
-    @GetMapping("/{id}/blocks")
+    @GetMapping("/{publicId}/blocks")
     @Operation(summary = "ブロック一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<BlockResponse>>> getBlocks(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<List<BlockResponse>>> getBlocks(@PathVariable UUID publicId) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.ok(ApiResponse.of(blockService.getBlocks(id, SCOPE_TYPE)));
     }
 
-    @PostMapping("/{id}/blocks")
+    @PostMapping("/{publicId}/blocks")
     @Operation(summary = "ユーザーブロック")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "ブロック成功")
     public ResponseEntity<ApiResponse<BlockResponse>> blockUser(
-            @PathVariable Long id, @Valid @RequestBody BlockRequest req) {
+            @PathVariable UUID publicId, @Valid @RequestBody BlockRequest req) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(blockService.blockUser(id, SCOPE_TYPE, req, SecurityUtils.getCurrentUserId()));
     }
 
-    @DeleteMapping("/{id}/blocks/{userId}")
+    @DeleteMapping("/{publicId}/blocks/{userId}")
     @Operation(summary = "ユーザーブロック解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "ブロック解除成功")
     public ResponseEntity<Void> unblockUser(
-            @PathVariable Long id, @PathVariable Long userId) {
+            @PathVariable UUID publicId, @PathVariable Long userId) {
+        Long id = organizationService.resolveOrgId(publicId);
         Long unblockedBy = SecurityUtils.getCurrentUserIdOrNull();
         blockService.unblockUser(id, SCOPE_TYPE, userId, unblockedBy);
         return ResponseEntity.noContent().build();
@@ -376,30 +402,33 @@ public class OrganizationController {
     // 自分の権限・退会・オーナー譲渡
     // ========================================
 
-    @GetMapping("/{id}/me/permissions")
+    @GetMapping("/{publicId}/me/permissions")
     @Operation(summary = "自分の有効権限取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<EffectivePermissionsResponse>> getMyPermissions(
-            @PathVariable Long id) {
+            @PathVariable UUID publicId) {
+        Long id = organizationService.resolveOrgId(publicId);
         Long userId = SecurityUtils.getCurrentUserId();
         List<String> permissions = roleService.resolveEffectivePermissions(userId, id, SCOPE_TYPE);
         String roleName = accessControlService.getRoleName(userId, id, SCOPE_TYPE);
         return ResponseEntity.ok(ApiResponse.of(new EffectivePermissionsResponse(roleName, permissions)));
     }
 
-    @PostMapping("/{id}/transfer-ownership")
+    @PostMapping("/{publicId}/transfer-ownership")
     @Operation(summary = "オーナー譲渡")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "譲渡成功")
     public ResponseEntity<Void> transferOwnership(
-            @PathVariable Long id, @RequestParam Long targetUserId) {
+            @PathVariable UUID publicId, @RequestParam Long targetUserId) {
+        Long id = organizationService.resolveOrgId(publicId);
         roleService.transferOwnership(id, SCOPE_TYPE, SecurityUtils.getCurrentUserId(), targetUserId);
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/{id}/me")
+    @DeleteMapping("/{publicId}/me")
     @Operation(summary = "組織退会")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "退会成功")
-    public ResponseEntity<Void> leaveOrganization(@PathVariable Long id) {
+    public ResponseEntity<Void> leaveOrganization(@PathVariable UUID publicId) {
+        Long id = organizationService.resolveOrgId(publicId);
         roleService.leaveScope(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.noContent().build();
     }
@@ -415,7 +444,7 @@ public class OrganizationController {
      * 非メンバー＆非子孫メンバーで 403 を返す。各祖先はその visibility / hierarchyVisibility に応じて
      * フル情報・限定情報・プレースホルダ（{@code hidden: true}）のいずれかとして返す。</p>
      */
-    @GetMapping("/{id}/ancestors")
+    @GetMapping("/{publicId}/ancestors")
     @Operation(summary = "祖先組織一覧（階層パンくず用）",
             description = "対象組織の上位組織チェーンを root から直近の親の順に返す。" +
                     "max-depth (default 5) を超える場合は途中で打ち切り、meta.truncated=true を立てる。")
@@ -426,7 +455,8 @@ public class OrganizationController {
             description = "PRIVATE 組織で呼び出し者が直接所属でも子孫メンバーでもない")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
             description = "対象組織が存在しない / 論理削除済み")
-    public ResponseEntity<AncestorsResponse> getAncestors(@PathVariable Long id) {
+    public ResponseEntity<AncestorsResponse> getAncestors(@PathVariable UUID publicId) {
+        Long id = organizationService.resolveOrgId(publicId);
         Long requesterId = SecurityUtils.getCurrentUserIdOrNull();
         return ResponseEntity.ok(organizationService.getAncestors(id, requesterId));
     }
@@ -434,7 +464,7 @@ public class OrganizationController {
     /**
      * 対象組織の直近の子組織一覧を返す（深い孫は含まない）。
      */
-    @GetMapping("/{id}/children")
+    @GetMapping("/{publicId}/children")
     @Operation(summary = "直近の子組織一覧",
             description = "parent_organization_id = id かつ未削除の子組織のみ返す。" +
                     "PRIVATE 子組織は呼び出し者が直接所属メンバーの場合のみ含める。")
@@ -445,9 +475,10 @@ public class OrganizationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
             description = "対象組織が存在しない / 論理削除済み")
     public ResponseEntity<ChildrenResponse> getChildren(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "50") int size) {
+        Long id = organizationService.resolveOrgId(publicId);
         Long requesterId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(organizationService.getChildren(id, requesterId, cursor, size));
     }
@@ -456,10 +487,11 @@ public class OrganizationController {
     // 組織所属チーム一覧
     // ========================================
 
-    @GetMapping("/{id}/teams")
+    @GetMapping("/{publicId}/teams")
     @Operation(summary = "組織所属チーム一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<OrgTeamSummaryResponse>>> getTeams(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<List<OrgTeamSummaryResponse>>> getTeams(@PathVariable UUID publicId) {
+        Long id = organizationService.resolveOrgId(publicId);
         return ResponseEntity.ok(ApiResponse.of(organizationService.getTeams(id)));
     }
 
@@ -467,13 +499,14 @@ public class OrganizationController {
     // 組織配下全メンバー一覧
     // ========================================
 
-    @GetMapping("/{id}/members/all")
+    @GetMapping("/{publicId}/members/all")
     @Operation(summary = "組織配下全メンバー一覧（カスケード通知用）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<CursorPagedResponse<OrgAllMembersResponse>> getAllMembers(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @RequestParam(defaultValue = "INDIVIDUAL") String scope,
             @RequestParam(defaultValue = "50") int size) {
+        Long id = organizationService.resolveOrgId(publicId);
         List<OrgAllMembersResponse> members = organizationService.getAllMembers(id, scope);
         var meta = new CursorPagedResponse.CursorMeta(null, false, size);
         return ResponseEntity.ok(CursorPagedResponse.of(members, meta));
@@ -483,10 +516,11 @@ public class OrganizationController {
     // 組織の復元（SYSTEM_ADMIN専用）
     // ========================================
 
-    @PatchMapping("/{id}/restore")
+    @PatchMapping("/{publicId}/restore")
     @Operation(summary = "組織復元（SYSTEM_ADMINのみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "復元成功")
-    public ResponseEntity<Void> restoreOrganization(@PathVariable Long id) {
+    public ResponseEntity<Void> restoreOrganization(@PathVariable UUID publicId) {
+        Long id = organizationService.resolveOrgId(publicId);
         organizationService.restoreOrganization(id);
         return ResponseEntity.noContent().build();
     }
