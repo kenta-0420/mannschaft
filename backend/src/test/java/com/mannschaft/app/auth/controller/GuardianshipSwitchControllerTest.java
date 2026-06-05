@@ -2,8 +2,10 @@ package com.mannschaft.app.auth.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.dto.BlockedChildDto;
+import com.mannschaft.app.auth.dto.IndependenceStatusResponse;
 import com.mannschaft.app.auth.dto.SwitchableChildDto;
 import com.mannschaft.app.auth.dto.SwitchableChildrenResponse;
+import com.mannschaft.app.auth.guardianship.GuardianshipHandoverService;
 import com.mannschaft.app.auth.guardianship.GuardianshipSwitchService;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.GlobalExceptionHandler;
@@ -58,6 +60,8 @@ class GuardianshipSwitchControllerTest {
 
     @Mock
     private GuardianshipSwitchService guardianshipSwitchService;
+    @Mock
+    private GuardianshipHandoverService guardianshipHandoverService;
 
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -69,7 +73,7 @@ class GuardianshipSwitchControllerTest {
         objectMapper.findAndRegisterModules();
         MessageSource ms = new StaticMessageSource();
         GuardianshipSwitchController controller =
-                new GuardianshipSwitchController(guardianshipSwitchService);
+                new GuardianshipSwitchController(guardianshipSwitchService, guardianshipHandoverService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .setControllerAdvice(new GlobalExceptionHandler(ms))
@@ -190,5 +194,91 @@ class GuardianshipSwitchControllerTest {
                         .param("childUserId", "11"))
                 .andExpect(status().isNoContent());
         verify(guardianshipSwitchService).endSwitch(GUARDIAN_USER_ID, 11L);
+    }
+
+    // ========================================
+    // GET /children/{id}/independence-status（F08.9 P3c-2）
+    // ========================================
+
+    @Test
+    @DisplayName("GET independence-status 正常系: 200 / camelCase / sealDate を含む")
+    void independenceStatus_200() throws Exception {
+        given(guardianshipSwitchService.getIndependenceStatus(eq(GUARDIAN_USER_ID), eq(11L)))
+                .willReturn(new IndependenceStatusResponse(
+                        11L, "elementary", true, java.time.LocalDate.parse("2027-04-01"), false));
+
+        mockMvc.perform(get("/api/v1/me/guardianship/children/11/independence-status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.childUserId").value(11))
+                .andExpect(jsonPath("$.data.stageKey").value("elementary"))
+                .andExpect(jsonPath("$.data.switchAllowed").value(true))
+                .andExpect(jsonPath("$.data.sealDate").value("2027-04-01"))
+                .andExpect(jsonPath("$.data.passwordSet").value(false));
+    }
+
+    @Test
+    @DisplayName("GET independence-status IDOR: 403 GUARDIANSHIP_LINK_NOT_FOUND（MEMBERSHIP_BILLING_005）")
+    void independenceStatus_idor_403() throws Exception {
+        given(guardianshipSwitchService.getIndependenceStatus(eq(GUARDIAN_USER_ID), eq(11L)))
+                .willThrow(new com.mannschaft.app.common.BusinessException(
+                        com.mannschaft.app.payment.MembershipBillingErrorCode.GUARDIANSHIP_LINK_NOT_FOUND));
+
+        mockMvc.perform(get("/api/v1/me/guardianship/children/11/independence-status"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("MEMBERSHIP_BILLING_005"));
+    }
+
+    // ========================================
+    // POST /children/{id}/handover/initiate（F08.9 P3c-2）
+    // ========================================
+
+    @Test
+    @DisplayName("POST handover 正常系（body 省略）: 204 / Service へ (guardian, child, null) が渡る")
+    void handover_noBody_204() throws Exception {
+        mockMvc.perform(post("/api/v1/me/guardianship/children/11/handover/initiate"))
+                .andExpect(status().isNoContent());
+        verify(guardianshipHandoverService)
+                .initiateHandover(eq(GUARDIAN_USER_ID), eq(11L), org.mockito.ArgumentMatchers.isNull(),
+                        org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    @DisplayName("POST handover 正常系（childEmail 指定）: 204 / Service へメールが渡る")
+    void handover_withEmail_204() throws Exception {
+        mockMvc.perform(post("/api/v1/me/guardianship/children/11/handover/initiate")
+                        .contentType("application/json")
+                        .content("{\"childEmail\":\"new-child@example.com\"}"))
+                .andExpect(status().isNoContent());
+        verify(guardianshipHandoverService)
+                .initiateHandover(eq(GUARDIAN_USER_ID), eq(11L), eq("new-child@example.com"),
+                        org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    @DisplayName("POST handover メール必須エラー: 400 MEMBERSHIP_BILLING_006")
+    void handover_emailRequired_400() throws Exception {
+        org.mockito.BDDMockito.willThrow(new com.mannschaft.app.common.BusinessException(
+                        com.mannschaft.app.payment.MembershipBillingErrorCode.GUARDIANSHIP_HANDOVER_EMAIL_REQUIRED))
+                .given(guardianshipHandoverService)
+                .initiateHandover(eq(GUARDIAN_USER_ID), eq(11L), org.mockito.ArgumentMatchers.isNull(),
+                        org.mockito.ArgumentMatchers.anyString());
+
+        mockMvc.perform(post("/api/v1/me/guardianship/children/11/handover/initiate"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("MEMBERSHIP_BILLING_006"));
+    }
+
+    @Test
+    @DisplayName("POST handover acting-as 中: 403 MEMBERSHIP_BILLING_003")
+    void handover_actingAs_403() throws Exception {
+        org.mockito.BDDMockito.willThrow(new com.mannschaft.app.common.BusinessException(
+                        com.mannschaft.app.payment.MembershipBillingErrorCode.MEMBERSHIP_AUTHENTICATION_CRITICAL_OPERATION))
+                .given(guardianshipHandoverService)
+                .initiateHandover(eq(GUARDIAN_USER_ID), eq(11L), org.mockito.ArgumentMatchers.isNull(),
+                        org.mockito.ArgumentMatchers.anyString());
+
+        mockMvc.perform(post("/api/v1/me/guardianship/children/11/handover/initiate"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("MEMBERSHIP_BILLING_003"));
     }
 }

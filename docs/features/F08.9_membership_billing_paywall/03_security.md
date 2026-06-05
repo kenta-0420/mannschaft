@@ -42,6 +42,7 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
 ```
 
 - 結果（`SELF`/`GUARDIAN`/`GUARDIAN_PROXY`/`PROXY_GRANT`/`ADMIN_MANUAL`）と権原ID（grant_id 等）を `member_payments.payer_relationship`/`payment_proxy_grant_id` に**記録**（監査・非否認）。**後見切替セッション中（`X-Proxy-For-User-Id` 付き）の決済は `GUARDIAN`（保護者リンクで権原成立）だが `payer_relationship=GUARDIAN_PROXY` として区別記録**し、「子の自己払い」と誤読させない。
+  - **実装（P3c-2・2026-06-05）**: `PaymentAuthorizationService` に `ProxyInputContext`（RequestScope・`AuthenticationCriticalOperationGuard` と同じ scoped proxy 注入）を注入し、`GUARDIAN_PROXY` を実評価する。条件は「GUARDIAN 成立（保護者リンク）**かつ** `proxyInputContext.isProxy()`（`X-Proxy-For-User-Id` 付き）**かつ** 切替対象の子（`subjectUserId`）＝受益者（`beneficiaryUserId`）」で、このとき `GUARDIAN_PROXY` を `GUARDIAN` より優先して返す。本人払い（`SELF`）は先に確定するため切替中でも子自身の自己払いは `SELF`。別の子へ acting-as 中（`subject≠beneficiary`）の支払いは誤分類せず `GUARDIAN`。権原評価そのものは `GUARDIAN` と同一（保護者リンクが無ければ `isProxy` でも 403）。
 - **F14.1 の代理権は本 authorizePayment の経路に含めない**（日常の代理払いは SELF/保護者リンク/grant/ADMIN の4経路のみ）。代理権スコープ `PAYMENT` は紙同意書ベースの**組織代理の重い経路**として温存し、必要時に別途評価する（README §3.3 と一致）。
   - **是正（2026-06-04）**: scope `PAYMENT` は実在の `proxy_input_consent_scopes.feature_scope`（VARCHAR(64)・V18.011・CHECK なし・実機確認済）に **enum 値 `PAYMENT` を1つ足すだけ**で表現する（`proxy_input_consents` 本体への列追加・DDL は不要）。代理払い認可・退会失効はこの scope 行（同意書ごとの許可スコープ）で判定する。
   - **実装（P3b・2026-06-04）**: `FeatureScope.PAYMENT` を追加（DDL 不要）。`ProxyInputContextFilter` は検証済み同意書の許可スコープ集合を `ProxyInputContext.activate(...)` に渡し、決済系 Service は `ProxyInputContext.hasScope(FeatureScope.PAYMENT)` で代理払いの要求スコープを検証できる（素地）。実際の代理払い認可経路（`authorizePayment` での scope `PAYMENT` 評価）は P1/P3c の管轄。
@@ -62,6 +63,7 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
   - JP：2013-04-02 生まれ × 2026-03-31 → `switchAllowed=true`／× 2026-04-01 → `false`。学年早生まれ（4/1 生まれ＝前学年）を明記しテスト化。
   - フォールバック：未対応国コード × 満13歳前後で境界が満13歳誕生日になること。
   - 共通：`switchAllowed=true` のときのみ切替 API が成功し、`false` で 403。`country_code` 欠落時はフォールバック適用。
+- **封印境界日（P3c-2・2026-06-05）**: `GuardianshipAgePolicy.sealDate(birthDate, clock)` が `switchAllowed` が `false` に変わる最初の日（封印発火日）を返す。JP＝満12歳に達する年度の翌4/1、フォールバック＝満13歳の誕生日。`clock` 非依存で生年月日から一意（既に封印済みでも過去日を返す）。`resolve` の境界と整合（境界日当日に `switchAllowed=false`）。自立移行ステータス（`independence-status`）と 3ヶ月前事前通知（第三波）で参照する。
 
 ### 3.2 切替セッションの安全境界（なりすまし防止）
 - 切替は **JWT 再発行せず**、actor=保護者のまま `X-Proxy-For-User-Id=child` を `ProxyInputContextFilter`（F14.1）で検証。`isProxy()` 下の操作はすべて代理として `proxy_input_records` に記録。
@@ -75,6 +77,7 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
 - 監査：切替の開始/終了・代理操作を `audit_logs`（センシティブ）＋`proxy_input_records` に二重記録。`unconfirmedVisibility` 等は対象外。
   - **実装（P3c・2026-06-05）**：開始は `audit_logs`（`GUARDIANSHIP_SWITCH_STARTED`・userId=保護者/targetUserId=子）＋ `proxy_input_records`（consent_id=NULL・`input_source=GUARDIANSHIP_SWITCH`・`feature_scope=PAYMENT`）の二重記録。終了は `audit_logs`（`GUARDIANSHIP_SWITCH_ENDED`）のみ（ステートレスゆえ解除すべきサーバ状態なし）。`proxy_input_records.proxy_input_consent_id` の NULLABLE 化は V74.010（01_data_model §6 参照）。
 - 中学進学（年齢到達）で進行中の切替権原は**自動失効**（バッチ＋実行時ゲートの二重防御）。
+- **自立移行の引き継ぎ（P3c-2・2026-06-05）**：`POST /api/v1/me/guardianship/children/{childUserId}/handover/initiate` は保護者本人の権原で子のメールへパスワード設定リンクを送る操作であり、後見切替セッション（acting-as）とは無関係（`X-Proxy-For-User-Id` 無しで呼ぶ）。混乱・なりすまし経路を避けるため `AuthenticationCriticalOperationGuard.assertNotActingAs()` を適用し、acting-as 中の呼び出しは 403（`MEMBERSHIP_BILLING_003`）。認可は有効な保護者リンク（`isApprovedGuardian`/`isActiveParentWatcher`）のみで、他人の子は 403（`GUARDIANSHIP_LINK_NOT_FOUND`・IDOR 防止）。メール送付は F01.9 の `AuthPasswordResetService` を流用し F09.18 outbox 経由（`EmailService.sendEmail` 直呼びしない）。`independence-status`（`GET`）も同じ保護者リンク検証で IDOR を塞ぐ。
 
 ---
 

@@ -172,6 +172,58 @@ public class GuardianshipSwitchService {
     }
 
     /**
+     * 子の自立移行ステータスを返す（02_api_design §2.3）。
+     *
+     * <p>保護者が「子がいつ自立段階に入るか（封印境界日）」「引き継ぎ（パスワード設定）が済んでいるか」を
+     * 把握するための情報を返す。封印済み（{@code switchAllowed=false}）の子も {@code AGE_LOCKED} で
+     * 例外にせず、現在段階・境界日・パスワード設定有無を返す（切替は不可でも状況把握は必要）。</p>
+     *
+     * <p><b>IDOR 防止</b>: 呼び出し元（保護者）が当該子の有効な保護者でない場合は
+     * {@link MembershipBillingErrorCode#GUARDIANSHIP_LINK_NOT_FOUND}（403）。他人の子の状態は一切返さない。
+     * 生年月日が解決できない子は安全側で {@code switchAllowed=false}・{@code stageKey="independent"} とし、
+     * 境界日は {@code null} で返す（症状を隠さず記録）。</p>
+     *
+     * @param guardianUserId 保護者（認証ユーザー）のユーザーID
+     * @param childUserId    対象の子のユーザーID
+     * @return 自立移行ステータス
+     * @throws BusinessException 有効な保護者リンクがない（{@code GUARDIANSHIP_LINK_NOT_FOUND} 403・IDOR）
+     */
+    public com.mannschaft.app.auth.dto.IndependenceStatusResponse getIndependenceStatus(
+            Long guardianUserId, Long childUserId) {
+        // 保護者リンク検証（IDOR 防止）。リンクなし／他人の子は 403。
+        boolean linked = guardianUserId != null && childUserId != null
+                && (parentalConsentService.isApprovedGuardian(guardianUserId, childUserId)
+                || careLinkService.isActiveParentWatcher(guardianUserId, childUserId));
+        if (!linked) {
+            log.warn("自立移行ステータス取得拒否: 有効な保護者リンクなし guardianUserId={}, childUserId={}",
+                    guardianUserId, childUserId);
+            throw new BusinessException(MembershipBillingErrorCode.GUARDIANSHIP_LINK_NOT_FOUND);
+        }
+
+        UserEntity child = userRepository.findById(childUserId).orElse(null);
+        if (child == null) {
+            // リンクはあるが子が存在しない不整合 → IDOR と同様に 403（情報を漏らさない）。
+            log.warn("自立移行ステータス取得拒否: 子ユーザー不在 childUserId={}", childUserId);
+            throw new BusinessException(MembershipBillingErrorCode.GUARDIANSHIP_LINK_NOT_FOUND);
+        }
+
+        boolean passwordSet = child.getPasswordHash() != null && !child.getPasswordHash().isBlank();
+        LocalDate birthDate = parseBirthDate(child);
+        if (birthDate == null) {
+            // 生年月日が解決できない子は安全側で封印扱い（境界日は算出不能ゆえ null）。
+            log.warn("自立移行ステータス: 子 userId={} の birthDate 解決不能のため安全側（封印扱い）", childUserId);
+            return new com.mannschaft.app.auth.dto.IndependenceStatusResponse(
+                    childUserId, "independent", false, null, passwordSet);
+        }
+
+        GuardianshipAgePolicy policy = agePolicyRegistry.forCountry(child.getCountryCode());
+        AgeStageResolution resolution = policy.resolve(birthDate, clock);
+        LocalDate sealDate = policy.sealDate(birthDate, clock);
+        return new com.mannschaft.app.auth.dto.IndependenceStatusResponse(
+                childUserId, resolution.stageKey(), resolution.switchAllowed(), sealDate, passwordSet);
+    }
+
+    /**
      * 後見切替セッションを開始する（02_api_design §2.2 / 03_security §3.2）。
      *
      * <p>サーバ側ステートレス（セッションテーブルを持たない）。本メソッドは

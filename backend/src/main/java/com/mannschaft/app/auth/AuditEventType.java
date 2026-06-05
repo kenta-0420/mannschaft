@@ -381,7 +381,13 @@ public enum AuditEventType {
      * 後見切替セッションを終了した（acting-as 終了・本人へ復帰）。
      * userId=保護者 / targetUserId=子。
      */
-    GUARDIANSHIP_SWITCH_ENDED(AuditEventCategory.PAYMENT);
+    GUARDIANSHIP_SWITCH_ENDED(AuditEventCategory.PAYMENT),
+
+    /**
+     * 保護者が子の自立移行の引き継ぎ（パスワード設定リンク送付）を開始した（F08.9 P3c-2・02_api §2.3）。
+     * userId=保護者 / targetUserId=子。childEmail を新規登録した場合は metadata に記録する。
+     */
+    GUARDIANSHIP_HANDOVER_INITIATED(AuditEventCategory.PAYMENT);
 
     private final AuditEventCategory category;
 }

@@ -77,4 +77,38 @@ class DefaultGuardianshipAgePolicyTest {
     void supportedCountryCodeNull() {
         assertThat(policy.supportedCountryCode()).isNull();
     }
+
+    @org.junit.jupiter.api.Nested
+    @DisplayName("sealDate（封印境界日＝満13歳の誕生日・F08.9 P3c-2）")
+    class SealDate {
+
+        @Test
+        @DisplayName("満13歳の誕生日が境界日（clock 非依存）")
+        void sealDateIs13thBirthday() {
+            LocalDate birthDate = LocalDate.parse("2013-06-15");
+            assertThat(policy.sealDate(birthDate, clockAt(LocalDate.parse("2020-01-01"))))
+                    .isEqualTo(LocalDate.parse("2026-06-15"));
+            // clock を変えても結果は同じ（生年月日から一意）。
+            assertThat(policy.sealDate(birthDate, clockAt(LocalDate.parse("2099-12-31"))))
+                    .isEqualTo(LocalDate.parse("2026-06-15"));
+        }
+
+        @Test
+        @DisplayName("封印日当日に resolve が false に変わる（境界日の整合）")
+        void sealDateMatchesResolveBoundary() {
+            LocalDate birthDate = LocalDate.parse("2013-06-15");
+            LocalDate seal = policy.sealDate(birthDate, clockAt(LocalDate.parse("2020-01-01")));
+            // 封印日前日は切替可、封印日当日は封印。
+            assertThat(policy.resolve(birthDate, clockAt(seal.minusDays(1))).switchAllowed()).isTrue();
+            assertThat(policy.resolve(birthDate, clockAt(seal)).switchAllowed()).isFalse();
+        }
+
+        @Test
+        @DisplayName("うるう年 2/29 生まれ: 13歳の境界日は plusYears 規約で 2/28")
+        void leapDaySealDate() {
+            LocalDate birthDate = LocalDate.parse("2012-02-29");
+            assertThat(policy.sealDate(birthDate, clockAt(LocalDate.parse("2020-01-01"))))
+                    .isEqualTo(LocalDate.parse("2025-02-28"));
+        }
+    }
 }

@@ -135,6 +135,42 @@ class JapanGuardianshipAgePolicyTest {
     }
 
     @Nested
+    @DisplayName("sealDate（封印境界日＝満12歳に達する年度の翌4/1・F08.9 P3c-2）")
+    class SealDate {
+
+        @Test
+        @DisplayName("2013-04-02 生まれ → 境界日 2026-04-01（clock 非依存）")
+        void born20130402_seal20260401() {
+            LocalDate birthDate = LocalDate.parse("2013-04-02");
+            assertThat(policy.sealDate(birthDate, jstClockAt(LocalDate.parse("2020-01-01"))))
+                    .isEqualTo(LocalDate.parse("2026-04-01"));
+            // clock を変えても結果は同じ（生年月日から一意）。
+            assertThat(policy.sealDate(birthDate, jstClockAt(LocalDate.parse("2099-12-31"))))
+                    .isEqualTo(LocalDate.parse("2026-04-01"));
+        }
+
+        @Test
+        @DisplayName("4/1 生まれ＝前学年: 2013-04-01 生まれ → 境界日 2025-04-01（4/2 生まれより一年早い）")
+        void born20130401_seal20250401() {
+            assertThat(policy.sealDate(LocalDate.parse("2013-04-01"), jstClockAt(LocalDate.parse("2020-01-01"))))
+                    .isEqualTo(LocalDate.parse("2025-04-01"));
+            // 一日違いの 4/2 生まれは一年遅い境界。
+            assertThat(policy.sealDate(LocalDate.parse("2013-04-02"), jstClockAt(LocalDate.parse("2020-01-01"))))
+                    .isEqualTo(LocalDate.parse("2026-04-01"));
+        }
+
+        @Test
+        @DisplayName("封印日当日に resolve が false へ変わる（境界日の整合）")
+        void sealDateMatchesResolveBoundary() {
+            LocalDate birthDate = LocalDate.parse("2013-04-02");
+            LocalDate seal = policy.sealDate(birthDate, jstClockAt(LocalDate.parse("2020-01-01")));
+            assertThat(seal).isEqualTo(LocalDate.parse("2026-04-01"));
+            assertThat(policy.resolve(birthDate, jstClockAt(seal.minusDays(1))).switchAllowed()).isTrue();
+            assertThat(policy.resolve(birthDate, jstClockAt(seal)).switchAllowed()).isFalse();
+        }
+    }
+
+    @Nested
     @DisplayName("3月内の複数日でオフバイワンなし（同一学年として年度末まで切替可）")
     class MarchMultipleDaysWithinSameGrade {
 

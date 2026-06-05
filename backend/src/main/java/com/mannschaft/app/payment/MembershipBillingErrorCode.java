@@ -87,6 +87,20 @@ public enum MembershipBillingErrorCode implements ErrorCode {
     GUARDIANSHIP_LINK_NOT_FOUND(
             "MEMBERSHIP_BILLING_005",
             "有効な保護者リンクが見つからないため後見切替できません",
+            Severity.WARN),
+
+    /**
+     * 自立移行の引き継ぎ（パスワード設定リンク送付）に必要な子のメールアドレスが解決できない。400。
+     *
+     * <p>子が未登録メール かつ {@code childEmail} も未指定の場合に投げる。逆に子に既存メールが
+     * あるのに {@code childEmail} を指定した場合（上書き要求＝メール変更フローの迂回）も本コードで弾く。</p>
+     *
+     * <p>設計書: docs/features/F08.9_membership_billing_paywall/02_api_design.md §2.3
+     * （{@code handover/initiate}・子メールが無ければ保護者が登録）。</p>
+     */
+    GUARDIANSHIP_HANDOVER_EMAIL_REQUIRED(
+            "MEMBERSHIP_BILLING_006",
+            "引き継ぎにはお子さまのメールアドレスが必要です",
             Severity.WARN);
 
     private final String code;
