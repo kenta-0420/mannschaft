@@ -125,7 +125,7 @@ onMounted(async () => {
 
         <!-- TabPanels はパディングあり -->
         <div class="px-6 pb-6">
-          <TabPanels>
+          <TabPanels class="!bg-transparent">
             <TabPanel :value="0">
               <div class="mt-4">
                 <ScopeDashboard
