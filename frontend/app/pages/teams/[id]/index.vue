@@ -150,11 +150,12 @@ onMounted(async () => {
             <Tab v-if="isAdmin && team.visibility?.supporterEnabled" :value="4"> サポーター管理 </Tab>
             <Tab v-if="isAdmin" :value="5"> 機能設定 </Tab>
             <Tab v-if="isAdmin" :value="6"> {{ $t('nav.tab') }} </Tab>
+            <Tab v-if="roleName" :value="7"> フレンドチーム </Tab>
           </TabList>
         </div>
 
         <!-- TabPanels はパディングあり -->
-        <div class="px-6 pb-6">
+        <div class="px-6 pb-6 bg-surface-50 dark:bg-surface-950">
           <TabPanels>
             <TabPanel :value="0">
               <div class="mt-4">
@@ -245,6 +246,16 @@ onMounted(async () => {
                 <NuxtLink :to="`/teams/${teamId}/friend-forward-exports`">
                   <Button :label="$t('forward_exports.title')" icon="pi pi-history" class="w-full" outlined />
                 </NuxtLink>
+              </div>
+            </TabPanel>
+
+            <TabPanel v-if="roleName" :value="7">
+              <div class="mt-4">
+                <TeamFriendList
+                  :team-id="teamId"
+                  :can-edit="isAdminOrDeputy"
+                  :can-toggle-visibility="isAdmin"
+                />
               </div>
             </TabPanel>
           </TabPanels>
