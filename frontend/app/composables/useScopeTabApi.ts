@@ -64,9 +64,10 @@ interface RawActionRequiredSummary {
 
 function toScopeTabItem(r: RawScopeTabItem): ScopeTabItem {
   return {
-    // public_id（UUID）を優先して使用する。BEがpublic_idを返せない場合のみBIGINTにフォールバック。
-    // ダッシュボードAPIの pathVariable（/team/{publicId}）には UUID が必要なため。
-    scopeId: r.public_id ?? String(r.scope_id),
+    // scopeId は BIGINT のまま保持する（PUT /scope-tabs/order の scopeId は Long 型）。
+    // ダッシュボード API の pathVariable には publicId（UUID）を使用する。
+    scopeId: String(r.scope_id),
+    publicId: r.public_id ?? null,
     scopeType: r.scope_type,
     name: r.name,
     avatarUrl: r.avatar_url,
