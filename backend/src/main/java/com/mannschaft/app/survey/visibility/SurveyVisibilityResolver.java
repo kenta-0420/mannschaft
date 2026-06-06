@@ -32,7 +32,7 @@ import java.util.Objects;
  *
  * <p><strong>機能側 visibility との対応</strong>（§5.2）:</p>
  * <ul>
- *   <li>{@link ResultsVisibility#ADMINS_ONLY} → {@link StandardVisibility#ADMINS_ONLY}</li>
+ *   <li>{@link ResultsVisibility#ADMINS_ONLY} → {@link StandardVisibility#ADMINS_AND_ABOVE}</li>
  *   <li>{@link ResultsVisibility#AFTER_RESPONSE} → {@link StandardVisibility#CUSTOM}
  *       （回答済みユーザーのみ可視。判定は {@link SurveyResponseRepository}）</li>
  *   <li>{@link ResultsVisibility#AFTER_CLOSE} → {@link StandardVisibility#CUSTOM}

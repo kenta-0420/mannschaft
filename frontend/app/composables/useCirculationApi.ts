@@ -13,7 +13,7 @@ import type {
 
 interface CirculationListParams {
   scopeType: string
-  scopeId: number
+  scopeId: string
   status?: string
   keyword?: string
   overdueOnly?: boolean
@@ -56,7 +56,7 @@ export function useCirculationApi() {
 
   async function createCirculation(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: CirculationResponse }>('/api/v1/circulation', {
@@ -120,7 +120,7 @@ export function useCirculationApi() {
   // === Scoped Circulation CRUD ===
   async function listScopedCirculations(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: { page?: number; size?: number },
   ) {
     const base =
@@ -136,7 +136,7 @@ export function useCirculationApi() {
 
   async function createScopedCirculation(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     const base =
@@ -146,7 +146,7 @@ export function useCirculationApi() {
 
   async function getScopedCirculation(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     documentId: number,
   ) {
     const base =
@@ -155,7 +155,7 @@ export function useCirculationApi() {
   }
 
   async function updateScopedCirculation(
-    teamId: number,
+    teamId: string,
     documentId: number,
     body: Record<string, unknown>,
   ) {
@@ -165,13 +165,13 @@ export function useCirculationApi() {
     )
   }
 
-  async function deleteScopedCirculation(teamId: number, documentId: number) {
+  async function deleteScopedCirculation(teamId: string, documentId: number) {
     return api(`/api/v1/teams/${teamId}/circulations/${documentId}`, { method: 'DELETE' })
   }
 
   async function activateCirculation(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     documentId: number,
   ) {
     const base =
@@ -179,11 +179,11 @@ export function useCirculationApi() {
     return api(`${base}/circulations/${documentId}/activate`, { method: 'POST' })
   }
 
-  async function cancelScopedCirculation(teamId: number, documentId: number) {
+  async function cancelScopedCirculation(teamId: string, documentId: number) {
     return api(`/api/v1/teams/${teamId}/circulations/${documentId}/cancel`, { method: 'POST' })
   }
 
-  async function getCirculationStats(teamId: number) {
+  async function getCirculationStats(teamId: string) {
     return api<{ data: CirculationStatsResponse }>(`/api/v1/teams/${teamId}/circulations/stats`)
   }
 

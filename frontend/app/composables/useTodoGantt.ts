@@ -3,7 +3,7 @@ import type { GanttResponse } from '~/types/todo'
 export function useTodoGantt() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team'
       ? `/api/v1/teams/${scopeId}`
       : `/api/v1/organizations/${scopeId}`
@@ -27,7 +27,7 @@ export function useTodoGantt() {
    */
   async function getGanttTodos(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     from: string,
     to: string,
   ): Promise<GanttResponse> {

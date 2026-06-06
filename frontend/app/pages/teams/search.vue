@@ -10,16 +10,16 @@ const teamStore = useTeamStore()
 const { handleApiError } = useErrorHandler()
 const notification = useNotification()
 
-const followedTeamIds = ref<number[]>([])
-const followingTeamIds = ref<number[]>([])
+const followedTeamIds = ref<string[]>([])
+const followingTeamIds = ref<string[]>([])
 
-const myTeamIds = computed(() => new Set(teamStore.myTeams.map((team) => team.id)))
+const myTeamPublicIds = computed(() => new Set(teamStore.myTeams.map((team) => team.publicId)))
 
-async function followTeam(teamId: number, event: Event) {
+async function followTeam(teamId: string, event: Event) {
   event.stopPropagation()
   followingTeamIds.value.push(teamId)
   try {
-    await teamApi.followTeam(teamId)
+    await teamApi.followTeam(String(teamId))
     followedTeamIds.value.push(teamId)
     notification.success(t('teamHub.supporterSuccess'))
   } catch {
@@ -30,7 +30,7 @@ async function followTeam(teamId: number, event: Event) {
 }
 
 interface TeamSummary {
-  id: number
+  id: string
   name: string
   nickname1: string | null
   iconUrl: string | null
@@ -108,8 +108,8 @@ function onPageChange(event: { page: number }) {
   fetchTeams()
 }
 
-function onTeamCreated(entity: { id: number; name: string }) {
-  navigateTo(`/teams/${entity.id}`)
+function onTeamCreated(entity: { id: number; publicId: string; name: string }) {
+  navigateTo(`/teams/${entity.publicId}`)
 }
 
 function formatLocation(prefecture: string | null, city: string | null): string {
@@ -187,7 +187,7 @@ onMounted(() => {
             <span><i class="pi pi-users mr-1" />{{ $t('teamHub.memberCount', { count: team.memberCount }) }}</span>
           </div>
           <div
-            v-if="team.supporterEnabled && !myTeamIds.has(team.id)"
+            v-if="team.supporterEnabled && !myTeamPublicIds.has(team.id)"
             class="mt-3 border-t border-surface-100 pt-3"
           >
             <span

@@ -7,7 +7,7 @@ import type {
 
 export function useDashboardWidgetVisibility(
   scopeType: 'team' | 'organization',
-  scopeId: Ref<number>,
+  scopeId: Ref<string>,
 ) {
   const api = useApi()
   const settings = ref<WidgetVisibilitySetting[]>([])

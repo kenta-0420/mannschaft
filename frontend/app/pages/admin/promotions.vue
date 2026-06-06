@@ -14,7 +14,7 @@ const scopeType = ref<'team' | 'organization'>(
   (route.query.scopeType as 'team' | 'organization') || 'team',
 )
 const scopeIdInput = ref(route.query.scopeId ? String(route.query.scopeId) : '')
-const scopeId = computed(() => Number(scopeIdInput.value) || 0)
+const scopeId = computed(() => scopeIdInput.value || '')
 
 const scopeTypeOptions = [
   { label: 'チーム', value: 'team' },

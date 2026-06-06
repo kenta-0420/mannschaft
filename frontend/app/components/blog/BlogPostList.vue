@@ -3,7 +3,7 @@ import type { BlogPostResponse } from '~/types/cms'
 
 const props = defineProps<{
   scopeType?: string
-  scopeId?: number
+  scopeId?: string
 }>()
 
 const emit = defineEmits<{

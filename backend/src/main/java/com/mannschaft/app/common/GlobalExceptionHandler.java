@@ -647,6 +647,23 @@ public class GlobalExceptionHandler {
             Map.entry("MEMBERSHIP_BILLING_004", HttpStatus.FORBIDDEN),       // 後見切替の年齢ゲート封印（02_api §2.2 GUARDIANSHIP_SWITCH_AGE_LOCKED）
             Map.entry("MEMBERSHIP_BILLING_005", HttpStatus.FORBIDDEN),       // 後見切替の保護者リンクなし（02_api §2.2 GUARDIANSHIP_LINK_NOT_FOUND / IDOR）
             Map.entry("MEMBERSHIP_BILLING_006", HttpStatus.BAD_REQUEST),     // 自立移行の引き継ぎに子メールが必要 / 既存メール上書き拒否（02_api §2.3 handover/initiate）
+            Map.entry("MEMBERSHIP_BILLING_007", HttpStatus.NOT_FOUND),       // 協会請求が見つからない / IDOR 秘匿（02_api §7 PAYMENT_REQUEST_NOT_FOUND）
+            Map.entry("MEMBERSHIP_BILLING_008", HttpStatus.CONFLICT),        // 協会請求が現在の状態では操作不可（取消/支払いの状態制約）
+            Map.entry("MEMBERSHIP_BILLING_009", HttpStatus.CONFLICT),        // 協会請求が支払い済み（二重支払い防止・02_api §7 PAYMENT_REQUEST_ALREADY_PAID）
+            Map.entry("MEMBERSHIP_BILLING_010", HttpStatus.CONFLICT),        // 協会請求の着金口座が未 READY（支払い時に検証・02_api §11）
+            Map.entry("MEMBERSHIP_BILLING_011", HttpStatus.FORBIDDEN),       // 協会請求の支払い権限なし / 請求先チーム不一致（IDOR・02_api §7 PAYMENT_REQUEST_NOT_FOR_THIS_TEAM）
+            Map.entry("MEMBERSHIP_BILLING_012", HttpStatus.NOT_FOUND),       // 立替記録が見つからない / IDOR 秘匿
+            Map.entry("MEMBERSHIP_BILLING_013", HttpStatus.CONFLICT),        // 立替が既に精算済み（重複確認防止・02_api §10 ADVANCE_ALREADY_SETTLED）
+            Map.entry("MEMBERSHIP_BILLING_014", HttpStatus.CONFLICT),        // 協会請求の配信で受信者ゼロ（チーム ADMIN 不在・02_api §7 PAYMENT_REQUEST_NO_RECIPIENTS / INVALID_STATUS と分離）
+            // F08.9 P5 継続課金（02_api §4）
+            Map.entry("MEMBERSHIP_BILLING_015", HttpStatus.NOT_FOUND),       // 継続課金が見つからない / IDOR 秘匿（02_api §4 SUBSCRIPTION_NOT_FOUND）
+            Map.entry("MEMBERSHIP_BILLING_016", HttpStatus.CONFLICT),        // 継続課金が ACTIVE でない（スキップ/再開不可・02_api §4.3 SUBSCRIPTION_NOT_ACTIVE）
+            Map.entry("MEMBERSHIP_BILLING_017", HttpStatus.CONFLICT),        // 継続課金が既に今月スキップ済み（二重スキップ防止・02_api §4.3 SUBSCRIPTION_ALREADY_SKIPPED）
+            Map.entry("MEMBERSHIP_BILLING_018", HttpStatus.FORBIDDEN),       // 継続課金の操作者がサブスク所有者でない（IDOR・03_security §1 SUBSCRIPTION_NOT_AUTHORIZED）
+            Map.entry("MEMBERSHIP_BILLING_019", HttpStatus.CONFLICT),        // 加入対象が継続課金項目でない（02_api §4.1 SUBSCRIPTION_ITEM_NOT_RECURRING）
+            Map.entry("MEMBERSHIP_BILLING_020", HttpStatus.CONFLICT),        // 継続課金加入に支払い方法が未保存（SetupIntent 導線へ・02_api §4.1 SUBSCRIPTION_PAYMENT_METHOD_NOT_SAVED）
+            Map.entry("MEMBERSHIP_BILLING_021", HttpStatus.CONFLICT),        // 同一受益者・項目に有効な継続課金が既存（二重加入防止・02_api §4.1 SUBSCRIPTION_ALREADY_EXISTS）
+            Map.entry("MEMBERSHIP_BILLING_022", HttpStatus.CONFLICT),        // 継続課金がスキップ中でないため再開できない（02_api §4.3 SUBSCRIPTION_NOT_SKIPPED）
             // セキュリティインシデント（GDPR Article 33）
             Map.entry("SEC_INCIDENT_001", HttpStatus.NOT_FOUND)              // SECURITY_INCIDENT_NOT_FOUND（IDOR 対策で 404）
     );

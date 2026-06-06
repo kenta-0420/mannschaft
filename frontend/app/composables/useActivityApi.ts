@@ -44,7 +44,7 @@ export function useActivityApi() {
   }
 
   // === Activity Templates ===
-  async function getTemplates(scopeType: string, scopeId: number) {
+  async function getTemplates(scopeType: string, scopeId: string) {
     return api<{ data: ActivityTemplate[] }>(
       `/api/v1/activity-templates?scope_type=${scopeType}&scope_id=${scopeId}`,
     )
@@ -107,27 +107,27 @@ export function useActivityApi() {
   }
 
   // === Public Activities ===
-  async function listOrgPublicActivities(orgId: number) {
+  async function listOrgPublicActivities(orgId: string) {
     return api<{ data: ActivityRecordResponse[] }>(
       `/api/v1/public/organizations/${orgId}/activities`,
     )
   }
 
-  async function getOrgPublicActivity(orgId: number, id: number) {
+  async function getOrgPublicActivity(orgId: string, id: number) {
     return api<{ data: ActivityRecordResponse }>(
       `/api/v1/public/organizations/${orgId}/activities/${id}`,
     )
   }
 
-  async function listTeamPublicActivities(teamId: number) {
+  async function listTeamPublicActivities(teamId: string) {
     return api<{ data: ActivityRecordResponse[] }>(`/api/v1/public/teams/${teamId}/activities`)
   }
 
-  async function getTeamPublicActivity(teamId: number, id: number) {
+  async function getTeamPublicActivity(teamId: string, id: number) {
     return api<{ data: ActivityRecordResponse }>(`/api/v1/public/teams/${teamId}/activities/${id}`)
   }
 
-  async function getStats(scopeType: string, scopeId: number) {
+  async function getStats(scopeType: string, scopeId: string) {
     return api<{ data: ActivityStats }>(
       `/api/v1/activities/stats?scope_type=${scopeType}&scope_id=${scopeId}`,
     )

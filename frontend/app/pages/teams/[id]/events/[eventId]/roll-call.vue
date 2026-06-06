@@ -17,7 +17,7 @@ definePageMeta({
 })
 
 const route = useRoute()
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 const eventId = computed(() => Number(route.params.eventId))
 
 const { candidates, sessionIds, loading, submitting, offlineQueued, loadCandidates, submit, loadSessions } =

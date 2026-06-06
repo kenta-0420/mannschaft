@@ -3,7 +3,7 @@ import type { AttendanceMode, EventVisibility } from '~/types/event'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   eventId?: number
   visible: boolean
 }>()

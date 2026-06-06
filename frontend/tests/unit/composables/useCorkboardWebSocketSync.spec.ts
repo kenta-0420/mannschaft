@@ -68,7 +68,7 @@ function makeBoard(
   return {
     id: 42,
     scopeType,
-    scopeId: scopeType === 'PERSONAL' ? null : 1,
+    scopeId: scopeType === 'PERSONAL' ? null : '1',
     ownerId: 1,
     name: 'テストボード',
     backgroundStyle: 'CORK',

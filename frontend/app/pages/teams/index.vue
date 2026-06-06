@@ -31,8 +31,8 @@ watch(viewMode, (mode) => {
   }
 })
 
-function onTeamCreated(entity: { id: number; name: string }) {
-  navigateTo(`/teams/${entity.id}`)
+function onTeamCreated(entity: { id: number; publicId: string; name: string }) {
+  navigateTo(`/teams/${entity.publicId}`)
 }
 
 /**
@@ -86,13 +86,13 @@ const filteredTeams = computed(() => {
     const def = foldersStore.defaultFolderFor('TEAM')
     if (!def) return all // 未分類フォルダ未作成なら全件
     const idSet = new Set(def.itemScopeIds)
-    return all.filter(t => idSet.has(t.id))
+    return all.filter(t => idSet.has(String(t.id)))
   }
   // numeric folder id
   const folder = foldersStore.foldersFor('TEAM').find(f => f.id === v)
   if (!folder) return []
   const idSet = new Set(folder.itemScopeIds)
-  return all.filter(t => idSet.has(t.id))
+  return all.filter(t => idSet.has(String(t.id)))
 })
 
 const isManageView = computed(() => currentFolderId.value === 'manage')
@@ -180,7 +180,7 @@ const isManageView = computed(() => currentFolderId.value === 'manage')
           v-for="team in filteredTeams"
           :key="team.id"
           class="cursor-pointer rounded-lg border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md"
-          @click="navigateTo(`/teams/${team.id}`)"
+          @click="navigateTo(`/teams/${team.publicId}`)"
         >
           <div class="mb-3 flex items-center gap-3">
             <Avatar
@@ -214,7 +214,7 @@ const isManageView = computed(() => currentFolderId.value === 'manage')
           v-for="team in filteredTeams"
           :key="team.id"
           class="flex cursor-pointer items-center gap-4 rounded-lg border border-surface-200 bg-surface-0 px-4 py-3 transition-shadow hover:shadow-sm"
-          @click="navigateTo(`/teams/${team.id}`)"
+          @click="navigateTo(`/teams/${team.publicId}`)"
         >
           <Avatar
             :image="team.iconUrl ?? undefined"

@@ -129,6 +129,12 @@ dependencies {
     implementation("com.vladsch.flexmark:flexmark-all:0.64.8")
 
     // === Stripe Connect 決済 ===
+    // ⚠️ 28.x 固定。29.x(basil)以降は invoice.application_fee_amount / transfer_data / charge 等が
+    //    新 Invoice Payments 構造へ移行して invoice から消え、P5 継続課金の「invoice.created draft 窓で
+    //    application_fee_amount を固定上書きする手数料機構」が黙殺で壊れる（HTTP 200 で無視される）。
+    //    PoC 2026-06-05 実証（API バージョン 2025-02-24.acacia で成立・basil 系で黙殺を確認）。
+    //    詳細: docs/features/F08.9_membership_billing_paywall/README §11-3 / scripts/poc/README_f089_p5_poc.md §0。
+    //    更新時は P5 invoice 上書き機構の再設計（新 Invoice Payments 構造への移行）が必須。
     implementation("com.stripe:stripe-java:28.2.0")
 
     // === HTTP クライアント（Claude API 等の外部 API 呼び出し） ===

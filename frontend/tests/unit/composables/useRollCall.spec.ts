@@ -116,13 +116,13 @@ describe('useRollCall.loadCandidates', () => {
     const data = [sampleCandidate(), sampleCandidate({ userId: 102, fullName: '鈴木花子' })]
     mockGetCandidates.mockResolvedValueOnce(data)
 
-    const teamId = ref(1)
+    const teamId = ref('1')
     const eventId = ref(2)
     const rc = useRollCall(teamId, eventId)
 
     await rc.loadCandidates()
 
-    expect(mockGetCandidates).toHaveBeenCalledWith(1, 2)
+    expect(mockGetCandidates).toHaveBeenCalledWith('1', 2)
     expect(rc.candidates.value).toHaveLength(2)
     expect(rc.candidates.value[0]?.fullName).toBe('山田太郎')
     expect(rc.loading.value).toBe(false)
@@ -131,7 +131,7 @@ describe('useRollCall.loadCandidates', () => {
 
   it('異常系: API 失敗時 error を埋めて throw する', async () => {
     mockGetCandidates.mockRejectedValueOnce(new Error('boom'))
-    const rc = useRollCall(ref(1), ref(2))
+    const rc = useRollCall(ref('1'), ref(2))
     await expect(rc.loadCandidates()).rejects.toThrow('boom')
     expect(rc.error.value).toBe('boom')
     expect(rc.loading.value).toBe(false)
@@ -147,15 +147,15 @@ describe('useRollCall.submit (オンライン)', () => {
     })
     mockSubmitRollCall.mockResolvedValueOnce(response)
 
-    const rc = useRollCall(ref(7), ref(11))
+    const rc = useRollCall(ref('7'), ref(11))
     const result = await rc.submit(
       [sampleEntry(), sampleEntry({ userId: 102, status: 'LATE', lateArrivalMinutes: 5 })],
       true,
     )
 
     expect(mockSubmitRollCall).toHaveBeenCalledTimes(1)
-    const [teamId, eventId, body] = mockSubmitRollCall.mock.calls[0] as [number, number, { rollCallSessionId: string; entries: RollCallEntry[]; notifyGuardiansImmediately: boolean }]
-    expect(teamId).toBe(7)
+    const [teamId, eventId, body] = mockSubmitRollCall.mock.calls[0] as [string, number, { rollCallSessionId: string; entries: RollCallEntry[]; notifyGuardiansImmediately: boolean }]
+    expect(teamId).toBe('7')
     expect(eventId).toBe(11)
     expect(typeof body.rollCallSessionId).toBe('string')
     expect(body.rollCallSessionId.length).toBeGreaterThanOrEqual(8)
@@ -170,7 +170,7 @@ describe('useRollCall.submit (オンライン)', () => {
 
   it('API 例外時: error を埋めて throw する', async () => {
     mockSubmitRollCall.mockRejectedValueOnce(new Error('server-down'))
-    const rc = useRollCall(ref(1), ref(2))
+    const rc = useRollCall(ref('1'), ref(2))
     await expect(rc.submit([sampleEntry()], false)).rejects.toThrow('server-down')
     expect(rc.error.value).toBe('server-down')
     expect(rc.submitting.value).toBe(false)
@@ -182,15 +182,15 @@ describe('useRollCall.submit (オフライン)', () => {
     setOnline(false)
     mockEnqueueCareJob.mockResolvedValueOnce(99)
 
-    const rc = useRollCall(ref(3), ref(4))
+    const rc = useRollCall(ref('3'), ref(4))
     const entries = [sampleEntry({ userId: 201, status: 'ABSENT', absenceReason: 'SICK' })]
     const result = await rc.submit(entries, false)
 
     expect(mockSubmitRollCall).not.toHaveBeenCalled()
     expect(mockEnqueueCareJob).toHaveBeenCalledTimes(1)
-    const [job] = mockEnqueueCareJob.mock.calls[0] as [{ type: string; teamId: number; eventId: number; payload: { rollCallSessionId: string; entries: RollCallEntry[]; notifyGuardiansImmediately: boolean } }]
+    const [job] = mockEnqueueCareJob.mock.calls[0] as [{ type: string; teamId: string; eventId: number; payload: { rollCallSessionId: string; entries: RollCallEntry[]; notifyGuardiansImmediately: boolean } }]
     expect(job.type).toBe('ROLL_CALL')
-    expect(job.teamId).toBe(3)
+    expect(job.teamId).toBe('3')
     expect(job.eventId).toBe(4)
     expect(typeof job.payload.rollCallSessionId).toBe('string')
     expect(job.payload.entries).toEqual(entries)
@@ -204,19 +204,19 @@ describe('useRollCall.submit (オフライン)', () => {
 describe('useRollCall.loadSessions / patchEntry', () => {
   it('loadSessions: API を呼び sessionIds を更新する', async () => {
     mockGetSessions.mockResolvedValueOnce(['uuid-a', 'uuid-b'])
-    const rc = useRollCall(ref(1), ref(2))
+    const rc = useRollCall(ref('1'), ref(2))
     await rc.loadSessions()
-    expect(mockGetSessions).toHaveBeenCalledWith(1, 2)
+    expect(mockGetSessions).toHaveBeenCalledWith('1', 2)
     expect(rc.sessionIds.value).toEqual(['uuid-a', 'uuid-b'])
   })
 
   it('patchEntry: API を呼ぶ（status のみ）', async () => {
     mockPatchEntry.mockResolvedValueOnce(undefined)
-    const rc = useRollCall(ref(5), ref(6))
+    const rc = useRollCall(ref('5'), ref(6))
     await rc.patchEntry(101, 'PRESENT')
     expect(mockPatchEntry).toHaveBeenCalledTimes(1)
-    const [teamId, eventId, userId, body] = mockPatchEntry.mock.calls[0] as [number, number, number, { userId: number; status: string; lateArrivalMinutes?: number; absenceReason?: string }]
-    expect(teamId).toBe(5)
+    const [teamId, eventId, userId, body] = mockPatchEntry.mock.calls[0] as [string, number, number, { userId: number; status: string; lateArrivalMinutes?: number; absenceReason?: string }]
+    expect(teamId).toBe('5')
     expect(eventId).toBe(6)
     expect(userId).toBe(101)
     expect(body.status).toBe('PRESENT')
@@ -227,9 +227,9 @@ describe('useRollCall.loadSessions / patchEntry', () => {
 
   it('patchEntry: LATE の場合 lateArrivalMinutes が body に乗る', async () => {
     mockPatchEntry.mockResolvedValueOnce(undefined)
-    const rc = useRollCall(ref(5), ref(6))
+    const rc = useRollCall(ref('5'), ref(6))
     await rc.patchEntry(101, 'LATE', 15)
-    const [, , , body] = mockPatchEntry.mock.calls[0] as [number, number, number, { lateArrivalMinutes?: number }]
+    const [, , , body] = mockPatchEntry.mock.calls[0] as [string, number, number, { lateArrivalMinutes?: number }]
     expect(body.lateArrivalMinutes).toBe(15)
   })
 })

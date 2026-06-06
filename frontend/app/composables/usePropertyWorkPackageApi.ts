@@ -30,7 +30,7 @@ export interface PropertyWorkPackageListMeta {
   totalPages: number
 }
 
-export function usePropertyWorkPackageApi(scope: ScopeName, scopeId: number) {
+export function usePropertyWorkPackageApi(scope: ScopeName, scopeId: string) {
   const api = useApi()
   const base = `/api/v1/${scope}/${scopeId}/property-history`
 

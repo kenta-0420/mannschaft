@@ -318,7 +318,7 @@ onUnmounted(() => {
                 v-if="userId"
                 v-model="inlineStatusLabelId"
                 scope-type="PERSONAL"
-                :scope-id="userId"
+                :scope-id="userId !== null ? String(userId) : null"
               />
               <div class="flex justify-end gap-1">
                 <Button icon="pi pi-times" text rounded size="small" severity="secondary" :disabled="fieldSaving" @click="cancelFieldEdit" />
@@ -447,7 +447,7 @@ onUnmounted(() => {
               v-if="userId"
               v-model="newLabelId"
               scope-type="PERSONAL"
-              :scope-id="userId"
+              :scope-id="userId !== null ? String(userId) : null"
             />
           </div>
           <Button

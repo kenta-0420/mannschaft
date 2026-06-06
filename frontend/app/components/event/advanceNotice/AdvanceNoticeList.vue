@@ -9,7 +9,7 @@ import type { AdvanceNoticeResponse } from '~/types/care'
  */
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   eventId: number
 }>()
 

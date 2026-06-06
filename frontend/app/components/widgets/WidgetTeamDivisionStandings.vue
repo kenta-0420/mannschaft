@@ -7,7 +7,7 @@ import type {
 // F08.7.1 / 02 ③: 順位表ウィジェット（参加中ディビジョンの順位表）。
 // 2 段取得: tournament-history → 最新エントリの org/tournament/division → standings。
 const props = defineProps<{
-  teamId: number
+  teamId: string
 }>()
 
 const { getTeamHistory, getStandings } = useTournamentWidgetApi()
@@ -46,7 +46,7 @@ async function loadStandings() {
   }
   standingsLoading.value = true
   try {
-    const res = await getStandings(orgId, tournamentId, divisionId)
+    const res = await getStandings(String(orgId), tournamentId, divisionId)
     standings.value = res.data ?? []
   } catch (err) {
     captureQuiet(err, { context: 'WidgetTeamDivisionStandings: 順位表取得' })

@@ -780,12 +780,16 @@ public enum StandardVisibility {
 }
 ```
 
-> **⚠️ 移行ステータス注記（2026-06-05・W0 設計統一）**:
-> 本節は **目標仕様（_AND_ABOVE 統一後の正準ラダー）** を示す。`MEMBERS_AND_ABOVE` は新設値、
-> `ADMINS_AND_ABOVE` は旧 `ADMINS_ONLY` の改名、`SCOPE_AFFILIATED` は旧 `MEMBERS_ONLY` の改名であり、
-> **コード（enum 定数・Mapper の出力先・DB 値）は後続 wave で追従する**。本設計書時点ではまだコード上に
-> `MEMBERS_AND_ABOVE` / `ADMINS_AND_ABOVE` / `SCOPE_AFFILIATED` は存在しない可能性がある。
-> 移行は Expand→Migrate→Contract（後方互換）で進める。方針の要点は §5.1.6（移行方式）を参照。
+> **✅ 移行ステータス注記（2026-06-05・W6 Contract 完了・旧値撤去済）**:
+> 本節は **目標仕様（_AND_ABOVE 統一後の正準ラダー）** を示し、**コードもこの正準ラダーに到達済み**。
+> `MEMBERS_AND_ABOVE` は新設値、`ADMINS_AND_ABOVE` は旧 `ADMINS_ONLY` の改名、`SCOPE_AFFILIATED` は
+> 旧 `MEMBERS_ONLY` の改名であり、Expand→Migrate→Contract で段階移行した。
+> **W6（Contract・最終）で旧 `MEMBERS_ONLY` / `ADMINS_ONLY` を `StandardVisibility` enum から撤去完了**。
+> もはやコード上に旧 2 値は存在せず、全 Mapper は正準ラダー値のみを出力する。
+> 撤去の安全性: `StandardVisibility` は実行時導出のみ（`@Enumerated` カラムでの永続化・`valueOf` による
+> デシリアライズ・API 応答 DTO への露出はいずれも無し）であることを W6 で確認済。
+> 監査ログ JSON への `level.name()` 出力は書き込み専用テキストで読み戻しに用いないため、旧値撤去の影響を受けない。
+> 移行の各段階の方針は §5.1.6 を参照。
 
 ### 5.1.5 役割閾値 `_AND_ABOVE` 命名規約と「直接所属」別軸（2026-06-05 確定）
 
@@ -834,6 +838,15 @@ PUBLIC  >  SUPPORTERS_AND_ABOVE  >  MEMBERS_AND_ABOVE  >  ADMINS_AND_ABOVE
    announcement 以外は機能ローカル enum 据え置きのため DB 値移行は不要（Mapper 変更のみ）。
 
 各 wave 着手時に本節を参照し、対象機能ごとに「Mapper のみ変更」か「DB 値移行を伴う」かを判別すること。
+
+> **✅ Contract 完了（W6・2026-06-05）**: 全 Mapper の出力先付け替え（W1〜W5）が完了し、
+> 旧 `MEMBERS_ONLY` / `ADMINS_ONLY` を出力する Mapper/Resolver はゼロになったことを確認後、
+> `StandardVisibility` enum から旧 2 値を撤去した（`AbstractContentVisibilityResolver` の
+> `case MEMBERS_ONLY` / `case ADMINS_ONLY` 評価ロジック・`classifyDenyReason` の旧 case・
+> `ResolverAuditPolicy` の `ADMINS_ONLY` 参照も併せて新値へ統合・撤去）。
+> Expand→Migrate→Contract が完結し、ラダーは正準 10 値（PUBLIC / SCOPE_AFFILIATED /
+> SUPPORTERS_AND_ABOVE / MEMBERS_AND_ABOVE / ADMINS_AND_ABOVE / PRIVATE / FOLLOWERS_ONLY /
+> CUSTOM_TEMPLATE / ORGANIZATION_WIDE / CUSTOM）のみとなった。
 
 ### 5.1.1 親スコープ解決規約
 
@@ -944,36 +957,34 @@ Survey の `ResultsVisibility.AFTER_RESPONSE` / `AFTER_CLOSE` を Resolver の `
 
 ### 5.2 既存 enum → StandardVisibility 対応表
 
-> **⚠️ 移行ステータス注記（2026-06-05・W0 設計統一）**: 右列は **目標仕様（_AND_ABOVE 統一後）の Std 出力先**。
-> - 旧 Std 値 `MEMBERS_ONLY` は **`SCOPE_AFFILIATED` に改名**（= `isMemberOf`・直接所属者全員。挙動不変）。
->   各機能の「全メンバー／TEAM 所属」系の値はこの行に従って `SCOPE_AFFILIATED` を指す。
+> **✅ 移行ステータス注記（2026-06-05・W6 Contract 完了・実コードに一致済）**: 右列は **各 Mapper/Resolver の実際の Std 出力先**であり、W6 でコード実装と完全に突き合わせた。
+> - 旧 Std 値 `MEMBERS_ONLY` は **`SCOPE_AFFILIATED`（直接所属者全員＝`isMemberOf`）と `MEMBERS_AND_ABOVE`（メンバー以上・応援者除外）の 2 値に分化** して撤去された。
+>   「全メンバー／直接所属」を意図する機能（schedule / gallery ALL_MEMBERS / recruitment SCOPE_ONLY / jobmatching TEAM_MEMBERS / actionmemo TEAM_ONLY / survey ALL_MEMBERS / confirmable ALL_MEMBERS / team・organization PRIVATE 等）は `SCOPE_AFFILIATED`。
+>   「応援者を除外したメンバー以上の内輪」を確実に意図する機能（cms / event / activity / tournament / timetable / member / project / property / announcement F02.6）は `MEMBERS_AND_ABOVE`。
 > - 旧 Std 値 `ADMINS_ONLY` は **`ADMINS_AND_ABOVE` に改名**（挙動不変）。
-> - **応援者を除外した「メンバー以上の内輪」** を意図する機能は新設 `MEMBERS_AND_ABOVE` を指す。
->   ただし既存 enum で「メンバー以上＝応援者除外」を確実に意図しているのは announcement（F02.6）/ property / cms の内輪お知らせ系のみ。
->   判定が曖昧な既存マッピングは **現状維持（= `SCOPE_AFFILIATED` または `SUPPORTERS_AND_ABOVE`）に倒し挙動を変えない**（§5.1.6）。
-> - **機能ローカル enum 名・DB 値は据え置き**、`*VisibilityMapper` の出力先 Std 値だけを後続 wave で変更する。
+> - **機能ローカル enum 名・DB 値は据え置き**、`*VisibilityMapper` の出力先 Std 値のみが正準ラダー値を指す。各行「備考」の Mapper/Resolver 名が出力元の実装。
 
 | 既存 enum | 値 | → StandardVisibility | 備考 |
 |---|---|---|---|
 | `cms.Visibility` | PUBLIC | PUBLIC | |
-| | MEMBERS_ONLY | SCOPE_AFFILIATED | 機能側 enum 名据え置き・挙動不変（直接所属者全員）。※cms の「内輪お知らせ」用途を MEMBERS_AND_ABOVE に倒すかは F02.6 系の DB 値移行と併せ wave 時判断 |
+| | MEMBERS_ONLY | MEMBERS_AND_ABOVE | 機能側 enum 名据え置き。「内輪お知らせ」用途のため応援者除外（MEMBER 以上）。`CmsVisibilityMapper` 実装に一致 |
 | | SUPPORTERS_AND_ABOVE | SUPPORTERS_AND_ABOVE | |
 | | FOLLOWERS_ONLY | FOLLOWERS_ONLY | |
 | | PRIVATE | PRIVATE | |
 | | CUSTOM_TEMPLATE | CUSTOM_TEMPLATE | |
 | `event.entity.EventVisibility` | PUBLIC | PUBLIC | |
-| | MEMBERS_ONLY | SCOPE_AFFILIATED | 挙動不変（直接所属者全員） |
+| | MEMBERS_ONLY | MEMBERS_AND_ABOVE | メンバー以上（応援者除外）。`EventVisibilityMapper` 実装に一致 |
 | | SUPPORTERS_AND_ABOVE | SUPPORTERS_AND_ABOVE | |
 | `activity.ActivityVisibility` | PUBLIC | PUBLIC | |
-| | MEMBERS_ONLY | SCOPE_AFFILIATED | 挙動不変（直接所属者全員） |
+| | MEMBERS_ONLY | MEMBERS_AND_ABOVE | メンバー以上（応援者除外）。`ActivityVisibilityMapper` 実装に一致 |
 | `tournament.TournamentVisibility` | PUBLIC | PUBLIC | |
-| | MEMBERS_ONLY | SCOPE_AFFILIATED | 挙動不変（直接所属者全員） |
+| | MEMBERS_ONLY | MEMBERS_AND_ABOVE | メンバー以上（応援者除外）。`TournamentVisibilityMapper` 実装に一致 |
 | `timetable.TimetableVisibility` | PUBLIC | PUBLIC | |
-| | MEMBERS_ONLY | SCOPE_AFFILIATED | 挙動不変（直接所属者全員） |
+| | MEMBERS_ONLY | MEMBERS_AND_ABOVE | メンバー以上（応援者除外）。`TimetableVisibilityMapper` 実装に一致 |
 | `member.PageVisibility` | PUBLIC | PUBLIC | |
-| | MEMBERS_ONLY | SCOPE_AFFILIATED | 挙動不変（直接所属者全員） |
+| | MEMBERS_ONLY | MEMBERS_AND_ABOVE | メンバー以上（応援者除外）。`MemberPageVisibilityMapper` 実装に一致 |
 | `todo.ProjectVisibility` | PRIVATE | PRIVATE | |
-| | MEMBERS_ONLY | SCOPE_AFFILIATED | 挙動不変（直接所属者全員） |
+| | MEMBERS_ONLY | MEMBERS_AND_ABOVE | メンバー以上（応援者除外）。`ProjectVisibilityMapper` 実装に一致 |
 | | PUBLIC | PUBLIC | |
 | `schedule.ScheduleVisibility` | MEMBERS_ONLY | SCOPE_AFFILIATED | 挙動不変（直接所属者全員） |
 | | ORGANIZATION | ORGANIZATION_WIDE | |
@@ -981,6 +992,7 @@ Survey の `ResultsVisibility.AFTER_RESPONSE` / `AFTER_CLOSE` を Resolver の `
 | `recruitment.RecruitmentVisibility` | PUBLIC | PUBLIC | |
 | | SCOPE_ONLY | SCOPE_AFFILIATED | 直接所属者全員。挙動不変 |
 | | SUPPORTERS_ONLY | SUPPORTERS_AND_ABOVE | |
+| | FRIEND_TEAMS_ONLY | CUSTOM | フレンドチーム限定（Resolver 内で個別処理）。`RecruitmentVisibilityMapper` 実装に一致 |
 | | CUSTOM_TEMPLATE | CUSTOM_TEMPLATE | |
 | `jobmatching.enums.VisibilityScope` | TEAM_MEMBERS | SCOPE_AFFILIATED | 直接所属者全員。挙動不変 |
 | | TEAM_MEMBERS_SUPPORTERS | SUPPORTERS_AND_ABOVE | |
@@ -988,9 +1000,12 @@ Survey の `ResultsVisibility.AFTER_RESPONSE` / `AFTER_CLOSE` を Resolver の `
 | | JOBBER_PUBLIC_BOARD | PUBLIC | |
 | | ORGANIZATION_SCOPE | ORGANIZATION_WIDE | |
 | | CUSTOM_TEMPLATE | CUSTOM_TEMPLATE | |
-| `gallery.AlbumVisibility` | ALL_MEMBERS | SCOPE_AFFILIATED | 「全メンバー」= 直接所属者全員（旧 MEMBERS_ONLY） |
+| `gallery.AlbumVisibility` | ALL_MEMBERS | SCOPE_AFFILIATED | 「全メンバー」= 直接所属者全員（旧 MEMBERS_ONLY 相当） |
 | | SUPPORTERS_AND_ABOVE | SUPPORTERS_AND_ABOVE | |
-| | ADMIN_ONLY | ADMINS_AND_ABOVE | 旧 ADMINS_ONLY |
+| | ADMIN_ONLY | ADMINS_AND_ABOVE | 旧 ADMINS_ONLY 相当 |
+| `property.WorkPackageVisibility` | PUBLIC_MASKED | SUPPORTERS_AND_ABOVE | SUPPORTER 以上が閲覧可（金額マスクは MaskingService 側） |
+| | MEMBERS_ONLY / MEMBERS_MASKED | MEMBERS_AND_ABOVE | 応援者に見せない内輪（MEMBER 以上）。`PropertyWorkPackageVisibilityResolver` 実装に一致 |
+| | ADMINS_ONLY | ADMINS_AND_ABOVE | 機能側 enum 名・DB 値据え置き、Std 出力先のみ改名 |
 | `actionmemo.enums.OrgVisibility` | TEAM_ONLY | SCOPE_AFFILIATED | 直接所属者全員。挙動不変 |
 | | ORG_WIDE | ORGANIZATION_WIDE | |
 | `committee.entity.CommitteeVisibility` | HIDDEN | PRIVATE | "見えない" 扱いを PRIVATE 相当に |
@@ -1034,8 +1049,9 @@ public final class CmsVisibilityMapper {
     public static StandardVisibility toStandard(com.mannschaft.app.cms.Visibility v) {
         return switch (v) {
             case PUBLIC -> StandardVisibility.PUBLIC;
-            // 機能側 enum 名 MEMBERS_ONLY は据え置き、出力先 Std 値のみ SCOPE_AFFILIATED へ（挙動不変）
-            case MEMBERS_ONLY -> StandardVisibility.SCOPE_AFFILIATED;
+            // 機能側 enum 名 MEMBERS_ONLY は据え置き、出力先 Std 値のみ MEMBERS_AND_ABOVE へ
+            // （cms「内輪お知らせ」用途は応援者除外＝MEMBER 以上）
+            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_AND_ABOVE;
             case SUPPORTERS_AND_ABOVE -> StandardVisibility.SUPPORTERS_AND_ABOVE;
             case FOLLOWERS_ONLY -> StandardVisibility.FOLLOWERS_ONLY;
             case PRIVATE -> StandardVisibility.PRIVATE;

@@ -18,7 +18,7 @@ import type { FollowTeamResponse } from '~/types/friends'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 const { t } = useI18n()
 const { roleName, isAdmin, isAdminOrDeputy, can, loadPermissions } = useRoleAccess('team', teamId)
 

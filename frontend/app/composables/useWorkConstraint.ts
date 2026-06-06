@@ -1,6 +1,6 @@
 import type { WorkConstraint } from '~/types/shift'
 
-export function useWorkConstraint(teamId: Ref<number>) {
+export function useWorkConstraint(teamId: Ref<string>) {
   const shiftApi = useShiftApi()
   const constraints = ref<WorkConstraint[]>([])
 

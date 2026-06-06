@@ -25,6 +25,7 @@ import type {
 definePageMeta({
   middleware: 'auth',
   layout: 'default',
+  key: route => route.fullPath,
 })
 
 const route = useRoute()

@@ -3,6 +3,7 @@ package com.mannschaft.app.family.repository;
 import com.mannschaft.app.family.CareLinkStatus;
 import com.mannschaft.app.family.CareRelationship;
 import com.mannschaft.app.family.entity.UserCareLinkEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -78,4 +79,19 @@ public interface UserCareLinkRepository extends JpaRepository<UserCareLinkEntity
     List<UserCareLinkEntity> findByCareRecipientUserIdInAndStatus(
             @Param("userIds") Collection<Long> careRecipientUserIds,
             @Param("status") CareLinkStatus status);
+
+    /**
+     * バッチ用: 続柄・ステータスを指定して全ケアリンクをページングで取得する。
+     *
+     * <p>F08.9 P3c-3 自立移行通知バッチ（進学予告）で、全 ACTIVE 見守り PARENT リンク
+     * （保護者→子）を横断的に列挙するために使用する。特定の watcher / recipient に
+     * 限定せず、相互の (watcher, recipient) ペアを全件走査する（id 昇順で安定ページング）。</p>
+     *
+     * @param relationship 続柄（通常 PARENT）
+     * @param status       ステータス（通常 ACTIVE）
+     * @param pageable     ページング設定（id 昇順ソート推奨）
+     * @return 該当するケアリンク一覧（ページ）
+     */
+    List<UserCareLinkEntity> findByRelationshipAndStatusOrderByIdAsc(
+            CareRelationship relationship, CareLinkStatus status, Pageable pageable);
 }

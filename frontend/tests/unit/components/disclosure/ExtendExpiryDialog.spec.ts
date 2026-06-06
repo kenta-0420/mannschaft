@@ -41,7 +41,7 @@ function findByTestId<T extends Element = HTMLElement>(testId: string): T | null
 function buildExport(overrides: Partial<DisclosureExport> = {}): DisclosureExport {
   return {
     id: 1001,
-    scopeId: 7,
+    scopeId: '7',
     draftId: 42,
     templateCodeSnapshot: 'mlit-standard',
     templateVersionSnapshot: '1.0.0',
@@ -71,7 +71,7 @@ afterEach(() => {
 describe('ExtendExpiryDialog.vue', () => {
   it('open=true でダイアログがレンダリングされる', async () => {
     await mountSuspended(ExtendExpiryDialog, {
-      props: { organizationId: 7, export: buildExport(), open: true },
+      props: { organizationId: '7', export: buildExport(), open: true },
     })
     expect(findByTestId('extend-expiry-dialog')).not.toBeNull()
     expect(findByTestId('extend-expiry-current')).not.toBeNull()
@@ -82,7 +82,7 @@ describe('ExtendExpiryDialog.vue', () => {
   it('初期値は現在の expiresAt + 90 日', async () => {
     const wrapper = await mountSuspended(ExtendExpiryDialog, {
       props: {
-        organizationId: 7,
+        organizationId: '7',
         export: buildExport({ expiresAt: '2026-08-01T00:00:00' }),
         open: true,
       },
@@ -96,7 +96,7 @@ describe('ExtendExpiryDialog.vue', () => {
 
   it('過去日時を入力するとバリデーションエラー & 送信不可', async () => {
     const wrapper = await mountSuspended(ExtendExpiryDialog, {
-      props: { organizationId: 7, export: buildExport(), open: true },
+      props: { organizationId: '7', export: buildExport(), open: true },
     })
     const vm = wrapper.vm as unknown as {
       newExpiresAt: Date | null
@@ -115,7 +115,7 @@ describe('ExtendExpiryDialog.vue', () => {
 
   it('7 年を超える日時を入力するとバリデーションエラー & 送信不可', async () => {
     const wrapper = await mountSuspended(ExtendExpiryDialog, {
-      props: { organizationId: 7, export: buildExport(), open: true },
+      props: { organizationId: '7', export: buildExport(), open: true },
     })
     const vm = wrapper.vm as unknown as {
       newExpiresAt: Date | null
@@ -138,7 +138,7 @@ describe('ExtendExpiryDialog.vue', () => {
 
     const wrapper = await mountSuspended(ExtendExpiryDialog, {
       props: {
-        organizationId: 7,
+        organizationId: '7',
         export: buildExport({ id: 1001, expiresAt: '2026-08-01T00:00:00' }),
         open: true,
       },
@@ -178,7 +178,7 @@ describe('ExtendExpiryDialog.vue', () => {
     mockExtendExpiry.mockRejectedValueOnce(new Error('DISCLOSURE_011'))
 
     const wrapper = await mountSuspended(ExtendExpiryDialog, {
-      props: { organizationId: 7, export: buildExport(), open: true },
+      props: { organizationId: '7', export: buildExport(), open: true },
     })
     const vm = wrapper.vm as unknown as {
       newExpiresAt: Date | null
@@ -202,7 +202,7 @@ describe('ExtendExpiryDialog.vue', () => {
 
   it('キャンセルボタンで update:open(false) を emit', async () => {
     const wrapper = await mountSuspended(ExtendExpiryDialog, {
-      props: { organizationId: 7, export: buildExport(), open: true },
+      props: { organizationId: '7', export: buildExport(), open: true },
     })
     const cancelBtn = findByTestId<HTMLButtonElement>('extend-expiry-cancel')
     expect(cancelBtn).not.toBeNull()

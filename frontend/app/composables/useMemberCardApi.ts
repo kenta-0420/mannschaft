@@ -69,17 +69,17 @@ export function useMemberCardApi() {
     await api(`/api/v1/member-cards/${id}/reactivate`, { method: 'PATCH' })
   }
 
-  async function listByTeam(teamId: number) {
+  async function listByTeam(teamId: string) {
     const res = await api<{ data: MemberCard[] }>(`/api/v1/teams/${teamId}/member-cards`)
     return res.data
   }
 
-  async function listByOrg(orgId: number) {
+  async function listByOrg(orgId: string) {
     const res = await api<{ data: MemberCard[] }>(`/api/v1/organizations/${orgId}/member-cards`)
     return res.data
   }
 
-  async function getTeamCheckins(teamId: number, params?: { from?: string; to?: string }) {
+  async function getTeamCheckins(teamId: string, params?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
     if (params?.from) query.set('from', params.from)
     if (params?.to) query.set('to', params.to)
@@ -90,17 +90,17 @@ export function useMemberCardApi() {
     return res.data
   }
 
-  async function getTeamCheckinStats(teamId: number) {
+  async function getTeamCheckinStats(teamId: string) {
     const res = await api<{ data: CheckinStats }>(`/api/v1/teams/${teamId}/checkins/stats`)
     return res.data
   }
 
-  async function listLocations(teamId: number) {
+  async function listLocations(teamId: string) {
     const res = await api<{ data: CheckinLocation[] }>(`/api/v1/teams/${teamId}/checkin-locations`)
     return res.data
   }
 
-  async function createLocation(teamId: number, body: CreateCheckinLocationRequest) {
+  async function createLocation(teamId: string, body: CreateCheckinLocationRequest) {
     const res = await api<{ data: CheckinLocation }>(`/api/v1/teams/${teamId}/checkin-locations`, {
       method: 'POST',
       body,
@@ -108,7 +108,7 @@ export function useMemberCardApi() {
     return res.data
   }
 
-  async function updateLocation(teamId: number, id: number, body: CreateCheckinLocationRequest) {
+  async function updateLocation(teamId: string, id: number, body: CreateCheckinLocationRequest) {
     const res = await api<{ data: CheckinLocation }>(
       `/api/v1/teams/${teamId}/checkin-locations/${id}`,
       { method: 'PUT', body },
@@ -116,11 +116,11 @@ export function useMemberCardApi() {
     return res.data
   }
 
-  async function deleteLocation(teamId: number, id: number) {
+  async function deleteLocation(teamId: string, id: number) {
     await api(`/api/v1/teams/${teamId}/checkin-locations/${id}`, { method: 'DELETE' })
   }
 
-  async function getLocationQr(teamId: number, id: number) {
+  async function getLocationQr(teamId: string, id: number) {
     const res = await api<{ data: { qrToken: string } }>(
       `/api/v1/teams/${teamId}/checkin-locations/${id}/qr`,
     )

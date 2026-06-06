@@ -21,7 +21,7 @@
 import type { FollowTeamResponse } from '~/types/friends'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   targetTeamId: number
   comment?: string
   disabled?: boolean

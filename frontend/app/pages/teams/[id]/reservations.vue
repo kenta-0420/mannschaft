@@ -3,7 +3,7 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = Number(route.params.id)
+const teamId = String(route.params.id)
 const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
 
 const activeTab = ref(0)

@@ -4,7 +4,7 @@ import type { KbScopeType } from '~/composables/useKnowledgeBaseApi'
 
 const props = defineProps<{
   scopeType: KbScopeType
-  scopeId: number
+  scopeId: string
   canManage?: boolean
 }>()
 

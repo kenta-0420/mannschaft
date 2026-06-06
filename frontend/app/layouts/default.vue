@@ -49,11 +49,23 @@ const handleLogoClick = () => {
   logoLongPressTriggered.value = false
 }
 
+const inboxStore = useInboxStore()
+
 const isMounted = ref(false)
 const showMobileMenu = ref(false)
 
+let inboxPollTimer: ReturnType<typeof setInterval> | null = null
+
 onMounted(() => {
   isMounted.value = true
+  inboxStore.fetchSummary().catch(() => {})
+  inboxPollTimer = setInterval(() => {
+    inboxStore.fetchSummary().catch(() => {})
+  }, 60_000)
+})
+
+onUnmounted(() => {
+  if (inboxPollTimer) clearInterval(inboxPollTimer)
 })
 
 watch(
@@ -202,6 +214,21 @@ function isActive(path: string, exact = false): boolean {
           <ClientOnly>
             <template v-if="authStore.isAuthenticated">
               <SyncProgressIndicator />
+              <!-- F04.11: 受信箱アイコン（ナビバー常時表示） -->
+              <NuxtLink
+                to="/inbox"
+                class="relative flex shrink-0 items-center justify-center rounded-lg p-2 transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+                :aria-label="t('inbox.title')"
+                :title="t('inbox.title')"
+              >
+                <i class="pi pi-inbox text-xl" />
+                <Badge
+                  v-if="inboxStore.inboxCount > 0"
+                  :value="inboxStore.inboxCount > 99 ? '99+' : inboxStore.inboxCount"
+                  severity="danger"
+                  class="absolute -right-1 -top-1 !min-w-[1.1rem] !text-[0.6rem]"
+                />
+              </NuxtLink>
               <NotificationBell />
               <!-- PWAインストールボタン（未インストール時のみ） -->
               <Button

@@ -3,7 +3,7 @@ import type { ReportScheduleResponse, ReportFrequency } from '~/types/advertiser
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const advertiserApi = useAdvertiserApi()
 const { success, error: showError } = useNotification()
 

@@ -12,7 +12,7 @@ import type { TodoStatusLabel } from '~/types/todoStatusLabel'
 const props = defineProps<{
   visible: boolean
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   todoId: number
   todoTitle: string
 }>()

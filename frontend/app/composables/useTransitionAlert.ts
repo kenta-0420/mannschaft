@@ -1,7 +1,7 @@
 import { ref, type Ref } from 'vue'
 import type { TransitionAlertResponse } from '~/types/school'
 
-export function useTransitionAlert(teamId: Ref<number>) {
+export function useTransitionAlert(teamId: Ref<string>) {
   const api = useTransitionAlertApi()
   const { error: notifyError, success: notifySuccess } = useNotification()
   const { t } = useI18n()

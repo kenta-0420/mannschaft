@@ -39,7 +39,7 @@ export function useBlogMediaApi() {
   async function uploadImage(params: {
     file: File
     scopeType: string
-    scopeId: number
+    scopeId: string
     blogPostId: number
   }): Promise<{ mediaId: number; fileKey: string }> {
     const { file, scopeType, scopeId, blogPostId } = params
@@ -97,7 +97,7 @@ export function useBlogMediaApi() {
   async function uploadVideo(params: {
     file: File
     scopeType: string
-    scopeId: number
+    scopeId: string
     blogPostId: number
     onProgress?: (progress: number) => void
     signal?: AbortSignal

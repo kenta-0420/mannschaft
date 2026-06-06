@@ -1,6 +1,7 @@
 package com.mannschaft.app.payment.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.payment.BillingInterval;
 import com.mannschaft.app.payment.PaymentItemType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -67,6 +68,22 @@ public class PaymentItemEntity extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private Short gracePeriodDays = 0;
+
+    /**
+     * F08.9 P5: 継続課金（Stripe Subscription 管理）か。TRUE の項目は P5 で Subscription を作成する対象。
+     * 後方互換: 既定 FALSE で現挙動と完全一致（設計書 01 §1.2）。
+     */
+    @Column(name = "is_recurring", nullable = false)
+    @Builder.Default
+    private Boolean isRecurring = false;
+
+    /**
+     * F08.9 P5: 課金周期（MONTHLY/YEARLY）。{@code isRecurring=TRUE} 時に必須・それ以外は NULL。
+     * {@link PaymentItemType#MONTHLY_FEE}/{@link PaymentItemType#ANNUAL_FEE} と整合（設計書 01 §1.2）。
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "billing_interval", length = 8)
+    private BillingInterval billingInterval;
 
     private Long createdBy;
 

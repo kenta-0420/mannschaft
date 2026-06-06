@@ -66,7 +66,7 @@ afterEach(() => {
 describe('AbsenceNoticeDialog.vue', () => {
   it('open=true で 3 種類のラジオ（SICK/PERSONAL_REASON/OTHER）が表示される', async () => {
     await mountSuspended(AbsenceNoticeDialog, {
-      props: { teamId: 7, eventId: 42, userId: 101, open: true },
+      props: { teamId: '7', eventId: 42, userId: 101, open: true },
     })
     expect(findByTestId('absence-reason-SICK')).not.toBeNull()
     expect(findByTestId('absence-reason-PERSONAL_REASON')).not.toBeNull()
@@ -75,7 +75,7 @@ describe('AbsenceNoticeDialog.vue', () => {
 
   it('初期値は SICK である', async () => {
     const wrapper = await mountSuspended(AbsenceNoticeDialog, {
-      props: { teamId: 7, eventId: 42, userId: 101, open: true },
+      props: { teamId: '7', eventId: 42, userId: 101, open: true },
     })
     const vm = wrapper.vm as unknown as { absenceReason: AdvanceAbsenceReason }
     expect(vm.absenceReason).toBe('SICK')
@@ -94,7 +94,7 @@ describe('AbsenceNoticeDialog.vue', () => {
     mockSubmitAbsence.mockResolvedValueOnce(expectedRes)
 
     const wrapper = await mountSuspended(AbsenceNoticeDialog, {
-      props: { teamId: 7, eventId: 42, userId: 101, open: true },
+      props: { teamId: '7', eventId: 42, userId: 101, open: true },
     })
     const vm = wrapper.vm as unknown as {
       absenceReason: AdvanceAbsenceReason
@@ -133,7 +133,7 @@ describe('AbsenceNoticeDialog.vue', () => {
     } as AdvanceNoticeResponse)
 
     const wrapper = await mountSuspended(AbsenceNoticeDialog, {
-      props: { teamId: 7, eventId: 42, userId: 101, open: true },
+      props: { teamId: '7', eventId: 42, userId: 101, open: true },
     })
     const vm = wrapper.vm as unknown as {
       absenceReason: AdvanceAbsenceReason
@@ -157,7 +157,7 @@ describe('AbsenceNoticeDialog.vue', () => {
 
   it('キャンセルで update:open(false) を emit', async () => {
     const wrapper = await mountSuspended(AbsenceNoticeDialog, {
-      props: { teamId: 7, eventId: 42, userId: 101, open: true },
+      props: { teamId: '7', eventId: 42, userId: 101, open: true },
     })
     getByTestId<HTMLButtonElement>('absence-notice-cancel').click()
     await wrapper.vm.$nextTick()

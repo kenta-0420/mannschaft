@@ -2,6 +2,7 @@ package com.mannschaft.app.survey.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.survey.dto.CreateSurveyRequest;
 import com.mannschaft.app.survey.dto.DuplicateSurveyRequest;
 import com.mannschaft.app.survey.dto.ExtendDeadlineRequest;
@@ -12,8 +13,10 @@ import com.mannschaft.app.survey.dto.SurveyStatsResponse;
 import com.mannschaft.app.survey.dto.UpdateSurveyRequest;
 import com.mannschaft.app.survey.service.SurveyResultService;
 import com.mannschaft.app.survey.service.SurveyService;
+import com.mannschaft.app.team.service.TeamService;
 
 import java.util.List;
+import java.util.UUID;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -46,6 +49,8 @@ public class SurveyController {
 
     private final SurveyService surveyService;
     private final SurveyResultService surveyResultService;
+    private final OrganizationService organizationService;
+    private final TeamService teamService;
 
 
     /**
@@ -56,12 +61,13 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<SurveyResponse>> listSurveys(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
         Page<SurveyResponse> result = surveyService.listSurveys(
-                scopeType, scopeId, status, PageRequest.of(page, size));
+                scopeType, resolvedScopeId, status, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -75,9 +81,10 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<SurveyDetailResponse>> getSurvey(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId) {
-        SurveyDetailResponse response = surveyService.getSurveyDetail(scopeType, scopeId, surveyId);
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        SurveyDetailResponse response = surveyService.getSurveyDetail(scopeType, resolvedScopeId, surveyId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -89,10 +96,11 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<SurveyDetailResponse>> createSurvey(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @Valid @RequestBody CreateSurveyRequest request) {
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
         SurveyDetailResponse response = surveyService.createSurvey(
-                scopeType, scopeId, SecurityUtils.getCurrentUserId(), request);
+                scopeType, resolvedScopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -104,10 +112,11 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<SurveyResponse>> updateSurvey(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId,
             @Valid @RequestBody UpdateSurveyRequest request) {
-        SurveyResponse response = surveyService.updateSurvey(scopeType, scopeId, surveyId, request);
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        SurveyResponse response = surveyService.updateSurvey(scopeType, resolvedScopeId, surveyId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -119,9 +128,10 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "公開成功")
     public ResponseEntity<ApiResponse<SurveyResponse>> publishSurvey(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId) {
-        SurveyResponse response = surveyService.publishSurvey(scopeType, scopeId, surveyId);
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        SurveyResponse response = surveyService.publishSurvey(scopeType, resolvedScopeId, surveyId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -133,9 +143,10 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "締め切り成功")
     public ResponseEntity<ApiResponse<SurveyResponse>> closeSurvey(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId) {
-        SurveyResponse response = surveyService.closeSurvey(scopeType, scopeId, surveyId);
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        SurveyResponse response = surveyService.closeSurvey(scopeType, resolvedScopeId, surveyId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -147,9 +158,10 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteSurvey(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId) {
-        surveyService.deleteSurvey(scopeType, scopeId, surveyId);
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        surveyService.deleteSurvey(scopeType, resolvedScopeId, surveyId);
         return ResponseEntity.noContent().build();
     }
 
@@ -165,7 +177,7 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<RespondentResponse>>> getRespondents(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId) {
         List<RespondentResponse> respondents = surveyResultService.getRespondents(
                 surveyId, SecurityUtils.getCurrentUserId());
@@ -184,10 +196,11 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<byte[]> exportResults(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId) {
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
         byte[] csv = surveyResultService.exportResultsCsv(
-                scopeType, scopeId, surveyId, SecurityUtils.getCurrentUserId());
+                scopeType, resolvedScopeId, surveyId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"survey_" + surveyId + ".csv\"")
                 .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
@@ -206,11 +219,12 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "複製成功")
     public ResponseEntity<ApiResponse<SurveyDetailResponse>> duplicateSurvey(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId,
             @RequestBody(required = false) DuplicateSurveyRequest request) {
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
         SurveyDetailResponse response = surveyService.duplicateSurvey(
-                scopeType, scopeId, surveyId, request, SecurityUtils.getCurrentUserId());
+                scopeType, resolvedScopeId, surveyId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -225,11 +239,12 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "延長成功")
     public ResponseEntity<ApiResponse<SurveyResponse>> extendDeadline(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId,
             @Valid @RequestBody ExtendDeadlineRequest request) {
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
         SurveyResponse response = surveyService.extendDeadline(
-                scopeType, scopeId, surveyId, request.getNewDeadline(), SecurityUtils.getCurrentUserId());
+                scopeType, resolvedScopeId, surveyId, request.getNewDeadline(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -241,8 +256,29 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<SurveyStatsResponse>> getStats(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId) {
-        SurveyStatsResponse response = surveyService.getStats(scopeType, scopeId);
+            @PathVariable String scopeId) {
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        SurveyStatsResponse response = surveyService.getStats(scopeType, resolvedScopeId);
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * scopeType と scopeId（UUID 文字列）から内部 BIGINT ID を解決する。
+     *
+     * <p>PR #1331 対応: FE から UUID publicId が渡るため、scopeType に応じて
+     * OrganizationService または TeamService 経由で内部 ID に変換する。</p>
+     *
+     * @param scopeType "organizations" または "teams"
+     * @param scopeId   UUID 文字列（publicId）
+     * @return 内部 BIGINT ID
+     */
+    private Long resolveScopeId(String scopeType, String scopeId) {
+        UUID publicId = UUID.fromString(scopeId);
+        if ("organizations".equalsIgnoreCase(scopeType)) {
+            return organizationService.resolveOrgId(publicId);
+        } else if ("teams".equalsIgnoreCase(scopeType)) {
+            return teamService.resolveTeamId(publicId);
+        }
+        throw new IllegalArgumentException("不明な scopeType: " + scopeType);
     }
 }

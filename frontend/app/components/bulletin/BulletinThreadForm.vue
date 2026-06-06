@@ -17,7 +17,7 @@ const { createThread, getCategories } = useBulletinApi()
 const { showSuccess, showError } = useNotification()
 const { t } = useI18n()
 // VILLAGE スコープはお知らせウィジェット非対応のため、TEAM/ORGANIZATION 時のみ有効な scopeId を渡す
-const announceScopeId = typeof props.scopeId === 'number' ? props.scopeId : 0
+const announceScopeId = typeof props.scopeId !== 'undefined' ? String(props.scopeId) : ''
 const { createAnnouncement } = useAnnouncementFeed(
   props.scopeType as 'TEAM' | 'ORGANIZATION',
   announceScopeId,

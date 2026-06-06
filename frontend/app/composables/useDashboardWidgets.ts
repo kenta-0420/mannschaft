@@ -299,11 +299,11 @@ const ALL_WIDGETS: WidgetDefinition[] = [
   },
 ]
 
-function hiddenStorageKey(scopeType: string, scopeId?: number): string {
+function hiddenStorageKey(scopeType: string, scopeId?: string): string {
   return scopeId ? `dashboard-widgets:${scopeType}:${scopeId}` : `dashboard-widgets:${scopeType}`
 }
 
-function orderStorageKey(scopeType: string, scopeId?: number): string {
+function orderStorageKey(scopeType: string, scopeId?: string): string {
   return scopeId
     ? `dashboard-widget-order:${scopeType}:${scopeId}`
     : `dashboard-widget-order:${scopeType}`
@@ -311,11 +311,11 @@ function orderStorageKey(scopeType: string, scopeId?: number): string {
 
 export function useDashboardWidgets(
   scopeType: 'personal' | 'team' | 'organization',
-  scopeId?: Ref<number> | number,
+  scopeId?: Ref<string> | string,
   viewerRole?: ViewerRole,
   visibilityMap?: WidgetVisibilitySetting[],
 ) {
-  const resolvedId = typeof scopeId === 'number' ? scopeId : scopeId?.value
+  const resolvedId = typeof scopeId === 'string' ? scopeId : scopeId?.value
 
   const availableWidgets = computed(() => ALL_WIDGETS.filter((w) => w.scope.includes(scopeType)))
 

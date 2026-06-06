@@ -122,10 +122,10 @@ async function onSubmit() {
 
     const res = await createPost(formData)
     // お知らせウィジェットに表示する場合、投稿後に登録（VILLAGE スコープは非対応）
-    if (displayInAnnouncement.value && isTeamOrOrgScope.value && res?.data?.id && typeof props.scopeId === 'number') {
+    if (displayInAnnouncement.value && isTeamOrOrgScope.value && res?.data?.id && props.scopeId != null) {
       const { createAnnouncement } = useAnnouncementFeed(
         props.scopeType as 'TEAM' | 'ORGANIZATION',
-        props.scopeId,
+        String(props.scopeId),
       )
       await createAnnouncement({
         sourceType: 'TIMELINE_POST',

@@ -5,7 +5,7 @@ export function useRepairPlanTimelineApi() {
 
   async function getTimeline(
     scope: string,
-    scopeId: number,
+    scopeId: string,
     params?: { yearFrom?: number; yearTo?: number },
   ): Promise<RepairPlanTimelineResponse> {
     const query = new URLSearchParams()

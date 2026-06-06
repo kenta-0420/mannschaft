@@ -39,7 +39,7 @@ function makePublicTeam(
   over: Partial<TeamPublicDetailResponse> = {},
 ): TeamPublicDetailResponse {
   return {
-    id: 8001,
+    id: '8001',
     name: '本店',
     nameKana: null,
     nickname1: null,
@@ -65,10 +65,10 @@ describe('useTeamApi.getPublicTeam', () => {
   })
 
   it('指定 ID で `/api/v1/public/teams/{id}` を呼ぶこと', async () => {
-    mockApiFetch.mockResolvedValueOnce({ data: makePublicTeam({ id: 8001 }) })
+    mockApiFetch.mockResolvedValueOnce({ data: makePublicTeam({ id: '8001' }) })
 
     const { getPublicTeam } = useTeamApi()
-    await getPublicTeam(8001)
+    await getPublicTeam('8001')
 
     expect(mockApiFetch).toHaveBeenCalledTimes(1)
     const [calledUrl] = mockApiFetch.mock.calls[0] as [string]
@@ -77,7 +77,7 @@ describe('useTeamApi.getPublicTeam', () => {
 
   it('200 レスポンスを `{ data: TeamPublicDetailResponse }` で返すこと', async () => {
     const team = makePublicTeam({
-      id: 9001,
+      id: '9001',
       name: 'カフェ・公開店',
       philosophy: '地域に根ざして',
       memberCount: 7,
@@ -86,9 +86,9 @@ describe('useTeamApi.getPublicTeam', () => {
     mockApiFetch.mockResolvedValueOnce({ data: team })
 
     const { getPublicTeam } = useTeamApi()
-    const result = await getPublicTeam(9001)
+    const result = await getPublicTeam('9001')
 
-    expect(result.data.id).toBe(9001)
+    expect(result.data.id).toBe('9001')
     expect(result.data.name).toBe('カフェ・公開店')
     expect(result.data.philosophy).toBe('地域に根ざして')
     expect(result.data.memberCount).toBe(7)
@@ -102,7 +102,7 @@ describe('useTeamApi.getPublicTeam', () => {
     const { getPublicTeam } = useTeamApi()
     let captured: unknown = null
     try {
-      await getPublicTeam(9999)
+      await getPublicTeam('9999')
     } catch (e) {
       captured = e
     }
@@ -113,7 +113,7 @@ describe('useTeamApi.getPublicTeam', () => {
     for (const status of [429, 500]) {
       mockApiFetch.mockRejectedValueOnce(makeFetchError(status))
       const { getPublicTeam } = useTeamApi()
-      await expect(getPublicTeam(8001)).rejects.toBeDefined()
+      await expect(getPublicTeam('8001')).rejects.toBeDefined()
     }
   })
 })

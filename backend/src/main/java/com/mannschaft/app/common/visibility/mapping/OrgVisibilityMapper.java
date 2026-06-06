@@ -25,7 +25,11 @@ public final class OrgVisibilityMapper {
      */
     public static StandardVisibility toStandard(OrgVisibility v) {
         return switch (v) {
-            case TEAM_ONLY -> StandardVisibility.MEMBERS_ONLY;
+            // 内輪判定（W5・マスター御裁可 2026-06-05）: アクションメモ（業務行動メモ＝仕事の進捗の
+            // 見える化・チームタイムライン投稿）は「メンバー限定の内輪」であり応援者(SUPPORTER)には
+            // 見せない。TEAM_ONLY の出力先を MEMBERS_AND_ABOVE（hasRoleOrAbove("MEMBER") / SUPPORTER・
+            // GUEST 除外）へ。機能 enum 名・DB 値は据え置き（④A）。挙動変更: 直接所属の SUPPORTER は不可視に。
+            case TEAM_ONLY -> StandardVisibility.MEMBERS_AND_ABOVE;
             case ORG_WIDE -> StandardVisibility.ORGANIZATION_WIDE;
         };
     }

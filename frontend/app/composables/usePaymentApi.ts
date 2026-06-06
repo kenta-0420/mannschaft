@@ -9,17 +9,17 @@ import type {
 export function usePaymentApi() {
   const api = useApi()
 
-  function base(scopeType: 'team' | 'organization', scopeId: number) {
+  function base(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   // === Payment Items ===
-  async function getPaymentItems(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getPaymentItems(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: PaymentItemResponse[] }>(`${base(scopeType, scopeId)}/payment-items`)
   }
   async function createPaymentItem(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: PaymentItemResponse }>(`${base(scopeType, scopeId)}/payment-items`, {
@@ -29,7 +29,7 @@ export function usePaymentApi() {
   }
   async function updatePaymentItem(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
     body: Record<string, unknown>,
   ) {
@@ -37,7 +37,7 @@ export function usePaymentApi() {
   }
   async function deletePaymentItem(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
   ) {
     return api(`${base(scopeType, scopeId)}/payment-items/${itemId}`, { method: 'DELETE' })
@@ -46,7 +46,7 @@ export function usePaymentApi() {
   // === Member Payments ===
   async function getMemberPayments(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
   ) {
     return api<{ data: MemberPaymentResponse[] }>(
@@ -55,7 +55,7 @@ export function usePaymentApi() {
   }
   async function recordManualPayment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
     body: Record<string, unknown>,
   ) {
@@ -66,7 +66,7 @@ export function usePaymentApi() {
   }
   async function bulkRecordPayment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
     payments: Array<Record<string, unknown>>,
   ) {
@@ -77,7 +77,7 @@ export function usePaymentApi() {
   }
   async function cancelPayment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
     paymentId: number,
   ) {
@@ -85,12 +85,12 @@ export function usePaymentApi() {
       method: 'DELETE',
     })
   }
-  async function sendReminder(scopeType: 'team' | 'organization', scopeId: number, itemId: number) {
+  async function sendReminder(scopeType: 'team' | 'organization', scopeId: string, itemId: number) {
     return api(`${base(scopeType, scopeId)}/payment-items/${itemId}/remind`, { method: 'POST' })
   }
 
   // === Summary ===
-  async function getPaymentSummary(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getPaymentSummary(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: PaymentSummaryResponse }>(`${base(scopeType, scopeId)}/payment-summary`)
   }
 
@@ -104,7 +104,7 @@ export function usePaymentApi() {
   // === Update Payment ===
   async function updatePayment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
     paymentId: number,
     body: Record<string, unknown>,
@@ -131,7 +131,7 @@ export function usePaymentApi() {
   // === Export ===
   async function exportPayments(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
   ) {
     return api<Blob>(`${base(scopeType, scopeId)}/payment-items/${itemId}/payments/export`)
@@ -140,7 +140,7 @@ export function usePaymentApi() {
   // === Refund ===
   async function refundPayment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
     paymentId: number,
   ) {

@@ -30,8 +30,8 @@ watch(viewMode, (mode) => {
   }
 })
 
-function onOrgCreated(entity: { id: number; name: string }) {
-  navigateTo(`/organizations/${entity.id}`)
+function onOrgCreated(entity: { id: number; publicId: string; name: string }) {
+  navigateTo(`/organizations/${entity.publicId}`)
 }
 
 /** F15.3: URL クエリ `?folder=` がソース・オブ・トゥルース。 */
@@ -77,12 +77,12 @@ const filteredOrgs = computed(() => {
     const def = foldersStore.defaultFolderFor('ORGANIZATION')
     if (!def) return all
     const idSet = new Set(def.itemScopeIds)
-    return all.filter(o => idSet.has(o.id))
+    return all.filter(o => idSet.has(String(o.id)))
   }
   const folder = foldersStore.foldersFor('ORGANIZATION').find(f => f.id === v)
   if (!folder) return []
   const idSet = new Set(folder.itemScopeIds)
-  return all.filter(o => idSet.has(o.id))
+  return all.filter(o => idSet.has(String(o.id)))
 })
 
 const isManageView = computed(() => currentFolderId.value === 'manage')
@@ -170,7 +170,7 @@ const isManageView = computed(() => currentFolderId.value === 'manage')
           v-for="org in filteredOrgs"
           :key="org.id"
           class="cursor-pointer rounded-lg border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md"
-          @click="navigateTo(`/organizations/${org.id}`)"
+          @click="navigateTo(`/organizations/${org.publicId}`)"
         >
           <div class="mb-3 flex items-center gap-3">
             <Avatar
@@ -199,7 +199,7 @@ const isManageView = computed(() => currentFolderId.value === 'manage')
           v-for="org in filteredOrgs"
           :key="org.id"
           class="flex cursor-pointer items-center gap-4 rounded-lg border border-surface-200 bg-surface-0 px-4 py-3 transition-shadow hover:shadow-sm"
-          @click="navigateTo(`/organizations/${org.id}`)"
+          @click="navigateTo(`/organizations/${org.publicId}`)"
         >
           <Avatar
             :image="org.iconUrl ?? undefined"

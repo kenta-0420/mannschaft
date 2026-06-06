@@ -22,7 +22,7 @@ import type { TeamFriendView } from '~/types/friends'
 
 const props = defineProps<{
   friend: TeamFriendView
-  teamId: number
+  teamId: string
   canEdit: boolean
   canToggleVisibility: boolean
 }>()

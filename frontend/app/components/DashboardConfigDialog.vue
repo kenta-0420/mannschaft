@@ -12,7 +12,7 @@ const props = withDefaults(
     widgets: WidgetDefinition[]
     isVisible: (key: string) => boolean
     scopeType?: 'personal' | 'team' | 'organization'
-    scopeId?: number
+    scopeId?: string
     isAdminOrDeputy?: boolean
   }>(),
   {
@@ -38,7 +38,7 @@ const showRoleTab = computed(
 const activeTab = ref(0)
 
 // === ロール別設定 (管理者タブ) ===
-const scopeIdRef = computed(() => props.scopeId ?? 0)
+const scopeIdRef = computed(() => props.scopeId ?? '')
 const visibility = useDashboardWidgetVisibility(
   props.scopeType === 'organization' ? 'organization' : 'team',
   scopeIdRef,

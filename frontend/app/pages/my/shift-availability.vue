@@ -58,7 +58,7 @@ function initDefaults(current: AvailabilityDefaultResponse[]) {
 async function loadForTeam(id: number) {
   loading.value = true
   try {
-    const data = await getAvailabilityDefaults(id)
+    const data = await getAvailabilityDefaults(String(id))
     initDefaults(data)
   } catch {
     showError(t('shift.notification.errorLoad'))
@@ -87,7 +87,7 @@ async function save() {
         preference: pref,
       })
     }
-    await setAvailabilityDefaults(selectedTeamId.value, { availabilities })
+    await setAvailabilityDefaults(String(selectedTeamId.value), { availabilities })
     showSuccess(t('shift.notification.updateSuccess'))
   } catch {
     showError(t('shift.notification.errorUpdate'))
@@ -99,7 +99,7 @@ async function save() {
 async function resetAll() {
   if (!selectedTeamId.value) return
   try {
-    await deleteAvailabilityDefaults(selectedTeamId.value)
+    await deleteAvailabilityDefaults(String(selectedTeamId.value))
     initDefaults([])
     showSuccess(t('shift.notification.deleteSuccess'))
   } catch {

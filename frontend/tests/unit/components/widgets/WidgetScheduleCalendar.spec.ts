@@ -125,7 +125,7 @@ describe('WidgetScheduleCalendar.vue', () => {
     scheduleApiMock.getMySchedules.mockResolvedValueOnce(emptyResponse)
 
     const wrapper = await mountSuspended(WidgetScheduleCalendar, {
-      props: { scopeType: 'team', scopeId: 42 },
+      props: { scopeType: 'team', scopeId: '42' },
       global: { stubs: { CalendarGrid: CalendarGridStub, Skeleton: true } },
     })
 
@@ -144,7 +144,7 @@ describe('WidgetScheduleCalendar.vue', () => {
     const expectedTo = expectedMonthRange(endOffset.getFullYear(), endOffset.getMonth() + 1)
     const callArgs = scheduleApiMock.listSchedules.mock.calls[0]!
     expect(callArgs[0]).toBe('team')
-    expect(callArgs[1]).toBe(42)
+    expect(callArgs[1]).toBe('42')
     // from/to は YYYY-MM-DDTHH:mm:ss 形式 (19 文字) で渡されること (F01.2 規約)
     expect(callArgs[2].from).toBe(expectedFrom.from)
     expect(callArgs[2].to).toBe(expectedTo.to)
@@ -167,7 +167,7 @@ describe('WidgetScheduleCalendar.vue', () => {
     scheduleApiMock.getMySchedules.mockResolvedValue(emptyResponse)
 
     const wrapper = await mountSuspended(WidgetScheduleCalendar, {
-      props: { scopeType: 'organization', scopeId: 7 },
+      props: { scopeType: 'organization', scopeId: '7' },
       global: { stubs: { CalendarGrid: CalendarGridStub, Skeleton: true } },
     })
 
@@ -202,7 +202,7 @@ describe('WidgetScheduleCalendar.vue', () => {
     scheduleApiMock.getMySchedules.mockResolvedValueOnce(emptyResponse)
 
     const wrapper = await mountSuspended(WidgetScheduleCalendar, {
-      props: { scopeType: 'team', scopeId: 99 },
+      props: { scopeType: 'team', scopeId: '99' },
       global: { stubs: { CalendarGrid: CalendarGridStub, Skeleton: true } },
     })
 

@@ -17,7 +17,7 @@ const { fetchTeamMembers } = useActionMemoApi()
 const { memos, nextCursor, loading, loadingMore, error, loadMemos, loadMore, reset } =
   useActionMemoDashboard()
 
-const selectedTeamId = ref<number | null>(null)
+const selectedTeamId = ref<string | null>(null)
 const selectedMemberId = ref<number | null>(null)
 const memberId = ref<number | null>(null)
 const teamMembers = ref<{ userId: number; displayName: string }[]>([])
@@ -30,7 +30,7 @@ onMounted(async () => {
 })
 
 async function onTeamChange(id: number | null) {
-  selectedTeamId.value = id
+  selectedTeamId.value = id != null ? String(id) : null
   selectedMemberId.value = null
   memberId.value = null
   teamMembers.value = []
@@ -38,7 +38,7 @@ async function onTeamChange(id: number | null) {
   if (id) {
     membersLoading.value = true
     try {
-      teamMembers.value = await fetchTeamMembers(id)
+      teamMembers.value = await fetchTeamMembers(String(id))
     } finally {
       membersLoading.value = false
     }

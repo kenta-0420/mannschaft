@@ -76,7 +76,7 @@ beforeEach(() => {
 describe('useDismissal', () => {
   describe('loadStatus', () => {
     it('API 経由で status が更新される', async () => {
-      const teamId = ref(1)
+      const teamId = ref('1')
       const eventId = ref(2)
       const expected = makeStatus({ dismissed: false })
       mockGetDismissalStatus.mockResolvedValueOnce(expected)
@@ -85,14 +85,14 @@ describe('useDismissal', () => {
 
       await loadStatus()
 
-      expect(mockGetDismissalStatus).toHaveBeenCalledWith(1, 2)
+      expect(mockGetDismissalStatus).toHaveBeenCalledWith('1', 2)
       expect(status.value).toEqual(expected)
       expect(error.value).toBeNull()
       expect(loading.value).toBe(false)
     })
 
     it('API が失敗したら error にセットする', async () => {
-      const teamId = ref(1)
+      const teamId = ref('1')
       const eventId = ref(2)
       mockGetDismissalStatus.mockRejectedValueOnce(new Error('boom'))
 
@@ -107,7 +107,7 @@ describe('useDismissal', () => {
 
   describe('submit (オンライン)', () => {
     it('submitDismissal を呼んで status を更新し成功トーストを出す', async () => {
-      const teamId = ref(10)
+      const teamId = ref('10')
       const eventId = ref(20)
       const next = makeStatus({
         dismissed: true,
@@ -121,7 +121,7 @@ describe('useDismissal', () => {
         notifyGuardians: true,
       })
 
-      expect(mockSubmitDismissal).toHaveBeenCalledWith(10, 20, {
+      expect(mockSubmitDismissal).toHaveBeenCalledWith('10', 20, {
         message: 'お疲れさまでした',
         notifyGuardians: true,
       })
@@ -132,7 +132,7 @@ describe('useDismissal', () => {
     })
 
     it('API 失敗時は error をセットしてエラートーストを出す', async () => {
-      const teamId = ref(10)
+      const teamId = ref('10')
       const eventId = ref(20)
       mockSubmitDismissal.mockRejectedValueOnce(new Error('5xx'))
 
@@ -151,7 +151,7 @@ describe('useDismissal', () => {
     })
 
     it('navigator.onLine=false なら enqueueCareJob を呼びキューに積む', async () => {
-      const teamId = ref(7)
+      const teamId = ref('7')
       const eventId = ref(99)
       mockEnqueueCareJob.mockResolvedValueOnce(42)
 
@@ -160,7 +160,7 @@ describe('useDismissal', () => {
 
       expect(mockEnqueueCareJob).toHaveBeenCalledWith({
         type: 'DISMISSAL',
-        teamId: 7,
+        teamId: '7',
         eventId: 99,
         payload: { notifyGuardians: false },
       })
@@ -171,7 +171,7 @@ describe('useDismissal', () => {
     })
 
     it('enqueue 失敗時は error にセットする', async () => {
-      const teamId = ref(7)
+      const teamId = ref('7')
       const eventId = ref(99)
       mockEnqueueCareJob.mockRejectedValueOnce(new Error('IndexedDB unavailable'))
 
@@ -186,7 +186,7 @@ describe('useDismissal', () => {
 
   describe('二重送信防止', () => {
     it('既に dismissed=true なら submit を呼ばず warn トーストを出す', async () => {
-      const teamId = ref(1)
+      const teamId = ref('1')
       const eventId = ref(2)
       // 先に loadStatus で dismissed=true 状態を作る
       mockGetDismissalStatus.mockResolvedValueOnce(

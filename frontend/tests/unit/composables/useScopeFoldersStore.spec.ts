@@ -162,40 +162,40 @@ describe('useScopeFoldersStore', () => {
 
   describe('addItem / removeItem', () => {
     it('addItem は POST し他フォルダから scopeId を取り除く', async () => {
-      const folderA = makeFolder({ id: 1, itemScopeIds: [101] })
+      const folderA = makeFolder({ id: 1, itemScopeIds: ['101'] })
       const folderB = makeFolder({ id: 2, itemScopeIds: [] })
       // レスポンスは追加後の folderB
-      const updatedB = makeFolder({ id: 2, itemScopeIds: [101] })
+      const updatedB = makeFolder({ id: 2, itemScopeIds: ['101'] })
       mockFetch.mockResolvedValueOnce({ data: updatedB })
 
       const store = useScopeFoldersStore()
       store.myTeamFolders = [folderA, folderB]
 
-      await store.addItem('TEAM', 2, 101)
+      await store.addItem('TEAM', 2, '101')
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/me/scope-folders/2/items', {
         method: 'POST',
-        body: { scopeId: 101 },
+        body: { scopeId: '101' },
       })
       const a = store.myTeamFolders.find(f => f.id === 1)
       const b = store.myTeamFolders.find(f => f.id === 2)
-      expect(a?.itemScopeIds).not.toContain(101)
-      expect(b?.itemScopeIds).toContain(101)
+      expect(a?.itemScopeIds).not.toContain('101')
+      expect(b?.itemScopeIds).toContain('101')
     })
 
     it('removeItem は DELETE し state から取り除く', async () => {
       mockFetch.mockResolvedValueOnce(undefined)
-      const folder = makeFolder({ id: 1, itemScopeIds: [101, 102] })
+      const folder = makeFolder({ id: 1, itemScopeIds: ['101', '102'] })
       const store = useScopeFoldersStore()
       store.myTeamFolders = [folder]
 
-      await store.removeItem('TEAM', 1, 101)
+      await store.removeItem('TEAM', 1, '101')
 
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/v1/me/scope-folders/1/items/101',
         { method: 'DELETE' },
       )
-      expect(store.myTeamFolders[0]?.itemScopeIds).toEqual([102])
+      expect(store.myTeamFolders[0]?.itemScopeIds).toEqual(['102'])
     })
   })
 
@@ -207,14 +207,14 @@ describe('useScopeFoldersStore', () => {
       mockFetch.mockResolvedValueOnce({ data: [] })
 
       const store = useScopeFoldersStore()
-      const result = await store.bulkAssign(1, [101, 102, 103], 'TEAM')
+      const result = await store.bulkAssign(1, ['101', '102', '103'], 'TEAM')
 
       expect(mockFetch).toHaveBeenNthCalledWith(
         1,
         '/api/v1/me/scope-folders/items/bulk-assign',
         {
           method: 'POST',
-          body: { folderId: 1, scopeIds: [101, 102, 103], scopeType: 'TEAM' },
+          body: { folderId: 1, scopeIds: ['101', '102', '103'], scopeType: 'TEAM' },
         },
       )
       expect(result).toEqual(bulkResp)

@@ -73,7 +73,7 @@ export interface PropertyWorkPackagePermissions {
 export interface PropertyWorkPackageResponse {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   dwellingUnitId: number | null
   workType: WorkType
   category: string | null

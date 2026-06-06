@@ -24,7 +24,7 @@ const props = defineProps<{
   slotId: number
   slotDate: string
   scheduleId: number
-  teamId: number
+  teamId: string
 }>()
 
 const emit = defineEmits<{

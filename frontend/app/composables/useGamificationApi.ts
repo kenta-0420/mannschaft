@@ -3,37 +3,37 @@ import type { GamificationConfig, PointRule, Badge, UserBadge, PointSummary, Poi
 export function useGamificationApi() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
-  async function getConfig(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getConfig(scopeType: 'team' | 'organization', scopeId: string) {
     const base = buildBase(scopeType, scopeId)
     const res = await api<{ data: GamificationConfig }>(`${base}/gamification/config`)
     return res.data
   }
 
-  async function updateConfig(scopeType: 'team' | 'organization', scopeId: number, config: GamificationConfig) {
+  async function updateConfig(scopeType: 'team' | 'organization', scopeId: string, config: GamificationConfig) {
     const base = buildBase(scopeType, scopeId)
     await api(`${base}/gamification/config`, { method: 'PUT', body: config })
   }
 
-  async function listPointRules(teamId: number) {
+  async function listPointRules(teamId: string) {
     const res = await api<{ data: PointRule[] }>(`/api/v1/teams/${teamId}/gamification/point-rules`)
     return res.data
   }
 
-  async function listBadges(teamId: number) {
+  async function listBadges(teamId: string) {
     const res = await api<{ data: Badge[] }>(`/api/v1/teams/${teamId}/gamification/badges`)
     return res.data
   }
 
-  async function getMyPoints(teamId: number) {
+  async function getMyPoints(teamId: string) {
     const res = await api<{ data: PointSummary }>(`/api/v1/teams/${teamId}/gamification/points/me`)
     return res.data
   }
 
-  async function getMyPointHistory(teamId: number, cursor?: string) {
+  async function getMyPointHistory(teamId: string, cursor?: string) {
     const qs = cursor ? `?cursor=${cursor}` : ''
     const res = await api<{ data: PointHistory[]; meta: { nextCursor: string | null } }>(
       `/api/v1/teams/${teamId}/gamification/points/me/history${qs}`,
@@ -41,22 +41,22 @@ export function useGamificationApi() {
     return res
   }
 
-  async function getRankings(teamId: number, period: 'WEEKLY' | 'MONTHLY' | 'YEARLY') {
+  async function getRankings(teamId: string, period: 'WEEKLY' | 'MONTHLY' | 'YEARLY') {
     const res = await api<{ data: RankingEntry[] }>(`/api/v1/teams/${teamId}/gamification/rankings?period=${period}`)
     return res.data
   }
 
-  async function getMyBadges(teamId: number) {
+  async function getMyBadges(teamId: string) {
     const res = await api<{ data: UserBadge[] }>(`/api/v1/teams/${teamId}/gamification/badges/me`)
     return res.data
   }
 
-  async function getPrivacy(teamId: number) {
+  async function getPrivacy(teamId: string) {
     const res = await api<{ data: GamificationPrivacy }>(`/api/v1/teams/${teamId}/gamification/settings/me`)
     return res.data
   }
 
-  async function updatePrivacy(teamId: number, settings: GamificationPrivacy) {
+  async function updatePrivacy(teamId: string, settings: GamificationPrivacy) {
     await api(`/api/v1/teams/${teamId}/gamification/settings/me`, { method: 'PUT', body: settings })
   }
 

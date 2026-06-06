@@ -4,7 +4,7 @@ import { buildBase } from './useParkingApiBase'
 export function useParkingVisitorRecurringApi() {
   const api = useApi()
 
-  async function getVisitorRecurring(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getVisitorRecurring(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: VisitorRecurringResponse[] }>(
       `${buildBase(scopeType, scopeId)}/parking/visitor-recurring`,
     )
@@ -12,7 +12,7 @@ export function useParkingVisitorRecurringApi() {
 
   async function createVisitorRecurring(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: VisitorRecurringResponse }>(
@@ -23,7 +23,7 @@ export function useParkingVisitorRecurringApi() {
 
   async function updateVisitorRecurring(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     recurringId: number,
     body: Record<string, unknown>,
   ) {
@@ -35,7 +35,7 @@ export function useParkingVisitorRecurringApi() {
 
   async function deleteVisitorRecurring(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     recurringId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/parking/visitor-recurring/${recurringId}`, {

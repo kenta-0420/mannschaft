@@ -4,7 +4,7 @@ import type { TransitionAlertResponse } from '~/types/school'
 
 const props = defineProps<{
   alerts: TransitionAlertResponse[]
-  teamId: number
+  teamId: string
 }>()
 
 const emit = defineEmits<{

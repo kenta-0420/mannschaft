@@ -19,7 +19,7 @@ const { t } = useI18n()
 const api = useJobPostingApi()
 const { error } = useNotification()
 
-const teamId = computed(() => Number(route.params.id))
+const teamId = computed(() => String(route.params.id))
 
 const PAGE_SIZE = 20
 
@@ -44,7 +44,7 @@ async function load(page = 0) {
   currentPage.value = page
   try {
     const res = await api.searchJobs({
-      teamId: teamId.value,
+      teamId: Number(teamId.value),
       status: statusFilter.value === 'ALL' ? null : statusFilter.value,
       page,
       size: PAGE_SIZE,
@@ -79,7 +79,7 @@ function goToNew() {
 }
 
 onMounted(() => {
-  if (!Number.isFinite(teamId.value)) return
+  if (!teamId.value) return
   load(0)
 })
 </script>

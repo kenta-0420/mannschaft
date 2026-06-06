@@ -110,7 +110,7 @@ onMounted(load)
     </DashboardWidgetCard>
 
     <!-- スコープタブ（一覧・カンバン用） -->
-    <div v-if="viewMode !== 'gantt'" class="mb-5 flex flex-wrap gap-2">
+    <div v-if="viewMode !== 'gantt'" class="mb-5 flex gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 w-fit dark:border-surface-600 dark:bg-surface-700">
       <button
         v-for="tab in [
           { key: 'all', label: 'すべて' },
@@ -119,11 +119,11 @@ onMounted(load)
           { key: 'organization', label: '組織' },
         ]"
         :key="tab.key"
-        class="rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
+        class="rounded-md px-4 py-1.5 text-sm font-medium transition-colors"
         :class="
           scopeTab === tab.key
-            ? 'border-2 border-primary bg-primary text-white'
-            : 'field-bordered bg-surface-100 text-surface-600 hover:bg-surface-200 dark:bg-surface-700 dark:text-surface-300'
+            ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
+            : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'
         "
         @click="scopeTab = tab.key as typeof scopeTab"
       >

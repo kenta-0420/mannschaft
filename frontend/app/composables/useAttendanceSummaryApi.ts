@@ -14,7 +14,7 @@ export function useAttendanceSummaryApi() {
 
   async function getStudentSummary(
     studentId: number,
-    teamId: number,
+    teamId: string,
     academicYear: number,
     termId?: number,
   ): Promise<StudentSummaryResponse> {
@@ -27,7 +27,7 @@ export function useAttendanceSummaryApi() {
   }
 
   async function getClassSummaries(
-    teamId: number,
+    teamId: string,
     academicYear: number,
     termId?: number,
   ): Promise<ClassSummaryListResponse> {

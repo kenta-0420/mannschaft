@@ -4,7 +4,7 @@ import type { TournamentResponse } from '~/types/tournament'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 
 const notification = useNotification()
 const { getTournaments, createTournament } = useTournamentApi()

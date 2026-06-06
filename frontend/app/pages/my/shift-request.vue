@@ -67,7 +67,7 @@ async function selectTeam(id: number) {
   step.value = 'schedule-select'
   schedulesLoading.value = true
   try {
-    const all = await listSchedules(id)
+    const all = await listSchedules(String(id))
     // COLLECTING 状態のみ表示
     schedules.value = all.filter((s) => s.status === 'COLLECTING')
   } catch {
@@ -87,7 +87,7 @@ async function selectSchedule(schedule: ShiftScheduleResponse) {
       listSlots(schedule.id),
       listMyRequests(),
       selectedTeamId.value
-        ? getAvailabilityDefaults(selectedTeamId.value)
+        ? getAvailabilityDefaults(String(selectedTeamId.value))
         : Promise.resolve([] as AvailabilityDefaultResponse[]),
     ])
     slots.value = fetchedSlots

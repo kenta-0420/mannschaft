@@ -12,7 +12,7 @@ export type ActivePanel = 'PERSONAL' | 'TEAM' | 'ORGANIZATION'
 
 /** 表示順エントリ */
 export interface TabOrderEntry {
-  scopeId: number
+  scopeId: string
   sortOrder: number
 }
 
@@ -22,8 +22,8 @@ interface PersistedState {
   teamTabPage: number
   orgTabPage: number
   activeFolderId: number | null
-  selectedTeamId: number | null
-  selectedOrgId: number | null
+  selectedTeamId: string | null
+  selectedOrgId: string | null
   tabOrders: Record<ScopeTabType, TabOrderEntry[]>
 }
 
@@ -45,10 +45,10 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
     orgTabPage: 0,
     /** フォルダフィルタ（F15.3 フォルダ ID / null = すべて。my_scope_folders.id は数値）*/
     activeFolderId: null as number | null,
-    /** チームパネルで選択中のチーム ID */
-    selectedTeamId: null as number | null,
-    /** 組織パネルで選択中の組織 ID */
-    selectedOrgId: null as number | null,
+    /** チームパネルで選択中のチーム ID（UUID string）*/
+    selectedTeamId: null as string | null,
+    /** 組織パネルで選択中の組織 ID（UUID string）*/
+    selectedOrgId: null as string | null,
     /** 表示順（楽観更新用。PUT /order 成功まで先行反映）*/
     tabOrders: defaultTabOrders() as Record<ScopeTabType, TabOrderEntry[]>,
     /** タグページデータキャッシュ（scopeType → ScopeTabPage）*/

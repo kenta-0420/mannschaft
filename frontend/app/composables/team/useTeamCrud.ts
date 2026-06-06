@@ -9,7 +9,7 @@ import {
 } from '~/types/team-search'
 
 interface TeamSummaryResponse {
-  id: number
+  id: string
   name: string
   nickname1: string | null
   iconUrl: string | null
@@ -39,20 +39,20 @@ export function useTeamCrud() {
   const api = useApi()
 
   // === CRUD ===
-  async function getTeam(teamId: number) {
+  async function getTeam(teamId: string) {
     return api<{ data: TeamResponse }>(`/api/v1/teams/${teamId}`)
   }
 
   /**
    * F15.4 Phase 5-α: 未ログイン公開チーム詳細取得。
-   * `GET /api/v1/public/teams/{id}` を呼ぶ（permitAll、レート制限 60/min/IP）。
+   * `GET /api/v1/public/teams/{publicId}` を呼ぶ（permitAll、レート制限 60/min/IP）。
    *
    * - 404: 不在 / 削除済み / archived / visibility != PUBLIC
    * - 429: レート制限超過（呼び出し元で扱う）
    *
    * バックエンドのレスポンスは `{ data: TeamPublicDetailResponse }` 形式。
    */
-  async function getPublicTeam(teamId: number) {
+  async function getPublicTeam(teamId: string) {
     return api<{ data: TeamPublicDetailResponse }>(`/api/v1/public/teams/${teamId}`)
   }
 
@@ -99,7 +99,7 @@ export function useTeamCrud() {
    *          （判定は `isTeamSearchResult` タイプガードで行う）。
    */
   async function searchOrganizationTeams(
-    orgId: number | string,
+    orgId: string | string,
     query: TeamSearchQuery,
   ): Promise<PagedResponse<TeamSearchItem>> {
     const params = new URLSearchParams()
@@ -145,34 +145,34 @@ export function useTeamCrud() {
     return api<{ data: TeamResponse }>('/api/v1/teams', { method: 'POST', body })
   }
 
-  async function updateTeam(teamId: number, body: Record<string, unknown>) {
+  async function updateTeam(teamId: string, body: Record<string, unknown>) {
     return api<{ data: TeamResponse }>(`/api/v1/teams/${teamId}`, { method: 'PATCH', body })
   }
 
-  async function deleteTeam(teamId: number) {
+  async function deleteTeam(teamId: string) {
     return api(`/api/v1/teams/${teamId}`, { method: 'DELETE' })
   }
 
   // === アーカイブ ===
-  async function archiveTeam(teamId: number) {
+  async function archiveTeam(teamId: string) {
     return api(`/api/v1/teams/${teamId}/archive`, { method: 'PATCH' })
   }
 
-  async function unarchiveTeam(teamId: number) {
+  async function unarchiveTeam(teamId: string) {
     return api(`/api/v1/teams/${teamId}/unarchive`, { method: 'PATCH' })
   }
 
-  async function restoreTeam(teamId: number) {
+  async function restoreTeam(teamId: string) {
     return api(`/api/v1/teams/${teamId}/restore`, { method: 'PATCH' })
   }
 
   // === 組織一覧 ===
-  async function getOrganizations(teamId: number) {
+  async function getOrganizations(teamId: string) {
     return api<{ data: Array<Record<string, unknown>> }>(`/api/v1/teams/${teamId}/organizations`)
   }
 
   // === オーナー移譲 ===
-  async function transferOwnership(teamId: number, newAdminUserId: number) {
+  async function transferOwnership(teamId: string, newAdminUserId: number) {
     return api(`/api/v1/teams/${teamId}/transfer-ownership`, {
       method: 'POST',
       body: { newAdminUserId },

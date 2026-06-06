@@ -111,7 +111,7 @@ describe('useTeamApi.searchOrganizationTeams', () => {
     mockApiFetch.mockResolvedValueOnce(makePagedResponse([]))
 
     const { searchOrganizationTeams } = useTeamApi()
-    await searchOrganizationTeams(42, {
+    await searchOrganizationTeams('42', {
       keyword: '本店',
       // prefecture / city / template / page / size / sort は undefined
     })
@@ -158,7 +158,7 @@ describe('useTeamApi.searchOrganizationTeams', () => {
     mockApiFetch.mockResolvedValueOnce(makePagedResponse([]))
 
     const { searchOrganizationTeams } = useTeamApi()
-    await searchOrganizationTeams(42, {
+    await searchOrganizationTeams('42', {
       keyword: 'カフェ',
       prefectureCode: '13',
       cityCode: '13101',
@@ -177,7 +177,7 @@ describe('useTeamApi.searchOrganizationTeams', () => {
     mockApiFetch.mockResolvedValueOnce(makePagedResponse([]))
 
     const { searchOrganizationTeams } = useTeamApi()
-    await searchOrganizationTeams(42, {
+    await searchOrganizationTeams('42', {
       prefecture: '東京都',
       prefectureCode: '13',
       city: '千代田区',
@@ -201,7 +201,7 @@ describe('useTeamApi.searchOrganizationTeams', () => {
     mockApiFetch.mockResolvedValueOnce(makePagedResponse(items))
 
     const { searchOrganizationTeams } = useTeamApi()
-    const result = await searchOrganizationTeams(42, { keyword: '店' })
+    const result = await searchOrganizationTeams('42', { keyword: '店' })
 
     expect(result.data).toHaveLength(2)
     expect(result.data[0]!.id).toBe(1)
@@ -226,13 +226,13 @@ describe('useTeamApi.searchOrganizationTeams', () => {
     mockApiFetch.mockRejectedValueOnce(makeFetchError(404))
 
     const { searchOrganizationTeams } = useTeamApi()
-    await expect(searchOrganizationTeams(999, {})).rejects.toBeInstanceOf(
+    await expect(searchOrganizationTeams('999', {})).rejects.toBeInstanceOf(
       OrganizationNotFoundError,
     )
 
     // organizationId が保持されていることを確認
     try {
-      await searchOrganizationTeams(999, {})
+      await searchOrganizationTeams('999', {})
     } catch (e) {
       // 2 回目のモックを設定しなおす必要があるためここでは型のみ確認
       expect(e).toBeDefined()
@@ -245,12 +245,12 @@ describe('useTeamApi.searchOrganizationTeams', () => {
     const { searchOrganizationTeams } = useTeamApi()
     let captured: unknown = null
     try {
-      await searchOrganizationTeams(777, {})
+      await searchOrganizationTeams('777', {})
     } catch (e) {
       captured = e
     }
     expect(captured).toBeInstanceOf(OrganizationNotFoundError)
-    expect((captured as OrganizationNotFoundError).organizationId).toBe(777)
+    expect((captured as OrganizationNotFoundError).organizationId).toBe('777')
   })
 
   it('429 は TeamSearchRateLimitError に変換してスローし Retry-After を保持すること', async () => {
@@ -261,7 +261,7 @@ describe('useTeamApi.searchOrganizationTeams', () => {
     const { searchOrganizationTeams } = useTeamApi()
     let captured: unknown = null
     try {
-      await searchOrganizationTeams(42, {})
+      await searchOrganizationTeams('42', {})
     } catch (e) {
       captured = e
     }
@@ -275,7 +275,7 @@ describe('useTeamApi.searchOrganizationTeams', () => {
     const { searchOrganizationTeams } = useTeamApi()
     let captured: unknown = null
     try {
-      await searchOrganizationTeams(42, {})
+      await searchOrganizationTeams('42', {})
     } catch (e) {
       captured = e
     }
@@ -290,7 +290,7 @@ describe('useTeamApi.searchOrganizationTeams', () => {
     const { searchOrganizationTeams } = useTeamApi()
     let captured: unknown = null
     try {
-      await searchOrganizationTeams(42, {})
+      await searchOrganizationTeams('42', {})
     } catch (e) {
       captured = e
     }

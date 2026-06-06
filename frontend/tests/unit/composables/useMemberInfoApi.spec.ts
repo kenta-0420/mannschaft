@@ -36,7 +36,7 @@ describe('useMemberInfoApi', () => {
     mockFetch.mockResolvedValueOnce({ data: [] })
     const api = useMemberInfoApi()
 
-    await api.getFields(1)
+    await api.getFields('1')
 
     expect(mockFetch).toHaveBeenCalledWith('/api/v1/teams/1/member-info/fields')
   })
@@ -52,7 +52,7 @@ describe('useMemberInfoApi', () => {
       refreshIntervalMonths: 36,
     }
 
-    await api.createField(1, req)
+    await api.createField('1', req)
 
     expect(mockFetch).toHaveBeenCalledWith(
       '/api/v1/teams/1/member-info/fields',
@@ -65,7 +65,7 @@ describe('useMemberInfoApi', () => {
     const api = useMemberInfoApi()
     const req = { fieldName: '更新後のフィールド名' }
 
-    await api.updateField(1, 42, req)
+    await api.updateField('1', 42, req)
 
     expect(mockFetch).toHaveBeenCalledWith(
       '/api/v1/teams/1/member-info/fields/42',
@@ -77,7 +77,7 @@ describe('useMemberInfoApi', () => {
     mockFetch.mockResolvedValueOnce(undefined)
     const api = useMemberInfoApi()
 
-    await api.deleteField(1, 42)
+    await api.deleteField('1', 42)
 
     expect(mockFetch).toHaveBeenCalledWith(
       '/api/v1/teams/1/member-info/fields/42',
@@ -90,7 +90,7 @@ describe('useMemberInfoApi', () => {
     const api = useMemberInfoApi()
     const req = { orders: [{ fieldId: 1, sortOrder: 0 }, { fieldId: 2, sortOrder: 1 }] }
 
-    await api.reorderFields(1, req)
+    await api.reorderFields('1', req)
 
     expect(mockFetch).toHaveBeenCalledWith(
       '/api/v1/teams/1/member-info/fields/reorder',
@@ -102,7 +102,7 @@ describe('useMemberInfoApi', () => {
     mockFetch.mockResolvedValueOnce({ data: { totalMembers: 0, completedCount: 0, overdueCount: 0, members: [] } })
     const api = useMemberInfoApi()
 
-    await api.getResponseStatus(1)
+    await api.getResponseStatus('1')
 
     expect(mockFetch).toHaveBeenCalledWith('/api/v1/teams/1/member-info/responses/status')
   })
@@ -111,7 +111,7 @@ describe('useMemberInfoApi', () => {
     mockFetch.mockResolvedValueOnce(undefined)
     const api = useMemberInfoApi()
 
-    await api.sendRemind(1, 99)
+    await api.sendRemind('1', 99)
 
     expect(mockFetch).toHaveBeenCalledWith(
       '/api/v1/teams/1/member-info/responses/99/remind',
@@ -123,7 +123,7 @@ describe('useMemberInfoApi', () => {
     mockFetch.mockResolvedValueOnce({ data: [] })
     const api = useMemberInfoApi()
 
-    await api.getMyResponses(1)
+    await api.getMyResponses('1')
 
     expect(mockFetch).toHaveBeenCalledWith('/api/v1/teams/1/member-info/responses/me')
   })
@@ -133,7 +133,7 @@ describe('useMemberInfoApi', () => {
     const api = useMemberInfoApi()
     const req = { responses: [{ fieldId: 1, value: '090-1234-5678' }] }
 
-    await api.upsertMyResponses(1, req)
+    await api.upsertMyResponses('1', req)
 
     expect(mockFetch).toHaveBeenCalledWith(
       '/api/v1/teams/1/member-info/responses/me',

@@ -5,7 +5,7 @@ import type { AnnouncementTemplate, BroadcastTargetRole, WizardFormState } from 
 const props = defineProps<{
   modelValue: WizardFormState
   scopeType: AnnouncementScopeType
-  scopeId: number
+  scopeId: string
 }>()
 
 const emit = defineEmits<{
@@ -46,23 +46,23 @@ const allTeams = computed({
 })
 
 /** 組織配下のチーム一覧（ORGANIZATION スコープのみ使用。id と name のみ利用） */
-const orgTeams = ref<Array<{ id: number; name: string }>>([])
+const orgTeams = ref<Array<{ id: string; name: string }>>([])
 
 // scopeType === 'ORGANIZATION' のときにチーム一覧を取得
 watchEffect(async () => {
   if (props.scopeType === 'ORGANIZATION') {
     const res = await getTeamsInOrg(props.scopeId)
-    orgTeams.value = res.data
+    orgTeams.value = res.data.map(t => ({ id: String(t.id), name: t.name }))
   }
 })
 
 /** 個別チームのチェック状態 */
-function isTeamChecked(teamId: number): boolean {
+function isTeamChecked(teamId: string): boolean {
   return props.modelValue.targetTeamIds?.includes(teamId) ?? false
 }
 
 /** 個別チームのチェックを切り替える */
-function toggleTeam(teamId: number, checked: boolean) {
+function toggleTeam(teamId: string, checked: boolean) {
   const current = props.modelValue.targetTeamIds ?? []
   const next = checked
     ? [...current, teamId]

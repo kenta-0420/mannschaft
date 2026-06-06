@@ -14,11 +14,11 @@ export function useOrgExtendedProfileApi() {
   const api = useApi()
 
   // 拡張プロフィール
-  async function getProfile(orgId: number) {
+  async function getProfile(orgId: string) {
     return api<{ data: OrganizationProfileResponse }>(`/api/v1/organizations/${orgId}/profile`)
   }
 
-  async function updateProfile(orgId: number, body: UpdateOrgProfileRequest) {
+  async function updateProfile(orgId: string, body: UpdateOrgProfileRequest) {
     return api<{ data: OrganizationProfileResponse }>(`/api/v1/organizations/${orgId}/profile`, {
       method: 'PATCH',
       body,
@@ -26,58 +26,58 @@ export function useOrgExtendedProfileApi() {
   }
 
   // 役員
-  async function getOfficers(orgId: number, visibilityPreview = false) {
+  async function getOfficers(orgId: string, visibilityPreview = false) {
     const query = visibilityPreview ? '?visibilityPreview=true' : ''
     return api<{ data: OfficerResponse[] }>(`/api/v1/organizations/${orgId}/officers${query}`)
   }
 
-  async function createOfficer(orgId: number, body: CreateOfficerRequest) {
+  async function createOfficer(orgId: string, body: CreateOfficerRequest) {
     return api<{ data: OfficerResponse }>(`/api/v1/organizations/${orgId}/officers`, {
       method: 'POST',
       body,
     })
   }
 
-  async function updateOfficer(orgId: number, officerId: number, body: UpdateOfficerRequest) {
+  async function updateOfficer(orgId: string, officerId: number, body: UpdateOfficerRequest) {
     return api<{ data: OfficerResponse }>(`/api/v1/organizations/${orgId}/officers/${officerId}`, {
       method: 'PATCH',
       body,
     })
   }
 
-  async function deleteOfficer(orgId: number, officerId: number) {
+  async function deleteOfficer(orgId: string, officerId: number) {
     return api(`/api/v1/organizations/${orgId}/officers/${officerId}`, { method: 'DELETE' })
   }
 
-  async function reorderOfficers(orgId: number, body: ReorderRequest) {
+  async function reorderOfficers(orgId: string, body: ReorderRequest) {
     return api(`/api/v1/organizations/${orgId}/officers/reorder`, { method: 'PUT', body })
   }
 
   // カスタムフィールド
-  async function getCustomFields(orgId: number, visibilityPreview = false) {
+  async function getCustomFields(orgId: string, visibilityPreview = false) {
     const query = visibilityPreview ? '?visibilityPreview=true' : ''
     return api<{ data: CustomFieldResponse[] }>(`/api/v1/organizations/${orgId}/custom-fields${query}`)
   }
 
-  async function createCustomField(orgId: number, body: CreateCustomFieldRequest) {
+  async function createCustomField(orgId: string, body: CreateCustomFieldRequest) {
     return api<{ data: CustomFieldResponse }>(`/api/v1/organizations/${orgId}/custom-fields`, {
       method: 'POST',
       body,
     })
   }
 
-  async function updateCustomField(orgId: number, fieldId: number, body: UpdateCustomFieldRequest) {
+  async function updateCustomField(orgId: string, fieldId: number, body: UpdateCustomFieldRequest) {
     return api<{ data: CustomFieldResponse }>(`/api/v1/organizations/${orgId}/custom-fields/${fieldId}`, {
       method: 'PATCH',
       body,
     })
   }
 
-  async function deleteCustomField(orgId: number, fieldId: number) {
+  async function deleteCustomField(orgId: string, fieldId: number) {
     return api(`/api/v1/organizations/${orgId}/custom-fields/${fieldId}`, { method: 'DELETE' })
   }
 
-  async function reorderCustomFields(orgId: number, body: ReorderRequest) {
+  async function reorderCustomFields(orgId: string, body: ReorderRequest) {
     return api(`/api/v1/organizations/${orgId}/custom-fields/reorder`, { method: 'PUT', body })
   }
 

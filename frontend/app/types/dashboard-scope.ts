@@ -13,7 +13,7 @@ export type ScopeTabType = 'TEAM' | 'ORGANIZATION'
 
 /** タグ行の 1 スコープエントリ（API レスポンスは snake_case → camelCase に変換） */
 export interface ScopeTabItem {
-  scopeId: number
+  scopeId: string
   scopeType: ScopeTabType
   name: string
   avatarUrl: string | null
@@ -35,7 +35,7 @@ export interface ScopeTabPage {
 /** PUT /dashboard/scope-tabs/order のリクエストボディ */
 export interface ScopeTabOrderUpdate {
   scopeType: ScopeTabType
-  orders: { scopeId: number; sortOrder: number }[]
+  orders: { scopeId: string; sortOrder: number }[]
 }
 
 // -----------------------------------------------------------------------

@@ -1,7 +1,7 @@
 export function useAdminDashboardApi() {
   const api = useApi()
 
-  async function getDashboard(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getDashboard(scopeType: 'team' | 'organization', scopeId: string) {
     const base = scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
     const res = await api<{ data: Record<string, unknown> }>(`${base}/admin/dashboard`)
     return res.data
@@ -12,7 +12,7 @@ export function useAdminDashboardApi() {
     return res.data
   }
 
-  async function listModules(scopeType: 'team' | 'organization', scopeId: number) {
+  async function listModules(scopeType: 'team' | 'organization', scopeId: string) {
     const base = scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
     const res = await api<{
       data: { moduleId: number; moduleName: string; moduleSlug: string; isEnabled: boolean }[]
@@ -26,7 +26,7 @@ export function useAdminDashboardApi() {
 
   async function toggleModule(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     moduleId: string,
     enabled: boolean,
   ) {

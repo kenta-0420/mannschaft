@@ -20,57 +20,57 @@ export function useSkillApi() {
   }
 
   // === Skills ===
-  async function getSkill(teamId: number, skillId: number) {
+  async function getSkill(teamId: string, skillId: number) {
     return api<{ data: MemberSkillResponse }>(
       `/api/v1/teams/${teamId}/skills/${skillId}`,
     )
   }
 
-  async function registerSkill(teamId: number, body: RegisterSkillRequest) {
+  async function registerSkill(teamId: string, body: RegisterSkillRequest) {
     return api<{ data: MemberSkillResponse }>(
       `/api/v1/teams/${teamId}/skills`,
       { method: 'POST', body },
     )
   }
 
-  async function updateSkill(teamId: number, skillId: number, body: UpdateSkillRequest) {
+  async function updateSkill(teamId: string, skillId: number, body: UpdateSkillRequest) {
     return api<{ data: MemberSkillResponse }>(
       `/api/v1/teams/${teamId}/skills/${skillId}`,
       { method: 'PUT', body },
     )
   }
 
-  async function deleteSkill(teamId: number, skillId: number) {
+  async function deleteSkill(teamId: string, skillId: number) {
     return api(`/api/v1/teams/${teamId}/skills/${skillId}`, { method: 'DELETE' })
   }
 
-  async function verifySkill(teamId: number, skillId: number) {
+  async function verifySkill(teamId: string, skillId: number) {
     return api<{ data: MemberSkillResponse }>(
       `/api/v1/teams/${teamId}/skills/${skillId}/verify`,
       { method: 'POST' },
     )
   }
 
-  async function getMySkills(teamId: number) {
+  async function getMySkills(teamId: string) {
     return api<{ data: MemberSkillResponse[] }>(
       `/api/v1/teams/${teamId}/skills/me`,
     )
   }
 
-  async function searchSkills(teamId: number, params: Record<string, unknown> = {}) {
+  async function searchSkills(teamId: string, params: Record<string, unknown> = {}) {
     const qs = buildQuery(params)
     return api<{ data: MemberSkillResponse[] }>(
       `/api/v1/teams/${teamId}/skills/search${qs ? `?${qs}` : ''}`,
     )
   }
 
-  async function getCertificateUrl(teamId: number, skillId: number) {
+  async function getCertificateUrl(teamId: string, skillId: number) {
     return api<{ data: { url: string } }>(
       `/api/v1/teams/${teamId}/skills/${skillId}/certificate-url`,
     )
   }
 
-  async function getSkillUploadUrl(teamId: number) {
+  async function getSkillUploadUrl(teamId: string) {
     return api<{ data: { uploadUrl: string; s3Key: string } }>(
       `/api/v1/teams/${teamId}/skills/upload-url`,
       { method: 'POST' },
@@ -78,19 +78,19 @@ export function useSkillApi() {
   }
 
   // === Skill Categories ===
-  async function getSkillCategories(teamId: number) {
+  async function getSkillCategories(teamId: string) {
     return api<{ data: SkillCategoryResponse[] }>(
       `/api/v1/teams/${teamId}/skill-categories`,
     )
   }
 
-  async function getSkillCategory(teamId: number, categoryId: number) {
+  async function getSkillCategory(teamId: string, categoryId: number) {
     return api<{ data: SkillCategoryResponse }>(
       `/api/v1/teams/${teamId}/skill-categories/${categoryId}`,
     )
   }
 
-  async function createSkillCategory(teamId: number, body: CreateSkillCategoryRequest) {
+  async function createSkillCategory(teamId: string, body: CreateSkillCategoryRequest) {
     return api<{ data: SkillCategoryResponse }>(
       `/api/v1/teams/${teamId}/skill-categories`,
       { method: 'POST', body },
@@ -98,7 +98,7 @@ export function useSkillApi() {
   }
 
   async function updateSkillCategory(
-    teamId: number,
+    teamId: string,
     categoryId: number,
     body: UpdateSkillCategoryRequest,
   ) {
@@ -108,14 +108,14 @@ export function useSkillApi() {
     )
   }
 
-  async function deleteSkillCategory(teamId: number, categoryId: number) {
+  async function deleteSkillCategory(teamId: string, categoryId: number) {
     return api(`/api/v1/teams/${teamId}/skill-categories/${categoryId}`, {
       method: 'DELETE',
     })
   }
 
   // === Skill Matrix ===
-  async function getSkillMatrix(teamId: number) {
+  async function getSkillMatrix(teamId: string) {
     return api<{ data: SkillMatrixResponse }>(
       `/api/v1/teams/${teamId}/skill-matrix`,
     )

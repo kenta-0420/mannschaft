@@ -26,13 +26,11 @@ public final class ResolverAuditPolicy {
      *
      * <p>マスター裁可 C-1: {@link StandardVisibility#PRIVATE} /
      * {@link StandardVisibility#CUSTOM_TEMPLATE} /
-     * {@link StandardVisibility#ADMINS_ONLY} のみが対象。
+     * {@link StandardVisibility#ADMINS_AND_ABOVE}（最高機微）のみが対象。
      *
-     * <p><strong>W1 Expand</strong>: 新ラダー {@link StandardVisibility#ADMINS_AND_ABOVE}
-     * は旧 {@link StandardVisibility#ADMINS_ONLY} と同じ最高機微として対象に加える。
-     * {@link StandardVisibility#MEMBERS_AND_ABOVE} /
-     * {@link StandardVisibility#SCOPE_AFFILIATED} は旧 {@link StandardVisibility#MEMBERS_ONLY}
-     * 相当（非センシティブ）のため対象外（false）。
+     * <p>{@link StandardVisibility#MEMBERS_AND_ABOVE} /
+     * {@link StandardVisibility#SCOPE_AFFILIATED}（所属者全員可視 = 旧 MEMBERS_ONLY 相当）は
+     * 非センシティブのため対象外（false）。
      *
      * @param level 解決された可視性レベル ({@code null} 可)
      * @return 永続化すべき場合 true
@@ -43,7 +41,6 @@ public final class ResolverAuditPolicy {
         }
         return level == StandardVisibility.PRIVATE
                 || level == StandardVisibility.CUSTOM_TEMPLATE
-                || level == StandardVisibility.ADMINS_ONLY
                 || level == StandardVisibility.ADMINS_AND_ABOVE;
     }
 

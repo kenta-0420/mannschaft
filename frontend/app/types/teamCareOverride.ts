@@ -1,7 +1,7 @@
 export interface TeamCareOverrideResponse {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   careLinkId: number
   notifyOnRsvp: boolean
   notifyOnCheckin: boolean

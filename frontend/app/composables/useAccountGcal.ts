@@ -6,8 +6,8 @@ interface GcalStatus {
 
 interface GcalSync {
   personalSync: boolean
-  teamSyncIds: number[]
-  orgSyncIds: number[]
+  teamSyncIds: string[]
+  orgSyncIds: string[]
 }
 
 export function useAccountGcal() {
@@ -74,14 +74,14 @@ export function useAccountGcal() {
     }
   }
 
-  function toggleTeamSync(teamId: number) {
+  function toggleTeamSync(teamId: string) {
     if (!gcalSyncSettings.value) return
     const idx = gcalSyncSettings.value.teamSyncIds.indexOf(teamId)
     if (idx >= 0) gcalSyncSettings.value.teamSyncIds.splice(idx, 1)
     else gcalSyncSettings.value.teamSyncIds.push(teamId)
   }
 
-  function toggleOrgSync(orgId: number) {
+  function toggleOrgSync(orgId: string) {
     if (!gcalSyncSettings.value) return
     const idx = gcalSyncSettings.value.orgSyncIds.indexOf(orgId)
     if (idx >= 0) gcalSyncSettings.value.orgSyncIds.splice(idx, 1)

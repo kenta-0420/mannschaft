@@ -3,7 +3,7 @@ import type {
   EquipmentTrendingParams,
 } from '~/types/equipment-ranking'
 
-export function useEquipmentTrending(teamId: number) {
+export function useEquipmentTrending(teamId: string) {
   const api = useApi()
 
   async function getTrending(params?: EquipmentTrendingParams): Promise<{ data: EquipmentTrendingResponse }> {

@@ -2,7 +2,7 @@
 import type { ReservationResponse } from '~/types/reservation'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   canManage: boolean
 }>()
 

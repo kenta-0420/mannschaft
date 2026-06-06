@@ -15,7 +15,7 @@ const { forward } = useFriendForwardApi()
 
 const props = defineProps<{
   modelValue: boolean
-  teamId: number
+  teamId: string
   postId: number | null
   sourceTeamName: string
 }>()

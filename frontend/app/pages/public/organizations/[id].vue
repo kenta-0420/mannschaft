@@ -28,9 +28,9 @@ const {
 } = usePublicApi()
 
 const rawId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
-const orgId = Number(rawId)
+const orgId = String(rawId)
 
-if (!Number.isFinite(orgId) || orgId <= 0) {
+if (!orgId) {
   throw createError({
     statusCode: 404,
     statusMessage: t('public.error.notFound'),

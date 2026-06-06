@@ -38,11 +38,9 @@ import java.util.List;
  * <ul>
  *   <li>{@link OrganizationEntity.Visibility#PUBLIC} → {@link StandardVisibility#PUBLIC}
  *       （誰でも閲覧可）</li>
- *   <li>{@link OrganizationEntity.Visibility#PRIVATE} → {@link StandardVisibility#ADMINS_ONLY}
- *       （組織管理者のみ閲覧可。組織は MEMBERS_ONLY 相当の中間公開概念を持たず、
- *       PUBLIC/PRIVATE の 2 値のみのため、PRIVATE は最も制限的な ADMINS_ONLY にマッピングする。
- *       Phase D-δ 設計方針: Resolver 未稼働状態から切り替える際の誤公開リスクを最小化するため
- *       保守的な ADMINS_ONLY を採用。）</li>
+ *   <li>{@link OrganizationEntity.Visibility#PRIVATE} → {@link StandardVisibility#SCOPE_AFFILIATED}
+ *       （外部非公開・組織メンバーは閲覧可。非メンバーには非公開となる。
+ *       実際の写像は {@code OrganizationVisibilityMapper.toStandard} を参照。）</li>
  * </ul>
  *
  * <p><strong>status × visibility 合成</strong>（§7.5）:</p>

@@ -4,7 +4,7 @@ definePageMeta({
 })
 
 const route = useRoute()
-const orgId = Number(route.params.id)
+const orgId = String(route.params.id)
 const { loadPermissions } = useRoleAccess('organization', orgId)
 
 const showCreateDialog = ref(false)

@@ -17,7 +17,7 @@ const errorKey = ref<string | null>(null)
 
 const selectedOrgId = computed(() => store.selectedOrgId)
 
-async function load(orgId: number) {
+async function load(orgId: string) {
   loading.value = true
   errorKey.value = null
   try {

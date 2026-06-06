@@ -208,6 +208,6 @@ function formatMemberSince(dateStr: string): string {
       </nav>
     </section>
 
-    <LoginCtaCard scope-kind="TEAM" :scope-id="userId" />
+    <LoginCtaCard scope-kind="TEAM" :scope-id="String(userId)" />
   </div>
 </template>

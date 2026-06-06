@@ -20,7 +20,7 @@ export function useShiftHourlyRateApi() {
    * @param payload 時給作成リクエスト
    */
   async function createHourlyRate(
-    teamId: number,
+    teamId: string,
     payload: CreateHourlyRateRequest,
   ): Promise<ShiftHourlyRateResponse> {
     const query = new URLSearchParams()
@@ -39,7 +39,7 @@ export function useShiftHourlyRateApi() {
    * @param date   有効日（YYYY-MM-DD）— 指定時はその日付の適用時給のみ返す
    */
   async function listHourlyRates(
-    teamId: number,
+    teamId: string,
     userId: number,
     date?: string,
   ): Promise<ShiftHourlyRateResponse[]> {

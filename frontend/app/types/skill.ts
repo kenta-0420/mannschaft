@@ -16,7 +16,7 @@ export interface MemberSkillResponse {
   categoryName: string
   userId: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   name: string
   issuer: string | null
   credentialNumber: string | null

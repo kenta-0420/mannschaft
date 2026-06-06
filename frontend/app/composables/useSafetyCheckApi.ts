@@ -7,7 +7,7 @@ export function useSafetyCheckApi() {
   // BE 契約: scopeType / scopeId は必須クエリパラメータ
   async function listSafetyChecks(params: {
     scopeType: string
-    scopeId: number
+    scopeId: string
     status?: string
     page?: number
     size?: number
@@ -29,7 +29,7 @@ export function useSafetyCheckApi() {
     title: string
     message?: string
     scopeType: string
-    scopeId: number
+    scopeId: string
     isDrill?: boolean
     reminderIntervalMinutes?: number
     templateId?: number
@@ -95,7 +95,7 @@ export function useSafetyCheckApi() {
   // BE 契約: scopeType / scopeId は必須クエリパラメータ
   async function getHistory(params: {
     scopeType: string
-    scopeId: number
+    scopeId: string
     page?: number
     size?: number
   }) {

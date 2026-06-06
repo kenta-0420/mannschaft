@@ -11,37 +11,37 @@ import type {
 export function useTimetableApi() {
   const api = useApi()
 
-  async function listTerms(scopeType: 'team' | 'organization', scopeId: number) {
+  async function listTerms(scopeType: 'team' | 'organization', scopeId: string) {
     const base =
       scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
     const res = await api<{ data: TimetableTerm[] }>(`${base}/timetable-terms`)
     return res.data
   }
 
-  async function listPeriods(orgId: number) {
+  async function listPeriods(orgId: string) {
     const res = await api<{ data: TimetablePeriod[] }>(
       `/api/v1/organizations/${orgId}/timetable-periods`,
     )
     return res.data
   }
 
-  async function list(teamId: number) {
+  async function list(teamId: string) {
     const res = await api<{ data: Timetable[] }>(`/api/v1/teams/${teamId}/timetables`)
     return res.data
   }
 
-  async function getCurrent(teamId: number) {
+  async function getCurrent(teamId: string) {
     const res = await api<{ data: Timetable }>(`/api/v1/teams/${teamId}/timetables/current`)
     return res.data
   }
 
-  async function get(teamId: number, timetableId: number) {
+  async function get(teamId: string, timetableId: number) {
     const res = await api<{ data: Timetable }>(`/api/v1/teams/${teamId}/timetables/${timetableId}`)
     return res.data
   }
 
   async function create(
-    teamId: number,
+    teamId: string,
     body: {
       name: string
       termId: number
@@ -61,16 +61,16 @@ export function useTimetableApi() {
     return res.data
   }
 
-  async function activate(teamId: number, timetableId: number) {
+  async function activate(teamId: string, timetableId: number) {
     await api(`/api/v1/teams/${teamId}/timetables/${timetableId}/activate`, { method: 'POST' })
   }
 
-  async function archive(teamId: number, timetableId: number) {
+  async function archive(teamId: string, timetableId: number) {
     await api(`/api/v1/teams/${teamId}/timetables/${timetableId}/archive`, { method: 'POST' })
   }
 
   async function duplicate(
-    teamId: number,
+    teamId: string,
     timetableId: number,
     body?: { name?: string; targetTermId?: number; effectiveFrom?: string; effectiveUntil?: string | null },
   ) {
@@ -90,7 +90,7 @@ export function useTimetableApi() {
     await api(`/api/v1/timetables/${timetableId}/slots`, { method: 'PUT', body: { slots } })
   }
 
-  async function getWeekly(teamId: number, timetableId: number, weekOf?: string) {
+  async function getWeekly(teamId: string, timetableId: number, weekOf?: string) {
     const qs = weekOf ? `?weekOf=${weekOf}` : ''
     const res = await api<{ data: WeeklyView }>(
       `/api/v1/teams/${teamId}/timetables/${timetableId}/weekly${qs}`,
@@ -130,7 +130,7 @@ export function useTimetableApi() {
     return res.data
   }
 
-  async function exportPdf(teamId: number, timetableId: number) {
+  async function exportPdf(teamId: string, timetableId: number) {
     const res = await api<{ data: { url: string } }>(
       `/api/v1/teams/${teamId}/timetables/${timetableId}/export/pdf`,
     )
@@ -151,14 +151,14 @@ export function useTimetableApi() {
     return res.data
   }
 
-  async function revertToDraft(teamId: number, timetableId: number) {
+  async function revertToDraft(teamId: string, timetableId: number) {
     await api(`/api/v1/teams/${teamId}/timetables/${timetableId}/revert-to-draft`, {
       method: 'POST',
     })
   }
 
   async function update(
-    teamId: number,
+    teamId: string,
     timetableId: number,
     body: Partial<{ name: string; termId: number; weekPatternEnabled: boolean }>,
   ) {
@@ -169,7 +169,7 @@ export function useTimetableApi() {
     return res.data
   }
 
-  async function remove(teamId: number, timetableId: number) {
+  async function remove(teamId: string, timetableId: number) {
     await api(`/api/v1/teams/${teamId}/timetables/${timetableId}`, { method: 'DELETE' })
   }
 
@@ -190,7 +190,7 @@ export function useTimetableApi() {
   }
 
   // === Terms ===
-  async function createTeamTerm(teamId: number, body: Partial<TimetableTerm>) {
+  async function createTeamTerm(teamId: string, body: Partial<TimetableTerm>) {
     const res = await api<{ data: TimetableTerm }>(`/api/v1/teams/${teamId}/timetable-terms`, {
       method: 'POST',
       body,
@@ -198,7 +198,7 @@ export function useTimetableApi() {
     return res.data
   }
 
-  async function createOrgTerm(orgId: number, body: Partial<TimetableTerm>) {
+  async function createOrgTerm(orgId: string, body: Partial<TimetableTerm>) {
     const res = await api<{ data: TimetableTerm }>(
       `/api/v1/organizations/${orgId}/timetable-terms`,
       { method: 'POST', body },
@@ -219,7 +219,7 @@ export function useTimetableApi() {
   }
 
   // === Period Templates ===
-  async function updatePeriodTemplates(orgId: number, body: Partial<TimetablePeriod>[]) {
+  async function updatePeriodTemplates(orgId: string, body: Partial<TimetablePeriod>[]) {
     await api(`/api/v1/organizations/${orgId}/timetable-periods`, {
       method: 'PUT',
       body: { periods: body },

@@ -20,7 +20,7 @@ export type UnrespondedVisibility = 'HIDDEN' | 'CREATOR_AND_ADMIN' | 'ALL_MEMBER
 // === Survey Response ===
 export interface SurveyScopeDto {
   scopeType: string
-  scopeId: number
+  scopeId: string
 }
 export interface SurveyContentDto {
   title: string

@@ -3,7 +3,7 @@ import type { MemberWorkConstraintResponse, MemberWorkConstraintRequest } from '
 
 const props = defineProps<{
   constraint: MemberWorkConstraintResponse | null
-  teamId: number
+  teamId: string
   /** null の場合はチームデフォルト編集 */
   userId: number | null
   loading?: boolean
