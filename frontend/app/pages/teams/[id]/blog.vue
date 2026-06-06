@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useTeamMembers } from '~/composables/team/useTeamMembers'
+
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const teamId = String(route.params.id)
@@ -15,7 +17,7 @@ onMounted(async () => {
   }
   try {
     const res = await getMembers(teamId, { size: 500 })
-    isMember.value = res.data.some((m) => m.userId === currentUserId)
+    isMember.value = res.data.some((m: { userId: number }) => m.userId === currentUserId)
   } catch {
     isMember.value = false
   }
