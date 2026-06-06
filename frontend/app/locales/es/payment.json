@@ -1,6 +1,35 @@
 {
   "payment": {
     "membership": {
+      "subscribe": {
+        "cardLabel": "Tarjeta de pago",
+        "submit": "Suscribirse con esta tarjeta",
+        "processing": "Procesando…",
+        "loadFailed": "No se pudo cargar el formulario de pago. Inténtalo de nuevo más tarde",
+        "keyMissing": "La configuración de pago está incompleta. Contacta con un administrador",
+        "genericError": "Se produjo un error al procesar el pago. Inténtalo de nuevo más tarde",
+        "noPaymentMethod": "No se pudo confirmar tu método de pago. Revisa los datos de la tarjeta e inténtalo de nuevo",
+        "pageTitle": "Suscribirse al pago recurrente",
+        "stepBeneficiary": "Elegir miembro",
+        "stepCard": "Datos de la tarjeta",
+        "stepConfirm": "Revisar y confirmar",
+        "stepDone": "Hecho",
+        "beneficiaryHelp": "Elige para quién es esta suscripción de cuota.",
+        "beneficiarySelf": "Yo mismo",
+        "unnamedChild": "(Hijo/a sin nombre)",
+        "beneficiaryRequired": "Selecciona el miembro para el que te suscribes",
+        "next": "Siguiente",
+        "invalidItem": "No se encontró el concepto de cuota. Vuelve a empezar desde el inicio",
+        "finalizing": "Completando tu suscripción…",
+        "authFailed": "No se completó la autenticación de la tarjeta. Vuelve a introducir los datos de la tarjeta",
+        "errorNotRecurring": "Esta cuota no admite pagos recurrentes",
+        "errorPmNotSaved": "No hay ningún método de pago guardado. Vuelve a introducir los datos de la tarjeta",
+        "errorAlreadyExists": "Ya existe un pago recurrente activo para este miembro",
+        "beneficiaryUnverified": "No se pudo verificar al beneficiario; el procesamiento se ha detenido. Tu método de pago ha sido guardado. Por favor, vuelve a seleccionar el beneficiario e inténtalo de nuevo",
+        "doneTitle": "Suscripción completada",
+        "doneMessage": "Tu pago recurrente ha comenzado. Los próximos pagos se cobrarán automáticamente.",
+        "toSubscriptions": "Gestionar pagos recurrentes"
+      },
       "subscription": {
         "title": "Pagos recurrentes",
         "empty": "No tienes pagos recurrentes activos",
