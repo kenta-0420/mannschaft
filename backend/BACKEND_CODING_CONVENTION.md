@@ -161,6 +161,51 @@ dependencies {
 ```
 * **N+1 問題の防止**: リレーションの取得には `@EntityGraph` またはJPQLの `JOIN FETCH` を明示的に使用し、Lazy Loading による N+1 問題を防止すること。
 
+### Entity フィールドの @Column(name) 必須ルール
+
+#### 数字を挟む略語フィールドは @Column(name=...) を必ず明示すること
+
+Hibernate の物理命名戦略（`CamelCaseToUnderscoresNamingStrategy`）は
+**小文字→大文字の境界**でのみアンダースコアを挿入する。数字→大文字の境界では挿入しない。
+
+そのため `S3Key` / `S3Url` / `Pdf2` 等のように数字と大文字が隣接するフィールド名では、
+Hibernate が生成する列名と Flyway の DDL で定義した列名が食い違う。
+
+| フィールド名 | Hibernate 生成（誤）| DDL 実列名（正）|
+|---|---|---|
+| `scannedDocumentS3Key` | `scanned_documents3key` | `scanned_document_s3_key` |
+| `guardianCertificateS3Key` | `guardian_certificates3key` | `guardian_certificate_s3_key` |
+| `photoS3Key` | `photos3key` | `photo_s3_key` |
+| `imageS3Key` | `images3key` | `image_s3_key` |
+| `coverImageS3Key` | `cover_images3key` | `cover_image_s3_key` |
+| `certificateS3Key` | `certificates3key` | `certificate_s3_key` |
+
+**根治事例**: 2026-06-06 実機テストで `ProxyInputConsentEntity` の S3Key フィールド列名不一致が
+`ProxyInputContextFilter` 経由の全リクエストで SQLSyntaxErrorException を引き起こす致命的バグとして発覚。
+`ddl-auto=create` を使う UT/IT では Hibernate が誤った列名でテーブルを作成してしまうため
+自己整合で通過してしまい検出不能だった（CI が通っても実 Flyway スキーマで壊れるパターン）。
+
+**ルール**:
+
+```java
+// NG: name 未指定（Hibernate が誤った列名を生成する）
+@Column(length = 512)
+private String scannedDocumentS3Key;
+
+// OK: DDL の実列名に合わせて明示する
+@Column(name = "scanned_document_s3_key", length = 512)
+private String scannedDocumentS3Key;
+```
+
+**影響を受けるパターン（これらを含むフィールド名は必ず `name=` を明示）**:
+- `S3Key` / `S3Url` / `S3Bucket` — S3 関連
+- `PdfUrl` / `PdfKey` / `Pdf2` — PDF 関連
+- `HtmlUrl` / `HtmlContent` — HTML 関連（H が大文字で前が数字の場合）
+- その他「数字→大文字」が連続する略語を含むフィールド全般
+
+**再発防止テスト**: Testcontainers (Flyway 実スキーマ) を使った Repository IT で
+S3Key を含む `save → find` を必ず入れること（`ddl-auto=create` のみのテストでは検出不能）。
+
 ### コネクションプール (HikariCP)
 * **使用ライブラリ**: Spring Boot 標準の **HikariCP** をそのまま使用する。別のプールライブラリへの変更は禁止する。
 * **設定指針**:
