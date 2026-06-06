@@ -127,12 +127,11 @@ const initialsColorClass = computed(() => {
 </script>
 
 <template>
-  <div class="profile-header relative mb-10">
-    <!-- バナー領域 -->
+  <div class="profile-header">
+    <!-- バナー領域（全幅） -->
     <div
-      class="relative w-full overflow-hidden"
+      class="relative w-full overflow-hidden h-40 sm:h-56"
       :class="{ 'cursor-pointer': editable }"
-      style="height: 200px"
       @click="openBannerPicker"
     >
       <!-- バナー画像 -->
@@ -145,7 +144,7 @@ const initialsColorClass = computed(() => {
       <!-- バナーなし: グラデーション背景 -->
       <div
         v-else
-        class="w-full h-full bg-gradient-to-r from-primary-400 to-primary-600"
+        class="w-full h-full bg-gradient-to-br from-primary-300 via-primary-500 to-primary-700"
       />
 
       <!-- 編集オーバーレイ（バナー） — アップロード中は非表示 -->
@@ -175,13 +174,11 @@ const initialsColorClass = computed(() => {
       >
     </div>
 
-    <!-- アイコン領域（バナー下端に重なって表示） -->
-    <div
-      class="absolute left-6 z-10"
-      style="bottom: -40px"
-    >
+    <!-- 情報層（アイコン + slot コンテンツ） -->
+    <div class="relative px-4 sm:px-6 pb-3 pt-2 bg-surface-0">
+      <!-- アイコン（バナー下端に重なる位置） -->
       <div
-        class="relative w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-md"
+        class="absolute -top-10 sm:-top-12 left-4 sm:left-6 w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-surface-200"
         :class="{ 'cursor-pointer': editable }"
         @click="editable && (showIconCropModal = true)"
       >
@@ -208,6 +205,11 @@ const initialsColorClass = computed(() => {
         >
           <i class="pi pi-camera text-white opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
+      </div>
+
+      <!-- アイコン右のコンテンツ（slot で外から挿入） -->
+      <div class="pl-24 sm:pl-28">
+        <slot />
       </div>
     </div>
 
