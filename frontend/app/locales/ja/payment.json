@@ -25,6 +25,7 @@
         "errorNotRecurring": "この会費は継続のお支払いに対応していません",
         "errorPmNotSaved": "お支払い方法が保存されていません。カード情報を再度ご入力ください",
         "errorAlreadyExists": "この対象では、すでに継続のお支払いに加入済みです",
+        "beneficiaryUnverified": "受益者を確認できなかったため処理を中断しました。お支払い方法は保存済みです。受益者を選び直してください",
         "doneTitle": "加入が完了しました",
         "doneMessage": "継続のお支払いを開始しました。次回以降は自動でお支払いされます。",
         "toSubscriptions": "継続のお支払いを管理する"

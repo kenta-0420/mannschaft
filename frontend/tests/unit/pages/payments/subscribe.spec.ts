@@ -16,7 +16,8 @@ import { defineComponent, nextTick } from 'vue'
  *   SUB-007: 3DS 復帰（setup_intent_client_secret クエリ・succeeded）→ confirm→subscribe 続行
  *   SUB-008: 3DS 復帰で router.replace によりクエリが除去される（secret を残さない）
  *   SUB-010: router.replace が reject しても加入が完了し console.warn が呼ばれる
- *   SUB-011: 3DS 復帰クエリの beneficiaryUserId が switchableChildren に無い → SELF フォールバック＋console.warn
+ *   SUB-011: 3DS 復帰クエリの beneficiaryUserId が switchableChildren に無い → finalizeSubscription 呼ばれず・受益者ステップ表示・warn
+ *   SUB-012: children API 失敗（mockRejected）＋クエリ ben=100 → finalizeSubscription 呼ばれず・受益者ステップ表示・warn
  */
 
 // ── Stripe / API / guardianship / auth / notification のモック ──
@@ -325,8 +326,8 @@ describe('pages/payments/subscribe/[itemId].vue', () => {
     warnSpy.mockRestore()
   })
 
-  it('SUB-011: 3DS 復帰クエリの beneficiaryUserId が switchableChildren に無い → SELF フォールバック＋console.warn', async () => {
-    // switchableChildren は userId=42（自分）とも子 ID とも一致しない ID=999 を返すクエリ。
+  it('SUB-011: 3DS 復帰クエリの beneficiaryUserId が switchableChildren に無い → finalizeSubscription 呼ばれず・受益者ステップ表示・console.warn', async () => {
+    // switchableChildren には childUserId=100 の子のみ存在。クエリは 999（どちらでもない）。
     mockListSwitchableChildren.mockResolvedValue({
       data: {
         children: [{ childUserId: 100, displayName: '子 花子', stageKey: 'elementary', switchAllowed: true }],
@@ -339,25 +340,66 @@ describe('pages/payments/subscribe/[itemId].vue', () => {
       status: 'ok',
       setupIntent: { id: 'seti_1', status: 'succeeded', payment_method: 'pm_selffall' },
     })
-    // beneficiaryUserId=999 → 自分(42)でも子(100)でもない → SELF フォールバック。
-    await mountWith({
+    // beneficiaryUserId=999 → 自分(42)でも子(100)でもない → 自動課金を中断。
+    const wrapper = await mountWith({
       setup_intent_client_secret: 'seti_secret_unknown',
       beneficiaryUserId: '999',
     })
     await flush()
 
-    // SELF にフォールバックしているため subscribeBody は自分の ID(42) になる。
-    expect(mockSubscribe).toHaveBeenCalledTimes(1)
-    expect(subscribeBody().beneficiaryUserId).toBe(42)
+    // 自動課金が中断されるため subscribe は呼ばれない。
+    expect(mockSubscribe).not.toHaveBeenCalled()
+    // 受益者選択ステップへ戻る（subscribe-done は表示されない）。
+    expect(wrapper.find('[data-testid="subscribe-done"]').exists()).toBe(false)
+    // エラーメッセージが表示される。
+    expect(wrapper.find('[data-testid="subscribe-error"]').exists()).toBe(true)
 
-    // console.warn が呼ばれ、receivedBeneficiaryUserId が含まれること。
+    // console.warn が呼ばれ、自動課金中断を示すメッセージが含まれること。
     expect(warnSpy).toHaveBeenCalled()
     const warnArgs = warnSpy.mock.calls.find((args) =>
-      String(args[0]).includes('ホワイトリスト外のため SELF にフォールバック'),
+      String(args[0]).includes('ホワイトリスト外のため自動課金を中断'),
     )
     expect(warnArgs).toBeDefined()
     // ログにパスが含まれること。
     expect(JSON.stringify(warnArgs)).toContain(routeState.path)
+
+    warnSpy.mockRestore()
+  })
+
+  it('SUB-012: children API 失敗（mockRejected）＋クエリ ben=100 → finalizeSubscription 呼ばれず・受益者ステップ表示・console.warn', async () => {
+    // loadSwitchableChildren が API エラーで失敗（空配列にフォールバックする実装）。
+    // その後、クエリの beneficiaryUserId=100 は switchableChildren（空）に見つからないため、
+    // SELF でも子でも確認できない → 自動課金を中断する。
+    mockListSwitchableChildren.mockRejectedValue(new Error('Network error'))
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    mockRetrieveSetupIntent.mockResolvedValue({
+      status: 'ok',
+      setupIntent: { id: 'seti_1', status: 'succeeded', payment_method: 'pm_api_fail' },
+    })
+    // beneficiaryUserId=100: children API 失敗で空配列 → ホワイトリスト照合不能 → 中断。
+    const wrapper = await mountWith({
+      setup_intent_client_secret: 'seti_secret_apifail',
+      beneficiaryUserId: '100',
+    })
+    await flush()
+
+    // children API 失敗で switchableChildren が空になり、ben=100 は確認できない。
+    // → finalizeSubscription は自動実行されない。
+    expect(mockSubscribe).not.toHaveBeenCalled()
+    // 受益者選択ステップへ戻る。
+    expect(wrapper.find('[data-testid="subscribe-done"]').exists()).toBe(false)
+    // エラーメッセージが表示される。
+    expect(wrapper.find('[data-testid="subscribe-error"]').exists()).toBe(true)
+
+    // console.warn が呼ばれること（children API 失敗 + 自動課金中断の両方）。
+    expect(warnSpy).toHaveBeenCalled()
+    const warnArgs = warnSpy.mock.calls.find((args) =>
+      String(args[0]).includes('ホワイトリスト外のため自動課金を中断'),
+    )
+    expect(warnArgs).toBeDefined()
+    // childrenLoaded: 0 が含まれること（API 失敗で空配列の場合）。
+    expect(JSON.stringify(warnArgs)).toContain('"childrenLoaded":0')
 
     warnSpy.mockRestore()
   })

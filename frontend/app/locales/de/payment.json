@@ -25,6 +25,7 @@
         "errorNotRecurring": "Dieser Beitrag unterstützt keine wiederkehrenden Zahlungen",
         "errorPmNotSaved": "Es ist keine Zahlungsmethode gespeichert. Bitte gib deine Kartendaten erneut ein",
         "errorAlreadyExists": "Für dieses Mitglied besteht bereits eine aktive wiederkehrende Zahlung",
+        "beneficiaryUnverified": "Der Begünstigte konnte nicht verifiziert werden; die Verarbeitung wurde gestoppt. Deine Zahlungsmethode wurde gespeichert. Bitte wähle den Begünstigten erneut aus und versuche es erneut",
         "doneTitle": "Abonnement abgeschlossen",
         "doneMessage": "Deine wiederkehrende Zahlung wurde gestartet. Künftige Zahlungen werden automatisch abgebucht.",
         "toSubscriptions": "Wiederkehrende Zahlungen verwalten"

@@ -231,14 +231,19 @@ async function handleRedirectReturn() {
       // 後見下の子として選択を復元する。
       beneficiaryChoice.value = String(benNum)
     } else {
-      // ホワイトリスト不一致: SELF にフォールバックし警告を出す（症状を隠さない）。
-      // BE 権原検証が最終防衛ラインだが FE でも二重防御として可視化する。
+      // ホワイトリスト不一致（攻撃改竄 or loadSwitchableChildren API 失敗で空配列）:
+      // SELF にフォールバックして finalizeSubscription を自動実行すると、
+      // 後見人が子のために加入したつもりが自分への課金に化ける（SELF化け）。
+      // 安全側に倒し、自動課金を中断して受益者選択ステップへ戻す。
       // client_secret 値はログに含めない。
-      console.warn('[subscribe] 3DS 復帰: beneficiaryUserId がホワイトリスト外のため SELF にフォールバック', {
+      console.warn('[subscribe] 3DS 復帰: beneficiaryUserId がホワイトリスト外のため自動課金を中断', {
         path: route.path,
         receivedBeneficiaryUserId: benNum,
+        childrenLoaded: switchableChildren.value.length,
       })
-      beneficiaryChoice.value = SELF_VALUE
+      pageError.value = t('payment.membership.subscribe.beneficiaryUnverified')
+      step.value = 'beneficiary'
+      return
     }
   }
 

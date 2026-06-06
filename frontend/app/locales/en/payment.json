@@ -25,6 +25,7 @@
         "errorNotRecurring": "This fee does not support recurring payments",
         "errorPmNotSaved": "No payment method is saved. Please enter your card details again",
         "errorAlreadyExists": "An active recurring payment already exists for this member",
+        "beneficiaryUnverified": "The intended member could not be verified; processing has been stopped. Your payment method has been saved. Please reselect the member and try again",
         "doneTitle": "Subscription complete",
         "doneMessage": "Your recurring payment has started. Future payments will be charged automatically.",
         "toSubscriptions": "Manage recurring payments"

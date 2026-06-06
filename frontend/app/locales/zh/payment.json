@@ -25,6 +25,7 @@
         "errorNotRecurring": "此会费不支持持续付款",
         "errorPmNotSaved": "尚未保存支付方式。请重新输入卡片信息",
         "errorAlreadyExists": "此对象已加入有效的持续付款",
+        "beneficiaryUnverified": "无法确认受益人，处理已中断。您的支付方式已保存，请重新选择受益人后再试",
         "doneTitle": "加入完成",
         "doneMessage": "持续付款已开始。今后将自动付款。",
         "toSubscriptions": "管理持续付款"

@@ -25,6 +25,7 @@
         "errorNotRecurring": "Esta cuota no admite pagos recurrentes",
         "errorPmNotSaved": "No hay ningún método de pago guardado. Vuelve a introducir los datos de la tarjeta",
         "errorAlreadyExists": "Ya existe un pago recurrente activo para este miembro",
+        "beneficiaryUnverified": "No se pudo verificar al beneficiario; el procesamiento se ha detenido. Tu método de pago ha sido guardado. Por favor, vuelve a seleccionar el beneficiario e inténtalo de nuevo",
         "doneTitle": "Suscripción completada",
         "doneMessage": "Tu pago recurrente ha comenzado. Los próximos pagos se cobrarán automáticamente.",
         "toSubscriptions": "Gestionar pagos recurrentes"
