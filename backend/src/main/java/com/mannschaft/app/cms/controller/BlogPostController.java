@@ -59,8 +59,8 @@ public class BlogPostController {
     @Operation(summary = "記事一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<BlogPostResponse>> listPosts(
-            @RequestParam(required = false) Long teamId,
-            @RequestParam(required = false) Long organizationId,
+            @RequestParam(required = false) String teamId,
+            @RequestParam(required = false) String organizationId,
             @RequestParam(required = false) String postType,
             @RequestParam(required = false) List<Long> tagIds,
             @RequestParam(required = false) String status,

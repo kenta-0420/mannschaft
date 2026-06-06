@@ -14,11 +14,14 @@ import com.mannschaft.app.cms.repository.BlogPostTagRepository;
 import com.mannschaft.app.cms.service.BlogPostRevisionService;
 import com.mannschaft.app.cms.service.BlogPostService;
 import com.mannschaft.app.cms.service.BlogPostShareService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.common.visibility.VisibilityErrorCode;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
+import com.mannschaft.app.team.repository.TeamRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -67,12 +70,20 @@ class BlogPostServiceAdditionalTest {
     private BlogPostShareService shareService;
     @Mock
     private PostAuthorSnapshotService postAuthorSnapshotService;
+    @Mock
+    private TeamRepository teamRepository;
+    @Mock
+    private OrganizationRepository organizationRepository;
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private BlogPostService service;
 
     private static final Long TEAM_ID = 1L;
+    private static final String TEAM_ID_STR = TEAM_ID.toString();
     private static final Long ORG_ID = 2L;
+    private static final String ORG_ID_STR = ORG_ID.toString();
     private static final Long USER_ID = 100L;
     private static final Long POST_ID = 10L;
 
@@ -106,7 +117,7 @@ class BlogPostServiceAdditionalTest {
     class ListByOrganization {
 
         @Test
-        @DisplayName("正常系: 組織別記事一覧が返却される")
+        @DisplayName("正常系: 組織別記事一覧が返却される（Long文字列）")
         void 組織別一覧_正常_一覧返却() {
             Pageable pageable = PageRequest.of(0, 10);
             BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
@@ -114,7 +125,8 @@ class BlogPostServiceAdditionalTest {
             given(postRepository.findByOrganizationIdOrderByPinnedDescCreatedAtDesc(ORG_ID, pageable)).willReturn(page);
             given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class))).willReturn(createPostResponse());
 
-            Page<BlogPostResponse> result = service.listByOrganization(ORG_ID, pageable);
+            // Long文字列で渡す（後方互換）
+            Page<BlogPostResponse> result = service.listByOrganization(ORG_ID_STR, pageable);
 
             assertThat(result).hasSize(1);
         }
@@ -246,7 +258,7 @@ class BlogPostServiceAdditionalTest {
         @DisplayName("正常系: 日本語タイトルからslugが自動生成される（UUID利用）")
         void 作成_日本語タイトル_slugUUID生成() {
             CreateBlogPostRequest request = new CreateBlogPostRequest(
-                    TEAM_ID, null, null, "日本語記事タイトル", null, "本文",
+                    TEAM_ID_STR, null, null, "日本語記事タイトル", null, "本文",
                     null, null, null, null, null, null, null, null, null, null, null);
             BlogPostEntity savedEntity = createPostEntity(PostStatus.DRAFT);
             given(postRepository.save(any(BlogPostEntity.class))).willReturn(savedEntity);
@@ -262,7 +274,7 @@ class BlogPostServiceAdditionalTest {
         @DisplayName("正常系: postType/visibility/priorityを指定して記事が作成される")
         void 作成_全パラメータ指定_記事保存() {
             CreateBlogPostRequest request = new CreateBlogPostRequest(
-                    null, ORG_ID, null, "組織記事", "custom-slug", "長い本文".repeat(100),
+                    null, ORG_ID_STR, null, "組織記事", "custom-slug", "長い本文".repeat(100),
                     "excerpt", "url", "ANNOUNCEMENT", "PUBLIC", "IMPORTANT",
                     null, null, null, null, null, null);
             BlogPostEntity savedEntity = createPostEntity(PostStatus.DRAFT);

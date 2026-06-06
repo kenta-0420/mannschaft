@@ -78,7 +78,13 @@ public enum CmsErrorCode implements ErrorCode {
     REACTION_NOT_FOUND("CMS_022", "みたよ！が見つかりません", Severity.WARN),
 
     /** ストレージクォータ超過 */
-    MEDIA_QUOTA_EXCEEDED("CMS_023", "ストレージ容量が不足しているためアップロードできません", Severity.WARN);
+    MEDIA_QUOTA_EXCEEDED("CMS_023", "ストレージ容量が不足しているためアップロードできません", Severity.WARN),
+
+    /** チームが見つからない（publicId解決時） */
+    TEAM_NOT_FOUND("CMS_024", "指定されたチームが見つかりません", Severity.WARN),
+
+    /** 組織が見つからない（publicId解決時） */
+    ORG_NOT_FOUND("CMS_025", "指定された組織が見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

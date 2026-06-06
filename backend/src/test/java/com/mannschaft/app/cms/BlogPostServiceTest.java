@@ -17,10 +17,14 @@ import com.mannschaft.app.cms.repository.BlogPostTagRepository;
 import com.mannschaft.app.cms.service.BlogPostRevisionService;
 import com.mannschaft.app.cms.service.BlogPostService;
 import com.mannschaft.app.cms.service.BlogPostShareService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
+import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.repository.TeamRepository;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -70,11 +74,18 @@ class BlogPostServiceTest {
     private BlogPostShareService shareService;
     @Mock
     private PostAuthorSnapshotService postAuthorSnapshotService;
+    @Mock
+    private TeamRepository teamRepository;
+    @Mock
+    private OrganizationRepository organizationRepository;
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private BlogPostService service;
 
     private static final Long TEAM_ID = 1L;
+    private static final String TEAM_ID_STR = TEAM_ID.toString();
     private static final Long USER_ID = 100L;
     private static final Long POST_ID = 10L;
 
@@ -108,7 +119,7 @@ class BlogPostServiceTest {
     class ListByTeam {
 
         @Test
-        @DisplayName("正常系: チーム別記事一覧が返却される")
+        @DisplayName("正常系: チーム別記事一覧が返却される（Long文字列）")
         void チーム別一覧_正常_一覧返却() {
             // Given
             Pageable pageable = PageRequest.of(0, 10);
@@ -117,11 +128,35 @@ class BlogPostServiceTest {
             given(postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(TEAM_ID, pageable)).willReturn(page);
             given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class))).willReturn(createPostResponse());
 
-            // When
-            Page<BlogPostResponse> result = service.listByTeam(TEAM_ID, pageable);
+            // When: Long文字列で渡す（後方互換）
+            Page<BlogPostResponse> result = service.listByTeam(TEAM_ID_STR, pageable);
 
             // Then
             assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("正常系: UUID文字列でチーム別記事一覧が返却される")
+        void チーム別一覧_UUID文字列_正常() {
+            // Given
+            String teamUuid = "01961234-5678-7000-9abc-def012345678";
+            java.util.UUID uuid = java.util.UUID.fromString(teamUuid);
+            Pageable pageable = PageRequest.of(0, 10);
+            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            Page<BlogPostEntity> page = new PageImpl<>(List.of(entity));
+
+            TeamEntity mockTeam = TeamEntity.builder().build();
+            org.springframework.test.util.ReflectionTestUtils.setField(mockTeam, "id", TEAM_ID);
+            given(teamRepository.findByPublicId(uuid)).willReturn(java.util.Optional.of(mockTeam));
+            given(postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(TEAM_ID, pageable)).willReturn(page);
+            given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class))).willReturn(createPostResponse());
+
+            // When: UUID文字列で渡す
+            Page<BlogPostResponse> result = service.listByTeam(teamUuid, pageable);
+
+            // Then
+            assertThat(result).hasSize(1);
+            verify(teamRepository).findByPublicId(uuid);
         }
     }
 
@@ -171,15 +206,16 @@ class BlogPostServiceTest {
     class CreatePost {
 
         @Test
-        @DisplayName("正常系: 記事が作成される")
+        @DisplayName("正常系: 記事が作成される（Long文字列teamId）")
         void 作成_正常_記事保存() {
-            // Given
+            // Given: Long文字列形式（後方互換）
             CreateBlogPostRequest request = new CreateBlogPostRequest(
-                    TEAM_ID, null, null, "新規記事", null, "本文テスト",
+                    TEAM_ID_STR, null, null, "新規記事", null, "本文テスト",
                     null, null, null, null, null, null, null, null, null, null, null);
             BlogPostEntity savedEntity = createPostEntity(PostStatus.DRAFT);
             given(postRepository.save(any(BlogPostEntity.class))).willReturn(savedEntity);
             given(cmsMapper.toBlogPostResponse(savedEntity)).willReturn(createPostResponse());
+            // accessControlService.checkMembership はモック（void なので stubbing 不要）
 
             // When
             BlogPostResponse result = service.createPost(USER_ID, request);
@@ -187,6 +223,7 @@ class BlogPostServiceTest {
             // Then
             assertThat(result).isNotNull();
             verify(postRepository).save(any(BlogPostEntity.class));
+            verify(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
         }
 
         @Test
@@ -194,7 +231,7 @@ class BlogPostServiceTest {
         void 作成_タグ付き_タグ紐付け() {
             // Given
             CreateBlogPostRequest request = new CreateBlogPostRequest(
-                    TEAM_ID, null, null, "タグ付き記事", null, "本文",
+                    TEAM_ID_STR, null, null, "タグ付き記事", null, "本文",
                     null, null, null, null, null, List.of(1L, 2L), null, null, null, null, null);
             BlogPostEntity savedEntity = createPostEntity(PostStatus.DRAFT);
             given(postRepository.save(any(BlogPostEntity.class))).willReturn(savedEntity);

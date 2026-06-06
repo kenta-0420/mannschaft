@@ -1,6 +1,8 @@
 package com.mannschaft.app.timeline.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
@@ -87,6 +89,9 @@ class TimelinePostServiceTest {
 
     @Mock
     private PostingIdentityService postingIdentityService;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private TimelinePostService timelinePostService;
@@ -353,6 +358,144 @@ class TimelinePostServiceTest {
             ArgumentCaptor<TimelinePostEntity> cap = ArgumentCaptor.forClass(TimelinePostEntity.class);
             verify(postRepository).save(cap.capture());
             assertThat(cap.getValue().getStatus()).isEqualTo(PostStatus.PUBLISHED);
+        }
+
+        @Test
+        @DisplayName("異常系: TEAMスコープで非メンバーが投稿しようとすると403")
+        void TEAMスコープで非メンバーが投稿すると403() {
+            // given
+            Long teamId = 50L;
+            CreatePostRequest req = new CreatePostRequest("非メンバー投稿", "TEAM", teamId,
+                    "USER", null, null, null, null, null, null);
+            org.mockito.Mockito.doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkMembership(USER_ID, teamId, "TEAM");
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.createPost(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+
+            // postRepository.save は呼ばれないこと（メンバーシップチェックで弾かれる）
+            then(postRepository).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("異常系: ORGANIZATIONスコープで非メンバーが投稿しようとすると403")
+        void ORGANIZATIONスコープで非メンバーが投稿すると403() {
+            // given
+            Long orgId = 60L;
+            CreatePostRequest req = new CreatePostRequest("非メンバー投稿", "ORGANIZATION", orgId,
+                    "USER", null, null, null, null, null, null);
+            org.mockito.Mockito.doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkMembership(USER_ID, orgId, "ORGANIZATION");
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.createPost(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+
+            // postRepository.save は呼ばれないこと（メンバーシップチェックで弾かれる）
+            then(postRepository).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("正常系: TEAMスコープでメンバーが投稿すると保存される")
+        void TEAMスコープでメンバーが投稿すると保存される() {
+            // given: accessControlService.checkMembership は void なのでデフォルト（何もしない）
+            Long teamId = 50L;
+            CreatePostRequest req = new CreatePostRequest("チームメンバー投稿", "TEAM", teamId,
+                    "USER", null, null, null, null, null, null);
+            TimelinePostEntity savedPost = createPost();
+            PostResponse expected = createPostResponse();
+
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+
+            // when
+            PostResponse result = timelinePostService.createPost(req, USER_ID);
+
+            // then
+            assertThat(result).isNotNull();
+            verify(accessControlService).checkMembership(USER_ID, teamId, "TEAM");
+            verify(postRepository).save(any(TimelinePostEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系: ORGANIZATIONスコープでメンバーが投稿すると保存される")
+        void ORGANIZATIONスコープでメンバーが投稿すると保存される() {
+            // given: accessControlService.checkMembership は void なのでデフォルト（何もしない）
+            Long orgId = 70L;
+            CreatePostRequest req = new CreatePostRequest("組織メンバー投稿", "ORGANIZATION", orgId,
+                    "USER", null, null, null, null, null, null);
+            TimelinePostEntity savedPost = createPost();
+            PostResponse expected = createPostResponse();
+
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+
+            // when
+            PostResponse result = timelinePostService.createPost(req, USER_ID);
+
+            // then
+            assertThat(result).isNotNull();
+            verify(accessControlService).checkMembership(USER_ID, orgId, "ORGANIZATION");
+            verify(postRepository).save(any(TimelinePostEntity.class));
+        }
+    }
+
+    // ========================================
+    // createSystemPost
+    // ========================================
+    @Nested
+    @DisplayName("createSystemPost")
+    class CreateSystemPost {
+
+        @Test
+        @DisplayName("正常系: TEAMスコープで非メンバーユーザーでもメンバーシップチェックなしで投稿できる")
+        void TEAMスコープで非メンバーでもシステム投稿できる() {
+            // given: accessControlService は一切呼ばれない想定
+            Long teamId = 50L;
+            CreatePostRequest req = new CreatePostRequest("【物件履歴】自動投稿テスト", "TEAM", teamId,
+                    "USER", null, null, null, null, null, null);
+            TimelinePostEntity savedPost = createPost();
+            PostResponse expected = createPostResponse();
+
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+
+            // when
+            PostResponse result = timelinePostService.createSystemPost(req, USER_ID);
+
+            // then: 正常に投稿が作成される
+            assertThat(result).isNotNull();
+            verify(postRepository).save(any(TimelinePostEntity.class));
+            // メンバーシップチェックは呼ばれないこと
+            then(accessControlService).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("正常系: ORGANIZATIONスコープでもメンバーシップチェックなしで投稿できる")
+        void ORGANIZATIONスコープでもシステム投稿できる() {
+            // given: accessControlService は一切呼ばれない想定
+            Long orgId = 70L;
+            CreatePostRequest req = new CreatePostRequest("【物件履歴】組織自動投稿", "ORGANIZATION", orgId,
+                    "USER", null, null, null, null, null, null);
+            TimelinePostEntity savedPost = createPost();
+            PostResponse expected = createPostResponse();
+
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+
+            // when
+            PostResponse result = timelinePostService.createSystemPost(req, USER_ID);
+
+            // then: 正常に投稿が作成される
+            assertThat(result).isNotNull();
+            verify(postRepository).save(any(TimelinePostEntity.class));
+            // メンバーシップチェックは呼ばれないこと
+            then(accessControlService).shouldHaveNoInteractions();
         }
     }
 
