@@ -78,66 +78,6 @@ class ProxyInputConsentRepositoryTest extends AbstractMySqlIntegrationTest {
         return consent;
     }
 
-    /**
-     * S3 キーフィールドの列名マッピング確認テスト（再発防止）。
-     *
-     * <p>Hibernate 物理命名戦略（{@code CamelCaseToUnderscoresNamingStrategy}）は数字→大文字境界
-     * （例: {@code S3Key} の {@code 3→K}）でアンダースコアを挿入しない。そのため
-     * {@code scannedDocumentS3Key} が {@code scanned_documents3key}、
-     * {@code guardianCertificateS3Key} が {@code guardian_certificates3key} と解釈され、
-     * Flyway が作成した実列名（{@code scanned_document_s3_key} / {@code guardian_certificate_s3_key}）
-     * と不一致になり SQLSyntaxErrorException が発生する（2026-06-06 実機 P3-03 で発見）。</p>
-     *
-     * <p>本テストは実 Flyway スキーマに対して S3 キーを持つ同意書を save→find することで、
-     * {@code @Column(name=...)} が正しく設定されているか（＝列名不一致がないか）を検証する。
-     * {@code @Column(name)} を外すと {@code Unknown column 'xxx.scanned_documents3key'} で落ちる。</p>
-     */
-    @Nested
-    @DisplayName("S3Key 列名マッピング確認（Hibernate 物理命名ズレの再発防止）")
-    class S3KeyColumnMapping {
-
-        @Test
-        @DisplayName("scannedDocumentS3Key と guardianCertificateS3Key を指定して save → find で値が往復できる")
-        void shouldPersistAndLoadS3Keys() {
-            String scannedKey = "orgs/1/proxy-consents/scan-abc123.pdf";
-            String guardianKey = "orgs/1/proxy-consents/guardian-cert-xyz789.pdf";
-
-            ProxyInputConsentEntity consent = ProxyInputConsentEntity.create(
-                    SUBJECT_USER_ID, PROXY_USER_ID, ORG_ID,
-                    ProxyInputConsentEntity.ConsentMethod.GUARDIAN_BY_COURT,
-                    scannedKey, guardianKey, null,
-                    LocalDate.now().minusDays(1),
-                    LocalDate.now().plusMonths(6));
-            consent.approve(999L);
-            em.persist(consent);
-            em.flush();
-            em.clear(); // 1次キャッシュをクリアして DB から再ロードする
-
-            ProxyInputConsentEntity loaded = em.find(ProxyInputConsentEntity.class, consent.getId());
-
-            assertThat(loaded).as("保存した同意書が取得できること").isNotNull();
-            assertThat(loaded.getScannedDocumentS3Key())
-                    .as("scannedDocumentS3Key が DB から正しく取得できること（@Column name 不一致なら SQLSyntaxErrorException）")
-                    .isEqualTo(scannedKey);
-            assertThat(loaded.getGuardianCertificateS3Key())
-                    .as("guardianCertificateS3Key が DB から正しく取得できること（@Column name 不一致なら SQLSyntaxErrorException）")
-                    .isEqualTo(guardianKey);
-        }
-
-        @Test
-        @DisplayName("S3Key が null の同意書でも findValidConsent が正常動作する（既存挙動の保護）")
-        void shouldHandleNullS3Keys() {
-            ProxyInputConsentEntity saved = persistActiveConsent(SUBJECT_USER_ID, PROXY_USER_ID);
-
-            Optional<ProxyInputConsentEntity> result = repository.findValidConsent(
-                    saved.getId(), PROXY_USER_ID);
-
-            assertThat(result).isPresent();
-            assertThat(result.get().getScannedDocumentS3Key()).isNull();
-            assertThat(result.get().getGuardianCertificateS3Key()).isNull();
-        }
-    }
-
     @Nested
     @DisplayName("findValidConsent — 有効同意書の検索")
     class FindValidConsent {

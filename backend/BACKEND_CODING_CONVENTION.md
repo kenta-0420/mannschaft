@@ -203,8 +203,67 @@ private String scannedDocumentS3Key;
 - `HtmlUrl` / `HtmlContent` — HTML 関連（H が大文字で前が数字の場合）
 - その他「数字→大文字」が連続する略語を含むフィールド全般
 
-**再発防止テスト**: Testcontainers (Flyway 実スキーマ) を使った Repository IT で
-S3Key を含む `save → find` を必ず入れること（`ddl-auto=create` のみのテストでは検出不能）。
+**再発防止テスト**: `ddl-auto=create` のみのテスト（通常の `AbstractMySqlIntegrationTest` 派生クラス）では検出不能。
+S3Key 系フィールドを持つ Entity には、専用の Flyway 実スキーマテストクラスを作成すること。
+
+実装パターン（`@SpringBootTest` プロパティ上書き + ネイティブ SQL 列名直接確認）:
+
+```java
+@SpringBootTest(properties = {
+        "spring.flyway.enabled=true",
+        "spring.jpa.hibernate.ddl-auto=none"   // Flyway 適用済みスキーマをそのまま使う
+})
+@Testcontainers
+@Transactional
+@EnabledIf("com.example.XxxS3KeyFlywaySchemaTest#isDockerAvailable")
+@DisplayName("Xxx S3Key 列名マッピング再発防止テスト（Flyway 実スキーマ）")
+class XxxS3KeyFlywaySchemaTest {
+
+    @SuppressWarnings("resource")
+    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
+            .withDatabaseName("mannschaft_s3key_flyway")
+            .withUsername("test").withPassword("test")
+            .withTmpFs(Map.of("/var/lib/mysql", "rw"))   // WSL2 VHD 遅延対策（定石）
+            .withCommand("--log_bin_trust_function_creators=1");  // TRIGGER 作成権限
+
+    static { if (isDockerAvailable()) MYSQL.start(); }
+
+    @MockitoBean
+    org.springframework.data.redis.core.StringRedisTemplate redisTemplate;  // 外部依存モック化
+
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
+        registry.add("spring.datasource.username", MYSQL::getUsername);
+        registry.add("spring.datasource.password", MYSQL::getPassword);
+    }
+
+    public static boolean isDockerAvailable() { ... }
+
+    @PersistenceContext EntityManager em;
+
+    @Test
+    void s3KeyColumnsMatchFlywaySchema() {
+        // 1. S3 キーを指定して永続化・flush
+        em.persist(entity); em.flush(); em.clear();
+
+        // 2. JPA 往復確認
+        XxxEntity loaded = em.find(XxxEntity.class, entity.getId());
+        assertThat(loaded.getSomeS3Key()).isEqualTo(expectedKey);
+
+        // 3. ネイティブ SQL で Flyway DDL 定義の実列名を直接指定して確認
+        //    → JPA 側と DB 側の「両方が誤列名」という見逃しパターンを排除
+        List<Object[]> rows = em.createNativeQuery(
+                "SELECT some_s3_key FROM xxx_table WHERE id = :id")
+                .setParameter("id", entity.getId()).getResultList();
+        assertThat(rows.get(0)[0]).isEqualTo(expectedKey);
+    }
+}
+```
+
+**注意**: `@SpringBootTest(properties=...)` でプロパティを上書きすると、`AbstractMySqlIntegrationTest` とは
+別の ApplicationContext が生成される（OOM 回避のため、このパターンのクラスを不必要に増やさないこと）。
+参照実装: `ProxyInputConsentS3KeyFlywaySchemaTest`。
 
 ### コネクションプール (HikariCP)
 * **使用ライブラリ**: Spring Boot 標準の **HikariCP** をそのまま使用する。別のプールライブラリへの変更は禁止する。
