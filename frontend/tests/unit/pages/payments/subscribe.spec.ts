@@ -15,6 +15,8 @@ import { defineComponent, nextTick } from 'vue'
  *   SUB-006: 409 NOT_RECURRING → errorNotRecurring 文言にマップ
  *   SUB-007: 3DS 復帰（setup_intent_client_secret クエリ・succeeded）→ confirm→subscribe 続行
  *   SUB-008: 3DS 復帰で router.replace によりクエリが除去される（secret を残さない）
+ *   SUB-010: router.replace が reject しても加入が完了し console.warn が呼ばれる
+ *   SUB-011: 3DS 復帰クエリの beneficiaryUserId が switchableChildren に無い → SELF フォールバック＋console.warn
  */
 
 // ── Stripe / API / guardianship / auth / notification のモック ──
@@ -53,18 +55,45 @@ vi.mock('~/composables/useStripeSetup', () => ({
 vi.mock('~/stores/useAuthStore', () => ({
   useAuthStore: () => ({
     user: { id: 42, fullName: 'テスト 太郎' },
+    loadFromStorage: vi.fn(),
   }),
 }))
 
 // useRoute を制御可能にする（3DS 復帰クエリの注入のため）。
 // mountSuspended の route オプションは useRoute().query へ確実に反映されないため明示モックする。
-// useRouter は Nuxt 内部プラグインが afterEach/beforeResolve 等を使うためモックせず実体を使う。
+// useRouter は Nuxt 内部プラグインが afterEach/beforeResolve 等を使うため、
+// これらすべてのメソッドを持つ完全なモックオブジェクトを返す必要がある。
 const routeState = {
   path: '/payments/subscribe/7',
   params: { itemId: '7' } as Record<string, string>,
   query: {} as Record<string, string>,
 }
 mockNuxtImport('useRoute', () => () => routeState)
+
+// router.replace を制御可能にするための vi.fn()。
+// SUB-010 で reject させて console.warn を検証する。
+const mockRouterReplace = vi.fn().mockResolvedValue(undefined)
+
+// useRouter は Nuxt 内部プラグイン（chunk-reload, navigation-repaint 等）が
+// afterEach/beforeResolve 等を使うため、これらすべてを vi.fn() として含むモックを返す。
+mockNuxtImport('useRouter', () => () => ({
+  replace: (...args: unknown[]) => mockRouterReplace(...args),
+  push: vi.fn().mockResolvedValue(undefined),
+  go: vi.fn(),
+  back: vi.fn(),
+  forward: vi.fn(),
+  beforeEach: vi.fn().mockReturnValue(vi.fn()),
+  afterEach: vi.fn().mockReturnValue(vi.fn()),
+  beforeResolve: vi.fn().mockReturnValue(vi.fn()),
+  onError: vi.fn().mockReturnValue(vi.fn()),
+  addRoute: vi.fn(),
+  removeRoute: vi.fn(),
+  hasRoute: vi.fn().mockReturnValue(false),
+  getRoutes: vi.fn().mockReturnValue([]),
+  resolve: vi.fn().mockReturnValue({ href: '/', fullPath: '/', matched: [], params: {}, query: {}, hash: '', meta: {}, name: undefined, redirectedFrom: undefined }),
+  currentRoute: { value: routeState },
+  isReady: vi.fn().mockResolvedValue(undefined),
+}))
 
 // StripePaymentForm は Stripe.js に依存するため、success/error を手動 emit できる stub に置換する。
 const StripePaymentFormStub = defineComponent({
@@ -93,6 +122,7 @@ beforeEach(() => {
   mockSubscribe.mockReset()
   mockListSwitchableChildren.mockReset()
   mockRetrieveSetupIntent.mockReset()
+  mockRouterReplace.mockReset().mockResolvedValue(undefined)
 
   mockListSwitchableChildren.mockResolvedValue({ data: { children: [], blockedChildren: [] } })
   mockCreateSetupIntent.mockResolvedValue({ data: { clientSecret: 'seti_secret_1', setupIntentId: 'seti_1', status: 'requires_payment_method' } })
@@ -249,5 +279,86 @@ describe('pages/payments/subscribe/[itemId].vue', () => {
 
     expect(mockSubscribe).not.toHaveBeenCalled()
     expect(errorText(wrapper)).toContain('Card authentication was not completed')
+  })
+
+  it('SUB-010: router.replace が reject しても加入が完了し console.warn が呼ばれる', async () => {
+    // 前テスト（SUB-009）の非同期残存処理が確実に終わるよう複数 tick 待機する。
+    // SUB-009 の handleRedirectReturn は loadSwitchableChildren / router.replace /
+    // retrieveSetupIntent / finalizeSubscription と多段 await を持つため、
+    // 残存処理が SUB-010 の mock 設定に干渉しないようにする。
+    await flush(10)
+
+    // replace を reject させる（重複ナビゲーション等のシミュレーション）。
+    // @nuxt/test-utils の mountSuspended 内部でも router.replace が呼ばれるため、
+    // 最初の呼び出し（Nuxt 内部）は成功させ、以降（コンポーネントの handleRedirectReturn）は reject させる。
+    let replaceCallCount = 0
+    mockRouterReplace.mockImplementation(() => {
+      replaceCallCount++
+      if (replaceCallCount === 1) return Promise.resolve(undefined)
+      return Promise.reject(new Error('NavigationDuplicated: Avoided redundant navigation'))
+    })
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    mockRetrieveSetupIntent.mockResolvedValue({
+      status: 'ok',
+      setupIntent: { id: 'seti_1', status: 'succeeded', payment_method: 'pm_warn_test' },
+    })
+    const wrapper = await mountWith({
+      setup_intent_client_secret: 'seti_secret_warn',
+      beneficiaryUserId: '42',
+    })
+    await flush(10)
+
+    // replace 失敗でも加入フローが継続し完了ステップが表示される。
+    expect(wrapper.find('[data-testid="subscribe-done"]').exists()).toBe(true)
+    expect(mockSubscribe).toHaveBeenCalledTimes(1)
+
+    // console.warn が呼ばれ、path は含まれるが secret 値は含まれないこと。
+    expect(warnSpy).toHaveBeenCalled()
+    const warnArgs = warnSpy.mock.calls.find((args) =>
+      String(args[0]).includes('secret クエリの URL 除去に失敗した'),
+    )
+    expect(warnArgs).toBeDefined()
+    // ログに client_secret の値（'seti_secret_warn'）が含まれていないこと。
+    expect(JSON.stringify(warnArgs)).not.toContain('seti_secret_warn')
+
+    warnSpy.mockRestore()
+  })
+
+  it('SUB-011: 3DS 復帰クエリの beneficiaryUserId が switchableChildren に無い → SELF フォールバック＋console.warn', async () => {
+    // switchableChildren は userId=42（自分）とも子 ID とも一致しない ID=999 を返すクエリ。
+    mockListSwitchableChildren.mockResolvedValue({
+      data: {
+        children: [{ childUserId: 100, displayName: '子 花子', stageKey: 'elementary', switchAllowed: true }],
+        blockedChildren: [],
+      },
+    })
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    mockRetrieveSetupIntent.mockResolvedValue({
+      status: 'ok',
+      setupIntent: { id: 'seti_1', status: 'succeeded', payment_method: 'pm_selffall' },
+    })
+    // beneficiaryUserId=999 → 自分(42)でも子(100)でもない → SELF フォールバック。
+    await mountWith({
+      setup_intent_client_secret: 'seti_secret_unknown',
+      beneficiaryUserId: '999',
+    })
+    await flush()
+
+    // SELF にフォールバックしているため subscribeBody は自分の ID(42) になる。
+    expect(mockSubscribe).toHaveBeenCalledTimes(1)
+    expect(subscribeBody().beneficiaryUserId).toBe(42)
+
+    // console.warn が呼ばれ、receivedBeneficiaryUserId が含まれること。
+    expect(warnSpy).toHaveBeenCalled()
+    const warnArgs = warnSpy.mock.calls.find((args) =>
+      String(args[0]).includes('ホワイトリスト外のため SELF にフォールバック'),
+    )
+    expect(warnArgs).toBeDefined()
+    // ログにパスが含まれること。
+    expect(JSON.stringify(warnArgs)).toContain(routeState.path)
+
+    warnSpy.mockRestore()
   })
 })

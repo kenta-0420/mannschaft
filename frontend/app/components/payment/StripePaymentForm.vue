@@ -56,7 +56,7 @@ onMounted(async () => {
     elements = mounted.elements
     unmountElement = mounted.unmount
     loaded.value = true
-  } catch (e) {
+  } catch (e: unknown) {
     // 読み込み失敗は隠さず error emit ＋画面表示する。
     const message = e instanceof Error ? e.message : t('payment.membership.subscribe.loadFailed')
     formError.value = message

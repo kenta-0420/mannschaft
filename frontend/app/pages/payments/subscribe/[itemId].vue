@@ -214,16 +214,46 @@ async function handleRedirectReturn() {
   if (!secret) return
 
   // 受益者 ID は returnUrl に載せた beneficiaryUserId クエリから復元する。
+  // セキュリティ二重防御（BE 権原検証が最終防衛）: FE でもホワイトリスト照合し、
+  // 「自分の userId」または「switchableChildren の childUserId」以外は SELF にフォールバックする。
+  // ※ loadSwitchableChildren はまだ未実行（3DS 復帰時は beneficiary ステップを経由しない）ため、
+  //   ここで await してから判定する。
+  await loadSwitchableChildren()
   const benParam = route.query.beneficiaryUserId
   const ben = Array.isArray(benParam) ? benParam[0] : benParam
   if (ben) {
-    // 自分の ID と一致すれば SELF、そうでなければ子 ID として選択を復元する。
-    beneficiaryChoice.value = Number(ben) === authStore.user?.id ? SELF_VALUE : String(ben)
+    const benNum = Number(ben)
+    const isSelf = benNum === authStore.user?.id
+    const isKnownChild = switchableChildren.value.some((c) => c.childUserId === benNum)
+    if (isSelf) {
+      beneficiaryChoice.value = SELF_VALUE
+    } else if (isKnownChild) {
+      // 後見下の子として選択を復元する。
+      beneficiaryChoice.value = String(benNum)
+    } else {
+      // ホワイトリスト不一致: SELF にフォールバックし警告を出す（症状を隠さない）。
+      // BE 権原検証が最終防衛ラインだが FE でも二重防御として可視化する。
+      // client_secret 値はログに含めない。
+      console.warn('[subscribe] 3DS 復帰: beneficiaryUserId がホワイトリスト外のため SELF にフォールバック', {
+        path: route.path,
+        receivedBeneficiaryUserId: benNum,
+      })
+      beneficiaryChoice.value = SELF_VALUE
+    }
   }
 
   // クエリ（secret 含む）を URL から即座に除去する（履歴・共有リンクに secret を残さない）。
-  // 履歴差し替えの失敗（重複ナビゲーション等）は加入完了の妨げにしてはならないため握りで握らず継続する。
-  void Promise.resolve(router.replace({ path: route.path })).catch(() => {})
+  // 症状を隠さない（CLAUDE.md 障害対応の原則）: replace 失敗は WARN で可視化する。
+  // secret は URL に残留し得るため WARN で開発者に通知する（加入フロー自体は継続する）。
+  // client_secret 値そのものはログに絶対に含めない。
+  try {
+    await router.replace({ path: route.path })
+  } catch (replaceErr) {
+    console.warn('[subscribe] secret クエリの URL 除去に失敗した（加入フローは継続）', {
+      path: route.path,
+      reason: replaceErr instanceof Error ? replaceErr.message : String(replaceErr),
+    })
+  }
 
   // retrieve フェーズは専用フラグ retrieving で管理する。
   // 共有 processing は finalizeSubscription が自前で立てる（二重送信ガードとの衝突回避）。
