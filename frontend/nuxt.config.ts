@@ -34,6 +34,9 @@ const connectSrc = [
   // 本番 API が wss、dev が ws のため双方を許可する。
   'ws:',
   'wss:',
+  // F08.9 P5 Stripe.js: SetupIntent confirm / Elements が Stripe API へ XHR/fetch する。
+  // 設計書: docs/features/F08.9_membership_billing_paywall/04_ui_i18n.md §2.2 / docs/security/03_security_headers_and_csp.md
+  'https://api.stripe.com',
 ]
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
@@ -119,7 +122,11 @@ export default defineNuxtConfig({
         'default-src': ["'self'"],
         // script-src: nonce は nuxt-security が自動付与。
         // 'strict-dynamic' により nonce 付きスクリプトがロードする子スクリプトを許可。
-        'script-src': ["'self'", "'nonce-{{nonce}}'", "'strict-dynamic'"],
+        // F08.9 P5: Stripe.js 本体（https://js.stripe.com/v3）の読み込みを許可。
+        //   loadStripe は nonce 付き親スクリプトから動的に <script src> を挿入するため
+        //   'strict-dynamic' 下でも src 許可リストが効くよう明示する（過剰緩和なし）。
+        // 設計書: docs/features/F08.9_membership_billing_paywall/04_ui_i18n.md §2.2
+        'script-src': ["'self'", "'nonce-{{nonce}}'", "'strict-dynamic'", 'https://js.stripe.com'],
         // style-src: PrimeVue(Aura)/Tailwind の動的インラインスタイルのため
         // 'unsafe-inline' を当面維持する。
         // 【実地検証の結論（2026-05-26 / feature/security-fe-csp-refine）】
@@ -143,7 +150,10 @@ export default defineNuxtConfig({
         'img-src': ["'self'", 'data:', 'blob:', 'https:'],
         'connect-src': connectSrc,
         // frame-src: PublicMapEmbed.vue の Google Maps 埋め込み。
-        'frame-src': ['https://www.google.com'],
+        // F08.9 P5: Stripe.js の PaymentElement iframe（js.stripe.com）と
+        //   3DS 認証チャレンジ iframe（hooks.stripe.com）を許可。
+        // 設計書: docs/features/F08.9_membership_billing_paywall/04_ui_i18n.md §2.2
+        'frame-src': ['https://www.google.com', 'https://js.stripe.com', 'https://hooks.stripe.com'],
         // worker-src: @vite-pwa/nuxt の service worker。
         'worker-src': ["'self'", 'blob:'],
         'manifest-src': ["'self'"],
@@ -288,6 +298,12 @@ export default defineNuxtConfig({
       // 設計書: docs/features/F18_point_card_wallet.md §1.4 / §16 / §17
       // 既定 false（凍結中）。再開時は NUXT_PUBLIC_F18_BALANCE_ENABLED=true で復活可能。
       f18BalanceEnabled: process.env.NUXT_PUBLIC_F18_BALANCE_ENABLED === 'true',
+      // F08.9 P5 継続課金（Stripe.js）公開可能キー。
+      // クライアントで `loadStripe(publishableKey)` に渡す。公開鍵は秘匿情報ではない（pk_*）が、
+      // 環境（test/live）で切り替えるため値はコミットせず環境変数から注入する。
+      // 未設定（空文字）の場合は useStripeSetup が明示エラーを投げる（症状を隠さない）。
+      // 設計書: docs/features/F08.9_membership_billing_paywall/04_ui_i18n.md §2.2
+      stripePublishableKey: process.env.NUXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '',
     },
   },
 

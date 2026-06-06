@@ -1,6 +1,15 @@
 {
   "payment": {
     "membership": {
+      "subscribe": {
+        "cardLabel": "Tarjeta de pago",
+        "submit": "Suscribirse con esta tarjeta",
+        "processing": "Procesando…",
+        "loadFailed": "No se pudo cargar el formulario de pago. Inténtalo de nuevo más tarde",
+        "keyMissing": "La configuración de pago está incompleta. Contacta con un administrador",
+        "genericError": "Se produjo un error al procesar el pago. Inténtalo de nuevo más tarde",
+        "noPaymentMethod": "No se pudo confirmar tu método de pago. Revisa los datos de la tarjeta e inténtalo de nuevo"
+      },
       "subscription": {
         "title": "Pagos recurrentes",
         "empty": "No tienes pagos recurrentes activos",

@@ -1,6 +1,15 @@
 {
   "payment": {
     "membership": {
+      "subscribe": {
+        "cardLabel": "결제 카드",
+        "submit": "이 카드로 가입하기",
+        "processing": "처리 중…",
+        "loadFailed": "결제 양식을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요",
+        "keyMissing": "결제 설정이 완료되지 않았습니다. 관리자에게 문의하세요",
+        "genericError": "결제 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요",
+        "noPaymentMethod": "결제 수단을 확인할 수 없습니다. 카드 정보를 확인한 후 다시 시도해 주세요"
+      },
       "subscription": {
         "title": "지속 결제",
         "empty": "진행 중인 지속 결제가 없습니다",

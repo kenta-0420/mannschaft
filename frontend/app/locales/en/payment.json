@@ -1,6 +1,15 @@
 {
   "payment": {
     "membership": {
+      "subscribe": {
+        "cardLabel": "Payment card",
+        "submit": "Subscribe with this card",
+        "processing": "Processing…",
+        "loadFailed": "Failed to load the payment form. Please try again later",
+        "keyMissing": "Payment setup is incomplete. Please contact an administrator",
+        "genericError": "An error occurred while processing the payment. Please try again later",
+        "noPaymentMethod": "Could not confirm your payment method. Please check your card details and try again"
+      },
       "subscription": {
         "title": "Recurring payments",
         "empty": "You have no active recurring payments",

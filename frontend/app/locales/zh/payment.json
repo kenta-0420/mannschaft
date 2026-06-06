@@ -1,6 +1,15 @@
 {
   "payment": {
     "membership": {
+      "subscribe": {
+        "cardLabel": "支付卡",
+        "submit": "使用此卡加入",
+        "processing": "处理中…",
+        "loadFailed": "支付表单加载失败。请稍后重试",
+        "keyMissing": "支付设置尚未完成。请联系管理员",
+        "genericError": "处理支付时发生错误。请稍后重试",
+        "noPaymentMethod": "无法确认您的支付方式。请检查卡片信息后重试"
+      },
       "subscription": {
         "title": "持续付款",
         "empty": "暂无进行中的持续付款",

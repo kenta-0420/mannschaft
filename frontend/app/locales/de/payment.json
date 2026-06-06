@@ -1,6 +1,15 @@
 {
   "payment": {
     "membership": {
+      "subscribe": {
+        "cardLabel": "Zahlungskarte",
+        "submit": "Mit dieser Karte abonnieren",
+        "processing": "Wird verarbeitet…",
+        "loadFailed": "Das Zahlungsformular konnte nicht geladen werden. Bitte versuche es später erneut",
+        "keyMissing": "Die Zahlungseinrichtung ist unvollständig. Bitte wende dich an einen Administrator",
+        "genericError": "Bei der Zahlungsabwicklung ist ein Fehler aufgetreten. Bitte versuche es später erneut",
+        "noPaymentMethod": "Deine Zahlungsmethode konnte nicht bestätigt werden. Bitte überprüfe deine Kartendaten und versuche es erneut"
+      },
       "subscription": {
         "title": "Wiederkehrende Zahlungen",
         "empty": "Du hast keine aktiven wiederkehrenden Zahlungen",

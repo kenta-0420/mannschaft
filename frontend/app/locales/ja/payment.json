@@ -1,6 +1,15 @@
 {
   "payment": {
     "membership": {
+      "subscribe": {
+        "cardLabel": "お支払いカード",
+        "submit": "この内容で加入する",
+        "processing": "処理中…",
+        "loadFailed": "決済フォームの読み込みに失敗しました。時間をおいて再度お試しください",
+        "keyMissing": "決済の設定が未完了です。管理者にお問い合わせください",
+        "genericError": "決済処理中にエラーが発生しました。時間をおいて再度お試しください",
+        "noPaymentMethod": "お支払い方法を確定できませんでした。カード情報をご確認のうえ再度お試しください"
+      },
       "subscription": {
         "title": "継続のお支払い",
         "empty": "継続中のお支払いはありません",
