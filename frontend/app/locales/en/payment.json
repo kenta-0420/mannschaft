@@ -1,0 +1,40 @@
+{
+  "payment": {
+    "membership": {
+      "subscription": {
+        "title": "Recurring payments",
+        "empty": "You have no active recurring payments",
+        "unnamedItem": "(Unnamed fee)",
+        "monthly": "Monthly",
+        "yearly": "Yearly",
+        "beneficiary": "Member",
+        "nextBilling": "Next billing date",
+        "validUntil": "Valid until",
+        "skip": "Skip this month",
+        "skipConfirm": "Payment for this month will be paused. Your next billing date is {date}. Your access period will not be extended during this time.",
+        "skipped": "Paused this month (next: {date})",
+        "skipSuccess": "Skipped this month's payment",
+        "resume": "Resume",
+        "resumeConfirm": "Cancel the skip and resume your recurring payment?",
+        "resumeSuccess": "Recurring payment resumed",
+        "cancel": "Cancel",
+        "cancelAtPeriodEnd": "Cancel at period end",
+        "cancelConfirm": "You can use this until {date}. Cancel at the end of the period? (No prorated refund)",
+        "cancelScheduled": "Available until {date} (cancellation scheduled at period end)",
+        "cancelSuccess": "Scheduled to cancel at the end of the period",
+        "pastDue": "Payment required",
+        "pastDueGuide": "Your card payment failed. Please update your payment method.",
+        "confirmAction": "Confirm",
+        "loadError": "Failed to load recurring payments",
+        "actionError": "Operation failed. Please try again later",
+        "status": {
+          "PENDING": "Pending",
+          "ACTIVE": "Active",
+          "PAST_DUE": "Payment due",
+          "CANCELLED": "Cancelled",
+          "EXPIRED": "Expired"
+        }
+      }
+    }
+  }
+}

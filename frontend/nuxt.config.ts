@@ -375,6 +375,7 @@ export default defineNuxtConfig({
           'ja/market.json',
           'ja/inbox.json',
           'ja/schedule.json',
+          'ja/payment.json',
         ],
       },
       {
@@ -432,6 +433,7 @@ export default defineNuxtConfig({
           'en/market.json',
           'en/inbox.json',
           'en/schedule.json',
+          'en/payment.json',
         ],
       },
       {
@@ -489,6 +491,7 @@ export default defineNuxtConfig({
           'zh/market.json',
           'zh/inbox.json',
           'zh/schedule.json',
+          'zh/payment.json',
         ],
       },
       {
@@ -546,6 +549,7 @@ export default defineNuxtConfig({
           'ko/market.json',
           'ko/inbox.json',
           'ko/schedule.json',
+          'ko/payment.json',
         ],
       },
       {
@@ -603,6 +607,7 @@ export default defineNuxtConfig({
           'es/market.json',
           'es/inbox.json',
           'es/schedule.json',
+          'es/payment.json',
         ],
       },
       {
@@ -660,6 +665,7 @@ export default defineNuxtConfig({
           'de/market.json',
           'de/inbox.json',
           'de/schedule.json',
+          'de/payment.json',
         ],
       },
     ],

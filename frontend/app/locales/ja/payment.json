@@ -1,0 +1,40 @@
+{
+  "payment": {
+    "membership": {
+      "subscription": {
+        "title": "継続のお支払い",
+        "empty": "継続中のお支払いはありません",
+        "unnamedItem": "（名称未設定の会費）",
+        "monthly": "月額",
+        "yearly": "年額",
+        "beneficiary": "対象会員",
+        "nextBilling": "次回お支払い日",
+        "validUntil": "ご利用期限",
+        "skip": "今月をスキップ",
+        "skipConfirm": "今月分のお支払いをお休みします。次回お支払い日は {date} です。この間は閲覧期限も延びません。",
+        "skipped": "今月はお休み中（次回 {date}）",
+        "skipSuccess": "今月分のお支払いをスキップしました",
+        "resume": "再開する",
+        "resumeConfirm": "スキップを解除して継続のお支払いを再開しますか？",
+        "resumeSuccess": "継続のお支払いを再開しました",
+        "cancel": "解約する",
+        "cancelAtPeriodEnd": "期間終了時に解約",
+        "cancelConfirm": "{date} まで利用できます。期間終了時に解約しますか？（日割り返金はありません）",
+        "cancelScheduled": "{date} まで利用できます（期間終了時に解約予定）",
+        "cancelSuccess": "期間終了時に解約するよう予約しました",
+        "pastDue": "お支払いが必要です",
+        "pastDueGuide": "カードのお支払いに失敗しました。お支払い方法を更新してください。",
+        "confirmAction": "実行する",
+        "loadError": "継続のお支払いの取得に失敗しました",
+        "actionError": "操作に失敗しました。時間をおいて再度お試しください",
+        "status": {
+          "PENDING": "保留中",
+          "ACTIVE": "有効",
+          "PAST_DUE": "お支払い待ち",
+          "CANCELLED": "解約済み",
+          "EXPIRED": "期限切れ"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "payment": {
+    "membership": {
+      "subscription": {
+        "title": "Pagos recurrentes",
+        "empty": "No tienes pagos recurrentes activos",
+        "unnamedItem": "(Cuota sin nombre)",
+        "monthly": "Mensual",
+        "yearly": "Anual",
+        "beneficiary": "Miembro",
+        "nextBilling": "Próxima fecha de cobro",
+        "validUntil": "Válido hasta",
+        "skip": "Omitir este mes",
+        "skipConfirm": "El pago de este mes se pausará. Tu próxima fecha de cobro es {date}. Durante este tiempo, tu período de acceso no se ampliará.",
+        "skipped": "En pausa este mes (próximo: {date})",
+        "skipSuccess": "Se omitió el pago de este mes",
+        "resume": "Reanudar",
+        "resumeConfirm": "¿Cancelar la omisión y reanudar tu pago recurrente?",
+        "resumeSuccess": "Pago recurrente reanudado",
+        "cancel": "Cancelar",
+        "cancelAtPeriodEnd": "Cancelar al final del período",
+        "cancelConfirm": "Puedes usarlo hasta el {date}. ¿Cancelar al final del período? (Sin reembolso prorrateado)",
+        "cancelScheduled": "Disponible hasta el {date} (cancelación programada al final del período)",
+        "cancelSuccess": "Programado para cancelar al final del período",
+        "pastDue": "Se requiere pago",
+        "pastDueGuide": "El pago con tu tarjeta falló. Actualiza tu método de pago.",
+        "confirmAction": "Confirmar",
+        "loadError": "Error al cargar los pagos recurrentes",
+        "actionError": "La operación falló. Inténtalo de nuevo más tarde",
+        "status": {
+          "PENDING": "Pendiente",
+          "ACTIVE": "Activo",
+          "PAST_DUE": "Pago pendiente",
+          "CANCELLED": "Cancelado",
+          "EXPIRED": "Caducado"
+        }
+      }
+    }
+  }
+}

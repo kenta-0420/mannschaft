@@ -1,0 +1,40 @@
+{
+  "payment": {
+    "membership": {
+      "subscription": {
+        "title": "Wiederkehrende Zahlungen",
+        "empty": "Du hast keine aktiven wiederkehrenden Zahlungen",
+        "unnamedItem": "(Unbenannter Beitrag)",
+        "monthly": "Monatlich",
+        "yearly": "Jährlich",
+        "beneficiary": "Mitglied",
+        "nextBilling": "Nächstes Abrechnungsdatum",
+        "validUntil": "Gültig bis",
+        "skip": "Diesen Monat überspringen",
+        "skipConfirm": "Die Zahlung für diesen Monat wird pausiert. Dein nächstes Abrechnungsdatum ist der {date}. In dieser Zeit wird dein Zugriffszeitraum nicht verlängert.",
+        "skipped": "Diesen Monat pausiert (nächste: {date})",
+        "skipSuccess": "Zahlung für diesen Monat übersprungen",
+        "resume": "Fortsetzen",
+        "resumeConfirm": "Das Überspringen aufheben und deine wiederkehrende Zahlung fortsetzen?",
+        "resumeSuccess": "Wiederkehrende Zahlung fortgesetzt",
+        "cancel": "Kündigen",
+        "cancelAtPeriodEnd": "Zum Periodenende kündigen",
+        "cancelConfirm": "Du kannst es bis zum {date} nutzen. Zum Ende der Periode kündigen? (Keine anteilige Rückerstattung)",
+        "cancelScheduled": "Nutzbar bis zum {date} (Kündigung zum Periodenende geplant)",
+        "cancelSuccess": "Kündigung zum Periodenende geplant",
+        "pastDue": "Zahlung erforderlich",
+        "pastDueGuide": "Deine Kartenzahlung ist fehlgeschlagen. Bitte aktualisiere deine Zahlungsmethode.",
+        "confirmAction": "Bestätigen",
+        "loadError": "Wiederkehrende Zahlungen konnten nicht geladen werden",
+        "actionError": "Der Vorgang ist fehlgeschlagen. Bitte versuche es später erneut",
+        "status": {
+          "PENDING": "Ausstehend",
+          "ACTIVE": "Aktiv",
+          "PAST_DUE": "Zahlung fällig",
+          "CANCELLED": "Gekündigt",
+          "EXPIRED": "Abgelaufen"
+        }
+      }
+    }
+  }
+}
