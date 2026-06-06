@@ -1,0 +1,40 @@
+{
+  "payment": {
+    "membership": {
+      "subscription": {
+        "title": "持续付款",
+        "empty": "暂无进行中的持续付款",
+        "unnamedItem": "（未命名的会费）",
+        "monthly": "月付",
+        "yearly": "年付",
+        "beneficiary": "对象会员",
+        "nextBilling": "下次付款日",
+        "validUntil": "使用期限",
+        "skip": "跳过本月",
+        "skipConfirm": "本月的付款将暂停。下次付款日为 {date}。在此期间浏览期限不会延长。",
+        "skipped": "本月暂停中（下次 {date}）",
+        "skipSuccess": "已跳过本月付款",
+        "resume": "恢复",
+        "resumeConfirm": "取消跳过并恢复持续付款吗？",
+        "resumeSuccess": "已恢复持续付款",
+        "cancel": "解约",
+        "cancelAtPeriodEnd": "在周期结束时解约",
+        "cancelConfirm": "您可使用至 {date}。在周期结束时解约吗？（不按比例退款）",
+        "cancelScheduled": "可使用至 {date}（已预约在周期结束时解约）",
+        "cancelSuccess": "已预约在周期结束时解约",
+        "pastDue": "需要付款",
+        "pastDueGuide": "卡付款失败。请更新您的付款方式。",
+        "confirmAction": "确认执行",
+        "loadError": "获取持续付款失败",
+        "actionError": "操作失败。请稍后重试",
+        "status": {
+          "PENDING": "待处理",
+          "ACTIVE": "有效",
+          "PAST_DUE": "待付款",
+          "CANCELLED": "已解约",
+          "EXPIRED": "已过期"
+        }
+      }
+    }
+  }
+}
