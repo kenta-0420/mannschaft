@@ -463,7 +463,8 @@ public class PropertyWorkPackageService {
                 /* status */ initialStatus);
 
         try {
-            PostResponse posted = timelinePostService.createPost(req, entity.getCreatedBy());
+            // システム内部からの自動投稿のため createSystemPost を使用（メンバーシップチェックをスキップ）
+            PostResponse posted = timelinePostService.createSystemPost(req, entity.getCreatedBy());
             entity.linkTimelinePost(posted.getId());
             log.info("F04.1 TimelinePost 自動投稿成功: packageId={}, postId={}, visibility={}, status={}",
                     entity.getId(), posted.getId(), entity.getVisibility(),

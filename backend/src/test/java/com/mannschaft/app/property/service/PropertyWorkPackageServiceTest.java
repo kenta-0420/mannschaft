@@ -166,7 +166,7 @@ class PropertyWorkPackageServiceTest {
                         ReflectionTestUtils.setField(e, "id", PACKAGE_ID);
                         return e;
                     });
-            given(timelinePostService.createPost(any(CreatePostRequest.class), any(Long.class)))
+            given(timelinePostService.createSystemPost(any(CreatePostRequest.class), any(Long.class)))
                     .willReturn(stubPostResponse(900L));
 
             PropertyWorkPackageEntity saved = service.create(SCOPE_TEAM, TEAM_ID, USER_ID,
@@ -181,7 +181,7 @@ class PropertyWorkPackageServiceTest {
             assertThat(saved.getTags()).contains("大規模修繕").contains("国交省ガイドライン準拠");
 
             ArgumentCaptor<CreatePostRequest> postCap = ArgumentCaptor.forClass(CreatePostRequest.class);
-            verify(timelinePostService).createPost(postCap.capture(), any(Long.class));
+            verify(timelinePostService).createSystemPost(postCap.capture(), any(Long.class));
             assertThat(postCap.getValue().getContent()).contains("【物件履歴】南側外壁大規模修繕");
             assertThat(postCap.getValue().getContent()).contains("RENOVATION");
             assertThat(postCap.getValue().getScopeType()).isEqualTo("TEAM");
@@ -199,7 +199,7 @@ class PropertyWorkPackageServiceTest {
                         ReflectionTestUtils.setField(e, "id", PACKAGE_ID);
                         return e;
                     });
-            given(timelinePostService.createPost(any(CreatePostRequest.class), any(Long.class)))
+            given(timelinePostService.createSystemPost(any(CreatePostRequest.class), any(Long.class)))
                     .willReturn(stubPostResponse(900L));
 
             WorkPackageRequest req = new WorkPackageRequest(
@@ -220,13 +220,13 @@ class PropertyWorkPackageServiceTest {
         void create_orgScope_timelineOrg() {
             given(packageRepository.save(any(PropertyWorkPackageEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
-            given(timelinePostService.createPost(any(CreatePostRequest.class), any(Long.class)))
+            given(timelinePostService.createSystemPost(any(CreatePostRequest.class), any(Long.class)))
                     .willReturn(stubPostResponse(901L));
 
             service.create(SCOPE_ORG, ORG_ID, USER_ID, baseRequest(WorkType.RENOVATION));
 
             ArgumentCaptor<CreatePostRequest> cap = ArgumentCaptor.forClass(CreatePostRequest.class);
-            verify(timelinePostService).createPost(cap.capture(), any(Long.class));
+            verify(timelinePostService).createSystemPost(cap.capture(), any(Long.class));
             assertThat(cap.getValue().getScopeType()).isEqualTo("ORGANIZATION");
             assertThat(cap.getValue().getScopeId()).isEqualTo(ORG_ID);
         }
@@ -237,7 +237,7 @@ class PropertyWorkPackageServiceTest {
         void create_adminsOnly_timelineDraft() {
             given(packageRepository.save(any(PropertyWorkPackageEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
-            given(timelinePostService.createPost(any(CreatePostRequest.class), any(Long.class)))
+            given(timelinePostService.createSystemPost(any(CreatePostRequest.class), any(Long.class)))
                     .willReturn(stubPostResponse(910L));
 
             WorkPackageRequest req = new WorkPackageRequest(
@@ -248,7 +248,7 @@ class PropertyWorkPackageServiceTest {
             service.create(SCOPE_TEAM, TEAM_ID, USER_ID, req);
 
             ArgumentCaptor<CreatePostRequest> cap = ArgumentCaptor.forClass(CreatePostRequest.class);
-            verify(timelinePostService).createPost(cap.capture(), any(Long.class));
+            verify(timelinePostService).createSystemPost(cap.capture(), any(Long.class));
             assertThat(cap.getValue().getStatus()).isEqualTo(PostStatus.DRAFT);
         }
 
@@ -257,14 +257,14 @@ class PropertyWorkPackageServiceTest {
         void create_membersMasked_timelinePublished() {
             given(packageRepository.save(any(PropertyWorkPackageEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
-            given(timelinePostService.createPost(any(CreatePostRequest.class), any(Long.class)))
+            given(timelinePostService.createSystemPost(any(CreatePostRequest.class), any(Long.class)))
                     .willReturn(stubPostResponse(911L));
 
             // baseRequest は visibility=MEMBERS_MASKED
             service.create(SCOPE_TEAM, TEAM_ID, USER_ID, baseRequest(WorkType.RENOVATION));
 
             ArgumentCaptor<CreatePostRequest> cap = ArgumentCaptor.forClass(CreatePostRequest.class);
-            verify(timelinePostService).createPost(cap.capture(), any(Long.class));
+            verify(timelinePostService).createSystemPost(cap.capture(), any(Long.class));
             // ADMINS_ONLY 以外は status=null（TimelinePostService 側で PUBLISHED に解決）
             assertThat(cap.getValue().getStatus()).isNull();
         }
@@ -274,7 +274,7 @@ class PropertyWorkPackageServiceTest {
         void create_membersOnly_timelinePublished() {
             given(packageRepository.save(any(PropertyWorkPackageEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
-            given(timelinePostService.createPost(any(CreatePostRequest.class), any(Long.class)))
+            given(timelinePostService.createSystemPost(any(CreatePostRequest.class), any(Long.class)))
                     .willReturn(stubPostResponse(912L));
 
             WorkPackageRequest req = new WorkPackageRequest(
@@ -285,7 +285,7 @@ class PropertyWorkPackageServiceTest {
             service.create(SCOPE_TEAM, TEAM_ID, USER_ID, req);
 
             ArgumentCaptor<CreatePostRequest> cap = ArgumentCaptor.forClass(CreatePostRequest.class);
-            verify(timelinePostService).createPost(cap.capture(), any(Long.class));
+            verify(timelinePostService).createSystemPost(cap.capture(), any(Long.class));
             assertThat(cap.getValue().getStatus()).isNull();
         }
 
@@ -564,7 +564,7 @@ class PropertyWorkPackageServiceTest {
                         ReflectionTestUtils.setField(e, "id", PACKAGE_ID);
                         return e;
                     });
-            given(timelinePostService.createPost(any(CreatePostRequest.class), any(Long.class)))
+            given(timelinePostService.createSystemPost(any(CreatePostRequest.class), any(Long.class)))
                     .willReturn(stubPostResponse(902L));
 
             Optional<PropertyWorkPackageEntity> created = service.createFromIncident(
@@ -575,7 +575,7 @@ class PropertyWorkPackageServiceTest {
             assertThat(created.get().getWorkType()).isEqualTo(WorkType.INCIDENT);
             assertThat(created.get().getIncidentId()).isEqualTo(INCIDENT_ID);
             assertThat(created.get().getStatus()).isEqualTo(WorkPackageStatus.PLANNED);
-            verify(timelinePostService, times(1)).createPost(any(), any());
+            verify(timelinePostService, times(1)).createSystemPost(any(), any());
         }
 
         @Test
@@ -591,7 +591,7 @@ class PropertyWorkPackageServiceTest {
 
             assertThat(result).isEmpty();
             verify(packageRepository, never()).save(any());
-            verify(timelinePostService, never()).createPost(any(), any());
+            verify(timelinePostService, never()).createSystemPost(any(), any());
         }
     }
 
