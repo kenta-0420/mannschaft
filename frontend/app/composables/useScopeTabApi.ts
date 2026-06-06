@@ -26,6 +26,7 @@ import type {
 
 interface RawScopeTabItem {
   scope_id: number
+  public_id: string | null // UUID string（ダッシュボード API の pathVariable に使用）
   scope_type: ScopeTabType
   name: string
   avatar_url: string | null
@@ -63,7 +64,9 @@ interface RawActionRequiredSummary {
 
 function toScopeTabItem(r: RawScopeTabItem): ScopeTabItem {
   return {
-    scopeId: String(r.scope_id),
+    // public_id（UUID）を優先して使用する。BEがpublic_idを返せない場合のみBIGINTにフォールバック。
+    // ダッシュボードAPIの pathVariable（/team/{publicId}）には UUID が必要なため。
+    scopeId: r.public_id ?? String(r.scope_id),
     scopeType: r.scope_type,
     name: r.name,
     avatarUrl: r.avatar_url,

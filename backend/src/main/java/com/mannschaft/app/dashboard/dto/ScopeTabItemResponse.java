@@ -3,6 +3,8 @@ package com.mannschaft.app.dashboard.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 
+import java.util.UUID;
+
 /**
  * F22.1: タグ（所属スコープ）1 件のレスポンス DTO。
  *
@@ -11,8 +13,11 @@ import lombok.Builder;
 @Builder
 public record ScopeTabItemResponse(
 
-        /** チーム ID または 組織 ID。 */
+        /** チーム ID または 組織 ID（内部 BIGINT）。 */
         @JsonProperty("scope_id") Long scopeId,
+
+        /** チームまたは組織の公開用 UUID（ダッシュボード API の pathVariable に使用）。 */
+        @JsonProperty("public_id") UUID publicId,
 
         /** スコープ種別（TEAM / ORGANIZATION）。 */
         @JsonProperty("scope_type") String scopeType,
