@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -64,6 +65,10 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.flyway.enabled=true",
         "spring.jpa.hibernate.ddl-auto=none"
 })
+// test プロファイル（Redis 無効化等の試験設定）を読み込んだ上で、上記 properties が
+// flyway/ddl-auto のみを上書きする。これが欠落すると default プロファイルで context が
+// 組まれ CI で起動不能（2026-06-07 CI shard3 で実証・activeProfiles=[] が原因）。
+@ActiveProfiles("test")
 @Testcontainers
 @Transactional
 @EnabledIf("com.mannschaft.app.proxy.ProxyInputConsentS3KeyFlywaySchemaTest#isDockerAvailable")
