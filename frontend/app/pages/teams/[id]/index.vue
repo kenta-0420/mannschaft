@@ -139,8 +139,9 @@ onMounted(async () => {
         @banner-updated="(url) => { if (team && team.metadata) team.metadata.bannerUrl = url }"
       />
 
-      <div class="px-6 pb-6">
-        <Tabs v-model:value="activeTab">
+      <Tabs v-model:value="activeTab">
+        <!-- TabList を村スタイルで全幅表示 -->
+        <div class="border-b border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900">
           <TabList>
             <Tab :value="0"> ダッシュボード </Tab>
             <Tab :value="1"> 基本情報 </Tab>
@@ -150,7 +151,10 @@ onMounted(async () => {
             <Tab v-if="isAdmin" :value="5"> 機能設定 </Tab>
             <Tab v-if="isAdmin" :value="6"> {{ $t('nav.tab') }} </Tab>
           </TabList>
+        </div>
 
+        <!-- TabPanels はパディングあり -->
+        <div class="px-6 pb-6">
           <TabPanels>
             <TabPanel :value="0">
               <div class="mt-4">
@@ -244,39 +248,39 @@ onMounted(async () => {
               </div>
             </TabPanel>
           </TabPanels>
-        </Tabs>
 
-        <Dialog
-          v-model:visible="showCancelSupporterConfirm"
-          header="サポーターをやめますか？"
-          :style="{ width: '400px' }"
-          modal
-        >
-          <p>{{ displayName }}のサポーターをやめます。よろしいですか？</p>
-          <template #footer>
-            <Button label="キャンセル" text @click="showCancelSupporterConfirm = false" />
-            <Button
-              label="やめる"
-              severity="danger"
-              :loading="followLoading"
-              @click="cancelSupporter"
-            />
-          </template>
-        </Dialog>
+          <Dialog
+            v-model:visible="showCancelSupporterConfirm"
+            header="サポーターをやめますか？"
+            :style="{ width: '400px' }"
+            modal
+          >
+            <p>{{ displayName }}のサポーターをやめます。よろしいですか？</p>
+            <template #footer>
+              <Button label="キャンセル" text @click="showCancelSupporterConfirm = false" />
+              <Button
+                label="やめる"
+                severity="danger"
+                :loading="followLoading"
+                @click="cancelSupporter"
+              />
+            </template>
+          </Dialog>
 
-        <Dialog
-          v-model:visible="showLeaveConfirm"
-          header="チームから退出"
-          :style="{ width: '400px' }"
-          modal
-        >
-          <p>本当にこのチームから退出しますか？この操作は取り消せません。</p>
-          <template #footer>
-            <Button label="キャンセル" text @click="showLeaveConfirm = false" />
-            <Button label="退出する" severity="danger" @click="leaveTeam" />
-          </template>
-        </Dialog>
-      </div>
+          <Dialog
+            v-model:visible="showLeaveConfirm"
+            header="チームから退出"
+            :style="{ width: '400px' }"
+            modal
+          >
+            <p>本当にこのチームから退出しますか？この操作は取り消せません。</p>
+            <template #footer>
+              <Button label="キャンセル" text @click="showLeaveConfirm = false" />
+              <Button label="退出する" severity="danger" @click="leaveTeam" />
+            </template>
+          </Dialog>
+        </div>
+      </Tabs>
     </template>
   </div>
 </template>
