@@ -153,6 +153,11 @@ class ProxyInputConsentS3KeyFlywaySchemaTest {
                 LocalDate.now().minusDays(1),
                 LocalDate.now().plusMonths(6));
         consent.approve(999L);
+        // Flyway 実スキーマには fk_pic_subject 等の FK が存在する（ddl-auto=create には無い）。
+        // 本テストの対象は「列名マッピング」であり FK 整合は対象外のため、セッション限定で
+        // FK チェックを無効化する（users/organizations の前提行を最小 INSERT で組むのは
+        // NOT NULL 列が多く brittle・列名検証の焦点も濁る。2026-06-07 CI shard3 FK 失敗の根治）。
+        em.createNativeQuery("SET FOREIGN_KEY_CHECKS = 0").executeUpdate();
         em.persist(consent);
         em.flush();
         em.clear(); // 1次キャッシュをクリアして DB から再ロードさせる
