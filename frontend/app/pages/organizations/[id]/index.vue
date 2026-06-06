@@ -124,7 +124,7 @@ onMounted(async () => {
         </div>
 
         <!-- TabPanels はパディングあり -->
-        <div class="px-6 pb-6 bg-surface-50 dark:bg-surface-950">
+        <div class="px-6 pb-6">
           <TabPanels>
             <TabPanel :value="0">
               <div class="mt-4">
