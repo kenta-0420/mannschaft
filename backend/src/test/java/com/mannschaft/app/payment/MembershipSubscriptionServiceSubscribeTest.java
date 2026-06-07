@@ -109,7 +109,8 @@ class MembershipSubscriptionServiceSubscribeTest {
                 .userId(PAYER).stripeCustomerId("cus_payer").defaultPaymentMethod("pm_saved").build();
     }
 
-    private void stubHappyPathUpTo() {
+    /** charge 直前までのモック（項目検証→権原→二重加入→READY→PM→fee 解決）。charge 自体はスタブしない。 */
+    private void stubUpToCharge() {
         given(paymentItemService.findByIdOrThrow(ITEM_ID)).willReturn(recurringItem());
         given(paymentAuthorizationService.authorizePayment(PAYER, BENEFICIARY, ITEM_ID, false))
                 .willReturn(PayerRelationship.SELF);
@@ -121,6 +122,10 @@ class MembershipSubscriptionServiceSubscribeTest {
         given(stripeCustomerRepository.findByUserId(PAYER)).willReturn(Optional.of(customerWithPm()));
         given(feePolicyResolver.resolve(EscrowSourceKind.MEMBERSHIP, null))
                 .willReturn(new FeePolicy("MEMBERSHIP_RANK_A", new BigDecimal("0.03"), 0L));
+    }
+
+    private void stubHappyPathUpTo() {
+        stubUpToCharge();
         given(connectChargeService.charge(any(MembershipChargeCommand.class)))
                 .willReturn(new MembershipChargeResult(ESCROW_ID, "cs_secret", "pi_123", EscrowStatus.AUTHORIZED));
     }
@@ -296,7 +301,7 @@ class MembershipSubscriptionServiceSubscribeTest {
         @Test
         @DisplayName("初回 off-session 確定がカード認証要求/拒否で失敗→402(MEMBERSHIP_BILLING_023)・DB 起票しない（R2-1）")
         void offSession確定失敗は402() {
-            stubHappyPathUpTo();
+            stubUpToCharge();
             // charge が off-session confirm 失敗を投げる（PI はプロバイダ側で cancel 済みの想定）。
             given(connectChargeService.charge(any(MembershipChargeCommand.class)))
                     .willThrow(new StripePaymentProvider.OffSessionConfirmationException(
