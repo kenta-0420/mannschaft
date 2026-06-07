@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import type { BlogPostResponse } from '~/types/cms'
 
-const props = defineProps<{
-  scopeType?: string
-  scopeId?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    scopeType?: string
+    scopeId?: string
+    canCreate?: boolean
+  }>(),
+  {
+    canCreate: false,
+  },
+)
 
 const emit = defineEmits<{
   select: [post: BlogPostResponse]
@@ -13,6 +19,11 @@ const emit = defineEmits<{
 const { getPosts, createPost } = useBlogApi()
 const { error: showError } = useNotification()
 const { relativeTime } = useRelativeTime()
+
+// scopeType が未指定（個人ブログ）の場合は常に作成可能
+const showCreateButton = computed(
+  () => props.canCreate || !props.scopeType || props.scopeType === 'PERSONAL',
+)
 
 const posts = ref<BlogPostResponse[]>([])
 const loading = ref(false)
@@ -103,7 +114,7 @@ defineExpose({ refresh: loadPosts })
   <div>
     <div class="mb-4 flex items-center justify-between">
       <h2 class="text-lg font-semibold">記事</h2>
-      <Button label="新規作成" icon="pi pi-plus" @click="openCreateDialog" />
+      <Button v-if="showCreateButton" label="新規作成" icon="pi pi-plus" @click="openCreateDialog" />
     </div>
 
     <div v-if="loading" class="flex justify-center py-8">

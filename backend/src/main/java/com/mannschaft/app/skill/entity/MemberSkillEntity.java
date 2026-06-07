@@ -59,7 +59,9 @@ public class MemberSkillEntity extends BaseEntity {
     @Builder.Default
     private SkillStatus status = SkillStatus.PENDING_REVIEW;
 
-    @Column(length = 500)
+    // NOTE: S3Key のような数字→大文字境界は Hibernate 物理命名で _s3_key にならず
+    // certificates3key になる。DDL の certificate_s3_key と一致させるため name を明示。
+    @Column(name = "certificate_s3_key", length = 500)
     private String certificateS3Key;
 
     private LocalDateTime verifiedAt;

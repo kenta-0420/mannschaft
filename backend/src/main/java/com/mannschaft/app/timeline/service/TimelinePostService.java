@@ -1,5 +1,6 @@
 package com.mannschaft.app.timeline.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.R2StorageService;
@@ -74,9 +75,15 @@ public class TimelinePostService {
     private final StorageQuotaService storageQuotaService;
     /** F17.1 Phase 3: scope=VILLAGE 投稿の主体検証。 */
     private final PostingIdentityService postingIdentityService;
+    /** TEAM/ORGANIZATION スコープへの投稿時のメンバーシップ検証。 */
+    private final AccessControlService accessControlService;
 
     /**
      * 投稿を作成する。添付ファイル・投票も同時に作成する。
+     *
+     * <p>TEAM/ORGANIZATION スコープへの投稿時はメンバーシップチェックを行い、
+     * 非メンバーによる投稿を禁止する。システム内部からの自動投稿には
+     * {@link #createSystemPost(CreatePostRequest, Long)} を使うこと。</p>
      *
      * @param req    作成リクエスト
      * @param userId ユーザーID
@@ -84,6 +91,53 @@ public class TimelinePostService {
      */
     @Transactional
     public PostResponse createPost(CreatePostRequest req, Long userId) {
+        checkScopeMembership(req, userId);
+        return doCreatePost(req, userId);
+    }
+
+    /**
+     * システム内部からのタイムライン投稿（メンバーシップチェックをスキップ）。
+     *
+     * <p>ユーザー操作ではなくバッチ/イベント/サービス連携で自動投稿する場合に使う。
+     * 例: {@code PropertyWorkPackageService.publishToTimeline()} による物件履歴の自動投稿。</p>
+     *
+     * <p><strong>注意</strong>: このメソッドは呼び出し元がシステム内部の信頼済みコードであることを
+     * 前提とする。ユーザー入力を直接受け付けるコントローラーからは必ず {@link #createPost} を使うこと。</p>
+     *
+     * @param req    作成リクエスト
+     * @param userId 投稿者ユーザーID（システムアクターのID）
+     * @return 作成された投稿
+     */
+    @Transactional
+    public PostResponse createSystemPost(CreatePostRequest req, Long userId) {
+        return doCreatePost(req, userId);
+    }
+
+    /**
+     * スコープに応じたメンバーシップチェックを行う（ユーザー操作用）。
+     *
+     * <ul>
+     *   <li>TEAM スコープ: {@link AccessControlService#checkMembership} でチームメンバー確認</li>
+     *   <li>ORGANIZATION スコープ: 同上で組織メンバー確認</li>
+     *   <li>その他スコープ: チェックなし</li>
+     * </ul>
+     */
+    private void checkScopeMembership(CreatePostRequest req, Long userId) {
+        PostScopeType scopeTypeEnum = PostScopeType.valueOf(req.getScopeTypeOrDefault());
+        if (scopeTypeEnum == PostScopeType.TEAM && req.getScopeId() != null) {
+            accessControlService.checkMembership(userId, req.getScopeId(), "TEAM");
+        } else if (scopeTypeEnum == PostScopeType.ORGANIZATION && req.getScopeId() != null) {
+            accessControlService.checkMembership(userId, req.getScopeId(), "ORGANIZATION");
+        }
+    }
+
+    /**
+     * 投稿作成の共通ロジック（メンバーシップチェックなし）。
+     *
+     * <p>{@link #createPost} と {@link #createSystemPost} の両方から呼ばれる。
+     * バリデーション・ステータス決定・Entity 生成・添付ファイル保存・イベント発行を担う。</p>
+     */
+    private PostResponse doCreatePost(CreatePostRequest req, Long userId) {
         if (req.getContent() == null || req.getContent().isBlank()) {
             if (req.getRepostOfId() == null && req.getPoll() == null) {
                 throw new BusinessException(TimelineErrorCode.EMPTY_POST_CONTENT);
@@ -111,6 +165,7 @@ public class TimelinePostService {
         PostScopeType scopeTypeEnum = PostScopeType.valueOf(req.getScopeTypeOrDefault());
         PostedAsType postedAsTypeEnum = PostedAsType.valueOf(req.getPostedAsTypeOrDefault());
         Long postedAsId = req.getPostedAsId();
+
         UUID scopeVillageId = null;
         if (scopeTypeEnum == PostScopeType.VILLAGE) {
             scopeVillageId = req.getScopeVillageId();

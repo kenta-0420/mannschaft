@@ -22,11 +22,14 @@ import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.entity.BlogPostTagEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.cms.repository.BlogPostTagRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
+import com.mannschaft.app.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -38,6 +41,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -66,19 +70,35 @@ public class BlogPostService {
     private final BlogPostShareService shareService;
     // TODO: publicview ドメインが cms ドメインを参照（CLAUDE.md 原則5）。将来はイベント駆動化を検討。
     private final PostAuthorSnapshotService postAuthorSnapshotService;
+    // TODO: cms ドメインが team/organization ドメインを参照（CLAUDE.md 原則5）。将来はイベント駆動化を検討。
+    private final TeamRepository teamRepository;
+    private final OrganizationRepository organizationRepository;
+    private final AccessControlService accessControlService;
 
     /**
      * チーム別記事一覧をページング取得する。
+     *
+     * @param teamIdStr チームの公開ID（UUID文字列）または内部Long ID文字列
      */
-    public Page<BlogPostResponse> listByTeam(Long teamId, Pageable pageable) {
+    public Page<BlogPostResponse> listByTeam(String teamIdStr, Pageable pageable) {
+        if (teamIdStr == null) {
+            return Page.empty(pageable);
+        }
+        Long teamId = resolveTeamId(teamIdStr);
         Page<BlogPostEntity> page = postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(teamId, pageable);
         return page.map(cmsMapper::toBlogPostResponse);
     }
 
     /**
      * 組織別記事一覧をページング取得する。
+     *
+     * @param organizationIdStr 組織の公開ID（UUID文字列）または内部Long ID文字列。null の場合は空ページを返す。
      */
-    public Page<BlogPostResponse> listByOrganization(Long organizationId, Pageable pageable) {
+    public Page<BlogPostResponse> listByOrganization(String organizationIdStr, Pageable pageable) {
+        if (organizationIdStr == null) {
+            return Page.empty(pageable);
+        }
+        Long organizationId = resolveOrganizationId(organizationIdStr);
         Page<BlogPostEntity> page = postRepository.findByOrganizationIdOrderByPinnedDescCreatedAtDesc(organizationId, pageable);
         return page.map(cmsMapper::toBlogPostResponse);
     }
@@ -141,20 +161,31 @@ public class BlogPostService {
         String slug = request.getSlug() != null ? request.getSlug() : generateSlug(request.getTitle());
         short readingTime = calculateReadingTime(request.getBody());
 
+        // teamId / organizationId の文字列（UUID or Long文字列）を内部Long IDに解決する
+        Long resolvedTeamId = request.getTeamId() != null ? resolveTeamId(request.getTeamId()) : null;
+        Long resolvedOrgId = request.getOrganizationId() != null ? resolveOrganizationId(request.getOrganizationId()) : null;
+
+        // メンバーシップチェック: チームまたは組織への帰属確認（非メンバーは403）
+        if (resolvedTeamId != null) {
+            accessControlService.checkMembership(userId, resolvedTeamId, "TEAM");
+        } else if (resolvedOrgId != null) {
+            accessControlService.checkMembership(userId, resolvedOrgId, "ORGANIZATION");
+        }
+
         // F19.1 Phase 2: チーム/組織が REAL_NAME モードの場合に投稿者本名スナップショットを取得する（§4.7 非対称切替ルール対応）
         String authorRealNameSnapshot;
-        if (request.getTeamId() != null) {
-            authorRealNameSnapshot = postAuthorSnapshotService.resolveForTeamPost(request.getTeamId(), userId);
-        } else if (request.getOrganizationId() != null) {
-            authorRealNameSnapshot = postAuthorSnapshotService.resolveForOrganizationPost(request.getOrganizationId(), userId);
+        if (resolvedTeamId != null) {
+            authorRealNameSnapshot = postAuthorSnapshotService.resolveForTeamPost(resolvedTeamId, userId);
+        } else if (resolvedOrgId != null) {
+            authorRealNameSnapshot = postAuthorSnapshotService.resolveForOrganizationPost(resolvedOrgId, userId);
         } else {
             authorRealNameSnapshot = null;
         }
 
         BlogPostEntity entity = BlogPostEntity.builder()
-                .teamId(request.getTeamId())
-                .organizationId(request.getOrganizationId())
-                .userId(request.getTeamId() == null && request.getOrganizationId() == null ? userId : null)
+                .teamId(resolvedTeamId)
+                .organizationId(resolvedOrgId)
+                .userId(resolvedTeamId == null && resolvedOrgId == null ? userId : null)
                 .socialProfileId(request.getSocialProfileId())
                 .authorId(userId)
                 .title(request.getTitle())
@@ -528,5 +559,49 @@ public class BlogPostService {
             base = java.util.UUID.randomUUID().toString().substring(0, 12);
         }
         return base.substring(0, Math.min(base.length(), 180));
+    }
+
+    /**
+     * チームID文字列（UUID文字列 or Long文字列）を内部Long IDに解決する。
+     *
+     * <p>後方互換のため Long 文字列（数値文字列）も受け入れる。
+     * UUID形式の場合は {@link TeamRepository#findByPublicId} で publicId から内部IDを引く。</p>
+     *
+     * @param idStr チームの公開ID（UUID文字列）または内部Long ID文字列
+     * @return 内部Long ID
+     * @throws BusinessException チームが見つからない場合（CMS_024）
+     * @throws BusinessException 不正なID形式の場合（CMS_024）
+     */
+    private Long resolveTeamId(String idStr) {
+        try {
+            return Long.parseLong(idStr);
+        } catch (NumberFormatException e) {
+            UUID uuid = UUID.fromString(idStr);
+            return teamRepository.findByPublicId(uuid)
+                    .orElseThrow(() -> new BusinessException(CmsErrorCode.TEAM_NOT_FOUND))
+                    .getId();
+        }
+    }
+
+    /**
+     * 組織ID文字列（UUID文字列 or Long文字列）を内部Long IDに解決する。
+     *
+     * <p>後方互換のため Long 文字列（数値文字列）も受け入れる。
+     * UUID形式の場合は {@link OrganizationRepository#findByPublicId} で publicId から内部IDを引く。</p>
+     *
+     * @param idStr 組織の公開ID（UUID文字列）または内部Long ID文字列
+     * @return 内部Long ID
+     * @throws BusinessException 組織が見つからない場合（CMS_025）
+     * @throws BusinessException 不正なID形式の場合（CMS_025）
+     */
+    private Long resolveOrganizationId(String idStr) {
+        try {
+            return Long.parseLong(idStr);
+        } catch (NumberFormatException e) {
+            UUID uuid = UUID.fromString(idStr);
+            return organizationRepository.findByPublicId(uuid)
+                    .orElseThrow(() -> new BusinessException(CmsErrorCode.ORG_NOT_FOUND))
+                    .getId();
+        }
     }
 }

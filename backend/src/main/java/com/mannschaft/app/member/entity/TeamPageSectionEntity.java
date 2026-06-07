@@ -37,7 +37,9 @@ public class TeamPageSectionEntity extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    @Column(length = 500)
+    // NOTE: S3Key のような数字→大文字境界は Hibernate 物理命名で _s3_key にならず
+    // images3key になる。DDL の image_s3_key と一致させるため name を明示。
+    @Column(name = "image_s3_key", length = 500)
     private String imageS3Key;
 
     @Column(length = 200)
