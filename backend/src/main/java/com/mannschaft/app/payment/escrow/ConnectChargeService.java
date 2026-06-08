@@ -204,6 +204,14 @@ public class ConnectChargeService {
         if (cmd.faceAmount() <= 0L) {
             throw new IllegalArgumentException("faceAmount must be positive (会費・円整数): " + cmd.faceAmount());
         }
+        // 🟡1 null ガード（F08.9 R2-2 検分 2026-06-08）: idempotencyKey が null/blank の場合、下記 dedup が効かず
+        // 二重 escrow 起票が生じうる。呼び出し側（P1/P7）は常に Idempotency-Key ヘッダ起源の一意値を渡すため
+        // 現状実害はないが、誤った呼び出しを明示拒否し契約違反を早期発見する（症状を隠さない）。
+        if (cmd.idempotencyKey() == null || cmd.idempotencyKey().isBlank()) {
+            throw new IllegalArgumentException(
+                    "idempotencyKey は business 冪等の必須キー。null/blank では escrow 二重起票を防止できない"
+                    + "（呼び出し側で必ず一意値を渡すこと）");
+        }
 
         // 冪等（R2-2 根治）: 即時 charge の二重起票防止は呼び出し側が渡す idempotencyKey（Idempotency-Key ヘッダ起源・
         // P5/P7 で別値・Stripe へも橋渡し）で行う。
@@ -260,6 +268,12 @@ public class ConnectChargeService {
 
         // escrow を MEMBERSHIP/AUTOMATIC で INSERT。hold_expires_at=NULL（即時・与信フェーズなし）。
         // status=AUTHORIZED（succeeded webhook 待ち）。CAPTURED 確定＋ledger 起票は webhook に委ねる（二重記帳しない）。
+        //
+        // 🟡2 TODO: source_id は source_kind 内で名前空間が重複し得る（P5=payment_item_id / P7=team_id）。
+        // business 冪等は idempotencyKey で担保しているため現状実害はないが、findBySourceKindAndSourceId を
+        // 新規経路で使う際は誤再利用（P7 が P5 の escrow を流用するなど）に注意。
+        // 将来は source_ref（ドメインプレフィックス付き文字列キー）等での厳密化を検討する
+        // （F08.9 R2-2 検分 2026-06-08）。
         EscrowTransactionEntity charged = EscrowTransactionEntity.builder()
                 .sourceKind(EscrowSourceKind.MEMBERSHIP)
                 .captureMode(EscrowCaptureMode.AUTOMATIC)

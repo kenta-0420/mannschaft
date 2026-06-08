@@ -347,4 +347,37 @@ class ConnectChargeServiceChargeTest {
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
         verify(escrowTransactionRepository, never()).save(any());
     }
+
+    @Test
+    @DisplayName("🟡1 idempotencyKey=null→IllegalArgumentException（契約違反・dedup 不能・口座解決も PI 作成もしない）")
+    void charge_nullIdempotencyKey_rejected() {
+        ConnectChargeService svc = service();
+        // null idempotencyKey は契約違反（escrow 二重起票防止が効かなくなる）。
+        MembershipChargeCommand bad = new MembershipChargeCommand(
+                10_000L, PAYEE_ACCOUNT_ID, "cus_payer", 999L, 777L, 55L, null);
+
+        assertThatThrownBy(() -> svc.charge(bad))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("idempotencyKey");
+
+        verify(stripePaymentProvider, never()).createDestinationPaymentIntent(
+                anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
+        verify(escrowTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("🟡1 idempotencyKey 空白→IllegalArgumentException（blank も契約違反）")
+    void charge_blankIdempotencyKey_rejected() {
+        ConnectChargeService svc = service();
+        MembershipChargeCommand bad = new MembershipChargeCommand(
+                10_000L, PAYEE_ACCOUNT_ID, "cus_payer", 999L, 777L, 55L, "   ");
+
+        assertThatThrownBy(() -> svc.charge(bad))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("idempotencyKey");
+
+        verify(stripePaymentProvider, never()).createDestinationPaymentIntent(
+                anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
+        verify(escrowTransactionRepository, never()).save(any());
+    }
 }

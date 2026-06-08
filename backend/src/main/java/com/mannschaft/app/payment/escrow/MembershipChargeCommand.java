@@ -24,8 +24,11 @@ import java.util.UUID;
  *   <li>{@code sourceId} — 出所 ID（会費項目＝{@code payment_items.id}）。{@code escrow_transactions.source_id}
  *       （NOT NULL）へ格納し、{@code idempotencyKey} と併せ会費×項目の二重起票を 1 件に収束させる。</li>
  *   <li>{@code organizationId} — テナント列（受領が ORG/TEAM 配下のとき非 null・将来シャーディングのルーティングキー）。</li>
- *   <li>{@code idempotencyKey} — 冪等性キー（Idempotency-Key ヘッダー起源・F08.9 02 §1.1）。
- *       Stripe へ橋渡しし、再送時の二重 PaymentIntent 作成を Stripe 側でも拒否する。</li>
+ *   <li>{@code idempotencyKey} — <b>business 冪等の必須キー</b>（Idempotency-Key ヘッダー起源・F08.9 02 §1.1）。
+ *       {@code null} または blank の場合、{@link ConnectChargeService#charge} 冒頭で
+ *       {@link IllegalArgumentException} を投げ escrow 二重起票を未然に防ぐ（🟡1 契約ガード・F08.9 R2-2 検分 2026-06-08）。
+ *       呼び出し側（P1/P7）は <b>必ず一意値</b>（HTTP {@code Idempotency-Key} ヘッダー等）を渡すこと。
+ *       Stripe へも橋渡しし、再送時の二重 PaymentIntent 作成を Stripe 側でも拒否する。</li>
  *   <li>{@code subKey} — 手数料パターン解決の細分キー（R1）。{@code null}＝source_kind（MEMBERSHIP）の既定割当を引く
  *       （{@link com.mannschaft.app.payment.FeePolicyResolver}・設計書 02 §3.5.1）。</li>
  *   <li>{@code paymentMethodId} — off-session 即時確定に用いる保存済み既定 PaymentMethod（{@code pm_xxx}・nullable）。
