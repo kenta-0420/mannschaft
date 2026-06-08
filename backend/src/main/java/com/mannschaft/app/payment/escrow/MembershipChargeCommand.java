@@ -24,10 +24,19 @@ import java.util.UUID;
  *   <li>{@code sourceId} — 出所 ID（会費項目＝{@code payment_items.id}）。{@code escrow_transactions.source_id}
  *       （NOT NULL）へ格納し、{@code idempotencyKey} と併せ会費×項目の二重起票を 1 件に収束させる。</li>
  *   <li>{@code organizationId} — テナント列（受領が ORG/TEAM 配下のとき非 null・将来シャーディングのルーティングキー）。</li>
- *   <li>{@code idempotencyKey} — 冪等性キー（Idempotency-Key ヘッダー起源・F08.9 02 §1.1）。
- *       Stripe へ橋渡しし、再送時の二重 PaymentIntent 作成を Stripe 側でも拒否する。</li>
+ *   <li>{@code idempotencyKey} — <b>business 冪等の必須キー</b>（Idempotency-Key ヘッダー起源・F08.9 02 §1.1）。
+ *       {@code null} または blank の場合、{@link ConnectChargeService#charge} 冒頭で
+ *       {@link IllegalArgumentException} を投げ escrow 二重起票を未然に防ぐ（🟡1 契約ガード・F08.9 R2-2 検分 2026-06-08）。
+ *       呼び出し側（P1/P7）は <b>必ず一意値</b>（HTTP {@code Idempotency-Key} ヘッダー等）を渡すこと。
+ *       Stripe へも橋渡しし、再送時の二重 PaymentIntent 作成を Stripe 側でも拒否する。</li>
  *   <li>{@code subKey} — 手数料パターン解決の細分キー（R1）。{@code null}＝source_kind（MEMBERSHIP）の既定割当を引く
  *       （{@link com.mannschaft.app.payment.FeePolicyResolver}・設計書 02 §3.5.1）。</li>
+ *   <li>{@code paymentMethodId} — off-session 即時確定に用いる保存済み既定 PaymentMethod（{@code pm_xxx}・nullable）。
+ *       P5 継続課金の初回 charge は払い手不在（off-session）で確定するためここに既定 PM を渡す（R2-1 根治）。
+ *       {@code null}＝P1（FE on-session confirm 前提）/P7（同様）の従来挙動（PI を未 confirm で作成）。</li>
+ *   <li>{@code confirmImmediately} — {@code true} のとき {@code paymentMethodId} を添付して
+ *       {@code setConfirm(true)+setOffSession(true)} で<b>server-side 即時確定</b>する（R2-1）。
+ *       {@code false}（既定・後方互換）＝従来どおり未 confirm の PI を作成し FE の on-session confirm に委ねる。</li>
  * </ul>
  */
 public record MembershipChargeCommand(
@@ -38,11 +47,14 @@ public record MembershipChargeCommand(
         Long sourceId,
         Long organizationId,
         String idempotencyKey,
-        String subKey) {
+        String subKey,
+        String paymentMethodId,
+        boolean confirmImmediately) {
 
     /**
-     * 後方互換コンストラクタ（{@code subKey=null}＝MEMBERSHIP の既定手数料パターンを引く）。
-     * 既存の会費 charge 経路・テストはこちらを用いる。
+     * 後方互換コンストラクタ（{@code subKey=null}＝MEMBERSHIP の既定手数料パターンを引く・
+     * {@code paymentMethodId=null}/{@code confirmImmediately=false}＝従来の未 confirm PI 作成）。
+     * 既存の会費 charge 経路（P1）・協会請求（P7）・既存テストはこちらを用いる。
      */
     public MembershipChargeCommand(
             long faceAmount,
@@ -53,6 +65,23 @@ public record MembershipChargeCommand(
             Long organizationId,
             String idempotencyKey) {
         this(faceAmount, payeeConnectAccountId, payerStripeCustomerId, payerUserId, sourceId, organizationId,
-                idempotencyKey, null);
+                idempotencyKey, null, null, false);
+    }
+
+    /**
+     * 後方互換コンストラクタ（{@code subKey} 指定あり・{@code paymentMethodId=null}/{@code confirmImmediately=false}）。
+     * 手数料細分キーを渡しつつ従来の未 confirm PI 作成を行う既存経路向け。
+     */
+    public MembershipChargeCommand(
+            long faceAmount,
+            UUID payeeConnectAccountId,
+            String payerStripeCustomerId,
+            Long payerUserId,
+            Long sourceId,
+            Long organizationId,
+            String idempotencyKey,
+            String subKey) {
+        this(faceAmount, payeeConnectAccountId, payerStripeCustomerId, payerUserId, sourceId, organizationId,
+                idempotencyKey, subKey, null, false);
     }
 }

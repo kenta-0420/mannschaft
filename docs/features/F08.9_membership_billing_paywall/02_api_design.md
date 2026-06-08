@@ -10,6 +10,7 @@
 - ベースパス：`/api/v1`
 - レスポンス封筒：`ApiResponse<T>`（既存規約）
 - 冪等性：決済起票系は `Idempotency-Key` ヘッダ必須（Stripe idempotency_key へ橋渡し）。Webhook は `stripe_webhook_events.event_id` UNIQUE（既存）。
+- **source_id 名前空間の注意（🟡2 R2-2 検分 2026-06-08）**：`escrow_transactions.source_id` の意味は呼び出し元によって異なる（P5=`payment_item_id` / P7=`team_id`）。business 冪等は `idempotencyKey`（必須・null/blank 不可）で担保しているため現状実害はないが、`findBySourceKindAndSourceId` を新規経路で使う際は名前空間の誤一致に注意。将来は `source_ref`（ドメインプレフィックス付き文字列）等での厳密化を検討する。
 - 代理コンテキスト：後見切替中は `X-Proxy-For-User-Id`（子）ヘッダを付与（F14.1 `ProxyInputContextFilter` 拡張）。
 
 ---
