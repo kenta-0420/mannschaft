@@ -113,6 +113,7 @@ boolean canView(Long userId, UUID matchId);                 // F00 MatchVisibili
 
 - `owning_team_id` / `recorded_by_team_id` は **Request DTO に含めない**。サーバーが**認証主体のチーム所属から導出**してセットする（クライアントが任意のチーム ID を詐称できないようにする＝マスアサインメント防止）。
 - イベント記録時、`team_side` と相手チームの整合を検証する（**自サイド以外を自名義で記録できない**）。共同記録で自チームが相手サイドのイベントを自名義（`recorded_by_team_id`=自チーム）で捏造することを防ぐ。
+- **`linked_event_id`（連鎖・01 §B.2）の帰属検証**: クライアントが指定する `linked_event_id` は、**同一 `matches`（同じ `match_id`）に属する既存 `match_events` の ID であることをサーバーが検証**する（別試合・他テナントのイベント ID を連鎖相手に指定する越境を遮断）。不一致は 404（親子不一致の統一・C.4）。連鎖相手も自チームの編集権限スコープ内であることを確認する。
 
 ### C.4b 入力検証（インジェクション・過大入力対策）【要改善の根治】
 
@@ -121,7 +122,8 @@ boolean canView(Long userId, UUID matchId);                 // F00 MatchVisibili
 - `detail JSON`: **サイズ上限 4KB** ＋ サーバー側スキーマ検証（競技別・01 §D.3 の `SportEventCatalog` と整合）。任意 JSON を無検証で保存しない。
 - `minute` / `stoppage_minute` / `jersey_number` / `home_score` / `away_score` / PK スコア: `@Min`/`@Max` で業務範囲を制約（例: minute 0–150、jersey 0–999、score 0–999）。
 - `player_name` / `related_player_name` / `opponent_name`: 最大長制約 ＋ **制御文字除去 ＋ trim**。
-- **ログ出力時は CRLF サニタイズ**（player_name 等のユーザー入力をログに出す場合、改行除去でログインジェクションを防ぐ）。
+- **`note`（最大 255）・`custom_label`（最大 64）**（01 §B.2・§D.2）: 上記と同じ入力検証方針の対象に含める。`@Size(max=255)` / `@Size(max=64)`（`jakarta.validation`）＋ **制御文字除去 ＋ trim**。**HTML タグ不可**（Vue 自動エスケープに加え、CSV/PDF エクスポート・SSR・ログ出力時に XSS / CSV インジェクション / CRLF サニタイズの対象とする）。任意のリッチテキストを無検証で保存しない。
+- **ログ出力時は CRLF サニタイズ**（player_name / `note` / `custom_label` 等のユーザー入力をログに出す場合、改行除去でログインジェクションを防ぐ）。
 
 ### C.5 共同記録の破壊耐性・異議フロー【要改善の根治】
 

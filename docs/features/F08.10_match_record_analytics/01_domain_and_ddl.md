@@ -25,7 +25,7 @@ com.mannschaft.app.match/
 ├── TeamSide.java                  (enum: HOME/AWAY)
 ├── MatchStatus.java               (enum: SCHEDULED/IN_PROGRESS/COMPLETED/POSTPONED/CANCELLED)
 ├── PeriodType.java                (enum: FIRST_HALF/SECOND_HALF/EXTRA_FIRST/EXTRA_SECOND/PENALTY_SHOOTOUT/QUARTER_1.. 等)
-├── MatchEventType.java            (enum: GOAL/ASSIST/SUB_IN/... サッカー基本セット)
+├── MatchEventType.java            (enum: GOAL/ASSIST/SUB_IN/.../OTHER サッカー基本セット＋その他)
 ├── Sport.java                     (enum: SOCCER/FUTSAL/...（将来拡張）)
 ├── entity/
 │   ├── MatchEntity.java
@@ -69,6 +69,7 @@ com.mannschaft.app.match/
 | `matches.schedule_id`（BIGINT） | schedules.id | match → schedule（クロス・F03.1 連携） | ID 参照のみ |
 | `matches.created_by` | users.id | match → user（クロス） | ID 参照のみ |
 | `match_events.match_id` | matches.id | match 内（同一ドメイン） | **FK＋ON DELETE CASCADE 可**（原則 2） |
+| `match_events.linked_event_id` | match_events.id | match 内（同一テーブル自己参照） | **FK＋ON DELETE SET NULL 可**（同一 match ドメイン・原則 2／連鎖相手を消しても残イベントは保持） |
 | `match_events.player_user_id` / `related_player_user_id` | users.id | match → user（クロス） | ID 参照のみ |
 | `match_events.recorded_by_team_id` | teams.id | match → team（クロス） | ID 参照のみ |
 | `player_appearances.match_id` | matches.id | match 内（同一ドメイン） | **FK＋ON DELETE CASCADE 可**（原則 2） |
@@ -184,13 +185,16 @@ CREATE TABLE match_events (
     minute SMALLINT UNSIGNED NULL,                -- 経過分（タイマー連動・手動訂正可・NULL=分不明）
     stoppage_minute SMALLINT UNSIGNED NULL,       -- アディショナルタイム（例 45+2 の "2"・NULL=なし）
     period VARCHAR(24) NOT NULL,                  -- PeriodType（前半/後半/延長/PK 等・D §PeriodType）
-    event_type VARCHAR(24) NOT NULL,             -- MatchEventType（GOAL/ASSIST/SUB_IN/... ・D）
+    event_type VARCHAR(24) NOT NULL,             -- MatchEventType（GOAL/ASSIST/SUB_IN/.../OTHER ・D）
+    custom_label VARCHAR(64) NULL,                -- event_type=OTHER（その他）時の自由ラベル名（D・04 §G.2）
     team_side ENUM('HOME','AWAY') NOT NULL,       -- どちらのチームのイベントか
     player_user_id BIGINT NULL,                   -- 主体選手（user ドメイン ID 参照・未登録は NULL）
     player_name VARCHAR(128) NULL,                -- 未登録選手名（player_user_id NULL のとき）
     jersey_number SMALLINT UNSIGNED NULL,         -- 背番号（未登録選手の同一性キーの一部・D 同一性）
     related_player_user_id BIGINT NULL,           -- 関連選手（アシスト者/交代相手・user ドメイン ID 参照）
     related_player_name VARCHAR(128) NULL,        -- 関連未登録選手名
+    note VARCHAR(255) NULL,                        -- 理由・メモ自由記述（例「コーナーキックから」「スルーパスから右足」・04 §G.2・03 §C.4b 検証）
+    linked_event_id BINARY(16) NULL,             -- 時系列連鎖の相手イベント（同一テーブル自己参照・例 アシスト⤵得点・04 §G.2）
     detail JSON NULL,                             -- 拡張属性（競技別の追加情報・最大 4KB・03 §C.6 検証）
     recorded_by_team_id BIGINT NULL,             -- 記録したチーム（共同記録の権限判定・03 §C・NULL=記録係記録）
     sort_seq INT NOT NULL DEFAULT 0,             -- 同分内の表示順（タイムライン安定ソート）
@@ -199,13 +203,17 @@ CREATE TABLE match_events (
     PRIMARY KEY (id),
     INDEX idx_match_events_match (match_id, period, minute, sort_seq),
     INDEX idx_match_events_player (player_user_id),
+    INDEX idx_match_events_linked (linked_event_id),
     CONSTRAINT fk_match_events_match FOREIGN KEY (match_id)
-      REFERENCES matches (id) ON DELETE CASCADE   -- 同一 match ドメイン内（原則 2）
+      REFERENCES matches (id) ON DELETE CASCADE,  -- 同一 match ドメイン内（原則 2）
+    CONSTRAINT fk_match_events_linked FOREIGN KEY (linked_event_id)
+      REFERENCES match_events (id) ON DELETE SET NULL  -- 同一テーブル自己参照（同一 match ドメイン・原則 2／連鎖相手削除でも残イベント保持）
 );
 ```
 
 - 交代は **SUB_IN / SUB_OUT を別イベント**として記録する（同分・同 `related_player_*` で対を成す。出場時間算出は 02 §E）。**複数交代・再出場**（一度 OUT した選手が再び IN するケース）にも対応する（02 §E.1）。
-- アシストは GOAL とは別イベント（`event_type=ASSIST`・`related_player_user_id` に得点者）でも、GOAL イベントの `related_player_user_id` にアシスト者を入れる方式でもよいが、**集計の一意性のため GOAL は得点者・ASSIST は別イベント**を正とする（02 §F で確定）。
+- アシストは **GOAL とは独立した固有イベント**（`event_type=ASSIST`・自身の `player_user_id`/`jersey_number`/`note` を持つ）であり、**集計の一意性のため GOAL は得点者・ASSIST は別イベント**を正とする（02 §F で確定）。GOAL と ASSIST の時系列対応は **`linked_event_id`（同一テーブル自己参照）で双方向に連鎖**させる（GOAL→ASSIST でも ASSIST→GOAL でも、2 つの独立イベントを `linked_event_id` で結ぶ。入力フローは [04](./04_frontend_and_ux.md) §G.2・タイムライン表示で連鎖を視覚的に束ねる）。**集計（02 §F）は従来どおり各イベント単体（GOAL=得点者の goals、ASSIST=アシスト者の assists）をカウントする**ため、`linked_event_id` は表示・関連付けのメタ情報であり集計の二重計上を生まない。
+- `note VARCHAR(255)` は各イベントの理由・メモ自由記述（例「コーナーキックから」「スルーパスから右足」）。`custom_label VARCHAR(64)` は `event_type=OTHER`（その他）時の自由ラベル名（§D.2・[04](./04_frontend_and_ux.md) §G.2）。いずれもユーザー入力ゆえ入力検証（最大長・制御文字除去・trim・出力時 XSS/CRLF サニタイズ）の対象（[03](./03_permissions_and_recording_modes.md) §C.4b）。
 - `detail JSON` は競技別拡張（例: バスケのショット位置）に用いる予備領域。サッカー基本セットでは未使用でよい。サイズ上限 4KB・サーバー側スキーマ検証（[03](./03_permissions_and_recording_modes.md) §C.6）。
 
 ### B.3 `player_appearances`（出場時間）
@@ -247,7 +255,7 @@ CREATE TABLE player_appearances (
 | 種別 | テーブル | 主キー | 親 FK | organization_id / deleted_at | 原則 |
 |------|---------|--------|-------|------------------------------|------|
 | 新規 | `matches` | UUIDv7 / BINARY(16) | なし（全クロスドメインは ID 参照・fixture は BIGINT） | あり / あり（AbstractTenantAwareRepository 継承） | 1・3・6・7 |
-| 新規 | `match_events` | UUIDv7 / BINARY(16) | `match_id` → matches CASCADE | **なし / なし**（親 matches で分離・A.4） | 1・2・6 |
+| 新規 | `match_events` | UUIDv7 / BINARY(16) | `match_id` → matches CASCADE ／ `linked_event_id` → match_events 自己参照 SET NULL | **なし / なし**（親 matches で分離・A.4） | 1・2・6 |
 | 新規 | `player_appearances` | UUIDv7 / BINARY(16) | `match_id` → matches CASCADE | **なし / なし**（親 matches で分離・A.4） | 1・2・6 |
 
 ---
@@ -302,7 +310,9 @@ public enum MatchEventType {
     SAVE,             // GK セーブ
     INJURY,           // 負傷
     PERIOD_START,     // ピリオド開始（タイマー基準）
-    PERIOD_END        // ピリオド終了
+    PERIOD_END,       // ピリオド終了
+    // その他
+    OTHER             // その他（プリセット外のイベント・custom_label に自由ラベル名・note に理由メモ）
 }
 ```
 
@@ -316,6 +326,7 @@ public enum MatchEventType {
 | PENALTY_SHOOTOUT | — | 当該 team_side の **PK 戦**スコア +1（本戦集計対象外・02 §E.2） |
 | RED_CARD / SECOND_YELLOW | out=minute（退場で出場区間を閉じる） | — |
 | YELLOW_CARD / SAVE / INJURY / ASSIST / PENALTY_MISS | — | — |
+| OTHER | — | — （`custom_label`＋`note` で内容を記述・スコア/出場時間に影響しない） |
 
 ### D.3 多競技拡張機構 — 案 A（enum＋定数）で確定【殿裁可】
 
@@ -336,7 +347,7 @@ public final class SportEventCatalog {
         Sport.SOCCER, EnumSet.of(STARTER, SUB_IN, SUB_OUT, GOAL, ASSIST, OWN_GOAL,
                                  PENALTY_GOAL, PENALTY_MISS, PENALTY_SHOOTOUT,
                                  YELLOW_CARD, RED_CARD, SECOND_YELLOW,
-                                 SAVE, INJURY, PERIOD_START, PERIOD_END)
+                                 SAVE, INJURY, PERIOD_START, PERIOD_END, OTHER)
         // 将来: Sport.BASKETBALL, Sport.FUTSAL ...
     );
 }
