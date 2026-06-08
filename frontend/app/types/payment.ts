@@ -89,6 +89,23 @@ export interface ContentPaymentGateResponse {
   }
 }
 
+/**
+ * F08.9 P4: ペイウォール判定レスポンス（GET /api/v1/content-gates/check）。
+ * BE: GateCheckResponse / GateCheckResponse.RequiredItem に対応。
+ */
+export interface RequiredPaymentItem {
+  paymentItemId: number
+  name: string
+  faceAmount: number
+  satisfied: boolean
+}
+
+export interface GateCheckResponse {
+  accessible: boolean
+  titleHidden: boolean
+  requiredItems: RequiredPaymentItem[]
+}
+
 export interface MyPaymentResponse {
   id: number
   paymentItem: { id: number; name: string; type: PaymentItemType; amount: number; currency: string }

@@ -1,5 +1,12 @@
 {
   "payment": {
+    "paywall": {
+      "locked": "此内容需要支付会费才能查看",
+      "unlock": "付款后查看",
+      "requiredItem": "所需支付: {name}",
+      "hiddenContent": "此内容无法查看",
+      "loading": "正在确认访问权限..."
+    },
     "membership": {
       "subscribe": {
         "cardLabel": "支付卡",

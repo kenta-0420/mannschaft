@@ -1,5 +1,12 @@
 {
   "payment": {
+    "paywall": {
+      "locked": "Este contenido requiere el pago de una cuota de membresía",
+      "unlock": "Pagar para ver",
+      "requiredItem": "Pago requerido: {name}",
+      "hiddenContent": "Este contenido no está disponible",
+      "loading": "Verificando acceso..."
+    },
     "membership": {
       "subscribe": {
         "cardLabel": "Tarjeta de pago",
