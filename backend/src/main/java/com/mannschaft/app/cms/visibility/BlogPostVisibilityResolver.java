@@ -13,6 +13,7 @@ import com.mannschaft.app.common.visibility.StandardVisibility;
 import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.common.visibility.VisibilityMetrics;
 import com.mannschaft.app.common.visibility.mapping.CmsVisibilityMapper;
+import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,11 +40,8 @@ import java.util.List;
 public class BlogPostVisibilityResolver
         extends AbstractContentVisibilityResolver<Visibility, BlogPostVisibilityProjection> {
 
-    /**
-     * F08.9 P4b ペイウォール連結。{@code contentType="BLOG_POST"} で
-     * {@link PaymentGateService#checkAccess} を呼ぶ。
-     */
-    private static final String CONTENT_TYPE_BLOG_POST = "BLOG_POST";
+    // F08.9 P4b: content_payment_gates.content_type の値は ContentGateType.POST = "POST"
+    private static final String CONTENT_TYPE_BLOG_POST = ContentGateType.POST;
 
     private final BlogPostRepository blogPostRepository;
     private final PaymentGateService paymentGateService;

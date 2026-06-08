@@ -10,6 +10,7 @@ import com.mannschaft.app.common.visibility.StandardVisibility;
 import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.common.visibility.VisibilityMetrics;
 import com.mannschaft.app.common.visibility.mapping.AnnouncementFeedVisibilityMapper;
+import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedRepository;
@@ -103,12 +104,16 @@ public class AnnouncementFeedVisibilityResolver
     /**
      * F08.9 P4b — ペイウォール解錠判定（{@link StandardVisibility#CUSTOM} 経路）。
      *
-     * <p>{@link AnnouncementFeedVisibility#CUSTOM} が付与されたお知らせフィードのみここに到達する。
-     * 元コンテンツ（{@code sourceType}/{@code sourceId}）の
-     * {@link PaymentGateService#checkAccess} で閲覧者本人（受益者キー）の支払い状態を評価する。</p>
+     * <p>{@link AnnouncementFeedVisibility#CUSTOM} が付与されたお知らせフィード自身のゲートを評価する。
+     * FE が {@code checkAccess("ANNOUNCEMENT", announcementFeedId)} を呼ぶのと同じキー体系:
+     * {@code content_payment_gates(content_type="ANNOUNCEMENT", content_id=announcementFeedId)}。</p>
      *
-     * <p><strong>fail-closed 設計</strong>: {@code viewerUserId} が {@code null}（未認証）、
-     * {@code sourceType} や {@code sourceId} が {@code null} の場合は閲覧拒否側に倒す。</p>
+     * <p><strong>なぜ sourceType/sourceId でなく "ANNOUNCEMENT"+id か</strong>:
+     * {@code ContentGateType.ANNOUNCEMENT = "ANNOUNCEMENT"} が正式値。
+     * {@code sourceType} は Java enum 名（例: "BLOG_POST"）であり {@link ContentGateType} 体系と別物のため
+     * ゲートキーとして使用すると常にゲートなし（accessible=true）になるバグを招く。</p>
+     *
+     * <p><strong>fail-closed 設計</strong>: {@code viewerUserId}/{@code row.id()} が {@code null} なら拒否。</p>
      *
      * @param row          判定対象の Projection
      * @param viewerUserId 閲覧者 user_id（{@code null} 可、未認証 = fail-closed）
@@ -124,13 +129,8 @@ public class AnnouncementFeedVisibilityResolver
             // 未認証またはデータ不整合 → fail-closed（漏洩より過剰遮断・03_security §4）
             return false;
         }
-        if (row.sourceType() == null || row.sourceId() == null) {
-            // 元コンテンツ情報不完全 → fail-closed
-            log.warn("ペイウォール判定不能（sourceType/sourceId 欠落）: announcementFeedId={} → accessible=false",
-                    row.id());
-            return false;
-        }
-        return paymentGateService.checkAccess(row.sourceType(), row.sourceId(), viewerUserId)
+        // content_type="ANNOUNCEMENT" で announcement_feeds.id をゲートキーとして評価
+        return paymentGateService.checkAccess(ContentGateType.ANNOUNCEMENT, row.id(), viewerUserId)
                 .isAccessible();
     }
 
