@@ -73,6 +73,37 @@
       "byProxy": "대리 입력",
       "total": "합계"
     },
+    "guardianship": {
+      "switch": {
+        "title": "후견 전환",
+        "startAs": "{name}으로 조작하기",
+        "actingAs": "{name}으로 조작 중",
+        "end": "전환 종료",
+        "confirm": "후견 전환을 시작하시겠습니까?",
+        "empty": "전환 가능한 자녀가 없습니다",
+        "blocked": "연령 제한으로 전환 불가",
+        "success": "후견 전환을 시작했습니다",
+        "endSuccess": "후견 전환을 종료했습니다"
+      },
+      "independence": {
+        "title": "자립 전환",
+        "sealDate": "전환 봉인일",
+        "stage": "현재 단계",
+        "passwordSet": "비밀번호 설정됨",
+        "passwordNotSet": "비밀번호 미설정",
+        "handover": "인계 시작",
+        "handoverConfirm": "자녀의 이메일 주소로 비밀번호 설정 링크를 발송합니다",
+        "handoverSuccess": "인계 이메일을 발송했습니다",
+        "alreadyIndependent": "이 자녀는 이미 자립 단계입니다",
+        "childEmail": "자녀의 이메일 주소（선택사항）"
+      },
+      "stage": {
+        "elementary": "초등학생",
+        "junior_high": "중학생",
+        "high_school": "고등학생",
+        "adult": "성인"
+      }
+    },
     "delegation": {
       "title": "대리 출석",
       "description": "출결에 응답할 수 없는 경우 같은 스코프의 멤버에게 대리 출석을 위임할 수 있습니다",

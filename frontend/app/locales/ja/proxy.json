@@ -73,6 +73,37 @@
       "byProxy": "代理入力",
       "total": "合計"
     },
+    "guardianship": {
+      "switch": {
+        "title": "後見切替",
+        "startAs": "{name}として操作する",
+        "actingAs": "{name}として操作中",
+        "end": "切替を終了する",
+        "confirm": "後見切替を開始してよいですか？",
+        "empty": "切替可能な子がいません",
+        "blocked": "年齢制限で切替不可",
+        "success": "後見切替を開始しました",
+        "endSuccess": "後見切替を終了しました"
+      },
+      "independence": {
+        "title": "自立移行",
+        "sealDate": "切替封印日",
+        "stage": "現在の段階",
+        "passwordSet": "パスワード設定済み",
+        "passwordNotSet": "パスワード未設定",
+        "handover": "引き継ぎを開始する",
+        "handoverConfirm": "子のメールアドレスにパスワード設定リンクを送信します",
+        "handoverSuccess": "引き継ぎメールを送信しました",
+        "alreadyIndependent": "この子は既に自立段階です",
+        "childEmail": "子のメールアドレス（任意）"
+      },
+      "stage": {
+        "elementary": "小学生",
+        "junior_high": "中学生",
+        "high_school": "高校生",
+        "adult": "成人"
+      }
+    },
     "delegation": {
       "title": "代理出席",
       "description": "出欠回答できない場合、同スコープのメンバーに出席を代理委任できます",
