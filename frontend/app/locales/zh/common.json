@@ -494,7 +494,8 @@
       "selfReviewStart": "自我审阅开始时间",
       "selfReviewEnd": "自我审阅结束时间",
       "selfReviewHelp": "设定的时间段将作为发布前的审阅期",
-      "saveSettings": "保存设置"
+      "saveSettings": "保存设置",
+      "loadFailed": "无法加载文章"
     },
     "autoSave": {
       "label": "自动保存",

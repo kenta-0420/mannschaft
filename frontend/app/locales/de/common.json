@@ -494,7 +494,8 @@
       "selfReviewStart": "Startzeit der Selbstüberprüfung",
       "selfReviewEnd": "Endzeit der Selbstüberprüfung",
       "selfReviewHelp": "Der konfigurierte Zeitraum wird als Überprüfungsfenster vor der Veröffentlichung behandelt",
-      "saveSettings": "Einstellungen speichern"
+      "saveSettings": "Einstellungen speichern",
+      "loadFailed": "Artikel konnte nicht geladen werden"
     },
     "autoSave": {
       "label": "Automatisch speichern",

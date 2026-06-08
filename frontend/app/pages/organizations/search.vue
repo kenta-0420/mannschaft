@@ -86,8 +86,8 @@ function onPageChange(event: { page: number }) {
   fetchOrganizations()
 }
 
-function onOrgCreated(entity: { id: number; publicId: string; name: string }) {
-  navigateTo(`/organizations/${entity.publicId}`)
+function onOrgCreated(entity: { id: string; name: string }) {
+  navigateTo(`/organizations/${entity.id}`)
 }
 
 function formatLocation(prefecture: string | null, city: string | null): string {

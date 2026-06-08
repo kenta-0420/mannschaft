@@ -31,8 +31,8 @@ watch(viewMode, (mode) => {
   }
 })
 
-function onTeamCreated(entity: { id: number; publicId: string; name: string }) {
-  navigateTo(`/teams/${entity.publicId}`)
+function onTeamCreated(entity: { id: string; name: string }) {
+  navigateTo(`/teams/${entity.id}`)
 }
 
 /**

@@ -1,12 +1,17 @@
 package com.mannschaft.app.match.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.match.domain.MatchKind;
+import com.mannschaft.app.match.domain.MatchStatus;
+import com.mannschaft.app.match.domain.Sport;
 import com.mannschaft.app.match.dto.ChangeRecordingModeRequest;
 import com.mannschaft.app.match.dto.ChangeStatusRequest;
 import com.mannschaft.app.match.dto.CreateMatchRequest;
 import com.mannschaft.app.match.dto.FinalizeScoreRequest;
 import com.mannschaft.app.match.dto.MatchResponse;
+import com.mannschaft.app.match.dto.MatchSummaryResponse;
 import com.mannschaft.app.match.dto.UpdateMatchRequest;
 import com.mannschaft.app.match.entity.MatchEntity;
 import com.mannschaft.app.match.service.MatchAccessService;
@@ -15,6 +20,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,8 +32,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -90,6 +99,35 @@ public class MatchRecordController {
         MatchEntity saved = matchService.create(command, actor);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.of(toResponse(saved, actor)));
+    }
+
+    @GetMapping
+    @Operation(summary = "チーム試合一覧（メンバー以上・ページング・kind/status/期間フィルタ）")
+    @PreAuthorize("@accessGuard.isScopeMember(authentication, #teamId, 'TEAM')")
+    public ResponseEntity<PagedResponse<MatchSummaryResponse>> listMatches(
+            @PathVariable Long orgId,
+            @PathVariable Long teamId,
+            @RequestParam(required = false) MatchKind kind,
+            @RequestParam(required = false) MatchStatus status,
+            @RequestParam(required = false) Sport sport,
+            @RequestParam(required = false) LocalDateTime from,
+            @RequestParam(required = false) LocalDateTime to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Long actor = SecurityUtils.getCurrentUserId();
+        // 認可（第一防御）・テナント絞り込みは Service / Repository に集約する（03 §C.3.1）
+        MatchService.ListFilter filter = MatchService.ListFilter.builder()
+                .kind(kind)
+                .status(status)
+                .sport(sport)
+                .from(from)
+                .to(to)
+                .build();
+        Page<MatchSummaryResponse> result = matchService.listMatches(
+                orgId, teamId, actor, filter, PageRequest.of(page, size));
+        PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
+                result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
+        return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
     }
 
     @GetMapping("/{matchId}")
