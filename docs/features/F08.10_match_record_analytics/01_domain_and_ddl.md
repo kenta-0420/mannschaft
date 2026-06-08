@@ -98,7 +98,9 @@ com.mannschaft.app.match/
 
 `matches` は **UUIDv7 / BINARY(16)**（原則 6・`UuidV7Entity` 継承）。子テーブルも UUIDv7 / BINARY(16)。同一 match ドメイン内のみ FK CASCADE 可。
 **tournament の fixture は BIGINT 据え置き**（原則 6「既存テーブルの BIGINT ID は変更しない」）なので、`matches.tournament_fixture_id` は **BIGINT NULL**（BINARY(16) は誤り）。
-Flyway 採番は実体の最新（`V9.20260603000006`）の次として、新規はタイムスタンプ式 `V9.YYYYMMDDHHMMSS__create_xxx.sql` で連番採番する（具体的 SQL ファイルは本設計では作らず命名規則のみ規定。マージ直前に origin/main 最大番号を再確認しリネームする）。
+**Flyway 採番は origin/main の全体最大バージョンの次の major を採る**（Flyway は major 数値比較でソートするため。例: 全体最大が V75 系なら V76 系）。
+> ⚠️ **訂正（採番ガイドの誤り根治）**: 起草時の「実体の最新 `V9.20260603000006` の次にタイムスタンプ式 `V9.YYYYMMDDHHMMSS` で採番する」は<b>誤り</b>である。`V9.*` は major=9 として V10〜V75 より<b>前</b>にソートされ、後発テーブルの ALTER が from-scratch 適用で先に走って死ぬ（メモリ教訓 `feedback_flyway_version_sort_after_global_max`）。新規テーブルの DDL は必ず全体最大 major の次（V76 系など）を採ること。マージ直前に origin/main 最大番号を再確認しリネームする（並行 PR 衝突回避）。
+> **Phase 1 では実際に `V76.001`〜`V76.003`（matches / match_events / player_appearances）を採用済**。
 
 ### B.1 `matches`（汎用試合）
 

@@ -414,7 +414,27 @@ public enum AuditEventType {
      * チーム ADMIN が立替金の精算を確認した（PENDING → SETTLED・F08.9 P7・02_api §7）。
      * userId=確認者(チーム ADMIN) / teamId=チーム / metadata に advanceId・paymentRequestId。
      */
-    PAYMENT_ADVANCE_SETTLED(AuditEventCategory.PAYMENT);
+    PAYMENT_ADVANCE_SETTLED(AuditEventCategory.PAYMENT),
+
+    // ─── MATCH (F08.10 試合記録・分析) ──────────────────────────────
+    /**
+     * 試合スコアを確定した（メタ更新・03 §C.7）。
+     * metadata に matchId・操作者・teamId・before/after（home/away/PK スコア）を含める。
+     */
+    MATCH_SCORE_FINALIZED(AuditEventCategory.MATCH),
+    /**
+     * 試合の status を遷移した（COMPLETED / CANCELLED / POSTPONED 等・03 §C.7）。
+     * metadata に matchId・before/after status を含める。
+     */
+    MATCH_STATUS_CHANGED(AuditEventCategory.MATCH),
+    /**
+     * 記録モードを切替えた（公式戦⇔共同記録・has_scorekeeper 変更・03 §C.7）。
+     */
+    MATCH_RECORDING_MODE_CHANGED(AuditEventCategory.MATCH),
+    /**
+     * 記録係（scorekeeper_user_id）を変更した（03 §C.7）。
+     */
+    MATCH_SCOREKEEPER_CHANGED(AuditEventCategory.MATCH);
 
     private final AuditEventCategory category;
 }
