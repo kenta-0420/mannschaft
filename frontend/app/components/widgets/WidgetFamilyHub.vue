@@ -50,7 +50,7 @@ async function load() {
           listTodos('team', String(team.id), { size: 5 }),
         ])
         return {
-          teamId: String(team.id),
+          teamId: team.publicId,
           familyName: name,
           announcements: announcementsRes.status === 'fulfilled' ? announcementsRes.value.data : [],
           todos:

@@ -93,6 +93,7 @@ public class PublicTeamSearchQueryService {
         List<PublicTeamSearchResultResponse> content = teamPage.getContent().stream()
                 .map(team -> new PublicTeamSearchResultResponse(
                         team.getId(),
+                        team.getPublicId(),
                         team.getName(),
                         team.getIconUrl(),
                         team.getMemberCount() != null ? Math.toIntExact(team.getMemberCount()) : 0,

@@ -9,7 +9,7 @@ const orgStore = useOrganizationStore()
         <NuxtLink
           v-for="org in orgStore.myOrganizations.slice(0, 8)"
           :key="org.id"
-          :to="`/organizations/${org.id}`"
+          :to="`/organizations/${org.publicId}`"
           class="flex items-center gap-2 rounded-lg border border-surface-400 bg-surface-50 px-3 py-2 text-sm transition-shadow hover:shadow-md dark:border-surface-600 dark:bg-surface-700"
         >
           <i class="pi pi-building text-xs text-primary" />

@@ -172,6 +172,8 @@ export interface PublicPostComment {
 /** F19.1 公開チーム検索結果 1 件の DTO。 */
 export interface PublicTeamSearchResult {
   id: number
+  /** チーム UUID（/public/teams/{uuid} ルートに使用） */
+  publicId: string
   name: string
   iconUrl: string | null
   memberCount: number
