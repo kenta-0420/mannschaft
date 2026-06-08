@@ -104,6 +104,14 @@ public class ActivityResultService {
     }
 
     /**
+     * 公開用に活動記録詳細を取得する（認証不要・メンバーシップチェックなし）。
+     * ActivityPublicController 等の公開エンドポイント専用。
+     */
+    public ActivityResultEntity getActivity(Long id) {
+        return findActivityOrThrow(id);
+    }
+
+    /**
      * 活動記録詳細を取得する。
      */
     public ActivityResultEntity getActivity(Long id, Long userId) {
