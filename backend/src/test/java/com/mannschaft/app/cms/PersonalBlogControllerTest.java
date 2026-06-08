@@ -1,5 +1,6 @@
 package com.mannschaft.app.cms;
 
+import com.mannschaft.app.cms.CmsErrorCode;
 import com.mannschaft.app.cms.controller.PersonalBlogController;
 import com.mannschaft.app.cms.dto.BlogPostResponse;
 import com.mannschaft.app.cms.dto.BlogReactionResponse;
@@ -15,6 +16,7 @@ import com.mannschaft.app.cms.service.BlogPostService;
 import com.mannschaft.app.cms.service.BlogReactionService;
 import com.mannschaft.app.cms.service.UserBlogSettingsService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +37,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -308,6 +311,39 @@ class PersonalBlogControllerTest {
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(result.getBody().getData().getSelfReviewEnabled()).isFalse();
+        }
+    }
+
+    // ========================================
+    // getMyPost — GET /me/blog/posts/{id}
+    // ========================================
+
+    @Nested
+    @DisplayName("getMyPost")
+    class GetMyPost {
+
+        @Test
+        @DisplayName("正常系: 自分の記事がID指定で返却される")
+        void 自分の記事詳細_ID指定_正常() {
+            given(postService.getMyPostById(eq(POST_ID), eq(USER_ID))).willReturn(mockResponse());
+
+            ResponseEntity<ApiResponse<BlogPostResponse>> result = controller.getMyPost(POST_ID);
+
+            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(result.getBody().getData().getId()).isEqualTo(POST_ID);
+            assertThat(result.getBody().getData().getContent().title()).isEqualTo("個人記事");
+        }
+
+        @Test
+        @DisplayName("異常系: 他ユーザーの記事IDを指定すると BusinessException が発生する（IDOR 対策）")
+        void 他ユーザーの記事ID_404相当の例外発生() {
+            given(postService.getMyPostById(eq(POST_ID), eq(USER_ID)))
+                    .willThrow(new BusinessException(CmsErrorCode.POST_NOT_FOUND));
+
+            assertThatThrownBy(() -> controller.getMyPost(POST_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CmsErrorCode.POST_NOT_FOUND));
         }
     }
 }

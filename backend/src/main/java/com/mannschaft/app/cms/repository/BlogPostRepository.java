@@ -48,6 +48,17 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
     @Query(value = SEARCH_BY_ORG, nativeQuery = true)
     Page<BlogPostEntity> searchByOrganization(@Param("orgId") Long orgId, @Param("keyword") String keyword, Pageable pageable);
 
+    /**
+     * 認証ユーザー自身のブログ記事をID指定で取得する（削除済み除外）。
+     *
+     * <p>authorId 不一致 / 削除済み / 不在 は全て空を返す（IDOR 対策）。</p>
+     *
+     * @param id       ブログ記事 ID
+     * @param authorId 著者（認証ユーザー）ID
+     * @return 該当する BlogPostEntity（存在しない場合は空）
+     */
+    Optional<BlogPostEntity> findByIdAndAuthorIdAndDeletedAtIsNull(Long id, Long authorId);
+
     long countBySeriesId(Long seriesId);
 
     /**

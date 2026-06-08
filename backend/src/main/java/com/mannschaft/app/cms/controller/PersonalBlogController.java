@@ -82,6 +82,21 @@ public class PersonalBlogController {
     }
 
     /**
+     * 認証ユーザー自身のブログ記事詳細をID指定で取得する。
+     *
+     * <p>ステータス不問（下書き・公開・却下・アーカイブなど自分の記事はすべて取得可能）。
+     * 投稿者本人以外が ID を指定しても 404 を返す（IDOR 対策）。</p>
+     */
+    @GetMapping("/me/blog/posts/{id}")
+    @Operation(summary = "自分のブログ記事詳細（ID指定）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<BlogPostResponse>> getMyPost(
+            @PathVariable Long id) {
+        BlogPostResponse response = postService.getMyPostById(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
      * 認証ユーザー自身のブログ記事一覧を取得する。
      */
     @GetMapping("/me/blog/posts")

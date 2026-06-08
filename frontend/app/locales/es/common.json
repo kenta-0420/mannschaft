@@ -494,7 +494,8 @@
       "selfReviewStart": "Hora de inicio de autorevisión",
       "selfReviewEnd": "Hora de fin de autorevisión",
       "selfReviewHelp": "El período configurado se trata como tiempo de revisión antes de publicar",
-      "saveSettings": "Guardar configuración"
+      "saveSettings": "Guardar configuración",
+      "loadFailed": "No se pudo cargar el artículo"
     },
     "autoSave": {
       "label": "Guardado automático",
