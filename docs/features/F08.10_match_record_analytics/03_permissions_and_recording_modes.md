@@ -9,8 +9,10 @@
 > - [docs/security/03_role_authority_model.md](../../security/03_role_authority_model.md) — ロール・権限モデル（AccessControlService / @accessGuard SpEL）
 > - [docs/features/F00_content_visibility_resolver.md](../F00_content_visibility_resolver.md) — `ContentVisibilityResolver` / `ReferenceType` / `ContentVisibilityChecker`
 > - 実装基盤: `com.mannschaft.app.common.AccessControlService`（メンバーシップ検証・ロール判定）／ `com.mannschaft.app.common.visibility.ContentVisibilityResolver`
+> - [sports/01_soccer.md](./sports/01_soccer.md) — サッカーの理由コード具体値（C/S）と event_type↔コード対応（§5.3・本書 §C.4b の検証規約が参照する競技カタログ）
 
 本書は **C（記録モードと権限）** を具体化する。最重要章。
+本書（記録モード・編集権限・IDOR・F00 可視性・テナント分離・入力検証の**枠組み**）は**ほぼ全てが競技非依存のコア**である。唯一、`card_reason_code` の**具体コード一覧**だけが競技依存のため [sports/01_soccer.md](./sports/01_soccer.md) §5 を参照する形にし、検証規約は「**その競技カタログの列挙値かつ event_type 整合**」という汎用表現で本書に残す（§C.4b）。
 
 ---
 
@@ -123,10 +125,11 @@ boolean canView(Long userId, UUID matchId);                 // F00 MatchVisibili
 - `minute` / `stoppage_minute` / `jersey_number` / `home_score` / `away_score` / PK スコア: `@Min`/`@Max` で業務範囲を制約（例: minute 0–150、jersey 0–999、score 0–999）。
 - `player_name` / `related_player_name` / `opponent_name`: 最大長制約 ＋ **制御文字除去 ＋ trim**。
 - **`note`（最大 255）・`custom_label`（最大 64）**（01 §B.2・§D.2）: 上記と同じ入力検証方針の対象に含める。`@Size(max=255)` / `@Size(max=64)`（`jakarta.validation`）＋ **制御文字除去 ＋ trim**。**HTML タグ不可**（Vue 自動エスケープに加え、CSV/PDF エクスポート・SSR・ログ出力時に XSS / CSV インジェクション / CRLF サニタイズの対象とする）。任意のリッチテキストを無検証で保存しない。
-- **`card_reason_code`（最大 8）**（01 §B.2・§D.5）: 警告/退場の標準理由コード。サーバーで**二段検証**する。
-  - **(1) カタログ列挙値であること**: `CautionCode`（C1〜C8）または `SendingOffCode`（S1〜S6, CS）のいずれか（01 §D.5）。列挙外の文字列は **400**。クライアントが渡す任意文字列を無検証で保存しない（症状を隠さず根治）。
-  - **(2) `event_type` との整合**: `YELLOW_CARD`→C 系（C1〜C8）／`RED_CARD`→S 系（S1〜S6・CS は除く）／`SECOND_YELLOW`→CS（01 §D.5.3 対応表）。警告に S 系、退場に C 系を付けた等の不整合は **400**。警告/退場系以外の `event_type` に `card_reason_code` を付けた場合も **400**（非対象イベントには NULL のみ許容）。
-  - 競技整合: 多競技拡張時はカタログを競技別に切替（`match.sport` に紐づくカタログ・01 §D.5）。サッカー以外の競技にサッカー用コードを付けた場合は **400**。
+- **`card_reason_code`（最大 8）**（01 §B.2・§D.5）: 警告/退場の標準理由コード。サーバーで**二段検証**する（**検証規約は競技非依存・コア**）。
+  - **(1) カタログ列挙値であること**: `match.sport` に紐づく**その競技の理由コードカタログ**（01 §D.5・案 A）の列挙値であること。列挙外の文字列は **400**。クライアントが渡す任意文字列を無検証で保存しない（症状を隠さず根治）。
+  - **(2) `event_type` との整合**: 警告系→警告コード群／退場系→退場コード群、という対応がカタログで定められる（その競技カタログの event_type↔コード対応に整合すること）。不整合は **400**。警告/退場系以外の `event_type` に `card_reason_code` を付けた場合も **400**（非対象イベントには NULL のみ許容）。
+  - **競技整合**: 多競技拡張時はカタログを競技別に切替（`match.sport` に紐づくカタログ・01 §D.5）。当該競技のカタログ外のコードを付けた場合は **400**。
+  - **競技固有の具体対応 → [sports/01_soccer.md](./sports/01_soccer.md) §5.3 参照**: サッカーの具体列挙値（`CautionCode` C1〜C8／`SendingOffCode` S1〜S6・CS）と event_type↔コード対応（`YELLOW_CARD`→C 系／`RED_CARD`→S1〜S6／`SECOND_YELLOW`→CS）はサッカー競技カタログに集約した。
   - `card_reason_code` は固定記号で言語非依存・固定長ゆえ XSS/CRLF の懸念は低いが、列挙値突合により実質ホワイトリスト検証となる（任意入力ではない）。
 - **ログ出力時は CRLF サニタイズ**（player_name / `note` / `custom_label` 等のユーザー入力をログに出す場合、改行除去でログインジェクションを防ぐ）。
 

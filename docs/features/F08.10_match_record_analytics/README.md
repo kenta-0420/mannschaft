@@ -17,6 +17,14 @@
 
 サッカーを具体実装の起点とし、`sport` カラム＋競技別イベントカタログにより**多競技拡張**（将来バスケット等）に開かれた構造を採る。
 
+### 1.0 コア（競技非依存）＋ sports/（競技固有）の二層構造
+
+本設計書は **「テーブル（器）は競技非依存で共通・カタログ（中身）だけ競技別」** という方針で二層に分かれる（競技ごとに「記録すべき内容」＝サッカー/バスケ/バレー/野球…が異なるため）。
+
+- **F08.10 コア（01〜06）** = **競技非依存の土台**（`matches`/`match_events`/`player_appearances` の汎用カラム・汎用 enum・出場時間算出の枠組み・集計 API の枠組み・記録モード/権限/IDOR/F00 可視性/入力検証の枠組み・ライブ入力 UX の骨格・tournament 統合・実装計画）＋**拡張点 `SportEventCatalog` の定義**（01 §D.3）。
+- **[sports/01_soccer.md](./sports/01_soccer.md)** = **サッカー固有のカタログ**（event_type 具体値・period 具体値・スコア計算/勝敗判定・規律コード C/S・統計定義・ポジション語彙・サッカー固有 UX 細部・i18n namespace）。
+- 将来 `sports/02_basketball.md` 等を **01_soccer.md を雛形に複製・差分記述**して追加できる（[sports/01_soccer.md](./sports/01_soccer.md) §10 新競技の追加手順・01 §D.3）。コアのテーブル（器）は一切変更しない。
+
 ### 1.1 本機能が解決する課題
 
 - 大会の対戦カード（`tournament_matches`）はスコアしか持たず、**時系列イベント・出場時間・個人スタッツの蓄積基盤が無い**。
@@ -49,8 +57,10 @@ GoalNote（サッカー個人記録アプリ）は「個人が自分の出場・
 
 | 機能 | 説明 | ステータス |
 |------|------|-----------|
-| 汎用試合 `matches` 基盤 | 全種別試合の単一レコード（DDL/Entity/Repo/enum） | 🟢 設計完了 |
-| 時系列イベント `match_events` | 得点・アシスト・交代・カード等のタイムライン（カードは警告/退場の標準理由コード C1〜C8 / S1〜S6 / CS を選択式で付与可・JFA 競技規則準拠・01 §D.5） | 🟢 設計完了 |
+| 汎用試合 `matches` 基盤（競技非依存・器） | 全種別試合の単一レコード（DDL/Entity/Repo/汎用 enum・拡張点 `SportEventCatalog`） | 🟢 設計完了 |
+| 競技カタログ機構（多競技拡張） | `Sport`＋`SportEventCatalog`（案 A）で競技別カタログを差し込む拡張点（01 §D.3） | 🟢 設計完了 |
+| **サッカー競技カタログ**（最初の競技） | event_type/period/スコア計算/規律コード C/S/統計/ポジション/UX/i18n（sports/01_soccer.md） | 🟢 設計完了 |
+| 時系列イベント `match_events`（器） | 得点・アシスト・交代・カード等のタイムライン（カードは標準理由コードを選択式で付与可・**サッカーの C1〜C8/S1〜S6/CS は sports/01_soccer.md §5**） | 🟢 設計完了 |
 | 出場時間 `player_appearances` | 交代から自動算出する出場分（複数交代/再出場対応） | 🟢 設計完了 |
 | 出場時間自動算出ロジック | イベント保存時のフル再計算 upsert | 🟢 設計完了 |
 | 集計 API（個人/チーム） | キャリア統計・チーム統計・チャート用 DTO | 🟢 設計完了 |
@@ -67,15 +77,24 @@ GoalNote（サッカー個人記録アプリ）は「個人が自分の出場・
 
 ## 4. 本ディレクトリ内インデックス
 
+**コア（競技非依存・01〜06）**:
+
 | ファイル | 内容 |
 |----------|------|
-| [README.md](./README.md) | 本書。概要・GoalNote 比較・ステータス表・インデックス・横断未解決事項 |
-| [01_domain_and_ddl.md](./01_domain_and_ddl.md) | ドメイン配置（A）／新規テーブル DDL（B）／enum・多競技対応（D） |
-| [02_playing_time_and_aggregation.md](./02_playing_time_and_aggregation.md) | 出場時間自動算出ロジック（E）／集計 API（F） |
-| [03_permissions_and_recording_modes.md](./03_permissions_and_recording_modes.md) | 記録モード（公式戦/共同記録）・編集権限・セキュリティ・IDOR・F00 可視性（C） |
-| [04_frontend_and_ux.md](./04_frontend_and_ux.md) | 画面・導線・ライブ入力 UX・チャート・composable・i18n（G） |
+| [README.md](./README.md) | 本書。概要・コア+sports 二層構造・GoalNote 比較・ステータス表・インデックス・横断未解決事項 |
+| [01_domain_and_ddl.md](./01_domain_and_ddl.md) | ドメイン配置（A）／新規テーブル DDL（B・汎用の器）／汎用 enum・**拡張点 `SportEventCatalog` の定義**（D） |
+| [02_playing_time_and_aggregation.md](./02_playing_time_and_aggregation.md) | 出場時間自動算出の枠組み（E）／集計 API の枠組み（F） |
+| [03_permissions_and_recording_modes.md](./03_permissions_and_recording_modes.md) | 記録モード（公式戦/共同記録）・編集権限・セキュリティ・IDOR・F00 可視性・入力検証の枠組み（C） |
+| [04_frontend_and_ux.md](./04_frontend_and_ux.md) | 画面・導線・ライブ入力 UX の骨格・チャート枠組み・composable・i18n 機構（G） |
 | [05_tournament_integration.md](./05_tournament_integration.md) | tournament 統合・既存コード作り替え・Match*→Fixture* 改称（H） |
-| [06_implementation_plan.md](./06_implementation_plan.md) | 段階実装計画・部隊割り・テスト方針（I） |
+| [06_implementation_plan.md](./06_implementation_plan.md) | 段階実装計画・部隊割り・テスト方針・**競技カタログ実装コンポーネント**（I） |
+
+**競技固有カタログ（sports/）**:
+
+| ファイル | 内容 |
+|----------|------|
+| [sports/01_soccer.md](./sports/01_soccer.md) | **サッカー競技カタログ**（コアを継承）: event_type（§2）／period（§3）／スコア計算・勝敗判定（§4）／規律コード C/S（§5）／統計定義（§6）／ポジション語彙（§7）／サッカー固有 UX 細部（§8）／i18n namespace（§9）／**新競技の追加手順（§10）** |
+| sports/02_basketball.md 等（将来） | 01_soccer.md を雛形に複製・差分記述（未作成・§10 手順） |
 
 ---
 

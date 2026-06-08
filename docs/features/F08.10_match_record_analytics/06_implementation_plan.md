@@ -5,10 +5,12 @@
 > **関連機能番号**: F08.10（試合記録・分析）
 > **関連ドキュメント**:
 > - [01_domain_and_ddl.md](./01_domain_and_ddl.md) 〜 [05_tournament_integration.md](./05_tournament_integration.md)
+> - [sports/01_soccer.md](./sports/01_soccer.md) — **最初の競技カタログ（サッカー）**。競技カタログ実装は 1 コンポーネントとして本計画に含む（Phase 1-B・§10 新競技追加手順）
 > - [TEST_CONVENTION.md](../../../TEST_CONVENTION.md) — テスト規約
 > - 方針: BE/API はテスト先行（test-first）／FE・E2E は後（feedback_test_first_be_api）
 
 本書は **I（段階実装計画）** を具体化する。
+**競技非依存のコア（テーブル・Service・FE 骨格）と、競技カタログ（最初の競技＝サッカー）を 1 コンポーネントとして区別**して実装する。サッカーカタログ（event_type/period/規律コード/統計/ポジション/UX/i18n の具体）は [sports/01_soccer.md](./sports/01_soccer.md) を正準とし、2 競技目以降は同文書 §10 の手順で雛形複製・差分追加する。
 
 ---
 
@@ -40,7 +42,8 @@
 | 隊 | 担当 | 成果物 |
 |----|------|--------|
 | 1-A | Flyway／DDL | `V9.YYYYMMDDHHMMSS__create_matches.sql` ほか 3 ファイル（matches=UUIDv7・子=UUIDv7・`tournament_fixture_id`/`schedule_id` は BIGINT。採番はマージ直前に origin/main 最大番号を再確認） |
-| 1-B | Entity／enum | `MatchEntity`/`MatchEventEntity`（**note/custom_label/linked_event_id/card_reason_code 列含む・自己参照 FK**）/`PlayerAppearanceEntity`（UuidV7Entity 継承・子は org_id/deleted_at 無し）・`MatchKind`/`MatchStatus`(POSTPONED 含む)/`MatchEventType`(PENALTY_SHOOTOUT・**OTHER** 含む) 等 enum・`SportEventCatalog`（案 A・OTHER 含む）・**理由コードカタログ `CautionCode`(C1〜C8)/`SendingOffCode`(S1〜S6, CS)（JFA 競技規則 標準・サッカー固有・Sport.SOCCER 紐づけ・01 §D.5。実装時に最新 JFA 公式競技規則と照合）** |
+| 1-B | Entity／enum（器＝コア） | `MatchEntity`/`MatchEventEntity`（**note/custom_label/linked_event_id/card_reason_code 列含む・自己参照 FK**）/`PlayerAppearanceEntity`（UuidV7Entity 継承・子は org_id/deleted_at 無し）・`MatchKind`/`MatchStatus`(POSTPONED 含む)/`MatchEventType`(全競技の値を保持する器・PENALTY_SHOOTOUT・**OTHER** 含む)/`PeriodType`/`Sport` 等 enum・**拡張点 `SportEventCatalog`（案 A の機構そのもの）** |
+| 1-S | **競技カタログ（サッカー＝最初の競技）** | `Sport.SOCCER` のカタログ実体（[sports/01_soccer.md](./sports/01_soccer.md) 正準）: `SportEventCatalog.CATALOG` の SOCCER 集合（§2）・**理由コードカタログ `CautionCode`(C1〜C8)/`SendingOffCode`(S1〜S6, CS)（JFA 競技規則 標準・サッカー固有・Sport.SOCCER 紐づけ・実装時に最新 JFA 公式競技規則と照合）**・ポジション語彙（§7）。**この隊が「競技カタログ実装」コンポーネント**。2 競技目は §10 手順で複製 |
 | 1-C | Repository | `MatchRepository`（AbstractTenantAwareRepository 継承）/`MatchEventRepository`/`PlayerAppearanceRepository`（後 2 者はテナント絞り込み無し・match_id スコープ専用・二段アクセス・01 §A.4） |
 | 1-T | テスト | Flyway from-scratch 適用テスト（Docker・FK/CASCADE 成立・**子に org_id/deleted_at が無いこと**確認）・Entity 永続化 IT |
 

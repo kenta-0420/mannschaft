@@ -8,8 +8,10 @@
 > - [02_playing_time_and_aggregation.md](./02_playing_time_and_aggregation.md) — スコア正本・イベント集計・PK 戦分離
 > - [F08.7_tournament_league.md](../F08.7_tournament_league.md) — 既存 `tournament_matches` / 順位表 / 個人ランキング
 > - 既存実装: `TournamentMatchEntity` / `MatchController`（org スコープ）/ `MatchService` / `StandingsCalculationService` / `RankingsCalculationService` / `TournamentMatchSetEntity`
+> - [sports/01_soccer.md](./sports/01_soccer.md) — サッカー固有のスコア計算・勝敗判定（§4・延長合算/PK 分離/PK 勝敗）
 
 本書は **H（tournament 統合・既存コード作り替え）** を具体化する。**グリーンフィールド**（未デプロイ・運用データ無し）のため、後方互換を考えず最も綺麗な形へ作り替える。
+**tournament 統合の枠組み（fixture 化・スコア正本化・順位導出のイベント駆動・スナップショット・participant⇔team_side 変換）は競技非依存のコア＝本書**。スコアの**合算ルール・勝敗判定の具体（延長得点の本戦合算・PK 戦勝敗）はサッカー固有**であり [sports/01_soccer.md](./sports/01_soccer.md) §4 を参照する。
 
 ---
 
@@ -27,7 +29,7 @@
 | `nextMatchId` / `nextMatchSlot` | **fixture が保持**（トーナメント進行） |
 | `scheduledDatetime` / `venue` / `scheduleId` | **matches へ移管**（試合の実体情報・`matches.kickoff_at`/`venue`/`schedule_id`・01 §B.1） |
 | `homeScore`/`awayScore`/`homePenaltyScore`/`awayPenaltyScore`/`winnerParticipantId`/`result` | **matches へ移管（スコア正本化・二重持ち解消）**。`matches.home_score`/`away_score`（本戦）・`home_penalty_score`/`away_penalty_score`（PK 戦）へ。順位は matches 由来で導出。ただし**順位計算の高速化のためスナップショットを fixture へコピー**（H.2.3） |
-| `homeExtraScore`/`awayExtraScore`（延長別スコア） | **home/away_score へ合算（延長別列は廃止）**。新 `matches` は延長別カラムを持たず、延長得点は本戦スコア（`home_score`/`away_score`）に合算する（01 §B.1 延長戦スコアの扱い・02 §E.2a）。最終スコア「延長の末 3-2」は 3-2 が正 |
+| `homeExtraScore`/`awayExtraScore`（延長別スコア） | **home/away_score へ合算（延長別列は廃止）**。新 `matches` は延長別カラムを持たず、延長得点は本戦スコアに合算する（01 §B.1 延長戦スコアの扱い・02 §E.2a）。**この合算ルールはサッカー固有 → [sports/01_soccer.md](./sports/01_soccer.md) §4.1 参照**（最終スコア「延長の末 3-2」は 3-2 が正） |
 | `status` | matches の status を正とし、fixture は参照（01 §B.1.1 照合表・MatchStatus は POSTPONED 含む 5 値で一致） |
 | `rosterDeadline` | F08.7.1/05 の roster 機能に紐づく。fixture 側に残す（roster は tournament スコープ） |
 

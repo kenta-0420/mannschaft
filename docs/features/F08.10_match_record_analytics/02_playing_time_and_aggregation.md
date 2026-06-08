@@ -7,8 +7,10 @@
 > - [01_domain_and_ddl.md](./01_domain_and_ddl.md) — `match_events` / `player_appearances` のスキーマ・enum・PK 戦スコア列
 > - [04_frontend_and_ux.md](./04_frontend_and_ux.md) — チャート種別との対応・空状態
 > - [03_permissions_and_recording_modes.md](./03_permissions_and_recording_modes.md) — 集計 API の認可・プライバシー
+> - [sports/01_soccer.md](./sports/01_soccer.md) — **サッカー固有のスコア計算（延長合算/PK 分離・§4）・統計定義（得点/アシスト/90 分換算等・§6）**
 
 本書は **E（出場時間自動算出ロジック）／ F（集計 API）** を具体化する。
+**出場時間自動算出の枠組み・集計 API の枠組み（エンドポイント形・認可/プライバシー）は競技非依存のコア＝本書**。**競技固有のスコア計算ルール（延長得点の本戦合算・PK 戦分離・勝敗判定）と統計指標の定義（得点/アシスト/自責点/90 分あたり得点 等）は [sports/01_soccer.md](./sports/01_soccer.md)（§4・§6）** に分離する。本書の枠組み記述で現れる具体的 event_type 名（GOAL/PENALTY_GOAL 等）はサッカーカタログ（[sports/01_soccer.md](./sports/01_soccer.md) §2）の値であり、他競技では各カタログの値に読み替える。
 
 ---
 
@@ -69,12 +71,17 @@ on MatchEvent change (create/update/delete) for matchId:
 - この再計算は `@Transactional`（match ドメイン内に閉じる・原則 5）。
 - パフォーマンス: 1 試合のイベント数は高々数十〜百件なのでフル再計算で十分。大量試合の一括取込時のみバルク再計算を別途検討（§未解決）。
 
-### E.2a PK 戦スコアの分離・延長得点の本戦合算【要改善の根治】
+### E.2a スコア計算ルール（器はコア・具体ルールは競技固有）
 
-- **本戦スコア（home/away_score）と PK 戦スコア（home/away_penalty_score）は別**（01 §B.1）。
-- **延長中の `GOAL`/`PENALTY_GOAL` は本戦スコア（home/away_score）に加算する。延長別カラムは持たない**（01 §B.1 延長戦スコアの扱い）。`period`（`EXTRA_FIRST`/`EXTRA_SECOND`）に関わらず、本戦得点イベントは本戦スコアへ合算する（最終スコア「延長の末 3-2」は 3-2 が正）。本戦スコア整合チェック（§E.5）の対象に延長得点も含める。
-- 本戦スコア整合チェック（§E.5）は **GOAL ＋ PENALTY_GOAL（本戦・延長を問わず自サイド）＋ 相手 OWN_GOAL** で突合する。
-- **PK 戦（`PENALTY_SHOOTOUT` イベント）のみ本戦スコア集計の対象外**であり、`home/away_penalty_score` にのみ加算する。個人キャリアの `goals` にも PK 戦は含めない（本戦得点＝延長得点を含む）。
+スコアの**器**はコアの汎用カラム（本戦 `home/away_score`・PK 戦 `home/away_penalty_score`・[01](./01_domain_and_ddl.md) §B.1）で競技非依存だが、**どの period/event_type をどのスコアに合算するか（合算ルール）は競技固有**である。
+
+> **競技固有 → [sports/01_soccer.md](./sports/01_soccer.md) §4 参照**: サッカーの具体ルール（延長得点の本戦合算・PK 戦の `home/away_penalty_score` 分離・本戦スコア整合チェックの突合式＝`GOAL＋PENALTY_GOAL（自サイド）＋相手 OWN_GOAL`・勝敗判定）はサッカー競技カタログに集約した。
+>
+> - 本戦スコアと PK 戦スコアは別カラムで分離する（器はコア）。
+> - 延長別カラムは持たず、延長得点は本戦スコアへ合算する（サッカーのセマンティクス・§4.1）。
+> - PK 戦（`PENALTY_SHOOTOUT`）のみ本戦集計の対象外で `home/away_penalty_score` にのみ加算し、個人キャリアの `goals` にも含めない（[sports/01_soccer.md](./sports/01_soccer.md) §4・§6）。
+>
+> 整合チェックの**枠組み**（握りつぶさず乖離を可視化・スコア正本は記録係確定）は §E.5 のコアに残し、サッカーの具体突合式は [sports/01_soccer.md](./sports/01_soccer.md) §4.2 を参照する。
 
 ### E.3 COMPLETED 遷移時の確定再計算
 
@@ -89,12 +96,11 @@ on MatchEvent change (create/update/delete) for matchId:
 - 理由: アディショナルタイムは公式記録でも分計上が曖昧なため、二重カウントや過大計上を避ける。`stoppage_minute` は**イベントのタイムライン表示順とラベル**（"45+2'"）にのみ用いる。
 - 将来「アディショナルを出場分に算入する」要件が出たら、`in/out` を `minute + stoppage_minute` で計算するモードをチーム/大会設定で切替可能にする（§未解決）。
 
-### E.5 スコア整合チェック（握りつぶさない）
+### E.5 スコア整合チェック（握りつぶさない）— 枠組み（コア）
 
-- `matches.home_score` / `away_score`（本戦正本キャッシュ）と、`match_events` の `GOAL`＋`PENALTY_GOAL`（自サイド・本戦）＋相手の `OWN_GOAL` を集計した値を比較する（**PK 戦 `PENALTY_SHOOTOUT` は対象外**・§E.2a）。
-- 不一致時は**例外で握りつぶさず警告を返す**: 集計 API レスポンス・ライブ記録 UI に「スコア(2) とイベント得点集計(1) が不一致」を表示する。
+- **枠組み（競技非依存）**: `matches.home_score`/`away_score`（本戦正本キャッシュ）と、`match_events` から導出した得点集計値を比較し、不一致時は**例外で握りつぶさず警告を返す**（集計 API レスポンス・ライブ記録 UI に「スコア(2) とイベント得点集計(1) が不一致」を表示）。
 - スコアの正本はあくまで `home_score`（記録係が最終確定）。イベントは抜け漏れがあり得るため、**自動で書き換えず**乖離を可視化して人が判断する（根治治療＝症状を隠さない）。
-- OWN_GOAL は**相手サイドの本戦スコアに加算**して集計する（01 §D.2 表）。
+- **競技固有 → [sports/01_soccer.md](./sports/01_soccer.md) §4.2 参照**: 「イベントから導出した得点集計値」の**具体突合式**（サッカー＝`GOAL＋PENALTY_GOAL（自サイド・本戦＝延長含む）＋相手 OWN_GOAL`・PK 戦 `PENALTY_SHOOTOUT` は対象外・OWN_GOAL は相手サイドへ加算）は競技固有のため、サッカー競技カタログに集約した。他競技では各カタログの得点合算ルールに従う。
 
 ### E.5a 再計算の破壊耐性（変更権限スコープ内に限定）【セキュリティ要改善の根治】
 
@@ -152,20 +158,8 @@ GET /api/v1/users/{userId}/teams/{teamId}/match-stats?from=&to=&kind=&sport=  --
 
 **レスポンス DTO（`UserMatchStatsResponse`）の指標**:
 
-| 指標 | 算出元 |
-|------|--------|
-| totalMatches | 出場した（appearance がある）試合数 |
-| totalMinutes | Σ computed_minutes |
-| goals | GOAL＋PENALTY_GOAL（自分が主体・**本戦のみ**・PK 戦除外） |
-| assists | ASSIST（自分が主体） |
-| ownGoals | OWN_GOAL（自分が主体・自責点） |
-| yellowCards / redCards | YELLOW_CARD ＋SECOND_YELLOW / RED_CARD |
-| starterRate | starter 試合数 / totalMatches |
-| avgMinutes | totalMinutes / totalMatches |
-| goalsPer90 | goals / (totalMinutes / 90)（totalMinutes=0 は NULL・§未解決 4） |
-| monthlyTrend[] | 月別 { month, matches, minutes, goals, assists }（ライン用） |
-| seasonTrend[] | シーズン別配列（同上・期間粒度違い） |
-| byKind[] | kind 別内訳 { kind, matches, goals, ... }（doughnut/bar 用） |
+- **枠組み（競技非依存・コア）**: 個人キャリア統計のレスポンス DTO（`UserMatchStatsResponse`）として、出場系（totalMatches/totalMinutes/starterRate/avgMinutes）・トレンド系（monthlyTrend[]/seasonTrend[]/byKind[]）の**構造**を返す。`goalsPer90` 等の 90 分換算・分母ゼロ NULL（§未解決 4）も枠組みとして共通。
+- **競技固有 → [sports/01_soccer.md](./sports/01_soccer.md) §6.1 参照**: 各指標の**具体的な算出定義**（goals=GOAL＋PENALTY_GOAL〔本戦のみ・PK 戦除外〕／assists=ASSIST／ownGoals=OWN_GOAL〔自責点〕／yellowCards・redCards／goalsPer90 等）はサッカー固有のため、サッカー競技カタログの統計定義に集約した。他競技では各カタログの指標定義に従う（バスケ＝リバウンド/スティール等）。
 
 ### F.2 個人タイムライン
 
@@ -188,14 +182,8 @@ GET /api/v1/teams/{teamId}/match-stats?from=&to=&kind=&sport=
 
 **レスポンス DTO（`TeamMatchStatsResponse`）**:
 
-| 指標 | 説明 |
-|------|------|
-| wins / draws / losses | team_side と home_score/away_score（本戦）から判定（W/D/L） |
-| totalGoalsFor / totalGoalsAgainst | 得点 / 失点合計（本戦） |
-| goalDifference | 得失点差 |
-| playerRankings | 選手別ランキング { userId, displayName, goals, assists, minutes }（bar 用・top-N 上限・displayName は退会者匿名化追従・原則 4） |
-| byKind[] | kind 別内訳（勝敗・得失点） |
-| recentForm[] | 直近 N 試合の結果配列（W/D/L・ライン/フォーム表示） |
+- **枠組み（競技非依存・コア）**: チーム統計のレスポンス DTO（`TeamMatchStatsResponse`）として、勝敗系（wins/draws/losses・recentForm[]）・選手別ランキング（playerRankings・top-N 上限・displayName は退会者匿名化追従・原則 4）・kind 別内訳（byKind[]）の**構造**を返す。
+- **競技固有 → [sports/01_soccer.md](./sports/01_soccer.md) §6.2 参照**: 各指標の**具体的な算出定義**（W/D/L 判定＝team_side と本戦スコア／totalGoalsFor・totalGoalsAgainst／goalDifference〔得失点差〕／playerRankings の goals/assists 定義）はサッカー固有のため、サッカー競技カタログの統計定義に集約した。勝敗判定の具体（PK 戦勝敗を含む）は [sports/01_soccer.md](./sports/01_soccer.md) §4.3 を参照。
 
 > **N+1 / 大量試合**: `playerRankings` は top-N 上限で返す。試合数が膨大なチーム/大会では将来サマリテーブル（事前集計）を設ける余地を残す（§未解決）。
 
@@ -220,6 +208,7 @@ GET /api/v1/matches/{matchId}/appearances  -- 出場時間一覧（両サイド�
 
 - DTO は集計済みの**チャートが直接描ける形**（labels 配列＋values 配列に変換しやすい構造）で返す。FE 側で再集計しないことで any 排除と型安全を担保（[04](./04_frontend_and_ux.md)）。
 - 全 DTO は `@Builder`（Response DTO の規約）で構築する。
+- チャート種別との対応は**枠組み（競技非依存）**。各チャートに差し込むサッカー固有の指標（radar の守備軸＝SAVE 等・doughnut のポジション傾向＝GK/DF/MF/FW 等）は**競技固有 → [sports/01_soccer.md](./sports/01_soccer.md) §8.6 参照**。
 
 ---
 
