@@ -85,7 +85,8 @@
         "success": "後見切替を開始しました",
         "endSuccess": "後見切替を終了しました",
         "cancelButton": "キャンセル",
-        "startButton": "開始する"
+        "startButton": "開始する",
+        "otherChildren": "その他"
       },
       "independence": {
         "title": "自立移行",
@@ -97,7 +98,8 @@
         "handoverConfirm": "子のメールアドレスにパスワード設定リンクを送信します",
         "handoverSuccess": "引き継ぎメールを送信しました",
         "alreadyIndependent": "この子は既に自立段階です",
-        "childEmail": "子のメールアドレス（任意）"
+        "childEmail": "子のメールアドレス（任意）",
+        "passwordStatus": "パスワード状況"
       },
       "stage": {
         "elementary": "小学生",

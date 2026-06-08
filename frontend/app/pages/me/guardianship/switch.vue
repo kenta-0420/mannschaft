@@ -143,7 +143,7 @@ onMounted(loadChildren)
 
       <!-- 封印された子（グレーアウト） -->
       <div v-if="blockedChildren.length > 0" class="flex flex-col gap-3">
-        <p class="text-xs font-medium text-surface-400 uppercase tracking-wider mb-1">その他</p>
+        <p class="text-xs font-medium text-surface-400 uppercase tracking-wider mb-1">{{ $t('proxy.guardianship.switch.otherChildren') }}</p>
         <div
           v-for="child in blockedChildren"
           :key="child.childUserId"

@@ -85,7 +85,8 @@
         "success": "후견 전환을 시작했습니다",
         "endSuccess": "후견 전환을 종료했습니다",
         "cancelButton": "취소",
-        "startButton": "시작"
+        "startButton": "시작",
+        "otherChildren": "기타"
       },
       "independence": {
         "title": "자립 전환",
@@ -97,7 +98,8 @@
         "handoverConfirm": "자녀의 이메일 주소로 비밀번호 설정 링크를 발송합니다",
         "handoverSuccess": "인계 이메일을 발송했습니다",
         "alreadyIndependent": "이 자녀는 이미 자립 단계입니다",
-        "childEmail": "자녀의 이메일 주소（선택사항）"
+        "childEmail": "자녀의 이메일 주소（선택사항）",
+        "passwordStatus": "비밀번호 상태"
       },
       "stage": {
         "elementary": "초등학생",

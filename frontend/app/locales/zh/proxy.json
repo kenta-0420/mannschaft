@@ -85,7 +85,8 @@
         "success": "监护切换已开始",
         "endSuccess": "监护切换已结束",
         "cancelButton": "取消",
-        "startButton": "开始"
+        "startButton": "开始",
+        "otherChildren": "其他"
       },
       "independence": {
         "title": "独立过渡",
@@ -97,7 +98,8 @@
         "handoverConfirm": "将向孩子的电子邮件地址发送密码设置链接",
         "handoverSuccess": "交接邮件已发送",
         "alreadyIndependent": "该孩子已达到独立阶段",
-        "childEmail": "孩子的电子邮件地址（可选）"
+        "childEmail": "孩子的电子邮件地址（可选）",
+        "passwordStatus": "密码状态"
       },
       "stage": {
         "elementary": "小学生",

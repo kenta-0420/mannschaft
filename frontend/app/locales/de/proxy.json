@@ -85,7 +85,8 @@
         "success": "Vormund-Wechsel gestartet",
         "endSuccess": "Vormund-Wechsel beendet",
         "cancelButton": "Abbrechen",
-        "startButton": "Starten"
+        "startButton": "Starten",
+        "otherChildren": "Andere"
       },
       "independence": {
         "title": "Unabhängigkeitsübergang",
@@ -97,7 +98,8 @@
         "handoverConfirm": "Ein Passwort-Einrichtungslink wird an die E-Mail-Adresse des Kindes gesendet",
         "handoverSuccess": "Übergabe-E-Mail gesendet",
         "alreadyIndependent": "Dieses Kind hat bereits die Unabhängigkeitsstufe erreicht",
-        "childEmail": "E-Mail-Adresse des Kindes (optional)"
+        "childEmail": "E-Mail-Adresse des Kindes (optional)",
+        "passwordStatus": "Passwortstatus"
       },
       "stage": {
         "elementary": "Grundschule",

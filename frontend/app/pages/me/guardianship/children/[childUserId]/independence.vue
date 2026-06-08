@@ -95,7 +95,7 @@ onMounted(loadStatus)
 
         <!-- パスワード設定状況 -->
         <div class="flex items-center justify-between">
-          <span class="text-sm text-surface-500">パスワード状況</span>
+          <span class="text-sm text-surface-500">{{ $t('proxy.guardianship.independence.passwordStatus') }}</span>
           <Tag
             v-if="status.passwordSet"
             :value="$t('proxy.guardianship.independence.passwordSet')"

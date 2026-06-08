@@ -98,18 +98,14 @@ const proxyDeskItem = { label: t('proxy.title'), icon: 'pi pi-tablet', to: '/adm
 
 const guardianshipSwitchStore = useGuardianshipSwitchStore()
 const { endSwitch: apiEndSwitch } = useGuardianshipApi()
+const notification = useNotification()
 
 async function handleEndSwitch() {
   if (!guardianshipSwitchStore.activeChild) return
   try {
     await apiEndSwitch(guardianshipSwitchStore.activeChild.childUserId)
     guardianshipSwitchStore.endSwitch()
-    const toast = useNuxtApp().$toast as { add: (opts: Record<string, unknown>) => void } | undefined
-    toast?.add({
-      severity: 'success',
-      summary: t('proxy.guardianship.switch.endSuccess'),
-      life: 3000,
-    })
+    notification.success(t('proxy.guardianship.switch.endSuccess'))
   } catch {
     // エラーは useApi の共通ハンドラに任せる
   }

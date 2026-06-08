@@ -85,7 +85,8 @@
         "success": "Guardianship switch started",
         "endSuccess": "Guardianship switch ended",
         "cancelButton": "Cancel",
-        "startButton": "Start"
+        "startButton": "Start",
+        "otherChildren": "Others"
       },
       "independence": {
         "title": "Independence Transition",
@@ -97,7 +98,8 @@
         "handoverConfirm": "A password setup link will be sent to the child's email address",
         "handoverSuccess": "Handover email sent",
         "alreadyIndependent": "This child has already reached independence stage",
-        "childEmail": "Child's email address (optional)"
+        "childEmail": "Child's email address (optional)",
+        "passwordStatus": "Password status"
       },
       "stage": {
         "elementary": "Elementary school",

@@ -85,7 +85,8 @@
         "success": "Cambio de tutela iniciado",
         "endSuccess": "Cambio de tutela finalizado",
         "cancelButton": "Cancelar",
-        "startButton": "Iniciar"
+        "startButton": "Iniciar",
+        "otherChildren": "Otros"
       },
       "independence": {
         "title": "Transición a la independencia",
@@ -97,7 +98,8 @@
         "handoverConfirm": "Se enviará un enlace de configuración de contraseña al correo del niño",
         "handoverSuccess": "Correo de traspaso enviado",
         "alreadyIndependent": "Este niño ya ha alcanzado la etapa de independencia",
-        "childEmail": "Correo electrónico del niño (opcional)"
+        "childEmail": "Correo electrónico del niño (opcional)",
+        "passwordStatus": "Estado de contraseña"
       },
       "stage": {
         "elementary": "Primaria",
