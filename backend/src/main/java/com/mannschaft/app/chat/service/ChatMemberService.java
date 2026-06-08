@@ -10,6 +10,7 @@ import com.mannschaft.app.chat.dto.MemberResponse;
 import com.mannschaft.app.chat.dto.UpdateMyChannelSettingsRequest;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,7 @@ public class ChatMemberService {
     private final ChatChannelService channelService;
     private final ChatMapper chatMapper;
     private final ChatChannelEventPublisher eventPublisher;
+    private final AccessControlService accessControlService;
 
     /**
      * チャンネルのメンバー一覧を取得する。
@@ -47,13 +49,18 @@ public class ChatMemberService {
     /**
      * チャンネルにメンバーを追加する。
      *
-     * @param channelId チャンネルID
-     * @param request   追加リクエスト
+     * @param channelId       チャンネルID
+     * @param operatorUserId  操作者ユーザーID（認可チェック用）
+     * @param request         追加リクエスト
      * @return 追加されたメンバーレスポンスリスト
      */
     @Transactional
-    public List<MemberResponse> addMembers(Long channelId, AddMemberRequest request) {
+    public List<MemberResponse> addMembers(Long channelId, Long operatorUserId, AddMemberRequest request) {
         channelService.findChannelOrThrow(channelId);
+        // 操作者がチャンネルメンバーであることを確認
+        if (!memberRepository.existsByChannelIdAndUserId(channelId, operatorUserId)) {
+            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+        }
 
         List<ChatChannelMemberEntity> added = new java.util.ArrayList<>();
         for (Long userId : request.getUserIds()) {
@@ -75,11 +82,18 @@ public class ChatMemberService {
     /**
      * チャンネルからメンバーを除外する。
      *
-     * @param channelId チャンネルID
-     * @param userId    除外するユーザーID
+     * @param channelId      チャンネルID
+     * @param userId         除外するユーザーID
+     * @param operatorUserId 操作者ユーザーID（認可チェック用）
      */
     @Transactional
-    public void removeMember(Long channelId, Long userId) {
+    public void removeMember(Long channelId, Long userId, Long operatorUserId) {
+        // 自分以外を除外しようとする場合は、操作者がチャンネルメンバーであること
+        if (!operatorUserId.equals(userId)) {
+            if (!memberRepository.existsByChannelIdAndUserId(channelId, operatorUserId)) {
+                throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
+            }
+        }
         ChatChannelMemberEntity member = findMemberOrThrow(channelId, userId);
         if (member.getRole() == ChannelMemberRole.OWNER) {
             throw new BusinessException(ChatErrorCode.OWNER_CANNOT_LEAVE);

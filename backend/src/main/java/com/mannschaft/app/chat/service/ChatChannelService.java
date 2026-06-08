@@ -139,11 +139,13 @@ public class ChatChannelService {
      *
      * @param channelId チャンネルID
      * @param request   更新リクエスト
+     * @param userId    操作ユーザーID（認可チェック用）
      * @return 更新されたチャンネルレスポンス
      */
     @Transactional
-    public ChannelResponse updateChannel(Long channelId, UpdateChannelRequest request) {
+    public ChannelResponse updateChannel(Long channelId, UpdateChannelRequest request, Long userId) {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
+        checkChannelAdminAccess(channel, userId);
         validateNotArchived(channel);
 
         channel.updateInfo(
@@ -161,10 +163,12 @@ public class ChatChannelService {
      * チャンネルを削除する（論理削除）。
      *
      * @param channelId チャンネルID
+     * @param userId    操作ユーザーID（認可チェック用）
      */
     @Transactional
-    public void deleteChannel(Long channelId) {
+    public void deleteChannel(Long channelId, Long userId) {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
+        checkChannelAdminAccess(channel, userId);
         channel.softDelete();
         channelRepository.save(channel);
         log.info("チャンネル削除完了: channelId={}", channelId);
@@ -176,11 +180,13 @@ public class ChatChannelService {
      * チャンネルをアーカイブする。
      *
      * @param channelId チャンネルID
+     * @param userId    操作ユーザーID（認可チェック用）
      * @return アーカイブされたチャンネルレスポンス
      */
     @Transactional
-    public ChannelResponse archiveChannel(Long channelId) {
+    public ChannelResponse archiveChannel(Long channelId, Long userId) {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
+        checkChannelAdminAccess(channel, userId);
         channel.archive();
         ChatChannelEntity saved = channelRepository.save(channel);
         log.info("チャンネルアーカイブ完了: channelId={}", channelId);
@@ -194,11 +200,13 @@ public class ChatChannelService {
      * F04.2.1 §3.10.1: 解除後に全メンバーへ CHANNEL_UNARCHIVED イベントを配信し、フロントエンドのタブを復元する。
      *
      * @param channelId チャンネルID
+     * @param userId    操作ユーザーID（認可チェック用）
      * @return 更新されたチャンネルレスポンス
      */
     @Transactional
-    public ChannelResponse unarchiveChannel(Long channelId) {
+    public ChannelResponse unarchiveChannel(Long channelId, Long userId) {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
+        checkChannelAdminAccess(channel, userId);
         if (!Boolean.TRUE.equals(channel.getIsArchived())) {
             throw new BusinessException(ChatErrorCode.CHANNEL_NOT_ARCHIVED);
         }
@@ -443,6 +451,30 @@ public class ChatChannelService {
     private void validateNotArchived(ChatChannelEntity channel) {
         if (channel.getIsArchived()) {
             throw new BusinessException(ChatErrorCode.CHANNEL_ARCHIVED);
+        }
+    }
+
+    /**
+     * チャンネル管理操作（更新・削除・アーカイブ）の認可チェック。
+     * チーム/組織チャンネルはADMIN以上、DM/GROUP_DMはチャンネルOWNERのみ許可。
+     */
+    private void checkChannelAdminAccess(ChatChannelEntity channel, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        if (channel.getTeamId() != null) {
+            accessControlService.checkAdminOrAbove(userId, channel.getTeamId(), "TEAM");
+            return;
+        }
+        if (channel.getOrganizationId() != null) {
+            accessControlService.checkAdminOrAbove(userId, channel.getOrganizationId(), "ORGANIZATION");
+            return;
+        }
+        // DM / GROUP_DM: チャンネルのOWNERのみ許可
+        ChatChannelMemberEntity member = memberRepository.findByChannelIdAndUserId(channel.getId(), userId)
+                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED));
+        if (member.getRole() != ChannelMemberRole.OWNER) {
+            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
         }
     }
 
