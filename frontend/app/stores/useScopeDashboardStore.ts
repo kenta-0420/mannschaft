@@ -122,27 +122,54 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
         // 先頭スコープ（存在すれば）。undefined ガードで noUncheckedIndexedAccess に適合。
         const first = result.items[0]
 
-        // 先頭スコープを自動選択（未選択の場合のみ）
-        if (first) {
-          if (scopeType === 'TEAM' && this.selectedTeamId === null) {
-            this.selectedTeamId = first.scopeId
-          } else if (scopeType === 'ORGANIZATION' && this.selectedOrgId === null) {
-            this.selectedOrgId = first.scopeId
+        // 選択中スコープの BIGINT→UUID マイグレーション + フォールバック処理。
+        // scopeId（BIGINT 文字列）と publicId（UUID）の両方でマッチングを行い、
+        // UUID が取得できた場合は localStorage も含めてアップグレードする。
+        if (scopeType === 'TEAM') {
+          if (this.selectedTeamId === null) {
+            // 未選択 → 先頭を選択
+            if (first) {
+              this.selectedTeamId = first.publicId ?? first.scopeId
+              this.persistToStorage()
+            }
+          } else {
+            // BIGINT または UUID どちらでもマッチするアイテムを探す
+            const matchingItem = result.items.find(
+              item => item.scopeId === this.selectedTeamId || item.publicId === this.selectedTeamId,
+            )
+            if (matchingItem) {
+              const uuid = matchingItem.publicId ?? matchingItem.scopeId
+              if (uuid !== this.selectedTeamId) {
+                // BIGINT → UUID アップグレード（localStorage にも保存）
+                this.selectedTeamId = uuid
+                this.persistToStorage()
+              }
+            } else if (first) {
+              // 一覧から消えた（退会・権限喪失）→ 先頭にフォールバック
+              this.selectedTeamId = first.publicId ?? first.scopeId
+              this.persistToStorage()
+            }
           }
-        }
-
-        // 選択中スコープが一覧から消えた場合は先頭へフォールバック（退会・権限喪失対応）
-        if (scopeType === 'TEAM' && this.selectedTeamId !== null) {
-          const exists = result.items.some(item => item.scopeId === this.selectedTeamId)
-          if (!exists && first) {
-            this.selectedTeamId = first.scopeId
-            this.persistToStorage()
-          }
-        } else if (scopeType === 'ORGANIZATION' && this.selectedOrgId !== null) {
-          const exists = result.items.some(item => item.scopeId === this.selectedOrgId)
-          if (!exists && first) {
-            this.selectedOrgId = first.scopeId
-            this.persistToStorage()
+        } else if (scopeType === 'ORGANIZATION') {
+          if (this.selectedOrgId === null) {
+            if (first) {
+              this.selectedOrgId = first.publicId ?? first.scopeId
+              this.persistToStorage()
+            }
+          } else {
+            const matchingItem = result.items.find(
+              item => item.scopeId === this.selectedOrgId || item.publicId === this.selectedOrgId,
+            )
+            if (matchingItem) {
+              const uuid = matchingItem.publicId ?? matchingItem.scopeId
+              if (uuid !== this.selectedOrgId) {
+                this.selectedOrgId = uuid
+                this.persistToStorage()
+              }
+            } else if (first) {
+              this.selectedOrgId = first.publicId ?? first.scopeId
+              this.persistToStorage()
+            }
           }
         }
 

@@ -31,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * F22.1: 横スワイプ・ダッシュボードのチーム/組織タグ表示順サービス。
@@ -169,17 +170,21 @@ public class DashboardScopeTabService {
     private ScopeTabItemResponse buildItem(String scopeType, Long scopeId, int sortOrder) {
         String name;
         String avatarUrl;
+        UUID publicId = null;
         if ("TEAM".equals(scopeType)) {
             TeamEntity team = teamRepository.findById(scopeId).orElse(null);
             name = team != null ? team.getName() : null;
             avatarUrl = team != null ? team.getIconUrl() : null;
+            publicId = team != null ? team.getPublicId() : null;
         } else {
             OrganizationEntity org = organizationRepository.findById(scopeId).orElse(null);
             name = org != null ? org.getName() : null;
             avatarUrl = org != null ? org.getIconUrl() : null;
+            publicId = org != null ? org.getPublicId() : null;
         }
         return ScopeTabItemResponse.builder()
                 .scopeId(scopeId)
+                .publicId(publicId)
                 .scopeType(scopeType)
                 .name(name)
                 .avatarUrl(avatarUrl)

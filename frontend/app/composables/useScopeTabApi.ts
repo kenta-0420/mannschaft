@@ -26,6 +26,7 @@ import type {
 
 interface RawScopeTabItem {
   scope_id: number
+  public_id: string | null // UUID string（ダッシュボード API の pathVariable に使用）
   scope_type: ScopeTabType
   name: string
   avatar_url: string | null
@@ -63,7 +64,10 @@ interface RawActionRequiredSummary {
 
 function toScopeTabItem(r: RawScopeTabItem): ScopeTabItem {
   return {
+    // scopeId は BIGINT のまま保持する（PUT /scope-tabs/order の scopeId は Long 型）。
+    // ダッシュボード API の pathVariable には publicId（UUID）を使用する。
     scopeId: String(r.scope_id),
+    publicId: r.public_id ?? null,
     scopeType: r.scope_type,
     name: r.name,
     avatarUrl: r.avatar_url,
