@@ -14,6 +14,7 @@ import com.mannschaft.app.todo.dto.UpdateMilestoneRequest;
 import com.mannschaft.app.todo.dto.UpdateProjectRequest;
 import com.mannschaft.app.todo.service.ProjectService;
 import com.mannschaft.app.todo.service.TodoService;
+import com.mannschaft.app.team.service.TeamService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -32,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
@@ -45,6 +47,7 @@ public class TeamProjectController {
 
     private final ProjectService projectService;
     private final TodoService todoService;
+    private final TeamService teamService;
 
 
     /**
@@ -54,12 +57,13 @@ public class TeamProjectController {
     @Operation(summary = "プロジェクト一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<ProjectResponse>> listProjects(
-            @PathVariable Long teamId,
+            @PathVariable UUID teamId,
             @RequestParam(defaultValue = "ACTIVE") String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
         return ResponseEntity.ok(projectService.listProjects(
-                TodoScopeType.TEAM, teamId, ProjectStatus.valueOf(status), page, size));
+                TodoScopeType.TEAM, internalTeamId, ProjectStatus.valueOf(status), page, size));
     }
 
     /**
@@ -69,10 +73,11 @@ public class TeamProjectController {
     @Operation(summary = "プロジェクト作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ProjectResponse>> createProject(
-            @PathVariable Long teamId,
+            @PathVariable UUID teamId,
             @Valid @RequestBody CreateProjectRequest request) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(projectService.createProject(TodoScopeType.TEAM, teamId, request, SecurityUtils.getCurrentUserId()));
+                .body(projectService.createProject(TodoScopeType.TEAM, internalTeamId, request, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -82,7 +87,7 @@ public class TeamProjectController {
     @Operation(summary = "プロジェクト詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ProjectDetailResponse>> getProject(
-            @PathVariable Long teamId,
+            @PathVariable UUID teamId,
             @PathVariable Long id) {
         return ResponseEntity.ok(projectService.getProject(id));
     }
@@ -94,7 +99,7 @@ public class TeamProjectController {
     @Operation(summary = "プロジェクト更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<ProjectResponse>> updateProject(
-            @PathVariable Long teamId,
+            @PathVariable UUID teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateProjectRequest request) {
         return ResponseEntity.ok(projectService.updateProject(id, request));
@@ -107,7 +112,7 @@ public class TeamProjectController {
     @Operation(summary = "プロジェクト削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteProject(
-            @PathVariable Long teamId,
+            @PathVariable UUID teamId,
             @PathVariable Long id) {
         projectService.deleteProject(id);
         return ResponseEntity.noContent().build();
@@ -120,7 +125,7 @@ public class TeamProjectController {
     @Operation(summary = "プロジェクト手動完了")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "完了成功")
     public ResponseEntity<ApiResponse<ProjectResponse>> completeProject(
-            @PathVariable Long teamId,
+            @PathVariable UUID teamId,
             @PathVariable Long id) {
         return ResponseEntity.ok(projectService.completeProject(id));
     }
@@ -132,7 +137,7 @@ public class TeamProjectController {
     @Operation(summary = "プロジェクト再開")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再開成功")
     public ResponseEntity<ApiResponse<ProjectResponse>> reopenProject(
-            @PathVariable Long teamId,
+            @PathVariable UUID teamId,
             @PathVariable Long id) {
         return ResponseEntity.ok(projectService.reopenProject(id));
     }
@@ -146,7 +151,7 @@ public class TeamProjectController {
     @Operation(summary = "マイルストーン一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<MilestoneResponse>>> listMilestones(
-            @PathVariable Long teamId,
+            @PathVariable UUID teamId,
             @PathVariable Long id) {
         return ResponseEntity.ok(projectService.listMilestones(id));
     }
@@ -158,7 +163,7 @@ public class TeamProjectController {
     @Operation(summary = "マイルストーン作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<MilestoneResponse>> createMilestone(
-            @PathVariable Long teamId,
+            @PathVariable UUID teamId,
             @PathVariable Long id,
             @Valid @RequestBody CreateMilestoneRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -172,7 +177,7 @@ public class TeamProjectController {
     @Operation(summary = "マイルストーン更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<MilestoneResponse>> updateMilestone(
-            @PathVariable Long teamId,
+            @PathVariable UUID teamId,
             @PathVariable Long id,
             @PathVariable Long mid,
             @Valid @RequestBody UpdateMilestoneRequest request) {
@@ -186,7 +191,7 @@ public class TeamProjectController {
     @Operation(summary = "マイルストーン削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteMilestone(
-            @PathVariable Long teamId,
+            @PathVariable UUID teamId,
             @PathVariable Long id,
             @PathVariable Long mid) {
         projectService.deleteMilestone(id, mid);
@@ -200,7 +205,7 @@ public class TeamProjectController {
     @Operation(summary = "マイルストーン完了")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "完了成功")
     public ResponseEntity<ApiResponse<MilestoneResponse>> completeMilestone(
-            @PathVariable Long teamId,
+            @PathVariable UUID teamId,
             @PathVariable Long id,
             @PathVariable Long mid) {
         return ResponseEntity.ok(projectService.completeMilestone(id, mid));
@@ -213,7 +218,7 @@ public class TeamProjectController {
     @Operation(summary = "プロジェクト内TODO一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TodoResponse>>> listProjectTodos(
-            @PathVariable Long teamId,
+            @PathVariable UUID teamId,
             @PathVariable Long id) {
         return ResponseEntity.ok(todoService.listProjectTodos(id));
     }
