@@ -347,7 +347,10 @@ class ChatMemberServiceTest {
                     .channelType(ChannelType.TEAM_PUBLIC).name("test").build();
 
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
-            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(true);
+            // 操作者はOWNER
+            given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID))
+                    .willReturn(java.util.Optional.of(ChatChannelMemberEntity.builder()
+                            .channelId(CHANNEL_ID).userId(USER_ID).role(ChannelMemberRole.OWNER).build()));
             given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, newUser)).willReturn(false);
             given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, existingUser)).willReturn(true);
             given(memberRepository.save(any(ChatChannelMemberEntity.class)))
