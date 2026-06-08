@@ -5,8 +5,13 @@
  * チームのお知らせを全件表示する。カーソルページング対応。
  * ADMIN の場合: ピン留め・削除・お知らせ追加ボタンを表示。
  *
+ * F08.9 P4b: アイテムクリック時にペイウォール判定を行い、
+ * ロックされている場合は PaywallLock UI を表示する（モーダル）。
+ *
  * 権限: チームメンバー以上（middleware: auth で保護）
  */
+import type { GateCheckResponse } from '~/types/payment'
+
 definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
@@ -27,7 +32,15 @@ const {
   markAllAsRead,
 } = useAnnouncementFeed('TEAM', teamId)
 
+const { checkAccess } = useContentGateApi()
+
 const confirmDialog = useConfirm()
+
+// ── ペイウォールモーダル状態 ──────────────────────────────────
+const paywallModalVisible = ref(false)
+const paywallGateLoading = ref(false)
+const paywallGateResult = ref<GateCheckResponse | null>(null)
+const paywallPendingUrl = ref<string | null>(null)
 
 onMounted(async () => {
   await loadPermissions()
@@ -43,8 +56,29 @@ async function loadMore() {
   })
 }
 
-/** アイテムクリック: 既読マーク → 元コンテンツへ遷移 */
+/** アイテムクリック: ペイウォール判定 → 既読マーク → 元コンテンツへ遷移 */
 async function onItemClick(item: (typeof feed.value)[number]) {
+  // F08.9 P4b: お知らせコンテンツ（ANNOUNCEMENT）のペイウォール判定
+  paywallGateLoading.value = true
+  paywallGateResult.value = null
+  paywallPendingUrl.value = item.sourceUrl
+  try {
+    const res = await checkAccess('ANNOUNCEMENT', item.id)
+    paywallGateResult.value = res.data
+  } catch {
+    // ゲートチェック失敗時は fail-safe: accessible=true として遷移を許可する
+    paywallGateResult.value = { accessible: true, titleHidden: false, requiredItems: [] }
+  } finally {
+    paywallGateLoading.value = false
+  }
+
+  if (paywallGateResult.value && !paywallGateResult.value.accessible) {
+    // ロックされている場合: モーダルでペイウォールUIを表示
+    paywallModalVisible.value = true
+    return
+  }
+
+  // アクセス可能: 既読マーク → 遷移
   if (!item.isRead) {
     await markAsRead(item.id)
   }
@@ -144,5 +178,17 @@ function onDeleteConfirm(id: number) {
     </div>
 
     <ConfirmDialog />
+
+    <!-- F08.9 P4b: ペイウォールモーダル -->
+    <Dialog
+      v-model:visible="paywallModalVisible"
+      :header="$t('payment.paywall.locked')"
+      :modal="true"
+      :closable="true"
+      :draggable="false"
+      class="w-full max-w-md"
+    >
+      <PaymentPaywallLock :loading="paywallGateLoading" :gate-result="paywallGateResult" />
+    </Dialog>
   </div>
 </template>
