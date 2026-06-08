@@ -83,7 +83,9 @@
         "empty": "没有可切换的孩子",
         "blocked": "因年龄限制无法切换",
         "success": "监护切换已开始",
-        "endSuccess": "监护切换已结束"
+        "endSuccess": "监护切换已结束",
+        "cancelButton": "取消",
+        "startButton": "开始"
       },
       "independence": {
         "title": "独立过渡",

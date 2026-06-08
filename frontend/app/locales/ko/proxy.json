@@ -83,7 +83,9 @@
         "empty": "전환 가능한 자녀가 없습니다",
         "blocked": "연령 제한으로 전환 불가",
         "success": "후견 전환을 시작했습니다",
-        "endSuccess": "후견 전환을 종료했습니다"
+        "endSuccess": "후견 전환을 종료했습니다",
+        "cancelButton": "취소",
+        "startButton": "시작"
       },
       "independence": {
         "title": "자립 전환",

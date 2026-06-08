@@ -83,7 +83,9 @@
         "empty": "No switchable children available",
         "blocked": "Age restriction — switch not allowed",
         "success": "Guardianship switch started",
-        "endSuccess": "Guardianship switch ended"
+        "endSuccess": "Guardianship switch ended",
+        "cancelButton": "Cancel",
+        "startButton": "Start"
       },
       "independence": {
         "title": "Independence Transition",

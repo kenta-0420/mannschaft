@@ -83,7 +83,9 @@
         "empty": "切替可能な子がいません",
         "blocked": "年齢制限で切替不可",
         "success": "後見切替を開始しました",
-        "endSuccess": "後見切替を終了しました"
+        "endSuccess": "後見切替を終了しました",
+        "cancelButton": "キャンセル",
+        "startButton": "開始する"
       },
       "independence": {
         "title": "自立移行",

@@ -83,7 +83,9 @@
         "empty": "No hay niños disponibles para cambio",
         "blocked": "Cambio no permitido por restricción de edad",
         "success": "Cambio de tutela iniciado",
-        "endSuccess": "Cambio de tutela finalizado"
+        "endSuccess": "Cambio de tutela finalizado",
+        "cancelButton": "Cancelar",
+        "startButton": "Iniciar"
       },
       "independence": {
         "title": "Transición a la independencia",
