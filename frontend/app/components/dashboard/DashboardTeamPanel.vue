@@ -8,6 +8,9 @@
  */
 import type { TeamDashboardResponse } from '~/types/dashboard-scope'
 
+/** UUID v4/v7 形式判定。BIGINT 文字列（"92" 等）を除外して 400 を防ぐ。 */
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const store = useScopeDashboardStore()
 const { getTeamDashboard } = useDashboardApi()
 
@@ -36,8 +39,12 @@ async function load(teamId: string) {
 watch(
   selectedTeamId,
   (id) => {
-    if (id !== null) load(id)
-    else data.value = null
+    if (id === null) {
+      data.value = null
+    } else if (UUID_REGEX.test(id)) {
+      load(id)
+    }
+    // UUID 形式でない（旧 BIGINT）場合は loadTabs 完了後に UUID に更新されるため待機
   },
   { immediate: true },
 )
