@@ -108,8 +108,8 @@ function onPageChange(event: { page: number }) {
   fetchTeams()
 }
 
-function onTeamCreated(entity: { id: number; publicId: string; name: string }) {
-  navigateTo(`/teams/${entity.publicId}`)
+function onTeamCreated(entity: { id: string; name: string }) {
+  navigateTo(`/teams/${entity.id}`)
 }
 
 function formatLocation(prefecture: string | null, city: string | null): string {
