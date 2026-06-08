@@ -45,6 +45,9 @@ public final class SportEventCatalog {
      * @return カタログに含まれていれば true
      */
     public static boolean isAllowed(Sport sport, MatchEventType eventType) {
+        if (sport == null) {
+            return false;
+        }
         Set<MatchEventType> allowed = CATALOG.get(sport);
         return allowed != null && allowed.contains(eventType);
     }
@@ -56,6 +59,9 @@ public final class SportEventCatalog {
      * @return 利用可能集合（未登録競技は空集合）
      */
     public static Set<MatchEventType> allowedEventTypes(Sport sport) {
+        if (sport == null) {
+            return Set.of();
+        }
         return CATALOG.getOrDefault(sport, Set.of());
     }
 }

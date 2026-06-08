@@ -151,7 +151,25 @@ public enum ReferenceType {
      *
      * <p>使用カラム: {@code corkboard_cards.reference_id_uuid} (UUIDv7)
      */
-    RESIDENT_ACTIVITY_SNAPSHOT;
+    RESIDENT_ACTIVITY_SNAPSHOT,
+
+    // ---------------------------------------------------------------------
+    // F08.10 試合記録・分析 (matches は UUIDv7 主キー)
+    // ---------------------------------------------------------------------
+
+    /**
+     * 試合 (F08.10 / {@code MatchVisibilityResolver} が実装).
+     *
+     * <p>{@code matches} テーブル（UUIDv7 / BINARY(16) 主キー）の可視性判定に用いる。
+     * 閲覧可視性は独自述語を書かず {@code MatchVisibilityResolver} 経由で F00 正準に委譲する
+     * （03_permissions_and_recording_modes.md §C.3.2）。{@link #idKind()} は {@link IdKind#UUID_V7}。</p>
+     *
+     * <p><b>コルクボード引用は対象外</b>: match はコルクボード（引用・ピン留め）の対象に含めない方針のため、
+     * 引用先 ID を保持する {@code corkboard_cards.reference_id_uuid} カラムを使う用途は当面無い
+     * （引用要件が顕在化したら追加する）。本値は {@code ContentVisibilityChecker.canViewUuid} の
+     * 単発・バッチ判定経路でのみ参照される。</p>
+     */
+    MATCH;
 
     /**
      * 本 reference_type が参照する主キー型を返す。
@@ -171,7 +189,8 @@ public enum ReferenceType {
         return switch (this) {
             case SUCCESSION_PRE_REGISTRATION,
                  SUCCESSION_COVENANTS,
-                 RESIDENT_ACTIVITY_SNAPSHOT -> IdKind.UUID_V7;
+                 RESIDENT_ACTIVITY_SNAPSHOT,
+                 MATCH -> IdKind.UUID_V7;
             default -> IdKind.BIGINT;
         };
     }
