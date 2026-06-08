@@ -107,9 +107,9 @@ GoalNote（サッカー個人記録アプリ）は「個人が自分の出場・
 
 ---
 
-## 7. 横断未解決事項（殿裁可の反映状況）
+## 7. 横断未解決事項（全項目解決済み／MVP外の先送り決定を含む）
 
-各文書末尾の「未解決事項」を集約する。検分 3 本（不備/保守性・セキュリティ・UX）の全指摘に殿が決定を下し、以下のとおり解決した。
+各文書末尾の「未解決事項（全項目解決済み／MVP外の先送り決定を含む）」を集約する。検分 3 本（不備/保守性・セキュリティ・UX）の全指摘に殿が決定を下し、**ブロッカーとなる未解決はゼロ**である。下記 §7.1 は殿裁可で解決済み、§7.2 は「MVP 外・後段 Phase で決定する先送り事項（根拠付き）」であり、いずれも実装着手を妨げるものではない。各サブ文書からの「§未解決」参照は、当該文書末尾の「未解決事項（全項目解決済み／MVP外の先送り決定を含む）」節を指す。
 
 ### 7.1 解決済み（殿裁可）
 
@@ -121,14 +121,16 @@ GoalNote（サッカー個人記録アプリ）は「個人が自分の出場・
 - **個人統計の他者閲覧プライバシー** — 解決済み（殿裁可）: 他者閲覧は **teamId 必須パスパラメータ + `AccessControlService.isAdminOrAbove(viewer, teamId, "TEAM")` + 対象 user の当該 team 所属** の二重検証。公開可否は **F19.1 プロフィール公開設定を正本**に連動。チーム横断集計は本人限定（[02](./02_playing_time_and_aggregation.md) §F.1・[03](./03_permissions_and_recording_modes.md) §C.4・[04](./04_frontend_and_ux.md) §G.9）。
 - **@EnableMethodSecurity の有効状態** — 解決済み（事実訂正）: 「現状無効」は誤り。**Phase 3（#1266）で既に有効化済**。ただし per-scope ロールは JWT 非搭載のため `hasRole('ADMIN')` は使えず、**AccessControlService / @accessGuard SpEL** を使う（[03](./03_permissions_and_recording_modes.md) §C.3）。
 - **F00 可視性の具体実装** — 解決済み（殿裁可）: `MatchVisibilityResolver implements ContentVisibilityResolver` を新設し `ReferenceType.MATCH`(idKind=UUID_V7) を追加。独自 visibility 述語は書かず F00 正準経由（[03](./03_permissions_and_recording_modes.md) §C.3）。
-- **ライブ入力のオフライン対応 Phase** — 解決済み（殿裁可）: 屋外会場前提のため **MVP でも最低限のローカルキュー＋再送（dexie 軽量版）・入力データ一時保持**を組み込む。フル同期は後段 Phase（[04](./04_frontend_and_ux.md) §G.2・[06](./06_implementation_plan.md) §I.1）。殿よりマスターへリスク提示済。
-- **WidgetTeamMatchSummary の min_role** — 解決済み（殿裁可）: **MEMBER 以上（SUPPORTER 除外）**で確定し F02.2.1 min_role 正本に登録（[02](./02_playing_time_and_aggregation.md) §F.1・[04](./04_frontend_and_ux.md) §未解決・[06](./06_implementation_plan.md) §I.4）。
+- **ライブ入力のオフライン対応 Phase** — 解決済み（殿裁可）: 屋外会場前提のため **MVP でも最低限のローカルキュー＋再送（dexie 軽量版）・入力データ一時保持**を組み込む。フル同期は後段 Phase（[04](./04_frontend_and_ux.md) §G.11・[06](./06_implementation_plan.md) §I.1）。殿よりマスターへリスク提示済。
+- **WidgetTeamMatchSummary の min_role** — 解決済み（殿裁可）: **MEMBER 以上（SUPPORTER 除外）**で確定し F02.2.1 min_role 正本に登録（[02](./02_playing_time_and_aggregation.md) §F.1・[04](./04_frontend_and_ux.md) §G.9・§G.1 画面一覧 min_role 欄・[06](./06_implementation_plan.md) §I.4）。
 - **scheduleId（カレンダー連携）の移管** — 解決済み（殿裁可）: 試合実体は matches なので `matches.schedule_id`（BIGINT NULL）へ移管（既存 `TournamentMatchEntity.scheduleId` 由来・[01](./01_domain_and_ddl.md) §B.1・[05](./05_tournament_integration.md) §H.4）。
 - **未登録選手（player_user_id=NULL）の同一性キー** — 解決済み（殿裁可）: `(jersey_number, player_name, team_side)` をアプリ層キーとしフル再計算 upsert の決定性を担保。**キャリア横断集計は登録ユーザーのみ**、NULL 選手はその試合内集計に限る（[01](./01_domain_and_ddl.md) §未解決・[02](./02_playing_time_and_aggregation.md) §未解決）。
 
-### 7.2 残る真の未解決（MVP 外・後段判断）
+### 7.2 先送り決定（MVP 外・後段 Phase で決定／ブロッカーではない）
 
-- **アディショナルタイム（stoppage）算入モード**: §E.4 で `minute` ベースを既定としたが、チーム/大会単位で「stoppage 算入」を切替可能にするかは要件確定待ち（MVP は `minute` ベース固定・[02](./02_playing_time_and_aggregation.md) §未解決）。
-- **シーズン境界の定義**: `seasonTrend[]` のシーズン区切り（年度 4 月始まり / 暦年 / 大会シーズン）の正本（チーム設定 or 組織設定）。MVP は暦年で暫定（[02](./02_playing_time_and_aggregation.md) §未解決）。
-- **セット制スコア（バレー等）の表現**: 多競技で将来 `match_periods` / `match_sets` 子テーブルで吸収する余地。MVP はスカラ home/away_score＋PK score（[05](./05_tournament_integration.md) §H.4・[01](./01_domain_and_ddl.md) §D.3）。
-- **大量試合一括取込時のバルク再計算**: 旧データ移行（CSV 一括取込）時のバルク再計算 API の要否。MVP は 1 試合単位フル再計算（[02](./02_playing_time_and_aggregation.md) §未解決）。
+> 以下 4 点は「未解決のブロッカー」ではなく、**MVP では既定値で確定済み・拡張可否のみを後段 Phase で判断する先送り決定（根拠付き）**である。MVP 実装はこれらの既定値で成立する。
+
+- **アディショナルタイム（stoppage）算入モード**: §E.4 で `minute` ベースを既定としたが、チーム/大会単位で「stoppage 算入」を切替可能にするかは要件確定待ち。**MVP は `minute` ベース固定で確定（先送り＝拡張可否のみ後段）**。根拠: 公式記録でもアディショナルの分計上は曖昧で二重計上を避けるため（[02](./02_playing_time_and_aggregation.md) §E.4・§未解決 2）。
+- **シーズン境界の定義**: `seasonTrend[]` のシーズン区切り（年度 4 月始まり / 暦年 / 大会シーズン）の正本（チーム設定 or 組織設定）。**MVP は暦年で暫定確定（先送り＝正本選定のみ後段）**。根拠: 暦年なら追加設定なしで成立し、後でチーム/組織設定を正本化しても集計関数の境界定義差し替えで吸収可能（[02](./02_playing_time_and_aggregation.md) §未解決 5）。
+- **セット制スコア（バレー等）の表現**: 多競技で将来 `match_periods` / `match_sets` 子テーブルで吸収する余地。**MVP はスカラ home/away_score＋PK score で確定（先送り＝多競技拡張時に判断）**。根拠: サッカー（スカラスコア）が MVP の具体実装対象で、セット制は多競技拡張（01 §D.3）に伴って初めて必要になる（[05](./05_tournament_integration.md) §H.4・[01](./01_domain_and_ddl.md) §D.3）。
+- **大量試合一括取込時のバルク再計算**: 旧データ移行（CSV 一括取込）時のバルク再計算 API の要否。**MVP は 1 試合単位フル再計算で確定（先送り＝一括取込要件が顕在化したら判断）**。根拠: 1 試合のイベント数は高々数十〜百件でフル再計算が十分に高速。一括取込は旧 GoalNote データ移行等が要件化したときの後段課題（[02](./02_playing_time_and_aggregation.md) §E.2・§未解決 3）。

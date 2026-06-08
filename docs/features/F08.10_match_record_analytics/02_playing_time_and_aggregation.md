@@ -69,11 +69,12 @@ on MatchEvent change (create/update/delete) for matchId:
 - この再計算は `@Transactional`（match ドメイン内に閉じる・原則 5）。
 - パフォーマンス: 1 試合のイベント数は高々数十〜百件なのでフル再計算で十分。大量試合の一括取込時のみバルク再計算を別途検討（§未解決）。
 
-### E.2a PK 戦スコアの分離【要改善の根治】
+### E.2a PK 戦スコアの分離・延長得点の本戦合算【要改善の根治】
 
 - **本戦スコア（home/away_score）と PK 戦スコア（home/away_penalty_score）は別**（01 §B.1）。
-- 本戦スコア整合チェック（§E.5）は **GOAL ＋ PENALTY_GOAL（本戦の自サイド）＋ 相手 OWN_GOAL** のみで突合する。
-- **PK 戦（`PENALTY_SHOOTOUT` イベント）は本戦スコア集計の対象外**であり、`home/away_penalty_score` にのみ加算する。個人キャリアの `goals` にも PK 戦は含めない（本戦得点のみ）。
+- **延長中の `GOAL`/`PENALTY_GOAL` は本戦スコア（home/away_score）に加算する。延長別カラムは持たない**（01 §B.1 延長戦スコアの扱い）。`period`（`EXTRA_FIRST`/`EXTRA_SECOND`）に関わらず、本戦得点イベントは本戦スコアへ合算する（最終スコア「延長の末 3-2」は 3-2 が正）。本戦スコア整合チェック（§E.5）の対象に延長得点も含める。
+- 本戦スコア整合チェック（§E.5）は **GOAL ＋ PENALTY_GOAL（本戦・延長を問わず自サイド）＋ 相手 OWN_GOAL** で突合する。
+- **PK 戦（`PENALTY_SHOOTOUT` イベント）のみ本戦スコア集計の対象外**であり、`home/away_penalty_score` にのみ加算する。個人キャリアの `goals` にも PK 戦は含めない（本戦得点＝延長得点を含む）。
 
 ### E.3 COMPLETED 遷移時の確定再計算
 
@@ -136,6 +137,8 @@ GET /api/v1/users/{userId}/teams/{teamId}/match-stats?from=&to=&kind=&sport=  --
 | from / to | 集計期間（kickoff_at 基準・ISO 日付） |
 | kind | PRACTICE/FRIENDLY/TOURNAMENT/LEAGUE 絞り込み（任意） |
 | sport | 競技絞り込み（任意・既定 SOCCER） |
+
+> **タイムゾーン方針**: `kickoff_at` 基準の `from`/`to` 絞り込み・`monthlyTrend` の月境界・シーズン境界（§F.1 末尾の `seasonTrend[]`・§未解決 5）は、**プロジェクトの既存 TZ 方針（`matches.kickoff_at` は `LocalDateTime` ＝サーバー TZ）に従う**。アカウント別 TZ 表示は FE 表示層（`useDatetime`）で行い、集計の境界判定はサーバー TZ で一貫させる（タイムゾーン根治シリーズの方針を踏襲）。
 
 #### 認可・プライバシー（殿裁可）
 
@@ -220,10 +223,10 @@ GET /api/v1/matches/{matchId}/appearances  -- 出場時間一覧（両サイド�
 
 ---
 
-## 未解決事項
+## 未解決事項（全項目解決済み／MVP外の先送り決定を含む）
 
 1. **未登録選手のキャリア集計** — 解決済み（殿裁可）: `player_user_id=NULL`（手入力選手名）は **キャリア横断統計（F.1）の対象外**（userId が無い）。チーム統計（F.3）・タイムラインでは `(jersey_number, player_name, team_side)`（01 §D.4）ベースでその試合内に限り集計する。アプリ登録への誘導 UX で緩和する。
-2. **アディショナルタイム算入モード**: §E.4 で `minute` ベースを既定としたが、チーム/大会単位で「stoppage 算入」を切替可能にするかは要件確定待ち（**MVP は `minute` ベース固定**・残る未解決）。
-3. **大量試合一括取込時の再計算性能**: §E.2 のフル再計算は 1 試合単位では十分だが、CSV 一括取込（旧 GoalNote データ移行等）ではバルク再計算 API の要否を後段判断（**MVP は 1 試合単位**・残る未解決）。
+2. **アディショナルタイム算入モード**: §E.4 で `minute` ベースを既定としたが、チーム/大会単位で「stoppage 算入」を切替可能にするかは要件確定待ち（**MVP は `minute` ベース固定で確定**・拡張可否のみ後段判断する**先送り決定＝ブロッカーではない**）。
+3. **大量試合一括取込時の再計算性能**: §E.2 のフル再計算は 1 試合単位では十分だが、CSV 一括取込（旧 GoalNote データ移行等）ではバルク再計算 API の要否を後段判断（**MVP は 1 試合単位フル再計算で確定**・**先送り決定＝ブロッカーではない**）。
 4. **goalsPer90 の分母ゼロ** — 解決済み（殿裁可）: totalMinutes=0 のとき goalsPer90 は **NULL（未定義）**として返す（0 除算を握りつぶさない）。FE 表示は「—」（[04](./04_frontend_and_ux.md) §G.8）。
-5. **シーズン境界の定義**: `seasonTrend[]` のシーズン区切り（年度 4 月始まり / 暦年 / 大会シーズン）。チーム設定 or 組織設定のどれを正本にするか後段判断（**MVP は暦年で暫定**・残る未解決）。
+5. **シーズン境界の定義**: `seasonTrend[]` のシーズン区切り（年度 4 月始まり / 暦年 / 大会シーズン）。チーム設定 or 組織設定のどれを正本にするか後段判断（**MVP は暦年で暫定確定**・正本選定のみ後段の**先送り決定＝ブロッカーではない**）。

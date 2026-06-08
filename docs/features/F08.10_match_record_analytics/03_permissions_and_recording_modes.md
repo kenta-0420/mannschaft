@@ -54,8 +54,12 @@
 
 - ただし **per-scope ロール（チーム ADMIN/DEPUTY）は JWT に搭載されていない**ため、`@PreAuthorize("hasRole('ADMIN')")` のような JWT 権限ベースの SpEL は使えない（JWT に per-scope の ADMIN は無い）。
 - per-scope の認可は **`AccessControlService` / `@accessGuard` 形式の SpEL ガード**（`docs/security/03_role_authority_model.md §3.3`）を使う。
-  - 例: `@PreAuthorize("@accessGuard.isAdminOrAbove(#teamId, 'TEAM')")`
-- **二重防御**: 第一防御は Service 層で `AccessControlService` を明示呼出し、第二防御は Controller の `@PreAuthorize`（@accessGuard SpEL）。認可は `MatchAccessService`（match ドメイン）に集約し Controller から委譲する。
+  - **実コードの `AccessGuard` 公開メソッドは第一引数が `Authentication`**: `isScopeAdmin(authentication, scopeId, scopeType)` / `isScopeMember(authentication, scopeId, scopeType)` / `isScopeStrictAdmin(authentication, scopeId, scopeType)` / `hasScopePermission(authentication, scopeId, scopeType, permission)`。`isAdminOrAbove(...)` という `@accessGuard` メソッドは**実在しない**（それは Service 層 `AccessControlService` のメソッド名）。
+  - 例（@PreAuthorize 第二防御）: `@PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")`
+- **二重防御の使い分け**:
+  - **第一防御（Service 層）**: `AccessControlService.isAdminOrAbove(userId, teamId, "TEAM")` 等を `MatchAccessService` から明示呼出し。
+  - **第二防御（Controller の `@PreAuthorize`）**: `@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')` 等の SpEL ガード（第一引数 `authentication`）。
+  - 認可ロジックは `MatchAccessService`（match ドメイン）に集約し Controller から委譲する。
 
 > **既存 tournament の無防備パターンを継承しない**: 既存 `com.mannschaft.app.tournament.MatchController` / `MatchService` は `@PreAuthorize` 無し・org 絞り込み無しで IDOR の温床である（[05](./05_tournament_integration.md) §H.4 で `FixtureController` へ改称・認可付与）。**本機能はこの無防備パターンを継承せず**、全エンドポイントに二重防御と IDOR チェーンを必須とする。
 
@@ -65,6 +69,7 @@
 
 - **`MatchVisibilityResolver implements ContentVisibilityResolver<…>` を新設**（`com.mannschaft.app.match`・実装は `backend/.../common/visibility/ContentVisibilityResolver.java` の規約に沿う）。
 - **`ReferenceType.MATCH`（idKind=`UUID_V7`）を追加**（matches の PK は UUIDv7 / BINARY(16)）。
+  - **実装注記**: `ReferenceType.idKind()` の switch に `MATCH = UUID_V7` ケースを追加する必要がある（漏れると idKind 解決が `fail-closed` になり可視性判定が機能しない）。なお **match はコルクボード（引用・ピン留め）の対象外**のため、引用先 ID を保持する `reference_id_uuid` カラムの追加は**当面不要**（コルクボード引用が match を対象に含める要件が顕在化したら追加する）。
 - matches は UUIDv7 主キーなので、`ContentVisibilityResolver` の **UUID 経路** `canViewUuid(UUID, Long)` / `filterAccessibleUuid(Collection<UUID>, Long)` を実装する（Long 経路はデフォルトのまま `UnsupportedOperationException`）。
 - `ContentVisibilityChecker` のコンストラクタ・ディスパッチ表に `MatchVisibilityResolver` を**自動登録**（Spring Bean として注入され `referenceType()` をキーに登録される）。
 - **`MatchAccessService.canView` は必ずこの Resolver / Checker へ委譲**する（独自述語禁止）。
@@ -146,7 +151,7 @@ boolean canView(Long userId, UUID matchId);                 // F00 MatchVisibili
 
 ---
 
-## 未解決事項
+## 未解決事項（全項目解決済み／MVP外の先送り決定を含む）
 
 1. **共同記録モードの編集競合** — 解決済み（殿裁可）: 楽観ロック粒度は**イベント行単位**を優先。スコアキャッシュは `matches.version` 非依存（アトミック増減 or 読取時 GOAL 集計導出）。フル再計算は `matches.version` に触れず appearances のみ更新（02 §E.2）。ライブ入力中の 409 リトライ UX は [04](./04_frontend_and_ux.md) §G.2（G.7）。
 2. **記録係の権限源泉** — 解決済み（殿裁可・MVP 方針）: `scorekeeper_user_id` を「作成者が任意ユーザーを記録係指定」とする（前者）。会場運営ロール（組織レベルの記録係ロール）新設は後段の余地として残すが MVP 外。

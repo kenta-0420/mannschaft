@@ -116,9 +116,9 @@ CREATE TABLE matches (
     venue VARCHAR(200) NULL,                      -- 会場
     duration_minutes SMALLINT UNSIGNED NULL,      -- 試合長（分・前後半90＋延長の試合通算・出場時間 out 既定値に使用・02 §E）
     period_format VARCHAR(32) NULL,               -- 試合形式（'HALVES_45'/'QUARTERS_10' 等・D §PeriodType と対応）
-    home_score SMALLINT UNSIGNED NULL,            -- ホーム本戦スコア（正本・GOAL 集計と整合チェック・02 §E）
-    away_score SMALLINT UNSIGNED NULL,            -- アウェイ本戦スコア（正本）
-    home_penalty_score SMALLINT UNSIGNED NULL,    -- ホーム PK 戦スコア（本戦と分離・02 §E.2）
+    home_score SMALLINT UNSIGNED NULL,            -- ホーム本戦スコア（正本・延長得点も合算・GOAL 集計と整合チェック・02 §E.2a）
+    away_score SMALLINT UNSIGNED NULL,            -- アウェイ本戦スコア（正本・延長得点も合算）
+    home_penalty_score SMALLINT UNSIGNED NULL,    -- ホーム PK 戦スコア（本戦と分離・02 §E.2a）
     away_penalty_score SMALLINT UNSIGNED NULL,    -- アウェイ PK 戦スコア（本戦と分離）
     status VARCHAR(16) NOT NULL DEFAULT 'SCHEDULED', -- SCHEDULED/IN_PROGRESS/COMPLETED/POSTPONED/CANCELLED
     scorekeeper_user_id BIGINT NULL,              -- 記録係ユーザー（公式戦・user ドメイン ID 参照・03 §C）
@@ -158,6 +158,8 @@ CREATE TABLE matches (
 > **fixture が BIGINT である理由**: tournament ドメインは全テーブルが `BaseEntity`（BIGINT AUTO_INCREMENT）で構成されており、CLAUDE.md 原則 6 は「**既存テーブルの BIGINT ID は変更しない**」と定める。本機能のために tournament を UUID 全面移行することは超侵襲かつ原則違反になるため、fixture（旧 `tournament_matches` の縮退形）は BIGINT のまま。**matches からは BIGINT で fixture を ID 参照する**（`tournament_fixture_id BIGINT NULL`）。新規 match ドメインは原則 6 に従い UUIDv7、tournament は据え置き、という非対称はクロスドメイン ID 参照（原則 1・FK なし）なので問題ない。
 
 > **enum の保持方式**: 既存 tournament ドメインは `@Enumerated(EnumType.STRING)`（`VARCHAR`）を採用している。本機能もそれに揃え `kind`/`status`/`sport` は `VARCHAR`＋`@Enumerated(STRING)` とする（MySQL `ENUM` 型はマイグレーション拡張時の `ALTER` コストが高いため、拡張が見込まれる列は VARCHAR を採る）。`home_away` のみ値が固定的なので `ENUM` でも可（実装時に統一方針へ寄せる）。
+
+> **延長戦スコアの扱い（MVP 方針・延長別カラムは持たない）**: 既存 `TournamentMatchEntity` は `homeExtraScore`/`awayExtraScore` を本戦と別管理していたが、新 `matches` は**延長別カラムを持たない**。延長中の `GOAL`/`PENALTY_GOAL` イベントは本戦スコア（`home_score`/`away_score`）に**合算**する（サッカーの最終スコア「延長の末 3-2」は 3-2 が正＝合算が正しいセマンティクス）。**PK 戦のみ** `home_penalty_score`/`away_penalty_score` で本戦と別管理する。延長別の内訳が必要になった場合は将来 `match_periods`（ピリオド別スコア子テーブル）で吸収する余地を残す（[05](./05_tournament_integration.md) §H.1 移行表・§未解決 3）。
 
 ### B.1.1 MatchStatus 照合表（tournament との整合）【POSTPONED 追加】
 
@@ -353,7 +355,7 @@ public final class SportEventCatalog {
 
 ---
 
-## 未解決事項
+## 未解決事項（全項目解決済み／MVP外の先送り決定を含む）
 
 1. **既存 `tournament_match_player_stats`（EAV）の扱い** — 解決済み（殿裁可）: 基本スタッツ（出場・先発・得点・アシスト・カード）は `match_events` / `player_appearances` へ統合する。大会主催者が任意定義する独自 `statKey`（例: 独自 MVP ポイント）**のみ** tournament 側に `tournament_fixture_stat`（fixture×user×statKey・EAV）として残す（[05](./05_tournament_integration.md) §H.3・§H.6）。
 2. **多競技カタログの実装方式** — 解決済み（殿裁可）: **案 A（enum＋定数）で確定**。DB マスタ化（案 B）は将来余地（§D.3）。

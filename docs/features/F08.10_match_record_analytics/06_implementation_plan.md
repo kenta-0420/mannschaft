@@ -60,7 +60,7 @@
 |----|------|--------|
 | 3-A | composable/型 | `composables/match/useMatchApi`/`useMatchEventApi`・`types/match.ts`（any 禁止・PENALTY_SHOOTOUT/POSTPONED 含む） |
 | 3-B | 試合一覧/作成 | `pages/teams/[id]/matches/index.vue`（進行中バッジ）・`new.vue`（クイックスタート・必須は kind＋相手） |
-| 3-C | ライブ記録 | `live.vue`（3 タップ UX・タイマー状態機械・WakeLock・undo・**オフライン最低限（dexie 軽量）**・選手グリッド 3 段フォールバック） |
+| 3-C | ライブ記録 | `live.vue`（3 タップ UX・タイマー状態機械・WakeLock・undo・**オフライン最低限（dexie 軽量）**・選手グリッド 3 段フォールバック・**付加機能 (a) 前回先発コピー・(b) スコアボード常時表示（04 §G.15 (a)/(b)）**） |
 | 3-D | i18n | `match.json` 6 言語＋`nuxt.config.ts` files 登録 |
 | 3-T | テスト | E2E（試合作成→ライブ記録→COMPLETED の一気通貫・実 BE） |
 
@@ -69,7 +69,7 @@
 | 隊 | 担当 | 成果物 |
 |----|------|--------|
 | 4-A | 共通チャート | `components/charts/BaseChart.vue`（chart.js register 追加・ClientOnly・destroy・空状態・色覚配慮） |
-| 4-B | 個人/チーム分析 | `pages/me/match-analytics.vue`（マイページタブ）・`teams/[id]/match-analytics.vue`・`members/[userId]/...`（teamId 認可・F19.1 連動）・`composables/match/useMatchAnalytics` |
+| 4-B | 個人/チーム分析 | `pages/me/match-analytics.vue`（マイページタブ）・`teams/[id]/match-analytics.vue`・`members/[userId]/...`（teamId 認可・F19.1 連動）・`composables/match/useMatchAnalytics`・**付加機能 (c) 出場時間タイムバー可視化・(d) 個人「自己ベスト」ハイライト（04 §G.15 (c)/(d)）** |
 | 4-C | ウィジェット | `WidgetTeamMatchSummary.vue`＋**F02.2.1 min_role=MEMBER 登録（CI 双方向検証）** |
 | 4-T | テスト | チャート描画スモーク・集計表示 E2E |
 
@@ -110,7 +110,7 @@
 
 ---
 
-## 未解決事項
+## 未解決事項（全項目解決済み／MVP外の先送り決定を含む）
 
 1. **Phase 5 着手条件** — 解決済み（殿裁可）: 05 §H.1（物理改称・BIGINT 据え置き）の御裁可済。**Phase 1〜4（単独試合の記録・分析）だけで MVP として成立**し、Phase 5 を切り離して先行リリース可能（§I.1）。Phase 5 着手は別途タイミング判断。
 2. **test-first の適用度** — 解決済み（殿裁可）: 出場時間算出・集計の純ロジックは test-first。tournament 作り替え（Phase 5）は既存テストの大量追従を伴うため Phase 5 のみ従来順（実装→テスト追従）に戻してよい。

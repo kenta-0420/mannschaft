@@ -15,7 +15,7 @@
 
 ## H.1 中核思想 — `tournament_matches` を fixture へ縮退（BIGINT 据え置き）
 
-既存 `tournament_matches` は実体が「**対戦カード(fixture)**」である。スコア（`home_score`/`away_score`/`homeExtraScore`/`homePenaltyScore`/`winnerParticipantId`/`result`）を持つが、これは新 `matches` が正本化すべき情報である（二重持ち解消）。
+既存 `tournament_matches` は実体が「**対戦カード(fixture)**」である。スコア（`homeScore`/`awayScore`/`homeExtraScore`/`awayExtraScore`/`homePenaltyScore`/`awayPenaltyScore`/`winnerParticipantId`/`result`）を持つが、これは新 `matches` が正本化すべき情報である（二重持ち解消）。延長別スコア（`homeExtraScore`/`awayExtraScore`）は本戦スコアへ合算し延長別列は廃止する（H.1 移行表・01 §B.1）。
 
 **作り替え方針**: `tournament_matches` を **`tournament_fixtures`** へ改称・縮退し、fixture は「matches を参照し、節(matchday)・部(division)・参加チーム(participant)・順位寄与のみを持つ」ものとする。
 
@@ -26,7 +26,8 @@
 | `matchdayId` / `homeParticipantId` / `awayParticipantId` / `matchNumber` / `leg` | **fixture が保持**（対戦カード構造） |
 | `nextMatchId` / `nextMatchSlot` | **fixture が保持**（トーナメント進行） |
 | `scheduledDatetime` / `venue` / `scheduleId` | **matches へ移管**（試合の実体情報・`matches.kickoff_at`/`venue`/`schedule_id`・01 §B.1） |
-| `homeScore`/`awayScore`/`homeExtraScore`/`awayExtraScore`/`homePenaltyScore`/`awayPenaltyScore`/`winnerParticipantId`/`result` | **matches へ移管（スコア正本化・二重持ち解消）**。順位は matches 由来で導出。ただし**順位計算の高速化のためスナップショットを fixture へコピー**（H.2.3） |
+| `homeScore`/`awayScore`/`homePenaltyScore`/`awayPenaltyScore`/`winnerParticipantId`/`result` | **matches へ移管（スコア正本化・二重持ち解消）**。`matches.home_score`/`away_score`（本戦）・`home_penalty_score`/`away_penalty_score`（PK 戦）へ。順位は matches 由来で導出。ただし**順位計算の高速化のためスナップショットを fixture へコピー**（H.2.3） |
+| `homeExtraScore`/`awayExtraScore`（延長別スコア） | **home/away_score へ合算（延長別列は廃止）**。新 `matches` は延長別カラムを持たず、延長得点は本戦スコア（`home_score`/`away_score`）に合算する（01 §B.1 延長戦スコアの扱い・02 §E.2a）。最終スコア「延長の末 3-2」は 3-2 が正 |
 | `status` | matches の status を正とし、fixture は参照（01 §B.1.1 照合表・MatchStatus は POSTPONED 含む 5 値で一致） |
 | `rosterDeadline` | F08.7.1/05 の roster 機能に紐づく。fixture 側に残す（roster は tournament スコープ） |
 
@@ -55,16 +56,25 @@ fixture は「**参加チーム(participant)**」を `home_participant_id` / `aw
 - 作り替え: **スコアの源泉を `matches` へ変更**。トリガーは match の COMPLETED 遷移（`MatchCompletedEvent`・match ドメイン発火）を tournament ドメインが受信 → 当該 fixture の division の順位を再計算（原則 5: ドメインをまたぐ更新はイベント駆動で分離）。
 
 ```
-[match ドメイン]  match.status=COMPLETED  →  publish MatchCompletedEvent(matchId, fixtureId, homeScore, awayScore, ...)
+[match ドメイン]  match.status=COMPLETED  →  publish MatchCompletedEvent(matchId, fixtureId, homeScore, awayScore, homePenaltyScore, awayPenaltyScore, result, winnerParticipantId, status, ...)
         │（イベント越境・原則 5 で @Transactional は跨がない）
         ▼
-[tournament ドメイン] @EventListener StandingsCalculationService
+[tournament ドメイン] @TransactionalEventListener(phase=AFTER_COMMIT) StandingsCalculationService
         fixture := findByMatch(fixtureId)
         // スナップショットを fixture へコピー（H.2.3）→ 以後はクロスドメイン JOIN 不要
-        fixture.home_score/away_score/status := event のスナップショット
+        fixture.home_score/away_score/home_penalty_score/away_penalty_score/status/result/winner_participant_id := event のスナップショット
         participant 対応 := fixture.home_participant_id / away_participant_id（H.1.2）
         → 勝点・タイブレーク・順位を再計算（既存ロジック流用・fixture スナップショット参照）
 ```
+
+#### イベント駆動の失敗リカバリ・冪等性（フェイルセーフ）【要改善の根治】
+
+順位スナップショットは matches を正本とする**派生キャッシュ**であり、整合崩れが**順位表に直結**するため、失敗時のリカバリ経路を明示する。
+
+- **(a) AFTER_COMMIT 発火**: `@TransactionalEventListener(phase=AFTER_COMMIT)` でリスナーを起動し、**match 側のトランザクションがコミット済みのデータに対してのみ**スナップショットコピー・順位再計算を実行する（未コミットのスコアで順位を誤更新しない）。発火元 match ドメインの `@Transactional` を跨がない（原則 5・H.5）。
+- **(b) リスナー例外時の許容**: リスナー内で例外が出た場合は**ログに記録し（症状を隠さない）**、fixture スナップショット未更新を一時的に許容する。リスナー例外で match 側トランザクション（既コミット）を巻き戻さない（AFTER_COMMIT のため不可かつ不要）。
+- **(c) 明示再同期（フェイルセーフ）**: スナップショット欠落・順位ズレが疑われる場合に、**順位再計算 API（既存 `recalculateStandings` 相当・手動キック）でクロスドメインに matches から fixture スナップショットを再取得・順位を明示再同期できる経路**を残す。これが派生キャッシュ整合崩れの最終的な回復手段（根治）。
+- **(d) 冪等設計**: 同一 fixture への複数 `MatchCompletedEvent`（COMPLETED 後の訂正による再 COMPLETED）は、**常に最新値で上書き**する（加算ではなく置換）。スナップショットは最新の matches 値で冪等に再構築されるため、イベント重複配信・再発火でも順位が二重計上されない。
 
 ### H.2.2 RankingsCalculationService（個人ランキング）
 
@@ -76,7 +86,7 @@ fixture は「**参加チーム(participant)**」を `home_participant_id` / `aw
 
 > 起草時の「fixture はスコアを一切持たない」は**撤回**する。クロスドメイン JOIN（原則 1 違反）と N+1 を避けるため、**fixture にスコアのスナップショットをイベント駆動でコピー**する（実体化ビュー）。
 
-- `MatchCompletedEvent` 受信時、tournament ドメインが **fixture へ `status` / `home_score` / `away_score`（必要なら PK スコア）のスナップショットをコピー**する。
+- `MatchCompletedEvent` 受信時、tournament ドメインが **fixture へ次の列のスナップショットをコピー**する: `status` / `home_score` / `away_score` / `home_penalty_score` / `away_penalty_score` / `result`（勝敗） / `winner_participant_id`。クロスドメイン JOIN（原則 1 違反）を完全に回避するため、**勝敗確定値（result / winner_participant_id）も fixture へコピー**し、順位計算が fixture 自ドメイン内で完結するようにする（「必要なら」の曖昧運用を排除し、上記列を必須コピー対象として確定）。
 - これにより tournament は**自ドメイン内テーブル（fixture）だけで順位計算でき**、毎回 matches へクロスドメイン JOIN する必要がなくなる（原則 1・N+1 回避）。
 - スナップショットは matches を正本とする**派生キャッシュ**であり、COMPLETED 後の訂正（再 COMPLETED）でも `MatchCompletedEvent` の再発火でコピーが更新される。
 - 既存 `findByDivisionIdAndStatus` 等のクエリは、**fixture スナップショット（fixture.status / fixture.home_score）参照に書き換える**（matches を直接見ない）。
@@ -141,9 +151,9 @@ fixture は「**参加チーム(participant)**」を `home_participant_id` / `aw
 
 ---
 
-## 未解決事項
+## 未解決事項（全項目解決済み／MVP外の先送り決定を含む）
 
 1. **物理改称の可否** — 解決済み（殿裁可）: グリーンフィールドゆえ `tournament_matches` → `tournament_fixtures` の物理リネーム（縮退・スコア列削除＋スナップショット列追加）を採用。`Match*`→`Fixture*` 改称で名前衝突を回避（H.1・H.4）。
 2. **大会固有の任意 statKey の残置** — 解決済み（殿裁可）: 基本スタッツは match へ統合。大会固有の独自 statKey のみ tournament 側 `tournament_fixture_stat`（EAV）に残す（H.6・01 §未解決 1）。
-3. **セット制スコア（バレー等）の表現**: MVP はスカラ home/away_score＋PK score に縮退。将来 `match_periods`/`match_sets`（match ドメイン子テーブル）で吸収する余地（多競技 01 §D.3 と整合・残る未解決）。
+3. **セット制スコア（バレー等）の表現**: MVP はスカラ home/away_score＋PK score に縮退で確定。将来 `match_periods`/`match_sets`（match ドメイン子テーブル）で吸収する余地（多競技 01 §D.3 と整合・**多競技拡張時に判断する先送り決定＝ブロッカーではない**）。延長別スコアも同じ `match_periods` で将来吸収する（01 §B.1 延長戦スコアの扱い）。
 4. **scheduleId（カレンダー連携）の移管** — 解決済み（殿裁可）: 試合実体は matches なので **`matches.schedule_id`（BIGINT NULL）へ移管**（H.1 表・01 §B.1）。
