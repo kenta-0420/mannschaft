@@ -5,8 +5,12 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.GlobalExceptionHandler;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.match.MatchErrorCode;
+import com.mannschaft.app.match.domain.HomeAway;
 import com.mannschaft.app.match.domain.MatchKind;
+import com.mannschaft.app.match.domain.MatchStatus;
+import com.mannschaft.app.match.domain.Sport;
 import com.mannschaft.app.match.dto.CreateMatchRequest;
+import com.mannschaft.app.match.dto.MatchSummaryResponse;
 import com.mannschaft.app.match.entity.MatchEntity;
 import com.mannschaft.app.match.service.MatchAccessService;
 import com.mannschaft.app.match.service.MatchService;
@@ -27,6 +31,13 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.UUID;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -35,6 +46,8 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -142,5 +155,115 @@ class MatchRecordControllerContractTest {
         mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}",
                         ORG, TEAM, MATCH_ID))
                 .andExpect(status().isOk());
+    }
+
+    // ─── 一覧（コレクション GET・Phase2C） ────────────────────────
+
+    private MatchSummaryResponse summaryRow() {
+        return MatchSummaryResponse.builder()
+                .id(MATCH_ID)
+                .sport(Sport.SOCCER)
+                .kind(MatchKind.PRACTICE)
+                .homeAway(HomeAway.HOME)
+                .opponentName("対戦相手A")
+                .status(MatchStatus.SCHEDULED)
+                .build();
+    }
+
+    @Test
+    @DisplayName("一覧: happy path は 200・data 配列＋ページ meta を返す")
+    void listMatches_happyPath_200() throws Exception {
+        given(matchService.listMatches(eq(ORG), eq(TEAM), eq(ACTOR), any(), any()))
+                .willReturn(new PageImpl<>(List.of(summaryRow()), PageRequest.of(0, 20), 1));
+
+        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/{teamId}/matches", ORG, TEAM))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").value(MATCH_ID.toString()))
+                .andExpect(jsonPath("$.meta.total").value(1))
+                .andExpect(jsonPath("$.meta.page").value(0))
+                .andExpect(jsonPath("$.meta.size").value(20));
+    }
+
+    @Test
+    @DisplayName("一覧: kind/status/期間フィルタ＋ページングが ListFilter / Pageable に正しく渡る")
+    void listMatches_passesFiltersAndPaging() throws Exception {
+        given(matchService.listMatches(eq(ORG), eq(TEAM), eq(ACTOR), any(), any()))
+                .willReturn(new PageImpl<>(List.of(), PageRequest.of(2, 5), 0));
+
+        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/{teamId}/matches", ORG, TEAM)
+                        .param("kind", "TOURNAMENT")
+                        .param("status", "COMPLETED")
+                        .param("sport", "SOCCER")
+                        .param("from", "2026-01-01T00:00:00")
+                        .param("to", "2026-12-31T23:59:59")
+                        .param("page", "2")
+                        .param("size", "5"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<MatchService.ListFilter> filterCaptor =
+                ArgumentCaptor.forClass(MatchService.ListFilter.class);
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(matchService).listMatches(eq(ORG), eq(TEAM), eq(ACTOR),
+                filterCaptor.capture(), pageableCaptor.capture());
+
+        MatchService.ListFilter filter = filterCaptor.getValue();
+        assertThat(filter.getKind()).isEqualTo(MatchKind.TOURNAMENT);
+        assertThat(filter.getStatus()).isEqualTo(MatchStatus.COMPLETED);
+        assertThat(filter.getSport()).isEqualTo(Sport.SOCCER);
+        assertThat(filter.getFrom()).isEqualTo(LocalDateTime.parse("2026-01-01T00:00:00"));
+        assertThat(filter.getTo()).isEqualTo(LocalDateTime.parse("2026-12-31T23:59:59"));
+
+        Pageable pageable = pageableCaptor.getValue();
+        assertThat(pageable.getPageNumber()).isEqualTo(2);
+        assertThat(pageable.getPageSize()).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("一覧: フィルタ未指定なら ListFilter は全 null（＝絞り込まない）")
+    void listMatches_noFilters_allNull() throws Exception {
+        given(matchService.listMatches(eq(ORG), eq(TEAM), eq(ACTOR), any(), any()))
+                .willReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+
+        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/{teamId}/matches", ORG, TEAM))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<MatchService.ListFilter> filterCaptor =
+                ArgumentCaptor.forClass(MatchService.ListFilter.class);
+        verify(matchService).listMatches(eq(ORG), eq(TEAM), eq(ACTOR), filterCaptor.capture(), any());
+        MatchService.ListFilter filter = filterCaptor.getValue();
+        assertThat(filter.getKind()).isNull();
+        assertThat(filter.getStatus()).isNull();
+        assertThat(filter.getSport()).isNull();
+        assertThat(filter.getFrom()).isNull();
+        assertThat(filter.getTo()).isNull();
+    }
+
+    @Test
+    @DisplayName("一覧: 非メンバー（Service 第一防御 403）は 403 を返す")
+    void listMatches_nonMember_403() throws Exception {
+        org.mockito.Mockito.doThrow(new BusinessException(MatchErrorCode.MATCH_010))
+                .when(matchService).listMatches(eq(ORG), eq(TEAM), eq(ACTOR), any(), any());
+
+        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/{teamId}/matches", ORG, TEAM))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("一覧: 所有/権限列（createdBy・scorekeeperUserId・canEditMeta 等）を露出しない")
+    void listMatches_doesNotExposeOwnershipColumns() throws Exception {
+        given(matchService.listMatches(eq(ORG), eq(TEAM), eq(ACTOR), any(), any()))
+                .willReturn(new PageImpl<>(List.of(summaryRow()), PageRequest.of(0, 20), 1));
+
+        String body = mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/{teamId}/matches", ORG, TEAM))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).doesNotContain("createdBy");
+        assertThat(body).doesNotContain("scorekeeperUserId");
+        assertThat(body).doesNotContain("canEditMeta");
+        assertThat(body).doesNotContain("canRecordTimeline");
+        assertThat(body).doesNotContain("owningTeamId");
+        assertThat(body).doesNotContain("notes");
     }
 }
