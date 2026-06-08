@@ -6,6 +6,8 @@ const props = defineProps<{
   /** TEAM/ORGANIZATION は数値ID、VILLAGE は UUID 文字列 */
   scopeId: string | number
   canManage?: boolean
+  /** スレッド新規作成ボタンを表示するか（デフォルト true・後方互換） */
+  canCreate?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -110,7 +112,7 @@ defineExpose({ refresh: () => loadThreads() })
       />
       <div class="ml-auto flex items-center gap-2">
         <Button :label="t('bulletin.list.readAll')" text size="small" @click="onReadAll" />
-        <Button :label="t('bulletin.list.newThread')" icon="pi pi-plus" @click="emit('create')" />
+        <Button v-if="props.canCreate !== false" :label="t('bulletin.list.newThread')" icon="pi pi-plus" @click="emit('create')" />
       </div>
     </div>
 
