@@ -101,7 +101,7 @@ public class ChatChannelController {
     public ResponseEntity<ApiResponse<ChannelResponse>> updateChannel(
             @PathVariable Long channelId,
             @Valid @RequestBody UpdateChannelRequest request) {
-        ChannelResponse response = channelService.updateChannel(channelId, request);
+        ChannelResponse response = channelService.updateChannel(channelId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -112,7 +112,7 @@ public class ChatChannelController {
     @Operation(summary = "チャンネル削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteChannel(@PathVariable Long channelId) {
-        channelService.deleteChannel(channelId);
+        channelService.deleteChannel(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -123,7 +123,7 @@ public class ChatChannelController {
     @Operation(summary = "チャンネルアーカイブ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ成功")
     public ResponseEntity<ApiResponse<ChannelResponse>> archiveChannel(@PathVariable Long channelId) {
-        ChannelResponse response = channelService.archiveChannel(channelId);
+        ChannelResponse response = channelService.archiveChannel(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -134,7 +134,7 @@ public class ChatChannelController {
     @Operation(summary = "チャンネルアーカイブ解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ解除成功")
     public ResponseEntity<ApiResponse<ChannelResponse>> unarchiveChannel(@PathVariable Long channelId) {
-        ChannelResponse response = channelService.unarchiveChannel(channelId);
+        ChannelResponse response = channelService.unarchiveChannel(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -147,7 +147,7 @@ public class ChatChannelController {
     public ResponseEntity<ApiResponse<List<MemberResponse>>> addMembers(
             @PathVariable Long channelId,
             @Valid @RequestBody AddMemberRequest request) {
-        List<MemberResponse> responses = memberService.addMembers(channelId, request);
+        List<MemberResponse> responses = memberService.addMembers(channelId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(responses));
     }
 
@@ -160,7 +160,7 @@ public class ChatChannelController {
     public ResponseEntity<Void> removeMember(
             @PathVariable Long channelId,
             @PathVariable Long userId) {
-        memberService.removeMember(channelId, userId);
+        memberService.removeMember(channelId, userId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
