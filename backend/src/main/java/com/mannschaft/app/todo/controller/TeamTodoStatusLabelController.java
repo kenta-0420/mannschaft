@@ -7,6 +7,7 @@ import com.mannschaft.app.todo.dto.CreateTodoStatusLabelRequest;
 import com.mannschaft.app.todo.dto.TodoStatusLabelResponse;
 import com.mannschaft.app.todo.dto.UpdateTodoStatusLabelRequest;
 import com.mannschaft.app.todo.service.TodoStatusLabelService;
+import com.mannschaft.app.team.service.TeamService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * チームスコープ TODO ステータスラベル管理 API（F02.3.1 Phase 1a）。
@@ -36,42 +38,47 @@ import java.util.List;
 public class TeamTodoStatusLabelController {
 
     private final TodoStatusLabelService labelService;
+    private final TeamService teamService;
 
     @GetMapping
     @Operation(summary = "チームステータスラベル一覧（SYSTEM 既定 + チームスコープ）")
-    public ResponseEntity<ApiResponse<List<TodoStatusLabelResponse>>> list(@PathVariable Long teamId) {
+    public ResponseEntity<ApiResponse<List<TodoStatusLabelResponse>>> list(@PathVariable UUID teamId) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.of(
-                labelService.list(TodoStatusLabelScope.TEAM, teamId, userId)));
+                labelService.list(TodoStatusLabelScope.TEAM, internalTeamId, userId)));
     }
 
     @PostMapping
     @Operation(summary = "チームステータスラベル作成（ADMIN/DEPUTY_ADMIN）")
     public ResponseEntity<ApiResponse<TodoStatusLabelResponse>> create(
-            @PathVariable Long teamId,
+            @PathVariable UUID teamId,
             @Valid @RequestBody CreateTodoStatusLabelRequest request) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
         Long userId = SecurityUtils.getCurrentUserId();
         TodoStatusLabelResponse response = labelService.create(
-                TodoStatusLabelScope.TEAM, teamId, request, userId);
+                TodoStatusLabelScope.TEAM, internalTeamId, request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
     @PutMapping("/{labelId}")
     @Operation(summary = "チームステータスラベル更新（ADMIN のみ）")
     public ResponseEntity<ApiResponse<TodoStatusLabelResponse>> update(
-            @PathVariable Long teamId,
+            @PathVariable UUID teamId,
             @PathVariable Long labelId,
             @Valid @RequestBody UpdateTodoStatusLabelRequest request) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.of(
-                labelService.update(labelId, TodoStatusLabelScope.TEAM, teamId, request, userId)));
+                labelService.update(labelId, TodoStatusLabelScope.TEAM, internalTeamId, request, userId)));
     }
 
     @DeleteMapping("/{labelId}")
     @Operation(summary = "チームステータスラベル削除（ADMIN のみ）")
-    public ResponseEntity<Void> delete(@PathVariable Long teamId, @PathVariable Long labelId) {
+    public ResponseEntity<Void> delete(@PathVariable UUID teamId, @PathVariable Long labelId) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
         Long userId = SecurityUtils.getCurrentUserId();
-        labelService.delete(labelId, TodoStatusLabelScope.TEAM, teamId, userId);
+        labelService.delete(labelId, TodoStatusLabelScope.TEAM, internalTeamId, userId);
         return ResponseEntity.noContent().build();
     }
 }
