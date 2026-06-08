@@ -186,6 +186,7 @@ CREATE TABLE match_events (
     stoppage_minute SMALLINT UNSIGNED NULL,       -- アディショナルタイム（例 45+2 の "2"・NULL=なし）
     period VARCHAR(24) NOT NULL,                  -- PeriodType（前半/後半/延長/PK 等・D §PeriodType）
     event_type VARCHAR(24) NOT NULL,             -- MatchEventType（GOAL/ASSIST/SUB_IN/.../OTHER ・D）
+    card_reason_code VARCHAR(8) NULL,            -- 警告/退場の標準理由コード（C1〜C8 / S1〜S6 / CS・JFA 競技規則準拠・D §D.5）。集計・絞り込み可能にする構造化カラム（note は補足の自由記述として併存）。警告/退場系 event_type 以外では NULL
     custom_label VARCHAR(64) NULL,                -- event_type=OTHER（その他）時の自由ラベル名（D・04 §G.2）
     team_side ENUM('HOME','AWAY') NOT NULL,       -- どちらのチームのイベントか
     player_user_id BIGINT NULL,                   -- 主体選手（user ドメイン ID 参照・未登録は NULL）
@@ -214,6 +215,8 @@ CREATE TABLE match_events (
 - 交代は **SUB_IN / SUB_OUT を別イベント**として記録する（同分・同 `related_player_*` で対を成す。出場時間算出は 02 §E）。**複数交代・再出場**（一度 OUT した選手が再び IN するケース）にも対応する（02 §E.1）。
 - アシストは **GOAL とは独立した固有イベント**（`event_type=ASSIST`・自身の `player_user_id`/`jersey_number`/`note` を持つ）であり、**集計の一意性のため GOAL は得点者・ASSIST は別イベント**を正とする（02 §F で確定）。GOAL と ASSIST の時系列対応は **`linked_event_id`（同一テーブル自己参照）で双方向に連鎖**させる（GOAL→ASSIST でも ASSIST→GOAL でも、2 つの独立イベントを `linked_event_id` で結ぶ。入力フローは [04](./04_frontend_and_ux.md) §G.2・タイムライン表示で連鎖を視覚的に束ねる）。**集計（02 §F）は従来どおり各イベント単体（GOAL=得点者の goals、ASSIST=アシスト者の assists）をカウントする**ため、`linked_event_id` は表示・関連付けのメタ情報であり集計の二重計上を生まない。
 - `note VARCHAR(255)` は各イベントの理由・メモ自由記述（例「コーナーキックから」「スルーパスから右足」）。`custom_label VARCHAR(64)` は `event_type=OTHER`（その他）時の自由ラベル名（§D.2・[04](./04_frontend_and_ux.md) §G.2）。いずれもユーザー入力ゆえ入力検証（最大長・制御文字除去・trim・出力時 XSS/CRLF サニタイズ）の対象（[03](./03_permissions_and_recording_modes.md) §C.4b）。
+- `card_reason_code VARCHAR(8)` は警告/退場イベントの**標準理由コード（選択式・構造化）**で、`note`（補足の自由記述）と**併存**する（理由コード＝構造化＋補足メモ＝自由記述の両方を 1 イベントに持てる）。値は理由コードカタログ（§D.5 の `CautionCode`/`SendingOffCode`）の列挙値のいずれか（C1〜C8 / S1〜S6 / CS）に限り、`event_type` との整合（警告→C 系、退場→S 系/CS）をサーバー検証する（[03](./03_permissions_and_recording_modes.md) §C.4b）。`event_type` が警告/退場系（`YELLOW_CARD`/`RED_CARD`/`SECOND_YELLOW`）以外の場合は NULL。コードは固定記号で言語非依存（表示ラベルは i18n・[04](./04_frontend_and_ux.md) §G.6）。
+  - **index は必須でない**（カードは試合あたり件数が少なく `idx_match_events_match` で十分）。ただし**規律統計（チーム/選手の警告・退場理由の集計）で横断絞り込みする要件が顕在化したら** `INDEX idx_match_events_card_reason (card_reason_code)` を追加する余地を残す。
 - `detail JSON` は競技別拡張（例: バスケのショット位置）に用いる予備領域。サッカー基本セットでは未使用でよい。サイズ上限 4KB・サーバー側スキーマ検証（[03](./03_permissions_and_recording_modes.md) §C.6）。
 
 ### B.3 `player_appearances`（出場時間）
@@ -363,6 +366,82 @@ public final class SportEventCatalog {
 - フル再計算 upsert（02 §E.2）はこのキーで**決定性**を担保する（同一試合内で同じ未登録選手のイベントを 1 つの appearance に集約する）。
 - **キャリア横断集計（個人統計）は登録ユーザー（`player_user_id` 非 NULL）のみ**を対象とする。未登録選手は `userId` が無いためキャリア横断で名寄せできない。NULL 選手の集計は**その試合内（チーム統計・タイムライン）に限る**（02 §F）。
 - アプリ登録への誘導 UX（[04](./04_frontend_and_ux.md)）で未登録選手を緩和する。
+
+### D.5 警告・退場の理由コードカタログ（JFA 競技規則 標準）【マスター御裁可】
+
+警告（Caution）・退場（Sending-off）の理由を**選択式（構造化）の標準コード**で記録できるようにする。コードは `match_events.card_reason_code`（§B.2）に保持し、補足の自由記述（既存 `note`）と**両方を併せ持てる**。
+
+**これはサッカー固有のカタログ**であり、競技別カタログ（`SportEventCatalog`・§D.3）の一部として `Sport.SOCCER` に紐づく。**多競技拡張時は競技ごとに別カタログ（理由コード集合）を持つ**こと（バスケのテクニカルファウル等は別体系）。
+
+> ⚠️ **保守方針（記憶ではなく公式準拠）**: 本カタログは **JFA 競技規則（出典: <https://www.jfa.jp/laws/>）の標準コード**に基づく。競技規則は毎年改定されうるため、**JFA 公式競技規則の改定に追従して保守**すること。実装時には**最新の JFA 公式競技規則と必ず照合**してから列挙値を確定する（本設計書の記載は起草時点の標準であり、唯一の正本は JFA 公式競技規則である）。
+
+#### D.5.1 警告（Caution）— `CautionCode` C1〜C8
+
+```java
+// サッカー固有: 警告の理由コード（JFA 競技規則 標準・YELLOW_CARD / SECOND_YELLOW に紐づく）
+public enum CautionCode {
+    C1, // 反スポーツ的行為
+    C2, // ラフプレー
+    C3, // 異議（言葉・行動による）
+    C4, // 繰り返しの違反
+    C5, // 遅延行為
+    C6, // 距離不足（コーナーキック/フリーキック/スローインの規定距離を守らない）
+    C7, // 無許可入（主審の承認を得ずにフィールドへ入る・復帰する）
+    C8  // 無許可去（主審の承認を得ずにフィールドから離れる）
+}
+```
+
+| コード | 理由（短ラベル） |
+|--------|------------------|
+| C1 | 反スポーツ的行為 |
+| C2 | ラフプレー |
+| C3 | 異議 |
+| C4 | 繰り返しの違反 |
+| C5 | 遅延行為 |
+| C6 | 距離不足 |
+| C7 | 無許可入 |
+| C8 | 無許可去 |
+
+#### D.5.2 退場（Sending-off）— `SendingOffCode` S1〜S6・CS
+
+```java
+// サッカー固有: 退場の理由コード（JFA 競技規則 標準・RED_CARD / SECOND_YELLOW に紐づく）
+public enum SendingOffCode {
+    S1, // 著しく不正なプレー
+    S2, // 乱暴な行為
+    S3, // つば（人に唾を吐く）
+    S4, // 得点機会阻止（意図的なハンドリングによる）
+    S5, // 得点機会阻止（その他のファウルによる）
+    S6, // 侮辱（攻撃的・侮辱的・下品な発言や身振り）
+    CS  // 警告 2 回（2 枚目の警告による退場＝SECOND_YELLOW に対応）
+}
+```
+
+| コード | 理由（短ラベル） |
+|--------|------------------|
+| S1 | 著しく不正なプレー |
+| S2 | 乱暴な行為 |
+| S3 | つば吐き |
+| S4 | 得点機会阻止（手） |
+| S5 | 得点機会阻止（その他） |
+| S6 | 侮辱 |
+| CS | 警告 2 回（2 枚目の警告による退場） |
+
+#### D.5.3 event_type とコード群の対応
+
+`card_reason_code` に許容されるコード集合は `event_type` で決まる（サーバー検証は [03](./03_permissions_and_recording_modes.md) §C.4b）。
+
+| event_type | 意味 | 許容コード群 |
+|------------|------|--------------|
+| `YELLOW_CARD` | 警告 | `CautionCode`（C1〜C8） |
+| `RED_CARD` | 退場（一発） | `SendingOffCode` のうち **S1〜S6**（CS は除く＝一発退場は警告 2 回ではない） |
+| `SECOND_YELLOW` | 2 枚目の警告による退場 | **CS**（＝警告 2 回による退場。`SECOND_YELLOW` は意味上 CS に対応） |
+| 上記以外 | — | NULL のみ（理由コード非対象） |
+
+- いずれのコードも**任意（NULL 可）**: 後から補完できる（公式戦では記録を推奨・[04](./04_frontend_and_ux.md) §G.2）。
+- `card_reason_code` は構造化（集計・絞り込み用）、`note` は補足の自由記述。両者は**併存**し、既存の `custom_label`（OTHER 用）・`linked_event_id`（連鎖）とも独立して共存する。
+
+> **カタログの実装配置**: `CautionCode`/`SendingOffCode` は match ドメイン（`com.mannschaft.app.match`）のサッカー固有カタログとして配置し、`SportEventCatalog`（§D.3・案 A）と同じく**コード定数で `Sport.SOCCER` に紐づける**（例: `Map<Sport, CardReasonCatalog>`）。DB マスタ化は将来余地（§D.3 案 B と同方針）。
 
 ---
 

@@ -40,7 +40,7 @@
 | 隊 | 担当 | 成果物 |
 |----|------|--------|
 | 1-A | Flyway／DDL | `V9.YYYYMMDDHHMMSS__create_matches.sql` ほか 3 ファイル（matches=UUIDv7・子=UUIDv7・`tournament_fixture_id`/`schedule_id` は BIGINT。採番はマージ直前に origin/main 最大番号を再確認） |
-| 1-B | Entity／enum | `MatchEntity`/`MatchEventEntity`（**note/custom_label/linked_event_id 列含む・自己参照 FK**）/`PlayerAppearanceEntity`（UuidV7Entity 継承・子は org_id/deleted_at 無し）・`MatchKind`/`MatchStatus`(POSTPONED 含む)/`MatchEventType`(PENALTY_SHOOTOUT・**OTHER** 含む) 等 enum・`SportEventCatalog`（案 A・OTHER 含む） |
+| 1-B | Entity／enum | `MatchEntity`/`MatchEventEntity`（**note/custom_label/linked_event_id/card_reason_code 列含む・自己参照 FK**）/`PlayerAppearanceEntity`（UuidV7Entity 継承・子は org_id/deleted_at 無し）・`MatchKind`/`MatchStatus`(POSTPONED 含む)/`MatchEventType`(PENALTY_SHOOTOUT・**OTHER** 含む) 等 enum・`SportEventCatalog`（案 A・OTHER 含む）・**理由コードカタログ `CautionCode`(C1〜C8)/`SendingOffCode`(S1〜S6, CS)（JFA 競技規則 標準・サッカー固有・Sport.SOCCER 紐づけ・01 §D.5。実装時に最新 JFA 公式競技規則と照合）** |
 | 1-C | Repository | `MatchRepository`（AbstractTenantAwareRepository 継承）/`MatchEventRepository`/`PlayerAppearanceRepository`（後 2 者はテナント絞り込み無し・match_id スコープ専用・二段アクセス・01 §A.4） |
 | 1-T | テスト | Flyway from-scratch 適用テスト（Docker・FK/CASCADE 成立・**子に org_id/deleted_at が無いこと**確認）・Entity 永続化 IT |
 
@@ -51,8 +51,8 @@
 | 2-A | 出場時間算出 | `PlayingTimeCalculationService`（フル再計算 upsert・**再出場/区間合計**・matches.version 非依存・破壊耐性 02 §E.5a） |
 | 2-B | 集計 | `MatchStatsAggregationService`（個人/チーム・本戦/PK 分離・02 §F）＋ Response DTO（@Builder） |
 | 2-C | 権限/IDOR/可視性 | `MatchAccessService`（03 §C・二段アクセス）＋ **`MatchVisibilityResolver`（F00・`ReferenceType.MATCH` 追加・`ContentVisibilityChecker` 登録）** ＋ `MatchEventService`/`MatchService` |
-| 2-D | Controller/DTO | `MatchController`/`MatchEventController`/`MatchStatsController` ＋ Request DTO（jakarta.validation・owning/recorded_by はサーバー導出・**note(@Size 255)/custom_label(@Size 64) の最大長＋制御文字除去＋HTML 不可検証・linked_event_id の同一 match 帰属検証**・03 §C.4a/C.4b） |
-| 2-T | テスト | 出場時間算出 UT（02 §E.6 ケース表）・集計 UT・Controller 統合テスト・**認可/IDOR/テナント越境/F00 可視性テスト** |
+| 2-D | Controller/DTO | `MatchController`/`MatchEventController`/`MatchStatsController` ＋ Request DTO（jakarta.validation・owning/recorded_by はサーバー導出・**note(@Size 255)/custom_label(@Size 64) の最大長＋制御文字除去＋HTML 不可検証・linked_event_id の同一 match 帰属検証・card_reason_code のカタログ列挙値検証＋event_type 整合検証（警告→C 系/退場→S 系/CS・不整合は 400）**・03 §C.4a/C.4b） |
+| 2-T | テスト | 出場時間算出 UT（02 §E.6 ケース表）・集計 UT・Controller 統合テスト・**認可/IDOR/テナント越境/F00 可視性テスト**・**card_reason_code 検証テスト（カタログ列挙値・event_type 整合＝警告→C 系/退場→S 系/CS・非対象 event_type への付与は 400・03 §C.4b）** |
 
 #### Phase 3（FE 試合 CRUD＋ライブ記録）
 
@@ -60,8 +60,8 @@
 |----|------|--------|
 | 3-A | composable/型 | `composables/match/useMatchApi`/`useMatchEventApi`・`types/match.ts`（any 禁止・PENALTY_SHOOTOUT/POSTPONED 含む） |
 | 3-B | 試合一覧/作成＋入口導線 | `pages/teams/[id]/matches/index.vue`（進行中バッジ・**「＋試合を記録」FAB＝入口 2**）・`new.vue`（クイックスタート・必須は kind＋相手）・**ダッシュボードのクイックアクション「試合を記録」（入口 3）**・**カレンダー（F03.1）予定からの「この試合を記録」起票（入口 4・`matches.schedule_id` 引き継ぎ＝日時/相手/会場を予定から事前充填）**（4 入口はすべて `live.vue` に合流・04 §G.1a-2） |
-| 3-C | ライブ記録 | `live.vue`（3 タップ UX・タイマー状態機械・WakeLock・undo・**オフライン最低限（dexie 軽量）**・選手グリッド 3 段フォールバック・**イベント種別選択 UI（得点/アシスト/警告/交代＋その他）・その他自由入力（custom_label＋note）・理由メモ枠（note）・GOAL⇔ASSIST 双方向連鎖（linked_event_id）＋連鎖の束ね表示（04 §G.2/G.2a/G.2b）**・**付加機能 (a) 前回先発コピー・(b) スコアボード常時表示（04 §G.15 (a)/(b)）**） |
-| 3-D | i18n | `match.json` 6 言語＋`nuxt.config.ts` files 登録 |
+| 3-C | ライブ記録 | `live.vue`（3 タップ UX・タイマー状態機械・WakeLock・undo・**オフライン最低限（dexie 軽量）**・選手グリッド 3 段フォールバック・**イベント種別選択 UI（得点/アシスト/警告/交代＋その他）・その他自由入力（custom_label＋note）・理由メモ枠（note）・警告/退場の理由コード選択 UI（C1〜C8 / S1〜S6・CS の選択式＋短ラベル・補足 note 併記・タイムラインで「🟨 C2 ラフプレー（7番）」表示・04 §G.2c/G.2d）・GOAL⇔ASSIST 双方向連鎖（linked_event_id）＋連鎖の束ね表示（04 §G.2/G.2a/G.2b）**・**付加機能 (a) 前回先発コピー・(b) スコアボード常時表示（04 §G.15 (a)/(b)）**） |
+| 3-D | i18n | `match.json` 6 言語（**`match.card_reason.C1`…`C8`/`S1`…`S6`/`CS` の短ラベル翻訳含む・04 §G.6**）＋`nuxt.config.ts` files 登録 |
 | 3-T | テスト | E2E（試合作成→ライブ記録→COMPLETED の一気通貫・実 BE） |
 
 #### Phase 4（分析チャート＋ウィジェット）
