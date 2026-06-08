@@ -4,6 +4,7 @@ definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const { t } = useI18n()
 const teamId = String(route.params.id)
+const { isMember, loadPermissions } = useRoleAccess('team', teamId)
 
 const { getActivities } = useActivityApi()
 const { showError } = useNotification()
@@ -33,7 +34,10 @@ function getPublicUrl(activityId: number): string {
   return `/activity/${activityId}`
 }
 
-onMounted(() => load())
+onMounted(async () => {
+  await loadPermissions()
+  load()
+})
 </script>
 
 <template>
@@ -43,7 +47,7 @@ onMounted(() => load())
         <BackButton />
         <PageHeader :title="$t('activity.pageTitle')" />
       </div>
-      <Button :label="$t('activity.addRecord')" icon="pi pi-plus" />
+      <Button v-if="isMember" :label="$t('activity.addRecord')" icon="pi pi-plus" />
     </div>
 
     <PageLoading v-if="loading" size="40px" />

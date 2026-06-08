@@ -2,7 +2,9 @@
 import type { ActivityRecordResponse } from '~/types/activity'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
+const { t } = useI18n()
 const orgId = String(route.params.id)
+const { isMember, loadPermissions } = useRoleAccess('organization', orgId)
 
 const { getActivities } = useActivityApi()
 const { showError } = useNotification()
@@ -16,13 +18,16 @@ async function load() {
     const res = await getActivities({ scope_type: 'ORGANIZATION', scope_id: orgId })
     activities.value = res.data
   } catch {
-    showError('活動記録の取得に失敗しました')
+    showError(t('activity.loadError'))
   } finally {
     loading.value = false
   }
 }
 
-onMounted(() => load())
+onMounted(async () => {
+  await loadPermissions()
+  load()
+})
 </script>
 
 <template>
@@ -30,9 +35,9 @@ onMounted(() => load())
     <div class="mb-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <BackButton />
-        <PageHeader title="活動記録" />
+        <PageHeader :title="$t('activity.pageTitle')" />
       </div>
-      <Button label="記録を追加" icon="pi pi-plus" />
+      <Button v-if="isMember" :label="$t('activity.addRecord')" icon="pi pi-plus" />
     </div>
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="flex flex-col gap-3">
@@ -48,9 +53,9 @@ onMounted(() => load())
           <i class="pi pi-map-marker" /> {{ act.location }}
         </p>
         <p v-if="act.description" class="mt-1 text-sm text-surface-600">{{ act.description }}</p>
-        <div class="mt-2 text-xs text-surface-400">参加者 {{ act.participantCount }}名</div>
+        <div class="mt-2 text-xs text-surface-400">{{ $t('activity.participantCount', { count: act.participantCount }) }}</div>
       </SectionCard>
-      <DashboardEmptyState v-if="activities.length === 0" icon="pi pi-history" message="活動記録がありません" />
+      <DashboardEmptyState v-if="activities.length === 0" icon="pi pi-history" :message="$t('activity.noRecords')" />
     </div>
   </div>
 </template>
