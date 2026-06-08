@@ -5,7 +5,7 @@ definePageMeta({
 
 const route = useRoute()
 const teamId = String(route.params.id)
-const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdmin, isAdminOrDeputy, isMember, loadPermissions } = useRoleAccess('team', teamId)
 
 const showCreateDialog = ref(false)
 const editTodoId = ref<number | undefined>(undefined)
@@ -31,7 +31,7 @@ onMounted(() => loadPermissions())
         <BackButton />
         <PageHeader title="TODO" />
       </div>
-      <Button label="TODO作成" icon="pi pi-plus" @click="showCreateDialog = true" />
+      <Button v-if="isMember" label="TODO作成" icon="pi pi-plus" @click="showCreateDialog = true" />
     </div>
 
     <TodoListTable

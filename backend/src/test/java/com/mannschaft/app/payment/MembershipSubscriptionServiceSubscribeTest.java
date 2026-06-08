@@ -109,7 +109,8 @@ class MembershipSubscriptionServiceSubscribeTest {
                 .userId(PAYER).stripeCustomerId("cus_payer").defaultPaymentMethod("pm_saved").build();
     }
 
-    private void stubHappyPathUpTo() {
+    /** charge 直前までのモック（項目検証→権原→二重加入→READY→PM→fee 解決）。charge 自体はスタブしない。 */
+    private void stubUpToCharge() {
         given(paymentItemService.findByIdOrThrow(ITEM_ID)).willReturn(recurringItem());
         given(paymentAuthorizationService.authorizePayment(PAYER, BENEFICIARY, ITEM_ID, false))
                 .willReturn(PayerRelationship.SELF);
@@ -121,6 +122,10 @@ class MembershipSubscriptionServiceSubscribeTest {
         given(stripeCustomerRepository.findByUserId(PAYER)).willReturn(Optional.of(customerWithPm()));
         given(feePolicyResolver.resolve(EscrowSourceKind.MEMBERSHIP, null))
                 .willReturn(new FeePolicy("MEMBERSHIP_RANK_A", new BigDecimal("0.03"), 0L));
+    }
+
+    private void stubHappyPathUpTo() {
+        stubUpToCharge();
         given(connectChargeService.charge(any(MembershipChargeCommand.class)))
                 .willReturn(new MembershipChargeResult(ESCROW_ID, "cs_secret", "pi_123", EscrowStatus.AUTHORIZED));
     }
@@ -163,6 +168,9 @@ class MembershipSubscriptionServiceSubscribeTest {
             assertThat(cmd.getValue().payeeConnectAccountId()).isEqualTo(ACCOUNT_ID);
             assertThat(cmd.getValue().sourceId()).isEqualTo(ITEM_ID);
             assertThat(cmd.getValue().idempotencyKey()).isEqualTo(IDEMPOTENCY_KEY);
+            // R2-1: 初回 charge は保存済み既定 PM で server-side off-session 即時確定する。
+            assertThat(cmd.getValue().confirmImmediately()).isTrue();
+            assertThat(cmd.getValue().paymentMethodId()).isEqualTo("pm_saved");
 
             // Subscription 作成引数（default PM・transfer destination・anchor は将来時刻）。
             ArgumentCaptor<Long> anchor = ArgumentCaptor.forClass(Long.class);
@@ -288,6 +296,29 @@ class MembershipSubscriptionServiceSubscribeTest {
                     .isEqualTo(MembershipBillingErrorCode.SUBSCRIPTION_PAYMENT_METHOD_NOT_SAVED);
 
             verify(connectChargeService, never()).charge(any());
+        }
+
+        @Test
+        @DisplayName("初回 off-session 確定がカード認証要求/拒否で失敗→402(MEMBERSHIP_BILLING_023)・DB 起票しない（R2-1）")
+        void offSession確定失敗は402() {
+            stubUpToCharge();
+            // charge が off-session confirm 失敗を投げる（PI はプロバイダ側で cancel 済みの想定）。
+            given(connectChargeService.charge(any(MembershipChargeCommand.class)))
+                    .willThrow(new StripePaymentProvider.OffSessionConfirmationException(
+                            "authentication_required", "off-session confirm did not succeed", null));
+
+            assertThatThrownBy(() -> service.subscribe(ITEM_ID, PAYER, BENEFICIARY, null, IDEMPOTENCY_KEY))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MembershipBillingErrorCode.SUBSCRIPTION_OFF_SESSION_AUTHENTICATION_REQUIRED);
+
+            // charge は呼ばれるが、後続の DB 起票（subscription save / member_payment / Subscription 作成）には進まない。
+            verify(connectChargeService).charge(any());
+            verify(membershipSubscriptionRepository, never()).save(any());
+            verify(memberPaymentService, never()).recordSubscriptionInitialChargePending(
+                    anyLong(), anyLong(), any(), anyString(), anyLong(), any(), any(), any());
+            verify(stripePaymentProvider, never()).createSubscription(
+                    anyString(), anyString(), anyString(), anyString(), any(), anyLong(), anyString());
         }
 
         @Test

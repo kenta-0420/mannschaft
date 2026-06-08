@@ -227,15 +227,30 @@ public class MembershipSubscriptionService {
         long faceAmount = item.getAmount().longValueExact();
         BillingInterval interval = resolveBillingInterval(item);
 
-        // 7. 初回: P1 同型の単発 destination charge（AUTHORIZED 起票→CAPTURED は escrow webhook）。
-        MembershipChargeResult chargeResult = connectChargeService.charge(new MembershipChargeCommand(
-                faceAmount,
-                payee.getId(),
-                payerCustomer.getStripeCustomerId(),
-                payerUserId,
-                itemId,
-                item.getOrganizationId(),
-                idempotencyKey));
+        // 7. 初回: 保存済み既定 PM で server-side off-session 即時確定する単発 destination charge（R2-1 根治）。
+        //    P1（FE on-session confirm 前提）と異なり P5 継続課金は払い手不在で確定するため confirmImmediately=true。
+        //    AUTHORIZED 起票→CAPTURED は succeeded webhook（EscrowWebhookService）に委ねる（escrow 流儀は P1 と整合）。
+        //    off-session confirm がカード認証要求/拒否で失敗した場合は症状を隠さず専用 402（MEMBERSHIP_BILLING_023）へ
+        //    変換する（Stripe 例外を握り潰さない・PI はプロバイダ側で cancel 済みで孤児を残さない）。
+        MembershipChargeResult chargeResult;
+        try {
+            chargeResult = connectChargeService.charge(new MembershipChargeCommand(
+                    faceAmount,
+                    payee.getId(),
+                    payerCustomer.getStripeCustomerId(),
+                    payerUserId,
+                    itemId,
+                    item.getOrganizationId(),
+                    idempotencyKey,
+                    null,
+                    defaultPaymentMethod,
+                    true));
+        } catch (StripePaymentProvider.OffSessionConfirmationException e) {
+            log.warn("継続課金 加入の初回 off-session 確定がカード認証要求/拒否で失敗（402 で拒否）: itemId={}, payer={}, "
+                            + "stripeErrorCode={}", itemId, payerUserId, e.getStripeErrorCode(), e);
+            throw new BusinessException(
+                    MembershipBillingErrorCode.SUBSCRIPTION_OFF_SESSION_AUTHENTICATION_REQUIRED, e);
+        }
 
         // charge 成功後の DB 処理は P7 §11.1 同型で try-catch し、失敗は ERROR ログ＋再 throw（症状を隠さない）。
         try {

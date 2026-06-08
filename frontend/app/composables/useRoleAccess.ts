@@ -45,6 +45,11 @@ export function useRoleAccess(scopeType: 'team' | 'organization', scopeId: Ref<s
     isAdmin.value || roleName.value === 'DEPUTY_ADMIN',
   )
 
+  /** ADMIN/DEPUTY_ADMIN/MEMBER は書き込み可（SUPPORTER/GUEST は不可） */
+  const isMember = computed(() =>
+    isAdminOrDeputy.value || roleName.value === 'MEMBER',
+  )
+
   // scopeIdがリアクティブな場合、変更時に自動リロード
   if (isRef(scopeId)) {
     watch(scopeId, (newId) => {
@@ -60,5 +65,6 @@ export function useRoleAccess(scopeType: 'team' | 'organization', scopeId: Ref<s
     can,
     isAdmin,
     isAdminOrDeputy,
+    isMember,
   }
 }

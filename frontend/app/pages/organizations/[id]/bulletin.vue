@@ -6,7 +6,7 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 const { t } = useI18n()
 const route = useRoute()
 const orgId = String(route.params.id)
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const { isAdminOrDeputy, isMember, loadPermissions } = useRoleAccess('organization', orgId)
 
 const selectedThread = ref<BulletinThreadResponse | null>(null)
 const showCreateDialog = ref(false)
@@ -59,6 +59,7 @@ onMounted(() => loadPermissions())
         scope-type="ORGANIZATION"
         :scope-id="orgId"
         :can-manage="isAdminOrDeputy"
+        :can-create="isMember"
         @select="(t) => selectedThread = t"
         @create="showCreateDialog = true"
       />
