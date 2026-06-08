@@ -63,6 +63,16 @@ function cancelEdit() {
   editingTitle.value = ''
 }
 
+function handleInputKeydown(e: KeyboardEvent, memo: QuickMemoResponse) {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    commitEdit(memo)
+  } else if (e.key === 'Escape') {
+    e.preventDefault()
+    cancelEdit()
+  }
+}
+
 async function commitEdit(memo: QuickMemoResponse) {
   const next = editingTitle.value.trim()
   if (!next || next === memo.title) {
@@ -146,8 +156,7 @@ onMounted(load)
               v-model="editingTitle"
               class="flex-1 text-sm"
               maxlength="200"
-              @keydown.enter.prevent="commitEdit(memo)"
-              @keydown.escape.prevent="cancelEdit"
+              @keydown="handleInputKeydown($event, memo)"
               @blur="commitEdit(memo)"
             />
           </template>

@@ -576,10 +576,14 @@ public class BlogPostService {
         try {
             return Long.parseLong(idStr);
         } catch (NumberFormatException e) {
-            UUID uuid = UUID.fromString(idStr);
-            return teamRepository.findByPublicId(uuid)
-                    .orElseThrow(() -> new BusinessException(CmsErrorCode.TEAM_NOT_FOUND))
-                    .getId();
+            try {
+                UUID uuid = UUID.fromString(idStr);
+                return teamRepository.findByPublicId(uuid)
+                        .orElseThrow(() -> new BusinessException(CmsErrorCode.TEAM_NOT_FOUND))
+                        .getId();
+            } catch (IllegalArgumentException iae) {
+                throw new BusinessException(CmsErrorCode.TEAM_NOT_FOUND);
+            }
         }
     }
 
@@ -598,10 +602,14 @@ public class BlogPostService {
         try {
             return Long.parseLong(idStr);
         } catch (NumberFormatException e) {
-            UUID uuid = UUID.fromString(idStr);
-            return organizationRepository.findByPublicId(uuid)
-                    .orElseThrow(() -> new BusinessException(CmsErrorCode.ORG_NOT_FOUND))
-                    .getId();
+            try {
+                UUID uuid = UUID.fromString(idStr);
+                return organizationRepository.findByPublicId(uuid)
+                        .orElseThrow(() -> new BusinessException(CmsErrorCode.ORG_NOT_FOUND))
+                        .getId();
+            } catch (IllegalArgumentException iae) {
+                throw new BusinessException(CmsErrorCode.ORG_NOT_FOUND);
+            }
         }
     }
 }
