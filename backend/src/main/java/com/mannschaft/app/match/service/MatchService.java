@@ -117,6 +117,39 @@ public class MatchService {
     }
 
     // ─────────────────────────────────────────────
+    // メタ情報更新（日時・会場・相手・試合長など・03 §C.2）
+    // ─────────────────────────────────────────────
+
+    /**
+     * 試合メタ情報（日時・会場・相手・試合長・備考など）を更新する（作成者/記録係/主体チーム ADMIN のみ・03 §C.2）。
+     *
+     * <p>{@code organization_id}/{@code team_id}/{@code created_by} は変更しない（サーバー保持値・改竄耐性）。
+     * status 遷移・スコア確定・記録モード切替は専用メソッドに分離する（責務分界）。</p>
+     */
+    @Transactional
+    public MatchEntity updateMeta(UUID matchId, Long organizationId, Long actorUserId,
+                                  UpdateMetaCommand command) {
+        MatchEntity match = getMatchOrThrow(matchId, organizationId);
+        matchAccessService.assertCanEditMeta(actorUserId, match);
+
+        if (command.getHomeAway() != null) {
+            match.setHomeAway(command.getHomeAway());
+        }
+        // opponentTeamId / opponentName は明示的に上書きする（null も意味を持つ＝相手未登録への切替）。
+        match.setOpponentTeamId(command.getOpponentTeamId());
+        match.setOpponentName(command.getOpponentName());
+        match.setKickoffAt(command.getKickoffAt());
+        match.setVenue(command.getVenue());
+        if (command.getDurationMinutes() != null) {
+            match.setDurationMinutes(command.getDurationMinutes());
+        }
+        match.setPeriodFormat(command.getPeriodFormat());
+        match.setNotes(command.getNotes());
+
+        return matchRepository.save(match);
+    }
+
+    // ─────────────────────────────────────────────
     // スコア確定（メタ更新・matches.version 使用・監査）
     // ─────────────────────────────────────────────
 
@@ -282,6 +315,24 @@ public class MatchService {
         private final String periodFormat;
         private final boolean hasScorekeeper;
         private final Long scorekeeperUserId;
+        private final String notes;
+    }
+
+    /**
+     * 試合メタ情報更新コマンド（日時・会場・相手・試合長など・03 §C.2）。
+     *
+     * <p>{@code organizationId}/{@code teamId}/{@code createdBy} は更新対象外（サーバー保持値）。</p>
+     */
+    @Getter
+    @Builder
+    public static class UpdateMetaCommand {
+        private final HomeAway homeAway;
+        private final Long opponentTeamId;
+        private final String opponentName;
+        private final java.time.LocalDateTime kickoffAt;
+        private final String venue;
+        private final Integer durationMinutes;
+        private final String periodFormat;
         private final String notes;
     }
 }

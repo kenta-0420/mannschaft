@@ -4,6 +4,7 @@ import com.mannschaft.app.match.entity.MatchEventEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,4 +35,13 @@ public interface MatchEventRepository extends JpaRepository<MatchEventEntity, UU
 
     /** 指定試合のイベントを一括削除する（親の物理削除前の明示削除など）。 */
     void deleteByMatchId(UUID matchId);
+
+    /**
+     * 集計用: 複数試合のイベントを一括取得する（N+1 回避・02 §F.3）。
+     *
+     * <p>呼び出し元（{@code MatchStatsAggregationService}）は、親 matches を<b>テナント絞り込みで取得した
+     * matchId 集合</b>のみを渡す。本メソッド自体はテナントゲートを持たないため、テナント外の matchId を
+     * 渡してはならない（必ず {@code MatchRepository.findForXxxStats} で得た ID 群に限る）。</p>
+     */
+    List<MatchEventEntity> findByMatchIdIn(Collection<UUID> matchIds);
 }
