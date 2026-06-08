@@ -68,7 +68,7 @@ export default defineNuxtConfig({
   components: [{ path: '~/components', pathPrefix: false }],
 
   imports: {
-    dirs: ['composables', 'composables/jobs', 'composables/wallet-group-show'],
+    dirs: ['composables', 'composables/jobs', 'composables/wallet-group-show', 'composables/match'],
   },
 
   devServer: {
@@ -392,6 +392,7 @@ export default defineNuxtConfig({
           'ja/inbox.json',
           'ja/schedule.json',
           'ja/payment.json',
+          'ja/match.json',
         ],
       },
       {
@@ -450,6 +451,7 @@ export default defineNuxtConfig({
           'en/inbox.json',
           'en/schedule.json',
           'en/payment.json',
+          'en/match.json',
         ],
       },
       {
@@ -508,6 +510,7 @@ export default defineNuxtConfig({
           'zh/inbox.json',
           'zh/schedule.json',
           'zh/payment.json',
+          'zh/match.json',
         ],
       },
       {
@@ -566,6 +569,7 @@ export default defineNuxtConfig({
           'ko/inbox.json',
           'ko/schedule.json',
           'ko/payment.json',
+          'ko/match.json',
         ],
       },
       {
@@ -624,6 +628,7 @@ export default defineNuxtConfig({
           'es/inbox.json',
           'es/schedule.json',
           'es/payment.json',
+          'es/match.json',
         ],
       },
       {
@@ -682,6 +687,7 @@ export default defineNuxtConfig({
           'de/inbox.json',
           'de/schedule.json',
           'de/payment.json',
+          'de/match.json',
         ],
       },
     ],

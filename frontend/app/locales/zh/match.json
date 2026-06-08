@@ -1,0 +1,147 @@
+{
+  "match": {
+    "list": {
+      "title": "比赛记录",
+      "subtitle": "记录练习赛、友谊赛和正式比赛",
+      "record_button": "＋记录比赛",
+      "filter": {
+        "kind": "类型",
+        "status": "状态",
+        "all": "全部"
+      },
+      "result": {
+        "win": "胜",
+        "draw": "平",
+        "loss": "负",
+        "win_label": "W",
+        "draw_label": "D",
+        "loss_label": "L"
+      },
+      "in_progress_badge": "进行中",
+      "score_vs": "{home} - {away}",
+      "vs": "对阵 {opponent}",
+      "no_opponent": "未设置对手",
+      "no_score": "—",
+      "delete_confirm": "确定删除此比赛记录吗？",
+      "delete_success": "已删除比赛记录",
+      "empty": "暂无比赛记录",
+      "empty_cta": "记录第一场比赛",
+      "load_more": "加载更多",
+      "page_info": "共 {total} 条中的 {from}-{to} 条",
+      "error": {
+        "load_failed": "获取比赛列表失败",
+        "status_failed": "更改状态失败",
+        "score_failed": "确定比分失败",
+        "recording_mode_failed": "更改记录模式失败",
+        "delete_failed": "删除比赛记录失败"
+      }
+    },
+    "create": {
+      "title": "记录比赛",
+      "subtitle": "只需选择类型和对手即可开始。场地和时间可稍后设置。",
+      "kind_label": "类型",
+      "kind_hint": "点击选择",
+      "opponent_label": "对手队名",
+      "opponent_placeholder": "请输入对手队名",
+      "opponent_required": "请输入对手名称",
+      "kind_required": "请选择类型",
+      "optional_section": "可选项（稍后设置）",
+      "optional_hint": "这些可以留空开始记录，赛后再补充。",
+      "venue_label": "场地",
+      "venue_placeholder": "场地名称（可选）",
+      "kickoff_label": "开球日期时间",
+      "duration_label": "比赛时长（分钟）",
+      "home_away_label": "主场/客场",
+      "home_away": {
+        "HOME": "主场",
+        "AWAY": "客场",
+        "NEUTRAL": "中立"
+      },
+      "submit": "开始记录",
+      "submit_short": "创建",
+      "cancel": "取消",
+      "success": "已创建比赛",
+      "update_success": "已更新比赛信息",
+      "error": {
+        "create_failed": "创建比赛失败",
+        "update_failed": "更新比赛信息失败"
+      }
+    },
+    "live": {
+      "error": {
+        "load_events_failed": "获取事件失败",
+        "load_appearances_failed": "获取出场记录失败",
+        "add_event_failed": "记录事件失败",
+        "update_event_failed": "更新事件失败",
+        "delete_event_failed": "删除事件失败"
+      }
+    },
+    "analytics": {
+      "error": {
+        "load_failed": "获取统计失败"
+      }
+    },
+    "kind": {
+      "PRACTICE": "练习赛",
+      "FRIENDLY": "友谊赛",
+      "TOURNAMENT": "锦标赛",
+      "LEAGUE": "联赛"
+    },
+    "status": {
+      "SCHEDULED": "已安排",
+      "IN_PROGRESS": "进行中",
+      "COMPLETED": "已结束",
+      "POSTPONED": "延期",
+      "CANCELLED": "取消",
+      "PLANNED": "已安排",
+      "CLOSED": "已确定"
+    },
+    "event_type": {
+      "STARTER": "首发",
+      "SUB_IN": "换人上场",
+      "SUB_OUT": "换人下场",
+      "GOAL": "进球",
+      "ASSIST": "助攻",
+      "OWN_GOAL": "乌龙球",
+      "PENALTY_GOAL": "点球（命中）",
+      "PENALTY_MISS": "点球（罚失）",
+      "PENALTY_SHOOTOUT": "点球大战",
+      "YELLOW_CARD": "警告",
+      "RED_CARD": "罚下",
+      "SECOND_YELLOW": "第二张黄牌",
+      "SAVE": "扑救",
+      "INJURY": "受伤",
+      "PERIOD_START": "时段开始",
+      "PERIOD_END": "时段结束",
+      "OTHER": "其他"
+    },
+    "card_type": {
+      "YELLOW": "警告",
+      "RED": "罚下",
+      "SECOND_YELLOW": "第二张黄牌"
+    },
+    "card_reason": {
+      "C1": "非体育行为",
+      "C2": "粗野动作",
+      "C3": "异议",
+      "C4": "屡次犯规",
+      "C5": "拖延比赛",
+      "C6": "距离不足",
+      "C7": "未经许可入场",
+      "C8": "未经许可离场",
+      "S1": "严重犯规",
+      "S2": "暴力行为",
+      "S3": "吐口水",
+      "S4": "阻止进球（手球）",
+      "S5": "阻止进球（其他）",
+      "S6": "侮辱言行",
+      "CS": "两次警告"
+    },
+    "position": {
+      "GK": "门将",
+      "DF": "后卫",
+      "MF": "中场",
+      "FW": "前锋"
+    }
+  }
+}

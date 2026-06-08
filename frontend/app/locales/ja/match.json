@@ -1,0 +1,147 @@
+{
+  "match": {
+    "list": {
+      "title": "試合記録",
+      "subtitle": "練習・親善・大会の試合を記録する",
+      "record_button": "＋試合を記録",
+      "filter": {
+        "kind": "種別",
+        "status": "ステータス",
+        "all": "すべて"
+      },
+      "result": {
+        "win": "勝",
+        "draw": "分",
+        "loss": "敗",
+        "win_label": "W",
+        "draw_label": "D",
+        "loss_label": "L"
+      },
+      "in_progress_badge": "進行中",
+      "score_vs": "{home} - {away}",
+      "vs": "vs {opponent}",
+      "no_opponent": "相手未設定",
+      "no_score": "—",
+      "delete_confirm": "この試合記録を削除しますか？",
+      "delete_success": "試合記録を削除しました",
+      "empty": "まだ試合記録がありません",
+      "empty_cta": "最初の試合を記録する",
+      "load_more": "もっと見る",
+      "page_info": "{total} 件中 {from}-{to} 件",
+      "error": {
+        "load_failed": "試合一覧の取得に失敗しました",
+        "status_failed": "ステータスの変更に失敗しました",
+        "score_failed": "スコアの確定に失敗しました",
+        "recording_mode_failed": "記録モードの変更に失敗しました",
+        "delete_failed": "試合記録の削除に失敗しました"
+      }
+    },
+    "create": {
+      "title": "試合を記録",
+      "subtitle": "種別と相手だけで始められます。会場や時間は後で設定できます",
+      "kind_label": "種別",
+      "kind_hint": "タップして選択",
+      "opponent_label": "相手チーム名",
+      "opponent_placeholder": "相手チーム名を入力",
+      "opponent_required": "相手名を入力してください",
+      "kind_required": "種別を選択してください",
+      "optional_section": "任意項目（後で設定可）",
+      "optional_hint": "ここは空でも記録を開始できます。試合後に補完できます",
+      "venue_label": "会場",
+      "venue_placeholder": "会場名（任意）",
+      "kickoff_label": "キックオフ日時",
+      "duration_label": "試合時間（分）",
+      "home_away_label": "ホーム/アウェイ",
+      "home_away": {
+        "HOME": "ホーム",
+        "AWAY": "アウェイ",
+        "NEUTRAL": "中立"
+      },
+      "submit": "記録を開始",
+      "submit_short": "作成",
+      "cancel": "キャンセル",
+      "success": "試合を作成しました",
+      "update_success": "試合情報を更新しました",
+      "error": {
+        "create_failed": "試合の作成に失敗しました",
+        "update_failed": "試合情報の更新に失敗しました"
+      }
+    },
+    "live": {
+      "error": {
+        "load_events_failed": "イベントの取得に失敗しました",
+        "load_appearances_failed": "出場記録の取得に失敗しました",
+        "add_event_failed": "イベントの記録に失敗しました",
+        "update_event_failed": "イベントの更新に失敗しました",
+        "delete_event_failed": "イベントの削除に失敗しました"
+      }
+    },
+    "analytics": {
+      "error": {
+        "load_failed": "統計の取得に失敗しました"
+      }
+    },
+    "kind": {
+      "PRACTICE": "練習試合",
+      "FRIENDLY": "親善試合",
+      "TOURNAMENT": "大会",
+      "LEAGUE": "リーグ"
+    },
+    "status": {
+      "SCHEDULED": "予定",
+      "IN_PROGRESS": "進行中",
+      "COMPLETED": "終了",
+      "POSTPONED": "延期",
+      "CANCELLED": "中止",
+      "PLANNED": "予定",
+      "CLOSED": "確定済み"
+    },
+    "event_type": {
+      "STARTER": "先発",
+      "SUB_IN": "交代IN",
+      "SUB_OUT": "交代OUT",
+      "GOAL": "得点",
+      "ASSIST": "アシスト",
+      "OWN_GOAL": "オウンゴール",
+      "PENALTY_GOAL": "PK（成功）",
+      "PENALTY_MISS": "PK（失敗）",
+      "PENALTY_SHOOTOUT": "PK戦",
+      "YELLOW_CARD": "警告",
+      "RED_CARD": "退場",
+      "SECOND_YELLOW": "2枚目の警告",
+      "SAVE": "セーブ",
+      "INJURY": "負傷",
+      "PERIOD_START": "ピリオド開始",
+      "PERIOD_END": "ピリオド終了",
+      "OTHER": "その他"
+    },
+    "card_type": {
+      "YELLOW": "警告",
+      "RED": "退場",
+      "SECOND_YELLOW": "2枚目の警告"
+    },
+    "card_reason": {
+      "C1": "反スポーツ的行為",
+      "C2": "ラフプレー",
+      "C3": "異議",
+      "C4": "繰り返しの違反",
+      "C5": "遅延行為",
+      "C6": "距離不足",
+      "C7": "無許可入",
+      "C8": "無許可去",
+      "S1": "著しく不正なプレー",
+      "S2": "乱暴な行為",
+      "S3": "つば吐き",
+      "S4": "得点機会阻止（手）",
+      "S5": "得点機会阻止（その他）",
+      "S6": "侮辱",
+      "CS": "警告2回"
+    },
+    "position": {
+      "GK": "ゴールキーパー",
+      "DF": "ディフェンダー",
+      "MF": "ミッドフィルダー",
+      "FW": "フォワード"
+    }
+  }
+}

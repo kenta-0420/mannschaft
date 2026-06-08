@@ -1,0 +1,147 @@
+{
+  "match": {
+    "list": {
+      "title": "경기 기록",
+      "subtitle": "연습·친선·대회 경기를 기록합니다",
+      "record_button": "＋경기 기록",
+      "filter": {
+        "kind": "종류",
+        "status": "상태",
+        "all": "전체"
+      },
+      "result": {
+        "win": "승",
+        "draw": "무",
+        "loss": "패",
+        "win_label": "W",
+        "draw_label": "D",
+        "loss_label": "L"
+      },
+      "in_progress_badge": "진행 중",
+      "score_vs": "{home} - {away}",
+      "vs": "vs {opponent}",
+      "no_opponent": "상대 미설정",
+      "no_score": "—",
+      "delete_confirm": "이 경기 기록을 삭제하시겠습니까?",
+      "delete_success": "경기 기록을 삭제했습니다",
+      "empty": "아직 경기 기록이 없습니다",
+      "empty_cta": "첫 경기를 기록하기",
+      "load_more": "더 보기",
+      "page_info": "총 {total}건 중 {from}-{to}건",
+      "error": {
+        "load_failed": "경기 목록을 불러오지 못했습니다",
+        "status_failed": "상태 변경에 실패했습니다",
+        "score_failed": "점수 확정에 실패했습니다",
+        "recording_mode_failed": "기록 모드 변경에 실패했습니다",
+        "delete_failed": "경기 기록 삭제에 실패했습니다"
+      }
+    },
+    "create": {
+      "title": "경기 기록",
+      "subtitle": "종류와 상대만 선택하면 시작할 수 있습니다. 장소와 시간은 나중에 설정할 수 있습니다.",
+      "kind_label": "종류",
+      "kind_hint": "탭하여 선택",
+      "opponent_label": "상대 팀명",
+      "opponent_placeholder": "상대 팀명을 입력하세요",
+      "opponent_required": "상대 이름을 입력하세요",
+      "kind_required": "종류를 선택하세요",
+      "optional_section": "선택 항목 (나중에 설정 가능)",
+      "optional_hint": "비워둔 채로 기록을 시작하고 경기 후에 보완할 수 있습니다.",
+      "venue_label": "경기장",
+      "venue_placeholder": "경기장 이름 (선택)",
+      "kickoff_label": "킥오프 일시",
+      "duration_label": "경기 시간 (분)",
+      "home_away_label": "홈/원정",
+      "home_away": {
+        "HOME": "홈",
+        "AWAY": "원정",
+        "NEUTRAL": "중립"
+      },
+      "submit": "기록 시작",
+      "submit_short": "생성",
+      "cancel": "취소",
+      "success": "경기를 생성했습니다",
+      "update_success": "경기 정보를 업데이트했습니다",
+      "error": {
+        "create_failed": "경기 생성에 실패했습니다",
+        "update_failed": "경기 정보 업데이트에 실패했습니다"
+      }
+    },
+    "live": {
+      "error": {
+        "load_events_failed": "이벤트를 불러오지 못했습니다",
+        "load_appearances_failed": "출전 기록을 불러오지 못했습니다",
+        "add_event_failed": "이벤트 기록에 실패했습니다",
+        "update_event_failed": "이벤트 업데이트에 실패했습니다",
+        "delete_event_failed": "이벤트 삭제에 실패했습니다"
+      }
+    },
+    "analytics": {
+      "error": {
+        "load_failed": "통계를 불러오지 못했습니다"
+      }
+    },
+    "kind": {
+      "PRACTICE": "연습 경기",
+      "FRIENDLY": "친선 경기",
+      "TOURNAMENT": "대회",
+      "LEAGUE": "리그"
+    },
+    "status": {
+      "SCHEDULED": "예정",
+      "IN_PROGRESS": "진행 중",
+      "COMPLETED": "종료",
+      "POSTPONED": "연기",
+      "CANCELLED": "취소",
+      "PLANNED": "예정",
+      "CLOSED": "확정됨"
+    },
+    "event_type": {
+      "STARTER": "선발",
+      "SUB_IN": "교체 투입",
+      "SUB_OUT": "교체 아웃",
+      "GOAL": "득점",
+      "ASSIST": "어시스트",
+      "OWN_GOAL": "자책골",
+      "PENALTY_GOAL": "PK (성공)",
+      "PENALTY_MISS": "PK (실패)",
+      "PENALTY_SHOOTOUT": "승부차기",
+      "YELLOW_CARD": "경고",
+      "RED_CARD": "퇴장",
+      "SECOND_YELLOW": "두 번째 경고",
+      "SAVE": "선방",
+      "INJURY": "부상",
+      "PERIOD_START": "피리어드 시작",
+      "PERIOD_END": "피리어드 종료",
+      "OTHER": "기타"
+    },
+    "card_type": {
+      "YELLOW": "경고",
+      "RED": "퇴장",
+      "SECOND_YELLOW": "두 번째 경고"
+    },
+    "card_reason": {
+      "C1": "비신사적 행위",
+      "C2": "거친 플레이",
+      "C3": "항의",
+      "C4": "반복 반칙",
+      "C5": "지연 행위",
+      "C6": "거리 미확보",
+      "C7": "무단 입장",
+      "C8": "무단 이탈",
+      "S1": "심각한 반칙",
+      "S2": "난폭한 행위",
+      "S3": "침 뱉기",
+      "S4": "득점 기회 저지 (핸드볼)",
+      "S5": "득점 기회 저지 (기타)",
+      "S6": "모욕적 언행",
+      "CS": "경고 2회"
+    },
+    "position": {
+      "GK": "골키퍼",
+      "DF": "수비수",
+      "MF": "미드필더",
+      "FW": "공격수"
+    }
+  }
+}
