@@ -1,0 +1,287 @@
+package com.mannschaft.app.match.service;
+
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.match.MatchCompletedEvent;
+import com.mannschaft.app.match.MatchErrorCode;
+import com.mannschaft.app.match.domain.HomeAway;
+import com.mannschaft.app.match.domain.MatchKind;
+import com.mannschaft.app.match.domain.MatchStatus;
+import com.mannschaft.app.match.domain.Sport;
+import com.mannschaft.app.match.entity.MatchEntity;
+import com.mannschaft.app.match.repository.MatchRepository;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
+
+/**
+ * F08.10 試合本体のライフサイクルサービス（作成・更新・status 遷移・スコア確定）。
+ *
+ * <p>認可は {@link MatchAccessService} へ委譲し、IDOR 帰属チェーンは
+ * {@code matchRepository.findByIdAndOrganizationIdAndDeletedAtIsNull}（テナント絞り）で担保する（03 §C.4）。
+ * COMPLETED 遷移時に {@link MatchCompletedEvent} を発火する（05 §H.2・受信は Phase 5）。
+ * スコア確定・status 遷移・記録モード切替・記録係変更は監査ログに残す（03 §C.7）。</p>
+ *
+ * <p><b>マスアサインメント防止</b>: {@code team_id}/{@code created_by} は呼び出し主体から導出した値を用い、
+ * 外部入力を信頼しない（03 §C.4a）。{@code @Transactional} は match ドメイン内に閉じる（原則 5）。</p>
+ *
+ * <p>設計: docs/features/F08.10_match_record_analytics/02・03・05</p>
+ */
+@Slf4j
+// 既存 com.mannschaft.app.tournament.service.MatchService と Spring デフォルト bean 名（"matchService"）が衝突し
+// ApplicationContext のロードに失敗するため、明示 bean 名を付与して衝突を回避する（F08.10 P2a）。
+// 型注入（@Autowired / コンストラクタ注入）は bean 名に依存しないため影響を受けない。
+@Service("matchRecordService")
+@Transactional(readOnly = true)
+@RequiredArgsConstructor
+public class MatchService {
+
+    private static final String TEAM = "TEAM";
+
+    private final MatchRepository matchRepository;
+    private final MatchAccessService matchAccessService;
+    private final PlayingTimeCalculationService playingTimeCalculationService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final AuditLogService auditLogService;
+
+    // ─────────────────────────────────────────────
+    // 取得（IDOR 帰属チェーン）
+    // ─────────────────────────────────────────────
+
+    /**
+     * テナント絞り込みで試合を取得する（IDOR の 1 段目テナントゲート・03 §C.4）。
+     * 不在・テナント越境・削除済みは 404（存在を漏らさない）。
+     */
+    public MatchEntity getMatchOrThrow(UUID matchId, Long organizationId) {
+        return matchRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(matchId, organizationId)
+                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_001));
+    }
+
+    // ─────────────────────────────────────────────
+    // 作成（4 入口の文脈は CreateCommand で引き継ぐ）
+    // ─────────────────────────────────────────────
+
+    /**
+     * 試合を作成する（最小必須は {@code kind} ＋相手＝opponentTeamId or opponentName・03 §C / 04 §G.1）。
+     *
+     * <p>{@code team_id}/{@code created_by} はサーバー導出値（{@code command.teamId} は認証主体の所属チーム）。
+     * 記録モード（{@code hasScorekeeper}）と {@code scorekeeperUserId} を作成時に決定する（03 §C.1）。</p>
+     *
+     * @param command  作成コマンド（サーバー導出済みの teamId/createdBy を含む）
+     * @param actorUserId 操作者ユーザー ID（監査用）
+     * @return 作成された試合
+     */
+    @Transactional
+    public MatchEntity create(CreateCommand command, Long actorUserId) {
+        if (command.getKind() == null) {
+            throw new BusinessException(MatchErrorCode.MATCH_024);
+        }
+        // 相手は登録チーム or 手入力名のどちらか必須（共同記録の成立条件・03 §未解決 4 の縮退は別途）
+        if (command.getOpponentTeamId() == null
+                && (command.getOpponentName() == null || command.getOpponentName().isBlank())) {
+            throw new BusinessException(MatchErrorCode.MATCH_024);
+        }
+
+        MatchEntity match = MatchEntity.builder()
+                .organizationId(command.getOrganizationId())
+                .teamId(command.getTeamId())
+                .sport(command.getSport() != null ? command.getSport() : Sport.SOCCER)
+                .kind(command.getKind())
+                .tournamentFixtureId(command.getTournamentFixtureId())
+                .scheduleId(command.getScheduleId())
+                .homeAway(command.getHomeAway() != null ? command.getHomeAway() : HomeAway.HOME)
+                .opponentTeamId(command.getOpponentTeamId())
+                .opponentName(command.getOpponentName())
+                .kickoffAt(command.getKickoffAt())
+                .venue(command.getVenue())
+                .durationMinutes(command.getDurationMinutes())
+                .periodFormat(command.getPeriodFormat())
+                .status(MatchStatus.SCHEDULED)
+                .hasScorekeeper(command.isHasScorekeeper())
+                .scorekeeperUserId(command.getScorekeeperUserId())
+                .notes(command.getNotes())
+                .createdBy(command.getCreatedBy())
+                .build();
+
+        MatchEntity saved = matchRepository.save(match);
+        log.info("試合作成: matchId={}, teamId={}, kind={}, actor={}",
+                saved.getId(), saved.getTeamId(), saved.getKind(), actorUserId);
+        return saved;
+    }
+
+    // ─────────────────────────────────────────────
+    // スコア確定（メタ更新・matches.version 使用・監査）
+    // ─────────────────────────────────────────────
+
+    /**
+     * 最終スコアを確定する（作成者/記録係/主体チーム ADMIN のみ・03 §C.2）。
+     * 本戦・PK 戦スコアを更新し、before/after を監査記録する（03 §C.7）。
+     */
+    @Transactional
+    public MatchEntity finalizeScore(UUID matchId, Long organizationId, Long actorUserId,
+                                     Integer homeScore, Integer awayScore,
+                                     Integer homePenaltyScore, Integer awayPenaltyScore) {
+        MatchEntity match = getMatchOrThrow(matchId, organizationId);
+        matchAccessService.assertCanEditMeta(actorUserId, match);
+
+        Integer beforeHome = match.getHomeScore();
+        Integer beforeAway = match.getAwayScore();
+        Integer beforeHomePk = match.getHomePenaltyScore();
+        Integer beforeAwayPk = match.getAwayPenaltyScore();
+
+        match.setHomeScore(homeScore);
+        match.setAwayScore(awayScore);
+        match.setHomePenaltyScore(homePenaltyScore);
+        match.setAwayPenaltyScore(awayPenaltyScore);
+        MatchEntity saved = matchRepository.save(match);
+
+        String metadata = String.format(
+                "{\"matchId\":\"%s\",\"teamId\":%s,"
+                        + "\"before\":{\"home\":%s,\"away\":%s,\"homePk\":%s,\"awayPk\":%s},"
+                        + "\"after\":{\"home\":%s,\"away\":%s,\"homePk\":%s,\"awayPk\":%s}}",
+                matchId, match.getTeamId(),
+                beforeHome, beforeAway, beforeHomePk, beforeAwayPk,
+                homeScore, awayScore, homePenaltyScore, awayPenaltyScore);
+        auditLogService.record(AuditEventType.MATCH_SCORE_FINALIZED.name(), actorUserId, null,
+                match.getTeamId(), organizationId, null, null, null, metadata);
+        return saved;
+    }
+
+    // ─────────────────────────────────────────────
+    // status 遷移（COMPLETED で MatchCompletedEvent 発火・監査）
+    // ─────────────────────────────────────────────
+
+    /**
+     * status を遷移する（作成者/記録係/主体チーム ADMIN のみ・03 §C.2）。
+     *
+     * <ul>
+     *   <li>COMPLETED 遷移時は {@code duration_minutes} を必須化（未設定なら 400・02 §E.3）し、
+     *       出場記録を確定再計算した後に {@link MatchCompletedEvent} を発火する（05 §H.2）。</li>
+     *   <li>全遷移を監査記録する（03 §C.7）。</li>
+     * </ul>
+     */
+    @Transactional
+    public MatchEntity changeStatus(UUID matchId, Long organizationId, Long actorUserId,
+                                    MatchStatus newStatus) {
+        MatchEntity match = getMatchOrThrow(matchId, organizationId);
+        matchAccessService.assertCanEditMeta(actorUserId, match);
+
+        MatchStatus before = match.getStatus();
+        if (newStatus == MatchStatus.COMPLETED) {
+            if (match.getDurationMinutes() == null) {
+                // duration 未設定では出場記録を確定できない（必須化・症状を隠さない・02 §E.3）
+                throw new BusinessException(MatchErrorCode.MATCH_023);
+            }
+        }
+
+        match.setStatus(newStatus);
+        MatchEntity saved = matchRepository.save(match);
+
+        String metadata = String.format(
+                "{\"matchId\":\"%s\",\"teamId\":%s,\"before\":\"%s\",\"after\":\"%s\"}",
+                matchId, match.getTeamId(), before, newStatus);
+        auditLogService.record(AuditEventType.MATCH_STATUS_CHANGED.name(), actorUserId, null,
+                match.getTeamId(), organizationId, null, null, null, metadata);
+
+        if (newStatus == MatchStatus.COMPLETED) {
+            // 確定再計算（全 side・記録係/作成者は全 side 編集権あり）
+            playingTimeCalculationService.recalculate(saved, null);
+            // 順位導出は tournament ドメインがイベントで受ける（原則 5・受信は Phase 5）
+            eventPublisher.publishEvent(MatchCompletedEvent.builder()
+                    .matchId(saved.getId())
+                    .tournamentFixtureId(saved.getTournamentFixtureId())
+                    .homeScore(saved.getHomeScore())
+                    .awayScore(saved.getAwayScore())
+                    .homePenaltyScore(saved.getHomePenaltyScore())
+                    .awayPenaltyScore(saved.getAwayPenaltyScore())
+                    .status(saved.getStatus())
+                    .build());
+        }
+        return saved;
+    }
+
+    // ─────────────────────────────────────────────
+    // 記録モード切替・記録係変更（監査）
+    // ─────────────────────────────────────────────
+
+    /**
+     * 記録モードを切替える（公式戦⇔共同記録・作成者/主体チーム ADMIN のみ・03 §C.3）。
+     */
+    @Transactional
+    public MatchEntity changeRecordingMode(UUID matchId, Long organizationId, Long actorUserId,
+                                           boolean hasScorekeeper, Long scorekeeperUserId) {
+        MatchEntity match = getMatchOrThrow(matchId, organizationId);
+        matchAccessService.assertCanEditMeta(actorUserId, match);
+
+        boolean beforeMode = match.isHasScorekeeper();
+        Long beforeScorekeeper = match.getScorekeeperUserId();
+
+        match.setHasScorekeeper(hasScorekeeper);
+        match.setScorekeeperUserId(hasScorekeeper ? scorekeeperUserId : null);
+        MatchEntity saved = matchRepository.save(match);
+
+        if (beforeMode != hasScorekeeper) {
+            String metadata = String.format(
+                    "{\"matchId\":\"%s\",\"before\":%s,\"after\":%s}",
+                    matchId, beforeMode, hasScorekeeper);
+            auditLogService.record(AuditEventType.MATCH_RECORDING_MODE_CHANGED.name(), actorUserId, null,
+                    match.getTeamId(), organizationId, null, null, null, metadata);
+        }
+        if (!java.util.Objects.equals(beforeScorekeeper, saved.getScorekeeperUserId())) {
+            String metadata = String.format(
+                    "{\"matchId\":\"%s\",\"before\":%s,\"after\":%s}",
+                    matchId, beforeScorekeeper, saved.getScorekeeperUserId());
+            auditLogService.record(AuditEventType.MATCH_SCOREKEEPER_CHANGED.name(), actorUserId,
+                    saved.getScorekeeperUserId(), match.getTeamId(), organizationId,
+                    null, null, null, metadata);
+        }
+        return saved;
+    }
+
+    /**
+     * 試合を論理削除する（作成者/主体チーム ADMIN のみ）。
+     */
+    @Transactional
+    public void softDelete(UUID matchId, Long organizationId, Long actorUserId) {
+        MatchEntity match = getMatchOrThrow(matchId, organizationId);
+        matchAccessService.assertCanEditMeta(actorUserId, match);
+        match.softDelete();
+        matchRepository.save(match);
+    }
+
+    /**
+     * 試合作成コマンド。
+     *
+     * <p>{@code teamId}/{@code createdBy} は呼び出し側（Controller）が認証主体から導出してセットする
+     * （クライアントの詐称を信頼しない・マスアサインメント防止・03 §C.4a）。
+     * {@code organizationId} は認証テナント。4 入口の文脈（{@code scheduleId}/{@code tournamentFixtureId}）も引き継ぐ。</p>
+     */
+    @Getter
+    @Builder
+    public static class CreateCommand {
+        private final Long organizationId;
+        private final Long teamId;
+        private final Long createdBy;
+        private final Sport sport;
+        private final MatchKind kind;
+        private final Long tournamentFixtureId;
+        private final Long scheduleId;
+        private final HomeAway homeAway;
+        private final Long opponentTeamId;
+        private final String opponentName;
+        private final java.time.LocalDateTime kickoffAt;
+        private final String venue;
+        private final Integer durationMinutes;
+        private final String periodFormat;
+        private final boolean hasScorekeeper;
+        private final Long scorekeeperUserId;
+        private final String notes;
+    }
+}
