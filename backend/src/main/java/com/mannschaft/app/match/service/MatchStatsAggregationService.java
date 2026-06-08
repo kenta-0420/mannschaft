@@ -61,6 +61,12 @@ public class MatchStatsAggregationService {
 
     private static final DateTimeFormatter MONTH_FMT = DateTimeFormatter.ofPattern("yyyy-MM");
 
+    /**
+     * recentForm に含める直近試合数（soccer §6.2 / 02 §F.3）。
+     * 全試合分を蓄積すると配列が無制限に肥大化するため、直近 N 件に限定する。
+     */
+    private static final int RECENT_FORM_SIZE = 5;
+
     /** 得点としてカウントする event_type（本戦のみ・PK 戦 PENALTY_SHOOTOUT は除外・soccer §6.1）。 */
     private static final Set<MatchEventType> GOAL_TYPES =
             EnumSet.of(MatchEventType.GOAL, MatchEventType.PENALTY_GOAL);
@@ -387,6 +393,12 @@ public class MatchStatsAggregationService {
             }
         }
 
+        // 直近 RECENT_FORM_SIZE 件に絞る（findForTeamStats は kickoffAt ASC 順のため末尾が最新）。
+        // 古い→新しい順を維持（TeamMatchStatsResponse.recentForm の Javadoc 仕様）。
+        List<String> trimmedRecentForm = recentForm.size() > RECENT_FORM_SIZE
+                ? recentForm.subList(recentForm.size() - RECENT_FORM_SIZE, recentForm.size())
+                : recentForm;
+
         List<TeamMatchStatsResponse.PlayerRanking> rankings =
                 includeRankings ? buildPlayerRankings(matches, teamId, rankingLimit) : List.of();
 
@@ -405,7 +417,7 @@ public class MatchStatsAggregationService {
                 .wins(wins).draws(draws).losses(losses)
                 .totalGoalsFor(gf).totalGoalsAgainst(ga)
                 .goalDifference(gf - ga)
-                .recentForm(recentForm)
+                .recentForm(trimmedRecentForm)
                 .playerRankings(rankings)
                 .byKind(byKind)
                 .build();

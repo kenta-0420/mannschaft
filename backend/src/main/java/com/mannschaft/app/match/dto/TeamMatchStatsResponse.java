@@ -28,7 +28,11 @@ public class TeamMatchStatsResponse {
     /** 得失点差（totalGoalsFor - totalGoalsAgainst）。 */
     private final int goalDifference;
 
-    /** 直近 N 試合の結果配列（古い→新しい順・W/D/L・null=スコア未確定）。 */
+    /**
+     * 直近 {@code RECENT_FORM_SIZE}（=5）試合の結果配列（古い→新しい順・W/D/L）。
+     * スコア未確定の試合はエントリに含まれない。
+     * 並び順: kickoff_at ASC（先頭が最も古い試合・末尾が最新試合）。
+     */
     private final List<String> recentForm;
     /** 選手別ランキング（top-N 上限・bar 用）。 */
     private final List<PlayerRanking> playerRankings;
