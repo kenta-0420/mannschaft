@@ -192,6 +192,8 @@ export interface ReorderRequest {
  */
 export interface AncestorOrganization {
   id: number
+  /** 祖先組織 UUID（URL に使用。hidden=false のとき返る） */
+  publicId?: string | null
   name?: string | null
   nickname1?: string | null
   description?: string | null
@@ -207,6 +209,8 @@ export interface AncestorsResponse {
 
 export interface ChildOrganization {
   id: number
+  /** 子組織 UUID（URL に使用） */
+  publicId?: string | null
   name: string
   nickname1?: string | null
   iconUrl?: string | null

@@ -98,7 +98,7 @@ async function load() {
       ...teamStore.myTeams.slice(0, 5).map((team) =>
         getSurveys('TEAM', String(team.id), { status: 'PUBLISHED', size: 10 }).then((res) => ({
           type: 'survey' as const,
-          scopeId: String(team.id),
+          scopeId: team.publicId,
           scopeName: team.nickname1 || team.name,
           scopeKind: 'team' as const,
           data: res.data,
@@ -109,7 +109,7 @@ async function load() {
       ...orgStore.myOrganizations.slice(0, 5).map((org) =>
         getSurveys('ORGANIZATION', String(org.id), { status: 'PUBLISHED', size: 10 }).then((res) => ({
           type: 'survey' as const,
-          scopeId: String(org.id),
+          scopeId: org.publicId,
           scopeName: org.nickname1 || org.name,
           scopeKind: 'org' as const,
           data: res.data,
@@ -120,7 +120,7 @@ async function load() {
       ...teamStore.myTeams.slice(0, 5).map((team) =>
         listSchedules('team', String(team.id), { from: fromStr, to: toStr, size: 10 }).then((res) => ({
           type: 'attendance' as const,
-          scopeId: String(team.id),
+          scopeId: team.publicId,
           scopeName: team.nickname1 || team.name,
           scopeKind: 'team' as const,
           data: res.data as ScheduleSummary[],
@@ -134,7 +134,7 @@ async function load() {
         .map((team) =>
           getTeamRequests(String(team.id)).then((res) => ({
             type: 'matching' as const,
-            scopeId: String(team.id),
+            scopeId: team.publicId,
             scopeName: team.nickname1 || team.name,
             scopeKind: 'team' as const,
             data: res.data,

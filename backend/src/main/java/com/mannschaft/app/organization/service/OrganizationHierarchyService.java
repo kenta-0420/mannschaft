@@ -186,6 +186,7 @@ public class OrganizationHierarchyService {
         List<ChildOrganizationResponse> data = page.stream()
                 .map(child -> ChildOrganizationResponse.builder()
                         .id(child.getId())
+                        .publicId(child.getPublicId())
                         .name(child.getName())
                         .nickname1(child.getNickname1())
                         .iconUrl(child.getIconUrl())
@@ -348,6 +349,7 @@ public class OrganizationHierarchyService {
     private AncestorOrganizationResponse fullAncestor(OrganizationEntity org) {
         return AncestorOrganizationResponse.builder()
                 .id(org.getId())
+                .publicId(org.getPublicId())
                 .name(org.getName())
                 .nickname1(org.getNickname1())
                 .description(null) // organizations.description は現状未保持。philosophy 等は別 API で取得
@@ -360,6 +362,7 @@ public class OrganizationHierarchyService {
     private AncestorOrganizationResponse basicAncestor(OrganizationEntity org) {
         return AncestorOrganizationResponse.builder()
                 .id(org.getId())
+                .publicId(org.getPublicId())
                 .name(org.getName())
                 .nickname1(org.getNickname1())
                 .description(null)
@@ -373,6 +376,7 @@ public class OrganizationHierarchyService {
         // 外部ユーザー + PUBLIC: id / name / nickname1 / iconUrl / visibility のみ（description は外す）
         return AncestorOrganizationResponse.builder()
                 .id(org.getId())
+                .publicId(org.getPublicId())
                 .name(org.getName())
                 .nickname1(org.getNickname1())
                 .iconUrl(org.getIconUrl())
