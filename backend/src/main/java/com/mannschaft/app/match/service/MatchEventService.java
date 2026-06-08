@@ -32,8 +32,18 @@ import java.util.UUID;
  * <ul>
  *   <li><b>recorded_by_team_id はサーバー導出</b>: 認証主体の所属チームから決定し、外部入力を信頼しない
  *       （マスアサインメント防止）。共同記録では自サイド以外を自名義で記録できない。</li>
+ *   <li><b>team_side ↔ recorded_by_team_id の整合不変条件（03 §C.4a）</b>:
+ *       HOME イベントの {@code recorded_by_team_id} は {@code match.teamId} と一致、
+ *       AWAY イベントは登録相手（{@code opponent_team_id}≠NULL）なら {@code opponent_team_id} と一致、
+ *       未登録相手（{@code opponent_team_id}=NULL）はホーム/記録係が代行記録するため {@code match.teamId} を許容。
+ *       矛盾は 403（MATCH_025・相手サイドを自名義で捏造する余地を塞ぐドメイン二重防御）。
+ *       <b>「認証主体（principal）→所属チーム の導出」と「その principal がそのサイドを記録してよいか」の認可は
+ *       Controller（Phase 2-D）が {@link MatchAccessService#canRecordTimeline} /
+ *       {@link MatchAccessService#canEditTeamData} で実施</b>する（責務分界）。本不変条件は
+ *       {@code recorded_by_team_id} が既にサーバー導出済みである前提での整合性検証である。</li>
  *   <li><b>linked_event_id の同一 match 帰属検証</b>: 連鎖先が同一 match の既存イベントであることを確認
- *       （別試合・他テナント ID の指定は 404・親子不一致統一）。</li>
+ *       （別試合・他テナント ID の指定は 404・親子不一致統一）。連鎖相手の team_side が記録中イベントと
+ *       同一サイドであることも確認する（03 §C.4a）。</li>
  *   <li><b>event_type のカタログ検証</b>: {@code match.sport} のカタログに含まれない event_type は 400。</li>
  *   <li><b>card_reason_code の二段検証</b>: カタログ列挙値かつ event_type 整合（警告→C 系/退場→S 系/CS・
  *       非対象イベントへの付与は 400）。</li>
@@ -92,7 +102,8 @@ public class MatchEventService {
         validateEventType(match, command.getEventType());
         validateCardReasonCode(command.getEventType(), command.getCardReasonCode());
         validateNumericRanges(command);
-        validateLinkedEvent(matchId, command.getLinkedEventId());
+        validateSideOwnership(match, command.getTeamSide(), command.getRecordedByTeamId());
+        validateLinkedEvent(matchId, command.getTeamSide(), command.getLinkedEventId());
 
         // recorded_by_team_id はサーバー導出値（command.recordedByTeamId は呼び出し側が認証主体所属から決定）
         MatchEventEntity event = MatchEventEntity.builder()
@@ -138,7 +149,10 @@ public class MatchEventService {
         validateEventType(match, command.getEventType());
         validateCardReasonCode(command.getEventType(), command.getCardReasonCode());
         validateNumericRanges(command);
-        validateLinkedEvent(matchId, command.getLinkedEventId());
+        // 更新では recorded_by_team_id は不変（作成時のサーバー導出値を維持）。
+        // 新しい team_side が既存名義と整合するか検証し、サイドの付け替えによる相手分捏造を遮断する（03 §C.4a）。
+        validateSideOwnership(match, command.getTeamSide(), event.getRecordedByTeamId());
+        validateLinkedEvent(matchId, command.getTeamSide(), command.getLinkedEventId());
 
         event.setMinute(command.getMinute());
         event.setStoppageMinute(command.getStoppageMinute());
@@ -244,16 +258,74 @@ public class MatchEventService {
     }
 
     /**
-     * linked_event_id の同一 match 帰属検証（03 §C.4a）。
-     * 連鎖先が同一 match の既存イベントでない場合は 404（越境・親子不一致統一）。
+     * team_side ↔ recorded_by_team_id の整合不変条件（03 §C.4a・自名義捏造防止のドメイン二重防御）。
+     *
+     * <ul>
+     *   <li>{@code recordedByTeamId==null}: 名義未確定（縮退・後段補完）として整合検証はスキップ。</li>
+     *   <li>{@code team_side=HOME}: {@code recordedByTeamId == match.teamId} のみ許容。</li>
+     *   <li>{@code team_side=AWAY} かつ {@code opponent_team_id≠NULL}（登録相手）:
+     *       {@code recordedByTeamId == opponent_team_id} のみ許容。</li>
+     *   <li>{@code team_side=AWAY} かつ {@code opponent_team_id=NULL}（未登録相手）:
+     *       ホーム/記録係が相手分を代行記録するため {@code recordedByTeamId == match.teamId} を許容。</li>
+     * </ul>
+     *
+     * <p>矛盾は 403（MATCH_025）。なお「principal がそのサイドを記録してよいか」の認可は Controller が
+     * {@link MatchAccessService#canRecordTimeline} / {@link MatchAccessService#canEditTeamData} で実施し、
+     * 本検証は recorded_by_team_id がサーバー導出済みである前提でのドメイン整合性チェックである。</p>
      */
-    private void validateLinkedEvent(UUID matchId, UUID linkedEventId) {
+    private void validateSideOwnership(MatchEntity match, TeamSide teamSide, Long recordedByTeamId) {
+        if (teamSide == null) {
+            // team_side は @NotNull で Request DTO（Phase 2-D）が担保するが、防御的に弾く
+            throw new BusinessException(MatchErrorCode.MATCH_024);
+        }
+        if (recordedByTeamId == null) {
+            // 名義が未確定の縮退ケースは整合検証の対象外（後段補完）
+            return;
+        }
+        Long homeTeamId = match.getTeamId();
+        Long awayTeamId = match.getOpponentTeamId();
+        boolean ok;
+        if (teamSide == TeamSide.HOME) {
+            ok = recordedByTeamId.equals(homeTeamId);
+        } else { // AWAY
+            if (awayTeamId != null) {
+                // 登録相手: 相手名義のみ許容（自チームが相手サイドを自名義で捏造するのを遮断）
+                ok = recordedByTeamId.equals(awayTeamId);
+            } else {
+                // 未登録相手: ホーム/記録係が代行記録 → 主体チーム名義を許容
+                ok = recordedByTeamId.equals(homeTeamId);
+            }
+        }
+        if (!ok) {
+            throw new BusinessException(MatchErrorCode.MATCH_025);
+        }
+    }
+
+    /**
+     * linked_event_id の同一 match 帰属検証＋連鎖相手 side 整合（03 §C.4a）。
+     *
+     * <ul>
+     *   <li>連鎖先が同一 match の既存イベントでない場合は 404（越境・親子不一致統一）。</li>
+     *   <li>連鎖相手の {@code team_side} が記録中イベントと同一サイドであることを確認する。
+     *       異サイドへの連鎖（例: 自サイドのアシストを相手サイドのゴールに紐づける）を遮断し、
+     *       相手サイドの集計を汚染する余地を塞ぐ（自名義捏造防止と同趣旨）。不一致は 404（連鎖先不一致統一）。</li>
+     * </ul>
+     *
+     * @param matchId       親 match ID
+     * @param teamSide      記録中イベントの team_side
+     * @param linkedEventId 連鎖相手イベント ID（NULL 可）
+     */
+    private void validateLinkedEvent(UUID matchId, TeamSide teamSide, UUID linkedEventId) {
         if (linkedEventId == null) {
             return;
         }
         MatchEventEntity linked = matchEventRepository.findById(linkedEventId).orElse(null);
         if (linked == null || !matchId.equals(linked.getMatchId())) {
             // 別試合・他テナントのイベント ID を連鎖相手に指定する越境を遮断（404 統一）
+            throw new BusinessException(MatchErrorCode.MATCH_022);
+        }
+        if (teamSide != null && linked.getTeamSide() != null && teamSide != linked.getTeamSide()) {
+            // 連鎖は同一サイド内で完結すべき（異サイド連鎖は相手集計を汚染しうる・404 統一）
             throw new BusinessException(MatchErrorCode.MATCH_022);
         }
     }
@@ -300,8 +372,12 @@ public class MatchEventService {
     /**
      * イベント記録/更新コマンド。
      *
-     * <p>{@code recordedByTeamId} は呼び出し側（Controller）が認証主体の所属から導出してセットする
-     * （クライアントの詐称を信頼しない・マスアサインメント防止・03 §C.4a）。</p>
+     * <p>{@code recordedByTeamId} は呼び出し側（Controller・Phase 2-D）が認証主体の所属から導出してセットする
+     * （クライアントの詐称を信頼しない・マスアサインメント防止・03 §C.4a）。
+     * <b>「principal → 所属チームの導出」「その principal が当該サイドを記録してよいか」の認可は Controller が
+     * {@link MatchAccessService#canRecordTimeline} / {@link MatchAccessService#canEditTeamData} で実施</b>し、
+     * Service 側は導出済みの {@code recordedByTeamId} と {@code teamSide} の<b>整合不変条件</b>を
+     * {@code validateSideOwnership} で二重防御する（責務分界）。</p>
      */
     @Getter
     @Builder

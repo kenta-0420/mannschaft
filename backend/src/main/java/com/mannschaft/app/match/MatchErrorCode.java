@@ -43,7 +43,15 @@ public enum MatchErrorCode implements ErrorCode {
     MATCH_023("MATCH_023", "試合を終了するには試合時間（分）の設定が必要です", Severity.WARN),
 
     /** 入力値が業務範囲外 / 制約違反（400）。 */
-    MATCH_024("MATCH_024", "入力内容に不備があります", Severity.WARN);
+    MATCH_024("MATCH_024", "入力内容に不備があります", Severity.WARN),
+
+    /**
+     * team_side と recorded_by_team_id の不整合（自サイド以外を自名義で記録できない・403・03 §C.4a）。
+     *
+     * <p>共同記録で相手サイドのイベントを自チーム名義（{@code recorded_by_team_id}=自チーム）で
+     * 捏造することを防ぐドメイン不変条件違反。`recorded_by_team_id` はサーバー導出済みである前提の二重防御。</p>
+     */
+    MATCH_025("MATCH_025", "記録名義と対象サイドが一致しません", Severity.WARN);
 
     private final String code;
     private final String message;

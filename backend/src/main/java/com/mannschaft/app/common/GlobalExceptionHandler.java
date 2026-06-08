@@ -675,7 +675,8 @@ public class GlobalExceptionHandler {
             Map.entry("MATCH_021", HttpStatus.BAD_REQUEST),                  // card_reason_code 不正
             Map.entry("MATCH_022", HttpStatus.NOT_FOUND),                    // linked_event_id 越境（親子不一致 → 404 統一）
             Map.entry("MATCH_023", HttpStatus.BAD_REQUEST),                  // COMPLETED に duration_minutes 必須
-            Map.entry("MATCH_024", HttpStatus.BAD_REQUEST)                   // 入力値が業務範囲外
+            Map.entry("MATCH_024", HttpStatus.BAD_REQUEST),                  // 入力値が業務範囲外
+            Map.entry("MATCH_025", HttpStatus.FORBIDDEN)                     // team_side↔recorded_by_team_id 不整合（自名義捏造防止・03 §C.4a）
     );
 
     /**
