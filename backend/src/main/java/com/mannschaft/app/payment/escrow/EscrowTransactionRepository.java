@@ -57,6 +57,15 @@ public interface EscrowTransactionRepository
             EscrowSourceKind sourceKind, Long sourceId);
 
     /**
+     * 業務冪等キー（{@code Idempotency-Key} ヘッダ起源）で即時 charge の既存 escrow を取得する（R2-2）。
+     *
+     * <p>会費（即時 charge）の二重起票防止に用いる。{@code (source_kind, source_id)} は P5（payment_item_id）と
+     * P7（team_id）で名前空間が衝突しうるため、呼び出し側が渡す一意な idempotencyKey で dedup する。
+     * 同一リクエストの二重送信のみが同一キーを再利用するため、別取引（別キー）は別 escrow になる。</p>
+     */
+    Optional<EscrowTransactionEntity> findByStripeIdempotencyKey(String stripeIdempotencyKey);
+
+    /**
      * 出所＋参加者（source_kind × source_id × source_participant_id）の取引を取得する。
      *
      * <p>与信の冪等判定に用いる（同一応募の二重与信を 1 件に収束させる・設計書 02 §9）。</p>

@@ -525,6 +525,88 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
     }
 
     @Override
+    public PaymentIntentInfo createAndConfirmDestinationPaymentIntent(long chargeAmountMinor, String currency,
+                                                                      String payerCustomerId, long applicationFeeMinor,
+                                                                      String destinationAccountId,
+                                                                      CaptureMethod captureMethod,
+                                                                      String paymentMethodId, String idempotencyKey) {
+        try {
+            PaymentIntentCreateParams.CaptureMethod stripeCaptureMethod =
+                    captureMethod == CaptureMethod.AUTOMATIC
+                            ? PaymentIntentCreateParams.CaptureMethod.AUTOMATIC
+                            : PaymentIntentCreateParams.CaptureMethod.MANUAL;
+
+            // 既存 createDestinationPaymentIntent と同一の destination/on_behalf_of/application_fee/capture_method に、
+            // off-session 即時確定（payment_method + confirm + off_session）を加える（R2-1・設計書 02 §4.1）。
+            PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
+                    .setAmount(chargeAmountMinor)
+                    .setCurrency(currency.toLowerCase())
+                    .setCustomer(payerCustomerId)
+                    .setCaptureMethod(stripeCaptureMethod)
+                    .setApplicationFeeAmount(applicationFeeMinor)
+                    .setOnBehalfOf(destinationAccountId)
+                    .setTransferData(PaymentIntentCreateParams.TransferData.builder()
+                            .setDestination(destinationAccountId)
+                            .build())
+                    .setPaymentMethod(paymentMethodId)
+                    .setConfirm(true)
+                    .setOffSession(true)
+                    .build();
+
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            PaymentIntent intent = PaymentIntent.create(params, options);
+            log.info("Stripe off-session 即時確定 PaymentIntent 作成: id={}, status={}, captureMethod={}, destination={}, "
+                            + "amount={}, appFee={}",
+                    intent.getId(), intent.getStatus(), captureMethod, destinationAccountId, chargeAmountMinor,
+                    applicationFeeMinor);
+
+            // confirm=true でも 3DS 要求（requires_action）等で succeeded にならない場合は、off-session では完結不能。
+            // 孤児 PI を残さず cancel し、専用例外で症状を露出する（症状を隠さない・R2-1）。
+            String status = intent.getStatus();
+            if (!"succeeded".equals(status) && !"requires_capture".equals(status) && !"processing".equals(status)) {
+                log.warn("off-session 確定が succeeded に至らず（status={}）。PI を cancel して専用例外で拒否: piId={}",
+                        status, intent.getId());
+                safeCancelPaymentIntent(intent.getId(), "offsession-cancel-" + idempotencyKey);
+                throw new OffSessionConfirmationException(
+                        status, "off-session confirm did not succeed: status=" + status, null);
+            }
+            return new PaymentIntentInfo(intent.getId(), intent.getClientSecret(), intent.getStatus());
+        } catch (com.stripe.exception.CardException e) {
+            // authentication_required / card_declined 等。Stripe が PI を生成済みなら cancel して孤児を残さない。
+            String piId = (e.getStripeError() != null && e.getStripeError().getPaymentIntent() != null)
+                    ? e.getStripeError().getPaymentIntent().getId() : null;
+            if (piId != null) {
+                safeCancelPaymentIntent(piId, "offsession-cancel-" + idempotencyKey);
+            }
+            log.warn("off-session 確定がカード認証要求/拒否で失敗: code={}, declineCode={}, piId={}",
+                    e.getCode(), e.getDeclineCode(), piId, e);
+            throw new OffSessionConfirmationException(e.getCode(), e.getMessage(), e);
+        } catch (StripeException e) {
+            log.error("Stripe off-session 確定 PaymentIntent 作成失敗: destination={}, amount={}",
+                    destinationAccountId, chargeAmountMinor, e);
+            throw new BusinessException(ConnectPaymentErrorCode.AUTHORIZATION_FAILED, e);
+        }
+    }
+
+    /**
+     * 確定に至らなかった PaymentIntent を cancel する（孤児を残さない・R2-1）。
+     * cancel 自体の失敗は本来の確定失敗を覆い隠さないため警告ログに留め、握り潰さず元の失敗を呼び出し側へ返す。
+     */
+    private void safeCancelPaymentIntent(String paymentIntentId, String idempotencyKey) {
+        try {
+            PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
+            RequestOptions options = RequestOptions.builder().setIdempotencyKey(idempotencyKey).build();
+            intent.cancel(PaymentIntentCancelParams.builder().build(), options);
+            log.info("off-session 確定失敗の PI を cancel（孤児防止）: piId={}", paymentIntentId);
+        } catch (StripeException ce) {
+            log.warn("off-session 確定失敗の PI cancel に失敗（要運用確認・本来の失敗は別途返却）: piId={}",
+                    paymentIntentId, ce);
+        }
+    }
+
+    @Override
     public PaymentIntentInfo captureManualPaymentIntent(String paymentIntentId, String idempotencyKey) {
         try {
             PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);

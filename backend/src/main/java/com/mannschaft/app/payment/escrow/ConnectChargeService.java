@@ -204,15 +204,29 @@ public class ConnectChargeService {
         if (cmd.faceAmount() <= 0L) {
             throw new IllegalArgumentException("faceAmount must be positive (会費・円整数): " + cmd.faceAmount());
         }
+        // 🟡1 null ガード（F08.9 R2-2 検分 2026-06-08）: idempotencyKey が null/blank の場合、下記 dedup が効かず
+        // 二重 escrow 起票が生じうる。呼び出し側（P1/P7）は常に Idempotency-Key ヘッダ起源の一意値を渡すため
+        // 現状実害はないが、誤った呼び出しを明示拒否し契約違反を早期発見する（症状を隠さない）。
+        if (cmd.idempotencyKey() == null || cmd.idempotencyKey().isBlank()) {
+            throw new IllegalArgumentException(
+                    "idempotencyKey は business 冪等の必須キー。null/blank では escrow 二重起票を防止できない"
+                    + "（呼び出し側で必ず一意値を渡すこと）");
+        }
 
-        // 冪等: 同一会費項目（source_kind=MEMBERSHIP × source_id）の二重起票を 1 件に収束させる（02 §9）。
-        // 即時モードは応募概念（source_participant_id）を持たないため source_id 単位で判定する。
-        var existing = escrowTransactionRepository.findBySourceKindAndSourceId(
-                EscrowSourceKind.MEMBERSHIP, cmd.sourceId());
-        if (!existing.isEmpty()) {
-            EscrowTransactionEntity e = existing.get(0);
-            log.info("会費 charge は既に存在します（冪等・再作成しない）: escrowId={}, status={}", e.getId(), e.getStatus());
-            return new MembershipChargeResult(e.getId(), null, e.getStripePaymentIntentId(), e.getStatus());
+        // 冪等（R2-2 根治）: 即時 charge の二重起票防止は呼び出し側が渡す idempotencyKey（Idempotency-Key ヘッダ起源・
+        // P5/P7 で別値・Stripe へも橋渡し）で行う。
+        // 旧実装は findBySourceKindAndSourceId(MEMBERSHIP, source_id) のみで判定していたが、source_id の意味が
+        // 呼び出し側で異なる（P5=payment_item_id / P7=team_id）ため、両者の値が一致すると名前空間が衝突し、P7 が P5 の
+        // escrow を「冪等ヒット」と誤判定して実 charge なしに流用していた。idempotencyKey は業務リクエスト単位で一意
+        // （同一リクエストの二重送信のみが同一キーを再利用）なので、値が一致しても別取引は必ず別 escrow になる。
+        if (cmd.idempotencyKey() != null && !cmd.idempotencyKey().isBlank()) {
+            var existing = escrowTransactionRepository.findByStripeIdempotencyKey(cmd.idempotencyKey());
+            if (existing.isPresent()) {
+                EscrowTransactionEntity e = existing.get();
+                log.info("会費 charge は既に存在します（冪等・再作成しない・idempotencyKey 一致）: escrowId={}, status={}",
+                        e.getId(), e.getStatus());
+                return new MembershipChargeResult(e.getId(), null, e.getStripePaymentIntentId(), e.getStatus());
+            }
         }
 
         // 手数料パターン（率%＋固定額¥）を解決し（R1・02 §3.5.1）、PaymentFeeCalculator で折半計算する
@@ -233,12 +247,33 @@ public class ConnectChargeService {
         }
 
         // AUTOMATIC（即時 capture）の Destination PaymentIntent を作成（idempotencyKey を Stripe へ橋渡し）。
-        StripePaymentProvider.PaymentIntentInfo pi = stripePaymentProvider.createDestinationPaymentIntent(
-                fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), fee.applicationFeeAmount(),
-                payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, cmd.idempotencyKey());
+        // R2-1: confirmImmediately=true（P5 継続課金の初回会費・払い手不在）なら、保存済み既定 PM で
+        // server-side off-session 即時確定する（succeeded webhook が CAPTURED 化＋記帳）。false（P1/P7）は従来どおり
+        // 未 confirm の PI を作成し FE の on-session confirm に委ねる（後方互換・無破壊）。
+        StripePaymentProvider.PaymentIntentInfo pi;
+        if (cmd.confirmImmediately()) {
+            if (cmd.paymentMethodId() == null || cmd.paymentMethodId().isBlank()) {
+                // 即時確定要求なのに PM が無いのは呼び出し側の契約違反（症状を隠さず拒否）。
+                throw new IllegalArgumentException(
+                        "confirmImmediately=true requires a non-blank paymentMethodId (off-session confirm)");
+            }
+            pi = stripePaymentProvider.createAndConfirmDestinationPaymentIntent(
+                    fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), fee.applicationFeeAmount(),
+                    payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, cmd.paymentMethodId(), cmd.idempotencyKey());
+        } else {
+            pi = stripePaymentProvider.createDestinationPaymentIntent(
+                    fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), fee.applicationFeeAmount(),
+                    payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, cmd.idempotencyKey());
+        }
 
         // escrow を MEMBERSHIP/AUTOMATIC で INSERT。hold_expires_at=NULL（即時・与信フェーズなし）。
         // status=AUTHORIZED（succeeded webhook 待ち）。CAPTURED 確定＋ledger 起票は webhook に委ねる（二重記帳しない）。
+        //
+        // 🟡2 TODO: source_id は source_kind 内で名前空間が重複し得る（P5=payment_item_id / P7=team_id）。
+        // business 冪等は idempotencyKey で担保しているため現状実害はないが、findBySourceKindAndSourceId を
+        // 新規経路で使う際は誤再利用（P7 が P5 の escrow を流用するなど）に注意。
+        // 将来は source_ref（ドメインプレフィックス付き文字列キー）等での厳密化を検討する
+        // （F08.9 R2-2 検分 2026-06-08）。
         EscrowTransactionEntity charged = EscrowTransactionEntity.builder()
                 .sourceKind(EscrowSourceKind.MEMBERSHIP)
                 .captureMode(EscrowCaptureMode.AUTOMATIC)
@@ -257,6 +292,7 @@ public class ConnectChargeService {
                 .feePolicyKey(policy.policyKey()) // 適用パターンを焼き付け（遡及防止・R1・01 §3.2）。
                 .status(EscrowStatus.AUTHORIZED)
                 .stripePaymentIntentId(pi.paymentIntentId())
+                .stripeIdempotencyKey(cmd.idempotencyKey()) // R2-2: 業務冪等キーを焼き付け（次回二重送信を dedup）。
                 .authorizedAt(LocalDateTime.now())
                 .holdExpiresAt(null)
                 .build();

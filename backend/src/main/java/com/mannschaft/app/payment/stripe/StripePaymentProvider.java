@@ -188,6 +188,64 @@ public interface StripePaymentProvider {
                                                      String idempotencyKey);
 
     /**
+     * Destination Charge の PaymentIntent を作成し、保存済み PaymentMethod で<b>server-side off-session 即時確定</b>する
+     * （F08.9 P5 継続課金の初回会費・R2-1 根治・設計書 02 §4.1）。
+     *
+     * <p>{@link #createDestinationPaymentIntent} は PaymentMethod 無し・未 confirm の PI を作るため、FE が
+     * カード入力で on-session confirm する P1 では機能するが、P5 の継続課金は「保存済み既定 PM での off-session 課金」
+     * であり FE は confirm しない。本メソッドは {@code setPaymentMethod(pm)}＋{@code setConfirm(true)}＋
+     * {@code setOffSession(true)} を加えて<b>サーバ側で即時確定</b>する。{@code transfer_data.destination}・
+     * {@code on_behalf_of}・{@code application_fee_amount}・{@code capture_method} は {@link #createDestinationPaymentIntent}
+     * と同一（会費は {@link CaptureMethod#AUTOMATIC}）。確定が成功すると Stripe から {@code payment_intent.succeeded}
+     * webhook が飛び、既存 {@link com.mannschaft.app.payment.escrow.EscrowWebhookService} 経路で AUTHORIZED→CAPTURED 化＋
+     * 複式記帳が行われる（escrow は呼び出し側で AUTHORIZED 起票・二重記帳しない・P1 流儀と整合）。</p>
+     *
+     * <p><b>3DS/カード拒否（症状を隠さない・R2-1）:</b> off-session confirm が {@code authentication_required}
+     * （off-session では 3DS 実行不能）/{@code card_declined} 等で失敗した場合、Stripe 側で確定した PI が残らないよう
+     * 当該 PI を cancel（孤児を作らない）したうえで {@link OffSessionConfirmationException} を投げる。呼び出し側は
+     * これを専用業務エラー（MEMBERSHIP_BILLING_023・402）へ変換し、Stripe 例外を握り潰さない。</p>
+     *
+     * @param chargeAmountMinor    課金額（最小通貨単位の整数・額面+支払手数料）
+     * @param currency             通貨コード（ISO 4217・例 {@code "jpy"}）
+     * @param payerCustomerId      支払者の Stripe Customer ID（{@code cus_xxx}）
+     * @param applicationFeeMinor  Mannschaft 徴収手数料（最小通貨単位の整数）
+     * @param destinationAccountId 受取側 Connect アカウント ID（{@code acct_xxx}）
+     * @param captureMethod        capture 方式（会費は AUTOMATIC）
+     * @param paymentMethodId      off-session 確定に用いる保存済み PaymentMethod（{@code pm_xxx}）
+     * @param idempotencyKey       冪等性キー（設計書 02 §9）
+     * @return 確定後の PaymentIntent 情報（id / clientSecret / status＝通常 {@code succeeded}）
+     * @throws OffSessionConfirmationException off-session confirm がカード認証要求/拒否で失敗した場合（PI は cancel 済み）
+     */
+    PaymentIntentInfo createAndConfirmDestinationPaymentIntent(long chargeAmountMinor, String currency,
+                                                              String payerCustomerId, long applicationFeeMinor,
+                                                              String destinationAccountId, CaptureMethod captureMethod,
+                                                              String paymentMethodId, String idempotencyKey);
+
+    /**
+     * off-session の即時確定（{@link #createAndConfirmDestinationPaymentIntent}）が、カードの追加認証要求
+     * （{@code authentication_required}）またはカード拒否（{@code card_declined} 等）で成立しなかったことを表す
+     * 非チェック例外（R2-1）。
+     *
+     * <p>{@code stripeErrorCode} は Stripe のエラーコード（例 {@code authentication_required}）。確定前の
+     * PaymentIntent はプロバイダ側で cancel 済み（孤児を残さない）。呼び出し側はこれを業務エラー
+     * （MEMBERSHIP_BILLING_023・402）へ変換し、症状を隠さず払い手へ「カード再認証/別カード登録」を促す。</p>
+     */
+    class OffSessionConfirmationException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+        private final transient String stripeErrorCode;
+
+        public OffSessionConfirmationException(String stripeErrorCode, String message, Throwable cause) {
+            super(message, cause);
+            this.stripeErrorCode = stripeErrorCode;
+        }
+
+        /** Stripe のエラーコード（例 {@code authentication_required}/{@code card_declined}）。null 可。 */
+        public String getStripeErrorCode() {
+            return stripeErrorCode;
+        }
+    }
+
+    /**
      * manual-capture の PaymentIntent を確定（capture）する（設計書 02 §5.3 / §8）。
      *
      * <p>{@code capture_method='manual'} で与信済み（{@code requires_capture}）の PaymentIntent を確定する。
