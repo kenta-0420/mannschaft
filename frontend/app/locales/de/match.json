@@ -1,0 +1,147 @@
+{
+  "match": {
+    "list": {
+      "title": "Spielaufzeichnungen",
+      "subtitle": "Trainings-, Freundschafts- und Turnierspiele erfassen",
+      "record_button": "+ Spiel erfassen",
+      "filter": {
+        "kind": "Art",
+        "status": "Status",
+        "all": "Alle"
+      },
+      "result": {
+        "win": "S",
+        "draw": "U",
+        "loss": "N",
+        "win_label": "W",
+        "draw_label": "D",
+        "loss_label": "L"
+      },
+      "in_progress_badge": "Läuft",
+      "score_vs": "{home} - {away}",
+      "vs": "gegen {opponent}",
+      "no_opponent": "Kein Gegner",
+      "no_score": "—",
+      "delete_confirm": "Diese Spielaufzeichnung löschen?",
+      "delete_success": "Spielaufzeichnung gelöscht",
+      "empty": "Noch keine Spielaufzeichnungen",
+      "empty_cta": "Erstes Spiel erfassen",
+      "load_more": "Mehr laden",
+      "page_info": "{from}-{to} von {total}",
+      "error": {
+        "load_failed": "Spiele konnten nicht geladen werden",
+        "status_failed": "Status konnte nicht geändert werden",
+        "score_failed": "Endstand konnte nicht festgelegt werden",
+        "recording_mode_failed": "Aufzeichnungsmodus konnte nicht geändert werden",
+        "delete_failed": "Spielaufzeichnung konnte nicht gelöscht werden"
+      }
+    },
+    "create": {
+      "title": "Spiel erfassen",
+      "subtitle": "Wähle einfach Art und Gegner, um zu beginnen. Ort und Zeit kannst du später festlegen.",
+      "kind_label": "Art",
+      "kind_hint": "Zum Auswählen tippen",
+      "opponent_label": "Name des gegnerischen Teams",
+      "opponent_placeholder": "Name des gegnerischen Teams eingeben",
+      "opponent_required": "Bitte einen Gegnernamen eingeben",
+      "kind_required": "Bitte eine Art auswählen",
+      "optional_section": "Optional (später festlegen)",
+      "optional_hint": "Du kannst die Erfassung mit leeren Feldern starten und sie nach dem Spiel ergänzen.",
+      "venue_label": "Spielort",
+      "venue_placeholder": "Name des Spielorts (optional)",
+      "kickoff_label": "Anstoßdatum und -zeit",
+      "duration_label": "Dauer (Minuten)",
+      "home_away_label": "Heim / Auswärts",
+      "home_away": {
+        "HOME": "Heim",
+        "AWAY": "Auswärts",
+        "NEUTRAL": "Neutral"
+      },
+      "submit": "Erfassung starten",
+      "submit_short": "Erstellen",
+      "cancel": "Abbrechen",
+      "success": "Spiel erstellt",
+      "update_success": "Spielinformationen aktualisiert",
+      "error": {
+        "create_failed": "Spiel konnte nicht erstellt werden",
+        "update_failed": "Spielinformationen konnten nicht aktualisiert werden"
+      }
+    },
+    "live": {
+      "error": {
+        "load_events_failed": "Ereignisse konnten nicht geladen werden",
+        "load_appearances_failed": "Einsätze konnten nicht geladen werden",
+        "add_event_failed": "Ereignis konnte nicht erfasst werden",
+        "update_event_failed": "Ereignis konnte nicht aktualisiert werden",
+        "delete_event_failed": "Ereignis konnte nicht gelöscht werden"
+      }
+    },
+    "analytics": {
+      "error": {
+        "load_failed": "Statistiken konnten nicht geladen werden"
+      }
+    },
+    "kind": {
+      "PRACTICE": "Training",
+      "FRIENDLY": "Freundschaftsspiel",
+      "TOURNAMENT": "Turnier",
+      "LEAGUE": "Liga"
+    },
+    "status": {
+      "SCHEDULED": "Geplant",
+      "IN_PROGRESS": "Läuft",
+      "COMPLETED": "Beendet",
+      "POSTPONED": "Verschoben",
+      "CANCELLED": "Abgesagt",
+      "PLANNED": "Geplant",
+      "CLOSED": "Bestätigt"
+    },
+    "event_type": {
+      "STARTER": "Startelf",
+      "SUB_IN": "Einwechslung",
+      "SUB_OUT": "Auswechslung",
+      "GOAL": "Tor",
+      "ASSIST": "Vorlage",
+      "OWN_GOAL": "Eigentor",
+      "PENALTY_GOAL": "Elfmeter (verwandelt)",
+      "PENALTY_MISS": "Elfmeter (verschossen)",
+      "PENALTY_SHOOTOUT": "Elfmeterschießen",
+      "YELLOW_CARD": "Verwarnung",
+      "RED_CARD": "Feldverweis",
+      "SECOND_YELLOW": "Zweite Gelbe",
+      "SAVE": "Parade",
+      "INJURY": "Verletzung",
+      "PERIOD_START": "Spielabschnitt-Beginn",
+      "PERIOD_END": "Spielabschnitt-Ende",
+      "OTHER": "Sonstiges"
+    },
+    "card_type": {
+      "YELLOW": "Verwarnung",
+      "RED": "Feldverweis",
+      "SECOND_YELLOW": "Zweite Gelbe"
+    },
+    "card_reason": {
+      "C1": "Unsportliches Verhalten",
+      "C2": "Rohes Spiel",
+      "C3": "Reklamieren",
+      "C4": "Wiederholte Vergehen",
+      "C5": "Verzögerung der Spielfortsetzung",
+      "C6": "Abstand nicht eingehalten",
+      "C7": "Betreten ohne Erlaubnis",
+      "C8": "Verlassen ohne Erlaubnis",
+      "S1": "Grobes Foulspiel",
+      "S2": "Tätlichkeit",
+      "S3": "Anspucken",
+      "S4": "Verhindern eines Tores (Handspiel)",
+      "S5": "Verhindern eines Tores (sonstiges)",
+      "S6": "Beleidigende Äußerungen/Gesten",
+      "CS": "Zwei Verwarnungen"
+    },
+    "position": {
+      "GK": "Torwart",
+      "DF": "Verteidiger",
+      "MF": "Mittelfeldspieler",
+      "FW": "Stürmer"
+    }
+  }
+}

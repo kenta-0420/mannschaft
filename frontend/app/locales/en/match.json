@@ -1,0 +1,147 @@
+{
+  "match": {
+    "list": {
+      "title": "Match Records",
+      "subtitle": "Record practice, friendly and tournament matches",
+      "record_button": "+ Record a Match",
+      "filter": {
+        "kind": "Type",
+        "status": "Status",
+        "all": "All"
+      },
+      "result": {
+        "win": "W",
+        "draw": "D",
+        "loss": "L",
+        "win_label": "W",
+        "draw_label": "D",
+        "loss_label": "L"
+      },
+      "in_progress_badge": "In Progress",
+      "score_vs": "{home} - {away}",
+      "vs": "vs {opponent}",
+      "no_opponent": "No opponent",
+      "no_score": "—",
+      "delete_confirm": "Delete this match record?",
+      "delete_success": "Match record deleted",
+      "empty": "No match records yet",
+      "empty_cta": "Record your first match",
+      "load_more": "Load more",
+      "page_info": "{from}-{to} of {total}",
+      "error": {
+        "load_failed": "Failed to load matches",
+        "status_failed": "Failed to change status",
+        "score_failed": "Failed to finalize score",
+        "recording_mode_failed": "Failed to change recording mode",
+        "delete_failed": "Failed to delete match record"
+      }
+    },
+    "create": {
+      "title": "Record a Match",
+      "subtitle": "Just pick a type and opponent to start. Venue and time can be set later.",
+      "kind_label": "Type",
+      "kind_hint": "Tap to select",
+      "opponent_label": "Opponent team name",
+      "opponent_placeholder": "Enter opponent team name",
+      "opponent_required": "Please enter an opponent name",
+      "kind_required": "Please select a type",
+      "optional_section": "Optional (set later)",
+      "optional_hint": "You can start recording with these blank and fill them in after the match.",
+      "venue_label": "Venue",
+      "venue_placeholder": "Venue name (optional)",
+      "kickoff_label": "Kickoff date & time",
+      "duration_label": "Duration (minutes)",
+      "home_away_label": "Home / Away",
+      "home_away": {
+        "HOME": "Home",
+        "AWAY": "Away",
+        "NEUTRAL": "Neutral"
+      },
+      "submit": "Start Recording",
+      "submit_short": "Create",
+      "cancel": "Cancel",
+      "success": "Match created",
+      "update_success": "Match info updated",
+      "error": {
+        "create_failed": "Failed to create match",
+        "update_failed": "Failed to update match info"
+      }
+    },
+    "live": {
+      "error": {
+        "load_events_failed": "Failed to load events",
+        "load_appearances_failed": "Failed to load appearances",
+        "add_event_failed": "Failed to record event",
+        "update_event_failed": "Failed to update event",
+        "delete_event_failed": "Failed to delete event"
+      }
+    },
+    "analytics": {
+      "error": {
+        "load_failed": "Failed to load statistics"
+      }
+    },
+    "kind": {
+      "PRACTICE": "Practice",
+      "FRIENDLY": "Friendly",
+      "TOURNAMENT": "Tournament",
+      "LEAGUE": "League"
+    },
+    "status": {
+      "SCHEDULED": "Scheduled",
+      "IN_PROGRESS": "In Progress",
+      "COMPLETED": "Completed",
+      "POSTPONED": "Postponed",
+      "CANCELLED": "Cancelled",
+      "PLANNED": "Scheduled",
+      "CLOSED": "Finalized"
+    },
+    "event_type": {
+      "STARTER": "Starter",
+      "SUB_IN": "Sub In",
+      "SUB_OUT": "Sub Out",
+      "GOAL": "Goal",
+      "ASSIST": "Assist",
+      "OWN_GOAL": "Own Goal",
+      "PENALTY_GOAL": "Penalty (Scored)",
+      "PENALTY_MISS": "Penalty (Missed)",
+      "PENALTY_SHOOTOUT": "Penalty Shootout",
+      "YELLOW_CARD": "Caution",
+      "RED_CARD": "Sending-off",
+      "SECOND_YELLOW": "Second Yellow",
+      "SAVE": "Save",
+      "INJURY": "Injury",
+      "PERIOD_START": "Period Start",
+      "PERIOD_END": "Period End",
+      "OTHER": "Other"
+    },
+    "card_type": {
+      "YELLOW": "Caution",
+      "RED": "Sending-off",
+      "SECOND_YELLOW": "Second Yellow"
+    },
+    "card_reason": {
+      "C1": "Unsporting behavior",
+      "C2": "Rough play",
+      "C3": "Dissent",
+      "C4": "Persistent offences",
+      "C5": "Delaying the restart",
+      "C6": "Failing to respect distance",
+      "C7": "Entering without permission",
+      "C8": "Leaving without permission",
+      "S1": "Serious foul play",
+      "S2": "Violent conduct",
+      "S3": "Spitting",
+      "S4": "Denying a goal (handball)",
+      "S5": "Denying a goal (other)",
+      "S6": "Offensive language/gestures",
+      "CS": "Two cautions"
+    },
+    "position": {
+      "GK": "Goalkeeper",
+      "DF": "Defender",
+      "MF": "Midfielder",
+      "FW": "Forward"
+    }
+  }
+}

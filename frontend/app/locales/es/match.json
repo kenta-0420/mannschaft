@@ -1,0 +1,147 @@
+{
+  "match": {
+    "list": {
+      "title": "Registros de partidos",
+      "subtitle": "Registra partidos de entrenamiento, amistosos y de torneo",
+      "record_button": "+ Registrar partido",
+      "filter": {
+        "kind": "Tipo",
+        "status": "Estado",
+        "all": "Todos"
+      },
+      "result": {
+        "win": "G",
+        "draw": "E",
+        "loss": "P",
+        "win_label": "W",
+        "draw_label": "D",
+        "loss_label": "L"
+      },
+      "in_progress_badge": "En curso",
+      "score_vs": "{home} - {away}",
+      "vs": "vs {opponent}",
+      "no_opponent": "Sin rival",
+      "no_score": "—",
+      "delete_confirm": "¿Eliminar este registro de partido?",
+      "delete_success": "Registro de partido eliminado",
+      "empty": "Aún no hay registros de partidos",
+      "empty_cta": "Registra tu primer partido",
+      "load_more": "Cargar más",
+      "page_info": "{from}-{to} de {total}",
+      "error": {
+        "load_failed": "Error al cargar los partidos",
+        "status_failed": "Error al cambiar el estado",
+        "score_failed": "Error al finalizar el marcador",
+        "recording_mode_failed": "Error al cambiar el modo de registro",
+        "delete_failed": "Error al eliminar el registro del partido"
+      }
+    },
+    "create": {
+      "title": "Registrar partido",
+      "subtitle": "Solo elige un tipo y un rival para empezar. El lugar y la hora se pueden configurar después.",
+      "kind_label": "Tipo",
+      "kind_hint": "Toca para seleccionar",
+      "opponent_label": "Nombre del equipo rival",
+      "opponent_placeholder": "Introduce el nombre del equipo rival",
+      "opponent_required": "Introduce un nombre de rival",
+      "kind_required": "Selecciona un tipo",
+      "optional_section": "Opcional (configurar después)",
+      "optional_hint": "Puedes empezar a registrar con estos campos vacíos y completarlos tras el partido.",
+      "venue_label": "Lugar",
+      "venue_placeholder": "Nombre del lugar (opcional)",
+      "kickoff_label": "Fecha y hora de inicio",
+      "duration_label": "Duración (minutos)",
+      "home_away_label": "Local / Visitante",
+      "home_away": {
+        "HOME": "Local",
+        "AWAY": "Visitante",
+        "NEUTRAL": "Neutral"
+      },
+      "submit": "Empezar a registrar",
+      "submit_short": "Crear",
+      "cancel": "Cancelar",
+      "success": "Partido creado",
+      "update_success": "Información del partido actualizada",
+      "error": {
+        "create_failed": "Error al crear el partido",
+        "update_failed": "Error al actualizar la información del partido"
+      }
+    },
+    "live": {
+      "error": {
+        "load_events_failed": "Error al cargar los eventos",
+        "load_appearances_failed": "Error al cargar las apariciones",
+        "add_event_failed": "Error al registrar el evento",
+        "update_event_failed": "Error al actualizar el evento",
+        "delete_event_failed": "Error al eliminar el evento"
+      }
+    },
+    "analytics": {
+      "error": {
+        "load_failed": "Error al cargar las estadísticas"
+      }
+    },
+    "kind": {
+      "PRACTICE": "Entrenamiento",
+      "FRIENDLY": "Amistoso",
+      "TOURNAMENT": "Torneo",
+      "LEAGUE": "Liga"
+    },
+    "status": {
+      "SCHEDULED": "Programado",
+      "IN_PROGRESS": "En curso",
+      "COMPLETED": "Finalizado",
+      "POSTPONED": "Aplazado",
+      "CANCELLED": "Cancelado",
+      "PLANNED": "Programado",
+      "CLOSED": "Confirmado"
+    },
+    "event_type": {
+      "STARTER": "Titular",
+      "SUB_IN": "Entra",
+      "SUB_OUT": "Sale",
+      "GOAL": "Gol",
+      "ASSIST": "Asistencia",
+      "OWN_GOAL": "Gol en propia puerta",
+      "PENALTY_GOAL": "Penalti (marcado)",
+      "PENALTY_MISS": "Penalti (fallado)",
+      "PENALTY_SHOOTOUT": "Tanda de penaltis",
+      "YELLOW_CARD": "Amonestación",
+      "RED_CARD": "Expulsión",
+      "SECOND_YELLOW": "Segunda amarilla",
+      "SAVE": "Parada",
+      "INJURY": "Lesión",
+      "PERIOD_START": "Inicio del periodo",
+      "PERIOD_END": "Fin del periodo",
+      "OTHER": "Otro"
+    },
+    "card_type": {
+      "YELLOW": "Amonestación",
+      "RED": "Expulsión",
+      "SECOND_YELLOW": "Segunda amarilla"
+    },
+    "card_reason": {
+      "C1": "Conducta antideportiva",
+      "C2": "Juego brusco",
+      "C3": "Desacuerdo",
+      "C4": "Infracciones reiteradas",
+      "C5": "Retrasar la reanudación",
+      "C6": "Distancia insuficiente",
+      "C7": "Entrar sin permiso",
+      "C8": "Salir sin permiso",
+      "S1": "Juego brusco grave",
+      "S2": "Conducta violenta",
+      "S3": "Escupir",
+      "S4": "Impedir un gol (mano)",
+      "S5": "Impedir un gol (otro)",
+      "S6": "Lenguaje o gestos ofensivos",
+      "CS": "Dos amonestaciones"
+    },
+    "position": {
+      "GK": "Portero",
+      "DF": "Defensa",
+      "MF": "Centrocampista",
+      "FW": "Delantero"
+    }
+  }
+}
