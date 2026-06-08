@@ -55,6 +55,7 @@ public class ActivityController {
             @RequestParam(value = "template_id", required = false) Long templateId,
             @RequestParam(defaultValue = "20") int limit) {
         Page<ActivityResultEntity> result = activityService.listActivities(
+                SecurityUtils.getCurrentUserId(),
                 ActivityScopeType.valueOf(scopeType), scopeId, templateId, PageRequest.of(0, limit));
         return ResponseEntity.ok(ApiResponse.of(result.getContent()));
     }
@@ -66,7 +67,7 @@ public class ActivityController {
     @Operation(summary = "活動記録詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ActivityResultEntity>> getActivity(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(activityService.getActivity(id)));
+        return ResponseEntity.ok(ApiResponse.of(activityService.getActivity(id, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -93,7 +94,7 @@ public class ActivityController {
     public ResponseEntity<ApiResponse<ActivityResultEntity>> updateActivity(
             @PathVariable Long id,
             @Valid @RequestBody UpdateActivityRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(activityService.updateActivity(id, request)));
+        return ResponseEntity.ok(ApiResponse.of(activityService.updateActivity(id, SecurityUtils.getCurrentUserId(), request)));
     }
 
     /**
@@ -103,7 +104,7 @@ public class ActivityController {
     @Operation(summary = "活動記録削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteActivity(@PathVariable Long id) {
-        activityService.deleteActivity(id);
+        activityService.deleteActivity(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -129,7 +130,7 @@ public class ActivityController {
     public ResponseEntity<ApiResponse<List<ActivityParticipantResponse>>> addParticipants(
             @PathVariable Long id,
             @Valid @RequestBody AddParticipantsRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(activityService.addParticipants(id, request)));
+        return ResponseEntity.ok(ApiResponse.of(activityService.addParticipants(id, SecurityUtils.getCurrentUserId(), request)));
     }
 
     /**
@@ -141,6 +142,6 @@ public class ActivityController {
     public ResponseEntity<ApiResponse<List<ActivityParticipantResponse>>> removeParticipants(
             @PathVariable Long id,
             @Valid @RequestBody RemoveParticipantsRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(activityService.removeParticipants(id, request)));
+        return ResponseEntity.ok(ApiResponse.of(activityService.removeParticipants(id, SecurityUtils.getCurrentUserId(), request)));
     }
 }

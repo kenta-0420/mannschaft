@@ -14,6 +14,7 @@ import com.mannschaft.app.activity.entity.ActivityParticipantEntity;
 import com.mannschaft.app.activity.entity.ActivityResultEntity;
 import com.mannschaft.app.activity.repository.ActivityParticipantRepository;
 import com.mannschaft.app.activity.repository.ActivityResultRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -50,12 +51,17 @@ public class ActivityResultService {
     private final ActivityMapper activityMapper;
     private final ObjectMapper objectMapper;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    private final AccessControlService accessControlService;
 
     /**
      * 活動記録一覧をページング取得する。
      */
-    public Page<ActivityResultEntity> listActivities(ActivityScopeType scopeType, Long scopeId,
+    public Page<ActivityResultEntity> listActivities(Long userId, ActivityScopeType scopeType, Long scopeId,
                                                       Long templateId, Pageable pageable) {
+        // スコープメンバーシップ検証: 非メンバーは403
+        if (scopeType == ActivityScopeType.TEAM || scopeType == ActivityScopeType.ORGANIZATION) {
+            accessControlService.checkMembership(userId, scopeId, scopeType.name());
+        }
         if (templateId != null) {
             return resultRepository.findByScopeTypeAndScopeIdAndTemplateIdOrderByActivityDateDescIdDesc(
                     scopeType, scopeId, templateId, pageable);
@@ -98,10 +104,24 @@ public class ActivityResultService {
     }
 
     /**
-     * 活動記録詳細を取得する。
+     * 公開用に活動記録詳細を取得する（認証不要・メンバーシップチェックなし）。
+     * ActivityPublicController 等の公開エンドポイント専用。
      */
     public ActivityResultEntity getActivity(Long id) {
         return findActivityOrThrow(id);
+    }
+
+    /**
+     * 活動記録詳細を取得する。
+     */
+    public ActivityResultEntity getActivity(Long id, Long userId) {
+        ActivityResultEntity entity = findActivityOrThrow(id);
+        // スコープメンバーシップ検証
+        ActivityScopeType scopeType = entity.getScopeType();
+        if (scopeType == ActivityScopeType.TEAM || scopeType == ActivityScopeType.ORGANIZATION) {
+            accessControlService.checkMembership(userId, entity.getScopeId(), scopeType.name());
+        }
+        return entity;
     }
 
     /**
@@ -124,6 +144,10 @@ public class ActivityResultService {
     @Transactional
     public ActivityResultEntity createActivity(Long userId, ActivityScopeType scopeType,
                                                 Long scopeId, CreateActivityRequest request) {
+        // スコープメンバーシップ検証: 非メンバーは403
+        if (scopeType == ActivityScopeType.TEAM || scopeType == ActivityScopeType.ORGANIZATION) {
+            accessControlService.checkMembership(userId, scopeId, scopeType.name());
+        }
         // テンプレート存在チェック
         templateService.findTemplateOrThrow(request.getTemplateId());
 
@@ -176,8 +200,15 @@ public class ActivityResultService {
      * 活動記録を更新する。
      */
     @Transactional
-    public ActivityResultEntity updateActivity(Long id, UpdateActivityRequest request) {
+    public ActivityResultEntity updateActivity(Long id, Long userId, UpdateActivityRequest request) {
         ActivityResultEntity entity = findActivityOrThrow(id);
+        // 本人または管理者のみ更新可能
+        ActivityScopeType scopeType = entity.getScopeType();
+        if (scopeType == ActivityScopeType.TEAM || scopeType == ActivityScopeType.ORGANIZATION) {
+            if (!userId.equals(entity.getCreatedBy())) {
+                accessControlService.checkAdminOrAbove(userId, entity.getScopeId(), scopeType.name());
+            }
+        }
 
         // 時刻バリデーション
         if (request.getActivityTimeStart() != null && request.getActivityTimeEnd() != null
@@ -204,8 +235,15 @@ public class ActivityResultService {
      * 活動記録を論理削除する。
      */
     @Transactional
-    public void deleteActivity(Long id) {
+    public void deleteActivity(Long id, Long userId) {
         ActivityResultEntity entity = findActivityOrThrow(id);
+        // 本人または管理者のみ削除可能
+        ActivityScopeType scopeType = entity.getScopeType();
+        if (scopeType == ActivityScopeType.TEAM || scopeType == ActivityScopeType.ORGANIZATION) {
+            if (!userId.equals(entity.getCreatedBy())) {
+                accessControlService.checkAdminOrAbove(userId, entity.getScopeId(), scopeType.name());
+            }
+        }
         entity.softDelete();
         resultRepository.save(entity);
         log.info("活動記録削除: activityId={}", id);
@@ -259,23 +297,28 @@ public class ActivityResultService {
      * 参加者を追加する。
      */
     @Transactional
-    public List<ActivityParticipantResponse> addParticipants(Long activityId, AddParticipantsRequest request) {
-        findActivityOrThrow(activityId);
+    public List<ActivityParticipantResponse> addParticipants(Long activityId, Long userId, AddParticipantsRequest request) {
+        ActivityResultEntity activity = findActivityOrThrow(activityId);
+        // スコープメンバーシップ検証: 非メンバーは403
+        ActivityScopeType scopeType = activity.getScopeType();
+        if (scopeType == ActivityScopeType.TEAM || scopeType == ActivityScopeType.ORGANIZATION) {
+            accessControlService.checkMembership(userId, activity.getScopeId(), scopeType.name());
+        }
 
-        for (Long userId : request.getUserIds()) {
+        for (Long participantUserId : request.getUserIds()) {
             // 重複チェック
-            if (participantRepository.findByActivityResultIdAndUserId(activityId, userId).isPresent()) {
+            if (participantRepository.findByActivityResultIdAndUserId(activityId, participantUserId).isPresent()) {
                 continue;
             }
 
             String roleLabel = null;
             if (request.getRoleLabels() != null) {
-                roleLabel = request.getRoleLabels().get(String.valueOf(userId));
+                roleLabel = request.getRoleLabels().get(String.valueOf(participantUserId));
             }
 
             ActivityParticipantEntity participant = ActivityParticipantEntity.builder()
                     .activityResultId(activityId)
-                    .userId(userId)
+                    .userId(participantUserId)
                     .roleLabel(roleLabel)
                     .build();
             participantRepository.save(participant);
@@ -290,8 +333,13 @@ public class ActivityResultService {
      * 参加者を削除する。
      */
     @Transactional
-    public List<ActivityParticipantResponse> removeParticipants(Long activityId, RemoveParticipantsRequest request) {
-        findActivityOrThrow(activityId);
+    public List<ActivityParticipantResponse> removeParticipants(Long activityId, Long userId, RemoveParticipantsRequest request) {
+        ActivityResultEntity activity = findActivityOrThrow(activityId);
+        // スコープメンバーシップ検証: 非メンバーは403
+        ActivityScopeType scopeType = activity.getScopeType();
+        if (scopeType == ActivityScopeType.TEAM || scopeType == ActivityScopeType.ORGANIZATION) {
+            accessControlService.checkMembership(userId, activity.getScopeId(), scopeType.name());
+        }
         participantRepository.deleteByActivityResultIdAndUserIdIn(activityId, request.getUserIds());
         log.info("参加者削除: activityId={}, count={}", activityId, request.getUserIds().size());
 

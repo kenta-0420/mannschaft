@@ -31,5 +31,7 @@ public enum AuditEventCategory {
     /** F05.1 掲示板（他者コンテンツ削除等のモデレーション操作）。 */
     BULLETIN,
     /** F08.7 / F08.7.1 大会（連絡スペース公開設定変更等）。 */
-    TOURNAMENT
+    TOURNAMENT,
+    /** F08.10 試合記録・分析（スコア確定 / status 遷移 / 記録モード切替 / 記録係変更）。 */
+    MATCH
 }

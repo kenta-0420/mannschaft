@@ -46,6 +46,7 @@ class ActivityResultServiceTest {
     @Mock private ActivityMapper activityMapper;
     @Mock private ObjectMapper objectMapper;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
+    @Mock private com.mannschaft.app.common.AccessControlService accessControlService;
 
     @InjectMocks
     private ActivityResultService service;
@@ -93,7 +94,7 @@ class ActivityResultServiceTest {
         void 削除_正常_論理削除() {
             ActivityResultEntity entity = ActivityResultEntity.builder().title("テスト").build();
             given(resultRepository.findById(ACTIVITY_ID)).willReturn(Optional.of(entity));
-            service.deleteActivity(ACTIVITY_ID);
+            service.deleteActivity(ACTIVITY_ID, USER_ID);
             verify(resultRepository).save(entity);
         }
 
@@ -101,7 +102,7 @@ class ActivityResultServiceTest {
         @DisplayName("異常系: 活動記録不在でACTIVITY_001例外")
         void 削除_不在_例外() {
             given(resultRepository.findById(ACTIVITY_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.deleteActivity(ACTIVITY_ID))
+            assertThatThrownBy(() -> service.deleteActivity(ACTIVITY_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ACTIVITY_001"));
@@ -169,7 +170,7 @@ class ActivityResultServiceTest {
 
             AddParticipantsRequest request = new AddParticipantsRequest(List.of(1L), null);
 
-            service.addParticipants(ACTIVITY_ID, request);
+            service.addParticipants(ACTIVITY_ID, USER_ID, request);
             // No new save since already exists
         }
     }
