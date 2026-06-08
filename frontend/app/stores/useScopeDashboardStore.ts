@@ -123,25 +123,31 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
         const first = result.items[0]
 
         // 先頭スコープを自動選択（未選択の場合のみ）
+        // ダッシュボード API の pathVariable には UUID（publicId）を使用する。
+        // publicId が null の場合は BIGINT（scopeId）にフォールバック。
         if (first) {
           if (scopeType === 'TEAM' && this.selectedTeamId === null) {
-            this.selectedTeamId = first.scopeId
+            this.selectedTeamId = first.publicId ?? first.scopeId
           } else if (scopeType === 'ORGANIZATION' && this.selectedOrgId === null) {
-            this.selectedOrgId = first.scopeId
+            this.selectedOrgId = first.publicId ?? first.scopeId
           }
         }
 
         // 選択中スコープが一覧から消えた場合は先頭へフォールバック（退会・権限喪失対応）
         if (scopeType === 'TEAM' && this.selectedTeamId !== null) {
-          const exists = result.items.some(item => item.scopeId === this.selectedTeamId)
+          const exists = result.items.some(
+            item => (item.publicId ?? item.scopeId) === this.selectedTeamId,
+          )
           if (!exists && first) {
-            this.selectedTeamId = first.scopeId
+            this.selectedTeamId = first.publicId ?? first.scopeId
             this.persistToStorage()
           }
         } else if (scopeType === 'ORGANIZATION' && this.selectedOrgId !== null) {
-          const exists = result.items.some(item => item.scopeId === this.selectedOrgId)
+          const exists = result.items.some(
+            item => (item.publicId ?? item.scopeId) === this.selectedOrgId,
+          )
           if (!exists && first) {
-            this.selectedOrgId = first.scopeId
+            this.selectedOrgId = first.publicId ?? first.scopeId
             this.persistToStorage()
           }
         }
