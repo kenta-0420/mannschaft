@@ -50,6 +50,9 @@ class ChatMemberServiceTest {
     @Mock
     private ChatChannelEventPublisher eventPublisher;
 
+    @Mock
+    private com.mannschaft.app.common.AccessControlService accessControlService;
+
     @InjectMocks
     private ChatMemberService chatMemberService;
 
@@ -344,6 +347,7 @@ class ChatMemberServiceTest {
                     .channelType(ChannelType.TEAM_PUBLIC).name("test").build();
 
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(true);
             given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, newUser)).willReturn(false);
             given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, existingUser)).willReturn(true);
             given(memberRepository.save(any(ChatChannelMemberEntity.class)))
