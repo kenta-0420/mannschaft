@@ -57,8 +57,10 @@ public class ChatMemberService {
     @Transactional
     public List<MemberResponse> addMembers(Long channelId, Long operatorUserId, AddMemberRequest request) {
         channelService.findChannelOrThrow(channelId);
-        // 操作者がチャンネルメンバーであることを確認
-        if (!memberRepository.existsByChannelIdAndUserId(channelId, operatorUserId)) {
+        // 操作者がチャンネルのOWNER/ADMINであることを確認（一般MEMBERによるメンバー追加を禁止）
+        ChatChannelMemberEntity operator = memberRepository.findByChannelIdAndUserId(channelId, operatorUserId)
+                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED));
+        if (operator.getRole() != ChannelMemberRole.OWNER && operator.getRole() != ChannelMemberRole.ADMIN) {
             throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
         }
 
@@ -88,9 +90,11 @@ public class ChatMemberService {
      */
     @Transactional
     public void removeMember(Long channelId, Long userId, Long operatorUserId) {
-        // 自分以外を除外しようとする場合は、操作者がチャンネルメンバーであること
+        // 他人を除外する場合はOWNER/ADMINのみ許可（一般MEMBERによるキック禁止）
         if (!operatorUserId.equals(userId)) {
-            if (!memberRepository.existsByChannelIdAndUserId(channelId, operatorUserId)) {
+            ChatChannelMemberEntity operator = memberRepository.findByChannelIdAndUserId(channelId, operatorUserId)
+                    .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED));
+            if (operator.getRole() != ChannelMemberRole.OWNER && operator.getRole() != ChannelMemberRole.ADMIN) {
                 throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
             }
         }
