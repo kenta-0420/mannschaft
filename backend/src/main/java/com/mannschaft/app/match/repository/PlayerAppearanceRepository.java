@@ -4,6 +4,7 @@ import com.mannschaft.app.match.entity.PlayerAppearanceEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,4 +35,17 @@ public interface PlayerAppearanceRepository extends JpaRepository<PlayerAppearan
 
     /** 指定試合の出場記録を一括削除する。 */
     void deleteByMatchId(UUID matchId);
+
+    /**
+     * 集計用: 複数試合の出場記録を一括取得する（N+1 回避・02 §F.3）。
+     *
+     * <p>呼び出し元は、親 matches を<b>テナント絞り込みで取得した matchId 集合</b>のみを渡す
+     * （テナント外 ID を渡してはならない・{@code MatchRepository.findForXxxStats} 経由）。</p>
+     */
+    List<PlayerAppearanceEntity> findByMatchIdIn(Collection<UUID> matchIds);
+
+    /**
+     * 集計用: 複数試合のうち指定ユーザーの出場記録を一括取得する（個人統計・N+1 回避）。
+     */
+    List<PlayerAppearanceEntity> findByMatchIdInAndPlayerUserId(Collection<UUID> matchIds, Long playerUserId);
 }
