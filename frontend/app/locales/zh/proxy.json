@@ -73,6 +73,41 @@
       "byProxy": "代理输入",
       "total": "合计"
     },
+    "guardianship": {
+      "switch": {
+        "title": "监护切换",
+        "startAs": "以{name}身份操作",
+        "actingAs": "正在以{name}身份操作",
+        "end": "结束切换",
+        "confirm": "确定要开始监护切换吗？",
+        "empty": "没有可切换的孩子",
+        "blocked": "因年龄限制无法切换",
+        "success": "监护切换已开始",
+        "endSuccess": "监护切换已结束",
+        "cancelButton": "取消",
+        "startButton": "开始",
+        "otherChildren": "其他"
+      },
+      "independence": {
+        "title": "独立过渡",
+        "sealDate": "切换封印日",
+        "stage": "当前阶段",
+        "passwordSet": "已设置密码",
+        "passwordNotSet": "未设置密码",
+        "handover": "开始交接",
+        "handoverConfirm": "将向孩子的电子邮件地址发送密码设置链接",
+        "handoverSuccess": "交接邮件已发送",
+        "alreadyIndependent": "该孩子已达到独立阶段",
+        "childEmail": "孩子的电子邮件地址（可选）",
+        "passwordStatus": "密码状态"
+      },
+      "stage": {
+        "elementary": "小学生",
+        "junior_high": "初中生",
+        "high_school": "高中生",
+        "adult": "成人"
+      }
+    },
     "delegation": {
       "title": "代理出席",
       "description": "如果无法回复出席情况，可以委托同一范围内的成员代为出席",

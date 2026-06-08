@@ -96,6 +96,21 @@ const systemAdminItem = { label: 'SYSTEM', icon: 'pi pi-shield', to: '/system-ad
 
 const proxyDeskItem = { label: t('proxy.title'), icon: 'pi pi-tablet', to: '/admin/proxy-desk' }
 
+const guardianshipSwitchStore = useGuardianshipSwitchStore()
+const { endSwitch: apiEndSwitch } = useGuardianshipApi()
+const notification = useNotification()
+
+async function handleEndSwitch() {
+  if (!guardianshipSwitchStore.activeChild) return
+  try {
+    await apiEndSwitch(guardianshipSwitchStore.activeChild.childUserId)
+    guardianshipSwitchStore.endSwitch()
+    notification.success(t('proxy.guardianship.switch.endSuccess'))
+  } catch {
+    // エラーは useApi の共通ハンドラに任せる
+  }
+}
+
 function isActive(path: string, exact = false): boolean {
   if (exact) return route.path === path
   // スラッシュ境界で判定: /my/shift が /my にマッチしないよう path + '/' で比較
@@ -268,6 +283,16 @@ function isActive(path: string, exact = false): boolean {
     <!-- PWA: オフラインバナー -->
     <ClientOnly>
       <OfflineStatusBanner />
+      <!-- 後見切替中バナー -->
+      <div
+        v-if="guardianshipSwitchStore.isActingAs"
+        class="bg-orange-100 border-b border-orange-300 text-orange-800 text-sm py-1 px-4 flex items-center justify-between"
+      >
+        <span>{{ $t('proxy.guardianship.switch.actingAs', { name: guardianshipSwitchStore.activeChild?.displayName ?? '' }) }}</span>
+        <button class="text-xs underline hover:no-underline" @click="handleEndSwitch">
+          {{ $t('proxy.guardianship.switch.end') }}
+        </button>
+      </div>
     </ClientOnly>
 
     <!-- メインコンテンツ -->

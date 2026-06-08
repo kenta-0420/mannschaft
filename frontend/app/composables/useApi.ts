@@ -11,6 +11,7 @@ export function useApi() {
   const config = useRuntimeConfig()
   const authStore = useAuthStore()
   const proxyDeskStore = useProxyDeskStore()
+  const guardianshipSwitchStore = useGuardianshipSwitchStore()
   const nuxtApp = useNuxtApp()
   const errorReport = useErrorReport()
 
@@ -40,6 +41,11 @@ export function useApi() {
           if (proxyDeskStore.originalStorageLocation) {
             headers.set('X-Proxy-Original-Storage', proxyDeskStore.originalStorageLocation)
           }
+        }
+        // 後見切替モードが有効な場合: X-Proxy-For-User-Id のみ付与（guardianship 経路）
+        // X-Proxy-Consent-Id / X-Proxy-Input-Source は送らない（代理入力とは別経路）
+        else if (guardianshipSwitchStore.isActingAs) {
+          headers.set('X-Proxy-For-User-Id', String(guardianshipSwitchStore.activeChild!.childUserId))
         }
 
         options.headers = headers

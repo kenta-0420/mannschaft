@@ -73,6 +73,41 @@
       "byProxy": "Proxy Input",
       "total": "Total"
     },
+    "guardianship": {
+      "switch": {
+        "title": "Guardianship Switch",
+        "startAs": "Act as {name}",
+        "actingAs": "Acting as {name}",
+        "end": "End switch",
+        "confirm": "Are you sure you want to start guardianship switch?",
+        "empty": "No switchable children available",
+        "blocked": "Age restriction — switch not allowed",
+        "success": "Guardianship switch started",
+        "endSuccess": "Guardianship switch ended",
+        "cancelButton": "Cancel",
+        "startButton": "Start",
+        "otherChildren": "Others"
+      },
+      "independence": {
+        "title": "Independence Transition",
+        "sealDate": "Switch seal date",
+        "stage": "Current stage",
+        "passwordSet": "Password set",
+        "passwordNotSet": "Password not set",
+        "handover": "Start handover",
+        "handoverConfirm": "A password setup link will be sent to the child's email address",
+        "handoverSuccess": "Handover email sent",
+        "alreadyIndependent": "This child has already reached independence stage",
+        "childEmail": "Child's email address (optional)",
+        "passwordStatus": "Password status"
+      },
+      "stage": {
+        "elementary": "Elementary school",
+        "junior_high": "Junior high school",
+        "high_school": "High school",
+        "adult": "Adult"
+      }
+    },
     "delegation": {
       "title": "Proxy Attendance",
       "description": "If you cannot respond to attendance, you can delegate to another member in the same scope",

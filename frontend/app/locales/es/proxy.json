@@ -73,6 +73,41 @@
       "byProxy": "Entrada por representación",
       "total": "Total"
     },
+    "guardianship": {
+      "switch": {
+        "title": "Cambio de tutela",
+        "startAs": "Operar como {name}",
+        "actingAs": "Operando como {name}",
+        "end": "Terminar cambio",
+        "confirm": "¿Está seguro de iniciar el cambio de tutela?",
+        "empty": "No hay niños disponibles para cambio",
+        "blocked": "Cambio no permitido por restricción de edad",
+        "success": "Cambio de tutela iniciado",
+        "endSuccess": "Cambio de tutela finalizado",
+        "cancelButton": "Cancelar",
+        "startButton": "Iniciar",
+        "otherChildren": "Otros"
+      },
+      "independence": {
+        "title": "Transición a la independencia",
+        "sealDate": "Fecha de sellado del cambio",
+        "stage": "Etapa actual",
+        "passwordSet": "Contraseña configurada",
+        "passwordNotSet": "Contraseña no configurada",
+        "handover": "Iniciar traspaso",
+        "handoverConfirm": "Se enviará un enlace de configuración de contraseña al correo del niño",
+        "handoverSuccess": "Correo de traspaso enviado",
+        "alreadyIndependent": "Este niño ya ha alcanzado la etapa de independencia",
+        "childEmail": "Correo electrónico del niño (opcional)",
+        "passwordStatus": "Estado de contraseña"
+      },
+      "stage": {
+        "elementary": "Primaria",
+        "junior_high": "Secundaria",
+        "high_school": "Bachillerato",
+        "adult": "Adulto"
+      }
+    },
     "delegation": {
       "title": "Asistencia por representación",
       "description": "Si no puede responder a la asistencia, puede delegar a otro miembro del mismo ámbito",

@@ -47,3 +47,21 @@ export interface SwitchableChildrenResponse {
   /** 封印（switchAllowed=false）された子の一覧。 */
   blockedChildren: BlockedChild[]
 }
+
+/**
+ * 自立移行ステータスレスポンス。
+ * BE: IndependenceStatusResponse に 1:1 対応。
+ * GET /api/v1/me/guardianship/children/{childUserId}/independence-status
+ */
+export interface IndependenceStatusResponse {
+  /** 対象の子のユーザー ID。 */
+  childUserId: number
+  /** 年齢段階の i18n ラベルキー（例: elementary, junior_high）。null の場合は不明。 */
+  stageKey: string | null
+  /** 後見切替が許可されているか（false の場合は既に自立段階）。 */
+  switchAllowed: boolean
+  /** 切替封印境界日（YYYY-MM-DD 形式）。 */
+  sealDate: string
+  /** 子が自分でパスワードを設定済みかどうか。 */
+  passwordSet: boolean
+}

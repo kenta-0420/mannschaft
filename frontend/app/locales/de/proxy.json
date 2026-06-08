@@ -73,6 +73,41 @@
       "byProxy": "Stellvertretende Eingabe",
       "total": "Gesamt"
     },
+    "guardianship": {
+      "switch": {
+        "title": "Vormund-Wechsel",
+        "startAs": "Als {name} agieren",
+        "actingAs": "Aktiv als {name}",
+        "end": "Wechsel beenden",
+        "confirm": "Möchten Sie den Vormund-Wechsel wirklich starten?",
+        "empty": "Keine wechselbaren Kinder verfügbar",
+        "blocked": "Wechsel wegen Altersbeschränkung nicht möglich",
+        "success": "Vormund-Wechsel gestartet",
+        "endSuccess": "Vormund-Wechsel beendet",
+        "cancelButton": "Abbrechen",
+        "startButton": "Starten",
+        "otherChildren": "Andere"
+      },
+      "independence": {
+        "title": "Unabhängigkeitsübergang",
+        "sealDate": "Versiegelungsdatum des Wechsels",
+        "stage": "Aktuelle Stufe",
+        "passwordSet": "Passwort festgelegt",
+        "passwordNotSet": "Kein Passwort festgelegt",
+        "handover": "Übergabe starten",
+        "handoverConfirm": "Ein Passwort-Einrichtungslink wird an die E-Mail-Adresse des Kindes gesendet",
+        "handoverSuccess": "Übergabe-E-Mail gesendet",
+        "alreadyIndependent": "Dieses Kind hat bereits die Unabhängigkeitsstufe erreicht",
+        "childEmail": "E-Mail-Adresse des Kindes (optional)",
+        "passwordStatus": "Passwortstatus"
+      },
+      "stage": {
+        "elementary": "Grundschule",
+        "junior_high": "Mittelschule",
+        "high_school": "Oberschule",
+        "adult": "Erwachsener"
+      }
+    },
     "delegation": {
       "title": "Stellvertretende Teilnahme",
       "description": "Wenn Sie nicht auf die Anwesenheit antworten können, können Sie ein Mitglied desselben Bereichs beauftragen",
