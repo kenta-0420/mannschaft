@@ -50,6 +50,9 @@ class ChatMemberServiceTest {
     @Mock
     private ChatChannelEventPublisher eventPublisher;
 
+    @Mock
+    private com.mannschaft.app.common.AccessControlService accessControlService;
+
     @InjectMocks
     private ChatMemberService chatMemberService;
 
@@ -127,7 +130,7 @@ class ChatMemberServiceTest {
                     .willReturn(Optional.of(member));
 
             // when
-            chatMemberService.removeMember(CHANNEL_ID, USER_ID);
+            chatMemberService.removeMember(CHANNEL_ID, USER_ID, USER_ID);
 
             // then
             verify(memberRepository).deleteByChannelIdAndUserId(CHANNEL_ID, USER_ID);
@@ -144,7 +147,7 @@ class ChatMemberServiceTest {
                     .willReturn(Optional.of(member));
 
             // when & then
-            assertThatThrownBy(() -> chatMemberService.removeMember(CHANNEL_ID, USER_ID))
+            assertThatThrownBy(() -> chatMemberService.removeMember(CHANNEL_ID, USER_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.OWNER_CANNOT_LEAVE));
@@ -158,7 +161,7 @@ class ChatMemberServiceTest {
                     .willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> chatMemberService.removeMember(CHANNEL_ID, USER_ID))
+            assertThatThrownBy(() -> chatMemberService.removeMember(CHANNEL_ID, USER_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.MEMBER_NOT_FOUND));
@@ -344,6 +347,7 @@ class ChatMemberServiceTest {
                     .channelType(ChannelType.TEAM_PUBLIC).name("test").build();
 
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(true);
             given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, newUser)).willReturn(false);
             given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, existingUser)).willReturn(true);
             given(memberRepository.save(any(ChatChannelMemberEntity.class)))
@@ -351,7 +355,7 @@ class ChatMemberServiceTest {
             given(chatMapper.toMemberResponseList(any())).willReturn(List.of());
 
             // when
-            chatMemberService.addMembers(CHANNEL_ID, req);
+            chatMemberService.addMembers(CHANNEL_ID, USER_ID, req);
 
             // then
             verify(memberRepository).save(any(ChatChannelMemberEntity.class));
