@@ -220,6 +220,139 @@ class MatchEventServiceTest {
                 .isInstanceOf(BusinessException.class);
     }
 
+    // ─── team_side ↔ recorded_by_team_id 整合不変条件（03 §C.4a・補正1） ──
+
+    private static final long TEAM_AWAY = 200L;
+
+    /** 登録相手あり・共同記録の試合（HOME=100 / AWAY=200）。 */
+    private MatchEntity coopMatchWithOpponent() {
+        MatchEntity m = MatchEntity.builder()
+                .organizationId(ORG)
+                .teamId(TEAM_HOME)
+                .opponentTeamId(TEAM_AWAY)
+                .sport(Sport.SOCCER)
+                .hasScorekeeper(false)
+                .build();
+        m.setId(matchId);
+        lenient().when(matchService.getMatchOrThrow(matchId, ORG)).thenReturn(m);
+        return m;
+    }
+
+    @Test
+    @DisplayName("HOME イベントの recorded_by_team_id が match.teamId と一致なら OK")
+    void homeSideMatchesHomeTeamOk() {
+        coopMatchWithOpponent();
+        when(matchEventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        service.record(matchId, ORG, ACTOR,
+                baseGoal().teamSide(TeamSide.HOME).recordedByTeamId(TEAM_HOME).build());
+    }
+
+    @Test
+    @DisplayName("HOME イベントを AWAY チーム名義で記録 → 403（MATCH_025・自名義捏造防止）")
+    void homeSideWithAwayTeamForbidden() {
+        coopMatchWithOpponent();
+        assertThatThrownBy(() -> service.record(matchId, ORG, ACTOR,
+                baseGoal().teamSide(TeamSide.HOME).recordedByTeamId(TEAM_AWAY).build()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("記録名義");
+    }
+
+    @Test
+    @DisplayName("登録相手あり: AWAY イベントを自チーム(HOME)名義で記録 → 403（相手サイド捏造遮断）")
+    void awaySideWithHomeTeamForbiddenWhenOpponentRegistered() {
+        coopMatchWithOpponent();
+        assertThatThrownBy(() -> service.record(matchId, ORG, ACTOR,
+                baseGoal().teamSide(TeamSide.AWAY).recordedByTeamId(TEAM_HOME).build()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("記録名義");
+    }
+
+    @Test
+    @DisplayName("登録相手あり: AWAY イベントを相手チーム名義で記録 → OK")
+    void awaySideWithAwayTeamOk() {
+        coopMatchWithOpponent();
+        when(matchEventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        service.record(matchId, ORG, ACTOR,
+                baseGoal().teamSide(TeamSide.AWAY).recordedByTeamId(TEAM_AWAY).build());
+    }
+
+    @Test
+    @DisplayName("未登録相手(opponent_team_id=NULL): AWAY イベントをホーム名義で代行記録 → OK")
+    void awaySideHomeProxyAllowedWhenOpponentUnregistered() {
+        MatchEntity m = MatchEntity.builder()
+                .organizationId(ORG).teamId(TEAM_HOME).opponentTeamId(null)
+                .opponentName("未登録FC").sport(Sport.SOCCER).hasScorekeeper(false).build();
+        m.setId(matchId);
+        when(matchService.getMatchOrThrow(matchId, ORG)).thenReturn(m);
+        when(matchEventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        service.record(matchId, ORG, ACTOR,
+                baseGoal().teamSide(TeamSide.AWAY).recordedByTeamId(TEAM_HOME).build());
+    }
+
+    @Test
+    @DisplayName("recorded_by_team_id=null（名義未確定の縮退）は整合検証をスキップして OK")
+    void nullRecordedByTeamSkipsCheck() {
+        coopMatchWithOpponent();
+        when(matchEventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        service.record(matchId, ORG, ACTOR,
+                baseGoal().teamSide(TeamSide.AWAY).recordedByTeamId(null).build());
+    }
+
+    @Test
+    @DisplayName("update: team_side を AWAY に付け替えても既存名義(HOME)と矛盾すれば 403（サイド付替え捏造遮断）")
+    void updateSideSwapMismatchForbidden() {
+        coopMatchWithOpponent();
+        UUID eventId = UUID.randomUUID();
+        // 既存イベントは HOME 名義で記録済み
+        MatchEventEntity existing = MatchEventEntity.builder()
+                .matchId(matchId).teamSide(TeamSide.HOME).recordedByTeamId(TEAM_HOME).build();
+        existing.setId(eventId);
+        when(matchEventRepository.findById(eventId)).thenReturn(Optional.of(existing));
+
+        // team_side だけ AWAY に付け替えようとする → 既存名義 HOME と矛盾 → 403
+        assertThatThrownBy(() -> service.update(matchId, eventId, ORG, ACTOR,
+                baseGoal().teamSide(TeamSide.AWAY).recordedByTeamId(TEAM_AWAY).build()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("記録名義");
+    }
+
+    // ─── linked_event_id の side 整合（03 §C.4a・補正3） ──────
+
+    @Test
+    @DisplayName("連鎖相手が同一サイドなら OK")
+    void linkedSameSideOk() {
+        coopMatchWithOpponent();
+        UUID linkedId = UUID.randomUUID();
+        MatchEventEntity linked = MatchEventEntity.builder()
+                .matchId(matchId).teamSide(TeamSide.HOME).build();
+        linked.setId(linkedId);
+        when(matchEventRepository.findById(linkedId)).thenReturn(Optional.of(linked));
+        when(matchEventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.record(matchId, ORG, ACTOR,
+                baseGoal().teamSide(TeamSide.HOME).recordedByTeamId(TEAM_HOME)
+                        .linkedEventId(linkedId).build());
+    }
+
+    @Test
+    @DisplayName("連鎖相手が異サイドなら 404（MATCH_022・相手集計汚染遮断）")
+    void linkedCrossSide404() {
+        coopMatchWithOpponent();
+        UUID linkedId = UUID.randomUUID();
+        // 連鎖相手は AWAY サイドのイベント
+        MatchEventEntity linked = MatchEventEntity.builder()
+                .matchId(matchId).teamSide(TeamSide.AWAY).build();
+        linked.setId(linkedId);
+        when(matchEventRepository.findById(linkedId)).thenReturn(Optional.of(linked));
+
+        // 記録中は HOME サイド → 異サイド連鎖は遮断
+        assertThatThrownBy(() -> service.record(matchId, ORG, ACTOR,
+                baseGoal().teamSide(TeamSide.HOME).recordedByTeamId(TEAM_HOME)
+                        .linkedEventId(linkedId).build()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("連鎖先");
+    }
+
     // ─── 入力サニタイズ（HTML 不可・制御文字除去・trim） ──────
 
     @Test
