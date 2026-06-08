@@ -41,10 +41,14 @@ watch(
   (id) => {
     if (id === null) {
       data.value = null
+      loading.value = false
     } else if (UUID_REGEX.test(id)) {
       load(id)
+    } else {
+      // BIGINT 形式: DashboardScopeCarousel.onMounted が loadTabs で UUID に移行するまで
+      // スピナーを表示し、空白状態（loading=false/data=null/errorKey=null かつ非null id）を防ぐ
+      loading.value = true
     }
-    // UUID 形式でない（旧 BIGINT）場合は loadTabs 完了後に UUID に更新されるため待機
   },
   { immediate: true },
 )
