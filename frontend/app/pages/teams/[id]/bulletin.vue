@@ -58,7 +58,7 @@ onMounted(async () => {
     <template v-else>
       <!-- numericTeamId が解決されるまでスケルトン表示 -->
       <div v-if="!numericTeamId" class="p-4 text-center text-surface-500">
-        <i class="pi pi-spin pi-spinner mr-2" />{{ t('common.loading') }}
+        <i class="pi pi-spin pi-spinner mr-2" />{{ t('button.loading') }}
       </div>
 
       <template v-else>
