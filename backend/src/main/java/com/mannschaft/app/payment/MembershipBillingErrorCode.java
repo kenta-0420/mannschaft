@@ -283,6 +283,25 @@ public enum MembershipBillingErrorCode implements ErrorCode {
     SUBSCRIPTION_NOT_SKIPPED(
             "MEMBERSHIP_BILLING_022",
             "この継続課金は今月スキップが適用されていないため再開できません",
+            Severity.WARN),
+
+    /**
+     * 継続課金の加入（subscribe）で、保存済み既定カードが off-session（払い手不在）での初回課金に使えない。402。
+     *
+     * <p>R2-1 根治: P5 案b の初回会費は保存済み既定 PaymentMethod を用いた server-side off-session confirm で
+     * 即時確定する。Stripe がこの確定を {@code authentication_required}（3DS が必要だが off-session では実行不能）
+     * または {@code card_declined} 等で拒否した場合に投げる。症状を隠さず（Stripe 例外を握り潰さず）専用コードで
+     * 返し、FE は「カード再認証（オンセッションでの再 confirm）」または別カード登録の導線へ誘導する。
+     * 確定前の PaymentIntent はサービス側で cancel して孤児を残さない。</p>
+     *
+     * <p>402（Payment Required）: カード自体は登録済みだが当該決済が成立しなかったことを表す
+     * （未保存=409 {@link #SUBSCRIPTION_PAYMENT_METHOD_NOT_SAVED} とは区別する）。</p>
+     *
+     * <p>設計書: docs/features/F08.9_membership_billing_paywall/02_api_design.md §4.1（初回 off-session confirm）。</p>
+     */
+    SUBSCRIPTION_OFF_SESSION_AUTHENTICATION_REQUIRED(
+            "MEMBERSHIP_BILLING_023",
+            "保存済みのカードで初回の会費を確定できませんでした。カードの再認証または別のカードの登録が必要です",
             Severity.WARN);
 
     private final String code;

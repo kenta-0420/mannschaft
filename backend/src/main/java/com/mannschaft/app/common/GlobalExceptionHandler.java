@@ -664,8 +664,20 @@ public class GlobalExceptionHandler {
             Map.entry("MEMBERSHIP_BILLING_020", HttpStatus.CONFLICT),        // 継続課金加入に支払い方法が未保存（SetupIntent 導線へ・02_api §4.1 SUBSCRIPTION_PAYMENT_METHOD_NOT_SAVED）
             Map.entry("MEMBERSHIP_BILLING_021", HttpStatus.CONFLICT),        // 同一受益者・項目に有効な継続課金が既存（二重加入防止・02_api §4.1 SUBSCRIPTION_ALREADY_EXISTS）
             Map.entry("MEMBERSHIP_BILLING_022", HttpStatus.CONFLICT),        // 継続課金がスキップ中でないため再開できない（02_api §4.3 SUBSCRIPTION_NOT_SKIPPED）
+            Map.entry("MEMBERSHIP_BILLING_023", HttpStatus.PAYMENT_REQUIRED), // 保存済みカードが off-session 初回課金に使えない（R2-1・02_api §4.1 SUBSCRIPTION_OFF_SESSION_AUTHENTICATION_REQUIRED）
             // セキュリティインシデント（GDPR Article 33）
-            Map.entry("SEC_INCIDENT_001", HttpStatus.NOT_FOUND)              // SECURITY_INCIDENT_NOT_FOUND（IDOR 対策で 404）
+            Map.entry("SEC_INCIDENT_001", HttpStatus.NOT_FOUND),             // SECURITY_INCIDENT_NOT_FOUND（IDOR 対策で 404）
+            // F08.10 試合記録・分析（03 §C.4/C.6: 不在/越境/親子不一致は 404、権限不足は 403、検証系は 400）
+            Map.entry("MATCH_001", HttpStatus.NOT_FOUND),                    // 試合不在 / テナント越境 / 削除済み（IDOR 秘匿）
+            Map.entry("MATCH_002", HttpStatus.NOT_FOUND),                    // イベント不在 / 親子 match_id 不一致
+            Map.entry("MATCH_003", HttpStatus.NOT_FOUND),                    // 出場記録不在 / 親子 match_id 不一致
+            Map.entry("MATCH_010", HttpStatus.FORBIDDEN),                    // 操作権限なし
+            Map.entry("MATCH_020", HttpStatus.BAD_REQUEST),                  // event_type がカタログ外
+            Map.entry("MATCH_021", HttpStatus.BAD_REQUEST),                  // card_reason_code 不正
+            Map.entry("MATCH_022", HttpStatus.NOT_FOUND),                    // linked_event_id 越境（親子不一致 → 404 統一）
+            Map.entry("MATCH_023", HttpStatus.BAD_REQUEST),                  // COMPLETED に duration_minutes 必須
+            Map.entry("MATCH_024", HttpStatus.BAD_REQUEST),                  // 入力値が業務範囲外
+            Map.entry("MATCH_025", HttpStatus.FORBIDDEN)                     // team_side↔recorded_by_team_id 不整合（自名義捏造防止・03 §C.4a）
     );
 
     /**

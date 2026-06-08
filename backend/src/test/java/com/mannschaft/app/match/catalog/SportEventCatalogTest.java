@@ -71,6 +71,18 @@ class SportEventCatalogTest {
     }
 
     @Test
+    @DisplayName("isAllowed: カタログ未登録の競技（null）は常に false（否定経路・NPE を投げない）")
+    void isAllowedFalseForUnregisteredSport() {
+        // Sport は現状 SOCCER のみ・サッカーは全 enum を許容するため、競技未登録の否定経路は
+        // null 競技で代表検証する（CATALOG.get(null)==null → false）。将来サッカー非対応イベントを
+        // 持つ競技を追加したら、その競技×非対応 event_type で false を直接検証すること。
+        for (MatchEventType type : MatchEventType.values()) {
+            assertThat(SportEventCatalog.isAllowed(null, type))
+                    .as("未登録競技(null)では %s は許容されない", type).isFalse();
+        }
+    }
+
+    @Test
     @DisplayName("EVENT_TYPES は不変集合（変更不可）")
     void eventTypesImmutable() {
         assertThatThrownBy(() -> SoccerCatalog.EVENT_TYPES.add(MatchEventType.GOAL))

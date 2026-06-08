@@ -100,8 +100,8 @@ class ConnectChargeServiceChargeTest {
     @DisplayName("即時 charge: MEMBERSHIP/AUTOMATIC・hold_expires_at=NULL で起票し AUTOMATIC+idempotencyKey を Stripe へ渡す")
     void charge_membershipAutomatic() {
         ConnectChargeService svc = service();
-        given(escrowTransactionRepository.findBySourceKindAndSourceId(EscrowSourceKind.MEMBERSHIP, 777L))
-                .willReturn(List.of());
+        given(escrowTransactionRepository.findByStripeIdempotencyKey("idem-membership-777"))
+                .willReturn(Optional.empty());
         given(connectAccountRepository.findById(PAYEE_ACCOUNT_ID)).willReturn(Optional.of(payeeAccount(true)));
         given(stripePaymentProvider.createDestinationPaymentIntent(
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString()))
@@ -130,6 +130,8 @@ class ConnectChargeServiceChargeTest {
         assertThat(saved.getPayeeConnectAccountId()).isEqualTo(PAYEE_ACCOUNT_ID);
         assertThat(saved.getOrganizationId()).isEqualTo(55L);
         assertThat(saved.getStripePaymentIntentId()).isEqualTo("pi_mem");
+        // R2-2: 業務冪等キーを escrow へ焼き付ける（次回の二重送信を dedup する基点）。
+        assertThat(saved.getStripeIdempotencyKey()).isEqualTo("idem-membership-777");
 
         // clientSecret は払い手本人へ返す。
         assertThat(result.escrowTransactionId()).isEqualTo(saved.getId());
@@ -142,8 +144,8 @@ class ConnectChargeServiceChargeTest {
     @DisplayName("手数料折半: 額面10,000→charge10,250/appFee500/transfer9,750 が escrow に反映")
     void charge_feeSplitReflectedInEscrow() {
         ConnectChargeService svc = service();
-        given(escrowTransactionRepository.findBySourceKindAndSourceId(EscrowSourceKind.MEMBERSHIP, 777L))
-                .willReturn(List.of());
+        given(escrowTransactionRepository.findByStripeIdempotencyKey("idem-membership-777"))
+                .willReturn(Optional.empty());
         given(connectAccountRepository.findById(PAYEE_ACCOUNT_ID)).willReturn(Optional.of(payeeAccount(true)));
         given(stripePaymentProvider.createDestinationPaymentIntent(
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString()))
@@ -166,8 +168,8 @@ class ConnectChargeServiceChargeTest {
     @DisplayName("受領口座未 READY(payouts_enabled=false)→ HELD にせず ONBOARDING_NOT_READY(409)・PI never・escrow 未保存")
     void charge_payeeNotReady_rejected() {
         ConnectChargeService svc = service();
-        given(escrowTransactionRepository.findBySourceKindAndSourceId(EscrowSourceKind.MEMBERSHIP, 777L))
-                .willReturn(List.of());
+        given(escrowTransactionRepository.findByStripeIdempotencyKey("idem-membership-777"))
+                .willReturn(Optional.empty());
         given(connectAccountRepository.findById(PAYEE_ACCOUNT_ID)).willReturn(Optional.of(payeeAccount(false)));
 
         assertThatThrownBy(() -> svc.charge(command()))
@@ -182,8 +184,8 @@ class ConnectChargeServiceChargeTest {
     }
 
     @Test
-    @DisplayName("冪等: 同一 sourceId(会費項目) の二重起票→既存を返し PI 再作成も escrow 再保存もしない")
-    void charge_idempotentBySourceId() {
+    @DisplayName("冪等(R2-2): 同一 idempotencyKey の二重送信→既存を返し PI 再作成も escrow 再保存もしない")
+    void charge_idempotentByIdempotencyKey() {
         ConnectChargeService svc = service();
         EscrowTransactionEntity existing = EscrowTransactionEntity.builder()
                 .sourceKind(EscrowSourceKind.MEMBERSHIP).sourceId(777L)
@@ -193,11 +195,12 @@ class ConnectChargeServiceChargeTest {
                 .faceAmount(10_000L).amount(10_250L).applicationFeeAmount(500L)
                 .currency("JPY").status(EscrowStatus.CAPTURED)
                 .stripePaymentIntentId("pi_existing")
+                .stripeIdempotencyKey("idem-membership-777")
                 .build();
         UUID existingId = UUID.fromString("019607a0-0000-7000-8000-0000000000bb");
         existing.setId(existingId);
-        given(escrowTransactionRepository.findBySourceKindAndSourceId(EscrowSourceKind.MEMBERSHIP, 777L))
-                .willReturn(List.of(existing));
+        given(escrowTransactionRepository.findByStripeIdempotencyKey("idem-membership-777"))
+                .willReturn(Optional.of(existing));
 
         MembershipChargeResult result = svc.charge(command());
 
@@ -212,11 +215,93 @@ class ConnectChargeServiceChargeTest {
     }
 
     @Test
+    @DisplayName("名前空間分離(R2-2): source_id 値が一致(P5 item=1 と P7 team=1)でも idempotencyKey が別なら別 escrow を作る")
+    void charge_namespaceSeparatedByIdempotencyKey() {
+        ConnectChargeService svc = service();
+        // P5（会費・source_id=payment_item_id=1）と P7（協会請求・source_id=team_id=1）が同じ source_id 値を持つが、
+        // idempotencyKey は別。R2-2 修正後は idempotencyKey で dedup するため、P7 は P5 の escrow を流用しない。
+        MembershipChargeCommand p5 = new MembershipChargeCommand(
+                1_000L, PAYEE_ACCOUNT_ID, "cus_p5", 100L, 1L, 55L, "idem-P5-membership");
+        MembershipChargeCommand p7 = new MembershipChargeCommand(
+                5_000L, PAYEE_ACCOUNT_ID, "cus_p7", 200L, 1L, 55L, "idem-P7-billing");
+
+        // どちらの idempotencyKey でも既存 escrow は無い（=別取引）。
+        given(escrowTransactionRepository.findByStripeIdempotencyKey("idem-P5-membership"))
+                .willReturn(Optional.empty());
+        given(escrowTransactionRepository.findByStripeIdempotencyKey("idem-P7-billing"))
+                .willReturn(Optional.empty());
+        given(connectAccountRepository.findById(PAYEE_ACCOUNT_ID)).willReturn(Optional.of(payeeAccount(true)));
+        given(stripePaymentProvider.createDestinationPaymentIntent(
+                anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString()))
+                .willReturn(new StripePaymentProvider.PaymentIntentInfo("pi_p5", "cs_p5", "requires_confirmation"))
+                .willReturn(new StripePaymentProvider.PaymentIntentInfo("pi_p7", "cs_p7", "requires_confirmation"));
+        given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        svc.charge(p5);
+        svc.charge(p7);
+
+        // 2 回とも PI を作成し（流用しない）、2 行を保存する（別 escrow）。
+        verify(stripePaymentProvider, org.mockito.Mockito.times(2)).createDestinationPaymentIntent(
+                anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
+        ArgumentCaptor<EscrowTransactionEntity> captor = ArgumentCaptor.forClass(EscrowTransactionEntity.class);
+        verify(escrowTransactionRepository, org.mockito.Mockito.times(2)).save(captor.capture());
+        List<EscrowTransactionEntity> saved = captor.getAllValues();
+        assertThat(saved).hasSize(2);
+        assertThat(saved.get(0).getStripeIdempotencyKey()).isEqualTo("idem-P5-membership");
+        assertThat(saved.get(0).getFaceAmount()).isEqualTo(1_000L);
+        assertThat(saved.get(1).getStripeIdempotencyKey()).isEqualTo("idem-P7-billing");
+        assertThat(saved.get(1).getFaceAmount()).isEqualTo(5_000L);
+    }
+
+    @Test
+    @DisplayName("R2-1: confirmImmediately=true は createAndConfirmDestinationPaymentIntent(PM 付き) を呼ぶ")
+    void charge_confirmImmediately_offSession() {
+        ConnectChargeService svc = service();
+        MembershipChargeCommand cmd = new MembershipChargeCommand(
+                10_000L, PAYEE_ACCOUNT_ID, "cus_payer", 999L, 777L, 55L, "idem-membership-777", null, "pm_saved", true);
+        given(escrowTransactionRepository.findByStripeIdempotencyKey("idem-membership-777"))
+                .willReturn(Optional.empty());
+        given(connectAccountRepository.findById(PAYEE_ACCOUNT_ID)).willReturn(Optional.of(payeeAccount(true)));
+        given(stripePaymentProvider.createAndConfirmDestinationPaymentIntent(
+                anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString(), anyString()))
+                .willReturn(new StripePaymentProvider.PaymentIntentInfo("pi_mem", null, "succeeded"));
+        given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        svc.charge(cmd);
+
+        // off-session 確定メソッドを PM・AUTOMATIC・idempotencyKey 付きで呼ぶ。
+        verify(stripePaymentProvider).createAndConfirmDestinationPaymentIntent(
+                eq(10_250L), eq("JPY"), eq("cus_payer"), eq(500L), eq("acct_payee"),
+                eq(CaptureMethod.AUTOMATIC), eq("pm_saved"), eq("idem-membership-777"));
+        // 未 confirm の作成メソッドは呼ばない（off-session 経路では使わない）。
+        verify(stripePaymentProvider, never()).createDestinationPaymentIntent(
+                anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
+    }
+
+    @Test
+    @DisplayName("R2-1: confirmImmediately=true で paymentMethodId が空→IllegalArgumentException（契約違反・PI never）")
+    void charge_confirmImmediately_missingPm_rejected() {
+        ConnectChargeService svc = service();
+        MembershipChargeCommand bad = new MembershipChargeCommand(
+                10_000L, PAYEE_ACCOUNT_ID, "cus_payer", 999L, 777L, 55L, "idem-membership-777", null, null, true);
+        given(escrowTransactionRepository.findByStripeIdempotencyKey("idem-membership-777"))
+                .willReturn(Optional.empty());
+        given(connectAccountRepository.findById(PAYEE_ACCOUNT_ID)).willReturn(Optional.of(payeeAccount(true)));
+
+        assertThatThrownBy(() -> svc.charge(bad)).isInstanceOf(IllegalArgumentException.class);
+
+        verify(stripePaymentProvider, never()).createAndConfirmDestinationPaymentIntent(
+                anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString(), anyString());
+        verify(stripePaymentProvider, never()).createDestinationPaymentIntent(
+                anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
+    }
+
+    @Test
     @DisplayName("ledger 二重記帳しない: charge() は LedgerEntryRepository を一切呼ばない（複式記帳は succeeded webhook 委譲）")
     void charge_doesNotWriteLedger() {
         ConnectChargeService svc = service();
-        given(escrowTransactionRepository.findBySourceKindAndSourceId(EscrowSourceKind.MEMBERSHIP, 777L))
-                .willReturn(List.of());
+        given(escrowTransactionRepository.findByStripeIdempotencyKey("idem-membership-777"))
+                .willReturn(Optional.empty());
         given(connectAccountRepository.findById(PAYEE_ACCOUNT_ID)).willReturn(Optional.of(payeeAccount(true)));
         given(stripePaymentProvider.createDestinationPaymentIntent(
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString()))
@@ -236,8 +321,8 @@ class ConnectChargeServiceChargeTest {
     @DisplayName("受領 Connect 口座が未解決→404秘匿(PAYMENT_C002)・PI never")
     void charge_payeeAccountMissing_notFound() {
         ConnectChargeService svc = service();
-        given(escrowTransactionRepository.findBySourceKindAndSourceId(EscrowSourceKind.MEMBERSHIP, 777L))
-                .willReturn(List.of());
+        given(escrowTransactionRepository.findByStripeIdempotencyKey("idem-membership-777"))
+                .willReturn(Optional.empty());
         given(connectAccountRepository.findById(PAYEE_ACCOUNT_ID)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> svc.charge(command()))
@@ -257,6 +342,39 @@ class ConnectChargeServiceChargeTest {
                 0L, PAYEE_ACCOUNT_ID, "cus_payer", 999L, 777L, 55L, "idem-membership-777");
 
         assertThatThrownBy(() -> svc.charge(bad)).isInstanceOf(IllegalArgumentException.class);
+
+        verify(stripePaymentProvider, never()).createDestinationPaymentIntent(
+                anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
+        verify(escrowTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("🟡1 idempotencyKey=null→IllegalArgumentException（契約違反・dedup 不能・口座解決も PI 作成もしない）")
+    void charge_nullIdempotencyKey_rejected() {
+        ConnectChargeService svc = service();
+        // null idempotencyKey は契約違反（escrow 二重起票防止が効かなくなる）。
+        MembershipChargeCommand bad = new MembershipChargeCommand(
+                10_000L, PAYEE_ACCOUNT_ID, "cus_payer", 999L, 777L, 55L, null);
+
+        assertThatThrownBy(() -> svc.charge(bad))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("idempotencyKey");
+
+        verify(stripePaymentProvider, never()).createDestinationPaymentIntent(
+                anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
+        verify(escrowTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("🟡1 idempotencyKey 空白→IllegalArgumentException（blank も契約違反）")
+    void charge_blankIdempotencyKey_rejected() {
+        ConnectChargeService svc = service();
+        MembershipChargeCommand bad = new MembershipChargeCommand(
+                10_000L, PAYEE_ACCOUNT_ID, "cus_payer", 999L, 777L, 55L, "   ");
+
+        assertThatThrownBy(() -> svc.charge(bad))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("idempotencyKey");
 
         verify(stripePaymentProvider, never()).createDestinationPaymentIntent(
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());

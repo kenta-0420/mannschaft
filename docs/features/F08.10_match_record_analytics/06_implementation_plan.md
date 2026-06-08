@@ -41,7 +41,7 @@
 
 | 隊 | 担当 | 成果物 |
 |----|------|--------|
-| 1-A | Flyway／DDL | `V9.YYYYMMDDHHMMSS__create_matches.sql` ほか 3 ファイル（matches=UUIDv7・子=UUIDv7・`tournament_fixture_id`/`schedule_id` は BIGINT。採番はマージ直前に origin/main 最大番号を再確認） |
+| 1-A | Flyway／DDL | `V76.001__create_matches.sql` ほか 3 ファイル（matches=UUIDv7・子=UUIDv7・`tournament_fixture_id`/`schedule_id` は BIGINT。**採番は origin/main の全体最大バージョンの次の major を採る**＝Phase 1 では V76 系を採用済。マージ直前に origin/main 最大番号を再確認しリネーム） |
 | 1-B | Entity／enum（器＝コア） | `MatchEntity`/`MatchEventEntity`（**note/custom_label/linked_event_id/card_reason_code 列含む・自己参照 FK**）/`PlayerAppearanceEntity`（UuidV7Entity 継承・子は org_id/deleted_at 無し）・`MatchKind`/`MatchStatus`(POSTPONED 含む)/`MatchEventType`(全競技の値を保持する器・PENALTY_SHOOTOUT・**OTHER** 含む)/`PeriodType`/`Sport` 等 enum・**拡張点 `SportEventCatalog`（案 A の機構そのもの）** |
 | 1-S | **競技カタログ（サッカー＝最初の競技）** | `Sport.SOCCER` のカタログ実体（[sports/01_soccer.md](./sports/01_soccer.md) 正準）: `SportEventCatalog.CATALOG` の SOCCER 集合（§2）・**理由コードカタログ `CautionCode`(C1〜C8)/`SendingOffCode`(S1〜S6, CS)（JFA 競技規則 標準・サッカー固有・Sport.SOCCER 紐づけ・実装時に最新 JFA 公式競技規則と照合）**・ポジション語彙（§7）。**この隊が「競技カタログ実装」コンポーネント**。2 競技目は §10 手順で複製 |
 | 1-C | Repository | `MatchRepository`（AbstractTenantAwareRepository 継承）/`MatchEventRepository`/`PlayerAppearanceRepository`（後 2 者はテナント絞り込み無し・match_id スコープ専用・二段アクセス・01 §A.4） |
@@ -98,7 +98,7 @@
 | **FE E2E** | 試合作成→ライブ記録→COMPLETED→分析表示の一気通貫 | 実 BE・認証付き CRUD（read-only/モック禁止・feedback_e2e_real_full_crud） |
 
 - BE ドメイン UT ＋ API 契約テストは**実装より前に設計書から書く**（test-first）。FE/E2E は後（feedback_test_first_be_api）。
-- Flyway 採番は**マージ時に origin/main 最大番号を再確認**しリネーム（並行 PR との衝突回避・feedback_migration_version_collision）。
+- Flyway 採番は**全体最大バージョンの次の major を採る**（major 数値比較でソートされるため。例: 全体最大 V75→V76 系。`V9.timestamp` 式は major=9 で V10〜V75 より前にソートされ from-scratch で死ぬ＝誤り・feedback_flyway_version_sort_after_global_max）。**マージ時に origin/main 最大番号を再確認**しリネーム（並行 PR との衝突回避・feedback_migration_version_collision）。Phase 1 は V76.001-003 を採用済。
 - `@WebMvcTest` ＋ `@EnableMethodSecurity`（**既に有効・03 §C.3.1**）の incompatible に注意（既存教訓）。認可テストは方式を確認のうえ選定（full context or @accessGuard モック）。
 
 ### I.4 ドキュメント同期
