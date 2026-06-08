@@ -112,6 +112,22 @@ public class BlogPostService {
     }
 
     /**
+     * 認証ユーザー自身のブログ記事をID指定で取得する（ステータス不問・削除済み除外）。
+     *
+     * <p>投稿者本人以外がアクセスした場合は POST_NOT_FOUND を返す（IDOR 対策）。</p>
+     *
+     * @param postId 記事 ID
+     * @param userId 認証ユーザー ID
+     * @return 該当する BlogPostResponse
+     * @throws BusinessException 記事が存在しない、または著者が一致しない場合（CMS_001、404）
+     */
+    public BlogPostResponse getMyPostById(Long postId, Long userId) {
+        BlogPostEntity entity = postRepository.findByIdAndAuthorIdAndDeletedAtIsNull(postId, userId)
+                .orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND));
+        return cmsMapper.toBlogPostResponse(entity);
+    }
+
+    /**
      * slug で記事を取得する。
      */
     public BlogPostResponse getBySlug(Long teamId, Long organizationId, Long userId, String slug) {

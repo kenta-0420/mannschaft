@@ -93,8 +93,9 @@ async function load() {
     const rawScopeId = post.scope?.organizationId ?? post.scope?.teamId ?? null
     scopeId.value = rawScopeId != null ? String(rawScopeId) : null
     rejectionReason.value = (post as unknown as Record<string, unknown>).rejectionReason as string | null ?? null
-  } catch {
-    // タイトルはクエリパラメータから引き継いでいるので画面表示は継続
+  } catch (err) {
+    console.error('[blog] 記事読み込みに失敗しました:', err)
+    showError($t('blog.post.loadFailed'))
   } finally {
     loading.value = false
   }
