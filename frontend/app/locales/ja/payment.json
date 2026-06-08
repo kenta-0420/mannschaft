@@ -1,5 +1,12 @@
 {
   "payment": {
+    "paywall": {
+      "locked": "このコンテンツは会費のお支払いが必要です",
+      "unlock": "お支払いして閲覧する",
+      "requiredItem": "必要なお支払い: {name}",
+      "hiddenContent": "このコンテンツは閲覧できません",
+      "loading": "アクセス確認中..."
+    },
     "membership": {
       "subscribe": {
         "cardLabel": "お支払いカード",
