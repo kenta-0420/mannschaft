@@ -325,15 +325,14 @@ public enum Sport { SOCCER /*, FUTSAL, BASKETBALL ...（将来）*/ }
 // 案 A（確定）: 競技別イベントカタログ（コード定数）— 機構はコア・中身は競技別
 public final class SportEventCatalog {
     public static final Map<Sport, Set<MatchEventType>> CATALOG = Map.of(
-        // SOCCER の具体集合（正準定義）→ sports/01_soccer.md §2 参照（本書の列挙は機構説明のための引用）
-        Sport.SOCCER, EnumSet.of(STARTER, SUB_IN, SUB_OUT, GOAL, ASSIST, OWN_GOAL,
-                                 PENALTY_GOAL, PENALTY_MISS, PENALTY_SHOOTOUT,
-                                 YELLOW_CARD, RED_CARD, SECOND_YELLOW,
-                                 SAVE, INJURY, PERIOD_START, PERIOD_END, OTHER)
+        // 各競技の具体集合（正準）は競技別カタログ文書で定義する。ここでは値を列挙しない。
+        Sport.SOCCER, SoccerCatalog.EVENT_TYPES   // → 正準: sports/01_soccer.md §2
         // 将来: Sport.BASKETBALL, Sport.FUTSAL ...（各競技カタログ文書が定義・sports/01_soccer.md §10 手順）
     );
 }
 ```
+
+> **正準の所在（単一参照点）**: 各競技が利用する `event_type` の具体集合は **競技別カタログ文書を唯一の正準** とする。サッカーは [sports/01_soccer.md](./sports/01_soccer.md) §2 が正準であり、本書（コア）は集合の具体値を**定義として持たない**（重複・ドリフト防止）。コアが定義するのは「競技ごとに集合を持つ」という**機構のみ**。
 
 - イベント記録時に `event_type ∈ CATALOG.get(match.sport)` を Service で検証する（不正値は 400・症状を隠さず根治）。**この検証規約（競技カタログの列挙値であること）が競技非依存のコア**であり、サッカーの具体列挙値は [sports/01_soccer.md](./sports/01_soccer.md) §2 を正準とする。
 - `detail JSON` 列で競技固有の追加属性（バスケのショット座標等）を保持し、コアスキーマを汚さない。
