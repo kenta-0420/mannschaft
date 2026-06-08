@@ -127,7 +127,7 @@ class ChatMemberServiceTest {
                     .willReturn(Optional.of(member));
 
             // when
-            chatMemberService.removeMember(CHANNEL_ID, USER_ID);
+            chatMemberService.removeMember(CHANNEL_ID, USER_ID, USER_ID);
 
             // then
             verify(memberRepository).deleteByChannelIdAndUserId(CHANNEL_ID, USER_ID);
@@ -144,7 +144,7 @@ class ChatMemberServiceTest {
                     .willReturn(Optional.of(member));
 
             // when & then
-            assertThatThrownBy(() -> chatMemberService.removeMember(CHANNEL_ID, USER_ID))
+            assertThatThrownBy(() -> chatMemberService.removeMember(CHANNEL_ID, USER_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.OWNER_CANNOT_LEAVE));
@@ -158,7 +158,7 @@ class ChatMemberServiceTest {
                     .willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> chatMemberService.removeMember(CHANNEL_ID, USER_ID))
+            assertThatThrownBy(() -> chatMemberService.removeMember(CHANNEL_ID, USER_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.MEMBER_NOT_FOUND));
@@ -351,7 +351,7 @@ class ChatMemberServiceTest {
             given(chatMapper.toMemberResponseList(any())).willReturn(List.of());
 
             // when
-            chatMemberService.addMembers(CHANNEL_ID, req);
+            chatMemberService.addMembers(CHANNEL_ID, USER_ID, req);
 
             // then
             verify(memberRepository).save(any(ChatChannelMemberEntity.class));

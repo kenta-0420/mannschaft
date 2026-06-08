@@ -228,7 +228,7 @@ class ChatChannelServiceTest {
             given(chatMapper.toChannelResponse(any(ChatChannelEntity.class))).willReturn(expected);
 
             // when
-            ChannelResponse result = chatChannelService.updateChannel(CHANNEL_ID, req);
+            ChannelResponse result = chatChannelService.updateChannel(CHANNEL_ID, req, USER_ID);
 
             // then
             assertThat(result.getMeta().name()).isEqualTo("更新名");
@@ -245,7 +245,7 @@ class ChatChannelServiceTest {
             given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channel));
 
             // when & then
-            assertThatThrownBy(() -> chatChannelService.updateChannel(CHANNEL_ID, req))
+            assertThatThrownBy(() -> chatChannelService.updateChannel(CHANNEL_ID, req, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.CHANNEL_ARCHIVED));
@@ -268,7 +268,7 @@ class ChatChannelServiceTest {
             given(channelRepository.save(any(ChatChannelEntity.class))).willReturn(channel);
 
             // when
-            chatChannelService.deleteChannel(CHANNEL_ID);
+            chatChannelService.deleteChannel(CHANNEL_ID, USER_ID);
 
             // then
             verify(channelRepository).save(any(ChatChannelEntity.class));
@@ -283,7 +283,7 @@ class ChatChannelServiceTest {
             given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> chatChannelService.deleteChannel(CHANNEL_ID))
+            assertThatThrownBy(() -> chatChannelService.deleteChannel(CHANNEL_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.CHANNEL_NOT_FOUND));
@@ -314,7 +314,7 @@ class ChatChannelServiceTest {
             given(chatMapper.toChannelResponse(any(ChatChannelEntity.class))).willReturn(expected);
 
             // when
-            ChannelResponse result = chatChannelService.archiveChannel(CHANNEL_ID);
+            ChannelResponse result = chatChannelService.archiveChannel(CHANNEL_ID, USER_ID);
 
             // then
             assertThat(result).isEqualTo(expected);
@@ -348,7 +348,7 @@ class ChatChannelServiceTest {
             given(chatMapper.toChannelResponse(any(ChatChannelEntity.class))).willReturn(expected);
 
             // when
-            ChannelResponse result = chatChannelService.unarchiveChannel(CHANNEL_ID);
+            ChannelResponse result = chatChannelService.unarchiveChannel(CHANNEL_ID, USER_ID);
 
             // then
             assertThat(result).isEqualTo(expected);
@@ -365,7 +365,7 @@ class ChatChannelServiceTest {
             given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channel));
 
             // when / then
-            assertThatThrownBy(() -> chatChannelService.unarchiveChannel(CHANNEL_ID))
+            assertThatThrownBy(() -> chatChannelService.unarchiveChannel(CHANNEL_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining(ChatErrorCode.CHANNEL_NOT_ARCHIVED.getMessage());
         }
