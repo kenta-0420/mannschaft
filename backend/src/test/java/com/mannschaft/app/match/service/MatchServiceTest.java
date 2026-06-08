@@ -4,8 +4,11 @@ import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.match.MatchCompletedEvent;
+import com.mannschaft.app.match.MatchErrorCode;
+import com.mannschaft.app.match.domain.MatchKind;
 import com.mannschaft.app.match.domain.MatchStatus;
 import com.mannschaft.app.match.domain.Sport;
+import com.mannschaft.app.match.dto.MatchSummaryResponse;
 import com.mannschaft.app.match.entity.MatchEntity;
 import com.mannschaft.app.match.repository.MatchRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +20,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -27,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -259,6 +268,69 @@ class MatchServiceTest {
         service.softDelete(matchId, ORG, ACTOR);
         verify(matchAccessService).assertCanEditMeta(ACTOR, match);
         assertThat(match.getDeletedAt()).isNotNull();
+    }
+
+    // ─── listMatches（一覧・Phase2C） ──────────────────────────
+
+    @Test
+    @DisplayName("listMatches: 認可委譲（assertCanListTeamMatches）＋テナント/チーム＋フィルタをリポジトリに渡し DTO へ変換")
+    void listMatchesDelegatesAuthzAndPassesFilters() {
+        LocalDateTime from = LocalDateTime.parse("2026-01-01T00:00:00");
+        LocalDateTime to = LocalDateTime.parse("2026-12-31T23:59:59");
+        MatchEntity row = MatchEntity.builder()
+                .organizationId(ORG).teamId(TEAM).sport(Sport.SOCCER)
+                .kind(MatchKind.TOURNAMENT).status(MatchStatus.COMPLETED).createdBy(ACTOR)
+                .opponentName("相手FC").build();
+        row.setId(UUID.randomUUID());
+        Pageable pageable = PageRequest.of(0, 20);
+        when(matchRepository.findTeamMatches(
+                eq(ORG), eq(TEAM), eq(MatchStatus.COMPLETED), eq(MatchKind.TOURNAMENT),
+                eq(Sport.SOCCER), eq(from), eq(to), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(row), pageable, 1));
+
+        MatchService.ListFilter filter = MatchService.ListFilter.builder()
+                .status(MatchStatus.COMPLETED).kind(MatchKind.TOURNAMENT).sport(Sport.SOCCER)
+                .from(from).to(to).build();
+
+        var result = service.listMatches(ORG, TEAM, ACTOR, filter, pageable);
+
+        // 認可委譲（第一防御）
+        verify(matchAccessService).assertCanListTeamMatches(ACTOR, TEAM);
+        // Entity → サマリ DTO 変換
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        MatchSummaryResponse dto = result.getContent().get(0);
+        assertThat(dto.getId()).isEqualTo(row.getId());
+        assertThat(dto.getStatus()).isEqualTo(MatchStatus.COMPLETED);
+        assertThat(dto.getKind()).isEqualTo(MatchKind.TOURNAMENT);
+        assertThat(dto.getOpponentName()).isEqualTo("相手FC");
+    }
+
+    @Test
+    @DisplayName("listMatches: 非メンバー（認可 403）ならリポジトリを呼ばずに伝播する")
+    void listMatchesNonMemberThrows() {
+        doThrow(new BusinessException(MatchErrorCode.MATCH_010))
+                .when(matchAccessService).assertCanListTeamMatches(ACTOR, TEAM);
+
+        assertThatThrownBy(() -> service.listMatches(ORG, TEAM, ACTOR,
+                MatchService.ListFilter.builder().build(), PageRequest.of(0, 20)))
+                .isInstanceOf(BusinessException.class);
+
+        verify(matchRepository, never()).findTeamMatches(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("listMatches: filter が null でも全 null フィルタとしてリポジトリに渡す（NPE にならない）")
+    void listMatchesNullFilterDefaultsToAllNull() {
+        Pageable pageable = PageRequest.of(0, 20);
+        when(matchRepository.findTeamMatches(
+                eq(ORG), eq(TEAM), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+
+        var result = service.listMatches(ORG, TEAM, ACTOR, null, pageable);
+
+        assertThat(result.getTotalElements()).isZero();
+        verify(matchRepository).findTeamMatches(
+                eq(ORG), eq(TEAM), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable));
     }
 
     @Test

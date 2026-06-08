@@ -78,6 +78,31 @@ class MatchAccessServiceTest {
                 .hasMessageContaining("試合が見つかりません");
     }
 
+    // ─── canListTeamMatches（一覧・メンバー以上・Phase2C） ──
+
+    @Test
+    @DisplayName("canListTeamMatches: 当該チームのメンバーは可")
+    void canListTeamMatchesMember() {
+        when(accessControlService.isMember(HOME_ADMIN, TEAM_HOME, "TEAM")).thenReturn(true);
+        assertThat(service.canListTeamMatches(HOME_ADMIN, TEAM_HOME)).isTrue();
+    }
+
+    @Test
+    @DisplayName("canListTeamMatches: 非メンバーは不可・assertCanListTeamMatches は 403（MATCH_010）")
+    void canListTeamMatchesNonMember() {
+        when(accessControlService.isMember(STRANGER, TEAM_HOME, "TEAM")).thenReturn(false);
+        assertThat(service.canListTeamMatches(STRANGER, TEAM_HOME)).isFalse();
+        assertThatThrownBy(() -> service.assertCanListTeamMatches(STRANGER, TEAM_HOME))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("canListTeamMatches: userId / teamId が null なら不可（NPE にならず false）")
+    void canListTeamMatchesNullArgs() {
+        assertThat(service.canListTeamMatches(null, TEAM_HOME)).isFalse();
+        assertThat(service.canListTeamMatches(HOME_ADMIN, null)).isFalse();
+    }
+
     // ─── canEditMeta ───────────────────────────────────────
 
     @Test

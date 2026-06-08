@@ -1,8 +1,12 @@
 package com.mannschaft.app.match.repository;
 
 import com.mannschaft.app.common.repository.AbstractTenantAwareRepository;
+import com.mannschaft.app.match.domain.MatchKind;
 import com.mannschaft.app.match.domain.MatchStatus;
+import com.mannschaft.app.match.domain.Sport;
 import com.mannschaft.app.match.entity.MatchEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -77,4 +81,45 @@ public interface MatchRepository extends AbstractTenantAwareRepository<MatchEnti
 
     /** 内部利用（COMPLETED 等のフィルタ用にステータスを参照する派生クエリの土台）。 */
     List<MatchEntity> findByOrganizationIdAndStatus(Long organizationId, MatchStatus status);
+
+    /**
+     * チーム試合一覧（コレクション GET 用・Phase2C）。
+     *
+     * <p>当該テナント（organization_id）かつ当該チームが主体（team_id）の試合をページングで取得する。
+     * kind / status / 期間（kickoff_at）/ sport で任意絞り込み（いずれも NULL は無効化＝絞り込まない）。
+     * 論理削除は {@code @SQLRestriction("deleted_at IS NULL")}（Entity）で常に除外される。</p>
+     *
+     * <p>kickoff_at 降順（最新試合が先頭・NULL は最後）→ id 降順で安定ソートする。
+     * 単一の親テーブルのみを引く単純なページングクエリで N+1 を起こさない（子テーブルは引かない）。</p>
+     *
+     * @param orgId  テナント organization_id
+     * @param teamId 主体チーム team_id
+     * @param status 任意 status フィルタ（NULL=全 status）
+     * @param kind   任意 kind フィルタ（NULL=全 kind）
+     * @param sport  任意 sport フィルタ（NULL=全 sport）
+     * @param from   任意 kickoff_at 下限（含む・NULL=下限なし）
+     * @param to     任意 kickoff_at 上限（含む・NULL=上限なし）
+     * @param pageable ページング
+     * @return 該当試合のページ
+     */
+    @Query("""
+            SELECT m FROM MatchEntity m
+            WHERE m.organizationId = :orgId
+              AND m.teamId = :teamId
+              AND (:status IS NULL OR m.status = :status)
+              AND (:kind IS NULL OR m.kind = :kind)
+              AND (:sport IS NULL OR m.sport = :sport)
+              AND (:from IS NULL OR m.kickoffAt >= :from)
+              AND (:to IS NULL OR m.kickoffAt <= :to)
+            ORDER BY m.kickoffAt DESC, m.id DESC
+            """)
+    Page<MatchEntity> findTeamMatches(
+            @Param("orgId") Long orgId,
+            @Param("teamId") Long teamId,
+            @Param("status") MatchStatus status,
+            @Param("kind") MatchKind kind,
+            @Param("sport") Sport sport,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            Pageable pageable);
 }

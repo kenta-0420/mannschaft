@@ -9,6 +9,7 @@ import com.mannschaft.app.match.domain.HomeAway;
 import com.mannschaft.app.match.domain.MatchKind;
 import com.mannschaft.app.match.domain.MatchStatus;
 import com.mannschaft.app.match.domain.Sport;
+import com.mannschaft.app.match.dto.MatchSummaryResponse;
 import com.mannschaft.app.match.entity.MatchEntity;
 import com.mannschaft.app.match.repository.MatchRepository;
 import lombok.Builder;
@@ -16,9 +17,12 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -62,6 +66,40 @@ public class MatchService {
     public MatchEntity getMatchOrThrow(UUID matchId, Long organizationId) {
         return matchRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(matchId, organizationId)
                 .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_001));
+    }
+
+    // ─────────────────────────────────────────────
+    // 一覧（コレクション GET・Phase2C）
+    // ─────────────────────────────────────────────
+
+    /**
+     * チームの試合一覧を取得する（FE 一覧ページ前提・02 §F・03 §C）。
+     *
+     * <p><b>認可（第一防御・Service 層）</b>: 当該チームのメンバー以上であることを
+     * {@link MatchAccessService#assertCanListTeamMatches} で明示検証する
+     * （per-scope ロールは JWT に無いため SpEL ベースの判定だけに頼らない・03 §C.3.1）。
+     * 非メンバーは 403（{@code MATCH_010}）。</p>
+     *
+     * <p><b>テナント絞り込み（IDOR）</b>: リポジトリ層で {@code organization_id} ＋ {@code team_id} を強制し、
+     * パスの {@code orgId}/{@code teamId} 帰属外の試合は結果に含めない。論理削除は Entity の
+     * {@code @SQLRestriction} で常に除外される。</p>
+     *
+     * @param orgId    テナント organization_id（パス由来）
+     * @param teamId   主体チーム team_id（パス由来）
+     * @param actorUserId 操作者ユーザー ID（認可・サーバー導出）
+     * @param filter   任意フィルタ（status / kind / sport / 期間）
+     * @param pageable ページング
+     * @return 試合サマリのページ（所有/権限列は出さない・03 §C.2）
+     */
+    public Page<MatchSummaryResponse> listMatches(Long orgId, Long teamId, Long actorUserId,
+                                                  ListFilter filter, Pageable pageable) {
+        // 第一防御: 当該チームのメンバー以上であること（非メンバーは 403）
+        matchAccessService.assertCanListTeamMatches(actorUserId, teamId);
+        ListFilter f = filter != null ? filter : ListFilter.builder().build();
+        return matchRepository.findTeamMatches(
+                        orgId, teamId, f.getStatus(), f.getKind(), f.getSport(),
+                        f.getFrom(), f.getTo(), pageable)
+                .map(MatchSummaryResponse::from);
     }
 
     // ─────────────────────────────────────────────
@@ -334,5 +372,21 @@ public class MatchService {
         private final Integer durationMinutes;
         private final String periodFormat;
         private final String notes;
+    }
+
+    /**
+     * 試合一覧の任意フィルタ（Phase2C・いずれも NULL は無効化＝絞り込まない）。
+     *
+     * <p>テナント（organization_id）・チーム（team_id）はパス由来でリポジトリに直接渡すため、
+     * 本フィルタには含めない（クライアントから受け取らない・IDOR/越境防止）。</p>
+     */
+    @Getter
+    @Builder
+    public static class ListFilter {
+        private final MatchStatus status;
+        private final MatchKind kind;
+        private final Sport sport;
+        private final LocalDateTime from;
+        private final LocalDateTime to;
     }
 }

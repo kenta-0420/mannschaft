@@ -67,6 +67,32 @@ public class MatchAccessService {
     }
 
     // ─────────────────────────────────────────────
+    // 一覧（チームメンバー以上・Phase2C）
+    // ─────────────────────────────────────────────
+
+    /**
+     * チーム試合一覧の閲覧可否（メンバー以上・Phase2C・02 §F のチーム統計と同水準）。
+     *
+     * <p>per-scope ロールは JWT に無いため、SpEL（{@code @PreAuthorize}）の第二防御に加えて
+     * 本サービスを第一防御として明示呼出しする（03 §C.3.1）。</p>
+     *
+     * @param userId 操作者ユーザー ID
+     * @param teamId 対象チーム ID（パス由来）
+     * @return 当該チームのメンバー以上なら true
+     */
+    public boolean canListTeamMatches(Long userId, Long teamId) {
+        return userId != null && teamId != null
+                && accessControlService.isMember(userId, teamId, SCOPE_TEAM);
+    }
+
+    /** チーム試合一覧の閲覧不可（非メンバー）なら 403 でスローする。 */
+    public void assertCanListTeamMatches(Long userId, Long teamId) {
+        if (!canListTeamMatches(userId, teamId)) {
+            throw new BusinessException(MatchErrorCode.MATCH_010);
+        }
+    }
+
+    // ─────────────────────────────────────────────
     // メタ編集（作成者 / 記録係 / 主体チーム ADMIN）
     // ─────────────────────────────────────────────
 
