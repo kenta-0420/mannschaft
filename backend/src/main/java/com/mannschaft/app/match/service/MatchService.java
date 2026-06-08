@@ -35,7 +35,10 @@ import java.util.UUID;
  * <p>設計: docs/features/F08.10_match_record_analytics/02・03・05</p>
  */
 @Slf4j
-@Service
+// 既存 com.mannschaft.app.tournament.service.MatchService と Spring デフォルト bean 名（"matchService"）が衝突し
+// ApplicationContext のロードに失敗するため、明示 bean 名を付与して衝突を回避する（F08.10 P2a）。
+// 型注入（@Autowired / コンストラクタ注入）は bean 名に依存しないため影響を受けない。
+@Service("matchRecordService")
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class MatchService {
