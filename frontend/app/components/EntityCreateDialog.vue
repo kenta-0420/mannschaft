@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { useDebounceFn } from '@vueuse/core'
 import type { PrefectureResponse, CityResponse } from '~/types/matching'
+import { generateSlug, isValidSlug } from '~/utils/slug'
 
 const props = defineProps<{
   entityType: 'team' | 'organization'
@@ -75,11 +77,52 @@ const form = ref({
   cityCode: '',
   visibility: 'PUBLIC',
   supporterEnabled: false,
+  // スラッグ（英小文字・数字・ハイフン、3〜30文字）
+  slug: '',
   // Team only
   template: 'OTHER',
   // Org only
   orgType: 'OTHER',
 })
+
+// スラッグ可用性チェック
+const slugChecking = ref(false)
+const slugAvailable = ref<boolean | null>(null)
+
+const checkSlug = useDebounceFn(async (slug: string) => {
+  if (!slug || !isValidSlug(slug)) {
+    slugAvailable.value = null
+    return
+  }
+  slugChecking.value = true
+  try {
+    const endpoint = isTeam.value ? '/api/v1/teams/slug-check' : '/api/v1/organizations/slug-check'
+    const res = await api<{ available: boolean }>(endpoint, {
+      params: { slug },
+    })
+    slugAvailable.value = res.available
+  } catch {
+    slugAvailable.value = null
+  } finally {
+    slugChecking.value = false
+  }
+}, 300)
+
+// 名前が変わったらスラッグを自動生成
+watch(
+  () => form.value.name,
+  (name) => {
+    if (name && !form.value.slug) {
+      form.value.slug = generateSlug(name)
+      checkSlug(form.value.slug)
+    }
+  },
+)
+
+function onSlugInput() {
+  slugAvailable.value = null
+  checkSlug(form.value.slug)
+}
 
 const visibilityOptions = computed(() => {
   if (isTeam.value) {
@@ -138,6 +181,9 @@ async function submit() {
       visibility: form.value.visibility,
       supporterEnabled: form.value.supporterEnabled,
     }
+    if (form.value.slug) {
+      body.slug = form.value.slug
+    }
     if (isTeam.value) {
       body.template = form.value.template
       // F22.1 Phase2 足場C 第三陣: チーム作成時のみ構造化地域コードを送る
@@ -178,6 +224,7 @@ function resetForm() {
     cityCode: '',
     visibility: 'PUBLIC',
     supporterEnabled: false,
+    slug: '',
     template: 'OTHER',
     orgType: 'OTHER',
   }
@@ -185,6 +232,7 @@ function resetForm() {
   selectedCity.value = null
   cities.value = []
   fieldErrors.value = {}
+  slugAvailable.value = null
 }
 
 function close() {
@@ -209,6 +257,27 @@ function close() {
         >
         <InputText v-model="form.name" class="w-full" :class="{ 'p-invalid': fieldErrors.name }" />
         <small v-if="fieldErrors.name" class="text-red-500">{{ fieldErrors.name }}</small>
+      </div>
+
+      <!-- URLスラッグ -->
+      <div>
+        <label class="mb-1 block text-sm font-medium">
+          {{ $t('slug.label') }}
+        </label>
+        <div class="relative">
+          <InputText
+            v-model="form.slug"
+            class="w-full"
+            :placeholder="$t('slug.hint')"
+            :maxlength="30"
+            @input="onSlugInput"
+          />
+        </div>
+        <small class="mt-1 block text-xs text-gray-500">{{ $t('slug.format') }}</small>
+        <small v-if="slugChecking" class="text-gray-400 text-xs">{{ $t('slug.checking') }}</small>
+        <small v-else-if="slugAvailable === true" class="text-green-600 text-xs">✓ {{ $t('slug.available') }}</small>
+        <small v-else-if="slugAvailable === false" class="text-red-500 text-xs">✗ {{ $t('slug.unavailable') }}</small>
+        <small v-if="fieldErrors.slug" class="text-red-500 text-xs">{{ fieldErrors.slug }}</small>
       </div>
 
       <!-- 名前（カナ） -->
