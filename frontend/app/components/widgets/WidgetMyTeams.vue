@@ -32,7 +32,7 @@ onMounted(async () => {
           class="flex items-center rounded-lg border border-surface-400 bg-surface-50 text-sm transition-shadow hover:shadow-md dark:border-surface-600 dark:bg-surface-700"
         >
           <NuxtLink
-            :to="`/teams/${team.publicId}`"
+            :to="team.publicId ? `/teams/${team.publicId}` : undefined"
             class="flex flex-1 items-center gap-2 px-3 py-2"
           >
             <i class="pi pi-users text-xs text-primary" />
@@ -40,7 +40,7 @@ onMounted(async () => {
             <RoleBadge :role="team.role" />
           </NuxtLink>
           <NuxtLink
-            v-if="reservationEnabledTeamIds.includes(team.id)"
+            v-if="reservationEnabledTeamIds.includes(team.id) && team.publicId"
             :to="`/teams/${team.publicId}/reservations`"
             v-tooltip.top="$t('dashboard.team_reservation_link')"
             class="border-l border-surface-400 px-3 py-2 text-primary transition-colors hover:bg-surface-100 dark:border-surface-600 dark:hover:bg-surface-600"
