@@ -6,6 +6,7 @@ import com.mannschaft.app.event.EventDelegationRateLimitFilter;
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
 import com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter;
 import com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter;
+import com.mannschaft.app.team.filter.SlugCheckRateLimitFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
@@ -45,6 +46,7 @@ public class SecurityConfig {
     private final ScheduleDelegationRateLimitFilter scheduleDelegationRateLimitFilter;
     private final EventDelegationRateLimitFilter eventDelegationRateLimitFilter;
     private final DashboardScopeTabRateLimitFilter dashboardScopeTabRateLimitFilter;
+    private final SlugCheckRateLimitFilter slugCheckRateLimitFilter;
 
     /**
      * ProxyInputContextFilter の @Component によるサーブレットフィルター自動登録を無効化。
@@ -133,6 +135,21 @@ public class SecurityConfig {
             dashboardScopeTabRateLimitFilterRegistration() {
         FilterRegistrationBean<DashboardScopeTabRateLimitFilter> registration =
                 new FilterRegistrationBean<>(dashboardScopeTabRateLimitFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    /**
+     * スラッグ可用性チェック: {@link SlugCheckRateLimitFilter} の @Component による
+     * サーブレットフィルター自動登録を無効化。
+     * Spring Security フィルターチェーン経由（addFilterAfter）のみで動作させ、
+     * JWT 認証後の確定した SecurityContext から userId を解決できるようにする。
+     */
+    @Bean
+    public FilterRegistrationBean<SlugCheckRateLimitFilter>
+            slugCheckRateLimitFilterRegistration() {
+        FilterRegistrationBean<SlugCheckRateLimitFilter> registration =
+                new FilterRegistrationBean<>(slugCheckRateLimitFilter);
         registration.setEnabled(false);
         return registration;
     }
@@ -319,7 +336,9 @@ public class SecurityConfig {
             .addFilterAfter(scheduleDelegationRateLimitFilter, JwtAuthenticationFilter.class)
             .addFilterAfter(eventDelegationRateLimitFilter, JwtAuthenticationFilter.class)
             // F22.1 scope-tabs 並べ替え連打防止（§5・30req/分/ユーザー）。JWT 認証後に動かす。
-            .addFilterAfter(dashboardScopeTabRateLimitFilter, JwtAuthenticationFilter.class);
+            .addFilterAfter(dashboardScopeTabRateLimitFilter, JwtAuthenticationFilter.class)
+            // スラッグ可用性チェック（60 req/分/ユーザー）。JWT 認証後に動かし、userId を解決する。
+            .addFilterAfter(slugCheckRateLimitFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 }
