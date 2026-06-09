@@ -211,8 +211,90 @@
       }
     },
     "analytics": {
+      "my_title": "Análisis de partidos",
+      "my_subtitle": "Visualiza tus estadísticas de carrera",
+      "member_title": "Análisis de partidos del miembro",
+      "member_subtitle": "Estadísticas por equipo de este miembro",
+      "team_context": "Equipo objetivo",
+      "unknown_kind": "Otro",
+      "forbidden": "No tienes permiso para ver estas estadísticas",
+      "metric": {
+        "total_matches": "Partidos",
+        "total_minutes": "Minutos totales",
+        "goals": "Goles",
+        "assists": "Asistencias",
+        "goals_per90": "Goles por 90",
+        "starter_rate": "Tasa de titular"
+      },
+      "axis": {
+        "goals": "Goles",
+        "assists": "Asistencias",
+        "matches": "Partidos",
+        "minutes": "Min. promedio",
+        "starter_rate": "Tasa de titular"
+      },
+      "series": {
+        "goals": "Goles",
+        "minutes": "Minutos",
+        "match_share": "Cuota de aparición",
+        "goals_by_kind": "Goles por tipo"
+      },
+      "chart": {
+        "radar_title": "Distribución de stats",
+        "line_title": "Tendencia mensual (goles / minutos)",
+        "doughnut_title": "Cuota de aparición por tipo",
+        "bar_title": "Distribución de goles por tipo"
+      },
+      "best": {
+        "title": "Récord personal",
+        "top_goals": "Más goles en un mes",
+        "longest_minutes": "Más minutos en un mes"
+      },
+      "empty": {
+        "no_data": "No hay datos para mostrar",
+        "no_trend": "Sin datos de tendencia",
+        "no_goals": "Sin goles registrados",
+        "no_matches": "Aún no hay registros de partidos",
+        "member_no_matches": "Sin registros de partidos para este miembro",
+        "no_team": "Sin equipos",
+        "record_cta": "Registrar un partido"
+      },
       "error": {
         "load_failed": "Error al cargar las estadísticas"
+      },
+      "team_title": "Análisis de partidos del equipo",
+      "team_subtitle": "Visualiza el registro de victorias/derrotas, goles, clasificaciones de jugadores y forma reciente",
+      "team": {
+        "metric": {
+          "total_matches": "Partidos",
+          "win_draw_loss": "V/E/D",
+          "goals_for": "Goles a favor",
+          "goals_against": "Goles en contra",
+          "goal_difference": "Diferencia de goles"
+        },
+        "series": {
+          "points": "Puntos (acumulado)",
+          "player_goals": "Goles",
+          "matches_by_kind": "Partidos"
+        },
+        "chart": {
+          "result_title": "Resumen de resultados",
+          "player_goals_title": "Máximos goleadores",
+          "recent_form_title": "Forma reciente (tendencia de puntos)",
+          "matches_by_kind_title": "Partidos por tipo"
+        }
+      },
+      "widget": {
+        "summary": {
+          "title": "Resumen de partido",
+          "wdl_label": "V/E/D",
+          "goals_label": "GF/GC",
+          "recent_form": "Forma reciente",
+          "in_progress_label": "En progreso",
+          "resume_recording": "Reanudar registro",
+          "no_matches": "Aún no hay registros de partidos",
+          "view_analytics": "Ver análisis detallado"
+        }
       }
     },
     "kind": {

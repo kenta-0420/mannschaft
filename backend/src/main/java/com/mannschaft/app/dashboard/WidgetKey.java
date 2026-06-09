@@ -47,6 +47,8 @@ public enum WidgetKey {
     TEAM_DIVISION_STANDINGS(ScopeType.TEAM, true, 9),
     TEAM_BILLING(ScopeType.TEAM, true, 10),
     TEAM_PAGE_VIEWS(ScopeType.TEAM, false, 11),
+    /** F08.10: チーム試合サマリ（直近成績＋ミニチャート＋進行中試合の記録再開導線） */
+    TEAM_MATCH_SUMMARY(ScopeType.TEAM, true, 12),
 
     // --- 組織ダッシュボード ---
     ORG_TEAM_LIST(ScopeType.ORGANIZATION, true, 0),

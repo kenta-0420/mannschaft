@@ -3,6 +3,7 @@ definePageMeta({ middleware: 'auth' })
 
 const onboardingApi = useOnboardingApi()
 const { captureQuiet } = useErrorReport()
+const { t } = useI18n()
 
 const onboardingActiveCount = ref(0)
 
@@ -45,6 +46,13 @@ const cards: MyPageCard[] = [
     description: '自分の成績・実績',
     icon: 'pi pi-chart-line',
     to: '/my/performance',
+  },
+  {
+    // F08.10 個人分析の発見可能性（§G.9）。i18n 済みラベルで「試合分析」への入口を追加。
+    label: t('match.analytics.my_title'),
+    description: t('match.analytics.my_subtitle'),
+    icon: 'pi pi-chart-bar',
+    to: '/me/match-analytics',
   },
   {
     label: 'マイプロジェクト',

@@ -11,8 +11,9 @@ const emit = defineEmits<{
   posted: []
 }>()
 
-const { createPost } = useTimelineApi()
+const { createPost, getImageUploadUrl } = useTimelineApi()
 const { showSuccess, showError } = useNotification()
+const { t } = useI18n()
 
 // お知らせウィジェット表示フラグ（チーム/組織スコープのみ有効）
 const displayInAnnouncement = ref(false)
@@ -47,7 +48,7 @@ function onFileSelect(event: Event) {
   const newFiles = Array.from(input.files)
   const total = images.value.length + newFiles.length
   if (total > 4) {
-    showError('画像は最大4枚まで添付できます')
+    showError(t('timeline.imageTooMany'))
     return
   }
   images.value.push(...newFiles.slice(0, 4 - images.value.length))
@@ -71,11 +72,11 @@ function onVideoUploaded(payload: { fileKey: string; fileName: string; fileSize:
   videoFileName.value = payload.fileName
   videoFileSize.value = payload.fileSize
   videoContentType.value = payload.contentType
-  showSuccess('動画をアップロードしました')
+  showSuccess(t('timeline.videoUploadSuccess'))
 }
 
 function onVideoUploadError(message: string) {
-  showError(message || '動画のアップロードに失敗しました')
+  showError(message || t('timeline.videoUploadError'))
 }
 
 function removeVideo() {
@@ -93,34 +94,62 @@ async function onSubmit() {
   if (!canSubmit.value) return
   submitting.value = true
   try {
-    const formData = new FormData()
-    formData.append('scope_type', props.scopeType)
-    // VILLAGE スコープ: scope_id=0 + scope_village_id=UUID（設計書 §3.12.2）
-    if (props.scopeId) {
-      const isVillage = props.scopeType === 'VILLAGE'
-      formData.append('scope_id', isVillage ? '0' : String(props.scopeId))
-      if (isVillage) formData.append('scope_village_id', String(props.scopeId))
+    const isVillage = props.scopeType === 'VILLAGE'
+    const scopeId = isVillage ? 0 : (props.scopeId ?? 0)
+
+    // 1. 画像を事前アップロード（presigned URL方式）
+    const imageAttachments: Record<string, unknown>[] = []
+    for (const img of images.value) {
+      const urlRes = await getImageUploadUrl({
+        contentType: img.type,
+        scopeType: props.scopeType,
+        scopeId,
+      })
+      // R2 に直接 PUT（動画と同じパターン）
+      const putRes = await fetch(urlRes.data.uploadUrl, {
+        method: 'PUT',
+        body: img,
+        headers: { 'Content-Type': img.type },
+      })
+      if (!putRes.ok) {
+        showError(t('timeline.imageUploadError'))
+        return
+      }
+      imageAttachments.push({
+        attachmentType: 'IMAGE',
+        fileKey: urlRes.data.fileKey,
+        originalFilename: img.name,
+        fileSize: img.size,
+        mimeType: img.type,
+      })
     }
-    formData.append('content', content.value.trim())
-    images.value.forEach(img => formData.append('images', img))
-    if (videoUrl.value.trim()) {
-      formData.append('video_urls', videoUrl.value.trim())
-    }
+
+    // 2. 添付リスト（画像 + 動画ファイル）を構築
+    const attachments: Record<string, unknown>[] = [...imageAttachments]
     if (videoFileKey.value) {
-      formData.append('attachments', JSON.stringify({
+      attachments.push({
         attachmentType: 'VIDEO_FILE',
         fileKey: videoFileKey.value,
         originalFilename: videoFileName.value,
         fileSize: videoFileSize.value,
         mimeType: videoContentType.value,
         videoProcessingStatus: 'PENDING',
-      }))
-    }
-    if (poll.value) {
-      formData.append('poll', JSON.stringify(poll.value))
+      })
     }
 
-    const res = await createPost(formData)
+    // 3. JSON ボディを構築して送信
+    const body: Record<string, unknown> = {
+      scope_type: props.scopeType,
+      scope_id: scopeId,
+      // VILLAGE スコープ: scope_id=0 + scope_village_id=UUID（設計書 §3.12.2）
+      ...(isVillage && props.scopeId ? { scope_village_id: String(props.scopeId) } : {}),
+      content: content.value.trim(),
+      ...(attachments.length ? { attachments } : {}),
+      ...(videoUrl.value.trim() ? { video_urls: [videoUrl.value.trim()] } : {}),
+      ...(poll.value ? { poll: poll.value } : {}),
+    }
+
+    const res = await createPost(body)
     // お知らせウィジェットに表示する場合、投稿後に登録（VILLAGE スコープは非対応）
     if (displayInAnnouncement.value && isTeamOrOrgScope.value && res?.data?.id && props.scopeId != null) {
       const { createAnnouncement } = useAnnouncementFeed(
@@ -131,10 +160,10 @@ async function onSubmit() {
         sourceType: 'TIMELINE_POST',
         sourceId: res.data.id,
       }).catch(() => {
-        showError('お知らせへの登録に失敗しました。後から手動で登録してください。')
+        showError(t('timeline.announcementRegisterError'))
       })
     }
-    showSuccess('投稿しました')
+    showSuccess(t('timeline.postSuccess'))
     content.value = ''
     images.value = []
     videoUrl.value = ''
@@ -146,7 +175,7 @@ async function onSubmit() {
     displayInAnnouncement.value = false
     emit('posted')
   } catch {
-    showError('投稿に失敗しました')
+    showError(t('timeline.postError'))
   } finally {
     submitting.value = false
   }

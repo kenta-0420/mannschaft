@@ -3,6 +3,7 @@
     "category": {
       "home": "ホーム",
       "schedule": "スケジュール",
+      "match": "試合",
       "member": "メンバー",
       "ops": "業務運営",
       "facility": "施設管理",
@@ -19,6 +20,8 @@
       "shifts": "シフト",
       "duties": "当番",
       "annual_plan": "年間計画",
+      "matches": "試合記録",
+      "matchAnalytics": "試合分析",
       "members": "メンバー",
       "circulation": "回覧板",
       "safety_check": "安否確認",

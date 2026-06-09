@@ -211,8 +211,90 @@
       }
     },
     "analytics": {
+      "my_title": "比赛分析",
+      "my_subtitle": "可视化你的生涯统计",
+      "member_title": "成员比赛分析",
+      "member_subtitle": "该成员的球队统计",
+      "team_context": "目标球队",
+      "unknown_kind": "其他",
+      "forbidden": "你没有权限查看这些统计",
+      "metric": {
+        "total_matches": "出场",
+        "total_minutes": "总出场时间(分)",
+        "goals": "进球",
+        "assists": "助攻",
+        "goals_per90": "每90分钟进球",
+        "starter_rate": "首发率"
+      },
+      "axis": {
+        "goals": "进球",
+        "assists": "助攻",
+        "matches": "场次",
+        "minutes": "场均出场",
+        "starter_rate": "首发率"
+      },
+      "series": {
+        "goals": "进球",
+        "minutes": "出场时间(分)",
+        "match_share": "出场占比",
+        "goals_by_kind": "按类型进球"
+      },
+      "chart": {
+        "radar_title": "数据分布",
+        "line_title": "月度趋势（进球/出场时间）",
+        "doughnut_title": "按类型的出场占比",
+        "bar_title": "按类型的进球分布"
+      },
+      "best": {
+        "title": "个人最佳",
+        "top_goals": "单月最多进球",
+        "longest_minutes": "单月最长出场(分)"
+      },
+      "empty": {
+        "no_data": "暂无可显示的数据",
+        "no_trend": "暂无趋势数据",
+        "no_goals": "暂无进球记录",
+        "no_matches": "暂无比赛记录",
+        "member_no_matches": "该成员暂无比赛记录",
+        "no_team": "未加入任何球队",
+        "record_cta": "记录比赛"
+      },
       "error": {
         "load_failed": "获取统计失败"
+      },
+      "team_title": "球队比赛分析",
+      "team_subtitle": "可视化球队胜负记录、进失球、球员排名和近期状态",
+      "team": {
+        "metric": {
+          "total_matches": "比赛数",
+          "win_draw_loss": "胜/平/负",
+          "goals_for": "进球",
+          "goals_against": "失球",
+          "goal_difference": "净胜球"
+        },
+        "series": {
+          "points": "积分（累计）",
+          "player_goals": "进球数",
+          "matches_by_kind": "比赛数"
+        },
+        "chart": {
+          "result_title": "胜负汇总",
+          "player_goals_title": "射手榜",
+          "recent_form_title": "近期状态（积分趋势）",
+          "matches_by_kind_title": "各类型比赛数"
+        }
+      },
+      "widget": {
+        "summary": {
+          "title": "比赛概要",
+          "wdl_label": "胜/平/负",
+          "goals_label": "进/失球",
+          "recent_form": "近期状态",
+          "in_progress_label": "进行中",
+          "resume_recording": "继续记录",
+          "no_matches": "暂无比赛记录",
+          "view_analytics": "查看详细分析"
+        }
       }
     },
     "kind": {

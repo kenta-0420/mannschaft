@@ -37,7 +37,7 @@ public class TeamEntity extends BaseEntity {
      * <p>内部 BIGINT PK は FK 関係のために保持し、URL には本フィールドを使用する。
      * {@code @UuidGenerator(style = TIME)} により UUIDv7（時刻順ソート可能）が自動生成される。</p>
      */
-    @Column(name = "public_id", columnDefinition = "BINARY(16)", nullable = true, updatable = false, unique = true)
+    @Column(name = "public_id", columnDefinition = "BINARY(16)", nullable = false, updatable = false, unique = true)
     @UuidGenerator(style = UuidGenerator.Style.TIME)
     private UUID publicId;
 
@@ -174,12 +174,25 @@ public class TeamEntity extends BaseEntity {
     private boolean timelinePostsPublic = false;
 
     /**
-     * チーム公開範囲
+     * チーム公開範囲（ロールベース設計）。
+     *
+     * <p>旧設計（PRIVATE / ORGANIZATION_ONLY）は組織概念に依存していた。
+     * 新設計ではチーム内のロール（メンバー/サポーター/ゲスト/パブリック）で分ける。</p>
+     *
+     * <p>F00 StandardVisibility マッピング:
+     * <ul>
+     *   <li>{@link #PUBLIC} → {@link com.mannschaft.app.common.visibility.StandardVisibility#PUBLIC}</li>
+     *   <li>{@link #GUESTS_AND_ABOVE} → {@link com.mannschaft.app.common.visibility.StandardVisibility#SCOPE_AFFILIATED}</li>
+     *   <li>{@link #SUPPORTERS_AND_ABOVE} → {@link com.mannschaft.app.common.visibility.StandardVisibility#SUPPORTERS_AND_ABOVE}</li>
+     *   <li>{@link #MEMBERS_AND_ABOVE} → {@link com.mannschaft.app.common.visibility.StandardVisibility#MEMBERS_AND_ABOVE}</li>
+     * </ul>
+     * </p>
      */
     public enum Visibility {
         PUBLIC,
-        ORGANIZATION_ONLY,
-        PRIVATE
+        GUESTS_AND_ABOVE,
+        SUPPORTERS_AND_ABOVE,
+        MEMBERS_AND_ABOVE
     }
 
     /**

@@ -211,8 +211,90 @@
       }
     },
     "analytics": {
+      "my_title": "Match Analytics",
+      "my_subtitle": "Visualize your career statistics",
+      "member_title": "Member Match Analytics",
+      "member_subtitle": "This member's team statistics",
+      "team_context": "Target team",
+      "unknown_kind": "Other",
+      "forbidden": "You do not have permission to view these statistics",
+      "metric": {
+        "total_matches": "Matches",
+        "total_minutes": "Total minutes",
+        "goals": "Goals",
+        "assists": "Assists",
+        "goals_per90": "Goals per 90",
+        "starter_rate": "Starter rate"
+      },
+      "axis": {
+        "goals": "Goals",
+        "assists": "Assists",
+        "matches": "Matches",
+        "minutes": "Avg minutes",
+        "starter_rate": "Starter rate"
+      },
+      "series": {
+        "goals": "Goals",
+        "minutes": "Minutes",
+        "match_share": "Appearance share",
+        "goals_by_kind": "Goals by type"
+      },
+      "chart": {
+        "radar_title": "Stat distribution",
+        "line_title": "Monthly trend (goals / minutes)",
+        "doughnut_title": "Appearance share by type",
+        "bar_title": "Goal distribution by type"
+      },
+      "best": {
+        "title": "Personal best",
+        "top_goals": "Most goals in a month",
+        "longest_minutes": "Longest minutes in a month"
+      },
+      "empty": {
+        "no_data": "No data to display",
+        "no_trend": "No trend data",
+        "no_goals": "No goals recorded",
+        "no_matches": "No match records yet",
+        "member_no_matches": "No match records for this member",
+        "no_team": "No teams joined",
+        "record_cta": "Record a match"
+      },
       "error": {
         "load_failed": "Failed to load statistics"
+      },
+      "team_title": "Team Match Analytics",
+      "team_subtitle": "Visualize team win/loss record, goals, player rankings, and recent form",
+      "team": {
+        "metric": {
+          "total_matches": "Matches",
+          "win_draw_loss": "W/D/L",
+          "goals_for": "Goals For",
+          "goals_against": "Goals Against",
+          "goal_difference": "Goal Difference"
+        },
+        "series": {
+          "points": "Points (cumulative)",
+          "player_goals": "Goals",
+          "matches_by_kind": "Matches"
+        },
+        "chart": {
+          "result_title": "Result Summary",
+          "player_goals_title": "Top Scorers",
+          "recent_form_title": "Recent Form (points trend)",
+          "matches_by_kind_title": "Matches by Type"
+        }
+      },
+      "widget": {
+        "summary": {
+          "title": "Match Summary",
+          "wdl_label": "W/D/L",
+          "goals_label": "GF/GA",
+          "recent_form": "Recent Form",
+          "in_progress_label": "In Progress",
+          "resume_recording": "Resume Recording",
+          "no_matches": "No match records yet",
+          "view_analytics": "View Analytics"
+        }
       }
     },
     "kind": {
