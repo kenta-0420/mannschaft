@@ -77,8 +77,8 @@ class ScheduleDelegationMigrationIntegrationTest {
         try (Connection c = conn()) {
             long orgId;
             try (PreparedStatement ps = c.prepareStatement(
-                    "INSERT INTO organizations (name, org_type, created_at, updated_at) "
-                            + "VALUES ('代理出席テスト組織', 'OTHER', NOW(), NOW())",
+                    "INSERT INTO organizations (name, org_type, created_at, updated_at, public_id) "
+                            + "VALUES ('代理出席テスト組織', 'OTHER', NOW(), NOW(), UUID_TO_BIN(UUID(), 1))",
                     PreparedStatement.RETURN_GENERATED_KEYS)) {
                 ps.executeUpdate();
                 try (ResultSet rs = ps.getGeneratedKeys()) {
