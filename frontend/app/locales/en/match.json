@@ -363,6 +363,11 @@
     },
     "org_context": {
       "resolve_failed": "Could not resolve team/organization info. Please check your memberships"
+    },
+    "entry": {
+      "record_from_schedule": "Record this match",
+      "record_from_schedule_hint": "Start recording the match for this event",
+      "resolving": "Preparing match record…"
     }
   }
 }

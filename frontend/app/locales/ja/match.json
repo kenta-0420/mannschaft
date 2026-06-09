@@ -363,6 +363,11 @@
     },
     "org_context": {
       "resolve_failed": "チーム・組織の情報を解決できませんでした。所属を確認してください"
+    },
+    "entry": {
+      "record_from_schedule": "この試合を記録",
+      "record_from_schedule_hint": "この予定の試合記録を開始します",
+      "resolving": "試合記録を準備中…"
     }
   }
 }
