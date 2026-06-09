@@ -50,7 +50,7 @@ const defaultFolder = computed(() => foldersStore.defaultFolderFor(props.scopeTy
 /** scopeType に応じた個別スコープ（直接ジャンプ用）。 */
 interface NavScopeItem {
   id: number
-  publicId: string
+  publicId: string | null | undefined
   name: string
   nickname1: string | null
   role: string
@@ -137,8 +137,9 @@ function goDefault() {
   close()
 }
 
-/** 個別スコープへ直接ジャンプ。 */
-function goScope(publicId: string) {
+/** 個別スコープへ直接ジャンプ。publicId が falsy な場合はスキップ。 */
+function goScope(publicId: string | null | undefined) {
+  if (!publicId) return
   router.push(`${basePath.value}/${publicId}`)
   close()
 }
