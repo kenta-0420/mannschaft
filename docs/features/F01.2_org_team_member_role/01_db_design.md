@@ -29,6 +29,7 @@
 | カラム名 | 型 | NULL | デフォルト | 説明 |
 |---------|---|------|-----------|------|
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |
+| `slug` | VARCHAR(30) | NO | — | URLに使用する一意なスラッグ（英小文字・数字・ハイフン、3〜30文字）|
 | `name` | VARCHAR(100) | NO | — | 組織正式名称 |
 | `name_kana` | VARCHAR(100) | YES | NULL | フリガナ（地域検索用）|
 | `nickname1` | VARCHAR(50) | YES | NULL | 愛称1 |
@@ -57,6 +58,7 @@
 
 **インデックス**
 ```sql
+UNIQUE KEY uq_organizations_slug (slug)
 INDEX idx_org_parent (parent_organization_id)
 INDEX idx_org_archived (archived_at)    -- アーカイブバッチ用
 INDEX idx_org_name (name)               -- 検索用
@@ -64,6 +66,7 @@ INDEX idx_org_name (name)               -- 検索用
 
 **制約・備考**
 - 論理削除: `deleted_at DATETIME nullable`
+- `slug`: 英小文字・数字・ハイフンのみ（パターン: `^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$` または 3 文字以上）。アプリ層で正規表現バリデーション。組織作成時に未指定の場合は `name` から自動生成（ASCII 変換 + スペース→ハイフン + 重複回避の数値サフィックス）
 - `parent_organization_id` の循環参照はアプリケーション層で防ぐ。最大深さは `app.org.max-depth`（デフォルト: 5）で管理し、Service 層がこの設定値を参照して depth を検証する
 - `hierarchy_visibility` はこの組織を「子から上向きに見たとき」の可視範囲を制御する。`visibility`（外部からの検索・閲覧）とは独立して設定できる
 - `homepage_url` は `^https?://` にマッチする場合のみ許可。`javascript:`, `data:`, `file:` 等のスキームは拒否（XSS/フィッシング対策）
@@ -96,6 +99,7 @@ INDEX idx_org_name (name)               -- 検索用
 | カラム名 | 型 | NULL | デフォルト | 説明 |
 |---------|---|------|-----------|------|
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |
+| `slug` | VARCHAR(30) | NO | — | URLに使用する一意なスラッグ（英小文字・数字・ハイフン、3〜30文字）|
 | `name` | VARCHAR(100) | NO | — | チーム/店舗/教室 正式名称 |
 | `name_kana` | VARCHAR(100) | YES | NULL | フリガナ |
 | `nickname1` | VARCHAR(50) | YES | NULL | 愛称1 |
@@ -123,6 +127,7 @@ INDEX idx_org_name (name)               -- 検索用
 
 **インデックス**
 ```sql
+UNIQUE KEY uq_teams_slug (slug)
 INDEX idx_team_archived (archived_at)
 INDEX idx_team_pref_city (prefecture, city)   -- 地域検索用
 INDEX idx_team_name (name)
@@ -130,6 +135,7 @@ INDEX idx_team_name (name)
 
 **制約・備考**
 - 論理削除: `deleted_at DATETIME nullable`
+- `slug`: 英小文字・数字・ハイフンのみ（パターン: `^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$` または 3 文字以上）。アプリ層で正規表現バリデーション。チーム作成時に未指定の場合は `name` から自動生成（ASCII 変換 + スペース→ハイフン + 重複回避の数値サフィックス）
 - 組織との多対多所属関係は `team_org_memberships` テーブルで管理する。チームは複数の組織に同時所属可能
 - `visibility = 'ORGANIZATION_ONLY'` は `team_org_memberships` に ACTIVE なエントリが1件以上存在する場合のみ有効（アプリ層でバリデーション。所属組織がない状態での設定は 422）
 - アーカイブトリガー: 全メンバーの最終ログインのうち最新が12ヶ月経過（README §アーカイブ規約参照）
