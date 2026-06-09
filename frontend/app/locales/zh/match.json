@@ -261,6 +261,40 @@
       },
       "error": {
         "load_failed": "获取统计失败"
+      },
+      "team_title": "球队比赛分析",
+      "team_subtitle": "可视化球队胜负记录、进失球、球员排名和近期状态",
+      "team": {
+        "metric": {
+          "total_matches": "比赛数",
+          "win_draw_loss": "胜/平/负",
+          "goals_for": "进球",
+          "goals_against": "失球",
+          "goal_difference": "净胜球"
+        },
+        "series": {
+          "points": "积分（累计）",
+          "player_goals": "进球数",
+          "matches_by_kind": "比赛数"
+        },
+        "chart": {
+          "result_title": "胜负汇总",
+          "player_goals_title": "射手榜",
+          "recent_form_title": "近期状态（积分趋势）",
+          "matches_by_kind_title": "各类型比赛数"
+        }
+      },
+      "widget": {
+        "summary": {
+          "title": "比赛概要",
+          "wdl_label": "胜/平/负",
+          "goals_label": "进/失球",
+          "recent_form": "近期状态",
+          "in_progress_label": "进行中",
+          "resume_recording": "继续记录",
+          "no_matches": "暂无比赛记录",
+          "view_analytics": "查看详细分析"
+        }
       }
     },
     "kind": {

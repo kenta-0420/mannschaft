@@ -49,6 +49,8 @@ public final class WidgetDefaultMinRoleMap {
         // F08.7.1: 自チーム大会成績／順位表は広報・サポーター関心層に見せてよい（公開性が高い）
         map.put(WidgetKey.TEAM_TOURNAMENT_RECORD, MinRole.SUPPORTER);
         map.put(WidgetKey.TEAM_DIVISION_STANDINGS, MinRole.SUPPORTER);
+        // F08.10: チーム試合サマリは選手・記録者向けの直近成績／記録再開導線 → MEMBER
+        map.put(WidgetKey.TEAM_MATCH_SUMMARY, MinRole.MEMBER);
         // TEAM_BILLING / TEAM_PAGE_VIEWS は ADMIN 限定のため対象外
 
         // --- 組織ダッシュボード ---

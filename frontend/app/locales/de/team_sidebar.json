@@ -3,6 +3,7 @@
     "category": {
       "home": "Startseite",
       "schedule": "Zeitplan",
+      "match": "Spiele",
       "member": "Mitglieder",
       "ops": "Betrieb",
       "facility": "Einrichtungsverwaltung",
@@ -19,6 +20,8 @@
       "shifts": "Schichten",
       "duties": "Dienste",
       "annual_plan": "Jahresplan",
+      "matches": "Spielaufzeichnungen",
+      "matchAnalytics": "Spielanalyse",
       "members": "Mitglieder",
       "circulation": "Umlauf",
       "safety_check": "Sicherheitscheck",

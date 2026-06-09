@@ -29,6 +29,16 @@ const categories: SidebarCategory[] = [
     ],
   },
   {
+    // F08.10: 試合記録・分析（試合一覧＝記録入口、チーム分析＝統計可視化）
+    key: 'match',
+    labelKey: 'teamSidebar.category.match',
+    icon: 'pi pi-flag',
+    items: [
+      { labelKey: 'teamSidebar.item.matches', icon: 'pi pi-flag', path: 'matches', moduleSlug: null, requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.matchAnalytics', icon: 'pi pi-chart-bar', path: 'match-analytics', moduleSlug: null, requiredRole: 'MEMBER' },
+    ],
+  },
+  {
     key: 'member',
     labelKey: 'teamSidebar.category.member',
     icon: 'pi pi-users',

@@ -53,6 +53,8 @@ export const WidgetKeyMap: Record<string, { team?: string; organization?: string
   'team-standings-record': { team: 'TEAM_TOURNAMENT_RECORD' },
   'team-division-standings': { team: 'TEAM_DIVISION_STANDINGS' },
   'org-tournament-summary': { organization: 'ORG_TOURNAMENT_SUMMARY' },
+  // F08.10 チーム試合サマリ
+  'team-match-summary': { team: 'TEAM_MATCH_SUMMARY' },
 }
 
 export const WidgetDefaultMinRoleMap: Record<string, MinRole> = {
@@ -73,6 +75,8 @@ export const WidgetDefaultMinRoleMap: Record<string, MinRole> = {
   TEAM_TOURNAMENT_RECORD: 'SUPPORTER',
   TEAM_DIVISION_STANDINGS: 'SUPPORTER',
   ORG_TOURNAMENT_SUMMARY: 'MEMBER',
+  // F08.10 チーム試合サマリ（BE WidgetDefaultMinRoleMap と同期）
+  TEAM_MATCH_SUMMARY: 'MEMBER',
 }
 
 export function backendKeyForWidget(
@@ -295,6 +299,15 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     icon: 'pi pi-sitemap',
     description: '主催する各大会×各部の首位・参加数・状態',
     scope: ['organization'],
+    defaultMinRole: 'MEMBER' as MinRole,
+  },
+  // F08.10: チーム試合サマリ（直近成績＋ミニチャート＋進行中試合の記録再開導線）
+  {
+    key: 'team-match-summary',
+    label: '試合サマリ',
+    icon: 'pi pi-flag',
+    description: '直近の試合成績と進行中試合の記録再開',
+    scope: ['team'],
     defaultMinRole: 'MEMBER' as MinRole,
   },
 ]

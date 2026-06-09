@@ -261,6 +261,40 @@
       },
       "error": {
         "load_failed": "Error al cargar las estadísticas"
+      },
+      "team_title": "Análisis de partidos del equipo",
+      "team_subtitle": "Visualiza el registro de victorias/derrotas, goles, clasificaciones de jugadores y forma reciente",
+      "team": {
+        "metric": {
+          "total_matches": "Partidos",
+          "win_draw_loss": "V/E/D",
+          "goals_for": "Goles a favor",
+          "goals_against": "Goles en contra",
+          "goal_difference": "Diferencia de goles"
+        },
+        "series": {
+          "points": "Puntos (acumulado)",
+          "player_goals": "Goles",
+          "matches_by_kind": "Partidos"
+        },
+        "chart": {
+          "result_title": "Resumen de resultados",
+          "player_goals_title": "Máximos goleadores",
+          "recent_form_title": "Forma reciente (tendencia de puntos)",
+          "matches_by_kind_title": "Partidos por tipo"
+        }
+      },
+      "widget": {
+        "summary": {
+          "title": "Resumen de partido",
+          "wdl_label": "V/E/D",
+          "goals_label": "GF/GC",
+          "recent_form": "Forma reciente",
+          "in_progress_label": "En progreso",
+          "resume_recording": "Reanudar registro",
+          "no_matches": "Aún no hay registros de partidos",
+          "view_analytics": "Ver análisis detallado"
+        }
       }
     },
     "kind": {
