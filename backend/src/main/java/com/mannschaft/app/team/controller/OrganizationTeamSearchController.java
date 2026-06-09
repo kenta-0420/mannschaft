@@ -75,7 +75,7 @@ public class OrganizationTeamSearchController {
      *   <li>未ログイン／非メンバー → {@link TeamPublicSummaryResponse}（抑制版）</li>
      * </ul>
      *
-     * <p>組織が PRIVATE/ORGANIZATION_ONLY で非メンバー／未ログインの場合は
+     * <p>組織が PUBLIC 以外で非メンバー／未ログインの場合は
      * エニュメレーション対策で 404 を返す（{@code TeamSearchService} 内部判定）。
      *
      * @param orgPublicId    組織の公開 UUID

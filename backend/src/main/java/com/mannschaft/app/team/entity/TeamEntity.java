@@ -174,12 +174,25 @@ public class TeamEntity extends BaseEntity {
     private boolean timelinePostsPublic = false;
 
     /**
-     * チーム公開範囲
+     * チーム公開範囲（ロールベース設計）。
+     *
+     * <p>旧設計（PRIVATE / ORGANIZATION_ONLY）は組織概念に依存していた。
+     * 新設計ではチーム内のロール（メンバー/サポーター/ゲスト/パブリック）で分ける。</p>
+     *
+     * <p>F00 StandardVisibility マッピング:
+     * <ul>
+     *   <li>{@link #PUBLIC} → {@link com.mannschaft.app.common.visibility.StandardVisibility#PUBLIC}</li>
+     *   <li>{@link #GUESTS_AND_ABOVE} → {@link com.mannschaft.app.common.visibility.StandardVisibility#SCOPE_AFFILIATED}</li>
+     *   <li>{@link #SUPPORTERS_AND_ABOVE} → {@link com.mannschaft.app.common.visibility.StandardVisibility#SUPPORTERS_AND_ABOVE}</li>
+     *   <li>{@link #MEMBERS_AND_ABOVE} → {@link com.mannschaft.app.common.visibility.StandardVisibility#MEMBERS_AND_ABOVE}</li>
+     * </ul>
+     * </p>
      */
     public enum Visibility {
         PUBLIC,
-        ORGANIZATION_ONLY,
-        PRIVATE
+        GUESTS_AND_ABOVE,
+        SUPPORTERS_AND_ABOVE,
+        MEMBERS_AND_ABOVE
     }
 
     /**
