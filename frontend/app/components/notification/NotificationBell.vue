@@ -72,7 +72,7 @@ defineExpose({ refresh: fetchCounts })
       v-if="totalCount > 0"
       :value="totalCount > 99 ? '99+' : totalCount"
       severity="danger"
-      class="absolute -right-1 -top-1 pointer-events-none shadow-md ring-2 ring-white dark:ring-surface-900"
+      class="absolute -right-1 -top-1 pointer-events-none shadow-md ring-2 ring-white dark:ring-surface-900 !min-w-[1.1rem] !h-[1.1rem] !text-[0.6rem]"
     />
 
     <Popover ref="popover" @show="onPopoverShow">
