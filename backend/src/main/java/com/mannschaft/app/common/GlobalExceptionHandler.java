@@ -74,6 +74,9 @@ public class GlobalExceptionHandler {
      * Severity ベースのデフォルトマッピングを上書きしたい場合にここへ追加する。
      */
     private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.ofEntries(
+            // F00 共通可視性基盤（Severity.WARN デフォルト 400 を設計書 §7.4 の正しい status に上書き）
+            Map.entry("VISIBILITY_001", HttpStatus.FORBIDDEN),   // 認可拒否（権限不足）→ 403
+            Map.entry("VISIBILITY_004", HttpStatus.NOT_FOUND),  // コンテンツ不在 → 404
             // 未認証は 401 を返す（Severity.WARN のデフォルト 400 を上書き）
             Map.entry(CommonErrorCode.COMMON_000.getCode(), HttpStatus.UNAUTHORIZED),
             Map.entry(CommonErrorCode.COMMON_002.getCode(), HttpStatus.FORBIDDEN),
