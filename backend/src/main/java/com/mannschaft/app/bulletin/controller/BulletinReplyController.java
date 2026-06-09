@@ -5,6 +5,7 @@ import com.mannschaft.app.bulletin.dto.CreateReplyRequest;
 import com.mannschaft.app.bulletin.dto.ReplyResponse;
 import com.mannschaft.app.bulletin.dto.UpdateReplyRequest;
 import com.mannschaft.app.bulletin.service.BulletinReplyService;
+import com.mannschaft.app.bulletin.service.BulletinScopeIdResolver;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,6 +37,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class BulletinReplyController {
 
     private final BulletinReplyService replyService;
+    private final BulletinScopeIdResolver scopeIdResolver;
 
 
     /**
@@ -46,12 +48,13 @@ public class BulletinReplyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<ReplyResponse>> listReplies(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long threadId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        Page<ReplyResponse> result = replyService.listReplies(type, scopeId, threadId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+        Page<ReplyResponse> result = replyService.listReplies(type, resolvedScopeId, threadId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -65,11 +68,12 @@ public class BulletinReplyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ReplyResponse>> createReply(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long threadId,
             @Valid @RequestBody CreateReplyRequest request) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        ReplyResponse response = replyService.createReply(type, scopeId, threadId, SecurityUtils.getCurrentUserId(), request);
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+        ReplyResponse response = replyService.createReply(type, resolvedScopeId, threadId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -81,12 +85,13 @@ public class BulletinReplyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<ReplyResponse>> updateReply(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long threadId,
             @PathVariable Long replyId,
             @Valid @RequestBody UpdateReplyRequest request) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        ReplyResponse response = replyService.updateReply(type, scopeId, threadId, replyId, SecurityUtils.getCurrentUserId(), request);
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+        ReplyResponse response = replyService.updateReply(type, resolvedScopeId, threadId, replyId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -98,11 +103,12 @@ public class BulletinReplyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteReply(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long threadId,
             @PathVariable Long replyId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        replyService.deleteReply(type, scopeId, threadId, replyId, SecurityUtils.getCurrentUserId());
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+        replyService.deleteReply(type, resolvedScopeId, threadId, replyId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }
