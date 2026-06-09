@@ -172,6 +172,8 @@ async function handleBulkCheckout() {
     // 完了後に一覧をリロードして最新状態を反映
     selected.value = new Set()
     await loadItems()
+  } catch {
+    notification.error(t('common.loadError'))
   } finally {
     processing.value = false
   }
