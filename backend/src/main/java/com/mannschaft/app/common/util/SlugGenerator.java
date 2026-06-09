@@ -70,7 +70,9 @@ public final class SlugGenerator {
      * @return サフィックス付きスラッグ
      */
     public static String withSuffix(String base, int n) {
-        String trimmed = base.substring(0, Math.min(base.length(), BASE_MAX_FOR_SUFFIX));
-        return trimmed + "-" + n;
+        String suffix = "-" + n;
+        int maxBase = MAX_LENGTH - suffix.length();
+        String trimmed = base.substring(0, Math.min(base.length(), maxBase));
+        return trimmed + suffix;
     }
 }
