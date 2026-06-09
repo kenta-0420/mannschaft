@@ -3,6 +3,7 @@
     "category": {
       "home": "首页",
       "schedule": "日程",
+      "match": "比赛",
       "member": "成员",
       "ops": "业务运营",
       "facility": "设施管理",
@@ -19,6 +20,8 @@
       "shifts": "排班",
       "duties": "值班",
       "annual_plan": "年度计划",
+      "matches": "比赛记录",
+      "matchAnalytics": "比赛分析",
       "members": "成员",
       "circulation": "传阅",
       "safety_check": "安全确认",
