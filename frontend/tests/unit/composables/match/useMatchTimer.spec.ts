@@ -3,6 +3,7 @@ import { effectScope } from 'vue'
 import {
   useMatchTimer,
   isRunningState,
+  isNextCompleted,
   stateToPeriod,
   type PeriodTransition,
   type TimerState,
@@ -29,6 +30,21 @@ afterEach(() => {
 })
 
 describe('useMatchTimer ヘルパ', () => {
+  it('TIMER-011: isNextCompleted は EXTRA_SECOND / PENALTY_SHOOTOUT のみ true', () => {
+    // EXTRA_SECOND → advance すると COMPLETED（completeMatch 経路が必要）
+    expect(isNextCompleted('EXTRA_SECOND')).toBe(true)
+    // PENALTY_SHOOTOUT → advance すると COMPLETED（completeMatch 経路が必要）
+    expect(isNextCompleted('PENALTY_SHOOTOUT')).toBe(true)
+    // SECOND_HALF は延長分岐があるため除外（@complete ボタンが別途ある）
+    expect(isNextCompleted('SECOND_HALF')).toBe(false)
+    // その他の停止・進行状態
+    expect(isNextCompleted('WAITING')).toBe(false)
+    expect(isNextCompleted('FIRST_HALF')).toBe(false)
+    expect(isNextCompleted('HALF_TIME')).toBe(false)
+    expect(isNextCompleted('EXTRA_FIRST')).toBe(false)
+    expect(isNextCompleted('COMPLETED')).toBe(false)
+  })
+
   it('TIMER-007: isRunningState は動作状態で true', () => {
     expect(isRunningState('FIRST_HALF')).toBe(true)
     expect(isRunningState('SECOND_HALF')).toBe(true)

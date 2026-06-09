@@ -92,7 +92,7 @@ public class TeamService {
                 .city(req.getCity())
                 .visibility(req.getVisibility() != null
                         ? TeamEntity.Visibility.valueOf(req.getVisibility())
-                        : TeamEntity.Visibility.PRIVATE)
+                        : TeamEntity.Visibility.GUESTS_AND_ABOVE)
                 .supporterEnabled(false)
                 .build();
         // F22.1 市 Phase 2 足場C: 構造化地域コードを反映（どちらも null 許容＝未指定はそのまま NULL）

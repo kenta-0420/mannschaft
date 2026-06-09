@@ -15,7 +15,7 @@ export type TeamTemplate =
   | 'NEIGHBORHOOD'
   | 'CONDO'
   | 'OTHER'
-export type TeamVisibility = 'PUBLIC' | 'ORGANIZATION_ONLY' | 'PRIVATE'
+export type TeamVisibility = 'PUBLIC' | 'GUESTS_AND_ABOVE' | 'SUPPORTERS_AND_ABOVE' | 'MEMBERS_AND_ABOVE'
 
 // Wave 3-B: TeamResponse ネスト構造（BE側変更に対応）
 export interface TeamBasicInfoDto {

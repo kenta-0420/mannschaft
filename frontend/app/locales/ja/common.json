@@ -1527,5 +1527,11 @@
     "unavailable": "このスラッグは既に使われています",
     "checking": "確認中...",
     "format": "英小文字・数字・ハイフンのみ（3〜30文字）"
+  },
+  "team_visibility": {
+    "PUBLIC": "公開",
+    "GUESTS_AND_ABOVE": "ゲスト以上",
+    "SUPPORTERS_AND_ABOVE": "サポーター以上",
+    "MEMBERS_AND_ABOVE": "メンバー以上"
   }
 }

@@ -50,7 +50,7 @@ class RepairPlanModuleGuardTest {
         return TeamEntity.builder()
                 .name("テストチーム")
                 .template(template)
-                .visibility(TeamEntity.Visibility.PRIVATE)
+                .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE)
                 .supporterEnabled(false)
                 .build();
     }

@@ -4,31 +4,34 @@
 // timer/offline/score を結線）。ここではヘッダ(スコアボード)・タイマー操作・大ボタン行・
 // ボトムシート・タイムライン・undo/offline/相手記録案内 を束ねるだけ。
 import type { MatchEventResponse } from '~/types/match'
+import { isNextCompleted } from '~/composables/match/useMatchTimer'
 
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const router = useRouter()
 const teamIdStr = String(route.params.slug)
-const teamSlug = Number(teamIdStr)
 const matchId = String(route.params.matchId)
 const { t } = useI18n()
 const notification = useNotification()
 
-const { resolveOrgId } = useMatchOrgContext()
+const { resolveContext } = useMatchOrgContext()
 const matchApi = useMatchApi()
 const eventApi = useMatchEventApi()
 const grid = useMatchPlayerGrid()
 const wakeLock = useWakeLockWithFallback()
 
 const orgId = ref<number | null>(null)
+const teamId = ref<number | null>(null)
 const ownTeamSide = ref<'HOME' | 'AWAY'>('HOME')
 const opponentName = ref<string | null>(null)
 const matchStatus = ref<string | null>(null)
+/** ライブ記録の可否（BE MatchDetailResponse.canRecordTimeline）。false は閲覧専用。 */
+const canRecord = ref(false)
 const homePenaltyScore = ref(0)
 const awayPenaltyScore = ref(0)
 
-const session = useMatchLiveSession({ orgId, matchId, ownTeamSide })
+const session = useMatchLiveSession({ orgId, teamId, matchId, ownTeamSide })
 const { timer, recorder } = session
 
 const isCompleted = computed(
@@ -83,14 +86,18 @@ function addManualPlayer(p: { name: string; jerseyNumber: number | null }): void
 
 // === 初期ロード ===
 onMounted(async () => {
-  orgId.value = await resolveOrgId(teamIdStr)
-  if (orgId.value === null) {
+  const ctx = await resolveContext(teamIdStr)
+  orgId.value = ctx?.orgId ?? null
+  teamId.value = ctx?.teamId ?? null
+  if (orgId.value === null || teamId.value === null) {
     loading.value = false
     return
   }
   try {
-    const match = await matchApi.getMatch(orgId.value, teamSlug, matchId)
+    const match = await matchApi.getMatch(orgId.value, teamId.value, matchId)
     matchStatus.value = match.status ?? null
+    session.setMatchStatus(match.status ?? null)
+    canRecord.value = match.canRecordTimeline ?? false
     ownTeamSide.value = match.homeAway === 'AWAY' ? 'AWAY' : 'HOME'
     opponentName.value = match.opponentName ?? null
     homePenaltyScore.value = match.homePenaltyScore ?? 0
@@ -115,6 +122,21 @@ onBeforeUnmount(() => {
   wakeLock.releaseWakeLock()
   window.removeEventListener('online', session.flushOffline)
 })
+
+/**
+ * @advance の集約ハンドラ。
+ * 次状態が COMPLETED になる遷移（EXTRA_SECOND / PENALTY_SHOOTOUT からの advance）は
+ * 必ず session.completeMatch() を経由させて BE の status を永続化する。
+ * それ以外の通常 advance（WAITING→FIRST_HALF 等）は timer.advance() に委譲。
+ * これにより「COMPLETED への到達は completeMatch() 経路のみ」を保証する（二重発火しない）。
+ */
+async function handleAdvance(): Promise<void> {
+  if (isNextCompleted(timer.state.value)) {
+    await session.completeMatch()
+  } else {
+    await timer.advance()
+  }
+}
 
 function back(): void {
   void router.push(`/teams/${teamIdStr}/matches`)
@@ -143,23 +165,34 @@ function back(): void {
         class="mb-3"
       />
 
+      <!-- 記録権限がある場合のみタイマー操作を出す（閲覧専用は非表示）。 -->
       <MatchTimerControls
+        v-if="canRecord"
         class="mb-3"
         :state="timer.state.value"
         :current-minute="timer.currentMinute.value"
         :running="timer.isRunning.value"
-        @advance="timer.advance()"
-        @complete="timer.complete()"
+        @advance="handleAdvance()"
+        @complete="session.completeMatch()"
         @extra="timer.goExtra()"
         @penalty="timer.goPenaltyShootout()"
       />
+
+      <!-- 閲覧専用案内（記録権限なし・§G.9 認可連動） -->
+      <p
+        v-if="!canRecord"
+        class="mb-3 flex items-center gap-2 rounded bg-surface-100 p-2 text-xs text-surface-500"
+      >
+        <i class="pi pi-eye" />
+        {{ t('match.live.read_only_notice') }}
+      </p>
 
       <p v-if="isCompleted" class="mb-3 rounded bg-surface-100 p-2 text-xs text-surface-500">
         {{ t('match.live.completed_notice') }}
       </p>
 
-      <!-- 大ボタン行（記録開始・スタメン設定） -->
-      <div class="mb-4 flex flex-col gap-2">
+      <!-- 大ボタン行（記録開始・スタメン設定）— 記録権限がある場合のみ。 -->
+      <div v-if="canRecord" class="mb-4 flex flex-col gap-2">
         <Button
           class="w-full !min-h-[3.5rem]"
           :label="t('match.live.title')"
@@ -176,8 +209,8 @@ function back(): void {
         />
       </div>
 
-      <!-- undo 帯 -->
-      <div v-if="recorder.canUndo.value" class="mb-3 flex justify-end">
+      <!-- undo 帯（記録権限がある場合のみ） -->
+      <div v-if="canRecord && recorder.canUndo.value" class="mb-3 flex justify-end">
         <Button
           text
           severity="secondary"
@@ -207,8 +240,9 @@ function back(): void {
         />
       </Dialog>
 
-      <!-- ボトムシート（記録 3 タップ） -->
+      <!-- ボトムシート（記録 3 タップ）— 記録権限がある場合のみマウント。 -->
       <MatchEventSheet
+        v-if="canRecord"
         v-model:visible="sheetVisible"
         :players="grid.players.value"
         @goal="session.recordGoal"
@@ -218,8 +252,9 @@ function back(): void {
         @other="session.recordOther"
       />
 
-      <!-- スタメン設定シート -->
+      <!-- スタメン設定シート（記録権限がある場合のみマウント） -->
       <MatchStarterSetup
+        v-if="canRecord"
         v-model:visible="starterSetupVisible"
         :players="grid.players.value"
         @toggle-starter="grid.toggleStarter($event)"

@@ -207,8 +207,10 @@
         "period_boundary_failed": {
           "title": "피리어드 경계 기록에 실패했습니다",
           "detail": "전·후반 전환이 서버에 저장되지 않았습니다. 점수와 출전 시간 집계가 어긋날 수 있습니다. 타이머를 다시 조작하여 재기록해 주세요."
-        }
-      }
+        },
+        "complete_failed": "경기 종료 저장에 실패했습니다"
+      },
+      "read_only_notice": "보기 전용입니다. 관리자·부관리자·기록원만 기록할 수 있습니다"
     },
     "analytics": {
       "my_title": "경기 분석",
@@ -261,6 +263,40 @@
       },
       "error": {
         "load_failed": "통계를 불러오지 못했습니다"
+      },
+      "team_title": "팀 경기 분석",
+      "team_subtitle": "팀의 승패 기록, 득실점, 선수 순위, 최근 폼을 시각화합니다",
+      "team": {
+        "metric": {
+          "total_matches": "경기 수",
+          "win_draw_loss": "승/무/패",
+          "goals_for": "득점",
+          "goals_against": "실점",
+          "goal_difference": "득실차"
+        },
+        "series": {
+          "points": "승점（누적）",
+          "player_goals": "득점 수",
+          "matches_by_kind": "경기 수"
+        },
+        "chart": {
+          "result_title": "승패 요약",
+          "player_goals_title": "선수별 득점 순위",
+          "recent_form_title": "최근 폼（승점 추이）",
+          "matches_by_kind_title": "유형별 경기 수"
+        }
+      },
+      "widget": {
+        "summary": {
+          "title": "경기 요약",
+          "wdl_label": "승/무/패",
+          "goals_label": "득/실점",
+          "recent_form": "최근 폼",
+          "in_progress_label": "진행 중",
+          "resume_recording": "기록 재개",
+          "no_matches": "아직 경기 기록이 없습니다",
+          "view_analytics": "상세 분석 보기"
+        }
       }
     },
     "kind": {
@@ -324,6 +360,9 @@
       "DF": "수비수",
       "MF": "미드필더",
       "FW": "공격수"
+    },
+    "org_context": {
+      "resolve_failed": "팀·조직 정보를 해결할 수 없습니다. 소속을 확인해 주세요"
     }
   }
 }

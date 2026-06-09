@@ -149,8 +149,7 @@ onMounted(async () => {
             <Tab v-if="isAdminOrDeputy" :value="3"> 招待 </Tab>
             <Tab v-if="isAdmin && team.visibility?.supporterEnabled" :value="4"> サポーター管理 </Tab>
             <Tab v-if="isAdmin" :value="5"> 機能設定 </Tab>
-            <Tab v-if="isAdmin" :value="6"> {{ $t('nav.tab') }} </Tab>
-            <Tab v-if="roleName" :value="7"> フレンドチーム </Tab>
+            <Tab v-if="roleName" :value="7"> {{ $t('nav.tab') }} </Tab>
           </TabList>
         </div>
 
@@ -232,25 +231,20 @@ onMounted(async () => {
               </div>
             </TabPanel>
 
-            <TabPanel v-if="isAdmin" :value="6">
-              <div class="mt-4 grid grid-cols-2 gap-3">
-                <NuxtLink :to="`/teams/${teamSlug}/friends`">
-                  <Button :label="$t('friends.title')" icon="pi pi-users" class="w-full" outlined />
-                </NuxtLink>
-                <NuxtLink :to="`/teams/${teamSlug}/friend-folders`">
-                  <Button :label="$t('folders.title')" icon="pi pi-folder-open" class="w-full" outlined />
-                </NuxtLink>
-                <NuxtLink :to="`/teams/${teamSlug}/friend-feed`">
-                  <Button :label="$t('friend_feed.title')" icon="pi pi-inbox" class="w-full" outlined />
-                </NuxtLink>
-                <NuxtLink :to="`/teams/${teamSlug}/friend-forward-exports`">
-                  <Button :label="$t('forward_exports.title')" icon="pi pi-history" class="w-full" outlined />
-                </NuxtLink>
-              </div>
-            </TabPanel>
-
             <TabPanel v-if="roleName" :value="7">
               <div class="mt-4">
+                <!-- 管理者向けショートカット -->
+                <div v-if="isAdmin" class="mb-4 grid grid-cols-2 gap-3">
+                  <NuxtLink :to="`/teams/${teamSlug}/friend-folders`">
+                    <Button :label="$t('folders.title')" icon="pi pi-folder-open" class="w-full" outlined />
+                  </NuxtLink>
+                  <NuxtLink :to="`/teams/${teamSlug}/friend-feed`">
+                    <Button :label="$t('friend_feed.title')" icon="pi pi-inbox" class="w-full" outlined />
+                  </NuxtLink>
+                  <NuxtLink :to="`/teams/${teamSlug}/friend-forward-exports`">
+                    <Button :label="$t('forward_exports.title')" icon="pi pi-history" class="w-full" outlined />
+                  </NuxtLink>
+                </div>
                 <TeamFriendList
                   :team-id="teamSlug"
                   :can-edit="isAdminOrDeputy"

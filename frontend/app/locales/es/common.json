@@ -1527,5 +1527,11 @@
     "unavailable": "Este identificador ya está en uso",
     "checking": "Verificando...",
     "format": "Solo letras minúsculas, números y guiones (3-30 caracteres)"
+  },
+  "team_visibility": {
+    "PUBLIC": "Público",
+    "GUESTS_AND_ABOVE": "Invitados y superiores",
+    "SUPPORTERS_AND_ABOVE": "Seguidores y superiores",
+    "MEMBERS_AND_ABOVE": "Miembros y superiores"
   }
 }

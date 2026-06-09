@@ -153,7 +153,7 @@ class OrganizationTeamSearchControllerTest {
                 .prefecture("大阪府")
                 .city("梅田")
                 .template("clinic")
-                .visibility(TeamEntity.Visibility.ORGANIZATION_ONLY)
+                .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE)
                 .supporterEnabled(false)
                 .iconUrl("https://cdn/icon2.png")
                 .bannerUrl("https://cdn/banner2.png")
@@ -171,7 +171,7 @@ class OrganizationTeamSearchControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].name").value("詳細店舗B"))
                 // 詳細版には visibility / bannerUrl / supporterEnabled / memberCount が含まれる
-                .andExpect(jsonPath("$.data[0].visibility").value("ORGANIZATION_ONLY"))
+                .andExpect(jsonPath("$.data[0].visibility").value("GUESTS_AND_ABOVE"))
                 .andExpect(jsonPath("$.data[0].bannerUrl").value("https://cdn/banner2.png"))
                 .andExpect(jsonPath("$.data[0].supporterEnabled").value(false))
                 .andExpect(jsonPath("$.data[0].memberCount").value(17))

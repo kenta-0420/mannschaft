@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * 自分の所属チームレスポンス（GET /api/v1/me/teams 用）。
@@ -14,7 +15,15 @@ import java.time.LocalDateTime;
 public class MyTeamResponse {
 
     private final Long id;
-    private final String publicId;
+    private final UUID publicId;
+    /**
+     * 親組織の数値 ID（F08.10 試合 API の org コンテキスト解決用・null 許容）。
+     * チームが ACTIVE な組織に所属していない場合は null。
+     * 試合 REST は {@code /organizations/{orgId}/teams/{teamId}/...}（数値）配下のため、
+     * publicId(UUID) しか持たない {@code /teams/{id}/organizations} ではなく
+     * 本フィールドから数値 orgId を直接取得できるようにする。
+     */
+    private final Long organizationId;
     private final String name;
     /** アイコンURL（DB未実装のため常にnull）。 */
     private final String iconUrl;
