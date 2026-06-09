@@ -52,7 +52,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.UUID;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
@@ -82,7 +81,7 @@ public class TeamTodoController {
     @Operation(summary = "TODO一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<TodoResponse>> listTodos(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -99,7 +98,7 @@ public class TeamTodoController {
     @Operation(summary = "TODO作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<TodoResponse>> createTodo(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @Valid @RequestBody CreateTodoRequest request) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -113,7 +112,7 @@ public class TeamTodoController {
     @Operation(summary = "TODO詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<TodoResponse>> getTodo(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
         // F02.3.1 後続 C-7: IDOR 対策 — path scope と TODO scope の整合確認
@@ -128,7 +127,7 @@ public class TeamTodoController {
     @Operation(summary = "TODO子一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TodoResponse>>> getChildTodos(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
         return ResponseEntity.ok(todoService.getChildTodos(TodoScopeType.TEAM, internalTeamId, id));
@@ -141,7 +140,7 @@ public class TeamTodoController {
     @Operation(summary = "TODO更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<TodoResponse>> updateTodo(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateTodoRequest request) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
@@ -157,7 +156,7 @@ public class TeamTodoController {
     @Operation(summary = "TODO削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteTodo(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
         // F02.3.1 後続 C-7: IDOR 対策
@@ -173,7 +172,7 @@ public class TeamTodoController {
     @Operation(summary = "TODOステータス変更")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "変更成功")
     public ResponseEntity<ApiResponse<TodoStatusChangeResponse>> changeStatus(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @Valid @RequestBody TodoStatusChangeRequest request) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
@@ -189,7 +188,7 @@ public class TeamTodoController {
     @Operation(summary = "TODO一括ステータス変更")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "変更成功")
     public ResponseEntity<ApiResponse<List<TodoStatusChangeResponse>>> bulkChangeStatus(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @Valid @RequestBody BulkStatusChangeRequest request) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
         return ResponseEntity.ok(todoStatusService.bulkChangeStatus(
@@ -205,7 +204,7 @@ public class TeamTodoController {
     @Operation(summary = "担当者追加")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "追加成功")
     public ResponseEntity<ApiResponse<AssigneeResponse>> addAssignee(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @Valid @RequestBody AddAssigneeRequest request) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
@@ -222,7 +221,7 @@ public class TeamTodoController {
     @Operation(summary = "担当者削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> removeAssignee(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @PathVariable Long userId) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
@@ -241,7 +240,7 @@ public class TeamTodoController {
     @Operation(summary = "コメント一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<CommentResponse>> listComments(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -255,7 +254,7 @@ public class TeamTodoController {
     @Operation(summary = "コメント追加")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "追加成功")
     public ResponseEntity<ApiResponse<CommentResponse>> addComment(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @Valid @RequestBody CreateCommentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -269,7 +268,7 @@ public class TeamTodoController {
     @Operation(summary = "コメント編集")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<CommentResponse>> updateComment(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @PathVariable Long commentId,
             @Valid @RequestBody UpdateCommentRequest request) {
@@ -283,7 +282,7 @@ public class TeamTodoController {
     @Operation(summary = "コメント削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteComment(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @PathVariable Long commentId) {
         commentService.deleteComment(id, commentId, SecurityUtils.getCurrentUserId());
@@ -299,7 +298,7 @@ public class TeamTodoController {
     @Operation(summary = "スケジュール連携")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "連携成功")
     public ResponseEntity<Void> linkSchedule(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @Valid @RequestBody LinkScheduleRequest request) {
         scheduleLinkService.linkScheduleToTodo(
@@ -314,7 +313,7 @@ public class TeamTodoController {
     @Operation(summary = "スケジュール連携解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "解除成功")
     public ResponseEntity<Void> unlinkSchedule(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id) {
         scheduleLinkService.unlinkScheduleFromTodo(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
@@ -330,7 +329,7 @@ public class TeamTodoController {
     @Operation(summary = "ガントバー用TODO一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<GanttTodoResponse>>> getGanttTodos(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
@@ -350,7 +349,7 @@ public class TeamTodoController {
     @Operation(summary = "進捗率更新（手動モード必須）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<TodoResponse>> setProgressRate(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @Valid @RequestBody ProgressRateRequest request) {
         return ResponseEntity.ok(todoService.setProgressRate(id, request.getProgressRate()));
@@ -363,7 +362,7 @@ public class TeamTodoController {
     @Operation(summary = "進捗モード切替（手動/自動）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "切替成功")
     public ResponseEntity<ApiResponse<TodoResponse>> setProgressMode(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @Valid @RequestBody ProgressModeRequest request) {
         return ResponseEntity.ok(todoService.setProgressMode(id, request.getProgressManual()));
@@ -378,7 +377,7 @@ public class TeamTodoController {
     @Operation(summary = "共有メモ一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<SharedMemoEntryResponse>> listSharedMemos(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -393,7 +392,7 @@ public class TeamTodoController {
     @Operation(summary = "共有メモ追加")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "追加成功")
     public ResponseEntity<ApiResponse<SharedMemoEntryResponse>> addSharedMemo(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @Valid @RequestBody SharedMemoEntryRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
@@ -408,7 +407,7 @@ public class TeamTodoController {
     @Operation(summary = "共有メモ編集")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<SharedMemoEntryResponse>> updateSharedMemo(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @PathVariable Long memoId,
             @Valid @RequestBody SharedMemoEntryRequest request) {
@@ -422,7 +421,7 @@ public class TeamTodoController {
     @Operation(summary = "共有メモ削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteSharedMemo(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @PathVariable Long memoId) {
         sharedMemoService.deleteSharedMemo(id, memoId, SecurityUtils.getCurrentUserId());
@@ -438,7 +437,7 @@ public class TeamTodoController {
     @Operation(summary = "個人メモ取得（チームTODO）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<PersonalMemoResponse>> getPersonalMemo(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id) {
         return ResponseEntity.ok(personalMemoService.getPersonalMemo(id, SecurityUtils.getCurrentUserId()));
     }
@@ -450,7 +449,7 @@ public class TeamTodoController {
     @Operation(summary = "個人メモUPSERT（チームTODO）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "保存成功")
     public ResponseEntity<ApiResponse<PersonalMemoResponse>> upsertPersonalMemo(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @Valid @RequestBody PersonalMemoRequest request) {
         return ResponseEntity.ok(personalMemoService.upsertPersonalMemo(id, SecurityUtils.getCurrentUserId(), request));
@@ -463,7 +462,7 @@ public class TeamTodoController {
     @Operation(summary = "個人メモ削除（チームTODO）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePersonalMemo(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long id) {
         personalMemoService.deletePersonalMemo(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();

@@ -65,7 +65,7 @@ public class MeController {
                     int memberCount = (int) userRoleRepository.countByTeamId(team.getId());
                     return new MyTeamResponse(
                             team.getId(),
-                            team.getPublicId(),
+                            team.getSlug(),
                             team.getName(),
                             null,
                             team.getVisibility().name(),
@@ -110,7 +110,7 @@ public class MeController {
                     int memberCount = (int) userRoleRepository.countByOrganizationId(org.getId());
                     return new MyOrganizationResponse(
                             org.getId(),
-                            org.getPublicId(),
+                            org.getSlug(),
                             org.getName(),
                             null,
                             org.getVisibility().name(),

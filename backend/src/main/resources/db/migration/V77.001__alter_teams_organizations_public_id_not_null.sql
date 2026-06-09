@@ -1,10 +1,3 @@
--- teams / organizations の public_id を NOT NULL 化
--- （V71.20260604160033/34 で追加済みだが nullable = true のまま残っていた）
-
--- 残存する NULL をバックフィル（V71 マイグレーション未実行環境向け安全網）
-UPDATE teams SET public_id = UUID_TO_BIN(UUID(), 1) WHERE public_id IS NULL;
-UPDATE organizations SET public_id = UUID_TO_BIN(UUID(), 1) WHERE public_id IS NULL;
-
--- NOT NULL 制約を付与
-ALTER TABLE teams MODIFY COLUMN public_id BINARY(16) NOT NULL;
-ALTER TABLE organizations MODIFY COLUMN public_id BINARY(16) NOT NULL;
+-- no-op: public_id カラムは V71.20260609125251/125253 で slug に置き換え済みのため、
+-- NOT NULL 化処理は不要。
+-- 元の意図: teams / organizations の public_id を NOT NULL 化（V71 nullable=true 残存の修正）

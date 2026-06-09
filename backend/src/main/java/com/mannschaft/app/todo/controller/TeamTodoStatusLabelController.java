@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.UUID;
 
 /**
  * チームスコープ TODO ステータスラベル管理 API（F02.3.1 Phase 1a）。
@@ -42,7 +41,7 @@ public class TeamTodoStatusLabelController {
 
     @GetMapping
     @Operation(summary = "チームステータスラベル一覧（SYSTEM 既定 + チームスコープ）")
-    public ResponseEntity<ApiResponse<List<TodoStatusLabelResponse>>> list(@PathVariable UUID teamId) {
+    public ResponseEntity<ApiResponse<List<TodoStatusLabelResponse>>> list(@PathVariable String teamId) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.of(
@@ -52,7 +51,7 @@ public class TeamTodoStatusLabelController {
     @PostMapping
     @Operation(summary = "チームステータスラベル作成（ADMIN/DEPUTY_ADMIN）")
     public ResponseEntity<ApiResponse<TodoStatusLabelResponse>> create(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @Valid @RequestBody CreateTodoStatusLabelRequest request) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
         Long userId = SecurityUtils.getCurrentUserId();
@@ -64,7 +63,7 @@ public class TeamTodoStatusLabelController {
     @PutMapping("/{labelId}")
     @Operation(summary = "チームステータスラベル更新（ADMIN のみ）")
     public ResponseEntity<ApiResponse<TodoStatusLabelResponse>> update(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long labelId,
             @Valid @RequestBody UpdateTodoStatusLabelRequest request) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
@@ -75,7 +74,7 @@ public class TeamTodoStatusLabelController {
 
     @DeleteMapping("/{labelId}")
     @Operation(summary = "チームステータスラベル削除（ADMIN のみ）")
-    public ResponseEntity<Void> delete(@PathVariable UUID teamId, @PathVariable Long labelId) {
+    public ResponseEntity<Void> delete(@PathVariable String teamId, @PathVariable Long labelId) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
         Long userId = SecurityUtils.getCurrentUserId();
         labelService.delete(labelId, TodoStatusLabelScope.TEAM, internalTeamId, userId);

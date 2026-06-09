@@ -3,7 +3,6 @@ package com.mannschaft.app.team.controller;
 import com.mannschaft.app.team.dto.TeamPublicDetailResponse;
 import com.mannschaft.app.team.service.TeamService;
 import io.swagger.v3.oas.annotations.Operation;
-import java.util.UUID;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -45,13 +44,13 @@ public class PublicTeamController {
      * @param id チーム ID
      * @return 抑制版チーム詳細レスポンス
      */
-    @GetMapping("/{publicId}")
+    @GetMapping("/{slug}")
     @Operation(
             summary = "店舗詳細（未ログイン公開）",
             description = "未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除のチームのみ 200。"
                     + " それ以外は 404（IDOR 対策で状態を区別しない）。")
-    public TeamPublicDetailResponse getPublicTeam(@PathVariable UUID publicId) {
-        Long id = teamService.resolveTeamId(publicId);
+    public TeamPublicDetailResponse getPublicTeam(@PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
         return teamService.getPublicTeam(id);
     }
 }
