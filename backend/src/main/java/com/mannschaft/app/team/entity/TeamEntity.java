@@ -14,11 +14,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * チームマスターエンティティ。チームの基本情報・公開設定を管理する。
@@ -33,13 +31,12 @@ import java.util.UUID;
 public class TeamEntity extends BaseEntity {
 
     /**
-     * URL 公開用 UUID（列挙攻撃対策）。
-     * <p>内部 BIGINT PK は FK 関係のために保持し、URL には本フィールドを使用する。
-     * {@code @UuidGenerator(style = TIME)} により UUIDv7（時刻順ソート可能）が自動生成される。</p>
+     * URL 公開用カスタムスラッグ（人間可読な識別子）。
+     * <p>3〜30文字の英数字ハイフン。チーム名から自動生成し、一意性は uq_teams_slug で担保する。
+     * 内部 BIGINT PK は FK 関係のために保持し、URL には本フィールドを使用する。</p>
      */
-    @Column(name = "public_id", columnDefinition = "BINARY(16)", nullable = true, updatable = false, unique = true)
-    @UuidGenerator(style = UuidGenerator.Style.TIME)
-    private UUID publicId;
+    @Column(name = "slug", length = 30, nullable = false, unique = true)
+    private String slug;
 
     @Column(nullable = false, length = 100)
     private String name;
