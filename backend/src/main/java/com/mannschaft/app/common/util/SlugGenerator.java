@@ -11,9 +11,6 @@ public final class SlugGenerator {
     /** スラッグの最大長。 */
     private static final int MAX_LENGTH = 30;
 
-    /** サフィックス付与時のベース最大長（"-" + 最大4桁 で +5 バイト確保）。 */
-    private static final int BASE_MAX_FOR_SUFFIX = 27;
-
     /** スラッグの最小長（これ未満はフォールバックを使う）。 */
     private static final int MIN_LENGTH = 3;
 
@@ -62,15 +59,16 @@ public final class SlugGenerator {
      *
      * <p>例: {@code withSuffix("team-tokyo", 2)} → {@code "team-tokyo-2"}</p>
      *
-     * <p>ベースが27文字超の場合は27文字に切り詰めてからサフィックスを付与し、
-     * 合計が30文字以内に収まることを保証する。</p>
+     * <p>サフィックス長（桁数）に応じてベースを動的に切り詰め、合計が30文字以内に収まることを保証する。</p>
      *
      * @param base ベーススラッグ
      * @param n    サフィックス番号（1〜）
      * @return サフィックス付きスラッグ
      */
     public static String withSuffix(String base, int n) {
-        String trimmed = base.substring(0, Math.min(base.length(), BASE_MAX_FOR_SUFFIX));
-        return trimmed + "-" + n;
+        String suffix = "-" + n;
+        int maxBaseLen = MAX_LENGTH - suffix.length();
+        String trimmed = base.substring(0, Math.min(base.length(), maxBaseLen));
+        return trimmed + suffix;
     }
 }

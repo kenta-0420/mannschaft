@@ -1,5 +1,6 @@
 package com.mannschaft.app.team.service;
 
+import com.mannschaft.app.common.util.SlugGenerator;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
@@ -719,6 +720,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
         TeamEntity team = TeamEntity.builder()
                 .name(name)
                 .nameKana(kana)
+                .slug(SlugGenerator.generate(name))
                 .visibility(v)
                 .supporterEnabled(false)
                 .prefecture(prefecture)
@@ -733,6 +735,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
         TeamEntity team = TeamEntity.builder()
                 .name(name)
                 .nameKana(kana)
+                .slug(SlugGenerator.generate(name))
                 .visibility(v)
                 .supporterEnabled(false)
                 .prefecture(prefecture)
@@ -748,6 +751,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
         TeamEntity team = TeamEntity.builder()
                 .name(name)
                 .nameKana(kana)
+                .slug(SlugGenerator.generate(name))
                 .visibility(TeamEntity.Visibility.PUBLIC)
                 .supporterEnabled(false)
                 .build();
@@ -762,6 +766,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
         TeamEntity team = TeamEntity.builder()
                 .name(name)
                 .nameKana(kana)
+                .slug(SlugGenerator.generate(name))
                 .visibility(TeamEntity.Visibility.PUBLIC)
                 .supporterEnabled(false)
                 .prefecture(prefecture)
@@ -776,6 +781,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
         TeamEntity team = TeamEntity.builder()
                 .name(name)
                 .nameKana(kana)
+                .slug(SlugGenerator.generate(name))
                 .visibility(TeamEntity.Visibility.PUBLIC)
                 .supporterEnabled(false)
                 .deletedAt(LocalDateTime.now())
@@ -788,6 +794,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
         TeamEntity team = TeamEntity.builder()
                 .name(name)
                 .nameKana(kana)
+                .slug(SlugGenerator.generate(name))
                 .visibility(TeamEntity.Visibility.PUBLIC)
                 .supporterEnabled(false)
                 .archivedAt(LocalDateTime.now())
