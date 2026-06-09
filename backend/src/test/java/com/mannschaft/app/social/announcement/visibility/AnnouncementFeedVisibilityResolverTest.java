@@ -10,7 +10,7 @@ import com.mannschaft.app.common.visibility.VisibilityMetrics;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.social.announcement.AnnouncementFeedRepository;
-import com.mannschaft.app.social.announcement.AnnouncementSourceType;
+import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -188,13 +188,13 @@ class AnnouncementFeedVisibilityResolverTest {
         @Test
         @DisplayName("ペイウォールあり + 支払い済み → 閲覧可")
         void paywall_paid_accessible() {
+            // contentType="ANNOUNCEMENT", contentId=FEED_ID でゲート判定（sourceType/sourceId は無関係）
             AnnouncementFeedVisibilityProjection p = projection(
-                    FEED_ID, AnnouncementFeedVisibility.CUSTOM,
-                    AnnouncementSourceType.BLOG_POST.name(), SOURCE_ID);
+                    FEED_ID, AnnouncementFeedVisibility.CUSTOM, null, null);
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
             when(paymentGateService.checkAccess(
-                    eq(AnnouncementSourceType.BLOG_POST.name()), eq(SOURCE_ID), eq(VIEWER_ID)))
+                    eq(ContentGateType.ANNOUNCEMENT), eq(FEED_ID), eq(VIEWER_ID)))
                     .thenReturn(new GateCheckResponse(true, false, List.of()));
 
             AnnouncementFeedVisibilityResolver directResolver = resolverWithProjection(p);
@@ -206,12 +206,11 @@ class AnnouncementFeedVisibilityResolverTest {
         @DisplayName("ペイウォールあり + 未払い → 閲覧不可")
         void paywall_unpaid_denied() {
             AnnouncementFeedVisibilityProjection p = projection(
-                    FEED_ID, AnnouncementFeedVisibility.CUSTOM,
-                    AnnouncementSourceType.BLOG_POST.name(), SOURCE_ID);
+                    FEED_ID, AnnouncementFeedVisibility.CUSTOM, null, null);
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
             when(paymentGateService.checkAccess(
-                    eq(AnnouncementSourceType.BLOG_POST.name()), eq(SOURCE_ID), eq(VIEWER_ID)))
+                    eq(ContentGateType.ANNOUNCEMENT), eq(FEED_ID), eq(VIEWER_ID)))
                     .thenReturn(new GateCheckResponse(false, false, List.of()));
 
             AnnouncementFeedVisibilityResolver directResolver = resolverWithProjection(p);
@@ -223,11 +222,9 @@ class AnnouncementFeedVisibilityResolverTest {
         @DisplayName("viewerUserId == null（未認証）→ fail-closed → 閲覧不可")
         void paywall_anonymousViewer_failClosed() {
             AnnouncementFeedVisibilityProjection p = projection(
-                    FEED_ID, AnnouncementFeedVisibility.CUSTOM,
-                    AnnouncementSourceType.BLOG_POST.name(), SOURCE_ID);
+                    FEED_ID, AnnouncementFeedVisibility.CUSTOM, null, null);
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
-            // 未認証 → evaluateCustom が false を返す（PaymentGateService は呼ばれない）
 
             AnnouncementFeedVisibilityResolver directResolver = resolverWithProjection(p);
 
@@ -235,26 +232,33 @@ class AnnouncementFeedVisibilityResolverTest {
         }
 
         @Test
-        @DisplayName("sourceType == null → fail-closed → 閲覧不可")
-        void paywall_nullSourceType_failClosed() {
+        @DisplayName("sourceType が null でもゲート判定は ANNOUNCEMENT+FEED_ID で行われる")
+        void paywall_nullSourceType_gateStillChecked() {
+            // sourceType=null でも evaluateCustom は ContentGateType.ANNOUNCEMENT + row.id() でチェック
             AnnouncementFeedVisibilityProjection p = projection(
                     FEED_ID, AnnouncementFeedVisibility.CUSTOM, null, SOURCE_ID);
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
+            when(paymentGateService.checkAccess(
+                    eq(ContentGateType.ANNOUNCEMENT), eq(FEED_ID), eq(VIEWER_ID)))
+                    .thenReturn(new GateCheckResponse(true, false, List.of()));
 
             AnnouncementFeedVisibilityResolver directResolver = resolverWithProjection(p);
 
-            assertThat(directResolver.canView(FEED_ID, VIEWER_ID)).isFalse();
+            assertThat(directResolver.canView(FEED_ID, VIEWER_ID)).isTrue();
         }
 
         @Test
-        @DisplayName("sourceId == null → fail-closed → 閲覧不可")
-        void paywall_nullSourceId_failClosed() {
+        @DisplayName("sourceId が null でもゲート判定は ANNOUNCEMENT+FEED_ID で行われる")
+        void paywall_nullSourceId_gateStillChecked() {
+            // sourceId=null でも evaluateCustom は ContentGateType.ANNOUNCEMENT + row.id() でチェック
             AnnouncementFeedVisibilityProjection p = projection(
-                    FEED_ID, AnnouncementFeedVisibility.CUSTOM,
-                    AnnouncementSourceType.BLOG_POST.name(), null);
+                    FEED_ID, AnnouncementFeedVisibility.CUSTOM, "BLOG_POST", null);
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
+            when(paymentGateService.checkAccess(
+                    eq(ContentGateType.ANNOUNCEMENT), eq(FEED_ID), eq(VIEWER_ID)))
+                    .thenReturn(new GateCheckResponse(false, false, List.of()));
 
             AnnouncementFeedVisibilityResolver directResolver = resolverWithProjection(p);
 
@@ -265,11 +269,9 @@ class AnnouncementFeedVisibilityResolverTest {
         @DisplayName("SystemAdmin 高速パス: CUSTOM でも SystemAdmin は visibility ガードをスキップして閲覧可")
         void paywall_systemAdmin_alwaysAllowed() {
             AnnouncementFeedVisibilityProjection p = projection(
-                    FEED_ID, AnnouncementFeedVisibility.CUSTOM,
-                    AnnouncementSourceType.BLOG_POST.name(), SOURCE_ID);
+                    FEED_ID, AnnouncementFeedVisibility.CUSTOM, null, null);
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.forSystemAdmin());
-            // SystemAdmin は evaluateCustom に到達しないため PaymentGateService は呼ばれない
 
             AnnouncementFeedVisibilityResolver directResolver = resolverWithProjection(p);
 

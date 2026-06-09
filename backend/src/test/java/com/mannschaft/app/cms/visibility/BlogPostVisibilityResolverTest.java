@@ -384,7 +384,7 @@ class BlogPostVisibilityResolverTest {
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
             // ゲートあり・支払い済み → accessible=true
-            when(paymentGateService.checkAccess(eq("BLOG_POST"), eq(GATE_POST_ID), eq(VIEWER_ID)))
+            when(paymentGateService.checkAccess(eq("POST"), eq(GATE_POST_ID), eq(VIEWER_ID)))
                     .thenReturn(new GateCheckResponse(true, false, List.of()));
 
             assertThat(resolver.canView(GATE_POST_ID, VIEWER_ID)).isTrue();
@@ -398,7 +398,7 @@ class BlogPostVisibilityResolverTest {
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
             // ゲートあり・未払い → accessible=false
-            when(paymentGateService.checkAccess(eq("BLOG_POST"), eq(GATE_POST_ID), eq(VIEWER_ID)))
+            when(paymentGateService.checkAccess(eq("POST"), eq(GATE_POST_ID), eq(VIEWER_ID)))
                     .thenReturn(new GateCheckResponse(false, false, List.of()));
 
             assertThat(resolver.canView(GATE_POST_ID, VIEWER_ID)).isFalse();
@@ -412,7 +412,7 @@ class BlogPostVisibilityResolverTest {
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
             // ゲートなし → accessible=true（PaymentGateService 設計: ゲートなし = 誰でも閲覧可）
-            when(paymentGateService.checkAccess(eq("BLOG_POST"), eq(GATE_POST_ID), eq(VIEWER_ID)))
+            when(paymentGateService.checkAccess(eq("POST"), eq(GATE_POST_ID), eq(VIEWER_ID)))
                     .thenReturn(new GateCheckResponse(true, false, List.of()));
 
             assertThat(resolver.canView(GATE_POST_ID, VIEWER_ID)).isTrue();
