@@ -238,7 +238,7 @@ public class PayableDuesService {
             String idempotencyKey = "bulk-" + payerUserId + "-" + beneficiaryId + "-"
                     + paymentItemId + "-" + UUID.randomUUID();
             memberPaymentService.createConnectCheckout(
-                    item.getId(), beneficiaryId, payerUserId, idempotencyKey);
+                    paymentItemId, beneficiaryId, payerUserId, idempotencyKey);
             return BulkCheckoutResultItem.checkedOut(paymentItemId);
         } catch (BusinessException e) {
             String reason = mapSkipReason(e);
