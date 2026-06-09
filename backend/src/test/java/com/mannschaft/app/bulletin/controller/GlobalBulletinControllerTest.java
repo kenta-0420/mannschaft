@@ -4,11 +4,14 @@ import com.mannschaft.app.bulletin.ScopeType;
 import com.mannschaft.app.bulletin.dto.CategoryResponse;
 import com.mannschaft.app.bulletin.dto.ThreadResponse;
 import com.mannschaft.app.bulletin.service.BulletinCategoryService;
+import com.mannschaft.app.bulletin.service.BulletinReadStatusService;
+import com.mannschaft.app.bulletin.service.BulletinScopeIdResolver;
 import com.mannschaft.app.bulletin.service.BulletinThreadService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.PagedResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -51,6 +54,8 @@ class GlobalBulletinControllerTest {
 
     private static final Long USER_ID = 1L;
     private static final Long SCOPE_ID = 10L;
+    private static final String SCOPE_ID_STR = "10";
+    private static final String VILLAGE_SCOPE_ID_STR = "0";
     private static final Long CATEGORY_ID = 5L;
     private static final Long THREAD_ID = 100L;
     private static final UUID VILLAGE_ID = UUID.fromString("00000000-0000-0000-0000-0000000000aa");
@@ -90,6 +95,9 @@ class GlobalBulletinControllerTest {
         @Mock
         private BulletinCategoryService categoryService;
 
+        @Mock
+        private BulletinScopeIdResolver scopeIdResolver;
+
         @InjectMocks
         private GlobalBulletinCategoryController controller;
 
@@ -100,7 +108,7 @@ class GlobalBulletinControllerTest {
                     .willReturn(List.of(categoryResponse()));
 
             ResponseEntity<ApiResponse<List<CategoryResponse>>> response =
-                    controller.listCategories("VILLAGE", 0L, VILLAGE_ID);
+                    controller.listCategories("VILLAGE", VILLAGE_SCOPE_ID_STR, VILLAGE_ID);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody().getData()).hasSize(1);
@@ -110,11 +118,12 @@ class GlobalBulletinControllerTest {
         @Test
         @DisplayName("TEAM一覧_既存scopeId経路へ委譲して200")
         void team一覧_委譲_200() {
+            given(scopeIdResolver.resolve(eq(ScopeType.TEAM), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(categoryService.listCategories(eq(ScopeType.TEAM), eq(SCOPE_ID), eq(USER_ID)))
                     .willReturn(List.of(categoryResponse()));
 
             ResponseEntity<ApiResponse<List<CategoryResponse>>> response =
-                    controller.listCategories("TEAM", SCOPE_ID, null);
+                    controller.listCategories("TEAM", SCOPE_ID_STR, null);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             verify(categoryService).listCategories(ScopeType.TEAM, SCOPE_ID, USER_ID);
@@ -124,7 +133,7 @@ class GlobalBulletinControllerTest {
         @Test
         @DisplayName("VILLAGEでscope_village_id欠落_COMMON_001（400相当）")
         void village_village_id欠落_400() {
-            assertThatThrownBy(() -> controller.listCategories("VILLAGE", 0L, null))
+            assertThatThrownBy(() -> controller.listCategories("VILLAGE", VILLAGE_SCOPE_ID_STR, null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(CommonErrorCode.COMMON_001));
@@ -134,7 +143,7 @@ class GlobalBulletinControllerTest {
         @Test
         @DisplayName("scope_type不正値_COMMON_001（400相当・500を撒かない）")
         void scope_type不正_400() {
-            assertThatThrownBy(() -> controller.listCategories("INVALID", 0L, null))
+            assertThatThrownBy(() -> controller.listCategories("INVALID", VILLAGE_SCOPE_ID_STR, null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(CommonErrorCode.COMMON_001));
@@ -152,6 +161,15 @@ class GlobalBulletinControllerTest {
         @Mock
         private BulletinThreadService threadService;
 
+        @Mock
+        private BulletinReadStatusService readStatusService;
+
+        @Mock
+        private ObjectMapper objectMapper;
+
+        @Mock
+        private BulletinScopeIdResolver scopeIdResolver;
+
         @InjectMocks
         private GlobalBulletinThreadController controller;
 
@@ -166,7 +184,7 @@ class GlobalBulletinControllerTest {
                     .willReturn(page());
 
             ResponseEntity<PagedResponse<ThreadResponse>> response =
-                    controller.listThreads("VILLAGE", 0L, VILLAGE_ID, null, 0, 20);
+                    controller.listThreads("VILLAGE", VILLAGE_SCOPE_ID_STR, VILLAGE_ID, null, 0, 20);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody().getData()).hasSize(1);
@@ -183,7 +201,7 @@ class GlobalBulletinControllerTest {
                     .willReturn(page());
 
             ResponseEntity<PagedResponse<ThreadResponse>> response =
-                    controller.listThreads("VILLAGE", 0L, VILLAGE_ID, CATEGORY_ID, 0, 20);
+                    controller.listThreads("VILLAGE", VILLAGE_SCOPE_ID_STR, VILLAGE_ID, CATEGORY_ID, 0, 20);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             verify(threadService).listVillageThreads(eq(VILLAGE_ID), eq(CATEGORY_ID), eq(USER_ID), any());
@@ -192,11 +210,12 @@ class GlobalBulletinControllerTest {
         @Test
         @DisplayName("TEAM一覧_category未指定_既存listThreadsへ委譲")
         void team一覧_委譲_200() {
+            given(scopeIdResolver.resolve(eq(ScopeType.TEAM), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(threadService.listThreads(eq(ScopeType.TEAM), eq(SCOPE_ID), eq(USER_ID), any()))
                     .willReturn(page());
 
             ResponseEntity<PagedResponse<ThreadResponse>> response =
-                    controller.listThreads("TEAM", SCOPE_ID, null, null, 0, 20);
+                    controller.listThreads("TEAM", SCOPE_ID_STR, null, null, 0, 20);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             verify(threadService).listThreads(ScopeType.TEAM, SCOPE_ID, USER_ID, PageRequest.of(0, 20));
@@ -206,12 +225,13 @@ class GlobalBulletinControllerTest {
         @Test
         @DisplayName("TEAM一覧_category指定_既存listThreadsByCategoryへ委譲")
         void team一覧_カテゴリ_委譲_200() {
+            given(scopeIdResolver.resolve(eq(ScopeType.TEAM), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(threadService.listThreadsByCategory(
                     eq(ScopeType.TEAM), eq(SCOPE_ID), eq(CATEGORY_ID), eq(USER_ID), any()))
                     .willReturn(page());
 
             ResponseEntity<PagedResponse<ThreadResponse>> response =
-                    controller.listThreads("TEAM", SCOPE_ID, null, CATEGORY_ID, 0, 20);
+                    controller.listThreads("TEAM", SCOPE_ID_STR, null, CATEGORY_ID, 0, 20);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             verify(threadService).listThreadsByCategory(
@@ -233,7 +253,7 @@ class GlobalBulletinControllerTest {
         @Test
         @DisplayName("VILLAGE一覧_scope_village_id欠落_COMMON_001（400相当）")
         void village一覧_village_id欠落_400() {
-            assertThatThrownBy(() -> controller.listThreads("VILLAGE", 0L, null, null, 0, 20))
+            assertThatThrownBy(() -> controller.listThreads("VILLAGE", VILLAGE_SCOPE_ID_STR, null, null, 0, 20))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(CommonErrorCode.COMMON_001));
@@ -243,7 +263,7 @@ class GlobalBulletinControllerTest {
         @Test
         @DisplayName("scope_type不正値_COMMON_001（400相当・500を撒かない）")
         void scope_type不正_400() {
-            assertThatThrownBy(() -> controller.listThreads("INVALID", 0L, null, null, 0, 20))
+            assertThatThrownBy(() -> controller.listThreads("INVALID", VILLAGE_SCOPE_ID_STR, null, null, 0, 20))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(CommonErrorCode.COMMON_001));

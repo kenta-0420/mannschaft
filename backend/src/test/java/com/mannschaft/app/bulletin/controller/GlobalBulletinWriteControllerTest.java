@@ -14,6 +14,7 @@ import com.mannschaft.app.bulletin.dto.UpdateReplyRequest;
 import com.mannschaft.app.bulletin.service.BulletinCategoryService;
 import com.mannschaft.app.bulletin.service.BulletinReadStatusService;
 import com.mannschaft.app.bulletin.service.BulletinReplyService;
+import com.mannschaft.app.bulletin.service.BulletinScopeIdResolver;
 import com.mannschaft.app.bulletin.service.BulletinThreadService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
@@ -97,6 +98,9 @@ class GlobalBulletinWriteControllerTest {
 
         @Mock
         private BulletinCategoryService categoryService;
+
+        @Mock
+        private BulletinScopeIdResolver scopeIdResolver;
 
         @InjectMocks
         private GlobalBulletinCategoryController controller;
@@ -272,6 +276,9 @@ class GlobalBulletinWriteControllerTest {
 
         @Mock
         private ObjectMapper objectMapper;
+
+        @Mock
+        private BulletinScopeIdResolver scopeIdResolver;
 
         @InjectMocks
         private GlobalBulletinThreadController controller;

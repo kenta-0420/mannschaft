@@ -172,8 +172,8 @@ class PublicTeamControllerTest {
     }
 
     @Test
-    @DisplayName("GET /public/teams/{publicId} 404: visibility=ORGANIZATION_ONLY")
-    void getPublicTeam_organizationOnly_returns404() throws Exception {
+    @DisplayName("GET /public/teams/{publicId} 404: visibility=GUESTS_AND_ABOVE（非公開チームは404）")
+    void getPublicTeam_guestsAndAbove_returns404() throws Exception {
         willThrow(new BusinessException(TeamErrorCode.TEAM_001))
                 .given(teamService).getPublicTeam(eq(TEAM_ID));
 
@@ -182,8 +182,8 @@ class PublicTeamControllerTest {
     }
 
     @Test
-    @DisplayName("GET /public/teams/{publicId} 404: visibility=PRIVATE")
-    void getPublicTeam_private_returns404() throws Exception {
+    @DisplayName("GET /public/teams/{publicId} 404: visibility=MEMBERS_AND_ABOVE（非公開チームは404）")
+    void getPublicTeam_membersAndAbove_returns404() throws Exception {
         willThrow(new BusinessException(TeamErrorCode.TEAM_001))
                 .given(teamService).getPublicTeam(eq(TEAM_ID));
 

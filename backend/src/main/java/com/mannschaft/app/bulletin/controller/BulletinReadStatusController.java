@@ -3,6 +3,7 @@ package com.mannschaft.app.bulletin.controller;
 import com.mannschaft.app.bulletin.ScopeType;
 import com.mannschaft.app.bulletin.dto.ReadStatusResponse;
 import com.mannschaft.app.bulletin.service.BulletinReadStatusService;
+import com.mannschaft.app.bulletin.service.BulletinScopeIdResolver;
 import com.mannschaft.app.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,6 +30,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class BulletinReadStatusController {
 
     private final BulletinReadStatusService readStatusService;
+    private final BulletinScopeIdResolver scopeIdResolver;
 
 
     /**
@@ -39,10 +41,11 @@ public class BulletinReadStatusController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "既読成功")
     public ResponseEntity<Void> markAsRead(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long threadId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        readStatusService.markAsRead(type, scopeId, threadId, SecurityUtils.getCurrentUserId());
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+        readStatusService.markAsRead(type, resolvedScopeId, threadId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
@@ -54,12 +57,13 @@ public class BulletinReadStatusController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ReadStatusResponse>>> listReadUsers(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long threadId,
             @RequestParam(required = false) String filter) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
         List<ReadStatusResponse> responses =
-                readStatusService.listReadUsers(type, scopeId, threadId, SecurityUtils.getCurrentUserId(), filter);
+                readStatusService.listReadUsers(type, resolvedScopeId, threadId, SecurityUtils.getCurrentUserId(), filter);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 }

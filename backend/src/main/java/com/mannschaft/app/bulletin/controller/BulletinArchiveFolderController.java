@@ -9,6 +9,7 @@ import com.mannschaft.app.bulletin.dto.MoveThreadFolderRequest;
 import com.mannschaft.app.bulletin.dto.ThreadResponse;
 import com.mannschaft.app.bulletin.dto.UpdateArchiveFolderRequest;
 import com.mannschaft.app.bulletin.service.BulletinArchiveFolderService;
+import com.mannschaft.app.bulletin.service.BulletinScopeIdResolver;
 import com.mannschaft.app.bulletin.service.BulletinThreadService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
@@ -52,6 +53,7 @@ public class BulletinArchiveFolderController {
 
     private final BulletinArchiveFolderService folderService;
     private final BulletinThreadService threadService;
+    private final BulletinScopeIdResolver scopeIdResolver;
 
     /**
      * 保管庫フォルダ一覧をツリー構造で取得する。
@@ -61,10 +63,11 @@ public class BulletinArchiveFolderController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ArchiveFolderTreeResponse> getFolderTree(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId) {
+            @PathVariable String scopeId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
         ArchiveFolderTreeResponse response =
-                folderService.getFolderTree(type, scopeId, SecurityUtils.getCurrentUserId());
+                folderService.getFolderTree(type, resolvedScopeId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(response);
     }
 
@@ -76,11 +79,12 @@ public class BulletinArchiveFolderController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ArchiveFolderResponse>> createFolder(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @Valid @RequestBody CreateArchiveFolderRequest request) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
         ArchiveFolderResponse response =
-                folderService.createFolder(type, scopeId, SecurityUtils.getCurrentUserId(), request);
+                folderService.createFolder(type, resolvedScopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -92,12 +96,13 @@ public class BulletinArchiveFolderController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<ArchiveFolderResponse>> updateFolder(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable UUID folderId,
             @Valid @RequestBody UpdateArchiveFolderRequest request) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
         ArchiveFolderResponse response =
-                folderService.updateFolder(type, scopeId, SecurityUtils.getCurrentUserId(), folderId, request);
+                folderService.updateFolder(type, resolvedScopeId, SecurityUtils.getCurrentUserId(), folderId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -109,11 +114,12 @@ public class BulletinArchiveFolderController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "削除成功")
     public ResponseEntity<ApiResponse<DeleteArchiveFolderResponse>> deleteFolder(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable UUID folderId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
         DeleteArchiveFolderResponse response =
-                folderService.deleteFolder(type, scopeId, SecurityUtils.getCurrentUserId(), folderId);
+                folderService.deleteFolder(type, resolvedScopeId, SecurityUtils.getCurrentUserId(), folderId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -128,7 +134,7 @@ public class BulletinArchiveFolderController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<ThreadResponse>> listArchiveThreads(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @RequestParam(name = "folder_id", required = false) String folderId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -150,9 +156,10 @@ public class BulletinArchiveFolderController {
             }
         }
 
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
         int pageSize = Math.min(size <= 0 ? DEFAULT_PAGE_SIZE : size, MAX_PAGE_SIZE);
         Page<ThreadResponse> result = threadService.listArchiveThreads(
-                type, scopeId, SecurityUtils.getCurrentUserId(),
+                type, resolvedScopeId, SecurityUtils.getCurrentUserId(),
                 folderUuid, allFolders, PageRequest.of(Math.max(page, 0), pageSize));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -167,13 +174,14 @@ public class BulletinArchiveFolderController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "振り分け成功")
     public ResponseEntity<ApiResponse<ThreadResponse>> moveThreadToFolder(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long threadId,
             @RequestBody(required = false) MoveThreadFolderRequest request) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
         UUID archiveFolderId = request == null ? null : request.getArchiveFolderId();
         ThreadResponse response = threadService.moveThreadToFolder(
-                type, scopeId, threadId, SecurityUtils.getCurrentUserId(), archiveFolderId);
+                type, resolvedScopeId, threadId, SecurityUtils.getCurrentUserId(), archiveFolderId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

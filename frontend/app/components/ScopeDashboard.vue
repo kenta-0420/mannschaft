@@ -96,6 +96,8 @@ const DATA_WIDGET_KEYS = new Set([
   'team-standings-record',
   'team-division-standings',
   'org-tournament-summary',
+  // F08.10: チーム試合サマリはデータ表示型
+  'team-match-summary',
 ])
 
 function isDataWidget(key: string): boolean {
@@ -145,6 +147,8 @@ function linkTo(widgetKey: string): string | undefined {
     'team-standings-record': `${base}/tournaments`,
     'team-division-standings': `${base}/tournaments`,
     'org-tournament-summary': `${base}/tournaments`,
+    // F08.10: チーム試合サマリ → チーム分析ページ
+    'team-match-summary': `${base}/match-analytics`,
   }
   return scopeLinks[widgetKey]
 }
@@ -366,6 +370,11 @@ function onDragEnd() {
             <WidgetOrgTournamentSummary
               v-else-if="w.key === 'org-tournament-summary' && scopeId && scopeType === 'organization'"
               :org-id="scopeId"
+            />
+            <!-- F08.10: チーム試合サマリ（team スコープのみ） -->
+            <WidgetTeamMatchSummary
+              v-else-if="w.key === 'team-match-summary' && scopeId && scopeType === 'team'"
+              :team-id="scopeId"
             />
           </div>
         </template>

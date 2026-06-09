@@ -4,6 +4,8 @@ import type { MemberProfile } from '~/types/member-profile'
 defineProps<{
   profiles: MemberProfile[]
   editable?: boolean
+  /** F08.10 §G.9: 各メンバー行に試合分析リンクを出すための teamId */
+  teamId?: string
 }>()
 
 const emit = defineEmits<{
@@ -30,6 +32,7 @@ const emit = defineEmits<{
         :key="profile.id"
         :profile="profile"
         :editable="editable"
+        :team-id="teamId"
         @edit="emit('edit', $event)"
         @delete="emit('delete', $event)"
       />
