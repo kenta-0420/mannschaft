@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * 自分の所属チームレスポンス（GET /api/v1/me/teams 用）。
@@ -15,7 +14,7 @@ import java.util.UUID;
 public class MyTeamResponse {
 
     private final Long id;
-    private final UUID publicId;
+    private final String publicId;
     private final String name;
     /** アイコンURL（DB未実装のため常にnull）。 */
     private final String iconUrl;

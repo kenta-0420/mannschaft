@@ -1,7 +1,6 @@
 package com.mannschaft.app.publicview.dto;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * F19.1 Phase 4 公開チーム検索 API のレスポンス DTO。
@@ -16,6 +15,7 @@ import java.util.UUID;
  * </ul>
  *
  * @param id           チーム ID
+ * @param publicId     チームのスラッグ（URL 識別子）
  * @param name         チーム名
  * @param iconUrl      アイコン URL（null 可）
  * @param memberCount  アクティブメンバー数（{@code teams.member_count} 集約カラムから取得）
@@ -25,7 +25,7 @@ import java.util.UUID;
  */
 public record PublicTeamSearchResultResponse(
         Long id,
-        UUID publicId,
+        String publicId,
         String name,
         String iconUrl,
         int memberCount,

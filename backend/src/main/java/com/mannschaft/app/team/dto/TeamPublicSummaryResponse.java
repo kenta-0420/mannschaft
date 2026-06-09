@@ -2,8 +2,6 @@ package com.mannschaft.app.team.dto;
 
 import com.mannschaft.app.team.entity.TeamEntity;
 
-import java.util.UUID;
-
 /**
  * F15.4: 組織内チーム検索の未ログイン／非メンバー向け抑制版レスポンス。
  *
@@ -24,7 +22,7 @@ import java.util.UUID;
  * <p>住所情報は {@code prefecture} と {@code city} までに限定する。
  */
 public record TeamPublicSummaryResponse(
-        UUID id,
+        String id,
         String name,
         String nameKana,
         String prefecture,
@@ -43,7 +41,7 @@ public record TeamPublicSummaryResponse(
      */
     public static TeamPublicSummaryResponse from(TeamEntity team) {
         return new TeamPublicSummaryResponse(
-                team.getPublicId(),
+                team.getSlug(),
                 team.getName(),
                 team.getNameKana(),
                 team.getPrefecture(),
