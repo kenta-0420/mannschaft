@@ -261,6 +261,40 @@
       },
       "error": {
         "load_failed": "Statistiken konnten nicht geladen werden"
+      },
+      "team_title": "Team-Spielanalyse",
+      "team_subtitle": "Visualisiert Sieg/Niederlage, Tore, Spielerranglisten und aktuelle Form",
+      "team": {
+        "metric": {
+          "total_matches": "Spiele",
+          "win_draw_loss": "S/U/N",
+          "goals_for": "Tore",
+          "goals_against": "Gegentore",
+          "goal_difference": "Tordifferenz"
+        },
+        "series": {
+          "points": "Punkte (kumulativ)",
+          "player_goals": "Tore",
+          "matches_by_kind": "Spiele"
+        },
+        "chart": {
+          "result_title": "Ergebnisübersicht",
+          "player_goals_title": "Torschützenrangliste",
+          "recent_form_title": "Aktuelle Form (Punktetrend)",
+          "matches_by_kind_title": "Spiele nach Typ"
+        }
+      },
+      "widget": {
+        "summary": {
+          "title": "Spielzusammenfassung",
+          "wdl_label": "S/U/N",
+          "goals_label": "T/GT",
+          "recent_form": "Aktuelle Form",
+          "in_progress_label": "Laufend",
+          "resume_recording": "Aufzeichnung fortsetzen",
+          "no_matches": "Noch keine Spielaufzeichnungen",
+          "view_analytics": "Detailanalyse anzeigen"
+        }
       }
     },
     "kind": {

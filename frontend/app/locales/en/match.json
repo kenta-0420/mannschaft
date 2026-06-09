@@ -261,6 +261,40 @@
       },
       "error": {
         "load_failed": "Failed to load statistics"
+      },
+      "team_title": "Team Match Analytics",
+      "team_subtitle": "Visualize team win/loss record, goals, player rankings, and recent form",
+      "team": {
+        "metric": {
+          "total_matches": "Matches",
+          "win_draw_loss": "W/D/L",
+          "goals_for": "Goals For",
+          "goals_against": "Goals Against",
+          "goal_difference": "Goal Difference"
+        },
+        "series": {
+          "points": "Points (cumulative)",
+          "player_goals": "Goals",
+          "matches_by_kind": "Matches"
+        },
+        "chart": {
+          "result_title": "Result Summary",
+          "player_goals_title": "Top Scorers",
+          "recent_form_title": "Recent Form (points trend)",
+          "matches_by_kind_title": "Matches by Type"
+        }
+      },
+      "widget": {
+        "summary": {
+          "title": "Match Summary",
+          "wdl_label": "W/D/L",
+          "goals_label": "GF/GA",
+          "recent_form": "Recent Form",
+          "in_progress_label": "In Progress",
+          "resume_recording": "Resume Recording",
+          "no_matches": "No match records yet",
+          "view_analytics": "View Analytics"
+        }
       }
     },
     "kind": {

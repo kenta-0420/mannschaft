@@ -261,6 +261,40 @@
       },
       "error": {
         "load_failed": "통계를 불러오지 못했습니다"
+      },
+      "team_title": "팀 경기 분석",
+      "team_subtitle": "팀의 승패 기록, 득실점, 선수 순위, 최근 폼을 시각화합니다",
+      "team": {
+        "metric": {
+          "total_matches": "경기 수",
+          "win_draw_loss": "승/무/패",
+          "goals_for": "득점",
+          "goals_against": "실점",
+          "goal_difference": "득실차"
+        },
+        "series": {
+          "points": "승점（누적）",
+          "player_goals": "득점 수",
+          "matches_by_kind": "경기 수"
+        },
+        "chart": {
+          "result_title": "승패 요약",
+          "player_goals_title": "선수별 득점 순위",
+          "recent_form_title": "최근 폼（승점 추이）",
+          "matches_by_kind_title": "유형별 경기 수"
+        }
+      },
+      "widget": {
+        "summary": {
+          "title": "경기 요약",
+          "wdl_label": "승/무/패",
+          "goals_label": "득/실점",
+          "recent_form": "최근 폼",
+          "in_progress_label": "진행 중",
+          "resume_recording": "기록 재개",
+          "no_matches": "아직 경기 기록이 없습니다",
+          "view_analytics": "상세 분석 보기"
+        }
       }
     },
     "kind": {
