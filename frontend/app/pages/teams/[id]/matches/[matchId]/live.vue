@@ -90,18 +90,11 @@ onMounted(async () => {
   }
   try {
     const match = await matchApi.getMatch(orgId.value, teamId, matchId)
-    const m = match as unknown as {
-      status?: string
-      homeAway?: string
-      opponentName?: string
-      homePenaltyScore?: number
-      awayPenaltyScore?: number
-    }
-    matchStatus.value = m.status ?? null
-    ownTeamSide.value = m.homeAway === 'AWAY' ? 'AWAY' : 'HOME'
-    opponentName.value = m.opponentName ?? null
-    homePenaltyScore.value = m.homePenaltyScore ?? 0
-    awayPenaltyScore.value = m.awayPenaltyScore ?? 0
+    matchStatus.value = match.status ?? null
+    ownTeamSide.value = match.homeAway === 'AWAY' ? 'AWAY' : 'HOME'
+    opponentName.value = match.opponentName ?? null
+    homePenaltyScore.value = match.homePenaltyScore ?? 0
+    awayPenaltyScore.value = match.awayPenaltyScore ?? 0
   } catch {
     notification.error(t('match.live.error.load_match_failed'))
   }

@@ -203,7 +203,11 @@
         "add_event_failed": "Ereignis konnte nicht erfasst werden",
         "update_event_failed": "Ereignis konnte nicht aktualisiert werden",
         "delete_event_failed": "Ereignis konnte nicht gelöscht werden",
-        "undo_failed": "Rückgängig fehlgeschlagen"
+        "undo_failed": "Rückgängig fehlgeschlagen",
+        "period_boundary_failed": {
+          "title": "Aufzeichnung der Periodengrenze fehlgeschlagen",
+          "detail": "Der Periodenwechsel konnte nicht auf dem Server gespeichert werden. Spielstand und Einsatzzeiten können ungenau sein. Bitte den Timer erneut auslösen, um es noch einmal aufzuzeichnen."
+        }
       }
     },
     "analytics": {

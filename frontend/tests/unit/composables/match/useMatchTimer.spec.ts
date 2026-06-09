@@ -151,4 +151,50 @@ describe('useMatchTimer', () => {
     })
     scope.stop()
   })
+
+  it('TIMER-008: lastActivePeriod は停止状態でも直近の具体ピリオドを保持する', async () => {
+    const scope = effectScope()
+    await scope.run(async () => {
+      const timer = useMatchTimer()
+      // 初期（WAITING・キックオフ前）は直近ピリオド無し
+      expect(timer.lastActivePeriod.value).toBeNull()
+      await timer.advance() // FIRST_HALF
+      expect(timer.lastActivePeriod.value).toBe('FIRST_HALF')
+      await timer.advance() // HALF_TIME（停止）でも直前の FIRST_HALF を保持
+      expect(timer.state.value).toBe('HALF_TIME')
+      expect(timer.lastActivePeriod.value).toBe('FIRST_HALF')
+      await timer.advance() // SECOND_HALF
+      expect(timer.lastActivePeriod.value).toBe('SECOND_HALF')
+    })
+    scope.stop()
+  })
+
+  it('TIMER-009: 延長・PK を経た COMPLETED でも lastActivePeriod は直前の進行ピリオドを保持する', async () => {
+    const scope = effectScope()
+    await scope.run(async () => {
+      const timer = useMatchTimer()
+      await timer.advance() // FIRST_HALF
+      await timer.advance() // HALF_TIME
+      await timer.advance() // SECOND_HALF
+      await timer.goExtra() // EXTRA_FIRST
+      await timer.advance() // EXTRA_SECOND
+      expect(timer.lastActivePeriod.value).toBe('EXTRA_SECOND')
+      await timer.goPenaltyShootout() // PENALTY_SHOOTOUT
+      expect(timer.lastActivePeriod.value).toBe('PENALTY_SHOOTOUT')
+      await timer.complete() // COMPLETED（停止）でも直前の PK を保持＝SECOND_HALF に潰れない
+      expect(timer.state.value).toBe('COMPLETED')
+      expect(timer.lastActivePeriod.value).toBe('PENALTY_SHOOTOUT')
+    })
+    scope.stop()
+  })
+
+  it('TIMER-010: restore で停止状態を復元しても直近進行ピリオドを同期する', async () => {
+    const scope = effectScope()
+    await scope.run(async () => {
+      const timer = useMatchTimer()
+      timer.restore({ state: 'SECOND_HALF', elapsedSeconds: 600 })
+      expect(timer.lastActivePeriod.value).toBe('SECOND_HALF')
+    })
+    scope.stop()
+  })
 })

@@ -108,6 +108,12 @@ export function useMatchTimer(options: UseMatchTimerOptions = {}) {
   const manualMinute = ref<number | null>(null)
   /** アディショナルタイム（+N 分）。表示・記録の stoppage に使う */
   const stoppageMinute = ref<number | null>(null)
+  /**
+   * 直近で「具体ピリオドだった」状態（FIRST_HALF/SECOND_HALF/EXTRA_FIRST/EXTRA_SECOND/PENALTY_SHOOTOUT）。
+   * 停止状態（WAITING/HALF_TIME/COMPLETED）には match_events.period の具体値が無い（soccer §3）ため、
+   * 停止中に記録されたイベントの period 丸めに用いる（直前の進行ピリオドへ寄せる）。WAITING 前は null。
+   */
+  const lastActivePeriod = ref<MatchPeriod | null>(null)
 
   let intervalId: ReturnType<typeof setInterval> | null = null
 
@@ -165,6 +171,12 @@ export function useMatchTimer(options: UseMatchTimerOptions = {}) {
     const endingPeriod = stateToPeriod(state.value)
     const startingPeriod = stateToPeriod(next)
     const atMinute = currentMinute.value
+
+    // 進行ピリオド（具体値あり）に入る/から出る際に「直近の具体ピリオド」を更新。
+    // 例: FIRST_HALF→HALF_TIME では endingPeriod=FIRST_HALF を保持し、HALF_TIME 中の
+    // 記録は FIRST_HALF に丸める。COMPLETED へは直前の SECOND_HALF/EXTRA/PK が残る。
+    if (startingPeriod !== null) lastActivePeriod.value = startingPeriod
+    else if (endingPeriod !== null) lastActivePeriod.value = endingPeriod
 
     state.value = next
     // 新ピリオドに入ったら経過秒・手動訂正・アディショナルをリセット
@@ -226,7 +238,12 @@ export function useMatchTimer(options: UseMatchTimerOptions = {}) {
     state?: TimerState
     elapsedSeconds?: number
   }): void {
-    if (restored.state) state.value = restored.state
+    if (restored.state) {
+      state.value = restored.state
+      // 復元時も直近の具体ピリオドを同期（停止状態復元時の丸めが過去に寄るように）。
+      const restoredPeriod = stateToPeriod(restored.state)
+      if (restoredPeriod !== null) lastActivePeriod.value = restoredPeriod
+    }
     if (typeof restored.elapsedSeconds === 'number') elapsedSeconds.value = restored.elapsedSeconds
     manualMinute.value = null
     stoppageMinute.value = null
@@ -241,6 +258,7 @@ export function useMatchTimer(options: UseMatchTimerOptions = {}) {
     elapsedSeconds,
     manualMinute,
     stoppageMinute,
+    lastActivePeriod,
     // 算出
     autoMinute,
     currentMinute,

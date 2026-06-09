@@ -13,7 +13,7 @@ import type {
   MatchEventType,
 } from '~/types/match'
 import { useMatchLiveRecorder, type RecorderPlayer } from '~/composables/match/useMatchLiveRecorder'
-import { useMatchTimer, type PeriodTransition } from '~/composables/match/useMatchTimer'
+import { useMatchTimer, stateToPeriod, type PeriodTransition } from '~/composables/match/useMatchTimer'
 
 export interface MatchLiveSessionContext {
   orgId: Ref<number | null>
@@ -86,20 +86,52 @@ export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
     onConflict: () => notification.warn(t('match.live.conflict.title'), t('match.live.conflict.detail')),
   })
 
+  /**
+   * PERIOD_START / PERIOD_END の自動記録。
+   *
+   * <p>ピリオド境界はスコア（前後半の按分）・出場時間（PERIOD_START 基準の minute 自動補完・
+   * soccer §8.5）の基礎であり、欠落を握り潰してはならない。</p>
+   *
+   * <ul>
+   *   <li>ネットワークエラー時は {@code resilientSender} がオフライン退避し「queued」を通知（throw しない）
+   *       ＝復帰時 flush で送出されるので欠落しない。</li>
+   *   <li>真の失敗（4xx/5xx）時は throw される。汎用の add_event_failed では「境界が欠けた」ことが
+   *       伝わらないため、ここで <b>ピリオド境界の記録失敗を明示警告</b>する（症状を隠さない・根治原則）。</li>
+   * </ul>
+   */
   async function safeRecord(body: MatchEventRequest): Promise<void> {
     try {
       await resilientSender(body)
     } catch {
-      // sender / composable 内で通知済み
+      // 4xx/5xx の恒久失敗（network はここに来ず offline 退避済み）。
+      // 境界欠落はスコア/出場時間の基礎を壊すため、汎用エラーに加えて明示警告する。
+      notification.warn(
+        t('match.live.error.period_boundary_failed.title'),
+        t('match.live.error.period_boundary_failed.detail'),
+      )
     }
   }
 
-  /** 現在の記録文脈（ピリオド・minute・自チーム側）。 */
+  /**
+   * 現在の記録文脈（ピリオド・minute・自チーム側）。
+   *
+   * <p>停止状態（WAITING/HALF_TIME/COMPLETED）には match_events.period の具体値が存在しない
+   * （soccer §3: HALF_TIME は UI タイマー状態であって period 値ではない）。停止中に記録された
+   * イベントの period は「直近の進行ピリオド」へ丸める（04 §G.2 / soccer §8.5）。</p>
+   *
+   * <ul>
+   *   <li>HALF_TIME / COMPLETED → {@code timer.lastActivePeriod}（直前の FIRST_HALF / SECOND_HALF /
+   *       EXTRA_FIRST / EXTRA_SECOND / PENALTY_SHOOTOUT）へ丸める。これにより延長・PK 戦を経た試合の COMPLETED 後の
+   *       記録が一律 SECOND_HALF に潰れる従来バグを是正する。</li>
+   *   <li>WAITING（キックオフ前で直近進行ピリオドが無い） → 直後に始まる FIRST_HALF へ丸める。</li>
+   * </ul>
+   *
+   * <p>進行状態（FIRST_HALF/SECOND_HALF/EXTRA_FIRST/EXTRA_SECOND/PENALTY_SHOOTOUT）はそのまま period として用いる。</p>
+   */
   function currentCtx(teamSide: 'HOME' | 'AWAY' = ownTeamSide.value) {
     const s = timer.state.value
-    const period = (s === 'WAITING' || s === 'HALF_TIME')
-      ? 'FIRST_HALF'
-      : (s === 'COMPLETED' ? 'SECOND_HALF' : s)
+    const concrete = stateToPeriod(s)
+    const period = concrete ?? timer.lastActivePeriod.value ?? 'FIRST_HALF'
     return {
       period: period as MatchEventRequest['period'],
       minute: timer.currentMinute.value,

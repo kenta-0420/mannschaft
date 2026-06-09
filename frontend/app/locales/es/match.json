@@ -203,7 +203,11 @@
         "add_event_failed": "Error al registrar el evento",
         "update_event_failed": "Error al actualizar el evento",
         "delete_event_failed": "Error al eliminar el evento",
-        "undo_failed": "Error al deshacer"
+        "undo_failed": "Error al deshacer",
+        "period_boundary_failed": {
+          "title": "Error al registrar el límite del período",
+          "detail": "La transición de período no se pudo guardar en el servidor. Los marcadores y los totales de tiempo de juego pueden ser inexactos. Vuelve a accionar el cronómetro para registrarlo de nuevo."
+        }
       }
     },
     "analytics": {

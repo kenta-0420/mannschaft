@@ -203,7 +203,11 @@
         "add_event_failed": "记录事件失败",
         "update_event_failed": "更新事件失败",
         "delete_event_failed": "删除事件失败",
-        "undo_failed": "撤销操作失败"
+        "undo_failed": "撤销操作失败",
+        "period_boundary_failed": {
+          "title": "未能记录节次边界",
+          "detail": "节次切换未能保存到服务器。比分和出场时间统计可能出现偏差。请重新操作计时器以再次记录。"
+        }
       }
     },
     "analytics": {

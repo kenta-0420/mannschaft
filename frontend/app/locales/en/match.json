@@ -203,7 +203,11 @@
         "add_event_failed": "Failed to record event",
         "update_event_failed": "Failed to update event",
         "delete_event_failed": "Failed to delete event",
-        "undo_failed": "Failed to undo"
+        "undo_failed": "Failed to undo",
+        "period_boundary_failed": {
+          "title": "Failed to record period boundary",
+          "detail": "The period transition could not be saved to the server. Scores and playing-time totals may be inaccurate. Please re-trigger the timer to record it again."
+        }
       }
     },
     "analytics": {

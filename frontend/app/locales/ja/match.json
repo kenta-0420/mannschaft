@@ -203,7 +203,11 @@
         "add_event_failed": "イベントの記録に失敗しました",
         "update_event_failed": "イベントの更新に失敗しました",
         "delete_event_failed": "イベントの削除に失敗しました",
-        "undo_failed": "操作の取り消しに失敗しました"
+        "undo_failed": "操作の取り消しに失敗しました",
+        "period_boundary_failed": {
+          "title": "ピリオド境界の記録に失敗しました",
+          "detail": "前後半の切替（記録）がサーバーに保存されませんでした。スコアや出場時間の集計がずれる可能性があります。タイマーを操作し直して再記録してください。"
+        }
       }
     },
     "analytics": {
