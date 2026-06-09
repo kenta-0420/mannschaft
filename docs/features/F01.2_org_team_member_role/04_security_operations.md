@@ -6,7 +6,7 @@
 - **親リソース認可チェック（子組織作成時）**: 子組織を作成する際は、作成者が**親組織**に対する ADMIN 権限を持つことを必ず確認する。具体的には:
   - `POST /organizations`（`parent_organization_id` 指定時）: 指定親組織に対して ADMIN 権限が必要
   - 親組織が存在しない・論理削除済みの場合は 404、権限不足は 403 を返す（存在チェックと権限チェックを分けることで情報漏洩を防ぐ）
-  - チーム作成（`POST /teams`）は常に独立した状態で作成され、組織への所属は `POST /organizations/{id}/team-invites` 経由で行うため、親リソース認可チェックは不要
+  - チーム作成（`POST /teams`）は常に独立した状態で作成され、組織への所属は `POST /organizations/{slug}/team-invites` 経由で行うため、親リソース認可チェックは不要
 - **招待トークン**: UUID v4（推測不可能）を使用。HTTPS 必須。`SELECT ... FOR UPDATE` でアトミックに使用回数チェックと更新を行い同時参加による上限超過を防ぐ
 - **ロール昇格制限**: ADMIN は自分と同等以上（priority <= 2）のロールを他ユーザーに付与できない（自己昇格・SYSTEM_ADMIN 付与を防止）
 - **ADMIN 昇格時の2FA必須**: ADMIN ロールへの昇格操作は、対象ユーザーが `two_factor_auth` テーブルに有効な TOTP レコードを持つ場合のみ許可する。2FA 未設定のまま ADMIN にすることはできない（README: 「SYSTEM_ADMIN・ADMIN には2FA必須」）
@@ -22,16 +22,16 @@
   | `GET /invite/{token}` | 10 req/min | **per IP** | 不要 | 未認証エンドポイントへのトークン列挙試行・DoS 防止 |
   | `GET /invite/{token}/qr` | 10 req/min | **per IP** | 不要 | 同上（PNG 画像生成リソースの保護）|
   | `POST /invite/{token}/join` | 10 req/min | per user | 必要 | トークンのブルートフォース探索を防止 |
-  | `POST /teams/{id}/invite-tokens` | 10 req/hour | per user | 必要 | 悪意ある ADMIN による大量トークン生成を防止 |
-  | `POST /organizations/{id}/invite-tokens` | 10 req/hour | per user | 必要 | 同上 |
-  | `POST /teams/{id}/follow` | 10 req/min | per user | 必要 | フォロー操作の乱用防止 |
-  | `POST /organizations/{id}/follow` | 10 req/min | per user | 必要 | フォロー操作の乱用防止 |
-  | `PATCH /organizations/{id}/profile` | 10 req/min | per user | 必要 | プロフィール連続更新の乱用防止（`PATCH /teams/{id}/profile` も同じ制限）|
-  | `POST/PATCH/DELETE/PUT /organizations/{id}/officers` 系 | 30 req/min | per user | 必要 | 役員 CRUD の乱用防止（`/teams/{id}/officers` 系も同じ制限）|
-  | `POST/PATCH/DELETE/PUT /organizations/{id}/custom-fields` 系 | 30 req/min | per user | 必要 | カスタムフィールド CRUD の乱用防止 |
+  | `POST /teams/{slug}/invite-tokens` | 10 req/hour | per user | 必要 | 悪意ある ADMIN による大量トークン生成を防止 |
+  | `POST /organizations/{slug}/invite-tokens` | 10 req/hour | per user | 必要 | 同上 |
+  | `POST /teams/{slug}/follow` | 10 req/min | per user | 必要 | フォロー操作の乱用防止 |
+  | `POST /organizations/{slug}/follow` | 10 req/min | per user | 必要 | フォロー操作の乱用防止 |
+  | `PATCH /organizations/{slug}/profile` | 10 req/min | per user | 必要 | プロフィール連続更新の乱用防止（`PATCH /teams/{slug}/profile` も同じ制限）|
+  | `POST/PATCH/DELETE/PUT /organizations/{slug}/officers` 系 | 30 req/min | per user | 必要 | 役員 CRUD の乱用防止（`/teams/{slug}/officers` 系も同じ制限）|
+  | `POST/PATCH/DELETE/PUT /organizations/{slug}/custom-fields` 系 | 30 req/min | per user | 必要 | カスタムフィールド CRUD の乱用防止 |
 
   > - **per IP vs per user**: 未認証エンドポイント（`GET /invite/*`）は user ID が存在しないため IP アドレスをキーに制限する。認証済みエンドポイントは user ID をキーに適用し、NAT・プロキシ環境での誤検知を防ぐ
-  > - **optional-auth エンドポイント**（`GET /teams/{id}`・`GET /organizations/{id}` など認証「任意」のもの）: 連番 ID が列挙可能だが、非公開エンティティは 403/404 のみ返し内部情報を返さない。SNS 経由の大量流入も想定されるため現時点では厳格な制限を設けず、将来的に問題が顕在化した場合に Nginx 等のゲートウェイで IP 単位のグローバル制限を追加することで対応する
+  > - **optional-auth エンドポイント**（`GET /teams/{slug}`・`GET /organizations/{slug}` など認証「任意」のもの）: スラッグは推測されにくいが、非公開エンティティは 403/404 のみ返し内部情報を返さない。SNS 経由の大量流入も想定されるため現時点では厳格な制限を設けず、将来的に問題が顕在化した場合に Nginx 等のゲートウェイで IP 単位のグローバル制限を追加することで対応する
   > - トークン作成のレートリミットは per user（ADMIN 個人）で適用する。`max_uses` を大きく設定すれば1枚のトークンで多人数を招待できるため、枚数制限はあくまで大量生成の乱用防止が目的
 
 ### プロフィール拡張項目のセキュリティ
@@ -64,7 +64,7 @@
 - **パフォーマンス（N+1対策）**: 組織詳細取得で officers / custom_fields を同時に返す場合は以下いずれかで N+1 を回避
   - 案A: `@EntityGraph` や `FETCH JOIN` で一括取得（組織1件に対して officers 最大50件・custom_fields 最大20件と上限があるため、JOIN 結果の重複行は無視できる）
   - 案B: JPQL で組織詳細と関連コレクションを別クエリで取得し、Service 層で組み立てる（REST レスポンス DTO が個別フィールドを持つ設計のため、こちらを推奨）
-  - `GET /organizations/{id}/officers` / `custom-fields` は単独エンドポイントなので N+1 は発生しない
+  - `GET /organizations/{slug}/officers` / `custom-fields` は単独エンドポイントなので N+1 は発生しない
 - **エラーコード一覧（新規追加分）**:
   - `ORG_040` (422): URL スキーム不正
   - `ORG_041` (422): 役員数上限超過（50件）
@@ -75,8 +75,8 @@
   - `ORG_046` (422): philosophy 文字数超過（2000コードポイント）
   - `ORG_047` (400): `profile_visibility` に未知キー含有
   - `ORG_048` (403): `visibility_preview=true` を ADMIN/DEPUTY_ADMIN 以外が要求
-  - `ORG_049` (400): 棲み分け違反（`PATCH /organizations/{id}` に拡張プロフィール項目、または `PATCH /organizations/{id}/profile` に基本情報項目）
-- **一括ON/OFF**: `PATCH /organizations/{id}/profile` のリクエストで `profile_visibility` 全キーを `true` または `false` に設定することで実現可能（特別 API は作らない）。フロントエンドは「全公開」「全非公開」ボタンをローカル状態で切り替えて送信する
+  - `ORG_049` (400): 棲み分け違反（`PATCH /organizations/{slug}` に拡張プロフィール項目、または `PATCH /organizations/{slug}/profile` に基本情報項目）
+- **一括ON/OFF**: `PATCH /organizations/{slug}/profile` のリクエストで `profile_visibility` 全キーを `true` または `false` に設定することで実現可能（特別 API は作らない）。フロントエンドは「全公開」「全非公開」ボタンをローカル状態で切り替えて送信する
 
 ---
 
@@ -176,6 +176,20 @@ V3.134__create_organization_custom_fields_table.sql
   -- INDEX idx_org_custom_fields_org (organization_id, display_order)
 V3.135__create_team_custom_fields_table.sql
   -- team_custom_fields: organization_custom_fields と同構造で team_id FK → teams(id) ON DELETE CASCADE
+
+-- チーム・組織スラッグ移行（F01.2 slug URL 対応）
+V71.20260609001__add_slug_to_teams.sql
+  -- teams テーブルに slug カラムを ADD:
+  --   slug VARCHAR(30) NOT NULL
+  --   UNIQUE KEY uq_teams_slug (slug)
+  -- 既存データには publicId 相当の一時値を自動生成して埋める（例: CONCAT('team-', id)）
+  -- バリデーション: ^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$（3〜30文字、英小文字・数字・ハイフンのみ）
+V71.20260609002__add_slug_to_organizations.sql
+  -- organizations テーブルに slug カラムを ADD:
+  --   slug VARCHAR(30) NOT NULL
+  --   UNIQUE KEY uq_organizations_slug (slug)
+  -- 既存データには publicId 相当の一時値を自動生成して埋める（例: CONCAT('org-', id)）
+  -- バリデーション: teams と同一
 ```
 
 **マイグレーション上の注意点**
@@ -258,6 +272,7 @@ V3.135__create_team_custom_fields_table.sql
 | 2026-03-11 | PaginationMeta に has_next フィールド追加（共通レスポンス統一） |
 | 2026-03-12 | UX・保守性改善 10件: ① `GET /teams/search` / `GET /organizations/search` 公開検索 API を追加（visibility=PUBLIC のみ・名前/地域/種別検索） ② メンバー一覧 API にフィルタ（`role` / `q`）・ソート（`sort`）パラメータを追加 ③ `GET /teams/{id}/me/permissions` / `GET /organizations/{id}/me/permissions` 実効パーミッション API を追加（フロントエンド UI 制御用） ④ チーム/組織レスポンスに `member_count` フィールドを追加（`/me/teams` / `/me/organizations` / `/organizations/{id}/teams` / `/teams/{id}/organizations` / 検索 API） ⑤ `team_blocks` / `organization_blocks` に `reason VARCHAR(500) NULL` カラムを追加（ブロック理由の記録・一覧表示） ⑥ `POST /teams/{id}/transfer-ownership` / `POST /organizations/{id}/transfer-ownership` ADMIN 権限移譲 API を追加（1ステップ: 対象→ADMIN + 自分→DEPUTY_ADMIN を1トランザクション内で実行・2FA 必須チェックあり） ⑦ 全一覧取得 API をカーソルベースページネーションに統一（`cursor` + `size` + `next_cursor` + `has_next`） ⑧ 権限解決 Valkey キャッシュ戦略を追加（キー: `perm:{user_id}:{scope_key}`・TTL 5分・ロール変更/グループ更新時に `@CacheEvict`） ⑨ `PATCH /teams/{id}/restore` / `PATCH /organizations/{id}/restore` 論理削除復元 API を追加（SYSTEM_ADMIN 専用・誤削除復旧用） ⑩ 招待参加フローの audit_logs メタデータに `invite_token_id` を追加（参加経路の事後追跡用） |
 | 2026-04-18 | F04.10 組織委員会機能の追加に伴う追記。組織配下のサブスコープとして Committee を導入（詳細は F04.10_committee.md 参照） |
+| 2026-06-09 | チーム・組織スラッグ移行: `teams`/`organizations` テーブルに `slug VARCHAR(30) NOT NULL UNIQUE` を追加。全 API パスの `{id}`（チーム・組織識別子）を `{slug}` に統一。Flyway V71.20260609001/002 を追加。セキュリティ考慮事項のレートリミット表・optional-auth 注記を slug 表記に更新 |
 
 ---
 
