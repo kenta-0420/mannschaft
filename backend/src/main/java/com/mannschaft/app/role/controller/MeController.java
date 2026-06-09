@@ -11,6 +11,7 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,6 +24,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * マイページコントローラー。ログインユーザーが所属するチーム・組織の一覧を提供する。
@@ -35,6 +39,7 @@ public class MeController {
 
     private final UserRoleRepository userRoleRepository;
     private final TeamRepository teamRepository;
+    private final TeamOrgMembershipRepository teamOrgMembershipRepository;
     private final OrganizationRepository organizationRepository;
     private final RoleRepository roleRepository;
 
@@ -51,6 +56,14 @@ public class MeController {
         Long userId = SecurityUtils.getCurrentUserId();
         List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
 
+        // 親組織の数値 ID をバルク解決する（F08.10 試合 API の org コンテキスト解決用）。
+        // 1 チームが複数組織に所属し得るが、本 Map は ACTIVE な親組織を 1 件返す
+        // （F00 ScopeAncestorResolver と同じ findOrganizationIdByTeamIdIn を再利用）。
+        Set<Long> teamIds = teamRoles.stream()
+                .map(UserRoleEntity::getTeamId)
+                .collect(Collectors.toSet());
+        Map<Long, Long> orgIdByTeamId = teamOrgMembershipRepository.findOrganizationIdByTeamIdIn(teamIds);
+
         List<MyTeamResponse> teams = teamRoles.stream()
                 .map(ur -> {
                     TeamEntity team = teamRepository.findById(ur.getTeamId()).orElse(null);
@@ -66,6 +79,7 @@ public class MeController {
                     return new MyTeamResponse(
                             team.getId(),
                             team.getPublicId(),
+                            orgIdByTeamId.get(team.getId()),
                             team.getName(),
                             null,
                             team.getVisibility().name(),
