@@ -17,9 +17,10 @@ const { createMatch } = useMatchApi()
 const { buildOffsetDateTimeStr } = useDatetime()
 
 // === 組織 ID の解決（useMatchOrgContext に集約・3 ページ共通化）===
-const { orgId, resolveOrgId } = useMatchOrgContext()
+const { resolveOrgId } = useMatchOrgContext()
+const orgId = ref<number | null>(null)
 async function loadOrganizationId(): Promise<void> {
-  await resolveOrgId(teamIdStr)
+  orgId.value = await resolveOrgId(teamIdStr)
 }
 
 // === フォーム状態 ===
