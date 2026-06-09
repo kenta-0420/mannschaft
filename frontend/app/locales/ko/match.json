@@ -211,6 +211,54 @@
       }
     },
     "analytics": {
+      "my_title": "경기 분석",
+      "my_subtitle": "나의 커리어 통계를 시각화합니다",
+      "member_title": "멤버 경기 분석",
+      "member_subtitle": "이 멤버의 팀별 통계입니다",
+      "team_context": "대상 팀",
+      "unknown_kind": "기타",
+      "forbidden": "이 통계를 볼 권한이 없습니다",
+      "metric": {
+        "total_matches": "출전 경기",
+        "total_minutes": "총 출전 시간(분)",
+        "goals": "득점",
+        "assists": "어시스트",
+        "goals_per90": "90분당 득점",
+        "starter_rate": "선발 비율"
+      },
+      "axis": {
+        "goals": "득점",
+        "assists": "어시스트",
+        "matches": "경기 수",
+        "minutes": "평균 출전",
+        "starter_rate": "선발 비율"
+      },
+      "series": {
+        "goals": "득점",
+        "minutes": "출전 시간(분)",
+        "match_share": "출전 비율",
+        "goals_by_kind": "종류별 득점"
+      },
+      "chart": {
+        "radar_title": "스탯 분포",
+        "line_title": "월별 추이(득점·출전 시간)",
+        "doughnut_title": "종류별 출전 비율",
+        "bar_title": "종류별 득점 분포"
+      },
+      "best": {
+        "title": "자기 최고 기록",
+        "top_goals": "한 달 최다 득점",
+        "longest_minutes": "한 달 최장 출전(분)"
+      },
+      "empty": {
+        "no_data": "표시할 데이터가 없습니다",
+        "no_trend": "추이 데이터가 없습니다",
+        "no_goals": "득점 기록이 없습니다",
+        "no_matches": "아직 경기 기록이 없습니다",
+        "member_no_matches": "이 멤버의 경기 기록이 없습니다",
+        "no_team": "소속 팀이 없습니다",
+        "record_cta": "경기 기록하기"
+      },
       "error": {
         "load_failed": "통계를 불러오지 못했습니다"
       }
