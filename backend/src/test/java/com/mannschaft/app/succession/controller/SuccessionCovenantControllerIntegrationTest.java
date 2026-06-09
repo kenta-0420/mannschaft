@@ -99,8 +99,8 @@ class SuccessionCovenantControllerIntegrationTest extends AbstractSuccessionInte
         // 2) organizations テーブルにテスト組合を挿入
         em.createNativeQuery(
                 "INSERT INTO organizations (id, name, org_type, visibility, hierarchy_visibility,"
-                        + " supporter_enabled, version, created_at, updated_at)"
-                        + " VALUES (:orgId, 'テスト管理組合', 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW())")
+                        + " supporter_enabled, version, created_at, updated_at, public_id)"
+                        + " VALUES (:orgId, 'テスト管理組合', 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW(), UUID_TO_BIN(UUID(), 1))")
                 .setParameter("orgId", ORG_ID)
                 .executeUpdate();
 
