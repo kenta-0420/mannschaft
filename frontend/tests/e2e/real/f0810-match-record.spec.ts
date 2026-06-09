@@ -158,32 +158,34 @@ test('MATCH-002: 練習試合を作成しライブ記録で得点/交代/警告�
   await openSheet.click()
   await page.waitForTimeout(500)
 
+  // 選手グリッド（MatchPlayerGrid select-mode）の n 番目の選手ボタンをタップする。
+  // 注意: ドロワー直下の button を nth() で拾うと閉じる(×)等の非選手ボタンを誤タップするため、
+  //       選手グリッド（grid-cols-3/4 の div 配下 button）に限定して選ぶこと。
+  const tapGridPlayer = async (index: number): Promise<boolean> => {
+    const gridBtn = page.locator('.p-drawer div[class*="grid"] > button').nth(index)
+    if (await gridBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await gridBtn.click()
+      await page.waitForTimeout(400)
+      return true
+    }
+    return false
+  }
+
   // プリセット: 得点
   await page.getByRole('button', { name: '得点', exact: true }).first().click()
   await page.waitForTimeout(400)
-  // 得点者（選手グリッドの先頭をタップ）。select-mode のフラットグリッドから最初の選手ボタンを選ぶ。
-  const scorer = page
-    .locator('.p-drawer')
-    .locator('button')
-    .filter({ hasNotText: '戻る' })
-    .filter({ hasNotText: '確定' })
-    .nth(0)
-  await scorer.click()
-  await page.waitForTimeout(400)
+  // 得点者（選手グリッドの先頭をタップ）
+  await tapGridPlayer(0)
   // aux ステップ: アシスト紐付け
-  const addAssist = page.getByRole('button', { name: '＋アシストを紐付け' }).first()
+  const addAssist = page.getByRole('button', { name: /アシストを紐付け|＋アシスト/ }).first()
   if (await addAssist.isVisible({ timeout: 3_000 }).catch(() => false)) {
     await addAssist.click()
     await page.waitForTimeout(300)
     // アシスト者（グリッドの2番目の選手があれば選ぶ。無ければ先頭）
-    const assistGrid = page.locator('.p-drawer').locator('button').filter({ hasText: /.+/ })
-    const assistCandidate = assistGrid.nth(1)
-    if (await assistCandidate.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await assistCandidate.click()
-    }
+    if (!(await tapGridPlayer(1))) await tapGridPlayer(0)
     await page.waitForTimeout(300)
   }
-  // 確定
+  // 確定（aux ステップの確定ボタン）
   const confirmGoal = page.getByRole('button', { name: '確定' }).first()
   await expect(confirmGoal).toBeVisible({ timeout: 5_000 })
   await confirmGoal.click()
@@ -195,26 +197,14 @@ test('MATCH-002: 練習試合を作成しライブ記録で得点/交代/警告�
   await page.getByRole('button', { name: '交代', exact: true }).first().click()
   await page.waitForTimeout(400)
   // OUT 選手
-  const outPlayer = page
-    .locator('.p-drawer')
-    .locator('button')
-    .filter({ hasNotText: '戻る' })
-    .nth(0)
-  await outPlayer.click()
-  await page.waitForTimeout(400)
-  // IN 選手（別の選手）
-  const inPlayer = page
-    .locator('.p-drawer')
-    .locator('button')
-    .filter({ hasNotText: '戻る' })
-    .nth(1)
-  if (await inPlayer.isVisible({ timeout: 2_000 }).catch(() => false)) {
-    await inPlayer.click()
-    await page.waitForTimeout(1_000)
-  } else {
+  await tapGridPlayer(0)
+  // IN 選手（別の選手）。交代は OUT+IN 揃った時点で自動確定する。
+  if (!(await tapGridPlayer(1))) {
     // 選手が1人しかいない等はキャンセルして次へ
     const back = page.getByRole('button', { name: '戻る' }).first()
     if (await back.isVisible().catch(() => false)) await back.click()
+  } else {
+    await page.waitForTimeout(1_000)
   }
 
   // --- 警告（カード C2）を記録 ---
@@ -227,13 +217,7 @@ test('MATCH-002: 練習試合を作成しライブ記録で得点/交代/警告�
     await cardPreset.click()
     await page.waitForTimeout(400)
     // 選手選択
-    const cardPlayer = page
-      .locator('.p-drawer')
-      .locator('button')
-      .filter({ hasNotText: '戻る' })
-      .nth(0)
-    await cardPlayer.click()
-    await page.waitForTimeout(400)
+    await tapGridPlayer(0)
     // 理由コード C2 を選択
     const c2 = page.locator('.p-drawer').getByText('C2', { exact: true }).first()
     if (await c2.isVisible({ timeout: 2_000 }).catch(() => false)) {
