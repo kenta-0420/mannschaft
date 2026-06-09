@@ -798,6 +798,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
 
     private Long persistArchivedTeam(String name, String kana) {
         TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
                 .name(name)
                 .nameKana(kana)
                 .visibility(TeamEntity.Visibility.PUBLIC)
