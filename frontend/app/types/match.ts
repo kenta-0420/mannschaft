@@ -32,8 +32,14 @@ type Schemas = components['schemas']
 export type MatchSummaryResponse = Schemas['MatchSummaryResponse']
 /** ページング付き試合サマリ一覧（listMatches のレスポンス本体） */
 export type PagedResponseMatchSummaryResponse = Schemas['PagedResponseMatchSummaryResponse']
-/** 試合詳細（getMatch / createMatch / updateMatch / changeStatus / finalizeScore / recordingMode のレスポンス） */
-export type MatchResponse = Schemas['MatchResponse']
+/**
+ * 試合詳細（getMatch / createMatch / updateMatch / changeStatus / finalizeScore / recordingMode のレスポンス）。
+ *
+ * BE クラス名は `match.dto.MatchResponse` だが、tournament(リーグ)側の同名 `MatchResponse` と
+ * OpenAPI スキーマ名が衝突するため、BE 側で `@Schema(name="MatchDetailResponse")` に分離した。
+ * 生成型でも `MatchDetailResponse` が正本（F08.10 3-B 根治）。
+ */
+export type MatchResponse = Schemas['MatchDetailResponse']
 /** イベント */
 export type MatchEventResponse = Schemas['MatchEventResponse']
 /** イベント一覧（スコア整合チェック付き） */
@@ -53,7 +59,9 @@ export type PageMeta = Schemas['PageMeta']
 
 export type CreateMatchRequest = Schemas['CreateMatchRequest']
 export type UpdateMatchRequest = Schemas['UpdateMatchRequest']
-export type ChangeStatusRequest = Schemas['ChangeStatusRequest']
+// BE クラス名は match.dto.ChangeStatusRequest だが、他ドメイン（property/incident/translation）の
+// 同名 DTO と OpenAPI スキーマ名が衝突するため @Schema(name="MatchChangeStatusRequest") に分離（3-B 根治）。
+export type ChangeStatusRequest = Schemas['MatchChangeStatusRequest']
 export type FinalizeScoreRequest = Schemas['FinalizeScoreRequest']
 export type ChangeRecordingModeRequest = Schemas['ChangeRecordingModeRequest']
 export type MatchEventRequest = Schemas['MatchEventRequest']

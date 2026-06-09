@@ -35,7 +35,7 @@ function displayName(a: AncestorOrganization): string {
       <!-- 通常の祖先（リンク） -->
       <NuxtLink
         v-else
-        :to="`/organizations/${ancestor.publicId}`"
+        :to="ancestor.publicId ? `/organizations/${ancestor.publicId}` : undefined"
         class="inline-flex items-center gap-1 hover:text-primary hover:underline dark:hover:text-primary-300"
         data-testid="org-ancestor-link"
       >
