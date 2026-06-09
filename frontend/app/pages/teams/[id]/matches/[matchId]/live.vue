@@ -4,6 +4,7 @@
 // timer/offline/score を結線）。ここではヘッダ(スコアボード)・タイマー操作・大ボタン行・
 // ボトムシート・タイムライン・undo/offline/相手記録案内 を束ねるだけ。
 import type { MatchEventResponse } from '~/types/match'
+import { isNextCompleted } from '~/composables/match/useMatchTimer'
 
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
@@ -122,6 +123,21 @@ onBeforeUnmount(() => {
   window.removeEventListener('online', session.flushOffline)
 })
 
+/**
+ * @advance の集約ハンドラ。
+ * 次状態が COMPLETED になる遷移（EXTRA_SECOND / PENALTY_SHOOTOUT からの advance）は
+ * 必ず session.completeMatch() を経由させて BE の status を永続化する。
+ * それ以外の通常 advance（WAITING→FIRST_HALF 等）は timer.advance() に委譲。
+ * これにより「COMPLETED への到達は completeMatch() 経路のみ」を保証する（二重発火しない）。
+ */
+async function handleAdvance(): Promise<void> {
+  if (isNextCompleted(timer.state.value)) {
+    await session.completeMatch()
+  } else {
+    await timer.advance()
+  }
+}
+
 function back(): void {
   void router.push(`/teams/${teamIdStr}/matches`)
 }
@@ -156,7 +172,7 @@ function back(): void {
         :state="timer.state.value"
         :current-minute="timer.currentMinute.value"
         :running="timer.isRunning.value"
-        @advance="timer.advance()"
+        @advance="handleAdvance()"
         @complete="session.completeMatch()"
         @extra="timer.goExtra()"
         @penalty="timer.goPenaltyShootout()"
