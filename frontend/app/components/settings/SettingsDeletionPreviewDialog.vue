@@ -89,7 +89,7 @@ function confirm() {
 
       <div v-if="loadingPreview" class="flex items-center gap-2 text-sm text-surface-500">
         <i class="pi pi-spin pi-spinner" />
-        <span>削除プレビューを読み込み中...</span>
+        <span>{{ $t('button.loading') }}</span>
       </div>
 
       <template v-else-if="preview">
