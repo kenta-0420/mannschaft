@@ -207,8 +207,10 @@
         "period_boundary_failed": {
           "title": "未能记录节次边界",
           "detail": "节次切换未能保存到服务器。比分和出场时间统计可能出现偏差。请重新操作计时器以再次记录。"
-        }
-      }
+        },
+        "complete_failed": "保存比赛结束状态失败"
+      },
+      "read_only_notice": "仅供查看。仅管理员、副管理员和记录员可记录"
     },
     "analytics": {
       "my_title": "比赛分析",
@@ -358,6 +360,9 @@
       "DF": "后卫",
       "MF": "中场",
       "FW": "前锋"
+    },
+    "org_context": {
+      "resolve_failed": "无法解析球队/组织信息。请确认你的所属"
     }
   }
 }

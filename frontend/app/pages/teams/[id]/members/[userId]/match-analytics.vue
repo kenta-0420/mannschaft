@@ -17,7 +17,7 @@ const { t } = useI18n()
 const teamIdStr = computed(() => String(route.params.id))
 const userId = computed(() => Number(route.params.userId))
 
-const { resolveOrgId } = useMatchOrgContext()
+const { resolveContext } = useMatchOrgContext()
 const analytics = useMatchAnalytics()
 
 const stats = ref<UserMatchStatsResponse | null>(null)
@@ -40,12 +40,12 @@ async function load(): Promise<void> {
   loading.value = true
   forbidden.value = false
   try {
-    const orgId = await resolveOrgId(teamIdStr.value)
-    if (orgId === null || !Number.isFinite(userId.value)) {
+    const ctx = await resolveContext(teamIdStr.value)
+    if (ctx === null || !Number.isFinite(userId.value)) {
       stats.value = null
       return
     }
-    stats.value = await analytics.getUserTeamStats(orgId, userId.value, Number(teamIdStr.value))
+    stats.value = await analytics.getUserTeamStats(ctx.orgId, userId.value, ctx.teamId)
   } catch (err) {
     if (statusOf(err) === 403) {
       forbidden.value = true
