@@ -86,7 +86,7 @@ async function submitDraft() {
   try {
     const f = form.value
     const body: CreateJobPostingRequest = {
-      teamSlug: teamSlug.value,
+      teamId: teamSlug.value,
       title: f.title.trim(),
       description: f.description.trim(),
       category: f.category.trim() || null,

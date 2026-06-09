@@ -44,7 +44,7 @@ async function load(page = 0) {
   currentPage.value = page
   try {
     const res = await api.searchJobs({
-      teamSlug: Number(teamSlug.value),
+      teamId: Number(teamSlug.value),
       status: statusFilter.value === 'ALL' ? null : statusFilter.value,
       page,
       size: PAGE_SIZE,
