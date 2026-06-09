@@ -1519,5 +1519,11 @@
       "cancel": "取消",
       "saveError": "保存显示顺序失败"
     }
+  },
+  "team_visibility": {
+    "PUBLIC": "公开",
+    "GUESTS_AND_ABOVE": "访客及以上",
+    "SUPPORTERS_AND_ABOVE": "支持者及以上",
+    "MEMBERS_AND_ABOVE": "成员及以上"
   }
 }

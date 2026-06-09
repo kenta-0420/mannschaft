@@ -9,7 +9,7 @@ import { test, expect, type Page, type Route } from '@playwright/test'
  *   1. 未ログイン → /public/teams/{id} で公開詳細が表示され、CTA が出る
  *   2. メンバー一覧 / チャット等の機微情報が出現しないこと
  *   3. 「ログイン」ボタンクリックで /login?redirect=... へ遷移
- *   4. archived / PRIVATE / 不在 → バックエンドが 404 を返し、Nuxt の 404 画面になる
+ *   4. archived / MEMBERS_AND_ABOVE / 不在 → バックエンドが 404 を返し、Nuxt の 404 画面になる
  */
 
 const TEAM_ID = 8001
@@ -125,7 +125,7 @@ test('F15.4-P5γ-3: ログインボタンクリックで /login?redirect=/public
   expect(href).toContain(encodeURIComponent(`/public/teams/${TEAM_ID}`))
 })
 
-test('F15.4-P5γ-4: archived / PRIVATE / 不在のチーム ID は 404 で Nuxt エラー画面になる', async ({
+test('F15.4-P5γ-4: archived / MEMBERS_AND_ABOVE / 不在のチーム ID は 404 で Nuxt エラー画面になる', async ({
   page,
 }) => {
   await mockPublicTeam(page, { status: 404, body: null })

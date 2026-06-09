@@ -1519,5 +1519,11 @@
       "cancel": "Cancel",
       "saveError": "Failed to save display order"
     }
+  },
+  "team_visibility": {
+    "PUBLIC": "Public",
+    "GUESTS_AND_ABOVE": "Guests and above",
+    "SUPPORTERS_AND_ABOVE": "Supporters and above",
+    "MEMBERS_AND_ABOVE": "Members and above"
   }
 }
