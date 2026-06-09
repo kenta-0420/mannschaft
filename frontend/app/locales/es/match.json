@@ -211,6 +211,54 @@
       }
     },
     "analytics": {
+      "my_title": "Análisis de partidos",
+      "my_subtitle": "Visualiza tus estadísticas de carrera",
+      "member_title": "Análisis de partidos del miembro",
+      "member_subtitle": "Estadísticas por equipo de este miembro",
+      "team_context": "Equipo objetivo",
+      "unknown_kind": "Otro",
+      "forbidden": "No tienes permiso para ver estas estadísticas",
+      "metric": {
+        "total_matches": "Partidos",
+        "total_minutes": "Minutos totales",
+        "goals": "Goles",
+        "assists": "Asistencias",
+        "goals_per90": "Goles por 90",
+        "starter_rate": "Tasa de titular"
+      },
+      "axis": {
+        "goals": "Goles",
+        "assists": "Asistencias",
+        "matches": "Partidos",
+        "minutes": "Min. promedio",
+        "starter_rate": "Tasa de titular"
+      },
+      "series": {
+        "goals": "Goles",
+        "minutes": "Minutos",
+        "match_share": "Cuota de aparición",
+        "goals_by_kind": "Goles por tipo"
+      },
+      "chart": {
+        "radar_title": "Distribución de stats",
+        "line_title": "Tendencia mensual (goles / minutos)",
+        "doughnut_title": "Cuota de aparición por tipo",
+        "bar_title": "Distribución de goles por tipo"
+      },
+      "best": {
+        "title": "Récord personal",
+        "top_goals": "Más goles en un mes",
+        "longest_minutes": "Más minutos en un mes"
+      },
+      "empty": {
+        "no_data": "No hay datos para mostrar",
+        "no_trend": "Sin datos de tendencia",
+        "no_goals": "Sin goles registrados",
+        "no_matches": "Aún no hay registros de partidos",
+        "member_no_matches": "Sin registros de partidos para este miembro",
+        "no_team": "Sin equipos",
+        "record_cta": "Registrar un partido"
+      },
       "error": {
         "load_failed": "Error al cargar las estadísticas"
       }
