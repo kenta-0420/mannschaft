@@ -170,7 +170,7 @@
 }
 ```
 
-> - `visibility = PUBLIC` のチームのみ返す（ORGANIZATION_ONLY / PRIVATE は対象外）
+> - `visibility = PUBLIC` のチームのみ返す（GUESTS_AND_ABOVE / SUPPORTERS_AND_ABOVE / MEMBERS_AND_ABOVE は対象外）
 > - 論理削除済み・アーカイブ済みチームは常に除外
 > - ソート: 名前昇順（デフォルト）
 > - `member_count` はフォロワー（SUPPORTER）を含む全メンバー数
@@ -228,8 +228,9 @@
 | チーム visibility | アクセス可能なユーザー |
 |------------------|----------------------|
 | `PUBLIC` | 任意の認証済みユーザー |
-| `ORGANIZATION_ONLY` | チームメンバー（任意ロール）または所属組織のメンバー（`team_org_memberships.status = 'ACTIVE'` 経由）|
-| `PRIVATE` | チームメンバー（任意ロール）のみ。それ以外は 403 |
+| `GUESTS_AND_ABOVE` | チームメンバー（任意ロール）が閲覧可（GUEST 以上）|
+| `SUPPORTERS_AND_ABOVE` | チームのサポーター以上のロールを持つメンバーが閲覧可 |
+| `MEMBERS_AND_ABOVE` | チームの正規メンバー以上のロールを持つメンバーのみ。それ以外は 403 |
 
 **返却フィールドのロール別制限**
 
@@ -237,7 +238,7 @@
 |-----------------|--------------|
 | ADMIN / DEPUTY_ADMIN（チームメンバー）| 全フィールド（`user_id`, `display_name`, `icon_url`, `role`, `permission_groups`, `joined_at`）|
 | MEMBER / SUPPORTER / GUEST（チームメンバー）| 基本プロフィール（`user_id`, `display_name`, `icon_url`, `role`）— `permission_groups` / `joined_at` は返さない |
-| 非メンバー（PUBLIC / ORGANIZATION_ONLY への外部アクセス）| 基本プロフィールのみ（MEMBER と同内容）|
+| 非メンバー（PUBLIC への外部アクセス）| 基本プロフィールのみ（MEMBER と同内容）|
 
 > - `permission_groups` は `role = DEPUTY_ADMIN` または `role = MEMBER`（権限グループが1件以上割り当て済み）のユーザーに返す。その他のロールまたは未割り当て MEMBER は空配列
 > - 支払い状況・連絡先等の個人情報は本エンドポイントには含めない（F04 参照）。SUPPORTER が自身の関連メンバー（子など）の詳細を閲覧する機能は F04 で設計する

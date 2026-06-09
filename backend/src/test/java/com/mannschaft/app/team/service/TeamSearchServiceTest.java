@@ -40,8 +40,8 @@ import static org.mockito.Mockito.verify;
  * <p>設計書 {@code docs/features/F15.4_team_store_search_within_org.md §4.3} の 4 種類の権限分岐を
  * すべて検証する:</p>
  * <ol>
- *   <li>PUBLIC 組織 + 未ログイン → PUBLIC チームのみ返す（ORGANIZATION_ONLY は出ない）</li>
- *   <li>PUBLIC 組織 + 組織メンバー → PUBLIC + ORGANIZATION_ONLY 両方返す</li>
+ *   <li>PUBLIC 組織 + 未ログイン → PUBLIC チームのみ返す（非公開チームは出ない）</li>
+ *   <li>PUBLIC 組織 + 組織メンバー → PUBLIC + 非公開系すべて（GUESTS_AND_ABOVE / SUPPORTERS_AND_ABOVE / MEMBERS_AND_ABOVE）を返す</li>
  *   <li>PRIVATE 組織 + 未ログイン → {@link OrganizationNotFoundException}</li>
  *   <li>PRIVATE 組織 + 組織メンバー → 正常に検索される</li>
  * </ol>
@@ -92,7 +92,7 @@ class TeamSearchServiceTest {
     class PublicOrganization {
 
         @Test
-        @DisplayName("未ログイン: PUBLIC チームのみ返す。検索 Spec が ORGANIZATION_ONLY を含まない")
+        @DisplayName("未ログイン: PUBLIC チームのみ返す。検索 Spec が非公開チームを含まない")
         void publicOrg_anonymous_returnsOnlyPublicTeams() {
             // Given: PUBLIC 組織
             OrganizationEntity org = buildOrg(OrganizationEntity.Visibility.PUBLIC);
@@ -123,7 +123,7 @@ class TeamSearchServiceTest {
         }
 
         @Test
-        @DisplayName("組織メンバー: PUBLIC + ORGANIZATION_ONLY 両方が許可可視性に含まれる")
+        @DisplayName("組織メンバー: PUBLIC + 非公開系すべて（GUESTS_AND_ABOVE / SUPPORTERS_AND_ABOVE / MEMBERS_AND_ABOVE）が許可可視性に含まれる")
         void publicOrg_member_includesOrganizationOnly() {
             // Given
             OrganizationEntity org = buildOrg(OrganizationEntity.Visibility.PUBLIC);
@@ -198,7 +198,7 @@ class TeamSearchServiceTest {
                     .willReturn(true);
             TeamEntity orgOnly = TeamEntity.builder()
                     .name("組織限定店舗")
-                    .visibility(TeamEntity.Visibility.ORGANIZATION_ONLY)
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE)
                     .supporterEnabled(false)
                     .build();
             given(teamRepository.findAll(any(Specification.class), any(Pageable.class)))

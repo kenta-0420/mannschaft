@@ -79,7 +79,7 @@ public class ContactableMemberService {
         OrganizationEntity org = organizationRepository.findById(orgId)
                 .orElseThrow(() -> new BusinessException(ContactErrorCode.CONTACT_015));
 
-        // アクセス制限チェック（PRIVATE/ORGANIZATION_ONLY は自分がメンバーの場合のみ）
+        // アクセス制限チェック（PUBLIC 以外の組織は自分がメンバーの場合のみアクセス可）
         if (org.getVisibility() != OrganizationEntity.Visibility.PUBLIC) {
             if (!userRoleRepository.existsByUserIdAndOrganizationId(currentUserId, orgId)) {
                 throw new BusinessException(ContactErrorCode.CONTACT_007);
