@@ -170,8 +170,8 @@ class OrganizationVisibilityResolverIntegrationTest extends AbstractMySqlIntegra
         em.createNativeQuery(
                 "INSERT INTO organizations ("
                         + "name, org_type, visibility, hierarchy_visibility, "
-                        + "supporter_enabled, version, created_at, updated_at, public_id) "
-                        + "VALUES (:name, 'OTHER', :visibility, 'NONE', 1, 0, NOW(), NOW(), UUID_TO_BIN(UUID(), 1))")
+                        + "supporter_enabled, version, slug, created_at, updated_at) "
+                        + "VALUES (:name, 'OTHER', :visibility, 'NONE', 1, 0, CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("name", name)
                 .setParameter("visibility", visibility)
                 .executeUpdate();
