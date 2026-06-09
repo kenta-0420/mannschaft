@@ -125,3 +125,46 @@ export interface MyPaymentResponse {
     paymentMethod: PaymentMethod | null
   }
 }
+
+/**
+ * F08.9 P2: 後見まとめ払い
+ * GET /api/v1/me/payable-dues のレスポンス要素
+ */
+export interface PayableDueItem {
+  beneficiaryUserId: number
+  beneficiaryDisplayName: string | null
+  scopeType: string
+  scopeId: number
+  scopeName: string | null
+  paymentItemId: number
+  itemName: string
+  faceAmount: number
+  payerSurcharge: number
+  totalCharge: number
+  dueDate: string | null
+  kind: 'ONE_TIME' | 'RECURRING' | 'TERM'
+  authorizationVia: 'SELF' | 'GUARDIAN' | 'GUARDIAN_PROXY' | 'PROXY_GRANT'
+  alreadyPaid: boolean
+  paidByUserId: number | null
+  paidByDisplayName: string | null
+  paidAt: string | null
+}
+
+export interface PayableDuesResponse {
+  items: PayableDueItem[]
+}
+
+export interface BulkCheckoutRequest {
+  beneficiaryUserId: number
+  paymentItemIds: number[]
+}
+
+export interface BulkCheckoutResultItem {
+  paymentItemId: number
+  status: 'CHECKED_OUT' | 'SKIPPED'
+  skipReason: 'ALREADY_PAID' | 'NOT_AUTHORIZED' | 'CONNECT_NOT_READY' | 'ITEM_NOT_FOUND' | 'ERROR' | null
+}
+
+export interface BulkCheckoutResponse {
+  results: BulkCheckoutResultItem[]
+}

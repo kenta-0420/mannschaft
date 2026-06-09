@@ -71,6 +71,46 @@
           "EXPIRED": "기한 만료"
         }
       }
+    },
+    "guardianBulkPayment": {
+      "title": "보호자 일괄 결제",
+      "subtitle": "관리하는 자녀의 미납 회비를 한 번에 결제할 수 있습니다",
+      "noItems": "미납 회비가 없습니다",
+      "beneficiary": "수혜자",
+      "scope": "소속",
+      "itemName": "회비명",
+      "amount": "금액",
+      "dueDate": "납부 기한",
+      "alreadyPaid": "납부 완료",
+      "paidBy": "{name}님이 납부함",
+      "kind": {
+        "ONE_TIME": "일시불",
+        "RECURRING": "정기 결제",
+        "TERM": "기간 결제"
+      },
+      "via": {
+        "SELF": "본인",
+        "GUARDIAN": "보호자",
+        "GUARDIAN_PROXY": "보호자 대리",
+        "PROXY_GRANT": "대리권"
+      },
+      "selectAll": "전체 선택",
+      "deselectAll": "전체 해제",
+      "paySelected": "{count}건 결제",
+      "totalAmount": "합계: ¥{amount}",
+      "processing": "처리 중...",
+      "result": {
+        "title": "결제 결과",
+        "checkedOut": "결제 완료",
+        "skipped": "건너뜀",
+        "skipReasons": {
+          "ALREADY_PAID": "납부 완료",
+          "NOT_AUTHORIZED": "결제 권한 없음",
+          "CONNECT_NOT_READY": "수취 계좌 미설정",
+          "ITEM_NOT_FOUND": "회비 항목 없음",
+          "ERROR": "오류"
+        }
+      }
     }
   }
 }
