@@ -65,6 +65,21 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
                                                        @Param("paymentItemId") Long paymentItemId);
 
     /**
+     * 受益者×項目の有効な PAID レコードを 1 件取得する（F08.9 P2 後見まとめ払いの paidBy 解決用）。
+     *
+     * <p>{@link #existsValidPaidPayment(Long, Long)} が真のとき、誰が払ったか（payer_user_id）・いつ払ったか
+     * （paid_at）を表示するために用いる。有効期限（validUntil）が切れていない PAID を支払い日時の新しい順で 1 件返す。
+     * 複数の有効 PAID が存在しうる不整合データでは最新の支払いを採る。</p>
+     */
+    @Query("SELECT mp FROM MemberPaymentEntity mp " +
+            "WHERE mp.userId = :userId AND mp.paymentItemId = :paymentItemId " +
+            "AND mp.status = 'PAID' " +
+            "AND (mp.validUntil IS NULL OR mp.validUntil >= CURRENT_DATE) " +
+            "ORDER BY mp.paidAt DESC, mp.createdAt DESC")
+    List<MemberPaymentEntity> findValidPaidPayments(@Param("userId") Long userId,
+                                                    @Param("paymentItemId") Long paymentItemId);
+
+    /**
      * Stripe Checkout Session ID で支払い記録を取得する（ロック付き）。
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
