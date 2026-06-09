@@ -363,6 +363,11 @@
     },
     "org_context": {
       "resolve_failed": "팀·조직 정보를 해결할 수 없습니다. 소속을 확인해 주세요"
+    },
+    "entry": {
+      "record_from_schedule": "이 경기 기록하기",
+      "record_from_schedule_hint": "이 일정의 경기 기록을 시작합니다",
+      "resolving": "경기 기록을 준비 중…"
     }
   }
 }
