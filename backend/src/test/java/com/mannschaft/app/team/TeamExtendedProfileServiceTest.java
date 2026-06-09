@@ -298,10 +298,10 @@ class TeamExtendedProfileServiceTest {
     class GetOfficers {
 
         @Test
-        @DisplayName("PRIVATE チームかつ非メンバーの場合、ContentVisibilityChecker が VISIBILITY_001 をスローする")
-        void PRIVATE_TEAM非メンバー_VISIBILITY001() {
+        @DisplayName("GUESTS_AND_ABOVE チームかつ非メンバーの場合、ContentVisibilityChecker が VISIBILITY_001 をスローする")
+        void GUESTS_AND_ABOVE_TEAM非メンバー_VISIBILITY001() {
             // Arrange
-            TeamEntity team = buildTeam(TeamEntity.Visibility.PRIVATE, null);
+            TeamEntity team = buildTeam(TeamEntity.Visibility.GUESTS_AND_ABOVE, null);
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
             given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
