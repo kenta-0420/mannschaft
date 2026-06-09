@@ -4,12 +4,16 @@ import type { MemberProfile } from '~/types/member-profile'
 defineProps<{
   profile: MemberProfile
   editable?: boolean
+  /** F08.10 §G.9: 指定時、userId を持つメンバー行に試合分析リンクを表示する */
+  teamId?: string
 }>()
 
 const emit = defineEmits<{
   edit: [profile: MemberProfile]
   delete: [id: number]
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -42,9 +46,19 @@ const emit = defineEmits<{
             </span>
           </div>
         </div>
-        <div v-if="editable" class="flex gap-1">
-          <Button icon="pi pi-pencil" size="small" text severity="secondary" @click="emit('edit', profile)" />
-          <Button icon="pi pi-trash" size="small" text severity="danger" @click="emit('delete', profile.id)" />
+        <div class="flex items-center gap-1">
+          <!-- F08.10 §G.9: メンバー別 試合分析への導線（userId を持つ行のみ） -->
+          <NuxtLink
+            v-if="teamId && profile.userId"
+            :to="`/teams/${teamId}/members/${profile.userId}/match-analytics`"
+            :aria-label="t('match.analytics.member_title')"
+          >
+            <Button icon="pi pi-chart-bar" size="small" text severity="secondary" />
+          </NuxtLink>
+          <template v-if="editable">
+            <Button icon="pi pi-pencil" size="small" text severity="secondary" @click="emit('edit', profile)" />
+            <Button icon="pi pi-trash" size="small" text severity="danger" @click="emit('delete', profile.id)" />
+          </template>
         </div>
       </div>
     </template>

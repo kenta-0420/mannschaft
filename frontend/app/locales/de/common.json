@@ -442,7 +442,12 @@
     "videoUploadSuccess": "Video erfolgreich hochgeladen",
     "videoUploadError": "Video-Upload fehlgeschlagen",
     "videoRemove": "Video entfernen",
-    "mitayo": "Gesehen"
+    "mitayo": "Gesehen",
+    "imageTooMany": "Es können maximal 4 Bilder angehängt werden",
+    "imageUploadError": "Bild-Upload fehlgeschlagen",
+    "postSuccess": "Erfolgreich gepostet",
+    "postError": "Fehler beim Posten",
+    "announcementRegisterError": "Fehler bei der Ankündigung. Bitte manuell registrieren."
   },
   "gallery": {
     "title": "Galerie",

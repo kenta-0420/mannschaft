@@ -442,7 +442,12 @@
     "videoUploadSuccess": "Video uploaded successfully",
     "videoUploadError": "Failed to upload video",
     "videoRemove": "Remove video",
-    "mitayo": "Seen"
+    "mitayo": "Seen",
+    "imageTooMany": "You can attach up to 4 images",
+    "imageUploadError": "Failed to upload image",
+    "postSuccess": "Posted successfully",
+    "postError": "Failed to post",
+    "announcementRegisterError": "Failed to register as announcement. Please register manually later."
   },
   "gallery": {
     "title": "Gallery",

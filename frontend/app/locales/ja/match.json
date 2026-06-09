@@ -211,6 +211,54 @@
       }
     },
     "analytics": {
+      "my_title": "試合分析",
+      "my_subtitle": "自分のキャリア統計を可視化します",
+      "member_title": "メンバーの試合分析",
+      "member_subtitle": "このメンバーのチーム別統計です",
+      "team_context": "対象チーム",
+      "unknown_kind": "その他",
+      "forbidden": "この統計を閲覧する権限がありません",
+      "metric": {
+        "total_matches": "出場試合",
+        "total_minutes": "総出場時間(分)",
+        "goals": "得点",
+        "assists": "アシスト",
+        "goals_per90": "90分あたり得点",
+        "starter_rate": "先発率"
+      },
+      "axis": {
+        "goals": "得点",
+        "assists": "アシスト",
+        "matches": "試合数",
+        "minutes": "平均出場",
+        "starter_rate": "先発率"
+      },
+      "series": {
+        "goals": "得点",
+        "minutes": "出場時間(分)",
+        "match_share": "出場割合",
+        "goals_by_kind": "種別別得点"
+      },
+      "chart": {
+        "radar_title": "スタッツ分布",
+        "line_title": "月別推移（得点・出場時間）",
+        "doughnut_title": "種別別の出場割合",
+        "bar_title": "種別別の得点分布"
+      },
+      "best": {
+        "title": "自己ベスト",
+        "top_goals": "1か月の最多得点",
+        "longest_minutes": "1か月の最長出場(分)"
+      },
+      "empty": {
+        "no_data": "表示できるデータがありません",
+        "no_trend": "推移データがありません",
+        "no_goals": "得点の記録がありません",
+        "no_matches": "まだ試合記録がありません",
+        "member_no_matches": "このメンバーの試合記録がありません",
+        "no_team": "所属チームがありません",
+        "record_cta": "試合を記録する"
+      },
       "error": {
         "load_failed": "統計の取得に失敗しました"
       }

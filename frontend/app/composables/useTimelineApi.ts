@@ -78,11 +78,29 @@ export function useTimelineApi() {
     return api<TimelinePostDetailResponse>(`/api/v1/timeline/posts/${postId}`)
   }
 
-  async function createPost(formData: FormData) {
+  async function createPost(body: Record<string, unknown>) {
     return api<{ data: TimelinePostResponse }>('/api/v1/timeline/posts', {
       method: 'POST',
-      body: formData,
+      body,
     })
+  }
+
+  async function getImageUploadUrl(params: {
+    contentType: string
+    scopeType: string
+    scopeId: string | number
+  }) {
+    return api<{ data: { uploadUrl: string; fileKey: string; expiresInSeconds: number } }>(
+      '/api/v1/timeline/attachments/upload-image-url',
+      {
+        method: 'POST',
+        body: {
+          content_type: params.contentType,
+          scope_type: params.scopeType,
+          scope_id: String(params.scopeId ?? 0),
+        },
+      },
+    )
   }
 
   async function updatePost(postId: number, body: Record<string, unknown>) {
@@ -254,6 +272,7 @@ export function useTimelineApi() {
     searchPosts,
     getPost,
     createPost,
+    getImageUploadUrl,
     updatePost,
     deletePost,
     createReply,

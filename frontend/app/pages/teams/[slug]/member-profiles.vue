@@ -105,6 +105,7 @@ onMounted(loadData)
       <MemberProfileList
         :profiles="profiles"
         :editable="isAdmin"
+        :team-id="teamId"
         @create="openCreate"
         @edit="openEdit"
         @delete="handleDelete"

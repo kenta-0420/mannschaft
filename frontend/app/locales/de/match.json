@@ -211,6 +211,54 @@
       }
     },
     "analytics": {
+      "my_title": "Spielanalyse",
+      "my_subtitle": "Visualisiere deine Karrierestatistiken",
+      "member_title": "Spielanalyse des Mitglieds",
+      "member_subtitle": "Teamstatistiken dieses Mitglieds",
+      "team_context": "Zielteam",
+      "unknown_kind": "Sonstige",
+      "forbidden": "Du hast keine Berechtigung, diese Statistiken zu sehen",
+      "metric": {
+        "total_matches": "Spiele",
+        "total_minutes": "Gesamtminuten",
+        "goals": "Tore",
+        "assists": "Vorlagen",
+        "goals_per90": "Tore pro 90",
+        "starter_rate": "Startelf-Quote"
+      },
+      "axis": {
+        "goals": "Tore",
+        "assists": "Vorlagen",
+        "matches": "Spiele",
+        "minutes": "Ø Minuten",
+        "starter_rate": "Startelf-Quote"
+      },
+      "series": {
+        "goals": "Tore",
+        "minutes": "Minuten",
+        "match_share": "Einsatzanteil",
+        "goals_by_kind": "Tore nach Typ"
+      },
+      "chart": {
+        "radar_title": "Statistikverteilung",
+        "line_title": "Monatlicher Verlauf (Tore / Minuten)",
+        "doughnut_title": "Einsatzanteil nach Typ",
+        "bar_title": "Torverteilung nach Typ"
+      },
+      "best": {
+        "title": "Persönliche Bestleistung",
+        "top_goals": "Meiste Tore in einem Monat",
+        "longest_minutes": "Längste Minuten in einem Monat"
+      },
+      "empty": {
+        "no_data": "Keine Daten zum Anzeigen",
+        "no_trend": "Keine Verlaufsdaten",
+        "no_goals": "Keine Tore erfasst",
+        "no_matches": "Noch keine Spieleinträge",
+        "member_no_matches": "Keine Spieleinträge für dieses Mitglied",
+        "no_team": "Keine Teams",
+        "record_cta": "Spiel erfassen"
+      },
       "error": {
         "load_failed": "Statistiken konnten nicht geladen werden"
       }

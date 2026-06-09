@@ -442,7 +442,12 @@
     "videoUploadSuccess": "동영상을 업로드했습니다",
     "videoUploadError": "동영상 업로드에 실패했습니다",
     "videoRemove": "동영상 삭제",
-    "mitayo": "확인함"
+    "mitayo": "확인함",
+    "imageTooMany": "이미지는 최대 4개까지 첨부할 수 있습니다",
+    "imageUploadError": "이미지 업로드에 실패했습니다",
+    "postSuccess": "게시되었습니다",
+    "postError": "게시에 실패했습니다",
+    "announcementRegisterError": "공지 등록에 실패했습니다. 나중에 수동으로 등록해 주세요."
   },
   "gallery": {
     "title": "갤러리",
