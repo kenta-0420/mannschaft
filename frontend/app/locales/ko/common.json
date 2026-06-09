@@ -1519,5 +1519,11 @@
       "cancel": "취소",
       "saveError": "표시 순서 저장에 실패했습니다"
     }
+  },
+  "team_visibility": {
+    "PUBLIC": "공개",
+    "GUESTS_AND_ABOVE": "게스트 이상",
+    "SUPPORTERS_AND_ABOVE": "서포터 이상",
+    "MEMBERS_AND_ABOVE": "멤버 이상"
   }
 }

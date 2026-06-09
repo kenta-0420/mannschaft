@@ -13,7 +13,7 @@ import { test, expect, type Page, type Route } from '@playwright/test'
  *        deletedAt / version / supporterEnabled / chatMessages / announcements /
  *        files / attendances キーが含まれない
  *   B. 404 ケース網羅
- *      - 不在 ID / 削除済み / archived / visibility=PRIVATE / visibility=ORGANIZATION_ONLY
+ *      - 不在 ID / 削除済み / archived / visibility=MEMBERS_AND_ABOVE / visibility=GUESTS_AND_ABOVE
  *      - エラーページにチーム情報が漏れない
  */
 
@@ -187,8 +187,8 @@ test('F15.4-P5δ-A3: API レスポンス JSON 自体に禁則フィールドキ�
 const NOT_FOUND_CASES: ReadonlyArray<{ label: string; teamId: number }> = [
   { label: 'archived チーム', teamId: 9201 },
   { label: '削除済みチーム', teamId: 9202 },
-  { label: 'visibility=PRIVATE チーム', teamId: 9203 },
-  { label: 'visibility=ORGANIZATION_ONLY チーム', teamId: 9204 },
+  { label: 'visibility=MEMBERS_AND_ABOVE チーム', teamId: 9203 },
+  { label: 'visibility=GUESTS_AND_ABOVE チーム', teamId: 9204 },
   { label: '存在しないチーム ID', teamId: 9999 },
 ]
 
