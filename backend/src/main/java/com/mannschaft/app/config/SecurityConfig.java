@@ -9,6 +9,7 @@ import com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter;
 import com.mannschaft.app.team.filter.SlugCheckRateLimitFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.actuate.health.HealthEndpoint;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -46,7 +47,7 @@ public class SecurityConfig {
     private final ScheduleDelegationRateLimitFilter scheduleDelegationRateLimitFilter;
     private final EventDelegationRateLimitFilter eventDelegationRateLimitFilter;
     private final DashboardScopeTabRateLimitFilter dashboardScopeTabRateLimitFilter;
-    private final SlugCheckRateLimitFilter slugCheckRateLimitFilter;
+    private final ObjectProvider<SlugCheckRateLimitFilter> slugCheckRateLimitFilterProvider;
 
     /**
      * ProxyInputContextFilter の @Component によるサーブレットフィルター自動登録を無効化。
@@ -148,8 +149,12 @@ public class SecurityConfig {
     @Bean
     public FilterRegistrationBean<SlugCheckRateLimitFilter>
             slugCheckRateLimitFilterRegistration() {
+        SlugCheckRateLimitFilter filter = slugCheckRateLimitFilterProvider.getIfAvailable();
+        if (filter == null) {
+            return new FilterRegistrationBean<>();
+        }
         FilterRegistrationBean<SlugCheckRateLimitFilter> registration =
-                new FilterRegistrationBean<>(slugCheckRateLimitFilter);
+                new FilterRegistrationBean<>(filter);
         registration.setEnabled(false);
         return registration;
     }
@@ -338,7 +343,11 @@ public class SecurityConfig {
             // F22.1 scope-tabs 並べ替え連打防止（§5・30req/分/ユーザー）。JWT 認証後に動かす。
             .addFilterAfter(dashboardScopeTabRateLimitFilter, JwtAuthenticationFilter.class)
             // スラッグ可用性チェック（60 req/分/ユーザー）。JWT 認証後に動かし、userId を解決する。
-            .addFilterAfter(slugCheckRateLimitFilter, JwtAuthenticationFilter.class);
+            ;
+        SlugCheckRateLimitFilter slugCheckFilter = slugCheckRateLimitFilterProvider.getIfAvailable();
+        if (slugCheckFilter != null) {
+            http.addFilterAfter(slugCheckFilter, JwtAuthenticationFilter.class);
+        }
         return http.build();
     }
 }
