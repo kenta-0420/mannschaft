@@ -45,7 +45,7 @@ export function useTeamCrud() {
 
   /**
    * F15.4 Phase 5-α: 未ログイン公開チーム詳細取得。
-   * `GET /api/v1/public/teams/{publicId}` を呼ぶ（permitAll、レート制限 60/min/IP）。
+   * `GET /api/v1/public/teams/{slug}` を呼ぶ（permitAll、レート制限 60/min/IP）。
    *
    * - 404: 不在 / 削除済み / archived / visibility != PUBLIC
    * - 429: レート制限超過（呼び出し元で扱う）

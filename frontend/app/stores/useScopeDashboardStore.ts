@@ -122,23 +122,23 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
         // 先頭スコープ（存在すれば）。undefined ガードで noUncheckedIndexedAccess に適合。
         const first = result.items[0]
 
-        // 選択中スコープの BIGINT→UUID マイグレーション + フォールバック処理。
-        // scopeId（BIGINT 文字列）と publicId（UUID）の両方でマッチングを行い、
+        // 選択中スコープの BIGINT→slug マイグレーション + フォールバック処理。
+        // scopeId（BIGINT 文字列）と slug（スラッグ）の両方でマッチングを行い、
         // UUID が取得できた場合は localStorage も含めてアップグレードする。
         if (scopeType === 'TEAM') {
           if (this.selectedTeamId === null) {
             // 未選択 → 先頭を選択
             if (first) {
-              this.selectedTeamId = first.publicId ?? first.scopeId
+              this.selectedTeamId = first.slug ?? first.scopeId
               this.persistToStorage()
             }
           } else {
             // BIGINT または UUID どちらでもマッチするアイテムを探す
             const matchingItem = result.items.find(
-              item => item.scopeId === this.selectedTeamId || item.publicId === this.selectedTeamId,
+              item => item.scopeId === this.selectedTeamId || item.slug === this.selectedTeamId,
             )
             if (matchingItem) {
-              const uuid = matchingItem.publicId ?? matchingItem.scopeId
+              const uuid = matchingItem.slug ?? matchingItem.scopeId
               if (uuid !== this.selectedTeamId) {
                 // BIGINT → UUID アップグレード（localStorage にも保存）
                 this.selectedTeamId = uuid
@@ -146,28 +146,28 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
               }
             } else if (first) {
               // 一覧から消えた（退会・権限喪失）→ 先頭にフォールバック
-              this.selectedTeamId = first.publicId ?? first.scopeId
+              this.selectedTeamId = first.slug ?? first.scopeId
               this.persistToStorage()
             }
           }
         } else if (scopeType === 'ORGANIZATION') {
           if (this.selectedOrgId === null) {
             if (first) {
-              this.selectedOrgId = first.publicId ?? first.scopeId
+              this.selectedOrgId = first.slug ?? first.scopeId
               this.persistToStorage()
             }
           } else {
             const matchingItem = result.items.find(
-              item => item.scopeId === this.selectedOrgId || item.publicId === this.selectedOrgId,
+              item => item.scopeId === this.selectedOrgId || item.slug === this.selectedOrgId,
             )
             if (matchingItem) {
-              const uuid = matchingItem.publicId ?? matchingItem.scopeId
+              const uuid = matchingItem.slug ?? matchingItem.scopeId
               if (uuid !== this.selectedOrgId) {
                 this.selectedOrgId = uuid
                 this.persistToStorage()
               }
             } else if (first) {
-              this.selectedOrgId = first.publicId ?? first.scopeId
+              this.selectedOrgId = first.slug ?? first.scopeId
               this.persistToStorage()
             }
           }

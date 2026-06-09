@@ -39,7 +39,7 @@ function onLoadMore() {
         :key="child.id"
         class="cursor-pointer rounded-lg border p-4 transition-shadow hover:shadow-md dark:border-surface-700"
         data-testid="org-child-card"
-        @click="child.publicId ? navigateTo(`/organizations/${child.publicId}`) : undefined"
+        @click="child.slug ? navigateTo(`/organizations/${child.slug}`) : undefined"
       >
         <div class="mb-2 flex items-center gap-3">
           <Avatar

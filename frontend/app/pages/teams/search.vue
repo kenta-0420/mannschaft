@@ -13,7 +13,7 @@ const notification = useNotification()
 const followedTeamIds = ref<string[]>([])
 const followingTeamIds = ref<string[]>([])
 
-const myTeamPublicIds = computed(() => new Set(teamStore.myTeams.map((team) => team.publicId)))
+const myTeamSlugs = computed(() => new Set(teamStore.myTeams.map((team) => team.slug)))
 
 async function followTeam(teamId: string, event: Event) {
   event.stopPropagation()
@@ -187,7 +187,7 @@ onMounted(() => {
             <span><i class="pi pi-users mr-1" />{{ $t('teamHub.memberCount', { count: team.memberCount }) }}</span>
           </div>
           <div
-            v-if="team.supporterEnabled && !myTeamPublicIds.has(team.id)"
+            v-if="team.supporterEnabled && !myTeamSlugs.has(team.id)"
             class="mt-3 border-t border-surface-100 pt-3"
           >
             <span
