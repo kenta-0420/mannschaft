@@ -4,100 +4,102 @@
 | メソッド | パス | 認証 | 説明 |
 |---------|-----|------|------|
 | GET | `/api/v1/teams/search` | 任意 | チーム公開検索（visibility=PUBLIC のみ対象・名前/地域/テンプレートで検索）|
+| GET | `/api/v1/teams/slug-check?slug={slug}` | 必要 | スラッグ使用可否チェック（チーム）。レスポンス: `{ available: boolean, suggestions: string[] }`。レートリミット: 60 req/min/user |
 | GET | `/api/v1/organizations/search` | 任意 | 組織公開検索（visibility=PUBLIC のみ対象・名前/地域/種別で検索）|
+| GET | `/api/v1/organizations/slug-check?slug={slug}` | 必要 | スラッグ使用可否チェック（組織）。レスポンス: `{ available: boolean, suggestions: string[] }`。レートリミット: 60 req/min/user |
 | POST | `/api/v1/organizations` | 必要 | 組織作成 |
-| GET | `/api/v1/organizations/{id}` | 任意 | 組織詳細取得（可視性による）|
-| PATCH | `/api/v1/organizations/{id}` | 必要（ADMIN+）| 組織情報更新 |
-| DELETE | `/api/v1/organizations/{id}` | 必要（ADMIN+）| 組織論理削除 |
-| GET | `/api/v1/organizations/{id}/members` | 必要（visibility = PUBLIC は外部閲覧可）| 組織メンバー一覧（直接所属・visibility 依存の認可・返却粒度あり）|
-| PATCH | `/api/v1/organizations/{id}/members/{userId}/role` | 必要（ADMIN）| 組織メンバーロール変更 |
-| DELETE | `/api/v1/organizations/{id}/members/{userId}` | 必要（ADMIN）| 組織メンバー除名 |
-| POST | `/api/v1/organizations/{id}/invite-tokens` | 必要（ADMIN / DEPUTY_ADMIN※）| 組織招待トークン発行（※INVITE_MEMBERS + MANAGE_INVITE_TOKENS 権限必要）|
-| GET | `/api/v1/organizations/{id}/invite-tokens` | 必要（ADMIN / DEPUTY_ADMIN※）| 組織招待トークン一覧（※MANAGE_INVITE_TOKENS 権限必要）|
-| DELETE | `/api/v1/organizations/{id}/invite-tokens/{tokenId}` | 必要（ADMIN / DEPUTY_ADMIN※）| 組織招待トークン失効（※MANAGE_INVITE_TOKENS 権限必要）|
+| GET | `/api/v1/organizations/{slug}` | 任意 | 組織詳細取得（可視性による）。`{slug}`: 組織のURLスラッグ（例: fc-tokyo-association）|
+| PATCH | `/api/v1/organizations/{slug}` | 必要（ADMIN+）| 組織情報更新 |
+| DELETE | `/api/v1/organizations/{slug}` | 必要（ADMIN+）| 組織論理削除 |
+| GET | `/api/v1/organizations/{slug}/members` | 必要（visibility = PUBLIC は外部閲覧可）| 組織メンバー一覧（直接所属・visibility 依存の認可・返却粒度あり）|
+| PATCH | `/api/v1/organizations/{slug}/members/{userId}/role` | 必要（ADMIN）| 組織メンバーロール変更 |
+| DELETE | `/api/v1/organizations/{slug}/members/{userId}` | 必要（ADMIN）| 組織メンバー除名 |
+| POST | `/api/v1/organizations/{slug}/invite-tokens` | 必要（ADMIN / DEPUTY_ADMIN※）| 組織招待トークン発行（※INVITE_MEMBERS + MANAGE_INVITE_TOKENS 権限必要）|
+| GET | `/api/v1/organizations/{slug}/invite-tokens` | 必要（ADMIN / DEPUTY_ADMIN※）| 組織招待トークン一覧（※MANAGE_INVITE_TOKENS 権限必要）|
+| DELETE | `/api/v1/organizations/{slug}/invite-tokens/{tokenId}` | 必要（ADMIN / DEPUTY_ADMIN※）| 組織招待トークン失効（※MANAGE_INVITE_TOKENS 権限必要）|
 | POST | `/api/v1/teams` | 必要 | チーム作成 |
-| GET | `/api/v1/teams/{id}` | 任意 | チーム詳細取得（可視性による）|
-| PATCH | `/api/v1/teams/{id}` | 必要（ADMIN+）| チーム情報更新 |
-| DELETE | `/api/v1/teams/{id}` | 必要（ADMIN+）| チーム論理削除 |
-| GET | `/api/v1/teams/{id}/members` | 必要（visibility = PUBLIC / ORGANIZATION_ONLY は外部閲覧可）| チームメンバー一覧（visibility 依存の認可・返却粒度あり）|
-| PATCH | `/api/v1/teams/{id}/members/{userId}/role` | 必要（ADMIN）| メンバーロール変更 |
-| DELETE | `/api/v1/teams/{id}/members/{userId}` | 必要（ADMIN）| メンバー除名 |
-| POST | `/api/v1/teams/{id}/invite-tokens` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム招待トークン発行（※INVITE_MEMBERS + MANAGE_INVITE_TOKENS 権限必要）|
-| GET | `/api/v1/teams/{id}/invite-tokens` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム招待トークン一覧（※MANAGE_INVITE_TOKENS 権限必要）|
-| DELETE | `/api/v1/teams/{id}/invite-tokens/{tokenId}` | 必要（ADMIN / DEPUTY_ADMIN※）| 招待トークン失効（※MANAGE_INVITE_TOKENS 権限必要）|
+| GET | `/api/v1/teams/{slug}` | 任意 | チーム詳細取得（可視性による）。`{slug}`: チームのURLスラッグ（例: fc-tokyo）|
+| PATCH | `/api/v1/teams/{slug}` | 必要（ADMIN+）| チーム情報更新 |
+| DELETE | `/api/v1/teams/{slug}` | 必要（ADMIN+）| チーム論理削除 |
+| GET | `/api/v1/teams/{slug}/members` | 必要（visibility = PUBLIC / ORGANIZATION_ONLY は外部閲覧可）| チームメンバー一覧（visibility 依存の認可・返却粒度あり）|
+| PATCH | `/api/v1/teams/{slug}/members/{userId}/role` | 必要（ADMIN）| メンバーロール変更 |
+| DELETE | `/api/v1/teams/{slug}/members/{userId}` | 必要（ADMIN）| メンバー除名 |
+| POST | `/api/v1/teams/{slug}/invite-tokens` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム招待トークン発行（※INVITE_MEMBERS + MANAGE_INVITE_TOKENS 権限必要）|
+| GET | `/api/v1/teams/{slug}/invite-tokens` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム招待トークン一覧（※MANAGE_INVITE_TOKENS 権限必要）|
+| DELETE | `/api/v1/teams/{slug}/invite-tokens/{tokenId}` | 必要（ADMIN / DEPUTY_ADMIN※）| 招待トークン失効（※MANAGE_INVITE_TOKENS 権限必要）|
 | GET | `/api/v1/invite/{token}` | 不要 | 招待プレビュー（参加前確認）|
 | POST | `/api/v1/invite/{token}/join` | 必要 | 招待URLで参加 |
-| GET | `/api/v1/teams/{id}/permission-groups` | 必要（ADMIN）| 権限グループ一覧（`?target_role=DEPUTY_ADMIN\|MEMBER` でフィルタ可）|
-| POST | `/api/v1/teams/{id}/permission-groups` | 必要（ADMIN）| 権限グループ作成（`target_role` で DEPUTY_ADMIN / MEMBER を指定）|
-| PATCH | `/api/v1/teams/{id}/permission-groups/{groupId}` | 必要（ADMIN）| 権限グループ更新 |
-| DELETE | `/api/v1/teams/{id}/permission-groups/{groupId}` | 必要（ADMIN）| 権限グループ論理削除 |
-| PUT | `/api/v1/teams/{id}/members/{userId}/permission-groups` | 必要（ADMIN）| DEPUTY_ADMIN / MEMBER への権限グループ一括設定（ユーザーのロールに対応する `target_role` のグループのみ割り当て可）|
-| GET | `/api/v1/organizations/{id}/permission-groups` | 必要（ADMIN）| 組織権限グループ一覧（`?target_role=DEPUTY_ADMIN\|MEMBER` でフィルタ可）|
-| POST | `/api/v1/organizations/{id}/permission-groups` | 必要（ADMIN）| 組織権限グループ作成（`target_role` で DEPUTY_ADMIN / MEMBER を指定）|
-| PATCH | `/api/v1/organizations/{id}/permission-groups/{groupId}` | 必要（ADMIN）| 組織権限グループ更新 |
-| DELETE | `/api/v1/organizations/{id}/permission-groups/{groupId}` | 必要（ADMIN）| 組織権限グループ論理削除 |
-| PUT | `/api/v1/organizations/{id}/members/{userId}/permission-groups` | 必要（ADMIN）| 組織 DEPUTY_ADMIN / MEMBER への権限グループ一括設定 |
-| GET | `/api/v1/teams/{id}/me/permissions` | 必要 | 自分の実効パーミッション一覧（対象チームでの権限確認用）|
-| GET | `/api/v1/organizations/{id}/me/permissions` | 必要 | 自分の実効パーミッション一覧（対象組織での権限確認用）|
-| POST | `/api/v1/teams/{id}/transfer-ownership` | 必要（ADMIN）| チーム ADMIN 権限移譲（1ステップ: 対象→ADMIN、自分→DEPUTY_ADMIN）|
-| POST | `/api/v1/organizations/{id}/transfer-ownership` | 必要（ADMIN）| 組織 ADMIN 権限移譲（1ステップ: 対象→ADMIN、自分→DEPUTY_ADMIN）|
+| GET | `/api/v1/teams/{slug}/permission-groups` | 必要（ADMIN）| 権限グループ一覧（`?target_role=DEPUTY_ADMIN\|MEMBER` でフィルタ可）|
+| POST | `/api/v1/teams/{slug}/permission-groups` | 必要（ADMIN）| 権限グループ作成（`target_role` で DEPUTY_ADMIN / MEMBER を指定）|
+| PATCH | `/api/v1/teams/{slug}/permission-groups/{groupId}` | 必要（ADMIN）| 権限グループ更新 |
+| DELETE | `/api/v1/teams/{slug}/permission-groups/{groupId}` | 必要（ADMIN）| 権限グループ論理削除 |
+| PUT | `/api/v1/teams/{slug}/members/{userId}/permission-groups` | 必要（ADMIN）| DEPUTY_ADMIN / MEMBER への権限グループ一括設定（ユーザーのロールに対応する `target_role` のグループのみ割り当て可）|
+| GET | `/api/v1/organizations/{slug}/permission-groups` | 必要（ADMIN）| 組織権限グループ一覧（`?target_role=DEPUTY_ADMIN\|MEMBER` でフィルタ可）|
+| POST | `/api/v1/organizations/{slug}/permission-groups` | 必要（ADMIN）| 組織権限グループ作成（`target_role` で DEPUTY_ADMIN / MEMBER を指定）|
+| PATCH | `/api/v1/organizations/{slug}/permission-groups/{groupId}` | 必要（ADMIN）| 組織権限グループ更新 |
+| DELETE | `/api/v1/organizations/{slug}/permission-groups/{groupId}` | 必要（ADMIN）| 組織権限グループ論理削除 |
+| PUT | `/api/v1/organizations/{slug}/members/{userId}/permission-groups` | 必要（ADMIN）| 組織 DEPUTY_ADMIN / MEMBER への権限グループ一括設定 |
+| GET | `/api/v1/teams/{slug}/me/permissions` | 必要 | 自分の実効パーミッション一覧（対象チームでの権限確認用）|
+| GET | `/api/v1/organizations/{slug}/me/permissions` | 必要 | 自分の実効パーミッション一覧（対象組織での権限確認用）|
+| POST | `/api/v1/teams/{slug}/transfer-ownership` | 必要（ADMIN）| チーム ADMIN 権限移譲（1ステップ: 対象→ADMIN、自分→DEPUTY_ADMIN）|
+| POST | `/api/v1/organizations/{slug}/transfer-ownership` | 必要（ADMIN）| 組織 ADMIN 権限移譲（1ステップ: 対象→ADMIN、自分→DEPUTY_ADMIN）|
 | GET | `/api/v1/permissions` | 必要（ADMIN+）| パーミッションカタログ一覧 |
 | GET | `/api/v1/me/teams` | 必要 | 自分が所属するチーム一覧（ロール・参加日時付き）|
 | GET | `/api/v1/me/organizations` | 必要 | 自分が所属する組織一覧（ロール・参加日時付き）|
-| POST | `/api/v1/teams/{id}/follow` | 必要 | チームをフォロー（SUPPORTER 自己登録・招待コード不要）|
-| DELETE | `/api/v1/teams/{id}/follow` | 必要 | フォロー解除（自分の SUPPORTER ロールを削除）|
-| GET | `/api/v1/teams/{id}/blocks` | 必要（ADMIN）| ブロック一覧 |
-| POST | `/api/v1/teams/{id}/blocks` | 必要（ADMIN/DEPUTY_ADMIN）| ユーザーをブロック（自己登録禁止・現在のロールも同時除名）|
-| DELETE | `/api/v1/teams/{id}/blocks/{userId}` | 必要（ADMIN/DEPUTY_ADMIN）| ブロック解除 |
-| POST | `/api/v1/organizations/{id}/follow` | 必要 | 組織をフォロー（SUPPORTER 自己登録・招待コード不要）|
-| DELETE | `/api/v1/organizations/{id}/follow` | 必要 | 組織フォロー解除 |
-| GET | `/api/v1/organizations/{id}/blocks` | 必要（ADMIN）| 組織ブロック一覧 |
-| POST | `/api/v1/organizations/{id}/blocks` | 必要（ADMIN/DEPUTY_ADMIN）| 組織ユーザーをブロック |
-| DELETE | `/api/v1/organizations/{id}/blocks/{userId}` | 必要（ADMIN/DEPUTY_ADMIN）| 組織ブロック解除 |
-| GET | `/api/v1/organizations/{id}/members/all` | 必要（ADMIN+）| 組織サブツリーの全メンバー一覧（WITH RECURSIVE で全子組織・子チームを網羅・カスケード通知対象確認用）|
-| DELETE | `/api/v1/teams/{id}/me` | 必要 | 自主退会（ADMIN / DEPUTY_ADMIN / MEMBER が自ら離脱。SUPPORTER は `DELETE /teams/{id}/follow` を使用）|
-| DELETE | `/api/v1/organizations/{id}/me` | 必要 | 自主退会（ADMIN / DEPUTY_ADMIN / MEMBER が自ら離脱。SUPPORTER は `DELETE /organizations/{id}/follow` を使用）|
-| PATCH | `/api/v1/teams/{id}/archive` | 必要（ADMIN）| チームを手動アーカイブ（`archived_at = NOW()`。招待トークン失効・以降の書き込み操作ブロック）|
-| PATCH | `/api/v1/teams/{id}/unarchive` | 必要（ADMIN）| チームアーカイブ解除（`archived_at = NULL`。書き込み操作を再開）|
-| PATCH | `/api/v1/organizations/{id}/archive` | 必要（ADMIN）| 組織を手動アーカイブ（`archived_at = NOW()`。招待トークン失効・書き込み操作ブロック）|
-| PATCH | `/api/v1/organizations/{id}/unarchive` | 必要（ADMIN）| 組織アーカイブ解除（`archived_at = NULL`）|
-| PATCH | `/api/v1/teams/{id}/restore` | 必要（SYSTEM_ADMIN）| 論理削除済みチームの復元（`deleted_at = NULL`）|
-| PATCH | `/api/v1/organizations/{id}/restore` | 必要（SYSTEM_ADMIN）| 論理削除済み組織の復元（`deleted_at = NULL`）|
-| POST | `/api/v1/organizations/{id}/team-invites` | 必要（ADMIN）| 組織からチームへ所属招待を送信 |
-| GET | `/api/v1/organizations/{id}/team-invites` | 必要（ADMIN）| 送信済み招待一覧（PENDING のみ）|
-| DELETE | `/api/v1/organizations/{id}/team-invites/{teamId}` | 必要（ADMIN）| 招待取消（PENDING を削除）|
-| DELETE | `/api/v1/organizations/{id}/teams/{teamId}` | 必要（ADMIN）| 所属チームを除名（ACTIVE を削除）|
-| GET | `/api/v1/organizations/{id}/teams` | 必要 | 組織に所属するチーム一覧（ACTIVE のみ）|
-| GET | `/api/v1/teams/{id}/organizations` | 必要 | チームが所属する組織一覧（ACTIVE のみ）|
-| GET | `/api/v1/organizations/{id}/ancestors` | 任意 | 上位組織チェーン取得（root → 親の順。`hierarchy_visibility` を尊重）|
-| GET | `/api/v1/organizations/{id}/children` | 任意 | 下位組織一覧（直近の子のみ・`visibility` で可視範囲フィルタ）|
-| GET | `/api/v1/teams/{id}/org-invites` | 必要（ADMIN）| 受信した組織招待一覧（PENDING のみ）|
-| POST | `/api/v1/teams/{id}/org-invites/{membershipId}/accept` | 必要（ADMIN）| 組織招待を承認（PENDING → ACTIVE）|
-| POST | `/api/v1/teams/{id}/org-invites/{membershipId}/reject` | 必要（ADMIN）| 組織招待を拒否（PENDING を削除）|
-| DELETE | `/api/v1/teams/{id}/organizations/{orgId}` | 必要（ADMIN）| チームが組織から自主離脱（ACTIVE を削除）|
+| POST | `/api/v1/teams/{slug}/follow` | 必要 | チームをフォロー（SUPPORTER 自己登録・招待コード不要）|
+| DELETE | `/api/v1/teams/{slug}/follow` | 必要 | フォロー解除（自分の SUPPORTER ロールを削除）|
+| GET | `/api/v1/teams/{slug}/blocks` | 必要（ADMIN）| ブロック一覧 |
+| POST | `/api/v1/teams/{slug}/blocks` | 必要（ADMIN/DEPUTY_ADMIN）| ユーザーをブロック（自己登録禁止・現在のロールも同時除名）|
+| DELETE | `/api/v1/teams/{slug}/blocks/{userId}` | 必要（ADMIN/DEPUTY_ADMIN）| ブロック解除 |
+| POST | `/api/v1/organizations/{slug}/follow` | 必要 | 組織をフォロー（SUPPORTER 自己登録・招待コード不要）|
+| DELETE | `/api/v1/organizations/{slug}/follow` | 必要 | 組織フォロー解除 |
+| GET | `/api/v1/organizations/{slug}/blocks` | 必要（ADMIN）| 組織ブロック一覧 |
+| POST | `/api/v1/organizations/{slug}/blocks` | 必要（ADMIN/DEPUTY_ADMIN）| 組織ユーザーをブロック |
+| DELETE | `/api/v1/organizations/{slug}/blocks/{userId}` | 必要（ADMIN/DEPUTY_ADMIN）| 組織ブロック解除 |
+| GET | `/api/v1/organizations/{slug}/members/all` | 必要（ADMIN+）| 組織サブツリーの全メンバー一覧（WITH RECURSIVE で全子組織・子チームを網羅・カスケード通知対象確認用）|
+| DELETE | `/api/v1/teams/{slug}/me` | 必要 | 自主退会（ADMIN / DEPUTY_ADMIN / MEMBER が自ら離脱。SUPPORTER は `DELETE /teams/{slug}/follow` を使用）|
+| DELETE | `/api/v1/organizations/{slug}/me` | 必要 | 自主退会（ADMIN / DEPUTY_ADMIN / MEMBER が自ら離脱。SUPPORTER は `DELETE /organizations/{slug}/follow` を使用）|
+| PATCH | `/api/v1/teams/{slug}/archive` | 必要（ADMIN）| チームを手動アーカイブ（`archived_at = NOW()`。招待トークン失効・以降の書き込み操作ブロック）|
+| PATCH | `/api/v1/teams/{slug}/unarchive` | 必要（ADMIN）| チームアーカイブ解除（`archived_at = NULL`。書き込み操作を再開）|
+| PATCH | `/api/v1/organizations/{slug}/archive` | 必要（ADMIN）| 組織を手動アーカイブ（`archived_at = NOW()`。招待トークン失効・書き込み操作ブロック）|
+| PATCH | `/api/v1/organizations/{slug}/unarchive` | 必要（ADMIN）| 組織アーカイブ解除（`archived_at = NULL`）|
+| PATCH | `/api/v1/teams/{slug}/restore` | 必要（SYSTEM_ADMIN）| 論理削除済みチームの復元（`deleted_at = NULL`）|
+| PATCH | `/api/v1/organizations/{slug}/restore` | 必要（SYSTEM_ADMIN）| 論理削除済み組織の復元（`deleted_at = NULL`）|
+| POST | `/api/v1/organizations/{slug}/team-invites` | 必要（ADMIN）| 組織からチームへ所属招待を送信 |
+| GET | `/api/v1/organizations/{slug}/team-invites` | 必要（ADMIN）| 送信済み招待一覧（PENDING のみ）|
+| DELETE | `/api/v1/organizations/{slug}/team-invites/{teamId}` | 必要（ADMIN）| 招待取消（PENDING を削除）|
+| DELETE | `/api/v1/organizations/{slug}/teams/{teamId}` | 必要（ADMIN）| 所属チームを除名（ACTIVE を削除）|
+| GET | `/api/v1/organizations/{slug}/teams` | 必要 | 組織に所属するチーム一覧（ACTIVE のみ）|
+| GET | `/api/v1/teams/{slug}/organizations` | 必要 | チームが所属する組織一覧（ACTIVE のみ）|
+| GET | `/api/v1/organizations/{slug}/ancestors` | 任意 | 上位組織チェーン取得（root → 親の順。`hierarchy_visibility` を尊重）|
+| GET | `/api/v1/organizations/{slug}/children` | 任意 | 下位組織一覧（直近の子のみ・`visibility` で可視範囲フィルタ）|
+| GET | `/api/v1/teams/{slug}/org-invites` | 必要（ADMIN）| 受信した組織招待一覧（PENDING のみ）|
+| POST | `/api/v1/teams/{slug}/org-invites/{membershipId}/accept` | 必要（ADMIN）| 組織招待を承認（PENDING → ACTIVE）|
+| POST | `/api/v1/teams/{slug}/org-invites/{membershipId}/reject` | 必要（ADMIN）| 組織招待を拒否（PENDING を削除）|
+| DELETE | `/api/v1/teams/{slug}/organizations/{orgSlug}` | 必要（ADMIN）| チームが組織から自主離脱（ACTIVE を削除）|
 | GET | `/api/v1/invite/{token}/qr` | 不要 | 招待QRコード画像取得（PNG）|
-| PATCH | `/api/v1/organizations/{id}/profile` | 必要（ADMIN / DEPUTY_ADMIN※）| 組織プロフィール拡張項目の一括更新（homepage_url / established_date / philosophy / profile_visibility）。※MANAGE_ORGANIZATION 権限必要 |
-| PATCH | `/api/v1/teams/{id}/profile` | 必要（ADMIN / DEPUTY_ADMIN※）| チームプロフィール拡張項目の一括更新。※MANAGE_TEAM 権限必要 |
-| GET | `/api/v1/organizations/{id}/officers` | 任意 | 組織役員一覧（可視性と `is_visible` に基づくフィルタ）|
-| POST | `/api/v1/organizations/{id}/officers` | 必要（ADMIN / DEPUTY_ADMIN※）| 役員追加（最大50件）|
-| PATCH | `/api/v1/organizations/{id}/officers/{officerId}` | 必要（ADMIN / DEPUTY_ADMIN※）| 役員編集（氏名・役職・is_visible）|
-| DELETE | `/api/v1/organizations/{id}/officers/{officerId}` | 必要（ADMIN / DEPUTY_ADMIN※）| 役員削除（物理削除）|
-| PUT | `/api/v1/organizations/{id}/officers/reorder` | 必要（ADMIN / DEPUTY_ADMIN※）| 役員並び替え（display_order の一括更新）|
-| GET | `/api/v1/teams/{id}/officers` | 任意 | チーム役員一覧 |
-| POST | `/api/v1/teams/{id}/officers` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム役員追加 |
-| PATCH | `/api/v1/teams/{id}/officers/{officerId}` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム役員編集 |
-| DELETE | `/api/v1/teams/{id}/officers/{officerId}` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム役員削除 |
-| PUT | `/api/v1/teams/{id}/officers/reorder` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム役員並び替え |
-| GET | `/api/v1/organizations/{id}/custom-fields` | 任意 | 組織カスタムフィールド一覧（可視性と `is_visible` に基づくフィルタ）|
-| POST | `/api/v1/organizations/{id}/custom-fields` | 必要（ADMIN / DEPUTY_ADMIN※）| カスタムフィールド追加（最大20件）|
-| PATCH | `/api/v1/organizations/{id}/custom-fields/{fieldId}` | 必要（ADMIN / DEPUTY_ADMIN※）| カスタムフィールド編集 |
-| DELETE | `/api/v1/organizations/{id}/custom-fields/{fieldId}` | 必要（ADMIN / DEPUTY_ADMIN※）| カスタムフィールド削除 |
-| PUT | `/api/v1/organizations/{id}/custom-fields/reorder` | 必要（ADMIN / DEPUTY_ADMIN※）| カスタムフィールド並び替え |
-| GET | `/api/v1/teams/{id}/custom-fields` | 任意 | チームカスタムフィールド一覧 |
-| POST | `/api/v1/teams/{id}/custom-fields` | 必要（ADMIN / DEPUTY_ADMIN※）| チームカスタムフィールド追加 |
-| PATCH | `/api/v1/teams/{id}/custom-fields/{fieldId}` | 必要（ADMIN / DEPUTY_ADMIN※）| チームカスタムフィールド編集 |
-| DELETE | `/api/v1/teams/{id}/custom-fields/{fieldId}` | 必要（ADMIN / DEPUTY_ADMIN※）| チームカスタムフィールド削除 |
-| PUT | `/api/v1/teams/{id}/custom-fields/reorder` | 必要（ADMIN / DEPUTY_ADMIN※）| チームカスタムフィールド並び替え |
+| PATCH | `/api/v1/organizations/{slug}/profile` | 必要（ADMIN / DEPUTY_ADMIN※）| 組織プロフィール拡張項目の一括更新（homepage_url / established_date / philosophy / profile_visibility）。※MANAGE_ORGANIZATION 権限必要 |
+| PATCH | `/api/v1/teams/{slug}/profile` | 必要（ADMIN / DEPUTY_ADMIN※）| チームプロフィール拡張項目の一括更新。※MANAGE_TEAM 権限必要 |
+| GET | `/api/v1/organizations/{slug}/officers` | 任意 | 組織役員一覧（可視性と `is_visible` に基づくフィルタ）|
+| POST | `/api/v1/organizations/{slug}/officers` | 必要（ADMIN / DEPUTY_ADMIN※）| 役員追加（最大50件）|
+| PATCH | `/api/v1/organizations/{slug}/officers/{officerId}` | 必要（ADMIN / DEPUTY_ADMIN※）| 役員編集（氏名・役職・is_visible）|
+| DELETE | `/api/v1/organizations/{slug}/officers/{officerId}` | 必要（ADMIN / DEPUTY_ADMIN※）| 役員削除（物理削除）|
+| PUT | `/api/v1/organizations/{slug}/officers/reorder` | 必要（ADMIN / DEPUTY_ADMIN※）| 役員並び替え（display_order の一括更新）|
+| GET | `/api/v1/teams/{slug}/officers` | 任意 | チーム役員一覧 |
+| POST | `/api/v1/teams/{slug}/officers` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム役員追加 |
+| PATCH | `/api/v1/teams/{slug}/officers/{officerId}` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム役員編集 |
+| DELETE | `/api/v1/teams/{slug}/officers/{officerId}` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム役員削除 |
+| PUT | `/api/v1/teams/{slug}/officers/reorder` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム役員並び替え |
+| GET | `/api/v1/organizations/{slug}/custom-fields` | 任意 | 組織カスタムフィールド一覧（可視性と `is_visible` に基づくフィルタ）|
+| POST | `/api/v1/organizations/{slug}/custom-fields` | 必要（ADMIN / DEPUTY_ADMIN※）| カスタムフィールド追加（最大20件）|
+| PATCH | `/api/v1/organizations/{slug}/custom-fields/{fieldId}` | 必要（ADMIN / DEPUTY_ADMIN※）| カスタムフィールド編集 |
+| DELETE | `/api/v1/organizations/{slug}/custom-fields/{fieldId}` | 必要（ADMIN / DEPUTY_ADMIN※）| カスタムフィールド削除 |
+| PUT | `/api/v1/organizations/{slug}/custom-fields/reorder` | 必要（ADMIN / DEPUTY_ADMIN※）| カスタムフィールド並び替え |
+| GET | `/api/v1/teams/{slug}/custom-fields` | 任意 | チームカスタムフィールド一覧 |
+| POST | `/api/v1/teams/{slug}/custom-fields` | 必要（ADMIN / DEPUTY_ADMIN※）| チームカスタムフィールド追加 |
+| PATCH | `/api/v1/teams/{slug}/custom-fields/{fieldId}` | 必要（ADMIN / DEPUTY_ADMIN※）| チームカスタムフィールド編集 |
+| DELETE | `/api/v1/teams/{slug}/custom-fields/{fieldId}` | 必要（ADMIN / DEPUTY_ADMIN※）| チームカスタムフィールド削除 |
+| PUT | `/api/v1/teams/{slug}/custom-fields/reorder` | 必要（ADMIN / DEPUTY_ADMIN※）| チームカスタムフィールド並び替え |
 
 ### リクエスト／レスポンス仕様
 
@@ -221,7 +223,7 @@
 
 ---
 
-#### `GET /api/v1/teams/{id}/members`
+#### `GET /api/v1/teams/{slug}/members`
 
 **認可ルール（visibility 依存）**
 
@@ -306,7 +308,7 @@ MEMBER / SUPPORTER / GUEST またはチーム非メンバー（PUBLIC / ORGANIZA
 
 ---
 
-#### `POST /api/v1/teams/{id}/invite-tokens`
+#### `POST /api/v1/teams/{slug}/invite-tokens`
 
 **リクエストボディ**
 ```json
@@ -459,7 +461,7 @@ Body: QRコード PNG バイナリ（invite_url をエンコード・デフォ�
 
 ---
 
-#### `PUT /api/v1/teams/{id}/members/{userId}/permission-groups`
+#### `PUT /api/v1/teams/{slug}/members/{userId}/permission-groups`
 
 **リクエストボディ**
 ```json
@@ -495,7 +497,7 @@ Body: QRコード PNG バイナリ（invite_url をエンコード・デフォ�
 
 ---
 
-#### `GET /api/v1/organizations/{id}/members`
+#### `GET /api/v1/organizations/{slug}/members`
 
 **認可ルール（visibility 依存）**
 
@@ -528,7 +530,7 @@ Body: QRコード PNG バイナリ（invite_url をエンコード・デフォ�
 
 **レスポンス（200 OK）**
 
-※ デフォルトソート: `joined_at`（参加日時）昇順。レスポンス構造・カーソルベースページネーション仕様は `GET /api/v1/teams/{id}/members` と同一（`permission_groups` / `joined_at` の返却条件も同様）。
+※ デフォルトソート: `joined_at`（参加日時）昇順。レスポンス構造・カーソルベースページネーション仕様は `GET /api/v1/teams/{slug}/members` と同一（`permission_groups` / `joined_at` の返却条件も同様）。
 
 **エラーレスポンス**
 | ステータス | 条件 |
@@ -539,7 +541,7 @@ Body: QRコード PNG バイナリ（invite_url をエンコード・デフォ�
 
 ---
 
-#### `GET /api/v1/organizations/{id}/members/all`
+#### `GET /api/v1/organizations/{slug}/members/all`
 
 **クエリパラメータ**
 | パラメータ | 型 | デフォルト | 説明 |
@@ -693,7 +695,7 @@ Body: QRコード PNG バイナリ（invite_url をエンコード・デフォ�
 
 ---
 
-#### `GET /api/v1/organizations/{id}/teams`
+#### `GET /api/v1/organizations/{slug}/teams`
 
 組織に所属する（`team_org_memberships.status = 'ACTIVE'`）チーム一覧を返す。
 
@@ -752,7 +754,7 @@ Body: QRコード PNG バイナリ（invite_url をエンコード・デフォ�
 
 ---
 
-#### `GET /api/v1/teams/{id}/organizations`
+#### `GET /api/v1/teams/{slug}/organizations`
 
 チームが所属する（`team_org_memberships.status = 'ACTIVE'`）組織一覧を返す。
 
@@ -808,7 +810,7 @@ Body: QRコード PNG バイナリ（invite_url をエンコード・デフォ�
 
 ---
 
-#### `GET /api/v1/organizations/{id}/ancestors`
+#### `GET /api/v1/organizations/{slug}/ancestors`
 
 対象組織の上位組織チェーン（祖先）を `parent_organization_id` を辿って返す。配列の先頭が root（最上位）、末尾が直近の親。`hierarchy_visibility` および `visibility` を尊重する。
 
@@ -883,9 +885,9 @@ Body: QRコード PNG バイナリ（invite_url をエンコード・デフォ�
 
 ---
 
-#### `GET /api/v1/organizations/{id}/children`
+#### `GET /api/v1/organizations/{slug}/children`
 
-対象組織の **直近の子組織**（`parent_organization_id = {id}` かつ `deleted_at IS NULL`）の一覧を返す。深い孫は含まない（必要なら呼び出し側で再帰取得）。
+対象組織の **直近の子組織**（`parent_organization_id = {slug}` かつ `deleted_at IS NULL`）の一覧を返す。深い孫は含まない（必要なら呼び出し側で再帰取得）。
 
 **認可ルール**
 
@@ -940,7 +942,7 @@ Body: QRコード PNG バイナリ（invite_url をエンコード・デフォ�
 
 ---
 
-#### `PATCH /api/v1/teams/{id}/archive` / `PATCH /api/v1/teams/{id}/unarchive`
+#### `PATCH /api/v1/teams/{slug}/archive` / `PATCH /api/v1/teams/{slug}/unarchive`
 
 リクエストボディなし。204 No Content を返す。
 
@@ -954,7 +956,7 @@ Body: QRコード PNG バイナリ（invite_url をエンコード・デフォ�
 
 ---
 
-#### `PATCH /api/v1/organizations/{id}/archive` / `PATCH /api/v1/organizations/{id}/unarchive`
+#### `PATCH /api/v1/organizations/{slug}/archive` / `PATCH /api/v1/organizations/{slug}/unarchive`
 
 リクエストボディなし。204 No Content を返す。
 
@@ -968,7 +970,7 @@ Body: QRコード PNG バイナリ（invite_url をエンコード・デフォ�
 
 ---
 
-#### `GET /api/v1/teams/{id}/me/permissions`
+#### `GET /api/v1/teams/{slug}/me/permissions`
 
 対象チームにおける自分の実効パーミッション一覧を返す。フロントエンドの UI 制御（ボタン表示/非表示）に使用する。
 
@@ -993,7 +995,7 @@ Body: QRコード PNG バイナリ（invite_url をエンコード・デフォ�
 > - 権限解決ロジック（Section 5）に従い、ロール・権限グループから実効パーミッションを算出して返す
 > - SYSTEM_ADMIN の場合は全パーミッションを返す
 > - SUPPORTER / GUEST の場合は `permissions` は空配列
-> - `GET /organizations/{id}/me/permissions` も同一仕様（スコープが組織に変わるのみ）
+> - `GET /organizations/{slug}/me/permissions` も同一仕様（スコープが組織に変わるのみ）
 
 **エラーレスポンス**
 | ステータス | 条件 |
@@ -1003,7 +1005,7 @@ Body: QRコード PNG バイナリ（invite_url をエンコード・デフォ�
 
 ---
 
-#### `POST /api/v1/teams/{id}/transfer-ownership`
+#### `POST /api/v1/teams/{slug}/transfer-ownership`
 
 ADMIN 権限を別のメンバーに移譲する。1ステップで「対象ユーザー→ADMIN」「自分→DEPUTY_ADMIN」を同時に実行する。
 
@@ -1032,7 +1034,7 @@ ADMIN 権限を別のメンバーに移譲する。1ステップで「対象ユ�
 }
 ```
 
-> - `POST /organizations/{id}/transfer-ownership` も同一仕様（スコープが組織に変わるのみ）
+> - `POST /organizations/{slug}/transfer-ownership` も同一仕様（スコープが組織に変わるのみ）
 
 **エラーレスポンス**
 | ステータス | 条件 |
@@ -1045,7 +1047,7 @@ ADMIN 権限を別のメンバーに移譲する。1ステップで「対象ユ�
 
 ---
 
-#### `PATCH /api/v1/teams/{id}/restore` / `PATCH /api/v1/organizations/{id}/restore`
+#### `PATCH /api/v1/teams/{slug}/restore` / `PATCH /api/v1/organizations/{slug}/restore`
 
 論理削除済みのチーム/組織を復元する。SYSTEM_ADMIN のみ実行可能。
 
@@ -1061,11 +1063,11 @@ ADMIN 権限を別のメンバーに移譲する。1ステップで「対象ユ�
 
 ---
 
-#### `PATCH /api/v1/organizations/{id}/profile`（`/api/v1/teams/{id}/profile` も同一仕様）
+#### `PATCH /api/v1/organizations/{slug}/profile`（`/api/v1/teams/{slug}/profile` も同一仕様）
 
 組織（またはチーム）のプロフィール拡張項目を一括更新する。
 
-**既存 `PATCH /api/v1/organizations/{id}` との棲み分け**:
+**既存 `PATCH /api/v1/organizations/{slug}` との棲み分け**:
 - 既存 PATCH は「基本情報」（`name`, `name_kana`, `nickname1/2`, `description`, `icon_url`, `banner_url`, `visibility`, `hierarchy_visibility`, `supporter_enabled`, `org_type`）のみ
 - 本 PATCH は「拡張プロフィール」（`homepage_url`, `established_date`, `established_date_precision`, `philosophy`, `profile_visibility`）のみ
 - 既存 PATCH に `homepage_url` 等を渡すと 400（`ORG_049`: 拡張プロフィール項目は `/profile` エンドポイントで更新）
@@ -1119,7 +1121,7 @@ ADMIN 権限を別のメンバーに移譲する。1ステップで「対象ユ�
 
 ---
 
-#### `POST /api/v1/organizations/{id}/officers`（`/api/v1/teams/{id}/officers` も同一仕様）
+#### `POST /api/v1/organizations/{slug}/officers`（`/api/v1/teams/{slug}/officers` も同一仕様）
 
 組織の役員を追加する。
 
@@ -1161,19 +1163,19 @@ ADMIN 権限を別のメンバーに移譲する。1ステップで「対象ユ�
 
 ---
 
-#### `PATCH /api/v1/organizations/{id}/officers/{officerId}`
+#### `PATCH /api/v1/organizations/{slug}/officers/{officerId}`
 
 役員情報を更新する。リクエスト・認可・エラーは `POST` と同一（全フィールド任意）。
 
 ---
 
-#### `DELETE /api/v1/organizations/{id}/officers/{officerId}`
+#### `DELETE /api/v1/organizations/{slug}/officers/{officerId}`
 
 役員を物理削除する。204 No Content を返す。同一組織配下の役員でない場合 404。
 
 ---
 
-#### `PUT /api/v1/organizations/{id}/officers/reorder`
+#### `PUT /api/v1/organizations/{slug}/officers/reorder`
 
 役員の並び順を一括更新する（楽観ロックのため単発 PATCH ではなく専用エンドポイント）。
 
@@ -1195,7 +1197,7 @@ ADMIN 権限を別のメンバーに移譲する。1ステップで「対象ユ�
 
 ---
 
-#### `GET /api/v1/organizations/{id}/officers`
+#### `GET /api/v1/organizations/{slug}/officers`
 
 役員一覧を取得する。
 
@@ -1215,7 +1217,7 @@ ADMIN 権限を別のメンバーに移譲する。1ステップで「対象ユ�
 
 ---
 
-#### `POST /api/v1/organizations/{id}/custom-fields`（`/api/v1/teams/{id}/custom-fields` も同一仕様）
+#### `POST /api/v1/organizations/{slug}/custom-fields`（`/api/v1/teams/{slug}/custom-fields` も同一仕様）
 
 フリー記述プロフィール項目を追加する。
 
@@ -1247,13 +1249,13 @@ ADMIN 権限を別のメンバーに移譲する。1ステップで「対象ユ�
 
 ---
 
-#### `PATCH /api/v1/organizations/{id}/custom-fields/{fieldId}` / `DELETE` / `PUT .../reorder`
+#### `PATCH /api/v1/organizations/{slug}/custom-fields/{fieldId}` / `DELETE` / `PUT .../reorder`
 
 officers と同じ仕様・エラーハンドリング（数値上限のみ 20 件に変更）。
 
 ---
 
-#### `GET /api/v1/organizations/{id}/custom-fields`
+#### `GET /api/v1/organizations/{slug}/custom-fields`
 
 可視性ルールは officers と同じ。`profile_visibility.custom_fields = false` のときは非メンバーには空配列。
 
