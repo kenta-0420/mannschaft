@@ -236,7 +236,7 @@ function isActive(path: string, exact = false): boolean {
                 :aria-label="t('inbox.title')"
                 :title="t('inbox.title')"
               >
-                <i class="pi pi-inbox text-xl" />
+                <i class="pi pi-inbox text-surface-600" />
                 <Badge
                   v-if="inboxStore.inboxCount > 0"
                   :value="inboxStore.inboxCount > 99 ? '99+' : inboxStore.inboxCount"
