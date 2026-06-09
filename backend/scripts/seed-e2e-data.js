@@ -2,6 +2,15 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
+/** チーム/組織名から URL スラッグを生成する（BE SlugGenerator と同ロジック）。 */
+function generateSlug(name) {
+  const base = name.toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .substring(0, 30);
+  return base.length >= 3 ? base : 'item';
+}
+
 // ============================================================
 // F18 ポイントカードウォレット用 AES-256-GCM 暗号化ヘルパー
 // ------------------------------------------------------------
@@ -119,12 +128,13 @@ function encryptForTest(plain) {
   const orgs = {};
 
   async function createOrg(name, orgType, parentId, pref, city) {
+    const slug = generateSlug(name);
     await conn.execute(
       `INSERT IGNORE INTO organizations
-        (name, org_type, parent_organization_id, prefecture, city,
+        (slug, name, org_type, parent_organization_id, prefecture, city,
          visibility, hierarchy_visibility, supporter_enabled, version, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,1,?,?)`,
-      [name, orgType, parentId, pref, city, 'PUBLIC', 'FULL', 1, now, now]
+       VALUES (?,?,?,?,?,?,?,?,?,1,?,?)`,
+      [slug, name, orgType, parentId, pref, city, 'PUBLIC', 'FULL', 1, now, now]
     );
     const [[r]] = await conn.execute('SELECT id FROM organizations WHERE name = ?', [name]);
     return Number(r.id);
@@ -154,11 +164,12 @@ function encryptForTest(plain) {
   const teams = {};
 
   async function createTeam(name, template, pref, city) {
+    const slug = generateSlug(name);
     await conn.execute(
       `INSERT IGNORE INTO teams
-        (name, template, prefecture, city, visibility, supporter_enabled, version, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,1,?,?)`,
-      [name, template, pref, city, 'PUBLIC', 1, now, now]
+        (slug, name, template, prefecture, city, visibility, supporter_enabled, version, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,1,?,?)`,
+      [slug, name, template, pref, city, 'PUBLIC', 1, now, now]
     );
     const [[r]] = await conn.execute('SELECT id FROM teams WHERE name = ?', [name]);
     return Number(r.id);
