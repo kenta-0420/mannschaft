@@ -14,17 +14,19 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 const route = useRoute()
 const router = useRouter()
 const teamIdStr = String(route.params.id)
-const teamId = Number(teamIdStr)
 const { t } = useI18n()
 
 const { listMatches } = useMatchApi()
 
-// === 組織 ID の解決（useMatchOrgContext に集約・3 ページ共通化）===
-const { resolveOrgId } = useMatchOrgContext()
+// === 組織／チーム 数値 ID の解決（publicId→数値 orgId/teamId・useMatchOrgContext に集約）===
+const { resolveContext } = useMatchOrgContext()
 const orgId = ref<number | null>(null)
+const teamId = ref<number | null>(null)
 
 async function loadOrganizationId(): Promise<void> {
-  orgId.value = await resolveOrgId(teamIdStr)
+  const ctx = await resolveContext(teamIdStr)
+  orgId.value = ctx?.orgId ?? null
+  teamId.value = ctx?.teamId ?? null
 }
 
 // === フィルタ状態 ===
@@ -48,7 +50,7 @@ const total = ref(0)
 const hasMore = computed(() => matches.value.length < total.value)
 
 async function load(reset = true): Promise<void> {
-  if (orgId.value === null) return
+  if (orgId.value === null || teamId.value === null) return
   if (reset) {
     page.value = 0
     matches.value = []
@@ -61,7 +63,7 @@ async function load(reset = true): Promise<void> {
     }
     if (kindFilter.value) params.kind = kindFilter.value
     if (statusFilter.value) params.status = statusFilter.value
-    const res = await listMatches(orgId.value, teamId, params)
+    const res = await listMatches(orgId.value, teamId.value, params)
     const rows = res.data ?? []
     matches.value = reset ? rows : [...matches.value, ...rows]
     total.value = res.meta?.total ?? matches.value.length

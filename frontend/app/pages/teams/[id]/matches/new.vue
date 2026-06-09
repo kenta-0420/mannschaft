@@ -10,17 +10,19 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 const route = useRoute()
 const router = useRouter()
 const teamIdStr = String(route.params.id)
-const teamId = Number(teamIdStr)
 const { t } = useI18n()
 
 const { createMatch } = useMatchApi()
 const { buildOffsetDateTimeStr } = useDatetime()
 
-// === 組織 ID の解決（useMatchOrgContext に集約・3 ページ共通化）===
-const { resolveOrgId } = useMatchOrgContext()
+// === 組織／チーム 数値 ID の解決（publicId→数値 orgId/teamId・useMatchOrgContext に集約）===
+const { resolveContext } = useMatchOrgContext()
 const orgId = ref<number | null>(null)
+const teamId = ref<number | null>(null)
 async function loadOrganizationId(): Promise<void> {
-  orgId.value = await resolveOrgId(teamIdStr)
+  const ctx = await resolveContext(teamIdStr)
+  orgId.value = ctx?.orgId ?? null
+  teamId.value = ctx?.teamId ?? null
 }
 
 // === フォーム状態 ===
@@ -82,7 +84,7 @@ function selectKind(kind: MatchKind): void {
 async function submit(): Promise<void> {
   if (!validate()) return
   await loadOrganizationId()
-  if (orgId.value === null || form.kind === null) return
+  if (orgId.value === null || teamId.value === null || form.kind === null) return
 
   submitting.value = true
   const body: CreateMatchRequest = {
@@ -98,7 +100,7 @@ async function submit(): Promise<void> {
   }
 
   try {
-    const created = await createMatch(orgId.value, teamId, body)
+    const created = await createMatch(orgId.value, teamId.value, body)
     // 作成成功後は live.vue へ遷移する（§G.1a-2 = 即記録開始）。3-B で live.vue を実装済み。
     if (created.id) {
       void router.push(`/teams/${teamIdStr}/matches/${created.id}/live`)
