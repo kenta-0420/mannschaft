@@ -37,7 +37,7 @@ public class TeamEntity extends BaseEntity {
      * <p>内部 BIGINT PK は FK 関係のために保持し、URL には本フィールドを使用する。
      * {@code @UuidGenerator(style = TIME)} により UUIDv7（時刻順ソート可能）が自動生成される。</p>
      */
-    @Column(name = "public_id", columnDefinition = "BINARY(16)", nullable = true, updatable = false, unique = true)
+    @Column(name = "public_id", columnDefinition = "BINARY(16)", nullable = false, updatable = false, unique = true)
     @UuidGenerator(style = UuidGenerator.Style.TIME)
     private UUID publicId;
 
