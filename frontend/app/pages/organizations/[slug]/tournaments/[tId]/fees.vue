@@ -9,11 +9,11 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const tId = Number(route.params.tId)
 
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
-const { listFees, createFee, deleteFee } = useTournamentFee(orgId, tId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
+const { listFees, createFee, deleteFee } = useTournamentFee(orgSlug, tId)
 const { getPaymentItems } = usePaymentApi()
 const notification = useNotification()
 
@@ -37,7 +37,7 @@ const paymentItems = ref<PaymentItemResponse[]>([])
 
 async function loadPaymentItems() {
   try {
-    const res = await getPaymentItems('organization', orgId)
+    const res = await getPaymentItems('organization', orgSlug)
     paymentItems.value = res.data
   } catch {
     // 支払い項目は補助情報のためサイレント
@@ -139,7 +139,7 @@ onMounted(async () => {
 <template>
   <div>
     <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/organizations/${orgId}/tournaments/${tId}`" :label="$t('tournament.fees.title')" />
+      <BackButton :to="`/organizations/${orgSlug}/tournaments/${tId}`" :label="$t('tournament.fees.title')" />
     </div>
 
     <div class="mb-6 flex items-center justify-between">

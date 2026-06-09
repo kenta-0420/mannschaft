@@ -12,10 +12,10 @@ interface StudentEntry extends DailyRollCallEntry {
 }
 
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 
 const { records, loading, submitting, lastSummary, loadRecords, submitRollCall } =
-  useDailyRollCall(teamId)
+  useDailyRollCall(teamSlug)
 const { userTimezone } = useDatetime()
 
 const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
@@ -66,7 +66,7 @@ onMounted(async () => {
 <template>
   <div class="flex flex-col min-h-screen">
     <header class="flex items-center gap-3 px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900">
-      <BackButton :to="`/teams/${teamId}`" :label="$t('common.back')" />
+      <BackButton :to="`/teams/${teamSlug}`" :label="$t('common.back')" />
       <h1 class="text-lg font-bold m-0">
         {{ $t('school.attendance.dailyRollCall.title') }}
       </h1>

@@ -23,7 +23,7 @@ const { t } = useI18n()
 const api = useJobPostingApi()
 const { success, error } = useNotification()
 
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const jobId = computed(() => Number(route.params.jobId))
 
 const job = ref<JobPostingResponse | null>(null)
@@ -136,7 +136,7 @@ async function save() {
     }
     await api.updateJob(jobId.value, body)
     success(t('jobmatching.edit.saved'))
-    router.push(`/teams/${teamId.value}/jobs/${jobId.value}`)
+    router.push(`/teams/${teamSlug.value}/jobs/${jobId.value}`)
   }
   catch (e) {
     error(t('jobmatching.edit.failed'), String(e))
@@ -147,7 +147,7 @@ async function save() {
 }
 
 function cancel() {
-  router.push(`/teams/${teamId.value}/jobs/${jobId.value}`)
+  router.push(`/teams/${teamSlug.value}/jobs/${jobId.value}`)
 }
 
 onMounted(() => load())

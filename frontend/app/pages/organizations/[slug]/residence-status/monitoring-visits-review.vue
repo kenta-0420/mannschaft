@@ -5,7 +5,7 @@ import type { ContactResult, MonitoringVisitResponse } from '~/types/residenceSt
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 
 const { listVisitsByCommittee, listVisitsByResident } = useMonitoringVisitApi()
 const { formatDate } = useDatetime()
@@ -63,12 +63,12 @@ async function handleSearch() {
   try {
     if (filterMode.value === 'committee') {
       if (!committeeIdInput.value) return
-      const res = await listVisitsByCommittee(orgId.value, Number(committeeIdInput.value))
+      const res = await listVisitsByCommittee(orgSlug.value, Number(committeeIdInput.value))
       visits.value = res.data
     }
     else {
       if (!residentRegistryIdInput.value) return
-      const res = await listVisitsByResident(orgId.value, Number(residentRegistryIdInput.value))
+      const res = await listVisitsByResident(orgSlug.value, Number(residentRegistryIdInput.value))
       visits.value = res.data
     }
   }
@@ -97,7 +97,7 @@ const canSearch = computed(() => {
 })
 
 function handleBackToDashboard() {
-  navigateTo(`/organizations/${orgId.value}/residence-status/dashboard`)
+  navigateTo(`/organizations/${orgSlug.value}/residence-status/dashboard`)
 }
 </script>
 

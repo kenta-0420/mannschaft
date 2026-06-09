@@ -2,7 +2,7 @@
 import type { DirectMailResponse } from '~/types/line'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const { getMails } = useDirectMailApi()
 const { error: showError } = useNotification()
 const mails = ref<DirectMailResponse[]>([])
@@ -10,7 +10,7 @@ const loading = ref(false)
 async function load() {
   loading.value = true
   try {
-    const res = await getMails('organization', orgId)
+    const res = await getMails('organization', orgSlug)
     mails.value = res.data
   } catch {
     showError('メール一覧の取得に失敗しました')

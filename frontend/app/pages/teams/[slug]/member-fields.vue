@@ -2,7 +2,7 @@
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 </script>
 
 <template>
@@ -10,6 +10,6 @@ const teamId = computed(() => String(route.params.id))
     <div class="flex items-center justify-between mb-4">
       <h1 class="text-xl font-bold">メンバーフィールド管理</h1>
     </div>
-    <MemberFieldsManager scope-type="TEAM" :scope-id="teamId" />
+    <MemberFieldsManager scope-type="TEAM" :scope-id="teamSlug" />
   </div>
 </template>

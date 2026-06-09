@@ -8,7 +8,7 @@ import type {
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 
 const {
   getTeamTournamentHistory,
@@ -29,8 +29,8 @@ async function load() {
   loading.value = true
   try {
     const [histRes, statsRes] = await Promise.all([
-      getTeamTournamentHistory(teamId),
-      getTeamTournamentStats(teamId),
+      getTeamTournamentHistory(teamSlug),
+      getTeamTournamentStats(teamSlug),
     ])
     historyResponse.value = histRes.data
     stats.value = statsRes.data

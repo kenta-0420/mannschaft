@@ -7,10 +7,10 @@ definePageMeta({
 })
 
 const route = useRoute()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 const onboardingApi = useOnboardingApi()
 const notification = useNotification()
-const { isAdmin, loadPermissions } = useRoleAccess('organization', orgId)
+const { isAdmin, loadPermissions } = useRoleAccess('organization', orgSlug)
 
 const templates = ref<OnboardingTemplate[]>([])
 const progresses = ref<OnboardingProgress[]>([])
@@ -25,8 +25,8 @@ async function loadData() {
   try {
     await loadPermissions()
     const [tmpl, prog] = await Promise.all([
-      onboardingApi.listTemplates('organization', orgId.value),
-      onboardingApi.listProgresses('organization', orgId.value),
+      onboardingApi.listTemplates('organization', orgSlug.value),
+      onboardingApi.listProgresses('organization', orgSlug.value),
     ])
     templates.value = tmpl
     progresses.value = prog
@@ -57,7 +57,7 @@ async function handleSave(data: { name: string; description: string; deadlineDay
       await onboardingApi.updateTemplate(editingTemplate.value.id, body)
       notification.success('テンプレートを更新しました')
     } else {
-      await onboardingApi.createTemplate('organization', orgId.value, body)
+      await onboardingApi.createTemplate('organization', orgSlug.value, body)
       notification.success('テンプレートを作成しました')
     }
     showTemplateDialog.value = false
@@ -89,7 +89,7 @@ async function archiveTemplate(id: number) {
 
 async function handleRemind() {
   try {
-    await onboardingApi.sendReminder('organization', orgId.value)
+    await onboardingApi.sendReminder('organization', orgSlug.value)
     notification.success('リマインダーを送信しました')
   } catch {
     notification.error('リマインダーの送信に失敗しました')

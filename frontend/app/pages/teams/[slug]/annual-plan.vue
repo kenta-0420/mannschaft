@@ -6,7 +6,7 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const annualPlanApi = useAnnualPlanApi()
 const notification = useNotification()
 const { userTimezone } = useDatetime()
@@ -35,7 +35,7 @@ const categoryOptions = computed(() => [
 async function loadData() {
   loading.value = true
   try {
-    const res = await annualPlanApi.getAnnualView('team', teamId.value, {
+    const res = await annualPlanApi.getAnnualView('team', teamSlug.value, {
       academicYear: selectedYear.value,
       categoryIds: selectedCategoryId.value !== undefined ? [selectedCategoryId.value] : undefined,
     })
@@ -57,7 +57,7 @@ async function loadPreview() {
   try {
     const preview = await annualPlanApi.getCopyPreview(
       'team',
-      teamId.value,
+      teamSlug.value,
       selectedYear.value - 1,
       selectedYear.value,
     )
@@ -74,7 +74,7 @@ async function loadPreview() {
 async function handleCopy() {
   copyLoading.value = true
   try {
-    await annualPlanApi.executeCopy('team', teamId.value, {
+    await annualPlanApi.executeCopy('team', teamSlug.value, {
       sourceYear: selectedYear.value - 1,
       targetYear: selectedYear.value,
       dateShiftMode: 'SAME_WEEKDAY',

@@ -7,10 +7,10 @@ definePageMeta({
 })
 
 const route = useRoute()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 const memberCardApi = useMemberCardApi()
 const notification = useNotification()
-const { loadPermissions } = useRoleAccess('organization', orgId)
+const { loadPermissions } = useRoleAccess('organization', orgSlug)
 
 const cards = ref<MemberCard[]>([])
 const loading = ref(true)
@@ -21,7 +21,7 @@ async function loadData() {
   loading.value = true
   try {
     await loadPermissions()
-    cards.value = await memberCardApi.listByOrg(orgId.value)
+    cards.value = await memberCardApi.listByOrg(orgSlug.value)
   } catch {
     notification.error('データの取得に失敗しました')
   } finally {

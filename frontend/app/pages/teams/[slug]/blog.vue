@@ -3,7 +3,7 @@ import { useTeamMembers } from '~/composables/team/useTeamMembers'
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const authStore = useAuthStore()
 const { getMembers } = useTeamMembers()
 
@@ -16,7 +16,7 @@ onMounted(async () => {
     return
   }
   try {
-    const res = await getMembers(teamId, { size: 500 })
+    const res = await getMembers(teamSlug, { size: 500 })
     isMember.value = res.data.some((m: { userId: number }) => m.userId === currentUserId)
   } catch {
     isMember.value = false
@@ -30,6 +30,6 @@ onMounted(async () => {
       <BackButton />
       <PageHeader title="ブログ・お知らせ" />
     </div>
-    <BlogPostList scope-type="TEAM" :scope-id="teamId" :can-create="isMember" />
+    <BlogPostList scope-type="TEAM" :scope-id="teamSlug" :can-create="isMember" />
   </div>
 </template>

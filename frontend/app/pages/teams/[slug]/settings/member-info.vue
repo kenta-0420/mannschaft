@@ -10,10 +10,10 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const notification = useNotification()
 const memberInfoApi = useMemberInfoApi()
-const { isAdmin, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdmin, loadPermissions } = useRoleAccess('team', teamSlug)
 
 // ===== フィールド管理 =====
 const fields = ref<MemberInfoFieldResponse[]>([])
@@ -55,7 +55,7 @@ const fieldForm = ref<{
 async function loadFields() {
   fieldsLoading.value = true
   try {
-    const res = await memberInfoApi.getFields(teamId)
+    const res = await memberInfoApi.getFields(teamSlug)
     fields.value = res.data
   } catch {
     notification.error(t('common.error.loadFailed'))
@@ -87,13 +87,13 @@ async function saveField() {
   fieldSaving.value = true
   try {
     if (editingField.value) {
-      await memberInfoApi.updateField(teamId, editingField.value.id, fieldForm.value)
+      await memberInfoApi.updateField(teamSlug, editingField.value.id, fieldForm.value)
     } else {
       const req: CreateMemberInfoFieldRequest = {
         ...fieldForm.value,
         sortOrder: fields.value.length,
       }
-      await memberInfoApi.createField(teamId, req)
+      await memberInfoApi.createField(teamSlug, req)
     }
     notification.success(t('common.saved'))
     showFieldDialog.value = false
@@ -114,7 +114,7 @@ async function deleteField() {
   if (!deletingField.value) return
   fieldDeleting.value = true
   try {
-    await memberInfoApi.deleteField(teamId, deletingField.value.id)
+    await memberInfoApi.deleteField(teamSlug, deletingField.value.id)
     notification.success(t('common.deleted'))
     showDeleteConfirm.value = false
     await loadFields()
@@ -158,7 +158,7 @@ async function onDrop(toIndex: number) {
 
   const orders = reordered.map((f, idx) => ({ fieldId: f.id, sortOrder: idx }))
   try {
-    await memberInfoApi.reorderFields(teamId, { orders })
+    await memberInfoApi.reorderFields(teamSlug, { orders })
   } catch {
     notification.error(t('common.error.saveFailed'))
     await loadFields()
@@ -178,7 +178,7 @@ const remindingMap = ref<Record<number, boolean>>({})
 async function loadStatus() {
   statusLoading.value = true
   try {
-    const res = await memberInfoApi.getResponseStatus(teamId)
+    const res = await memberInfoApi.getResponseStatus(teamSlug)
     statusData.value = res.data
   } catch {
     notification.error(t('common.error.loadFailed'))
@@ -190,7 +190,7 @@ async function loadStatus() {
 async function sendRemind(userId: number) {
   remindingMap.value[userId] = true
   try {
-    await memberInfoApi.sendRemind(teamId, userId)
+    await memberInfoApi.sendRemind(teamSlug, userId)
     notification.success(t('memberInfo.settings.remindSent'))
   } catch (e: unknown) {
     const status = (e as { status?: number })?.status

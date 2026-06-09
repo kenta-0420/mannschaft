@@ -13,8 +13,8 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const router = useRouter()
-const teamIdStr = String(route.params.id)
-const teamId = Number(teamIdStr)
+const teamIdStr = String(route.params.slug)
+const teamSlug = Number(teamIdStr)
 const { t } = useI18n()
 
 const { listMatches } = useMatchApi()
@@ -60,7 +60,7 @@ async function load(reset = true): Promise<void> {
     }
     if (kindFilter.value) params.kind = kindFilter.value
     if (statusFilter.value) params.status = statusFilter.value
-    const res = await listMatches(orgId.value, teamId, params)
+    const res = await listMatches(orgId.value, teamSlug, params)
     const rows = res.data ?? []
     matches.value = reset ? rows : [...matches.value, ...rows]
     total.value = res.meta?.total ?? matches.value.length

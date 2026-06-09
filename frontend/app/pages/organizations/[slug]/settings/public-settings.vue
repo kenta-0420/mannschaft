@@ -12,7 +12,7 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const toast = useToast()
 
 const { fetchPublicOrganization, updateOrgPublicSettings } = usePublicApi()
@@ -25,7 +25,7 @@ const saving = ref(false)
 async function loadSettings() {
   loading.value = true
   try {
-    const org = await fetchPublicOrganization(orgId)
+    const org = await fetchPublicOrganization(orgSlug)
     timelinePostsPublic.value = org.timelinePostsPublic
     publicEventsEnabled.value = org.publicEventsEnabled
   }
@@ -41,7 +41,7 @@ async function save() {
       timelinePostsPublic: timelinePostsPublic.value,
       publicEventsEnabled: publicEventsEnabled.value,
     }
-    await updateOrgPublicSettings(orgId, req)
+    await updateOrgPublicSettings(orgSlug, req)
     toast.add({ severity: 'success', summary: t('public.publicSettings.saved'), life: 3000 })
   }
   catch {

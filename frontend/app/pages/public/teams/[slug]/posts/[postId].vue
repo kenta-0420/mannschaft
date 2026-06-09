@@ -19,12 +19,12 @@ const route = useRoute()
 const { t } = useI18n()
 const { fetchPublicTeamPostDetail } = usePublicApi()
 
-const rawTeamId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
+const rawTeamId = Array.isArray(route.params.slug) ? route.params.slug[0] : route.params.slug
 const rawPostId = Array.isArray(route.params.postId) ? route.params.postId[0] : route.params.postId
-const teamId = String(rawTeamId)
+const teamSlug = String(rawTeamId)
 const postId = Number(rawPostId)
 
-if (!teamId || !Number.isFinite(postId) || postId <= 0) {
+if (!teamSlug || !Number.isFinite(postId) || postId <= 0) {
   throw createError({
     statusCode: 404,
     statusMessage: t('public.error.notFound'),
@@ -33,8 +33,8 @@ if (!teamId || !Number.isFinite(postId) || postId <= 0) {
 }
 
 const { data: post, error: postError } = await useAsyncData<PublicPostDetail>(
-  `public-team-${teamId}-post-${postId}`,
-  () => fetchPublicTeamPostDetail(teamId, postId),
+  `public-team-${teamSlug}-post-${postId}`,
+  () => fetchPublicTeamPostDetail(teamSlug, postId),
 )
 
 if (postError.value || !post.value) {
@@ -51,7 +51,7 @@ const config = useRuntimeConfig()
 const canonicalUrl = computed(
   () =>
     `${config.public.apiBase}`.replace(/\/api\/v1$/, '') +
-    `/public/teams/${teamId}/posts/${postId}`,
+    `/public/teams/${teamSlug}/posts/${postId}`,
 )
 
 const excerptForOgp = computed(() => {
@@ -74,7 +74,7 @@ useSeoMeta({
 
 // F19.1 Phase 3: hreflang 6言語 + canonical + JSON-LD Article スキーマ
 useSeoPublicPage({
-  canonicalPath: `/public/teams/${teamId}/posts/${postId}`,
+  canonicalPath: `/public/teams/${teamSlug}/posts/${postId}`,
   title: () => post.value?.title ?? '',
   description: () => excerptForOgp.value,
   jsonLd: () => post.value ? {
@@ -93,7 +93,7 @@ useSeoPublicPage({
   } : undefined,
 })
 
-const scopeHref = computed(() => `/public/teams/${teamId}`)
+const scopeHref = computed(() => `/public/teams/${teamSlug}`)
 </script>
 
 <template>
@@ -108,6 +108,6 @@ const scopeHref = computed(() => `/public/teams/${teamId}`)
 
     <PublicPostCommentSection :post-id="postId" />
 
-    <LoginCtaCard scope-kind="TEAM" :scope-id="teamId" />
+    <LoginCtaCard scope-kind="TEAM" :scope-id="teamSlug" />
   </div>
 </template>

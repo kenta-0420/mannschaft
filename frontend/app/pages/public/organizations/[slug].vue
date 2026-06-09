@@ -27,10 +27,10 @@ const {
   fetchPublicOrgEvents,
 } = usePublicApi()
 
-const rawId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
-const orgId = String(rawId)
+const rawId = Array.isArray(route.params.slug) ? route.params.slug[0] : route.params.slug
+const orgSlug = String(rawId)
 
-if (!orgId) {
+if (!orgSlug) {
   throw createError({
     statusCode: 404,
     statusMessage: t('public.error.notFound'),
@@ -39,8 +39,8 @@ if (!orgId) {
 }
 
 const { data: organization, error: orgError } = await useAsyncData<PublicOrganizationResponse>(
-  `public-org-${orgId}`,
-  () => fetchPublicOrganization(orgId),
+  `public-org-${orgSlug}`,
+  () => fetchPublicOrganization(orgSlug),
 )
 
 if (orgError.value || !organization.value) {
@@ -56,8 +56,8 @@ const currentPage = ref(0)
 const pageSize = 20
 
 const { data: postsPage, refresh: refreshPosts } = await useAsyncData<SpringPage<PublicPostSummary>>(
-  `public-org-${orgId}-posts`,
-  () => fetchPublicOrganizationPosts(orgId, currentPage.value, pageSize),
+  `public-org-${orgSlug}-posts`,
+  () => fetchPublicOrganizationPosts(orgSlug, currentPage.value, pageSize),
   { watch: [currentPage] },
 )
 
@@ -74,9 +74,9 @@ async function goPage(next: number) {
 // F19.1 Phase 7: タイムライン投稿一覧（timelinePostsPublic = true の場合のみ表示）
 const timelineCurrentPage = ref(0)
 const { data: timelinePage, refresh: refreshTimeline } = await useAsyncData<SpringPage<PublicTimelinePostResponse>>(
-  `public-org-${orgId}-timeline`,
+  `public-org-${orgSlug}-timeline`,
   () => organization.value?.timelinePostsPublic
-    ? fetchPublicOrgTimelinePosts(orgId, timelineCurrentPage.value, pageSize)
+    ? fetchPublicOrgTimelinePosts(orgSlug, timelineCurrentPage.value, pageSize)
     : Promise.resolve({ content: [], totalElements: 0, totalPages: 0, number: 0, size: pageSize, first: true, last: true, empty: true, numberOfElements: 0 }),
   { watch: [timelineCurrentPage] },
 )
@@ -94,9 +94,9 @@ async function goTimelinePage(next: number) {
 // F19.1 Phase 7: イベント一覧（publicEventsEnabled = true の場合のみ表示）
 const eventCurrentPage = ref(0)
 const { data: eventsPage, refresh: refreshEvents } = await useAsyncData<SpringPage<PublicEventResponse>>(
-  `public-org-${orgId}-events`,
+  `public-org-${orgSlug}-events`,
   () => organization.value?.publicEventsEnabled
-    ? fetchPublicOrgEvents(orgId, eventCurrentPage.value, pageSize)
+    ? fetchPublicOrgEvents(orgSlug, eventCurrentPage.value, pageSize)
     : Promise.resolve({ content: [], totalElements: 0, totalPages: 0, number: 0, size: pageSize, first: true, last: true, empty: true, numberOfElements: 0 }),
   { watch: [eventCurrentPage] },
 )
@@ -115,8 +115,8 @@ async function goEventsPage(next: number) {
 // 公開組織でも FAQ 0 件は正常状態（セクション非表示）なので 404/空は握りつぶさず空配列扱いとする。
 const { fetchPublicOrgFaqs } = useFaqApi()
 const { data: faqsData } = await useAsyncData<PublicFaqItem[]>(
-  `public-org-${orgId}-faqs`,
-  () => fetchPublicOrgFaqs(orgId),
+  `public-org-${orgSlug}-faqs`,
+  () => fetchPublicOrgFaqs(orgSlug),
   { default: () => [] },
 )
 const faqs = computed((): PublicFaqItem[] => faqsData.value ?? [])
@@ -151,7 +151,7 @@ const seoDescription = computed((): string => {
 // F21.1: canonical / baseUrl は useSeoPublicPage が単一ソースとして算出する。
 // 先に呼び出して戻り値（canonicalUrl）を後続の useSeoMeta に流用する。
 const { canonicalUrl } = useSeoPublicPage({
-  canonicalPath: `/public/organizations/${orgId}`,
+  canonicalPath: `/public/organizations/${orgSlug}`,
   title: () => t('public.organization.title', { name: organization.value?.name ?? '' }),
   description: () => seoDescription.value,
   imageUrl: () => organization.value?.bannerUrl ?? organization.value?.iconUrl ?? undefined,
@@ -237,7 +237,7 @@ useSeoMeta({
 })
 
 function detailHref(postId: number): string {
-  return `/public/organizations/${orgId}/posts/${postId}`
+  return `/public/organizations/${orgSlug}/posts/${postId}`
 }
 </script>
 
@@ -448,6 +448,6 @@ function detailHref(postId: number): string {
       </Accordion>
     </section>
 
-    <LoginCtaCard scope-kind="ORGANIZATION" :scope-id="orgId" />
+    <LoginCtaCard scope-kind="ORGANIZATION" :scope-id="orgSlug" />
   </div>
 </template>

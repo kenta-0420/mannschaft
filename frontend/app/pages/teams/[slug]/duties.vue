@@ -5,8 +5,8 @@ import type { DutyRotationResponse, DutyRotationRequest, DutyTodayResponse } fro
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = String(route.params.id)
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const teamSlug = String(route.params.slug)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 const { listDuties, createDuty, updateDuty, deleteDuty, getTodayDuties } = useDutyApi()
 const { showError } = useNotification()
 const { userTimezone } = useDatetime()
@@ -35,7 +35,7 @@ const rotationTypes = [
 async function load() {
   loading.value = true
   try {
-    const [dutiesRes, todayRes] = await Promise.all([listDuties(teamId), getTodayDuties(teamId)])
+    const [dutiesRes, todayRes] = await Promise.all([listDuties(teamSlug), getTodayDuties(teamSlug)])
     duties.value = dutiesRes.data
     todayDuties.value = todayRes.data
   } catch {
@@ -74,9 +74,9 @@ function openEdit(duty: DutyRotationResponse) {
 async function save() {
   try {
     if (editingDuty.value) {
-      await updateDuty(teamId, editingDuty.value.id, form)
+      await updateDuty(teamSlug, editingDuty.value.id, form)
     } else {
-      await createDuty(teamId, form)
+      await createDuty(teamSlug, form)
     }
     showDialog.value = false
     await load()
@@ -88,7 +88,7 @@ async function save() {
 async function remove(duty: DutyRotationResponse) {
   if (!confirm(`「${duty.dutyName}」を削除しますか？`)) return
   try {
-    await deleteDuty(teamId, duty.id)
+    await deleteDuty(teamSlug, duty.id)
     await load()
   } catch {
     showError('削除に失敗しました')

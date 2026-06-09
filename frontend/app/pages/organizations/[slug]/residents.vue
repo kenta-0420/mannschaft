@@ -2,7 +2,7 @@
 import type { DwellingUnit } from '~/types/resident'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const { getUnits } = useResidentApi()
 const { showError } = useNotification()
 const units = ref<DwellingUnit[]>([])
@@ -10,7 +10,7 @@ const loading = ref(false)
 async function load() {
   loading.value = true
   try {
-    const res = await getUnits('organization', orgId)
+    const res = await getUnits('organization', orgSlug)
     units.value = res.data
   } catch {
     showError('住民台帳の取得に失敗しました')

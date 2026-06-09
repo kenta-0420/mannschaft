@@ -29,10 +29,10 @@ const { t } = useI18n()
 const route = useRoute()
 const toast = useToast()
 const orgStore = useOrganizationStore()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 const runtimeConfig = useRuntimeConfig()
 
-const api = useOrgWalletApi(() => orgId.value)
+const api = useOrgWalletApi(() => orgSlug.value)
 
 // F18 SELF_ISSUED_BALANCE 凍結（2026-05-17 マスター御裁可）
 // 資金決済法対応のため法務整備が整うまで残高 3 タブを非表示。
@@ -40,7 +40,7 @@ const api = useOrgWalletApi(() => orgId.value)
 const balanceEnabled = computed<boolean>(() => Boolean(runtimeConfig.public.f18BalanceEnabled))
 
 const myOrg = computed(() =>
-  orgStore.myOrganizations.find(o => String(o.id) === orgId.value),
+  orgStore.myOrganizations.find(o => String(o.id) === orgSlug.value),
 )
 const canAccess = computed(() =>
   myOrg.value?.role === 'ADMIN'
@@ -310,7 +310,7 @@ const currentBalanceNum = computed(() => {
     <template v-else-if="canAccess">
       <header>
         <NuxtLink
-          :to="`/organizations/${orgId}/admin/point-cards`"
+          :to="`/organizations/${orgSlug}/admin/point-cards`"
           class="text-sm text-primary-600 hover:underline dark:text-primary-400"
         >
           &larr; {{ t('wallet.admin.actions.back') }}
@@ -596,7 +596,7 @@ const currentBalanceNum = computed(() => {
           <BalanceChargeTabPanel
             v-else-if="opTab === 'charge' && resolvedCard.providerType === 'SELF_ISSUED_BALANCE' && balanceEnabled"
             :card-id="resolvedCard.cardId"
-            :org-id="orgId"
+            :org-id="orgSlug"
             @done="onBalanceDone"
           />
 
@@ -604,7 +604,7 @@ const currentBalanceNum = computed(() => {
           <BalanceSpendTabPanel
             v-else-if="opTab === 'spent' && resolvedCard.providerType === 'SELF_ISSUED_BALANCE' && balanceEnabled"
             :card-id="resolvedCard.cardId"
-            :org-id="orgId"
+            :org-id="orgSlug"
             :current-balance="currentBalanceNum"
             @done="onBalanceDone"
           />
@@ -613,7 +613,7 @@ const currentBalanceNum = computed(() => {
           <BalanceRefundTabPanel
             v-else-if="opTab === 'refund' && resolvedCard.providerType === 'SELF_ISSUED_BALANCE' && balanceEnabled"
             :card-id="resolvedCard.cardId"
-            :org-id="orgId"
+            :org-id="orgSlug"
             @done="onBalanceDone"
           />
         </div>

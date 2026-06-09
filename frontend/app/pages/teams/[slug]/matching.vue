@@ -3,7 +3,7 @@ import type { MatchActivityType, MatchCategory, MatchLevel, MatchVisibility } fr
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const { createRequest } = useMatchingApi()
 const notification = useNotification()
 
@@ -42,7 +42,7 @@ async function handleCreate() {
   if (!form.value.title.trim()) return
   saving.value = true
   try {
-    await createRequest(teamId, {
+    await createRequest(teamSlug, {
       title: form.value.title,
       activity_type: form.value.activity_type,
       category: form.value.category,
@@ -71,7 +71,7 @@ async function handleCreate() {
     </div>
     <MatchRequestList
       ref="listRef"
-      :team-id="teamId"
+      :team-id="teamSlug"
       @create="openCreateDialog"
     />
 

@@ -2,7 +2,7 @@
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 
 // ===== タブ =====
 const activeTab = ref(0)
@@ -24,15 +24,15 @@ const activeTab = ref(0)
 
       <TabPanels>
         <TabPanel :value="0">
-          <WebhookOutgoingTab scope-type="TEAM" :scope-id="teamId" />
+          <WebhookOutgoingTab scope-type="TEAM" :scope-id="teamSlug" />
         </TabPanel>
 
         <TabPanel :value="1">
-          <WebhookIncomingTab scope-type="TEAM" :scope-id="teamId" />
+          <WebhookIncomingTab scope-type="TEAM" :scope-id="teamSlug" />
         </TabPanel>
 
         <TabPanel :value="2">
-          <WebhookApiKeyTab scope-type="TEAM" :scope-id="teamId" />
+          <WebhookApiKeyTab scope-type="TEAM" :scope-id="teamSlug" />
         </TabPanel>
       </TabPanels>
     </Tabs>

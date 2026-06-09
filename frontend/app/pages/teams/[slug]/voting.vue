@@ -3,7 +3,7 @@ import type { VoteSessionResponse } from '~/types/voting'
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 
 const { getSessions, createSession } = useVotingApi()
 const notification = useNotification()
@@ -15,7 +15,7 @@ const loading = ref(false)
 async function load() {
   loading.value = true
   try {
-    const res = await getSessions({ scope_type: 'TEAM', scope_id: teamId })
+    const res = await getSessions({ scope_type: 'TEAM', scope_id: teamSlug })
     sessions.value = res.data
   } catch {
     notification.error('投票セッションの取得に失敗しました')
@@ -59,7 +59,7 @@ async function handleCreate() {
   try {
     await createSession({
       scopeType: 'TEAM',
-      scopeId: teamId,
+      scopeId: teamSlug,
       title: form.value.title,
       description: form.value.description || undefined,
       votingMode: form.value.votingMode,

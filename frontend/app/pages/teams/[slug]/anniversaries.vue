@@ -5,8 +5,8 @@ import type { AnniversaryResponse, AnniversaryRequest } from '~/types/anniversar
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = String(route.params.id)
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const teamSlug = String(route.params.slug)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 const anniversaryApi = useAnniversaryApi()
 const { showError } = useNotification()
 const { userTimezone } = useDatetime()
@@ -28,8 +28,8 @@ async function load() {
   loading.value = true
   try {
     const [allRes, upcomingRes] = await Promise.all([
-      anniversaryApi.listAnniversaries(teamId),
-      anniversaryApi.getUpcoming(teamId),
+      anniversaryApi.listAnniversaries(teamSlug),
+      anniversaryApi.getUpcoming(teamSlug),
     ])
     anniversaries.value = allRes.data
     upcoming.value = upcomingRes.data
@@ -65,9 +65,9 @@ function openEdit(item: AnniversaryResponse) {
 async function save() {
   try {
     if (editingItem.value) {
-      await anniversaryApi.updateAnniversary(teamId, editingItem.value.id, form)
+      await anniversaryApi.updateAnniversary(teamSlug, editingItem.value.id, form)
     } else {
-      await anniversaryApi.createAnniversary(teamId, form)
+      await anniversaryApi.createAnniversary(teamSlug, form)
     }
     showDialog.value = false
     await load()
@@ -79,7 +79,7 @@ async function save() {
 async function remove(item: AnniversaryResponse) {
   if (!confirm(`「${item.name}」を削除しますか？`)) return
   try {
-    await anniversaryApi.deleteAnniversary(teamId, item.id)
+    await anniversaryApi.deleteAnniversary(teamSlug, item.id)
     await load()
   } catch {
     showError('削除に失敗しました')

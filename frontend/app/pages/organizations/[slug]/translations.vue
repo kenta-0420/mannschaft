@@ -2,7 +2,7 @@
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 </script>
 
 <template>
@@ -10,6 +10,6 @@ const orgId = computed(() => String(route.params.id))
     <div class="flex items-center justify-between mb-4">
       <h1 class="text-xl font-bold">{{ $t('translation.title') }}</h1>
     </div>
-    <TranslationList :org-id="orgId" />
+    <TranslationList :org-id="orgSlug" />
   </div>
 </template>

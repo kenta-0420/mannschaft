@@ -9,8 +9,8 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const router = useRouter()
-const teamIdStr = String(route.params.id)
-const teamId = Number(teamIdStr)
+const teamIdStr = String(route.params.slug)
+const teamSlug = Number(teamIdStr)
 const { t } = useI18n()
 
 const { createMatch } = useMatchApi()
@@ -97,7 +97,7 @@ async function submit(): Promise<void> {
   }
 
   try {
-    const created = await createMatch(orgId.value, teamId, body)
+    const created = await createMatch(orgId.value, teamSlug, body)
     // 作成成功後は live.vue へ遷移する（§G.1a-2 = 即記録開始）。3-B で live.vue を実装済み。
     if (created.id) {
       void router.push(`/teams/${teamIdStr}/matches/${created.id}/live`)

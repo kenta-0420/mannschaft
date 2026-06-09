@@ -3,10 +3,10 @@ import dayjs from 'dayjs'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const shiftApi = useShiftApi()
 const notification = useNotification()
-const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 const { userTimezone } = useDatetime()
 
 const activeTab = ref(0)
@@ -31,7 +31,7 @@ async function createSchedule() {
     return
   creating.value = true
   try {
-    await shiftApi.createSchedule(teamId, {
+    await shiftApi.createSchedule(teamSlug, {
       title: createForm.value.title.trim(),
       startDate: dayjs(createForm.value.periodStart).tz(userTimezone.value).format('YYYY-MM-DD'),
       endDate: dayjs(createForm.value.periodEnd).tz(userTimezone.value).format('YYYY-MM-DD'),
@@ -70,17 +70,17 @@ onMounted(() => loadPermissions())
       <TabPanels>
         <TabPanel :value="0">
           <ShiftScheduleList
-            :team-id="teamId"
+            :team-id="teamSlug"
             :can-manage="isAdminOrDeputy"
             @select="onScheduleSelect"
             @create="showCreateDialog = true"
           />
         </TabPanel>
         <TabPanel :value="1">
-          <ShiftSwapList :team-id="teamId" />
+          <ShiftSwapList :team-id="teamSlug" />
         </TabPanel>
         <TabPanel v-if="isAdmin" :value="2">
-          <ShiftPositionManager :team-id="teamId" />
+          <ShiftPositionManager :team-id="teamSlug" />
         </TabPanel>
       </TabPanels>
     </Tabs>
@@ -128,7 +128,7 @@ onMounted(() => loadPermissions())
     <ShiftRequestForm
       v-if="selectedScheduleId"
       v-model:visible="showRequestDialog"
-      :team-id="teamId"
+      :team-id="teamSlug"
       :schedule-id="selectedScheduleId"
     />
     </template>

@@ -4,7 +4,7 @@ import type { DigestSummaryResponse } from '~/types/timeline-digest'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const { listDigests, deleteDigest, publishDigest, regenerateDigest } = useTimelineDigestApi()
 const notification = useNotification()
 const { t } = useI18n()
@@ -172,7 +172,7 @@ onMounted(loadDigests)
     <DigestGenerateDialog
       v-model:visible="showGenerateDialog"
       scope-type="TEAM"
-      :scope-id="teamId"
+      :scope-id="teamSlug"
       @generated="onGenerated"
     />
 
@@ -184,7 +184,7 @@ onMounted(loadDigests)
     >
       <DigestConfigForm
         scope-type="TEAM"
-        :scope-id="teamId"
+        :scope-id="teamSlug"
       />
     </Dialog>
   </div>

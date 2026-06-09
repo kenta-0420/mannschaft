@@ -4,7 +4,7 @@ import type { OrganizerRosterView } from '~/types/tournament'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const tournamentId = Number(route.params.tId)
 
 // 試合ID（クエリパラメータから取得）
@@ -24,7 +24,7 @@ const showDeadlineDialog = ref(false)
 const expandedTeamId = ref<number | null>(null)
 
 // 権限
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 
 // ===== 試合選択 =====
 
@@ -97,7 +97,7 @@ function toggleExpand(teamId: number) {
   <div class="mx-auto max-w-4xl">
     <div class="mb-4 flex items-center gap-3">
       <BackButton
-        :to="`/organizations/${orgId}/tournaments/${tournamentId}`"
+        :to="`/organizations/${orgSlug}/tournaments/${tournamentId}`"
         :label="$t('tournament.roster.title')"
       />
       <PageHeader :title="$t('tournament.roster.title')" />

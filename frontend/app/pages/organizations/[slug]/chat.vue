@@ -7,8 +7,8 @@ definePageMeta({
 })
 
 const route = useRoute()
-const orgId = String(route.params.id)
-const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const orgSlug = String(route.params.slug)
+const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 
 const selectedChannel = ref<ChatChannelResponse | null>(null)
 const showCreateDialog = ref(false)
@@ -41,7 +41,7 @@ onMounted(() => loadPermissions())
       <div class="w-64 shrink-0 border-r border-surface-200 bg-surface-50">
         <ChatChannelList
           ref="listRef"
-          :organization-id="orgId"
+          :organization-id="orgSlug"
           @select="onSelectChannel"
           @create="showCreateDialog = true"
         />
@@ -53,7 +53,7 @@ onMounted(() => loadPermissions())
           :channel="selectedChannel"
           :can-pin="isAdminOrDeputy"
           :can-delete="isAdmin"
-          :organization-id="orgId"
+          :organization-id="orgSlug"
           @channel-created="onChannelCreated"
         />
         <DashboardEmptyState v-else icon="pi pi-comments" message="チャンネルを選択してください" />
@@ -62,7 +62,7 @@ onMounted(() => loadPermissions())
 
     <ChatCreateDialog
       v-model:visible="showCreateDialog"
-      :organization-id="orgId"
+      :organization-id="orgSlug"
       @created="onCreated"
     />
   </div>

@@ -4,7 +4,7 @@ import type { AnalyticsResponse } from '~/types/analytics'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 const analyticsApi = useAnalyticsApi()
 const notification = useNotification()
 
@@ -15,7 +15,7 @@ const showExport = ref(false)
 async function loadData() {
   loading.value = true
   try {
-    data.value = await analyticsApi.getAnalytics('organization', orgId.value)
+    data.value = await analyticsApi.getAnalytics('organization', orgSlug.value)
   } catch {
     notification.error('アクセス解析データの取得に失敗しました')
   } finally {
@@ -83,6 +83,6 @@ onMounted(loadData)
       </SectionCard>
     </template>
 
-    <ExportDialog v-model:visible="showExport" scope-type="organization" :scope-id="orgId" />
+    <ExportDialog v-model:visible="showExport" scope-type="organization" :scope-id="orgSlug" />
   </div>
 </template>

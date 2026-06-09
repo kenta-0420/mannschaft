@@ -4,7 +4,7 @@ import type { FiscalYearResponse, BudgetSummary } from '~/types/budget'
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 
 const notification = useNotification()
 const { getFiscalYears, getSummary, createFiscalYear } = useBudgetApi()
@@ -39,7 +39,7 @@ async function handleCreate() {
   if (!form.value.name.trim() || !form.value.startDate || !form.value.endDate) return
   saving.value = true
   try {
-    await createFiscalYear('team', teamId, {
+    await createFiscalYear('team', teamSlug, {
       name: form.value.name,
       startDate: form.value.startDate,
       endDate: form.value.endDate,
@@ -56,7 +56,7 @@ async function handleCreate() {
 
 async function load() {
   try {
-    const res = await getFiscalYears('team', teamId)
+    const res = await getFiscalYears('team', teamSlug)
     fiscalYears.value = res.data
     if (res.data.length > 0) selectFy(res.data[0]!)
   } catch {
@@ -68,7 +68,7 @@ async function selectFy(fy: FiscalYearResponse) {
   selectedFy.value = fy
   loading.value = true
   try {
-    const res = await getSummary('team', teamId, fy.id)
+    const res = await getSummary('team', teamSlug, fy.id)
     summary.value = res.data
   } catch {
     notification.error('予算サマリーの取得に失敗しました')

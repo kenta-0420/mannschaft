@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const authStore = useAuthStore()
 const { getMembers } = useOrganizationApi()
 
@@ -14,7 +14,7 @@ onMounted(async () => {
     return
   }
   try {
-    const res = await getMembers(orgId, { size: 500 })
+    const res = await getMembers(orgSlug, { size: 500 })
     isMember.value = res.data.some((m) => m.userId === currentUserId)
   } catch {
     isMember.value = false
@@ -28,6 +28,6 @@ onMounted(async () => {
       <BackButton />
       <PageHeader title="ブログ・お知らせ" />
     </div>
-    <BlogPostList scope-type="ORGANIZATION" :scope-id="orgId" :can-create="isMember" />
+    <BlogPostList scope-type="ORGANIZATION" :scope-id="orgSlug" :can-create="isMember" />
   </div>
 </template>

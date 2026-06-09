@@ -14,13 +14,13 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 const { t } = useI18n()
 const route = useRoute()
 const orgStore = useOrganizationStore()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 
-const api = useOrgWalletApi(() => orgId.value)
+const api = useOrgWalletApi(() => orgSlug.value)
 
 // ─── アクセス制御 ────────────────────────────────────────────
 const myOrg = computed(() =>
-  orgStore.myOrganizations.find(o => String(o.id) === orgId.value),
+  orgStore.myOrganizations.find(o => String(o.id) === orgSlug.value),
 )
 const canAccess = computed(() =>
   myOrg.value?.role === 'ADMIN'
@@ -96,7 +96,7 @@ watch(canAccess, (v) => {
       <!-- 3 つのアクションカード -->
       <section class="grid gap-4 sm:grid-cols-3">
         <NuxtLink
-          :to="`/organizations/${orgId}/admin/point-cards/providers/new`"
+          :to="`/organizations/${orgSlug}/admin/point-cards/providers/new`"
           class="flex flex-col rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:border-primary-400 hover:shadow-md dark:border-surface-700 dark:bg-surface-900"
         >
           <h2 class="text-base font-semibold">
@@ -111,7 +111,7 @@ watch(canAccess, (v) => {
         </NuxtLink>
 
         <NuxtLink
-          :to="`/organizations/${orgId}/admin/point-cards/history`"
+          :to="`/organizations/${orgSlug}/admin/point-cards/history`"
           class="flex flex-col rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:border-primary-400 hover:shadow-md dark:border-surface-700 dark:bg-surface-900"
         >
           <h2 class="text-base font-semibold">
@@ -126,7 +126,7 @@ watch(canAccess, (v) => {
         </NuxtLink>
 
         <NuxtLink
-          :to="`/organizations/${orgId}/admin/point-cards/stamp`"
+          :to="`/organizations/${orgSlug}/admin/point-cards/stamp`"
           class="flex flex-col rounded-xl border border-primary-300 bg-primary-50 p-5 shadow-sm transition hover:border-primary-500 hover:shadow-md dark:border-primary-700 dark:bg-primary-950"
         >
           <h2 class="text-base font-semibold text-primary-900 dark:text-primary-100">
@@ -149,7 +149,7 @@ watch(canAccess, (v) => {
           </h2>
           <NuxtLink
             v-if="isAdminOnly"
-            :to="`/organizations/${orgId}/admin/point-cards/providers/new`"
+            :to="`/organizations/${orgSlug}/admin/point-cards/providers/new`"
             class="rounded bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700"
           >
             {{ t('wallet.admin.providers.new') }}
@@ -173,7 +173,7 @@ watch(canAccess, (v) => {
             class="overflow-hidden rounded-lg border border-surface-200 bg-white shadow-sm dark:border-surface-700 dark:bg-surface-900"
           >
             <NuxtLink
-              :to="`/organizations/${orgId}/admin/point-cards/providers/${p.id}`"
+              :to="`/organizations/${orgSlug}/admin/point-cards/providers/${p.id}`"
               class="block p-4 hover:bg-surface-50 dark:hover:bg-surface-800/50"
             >
               <div class="flex items-center gap-3">

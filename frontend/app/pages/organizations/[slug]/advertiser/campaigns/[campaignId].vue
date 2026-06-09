@@ -8,7 +8,7 @@ import type {
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const campaignId = Number(route.params.campaignId)
 const advertiserApi = useAdvertiserApi()
 
@@ -41,19 +41,19 @@ async function load() {
     const [perfRes, creativeRes, breakdownRes] = await Promise.all([
       advertiserApi.getCampaignPerformance(
         campaignId,
-        orgId,
+        orgSlug,
         formatDate(dateFrom.value),
         formatDate(dateTo.value),
       ),
       advertiserApi.getCreativeComparison(
         campaignId,
-        orgId,
+        orgSlug,
         formatDate(dateFrom.value),
         formatDate(dateTo.value),
       ),
       advertiserApi.getBreakdown(
         campaignId,
-        orgId,
+        orgSlug,
         formatDate(dateFrom.value),
         formatDate(dateTo.value),
       ),
@@ -73,7 +73,7 @@ async function handleExportCsv() {
   try {
     const blob = await advertiserApi.exportCampaignCsv(
       campaignId,
-      orgId,
+      orgSlug,
       formatDate(dateFrom.value),
       formatDate(dateTo.value),
     )
@@ -98,7 +98,7 @@ watch([dateFrom, dateTo], load)
   <div>
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div class="flex items-center gap-3">
-        <BackButton :to="`/organizations/${orgId}/advertiser`" />
+        <BackButton :to="`/organizations/${orgSlug}/advertiser`" />
         <div>
           <h1 class="text-2xl font-bold">
             {{ performance?.campaignName ?? 'キャンペーン詳細' }}
@@ -140,7 +140,7 @@ watch([dateFrom, dateTo], load)
     <div v-else class="py-20 text-center">
       <i class="pi pi-chart-bar mb-4 text-6xl text-surface-400" />
       <p class="text-surface-500">キャンペーンデータを取得できませんでした。</p>
-      <NuxtLink :to="`/organizations/${orgId}/advertiser`">
+      <NuxtLink :to="`/organizations/${orgSlug}/advertiser`">
         <Button
           label="ダッシュボードに戻る"
           icon="pi pi-arrow-left"

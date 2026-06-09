@@ -4,9 +4,9 @@ definePageMeta({
 })
 
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const eventId = Number(route.params.eventId)
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const loading = ref(true)
 
@@ -23,12 +23,12 @@ onMounted(async () => {
   <PageLoading v-if="loading" />
   <div v-else>
     <div class="mb-4">
-      <BackButton :to="`/teams/${teamId}/events`" label="イベント一覧に戻る" />
+      <BackButton :to="`/teams/${teamSlug}/events`" label="イベント一覧に戻る" />
     </div>
 
     <EventDetail
       scope-type="team"
-      :scope-id="teamId"
+      :scope-id="teamSlug"
       :event-id="eventId"
       :can-edit="isAdminOrDeputy"
     />

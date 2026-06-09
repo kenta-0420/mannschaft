@@ -6,8 +6,8 @@ definePageMeta({
 })
 
 const route = useRoute()
-const teamId = String(route.params.id)
-const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const teamSlug = String(route.params.slug)
+const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const selectedChannel = ref<ChatChannelResponse | null>(null)
 const showCreateDialog = ref(false)
@@ -41,7 +41,7 @@ onMounted(() => loadPermissions())
       <div class="w-64 shrink-0 border-r border-surface-200 bg-surface-50">
         <ChatChannelList
           ref="listRef"
-          :team-id="teamId"
+          :team-id="teamSlug"
           @select="onSelectChannel"
           @create="showCreateDialog = true"
         />
@@ -54,7 +54,7 @@ onMounted(() => loadPermissions())
           :channel="selectedChannel"
           :can-pin="isAdminOrDeputy"
           :can-delete="isAdmin"
-          :team-id="teamId"
+          :team-id="teamSlug"
           @channel-created="onChannelCreated"
         />
         <div v-else class="flex h-full flex-col items-center justify-center">
@@ -63,6 +63,6 @@ onMounted(() => loadPermissions())
       </div>
     </div>
 
-    <ChatCreateDialog v-model:visible="showCreateDialog" :team-id="teamId" @created="onCreated" />
+    <ChatCreateDialog v-model:visible="showCreateDialog" :team-id="teamSlug" @created="onCreated" />
   </div>
 </template>

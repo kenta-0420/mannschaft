@@ -24,7 +24,7 @@ const applicationApi = useJobApplicationApi()
 const contractApi = useJobContractApi()
 const { success, error, warn } = useNotification()
 
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const jobId = computed(() => Number(route.params.jobId))
 
 const job = ref<JobPostingResponse | null>(null)
@@ -162,7 +162,7 @@ async function remove() {
   try {
     await postingApi.deleteJob(job.value.id)
     success(t('jobmatching.detail.deleteSucceeded'))
-    router.push(`/teams/${teamId.value}/jobs`)
+    router.push(`/teams/${teamSlug.value}/jobs`)
   }
   catch (e) {
     error(t('jobmatching.detail.deleteFailed'), String(e))
@@ -173,7 +173,7 @@ async function remove() {
 }
 
 function goToEdit() {
-  router.push(`/teams/${teamId.value}/jobs/${jobId.value}/edit`)
+  router.push(`/teams/${teamSlug.value}/jobs/${jobId.value}/edit`)
 }
 
 // --- 応募者の採用/不採用 ---
@@ -265,7 +265,7 @@ onMounted(async () => {
           icon="pi pi-arrow-left"
           severity="secondary"
           text
-          @click="router.push(`/teams/${teamId}/jobs`)"
+          @click="router.push(`/teams/${teamSlug}/jobs`)"
         />
       </div>
 

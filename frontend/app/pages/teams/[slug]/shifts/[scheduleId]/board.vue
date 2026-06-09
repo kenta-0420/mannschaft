@@ -4,7 +4,7 @@
     <div class="flex items-center justify-between px-4 py-3 border-b border-surface-200 bg-white flex-shrink-0">
       <div class="flex items-center gap-3">
         <NuxtLink
-          :to="`/teams/${teamId}/shifts`"
+          :to="`/teams/${teamSlug}/shifts`"
           class="text-surface-500 hover:text-surface-700"
         >
           <i class="pi pi-arrow-left" />
@@ -24,7 +24,7 @@
         />
 
         <!-- 変更依頼ページへのリンク -->
-        <NuxtLink :to="`/teams/${teamId}/shifts/${scheduleId}/change-requests`">
+        <NuxtLink :to="`/teams/${teamSlug}/shifts/${scheduleId}/change-requests`">
           <Button
             :label="$t('shift.changeRequest.title')"
             icon="pi pi-list"
@@ -130,7 +130,7 @@ import type {
 } from '~/types/shift'
 
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const scheduleId = computed(() => Number(route.params.scheduleId))
 
 // F00.5 Phase 5: チームレベルの SUPPORTER 判定を useRoleAccess 経由に切替
@@ -138,7 +138,7 @@ const scheduleId = computed(() => Number(route.params.scheduleId))
 //   → systemRole はプラットフォームロール（SYSTEM_ADMIN など）であり、
 //     チームの SUPPORTER を判定するのは誤りだった。
 // 新実装: /api/v1/teams/{id}/me/permissions から取得した roleName で判定する。
-const { roleName, loadPermissions } = useRoleAccess('team', teamId)
+const { roleName, loadPermissions } = useRoleAccess('team', teamSlug)
 const isSupporter = computed(() => roleName.value === 'SUPPORTER')
 
 const shiftApi = useShiftApi()
@@ -223,7 +223,7 @@ async function loadPositions(): Promise<void> {
 
 async function loadMembers(): Promise<void> {
   try {
-    const res = await teamApi.getMembers(teamId.value, { size: 200 })
+    const res = await teamApi.getMembers(teamSlug.value, { size: 200 })
     allMembers.value = res.data.map((m) => ({
       userId: m.userId,
       displayName: m.displayName || String(m.userId),

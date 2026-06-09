@@ -14,12 +14,12 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 const { t } = useI18n()
 const route = useRoute()
 const orgStore = useOrganizationStore()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 
-const api = useOrgWalletApi(() => orgId.value)
+const api = useOrgWalletApi(() => orgSlug.value)
 
 const myOrg = computed(() =>
-  orgStore.myOrganizations.find(o => String(o.id) === orgId.value),
+  orgStore.myOrganizations.find(o => String(o.id) === orgSlug.value),
 )
 const canAccess = computed(() =>
   myOrg.value?.role === 'ADMIN'
@@ -162,7 +162,7 @@ function goNextBalance() {
     <template v-else-if="canAccess">
       <header>
         <NuxtLink
-          :to="`/organizations/${orgId}/admin/point-cards`"
+          :to="`/organizations/${orgSlug}/admin/point-cards`"
           class="text-sm text-primary-600 hover:underline dark:text-primary-400"
         >
           &larr; {{ t('wallet.admin.actions.back') }}

@@ -6,10 +6,10 @@ definePageMeta({
 })
 
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const memberCardApi = useMemberCardApi()
 const notification = useNotification()
-const { isAdmin, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdmin, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const cards = ref<MemberCard[]>([])
 const stats = ref<CheckinStats | null>(null)
@@ -21,12 +21,12 @@ async function loadData() {
   loading.value = true
   try {
     const [cardsRes] = await Promise.all([
-      memberCardApi.listByTeam(teamId.value),
+      memberCardApi.listByTeam(teamSlug.value),
       loadPermissions(),
     ])
     cards.value = cardsRes
     if (isAdmin.value) {
-      stats.value = await memberCardApi.getTeamCheckinStats(teamId.value)
+      stats.value = await memberCardApi.getTeamCheckinStats(teamSlug.value)
     }
   } catch {
     notification.error('データの取得に失敗しました')
@@ -126,7 +126,7 @@ onMounted(loadData)
             </div>
           </TabPanel>
           <TabPanel v-if="isAdmin" value="3">
-            <CheckinLocationManager :team-id="teamId" />
+            <CheckinLocationManager :team-id="teamSlug" />
           </TabPanel>
         </TabPanels>
       </Tabs>

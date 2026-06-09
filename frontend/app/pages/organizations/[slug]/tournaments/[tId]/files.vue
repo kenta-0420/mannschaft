@@ -4,10 +4,10 @@ import type { TournamentDivision } from '~/types/tournament'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const tId = Number(route.params.tId)
 
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 const { getTournament, getDivisions } = useTournamentApi()
 const notification = useNotification()
 
@@ -19,8 +19,8 @@ onMounted(async () => {
   try {
     await loadPermissions()
     const [tournamentRes, divisionsRes] = await Promise.all([
-      getTournament(orgId, tId),
-      getDivisions(orgId, tId),
+      getTournament(orgSlug, tId),
+      getDivisions(orgSlug, tId),
     ])
     tournamentName.value = tournamentRes.data.content?.name ?? ''
     divisions.value = divisionsRes.data
@@ -37,7 +37,7 @@ onMounted(async () => {
 <template>
   <div>
     <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/organizations/${orgId}/tournaments/${tId}`" :label="tournamentName || String(tId)" />
+      <BackButton :to="`/organizations/${orgSlug}/tournaments/${tId}`" :label="tournamentName || String(tId)" />
     </div>
 
     <PageHeader :title="$t('tournament.files.title')" />

@@ -9,10 +9,10 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const tId = Number(route.params.tId)
 
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 const { getTournament, getParticipants, getEntrySummary } = useTournamentApi()
 const notification = useNotification()
 
@@ -79,11 +79,11 @@ async function loadParticipantsForDivision(divId: number) {
   if (participantsMap.value[divId] !== undefined) return
   participantsLoading.value[divId] = true
   try {
-    const res = await getParticipants(orgId, tId, divId)
+    const res = await getParticipants(orgSlug, tId, divId)
     participantsMap.value[divId] = res.data
     // 管理者のみエントリーサマリーを取得
     if (isAdminOrDeputy.value) {
-      const summary = await getEntrySummary(orgId, tId, divId)
+      const summary = await getEntrySummary(orgSlug, tId, divId)
       entrySummaryMap.value[divId] = summary
     }
   } catch {
@@ -108,7 +108,7 @@ async function onEntrySaved() {
   const divId = selectedDivisionId.value
   if (divId && isAdminOrDeputy.value) {
     try {
-      const summary = await getEntrySummary(orgId, tId, divId)
+      const summary = await getEntrySummary(orgSlug, tId, divId)
       entrySummaryMap.value[divId] = summary
     } catch {
       // サマリー更新失敗はサイレントで続行
@@ -119,7 +119,7 @@ async function onEntrySaved() {
 onMounted(async () => {
   try {
     await loadPermissions()
-    const res = await getTournament(orgId, tId)
+    const res = await getTournament(orgSlug, tId)
     tournament.value = res.data
     if ((res.data.tiebreakers?.length ?? 0) > 0 || (res.data.statDefs?.length ?? 0) > 0) {
       // tiebreakers/statDefs は将来用。現在は divisions 相当の情報なし
@@ -135,37 +135,37 @@ onMounted(async () => {
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between gap-3">
-      <BackButton :to="`/organizations/${orgId}/tournaments`" label="大会一覧に戻る" />
+      <BackButton :to="`/organizations/${orgSlug}/tournaments`" label="大会一覧に戻る" />
       <NuxtLink
-        :to="`/organizations/${orgId}/tournaments/${tId}/rosters`"
+        :to="`/organizations/${orgSlug}/tournaments/${tId}/rosters`"
         class="ml-auto flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition hover:border-primary-400 hover:text-primary"
       >
         <i class="pi pi-list-check" />
         {{ $t('tournament.roster.title') }}
       </NuxtLink>
       <NuxtLink
-        :to="`/organizations/${orgId}/tournaments/${tId}/communication`"
+        :to="`/organizations/${orgSlug}/tournaments/${tId}/communication`"
         class="flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition-colors hover:bg-surface-100"
       >
         <i class="pi pi-comments text-sm" />
         {{ t('tournament.communication.title') }}
       </NuxtLink>
       <NuxtLink
-        :to="`/organizations/${orgId}/tournaments/${tId}/submissions`"
+        :to="`/organizations/${orgSlug}/tournaments/${tId}/submissions`"
         class="flex items-center gap-1 rounded-lg border border-surface-200 px-3 py-1.5 text-xs font-medium text-surface-600 transition hover:border-primary-400 hover:text-primary-600"
       >
         <i class="pi pi-file-edit text-xs" />
         {{ $t('tournament.submission.nav_link') }}
       </NuxtLink>
       <NuxtLink
-        :to="`/organizations/${orgId}/tournaments/${tId}/files`"
+        :to="`/organizations/${orgSlug}/tournaments/${tId}/files`"
         class="flex items-center gap-1.5 rounded-lg border border-surface-200 bg-surface-0 px-3 py-1.5 text-sm text-surface-600 transition-colors hover:bg-surface-100"
       >
         <i class="pi pi-folder text-amber-500" />
         {{ $t('tournament.files.title') }}
       </NuxtLink>
       <NuxtLink
-        :to="`/organizations/${orgId}/tournaments/${tId}/fees`"
+        :to="`/organizations/${orgSlug}/tournaments/${tId}/fees`"
         class="flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition hover:border-primary-400 hover:text-primary-600"
       >
         <i class="pi pi-money-bill text-sm" />
@@ -266,7 +266,7 @@ onMounted(async () => {
     <TournamentEntryModal
       v-if="selectedParticipant !== null"
       :is-open="selectedParticipant !== null"
-      :org-id="orgId"
+      :org-id="orgSlug"
       :tournament-id="tId"
       :division-id="selectedDivisionId"
       :participant-id="selectedParticipant.id"

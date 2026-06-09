@@ -4,8 +4,8 @@ definePageMeta({
 })
 
 const route = useRoute()
-const teamId = String(route.params.id)
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const teamSlug = String(route.params.slug)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const showCreateDialog = ref(false)
 const listRef = ref<{ refresh: () => void } | null>(null)
@@ -21,7 +21,7 @@ onMounted(() => loadPermissions())
   <div>
     <div class="mb-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <BackButton :to="`/teams/${teamId}/forms`" label="フォームに戻る" />
+        <BackButton :to="`/teams/${teamSlug}/forms`" label="フォームに戻る" />
         <PageHeader title="フォームテンプレート" />
       </div>
       <Button
@@ -35,14 +35,14 @@ onMounted(() => loadPermissions())
     <FormTemplateList
       ref="listRef"
       scope-type="team"
-      :scope-id="teamId"
+      :scope-id="teamSlug"
       :can-edit="isAdminOrDeputy"
     />
 
     <FormTemplateEditor
       v-model:visible="showCreateDialog"
       scope-type="team"
-      :scope-id="teamId"
+      :scope-id="teamSlug"
       @saved="onSaved"
     />
   </div>

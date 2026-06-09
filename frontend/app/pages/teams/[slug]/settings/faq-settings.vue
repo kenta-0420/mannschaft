@@ -10,14 +10,14 @@
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 </script>
 
 <template>
   <div class="mx-auto max-w-2xl p-4">
     <FaqSettingsEditor
       scope-type="team"
-      :scope-id="teamId"
+      :scope-id="teamSlug"
     />
   </div>
 </template>

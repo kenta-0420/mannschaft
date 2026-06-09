@@ -22,9 +22,9 @@ definePageMeta({ middleware: 'auth' })
 const FOLDER_MAX = 20
 
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const { t } = useI18n()
-const { isAdmin, isAdminOrDeputy, can, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdmin, isAdminOrDeputy, can, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const { deleteFolder } = useFriendFoldersApi()
 const notification = useNotification()
@@ -88,7 +88,7 @@ function handleDelete(folderId: number) {
     message: t('folders.messages.delete_confirm'),
     onAccept: async () => {
       try {
-        await deleteFolder(teamId.value, folderId)
+        await deleteFolder(teamSlug.value, folderId)
         notification.success(t('folders.messages.deleted'))
         await listRef.value?.refresh()
       }
@@ -143,7 +143,7 @@ onMounted(() => {
     <FriendFolderList
       v-else
       ref="listRef"
-      :team-id="teamId"
+      :team-id="teamSlug"
       :can-edit="canManage"
       @edit="openEditDialog"
       @delete="handleDelete"
@@ -153,7 +153,7 @@ onMounted(() => {
     <!-- 作成・編集ダイアログ -->
     <FriendFolderFormDialog
       v-model="formDialogOpen"
-      :team-id="teamId"
+      :team-id="teamSlug"
       :folder="editingFolder"
       @saved="onFolderSaved"
     />
@@ -161,7 +161,7 @@ onMounted(() => {
     <!-- メンバー管理パネル -->
     <FriendFolderMembersPanel
       v-model="membersPanelOpen"
-      :team-id="teamId"
+      :team-id="teamSlug"
       :folder="membersPanelFolder"
       @updated="onMembersUpdated"
     />

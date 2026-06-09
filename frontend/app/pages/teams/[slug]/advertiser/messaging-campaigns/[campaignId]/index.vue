@@ -13,11 +13,11 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const router = useRouter()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const campaignId = String(route.params.campaignId)
 // F09.17 Phase 11-d-4: チーム配下ページは scope='TEAM' 固定で composable を呼ぶ。
 const scopeType: ScopeType = 'TEAM'
-const scopeId = teamId
+const scopeId = teamSlug
 const { t } = useI18n()
 const api = useAdMessagingCampaignApi()
 const toast = useNotification()
@@ -99,7 +99,7 @@ async function deleteCampaign() {
       try {
         await api.deleteCampaign(scopeType, scopeId, campaignId)
         toast.success(t('advertising.actions.delete'))
-        router.push(`/teams/${teamId}/advertiser/messaging-campaigns`)
+        router.push(`/teams/${teamSlug}/advertiser/messaging-campaigns`)
       }
       catch {
         toast.error(t('advertising.advertiser_crud.errors.save_failed'))
@@ -134,7 +134,7 @@ onMounted(load)
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <NuxtLink :to="`/teams/${teamId}/advertiser/messaging-campaigns`" class="text-sm text-primary hover:underline">
+      <NuxtLink :to="`/teams/${teamSlug}/advertiser/messaging-campaigns`" class="text-sm text-primary hover:underline">
         <i class="pi pi-arrow-left mr-1" />{{ t('advertising.pages.advertiser_campaign_list.title') }}
       </NuxtLink>
     </div>

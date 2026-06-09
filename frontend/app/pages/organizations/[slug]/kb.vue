@@ -4,8 +4,8 @@ import type { KbPageSummaryResponse, KbPageResponse } from '~/types/knowledgeBas
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = String(route.params.id)
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const orgSlug = String(route.params.slug)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 
 const selectedPageId = ref<number | null>(null)
 const showFormDialog = ref(false)
@@ -50,7 +50,7 @@ onMounted(() => loadPermissions())
     <div v-if="selectedPageId" class="mx-auto max-w-3xl">
       <KbPageDetail
         scope-type="organizations"
-        :scope-id="orgId"
+        :scope-id="orgSlug"
         :page-id="selectedPageId"
         :can-manage="isAdminOrDeputy"
         @back="selectedPageId = null"
@@ -64,7 +64,7 @@ onMounted(() => loadPermissions())
       <KbPageTree
         ref="listRef"
         scope-type="organizations"
-        :scope-id="orgId"
+        :scope-id="orgSlug"
         :can-manage="isAdminOrDeputy"
         @select="onSelectPage"
         @create="onCreatePage"
@@ -74,7 +74,7 @@ onMounted(() => loadPermissions())
     <KbPageForm
       v-model:visible="showFormDialog"
       scope-type="organizations"
-      :scope-id="orgId"
+      :scope-id="orgSlug"
       :edit-page="editPage"
       @saved="onSaved"
     />

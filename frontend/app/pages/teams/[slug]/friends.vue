@@ -18,9 +18,9 @@ import type { FollowTeamResponse } from '~/types/friends'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const { t } = useI18n()
-const { roleName, isAdmin, isAdminOrDeputy, can, loadPermissions } = useRoleAccess('team', teamId)
+const { roleName, isAdmin, isAdminOrDeputy, can, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const dialogOpen = ref(false)
 const listRef = ref<{ refresh: () => Promise<void> } | null>(null)
@@ -81,14 +81,14 @@ onMounted(() => {
 
     <TeamFriendList
       ref="listRef"
-      :team-id="teamId"
+      :team-id="teamSlug"
       :can-edit="canEditList"
       :can-toggle-visibility="canToggleVisibility"
     />
 
     <FriendFollowDialog
       v-model="dialogOpen"
-      :team-id="teamId"
+      :team-id="teamSlug"
       @success="onFollowSuccess"
     />
   </div>

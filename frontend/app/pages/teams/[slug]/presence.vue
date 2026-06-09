@@ -8,8 +8,8 @@ import type {
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = String(route.params.id)
-const { loadPermissions } = useRoleAccess('team', teamId)
+const teamSlug = String(route.params.slug)
+const { loadPermissions } = useRoleAccess('team', teamSlug)
 const presenceApi = usePresenceApi()
 const { showError } = useNotification()
 const { formatDateTime } = useDatetime()
@@ -32,7 +32,7 @@ const homeMessage = ref('')
 async function loadStatus() {
   loading.value = true
   try {
-    const res = await presenceApi.getStatus(teamId)
+    const res = await presenceApi.getStatus(teamSlug)
     statuses.value = res.data
   } catch {
     showError('在席情報の取得に失敗しました')
@@ -43,7 +43,7 @@ async function loadStatus() {
 
 async function loadHistory() {
   try {
-    const res = await presenceApi.getHistory(teamId)
+    const res = await presenceApi.getHistory(teamSlug)
     historyList.value = res.data
   } catch {
     showError('履歴の取得に失敗しました')
@@ -52,7 +52,7 @@ async function loadHistory() {
 
 async function loadStats() {
   try {
-    const res = await presenceApi.getStats(teamId)
+    const res = await presenceApi.getStats(teamSlug)
     stats.value = res.data
   } catch {
     showError('統計の取得に失敗しました')
@@ -72,7 +72,7 @@ async function submitGoingOut() {
     if (destination.value) body.destination = destination.value
     if (expectedReturnAt.value) body.expectedReturnAt = expectedReturnAt.value
     if (goingOutMessage.value) body.message = goingOutMessage.value
-    await presenceApi.goingOut(teamId, body as Record<string, unknown>)
+    await presenceApi.goingOut(teamSlug, body as Record<string, unknown>)
     showGoingOutDialog.value = false
     await loadStatus()
   } catch {
@@ -82,7 +82,7 @@ async function submitGoingOut() {
 
 async function submitHome() {
   try {
-    await presenceApi.goHome(teamId, homeMessage.value ? { message: homeMessage.value } : undefined)
+    await presenceApi.goHome(teamSlug, homeMessage.value ? { message: homeMessage.value } : undefined)
     homeMessage.value = ''
     await loadStatus()
   } catch {

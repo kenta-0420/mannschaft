@@ -2,10 +2,10 @@
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const safetyApi = useSafetyCheckApi()
 const notification = useNotification()
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 const { formatDateTime } = useDatetime()
 
 interface SafetyCheck {
@@ -28,7 +28,7 @@ async function loadChecks() {
   try {
     const res = await safetyApi.listSafetyChecks({
       scopeType: 'ORGANIZATION',
-      scopeId: orgId,
+      scopeId: orgSlug,
       size: 20,
     })
     checks.value = res.data as SafetyCheck[]
@@ -112,7 +112,7 @@ onMounted(async () => {
     <SafetyCheckTrigger
       v-model:visible="showTriggerDialog"
       :scope-type="'ORGANIZATION'"
-      :scope-id="orgId"
+      :scope-id="orgSlug"
       @triggered="loadChecks"
     />
   </div>

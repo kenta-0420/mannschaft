@@ -4,7 +4,7 @@ import type { CreateLegalFilingRequest, LegalFiling, LegalFilingType } from '~/t
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 const { t } = useI18n()
 const toast = useToast()
 const { listByOrganization, createLegalFiling, buildEvidencePackage, getEvidenceDownloadUrl } = useLegalFilingApi()
@@ -43,7 +43,7 @@ function filingTypeLabel(type: LegalFilingType): string {
 async function fetchFilings() {
   loading.value = true
   try {
-    const res = await listByOrganization(orgId.value)
+    const res = await listByOrganization(orgSlug.value)
     filings.value = res.data
   }
   catch (e) {
@@ -68,7 +68,7 @@ function openCreateDialog() {
 async function handleCreate() {
   submittingCreate.value = true
   try {
-    await createLegalFiling(orgId.value, createForm.value)
+    await createLegalFiling(orgSlug.value, createForm.value)
     showCreateDialog.value = false
     toast.add({ severity: 'success', summary: t('succession.legalFilings.createSuccess'), life: 3000 })
     await fetchFilings()
@@ -85,7 +85,7 @@ async function handleCreate() {
 async function handleBuildEvidence(filing: LegalFiling) {
   buildingId.value = filing.id
   try {
-    await buildEvidencePackage(orgId.value, filing.id)
+    await buildEvidencePackage(orgSlug.value, filing.id)
     toast.add({ severity: 'success', summary: t('succession.legalFilings.evidenceBuildSuccess'), life: 3000 })
     await fetchFilings()
   }
@@ -101,7 +101,7 @@ async function handleBuildEvidence(filing: LegalFiling) {
 async function handleDownloadEvidence(filing: LegalFiling) {
   downloadingId.value = filing.id
   try {
-    const res = await getEvidenceDownloadUrl(orgId.value, filing.id)
+    const res = await getEvidenceDownloadUrl(orgSlug.value, filing.id)
     if (typeof window !== 'undefined') {
       window.open(res.data.downloadUrl, '_blank', 'noopener,noreferrer')
     }

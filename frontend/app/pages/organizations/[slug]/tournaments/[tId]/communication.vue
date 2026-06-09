@@ -6,10 +6,10 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const tId = Number(route.params.tId)
 
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 const { fetchContactSpaces, fetchDivisionContactSpaces, toggleVisibility, toggleDivisionVisibility } = useTournamentContact()
 const { getDivisions } = useTournamentApi()
 const { getChannel } = useChatApi()
@@ -160,7 +160,7 @@ onMounted(async () => {
     await loadPermissions()
     const [, divRes] = await Promise.all([
       loadTournamentSpaces(),
-      getDivisions(orgId, tId).catch(() => ({ data: [] as TournamentDivision[] })),
+      getDivisions(orgSlug, tId).catch(() => ({ data: [] as TournamentDivision[] })),
     ])
     divisions.value = divRes.data
   }
@@ -173,7 +173,7 @@ onMounted(async () => {
 <template>
   <div>
     <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/organizations/${orgId}/tournaments/${tId}`" />
+      <BackButton :to="`/organizations/${orgSlug}/tournaments/${tId}`" />
       <PageHeader :title="$t('tournament.communication.title')" />
     </div>
 
@@ -274,7 +274,7 @@ onMounted(async () => {
                 :channel="activeChatChannel"
                 :can-pin="isAdminOrDeputy"
                 :can-delete="isAdminOrDeputy"
-                :organization-id="orgId"
+                :organization-id="orgSlug"
               />
             </div>
           </template>

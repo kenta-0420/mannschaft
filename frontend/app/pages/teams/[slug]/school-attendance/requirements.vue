@@ -7,7 +7,7 @@ definePageMeta({
 })
 
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const { t } = useI18n()
 
 const {
@@ -43,7 +43,7 @@ const filterOptions = computed(() => [
 
 watch(selectedStatus, (val) => {
   statusFilter.value = val ? [val] : []
-  void loadAtRiskStudents(teamId.value)
+  void loadAtRiskStudents(teamSlug.value)
 })
 
 async function onResolve(student: AtRiskStudentResponse): Promise<void> {
@@ -63,7 +63,7 @@ async function onResolve(student: AtRiskStudentResponse): Promise<void> {
 }
 
 async function onResolveSubmit(evaluationId: number, req: ResolveEvaluationRequest): Promise<void> {
-  await resolveViolation(evaluationId, req.resolutionNote, teamId.value)
+  await resolveViolation(evaluationId, req.resolutionNote, teamSlug.value)
   showResolveModal.value = false
   selectedEvaluationId.value = undefined
 }
@@ -83,30 +83,30 @@ async function onDisclose(student: AtRiskStudentResponse): Promise<void> {
 }
 
 async function onDisclosed(evaluationId: number, req: DisclosureRequest): Promise<void> {
-  await executeDisclose(teamId.value, evaluationId, req, () => {
-    void loadAtRiskStudents(teamId.value)
+  await executeDisclose(teamSlug.value, evaluationId, req, () => {
+    void loadAtRiskStudents(teamSlug.value)
   })
   showDisclosureModal.value = false
   selectedDisclosureEvaluationId.value = undefined
 }
 
 async function onWithheld(evaluationId: number, req: WithholdRequest): Promise<void> {
-  await executeWithhold(teamId.value, evaluationId, req, () => {
-    void loadAtRiskStudents(teamId.value)
+  await executeWithhold(teamSlug.value, evaluationId, req, () => {
+    void loadAtRiskStudents(teamSlug.value)
   })
   showDisclosureModal.value = false
   selectedDisclosureEvaluationId.value = undefined
 }
 
 onMounted(async () => {
-  await loadAtRiskStudents(teamId.value)
+  await loadAtRiskStudents(teamSlug.value)
 })
 </script>
 
 <template>
   <div class="flex flex-col min-h-screen" data-testid="requirements-page">
     <header class="flex items-center gap-3 px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900">
-      <BackButton :to="`/teams/${teamId}`" :label="$t('common.back')" />
+      <BackButton :to="`/teams/${teamSlug}`" :label="$t('common.back')" />
       <h1 class="text-lg font-bold m-0">
         {{ $t('school.requirements.title') }}
       </h1>
@@ -158,7 +158,7 @@ onMounted(async () => {
       <RequirementDisclosureDecisionModal
         v-model:visible="showDisclosureModal"
         :evaluation-id="selectedDisclosureEvaluationId"
-        :team-id="teamId"
+        :team-id="teamSlug"
         @disclosed="onDisclosed"
         @withheld="onWithheld"
       />

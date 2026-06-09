@@ -2,8 +2,8 @@
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = String(route.params.id)
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const orgSlug = String(route.params.slug)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 
 const activeTab = ref(0)
 const showTicketForm = ref(false)
@@ -25,14 +25,14 @@ onMounted(() => loadPermissions())
       </TabList>
       <TabPanels>
         <TabPanel :value="0">
-          <QueueStatusBoard :team-id="orgId" />
+          <QueueStatusBoard :team-id="orgSlug" />
         </TabPanel>
         <TabPanel v-if="isAdminOrDeputy" :value="1">
-          <QueueAdminPanel :team-id="orgId" />
+          <QueueAdminPanel :team-id="orgSlug" />
         </TabPanel>
       </TabPanels>
     </Tabs>
 
-    <QueueTicketForm v-model:visible="showTicketForm" :team-id="orgId" />
+    <QueueTicketForm v-model:visible="showTicketForm" :team-id="orgSlug" />
   </div>
 </template>

@@ -14,10 +14,10 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const timetableApi = useTimetableApi()
 const notification = useNotification()
-const { isAdmin, can, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdmin, can, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const canManage = computed(() => isAdmin.value || can('MANAGE_TIMETABLE'))
 
@@ -94,7 +94,7 @@ async function loadData() {
   loading.value = true
   try {
     await loadPermissions()
-    timetables.value = await timetableApi.list(teamId.value)
+    timetables.value = await timetableApi.list(teamSlug.value)
     const active = timetables.value.find((tt) => tt.status === 'ACTIVE')
     if (active) await selectTimetable(active)
   } catch {
@@ -108,7 +108,7 @@ async function selectTimetable(tt: Timetable) {
   selectedTimetable.value = tt
   currentWeekOf.value = undefined
   try {
-    weeklyView.value = await timetableApi.getWeekly(teamId.value, tt.id)
+    weeklyView.value = await timetableApi.getWeekly(teamSlug.value, tt.id)
   } catch {
     notification.error(t('timetable.weekly_error'))
   }
@@ -140,7 +140,7 @@ async function navigateWeek(direction: 'prev' | 'next' | 'current') {
   }
   try {
     weeklyView.value = await timetableApi.getWeekly(
-      teamId.value,
+      teamSlug.value,
       selectedTimetable.value.id,
       currentWeekOf.value,
     )
@@ -151,7 +151,7 @@ async function navigateWeek(direction: 'prev' | 'next' | 'current') {
 
 async function handleActivate(id: number) {
   try {
-    await timetableApi.activate(teamId.value, id)
+    await timetableApi.activate(teamSlug.value, id)
     notification.success(t('timetable.activate_success'))
     await loadData()
   } catch {
@@ -161,7 +161,7 @@ async function handleActivate(id: number) {
 
 async function handleArchive(id: number) {
   try {
-    await timetableApi.archive(teamId.value, id)
+    await timetableApi.archive(teamSlug.value, id)
     notification.success(t('timetable.archive_success'))
     await loadData()
   } catch {
@@ -171,7 +171,7 @@ async function handleArchive(id: number) {
 
 async function handleRevertToDraft(id: number) {
   try {
-    await timetableApi.revertToDraft(teamId.value, id)
+    await timetableApi.revertToDraft(teamSlug.value, id)
     notification.success(t('timetable.revert_success'))
     await loadData()
   } catch {
@@ -181,7 +181,7 @@ async function handleRevertToDraft(id: number) {
 
 async function handleDuplicate(id: number) {
   try {
-    await timetableApi.duplicate(teamId.value, id)
+    await timetableApi.duplicate(teamSlug.value, id)
     notification.success(t('timetable.duplicate_success'))
     await loadData()
   } catch {
@@ -192,7 +192,7 @@ async function handleDuplicate(id: number) {
 async function handleExportPdf() {
   if (!selectedTimetable.value) return
   try {
-    const res = await timetableApi.exportPdf(teamId.value, selectedTimetable.value.id)
+    const res = await timetableApi.exportPdf(teamSlug.value, selectedTimetable.value.id)
     window.open(res.url, '_blank')
   } catch {
     notification.error(t('timetable.pdf_error'))
@@ -201,7 +201,7 @@ async function handleExportPdf() {
 
 async function openCreateDialog() {
   try {
-    terms.value = await timetableApi.listTerms('team', teamId.value)
+    terms.value = await timetableApi.listTerms('team', teamSlug.value)
   } catch {
     // サイレント失敗
   }
@@ -211,7 +211,7 @@ async function openCreateDialog() {
 async function submitCreate(payload: CreatePayload) {
   createSubmitting.value = true
   try {
-    await timetableApi.create(teamId.value, payload)
+    await timetableApi.create(teamSlug.value, payload)
     notification.success(t('timetable.create_success'))
     showCreateDialog.value = false
     await loadData()
@@ -233,7 +233,7 @@ async function submitChange(payload: ChangePayload) {
     // 週間ビューも再取得
     if (selectedTimetable.value) {
       weeklyView.value = await timetableApi.getWeekly(
-        teamId.value,
+        teamSlug.value,
         selectedTimetable.value.id,
         currentWeekOf.value,
       )

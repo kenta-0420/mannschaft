@@ -4,8 +4,8 @@ import type { ShoppingListResponse } from '~/types/shopping-list'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = String(route.params.id)
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const teamSlug = String(route.params.slug)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 const shoppingApi = useShoppingListApi()
 const { showError } = useNotification()
 
@@ -18,12 +18,12 @@ const isTemplate = ref(false)
 const editingList = ref<ShoppingListResponse | null>(null)
 
 const { items, loadingItems, newItemName, loadItems, addItem, toggleItem, removeItem, clearChecked } =
-  useShoppingItems(teamId, selectedList)
+  useShoppingItems(teamSlug, selectedList)
 
 async function loadLists() {
   loading.value = true
   try {
-    const res = await shoppingApi.listShoppingLists(teamId)
+    const res = await shoppingApi.listShoppingLists(teamSlug)
     lists.value = res.data
     if (res.data.length > 0 && !selectedList.value) {
       await selectList(res.data[0]!)
@@ -57,12 +57,12 @@ function openEditList(list: ShoppingListResponse) {
 async function saveList() {
   try {
     if (editingList.value) {
-      await shoppingApi.updateShoppingList(teamId, editingList.value.id, {
+      await shoppingApi.updateShoppingList(teamSlug, editingList.value.id, {
         name: listName.value,
         isTemplate: isTemplate.value,
       })
     } else {
-      await shoppingApi.createShoppingList(teamId, {
+      await shoppingApi.createShoppingList(teamSlug, {
         name: listName.value,
         isTemplate: isTemplate.value,
       })
@@ -77,7 +77,7 @@ async function saveList() {
 async function removeList(list: ShoppingListResponse) {
   if (!confirm(`「${list.name}」を削除しますか？`)) return
   try {
-    await shoppingApi.deleteShoppingList(teamId, list.id)
+    await shoppingApi.deleteShoppingList(teamSlug, list.id)
     if (selectedList.value?.id === list.id) {
       selectedList.value = null
       items.value = []

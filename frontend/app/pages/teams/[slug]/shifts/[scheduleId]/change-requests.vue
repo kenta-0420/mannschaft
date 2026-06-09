@@ -2,7 +2,7 @@
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const scheduleId = computed(() => Number(route.params.scheduleId))
 
 const authStore = useAuthStore()
@@ -32,7 +32,7 @@ async function onWithdraw(id: number): Promise<void> {
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">
         <NuxtLink
-          :to="`/teams/${teamId}/shifts`"
+          :to="`/teams/${teamSlug}/shifts`"
           class="text-surface-500 hover:text-surface-700"
         >
           <i class="pi pi-arrow-left" />

@@ -5,8 +5,8 @@ definePageMeta({
 })
 
 const route = useRoute()
-const orgId = String(route.params.id)
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const orgSlug = String(route.params.slug)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 
 const loading = ref(true)
 
@@ -23,9 +23,9 @@ onMounted(async () => {
   <PageLoading v-if="loading" />
   <div v-else>
     <div class="mb-4">
-      <BackButton :to="`/organizations/${orgId}/workflows`" label="申請一覧に戻る" />
+      <BackButton :to="`/organizations/${orgSlug}/workflows`" label="申請一覧に戻る" />
     </div>
 
-    <WorkflowTemplateList scope-type="organization" :scope-id="orgId" :can-edit="isAdminOrDeputy" />
+    <WorkflowTemplateList scope-type="organization" :scope-id="orgSlug" :can-edit="isAdminOrDeputy" />
   </div>
 </template>

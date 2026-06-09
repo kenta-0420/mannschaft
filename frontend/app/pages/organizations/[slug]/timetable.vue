@@ -6,10 +6,10 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 const timetableApi = useTimetableApi()
 const notification = useNotification()
-const { isAdmin, loadPermissions } = useRoleAccess('organization', orgId)
+const { isAdmin, loadPermissions } = useRoleAccess('organization', orgSlug)
 const { formatDate, userTimezone } = useDatetime()
 
 const periods = ref<TimetablePeriod[]>([])
@@ -36,8 +36,8 @@ async function loadData() {
   try {
     await loadPermissions()
     const [p, t] = await Promise.all([
-      timetableApi.listPeriods(orgId.value),
-      timetableApi.listTerms('organization', orgId.value),
+      timetableApi.listPeriods(orgSlug.value),
+      timetableApi.listTerms('organization', orgSlug.value),
     ])
     periods.value = p
     terms.value = t
@@ -52,7 +52,7 @@ async function submitTerm() {
   if (!termForm.value.name || !termForm.value.startDate || !termForm.value.endDate) return
   termSubmitting.value = true
   try {
-    await timetableApi.createOrgTerm(orgId.value, {
+    await timetableApi.createOrgTerm(orgSlug.value, {
       name: termForm.value.name,
       startDate: termForm.value.startDate,
       endDate: termForm.value.endDate,
@@ -68,7 +68,7 @@ async function submitTerm() {
       academicYear: dayjs().tz(userTimezone.value).year(),
       sortOrder: 0,
     }
-    terms.value = await timetableApi.listTerms('organization', orgId.value)
+    terms.value = await timetableApi.listTerms('organization', orgSlug.value)
   } catch {
     notification.error(t('timetable.term_error'))
   } finally {
@@ -81,7 +81,7 @@ async function deleteTerm(termId: number) {
   try {
     await timetableApi.deleteTerm(termId)
     notification.success(t('common.dialog.success'))
-    terms.value = await timetableApi.listTerms('organization', orgId.value)
+    terms.value = await timetableApi.listTerms('organization', orgSlug.value)
   } catch {
     notification.error(t('common.dialog.error'))
   } finally {

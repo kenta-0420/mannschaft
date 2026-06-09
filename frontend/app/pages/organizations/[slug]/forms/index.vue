@@ -6,8 +6,8 @@ definePageMeta({
 })
 
 const route = useRoute()
-const orgId = String(route.params.id)
-const { loadPermissions } = useRoleAccess('organization', orgId)
+const orgSlug = String(route.params.slug)
+const { loadPermissions } = useRoleAccess('organization', orgSlug)
 
 const formApi = useFormApi()
 const { formatDate } = useDatetime()
@@ -21,7 +21,7 @@ const submissionListRef = ref<{ refresh: () => void } | null>(null)
 async function loadPublishedTemplates() {
   loading.value = true
   try {
-    const res = await formApi.listTemplates('organization', orgId, {
+    const res = await formApi.listTemplates('organization', orgSlug, {
       status: 'PUBLISHED',
       size: 100,
     })
@@ -52,7 +52,7 @@ onMounted(async () => {
   <div>
     <div class="mb-4 flex items-center justify-between">
       <PageHeader title="フォーム" />
-      <NuxtLink :to="`/organizations/${orgId}/forms/templates`">
+      <NuxtLink :to="`/organizations/${orgSlug}/forms/templates`">
         <Button label="テンプレート管理" icon="pi pi-cog" outlined />
       </NuxtLink>
     </div>
@@ -98,7 +98,7 @@ onMounted(async () => {
     <FormSubmissionList
       ref="submissionListRef"
       scope-type="organization"
-      :scope-id="orgId"
+      :scope-id="orgSlug"
       :my-only="true"
     />
 
@@ -107,7 +107,7 @@ onMounted(async () => {
       v-if="selectedTemplateId"
       v-model:visible="showSubmitDialog"
       scope-type="organization"
-      :scope-id="orgId"
+      :scope-id="orgSlug"
       :template-id="selectedTemplateId"
       @saved="onSaved"
     />

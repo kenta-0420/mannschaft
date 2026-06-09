@@ -7,7 +7,7 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const tId = Number(route.params.tId)
 // orgId はナビゲーション時にクエリパラメータとして渡す
 const orgId = String(route.query.orgId ?? '')
@@ -47,7 +47,7 @@ function canSubmit(req: SubmissionRequirementResponse): boolean {
 async function loadRequirements() {
   loadingReqs.value = true
   try {
-    const res = await listRequirementsForTeam(teamId)
+    const res = await listRequirementsForTeam(teamSlug)
     requirements.value = res.data
   } catch {
     notification.error(t('tournament.submission.error_load'))
@@ -69,7 +69,7 @@ function cancelSubmit() {
 async function doSubmit(reqId: number) {
   submitting.value = true
   try {
-    await submitForTeam(reqId, teamId, {})
+    await submitForTeam(reqId, teamSlug, {})
     notification.success(t('tournament.submission.submit_success'))
     submittingReqId.value = null
     await loadRequirements()
@@ -88,7 +88,7 @@ onMounted(() => loadRequirements())
 <template>
   <div class="mx-auto max-w-3xl">
     <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamId}/tournaments`" />
+      <BackButton :to="`/teams/${teamSlug}/tournaments`" />
       <PageHeader :title="$t('tournament.submission.title')" />
     </div>
 

@@ -5,8 +5,8 @@ definePageMeta({
 })
 
 const route = useRoute()
-const orgId = String(route.params.id)
-const { isAdmin, isAdminOrDeputy, isMember, loadPermissions } = useRoleAccess('organization', orgId)
+const orgSlug = String(route.params.slug)
+const { isAdmin, isAdminOrDeputy, isMember, loadPermissions } = useRoleAccess('organization', orgSlug)
 
 const showCreateDialog = ref(false)
 const editTodoId = ref<number | undefined>(undefined)
@@ -38,7 +38,7 @@ onMounted(() => loadPermissions())
     <TodoListTable
       ref="listRef"
       scope-type="organization"
-      :scope-id="orgId"
+      :scope-id="orgSlug"
       :can-edit="isAdminOrDeputy"
       :can-delete="isAdmin"
       @edit="onEdit"
@@ -47,14 +47,14 @@ onMounted(() => loadPermissions())
     <TodoForm
       v-model:visible="showCreateDialog"
       scope-type="organization"
-      :scope-id="orgId"
+      :scope-id="orgSlug"
       @saved="onSaved"
     />
 
     <TodoForm
       v-model:visible="showEditDialog"
       scope-type="organization"
-      :scope-id="orgId"
+      :scope-id="orgSlug"
       :todo-id="editTodoId"
       @saved="onSaved"
     />

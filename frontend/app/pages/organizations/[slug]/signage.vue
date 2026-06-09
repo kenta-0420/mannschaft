@@ -2,9 +2,9 @@
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 </script>
 
 <template>
-  <SignageManager scope-type="ORGANIZATION" :scope-id="orgId" />
+  <SignageManager scope-type="ORGANIZATION" :scope-id="orgSlug" />
 </template>

@@ -4,8 +4,8 @@ import type { IncidentSummaryResponse } from '~/types/incident'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = String(route.params.id)
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const orgSlug = String(route.params.slug)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 
 const selectedIncident = ref<IncidentSummaryResponse | null>(null)
 const showCreateDialog = ref(false)
@@ -47,7 +47,7 @@ onMounted(() => loadPermissions())
       <IncidentList
         ref="listRef"
         scope-type="ORGANIZATION"
-        :scope-id="orgId"
+        :scope-id="orgSlug"
         :can-manage="isAdminOrDeputy"
         @select="onSelect"
         @create="showCreateDialog = true"
@@ -58,14 +58,14 @@ onMounted(() => loadPermissions())
     <IncidentForm
       v-model:visible="showCreateDialog"
       scope-type="ORGANIZATION"
-      :scope-id="orgId"
+      :scope-id="orgSlug"
       @saved="onSaved"
     />
 
     <IncidentForm
       v-model:visible="showEditDialog"
       scope-type="ORGANIZATION"
-      :scope-id="orgId"
+      :scope-id="orgSlug"
       :edit-id="editId"
       @saved="onSaved"
     />
@@ -73,7 +73,7 @@ onMounted(() => loadPermissions())
     <IncidentCategoryManager
       v-model:visible="showCategoryManager"
       scope-type="ORGANIZATION"
-      :scope-id="orgId"
+      :scope-id="orgSlug"
     />
   </div>
 </template>

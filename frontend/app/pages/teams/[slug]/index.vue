@@ -13,21 +13,21 @@ const notification = useNotification()
 const { handleApiError } = useErrorHandler()
 const { templateLabel, visibilityLabel } = useScopeLabels()
 
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const {
   roleName,
   loading: roleLoading,
   loadPermissions,
   isAdmin,
   isAdminOrDeputy,
-} = useRoleAccess('team', teamId)
+} = useRoleAccess('team', teamSlug)
 
 const viewerRole = computed<ViewerRole>(() => (roleName.value as ViewerRole | null) ?? 'PUBLIC')
 
 const {
   settings: widgetVisibilitySettings,
   fetch: fetchWidgetVisibility,
-} = useDashboardWidgetVisibility('team', teamId)
+} = useDashboardWidgetVisibility('team', teamSlug)
 
 const followStatus = ref<'NONE' | 'PENDING' | 'APPROVED'>('NONE')
 const followLoading = ref(false)
@@ -36,7 +36,7 @@ const showCancelSupporterConfirm = ref(false)
 async function fetchFollowStatus() {
   if (roleName.value) return
   try {
-    const res = await teamApi.getFollowStatus(teamId.value)
+    const res = await teamApi.getFollowStatus(teamSlug.value)
     followStatus.value = res.data.status
   } catch {
     followStatus.value = 'NONE'
@@ -46,8 +46,8 @@ async function fetchFollowStatus() {
 async function applySupporter() {
   followLoading.value = true
   try {
-    await teamApi.followTeam(teamId.value)
-    const res = await teamApi.getFollowStatus(teamId.value)
+    await teamApi.followTeam(teamSlug.value)
+    const res = await teamApi.getFollowStatus(teamSlug.value)
     followStatus.value = res.data.status
     notification.success(
       followStatus.value === 'APPROVED'
@@ -64,7 +64,7 @@ async function applySupporter() {
 async function cancelSupporter() {
   followLoading.value = true
   try {
-    await teamApi.unfollowTeam(teamId.value)
+    await teamApi.unfollowTeam(teamSlug.value)
     followStatus.value = 'NONE'
     showCancelSupporterConfirm.value = false
     notification.success('サポーターをやめました')
@@ -85,7 +85,7 @@ const displayName = computed(() => team.value?.basicInfo?.nickname1 || team.valu
 async function fetchTeam() {
   loading.value = true
   try {
-    const result = await teamApi.getTeam(teamId.value)
+    const result = await teamApi.getTeam(teamSlug.value)
     team.value = result.data
   } catch (error) {
     handleApiError(error, 'チーム詳細取得')
@@ -96,7 +96,7 @@ async function fetchTeam() {
 
 async function leaveTeam() {
   try {
-    await teamApi.leaveTeam(teamId.value)
+    await teamApi.leaveTeam(teamSlug.value)
     notification.success('チームから退出しました')
     navigateTo('/dashboard')
   } catch (error) {
@@ -161,7 +161,7 @@ onMounted(async () => {
               <div class="mt-4">
                 <ScopeDashboard
                   scope-type="team"
-                  :scope-id="teamId"
+                  :scope-id="teamSlug"
                   :scope-name="displayName"
                   :scope-template="team.location?.template"
                   :viewer-role="viewerRole"
@@ -173,7 +173,7 @@ onMounted(async () => {
 
             <TabPanel :value="1">
               <TeamDetailInfo
-                :team-id="teamId"
+                :team-id="teamSlug"
                 :name="team.basicInfo?.name ?? ''"
                 :name-kana="team.basicInfo?.nameKana ?? null"
                 :nickname1="team.basicInfo?.nickname1 ?? null"
@@ -207,7 +207,7 @@ onMounted(async () => {
               <div class="mt-4">
                 <MemberTable
                   scope-type="team"
-                  :scope-id="teamId"
+                  :scope-id="teamSlug"
                   :can-change-role="isAdminOrDeputy"
                   :can-remove="isAdminOrDeputy"
                 />
@@ -216,34 +216,34 @@ onMounted(async () => {
 
             <TabPanel v-if="isAdminOrDeputy" :value="3">
               <div class="mt-4">
-                <InviteTokenList scope-type="team" :scope-id="teamId" />
+                <InviteTokenList scope-type="team" :scope-id="teamSlug" />
               </div>
             </TabPanel>
 
             <TabPanel v-if="isAdmin && team.visibility?.supporterEnabled" :value="4">
               <div class="mt-4">
-                <SupporterManagementPanel scope-type="team" :scope-id="teamId" />
+                <SupporterManagementPanel scope-type="team" :scope-id="teamSlug" />
               </div>
             </TabPanel>
 
             <TabPanel v-if="isAdmin" :value="5">
               <div class="mt-4">
-                <ModuleSettingsPanel scope-type="team" :scope-id="teamId" />
+                <ModuleSettingsPanel scope-type="team" :scope-id="teamSlug" />
               </div>
             </TabPanel>
 
             <TabPanel v-if="isAdmin" :value="6">
               <div class="mt-4 grid grid-cols-2 gap-3">
-                <NuxtLink :to="`/teams/${teamId}/friends`">
+                <NuxtLink :to="`/teams/${teamSlug}/friends`">
                   <Button :label="$t('friends.title')" icon="pi pi-users" class="w-full" outlined />
                 </NuxtLink>
-                <NuxtLink :to="`/teams/${teamId}/friend-folders`">
+                <NuxtLink :to="`/teams/${teamSlug}/friend-folders`">
                   <Button :label="$t('folders.title')" icon="pi pi-folder-open" class="w-full" outlined />
                 </NuxtLink>
-                <NuxtLink :to="`/teams/${teamId}/friend-feed`">
+                <NuxtLink :to="`/teams/${teamSlug}/friend-feed`">
                   <Button :label="$t('friend_feed.title')" icon="pi pi-inbox" class="w-full" outlined />
                 </NuxtLink>
-                <NuxtLink :to="`/teams/${teamId}/friend-forward-exports`">
+                <NuxtLink :to="`/teams/${teamSlug}/friend-forward-exports`">
                   <Button :label="$t('forward_exports.title')" icon="pi pi-history" class="w-full" outlined />
                 </NuxtLink>
               </div>
@@ -252,7 +252,7 @@ onMounted(async () => {
             <TabPanel v-if="roleName" :value="7">
               <div class="mt-4">
                 <TeamFriendList
-                  :team-id="teamId"
+                  :team-id="teamSlug"
                   :can-edit="isAdminOrDeputy"
                   :can-toggle-visibility="isAdmin"
                 />

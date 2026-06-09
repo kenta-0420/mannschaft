@@ -3,7 +3,7 @@ import type { CreditLimitRequestResponse } from '~/types/advertiser'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const advertiserApi = useAdvertiserApi()
 const { success, error: showError } = useNotification()
 
@@ -16,7 +16,7 @@ const form = ref({ requestedLimit: 0, reason: '' })
 async function load() {
   loading.value = true
   try {
-    const res = await advertiserApi.getCreditLimitRequests(orgId)
+    const res = await advertiserApi.getCreditLimitRequests(orgSlug)
     requests.value = res.data
   }
   catch { requests.value = [] }
@@ -27,7 +27,7 @@ async function create() {
   if (!form.value.requestedLimit || !form.value.reason) return
   creating.value = true
   try {
-    await advertiserApi.createCreditLimitRequest(orgId, form.value)
+    await advertiserApi.createCreditLimitRequest(orgSlug, form.value)
     success('増額申請を送信しました')
     showCreate.value = false
     form.value = { requestedLimit: 0, reason: '' }

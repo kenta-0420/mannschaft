@@ -1,8 +1,8 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
-const orgId = String(route.params.id)
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const orgSlug = String(route.params.slug)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 
 const loading = ref(true)
 
@@ -18,6 +18,6 @@ onMounted(async () => {
 <template>
   <PageLoading v-if="loading" />
   <div v-else>
-    <EquipmentList scope-type="organization" :scope-id="orgId" :can-manage="isAdminOrDeputy" />
+    <EquipmentList scope-type="organization" :scope-id="orgSlug" :can-manage="isAdminOrDeputy" />
   </div>
 </template>

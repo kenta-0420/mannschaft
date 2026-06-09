@@ -3,7 +3,7 @@ import type { AdvertiserAccountResponse, AdvertiserOverviewResponse } from '~/ty
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const advertiserApi = useAdvertiserApi()
 const account = ref<AdvertiserAccountResponse | null>(null)
 const overview = ref<AdvertiserOverviewResponse | null>(null)
@@ -13,9 +13,9 @@ const notRegistered = ref(false)
 async function load() {
   loading.value = true
   try {
-    const res = await advertiserApi.getAccount(orgId)
+    const res = await advertiserApi.getAccount(orgSlug)
     account.value = res.data
-    const ovRes = await advertiserApi.getOverview(orgId)
+    const ovRes = await advertiserApi.getOverview(orgSlug)
     overview.value = ovRes.data
   }
   catch (e: unknown) {
@@ -40,11 +40,11 @@ onMounted(load)
       <i class="pi pi-megaphone mb-4 text-6xl text-surface-400" />
       <h2 class="mb-2 text-2xl font-bold">広告主ダッシュボード</h2>
       <p class="mb-6 text-surface-500">広告を出稿するには、まず広告主として登録してください。</p>
-      <NuxtLink :to="`/organizations/${orgId}/advertiser/register`">
+      <NuxtLink :to="`/organizations/${orgSlug}/advertiser/register`">
         <Button label="広告主登録" icon="pi pi-user-plus" />
       </NuxtLink>
       <div class="mt-4">
-        <NuxtLink :to="`/organizations/${orgId}/advertiser/rate-simulator`">
+        <NuxtLink :to="`/organizations/${orgSlug}/advertiser/rate-simulator`">
           <Button label="料金シミュレーター" icon="pi pi-calculator" severity="secondary" text />
         </NuxtLink>
       </div>
@@ -113,7 +113,7 @@ onMounted(load)
           </Column>
           <Column header="">
             <template #body="{ data }">
-              <NuxtLink :to="`/organizations/${orgId}/advertiser/campaigns/${data.campaignId}`">
+              <NuxtLink :to="`/organizations/${orgSlug}/advertiser/campaigns/${data.campaignId}`">
                 <Button icon="pi pi-chart-bar" text size="small" />
               </NuxtLink>
             </template>
@@ -123,31 +123,31 @@ onMounted(load)
 
       <!-- ナビゲーション -->
       <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <NuxtLink :to="`/organizations/${orgId}/advertiser/messaging-campaigns`">
+        <NuxtLink :to="`/organizations/${orgSlug}/advertiser/messaging-campaigns`">
           <div class="cursor-pointer rounded-lg border border-surface-300 p-3 text-center transition hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700">
             <i class="pi pi-send mb-2 text-2xl text-primary" />
             <p class="text-sm">{{ $t('advertising.advertiser_crud.nav.messaging_campaigns') }}</p>
           </div>
         </NuxtLink>
-        <NuxtLink :to="`/organizations/${orgId}/advertiser/invoices`">
+        <NuxtLink :to="`/organizations/${orgSlug}/advertiser/invoices`">
           <div class="cursor-pointer rounded-lg border border-surface-300 p-3 text-center transition hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700">
             <i class="pi pi-file-edit mb-2 text-2xl text-primary" />
             <p class="text-sm">請求書</p>
           </div>
         </NuxtLink>
-        <NuxtLink :to="`/organizations/${orgId}/advertiser/rate-simulator`">
+        <NuxtLink :to="`/organizations/${orgSlug}/advertiser/rate-simulator`">
           <div class="cursor-pointer rounded-lg border border-surface-300 p-3 text-center transition hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700">
             <i class="pi pi-calculator mb-2 text-2xl text-primary" />
             <p class="text-sm">料金シミュレーター</p>
           </div>
         </NuxtLink>
-        <NuxtLink :to="`/organizations/${orgId}/advertiser/report-schedules`">
+        <NuxtLink :to="`/organizations/${orgSlug}/advertiser/report-schedules`">
           <div class="cursor-pointer rounded-lg border border-surface-300 p-3 text-center transition hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700">
             <i class="pi pi-calendar-clock mb-2 text-2xl text-primary" />
             <p class="text-sm">定期レポート</p>
           </div>
         </NuxtLink>
-        <NuxtLink :to="`/organizations/${orgId}/advertiser/credit-limit-requests`">
+        <NuxtLink :to="`/organizations/${orgSlug}/advertiser/credit-limit-requests`">
           <div class="cursor-pointer rounded-lg border border-surface-300 p-3 text-center transition hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700">
             <i class="pi pi-wallet mb-2 text-2xl text-primary" />
             <p class="text-sm">与信枠申請</p>

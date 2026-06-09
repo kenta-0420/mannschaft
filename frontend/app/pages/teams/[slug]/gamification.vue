@@ -4,7 +4,7 @@ import type { PointSummary, UserBadge, RankingEntry } from '~/types/gamification
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const gamificationApi = useGamificationApi()
 const notification = useNotification()
 const { formatDate } = useDatetime()
@@ -20,9 +20,9 @@ async function loadData() {
   loading.value = true
   try {
     const [pts, bdg, rnk] = await Promise.all([
-      gamificationApi.getMyPoints(teamId.value),
-      gamificationApi.getMyBadges(teamId.value),
-      gamificationApi.getRankings(teamId.value, rankingPeriod.value),
+      gamificationApi.getMyPoints(teamSlug.value),
+      gamificationApi.getMyBadges(teamSlug.value),
+      gamificationApi.getRankings(teamSlug.value, rankingPeriod.value),
     ])
     points.value = pts
     badges.value = bdg
@@ -36,7 +36,7 @@ async function loadData() {
 
 async function loadRankings() {
   try {
-    rankings.value = await gamificationApi.getRankings(teamId.value, rankingPeriod.value)
+    rankings.value = await gamificationApi.getRankings(teamSlug.value, rankingPeriod.value)
   } catch {
     notification.error('ランキングの取得に失敗しました')
   }

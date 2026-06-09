@@ -9,8 +9,8 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const router = useRouter()
-const teamIdStr = String(route.params.id)
-const teamId = Number(teamIdStr)
+const teamIdStr = String(route.params.slug)
+const teamSlug = Number(teamIdStr)
 const matchId = String(route.params.matchId)
 const { t } = useI18n()
 const notification = useNotification()
@@ -89,7 +89,7 @@ onMounted(async () => {
     return
   }
   try {
-    const match = await matchApi.getMatch(orgId.value, teamId, matchId)
+    const match = await matchApi.getMatch(orgId.value, teamSlug, matchId)
     matchStatus.value = match.status ?? null
     ownTeamSide.value = match.homeAway === 'AWAY' ? 'AWAY' : 'HOME'
     opponentName.value = match.opponentName ?? null

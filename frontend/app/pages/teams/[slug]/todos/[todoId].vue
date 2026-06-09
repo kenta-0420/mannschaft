@@ -7,14 +7,14 @@ definePageMeta({
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const todoId = Number(route.params.todoId)
 const todoApi = useTodoApi()
 const labelApi = useTodoStatusLabelApi()
 const progressApi = useTodoProgress()
 const notification = useNotification()
 const errorHandler = useErrorHandler()
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 const { formatDate, formatDateTime } = useDatetime()
 
 /** Wave 1 DTO刷新: ネスト構造 */
@@ -78,7 +78,7 @@ const changing = ref(false)
 async function loadTodo() {
   loading.value = true
   try {
-    const res = await todoApi.getTodo('team', teamId, todoId)
+    const res = await todoApi.getTodo('team', teamSlug, todoId)
     // progressRate / progressManual が存在しない場合はデフォルト値を設定
     const data = res.data as unknown as TodoDetail & {
       progressRate?: string
@@ -107,7 +107,7 @@ async function openConfirmDialog() {
   if (newLabelId.value === todo.value.statusLabel?.id) return
   // 候補ラベルから新ラベル名を解決
   try {
-    const res = await labelApi.listLabels('team', teamId)
+    const res = await labelApi.listLabels('team', teamSlug)
     const target = res.data.find((l) => l.id === newLabelId.value)
     toLabelName.value = target?.name ?? ''
     confirmDialogVisible.value = true
@@ -120,7 +120,7 @@ async function applyStatusChange() {
   if (!todo.value || newLabelId.value === null) return
   changing.value = true
   try {
-    await todoApi.changeTodoStatus('team', teamId, todoId, {
+    await todoApi.changeTodoStatus('team', teamSlug, todoId, {
       statusLabelId: newLabelId.value,
     })
     confirmDialogVisible.value = false
@@ -138,7 +138,7 @@ async function applyStatusChange() {
 async function onProgressRateUpdate(rate: string) {
   if (!todo.value) return
   try {
-    await progressApi.updateProgress('team', teamId, todoId, { progressRate: rate })
+    await progressApi.updateProgress('team', teamSlug, todoId, { progressRate: rate })
     todo.value.progressRate = rate
     if (todo.value.content) {
       todo.value.content.progressRate = rate
@@ -151,7 +151,7 @@ async function onProgressRateUpdate(rate: string) {
 async function onProgressManualUpdate(manual: boolean) {
   if (!todo.value) return
   try {
-    await progressApi.updateProgressMode('team', teamId, todoId, { progressManual: manual })
+    await progressApi.updateProgressMode('team', teamSlug, todoId, { progressManual: manual })
     todo.value.progressManual = manual
     if (todo.value.content) {
       todo.value.content.progressManual = manual
@@ -181,7 +181,7 @@ onMounted(async () => {
   <div v-else-if="todo" class="mx-auto max-w-3xl">
     <!-- ヘッダー -->
     <div class="mb-6">
-      <BackButton :to="`/teams/${teamId}/todos`" :label="t('todo.backToList')" />
+      <BackButton :to="`/teams/${teamSlug}/todos`" :label="t('todo.backToList')" />
       <div class="flex items-start justify-between">
         <PageHeader :title="todo.content?.title ?? ''" />
         <div class="flex gap-2">
@@ -239,7 +239,7 @@ onMounted(async () => {
           <TodoStatusLabelSelect
             v-model="newLabelId"
             scope-type="TEAM"
-            :scope-id="teamId"
+            :scope-id="teamSlug"
           />
         </div>
         <Button
@@ -328,7 +328,7 @@ onMounted(async () => {
       <div v-else-if="activeDetailTab === 'shared_memo'">
         <TodoSharedMemo
           scope-type="team"
-          :scope-id="teamId"
+          :scope-id="teamSlug"
           :todo-id="todoId"
         />
       </div>
@@ -336,7 +336,7 @@ onMounted(async () => {
       <div v-else-if="activeDetailTab === 'personal_memo'">
         <TodoPersonalMemo
           scope-type="team"
-          :scope-id="teamId"
+          :scope-id="teamSlug"
           :todo-id="todoId"
         />
       </div>
@@ -344,7 +344,7 @@ onMounted(async () => {
 
     <!-- コメント -->
     <SectionCard>
-      <TodoComments scope-type="team" :scope-id="teamId" :todo-id="todoId" />
+      <TodoComments scope-type="team" :scope-id="teamSlug" :todo-id="todoId" />
     </SectionCard>
 
     <!-- F02.3.1 Phase 2 — キャッチボール履歴タイムライン -->
@@ -352,7 +352,7 @@ onMounted(async () => {
       <TodoHandoffTimeline
         ref="timelineRef"
         scope-type="team"
-        :scope-id="teamId"
+        :scope-id="teamSlug"
         :todo-id="todoId"
       />
     </SectionCard>
@@ -361,7 +361,7 @@ onMounted(async () => {
     <TodoForm
       v-model:visible="showEditDialog"
       scope-type="team"
-      :scope-id="teamId"
+      :scope-id="teamSlug"
       :todo-id="todoId"
       @saved="loadTodo"
     />
@@ -397,7 +397,7 @@ onMounted(async () => {
     <TodoHandoffDialog
       v-model:visible="showHandoffDialog"
       scope-type="team"
-      :scope-id="teamId"
+      :scope-id="teamSlug"
       :todo-id="todoId"
       :todo-title="todo.content?.title ?? ''"
       @handoff-complete="async () => { await loadTodo(); timelineRef?.reload() }"

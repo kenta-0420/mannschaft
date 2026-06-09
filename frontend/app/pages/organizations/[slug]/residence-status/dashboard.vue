@@ -11,7 +11,7 @@ import type {
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 
 const { getDashboard } = useActivitySnapshotApi()
 const { listReviews, createReview, closeReview } = useAnnualReviewApi()
@@ -78,7 +78,7 @@ function contactResultLabel(result: ContactResult): string {
 async function fetchDashboard() {
   loadingDashboard.value = true
   try {
-    const res = await getDashboard(orgId.value)
+    const res = await getDashboard(orgSlug.value)
     dashboard.value = res.data
   }
   catch (e) {
@@ -93,7 +93,7 @@ async function fetchDashboard() {
 async function fetchReviews() {
   loadingReviews.value = true
   try {
-    const res = await listReviews(orgId.value)
+    const res = await listReviews(orgSlug.value)
     reviews.value = res.data
   }
   catch (e) {
@@ -108,7 +108,7 @@ async function fetchReviews() {
 async function handleCreateReview() {
   submittingCreate.value = true
   try {
-    await createReview(orgId.value, {
+    await createReview(orgSlug.value, {
       ...createForm.value,
       targetYear: Number(targetYearInput.value),
     })
@@ -132,7 +132,7 @@ async function handleCreateReview() {
 async function handleCloseReview(reviewId: string) {
   closingReviewId.value = reviewId
   try {
-    await closeReview(orgId.value, reviewId)
+    await closeReview(orgSlug.value, reviewId)
     await fetchReviews()
   }
   catch (e) {
@@ -148,7 +148,7 @@ async function fetchVisits() {
   if (!committeeIdInput.value) return
   loadingVisits.value = true
   try {
-    const res = await listVisitsByCommittee(orgId.value, Number(committeeIdInput.value))
+    const res = await listVisitsByCommittee(orgSlug.value, Number(committeeIdInput.value))
     visits.value = res.data
   }
   catch (e) {
@@ -163,7 +163,7 @@ async function fetchVisits() {
 async function handleTriggerSafetyCheck() {
   submittingSafetyCheck.value = true
   try {
-    await triggerSafetyCheck(orgId.value, triggerReason.value)
+    await triggerSafetyCheck(orgSlug.value, triggerReason.value)
     showSafetyCheckDialog.value = false
     triggerReason.value = ''
   }

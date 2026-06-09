@@ -2,10 +2,10 @@
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const safetyApi = useSafetyCheckApi()
 const notification = useNotification()
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 const { formatDateTime } = useDatetime()
 
 interface SafetyCheck {
@@ -26,7 +26,7 @@ const selectedCheckId = ref<number | null>(null)
 async function loadChecks() {
   loading.value = true
   try {
-    const res = await safetyApi.listSafetyChecks({ scopeType: 'TEAM', scopeId: teamId, size: 20 })
+    const res = await safetyApi.listSafetyChecks({ scopeType: 'TEAM', scopeId: teamSlug, size: 20 })
     checks.value = res.data as SafetyCheck[]
   } catch {
     notification.error('安否確認の取得に失敗しました')
@@ -108,7 +108,7 @@ onMounted(async () => {
     <SafetyCheckTrigger
       v-model:visible="showTriggerDialog"
       :scope-type="'TEAM'"
-      :scope-id="teamId"
+      :scope-id="teamSlug"
       @triggered="loadChecks"
     />
   </div>

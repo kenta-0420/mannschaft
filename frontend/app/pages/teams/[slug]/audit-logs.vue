@@ -4,7 +4,7 @@ import type { AuditLog } from '~/types/audit-log'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const auditLogApi = useAuditLogApi()
 const notification = useNotification()
 const { formatDateTime } = useDatetime()
@@ -17,7 +17,7 @@ const page = ref(0)
 async function loadLogs() {
   loading.value = true
   try {
-    const res = await auditLogApi.listByTeam(teamId.value, { page: page.value, size: 30 })
+    const res = await auditLogApi.listByTeam(teamSlug.value, { page: page.value, size: 30 })
     logs.value = res.data
     totalRecords.value = res.meta.totalElements
   } catch {

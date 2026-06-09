@@ -11,7 +11,7 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const toast = useToast()
 
 const { fetchPublicTeam, updateTeamPublicSettings } = usePublicApi()
@@ -23,7 +23,7 @@ const saving = ref(false)
 async function loadSettings() {
   loading.value = true
   try {
-    const team = await fetchPublicTeam(teamId)
+    const team = await fetchPublicTeam(teamSlug)
     timelinePostsPublic.value = team.timelinePostsPublic
   }
   finally {
@@ -37,7 +37,7 @@ async function save() {
     const req: UpdatePublicSettingsRequest = {
       timelinePostsPublic: timelinePostsPublic.value,
     }
-    await updateTeamPublicSettings(teamId, req)
+    await updateTeamPublicSettings(teamSlug, req)
     toast.add({ severity: 'success', summary: t('public.publicSettings.saved'), life: 3000 })
   }
   catch {

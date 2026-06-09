@@ -20,13 +20,13 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 const { t } = useI18n()
 const route = useRoute()
 const orgStore = useOrganizationStore()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 const providerId = computed(() => String(route.params.providerId))
 
-const api = useOrgWalletApi(() => orgId.value)
+const api = useOrgWalletApi(() => orgSlug.value)
 
 const myOrg = computed(() =>
-  orgStore.myOrganizations.find(o => String(o.id) === orgId.value),
+  orgStore.myOrganizations.find(o => String(o.id) === orgSlug.value),
 )
 const canAccess = computed(() =>
   myOrg.value?.role === 'ADMIN'
@@ -102,7 +102,7 @@ async function onDeactivate() {
   deactivating.value = true
   try {
     await api.deactivateProvider(providerId.value)
-    await navigateTo(`/organizations/${orgId.value}/admin/point-cards`)
+    await navigateTo(`/organizations/${orgSlug.value}/admin/point-cards`)
   } catch (e) {
     console.error('[providers/[providerId]] deactivate failed', e)
     deactivateConfirmOpen.value = false
@@ -138,7 +138,7 @@ async function openCustomerQr() {
     <template v-else-if="canAccess">
       <header class="space-y-1">
         <NuxtLink
-          :to="`/organizations/${orgId}/admin/point-cards`"
+          :to="`/organizations/${orgSlug}/admin/point-cards`"
           class="text-sm text-primary-600 hover:underline dark:text-primary-400"
         >
           &larr; {{ t('wallet.admin.actions.back') }}

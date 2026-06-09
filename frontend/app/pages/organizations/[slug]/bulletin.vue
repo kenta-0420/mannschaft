@@ -5,8 +5,8 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = String(route.params.id)
-const { isAdminOrDeputy, isMember, loadPermissions } = useRoleAccess('organization', orgId)
+const orgSlug = String(route.params.slug)
+const { isAdminOrDeputy, isMember, loadPermissions } = useRoleAccess('organization', orgSlug)
 
 const selectedThread = ref<BulletinThreadResponse | null>(null)
 const showCreateDialog = ref(false)
@@ -57,7 +57,7 @@ onMounted(() => loadPermissions())
         v-if="activeTab === 'threads'"
         ref="listRef"
         scope-type="ORGANIZATION"
-        :scope-id="orgId"
+        :scope-id="orgSlug"
         :can-manage="isAdminOrDeputy"
         :can-create="isMember"
         @select="(t) => selectedThread = t"
@@ -67,12 +67,12 @@ onMounted(() => loadPermissions())
       <BulletinArchiveView
         v-else
         scope-type="ORGANIZATION"
-        :scope-id="orgId"
+        :scope-id="orgSlug"
         :can-manage="isAdminOrDeputy"
         @select="(t) => selectedThread = t"
       />
     </template>
 
-    <BulletinThreadForm v-model:visible="showCreateDialog" scope-type="ORGANIZATION" :scope-id="orgId" @saved="onSaved" />
+    <BulletinThreadForm v-model:visible="showCreateDialog" scope-type="ORGANIZATION" :scope-id="orgSlug" @saved="onSaved" />
   </div>
 </template>

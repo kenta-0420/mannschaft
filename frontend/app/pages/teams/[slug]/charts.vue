@@ -4,10 +4,10 @@ import type { Chart, CreateChartRequest } from '~/types/chart'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const chartApi = useChartApi()
 const notification = useNotification()
-const { loadPermissions } = useRoleAccess('team', teamId)
+const { loadPermissions } = useRoleAccess('team', teamSlug)
 const { formatDate } = useDatetime()
 
 const charts = ref<Chart[]>([])
@@ -22,7 +22,7 @@ async function loadData(page = 0) {
   loading.value = true
   try {
     await loadPermissions()
-    const res = await chartApi.list(teamId.value, { page, size: 20 })
+    const res = await chartApi.list(teamSlug.value, { page, size: 20 })
     charts.value = res.data
     totalRecords.value = res.meta.totalElements
   } catch {
@@ -39,7 +39,7 @@ function openCreate() {
 
 async function handleSelect(chart: Chart) {
   try {
-    selectedChart.value = (await chartApi.get(teamId.value, chart.id)).data
+    selectedChart.value = (await chartApi.get(teamSlug.value, chart.id)).data
     showDetailDialog.value = true
   } catch {
     notification.error('カルテの詳細取得に失敗しました')
@@ -49,13 +49,13 @@ async function handleSelect(chart: Chart) {
 async function handleSave(data: CreateChartRequest) {
   try {
     if (editingChart.value) {
-      await chartApi.update(teamId.value, editingChart.value.id, {
+      await chartApi.update(teamSlug.value, editingChart.value.id, {
         ...data,
         version: editingChart.value.version,
       })
       notification.success('カルテを更新しました')
     } else {
-      await chartApi.create(teamId.value, data)
+      await chartApi.create(teamSlug.value, data)
       notification.success('カルテを作成しました')
     }
     showFormDialog.value = false
@@ -67,7 +67,7 @@ async function handleSave(data: CreateChartRequest) {
 
 async function handlePin(chartId: number) {
   try {
-    await chartApi.togglePin(teamId.value, chartId)
+    await chartApi.togglePin(teamSlug.value, chartId)
     await loadData()
   } catch {
     notification.error('ピン留めに失敗しました')
@@ -77,8 +77,8 @@ async function handlePin(chartId: number) {
 async function handlePhotoUpload(file: File, type: string) {
   if (!selectedChart.value) return
   try {
-    await chartApi.uploadPhoto(teamId.value, selectedChart.value.id, file, type)
-    selectedChart.value = (await chartApi.get(teamId.value, selectedChart.value.id)).data
+    await chartApi.uploadPhoto(teamSlug.value, selectedChart.value.id, file, type)
+    selectedChart.value = (await chartApi.get(teamSlug.value, selectedChart.value.id)).data
     notification.success('写真をアップロードしました')
   } catch {
     notification.error('アップロードに失敗しました')

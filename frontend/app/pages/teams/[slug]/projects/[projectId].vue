@@ -12,9 +12,9 @@ import type { TodoResponse } from '~/types/todo'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const projectId = Number(route.params.projectId)
-const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 const projectApi = useProjectApi()
 const notification = useNotification()
 const { success: showSuccess, error: showError, warn: showWarn } = notification
@@ -51,10 +51,10 @@ async function load() {
   loading.value = true
   try {
     const [pRes, mRes, tRes, gRes] = await Promise.all([
-      projectApi.getProject(teamId, projectId),
-      projectApi.listMilestones(teamId, projectId),
-      projectApi.getProjectTodos(teamId, projectId),
-      projectApi.getGatesSummary(teamId, projectId).catch(() => null),
+      projectApi.getProject(teamSlug, projectId),
+      projectApi.listMilestones(teamSlug, projectId),
+      projectApi.getProjectTodos(teamSlug, projectId),
+      projectApi.getGatesSummary(teamSlug, projectId).catch(() => null),
     ])
     project.value = pRes.data
     milestones.value = mRes.data
@@ -80,7 +80,7 @@ function openEdit() {
 
 async function saveProject() {
   try {
-    await projectApi.updateProject(teamId, projectId, editForm)
+    await projectApi.updateProject(teamSlug, projectId, editForm)
     showEditDialog.value = false
     await load()
   } catch {
@@ -92,9 +92,9 @@ async function toggleComplete() {
   if (!project.value) return
   try {
     if (project.value.status === 'COMPLETED') {
-      await projectApi.reopenProject(teamId, projectId)
+      await projectApi.reopenProject(teamSlug, projectId)
     } else {
-      await projectApi.completeProject(teamId, projectId)
+      await projectApi.completeProject(teamSlug, projectId)
     }
     await load()
   } catch {
@@ -121,9 +121,9 @@ function openEditMilestone(ms: MilestoneResponse) {
 async function saveMilestone() {
   try {
     if (editingMilestone.value) {
-      await projectApi.updateMilestone(teamId, projectId, editingMilestone.value.id, milestoneForm)
+      await projectApi.updateMilestone(teamSlug, projectId, editingMilestone.value.id, milestoneForm)
     } else {
-      await projectApi.createMilestone(teamId, projectId, milestoneForm)
+      await projectApi.createMilestone(teamSlug, projectId, milestoneForm)
     }
     showMilestoneDialog.value = false
     await load()
@@ -134,7 +134,7 @@ async function saveMilestone() {
 
 async function toggleMilestoneComplete(ms: MilestoneResponse) {
   try {
-    await projectApi.completeMilestone(teamId, projectId, ms.id)
+    await projectApi.completeMilestone(teamSlug, projectId, ms.id)
     await load()
   } catch {
     showError('更新に失敗しました')
@@ -144,7 +144,7 @@ async function toggleMilestoneComplete(ms: MilestoneResponse) {
 async function removeMilestone(ms: MilestoneResponse) {
   if (!confirm(`「${ms.title}」を削除しますか？`)) return
   try {
-    await projectApi.deleteMilestone(teamId, projectId, ms.id)
+    await projectApi.deleteMilestone(teamSlug, projectId, ms.id)
     await load()
   } catch {
     showError('削除に失敗しました')
@@ -177,7 +177,7 @@ async function handleForceUnlockConfirm(reason: string) {
   if (!forceUnlockTarget.value) return
   forceUnlockSubmitting.value = true
   try {
-    await projectApi.forceUnlockMilestone(teamId, projectId, forceUnlockTarget.value.id, reason)
+    await projectApi.forceUnlockMilestone(teamSlug, projectId, forceUnlockTarget.value.id, reason)
     showSuccess(t('project.force_unlock_success'))
     showForceUnlockDialog.value = false
     forceUnlockTarget.value = null
@@ -196,7 +196,7 @@ async function handleForceUnlockConfirm(reason: string) {
 
 async function handleChangeCompletionMode(milestoneId: number, mode: MilestoneCompletionMode) {
   try {
-    await projectApi.changeCompletionMode(teamId, projectId, milestoneId, mode)
+    await projectApi.changeCompletionMode(teamSlug, projectId, milestoneId, mode)
     showSuccess(t('project.completion_mode_changed'))
     await load()
   } catch (err) {
@@ -215,7 +215,7 @@ async function handleInitializeGate() {
     // プロジェクト内の全マイルストーンを sort_order 昇順でゲート初期化
     const ordered = [...milestones.value].sort((a, b) => a.sortOrder - b.sortOrder)
     for (const ms of ordered) {
-      await projectApi.initializeGate(teamId, projectId, ms.id)
+      await projectApi.initializeGate(teamSlug, projectId, ms.id)
     }
     showSuccess(t('project.initialize_gate_success'))
     await load()
@@ -239,7 +239,7 @@ onMounted(async () => {
 
     <div v-else-if="project">
       <div class="mb-6">
-        <BackButton :to="`/teams/${teamId}/projects`" label="プロジェクト一覧" />
+        <BackButton :to="`/teams/${teamSlug}/projects`" label="プロジェクト一覧" />
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <span v-if="project.emoji" class="text-3xl">{{ project.emoji }}</span>
@@ -307,7 +307,7 @@ onMounted(async () => {
       <ProjectMilestoneList
         :milestones="milestones"
         :todos="todos"
-        :team-id="teamId"
+        :team-id="teamSlug"
         :project-id="projectId"
         :can-edit="isAdminOrDeputy"
         :can-force-unlock="isAdmin"

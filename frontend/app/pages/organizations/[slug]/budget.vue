@@ -2,7 +2,7 @@
 import type { BudgetSummary } from '~/types/budget'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const { getSummary, getFiscalYears } = useBudgetApi()
 const { showError } = useNotification()
 const summary = ref<BudgetSummary | null>(null)
@@ -11,10 +11,10 @@ async function load() {
   loading.value = true
   try {
     // まず最新の会計年度を取得してから集計を取得する
-    const fyRes = await getFiscalYears('organization', orgId)
+    const fyRes = await getFiscalYears('organization', orgSlug)
     const latestFY = fyRes.data[0]
     if (!latestFY) return
-    const res = await getSummary('organization', orgId, latestFY.id)
+    const res = await getSummary('organization', orgSlug, latestFY.id)
     summary.value = res.data
   } catch {
     showError('予算情報の取得に失敗しました')

@@ -3,7 +3,7 @@
 //
 // 組織版 (pages/organizations/[id]/advertiser/register.vue) をベースに
 // scope を TEAM に変更したページ。
-// POST /api/v1/teams/{teamId}/advertiser/register を呼び出す。
+// POST /api/v1/teams/{teamSlug}/advertiser/register を呼び出す。
 
 import type { BillingMethod } from '~/types/advertiser'
 
@@ -11,7 +11,7 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const advertiserApi = useAdvertiserApi()
 const toast = useNotification()
 
@@ -31,9 +31,9 @@ async function submit() {
   if (!form.value.companyName || !form.value.contactEmail) return
   submitting.value = true
   try {
-    await advertiserApi.registerTeam(teamId, form.value)
+    await advertiserApi.registerTeam(teamSlug, form.value)
     toast.success(t('advertising.teams_page.register.success_message'))
-    router.push(`/teams/${teamId}/advertiser`)
+    router.push(`/teams/${teamSlug}/advertiser`)
   }
   catch { toast.error(t('advertising.teams_page.register.error_message')) }
   finally { submitting.value = false }

@@ -7,13 +7,13 @@ definePageMeta({ middleware: 'auth', layout: 'team' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const { getTimeline } = useRepairPlanTimelineApi()
 const { listKanbans, createKanban, moveCard } = useRepairPlanKanbanApi()
 const notification = useNotification()
 const { formatDate, userTimezone } = useDatetime()
 const teamApi = useTeamApi()
-const { isAdminOrDeputy, isAdmin, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdminOrDeputy, isAdmin, loadPermissions } = useRoleAccess('team', teamSlug)
 
 // タブ管理
 type Tab = 'timeline' | 'kanban' | 'handover'
@@ -42,7 +42,7 @@ const createForm = reactive<CreateKanbanRequest>({
 async function loadOrganizationId() {
   if (organizationId.value !== null) return
   try {
-    const res = await teamApi.getOrganizations(teamId.value)
+    const res = await teamApi.getOrganizations(teamSlug.value)
     const orgs = res.data ?? res
     if (Array.isArray(orgs) && orgs.length > 0) {
       const firstOrg = orgs[0] as Record<string, unknown>
@@ -59,7 +59,7 @@ async function loadOrganizationId() {
 async function loadTimeline() {
   timelineLoading.value = true
   try {
-    timelineData.value = await getTimeline('teams', teamId.value, {
+    timelineData.value = await getTimeline('teams', teamSlug.value, {
       yearFrom: yearFrom.value,
       yearTo: yearTo.value,
     })
@@ -74,7 +74,7 @@ async function loadKanbans() {
   if (organizationId.value === null) return
   kanbanLoading.value = true
   try {
-    kanbans.value = await listKanbans('teams', teamId.value, organizationId.value)
+    kanbans.value = await listKanbans('teams', teamSlug.value, organizationId.value)
   } catch {
     notification.error(t('common.fetch_failed'))
   } finally {
@@ -118,7 +118,7 @@ function openCreateDialog() {
 async function handleCreateKanban() {
   if (!organizationId.value) return
   try {
-    await createKanban('teams', teamId.value, organizationId.value, createForm)
+    await createKanban('teams', teamSlug.value, organizationId.value, createForm)
     showCreateDialog.value = false
     await loadKanbans()
     notification.success(t('repair_plan.kanban.created'))
@@ -130,9 +130,9 @@ async function handleCreateKanban() {
 async function handleCardMoved(cardId: string, newStage: KanbanStage) {
   if (!organizationId.value || !selectedKanban.value) return
   try {
-    await moveCard('teams', teamId.value, cardId, organizationId.value, { newStage })
+    await moveCard('teams', teamSlug.value, cardId, organizationId.value, { newStage })
     // カンバンを再取得して表示を更新
-    const updated = await listKanbans('teams', teamId.value, organizationId.value)
+    const updated = await listKanbans('teams', teamSlug.value, organizationId.value)
     kanbans.value = updated
     // 選択中のカンバンも更新
     const refreshed = updated.find((k) => k.id === selectedKanban.value!.id)
@@ -341,17 +341,17 @@ onMounted(async () => {
 
     <!-- ===== 申し送りタブ ===== -->
     <div v-if="activeTab === 'handover'" class="space-y-6">
-      <MemberTermManager :team-id="teamId" :is-admin="isAdmin" />
+      <MemberTermManager :team-id="teamSlug" :is-admin="isAdmin" />
       <HandoverPackBuilder
         scope-type="teams"
-        :scope-id="teamId"
-        :team-id="teamId"
+        :scope-id="teamSlug"
+        :team-id="teamSlug"
         @generated="handlePackGenerated"
       />
       <HandoverPackHistoryList
         ref="handoverHistoryRef"
         scope-type="teams"
-        :scope-id="teamId"
+        :scope-id="teamSlug"
         :is-admin="isAdmin"
       />
     </div>

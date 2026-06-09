@@ -4,7 +4,7 @@ import type { SurveyResponse } from '~/types/survey'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 
 const { t } = useI18n()
 
@@ -14,7 +14,7 @@ const showCreateDialog = ref(false)
 function onSelect(survey: SurveyResponse) {
   navigateTo({
     path: `/surveys/${survey.id}`,
-    query: { scope: 'team', scopeId: String(teamId) },
+    query: { scope: 'team', scopeId: String(teamSlug) },
   })
 }
 
@@ -38,7 +38,7 @@ async function onCreated(_survey: SurveyResponse) {
     <SurveyList
       ref="surveyListRef"
       scope-type="TEAM"
-      :scope-id="teamId"
+      :scope-id="teamSlug"
       @select="onSelect"
       @create="onCreate"
     />
@@ -46,7 +46,7 @@ async function onCreated(_survey: SurveyResponse) {
     <SurveyCreateDialog
       v-model:visible="showCreateDialog"
       scope-type="TEAM"
-      :scope-id="teamId"
+      :scope-id="teamSlug"
       @created="onCreated"
     />
   </div>

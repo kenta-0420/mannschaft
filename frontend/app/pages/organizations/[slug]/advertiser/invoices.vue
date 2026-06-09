@@ -3,7 +3,7 @@ import type { InvoiceSummaryResponse, InvoiceDetailResponse, InvoiceStatus } fro
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const advertiserApi = useAdvertiserApi()
 
 const invoices = ref<InvoiceSummaryResponse[]>([])
@@ -25,7 +25,7 @@ async function loadInvoices() {
   try {
     const params: Record<string, string> = {}
     if (statusFilter.value) params.status = statusFilter.value
-    const res = await advertiserApi.getInvoices(orgId, params)
+    const res = await advertiserApi.getInvoices(orgSlug, params)
     invoices.value = res.data
   }
   catch { invoices.value = [] }
@@ -34,7 +34,7 @@ async function loadInvoices() {
 
 async function viewDetail(invoice: InvoiceSummaryResponse) {
   try {
-    const res = await advertiserApi.getInvoiceDetail(invoice.id, orgId)
+    const res = await advertiserApi.getInvoiceDetail(invoice.id, orgSlug)
     selectedInvoice.value = res.data
     showDetail.value = true
   }
@@ -43,7 +43,7 @@ async function viewDetail(invoice: InvoiceSummaryResponse) {
 
 async function downloadPdf(invoiceId: number) {
   try {
-    const blob = await advertiserApi.downloadInvoicePdf(invoiceId, orgId)
+    const blob = await advertiserApi.downloadInvoicePdf(invoiceId, orgSlug)
     const url = URL.createObjectURL(blob as Blob)
     const a = document.createElement('a')
     a.href = url

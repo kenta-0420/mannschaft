@@ -3,8 +3,8 @@ import type { EquipmentType } from '~/types/equipment'
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const teamId = String(route.params.id)
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const teamSlug = String(route.params.slug)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 const { createEquipment } = useEquipmentApi()
 const notification = useNotification()
 
@@ -38,7 +38,7 @@ async function handleCreate() {
   if (!form.value.name.trim()) return
   saving.value = true
   try {
-    await createEquipment('team', teamId, {
+    await createEquipment('team', teamSlug, {
       name: form.value.name,
       quantity: form.value.quantity,
       equipmentType: form.value.equipmentType,
@@ -65,19 +65,19 @@ async function handleCreate() {
         <EquipmentList
           ref="listRef"
           scope-type="team"
-          :scope-id="teamId"
+          :scope-id="teamSlug"
           :can-manage="isAdminOrDeputy"
           @create="openCreateDialog"
         />
       </div>
       <!-- デスクトップのみサイドパネル表示 -->
       <aside class="hidden w-80 shrink-0 lg:block">
-        <EquipmentTrending :team-id="teamId" />
+        <EquipmentTrending :team-id="teamSlug" />
       </aside>
     </div>
     <!-- モバイル・タブレット: 下部表示 -->
     <div class="mt-4 lg:hidden">
-      <EquipmentTrending :team-id="teamId" />
+      <EquipmentTrending :team-id="teamSlug" />
     </div>
 
     <Dialog v-model:visible="showCreateDialog" modal header="備品を登録" :style="{ width: '28rem' }">

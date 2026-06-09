@@ -22,7 +22,7 @@ const { t } = useI18n()
 const api = useJobPostingApi()
 const { success, error } = useNotification()
 
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 
 // デフォルト値（未来の日時を入れて Future バリデータを通しやすくする）
 function createDefaultForm(): JobPostingFormState {
@@ -86,7 +86,7 @@ async function submitDraft() {
   try {
     const f = form.value
     const body: CreateJobPostingRequest = {
-      teamId: teamId.value,
+      teamSlug: teamSlug.value,
       title: f.title.trim(),
       description: f.description.trim(),
       category: f.category.trim() || null,
@@ -102,7 +102,7 @@ async function submitDraft() {
     }
     const res = await api.createJob(body)
     success(t('jobmatching.create.draftSaved'))
-    router.push(`/teams/${teamId.value}/jobs/${res.data.id}`)
+    router.push(`/teams/${teamSlug.value}/jobs/${res.data.id}`)
   }
   catch (e) {
     error(t('jobmatching.create.failed'), String(e))
@@ -113,7 +113,7 @@ async function submitDraft() {
 }
 
 function cancel() {
-  router.push(`/teams/${teamId.value}/jobs`)
+  router.push(`/teams/${teamSlug.value}/jobs`)
 }
 </script>
 

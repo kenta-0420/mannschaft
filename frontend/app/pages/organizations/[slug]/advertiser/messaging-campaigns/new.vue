@@ -13,10 +13,10 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
 const router = useRouter()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 // F09.17 Phase 11-d-3: 組織配下ページは scope='ORGANIZATION' 固定で composable を呼ぶ。
 const scopeType: ScopeType = 'ORGANIZATION'
-const scopeId = orgId
+const scopeId = orgSlug
 const { t } = useI18n()
 const api = useAdMessagingCampaignApi()
 const toast = useNotification()
@@ -190,7 +190,7 @@ async function submit() {
     }
 
     toast.success(t('advertising.pages.advertiser_campaign_create.saved'))
-    router.push(`/organizations/${orgId}/advertiser/messaging-campaigns/${campaignId}`)
+    router.push(`/organizations/${orgSlug}/advertiser/messaging-campaigns/${campaignId}`)
   }
   catch {
     toast.error(t('advertising.advertiser_crud.errors.save_failed'))

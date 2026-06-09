@@ -6,7 +6,7 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 const annualPlanApi = useAnnualPlanApi()
 const notification = useNotification()
 const { userTimezone } = useDatetime()
@@ -35,7 +35,7 @@ const categoryOptions = computed(() => [
 async function loadData() {
   loading.value = true
   try {
-    const res = await annualPlanApi.getAnnualView('organization', orgId.value, {
+    const res = await annualPlanApi.getAnnualView('organization', orgSlug.value, {
       academicYear: selectedYear.value,
       categoryIds: selectedCategoryId.value !== undefined ? [selectedCategoryId.value] : undefined,
     })
@@ -53,7 +53,7 @@ async function loadPreview() {
   try {
     const preview = await annualPlanApi.getCopyPreview(
       'organization',
-      orgId.value,
+      orgSlug.value,
       selectedYear.value - 1,
       selectedYear.value,
     )
@@ -70,7 +70,7 @@ async function loadPreview() {
 async function handleCopy() {
   copyLoading.value = true
   try {
-    await annualPlanApi.executeCopy('organization', orgId.value, {
+    await annualPlanApi.executeCopy('organization', orgSlug.value, {
       sourceYear: selectedYear.value - 1,
       targetYear: selectedYear.value,
       dateShiftMode: 'SAME_WEEKDAY',

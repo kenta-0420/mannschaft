@@ -4,12 +4,12 @@ definePageMeta({
 })
 
 const route = useRoute()
-const teamId = String(route.params.id)
-const { isAdmin, loadPermissions } = useRoleAccess('team', teamId)
+const teamSlug = String(route.params.slug)
+const { isAdmin, loadPermissions } = useRoleAccess('team', teamSlug)
 
 onMounted(loadPermissions)
 </script>
 
 <template>
-  <TodoStatusLabelManagement scope="team" :scope-id="teamId" :can-edit="isAdmin" />
+  <TodoStatusLabelManagement scope="team" :scope-id="teamSlug" :can-edit="isAdmin" />
 </template>

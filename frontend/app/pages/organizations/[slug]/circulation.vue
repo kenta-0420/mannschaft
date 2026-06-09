@@ -2,8 +2,8 @@
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = String(route.params.id)
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const orgSlug = String(route.params.slug)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 
 const loading = ref(true)
 
@@ -23,6 +23,6 @@ onMounted(async () => {
       <BackButton />
       <PageHeader title="回覧板" />
     </div>
-    <CirculationList scope-type="ORGANIZATION" :scope-id="orgId" :can-manage="isAdminOrDeputy" />
+    <CirculationList scope-type="ORGANIZATION" :scope-id="orgSlug" :can-manage="isAdminOrDeputy" />
   </div>
 </template>

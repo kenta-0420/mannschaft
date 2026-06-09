@@ -3,7 +3,7 @@ import type { ReportScheduleResponse, ReportFrequency } from '~/types/advertiser
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const advertiserApi = useAdvertiserApi()
 const { success, error: showError } = useNotification()
 
@@ -24,7 +24,7 @@ const frequencyOptions = [
 async function load() {
   loading.value = true
   try {
-    const res = await advertiserApi.getReportSchedules(orgId)
+    const res = await advertiserApi.getReportSchedules(orgSlug)
     schedules.value = res.data
   }
   catch { schedules.value = [] }
@@ -36,7 +36,7 @@ async function create() {
   if (recipients.length === 0) return
   creating.value = true
   try {
-    await advertiserApi.createReportSchedule(orgId, { frequency: form.value.frequency, recipients })
+    await advertiserApi.createReportSchedule(orgSlug, { frequency: form.value.frequency, recipients })
     success('レポートスケジュールを作成しました')
     showCreate.value = false
     form.value = { frequency: 'WEEKLY', recipients: '' }
@@ -48,7 +48,7 @@ async function create() {
 
 async function remove(id: number) {
   try {
-    await advertiserApi.deleteReportSchedule(id, orgId)
+    await advertiserApi.deleteReportSchedule(id, orgSlug)
     success('削除しました')
     await load()
   }

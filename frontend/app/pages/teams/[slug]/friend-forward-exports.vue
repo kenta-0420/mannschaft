@@ -11,9 +11,9 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 
-const { isAdmin, can, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdmin, can, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const loading = ref(true)
 const permissionDenied = ref(false)
@@ -53,7 +53,7 @@ onMounted(async () => {
 
     <div class="mx-auto max-w-3xl">
       <SectionCard>
-        <FriendsFriendForwardExportList :team-id="teamId" />
+        <FriendsFriendForwardExportList :team-id="teamSlug" />
       </SectionCard>
     </div>
   </div>

@@ -27,8 +27,8 @@ const teamApi = useTeamApi()
 const { templateLabel } = useScopeLabels()
 const { t } = useI18n()
 
-const teamId = computed(() => {
-  const raw = route.params.id
+const teamSlug = computed(() => {
+  const raw = route.params.slug
   const idStr = Array.isArray(raw) ? raw[0] : raw
   if (!idStr) {
     throw createError({ statusCode: 404, statusMessage: 'Team not found' })
@@ -42,7 +42,7 @@ const loading = ref(true)
 async function load() {
   loading.value = true
   try {
-    const res = await teamApi.getPublicTeam(teamId.value)
+    const res = await teamApi.getPublicTeam(teamSlug.value)
     team.value = res.data
   } catch (error) {
     // 404 / archived / PRIVATE / 削除済みはすべてバックエンドで 404 となる
@@ -123,7 +123,7 @@ useHead(() => ({
 }))
 
 function onBackToSearch() {
-  // 同組織の他店舗一覧へ戻る経路は本 DTO に orgId を含まないため、
+  // 同組織の他店舗一覧へ戻る経路は本 DTO に orgSlug を含まないため、
   // 戻る操作は前ページ（検索ページなど）への履歴 back に委ねる。
   router.back()
 }

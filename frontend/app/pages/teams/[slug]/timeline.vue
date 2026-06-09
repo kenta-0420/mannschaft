@@ -5,8 +5,8 @@ definePageMeta({
 
 const route = useRoute()
 const router = useRouter()
-const teamId = String(route.params.id)
-const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const teamSlug = String(route.params.slug)
+const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const feedRef = ref<{ refresh: () => void } | null>(null)
 const loading = ref(true)
@@ -37,12 +37,12 @@ onMounted(async () => {
     </div>
 
     <div class="mx-auto max-w-2xl">
-      <TimelinePostForm scope-type="TEAM" :scope-id="teamId" class="mb-4" @posted="onPosted" />
+      <TimelinePostForm scope-type="TEAM" :scope-id="teamSlug" class="mb-4" @posted="onPosted" />
 
       <TimelineFeed
         ref="feedRef"
         scope-type="TEAM"
-        :scope-id="teamId"
+        :scope-id="teamSlug"
         :can-pin="isAdminOrDeputy"
         :can-delete-others="isAdmin"
         @click-post="onClickPost"

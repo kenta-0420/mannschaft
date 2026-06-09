@@ -5,11 +5,11 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const committeeApi = useCommitteeApi()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 
 const committees = ref<CommitteeSummary[]>([])
 const loading = ref(true)
@@ -27,7 +27,7 @@ const createForm = ref({
 async function loadCommittees() {
   loading.value = true
   try {
-    const res = await committeeApi.listCommittees(orgId)
+    const res = await committeeApi.listCommittees(orgSlug)
     committees.value = res.data
   } catch {
     committees.value = []
@@ -40,7 +40,7 @@ async function onCreateCommittee() {
   if (!createForm.value.name.trim()) return
   creating.value = true
   try {
-    await committeeApi.createCommittee(orgId, {
+    await committeeApi.createCommittee(orgSlug, {
       name: createForm.value.name,
       description: createForm.value.description || null,
       purposeTag: createForm.value.purposeTag || null,

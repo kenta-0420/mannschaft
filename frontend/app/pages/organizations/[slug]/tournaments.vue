@@ -4,7 +4,7 @@ import type { TournamentResponse } from '~/types/tournament'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 
 const notification = useNotification()
 const { getTournaments, createTournament } = useTournamentApi()
@@ -30,7 +30,7 @@ const form = ref({
 async function load() {
   loading.value = true
   try {
-    const res = await getTournaments(orgId)
+    const res = await getTournaments(orgSlug)
     tournaments.value = res.data
   } catch {
     notification.error('大会一覧の取得に失敗しました')
@@ -86,7 +86,7 @@ async function handleCreate() {
   if (!form.value.title.trim() || !form.value.sportCategory.trim()) return
   saving.value = true
   try {
-    await createTournament(orgId, {
+    await createTournament(orgSlug, {
       title: form.value.title,
       sportCategory: form.value.sportCategory,
       format: form.value.format,
@@ -121,7 +121,7 @@ onMounted(() => load())
       <NuxtLink
         v-for="t in tournaments"
         :key="t.id"
-        :to="`/organizations/${orgId}/tournaments/${t.id}`"
+        :to="`/organizations/${orgSlug}/tournaments/${t.id}`"
         class="block rounded-xl border border-surface-300 bg-surface-0 p-4 transition hover:border-primary-400 hover:shadow-sm"
       >
         <div class="mb-2 flex items-center gap-2">

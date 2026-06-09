@@ -4,10 +4,10 @@ import type { MemberProfile, MemberProfileField, CreateMemberProfileRequest } fr
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const memberProfileApi = useMemberProfileApi()
 const notification = useNotification()
-const { isAdmin, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdmin, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const profiles = ref<MemberProfile[]>([])
 const fields = ref<MemberProfileField[]>([])
@@ -28,8 +28,8 @@ async function loadData() {
   try {
     await loadPermissions()
     const [profilesResult, fieldsResult] = await Promise.all([
-      memberProfileApi.listMembers('team', teamId.value),
-      memberProfileApi.listFields('team', teamId.value),
+      memberProfileApi.listMembers('team', teamSlug.value),
+      memberProfileApi.listFields('team', teamSlug.value),
     ])
     profiles.value = profilesResult
     fields.value = fieldsResult
@@ -66,10 +66,10 @@ async function save() {
       customFields: customFieldValues,
     }
     if (editingProfile.value) {
-      await memberProfileApi.updateMember('team', teamId.value, editingProfile.value.id, body)
+      await memberProfileApi.updateMember('team', teamSlug.value, editingProfile.value.id, body)
       notification.success('メンバーを更新しました')
     } else {
-      await memberProfileApi.createMember('team', teamId.value, body)
+      await memberProfileApi.createMember('team', teamSlug.value, body)
       notification.success('メンバーを追加しました')
     }
     showDialog.value = false

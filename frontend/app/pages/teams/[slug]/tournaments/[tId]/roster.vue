@@ -12,7 +12,7 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const tournamentId = Number(route.params.tId)
 
 // 試合選択
@@ -47,7 +47,7 @@ const selectedTemplateId = ref<string | null>(null)
 const overwriteExisting = ref(false)
 
 // 権限
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 
 // ===== メンバー表のロード =====
 
@@ -86,9 +86,9 @@ async function loadTemplates() {
   try {
     const orgId = '0' // NOTE: チームスコープでは organization_id は不要（BE API は orgId ベースだが team スコープ用 API に変更）
     // チームのエントリーテンプレ一覧を取得
-    // useTournamentParticipants.getEntryTemplates は orgId/teamId が必要
-    // ここでは teamId を使用してロード
-    const data = await getEntryTemplates(orgId, teamId)
+    // useTournamentParticipants.getEntryTemplates は orgId/teamSlug が必要
+    // ここでは teamSlug を使用してロード
+    const data = await getEntryTemplates(orgId, teamSlug)
     templates.value = Array.isArray(data) ? data : []
   } catch {
     // テンプレ取得失敗はサイレント（テンプレなしで手動入力可）
@@ -190,7 +190,7 @@ onMounted(async () => {
 <template>
   <div class="mx-auto max-w-3xl">
     <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamId}/tournaments`" :label="$t('tournament.roster.title')" />
+      <BackButton :to="`/teams/${teamSlug}/tournaments`" :label="$t('tournament.roster.title')" />
       <PageHeader :title="$t('tournament.roster.title')" />
     </div>
 

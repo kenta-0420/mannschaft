@@ -5,7 +5,7 @@ import type { ContactResult, MonitoringVisitCreateRequest } from '~/types/reside
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 
 const { createVisit } = useMonitoringVisitApi()
 
@@ -53,8 +53,8 @@ async function handleSubmit() {
         : null,
     }
 
-    await createVisit(orgId.value, payload)
-    await navigateTo(`/organizations/${orgId.value}/residence-status/dashboard`)
+    await createVisit(orgSlug.value, payload)
+    await navigateTo(`/organizations/${orgSlug.value}/residence-status/dashboard`)
   }
   catch (e) {
     console.error('訪問記録作成エラー:', e)
@@ -65,7 +65,7 @@ async function handleSubmit() {
 }
 
 function handleCancel() {
-  navigateTo(`/organizations/${orgId.value}/residence-status/dashboard`)
+  navigateTo(`/organizations/${orgSlug.value}/residence-status/dashboard`)
 }
 </script>
 

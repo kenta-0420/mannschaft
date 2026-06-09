@@ -4,16 +4,16 @@ definePageMeta({
 })
 
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const requestId = Number(route.params.requestId)
 </script>
 
 <template>
   <div>
     <div class="mb-4">
-      <BackButton :to="`/teams/${teamId}/workflows`" label="申請一覧に戻る" />
+      <BackButton :to="`/teams/${teamSlug}/workflows`" label="申請一覧に戻る" />
     </div>
 
-    <WorkflowRequestDetail scope-type="team" :scope-id="teamId" :request-id="requestId" />
+    <WorkflowRequestDetail scope-type="team" :scope-id="teamSlug" :request-id="requestId" />
   </div>
 </template>

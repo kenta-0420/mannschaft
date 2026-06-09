@@ -7,21 +7,21 @@ definePageMeta({
 })
 
 const route = useRoute()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 const {
   roleName,
   loading: roleLoading,
   loadPermissions,
   isAdmin,
   isAdminOrDeputy,
-} = useRoleAccess('organization', orgId)
+} = useRoleAccess('organization', orgSlug)
 
 const viewerRole = computed<ViewerRole>(() => (roleName.value as ViewerRole | null) ?? 'PUBLIC')
 
 const {
   settings: widgetVisibilitySettings,
   fetch: fetchWidgetVisibility,
-} = useDashboardWidgetVisibility('organization', orgId)
+} = useDashboardWidgetVisibility('organization', orgSlug)
 
 const {
   org,
@@ -39,7 +39,7 @@ const {
   applySupporter,
   cancelSupporter,
   leaveOrganization,
-} = useOrgDetail(orgId)
+} = useOrgDetail(orgSlug)
 
 const {
   ancestors,
@@ -48,7 +48,7 @@ const {
   childrenHasNext,
   fetchAncestors,
   fetchChildren,
-} = useOrgHierarchy(orgId)
+} = useOrgHierarchy(orgSlug)
 
 const activeTab = ref(0)
 
@@ -89,7 +89,7 @@ onMounted(async () => {
     <template v-else-if="org">
       <OrgPageHeader
         :org="org"
-        :org-id="orgId"
+        :org-id="orgSlug"
         :role-name="roleName"
         :is-admin="isAdmin"
         :is-admin-or-deputy="isAdminOrDeputy"
@@ -130,7 +130,7 @@ onMounted(async () => {
               <div class="mt-4">
                 <ScopeDashboard
                   scope-type="organization"
-                  :scope-id="orgId"
+                  :scope-id="orgSlug"
                   :scope-name="org.basicInfo?.nickname1 || org.basicInfo?.name || ''"
                   :scope-template="org.hierarchy?.orgType"
                   :viewer-role="viewerRole"
@@ -148,7 +148,7 @@ onMounted(async () => {
               <div class="mt-4">
                 <MemberTable
                   scope-type="organization"
-                  :scope-id="orgId"
+                  :scope-id="orgSlug"
                   :can-change-role="isAdminOrDeputy"
                   :can-remove="isAdminOrDeputy"
                 />
@@ -161,7 +161,7 @@ onMounted(async () => {
                 class="mt-4 flex justify-end"
               >
                 <NuxtLink
-                  :to="`/organizations/${orgId}/teams/search`"
+                  :to="`/organizations/${orgSlug}/teams/search`"
                   :aria-label="$t('organizationTeamSearch.title')"
                   class="inline-flex items-center gap-2 rounded-md border border-primary-300 bg-primary-50 px-3 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-primary-400"
                 >
@@ -183,7 +183,7 @@ onMounted(async () => {
 
             <TabPanel v-if="isAdminOrDeputy" :value="4">
               <div class="mt-4">
-                <InviteTokenList scope-type="organization" :scope-id="orgId" />
+                <InviteTokenList scope-type="organization" :scope-id="orgSlug" />
               </div>
             </TabPanel>
 
@@ -193,13 +193,13 @@ onMounted(async () => {
 
             <TabPanel v-if="isAdmin && org.visibility?.supporterEnabled" :value="6">
               <div class="mt-4">
-                <SupporterManagementPanel scope-type="organization" :scope-id="orgId" />
+                <SupporterManagementPanel scope-type="organization" :scope-id="orgSlug" />
               </div>
             </TabPanel>
 
             <TabPanel v-if="isAdmin" :value="7">
               <div class="mt-4">
-                <ModuleSettingsPanel scope-type="organization" :scope-id="orgId" />
+                <ModuleSettingsPanel scope-type="organization" :scope-id="orgSlug" />
               </div>
             </TabPanel>
           </TabPanels>

@@ -3,8 +3,8 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = String(route.params.id)
-const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const teamSlug = String(route.params.slug)
+const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const activeTab = ref(0)
 const showBookDialog = ref(false)
@@ -36,20 +36,20 @@ onMounted(() => loadPermissions())
       </TabList>
       <TabPanels>
         <TabPanel :value="0">
-          <SlotPicker :team-id="teamId" @slot-selected="onSlotSelected" />
+          <SlotPicker :team-id="teamSlug" @slot-selected="onSlotSelected" />
         </TabPanel>
         <TabPanel :value="1">
-          <ReservationList :team-id="teamId" :can-manage="isAdminOrDeputy" />
+          <ReservationList :team-id="teamSlug" :can-manage="isAdminOrDeputy" />
         </TabPanel>
         <TabPanel v-if="isAdmin" :value="2">
-          <LineManager :team-id="teamId" />
+          <LineManager :team-id="teamSlug" />
         </TabPanel>
       </TabPanels>
     </Tabs>
 
     <ReservationForm
       v-model:visible="showBookDialog"
-      :team-id="teamId"
+      :team-id="teamSlug"
       :slot-id="selectedSlot.slotId"
       :line-name="selectedSlot.lineName"
       :date="selectedSlot.date"

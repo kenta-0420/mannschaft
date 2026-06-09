@@ -5,7 +5,7 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 
 const notification = useNotification()
 
@@ -25,7 +25,7 @@ async function loadSettings() {
   loading.value = true
   try {
     const res = await $fetch<TeamShiftSettings>(
-      `/api/v1/teams/${teamId}/shift-settings`,
+      `/api/v1/teams/${teamSlug}/shift-settings`,
     )
     settings.value = res
     form.value = {
@@ -59,7 +59,7 @@ async function saveSettings() {
   saving.value = true
   try {
     const res = await $fetch<TeamShiftSettings>(
-      `/api/v1/teams/${teamId}/shift-settings`,
+      `/api/v1/teams/${teamSlug}/shift-settings`,
       {
         method: 'PATCH',
         body: form.value,

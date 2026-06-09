@@ -12,10 +12,10 @@ type TournamentDivision = import('~/types/tournament').TournamentDivision
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const notification = useNotification()
 
-const leagueTransfer = useLeagueTransfer(orgId)
+const leagueTransfer = useLeagueTransfer(orgSlug)
 const { getTournaments, getDivisions } = useTournamentBase()
 
 // ===== 送り出しセクション =====
@@ -55,7 +55,7 @@ const activeTab = ref<'dispatch' | 'inbound'>('dispatch')
 // --- 大会一覧ロード ---
 async function loadTournaments() {
   try {
-    const res = await getTournaments(orgId, { status: 'COMPLETED' })
+    const res = await getTournaments(orgSlug, { status: 'COMPLETED' })
     tournaments.value = res.data ?? []
   } catch {
     notification.error(t('transfer.select_tournament'))
@@ -74,7 +74,7 @@ async function loadCandidates() {
     const res = await leagueTransfer.getCandidates(selectedTournamentId.value)
     candidates.value = res.data ?? []
     // ディビジョン一覧も取得（承認時に使用）
-    const divRes = await getDivisions(orgId, selectedTournamentId.value)
+    const divRes = await getDivisions(orgSlug, selectedTournamentId.value)
     divisions.value = divRes.data ?? []
   } catch {
     notification.error(t('transfer.empty_candidates'))
@@ -165,7 +165,7 @@ async function onApproveTournamentChange() {
     return
   }
   try {
-    const res = await getDivisions(orgId, approveTournamentId.value)
+    const res = await getDivisions(orgSlug, approveTournamentId.value)
     approveDivisions.value = res.data ?? []
   } catch {
     approveDivisions.value = []

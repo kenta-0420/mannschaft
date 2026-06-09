@@ -8,10 +8,10 @@ type LeagueTransferResponse = components['schemas']['LeagueTransferResponse']
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const notification = useNotification()
 
-const { getTeamTransfers } = useTeamLeagueTransfer(teamId)
+const { getTeamTransfers } = useTeamLeagueTransfer(teamSlug)
 
 const transfers = ref<LeagueTransferResponse[]>([])
 const loading = ref(false)

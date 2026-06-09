@@ -6,7 +6,7 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 
 const careLinkApi = useCareLinkApi()
 const overrideApi = useTeamCareOverrideApi()
@@ -40,7 +40,7 @@ async function loadData() {
 
     // 各リンクの上書き設定を取得
     const results = await Promise.allSettled(
-      allLinks.map(link => overrideApi.getCareOverride(teamId, link.id)),
+      allLinks.map(link => overrideApi.getCareOverride(teamSlug, link.id)),
     )
 
     const newMap = new Map<number, TeamCareOverrideResponse | null>()
@@ -109,7 +109,7 @@ async function saveOverride(linkId: number) {
   savingMap.value = new Map(savingMap.value)
   try {
     const body = getForm(linkId)
-    const result = await overrideApi.upsertCareOverride(teamId, linkId, body)
+    const result = await overrideApi.upsertCareOverride(teamSlug, linkId, body)
     overrideMap.value.set(linkId, result.data)
     overrideMap.value = new Map(overrideMap.value)
     notification.success(t('care.message.saveOverrideSuccess'))
@@ -125,7 +125,7 @@ async function deleteOverride(linkId: number) {
   deletingMap.value.set(linkId, true)
   deletingMap.value = new Map(deletingMap.value)
   try {
-    await overrideApi.deleteCareOverride(teamId, linkId)
+    await overrideApi.deleteCareOverride(teamSlug, linkId)
     overrideMap.value.set(linkId, null)
     overrideMap.value = new Map(overrideMap.value)
     // フォームをデフォルトに戻す

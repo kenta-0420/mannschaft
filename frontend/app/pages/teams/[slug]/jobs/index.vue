@@ -19,7 +19,7 @@ const { t } = useI18n()
 const api = useJobPostingApi()
 const { error } = useNotification()
 
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 
 const PAGE_SIZE = 20
 
@@ -44,7 +44,7 @@ async function load(page = 0) {
   currentPage.value = page
   try {
     const res = await api.searchJobs({
-      teamId: Number(teamId.value),
+      teamSlug: Number(teamSlug.value),
       status: statusFilter.value === 'ALL' ? null : statusFilter.value,
       page,
       size: PAGE_SIZE,
@@ -71,15 +71,15 @@ function onPageChange(event: { page: number }) {
 }
 
 function goToDetail(jobId: number) {
-  router.push(`/teams/${teamId.value}/jobs/${jobId}`)
+  router.push(`/teams/${teamSlug.value}/jobs/${jobId}`)
 }
 
 function goToNew() {
-  router.push(`/teams/${teamId.value}/jobs/new`)
+  router.push(`/teams/${teamSlug.value}/jobs/new`)
 }
 
 onMounted(() => {
-  if (!teamId.value) return
+  if (!teamSlug.value) return
   load(0)
 })
 </script>

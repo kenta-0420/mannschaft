@@ -4,10 +4,10 @@ import type { GamificationConfig } from '~/types/gamification'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 const gamificationApi = useGamificationApi()
 const notification = useNotification()
-const { isAdmin, loadPermissions } = useRoleAccess('organization', orgId)
+const { isAdmin, loadPermissions } = useRoleAccess('organization', orgSlug)
 
 const config = ref<GamificationConfig | null>(null)
 const loading = ref(true)
@@ -17,7 +17,7 @@ async function loadData() {
   loading.value = true
   try {
     await loadPermissions()
-    config.value = await gamificationApi.getConfig('organization', orgId.value)
+    config.value = await gamificationApi.getConfig('organization', orgSlug.value)
   } catch {
     notification.error('ゲーミフィケーション設定の取得に失敗しました')
   } finally {
@@ -29,7 +29,7 @@ async function saveConfig() {
   if (!config.value) return
   saving.value = true
   try {
-    await gamificationApi.updateConfig('organization', orgId.value, config.value)
+    await gamificationApi.updateConfig('organization', orgSlug.value, config.value)
     notification.success('設定を保存しました')
   } catch {
     notification.error('設定の保存に失敗しました')

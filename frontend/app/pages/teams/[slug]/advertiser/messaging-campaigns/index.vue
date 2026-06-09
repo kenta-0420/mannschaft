@@ -11,10 +11,10 @@ import type {
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 // F09.17 Phase 11-d-4: チーム配下ページは scope='TEAM' 固定で composable を呼ぶ。
 const scopeType: ScopeType = 'TEAM'
-const scopeId = teamId
+const scopeId = teamSlug
 const { t } = useI18n()
 const api = useAdMessagingCampaignApi()
 
@@ -97,7 +97,7 @@ onMounted(load)
   <div>
     <div class="mb-4 flex items-center justify-between">
       <PageHeader :title="t('advertising.pages.advertiser_campaign_list.title')" />
-      <NuxtLink :to="`/teams/${teamId}/advertiser/messaging-campaigns/new`">
+      <NuxtLink :to="`/teams/${teamSlug}/advertiser/messaging-campaigns/new`">
         <Button
           icon="pi pi-plus"
           :label="t('advertising.advertiser_crud.list_action.create_button')"
@@ -143,7 +143,7 @@ onMounted(load)
         <Column field="name" :header="t('advertising.advertiser_crud.list_table.name')">
           <template #body="{ data }">
             <NuxtLink
-              :to="`/teams/${teamId}/advertiser/messaging-campaigns/${data.id}`"
+              :to="`/teams/${teamSlug}/advertiser/messaging-campaigns/${data.id}`"
               class="text-primary hover:underline"
             >
               {{ data.name }}
@@ -177,7 +177,7 @@ onMounted(load)
         </Column>
         <Column :header="t('advertising.advertiser_crud.list_table.actions')">
           <template #body="{ data }">
-            <NuxtLink :to="`/teams/${teamId}/advertiser/messaging-campaigns/${data.id}`">
+            <NuxtLink :to="`/teams/${teamSlug}/advertiser/messaging-campaigns/${data.id}`">
               <Button icon="pi pi-arrow-right" text size="small" />
             </NuxtLink>
           </template>

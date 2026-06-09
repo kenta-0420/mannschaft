@@ -4,7 +4,7 @@ import type { CoinTossResponse } from '~/types/coin-toss'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const { toss, getHistory, shareToChat } = useCoinTossApi()
 const { showError } = useNotification()
 const { formatDateTime } = useDatetime()
@@ -39,7 +39,7 @@ async function doToss() {
     const body: Record<string, unknown> = { mode: mode.value }
     if (question.value) body.question = question.value
     if (mode.value === 'CUSTOM') body.options = customOptions.value.filter((o) => o.trim())
-    const res = await toss(teamId, body as Record<string, unknown>)
+    const res = await toss(teamSlug, body as Record<string, unknown>)
     // アニメーション待ち
     await new Promise((resolve) => setTimeout(resolve, 1000))
     result.value = res.data
@@ -52,7 +52,7 @@ async function doToss() {
 
 async function loadHistory() {
   try {
-    const res = await getHistory(teamId)
+    const res = await getHistory(teamSlug)
     history.value = res.data
     showHistory.value = true
   } catch {
@@ -62,7 +62,7 @@ async function loadHistory() {
 
 async function share(item: CoinTossResponse) {
   try {
-    await shareToChat(teamId, item.id)
+    await shareToChat(teamSlug, item.id)
   } catch {
     showError('共有に失敗しました')
   }

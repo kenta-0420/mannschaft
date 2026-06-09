@@ -4,7 +4,7 @@ import type { UnsealRequestResponse } from '~/types/succession'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const { t } = useI18n()
 const { getRequest } = useUnsealRequestApi()
 
@@ -17,7 +17,7 @@ async function onSelect(id: string) {
   selectedId.value = id
   loadingDetail.value = true
   try {
-    const res = await getRequest(orgId, id)
+    const res = await getRequest(orgSlug, id)
     selectedRequest.value = res.data
   }
   finally {
@@ -42,14 +42,14 @@ function onRefresh() {
       <div class="xl:col-span-2">
         <UnsealRequestList
           ref="listRef"
-          :org-id="orgId"
+          :org-id="orgSlug"
           @select="onSelect"
         />
       </div>
 
       <div v-if="selectedRequest" class="bg-surface-0 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700">
         <UnsealRequestDetail
-          :org-id="orgId"
+          :org-id="orgSlug"
           :request="selectedRequest"
           @refresh="onRefresh"
         />

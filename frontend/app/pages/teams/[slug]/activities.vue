@@ -3,8 +3,8 @@ import type { ActivityRecordResponse } from '~/types/activity'
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const { t } = useI18n()
-const teamId = String(route.params.id)
-const { isMember, loadPermissions } = useRoleAccess('team', teamId)
+const teamSlug = String(route.params.slug)
+const { isMember, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const { getActivities } = useActivityApi()
 const { showError } = useNotification()
@@ -15,7 +15,7 @@ const loading = ref(false)
 async function load() {
   loading.value = true
   try {
-    const res = await getActivities({ scope_type: 'TEAM', scope_id: teamId })
+    const res = await getActivities({ scope_type: 'TEAM', scope_id: teamSlug })
     activities.value = res.data
   } catch {
     showError(t('activity.loadError'))

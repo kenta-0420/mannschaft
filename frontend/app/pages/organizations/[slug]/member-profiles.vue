@@ -4,10 +4,10 @@ import type { MemberProfile, CreateMemberProfileRequest } from '~/types/member-p
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 const memberProfileApi = useMemberProfileApi()
 const notification = useNotification()
-const { isAdmin, loadPermissions } = useRoleAccess('organization', orgId)
+const { isAdmin, loadPermissions } = useRoleAccess('organization', orgSlug)
 
 const profiles = ref<MemberProfile[]>([])
 const loading = ref(true)
@@ -25,7 +25,7 @@ async function loadData() {
   loading.value = true
   try {
     await loadPermissions()
-    profiles.value = await memberProfileApi.listMembers('organization', orgId.value)
+    profiles.value = await memberProfileApi.listMembers('organization', orgSlug.value)
   } catch {
     notification.error('メンバー情報の取得に失敗しました')
   } finally {
@@ -55,13 +55,13 @@ async function save() {
     if (editingProfile.value) {
       await memberProfileApi.updateMember(
         'organization',
-        orgId.value,
+        orgSlug.value,
         editingProfile.value.id,
         form.value,
       )
       notification.success('メンバーを更新しました')
     } else {
-      await memberProfileApi.createMember('organization', orgId.value, form.value)
+      await memberProfileApi.createMember('organization', orgSlug.value, form.value)
       notification.success('メンバーを追加しました')
     }
     showDialog.value = false

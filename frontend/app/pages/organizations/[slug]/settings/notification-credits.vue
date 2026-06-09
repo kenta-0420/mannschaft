@@ -7,7 +7,7 @@ const { t } = useI18n()
 const { formatDate: formatDateBase } = useDatetime()
 const route = useRoute()
 const toast = useToast()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 
 const creditApi = useNotificationCreditApi()
 
@@ -23,9 +23,9 @@ async function fetchAll() {
   loading.value = true
   try {
     const [balanceRes, packagesRes, purchasesRes] = await Promise.all([
-      creditApi.getBalance(orgId),
+      creditApi.getBalance(orgSlug),
       creditApi.listPackages(),
-      creditApi.listPurchases(orgId),
+      creditApi.listPurchases(orgSlug),
     ])
     balance.value = balanceRes.data
     packages.value = packagesRes.data
@@ -83,7 +83,7 @@ const progressColor = computed(() => {
 async function handlePurchase(packageId: number) {
   purchasingId.value = packageId
   try {
-    const res = await creditApi.createCheckout(orgId, packageId)
+    const res = await creditApi.createCheckout(orgSlug, packageId)
     // Stripe Checkout へリダイレクト
     window.location.href = res.data.checkoutUrl
   } catch (e) {

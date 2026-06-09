@@ -8,7 +8,7 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const tId = Number(route.params.tId)
 // orgId はクエリパラメータ経由で受け取る（大会は組織に属するため）
 const orgId = String(route.query.orgId ?? '')
@@ -38,7 +38,7 @@ async function handleCheckout(fee: TournamentFeeResponse) {
   if (!fee.id) return
   checkingOutFeeId.value = fee.id
   try {
-    const result: CheckoutResponse = await checkout(fee.id, teamId)
+    const result: CheckoutResponse = await checkout(fee.id, teamSlug)
     if (result.checkoutUrl) {
       // Stripe Checkout リダイレクト
       notification.info(t('tournament.fees.checkout_redirect'))
@@ -84,7 +84,7 @@ onMounted(() => {
 <template>
   <div>
     <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamId}/tournaments`" :label="$t('tournament.fees.title')" />
+      <BackButton :to="`/teams/${teamSlug}/tournaments`" :label="$t('tournament.fees.title')" />
     </div>
 
     <div class="mb-6">

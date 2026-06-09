@@ -16,9 +16,9 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 
-const { isAdmin, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdmin, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const {
   feed,
@@ -30,7 +30,7 @@ const {
   deleteAnnouncement,
   markAsRead,
   markAllAsRead,
-} = useAnnouncementFeed('TEAM', teamId)
+} = useAnnouncementFeed('TEAM', teamSlug)
 
 const { checkAccess } = useContentGateApi()
 

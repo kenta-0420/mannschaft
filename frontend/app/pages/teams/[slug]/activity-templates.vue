@@ -4,7 +4,7 @@ import type { ActivityTemplate } from '~/types/activity'
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 
 const { getTemplates, deleteTemplate, duplicateTemplate } = useActivityApi()
 const { showError, showSuccess } = useNotification()
@@ -18,7 +18,7 @@ const editingTemplate = ref<ActivityTemplate | null>(null)
 async function loadTemplates() {
   loading.value = true
   try {
-    const res = await getTemplates('TEAM', teamId.value)
+    const res = await getTemplates('TEAM', teamSlug.value)
     templates.value = res.data
   } catch {
     showError('テンプレートの取得に失敗しました')

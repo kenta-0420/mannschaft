@@ -4,7 +4,7 @@ import type { ServiceRecordResponse } from '~/types/service'
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 
 const { getRecords, createRecord } = useServiceRecordApi()
 const notification = useNotification()
@@ -26,7 +26,7 @@ const form = ref({
 async function load() {
   loading.value = true
   try {
-    const res = await getRecords(teamId)
+    const res = await getRecords(teamSlug)
     records.value = res.data
   } catch {
     notification.error('サービス履歴の取得に失敗しました')
@@ -49,7 +49,7 @@ async function handleCreate() {
   if (!form.value.title.trim()) return
   saving.value = true
   try {
-    await createRecord(teamId, {
+    await createRecord(teamSlug, {
       targetUserId: form.value.targetUserId,
       serviceDate: form.value.serviceDate,
       title: form.value.title,

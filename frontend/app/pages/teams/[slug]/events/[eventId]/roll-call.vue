@@ -17,11 +17,11 @@ definePageMeta({
 })
 
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const eventId = computed(() => Number(route.params.eventId))
 
 const { candidates, sessionIds, loading, submitting, offlineQueued, loadCandidates, submit, loadSessions } =
-  useRollCall(teamId, eventId)
+  useRollCall(teamSlug, eventId)
 
 const advanceNoticeApi = useAdvanceNoticeApi()
 const advanceNotices = ref<AdvanceNoticeResponse[]>([])
@@ -37,7 +37,7 @@ async function loadAdvanceNotices(): Promise<void> {
   advanceNoticesLoading.value = true
   try {
     advanceNotices.value = await advanceNoticeApi.getAdvanceNotices(
-      teamId.value,
+      teamSlug.value,
       eventId.value,
     )
   } catch {
@@ -73,7 +73,7 @@ onMounted(() => {
   <div class="rc-page">
     <header class="rc-page__header">
       <BackButton
-        :to="`/teams/${teamId}/events/${eventId}`"
+        :to="`/teams/${teamSlug}/events/${eventId}`"
         :label="$t('common.back')"
       />
       <h1 class="rc-page__title">
@@ -85,7 +85,7 @@ onMounted(() => {
       <PageLoading v-if="loading && candidates.length === 0" />
       <RollCallSheet
         v-else
-        :team-id="teamId"
+        :team-id="teamSlug"
         :event-id="eventId"
         :candidates="candidates"
         :advance-notices="advanceNotices"

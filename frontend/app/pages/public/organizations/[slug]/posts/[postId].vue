@@ -15,12 +15,12 @@ const route = useRoute()
 const { t } = useI18n()
 const { fetchPublicOrganizationPostDetail } = usePublicApi()
 
-const rawOrgId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
+const rawOrgId = Array.isArray(route.params.slug) ? route.params.slug[0] : route.params.slug
 const rawPostId = Array.isArray(route.params.postId) ? route.params.postId[0] : route.params.postId
-const orgId = String(rawOrgId)
+const orgSlug = String(rawOrgId)
 const postId = Number(rawPostId)
 
-if (!orgId || !Number.isFinite(postId) || postId <= 0) {
+if (!orgSlug || !Number.isFinite(postId) || postId <= 0) {
   throw createError({
     statusCode: 404,
     statusMessage: t('public.error.notFound'),
@@ -29,8 +29,8 @@ if (!orgId || !Number.isFinite(postId) || postId <= 0) {
 }
 
 const { data: post, error: postError } = await useAsyncData<PublicPostDetail>(
-  `public-org-${orgId}-post-${postId}`,
-  () => fetchPublicOrganizationPostDetail(orgId, postId),
+  `public-org-${orgSlug}-post-${postId}`,
+  () => fetchPublicOrganizationPostDetail(orgSlug, postId),
 )
 
 if (postError.value || !post.value) {
@@ -46,7 +46,7 @@ const config = useRuntimeConfig()
 const canonicalUrl = computed(
   () =>
     `${config.public.apiBase}`.replace(/\/api\/v1$/, '') +
-    `/public/organizations/${orgId}/posts/${postId}`,
+    `/public/organizations/${orgSlug}/posts/${postId}`,
 )
 
 const excerptForOgp = computed(() => {
@@ -69,7 +69,7 @@ useSeoMeta({
 
 // F19.1 Phase 3: hreflang 6言語 + canonical + JSON-LD Article スキーマ
 useSeoPublicPage({
-  canonicalPath: `/public/organizations/${orgId}/posts/${postId}`,
+  canonicalPath: `/public/organizations/${orgSlug}/posts/${postId}`,
   title: () => post.value?.title ?? '',
   description: () => excerptForOgp.value,
   jsonLd: () => post.value ? {
@@ -88,7 +88,7 @@ useSeoPublicPage({
   } : undefined,
 })
 
-const scopeHref = computed(() => `/public/organizations/${orgId}`)
+const scopeHref = computed(() => `/public/organizations/${orgSlug}`)
 </script>
 
 <template>
@@ -103,6 +103,6 @@ const scopeHref = computed(() => `/public/organizations/${orgId}`)
 
     <PublicPostCommentSection :post-id="postId" />
 
-    <LoginCtaCard scope-kind="ORGANIZATION" :scope-id="orgId" />
+    <LoginCtaCard scope-kind="ORGANIZATION" :scope-id="orgSlug" />
   </div>
 </template>

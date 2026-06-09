@@ -4,7 +4,7 @@ import type { BillingMethod } from '~/types/advertiser'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
 const router = useRouter()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const advertiserApi = useAdvertiserApi()
 const { success, error: showError } = useNotification()
 
@@ -24,9 +24,9 @@ async function submit() {
   if (!form.value.companyName || !form.value.contactEmail) return
   submitting.value = true
   try {
-    await advertiserApi.register(orgId, form.value)
+    await advertiserApi.register(orgSlug, form.value)
     success('広告主登録を申請しました。審査後に利用開始できます。')
-    router.push(`/organizations/${orgId}/advertiser`)
+    router.push(`/organizations/${orgSlug}/advertiser`)
   }
   catch { showError('登録に失敗しました') }
   finally { submitting.value = false }

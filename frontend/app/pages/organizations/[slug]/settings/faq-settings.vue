@@ -10,14 +10,14 @@
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 </script>
 
 <template>
   <div class="mx-auto max-w-2xl p-4">
     <FaqSettingsEditor
       scope-type="organization"
-      :scope-id="orgId"
+      :scope-id="orgSlug"
     />
   </div>
 </template>

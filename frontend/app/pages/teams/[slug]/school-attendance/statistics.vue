@@ -7,9 +7,9 @@ definePageMeta({
 })
 
 const route = useRoute()
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const { monthlyStats, termStats, loadingMonthly, loadingTerm, exporting, loadMonthlyStatistics, loadTermStatistics, downloadCsv } =
-  useAttendanceStatistics(teamId)
+  useAttendanceStatistics(teamSlug)
 const { userTimezone } = useDatetime()
 
 const today = dayjs().tz(userTimezone.value)
@@ -57,7 +57,7 @@ onMounted(() => {
 <template>
   <div class="flex flex-col min-h-screen" data-testid="statistics-page">
     <header class="flex items-center gap-3 px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900">
-      <BackButton :to="`/teams/${teamId}`" :label="$t('common.back')" />
+      <BackButton :to="`/teams/${teamSlug}`" :label="$t('common.back')" />
       <h1 class="text-lg font-bold m-0">
         {{ $t('school.statistics.title') }}
       </h1>

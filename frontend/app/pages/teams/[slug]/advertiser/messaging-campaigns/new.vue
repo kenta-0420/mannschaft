@@ -15,10 +15,10 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const router = useRouter()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 // F09.17 Phase 11-d-4: チーム配下ページは scope='TEAM' 固定で composable を呼ぶ。
 const scopeType: ScopeType = 'TEAM'
-const scopeId = teamId
+const scopeId = teamSlug
 const { t } = useI18n()
 const api = useAdMessagingCampaignApi()
 const toast = useNotification()
@@ -192,7 +192,7 @@ async function submit() {
     }
 
     toast.success(t('advertising.pages.advertiser_campaign_create.saved'))
-    router.push(`/teams/${teamId}/advertiser/messaging-campaigns/${campaignId}`)
+    router.push(`/teams/${teamSlug}/advertiser/messaging-campaigns/${campaignId}`)
   }
   catch {
     toast.error(t('advertising.advertiser_crud.errors.save_failed'))

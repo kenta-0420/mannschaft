@@ -11,7 +11,7 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const { t } = useI18n()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 </script>
 
 <template>
@@ -23,7 +23,7 @@ const teamId = String(route.params.id)
 
     <!-- ナビゲーション -->
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      <NuxtLink :to="`/teams/${teamId}/advertiser/messaging-campaigns`">
+      <NuxtLink :to="`/teams/${teamSlug}/advertiser/messaging-campaigns`">
         <div class="cursor-pointer rounded-lg border border-surface-300 p-4 text-center transition hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700">
           <i class="pi pi-send mb-2 text-2xl text-primary" />
           <p class="text-sm font-medium">{{ t('advertising.advertiser_crud.nav.messaging_campaigns') }}</p>

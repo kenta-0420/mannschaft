@@ -6,8 +6,8 @@ definePageMeta({
 })
 
 const route = useRoute()
-const teamId = String(route.params.id)
-const { loadPermissions } = useRoleAccess('team', teamId)
+const teamSlug = String(route.params.slug)
+const { loadPermissions } = useRoleAccess('team', teamSlug)
 
 const formApi = useFormApi()
 const { formatDate } = useDatetime()
@@ -21,7 +21,7 @@ const submissionListRef = ref<{ refresh: () => void } | null>(null)
 async function loadPublishedTemplates() {
   loading.value = true
   try {
-    const res = await formApi.listTemplates('team', teamId, { status: 'PUBLISHED', size: 100 })
+    const res = await formApi.listTemplates('team', teamSlug, { status: 'PUBLISHED', size: 100 })
     templates.value = res.data
   } catch {
     templates.value = []
@@ -49,7 +49,7 @@ onMounted(async () => {
   <div>
     <div class="mb-4 flex items-center justify-between">
       <PageHeader title="フォーム" />
-      <NuxtLink :to="`/teams/${teamId}/forms/templates`">
+      <NuxtLink :to="`/teams/${teamSlug}/forms/templates`">
         <Button label="テンプレート管理" icon="pi pi-cog" outlined />
       </NuxtLink>
     </div>
@@ -95,7 +95,7 @@ onMounted(async () => {
     <FormSubmissionList
       ref="submissionListRef"
       scope-type="team"
-      :scope-id="teamId"
+      :scope-id="teamSlug"
       :my-only="true"
     />
 
@@ -104,7 +104,7 @@ onMounted(async () => {
       v-if="selectedTemplateId"
       v-model:visible="showSubmitDialog"
       scope-type="team"
-      :scope-id="teamId"
+      :scope-id="teamSlug"
       :template-id="selectedTemplateId"
       @saved="onSaved"
     />

@@ -8,7 +8,7 @@ const { t } = useI18n()
 const api = useRecruitmentApi()
 const { error } = useNotification()
 
-const teamId = computed(() => String(route.params.id))
+const teamSlug = computed(() => String(route.params.slug))
 const listings = ref<RecruitmentListingSummaryResponse[]>([])
 const loading = ref(false)
 const status = ref<string | undefined>(undefined)
@@ -16,7 +16,7 @@ const status = ref<string | undefined>(undefined)
 async function load() {
   loading.value = true
   try {
-    const result = await api.listTeamListings(teamId.value, { status: status.value })
+    const result = await api.listTeamListings(teamSlug.value, { status: status.value })
     listings.value = result.data
   }
   catch (e) {
@@ -28,7 +28,7 @@ async function load() {
 }
 
 function goToCreate() {
-  router.push(`/teams/${teamId.value}/recruitment-listings/new`)
+  router.push(`/teams/${teamSlug.value}/recruitment-listings/new`)
 }
 
 function goToDetail(id: number) {

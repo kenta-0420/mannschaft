@@ -4,8 +4,8 @@ definePageMeta({
 })
 
 const route = useRoute()
-const teamId = String(route.params.id)
-const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const teamSlug = String(route.params.slug)
+const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const showCreateDialog = ref(false)
 const listRef = ref<{ refresh: () => void } | null>(null)
@@ -15,7 +15,7 @@ function onSaved() {
 }
 
 function onSelect(eventId: number) {
-  navigateTo(`/teams/${teamId}/events/${eventId}`)
+  navigateTo(`/teams/${teamSlug}/events/${eventId}`)
 }
 
 onMounted(() => loadPermissions())
@@ -31,7 +31,7 @@ onMounted(() => loadPermissions())
     <EventList
       ref="listRef"
       scope-type="team"
-      :scope-id="teamId"
+      :scope-id="teamSlug"
       :can-edit="isAdminOrDeputy"
       :can-delete="isAdmin"
       @select="onSelect"
@@ -40,7 +40,7 @@ onMounted(() => loadPermissions())
     <EventForm
       v-model:visible="showCreateDialog"
       scope-type="team"
-      :scope-id="teamId"
+      :scope-id="teamSlug"
       @saved="onSaved"
     />
   </div>

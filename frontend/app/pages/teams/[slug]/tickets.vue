@@ -3,7 +3,7 @@ import type { TicketProductResponse, TicketBookResponse } from '~/types/ticket'
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 
 const notification = useNotification()
 const { getProducts, getBooks, createProduct } = useTicketApi()
@@ -28,7 +28,7 @@ const form = ref({
 async function load() {
   loading.value = true
   try {
-    const [pRes, bRes] = await Promise.all([getProducts(teamId), getBooks(teamId)])
+    const [pRes, bRes] = await Promise.all([getProducts(teamSlug), getBooks(teamSlug)])
     products.value = pRes.data
     books.value = bRes.data
   } catch {
@@ -60,7 +60,7 @@ async function handleCreate() {
   if (!form.value.name.trim() || form.value.price < 0) return
   saving.value = true
   try {
-    await createProduct(teamId, {
+    await createProduct(teamSlug, {
       name: form.value.name,
       description: form.value.description || undefined,
       totalTickets: form.value.totalTickets,

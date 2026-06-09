@@ -3,7 +3,7 @@ import type { PerformanceStats } from '~/types/performance'
 
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 
 const { getTeamStats } = usePerformanceApi()
 const { showError } = useNotification()
@@ -14,7 +14,7 @@ const loading = ref(false)
 async function load() {
   loading.value = true
   try {
-    const res = await getTeamStats(teamId)
+    const res = await getTeamStats(teamSlug)
     stats.value = res.data
   } catch {
     showError('パフォーマンスデータの取得に失敗しました')

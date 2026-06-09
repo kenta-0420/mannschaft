@@ -31,11 +31,11 @@ const {
   fetchPublicTeamEvents,
 } = usePublicApi()
 
-const rawId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
-const teamId = String(rawId)
+const rawId = Array.isArray(route.params.slug) ? route.params.slug[0] : route.params.slug
+const teamSlug = String(rawId)
 
 // パスパラメータが空の場合は 404
-if (!teamId) {
+if (!teamSlug) {
   throw createError({
     statusCode: 404,
     statusMessage: t('public.error.notFound'),
@@ -45,8 +45,8 @@ if (!teamId) {
 
 // チーム本体（SSR 必須）
 const { data: team, error: teamError } = await useAsyncData<PublicTeamResponse>(
-  `public-team-${teamId}`,
-  () => fetchPublicTeam(teamId),
+  `public-team-${teamSlug}`,
+  () => fetchPublicTeam(teamSlug),
 )
 
 if (teamError.value || !team.value) {
@@ -63,8 +63,8 @@ const currentPage = ref(0)
 const pageSize = 20
 
 const { data: postsPage, refresh: refreshPosts } = await useAsyncData<SpringPage<PublicPostSummary>>(
-  `public-team-${teamId}-posts`,
-  () => fetchPublicTeamPosts(teamId, currentPage.value, pageSize),
+  `public-team-${teamSlug}-posts`,
+  () => fetchPublicTeamPosts(teamSlug, currentPage.value, pageSize),
   { watch: [currentPage] },
 )
 
@@ -81,9 +81,9 @@ async function goPage(next: number) {
 // F19.1 Phase 7: タイムライン投稿一覧（timelinePostsPublic = true の場合のみ表示）
 const timelineCurrentPage = ref(0)
 const { data: timelinePage, refresh: refreshTimeline } = await useAsyncData<SpringPage<PublicTimelinePostResponse>>(
-  `public-team-${teamId}-timeline`,
+  `public-team-${teamSlug}-timeline`,
   () => team.value?.timelinePostsPublic
-    ? fetchPublicTeamTimelinePosts(teamId, timelineCurrentPage.value, pageSize)
+    ? fetchPublicTeamTimelinePosts(teamSlug, timelineCurrentPage.value, pageSize)
     : Promise.resolve({ content: [], totalElements: 0, totalPages: 0, number: 0, size: pageSize, first: true, last: true, empty: true, numberOfElements: 0 }),
   { watch: [timelineCurrentPage] },
 )
@@ -101,9 +101,9 @@ async function goTimelinePage(next: number) {
 // F19.1 Phase 7: イベント一覧（チームは timelinePostsPublic が true の場合にイベントも表示）
 const eventCurrentPage = ref(0)
 const { data: eventsPage, refresh: refreshEvents } = await useAsyncData<SpringPage<PublicEventResponse>>(
-  `public-team-${teamId}-events`,
+  `public-team-${teamSlug}-events`,
   () => team.value?.timelinePostsPublic
-    ? fetchPublicTeamEvents(teamId, eventCurrentPage.value, pageSize)
+    ? fetchPublicTeamEvents(teamSlug, eventCurrentPage.value, pageSize)
     : Promise.resolve({ content: [], totalElements: 0, totalPages: 0, number: 0, size: pageSize, first: true, last: true, empty: true, numberOfElements: 0 }),
   { watch: [eventCurrentPage] },
 )
@@ -122,8 +122,8 @@ async function goEventsPage(next: number) {
 // 公開チームでも FAQ 0 件は正常状態（セクション非表示）なので 404/空は握りつぶさず空配列扱いとする。
 const { fetchPublicTeamFaqs } = useFaqApi()
 const { data: faqsData } = await useAsyncData<PublicFaqItem[]>(
-  `public-team-${teamId}-faqs`,
-  () => fetchPublicTeamFaqs(teamId),
+  `public-team-${teamSlug}-faqs`,
+  () => fetchPublicTeamFaqs(teamSlug),
   { default: () => [] },
 )
 const faqs = computed((): PublicFaqItem[] => faqsData.value ?? [])
@@ -158,7 +158,7 @@ const seoDescription = computed((): string => {
 // F21.1: canonical / baseUrl は useSeoPublicPage が単一ソースとして算出する。
 // 先に呼び出して戻り値（canonicalUrl / baseUrl）を後続の useSeoMeta に流用する。
 const { canonicalUrl } = useSeoPublicPage({
-  canonicalPath: `/public/teams/${teamId}`,
+  canonicalPath: `/public/teams/${teamSlug}`,
   title: () => t('public.team.title', { name: team.value?.name ?? '' }),
   description: () => seoDescription.value,
   imageUrl: () => team.value?.bannerUrl ?? team.value?.iconUrl ?? undefined,
@@ -242,7 +242,7 @@ useSeoMeta({
 })
 
 function detailHref(postId: number): string {
-  return `/public/teams/${teamId}/posts/${postId}`
+  return `/public/teams/${teamSlug}/posts/${postId}`
 }
 </script>
 
@@ -453,6 +453,6 @@ function detailHref(postId: number): string {
       </Accordion>
     </section>
 
-    <LoginCtaCard scope-kind="TEAM" :scope-id="teamId" />
+    <LoginCtaCard scope-kind="TEAM" :scope-id="teamSlug" />
   </div>
 </template>

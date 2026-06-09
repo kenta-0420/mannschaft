@@ -3,7 +3,7 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
 const router = useRouter()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 
 // ===== タブ =====
 const activeTab = ref(0)
@@ -25,15 +25,15 @@ const activeTab = ref(0)
 
       <TabPanels>
         <TabPanel :value="0">
-          <WebhookOutgoingTab scope-type="ORGANIZATION" :scope-id="orgId" />
+          <WebhookOutgoingTab scope-type="ORGANIZATION" :scope-id="orgSlug" />
         </TabPanel>
 
         <TabPanel :value="1">
-          <WebhookIncomingTab scope-type="ORGANIZATION" :scope-id="orgId" />
+          <WebhookIncomingTab scope-type="ORGANIZATION" :scope-id="orgSlug" />
         </TabPanel>
 
         <TabPanel :value="2">
-          <WebhookApiKeyTab scope-type="ORGANIZATION" :scope-id="orgId" />
+          <WebhookApiKeyTab scope-type="ORGANIZATION" :scope-id="orgSlug" />
         </TabPanel>
       </TabPanels>
     </Tabs>

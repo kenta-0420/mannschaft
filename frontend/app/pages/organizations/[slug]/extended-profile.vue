@@ -11,10 +11,10 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 const api = useOrgExtendedProfileApi()
 const notification = useNotification()
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 
 // ----- プロフィール -----
 const profileLoading = ref(true)
@@ -61,7 +61,7 @@ function applyProfile(data: OrganizationProfileResponse) {
 
 async function saveProfile() {
   try {
-    const res = await api.updateProfile(orgId.value, {
+    const res = await api.updateProfile(orgSlug.value, {
       homepage_url: profileForm.value.homepage_url || null,
       established_date: profileForm.value.established_date || null,
       established_date_precision: profileForm.value.established_date_precision,
@@ -109,12 +109,12 @@ function openEditOfficer(officer: OfficerResponse) {
 async function saveOfficer() {
   try {
     if (editingOfficer.value) {
-      const res = await api.updateOfficer(orgId.value, editingOfficer.value.id, officerForm.value)
+      const res = await api.updateOfficer(orgSlug.value, editingOfficer.value.id, officerForm.value)
       const idx = officers.value.findIndex((o) => o.id === editingOfficer.value!.id)
       if (idx !== -1) officers.value[idx] = res.data
       notification.success(t('extended_profile.officer_updated'))
     } else {
-      const res = await api.createOfficer(orgId.value, officerForm.value)
+      const res = await api.createOfficer(orgSlug.value, officerForm.value)
       officers.value.push(res.data)
       notification.success(t('extended_profile.officer_added'))
     }
@@ -127,7 +127,7 @@ async function saveOfficer() {
 
 async function deleteOfficer(officer: OfficerResponse) {
   try {
-    await api.deleteOfficer(orgId.value, officer.id)
+    await api.deleteOfficer(orgSlug.value, officer.id)
     officers.value = officers.value.filter((o) => o.id !== officer.id)
     notification.success(t('extended_profile.officer_deleted'))
   } catch (e: unknown) {
@@ -166,7 +166,7 @@ function onOfficerDragEnd() {
 async function saveOfficerOrder() {
   try {
     const orders = officers.value.map((o, idx) => ({ id: o.id, displayOrder: idx + 1 }))
-    await api.reorderOfficers(orgId.value, { orders })
+    await api.reorderOfficers(orgSlug.value, { orders })
     officers.value = officers.value.map((o, idx) => ({ ...o, display_order: idx + 1 }))
     notification.success(t('extended_profile.order_saved'))
     officerOrderDirty.value = false
@@ -209,12 +209,12 @@ function openEditCf(field: CustomFieldResponse) {
 async function saveCf() {
   try {
     if (editingCf.value) {
-      const res = await api.updateCustomField(orgId.value, editingCf.value.id, cfForm.value)
+      const res = await api.updateCustomField(orgSlug.value, editingCf.value.id, cfForm.value)
       const idx = customFields.value.findIndex((f) => f.id === editingCf.value!.id)
       if (idx !== -1) customFields.value[idx] = res.data
       notification.success(t('extended_profile.custom_field_updated'))
     } else {
-      const res = await api.createCustomField(orgId.value, cfForm.value)
+      const res = await api.createCustomField(orgSlug.value, cfForm.value)
       customFields.value.push(res.data)
       notification.success(t('extended_profile.custom_field_added'))
     }
@@ -227,7 +227,7 @@ async function saveCf() {
 
 async function deleteCf(field: CustomFieldResponse) {
   try {
-    await api.deleteCustomField(orgId.value, field.id)
+    await api.deleteCustomField(orgSlug.value, field.id)
     customFields.value = customFields.value.filter((f) => f.id !== field.id)
     notification.success(t('extended_profile.custom_field_deleted'))
   } catch (e: unknown) {
@@ -266,7 +266,7 @@ function onCfDragEnd() {
 async function saveCfOrder() {
   try {
     const orders = customFields.value.map((f, idx) => ({ id: f.id, displayOrder: idx + 1 }))
-    await api.reorderCustomFields(orgId.value, { orders })
+    await api.reorderCustomFields(orgSlug.value, { orders })
     customFields.value = customFields.value.map((f, idx) => ({ ...f, display_order: idx + 1 }))
     notification.success(t('extended_profile.order_saved'))
     cfOrderDirty.value = false
@@ -282,9 +282,9 @@ async function loadData() {
   try {
     await loadPermissions()
     const [profileRes, officersRes, fieldsRes] = await Promise.all([
-      api.getProfile(orgId.value),
-      api.getOfficers(orgId.value, true),
-      api.getCustomFields(orgId.value, true),
+      api.getProfile(orgSlug.value),
+      api.getOfficers(orgSlug.value, true),
+      api.getCustomFields(orgSlug.value, true),
     ])
     applyProfile(profileRes.data)
     officers.value = officersRes.data.sort((a, b) => a.display_order - b.display_order)

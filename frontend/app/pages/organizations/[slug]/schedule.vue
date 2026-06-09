@@ -4,9 +4,9 @@ import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const scheduleApi = useScheduleApi()
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 
 interface ScheduleEventDetail {
   id: number
@@ -34,7 +34,7 @@ const showDetailPanel = ref(false)
 const showEditDialog = ref(false)
 
 const fetcher = async (from: string, to: string): Promise<CalendarEventItem[]> => {
-  const res = await scheduleApi.listSchedules('organization', orgId, { from, to, size: 100 })
+  const res = await scheduleApi.listSchedules('organization', orgSlug, { from, to, size: 100 })
   return (res.data as CalendarEventItem[]).map((e) => ({
     ...e,
     allDay: e.allDay ?? false,
@@ -59,7 +59,7 @@ function onAddButtonClick() {
 
 async function onEventClick(eventId: number) {
   try {
-    const res = await scheduleApi.getSchedule('organization', orgId, eventId)
+    const res = await scheduleApi.getSchedule('organization', orgSlug, eventId)
     selectedEvent.value = res.data as ScheduleEventDetail
     selectedEventId.value = eventId
     showDetailPanel.value = true
@@ -76,7 +76,7 @@ function onEditEvent() {
 async function onDeleteEvent() {
   if (!selectedEventId.value || !confirm('このイベントを削除しますか？')) return
   try {
-    await scheduleApi.deleteSchedule('organization', orgId, selectedEventId.value)
+    await scheduleApi.deleteSchedule('organization', orgSlug, selectedEventId.value)
     showDetailPanel.value = false
     refreshing.value = true
     await refresh()
@@ -129,7 +129,7 @@ onMounted(async () => {
           <EventDetailPanel
             :event="selectedEvent!"
             scope-type="organization"
-            :scope-id="orgId"
+            :scope-id="orgSlug"
             :can-edit="isAdminOrDeputy"
             @edit="onEditEvent"
             @delete="onDeleteEvent"
@@ -146,7 +146,7 @@ onMounted(async () => {
     <ScheduleEventForm
       v-model:visible="showCreateDialog"
       scope-type="organization"
-      :scope-id="orgId"
+      :scope-id="orgSlug"
       :initial-date="selectedDate"
       @saved="onSaved"
     />
@@ -155,7 +155,7 @@ onMounted(async () => {
     <ScheduleEventForm
       v-model:visible="showEditDialog"
       scope-type="organization"
-      :scope-id="orgId"
+      :scope-id="orgSlug"
       :schedule-id="selectedEventId"
       @saved="onSaved"
     />

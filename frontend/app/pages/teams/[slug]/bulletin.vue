@@ -5,8 +5,8 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = String(route.params.id)
-const { isAdminOrDeputy, isMember, loadPermissions } = useRoleAccess('team', teamId)
+const teamSlug = String(route.params.slug)
+const { isAdminOrDeputy, isMember, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const selectedThread = ref<BulletinThreadResponse | null>(null)
 const showCreateDialog = ref(false)
@@ -30,7 +30,7 @@ onMounted(() => loadPermissions())
 <template>
   <div>
     <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamId}`" />
+      <BackButton :to="`/teams/${teamSlug}`" />
       <PageHeader :title="t('bulletin.title')" />
     </div>
 
@@ -68,7 +68,7 @@ onMounted(() => loadPermissions())
         v-if="activeTab === 'threads'"
         ref="listRef"
         scope-type="TEAM"
-        :scope-id="teamId"
+        :scope-id="teamSlug"
         :can-manage="isAdminOrDeputy"
         :can-create="isMember"
         @select="(t) => selectedThread = t"
@@ -78,7 +78,7 @@ onMounted(() => loadPermissions())
       <BulletinArchiveView
         v-else
         scope-type="TEAM"
-        :scope-id="teamId"
+        :scope-id="teamSlug"
         :can-manage="isAdminOrDeputy"
         @select="(t) => selectedThread = t"
       />
@@ -87,7 +87,7 @@ onMounted(() => loadPermissions())
     <BulletinThreadForm
       v-model:visible="showCreateDialog"
       scope-type="TEAM"
-      :scope-id="teamId"
+      :scope-id="teamSlug"
       @saved="onSaved"
     />
   </div>

@@ -8,14 +8,14 @@ definePageMeta({
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const todoId = Number(route.params.todoId)
 const todoApi = useTodoApi()
 const labelApi = useTodoStatusLabelApi()
 const progressApi = useTodoProgress()
 const notification = useNotification()
 const errorHandler = useErrorHandler()
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 const { formatDate, formatDateTime } = useDatetime()
 
 /** Wave 1 DTO刷新: ネスト構造 */
@@ -82,7 +82,7 @@ const fromLabelName = computed(() => todo.value?.statusLabel?.name ?? '')
 async function loadTodo() {
   loading.value = true
   try {
-    const res = await todoApi.getTodo('organization', orgId, todoId)
+    const res = await todoApi.getTodo('organization', orgSlug, todoId)
     const data = res.data as unknown as TodoDetail & {
       progressRate?: string
       progressManual?: boolean
@@ -104,7 +104,7 @@ async function openConfirmDialog() {
   if (!todo.value || newLabelId.value === null) return
   if (newLabelId.value === todo.value.statusLabel?.id) return
   try {
-    const res = await labelApi.listLabels('organization', orgId)
+    const res = await labelApi.listLabels('organization', orgSlug)
     const target = res.data.find((l) => l.id === newLabelId.value)
     toLabelName.value = target?.name ?? ''
     confirmDialogVisible.value = true
@@ -117,7 +117,7 @@ async function applyStatusChange() {
   if (!todo.value || newLabelId.value === null) return
   changing.value = true
   try {
-    await todoApi.changeTodoStatus('organization', orgId, todoId, {
+    await todoApi.changeTodoStatus('organization', orgSlug, todoId, {
       statusLabelId: newLabelId.value,
     })
     confirmDialogVisible.value = false
@@ -135,7 +135,7 @@ async function applyStatusChange() {
 async function onProgressRateUpdate(rate: string) {
   if (!todo.value) return
   try {
-    await progressApi.updateProgress('organization', orgId, todoId, { progressRate: rate })
+    await progressApi.updateProgress('organization', orgSlug, todoId, { progressRate: rate })
     todo.value.progressRate = rate
     if (todo.value.content) {
       todo.value.content.progressRate = rate
@@ -148,7 +148,7 @@ async function onProgressRateUpdate(rate: string) {
 async function onProgressManualUpdate(manual: boolean) {
   if (!todo.value) return
   try {
-    await progressApi.updateProgressMode('organization', orgId, todoId, { progressManual: manual })
+    await progressApi.updateProgressMode('organization', orgSlug, todoId, { progressManual: manual })
     todo.value.progressManual = manual
     if (todo.value.content) {
       todo.value.content.progressManual = manual
@@ -177,7 +177,7 @@ onMounted(async () => {
   <div v-else-if="todo" class="mx-auto max-w-3xl">
     <!-- ヘッダー -->
     <div class="mb-6">
-      <BackButton :to="`/organizations/${orgId}/todos`" :label="t('todo.backToList')" />
+      <BackButton :to="`/organizations/${orgSlug}/todos`" :label="t('todo.backToList')" />
       <div class="flex items-start justify-between">
         <PageHeader :title="todo.content?.title ?? ''" />
         <div class="flex gap-2">
@@ -242,7 +242,7 @@ onMounted(async () => {
           <TodoStatusLabelSelect
             v-model="newLabelId"
             scope-type="ORGANIZATION"
-            :scope-id="orgId"
+            :scope-id="orgSlug"
           />
         </div>
         <Button
@@ -344,17 +344,17 @@ onMounted(async () => {
       </div>
 
       <div v-else-if="activeDetailTab === 'shared_memo'">
-        <TodoSharedMemo scope-type="organization" :scope-id="orgId" :todo-id="todoId" />
+        <TodoSharedMemo scope-type="organization" :scope-id="orgSlug" :todo-id="todoId" />
       </div>
 
       <div v-else-if="activeDetailTab === 'personal_memo'">
-        <TodoPersonalMemo scope-type="organization" :scope-id="orgId" :todo-id="todoId" />
+        <TodoPersonalMemo scope-type="organization" :scope-id="orgSlug" :todo-id="todoId" />
       </div>
     </SectionCard>
 
     <!-- コメント -->
     <SectionCard>
-      <TodoComments scope-type="organization" :scope-id="orgId" :todo-id="todoId" />
+      <TodoComments scope-type="organization" :scope-id="orgSlug" :todo-id="todoId" />
     </SectionCard>
 
     <!-- F02.3.1 Phase 2 — キャッチボール履歴 -->
@@ -362,7 +362,7 @@ onMounted(async () => {
       <TodoHandoffTimeline
         ref="timelineRef"
         scope-type="organization"
-        :scope-id="orgId"
+        :scope-id="orgSlug"
         :todo-id="todoId"
       />
     </SectionCard>
@@ -371,7 +371,7 @@ onMounted(async () => {
     <TodoHandoffDialog
       v-model:visible="showHandoffDialog"
       scope-type="organization"
-      :scope-id="orgId"
+      :scope-id="orgSlug"
       :todo-id="todoId"
       :todo-title="todo.content?.title ?? ''"
       @handoff-complete="async () => { await loadTodo(); timelineRef?.reload() }"
@@ -381,7 +381,7 @@ onMounted(async () => {
     <TodoForm
       v-model:visible="showEditDialog"
       scope-type="organization"
-      :scope-id="orgId"
+      :scope-id="orgSlug"
       :todo-id="todoId"
       @saved="loadTodo"
     />

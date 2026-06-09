@@ -5,7 +5,7 @@ import ActivityScoreCard from '~/components/residenceStatus/ActivityScoreCard.vu
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
-const orgId = computed(() => String(route.params.id))
+const orgSlug = computed(() => String(route.params.slug))
 
 const { getDashboard } = useActivitySnapshotApi()
 
@@ -18,7 +18,7 @@ const committeeIdInput = ref<string>('')
 async function fetchDashboard() {
   loadingDashboard.value = true
   try {
-    const res = await getDashboard(orgId.value)
+    const res = await getDashboard(orgSlug.value)
     dashboard.value = res.data
   }
   catch (e) {
@@ -31,12 +31,12 @@ async function fetchDashboard() {
 
 function goToVisitsReview() {
   navigateTo(
-    `/organizations/${orgId.value}/residence-status/monitoring-visits-review?committeeId=${Number(committeeIdInput.value)}`,
+    `/organizations/${orgSlug.value}/residence-status/monitoring-visits-review?committeeId=${Number(committeeIdInput.value)}`,
   )
 }
 
 function goToVisitForm() {
-  navigateTo(`/organizations/${orgId.value}/residence-status/monitoring-visit-form`)
+  navigateTo(`/organizations/${orgSlug.value}/residence-status/monitoring-visit-form`)
 }
 
 onMounted(async () => {

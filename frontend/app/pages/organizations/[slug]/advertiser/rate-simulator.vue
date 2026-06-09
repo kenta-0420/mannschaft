@@ -3,7 +3,7 @@ import type { PricingModel, RateSimulatorResponse } from '~/types/advertiser'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
-void route.params.id // organizationId はシミュレーターでは未使用（認証のみ）
+void route.params.slug // organizationId はシミュレーターでは未使用（認証のみ）
 const advertiserApi = useAdvertiserApi()
 
 const form = ref({

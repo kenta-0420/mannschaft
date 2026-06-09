@@ -11,12 +11,12 @@ definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const tId = Number(route.params.tId)
 
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 const { listRequirementsForOrganizer, createRequirement, updateRequirement, deleteRequirement, getStatusDashboard } =
-  useTournamentSubmission(orgId, tId)
+  useTournamentSubmission(orgSlug, tId)
 const notification = useNotification()
 
 // ===== 状態 =====
@@ -204,7 +204,7 @@ onMounted(async () => {
 <template>
   <div class="mx-auto max-w-5xl">
     <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/organizations/${orgId}/tournaments/${tId}`" :label="$t('tournament.submission.back_to_tournament')" />
+      <BackButton :to="`/organizations/${orgSlug}/tournaments/${tId}`" :label="$t('tournament.submission.back_to_tournament')" />
       <PageHeader :title="$t('tournament.submission.title')" />
     </div>
 

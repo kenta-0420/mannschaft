@@ -5,8 +5,8 @@ definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 const router = useRouter()
-const teamId = String(route.params.id)
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamId)
+const teamSlug = String(route.params.slug)
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 const projectApi = useProjectApi()
 const { showError } = useNotification()
 
@@ -25,7 +25,7 @@ const form = reactive<CreateProjectRequest>({
 async function load() {
   loading.value = true
   try {
-    const res = await projectApi.listProjects(teamId)
+    const res = await projectApi.listProjects(teamSlug)
     projects.value = res.data
   } catch {
     showError('プロジェクトの取得に失敗しました')
@@ -41,7 +41,7 @@ function openCreate() {
 
 async function createProject() {
   try {
-    await projectApi.createProject(teamId, form)
+    await projectApi.createProject(teamSlug, form)
     showDialog.value = false
     await load()
   } catch {
@@ -50,13 +50,13 @@ async function createProject() {
 }
 
 function openProject(project: ProjectResponse) {
-  router.push(`/teams/${teamId}/projects/${project.id}`)
+  router.push(`/teams/${teamSlug}/projects/${project.id}`)
 }
 
 async function remove(project: ProjectResponse) {
   if (!confirm(`「${project.title}」を削除しますか？`)) return
   try {
-    await projectApi.deleteProject(teamId, project.id)
+    await projectApi.deleteProject(teamSlug, project.id)
     await load()
   } catch {
     showError('削除に失敗しました')

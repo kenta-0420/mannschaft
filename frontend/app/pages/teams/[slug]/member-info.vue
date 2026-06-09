@@ -5,7 +5,7 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 const notification = useNotification()
 const memberInfoApi = useMemberInfoApi()
 const { formatDate } = useDatetime()
@@ -18,7 +18,7 @@ const editValues = ref<Record<number, string | null>>({})
 async function loadResponses() {
   loading.value = true
   try {
-    const res = await memberInfoApi.getMyResponses(teamId)
+    const res = await memberInfoApi.getMyResponses(teamSlug)
     items.value = res.data
     for (const item of res.data) {
       editValues.value[item.fieldId] = item.value
@@ -33,7 +33,7 @@ async function loadResponses() {
 async function saveAll() {
   saving.value = true
   try {
-    await memberInfoApi.upsertMyResponses(teamId, {
+    await memberInfoApi.upsertMyResponses(teamSlug, {
       responses: items.value.map((item) => ({
         fieldId: item.fieldId,
         value: editValues.value[item.fieldId] ?? null,

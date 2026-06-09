@@ -37,7 +37,7 @@ const authStore = useAuthStore()
 const notification = useNotification()
 
 const organizationId = computed<string>(() => {
-  const raw = route.params.id
+  const raw = route.params.slug
   return String(Array.isArray(raw) ? raw[0] : raw)
 })
 

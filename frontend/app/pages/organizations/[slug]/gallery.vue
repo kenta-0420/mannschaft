@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 </script>
 
 <template>
@@ -10,6 +10,6 @@ const orgId = String(route.params.id)
       <BackButton />
       <PageHeader title="ギャラリー" />
     </div>
-    <GalleryAlbumGrid scope-type="ORGANIZATION" :scope-id="orgId" />
+    <GalleryAlbumGrid scope-type="ORGANIZATION" :scope-id="orgSlug" />
   </div>
 </template>

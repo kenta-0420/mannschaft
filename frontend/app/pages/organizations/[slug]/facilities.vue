@@ -2,7 +2,7 @@
 import type { FacilityResponse } from '~/types/facility'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
-const orgId = String(route.params.id)
+const orgSlug = String(route.params.slug)
 const { getFacilities } = useFacilityApi()
 const { showError } = useNotification()
 const facilities = ref<FacilityResponse[]>([])
@@ -10,7 +10,7 @@ const loading = ref(false)
 async function load() {
   loading.value = true
   try {
-    const res = await getFacilities('organization', orgId)
+    const res = await getFacilities('organization', orgSlug)
     facilities.value = res.data
   } catch {
     showError('施設情報の取得に失敗しました')

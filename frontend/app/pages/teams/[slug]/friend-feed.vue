@@ -11,9 +11,9 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = String(route.params.id)
+const teamSlug = String(route.params.slug)
 
-const { isAdmin, can, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdmin, can, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const loading = ref(true)
 const permissionDenied = ref(false)
@@ -79,7 +79,7 @@ function onForwardSuccess(forwardId: number) {
       <!-- 投稿一覧 -->
       <FriendsFriendFeedPostList
         ref="feedListRef"
-        :team-id="teamId"
+        :team-id="teamSlug"
         @forward="onForward"
       />
     </div>
@@ -87,7 +87,7 @@ function onForwardSuccess(forwardId: number) {
     <!-- 転送モーダル -->
     <FriendsFriendForwardModal
       v-model="forwardModalVisible"
-      :team-id="teamId"
+      :team-id="teamSlug"
       :post-id="forwardPostId"
       :source-team-name="forwardSourceTeamName"
       @success="onForwardSuccess"
