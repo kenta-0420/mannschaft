@@ -39,8 +39,8 @@ export function useTeamCrud() {
   const api = useApi()
 
   // === CRUD ===
-  async function getTeam(teamId: string) {
-    return api<{ data: TeamResponse }>(`/api/v1/teams/${teamId}`)
+  async function getTeam(teamSlug: string) {
+    return api<{ data: TeamResponse }>(`/api/v1/teams/${teamSlug}`)
   }
 
   /**
@@ -52,8 +52,8 @@ export function useTeamCrud() {
    *
    * バックエンドのレスポンスは `{ data: TeamPublicDetailResponse }` 形式。
    */
-  async function getPublicTeam(teamId: string) {
-    return api<{ data: TeamPublicDetailResponse }>(`/api/v1/public/teams/${teamId}`)
+  async function getPublicTeam(teamSlug: string) {
+    return api<{ data: TeamPublicDetailResponse }>(`/api/v1/public/teams/${teamSlug}`)
   }
 
   /**
@@ -145,35 +145,35 @@ export function useTeamCrud() {
     return api<{ data: TeamResponse }>('/api/v1/teams', { method: 'POST', body })
   }
 
-  async function updateTeam(teamId: string, body: Record<string, unknown>) {
-    return api<{ data: TeamResponse }>(`/api/v1/teams/${teamId}`, { method: 'PATCH', body })
+  async function updateTeam(teamSlug: string, body: Record<string, unknown>) {
+    return api<{ data: TeamResponse }>(`/api/v1/teams/${teamSlug}`, { method: 'PATCH', body })
   }
 
-  async function deleteTeam(teamId: string) {
-    return api(`/api/v1/teams/${teamId}`, { method: 'DELETE' })
+  async function deleteTeam(teamSlug: string) {
+    return api(`/api/v1/teams/${teamSlug}`, { method: 'DELETE' })
   }
 
   // === アーカイブ ===
-  async function archiveTeam(teamId: string) {
-    return api(`/api/v1/teams/${teamId}/archive`, { method: 'PATCH' })
+  async function archiveTeam(teamSlug: string) {
+    return api(`/api/v1/teams/${teamSlug}/archive`, { method: 'PATCH' })
   }
 
-  async function unarchiveTeam(teamId: string) {
-    return api(`/api/v1/teams/${teamId}/unarchive`, { method: 'PATCH' })
+  async function unarchiveTeam(teamSlug: string) {
+    return api(`/api/v1/teams/${teamSlug}/unarchive`, { method: 'PATCH' })
   }
 
-  async function restoreTeam(teamId: string) {
-    return api(`/api/v1/teams/${teamId}/restore`, { method: 'PATCH' })
+  async function restoreTeam(teamSlug: string) {
+    return api(`/api/v1/teams/${teamSlug}/restore`, { method: 'PATCH' })
   }
 
   // === 組織一覧 ===
-  async function getOrganizations(teamId: string) {
-    return api<{ data: Array<Record<string, unknown>> }>(`/api/v1/teams/${teamId}/organizations`)
+  async function getOrganizations(teamSlug: string) {
+    return api<{ data: Array<Record<string, unknown>> }>(`/api/v1/teams/${teamSlug}/organizations`)
   }
 
   // === オーナー移譲 ===
-  async function transferOwnership(teamId: string, newAdminUserId: number) {
-    return api(`/api/v1/teams/${teamId}/transfer-ownership`, {
+  async function transferOwnership(teamSlug: string, newAdminUserId: number) {
+    return api(`/api/v1/teams/${teamSlug}/transfer-ownership`, {
       method: 'POST',
       body: { newAdminUserId },
     })
