@@ -64,6 +64,18 @@ public enum ReferenceType {
     /** 写真アルバム (Phase D / 既存 enum: {@code gallery.AlbumVisibility}). */
     PHOTO_ALBUM,
 
+    /**
+     * お知らせウィジェットフィード（F02.6 / F08.9 P4b ペイウォール連結）。
+     *
+     * <p>フィード単体の可視性は {@code announcement_feeds.visibility} のロールベース値
+     * ({@code PUBLIC}/{@code SUPPORTERS_AND_ABOVE}/{@code MEMBERS_AND_ABOVE})、
+     * または F08.9 P4b ペイウォール連結用の {@code CUSTOM} で表現される。
+     * {@link com.mannschaft.app.social.announcement.visibility.AnnouncementFeedVisibilityResolver}
+     * が {@link com.mannschaft.app.payment.service.PaymentGateService#checkAccess}
+     * を経由してペイウォール判定を行う（設計書 F08.9 02 §6）。</p>
+     */
+    ANNOUNCEMENT_FEED,
+
     /** ファイル添付 (Phase D / 添付元コンテンツの可視性に従属). */
     FILE_ATTACHMENT,
 

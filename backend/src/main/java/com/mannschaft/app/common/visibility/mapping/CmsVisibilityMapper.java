@@ -34,6 +34,8 @@ public final class CmsVisibilityMapper {
             case FOLLOWERS_ONLY -> StandardVisibility.FOLLOWERS_ONLY;
             case PRIVATE -> StandardVisibility.PRIVATE;
             case CUSTOM_TEMPLATE -> StandardVisibility.CUSTOM_TEMPLATE;
+            // F08.9 P4b: ペイウォール連結。evaluateCustom で PaymentGateService を呼ぶ。
+            case CUSTOM -> StandardVisibility.CUSTOM;
         };
     }
 }

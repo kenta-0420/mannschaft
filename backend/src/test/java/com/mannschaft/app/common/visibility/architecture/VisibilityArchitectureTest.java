@@ -99,6 +99,7 @@ class VisibilityArchitectureTest {
                     "..recruitment..",
                     "..schedule..",
                     "..survey..",
+                    "..social.announcement.visibility..",
                     "..timetable..",
                     "..tournament..",
                     "..team..",

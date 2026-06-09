@@ -10,8 +10,11 @@ import com.mannschaft.app.common.visibility.FollowBatchService;
 import com.mannschaft.app.common.visibility.MembershipBatchQueryService;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.common.visibility.StandardVisibility;
+import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.common.visibility.VisibilityMetrics;
 import com.mannschaft.app.common.visibility.mapping.CmsVisibilityMapper;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -27,15 +30,25 @@ import java.util.List;
  * {@link AbstractContentVisibilityResolver} の最小契約 (loadProjections / toStandard /
  * toContentStatus) のみを実装する。SystemAdmin 高速パス・status × visibility 合成・
  * 親 ORG 連鎖・監査ログ連携・メトリクスは基底クラスで一括対応される。
+ *
+ * <p><strong>F08.9 P4b — ペイウォール連結</strong>: {@link Visibility#CUSTOM} が付与されたブログ記事は
+ * {@link StandardVisibility#CUSTOM} に写像され、本クラスの {@link #evaluateCustom} が呼ばれる。
+ * {@link PaymentGateService#checkAccess} で受益者キー（閲覧者本人）の支払い状態を評価し、
+ * アクセス可否を決定する（設計書 F08.9 02 §6 / F00 §5.1.4）。</p>
  */
 @Component
 public class BlogPostVisibilityResolver
         extends AbstractContentVisibilityResolver<Visibility, BlogPostVisibilityProjection> {
 
+    // F08.9 P4b: content_payment_gates.content_type の値は ContentGateType.POST = "POST"
+    private static final String CONTENT_TYPE_BLOG_POST = ContentGateType.POST;
+
     private final BlogPostRepository blogPostRepository;
+    private final PaymentGateService paymentGateService;
 
     public BlogPostVisibilityResolver(
             BlogPostRepository blogPostRepository,
+            PaymentGateService paymentGateService,
             MembershipBatchQueryService membershipBatchQueryService,
             VisibilityTemplateEvaluator templateEvaluator,
             VisibilityMetrics visibilityMetrics,
@@ -44,6 +57,7 @@ public class BlogPostVisibilityResolver
         super(membershipBatchQueryService, templateEvaluator, visibilityMetrics,
                 followBatchService, auditLogService);
         this.blogPostRepository = blogPostRepository;
+        this.paymentGateService = paymentGateService;
     }
 
     @Override
@@ -64,6 +78,33 @@ public class BlogPostVisibilityResolver
     @Override
     protected ContentStatus toContentStatus(BlogPostVisibilityProjection row) {
         return mapStatus(row.status());
+    }
+
+    /**
+     * F08.9 P4b — ペイウォール解錠判定（{@link StandardVisibility#CUSTOM} 経路）。
+     *
+     * <p>{@link Visibility#CUSTOM} が付与されたブログ記事のみここに到達する。
+     * {@link PaymentGateService#checkAccess} で閲覧者本人（受益者キー）の支払い状態を評価する。</p>
+     *
+     * <p><strong>fail-closed 設計</strong>: {@code viewerUserId} が {@code null}（未認証）、
+     * または {@code row} / {@code row.id()} が {@code null} の場合は閲覧拒否側に倒す。</p>
+     *
+     * @param row          判定対象の Projection
+     * @param viewerUserId 閲覧者 user_id（{@code null} 可、未認証 = fail-closed）
+     * @param snapshot     メンバーシップスナップショット（本メソッドでは不使用）
+     * @return ペイウォール解錠済みなら {@code true}（ゲートなし＝誰でも閲覧可を含む）
+     */
+    @Override
+    protected boolean evaluateCustom(
+            BlogPostVisibilityProjection row,
+            Long viewerUserId,
+            UserScopeRoleSnapshot snapshot) {
+        if (viewerUserId == null || row == null || row.id() == null) {
+            // 未認証またはデータ不整合 → fail-closed（漏洩より過剰遮断・03_security §4）
+            return false;
+        }
+        return paymentGateService.checkAccess(CONTENT_TYPE_BLOG_POST, row.id(), viewerUserId)
+                .isAccessible();
     }
 
     /**

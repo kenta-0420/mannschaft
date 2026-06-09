@@ -13,6 +13,7 @@ import com.mannschaft.app.bulletin.dto.UpdateReplyRequest;
 import com.mannschaft.app.bulletin.dto.UpdateThreadRequest;
 import com.mannschaft.app.bulletin.service.BulletinCategoryService;
 import com.mannschaft.app.bulletin.service.BulletinReplyService;
+import com.mannschaft.app.bulletin.service.BulletinScopeIdResolver;
 import com.mannschaft.app.bulletin.service.BulletinThreadService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
@@ -53,6 +54,7 @@ class BulletinControllerTest {
 
     private static final Long USER_ID = 1L;
     private static final Long SCOPE_ID = 10L;
+    private static final String SCOPE_ID_STR = "10";
     private static final String SCOPE_TYPE = "TEAM";
     private static final Long CATEGORY_ID = 5L;
     private static final Long THREAD_ID = 100L;
@@ -81,6 +83,9 @@ class BulletinControllerTest {
         @Mock
         private BulletinCategoryService categoryService;
 
+        @Mock
+        private BulletinScopeIdResolver scopeIdResolver;
+
         @InjectMocks
         private BulletinCategoryController categoryController;
 
@@ -94,12 +99,13 @@ class BulletinControllerTest {
         @DisplayName("正常系: カテゴリ一覧が200で返る")
         void listCategories_正常_200() {
             // Given
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(categoryService.listCategories(any(), eq(SCOPE_ID), eq(USER_ID)))
                     .willReturn(List.of(createCategoryResponse()));
 
             // When
             ResponseEntity<ApiResponse<List<CategoryResponse>>> response =
-                    categoryController.listCategories(SCOPE_TYPE, SCOPE_ID);
+                    categoryController.listCategories(SCOPE_TYPE, SCOPE_ID_STR);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -111,12 +117,13 @@ class BulletinControllerTest {
         @DisplayName("正常系: カテゴリ詳細が200で返る")
         void getCategory_正常_200() {
             // Given
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(categoryService.getCategory(any(), eq(SCOPE_ID), eq(CATEGORY_ID), eq(USER_ID)))
                     .willReturn(createCategoryResponse());
 
             // When
             ResponseEntity<ApiResponse<CategoryResponse>> response =
-                    categoryController.getCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID);
+                    categoryController.getCategory(SCOPE_TYPE, SCOPE_ID_STR, CATEGORY_ID);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -128,12 +135,13 @@ class BulletinControllerTest {
         void createCategory_正常_201() {
             // Given
             CreateCategoryRequest request = new CreateCategoryRequest("新カテゴリ", "説明", 1, "#000000", "MEMBER");
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(categoryService.createCategory(any(), eq(SCOPE_ID), eq(USER_ID), eq(request)))
                     .willReturn(createCategoryResponse());
 
             // When
             ResponseEntity<ApiResponse<CategoryResponse>> response =
-                    categoryController.createCategory(SCOPE_TYPE, SCOPE_ID, request);
+                    categoryController.createCategory(SCOPE_TYPE, SCOPE_ID_STR, request);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
@@ -145,12 +153,13 @@ class BulletinControllerTest {
         void updateCategory_正常_200() {
             // Given
             UpdateCategoryRequest request = new UpdateCategoryRequest("更新カテゴリ", "更新説明", 2, "#FFFFFF", "ADMIN");
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(categoryService.updateCategory(any(), eq(SCOPE_ID), eq(CATEGORY_ID), eq(USER_ID), eq(request)))
                     .willReturn(createCategoryResponse());
 
             // When
             ResponseEntity<ApiResponse<CategoryResponse>> response =
-                    categoryController.updateCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID, request);
+                    categoryController.updateCategory(SCOPE_TYPE, SCOPE_ID_STR, CATEGORY_ID, request);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -161,13 +170,14 @@ class BulletinControllerTest {
         @DisplayName("正常系: カテゴリ削除が200で返り未分類化件数を含む")
         void deleteCategory_正常_200() {
             // Given
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(categoryService.deleteCategory(any(), eq(SCOPE_ID), eq(CATEGORY_ID), eq(USER_ID)))
                     .willReturn(new DeleteCategoryResponse(CATEGORY_ID, 3,
                             "カテゴリを削除しました。3件のスレッドが未分類に移行しました"));
 
             // When
             ResponseEntity<ApiResponse<DeleteCategoryResponse>> response =
-                    categoryController.deleteCategory(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID);
+                    categoryController.deleteCategory(SCOPE_TYPE, SCOPE_ID_STR, CATEGORY_ID);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -188,6 +198,9 @@ class BulletinControllerTest {
         @Mock
         private BulletinThreadService threadService;
 
+        @Mock
+        private BulletinScopeIdResolver scopeIdResolver;
+
         @InjectMocks
         private BulletinThreadController threadController;
 
@@ -207,13 +220,14 @@ class BulletinControllerTest {
         @DisplayName("正常系: スレッド一覧（categoryId指定なし）が200で返る")
         void listThreads_カテゴリ指定なし_200() {
             // Given
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             Page<ThreadResponse> page = new PageImpl<>(
                     List.of(createThreadResponse()), PageRequest.of(0, 20), 1);
             given(threadService.listThreads(any(), eq(SCOPE_ID), eq(USER_ID), any())).willReturn(page);
 
             // When
             ResponseEntity<PagedResponse<ThreadResponse>> response =
-                    threadController.listThreads(SCOPE_TYPE, SCOPE_ID, null, 0, 20);
+                    threadController.listThreads(SCOPE_TYPE, SCOPE_ID_STR, null, 0, 20);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -224,13 +238,14 @@ class BulletinControllerTest {
         @DisplayName("正常系: スレッド一覧（categoryId指定あり）が200で返る")
         void listThreads_カテゴリ指定あり_200() {
             // Given
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             Page<ThreadResponse> page = new PageImpl<>(
                     List.of(createThreadResponse()), PageRequest.of(0, 20), 1);
             given(threadService.listThreadsByCategory(any(), eq(SCOPE_ID), eq(CATEGORY_ID), eq(USER_ID), any())).willReturn(page);
 
             // When
             ResponseEntity<PagedResponse<ThreadResponse>> response =
-                    threadController.listThreads(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID, 0, 20);
+                    threadController.listThreads(SCOPE_TYPE, SCOPE_ID_STR, CATEGORY_ID, 0, 20);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -241,12 +256,13 @@ class BulletinControllerTest {
         @DisplayName("正常系: スレッド詳細が200で返る")
         void getThread_正常_200() {
             // Given
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(threadService.getThread(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID)))
                     .willReturn(createThreadResponse());
 
             // When
             ResponseEntity<ApiResponse<ThreadResponse>> response =
-                    threadController.getThread(SCOPE_TYPE, SCOPE_ID, THREAD_ID);
+                    threadController.getThread(SCOPE_TYPE, SCOPE_ID_STR, THREAD_ID);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -257,13 +273,14 @@ class BulletinControllerTest {
         @DisplayName("正常系: スレッド検索が200で返る")
         void searchThreads_正常_200() {
             // Given
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             Page<ThreadResponse> page = new PageImpl<>(
                     List.of(createThreadResponse()), PageRequest.of(0, 20), 1);
             given(threadService.searchThreads(any(), eq(SCOPE_ID), eq(USER_ID), eq("テスト"), any())).willReturn(page);
 
             // When
             ResponseEntity<PagedResponse<ThreadResponse>> response =
-                    threadController.searchThreads(SCOPE_TYPE, SCOPE_ID, "テスト", 0, 20);
+                    threadController.searchThreads(SCOPE_TYPE, SCOPE_ID_STR, "テスト", 0, 20);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -275,12 +292,13 @@ class BulletinControllerTest {
             // Given
             CreateThreadRequest request = new CreateThreadRequest(
                     CATEGORY_ID, "タイトル", "本文", "INFO", "COUNT_ONLY", null, null);
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(threadService.createThread(any(), eq(SCOPE_ID), eq(USER_ID), eq(request)))
                     .willReturn(createThreadResponse());
 
             // When
             ResponseEntity<ApiResponse<ThreadResponse>> response =
-                    threadController.createThread(SCOPE_TYPE, SCOPE_ID, request);
+                    threadController.createThread(SCOPE_TYPE, SCOPE_ID_STR, request);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
@@ -292,12 +310,13 @@ class BulletinControllerTest {
         void updateThread_正常_200() {
             // Given
             UpdateThreadRequest request = new UpdateThreadRequest("更新タイトル", "更新本文", "IMPORTANT");
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(threadService.updateThread(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(request)))
                     .willReturn(createThreadResponse());
 
             // When
             ResponseEntity<ApiResponse<ThreadResponse>> response =
-                    threadController.updateThread(SCOPE_TYPE, SCOPE_ID, THREAD_ID, request);
+                    threadController.updateThread(SCOPE_TYPE, SCOPE_ID_STR, THREAD_ID, request);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -306,8 +325,11 @@ class BulletinControllerTest {
         @Test
         @DisplayName("正常系: スレッド削除が204で返る")
         void deleteThread_正常_204() {
+            // Given
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
+
             // When
-            ResponseEntity<Void> response = threadController.deleteThread(SCOPE_TYPE, SCOPE_ID, THREAD_ID);
+            ResponseEntity<Void> response = threadController.deleteThread(SCOPE_TYPE, SCOPE_ID_STR, THREAD_ID);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
@@ -318,12 +340,13 @@ class BulletinControllerTest {
         @DisplayName("正常系: ピン留め切替が200で返る")
         void togglePin_正常_200() {
             // Given
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(threadService.togglePin(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID)))
                     .willReturn(createThreadResponse());
 
             // When
             ResponseEntity<ApiResponse<ThreadResponse>> response =
-                    threadController.togglePin(SCOPE_TYPE, SCOPE_ID, THREAD_ID);
+                    threadController.togglePin(SCOPE_TYPE, SCOPE_ID_STR, THREAD_ID);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -333,12 +356,13 @@ class BulletinControllerTest {
         @DisplayName("正常系: ロック切替が200で返る")
         void toggleLock_正常_200() {
             // Given
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(threadService.toggleLock(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID)))
                     .willReturn(createThreadResponse());
 
             // When
             ResponseEntity<ApiResponse<ThreadResponse>> response =
-                    threadController.toggleLock(SCOPE_TYPE, SCOPE_ID, THREAD_ID);
+                    threadController.toggleLock(SCOPE_TYPE, SCOPE_ID_STR, THREAD_ID);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -348,12 +372,13 @@ class BulletinControllerTest {
         @DisplayName("正常系: アーカイブ（body無し=後方互換でtrue）が200で返る")
         void archive_body無し_200() {
             // Given: body 無しは後方互換で isArchived=true として委譲される
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(threadService.archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(true), isNull()))
                     .willReturn(createThreadResponse());
 
             // When
             ResponseEntity<ApiResponse<ThreadResponse>> response =
-                    threadController.archive(SCOPE_TYPE, SCOPE_ID, THREAD_ID, null);
+                    threadController.archive(SCOPE_TYPE, SCOPE_ID_STR, THREAD_ID, null);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -366,12 +391,13 @@ class BulletinControllerTest {
             // Given
             ArchiveThreadRequest request = new ArchiveThreadRequest();
             request.setIsArchived(true);
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(threadService.archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(true), isNull()))
                     .willReturn(createThreadResponse());
 
             // When
             ResponseEntity<ApiResponse<ThreadResponse>> response =
-                    threadController.archive(SCOPE_TYPE, SCOPE_ID, THREAD_ID, request);
+                    threadController.archive(SCOPE_TYPE, SCOPE_ID_STR, THREAD_ID, request);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -384,12 +410,13 @@ class BulletinControllerTest {
             // Given
             ArchiveThreadRequest request = new ArchiveThreadRequest();
             request.setIsArchived(false);
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(threadService.archive(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(false), isNull()))
                     .willReturn(createThreadResponse());
 
             // When
             ResponseEntity<ApiResponse<ThreadResponse>> response =
-                    threadController.archive(SCOPE_TYPE, SCOPE_ID, THREAD_ID, request);
+                    threadController.archive(SCOPE_TYPE, SCOPE_ID_STR, THREAD_ID, request);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -400,13 +427,14 @@ class BulletinControllerTest {
         @DisplayName("正常系: 検索結果が空の場合も200で返る")
         void searchThreads_空結果_200() {
             // Given
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             Page<ThreadResponse> emptyPage = new PageImpl<>(
                     Collections.emptyList(), PageRequest.of(0, 20), 0);
             given(threadService.searchThreads(any(), eq(SCOPE_ID), eq(USER_ID), eq("存在しない"), any())).willReturn(emptyPage);
 
             // When
             ResponseEntity<PagedResponse<ThreadResponse>> response =
-                    threadController.searchThreads(SCOPE_TYPE, SCOPE_ID, "存在しない", 0, 20);
+                    threadController.searchThreads(SCOPE_TYPE, SCOPE_ID_STR, "存在しない", 0, 20);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -425,6 +453,9 @@ class BulletinControllerTest {
         @Mock
         private BulletinReplyService replyService;
 
+        @Mock
+        private BulletinScopeIdResolver scopeIdResolver;
+
         @InjectMocks
         private BulletinReplyController replyController;
 
@@ -438,13 +469,14 @@ class BulletinControllerTest {
         @DisplayName("正常系: 返信一覧が200で返る")
         void listReplies_正常_200() {
             // Given
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             Page<ReplyResponse> page = new PageImpl<>(
                     List.of(createReplyResponse()), PageRequest.of(0, 20), 1);
             given(replyService.listReplies(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), any())).willReturn(page);
 
             // When
             ResponseEntity<PagedResponse<ReplyResponse>> response =
-                    replyController.listReplies(SCOPE_TYPE, SCOPE_ID, THREAD_ID, 0, 20);
+                    replyController.listReplies(SCOPE_TYPE, SCOPE_ID_STR, THREAD_ID, 0, 20);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -456,12 +488,13 @@ class BulletinControllerTest {
         void createReply_正常_201() {
             // Given
             CreateReplyRequest request = new CreateReplyRequest(null, "返信本文");
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(replyService.createReply(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(request)))
                     .willReturn(createReplyResponse());
 
             // When
             ResponseEntity<ApiResponse<ReplyResponse>> response =
-                    replyController.createReply(SCOPE_TYPE, SCOPE_ID, THREAD_ID, request);
+                    replyController.createReply(SCOPE_TYPE, SCOPE_ID_STR, THREAD_ID, request);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
@@ -473,12 +506,13 @@ class BulletinControllerTest {
         void updateReply_正常_200() {
             // Given
             UpdateReplyRequest request = new UpdateReplyRequest("更新された返信");
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(replyService.updateReply(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(REPLY_ID), eq(USER_ID), eq(request)))
                     .willReturn(createReplyResponse());
 
             // When
             ResponseEntity<ApiResponse<ReplyResponse>> response =
-                    replyController.updateReply(SCOPE_TYPE, SCOPE_ID, THREAD_ID, REPLY_ID, request);
+                    replyController.updateReply(SCOPE_TYPE, SCOPE_ID_STR, THREAD_ID, REPLY_ID, request);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -488,9 +522,12 @@ class BulletinControllerTest {
         @Test
         @DisplayName("正常系: 返信削除が204で返る")
         void deleteReply_正常_204() {
+            // Given
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
+
             // When
             ResponseEntity<Void> response =
-                    replyController.deleteReply(SCOPE_TYPE, SCOPE_ID, THREAD_ID, REPLY_ID);
+                    replyController.deleteReply(SCOPE_TYPE, SCOPE_ID_STR, THREAD_ID, REPLY_ID);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
@@ -505,12 +542,13 @@ class BulletinControllerTest {
             ReplyResponse childReply = new ReplyResponse(
                     201L, THREAD_ID, REPLY_ID, USER_ID,
                     "子返信本文", false, 0, null, null, 1, Collections.emptyList());
+            given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
             given(replyService.createReply(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID), eq(request)))
                     .willReturn(childReply);
 
             // When
             ResponseEntity<ApiResponse<ReplyResponse>> response =
-                    replyController.createReply(SCOPE_TYPE, SCOPE_ID, THREAD_ID, request);
+                    replyController.createReply(SCOPE_TYPE, SCOPE_ID_STR, THREAD_ID, request);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
