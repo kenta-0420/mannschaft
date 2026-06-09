@@ -13,17 +13,13 @@ const teamIdStr = String(route.params.id)
 const teamId = Number(teamIdStr)
 const { t } = useI18n()
 
-const teamApi = useTeamApi()
 const { createMatch } = useMatchApi()
 const { buildOffsetDateTimeStr } = useDatetime()
 
-// === 組織 ID の解決 ===
-const orgId = ref<number | null>(null)
+// === 組織 ID の解決（useMatchOrgContext に集約・3 ページ共通化）===
+const { orgId, resolveOrgId } = useMatchOrgContext()
 async function loadOrganizationId(): Promise<void> {
-  if (orgId.value !== null) return
-  const res = await teamApi.getOrganizations(teamIdStr)
-  const first = (res.data ?? [])[0]
-  if (typeof first?.id === 'number') orgId.value = first.id
+  await resolveOrgId(teamIdStr)
 }
 
 // === フォーム状態 ===
@@ -102,8 +98,7 @@ async function submit(): Promise<void> {
 
   try {
     const created = await createMatch(orgId.value, teamId, body)
-    // TODO(3-B): 作成成功後は live.vue へ遷移する（§G.1a-2 = 即記録開始）。
-    // live.vue 実装後に以下を有効化する。本 PR では未実装のため一覧へ戻る暫定。
+    // 作成成功後は live.vue へ遷移する（§G.1a-2 = 即記録開始）。3-B で live.vue を実装済み。
     if (created.id) {
       void router.push(`/teams/${teamIdStr}/matches/${created.id}/live`)
     } else {

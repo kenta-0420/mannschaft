@@ -68,12 +68,142 @@
       }
     },
     "live": {
+      "title": "실시간 기록",
+      "loading": "불러오는 중…",
+      "scoreboard": {
+        "home": "우리",
+        "away": "상대",
+        "vs": "vs {opponent}",
+        "penalty": "승부차기 {home}-{away}"
+      },
+      "timer": {
+        "state": {
+          "WAITING": "경기 전",
+          "FIRST_HALF": "전반",
+          "HALF_TIME": "하프타임",
+          "SECOND_HALF": "후반",
+          "EXTRA_FIRST": "연장 전반",
+          "EXTRA_SECOND": "연장 후반",
+          "PENALTY_SHOOTOUT": "승부차기",
+          "COMPLETED": "경기 종료"
+        },
+        "start_first_half": "전반 시작",
+        "to_half_time": "하프타임으로",
+        "start_second_half": "후반 시작",
+        "to_extra": "연장으로",
+        "to_penalty": "승부차기로",
+        "complete": "경기 종료",
+        "advance": "다음 피리어드",
+        "minute_label": "분",
+        "stoppage_label": "추가시간 (+)",
+        "minute_override_hint": "타이머와 차이가 나면 분을 수동으로 수정할 수 있습니다.",
+        "pause": "일시정지",
+        "resume": "재개",
+        "running": "측정 중",
+        "stopped": "정지됨"
+      },
+      "preset": {
+        "goal": "득점",
+        "assist": "어시스트",
+        "card": "카드",
+        "substitution": "교체",
+        "other": "기타"
+      },
+      "flow": {
+        "select_player": "선수 선택",
+        "select_scorer": "득점자 선택",
+        "select_assist": "어시스트 선택",
+        "select_out": "교체 OUT 선수",
+        "select_in": "교체 IN 선수",
+        "add_assist": "+ 어시스트 연결",
+        "to_goal": "-> 득점으로 연결",
+        "skip": "건너뛰기",
+        "confirm": "확정",
+        "cancel": "취소",
+        "back": "뒤로",
+        "note_label": "사유 / 메모",
+        "note_placeholder": "예: 코너킥에서",
+        "goal_type_label": "득점 종류",
+        "goal_type": {
+          "GOAL": "일반",
+          "PENALTY_GOAL": "PK",
+          "OWN_GOAL": "자책골"
+        },
+        "card_color_label": "카드 종류",
+        "card_yellow": "경고",
+        "card_red": "퇴장",
+        "card_second_yellow": "두 번째 경고",
+        "team_side_label": "기록 대상",
+        "other_label_placeholder": "이벤트 이름 (예: 파울)"
+      },
+      "team_side": {
+        "HOME": "우리 팀",
+        "AWAY": "상대 팀"
+      },
+      "card_reason": {
+        "title": "사유 코드 (선택)",
+        "skip_hint": "나중에 보완할 수 있습니다. 공식전에서는 기록을 권장합니다.",
+        "none": "미선택"
+      },
+      "grid": {
+        "starters": "선발",
+        "bench": "교체 대기",
+        "setup_button": "선발 설정",
+        "all_starters": "전원 선발",
+        "clear_starters": "선발 해제",
+        "copy_previous": "지난 선발 복사",
+        "add_manual": "수동 추가",
+        "manual_name_placeholder": "선수 이름",
+        "manual_number_placeholder": "번호",
+        "empty": "선수를 찾을 수 없습니다. 수동으로 추가하세요.",
+        "position": {
+          "GK": "GK",
+          "DF": "DF",
+          "MF": "MF",
+          "FW": "FW",
+          "other": "기타"
+        }
+      },
+      "timeline": {
+        "title": "타임라인",
+        "empty": "아직 이벤트가 없습니다. 아래 버튼으로 기록을 시작하세요.",
+        "minute_suffix": "'",
+        "self": "우리",
+        "opponent": "상대",
+        "linked_assist": "어시스트",
+        "linked_goal": "득점",
+        "tap_to_edit": "탭하여 편집",
+        "delete": "삭제",
+        "delete_confirm": "이 이벤트를 삭제하시겠습니까?"
+      },
+      "undo": {
+        "button": "되돌리기",
+        "done": "작업을 취소했습니다",
+        "substitution": "교체를 취소했습니다",
+        "goal_assist": "득점/어시스트를 취소했습니다"
+      },
+      "conflict": {
+        "title": "다른 기록자가 업데이트했습니다",
+        "detail": "최신 기록을 가져와 재시도합니다"
+      },
+      "opponent_notice": {
+        "title": "{team} 팀이 입력했습니다",
+        "detail": "이 기록의 수정은 {team} 팀의 기록자에게 요청하세요."
+      },
+      "offline": {
+        "queued": "오프라인이라 저장했습니다. 연결 복구 시 전송합니다.",
+        "flushed": "대기 중인 {count}건의 이벤트를 전송했습니다.",
+        "pending": "미전송 {count}건"
+      },
+      "completed_notice": "이 경기는 종료되었습니다. 수정은 권한에 따릅니다.",
       "error": {
         "load_events_failed": "이벤트를 불러오지 못했습니다",
         "load_appearances_failed": "출전 기록을 불러오지 못했습니다",
+        "load_match_failed": "경기 정보를 불러오지 못했습니다",
         "add_event_failed": "이벤트 기록에 실패했습니다",
         "update_event_failed": "이벤트 업데이트에 실패했습니다",
-        "delete_event_failed": "이벤트 삭제에 실패했습니다"
+        "delete_event_failed": "이벤트 삭제에 실패했습니다",
+        "undo_failed": "작업 취소에 실패했습니다"
       }
     },
     "analytics": {

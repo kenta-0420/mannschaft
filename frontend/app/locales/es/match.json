@@ -68,12 +68,142 @@
       }
     },
     "live": {
+      "title": "Registro en vivo",
+      "loading": "Cargando...",
+      "scoreboard": {
+        "home": "Nos.",
+        "away": "Riv.",
+        "vs": "vs {opponent}",
+        "penalty": "Penales {home}-{away}"
+      },
+      "timer": {
+        "state": {
+          "WAITING": "Pre-partido",
+          "FIRST_HALF": "1er tiempo",
+          "HALF_TIME": "Descanso",
+          "SECOND_HALF": "2do tiempo",
+          "EXTRA_FIRST": "Prórroga 1",
+          "EXTRA_SECOND": "Prórroga 2",
+          "PENALTY_SHOOTOUT": "Penales",
+          "COMPLETED": "Finalizado"
+        },
+        "start_first_half": "Iniciar 1er tiempo",
+        "to_half_time": "Al descanso",
+        "start_second_half": "Iniciar 2do tiempo",
+        "to_extra": "A la prórroga",
+        "to_penalty": "A los penales",
+        "complete": "Finalizar partido",
+        "advance": "Siguiente periodo",
+        "minute_label": "Min",
+        "stoppage_label": "Tiempo añadido (+)",
+        "minute_override_hint": "Puedes corregir el minuto manualmente si se desfasa.",
+        "pause": "Pausar",
+        "resume": "Reanudar",
+        "running": "En marcha",
+        "stopped": "Detenido"
+      },
+      "preset": {
+        "goal": "Gol",
+        "assist": "Asistencia",
+        "card": "Tarjeta",
+        "substitution": "Cambio",
+        "other": "Otro"
+      },
+      "flow": {
+        "select_player": "Seleccionar jugador",
+        "select_scorer": "Seleccionar goleador",
+        "select_assist": "Seleccionar asistente",
+        "select_out": "Jugador que sale",
+        "select_in": "Jugador que entra",
+        "add_assist": "+ Vincular asistencia",
+        "to_goal": "-> Vincular al gol",
+        "skip": "Omitir",
+        "confirm": "Confirmar",
+        "cancel": "Cancelar",
+        "back": "Atrás",
+        "note_label": "Motivo / nota",
+        "note_placeholder": "p. ej. desde un córner",
+        "goal_type_label": "Tipo de gol",
+        "goal_type": {
+          "GOAL": "Jugada",
+          "PENALTY_GOAL": "Penal",
+          "OWN_GOAL": "Autogol"
+        },
+        "card_color_label": "Tipo de tarjeta",
+        "card_yellow": "Amarilla",
+        "card_red": "Roja",
+        "card_second_yellow": "Segunda amarilla",
+        "team_side_label": "Registrar para",
+        "other_label_placeholder": "Nombre del evento (p. ej. falta)"
+      },
+      "team_side": {
+        "HOME": "Nuestro equipo",
+        "AWAY": "Rival"
+      },
+      "card_reason": {
+        "title": "Código de motivo (opcional)",
+        "skip_hint": "Se puede completar luego. Recomendado en partidos oficiales.",
+        "none": "Sin seleccionar"
+      },
+      "grid": {
+        "starters": "Titulares",
+        "bench": "Suplentes",
+        "setup_button": "Definir alineación",
+        "all_starters": "Todos titulares",
+        "clear_starters": "Quitar titulares",
+        "copy_previous": "Copiar alineación anterior",
+        "add_manual": "Agregar manualmente",
+        "manual_name_placeholder": "Nombre del jugador",
+        "manual_number_placeholder": "N.º",
+        "empty": "No se encontraron jugadores. Agrégalos manualmente.",
+        "position": {
+          "GK": "POR",
+          "DF": "DEF",
+          "MF": "MED",
+          "FW": "DEL",
+          "other": "Otro"
+        }
+      },
+      "timeline": {
+        "title": "Cronología",
+        "empty": "Aún no hay eventos. Empieza a registrar con los botones de abajo.",
+        "minute_suffix": "'",
+        "self": "Nos.",
+        "opponent": "Riv.",
+        "linked_assist": "Asistencia",
+        "linked_goal": "Gol",
+        "tap_to_edit": "Toca para editar",
+        "delete": "Eliminar",
+        "delete_confirm": "¿Eliminar este evento?"
+      },
+      "undo": {
+        "button": "Deshacer",
+        "done": "Acción deshecha",
+        "substitution": "Cambio deshecho",
+        "goal_assist": "Gol/asistencia deshechos"
+      },
+      "conflict": {
+        "title": "Otro registrador actualizó esto",
+        "detail": "Recargando los registros más recientes y reintentando"
+      },
+      "opponent_notice": {
+        "title": "Registrado por el equipo {team}",
+        "detail": "Pide al registrador del equipo {team} que corrija esta entrada."
+      },
+      "offline": {
+        "queued": "Guardado sin conexión. Se enviará al reconectar.",
+        "flushed": "Se enviaron {count} evento(s) pendientes.",
+        "pending": "{count} pendiente(s)"
+      },
+      "completed_notice": "Este partido ha finalizado. Las correcciones siguen tus permisos.",
       "error": {
         "load_events_failed": "Error al cargar los eventos",
         "load_appearances_failed": "Error al cargar las apariciones",
+        "load_match_failed": "Error al cargar la información del partido",
         "add_event_failed": "Error al registrar el evento",
         "update_event_failed": "Error al actualizar el evento",
-        "delete_event_failed": "Error al eliminar el evento"
+        "delete_event_failed": "Error al eliminar el evento",
+        "undo_failed": "Error al deshacer"
       }
     },
     "analytics": {

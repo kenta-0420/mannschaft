@@ -68,12 +68,142 @@
       }
     },
     "live": {
+      "title": "Live-Erfassung",
+      "loading": "Wird geladen...",
+      "scoreboard": {
+        "home": "Wir",
+        "away": "Geg.",
+        "vs": "vs {opponent}",
+        "penalty": "Elfm. {home}-{away}"
+      },
+      "timer": {
+        "state": {
+          "WAITING": "Vor dem Spiel",
+          "FIRST_HALF": "1. Halbzeit",
+          "HALF_TIME": "Halbzeit",
+          "SECOND_HALF": "2. Halbzeit",
+          "EXTRA_FIRST": "Verl. 1",
+          "EXTRA_SECOND": "Verl. 2",
+          "PENALTY_SHOOTOUT": "Elfmeterschießen",
+          "COMPLETED": "Spielende"
+        },
+        "start_first_half": "1. Halbzeit starten",
+        "to_half_time": "Zur Halbzeit",
+        "start_second_half": "2. Halbzeit starten",
+        "to_extra": "Zur Verlängerung",
+        "to_penalty": "Zum Elfmeterschießen",
+        "complete": "Spiel beenden",
+        "advance": "Nächster Abschnitt",
+        "minute_label": "Min",
+        "stoppage_label": "Nachspielzeit (+)",
+        "minute_override_hint": "Bei Abweichung kann die Minute manuell korrigiert werden.",
+        "pause": "Pause",
+        "resume": "Fortsetzen",
+        "running": "Läuft",
+        "stopped": "Gestoppt"
+      },
+      "preset": {
+        "goal": "Tor",
+        "assist": "Vorlage",
+        "card": "Karte",
+        "substitution": "Wechsel",
+        "other": "Sonstiges"
+      },
+      "flow": {
+        "select_player": "Spieler wählen",
+        "select_scorer": "Torschützen wählen",
+        "select_assist": "Vorlagengeber wählen",
+        "select_out": "Spieler RAUS",
+        "select_in": "Spieler REIN",
+        "add_assist": "+ Vorlage verknüpfen",
+        "to_goal": "-> Mit Tor verknüpfen",
+        "skip": "Überspringen",
+        "confirm": "Bestätigen",
+        "cancel": "Abbrechen",
+        "back": "Zurück",
+        "note_label": "Grund / Notiz",
+        "note_placeholder": "z. B. nach einem Eckball",
+        "goal_type_label": "Torart",
+        "goal_type": {
+          "GOAL": "Aus dem Spiel",
+          "PENALTY_GOAL": "Elfmeter",
+          "OWN_GOAL": "Eigentor"
+        },
+        "card_color_label": "Kartenart",
+        "card_yellow": "Gelb",
+        "card_red": "Rot",
+        "card_second_yellow": "Gelb-Rot",
+        "team_side_label": "Erfassen für",
+        "other_label_placeholder": "Ereignisname (z. B. Foul)"
+      },
+      "team_side": {
+        "HOME": "Unser Team",
+        "AWAY": "Gegner"
+      },
+      "card_reason": {
+        "title": "Begründungscode (optional)",
+        "skip_hint": "Kann später ergänzt werden. Bei offiziellen Spielen empfohlen.",
+        "none": "Nicht gewählt"
+      },
+      "grid": {
+        "starters": "Startelf",
+        "bench": "Bank",
+        "setup_button": "Aufstellung festlegen",
+        "all_starters": "Alle in die Startelf",
+        "clear_starters": "Startelf leeren",
+        "copy_previous": "Letzte Aufstellung kopieren",
+        "add_manual": "Manuell hinzufügen",
+        "manual_name_placeholder": "Spielername",
+        "manual_number_placeholder": "Nr.",
+        "empty": "Keine Spieler gefunden. Bitte manuell hinzufügen.",
+        "position": {
+          "GK": "TW",
+          "DF": "ABW",
+          "MF": "MF",
+          "FW": "ST",
+          "other": "Sonstige"
+        }
+      },
+      "timeline": {
+        "title": "Zeitleiste",
+        "empty": "Noch keine Ereignisse. Starte die Erfassung über die Schaltflächen unten.",
+        "minute_suffix": "'",
+        "self": "Wir",
+        "opponent": "Geg.",
+        "linked_assist": "Vorlage",
+        "linked_goal": "Tor",
+        "tap_to_edit": "Zum Bearbeiten tippen",
+        "delete": "Löschen",
+        "delete_confirm": "Dieses Ereignis löschen?"
+      },
+      "undo": {
+        "button": "Rückgängig",
+        "done": "Aktion rückgängig gemacht",
+        "substitution": "Wechsel rückgängig gemacht",
+        "goal_assist": "Tor/Vorlage rückgängig gemacht"
+      },
+      "conflict": {
+        "title": "Ein anderer Erfasser hat aktualisiert",
+        "detail": "Aktuelle Aufzeichnungen werden geladen und erneut versucht"
+      },
+      "opponent_notice": {
+        "title": "Erfasst von Team {team}",
+        "detail": "Bitte den Erfasser von Team {team} um Korrektur dieses Eintrags."
+      },
+      "offline": {
+        "queued": "Offline gespeichert. Wird bei Verbindung gesendet.",
+        "flushed": "{count} ausstehende Ereignisse gesendet.",
+        "pending": "{count} ausstehend"
+      },
+      "completed_notice": "Dieses Spiel ist beendet. Korrekturen richten sich nach deinen Berechtigungen.",
       "error": {
         "load_events_failed": "Ereignisse konnten nicht geladen werden",
         "load_appearances_failed": "Einsätze konnten nicht geladen werden",
+        "load_match_failed": "Spielinfo konnte nicht geladen werden",
         "add_event_failed": "Ereignis konnte nicht erfasst werden",
         "update_event_failed": "Ereignis konnte nicht aktualisiert werden",
-        "delete_event_failed": "Ereignis konnte nicht gelöscht werden"
+        "delete_event_failed": "Ereignis konnte nicht gelöscht werden",
+        "undo_failed": "Rückgängig fehlgeschlagen"
       }
     },
     "analytics": {

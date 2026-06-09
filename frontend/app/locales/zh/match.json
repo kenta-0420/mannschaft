@@ -68,12 +68,142 @@
       }
     },
     "live": {
+      "title": "实时记录",
+      "loading": "加载中…",
+      "scoreboard": {
+        "home": "我方",
+        "away": "对方",
+        "vs": "对 {opponent}",
+        "penalty": "点球 {home}-{away}"
+      },
+      "timer": {
+        "state": {
+          "WAITING": "赛前",
+          "FIRST_HALF": "上半场",
+          "HALF_TIME": "中场休息",
+          "SECOND_HALF": "下半场",
+          "EXTRA_FIRST": "加时上半场",
+          "EXTRA_SECOND": "加时下半场",
+          "PENALTY_SHOOTOUT": "点球大战",
+          "COMPLETED": "比赛结束"
+        },
+        "start_first_half": "开始上半场",
+        "to_half_time": "进入中场",
+        "start_second_half": "开始下半场",
+        "to_extra": "进入加时",
+        "to_penalty": "进入点球",
+        "complete": "结束比赛",
+        "advance": "下一节",
+        "minute_label": "分钟",
+        "stoppage_label": "补时 (+)",
+        "minute_override_hint": "如与计时器有偏差可手动修正分钟。",
+        "pause": "暂停",
+        "resume": "继续",
+        "running": "计时中",
+        "stopped": "已停止"
+      },
+      "preset": {
+        "goal": "进球",
+        "assist": "助攻",
+        "card": "纸牌",
+        "substitution": "换人",
+        "other": "其他"
+      },
+      "flow": {
+        "select_player": "选择球员",
+        "select_scorer": "选择进球者",
+        "select_assist": "选择助攻者",
+        "select_out": "下场球员",
+        "select_in": "上场球员",
+        "add_assist": "+ 关联助攻",
+        "to_goal": "-> 关联进球",
+        "skip": "跳过",
+        "confirm": "确定",
+        "cancel": "取消",
+        "back": "返回",
+        "note_label": "原因 / 备注",
+        "note_placeholder": "例如：角球助攻",
+        "goal_type_label": "进球类型",
+        "goal_type": {
+          "GOAL": "运动战",
+          "PENALTY_GOAL": "点球",
+          "OWN_GOAL": "乌龙球"
+        },
+        "card_color_label": "纸牌类型",
+        "card_yellow": "黄牌",
+        "card_red": "红牌",
+        "card_second_yellow": "第二张黄牌",
+        "team_side_label": "记录对象",
+        "other_label_placeholder": "事件名称（例如：犯规）"
+      },
+      "team_side": {
+        "HOME": "本队",
+        "AWAY": "对方"
+      },
+      "card_reason": {
+        "title": "原因代码（可选）",
+        "skip_hint": "可稍后补填。正式比赛建议记录。",
+        "none": "未选择"
+      },
+      "grid": {
+        "starters": "首发",
+        "bench": "替补",
+        "setup_button": "设置首发",
+        "all_starters": "全部首发",
+        "clear_starters": "清除首发",
+        "copy_previous": "复制上次首发",
+        "add_manual": "手动添加",
+        "manual_name_placeholder": "球员姓名",
+        "manual_number_placeholder": "号码",
+        "empty": "未找到球员，请手动添加。",
+        "position": {
+          "GK": "门将",
+          "DF": "后卫",
+          "MF": "中场",
+          "FW": "前锋",
+          "other": "其他"
+        }
+      },
+      "timeline": {
+        "title": "时间线",
+        "empty": "暂无事件。请从下方按钮开始记录。",
+        "minute_suffix": "'",
+        "self": "我方",
+        "opponent": "对方",
+        "linked_assist": "助攻",
+        "linked_goal": "进球",
+        "tap_to_edit": "点击编辑",
+        "delete": "删除",
+        "delete_confirm": "删除该事件？"
+      },
+      "undo": {
+        "button": "撤销",
+        "done": "已撤销操作",
+        "substitution": "已撤销换人",
+        "goal_assist": "已撤销进球/助攻"
+      },
+      "conflict": {
+        "title": "其他记录者已更新",
+        "detail": "正在获取最新记录并重试"
+      },
+      "opponent_notice": {
+        "title": "由{team}队记录",
+        "detail": "请联系{team}队的记录者进行修正。"
+      },
+      "offline": {
+        "queued": "已离线保存，恢复网络后发送。",
+        "flushed": "已发送 {count} 条待发事件。",
+        "pending": "待发送 {count} 条"
+      },
+      "completed_notice": "本场比赛已结束。修正将依据您的权限。",
       "error": {
         "load_events_failed": "获取事件失败",
         "load_appearances_failed": "获取出场记录失败",
+        "load_match_failed": "获取比赛信息失败",
         "add_event_failed": "记录事件失败",
         "update_event_failed": "更新事件失败",
-        "delete_event_failed": "删除事件失败"
+        "delete_event_failed": "删除事件失败",
+        "undo_failed": "撤销操作失败"
       }
     },
     "analytics": {
