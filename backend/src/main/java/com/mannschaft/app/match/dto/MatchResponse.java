@@ -5,6 +5,7 @@ import com.mannschaft.app.match.domain.MatchKind;
 import com.mannschaft.app.match.domain.MatchStatus;
 import com.mannschaft.app.match.domain.Sport;
 import com.mannschaft.app.match.entity.MatchEntity;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -19,6 +20,7 @@ import java.util.UUID;
  *
  * <p>設計: docs/features/F08.10_match_record_analytics/01_domain_and_ddl.md §B.1 / 03 §C.2</p>
  */
+@Schema(name = "MatchDetailResponse")
 @Getter
 @Builder
 public class MatchResponse {

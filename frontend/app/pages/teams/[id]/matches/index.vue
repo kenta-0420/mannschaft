@@ -17,21 +17,13 @@ const teamIdStr = String(route.params.id)
 const teamId = Number(teamIdStr)
 const { t } = useI18n()
 
-const teamApi = useTeamApi()
 const { listMatches } = useMatchApi()
 
-// === 組織 ID の解決（teamApi.getOrganizations 由来・repair-plan.vue 作法） ===
-const orgId = ref<number | null>(null)
+// === 組織 ID の解決（useMatchOrgContext に集約・3 ページ共通化）===
+const { orgId, resolveOrgId } = useMatchOrgContext()
 
 async function loadOrganizationId(): Promise<void> {
-  if (orgId.value !== null) return
-  const res = await teamApi.getOrganizations(teamIdStr)
-  const orgs = res.data ?? []
-  const first = orgs[0]
-  const rawId = first?.id
-  if (typeof rawId === 'number') {
-    orgId.value = rawId
-  }
+  await resolveOrgId(teamIdStr)
 }
 
 // === フィルタ状態 ===
@@ -90,8 +82,7 @@ watch([kindFilter, statusFilter], () => {
 })
 
 // === カード選択時の遷移（進行中・それ以外も live に合流＝§G.1a-2） ===
-// TODO(3-B): 遷移先 pages/teams/[id]/matches/[matchId]/live.vue は 3-B で実装する。
-// 本 PR 時点では未実装のため、リンクは 3-B マージ後に有効化される。
+// 遷移先 pages/teams/[id]/matches/[matchId]/live.vue は 3-B で実装済み。
 function onSelectMatch(match: MatchSummaryResponse): void {
   if (!match.id) return
   void router.push(`/teams/${teamIdStr}/matches/${match.id}/live`)

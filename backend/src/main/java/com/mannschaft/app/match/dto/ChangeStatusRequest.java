@@ -1,6 +1,7 @@
 package com.mannschaft.app.match.dto;
 
 import com.mannschaft.app.match.domain.MatchStatus;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,6 +14,7 @@ import lombok.Setter;
  *
  * <p>設計: docs/features/F08.10_match_record_analytics/02_playing_time_and_aggregation.md §E.3</p>
  */
+@Schema(name = "MatchChangeStatusRequest")
 @Getter
 @Setter
 @NoArgsConstructor

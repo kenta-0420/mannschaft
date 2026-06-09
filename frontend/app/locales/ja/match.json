@@ -68,12 +68,146 @@
       }
     },
     "live": {
+      "title": "ライブ記録",
+      "loading": "読み込み中…",
+      "scoreboard": {
+        "home": "自",
+        "away": "相手",
+        "vs": "vs {opponent}",
+        "penalty": "PK {home}-{away}"
+      },
+      "timer": {
+        "state": {
+          "WAITING": "開始前",
+          "FIRST_HALF": "前半",
+          "HALF_TIME": "ハーフタイム",
+          "SECOND_HALF": "後半",
+          "EXTRA_FIRST": "延長前半",
+          "EXTRA_SECOND": "延長後半",
+          "PENALTY_SHOOTOUT": "PK戦",
+          "COMPLETED": "試合終了"
+        },
+        "start_first_half": "前半開始",
+        "to_half_time": "ハーフタイムへ",
+        "start_second_half": "後半開始",
+        "to_extra": "延長へ",
+        "to_penalty": "PK戦へ",
+        "complete": "試合終了",
+        "advance": "次のピリオドへ",
+        "minute_label": "分",
+        "stoppage_label": "アディショナル(+)",
+        "minute_override_hint": "タイマーとずれる場合は手動で訂正できます",
+        "pause": "一時停止",
+        "resume": "再開",
+        "running": "計測中",
+        "stopped": "停止中"
+      },
+      "preset": {
+        "goal": "得点",
+        "assist": "アシスト",
+        "card": "警告/退場",
+        "substitution": "交代",
+        "other": "その他"
+      },
+      "flow": {
+        "select_player": "選手を選択",
+        "select_scorer": "得点者を選択",
+        "select_assist": "アシスト者を選択",
+        "select_out": "OUT する選手",
+        "select_in": "IN する選手",
+        "add_assist": "＋アシストを紐付け",
+        "to_goal": "→ 得点へつなぐ",
+        "skip": "スキップ",
+        "confirm": "確定",
+        "cancel": "キャンセル",
+        "back": "戻る",
+        "note_label": "理由・メモ",
+        "note_placeholder": "例: コーナーキックから",
+        "goal_type_label": "得点種別",
+        "goal_type": {
+          "GOAL": "通常",
+          "PENALTY_GOAL": "PK",
+          "OWN_GOAL": "オウンゴール"
+        },
+        "card_color_label": "カードの種類",
+        "card_yellow": "警告（黄）",
+        "card_red": "退場（赤）",
+        "card_second_yellow": "2枚目の警告",
+        "team_side_label": "記録対象",
+        "other_label_placeholder": "イベント名（例: ファウル）"
+      },
+      "team_side": {
+        "HOME": "自チーム",
+        "AWAY": "相手チーム"
+      },
+      "card_reason": {
+        "title": "理由コード（任意）",
+        "skip_hint": "後で補完できます。公式戦では記録を推奨します",
+        "none": "未選択"
+      },
+      "grid": {
+        "starters": "先発",
+        "bench": "控え",
+        "setup_button": "スタメン設定",
+        "all_starters": "全員先発",
+        "clear_starters": "先発をクリア",
+        "copy_previous": "前回の先発をコピー",
+        "add_manual": "手入力で追加",
+        "manual_name_placeholder": "選手名",
+        "manual_number_placeholder": "背番号",
+        "empty": "選手が見つかりません。手入力で追加してください",
+        "position": {
+          "GK": "GK",
+          "DF": "DF",
+          "MF": "MF",
+          "FW": "FW",
+          "other": "その他"
+        }
+      },
+      "timeline": {
+        "title": "タイムライン",
+        "empty": "まだイベントがありません。下のボタンから記録を始めましょう",
+        "minute_suffix": "'",
+        "self": "自",
+        "opponent": "相手",
+        "linked_assist": "アシスト",
+        "linked_goal": "得点",
+        "tap_to_edit": "タップで編集",
+        "delete": "削除",
+        "delete_confirm": "このイベントを削除しますか？"
+      },
+      "undo": {
+        "button": "元に戻す",
+        "done": "操作を取り消しました",
+        "substitution": "交代を取り消しました",
+        "goal_assist": "得点・アシストを取り消しました"
+      },
+      "conflict": {
+        "title": "他の記録者が更新しました",
+        "detail": "最新の記録を取得して再試行します"
+      },
+      "opponent_notice": {
+        "title": "{team}チームが入力しました",
+        "detail": "この記録の訂正は{team}チームの記録者へ依頼してください"
+      },
+      "offline": {
+        "queued": "オフラインのため保存しました。通信復帰時に送信します",
+        "flushed": "保留していた{count}件のイベントを送信しました",
+        "pending": "未送信 {count} 件"
+      },
+      "completed_notice": "この試合は終了しています。記録の訂正は権限に従います",
       "error": {
         "load_events_failed": "イベントの取得に失敗しました",
         "load_appearances_failed": "出場記録の取得に失敗しました",
+        "load_match_failed": "試合情報の取得に失敗しました",
         "add_event_failed": "イベントの記録に失敗しました",
         "update_event_failed": "イベントの更新に失敗しました",
-        "delete_event_failed": "イベントの削除に失敗しました"
+        "delete_event_failed": "イベントの削除に失敗しました",
+        "undo_failed": "操作の取り消しに失敗しました",
+        "period_boundary_failed": {
+          "title": "ピリオド境界の記録に失敗しました",
+          "detail": "前後半の切替（記録）がサーバーに保存されませんでした。スコアや出場時間の集計がずれる可能性があります。タイマーを操作し直して再記録してください。"
+        }
       }
     },
     "analytics": {
