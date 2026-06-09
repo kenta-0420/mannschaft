@@ -442,7 +442,12 @@
     "videoUploadSuccess": "视频上传成功",
     "videoUploadError": "视频上传失败",
     "videoRemove": "删除视频",
-    "mitayo": "已看"
+    "mitayo": "已看",
+    "imageTooMany": "最多可附加4张图片",
+    "imageUploadError": "图片上传失败",
+    "postSuccess": "发布成功",
+    "postError": "发布失败",
+    "announcementRegisterError": "注册公告失败，请稍后手动注册。"
   },
   "gallery": {
     "title": "相册",
