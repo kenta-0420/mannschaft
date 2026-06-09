@@ -161,9 +161,7 @@ test('MATCH-002: 練習試合を作成しライブ記録で得点/交代/警告�
   // プリセット: 得点
   await page.getByRole('button', { name: '得点', exact: true }).first().click()
   await page.waitForTimeout(400)
-  // 得点者（選手グリッドの先頭をタップ）
-  const playerButtons = page.locator('.p-drawer button:has(span)').filter({ hasText: /.+/ })
-  // 選手グリッドは select-mode のフラットグリッド。最初の選手ボタンを選ぶ。
+  // 得点者（選手グリッドの先頭をタップ）。select-mode のフラットグリッドから最初の選手ボタンを選ぶ。
   const scorer = page
     .locator('.p-drawer')
     .locator('button')
