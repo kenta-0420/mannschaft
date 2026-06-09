@@ -21,7 +21,7 @@ const statusSeverity: Record<EvaluationStatus, 'warn' | 'danger'> = {
 <template>
   <div data-testid="at-risk-student-list">
     <div v-if="loading" class="text-center py-4 text-surface-500">
-      {{ $t('common.loading') }}
+      <i class="pi pi-spin pi-spinner mr-2" />{{ $t('button.loading') }}
     </div>
     <div v-else-if="students.length === 0" class="text-center py-4 text-surface-500">
       {{ $t('school.evaluation.noAtRisk') }}

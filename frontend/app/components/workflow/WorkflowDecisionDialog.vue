@@ -70,7 +70,7 @@ function onSubmit() {
           電子印鑑 <span class="text-red-500">*</span>
         </label>
         <div v-if="loadingSeals" class="flex items-center gap-2 text-sm text-surface-500">
-          <i class="pi pi-spin pi-spinner" /> 印鑑を読み込み中...
+          <i class="pi pi-spin pi-spinner" /> {{ $t('button.loading') }}
         </div>
         <Select
           v-else

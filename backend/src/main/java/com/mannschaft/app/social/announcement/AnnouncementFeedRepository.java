@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -70,6 +71,20 @@ public interface AnnouncementFeedRepository extends JpaRepository<AnnouncementFe
     long countByScopeTypeAndScopeIdAndIsPinnedTrueAndSourceDeletedAtIsNull(
             AnnouncementScopeType scopeType,
             Long scopeId);
+
+    /**
+     * F00 可視性判定用の射影を ID 集合で一括取得する（F08.9 P4b ペイウォール連結）。
+     *
+     * <p>取得した Entity から
+     * {@link com.mannschaft.app.social.announcement.visibility.AnnouncementFeedVisibilityResolver}
+     * がメモリ上で {@link AnnouncementFeedVisibilityProjection} に変換する。
+     * {@code source_deleted_at IS NOT NULL} のレコードも含む
+     * （可視性判定後に削除済み表示除外は一覧クエリ側の別軸で制御）。</p>
+     *
+     * @param ids 取得対象 ID 集合（空でない、{@code null} ではない）
+     * @return 実存する {@link AnnouncementFeedEntity} の List
+     */
+    List<AnnouncementFeedEntity> findByIdIn(Collection<Long> ids);
 
     /**
      * 元コンテンツの種別と ID に紐づくお知らせフィードを全件取得する。
