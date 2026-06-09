@@ -2,13 +2,18 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
-/** チーム/組織名から URL スラッグを生成する（BE SlugGenerator と同ロジック）。 */
+/** チーム/組織名から URL スラッグを生成する（BE SlugGenerator と同ロジック）。
+ * 日本語名など ASCII 英数字が 3 文字未満の場合は MD5 ハッシュのプレフィックスを使い
+ * 一意性を担保する（seed の重複実行でも同じ名前から同じスラッグを生成）。 */
 function generateSlug(name) {
   const base = name.toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .substring(0, 30);
-  return base.length >= 3 ? base : 'item';
+  if (base.length >= 3) return base;
+  // 非 ASCII 主体の名前: MD5 ハッシュで一意な 8 文字を生成（決定論的）
+  const hash = crypto.createHash('md5').update(name).digest('hex').substring(0, 8);
+  return 's-' + hash;
 }
 
 // ============================================================
