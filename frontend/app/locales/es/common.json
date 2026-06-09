@@ -442,7 +442,12 @@
     "videoUploadSuccess": "Video subido correctamente",
     "videoUploadError": "Error al subir el video",
     "videoRemove": "Eliminar video",
-    "mitayo": "Visto"
+    "mitayo": "Visto",
+    "imageTooMany": "Puedes adjuntar hasta 4 imágenes",
+    "imageUploadError": "Error al subir la imagen",
+    "postSuccess": "Publicado correctamente",
+    "postError": "Error al publicar",
+    "announcementRegisterError": "Error al registrar el anuncio. Por favor, regístralo manualmente más tarde."
   },
   "gallery": {
     "title": "Galería",
