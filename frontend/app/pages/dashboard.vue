@@ -10,6 +10,18 @@
 definePageMeta({
   middleware: 'auth',
 })
+
+const teamStore = useTeamStore()
+const orgStore = useOrganizationStore()
+
+onMounted(async () => {
+  // teams/index.vue や organizations/index.vue を経由せずに直接 /dashboard に来た場合も
+  // ウィジェットが正しく表示されるようにストアを初期化する
+  await Promise.allSettled([
+    teamStore.myTeams.length === 0 ? teamStore.fetchMyTeams() : Promise.resolve(),
+    orgStore.myOrganizations.length === 0 ? orgStore.fetchMyOrganizations() : Promise.resolve(),
+  ])
+})
 </script>
 
 <template>
