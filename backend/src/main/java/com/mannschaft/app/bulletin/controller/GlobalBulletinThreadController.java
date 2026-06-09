@@ -13,6 +13,7 @@ import com.mannschaft.app.bulletin.dto.SetPinRequest;
 import com.mannschaft.app.bulletin.dto.ThreadResponse;
 import com.mannschaft.app.bulletin.dto.UpdateThreadRequest;
 import com.mannschaft.app.bulletin.service.BulletinReadStatusService;
+import com.mannschaft.app.bulletin.service.BulletinScopeIdResolver;
 import com.mannschaft.app.bulletin.service.BulletinThreadService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
@@ -78,6 +79,7 @@ public class GlobalBulletinThreadController {
     private final BulletinThreadService threadService;
     private final BulletinReadStatusService readStatusService;
     private final ObjectMapper objectMapper;
+    private final BulletinScopeIdResolver scopeIdResolver;
 
     /**
      * スレッド一覧を取得する（グローバル方式）。
@@ -95,7 +97,7 @@ public class GlobalBulletinThreadController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<ThreadResponse>> listThreads(
             @RequestParam("scope_type") String scopeType,
-            @RequestParam("scope_id") Long scopeId,
+            @RequestParam("scope_id") String scopeId,
             @RequestParam(value = "scope_village_id", required = false) UUID scopeVillageId,
             @RequestParam(value = "category_id", required = false) Long categoryId,
             @RequestParam(defaultValue = "0") int page,
@@ -110,10 +112,13 @@ public class GlobalBulletinThreadController {
                 throw new BusinessException(CommonErrorCode.COMMON_001);
             }
             result = threadService.listVillageThreads(scopeVillageId, categoryId, currentUserId, pageable);
-        } else if (categoryId != null) {
-            result = threadService.listThreadsByCategory(type, scopeId, categoryId, currentUserId, pageable);
         } else {
-            result = threadService.listThreads(type, scopeId, currentUserId, pageable);
+            Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+            if (categoryId != null) {
+                result = threadService.listThreadsByCategory(type, resolvedScopeId, categoryId, currentUserId, pageable);
+            } else {
+                result = threadService.listThreads(type, resolvedScopeId, currentUserId, pageable);
+            }
         }
 
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
