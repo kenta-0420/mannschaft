@@ -1519,5 +1519,11 @@
       "cancel": "キャンセル",
       "saveError": "表示順の保存に失敗しました"
     }
+  },
+  "team_visibility": {
+    "PUBLIC": "公開",
+    "GUESTS_AND_ABOVE": "ゲスト以上",
+    "SUPPORTERS_AND_ABOVE": "サポーター以上",
+    "MEMBERS_AND_ABOVE": "メンバー以上"
   }
 }

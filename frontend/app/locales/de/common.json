@@ -1519,5 +1519,11 @@
       "cancel": "Abbrechen",
       "saveError": "Anzeigereihenfolge konnte nicht gespeichert werden"
     }
+  },
+  "team_visibility": {
+    "PUBLIC": "Öffentlich",
+    "GUESTS_AND_ABOVE": "Gäste und höher",
+    "SUPPORTERS_AND_ABOVE": "Unterstützer und höher",
+    "MEMBERS_AND_ABOVE": "Mitglieder und höher"
   }
 }
