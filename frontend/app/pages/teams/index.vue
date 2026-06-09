@@ -180,7 +180,7 @@ const isManageView = computed(() => currentFolderId.value === 'manage')
           v-for="team in filteredTeams"
           :key="team.id"
           class="cursor-pointer rounded-lg border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md"
-          @click="navigateTo(`/teams/${team.publicId}`)"
+          @click="team.publicId ? navigateTo(`/teams/${team.publicId}`) : undefined"
         >
           <div class="mb-3 flex items-center gap-3">
             <Avatar
@@ -214,7 +214,7 @@ const isManageView = computed(() => currentFolderId.value === 'manage')
           v-for="team in filteredTeams"
           :key="team.id"
           class="flex cursor-pointer items-center gap-4 rounded-lg border border-surface-200 bg-surface-0 px-4 py-3 transition-shadow hover:shadow-sm"
-          @click="navigateTo(`/teams/${team.publicId}`)"
+          @click="team.publicId ? navigateTo(`/teams/${team.publicId}`) : undefined"
         >
           <Avatar
             :image="team.iconUrl ?? undefined"
