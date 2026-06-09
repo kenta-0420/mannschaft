@@ -190,8 +190,8 @@ class TeamVisibilityResolverIntegrationTest extends AbstractMySqlIntegrationTest
 
     private Long insertTeam(String name, String visibility) {
         em.createNativeQuery(
-                "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, created_at, updated_at, public_id) "
-                        + "VALUES (:name, :visibility, 1, 0, 0, NOW(), NOW(), UUID_TO_BIN(UUID(), 1))")
+                "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, created_at, updated_at, slug) "
+                        + "VALUES (:name, :visibility, 1, 0, 0, NOW(), NOW(), LEFT(REPLACE(UUID(), '-', ''), 22))")
                 .setParameter("name", name)
                 .setParameter("visibility", visibility)
                 .executeUpdate();

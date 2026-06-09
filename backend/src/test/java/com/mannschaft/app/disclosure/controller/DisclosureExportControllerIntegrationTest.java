@@ -328,8 +328,8 @@ class DisclosureExportControllerIntegrationTest extends AbstractDisclosureIntegr
     private void insertOrganization(Long id, String name) {
         em.createNativeQuery(
                 "INSERT INTO organizations (id, name, org_type, visibility, hierarchy_visibility, "
-                        + "supporter_enabled, version, created_at, updated_at, public_id) "
-                        + "VALUES (:id, :name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW(), UUID_TO_BIN(UUID(), 1))")
+                        + "supporter_enabled, version, created_at, updated_at, slug) "
+                        + "VALUES (:id, :name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW(), LEFT(REPLACE(UUID(), '-', ''), 22))")
                 .setParameter("id", id)
                 .setParameter("name", name)
                 .executeUpdate();
