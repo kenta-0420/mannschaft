@@ -236,12 +236,12 @@ function isActive(path: string, exact = false): boolean {
                 :aria-label="t('inbox.title')"
                 :title="t('inbox.title')"
               >
-                <i class="pi pi-inbox text-xl" />
+                <i class="pi pi-inbox text-surface-600" />
                 <Badge
                   v-if="inboxStore.inboxCount > 0"
                   :value="inboxStore.inboxCount > 99 ? '99+' : inboxStore.inboxCount"
                   severity="danger"
-                  class="absolute -right-1 -top-1 !min-w-[1.1rem] !text-[0.6rem]"
+                  class="absolute -right-1 -top-1 shadow-md ring-2 ring-white dark:ring-surface-900 !min-w-[1.1rem] !h-[1.1rem] !text-[0.6rem]"
                 />
               </NuxtLink>
               <NotificationBell />
