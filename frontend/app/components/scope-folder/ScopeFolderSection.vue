@@ -301,7 +301,7 @@ onUnmounted(() => {
                 shape="circle"
                 size="normal"
               />
-              <div class="min-w-0 flex-1" @click="navigateTo(scopeType === 'TEAM' ? `/teams/${item.publicId}` : `/organizations/${item.publicId}`)">
+              <div class="min-w-0 flex-1" @click="item.publicId ? navigateTo(scopeType === 'TEAM' ? `/teams/${item.publicId}` : `/organizations/${item.publicId}`) : undefined">
                 <span class="block truncate font-semibold">{{ item.nickname1 || item.name }}</span>
                 <span class="text-xs text-surface-400">
                   <i class="pi pi-users mr-1" />{{ item.memberCount }}
@@ -385,7 +385,7 @@ onUnmounted(() => {
                 shape="circle"
                 size="normal"
               />
-              <div class="min-w-0 flex-1" @click="navigateTo(scopeType === 'TEAM' ? `/teams/${item.publicId}` : `/organizations/${item.publicId}`)">
+              <div class="min-w-0 flex-1" @click="item.publicId ? navigateTo(scopeType === 'TEAM' ? `/teams/${item.publicId}` : `/organizations/${item.publicId}`) : undefined">
                 <span class="block truncate font-semibold">{{ item.nickname1 || item.name }}</span>
                 <span class="text-xs text-surface-400">
                   <i class="pi pi-users mr-1" />{{ item.memberCount }}
