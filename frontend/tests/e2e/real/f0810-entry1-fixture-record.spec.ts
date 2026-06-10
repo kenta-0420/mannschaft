@@ -20,17 +20,19 @@
  *   FIX-006  スコア確定（homeScore=1, awayScore=0）
  *   FIX-007  COMPLETED 遷移 → MatchCompletedEvent 発火・MatchScoreFixtureListener 連鎖確認
  *   FIX-008  tournament_match へスコア反映確認（result=HOME_WIN, status=COMPLETED）
- *   FIX-009  順位反映確認（手動 recalculate 後 played=1, wins=1, points=3）
+ *   FIX-009  順位「自動」反映確認（手動 recalculate なし・ポーリングで played=1, wins=1, points=3）
  *   FIX-010  大会対戦表ページで試合結果カードが描画される
  *
- * 設計: docs/features/F08.10_match_record_analytics/05_tournament_integration.md §H.2
+ * 設計: docs/features/F08.10_match_record_analytics/05_tournament_integration.md §H.2 / §H.0
  *
  * 備考:
- *   - FIX-007 の自動 StandingsRecalculation はタイミング問題（@Async @EventListener が
- *     REQUIRES_NEW コミット前に発火するリスク）により played=0 のまま残る場合がある。
- *     根治候補: StandingsCalculationService.onStandingsRecalculation を
- *     @TransactionalEventListener(AFTER_COMMIT) に変更。
- *   - FIX-009 では手動 recalculate API を呼んで standings の正確性を検証する。
+ *   - 第三陣でレース条件を根治済み: StandingsCalculationService.onStandingsRecalculation を
+ *     @Async @EventListener → @Async @TransactionalEventListener(AFTER_COMMIT)（REQUIRES_NEW）に
+ *     切り替え、発火元 TX（updateScore / MatchScoreFixtureListener の REQUIRES_NEW）のコミット後に
+ *     確定データを読んで再計算するようにした。これにより手動 recalculate なしで順位が自動反映される。
+ *   - FIX-009 はその自動反映を検証する。@Async ゆえ反映に数秒かかり得るため、
+ *     手動 recalculate を一切呼ばず、最大 ~10 秒ポーリングして standings の確定を待つ。
+ *     （以前の「手動 recalculate 後に確認」はバグを覆い隠す対処療法だったため除去した。）
  *   - 本 spec は storageState を使わず API 内ログインで認証する（TOUR-spec 作法に従う）。
  */
 
@@ -300,39 +302,46 @@ test('FIX-008: tournament_match にスコアが反映される（result=HOME_WIN
 })
 
 // ────────────────────────────────────────────────────────────────────
-// FIX-009: 順位反映確認（手動 recalculate 後 played=1, wins=1, points=3）
+// FIX-009: 順位「自動」反映確認（手動 recalculate なし・played=1, wins=1, points=3）
 // ────────────────────────────────────────────────────────────────────
-test('FIX-009: 順位表が正しく反映される（FC東京U-18: played=1, wins=1, points=3）', async () => {
-  // 手動 recalculate（自動 @Async のタイミング問題回避）
-  const recalcRes = await api.post(
-    `${BE_API}/organizations/${ORG_ID}/tournaments/${TOURNAMENT_ID}/divisions/${DIVISION_ID}/standings/recalculate`,
-    { headers: authHeaders(adminToken), data: {} },
-  )
-  expect(recalcRes.status(), '手動 recalculate は 204').toBe(204)
+type StandingRow = {
+  meta: { participantId: number }
+  record: { played: number; wins: number; draws: number; losses: number }
+  score: { points: number; scoreFor: number; scoreAgainst: number }
+}
 
-  // standings 取得
-  const standingsRes = await api.get(
-    `${BE_API}/organizations/${ORG_ID}/tournaments/${TOURNAMENT_ID}/divisions/${DIVISION_ID}/standings`,
-    { headers: authHeaders(adminToken) },
-  )
-  expect(standingsRes.status(), 'standings は 200').toBe(200)
-  const json = await standingsRes.json() as {
-    data: Array<{
-      meta: { participantId: number }
-      record: { played: number; wins: number; draws: number; losses: number }
-      score: { points: number; scoreFor: number; scoreAgainst: number }
-    }>
+test('FIX-009: 手動 recalculate なしで順位表が自動反映される（FC東京U-18: played=1, wins=1, points=3）', async () => {
+  // 第三陣根治の実証: 手動 recalculate は一切呼ばない。
+  // COMPLETED 遷移（FIX-007）→ MatchScoreFixtureListener(AFTER_COMMIT, REQUIRES_NEW)
+  // → updateScore コミット後 → StandingsCalculationService(AFTER_COMMIT, @Async) が
+  // 自動で再計算する。@Async ゆえ反映に数秒かかり得るので最大 ~10 秒ポーリングする。
+  const deadline = Date.now() + 10_000
+  let u18Standing: StandingRow | undefined
+
+  while (Date.now() < deadline) {
+    const standingsRes = await api.get(
+      `${BE_API}/organizations/${ORG_ID}/tournaments/${TOURNAMENT_ID}/divisions/${DIVISION_ID}/standings`,
+      { headers: authHeaders(adminToken) },
+    )
+    expect(standingsRes.status(), 'standings は 200').toBe(200)
+    const json = await standingsRes.json() as { data: StandingRow[] }
+
+    const candidate = json.data.find((s) => s.meta.participantId === PARTICIPANT_U18_ID)
+    // played=1 まで自動反映されたら確定（コミット前の played=0 では待機継続）
+    if (candidate && candidate.record.played === 1) {
+      u18Standing = candidate
+      break
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_000))
   }
-  expect(json.data.length, '2 チームの standings が存在する').toBeGreaterThanOrEqual(2)
 
-  // U-18（participant 9）の順位を確認
-  const u18Standing = json.data.find((s) => s.meta.participantId === PARTICIPANT_U18_ID)
-  expect(u18Standing, 'FC東京U-18 の standings 行が存在する').toBeTruthy()
-  expect(u18Standing!.record.played, 'played=1 (1試合消化)').toBe(1)
+  // 自動反映の最終アサート（手動 recalculate を踏まずに確定していること）
+  expect(u18Standing, 'FC東京U-18 の standings が自動反映される（手動 recalculate なし）').toBeTruthy()
+  expect(u18Standing!.record.played, 'played=1 (1試合消化・自動反映)').toBe(1)
   expect(u18Standing!.record.wins, 'wins=1').toBe(1)
   expect(u18Standing!.record.draws, 'draws=0').toBe(0)
   expect(u18Standing!.record.losses, 'losses=0').toBe(0)
-  expect(u18Standing!.score.points, 'points=3 (勝点3)').toBe(3)
+  expect(u18Standing!.score.points, 'points=3 (勝点3・自動反映)').toBe(3)
   expect(u18Standing!.score.scoreFor, 'scoreFor=1 (1点入れた)').toBe(1)
   expect(u18Standing!.score.scoreAgainst, 'scoreAgainst=0 (0点入れられた)').toBe(0)
 })
