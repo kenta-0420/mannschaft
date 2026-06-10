@@ -25,15 +25,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * {@link TeamSlugCheckController} の MockMvc 結合テスト。
  *
- * <p>検証するケース:</p>
+ * <p>検証するケース（Controller のロジック層: 可用性判定・候補生成・バリデーション）:</p>
  * <ul>
  *   <li>認証済み・使用可能なスラッグ → 200 {@code available: true, suggestions: []}</li>
  *   <li>認証済み・使用不可のスラッグ → 200 {@code available: false, suggestions: [...]}</li>
- *   <li>未認証でアクセス → 401（@PreAuthorize("isAuthenticated()") によるガード）</li>
  *   <li>3文字未満のスラッグ → 400 バリデーションエラー</li>
  *   <li>不正文字（大文字等）のスラッグ → 400</li>
  *   <li>30文字超のスラッグ → 400</li>
  * </ul>
+ *
+ * <p><b>認証ガードは本スライスの検証範囲外</b>: {@code @WebMvcTest} +
+ * {@code addFilters = false} はセキュリティフィルタチェーンを載せないため、
+ * 未認証拒否（401）はここでは検証できない。slug-check の認証必須性は
+ * {@code SecurityConfig} の {@code .anyRequest().authenticated()} がフィルタ層で担保し、
+ * その正準検証は
+ * {@code SecurityConfigAuthorizationTest#anonymous_team_slug_check_is_auth_rejected}
+ * が実フィルタチェーンを載せて行う。</p>
  */
 @WebMvcTest(TeamSlugCheckController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -121,18 +128,16 @@ class TeamSlugCheckControllerTest {
     }
 
     // ════════════════════════════════════════════════════════════
-    // 401: 未認証アクセス
+    // 認証ガードの検証境界
     // ════════════════════════════════════════════════════════════
-
-    @Test
-    @DisplayName("GET /teams/slug-check: 未認証でもスライステストでは到達可能（認証ガードは SecurityConfigAuthorizationTest で検証）")
-    void checkSlug_unauthenticated_reachableInSliceTest() throws Exception {
-        // @WebMvcTest + addFilters=false の文脈では @PreAuthorize("isAuthenticated()") は AOP で機能しない。
-        // 実際の 401/403 動作は SecurityConfigAuthorizationTest で検証済み。
-        given(teamRepository.existsBySlugAndDeletedAtIsNull("my-team")).willReturn(false);
-        mockMvc.perform(get("/api/v1/teams/slug-check").param("slug", "my-team"))
-                .andExpect(status().isOk());
-    }
+    //
+    // 本スライス（@WebMvcTest + addFilters=false）はセキュリティフィルタチェーンを
+    // 載せないため、未認証拒否（401）の検証はできない。slug-check の認証必須性は
+    // SecurityConfig の .anyRequest().authenticated() がフィルタ層で担保しており、
+    // その正準検証は SecurityConfigAuthorizationTest#anonymous_team_slug_check_is_auth_rejected
+    // が実際のフィルタチェーンを載せて行う。ここで未認証 200 を擬似検証しても
+    // 本番の保護層を一切なぞらないため、本スライスからは未認証テストを意図的に除外する。
+    // （Controller の @PreAuthorize はフィルタ層に対する冗長な多層防御）
 
     // ════════════════════════════════════════════════════════════
     // 400: バリデーションエラー
