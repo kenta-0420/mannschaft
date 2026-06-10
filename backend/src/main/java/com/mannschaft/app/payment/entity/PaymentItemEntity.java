@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -84,6 +85,19 @@ public class PaymentItemEntity extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "billing_interval", length = 8)
     private BillingInterval billingInterval;
+
+    /**
+     * F08.9 P6: 期別有効開始日（{@link PaymentItemType#TERM} のみ使用）。
+     */
+    @Column(name = "term_starts_on")
+    private LocalDate termStartsOn;
+
+    /**
+     * F08.9 P6: 期別有効終了日（{@link PaymentItemType#TERM} のみ使用）。
+     * TERM 型のチェックアウト完了時に {@code member_payments.valid_until} として設定される。
+     */
+    @Column(name = "term_ends_on")
+    private LocalDate termEndsOn;
 
     private Long createdBy;
 
