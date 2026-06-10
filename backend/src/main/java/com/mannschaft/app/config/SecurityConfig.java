@@ -13,6 +13,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.actuate.health.HealthEndpoint;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -147,12 +148,10 @@ public class SecurityConfig {
      * JWT 認証後の確定した SecurityContext から userId を解決できるようにする。
      */
     @Bean
+    @ConditionalOnBean(SlugCheckRateLimitFilter.class)
     public FilterRegistrationBean<SlugCheckRateLimitFilter>
             slugCheckRateLimitFilterRegistration() {
         SlugCheckRateLimitFilter filter = slugCheckRateLimitFilterProvider.getIfAvailable();
-        if (filter == null) {
-            return new FilterRegistrationBean<>();
-        }
         FilterRegistrationBean<SlugCheckRateLimitFilter> registration =
                 new FilterRegistrationBean<>(filter);
         registration.setEnabled(false);
