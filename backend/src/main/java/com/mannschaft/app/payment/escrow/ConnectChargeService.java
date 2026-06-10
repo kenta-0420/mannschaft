@@ -62,8 +62,8 @@ public class ConnectChargeService {
     /** HELD（受取側 onboarding 未完了）の与信保持期限（72h・設計書 02 §5.2）。 */
     static final long HELD_GRACE_HOURS = 72L;
 
-    /** AUTHORIZED（与信成立）の hold 期限（最大7日・設計書 02 §5.1）。 */
-    static final long AUTHORIZED_HOLD_DAYS = 7L;
+    // 第一陣 status 意味論の根治: AUTHORIZED の hold 失効基準（最大7日）は、与信が真に立つ webhook
+    // （amount_capturable_updated）昇格時に刻むため EscrowWebhookService 側へ移設した（authorize 時には立てない）。
 
     /** TEAM/ORG scope ADMIN 判定に用いる権限名（Connect onboarding と同等の管理権限）。 */
     static final String PERMISSION_MANAGE_PAYMENT = "MANAGE_RECRUITMENTS";
@@ -155,17 +155,22 @@ public class ConnectChargeService {
                 fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), fee.applicationFeeAmount(),
                 payee.getStripeAccountId(), CaptureMethod.MANUAL, idempotencyKey);
 
-        EscrowTransactionEntity authorized = builder
-                .status(EscrowStatus.AUTHORIZED)
+        // 第一陣 status 意味論の根治: manual-capture PI は札主が Stripe.js で confirm するまで真の与信
+        // （amount_capturable）が立たない。よってこの時点で AUTHORIZED にするのは誤りで、capture 失敗の温床だった。
+        // PI 作成済・札主未 confirm の中間状態 PENDING_CONFIRMATION で起票し、真の与信確定（AUTHORIZED 昇格）は
+        // payment_intent.amount_capturable_updated webhook 受信時のみ行う（EscrowWebhookService）。
+        // authorized_at/hold_expires_at（hold 失効基準）も与信が立つまで未確定のため、ここでは設定しない
+        // （webhook 昇格時に authorized_at を刻む）。
+        EscrowTransactionEntity pendingConfirmation = builder
+                .status(EscrowStatus.PENDING_CONFIRMATION)
                 .stripePaymentIntentId(pi.paymentIntentId())
-                .authorizedAt(now)
-                .holdExpiresAt(now.plusDays(AUTHORIZED_HOLD_DAYS))
                 .build();
-        authorized = escrowTransactionRepository.save(authorized);
+        pendingConfirmation = escrowTransactionRepository.save(pendingConfirmation);
         clientSecret = pi.clientSecret();
-        log.info("与信を AUTHORIZED で記録: escrowId={}, paymentIntentId={}, charge={}, appFee={}",
-                authorized.getId(), pi.paymentIntentId(), fee.chargeAmount(), fee.applicationFeeAmount());
-        return toResult(authorized, clientSecret);
+        log.info("与信を PENDING_CONFIRMATION で記録（PI 作成済・札主 confirm 待ち）: escrowId={}, paymentIntentId={}, "
+                        + "charge={}, appFee={}",
+                pendingConfirmation.getId(), pi.paymentIntentId(), fee.chargeAmount(), fee.applicationFeeAmount());
+        return toResult(pendingConfirmation, clientSecret);
     }
 
     /**
@@ -345,8 +350,16 @@ public class ConnectChargeService {
             return;
         }
 
-        // AUTHORIZED 以外（HELD/CANCELLED/REFUNDED/DISPUTED 等）は払出不能。HELD は payout 不能のため
-        // capture せず、onboarding 完了→AUTHORIZED 化（§5.2 webhook）を待つ。症状を隠さず 409 で拒否する。
+        // 第一陣 status 意味論の根治: PENDING_CONFIRMATION（札主未 confirm）は真の与信が立っておらず、
+        // capture を呼んでも Stripe で必ず失敗する。Stripe へ到達させず専用コード 409 で拒否する（症状を隠さない）。
+        // 札主が confirm し payment_intent.amount_capturable_updated で AUTHORIZED へ昇格してから capture すること。
+        if (escrow.getStatus() == EscrowStatus.PENDING_CONFIRMATION) {
+            log.warn("札主の confirm 前（PENDING_CONFIRMATION）からの capture 要求を拒否: escrowId={}", escrowId);
+            throw new BusinessException(ConnectPaymentErrorCode.AUTHORIZATION_NOT_CONFIRMED);
+        }
+
+        // AUTHORIZED（真に与信確定済）以外（HELD/CANCELLED/REFUNDED/DISPUTED 等）は払出不能。HELD は payout 不能の
+        // ため capture せず、onboarding 完了→AUTHORIZED 化（§5.2 webhook）を待つ。症状を隠さず 409 で拒否する。
         if (escrow.getStatus() != EscrowStatus.AUTHORIZED || escrow.getStripePaymentIntentId() == null) {
             log.warn("払出不能な状態からの capture 要求を拒否: escrowId={}, status={}, hasPi={}",
                     escrowId, escrow.getStatus(), escrow.getStripePaymentIntentId() != null);
@@ -452,8 +465,11 @@ public class ConnectChargeService {
             return new RefundResult(escrowId, escrow.getStatus(), 0L, 0L);
         }
 
-        // capture 前（AUTHORIZED/HELD）は返金でなく与信取消（支払者に課金なし・02 §6.1）。
-        if (escrow.getStatus() == EscrowStatus.AUTHORIZED || escrow.getStatus() == EscrowStatus.HELD) {
+        // capture 前（PENDING_CONFIRMATION/AUTHORIZED/HELD）は返金でなく与信取消（支払者に課金なし・02 §6.1）。
+        // PENDING_CONFIRMATION（札主未 confirm）も真の与信が立つ前のため、課金は起きておらず取消で足りる。
+        if (escrow.getStatus() == EscrowStatus.PENDING_CONFIRMATION
+                || escrow.getStatus() == EscrowStatus.AUTHORIZED
+                || escrow.getStatus() == EscrowStatus.HELD) {
             cancelAuthorizationForRefund(escrow);
             return new RefundResult(escrowId, EscrowStatus.CANCELLED, 0L, 0L);
         }

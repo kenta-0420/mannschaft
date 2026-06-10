@@ -87,6 +87,27 @@ export function useMatchApi() {
     }
   }
 
+  /**
+   * 大会の対戦表 fixture（TournamentMatch）に紐づく既存試合を解決する（入口①）。
+   * by-schedule と完全対称：既存があれば live を開き・無ければ作成する二重起票防止に用いる。
+   * BE は存在しない場合 200 + data:null を返すため、戻り値も `MatchSummaryResponse | null`。
+   */
+  async function resolveMatchByFixture(
+    orgId: number,
+    teamId: number,
+    fixtureId: number,
+  ): Promise<MatchSummaryResponse | null> {
+    try {
+      const res = await api<{ data: MatchSummaryResponse | null }>(
+        `${base(orgId, teamId)}/by-fixture/${fixtureId}`,
+      )
+      return res.data ?? null
+    } catch (err) {
+      notification.error(t('match.list.error.load_failed'))
+      throw err
+    }
+  }
+
   /** 試合作成（クイックスタート＝kind＋相手名が最小） */
   async function createMatch(
     orgId: number,
@@ -198,6 +219,7 @@ export function useMatchApi() {
     listMatches,
     getMatch,
     resolveMatchBySchedule,
+    resolveMatchByFixture,
     createMatch,
     updateMatch,
     changeStatus,
