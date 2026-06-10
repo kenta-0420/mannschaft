@@ -72,6 +72,27 @@
         }
       }
     },
+    "term": {
+      "periodLabel": "有效期间",
+      "from": "开始",
+      "until": "结束",
+      "typeLabel": {
+        "ANNUAL_FEE": "年费",
+        "MONTHLY_FEE": "月费",
+        "ITEM": "单品",
+        "DONATION": "捐款",
+        "TERM": "期间费用"
+      }
+    },
+    "admin": {
+      "itemsTitle": "支付项目",
+      "selectItem": "请选择支付项目",
+      "remindUnpaid": "催缴未付款",
+      "loadItemsError": "获取支付项目失败",
+      "loadPaymentsError": "获取支付状态失败",
+      "remindSuccess": "催缴通知已发送",
+      "remindError": "发送失败"
+    },
     "guardianBulkPayment": {
       "title": "监护人批量付款",
       "subtitle": "可以一次性支付您管理的孩子的未缴会费",

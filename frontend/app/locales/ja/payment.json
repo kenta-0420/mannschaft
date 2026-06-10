@@ -72,6 +72,27 @@
         }
       }
     },
+    "term": {
+      "periodLabel": "有効期間",
+      "from": "開始",
+      "until": "終了",
+      "typeLabel": {
+        "ANNUAL_FEE": "年額",
+        "MONTHLY_FEE": "月額",
+        "ITEM": "単品",
+        "DONATION": "寄付",
+        "TERM": "期別"
+      }
+    },
+    "admin": {
+      "itemsTitle": "支払い項目",
+      "selectItem": "支払い項目を選択してください",
+      "remindUnpaid": "未払いリマインド",
+      "loadItemsError": "支払い項目の取得に失敗しました",
+      "loadPaymentsError": "支払い状況の取得に失敗しました",
+      "remindSuccess": "リマインドを送信しました",
+      "remindError": "送信に失敗しました"
+    },
     "guardianBulkPayment": {
       "title": "後見まとめ払い",
       "subtitle": "管理する子どもの未払い会費をまとめて決済できます",
