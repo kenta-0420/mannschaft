@@ -34,5 +34,7 @@ public class PaymentSummaryResponse {
         private final BigDecimal totalCollected;
         private final Boolean isActive;
         private final Short displayOrder;
+        /** F08.9 P8: 期限切れ件数（valid_until &lt; NOW() かつ status = PAID）。 */
+        private final long expiredCount;
     }
 }
