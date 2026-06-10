@@ -1,8 +1,6 @@
--- teams.visibility の CHECK 制約を新しい ENUM 値に合わせて更新する
--- V79.001 の MODIFY COLUMN ENUM(...) で MySQL が CHECK 制約を自動削除した環境と
--- 残存している環境の両方に対応するため IF EXISTS で保護する
-
-ALTER TABLE teams DROP CHECK IF EXISTS chk_teams_visibility;
+-- teams.visibility の CHECK 制約を新しい ENUM 値で再追加する
+-- V79.001 の MODIFY COLUMN ENUM(...) 実行時に MySQL 8.0 が CHECK 制約を自動削除することが
+-- from-scratch テストで確認されたため、DROP は不要。ADD CONSTRAINT のみ実行する。
 
 ALTER TABLE teams
     ADD CONSTRAINT chk_teams_visibility
