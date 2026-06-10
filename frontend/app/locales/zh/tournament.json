@@ -245,5 +245,18 @@
     "empty_team_record": "尚未参加任何赛事",
     "empty_org_summary": "尚未主办任何赛事",
     "empty_division_standings": "当前没有参加中的赛事"
+  },
+  "tournamentFee": {
+    "pageTitle": "大会参赛费",
+    "myFees": "我的参赛费",
+    "noFees": "目前没有参赛费",
+    "payNow": "立即支付",
+    "paid": "已支付",
+    "paidAt": "支付时间",
+    "dueDate": "截止日期",
+    "faceAmount": "参赛费",
+    "totalCharge": "总费用",
+    "checkoutSuccess": "结账完成",
+    "checkoutError": "结账失败"
   }
 }
