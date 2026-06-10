@@ -72,6 +72,27 @@
         }
       }
     },
+    "term": {
+      "periodLabel": "Gültigkeitszeitraum",
+      "from": "Von",
+      "until": "Bis",
+      "typeLabel": {
+        "ANNUAL_FEE": "Jährlich",
+        "MONTHLY_FEE": "Monatlich",
+        "ITEM": "Artikel",
+        "DONATION": "Spende",
+        "TERM": "Zeitraumgebühr"
+      }
+    },
+    "admin": {
+      "itemsTitle": "Zahlungsposten",
+      "selectItem": "Bitte einen Zahlungsposten auswählen",
+      "remindUnpaid": "Offene Zahlungen erinnern",
+      "loadItemsError": "Zahlungsposten konnten nicht geladen werden",
+      "loadPaymentsError": "Zahlungsstatus konnte nicht geladen werden",
+      "remindSuccess": "Erinnerung gesendet",
+      "remindError": "Senden fehlgeschlagen"
+    },
     "guardianBulkPayment": {
       "title": "Vormund-Sammelzahlung",
       "subtitle": "Bezahle ausstehende Beiträge für von dir verwaltete Kinder auf einmal",

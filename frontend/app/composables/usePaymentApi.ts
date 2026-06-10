@@ -101,6 +101,14 @@ export function usePaymentApi() {
     })
   }
 
+  /**
+   * F08.9 P6: 支払い項目を ID で取得する（TERM 型の有効期間表示等に使用）。
+   * BE エンドポイント: GET /api/v1/payment-items/{itemId}（P6 実装待ち）
+   */
+  async function getPaymentItemById(itemId: number) {
+    return api<{ data: PaymentItemResponse }>(`/api/v1/payment-items/${itemId}`)
+  }
+
   // === Update Payment ===
   async function updatePayment(
     scopeType: 'team' | 'organization',
@@ -175,6 +183,7 @@ export function usePaymentApi() {
     sendReminder,
     getPaymentSummary,
     createCheckoutSession,
+    getPaymentItemById,
     getMyPayments,
     getMySubscriptions,
     getPaymentRequirements,

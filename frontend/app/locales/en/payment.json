@@ -72,6 +72,27 @@
         }
       }
     },
+    "term": {
+      "periodLabel": "Valid Period",
+      "from": "From",
+      "until": "Until",
+      "typeLabel": {
+        "ANNUAL_FEE": "Annual",
+        "MONTHLY_FEE": "Monthly",
+        "ITEM": "Item",
+        "DONATION": "Donation",
+        "TERM": "Term"
+      }
+    },
+    "admin": {
+      "itemsTitle": "Payment items",
+      "selectItem": "Select a payment item",
+      "remindUnpaid": "Remind unpaid",
+      "loadItemsError": "Failed to load payment items",
+      "loadPaymentsError": "Failed to load payment status",
+      "remindSuccess": "Reminder sent",
+      "remindError": "Failed to send reminder"
+    },
     "guardianBulkPayment": {
       "title": "Guardian Bulk Payment",
       "subtitle": "Pay outstanding fees for children you manage all at once",
