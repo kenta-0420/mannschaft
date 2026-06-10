@@ -71,6 +71,7 @@ export default {
       "cancelMyApplication": "申込をキャンセル",
       "joinWaitlist": "キャンセル待ちに登録",
       "viewDetails": "詳細を見る",
+      "confirmApplication": "成立させる",
       "createPolicy": "ポリシー作成"
     },
     "confirmModal": {

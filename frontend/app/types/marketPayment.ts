@@ -25,8 +25,15 @@ export type ScopeKind = 'USER' | 'TEAM' | 'ORG'
 /** Connect アカウントの onboarding 状態（payment/connect/OnboardingStatus.java）。 */
 export type OnboardingStatus = 'PENDING' | 'ONBOARDING' | 'READY' | 'RESTRICTED' | 'DISABLED'
 
-/** エスクロー取引の状態（payment/escrow/EscrowStatus.java）。 */
+/**
+ * エスクロー取引の状態（payment/escrow/EscrowStatus.java・全9値と 1:1）。
+ *   - PENDING_CONFIRMATION: PI 作成済・札主の Stripe.js confirm 待ち（clientSecret が非 null で返る状態）。
+ *   - DEFERRED: 成立〜役務日が7日超で与信を立てず、完了時に即時払いへフォールバックする予定。
+ *   - AUTHORIZED 以降: 与信確定済（再 confirm 不要・clientSecret は null）。
+ */
 export type EscrowStatus =
+  | 'PENDING_CONFIRMATION'
+  | 'DEFERRED'
   | 'AUTHORIZED'
   | 'HELD'
   | 'CAPTURED'
@@ -88,4 +95,24 @@ export interface MarketRefundResponse {
   status: EscrowStatus
   refundedAmount: number
   residualAmount: number
+}
+
+/**
+ * 札主の決済確認 / エスクロー状態照会レスポンス
+ * （payment/escrow/dto/RecruitmentPaymentResponse.java と 1:1）。
+ *
+ * 金額はすべて最小通貨単位（円整数・BE は long）。
+ *   - clientSecret: 支払者本人 × PENDING_CONFIRMATION 時のみ非 null（Stripe.js で confirm する）。
+ *   - escrowTransactionId: エスクロー取引 ID（UUID 文字列）。返金 EP の {id} に渡す。
+ *   - faceAmount: 額面（受取側が設定した謝礼の元値）。
+ *   - chargeAmount: 課金額（支払者への実請求額＝額面 + 支払手数料）。
+ *   - applicationFeeAmount: Mannschaft 徴収手数料。
+ */
+export interface RecruitmentPaymentResponse {
+  clientSecret: string | null
+  escrowTransactionId: string
+  status: EscrowStatus
+  faceAmount: number
+  chargeAmount: number
+  applicationFeeAmount: number
 }
