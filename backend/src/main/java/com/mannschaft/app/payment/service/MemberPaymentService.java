@@ -121,7 +121,7 @@ public class MemberPaymentService {
                 : request.getPaidAt().toLocalDate();
         LocalDate validUntil = request.getValidUntil() != null
                 ? request.getValidUntil()
-                : calculateValidUntil(paymentItem.getType(), validFrom);
+                : calculateValidUntilWithItem(paymentItem, validFrom);
 
         MemberPaymentEntity entity = MemberPaymentEntity.builder()
                 .userId(request.getUserId())
@@ -202,7 +202,7 @@ public class MemberPaymentService {
                         : payment.getPaidAt().toLocalDate();
                 LocalDate validUntil = payment.getValidUntil() != null
                         ? payment.getValidUntil()
-                        : calculateValidUntil(paymentItem.getType(), validFrom);
+                        : calculateValidUntilWithItem(paymentItem, validFrom);
 
                 MemberPaymentEntity entity = MemberPaymentEntity.builder()
                         .userId(payment.getUserId())
