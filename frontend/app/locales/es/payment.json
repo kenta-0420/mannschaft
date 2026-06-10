@@ -72,6 +72,27 @@
         }
       }
     },
+    "term": {
+      "periodLabel": "Período válido",
+      "from": "Desde",
+      "until": "Hasta",
+      "typeLabel": {
+        "ANNUAL_FEE": "Anual",
+        "MONTHLY_FEE": "Mensual",
+        "ITEM": "Artículo",
+        "DONATION": "Donación",
+        "TERM": "Por período"
+      }
+    },
+    "admin": {
+      "itemsTitle": "Conceptos de pago",
+      "selectItem": "Selecciona un concepto de pago",
+      "remindUnpaid": "Recordar impagados",
+      "loadItemsError": "Error al cargar los conceptos de pago",
+      "loadPaymentsError": "Error al cargar el estado de pago",
+      "remindSuccess": "Recordatorio enviado",
+      "remindError": "Error al enviar el recordatorio"
+    },
     "guardianBulkPayment": {
       "title": "Pago masivo del tutor",
       "subtitle": "Paga todas las cuotas pendientes de los niños que gestionas de una vez",
