@@ -92,9 +92,9 @@
 
 | 陣 | 範囲 | 成果物 | 状態 |
 |----|------|--------|------|
-| **第一陣（BE）** | by-fixture 解決＋順位連携リスナー | `MatchRepository.findFirstByOrganizationIdAndTeamIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc`／`MatchService.resolveByFixtureId`／`MatchRecordController` `GET .../matches/by-fixture/{fixtureId}`（入口④ by-schedule と完全対称）＋ **`tournament/listener/MatchScoreFixtureListener`**（`MatchCompletedEvent` を AFTER_COMMIT 受信 → fixture 引当 → 既存 `tournament.service.MatchService.updateScore` 再利用 → 既存 `StandingsRecalculationEvent` 発火に乗る。participant⇔side=HOME 固定／延長は本戦合算済みで extra=null／PK 分離／冪等／既存 `@Async` 順位計算は切替えない）。契約/Service/リスナー UT 付き | ✅ 実装済 |
-| **第二陣（FE）** | 大会の対戦表ページ導線 | 対戦表ページ（節（matchday）/会場・日付グルーピング）の「記録」ボタン → by-fixture 解決 → 既存なら live 復帰・無ければ `tournament_fixtureId` 引き継ぎ作成 → `live.vue` 合流（04 §G.1a-2）。fixture の participant → team 解決、記録時 `tournament_fixtureId` 必須 | ⏳ 別出陣 |
-| **第三陣（連携 E2E）** | 一気通貫 | 対戦表からカード押下 → ライブ記録 → COMPLETED → 順位表反映の実 BE E2E（feedback_e2e_real_full_crud） | ⏳ 別出陣 |
+| **第一陣（BE）** | by-fixture 解決＋順位連携リスナー | `MatchRepository.findFirstByOrganizationIdAndTeamIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc`／`MatchService.resolveByFixtureId`／`MatchRecordController` `GET .../matches/by-fixture/{fixtureId}`（入口④ by-schedule と完全対称）＋ **`tournament/listener/MatchScoreFixtureListener`**（`MatchCompletedEvent` を AFTER_COMMIT 受信 → fixture 引当 → 既存 `tournament.service.MatchService.updateScore` 再利用 → 既存 `StandingsRecalculationEvent` 発火に乗る。participant⇔side=HOME 固定／延長は本戦合算済みで extra=null／PK 分離／冪等／~~既存 `@Async` 順位計算は切替えない~~ **【第三陣で訂正＝AFTER_COMMIT へ切替・05 §H.0.1】**）。契約/Service/リスナー UT 付き | ✅ 実装済 |
+| **第二陣（FE）** | 大会の対戦表ページ導線 | 対戦表ページ（節（matchday）/会場・日付グルーピング）の「記録」ボタン → by-fixture 解決 → 既存なら live 復帰・無ければ `tournament_fixtureId` 引き継ぎ作成 → `live.vue` 合流（04 §G.1a-2）。fixture の participant → team 解決、記録時 `tournament_fixtureId` 必須 | ✅ 実装済（#1439） |
+| **第三陣（連携 E2E）** | 一気通貫 | 対戦表からカード押下 → ライブ記録 → COMPLETED → 順位表反映の実 BE E2E（feedback_e2e_real_full_crud）。`frontend/tests/e2e/real/f0810-entry1-fixture-record.spec.ts`（FIX-000〜FIX-010）。**実機 E2E で順位自動反映のレース条件を発見**（`StandingsCalculationService.onStandingsRecalculation` が `@Async @EventListener`＝発火元 REQUIRES_NEW TX のコミット前に未コミットスコアを読む → `played=0`・手動再計算でしか反映されない）→ **AFTER_COMMIT へ切替えて根治（05 §H.0.1）**。FIX-009 は手動 recalculate を除去し、最大 ~10 秒ポーリングで自動反映（`played=1`/勝点 3）をアサートするよう是正 | ✅ 根治・自動反映実証済 |
 
 ### I.3 テスト方針
 

@@ -25,7 +25,7 @@
 - 入口① は match ドメインの `MatchCompletedEvent`（COMPLETED 遷移時に発火・受信ゼロだった）を、**tournament 側に新設したリスナー `MatchScoreFixtureListener` が `@TransactionalEventListener(phase=AFTER_COMMIT)` で受信**する。
 - リスナーは fixtureId（= 既存 `tournament_matches.id`・BIGINT）で fixture を引当て、**既存 `tournament.service.MatchService.updateScore` を再利用**してスコアを反映する。これにより:
   - `updateScore` 内で `determineResult` / `winnerParticipantId` 確定 / `match.updateScore()`（status=COMPLETED 自動化）/ 既存 `StandingsRecalculationEvent` 発火 がそのまま走る。
-  - **既存 `StandingsCalculationService` の `@Async @EventListener` 順位再計算（冪等・全消し再計算）は切り替えない**（二重発火・既存テスト破壊のリスク回避）。新リスナーは「`MatchCompletedEvent`(AFTER_COMMIT) を受けて既存 `updateScore`＋既存 StandingsRecalc 経路を起動するだけ」の薄い橋渡しに徹する。
+  - ~~**既存 `StandingsCalculationService` の `@Async @EventListener` 順位再計算（冪等・全消し再計算）は切り替えない**（二重発火・既存テスト破壊のリスク回避）。~~ **【第三陣で訂正・H.0.1 参照】** この「非切替」方針は**レース条件を残す誤りだった**ため、第三陣で `StandingsCalculationService` を **`@Async @TransactionalEventListener(AFTER_COMMIT)`** に切り替えた。新リスナーは「`MatchCompletedEvent`(AFTER_COMMIT) を受けて既存 `updateScore`＋既存 StandingsRecalc 経路を起動するだけ」の薄い橋渡しに徹する点は不変。
 - **participant ⇔ side は home participant = HOME 固定**（H.1.2）。リスナーはイベントの `homeScore` を fixture の HOME 側（`home_participant_id`）へ、`awayScore` を AWAY 側へ入替えずに渡す。
 - **延長 PK 値整合**: イベントの `homeScore`/`awayScore` は**本戦合算済み**（延長得点は本戦に合算・sports/01 §4.1）であり、リスナーは延長別スコア（`homeExtraScore`/`awayExtraScore`）を**使わない（null を渡す）**。PK 戦は `homePenaltyScore`/`awayPenaltyScore` を**分離値のまま**渡す（合算 home_score ＋ PK 分離）。
 - **AFTER_COMMIT**: match 側トランザクションがコミット済みのスコアに対してのみ反映する（未コミットのスコアで順位を誤更新しない）。リスナーは新規 `@Transactional` を張る（AFTER_COMMIT は元トランザクション外で走るため）。発火元 match ドメインの `@Transactional` を跨がない（原則 5・H.5）。
@@ -34,6 +34,24 @@
 - **div/tournament の順引き**: 既存 `updateScore` が要求する `tournamentId`/`divisionId` 発火経路に合わせるため、fixture の `matchday → division` を ID 順引きして `tournamentId` を得る。
 
 なぜ中道か（根治の範囲を限定）: H.1 の full Fixture 改称は既存 F08.7（tournament）全体への最も侵襲的な作り替え（Entity/Controller/Service/enum/DTO 改称・スコア列移管・既存テスト大量追従）であり、入口①の順位連携という単一の価値提供には不要。**疎結合イベント駆動（`MatchCompletedEvent` 購読）だけで順位連携を成立させ**、改称は Phase 5 として独立に判断する。下記 **H.1〜H.4 は full Fixture 改称（Phase 5）前提の記述**であり、※ 印で「中道採用・改称は後続」を注記する。
+
+### H.0.1 第三陣 訂正 — `StandingsCalculationService` を AFTER_COMMIT へ切替（順位自動反映のレース条件根治）【実装済】
+
+> **状態**: 第三陣の実機 E2E（`frontend/tests/e2e/real/f0810-entry1-fixture-record.spec.ts`）で「順位が手動再計算でしか反映されない」レース条件を再現・根治済み。
+
+**第一陣で「既存 `@Async @EventListener` 順位再計算は非切替」とした方針（H.0 上記の取り消し線部）は誤りだった。** 以下のレース条件が残っていた:
+
+1. 入口① の `MatchScoreFixtureListener` は `@TransactionalEventListener(AFTER_COMMIT)` ＋ `@Transactional(REQUIRES_NEW)` で `updateScore` を呼ぶ。`updateScore` は自身の `@Transactional`（= REQUIRES_NEW の内側）でスコアを書き、その TX 内で `StandingsRecalculationEvent` を **publish** する。
+2. ところが `StandingsCalculationService.onStandingsRecalculation` が **`@Async @EventListener`** だったため、`publishEvent` の**同期発火点（＝ REQUIRES_NEW TX のコミット前）**で別スレッドへ即ディスパッチされ、**まだコミットされていないスコア**（`tournament_matches` の status=COMPLETED / スコアが別 TX から見えない）を読んでしまう。結果、`findByDivisionIdAndStatus(..., COMPLETED)` が 0 件 → `played=0`・勝点 0 のまま再計算が確定し、**順位が自動反映されない**（手動 `recalculate` を別 TX で叩いたときだけ確定済みデータを読めて反映される）。
+
+**根治（対処療法ではない・正しい順序保証）**: `StandingsCalculationService.onStandingsRecalculation` を **`@Async @TransactionalEventListener(phase = AFTER_COMMIT)` ＋ `@Transactional(REQUIRES_NEW)`** に切り替えた。
+
+- `@TransactionalEventListener(AFTER_COMMIT)` により、発火元 TX（`updateScore` の `@Transactional`、ひいては入口① リスナーの `REQUIRES_NEW`）の**コミット後**にリスナー呼び出しが発生する → 確定済みスコアを読んで再計算する。
+- `@Async` を併存させることで、コミット後のリスナー呼び出しを別スレッドへ逃がし「コミット後」かつ「呼び出し元非ブロック」を両立する（反映に数秒のラグが出るのは許容。E2E はポーリングで待つ）。
+- AFTER_COMMIT 後はアクティブ TX が無いため `REQUIRES_NEW`（Spring は `@TransactionalEventListener` への `@Transactional(REQUIRED)` を起動時に禁止＝ApplicationContext 全滅するため `REQUIRES_NEW` が正道。入口① リスナーと同じ理由）。
+- **二重発火/既存パスへの影響**: tournament 自身の `updateScore`（既存パス）も同イベントを発火するが、AFTER_COMMIT 化で**全経路が「コミット後に確定データで再計算」へ統一**される（既存の手動 UI 操作経路も等しく正しくなる）。`batchUpdateScores` 経由も同様。
+- **同根の `RankingsCalculationService.onRankingsRecalculation`（個人ランキング）も同一のレース条件を抱えていたため、同様に AFTER_COMMIT へ切替**した（`updatePlayerStats` の TX コミット前に未コミットの選手スタッツを読む問題の根治）。
+- **既存テスト**: `StandingsCalculationServiceTest` / `RankingsCalculationServiceTest` / `MatchScoreFixtureListenerTest` はいずれも純 Mockito でリスナーメソッドを直接呼ぶため、アノテーション変更の影響を受けない（自動反映の確定検証は実 TX コミットを伴う実機 E2E が担保する。`@TransactionalEventListener` は `@Transactional` ロールバック方式の結合テストでは発火しないため）。
 
 ---
 
@@ -80,9 +98,9 @@ fixture は「**参加チーム(participant)**」を `home_participant_id` / `aw
 
 ### H.2.1 StandingsCalculationService
 
-- 現状: `StandingsRecalculationEvent` を受けて `tournament_matches` のスコア（`homeScore`/`awayScore`/`result`）から勝点・順位を計算（`@Async @EventListener`）。
+- 現状: `StandingsRecalculationEvent` を受けて `tournament_matches` のスコア（`homeScore`/`awayScore`/`result`）から勝点・順位を計算。**第三陣で `@Async @EventListener` → `@Async @TransactionalEventListener(AFTER_COMMIT)`（REQUIRES_NEW）に切替済み（H.0.1・レース条件根治）。**
 - 作り替え（※ Phase 5）: **スコアの源泉を `matches` へ変更**。トリガーは match の COMPLETED 遷移（`MatchCompletedEvent`・match ドメイン発火）を tournament ドメインが受信 → 当該 fixture の division の順位を再計算（原則 5: ドメインをまたぐ更新はイベント駆動で分離）。
-- **入口①第一陣（中道・実装済）**: `StandingsCalculationService` は不変。`MatchScoreFixtureListener` が `MatchCompletedEvent`(AFTER_COMMIT) を受けて既存 `tournament.service.MatchService.updateScore(tournamentId, fixtureId, ...)` を呼ぶ → 既存 `StandingsRecalculationEvent`(divisionId, tournamentId) が発火し既存 `@Async` 再計算（冪等）が走る。
+- **入口①第一陣（中道・実装済）＋第三陣訂正**: `StandingsCalculationService` の**イベントリスナーは AFTER_COMMIT へ切替（H.0.1）**。`MatchScoreFixtureListener` が `MatchCompletedEvent`(AFTER_COMMIT) を受けて既存 `tournament.service.MatchService.updateScore(tournamentId, fixtureId, ...)` を呼ぶ → 既存 `StandingsRecalculationEvent`(divisionId, tournamentId) が発火し、**コミット後**に `@Async` 再計算（冪等）が走る。これにより手動再計算なしで順位が自動反映される。
 
 ```
 [match ドメイン]  match.status=COMPLETED  →  publish MatchCompletedEvent(matchId, fixtureId, homeScore, awayScore, homePenaltyScore, awayPenaltyScore, result, winnerParticipantId, status, ...)
