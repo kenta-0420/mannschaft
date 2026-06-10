@@ -122,7 +122,30 @@
         },
         "submit": "Emitir reembolso",
         "confirmTitle": "Confirmar reembolso",
-        "confirmPayee": "Este es un reembolso asumido por el receptor. Se reembolsará al pagador el importe íntegro y usted asumirá la comisión de procesamiento. ¿Continuar?"
+        "confirmPayee": "Este es un reembolso asumido por el receptor. Se reembolsará al pagador el importe íntegro y usted asumirá la comisión de procesamiento. ¿Continuar?",
+        "amountLabel": "Importe del reembolso",
+        "amountFull": "Reembolso total",
+        "amountPartial": "Reembolso parcial",
+        "amountRequired": "Introduce el importe del reembolso.",
+        "amountTooLarge": "El importe del reembolso supera el importe reembolsable.",
+        "reasonLabel": "Motivo (opcional)",
+        "failed": "El reembolso ha fallado."
+      },
+      "connect": {
+        "title": "Cuenta de cobro (recibir recompensas)",
+        "loading": "Cargando…",
+        "statusLabel": "Estado",
+        "status": {
+          "ready": "Completado",
+          "onboarding": "En revisión",
+          "restricted": "Se requiere más información",
+          "notRegistered": "No registrada"
+        },
+        "registrationRequired": "Necesitas registrar una cuenta de cobro para recibir recompensas.",
+        "register": "Registrar cuenta de cobro",
+        "continue": "Continuar registro",
+        "redirecting": "Redirigiendo…",
+        "linkFailed": "No se pudo obtener el enlace de registro de la cuenta de cobro."
       }
     }
   }
