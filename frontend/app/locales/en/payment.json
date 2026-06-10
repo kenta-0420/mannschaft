@@ -71,6 +71,46 @@
           "EXPIRED": "Expired"
         }
       }
+    },
+    "guardianBulkPayment": {
+      "title": "Guardian Bulk Payment",
+      "subtitle": "Pay outstanding fees for children you manage all at once",
+      "noItems": "No outstanding fees",
+      "beneficiary": "Beneficiary",
+      "scope": "Affiliation",
+      "itemName": "Fee name",
+      "amount": "Amount",
+      "dueDate": "Due date",
+      "alreadyPaid": "Already paid",
+      "paidBy": "Paid by {name}",
+      "kind": {
+        "ONE_TIME": "One-time",
+        "RECURRING": "Recurring",
+        "TERM": "Term"
+      },
+      "via": {
+        "SELF": "Self",
+        "GUARDIAN": "Guardian",
+        "GUARDIAN_PROXY": "Guardian proxy",
+        "PROXY_GRANT": "Proxy grant"
+      },
+      "selectAll": "Select all",
+      "deselectAll": "Deselect all",
+      "paySelected": "Pay {count} item(s)",
+      "totalAmount": "Total: ¥{amount}",
+      "processing": "Processing...",
+      "result": {
+        "title": "Payment result",
+        "checkedOut": "Payment complete",
+        "skipped": "Skipped",
+        "skipReasons": {
+          "ALREADY_PAID": "Already paid",
+          "NOT_AUTHORIZED": "Not authorized",
+          "CONNECT_NOT_READY": "Receiving account not set up",
+          "ITEM_NOT_FOUND": "Fee item not found",
+          "ERROR": "Error"
+        }
+      }
     }
   }
 }
