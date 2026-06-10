@@ -64465,7 +64465,7 @@ export interface components {
             prefectureCode?: string;
             cityCode?: string;
             /** @enum {string} */
-            visibility?: "PUBLIC" | "ORGANIZATION_ONLY" | "PRIVATE";
+            visibility?: "PUBLIC" | "GUESTS_AND_ABOVE" | "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE";
             supporterEnabled?: boolean;
             /** Format: int64 */
             version?: number;
