@@ -85,13 +85,38 @@
       }
     },
     "admin": {
+      "pageTitle": "Gestión de pagos",
       "itemsTitle": "Conceptos de pago",
       "selectItem": "Selecciona un concepto de pago",
       "remindUnpaid": "Recordar impagados",
       "loadItemsError": "Error al cargar los conceptos de pago",
       "loadPaymentsError": "Error al cargar el estado de pago",
       "remindSuccess": "Recordatorio enviado",
-      "remindError": "Error al enviar el recordatorio"
+      "remindError": "Error al enviar el recordatorio",
+      "status": {
+        "PAID": "Pagado",
+        "UNPAID": "Impagado",
+        "EXPIRED": "Vencido",
+        "PENDING": "Pendiente",
+        "REFUNDED": "Reembolsado",
+        "CANCELLED": "Cancelado"
+      }
+    },
+    "receipt": {
+      "title": "Recibos",
+      "download": "Descargar",
+      "issuedBy": "Emisor",
+      "amount": "Monto",
+      "issuedDate": "Fecha de emisión",
+      "pending": "En preparación",
+      "noReceipts": "Sin recibos",
+      "loadError": "Error al cargar los registros de pago",
+      "loadReceiptError": "Error al cargar el recibo"
+    },
+    "summary": {
+      "expired": "Vencido",
+      "payer": "Pagador",
+      "beneficiary": "Beneficiario"
     },
     "guardianBulkPayment": {
       "title": "Pago masivo del tutor",

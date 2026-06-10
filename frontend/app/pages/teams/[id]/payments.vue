@@ -6,7 +6,7 @@ const teamId = String(route.params.id)
 
 <template>
   <div>
-    <div class="mb-4"><PageHeader title="支払い管理" /></div>
+    <div class="mb-4"><PageHeader :title="$t('payment.admin.pageTitle')" /></div>
     <PaymentAdminPanel scope-type="team" :scope-id="teamId" />
   </div>
 </template>

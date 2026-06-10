@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { PaymentItemResponse, MemberPaymentResponse, PaymentItemType } from '~/types/payment'
+import type { PaymentItemResponse, MemberPaymentResponse, PaymentItemType, PaymentSummaryResponse } from '~/types/payment'
 
 const props = defineProps<{ scopeType: 'team' | 'organization'; scopeId: string }>()
 
 const { t } = useI18n()
-const { getPaymentItems, getMemberPayments, sendReminder } = usePaymentApi()
+const { getPaymentItems, getMemberPayments, sendReminder, getPaymentSummary } = usePaymentApi()
 const { showSuccess, showError } = useNotification()
 
 /**
@@ -39,11 +39,22 @@ const items = ref<PaymentItemResponse[]>([])
 const selectedItem = ref<PaymentItemResponse | null>(null)
 const payments = ref<MemberPaymentResponse[]>([])
 const loading = ref(false)
+/** F08.9 P8: サマリー（支払い項目ごとの PAID/UNPAID/EXPIRED 件数）。 */
+const summary = ref<PaymentSummaryResponse | null>(null)
+
+/** 選択中の支払い項目のサマリー行。 */
+const selectedSummaryItem = computed(() =>
+  summary.value?.items.find((s) => s.paymentItemId === selectedItem.value?.id) ?? null,
+)
 
 async function loadItems() {
   try {
-    const res = await getPaymentItems(props.scopeType, props.scopeId)
-    items.value = res.data
+    const [itemsRes, summaryRes] = await Promise.all([
+      getPaymentItems(props.scopeType, props.scopeId),
+      getPaymentSummary(props.scopeType, props.scopeId).catch(() => null),
+    ])
+    items.value = itemsRes.data
+    summary.value = summaryRes?.data ?? null
   } catch { showError(t('payment.admin.loadItemsError')) }
 }
 
@@ -65,8 +76,22 @@ async function onRemind() {
   } catch { showError(t('payment.admin.remindError')) }
 }
 
-function getStatusClass(s: string): string {
-  switch (s) { case 'PAID': return 'bg-green-100 text-green-700'; case 'PENDING': case 'UNPAID': return 'bg-yellow-100 text-yellow-700'; case 'REFUNDED': return 'bg-blue-100 text-blue-700'; default: return 'bg-surface-100 text-surface-500' }
+/**
+ * F08.9 P8: 支払い状態の PrimeVue Tag severity。
+ * EXPIRED = 期限切れ（赤）, PAID = 支払い済み（緑）, UNPAID/PENDING = 未払い（橙）, その他（グレー）。
+ */
+function statusSeverity(status: string): 'success' | 'warn' | 'danger' | 'secondary' | 'info' {
+  switch (status) {
+    case 'PAID': return 'success'
+    case 'UNPAID': case 'PENDING': return 'warn'
+    case 'EXPIRED': return 'danger'
+    default: return 'secondary'
+  }
+}
+
+function statusLabel(status: string): string {
+  const key = `payment.admin.status.${status}`
+  return t(key, status)
 }
 
 onMounted(() => loadItems())
@@ -112,6 +137,24 @@ onMounted(() => loadItems())
             <span v-else-if="selectedItem.term.termStartsOn">{{ selectedItem.term.termStartsOn }} 〜</span>
             <span v-else-if="selectedItem.term.termEndsOn">〜 {{ selectedItem.term.termEndsOn }}</span>
           </div>
+          <!-- F08.9 P8: 支払い状態3区分サマリー -->
+          <div v-if="selectedSummaryItem" class="mt-2 flex flex-wrap items-center gap-2">
+            <Tag
+              :value="`${t('payment.admin.status.PAID')} ${selectedSummaryItem.paidCount}`"
+              severity="success"
+              rounded
+            />
+            <Tag
+              :value="`${t('payment.admin.status.UNPAID')} ${selectedSummaryItem.unpaidCount}`"
+              severity="warn"
+              rounded
+            />
+            <Tag
+              :value="`${t('payment.admin.status.EXPIRED')} ${selectedSummaryItem.expiredCount}`"
+              severity="danger"
+              rounded
+            />
+          </div>
         </div>
         <Button :label="t('payment.admin.remindUnpaid')" icon="pi pi-bell" text size="small" @click="onRemind" />
       </div>
@@ -120,7 +163,12 @@ onMounted(() => loadItems())
         <div v-for="p in payments" :key="p.id" class="flex items-center gap-3 rounded-lg border border-surface-100 px-4 py-2">
           <Avatar :label="p.userName?.charAt(0)" shape="circle" size="small" />
           <span class="flex-1 text-sm">{{ p.userName }}</span>
-          <span :class="getStatusClass(p.statusInfo.status)" class="rounded px-2 py-0.5 text-xs font-medium">{{ p.statusInfo.status }}</span>
+          <!-- F08.9 P8: PrimeVue Tag で状態を色分け表示（PAID=緑・UNPAID/PENDING=橙・EXPIRED=赤） -->
+          <Tag
+            :value="statusLabel(p.statusInfo.status)"
+            :severity="statusSeverity(p.statusInfo.status)"
+            rounded
+          />
           <span v-if="p.statusInfo.paidAt" class="text-xs text-surface-400">{{ p.statusInfo.paidAt }}</span>
         </div>
       </div>

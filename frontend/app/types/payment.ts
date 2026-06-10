@@ -1,6 +1,8 @@
 export type PaymentItemType = 'ANNUAL_FEE' | 'MONTHLY_FEE' | 'ITEM' | 'DONATION' | 'TERM'
 export type PaymentMethod = 'STRIPE' | 'MANUAL'
 export type PaymentStatus = 'PENDING' | 'PAID' | 'REFUNDED' | 'CANCELLED'
+/** F08.9 P8: member_payments の集計3区分。valid_until + grace_period_days < CURDATE() を EXPIRED とする。 */
+export type MemberPaymentDisplayStatus = 'UNPAID' | 'PAID' | 'EXPIRED'
 export type ContentGateType = 'POST' | 'FILE' | 'ANNOUNCEMENT' | 'SCHEDULE'
 
 export interface PaymentItemResponse {
@@ -78,6 +80,8 @@ export interface PaymentSummaryResponse {
     amount: number
     paidCount: number
     unpaidCount: number
+    /** F08.9 P8: valid_until + grace_period_days < CURDATE() の件数（BE P8 実装後に実値が入る）。 */
+    expiredCount: number
     totalCollected: number
     isActive: boolean
   }>
@@ -175,4 +179,32 @@ export interface BulkCheckoutResultItem {
 
 export interface BulkCheckoutResponse {
   results: BulkCheckoutResultItem[]
+}
+
+/**
+ * F08.9 P8: 税内訳（`NoOpTaxPolicy` では null。将来の適格請求書対応枠）。
+ * BE: TaxBreakdownDto
+ */
+export interface MemberPaymentTaxBreakdown {
+  taxCategory: string
+  taxRate: number
+  grossAmount: number
+  netAmount: number
+  taxAmount: number
+  registrationNumber: string | null
+}
+
+/**
+ * F08.9 P8: 会費領収書レスポンス（F08.4 の ReceiptResponse と区別するため MemberPaymentReceipt に命名）。
+ * BE: GET /api/v1/member-payments/{id}/receipt
+ * - receiptUrl: stripe_receipt_url 優先。null の場合は BE P8 実装後に自前 PDF URL が入る。
+ */
+export interface MemberPaymentReceiptResponse {
+  memberPaymentId: number
+  issuedBy: string | null
+  amount: number
+  currency: string
+  issuedDate: string  // ISO date YYYY-MM-DD
+  receiptUrl: string | null
+  taxInfo: MemberPaymentTaxBreakdown | null
 }

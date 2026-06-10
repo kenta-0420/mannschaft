@@ -85,13 +85,38 @@
       }
     },
     "admin": {
+      "pageTitle": "支払い管理",
       "itemsTitle": "支払い項目",
       "selectItem": "支払い項目を選択してください",
       "remindUnpaid": "未払いリマインド",
       "loadItemsError": "支払い項目の取得に失敗しました",
       "loadPaymentsError": "支払い状況の取得に失敗しました",
       "remindSuccess": "リマインドを送信しました",
-      "remindError": "送信に失敗しました"
+      "remindError": "送信に失敗しました",
+      "status": {
+        "PAID": "支払い済み",
+        "UNPAID": "未払い",
+        "EXPIRED": "期限切れ",
+        "PENDING": "保留中",
+        "REFUNDED": "返金済み",
+        "CANCELLED": "キャンセル"
+      }
+    },
+    "receipt": {
+      "title": "領収書",
+      "download": "ダウンロード",
+      "issuedBy": "発行者",
+      "amount": "金額",
+      "issuedDate": "発行日",
+      "pending": "発行準備中",
+      "noReceipts": "領収書はありません",
+      "loadError": "支払い情報の取得に失敗しました",
+      "loadReceiptError": "領収書の取得に失敗しました"
+    },
+    "summary": {
+      "expired": "期限切れ",
+      "payer": "支払い者",
+      "beneficiary": "対象会員"
     },
     "guardianBulkPayment": {
       "title": "後見まとめ払い",
