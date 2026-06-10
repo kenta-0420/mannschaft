@@ -7,8 +7,13 @@
  *     - org id=1 (日本サッカー協会テスト) に tournament id=12 が存在
  *     - division id=10 (Division 1) に participant 9 (FC東京U-18) / 10 (FC東京U-15)
  *     - matchday id=5 に tournament_match id=1 (home=9, away=10)
- *   - バックエンド http://localhost:8080 起動済み
- *   - フロントエンド http://localhost:3100 起動済み（BASE_URL 上書き可）
+ *   - バックエンド http://localhost:8080 起動済み（BE_ORIGIN で上書き可）
+ *
+ * 構成:
+ *   - 本 spec は API 完結（fetch ベース）であり、フロントエンドのページ遷移
+ *     （page.goto / 描画確認）は行わない。Playwright の browser/page も使わず、
+ *     APIRequestContext のみで backend を直接叩く。したがって BASE_URL（フロント
+ *     dev サーバー）は不要で、参照もしない。
  *
  * テスト ID:
  *   FIX-000  認証セッション確立（Bearer 取得・org/team ID 解決）
@@ -45,7 +50,7 @@ test.describe.configure({ mode: 'serial' })
 
 const BE = process.env.BE_ORIGIN ?? 'http://localhost:8080'
 const BE_API = `${BE}/api/v1`
-const BASE_URL = process.env.BASE_URL ?? 'http://localhost:3100'
+// 本 spec は API 完結のためフロント BASE_URL は使用しない（ヘッダコメント「構成」参照）
 
 const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local'
 const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!'
@@ -107,7 +112,7 @@ test.afterAll(async () => {
 // FIX-000: 認証セッション確立
 // ────────────────────────────────────────────────────────────────────
 test('FIX-000: ADMIN ログインで Bearer トークン取得', async () => {
-  expect(adminToken, 'トークンは 50 文字以上').toHaveLength >= 50
+  expect(adminToken.length, 'トークンは 50 文字以上').toBeGreaterThanOrEqual(50)
 })
 
 // ────────────────────────────────────────────────────────────────────

@@ -24,9 +24,15 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * <b>後続フェーズ（Phase 5）に延期</b>する。入口①は本リスナーが {@link MatchCompletedEvent} を
  * {@link TransactionalEventListener}(AFTER_COMMIT) で受信し、<b>既存 {@code tournament_matches} の
  * {@link MatchService#updateScore} を再利用</b>してスコア反映＋既存の
- * {@code StandingsRecalculationEvent} 発火（既存 {@code @Async} 順位再計算・冪等）に乗せるだけとする。
- * 既存 {@code StandingsCalculationService} の {@code @Async @EventListener} 経路は<b>切り替えない</b>
- * （二重発火・既存テスト破壊のリスク回避）。</p>
+ * {@code StandingsRecalculationEvent} 発火（既存の非同期順位再計算・冪等）に乗せるだけとする。</p>
+ *
+ * <p><b>順位再計算経路（第三陣でレース根治済み・05 §H.0.1）</b>: 当初は既存
+ * {@code StandingsCalculationService} の {@code @Async @EventListener} 経路を<b>切り替えない</b>方針
+ * だったが、{@code @Async @EventListener} は発火元 TX の<b>コミット前</b>に別スレッドで即時実行され、
+ * 未コミットのスコアを読んで順位が自動反映されないレース条件が実機 E2E で判明した。第三陣で同サービスの
+ * {@code onStandingsRecalculation} を {@code @Async @TransactionalEventListener}(AFTER_COMMIT) /
+ * {@code REQUIRES_NEW} へ<b>切替済み</b>（コミット後に確定データを読んで再計算）。詳細は
+ * docs/features/F08.10_match_record_analytics/05_tournament_integration.md §H.0.1 を参照。</p>
  *
  * <h3>処理（05 §H.2 / 06 §I.2 第一陣）</h3>
  * <ol>
