@@ -13,6 +13,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+
 /**
  * F22.1 統一決済 P2-b: 応募確定 → 謝礼の与信（authorize）を起動するリスナ（設計書 02 §5.1・§1 行#4）。
  *
@@ -47,6 +50,13 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Component
 @RequiredArgsConstructor
 public class RecruitmentChargeAuthorizationListener {
+
+    /**
+     * 第三陣-b「7日超 fallback」の閾値（日数・マスター裁可）。成立〜役務日がこの日数を超える謝礼は、カード与信が
+     * 役務完了前に失効する（Stripe 仕様で manual-capture の与信は約7日で失効）ため、成立時に与信せず
+     * {@link EscrowStatus#DEFERRED}（完了時即時払い予定）で起票する（設計書 02 §5.1）。
+     */
+    static final long ESCROW_MAX_HOLD_DAYS = 7L;
 
     private final ConnectChargeService connectChargeService;
     private final StripeCustomerRepository stripeCustomerRepository;
@@ -85,6 +95,17 @@ public class RecruitmentChargeAuthorizationListener {
                 .map(StripeCustomerEntity::getStripeCustomerId)
                 .orElse(null);
 
+        // 第三陣-b「7日超 fallback」判定（マスター裁可・02 §5.1）: 成立（now）〜役務日（event.serviceDate）が
+        // ESCROW_MAX_HOLD_DAYS を超えるなら、カード与信が役務完了前に失効するため成立時に与信せず DEFERRED で起票し、
+        // 最終認証時に即時払いへフォールバックする。役務日不明（serviceDate=null・助っ人等で start_at 未設定）は
+        // 安全側で従来 escrow（与信）に倒し、与信の失効ハンドリングは第三陣のライフサイクルバッチに委ねる。
+        boolean deferred = isBeyondHoldWindow(event.serviceDate());
+        if (deferred) {
+            log.info("F22.1 第三陣-b: 成立〜役務日が {} 日超のため完了時即時払い（DEFERRED）で起票: "
+                            + "listingId={}, participantId={}, serviceDate={}",
+                    ESCROW_MAX_HOLD_DAYS, event.listingId(), event.participantId(), event.serviceDate());
+        }
+
         AuthorizeChargeCommand cmd = new AuthorizeChargeCommand(
                 EscrowSourceKind.RECRUITMENT,
                 event.listingId(),
@@ -97,7 +118,9 @@ public class RecruitmentChargeAuthorizationListener {
                 event.faceAmount(),
                 "JPY",
                 organizationId,
-                null); // system 経路（イベント駆動）: actor 認可はスキップ（02 §1 行#4「外部API無し」）
+                null, // system 経路（イベント駆動）: actor 認可はスキップ（02 §1 行#4「外部API無し」）
+                null, // subKey: source_kind（RECRUITMENT）の既定手数料パターンを引く
+                deferred); // 7日超なら DEFERRED（完了時即時払い予定）・7日以内/役務日不明は従来与信
 
         // AFTER_COMMIT 後ゆえ応募はロールバックできない。与信失敗を握り潰さず、ERROR ログ＋失敗イベントで救済する
         // （02 §5.1 / PAYMENT_041・根治）。例外はここで処理し終え、@Async 既定ハンドラのログに埋もれさせない。
@@ -117,6 +140,26 @@ public class RecruitmentChargeAuthorizationListener {
                     event.payerUserId(),
                     e.getMessage()));
         }
+    }
+
+    /**
+     * 成立（現在時刻）〜役務日が {@link #ESCROW_MAX_HOLD_DAYS} を超えるか判定する（第三陣-b 7日判定）。
+     *
+     * <p>{@code serviceDate} が {@code null}（役務日不明）の場合は {@code false}（安全側で従来与信）。過去日
+     * （既に役務日を過ぎている）も {@code false}（即時に近く与信失効の懸念がないため従来与信で足りる）。</p>
+     *
+     * @param serviceDate 役務日（札の start_at・null 可）
+     * @return 成立〜役務日が ESCROW_MAX_HOLD_DAYS 超なら true（DEFERRED 対象）
+     */
+    private boolean isBeyondHoldWindow(LocalDateTime serviceDate) {
+        if (serviceDate == null) {
+            return false;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (!serviceDate.isAfter(now)) {
+            return false;
+        }
+        return Duration.between(now, serviceDate).toDays() > ESCROW_MAX_HOLD_DAYS;
     }
 
     private ScopeKind parsePayeeKind(String payeeKind) {

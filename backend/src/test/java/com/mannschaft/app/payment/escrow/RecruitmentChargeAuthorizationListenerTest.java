@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -149,5 +150,61 @@ class RecruitmentChargeAuthorizationListenerTest {
         assertThat(failed.payerScope()).isEqualTo(ScopeKind.USER);
         assertThat(failed.payerScopeId()).isEqualTo(999L);
         assertThat(failed.reason()).contains("stripe authorize failed");
+    }
+
+    // ============================ 第三陣-b 7日判定 ============================
+
+    @Test
+    @DisplayName("7日超(役務日=+10日): deferred=true で authorize を委譲（成立時に与信しない）")
+    void serviceDateBeyond7Days_buildsDeferredCommand() {
+        RecruitmentParticipantConfirmedEvent event = new RecruitmentParticipantConfirmedEvent(
+                110L, 210L, 999L, "TEAM", 10L, "TEAM", null, 10_000L, LocalDateTime.now().plusDays(10));
+        given(stripeCustomerRepository.findByUserId(999L))
+                .willReturn(Optional.of(StripeCustomerEntity.builder()
+                        .userId(999L).stripeCustomerId("cus_payer").build()));
+        given(connectChargeService.authorize(any())).willReturn(new AuthorizeChargeResult(
+                UUID.randomUUID(), EscrowStatus.DEFERRED, null, null, 10_000L, 10_250L, 500L));
+
+        listener.onParticipantConfirmed(event);
+
+        ArgumentCaptor<AuthorizeChargeCommand> captor = ArgumentCaptor.forClass(AuthorizeChargeCommand.class);
+        verify(connectChargeService).authorize(captor.capture());
+        assertThat(captor.getValue().deferred()).isTrue();
+    }
+
+    @Test
+    @DisplayName("7日以内(役務日=+3日): deferred=false で従来与信を委譲")
+    void serviceDateWithin7Days_buildsAuthorizeCommand() {
+        RecruitmentParticipantConfirmedEvent event = new RecruitmentParticipantConfirmedEvent(
+                111L, 211L, 999L, "TEAM", 10L, "TEAM", null, 10_000L, LocalDateTime.now().plusDays(3));
+        given(stripeCustomerRepository.findByUserId(999L))
+                .willReturn(Optional.of(StripeCustomerEntity.builder()
+                        .userId(999L).stripeCustomerId("cus_payer").build()));
+        given(connectChargeService.authorize(any())).willReturn(new AuthorizeChargeResult(
+                UUID.randomUUID(), EscrowStatus.PENDING_CONFIRMATION, "cs", "pi", 10_000L, 10_250L, 500L));
+
+        listener.onParticipantConfirmed(event);
+
+        ArgumentCaptor<AuthorizeChargeCommand> captor = ArgumentCaptor.forClass(AuthorizeChargeCommand.class);
+        verify(connectChargeService).authorize(captor.capture());
+        assertThat(captor.getValue().deferred()).isFalse();
+    }
+
+    @Test
+    @DisplayName("役務日不明(serviceDate=null): 安全側で deferred=false（従来与信・第三陣バッチに委ねる）")
+    void serviceDateNull_buildsAuthorizeCommandSafeSide() {
+        RecruitmentParticipantConfirmedEvent event = new RecruitmentParticipantConfirmedEvent(
+                112L, 212L, 999L, "TEAM", 10L, "TEAM", null, 10_000L, null);
+        given(stripeCustomerRepository.findByUserId(999L))
+                .willReturn(Optional.of(StripeCustomerEntity.builder()
+                        .userId(999L).stripeCustomerId("cus_payer").build()));
+        given(connectChargeService.authorize(any())).willReturn(new AuthorizeChargeResult(
+                UUID.randomUUID(), EscrowStatus.PENDING_CONFIRMATION, "cs", "pi", 10_000L, 10_250L, 500L));
+
+        listener.onParticipantConfirmed(event);
+
+        ArgumentCaptor<AuthorizeChargeCommand> captor = ArgumentCaptor.forClass(AuthorizeChargeCommand.class);
+        verify(connectChargeService).authorize(captor.capture());
+        assertThat(captor.getValue().deferred()).isFalse();
     }
 }
