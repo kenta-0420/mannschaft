@@ -122,7 +122,30 @@
         },
         "submit": "환불하기",
         "confirmTitle": "환불 확인",
-        "confirmPayee": "수취 측 부담 환불입니다. 지불자에게 전액이 환불되고 결제 수수료는 귀하의 부담이 됩니다. 진행하시겠습니까?"
+        "confirmPayee": "수취 측 부담 환불입니다. 지불자에게 전액이 환불되고 결제 수수료는 귀하의 부담이 됩니다. 진행하시겠습니까?",
+        "amountLabel": "환불 금액",
+        "amountFull": "전액 환불",
+        "amountPartial": "부분 환불",
+        "amountRequired": "환불 금액을 입력하세요.",
+        "amountTooLarge": "환불 금액이 환불 가능 금액을 초과합니다.",
+        "reasonLabel": "사유(선택)",
+        "failed": "환불에 실패했습니다."
+      },
+      "connect": {
+        "title": "수령 계좌(사례 수령)",
+        "loading": "불러오는 중…",
+        "statusLabel": "상태",
+        "status": {
+          "ready": "등록 완료",
+          "onboarding": "심사 중",
+          "restricted": "추가 정보 필요",
+          "notRegistered": "미등록"
+        },
+        "registrationRequired": "사례를 받으려면 수령 계좌 등록이 필요합니다.",
+        "register": "수령 계좌 등록",
+        "continue": "등록 계속하기",
+        "redirecting": "이동 중…",
+        "linkFailed": "수령 계좌 등록 링크를 가져오지 못했습니다."
       }
     }
   }
