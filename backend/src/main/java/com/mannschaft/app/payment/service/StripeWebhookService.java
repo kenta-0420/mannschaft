@@ -115,6 +115,8 @@ public class StripeWebhookService {
             case ANNUAL_FEE -> validFrom.plusDays(365);
             case MONTHLY_FEE -> validFrom.plusDays(31);
             case ITEM, DONATION -> null;
+            // F08.9 P6: TERM 型は paymentItem.termEndsOn を有効期限とする
+            case TERM -> paymentItem.getTermEndsOn();
         };
 
         payment.markAsPaid(

@@ -90,7 +90,10 @@ public enum PaymentErrorCode implements ErrorCode {
     PAYMENT_ITEM_DELETED("PAYMENT_026", "この支払い項目は削除されています", Severity.WARN),
 
     /** 対象ユーザーがメンバーでない */
-    USER_NOT_MEMBER("PAYMENT_027", "対象ユーザーはこのスコープのメンバーではありません", Severity.WARN);
+    USER_NOT_MEMBER("PAYMENT_027", "対象ユーザーはこのスコープのメンバーではありません", Severity.WARN),
+
+    /** TERM 型で終了日が未設定 */
+    TERM_END_DATE_REQUIRED("PAYMENT_028", "期別決済には有効期間終了日（termEndsOn）の指定が必要です", Severity.WARN);
 
     private final String code;
     private final String message;

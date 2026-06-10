@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -8,6 +9,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * 支払い項目作成リクエストDTO。
@@ -41,4 +43,12 @@ public class CreatePaymentItemRequest {
 
     @Size(max = 100)
     private final String stripePriceId;
+
+    /** F08.9 P6: 期別有効開始日（type=TERM のみ使用）。 */
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private final LocalDate termStartsOn;
+
+    /** F08.9 P6: 期別有効終了日（type=TERM のみ使用・TERM 型では必須）。 */
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private final LocalDate termEndsOn;
 }
