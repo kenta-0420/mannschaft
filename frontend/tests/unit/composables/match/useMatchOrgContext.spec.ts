@@ -105,4 +105,44 @@ describe('useMatchOrgContext', () => {
     expect(result).toBeNull()
     expect(mockWarn).toHaveBeenCalled()
   })
+
+  // ===== 入口①: 数値 teamId 起点の解決（resolveContextByTeamId） =====
+
+  it('ORG-CTX-101: 数値 teamId から orgId/teamId/teamPublicId を解決する', async () => {
+    mockFetch.mockResolvedValueOnce({
+      data: [{ id: 500, publicId: TEAM_A_PUBLIC, organizationId: 50 }],
+    })
+
+    const { resolveContextByTeamId } = useMatchOrgContext()
+    const result = await resolveContextByTeamId(500)
+
+    expect(mockFetch).toHaveBeenCalledWith('/api/v1/me/teams')
+    expect(result).toEqual({ orgId: 50, teamId: 500, teamPublicId: TEAM_A_PUBLIC })
+  })
+
+  it('ORG-CTX-102: 同一 teamId の 2 回目はキャッシュを返し API を再度叩かない', async () => {
+    mockFetch.mockResolvedValueOnce({
+      data: [{ id: 600, publicId: TEAM_B_PUBLIC, organizationId: 60 }],
+    })
+
+    const { resolveContextByTeamId } = useMatchOrgContext()
+    const first = await resolveContextByTeamId(600)
+    const second = await resolveContextByTeamId(600)
+
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(first).toEqual({ orgId: 60, teamId: 600, teamPublicId: TEAM_B_PUBLIC })
+    expect(second).toEqual(first)
+  })
+
+  it('ORG-CTX-103: 自分が所属しない teamId（記録権限なし）は null を返し通知する', async () => {
+    mockFetch.mockResolvedValueOnce({
+      data: [{ id: 700, publicId: TEAM_A_PUBLIC, organizationId: 70 }],
+    })
+
+    const { resolveContextByTeamId } = useMatchOrgContext()
+    const result = await resolveContextByTeamId(999)
+
+    expect(result).toBeNull()
+    expect(mockWarn).toHaveBeenCalled()
+  })
 })

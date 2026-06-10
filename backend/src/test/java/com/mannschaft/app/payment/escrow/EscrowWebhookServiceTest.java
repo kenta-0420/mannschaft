@@ -63,7 +63,33 @@ class EscrowWebhookServiceTest {
     }
 
     @Test
-    @DisplayName("amount_capturable_updated → AUTHORIZED 確定（PROCESSED）")
+    @DisplayName("第一陣根治: amount_capturable_updated → PENDING_CONFIRMATION から AUTHORIZED へ昇格・authorized_at/hold_expires_at 確定（PROCESSED）")
+    void amountCapturable_promotesPendingToAuthorized() {
+        given(stripePaymentProvider.constructEscrowEvent(any(), any()))
+                .willReturn(event("evt_0", "payment_intent.amount_capturable_updated"));
+        given(idempotencyService.tryBegin("evt_0", "payment_intent.amount_capturable_updated", false))
+                .willReturn(true);
+        // authorize 直後は PENDING_CONFIRMATION（札主 confirm 待ち・authorized_at/hold_expires_at 未設定）。
+        EscrowTransactionEntity pending = escrow(EscrowStatus.PENDING_CONFIRMATION);
+        assertThat(pending.getAuthorizedAt()).isNull();
+        assertThat(pending.getHoldExpiresAt()).isNull();
+        given(escrowTransactionRepository.findByStripePaymentIntentId("pi_abc")).willReturn(Optional.of(pending));
+        given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        service.handleWebhook("payload", "sig");
+
+        ArgumentCaptor<EscrowTransactionEntity> captor = ArgumentCaptor.forClass(EscrowTransactionEntity.class);
+        verify(escrowTransactionRepository).save(captor.capture());
+        // 札主 confirm 完了＝真の与信確定。capture 可能な AUTHORIZED へ昇格する。
+        assertThat(captor.getValue().getStatus()).isEqualTo(EscrowStatus.AUTHORIZED);
+        // hold は confirm で立つため、昇格時に authorized_at / hold_expires_at（最大7日）を刻む。
+        assertThat(captor.getValue().getAuthorizedAt()).isNotNull();
+        assertThat(captor.getValue().getHoldExpiresAt()).isNotNull();
+        verify(idempotencyService).markProcessed("evt_0", WebhookProcessStatus.PROCESSED);
+    }
+
+    @Test
+    @DisplayName("amount_capturable_updated → HELD（onboarding 完了）からも AUTHORIZED 確定（PROCESSED）")
     void amountCapturable_confirmsAuthorized() {
         given(stripePaymentProvider.constructEscrowEvent(any(), any()))
                 .willReturn(event("evt_1", "payment_intent.amount_capturable_updated"));
@@ -80,6 +106,40 @@ class EscrowWebhookServiceTest {
         assertThat(captor.getValue().getStatus()).isEqualTo(EscrowStatus.AUTHORIZED);
         assertThat(captor.getValue().getAuthorizedAt()).isNotNull();
         verify(idempotencyService).markProcessed("evt_1", WebhookProcessStatus.PROCESSED);
+    }
+
+    @Test
+    @DisplayName("二重昇格（同一 event_id の amount_capturable 再送）はハンドラ非実行（冪等・行ロック前段の event_id ゲート）")
+    void amountCapturable_duplicateEventNoOp() {
+        given(stripePaymentProvider.constructEscrowEvent(any(), any()))
+                .willReturn(event("evt_dup", "payment_intent.amount_capturable_updated"));
+        given(idempotencyService.tryBegin("evt_dup", "payment_intent.amount_capturable_updated", false))
+                .willReturn(false);
+
+        service.handleWebhook("payload", "sig");
+
+        verify(escrowTransactionRepository, never()).findByStripePaymentIntentId(any());
+        verify(escrowTransactionRepository, never()).save(any());
+        verify(idempotencyService, never()).markProcessed(any(), any());
+    }
+
+    @Test
+    @DisplayName("第一陣根治: payment_intent.payment_failed → PENDING_CONFIRMATION から CANCELLED へ遷移（PROCESSED）")
+    void paymentFailed_cancelsPending() {
+        given(stripePaymentProvider.constructEscrowEvent(any(), any()))
+                .willReturn(event("evt_pf", "payment_intent.payment_failed"));
+        given(idempotencyService.tryBegin("evt_pf", "payment_intent.payment_failed", false)).willReturn(true);
+        EscrowTransactionEntity pending = escrow(EscrowStatus.PENDING_CONFIRMATION);
+        given(escrowTransactionRepository.findByStripePaymentIntentId("pi_abc")).willReturn(Optional.of(pending));
+        given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        service.handleWebhook("payload", "sig");
+
+        ArgumentCaptor<EscrowTransactionEntity> captor = ArgumentCaptor.forClass(EscrowTransactionEntity.class);
+        verify(escrowTransactionRepository).save(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(EscrowStatus.CANCELLED);
+        assertThat(captor.getValue().getCancelledAt()).isNotNull();
+        verify(idempotencyService).markProcessed("evt_pf", WebhookProcessStatus.PROCESSED);
     }
 
     @Test

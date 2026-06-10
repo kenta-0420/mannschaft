@@ -368,6 +368,26 @@
       "record_from_schedule": "이 경기 기록하기",
       "record_from_schedule_hint": "이 일정의 경기 기록을 시작합니다",
       "resolving": "경기 기록을 준비 중…"
+    },
+    "fixtures": {
+      "title": "대진표",
+      "back": "대회 홈으로 돌아가기",
+      "round": "{n}라운드",
+      "record": "기록",
+      "venue_tbd": "장소 미정",
+      "date_tbd": "날짜 미정",
+      "tbd_participant": "미정",
+      "no_score": "경기 예정",
+      "empty": "아직 대진이 없습니다",
+      "load_failed": "대진표를 불러오지 못했습니다",
+      "record_not_participant": "이 대진에 자기 팀이 참가하지 않아 기록할 수 없습니다",
+      "status": {
+        "SCHEDULED": "예정",
+        "IN_PROGRESS": "진행 중",
+        "COMPLETED": "종료",
+        "POSTPONED": "연기",
+        "CANCELLED": "취소"
+      }
     }
   }
 }

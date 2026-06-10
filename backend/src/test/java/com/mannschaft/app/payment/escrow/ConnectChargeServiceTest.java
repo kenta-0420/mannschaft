@@ -85,8 +85,8 @@ class ConnectChargeServiceTest {
     }
 
     @Test
-    @DisplayName("手数料連動: 額面10,000→charge10,250/appFee500 を PI 作成へ渡し escrow へ記録")
-    void feeLinkage_authorized() {
+    @DisplayName("手数料連動: 額面10,000→charge10,250/appFee500 を PI 作成へ渡し escrow を PENDING_CONFIRMATION で記録（札主 confirm 待ち）")
+    void feeLinkage_pendingConfirmation() {
         ConnectChargeService svc = service();
         given(escrowTransactionRepository.findBySourceKindAndSourceIdAndSourceParticipantId(
                 EscrowSourceKind.RECRUITMENT, 100L, 200L)).willReturn(Optional.empty());
@@ -107,17 +107,22 @@ class ConnectChargeServiceTest {
         ArgumentCaptor<EscrowTransactionEntity> captor = ArgumentCaptor.forClass(EscrowTransactionEntity.class);
         verify(escrowTransactionRepository).save(captor.capture());
         EscrowTransactionEntity saved = captor.getValue();
-        assertThat(saved.getStatus()).isEqualTo(EscrowStatus.AUTHORIZED);
+        // 第一陣根治: manual-capture PI は札主 confirm 前は真の与信が立たないため AUTHORIZED にしない。
+        assertThat(saved.getStatus()).isEqualTo(EscrowStatus.PENDING_CONFIRMATION);
         assertThat(saved.getFaceAmount()).isEqualTo(10_000L);
         assertThat(saved.getAmount()).isEqualTo(10_250L);
         assertThat(saved.getApplicationFeeAmount()).isEqualTo(500L);
         assertThat(saved.getCaptureMode()).isEqualTo(EscrowCaptureMode.MANUAL);
         assertThat(saved.getPayeeKind()).isEqualTo(ScopeKind.TEAM);
         assertThat(saved.getStripePaymentIntentId()).isEqualTo("pi_abc");
+        // 与信が真に立つ webhook 昇格まで authorized_at / hold_expires_at は刻まない。
+        assertThat(saved.getAuthorizedAt()).isNull();
+        assertThat(saved.getHoldExpiresAt()).isNull();
 
-        // clientSecret は支払者本人へ返す。
-        assertThat(result.status()).isEqualTo(EscrowStatus.AUTHORIZED);
+        // clientSecret は支払者本人へ返す（PENDING_CONFIRMATION 時に非 null・札主が confirm するため）。
+        assertThat(result.status()).isEqualTo(EscrowStatus.PENDING_CONFIRMATION);
         assertThat(result.clientSecret()).isEqualTo("pi_abc_secret");
+        assertThat(result.paymentIntentId()).isEqualTo("pi_abc");
         assertThat(result.chargeAmount()).isEqualTo(10_250L);
         assertThat(result.applicationFeeAmount()).isEqualTo(500L);
     }

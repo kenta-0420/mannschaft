@@ -245,5 +245,18 @@
     "empty_team_record": "Aún no ha participado en ningún torneo",
     "empty_org_summary": "Aún no ha organizado ningún torneo",
     "empty_division_standings": "Actualmente no participa en ningún torneo"
+  },
+  "tournamentFee": {
+    "pageTitle": "Cuotas de Inscripción",
+    "myFees": "Mis Cuotas",
+    "noFees": "No hay cuotas de inscripción",
+    "payNow": "Pagar Ahora",
+    "paid": "Pagado",
+    "paidAt": "Fecha de Pago",
+    "dueDate": "Fecha Límite",
+    "faceAmount": "Cuota",
+    "totalCharge": "Total",
+    "checkoutSuccess": "Pago completado",
+    "checkoutError": "Error en el pago"
   }
 }

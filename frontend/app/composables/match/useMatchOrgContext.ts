@@ -34,6 +34,14 @@ export interface MatchOrgContext {
   teamId: number
 }
 
+/**
+ * 数値 teamId からの解決結果（入口①の大会対戦表用）。
+ * live 画面の遷移先は `/teams/{teamPublicId}/matches/...` のため publicId も同時に返す。
+ */
+export interface MatchOrgContextByTeamId extends MatchOrgContext {
+  teamPublicId: string
+}
+
 interface MyTeamItem {
   id: number
   publicId: string
@@ -77,7 +85,45 @@ export function useMatchOrgContext() {
     }
   }
 
+  /** 数値 teamId → 解決済みコンテキスト（入口①で home/away participant.teamId と突合した後に使う）。 */
+  const contextByTeamIdCache = new Map<number, MatchOrgContextByTeamId>()
+
+  /**
+   * 数値 teamId（大会 participant.teamId）から数値 orgId ＋ teamPublicId を解決する。
+   * 大会対戦表（入口①）では participant.teamId（数値）が起点になるため、publicId 起点の
+   * resolveContext と対称に、数値 teamId をキーに `/me/teams` を引いて解決する。
+   * 当該ユーザーが所属しないチーム（=記録権限を持たない）や親組織未解決の場合は null を返す
+   * （症状は隠さず呼び出し側でトースト通知する）。
+   */
+  async function resolveContextByTeamId(
+    teamId: number,
+  ): Promise<MatchOrgContextByTeamId | null> {
+    const cached = contextByTeamIdCache.get(teamId)
+    if (cached !== undefined) return cached
+
+    try {
+      const res = await api<{ data: MyTeamItem[] }>('/api/v1/me/teams')
+      const myTeam = (res.data ?? []).find((tm) => tm.id === teamId)
+      if (!myTeam || typeof myTeam.organizationId !== 'number') {
+        notification.warn(t('match.org_context.resolve_failed'))
+        return null
+      }
+
+      const ctx: MatchOrgContextByTeamId = {
+        orgId: myTeam.organizationId,
+        teamId: myTeam.id,
+        teamPublicId: myTeam.publicId,
+      }
+      contextByTeamIdCache.set(teamId, ctx)
+      return ctx
+    } catch {
+      notification.warn(t('match.org_context.resolve_failed'))
+      return null
+    }
+  }
+
   return {
     resolveContext,
+    resolveContextByTeamId,
   }
 }

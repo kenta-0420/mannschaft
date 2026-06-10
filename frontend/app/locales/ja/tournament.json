@@ -245,5 +245,18 @@
     "empty_team_record": "参加した大会がまだありません",
     "empty_org_summary": "主催している大会がまだありません",
     "empty_division_standings": "現在参加中の大会がありません"
+  },
+  "tournamentFee": {
+    "pageTitle": "大会参加費",
+    "myFees": "自分の参加費一覧",
+    "noFees": "現在対象の大会参加費はありません",
+    "payNow": "今すぐ支払う",
+    "paid": "支払済み",
+    "paidAt": "支払日時",
+    "dueDate": "支払期限",
+    "faceAmount": "参加費",
+    "totalCharge": "合計請求額",
+    "checkoutSuccess": "決済チェックアウトを完了しました",
+    "checkoutError": "決済チェックアウトに失敗しました"
   }
 }
