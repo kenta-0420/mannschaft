@@ -77,7 +77,8 @@ public class MarketChargeCaptureListener {
 
         for (EscrowTransactionEntity escrow : escrows) {
             if (escrow.getStatus() != EscrowStatus.AUTHORIZED) {
-                // HELD（onboarding 未完で payout 不能）/CANCELLED/CAPTURED 済み等は capture 対象外。
+                // PENDING_CONFIRMATION（札主未 confirm・真の与信未確定）/HELD（onboarding 未完で payout 不能）/
+                // CANCELLED/CAPTURED 済み等は capture 対象外（第一陣 status 意味論の根治）。
                 log.info("F22.1 払出スキップ（AUTHORIZED 以外）: escrowId={}, status={}",
                         escrow.getId(), escrow.getStatus());
                 continue;

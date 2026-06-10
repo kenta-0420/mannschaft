@@ -74,6 +74,12 @@ public class PaymentItemService {
     private PaymentItemResponse createPaymentItem(Long teamId, Long organizationId, Long userId,
                                                    CreatePaymentItemRequest request) {
         PaymentItemType type = PaymentItemType.valueOf(request.getType());
+
+        // F08.9 P6: TERM 型は termEndsOn 必須バリデーション
+        if (type == PaymentItemType.TERM && request.getTermEndsOn() == null) {
+            throw new BusinessException(PaymentErrorCode.TERM_END_DATE_REQUIRED);
+        }
+
         boolean isActive = request.getIsActive() != null ? request.getIsActive() : true;
         short gracePeriodDays = request.getGracePeriodDays() != null ? request.getGracePeriodDays() : 0;
         short displayOrder = request.getDisplayOrder() != null ? request.getDisplayOrder() : 0;
@@ -90,17 +96,19 @@ public class PaymentItemService {
                 .isActive(isActive)
                 .displayOrder(displayOrder)
                 .gracePeriodDays(gracePeriodDays)
+                .termStartsOn(request.getTermStartsOn())
+                .termEndsOn(request.getTermEndsOn())
                 .createdBy(userId)
                 .build();
 
         PaymentItemEntity saved = paymentItemRepository.save(entity);
 
-        // Stripe Price の処理
+        // Stripe Price の処理（TERM 型は単発 destination charge のため Stripe Price 自動作成不要）
         if (request.getStripePriceId() != null) {
             // 手動紐付けフロー B
             handleManualPriceBinding(saved, request.getStripePriceId());
-        } else if (isActive) {
-            // 自動作成フロー A
+        } else if (isActive && type != PaymentItemType.TERM) {
+            // 自動作成フロー A（TERM は Stripe Subscription 不要・Price 管理対象外）
             handleAutoStripeCreation(saved);
         }
 

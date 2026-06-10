@@ -215,6 +215,8 @@ public class PayableDuesService {
             case MONTHLY_FEE -> "RECURRING";
             case ANNUAL_FEE -> "TERM";
             case ITEM, DONATION -> "ONE_TIME";
+            // F08.9 P6: TERM 型（期別単発 charge）は "TERM" 種別（有効期間を期別に管理）
+            case TERM -> "TERM";
         };
     }
 

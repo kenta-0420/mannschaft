@@ -1,4 +1,4 @@
-export type PaymentItemType = 'ANNUAL_FEE' | 'MONTHLY_FEE' | 'ITEM' | 'DONATION'
+export type PaymentItemType = 'ANNUAL_FEE' | 'MONTHLY_FEE' | 'ITEM' | 'DONATION' | 'TERM'
 export type PaymentMethod = 'STRIPE' | 'MANUAL'
 export type PaymentStatus = 'PENDING' | 'PAID' | 'REFUNDED' | 'CANCELLED'
 export type ContentGateType = 'POST' | 'FILE' | 'ANNOUNCEMENT' | 'SCHEDULE'
@@ -20,6 +20,14 @@ export interface PaymentItemResponse {
     stripeProductId: string | null
     stripePriceId: string | null
   }
+  /**
+   * F08.9 P6: 期別課金（TERM）の有効期間。type=TERM 以外は null。
+   * BE: payment_items.term_starts_on / term_ends_on（設計書 01 §1.2）
+   */
+  term: {
+    termStartsOn: string | null  // ISO date YYYY-MM-DD
+    termEndsOn: string | null    // ISO date YYYY-MM-DD
+  } | null
   audit: {
     isActive: boolean
     createdAt: string
