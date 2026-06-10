@@ -19,7 +19,7 @@ import java.time.LocalDate;
  * Stripe receipt_url が存在する場合はその URL を含める。
  * 税内訳（TaxBreakdownDto）は TaxPolicy 確定まで null で返す。</p>
  */
-@Service
+@Service("memberPaymentReceiptService")
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ReceiptService {

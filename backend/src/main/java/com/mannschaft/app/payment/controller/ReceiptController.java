@@ -5,6 +5,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.payment.dto.ReceiptResponse;
 import com.mannschaft.app.payment.service.ReceiptService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,10 +20,13 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/member-payments")
-@RequiredArgsConstructor
 public class ReceiptController {
 
     private final ReceiptService receiptService;
+
+    public ReceiptController(@Qualifier("memberPaymentReceiptService") ReceiptService receiptService) {
+        this.receiptService = receiptService;
+    }
 
     /**
      * 会費領収書を取得する。
