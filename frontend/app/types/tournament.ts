@@ -655,3 +655,39 @@ export interface SubmitForTeamRequest {
     fileKey?: string | null
   }>
 }
+
+// ──────────────────────────────────────────────────
+// F08.7.1: 大会参加費 Connect 決済（自分の参加費一覧・チェックアウト）
+// GET  /api/v1/tournament-fees/my
+// POST /api/v1/tournament-fees/{feeId}/checkout
+// ──────────────────────────────────────────────────
+
+export interface MyTournamentFeeItem {
+  feeId: string
+  tournamentId: number
+  tournamentName: string
+  divisionId: number | null
+  divisionName: string | null
+  title: string
+  paymentItemId: number
+  faceAmount: number
+  payerSurcharge: number
+  totalCharge: number
+  dueDate: string | null
+  alreadyPaid: boolean
+  paidAt: string | null
+}
+
+export interface MyTournamentFeesResponse {
+  fees: MyTournamentFeeItem[]
+}
+
+export interface TournamentFeeCheckoutRequest {
+  idempotencyKey?: string
+}
+
+export interface TournamentFeeCheckoutResponse {
+  clientSecret: string | null
+  memberPaymentId: number
+  escrowTransactionId: string
+}

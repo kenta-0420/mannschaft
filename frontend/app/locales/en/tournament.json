@@ -245,5 +245,18 @@
     "empty_team_record": "No tournaments joined yet",
     "empty_org_summary": "No tournaments hosted yet",
     "empty_division_standings": "Not currently in any tournament"
+  },
+  "tournamentFee": {
+    "pageTitle": "Tournament Entry Fees",
+    "myFees": "My Entry Fees",
+    "noFees": "No entry fees found",
+    "payNow": "Pay Now",
+    "paid": "Paid",
+    "paidAt": "Paid At",
+    "dueDate": "Due Date",
+    "faceAmount": "Entry Fee",
+    "totalCharge": "Total Charge",
+    "checkoutSuccess": "Checkout completed",
+    "checkoutError": "Checkout failed"
   }
 }
